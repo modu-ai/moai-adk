@@ -2,9 +2,9 @@
 id: SPEC-HARNESS-EVOLVE-003
 title: "Curator production wiring — Tier-Surface mapping + validation gates + re-proposal suppression"
 version: "0.1.1"
-status: draft
+status: completed
 created: 2026-07-12
-updated: 2026-07-12
+updated: 2026-07-13
 author: manager-spec
 priority: P1
 phase: "v3.0.0"

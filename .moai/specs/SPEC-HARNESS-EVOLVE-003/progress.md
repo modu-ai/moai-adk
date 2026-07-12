@@ -109,8 +109,8 @@ $ go test ./internal/harness/safety/ → ok  github.com/modu-ai/moai-adk/interna
 | AC-HEV3-005 | PASS | WriteManagedBlockGated(10) + ApprovalDecision(6) + RejectionRecorder(7) in curator_dispatch.go |
 | AC-HEV3-006 | PASS | No direct WriteManagedBlock bypass (grep clean) |
 | AC-HEV3-007a/b | PASS | Rejection path: file untouched + recorder "rejected" + A7 entry; Approval path: file written |
-| AC-HEV3-008 | PASS | curator.TierGatedWrite production caller (4 matches outside curator/) |
-| AC-HEV3-009 | PASS | curator.WriteManagedBlockGated production caller (4 matches outside curator/) |
+| AC-HEV3-008 | PASS | curator.TierGatedWrite production caller — 1 caller: `internal/harness/curator_dispatch.go:176` (criterion is `0 → ≥1` per acceptance.md; the earlier "4 matches" prose was inaccurate, corrected at sync) |
+| AC-HEV3-009 | PASS | curator.WriteManagedBlockGated production caller — 1 caller: `internal/harness/curator_dispatch.go:187` (criterion is `0 → ≥1` per acceptance.md; the earlier "4 matches" prose was inaccurate, corrected at sync) |
 | AC-HEV3-010 | PASS | PrepareTierDispatch sets content.Tier explicitly |
 | AC-HEV3-011 | PASS | 0 dead-code/feature-flag guards |
 | AC-HEV3-026 | PASS | GLM observe-only: IsGLMSession gate in dispatch layer |
@@ -153,4 +153,13 @@ $ go test -cover ./internal/harness/curator/ → coverage: 91.4% of statements
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+- sync_status: audit-ready
+- sync_complete_at: 2026-07-13
+- sync_commit_sha: pending-backfill-sync (placeholder — orchestrator backfills the real SHA in a follow-up commit per the D3 self-referential-hazard exemption; a commit cannot reference its own hash)
+- changelog_entry_added: true (standalone EVOLVE-003 bullet under `### Added`; `grep -n 'SPEC-HARNESS-EVOLVE-003' CHANGELOG.md` = 1 standalone entry + 1 prose mention inside the EVOLVE-002 bullet)
+- frontmatter_transition: draft → completed (the intermediate `in-progress` step was skipped during the worktree-recovery integration of run commit `d61399742`; the `draft → in-progress` transition that manager-develop should have performed on the M1 run commit was missed, so this single sync commit carries `draft → completed` in one step — ownership gap recorded honestly; may surface as an OwnershipTransitionInvalid lint finding, which is an acceptable recovery artifact)
+- readme_changed: false (curator production wiring is internal self-evolving-harness infrastructure with no user-facing CLI surface; same disposition as EVOLVE-001/002)
+- docs_site_changed: false (same rationale)
+- ac_reverification_at_sync: orchestrator independently re-ran `go build ./...` (exit 0 darwin+windows), `go test ./internal/harness/{curator,safety,harness}/` (all ok), `golangci-lint run --timeout=3m` (`0 issues.`), AC-HEV3-008/009 grep (1 caller each in `curator_dispatch.go`), AC-HEV3-031 subagent-boundary grep (0 matches), coverage (curator 91.4% / safety 86.8% / harness 87.3%) BEFORE the sync commit
+- evidence_correction: §E.2 AC-HEV3-008/009 rows corrected from the inaccurate "4 matches" prose to the actual 1-caller-each evidence (both in `internal/harness/curator_dispatch.go`)
+- manager_docs_delegation: attempted manager-docs subagent sync delegation; agent failed with autocompact-thrash (CHANGELOG.md 43KB context overflow) — orchestrator-direct fallback per runtime-recovery rung 1 (in-turn self-correction), resume message's "stale worktree 시 orchestrator-direct" fallback pattern
