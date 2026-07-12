@@ -13,6 +13,7 @@ lifecycle: spec-anchored
 tags: "agentic-core, routing, analyze-first, intent-analysis, agent-diet"
 era: V3R6
 tier: M
+sync_commit_sha: 463e89a5f50e0d6d6c426e835d04eaea72f11778
 ---
 
 # SPEC-ANALYZE-FIRST-ROUTING-001 — Analyze-First Routing Reform

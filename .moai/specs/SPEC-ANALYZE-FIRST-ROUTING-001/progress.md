@@ -78,7 +78,7 @@ notes: >
 
 ```yaml
 sync_complete_at: 2026-07-12
-sync_commit_sha: <backfill-after-sync-commit>
+sync_commit_sha: 463e89a5f50e0d6d6c426e835d04eaea72f11778
 sync_status: completed
 changelog_entry: "[Unreleased] Added — SPEC-ANALYZE-FIRST-ROUTING-001"
 frontmatter_transitions:
