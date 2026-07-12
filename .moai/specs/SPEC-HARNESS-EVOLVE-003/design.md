@@ -66,11 +66,22 @@ Curator pipeline (applier.go Apply path, extended by this SPEC)
    ├── 5. L5 AskUserQuestion round (orchestrator-mediated, §G state machine)
    │      returns ApprovalDecision
    │
-   ├── 6. curator.WriteManagedBlockGated(path, blockType, content, decision, recorder)
-   │      the EVOLVE-002 API, now with a production caller
+   ├── 6. L5 ApprovalDecision branch point (double-write-avoidance invariant —
+   │      REQ-HEV3-008/009 sequencing: WriteManagedBlockGated and
+   │      TierGatedWrite are called on DISJOINT branches, NEVER both on the
+   │      same branch, so WriteManagedBlock is reached at most once per cycle.
+   │      Both internally delegate to WriteManagedBlock — approval.go:50 and
+   │      tier_gate.go:103 respectively — so calling both sequentially would
+   │      double-write the block.)
    │
-   ├── 7a. on approval  → curator.TierGatedWrite dispatch → write + snapshot + lineage
-   ├── 7b. on rejection → RejectionRecorder → lineage + A7 registry append
+   ├── 7a. on approval → curator.TierGatedWrite(path, blockType, observations, content)
+   │      → tier-validate + SOLE write + snapshot + lineage
+   │      (WriteManagedBlockGated is NOT called on this branch — its internal
+   │      WriteManagedBlock delegate would double-write)
+   │
+   ├── 7b. on rejection → curator.WriteManagedBlockGated(path, blockType, content,
+   │      decision{Approved:false}, recorder) → RejectionRecorder → lineage +
+   │      A7 registry append (no write; TierGatedWrite is NOT called here)
    └── 7c. on rollback  → RestoreSnapshot + A7 registry auto-append
 ```
 
@@ -154,11 +165,13 @@ expands L1's block-list.
 
 ### C.2 L1 Frozen Guard (A1 expansion)
 
-`safety/frozen_guard.go:18` currently lists:
+`safety/frozen_guard.go:18` currently lists (3 entries — verified via
+`sed -n '18,25p'`; note `.claude/skills/moai-` is the dash-form, there is NO
+`.claude/skills/moai/` directory entry here, unlike the meta-harness
+`internal/harness/frozen_guard.go` 4-entry list):
 ```
 .claude/agents/moai/
 .claude/skills/moai-
-.claude/skills/moai/
 .claude/rules/moai/
 ```
 

@@ -38,8 +38,9 @@ no-op result.
 
 ### B.1 The curator package — COMPLETED + INERT (verified)
 
-The EVOLVE-002 `internal/harness/curator/` package ships 20 files
-(`ls -la internal/harness/curator/` — observed). The API surface is complete:
+The EVOLVE-002 `internal/harness/curator/` package ships 18 Go source files
+(`ls -1 internal/harness/curator/*.go | wc -l` = 18 — verified). The API
+surface is complete:
 
 | API | File:line | Purpose | Production callers |
 |-----|-----------|---------|--------------------|
@@ -120,14 +121,20 @@ Read of `internal/harness/safety/frozen_guard.go` confirms:
 - Line 34: `func IsFrozen(path string) bool` — the L1 check.
 - Line 46: `for _, prefix := range frozenPrefixes { if strings.HasPrefix(norm, prefix) {...} }`
 
-The current `frozenPrefixes` list (observed via grep):
+The current `frozenPrefixes` list (observed via `sed -n '18,25p'
+internal/harness/safety/frozen_guard.go`):
 
 ```
 .claude/agents/moai/
 .claude/skills/moai-
-.claude/skills/moai/
 .claude/rules/moai/
 ```
+
+(3 entries — `.claude/skills/moai/` is ABSENT; note the dash-form
+`.claude/skills/moai-` matches skill-file prefixes, not a directory. The
+meta-harness `internal/harness/frozen_guard.go` carries a DIFFERENT 4-entry
+list that DOES include `.claude/skills/moai/` — do not conflate the two
+files; the L1 safety pipeline consults the 3-entry safety list here.)
 
 **Verified defect**: the list does NOT include permission surfaces
 (`settings.json`, `settings.local.json`, hook registration, the guard source

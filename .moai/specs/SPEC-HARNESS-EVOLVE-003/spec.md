@@ -1,7 +1,7 @@
 ---
 id: SPEC-HARNESS-EVOLVE-003
 title: "Curator production wiring — Tier-Surface mapping + validation gates + re-proposal suppression"
-version: "0.1.0"
+version: "0.1.1"
 status: draft
 created: 2026-07-12
 updated: 2026-07-12
@@ -23,6 +23,7 @@ depends_on: [SPEC-HARNESS-EVOLVE-002]
 | Date | Version | Change | Author |
 |--------|---------|--------|--------|
 | 2026-07-12 | 0.1.0 | Initial plan-phase draft (Tier L, 5 content artifacts: spec.md + plan.md + acceptance.md + design.md + research.md, plus progress.md §E skeleton). M3 of the HARNESS-EVOLVE Epic per the approved design SSOT `.moai/reports/harness-self-evolving-redesign-final-20260712.html` (§4 3-Zone edit-surface contract — Evolvable-zone A6 row; §5 Loop 2 gate chain L2→L3→L4→L5; §7 M3 milestone + verification matrix; §1 A1/A6/A7 deltas). Activates the PRODUCTION wiring that EVOLVE-002 deliberately left INERT (the write-layer API surface exists and is unit-tested against machine-signal inputs, but no live Curator write path drives it — verified: `grep -rn TierGatedWrite\|WriteManagedBlockGated internal/ cmd/ pkg/ | grep -v _test.go | grep -v curator/` returns empty). 7 pillars sourced from SSOT §1 (A1, A6, A7) + EVOLVE-002 spec.md §Out of Scope (Tier↔surface mapping, Gate activation, Re-proposal suppression). 4 NEEDS-CLARIFICATION items tracked in plan.md §H. | manager-spec |
+| 2026-07-12 | 0.1.1 | plan-audit amendments D1-D3 + G1/G2 (PASS-WITH-DEBT 0.89 → re-audit ready). **D1** (sync-phase trap): AC-HEV3-023a compound-grep `≥3` trap fixed to per-token `≥1` × 2 tokens — design.md §C.2 decides the hooks axis is covered by the `.claude/settings.json` prefix match, so only 2 entries are added (not 3); the old compound count would mechanically max at 2 and never reach ≥3. **D2** (verification-claim-integrity §1.1 surface 3): research.md §C.2 + design.md §C.2 frozenPrefixes list corrected from 4 entries to the actual 3 (`sed -n '18,25p' internal/harness/safety/frozen_guard.go` — `.claude/skills/moai/` is ABSENT; it lives only in the meta-harness `internal/harness/frozen_guard.go` 4-entry list — the two files must not be conflated). **D3** (double-write hazard): REQ-HEV3-008/009 amended with a sequencing clause — TierGatedWrite (approval path, sole write via WriteManagedBlock) and WriteManagedBlockGated (rejection path, RejectionRecorder) are called on DISJOINT branches, never both on the same branch; design.md §A.1 call chain step 6→7a/7b updated to reflect the branch-split. **G1**: AC-HEV3-005 compound-grep `≥3 (one per token)` → per-token verification (3 separate greps, each ≥1) so a single token repeated 3× cannot mechanically satisfy it. **G2**: research.md §B.1 "20 files" → "18 Go source files" (`ls -1 internal/harness/curator/*.go \| wc -l` = 18 — the "20" counted `.`/`..`). spec-lint stays 0 findings (normal + strict). | manager-spec |
 
 ## §A. Context and Intent
 
@@ -223,18 +224,29 @@ orchestrator-side round that feeds it.
 
 ### C.3 EVOLVE-002 residual — PRODUCTION wiring (TierGatedWrite / WriteManagedBlockGated)
 
-- **REQ-HEV3-008** (Ubiquitous — production caller for TierGatedWrite): The
-  live Curator pipeline SHALL call `curator.TierGatedWrite` (tier_gate.go:71)
-  as its tier→surface dispatch entry point. The baseline of 0 production
-  callers (verified: `grep -rn TierGatedWrite internal/ cmd/ pkg/ | grep -v
-  _test.go | grep -v curator/` returns empty) MUST rise to ≥1 production call
-  site wired through the L5-gated path.
-- **REQ-HEV3-009** (Ubiquitous — production caller for WriteManagedBlockGated):
-  The live Curator pipeline SHALL call `curator.WriteManagedBlockGated`
-  (approval.go:41) for every CLAUDE.md / CLAUDE.local.md write, with a live
-  `ApprovalDecision` (never a hardcoded `Approved: true`) and a non-nil
-  `RejectionRecorder` bound to the lineage writer. The baseline of 0
-  production callers MUST rise to ≥1 production call site.
+- **REQ-HEV3-008** (Compound — production caller for TierGatedWrite + sequencing):
+  **When** the L5 approval decision is `Approved: true`, the dispatch SHALL call
+  `curator.TierGatedWrite` (tier_gate.go:71) as the SOLE write entry point on
+  the approval path (the tier-validation AND the write happen here). The
+  baseline of 0 production callers (verified: `grep -rn TierGatedWrite
+  internal/ cmd/ pkg/ | grep -v _test.go | grep -v curator/` returns empty)
+  MUST rise to ≥1 production call site. The dispatch SHALL NOT call
+  `WriteManagedBlockGated` on the approval path — its internal
+  `WriteManagedBlock` delegate (approval.go:50) would double-write the block
+  that `TierGatedWrite` already persisted (the double-write hazard; design.md
+  §A.1 step 6→7a).
+- **REQ-HEV3-009** (Compound — production caller for WriteManagedBlockGated +
+  sequencing): **When** the L5 approval decision is `Approved: false`, the
+  dispatch SHALL call `curator.WriteManagedBlockGated` (approval.go:41) with
+  the rejection to exercise its `RejectionRecorder` contract (the rejection
+  path — no write occurs; the gate returns `ErrApprovalRejected` at
+  approval.go:48). The dispatch SHALL call it with a live `ApprovalDecision`
+  and a non-nil `RejectionRecorder` bound to the lineage writer. The baseline
+  of 0 production callers MUST rise to ≥1 production call site. The two
+  functions are called on DISJOINT branches (approval → `TierGatedWrite`;
+  rejection → `WriteManagedBlockGated`), ensuring `WriteManagedBlock` is
+  reached at most once per Curator cycle (the double-write-avoidance
+  invariant; design.md §A.1 step 6→7a/7b).
 - **REQ-HEV3-010** (Ubiquitous — tier→surface config read): The dispatch
   layer SHALL read the pattern's tier from the existing learner aggregation
   (`tier.ClassifyStatus`) and the target surface from the tier→surface map

@@ -54,7 +54,7 @@ depends_on: [SPEC-HARNESS-EVOLVE-002]
 
 | AC | Severity | Mode | Verification | Baseline → Target |
 |----|----------|------|--------------|-------------------|
-| AC-HEV3-005 | Must-pass | grep | `grep -rn 'WriteManagedBlockGated\|ApprovalDecision\|RejectionRecorder' internal/harness/curator/dispatch.go internal/harness/applier.go` — the production wiring threads the L5 contract | 0 → ≥3 (one per token) |
+| AC-HEV3-005 | Must-pass | grep | Per-token verification across the 3 L5-contract tokens (NOT a single compound count — a single token repeated 3× must NOT mechanically satisfy this AC): `grep -rn 'WriteManagedBlockGated' internal/harness/curator/dispatch.go internal/harness/applier.go` ≥1 AND `grep -rn 'ApprovalDecision' internal/harness/curator/dispatch.go internal/harness/applier.go` ≥1 AND `grep -rn 'RejectionRecorder' internal/harness/curator/dispatch.go internal/harness/applier.go` ≥1 — the production wiring threads all three L5-contract tokens | 0 → ≥1 per token (3 tokens) |
 | AC-HEV3-006 | Must-pass | grep | `grep -rn 'WriteManagedBlock\b' internal/harness/curator/dispatch.go internal/harness/applier.go | grep -v WriteManagedBlockGated` — NO direct `WriteManagedBlock` call bypassing the gate | 0 → 0 (must remain 0) |
 | AC-HEV3-007a | Must-pass | behavior | Inject an L5 `ApprovalDecision{Approved: false, Rationale: "test"}`. Assert the file is NOT touched AND a `LineageEntry` with outcome `rejected` is appended AND the A7 registry gains an entry. | rejection path |
 | AC-HEV3-007b | Must-pass | behavior | Inject an L5 `ApprovalDecision{Approved: true}`. Assert the file IS written AND the lineage outcome is `applied`. | approval path |
@@ -104,7 +104,7 @@ depends_on: [SPEC-HARNESS-EVOLVE-002]
 
 | AC | Severity | Mode | Verification | Baseline → Target |
 |----|----------|------|--------------|-------------------|
-| AC-HEV3-023a | Must-pass | grep | `grep -A8 'var frozenPrefixes' internal/harness/safety/frozen_guard.go | grep -c 'settings.json\|settings.local.json\|hooks'` — the permission surfaces are in the expanded list | 0 → ≥3 |
+| AC-HEV3-023a | Must-pass | grep | Per-token verification (design.md §C.2 decides the hooks axis is covered by the `.claude/settings.json` prefix match, so the A1 expansion adds 2 entries, NOT 3): `grep -A8 'var frozenPrefixes' internal/harness/safety/frozen_guard.go \| grep -c 'settings\.json'` ≥1 AND `grep -A8 'var frozenPrefixes' internal/harness/safety/frozen_guard.go \| grep -c 'settings\.local\.json'` ≥1 — both permission-surface tokens present in the expanded list (a single compound `grep -c 'A\|B\|C' ≥3` would mechanically FAIL since only 2 entries are added) | 0 → ≥1 per token (2 tokens) |
 | AC-HEV3-023b | Must-pass | grep | `grep -A8 'var frozenPrefixes' internal/harness/safety/frozen_guard.go | grep -c 'frozen_guard'` — the guard source files are self-protected | 0 → ≥1 |
 | AC-HEV3-024a | Must-pass | behavior | Inject a Curator proposal targeting `.claude/settings.json`. Assert `Decision.RejectedBy == 1` (L1 Frozen guard fires) AND the file is NOT touched. | **permission-surface L1-blocked** (the A1 breakthrough) |
 | AC-HEV3-024b | Must-pass | behavior | Inject a Curator proposal targeting `.claude/settings.local.json`. Assert `RejectedBy == 1`. | permission-surface L1-blocked |
