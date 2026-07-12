@@ -442,6 +442,11 @@ const (
 
 	// ContradictionChainRules is a contradiction in chaining-rules.yaml (same phase, different rules).
 	ContradictionChainRules ContradictionType = "contradictory_chain_rules"
+
+	// ContradictionFrozenRule occurs when a Curator proposal targets a registered
+	// Frozen-rule surface (REQ-HEV3-015/016/017, SPEC-HARNESS-EVOLVE-003 M3).
+	// The rejection Reason cites the Frozen-rule stable identifier (audit-trail).
+	ContradictionFrozenRule ContradictionType = "frozen_rule_violation"
 )
 
 // ContradictionItem is a single contradiction item.

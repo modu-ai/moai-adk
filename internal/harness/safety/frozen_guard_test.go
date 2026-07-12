@@ -147,6 +147,55 @@ func TestIsFrozen_SymlinkResolution(t *testing.T) {
 	}
 }
 
+// TestIsFrozen_PermissionSurfaces verifies that A1 permission-surface paths are FROZEN.
+// REQ-HEV3-023/024: settings.json + settings.local.json are L1-blocked (SPEC-HARNESS-EVOLVE-003).
+func TestIsFrozen_PermissionSurfaces(t *testing.T) {
+	t.Parallel()
+
+	cases := []struct {
+		name string
+		path string
+	}{
+		{"settings.json", ".claude/settings.json"},
+		{"settings.local.json", ".claude/settings.local.json"},
+		{"settings.json template", ".claude/settings.json.tmpl"},
+	}
+
+	for _, tc := range cases {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			if !IsFrozen(tc.path) {
+				t.Errorf("IsFrozen(%q) = false, must be true (A1 permission-surface FROZEN per REQ-HEV3-023)", tc.path)
+			}
+		})
+	}
+}
+
+// TestIsFrozen_GuardSelfProtection verifies that the frozen_guard source files are FROZEN.
+// REQ-HEV3-025: the guard cannot be the surface that permits its own modification.
+func TestIsFrozen_GuardSelfProtection(t *testing.T) {
+	t.Parallel()
+
+	cases := []struct {
+		name string
+		path string
+	}{
+		{"safety guard source", "internal/harness/safety/frozen_guard.go"},
+		{"meta-harness guard source", "internal/harness/frozen_guard.go"},
+	}
+
+	for _, tc := range cases {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			if !IsFrozen(tc.path) {
+				t.Errorf("IsFrozen(%q) = false, must be true (guard self-protection per REQ-HEV3-025)", tc.path)
+			}
+		})
+	}
+}
+
 // TestLogViolation_AppendsJSONL verifies that LogViolation writes to the violations JSONL.
 func TestLogViolation_AppendsJSONL(t *testing.T) {
 	t.Parallel()
