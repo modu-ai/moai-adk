@@ -87,7 +87,7 @@ All 34 ACs PASS. Verification commands run in the worktree (this run, against th
 ## §E.3 Run-phase Audit-Ready Signal
 
 - run_complete_at: 2026-07-12
-- run_commit_sha: pending-backfill (single run-phase commit; SHA backfilled post-land)
+- run_commit_sha: 23a9a7249 (single run-phase commit; SHA backfilled post-land)
 - run_status: audit-ready (34/34 AC PASS)
 - ac_pass_count: 34
 - ac_fail_count: 0
@@ -106,4 +106,15 @@ All 34 ACs PASS. Verification commands run in the worktree (this run, against th
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase — owned by manager-docs>_
+- sync_complete_at: 2026-07-12
+- sync_commit_sha: <pending backfill after sync commit>
+- sync_status: audit-ready
+- changelog_entry_added: true (SPEC-GOAL-ENGINE-001 entry added to CHANGELOG.md [Unreleased] ### Added section)
+- readme_updated: true (README.md + README.ko.md updated with `/moai goal` subcommand)
+- mx_tag_validation: PASS (0 AskUserQuestion/mcp__askuser matches in internal/goal/ + hook_stop_goal.go + handle-stop-goal.sh non-test code)
+- spec_lint: `moai spec lint spec.md` → 0 errors
+- template_neutrality: `grep -rn 'SPEC-GOAL-ENGINE\|SPEC-ANALYZE-FIRST\|AGENTIC-CORE\|REQ-GLE' internal/template/templates/.claude/` → 0
+- cross_platform_build:
+  - `go build ./...` → exit 0
+  - `GOOS=windows GOARCH=amd64 go build ./...` → exit 0
+- full_suite_test: `go test ./...` → 96 packages ok / 0 FAIL

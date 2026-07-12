@@ -2,7 +2,7 @@
 id: SPEC-GOAL-ENGINE-001
 title: "Goal Engine — /moai goal condition-declared universal agentic loop (MoAI-owned /goal reimplementation)"
 version: "0.2.1"
-status: in-progress
+status: completed
 created: 2026-07-12
 updated: 2026-07-12
 author: manager-spec
@@ -14,6 +14,7 @@ tags: "agentic-core, goal-engine, stop-hook, autonomous-loop, per-session-state,
 era: V3R6
 tier: L
 depends_on: [SPEC-ANALYZE-FIRST-ROUTING-001]
+sync_commit_sha: <pending backfill>
 ---
 
 # SPEC-GOAL-ENGINE-001 — Goal Engine (`/moai goal`)
