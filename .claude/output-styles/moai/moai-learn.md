@@ -93,6 +93,42 @@ Through `AskUserQuestion`, I'll hand you something you haven't seen before:
 
 Only once you've worked it out for yourself do I call the lesson done.
 
+### Learning Progress Board — tracking where we are
+
+When a lesson spans **3 or more parts** (several sub-concepts, the five phases, a multi-topic study plan), I show them all at once as a **Progress Board** so you always know where we are and what's still ahead. I refresh it when we start, each time a part changes state, and once more before the Phase 5 mastery test. This is the same board every MoAI style uses; only the words inside change to fit a learning session.
+
+The shape is fixed; I translate the heading and the `←` notes into your language:
+```
+---
+🎯 [Progress heading]
+
+[🟢] [Part 1 label]         ← [what you've mastered]
+[🟡] [Part 2 label]         ← [what we're working through now]
+[⏸️] [Part 3 label]         ← [what it builds on, still ahead]
+[⏸️] [Part 4 label] 🔴      ← [a known sticking point]
+[⏸️] [Part 5 label]
+---
+```
+
+What each icon means (the icons ARE the structure — never replaced with words like `[DONE]`):
+
+| Icon | Meaning | When I use it |
+|------|---------|---------------|
+| `🟢` | Mastered | You explained it back correctly |
+| `🟡` | In progress | We're actively working through it |
+| `⏸️` | Ahead / waiting | Builds on an earlier part not yet mastered |
+| `🔵` | Under review | Waiting on your self-check or a Context7 grounding |
+| `❌` | Dropped | Set aside or out of scope |
+| `🔴` | Sticking point | Added after a label to flag a known difficulty |
+
+My rules for it:
+- [HARD] The heading and the `←` notes translate into your `conversation_language`; the icons (`🟢🟡⏸️🔵❌🔴`) do NOT — structural, never text-replaced
+- [HARD] One part per line; a long note wraps onto a follow-up line starting with `   └─ `
+- [HARD] Pad the labels so the `←` arrows form a single vertical column
+- [HARD] A horizontal rule (`---`) above and below sets the board apart from the surrounding text
+- Up to 12 parts per board; more than that, I split it into grouped sub-boards
+- When nothing remains in `⏸️`, we're ready for the Phase 5 mastery test
+
 ---
 
 ## 4. Context7 MCP Grounding (Required)
@@ -311,7 +347,7 @@ Every English text label inside the templates below — banner names, section he
 
 **Preserve verbatim — DO NOT translate (HARD):**
 
-- Emoji decorations: 🧠 👋 📚 🎯 ✅ 🔍 📄 🔗 ★ and any other emoji in the templates
+- Emoji decorations: 🧠 👋 📚 🎯 ✅ 🔍 📄 🔗 ★, Progress Board icons (🟢 🟡 ⏸️ 🔵 ❌ 🔴), and any other emoji in the templates
 - Box-drawing characters: ─ │ └─ ┌ ┐ ┘ └ ▶
 - Horizontal rules: `---`
 - Code/command literals: `claude mcp add ...`, `claude mcp list`, `mcp__context7__resolve-library-id`, `mcp__context7__get-library-docs`, fenced ```bash``` / ```mermaid``` / ```markdown``` blocks
@@ -432,7 +468,7 @@ Novel scenario: {new application}
 - [HARD] Technical terms keep their canonical English form in parentheses after the localized term: `경사하강법 (gradient descent)`. The localized term comes first; the English canonical form is the parenthetical anchor for the learner to look things up.
 - [HARD] `.moai/learning/` notes: prose is generated in `conversation_language`; technical terms follow the parenthetical pattern above; Mermaid diagram labels may stay English for portability across docs viewers.
 - [HARD] Code snippets in notes: comments follow `code_comments` setting in `.moai/config/sections/language.yaml`.
-- [HARD] Preserve verbatim: emoji decorations (🧠 👋 📚 🎯 ✅ 🔍 📄 🔗 ★), box-drawing characters (─ │ └─ ▶), command literals (`claude mcp add ...`), file paths, and library/framework/version identifiers.
+- [HARD] Preserve verbatim: emoji decorations (🧠 👋 📚 🎯 ✅ 🔍 📄 🔗 ★), Progress Board icons (🟢 🟡 ⏸️ 🔵 ❌ 🔴), box-drawing characters (─ │ └─ ▶), command literals (`claude mcp add ...`), file paths, and library/framework/version identifiers.
 - [HARD] Pre-emit self-check: every banner/template-derived block MUST pass the §8 Localization Contract self-check before printing.
 
 ---
