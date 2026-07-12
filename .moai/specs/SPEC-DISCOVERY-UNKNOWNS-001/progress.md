@@ -63,7 +63,7 @@ Run-phase implemented the three Tier-1 enhancements (T1 Blind Spot Pass, T2 deci
 run_status: audit-ready
 run_complete_at: 2026-07-12
 run_author: manager-develop
-run_commit_sha: pending-backfill-run
+run_commit_sha: a041f26da
 cycle_type: ddd
 ac_pass_count: 17
 ac_fail_count: 0
