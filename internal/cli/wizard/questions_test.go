@@ -52,6 +52,7 @@ func TestQuestionOrder(t *testing.T) {
 	expectedIDs := []string{
 		"project_name",
 		"model_policy",
+		"plan_type",
 		"development_mode",
 		"git_mode",
 		"git_provider",
@@ -151,6 +152,7 @@ func TestQuestionsAllPresent(t *testing.T) {
 	expectedIDs := []string{
 		"project_name",
 		"model_policy",
+		"plan_type",
 		"development_mode",
 		"git_mode",
 		"git_provider",
@@ -194,5 +196,55 @@ func TestGitConditionalFilteredByMode(t *testing.T) {
 	}
 	if !providerFound {
 		t.Error("git_provider should be visible when git_mode is 'team'")
+	}
+}
+
+// TestPlanTypeQuestion (REQ-MTP-017) verifies the plan-type wizard question:
+// present in DefaultQuestions, recommended/default option is subscription, and
+// the closed-set options are exactly {subscription, api}.
+func TestPlanTypeQuestion(t *testing.T) {
+	questions := DefaultQuestions("/tmp/test-project")
+
+	q := QuestionByID(questions, "plan_type")
+	if q == nil {
+		t.Fatal("plan_type question not found in DefaultQuestions")
+		return // staticcheck SA5011 guard
+	}
+	if q.Type != QuestionTypeSelect {
+		t.Errorf("plan_type should be QuestionTypeSelect, got %v", q.Type)
+	}
+	if q.Default != "subscription" {
+		t.Errorf("plan_type default = %q, want %q (recommended)", q.Default, "subscription")
+	}
+	if !q.Required {
+		t.Error("plan_type should be required")
+	}
+	if q.Condition != nil {
+		t.Error("plan_type should have no condition (always visible in Quick mode)")
+	}
+	wantValues := []string{"subscription", "api"}
+	if len(q.Options) != len(wantValues) {
+		t.Fatalf("plan_type should have %d options, got %d", len(wantValues), len(q.Options))
+	}
+	for i, want := range wantValues {
+		if q.Options[i].Value != want {
+			t.Errorf("plan_type option %d value = %q, want %q", i, q.Options[i].Value, want)
+		}
+	}
+}
+
+// TestSaveAnswerPlanType (REQ-MTP-017) verifies saveAnswer routes the plan_type
+// answer into WizardResult.PlanType.
+func TestSaveAnswerPlanType(t *testing.T) {
+	result := &WizardResult{}
+	locale := ""
+
+	saveAnswer("plan_type", "api", result, &locale)
+	if result.PlanType != "api" {
+		t.Errorf("expected PlanType 'api', got %q", result.PlanType)
+	}
+	saveAnswer("plan_type", "subscription", result, &locale)
+	if result.PlanType != "subscription" {
+		t.Errorf("expected PlanType 'subscription', got %q", result.PlanType)
 	}
 }

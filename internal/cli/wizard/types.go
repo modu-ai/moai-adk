@@ -19,6 +19,11 @@ type WizardResult struct {
 	// Model policy (project-level)
 	ModelPolicy string // Token tier: high, medium, low
 
+	// Plan type (project-level billing context) — api or subscription
+	// (SPEC-MODEL-TIER-PLANTYPE-001 M3, REQ-MTP-017). Empty resolves to the
+	// subscription default at persistence time.
+	PlanType string // Billing plan: api, subscription
+
 	// Git settings
 	GitMode           string // Git automation mode: manual, personal, team
 	GitProvider       string // Git provider: "github", "gitlab"

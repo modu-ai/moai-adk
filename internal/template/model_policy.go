@@ -398,6 +398,67 @@ func ResolveProjectPlanType(projectRoot string) string {
 	return config.LLMConfig{PlanType: pt}.EffectivePlanType()
 }
 
+// planTypePersistRegex matches the plan_type: line in llm.yaml for a
+// value-replacing write, capturing the leading indentation (group 1). Unlike
+// planTypeLineRegex (which captures the value and requires a non-empty value),
+// this uses `[\w-]*` so an empty value (`plan_type: ""`) is also matched and
+// rewritten — mirroring performanceTierRegex.
+var planTypePersistRegex = regexp.MustCompile(`(?m)^(\s*)plan_type:\s*["']?[\w-]*["']?`)
+
+// ApplyPlanType patches the plan_type field in llm.yaml under the given project
+// root (REQ-MTP-016/018), mirroring ApplyPerformanceTier. It reads
+// .moai/config/sections/llm.yaml, replaces the plan_type: line with the new
+// value (preserving indentation), and writes the file back. Returns nil when the
+// file is absent (graceful no-op) or when the plan_type line already carries the
+// target value. The planType MUST be validated by the caller (config.IsValidPlanType).
+//
+// @MX:ANCHOR: [AUTO] ApplyPlanType — plan_type persistence entry point
+// @MX:REASON: [AUTO] fan_in >= 2 (init.go, update.go); shipped-plan_type SSOT persistence, mirrors ApplyPerformanceTier
+func ApplyPlanType(projectRoot, planType string) error {
+	llmPath := filepath.Join(projectRoot, ".moai", "config", "sections", "llm.yaml")
+	content, err := os.ReadFile(llmPath)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil
+		}
+		return fmt.Errorf("read llm.yaml: %w", err)
+	}
+
+	replacement := "${1}plan_type: " + planType
+	newContent := planTypePersistRegex.ReplaceAll(content, []byte(replacement))
+
+	if string(newContent) == string(content) {
+		return nil
+	}
+
+	if err := os.WriteFile(llmPath, newContent, 0o644); err != nil {
+		return fmt.Errorf("write llm.yaml: %w", err)
+	}
+	return nil
+}
+
+// performanceTierValueRegex captures the persisted performance_tier value
+// (group 1) from llm.yaml, requiring a non-empty value (an empty
+// `performance_tier: ""` falls through to the medium default).
+var performanceTierValueRegex = regexp.MustCompile(`(?m)^\s*performance_tier:\s*["']?([\w-]+)["']?`)
+
+// ResolveProjectPerformanceTier reads the persisted performance_tier from the
+// project's llm.yaml (REQ-MTP-018 — the update path's tier source). An absent
+// file, an absent/commented performance_tier key, or an empty value resolves to
+// the medium default (plan.md D6 default-when-absent). Any explicit value passes
+// through verbatim; NormalizeToTier at the apply site bridges legacy vocabularies.
+func ResolveProjectPerformanceTier(projectRoot string) string {
+	llmPath := filepath.Join(projectRoot, ".moai", "config", "sections", "llm.yaml")
+	content, err := os.ReadFile(llmPath)
+	if err != nil {
+		return PerformanceTierMedium
+	}
+	if m := performanceTierValueRegex.FindSubmatch(content); len(m) >= 2 && len(m[1]) > 0 {
+		return string(m[1])
+	}
+	return PerformanceTierMedium
+}
+
 // ApplyTierProfile patches each shipped agent file's model: AND effort:
 // frontmatter in a single traversal, using the {model, effort} pair from the
 // plan_type × tier profile (spec.md §B.6/§B.7). It replaces the former two-pass

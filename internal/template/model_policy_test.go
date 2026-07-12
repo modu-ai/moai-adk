@@ -640,3 +640,109 @@ func containsString(s, substr string) bool {
 	}
 	return false
 }
+
+// writeLLMSection writes a minimal llm.yaml under root's sections dir with the
+// given body (already indented under `llm:`).
+func writeLLMSection(t *testing.T, root, body string) {
+	t.Helper()
+	dir := filepath.Join(root, ".moai", "config", "sections")
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		t.Fatalf("MkdirAll: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "llm.yaml"), []byte(body), 0o644); err != nil {
+		t.Fatalf("WriteFile llm.yaml: %v", err)
+	}
+}
+
+func readLLMSection(t *testing.T, root string) string {
+	t.Helper()
+	b, err := os.ReadFile(filepath.Join(root, ".moai", "config", "sections", "llm.yaml"))
+	if err != nil {
+		t.Fatalf("ReadFile llm.yaml: %v", err)
+	}
+	return string(b)
+}
+
+// TestApplyPlanType (REQ-MTP-016/018) — persisting the plan type rewrites the
+// plan_type: line in llm.yaml, preserving surrounding indentation and other
+// lines byte-for-byte.
+func TestApplyPlanType(t *testing.T) {
+	t.Run("replaces quoted subscription with api", func(t *testing.T) {
+		root := t.TempDir()
+		writeLLMSection(t, root, "llm:\n  plan_type: \"subscription\"\n  performance_tier: \"medium\"\n")
+		if err := ApplyPlanType(root, "api"); err != nil {
+			t.Fatalf("ApplyPlanType: %v", err)
+		}
+		got := readLLMSection(t, root)
+		if !containsString(got, "plan_type: api") {
+			t.Errorf("plan_type not rewritten to api:\n%s", got)
+		}
+		if ResolveProjectPlanType(root) != "api" {
+			t.Errorf("ResolveProjectPlanType after apply = %q, want api", ResolveProjectPlanType(root))
+		}
+		// The performance_tier line must be untouched.
+		if !containsString(got, "performance_tier: \"medium\"") {
+			t.Errorf("performance_tier line was altered:\n%s", got)
+		}
+	})
+
+	t.Run("replaces empty value", func(t *testing.T) {
+		root := t.TempDir()
+		writeLLMSection(t, root, "llm:\n    plan_type: \"\"\n")
+		if err := ApplyPlanType(root, "subscription"); err != nil {
+			t.Fatalf("ApplyPlanType: %v", err)
+		}
+		if ResolveProjectPlanType(root) != "subscription" {
+			t.Errorf("after apply = %q, want subscription", ResolveProjectPlanType(root))
+		}
+		// 4-space indentation must be preserved.
+		if !containsString(readLLMSection(t, root), "    plan_type: subscription") {
+			t.Errorf("indentation not preserved:\n%s", readLLMSection(t, root))
+		}
+	})
+
+	t.Run("absent file is graceful no-op", func(t *testing.T) {
+		root := t.TempDir()
+		if err := ApplyPlanType(root, "api"); err != nil {
+			t.Errorf("absent llm.yaml should be a no-op, got err: %v", err)
+		}
+	})
+
+	t.Run("already at target does not rewrite", func(t *testing.T) {
+		root := t.TempDir()
+		// Unquoted value already equal to the target — the regex replacement
+		// yields byte-identical content, so ApplyPlanType returns without writing.
+		writeLLMSection(t, root, "llm:\n  plan_type: api\n")
+		before := readLLMSection(t, root)
+		if err := ApplyPlanType(root, "api"); err != nil {
+			t.Fatalf("ApplyPlanType: %v", err)
+		}
+		if got := readLLMSection(t, root); got != before {
+			t.Errorf("already-at-target llm.yaml was rewritten:\nbefore:\n%s\nafter:\n%s", before, got)
+		}
+	})
+}
+
+// TestResolveProjectPerformanceTier (REQ-MTP-018) — the update path reads the
+// persisted performance_tier from llm.yaml; absent/empty → medium (D6 default).
+func TestResolveProjectPerformanceTier(t *testing.T) {
+	root := t.TempDir()
+	if got := ResolveProjectPerformanceTier(root); got != "medium" {
+		t.Errorf("absent llm.yaml: got %q, want medium", got)
+	}
+
+	writeLLMSection(t, root, "llm:\n  performance_tier: \"max\"\n")
+	if got := ResolveProjectPerformanceTier(root); got != "max" {
+		t.Errorf("explicit max: got %q, want max", got)
+	}
+
+	writeLLMSection(t, root, "llm:\n  performance_tier: \"\"\n")
+	if got := ResolveProjectPerformanceTier(root); got != "medium" {
+		t.Errorf("empty performance_tier: got %q, want medium", got)
+	}
+
+	writeLLMSection(t, root, "llm:\n  performance_tier: low\n")
+	if got := ResolveProjectPerformanceTier(root); got != "low" {
+		t.Errorf("unquoted low: got %q, want low", got)
+	}
+}

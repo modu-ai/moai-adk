@@ -18,6 +18,7 @@ import (
 	"github.com/modu-ai/moai-adk/internal/cli/printer"
 	"github.com/modu-ai/moai-adk/internal/cli/uikit"
 	"github.com/modu-ai/moai-adk/internal/cli/wizard"
+	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/core/project"
 	"github.com/modu-ai/moai-adk/internal/foundation"
 	"github.com/modu-ai/moai-adk/internal/manifest"
@@ -96,6 +97,11 @@ func init() {
 	initCmd.Flags().Bool("high", false, "Deprecated alias for --model-policy max (one-cycle backward compat)")
 	initCmd.Flags().Bool("medium-alias", false, "Deprecated alias for --model-policy medium (one-cycle backward compat)")
 	initCmd.Flags().Bool("low", false, "Deprecated alias for --model-policy low (one-cycle backward compat)")
+
+	// SPEC-MODEL-TIER-PLANTYPE-001 M3 (REQ-MTP-014): plan_type billing context.
+	// Selects the api vs subscription model tier profile; persists to llm.yaml
+	// plan_type. Absent → the wizard answer, else the subscription default.
+	initCmd.Flags().String("plan-type", "", "Billing plan type: api or subscription (persists to llm.yaml plan_type)")
 }
 
 // getStringFlag retrieves a string flag value from the command.
@@ -169,6 +175,13 @@ func validateInitFlags(cmd *cobra.Command, _ []string) error {
 		if !slices.Contains(validTiers, modelPolicy) {
 			return fmt.Errorf("invalid --model-policy value %q: must be one of: max, medium, low", modelPolicy)
 		}
+	}
+
+	// SPEC-MODEL-TIER-PLANTYPE-001 M3 (REQ-MTP-014): validate --plan-type enum.
+	// Invalid value exits non-zero with a usage error naming the closed set.
+	planType := getStringFlag(cmd, "plan-type")
+	if planType != "" && !config.IsValidPlanType(planType) {
+		return fmt.Errorf("invalid --plan-type value %q: must be one of: api, subscription", planType)
 	}
 
 	return nil
@@ -302,6 +315,10 @@ func runInit(cmd *cobra.Command, args []string) error {
 		GitLabInstanceURL: getStringFlag(cmd, "gitlab-instance-url"),
 		NonInteractive:    nonInteractive,
 		Force:             getBoolFlag(cmd, "force"),
+		// SPEC-MODEL-TIER-PLANTYPE-001 M3 (REQ-MTP-016/017): --plan-type flag value
+		// (validated in validateInitFlags). The wizard fills this only when the flag
+		// is absent, so the flag takes precedence over the wizard answer.
+		PlanType: getStringFlag(cmd, "plan-type"),
 		// Phase 1 mode flags
 		StandardMode: standardMode,
 		// Phase 1 non-interactive overrides — defaults match wizard defaults (REQ-IWE-008)
@@ -399,6 +416,11 @@ func runInit(cmd *cobra.Command, args []string) error {
 		}
 		if result.ModelPolicy != "" {
 			opts.ModelPolicy = result.ModelPolicy
+		}
+		// SPEC-MODEL-TIER-PLANTYPE-001 M3 (REQ-MTP-017): the wizard fills plan_type
+		// ONLY when the --plan-type flag was absent, giving the flag precedence.
+		if opts.PlanType == "" && result.PlanType != "" {
+			opts.PlanType = result.PlanType
 		}
 		// Apply Phase 1 wizard results (only when StandardMode was active)
 		if result.StandardMode {
@@ -505,6 +527,17 @@ func runInit(cmd *cobra.Command, args []string) error {
 	if perfTier != "" && template.IsValidPerformanceTier(perfTier) {
 		if err := template.ApplyPerformanceTier(opts.ProjectRoot, perfTier); err != nil {
 			p.Warn("Failed to apply performance tier: %v", err)
+		}
+	}
+
+	// SPEC-MODEL-TIER-PLANTYPE-001 M3 (REQ-MTP-016): persist the resolved plan
+	// type to llm.yaml. opts.PlanType already carries the --plan-type flag value
+	// (validated in validateInitFlags), falling back to the wizard answer. The
+	// tier-profile apply pass during Execute already consumed opts.PlanType for
+	// the agent frontmatter; this persists the choice for future update runs.
+	if opts.PlanType != "" && config.IsValidPlanType(opts.PlanType) {
+		if err := template.ApplyPlanType(opts.ProjectRoot, opts.PlanType); err != nil {
+			p.Warn("Failed to apply plan type: %v", err)
 		}
 	}
 

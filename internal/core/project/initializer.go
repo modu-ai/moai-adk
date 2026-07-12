@@ -41,6 +41,7 @@ type InitOptions struct {
 	Force             bool     // If true, allow reinitializing an existing project.
 	SkipShellConfig   bool     // If true, skip shell environment configuration.
 	ModelPolicy       string   // Token consumption tier: "high", "medium", "low".
+	PlanType          string   // Billing plan type: "api" or "subscription" (empty → persisted/subscription default).
 
 	// Phase 1 wizard fields (REQ-IWE-001..005) — populated from wizard result or CLI flags.
 	ProjectMode               string // project.mode: personal, team (B1)
@@ -168,11 +169,16 @@ func (i *projectInitializer) Init(ctx context.Context, opts InitOptions) (*InitR
 	// Step 3b: Apply the plan_type × tier profile to agent files (post-deployment
 	// patching). A single pass patches both model: and effort: frontmatter
 	// atomically with replace-both precedence (the tier profile is the SSOT for
-	// shipped-agent model/effort). The effective plan type is read from the
-	// deployed llm.yaml (absent → subscription); the tier is resolved from
+	// shipped-agent model/effort). The plan type prefers the explicit opts.PlanType
+	// (SPEC-MODEL-TIER-PLANTYPE-001 M3 — the --plan-type flag / wizard answer, which
+	// is not yet persisted at this point on a first init); it falls back to the
+	// deployed llm.yaml (absent → subscription). The tier is resolved from
 	// opts.ModelPolicy (default medium when unset).
 	{
-		planType := template.ResolveProjectPlanType(opts.ProjectRoot)
+		planType := opts.PlanType
+		if planType == "" {
+			planType = template.ResolveProjectPlanType(opts.ProjectRoot)
+		}
 		tier := template.NormalizeToTier(opts.ModelPolicy)
 		if err := template.ApplyTierProfile(opts.ProjectRoot, planType, tier, i.manifestMgr); err != nil {
 			i.logger.Warn("failed to apply tier profile", "error", err)

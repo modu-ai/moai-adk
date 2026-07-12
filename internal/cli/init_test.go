@@ -377,3 +377,110 @@ func TestAdvancedImpliesStandard(t *testing.T) {
 		t.Error("--advanced should imply --standard (standardMode should be true)")
 	}
 }
+
+// resetInitFlagsForPlanType clears the flags a plan-type test cares about so a
+// prior test's leftover value on the shared global initCmd cannot bleed in.
+func resetInitFlagsForPlanType(t *testing.T) {
+	t.Helper()
+	for _, f := range []string{"mode", "git-mode", "plan-type", "model-policy"} {
+		if initCmd.Flags().Lookup(f) != nil {
+			_ = initCmd.Flags().Set(f, "")
+		}
+	}
+}
+
+// TestInitCmd_HasPlanTypeFlag (REQ-MTP-014, AC-MTP-014a) — the --plan-type flag
+// is registered on the init command (so `moai init --help` lists it).
+func TestInitCmd_HasPlanTypeFlag(t *testing.T) {
+	if initCmd.Flags().Lookup("plan-type") == nil {
+		t.Error("init command should have a --plan-type flag")
+	}
+}
+
+// TestValidateInitFlags_ValidPlanType (REQ-MTP-014) — api and subscription pass.
+func TestValidateInitFlags_ValidPlanType(t *testing.T) {
+	for _, pt := range []string{"api", "subscription"} {
+		t.Run(pt, func(t *testing.T) {
+			resetInitFlagsForPlanType(t)
+			if err := initCmd.Flags().Set("plan-type", pt); err != nil {
+				t.Fatal(err)
+			}
+			if err := validateInitFlags(initCmd, []string{}); err != nil {
+				t.Errorf("validateInitFlags with plan-type=%q should not error, got: %v", pt, err)
+			}
+		})
+	}
+	resetInitFlagsForPlanType(t)
+}
+
+// TestValidateInitFlags_InvalidPlanType (REQ-MTP-014, AC-MTP-014b) — an
+// out-of-set value errors, and the message names api and subscription.
+func TestValidateInitFlags_InvalidPlanType(t *testing.T) {
+	for _, pt := range []string{"bogus", "enterprise", "API"} {
+		t.Run(pt, func(t *testing.T) {
+			resetInitFlagsForPlanType(t)
+			if err := initCmd.Flags().Set("plan-type", pt); err != nil {
+				t.Fatal(err)
+			}
+			err := validateInitFlags(initCmd, []string{})
+			if err == nil {
+				t.Fatalf("validateInitFlags with plan-type=%q should error, got nil", pt)
+			}
+			msg := err.Error()
+			if !strings.Contains(msg, "invalid --plan-type") {
+				t.Errorf("error should mention 'invalid --plan-type', got: %v", err)
+			}
+			if !strings.Contains(msg, "api") || !strings.Contains(msg, "subscription") {
+				t.Errorf("error should name both api and subscription, got: %v", err)
+			}
+		})
+	}
+	resetInitFlagsForPlanType(t)
+}
+
+// TestInitCmd_PlanTypePersistence (REQ-MTP-016, AC-MTP-016) — init with
+// --plan-type api persists plan_type: api into the deployed llm.yaml.
+func TestInitCmd_PlanTypePersistence(t *testing.T) {
+	root := t.TempDir()
+
+	buf := new(bytes.Buffer)
+	initCmd.SetOut(buf)
+	initCmd.SetErr(buf)
+
+	resetInitFlagsForPlanType(t)
+	if err := initCmd.Flags().Set("root", root); err != nil {
+		t.Fatalf("set root flag: %v", err)
+	}
+	if err := initCmd.Flags().Set("non-interactive", "true"); err != nil {
+		t.Fatalf("set non-interactive flag: %v", err)
+	}
+	if err := initCmd.Flags().Set("name", "plan-type-test"); err != nil {
+		t.Fatalf("set name flag: %v", err)
+	}
+	if err := initCmd.Flags().Set("language", "Go"); err != nil {
+		t.Fatalf("set language flag: %v", err)
+	}
+	if err := initCmd.Flags().Set("mode", "tdd"); err != nil {
+		t.Fatalf("set mode flag: %v", err)
+	}
+	if err := initCmd.Flags().Set("plan-type", "api"); err != nil {
+		t.Fatalf("set plan-type flag: %v", err)
+	}
+	t.Cleanup(func() {
+		_ = initCmd.Flags().Set("plan-type", "")
+		_ = initCmd.Flags().Set("root", "")
+	})
+
+	if err := initCmd.RunE(initCmd, []string{}); err != nil {
+		t.Fatalf("init command RunE error = %v", err)
+	}
+
+	llmPath := filepath.Join(root, ".moai", "config", "sections", "llm.yaml")
+	content, err := os.ReadFile(llmPath)
+	if err != nil {
+		t.Fatalf("read deployed llm.yaml: %v", err)
+	}
+	if !strings.Contains(string(content), "plan_type: api") {
+		t.Errorf("deployed llm.yaml should contain 'plan_type: api', got:\n%s", content)
+	}
+}

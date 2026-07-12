@@ -60,7 +60,19 @@ var updateCmd = &cobra.Command{
 	Short:   "Sync MoAI-ADK project templates to the latest version",
 	GroupID: "project",
 	Long:    "Check for binary updates, install if available, then synchronize embedded templates with the project.",
+	PreRunE: validateUpdateFlags,
 	RunE:    runUpdate,
+}
+
+// validateUpdateFlags validates update flag values before execution.
+// SPEC-MODEL-TIER-PLANTYPE-001 M3 (REQ-MTP-018): an out-of-set --plan-type value
+// exits non-zero with a usage error naming the closed set {api, subscription}.
+func validateUpdateFlags(cmd *cobra.Command, _ []string) error {
+	planType := getStringFlag(cmd, "plan-type")
+	if planType != "" && !config.IsValidPlanType(planType) {
+		return fmt.Errorf("invalid --plan-type value %q: must be one of: api, subscription", planType)
+	}
+	return nil
 }
 
 func init() {
@@ -76,6 +88,11 @@ func init() {
 	updateCmd.Flags().Bool("dry-run", false, "Show planned archive and install operations without modifying the filesystem")
 	updateCmd.Flags().Bool("no-hooks", false, "Skip git hook installation (REQ-CIAUT-002)")
 	updateCmd.Flags().Bool("verbose", false, "Show all warnings including acknowledged reserved-name and 3-way merge fallback notices (diagnostic mode; SPEC-V3R6-UPDATE-NOISE-001 REQ-UN-005/010)")
+
+	// SPEC-MODEL-TIER-PLANTYPE-001 M3 (REQ-MTP-018): plan_type override. When
+	// provided, persists the new value to llm.yaml and re-applies the tier profile;
+	// when absent, update reads the persisted llm.plan_type (absent → subscription).
+	updateCmd.Flags().String("plan-type", "", "Override the billing plan type: api or subscription (persists to llm.yaml plan_type and re-applies the tier profile)")
 }
 
 // @MX:ANCHOR: [AUTO] runUpdate orchestrates binary update and template synchronization
@@ -321,6 +338,14 @@ func runUpdate(cmd *cobra.Command, _ []string) error {
 	// Pre-fix UX leaked a "Skipping sync" line immediately followed by
 	// "Legacy skill archive failed" because the archive ran unconditionally.
 	if syncSkipped {
+		// SPEC-MODEL-TIER-PLANTYPE-001 M3 (REQ-MTP-018): an explicit --plan-type
+		// override must still persist + re-apply the tier profile even when the
+		// template sync short-circuits (the agent files already exist on disk).
+		if pt := getStringFlag(cmd, "plan-type"); pt != "" {
+			if err := applyUpdateTierProfile(".", pt); err != nil {
+				return err
+			}
+		}
 		return nil
 	}
 
@@ -356,6 +381,49 @@ func runUpdate(cmd *cobra.Command, _ []string) error {
 		}
 	}
 
+	// SPEC-MODEL-TIER-PLANTYPE-001 M3 (REQ-MTP-018): when --plan-type is given,
+	// persist the override and re-apply the plan_type × tier profile to the
+	// freshly-synced agent files.
+	if pt := getStringFlag(cmd, "plan-type"); pt != "" {
+		if err := applyUpdateTierProfile(".", pt); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+// applyUpdateTierProfile re-applies the plan_type × tier profile during
+// `moai update` (SPEC-MODEL-TIER-PLANTYPE-001 M3, REQ-MTP-018). When planTypeFlag
+// is non-empty it PERSISTS the override to llm.yaml first (D3); otherwise the
+// effective plan type is read from the persisted llm.plan_type (absent →
+// subscription). The tier is read from the persisted performance_tier (absent →
+// medium). Agent frontmatter is then patched via ApplyTierProfile.
+//
+// Returns a graceful nil when the manifest cannot be loaded (a non-initialized
+// directory), mirroring the applyWizardConfig guard. An out-of-set planTypeFlag
+// returns an error naming the closed set (defensive — the CLI flag is validated
+// by validateUpdateFlags before this is reached).
+func applyUpdateTierProfile(projectRoot, planTypeFlag string) error {
+	if planTypeFlag != "" {
+		if !config.IsValidPlanType(planTypeFlag) {
+			return fmt.Errorf("invalid --plan-type value %q: must be one of: api, subscription", planTypeFlag)
+		}
+		if err := template.ApplyPlanType(projectRoot, planTypeFlag); err != nil {
+			return fmt.Errorf("persist plan_type: %w", err)
+		}
+	}
+
+	mgr := manifest.NewManager()
+	if _, err := mgr.Load(projectRoot); err != nil {
+		return nil // non-initialized project — nothing to re-apply
+	}
+
+	planType := template.ResolveProjectPlanType(projectRoot)
+	tier := template.ResolveProjectPerformanceTier(projectRoot)
+	if err := template.ApplyTierProfile(projectRoot, planType, tier, mgr); err != nil {
+		return fmt.Errorf("apply tier profile: %w", err)
+	}
 	return nil
 }
 

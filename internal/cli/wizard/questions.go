@@ -49,6 +49,19 @@ func DefaultQuestions(projectRoot string) []Question {
 			Default:  "high",
 			Required: true,
 		},
+		// 3. Plan Type (billing context) — api vs subscription
+		{
+			ID:          "plan_type",
+			Type:        QuestionTypeSelect,
+			Title:       "Select billing plan type",
+			Description: "Selects the model tier profile matched to your Claude billing context.",
+			Options: []Option{
+				{Label: "Subscription (Recommended)", Value: "subscription", Desc: "Claude subscription (weekly quota) — opus-weighted tiers"},
+				{Label: "API", Value: "api", Desc: "API-metered billing — cost-optimized per-task tiers"},
+			},
+			Default:  "subscription",
+			Required: true,
+		},
 		// 3. Development Mode
 		{
 			ID:          "development_mode",
