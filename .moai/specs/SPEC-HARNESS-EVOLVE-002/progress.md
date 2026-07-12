@@ -167,3 +167,38 @@ m1_to_mN_commit_strategy: per-milestone
 ## §E.4 Sync-phase Audit-Ready Signal
 
 _<pending sync-phase>_
+
+## §F Phase 0.95 Mode Selection
+
+Decision: sub-agent
+
+> Retrospective backfill (recorded after M1-M3 completion, before M4). The
+> Mode 5 decision was effectively made when M1 was first delegated sequentially;
+> this section records it for the sync-phase "Mode Selection" grep AC + the
+> audit trail, per `orchestration-mode-selection.md` §D logging contract.
+
+### Input parameters
+
+| Parameter | Value |
+|-----------|-------|
+| tier | L |
+| scope (run-phase file count) | ~15-25 files: curator Go source + tests, layer3.go, config token-budget, templates, e2e |
+| domain count | >=3 (curator Go primitives / harness-layer3 integration / config token-budget / template-neutrality / SPEC artifacts) |
+| file language mix | predominantly Go source + markdown (templates, SPEC artifacts) |
+| concurrency benefit | LOW — coding-heavy with strong inter-milestone dependencies (M5 builds on M4; M6 on M5; M7 integrates all) |
+| Agent Teams prereqs | N/A (Mode 3 retired) |
+
+### Mode evaluation
+
+| Mode | Selected? | Rationale |
+|------|-----------|-----------|
+| 1 trivial | no | Multi-milestone Go implementation — not a typo/single-line fix |
+| 2 background | no | Write-heavy implementation; background-write restriction applies |
+| 3 agent-team | no | RETIRED — Mode 3 is a Phase 0.95 tombstone |
+| 4 parallel | no | Coding-heavy + inter-milestone deps violate the parallelism caveat; concurrent agents would mutate the same curator package |
+| 5 sub-agent | **YES** | Sequential per-milestone; each milestone's ACs verify before the next begins; preserves the M1->M2->M3 established pattern |
+| 6 workflow | no | Semantic multi-rule Go implementation, not a high-volume mechanical transform |
+
+### Justification
+
+Coding-heavy Go implementation in a single package family (`internal/harness/curator/` + `internal/harness/layer3.go`) with strong serial dependencies: M4 (mergeSectionBased + managedSectionHeadings allow-list) produces the section-merge primitives that M5 (snapshot/rollback/lineage) and M6 (Template-First + section 25 neutrality + Recall) build on, and M7 integrates in e2e. Anthropic's coding-task parallelism caveat applies directly — concurrent agents mutating the same curator package would produce inconsistent primitives. Mode 5 (sub-agent, sequential per-milestone) is the correct default for coding work and matches the M1->M2->M3 pattern already established. Per `orchestration-mode-selection.md` section B.2 tie-breaker: coding-heavy + multi-domain -> Mode 5 over Mode 4.
