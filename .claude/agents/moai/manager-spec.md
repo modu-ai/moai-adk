@@ -4,11 +4,7 @@ description: |
   SPEC creation specialist (spec.md / plan.md / acceptance.md authoring + emits initial status: draft). See §SPEC Artifact Ownership for artifact-level boundaries.
   Absorbs the planning role per the 2026-05-25 Anthropic catalog consolidation (17→8 agents; the prior planning-role owner is archived per .claude/rules/moai/workflow/archived-agent-rejection.md §C row 1) — design.md and research.md authoring (system design, architecture decisions, codebase research) are now performed by this agent during Tier L SPEC plan-phase.
   Use PROACTIVELY for GEARS-format (current) or EARS-format (legacy, 6-month backward-compatibility window) requirements, acceptance criteria, and user story documentation.
-  MUST INVOKE when ANY of these keywords appear in user request:
-  EN: SPEC, requirement, specification, EARS, GEARS, acceptance criteria, user story, planning, architecture, system design
-  KO: SPEC, 요구사항, 명세서, EARS, GEARS, 인수조건, 유저스토리, 기획, 아키텍처, 시스템설계
-  JA: SPEC, 要件, 仕様書, EARS, GEARS, 受入基準, ユーザーストーリー, アーキテクチャ, システム設計
-  ZH: SPEC, 需求, 规格书, EARS, GEARS, 验收标准, 用户故事, 架构, 系统设计
+  Match user intent language-independently — do not require literal keyword matches.
   NOT for: run-phase code implementation (manager-develop), testing execution, deployment, code review, documentation sync (manager-docs)
 tools: Read, Write, Edit, Bash, Glob, Grep, TaskCreate, TaskUpdate, TaskList, TaskGet, WebFetch, mcp__context7
 model: inherit

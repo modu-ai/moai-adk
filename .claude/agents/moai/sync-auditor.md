@@ -4,11 +4,7 @@ description: |
   Skeptical code evaluator for independent quality assessment. Actively tests implementations
   against SPEC acceptance criteria. Tuned toward finding defects, not rationalizing acceptance.
   Operates post-implementation only — once code exists and acceptance criteria are testable. Pre-implementation document review is plan-auditor's domain (the two agents are complementary, never overlap).
-  MUST INVOKE when ANY of these keywords appear in user request:
-  EN: evaluate, quality assessment, independent review, code audit, defect analysis, acceptance criteria test
-  KO: 평가, 품질 평가, 독립 검토, 코드 감사, 결함 분석, 인수 기준 테스트
-  JA: 評価, 品質評価, 独立レビュー, コード監査, 欠陥分析, 受入基準テスト
-  ZH: 评估, 质量评估, 独立审查, 代码审计, 缺陷分析, 验收标准测试
+  Match user intent language-independently — do not require literal keyword matches.
   NOT for: SPEC plan-phase audit (that is plan-auditor's domain; sync-auditor is post-implementation only), code implementation, architecture design, documentation writing, git operations
 tools: Read, Grep, Glob, Bash
 model: inherit

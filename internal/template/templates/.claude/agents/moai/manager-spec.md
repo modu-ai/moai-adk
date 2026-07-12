@@ -2,13 +2,9 @@
 name: manager-spec
 description: |
   SPEC creation specialist (spec.md / plan.md / acceptance.md authoring + emits initial status: draft). See §SPEC Artifact Ownership for artifact-level boundaries.
-  Absorbs the planning role per the Anthropic catalog consolidation (17→8 agents; the prior planning-role owner is archived per .claude/rules/moai/workflow/archived-agent-rejection.md §C row 1) — design.md and research.md authoring (system design, architecture decisions, codebase research) are now performed by this agent during Tier L SPEC plan-phase.
+  Absorbs the planning role per the 2026-05-25 Anthropic catalog consolidation (17→8 agents; the prior planning-role owner is archived per .claude/rules/moai/workflow/archived-agent-rejection.md §C row 1) — design.md and research.md authoring (system design, architecture decisions, codebase research) are now performed by this agent during Tier L SPEC plan-phase.
   Use PROACTIVELY for GEARS-format (current) or EARS-format (legacy, 6-month backward-compatibility window) requirements, acceptance criteria, and user story documentation.
-  MUST INVOKE when ANY of these keywords appear in user request:
-  EN: SPEC, requirement, specification, EARS, GEARS, acceptance criteria, user story, planning, architecture, system design
-  KO: SPEC, 요구사항, 명세서, EARS, GEARS, 인수조건, 유저스토리, 기획, 아키텍처, 시스템설계
-  JA: SPEC, 要件, 仕様書, EARS, GEARS, 受入基準, ユーザーストーリー, アーキテクチャ, システム設計
-  ZH: SPEC, 需求, 规格书, EARS, GEARS, 验收标准, 用户故事, 架构, 系统设计
+  Match user intent language-independently — do not require literal keyword matches.
   NOT for: run-phase code implementation (manager-develop), testing execution, deployment, code review, documentation sync (manager-docs)
 tools: Read, Write, Edit, Bash, Glob, Grep, TaskCreate, TaskUpdate, TaskList, TaskGet, WebFetch, mcp__context7
 model: inherit
@@ -147,7 +143,7 @@ OUT OF SCOPE: Code implementation (manager-develop/tdd), Git operations (manager
 3. `## §E.3 Run-phase Audit-Ready Signal`
 4. `## §E.4 Sync-phase Audit-Ready Signal`
 
-Why these markers: the era-classification engine (`internal/spec/era.go` `hasAnyProgressMarker`) greps for the literal `§E.2`/`§E.3`/`§E.4` substrings — NOT `§E.1` — so emitting the literal `§E.2`-`§E.4` headings at plan-phase is what prevents the SPEC from drifting into ad-hoc `§F.*` markers that the engine misclassifies (an H-2 era misclassification). The `§E.1` heading is emitted for human/audit readability. The `§E.2` heading specifically is the §E-section run-evidence start marker, not the sync phase (which lives at `§E.4`). The former `§E.5 Mx-phase` section is retired (3-phase lifecycle: plan→run→sync; MX Tag is a cross-cutting sync concern, NOT a separate phase); its content is folded into §E.4.
+Why these markers: the era-classification engine (`internal/spec/era.go` `hasAnyProgressMarker`) greps for the literal `§E.2`/`§E.3`/`§E.4` substrings — NOT `§E.1` — so emitting the literal `§E.2`-`§E.4` headings at plan-phase is what prevents the SPEC from drifting into ad-hoc `§F.*` markers that the engine misclassifies (an H-2 era misclassification). The `§E.1` heading is emitted for human/audit readability. The `§E.2` heading specifically is the §E-section run-evidence start marker, not the sync phase (which lives at `§E.4`). The former `§E.5 Mx-phase` section is retired per SPEC-V3R6-LIFECYCLE-REDESIGN-001 (3-phase lifecycle: plan→run→sync; MX Tag is a cross-cutting sync concern, NOT a separate phase); its content is folded into §E.4.
 
 Keep the skeleton minimal: each section is a heading plus a one-line placeholder note (e.g. `_<pending run-phase>_`). Emit NO populated evidence tables, commit SHAs, or audit-ready YAML blocks at plan-phase.
 
@@ -270,7 +266,7 @@ This agent emits exactly the initial `status: draft` at SPEC creation. It perfor
 |---|---|---|
 | `(none) → draft` | Plan-phase artifact creation | Sets initial `status: draft` across all 4 plan-phase artifacts (spec.md + plan.md + acceptance.md + progress.md) |
 
-Status values follow the canonical 8-value enum: draft, planned, in-progress, implemented, completed, superseded, archived, rejected. (`planned` is a legacy-optional enum value, not in the active 3-phase flow.)
+Status values follow the canonical 8-value enum: draft, planned, in-progress, implemented, completed, superseded, archived, rejected. (`planned` is a legacy-optional enum value, not in the active V3R6 3-phase flow.)
 
 ## SPEC Artifact Ownership
 
@@ -296,7 +292,7 @@ This agent MAY adjust `spec.md`, `plan.md`, or `acceptance.md` body content **mi
 
 ### Forbidden modifications
 
-- Modifying `progress.md` body sections (`§E.2 Run-phase Evidence`, `§E.3 Run-phase Audit-Ready Signal`, `§E.4 Sync-phase Audit-Ready Signal`) — these belong to manager-develop (§E.2/§E.3) and manager-docs (§E.4)
+- Modifying `progress.md` body sections (`§E.2 Run-phase Evidence`, `§E.3 Run-phase Audit-Ready Signal`, `§E.4 Sync-phase Audit-Ready Signal`) — these belong to manager-develop (§E.2/§E.3) and manager-docs (§E.4) per REQ-ARR-002/REQ-ARR-003
 - Modifying agent files (`.claude/agents/**/*.md`) — out of SPEC artifact scope
 - Modifying CHANGELOG.md — owned by manager-docs
 - Performing `draft → in-progress` or `in-progress → implemented` transitions — owned by manager-develop and manager-docs respectively

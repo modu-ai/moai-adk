@@ -167,6 +167,8 @@ Language Skills:
 
 ## Trigger Configuration
 
+[HARD] The `triggers:` block is OPTIONAL metadata, NOT a machine matcher. Claude Code does not literally match these keywords to route a skill — skill invocation is model-side **semantic matching** of the `description` / `when_to_use` fields. The `keywords` / `agents` / `phases` entries document intent for human readers and tooling; they are not a literal-match gate. Prefer a precise `description` over exhaustive `triggers` keywords.
+
 ```yaml
 triggers:
   keywords: ["api", "database", "authentication"]

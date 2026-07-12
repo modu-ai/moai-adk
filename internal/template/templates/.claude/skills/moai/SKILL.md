@@ -83,8 +83,10 @@ Only if Priority 1 did not match: Check if the Raw User Input contains a pattern
 
 Only if BOTH Priority 1 AND Priority 2 did not match: Classify the intent of the ENTIRE Raw User Input as natural language. This priority is NEVER reached when the first word matches a known subcommand.
 
+[HARD] The cue words listed below are **English exemplars**, NOT literal-match requirements. Classify intent semantically for any `conversation_language` — a Korean, Japanese, Chinese, or other-language request expressing the same intent routes identically. Do not require the literal English tokens to appear.
+
 - Planning and design language (design, architect, plan, spec, requirements, feature request) routes to **plan**
-- Quality gate language (lint, format, check, pre-commit, quality gate) routes to **gate**
+- Quality gate language (format, check, pre-commit, quality gate) routes to **gate**
 - Security language (security, audit, owasp, vulnerability, injection, xss, csrf) routes to **review** (with `--security` scope)
 - Error and fix language (fix, error, bug, broken, failing, lint) routes to **fix**
 - Iterative and repeat language (keep fixing, until done, repeat, iterate, all errors) routes to **loop**
@@ -109,21 +111,21 @@ Purpose: Create comprehensive specification documents using GEARS format with Re
 Phases: Deep Research (research.md) -> SPEC Planning -> Annotation Cycle (1-6 iterations) -> SPEC Creation -> Independent Review (plan-auditor)
 Agents: manager-spec (primary), Explore (research), plan-auditor (quality gate), manager-git (conditional)
 Flags: --worktree, --branch, --resume SPEC-XXX, --team, --issue (opt-in; default skips GitHub Issue creation per the late-branch opt-in policy)
-For detailed orchestration: Read ${CLAUDE_SKILL_DIR}/workflows/plan.md (team mode: ${CLAUDE_SKILL_DIR}/team/plan.md)
+For detailed orchestration: Read ${CLAUDE_SKILL_DIR}/workflows/plan.md
 
 ### run - DDD/TDD Implementation
 
 Purpose: Implement SPEC requirements through configured development methodology.
 Agents: manager-develop (cycle_type=ddd|tdd per quality.yaml, primary), manager-git
 Flags: --resume SPEC-XXX, --team
-For detailed orchestration: Read ${CLAUDE_SKILL_DIR}/workflows/run.md (team mode: ${CLAUDE_SKILL_DIR}/team/run.md)
+For detailed orchestration: Read ${CLAUDE_SKILL_DIR}/workflows/run.md
 
 ### sync - Documentation Sync and PR
 
 Purpose: Synchronize documentation with code changes and prepare pull requests.
 Agents: manager-docs (primary), sync-auditor (quality gate), manager-git
 Modes: auto, force, status, project. Flags: --merge, --skip-mx
-For detailed orchestration: Read ${CLAUDE_SKILL_DIR}/workflows/sync.md (team mode: ${CLAUDE_SKILL_DIR}/team/sync.md)
+For detailed orchestration: Read ${CLAUDE_SKILL_DIR}/workflows/sync.md
 
 ### gate - Pre-Commit Quality Gate
 
@@ -138,7 +140,6 @@ For detailed orchestration: Read ${CLAUDE_SKILL_DIR}/workflows/gate.md
 Purpose: Autonomously detect and fix LSP errors, linting issues, and type errors.
 Agents: manager-develop (cycle_type=autofix), Agent(general-purpose) with domain whitelist (fixes)
 Flags: --dry, --sequential, --level N, --resume, --team
-Team mode: For competing-hypothesis debugging, read ${CLAUDE_SKILL_DIR}/team/debug.md
 For detailed orchestration: Read ${CLAUDE_SKILL_DIR}/workflows/fix.md
 
 ### loop - Iterative Auto-Fix
@@ -160,7 +161,7 @@ For detailed orchestration: Read ${CLAUDE_SKILL_DIR}/workflows/mx.md
 Purpose: Multi-perspective code review with security, performance, quality, and UX analysis.
 Agents: sync-auditor (review), Agent(general-purpose) with security scope
 Flags: --staged, --branch, --security, --team
-For detailed orchestration: Read ${CLAUDE_SKILL_DIR}/workflows/review.md (team mode: ${CLAUDE_SKILL_DIR}/team/review.md)
+For detailed orchestration: Read ${CLAUDE_SKILL_DIR}/workflows/review.md
 
 ### clean - Dead Code Removal
 
@@ -299,7 +300,7 @@ Socratic-first ordering: while intent clarity is below 100%, run the Socratic in
 A derived completion condition NEVER authorizes autonomous run-phase entry — Implementation Kickoff Approval remains mandatory at the plan→run boundary.
 
 Step 3 - Load Workflow Details:
-If `--team` flag was parsed AND `${CLAUDE_SKILL_DIR}/team/<name>.md` exists for the target subcommand, read the team workflow file instead of the solo workflow. Otherwise read `workflows/<name>.md`. The Quick Reference section above shows both paths for each subcommand that supports team mode.
+Read `workflows/<name>.md` for the target subcommand. (The Agent Teams static layer is retired; a `--team` flag falls back to sub-agent mode per `.claude/rules/moai/workflow/orchestration-mode-selection.md` — there is no separate `team/<name>.md` workflow file.)
 
 Step 4 - Read Configuration:
 Load relevant configuration from .moai/config/config.yaml and section files as needed.

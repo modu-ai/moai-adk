@@ -8,11 +8,7 @@ description: |
   or Sonnet (low tier) at spawn time via the runtime-arg channel (NOT a frontmatter pin).
   Use PROACTIVELY for high-stakes reasoning consultation when the orchestrator needs a
   second opinion before an irreversible delegation or escalation.
-  MUST INVOKE when ANY of these keywords appear in user request:
-  EN: consult, second opinion, advisor, advise, high-reasoning, escalate, deadlock, architecture decision, bug deadlock
-  KO: 자문, 두번째의견, 어드바이저, 고추론, 에스컬레이션, 교착상태, 아키텍처결정, 버그교착
-  JA: 相談, 第二意見, アドバイザー, 高推論, エスカレーション, デッドロック, アーキテクチャ決定, バグデッドロック
-  ZH: 咨询, 第二意见, 顾问, 高推理, 升级, 死锁, 架构决策, 缺陷死锁
+  Match user intent language-independently — do not require literal keyword matches.
   NOT for: gate verdicts (plan-auditor/sync-auditor own binding PASS/FAIL judgment); NOT for: implementation (use manager-develop); NOT for: SPEC body authoring (use manager-spec)
 tools: Read, Grep, Glob, Bash, WebFetch, Skill
 model: inherit

@@ -20,10 +20,10 @@ metadata:
   version: "3.0.0"
   category: "foundation"
   status: "active"
-  updated: "2026-04-25"
+  updated: "2026-07-10"
   modularized: "true"
   tags: "foundation, core, orchestration, agents, commands, trust-5, spec-first-ddd, token-budget, context-window, session-state"
-  related-skills: "moai-foundation-context"
+  related-skills: "moai-foundation-cc, moai-foundation-thinking"
 
 # MoAI Extension: Progressive Disclosure
 progressive_disclosure:

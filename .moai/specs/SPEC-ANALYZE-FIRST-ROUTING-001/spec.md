@@ -2,7 +2,7 @@
 id: SPEC-ANALYZE-FIRST-ROUTING-001
 title: "Analyze-First Routing Reform — language-independent intent analysis as default orchestration"
 version: "0.1.0"
-status: draft
+status: in-progress
 created: 2026-07-12
 updated: 2026-07-12
 author: manager-spec

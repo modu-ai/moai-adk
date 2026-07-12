@@ -30,36 +30,17 @@ Core principles (1-4) and six Agent Core Behaviors (consolidated cross-cutting r
 
 ## 2. Request Processing Pipeline
 
-Four-phase request flow.
+**Analyze-First** is the default main-session orchestration behavior: every request — in any input language (any `conversation_language`), with or without a `/moai` subcommand — flows through one ordered pipeline. It begins with intent analysis: classify meaning, language-independent, never gated on English keyword matching. The structured Intent Router (P1 subcommand fast-path + P3 semantic classification) lives in the `/moai` skill (`.claude/skills/moai/SKILL.md`); this section defines the pipeline the router plugs into.
 
-### Phase 1: Analyze
+Five ordered stages:
 
-- Assess complexity and scope of the request
-- Detect technology keywords for agent matching (framework names, domain terms)
-- Identify if clarification is needed before delegation
+- ① **Intent analysis** — classify the request's intent regardless of input language (any `conversation_language`; language-independent, not keyword-gated). Technology signals are context for stage ③ only, never the routing gate.
+- ② **Context-sufficiency check** — when context is insufficient, run the Rule 5 Context-First Discovery `AskUserQuestion` rounds (§7) before proceeding.
+- ③ **Execution-plan composition** — compose the skill / agent / dynamic-workflow chain and select the Phase 0.95 orchestration mode (unchanged; see `.claude/rules/moai/workflow/orchestration-mode-selection.md`).
+- ④ **Approval gates** — unchanged, including the **Implementation Kickoff Approval** human gate at the plan→run boundary (§8).
+- ⑤ **Execute → verify → iterate** — run the plan, verify against acceptance criteria, iterate; when a goal is armed (`/goal`, forthcoming goal engine), its evaluator is the termination judge.
 
-Core Skills (load when needed): `Skill("moai-foundation-cc")` (orchestration patterns), `Skill("moai-foundation-core")` (SPEC system and workflows), `Skill("moai-workflow-project")` (project management).
-
-### Phase 2: Route
-
-- **Workflow Subcommands**: /moai project, /moai plan, /moai run, /moai sync, /moai harness
-- **Utility Subcommands**: /moai (default), /moai fix, /moai loop, /moai clean, /moai mx
-- **Quality Subcommands**: /moai review, /moai codemaps, /moai gate
-- **Feedback Subcommand**: /moai feedback
-- **Direct Agent Requests**: Immediate delegation when user explicitly requests an agent
-
-### Phase 3: Execute
-
-Execute using explicit agent invocation:
-
-- "Use the manager-develop subagent to implement the API (cycle_type=tdd, domain context: backend)"
-- "Use the manager-develop subagent to implement with DDD approach (cycle_type=ddd)"
-- "Use the Explore subagent to analyze the codebase structure"
-
-### Phase 4: Report
-
-- Consolidate agent execution results
-- Format response in user's conversation_language
+Report: consolidate agent results and format the response in the user's `conversation_language`.
 
 ---
 

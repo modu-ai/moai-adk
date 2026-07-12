@@ -3,6 +3,8 @@ name: manager-design
 description: |
   Claude Design collaboration owner — design system generation/
   synchronization, screen-artifact orchestration, handoff receipt+paste.
+  Use PROACTIVELY for design-phase collaboration on UI-surfaced SPECs: design-system generation, Claude Design bidirectional sync, screen-artifact orchestration, and design→implementation handoff (D1-D5 pipeline).
+  Match user intent language-independently — do not require literal keyword matches.
   NOT for: component code implementation (manager-develop), SPEC body
   authoring (manager-spec).
 tools: Read, Write, Edit, Grep, Glob, Bash, DesignSync
