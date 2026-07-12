@@ -273,6 +273,13 @@ neutrality CI guard green.
   `.moai/config/sections/system.yaml` (local runtime config, NOT template —
   the shipped default stays `false` per user decision 1 / spec.md §D.3), then
   exercise the live Stop-path finalization end-to-end
+  - **Disposition (N-1)**: this local enable is a DELIBERATE, committed
+    dogfood-enable — accumulating routing-observation data in this dev repo is
+    the very purpose of the HARNESS-EVOLVE Epic, so the `system.yaml` change is
+    committed (not reverted post-verification). NOTE the `hook.opt_in.enabled`
+    master toggle activates ALL 3 observe wrappers (PostToolUse observe +
+    SessionStart + Stop), not only the Stop finalizer this SPEC adds; this is
+    local-repo config only and never changes the template default (`false`).
 - Full suite `go test ./...` (+ `-race` for the concurrent-append path),
   `go vet ./...`, `golangci-lint run` NEW-issue check
 - `moai spec lint` clean for this SPEC; template neutrality test green
@@ -310,8 +317,9 @@ Exit: E1-E7 self-verification complete; ready for sync-phase handoff.
    default flipped. Default-config Stop-path dormancy is accepted shipped
    behavior; this dev repo enables the opt-in locally during M4.
 2. **request_class in schema v1 — RESOLVED, decision 2**: INCLUDED in v1 as a
-   coarse keyword-derived enum (`feature|bugfix|docs|refactor|question|other`
-   family, non-verbatim), alongside `request_digest` (spec.md §D.1 pinned).
+   coarse keyword-derived enum (`feature|bugfix|refactor|docs|question|pipeline|other`,
+   non-verbatim), alongside `request_digest` — enum aligned verbatim to the
+   spec.md §D.1 SSOT (N-2).
 3. **Ledger retention/rotation — RESOLVED, decision 3**: v1 no-rotation
    (append-only single file); retention revisited in EVOLVE-003 alongside the
    negative-evidence registry, with the option to reuse

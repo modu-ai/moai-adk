@@ -5,7 +5,7 @@
 ```yaml
 plan_status: audit-ready
 plan_complete_at: 2026-07-12
-plan_version: 0.1.1   # plan-audit iter-1 FAIL 0.75 → D1-D4 + S1-S6 fix applied
+plan_version: 0.1.2   # iter-1 FAIL 0.75 → D1-D4+S1-S6; iter-2 PASS 0.89 → D-1 + N-1/N-2 amendment
 tier: M
 artifacts: [spec.md, plan.md, acceptance.md, progress.md]
 req_count: 21

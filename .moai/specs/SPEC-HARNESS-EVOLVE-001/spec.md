@@ -1,7 +1,7 @@
 ---
 id: SPEC-HARNESS-EVOLVE-001
 title: "Routing Observation Ledger — Loop 0 (Generator) of the self-evolving harness"
-version: "0.1.1"
+version: "0.1.2"
 status: draft
 created: 2026-07-12
 updated: 2026-07-12
@@ -23,6 +23,7 @@ tier: M
 |------|---------|--------|--------|
 | 2026-07-12 | 0.1.0 | Initial plan-phase draft (Tier M, 21 REQ / 26 AC). First SPEC (M1) of the HARNESS-EVOLVE Epic (5 SPECs + 2 horizons) per the approved design SSOT `.moai/reports/harness-self-evolving-redesign-final-20260712.html` (§4 3-Zone contract, §5 Loop 0 ledger schema incl. deltas A2/A4, §7 M1 milestone). Creates the `routing-ledger.jsonl` observation surface (schema v1), the `internal/harness/routing/` Go writer/reader, Stop-hook outcome capture riding the existing `harness-observe-stop` handler, and the workflow-skill recording obligations. No Curator writes, no CLAUDE.md/local.md mutation, no tier promotion (EVOLVE-002/003 territory). 2 open clarifications tracked in plan.md. | manager-spec |
 | 2026-07-12 | 0.1.1 | Plan-audit fix (iter-1 FAIL 0.75 → D1-D4 MUST + S1-S6 SHOULD applied). **D1 (HOI dual-gate)**: `runHarnessObserveStop` gates FIRST on `isHookOptInEnabled` (fail-CLOSED, default OFF per SPEC-V3R6-HOOK-OBSERVE-OPT-IN-001 REQ-HOI-001/002), THEN `isHarnessLearningEnabled` (fail-open, default true) — REQ-HEV-016 rewritten naming BOTH gates; §D.3 activation-precondition note added (default-config Stop-path dormancy is EXPECTED shipped behavior; this dev repo enables `hook.opt_in.enabled: true` as part of M4 verification); HOI SPEC cross-referenced in §F. Transport KEPT per user decision 1 (no new gate, no default flip). **D2**: plan M2 registration re-pinned to the live `newHarnessRouterCmd()` tree + `v3r5RequiredHarnessVerbs` step (details in plan.md). **D3**: AC-HEV-011 re-scoped to write-surface `--outcome` absence. **D4 + user decisions pinned**: (2) `request_class` INCLUDED in schema v1 (coarse keyword enum, non-verbatim); (3) v1 no-rotation, retention deferred to EVOLVE-003 with `retention.go` reuse preserved (new §E Out-of-Scope entry); both plan.md §H markers struck. **S1**: same-session-reroute-wins precedence + 24h staleness threshold pinned (REQ-HEV-010/014). **S2**: `abort` evidence kind added to the closed enum; lazy-sweep path bypasses `DeriveOutcome` (REQ-HEV-006/013/014). **S3-S6**: AC matrix + plan corrections (acceptance.md/plan.md). Now 21 REQ / 27 AC. | manager-spec |
+| 2026-07-12 | 0.1.2 | Plan-audit iter-2 amendment (PASS 0.89 → D-1 SHOULD-FIX + N-1/N-2 notes folded in before M1). **D-1 (foreign-session live-row protection)**: REQ-HEV-014 rewritten — a foreign or unresolvable-session pending row is swept `abort` ONLY when older than the 24h staleness threshold (previously any-age for foreign rows), PLUS a best-effort `.moai/state/active-sessions.json` liveness guard that never aborts a row whose `session_id` is listed live. Prevents an age-independent foreign sweep from falsely aborting a live parallel same-checkout session's in-flight row (documented-normal here) and skewing the Loop 1 pattern key. AC-HEV-017 + Scenario 3 synced. **N-1**: plan M4 records the local `hook.opt_in.enabled: true` enable as a DELIBERATE committed dogfood-enable (observation-data accumulation is the Epic's purpose) + notes the master toggle activates all 3 observe wrappers, not only Stop; template default stays `false`. **N-2**: plan §H request_class enum aligned to the spec §D.1 SSOT (`pipeline` included); acceptance.md AC ordering normalized (AC-026 before AC-027). REQ/AC counts stable (21 REQ / 27 AC). | manager-spec |
 
 ## §A. Context and Intent
 
@@ -193,15 +194,24 @@ EVOLVE-002, the gates/registries are EVOLVE-003 (see §E Exclusions).
   ONLY; the two writer-internal finalizations — reroute (REQ-HEV-010) and the
   lazy staleness sweep (REQ-HEV-014) — assign their outcome directly and
   bypass `DeriveOutcome`.
-- **REQ-HEV-014** (Event-driven — stale sweep): **When** `ledger record` runs
-  and finds a pending row belonging to a **different session**, OR a pending
-  row with unresolvable session identity older than the staleness threshold
-  (**24 hours**, pinned), it shall finalize that row with `outcome: abort`
-  before creating the new pending row (lazy abort sweep — no SessionEnd hook
-  extension in this SPEC). The sweep assigns `abort` directly, **bypassing
-  `DeriveOutcome`** (the swept row's evidence is by definition non-terminal).
-  Precedence vs REQ-HEV-010: the current session's own pending row is ALWAYS
-  finalized as `reroute`, never swept as `abort`, regardless of age.
+- **REQ-HEV-014** (Event-driven — age-guarded stale sweep): **When**
+  `ledger record` runs and finds a pending row belonging to a **different
+  session** or with **unresolvable session identity**, it shall finalize that
+  row with `outcome: abort` **ONLY when the row is older than the staleness
+  threshold (24 hours, pinned)**; a foreign or unresolvable row at or younger
+  than the threshold shall be left untouched (concurrent same-checkout
+  sessions are documented-normal in this repo — an age-independent foreign
+  sweep would falsely abort a live parallel session's in-flight row, lose its
+  real outcome, and skew the Loop 1 pattern key). **Where**
+  `.moai/state/active-sessions.json` is readable and lists the row's
+  `session_id` as a live session, the sweep shall never abort that row
+  regardless of age (best-effort liveness guard; file absent or unreadable ⇒
+  fall back to the 24h age rule alone). The sweep assigns `abort` directly,
+  **bypassing `DeriveOutcome`** (the swept row's evidence is by definition
+  non-terminal), and runs lazily at record time (no SessionEnd hook extension
+  in this SPEC). Precedence vs REQ-HEV-010: the current session's own pending
+  row is ALWAYS finalized as `reroute`, never swept as `abort`, regardless of
+  age.
 - **REQ-HEV-015** (Unwanted behavior — fail-open + budget): The routing
   finalize path shall not block session end: all errors are logged to stderr
   and swallowed (matching the existing `harness-observe-stop` fail-open
@@ -320,8 +330,10 @@ dispatch ──► ledger record ──► .moai/state/routing-pending-<session>
 Stop hook (harness-observe-stop; HOI gate 0 + learning gate 1 + self-gate) ──► DeriveOutcome(evidence)
      ├─ terminal (abort|fail|success) ──► append routing-ledger.jsonl + delete pending
      └─ non-terminal ──► leave pending (multi-turn pipeline)
-next-session ledger record ──► foreign (or unresolvable-session >24h) pending row
+next-session ledger record ──► foreign/unresolvable pending row, age > 24h,
+                               session NOT listed live in active-sessions.json
                                ──► finalized: abort (lazy sweep, bypasses DeriveOutcome)
+                               (young foreign row OR live-listed session ──► left untouched)
 ```
 
 ### D.3 Activation precondition (HOI dual-gate — default-config dormancy)

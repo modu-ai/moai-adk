@@ -128,15 +128,20 @@
 - Expected: PASS (pending file survives Stop finalize when DeriveOutcome is
   non-terminal)
 
-**AC-HEV-017 — stale/foreign pending row swept as abort**
+**AC-HEV-017 — stale/foreign pending row swept as abort (age-guarded, D-1)**
 - REQ: REQ-HEV-014
 - Baseline: n/a
 - Verify: `go test -run TestStaleSweepAbort ./internal/harness/routing/`
-- Expected: PASS (cross-session pending row — any age — and
-  unresolvable-session pending row older than 24h are finalized
-  `"outcome":"abort"` DIRECTLY (bypassing DeriveOutcome) before the new
-  pending row is created; a same-session row is NEVER swept — it reroutes
-  per REQ-HEV-010 precedence, covered by AC-HEV-014's table)
+- Expected: PASS covering the age-guarded matrix — (a) a foreign OR
+  unresolvable-session pending row OLDER than the 24h staleness threshold is
+  finalized `"outcome":"abort"` DIRECTLY (bypassing DeriveOutcome) before the
+  new pending row is created; (b) a foreign OR unresolvable row AT OR YOUNGER
+  than 24h is LEFT UNTOUCHED (no false abort of a live parallel same-checkout
+  session's in-flight row); (c) when `.moai/state/active-sessions.json` lists
+  the row's `session_id` as live, the row is NEVER swept regardless of age
+  (best-effort liveness guard; absent/unreadable file ⇒ 24h age rule alone);
+  (d) a same-session row is NEVER swept — it reroutes per REQ-HEV-010
+  precedence (covered by AC-HEV-014's table)
 
 **AC-HEV-018 — fail-open finalizer**
 - REQ: REQ-HEV-015
@@ -252,15 +257,6 @@
 - Expected: all exit 0; no existing test modified to pass (usage-log / hook
   tests untouched-green)
 
-**AC-HEV-027 — verb-surface CI guard registration (`v3r5RequiredHarnessVerbs`)**
-- REQ: REQ-HEV-011
-- Baseline (measured): `grep -c '"ledger"' internal/cli/harness_retirement_test.go` → **0**
-- Verify: `grep -c '"ledger"' internal/cli/harness_retirement_test.go`
-- Expected: ≥ 1 (the `ledger` verb is added to `v3r5RequiredHarnessVerbs`
-  (lines 31-50) so `TestHarnessV3R5VerbSurface` pins the live-tree
-  registration — the guard that prevents the twice-shipped inert-verb failure
-  mode) AND `go test -run TestHarnessV3R5VerbSurface ./internal/cli/` PASS
-
 **AC-HEV-026 — gitignore coverage of the ledger path (preservation)**
 - REQ: REQ-HEV-001
 - Baseline (measured): `.moai/state/` present in .gitignore (lines 198, 265) — already green
@@ -269,6 +265,15 @@
   (`git check-ignore` evaluates ignore patterns without the file existing —
   NO `touch`/`rm` of the live ledger path; a post-implementation re-run must
   never delete real observation data)
+
+**AC-HEV-027 — verb-surface CI guard registration (`v3r5RequiredHarnessVerbs`)**
+- REQ: REQ-HEV-011
+- Baseline (measured): `grep -c '"ledger"' internal/cli/harness_retirement_test.go` → **0**
+- Verify: `grep -c '"ledger"' internal/cli/harness_retirement_test.go`
+- Expected: ≥ 1 (the `ledger` verb is added to `v3r5RequiredHarnessVerbs`
+  (lines 31-50) so `TestHarnessV3R5VerbSurface` pins the live-tree
+  registration — the guard that prevents the twice-shipped inert-verb failure
+  mode) AND `go test -run TestHarnessV3R5VerbSurface ./internal/cli/` PASS
 
 ## §D.1 REQ → AC Traceability
 
@@ -317,12 +322,16 @@
   finalized `success` with `loop_iterations`/`convergence_class` populated
   from machine artifacts (or null when no such artifact exists)
 
-**Scenario 3 — session death → abort (edge)**
+**Scenario 3 — session death → age-guarded abort (edge, D-1)**
 - Given a session that recorded a pending row and terminated without terminal
-  evidence
+  evidence, and that row is now OLDER than the 24h staleness threshold, and its
+  `session_id` is NOT listed live in `.moai/state/active-sessions.json`
 - When a later session runs `ledger record`
 - Then the foreign stale row is finalized `outcome: abort` first, then the new
   pending row is created (no orphaned pending files accumulate)
+- And, conversely, a foreign pending row YOUNGER than 24h (or whose session is
+  listed live) is left untouched — the live parallel session's in-flight row is
+  never falsely aborted (D-1 protection)
 
 **Scenario 4 — delegation trajectory (edge, A4)**
 - Given a run-phase dispatch that delegates to manager-develop (cycle_type=tdd)
