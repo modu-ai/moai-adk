@@ -18,6 +18,7 @@ import (
 	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/defs"
 	"github.com/modu-ai/moai-adk/internal/statusline"
+	"github.com/modu-ai/moai-adk/internal/template"
 	"github.com/modu-ai/moai-adk/internal/tmux"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
@@ -206,6 +207,34 @@ func setGLMEnv(glmConfig *GLMConfigFromYAML, apiKey string) {
 	_ = os.Setenv("API_TIMEOUT_MS", "3000000")                   //nolint:errcheck
 	// Z.AI MCP server (zai-mcp-server) reads this env for authentication.
 	_ = os.Setenv("Z_AI_API_KEY", apiKey) //nolint:errcheck
+	// GLM effort overlay (SPEC-MODEL-TIER-PLANTYPE-001 M5, REQ-MTP-030): inject the
+	// session-global GLM reasoning-control derived from the effort overlay.
+	for k, v := range glmReasoningEnvVars() {
+		_ = os.Setenv(k, v) //nolint:errcheck
+	}
+}
+
+// glmReasoningEnvVars returns the Branch-B explicit reasoning-control env
+// injection for a GLM backend (SPEC-MODEL-TIER-PLANTYPE-001 M5, REQ-MTP-030).
+// It is the SHARED overlay wire point invoked by BOTH setGLMEnv (process env) and
+// injectGLMEnvForTeam (settings.local.json env) — AC-MTP-032a reachability. It
+// derives the session-global GLM reasoning state from the effort overlay
+// (template.SessionGLMReasoningState) and maps it to the ANTHROPIC_REASONING_EFFORT
+// env var (thinking-enabled states) or the thinking toggle (thinking-off state).
+//
+// UNVERIFIED delivery (AC-MTP-032b run-phase empirical gate): whether z.ai
+// consumes ANTHROPIC_REASONING_EFFORT through the Anthropic-compat shim (Branch A
+// passthrough) or requires the reasoning_effort field in the request body (making
+// this env inert) is a run-phase empirical determination that needs a live z.ai
+// session. This is the safe-default Branch-B explicit write; it does NOT assert
+// the value actually reaches z.ai as reasoning-control.
+func glmReasoningEnvVars() map[string]string {
+	state := template.SessionGLMReasoningState()
+	out := make(map[string]string, 1)
+	if state.ThinkingEnabled {
+		out[config.EnvAnthropicReasoningEffort] = state.ReasoningEffort
+	}
+	return out
 }
 
 // runGLMSetup saves a GLM API key.
@@ -488,6 +517,10 @@ func buildTmuxClearVars() []string {
 		"ANTHROPIC_DEFAULT_SONNET_MODEL",
 		"ANTHROPIC_DEFAULT_HAIKU_MODEL",
 		"ANTHROPIC_DEFAULT_FABLE_MODEL",
+		// GLM effort overlay (SPEC-MODEL-TIER-PLANTYPE-001 M5, REQ-MTP-030 Branch-B
+		// inject↔clear parity, REQ-CGH-009): clear the reasoning-control env when
+		// leaving GLM mode so it does not leak into a subsequent `moai cc` session.
+		config.EnvAnthropicReasoningEffort,
 		"CLAUDE_CONFIG_DIR",
 		// Z.AI proxy compatibility flags
 		"CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS",
@@ -605,6 +638,12 @@ func injectGLMEnvForTeam(settingsPath string, glmConfig *GLMConfigFromYAML, apiK
 		// Z.AI proxy compatibility: strip Anthropic beta headers
 		env["CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS"] = "1"
 		env["API_TIMEOUT_MS"] = "3000000"
+		// GLM effort overlay (SPEC-MODEL-TIER-PLANTYPE-001 M5, REQ-MTP-030): inject
+		// the session-global GLM reasoning-control derived from the effort overlay
+		// (same shared wire point as setGLMEnv — AC-MTP-032a).
+		for k, v := range glmReasoningEnvVars() {
+			env[k] = v
+		}
 		// Issue #742: pre-compute statusline context size from the High slot
 		// (Opus equivalent) so SessionStart hook propagates it via tmux env.
 		if size := statusline.ResolveGLMContextWindow(glmConfig.Models.High); size > 0 {
