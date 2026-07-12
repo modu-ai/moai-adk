@@ -233,6 +233,24 @@ Each E-item is reported per the verification-claim-integrity 5-section format
   `curator.WriteManagedBlock(path, BlockTypeHarnessGenerated, ...)`. Existing
   tests in `layer3_test.go` MUST continue to pass byte-identical (B2
   backward compatibility).
+- **M1 backward-compat verification list (iter-1 D1 amendment — the
+  production caller MUST be preserved byte-identical, not just the test
+  suite)**:
+  1. `internal/harness/layer3_test.go` — existing unit tests pass
+     byte-identical (the original verification target).
+  2. `internal/cli/harness/install.go:85` — the ONE live production caller
+     (`moai harness install`, cobra-registered at `harness_route.go:124`
+     per SPEC-V3R6-HARNESS-ACTIVATION-WIRING-001). This caller injects the
+     `## Project-Specific Configuration (Harness-Generated)` block into
+     CLAUDE.md; M1 generalization MUST preserve that block byte-for-byte.
+  3. **Smoke test (AC-HEV2-003 cross-reference)**: run `moai harness install`
+     on a fixture project (t.TempDir-isolated CLAUDE.md), capture the
+     injected block BEFORE the InjectMarker generalization (baseline) and
+     AFTER (post-M1), and assert byte-identical output (`diff` exit 0 /
+     `cmp` equal). This is the load-bearing verification that the
+     production caller's behavior is preserved — it is distinct from the
+     unit-test verification because `install.go:85` was previously
+     invisible to the plan (the iter-1 false-premise finding D1).
 - Per-bullet CRUD operations: `AddBullet`, `UpdateBullet`, `DeleteBullet`
   (REQ-HEV2-007). Each locates the bullet by `LedgerKey` and rewrites only
   the targeted line.
@@ -243,7 +261,9 @@ Each E-item is reported per the verification-claim-integrity 5-section format
 ### M2 — `MOAI:LEARNED-WORKFLOW` digest block + budget/cap enforcement
 
 - Author `BlockTypeLearnedWorkflow` marker contract (heading + start/end
-  markers per spec.md §D.2). Marker-pattern unit tested.
+  markers per spec.md §D.2). Marker-pattern unit tested (REQ-HEV2-006 —
+  the `## MOAI:LEARNED-WORKFLOW` heading + `<!-- moai:learned-start -->` /
+  `<!-- moai:learned-end -->` atomic match group).
 - Wire the ≤3,000-character digest-budget enforcement via
   `internal/config/token_budget_guard.go measureAlwaysLoaded` (REQ-HEV2-008).
   The function may need a per-section attribution extension so the
@@ -297,18 +317,24 @@ Each E-item is reported per the verification-claim-integrity 5-section format
 
 ### M6 — Template-First + template neutrality + 2-layer Recall contract
 
-- Template-First edit: add the EMPTY `MOAI:LEARNED-WORKFLOW` block marker to
-  `internal/template/templates/CLAUDE.md` (REQ-HEV2-029). The marker carries
-  heading + start/end markers + zero bullets + NO internal SPEC IDs / REQ
-  tokens / dates / SHAs (REQ-HEV2-030, §25 neutrality).
+- Template-First edit (REQ-HEV2-028): add the EMPTY `MOAI:LEARNED-WORKFLOW`
+  block marker to `internal/template/templates/CLAUDE.md` (REQ-HEV2-029).
+  The template source is edited FIRST, then the live copy, then `make build`
+  (REQ-HEV2-028 Template-First ordering). The marker carries heading +
+  start/end markers + zero bullets + NO internal SPEC IDs / REQ tokens /
+  dates / SHAs (REQ-HEV2-030, §25 neutrality).
 - `make build` to recompile embedded assets.
 - Run `internal/template/internal_content_leak_test.go` +
   `.github/workflows/template-neutrality-check.yaml` — MUST PASS.
 - Author the 2-layer Recall contract documentation in the Curator package
-  godoc (REQ-HEV2-015..018). The contract names the digest layer, the ledger
-  layer surfaces, the cross-layer `ledger_key` linkage, and the "remember
-  everything ✗, search when needed ○" principle. (The contract is
-  formalized as types + godoc; the *consumption wiring* is EVOLVE-005.)
+  godoc (REQ-HEV2-015..018 — the range covers REQ-HEV2-015 digest layer,
+  REQ-HEV2-016 ledger layer, REQ-HEV2-017 cross-layer `ledger_key` linkage,
+  REQ-HEV2-018 principle codification; the literal REQ-HEV2-017 citation is
+  grep-visible per plan-audit iter-1 D6). The contract names the digest
+  layer, the ledger layer surfaces, the cross-layer `ledger_key` linkage,
+  and the "remember everything ✗, search when needed ○" principle. (The
+  contract is formalized as types + godoc; the *consumption wiring* is
+  EVOLVE-005.)
 
 ### M7 — Integration verification (spec.md M2 verification target)
 
@@ -320,7 +346,10 @@ Each E-item is reported per the verification-claim-integrity 5-section format
   (REQ-HEV2-019/020).
 - Tier-differentiated Curator proposal test: tier-3-qualified pattern →
   CLAUDE.local.md append; tier-4-qualified pattern → CLAUDE.md write;
-  under-tier pattern → `ErrTierNotQualified` (REQ-HEV2-025..027).
+  under-tier pattern → `ErrTierNotQualified` (REQ-HEV2-025..027 — the range
+  covers REQ-HEV2-025 Tier 4 gate, REQ-HEV2-026 Tier 3 gate, REQ-HEV2-027
+  no-self-tier-escalation; the literal REQ-HEV2-026 citation is grep-visible
+  per plan-audit iter-1 D6).
 - L5 approval gate test: writer returns proposal artifact → orchestrator
   AskUserQuestion simulation → approval token → writer executes; rejection
   → writer records `rejected` in lineage + does NOT touch file

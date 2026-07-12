@@ -12,7 +12,7 @@
 ## §E.1 Plan-phase Audit-Ready Signal
 
 ```yaml
-plan_status: pending-audit
+plan_status: audit-iter1-pass-amending
 plan_complete_at:
 plan_artifact_count: 6
 plan_tier: L
@@ -34,6 +34,12 @@ plan_commit_subject: "feat(SPEC-HARNESS-EVOLVE-002): plan-phase artifacts (L, 5 
 plan_depends_on: SPEC-HARNESS-EVOLVE-001
 plan_depends_on_status: completed
 plan_era: V3R6
+# plan-audit iter-1: PASS 0.86; D1 MUST + D2/D3 SHOULD + D5/D6/D7 MINOR amended;
+# D4 optional-tightened. NOT audit-ready — that is set only after iter-2 PASS.
+plan_audit_iter1_verdict: PASS
+plan_audit_iter1_score: 0.86
+plan_audit_iter1_amended: true
+plan_audit_iter1_note: "iter-1 PASS 0.86; D1 MUST + D2/D3 SHOULD + D5/D6/D7 MINOR amended; pending iter-2 re-audit"
 ```
 
 ## §E.2 Run-phase Evidence

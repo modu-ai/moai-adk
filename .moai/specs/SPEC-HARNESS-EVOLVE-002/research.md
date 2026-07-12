@@ -66,18 +66,45 @@ var markerBlockPattern = regexp.MustCompile(
 **`buildMarkerBlock`** (verified verbatim) — builds the legacy block with
 specID, domain, harness level, updated date, and `See @<path>` import refs.
 
-**Call sites** (verified via `grep -rn "InjectMarker" internal/ --include="*.go"`):
+**Call sites** (re-verified 2026-07-12 at plan-audit iter-1 via
+`grep -rn "InjectMarker" internal/ --include="*.go" | grep -v "_test.go"` —
+verbatim 10-line output):
 
 ```
-internal/harness/layer3.go:26   — definition
-internal/harness/layer3_test.go:19, 42, 76, 80 — tests (TestInjectMarker_FreshFile, _DifferentContent_Idempotent, _SameSpecID_Idempotent)
+internal/cli/harness_route.go:120:	// live call path that wires the previously-orphaned InjectMarker (layer3)
+internal/cli/harness/install.go:5:// internal/harness.InjectMarker (layer3, CLAUDE.md marker block) and
+internal/cli/harness/install.go:79:	// existing InjectMarker installer (layer3). Idempotent — re-running
+internal/cli/harness/install.go:85:	if err := harness.InjectMarker(claudeMdPath, opts.SpecID, opts.Domain,
+internal/harness/layer3.go:21:// InjectMarker injects (or replaces) the harness block in the file at
+internal/harness/layer3.go:26:func InjectMarker(claudeMdPath, specID, domain string, importPaths []string) error {
+internal/harness/layer3.go:28:		return errors.New("InjectMarker: empty path")
+internal/harness/layer3.go:31:		return errors.New("InjectMarker: empty specID")
+internal/harness/layer3.go:35:		return fmt.Errorf("InjectMarker: read %s: %w", claudeMdPath, err)
+internal/harness/layer3.go:50:		return fmt.Errorf("InjectMarker: write %s: %w", claudeMdPath, err)
 ```
 
-The function is currently called ONLY from tests — there is no production
-caller. This is important: the generalization in this SPEC (M1) does NOT
-risk breaking a production caller because none exists. The legacy
-`InjectMarker` is preserved for backward compatibility with any future
-caller + with `layer3_test.go`.
+Classification of the 10 non-test matches:
+
+- **ONE production caller** — `internal/cli/harness/install.go:85`. This is
+  the live `moai harness install` call path (the cobra registration at
+  `internal/cli/harness_route.go:124` wires `NewInstallCmd()`; the
+  `harness_route.go:120` comment documents this as the SPEC-V3R6-HARNESS-
+  ACTIVATION-WIRING-001 wiring of the previously-orphaned InjectMarker).
+- **Definition** — `internal/harness/layer3.go:26` (the function itself) +
+  internal error messages at `layer3.go:21,28,31,35,50`.
+- **Documentation comments** — `install.go:5,79` + `harness_route.go:120`
+  (they describe the install path's relationship to InjectMarker).
+
+The plan-audit iter-1 finding D1 corrected an earlier false premise in this
+section ("only test call sites"). There is exactly ONE production caller
+(`install.go:85`). This is load-bearing for M1: the generalization MUST
+preserve the byte-identical behavior of the `## Project-Specific
+Configuration (Harness-Generated)` block that `moai harness install`
+injects into CLAUDE.md. The legacy `InjectMarker` is preserved as a thin
+backward-compat wrapper over `curator.WriteManagedBlock(path,
+BlockTypeHarnessGenerated, ...)` (REQ-HEV2-002) AND its one live caller
+(`install.go:85`) must keep producing the same block byte-for-byte. See
+plan.md §F M1 backward-compat verification list + AC-HEV2-003.
 
 ### A.2 The `mergeSectionBased` section-preservation logic
 
@@ -414,12 +441,34 @@ stream).
 
 ## §F. Gaps Surfaced by Investigation
 
-### F.1 `InjectMarker` has NO production caller
+### F.1 `InjectMarker` has ONE production caller (plan-audit iter-1 D1 correction)
 
-Verified via `grep -rn "InjectMarker" internal/ --include="*.go" | grep -v "_test.go"`:
-only test call sites. The generalization in M1 is therefore low-risk
-(no production caller to break). The legacy entry point is preserved as
-a backward-compat wrapper (REQ-HEV2-002).
+> **Correction (iter-1)**: an earlier draft of this section asserted
+> `InjectMarker` had NO production caller. That was a false premise —
+> re-verification at plan-audit iter-1 found ONE live production caller.
+
+Verified via `grep -rn "InjectMarker" internal/ --include="*.go" | grep -v "_test.go"`
+(verbatim 10-line output — see §A.1 for the full block):
+
+- **Production caller** — `internal/cli/harness/install.go:85`, the live
+  `moai harness install` path (cobra-registered at `harness_route.go:124`).
+  This call injects the `## Project-Specific Configuration (Harness-Generated)`
+  block into CLAUDE.md.
+- The remaining 9 non-test matches are the function definition
+  (`layer3.go:21,26,28,31,35,50`) + documentation comments
+  (`install.go:5,79` + `harness_route.go:120`).
+
+**Risk conclusion (corrected)**: the generalization in M1 is NOT
+low-risk-by-absence — there IS a production caller whose byte-identical
+behavior MUST be preserved. M1 MUST preserve the byte-identical
+`## Project-Specific Configuration (Harness-Generated)` block produced by
+the `install.go:85` caller. The legacy `InjectMarker` entry point is
+preserved as a thin backward-compat wrapper over
+`curator.WriteManagedBlock(path, BlockTypeHarnessGenerated, ...)`
+(REQ-HEV2-002), AND its one live caller must keep producing the same
+block byte-for-byte (a `moai harness install` smoke test on a fixture
+project verifies this — see plan.md §F M1 backward-compat verification
+list + AC-HEV2-003).
 
 ### F.2 `measureAlwaysLoaded` may need a per-section attribution extension
 

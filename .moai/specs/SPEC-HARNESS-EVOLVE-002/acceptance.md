@@ -74,11 +74,11 @@ depends_on: [SPEC-HARNESS-EVOLVE-001]
 |----|--------|----------|---------------------|
 | AC-HEV2-047 | `internal/harness/curator/writer.go` exists with `WriteManagedBlock` exported | 0 matches | ≥ 1 match |
 | AC-HEV2-048 | `internal/harness/layer3.go InjectMarker` calls `curator.WriteManagedBlock` | 0 matches | ≥ 1 match (backward-compat wrapper) |
-| AC-HEV2-049 | `internal/merge/strategies.go mergeSectionBased` references the new managed-section registry | 0 matches | ≥ 1 match |
+| AC-HEV2-049 | `internal/merge/strategies.go` defines the `managedSectionHeadings` allow-list var (design.md §D.1 H-2 option (a)) AND `mergeSectionBased` consults it on the preservation path | 0 matches | ≥ 2 matches (1 var declaration + ≥1 consultation in mergeSectionBased) |
 | AC-HEV2-050 | `internal/harness/types.go LineageEntry` carries `LearnedSurface` + `BulletsChanged` + `SnapshotDir` fields | 0 matches | ≥ 3 matches (one per field) |
-| AC-HEV2-051 | `internal/harness/applier.go` snapshot path records distinct restore units per surface | 0 matches | ≥ 1 match |
+| AC-HEV2-051 | snapshot manifest JSON (written by `internal/harness/applier.go createSnapshot`) carries ≥2 distinct `learned_surface` values when both CLAUDE.md + CLAUDE.local.md are snapshotted — per-surface restore units (design.md §C.1 manifest entry shape) | 0 distinct `learned_surface` values (manifest schema has no `learned_surface` field today) | ≥ 2 distinct `learned_surface` values in a dual-surface snapshot fixture |
 | AC-HEV2-052 | `internal/template/templates/CLAUDE.md` carries the empty `MOAI:LEARNED-WORKFLOW` marker | 0 matches | heading + start marker + end marker (≥ 3 matches) |
-| AC-HEV2-053 | `.moai/specs/SPEC-HARNESS-EVOLVE-002/spec.md` REQ→AC matrix covers all 36 REQs | (this file) | 100% coverage |
+| AC-HEV2-053 | **(meta-traceability check — NOT a reachability AC; relabeled per plan-audit iter-1 D7)** `.moai/specs/SPEC-HARNESS-EVOLVE-002/spec.md` REQ→AC matrix covers all 36 REQs | (this file) | 100% coverage |
 
 ## §B. Severity Definitions
 
@@ -142,12 +142,12 @@ alongside the implementation per Go convention (`_test.go` co-located):
 | AC-HEV2-045 | (settings.json diff) | `git diff main -- internal/template/templates/.claude/settings.json.tmpl .claude/settings.json` → no hook-registration changes attributable to this SPEC |
 | AC-HEV2-046 | (hook-wrapper grep) | `ls .claude/hooks/moai/handle-*curator*.sh 2>/dev/null \| wc -l` → 0 (no new wrapper) |
 | AC-HEV2-047 | (reachability grep) | `grep -rn "func WriteManagedBlock" internal/harness/curator/` → ≥ 1 match |
-| AC-HEV2-048 | (reachability grep) | `grep -n "curator.WriteManagedBlock\|curator.BlockTypeHarnessGenerated" internal/harness/layer3.go` → ≥ 1 match |
-| AC-HEV2-049 | (reachability grep) | `grep -n "LearnedWorkflow\|managedSection\|managed-section" internal/merge/strategies.go` → ≥ 1 match |
+| AC-HEV2-048 | (reachability grep) | `grep -n "curator.WriteManagedBlock(" internal/harness/layer3.go` → ≥ 1 match (the literal call site with opening paren — discriminates the actual invocation from a type-reference comment; per plan-audit iter-1 D4 the original 2-token compound grep was acceptable but is tightened here since it is a one-line discriminating change) |
+| AC-HEV2-049 | (reachability grep) | `grep -n "managedSectionHeadings" internal/merge/strategies.go` → ≥ 2 matches (the `var managedSectionHeadings = []string{...}` declaration + its consultation inside `mergeSectionBased`'s preservation path — discriminating per design.md §D.1 H-2 option (a) explicit allow-list; a single dead comment mentioning the symbol once does NOT satisfy the ≥2 threshold) |
 | AC-HEV2-050 | (reachability grep) | `grep -E "LearnedSurface|BulletsChanged|SnapshotDir" internal/harness/types.go` → ≥ 3 matches |
-| AC-HEV2-051 | (reachability grep) | `grep -n "learned-workflow\|learned-local" internal/harness/applier.go` → ≥ 1 match |
+| AC-HEV2-051 | (manifest-structure assertion, driven by Go test `TestCreateSnapshot_DistinctRestoreUnitsPerSurface` AC-HEV2-028) | on a fixture dual-surface snapshot manifest: `jq -r '.Files[].learned_surface' <manifest> \| sort -u \| wc -l` → ≥ 2 (structural proof of per-surface restore units — NOT a substring grep that a single source comment satisfies; the manifest is a runtime JSON artifact per design.md §C.1) |
 | AC-HEV2-052 | (template-tree grep) | `grep -c "moai:learned-start\|moai:learned-end\|MOAI:LEARNED-WORKFLOW" internal/template/templates/CLAUDE.md` → ≥ 3 |
-| AC-HEV2-053 | (self-coverage) | this matrix covers all 36 REQs in spec.md §C (100%) |
+| AC-HEV2-053 | (self-coverage — **meta-traceability check, NOT a reachability AC; relabeled per plan-audit iter-1 D7**) | this matrix covers all 36 REQs in spec.md §C (100%) |
 
 ## §D. Given-When-Then Scenarios (key behavioral ACs)
 
@@ -307,7 +307,11 @@ Then the bullet carries ledger_key "null" (or empty with Provisional=true)
 
 - [ ] All 36 REQ-HEV2-XXX in spec.md §C have at least one PASS AC.
 - [ ] All MUST ACs in §A PASS.
-- [ ] All 9 cross-file reachability ACs (AC-HEV2-047..053) PASS.
+- [ ] All 6 cross-file reachability ACs (AC-HEV2-047..052) + 1
+      meta-traceability cross-check (AC-HEV2-053) PASS. (Iter-1 D5/D7
+      reconciliation: the original "9" was an arithmetic error — the range
+      047..053 is 7 ACs total; D7 relabeled 053 as a meta-traceability
+      check, leaving 6 genuine reachability ACs 047..052.)
 - [ ] All 9 Given-When-Then scenarios in §D PASS.
 - [ ] All 10 edge cases in §E handled (test-covered or explicitly documented
       as out-of-scope for this SPEC's milestone).
