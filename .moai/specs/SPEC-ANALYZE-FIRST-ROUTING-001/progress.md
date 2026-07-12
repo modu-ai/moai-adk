@@ -76,7 +76,17 @@ notes: >
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase — owned by manager-docs>_
+```yaml
+sync_complete_at: 2026-07-12
+sync_commit_sha: <backfill-after-sync-commit>
+sync_status: completed
+changelog_entry: "[Unreleased] Added — SPEC-ANALYZE-FIRST-ROUTING-001"
+frontmatter_transitions:
+  spec.md: in-progress → completed
+  plan.md: (no frontmatter)
+  acceptance.md: (no frontmatter)
+  progress.md: §E.4 populated
+```
 
 ## §F Phase 0.95 Mode Selection
 
