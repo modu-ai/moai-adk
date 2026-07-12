@@ -190,7 +190,7 @@ pkgs ok / 0 FAIL confirms no regression).
 ### Amendment 0.3.0 sync-phase close signal (this section, distinct from the 0.2.1 close above)
 
 - sync_complete_at: 2026-07-12
-- sync_commit_sha: pending-backfill-sync (amendment sync commit — cannot know its own SHA; backfilled in a follow-up commit per the SHA placeholder backfill exemption, spec-frontmatter-schema.md § Forbidden ownership crossings)
+- sync_commit_sha: 3b5243ed0
 - sync_status: audit-ready
 - amendment_version: "0.3.0" (distinct from the 0.2.1 close recorded above; frontmatter transition this commit: `in-progress → completed`)
 - changelog_entry_added: true (new distinct CHANGELOG.md `[Unreleased]` ### Added entry for the 0.3.0 amendment — arm CLI + prune wiring reachability fix; does NOT duplicate the existing 0.2.1 entry. `grep -c 'SPEC-GOAL-ENGINE-001' CHANGELOG.md` 2 → 3)
