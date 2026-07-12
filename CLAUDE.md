@@ -37,8 +37,8 @@ Five ordered stages:
 - ① **Intent analysis** — classify the request's intent regardless of input language (any `conversation_language`; language-independent, not keyword-gated). Technology signals are context for stage ③ only, never the routing gate.
 - ② **Context-sufficiency check** — when context is insufficient, run the Rule 5 Context-First Discovery `AskUserQuestion` rounds (§7) before proceeding.
 - ③ **Execution-plan composition** — compose the skill / agent / dynamic-workflow chain and select the Phase 0.95 orchestration mode (unchanged; see `.claude/rules/moai/workflow/orchestration-mode-selection.md`).
-- ④ **Approval gates** — unchanged, including the **Implementation Kickoff Approval** human gate at the plan→run boundary (§8).
-- ⑤ **Execute → verify → iterate** — run the plan, verify against acceptance criteria, iterate; when a goal is armed (`/goal`, forthcoming goal engine), its evaluator is the termination judge.
+- ④ **Approval gates** — unchanged, including the **Implementation Kickoff Approval** human gate at the plan→run boundary (§8); the gate also offers an autonomous-vs-semi-autonomous progression-mode axis (a post-approval progression choice, never a gate bypass).
+- ⑤ **Execute → verify → iterate** — run the plan, verify against acceptance criteria, iterate; when a goal is armed (`/goal`, `/moai goal`), the goal evaluator is the termination judge.
 
 Report: consolidate agent results and format the response in the user's `conversation_language`.
 

@@ -74,6 +74,7 @@ The `--team` / `--solo` flags are forced overrides onto the catalog; the flag-fr
 - **codemaps**: Generate architecture documentation in `.moai/project/codemaps/`
 - **gate** (aliases: check, pre-commit): Lightweight pre-commit quality gate (lint+format+type-check+test)
 - **harness** (aliases: hrn, learn): harness lifecycle management — learning-lifecycle verbs (status / apply / rollback &lt;date&gt; / disable) + v4-lifecycle verbs (list / edit / remove / doctor), all dispatching through the unified `moai harness` Go-binary Cobra subcommand tree; the slash command is the documented user-facing entry point
+- **goal**: Condition-declared universal agentic loop — arm a completion condition (`/moai goal "<condition>"`), check status, clear, or resume; evaluated each turn-end by the `stop-goal` Stop hook
 
 ### Priority 2: SPEC-ID Detection
 
@@ -134,6 +135,13 @@ Agents: Direct execution (no agent delegation)
 Flags: --fix, --staged, --file PATH
 Integration: Automatically invoked by run workflow (Phase 2.75) and sync workflow (Phase 0.0.1) with --fix behavior.
 For detailed orchestration: Read ${CLAUDE_SKILL_DIR}/workflows/gate.md
+
+### goal - Condition-Declared Agentic Loop
+
+Purpose: Arm a completion condition (mechanical commands + model claims); the `stop-goal` Stop-hook evaluator blocks each turn-end until the conditions hold or a turn ceiling (default 30) is reached.
+Verbs: `/moai goal "<condition>"` (register + arm), `status [--all]`, `clear`, `resume`.
+Progression mode: autonomous (default) vs. semi-autonomous — chosen at Implementation Kickoff Approval; the gate stays mandatory in both modes.
+For detailed orchestration: Read ${CLAUDE_SKILL_DIR}/workflows/goal.md
 
 ### fix - Auto-Fix Errors
 

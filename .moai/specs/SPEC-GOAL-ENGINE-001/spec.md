@@ -2,7 +2,7 @@
 id: SPEC-GOAL-ENGINE-001
 title: "Goal Engine — /moai goal condition-declared universal agentic loop (MoAI-owned /goal reimplementation)"
 version: "0.2.1"
-status: draft
+status: in-progress
 created: 2026-07-12
 updated: 2026-07-12
 author: manager-spec

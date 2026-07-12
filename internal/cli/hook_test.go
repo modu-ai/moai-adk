@@ -62,8 +62,9 @@ func TestHookCmd_SubcommandCount(t *testing.T) {
 	count := len(hookCmd.Commands())
 	// 36 previous - 1 "setup" (removed by SPEC-V3R2-MIG-002 M2.1) = 35.
 	// +1 "harness-classify" (added by SPEC-V3R6-HARNESS-CLASSIFIER-WIRING-001) = 36.
-	if count != 36 {
-		t.Errorf("hook should have 36 subcommands, got %d", count)
+	// +1 "stop-goal" (added by SPEC-GOAL-ENGINE-001) = 37.
+	if count != 37 {
+		t.Errorf("hook should have 37 subcommands, got %d", count)
 	}
 }
 

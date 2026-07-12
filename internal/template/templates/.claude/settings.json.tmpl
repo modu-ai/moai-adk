@@ -138,6 +138,15 @@
 {{- end}}
             "timeout": 60,
             "type": "command"
+          },
+          {
+{{- if eq .Platform "windows"}}
+            "command": "bash \"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-stop-goal.sh\"",
+{{- else}}
+            "command": "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-stop-goal.sh\"",
+{{- end}}
+            "timeout": 120,
+            "type": "command"
           }{{ if .HookOptIn.Enabled }},
           {
 {{- if eq .Platform "windows"}}

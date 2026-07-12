@@ -30,6 +30,10 @@ Three approaches keep the session running between prompts. Pick by **what should
 - **`/moai loop`** is MoAI's deterministic, diagnostic-driven fix loop — it knows the project's quality tooling and the SPEC lifecycle. Use it for "fix everything the tooling flags".
 - **`/goal`** is a model-evaluated condition over the conversation transcript — it does not run commands or read files itself; it judges what Claude has already surfaced. Use it for "keep going until this stated end-state is demonstrably true in the transcript".
 
+### `/moai goal` — the PROGRAMMATIC MoAI counterpart (Axis B)
+
+Native `/goal` is HUMAN-ONLY (a built-in TUI command the model cannot set on the user's behalf). `/moai goal` is the MoAI-owned, PROGRAMMATIC reimplementation of `/goal` semantics: it arms a per-session condition-declared loop that the `stop-goal` Stop-hook evaluator checks each turn-end, so an orchestrator can register and arm a goal without a human typing the native `/goal` line. This is the Axis B worked illustration — where the nearest native equivalent is HUMAN-ONLY, a MoAI subcommand automating that capability inside the pipeline is the ONLY pipeline path (see `.claude/rules/moai/workflow/native-invocation-model.md` § Axis B). See `.claude/skills/moai/workflows/goal.md` for the four verbs and the autonomous/semi-autonomous progression-mode axis.
+
 ## Writing an Effective Condition
 
 The evaluator judges the condition against Claude's own output, so write something Claude's output can demonstrate. A durable condition usually has:
