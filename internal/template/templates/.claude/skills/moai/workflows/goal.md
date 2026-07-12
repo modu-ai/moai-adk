@@ -44,10 +44,17 @@ Clear the active session's goal (delete its state file). The Stop hook then sees
 no armed goal and stops blocking. This is how the orchestrator ends the loop once
 it has evaluated the model claim as met.
 
-### `/moai goal resume`
+### `/moai goal resume` — deferred (follow-up), NOT delivered
 
-Re-arm the most recently cleared goal for the active session (best-effort restore
-from the `consumed/` archive). Use when a goal was cleared prematurely.
+**Out of scope — deferred to a follow-up.** The `resume` verb (best-effort re-arm
+of a previously cleared goal by restoring from the `consumed/` archive) is NOT
+delivered by the current arm CLI; `moai goal --help` lists only `arm` / `status`
+/ `clear`. The reason it is deferred: `clear` DELETES the state file (it does not
+tombstone into `consumed/`), and `consumed/` is the orphan-prune archive, not a
+`clear` destination — so a goal cleared via `clear` never lands in `consumed/` and
+cannot be resumed from it. Delivering a working `resume` would require changing
+`clear` from a delete to a tombstone-move, a semantic change to the existing
+`clear` contract that is out of scope here.
 
 ## Progression Mode (Autonomous / Semi-autonomous) — chosen at Implementation Kickoff Approval
 

@@ -16,6 +16,7 @@ import (
 	"time"
 
 	"github.com/modu-ai/moai-adk/internal/config"
+	"github.com/modu-ai/moai-adk/internal/goal"
 	"github.com/modu-ai/moai-adk/internal/hook/memo/taxonomy"
 	"github.com/modu-ai/moai-adk/internal/migration"
 	"github.com/modu-ai/moai-adk/internal/session"
@@ -147,6 +148,14 @@ func (h *sessionStartHandler) Handle(ctx context.Context, input *HookInput) (*Ho
 		if err := pruneTelemetry(input.ProjectDir); err != nil {
 			slog.Warn("session start: telemetry pruning failed", "error", err)
 		}
+	}
+
+	// Prune orphan goal-engine state files: a goal state file whose session id is
+	// absent from active-sessions.json AND older than the orphan TTL is moved to
+	// .moai/state/goal/consumed/. Best-effort + fail-open: a prune error is logged
+	// and NEVER blocks session start.
+	if input.ProjectDir != "" {
+		pruneGoalOrphans(input.ProjectDir)
 	}
 
 	// Detect stale agent memories and inject staleness caveat (SPEC-V3R2-EXT-001 REQ-006/017).
@@ -698,6 +707,38 @@ func copyDirRecursive(src, dst string) error {
 // It delegates to telemetry.PruneOldFiles and wraps any error with context.
 func pruneTelemetry(projectDir string) error {
 	return telemetry.PruneOldFiles(projectDir, 90)
+}
+
+// pruneGoalOrphans wires goal.PruneOrphans into the session-start path. It reads
+// the active session IDs from the multi-session registry and prunes orphan goal
+// state files (session absent from active-sessions.json OR TTL-expired) into
+// .moai/state/goal/consumed/. Fail-open: a prune error is logged, NEVER returned
+// — session start must never block on goal pruning.
+func pruneGoalOrphans(projectDir string) {
+	activeIDs := activeGoalSessionIDs(projectDir)
+	if _, err := goal.PruneOrphans(projectDir, activeIDs, time.Now()); err != nil {
+		slog.Warn("session start: goal orphan prune failed (non-blocking)",
+			"error", err.Error(),
+		)
+	}
+}
+
+// activeGoalSessionIDs reads the active session IDs from the multi-session
+// registry (.moai/state/active-sessions.json) anchored to projectDir. On any
+// read error it returns nil so PruneOrphans falls back to TTL-only pruning
+// (fail-open — an unreadable registry never blocks pruning or session start).
+func activeGoalSessionIDs(projectDir string) []string {
+	registryPath := filepath.Join(projectDir, session.DefaultRegistryPath)
+	reg := session.NewRegistry(registryPath, nil)
+	entries, err := reg.Query("")
+	if err != nil {
+		return nil
+	}
+	ids := make([]string, 0, len(entries))
+	for _, e := range entries {
+		ids = append(ids, e.SessionID)
+	}
+	return ids
 }
 
 // injectCLAUDEEnvFile checks whether a .env file exists in projectRoot. If it

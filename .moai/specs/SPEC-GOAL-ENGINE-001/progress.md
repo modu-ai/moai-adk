@@ -95,6 +95,41 @@ All 34 ACs PASS. Verification commands run in the worktree (this run, against th
 | 033 | PASS | `grep -ic "semi-autonomous\|progression.mode" orchestration-mode-selection.md` → 1 |
 | 034 | PASS | (a) `grep -ic "both.mode\|in both modes" goal.md` → 2; (b) `go test ./internal/goal/ -run TestKickoffMandatoryBothModes` → ok |
 
+### Amendment 0.3.0 (M8) run-phase evidence — arm CLI + prune wiring (REQ-GLE-030..034)
+
+M8 implemented (TDD, cycle_type=tdd) on a worktree fast-forwarded to the current
+main HEAD (which carries the M1–M7 engine). Files created/modified by this
+amendment run:
+
+- NEW `internal/cli/goal.go` — `moai goal` cobra command under `rootCmd`
+  (arm/status/clear; bare `goal "<cond>"` aliases arm; NO resume). Reuses the
+  `internal/goal` engine (`NewGoal`/`SaveGoal`/`LoadGoal`/`ClearGoal`); no engine
+  rewrite. Registered via `init()` → `rootCmd.AddCommand(newGoalCmd())`.
+- NEW `internal/cli/goal_test.go` — AC-035/036/037/039 + status/clear round-trip
+  + model-condition parse + `--all`/`--json` + no-session-id degrade tests.
+- EXTEND `internal/hook/session_start.go` — `pruneGoalOrphans` + `activeGoalSessionIDs`
+  helpers; `goal.PruneOrphans(` call site wired on the session-start path
+  (fail-open); imports `internal/goal`.
+- NEW `internal/hook/session_start_goal_prune_test.go` — AC-038 (orphan → consumed/)
+  + fail-open test.
+- EXTEND `.claude/skills/moai/workflows/goal.md` + template mirror — annotate
+  `resume` verb as deferred / out-of-scope (§D.6); §25-neutral (no SPEC IDs).
+- REGEN `internal/template/catalog.yaml` (goal.md mirror hash via `make build`).
+
+#### AC PASS/FAIL matrix (AC-GLE-035..039)
+
+| AC | Status | Verification |
+|----|--------|--------------|
+| 035 | PASS | `go run ./cmd/moai goal --help` exit 0; independent `grep -qw` → arm/status/clear all PRESENT (`ALL3_PRESENT`); `TestGoalCmdListsDeliveredVerbs` ok |
+| 036 | PASS | `go test ./internal/cli/ -run TestGoalArmEvalLinkage` → ok. Drives `goal arm "false exits 0" --session X` THROUGH the registered rootCmd; asserts `.moai/state/goal/X.json` written (exact path, not pid-*); `LoadGoal(root,"X")` returns armed goal (1 mechanical cond, cmd=`false`, ceiling 30); then `runStopGoalHook` given `{"session_id":"X"}` emits `"decision":"block"` — arm↔eval share the SAME file |
+| 037 | PASS | `go test ./internal/cli/ -run TestGoalArmResolvesSessionId` → ok. Side-channel `current-session-id.txt`=`real-sess-77`; arm without `--session` writes `real-sess-77.json`, NO pid-*.json (no silent pid fallback) |
+| 038 | PASS | (a) `grep -nE 'goal\.PruneOrphans\(' internal/hook/session_start.go \| grep -vE ':[0-9]+:[[:space:]]*//' \| wc -l` → 1 (was 0); (b) `go test ./internal/hook/ -run 'TestSessionStartPrunesGoalOrphans\|TestSessionStartGoalPruneFailOpen'` → ok (orphan → consumed/; prune error does not block session start) |
+| 039 | PASS | (a) `go run ./cmd/moai goal --help \| grep -qw resume` → RESUME_ABSENT; (b) `grep -Eic 'resume[^.]*(defer\|out of scope\|follow-up)\|(defer\|out of scope\|follow-up)[^.]*resume' goal.md` → 1 (local + template) |
+
+All 39 ACs hold (AC-GLE-001..034 from the prior run remain PASS — the amendment
+ADDED code without touching the engine, hook verb, or their tests; full suite 99
+pkgs ok / 0 FAIL confirms no regression).
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 - run_complete_at: 2026-07-12
@@ -115,6 +150,28 @@ All 34 ACs PASS. Verification commands run in the worktree (this run, against th
 - spec_lint: `moai spec lint spec.md` → 0 errors (1 StatusGitConsistency warning resolves on this commit landing the draft→in-progress transition)
 - template_neutrality: `grep -rn 'SPEC-GOAL-ENGINE\|SPEC-ANALYZE-FIRST\|AGENTIC-CORE\|REQ-GLE' internal/template/templates/.claude/` → 0
 
+### Amendment 0.3.0 (M8) run-phase audit-ready signal
+
+- run_complete_at: 2026-07-12
+- run_commit_sha: pending-backfill-m8 (single amendment run-phase commit; SHA backfilled post-land per the §E.3/§E.4 SHA-placeholder exemption)
+- run_status: audit-ready (39/39 AC PASS — AC-GLE-035..039 NEW + AC-GLE-001..034 preserved)
+- ac_pass_count: 5 (amendment-new; 34 prior preserved)
+- ac_fail_count: 0
+- preserve_list_post_run_count: 4 (internal/goal engine schema.go/state.go/prune.go/evaluate.go; internal/cli/hook_stop_goal.go stop-goal verb; goal.md skill body minus resume-deferral; REQ-GLE-001..029 + AC-GLE-001..034)
+- l44_pre_commit_fetch: n/a (L1 worktree fast-forwarded to current main c13b0fd26; no remote fetch — local unpushed per repo posture)
+- l44_post_push_fetch: n/a (no push — amendment commit left local unpushed per orchestrator directive)
+- new_warnings_or_lints_introduced: 0 (`golangci-lint run --timeout=3m` → 0 issues, baseline 0; `go vet` implicit in build clean)
+- cross_platform_build:
+  - `go build ./...` → exit 0
+  - `GOOS=windows GOARCH=amd64 go build ./...` → exit 0
+- coverage: `go test -cover ./internal/goal/...` → 86.5% (AC-024 ≥85); `internal/cli/goal.go` per-func: parseCondition/newGoalCmd/goalProjectRoot/resolveArmSessionID 100%, runGoalArm 83.3%, runGoalStatus 81.8%, runGoalStatusAll 78.6%, runGoalClear 80.0%, printGoalHuman 84.6%; new `session_start.go` helpers: pruneGoalOrphans 100%, activeGoalSessionIDs 88.9%
+- total_run_phase_files: 6 (NEW internal/cli/goal.go + internal/cli/goal_test.go + internal/hook/session_start_goal_prune_test.go; EXTEND internal/hook/session_start.go; EXTEND .claude/skills/moai/workflows/goal.md × 2 (local+template); REGEN internal/template/catalog.yaml)
+- m1_to_mN_commit_strategy: single amendment run-phase commit (M8). Frontmatter already `status: in-progress` (set by manager-spec at the 0.3.0 completed→in-progress amendment re-entry) — NO status transition performed by this run.
+- subagent_boundary_grep: `grep -rn 'AskUserQuestion\|mcp__askuser' internal/cli/goal.go internal/hook/session_start.go | grep -v _test.go | grep -v '//'` → 0 (REQ-GLE-014 / C-HRA-008 preserved)
+- template_neutrality: `grep -rn 'SPEC-GOAL-ENGINE\|SPEC-ANALYZE-FIRST\|AGENTIC-CORE\|REQ-GLE' internal/template/templates/.claude/` → 0
+- template_mirror: goal.md resume-deferral mirrored to `internal/template/templates/.claude/skills/moai/workflows/goal.md`; `make build` → exit 0; mirror-parity tests ok
+- full_suite_test: `go test ./...` → 99 packages ok / 0 FAIL
+
 ## §E.4 Sync-phase Audit-Ready Signal
 
 - sync_complete_at: 2026-07-12
@@ -129,3 +186,30 @@ All 34 ACs PASS. Verification commands run in the worktree (this run, against th
   - `go build ./...` → exit 0
   - `GOOS=windows GOARCH=amd64 go build ./...` → exit 0
 - full_suite_test: `go test ./...` → 96 packages ok / 0 FAIL
+
+## §F Phase 0.95 Mode Selection
+
+- Decision: sub-agent (Mode 5 — coding-heavy, single-domain, bounded)
+
+Recorded for the Amendment 0.3.0 (M8) run-phase (arm CLI + prune wiring). The
+prior M1–M7 run predated this logging section.
+
+- Input parameters: tier = L (retained for PASS threshold + Section A-E), but the
+  amendment scope is small — 6 files, single domain (Go CLI + one hook wiring +
+  one doc/mirror), all sequential/coding-heavy with inter-file dependency
+  (arm CLI depends on the engine; the E2E test drives arm→hook in one flow).
+  concurrency benefit = LOW (coding-heavy, not research fan-out).
+- Mode evaluation:
+  - Mode 1 (trivial): not selected — multi-file behavioral change, not a typo.
+  - Mode 2 (background): not selected — write-capable implementation, not read-only.
+  - Mode 3 (agent-team): RETIRED — never selected.
+  - Mode 4 (parallel): not selected — coding-heavy single-domain work (Anthropic
+    coding-task parallelism caveat), no ≥3-domain research fan-out.
+  - Mode 5 (sub-agent): SELECTED — sequential coding, one implementation agent.
+  - Mode 6 (workflow): not selected — < 30 files, not a uniform mechanical sweep.
+- Decision: sub-agent
+- Justification: The amendment is coding-heavy, single-domain, and bounded (6
+  files, arm↔engine↔hook inter-dependency), so Mode 5 (sequential sub-agent) is
+  the correct default per Anthropic's coding-task parallelism caveat — parallel /
+  workflow fan-out earns its overhead only on genuinely-parallel high-volume
+  mechanical work, which this is not.
