@@ -14,7 +14,7 @@ tags: "agentic-core, goal-engine, stop-hook, autonomous-loop, per-session-state,
 era: V3R6
 tier: L
 depends_on: [SPEC-ANALYZE-FIRST-ROUTING-001]
-sync_commit_sha: <pending backfill>
+sync_commit_sha: 624ae8491
 ---
 
 # SPEC-GOAL-ENGINE-001 — Goal Engine (`/moai goal`)

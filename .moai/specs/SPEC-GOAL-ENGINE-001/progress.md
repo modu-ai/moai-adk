@@ -107,7 +107,7 @@ All 34 ACs PASS. Verification commands run in the worktree (this run, against th
 ## §E.4 Sync-phase Audit-Ready Signal
 
 - sync_complete_at: 2026-07-12
-- sync_commit_sha: <pending backfill after sync commit>
+- sync_commit_sha: 624ae8491
 - sync_status: audit-ready
 - changelog_entry_added: true (SPEC-GOAL-ENGINE-001 entry added to CHANGELOG.md [Unreleased] ### Added section)
 - readme_updated: true (README.md + README.ko.md updated with `/moai goal` subcommand)
