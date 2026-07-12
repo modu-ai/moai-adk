@@ -2,9 +2,9 @@
 id: SPEC-DISCOVERY-UNKNOWNS-001
 title: "Unknowns framework Tier-1 for Context-First Discovery — Blind Spot Pass + decision-reversibility ordering + 4-quadrant lens"
 version: "0.1.0"
-status: in-progress
+status: completed
 created: 2026-07-05
-updated: 2026-07-12
+updated: 2026-07-13
 author: manager-spec
 priority: P2
 phase: "v3.0.0"
@@ -84,4 +84,18 @@ Run-phase complete on Route A (Hybrid Trunk main-direct, Tier M). Implementation
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+```yaml
+sync_status: audit-ready
+sync_complete_at: 2026-07-13
+sync_author: manager-docs
+sync_commit_sha: pending-backfill-discovery-unknowns-001
+changelog_entry_position: "[Unreleased] > ### Changed (top entry)"
+frontmatter_status_transitions:
+  spec.md: "in-progress -> completed"
+  plan.md: "in-progress -> completed"
+  acceptance.md: "in-progress -> completed"
+  progress.md: "in-progress -> completed"
+push_state: deferred (local main-direct commit only; batch-push by orchestrator after parallel session ends)
+```
+
+Sync-phase actions performed on this commit: (1) merged `in-progress -> implemented -> completed` frontmatter status transition applied atomically across all 4 SPEC artifacts (spec.md / plan.md / acceptance.md / progress.md), with `updated:` refreshed to 2026-07-13 in each; (2) one `### Changed` entry appended under `CHANGELOG.md` `[Unreleased]`, describing the actually-shipped T1 Blind Spot Pass + T2 decision-reversibility ordering + T3 4-quadrant lens behavior verified by reading the 4 changed rule/agent-body surfaces (`askuser-protocol.md`, `spec-workflow.md`, `manager-spec.md`, `CLAUDE.md`), pre-emission duplicate-check `grep -c 'SPEC-DISCOVERY-UNKNOWNS' CHANGELOG.md` → 0 confirmed before append; (3) README/README.ko.md assessed — no user-facing CLI surface or feature-list change, skipped per B12 discipline; (4) `sync_commit_sha` recorded as a `pending-backfill-*` placeholder per the SHA placeholder backfill exemption (spec-frontmatter-schema.md) — this sync commit cannot know its own SHA, real SHA to be backfilled in a follow-up commit by the orchestrator. Push is deferred: a parallel session holds the shared checkout; the orchestrator will batch-push after that session ends. This SPEC is doc/rule/agent-body only (zero Go source touched by the sync commit), consistent with the run-phase scope (REQ-DU-013).
