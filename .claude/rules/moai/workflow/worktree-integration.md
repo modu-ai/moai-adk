@@ -111,11 +111,9 @@ background: true   # Returns immediately; results delivered on next turn
 
 Use with `isolation: worktree` for optimal parallel execution in team mode.
 
-[ZONE:Frozen] [HARD] (clause updated for v2.1.186 semantics) Background subagents (`background: true` / `run_in_background: true`) MUST NOT perform Write/Edit operations, as a MoAI conservative default. Since Claude Code v2.1.186, a background write no longer auto-denies — it raises a permission prompt in the main session that interrupts the leader's flow and undercuts the parallelism benefit of backgrounding; MoAI therefore keeps write-heavy work in the foreground. Only use `background: true` for:
+Background-execution policy for write-capable agents is owned by `.claude/rules/moai/core/agent-common-protocol.md` § Background Agent Execution. As of Claude Code v2.1.198 subagents run in the background by default, and a background write surfaces a permission prompt in the main session naming the asking subagent; MoAI aligns with that runtime default rather than forcing foreground. The retained safeguard is concurrency, not backgrounding: MoAI does not run two write-capable agents concurrently. Use `background: true` for:
 - Read-only research and analysis agents
 - Agents whose write paths are pre-approved in settings.json `permissions.allow`
-
-For write-heavy agents without pre-approval, use `background: false` (foreground, sequential).
 
 Kill background agent: Press `Ctrl+X Ctrl+K` in Claude Code interface (v2.1.83+).
 

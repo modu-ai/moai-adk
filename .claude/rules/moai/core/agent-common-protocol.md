@@ -189,20 +189,17 @@ Architecture:
 
 ## Background Agent Execution
 
-[ZONE:Frozen] [HARD] Background subagents (`run_in_background: true`) MUST NOT perform Write/Edit operations.
+[ZONE:Evolvable] [HARD] As of Claude Code v2.1.198, subagents run in the background by **default**; Claude runs one in the foreground only when it needs the result before continuing. The default changes *where* a subagent runs, not *what it may do* — a background subagent still surfaces every permission prompt in the main session, and (since v2.1.186) that prompt names the asking subagent (Esc denies just that one call). MoAI **aligns with this runtime default** rather than forcing foreground for write-capable agents, and does not set the `background:` frontmatter field — the runtime's per-call heuristic chooses.
 
-As of Claude Code v2.1.186, when a background subagent reaches a tool call that needs permission, the prompt surfaces in the main session and names the asking subagent (Esc denies just that one call). Before v2.1.186, background subagents auto-denied any prompting tool call — the prior basis for this rule. MoAI nonetheless keeps `run_in_background: false` for write tasks as a conservative default: in standard permission mode each background write raises a main-session permission prompt that interrupts the leader's flow and undercuts the parallelism benefit of backgrounding, whereas foreground execution keeps write-permission flow deterministic. Read-only tasks (research, analysis, review) remain safe and efficient in the background.
+The retained safeguard is **concurrency, not backgrounding**: MoAI does not run two write-capable agents concurrently, and orchestrator work performed concurrently with a write-capable agent is **read-only**. This targets the actual hazard — a file-write race between agents — which forbidding background writes never addressed. The superseded restriction — a blanket ban on background Write/Edit — had its stated basis (background writes auto-denied) removed by v2.1.186 and no longer describes the runtime.
 
 Rules for agent spawning:
-- **Read-only tasks** (research, analysis, review): `run_in_background: true` is safe
-- **Write tasks** (implementation, refactoring, file creation): `run_in_background: false` required
-- **Parallel writes needed**: Process directly from the main session, or use sequential foreground agents
-- **Pre-approved writes**: Add path patterns to settings.json `permissions.allow` for background write support
+- **Read-only tasks** (research, analysis, review): safe in the background; while one is in flight the orchestrator continues independent read-only work so queued progress pushes drain at tool-call boundaries.
+- **Write tasks** (implementation, refactoring, file creation): the runtime chooses foreground or background, and the permission prompt surfaces in the main session either way — do not force the mode via `background:`.
+- **Concurrency**: never run two write-capable agents at once; orchestrator work concurrent with a write-capable agent stays read-only.
+- **Pre-approved writes**: add path patterns to settings.json `permissions.allow` to reduce prompts.
 
-Decision matrix:
-- Agent reads files only → `run_in_background: true` (parallel, fast)
-- Agent writes files → `run_in_background: false` (sequential, reliable)
-- Multiple agents need to write different files → Use main session directly or foreground agents in sequence
+Interim progress reporting for a delegated agent — the dual-channel `TaskCreate`/`TaskUpdate` primary (documented, durable) and the best-effort `SendMessage` secondary (undocumented, immediate) — is governed by `.claude/rules/moai/workflow/progress-reporting-protocol.md`.
 
 ## Tool Usage Guidelines
 

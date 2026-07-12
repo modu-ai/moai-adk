@@ -5,7 +5,7 @@ description: |
   Invocation gate: invoked for Tier L SPEC PR creation OR explicit `--pr` flag per the canonical Tier-based PR routing policy. Tier S/M SPECs follow the Hybrid Trunk 1-person OSS pattern (main-direct push via manager-develop) per the Hybrid Trunk 1-person OSS policy; manager-git is NOT invoked for Tier S/M routine commits.
   Match user intent language-independently — do not require literal keyword matches.
   NOT for: Tier S/M default Hybrid Trunk main-direct (no PR step — handled by manager-develop), code implementation, testing, architecture design, documentation content, security audits
-tools: Read, Write, Edit, Grep, Glob, Bash, TaskCreate, TaskUpdate, TaskList, TaskGet, Skill
+tools: Read, Write, Edit, Grep, Glob, Bash, TaskCreate, TaskUpdate, TaskList, TaskGet, Skill, SendMessage
 model: sonnet
 effort: low
 color: orange
@@ -203,3 +203,34 @@ Execute only with `--auto-merge` flag AND all approvals obtained:
 ## Model/effort escalation
 
 > **Model/effort escalation**: deep-reasoning escalation is an ORCHESTRATOR decision (this agent cannot spawn sub-agents — no `Agent` tool). See `.claude/rules/moai/development/model-policy.md`.
+
+## Progress Reporting Contract
+
+Report progress on two channels at each milestone boundary below.
+
+**Primary (durable).** At the start of your run, register the milestones below on the shared
+task list with `TaskCreate`. At each boundary, mark it with `TaskUpdate`. This is the
+officially documented channel and is the one the orchestrator relies on for correctness.
+
+**Secondary (immediate, best-effort).** At each boundary, also push one short status line:
+
+`SendMessage({ to: "main", summary: "<short label>", message: "[n/N] <what just completed> -> <what is next>" })`
+
+The `to: "main"` recipient is an undocumented runtime behavior. It works today, but it may
+stop working without notice — see the protocol rule. If the push fails, keep working; the
+task list still carries your progress.
+
+Milestones for this agent (N = 3):
+1. Branch and PR preconditions checked
+2. Push complete
+3. PR opened
+
+Constraints (full protocol: `.claude/rules/moai/workflow/progress-reporting-protocol.md`):
+- **Status only — never a question.** A progress report is a statement. You MUST NOT ask the
+  user anything through either channel. When you need user input, return a blocker report to
+  the orchestrator instead. The user-question tool is unavailable to subagents at the platform
+  level, so the blocker report is the only path.
+- **Milestone-only.** Do not report on individual tool calls, file reads, or sub-steps.
+- Two lines maximum per push, English (the orchestrator relays in the user's language).
+- **Best-effort.** A reporting failure is never a work-stopping failure: do not retry-loop,
+  do not abort, do not surface it as an error.

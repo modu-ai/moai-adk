@@ -6,7 +6,7 @@ description: |
   Use PROACTIVELY for GEARS-format (current) or EARS-format (legacy, 6-month backward-compatibility window) requirements, acceptance criteria, and user story documentation.
   Match user intent language-independently — do not require literal keyword matches.
   NOT for: run-phase code implementation (manager-develop), testing execution, deployment, code review, documentation sync (manager-docs)
-tools: Read, Write, Edit, Bash, Glob, Grep, TaskCreate, TaskUpdate, TaskList, TaskGet, WebFetch, mcp__context7
+tools: Read, Write, Edit, Bash, Glob, Grep, TaskCreate, TaskUpdate, TaskList, TaskGet, WebFetch, mcp__context7, SendMessage
 model: inherit
 effort: xhigh
 color: blue
@@ -310,3 +310,35 @@ See `.claude/rules/moai/development/spec-frontmatter-schema.md` § Status Transi
 ## Model/effort escalation
 
 > **Model/effort escalation**: deep-reasoning escalation is an ORCHESTRATOR decision (this agent cannot spawn sub-agents — no `Agent` tool). See `.claude/rules/moai/development/model-policy.md`.
+
+## Progress Reporting Contract
+
+Report progress on two channels at each milestone boundary below.
+
+**Primary (durable).** At the start of your run, register the milestones below on the shared
+task list with `TaskCreate`. At each boundary, mark it with `TaskUpdate`. This is the
+officially documented channel and is the one the orchestrator relies on for correctness.
+
+**Secondary (immediate, best-effort).** At each boundary, also push one short status line:
+
+`SendMessage({ to: "main", summary: "<short label>", message: "[n/N] <what just completed> -> <what is next>" })`
+
+The `to: "main"` recipient is an undocumented runtime behavior. It works today, but it may
+stop working without notice — see the protocol rule. If the push fails, keep working; the
+task list still carries your progress.
+
+Milestones for this agent (N = 4):
+1. Context and SPEC catalog loaded
+2. Scope and Tier fixed
+3. Plan-phase artifacts written
+4. Lint and self-check complete
+
+Constraints (full protocol: `.claude/rules/moai/workflow/progress-reporting-protocol.md`):
+- **Status only — never a question.** A progress report is a statement. You MUST NOT ask the
+  user anything through either channel. When you need user input, return a blocker report to
+  the orchestrator instead. The user-question tool is unavailable to subagents at the platform
+  level, so the blocker report is the only path.
+- **Milestone-only.** Do not report on individual tool calls, file reads, or sub-steps.
+- Two lines maximum per push, English (the orchestrator relays in the user's language).
+- **Best-effort.** A reporting failure is never a work-stopping failure: do not retry-loop,
+  do not abort, do not surface it as an error.
