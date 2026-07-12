@@ -126,7 +126,27 @@ ahead of `origin/main` (other SPECs) — origin push is the orchestrator's call.
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+```yaml
+sync_status: audit-ready
+sync_complete_at: 2026-07-12
+sync_commit_sha: pending-backfill-sync   # single sync commit cannot know its own SHA; backfilled in a follow-up commit
+changelog_entry_position: Added (top of [Unreleased])
+frontmatter_status_transitions:
+  spec_md: "in-progress -> completed"
+  plan_md: "n/a (no frontmatter status field — Tier M convention, status lives only in spec.md)"
+  acceptance_md: "n/a (no frontmatter status field — Tier M convention, status lives only in spec.md)"
+readme_sync: skipped   # internal self-evolving-harness observation infra, dormant by default, no user-facing workflow change
+ac_count_verified: 27   # cross-checked against acceptance.md SSOT (grep -oE 'AC-HEV-[0-9]+' unique count)
+```
+
+Sync-phase notes:
+- CHANGELOG dedup pre-check: `grep -c 'HARNESS-EVOLVE-001' CHANGELOG.md` = 0 before emission (no parallel-session duplicate).
+- CHANGELOG entry drafted from direct `Read` of the actual implementation files
+  (`internal/harness/routing/*.go`, `internal/cli/harness_ledger.go`,
+  `internal/cli/hook.go` grep) — not from plan.md prose alone.
+- README: reviewed, skipped. The new `moai harness ledger` CLI verbs are
+  internal harness self-evolution observation infrastructure, gated dormant by
+  default (HOI dual-gate); no documented user-facing workflow changes.
 
 ## §F Phase 0.95 Mode Selection
 

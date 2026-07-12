@@ -2,7 +2,7 @@
 id: SPEC-HARNESS-EVOLVE-001
 title: "Routing Observation Ledger — Loop 0 (Generator) of the self-evolving harness"
 version: "0.1.2"
-status: in-progress
+status: completed
 created: 2026-07-12
 updated: 2026-07-12
 author: manager-spec
