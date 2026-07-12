@@ -89,17 +89,20 @@ by a turn ceiling.
   `writer_pid` fallback when session id is unavailable (reuse the `moai session
   current` fallback contract).
 - **D3 — Hybrid 2-tier Stop-hook evaluator**: a new Go verb `moai hook stop-goal`
-  (wrapper `handle-stop-goal.sh` or folded into the existing stop handler — decided
-  in plan.md). Tier 1: run mechanical conditions; any FAIL → exit 0 stdout
+  plus a new `handle-stop-goal.sh` wrapper (settled — new wrapper, clean
+  composition with the HARNESS-EVOLVE observer). Tier 1: run mechanical
+  conditions; any FAIL → exit 0 stdout
   `{"decision":"block","reason":"<failed condition + output tail>"}`. Tier 2:
   only when ALL mechanical conditions PASS AND model conditions exist → model
   judgment. Ceiling: a turns counter in state; at the ceiling emit a 5-section
   verdict (`verification-claim-integrity.md` §3) and stop blocking. Goal-eval may
   exceed the MoAI 5s hook policy — the plan addresses a per-hook timeout override.
 - **D4 — Safety wiring**: a goal never bypasses Implementation Kickoff Approval;
-  an active native `/goal` → `stop-goal` yields (pass-through, detection is a
-  design decision); a stagnation guard (N no-progress iterations → stop + E1/E3
-  escalation note); destructive-action confirmation unchanged.
+  an active native `/goal` → `stop-goal` yields (pass-through; detection settled —
+  degrade-to-always-evaluate when the runtime does not expose the native-goal
+  signal, recorded as accepted DEBT in plan.md); a stagnation guard (N no-progress
+  iterations → stop + E1/E3 escalation note); destructive-action confirmation
+  unchanged.
 - **D5 — Handoff + doctrine integration**: `session-handoff.md` Block 5 MAY carry
   `Run: /moai goal "<condition>"`; the post-paste native-`/goal` follow-up is
   demoted to an optional variant. `goal-directive.md` gains a `/moai goal` row
@@ -158,8 +161,11 @@ by a turn ceiling.
   `{"decision":"block","reason":"<failed condition + output tail>"}` (continuing
   the turn per Claude Code hook semantics).
 - **REQ-GLE-011** (State-driven): **While** all mechanical conditions pass AND at
-  least one model condition exists, `stop-goal` shall perform Tier-2 model
-  judgment (mechanism per the plan § NEEDS CLARIFICATION).
+  least one model condition exists, `stop-goal` shall gate Tier-2 evaluation so it
+  is reached only after all mechanical conditions pass, surfacing the model claim
+  in the block `reason` for **orchestrator** evaluation against
+  conversation-surfaced evidence (settled Option B — orchestrator self-eval;
+  provider-agnostic incl. GLM; `stop-goal` itself does not run a model call).
 - **REQ-GLE-012** (Event-driven): **When** all conditions pass (mechanical and,
   where present, model), `stop-goal` shall NOT emit a block decision (the goal is
   satisfied; the turn ends and the goal clears).
@@ -177,16 +183,16 @@ by a turn ceiling.
   or perform any destructive operation.
 - **REQ-GLE-016** (Event-driven): **When** an active native `/goal` is detected,
   `stop-goal` shall yield (pass-through — not double-block the turn).
-- **REQ-GLE-017** (Event-detected): **When** N consecutive no-progress iterations
+- **REQ-GLE-017** (Event-driven): **When** N consecutive no-progress iterations
   are observed (stagnation), `stop-goal` shall stop blocking and record an
   E1/E3-escalation note in the 5-section verdict.
 
 ### §C.5 D5 — Handoff + doctrine integration
 
-- **REQ-GLE-018** (Capability gate): **Where** the next SPEC declares a
-  machine-verifiable end-state, the `session-handoff.md` Block 5 `Run:` line MAY
-  carry `/moai goal "<condition>"`, and the post-paste native-`/goal` follow-up is
-  documented as an optional variant.
+- **REQ-GLE-018** (Ubiquitous): `session-handoff.md` shall document that, where the
+  next SPEC declares a machine-verifiable end-state, the Block 5 `Run:` line may
+  carry `/moai goal "<condition>"`, and shall demote the post-paste native-`/goal`
+  follow-up to a documented optional variant.
 - **REQ-GLE-019** (Ubiquitous): `goal-directive.md` shall carry a `/moai goal`
   entry describing it as the PROGRAMMATIC MoAI counterpart of native `/goal`, with
   an Axis B citation.
@@ -197,9 +203,11 @@ by a turn ceiling.
 ### §C.6 D6 — Analyze-First integration
 
 - **REQ-GLE-021** (Ubiquitous): The `SPEC-ANALYZE-FIRST-ROUTING-001` §2 pipeline
-  stage ⑤ termination judge shall reference the goal evaluator, and the goal
-  engine shall document the boundary between the phase-granular Agentic Completion
-  Loop (`moai.md`) and the task-granular goal engine.
+  stage ⑤ termination judge shall reference the goal evaluator (clause a), AND the
+  goal engine shall document, in `.claude/skills/moai/workflows/moai.md` § Agentic
+  Completion Loop, the boundary between the phase-granular Agentic Completion Loop
+  and the task-granular goal engine (clause b). (The Agentic Completion Loop lives
+  in `.claude/skills/moai/workflows/moai.md`, NOT `.claude/output-styles/moai/moai.md`.)
 - **REQ-GLE-022** (Unwanted behavior): The goal engine and its config shall not
   collapse the `workflow.agentic_loop.max_iterations` vs
   `loop_prevention.max_iterations` distinctness guarded by

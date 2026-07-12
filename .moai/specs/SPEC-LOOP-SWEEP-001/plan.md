@@ -132,17 +132,16 @@ Ordering: M1 → M2 → M3 → M4 → M5.
 - **docs-site 4-locale** loop documentation. Follow-up SPEC.
 - **Full `--lens` catalog beyond clean|simplify|coverage**. Follow-up.
 
-## § Open Decisions ([NEEDS CLARIFICATION])
+## § Settled Decisions (iteration-2 — clarifications resolved via AskUserQuestion)
 
-- [NEEDS CLARIFICATION: `run --mode loop` alias disposition] — `/moai loop` is
-  currently an alias for `/moai run --mode loop` (`spec-workflow.md` § Subcommand
-  Classification). Now that loop is a goal preset, keep or retire the alias?
-  Proposed default: **KEEP the alias** (backward-compat; the alias is a historical
-  entry point and retiring it is a breaking change), but document that both routes
-  resolve to the goal-preset sweep. Retiring it would need a deprecation window.
-  Confirm before M3.
-- [NEEDS CLARIFICATION: sweep `exit_kind` value name] — the extended `exit_kind`
-  for the sweep-preset ceiling exit. Proposed default: `"sweep-residue"` (parallel
-  to `one-shot-residue`), added ADDITIVELY to the base
-  `ceiling | manual-residue | one-shot-residue` enum. Confirm the literal token so
-  downstream consumers of `loop-verdict-<id>.json` can be updated consistently.
+- **DECISION (`run --mode loop` alias)** — RESOLVED: **KEEP** the alias
+  (backward-compat; `/moai run --mode loop` is a historical entry point and
+  retiring it is a breaking change). Both `/moai run --mode loop` and `/moai loop`
+  resolve to the goal-preset sweep. The `spec-workflow.md` § Subcommand
+  Classification loop row is updated to state this, with the justification. Folded
+  into REQ-LSW-012 as settled.
+- **DECISION (sweep `exit_kind` value name)** — RESOLVED: `"sweep-residue"`
+  (parallel to `one-shot-residue`), added **ADDITIVELY** to the base
+  `ceiling | manual-residue | one-shot-residue` enum. Downstream consumers of
+  `loop-verdict-<id>.json` gain a fourth valid `exit_kind` value; the base enum
+  owner is unchanged. Folded into REQ-LSW-005 as settled.

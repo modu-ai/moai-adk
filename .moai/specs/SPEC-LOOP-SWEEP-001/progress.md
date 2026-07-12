@@ -10,9 +10,9 @@
 - tier: M
 - artifacts: spec.md, plan.md, acceptance.md, progress.md (research.md shared from SPEC-ANALYZE-FIRST-ROUTING-001)
 - REQ count: 14 (REQ-LSW-001..014)
-- AC count: 14 (AC-LSW-001..014)
+- AC count: 17 (AC-LSW-001..014 with 002b/004b/008b/009b split-outs, added iteration-2)
 - depends_on: SPEC-GOAL-ENGINE-001
-- open decisions: 2 [NEEDS CLARIFICATION] in plan.md (run --mode loop alias disposition; sweep exit_kind value name)
+- open decisions: 0 remaining — both resolved iteration-2 (run --mode loop alias to KEEP; sweep exit_kind to sweep-residue additive). See plan.md Settled Decisions.
 
 ## §E.2 Run-phase Evidence
 

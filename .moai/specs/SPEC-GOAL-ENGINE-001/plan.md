@@ -26,7 +26,7 @@
 |------|-------------|
 | `internal/goal/**` | NEW |
 | `internal/cli` (stop-goal verb) | EXTEND (new hook verb) |
-| `.claude/hooks/moai/handle-stop-goal.sh` | NEW (or fold — see NEEDS CLARIFICATION) |
+| `.claude/hooks/moai/handle-stop-goal.sh` | NEW (settled — new wrapper, not folded) |
 | `internal/template/templates/.claude/settings.json.tmpl` | EXTEND (add Stop entry) |
 | `.claude/skills/moai/workflows/goal.md` | NEW |
 | `.claude/skills/moai/SKILL.md` | EXTEND (P1 + Quick Reference) |
@@ -86,8 +86,9 @@ internal/cli/
   passes stdout through. Registered as a SEPARATE `Stop` hook entry (Stop hooks
   compose — do NOT replace the existing entry; coordinates with HARNESS-EVOLVE).
 - Timeout: goal eval runs mechanical `cmd`s which may exceed the MoAI 5s policy
-  default → this hook entry carries a per-hook `timeout` override (see NEEDS
-  CLARIFICATION for the value/approach).
+  default → this hook entry carries a per-hook `timeout` override of **120000ms**
+  (settled). goal.md documents that goal `cmd`s SHOULD be fast (prefer
+  `go test -run <pattern>` over the full suite) since the eval runs at turn-end.
 
 ## §B — Known Issues (Section A-E, Tier L relevant categories)
 
@@ -199,27 +200,30 @@ Ordering: M1 → M2 → M3 → M4 → M5 → M6.
   AUTONOMY roadmap's `SPEC-AUTONOMY-GOAL-CONDITIONS`). This SPEC hard-codes only
   the generic mechanical+model condition shape.
 
-## § Open Decisions ([NEEDS CLARIFICATION])
+## § Settled Decisions (iteration-2 — clarifications resolved via AskUserQuestion)
 
-- [NEEDS CLARIFICATION: Tier-2 model-condition evaluation mechanism] — two viable
-  options: (A) a prompt-type Stop hook config (native mechanism) that judges the
-  model condition against the transcript; (B) `stop-goal` returns the model claim
-  in the block `reason` for the orchestrator to self-evaluate with evidence.
-  Proposed default: **(B)** — orchestrator self-eval with the 5-section evidence
-  format, because it keeps the goal engine provider-agnostic and reuses the
-  existing verification-claim-integrity discipline, whereas (A) couples to a
-  specific prompt-hook runtime. Confirm before M2.
-- [NEEDS CLARIFICATION: stop-goal wrapper placement] — new
-  `handle-stop-goal.sh` + `moai hook stop-goal` verb vs folding into the existing
-  stop handler. Proposed default: **new wrapper + new verb** (clean composition
-  with the HARNESS-EVOLVE observer; the existing stop handler stays single-purpose).
-- [NEEDS CLARIFICATION: goal-eval hook timeout] — mechanical `cmd`s (e.g.
-  `go test ./...`) exceed the MoAI 5s policy default. Proposed default: set this
-  Stop-hook entry's `timeout` to 120000ms (2 min, the Bash default) and document
-  that goal `cmd`s SHOULD be fast (prefer targeted `go test -run`); a longer
-  ceiling risks stalling turn-end. Confirm the value.
-- [NEEDS CLARIFICATION: native-/goal-active detection] — how `stop-goal` detects
-  an active native `/goal` to yield (REQ-GLE-016). Proposed default: check for the
-  native goal indicator surfaced in the Stop-hook stdin JSON / session context; if
-  the runtime does not expose it, degrade to "always evaluate the MoAI goal"
-  (documented limitation) rather than block detection. Confirm.
+- **DECISION (Tier-2 model-condition evaluation mechanism)** — RESOLVED:
+  **Option B — orchestrator self-eval**. Once all mechanical (Tier 1) conditions
+  PASS, the Stop hook surfaces the model claim in the block `reason`; the
+  orchestrator evaluates it against conversation-surfaced evidence (provider-agnostic,
+  incl. GLM). `stop-goal` itself does NOT run a model call. REQ-GLE-011 is reworded
+  from "the hook shall perform Tier-2 judgment" to "shall gate Tier-2 evaluation so
+  it is reached only after all mechanical conditions pass, surfacing the model claim
+  in the block reason for orchestrator evaluation" (resolves the auditor's D-minor
+  contradiction).
+- **DECISION (stop-goal wrapper placement)** — RESOLVED: **new
+  `handle-stop-goal.sh` wrapper + new `moai hook stop-goal` Go verb** (clean
+  composition with the HARNESS-EVOLVE observer; the existing `handle-stop.sh` stays
+  single-purpose).
+- **DECISION (goal-eval hook timeout)** — RESOLVED: **120000ms** (2 min). goal.md
+  MUST carry a documented note that goal `cmd`s SHOULD be fast (prefer
+  `go test -run <pattern>` over the full suite) because the eval runs at turn-end.
+- **DECISION (native-/goal-active detection)** — RESOLVED: **degrade + document
+  DEBT**. When the runtime does not expose a native-goal-active signal, `stop-goal`
+  degrades to "always evaluate the MoAI goal". This is recorded as accepted **DEBT**:
+  REQ-GLE-016's double-block-avoidance guarantee is INERT in the degrade path — in
+  the rare concurrent-native-`/goal` case the turn may be evaluated by both the
+  native evaluator and the MoAI `stop-goal` (possible double evaluation only; no
+  correctness hazard, both only continue-or-stop the turn). AC-GLE-016 verifies the
+  yield behavior when the signal IS exposed; the degrade path is the documented
+  fallback.

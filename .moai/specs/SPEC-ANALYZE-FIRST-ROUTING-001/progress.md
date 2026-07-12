@@ -12,7 +12,7 @@
 - REQ count: 17 (REQ-AFR-001..017)
 - AC count: 17 (AC-AFR-001..017)
 - depends_on: (none — Epic entry SPEC)
-- open decisions: 2 [NEEDS CLARIFICATION] in plan.md (agent-diet char budget; P3 lint collision confirmation)
+- open decisions: 0 remaining — both resolved iteration-2 (agent-diet char budget to advisory + delta gate; P3 lint collision REAL, assign lint to fix). See plan.md Settled Decisions.
 
 ## §E.2 Run-phase Evidence
 

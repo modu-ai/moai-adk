@@ -232,8 +232,8 @@ enabled. `/goal` never bypasses Implementation Kickoff Approval.
   hooks (`type: prompt`) are the mechanism native `/goal` wraps.
 - Infra: `.claude/hooks/moai/handle-*.sh` wrappers → `moai hook <event>`;
   registration in `settings.json.tmpl`; MoAI 5s hook timeout policy
-  (goal evaluation may need longer — a per-hook timeout override is a
-  `SPEC-GOAL-ENGINE-001` design decision, plan.md § NEEDS CLARIFICATION).
+  (goal evaluation may need longer — the per-hook timeout override is settled at
+  120000ms per `SPEC-GOAL-ENGINE-001` plan.md § Settled Decisions).
 - Existing hook-verb infra confirms the pattern: a new verb `moai hook
   stop-goal` (or folding into an existing stop handler) is feasible.
 
@@ -283,23 +283,29 @@ cadence-eligible (cadence recipes never enter run-phase, never commit — a HARD
 invariant CADENCE-BRIDGE owns). LOOP-SWEEP updates the taxonomy prose but does
 NOT change cadence eligibility.
 
-## §E — Open Decisions (summary; full markers in each plan.md)
+## §E — Decisions Log (RESOLVED — iteration-2; see each plan.md § Settled Decisions)
 
-The following require user resolution before run-phase (surfaced as
-`[NEEDS CLARIFICATION]` markers in the respective plan.md, per
-`.claude/skills/moai-workflow-spec/SKILL.md` § NEEDS CLARIFICATION convention —
-markers live ONLY in plan.md/research.md):
+The 8 plan-phase open decisions were resolved via AskUserQuestion (iteration-2).
+No unresolved clarification markers remain in any plan.md. The settled outcomes:
 
-1. **[SPEC-GOAL-ENGINE-001] Tier-2 model-condition evaluation mechanism** —
-   prompt-type Stop hook config vs orchestrator self-eval via block-reason claim.
-2. **[SPEC-GOAL-ENGINE-001] Stop-hook verb placement** — new `handle-stop-goal.sh`
-   wrapper + `moai hook stop-goal` verb vs folding into an existing stop handler.
-3. **[SPEC-GOAL-ENGINE-001] goal-eval hook timeout** — per-hook override above the
-   MoAI 5s policy default.
-4. **[SPEC-GOAL-ENGINE-001] native-/goal-active detection** — how `stop-goal`
-   detects and yields to an active native `/goal`.
-5. **[SPEC-LOOP-SWEEP-001] `run --mode loop` alias disposition** — keep the alias
-   or retire it now that loop is a goal preset.
+1. **[SPEC-GOAL-ENGINE-001] Tier-2 model-condition evaluation** — RESOLVED:
+   Option B (orchestrator self-eval; the hook surfaces the model claim in the
+   block reason for orchestrator evaluation). REQ-GLE-011 reworded accordingly.
+2. **[SPEC-GOAL-ENGINE-001] Stop-hook verb placement** — RESOLVED: new
+   `handle-stop-goal.sh` wrapper + `moai hook stop-goal` verb (clean composition).
+3. **[SPEC-GOAL-ENGINE-001] goal-eval hook timeout** — RESOLVED: 120000ms; goal.md
+   documents that goal `cmd`s SHOULD be fast (`go test -run <pattern>`).
+4. **[SPEC-GOAL-ENGINE-001] native-/goal-active detection** — RESOLVED: degrade to
+   always-evaluate + documented DEBT (REQ-GLE-016 guarantee inert in the degrade
+   path — rare concurrent-native-goal double evaluation only, no correctness hazard).
+5. **[SPEC-ANALYZE-FIRST-ROUTING-001] agent-diet char budget** — RESOLVED: ≤7K is
+   advisory; the HARD gate is the post<pre delta (AC-AFR-011).
+6. **[SPEC-ANALYZE-FIRST-ROUTING-001] P3 `lint` collision** — RESOLVED: collision
+   is REAL; assign `lint` to fix, strip from the gate-cue line (AC-AFR-007).
+7. **[SPEC-LOOP-SWEEP-001] `run --mode loop` alias** — RESOLVED: KEEP (both routes
+   resolve to the goal-preset sweep; REQ-LSW-012).
+8. **[SPEC-LOOP-SWEEP-001] sweep `exit_kind` value** — RESOLVED: `sweep-residue`,
+   additive to the base enum (REQ-LSW-005).
 
 ## §F — Constraints Inherited by All Three SPECs
 

@@ -113,9 +113,10 @@ competing (spec.md §B.2 + a 1-2 paragraph loop.md/review.md cross-ref).
   `loop_prevention.max_iterations`), the 5-section ceiling-exit verdict, the
   memory-pressure guard, and the Step 1.5 independent final pass.
 - **REQ-LSW-005** (Event-driven): **When** the loop exits at the ceiling, it shall
-  persist residue to `.moai/state/loop-verdict-<id>.json` with an `exit_kind`
-  extended to name the sweep-preset exit (alongside the base
-  `ceiling | manual-residue | one-shot-residue` values).
+  persist residue to `.moai/state/loop-verdict-<id>.json` with `exit_kind:
+  "sweep-residue"` (settled value) — added ADDITIVELY as a fourth value alongside
+  the base `ceiling | manual-residue | one-shot-residue` enum, without reassigning
+  the base enum owner.
 
 ### §C.2 D2 — review relationship
 
@@ -143,8 +144,10 @@ competing (spec.md §B.2 + a 1-2 paragraph loop.md/review.md cross-ref).
   `cadence-bridge.md` shall continue to state that `/moai loop` is NOT
   cadence-eligible (it mutates / may enter run-phase; cadence recipes are read-only).
 - **REQ-LSW-012** (Ubiquitous): The `spec-workflow.md` § Subcommand Classification
-  loop row shall be updated (loop = Multi-Agent) and the `run --mode loop` alias
-  disposition shall be decided and justified (keep or retire — plan § Open Decisions).
+  loop row shall be updated (loop = Multi-Agent) and shall state the settled
+  `run --mode loop` alias disposition — **KEEP** (both `/moai run --mode loop` and
+  `/moai loop` resolve to the goal-preset sweep) — with its backward-compat
+  justification.
 - **REQ-LSW-013** (Ubiquitous): The Go CLI `moai loop` help text shall be renamed
   to clarify it is the SPEC-lifecycle controller (distinct from the `/moai loop`
   sweep skill), and the two surfaces shall be documented; engine unification is

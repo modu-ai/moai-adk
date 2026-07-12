@@ -9,8 +9,8 @@
 | AC | REQ | Verifies | Baseline → Post |
 |----|-----|----------|-----------------|
 | AC-GLE-001 | REQ-GLE-001 | goal.md workflow file exists + 4 verbs | absent → present |
-| AC-GLE-002 | REQ-GLE-002 | SKILL.md P1 registers `goal` | absent → present |
-| AC-GLE-003 | REQ-GLE-003 | SKILL.md Quick Reference has `goal` | absent → present |
+| AC-GLE-002 | REQ-GLE-002 | Priority 1 block registers `**goal**` | 0 → ≥1 |
+| AC-GLE-003 | REQ-GLE-003 | Quick Reference has `### goal` heading | 0 → ≥1 |
 | AC-GLE-004 | REQ-GLE-004 | per-session state path (no shared file) | test PASS |
 | AC-GLE-005 | REQ-GLE-005 | schema carries all fields incl ceiling=30 | test PASS |
 | AC-GLE-006 | REQ-GLE-006 | atomic write (temp+rename) | test PASS |
@@ -33,31 +33,39 @@
 | AC-GLE-023 | REQ-GLE-023 | internal/goal layout present | files exist |
 | AC-GLE-024 | REQ-GLE-024 | internal/goal ≥85% coverage | cover output |
 | AC-GLE-025 | REQ-GLE-025 | mirrors + neutral + make build | per-file + exit 0 |
+| AC-GLE-026 | REQ-GLE-023 | Stop-hook COMPOSE (add-not-replace) | existing≥1 preserved + new≥1 |
 
 ### AC-GLE-001 — goal.md workflow file + 4 verbs
 
 ```bash
 test -f .claude/skills/moai/workflows/goal.md && echo OK
-grep -c "status\|clear\|resume" .claude/skills/moai/workflows/goal.md   # verbs documented
+grep -ci "register\|arm" .claude/skills/moai/workflows/goal.md   # the register/arm verb (bare "<condition>" form)
+grep -c "status\|clear\|resume" .claude/skills/moai/workflows/goal.md   # the other 3 verbs
 ```
-PASS when the file exists AND documents the register/`status`/`clear`/`resume` verbs.
+PASS when the file exists AND documents ALL 4 verbs: the register/arm form (the
+bare `"<condition>"` argument form), `status`, `clear`, `resume`.
 
-### AC-GLE-002 — P1 registration (router surface, distinct from AC-GLE-003)
+### AC-GLE-002 — P1 registration (anchored to the Priority 1 block)
 
 ```bash
-# The P1 subcommand list in SKILL.md includes `goal`.
-grep -n "goal" .claude/skills/moai/SKILL.md | grep -i "P1\|subcommand\|Intent Router"
+# Anchor to the Priority 1 subcommand-matching block (a correct impl adds `**goal**` there).
+awk '/^### Priority 1/,/^### Priority 2/' .claude/skills/moai/SKILL.md | grep -c '\*\*goal\*\*'   # expect ≥1
 ```
-PASS when `goal` appears in the P1 subcommand routing list (baseline: absent).
+Baseline (verified this iteration): 0 inside the Priority 1 block. PASS when
+`**goal**` appears in the Priority 1 explicit-subcommand block. (SEPARATE from
+AC-GLE-003 — both surfaces must register, or the feature is inert per the
+reachability lesson.)
 
-### AC-GLE-003 — Quick Reference entry (distinct from AC-GLE-002)
+### AC-GLE-003 — Quick Reference entry (anchored to the section, `### goal` heading)
 
 ```bash
-# The Workflow Quick Reference table/section has a `goal` row.
-grep -n "goal" .claude/skills/moai/SKILL.md | grep -i "quick reference\|/moai goal"
+# Anchor to the Workflow Quick Reference section; existing entries use `### <name>`
+# headings (`### plan`, `### run`, `### sync`), so the new entry is `### goal`.
+awk '/^## Workflow Quick Reference/,0' .claude/skills/moai/SKILL.md | grep -c '^### goal'   # expect ≥1
 ```
-PASS when the Quick Reference carries a `goal` entry. (SEPARATE from AC-GLE-002 —
-both surfaces must register, or the feature is inert per the reachability lesson.)
+Baseline (verified this iteration): 0. PASS when the Quick Reference carries a
+`### goal` heading entry. (SEPARATE from AC-GLE-002 — a `/moai goal` mention
+anywhere is not enough; the actual section entry must exist.)
 
 ### AC-GLE-004 — per-session state path
 
@@ -191,13 +199,20 @@ grep -in "/moai goal" .claude/rules/moai/workflow/native-invocation-model.md | h
 PASS when the Axis B worked illustration reflects `/moai goal` now reimplementing
 the HUMAN-ONLY `/goal` (the "does not currently reimplement" sentence is updated).
 
-### AC-GLE-021 — §2 stage ⑤ references goal evaluator
+### AC-GLE-021 — goal-evaluator reference + boundary doc (both clauses of REQ-GLE-021)
 
 ```bash
-grep -in "goal evaluator\|goal engine" CLAUDE.md | head
+# clause (a): §2 stage ⑤ references the goal evaluator (baseline 0):
+grep -ic "goal evaluator\|goal engine" CLAUDE.md   # expect ≥1
+# clause (b): the phase-vs-task boundary is documented in the Agentic Completion Loop file (baseline 0):
+grep -ic "task-granular\|phase-granular\|goal engine" .claude/skills/moai/workflows/moai.md   # expect ≥1
 ```
-PASS when the ANALYZE-FIRST §2 stage ⑤ text references the goal evaluator (this AC
-depends on ANALYZE-FIRST-ROUTING-001 having landed the §2 rewrite).
+Baseline (verified this iteration): both 0. PATH CORRECTION — the Agentic
+Completion Loop lives in **`.claude/skills/moai/workflows/moai.md`**, NOT
+`.claude/output-styles/moai/moai.md` (the latter has no Agentic Completion Loop
+section). **GATED**: clause (a) depends on `SPEC-ANALYZE-FIRST-ROUTING-001`
+landing its §2 rewrite — this AC is evaluated only after ANALYZE-FIRST reaches
+`completed` (the Depends_on pre-flight). PASS when both clauses are ≥1.
 
 ### AC-GLE-022 — distinctness guard green
 
@@ -210,9 +225,10 @@ remain distinct).
 ### AC-GLE-023 — internal/goal layout
 
 ```bash
-ls internal/goal/schema.go internal/goal/state.go internal/goal/evaluate.go internal/cli/hook_stop_goal.go
+ls internal/goal/schema.go internal/goal/state.go internal/goal/prune.go internal/goal/evaluate.go internal/cli/hook_stop_goal.go
 ```
-PASS when the minimal-layout files exist.
+PASS when the minimal-layout files exist (schema.go, state.go, prune.go,
+evaluate.go, hook_stop_goal.go — the `prune.go` orphan-prune module included).
 
 ### AC-GLE-024 — coverage ≥85%
 
@@ -232,9 +248,30 @@ make build ; echo "exit=$?"
 PASS when every changed `.claude/` file has a mirror, the neutrality grep is 0,
 and `make build` exits 0.
 
+### AC-GLE-026 — Stop-hook COMPOSE (add-not-replace)
+
+No AC previously pinned the Stop-hook compose-not-replace invariant. The
+`settings.json.tmpl` already carries a `Stop` array with `handle-stop.sh`
+(HARNESS-EVOLVE also adds a Stop hook). This AC proves the new entry is ADDED, not
+substituted for the existing one:
+
+```bash
+# (a) existing entry preserved (baseline 2 — the two handle-stop.sh command lines):
+grep -c 'handle-stop\.sh' internal/template/templates/.claude/settings.json.tmpl   # expect ≥1 (unchanged from baseline)
+# (b) new entry added (baseline 0):
+grep -c 'handle-stop-goal\.sh' internal/template/templates/.claude/settings.json.tmpl   # expect ≥1
+```
+Baseline (verified this iteration): (a) `handle-stop.sh` count = 2 (preserved),
+(b) `handle-stop-goal.sh` count = 0. PASS when (a) is unchanged from its baseline
+(the existing `handle-stop.sh` entry survives) AND (b) is ≥1 (the new
+`handle-stop-goal.sh` entry is added) — proving add-not-replace composition. NOTE
+`grep -c` on a `.tmpl` counts the two command-line variants (`bash "..."` +
+`"..."`); the run-phase author records the exact pre-edit `handle-stop.sh` count
+and asserts it is unchanged.
+
 ## §D.1 Definition of Done
 
-- All 25 ACs PASS.
+- All 26 ACs PASS.
 - `internal/goal/` ≥ 85% coverage; cross-platform build green
   (`GOOS=windows GOARCH=amd64 go build ./...`).
 - Both router-registration surfaces (P1 list + Quick Reference) present.

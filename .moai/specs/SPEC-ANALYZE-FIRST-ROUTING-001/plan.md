@@ -121,17 +121,19 @@ Ordering: M1 → M2 → M3 → M4 → M5 (M5 last — mirror after all source ed
 - **Deprecated `moai-meta-harness` retirement** and **`triggers:` backfill** across
   the ~30 skills that lack it. Follow-up SPECs.
 
-## § Open Decisions ([NEEDS CLARIFICATION])
+## § Settled Decisions (iteration-2 — clarifications resolved via AskUserQuestion)
 
-- [NEEDS CLARIFICATION: agent-diet char-budget target] — the brief proposes a
-  total trigger-block target of ≤ 7K chars (from an estimated ~16.7K). Proposed
-  default: treat ≤ 7K as a SHOULD target, and the HARD AC as "keyword blocks
-  removed from all 9 agents + measured post-diet total is strictly less than the
-  re-measured pre-diet baseline" (REQ-AFR-011). Confirm whether the 7K figure is a
-  hard gate or an advisory target.
-- [NEEDS CLARIFICATION: P3 `lint` collision — confirm current membership] — the
-  `lint`-in-two-buckets claim is a prior-session assumption (research.md §B.3).
-  Proposed default: run-phase author reads the P3 body first; if `lint` is NOT
-  actually dual-membership, REQ-AFR-007 degrades to a no-op confirmation (still
-  passes by asserting single membership). Confirm the collision exists before
-  treating its removal as a deliverable.
+- **DECISION (agent-diet char-budget target)** — RESOLVED: the ≤ 7K char total is
+  an **advisory SHOULD target**, NOT a hard gate. The HARD gate is the **delta
+  check** encoded in REQ-AFR-011 / AC-AFR-011: keyword blocks removed from all 9
+  agents AND the re-measured post-diet total is strictly less than the re-measured
+  pre-diet baseline. The run-phase author records both numbers in progress.md §E.2;
+  the 7K figure is a reporting reference, not a pass/fail line.
+- **DECISION (P3 `lint` collision)** — RESOLVED: the collision is **REAL** (verified
+  on the current tree this iteration — `SKILL.md:81` gate-cue line
+  `Quality gate language (lint, format, check, pre-commit, quality gate) routes to
+  **gate**` AND `SKILL.md:83` fix-cue line `Error and fix language (fix, error,
+  bug, broken, failing, lint) routes to **fix**` both contain `lint`). Decision:
+  assign `lint` to the **fix** bucket — strip `lint` from the `:81` gate-cue line
+  (gate keeps "format, check, pre-commit, quality gate") and retain `lint` on the
+  `:83` fix-cue line. REQ-AFR-007 / AC-AFR-007 pin both discriminating lines.
