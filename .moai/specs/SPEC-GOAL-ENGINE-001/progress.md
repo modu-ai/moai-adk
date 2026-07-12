@@ -187,6 +187,20 @@ pkgs ok / 0 FAIL confirms no regression).
   - `GOOS=windows GOARCH=amd64 go build ./...` → exit 0
 - full_suite_test: `go test ./...` → 96 packages ok / 0 FAIL
 
+### Amendment 0.3.0 sync-phase close signal (this section, distinct from the 0.2.1 close above)
+
+- sync_complete_at: 2026-07-12
+- sync_commit_sha: pending-backfill-sync (amendment sync commit — cannot know its own SHA; backfilled in a follow-up commit per the SHA placeholder backfill exemption, spec-frontmatter-schema.md § Forbidden ownership crossings)
+- sync_status: audit-ready
+- amendment_version: "0.3.0" (distinct from the 0.2.1 close recorded above; frontmatter transition this commit: `in-progress → completed`)
+- changelog_entry_added: true (new distinct CHANGELOG.md `[Unreleased]` ### Added entry for the 0.3.0 amendment — arm CLI + prune wiring reachability fix; does NOT duplicate the existing 0.2.1 entry. `grep -c 'SPEC-GOAL-ENGINE-001' CHANGELOG.md` 2 → 3)
+- readme_updated: false (no user-facing README change required — internal CLI reachability fix only; a separate untracked README redesign in the working tree was left untouched per scope discipline)
+- mx_tag_validation: PASS (0 AskUserQuestion/mcp__askuser matches in internal/cli/goal.go + internal/hook/session_start.go non-test code, re-verified this sync)
+- spec_lint: `moai spec lint spec.md` → expect StatusGitConsistency warning to clear now that status is `completed`
+- template_neutrality: `grep -rn 'SPEC-GOAL-ENGINE\|SPEC-ANALYZE-FIRST\|AGENTIC-CORE\|REQ-GLE' internal/template/templates/.claude/` → 0 (unchanged)
+- ac_count: 39/39 AC PASS (AC-GLE-001..039, acceptance.md SSOT — amendment adds AC-GLE-035..039 reachability pins on top of the preserved AC-GLE-001..034)
+- files_touched_this_sync: spec.md (frontmatter status/updated only), progress.md (this §E.4 addendum), CHANGELOG.md (one new [Unreleased] entry) — no body edits to spec.md/plan.md/acceptance.md, no README edit, no run-phase code touched
+
 ## §F Phase 0.95 Mode Selection
 
 - Decision: sub-agent (Mode 5 — coding-heavy, single-domain, bounded)
