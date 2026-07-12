@@ -91,7 +91,18 @@ m1_to_mN_commit_strategy: "3 milestones, Route A Hybrid Trunk direct-to-main. M1
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase — owned by manager-docs>_
+```yaml
+sync_status: PASS
+sync_complete_at: 2026-07-12
+sync_commit_sha: pending-backfill-harness-verify-promote-001   # backfilled in a follow-up commit (a commit cannot know its own SHA)
+changelog_entry_position: "[Unreleased] > ### Added (first entry, Epic 'Project-Harness Pipeline' SPEC 3/3)"
+frontmatter_status_transitions:
+  spec_md: "in-progress -> completed (this commit)"
+  updated_field_refreshed: "2026-07-12"
+template_parity_reverified: "PARITY OK x3 (project/meta-harness.md, harness-build-entry.md, harness-builder.md)"
+neutrality_reverified: "grep -rn SPEC-HARNESS-VERIFY-PROMOTE-001 internal/template/templates/ -> 0"
+epic_closure: "3-SPEC Project-Harness Pipeline Epic CLOSED (SPEC-PROJECT-HARNESS-BRIDGE-001 -> SPEC-HARNESS-MCP-PROVISION-001 -> SPEC-HARNESS-VERIFY-PROMOTE-001)"
+```
 
 ## §F Phase 0.95 Mode Selection
 
