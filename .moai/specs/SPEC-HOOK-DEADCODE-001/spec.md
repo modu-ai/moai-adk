@@ -4,7 +4,7 @@ title: "internal/hook package dead-code cleanup (3 corroborated scopes)"
 version: "0.1.0"
 status: in-progress
 created: 2026-07-03
-updated: 2026-07-04
+updated: 2026-07-12
 author: manager-spec
 priority: P2
 phase: "v3.0.0"
@@ -22,6 +22,7 @@ tags: "cleanup, dead-code, hook, refactor, go, internal-hook"
 |------|---------|--------|--------|
 | 2026-07-03 | 0.1.0 | Initial plan-phase draft. Tier M. Orchestrator-scoped evidence investigation (`go list -deps` + registry-registration grep + `deadcode` tool) corroborated 3 deletion scopes; manager-spec independently re-verified all claims and found a **material correction to Scope 3** (see §A.4) — the `handle-agent-hook.sh` wrapper is actively registered via 4 agents' frontmatter `hooks:` blocks, not unregistered/dead as the initial evidence framing suggested. | manager-spec |
 | 2026-07-04 | 0.1.0 | Plan-auditor near-miss remediation (FAIL 0.77, Tier M threshold 0.80). D1: rewrote AC-HDC-011's over-broad `TeammateIdle, TaskCompleted` → zero grep (unsatisfiable + over-deletion-hazard) to the anchored `handle-agent-hook.sh.*TeammateIdle` form + a preservation constraint naming the 2 legitimate event-list lines (~74, ~350) that MUST be kept. D2: corrected the `resolver.go` `HookResponse` baseline from the never-measured "6 references" to the measured `grep -c` value **9** (§A.3 + AC-HDC-005). D3: completed the `dual_parse.go` whole-file-deletion rationale by acknowledging the 2 package-level error vars `deadcode`'s function-only analysis cannot see. D4/D5: noted `HookInput.Data`'s post-M3 orphaned-field retention decision + the `HookOutput.Data` same-name non-conflation. Body-only edits; scope unchanged. | manager-spec |
+| 2026-07-12 | 0.1.0 | Post-M1 plan-audit D1/D2/D3 remediation (PASS-WITH-DEBT 0.81 → run-ready). **D1**: propagated the measured `HookResponse` baseline "9 references" from spec.md §A.3 / AC-HDC-005 into `plan.md` §F M2 MUST-PRESERVE (was stale "6" — cross-artifact propagation gap). **D2**: framed M1 as COMPLETED — `plan.md` §F M1 COMPLETED banner (commit `43c996bb7`, 18 files / 2874 deletions, agent-hooks.md mirror-hygiene fix), `plan.md` §C Pre-flight reframed "before M1" → "before M2", `progress.md` §E.2 backfilled with M1 run-phase evidence, frontmatter status aligned `draft → in-progress` across plan.md + progress.md + acceptance.md. **D3**: removed stale M3 scope item #3 — `hooks-system.md:322` "false TeammateIdle/TaskCompleted attribution" was an unverified defect-claim (per `verification-claim-integrity.md` §1.1 surface 3); orchestrator cross-verification found the doc ALREADY CORRECT (line 323 attributes `handle-agent-hook.sh` to PreToolUse/PostToolUse/SubagentStop; lines 324-325 correctly attribute TeammateIdle/TaskCompleted to `handle-teammate-idle.sh`/`handle-task-completed.sh`). M3 scope narrows from 3 items to 2 (HookInput.Data injection removal + evaluator-completion row addition). AC-HDC-011 hooks-system conjunct rewritten from vacuous-negative to positive-non-vacuous. | manager-spec |
 
 ## §A. Context and Intent
 
@@ -81,7 +82,7 @@ The initial evidence framing described the `handle-agent-hook.sh` wrapper as "de
 
 - `agent-hooks.md`'s "Handler Architecture" section (both `.claude/rules/moai/core/agent-hooks.md` and its template mirror) states dispatch goes through `internal/hook/agents/factory.go` — this becomes factually false once M1 deletes that package. Must be corrected, not merely deleted-with-the-package (the doc is a live, loaded rule file — see `agent-hooks.md` frontmatter `paths:` scope).
 - `agent-hooks.md`'s "Agent Hook Actions" table omits the `sync-auditor` → `evaluator-completion` row (present in the live agent frontmatter, absent from the doc) — a pre-existing staleness unrelated to this cleanup's deletions, but adjacent enough to fix in the same M3 commit (single-file edit, near-zero incremental risk).
-- `hooks-system.md:322` (both local + template mirror) states `handle-agent-hook.sh` handles "TeammateIdle, TaskCompleted events (team mode)" — **independently verified false**: `settings.json.tmpl` registers `handle-teammate-idle.sh` and `handle-task-completed.sh` for those two events, not `handle-agent-hook.sh`.
+- `hooks-system.md:322` (both local + template mirror) — **ALREADY CORRECT (2026-07-12 orchestrator cross-verification)**: the line attributes `handle-agent-hook.sh` to "agent frontmatter lifecycle hooks (PreToolUse/PostToolUse/SubagentStop — see agent-hooks.md)" and correctly attributes `TeammateIdle`/`TaskCompleted` to `handle-teammate-idle.sh`/`handle-task-completed.sh` (lines 324-325). The earlier plan-phase finding claimed a false attribution existed at this line; re-verification (live `hooks-system.md` content grep on 2026-07-12) found the false attribution is ABSENT in both the live copy and the template mirror. Per `verification-claim-integrity.md` §1.1 surface 3, the earlier "false attribution exists" claim was an unverified defect-claim — a hypothesis the domain re-check did not confirm. **NO ACTION NEEDED** for this line; it is removed from M3 scope (see `plan.md` §F M3).
 
 ## §B. Requirements (GEARS format)
 

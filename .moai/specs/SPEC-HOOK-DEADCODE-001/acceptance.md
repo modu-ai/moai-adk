@@ -2,9 +2,9 @@
 id: SPEC-HOOK-DEADCODE-001
 title: "internal/hook package dead-code cleanup (3 corroborated scopes)"
 version: "0.1.0"
-status: draft
+status: in-progress
 created: 2026-07-03
-updated: 2026-07-04
+updated: 2026-07-12
 author: manager-spec
 priority: P2
 phase: "v3.0.0"
@@ -80,10 +80,11 @@ tags: "cleanup, dead-code, hook, refactor, go, internal-hook"
 
 ### AC-HDC-011 — M3: doc corrections are factually accurate and mirror-identical
 
-- **Given** M3 has corrected `agent-hooks.md`'s Actions table (adding the `sync-auditor` → `evaluator-completion` row) and `hooks-system.md:322` (removing the false TeammateIdle/TaskCompleted claim), in both live and template-mirror copies,
-- **When** `diff .claude/rules/moai/core/agent-hooks.md internal/template/templates/.claude/rules/moai/core/agent-hooks.md` and `diff .claude/rules/moai/core/hooks-system.md internal/template/templates/.claude/rules/moai/core/hooks-system.md` are run,
-- **Then** both diffs are empty (byte-identical mirror pairs), AND `grep -n 'evaluator-completion' .claude/rules/moai/core/agent-hooks.md` finds a match, AND `grep -n 'handle-agent-hook.sh.*TeammateIdle' .claude/rules/moai/core/hooks-system.md` finds zero matches (confirming the false attribution at line ~322 has been corrected — this anchored pattern isolates exactly the one line M3 fixes).
-- **Preservation constraint (over-deletion guard)**: The bare string `TeammateIdle, TaskCompleted` legitimately occurs at TWO OTHER lines in `hooks-system.md` — line ~74 (the general "Agent and Task Events" list: `SubagentStart, SubagentStop, TeammateIdle, TaskCompleted, TaskCreated`) and line ~350 (the registered-events timeout table) — and BOTH MUST be preserved unchanged. Only the false `handle-agent-hook.sh` attribution line (~322) is corrected. Do NOT assert a bare `grep -n 'TeammateIdle, TaskCompleted' ... → zero`: it would be (a) **unsatisfiable** (post-fix it returns 2, from the two correct lines) and (b) an **over-deletion hazard** — a run-phase agent trying to force it to zero could wrongly delete the two legitimate event-list lines. The anchored `handle-agent-hook.sh.*TeammateIdle` grep above is the correct, non-destructive check. (Both copies — local `.claude/rules/moai/core/hooks-system.md` and the template mirror `internal/template/templates/.claude/rules/moai/core/hooks-system.md` — carry all three lines identically; the same preservation applies to both.)
+- **Given** M3 has corrected `agent-hooks.md`'s Actions table (adding the `sync-auditor` → `evaluator-completion` row) in both live and template-mirror copies,
+- **When** (a) `diff .claude/rules/moai/core/agent-hooks.md internal/template/templates/.claude/rules/moai/core/agent-hooks.md` is run, (b) `grep -n 'evaluator-completion' .claude/rules/moai/core/agent-hooks.md` is run, (c) `grep -n 'handle-teammate-idle.sh.*TeammateIdle\|handle-task-completed.sh.*TaskCompleted' .claude/rules/moai/core/hooks-system.md` is run (positive verification that `hooks-system.md` correctly attributes TeammateIdle/TaskCompleted to their dedicated wrapper scripts), and (d) `diff .claude/rules/moai/core/hooks-system.md internal/template/templates/.claude/rules/moai/core/hooks-system.md` is run,
+- **Then** (a) the `agent-hooks.md` diff is empty (byte-identical mirror pair after the evaluator-completion row addition), (b) the evaluator-completion grep finds ≥1 match (the newly-added row), (c) the `hooks-system.md` positive-attribution grep finds ≥1 match (confirming the doc correctly attributes TeammateIdle/TaskCompleted to `handle-teammate-idle.sh`/`handle-task-completed.sh` — this is a NON-VACUOUS positive verification: the earlier plan-phase finding claimed a false `handle-agent-hook.sh` attribution existed at line ~322, but 2026-07-12 orchestrator cross-verification found the doc was ALREADY CORRECT; this conjunct verifies that correct state is preserved through M3), and (d) the `hooks-system.md` diff is empty (byte-identical mirror pair — no M3 edit needed, the doc is already correct in both copies).
+- **Note on scope narrowing (D3 remediation 2026-07-12)**: The earlier plan-phase version of this AC asserted `grep -n 'handle-agent-hook.sh.*TeammateIdle' .claude/rules/moai/core/hooks-system.md → zero` (a negative check that the false attribution was corrected by M3). That check passed VACUOUSLY because the false attribution never existed in the live doc — per `verification-claim-integrity.md` §1.1 surface 3, the "false attribution exists" claim was an unverified defect-claim (a hypothesis the domain re-check did not confirm). M3 scope is narrowed accordingly (see `plan.md` §F M3): `hooks-system.md` is NOT edited by M3; the positive-attribution grep (c) above replaces the vacuous negative check.
+- **Preservation constraint (unchanged)**: The bare string `TeammateIdle, TaskCompleted` legitimately occurs at TWO lines in `hooks-system.md` — line ~74 (the general "Agent and Task Events" list: `SubagentStart, SubagentStop, TeammateIdle, TaskCompleted, TaskCreated`) and line ~350 (the registered-events timeout table) — and BOTH MUST be preserved unchanged. The positive-attribution grep (c) targets the dedicated-wrapper attribution lines (~324-325), not these event-list lines.
 
 ### AC-HDC-012 — Cross-milestone: no scope-creep into the 120 false-positive deadcode findings
 
