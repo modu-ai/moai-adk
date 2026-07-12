@@ -224,14 +224,14 @@ Every English text label inside the templates below — banner names, section he
 - Arrow annotations: `PASS → next stage`, `FAIL → iterate`, `next stage`, `iterate`
 - Completion phrases: `Intent delivered`, `Files: N`, `Tests: X/X pass`, `Coverage: N%`, `Deliverables:`, `Specialists used:`, `Cleanup: [temp files removed]`
 - Error phrases: `Retry as-is`, `Alt approach`, `Pause`, `Abort+preserve`
-- Progress Board icon meanings (when verbalized): `Done`, `In Progress`, `Pending`, `Under Review`, `Failed`, `Critical`
+- Progress Board icon meanings (when verbalized): `Not Started`, `Done`, `In Progress`, `Blocked`, `Under Review`, `Failed`, `Critical`
 - Session Handoff headers: `Preconditions:`, `Run:`, `After merge:` / `Follow-up:` (workflow-context conditional), `entering`
 - Step labels: `Step 1: Clarify`, `Step 2: Delegate`, `Step 3: Execute`, `Step 4: Verify`
 - WebSearch citation: `Sources:`
 
 **Preserve verbatim — DO NOT translate (HARD):**
 
-- Emoji decorations: 🤖 📋 🎯 ⏳ ★ ✅ ⏭ ⏮ 📊 🔄 🧹 ❌ 🔍 🔧 🟢 🟡 ⏸️ 🔵 🔴 🚧 📤 📦 🛑 👋 📚 🧠
+- Emoji decorations: 🤖 📋 🎯 ⏳ ★ ✅ ⏭ ⏮ 📊 🔄 🧹 ❌ 🔍 🔧 ⬜ 🟢 🟡 ⏸️ 🔵 🔴 🚧 📤 📦 🛑 👋 📚 🧠
 - Box-drawing and arrow characters: ─ │ └─ ┌ ┐ ┘ └ ▶ → ← ⏭ ⏮
 - Horizontal rules: `---`
 - Code/command literals: `go test ./...`, `gh pr create`, `git fetch origin main`, `/moai <subcommand>`, `~/.claude/projects/{hash}/memory/`, fenced ```text``` blocks
@@ -643,11 +643,11 @@ Template (structural skeleton — translate the header and arrow text to `conver
 🎯 [Progress Status header]
 
 [🟢] [Item 1 label]         ← [completion status / result summary]
-[🟡] [Item 2 label]         ← [in-progress detail / waiting cause]
-[⏸️] [Item 3 label]         ← [blocking / blocker cause]
-[⏸️] [Item 4 label] 🔴      ← [risk / critical marker]
-[⏸️] [Item 5 label]
-[⏸️] [Item 6 label]
+[🟡] [Item 2 label]         ← [in-progress detail]
+[⏸️] [Item 3 label]         ← [blocked — waiting on dependency / blocker cause]
+[⬜] [Item 4 label]         ← [not started yet — queued, sequence not reached]
+[⬜] [Item 5 label] 🔴      ← [risk / critical marker]
+[⬜] [Item 6 label]
 ---
 ```
 
@@ -655,21 +655,23 @@ Icon legend (icons are structural — never substitute with text like `[DONE]`):
 
 | Icon | Meaning | Typical Use |
 |------|---------|-------------|
+| `⬜` | Not Started | Queued; sequence not reached yet (neutral "to do" — NOT blocked) |
 | `🟢` | Done | Merged, tests passed, deployed |
-| `🟡` | In Progress / Partial | Merged but downstream config pending |
-| `⏸️` | Pending / Blocked | Upstream item incomplete, external dependency |
+| `🟡` | In Progress / Partial | Actively being worked, or done but downstream config pending |
+| `⏸️` | Blocked / Waiting | Held by an incomplete upstream item or external dependency (ready but cannot proceed) |
 | `🔵` | Under Review | PR review pending, approval pending |
 | `❌` | Failed / Canceled | Rolled back, abandoned |
 | `🔴` | Critical Suffix | Appended after item label to flag risk |
 
 Rules:
 - [HARD] Header text (e.g., `Progress Status`) and arrow annotations (`← ...`) MUST translate to the user's `conversation_language`
-- [HARD] Icons (`🟢🟡⏸️🔵❌🔴`) are structural — do NOT translate or replace with text equivalents
+- [HARD] Icons (`⬜🟢🟡⏸️🔵❌🔴`) are structural — do NOT translate or replace with text equivalents
+- [HARD] `⬜` (not started) and `⏸️` (blocked/waiting) are distinct — use `⬜` for an item merely queued in sequence, `⏸️` only when an item is actively held by a dependency or blocker
 - [HARD] One item per line; wrap long annotations onto a follow-up line with `   └─ ` continuation
 - [HARD] Align labels with padding so the `←` arrows form a vertical column
 - [HARD] Use horizontal rules (`---`) above and below the board to separate it from surrounding prose
 - Maximum 12 items per board; if more, split into grouped sub-boards by phase or domain
-- When zero items remain in `⏸️`, announce readiness for Step 4 verification
+- When zero items remain in `⬜` and `⏸️`, announce readiness for Step 4 verification
 
 ### Session Handoff [HARD]
 
@@ -739,7 +741,7 @@ Before emitting, render-time obligations the orchestrator MUST satisfy — the f
 
 - [HARD] All user-facing responses in `conversation_language` — read the value from `.moai/config/sections/language.yaml`. This is the single source of truth; do NOT infer from prior turns, user-visible text, or training-time defaults.
 - [HARD] Templates in §8 are structural skeletons — translate every English label to `conversation_language` per §8 Localization Contract. The English text in §8 is documentation, not literal output. Anchoring to English literals is the exact defect §8 Localization Contract exists to prevent.
-- [HARD] Preserve verbatim across all languages: emoji decorations (🤖 📋 🎯 ⏳ ★ ✅ ⏭ ⏮ 📊 🔄 🧹 ❌ 🔍 🔧 🟢 🟡 ⏸️ 🔵 🔴 🚧 📤 📦 🛑 👋 📚 🧠), Session Handoff cut-line marker symbol (✂ U+2702 BLACK SCISSORS — used in `✂──── 여기부터 복사 ────✂` / `✂──── 여기까지 복사 ────✂` markers per §8 Session Handoff; only the marker text translates), box-drawing and arrow characters (─ │ └─ ▶ → ←), code/command literals, file paths, and the `ultrathink.` keyword token.
+- [HARD] Preserve verbatim across all languages: emoji decorations (🤖 📋 🎯 ⏳ ★ ✅ ⏭ ⏮ 📊 🔄 🧹 ❌ 🔍 🔧 ⬜ 🟢 🟡 ⏸️ 🔵 🔴 🚧 📤 📦 🛑 👋 📚 🧠), Session Handoff cut-line marker symbol (✂ U+2702 BLACK SCISSORS — used in `✂──── 여기부터 복사 ────✂` / `✂──── 여기까지 복사 ────✂` markers per §8 Session Handoff; only the marker text translates), box-drawing and arrow characters (─ │ └─ ▶ → ←), code/command literals, file paths, and the `ultrathink.` keyword token.
 - [HARD] Internal agent-to-agent messages (Agent() prompts, SendMessage payloads): English
 - [HARD] Code comments: per `code_comments` setting in `.moai/config/sections/language.yaml` (default English)
 - [HARD] Pre-emit self-check: every banner/template-derived block MUST pass §8 Localization Contract self-check before printing.

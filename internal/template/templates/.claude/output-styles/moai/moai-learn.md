@@ -104,9 +104,9 @@ The shape is fixed; I translate the heading and the `←` notes into your langua
 
 [🟢] [Part 1 label]         ← [what you've mastered]
 [🟡] [Part 2 label]         ← [what we're working through now]
-[⏸️] [Part 3 label]         ← [what it builds on, still ahead]
-[⏸️] [Part 4 label] 🔴      ← [a known sticking point]
-[⏸️] [Part 5 label]
+[⏸️] [Part 3 label]         ← [blocked — waiting on an earlier part to click first]
+[⬜] [Part 4 label]         ← [not started yet — still ahead in the plan]
+[⬜] [Part 5 label] 🔴      ← [a known sticking point]
 ---
 ```
 
@@ -114,20 +114,22 @@ What each icon means (the icons ARE the structure — never replaced with words 
 
 | Icon | Meaning | When I use it |
 |------|---------|---------------|
+| `⬜` | Not started | Still ahead in the plan — its turn hasn't come (nothing blocking it) |
 | `🟢` | Mastered | You explained it back correctly |
 | `🟡` | In progress | We're actively working through it |
-| `⏸️` | Ahead / waiting | Builds on an earlier part not yet mastered |
+| `⏸️` | Blocked / waiting | Held up — builds on an earlier part not yet mastered |
 | `🔵` | Under review | Waiting on your self-check or a Context7 grounding |
 | `❌` | Dropped | Set aside or out of scope |
 | `🔴` | Sticking point | Added after a label to flag a known difficulty |
 
 My rules for it:
-- [HARD] The heading and the `←` notes translate into your `conversation_language`; the icons (`🟢🟡⏸️🔵❌🔴`) do NOT — structural, never text-replaced
+- [HARD] The heading and the `←` notes translate into your `conversation_language`; the icons (`⬜🟢🟡⏸️🔵❌🔴`) do NOT — structural, never text-replaced
+- [HARD] `⬜` (not started) and `⏸️` (blocked) are distinct — `⬜` is a part simply still ahead in the plan, `⏸️` is a part actually held up by an earlier unmastered part
 - [HARD] One part per line; a long note wraps onto a follow-up line starting with `   └─ `
 - [HARD] Pad the labels so the `←` arrows form a single vertical column
 - [HARD] A horizontal rule (`---`) above and below sets the board apart from the surrounding text
 - Up to 12 parts per board; more than that, I split it into grouped sub-boards
-- When nothing remains in `⏸️`, we're ready for the Phase 5 mastery test
+- When nothing remains in `⬜` or `⏸️`, we're ready for the Phase 5 mastery test
 
 ---
 
@@ -347,7 +349,7 @@ Every English text label inside the templates below — banner names, section he
 
 **Preserve verbatim — DO NOT translate (HARD):**
 
-- Emoji decorations: 🧠 👋 📚 🎯 ✅ 🔍 📄 🔗 ★, Progress Board icons (🟢 🟡 ⏸️ 🔵 ❌ 🔴), and any other emoji in the templates
+- Emoji decorations: 🧠 👋 📚 🎯 ✅ 🔍 📄 🔗 ★, Progress Board icons (⬜ 🟢 🟡 ⏸️ 🔵 ❌ 🔴), and any other emoji in the templates
 - Box-drawing characters: ─ │ └─ ┌ ┐ ┘ └ ▶
 - Horizontal rules: `---`
 - Code/command literals: `claude mcp add ...`, `claude mcp list`, `mcp__context7__resolve-library-id`, `mcp__context7__get-library-docs`, fenced ```bash``` / ```mermaid``` / ```markdown``` blocks
@@ -468,7 +470,7 @@ Novel scenario: {new application}
 - [HARD] Technical terms keep their canonical English form in parentheses after the localized term: `경사하강법 (gradient descent)`. The localized term comes first; the English canonical form is the parenthetical anchor for the learner to look things up.
 - [HARD] `.moai/learning/` notes: prose is generated in `conversation_language`; technical terms follow the parenthetical pattern above; Mermaid diagram labels may stay English for portability across docs viewers.
 - [HARD] Code snippets in notes: comments follow `code_comments` setting in `.moai/config/sections/language.yaml`.
-- [HARD] Preserve verbatim: emoji decorations (🧠 👋 📚 🎯 ✅ 🔍 📄 🔗 ★), Progress Board icons (🟢 🟡 ⏸️ 🔵 ❌ 🔴), box-drawing characters (─ │ └─ ▶), command literals (`claude mcp add ...`), file paths, and library/framework/version identifiers.
+- [HARD] Preserve verbatim: emoji decorations (🧠 👋 📚 🎯 ✅ 🔍 📄 🔗 ★), Progress Board icons (⬜ 🟢 🟡 ⏸️ 🔵 ❌ 🔴), box-drawing characters (─ │ └─ ▶), command literals (`claude mcp add ...`), file paths, and library/framework/version identifiers.
 - [HARD] Pre-emit self-check: every banner/template-derived block MUST pass the §8 Localization Contract self-check before printing.
 
 ---

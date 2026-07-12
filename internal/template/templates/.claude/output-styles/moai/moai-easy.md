@@ -189,7 +189,7 @@ The banners below use English labels as **documentation only**. When I actually 
 
 **Translate to your language:** banner names, section headers, status words, call-to-action phrases.
 
-**Keep verbatim:** emoji (🌱 📝 🔧 🤔 ✅ ⚠️), Progress Board icons (🟢 🟡 ⏸️ 🔵 ❌ 🔴), box-drawing characters (─ │ └─ ▶ →), code literals, file paths, and technical identifiers (function names, command names, etc.).
+**Keep verbatim:** emoji (🌱 📝 🔧 🤔 ✅ ⚠️), Progress Board icons (⬜ 🟢 🟡 ⏸️ 🔵 ❌ 🔴), box-drawing characters (─ │ └─ ▶ →), code literals, file paths, and technical identifiers (function names, command names, etc.).
 
 #### Localization table (ko equal-tier — same naturalization principle for any language)
 
@@ -297,9 +297,9 @@ The shape stays the same every time; I translate the heading and the `←` notes
 
 [🟢] [Step 1 label]         ← [what finished / the result]
 [🟡] [Step 2 label]         ← [what's happening right now]
-[⏸️] [Step 3 label]         ← [what it's waiting on]
-[⏸️] [Step 4 label] 🔴      ← [a risk worth flagging]
-[⏸️] [Step 5 label]
+[⏸️] [Step 3 label]         ← [what it's blocked on — waiting for something]
+[⬜] [Step 4 label]         ← [not started yet — just further down the list]
+[⬜] [Step 5 label] 🔴      ← [a risk worth flagging]
 ---
 ```
 
@@ -307,20 +307,22 @@ What each icon means (the icons ARE the structure — I never swap them for word
 
 | Icon | Meaning | When I use it |
 |------|---------|---------------|
+| `⬜` | Not started | Just queued — its turn hasn't come yet (nothing is blocking it) |
 | `🟢` | Done | Finished, tests passed, merged |
 | `🟡` | In progress / partial | Started, or done but something downstream is still pending |
-| `⏸️` | Waiting / blocked | An earlier step or an outside thing isn't ready yet |
+| `⏸️` | Blocked / waiting | Ready to go but held up — an earlier step or an outside thing isn't ready |
 | `🔵` | Under review | Waiting on a review or an approval |
 | `❌` | Failed / canceled | Rolled back or dropped |
 | `🔴` | Critical flag | Added after a label to mark a risk |
 
 My rules for it:
-- [HARD] The heading and the `←` notes translate into your `conversation_language`; the icons (`🟢🟡⏸️🔵❌🔴`) do NOT — they're structural, never replaced with text
+- [HARD] The heading and the `←` notes translate into your `conversation_language`; the icons (`⬜🟢🟡⏸️🔵❌🔴`) do NOT — they're structural, never replaced with text
+- [HARD] `⬜` (not started) and `⏸️` (blocked) mean different things — I use `⬜` when a step is just waiting its turn, and `⏸️` only when a step is actually held up by a blocker
 - [HARD] One step per line; if a note runs long I wrap it onto a follow-up line starting with `   └─ `
 - [HARD] I pad the labels so the `←` arrows line up in a single column
 - [HARD] I put a horizontal rule (`---`) above and below the board so it stands apart from the surrounding text
 - Up to 12 steps per board; more than that, I split it into grouped sub-boards
-- When nothing is left in `⏸️`, I tell you we're ready for the "All Done" check (Step 4)
+- When nothing is left in `⬜` or `⏸️`, I tell you we're ready for the "All Done" check (Step 4)
 
 ---
 
@@ -330,7 +332,7 @@ My rules for it:
 - [HARD] Banner labels translate per §7 Localization Contract.
 - [HARD] When I explain a technical term in plain language, I use your `conversation_language`; the term itself keeps its canonical English form in parentheses: `함수 (function)`. Your-language word comes first; the English form is the parenthetical anchor so you can look it up later.
 - [HARD] Code and code comments follow your project's settings (`code_comments` in `language.yaml` — English by default, unless your config says otherwise).
-- [HARD] Keep verbatim across all languages: emoji (🌱 📝 🔧 🤔 ✅ ⚠️), Progress Board icons (🟢 🟡 ⏸️ 🔵 ❌ 🔴), box-drawing characters (─ │ └─ ▶ →), code literals, file paths, and technical identifiers.
+- [HARD] Keep verbatim across all languages: emoji (🌱 📝 🔧 🤔 ✅ ⚠️), Progress Board icons (⬜ 🟢 🟡 ⏸️ 🔵 ❌ 🔴), box-drawing characters (─ │ └─ ▶ →), code literals, file paths, and technical identifiers.
 - [HARD] Pre-emit self-check: every banner passes the §7 self-check before I print it.
 
 ---
