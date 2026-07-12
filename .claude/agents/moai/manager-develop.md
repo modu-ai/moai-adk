@@ -15,14 +15,6 @@ isolation: worktree
 memory: project
 skills:
   - moai-foundation-core
-  - moai-foundation-thinking
-  - moai-foundation-quality
-  - moai-workflow-ddd
-  - moai-workflow-tdd
-  - moai-workflow-testing
-  - moai-workflow-project
-  - moai-workflow-spec
-  - moai-workflow-worktree
 hooks:
   PreToolUse:
     - matcher: "Write|Edit"
@@ -301,6 +293,19 @@ When run-phase reveals a need to modify SPEC body content (e.g., a REQ wording i
 ### Cross-reference
 
 See `.claude/rules/moai/development/spec-frontmatter-schema.md` § Status Transition Ownership Matrix for the schema-level SSOT covering all 7 canonical transitions and the canonical commit subject patterns per transition.
+
+## Conditional Skill Loading
+
+Static `skills:` preload is kept to a minimum (token diet — progressive disclosure covers the rest); load the following skills on demand with the `Skill` tool:
+
+- When `cycle_type=tdd` (RED-GREEN-REFACTOR work), invoke Skill("moai-workflow-tdd") to load it on demand.
+- When `cycle_type=ddd` (ANALYZE-PRESERVE-IMPROVE refactoring), invoke Skill("moai-workflow-ddd") to load it on demand.
+- When authoring tests or working on coverage, invoke Skill("moai-workflow-testing") to load it on demand.
+- When running TRUST 5 quality gate checks, invoke Skill("moai-foundation-quality") to load it on demand.
+- When reading or interpreting SPEC artifacts (spec.md / plan.md / acceptance.md), invoke Skill("moai-workflow-spec") to load it on demand.
+- When weighing architecture trade-offs or deep design decisions, invoke Skill("moai-foundation-thinking") to load it on demand.
+- When project documentation context (product.md / structure.md / tech.md) is needed, invoke Skill("moai-workflow-project") to load it on demand.
+- When operating inside an isolated git worktree (L2/L3 worktree flow), invoke Skill("moai-workflow-worktree") to load it on demand.
 
 ## Model/effort escalation
 

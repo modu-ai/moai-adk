@@ -4,7 +4,7 @@ description: |
   Independent plan-phase document auditor. Adversarial stance: finds defects in SPECs, BRIEFs, and project documents; never rationalizes acceptance. Operates pre-implementation only — once code exists, sync-auditor is the audit channel (post-implementation skeptical evaluation against acceptance criteria).
   Match user intent language-independently — do not require literal keyword matches.
   NOT for: post-implementation code audit (sync-auditor), code implementation, code review, documentation writing, git operations, running tests
-tools: Read, Grep, Glob, Bash, Write, Edit, TaskCreate, TaskUpdate, TaskList, TaskGet, SendMessage
+tools: Read, Grep, Glob, Bash, Write, Edit, TaskCreate, TaskUpdate, TaskList, TaskGet, Skill, SendMessage
 model: inherit
 effort: xhigh
 color: red
@@ -494,6 +494,10 @@ Invoke this agent using standard MoAI delegation patterns:
 This agent is designed to be invoked by orchestrators (MoAI, plan workflow) after manager-spec writes a SPEC, before user approval. Its existence enables orchestrators to satisfy §24 delegation requirements for SPEC quality assurance without performing the audit themselves.
 
 The audit boundary is clear: plan-auditor audits, manager-spec creates and revises. These roles must not be merged.
+
+## Conditional Skill Loading
+
+This agent carries no static `skills:` preload. The Skill tool is for read-only reference loading only — e.g., invoke Skill("moai-foundation-quality") when scoring TRUST 5 dimensions. Auditor independence means never loading a skill that prescribes acceptance.
 
 ## Model/effort escalation
 
