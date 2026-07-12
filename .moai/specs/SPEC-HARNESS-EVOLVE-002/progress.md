@@ -168,30 +168,64 @@ plan_audit_final_iter: 2
 
 **Residual risk (M4 scope, NOT closing debt):** the managed-section preservation branch is behaviorally equivalent to the generic 3-way logic for the specific AC-025/026/027 fixtures (the generic logic already treats sections as opaque string-comparison units). The allow-list's load-bearing value is (a) AC-049 compliance (explicit recognition var consulted on the preservation path), (b) documented preservation policy for curator-managed blocks, (c) an extension point for future managed-block types, and (d) a future-proofing guard so later changes to the generic section logic cannot silently regress the managed-block preservation guarantee. A scenario where cosmetic template marker reformatting (e.g. an extra blank line in the empty marker) against a populated local block would currently surface as a conflict under both managed and generic logic — marker-body emptiness normalization is deferred (it would couple merge to marker parsing, which design.md §D.2 explicitly rejected in favor of the §D.1 allow-list). Does not block M4.
 
+### M5 — Snapshot / rollback / lineage extension
+
+**Deliverables shipped:**
+- `internal/harness/types.go` (MODIFIED) — `LineageEntry` extended additively with `LearnedSurface string`, `BulletsChanged []string`, `SnapshotDir string` (REQ-HEV2-023). The 3 fields are APPENDED after the existing fields — existing field order/types unchanged (backward-compat verified by `TestLineageEntry_AdditiveFieldOrder`). `BulletsChanged` is deliberately tagged WITHOUT omitempty so a nil slice serializes as JSON `null` (evidence-or-null per REQ-HEV2-024 / AP-HEV2-010 — NOT `[]` which would fabricate a zero-change claim, NOT omitted which loses the signal).
+- `internal/harness/applier.go` (MODIFIED) — (a) `snapshotFile` struct extended additively with `LearnedSurface`, `ByteLengthPreWrite`, `BulletsAffected` (all omitempty so legacy Apply-path snapshots serialize byte-identical); (b) new `SurfaceRestoreUnit` type + new exported `CreateSurfaceSnapshot(snapshotBase, proposalID, surfaces)` function producing distinct per-surface restore units (REQ-HEV2-021, design.md §C.1); (c) `RestoreSnapshot` extended with a byte-length integrity check gated on `ByteLengthPreWrite > 0` (REQ-HEV2-022) — skipped on legacy snapshots (zero value) for backward compat; (d) new `ErrRollbackIntegrityFailed` sentinel; (e) `writeLineage` refactored to delegate to a new internal `writeLineageEntry`, plus new `writeLineageCurator` method populating the M5 fields (REQ-HEV2-023 plumbing). The 4 existing `writeLineage` callers are byte-unaffected.
+- `internal/harness/applier_test.go` (MODIFIED) — 6 new tests: `TestCreateSnapshot_DistinctRestoreUnitsPerSurface` (AC-HEV2-028), `TestRestoreSnapshot_ByteIdenticalRollback` (AC-HEV2-029), `TestRestoreSnapshot_IntegrityFailure` (byte-length mismatch → ErrRollbackIntegrityFailed), `TestCreateSnapshot_BackupNameDisambiguation` (basename collision), `TestCreateSnapshot_EmptySurfaces` (guard), `TestWriteLineageCurator_RoundTrip` + `TestWriteLineage_LegacyPathLeavesSurfaceFieldsZero` (REQ-HEV2-023 plumbing + backward compat).
+- `internal/harness/lineage_test.go` (MODIFIED) — 3 new tests: `TestWriteLineageEntry_LearnedSurfaceFields` (AC-HEV2-030), `TestLineageEntry_EvidenceOrNull` (AC-HEV2-031), `TestLineageEntry_AdditiveFieldOrder` (additive invariant).
+
+**AC PASS/FAIL matrix (M5-scoped ACs):**
+
+| AC | Status | Verification |
+|----|--------|-------------|
+| AC-HEV2-028 (distinct restore units per surface) | PASS | `TestCreateSnapshot_DistinctRestoreUnitsPerSurface` — dual-surface manifest carries ≥2 distinct `learned_surface` values + per-surface `byte_length_pre_write` recorded |
+| AC-HEV2-029 (byte-identical rollback) | PASS | `TestRestoreSnapshot_ByteIdenticalRollback` — post-rollback bytes == pre-write bytes for BOTH surfaces |
+| AC-HEV2-030 (LineageEntry carries new fields) | PASS | `TestWriteLineageEntry_LearnedSurfaceFields` — LearnedSurface + BulletsChanged + SnapshotDir round-trip via WriteLineageEntry → LoadManifest |
+| AC-HEV2-031 (evidence-or-null) | PASS | `TestLineageEntry_EvidenceOrNull` — nil BulletsChanged serializes as JSON `null` (NOT `[]`, NOT omitted, NOT `""`); populated serializes as array |
+| AC-HEV2-050 (reachability: ≥3 field matches in types.go) | PASS | `grep -c -E "LearnedSurface\|BulletsChanged\|SnapshotDir" internal/harness/types.go` → **7** matches (≥3) |
+| AC-HEV2-051 (manifest structural: ≥2 distinct learned_surface) | PASS | `TestCreateSnapshot_DistinctRestoreUnitsPerSurface` — the dual-surface fixture manifest carries exactly 2 distinct `learned_surface` values |
+
+**Additive-invariant confirmation:** `TestLineageEntry_AdditiveFieldOrder` proves the M5 fields are appended AFTER the existing fields in declaration order (`proposal_id` < `decision` < `learned_surface` < `bullets_changed` < `snapshot_dir` in the serialized JSON). Existing field order/types unchanged — legacy lineage consumers parse pre-M5 entries verbatim. The `TestWriteLineage_LegacyPathLeavesSurfaceFieldsZero` test confirms the legacy `writeLineage` path (the pre-Curator Apply callers) leaves the M5 fields at zero/nil so legacy transitions serialize byte-identically to pre-M5 output.
+
+**Test output:** `go test -count=1 -run "<M5 AC tests>" ./internal/harness/` → 8 tests PASS (0 fail). Full harness suite: `go test -count=1 ./internal/harness/...` — all 12 sub-packages ok (M1-M4 preserved). `go test -count=1 ./internal/harness/curator/... ./internal/merge/...` ok (M1-M4 PRESERVE).
+
+**Coverage:** `go test -cover ./internal/harness/` → **87.2%** statement coverage (above the 85% QG1 minimum; M5 additions fully exercised by the 9 new tests).
+
+**Cross-platform build (B1):** `go build ./...` exit 0 AND `GOOS=windows GOARCH=amd64 go build ./...` exit 0. The M5 additions use only stdlib (`encoding/json`, `errors`, `fmt`, `os`, `path/filepath`, `strings`, `time` — all already imported) — no syscall, no build tags.
+
+**Subagent boundary (B3 / AC-HEV2-044):** `grep -rn 'AskUserQuestion\|mcp__askuser' internal/harness/ | grep -v _test.go | grep -v '// '` → the 1 match (`internal/harness/proposalgen/scaffolder.go:111`) is PRE-EXISTING at HEAD `c02c0ee8d` (a documentation string literal in a different package, OUTSIDE M5 edit scope, NOT a call). M5 introduced 0 new AskUserQuestion references.
+
+**Lint (B5):** `golangci-lint run --timeout=2m ./internal/harness/...` → **0 issues** (no NEW findings vs pre-flight baseline; an initial staticcheck QF1001 De-Morgan suggestion in `lineage_test.go` was resolved by rewriting `!(a<b)` → `a>=b`).
+
+**Residual risk (M5 scope, NOT closing debt):** the `writeLineageCurator` method (the Curator-path lineage populator) is PROVIDED but not yet WIRED into an actual Curator-write code path — the existing `Apply` method still calls the legacy `writeLineage` (leaving M5 fields zero). This is intentional: the Curator-pipeline-to-Apply integration is future wiring (a later milestone / EVOLVE-003+ territory). The M5 deliverable is the surface + the round-trip verification (AC-030/031); the field-population-on-every-Curator-write invariant (REQ-HEV2-023) holds for the `writeLineageCurator` code path itself. Wiring `SnapshotDir` into the existing Apply approve path (the legacy safety pipeline does create a snapshot) is a deferred enhancement — out of M5's AC scope.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 ```yaml
 run_complete_at:
-run_commit_sha: d4c00517f
-run_status: m4-complete-m5-m7-pending
+run_commit_sha: pending-backfill-m5
+run_status: m5-complete-m6-m7-pending
 # M1 (Typed Managed-Block Writer foundation) + M2 (LEARNED digest block +
 # budget/cap enforcement) + M3 (CLAUDE.local.md append-only LOCAL section) +
-# M4 (mergeSectionBased managed-section preservation) are complete. M1-scoped
-# ACs PASS (AC-HEV2-001..006, 009..011, 044, 047, 048). M2-scoped ACs PASS
-# (AC-HEV2-007, 008, 012, 013, 014, 015, 016). M3-scoped ACs PASS (AC-HEV2-018,
-# 019, 020). M4-scoped ACs PASS (AC-HEV2-025, 026, 027, 049). merge package
-# coverage 87.3%. Remaining milestones M5-M7 NOT started — run_status is NOT
-# audit-ready.
-ac_pass_count: 26  # M1 (12) + M2 (7) + M3 (3) + M4 (4)
+# M4 (mergeSectionBased managed-section preservation) + M5 (snapshot/rollback/
+# lineage surface extension) are complete. M1-scoped ACs PASS (AC-HEV2-001..006,
+# 009..011, 044, 047, 048). M2-scoped ACs PASS (AC-HEV2-007, 008, 012, 013,
+# 014, 015, 016). M3-scoped ACs PASS (AC-HEV2-018, 019, 020). M4-scoped ACs
+# PASS (AC-HEV2-025, 026, 027, 049). M5-scoped ACs PASS (AC-HEV2-028, 029,
+# 030, 031, 050, 051). harness package coverage 87.2%. Remaining milestones
+# M6-M7 NOT started — run_status is NOT audit-ready.
+ac_pass_count: 32  # M1 (12) + M2 (7) + M3 (3) + M4 (4) + M5 (6)
 ac_fail_count: 0
 preserve_list_post_run_count: 0  # no PRESERVE-list files modified
-l44_pre_commit_fetch: done-m4-push
-l44_post_push_fetch: done-m4-push
+l44_pre_commit_fetch: done-m5-push
+l44_post_push_fetch: done-m5-push
 new_warnings_or_lints_introduced: 0
 cross_platform_build:
   go_build_all: exit_0
   go_build_windows_amd64: exit_0
-total_run_phase_files: 17  # M1 (6) + M2 (5) + M3 (4) + M4 (2): strategies.go mod + strategies_test.go mod
+total_run_phase_files: 21  # M1 (6) + M2 (5) + M3 (4) + M4 (2) + M5 (4): types.go mod + applier.go mod + applier_test.go mod + lineage_test.go mod
 m1_to_mN_commit_strategy: per-milestone
 ```
 

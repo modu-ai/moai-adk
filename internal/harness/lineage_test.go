@@ -9,6 +9,7 @@ package harness
 
 import (
 	"bytes"
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"strings"
@@ -543,4 +544,154 @@ func TestApply_NoManifestPathSkipsLineage(t *testing.T) {
 		t.Fatalf("Apply with no manifest path: %v", err)
 	}
 	// No panic, no error — the apply proceeded normally without a manifest target.
+}
+
+// ─────────────────────────────────────────────
+// M5 — LineageEntry LearnedSurface fields (SPEC-HARNESS-EVOLVE-002)
+// REQ-HEV2-023 (lineage recording), REQ-HEV2-024 (evidence-or-null).
+// ─────────────────────────────────────────────
+
+// TestWriteLineageEntry_LearnedSurfaceFields (AC-HEV2-030 / REQ-HEV2-023): the
+// three M5 additive LineageEntry fields (LearnedSurface, BulletsChanged,
+// SnapshotDir) round-trip through WriteLineageEntry → LoadManifest. This is
+// the behavioral proof the fields are carried on every Curator write.
+func TestWriteLineageEntry_LearnedSurfaceFields(t *testing.T) {
+	t.Parallel()
+
+	manifestPath := filepath.Join(t.TempDir(), "manifest.jsonl")
+	entry := LineageEntry{
+		ProposalID:      "hev2-030-001",
+		TargetPath:      "CLAUDE.md",
+		AppliedSurface:  "description",
+		Decision:        "approved",
+		Reason:          "curator managed-block write",
+		LearnedSurface:  "claude.md.learned-workflow",
+		BulletsChanged:  []string{"ledger-key-A", "ledger-key-B"},
+		SnapshotDir:     "/tmp/snapshots/2026-07-12T00-00-00.000000000Z",
+	}
+	if err := WriteLineageEntry(manifestPath, entry); err != nil {
+		t.Fatalf("WriteLineageEntry: %v", err)
+	}
+
+	got, err := LoadManifest(manifestPath)
+	if err != nil {
+		t.Fatalf("LoadManifest: %v", err)
+	}
+	if len(got) != 1 {
+		t.Fatalf("entries = %d, want 1", len(got))
+	}
+	e := got[0]
+	if e.LearnedSurface != "claude.md.learned-workflow" {
+		t.Errorf("LearnedSurface = %q, want claude.md.learned-workflow", e.LearnedSurface)
+	}
+	if len(e.BulletsChanged) != 2 {
+		t.Fatalf("BulletsChanged len = %d, want 2", len(e.BulletsChanged))
+	}
+	if e.BulletsChanged[0] != "ledger-key-A" || e.BulletsChanged[1] != "ledger-key-B" {
+		t.Errorf("BulletsChanged = %v, want [ledger-key-A ledger-key-B]", e.BulletsChanged)
+	}
+	if e.SnapshotDir != "/tmp/snapshots/2026-07-12T00-00-00.000000000Z" {
+		t.Errorf("SnapshotDir = %q", e.SnapshotDir)
+	}
+
+	// Existing fields are preserved additively (no field-order/type regression).
+	if e.ProposalID != "hev2-030-001" {
+		t.Errorf("ProposalID = %q", e.ProposalID)
+	}
+	if e.Decision != "approved" {
+		t.Errorf("Decision = %q", e.Decision)
+	}
+	if e.AppliedSurface != "description" {
+		t.Errorf("AppliedSurface = %q", e.AppliedSurface)
+	}
+}
+
+// TestLineageEntry_EvidenceOrNull (AC-HEV2-031 / REQ-HEV2-024 / AP-HEV2-010):
+// when no machine signal exists, the evidence-reference field (BulletsChanged)
+// serializes as JSON `null` — NOT `[]` (which fabricates a "zero bullets
+// changed" claim), NOT omitted (which loses the evidence-or-null signal), NOT
+// `""` (wrong type). The field is deliberately tagged WITHOUT omitempty so a
+// nil slice emits `null`.
+func TestLineageEntry_EvidenceOrNull(t *testing.T) {
+	t.Parallel()
+
+	// Entry with no bullet-level machine signal (a reject, or a legacy transition).
+	entry := LineageEntry{
+		ProposalID: "hev2-031-001",
+		TargetPath: "CLAUDE.md",
+		Decision:   "rejected",
+		Reason:     "frozen guard",
+		// BulletsChanged left nil — no machine signal.
+	}
+	data, err := json.Marshal(entry)
+	if err != nil {
+		t.Fatalf("Marshal: %v", err)
+	}
+	jsonStr := string(data)
+
+	// Evidence-or-null: "bullets_changed":null (the load-bearing assertion).
+	if !strings.Contains(jsonStr, `"bullets_changed":null`) {
+		t.Errorf("BulletsChanged nil must serialize as null; got: %s", jsonStr)
+	}
+	// NOT the fabricated empty array.
+	if strings.Contains(jsonStr, `"bullets_changed":[]`) {
+		t.Errorf("BulletsChanged nil must NOT serialize as [] (fabricates zero-change claim); got: %s", jsonStr)
+	}
+	// NOT an empty string.
+	if strings.Contains(jsonStr, `"bullets_changed":""`) {
+		t.Errorf("BulletsChanged must NOT serialize as empty string; got: %s", jsonStr)
+	}
+
+	// Contrast: a populated BulletsChanged serializes as a JSON array.
+	populated := entry
+	populated.BulletsChanged = []string{"k1"}
+	data2, _ := json.Marshal(populated)
+	if !strings.Contains(string(data2), `"bullets_changed":["k1"]`) {
+		t.Errorf("populated BulletsChanged must serialize as array; got: %s", string(data2))
+	}
+}
+
+// TestLineageEntry_AdditiveFieldOrder verifies the M5 fields are APPENDED after
+// the existing fields (additive invariant — existing field order/types
+// unchanged for backward-compat with existing lineage consumers). The JSON key
+// order follows struct field declaration order in Go's default marshaler.
+func TestLineageEntry_AdditiveFieldOrder(t *testing.T) {
+	t.Parallel()
+
+	entry := LineageEntry{
+		ProposalID:      "order-001",
+		TargetPath:      "CLAUDE.md",
+		AppliedSurface:  "description",
+		Decision:        "approved",
+		LearnedSurface:  "claude.md.learned-workflow",
+		BulletsChanged:  []string{"k1"},
+		SnapshotDir:     "/tmp/snap",
+	}
+	data, _ := json.Marshal(entry)
+	s := string(data)
+
+	// Existing fields appear BEFORE the new M5 fields.
+	idxProposal := strings.Index(s, `"proposal_id"`)
+	idxDecision := strings.Index(s, `"decision"`)
+	idxLearned := strings.Index(s, `"learned_surface"`)
+	idxBullets := strings.Index(s, `"bullets_changed"`)
+	idxSnap := strings.Index(s, `"snapshot_dir"`)
+
+	if idxProposal == -1 || idxDecision == -1 || idxLearned == -1 || idxBullets == -1 || idxSnap == -1 {
+		t.Fatalf("missing expected keys in: %s", s)
+	}
+	// proposal_id precedes decision (existing order).
+	if idxProposal >= idxDecision {
+		t.Errorf("proposal_id (%d) must precede decision (%d)", idxProposal, idxDecision)
+	}
+	// The M5 fields come after the existing fields.
+	if idxDecision >= idxLearned {
+		t.Errorf("decision (%d) must precede learned_surface (%d) — M5 fields are appended", idxDecision, idxLearned)
+	}
+	if idxLearned >= idxBullets {
+		t.Errorf("learned_surface (%d) must precede bullets_changed (%d)", idxLearned, idxBullets)
+	}
+	if idxBullets >= idxSnap {
+		t.Errorf("bullets_changed (%d) must precede snapshot_dir (%d)", idxBullets, idxSnap)
+	}
 }

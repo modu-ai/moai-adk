@@ -1250,3 +1250,311 @@ func extractBody(content string) string {
 	}
 	return strings.Join(bodyLines, "\n")
 }
+
+// ─────────────────────────────────────────────
+// M5 — Snapshot / rollback / lineage extension (SPEC-HARNESS-EVOLVE-002)
+// REQ-HEV2-021 (distinct restore units), REQ-HEV2-022 (byte-identical rollback).
+// ─────────────────────────────────────────────
+
+// TestCreateSnapshot_DistinctRestoreUnitsPerSurface (AC-HEV2-028 / REQ-HEV2-021):
+// CreateSurfaceSnapshot on a dual-surface fixture (CLAUDE.md managed block +
+// CLAUDE.local.md Learned section) produces a manifest carrying ≥2 distinct
+// learned_surface values, each with byte_length_pre_write recorded. This is
+// the structural proof of per-surface restore units (design.md §C.1) — NOT a
+// substring grep that a single source comment satisfies.
+func TestCreateSnapshot_DistinctRestoreUnitsPerSurface(t *testing.T) {
+	t.Parallel()
+
+	dir := t.TempDir()
+	claudemd := filepath.Join(dir, "CLAUDE.md")
+	localmd := filepath.Join(dir, "CLAUDE.local.md")
+	claudePre := []byte("# Project\n\nSome always-loaded prose.\n")
+	localPre := []byte("# Local\n\nPersonal dev notes.\n")
+	if err := os.WriteFile(claudemd, claudePre, 0o644); err != nil {
+		t.Fatalf("write CLAUDE.md: %v", err)
+	}
+	if err := os.WriteFile(localmd, localPre, 0o644); err != nil {
+		t.Fatalf("write CLAUDE.local.md: %v", err)
+	}
+
+	snapshotBase := filepath.Join(dir, "snapshots")
+	surfaces := []SurfaceRestoreUnit{
+		{LearnedSurface: "claude.md.learned-workflow", OriginalPath: claudemd, BulletsAffected: []string{"k1", "k2"}},
+		{LearnedSurface: "claude.local.md.learned-workflow-local", OriginalPath: localmd, BulletsAffected: []string{"k3"}},
+	}
+	snapshotDir, err := CreateSurfaceSnapshot(snapshotBase, "hev2-028-001", surfaces)
+	if err != nil {
+		t.Fatalf("CreateSurfaceSnapshot: %v", err)
+	}
+
+	// Parse manifest.json.
+	manifestPath := filepath.Join(snapshotDir, "manifest.json")
+	data, err := os.ReadFile(manifestPath)
+	if err != nil {
+		t.Fatalf("read manifest: %v", err)
+	}
+	var manifest snapshotManifest
+	if err := json.Unmarshal(data, &manifest); err != nil {
+		t.Fatalf("parse manifest: %v", err)
+	}
+	if len(manifest.Files) != 2 {
+		t.Fatalf("manifest has %d files, want 2 (distinct restore units)", len(manifest.Files))
+	}
+
+	// AC-HEV2-051 structural proof: ≥2 distinct learned_surface values.
+	seen := map[string]bool{}
+	for _, f := range manifest.Files {
+		seen[f.LearnedSurface] = true
+	}
+	if len(seen) < 2 {
+		t.Errorf("distinct learned_surface values = %d, want ≥2 (got %v)", len(seen), seen)
+	}
+
+	// Each surface carries a non-zero byte_length_pre_write matching its source.
+	for _, f := range manifest.Files {
+		if f.ByteLengthPreWrite == 0 {
+			t.Errorf("file %q has byte_length_pre_write=0 (M5 must record it)", f.OriginalPath)
+		}
+		switch f.OriginalPath {
+		case claudemd:
+			if f.ByteLengthPreWrite != len(claudePre) {
+				t.Errorf("CLAUDE.md byte_length=%d, want %d", f.ByteLengthPreWrite, len(claudePre))
+			}
+		case localmd:
+			if f.ByteLengthPreWrite != len(localPre) {
+				t.Errorf("CLAUDE.local.md byte_length=%d, want %d", f.ByteLengthPreWrite, len(localPre))
+			}
+		}
+	}
+}
+
+// TestRestoreSnapshot_ByteIdenticalRollback (AC-HEV2-029 / REQ-HEV2-022): after
+// CreateSurfaceSnapshot + mutating both surfaces + RestoreSnapshot, both files
+// are byte-identical to their pre-write state. The byte-length integrity check
+// (ByteLengthPreWrite) gates the rollback.
+func TestRestoreSnapshot_ByteIdenticalRollback(t *testing.T) {
+	t.Parallel()
+
+	dir := t.TempDir()
+	claudemd := filepath.Join(dir, "CLAUDE.md")
+	localmd := filepath.Join(dir, "CLAUDE.local.md")
+	claudePre := []byte("# Project\n\nDigest bullet one.\n")
+	localPre := []byte("# Local\n\nLocal entry one.\n")
+	if err := os.WriteFile(claudemd, claudePre, 0o644); err != nil {
+		t.Fatalf("write CLAUDE.md: %v", err)
+	}
+	if err := os.WriteFile(localmd, localPre, 0o644); err != nil {
+		t.Fatalf("write CLAUDE.local.md: %v", err)
+	}
+
+	snapshotBase := filepath.Join(dir, "snapshots")
+	surfaces := []SurfaceRestoreUnit{
+		{LearnedSurface: "claude.md.learned-workflow", OriginalPath: claudemd},
+		{LearnedSurface: "claude.local.md.learned-workflow-local", OriginalPath: localmd},
+	}
+	snapshotDir, err := CreateSurfaceSnapshot(snapshotBase, "hev2-029-001", surfaces)
+	if err != nil {
+		t.Fatalf("CreateSurfaceSnapshot: %v", err)
+	}
+
+	// Mutate both surfaces (simulate the Curator write).
+	if err := os.WriteFile(claudemd, []byte("# Project\n\nDigest bullet one.\nDigest bullet two.\n"), 0o644); err != nil {
+		t.Fatalf("mutate CLAUDE.md: %v", err)
+	}
+	if err := os.WriteFile(localmd, []byte("# Local\n\nLocal entry one.\nLocal entry two.\n"), 0o644); err != nil {
+		t.Fatalf("mutate CLAUDE.local.md: %v", err)
+	}
+
+	// Rollback.
+	if err := RestoreSnapshot(snapshotDir); err != nil {
+		t.Fatalf("RestoreSnapshot: %v", err)
+	}
+
+	// Both surfaces byte-identical to pre-write.
+	gotClaude, _ := os.ReadFile(claudemd)
+	gotLocal, _ := os.ReadFile(localmd)
+	if !bytes.Equal(claudePre, gotClaude) {
+		t.Errorf("CLAUDE.md not byte-identical after rollback:\ngot:  %q\nwant: %q", string(gotClaude), string(claudePre))
+	}
+	if !bytes.Equal(localPre, gotLocal) {
+		t.Errorf("CLAUDE.local.md not byte-identical after rollback:\ngot:  %q\nwant: %q", string(gotLocal), string(localPre))
+	}
+}
+
+// TestRestoreSnapshot_IntegrityFailure (REQ-HEV2-022): a corrupted backup
+// (byte length != manifest's ByteLengthPreWrite) triggers ErrRollbackIntegrityFailed
+// and does NOT restore the file.
+func TestRestoreSnapshot_IntegrityFailure(t *testing.T) {
+	t.Parallel()
+
+	dir := t.TempDir()
+	target := filepath.Join(dir, "CLAUDE.md")
+	pre := []byte("pre-write content here.\n")
+	if err := os.WriteFile(target, pre, 0o644); err != nil {
+		t.Fatalf("write target: %v", err)
+	}
+	snapshotBase := filepath.Join(dir, "snapshots")
+	snapshotDir, err := CreateSurfaceSnapshot(snapshotBase, "hev2-integrity-001", []SurfaceRestoreUnit{
+		{LearnedSurface: "claude.md.learned-workflow", OriginalPath: target},
+	})
+	if err != nil {
+		t.Fatalf("CreateSurfaceSnapshot: %v", err)
+	}
+
+	// Corrupt the backup: truncate it so its byte length != ByteLengthPreWrite.
+	backupPath := filepath.Join(snapshotDir, "CLAUDE.md")
+	if err := os.WriteFile(backupPath, []byte("truncated"), 0o644); err != nil {
+		t.Fatalf("corrupt backup: %v", err)
+	}
+
+	// Mutate the original so a successful (buggy) restore would change it.
+	if err := os.WriteFile(target, []byte("post-write different.\n"), 0o644); err != nil {
+		t.Fatalf("mutate target: %v", err)
+	}
+
+	err = RestoreSnapshot(snapshotDir)
+	if err == nil {
+		t.Fatal("RestoreSnapshot returned nil — integrity check should have failed")
+	}
+	if !errors.Is(err, ErrRollbackIntegrityFailed) {
+		t.Errorf("error is not ErrRollbackIntegrityFailed: got %v", err)
+	}
+
+	// The file must NOT have been restored (the check fires before the write).
+	got, _ := os.ReadFile(target)
+	if string(got) == "pre-write content here.\n" {
+		t.Error("RestoreSnapshot restored despite integrity failure — the check must fire BEFORE the write")
+	}
+}
+
+// TestCreateSnapshot_BackupNameDisambiguation verifies that two surfaces sharing
+// a basename (e.g. two CLAUDE.md files in distinct dirs) get distinct backup
+// names so the second does NOT clobber the first.
+func TestCreateSnapshot_BackupNameDisambiguation(t *testing.T) {
+	t.Parallel()
+
+	dir := t.TempDir()
+	subA := filepath.Join(dir, "a")
+	subB := filepath.Join(dir, "b")
+	if err := os.MkdirAll(subA, 0o755); err != nil {
+		t.Fatalf("mkdir a: %v", err)
+	}
+	if err := os.MkdirAll(subB, 0o755); err != nil {
+		t.Fatalf("mkdir b: %v", err)
+	}
+	targetA := filepath.Join(subA, "CLAUDE.md")
+	targetB := filepath.Join(subB, "CLAUDE.md")
+	if err := os.WriteFile(targetA, []byte("content-a"), 0o644); err != nil {
+		t.Fatalf("write a: %v", err)
+	}
+	if err := os.WriteFile(targetB, []byte("content-b-longer"), 0o644); err != nil {
+		t.Fatalf("write b: %v", err)
+	}
+
+	snapshotBase := filepath.Join(dir, "snapshots")
+	snapshotDir, err := CreateSurfaceSnapshot(snapshotBase, "disambig-001", []SurfaceRestoreUnit{
+		{LearnedSurface: "claude.md.learned-workflow", OriginalPath: targetA},
+		{LearnedSurface: "claude.local.md.learned-workflow-local", OriginalPath: targetB},
+	})
+	if err != nil {
+		t.Fatalf("CreateSurfaceSnapshot: %v", err)
+	}
+
+	// Read the manifest — two distinct BackupName values.
+	data, _ := os.ReadFile(filepath.Join(snapshotDir, "manifest.json"))
+	var manifest snapshotManifest
+	if err := json.Unmarshal(data, &manifest); err != nil {
+		t.Fatalf("parse manifest: %v", err)
+	}
+	if len(manifest.Files) != 2 {
+		t.Fatalf("manifest files = %d, want 2", len(manifest.Files))
+	}
+	names := map[string]bool{}
+	for _, f := range manifest.Files {
+		names[f.BackupName] = true
+	}
+	if len(names) != 2 {
+		t.Errorf("distinct backup names = %d, want 2 (basename collision must be disambiguated): %v", len(names), names)
+	}
+
+	// Both backups exist and carry their distinct content.
+	for _, f := range manifest.Files {
+		bp := filepath.Join(snapshotDir, f.BackupName)
+		if _, statErr := os.Stat(bp); statErr != nil {
+			t.Errorf("backup %q missing: %v", f.BackupName, statErr)
+		}
+	}
+}
+
+// TestCreateSnapshot_EmptySurfaces verifies CreateSurfaceSnapshot rejects an
+// empty surface list without creating a snapshot directory.
+func TestCreateSnapshot_EmptySurfaces(t *testing.T) {
+	t.Parallel()
+
+	dir := t.TempDir()
+	snapshotBase := filepath.Join(dir, "snapshots")
+	_, err := CreateSurfaceSnapshot(snapshotBase, "empty-001", nil)
+	if err == nil {
+		t.Error("CreateSurfaceSnapshot with nil surfaces returned nil — want error")
+	}
+}
+
+// TestWriteLineageCurator_RoundTrip verifies the writeLineageCurator Applier
+// method populates the M5 surface fields and they round-trip via LoadManifest
+// (REQ-HEV2-023 plumbing).
+func TestWriteLineageCurator_RoundTrip(t *testing.T) {
+	t.Parallel()
+
+	manifestPath := filepath.Join(t.TempDir(), "manifest.jsonl")
+	a := newApplierWithManifest(manifestPath)
+	proposal := Proposal{ID: "curator-001", TargetPath: "CLAUDE.md", FieldKey: "description"}
+	if err := a.writeLineageCurator(proposal, "approved", "description", "curator write",
+		"claude.md.learned-workflow", []string{"k1", "k2"}, "/tmp/snapshots/x"); err != nil {
+		t.Fatalf("writeLineageCurator: %v", err)
+	}
+	entries, err := LoadManifest(manifestPath)
+	if err != nil {
+		t.Fatalf("LoadManifest: %v", err)
+	}
+	if len(entries) != 1 {
+		t.Fatalf("entries = %d, want 1", len(entries))
+	}
+	e := entries[0]
+	if e.LearnedSurface != "claude.md.learned-workflow" {
+		t.Errorf("LearnedSurface = %q", e.LearnedSurface)
+	}
+	if len(e.BulletsChanged) != 2 || e.BulletsChanged[0] != "k1" || e.BulletsChanged[1] != "k2" {
+		t.Errorf("BulletsChanged = %v", e.BulletsChanged)
+	}
+	if e.SnapshotDir != "/tmp/snapshots/x" {
+		t.Errorf("SnapshotDir = %q", e.SnapshotDir)
+	}
+}
+
+// TestWriteLineage_LegacyPathLeavesSurfaceFieldsZero verifies the legacy
+// writeLineage path (the pre-Curator Apply callers) leaves the M5 fields at
+// their zero value so legacy transitions serialize byte-identically to pre-M5.
+func TestWriteLineage_LegacyPathLeavesSurfaceFieldsZero(t *testing.T) {
+	t.Parallel()
+
+	manifestPath := filepath.Join(t.TempDir(), "manifest.jsonl")
+	a := newApplierWithManifest(manifestPath)
+	proposal := Proposal{ID: "legacy-001", TargetPath: ".claude/skills/x/SKILL.md", FieldKey: "description"}
+	if err := a.writeLineage(proposal, "approved", "description", "legacy approve"); err != nil {
+		t.Fatalf("writeLineage: %v", err)
+	}
+	entries, _ := LoadManifest(manifestPath)
+	if len(entries) != 1 {
+		t.Fatalf("entries = %d, want 1", len(entries))
+	}
+	e := entries[0]
+	if e.LearnedSurface != "" {
+		t.Errorf("legacy LearnedSurface = %q, want empty", e.LearnedSurface)
+	}
+	if e.BulletsChanged != nil {
+		t.Errorf("legacy BulletsChanged = %v, want nil (evidence-or-null)", e.BulletsChanged)
+	}
+	if e.SnapshotDir != "" {
+		t.Errorf("legacy SnapshotDir = %q, want empty", e.SnapshotDir)
+	}
+}

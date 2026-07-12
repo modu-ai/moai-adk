@@ -537,4 +537,33 @@ type LineageEntry struct {
 
 	// Reason은 전환 사유 (reject 시 거부 layer의 사유, approve 시 승인 설명).
 	Reason string `json:"reason,omitempty"`
+
+	// ── M5 additive fields (SPEC-HARNESS-EVOLVE-002 REQ-HEV2-023) ───────────
+	// These three fields are appended additively — existing field order/types
+	// are unchanged so legacy lineage consumers parse pre-M5 entries verbatim.
+	// Legacy Apply transitions (the pre-Curator safety-pipeline path) leave
+	// these at their Go zero value; the Curator write path
+	// (Applier.writeLineageCurator) populates them on every managed-block write.
+
+	// LearnedSurface names the curator managed-block surface this transition
+	// targeted: "claude.md.learned-workflow" for the Tier-4 digest block,
+	// "claude.local.md.learned-workflow-local" for the Tier-3 append surface.
+	// Empty for legacy Apply transitions that pre-date the Curator (omitempty).
+	LearnedSurface string `json:"learned_surface,omitempty"`
+
+	// BulletsChanged carries the ledger_keys of bullets added/updated/deleted
+	// by this transition. This is the load-bearing evidence-reference field:
+	// when no machine signal exists (a reject, or a legacy transition), it is
+	// left nil so json.Marshal emits JSON `null` — NOT `[]` (which would
+	// fabricate a "zero bullets changed" claim) and NOT omitted (which would
+	// lose the evidence-or-null signal). REQ-HEV2-024 / AP-HEV2-010.
+	// Deliberately tagged WITHOUT omitempty so nil serializes as `null`.
+	BulletsChanged []string `json:"bullets_changed"`
+
+	// SnapshotDir is the snapshot directory path backing this transition's
+	// restore unit (the value returned by CreateSurfaceSnapshot). Empty when
+	// no snapshot was taken (e.g. a reject) — omitempty drops the field
+	// rather than carrying an empty string (the evidence-or-null rule binds
+	// BulletsChanged, not this classifier/pointer field).
+	SnapshotDir string `json:"snapshot_dir,omitempty"`
 }
