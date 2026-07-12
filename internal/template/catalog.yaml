@@ -117,7 +117,7 @@ catalog:
             - name: manager-spec
               tier: core
               path: templates/.claude/agents/moai/manager-spec.md
-              hash: dc15539c7352ffaad5ee373bb0fbeaa7e544dc5c92c11541f90b24ed3855f97f
+              hash: 22eee060d7080ac5d0a248350e701bd47959b42677441ee053f8c4591f965075
               version: 1.0.0
             - name: plan-auditor
               tier: core

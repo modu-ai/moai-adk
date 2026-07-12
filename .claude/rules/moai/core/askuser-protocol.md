@@ -370,6 +370,15 @@ This section is the **single source of truth** for Stage 1 Clarify trigger condi
 4. Command invocation with all required arguments provided — no ambiguity
 5. Continuation of previously confirmed work in the same session — intent already established
 
+### The Unknowns 4-Quadrant Lens
+
+Beyond the detection-signal triggers above, classify the ambiguity by **user blind spot** using the Known-Knowns / Known-Unknowns / Unknown-Knowns / Unknown-Unknowns 4-quadrant lens:
+
+- **Known-Knowns** — facts the user has stated and the orchestrator has confirmed. No clarification needed.
+- **Known-Unknowns** — gaps the user is aware of (open questions they can answer). Resolve via a Socratic interview round (§ Socratic Interview Structure).
+- **Unknown-Knowns** — constraints implicit in the existing codebase that the user has not surfaced. Resolve via `Agent(Explore)` read-only reconnaissance, then confirm with the user.
+- **Unknown-Unknowns** — risks neither the user nor the orchestrator has articulated. When Unknown-Unknowns are suspected (unfamiliar domain, new subsystem, unfamiliar design/library work), the lens directs the orchestrator to run a Blind Spot Pass (§ Blind Spot Pass) before plan-phase entry.
+
 ### First-Action Sequence After Trigger
 
 ```
@@ -381,6 +390,31 @@ Trigger detected
   → Step 5: If <100%: go to Step 1 with narrowed questions
              If 100%: consolidate report → final confirmation → execute
 ```
+
+---
+
+## Blind Spot Pass
+
+The **Blind Spot Pass** is an OPTIONAL pre-plan Discovery technique for surfacing the user's **unknown-unknowns** — the risks neither the user nor the orchestrator has articulated. It adapts the "help me find my blind spots" activity to the orchestrator model: read-only reconnaissance by `Agent(Explore)`, with the findings surfaced to the user through the orchestrator's `AskUserQuestion` channel.
+
+### When to run
+
+**Where** the user is working in an **unfamiliar** domain — a new subsystem, or unfamiliar design/library territory — **and** the orchestrator suspects unknown-unknowns, the orchestrator SHOULD run a Blind Spot Pass **before plan-phase entry**, before authoring the SPEC. The trigger is a judgment call (suspected unknown-unknowns), NOT an automatic gate on every unfamiliar-domain plan entry.
+
+### Optionality
+
+The Blind Spot Pass is **optional** — it is triggered only when unknown-unknowns are suspected, and is **not a mandatory gate**. In a familiar domain with no suspected unknown-unknowns, the pass is skipped and no forced overhead is incurred.
+
+### Mechanism
+
+When the orchestrator runs a Blind Spot Pass:
+
+1. Spawn `Agent(Explore)` in **read-only** mode to scan the relevant domain (the existing subsystem, library surface, integration points).
+2. From that reconnaissance, surface the user's likely unknown-unknowns through a single `AskUserQuestion` round, so the user can react and prompt better before the plan is authored.
+
+### Subagent boundary (preserved)
+
+`Agent(Explore)` — and any subagent — **does not prompt the user** directly. The unknown-unknowns are surfaced only through the orchestrator's `AskUserQuestion` channel, preserving the asymmetric orchestrator–subagent boundary (§ Orchestrator–Subagent Boundary). A subagent that lacks input returns a blocker report; it never asks the user.
 
 ---
 

@@ -143,10 +143,13 @@ LSP quality gates apply phase-specific thresholds — plan: capture LSP baseline
 The five development safeguards (HARD Rules) ensure code quality and prevent regressions. They are the §1 HARD bullets (Approach-First, Multi-File Decomposition, Post-Implementation Review, Reproduction-First Bug Fix, Context-First Discovery) expanded:
 
 - **Rule 1 — Approach-First Development**: Before non-trivial code, explain the approach + which files change + why; get user approval. Exceptions: typo/single-line/obvious bug fixes.
+  - Present the decisions most likely to change first (data-model changes, new type interfaces, user-facing/UX flows), deferring mechanical/refactoring steps to the end, so review focuses on the highest-change-likelihood decisions.
 - **Rule 2 — Multi-File Change Decomposition**: When modifying 3+ files, split into logical units (TodoList), execute file-by-file, analyze dependencies before parallel execution, report progress per unit.
 - **Rule 3 — Post-Implementation Review**: After coding, provide potential-issue list (edge cases, error/concurrency scenarios), suggested test cases, known limitations/assumptions, additional-validation recommendations.
 - **Rule 4 — Reproduction-First Bug Fixing**: Write a failing reproduction test first; confirm it fails; challenge the diagnosed root cause once ("How do we know this is the cause, not a symptom?"); fix minimally; verify the test passes.
 - **Rule 5 — Context-First Discovery**: When intent is unclear, conduct a Socratic interview before execution. Trigger conditions, the discovery process (ToolSearch preload → AskUserQuestion rounds → 100% clarity → explicit confirmation), exceptions, and constraints are the SSOT at `.claude/rules/moai/core/askuser-protocol.md` § Ambiguity Triggers and Exceptions + § Socratic Interview Structure.
+  - When the domain is unfamiliar and unknown-unknowns are suspected, run an OPTIONAL Blind Spot Pass before plan-phase entry (SSOT: `.claude/rules/moai/core/askuser-protocol.md` § Blind Spot Pass).
+  - Classify ambiguity with the Known-Knowns / Known-Unknowns / Unknown-Knowns / Unknown-Unknowns 4-quadrant lens; suspected Unknown-Unknowns route to a Blind Spot Pass (same SSOT § Ambiguity Triggers and Exceptions).
 
 Rule sequencing: Rule 5 (Discovery — establishes WHAT) executes BEFORE Rule 1 (Approach-First — explains HOW).
 

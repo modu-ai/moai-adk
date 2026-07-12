@@ -128,7 +128,7 @@ OUT OF SCOPE: Code implementation (manager-develop/tdd), Git operations (manager
 
 **spec.md**: YAML frontmatter (12 canonical fields, see schema below), HISTORY section, EARS requirements, Out of Scope section (at least one `### Out of Scope — <topic>` H3 sub-heading with `-` bullets).
 
-**plan.md**: Implementation plan, milestones (priority-based, no time estimates), technical approach, risks.
+**plan.md**: Implementation plan, milestones (priority-based, no time estimates), technical approach, risks. Order plan.md milestones/sections by decision-reversibility — lead with the decisions most likely to change (data-model changes, new type interfaces, user-facing/UX flows) and defer mechanical/refactoring steps to the bottom, so human review focuses on the highest-change-likelihood decisions.
 
 **acceptance.md**: Given-When-Then scenarios (minimum 2), edge cases, quality gate criteria, Definition of Done.
 

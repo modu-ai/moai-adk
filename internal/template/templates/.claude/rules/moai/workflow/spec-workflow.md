@@ -157,6 +157,8 @@ Anti-pattern: classifying a 1000+ LOC SPEC as Tier S to skip overhead. Mitigatio
 
 Create comprehensive specification using EARS format.
 
+Optional pre-plan technique — **Blind Spot Pass**: when the domain is unfamiliar and unknown-unknowns are suspected, the orchestrator MAY run a Blind Spot Pass before plan-phase entry to surface the user's likely unknown-unknowns via `Agent(Explore)` read-only reconnaissance + an `AskUserQuestion` round. SSOT: `.claude/rules/moai/core/askuser-protocol.md` § Blind Spot Pass.
+
 Sub-phases:
 1. Research: Deep codebase analysis producing research.md artifact
 2. Planning: SPEC document creation with EARS format requirements
