@@ -7,6 +7,7 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/manifest"
 )
 
@@ -152,42 +153,11 @@ const (
 	EffortLevelMax = "max"
 )
 
-// agentEffortMap specifies explicit effort overrides for reasoning-heavy agents.
-//
-// SPEC-CC2178-MODEL-POLICY-REPAIR-001 M2: the map was reconciled against the
-// 8-agent retained catalog. The 3 archived phantom keys (manager-strategy,
-// expert-security, expert-refactoring) were removed; plan-auditor and
-// sync-auditor were synced from "high" to "xhigh" to match their hand-authored
-// agent files (map←file reconciliation per REQ-MPR-011b); manager-develop
-// (xhigh) and builder-harness (high) were added as the missing retained
-// agents. ApplyEffortPolicy + GetAgentEffort are NOT retired — they have 2
-// production callers (initializer.go, update.go); full retirement is deferred
-// to SPEC-CC2178-EFFORT-MAP-RETIREMENT-001 (see research.md §3).
-//
-// Key: agent name, Value: effort level string
-var agentEffortMap = map[string]string{
-	"manager-spec":    EffortLevelXHigh,
-	"plan-auditor":    EffortLevelXHigh, // REQ-MPR-011b: synced from high → xhigh (matches agent file)
-	"sync-auditor":    EffortLevelXHigh, // REQ-MPR-011b: synced from high → xhigh (matches agent file)
-	"manager-develop": EffortLevelXHigh, // REQ-MPR-011a: added retained agent (matches agent file)
-	"builder-harness": EffortLevelHigh,  // REQ-MPR-011a: added retained agent (matches agent file)
-}
-
-// GetAgentEffort returns the effort level override for the given agent.
-// Returns "" (empty string) for agents not in agentEffortMap, which signals
-// the caller to use the runtime default (Opus 4.7 defaults to xhigh).
-//
-// @MX:NOTE: [AUTO] Separate from GetAgentModel — ModelPolicy⊥Effort by design.
-func GetAgentEffort(agentName string) string {
-	return agentEffortMap[agentName]
-}
-
 // effortLineRegex matches an existing effort: field in YAML frontmatter.
 var effortLineRegex = regexp.MustCompile(`(?m)^effort:\s*\S+`)
 
-// frontmatterCloseRegex matches the closing --- delimiter of a YAML frontmatter block.
-// It is intentionally written to match the second occurrence via string splitting logic
-// in insertEffortInFrontmatter, not via regex alone.
+// frontmatterOpenPrefix is the opening --- delimiter of a YAML frontmatter block.
+// insertEffortInFrontmatter locates the second (closing) --- via string splitting.
 var frontmatterOpenPrefix = "---\n"
 
 // insertEffortInFrontmatter inserts "effort: <level>" into the YAML frontmatter block
@@ -212,179 +182,21 @@ func insertEffortInFrontmatter(content []byte, effortLevel string) []byte {
 	return []byte(s[:insertPos] + "effort: " + effortLevel + "\n" + s[insertPos:])
 }
 
-// ApplyEffortPolicy injects effort level overrides into agent definition files
-// under the given project root. It mirrors ApplyModelPolicy in structure but
-// operates on the effort: frontmatter field instead of model:.
-//
-// Injection rules:
-//   - Agent already has effort: field → preserved (user customisation wins)
-//   - Agent is in agentEffortMap and has no effort: field → value injected
-//   - Agent is not in agentEffortMap → no-op (runtime default applies)
-//   - File has no YAML frontmatter → skipped silently
-//
-// Manifest hashes are updated for every file that is written.
-//
-// @MX:ANCHOR: [AUTO] ApplyEffortPolicy — called from initializer and update paths; mirrors ApplyModelPolicy contract
-// @MX:REASON: [AUTO] fan_in >= 2 (initializer.go + update.go); public API boundary for effort wiring
-func ApplyEffortPolicy(projectRoot string, mgr manifest.Manager) error {
-	// Agents are consolidated under .claude/agents/moai/ (the SPEC-V3R6-AGENT-FOLDER-SPLIT-001
-	// 4-subfolder split was reverted). Iterate the single consolidated directory.
-	domains := []string{"moai"}
-	for _, domain := range domains {
-		agentsDir := filepath.Join(projectRoot, ".claude", "agents", domain)
-		entries, err := os.ReadDir(agentsDir)
-		if err != nil {
-			if os.IsNotExist(err) {
-				continue // domain subfolder absent — skip silently
-			}
-			return fmt.Errorf("read agents directory %q: %w", domain, err)
-		}
-
-		for _, entry := range entries {
-			if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".md") {
-				continue
-			}
-
-			agentName := strings.TrimSuffix(entry.Name(), ".md")
-			targetEffort := GetAgentEffort(agentName)
-			if targetEffort == "" {
-				continue // Not in effort map — use runtime default, no injection
-			}
-
-			filePath := filepath.Join(agentsDir, entry.Name())
-			content, err := os.ReadFile(filePath)
-			if err != nil {
-				return fmt.Errorf("read agent file %q: %w", entry.Name(), err)
-			}
-
-			// Preserve existing effort: value (user customisation wins)
-			if effortLineRegex.Match(content) {
-				continue
-			}
-
-			newContent := insertEffortInFrontmatter(content, targetEffort)
-			if string(newContent) == string(content) {
-				continue // No frontmatter or no change — skip
-			}
-
-			if err := os.WriteFile(filePath, newContent, 0o644); err != nil {
-				return fmt.Errorf("write agent file %q: %w", entry.Name(), err)
-			}
-
-			// Update manifest hash for the patched file
-			relPath := filepath.Join(".claude", "agents", domain, entry.Name())
-			hash := manifest.HashBytes(newContent)
-			if err := mgr.Track(relPath, manifest.TemplateManaged, hash); err != nil {
-				return fmt.Errorf("track patched agent %q: %w", entry.Name(), err)
-			}
-		}
-	}
-
-	return nil
-}
-
-// agentModelMap defines the model assignment for each agent under each policy.
-// Key: agent name, Value: [high_model, medium_model, low_model]
-//
-// SPEC-CC2178-MODEL-POLICY-REPAIR-001 M2: the map was cleaned against the
-// 8-agent retained catalog. The 16 canonical phantom keys (13 archived agents
-// + manager-ddd/manager-tdd legacy aliases of manager-develop + builder-agent
-// legacy alias of builder-harness + builder-skill/builder-plugin archived
-// builder variants) were removed. manager-develop and builder-harness were
-// added back under their canonical names with the iter-2 tuple {sonnet,
-// sonnet, haiku} — aligning with the SPEC's Default-Sonnet cost-routing
-// thesis (D6 rationale: pinning the busiest run-phase agent to Opus would
-// contradict the thesis). The 3 meta/evaluator agents (plan-auditor,
-// sync-auditor) and Explore are intentionally NOT in the map — they use
-// model: inherit per model-policy.md § Inherit-by-Default.
-var agentModelMap = map[string][3]string{
-	// Retained Manager Agents (5 entries total)
-	"manager-spec":    {"opus", "opus", "sonnet"},
-	"manager-develop": {"sonnet", "sonnet", "haiku"}, // REQ-MPR-009 iter-2 tuple (D6: Default-Sonnet-aligned)
-	"manager-docs":    {"sonnet", "haiku", "haiku"},
-	"manager-git":     {"haiku", "haiku", "haiku"},
-	// Retained Builder Agent
-	"builder-harness": {"sonnet", "sonnet", "haiku"}, // REQ-MPR-009 iter-2 tuple (D6: Default-Sonnet-aligned)
-}
-
-// GetAgentModel returns the model string for a given agent under the specified policy.
-func GetAgentModel(policy ModelPolicy, agentName string) string {
-	models, ok := agentModelMap[agentName]
-	if !ok {
-		return "" // Unknown agent: caller should skip to preserve current model
-	}
-
-	switch policy {
-	case ModelPolicyHigh:
-		return models[0]
-	case ModelPolicyMedium:
-		return models[1]
-	case ModelPolicyLow:
-		return models[2]
-	default:
-		return "sonnet" // Unknown policy: safe fallback
-	}
-}
-
 // modelLineRegex matches the "model:" line in YAML frontmatter.
 var modelLineRegex = regexp.MustCompile(`(?m)^model:\s*\S+`)
 
-// ApplyModelPolicy patches the model: field in all agent definition files
-// under the given project root based on the specified model policy.
-// It also updates the manifest hashes for patched files.
-func ApplyModelPolicy(projectRoot string, policy ModelPolicy, mgr manifest.Manager) error {
-	// Agents are consolidated under .claude/agents/moai/ (the SPEC-V3R6-AGENT-FOLDER-SPLIT-001
-	// 4-subfolder split was reverted). Iterate the single consolidated directory.
-	domains := []string{"moai"}
-	for _, domain := range domains {
-		agentsDir := filepath.Join(projectRoot, ".claude", "agents", domain)
-		entries, err := os.ReadDir(agentsDir)
-		if err != nil {
-			if os.IsNotExist(err) {
-				continue // domain subfolder absent — skip silently
-			}
-			return fmt.Errorf("read agents directory %q: %w", domain, err)
-		}
-
-		for _, entry := range entries {
-			if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".md") {
-				continue
-			}
-
-			agentName := strings.TrimSuffix(entry.Name(), ".md")
-			targetModel := GetAgentModel(policy, agentName)
-			if targetModel == "" {
-				continue // Unknown agent: preserve current model
-			}
-
-			filePath := filepath.Join(agentsDir, entry.Name())
-			content, err := os.ReadFile(filePath)
-			if err != nil {
-				return fmt.Errorf("read agent file %q: %w", entry.Name(), err)
-			}
-
-			// Replace the model: line in YAML frontmatter
-			newContent := modelLineRegex.ReplaceAll(content, []byte("model: "+targetModel))
-
-			if string(newContent) == string(content) {
-				continue // No change
-			}
-
-			if err := os.WriteFile(filePath, newContent, 0o644); err != nil {
-				return fmt.Errorf("write agent file %q: %w", entry.Name(), err)
-			}
-
-			// Update manifest hash for the patched file
-			relPath := filepath.Join(".claude", "agents", domain, entry.Name())
-			hash := manifest.HashBytes(newContent)
-			if err := mgr.Track(relPath, manifest.TemplateManaged, hash); err != nil {
-				return fmt.Errorf("track patched agent %q: %w", entry.Name(), err)
-			}
-		}
-	}
-
-	return nil
-}
+// Performance tier tokens — the canonical {max, medium, low} vocabulary of the
+// --model-policy CLI flag (SPEC-AGENT-ARCH-V2-001 M3c) and the tier axis of the
+// plan_type × tier profile structure. Named constants per CLAUDE.local.md §14
+// (no magic literals for the closed-set tokens).
+const (
+	// PerformanceTierMax is the highest-quality tier column.
+	PerformanceTierMax = "max"
+	// PerformanceTierMedium is the balanced default tier column (default-when-absent per plan.md D6).
+	PerformanceTierMedium = "medium"
+	// PerformanceTierLow is the economical tier column.
+	PerformanceTierLow = "low"
+)
 
 // performanceTierRegex matches the performance_tier: line in llm.yaml.
 var performanceTierRegex = regexp.MustCompile(`(?m)^(\s*)performance_tier:\s*["']?[\w-]*["']?`)
@@ -392,7 +204,7 @@ var performanceTierRegex = regexp.MustCompile(`(?m)^(\s*)performance_tier:\s*["'
 // ValidPerformanceTiers returns the closed set of valid No-Haiku performance
 // tiers (SPEC-AGENT-ARCH-V2-001 M3c, design.md §D.2).
 func ValidPerformanceTiers() []string {
-	return []string{"max", "medium", "low"}
+	return []string{PerformanceTierMax, PerformanceTierMedium, PerformanceTierLow}
 }
 
 // IsValidPerformanceTier checks if the given string is a valid performance tier.
@@ -433,5 +245,235 @@ func ApplyPerformanceTier(projectRoot, tier string) error {
 	if err := os.WriteFile(llmPath, newContent, 0o644); err != nil {
 		return fmt.Errorf("write llm.yaml: %w", err)
 	}
+	return nil
+}
+
+// modelInherit is the "inherit" model sentinel. Agents whose profile model is
+// inherit (only Explore) are skipped by the apply pass — inherit is never
+// written as a model: value, and Explore has no agent file on disk.
+const modelInherit = "inherit"
+
+// TierProfileEntry is one atomic {model, effort} assignment for a single agent
+// at one (plan_type, tier) coordinate. It replaces the split agentModelMap
+// ([3]string) + agentEffortMap representation with one unit that carries both
+// dimensions together (REQ-MTP-006).
+type TierProfileEntry struct {
+	// Model is the Claude Code short model alias (opus/sonnet/fable/inherit).
+	Model string
+	// Effort is the reasoning effort level (low/medium/high/xhigh/max).
+	Effort string
+}
+
+// tierProfileRow holds the three tier columns for one agent, indexed by
+// tierColumnIndex: [max, medium, low].
+type tierProfileRow = [3]TierProfileEntry
+
+// tierColumnIndex maps a performance tier token to its column index in a
+// tierProfileRow. Unknown tiers fall back to the medium column (plan.md D6).
+var tierColumnIndex = map[string]int{
+	PerformanceTierMax:    0,
+	PerformanceTierMedium: 1,
+	PerformanceTierLow:    2,
+}
+
+// tierProfiles is the single source of truth for the plan_type × tier × agent →
+// {model, effort} assignment, replacing the dual agentModelMap + agentEffortMap
+// (REQ-MTP-006). Outer key: plan type (config.PlanTypeAPI | config.PlanTypeSubscription).
+// Middle key: agent name. Value: the three tier columns (max, medium, low).
+//
+// The api rows equal spec.md §B.6 (Plan A rev2) and the subscription rows equal
+// spec.md §B.7 (Plan B), copied cell-for-cell — these values are settled design
+// input (verified 60/60 against the model-tier-redesign report) and MUST NOT be
+// re-derived or "improved" without a spec change. Auditors, manager-design, and
+// super-advisor carry explicit rows (moved off implicit inherit); Explore keeps
+// an inherit row for display/derivation surfaces only (the apply pass skips it).
+//
+// @MX:NOTE: [AUTO] SSOT for plan_type × tier agent {model, effort}; api = spec §B.6, subscription = spec §B.7 (verbatim, do not re-derive)
+var tierProfiles = map[string]map[string]tierProfileRow{
+	config.PlanTypeAPI: {
+		// Agent            max                       medium                    low
+		"manager-spec":    {{"fable", "high"}, {"fable", "high"}, {"opus", "high"}},
+		"plan-auditor":    {{"fable", "high"}, {"fable", "high"}, {"opus", "high"}},
+		"sync-auditor":    {{"fable", "high"}, {"opus", "high"}, {"opus", "medium"}},
+		"manager-design":  {{"fable", "high"}, {"fable", "high"}, {"opus", "high"}},
+		"super-advisor":   {{"fable", "xhigh"}, {"fable", "high"}, {"opus", "high"}},
+		"manager-develop": {{"fable", "high"}, {"opus", "high"}, {"opus", "medium"}},
+		"builder-harness": {{"opus", "high"}, {"opus", "medium"}, {"opus", "medium"}},
+		"manager-docs":    {{"sonnet", "medium"}, {"sonnet", "low"}, {"sonnet", "low"}},
+		"manager-git":     {{"sonnet", "low"}, {"sonnet", "low"}, {"sonnet", "low"}},
+		"Explore":         {{modelInherit, "medium"}, {modelInherit, "low"}, {modelInherit, "low"}},
+	},
+	config.PlanTypeSubscription: {
+		// Agent            max                       medium                    low
+		"manager-spec":    {{"opus", "high"}, {"opus", "high"}, {"opus", "medium"}},
+		"plan-auditor":    {{"opus", "high"}, {"opus", "medium"}, {"sonnet", "high"}},
+		"sync-auditor":    {{"opus", "high"}, {"opus", "medium"}, {"sonnet", "high"}},
+		"manager-design":  {{"opus", "high"}, {"opus", "medium"}, {"sonnet", "high"}},
+		"super-advisor":   {{"opus", "xhigh"}, {"opus", "high"}, {"opus", "medium"}},
+		"manager-develop": {{"sonnet", "high"}, {"sonnet", "high"}, {"sonnet", "high"}},
+		"builder-harness": {{"sonnet", "high"}, {"sonnet", "medium"}, {"sonnet", "medium"}},
+		"manager-docs":    {{"sonnet", "low"}, {"sonnet", "low"}, {"sonnet", "low"}},
+		"manager-git":     {{"sonnet", "low"}, {"sonnet", "low"}, {"sonnet", "low"}},
+		"Explore":         {{modelInherit, "medium"}, {modelInherit, "low"}, {modelInherit, "low"}},
+	},
+}
+
+// GetTierProfileEntry returns the {model, effort} assignment for an agent under
+// the given plan type and tier (REQ-MTP-006..009). The bool is false when the
+// agent has no row in the plan's profile (unknown/user-added agent) — the apply
+// pass uses the false return to skip the file byte-identically (REQ-MTP-013).
+// An unrecognized plan type falls back to the subscription profile (backward-
+// compatibility default per REQ-MTP-002); an unrecognized tier falls back to the
+// medium column (plan.md D6 default-when-absent).
+func GetTierProfileEntry(planType, agentName, tier string) (TierProfileEntry, bool) {
+	plan, ok := tierProfiles[planType]
+	if !ok {
+		plan = tierProfiles[config.DefaultPlanType] // subscription fallback (BC)
+	}
+	row, ok := plan[agentName]
+	if !ok {
+		return TierProfileEntry{}, false
+	}
+	idx, ok := tierColumnIndex[tier]
+	if !ok {
+		idx = tierColumnIndex[PerformanceTierMedium] // D6 default-when-absent
+	}
+	return row[idx], true
+}
+
+// MapModelPolicyToTier translates a legacy template.ModelPolicy value
+// ({high, medium, low}) to the canonical performance tier ({max, medium, low}):
+// high→max, medium→medium, low→low (REQ-MTP-012). It maps the TIER dimension
+// ONLY and returns NO plan value — plan selection is owned solely by the
+// effective plan_type resolution (config.LLMConfig.EffectivePlanType), NEVER by
+// this function. An empty or unrecognized policy falls back to the medium tier
+// (plan.md D6 default-when-absent).
+func MapModelPolicyToTier(policy ModelPolicy) string {
+	switch policy {
+	case ModelPolicyHigh:
+		return PerformanceTierMax
+	case ModelPolicyMedium:
+		return PerformanceTierMedium
+	case ModelPolicyLow:
+		return PerformanceTierLow
+	default:
+		return PerformanceTierMedium
+	}
+}
+
+// NormalizeToTier resolves any performance-policy string to the canonical tier
+// vocabulary {max, medium, low}. It accepts the canonical performance-tier
+// tokens verbatim and bridges the legacy ModelPolicy vocabulary via
+// MapModelPolicyToTier (high→max). Empty or unrecognized input falls back to the
+// medium tier (plan.md D6). This is the call-site resolver used by the init and
+// update apply paths, whose ModelPolicy vocabularies differ ({max,medium,low}
+// vs {high,medium,low}).
+func NormalizeToTier(s string) string {
+	if IsValidPerformanceTier(s) {
+		return s
+	}
+	return MapModelPolicyToTier(ModelPolicy(s))
+}
+
+// planTypeLineRegex matches an uncommented plan_type: field in llm.yaml,
+// capturing the value. A commented line (`# plan_type: ...`) does not match
+// because "#" is not leading whitespace.
+var planTypeLineRegex = regexp.MustCompile(`(?m)^\s*plan_type:\s*["']?([\w-]+)["']?`)
+
+// ResolveProjectPlanType reads the effective plan type from the project's
+// llm.yaml (REQ-MTP-002). An absent file, an absent/commented plan_type key, or
+// an empty value resolves to the subscription default via
+// config.LLMConfig.EffectivePlanType; any explicit value passes through verbatim
+// (GetTierProfileEntry falls back to subscription for an out-of-set value).
+func ResolveProjectPlanType(projectRoot string) string {
+	llmPath := filepath.Join(projectRoot, ".moai", "config", "sections", "llm.yaml")
+	content, err := os.ReadFile(llmPath)
+	if err != nil {
+		return config.DefaultPlanType
+	}
+	var pt string
+	if m := planTypeLineRegex.FindSubmatch(content); len(m) >= 2 {
+		pt = string(m[1])
+	}
+	return config.LLMConfig{PlanType: pt}.EffectivePlanType()
+}
+
+// ApplyTierProfile patches each shipped agent file's model: AND effort:
+// frontmatter in a single traversal, using the {model, effort} pair from the
+// plan_type × tier profile (spec.md §B.6/§B.7). It replaces the former two-pass
+// ApplyModelPolicy + ApplyEffortPolicy sequence at both production call sites
+// (REQ-MTP-010).
+//
+// Precedence (REQ-MTP-011, plan.md D1 replace-both): BOTH the existing model:
+// line AND the existing effort: line are REPLACED with the profile values. The
+// tier profile is the single source of truth for shipped-agent model/effort; the
+// historical preserve-existing-effort behavior is intentionally dropped because
+// all shipped agent files already carry effort:, which would otherwise render
+// the entire effort matrix inert. A user who wants to pin a value re-pins after
+// init/update (identical to today's model: replace semantics).
+//
+// An agent whose name has no row in the profile (unknown/user-added) is left
+// byte-identical (REQ-MTP-013). Agents whose profile model is "inherit" (Explore)
+// are skipped — Explore has no agent file, and inherit is never written as a
+// model: value. Manifest hashes are updated for every written file.
+//
+// @MX:ANCHOR: [AUTO] ApplyTierProfile — unified model+effort apply pass; called from initializer and update paths
+// @MX:REASON: [AUTO] fan_in >= 2 (initializer.go + update.go); public API boundary replacing ApplyModelPolicy + ApplyEffortPolicy; replace-both precedence is load-bearing (preserve-effort would render the effort matrix inert)
+func ApplyTierProfile(projectRoot, planType, tier string, mgr manifest.Manager) error {
+	// Agents are consolidated under .claude/agents/moai/.
+	agentsDir := filepath.Join(projectRoot, ".claude", "agents", "moai")
+	entries, err := os.ReadDir(agentsDir)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil // agents directory absent — nothing to patch
+		}
+		return fmt.Errorf("read agents directory: %w", err)
+	}
+
+	for _, entry := range entries {
+		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".md") {
+			continue
+		}
+
+		agentName := strings.TrimSuffix(entry.Name(), ".md")
+		profile, ok := GetTierProfileEntry(planType, agentName, tier)
+		if !ok {
+			continue // unknown/user-added agent — preserve byte-identical (REQ-MTP-013)
+		}
+		if profile.Model == modelInherit {
+			continue // inherit agents (Explore) are never patched
+		}
+
+		filePath := filepath.Join(agentsDir, entry.Name())
+		content, err := os.ReadFile(filePath)
+		if err != nil {
+			return fmt.Errorf("read agent file %q: %w", entry.Name(), err)
+		}
+
+		// Replace-both precedence (D1): rewrite model: AND effort: to the profile
+		// values in one traversal.
+		newContent := modelLineRegex.ReplaceAll(content, []byte("model: "+profile.Model))
+		if effortLineRegex.Match(newContent) {
+			newContent = effortLineRegex.ReplaceAll(newContent, []byte("effort: "+profile.Effort))
+		} else {
+			newContent = insertEffortInFrontmatter(newContent, profile.Effort)
+		}
+
+		if string(newContent) == string(content) {
+			continue // already at the target model + effort — no write
+		}
+
+		if err := os.WriteFile(filePath, newContent, 0o644); err != nil {
+			return fmt.Errorf("write agent file %q: %w", entry.Name(), err)
+		}
+
+		// Update manifest hash for the patched file.
+		relPath := filepath.Join(".claude", "agents", "moai", entry.Name())
+		hash := manifest.HashBytes(newContent)
+		if err := mgr.Track(relPath, manifest.TemplateManaged, hash); err != nil {
+			return fmt.Errorf("track patched agent %q: %w", entry.Name(), err)
+		}
+	}
+
 	return nil
 }

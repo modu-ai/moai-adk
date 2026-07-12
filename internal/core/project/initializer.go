@@ -165,21 +165,17 @@ func (i *projectInitializer) Init(ctx context.Context, opts InitOptions) (*InitR
 		}
 	}
 
-	// Step 3b: Apply model policy to agent files (post-deployment patching).
-	// Always apply a policy; default to high when not explicitly set.
-	// "inherit" is no longer a supported model value in Claude Code.
+	// Step 3b: Apply the plan_type × tier profile to agent files (post-deployment
+	// patching). A single pass patches both model: and effort: frontmatter
+	// atomically with replace-both precedence (the tier profile is the SSOT for
+	// shipped-agent model/effort). The effective plan type is read from the
+	// deployed llm.yaml (absent → subscription); the tier is resolved from
+	// opts.ModelPolicy (default medium when unset).
 	{
-		policy := template.ModelPolicy(opts.ModelPolicy)
-		if policy == "" {
-			policy = template.DefaultModelPolicy
-		}
-		if err := template.ApplyModelPolicy(opts.ProjectRoot, policy, i.manifestMgr); err != nil {
-			i.logger.Warn("failed to apply model policy", "error", err)
-		}
-		// Step 3c: Inject effort level overrides for Opus 4.7 reasoning agents.
-		// Only agents in agentEffortMap are patched; existing effort values are preserved.
-		if err := template.ApplyEffortPolicy(opts.ProjectRoot, i.manifestMgr); err != nil {
-			i.logger.Warn("failed to apply effort policy", "error", err)
+		planType := template.ResolveProjectPlanType(opts.ProjectRoot)
+		tier := template.NormalizeToTier(opts.ModelPolicy)
+		if err := template.ApplyTierProfile(opts.ProjectRoot, planType, tier, i.manifestMgr); err != nil {
+			i.logger.Warn("failed to apply tier profile", "error", err)
 		}
 	}
 

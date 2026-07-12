@@ -2735,19 +2735,20 @@ func applyWizardConfig(projectRoot string, result *wizard.WizardResult) error {
 		}
 	}
 
-	// Apply model policy to agent definition files (project-level, not profile-level)
+	// Apply the plan_type × tier profile to agent definition files (project-level,
+	// not profile-level). A single pass patches both model: and effort: frontmatter
+	// atomically (replace-both precedence). The effective plan type is read from the
+	// persisted llm.yaml (absent → subscription); the tier is resolved from
+	// result.ModelPolicy (legacy {high, medium, low} → {max, medium, low}).
 	if result.ModelPolicy != "" {
 		policy := template.ModelPolicy(result.ModelPolicy)
 		if template.IsValidModelPolicy(string(policy)) {
 			mgr := manifest.NewManager()
 			if _, err := mgr.Load(projectRoot); err == nil {
-				if err := template.ApplyModelPolicy(projectRoot, policy, mgr); err != nil {
-					return fmt.Errorf("apply model policy: %w", err)
-				}
-				// Inject effort level overrides for Opus 4.7 reasoning agents.
-				// Runs after ApplyModelPolicy to ensure agent files are in place first.
-				if err := template.ApplyEffortPolicy(projectRoot, mgr); err != nil {
-					return fmt.Errorf("apply effort policy: %w", err)
+				planType := template.ResolveProjectPlanType(projectRoot)
+				tier := template.NormalizeToTier(result.ModelPolicy)
+				if err := template.ApplyTierProfile(projectRoot, planType, tier, mgr); err != nil {
+					return fmt.Errorf("apply tier profile: %w", err)
 				}
 			}
 			// Persist model_policy to system.yaml so it survives future updates

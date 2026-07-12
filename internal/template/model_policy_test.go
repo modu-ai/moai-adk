@@ -53,297 +53,6 @@ func TestIsValidModelPolicy(t *testing.T) {
 	}
 }
 
-func TestGetAgentModel(t *testing.T) {
-	tests := []struct {
-		name      string
-		policy    ModelPolicy
-		agentName string
-		want      string
-	}{
-		// Retained Manager agents (SPEC-CC2178-MODEL-POLICY-REPAIR-001 M2 catalog)
-		{"spec_high", ModelPolicyHigh, "manager-spec", "opus"},
-		{"spec_medium", ModelPolicyMedium, "manager-spec", "opus"},
-		{"spec_low", ModelPolicyLow, "manager-spec", "sonnet"},
-		{"develop_high", ModelPolicyHigh, "manager-develop", "sonnet"},
-		{"develop_medium", ModelPolicyMedium, "manager-develop", "sonnet"},
-		{"develop_low", ModelPolicyLow, "manager-develop", "haiku"},
-		{"docs_high", ModelPolicyHigh, "manager-docs", "sonnet"},
-		{"docs_low", ModelPolicyLow, "manager-docs", "haiku"},
-		{"git_high", ModelPolicyHigh, "manager-git", "haiku"},
-
-		// Retained Builder agent
-		{"builder_harness_high", ModelPolicyHigh, "builder-harness", "sonnet"},
-		{"builder_harness_low", ModelPolicyLow, "builder-harness", "haiku"},
-
-		// Archived phantom agents (post-cleanup): return "" (absent from map)
-		{"quality_archived", ModelPolicyHigh, "manager-quality", ""},
-		{"backend_archived", ModelPolicyHigh, "expert-backend", ""},
-		{"security_archived", ModelPolicyHigh, "expert-security", ""},
-		{"builder_agent_archived", ModelPolicyHigh, "builder-agent", ""},
-
-		// Unknown agent: returns "" (skip sentinel - preserve current model)
-		{"unknown_agent", ModelPolicyHigh, "nonexistent-agent", ""},
-
-		// Invalid policy: returns "sonnet" as safe fallback
-		{"invalid_policy", ModelPolicy("invalid"), "manager-spec", "sonnet"},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			got := GetAgentModel(tt.policy, tt.agentName)
-			if got != tt.want {
-				t.Errorf("GetAgentModel(%q, %q) = %q, want %q", tt.policy, tt.agentName, got, tt.want)
-			}
-		})
-	}
-}
-
-func TestApplyModelPolicy(t *testing.T) {
-	t.Run("applies_policy_to_agent_files", func(t *testing.T) {
-		root := t.TempDir()
-		// SPEC-CC2178-MODEL-POLICY-REPAIR-001 M2: manager-develop lives in core/ and is in the retained map.
-		agentsDir := filepath.Join(root, ".claude", "agents", "moai")
-		if err := os.MkdirAll(agentsDir, 0o755); err != nil {
-			t.Fatalf("MkdirAll error: %v", err)
-		}
-
-		// Create a mock agent file with model: line
-		agentContent := `---
-name: manager-develop
-description: Run-phase implementation agent
-model: opus
----
-# Manager Develop Agent
-`
-		if err := os.WriteFile(filepath.Join(agentsDir, "manager-develop.md"), []byte(agentContent), 0o644); err != nil {
-			t.Fatalf("WriteFile error: %v", err)
-		}
-
-		// Set up manifest
-		mgr := manifest.NewManager()
-		moaiDir := filepath.Join(root, ".moai")
-		if err := os.MkdirAll(moaiDir, 0o755); err != nil {
-			t.Fatalf("MkdirAll error: %v", err)
-		}
-		if _, err := mgr.Load(root); err != nil {
-			t.Fatalf("manifest Load error: %v", err)
-		}
-
-		// Apply low policy (manager-develop low tuple is haiku → change from opus to haiku)
-		err := ApplyModelPolicy(root, ModelPolicyLow, mgr)
-		if err != nil {
-			t.Fatalf("ApplyModelPolicy error: %v", err)
-		}
-
-		// Verify the file was updated
-		content, err := os.ReadFile(filepath.Join(agentsDir, "manager-develop.md"))
-		if err != nil {
-			t.Fatalf("ReadFile error: %v", err)
-		}
-		if got := string(content); got == agentContent {
-			t.Error("file was not modified by ApplyModelPolicy")
-		}
-		// The model line should now be "model: haiku" (manager-develop low tuple)
-		want := "model: haiku"
-		if got := string(content); !containsString(got, want) {
-			t.Errorf("content does not contain %q:\n%s", want, got)
-		}
-	})
-
-	t.Run("no_agents_directory", func(t *testing.T) {
-		root := t.TempDir()
-		mgr := manifest.NewManager()
-		moaiDir := filepath.Join(root, ".moai")
-		if err := os.MkdirAll(moaiDir, 0o755); err != nil {
-			t.Fatalf("MkdirAll error: %v", err)
-		}
-		if _, err := mgr.Load(root); err != nil {
-			t.Fatalf("manifest Load error: %v", err)
-		}
-
-		// Should not error when agents directory does not exist
-		err := ApplyModelPolicy(root, ModelPolicyHigh, mgr)
-		if err != nil {
-			t.Fatalf("ApplyModelPolicy error: %v", err)
-		}
-	})
-
-	t.Run("skips_non_md_files", func(t *testing.T) {
-		root := t.TempDir()
-		// Post SPEC-V3R6-AGENT-FOLDER-SPLIT-001: any domain folder works for non-.md exclusion test.
-		agentsDir := filepath.Join(root, ".claude", "agents", "moai")
-		if err := os.MkdirAll(agentsDir, 0o755); err != nil {
-			t.Fatalf("MkdirAll error: %v", err)
-		}
-
-		// Create a non-.md file
-		if err := os.WriteFile(filepath.Join(agentsDir, "readme.txt"), []byte("not an agent"), 0o644); err != nil {
-			t.Fatalf("WriteFile error: %v", err)
-		}
-
-		mgr := manifest.NewManager()
-		moaiDir := filepath.Join(root, ".moai")
-		if err := os.MkdirAll(moaiDir, 0o755); err != nil {
-			t.Fatalf("MkdirAll error: %v", err)
-		}
-		if _, err := mgr.Load(root); err != nil {
-			t.Fatalf("manifest Load error: %v", err)
-		}
-
-		err := ApplyModelPolicy(root, ModelPolicyHigh, mgr)
-		if err != nil {
-			t.Fatalf("ApplyModelPolicy error: %v", err)
-		}
-	})
-
-	t.Run("skips_directories", func(t *testing.T) {
-		root := t.TempDir()
-		// Post SPEC-V3R6-AGENT-FOLDER-SPLIT-001: any domain folder works for directory-skip test.
-		agentsDir := filepath.Join(root, ".claude", "agents", "moai")
-		subDir := filepath.Join(agentsDir, "subdir.md")
-		if err := os.MkdirAll(subDir, 0o755); err != nil {
-			t.Fatalf("MkdirAll error: %v", err)
-		}
-
-		mgr := manifest.NewManager()
-		moaiDir := filepath.Join(root, ".moai")
-		if err := os.MkdirAll(moaiDir, 0o755); err != nil {
-			t.Fatalf("MkdirAll error: %v", err)
-		}
-		if _, err := mgr.Load(root); err != nil {
-			t.Fatalf("manifest Load error: %v", err)
-		}
-
-		err := ApplyModelPolicy(root, ModelPolicyHigh, mgr)
-		if err != nil {
-			t.Fatalf("ApplyModelPolicy error: %v", err)
-		}
-	})
-
-	t.Run("skips_unknown_agents", func(t *testing.T) {
-		root := t.TempDir()
-		// Post SPEC-V3R6-AGENT-FOLDER-SPLIT-001: unknown agent placed in core/ for walker discovery.
-		agentsDir := filepath.Join(root, ".claude", "agents", "moai")
-		if err := os.MkdirAll(agentsDir, 0o755); err != nil {
-			t.Fatalf("MkdirAll error: %v", err)
-		}
-
-		// Create an agent file for an unknown agent name
-		agentContent := `---
-name: unknown-agent
-model: opus
----
-`
-		if err := os.WriteFile(filepath.Join(agentsDir, "unknown-agent.md"), []byte(agentContent), 0o644); err != nil {
-			t.Fatalf("WriteFile error: %v", err)
-		}
-
-		mgr := manifest.NewManager()
-		moaiDir := filepath.Join(root, ".moai")
-		if err := os.MkdirAll(moaiDir, 0o755); err != nil {
-			t.Fatalf("MkdirAll error: %v", err)
-		}
-		if _, err := mgr.Load(root); err != nil {
-			t.Fatalf("manifest Load error: %v", err)
-		}
-
-		err := ApplyModelPolicy(root, ModelPolicyHigh, mgr)
-		if err != nil {
-			t.Fatalf("ApplyModelPolicy error: %v", err)
-		}
-
-		// File should be unchanged since unknown-agent returns "" (skip sentinel)
-		content, err := os.ReadFile(filepath.Join(agentsDir, "unknown-agent.md"))
-		if err != nil {
-			t.Fatalf("ReadFile error: %v", err)
-		}
-		if string(content) != agentContent {
-			t.Error("unknown agent file was modified, should have been skipped")
-		}
-	})
-
-	t.Run("skips_unchanged_content", func(t *testing.T) {
-		root := t.TempDir()
-		// SPEC-CC2178-MODEL-POLICY-REPAIR-001 M2: manager-spec lives in core/ and is in the retained map.
-		agentsDir := filepath.Join(root, ".claude", "agents", "moai")
-		if err := os.MkdirAll(agentsDir, 0o755); err != nil {
-			t.Fatalf("MkdirAll error: %v", err)
-		}
-
-		// Create a file where the model is already the target (manager-spec high tuple = opus)
-		agentContent := `---
-name: manager-spec
-model: opus
----
-`
-		if err := os.WriteFile(filepath.Join(agentsDir, "manager-spec.md"), []byte(agentContent), 0o644); err != nil {
-			t.Fatalf("WriteFile error: %v", err)
-		}
-
-		mgr := manifest.NewManager()
-		moaiDir := filepath.Join(root, ".moai")
-		if err := os.MkdirAll(moaiDir, 0o755); err != nil {
-			t.Fatalf("MkdirAll error: %v", err)
-		}
-		if _, err := mgr.Load(root); err != nil {
-			t.Fatalf("manifest Load error: %v", err)
-		}
-
-		// Apply high policy: manager-spec high tuple is opus — file already at opus, no change
-		err := ApplyModelPolicy(root, ModelPolicyHigh, mgr)
-		if err != nil {
-			t.Fatalf("ApplyModelPolicy error: %v", err)
-		}
-
-		// Content should remain unchanged
-		content, err := os.ReadFile(filepath.Join(agentsDir, "manager-spec.md"))
-		if err != nil {
-			t.Fatalf("ReadFile error: %v", err)
-		}
-		if string(content) != agentContent {
-			t.Error("file was modified but model was already correct")
-		}
-	})
-}
-
-// TestGetAgentEffort verifies the agentEffortMap and GetAgentEffort function.
-//
-// SPEC-CC2178-MODEL-POLICY-REPAIR-001 M2: the map was reconciled against the
-// retained catalog — 3 archived phantom keys removed (manager-strategy,
-// expert-security, expert-refactoring), plan-auditor/sync-auditor synced
-// high→xhigh, manager-develop/builder-harness added.
-func TestGetAgentEffort(t *testing.T) {
-	tests := []struct {
-		name      string
-		agentName string
-		want      string
-	}{
-		// Retained reasoning agents with explicit effort (post-reconciliation)
-		{"manager-spec xhigh", "manager-spec", "xhigh"},
-		{"plan-auditor xhigh", "plan-auditor", "xhigh"}, // REQ-MPR-011b synced high→xhigh
-		{"sync-auditor xhigh", "sync-auditor", "xhigh"}, // REQ-MPR-011b synced high→xhigh
-		{"manager-develop xhigh", "manager-develop", "xhigh"}, // REQ-MPR-011a added
-		{"builder-harness high", "builder-harness", "high"},   // REQ-MPR-011a added
-		// Archived phantoms (post-cleanup): return "" (absent from map)
-		{"manager-strategy archived", "manager-strategy", ""},
-		{"expert-security archived", "expert-security", ""},
-		{"expert-refactoring archived", "expert-refactoring", ""},
-		// Agents not in effort map: return "" (runtime default applies)
-		{"manager-docs unset", "manager-docs", ""},
-		{"manager-git unset", "manager-git", ""},
-		{"unknown-agent unset", "some-nonexistent-agent", ""},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			got := GetAgentEffort(tt.agentName)
-			if got != tt.want {
-				t.Errorf("GetAgentEffort(%q) = %q, want %q", tt.agentName, got, tt.want)
-			}
-		})
-	}
-}
-
 // TestModelClaudeOpus48Constant verifies the claude-opus-4-8 model ID constant.
 func TestModelClaudeOpus48Constant(t *testing.T) {
 	if ModelIDOpus48 == "" {
@@ -368,32 +77,6 @@ func TestEffortLevelConstants(t *testing.T) {
 	}
 	if EffortLevelMax != "max" {
 		t.Errorf("EffortLevelMax = %q, want %q", EffortLevelMax, "max")
-	}
-}
-
-// TestAgentModelMapSignatureUnchanged verifies the existing agentModelMap type
-// and all existing public API functions remain unchanged (NFR-1 no-break).
-func TestAgentModelMapSignatureUnchanged(t *testing.T) {
-	// ValidModelPolicies still returns exactly 3 items.
-	policies := ValidModelPolicies()
-	if len(policies) != 3 {
-		t.Errorf("ValidModelPolicies() len = %d, want 3 (signature must not change)", len(policies))
-	}
-
-	// IsValidModelPolicy still accepts only high/medium/low.
-	for _, p := range []string{"high", "medium", "low"} {
-		if !IsValidModelPolicy(p) {
-			t.Errorf("IsValidModelPolicy(%q) = false, want true", p)
-		}
-	}
-	// "xhigh" is NOT a ModelPolicy (it's an effort level, separate concern).
-	if IsValidModelPolicy("xhigh") {
-		t.Error("IsValidModelPolicy(xhigh) = true, want false (xhigh is effort, not policy)")
-	}
-
-	// GetAgentModel still returns "" for unknown agents.
-	if got := GetAgentModel(ModelPolicyHigh, "nonexistent"); got != "" {
-		t.Errorf("GetAgentModel(high, nonexistent) = %q, want empty string", got)
 	}
 }
 
@@ -579,346 +262,372 @@ func TestDeployExistingUserFile(t *testing.T) {
 	}
 }
 
-// TestApplyEffortPolicy verifies ApplyEffortPolicy behaviour across multiple scenarios.
-func TestApplyEffortPolicy(t *testing.T) {
-	t.Run("injects_effort_for_reasoning_agent", func(t *testing.T) {
-		root := t.TempDir()
-		// Post SPEC-V3R6-AGENT-FOLDER-SPLIT-001: manager-* agents live in core/.
-		agentsDir := filepath.Join(root, ".claude", "agents", "moai")
-		if err := os.MkdirAll(agentsDir, 0o755); err != nil {
-			t.Fatalf("MkdirAll error: %v", err)
-		}
-
-		// manager-spec has no effort: field yet — should be injected as xhigh
-		agentContent := `---
-name: manager-spec
-model: opus
-permissionMode: bypassPermissions
----
-# Manager Spec Agent
-`
-		if err := os.WriteFile(filepath.Join(agentsDir, "manager-spec.md"), []byte(agentContent), 0o644); err != nil {
-			t.Fatalf("WriteFile error: %v", err)
-		}
-
-		mgr := manifest.NewManager()
-		moaiDir := filepath.Join(root, ".moai")
-		if err := os.MkdirAll(moaiDir, 0o755); err != nil {
-			t.Fatalf("MkdirAll error: %v", err)
-		}
-		if _, err := mgr.Load(root); err != nil {
-			t.Fatalf("manifest Load error: %v", err)
-		}
-
-		if err := ApplyEffortPolicy(root, mgr); err != nil {
-			t.Fatalf("ApplyEffortPolicy error: %v", err)
-		}
-
-		content, err := os.ReadFile(filepath.Join(agentsDir, "manager-spec.md"))
-		if err != nil {
-			t.Fatalf("ReadFile error: %v", err)
-		}
-		if !containsString(string(content), "effort: xhigh") {
-			t.Errorf("expected effort: xhigh injected, got:\n%s", content)
-		}
-		// Existing fields must be preserved
-		if !containsString(string(content), "model: opus") {
-			t.Errorf("model field was lost:\n%s", content)
-		}
-	})
-
-	t.Run("preserves_existing_effort_value", func(t *testing.T) {
-		root := t.TempDir()
-		// SPEC-CC2178-MODEL-POLICY-REPAIR-001 M2: plan-auditor lives in meta/ and is in the retained effort map (xhigh).
-		agentsDir := filepath.Join(root, ".claude", "agents", "moai")
-		if err := os.MkdirAll(agentsDir, 0o755); err != nil {
-			t.Fatalf("MkdirAll error: %v", err)
-		}
-
-		// plan-auditor already has effort: max (user override) — must not be changed to xhigh
-		agentContent := `---
-name: plan-auditor
-model: inherit
-effort: max
----
-# Plan Auditor
-`
-		if err := os.WriteFile(filepath.Join(agentsDir, "plan-auditor.md"), []byte(agentContent), 0o644); err != nil {
-			t.Fatalf("WriteFile error: %v", err)
-		}
-
-		mgr := manifest.NewManager()
-		moaiDir := filepath.Join(root, ".moai")
-		if err := os.MkdirAll(moaiDir, 0o755); err != nil {
-			t.Fatalf("MkdirAll error: %v", err)
-		}
-		if _, err := mgr.Load(root); err != nil {
-			t.Fatalf("manifest Load error: %v", err)
-		}
-
-		if err := ApplyEffortPolicy(root, mgr); err != nil {
-			t.Fatalf("ApplyEffortPolicy error: %v", err)
-		}
-
-		content, err := os.ReadFile(filepath.Join(agentsDir, "plan-auditor.md"))
-		if err != nil {
-			t.Fatalf("ReadFile error: %v", err)
-		}
-		if string(content) != agentContent {
-			t.Errorf("existing effort was modified; want preserved:\ngot:\n%s\nwant:\n%s", content, agentContent)
-		}
-	})
-
-	t.Run("no_op_for_agent_not_in_effort_map", func(t *testing.T) {
-		root := t.TempDir()
-		// SPEC-CC2178-MODEL-POLICY-REPAIR-001 M2: manager-docs lives in core/ and is NOT in the effort map.
-		agentsDir := filepath.Join(root, ".claude", "agents", "moai")
-		if err := os.MkdirAll(agentsDir, 0o755); err != nil {
-			t.Fatalf("MkdirAll error: %v", err)
-		}
-
-		// manager-docs is NOT in agentEffortMap — nothing should be injected
-		agentContent := `---
-name: manager-docs
-model: haiku
----
-# Manager Docs
-`
-		if err := os.WriteFile(filepath.Join(agentsDir, "manager-docs.md"), []byte(agentContent), 0o644); err != nil {
-			t.Fatalf("WriteFile error: %v", err)
-		}
-
-		mgr := manifest.NewManager()
-		moaiDir := filepath.Join(root, ".moai")
-		if err := os.MkdirAll(moaiDir, 0o755); err != nil {
-			t.Fatalf("MkdirAll error: %v", err)
-		}
-		if _, err := mgr.Load(root); err != nil {
-			t.Fatalf("manifest Load error: %v", err)
-		}
-
-		if err := ApplyEffortPolicy(root, mgr); err != nil {
-			t.Fatalf("ApplyEffortPolicy error: %v", err)
-		}
-
-		content, err := os.ReadFile(filepath.Join(agentsDir, "manager-docs.md"))
-		if err != nil {
-			t.Fatalf("ReadFile error: %v", err)
-		}
-		if string(content) != agentContent {
-			t.Errorf("agent not in effort map was modified; want no-op:\ngot:\n%s\nwant:\n%s", content, agentContent)
-		}
-	})
-
-	t.Run("no_agents_directory", func(t *testing.T) {
-		root := t.TempDir()
-		mgr := manifest.NewManager()
-		moaiDir := filepath.Join(root, ".moai")
-		if err := os.MkdirAll(moaiDir, 0o755); err != nil {
-			t.Fatalf("MkdirAll error: %v", err)
-		}
-		if _, err := mgr.Load(root); err != nil {
-			t.Fatalf("manifest Load error: %v", err)
-		}
-
-		// Should not error when directory is absent
-		if err := ApplyEffortPolicy(root, mgr); err != nil {
-			t.Fatalf("ApplyEffortPolicy error: %v", err)
-		}
-	})
-
-	t.Run("no_frontmatter_not_modified", func(t *testing.T) {
-		root := t.TempDir()
-		// Post SPEC-V3R6-AGENT-FOLDER-SPLIT-001: manager-* agents live in core/.
-		agentsDir := filepath.Join(root, ".claude", "agents", "moai")
-		if err := os.MkdirAll(agentsDir, 0o755); err != nil {
-			t.Fatalf("MkdirAll error: %v", err)
-		}
-
-		// File without YAML frontmatter — skip silently
-		agentContent := "# manager-spec\nNo frontmatter here.\n"
-		if err := os.WriteFile(filepath.Join(agentsDir, "manager-spec.md"), []byte(agentContent), 0o644); err != nil {
-			t.Fatalf("WriteFile error: %v", err)
-		}
-
-		mgr := manifest.NewManager()
-		moaiDir := filepath.Join(root, ".moai")
-		if err := os.MkdirAll(moaiDir, 0o755); err != nil {
-			t.Fatalf("MkdirAll error: %v", err)
-		}
-		if _, err := mgr.Load(root); err != nil {
-			t.Fatalf("manifest Load error: %v", err)
-		}
-
-		if err := ApplyEffortPolicy(root, mgr); err != nil {
-			t.Fatalf("ApplyEffortPolicy error: %v", err)
-		}
-
-		content, err := os.ReadFile(filepath.Join(agentsDir, "manager-spec.md"))
-		if err != nil {
-			t.Fatalf("ReadFile error: %v", err)
-		}
-		if string(content) != agentContent {
-			t.Errorf("file without frontmatter was modified:\ngot:\n%s\nwant:\n%s", content, agentContent)
-		}
-	})
-
-	t.Run("manifest_tracked_after_injection", func(t *testing.T) {
-		root := t.TempDir()
-		// Post SPEC-V3R6-AGENT-FOLDER-SPLIT-001: plan-auditor lives in meta/.
-		agentsDir := filepath.Join(root, ".claude", "agents", "moai")
-		if err := os.MkdirAll(agentsDir, 0o755); err != nil {
-			t.Fatalf("MkdirAll error: %v", err)
-		}
-
-		agentContent := `---
-name: plan-auditor
-model: opus
----
-# Plan Auditor
-`
-		if err := os.WriteFile(filepath.Join(agentsDir, "plan-auditor.md"), []byte(agentContent), 0o644); err != nil {
-			t.Fatalf("WriteFile error: %v", err)
-		}
-
-		mgr := manifest.NewManager()
-		moaiDir := filepath.Join(root, ".moai")
-		if err := os.MkdirAll(moaiDir, 0o755); err != nil {
-			t.Fatalf("MkdirAll error: %v", err)
-		}
-		if _, err := mgr.Load(root); err != nil {
-			t.Fatalf("manifest Load error: %v", err)
-		}
-
-		if err := ApplyEffortPolicy(root, mgr); err != nil {
-			t.Fatalf("ApplyEffortPolicy error: %v", err)
-		}
-
-		// Manifest entry must be updated for the injected file
-		relPath := filepath.Join(".claude", "agents", "moai", "plan-auditor.md")
-		entry, found := mgr.GetEntry(relPath)
-		if !found {
-			t.Errorf("manifest entry not found for %q after injection", relPath)
-		} else if entry.TemplateHash == "" {
-			t.Errorf("manifest entry TemplateHash is empty for %q", relPath)
-		}
-	})
-}
-
-// === SPEC-CC2178-MODEL-POLICY-REPAIR-001 M2 (RED characterization tests) ===
+// === SPEC-MODEL-TIER-PLANTYPE-001 M2 ===
 //
-// These tests assert the POST-CLEANUP state of agentModelMap and agentEffortMap.
-// They are written BEFORE the GREEN map edits (TDD RED phase) and are expected
-// to FAIL against the current (stale) maps. After the M2 GREEN edits remove
-// the 16 phantom model keys + 3 phantom effort keys + add manager-develop/
-// builder-harness + reconcile effort values, these tests PASS.
+// Unified plan_type × tier profile fidelity + ApplyTierProfile replace-both.
+// The expected matrix is re-declared test-side (test-side EXPECTED values are
+// the point of a fidelity test — plan.md §G); production carries exactly one
+// structure. Values copied verbatim from spec.md §B.6 (api / Plan A rev2) and
+// §B.7 (subscription / Plan B).
 
-// canonicalPhantomModelKeys is the authoritative 16-key enumeration from
-// spec.md §C.3. All 16 MUST be absent from agentModelMap post-cleanup.
-var canonicalPhantomModelKeys = []string{
-	"manager-ddd", "manager-tdd", // legacy aliases of manager-develop
-	"manager-quality", "manager-project", "manager-strategy", // archived core managers
-	"expert-backend", "expert-frontend", "expert-security", "expert-devops",
-	"expert-performance", "expert-debug", "expert-testing", "expert-refactoring", // archived expert-*
-	"builder-agent", "builder-skill", "builder-plugin", // archived/legacy builder variants
+type tierProfileExpectCell struct {
+	model  string
+	effort string
 }
 
-// TestAgentModelMap_NoPhantomKeys (AC-MPR-007, REQ-MPR-008) verifies that all
-// 16 canonical phantom keys are ABSENT from agentModelMap.
-func TestAgentModelMap_NoPhantomKeys(t *testing.T) {
-	for _, key := range canonicalPhantomModelKeys {
-		t.Run("phantom_absent_"+key, func(t *testing.T) {
-			if got := GetAgentModel(ModelPolicyHigh, key); got != "" {
-				t.Errorf("GetAgentModel(high, %q) = %q; phantom key MUST be absent (return \"\"), want \"\"", key, got)
+// expectedTierProfiles mirrors spec.md §B.6/§B.7: plan → agent → [max, medium, low].
+var expectedTierProfiles = map[string]map[string][3]tierProfileExpectCell{
+	"api": {
+		"manager-spec":    {{"fable", "high"}, {"fable", "high"}, {"opus", "high"}},
+		"plan-auditor":    {{"fable", "high"}, {"fable", "high"}, {"opus", "high"}},
+		"sync-auditor":    {{"fable", "high"}, {"opus", "high"}, {"opus", "medium"}},
+		"manager-design":  {{"fable", "high"}, {"fable", "high"}, {"opus", "high"}},
+		"super-advisor":   {{"fable", "xhigh"}, {"fable", "high"}, {"opus", "high"}},
+		"manager-develop": {{"fable", "high"}, {"opus", "high"}, {"opus", "medium"}},
+		"builder-harness": {{"opus", "high"}, {"opus", "medium"}, {"opus", "medium"}},
+		"manager-docs":    {{"sonnet", "medium"}, {"sonnet", "low"}, {"sonnet", "low"}},
+		"manager-git":     {{"sonnet", "low"}, {"sonnet", "low"}, {"sonnet", "low"}},
+		"Explore":         {{"inherit", "medium"}, {"inherit", "low"}, {"inherit", "low"}},
+	},
+	"subscription": {
+		"manager-spec":    {{"opus", "high"}, {"opus", "high"}, {"opus", "medium"}},
+		"plan-auditor":    {{"opus", "high"}, {"opus", "medium"}, {"sonnet", "high"}},
+		"sync-auditor":    {{"opus", "high"}, {"opus", "medium"}, {"sonnet", "high"}},
+		"manager-design":  {{"opus", "high"}, {"opus", "medium"}, {"sonnet", "high"}},
+		"super-advisor":   {{"opus", "xhigh"}, {"opus", "high"}, {"opus", "medium"}},
+		"manager-develop": {{"sonnet", "high"}, {"sonnet", "high"}, {"sonnet", "high"}},
+		"builder-harness": {{"sonnet", "high"}, {"sonnet", "medium"}, {"sonnet", "medium"}},
+		"manager-docs":    {{"sonnet", "low"}, {"sonnet", "low"}, {"sonnet", "low"}},
+		"manager-git":     {{"sonnet", "low"}, {"sonnet", "low"}, {"sonnet", "low"}},
+		"Explore":         {{"inherit", "medium"}, {"inherit", "low"}, {"inherit", "low"}},
+	},
+}
+
+var tierColumnOrder = [3]string{"max", "medium", "low"}
+
+// TestTierProfileMatrixFidelity (AC-MTP-006, REQ-MTP-006..009) asserts every
+// (plan × tier × agent) cell of GetTierProfileEntry equals the spec.md §B.6/§B.7
+// {model, effort} pair. 2 plans × 10 agents × 3 tiers = 60 asserted cells.
+func TestTierProfileMatrixFidelity(t *testing.T) {
+	asserted := 0
+	for plan, agents := range expectedTierProfiles {
+		for agent, cols := range agents {
+			for i, tier := range tierColumnOrder {
+				want := cols[i]
+				got, ok := GetTierProfileEntry(plan, agent, tier)
+				if !ok {
+					t.Errorf("GetTierProfileEntry(%q, %q, %q): ok=false, want a row", plan, agent, tier)
+					continue
+				}
+				if got.Model != want.model || got.Effort != want.effort {
+					t.Errorf("GetTierProfileEntry(%q, %q, %q) = {%q, %q}, want {%q, %q}",
+						plan, agent, tier, got.Model, got.Effort, want.model, want.effort)
+				}
+				asserted++
 			}
-		})
+		}
+	}
+	if asserted != 60 {
+		t.Errorf("asserted %d cells, want 60 (2 plans × 10 agents × 3 tiers)", asserted)
 	}
 }
 
-// TestAgentModelMap_RetainedAgents (AC-MPR-008, REQ-MPR-009 iter-2) verifies
-// the 5 retained agents are present with correct tuples. manager-develop and
-// builder-harness use the iter-2 tuple {sonnet, sonnet, haiku} (NOT the
-// iter-1 {opus, sonnet, sonnet} derived from retired aliases — D6 rationale).
-func TestAgentModelMap_RetainedAgents(t *testing.T) {
+// TestTierProfiles_AllTenAgents (REQ-MTP-009) asserts both plans carry explicit
+// rows for all 10 retained agents — the auditors, manager-design, and
+// super-advisor moved off implicit inherit; Explore is retained as an explicit
+// inherit row for display/derivation surfaces.
+func TestTierProfiles_AllTenAgents(t *testing.T) {
+	agents := []string{
+		"manager-spec", "plan-auditor", "sync-auditor", "manager-design",
+		"super-advisor", "manager-develop", "builder-harness", "manager-docs",
+		"manager-git", "Explore",
+	}
+	for _, plan := range []string{"api", "subscription"} {
+		for _, a := range agents {
+			if _, ok := GetTierProfileEntry(plan, a, "medium"); !ok {
+				t.Errorf("plan %q missing explicit row for agent %q", plan, a)
+			}
+		}
+	}
+}
+
+// TestMapModelPolicyToTier (AC-MTP-012, REQ-MTP-012) asserts the legacy
+// ModelPolicy→tier mapping is tier-only (high→max, medium→medium, low→low) and
+// returns a tier string with NO plan value in its signature.
+func TestMapModelPolicyToTier(t *testing.T) {
 	tests := []struct {
-		name      string
-		policy    ModelPolicy
-		agentName string
-		want      string
+		policy ModelPolicy
+		want   string
 	}{
-		// manager-spec (retained-correct): {opus, opus, sonnet}
-		{"manager-spec_high", ModelPolicyHigh, "manager-spec", "opus"},
-		{"manager-spec_medium", ModelPolicyMedium, "manager-spec", "opus"},
-		{"manager-spec_low", ModelPolicyLow, "manager-spec", "sonnet"},
-		// manager-docs (retained-correct): {sonnet, haiku, haiku}
-		{"manager-docs_high", ModelPolicyHigh, "manager-docs", "sonnet"},
-		{"manager-docs_medium", ModelPolicyMedium, "manager-docs", "haiku"},
-		{"manager-docs_low", ModelPolicyLow, "manager-docs", "haiku"},
-		// manager-git (retained-correct): {haiku, haiku, haiku}
-		{"manager-git_high", ModelPolicyHigh, "manager-git", "haiku"},
-		// manager-develop (iter-2 tuple): {sonnet, sonnet, haiku}
-		{"manager-develop_high", ModelPolicyHigh, "manager-develop", "sonnet"},
-		{"manager-develop_medium", ModelPolicyMedium, "manager-develop", "sonnet"},
-		{"manager-develop_low", ModelPolicyLow, "manager-develop", "haiku"},
-		// builder-harness (iter-2 tuple): {sonnet, sonnet, haiku}
-		{"builder-harness_high", ModelPolicyHigh, "builder-harness", "sonnet"},
-		{"builder-harness_medium", ModelPolicyMedium, "builder-harness", "sonnet"},
-		{"builder-harness_low", ModelPolicyLow, "builder-harness", "haiku"},
+		{ModelPolicyHigh, "max"},
+		{ModelPolicyMedium, "medium"},
+		{ModelPolicyLow, "low"},
+		{ModelPolicy(""), "medium"},      // empty → D6 default-when-absent
+		{ModelPolicy("bogus"), "medium"}, // unknown → D6 default-when-absent
 	}
 	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if got := GetAgentModel(tt.policy, tt.agentName); got != tt.want {
-				t.Errorf("GetAgentModel(%q, %q) = %q, want %q", tt.policy, tt.agentName, got, tt.want)
-			}
-		})
+		if got := MapModelPolicyToTier(tt.policy); got != tt.want {
+			t.Errorf("MapModelPolicyToTier(%q) = %q, want %q", tt.policy, got, tt.want)
+		}
 	}
 }
 
-// TestAgentModelMap_EntryCount verifies exactly 5 entries remain post-cleanup
-// (manager-spec, manager-develop, manager-docs, manager-git, builder-harness).
-// This is a structural guard against accidental re-addition of phantoms.
-func TestAgentModelMap_EntryCount(t *testing.T) {
-	if got := len(agentModelMap); got != 5 {
-		t.Errorf("agentModelMap has %d entries, want exactly 5 (manager-spec, manager-develop, manager-docs, manager-git, builder-harness)", got)
+// TestNormalizeToTier asserts the call-site resolver accepts BOTH the canonical
+// performance-tier vocabulary ({max, medium, low}) and the legacy ModelPolicy
+// vocabulary ({high, medium, low}), defaulting to medium (D6).
+func TestNormalizeToTier(t *testing.T) {
+	cases := map[string]string{
+		"max": "max", "medium": "medium", "low": "low",
+		"high": "max", "": "medium", "bogus": "medium",
+	}
+	for in, want := range cases {
+		if got := NormalizeToTier(in); got != want {
+			t.Errorf("NormalizeToTier(%q) = %q, want %q", in, got, want)
+		}
 	}
 }
 
-// TestAgentEffortMap_NoPhantomKeys (AC-MPR-009, REQ-MPR-010/011a) verifies the
-// 3 archived phantom effort keys are ABSENT.
-func TestAgentEffortMap_NoPhantomKeys(t *testing.T) {
-	phantoms := []string{"manager-strategy", "expert-security", "expert-refactoring"}
-	for _, key := range phantoms {
-		t.Run("effort_phantom_absent_"+key, func(t *testing.T) {
-			if got := GetAgentEffort(key); got != "" {
-				t.Errorf("GetAgentEffort(%q) = %q; phantom effort key MUST be absent, want \"\"", key, got)
-			}
-		})
+// writeTierAgentFixture creates a shipped-style agent .md file carrying both
+// model: and effort: frontmatter under .claude/agents/moai/.
+func writeTierAgentFixture(t *testing.T, root, name, model, effort string) {
+	t.Helper()
+	dir := filepath.Join(root, ".claude", "agents", "moai")
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		t.Fatalf("MkdirAll: %v", err)
+	}
+	content := "---\nname: " + name + "\nmodel: " + model + "\neffort: " + effort + "\n---\n# " + name + "\n"
+	if err := os.WriteFile(filepath.Join(dir, name+".md"), []byte(content), 0o644); err != nil {
+		t.Fatalf("WriteFile %s: %v", name, err)
 	}
 }
 
-// TestAgentEffortMap_ReconciledValues (AC-MPR-010, REQ-MPR-011a/011b) verifies
-// the map↔file reconciliation: plan-auditor and sync-auditor synced from high
-// to xhigh; manager-develop and builder-harness added.
-func TestAgentEffortMap_ReconciledValues(t *testing.T) {
-	tests := []struct {
-		name      string
-		agentName string
-		want      string
-	}{
-		// Retained + reconciled (map←file sync)
-		{"manager-spec_xhigh", "manager-spec", "xhigh"},
-		{"plan-auditor_xhigh", "plan-auditor", "xhigh"}, // was "high", synced to "xhigh"
-		{"sync-auditor_xhigh", "sync-auditor", "xhigh"}, // was "high", synced to "xhigh"
-		// Added retained agents
-		{"manager-develop_xhigh", "manager-develop", "xhigh"}, // missing, added as xhigh per file
-		{"builder-harness_high", "builder-harness", "high"},   // missing, added as high per file
+// newTierManifest sets up a loaded manifest manager rooted at root.
+func newTierManifest(t *testing.T, root string) manifest.Manager {
+	t.Helper()
+	if err := os.MkdirAll(filepath.Join(root, ".moai"), 0o755); err != nil {
+		t.Fatalf("MkdirAll .moai: %v", err)
 	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if got := GetAgentEffort(tt.agentName); got != tt.want {
-				t.Errorf("GetAgentEffort(%q) = %q, want %q", tt.agentName, got, tt.want)
-			}
-		})
+	mgr := manifest.NewManager()
+	if _, err := mgr.Load(root); err != nil {
+		t.Fatalf("manifest Load: %v", err)
+	}
+	return mgr
+}
+
+// assertFrontmatter reads the agent file and asserts its model:/effort: lines
+// equal the wanted values.
+func assertFrontmatter(t *testing.T, root, name, wantModel, wantEffort string) {
+	t.Helper()
+	p := filepath.Join(root, ".claude", "agents", "moai", name+".md")
+	b, err := os.ReadFile(p)
+	if err != nil {
+		t.Fatalf("ReadFile %s: %v", name, err)
+	}
+	s := string(b)
+	if !containsString(s, "model: "+wantModel+"\n") {
+		t.Errorf("%s: want model: %q, got:\n%s", name, wantModel, s)
+	}
+	if !containsString(s, "effort: "+wantEffort+"\n") {
+		t.Errorf("%s: want effort: %q, got:\n%s", name, wantEffort, s)
+	}
+}
+
+// TestApplyTierProfile_ReplaceBoth_API (AC-MTP-008/011, REQ-MTP-010/011) — under
+// (api, medium) the pass REPLACES both existing model: and effort: lines with the
+// profile values: manager-develop (seeded sonnet/xhigh) → opus/high; plan-auditor
+// (seeded inherit/max, i.e. moved off inherit) → fable/high.
+func TestApplyTierProfile_ReplaceBoth_API(t *testing.T) {
+	root := t.TempDir()
+	writeTierAgentFixture(t, root, "manager-develop", "sonnet", "xhigh")
+	writeTierAgentFixture(t, root, "plan-auditor", "inherit", "max")
+	mgr := newTierManifest(t, root)
+
+	if err := ApplyTierProfile(root, "api", "medium", mgr); err != nil {
+		t.Fatalf("ApplyTierProfile error: %v", err)
+	}
+	assertFrontmatter(t, root, "manager-develop", "opus", "high")
+	assertFrontmatter(t, root, "plan-auditor", "fable", "high")
+
+	// Replace-both: the seeded values must be gone.
+	b, _ := os.ReadFile(filepath.Join(root, ".claude", "agents", "moai", "manager-develop.md"))
+	if containsString(string(b), "model: sonnet\n") || containsString(string(b), "effort: xhigh\n") {
+		t.Errorf("manager-develop retained a seeded value (replace-both failed):\n%s", b)
+	}
+}
+
+// TestApplyTierProfile_ReplaceBoth_Subscription (AC-MTP-009, REQ-MTP-010/011) —
+// under (subscription, max): manager-develop → sonnet/high; manager-spec →
+// opus/high; manager-docs → sonnet/low.
+func TestApplyTierProfile_ReplaceBoth_Subscription(t *testing.T) {
+	root := t.TempDir()
+	writeTierAgentFixture(t, root, "manager-develop", "opus", "low")
+	writeTierAgentFixture(t, root, "manager-spec", "sonnet", "low")
+	writeTierAgentFixture(t, root, "manager-docs", "opus", "high")
+	mgr := newTierManifest(t, root)
+
+	if err := ApplyTierProfile(root, "subscription", "max", mgr); err != nil {
+		t.Fatalf("ApplyTierProfile error: %v", err)
+	}
+	assertFrontmatter(t, root, "manager-develop", "sonnet", "high")
+	assertFrontmatter(t, root, "manager-spec", "opus", "high")
+	assertFrontmatter(t, root, "manager-docs", "sonnet", "low")
+}
+
+// TestApplyTierProfile_PlanBranchSelection asserts the api vs subscription branch
+// yields different {model, effort} for the same agent+tier (manager-develop,
+// medium: api → opus/high, subscription → sonnet/high).
+func TestApplyTierProfile_PlanBranchSelection(t *testing.T) {
+	rootAPI := t.TempDir()
+	writeTierAgentFixture(t, rootAPI, "manager-develop", "sonnet", "low")
+	if err := ApplyTierProfile(rootAPI, "api", "medium", newTierManifest(t, rootAPI)); err != nil {
+		t.Fatalf("api ApplyTierProfile: %v", err)
+	}
+	assertFrontmatter(t, rootAPI, "manager-develop", "opus", "high")
+
+	rootSub := t.TempDir()
+	writeTierAgentFixture(t, rootSub, "manager-develop", "opus", "low")
+	if err := ApplyTierProfile(rootSub, "subscription", "medium", newTierManifest(t, rootSub)); err != nil {
+		t.Fatalf("subscription ApplyTierProfile: %v", err)
+	}
+	assertFrontmatter(t, rootSub, "manager-develop", "sonnet", "high")
+}
+
+// TestApplyTierProfile_UnknownAgentByteIdentical (AC-MTP-013, REQ-MTP-013) — an
+// agent with no profile row is left byte-identical.
+func TestApplyTierProfile_UnknownAgentByteIdentical(t *testing.T) {
+	root := t.TempDir()
+	dir := filepath.Join(root, ".claude", "agents", "moai")
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		t.Fatalf("MkdirAll: %v", err)
+	}
+	original := "---\nname: custom-agent\nmodel: opus\neffort: max\n---\n# custom\n"
+	if err := os.WriteFile(filepath.Join(dir, "custom-agent.md"), []byte(original), 0o644); err != nil {
+		t.Fatalf("WriteFile: %v", err)
+	}
+	if err := ApplyTierProfile(root, "api", "medium", newTierManifest(t, root)); err != nil {
+		t.Fatalf("ApplyTierProfile error: %v", err)
+	}
+	got, _ := os.ReadFile(filepath.Join(dir, "custom-agent.md"))
+	if string(got) != original {
+		t.Errorf("unknown agent modified; want byte-identical:\ngot:\n%s\nwant:\n%s", got, original)
+	}
+}
+
+// TestApplyTierProfile_InheritAgentSkipped — an inherit-model agent (Explore) is
+// skipped byte-identically (inherit is never written as a model: value).
+func TestApplyTierProfile_InheritAgentSkipped(t *testing.T) {
+	root := t.TempDir()
+	dir := filepath.Join(root, ".claude", "agents", "moai")
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		t.Fatalf("MkdirAll: %v", err)
+	}
+	original := "---\nname: Explore\nmodel: inherit\neffort: high\n---\n# Explore\n"
+	if err := os.WriteFile(filepath.Join(dir, "Explore.md"), []byte(original), 0o644); err != nil {
+		t.Fatalf("WriteFile: %v", err)
+	}
+	if err := ApplyTierProfile(root, "api", "medium", newTierManifest(t, root)); err != nil {
+		t.Fatalf("ApplyTierProfile error: %v", err)
+	}
+	got, _ := os.ReadFile(filepath.Join(dir, "Explore.md"))
+	if string(got) != original {
+		t.Errorf("inherit agent modified; want skipped byte-identical:\ngot:\n%s\nwant:\n%s", got, original)
+	}
+}
+
+// TestResolveProjectPlanType asserts the effective plan-type read from llm.yaml:
+// absent/commented → subscription default; explicit api → api.
+func TestResolveProjectPlanType(t *testing.T) {
+	root := t.TempDir()
+	if got := ResolveProjectPlanType(root); got != "subscription" {
+		t.Errorf("absent llm.yaml: got %q, want subscription", got)
+	}
+
+	dir := filepath.Join(root, ".moai", "config", "sections")
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		t.Fatalf("MkdirAll: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "llm.yaml"), []byte("llm:\n  plan_type: \"api\"\n"), 0o644); err != nil {
+		t.Fatalf("WriteFile: %v", err)
+	}
+	if got := ResolveProjectPlanType(root); got != "api" {
+		t.Errorf("explicit api: got %q, want api", got)
+	}
+
+	if err := os.WriteFile(filepath.Join(dir, "llm.yaml"), []byte("llm:\n  # plan_type: api\n"), 0o644); err != nil {
+		t.Fatalf("WriteFile: %v", err)
+	}
+	if got := ResolveProjectPlanType(root); got != "subscription" {
+		t.Errorf("commented plan_type: got %q, want subscription", got)
+	}
+}
+
+// TestGetTierProfileEntry_Fallbacks (REQ-MTP-002 BC + plan.md D6) — an
+// out-of-set plan type falls back to the subscription profile, and an
+// out-of-set tier falls back to the medium column.
+func TestGetTierProfileEntry_Fallbacks(t *testing.T) {
+	// Unknown plan → subscription branch (BC default). subscription/medium
+	// manager-develop = sonnet/high.
+	got, ok := GetTierProfileEntry("enterprise", "manager-develop", "medium")
+	if !ok {
+		t.Fatal("unknown plan: ok=false, want subscription fallback row")
+	}
+	if got.Model != "sonnet" || got.Effort != "high" {
+		t.Errorf("unknown plan fallback = {%q, %q}, want subscription {sonnet, high}", got.Model, got.Effort)
+	}
+
+	// Unknown tier → medium column (D6). api/<medium> manager-develop = opus/high.
+	got, ok = GetTierProfileEntry("api", "manager-develop", "bogus-tier")
+	if !ok {
+		t.Fatal("unknown tier: ok=false, want a row")
+	}
+	if got.Model != "opus" || got.Effort != "high" {
+		t.Errorf("unknown tier fallback = {%q, %q}, want medium column {opus, high}", got.Model, got.Effort)
+	}
+}
+
+// TestApplyTierProfile_InsertsEffortWhenAbsent — an agent file carrying model:
+// but NO effort: line gets effort inserted (the insertEffortInFrontmatter path).
+func TestApplyTierProfile_InsertsEffortWhenAbsent(t *testing.T) {
+	root := t.TempDir()
+	dir := filepath.Join(root, ".claude", "agents", "moai")
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		t.Fatalf("MkdirAll: %v", err)
+	}
+	// manager-git has model: but no effort: line.
+	content := "---\nname: manager-git\nmodel: opus\n---\n# manager-git\n"
+	if err := os.WriteFile(filepath.Join(dir, "manager-git.md"), []byte(content), 0o644); err != nil {
+		t.Fatalf("WriteFile: %v", err)
+	}
+	if err := ApplyTierProfile(root, "api", "max", newTierManifest(t, root)); err != nil {
+		t.Fatalf("ApplyTierProfile error: %v", err)
+	}
+	// api/max manager-git = sonnet/low.
+	assertFrontmatter(t, root, "manager-git", "sonnet", "low")
+}
+
+// TestApplyTierProfile_NoAgentsDir — an absent agents directory is a graceful
+// no-op (no error).
+func TestApplyTierProfile_NoAgentsDir(t *testing.T) {
+	root := t.TempDir()
+	if err := ApplyTierProfile(root, "api", "medium", newTierManifest(t, root)); err != nil {
+		t.Fatalf("ApplyTierProfile on missing agents dir returned error: %v", err)
+	}
+}
+
+// TestApplyTierProfile_AlreadyAtTarget — an agent already at the profile
+// {model, effort} is left byte-identical (no rewrite).
+func TestApplyTierProfile_AlreadyAtTarget(t *testing.T) {
+	root := t.TempDir()
+	// api/max manager-git = sonnet/low — seed the fixture already at that value.
+	writeTierAgentFixture(t, root, "manager-git", "sonnet", "low")
+	p := filepath.Join(root, ".claude", "agents", "moai", "manager-git.md")
+	before, _ := os.ReadFile(p)
+	if err := ApplyTierProfile(root, "api", "max", newTierManifest(t, root)); err != nil {
+		t.Fatalf("ApplyTierProfile error: %v", err)
+	}
+	after, _ := os.ReadFile(p)
+	if string(before) != string(after) {
+		t.Errorf("already-at-target agent was rewritten:\nbefore:\n%s\nafter:\n%s", before, after)
 	}
 }
 
