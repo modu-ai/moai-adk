@@ -54,7 +54,13 @@ and MUST NOT be addressed at plan-phase:
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase — owned by manager-docs>_
+- sync_status: audit-ready
+- sync_complete_at: 2026-07-12
+- sync_commit_sha: pending-backfill (this sync commit cannot reference its own SHA; backfilled in a separate follow-up commit per the SHA-placeholder backfill exemption)
+- Frontmatter transition: spec.md `status: in-progress → completed` (merged 3-phase close on this single sync commit); `updated:` retained at 2026-07-12 (no change — sync lands same day as run).
+- CHANGELOG: one `[Unreleased]` entry added for SPEC-LOOP-SWEEP-001 (pre-emission grep confirmed 0 prior mentions; AC count 20 cross-checked against acceptance.md SSOT, not this file).
+- README: NOT touched (out of scope — another session is actively rewriting all README files; this SPEC is an internal-workflow redefinition with no user-facing README billing need).
+- MX Tag validation: no new MX-taggable code introduced by this SPEC (docs/workflow-prose scope; `internal/loop` + `internal/ralph` engine code untouched per the empty-diff guard AC-LSW-013b) — no MX annotations added or required at this sync sub-step.
 
 ## §F Phase 0.95 Mode Selection
 
