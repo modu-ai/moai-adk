@@ -205,7 +205,7 @@ plan_audit_final_iter: 2
 
 ```yaml
 run_complete_at:
-run_commit_sha: pending-backfill-m5
+run_commit_sha: 1b4765abf
 run_status: m5-complete-m6-m7-pending
 # M1 (Typed Managed-Block Writer foundation) + M2 (LEARNED digest block +
 # budget/cap enforcement) + M3 (CLAUDE.local.md append-only LOCAL section) +
