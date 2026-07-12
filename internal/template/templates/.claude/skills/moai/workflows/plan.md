@@ -172,3 +172,7 @@ Changes: Added test scenarios, Phase 0.9 JIT Language Detection.
 ## Sentinel Error Keys
 
 A CI audit verifies the literal `MODE_PIPELINE_ONLY_UTILITY` sentinel remains present in this skill body (shared with `design.md`). Passing `--mode pipeline` to `/moai plan` is rejected because plan is a Multi-Agent subcommand; pipeline mode is reserved for utility subcommands.
+
+## Routing Ledger Recording
+
+At plan dispatch, the orchestrator records the routing decision to the routing-ledger via `moai harness ledger record` (per the SKILL.md router recording obligation). At the plan-audit gate, it appends the plan-auditor verdict as machine evidence via `moai harness ledger evidence --kind audit_score --value <score> --ref <plan-audit report path>`. Outcome is derived from machine evidence only — never supplied as an input. The recording is opt-in and fail-open; it never blocks the plan phase.

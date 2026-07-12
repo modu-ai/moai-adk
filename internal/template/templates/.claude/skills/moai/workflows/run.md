@@ -187,3 +187,7 @@ The bounded self-diagnosis loop handles MECHANICAL run-phase failures fast (DIAG
 
 This loop is COMPLEMENTARY to the independent audits (plan-auditor Phase 1, sync-auditor Phase 3) — self-audit handles mechanical failures fast; independent audit handles SPEC-quality assurance. See `orchestration-mode-selection.md` §J.3.
 
+## Routing Ledger Recording
+
+At run dispatch, the orchestrator records the routing decision to the routing-ledger via `moai harness ledger record` (per the SKILL.md router recording obligation). As run-phase gates complete, it appends machine evidence via `moai harness ledger evidence` — a terminal gate exit (`--kind gate_exit --value 0 --terminal --ref "go test ./..."`) or a verify-log path (`--kind verify_path --ref <.moai/state/verify/... log>`). Outcome is finalized from that machine evidence only — never supplied as an input. The recording is opt-in and fail-open; it never blocks the run phase.
+

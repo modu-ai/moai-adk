@@ -115,3 +115,7 @@ Read .claude/skills/moai/workflows/sync/delivery.md
 ## Sentinel Error Keys
 
 A CI audit verifies the literal `MODE_PIPELINE_ONLY_UTILITY` sentinel remains present in this skill body (shared with `design.md`). Passing `--mode pipeline` to `/moai sync` is rejected because sync is a Multi-Agent subcommand; pipeline mode is reserved for utility subcommands.
+
+## Routing Ledger Recording
+
+At sync dispatch, the orchestrator records the routing decision to the routing-ledger via `moai harness ledger record` (per the SKILL.md router recording obligation). At the sync-phase quality gate, it appends the gate result as machine evidence via `moai harness ledger evidence --kind gate_exit --value <exit> --terminal --ref "sync-phase-quality-gate"`. Outcome is derived from machine evidence only — never supplied as an input. The recording is opt-in and fail-open; it never blocks the sync phase.

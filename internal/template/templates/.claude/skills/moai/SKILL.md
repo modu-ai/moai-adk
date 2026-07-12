@@ -33,6 +33,12 @@ Rules and constraints governing all workflows are always loaded from these sourc
 
 ---
 
+## Routing Observation Ledger
+
+When dispatching a subcommand or workflow, the orchestrator records the routing decision to the append-only routing-ledger (`.moai/state/routing-ledger.jsonl`) via `moai harness ledger record` at dispatch time — the request text is piped via stdin and only a privacy-preserving digest is stored, never verbatim user text. As the routed pipeline reaches gate points, machine evidence is appended via `moai harness ledger evidence` (gate exits, audit verdicts, verify-log paths). Outcome is never supplied as an input; it is finalized from machine evidence only. This observation is opt-in and fail-open — it never blocks routing, and it is a silent no-op unless the harness observability opt-in is enabled.
+
+---
+
 ## Intent Router
 
 ### Raw User Input
