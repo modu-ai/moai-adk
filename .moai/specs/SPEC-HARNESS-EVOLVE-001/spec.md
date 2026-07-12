@@ -1,7 +1,7 @@
 ---
 id: SPEC-HARNESS-EVOLVE-001
 title: "Routing Observation Ledger — Loop 0 (Generator) of the self-evolving harness"
-version: "0.1.0"
+version: "0.1.1"
 status: draft
 created: 2026-07-12
 updated: 2026-07-12
@@ -22,6 +22,7 @@ tier: M
 | Date | Version | Change | Author |
 |------|---------|--------|--------|
 | 2026-07-12 | 0.1.0 | Initial plan-phase draft (Tier M, 21 REQ / 26 AC). First SPEC (M1) of the HARNESS-EVOLVE Epic (5 SPECs + 2 horizons) per the approved design SSOT `.moai/reports/harness-self-evolving-redesign-final-20260712.html` (§4 3-Zone contract, §5 Loop 0 ledger schema incl. deltas A2/A4, §7 M1 milestone). Creates the `routing-ledger.jsonl` observation surface (schema v1), the `internal/harness/routing/` Go writer/reader, Stop-hook outcome capture riding the existing `harness-observe-stop` handler, and the workflow-skill recording obligations. No Curator writes, no CLAUDE.md/local.md mutation, no tier promotion (EVOLVE-002/003 territory). 2 open clarifications tracked in plan.md. | manager-spec |
+| 2026-07-12 | 0.1.1 | Plan-audit fix (iter-1 FAIL 0.75 → D1-D4 MUST + S1-S6 SHOULD applied). **D1 (HOI dual-gate)**: `runHarnessObserveStop` gates FIRST on `isHookOptInEnabled` (fail-CLOSED, default OFF per SPEC-V3R6-HOOK-OBSERVE-OPT-IN-001 REQ-HOI-001/002), THEN `isHarnessLearningEnabled` (fail-open, default true) — REQ-HEV-016 rewritten naming BOTH gates; §D.3 activation-precondition note added (default-config Stop-path dormancy is EXPECTED shipped behavior; this dev repo enables `hook.opt_in.enabled: true` as part of M4 verification); HOI SPEC cross-referenced in §F. Transport KEPT per user decision 1 (no new gate, no default flip). **D2**: plan M2 registration re-pinned to the live `newHarnessRouterCmd()` tree + `v3r5RequiredHarnessVerbs` step (details in plan.md). **D3**: AC-HEV-011 re-scoped to write-surface `--outcome` absence. **D4 + user decisions pinned**: (2) `request_class` INCLUDED in schema v1 (coarse keyword enum, non-verbatim); (3) v1 no-rotation, retention deferred to EVOLVE-003 with `retention.go` reuse preserved (new §E Out-of-Scope entry); both plan.md §H markers struck. **S1**: same-session-reroute-wins precedence + 24h staleness threshold pinned (REQ-HEV-010/014). **S2**: `abort` evidence kind added to the closed enum; lazy-sweep path bypasses `DeriveOutcome` (REQ-HEV-006/013/014). **S3-S6**: AC matrix + plan corrections (acceptance.md/plan.md). Now 21 REQ / 27 AC. | manager-spec |
 
 ## §A. Context and Intent
 
@@ -72,10 +73,12 @@ EVOLVE-002, the gates/registries are EVOLVE-003 (see §E Exclusions).
   `DeriveOutcome` machine-signal precedence, pending-row store
   (`.moai/state/routing-pending-<session>.json`).
 - Stop-hook outcome capture: extend the EXISTING `moai hook harness-observe-stop`
-  Go handler (already registered in settings.json Stop hooks, async, 5s) with a
-  self-gated routing finalizer — finalize only when a pending routing row exists
-  AND its evidence derives a terminal outcome; no-op otherwise. No new hook
-  wrapper, no settings.json registration change.
+  Go handler (already registered in settings.json Stop hooks, async, 5s;
+  HOI-gated — see the §D.3 activation precondition) with a self-gated routing
+  finalizer — finalize only when a pending routing row exists AND its evidence
+  derives a terminal outcome; no-op otherwise. No new hook wrapper, no
+  settings.json registration change, NO separate new gate, NO global default
+  flip (user decision 1).
 - CLI recording surface: `moai harness ledger record | evidence | list` verbs
   (the orchestrator's dispatch-time recording + evidence-append + read entry
   points).
@@ -92,8 +95,12 @@ EVOLVE-002, the gates/registries are EVOLVE-003 (see §E Exclusions).
 - The existing `harness-observe-stop` behavior (usage-log Stop event,
   auto-classify, auto-propose chains) — the routing finalizer is additive and
   fail-open.
-- The `learning.enabled` gate semantics of the harness-observe family
-  (default enabled; `false` → no-op).
+- The DUAL gate semantics of the harness-observe family, preserved verbatim:
+  gate 0 `isHookOptInEnabled` (`hook.opt_in.enabled` in
+  `.moai/config/sections/system.yaml` — fail-CLOSED, default OFF per
+  SPEC-V3R6-HOOK-OBSERVE-OPT-IN-001 REQ-HOI-001/002), THEN gate 1
+  `isHarnessLearningEnabled` (`learning.enabled` in harness.yaml — fail-open,
+  default true). Neither gate's default is changed by this SPEC.
 - The 5s MoAI hook timeout policy; hook failures never block session end.
 - Template neutrality (§25): the MECHANISM ships to templates (Go binary +
   skill-doc mirrors); the ledger DATA never does.
@@ -128,10 +135,12 @@ EVOLVE-002, the gates/registries are EVOLVE-003 (see §E Exclusions).
   written to disk by this package).
 - **REQ-HEV-006** (Unwanted behavior — machine-signal-only): The ledger shall
   not accept model self-reported prose as the basis for `outcome`;
-  `evidence_refs` entries shall carry machine signals only (`audit_score`,
-  `gate_exit`, `verify_path` kinds). When no machine signal exists for a
-  convergence field, the writer shall record `null` for that field rather than
-  an inferred value.
+  `evidence_refs` entries shall carry machine signals only, drawn from the
+  closed kind enum {`gate_exit`, `audit_score`, `verify_path`, `abort`} — the
+  `abort` kind is the explicit abort marker, recorded only for a structurally
+  observable abort artifact (killed/interrupted delegation, user interrupt).
+  When no machine signal exists for a convergence field, the writer shall
+  record `null` for that field rather than an inferred value.
 
 ### C.2 Writer / reader package (`internal/harness/routing/`)
 
@@ -150,8 +159,11 @@ EVOLVE-002, the gates/registries are EVOLVE-003 (see §E Exclusions).
   separate (different subjects).
 - **REQ-HEV-010** (Compound — reroute): **While** a pending routing row exists
   for the current session, **When** a new `ledger record` call arrives for the
-  same session, the writer shall finalize the earlier pending row with
-  `outcome: reroute` before creating the new pending row.
+  same session (typically a different subcommand — a re-route of the same
+  request), the writer shall finalize the earlier pending row with
+  `outcome: reroute` before creating the new pending row — **regardless of the
+  pending row's age** (same-session precedence: reroute wins; the REQ-HEV-014
+  staleness abort never applies to the current session's own row).
 
 ### C.3 Outcome capture (pending-row lifecycle + Stop hook, Phase Ω)
 
@@ -171,27 +183,46 @@ EVOLVE-002, the gates/registries are EVOLVE-003 (see §E Exclusions).
   hook fires every turn-end).
 - **REQ-HEV-013** (Ubiquitous — deterministic derivation): The
   `DeriveOutcome` function shall derive `outcome` deterministically from
-  machine evidence per fixed precedence: (1) explicit abort marker → `abort`;
+  machine evidence per fixed precedence: (1) explicit abort marker — an
+  `abort`-kind entry in `evidence_refs` (REQ-HEV-006 closed enum) → `abort`;
   (2) any `gate_exit` evidence with non-zero exit → `fail`; (3) at least one
   terminal passing machine signal (declared-final `gate_exit` 0, audit verdict
   evidence, or verify-path evidence marked terminal) → `success`;
   (4) otherwise → non-terminal (stay pending). The function shall accept no
-  free-text outcome override.
+  free-text outcome override. `DeriveOutcome` governs the Stop-finalize path
+  ONLY; the two writer-internal finalizations — reroute (REQ-HEV-010) and the
+  lazy staleness sweep (REQ-HEV-014) — assign their outcome directly and
+  bypass `DeriveOutcome`.
 - **REQ-HEV-014** (Event-driven — stale sweep): **When** `ledger record` runs
-  and finds a pending row belonging to a different session (or a stale pending
-  row older than the staleness threshold), it shall finalize that row with
-  `outcome: abort` before creating the new pending row (lazy abort sweep — no
-  SessionEnd hook extension in this SPEC).
+  and finds a pending row belonging to a **different session**, OR a pending
+  row with unresolvable session identity older than the staleness threshold
+  (**24 hours**, pinned), it shall finalize that row with `outcome: abort`
+  before creating the new pending row (lazy abort sweep — no SessionEnd hook
+  extension in this SPEC). The sweep assigns `abort` directly, **bypassing
+  `DeriveOutcome`** (the swept row's evidence is by definition non-terminal).
+  Precedence vs REQ-HEV-010: the current session's own pending row is ALWAYS
+  finalized as `reroute`, never swept as `abort`, regardless of age.
 - **REQ-HEV-015** (Unwanted behavior — fail-open + budget): The routing
   finalize path shall not block session end: all errors are logged to stderr
   and swallowed (matching the existing `harness-observe-stop` fail-open
   pattern), and the added work shall stay within the 5s MoAI hook timeout
   policy (single pending-file read + single O_APPEND write; no network, no
   subprocess).
-- **REQ-HEV-016** (Capability gate — learning gate inheritance): **Where**
-  `.moai/config/sections/harness.yaml` sets `learning.enabled: false`, the
-  routing capture (record / evidence / Stop finalize) shall no-op, inheriting
-  the existing harness-observe family gate (default: enabled).
+- **REQ-HEV-016** (Capability gate — HOI dual-gate inheritance): The routing
+  capture inherits BOTH existing harness-observe family gates, in their
+  existing order, with their existing asymmetric defaults — no separate new
+  gate is added and no default is flipped (user decision 1):
+  - **Gate 0 (HOI, fail-CLOSED, default OFF)**: **Where**
+    `.moai/config/sections/system.yaml` does NOT set
+    `hook.opt_in.enabled: true` (`isHookOptInEnabled` — file missing / parse
+    error / block absent / `false` all evaluate false, per
+    SPEC-V3R6-HOOK-OBSERVE-OPT-IN-001 REQ-HOI-001), the Stop-path outcome
+    finalization shall not run — Stop-path capture under default shipped
+    config is DORMANT (expected behavior; see §D.3).
+  - **Gate 1 (learning, fail-open, default true)**: **Where**
+    `.moai/config/sections/harness.yaml` sets `learning.enabled: false`
+    (`isHarnessLearningEnabled`), ALL routing capture (record / evidence /
+    Stop finalize) shall no-op.
 
 ### C.4 Workflow skill wiring (recording obligation)
 
@@ -258,17 +289,21 @@ EVOLVE-002, the gates/registries are EVOLVE-003 (see §E Exclusions).
 
 Field notes:
 
+- `schema_version` — a SPEC-added delta over the design SSOT §5 schema line
+  (like A2/A4, flagged explicitly): the versioned-row marker enabling Loop 1
+  consumers to evolve the schema without re-reading unversioned rows.
 - `request_digest` — truncated SHA-256 of the raw request, computed in-process;
   the raw text is never persisted (REQ-HEV-005). `request_class` is a coarse
-  keyword-derived enum (non-verbatim) included so the Loop 1 pattern key
-  (`request_class + subcommand + mode + outcome`, design SSOT §5) is derivable;
-  its v1 inclusion is tracked as an open clarification in plan.md.
+  keyword-derived enum (non-verbatim) — **INCLUDED in schema v1** (pinned user
+  decision 2) so the Loop 1 pattern key
+  (`request_class + subcommand + mode + outcome`, design SSOT §5) is derivable.
 - `model_class` — STOP-guard weighting input (design SSOT §2: GLM sessions are
   observation-only in later loops; observation itself is always accepted).
   `unknown` is the fallback when resolution fails.
 - `evidence_refs[].kind` — closed enum {`gate_exit`, `audit_score`,
-  `verify_path`} in v1 (REQ-HEV-006). `terminal: true` marks a signal eligible
-  to close the row via `DeriveOutcome` (REQ-HEV-013).
+  `verify_path`, `abort`} in v1 (REQ-HEV-006). `terminal: true` marks a signal
+  eligible to close the row via `DeriveOutcome` (REQ-HEV-013); an `abort`-kind
+  entry is inherently terminal (precedence 1).
 - `delegations[].outcome` — derived from post-delegation machine evidence where
   available; `blocker` carries the structured blocker category when the
   delegation returned a blocker report (a structurally observable artifact).
@@ -282,13 +317,34 @@ dispatch ──► ledger record ──► .moai/state/routing-pending-<session>
                  │  (same session, new record)          │
                  └──► earlier row finalized: reroute    │ ledger evidence (append machine refs)
                                                         ▼
-Stop hook (harness-observe-stop, self-gated) ──► DeriveOutcome(evidence)
+Stop hook (harness-observe-stop; HOI gate 0 + learning gate 1 + self-gate) ──► DeriveOutcome(evidence)
      ├─ terminal (abort|fail|success) ──► append routing-ledger.jsonl + delete pending
      └─ non-terminal ──► leave pending (multi-turn pipeline)
-next-session ledger record ──► stale/foreign pending row ──► finalized: abort (lazy sweep)
+next-session ledger record ──► foreign (or unresolvable-session >24h) pending row
+                               ──► finalized: abort (lazy sweep, bypasses DeriveOutcome)
 ```
 
-The full machine-verifiable AC matrix (AC-HEV-001 … AC-HEV-026) lives in
+### D.3 Activation precondition (HOI dual-gate — default-config dormancy)
+
+The Stop-path outcome finalization rides the `harness-observe-stop` handler,
+whose FIRST gate is `isHookOptInEnabled` — fail-CLOSED, default OFF (local
+`.moai/config/sections/system.yaml` measures `hook.opt_in.enabled: false`;
+the shipped template default is likewise `false`). Consequences, stated
+explicitly (audit D1):
+
+- Under DEFAULT shipped config, Stop-path finalization is **DORMANT** — this
+  is EXPECTED behavior, consistent with the HOI opt-in contract of
+  SPEC-V3R6-HOOK-OBSERVE-OPT-IN-001 (observability wrappers are opt-in).
+  Without opt-in, rows still finalize via the record-time reroute
+  (REQ-HEV-010) and lazy abort sweep (REQ-HEV-014) paths; `success`/`fail`
+  outcomes require the Stop path and therefore require HOI opt-in.
+- Activating full outcome capture requires `hook.opt_in.enabled: true` (plus
+  the default-on `learning.enabled`). This dev repo enables the HOI opt-in
+  locally as part of M4 verification (plan.md M4).
+- This SPEC does NOT flip either global default and does NOT add a separate
+  gate (user decision 1).
+
+The full machine-verifiable AC matrix (AC-HEV-001 … AC-HEV-027) lives in
 `acceptance.md` (SSOT). Every REQ maps to at least one AC; cross-file
 registrations (SKILL.md router, workflow bodies, hook handler, CLI verb,
 template mirrors) are pinned as SEPARATE baseline-0 ACs per the
@@ -345,6 +401,26 @@ The following are explicitly out of scope for this SPEC.
   auto-classify, and auto-propose chains are untouched except for the additive
   routing-finalizer call inside the `harness-observe-stop` CLI handler.
 
+### Out of Scope — Ledger retention / rotation (deferred to EVOLVE-003)
+
+- NO retention, rotation, archive, or pruning of `routing-ledger.jsonl` in v1
+  (pinned user decision 3): the ledger is append-only, single-file, unbounded
+  (rows ~300-500 B; premature rotation would complicate the Loop 1 consumer
+  contract). Retention is revisited in `SPEC-HARNESS-EVOLVE-003` alongside the
+  negative-evidence registry; the option to reuse the existing
+  `internal/harness/retention.go` component (archive + prune, as used by
+  usage-log.jsonl) is explicitly PRESERVED for that follow-up. Residual risk
+  accepted for v1: unbounded growth — mitigated by row size and by the
+  EVOLVE-003 revisit.
+
+### Out of Scope — HOI / gate default changes
+
+- NO change to `hook.opt_in.enabled` or `learning.enabled` defaults, NO
+  separate new gate, NO settings/system.yaml template default flip (user
+  decision 1). The default-config Stop-path dormancy documented in §D.3 is
+  accepted shipped behavior; enabling HOI remains a per-project opt-in owned
+  by SPEC-V3R6-HOOK-OBSERVE-OPT-IN-001.
+
 ### Out of Scope — CHANGELOG / README / docs-site
 
 - CHANGELOG.md is owned by manager-docs (sync-phase); README and docs-site
@@ -358,8 +434,13 @@ The following are explicitly out of scope for this SPEC.
 - `internal/harness/observer.go` — the EXISTING usage-log observer this SPEC
   stays separate from (REQ-HEV-009).
 - `internal/cli/hook.go` — `runHarnessObserveStop` handler (Stop-hook host for
-  the additive routing finalizer, REQ-HEV-012) + `isHarnessLearningEnabled`
-  gate (REQ-HEV-016).
+  the additive routing finalizer, REQ-HEV-012) + the dual gates
+  `isHookOptInEnabled` (gate 0, fail-CLOSED) and `isHarnessLearningEnabled`
+  (gate 1, fail-open) (REQ-HEV-016).
+- `SPEC-V3R6-HOOK-OBSERVE-OPT-IN-001` — the HOI master-toggle contract
+  (REQ-HOI-001 default-off, REQ-HOI-002 wrapper gating, §A.3 cohabitation)
+  governing the reused Stop-hook transport; the §D.3 activation precondition
+  is this SPEC's reconciliation with that contract.
 - `.claude/hooks/moai/handle-harness-observe-stop.sh` + settings.json Stop
   registration — the existing transport reused verbatim (no changes).
 - `.claude/skills/moai/SKILL.md` + `workflows/{plan,run,sync}.md` — recording

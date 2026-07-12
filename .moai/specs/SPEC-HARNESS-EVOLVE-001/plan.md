@@ -1,6 +1,6 @@
 # SPEC-HARNESS-EVOLVE-001 — Implementation Plan
 
-> Tier M · 21 REQ · 26 AC · 4 Milestones. Design SSOT:
+> Tier M · 21 REQ · 27 AC · 4 Milestones · v0.1.1 (plan-audit iter-1 fix applied). Design SSOT:
 > `.moai/reports/harness-self-evolving-redesign-final-20260712.html` (§4/§5/§7).
 > Epic: HARNESS-EVOLVE (1/5, entry SPEC, no `depends_on`).
 
@@ -15,24 +15,32 @@
 | `grep -rl "routing-ledger" .claude/skills/moai/workflows/` | 0 files | workflow-body wiring baseline |
 | `grep -c "harness/routing" internal/cli/hook.go` | 0 | hook finalizer registration baseline |
 | `grep -rn "routing-ledger\|routingledger" internal/cli/` | 0 | CLI verb registration baseline |
-| repo-wide `routing-ledger` (internal/ + .claude/, excl. reports) | 0 | zero-collision token — safe discriminator |
+| registration-surface `routing-ledger` (`grep -rn "routing-ledger" .claude/skills/ internal/`) | 0 | zero-collision token on all registration surfaces — safe discriminator. (NOTE: a broader `.claude/` sweep matches 1 hit in `.claude/agent-memory/` — agent memory, NOT a registration surface; excluded by scope) |
+| `grep -c '"ledger"' internal/cli/harness_retirement_test.go` | 0 | `v3r5RequiredHarnessVerbs` registration baseline (AC-HEV-027) |
 | `.gitignore` | `.moai/state/` at lines 198 & 265 | ledger path already ignored; NO gitignore edit needed |
 | Stop hooks (settings.json) | `handle-stop.sh`, `sync-phase-quality-gate.sh`, `handle-harness-observe-stop.sh` (async, 5s) | existing transport for outcome capture |
 | `internal/cli/hook.go` `runHarnessObserveStop` | records usage-log Stop event + auto-classify + auto-propose, fail-open | host function for the additive finalizer |
-| `internal/cli/hook.go` `isHarnessLearningEnabled` | default TRUE; `learning.enabled: false` → no-op | gate to inherit (REQ-HEV-016) |
-| `moai harness` CLI group | `route/validate/status/apply/rollback/disable/mute/list/edit/remove/doctor` — NO `ledger` verb | namespace free for `ledger` sub-group |
+| `internal/cli/hook.go` `isHookOptInEnabled` (hook.go:576-604 truth table; first gate at hook.go:731) | fail-CLOSED, default OFF; local `.moai/config/sections/system.yaml:14-15` = `opt_in: enabled: false`; template `system.yaml.tmpl` = `false` | gate 0 to inherit (REQ-HEV-016) — Stop-path DORMANT under default config (spec.md §D.3) |
+| `internal/cli/hook.go` `isHarnessLearningEnabled` (hook.go:549) | fail-open, default TRUE; `learning.enabled: false` → no-op; local harness.yaml = `true` | gate 1 to inherit (REQ-HEV-016) |
+| `moai harness` CLI group — live tree = `newHarnessRouterCmd()` (`internal/cli/harness_route.go`, registered `root.go:183`) | live verbs: `route/validate/status/clusters/apply/rollback/disable/mute/mute-list/unmute/verify/propose/install` (+ execute, v4 list/edit/remove/doctor) — NO `ledger` verb; `newHarnessCmd()` in `harness.go` is a superseded deprecation-marker factory NEVER added to the tree | namespace free for `ledger` sub-group; register in `newHarnessRouterCmd()` ONLY |
 | `internal/harness/observer.go` | usage-log.jsonl writer (PostToolUse family) | PRESERVE — separate subject |
 
 ### A.2 Design decisions (pinned)
 
 - **D1 — Stop-hook transport = extend the EXISTING `harness-observe-stop` Go
-  handler.** No new wrapper script, no settings.json(.tmpl) registration change.
-  Rationale: the wrapper + registration + template mirror already ship; the
-  Frozen permission surface (design §4, delta A1) is untouched; the 5s/async
-  envelope is inherited. Alternative (new `moai hook routing-outcome` event +
-  wrapper + registration) rejected: 3 extra mirrored files + permission-surface
-  churn for zero capability gain. The SEPARATION requirement (REQ-HEV-009)
-  binds the ledger FILE and schema types, not the hook transport process.
+  handler (KEPT per user decision 1, HOI precondition codified).** No new
+  wrapper script, no settings.json(.tmpl) registration change, no separate new
+  gate, no global default flip. Rationale: the wrapper + registration +
+  template mirror already ship; the Frozen permission surface (design §4,
+  delta A1) is untouched; the 5s/async envelope is inherited. Consequence
+  accepted knowingly (audit D1 + user decision 1): the handler's FIRST gate is
+  `isHookOptInEnabled` (fail-CLOSED, default OFF per
+  SPEC-V3R6-HOOK-OBSERVE-OPT-IN-001) — Stop-path outcome finalization is
+  DORMANT under default shipped config and requires `hook.opt_in.enabled: true`
+  (spec.md §D.3). Alternative (new `moai hook routing-outcome` event + wrapper
+  + registration) rejected: 3 extra mirrored files + permission-surface churn
+  for zero capability gain. The SEPARATION requirement (REQ-HEV-009) binds the
+  ledger FILE and schema types, not the hook transport process.
 - **D2 — Finalization authority = the hook, not the orchestrator.** The
   orchestrator only ever supplies machine evidence refs (`ledger evidence`);
   `DeriveOutcome` (REQ-HEV-013) runs inside the Stop-hook handler. This keeps
@@ -42,10 +50,14 @@
   `/moai plan|run|sync` span many turns; finalize triggers only when evidence
   is terminal-derivable. Stale/foreign pending rows are aborted lazily by the
   next `ledger record` (REQ-HEV-014) — no SessionEnd extension in v1.
-- **D4 — `learning.enabled` gate inheritance.** Routing capture no-ops when
-  `learning.enabled: false`, consistent with the whole harness-observe family
-  (observation IS the learning system's front end; if learning is off,
-  observing for it is off). Default remains enabled.
+- **D4 — HOI dual-gate inheritance.** Routing capture inherits BOTH
+  harness-observe family gates in their existing order and asymmetry: gate 0
+  `isHookOptInEnabled` (fail-CLOSED, default OFF — governs the Stop-finalize
+  path riding the HOI-gated handler) then gate 1 `isHarnessLearningEnabled`
+  (fail-open, default true — governs ALL routing capture; observation IS the
+  learning system's front end). Neither default is changed. Without HOI
+  opt-in, rows still finalize via record-time reroute + lazy abort sweep;
+  `success`/`fail` outcomes require the Stop path (spec.md §D.3).
 - **D5 — Per-session pending isolation.** Pending state at
   `.moai/state/routing-pending-<session_id>.json` (one file per session)
   avoids cross-session read-modify-write races; the ledger itself is only ever
@@ -77,15 +89,23 @@ sides rather than copying bytes.
 ### A.4 Hook self-gate design (explicit, per brief)
 
 ```
-runHarnessObserveStop (existing, internal/cli/hook.go)
+runHarnessObserveStop (existing, internal/cli/hook.go:726)
+  gate 0 [EXISTING, hook.go:731]: !isHookOptInEnabled(root)      → return nil
+         (HOI master toggle — fail-CLOSED, default OFF; REQ-HOI-002.
+          The routing finalizer below is NEVER reached without HOI opt-in.)
+  gate 1 [EXISTING]: !isHarnessLearningEnabled(root)             → return nil
+         (fail-open, default true)
   ├── [existing] usage-log Stop event + auto-classify + auto-propose   (UNCHANGED)
   └── [NEW, additive, last] routing.FinalizePendingOnStop(root, sessionID)
-        gate 0: isHarnessLearningEnabled(root) == false → return nil   (REQ-HEV-016)
-        gate 1: pending file for session absent          → return nil   (self-gate, REQ-HEV-012)
-        gate 2: DeriveOutcome(evidence) non-terminal     → return nil   (multi-turn, D3)
+        gate 2: pending file for session absent          → return nil   (self-gate, REQ-HEV-012)
+        gate 3: DeriveOutcome(evidence) non-terminal     → return nil   (multi-turn, D3)
         else  : append ledger row (O_APPEND) + remove pending file
         errors: fmt.Fprintf(stderr, ...) and return nil  (fail-open, REQ-HEV-015)
 ```
+
+Gates 0-1 are the EXISTING handler entry gates (not re-implemented by this
+SPEC); the finalizer adds only gates 2-3. The CLI `record`/`evidence` paths
+apply gate 1 (learning) themselves; gate 0 (HOI) binds the hook transport.
 
 Budget: 1 stat + 1 small JSON read + 1 O_APPEND write worst case — well inside
 the 5s hook timeout; no subprocess, no network.
@@ -135,7 +155,9 @@ go build ./... && GOOS=windows GOARCH=amd64 go build ./...
 golangci-lint run --timeout=2m 2>&1 | tail -5          # lint baseline (NEW vs pre-existing)
 ls internal/harness/routing 2>/dev/null || echo "greenfield OK"
 grep -rn "Retired\|superseded" internal/harness/*.go | head -5   # B2 pre-scan
-grep -rn "routing-ledger" .claude/ internal/ | wc -l    # expect 0 (token still free)
+grep -rn "routing-ledger" .claude/skills/ internal/ | wc -l   # expect 0 on registration surfaces
+# (scope note: .claude/agent-memory/ is EXCLUDED — the planning memory entry
+#  legitimately mentions the token; it is not a registration surface)
 ```
 
 ## §D. Constraints (DO NOT VIOLATE)
@@ -160,7 +182,7 @@ grep -rn "routing-ledger" .claude/ internal/ | wc -l    # expect 0 (token still 
 Per `manager-develop-prompt-template.md` §E (E1-E7) and
 `verification-claim-integrity.md` §3 (5-section evidence format):
 
-- E1: AC-HEV-001..026 binary PASS/FAIL matrix with verbatim command outputs
+- E1: AC-HEV-001..027 binary PASS/FAIL matrix with verbatim command outputs
 - E2: `go build ./...` + `GOOS=windows GOARCH=amd64 go build ./...` exit 0
 - E3: `go test -cover ./internal/harness/routing/...` ≥ 90%
 - E4: subagent-boundary grep = 0 matches in `internal/harness/routing/`
@@ -197,20 +219,32 @@ Exit: `go test ./internal/harness/routing/...` PASS, coverage ≥ 90%.
 ### M2 — CLI verbs + Stop-hook finalizer wiring (Priority: High)
 
 Files: `internal/cli/harness_ledger.go` (+`_test.go`), `internal/cli/hook.go`
-(additive edit in `runHarnessObserveStop`), `internal/cli/harness.go`
-(sub-command registration).
+(additive edit in `runHarnessObserveStop`), `internal/cli/harness_route.go`
+(**sub-command registration in `newHarnessRouterCmd()` — the LIVE tree wired
+at `root.go:183`; do NOT touch the superseded `newHarnessCmd()` in
+`harness.go`, which is a deprecation-marker factory never added to the
+tree**), `internal/cli/harness_retirement_test.go` (verb-surface guard).
 
 - `moai harness ledger record` — stdin request text → digest + class, flags
   for subcommand/mode/tier/level/clarify-rounds; creates pending row; runs the
-  lazy stale sweep (REQ-HEV-011/014); gated by `isHarnessLearningEnabled`
+  lazy stale sweep (REQ-HEV-011/014, cross-session or unresolvable+24h,
+  same-session→reroute precedence); gated by `isHarnessLearningEnabled`
 - `moai harness ledger evidence` — appends a machine evidence ref
-  (`--kind gate_exit|audit_score|verify_path`, `--value`, `--ref`,
-  `--terminal`); NO outcome flag exists
+  (`--kind gate_exit|audit_score|verify_path|abort`, `--value`, `--ref`,
+  `--terminal`); NO `--outcome` flag exists on record OR evidence (the
+  write surfaces — AC-HEV-011)
 - `moai harness ledger list` — reader filters
   (`--subcommand`, `--outcome`, `--since`, `--until`), JSONL/table output
+  (the read-side `--outcome` FILTER is legitimate — it selects rows, it never
+  writes an outcome)
+- `ledger` added to `v3r5RequiredHarnessVerbs`
+  (`internal/cli/harness_retirement_test.go:31-50`) so the verb-surface CI
+  guard pins the registration (AC-HEV-027)
 - `runHarnessObserveStop` gains the §A.4 self-gated finalizer call (last,
-  additive, fail-open); gate test
-  (`TestHarnessObserveStop_RoutingLedgerGated`) + no-pending no-op test
+  additive, fail-open, downstream of the EXISTING HOI + learning gates); gate
+  test (`TestHarnessObserveStop_RoutingLedgerGated` — fixtures set
+  `hook.opt_in.enabled: true` to reach the finalizer, then vary
+  `learning.enabled`; plus an HOI-off dormancy case) + no-pending no-op test
 
 Exit: `moai harness ledger --help` exits 0; `go test ./internal/cli/...` PASS;
 existing hook tests untouched-green.
@@ -234,10 +268,15 @@ neutrality CI guard green.
 
 ### M4 — Integration verification + evidence (Priority: Medium)
 
+- Enable the HOI opt-in LOCALLY for verification: set
+  `hook.opt_in.enabled: true` in this dev repo's
+  `.moai/config/sections/system.yaml` (local runtime config, NOT template —
+  the shipped default stays `false` per user decision 1 / spec.md §D.3), then
+  exercise the live Stop-path finalization end-to-end
 - Full suite `go test ./...` (+ `-race` for the concurrent-append path),
   `go vet ./...`, `golangci-lint run` NEW-issue check
 - `moai spec lint` clean for this SPEC; template neutrality test green
-- AC-HEV-001..026 sweep with verbatim outputs → progress.md §E.2
+- AC-HEV-001..027 sweep with verbatim outputs → progress.md §E.2
 - @MX tags: `@MX:ANCHOR` on the writer append entry point (fan-in ≥3 expected:
   CLI record/finalize + hook path), `@MX:NOTE` on DeriveOutcome precedence
 
@@ -258,34 +297,39 @@ Exit: E1-E7 self-verification complete; ready for sync-phase handoff.
 - AP-6: Writing tests against the repo's real `.moai/state/` — B8 violation;
   `t.TempDir()` only.
 
-## §H. Open Clarifications
+## §H. Resolved Clarifications (pinned — AskUserQuestion round 2026-07-12)
 
-> To be resolved via orchestrator AskUserQuestion before Implementation
-> Kickoff Approval (plan→run gate). Both have a pinned default so run-phase is
-> not blocked if the defaults are confirmed.
+> All markers STRUCK per plan-audit iter-1 D4/F4. The three user decisions
+> below are PINNED; no open clarifications remain (MP-7 gate clear).
 
-1. **[NEEDS CLARIFICATION: request_class field in schema v1]** — The design
-   SSOT §5 ledger schema line lists `request_digest` only, but the Loop 1
-   pattern key (design §5 Loop 1: `request_class + subcommand + mode +
-   outcome`) requires a class token. Proposed default (as drafted in spec.md
-   §D.1): include `request_class` as a coarse keyword-derived enum
-   (`feature|bugfix|refactor|docs|question|pipeline|other`) in v1 — non-verbatim,
-   privacy-preserving. Alternative: omit in v1 and let EVOLVE-002 add schema v2.
-2. **[NEEDS CLARIFICATION: ledger retention/rotation]** — The ledger is
-   append-only and unbounded in v1. usage-log.jsonl has a `Retention`
-   (archive + prune) component. Proposed default: NO rotation in v1 (rows are
-   ~300-500 B; thousands of routings ≪ 1 MB; premature rotation complicates the
-   Loop 1 consumer contract); revisit in EVOLVE-003 alongside the negative-
-   evidence registry. Alternative: reuse `Retention` at 10 MB single-level
-   rotation now.
+1. **HOI transport (audit D1) — RESOLVED, decision 1**: KEEP the HOI-gated
+   `runHarnessObserveStop` transport. The activation precondition is codified
+   explicitly (spec.md §D.3 + REQ-HEV-016 dual-gate): Stop-path outcome
+   finalization requires `hook.opt_in.enabled: true` (fail-closed, per
+   SPEC-V3R6-HOOK-OBSERVE-OPT-IN-001). NO separate gate added, NO global
+   default flipped. Default-config Stop-path dormancy is accepted shipped
+   behavior; this dev repo enables the opt-in locally during M4.
+2. **request_class in schema v1 — RESOLVED, decision 2**: INCLUDED in v1 as a
+   coarse keyword-derived enum (`feature|bugfix|docs|refactor|question|other`
+   family, non-verbatim), alongside `request_digest` (spec.md §D.1 pinned).
+3. **Ledger retention/rotation — RESOLVED, decision 3**: v1 no-rotation
+   (append-only single file); retention revisited in EVOLVE-003 alongside the
+   negative-evidence registry, with the option to reuse
+   `internal/harness/retention.go` explicitly preserved (spec.md §E
+   Out-of-Scope entry). Residual risk (unbounded growth) accepted for v1 —
+   mitigated by ~300-500 B row size + the EVOLVE-003 revisit.
 
 ## §I. Cross-References
 
 - spec.md §C (REQ SSOT) / §D (schema SSOT) / §E (exclusions)
-- acceptance.md (AC matrix SSOT, AC-HEV-001..024)
+- acceptance.md (AC matrix SSOT, AC-HEV-001..027)
 - `.moai/reports/harness-self-evolving-redesign-final-20260712.html` §5/§6/§7
-- `internal/cli/hook.go` (`runHarnessObserveStop`, `isHarnessLearningEnabled`,
-  `resolveHookProjectRoot`)
+- `internal/cli/hook.go` (`runHarnessObserveStop`, `isHookOptInEnabled`,
+  `isHarnessLearningEnabled`, `resolveHookProjectRoot`)
+- `internal/cli/harness_route.go` (`newHarnessRouterCmd()` — the LIVE CLI
+  registration site, wired `root.go:183`) + `harness_retirement_test.go`
+  (`v3r5RequiredHarnessVerbs`)
+- SPEC-V3R6-HOOK-OBSERVE-OPT-IN-001 (HOI master toggle — gate 0 contract)
 - `internal/harness/observer.go` (separation reference)
 - `.claude/rules/moai/development/manager-develop-prompt-template.md` (§B/§E)
 - CLAUDE.local.md §2 / §25 (Template-First + neutrality)

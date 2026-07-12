@@ -77,15 +77,21 @@
 - REQ: REQ-HEV-013, REQ-HEV-006
 - Baseline: n/a
 - Verify: `go test -run TestDeriveOutcome ./internal/harness/routing/`
-- Expected: PASS (table-driven: abort-marker > non-zero gate_exit > terminal
-  passing signal > non-terminal; no code path accepts a free-text outcome)
+- Expected: PASS (table-driven: `abort`-kind evidence marker > non-zero
+  gate_exit > terminal passing signal > non-terminal; no code path accepts a
+  free-text outcome; sweep/reroute paths bypass DeriveOutcome per REQ-HEV-013)
 
-**AC-HEV-011 — no bare outcome flag on any CLI verb**
+**AC-HEV-011 — no `--outcome` flag on the WRITE surfaces (record / evidence)**
 - REQ: REQ-HEV-006
-- Baseline: `internal/cli/harness_ledger.go` absent
-- Verify: `grep -c '"outcome"' internal/cli/harness_ledger.go` (flag-name registration scan)
-- Expected: 0 (absence assertion — preservation of the un-fakeable contract;
-  the ONLY outcome writers are `DeriveOutcome`, reroute, and stale-sweep abort)
+- Baseline: `internal/cli/harness_ledger.go` absent (`moai harness ledger` →
+  unknown command)
+- Verify (two write-surface probes, each independently):
+  `go run ./cmd/moai harness ledger record --help | grep -c -- '--outcome'`
+  AND `go run ./cmd/moai harness ledger evidence --help | grep -c -- '--outcome'`
+- Expected: 0 AND 0 (absence assertion on the WRITE surfaces only — the
+  un-fakeable contract binds outcome INPUT; the `ledger list --outcome` READ
+  filter is legitimate row selection and is NOT covered by this AC. The ONLY
+  outcome writers are `DeriveOutcome`, reroute, and stale-sweep abort)
 
 ### Group 4 — Separation from usage-log (REQ-HEV-009)
 
@@ -126,8 +132,11 @@
 - REQ: REQ-HEV-014
 - Baseline: n/a
 - Verify: `go test -run TestStaleSweepAbort ./internal/harness/routing/`
-- Expected: PASS (foreign-session or stale pending row finalized with
-  `"outcome":"abort"` before the new pending row is created)
+- Expected: PASS (cross-session pending row — any age — and
+  unresolvable-session pending row older than 24h are finalized
+  `"outcome":"abort"` DIRECTLY (bypassing DeriveOutcome) before the new
+  pending row is created; a same-session row is NEVER swept — it reroutes
+  per REQ-HEV-010 precedence, covered by AC-HEV-014's table)
 
 **AC-HEV-018 — fail-open finalizer**
 - REQ: REQ-HEV-015
@@ -152,12 +161,20 @@
 - Verify: `go run ./cmd/moai harness ledger --help; echo "exit=$?"`
 - Expected: exit 0 AND help text lists `record`, `evidence`, `list` sub-verbs
 
-**AC-HEV-021 — learning.enabled gate inheritance**
+**AC-HEV-021 — HOI dual-gate inheritance (gate 0 + gate 1)**
 - REQ: REQ-HEV-016
 - Baseline: n/a
 - Verify: `go test -run TestHarnessObserveStop_RoutingLedgerGated ./internal/cli/`
-- Expected: PASS (`learning.enabled: false` fixture ⇒ pending row NOT
-  finalized, ledger NOT appended; default/absent ⇒ capture active)
+- Expected: PASS — table-driven over BOTH gates with explicit fixtures:
+  (a) HOI OFF (`hook.opt_in.enabled` absent or `false` in the fixture
+  `system.yaml`) ⇒ Stop-path finalizer NEVER reached, pending row survives
+  (default-config dormancy per spec.md §D.3);
+  (b) HOI ON (`hook.opt_in.enabled: true`) + `learning.enabled: false` ⇒
+  no finalize, no append (gate 1);
+  (c) HOI ON + `learning.enabled` absent/true ⇒ capture active, terminal
+  evidence finalizes.
+  Every active-path fixture MUST set `hook.opt_in.enabled: true` explicitly —
+  relying on the default would silently test the dormant path.
 
 ### Group 7 — Workflow skill wiring (REQ-HEV-017/018) — per-file baseline-0 pins
 
@@ -187,21 +204,38 @@
 
 ### Group 8 — Template-First + neutrality (REQ-HEV-019/020)
 
-**AC-HEV-023a — template mirror carries the router obligation**
+**AC-HEV-023a — template mirror carries the router obligation (SKILL.md)**
 - REQ: REQ-HEV-019
 - Baseline (measured): `grep -c "routing-ledger" internal/template/templates/.claude/skills/moai/SKILL.md` → **0**
 - Verify: `grep -c "routing-ledger" internal/template/templates/.claude/skills/moai/SKILL.md`
-- Expected: ≥ 1 (each of the 3 workflow-body mirrors verified the same way,
-  one grep per file, during the M3 exit check)
+- Expected: ≥ 1
 
 **AC-HEV-023b — template neutrality preserved on edited mirrors**
 - REQ: REQ-HEV-019
-- Baseline: neutrality CI guard green
+- Baseline: neutrality CI guards green
 - Verify: `grep -c "SPEC-HARNESS-EVOLVE" internal/template/templates/.claude/skills/moai/SKILL.md`
 - Expected: 0 (absence assertion — no internal SPEC ID leaks into the
-  template copy; the neutrality test
-  `go test -run TestTemplateNeutrality ./internal/template/...` — or the
-  repo's actual guard test name — stays green)
+  template copy) AND both named guard tests stay green:
+  `go test -run TestTemplateNeutralityAudit ./internal/template/...` +
+  `go test -run TestTemplateNoInternalContentLeak ./internal/template/...`
+
+**AC-HEV-023c — template mirror: workflows/plan.md**
+- REQ: REQ-HEV-019
+- Baseline (measured): `grep -c "routing-ledger" internal/template/templates/.claude/skills/moai/workflows/plan.md` → **0**
+- Verify: `grep -c "routing-ledger" internal/template/templates/.claude/skills/moai/workflows/plan.md`
+- Expected: ≥ 1
+
+**AC-HEV-023d — template mirror: workflows/run.md**
+- REQ: REQ-HEV-019
+- Baseline (measured): `grep -c "routing-ledger" internal/template/templates/.claude/skills/moai/workflows/run.md` → **0**
+- Verify: `grep -c "routing-ledger" internal/template/templates/.claude/skills/moai/workflows/run.md`
+- Expected: ≥ 1
+
+**AC-HEV-023e — template mirror: workflows/sync.md**
+- REQ: REQ-HEV-019
+- Baseline (measured): `grep -c "routing-ledger" internal/template/templates/.claude/skills/moai/workflows/sync.md` → **0**
+- Verify: `grep -c "routing-ledger" internal/template/templates/.claude/skills/moai/workflows/sync.md`
+- Expected: ≥ 1
 
 **AC-HEV-024 — no ledger DATA in templates**
 - REQ: REQ-HEV-020
@@ -218,11 +252,23 @@
 - Expected: all exit 0; no existing test modified to pass (usage-log / hook
   tests untouched-green)
 
+**AC-HEV-027 — verb-surface CI guard registration (`v3r5RequiredHarnessVerbs`)**
+- REQ: REQ-HEV-011
+- Baseline (measured): `grep -c '"ledger"' internal/cli/harness_retirement_test.go` → **0**
+- Verify: `grep -c '"ledger"' internal/cli/harness_retirement_test.go`
+- Expected: ≥ 1 (the `ledger` verb is added to `v3r5RequiredHarnessVerbs`
+  (lines 31-50) so `TestHarnessV3R5VerbSurface` pins the live-tree
+  registration — the guard that prevents the twice-shipped inert-verb failure
+  mode) AND `go test -run TestHarnessV3R5VerbSurface ./internal/cli/` PASS
+
 **AC-HEV-026 — gitignore coverage of the ledger path (preservation)**
 - REQ: REQ-HEV-001
 - Baseline (measured): `.moai/state/` present in .gitignore (lines 198, 265) — already green
-- Verify: `touch .moai/state/routing-ledger.jsonl && git check-ignore .moai/state/routing-ledger.jsonl; echo "exit=$?"; rm .moai/state/routing-ledger.jsonl`
-- Expected: exit 0 (preservation invariant — no gitignore edit was needed or made)
+- Verify: `git check-ignore -v .moai/state/routing-ledger.jsonl; echo "exit=$?"`
+- Expected: exit 0 with the matching `.gitignore` pattern printed
+  (`git check-ignore` evaluates ignore patterns without the file existing —
+  NO `touch`/`rm` of the live ledger path; a post-implementation re-run must
+  never delete real observation data)
 
 ## §D.1 REQ → AC Traceability
 
@@ -238,7 +284,7 @@
 | REQ-HEV-008 | AC-HEV-001 (reader filter subtests: `TestReaderFilters`, `TestReaderSkipsMalformed`) |
 | REQ-HEV-009 | AC-HEV-012, AC-HEV-013 |
 | REQ-HEV-010 | AC-HEV-014 |
-| REQ-HEV-011 | AC-HEV-020 |
+| REQ-HEV-011 | AC-HEV-020, AC-HEV-027 |
 | REQ-HEV-012 | AC-HEV-015, AC-HEV-016, AC-HEV-019 |
 | REQ-HEV-013 | AC-HEV-010 |
 | REQ-HEV-014 | AC-HEV-017 |
@@ -246,14 +292,16 @@
 | REQ-HEV-016 | AC-HEV-021 |
 | REQ-HEV-017 | AC-HEV-022a |
 | REQ-HEV-018 | AC-HEV-022b, AC-HEV-022c, AC-HEV-022d |
-| REQ-HEV-019 | AC-HEV-023a, AC-HEV-023b |
+| REQ-HEV-019 | AC-HEV-023a, AC-HEV-023b, AC-HEV-023c, AC-HEV-023d, AC-HEV-023e |
 | REQ-HEV-020 | AC-HEV-024 |
 | REQ-HEV-021 | AC-HEV-002, AC-HEV-025 |
 
 ## §D.2 Given-When-Then scenarios (representative)
 
 **Scenario 1 — happy-path routing observation (10 routings → 10 rows)**
-- Given a project with `learning.enabled` unset (default enabled)
+- Given a project with `hook.opt_in.enabled: true` set explicitly in
+  `system.yaml` (HOI gate 0 open — required for the Stop path; spec.md §D.3)
+  and `learning.enabled` unset (default enabled)
 - When the orchestrator dispatches 10 `/moai` routings, each recorded via
   `ledger record`, each supplied terminal machine evidence, and Stop fires
 - Then `routing-ledger.jsonl` carries exactly 10 rows, each with
@@ -284,21 +332,33 @@
   `{"agent":"manager-develop","cycle_type":"tdd","outcome":"fail","blocker":"<category>"}`
   (blocker presence is a structural artifact, not a prose judgment)
 
-**Scenario 5 — learning disabled (capability gate)**
-- Given `.moai/config/sections/harness.yaml` with `learning.enabled: false`
+**Scenario 5 — learning disabled (gate 1, isolated)**
+- Given `hook.opt_in.enabled: true` (gate 0 open — isolating gate 1) AND
+  `.moai/config/sections/harness.yaml` with `learning.enabled: false`
 - When `ledger record` / Stop finalize run
 - Then no pending file and no ledger row are created (silent no-op, exit 0)
 
+**Scenario 6 — HOI default dormancy (gate 0, edge — audit D1)**
+- Given DEFAULT shipped config (`hook.opt_in.enabled` absent or `false`) and a
+  pending row with terminal evidence
+- When the Stop hook fires
+- Then the Stop-path finalizer is never reached and the pending row survives
+  (EXPECTED dormancy per spec.md §D.3); the row is later finalized only by
+  record-time reroute or the lazy abort sweep — never as `success`/`fail`
+
 ## §D.3 Quality Gate / Definition of Done
 
-- [ ] All 26 AC IDs PASS — 30 verification line items including sub-letters
-  022a-d and 023a-b — with verbatim command outputs (E1 matrix)
+- [ ] All 27 AC IDs PASS — 34 verification line items including sub-letters
+  022a-d and 023a-e — with verbatim command outputs (E1 matrix)
 - [ ] `internal/harness/routing` coverage ≥ 90%; no `t.Skip` without issue link
 - [ ] `go test -race ./internal/harness/routing/...` green
 - [ ] Cross-platform build green (`GOOS=windows GOARCH=amd64`)
 - [ ] golangci-lint: 0 NEW issues vs pre-flight baseline
 - [ ] `moai spec lint`: 0 errors for SPEC-HARNESS-EVOLVE-001
 - [ ] Template neutrality guard green; live↔template pair diffs reviewed
-- [ ] Both plan.md §H clarifications resolved (recorded in progress.md §E.1
-  addendum) before Implementation Kickoff Approval
+- [ ] plan.md §H clarifications RESOLVED (3 pinned user decisions, markers
+  struck — recorded in progress.md §E.1 addendum); MP-7 gate clear
+- [ ] M4 local HOI opt-in (`hook.opt_in.enabled: true` in this dev repo's
+  system.yaml) applied for live Stop-path verification, template default
+  untouched
 - [ ] No modifications outside plan.md §A.5 PRESERVE boundary
