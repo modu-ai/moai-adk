@@ -201,31 +201,71 @@ plan_audit_final_iter: 2
 
 **Residual risk (M5 scope, NOT closing debt):** the `writeLineageCurator` method (the Curator-path lineage populator) is PROVIDED but not yet WIRED into an actual Curator-write code path — the existing `Apply` method still calls the legacy `writeLineage` (leaving M5 fields zero). This is intentional: the Curator-pipeline-to-Apply integration is future wiring (a later milestone / EVOLVE-003+ territory). The M5 deliverable is the surface + the round-trip verification (AC-030/031); the field-population-on-every-Curator-write invariant (REQ-HEV2-023) holds for the `writeLineageCurator` code path itself. Wiring `SnapshotDir` into the existing Apply approve path (the legacy safety pipeline does create a snapshot) is a deferred enhancement — out of M5's AC scope.
 
+### M6 — Template-First empty marker + template neutrality + 2-layer Recall contract
+
+**Deliverables shipped:**
+- `internal/template/templates/CLAUDE.md` (MODIFIED, edited FIRST) + `CLAUDE.md` (live dogfood copy, MODIFIED second) — appended the EMPTY `MOAI:LEARNED-WORKFLOW` managed block (heading `## MOAI:LEARNED-WORKFLOW` + `<!-- moai:learned-start -->` / `<!-- moai:learned-end -->` markers, ZERO bullets, NEUTRAL content). The heading-adjacent start marker (no blank line between them) matches the curator writer's atomic-match regex so a future `WriteManagedBlock` stays idempotent. Template-First ordering (REQ-HEV2-028): template source edited before the live copy, then `make build` (REQ-HEV2-029 empty-marker shipping, REQ-HEV2-030 section-25 neutrality).
+- `make build` recompiled the embedded assets (`//go:embed all:templates`); the marker is embedded in the binary. `catalog.yaml` is byte-identical (CLAUDE.md is not a catalog-hashed skill dir).
+- `internal/harness/curator/recall.go` (NEW) — the 2-layer Recall contract as types + godoc: `RecallLayer` (`DigestLayer` summary-only / `LedgerLayer` searchable), `DigestEntry` (Summary + LedgerKey, `Provisional()` = evidence-or-null), `LedgerSearcher` interface (`SearchByKey`), `RecallContract` (`Digest()`/`Ledger()`/`SearchableLayer()`). The godoc names the digest layer, the ledger layer, the cross-layer `ledger_key` linkage (literal REQ-HEV2-017 citation grep-visible), and the principle "remember everything (cross), search when needed (circle)". Consumption wiring deferred to EVOLVE-005 (contract-only). (REQ-HEV2-015 digest / 016 ledger / 017 linkage / 018 principle)
+- `internal/harness/curator/recall_test.go` (NEW) — 3 TDD tests (RED-first, confirmed compile-fail then GREEN): `TestRecallContract_DigestLayerSummaryOnly` (AC-021), `TestRecallContract_LedgerLayerSearchInterface` (AC-022, via a fake `LedgerSearcher`), `TestRecallContract_NoWriteFullEvidencePath` (AC-024 — principle + source-scan guard for no `WriteFullEvidenceToDigest(` code path).
+- `internal/template/internal_content_leak_test.go` (EXTENDED) — `TestTemplateLearnedWorkflowBlockNeutral` (AC-038): asserts the template block is PRESENT (3 markers), ships EMPTY (zero bullets), and is NEUTRAL (default+strict forbidden-class scan over the block region -> 0 violations).
+
+**AC PASS/FAIL matrix (M6-scoped ACs):**
+
+| AC | Status | Verification |
+|----|--------|-------------|
+| AC-HEV2-021 (digest layer summary-only contract) | PASS | `TestRecallContract_DigestLayerSummaryOnly` — DigestLayer.SummaryOnly()==true, LedgerLayer==false, String() incl. default branch, DigestEntry.Provisional() both ways |
+| AC-HEV2-022 (ledger layer search interface) | PASS | `TestRecallContract_LedgerLayerSearchInterface` — fake LedgerSearcher; SearchableLayer()==LedgerLayer; SearchByKey resolves key->evidence, empty key->nil |
+| AC-HEV2-024 (no WriteFullEvidenceToDigest code path) | PASS | `TestRecallContract_NoWriteFullEvidencePath` — principle (DigestLayer summary-only) + source-scan of non-test curator .go files for a `WriteFullEvidenceToDigest(` definition/call -> 0 |
+| AC-HEV2-035 (Template-First: template edit precedes live copy) | PASS | template CLAUDE.md edited FIRST, then live copy, then `make build`; the single M6 feat commit lists the template path first in `git add`. `git log --diff-filter=A -- internal/template/templates/CLAUDE.md` -> ccd6be1f6 (historical file ADD predates this SPEC; the M6 edit is template-first by workflow discipline) |
+| AC-HEV2-036 (empty marker in template tree) | PASS | `grep -c "MOAI:LEARNED-WORKFLOW" internal/template/templates/CLAUDE.md` -> 1 (>=1) |
+| AC-HEV2-037 (make build embeds the marker) | PASS | `make build` then `strings bin/moai \| grep -c "MOAI:LEARNED-WORKFLOW"` -> 3 (>=1) |
+| AC-HEV2-038 (leak test extended for the new block) | PASS | `TestTemplateLearnedWorkflowBlockNeutral` PASS; full template leak suite green (no regression) |
+| AC-HEV2-052 (reachability: template marker triple grep >=3) | PASS | `grep -c "moai:learned-start\|moai:learned-end\|MOAI:LEARNED-WORKFLOW" internal/template/templates/CLAUDE.md` -> 3 (>=3) |
+
+**Test output:** `go test -run 'TestRecallContract_' -v ./internal/harness/curator/` -> 3/3 PASS. `go test -run TestTemplateLearnedWorkflowBlockNeutral ./internal/template/` -> PASS. Full suites: `go test ./internal/harness/... ./internal/merge/... ./internal/template/...` -> all ok, 0 FAIL (M1-M5 preserved + M6 new tests).
+
+**Coverage:** `go test -cover ./internal/harness/curator/` -> **93.6%** statement coverage (M5 curator ~93.3%; recall.go additions fully exercised; >=90% SPEC target). (AC-043 QG1)
+
+**Cross-platform build (B1 / QG5):** `go build ./...` exit 0 AND `GOOS=windows GOARCH=amd64 go build ./...` exit 0. `recall.go` uses only stdlib `strings`; no syscall, no build tags.
+
+**Subagent boundary (B3 / AC-HEV2-044):** `grep -rn 'AskUserQuestion\|mcp__askuser' internal/harness/curator/ | grep -v _test.go | grep -v '// '` -> 0 matches (the `writer.go` hit is a `//` godoc line, excluded; `recall.go` introduces 0 references).
+
+**Lint (B5 / QG2):** `golangci-lint run --timeout=3m ./internal/harness/curator/... ./internal/template/...` -> 0 issues. `go vet ./internal/harness/curator/... ./internal/template/...` exit 0.
+
+**Template neutrality (QG4):** `TestTemplateLearnedWorkflowBlockNeutral` + `TestTemplateNoInternalContentLeak` PASS — the template block ships EMPTY with zero forbidden-class content (no internal SPEC IDs / REQ-AC tokens / dates / SHAs). Section-25 isolation held.
+
+**M1-M5 PRESERVE verified:** no M1-M5 file modified. The only changes are the 2 CLAUDE.md files (template + live), 2 NEW recall files, and 1 EXTENDED leak test. Full harness/merge/template suites green (curator 93.6%, merge ok, template ok). `git status --porcelain` confirmed the 5-file scope.
+
+**Residual risk (M6 scope, NOT closing debt):** the Recall contract is types + godoc only — the CONSUMPTION wiring (a live `LedgerSearcher` over the EVOLVE-001 routing ledger + lineage surfaces, and the digest->ledger resolution at recall time) is deferred to EVOLVE-005 (declared in `recall.go` godoc). AC-021/022/024 verify the contract shape + the no-full-evidence-path principle; they do NOT verify a runtime search. The template empty marker is inert until a future L5-approved Curator write populates it (EVOLVE-003+). AC-035's `git log --diff-filter=A` check reflects the historical file ADD (predating this SPEC); the meaningful template-first ordering is the workflow discipline (template edited before the live copy, verified by the edit sequence). M7 integration verification NOT started.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 ```yaml
 run_complete_at:
-run_commit_sha: 1b4765abf
-run_status: m5-complete-m6-m7-pending
+run_commit_sha: e62b9306c
+run_status: m6-complete-m7-pending
 # M1 (Typed Managed-Block Writer foundation) + M2 (LEARNED digest block +
 # budget/cap enforcement) + M3 (CLAUDE.local.md append-only LOCAL section) +
 # M4 (mergeSectionBased managed-section preservation) + M5 (snapshot/rollback/
-# lineage surface extension) are complete. M1-scoped ACs PASS (AC-HEV2-001..006,
-# 009..011, 044, 047, 048). M2-scoped ACs PASS (AC-HEV2-007, 008, 012, 013,
-# 014, 015, 016). M3-scoped ACs PASS (AC-HEV2-018, 019, 020). M4-scoped ACs
-# PASS (AC-HEV2-025, 026, 027, 049). M5-scoped ACs PASS (AC-HEV2-028, 029,
-# 030, 031, 050, 051). harness package coverage 87.2%. Remaining milestones
-# M6-M7 NOT started — run_status is NOT audit-ready.
-ac_pass_count: 32  # M1 (12) + M2 (7) + M3 (3) + M4 (4) + M5 (6)
+# lineage surface extension) + M6 (Template-First empty marker + template
+# neutrality + 2-layer Recall contract) are complete. M1-scoped ACs PASS
+# (AC-HEV2-001..006, 009..011, 044, 047, 048). M2-scoped ACs PASS (AC-HEV2-007,
+# 008, 012, 013, 014, 015, 016). M3-scoped ACs PASS (AC-HEV2-018, 019, 020).
+# M4-scoped ACs PASS (AC-HEV2-025, 026, 027, 049). M5-scoped ACs PASS
+# (AC-HEV2-028, 029, 030, 031, 050, 051). M6-scoped ACs PASS (AC-HEV2-021, 022,
+# 024, 035, 036, 037, 038, 052). curator coverage 93.6%. Remaining milestone
+# M7 (integration verification) NOT started — run_status is NOT audit-ready.
+ac_pass_count: 40  # M1 (12) + M2 (7) + M3 (3) + M4 (4) + M5 (6) + M6 (8)
 ac_fail_count: 0
 preserve_list_post_run_count: 0  # no PRESERVE-list files modified
-l44_pre_commit_fetch: done-m5-push
-l44_post_push_fetch: done-m5-push
+l44_pre_commit_fetch: done-m6-push  # git fetch origin main before M6 push -> 0 1 (origin at baseline 8103592f4, clean FF)
+l44_post_push_fetch: done-m6-push
 new_warnings_or_lints_introduced: 0
 cross_platform_build:
   go_build_all: exit_0
   go_build_windows_amd64: exit_0
-total_run_phase_files: 21  # M1 (6) + M2 (5) + M3 (4) + M4 (2) + M5 (4): types.go mod + applier.go mod + applier_test.go mod + lineage_test.go mod
+total_run_phase_files: 26  # M1 (6) + M2 (5) + M3 (4) + M4 (2) + M5 (4) + M6 (5): template CLAUDE.md mod + live CLAUDE.md mod + recall.go new + recall_test.go new + internal_content_leak_test.go mod
 m1_to_mN_commit_strategy: per-milestone
 ```
 
