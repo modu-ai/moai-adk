@@ -746,3 +746,35 @@ func TestResolveProjectPerformanceTier(t *testing.T) {
 		t.Errorf("unquoted low: got %q, want low", got)
 	}
 }
+
+// TestTierProfileAgents covers the model-policy preview accessor (M4): it returns
+// exactly the 10 retained agents in stable display order, includes Explore for the
+// display/derivation surface, every listed agent resolves in both plan profiles,
+// and the returned slice is a defensive copy the caller cannot use to mutate the
+// package-level order.
+func TestTierProfileAgents(t *testing.T) {
+	agents := TierProfileAgents()
+	if len(agents) != 10 {
+		t.Fatalf("TierProfileAgents() returned %d agents, want 10", len(agents))
+	}
+	foundExplore := false
+	for _, a := range agents {
+		if a == "Explore" {
+			foundExplore = true
+		}
+		if _, ok := GetTierProfileEntry("api", a, PerformanceTierMax); !ok {
+			t.Errorf("api profile has no row for %q", a)
+		}
+		if _, ok := GetTierProfileEntry("subscription", a, PerformanceTierMax); !ok {
+			t.Errorf("subscription profile has no row for %q", a)
+		}
+	}
+	if !foundExplore {
+		t.Error("TierProfileAgents() must include Explore for the display surface")
+	}
+	// Defensive copy: mutating the returned slice must not affect a fresh call.
+	agents[0] = "MUTATED"
+	if TierProfileAgents()[0] == "MUTATED" {
+		t.Error("TierProfileAgents() must return a defensive copy, not the package slice")
+	}
+}

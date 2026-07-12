@@ -1,16 +1,20 @@
 package web
 
-// SPEC-WEB-CONSOLE-013 M3 — READ-ONLY Model Policy view (GET /model-policy).
+// SPEC-WEB-CONSOLE-013 M3 — Model Policy view (GET /model-policy).
 //
-// The Model Policy view is a purely observational dashboard mirroring the
-// board.go precedent (REQ-WC13-020, plan §A.4-2). It renders (a) the active
-// performance tier from llm.performance_tier and (b) the
-// workflow.model_routing_profiles map as a 3 perfTier × 12 cell
-// (S/M/L × plan/run/sync/mx) table — BOTH as READ-ONLY displays. It is
-// FieldDef-less: it lives OUTSIDE the schema/persist pipeline and has NO write
-// path, NO PersistTarget, NO form control, and NO status transition
-// (REQ-WC13-021). The legacy flat workflow.model_routing block and
+// The Model Policy view is an observational dashboard mirroring the board.go
+// precedent (REQ-WC13-020, plan §A.4-2). It renders the active performance tier
+// from llm.performance_tier and the workflow.model_routing_profiles map as a
+// 3 perfTier × 12 cell (S/M/L × plan/run/sync/mx) table — both READ-ONLY. The
+// routing display lives OUTSIDE the schema/persist pipeline (no FieldDef, no
+// PersistTarget). The legacy flat workflow.model_routing block and
 // workflow.workflow_agents are deliberately NOT rendered (REQ-WC13-022/023).
+//
+// SPEC-MODEL-TIER-PLANTYPE-001 M4 adds ONE sanctioned write path atop this view:
+// a plan_type selector (POST /model-policy/plan-type) that persists exactly
+// llm.plan_type (§B.4 — a deliberately-narrow, user-approved exception to the
+// SPEC-WEB-CONSOLE-013 REQ-WC13-021 read-only doctrine). NO OTHER field becomes
+// writable; the page route /model-policy itself stays GET-only (405 on non-GET).
 
 import (
 	"bytes"
@@ -19,6 +23,7 @@ import (
 	"strings"
 
 	"github.com/modu-ai/moai-adk/internal/config"
+	"github.com/modu-ai/moai-adk/internal/template"
 )
 
 // modelPolicyPerfTiers is the No-Haiku 3-tier order for the routing table rows
@@ -47,9 +52,44 @@ type mpProfile struct {
 	Cells    []mpCell
 }
 
-// modelPolicyView is the typed view-model for the READ-ONLY Model Policy page.
+// planPreviewCell is one tier column ({model, effort}) for an agent within a plan
+// preview. Values are DERIVED from template.GetTierProfileEntry at render time
+// (REQ-MTP-023) — never hardcoded in the web layer.
+type planPreviewCell struct {
+	Tier   string // max / medium / low
+	Model  string
+	Effort string
+}
+
+// planPreviewRow is one agent's three tier columns (max/medium/low) within a plan.
+type planPreviewRow struct {
+	Agent string
+	Cells []planPreviewCell
+}
+
+// planPreview is a single plan's {model, effort} preview table (10 agents × 3 tiers).
+type planPreview struct {
+	PlanType string // api / subscription
+	IsActive bool   // true when this plan equals the effective active plan
+	Rows     []planPreviewRow
+}
+
+// modelPolicyView is the typed view-model for the Model Policy page. As of
+// SPEC-MODEL-TIER-PLANTYPE-001 M4 the page carries a single sanctioned write path
+// (the plan_type selector, §B.4) atop the otherwise read-only routing display.
 type modelPolicyView struct {
 	BindAddr string
+
+	// ActivePlanType is the effective plan type (llm.plan_type resolved to the
+	// subscription default when absent/empty); PlanTypeIsEmpty drives the
+	// "(default: subscription)" label (REQ-MTP-019).
+	ActivePlanType  string
+	PlanTypeIsEmpty bool
+
+	// PlanPreviews carries the two plan preview tables (api + subscription), each
+	// 10 agents × 3 tiers, derived from the Go tier-profile structure
+	// (REQ-MTP-020/023 — no matrix literal duplicated here).
+	PlanPreviews []planPreview
 
 	// PerfTier is the raw llm.performance_tier value; PerfTierIsEmpty drives the
 	// "(runtime default: medium)" empty-value label (REQ-WC13-024).
@@ -67,6 +107,40 @@ type modelPolicyView struct {
 	BannerKind string
 }
 
+// modelPolicyPlanOptions returns the plan-type selector options in a stable order
+// (api first, subscription second) for the /model-policy selector.
+func modelPolicyPlanOptions() []string {
+	return []string{config.PlanTypeAPI, config.PlanTypeSubscription}
+}
+
+// buildPlanPreviews derives the two plan preview tables from the single Go
+// tier-profile structure (REQ-MTP-020/023). Both plans render every retained agent
+// across the {max, medium, low} tiers; the {model, effort} cells come straight from
+// template.GetTierProfileEntry so no matrix literal is duplicated in the web layer.
+func buildPlanPreviews(active string) []planPreview {
+	plans := modelPolicyPlanOptions()
+	tiers := template.ValidPerformanceTiers() // {max, medium, low}
+	agents := template.TierProfileAgents()
+	previews := make([]planPreview, 0, len(plans))
+	for _, plan := range plans {
+		pv := planPreview{PlanType: plan, IsActive: plan == active}
+		for _, agent := range agents {
+			row := planPreviewRow{Agent: agent}
+			for _, tier := range tiers {
+				entry, _ := template.GetTierProfileEntry(plan, agent, tier)
+				row.Cells = append(row.Cells, planPreviewCell{
+					Tier:   tier,
+					Model:  entry.Model,
+					Effort: entry.Effort,
+				})
+			}
+			pv.Rows = append(pv.Rows, row)
+		}
+		previews = append(previews, pv)
+	}
+	return previews
+}
+
 // handleModelPolicy serves GET /model-policy — the READ-ONLY Model Policy view.
 // Non-GET methods are rejected with 405 (there is no write path — REQ-WC13-021).
 func (a *app) handleModelPolicy(w http.ResponseWriter, r *http.Request) {
@@ -82,6 +156,37 @@ func (a *app) handleModelPolicy(w http.ResponseWriter, r *http.Request) {
 	a.renderModelPolicy(w, http.StatusOK, view)
 }
 
+// handleModelPolicyPlanType serves POST /model-policy/plan-type — the single
+// sanctioned write path of the Model Policy surface (SPEC-MODEL-TIER-PLANTYPE-001
+// §B.4 / REQ-MTP-021). It validates the posted value against the closed set
+// {api, subscription}; an out-of-set value is rejected 4xx WITHOUT mutating
+// llm.yaml, and a valid value is persisted via template.ApplyPlanType (which
+// rewrites ONLY the plan_type line). The loopback Host + Sec-Fetch-Site gate for
+// mutating methods is applied upstream by hostCheckMiddleware. On success it
+// redirects (303) back to the read-only page so the re-render reflects the new
+// active plan (Post/Redirect/Get — a refresh does not re-submit).
+func (a *app) handleModelPolicyPlanType(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	if err := r.ParseForm(); err != nil {
+		http.Error(w, "bad request: could not parse form", http.StatusBadRequest)
+		return
+	}
+	planType := strings.TrimSpace(r.PostFormValue("plan_type"))
+	if !config.IsValidPlanType(planType) {
+		// Out-of-set value: reject 4xx and leave llm.yaml byte-identical (REQ-MTP-021).
+		http.Error(w, "invalid plan_type: must be one of {api, subscription}", http.StatusBadRequest)
+		return
+	}
+	if err := template.ApplyPlanType(a.cfg.ProjectRoot, planType); err != nil {
+		a.renderError(w, http.StatusInternalServerError, "could not persist plan_type: "+err.Error())
+		return
+	}
+	http.Redirect(w, r, "/model-policy", http.StatusSeeOther)
+}
+
 // buildModelPolicyView loads the project config (LoadRaw — read-intent, no
 // validation) and assembles the read-only view-model. An absent config dir
 // yields empty values (LoadRaw default), which surface as the empty-tier label +
@@ -93,8 +198,12 @@ func (a *app) buildModelPolicyView() (modelPolicyView, error) {
 		return modelPolicyView{}, err
 	}
 
+	activePlan := cfg.LLM.EffectivePlanType()
 	view := modelPolicyView{
 		BindAddr:        a.resolveBindAddr(),
+		ActivePlanType:  activePlan,
+		PlanTypeIsEmpty: strings.TrimSpace(cfg.LLM.PlanType) == "",
+		PlanPreviews:    buildPlanPreviews(activePlan),
 		PerfTier:        cfg.LLM.PerformanceTier,
 		PerfTierIsEmpty: strings.TrimSpace(cfg.LLM.PerformanceTier) == "",
 		BlockAbsent:     len(cfg.Workflow.ModelRoutingProfiles) == 0,

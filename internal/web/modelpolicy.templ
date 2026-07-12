@@ -31,6 +31,58 @@ templ modelPolicyPage(view modelPolicyView) {
 				if view.Banner != "" {
 					@boardBanner(boardView{Banner: view.Banner})
 				}
+				<section class="board-section" aria-labelledby="mp-plan-h">
+					<h2 id="mp-plan-h" data-i18n="mp.plan.title">Plan type</h2>
+					<p class="board-section__desc" data-i18n="mp.plan.desc">llm.plan_type — the billing-context tier profile (api = API-metered, subscription = weekly quota). Switching re-applies the matching model/effort tier matrix to the shipped agents.</p>
+					<p class="mp-plan-active">
+						<span data-i18n="mp.plan.active">Active plan</span>: <code class="mp-plan-active-value">{ view.ActivePlanType }</code>
+						if view.PlanTypeIsEmpty {
+							<span class="mp-ro" data-i18n="mp.plan.default">(default: subscription — llm.plan_type unset)</span>
+						}
+					</p>
+					<form class="mp-plan-form" method="post" action="/model-policy/plan-type">
+						<label class="mp-plan-label" for="mp-plan-select" data-i18n="mp.plan.select">Switch plan type</label>
+						<select id="mp-plan-select" name="plan_type">
+							for _, opt := range modelPolicyPlanOptions() {
+								<option value={ opt } selected?={ opt == view.ActivePlanType }>{ opt }</option>
+							}
+						</select>
+						<button type="submit" data-i18n="mp.plan.apply">Apply</button>
+					</form>
+				</section>
+				<section class="board-section" aria-labelledby="mp-preview-h">
+					<h2 id="mp-preview-h" data-i18n="mp.plan.preview.title">Per-tier model / effort preview</h2>
+					<p class="board-section__desc" data-i18n="mp.plan.preview.desc">Both plans, all retained agents across the max / medium / low tiers. Values are derived from the Go tier-profile structure (single source).</p>
+					for _, prev := range view.PlanPreviews {
+						<div class="mp-plan-preview">
+							<h3 class="mp-plan-preview__plan"><span data-i18n="mp.plan.preview.plan">Plan</span>: <code>{ prev.PlanType }</code>
+								if prev.IsActive {
+									<span class="mp-plan-badge" data-i18n="mp.plan.preview.activebadge">(active)</span>
+								}
+							</h3>
+							<table class="mp-plan-table">
+								<thead>
+									<tr>
+										<th data-i18n="mp.plan.col.agent">Agent</th>
+										<th>max</th>
+										<th>medium</th>
+										<th>low</th>
+									</tr>
+								</thead>
+								<tbody>
+									for _, row := range prev.Rows {
+										<tr class="mp-plan-row">
+											<td><code>{ row.Agent }</code></td>
+											for _, cell := range row.Cells {
+												<td><code>{ cell.Model }</code><span class="mp-plan-sep"> / </span><code>{ cell.Effort }</code></td>
+											}
+										</tr>
+									}
+								</tbody>
+							</table>
+						</div>
+					}
+				</section>
 				<section class="board-section" aria-labelledby="mp-tier-h">
 					<h2 id="mp-tier-h" data-i18n="mp.tier.title">Active performance tier</h2>
 					<p class="board-section__desc" data-i18n="mp.tier.desc">llm.performance_tier — the routing-profile selector (max/medium/low). Distinct from the Launch section's model_policy (init-time agent frontmatter policy, high/medium/low).</p>

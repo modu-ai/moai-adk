@@ -120,6 +120,12 @@ func (a *app) routes() http.Handler {
 	// status 전이가 전혀 없다 (REQ-WC13-020/021). hostCheckMiddleware 는 GET 을
 	// 게이트하지 않으므로 보드와 동일하게 읽기 통과한다.
 	mux.HandleFunc("/model-policy", a.handleModelPolicy)
+	// SPEC-MODEL-TIER-PLANTYPE-001 M4: the single sanctioned write path of the
+	// Model Policy surface — a plan_type selector that persists exactly
+	// llm.plan_type (§B.4 / REQ-MTP-021). POST-only; hostCheckMiddleware gates the
+	// mutating method (loopback Host + Sec-Fetch-Site same-origin). The page route
+	// /model-policy itself stays GET-only; no OTHER field becomes writable.
+	mux.HandleFunc("/model-policy/plan-type", a.handleModelPolicyPlanType)
 	// SPEC-WEB-CONSOLE-011 M4: profile CRUD (create / delete) — POST-only,
 	// loopback-gated by hostCheckMiddleware. Switch reuses the existing
 	// GET /?profile=<name> load path (no dedicated route needed).

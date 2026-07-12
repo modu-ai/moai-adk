@@ -318,6 +318,35 @@ var tierProfiles = map[string]map[string]tierProfileRow{
 	},
 }
 
+// tierProfileAgentOrder is the canonical display/derivation order of the 10
+// retained agents for the model-policy preview surfaces (REQ-MTP-009 — Explore is
+// included for display even though the apply pass skips its inherit row). The order
+// matches the spec.md §B.6/§B.7 matrix row order so the web preview reads top-down
+// like the design tables.
+var tierProfileAgentOrder = []string{
+	"manager-spec",
+	"plan-auditor",
+	"sync-auditor",
+	"manager-design",
+	"super-advisor",
+	"manager-develop",
+	"builder-harness",
+	"manager-docs",
+	"manager-git",
+	"Explore",
+}
+
+// TierProfileAgents returns a copy of the canonical display order of the agents
+// carried by the plan_type tier profiles. The web /model-policy preview iterates
+// this to derive its per-tier {model, effort} cells from the single Go structure
+// (REQ-MTP-023 — the web layer must NOT re-declare the matrix as a second literal).
+// A defensive copy is returned so callers cannot mutate the package-level order.
+func TierProfileAgents() []string {
+	out := make([]string, len(tierProfileAgentOrder))
+	copy(out, tierProfileAgentOrder)
+	return out
+}
+
 // GetTierProfileEntry returns the {model, effort} assignment for an agent under
 // the given plan type and tier (REQ-MTP-006..009). The bool is false when the
 // agent has no row in the plan's profile (unknown/user-added agent) — the apply

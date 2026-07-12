@@ -7,11 +7,15 @@ package web
 import (
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"os"
 	"path/filepath"
 	"regexp"
 	"strings"
 	"testing"
+
+	"github.com/modu-ai/moai-adk/internal/config"
+	"github.com/modu-ai/moai-adk/internal/template"
 )
 
 // getModelPolicy issues GET /model-policy against a fresh app rooted at root.
@@ -113,36 +117,38 @@ func TestModelPolicyView(t *testing.T) {
 	}
 }
 
-// TestModelPolicyView_ReadOnlyNoForm (AC-WC13-021): the Model Policy view source
-// carries NO form / input / select / hx-post — it is structurally read-only.
-func TestModelPolicyView_ReadOnlyNoForm(t *testing.T) {
-	for _, name := range []string{"modelpolicy.templ", "modelpolicy_templ.go"} {
-		data, err := os.ReadFile(name)
-		if err != nil {
-			t.Fatalf("read %s: %v", name, err)
-		}
-		src := string(data)
-		for _, tok := range []string{"<form", "<input", "<select", "hx-post"} {
-			if strings.Contains(src, tok) {
-				t.Errorf("%s contains a write affordance %q — the Model Policy view must be READ-ONLY (REQ-WC13-021)", name, tok)
-			}
-		}
-	}
-	// The rendered page likewise carries no form control (the interface-language
-	// <select> lives in the shared board appbar, which is a separate file).
+// TestModelPolicyView_ScopedWriteInvariant (AC-MTP-021, D2 sanctioned exception):
+// the Model Policy view carries EXACTLY ONE write affordance — the plan_type
+// selector form posting to /model-policy/plan-type. No OTHER field is writable,
+// there is no hx-post, and the <main> region's only <form> targets the scoped
+// persist endpoint. This supersedes the former READ-ONLY-no-form assertion, which
+// D2 (persisting plan_type selector) intentionally relaxes for exactly one field
+// (SPEC-MODEL-TIER-PLANTYPE-001 §B.4 sanctioned exception to REQ-WC13-021).
+func TestModelPolicyView_ScopedWriteInvariant(t *testing.T) {
 	body := getModelPolicy(t, t.TempDir()).Body.String()
-	// Extract the <main> region — the model-policy content — and assert no form
-	// controls inside it (the appbar select is outside <main>).
 	mainStart := strings.Index(body, "<main")
 	mainEnd := strings.Index(body, "</main>")
 	if mainStart < 0 || mainEnd < 0 {
 		t.Fatal("rendered model-policy page has no <main> region")
 	}
 	mainRegion := body[mainStart:mainEnd]
-	for _, tok := range []string{"<form", "<input", "<select", "hx-post"} {
-		if strings.Contains(mainRegion, tok) {
-			t.Errorf("model-policy <main> region contains a write affordance %q (REQ-WC13-021)", tok)
-		}
+
+	// Exactly one <form> in the model-policy content region — the plan_type selector.
+	if n := strings.Count(mainRegion, "<form"); n != 1 {
+		t.Errorf("<main> region <form> count = %d, want 1 (only the scoped plan_type selector)", n)
+	}
+	// That form MUST target the scoped persist endpoint, never the page route.
+	if !strings.Contains(mainRegion, `action="/model-policy/plan-type"`) {
+		t.Error("the plan_type selector form must POST to /model-policy/plan-type (scoped write path)")
+	}
+	// The single writable control is the plan_type field — no other field name is
+	// enrolled in a write path.
+	if !strings.Contains(mainRegion, `name="plan_type"`) {
+		t.Error("the scoped selector must expose the plan_type field")
+	}
+	// No htmx post affordance anywhere in the content region (D2 uses a plain form).
+	if strings.Contains(mainRegion, "hx-post") {
+		t.Error("model-policy <main> region must not carry an hx-post affordance (D2 scope is a plain form)")
 	}
 }
 
@@ -276,5 +282,228 @@ func TestModelPolicyView_I18nParity(t *testing.T) {
 	discRe := regexp.MustCompile(`"mp\.tier\.desc":\s*"[^"]*model_policy[^"]*"`)
 	if !discRe.MatchString(dict) {
 		t.Error("mp.tier.desc must carry the model_policy vs performance_tier disambiguation note (REQ-WC13-025)")
+	}
+}
+
+// --- SPEC-MODEL-TIER-PLANTYPE-001 M4: plan_type selector + persist endpoint ---
+
+// writeLLMPlanType writes root/.moai/config/sections/llm.yaml carrying an explicit
+// plan_type line (the persist regex needs a line to replace) plus a performance_tier
+// line so the file has more than one line for byte-identity assertions.
+func writeLLMPlanType(t *testing.T, root, planType string) {
+	t.Helper()
+	dir := filepath.Join(root, ".moai", "config", "sections")
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		t.Fatalf("mkdir sections: %v", err)
+	}
+	body := "llm:\n    performance_tier: \"max\"\n    plan_type: " + planType + "\n"
+	if err := os.WriteFile(filepath.Join(dir, "llm.yaml"), []byte(body), 0o644); err != nil {
+		t.Fatalf("write llm.yaml: %v", err)
+	}
+}
+
+// readLLM returns the raw llm.yaml bytes for byte-identity comparisons.
+func readLLM(t *testing.T, root string) []byte {
+	t.Helper()
+	b, err := os.ReadFile(filepath.Join(root, ".moai", "config", "sections", "llm.yaml"))
+	if err != nil {
+		t.Fatalf("read llm.yaml: %v", err)
+	}
+	return b
+}
+
+// postPlanType issues a loopback-authenticated POST through the real app mux
+// (host-check + Sec-Fetch-Site same-origin satisfied so the CSRF/DNS-rebind gate
+// passes) to the given target path with the plan_type form value.
+func postPlanType(t *testing.T, root, target, value string) *httptest.ResponseRecorder {
+	t.Helper()
+	a := newApp(Config{ProjectRoot: root, ProfileName: "default"})
+	form := url.Values{"plan_type": {value}}
+	req := httptest.NewRequest(http.MethodPost, target, strings.NewReader(form.Encode()))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req.Header.Set("Sec-Fetch-Site", "same-origin")
+	req.Host = "127.0.0.1"
+	rec := httptest.NewRecorder()
+	a.routes().ServeHTTP(rec, req)
+	return rec
+}
+
+// TestModelPolicyActivePlan (AC-MTP-019): the active plan type is displayed from
+// llm.plan_type; an absent field renders the default-subscription label.
+func TestModelPolicyActivePlan(t *testing.T) {
+	rootAPI := t.TempDir()
+	writeLLMPlanType(t, rootAPI, "api")
+	rec := getModelPolicy(t, rootAPI)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("GET /model-policy (api) = %d, want 200", rec.Code)
+	}
+	if body := rec.Body.String(); !strings.Contains(body, `value="api" selected`) {
+		t.Error("plan_type: api did not pre-select the api option in the selector")
+	}
+
+	rootAbsent := t.TempDir()
+	writeLLMSection(t, rootAbsent, "max") // performance_tier only — no plan_type key
+	recAbsent := getModelPolicy(t, rootAbsent)
+	if recAbsent.Code != http.StatusOK {
+		t.Fatalf("GET /model-policy (absent plan_type) = %d, want 200", recAbsent.Code)
+	}
+	body := recAbsent.Body.String()
+	if !strings.Contains(body, "mp.plan.default") {
+		t.Error("absent plan_type did not render the default-subscription label (mp.plan.default)")
+	}
+	// The effective plan (subscription) is pre-selected even when the field is absent.
+	if !strings.Contains(body, `value="subscription" selected`) {
+		t.Error("absent plan_type did not pre-select the subscription option (effective default)")
+	}
+}
+
+// TestModelPolicyDualPlanPreview (AC-MTP-020 + AC-MTP-023 single source): both plan
+// previews render all 10 retained agents × 3 tiers, and an asserted cell value is
+// READ FROM the Go tier-profile structure — proving the web layer derives the matrix
+// rather than duplicating it as a literal.
+func TestModelPolicyDualPlanPreview(t *testing.T) {
+	root := t.TempDir()
+	writeLLMPlanType(t, root, "api")
+	body := getModelPolicy(t, root).Body.String()
+
+	if n := strings.Count(body, `class="mp-plan-preview"`); n != 2 {
+		t.Errorf("mp-plan-preview block count = %d, want 2 (api + subscription)", n)
+	}
+	if !strings.Contains(body, `name="plan_type"`) {
+		t.Error("plan_type selector markup missing")
+	}
+	for _, agent := range template.TierProfileAgents() {
+		if !strings.Contains(body, ">"+agent+"<") {
+			t.Errorf("preview missing agent row %q", agent)
+		}
+	}
+	// Each plan preview must render 10 agents × 3 tier cells → 30 tier <td> per plan.
+	// Assert the aggregate row count via the agent-row marker (10 agents × 2 plans).
+	if n := strings.Count(body, `class="mp-plan-row"`); n != len(template.TierProfileAgents())*2 {
+		t.Errorf("mp-plan-row count = %d, want %d (10 agents × 2 plans)", n, len(template.TierProfileAgents())*2)
+	}
+
+	// Structure-derived cross-check (single-source guarantee): api/max/super-advisor
+	// is read from the Go profile, never a hardcoded web literal.
+	entry, ok := template.GetTierProfileEntry(config.PlanTypeAPI, "super-advisor", template.PerformanceTierMax)
+	if !ok {
+		t.Fatal("tier profile lookup failed for api/super-advisor/max")
+	}
+	if entry.Effort != "xhigh" {
+		t.Fatalf("test premise broken: api/super-advisor/max effort = %q, want xhigh", entry.Effort)
+	}
+	if !strings.Contains(body, ">"+entry.Effort+"<") {
+		t.Errorf("structure-derived cell effort %q not rendered in the preview", entry.Effort)
+	}
+	if !strings.Contains(body, ">"+entry.Model+"<") {
+		t.Errorf("structure-derived cell model %q not rendered in the preview", entry.Model)
+	}
+}
+
+// TestModelPolicyPlanTypePersistRoundTrip (AC-MTP-027b): a valid plan-type change
+// POSTed to /model-policy/plan-type through the real mux persists to llm.yaml and the
+// subsequent GET renders the new active plan.
+func TestModelPolicyPlanTypePersistRoundTrip(t *testing.T) {
+	root := t.TempDir()
+	writeLLMPlanType(t, root, "subscription")
+
+	rec := postPlanType(t, root, "/model-policy/plan-type", "api")
+	if rec.Code < 200 || rec.Code >= 400 {
+		t.Fatalf("POST /model-policy/plan-type (valid) = %d, want 2xx/3xx", rec.Code)
+	}
+	if got := string(readLLM(t, root)); !strings.Contains(got, "plan_type: api") {
+		t.Errorf("llm.yaml did not persist plan_type: api after POST; got:\n%s", got)
+	}
+	if body := getModelPolicy(t, root).Body.String(); !strings.Contains(body, `value="api" selected`) {
+		t.Error("GET /model-policy after persist did not render api as the active plan")
+	}
+}
+
+// TestModelPolicyPlanTypeOutOfSet (AC-MTP-021b): an out-of-set POST is rejected 4xx
+// and leaves llm.yaml byte-identical.
+func TestModelPolicyPlanTypeOutOfSet(t *testing.T) {
+	root := t.TempDir()
+	writeLLMPlanType(t, root, "subscription")
+	before := readLLM(t, root)
+
+	rec := postPlanType(t, root, "/model-policy/plan-type", "enterprise")
+	if rec.Code < 400 || rec.Code >= 500 {
+		t.Fatalf("POST out-of-set plan_type = %d, want 4xx", rec.Code)
+	}
+	if after := readLLM(t, root); string(after) != string(before) {
+		t.Errorf("out-of-set POST mutated llm.yaml; before=%q after=%q", before, after)
+	}
+}
+
+// TestModelPolicyPlanTypeOnlyPlanLineChanges (AC-MTP-021c): a successful persist
+// changes ONLY the plan_type line — every other line is byte-identical.
+func TestModelPolicyPlanTypeOnlyPlanLineChanges(t *testing.T) {
+	root := t.TempDir()
+	writeLLMPlanType(t, root, "subscription")
+	before := strings.Split(string(readLLM(t, root)), "\n")
+
+	rec := postPlanType(t, root, "/model-policy/plan-type", "api")
+	if rec.Code < 200 || rec.Code >= 400 {
+		t.Fatalf("POST valid plan_type = %d, want 2xx/3xx", rec.Code)
+	}
+	after := strings.Split(string(readLLM(t, root)), "\n")
+	if len(before) != len(after) {
+		t.Fatalf("line count changed: before=%d after=%d", len(before), len(after))
+	}
+	for i := range before {
+		if strings.Contains(before[i], "plan_type:") {
+			if !strings.Contains(after[i], "plan_type: api") {
+				t.Errorf("plan_type line not updated: %q", after[i])
+			}
+			continue
+		}
+		if before[i] != after[i] {
+			t.Errorf("non-plan_type line %d changed: %q -> %q", i, before[i], after[i])
+		}
+	}
+}
+
+// TestModelPolicyNoOtherWritePath (AC-MTP-021a/d): the page route stays GET-only
+// (405 on non-GET) and no other sub-path under /model-policy accepts a write.
+func TestModelPolicyNoOtherWritePath(t *testing.T) {
+	root := t.TempDir()
+	writeLLMPlanType(t, root, "subscription")
+	before := readLLM(t, root)
+
+	// (a) POST to the page route itself → 405 (page route is GET-only).
+	if rec := postPlanType(t, root, "/model-policy", "api"); rec.Code != http.StatusMethodNotAllowed {
+		t.Errorf("POST /model-policy = %d, want 405 (page route is GET-only)", rec.Code)
+	}
+	// (d) POST to an unregistered sub-path → not a 2xx/3xx, llm.yaml unchanged.
+	rec := postPlanType(t, root, "/model-policy/bogus", "api")
+	if rec.Code >= 200 && rec.Code < 400 {
+		t.Errorf("POST /model-policy/bogus = %d, want >= 400 (no write path)", rec.Code)
+	}
+	if after := readLLM(t, root); string(after) != string(before) {
+		t.Error("a non-plan-type POST mutated llm.yaml")
+	}
+}
+
+// TestModelPolicyPlanI18nKeys (AC-MTP-022): the new plan_type i18n keys exist in all
+// 4 locales. Spot-anchor: mp.plan.title appears exactly 4 times (one per locale).
+func TestModelPolicyPlanI18nKeys(t *testing.T) {
+	dict := readEmbeddedAsset(t, "i18n.js")
+	if n := strings.Count(dict, `"mp.plan.title":`); n != 4 {
+		t.Errorf(`"mp.plan.title" locale count = %d, want 4`, n)
+	}
+	body := getModelPolicy(t, t.TempDir()).Body.String()
+	keyRe := regexp.MustCompile(`data-i18n="(mp\.plan[^"]*)"`)
+	seen := map[string]bool{}
+	for _, m := range keyRe.FindAllStringSubmatch(body, -1) {
+		if seen[m[1]] {
+			continue
+		}
+		seen[m[1]] = true
+		if !i18nKeyInAllLocales(t, m[1]) {
+			t.Errorf("i18n.js missing plan key %q in all 4 locales", m[1])
+		}
+	}
+	if len(seen) == 0 {
+		t.Fatal("no mp.plan.* data-i18n keys found in the rendered page")
 	}
 }
