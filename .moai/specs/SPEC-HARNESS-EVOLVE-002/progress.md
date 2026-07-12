@@ -321,7 +321,7 @@ m1_to_mN_commit_strategy: per-milestone
 
 ```yaml
 sync_status: audit-ready
-sync_commit_sha: pending-backfill-evolve002-sync
+sync_commit_sha: 29a6f53d0c3cb02dc2b1b2174b8ee148f7656195
 sync_complete_at: 2026-07-12
 # M1-M7 delivered: typed writer (curator/writer.go), LEARNED-WORKFLOW digest block
 # (budget/cap/ledger_key/anti-fabrication), CLAUDE.local.md append-only section,
