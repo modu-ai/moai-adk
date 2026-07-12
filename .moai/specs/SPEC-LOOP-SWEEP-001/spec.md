@@ -1,7 +1,7 @@
 ---
 id: SPEC-LOOP-SWEEP-001
 title: "Loop Sweep — /moai loop redefined as project-wide improvement sweep built on the goal engine"
-version: "0.1.0"
+version: "0.2.0"
 status: draft
 created: 2026-07-12
 updated: 2026-07-12
@@ -23,6 +23,7 @@ depends_on: [SPEC-GOAL-ENGINE-001]
 | Version | Date | Author | Change |
 |---------|------|--------|--------|
 | 0.1.0 | 2026-07-12 | manager-spec | Initial plan-phase authoring. Epic AGENTIC-CORE, SPEC 3 of 3. depends_on SPEC-GOAL-ENGINE-001. Shared findings in SPEC-ANALYZE-FIRST-ROUTING-001/research.md (§C loop/fix). |
+| 0.2.0 | 2026-07-12 | manager-spec | Plan-audit iter-1 FAIL 0.84 → D1+D2 fix. D1: added AC-LSW-001b (composition reachability — loop.md PROCEDURE delegates to goal engine, not just framing). D2a: added AC-LSW-013b (empty-diff guard on internal/loop + internal/ralph). D2b: narrowed AC-LSW-007 bare `\|layered` to `\|layered with loop\|layered under loop`. D2c: replaced AC-LSW-014 manual spot-check NOTE with per-mirror reformed-token grep (7 reformed mirrors). D3 (4 items) deferred to run-phase per orchestrator. AC count 18 → 20. |
 
 > **Epic**: AGENTIC-CORE (schema has no `epic:` field; recorded in body). SPEC 3 of 3.
 > Docs-heavy (no new Go engine — builds on `SPEC-GOAL-ENGINE-001`'s engine).

@@ -79,6 +79,11 @@ grep -n "^status:" .moai/specs/SPEC-GOAL-ENGINE-001/spec.md
 - PRESERVE ceiling precedence, 5-section verdict, Step 1.5, memory-pressure guard.
 - Extend `exit_kind` ADDITIVELY (do not reassign the base enum owner).
 - `internal/cli/loop.go` change is a help-text STRING only (loop Go tests green).
+- `internal/loop/` and `internal/ralph/` MUST remain untouched — `git diff --exit-code
+  --stat internal/loop/ internal/ralph/` exits 0 (empty diff) post-run-phase (AC-LSW-013b).
+  This is the "build NO new engine code" boundary guard — tests-green alone is
+  insufficient (a behavior-preserving refactor could pass tests while crossing the
+  no-new-engine-code line).
 - loop stays NOT cadence-eligible (REQ-LSW-011).
 - Template-First mirrors + §25 neutrality + `make build`.
 
@@ -112,7 +117,10 @@ Ordering: M1 → M2 → M3 → M4 → M5.
 - Changing `/moai fix`/`/moai review` behavior (text-only per REQ-LSW-007/008).
 - Reassigning the `loop-verdict-<id>.json` base `exit_kind` enum owner.
 - Adding loop to cadence recipes (REQ-LSW-011 keeps it ineligible).
-- Changing `internal/loop`/`internal/ralph` LOGIC (help-text string only).
+- Changing `internal/loop`/`internal/ralph` LOGIC (help-text string only). The
+  empty-diff guard `git diff --exit-code --stat internal/loop/ internal/ralph/`
+  (AC-LSW-013b) MUST exit 0 — even a behavior-preserving refactor inside these
+  directories crosses the "no new engine code" boundary.
 - Vacuous doctrine-edit claim — per-file grep for each reconciliation surface.
 
 ## §H — Cross-References

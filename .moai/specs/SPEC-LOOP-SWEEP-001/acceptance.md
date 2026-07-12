@@ -13,6 +13,7 @@
 | AC | REQ | Verifies | Kind / Baseline → Post |
 |----|-----|----------|------------------------|
 | AC-LSW-001 | REQ-LSW-001 | loop = goal preset + condition | discriminating: 0 → ≥1 |
+| AC-LSW-001b | REQ-LSW-001 | loop.md PROCEDURE composes on goal engine | discriminating: 0 → ≥1 |
 | AC-LSW-002 | REQ-LSW-002 | existing scan lenses preserved | preservation: present |
 | AC-LSW-002b | REQ-LSW-002 | NEW review-lens additions to the queue | discriminating: 0 → ≥1 |
 | AC-LSW-003 | REQ-LSW-003 | no-invented AND empty-queue-exit (conjunctive) | discriminating: both 0 → ≥1 |
@@ -29,6 +30,7 @@
 | AC-LSW-011 | REQ-LSW-011 | cadence loop-NOT-eligible preserved | preservation: present |
 | AC-LSW-012 | REQ-LSW-012 | NEW alias-KEEP decision + justification | discriminating: 0 → ≥1 |
 | AC-LSW-013 | REQ-LSW-013 | Go help "SPEC-lifecycle" + tests green | discriminating: 0 → ≥1 + test |
+| AC-LSW-013b | REQ-LSW-013 | internal/loop + internal/ralph untouched | preservation: empty-diff (exit 0) |
 | AC-LSW-014 | REQ-LSW-014 | per-file mirror parity + neutral + build | per-file + exit 0 |
 
 ### AC-LSW-001 — loop = goal preset + condition
@@ -40,6 +42,22 @@ grep -ic "queue drained\|diagnostics clean" .claude/skills/moai/workflows/loop.m
 Baseline (verified this iteration): both 0. PASS when loop.md defines `/moai loop`
 as a **goal preset** AND names the "issue queue drained + diagnostics clean"
 completion condition.
+
+### AC-LSW-001b — loop.md PROCEDURE composes on the goal engine (composition reachability)
+
+```bash
+grep -ic "/moai goal\|goal engine evaluates\|delegates to.*goal\|stop-goal\|goal state" .claude/skills/moai/workflows/loop.md   # expect ≥1 (baseline 0)
+```
+Baseline (verified 2026-07-12): 0. PASS when loop.md's PROCEDURE section delegates
+to the goal engine mechanism — naming `/moai goal`, "goal engine evaluates",
+"delegates to ... goal", "stop-goal", or "goal state". AC-LSW-001 verifies the
+FRAMING language ("goal preset" + "queue drained|diagnostics clean"); this AC
+verifies the PROCEDURE actually composes on the engine, NOT merely relabels the
+old iterate-until-clean machinery with a "goal preset" heading. Without this
+check, a run-phase author could satisfy AC-LSW-001 green while loop.md only
+RELABELS the old machinery — the SPEC's headline guarantee ("REDEFINES /moai loop
+as a sweep built ON the goal engine", "build NO new engine code") would be
+asserted in prose but unreachable from the doc.
 
 ### AC-LSW-002 — existing scan lenses preserved (preservation)
 
@@ -118,7 +136,7 @@ pre-matches an unrelated line — vacuous otherwise).
 
 ```bash
 # (a) review.md gains the cross-ref (baseline 0):
-grep -ic "loop.*queue supplier\|consumed by.*loop\|layered" .claude/skills/moai/workflows/review.md   # expect ≥1
+grep -ic "loop.*queue supplier\|consumed by.*loop\|layered with loop\|layered under loop" .claude/skills/moai/workflows/review.md   # expect ≥1
 # (b) behavior-unchanged: commit-scoped diff shows ONLY the cross-ref paragraph changed.
 #     (A no-ref `git diff --stat` is always empty after commit → false-PASS; use the run-phase commit SHA.)
 git show --stat <review-md-commit-sha> -- .claude/skills/moai/workflows/review.md
@@ -126,7 +144,10 @@ git show --stat <review-md-commit-sha> -- .claude/skills/moai/workflows/review.m
 Baseline (verified this iteration): (a) 0. PASS when review.md gains a 1-2
 paragraph cross-ref AND the commit-scoped `git show --stat <sha>` (the run-phase
 author cites the actual commit SHA that touched review.md) shows only the cross-ref
-addition — no lens/pipeline/behavior lines changed.
+addition — no lens/pipeline/behavior lines changed. NOTE the bare `|layered`
+alternative was narrowed to `layered with loop|layered under loop` (iteration-3
+fix) — a generic "layered architecture" sentence would otherwise satisfy the
+OR vacuously; only the loop-scoped phrasing qualifies.
 
 ### AC-LSW-008 — fix pipeline contract intact (preservation)
 
@@ -211,6 +232,22 @@ Baseline (verified this iteration): `SPEC-lifecycle|lifecycle controller` = 0
 (distinct from the `/moai loop` sweep skill) AND the loop/ralph Go tests still pass
 (string-only change, no behavior regression).
 
+### AC-LSW-013b — internal/loop + internal/ralph untouched (empty-diff guard)
+
+```bash
+git diff --exit-code --stat internal/loop/ internal/ralph/   # exit 0 = empty diff (no engine code touched)
+```
+Baseline (verified 2026-07-12): exit 0 (empty diff — both directories clean today).
+PASS when the run-phase leaves `internal/loop/` and `internal/ralph/` completely
+untouched (`git diff --exit-code --stat` exits 0 = empty diff). This pins the "build
+NO new engine code" boundary (spec.md §D.1 Out of Scope — the goal engine is owned
+by SPEC-GOAL-ENGINE-001, and this SPEC only CONFIGURES a preset on top of it).
+AC-LSW-013's `go test` green check alone is insufficient — a behavior-preserving
+refactor inside internal/loop could pass tests while crossing the no-new-engine-code
+boundary; this empty-diff guard catches that. (`internal/cli/loop.go` is the
+help-text-string-only edit verified by AC-LSW-013; it is a DIFFERENT path from
+`internal/loop/` and is NOT covered by this guard.)
+
 ### AC-LSW-014 — per-file mirror parity (all changed mirrored files) + neutrality + build
 
 The SPEC changes 8 template-mirrored `.claude/` files (all verified mirrored this
@@ -228,24 +265,45 @@ for f in \
   .claude/skills/moai-workflow-loop/SKILL.md ; do
   test -f "internal/template/templates/$f" && echo "MIRROR $f OK" || echo "MISSING $f"
 done
+# Per-mirror reformed-content discriminant (existence ≠ reformed — one grep per
+# reformed mirror; a STALE un-reformed mirror would pass the existence loop above
+# but fail here). Baseline verified 2026-07-12: all 7 = 0 (mirrors not yet reformed).
+# cadence-bridge.md is PRESERVATION (content unchanged — its loop-NOT-eligible
+# invariant is verified by AC-LSW-011 on the live file; the mirror only needs to
+# exist, which the test -f loop above covers).
+grep -ic "goal-preset\|goal preset" internal/template/templates/CLAUDE.md                                                           # expect ≥1 (baseline 0)
+grep -ic "goal preset"        internal/template/templates/.claude/skills/moai/workflows/loop.md                                     # expect ≥1 (baseline 0)
+grep -ic "enters the loop queue" internal/template/templates/.claude/skills/moai/workflows/fix.md                                   # expect ≥1 (baseline 0)
+grep -ic "queue supplier"     internal/template/templates/.claude/skills/moai/workflows/review.md                                  # expect ≥1 (baseline 0)
+grep -ic "goal preset"        internal/template/templates/.claude/rules/moai/workflow/goal-directive.md                            # expect ≥1 (baseline 0)
+grep -ic "both routes resolve to\|alias.*keep\|keep.*alias" internal/template/templates/.claude/rules/moai/workflow/spec-workflow.md  # expect ≥1 (baseline 0)
+grep -ic "goal preset\|preset architecture" internal/template/templates/.claude/skills/moai-workflow-loop/SKILL.md                  # expect ≥1 (baseline 0)
 # neutrality: no internal SPEC ID leaked into any mirror body
 grep -rn "SPEC-LOOP-SWEEP\|SPEC-GOAL-ENGINE\|AGENTIC-CORE\|REQ-LSW" internal/template/templates/.claude/ internal/template/templates/CLAUDE.md | wc -l   # expect 0
 make build ; echo "exit=$?"
 ```
-PASS when the loop prints no `MISSING` line (all 8 mirrors exist and carry the
-reformed content — the run-phase author additionally spot-checks a reformed token
-per mirror, e.g. `grep -c "goal preset" internal/template/templates/.claude/skills/moai/workflows/loop.md`),
-the neutrality grep is 0, and `make build` exits 0. NOTE `internal/cli/loop.go` is
-Go source, NOT a template mirror — it is verified by AC-LSW-013, not here.
+PASS when the existence loop prints no `MISSING` line (all 8 mirrors exist), EACH
+of the 7 per-mirror reformed-token greps returns ≥1 (every reformed mirror carries
+its reformed content — a STALE un-reformed mirror fails here), the neutrality grep
+is 0, and `make build` exits 0. `cadence-bridge.md` is PRESERVATION (no reformed
+token — its content is unchanged; verified by existence + AC-LSW-011). NOTE
+`internal/cli/loop.go` is Go source, NOT a template mirror — it is verified by
+AC-LSW-013, not here.
 
 ## §D.1 Definition of Done
 
-- All 17 ACs PASS (AC-LSW-001..014 with 002b / 004b / 008b / 009b split-outs).
+- All 20 ACs PASS (AC-LSW-001..014 with 001b / 002b / 004b / 008b / 009b / 013b
+  split-outs — 001b composition reachability and 013b empty-diff guard added
+  iteration-3).
 - `/moai fix` + `/moai review` behavior unchanged (AC-LSW-008 preservation +
   AC-LSW-007 commit-scoped diff).
-- `internal/loop`/`internal/ralph` logic untouched; loop/ralph Go tests green (AC-LSW-013).
+- loop.md PROCEDURE composes on the goal engine — not just framing language
+  (AC-LSW-001b composition reachability).
+- `internal/loop`/`internal/ralph` logic untouched; empty-diff guard + loop/ralph
+  Go tests green (AC-LSW-013b + AC-LSW-013).
 - loop stays NOT cadence-eligible (AC-LSW-011 preservation).
-- All 8 template mirrors updated + neutral + `make build` green (AC-LSW-014).
+- All 8 template mirrors exist, EACH reformed mirror carries its reformed token,
+  neutral, `make build` green (AC-LSW-014).
 
 ## §D.2 Edge cases
 
