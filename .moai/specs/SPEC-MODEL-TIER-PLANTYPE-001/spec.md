@@ -2,7 +2,7 @@
 id: SPEC-MODEL-TIER-PLANTYPE-001
 title: "plan_type-aware model tier profiles (API vs subscription) for moai init / moai web"
 version: "0.3.1"
-status: draft
+status: completed
 created: 2026-07-12
 updated: 2026-07-12
 author: manager-spec
