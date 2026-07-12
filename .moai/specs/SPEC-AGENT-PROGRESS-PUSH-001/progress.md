@@ -77,7 +77,7 @@ this session on Claude Code runtime **v2.1.207** (`CLAUDE_CODE_EXECPATH` version
 
 - sync_status: audit-ready
 - sync_complete_at: 2026-07-13
-- sync_commit_sha: pending-backfill-sync (placeholder — orchestrator backfills the real SHA in a follow-up commit per the D3 self-referential-hazard exemption; a commit cannot reference its own hash)
+- sync_commit_sha: `56ba822bc` (docs — sync-phase artifacts — 3-phase close; the real SHA, backfilled in this follow-up commit per the D3 self-referential-hazard exemption — a commit cannot reference its own hash)
 - changelog_entry_added: true (standalone AGENT-PROGRESS-PUSH-001 bullet under `### Added`, immediately after the EVOLVE-003 bullet)
 - frontmatter_transition: in-progress → completed (single sync commit carries the merged in-progress → implemented → completed transition per the 3-phase close convention; spec.md is the ONLY artifact with a `status:` frontmatter field — acceptance.md/plan.md/progress.md carry no frontmatter block in this SPEC, so the transition is a one-file edit)
 - readme_changed: false (dual-channel progress-reporting user-facing narrative deferred to the pending v3.0 README redesign — `project_readme_v3_rc11_redesign_draft` memory; CHANGELOG carries user visibility in the meantime)
