@@ -1,7 +1,7 @@
 ---
 id: SPEC-GOAL-ENGINE-001
 title: "Goal Engine — /moai goal condition-declared universal agentic loop (MoAI-owned /goal reimplementation)"
-version: "0.1.0"
+version: "0.2.1"
 status: draft
 created: 2026-07-12
 updated: 2026-07-12
@@ -23,6 +23,8 @@ depends_on: [SPEC-ANALYZE-FIRST-ROUTING-001]
 | Version | Date | Author | Change |
 |---------|------|--------|--------|
 | 0.1.0 | 2026-07-12 | manager-spec | Initial plan-phase authoring. Epic AGENTIC-CORE, SPEC 2 of 3. depends_on SPEC-ANALYZE-FIRST-ROUTING-001. Shared findings in that SPEC's research.md (§C.4 Axis B, §C.5 Stop hooks). |
+| 0.2.0 | 2026-07-12 | manager-spec | Plan-phase amendment: add D8 (Autonomous/Semi-autonomous Kickoff Progression Mode) per user mid-turn directive 2026-07-12. REQ-GLE-026..029, AC-GLE-027..034. The Implementation Kickoff Approval gate stays mandatory in both modes (§A.2 C1 clarified; §D.4 reconciled — progression-mode is an opt-in per-goal choice AT the gate, NOT a default-on autonomy switch). Semi-autonomous per-turn confirm flows via orchestrator-bridge (stop-goal hook emits checkpoint-signal JSON; orchestrator runs AskUserQuestion — REQ-GLE-014 preserved). Doc codification in CLAUDE.md / run.md / orchestration-mode-selection.md pinned as reachability ACs. Pending plan re-audit. |
+| 0.2.1 | 2026-07-12 | manager-spec | Plan-phase D2 fixes from plan-auditor v0.2.0 audit (PASS 0.90). **D2-1**: enrich the §B.5 semi-autonomous checkpoint JSON with a `failed_conditions: [{cmd, exit, tail}]` array so the orchestrator's confirm AskUserQuestion can surface WHY the goal isn't satisfied; reconcile REQ-GLE-010 ↔ REQ-GLE-028 (the failed-condition+tail mandate applies in BOTH modes — autonomous via plain block `reason`, semi-autonomous via the checkpoint's `failed_conditions`; the two REQs do NOT conflict); amend AC-GLE-029 to assert `failed_conditions` is present when a mechanical condition is failing. **D2-2**: re-anchor AC-GLE-021(a) from the stale `grep -ic "goal evaluator\|goal engine" CLAUDE.md` (baseline 1 — CLAUDE.md:41 already carries "forthcoming goal engine" per ANALYZE-FIRST commit 4d7ec04e4, non-discriminating) to `awk '/^## 2\./,/^## 3\./' CLAUDE.md \| grep -ic "goal evaluator"` (verified baseline 0, discriminating, post ≥ 1). 2 D3 defects (AC-GLE-032/033 OR-regex alignment; AC-GLE-029/030 028a/028b header notation) DEFERRED to run-phase — noted in progress.md only. spec-lint clean. |
 
 > **Epic**: AGENTIC-CORE (schema has no `epic:` field; recorded in body). SPEC 2 of 3.
 > **Artifact-set note (Tier L, LEAN)**: per the Epic leader's explicit scope
@@ -66,10 +68,13 @@ point read-only.
 
 `/moai goal` MUST preserve the same safety envelope as native `/goal` and the
 AUTONOMY-RUN-GOAL 6 conditions: (C1) Implementation Kickoff Approval is
-mandatory, score-independent, and never bypassed by an armed goal; (C2) all user
-preferences are collected before the goal is armed (subagents/goal-turns cannot
-prompt); (C5) every condition is transcript/mechanically measurable AND bounded
-by a turn ceiling.
+mandatory, score-independent, and never bypassed by an armed goal — this
+invariant holds in BOTH autonomous and semi-autonomous progression modes (D8,
+REQ-GLE-026); the progression-mode axis selects ONLY post-approval progression
+behavior (continue autonomously vs. checkpoint-confirm each step), never whether
+the gate runs; (C2) all user preferences are collected before the goal is armed
+(subagents/goal-turns cannot prompt); (C5) every condition is
+transcript/mechanically measurable AND bounded by a turn ceiling.
 
 ## §B — Scope (WHAT this SPEC delivers)
 
@@ -117,6 +122,26 @@ by a turn ceiling.
 - **D7 — Go packages**: minimal layout — `internal/goal/` (state + schema +
   evaluator), `internal/cli` hook verb, `settings.json.tmpl` Stop-hook
   registration. Coverage 85%+ (critical-package policy).
+- **D8 — Autonomous/Semi-autonomous Kickoff Progression Mode**: the
+  Implementation Kickoff Approval AskUserQuestion offers a progression-mode axis
+  (autonomous vs. semi-autonomous) as a DISTINCT axis from the approve/decline
+  decision — approval remains required in both modes; the mode selects only
+  post-approval progression. **Autonomous mode** = continue across turns without
+  per-turn user confirmation until the condition holds or the ceiling is reached
+  (existing D3 Stop-hook behavior; no NEW behavioral surface — REQ-GLE-027
+  codifies this as the default `progression_mode`). **Semi-autonomous mode** =
+  the `stop-goal` hook emits a checkpoint-signal block JSON at each turn boundary
+  for ORCHESTRATOR-side AskUserQuestion confirmation — the hook itself does NOT
+  call AskUserQuestion (REQ-GLE-014 preserved; the orchestrator bridges the
+  boundary per `agent-common-protocol.md` § User Interaction Boundary / Hook
+  Invocation Surface orchestrator-translation-responsibility pattern). The
+  selected mode is persisted in goal state (`progression_mode`, default
+  `autonomous`). The progression-mode semantics + the kickoff-still-mandatory
+  invariant SHALL be codified in CLAUDE.md, `run.md`, and
+  `orchestration-mode-selection.md` (run-phase doc deliverables pinned as
+  reachability ACs AC-GLE-031..033). Cross-file reachability: the 3 doc surfaces
+  are SEPARATE pinned ACs (research.md lesson: a behavior in code file A
+  undocumented in doctrine file B is unenforceable).
 
 ## §C — GEARS Requirements
 
@@ -225,6 +250,54 @@ by a turn ceiling.
   mirrors shall be updated and `make build` shall succeed; template bodies shall
   carry no internal SPEC ID (§25 neutrality).
 
+### §C.8 D8 — Autonomous/Semi-autonomous Kickoff Progression Mode
+
+> **Safety framing (HARD)**: the progression-mode axis is a CHOICE offered AT
+> the Implementation Kickoff Approval gate, NOT a bypass OF the gate. The gate
+> remains mandatory in both modes (C1 preserved). The axis selects only
+> post-approval progression behavior. REQ-GLE-015 (no destructive bypass) is
+> unchanged.
+
+- **REQ-GLE-026** (Event-driven): **When** the orchestrator runs Implementation
+  Kickoff Approval, its AskUserQuestion SHALL offer an autonomous-vs-semi-
+  autonomous progression-mode choice as a distinct axis from the approve/decline
+  decision — approval remains required in both modes; the selected mode SHALL be
+  persisted in goal state as `progression_mode` (default `autonomous` when the
+  user declines to choose).
+- **REQ-GLE-027** (State-driven): **While** a goal is armed in autonomous mode,
+  the engine SHALL continue across turns without per-turn user confirmation
+  until the condition holds or the ceiling is reached (existing D3 Stop-hook
+  behavior — REQ-GLE-010..013 govern the block/verdict mechanics; autonomous
+  mode is the default progression and introduces no NEW behavioral surface
+  beyond the `progression_mode` state field).
+- **REQ-GLE-028** (State-driven): **While** a goal is armed in semi-autonomous
+  mode AND the goal is not yet satisfied AND the ceiling is not yet reached, the
+  `stop-goal` hook SHALL emit a checkpoint-signal block
+  `{"decision":"block","reason":"semi-autonomous checkpoint: orchestrator to
+  confirm continuation","mode":"semi-autonomous","failed_conditions":[{"cmd","exit","tail"}],...}`
+  for orchestrator-side AskUserQuestion confirmation — the hook itself does NOT
+  call AskUserQuestion (REQ-GLE-014 preserved; the orchestrator bridges the
+  boundary by reading the checkpoint JSON and running the confirm round). The
+  `failed_conditions` array carries the failed-condition + output-tail detail
+  so the orchestrator's confirm AskUserQuestion can surface WHY the goal isn't
+  satisfied (the generic `reason` label alone is insufficient for an informed
+  continue/clear/switch decision). When no mechanical condition is failing
+  (e.g., the checkpoint fires because a model condition is not yet satisfied),
+  `failed_conditions` is empty `[]` or absent. **REQ-GLE-010 ↔ REQ-GLE-028
+  reconciliation**: REQ-GLE-010's failed-condition + output-tail mandate applies
+  in BOTH modes — in autonomous mode via the plain block `reason`, in
+  semi-autonomous mode via the checkpoint's `failed_conditions` array; the two
+  REQs do NOT conflict in semi-autonomous mode (the checkpoint does NOT drop
+  the diagnostic — it carries it in a structured field).
+- **REQ-GLE-029** (Ubiquitous): The progression-mode semantics (both modes) AND
+  the kickoff-still-mandatory invariant SHALL be codified in CLAUDE.md (the
+  kickoff / approval-gates section), `.claude/skills/moai/workflows/run.md`
+  (co-located with the Run-phase Autonomy section), and
+  `.claude/rules/moai/workflow/orchestration-mode-selection.md` (co-located with
+  the Implementation Kickoff Approval mandatory-restoration policy). (The doc
+  EDITS are run-phase deliverables; each doc surface is pinned as a separate
+  reachability AC with a baseline-0 discriminating grep — AC-GLE-031..033.)
+
 ## §D — Exclusions (What NOT to Build)
 
 [HARD] This SPEC explicitly does NOT deliver the following.
@@ -251,6 +324,15 @@ by a turn ceiling.
 - `/moai goal` is opt-in. This SPEC does NOT arm any goal automatically, does NOT
   flip a default-on autonomy switch, and does NOT relax the Implementation Kickoff
   Approval gate.
+- **Reconciliation with D8 (progression-mode axis)**: the progression-mode axis
+  (REQ-GLE-026) is an opt-in PER-GOAL choice offered AT the Implementation
+  Kickoff Approval gate — it is NOT a default-on autonomy switch. The default
+  `progression_mode` is `autonomous` ONLY when the user has already approved the
+  kickoff AND explicitly selected autonomous (or declined to choose, in which
+  case the existing D3 behavior applies). The kickoff gate itself is NEVER
+  relaxed by the mode selection: approval is required in BOTH modes; the axis
+  selects only post-approval progression. This is consistent with §A.2 C1 and
+  REQ-GLE-015.
 
 ### §D.5 Out of Scope — docs-site 4-locale translation
 

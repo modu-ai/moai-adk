@@ -14,6 +14,13 @@
   (or fold into existing stop handler).
 - **Doctrine edits**: `goal-directive.md`, `native-invocation-model.md`,
   `session-handoff.md`.
+- **D8 doctrine edits (progression-mode codification)**: `CLAUDE.md` (kickoff /
+  approval-gates section — template-sensitive, mirror to
+  `internal/template/templates/CLAUDE.md`, no SPEC IDs per §25);
+  `.claude/skills/moai/workflows/run.md` (co-located with Run-phase Autonomy);
+  `.claude/rules/moai/workflow/orchestration-mode-selection.md` (co-located with
+  Implementation Kickoff Approval mandatory-restoration policy). Each pinned as
+  a separate reachability AC (AC-GLE-031..033).
 - **PRESERVE**: `run.md § Run-phase Autonomy (/goal ac_converge)`;
   `internal/config/agentic_loop_distinctness_test.go` (must stay green);
   `internal/loop` / `internal/ralph` / `internal/cli/loop.go` (untouched — §D.3);
@@ -33,6 +40,9 @@
 | `run.md § Run-phase Autonomy` | PRESERVE |
 | `internal/config/agentic_loop_distinctness_test.go` | PRESERVE (stays green) |
 | `internal/loop`, `internal/ralph`, `internal/cli/loop.go` | PRESERVE |
+| `CLAUDE.md` (kickoff section) | EXTEND (D8 progression-mode axis + kickoff-mandatory-both-modes; mirror to template) |
+| `.claude/skills/moai/workflows/run.md` | EXTEND (D8 progression-mode co-located with Run-phase Autonomy) |
+| `.claude/rules/moai/workflow/orchestration-mode-selection.md` | EXTEND (D8 progression-mode co-located with Kickoff mandatory-restoration) |
 
 ## §B — Technical Design (folded design.md — LEAN Tier L)
 
@@ -61,6 +71,7 @@ internal/cli/
   "ceiling": {"max_turns": 30},
   "turns_used": 0,
   "progress": [{"turn": 1, "note": "..."}],
+  "progression_mode": "autonomous",
   "created_at": "2026-07-12T00:00:00Z",
   "status": "armed|satisfied|ceiling-exit|cleared"
 }
@@ -79,6 +90,21 @@ internal/cli/
 6. All mechanical PASS AND ≥1 `model` condition → Tier 2 model judgment
    (REQ-GLE-011). Not satisfied → block; satisfied → step 7.
 7. All satisfied → no block; set `status: satisfied` (REQ-GLE-012).
+8. **D8 semi-autonomous checkpoint branch**: if `progression_mode ==
+   "semi-autonomous"` AND the goal is NOT satisfied AND ceiling NOT reached
+   (i.e., the normal "block and continue" path would fire), emit the
+   checkpoint-signal block JSON (REQ-GLE-028, §B.5) INSTEAD OF the plain
+   `{"decision":"block","reason":"<cond + tail>"}` — the `mode` field
+   distinguishes the two; the orchestrator reads `mode == "semi-autonomous"`
+   and runs AskUserQuestion. The checkpoint block carries `failed_conditions`
+   (the failed-condition + tail detail from Tier 1) so the orchestrator's
+   confirm AskUserQuestion surfaces WHY the goal isn't satisfied (the generic
+   `reason` label alone is insufficient); this reconciles REQ-GLE-010 ↔
+   REQ-GLE-028 — the failed-condition+tail mandate is present in BOTH modes
+   (autonomous via plain block `reason`, semi-autonomous via the checkpoint's
+   `failed_conditions` array). In `autonomous` mode (default), step 8 is
+   skipped — the normal block from step 5/6 fires and the turn continues
+   without asking (existing D3 behavior, REQ-GLE-027).
 
 ### B.4 Hook wiring
 
@@ -89,6 +115,86 @@ internal/cli/
   default → this hook entry carries a per-hook `timeout` override of **120000ms**
   (settled). goal.md documents that goal `cmd`s SHOULD be fast (prefer
   `go test -run <pattern>` over the full suite) since the eval runs at turn-end.
+
+### B.5 Progression-mode design (D8 — Autonomous/Semi-autonomous)
+
+**Schema extension** (extends B.2): goal state gains `progression_mode` (string,
+`"autonomous"` | `"semi-autonomous"`, default `"autonomous"`). Set at goal-arm
+time from the Implementation Kickoff Approval AskUserQuestion response.
+
+**Kickoff-time mode selection** (REQ-GLE-026): the orchestrator's Implementation
+Kickoff Approval AskUserQuestion gains a progression-mode question as a DISTINCT
+axis from the approve/decline decision. The user approves the kickoff (required)
+AND chooses the post-approval progression mode (autonomous default, or
+semi-autonomous). The selected mode flows into the `moai goal "<condition>"`
+arm call → written to `progression_mode` in state. This is NOT a gate bypass —
+the gate still runs; the axis selects only what happens AFTER the gate passes.
+
+**Autonomous mode** (REQ-GLE-027): the existing D3 behavior — the evaluator
+blocks each turn until conditions hold or the ceiling is reached, with NO
+per-turn user prompt. No NEW behavioral surface beyond the `progression_mode`
+state field. The `reason` in the block JSON carries the failed-condition /
+model-claim detail as usual (no `mode` field, or `mode: "autonomous"`).
+
+**Semi-autonomous mode** (REQ-GLE-028) — checkpoint-signal JSON contract:
+
+```json
+{
+  "decision": "block",
+  "reason": "semi-autonomous checkpoint: orchestrator to confirm continuation (turn 3 of 30)",
+  "mode": "semi-autonomous",
+  "turn": 3,
+  "ceiling": 30,
+  "last_progress": "M2 evaluator Tier-1 gate implemented",
+  "failed_conditions": [
+    {"cmd": "go test ./internal/goal/...", "exit": 1, "tail": "FAIL: TestSemiAutonomousCheckpoint ... (output tail)"}
+  ]
+}
+```
+
+The `mode: "semi-autonomous"` field is the load-bearing signal: the orchestrator
+distinguishes a checkpoint block (run AskUserQuestion) from a normal
+condition-failed block (just continue). The `failed_conditions` array carries
+the failed-condition + output-tail detail so the orchestrator's confirm
+AskUserQuestion can surface WHY the goal isn't satisfied (the generic `reason`
+label alone is insufficient for an informed continue/clear/switch decision).
+When no mechanical condition is failing (e.g., the checkpoint fires because a
+model condition is not yet satisfied), `failed_conditions` is empty `[]` or
+absent. **REQ-GLE-010 ↔ REQ-GLE-028 reconciliation**: the failed-condition +
+output-tail detail mandated by REQ-GLE-010 is present in BOTH modes — in
+autonomous mode it rides the plain block `reason`; in semi-autonomous mode it
+rides the checkpoint's structured `failed_conditions` array. The two REQs do
+NOT conflict; the checkpoint does NOT drop the diagnostic (the v0.2.0 plan-
+auditor D2-1 defect is resolved by this enrichment).
+
+**Orchestrator-bridge worked flow** (the orchestrator-translation-responsibility
+pattern from `agent-common-protocol.md` § Hook Invocation Surface — the Stop
+hook CANNOT call AskUserQuestion per REQ-GLE-014, so the orchestrator bridges):
+
+```
+[turn N ends]
+    ↓
+stop-goal hook evaluates goal
+    ↓
+goal not satisfied, ceiling not reached, progression_mode == "semi-autonomous"
+    ↓
+hook emits exit-0 stdout: {"decision":"block","mode":"semi-autonomous","turn":N,...}
+    ↓
+Claude Code honors the block → next turn begins
+    ↓
+orchestrator reads the checkpoint JSON from the prior turn's block reason
+    ↓
+orchestrator runs AskUserQuestion (it CAN — it is the main session):
+    ├─ "Continue to next step" → orchestrator proceeds; hook re-evaluates next turn
+    ├─ "Clear goal" → orchestrator runs `moai goal clear`; loop ends
+    └─ "Switch to autonomous" → orchestrator updates progression_mode; loop continues without further checkpoints
+    ↓
+user choice applied; turn N+1 proceeds accordingly
+```
+
+This is the SAME pattern already codified for `team-ac-verify.sh` and
+`sync-phase-quality-gate.sh` (hooks emit structured JSON; the orchestrator
+translates to AskUserQuestion). No NEW boundary-crossing mechanism is invented.
 
 ## §B — Known Issues (Section A-E, Tier L relevant categories)
 
@@ -157,8 +263,15 @@ in `progress.md` §E.1.
 - **M6 — Analyze-First integration + mirror + build (D6, D7)**: §2 stage ⑤
   reference; moai.md boundary note; distinctness guard re-verify; template mirrors;
   `make build`. Priority High (gate).
+- **M7 — Progression-mode axis (D8)**: schema `progression_mode` field;
+  evaluator checkpoint-signal branch (B.3 step 8, B.5); kickoff-time mode
+  selection documented in `goal.md`; CLAUDE.md + `run.md` +
+  `orchestration-mode-selection.md` codification (3 separate reachability ACs);
+  safety invariant — kickoff mandatory in both modes (Go test); autonomous-mode
+  Go test; semi-autonomous checkpoint Go test + orchestrator-bridge doc.
+  Priority Medium.
 
-Ordering: M1 → M2 → M3 → M4 → M5 → M6.
+Ordering: M1 → M2 → M3 → M4 → M5 → M6 → M7.
 
 ## §G — Anti-Patterns
 
@@ -168,6 +281,19 @@ Ordering: M1 → M2 → M3 → M4 → M5 → M6.
 - Arming a goal that pre-authorizes run-phase entry (REQ-GLE-015 forbids).
 - Emitting `block` on exit 2 (Claude Code honors stdout JSON only on exit 0).
 - Vacuous coverage claim — cite real `go test -cover` output.
+- **D8 — Treating the progression-mode axis as a gate bypass** (REQ-GLE-026
+  forbids): the axis is a post-approval progression CHOICE, NOT a relaxation of
+  the Implementation Kickoff Approval gate. The gate stays mandatory in both
+  modes.
+- **D8 — Having the `stop-goal` hook call AskUserQuestion** (REQ-GLE-014
+  forbids): the semi-autonomous checkpoint is a JSON signal the ORCHESTRATOR
+  reads; the orchestrator runs the AskUserQuestion round, not the hook.
+- **D8 — Making autonomous mode default-on without a kickoff gate pass**:
+  `progression_mode` defaults to `autonomous` ONLY for an already-approved goal;
+  it never pre-authorizes run-phase entry.
+- **D8 — Compounding the 3 doc-surface greps into one `A|B|C ≥N` grep** (AC
+  reachability lesson forbids): CLAUDE.md, run.md, orchestration-mode-selection.md
+  are 3 SEPARATE ACs (AC-GLE-031..033), each with its own baseline-0 grep.
 
 ## §H — Cross-References
 
@@ -227,3 +353,22 @@ Ordering: M1 → M2 → M3 → M4 → M5 → M6.
   correctness hazard, both only continue-or-stop the turn). AC-GLE-016 verifies the
   yield behavior when the signal IS exposed; the degrade path is the documented
   fallback.
+- **DECISION (D8 progression-mode axis = kickoff-time choice, NOT gate bypass)**
+  — RESOLVED (user mid-turn directive 2026-07-12): the autonomous-vs-semi-
+  autonomous axis is a CHOICE offered AT the Implementation Kickoff Approval
+  gate, NOT a bypass OF the gate. The gate remains mandatory in both modes (C1
+  preserved, REQ-GLE-015 preserved). The axis selects ONLY post-approval
+  progression behavior (continue autonomously vs. checkpoint-confirm each step).
+  §D.4 is reconciled: autonomous MODE is opt-in per-goal at the gate, NOT a
+  default-on switch.
+- **DECISION (D8 semi-autonomous confirm via orchestrator bridge, NOT hook
+  prompt)** — RESOLVED: the `stop-goal` hook CANNOT call AskUserQuestion
+  (REQ-GLE-014 binding). The semi-autonomous per-turn confirm flow uses the
+  orchestrator-bridge pattern (B.5): the hook emits a checkpoint-signal block
+  JSON with `mode: "semi-autonomous"`; the orchestrator (which CAN call
+  AskUserQuestion) reads the checkpoint and runs the confirm round (continue /
+  clear / switch-to-autonomous). This reuses the existing
+  `agent-common-protocol.md` § User Interaction Boundary / Hook Invocation
+  Surface orchestrator-translation-responsibility pattern (same shape as
+  `team-ac-verify.sh` and `sync-phase-quality-gate.sh`). No NEW boundary-crossing
+  mechanism is invented.

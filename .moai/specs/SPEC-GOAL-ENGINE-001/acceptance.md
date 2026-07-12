@@ -34,6 +34,14 @@
 | AC-GLE-024 | REQ-GLE-024 | internal/goal ≥85% coverage | cover output |
 | AC-GLE-025 | REQ-GLE-025 | mirrors + neutral + make build | per-file + exit 0 |
 | AC-GLE-026 | REQ-GLE-023 | Stop-hook COMPOSE (add-not-replace) | existing≥1 preserved + new≥1 |
+| AC-GLE-027 | REQ-GLE-026 | goal.md documents progression-mode axis at kickoff | 0 → ≥1 |
+| AC-GLE-028 | REQ-GLE-027 | autonomous mode continues, no checkpoint (schema+eval) | test PASS |
+| AC-GLE-029 | REQ-GLE-028 | semi-autonomous checkpoint JSON emitted by hook | test PASS |
+| AC-GLE-030 | REQ-GLE-028 | orchestrator confirm path documented (bridge) | 0 → ≥1 |
+| AC-GLE-031 | REQ-GLE-029 | CLAUDE.md progression-mode axis documented | 0 → ≥1 |
+| AC-GLE-032 | REQ-GLE-029 | run.md progression-mode axis documented | 0 → ≥1 |
+| AC-GLE-033 | REQ-GLE-029 | orchestration-mode-selection.md axis documented | 0 → ≥1 |
+| AC-GLE-034 | REQ-GLE-026,029 | kickoff mandatory in BOTH modes (grep + Go test) | 0→≥1 + test PASS |
 
 ### AC-GLE-001 — goal.md workflow file + 4 verbs
 
@@ -202,17 +210,31 @@ the HUMAN-ONLY `/goal` (the "does not currently reimplement" sentence is updated
 ### AC-GLE-021 — goal-evaluator reference + boundary doc (both clauses of REQ-GLE-021)
 
 ```bash
-# clause (a): §2 stage ⑤ references the goal evaluator (baseline 0):
-grep -ic "goal evaluator\|goal engine" CLAUDE.md   # expect ≥1
+# clause (a): §2 stage ⑤ references the goal evaluator.
+# awk-windowed into the §2 Request Processing Pipeline section (the lines between
+# "## 2." and "## 3.") so a stray mention elsewhere in CLAUDE.md does not inflate
+# the count. Anchored to the phrase "goal evaluator" (the precise term REQ-GLE-021
+# mandates), NOT the generic "goal engine" — the latter already appears at
+# CLAUDE.md:41 ("forthcoming goal engine") pre-implementation, which made the
+# v0.2.0 combined grep `goal evaluator|goal engine` non-discriminating (baseline
+# 1, not 0). Baseline (verified v0.2.1): 0.
+awk '/^## 2\./,/^## 3\./' CLAUDE.md | grep -ic "goal evaluator"   # expect ≥1
 # clause (b): the phase-vs-task boundary is documented in the Agentic Completion Loop file (baseline 0):
 grep -ic "task-granular\|phase-granular\|goal engine" .claude/skills/moai/workflows/moai.md   # expect ≥1
 ```
-Baseline (verified this iteration): both 0. PATH CORRECTION — the Agentic
-Completion Loop lives in **`.claude/skills/moai/workflows/moai.md`**, NOT
+Baseline (verified v0.2.1): clause (a) = 0 — the awk-windowed "goal evaluator"
+phrase does NOT appear in §2 today; the stale v0.2.0 grep
+`goal evaluator|goal engine` returned 1 due to CLAUDE.md:41's "forthcoming goal
+engine" (added by `SPEC-ANALYZE-FIRST-ROUTING-001` commit `4d7ec04e4`), making
+it non-discriminating. Clause (b) = 0. PATH CORRECTION — the Agentic Completion
+Loop lives in **`.claude/skills/moai/workflows/moai.md`**, NOT
 `.claude/output-styles/moai/moai.md` (the latter has no Agentic Completion Loop
 section). **GATED**: clause (a) depends on `SPEC-ANALYZE-FIRST-ROUTING-001`
 landing its §2 rewrite — this AC is evaluated only after ANALYZE-FIRST reaches
-`completed` (the Depends_on pre-flight). PASS when both clauses are ≥1.
+`completed` (the Depends_on pre-flight). Even with the gate, the check MUST be
+discriminating when the gate clears, so the baseline-0 → post-≥1 property holds
+(the v0.2.0 plan-auditor D2-2 defect is resolved by this re-anchor). PASS when
+both clauses are ≥1.
 
 ### AC-GLE-022 — distinctness guard green
 
@@ -269,14 +291,133 @@ Baseline (verified this iteration): (a) `handle-stop.sh` count = 2 (preserved),
 `"..."`); the run-phase author records the exact pre-edit `handle-stop.sh` count
 and asserts it is unchanged.
 
+### AC-GLE-027 — goal.md documents progression-mode axis at kickoff (REQ-GLE-026)
+
+```bash
+# The /moai goal workflow file documents the autonomous/semi-autonomous axis offered at the kickoff gate.
+grep -ci "semi-autonomous" .claude/skills/moai/workflows/goal.md   # expect ≥1
+```
+Baseline (verified this amendment): 0 (goal.md does not yet exist — it is a
+run-phase deliverable of REQ-GLE-001). PASS when `goal.md` carries ≥1
+`semi-autonomous` token documenting the progression-mode axis. This pins the
+FEATURE-OWNER doc surface (goal.md is where `/moai goal` documents its own
+progression semantics); the 3 cross-file doctrine surfaces are pinned separately
+at AC-GLE-031..033. (SEPARATE from AC-GLE-030 which pins the orchestrator-bridge
+flow — different token, same file, no vacuous-overlap risk.)
+
+### AC-GLE-028 — autonomous mode continues without checkpoint (REQ-GLE-027)
+
+```bash
+go test ./internal/goal/ -run TestAutonomousModeNoCheckpoint -v 2>&1 | tail -5
+```
+PASS when the test asserts BOTH: (a) the state schema carries a
+`progression_mode` field with value `"autonomous"` as the default, AND (b) given
+`progression_mode == "autonomous"` and a goal NOT yet satisfied and ceiling NOT
+reached, the evaluator emits the normal block JSON with NO `mode:
+"semi-autonomous"` checkpoint signal (i.e., autonomous mode is the existing D3
+behavior — no per-turn checkpoint). This verifies REQ-GLE-027's claim that
+autonomous mode introduces no NEW behavioral surface beyond the state field.
+
+### AC-GLE-029 — semi-autonomous checkpoint JSON emitted by hook (REQ-GLE-028a)
+
+```bash
+go test ./internal/goal/ -run TestSemiAutonomousCheckpointSignal -v 2>&1 | tail -5
+```
+PASS when the test asserts: given `progression_mode == "semi-autonomous"` AND
+goal NOT satisfied AND ceiling NOT reached, `stop-goal` emits exit-0 stdout JSON
+containing `"decision":"block"`, `"mode":"semi-autonomous"`, a `reason`
+containing the literal `"semi-autonomous checkpoint"` prefix, AND — **when a
+mechanical condition is failing** — a `failed_conditions` array whose entries
+each carry `cmd`, `exit`, and `tail` (the failed-condition + output-tail detail
+mandated by REQ-GLE-010, so the orchestrator's confirm AskUserQuestion surfaces
+WHY the goal isn't satisfied; the generic `reason` label alone is insufficient —
+v0.2.0 plan-auditor D2-1 defect resolved by this assertion). When no mechanical
+condition is failing (e.g., the checkpoint fires because a model condition is
+not yet satisfied), `failed_conditions` is empty `[]` or absent. This is the
+hook-emits checkpoint half of REQ-GLE-028; the orchestrator-side confirm path is
+pinned separately at AC-GLE-030.
+
+### AC-GLE-030 — orchestrator confirm path documented (REQ-GLE-028b, the bridge)
+
+```bash
+# goal.md documents the orchestrator-bridge: reads the checkpoint JSON, runs AskUserQuestion.
+grep -ci "checkpoint" .claude/skills/moai/workflows/goal.md   # expect ≥1
+grep -ci "orchestrator" .claude/skills/moai/workflows/goal.md  # expect ≥1
+```
+Baseline (verified this amendment): 0 (goal.md does not yet exist). PASS when
+goal.md carries ≥1 `checkpoint` token AND ≥1 `orchestrator` token documenting
+that the ORCHESTRATOR (not the hook) reads the checkpoint-signal JSON and runs
+the AskUserQuestion confirm round (the bridge pattern from
+`agent-common-protocol.md` § User Interaction Boundary). This pins the
+orchestrator-side reachability of the semi-autonomous confirm flow; the
+hook-emits half is AC-GLE-029. (SEPARATE from AC-GLE-027 — `checkpoint` vs
+`semi-autonomous` are different discriminating tokens on the same file.)
+
+### AC-GLE-031 — CLAUDE.md progression-mode axis documented (REQ-GLE-029)
+
+```bash
+grep -ci "semi-autonomous" CLAUDE.md   # expect ≥1
+```
+Baseline (verified this amendment): 0. PASS when CLAUDE.md carries ≥1
+`semi-autonomous` token in the kickoff / approval-gates context. NOTE: CLAUDE.md
+is template-sensitive (§25) — the edit MUST be mirrored to
+`internal/template/templates/CLAUDE.md` and MUST carry no internal SPEC IDs (the
+progression-mode semantics are generic doctrine, not SPEC-specific). The mirror
+is verified by REQ-GLE-025's build + the template-neutrality CI guard.
+
+### AC-GLE-032 — run.md progression-mode axis documented (REQ-GLE-029)
+
+```bash
+# Co-located with the existing Run-phase Autonomy (/goal ac_converge) section.
+grep -ci "semi-autonomous\|progression.mode" .claude/skills/moai/workflows/run.md   # expect ≥1
+```
+Baseline (verified this amendment): 0. PASS when run.md carries ≥1
+`semi-autonomous` OR `progression mode` token co-located with the Run-phase
+Autonomy section. (SEPARATE from AC-GLE-031 and AC-GLE-033 — 3 distinct doc
+surfaces, each its own baseline-0 grep per the cross-file-reachability lesson.)
+
+### AC-GLE-033 — orchestration-mode-selection.md progression-mode axis documented (REQ-GLE-029)
+
+```bash
+# Co-located with the Implementation Kickoff Approval mandatory-restoration policy.
+grep -ci "semi-autonomous\|progression.mode" .claude/rules/moai/workflow/orchestration-mode-selection.md   # expect ≥1
+```
+Baseline (verified this amendment): 0. PASS when orchestration-mode-selection.md
+carries ≥1 `semi-autonomous` OR `progression mode` token co-located with the
+Kickoff mandatory-restoration header policy.
+
+### AC-GLE-034 — kickoff mandatory in BOTH modes (safety-invariant NON-bypass)
+
+```bash
+# (a) doc grep: goal.md states the invariant for BOTH modes.
+grep -ci "both.mode\|in both modes" .claude/skills/moai/workflows/goal.md   # expect ≥1
+# (b) Go test: no auto-run-authorization path exists regardless of progression_mode.
+go test ./internal/goal/ -run TestKickoffMandatoryBothModes -v 2>&1 | tail -5
+```
+Baseline (verified this amendment): (a) 0 (goal.md does not yet exist). PASS when
+BOTH: (a) goal.md states that Implementation Kickoff Approval remains mandatory
+in both autonomous AND semi-autonomous modes (the `both` / `in both modes`
+anchor), AND (b) the Go test asserts NO code path in `internal/goal/` authorizes
+run-phase entry — regardless of the `progression_mode` value (autonomous and
+semi-autonomous both fail to bypass the gate). This is the safety-invariant
+NON-bypass pin mandated by the amendment's binding AC-discipline. Distinct from
+AC-GLE-015 (which verifies the general no-bypass property): AC-GLE-034
+specifically pins that the NEW `progression_mode` field does not introduce a
+mode-specific bypass.
+
 ## §D.1 Definition of Done
 
-- All 26 ACs PASS.
+- All 34 ACs PASS.
 - `internal/goal/` ≥ 85% coverage; cross-platform build green
   (`GOOS=windows GOARCH=amd64 go build ./...`).
 - Both router-registration surfaces (P1 list + Quick Reference) present.
 - Stop-hook entry COMPOSED (existing entries preserved).
 - `run.md ac_converge` section unmodified; `agentic_loop_distinctness_test.go` green.
+- D8: progression-mode axis offered at kickoff (AC-GLE-027); `progression_mode`
+  state field present (AC-GLE-028); semi-autonomous checkpoint JSON contract
+  implemented (AC-GLE-029) + orchestrator-bridge documented (AC-GLE-030);
+  kickoff-still-mandatory invariant pinned in BOTH modes (AC-GLE-034); 3 doc
+  surfaces codified (AC-GLE-031..033).
 
 ## §D.2 Edge cases
 
@@ -287,3 +428,17 @@ and asserts it is unchanged.
 - **Native /goal active**: MoAI `stop-goal` yields (AC-GLE-016) — no double-loop.
 - **Depends_on unmet**: run-phase entry blocked unless ANALYZE-FIRST is `completed`
   or `--ignore-deps` + logged rationale (spec-workflow Depends_on pre-flight).
+- **D8 — User declines the progression-mode choice at kickoff**: defaults to
+  `autonomous` (existing D3 behavior); the kickoff gate still requires explicit
+  approval (REQ-GLE-026).
+- **D8 — User clears the goal mid-semi-autonomous-loop**: orchestrator runs
+  `moai goal clear`; the checkpoint loop ends; no further AskUserQuestion rounds.
+- **D8 — Semi-autonomous checkpoint with ceiling approaching**: the checkpoint
+  JSON carries `turn` + `ceiling`; the orchestrator surfaces "N turns remaining"
+  in the confirm AskUserQuestion so the user can decide with full information.
+- **D8 — Mode switched autonomous→semi-autonomous mid-goal**: the orchestrator
+  updates `progression_mode` in state; subsequent turns emit checkpoints.
+- **D8 — Hook emits checkpoint but orchestrator context lost (compact/clear)**:
+  the checkpoint JSON is the prior turn's block reason; on resume the orchestrator
+  re-derives from goal state `progression_mode` (state-file-first detection,
+  consistent with the session-handoff pattern).
