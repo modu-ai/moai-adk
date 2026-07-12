@@ -166,3 +166,39 @@ func measureAlwaysLoaded(repoRoot string) (total int, surface []string, err erro
 	}
 	return total, surface, nil
 }
+
+// MeasureAlwaysLoadedSection estimates the char and token contribution of a
+// specific section within a file on the always-loaded surface, identified by
+// its HTML-comment start/end marker pair. This is the per-section attribution
+// extension of measureAlwaysLoaded (AC-HEV2-013 / REQ-HEV2-008): it lets the
+// MOAI:LEARNED-WORKFLOW digest budget enforcement verify the ACTUAL measured
+// contribution of the block, not an assumed value.
+//
+// chars is the byte length of the body strictly between the first occurrence
+// of startMarker and the first subsequent occurrence of endMarker (the markers
+// themselves are excluded). tokens is chars/4 per the estimateTokens rule.
+// found is false (with zero counts) when either marker is absent or the file
+// cannot be read.
+//
+// Additive — does not alter measureAlwaysLoaded's signature or behavior.
+func MeasureAlwaysLoadedSection(filePath, startMarker, endMarker string) (chars, tokens int, found bool, err error) {
+	data, readErr := os.ReadFile(filePath)
+	if readErr != nil {
+		return 0, 0, false, nil // hermetic: absent file → not found, no error
+	}
+	body := string(data)
+	startIdx := strings.Index(body, startMarker)
+	if startIdx < 0 {
+		return 0, 0, false, nil
+	}
+	// Move past the start marker line's closing --> (or the marker itself).
+	afterStart := startIdx + len(startMarker)
+	endIdx := strings.Index(body[afterStart:], endMarker)
+	if endIdx < 0 {
+		return 0, 0, false, nil
+	}
+	section := body[afterStart : afterStart+endIdx]
+	chars = len(section)
+	tokens = estimateTokens([]byte(section))
+	return chars, tokens, true, nil
+}

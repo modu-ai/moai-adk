@@ -73,17 +73,54 @@ plan_audit_final_iter: 2
 
 **D1 load-bearing verification:** the production caller `internal/cli/harness/install.go:85` (`harness.InjectMarker`) delegates through the refactored `InjectMarker` → `curator.WriteManagedBlock(path, BlockTypeHarnessGenerated, ...)`. The byte-identical golden test (`TestBlockTypeEnum_IncludesHarnessGenerated`) verifies the HarnessGenerated block format is preserved exactly. The existing `layer3_test.go` suite (7 tests covering fresh-file, different-content-idempotent, same-spec-id-idempotent, append-without-trailing-newline, empty-path, empty-specID, file-not-found) passes unchanged — confirming the production path is preserved.
 
+### M2 — `MOAI:LEARNED-WORKFLOW` digest block + budget/cap enforcement
+
+**Deliverables shipped:**
+- `internal/harness/curator/budget.go` (NEW) — digest-layer budget constants (`MaxDigestBlockChars = 3000`, `MaxDigestBullets = 20`), typed errors (`ErrDigestBudgetExceeded`, `ErrBulletCapExceeded`, `ErrForbiddenContent`), anti-fabrication regex (`forbiddenTokenPatterns` + `shaLikePattern` with digit filter), `containsForbiddenContent` helper, `validateDigestBlock` aggregator.
+- `internal/harness/curator/writer.go` (MODIFIED) — wired `validateDigestBlock` into `WriteManagedBlock` for `BlockTypeLearnedWorkflow` BEFORE any file I/O (gated so the legacy `BlockTypeHarnessGenerated` D1 path is untouched).
+- `internal/config/token_budget_guard.go` (MODIFIED) — added `MeasureAlwaysLoadedSection(filePath, startMarker, endMarker)` (AC-HEV2-013 per-section attribution; additive — does not alter `measureAlwaysLoaded` signature).
+- `internal/harness/curator/{marker,budget,antifabrication}_test.go` (NEW) + `crud_test.go` (EXTENDED) — AC-HEV2-007/008/012/013/014/015/016 coverage.
+
+**AC PASS/FAIL matrix (M2-scoped ACs):**
+
+| AC | Status | Verification |
+|----|--------|-------------|
+| AC-HEV2-007 (LEARNED marker regex atomic match) | PASS | `TestLearnedWorkflowMarker_RegexMatchesHeadingPlusMarkers` — compiled pattern matches heading + start + body + end as one group |
+| AC-HEV2-008 (atomic match group; attrs + non-greedy) | PASS | `TestLearnedWorkflowMarker_AtomicMatchGroup` — 3 subtests (start-marker attrs, non-greedy stops at first end, bare heading not matched) |
+| AC-HEV2-012 (≤3K budget → ErrDigestBudgetExceeded, file untouched) | PASS | `TestWriteManagedBlock_BudgetExceeded_ErrDigestBudgetExceeded` + `TestWriteManagedBlock_BudgetBoundary` (exactly-3000 admitted, 3001 rejected) |
+| AC-HEV2-013 (measureAlwaysLoaded per-section attribution) | PASS | `TestMeasureAlwaysLoaded_PerSectionAttribution` + `TestMeasureAlwaysLoaded_SectionAbsent` — `config.MeasureAlwaysLoadedSection` measures the LearnedWorkflow block body distinctly; outside prose excluded; absent → found=false |
+| AC-HEV2-014 (≤20 bullet cap → ErrBulletCapExceeded, file untouched) | PASS | `TestWriteManagedBlock_BulletCapExceeded` (21 rejected) + `TestWriteManagedBlock_BulletCapBoundary` (exactly-20 admitted) |
+| AC-HEV2-015 (ledger_key trailing HTML comment linkage) | PASS | `TestBullet_LedgerKeyTrailingHTMLComment` + `TestBullet_ProvisionalOmitsKeyMarker` — `<!-- key: <k> -->` on the bullet line; provisional omits |
+| AC-HEV2-016 (anti-fabrication forbidden patterns rejected) | PASS | `TestWriteManagedBlock_RejectsForbiddenPatterns` (7 subtests: SPEC-id multi/single, REQ, AC, ISO date, SHA short/long) + `TestWriteManagedBlock_AdmitsGenericWorkflowKnowledge` (6 positive incl. CJK + "defaced" no-digit) + `TestContainsForbiddenContent` |
+
+**Anti-fabrication evidence-or-null (per task prompt §D):** the budget ACs verify the ACTUAL measured contribution via `config.MeasureAlwaysLoadedSection` (AC-HEV2-013), not an assumed value. `TestMeasureAlwaysLoaded_PerSectionAttribution` writes a known block body, then measures the section bytes directly and asserts the attributed char count equals the actual section byte length. The boundary tests (exactly-3000 / exactly-20) verify the gate threshold is the named constant, not a magic number.
+
+**Test output:** `go test -count=1 ./internal/harness/curator/...` → ok, all tests PASS (M1's 23 + M2's new tests, 0 fail).
+
+**Coverage:** `go test -cover ./internal/harness/curator/...` → **93.4%** statement coverage (M1 was 92.4%; M2 raised it; target ≥85% per QG1, SPEC target ≥90%).
+
+**Lint:** `golangci-lint run --timeout=2m ./internal/harness/curator/... ./internal/config/...` → 0 issues (no NEW findings vs pre-flight baseline).
+
+**Cross-platform build (B1):** `go build ./...` exit 0 AND `GOOS=windows GOARCH=amd64 go build ./...` exit 0. The new `budget.go` uses only stdlib (`errors`, `fmt`, `regexp`, `strings`) — no syscall, no build tags.
+
+**Subagent boundary (B3 / AC-HEV2-044):** `grep -rn 'AskUserQuestion\|mcp__askuser' internal/harness/curator/ | grep -v _test.go | grep -v '// '` → 0 matches (the existing `subagent_boundary_test.go` static guard still passes; M2 additions do not violate it).
+
+**D1 preservation re-verified:** `go test -v -run 'InjectMarker|HarnessGenerated' ./internal/harness` → 8/8 PASS (fresh-file, different-content-idempotent, same-spec-id-idempotent, append-without-trailing-newline, empty-path, empty-specID, file-not-found, no-ensure-allowed-call). The enforcement gate is scoped to `BlockTypeLearnedWorkflow` only; the HarnessGenerated path is byte-identical.
+
+**Residual risk (M2 scope, NOT closing debt):** `AddBullet` does NOT enforce the ≤20 bullet cap (only `WriteManagedBlock` does). AC-HEV2-014 pins `WriteManagedBlock` specifically; `AddBullet` cap enforcement is not pinned by any M2 AC and is deferred to keep M2 focused (scope discipline). A block populated via 21 successive `AddBullet` calls would bypass the cap. Mitigation path: a follow-up enforcement in `AddBullet` that counts existing bullets before insert.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 ```yaml
 run_complete_at:
-run_commit_sha: pending-backfill-m1
-run_status: m1-complete-m2-m7-pending
-# M1 (Typed Managed-Block Writer foundation) is complete: curator/writer.go +
-# curator/crud.go + layer3.go InjectMarker generalization. All M1-scoped ACs
-# PASS (AC-HEV2-001..006, 009..011, 044, 047, 048). Coverage 92.4%.
-# Remaining milestones M2-M7 are NOT started — run_status is NOT audit-ready.
-ac_pass_count: 12
+run_commit_sha: pending-backfill-m2
+run_status: m2-complete-m3-m7-pending
+# M1 (Typed Managed-Block Writer foundation) + M2 (LEARNED digest block +
+# budget/cap enforcement) are complete. M1-scoped ACs PASS (AC-HEV2-001..006,
+# 009..011, 044, 047, 048). M2-scoped ACs PASS (AC-HEV2-007, 008, 012, 013,
+# 014, 015, 016). Coverage 93.4%. Remaining milestones M3-M7 NOT started —
+# run_status is NOT audit-ready.
+ac_pass_count: 19  # M1 (12) + M2 (7)
 ac_fail_count: 0
 preserve_list_post_run_count: 0  # no PRESERVE-list files modified
 l44_pre_commit_fetch: "0	0 (origin/main...HEAD at commit time)"
@@ -92,7 +129,7 @@ new_warnings_or_lints_introduced: 0
 cross_platform_build:
   go_build_all: exit_0
   go_build_windows_amd64: exit_0
-total_run_phase_files: 6  # 3 new curator src + 3 new curator test + 1 modified layer3.go
+total_run_phase_files: 11  # M1 (6) + M2 (5): budget.go + marker/budget/antifabrication_test.go + writer.go mod + config mod + crud_test.go mod
 m1_to_mN_commit_strategy: per-milestone
 ```
 

@@ -130,14 +130,30 @@ var (
 // when absent), and writes the file back with pre-block and post-block bytes
 // preserved verbatim.
 //
+// For BlockTypeLearnedWorkflow the writer enforces the three digest-layer
+// gates BEFORE touching the file (REQ-HEV2-008 budget, REQ-HEV2-009 bullet
+// cap, REQ-HEV2-011 anti-fabrication): on violation the file is NOT modified
+// and a typed error (ErrDigestBudgetExceeded / ErrBulletCapExceeded /
+// ErrForbiddenContent) is returned.
+//
 // The function is idempotent: re-invoking with content that renders to the
 // same block text as the existing block produces zero byte-diff.
 //
 // Returns an error (without touching the file) when path is empty, the file
-// cannot be read/written, or blockType is not in the marker registry.
+// cannot be read/written, the blockType is not in the marker registry, or a
+// digest-layer gate is violated.
 func WriteManagedBlock(path string, blockType BlockType, content BlockContent) error {
 	if path == "" {
 		return errors.New("curator: empty path")
+	}
+	// Digest-layer enforcement gates (LearnedWorkflow only — the legacy
+	// HarnessGenerated block uses RawBody and is exempt to preserve its D1
+	// byte-identical contract). These run before any file I/O so a rejected
+	// write leaves the file untouched.
+	if blockType == BlockTypeLearnedWorkflow {
+		if err := validateDigestBlock(content); err != nil {
+			return err
+		}
 	}
 	block, err := renderBlock(blockType, content)
 	if err != nil {

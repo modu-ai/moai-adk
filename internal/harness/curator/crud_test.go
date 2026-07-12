@@ -191,3 +191,63 @@ func TestDeleteBullet_EmptyLedgerKey(t *testing.T) {
 		t.Fatal("expected error on empty ledgerKey")
 	}
 }
+
+// --- AC-HEV2-015: ledger_key cross-layer linkage — each digest bullet carries
+// a `<!-- key: <ledger_key> -->` trailing HTML comment linking the digest
+// bullet to a ledger-layer entry (REQ-HEV2-010). ---
+
+func TestBullet_LedgerKeyTrailingHTMLComment(t *testing.T) {
+	path := writeFixture(t, "# Project\n")
+
+	err := WriteManagedBlock(path, BlockTypeLearnedWorkflow, BlockContent{
+		Bullets: []Bullet{
+			{LedgerKey: "req-validation-fanout", Text: "validate cross-file reachability before declaring PASS"},
+			{LedgerKey: "context-first-discovery", Text: "run socratic interview when intent is ambiguous"},
+		},
+	})
+	if err != nil {
+		t.Fatalf("WriteManagedBlock: %v", err)
+	}
+	data := string(mustRead(t, path))
+
+	// Each bullet MUST carry its ledger_key in a trailing HTML comment of the
+	// exact form `<!-- key: <ledger_key> -->`.
+	for _, key := range []string{"req-validation-fanout", "context-first-discovery"} {
+		want := "<!-- key: " + key + " -->"
+		if !strings.Contains(data, want) {
+			t.Errorf("ledger_key linkage marker missing for %q; want %q in:\n%s", key, want, data)
+		}
+	}
+
+	// The marker MUST be on the SAME line as the bullet text (trailing, not on
+	// a separate line), so the ledger_key binds to its bullet.
+	for _, line := range strings.Split(data, "\n") {
+		if strings.Contains(line, "<!-- key:") {
+			if !strings.HasPrefix(strings.TrimSpace(line), "- ") {
+				t.Errorf("ledger_key marker not on a bullet line: %q", line)
+			}
+		}
+	}
+}
+
+// --- AC-HEV2-015 (provisional): a provisional bullet (empty LedgerKey) omits
+// the key marker (evidence-or-null, REQ-HEV2-010 + REQ-HEV2-024). ---
+
+func TestBullet_ProvisionalOmitsKeyMarker(t *testing.T) {
+	path := writeFixture(t, "# Project\n")
+	err := WriteManagedBlock(path, BlockTypeLearnedWorkflow, BlockContent{
+		Bullets: []Bullet{
+			{LedgerKey: "", Text: "early single observation", Provisional: true},
+		},
+	})
+	if err != nil {
+		t.Fatalf("WriteManagedBlock: %v", err)
+	}
+	data := string(mustRead(t, path))
+	if !strings.Contains(data, "- early single observation") {
+		t.Error("provisional bullet text missing")
+	}
+	if strings.Contains(data, "<!-- key:") {
+		t.Error("provisional bullet should not carry a key marker")
+	}
+}
