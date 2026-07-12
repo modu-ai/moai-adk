@@ -41,16 +41,16 @@ func TestClassifyRequest(t *testing.T) {
 	t.Parallel()
 
 	cases := map[string]string{
-		"add a new OAuth login feature":     "feature",
-		"implement the routing ledger":      "feature",
-		"fix the broken parser":             "bugfix",
-		"there is a regression in CI":       "bugfix",
-		"refactor the writer package":       "refactor",
-		"clean up the dead code":            "refactor",
-		"update the README docs":            "docs",
-		"why does the hook fail?":           "question",
-		"run the /moai run pipeline":        "pipeline",
-		"the sky is blue and green":         "other",
+		"add a new OAuth login feature": "feature",
+		"implement the routing ledger":  "feature",
+		"fix the broken parser":         "bugfix",
+		"there is a regression in CI":   "bugfix",
+		"refactor the writer package":   "refactor",
+		"clean up the dead code":        "refactor",
+		"update the README docs":        "docs",
+		"why does the hook fail?":       "question",
+		"run the /moai run pipeline":    "pipeline",
+		"the sky is blue and green":     "other",
 	}
 	for req, want := range cases {
 		if got := ClassifyRequest(req); got != want {

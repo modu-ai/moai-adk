@@ -44,7 +44,7 @@ func TestDeriveOutcome(t *testing.T) {
 			wantTerm:    true,
 		},
 		{
-			name:        "non-zero gate_exit outranks a passing signal",
+			name: "non-zero gate_exit outranks a passing signal",
 			refs: []EvidenceRef{
 				{Kind: KindVerifyPath, Ref: "x.log", Terminal: true},
 				{Kind: KindGateExit, Value: "1"},
