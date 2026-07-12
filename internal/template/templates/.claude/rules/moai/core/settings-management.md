@@ -277,7 +277,7 @@ The native Claude Code teammate runtime (`moai cg` GLM teammate panes,
 ## Output Style Configuration
 
 Output styles are Markdown files in `.claude/output-styles/moai/` that control how MoAI formats responses.
-Three styles ship with MoAI-ADK: **MoAI** (`moai.md`), **MoAI-Easy** (`moai-easy.md`), and **Einstein** (`einstein.md`).
+Three styles ship with MoAI-ADK: **MoAI** (`moai.md`), **MoAI-Easy** (`moai-easy.md`), and **MoAI-Learn** (`moai-learn.md`).
 
 ### Precedence
 
@@ -285,7 +285,7 @@ When `outputStyle` is set in multiple places, the first match wins:
 
 | Priority | Source | Key | Example |
 |----------|--------|-----|---------|
-| 1 (highest) | `.claude/settings.json` (project) | `outputStyle` | `"outputStyle": "Einstein"` |
+| 1 (highest) | `.claude/settings.json` (project) | `outputStyle` | `"outputStyle": "MoAI-Learn"` |
 | 2 | `~/.claude/settings.json` (user) | `outputStyle` | `"outputStyle": "MoAI"` |
 | 3 (lowest) | Hardcoded default | — | `"MoAI"` |
 
@@ -296,21 +296,21 @@ When `outputStyle` is set in multiple places, the first match wins:
 { "outputStyle": "MoAI" }
 
 // .claude/settings.json (project)
-{ "outputStyle": "Einstein" }
+{ "outputStyle": "MoAI-Learn" }
 ```
 
-Result: **Einstein** loads (project wins over user.
+Result: **MoAI-Learn** loads (project wins over user.
 
 **Example 2 — user setting applies when project is absent:**
 
 ```json
 // ~/.claude/settings.json
-{ "outputStyle": "Einstein" }
+{ "outputStyle": "MoAI-Learn" }
 
 // .claude/settings.json (project) — outputStyle key not present
 ```
 
-Result: **Einstein** loads (user setting applies.
+Result: **MoAI-Learn** loads (user setting applies.
 
 **Example 3 — third-party style at project level:**
 

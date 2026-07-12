@@ -277,7 +277,7 @@ The native Claude Code teammate runtime (`moai cg` GLM teammate panes,
 ## Output Style Configuration
 
 Output styles are Markdown files in `.claude/output-styles/moai/` that control how MoAI formats responses.
-Three styles ship with MoAI-ADK: **MoAI** (`moai.md`), **MoAI-Easy** (`moai-easy.md`), and **Einstein** (`einstein.md`).
+Three styles ship with MoAI-ADK: **MoAI** (`moai.md`), **MoAI-Easy** (`moai-easy.md`), and **MoAI-Learn** (`moai-learn.md`).
 
 ### Precedence
 
@@ -285,7 +285,7 @@ When `outputStyle` is set in multiple places, the first match wins:
 
 | Priority | Source | Key | Example |
 |----------|--------|-----|---------|
-| 1 (highest) | `.claude/settings.local.json` (local, gitignored) | `outputStyle` | `"outputStyle": "Einstein"` |
+| 1 (highest) | `.claude/settings.local.json` (local, gitignored) | `outputStyle` | `"outputStyle": "MoAI-Learn"` |
 | 2 | `.claude/settings.json` (project) | `outputStyle` | `"outputStyle": "MoAI-Easy"` |
 | 3 | `~/.claude/settings.json` (user) | `outputStyle` | `"outputStyle": "MoAI"` |
 | 4 (lowest) | Hardcoded default | — | `"MoAI"` |
@@ -299,21 +299,21 @@ The **local** scope (`.claude/settings.local.json`) is the highest-priority reso
 { "outputStyle": "MoAI" }
 
 // .claude/settings.json (project)
-{ "outputStyle": "Einstein" }
+{ "outputStyle": "MoAI-Learn" }
 ```
 
-Result: **Einstein** loads (project wins over user, REQ-WF006-006).
+Result: **MoAI-Learn** loads (project wins over user, REQ-WF006-006).
 
 **Example 2 — user setting applies when project is absent:**
 
 ```json
 // ~/.claude/settings.json
-{ "outputStyle": "Einstein" }
+{ "outputStyle": "MoAI-Learn" }
 
 // .claude/settings.json (project) — outputStyle key not present
 ```
 
-Result: **Einstein** loads (user setting applies, REQ-WF006-015).
+Result: **MoAI-Learn** loads (user setting applies, REQ-WF006-015).
 
 **Example 3 — third-party style at project level:**
 

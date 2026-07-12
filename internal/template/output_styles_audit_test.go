@@ -18,12 +18,12 @@ import (
 
 // Output style name and file name constants — single source of truth (CLAUDE.local.md §14).
 const (
-	styleNameMoAI     = "MoAI"
-	styleNameEinstein = "Einstein"
-	styleNameMoAIEasy = "MoAI-Easy"
-	styleFileMoAI     = "moai.md"
-	styleFileEinstein = "einstein.md"
-	styleFileMoAIEasy = "moai-easy.md"
+	styleNameMoAI      = "MoAI"
+	styleNameMoAILearn = "MoAI-Learn"
+	styleNameMoAIEasy  = "MoAI-Easy"
+	styleFileMoAI      = "moai.md"
+	styleFileMoAILearn = "moai-learn.md"
+	styleFileMoAIEasy  = "moai-easy.md"
 
 	// Frontmatter key names.
 	keyName                   = "name"
@@ -158,7 +158,7 @@ func findProjectRoot() (string, bool) {
 // embedded template has the required frontmatter keys with correct types and values.
 //
 // REQ-WF006-001: name, description, keep-coding-instructions required.
-// REQ-WF006-005: MoAI=true, Einstein=false.
+// REQ-WF006-005: MoAI=true, MoAI-Learn=false.
 // REQ-WF006-007, REQ-WF006-013: violations emit OUTPUT_STYLE_SCHEMA_ERROR.
 func TestOutputStylesFrontmatterSchema(t *testing.T) {
 	t.Parallel()
@@ -175,7 +175,7 @@ func TestOutputStylesFrontmatterSchema(t *testing.T) {
 		wantKeepCodingInstr string
 	}{
 		{styleFileMoAI, styleNameMoAI, "true"},
-		{styleFileEinstein, styleNameEinstein, "false"},
+		{styleFileMoAILearn, styleNameMoAILearn, "false"},
 		{styleFileMoAIEasy, styleNameMoAIEasy, "true"},
 	}
 
@@ -293,7 +293,7 @@ func TestOutputStylesFrontmatterSchema(t *testing.T) {
 // TestOutputStylesExactlyThree verifies that the embedded template contains exactly
 // three output style files with the expected names.
 //
-// REQ-WF006-002: exactly three styles (MoAI, Einstein, MoAI-Easy).
+// REQ-WF006-002: exactly three styles (MoAI, MoAI-Learn, MoAI-Easy).
 // REQ-WF006-014: a fourth style without schema validation emits OUTPUT_STYLE_UNVERIFIED.
 func TestOutputStylesExactlyThree(t *testing.T) {
 	t.Parallel()
@@ -323,13 +323,13 @@ func TestOutputStylesExactlyThree(t *testing.T) {
 
 	expectedNames := map[string]bool{
 		styleFileMoAI:     true,
-		styleFileEinstein: true,
+		styleFileMoAILearn: true,
 		styleFileMoAIEasy: true,
 	}
 	for _, name := range mdFiles {
 		if !expectedNames[name] {
 			t.Errorf("%s: unexpected style file %q (not in allowed set {%s, %s, %s})",
-				errPrefixUnverified, name, styleFileMoAI, styleFileEinstein, styleFileMoAIEasy)
+				errPrefixUnverified, name, styleFileMoAI, styleFileMoAILearn, styleFileMoAIEasy)
 		}
 	}
 	for expected := range expectedNames {
@@ -461,7 +461,7 @@ func TestOutputStylesEncoding(t *testing.T) {
 		t.Fatalf("EmbeddedTemplates() error: %v", err)
 	}
 
-	styleFiles := []string{styleFileMoAI, styleFileEinstein, styleFileMoAIEasy}
+	styleFiles := []string{styleFileMoAI, styleFileMoAILearn, styleFileMoAIEasy}
 	for _, name := range styleFiles {
 		name := name
 		t.Run(name, func(t *testing.T) {
