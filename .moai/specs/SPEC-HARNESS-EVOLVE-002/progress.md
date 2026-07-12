@@ -172,7 +172,7 @@ plan_audit_final_iter: 2
 
 ```yaml
 run_complete_at:
-run_commit_sha: pending-m4-push
+run_commit_sha: d4c00517f
 run_status: m4-complete-m5-m7-pending
 # M1 (Typed Managed-Block Writer foundation) + M2 (LEARNED digest block +
 # budget/cap enforcement) + M3 (CLAUDE.local.md append-only LOCAL section) +
@@ -185,8 +185,8 @@ run_status: m4-complete-m5-m7-pending
 ac_pass_count: 26  # M1 (12) + M2 (7) + M3 (3) + M4 (4)
 ac_fail_count: 0
 preserve_list_post_run_count: 0  # no PRESERVE-list files modified
-l44_pre_commit_fetch: pending-m4-push
-l44_post_push_fetch: pending-m4-push
+l44_pre_commit_fetch: done-m4-push
+l44_post_push_fetch: done-m4-push
 new_warnings_or_lints_introduced: 0
 cross_platform_build:
   go_build_all: exit_0
