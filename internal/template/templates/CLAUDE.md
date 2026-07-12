@@ -53,6 +53,8 @@ Single entry point for all MoAI development workflows.
 Subcommands: plan, run, sync, project, fix, loop, mx, feedback, review, clean, codemaps, gate, harness
 Default (natural language): Routes to autonomous workflow (plan -> run -> sync pipeline)
 
+`/moai loop` and `/moai fix` are goal-preset siblings built on the goal engine: `/moai loop` is the goal preset for a bounded project-wide improvement sweep (scan a finite issue queue, then delegate iterate-until-done to the goal engine), and `/moai fix` is the one-shot turn-based preset.
+
 ---
 
 ## 4. Agent Catalog

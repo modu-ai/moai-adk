@@ -2,7 +2,7 @@
 id: SPEC-LOOP-SWEEP-001
 title: "Loop Sweep — /moai loop redefined as project-wide improvement sweep built on the goal engine"
 version: "0.2.0"
-status: draft
+status: in-progress
 created: 2026-07-12
 updated: 2026-07-12
 author: manager-spec

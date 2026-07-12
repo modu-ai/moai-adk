@@ -18,7 +18,7 @@ Three approaches keep the session running between prompts. Pick by **what should
 |----------|----------------------|------------|
 | `/goal` | The previous turn finishes | A fresh model confirms the condition is met |
 | `/loop` (Claude Code native) | A fixed time interval elapses (re-runs the prompt/command on a schedule) | The user cancels the loop |
-| `/moai loop` (Ralph Engine) | A diagnostic cycle (LSP / AST-grep / test / coverage) finds remaining work | All issues resolved or max iterations reached |
+| `/moai loop` (goal preset — project-wide sweep) | A diagnostic scan builds a finite issue queue; the goal engine (`stop-goal`) then evaluates "queue drained + diagnostics clean" each turn-end. It is a **goal preset** distinct from native `/goal` and `/moai goal` — a preset that pre-fills the condition rather than asking the user to author it. | The queue drains + diagnostics clean, or the iteration ceiling is reached |
 | Stop hook (`type: prompt` / `type: agent`) | The previous turn finishes | The hook's own script or model decides |
 
 > Note: the Claude Code native `/loop` (time-interval scheduler) and MoAI's `/moai loop` (diagnostic-driven Ralph Engine) are distinct commands — native `/loop` re-runs a prompt on a wall-clock interval, while `/moai loop` iterates on tooling-detected work. They are not interchangeable.

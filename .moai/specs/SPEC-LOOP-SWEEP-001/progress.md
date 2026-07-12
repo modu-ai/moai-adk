@@ -39,11 +39,18 @@ and MUST NOT be addressed at plan-phase:
 
 ## §E.2 Run-phase Evidence
 
-_<pending run-phase — owned by manager-develop>_
+- run_commit_sha: pending-backfill (single integration commit; SHA backfilled post-land)
+- Implemented by manager-develop (cycle_type=tdd) in an isolated L1 worktree (5 milestone commits: 0afbb00ea 900a59e07 68d795383 400f6f4b0 436654753). The worktree base was stale relative to main, so the orchestrator integrated the work via a net patch to main + `make build` catalog.yaml regen (stale-worktree recovery per feedback_stale_worktree_orchestrator_cherry_pick), rather than a range cherry-pick.
+- Files: `.claude/skills/moai/workflows/{loop,fix,review}.md`, `.claude/rules/moai/workflow/{goal-directive,spec-workflow}.md`, `CLAUDE.md`, `internal/cli/loop.go`, `.claude/skills/moai-workflow-loop/SKILL.md` + 7 template mirrors under `internal/template/templates/` + regenerated `internal/template/catalog.yaml`.
+- Core change: `/moai loop` redefined as a goal preset built on the goal engine (SPEC-GOAL-ENGINE-001). loop.md's procedure now delegates to the goal engine (`/moai goal`, `goal engine evaluates`, `stop-goal`) rather than relabeling the old iterate-until-clean machinery. `internal/loop` + `internal/ralph` engine code untouched (AC-LSW-013b empty-diff guard).
 
 ## §E.3 Run-phase Audit-Ready Signal
 
-_<pending run-phase — owned by manager-develop>_
+- run_status: audit-ready
+- AC: 20/20 PASS (AC-LSW-001..014 + 001b/002b/004b/008b/009b/013b split-outs). manager-develop §E1 matrix + orchestrator independent re-verification on the main integration tree.
+- Orchestrator independent evidence (post-integration, main tree): AC-LSW-001b composition grep = 6 (strong tokens `/moai goal`, `goal engine evaluates`, `delegates to…goal`, `stop-goal`); AC-LSW-013b empty-diff guard exit 0; template neutrality grep = 0 (no SPEC-ID leaked); live==mirror parity = 0 (loop.md live == mirror).
+- Build: `go build ./...` exit 0 + `GOOS=windows GOARCH=amd64 go build ./...` exit 0. Tests: internal/loop + internal/ralph + internal/cli green. Lint: `golangci-lint` 0 issues.
+- D3 four items deferred to run-phase (§E.1); D3c (§B D4 stale "keep/retire" wording) resolved via spec-workflow.md KEEP alignment during M3.
 
 ## §E.4 Sync-phase Audit-Ready Signal
 

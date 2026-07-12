@@ -93,7 +93,7 @@ how the `--mode` flag is interpreted, and which CI guards apply.
 ### Mode Dispatch Cross-Reference
 
 
-`/moai loop` is an alias for `/moai run --mode loop` per the mode-dispatch contract. Both routes invoke the Ralph Engine identically; the alias preserves the historical entry point.
+`/moai loop` is an alias for `/moai run --mode loop` per the mode-dispatch contract. The alias disposition is settled as **KEEP** (backward-compat): both routes resolve to the goal-preset sweep — `/moai run --mode loop` is a historical entry point and retiring it would be a breaking change, so keeping the alias preserves that entry point. Both routes invoke the same goal-preset sweep (the Ralph engine re-expressed as a goal preset) identically.
 
 Mode precedence (hard-coded):
 

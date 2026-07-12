@@ -1,16 +1,18 @@
 ---
 description: >
-  Iterative autonomous fixing workflow that scans, fixes, verifies, and
-  repeats until all issues are resolved or max iterations reached.
-  Includes memory pressure detection and snapshot-based resume.
-  Use when iterative error resolution or continuous fixing is needed.
+  Project-wide improvement sweep, expressed as a goal preset built ON the goal
+  engine. A scan stage builds a finite issue queue (LSP + lint + test failures +
+  review lenses); the loop delegates the iterate-until-done decision to the goal
+  engine (stop-goal) whose condition is "queue drained + diagnostics clean",
+  bounded by an iteration ceiling. Includes memory pressure detection and
+  snapshot-based resume. Use when a bounded project-wide fix sweep is needed.
 user-invocable: false
 metadata:
-  version: "2.5.0"
+  version: "2.6.0"
   category: "workflow"
   status: "active"
-  updated: "2026-02-21"
-  tags: "loop, iterative, auto-fix, diagnostics, testing, coverage"
+  updated: "2026-07-12"
+  tags: "loop, goal-preset, sweep, scan-lens, diagnostics, testing, coverage"
 
 # MoAI Extension: Progressive Disclosure
 progressive_disclosure:
@@ -25,11 +27,11 @@ triggers:
   phases: ["loop"]
 ---
 
-# Workflow: Loop - Iterative Autonomous Fixing
+# Workflow: Loop - Project-Wide Improvement Sweep (goal preset)
 
-Purpose: Iterative autonomous fixing until all issues resolved. AI scans, fixes, verifies, and repeats until completion conditions met or max iterations reached.
+Purpose: `/moai loop` is a **goal preset** — a project-wide improvement sweep built ON the goal engine (the condition-declared loop delivered by the goal engine). A scan stage supplies a FINITE issue queue; the loop then runs as a goal preset whose completion condition is "**issue queue drained** AND **diagnostics clean** (zero errors + tests passing [+ coverage when enabled])", bounded by an iteration ceiling. The loop does NOT reimplement "iterate until done" — it delegates that mechanism to the goal engine and supplies only the preset's scan-derived queue + completion condition.
 
-Flow: Check Completion -> Memory Check -> Diagnose -> Fix -> Verify -> Repeat
+Flow: Scan -> build finite queue -> (goal preset) Check Completion -> Memory Check -> Diagnose -> Fix -> Verify -> Repeat
 
 <!-- @MX:NOTE - alias relationship: /moai loop and /moai run --mode loop are equivalent. The alias is enforced by a CI audit that checks the cross-reference text is present. -->
 
@@ -49,15 +51,51 @@ See [Subcommand Classification matrix](../../rules/moai/workflow/spec-workflow.m
 
 This skill is the Ralph engine — the specialized DIAGNOSTIC fix-loop (a per-iteration cycle over LSP / AST-grep / test / coverage diagnostics). It is distinct from the pipeline-level agentic completion loop (`workflows/moai.md` § Agentic Completion Loop), which iterates over PHASES (run → sync → verify) against a completion condition. The pipeline-level loop MAY invoke this engine during its verify step for mechanical convergence; the two loops are complementary, not competitors, and are NOT folded into one — the granularity differs (phases there, diagnostics here). The `/moai loop` ≡ `/moai run --mode loop` alias contract above is unchanged.
 
-## Loop Taxonomy Position
+## Loop Taxonomy Position — goal engine + presets
 
-`/moai loop` occupies the **goal-based** quadrant of the loop taxonomy: iterate until a mechanical completion predicate holds or the applied iteration ceiling is reached.
+The loop taxonomy is re-expressed as **goal engine + preset**: the four quadrants are not four independent engines but presets layered on the one goal engine. `/moai loop` occupies the **goal-based** quadrant as the **project-wide sweep preset** — a **goal-preset** whose completion condition is "issue queue drained AND diagnostics clean", bounded by the applied iteration ceiling.
 
-- **How it starts**: a `/moai loop` (or `/moai run --mode loop`) invocation.
-- **How it ends**: success-exit via the mechanical predicate confirmed by the independent final pass (Step 1/1.5), or a ceiling exit that emits the 5-section verdict and persists residue per § Ceiling-Exit Verdict Contract.
-- **When it fits**: driving diagnostics to zero across many iterations — not a one-off sweep, not a schedule.
+- **How it starts**: a `/moai loop` (or `/moai run --mode loop`) invocation runs the scan stage, then arms the goal preset.
+- **How it ends**: success-exit when the goal engine confirms "queue drained + diagnostics clean" via the independent final pass (Step 1/1.5), or a ceiling exit that emits the 5-section verdict and persists residue per § Ceiling-Exit Verdict Contract.
+- **When it fits**: sweeping a project-wide finite issue queue to zero across many iterations — not a one-off turn, not a schedule.
 
-Sibling quadrants: **turn-based** one-shot fixing is `.claude/skills/moai/workflows/fix.md` (its unresolved residue persists to the same verdict schema and recommends re-entry here); **time-based** cadence recipes are `.claude/rules/moai/workflow/cadence-bridge.md`; **proactive** CI-triggered watch is the `moai-workflow-ci-loop` skill.
+Sibling presets (same **goal engine + preset** framing, different quadrant): **turn-based** one-shot fixing is `.claude/skills/moai/workflows/fix.md` (its unresolved residue persists to the same verdict schema and recommends re-entry here); **time-based** cadence recipes are `.claude/rules/moai/workflow/cadence-bridge.md`; **proactive** CI-triggered watch is the `moai-workflow-ci-loop` skill. The `goal engine + preset` framing is consistent across the `loop.md`/`fix.md` sibling quadrant notes.
+
+## Goal-Preset Composition — how the sweep is built ON the goal engine
+
+`/moai loop` does NOT reimplement "iterate until done". It **delegates to the goal engine** and supplies only the preset's queue + completion condition:
+
+1. **Scan → queue**: the scan stage (§ Scan Stage below) builds a FINITE issue queue.
+2. **Arm the goal preset**: the sweep is expressed as a goal condition — "issue queue drained AND diagnostics clean (zero errors + tests passing [+ coverage when enabled])" — equivalent to running `/moai goal "loop-sweep: issue queue drained + diagnostics clean, or stop after N iterations"`. The loop is a preset that pre-fills this condition rather than asking the user to author it; the orchestrator arms it via `/moai goal` on the user's behalf as the loop preset.
+3. **Goal engine evaluates each turn-end**: after each iteration the **goal engine evaluates** the pre-filled condition through the `stop-goal` Stop-hook evaluator (`moai hook stop-goal`) — the same per-turn-end evaluation the goal engine performs for any `/moai goal`. When the condition holds the engine stops the sweep; otherwise the next iteration runs. The loop thus **delegates to the goal engine** for the iterate-until-done decision.
+4. **Bounded**: the goal preset is additionally bounded by the iteration ceiling (§ Iteration-Ceiling Precedence) and the memory-pressure guard, so the sweep terminates even when the queue cannot fully drain.
+
+Because the sweep **delegates to the goal engine** (`stop-goal`) for the iterate-until-done mechanism, this preset builds NO new engine code — it CONFIGURES a preset on top of the existing goal engine. The Step 1/Step 1.5 mechanical predicate + independent final pass below is the loop-preset's own mechanical confirmation that runs alongside the goal-engine evaluation.
+
+## Scan Stage — Finite Issue Queue (no invented improvements)
+
+Before arming the goal preset, the scan stage builds a **FINITE** issue queue from a fixed set of lenses. The queue is the sweep's entire work surface — the loop fixes exactly what the scan enqueued and does **no invented improvements** beyond it.
+
+**Default lenses** (always scanned):
+- **LSP diagnostics** — type / compile errors for the detected language.
+- **lint** — the language linter (golangci-lint, ruff, eslint, …).
+- **test failures** — failing tests from the detected test runner.
+- **review lenses** — the loop **consumes review** lenses as queue SUPPLIERS. Two review lenses supply queue items: the **security lens** (OWASP / injection / secrets findings) and the **@MX lens** (`@MX` tag-compliance findings). Each review lens produces findings independently; the scan enqueues them as fixable issues. This is the layered relationship with `/moai review` (§ Relationship to /moai review and /moai fix below): standalone review REPORTS, the loop CONSUMES its lenses as queue suppliers.
+
+**Opt-in lenses** (`--lens clean|simplify|coverage`, comma-separated):
+- `--lens clean` — dead-code findings (workflows/clean.md scan).
+- `--lens simplify` — over-engineering findings (the `/moai review --lean` 5-tag scan).
+- `--lens coverage` — coverage-gap findings. This lens is opt-in and coverage-conditional: it supplies queue items only when a coverage gate is enabled; with coverage disabled the lens supplies no queue items (edge case documented).
+
+**HARD boundary — no invented improvements**: the loop performs NO work **outside the scanned queue**. It does not add refactors, features, or cleanups that the scan lenses did not surface. Every fix maps to a scanned queue item; anything else is out of scope for the sweep.
+
+**Empty queue → immediate exit**: when the scan yields an **empty queue** (no lens produced a finding), the loop takes an **immediate exit** — it does NOT arm the goal preset, does NOT burn an iteration, and does NOT enter the per-iteration cycle. An empty queue is success with zero work.
+
+## Relationship to /moai review and /moai fix
+
+**`/moai review` (read-only, report-only)**: standalone `/moai review` REMAINS read-only and report-only — it produces findings and modifies nothing. This SPEC does not change its behavior. `/moai loop` **consumes review** lenses (security, `@MX`) as queue SUPPLIERS: the review lens produces findings, the loop enqueues them and drives the queue to drain. Run a review to SEE findings; run a loop to FIX the finite set the scan (including review lenses) found. The layering is documented from the review side in `.claude/skills/moai/workflows/review.md`.
+
+**`/moai fix` (turn-based sibling preset)**: `/moai fix` is UNCHANGED (single-pass Agentless pipeline). Its residue-handoff persists to the same `loop-verdict-<id>.json` schema, and that residue **enters the loop queue** when the user re-enters `/moai loop`.
 
 ## Supported Flags
 
@@ -202,7 +240,7 @@ Minimum JSON schema (doctrine-defined; orchestrator-written at exit time — no 
 ```
 {
   "spec_or_scope": "<SPEC-ID or free-form scope label>",
-  "exit_kind": "ceiling | manual-residue",
+  "exit_kind": "ceiling | manual-residue | one-shot-residue | sweep-residue",
   "iterations_used": <int>,
   "ceiling_applied": <int>,
   "ceiling_source": "flag | ralph | loop_prevention",
@@ -219,6 +257,8 @@ Minimum JSON schema (doctrine-defined; orchestrator-written at exit time — no 
   "created_at": "<ISO-8601 timestamp>"
 }
 ```
+
+> **`exit_kind` value ownership (additive)**: `loop.md` owns the base `ceiling | manual-residue`; `fix.md` added `one-shot-residue` (its one-shot pipeline exit path); the project-wide **sweep preset** adds `sweep-residue` ADDITIVELY as a fourth value — without reassigning the base enum owner. **When** `/moai loop` (the sweep preset) exits at the iteration ceiling with scanned-queue items still outstanding, it persists `"exit_kind": "sweep-residue"` (the settled value alongside the base `ceiling | manual-residue | one-shot-residue` enum), so a downstream backlog re-discovery reader can distinguish a sweep-residue exit from a plain ceiling exit.
 
 When `.moai/state/` is unwritable at exit, surface the verdict content in-conversation AND name the write failure explicitly in the Residual-risk section — the loop fails open on persistence, never on honesty.
 
@@ -332,5 +372,5 @@ All fixes within the loop follow CLAUDE.md Section 7 Safe Development Protocol:
 
 ---
 
-Version: 2.3.0
-Updated: 2026-07-09. Replaced the sentinel-string success-exit with a mechanical predicate + independent final pass (Step 1/1.5); added the ceiling-exit 5-section verdict contract with `.moai/state/loop-verdict-<id>.json` persistence; unified the iteration-ceiling precedence rule. Previous: Expanded Language-Specific Commands to 16 languages (2.2.0, 2026-03-02).
+Version: 2.6.0
+Updated: 2026-07-12. Redefined `/moai loop` as a **goal preset** — a project-wide improvement sweep built ON the goal engine. Added the Goal-Preset Composition section (delegates the iterate-until-done decision to the goal engine via `stop-goal`), the Scan Stage finite-issue-queue section (default LSP + lint + test + review lenses [security, @MX], opt-in `--lens clean|simplify|coverage`, no-invented-improvements HARD boundary, empty-queue immediate exit), the /moai review + /moai fix layering section, and the additive `sweep-residue` exit_kind value. PRESERVED: the mechanical predicate + independent final pass (Step 1/1.5), the ceiling-exit 5-section verdict contract with `.moai/state/loop-verdict-<id>.json` persistence, the iteration-ceiling precedence rule, and the memory-pressure guard. Previous: 2.3.0 (2026-07-09) replaced sentinel-string success-exit with mechanical predicate; 2.2.0 (2026-03-02) expanded Language-Specific Commands to 16 languages.

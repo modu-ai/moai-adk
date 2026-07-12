@@ -30,12 +30,19 @@ Purpose: Multi-perspective code review analyzing security, performance, quality,
 
 Flow: Identify Changes -> Analyze Perspectives -> Consolidate -> Report
 
+## Relationship to /moai loop (read-only lens, layered under loop)
+
+`/moai review` is a **read-only, report-only lens**: it produces findings and modifies nothing. Its behavior is unchanged by the loop-sweep redefinition. The relationship to `/moai loop` is layered, not competing — `/moai review` is **layered under loop** as a queue supplier: `/moai loop`'s scan stage may INVOKE the review lenses (the security lens and the `@MX` lens) so their findings are **consumed by** the loop as fixable queue items. Standalone `/moai review` still only REPORTS those findings; the loop is what enqueues and fixes them.
+
+Non-overlap: run a `/moai review` to SEE findings without changing anything; run a `/moai loop` to FIX the finite set of issues the scan (including review lenses) found. The loop-side view of this layering is documented in `.claude/skills/moai/workflows/loop.md` (§ Scan Stage / § Relationship to /moai review and /moai fix).
+
 ## Supported Flags
 
 - --staged: Review only staged (git add) changes
 - --branch BRANCH: Compare current branch against BRANCH (default: main)
 - --security: Focus primarily on security review (OWASP, injection, auth)
 - --file PATH: Review specific file(s) only
+- --design: Extract design patterns from UI code and create/update `.moai/design/system.md`
 - --critique: Post-build craft review focusing on subtle layering, surface elevation, token architecture, and typography hierarchy
 - --lean: Over-engineering-ONLY lean audit mode. Short-circuits the comprehensive 4-perspective analysis (Security / Performance / Quality / UX) and runs ONLY the over-engineering scan with the 5-tag finding format + net-reduction summary. Read-only and advisory: applies no fixes, modifies no files, renders no PASS/FAIL verdict. See the "--lean Mode" section below.
 - --repo: Repo-wide scope. With --lean, sweeps the WHOLE tree instead of the diff-scope default. Ignored without --lean.
@@ -269,21 +276,35 @@ The --lean mode is read-only and advisory. It applies NO fixes, modifies NO file
 
 ## Phase 4.5: Design Review (Conditional)
 
-When to run: --critique flag is present, OR changed files include UI components (tsx, jsx, vue, svelte, css, scss)
+When to run: --design or --critique flag is present, OR changed files include UI components (tsx, jsx, vue, svelte, css, scss)
+
+### --design: Extract Design Patterns
+
+Agent: per-spawn `Agent(general-purpose)` frontend specialist (frontend whitelist per `.claude/rules/moai/workflow/archived-agent-rejection.md` §C row 8)
+
+Tasks:
+1. Scan UI files for repeated patterns: spacing values, radius values, color tokens, button/card patterns, depth strategy (borders vs shadows)
+2. Identify existing design conventions and inconsistencies
+3. If `.moai/design/system.md` exists: Compare extracted patterns against system.md, report deviations
+4. If `.moai/design/system.md` does not exist: Create system.md from extracted patterns
+5. Present extraction summary with option to update system.md
+
+Output: Design pattern report with deviation list (file:line references)
 
 ### --critique: Post-Build Craft Review
 
 Agent: per-spawn `Agent(general-purpose)` frontend specialist (frontend whitelist per `.claude/rules/moai/workflow/archived-agent-rejection.md` §C row 8)
 
 Tasks:
-1. Review built UI against craft principles:
+1. Read `.moai/design/system.md` for design direction context
+2. Review built UI against craft principles:
    - **Composition**: Layout rhythm, proportions, focal point clarity
    - **Craft**: Spacing grid adherence, typography hierarchy, surface elevation consistency
    - **Content**: String coherence, data truthfulness
    - **Structure**: CSS quality (no negative margin hacks, no absolute positioning escapes)
-2. Run quality checks: swap test, squint test, signature test, token test
-3. Identify specific locations where defaults won over intentional design decisions
-4. Provide actionable rebuild recommendations with file:line references
+3. Run quality checks: swap test, squint test, signature test, token test
+4. Identify specific locations where defaults won over intentional design decisions
+5. Provide actionable rebuild recommendations with file:line references
 
 Output: Craft critique report with severity-ranked findings and rebuild suggestions
 

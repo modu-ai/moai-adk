@@ -30,6 +30,12 @@ Purpose: Multi-perspective code review analyzing security, performance, quality,
 
 Flow: Identify Changes -> Analyze Perspectives -> Consolidate -> Report
 
+## Relationship to /moai loop (read-only lens, layered under loop)
+
+`/moai review` is a **read-only, report-only lens**: it produces findings and modifies nothing. Its behavior is unchanged by the loop-sweep redefinition. The relationship to `/moai loop` is layered, not competing — `/moai review` is **layered under loop** as a queue supplier: `/moai loop`'s scan stage may INVOKE the review lenses (the security lens and the `@MX` lens) so their findings are **consumed by** the loop as fixable queue items. Standalone `/moai review` still only REPORTS those findings; the loop is what enqueues and fixes them.
+
+Non-overlap: run a `/moai review` to SEE findings without changing anything; run a `/moai loop` to FIX the finite set of issues the scan (including review lenses) found. The loop-side view of this layering is documented in `.claude/skills/moai/workflows/loop.md` (§ Scan Stage / § Relationship to /moai review and /moai fix).
+
 ## Supported Flags
 
 - --staged: Review only staged (git add) changes

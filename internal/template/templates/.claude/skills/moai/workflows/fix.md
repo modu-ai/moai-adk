@@ -57,15 +57,15 @@ It executes a deterministic 3-phase contract: **localize → repair → validate
 
 See [Subcommand Classification matrix](../../rules/moai/workflow/spec-workflow.md#subcommand-classification) for the full pipeline-vs-multi-agent contract.
 
-## Loop Taxonomy Position
+## Loop Taxonomy Position — goal engine + presets
 
-`/moai fix` occupies the **turn-based** quadrant of the loop taxonomy: one scan-fix-verify pass per invocation, no ceiling, no cadence.
+The loop taxonomy is re-expressed as **goal engine + preset**: the quadrants are presets, not independent engines. `/moai fix` occupies the **turn-based** quadrant as the one-shot preset: one scan-fix-verify pass per invocation, no ceiling, no cadence (it does not arm the goal engine — that is the goal-based sweep preset's job).
 
 - **How it starts**: a single `/moai fix` (or `/moai fix --ci`) invocation.
 - **How it ends**: Phase 4 verification completes with claim/evidence rows — success, or residue persisted (§ Phase 4.7) plus a `/moai loop` recommendation.
 - **When it fits**: a one-off diagnostic sweep or a quick CI-triggered patch, not driving toward a completion condition across many iterations.
 
-Sibling quadrants: **goal-based** iteration is `.claude/skills/moai/workflows/loop.md`; **time-based** cadence recipes are `.claude/rules/moai/workflow/cadence-bridge.md`; **proactive** CI-triggered watch is the `moai-workflow-ci-loop` skill.
+Sibling presets (same **goal engine + preset** framing, different quadrant): **goal-based** iteration is `.claude/skills/moai/workflows/loop.md` (the project-wide sweep preset that arms the goal engine); **time-based** cadence recipes are `.claude/rules/moai/workflow/cadence-bridge.md`; **proactive** CI-triggered watch is the `moai-workflow-ci-loop` skill.
 
 ## Phase 1: Parallel Scan
 
@@ -270,7 +270,7 @@ After fixes are applied and verified, scan for dead code exposed by the fixes:
 
 For this one-shot pipeline exit path, set `exit_kind: "one-shot-residue"` (a third value alongside the base `ceiling | manual-residue` enum) and `iterations_used: 1`.
 
-When the fix report is generated with non-empty residue, the report recommends `/moai loop` entry for re-fixable residue (or manual action for Level 4 items) as a suggestion only — the fix workflow SHALL NOT auto-invoke `/moai loop` or any other subcommand. The Pipeline Contract's Repeatability clause above governs re-entry; this recommendation is a suggestion surfaced in the report, not a mechanism that overrides it.
+When the fix report is generated with non-empty residue, the report recommends `/moai loop` entry for re-fixable residue (or manual action for Level 4 items) as a suggestion only — the fix workflow SHALL NOT auto-invoke `/moai loop` or any other subcommand. When the user does re-enter `/moai loop`, the persisted residue **enters the loop queue** as scanned queue items for the goal-preset sweep to drain (the loop's scan stage reads it as a queue supplier). The Pipeline Contract's Repeatability clause above governs re-entry; this recommendation is a suggestion surfaced in the report, not a mechanism that overrides it.
 
 ## Task Tracking
 

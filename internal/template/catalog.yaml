@@ -61,7 +61,7 @@ catalog:
             - name: moai-workflow-loop
               tier: core
               path: templates/.claude/skills/moai-workflow-loop/
-              hash: 50002433e0833f114c691a52a898d7069c5112927ee24537032e94104139fd9d
+              hash: 3e49556026d504778814fb03dc4c98528da993aa0dabcd3fb628e44621de7235
               version: 1.0.0
             - name: moai-workflow-project
               tier: core

@@ -22,6 +22,10 @@ metadata:
 
 Automated feedback loop system integrating LSP diagnostics, AST-grep security scanning, and test validation for continuous code quality improvement.
 
+## Preset Architecture — the Ralph Engine as a goal preset
+
+The `/moai loop` skill (`.claude/skills/moai/workflows/loop.md`) re-expresses this Ralph engine as a **goal preset** built ON the goal engine: a scan stage builds a finite issue queue, and the iterate-until-done decision is delegated to the goal engine (`stop-goal`) with the pre-filled condition "queue drained + diagnostics clean". In this **preset architecture**, this SKILL.md documents the underlying LSP / AST-grep / test / coverage diagnostic machinery that the goal-preset sweep drives; the preset layers the goal-engine composition on top of that machinery WITHOUT changing it. The four loop quadrants (goal-based sweep, turn-based `/moai fix`, time-based cadence, proactive CI-watch) are presets on the one goal engine, not independent engines.
+
 ## Quick Reference
 
 Core Capabilities:
