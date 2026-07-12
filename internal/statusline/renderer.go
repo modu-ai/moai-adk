@@ -309,7 +309,7 @@ func renderCacheHit(data *StatusData) string {
 	if !ok {
 		return ""
 	}
-	return fmt.Sprintf("💾 %d%%", pct)
+	return fmt.Sprintf("♻️ %d%%", pct)
 }
 
 // renderBarsInline renders CW/5H/7D bars inline on a single line (default mode L2).

@@ -50,7 +50,7 @@ func TestRenderCacheHit(t *testing.T) {
 		usage *CurrentUsageInfo
 		want  string
 	}{
-		{name: "present with cache → renders %", usage: &CurrentUsageInfo{CacheReadTokens: 2000, CacheCreationTokens: 5000}, want: "💾 28%"},
+		{name: "present with cache → renders %", usage: &CurrentUsageInfo{CacheReadTokens: 2000, CacheCreationTokens: 5000}, want: "♻️ 28%"},
 		{name: "null current_usage → omit", usage: nil, want: ""},
 		{name: "zero cache_creation → omit", usage: &CurrentUsageInfo{CacheReadTokens: 2000, CacheCreationTokens: 0}, want: ""},
 		{name: "both zero → omit (no 0/0)", usage: &CurrentUsageInfo{CacheReadTokens: 0, CacheCreationTokens: 0}, want: ""},
@@ -78,19 +78,19 @@ func TestCacheHitSegmentToggle(t *testing.T) {
 
 	// Default (nil segmentConfig → all enabled): segment present.
 	enabledLine := NewRenderer("", true, nil).renderInfoLine(data, false)
-	if !strings.Contains(enabledLine, "💾") {
+	if !strings.Contains(enabledLine, "♻️") {
 		t.Errorf("default renderInfoLine = %q, want cache-hit segment present", enabledLine)
 	}
 
 	// Explicitly disabled: segment absent.
 	disabledLine := NewRenderer("", true, map[string]bool{SegmentCacheHit: false}).renderInfoLine(data, false)
-	if strings.Contains(disabledLine, "💾") {
+	if strings.Contains(disabledLine, "♻️") {
 		t.Errorf("disabled renderInfoLine = %q, want cache-hit segment absent", disabledLine)
 	}
 
 	// Explicitly enabled: segment present.
 	explicitLine := NewRenderer("", true, map[string]bool{SegmentCacheHit: true}).renderInfoLine(data, false)
-	if !strings.Contains(explicitLine, "💾") {
+	if !strings.Contains(explicitLine, "♻️") {
 		t.Errorf("enabled renderInfoLine = %q, want cache-hit segment present", explicitLine)
 	}
 }
