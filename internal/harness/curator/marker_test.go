@@ -111,3 +111,76 @@ func TestLearnedWorkflowMarker_PatternCompiles(t *testing.T) {
 		t.Fatalf("marker pattern does not compile: %v", err)
 	}
 }
+
+// --- AC-HEV2-019: LEARNED-WORKFLOW-LOCAL marker regex matches heading +
+// start/end markers as one atomic group (REQ-HEV2-013 / spec.md §C.3). ---
+//
+// The Tier-3 append-only surface in CLAUDE.local.md carries a DISTINCT marker
+// contract from the digest block: the heading is suffixed `-LOCAL` and the
+// start/end markers use the `learned-local-*` token. The compiled pattern must
+// match the LOCAL block atomically and MUST NOT cross-match the digest block.
+
+func TestLearnedLocalMarker_RegexMatchesHeadingPlusMarkers(t *testing.T) {
+	// A canonical populated LOCAL block.
+	block := strings.Join([]string{
+		"## MOAI:LEARNED-WORKFLOW-LOCAL",
+		"<!-- moai:learned-local-start -->",
+		"- observed pattern alpha <!-- key: local-1 -->",
+		"- observed pattern beta <!-- key: local-2 -->",
+		"<!-- moai:learned-local-end -->",
+		"",
+	}, "\n")
+
+	re, ok := compiledPatterns[BlockTypeLearnedLocal]
+	if !ok {
+		t.Fatal("BlockTypeLearnedLocal missing from compiledPatterns registry")
+	}
+	if !re.MatchString(block) {
+		t.Errorf("compiled pattern did not match canonical LOCAL block:\n%s", block)
+	}
+
+	// The atomic match MUST include the heading, start marker, body, AND end marker.
+	match := re.FindString(block)
+	for _, frag := range []string{
+		"## MOAI:LEARNED-WORKFLOW-LOCAL",
+		"<!-- moai:learned-local-start -->",
+		"observed pattern alpha",
+		"<!-- moai:learned-local-end -->",
+	} {
+		if !strings.Contains(match, frag) {
+			t.Errorf("atomic LOCAL match missing %q; match=\n%s", frag, match)
+		}
+	}
+}
+
+func TestLearnedLocalMarker_DoesNotMatchDigestBlock(t *testing.T) {
+	// The LOCAL pattern MUST NOT match the digest (non-LOCAL) block — the two
+	// marker contracts are disjoint and a cross-match would let the append-only
+	// writer corrupt the digest surface.
+	localRe := compiledPatterns[BlockTypeLearnedLocal]
+	digestBlock := strings.Join([]string{
+		"## MOAI:LEARNED-WORKFLOW",
+		"<!-- moai:learned-start -->",
+		"- distilled rule <!-- key: k1 -->",
+		"<!-- moai:learned-end -->",
+		"",
+	}, "\n")
+	if localRe.MatchString(digestBlock) {
+		t.Error("LOCAL pattern matched the digest (non-LOCAL) block — marker contracts are not disjoint")
+	}
+}
+
+func TestLearnedLocalMarker_PatternCompiles(t *testing.T) {
+	spec, ok := markerRegistry[BlockTypeLearnedLocal]
+	if !ok {
+		t.Fatal("BlockTypeLearnedLocal missing from markerRegistry")
+	}
+	pattern := "(?s)" +
+		regexp.QuoteMeta(spec.heading) + `\n` +
+		regexp.QuoteMeta(spec.startPrefix) + `[^>]*-->` +
+		`.*?` +
+		regexp.QuoteMeta(spec.endMarker)
+	if _, err := regexp.Compile(pattern); err != nil {
+		t.Fatalf("LOCAL marker pattern does not compile: %v", err)
+	}
+}

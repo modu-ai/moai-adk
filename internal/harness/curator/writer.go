@@ -35,6 +35,11 @@ const (
 	// by the original InjectMarker. Preserved for backward compatibility so
 	// existing callers continue to work through the typed writer byte-identical.
 	BlockTypeHarnessGenerated
+	// BlockTypeLearnedLocal is the MOAI:LEARNED-WORKFLOW-LOCAL append-only
+	// section (Tier 3, CLAUDE.local.md permanent-record surface). Distinct from
+	// the digest block: this surface appends only (no update/delete of existing
+	// entries) and deduplicates on ledger_key (REQ-HEV2-012..014).
+	BlockTypeLearnedLocal
 )
 
 // blockSpec is the per-BlockType marker registry entry.
@@ -57,6 +62,11 @@ var markerRegistry = map[BlockType]blockSpec{
 		heading:     "## Project-Specific Configuration (Harness-Generated)",
 		startPrefix: "<!-- moai:harness-start",
 		endMarker:   "<!-- moai:harness-end -->",
+	},
+	BlockTypeLearnedLocal: {
+		heading:     "## MOAI:LEARNED-WORKFLOW-LOCAL",
+		startPrefix: "<!-- moai:learned-local-start",
+		endMarker:   "<!-- moai:learned-local-end -->",
 	},
 }
 
@@ -123,6 +133,10 @@ var (
 	// ErrBulletNotFound is returned by UpdateBullet/DeleteBullet when no
 	// bullet with the given ledger_key exists in the block.
 	ErrBulletNotFound = errors.New("curator: bullet not found")
+	// ErrDuplicateAppend is returned by AppendLearnedLocal when an existing
+	// entry in the LOCAL section already carries the same ledger_key as the
+	// proposed append (REQ-HEV2-014). The file is NOT modified.
+	ErrDuplicateAppend = errors.New("curator: duplicate append (ledger_key already exists)")
 )
 
 // WriteManagedBlock reads the file at path, locates the marker block matching
