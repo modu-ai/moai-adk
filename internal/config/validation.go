@@ -59,6 +59,9 @@ func Validate(cfg *Config, loadedSections map[string]bool) error {
 	// Check the GLM base_url is a safe, well-formed https endpoint (REQ-CGH-007).
 	errs = append(errs, validateGLMBaseURL(cfg.LLM.GLM.BaseURL)...)
 
+	// Check the llm.plan_type closed-set enum (REQ-MTP-003).
+	errs = append(errs, validatePlanType(cfg)...)
+
 	if len(errs) > 0 {
 		return &ValidationErrors{Errors: errs}
 	}

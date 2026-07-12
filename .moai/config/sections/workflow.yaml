@@ -48,7 +48,7 @@ workflow:
     # the 3-arg accessor. Existing external readers continue to work.
     # Key format: <TIER>-<phase> where Tier in {S, M, L} and Phase in
     # {plan, run, sync, mx}. Closed sets: model in
-    # {inherit, sonnet, opus, glm}, effort in {low, medium, high, xhigh, max}.
+    # {inherit, sonnet, opus, glm, fable}, effort in {low, medium, high, xhigh, max}.
     model_routing:
         S-plan: { model: sonnet, effort: medium }
         S-run: { model: sonnet, effort: high }
@@ -68,7 +68,7 @@ workflow:
     # entries. The orchestrator consults RouteModelFor(specTier, phase,
     # perfTier) at spawn time. `medium` is the default performance tier
     # (populated by `moai init --model-policy`). Closed sets: model in
-    # {inherit, sonnet, opus, glm}, effort in {low, medium, high, xhigh, max}.
+    # {inherit, sonnet, opus, glm, fable}, effort in {low, medium, high, xhigh, max}.
     model_routing_profiles:
         max:
             S-plan: { model: opus, effort: high }

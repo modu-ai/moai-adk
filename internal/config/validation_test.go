@@ -695,6 +695,7 @@ func TestValidate_OneofViolation(t *testing.T) {
 		tier  string
 		valid bool
 	}{
+		{"max is valid", "max", true},
 		{"high is valid", "high", true},
 		{"medium is valid", "medium", true},
 		{"low is valid", "low", true},

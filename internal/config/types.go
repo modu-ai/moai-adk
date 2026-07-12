@@ -241,9 +241,16 @@ type LLMConfig struct {
 	TeamMode string `yaml:"team_mode"`
 	// Environment variable name for GLM API key
 	GLMEnvVar string `yaml:"glm_env_var"`
-	// Performance tier: "high", "medium", "low"
-	// Controls model selection for all sub-agents and team agents
-	PerformanceTier string `yaml:"performance_tier" validate:"omitempty,oneof=high medium low"`
+	// PlanType selects the billing-context tier profile: "api" (API-metered) or
+	// "subscription". Absent or empty resolves to subscription via
+	// EffectivePlanType (REQ-MTP-001/002). Closed-set validated by validatePlanType.
+	PlanType string `yaml:"plan_type"`
+	// Performance tier: "max", "high", "medium", "low"
+	// Controls model selection for all sub-agents and team agents. The tag accepts
+	// "max" (the CLI-persisted --model-policy value) alongside the legacy "high"
+	// for backward compatibility (D4 adjacent drift fix: the CLI writes max/medium/low
+	// while pre-existing configs may carry the legacy high).
+	PerformanceTier string `yaml:"performance_tier" validate:"omitempty,oneof=max high medium low"`
 	// Claude model mapping by tier
 	ClaudeModels ClaudeTierModels `yaml:"claude_models"`
 	// GLM API configuration

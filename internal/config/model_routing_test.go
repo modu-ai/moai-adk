@@ -13,6 +13,7 @@ package config
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -197,6 +198,72 @@ func TestValidateModelRoutingGlmAllowed(t *testing.T) {
 	t.Parallel()
 	if !validRoutingModels["glm"] {
 		t.Errorf("glm must be in the model_routing closed model set (REQ-TR-012)")
+	}
+}
+
+// TestValidateModelRoutingFableAllowed asserts fable is a member of the closed
+// model set and is accepted by the flat validation path (AC-MTP-005a, REQ-MTP-005).
+func TestValidateModelRoutingFableAllowed(t *testing.T) {
+	t.Parallel()
+	if !validRoutingModels["fable"] {
+		t.Errorf("fable must be in the model_routing closed model set (REQ-MTP-005)")
+	}
+	root := seedWorkflowWithModelRouting(t, `workflow:
+    default_mode: ""
+    model_routing:
+        S-plan: { model: fable, effort: high }
+`)
+	raw, err := os.ReadFile(filepath.Join(root, ".moai", "config", "sections", "workflow.yaml"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if verr := ValidateModelRoutingFromYAML(raw); verr != nil {
+		t.Errorf("flat path should accept model: fable, got %v", verr)
+	}
+}
+
+// TestValidateModelRoutingProfilesFableAllowed asserts the profiles validation
+// path accepts model: fable (AC-MTP-005a, REQ-MTP-005).
+func TestValidateModelRoutingProfilesFableAllowed(t *testing.T) {
+	t.Parallel()
+	root := seedWorkflowWithModelRouting(t, `workflow:
+    default_mode: ""
+    model_routing_profiles:
+        max:
+            S-plan: { model: fable, effort: high }
+`)
+	cfg, err := NewConfigManager().LoadRaw(root)
+	if err != nil {
+		t.Fatalf("LoadRaw: %v", err)
+	}
+	if verr := cfg.ValidateModelRoutingProfiles(); verr != nil {
+		t.Errorf("profiles path should accept model: fable, got %v", verr)
+	}
+}
+
+// TestValidateModelRoutingInvalidModelNamesFable asserts the flat-path
+// invalid-model error names the updated closed set (including fable) and no
+// longer names the stale haiku member (AC-MTP-005b, REQ-MTP-005).
+func TestValidateModelRoutingInvalidModelNamesFable(t *testing.T) {
+	t.Parallel()
+	root := seedWorkflowWithModelRouting(t, `workflow:
+    default_mode: ""
+    model_routing:
+        S-plan: { model: gpt-4, effort: low }
+`)
+	raw, err := os.ReadFile(filepath.Join(root, ".moai", "config", "sections", "workflow.yaml"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	verr := ValidateModelRoutingFromYAML(raw)
+	if verr == nil {
+		t.Fatalf("expected validation error for invalid model gpt-4, got nil")
+	}
+	if !strings.Contains(verr.Error(), "fable") {
+		t.Errorf("invalid-model error should name fable, got: %v", verr)
+	}
+	if strings.Contains(verr.Error(), "haiku") {
+		t.Errorf("invalid-model error should NOT name stale haiku, got: %v", verr)
 	}
 }
 

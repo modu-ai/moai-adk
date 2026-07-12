@@ -8,6 +8,12 @@ llm:
   # Options: high (complex reasoning), medium (balanced), low (fast/cheap)
   performance_tier: "medium"
 
+  # Billing plan type: selects which model tier profile is applied.
+  #   api          - API-metered billing (per-task cost optimized)
+  #   subscription - subscription billing (weekly quota optimized)
+  # Absent or empty resolves to subscription (backward compatible).
+  plan_type: "subscription"
+
   # Claude model mapping by tier
   # Effort level mapping (Opus 4.7+ adaptive thinking):
   #   thorough harness → xhigh effort (deep reasoning)
