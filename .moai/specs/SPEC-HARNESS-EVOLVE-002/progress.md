@@ -139,28 +139,59 @@ plan_audit_final_iter: 2
 
 **Residual risk (M3 scope, NOT closing debt):** anti-fabrication input validation (`containsForbiddenContent`, REQ-HEV2-011) is NOT wired into `AppendLearnedLocal`. The M3 ACs (018/019/020) do not pin anti-fabrication for the LOCAL surface, and REQ-HEV2-011 is scoped to the digest layer in acceptance.md (AC-HEV2-016/017). A future caller could append a forbidden internal token (SPEC ID / REQ token / date / SHA) to a LOCAL bullet. Mitigation path: a follow-up that applies `containsForbiddenContent` to the LOCAL append (the function is reusable from budget.go). Noted as a §25-isolation gap for a follow-up; does not block M3.
 
+### M4 — `mergeSectionBased` managed-section preservation
+
+**Deliverables shipped:**
+- `internal/merge/strategies.go` (MODIFIED) — added `managedSectionHeadings` explicit allow-list var (design.md §D.1 H-2 option (a)) carrying the two curator-managed LEARNED block headings (`## MOAI:LEARNED-WORKFLOW`, `## MOAI:LEARNED-WORKFLOW-LOCAL`), an `isManagedSection(heading) bool` helper that consults it, and a managed-section preservation branch in `mergeSectionBased`'s "section exists in all three" path. For a managed section: when the upstream template content equals the base (template did not touch the block), the local populated block is preserved verbatim (no clobber — REQ-HEV2-019); when both sides carry differing content inside the marker boundaries, a conflict is surfaced rather than auto-resolved (REQ-HEV2-020). The generic 3-way section logic for non-managed sections is unchanged.
+- `internal/merge/strategies_test.go` (MODIFIED) — added `strings` import + 4 new tests: `TestMergeSectionBased_PreservesPopulatedLearnedBlock` (AC-HEV2-025), `TestMergeSectionBased_EmptyUpstreamPopulatedLocal` (AC-HEV2-026), `TestMergeSectionBased_ConflictInsideMarkers_Surfaced` (AC-HEV2-027), `TestManagedSectionHeadings_RecognizesLearnedBlocks` (AC-HEV2-049 recognition contract).
+
+**AC PASS/FAIL matrix (M4-scoped ACs):**
+
+| AC | Status | Verification |
+|----|--------|-------------|
+| AC-HEV2-025 (merge preserves populated block, no clobber) | PASS | `TestMergeSectionBased_PreservesPopulatedLearnedBlock` — template empty marker + local populated block → local bullet + ledger_key preserved verbatim; unrelated template section change still reflected; exactly 1 learned-start marker (no duplication); no conflict |
+| AC-HEV2-026 (empty upstream + populated local, minimal case) | PASS | `TestMergeSectionBased_EmptyUpstreamPopulatedLocal` — both bullets + both ledger_keys preserved verbatim; exactly 1 learned-start marker; no conflict |
+| AC-HEV2-027 (conflicting populated content inside markers → conflict, not auto-resolved) | PASS | `TestMergeSectionBased_ConflictInsideMarkers_Surfaced` — `HasConflict == true`; conflict carries both `Current` (local bullet X) and `Updated` (template bullet Y) content |
+| AC-HEV2-049 (reachability: managedSectionHeadings declared + consulted, ≥2 matches) | PASS | `grep -c "managedSectionHeadings" internal/merge/strategies.go` → **5** matches (var declaration + `isManagedSection` consultation + `mergeSectionBased` doc + @MX tag); `TestManagedSectionHeadings_RecognizesLearnedBlocks` pins the recognition contract |
+
+**Test output:** `go test -v -run "TestMergeSectionBased_PreservesPopulatedLearnedBlock|TestMergeSectionBased_EmptyUpstreamPopulatedLocal|TestMergeSectionBased_ConflictInsideMarkers_Surfaced|TestManagedSectionHeadings_RecognizesLearnedBlocks" ./internal/merge/...` → 4 tests PASS (0 fail). Full merge suite: `go test ./internal/merge/...` ok. Consumer cascade check: `go test ./internal/cli/...` ok (the merge package is consumed by `internal/cli/update`).
+
+**Coverage:** `go test -cover ./internal/merge/...` → **87.3%** statement coverage (above the 85% QG1 minimum; the new managed-section branch + `isManagedSection` are fully exercised by the 4 new tests).
+
+**Cross-platform build (B1):** `go build ./...` exit 0 AND `GOOS=windows GOARCH=amd64 go build ./...` exit 0. The changes are stdlib-only (`strings` already imported) — no syscall, no build tags, no platform-specific code.
+
+**Subagent boundary (B3 / AC-HEV2-044):** `grep -rn 'AskUserQuestion\|mcp__askuser' internal/merge/ | grep -v _test.go | grep -v '// '` → 0 matches.
+
+**Lint (B5):** `golangci-lint run --timeout=2m ./internal/merge/...` → 0 issues (no NEW findings vs pre-flight baseline). `go vet ./internal/merge/...` exit 0.
+
+**M1+M2+M3 PRESERVE verified:** only 2 files changed (`internal/merge/strategies.go` + `internal/merge/strategies_test.go`) — both in the merge package. No curator package file, no `layer3.go`, no `token_budget_guard.go` touched. Full harness suite: `go test ./internal/harness/...` — all 12 sub-packages ok (curator 2.128s green; M1 D1 byte-identical InjectMarker contract + M2 budget-gate scoping + M3 LOCAL surface intact). `git diff --stat` confirms the 2-file scope.
+
+**Residual risk (M4 scope, NOT closing debt):** the managed-section preservation branch is behaviorally equivalent to the generic 3-way logic for the specific AC-025/026/027 fixtures (the generic logic already treats sections as opaque string-comparison units). The allow-list's load-bearing value is (a) AC-049 compliance (explicit recognition var consulted on the preservation path), (b) documented preservation policy for curator-managed blocks, (c) an extension point for future managed-block types, and (d) a future-proofing guard so later changes to the generic section logic cannot silently regress the managed-block preservation guarantee. A scenario where cosmetic template marker reformatting (e.g. an extra blank line in the empty marker) against a populated local block would currently surface as a conflict under both managed and generic logic — marker-body emptiness normalization is deferred (it would couple merge to marker parsing, which design.md §D.2 explicitly rejected in favor of the §D.1 allow-list). Does not block M4.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 ```yaml
 run_complete_at:
-run_commit_sha: 266f55c5b
-run_status: m3-complete-m4-m7-pending
+run_commit_sha: pending-m4-push
+run_status: m4-complete-m5-m7-pending
 # M1 (Typed Managed-Block Writer foundation) + M2 (LEARNED digest block +
-# budget/cap enforcement) + M3 (CLAUDE.local.md append-only LOCAL section) are
-# complete. M1-scoped ACs PASS (AC-HEV2-001..006, 009..011, 044, 047, 048).
-# M2-scoped ACs PASS (AC-HEV2-007, 008, 012, 013, 014, 015, 016). M3-scoped
-# ACs PASS (AC-HEV2-018, 019, 020). Coverage 93.3%. Remaining milestones
-# M4-M7 NOT started — run_status is NOT audit-ready.
-ac_pass_count: 22  # M1 (12) + M2 (7) + M3 (3)
+# budget/cap enforcement) + M3 (CLAUDE.local.md append-only LOCAL section) +
+# M4 (mergeSectionBased managed-section preservation) are complete. M1-scoped
+# ACs PASS (AC-HEV2-001..006, 009..011, 044, 047, 048). M2-scoped ACs PASS
+# (AC-HEV2-007, 008, 012, 013, 014, 015, 016). M3-scoped ACs PASS (AC-HEV2-018,
+# 019, 020). M4-scoped ACs PASS (AC-HEV2-025, 026, 027, 049). merge package
+# coverage 87.3%. Remaining milestones M5-M7 NOT started — run_status is NOT
+# audit-ready.
+ac_pass_count: 26  # M1 (12) + M2 (7) + M3 (3) + M4 (4)
 ac_fail_count: 0
 preserve_list_post_run_count: 0  # no PRESERVE-list files modified
-l44_pre_commit_fetch: pending-m3-push
-l44_post_push_fetch: pending-m3-push
+l44_pre_commit_fetch: pending-m4-push
+l44_post_push_fetch: pending-m4-push
 new_warnings_or_lints_introduced: 0
 cross_platform_build:
   go_build_all: exit_0
   go_build_windows_amd64: exit_0
-total_run_phase_files: 15  # M1 (6) + M2 (5) + M3 (4): append.go + append_test.go + writer.go mod + marker_test.go mod
+total_run_phase_files: 17  # M1 (6) + M2 (5) + M3 (4) + M4 (2): strategies.go mod + strategies_test.go mod
 m1_to_mN_commit_strategy: per-milestone
 ```
 
