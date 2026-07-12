@@ -88,7 +88,7 @@ Run-phase complete on Route A (Hybrid Trunk main-direct, Tier M). Implementation
 sync_status: audit-ready
 sync_complete_at: 2026-07-13
 sync_author: manager-docs
-sync_commit_sha: pending-backfill-discovery-unknowns-001
+sync_commit_sha: c106f63c2
 changelog_entry_position: "[Unreleased] > ### Changed (top entry)"
 frontmatter_status_transitions:
   spec.md: "in-progress -> completed"
