@@ -237,35 +237,83 @@ plan_audit_final_iter: 2
 
 **M1-M5 PRESERVE verified:** no M1-M5 file modified. The only changes are the 2 CLAUDE.md files (template + live), 2 NEW recall files, and 1 EXTENDED leak test. Full harness/merge/template suites green (curator 93.6%, merge ok, template ok). `git status --porcelain` confirmed the 5-file scope.
 
-**Residual risk (M6 scope, NOT closing debt):** the Recall contract is types + godoc only — the CONSUMPTION wiring (a live `LedgerSearcher` over the EVOLVE-001 routing ledger + lineage surfaces, and the digest->ledger resolution at recall time) is deferred to EVOLVE-005 (declared in `recall.go` godoc). AC-021/022/024 verify the contract shape + the no-full-evidence-path principle; they do NOT verify a runtime search. The template empty marker is inert until a future L5-approved Curator write populates it (EVOLVE-003+). AC-035's `git log --diff-filter=A` check reflects the historical file ADD (predating this SPEC); the meaningful template-first ordering is the workflow discipline (template edited before the live copy, verified by the edit sequence). M7 integration verification NOT started.
+**Residual risk (M6 scope, NOT closing debt):** the Recall contract is types + godoc only — the CONSUMPTION wiring (a live `LedgerSearcher` over the EVOLVE-001 routing ledger + lineage surfaces, and the digest->ledger resolution at recall time) is deferred to EVOLVE-005 (declared in `recall.go` godoc). AC-021/022/024 verify the contract shape + the no-full-evidence-path principle; they do NOT verify a runtime search. The template empty marker is inert until a future L5-approved Curator write populates it (EVOLVE-003+). AC-035's `git log --diff-filter=A` check reflects the historical file ADD (predating this SPEC); the meaningful template-first ordering is the workflow discipline (template edited before the live copy, verified by the edit sequence).
+
+### M7 — Integration verification (spec.md §7 M2 verification target)
+
+**Deliverables shipped** (all ADDITIVE — M1-M6 implementation logic untouched; 2 minimal helpers the tests exercise + 7 test files):
+- `internal/harness/curator/tier_gate.go` (NEW) — `ErrTierNotQualified` sentinel + `TierGatedWrite(path, blockType, observations, content)` surface-selection gate (REQ-HEV2-025/026/027). Reuses the `internal/harness/tier` `ClassifyStatus` [1,3,5,10] ladder (threshold SSOT, no duplication); maps Tier 4 -> `WriteManagedBlock` (CLAUDE.md digest), Tier 3 -> `AppendLearnedLocal` (CLAUDE.local.md append); rejects self-tier-escalation with `ErrTierNotQualified` WITHOUT touching the file.
+- `internal/harness/curator/approval.go` (NEW) — `ApprovalDecision` + `RejectionRecorder` + `ErrApprovalRejected` + `WriteManagedBlockGated(...)` L5-approval gate (REQ-HEV2-032). No autonomous write path; on rejection the file is untouched and the injected recorder appends the "rejected" LineageEntry (the recorder callback respects the curator->harness import boundary — curator cannot import harness).
+- `internal/harness/curator/tier_test.go` (NEW, `package curator`) — AC-032/033/034.
+- `internal/harness/curator/approval_test.go` (NEW, `package curator_test`) — AC-040/041 (imports `harness` for the real `WriteLineageEntry`/`LoadManifest`).
+- `internal/harness/curator/rollback_test.go` (NEW, `package curator_test`) — AC-042 e2e byte-identical rollback.
+- `internal/harness/curator_e2e_test.go` (NEW, `package harness`) — the M2 verification chain.
+- `internal/merge/learned_roundtrip_test.go` (NEW, `package merge`) — full template-merge round-trip preservation.
+- `internal/harness/curator/crud_test.go` (EXTENDED) — AC-023 `TestBullet_ProvisionalNullLedgerKey`.
+- `internal/harness/curator/antifabrication_test.go` (EXTENDED) — AC-039 `TestWriteManagedBlock_RejectsModelSelfReport`.
+
+**AC PASS/FAIL matrix (M7-scoped ACs):**
+
+| AC | Status | Verification |
+|----|--------|-------------|
+| AC-HEV2-023 (provisional null ledger_key + Tier-3 promotion) | PASS | `TestBullet_ProvisionalNullLedgerKey` — empty ledger_key renders no key marker, `DigestEntry.Provisional()`==true; promotion adds the real `<!-- key: lw-promoted-001 -->` |
+| AC-HEV2-032 (Tier 4 qualified -> CLAUDE.md write) | PASS | `TestTier4Qualified_ClaudeMdWrite` — 10 obs writes the LEARNED-WORKFLOW block to CLAUDE.md |
+| AC-HEV2-033 (Tier 3 qualified -> CLAUDE.local.md append) | PASS | `TestTier3Qualified_ClaudeLocalMdAppend` — 5 obs appends inside the LOCAL block markers |
+| AC-HEV2-034 (under-tier -> ErrTierNotQualified) | PASS | `TestUnderTierWrite_ErrTierNotQualified` — 6-obs Tier-4 write -> `ErrTierNotQualified`, file untouched; same pattern accepted at Tier 3 |
+| AC-HEV2-039 (rejects model self-report) | PASS | `TestWriteManagedBlock_RejectsModelSelfReport` (3 sub-cases) — SPEC/REQ/AC/date/SHA self-report -> `ErrForbiddenContent`, file untouched |
+| AC-HEV2-040 (requires approval token) | PASS | `TestWriteManagedBlock_RequiresApprovalToken` — rejection -> no write + `ErrApprovalRejected`; approval -> block written |
+| AC-HEV2-041 (rejection records lineage, no file write) | PASS | `TestWriteManagedBlock_RejectionRecordsLineage_NoFileWrite` — 1 LineageEntry decision=="rejected" + rationale; file untouched |
+| AC-HEV2-042 (mechanical rollback, byte-identical) | PASS | `TestRollbackTrigger_MechanicalOnly_NoModelSelfReport` — AddBullet(D)+DeleteBullet(B)+RestoreSnapshot -> byte-identical to pre-write, markers intact, idempotent |
+| AC-HEV2-045 (no settings hook-registration change) | PASS | `git diff --name-only origin/main -- internal/template/templates/.claude/settings.json.tmpl .claude/settings.json` -> 0 |
+| AC-HEV2-046 (no new curator hook wrapper) | PASS | `ls .claude/hooks/moai/handle-*curator*.sh` -> 0 |
+
+**M2 verification chain (e2e):** `TestM2VerificationChain_EndToEnd` — AddBullet -> budget-enforced (16x200-char over-budget write -> `ErrDigestBudgetExceeded`, file untouched) -> `CreateSurfaceSnapshot` -> DeleteBullet -> `RestoreSnapshot` (byte-identical) -> `LineageEntry` audit trail (LearnedSurface/BulletsChanged/SnapshotDir round-trip). PASS.
+
+**Template-merge round-trip:** `TestMergeRoundTrip_PopulatedLearnedBlockSurvivesTemplateSync` — multi-bullet populated local block survives a template sync (empty upstream marker) while an unrelated upstream section update lands; exactly one marker pair, no clobber. PASS. (Complements the M4 AC-025/026/027 preservation cases.)
+
+**Test output:** `go test ./internal/harness/... ./internal/merge/... ./internal/template/...` -> 14 ok, 0 FAIL (M1-M6 preserved + M7 new tests). All M7 AC-bound tests PASS (`-count=1`).
+
+**Coverage (AC-043 QG1):** `go test -cover ./internal/harness/curator/` -> **91.0%** (>=90% REQ-HEV2-034); `./internal/harness/` -> 87.2%; `./internal/merge/` -> 87.3% (both >=85%).
+
+**Cross-platform build (B1 / QG5):** `go build ./...` exit 0 AND `GOOS=windows GOARCH=amd64 go build ./...` exit 0. tier_gate.go/approval.go use only stdlib + the tier package; no syscall, no build tags.
+
+**Subagent boundary (B3 / AC-HEV2-044):** `grep -rn 'AskUserQuestion\|mcp__askuser' internal/harness/curator/ | grep -v _test.go | grep -v '// '` -> 0 matches. The approval gate takes the L5 decision as an in-parameter (`ApprovalDecision`) — it never calls AskUserQuestion (REQ-HEV2-035).
+
+**Lint (B5 / QG2):** `golangci-lint run --timeout=2m ./internal/harness/... ./internal/merge/...` -> 0 issues (one NEW QF1001 De Morgan finding on tier_test.go was fixed before commit). `go vet` exit 0.
+
+**M1-M6 PRESERVE verified:** no M1-M6 implementation file modified. Changes are 2 NEW helper files + 7 test files (2 extended, 5+ new). Full harness/merge/template suites green.
+
+**Residual risk (M7 scope):** `TierGatedWrite` and `WriteManagedBlockGated` are the completed write-layer API surface (spec.md §D.1 sketch); their PRODUCTION wiring into the Curator pipeline (tier->surface activation from harness config; L5 orchestrator round injecting the ApprovalDecision + RejectionRecorder) is EVOLVE-003+ scope, explicitly out of scope per spec.md §E. The tests exercise the API directly with machine-signal inputs; no autonomous production write path is activated by this SPEC.
 
 ## §E.3 Run-phase Audit-Ready Signal
 
 ```yaml
-run_complete_at:
-run_commit_sha: e62b9306c
-run_status: m6-complete-m7-pending
+run_complete_at: 2026-07-12
+run_commit_sha: 81792f80c  # M7 feat commit (the progress.md docs commit follows separately)
+run_status: run-complete-sync-pending
 # M1 (Typed Managed-Block Writer foundation) + M2 (LEARNED digest block +
 # budget/cap enforcement) + M3 (CLAUDE.local.md append-only LOCAL section) +
 # M4 (mergeSectionBased managed-section preservation) + M5 (snapshot/rollback/
 # lineage surface extension) + M6 (Template-First empty marker + template
-# neutrality + 2-layer Recall contract) are complete. M1-scoped ACs PASS
-# (AC-HEV2-001..006, 009..011, 044, 047, 048). M2-scoped ACs PASS (AC-HEV2-007,
-# 008, 012, 013, 014, 015, 016). M3-scoped ACs PASS (AC-HEV2-018, 019, 020).
-# M4-scoped ACs PASS (AC-HEV2-025, 026, 027, 049). M5-scoped ACs PASS
-# (AC-HEV2-028, 029, 030, 031, 050, 051). M6-scoped ACs PASS (AC-HEV2-021, 022,
-# 024, 035, 036, 037, 038, 052). curator coverage 93.6%. Remaining milestone
-# M7 (integration verification) NOT started — run_status is NOT audit-ready.
-ac_pass_count: 40  # M1 (12) + M2 (7) + M3 (3) + M4 (4) + M5 (6) + M6 (8)
+# neutrality + 2-layer Recall contract) + M7 (integration verification) are
+# ALL complete — M7 is the final run milestone, so run-phase is audit-ready.
+# M1-scoped ACs PASS (AC-HEV2-001..006, 009..011, 044, 047, 048). M2-scoped ACs
+# PASS (AC-HEV2-007, 008, 012, 013, 014, 015, 016). M3-scoped ACs PASS
+# (AC-HEV2-018, 019, 020). M4-scoped ACs PASS (AC-HEV2-025, 026, 027, 049).
+# M5-scoped ACs PASS (AC-HEV2-028, 029, 030, 031, 050, 051). M6-scoped ACs PASS
+# (AC-HEV2-021, 022, 024, 035, 036, 037, 038, 052). M7-scoped ACs PASS
+# (AC-HEV2-023, 032, 033, 034, 039, 040, 041, 042, 045, 046). curator coverage
+# 91.0% (>=90%). Full harness/merge/template suites 14 ok / 0 FAIL.
+ac_pass_count: 50  # M1 (12) + M2 (7) + M3 (3) + M4 (4) + M5 (6) + M6 (8) + M7 (10)
 ac_fail_count: 0
-preserve_list_post_run_count: 0  # no PRESERVE-list files modified
-l44_pre_commit_fetch: done-m6-push  # git fetch origin main before M6 push -> 0 1 (origin at baseline 8103592f4, clean FF)
-l44_post_push_fetch: done-m6-push
+preserve_list_post_run_count: 0  # no PRESERVE-list / M1-M6 implementation files modified
+l44_pre_commit_fetch: done-m7-push  # git fetch origin main before M7 push -> 0 0 (origin at baseline ccf4f7e1c, synced)
+l44_post_push_fetch: pending  # backfill after push
 new_warnings_or_lints_introduced: 0
 cross_platform_build:
   go_build_all: exit_0
   go_build_windows_amd64: exit_0
-total_run_phase_files: 26  # M1 (6) + M2 (5) + M3 (4) + M4 (2) + M5 (4) + M6 (5): template CLAUDE.md mod + live CLAUDE.md mod + recall.go new + recall_test.go new + internal_content_leak_test.go mod
+total_run_phase_files: 33  # M1 (6) + M2 (5) + M3 (4) + M4 (2) + M5 (4) + M6 (5) + M7 (7 new): tier_gate.go + approval.go + tier_test.go + approval_test.go + rollback_test.go + curator_e2e_test.go + learned_roundtrip_test.go (crud_test.go + antifabrication_test.go extended, already counted)
 m1_to_mN_commit_strategy: per-milestone
 ```
 
