@@ -43,6 +43,11 @@
 | `CLAUDE.md` (kickoff section) | EXTEND (D8 progression-mode axis + kickoff-mandatory-both-modes; mirror to template) |
 | `.claude/skills/moai/workflows/run.md` | EXTEND (D8 progression-mode co-located with Run-phase Autonomy) |
 | `.claude/rules/moai/workflow/orchestration-mode-selection.md` | EXTEND (D8 progression-mode co-located with Kickoff mandatory-restoration) |
+| `internal/cli/goal.go` | NEW (amendment 0.3.0 — `moai goal` arm/status/clear CLI; reuses `internal/goal` engine) |
+| `internal/hook/session_start.go` | EXTEND (amendment 0.3.0 — `PruneOrphans` wiring, fail-open) |
+| `internal/goal/**` (engine) | PRESERVE (amendment 0.3.0 — NOT rewritten; arm CLI reuses `NewGoal`/`SaveGoal`/`LoadGoal`/`ClearGoal`) |
+| `internal/cli/hook_stop_goal.go` | PRESERVE (amendment 0.3.0 — existing `moai hook stop-goal` verb unchanged) |
+| `.claude/skills/moai/workflows/goal.md` | EXTEND (amendment 0.3.0 — annotate `resume` as deferred; mirror to template) |
 
 ## §B — Technical Design (folded design.md — LEAN Tier L)
 
@@ -196,6 +201,69 @@ This is the SAME pattern already codified for `team-ac-verify.sh` and
 `sync-phase-quality-gate.sh` (hooks emit structured JSON; the orchestrator
 translates to AskUserQuestion). No NEW boundary-crossing mechanism is invented.
 
+### B.6 Amendment 0.3.0 design — arm CLI + prune wiring (reachability fix)
+
+> Technical design for the 0.3.0 in-place amendment (§ Amendments 0.3.0 in spec.md). It
+> ADDS the missing arming surface + prune call site; it does NOT rewrite the existing
+> `internal/goal/` engine or the `moai hook stop-goal` evaluator.
+
+**New `internal/cli/goal.go`** (REQ-GLE-030..033):
+
+```
+internal/cli/
+  goal.go        # `moai goal` cobra command under rootCmd; subcommands arm/status/clear
+```
+
+- `goalCmd` is a top-level cobra command registered via `rootCmd.AddCommand(goalCmd)`
+  (mirrors the existing `hookCmd` / session command registration pattern), so `moai goal`
+  appears in `moai --help` (AC-GLE-035).
+- Subcommands: `arm "<condition>"`, `status`, `clear`. The bare `moai goal "<condition>"`
+  form MAY alias `arm` (cobra `Args` / `RunE` dispatch). `resume` is NOT registered (§D.6).
+- **Engine reuse (REQ-GLE-030, no reimplementation)**: `arm` builds `[]goal.Condition`
+  from the parsed condition, then calls `goal.NewGoal(sessionID, text, conds)` +
+  `goal.SaveGoal(root, g)`. `status` calls `goal.LoadGoal(root, sessionID)`. `clear`
+  calls `goal.ClearGoal(root, sessionID)`. NO new state / schema / prune code.
+- **Condition parsing (REQ-GLE-032)**: a bare shell-command string → `{type:mechanical,
+  cmd, expect_exit:0}`; a transcript-referencing claim → `{type:model, claim}`; the armed
+  goal carries `ceiling.max_turns == 30` (schema default). The orchestrator MAY pass a
+  structured condition set when arming programmatically (already documented in goal.md).
+- **Session-id consistency (REQ-GLE-033, the make-or-break)**: `arm` resolves the session
+  id via the existing `resolveCurrentSessionID()` in `internal/cli/session.go` (the same
+  side channel `moai hook stop-goal` reads). `goal.StatePath(root, sessionID)` then keys
+  the file to `<session-id>.json`. **When a real session id is resolvable, the arm path
+  MUST NOT pass an empty sessionID** (which would trigger `WriterPidKey()` → `pid-<pid>`),
+  because the hook runs in a DIFFERENT PID and would key to a different file — the armed
+  goal would be unreachable. The `WriterPidKey()` fallback (REQ-GLE-008) stays valid ONLY
+  when no real session id resolves (documented degrade — §D.2 edge case).
+
+**Session-start `PruneOrphans` wiring** (REQ-GLE-034):
+
+- Wiring point: `internal/hook/session_start.go` `sessionStartHandler.Handle()` (the
+  session-start entry; the existing `pruneTelemetry` call is the precedent pattern for a
+  session-start prune step).
+- Feed active session IDs from the active-sessions registry
+  (`.moai/state/active-sessions.json`; readers exist in `internal/cli/session.go` and
+  `internal/harness/routing/pending.go` `isSessionLive`). Call
+  `goal.PruneOrphans(projectRoot, activeSessionIDs, time.Now())`.
+- **Fail-open**: a `PruneOrphans` error MUST be logged/swallowed, never returned as a
+  `Handle()` error — session start proceeds unchanged on prune failure (AC-GLE-038b).
+
+**Template-mirror obligation (confirmed minimal)**: the ONLY `.claude/` change is
+annotating `goal.md`'s `resume` section as deferred (§D.6) — that edit is mirrored to
+`internal/template/templates/.claude/skills/moai/workflows/goal.md` per REQ-GLE-025, with
+no internal SPEC IDs (§25 neutrality). The arm/status/clear verbs are ALREADY documented
+in the existing `goal.md`, so no new workflow content is required there. The new Go files
+(`internal/cli/goal.go`) and the `session_start.go` edit are NOT template-mirrored (Go
+source is not a template asset). `make build` must succeed after the goal.md mirror.
+
+**PRESERVE (amendment 0.3.0)**: the entire `internal/goal/` engine (`schema.go`,
+`state.go`, `prune.go`, `evaluate.go` + their tests), the `moai hook stop-goal` verb
+(`internal/cli/hook_stop_goal.go`), and the `goal.md` skill body (only the `resume`
+deferral annotation is added). REQ-GLE-001..029 + AC-GLE-001..034 are unchanged.
+
+**Deferred (amendment 0.3.0)**: the `resume` verb (§D.6) — requires changing `ClearGoal`
+from a delete (`os.Remove`) to a tombstone-move, out of scope for this reachability fix.
+
 ## §B — Known Issues (Section A-E, Tier L relevant categories)
 
 - **B3/B11 — subagent/hook boundary (C-HRA-008)**: `stop-goal` and
@@ -271,7 +339,17 @@ in `progress.md` §E.1.
   Go test; semi-autonomous checkpoint Go test + orchestrator-bridge doc.
   Priority Medium.
 
-Ordering: M1 → M2 → M3 → M4 → M5 → M6 → M7.
+- **M8 — Amendment 0.3.0 arm CLI + prune wiring (REQ-GLE-030..034)**: NEW
+  `internal/cli/goal.go` (`moai goal` under rootCmd; arm/status/clear; reuses
+  `internal/goal` engine; session-id via `resolveCurrentSessionID`, no silent pid
+  fallback); EXTEND `internal/hook/session_start.go` (`PruneOrphans` call site,
+  fail-open); Go tests `TestGoalArmEvalLinkage` (make-or-break), `TestGoalArmResolvesSessionId`,
+  `TestSessionStartPrunesGoalOrphans`; annotate `goal.md` `resume` as deferred + mirror;
+  `make build`. TDD (cycle_type=tdd). Priority High. Runs in a FRESH run-phase AFTER
+  plan re-audit + Implementation Kickoff Approval.
+
+Ordering: M1 → M2 → M3 → M4 → M5 → M6 → M7. Amendment 0.3.0 adds M8 (run in a fresh
+run-phase after plan re-audit; M1–M7 are the prior completed run).
 
 ## §G — Anti-Patterns
 
@@ -325,6 +403,10 @@ Ordering: M1 → M2 → M3 → M4 → M5 → M6 → M7.
 - **`/moai goal` full condition-template registry** across subcommands (the
   AUTONOMY roadmap's `SPEC-AUTONOMY-GOAL-CONDITIONS`). This SPEC hard-codes only
   the generic mechanical+model condition shape.
+- **Amendment 0.3.0 — `moai goal resume` verb** (§D.6). Deferred to a follow-up SPEC:
+  requires changing `ClearGoal` from a delete (`os.Remove`) to a tombstone-move so that a
+  cleared goal lands in `consumed/` and can be restored — a semantic change to the
+  existing tested `ClearGoal` contract, out of scope for the 0.3.0 reachability fix.
 
 ## § Settled Decisions (iteration-2 — clarifications resolved via AskUserQuestion)
 

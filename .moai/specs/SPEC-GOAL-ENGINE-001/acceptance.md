@@ -42,6 +42,11 @@
 | AC-GLE-032 | REQ-GLE-029 | run.md progression-mode axis documented | 0 → ≥1 |
 | AC-GLE-033 | REQ-GLE-029 | orchestration-mode-selection.md axis documented | 0 → ≥1 |
 | AC-GLE-034 | REQ-GLE-026,029 | kickoff mandatory in BOTH modes (grep + Go test) | 0→≥1 + test PASS |
+| AC-GLE-035 | REQ-GLE-030,031 | `moai goal` CLI registered + lists arm/status/clear | unknown-cmd → exit-0 + 3 verbs |
+| AC-GLE-036 | REQ-GLE-030,032,033 | E2E arm→eval linkage (parse cond; arm writes file; hook loads SAME id) | test PASS (make-or-break) |
+| AC-GLE-037 | REQ-GLE-033 | session-id consistency (arm writes `<id>.json`, NOT `pid-*`) | test PASS |
+| AC-GLE-038 | REQ-GLE-034 | PruneOrphans wired on session-start + fail-open | grep 0 → ≥1 + test PASS |
+| AC-GLE-039 | REQ-GLE-031 | resume NOT delivered (out of scope) | CLI lacks resume + goal.md deferred |
 
 ### AC-GLE-001 — goal.md workflow file + 4 verbs
 
@@ -405,9 +410,103 @@ AC-GLE-015 (which verifies the general no-bypass property): AC-GLE-034
 specifically pins that the NEW `progression_mode` field does not introduce a
 mode-specific bypass.
 
+### AC-GLE-035 — `moai goal` CLI registered (arm/status/clear) (REQ-GLE-030,031)
+
+```bash
+# Runtime --help smoke (preferred over a pure grep): the command must be registered under rootCmd.
+go run ./cmd/moai goal --help 2>&1 | tail -20 ; echo "exit=$?"
+# Each delivered verb must be present — three INDEPENDENT grep -q checks (NOT one OR-count,
+# which the reachability lesson forbids: one token hitting N times must not pass).
+H=$(go run ./cmd/moai goal --help 2>&1)
+echo "$H" | grep -qw arm && echo "$H" | grep -qw status && echo "$H" | grep -qw clear && echo ALL3_PRESENT
+```
+Baseline (verified this amendment): `go run ./cmd/moai goal --help` → **non-zero** exit
+(`unknown command "goal" for "moai"`) because no `goal` command is registered (verified
+`grep goalCmd internal/cli/` → 0 command hits; only a `--goal` flag string in `handoff.go`).
+PASS when `moai goal --help` exits 0 AND `ALL3_PRESENT` is printed (each of `arm`,
+`status`, `clear` present, verified by an AND of three independent `grep -qw` — this
+avoids the compound-OR-count vacuous-pass trap). Prefer this runtime smoke over a pure
+`internal/cli/goal.go` symbol grep; a supplementary registration grep
+(`grep -c 'rootCmd.AddCommand(goalCmd)' internal/cli/goal.go` → ≥1) MAY accompany it, but
+the `--help` smoke is the load-bearing check — it proves the command is actually
+reachable, not merely that a symbol exists.
+
+### AC-GLE-036 — end-to-end arm → eval linkage (THE make-or-break AC) (REQ-GLE-030,032,033)
+
+```bash
+go test ./internal/cli/ -run TestGoalArmEvalLinkage -v 2>&1 | tail -8
+```
+PASS when the Go test asserts the full linkage in one flow, against a `t.TempDir()`
+project root and a fixed session id `X`:
+1. the arming path (the `moai goal arm` code path) PARSES the condition argument into a
+   `conditions[]` entry (a bare shell string → `{type:mechanical}`; a transcript claim →
+   `{type:model}` — REQ-GLE-032) with `ceiling.max_turns == 30`, and writes
+   `.moai/state/goal/X.json` (assert the file exists at that EXACT path — NOT `pid-*.json`);
+2. `moai hook stop-goal`, given the SAME session id `X` on its stdin, LOADS that goal
+   (`LoadGoal(root, "X")` returns the armed goal) and emits the expected turn-end verdict
+   — a block decision while a mechanical condition fails, or no-block once all conditions
+   pass.
+Baseline: no such linkage exists today — the arm path is absent (`grep goalCmd` → 0), so
+arm and eval cannot share state. This AC is the make-or-break reachability pin: it cannot
+pass today (the arm half cannot run) and passes only when the arm CLI AND the shared
+session-id keying (AC-GLE-037) are both wired.
+
+### AC-GLE-037 — session-id consistency (no silent pid fallback) (REQ-GLE-033)
+
+```bash
+go test ./internal/cli/ -run TestGoalArmResolvesSessionId -v 2>&1 | tail -8
+```
+PASS when the Go test asserts: given a resolvable real session id `X` (via the
+`moai session current` / `resolveCurrentSessionID` path), the arming path writes
+`.moai/state/goal/X.json` and does NOT write a `.moai/state/goal/pid-<n>.json` file
+(i.e., it does not silently fall back to `WriterPidKey()` when a real session id is
+available). The `WriterPidKey()` fallback remains valid ONLY when no real session id is
+resolvable (REQ-GLE-008 unchanged). Baseline: no arming path exists, so no such assertion
+is possible today. This pins the correctness property that makes AC-GLE-036's linkage
+reachable — an arm CLI keyed on `pid-<n>` (a different PID than the hook) would write a
+file the hook can never find.
+
+### AC-GLE-038 — PruneOrphans wired on session-start (fail-open) (REQ-GLE-034)
+
+```bash
+# (a) real call site on the session-start path (baseline 0):
+grep -c 'PruneOrphans' internal/hook/session_start.go   # expect ≥1 (was 0)
+# (b) fail-open + orphan-moved behavior:
+go test ./internal/hook/ -run TestSessionStartPrunesGoalOrphans -v 2>&1 | tail -8
+```
+Baseline (verified this amendment): (a) `grep -c 'PruneOrphans' internal/hook/session_start.go`
+→ 0 (the only non-test occurrence of `PruneOrphans` in the repo is its DEFINITION at
+`internal/goal/prune.go` — ZERO call sites). PASS when (a) ≥1 (a real call site exists on
+the session-start path) AND (b) the Go test asserts BOTH: session-start moves an orphan
+goal state file (a session id absent from `active-sessions.json`) to
+`.moai/state/goal/consumed/`, AND a prune error does NOT block session start (fail-open —
+the handler still returns its normal output on prune failure). NOTE: the grep is anchored
+to `internal/hook/session_start.go` specifically (not any `_test.go`, not the
+`internal/goal` definition), so it is discriminating — a call site elsewhere would not
+satisfy it.
+
+### AC-GLE-039 — resume NOT delivered (out of scope) (REQ-GLE-031)
+
+```bash
+# (a) the arm CLI does NOT register a runnable `resume` subcommand (out of scope §D.6):
+go run ./cmd/moai goal --help 2>&1 | grep -qw resume && echo RESUME_PRESENT || echo RESUME_ABSENT
+# (b) goal.md marks resume as deferred (run-phase doc edit):
+grep -Eic 'resume[^.]*(defer|out of scope|follow-up)|(defer|out of scope|follow-up)[^.]*resume' .claude/skills/moai/workflows/goal.md   # expect ≥1
+```
+PASS when: (a) `moai goal --help` does NOT list `resume` as a subcommand (prints
+`RESUME_ABSENT`) — the amendment delivers only `arm` / `status` / `clear` (REQ-GLE-031);
+AND (b) `goal.md` carries ≥1 line marking `resume` as deferred / out of scope / follow-up
+(the run-phase author annotates the existing `resume` section). Baseline (verified this
+amendment): (b) = 0 today — `goal.md` documents `resume` as an active verb with no
+deferral marker (line ~47-50: "Re-arm the most recently cleared goal ... best-effort
+restore from the `consumed/` archive"). This pins that the amendment EXPLICITLY withholds
+`resume` rather than silently leaving it half-built. (SEPARATE from AC-GLE-035, which
+requires arm/status/clear PRESENT; this one requires resume ABSENT — the two together fix
+the verb set to exactly the three delivered verbs.)
+
 ## §D.1 Definition of Done
 
-- All 34 ACs PASS.
+- All 39 ACs PASS (34 original + 5 amendment-0.3.0 reachability ACs AC-GLE-035..039).
 - `internal/goal/` ≥ 85% coverage; cross-platform build green
   (`GOOS=windows GOARCH=amd64 go build ./...`).
 - Both router-registration surfaces (P1 list + Quick Reference) present.
@@ -418,6 +517,12 @@ mode-specific bypass.
   implemented (AC-GLE-029) + orchestrator-bridge documented (AC-GLE-030);
   kickoff-still-mandatory invariant pinned in BOTH modes (AC-GLE-034); 3 doc
   surfaces codified (AC-GLE-031..033).
+- **Amendment 0.3.0 (arm CLI + prune wiring reachability)**: `moai goal` CLI
+  registered under `rootCmd` with arm/status/clear verbs (AC-GLE-035); the
+  make-or-break end-to-end arm→eval linkage passes (AC-GLE-036); the arming path
+  resolves the session id via `moai session current` and does NOT silently
+  pid-fallback (AC-GLE-037); `PruneOrphans` wired on the session-start path,
+  fail-open (AC-GLE-038); `resume` explicitly NOT delivered (AC-GLE-039, §D.6).
 
 ## §D.2 Edge cases
 
@@ -442,3 +547,19 @@ mode-specific bypass.
   the checkpoint JSON is the prior turn's block reason; on resume the orchestrator
   re-derives from goal state `progression_mode` (state-file-first detection,
   consistent with the session-handoff pattern).
+- **Amendment 0.3.0 — no resolvable session id at arm time**: when `moai goal arm`
+  runs and `moai session current` returns the fallback (runtime did not expose
+  session.id), the arm path uses `WriterPidKey()` (`pid-<pid>`) per REQ-GLE-008 — but
+  this yields a goal the hook (different PID) cannot find. The arm CLI SHOULD warn the
+  user that the goal may be unreachable until a real session id is registered (surfaced,
+  not silent). AC-GLE-037 pins that the pid fallback is NOT taken when a real id IS
+  resolvable; the no-id case is the documented degrade.
+- **Amendment 0.3.0 — `moai goal arm` with no active session state dir**: the arm path
+  creates `.moai/state/goal/` if absent (`SaveGoal` atomic temp+rename already
+  MkdirAll's the dir) — arming does not require a pre-existing goal dir.
+- **Amendment 0.3.0 — session-start prune with no goal state dir**: `PruneOrphans` on a
+  project with no `.moai/state/goal/` returns cleanly (no orphans, no error); fail-open
+  means even a read error never blocks session start (AC-GLE-038b).
+- **Amendment 0.3.0 — `moai goal clear` on an already-cleared / absent goal**: `ClearGoal`
+  `os.Remove` on a missing file is tolerated (clear is idempotent); the CLI reports
+  "no armed goal" rather than erroring.

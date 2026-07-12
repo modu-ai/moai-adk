@@ -1,19 +1,20 @@
 ---
 id: SPEC-GOAL-ENGINE-001
 title: "Goal Engine — /moai goal condition-declared universal agentic loop (MoAI-owned /goal reimplementation)"
-version: "0.2.1"
-status: completed
+version: "0.3.0"
+status: in-progress
 created: 2026-07-12
 updated: 2026-07-12
 author: manager-spec
 priority: P1
 phase: "v3.0.0"
-module: "internal/goal, internal/cli, .claude/skills/moai/workflows"
+module: "internal/goal, internal/cli, internal/hook, .claude/skills/moai/workflows"
 lifecycle: spec-anchored
 tags: "agentic-core, goal-engine, stop-hook, autonomous-loop, per-session-state, axis-b"
 era: V3R6
 tier: L
 depends_on: [SPEC-ANALYZE-FIRST-ROUTING-001]
+amendment_of: SPEC-GOAL-ENGINE-001
 sync_commit_sha: 624ae8491
 ---
 
@@ -26,6 +27,45 @@ sync_commit_sha: 624ae8491
 | 0.1.0 | 2026-07-12 | manager-spec | Initial plan-phase authoring. Epic AGENTIC-CORE, SPEC 2 of 3. depends_on SPEC-ANALYZE-FIRST-ROUTING-001. Shared findings in that SPEC's research.md (§C.4 Axis B, §C.5 Stop hooks). |
 | 0.2.0 | 2026-07-12 | manager-spec | Plan-phase amendment: add D8 (Autonomous/Semi-autonomous Kickoff Progression Mode) per user mid-turn directive 2026-07-12. REQ-GLE-026..029, AC-GLE-027..034. The Implementation Kickoff Approval gate stays mandatory in both modes (§A.2 C1 clarified; §D.4 reconciled — progression-mode is an opt-in per-goal choice AT the gate, NOT a default-on autonomy switch). Semi-autonomous per-turn confirm flows via orchestrator-bridge (stop-goal hook emits checkpoint-signal JSON; orchestrator runs AskUserQuestion — REQ-GLE-014 preserved). Doc codification in CLAUDE.md / run.md / orchestration-mode-selection.md pinned as reachability ACs. Pending plan re-audit. |
 | 0.2.1 | 2026-07-12 | manager-spec | Plan-phase D2 fixes from plan-auditor v0.2.0 audit (PASS 0.90). **D2-1**: enrich the §B.5 semi-autonomous checkpoint JSON with a `failed_conditions: [{cmd, exit, tail}]` array so the orchestrator's confirm AskUserQuestion can surface WHY the goal isn't satisfied; reconcile REQ-GLE-010 ↔ REQ-GLE-028 (the failed-condition+tail mandate applies in BOTH modes — autonomous via plain block `reason`, semi-autonomous via the checkpoint's `failed_conditions`; the two REQs do NOT conflict); amend AC-GLE-029 to assert `failed_conditions` is present when a mechanical condition is failing. **D2-2**: re-anchor AC-GLE-021(a) from the stale `grep -ic "goal evaluator\|goal engine" CLAUDE.md` (baseline 1 — CLAUDE.md:41 already carries "forthcoming goal engine" per ANALYZE-FIRST commit 4d7ec04e4, non-discriminating) to `awk '/^## 2\./,/^## 3\./' CLAUDE.md \| grep -ic "goal evaluator"` (verified baseline 0, discriminating, post ≥ 1). 2 D3 defects (AC-GLE-032/033 OR-regex alignment; AC-GLE-029/030 028a/028b header notation) DEFERRED to run-phase — noted in progress.md only. spec-lint clean. |
+| 0.3.0 | 2026-07-12 | manager-spec | **In-place amendment** (status completed → in-progress; `amendment_of` self-ref). Root cause: two shipped deliverables are INERT (reachability gap — a token/promise exists but no code path reaches it, same class as the AC-token-presence-≠-reachability lesson). (1) **Arming path absent** — the `internal/goal` engine + `moai hook stop-goal` evaluator only LOAD + evaluate an ALREADY-armed goal; there is NO `moai goal` CLI to arm one (verified `grep goalCmd internal/cli/` → 0 command hits), so nothing writes `.moai/state/goal/<session-id>.json` despite `goal.md` promising it. The original D7 / REQ-GLE-023 specified only the `internal/cli` HOOK verb (`stop-goal`), never an arming CLI — that omission is the overclaim root. (2) **Orphan-prune unwired** — `internal/goal.PruneOrphans` (REQ-GLE-007) has ZERO call sites (verified). Adds REQ-GLE-030..034 (arm CLI + session-id-consistency + prune wiring) and AC-GLE-035..039 (reachability pins). `resume` verb deferred (§D.6). Pending plan RE-AUDIT (the amendment invalidates the cached plan-auditor PASS). |
+
+## Amendments
+
+> Additive record per `spec-frontmatter-schema.md` § Optional Fields (`amendment_of`).
+> Original HISTORY rows above are preserved verbatim; amendment rows append below
+> with monotonically increasing version.
+
+### Amendment 0.3.0 (2026-07-12) — arm CLI + prune wiring reachability
+
+- **prior completed version**: 0.2.1
+- **prior_completed_sha**: 624ae8491
+- **amendment_of**: SPEC-GOAL-ENGINE-001 (self-referential — in-place amendment, NOT a successor SPEC)
+- **rationale**: SPEC-GOAL-ENGINE-001 shipped `status: completed` at 0.2.1, but two of
+  its deliverables are INERT — a reachability gap (a token/promise exists but no code path
+  reaches it), the same failure class as the `feedback_ac_token_presence_not_reachability`
+  lesson. (1) The engine (`internal/goal/`: `NewGoal` / `SaveGoal` / `LoadGoal` /
+  `ClearGoal`, plus schema / state / prune / evaluate) and the evaluator hook
+  (`moai hook stop-goal`, `internal/cli/hook_stop_goal.go`) are built and tested, but the
+  hook only LOADS + evaluates + re-saves an ALREADY-armed goal. `.claude/skills/moai/workflows/goal.md`
+  PROMISES arming writes `.moai/state/goal/<session-id>.json`, yet there is NO `moai goal`
+  CLI command (verified: `grep goalCmd internal/cli/` → 0 command hits; only a `--goal`
+  flag string in `handoff.go`). So nothing arms a goal — the headline `/moai goal`
+  capability is unreachable. The original D7 / REQ-GLE-023 named only the `internal/cli`
+  HOOK verb (`stop-goal`), never an arming CLI; that omission is the overclaim root.
+  (2) `internal/goal.PruneOrphans` (REQ-GLE-007) exists but has ZERO call sites (verified
+  `grep PruneOrphans internal/ cmd/` non-test → definition only) — "prune orphans at
+  session-start" never runs.
+- **scope** (affected §C REQ IDs / deliverables):
+  - NEW REQ-GLE-030..034 (§C.9) — the `moai goal` arm/status/clear CLI, condition
+    parsing, session-id-consistency (`moai session current`, NOT the pid fallback), and
+    the session-start `PruneOrphans` wiring.
+  - NEW AC-GLE-035..039 (acceptance.md) — reachability pins (CLI registration; the
+    make-or-break arm→eval linkage; session-id consistency; prune wired; resume-deferred).
+  - NEW exclusion §D.6 — the `resume` verb is deferred (inconsistent with current
+    `ClearGoal` delete semantics; see §D.6).
+  - PRESERVE (NOT rewritten): the entire existing `internal/goal/` engine, the existing
+    `moai hook stop-goal` verb, the existing `goal.md` skill, and REQ-GLE-001..029 +
+    AC-GLE-001..034 (all intact — this amendment ADDS, it does not rewrite).
 
 > **Epic**: AGENTIC-CORE (schema has no `epic:` field; recorded in body). SPEC 2 of 3.
 > **Artifact-set note (Tier L, LEAN)**: per the Epic leader's explicit scope
@@ -299,6 +339,43 @@ transcript/mechanically measurable AND bounded by a turn ceiling.
   EDITS are run-phase deliverables; each doc surface is pinned as a separate
   reachability AC with a baseline-0 discriminating grep — AC-GLE-031..033.)
 
+### §C.9 Amendment 0.3.0 — arm CLI + prune wiring (reachability fix)
+
+> Notation: GEARS (current). These REQs close the two inert-deliverable reachability
+> gaps recorded in § Amendments 0.3.0. Each maps to a reachability AC (AC-GLE-035..039).
+
+- **REQ-GLE-030** (Ubiquitous): The repository shall provide a top-level `moai goal`
+  cobra command registered under `rootCmd` (appearing in `moai --help`), living in
+  `internal/cli/goal.go`, that REUSES the existing `internal/goal` engine
+  (`NewGoal` / `SaveGoal` / `LoadGoal` / `ClearGoal`) and shall NOT reimplement the
+  state / schema / prune logic already in `internal/goal/`.
+- **REQ-GLE-031** (Ubiquitous): The `moai goal` command shall expose the verbs
+  `arm "<condition>"` (register + arm), `status`, and `clear`; the bare
+  `moai goal "<condition>"` form MAY alias `arm`. The `resume` verb is EXPLICITLY
+  out of scope for this amendment (§D.6) — the arm CLI shall NOT register a runnable
+  `resume` subcommand.
+- **REQ-GLE-032** (Event-driven): **When** `moai goal arm` parses its condition
+  argument, a bare shell-command string shall become a mechanical condition
+  (`{type:mechanical, cmd, expect_exit}`) and a transcript-referencing claim shall
+  become a model condition (`{type:model, claim}`), reusing the existing schema
+  `Condition` type; the armed goal shall carry the default turn ceiling
+  (`ceiling.max_turns == 30`).
+- **REQ-GLE-033** (Ubiquitous): The `moai goal` arming path shall resolve the active
+  session id via `moai session current` (`resolveCurrentSessionID`, already implemented
+  in `internal/cli/session.go`) so the arm CLI and the `moai hook stop-goal` evaluator
+  key to the SAME `.moai/state/goal/<session-id>.json` file. **When** a real session id
+  is resolvable, the arming path shall NOT fall back to the `WriterPidKey()`
+  (`pid-<pid>`) discriminator — a pid-keyed arm file would never be found by the hook
+  (which runs in a different PID), making the armed goal unreachable. (The
+  `WriterPidKey()` fallback of REQ-GLE-008 stays valid ONLY when no real session id
+  resolves.)
+- **REQ-GLE-034** (Event-driven): **When** a session starts, the session-start path
+  (`internal/hook/session_start.go`) shall invoke `internal/goal.PruneOrphans` with a
+  real call site, feeding the active session IDs read from the active-sessions registry
+  (`.moai/state/active-sessions.json`; readers exist in `internal/cli/session.go` /
+  `internal/harness/routing/pending.go`). The prune shall be fail-open — a prune error
+  shall never block session start.
+
 ## §D — Exclusions (What NOT to Build)
 
 [HARD] This SPEC explicitly does NOT deliver the following.
@@ -339,6 +416,23 @@ transcript/mechanically measurable AND bounded by a turn ceiling.
 
 - Translating the `/moai goal` documentation into docs-site locales is a DEFERRED
   follow-up (plan.md § Deferred), NOT run-phase scope.
+
+### §D.6 Out of Scope — resume verb (deferred)
+
+- The `moai goal resume` verb (best-effort re-arm of a previously cleared goal by
+  restoring from `.moai/state/goal/consumed/`) is DEFERRED to a follow-up SPEC and is
+  NOT delivered by this amendment. `goal.md` documents `resume` (a carry-over from the
+  original REQ-GLE-001 four-verb list), but no working `resume` implementation exists.
+- **Rationale**: `resume` is inconsistent with the current `ClearGoal` semantics.
+  `ClearGoal` (`internal/goal/state.go`) `os.Remove`s the state file — `clear` DELETES,
+  it does not tombstone. `consumed/` is `PruneOrphans`' tombstone (orphan-prune moves
+  state there), NOT a `clear` destination — so a goal cleared via `clear` never lands in
+  `consumed/` and cannot be resumed from it. Delivering a working `resume` would require
+  changing `clear` from a delete to a tombstone-move (a semantic change to the existing,
+  tested `ClearGoal` contract), which is out of scope for this reachability fix.
+- The run-phase author SHALL annotate the `goal.md` `resume` section as "deferred —
+  follow-up SPEC" (a `.claude/` doc edit requiring a template mirror per REQ-GLE-025);
+  the arm CLI (REQ-GLE-031) delivers only `arm` / `status` / `clear`.
 
 ## §E — Dependencies and Follow-ups
 

@@ -5,15 +5,25 @@
 
 ## §E.1 Plan-phase Audit-Ready Signal
 
-- plan_status: audit-ready (v0.2.1 — 2 D2 fixes from plan-auditor v0.2.0 audit applied; pending re-audit)
+- plan_status: audit-ready (v0.3.0 in-place amendment — SUPERSEDES the v0.2.1 signal; plan RE-AUDIT REQUIRED — see "### Amendment 0.3.0 plan-phase re-entry" below) [prior: v0.2.1 — 2 D2 fixes from plan-auditor v0.2.0 audit applied]
 - plan_complete_at: 2026-07-12
 - tier: L (LEAN: 3 core artifacts + progress.md; design folded into plan.md § Technical Design; research.md shared from SPEC-ANALYZE-FIRST-ROUTING-001)
 - artifacts: spec.md, plan.md, acceptance.md, progress.md
-- REQ count: 29 (REQ-GLE-001..025 + REQ-GLE-026..029 added v0.2.0 amendment D8; no new REQs in v0.2.1 — REQ-GLE-010/028 reworded in-place for the D2-1 reconciliation)
-- AC count: 34 (AC-GLE-001..026 + AC-GLE-027..034 added v0.2.0 amendment D8; no new ACs in v0.2.1 — AC-GLE-021(a) re-anchored and AC-GLE-029 amended in-place for the D2 fixes)
+- REQ count: 34 (REQ-GLE-001..025 + REQ-GLE-026..029 added v0.2.0 amendment D8 + REQ-GLE-030..034 added v0.3.0 amendment; no new REQs in v0.2.1)
+- AC count: 39 (AC-GLE-001..026 + AC-GLE-027..034 added v0.2.0 amendment D8 + AC-GLE-035..039 added v0.3.0 amendment; no new ACs in v0.2.1)
 - depends_on: SPEC-ANALYZE-FIRST-ROUTING-001
 - v0.2.1 changes (plan-auditor v0.2.0 D2 fixes): D2-1 = enrich §B.5 checkpoint JSON with `failed_conditions: [{cmd, exit, tail}]` + reconcile REQ-GLE-010 ↔ REQ-GLE-028 (failed-condition+tail present in BOTH modes) + amend AC-GLE-029 to assert `failed_conditions`; D2-2 = re-anchor AC-GLE-021(a) from stale `grep -ic "goal evaluator\|goal engine" CLAUDE.md` (baseline 1, non-discriminating) to `awk '/^## 2\./,/^## 3\./' CLAUDE.md | grep -ic "goal evaluator"` (verified baseline 0, discriminating).
 - open decisions: 0 remaining — all 4 iteration-2 decisions resolved + 2 D8 amendment decisions resolved (progression-mode axis = kickoff-time choice NOT gate bypass; semi-autonomous confirm via orchestrator-bridge NOT hook prompt). See plan.md Settled Decisions. v0.2.1 pending plan re-audit per the orchestrator.
+
+### Amendment 0.3.0 plan-phase re-entry (2026-07-12) — arm CLI + prune wiring reachability
+
+- plan_status: audit-ready (v0.3.0 in-place amendment; status completed → in-progress; `amendment_of` self-ref) — **plan RE-AUDIT REQUIRED** (the amendment invalidates the cached plan-auditor PASS from v0.2.1; the plan-artifact hash changed because spec.md was modified — see spec-workflow.md § Report Persistence "Amendment as cache-invalidating event").
+- amendment_re_entry_at: 2026-07-12
+- prior_completed: 0.2.1 @ sync_commit_sha 624ae8491 (§E.4 preserved below — the SPEC remains **V3R6** modern-era via §E.2 + §E.4 + sync_commit_sha; during the amendment, frontmatter status is `in-progress`, so the `internal/spec/audit.go` completed-no-drift predicate does NOT fire and normal drift detection resumes — no Go change required).
+- amendment REQ delta: +5 (REQ-GLE-030..034) → 34 total REQs.
+- amendment AC delta: +5 (AC-GLE-035..039) → 39 total ACs.
+- verified defects (domain tooling, this tree — not text inference): (1) `grep goalCmd internal/cli/` → 0 command hits (arm CLI absent — only a `--goal` flag string in `handoff.go`); (2) `grep PruneOrphans internal/ cmd/` non-test → definition only (`internal/goal/prune.go`), ZERO call sites; (3) `ClearGoal` `os.Remove`s the file (delete, not tombstone) → confirms the §D.6 resume-deferral rationale.
+- run-phase ownership boundary: the §E.2/§E.3 evidence below is the PRIOR run (v0.2.x). The amendment's NEW REQ-GLE-030..034 + AC-GLE-035..039 are implemented in a FRESH run-phase by manager-develop AFTER plan re-audit + Implementation Kickoff Approval. The §E.2/§E.3/§E.4 markers below are PRESERVED verbatim (era classification + prior-run provenance); they are NOT this amendment's run evidence and were NOT modified by manager-spec.
 
 ### Deferred to run-phase (plan-auditor D3, v0.2.0 audit)
 
