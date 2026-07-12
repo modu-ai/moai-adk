@@ -339,14 +339,6 @@ func runAgentHook(cmd *cobra.Command, args []string) error {
 		event = hook.EventPreToolUse
 	}
 
-	// Add action to input for handler identification. json.Marshal (not a
-	// format string) so an action containing quotes cannot produce malformed JSON.
-	if actionJSON, marshalErr := json.Marshal(struct {
-		Action string `json:"action"`
-	}{Action: action}); marshalErr == nil {
-		input.Data = actionJSON
-	}
-
 	ctx, cancel := context.WithTimeout(cmd.Context(), 30*time.Second)
 	defer cancel()
 

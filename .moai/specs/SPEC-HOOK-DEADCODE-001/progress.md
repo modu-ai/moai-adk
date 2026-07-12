@@ -43,17 +43,35 @@ Plan-phase artifacts (spec.md + plan.md + acceptance.md + this progress.md skele
 - **Doc hygiene edit** (2 files, +1/−1 each): `agent-hooks.md` "Handler Architecture" section corrected in BOTH live copy (`.claude/rules/moai/core/agent-hooks.md`) AND template mirror (`internal/template/templates/.claude/rules/moai/core/agent-hooks.md`) — dangling `internal/hook/agents/factory.go` reference replaced with generic `EventType`-based dispatch description.
 - **Commit-time verification** (per commit context): `go build ./...` exit 0; `go list -deps ./cmd/moai | grep -E 'internal/hook/(agents|lifecycle)'` empty (exit 1 — both packages absent from binary dependency graph); `agent-hooks.md` live ↔ template mirror byte-identical; 20-package test subset green.
 
-### M2 — _<pending run-phase>_
+### M2 — COMPLETED 2026-07-04 (commit `f7bfa86a9`)
 
-_<pending run-phase>_
+- **Commit**: `f7bfa86a9` — `refactor(SPEC-HOOK-DEADCODE-001): M2 dual_parse.go 무호출 함수5개+테스트 삭제 (HookResponse 타입 보존)` (2026-07-04)
+- **Stats** (`git show --stat f7bfa86a9`): 4 files changed, 635 deletions(−)
+- **Files deleted** (2 whole files):
+  - `internal/hook/dual_parse.go` (172 LOC — 5 dead funcs: ParseHookOutput, synthesizeFromExitCode, ValidateHookResponse, ToHookOutput, ToHookResponse; 2 package-level error vars: ErrHookProtocolLegacyRejected, ErrHookInvalidPermissionDecision)
+  - `internal/hook/dual_parse_test.go` (375 LOC — dedicated test for the deleted functions)
+- **Files edited** (2):
+  - `internal/hook/response.go` (2 LOC) — line-9 doc-comment reference to `ParseHookOutput` removed; `type HookResponse struct {` now at line 9
+  - `internal/hook/response_test.go` (86 LOC) — 3 dependent test functions removed: `TestPermissionDecisionValues`, `TestHookResponseContinue`, `TestHookResponseAdditionalContextTruncation`
+- **PRESERVE confirmed** (orchestrator independent verification 2026-07-12): `HookResponse` type (`response.go:9`) intact; `internal/permission/resolver.go` HookResponse references = **9** (unchanged baseline).
+- **Orchestrator independent verification** (2026-07-12, local main `89a5dd086`): `go build ./...` exit 0; `go test ./internal/hook/...` all `ok` (green); dead-func caller grep EMPTY (exit 1); stale-import grep EMPTY (exit 1); `response_test.go` retains only 3 unrelated tests (`TestHookResponseEventNames`, `TestHookResponseMarshalUnmarshal`, `TestRetryHint`).
 
-### M3 — _<pending run-phase>_
+### M3 — COMPLETED 2026-07-12 (orchestrator-direct; commit pending this session)
 
-_<pending run-phase>_
+- **Scope** (narrowed per plan-audit D3 remediation — the hooks-system.md:322 false-attribution item was removed as already-correct, verified by orchestrator cross-check 2026-07-12: live line 323 carries the correct `handle-agent-hook.sh` PreToolUse/PostToolUse/SubagentStop attribution):
+  1. `internal/cli/hook.go` `runAgentHook`: removed the dead `input.Data = actionJSON` injection block (the `json.Marshal` struct + assignment, ~7 LOC incl. 2-line comment). The `HookInput.Data` field declaration (`internal/hook/types.go:316`) is RETAINED per spec §A.3 — the writer was removed because the field has zero readers repo-wide.
+  2. `agent-hooks.md` "Agent Hook Actions" table: added the missing `| sync-auditor | - | - | evaluator-completion |` row — in BOTH the live copy (`.claude/rules/moai/core/agent-hooks.md`) AND the template mirror (`internal/template/templates/.claude/rules/moai/core/agent-hooks.md`), byte-identical.
+- **PRESERVE confirmed** (orchestrator verification 2026-07-12): `HookInput.Data` (`types.go:316`) + `HookOutput.Data` (`types.go:380`) field declarations both intact; `moai hook agent` subcommand registration + `registry.Dispatch` call unchanged; 4 agent-frontmatter `hooks:` blocks untouched.
+- **Orchestrator independent verification** (2026-07-12): `go build ./...` exit 0; `go test ./internal/hook/... ./internal/cli/...` all `ok` (green); `input.Data = ` writer grep EMPTY; `diff live template` IDENTICAL; `evaluator-completion` row count = 1 in both copies.
 
 ## §E.3 Run-phase Audit-Ready Signal
 
-_<pending run-phase>_
+Run-phase COMPLETE — all 3 milestones executed and independently verified by the orchestrator (2026-07-12):
+- **M1** `43c996bb7` — agents/+lifecycle/ deletion (18 files / 2874 LOC) + agent-hooks.md Handler Architecture correction.
+- **M2** `f7bfa86a9` — dual_parse.go whole-file deletion (5 funcs + 2 error vars) + 3 dependent response_test.go functions + response.go:9 doc.
+- **M3** (this session, orchestrator-direct) — HookInput.Data dead-injection removal + evaluator-completion doc row (live + template mirror).
+
+Aggregate verification: `go build ./...` exit 0, `go test ./internal/hook/... ./internal/cli/...` green, dead-func caller grep EMPTY, stale-import grep EMPTY, mirror parity IDENTICAL. All PRESERVE targets intact across M1-M3 (HookResponse type `response.go`, `resolver.go` 9 references, `moai hook agent` subcommand, HookInput/HookOutput.Data field declarations). Ready for sync-phase (manager-docs).
 
 ## §E.4 Sync-phase Audit-Ready Signal
 

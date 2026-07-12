@@ -50,6 +50,7 @@ Actions follow the naming pattern `{agent}-{phase}`:
 | manager-develop | develop-pre-implementation | develop-post-implementation | develop-completion |
 | manager-spec | - | - | spec-completion |
 | manager-docs | - | docs-verification | docs-completion |
+| sync-auditor | - | - | evaluator-completion |
 
 Note: The archived `expert-backend` / `expert-frontend` / `expert-devops` / `manager-quality` rows that previously appeared here were removed during the catalog consolidation. Domain expertise formerly routed through those agents is now delivered via per-spawn `Agent(general-purpose)` per `.claude/rules/moai/workflow/archived-agent-rejection.md` §C; quality-gate enforcement moved to the global Stop hook `sync-phase-quality-gate.sh` (see `.claude/rules/moai/core/agent-common-protocol.md` § Hook Invocation Surface).
 
