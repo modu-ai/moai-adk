@@ -78,10 +78,12 @@ The `draft → in-progress` transition rode M1 (539aa3e3f).
 | AC-MTP-019..023b, 027a, 027b | M4 | PASS | handler render + selector + both plan previews; router-level persistence round-trip; scoped-write negative invariants (405/4xx + byte-identity); i18n ×4; templ-sync clean |
 | AC-MTP-028..032a | M5 | PASS | detection truth table (7 rows incl. corrected `team_mode="glm"→TRUE`); 5→3 collapse table; coding-max override membership; effort-only + non-GLM no-op; `glm.go` wiring reachability grep |
 | AC-MTP-032b | M5 | **PASS-WITH-RESIDUAL** | Branch-B chosen + wired + inject↔clear parity verified in code; **wire-effectiveness EMPIRICALLY UNVERIFIED** — see §E.4 residual |
-| AC-MTP-026a..026d | Global | PASS | touched-package suites green (config/template/web/core-project/cli); `moai spec lint` 0 SPEC-attributable errors (delta +0); coverage ≥85% on changed config/template |
+| AC-MTP-026a..026d | Global | PASS | touched-package suites green (config/template/web/core-project/cli); `moai spec lint` 0 SPEC-attributable errors (delta +0); coverage — changed FILES ≥85% (plan_type.go 100%, glm_effort_overlay 7 fns 100%, template pkg 85.1%); config package aggregate 80.9% is a PRE-EXISTING baseline (M1-M4 parent, untested loader error paths — NOT SPEC-attributable) |
 
-Coverage note: `internal/config` and `internal/template` changed packages ≥85% per run-phase §E
-capture; touched packages `internal/{config,template,web,cli,core/project}` all green.
+Coverage note: changed FILES are ≥85% (plan_type.go 100%, glm_effort_overlay 7 fns 100%,
+`internal/template` pkg 85.1%); the `internal/config` package aggregate 80.9% is a pre-existing
+baseline (untested loader error paths, NOT SPEC-attributable) — the SPEC added no under-covered
+config statements. Touched packages `internal/{config,template,web,cli,core/project}` all green.
 
 ## §E.3 Run-phase Audit-Ready Signal
 

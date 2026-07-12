@@ -2,7 +2,7 @@
 id: SPEC-MODEL-TIER-PLANTYPE-001
 title: "Acceptance criteria — plan_type-aware model tier profiles"
 version: "0.3.1"
-status: draft
+status: completed
 created: 2026-07-12
 updated: 2026-07-12
 author: manager-spec
