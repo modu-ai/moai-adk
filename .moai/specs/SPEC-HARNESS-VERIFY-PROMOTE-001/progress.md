@@ -94,7 +94,7 @@ m1_to_mN_commit_strategy: "3 milestones, Route A Hybrid Trunk direct-to-main. M1
 ```yaml
 sync_status: PASS
 sync_complete_at: 2026-07-12
-sync_commit_sha: pending-backfill-harness-verify-promote-001   # backfilled in a follow-up commit (a commit cannot know its own SHA)
+sync_commit_sha: 09aec212ea7791a1401734f08d5e34954b593f61
 changelog_entry_position: "[Unreleased] > ### Added (first entry, Epic 'Project-Harness Pipeline' SPEC 3/3)"
 frontmatter_status_transitions:
   spec_md: "in-progress -> completed (this commit)"
