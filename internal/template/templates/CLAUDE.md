@@ -185,6 +185,8 @@ Tools that are not installed are skipped gracefully. Projects with no recognized
 
 [ZONE:Frozen] [HARD] `AskUserQuestion`, `TaskCreate`, `TaskUpdate`, `TaskList`, `TaskGet` are **deferred tools** — schemas NOT loaded at session start. Call `ToolSearch(query: "select:AskUserQuestion,TaskCreate,TaskUpdate,TaskList,TaskGet", max_results: 5)` before first use.
 
+[ZONE:Evolvable] [HARD] Native-UTF-8 tool-call payloads: every tool-call payload carrying `conversation_language` text (AskUserQuestion questions/options, Bash commands, Write/Edit content) MUST be written as native UTF-8. Hand-authored `\uXXXX` escape sequences are PROHIBITED — they corrupt the JSON into an `InputValidationError` / `Invalid tool parameters`, and the failure is self-reinforcing (one `\uXXXX` run in context seeds the next). SSOT: `.claude/rules/moai/core/askuser-protocol.md` § Non-ASCII Tool-Call Encoding (mechanism + recovery + pre-emit self-check).
+
 The AskUserQuestion channel rules (Socratic interview limits, recommended-option label, anti-patterns, pre-response self-check) are the SSOT at `.claude/rules/moai/core/askuser-protocol.md`. The orchestrator–subagent interaction boundary (subagents return blocker reports instead of prompting; MoAI bridges AskUserQuestion + SendMessage + TaskList in team mode) is at `.claude/rules/moai/core/agent-common-protocol.md` § User Interaction Boundary.
 
 ---

@@ -458,11 +458,27 @@ The corrective lever is step 1: keep multi-byte text as native UTF-8 in every to
 - **Preventive (always):** write all `conversation_language` text as native UTF-8 in the tool-call JSON — this binds **every** tool call that carries multi-byte text, not only `AskUserQuestion` but Bash commands, Write / Edit content arguments, and any other tool-call payload. Never hand-escape a non-ASCII character.
 - **Recovery (on failure):** if a call is rejected with `Invalid tool parameters` and the payload contained non-ASCII text, re-issue the identical call with the text rewritten as native UTF-8 — do not try to "repair" the escape sequence.
 
+### Self-Reinforcing Pollution Loop (why one failure recurs)
+
+This failure is **not** an isolated one-off — it is self-reinforcing, and that is why it "keeps happening" rather than failing once and clearing. The Root-Cause Mechanism above is a loop, not a line: once a single `\uXXXX` run is seeded into the conversation context (step 2, prompt pollution), the model sees escaped text in its own context and mimics that format on the *next* tool call too (step 3), re-seeding fresh corruption. Left unbroken, one malformed call becomes a run of malformed calls.
+
+Breaking the loop requires more than retrying the one rejected call:
+
+- **Do not carry the corrupted form forward.** After a recovery, the very next tool call carrying non-ASCII text is the highest-risk moment — the polluted context is still in view. Re-author that payload as native UTF-8 from the intended source text (the user's actual words), NOT by transcribing the `\uXXXX` sequence you can see in context.
+- **Recovery is per-payload, not per-call-type.** The clean-up applies to Bash, Write / Edit, and every subsequent multi-byte tool call in the turn — not only the `AskUserQuestion` that first failed.
+- **Persistent recurrence → reset the context.** If native-UTF-8 re-authoring still yields repeated `InputValidationError` on non-ASCII payloads within the same session, the context is saturated with `\uXXXX` runs. Escalate to a `/clear` (per `context-window-management.md` § Context Window Targets) with a paste-ready resume message, so the next session starts from an un-polluted context. This is the last-resort loop-break, not the first response.
+
+### Pre-Emit Self-Check (before any tool call carrying non-ASCII text) — 3 items
+
+- [ ] Is every `conversation_language` string in this payload written as native UTF-8 characters (한글 / 日本語 / 中文), with **zero** hand-authored `\uXXXX` sequences?
+- [ ] Am I authoring this text from the intended source meaning, not transcribing an escaped `\uXXXX` run visible in my own context?
+- [ ] If a prior call in this turn already failed with `Invalid tool parameters` on non-ASCII text, have I re-authored — not repaired — this payload, and am I watching for a saturated context that warrants `/clear`?
+
 ### Scope Note
 
 This is a model-output discipline, not a project-code defect: a correct JSON serializer (for example Go's `encoding/json`) already preserves multi-byte UTF-8 and never emits `ensure_ascii`-style escapes, so it cannot be the pollution source. The discipline binds the orchestrator's own construction of every tool call — `AskUserQuestion`, Bash, Write / Edit, and any other tool whose JSON payload carries non-ASCII text — not just clarification rounds. The `AskUserQuestion` case above is the origin example; a corrupted `\uXXXX` escape in a Bash command or a Write payload fails the same way.
 
 ---
 
-Version: 1.1.0
+Version: 1.2.0
 Classification: Canonical Reference — do not duplicate content; cross-reference this file instead.

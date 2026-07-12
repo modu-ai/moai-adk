@@ -91,7 +91,7 @@ catalog:
             - name: moai-domain-html-report
               tier: core
               path: templates/.claude/skills/moai-domain-html-report/
-              hash: a818c4d86db127792ef0af62272b7d3addf8d05c493fdbcf9cf827a3e96d150c
+              hash: 0c0686b3b45bf6198446d455fe09640d2884325703f4caed0a03fee78b87756a
               version: 1.0.0
         agents:
             - name: sync-auditor
