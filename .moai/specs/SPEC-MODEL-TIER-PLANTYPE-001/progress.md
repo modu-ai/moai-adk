@@ -100,7 +100,7 @@ capture; touched packages `internal/{config,template,web,cli,core/project}` all 
 
 ```yaml
 sync_complete_at: 2026-07-12
-sync_commit_sha: pending-backfill-sync
+sync_commit_sha: 83e36b8612734fb4d61ea298742c758b53bd98d6
 sync_status: PASS-WITH-DEBT
 changelog_entry_position: "[Unreleased] › Added (top)"
 frontmatter_status_transitions:
