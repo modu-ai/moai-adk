@@ -2,7 +2,7 @@
 id: SPEC-HARNESS-EVOLVE-002
 title: "Curator Editable Surfaces — Loop 2 (write layer) of the self-evolving harness"
 version: "0.1.0"
-status: draft
+status: in-progress
 created: 2026-07-12
 updated: 2026-07-12
 author: manager-spec
