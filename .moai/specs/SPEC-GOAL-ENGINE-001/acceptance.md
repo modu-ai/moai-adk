@@ -437,19 +437,36 @@ reachable, not merely that a symbol exists.
 go test ./internal/cli/ -run TestGoalArmEvalLinkage -v 2>&1 | tail -8
 ```
 PASS when the Go test asserts the full linkage in one flow, against a `t.TempDir()`
-project root and a fixed session id `X`:
-1. the arming path (the `moai goal arm` code path) PARSES the condition argument into a
-   `conditions[]` entry (a bare shell string → `{type:mechanical}`; a transcript claim →
-   `{type:model}` — REQ-GLE-032) with `ceiling.max_turns == 30`, and writes
-   `.moai/state/goal/X.json` (assert the file exists at that EXACT path — NOT `pid-*.json`);
+project root and a fixed session id `X`.
+
+**[D1 hardening — arm via the REGISTERED command, NOT an engine helper]** The arming half
+MUST drive the arm through the REGISTERED cobra command — the SAME `RunE` that AC-GLE-035
+proves is registered under `rootCmd` — e.g.
+`rootCmd.SetArgs([]string{"goal","arm","<cond>","--session","X"}); rootCmd.Execute()`
+(or the equivalent CLI test-harness invocation that dispatches the real `goal arm` RunE).
+It MUST NOT call the engine helpers (`goal.NewGoal` + `goal.SaveGoal`) DIRECTLY. Rationale:
+a stub `arm` RunE (`return nil`) plus a test that drives a private helper directly would
+satisfy BOTH AC-GLE-035 (`arm` listed in `--help`) AND a helper-drive AC-036 (helper writes
+`X.json`, hook loads it) while `moai goal arm` typed at a terminal stays INERT — reproducing
+the exact inert-arming defect one level down. **The registered `goal arm` RunE MUST be the
+code path that writes the state file** — this closes the registered-command↔behavior gap
+(proving `arm` is in `--help` is insufficient; AC-036 proves the registered RunE actually
+writes reachable state).
+
+The asserted flow:
+1. driving `goal arm "<cond>" --session X` THROUGH the registered command PARSES the
+   condition argument into a `conditions[]` entry (a bare shell string → `{type:mechanical}`;
+   a transcript claim → `{type:model}` — REQ-GLE-032) with `ceiling.max_turns == 30`, and
+   writes `.moai/state/goal/X.json` (assert the file exists at that EXACT path — NOT
+   `pid-*.json`);
 2. `moai hook stop-goal`, given the SAME session id `X` on its stdin, LOADS that goal
    (`LoadGoal(root, "X")` returns the armed goal) and emits the expected turn-end verdict
    — a block decision while a mechanical condition fails, or no-block once all conditions
    pass.
-Baseline: no such linkage exists today — the arm path is absent (`grep goalCmd` → 0), so
+Baseline: no such linkage exists today — the arm command is absent (`grep goalCmd` → 0), so
 arm and eval cannot share state. This AC is the make-or-break reachability pin: it cannot
-pass today (the arm half cannot run) and passes only when the arm CLI AND the shared
-session-id keying (AC-GLE-037) are both wired.
+pass today (the registered arm RunE does not exist) and passes only when the registered
+`goal arm` command AND the shared session-id keying (AC-GLE-037) are both wired.
 
 ### AC-GLE-037 — session-id consistency (no silent pid fallback) (REQ-GLE-033)
 
@@ -469,21 +486,25 @@ file the hook can never find.
 ### AC-GLE-038 — PruneOrphans wired on session-start (fail-open) (REQ-GLE-034)
 
 ```bash
-# (a) real call site on the session-start path (baseline 0):
-grep -c 'PruneOrphans' internal/hook/session_start.go   # expect ≥1 (was 0)
+# (a) real CALL site on the session-start path — anchored to the CALL form `goal.PruneOrphans(`
+#     (the `goal.` package qualifier + open paren) with comment lines excluded, so it matches
+#     the CALL, NOT the func definition (`func PruneOrphans(` in package goal — no `goal.`
+#     qualifier) nor a bare-mention comment:
+grep -nE 'goal\.PruneOrphans\(' internal/hook/session_start.go | grep -vE ':[0-9]+:[[:space:]]*//' | wc -l   # expect ≥1 (was 0)
 # (b) fail-open + orphan-moved behavior:
 go test ./internal/hook/ -run TestSessionStartPrunesGoalOrphans -v 2>&1 | tail -8
 ```
-Baseline (verified this amendment): (a) `grep -c 'PruneOrphans' internal/hook/session_start.go`
-→ 0 (the only non-test occurrence of `PruneOrphans` in the repo is its DEFINITION at
-`internal/goal/prune.go` — ZERO call sites). PASS when (a) ≥1 (a real call site exists on
-the session-start path) AND (b) the Go test asserts BOTH: session-start moves an orphan
-goal state file (a session id absent from `active-sessions.json`) to
-`.moai/state/goal/consumed/`, AND a prune error does NOT block session start (fail-open —
-the handler still returns its normal output on prune failure). NOTE: the grep is anchored
-to `internal/hook/session_start.go` specifically (not any `_test.go`, not the
-`internal/goal` definition), so it is discriminating — a call site elsewhere would not
-satisfy it.
+Baseline (verified this amendment): (a) the call-form grep `goal\.PruneOrphans\(` on
+`internal/hook/session_start.go` (comment lines excluded) → 0 (the only non-test occurrence
+of `PruneOrphans` in the repo is its DEFINITION `func PruneOrphans(` at
+`internal/goal/prune.go` — ZERO call sites). PASS when (a) ≥1 (a real CALL site exists on
+the session-start path — the `goal.` qualifier + `(` anchors to the call, excluding the
+`func PruneOrphans(` definition and any comment mention) AND (b) the Go test asserts BOTH:
+session-start moves an orphan goal state file (a session id absent from
+`active-sessions.json`) to `.moai/state/goal/consumed/`, AND a prune error does NOT block
+session start (fail-open — the handler still returns its normal output on prune failure).
+The call-form anchor (not a bare `PruneOrphans` grep) is what makes (a) discriminating: a
+comment or the package-goal definition cannot satisfy it.
 
 ### AC-GLE-039 — resume NOT delivered (out of scope) (REQ-GLE-031)
 

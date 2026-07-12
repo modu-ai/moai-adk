@@ -355,10 +355,16 @@ transcript/mechanically measurable AND bounded by a turn ceiling.
   out of scope for this amendment (§D.6) — the arm CLI shall NOT register a runnable
   `resume` subcommand.
 - **REQ-GLE-032** (Event-driven): **When** `moai goal arm` parses its condition
-  argument, a bare shell-command string shall become a mechanical condition
-  (`{type:mechanical, cmd, expect_exit}`) and a transcript-referencing claim shall
-  become a model condition (`{type:model, claim}`), reusing the existing schema
-  `Condition` type; the armed goal shall carry the default turn ceiling
+  argument, it shall classify the condition by an EXPLICIT rule (the parse branch shall
+  be specified, NOT an implicit heuristic): a bare shell-command string — a runnable
+  command (e.g. `go test ./... exits 0`) — shall become a mechanical condition
+  (`{type:mechanical, cmd, expect_exit}`); a natural-language claim that references the
+  conversation transcript (e.g. `all AC rows show PASS in the transcript`) shall become a
+  model condition (`{type:model, claim}`). The classification rule is therefore
+  `shell-command string → mechanical; transcript-referencing claim → model`. The
+  orchestrator MAY additionally pass an explicitly-typed structured condition set when
+  arming programmatically, bypassing the string heuristic. Both forms reuse the existing
+  schema `Condition` type; the armed goal shall carry the default turn ceiling
   (`ceiling.max_turns == 30`).
 - **REQ-GLE-033** (Ubiquitous): The `moai goal` arming path shall resolve the active
   session id via `moai session current` (`resolveCurrentSessionID`, already implemented
@@ -368,7 +374,10 @@ transcript/mechanically measurable AND bounded by a turn ceiling.
   (`pid-<pid>`) discriminator — a pid-keyed arm file would never be found by the hook
   (which runs in a different PID), making the armed goal unreachable. (The
   `WriterPidKey()` fallback of REQ-GLE-008 stays valid ONLY when no real session id
-  resolves.)
+  resolves.) The `moai goal arm` command MAY accept a `--session <id>` override — used
+  for deterministic testing (AC-GLE-036 drives the registered command with `--session X`)
+  and for programmatic arming; when the override is absent it resolves via
+  `moai session current` as above.
 - **REQ-GLE-034** (Event-driven): **When** a session starts, the session-start path
   (`internal/hook/session_start.go`) shall invoke `internal/goal.PruneOrphans` with a
   real call site, feeding the active session IDs read from the active-sessions registry
