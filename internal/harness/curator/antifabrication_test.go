@@ -111,3 +111,34 @@ func TestContainsForbiddenContent(t *testing.T) {
 		}
 	}
 }
+
+// --- AC-HEV2-039 (REQ-HEV2-031 machine-signal-only + Scenario 8): the writer's
+// write authority derives from mechanical state, NEVER from model self-report.
+// A bullet whose text is a model self-report — prose citing internal evidence
+// tokens (SPEC IDs, REQ tokens, dates, commit SHAs) the model "decided" on
+// rather than a machine signal — is rejected with ErrForbiddenContent WITHOUT
+// touching the file. ---
+
+func TestWriteManagedBlock_RejectsModelSelfReport(t *testing.T) {
+	selfReports := []struct{ name, text string }{
+		{"cites SPEC + REQ", "Per SPEC-HARNESS-EVOLVE-001 REQ-HEV-006, the ledger records outcomes"},
+		{"cites AC + date", "I verified AC-HEV2-014 on 2026-07-12 and it passed"},
+		{"cites commit SHA", "the model decided commit d4edb5fb5 fixed this pattern"},
+	}
+	for _, tc := range selfReports {
+		t.Run(tc.name, func(t *testing.T) {
+			path := writeFixture(t, "# Project\n")
+			before := mustRead(t, path)
+
+			err := WriteManagedBlock(path, BlockTypeLearnedWorkflow, BlockContent{
+				Bullets: []Bullet{{LedgerKey: "k1", Text: tc.text}},
+			})
+			if !errors.Is(err, ErrForbiddenContent) {
+				t.Fatalf("model self-report %q should be rejected with ErrForbiddenContent, got %v", tc.text, err)
+			}
+			if string(before) != string(mustRead(t, path)) {
+				t.Errorf("file modified despite model-self-report rejection (case %s)", tc.name)
+			}
+		})
+	}
+}

@@ -251,3 +251,50 @@ func TestBullet_ProvisionalOmitsKeyMarker(t *testing.T) {
 		t.Error("provisional bullet should not carry a key marker")
 	}
 }
+
+// TestBullet_ProvisionalNullLedgerKey (AC-HEV2-023, Scenario 9): a Tier-1
+// provisional observation carries a null (empty) ledger_key — the bullet renders
+// with NO key marker and the recall-layer DigestEntry.Provisional() reports true
+// (evidence-or-null, REQ-HEV2-017/024). A later Tier-3 promotion replaces the
+// provisional marker with a real ledger_key.
+func TestBullet_ProvisionalNullLedgerKey(t *testing.T) {
+	provisional := Bullet{LedgerKey: "", Text: "single occurrence, no aggregated evidence", Provisional: true}
+	if provisional.LedgerKey != "" {
+		t.Fatalf("provisional bullet must carry a null (empty) ledger_key")
+	}
+	// The recall-layer DigestEntry mirror reports the provisional state.
+	if de := (DigestEntry{Summary: provisional.Text, LedgerKey: provisional.LedgerKey}); !de.Provisional() {
+		t.Errorf("DigestEntry.Provisional() should report true for a null ledger_key")
+	}
+
+	// Write the provisional bullet → renders with NO key marker.
+	path := writeFixture(t, "# Project\n")
+	if err := WriteManagedBlock(path, BlockTypeLearnedWorkflow, BlockContent{
+		Bullets: []Bullet{provisional},
+	}); err != nil {
+		t.Fatalf("WriteManagedBlock (provisional): %v", err)
+	}
+	data := string(mustRead(t, path))
+	if !strings.Contains(data, "- single occurrence, no aggregated evidence") {
+		t.Fatal("provisional bullet text missing")
+	}
+	if strings.Contains(data, "<!-- key:") {
+		t.Errorf("provisional bullet must not carry a key marker (null ledger_key)")
+	}
+
+	// Tier-3 promotion: the same pattern gains a real ledger_key. Re-writing the
+	// block with the promoted bullet replaces the provisional marker with the key.
+	promoted := Bullet{LedgerKey: "lw-promoted-001", Text: provisional.Text}
+	if err := WriteManagedBlock(path, BlockTypeLearnedWorkflow, BlockContent{
+		Bullets: []Bullet{promoted},
+	}); err != nil {
+		t.Fatalf("WriteManagedBlock (promoted): %v", err)
+	}
+	promotedData := string(mustRead(t, path))
+	if !strings.Contains(promotedData, "<!-- key: lw-promoted-001 -->") {
+		t.Errorf("promoted bullet must carry the real ledger_key marker")
+	}
+	if de := (DigestEntry{Summary: promoted.Text, LedgerKey: promoted.LedgerKey}); de.Provisional() {
+		t.Errorf("promoted DigestEntry.Provisional() should report false")
+	}
+}
