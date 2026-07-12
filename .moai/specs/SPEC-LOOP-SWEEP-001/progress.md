@@ -48,3 +48,16 @@ _<pending run-phase — owned by manager-develop>_
 ## §E.4 Sync-phase Audit-Ready Signal
 
 _<pending sync-phase — owned by manager-docs>_
+
+## §F Phase 0.95 Mode Selection
+
+- Input parameters: tier=M; scope=~5-8 files (loop.md rewrite + rule/template mirrors + acceptance); domain count=2 (workflow skills + rules); file language mix=100% markdown/docs; concurrency benefit=LOW (docs-heavy, sequential).
+- Mode evaluation:
+  - Mode 1 (trivial): not selected — multi-file semantic doc rewrite, not a typo.
+  - Mode 2 (background): not selected — write work, not read-only async.
+  - Mode 3 (agent-team): not selected — RETIRED tombstone.
+  - Mode 4 (parallel): not selected — not multi-domain research (2 domains, docs-only).
+  - Mode 5 (sub-agent): SELECTED — default fallback; docs-heavy single-agent sequential.
+  - Mode 6 (workflow): not selected — <30 files and not a single uniform mechanical transform.
+- Decision: sub-agent
+- Justification: SPEC-LOOP-SWEEP-001 is a Tier M docs-heavy rewrite (loop.md redefined as a goal-engine preset + rule/template mirrors). It is neither multi-domain research (Mode 4) nor high-volume mechanical transformation (Mode 6). A single sequential manager-develop sub-agent (Mode 5) is correct per Anthropic's coding-task parallelism caveat. Implementation Kickoff Approval was obtained before this run-phase entry.
