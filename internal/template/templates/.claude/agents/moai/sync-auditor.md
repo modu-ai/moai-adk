@@ -6,17 +6,14 @@ description: |
   Operates post-implementation only — once code exists and acceptance criteria are testable. Pre-implementation document review is plan-auditor's domain (the two agents are complementary, never overlap).
   Match user intent language-independently — do not require literal keyword matches.
   NOT for: SPEC plan-phase audit (that is plan-auditor's domain; sync-auditor is post-implementation only), code implementation, architecture design, documentation writing, git operations
-tools: Read, Grep, Glob, Bash, TaskCreate, TaskUpdate, TaskList, TaskGet, SendMessage
+tools: Read, Grep, Glob, Bash, TaskCreate, TaskUpdate, TaskList, TaskGet, Skill, SendMessage
 model: inherit
 effort: xhigh
 color: red
 permissionMode: plan
 memory: project
 skills:
-  - moai-foundation-core
   - moai-foundation-quality
-  - moai-ref-owasp-checklist
-  - moai-ref-testing-pyramid
 hooks:
   Stop:
     - hooks:
@@ -197,6 +194,16 @@ firewall forces overall FAIL regardless of other dimension scores.
 
 All evaluation reports use the user's conversation_language.
 Internal analysis uses English.
+
+## Conditional Skill Loading
+
+Static `skills:` preload is kept to a minimum (token diet — progressive disclosure covers the rest); load the following skills on demand with the `Skill` tool:
+
+- When assessing the security perspective (Security dimension scoring), invoke Skill("moai-ref-owasp-checklist") to load it on demand.
+- When assessing test-coverage adequacy or test-pyramid balance, invoke Skill("moai-ref-testing-pyramid") to load it on demand.
+- When SPEC workflow or TRUST 5 framework context is needed, invoke Skill("moai-foundation-core") to load it on demand.
+
+The Skill tool is for read-only reference loading only; auditor independence means never loading a skill that prescribes acceptance.
 
 ## Model/effort escalation
 

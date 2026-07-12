@@ -63,6 +63,13 @@ const (
 
 	// EnvUpdateURL overrides the GitHub releases API URL.
 	EnvUpdateURL = "MOAI_UPDATE_URL"
+
+	// EnvNoProfileFallback disables the last-used-profile fallback for bare
+	// `moai cc`/`glm`/`cg` invocations. When set to "1", a bare launch with no
+	// -p flag uses the default profile even when the default is empty and a
+	// named profile was previously launched. Users who want strict default
+	// semantics set this to opt out of the fallback.
+	EnvNoProfileFallback = "MOAI_NO_PROFILE_FALLBACK"
 )
 
 // MoAI test-only environment variables.

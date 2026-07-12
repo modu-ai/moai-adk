@@ -7,7 +7,7 @@ description: |
   Match user intent language-independently — do not require literal keyword matches.
   NOT for: component code implementation (manager-develop), SPEC body
   authoring (manager-spec).
-tools: Read, Write, Edit, Grep, Glob, Bash, DesignSync, TaskCreate, TaskUpdate, TaskList, TaskGet, SendMessage
+tools: Read, Write, Edit, Grep, Glob, Bash, DesignSync, TaskCreate, TaskUpdate, TaskList, TaskGet, Skill, SendMessage
 model: inherit
 effort: xhigh
 color: pink

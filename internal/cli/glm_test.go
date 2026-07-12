@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/modu-ai/moai-adk/internal/config"
+	"github.com/modu-ai/moai-adk/internal/template"
 )
 
 func TestGLMCmd_Exists(t *testing.T) {
@@ -596,5 +597,43 @@ func TestRemoveGLMEnv_DropsStatuslineContextSize(t *testing.T) {
 	}
 	if v, present := settings.Env["MOAI_STATUSLINE_CONTEXT_SIZE"]; present {
 		t.Errorf("removeGLMEnv left MOAI_STATUSLINE_CONTEXT_SIZE = %q (expected absent)", v)
+	}
+}
+
+// TestGLMReasoningEnvVarsForEffort verifies the prefs-derived GLM reasoning
+// env injection for the main session. It is the main-session wire point that
+// derives ANTHROPIC_REASONING_EFFORT from the web-set effort (z.ai honors
+// reasoning_effort, NOT Claude's 5-step CLAUDE_CODE_EFFORT_LEVEL). Distinct from
+// glmReasoningEnvVars() (the hardcoded coding-max session default used for
+// sub-agents / empty-effort fallback), this helper carries prefs.EffortLevel
+// through to z.ai.
+func TestGLMReasoningEnvVarsForEffort(t *testing.T) {
+	cases := []struct {
+		name          string
+		effort        string
+		wantPresent   bool
+		wantReasoning string
+	}{
+		{"low disables thinking (no key)", template.EffortLevelLow, false, ""},
+		{"medium → reasoning high", template.EffortLevelMedium, true, template.GLMReasoningEffortHigh},
+		{"high → reasoning high", template.EffortLevelHigh, true, template.GLMReasoningEffortHigh},
+		{"xhigh → reasoning max", template.EffortLevelXHigh, true, template.GLMReasoningEffortMax},
+		{"max → reasoning max", template.EffortLevelMax, true, template.GLMReasoningEffortMax},
+		{"empty → session default (reasoning max)", "", true, template.GLMReasoningEffortMax},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			got := glmReasoningEnvVarsForEffort(tc.effort)
+			v, present := got[config.EnvAnthropicReasoningEffort]
+			if present != tc.wantPresent {
+				t.Errorf("glmReasoningEnvVarsForEffort(%q): %s present=%v, want %v (got=%v)",
+					tc.effort, config.EnvAnthropicReasoningEffort, present, tc.wantPresent, got)
+				return
+			}
+			if tc.wantPresent && v != tc.wantReasoning {
+				t.Errorf("glmReasoningEnvVarsForEffort(%q)[%s] = %q, want %q",
+					tc.effort, config.EnvAnthropicReasoningEffort, v, tc.wantReasoning)
+			}
+		})
 	}
 }

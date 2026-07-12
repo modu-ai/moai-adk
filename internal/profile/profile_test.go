@@ -3,6 +3,7 @@ package profile
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -201,5 +202,167 @@ func TestDelete_Success(t *testing.T) {
 
 	if _, err := os.Stat(profileDir); !os.IsNotExist(err) {
 		t.Error("profile directory should be deleted")
+	}
+}
+
+// TestResolveLaunchProfile_EmptyInputReturnsLastUsed verifies that when no -p
+// flag is given (profileName==""), ResolveLaunchProfile falls back to the
+// last_profile recorded in launch.yaml, and that the resolved profile yields
+// real preferences.
+func TestResolveLaunchProfile_EmptyInputReturnsLastUsed(t *testing.T) {
+	tmpDir := t.TempDir()
+	orig := BaseDirOverride
+	defer func() { BaseDirOverride = orig }()
+	BaseDirOverride = tmpDir
+
+	// Empty base preferences (the default profile is unconfigured).
+	if err := os.WriteFile(filepath.Join(tmpDir, "preferences.yaml"), []byte("{}\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	// Named profile with real preferences.
+	namedDir := filepath.Join(tmpDir, "moai-adk")
+	if err := os.MkdirAll(namedDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(namedDir, "preferences.yaml"), []byte("model: opus[1m]\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	// launch.yaml ledger pointing to the named profile.
+	if err := os.WriteFile(filepath.Join(tmpDir, "launch.yaml"), []byte("last_profile: moai-adk\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	t.Setenv("CLAUDE_CONFIG_DIR", "")
+
+	resolved := ResolveLaunchProfile("")
+	if resolved != "moai-adk" {
+		t.Fatalf("ResolveLaunchProfile('') = %q, want %q", resolved, "moai-adk")
+	}
+
+	// The resolved profile must yield real preferences.
+	prefs, err := ReadPreferences(resolved)
+	if err != nil {
+		t.Fatalf("ReadPreferences(%q) error: %v", resolved, err)
+	}
+	if prefs.Model != "opus[1m]" {
+		t.Errorf("ReadPreferences(%q).Model = %q, want %q", resolved, prefs.Model, "opus[1m]")
+	}
+}
+
+// TestResolveLaunchProfile_ExplicitFlagWins verifies that an explicit profileName
+// (from -p) is returned as-is, never overridden by the ledger.
+func TestResolveLaunchProfile_ExplicitFlagWins(t *testing.T) {
+	tmpDir := t.TempDir()
+	orig := BaseDirOverride
+	defer func() { BaseDirOverride = orig }()
+	BaseDirOverride = tmpDir
+
+	if err := os.MkdirAll(filepath.Join(tmpDir, "moai-adk"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(tmpDir, "launch.yaml"), []byte("last_profile: moai-adk\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	got := ResolveLaunchProfile("work")
+	if got != "work" {
+		t.Errorf("ResolveLaunchProfile('work') = %q, want %q", got, "work")
+	}
+}
+
+// TestResolveLaunchProfile_StaleRecordIgnored verifies that a last_profile entry
+// whose directory does not exist is ignored (returns "" = default semantics).
+func TestResolveLaunchProfile_StaleRecordIgnored(t *testing.T) {
+	tmpDir := t.TempDir()
+	orig := BaseDirOverride
+	defer func() { BaseDirOverride = orig }()
+	BaseDirOverride = tmpDir
+
+	// launch.yaml points to a profile whose directory does NOT exist.
+	if err := os.WriteFile(filepath.Join(tmpDir, "launch.yaml"), []byte("last_profile: ghost\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	got := ResolveLaunchProfile("")
+	if got != "" {
+		t.Errorf("ResolveLaunchProfile('') = %q, want '' (stale record ignored)", got)
+	}
+}
+
+// TestResolveLaunchProfile_OptOutEnv verifies that MOAI_NO_PROFILE_FALLBACK=1
+// disables the fallback even when a valid last_profile ledger exists.
+func TestResolveLaunchProfile_OptOutEnv(t *testing.T) {
+	tmpDir := t.TempDir()
+	orig := BaseDirOverride
+	defer func() { BaseDirOverride = orig }()
+	BaseDirOverride = tmpDir
+
+	// Valid ledger + named profile directory.
+	if err := os.MkdirAll(filepath.Join(tmpDir, "moai-adk"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(tmpDir, "launch.yaml"), []byte("last_profile: moai-adk\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	t.Setenv("MOAI_NO_PROFILE_FALLBACK", "1")
+
+	got := ResolveLaunchProfile("")
+	if got != "" {
+		t.Errorf("ResolveLaunchProfile('') with opt-out = %q, want ''", got)
+	}
+}
+
+// TestRecordLastUsedProfile_RejectsDefaultAndEmpty verifies that only NAMED
+// profiles are recorded — "" and "default" are refused.
+func TestRecordLastUsedProfile_RejectsDefaultAndEmpty(t *testing.T) {
+	tmpDir := t.TempDir()
+	orig := BaseDirOverride
+	defer func() { BaseDirOverride = orig }()
+	BaseDirOverride = tmpDir
+
+	if err := RecordLastUsedProfile("default"); err == nil {
+		t.Error("RecordLastUsedProfile('default') should return error, got nil")
+	}
+	if err := RecordLastUsedProfile(""); err == nil {
+		t.Error("RecordLastUsedProfile('') should return error, got nil")
+	}
+}
+
+// TestRecordLastUsedProfile_PreservesLegacyKeys verifies the read-modify-write
+// contract: pre-existing launch.yaml keys (e.g. legacy model:/bypass:) are
+// preserved alongside the new last_profile key.
+func TestRecordLastUsedProfile_PreservesLegacyKeys(t *testing.T) {
+	tmpDir := t.TempDir()
+	orig := BaseDirOverride
+	defer func() { BaseDirOverride = orig }()
+	BaseDirOverride = tmpDir
+
+	// Pre-existing launch.yaml with legacy keys.
+	legacy := "model: claude-opus-4-6\nbypass: true\n"
+	if err := os.WriteFile(filepath.Join(tmpDir, "launch.yaml"), []byte(legacy), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := RecordLastUsedProfile("work"); err != nil {
+		t.Fatalf("RecordLastUsedProfile('work') error: %v", err)
+	}
+
+	data, err := os.ReadFile(filepath.Join(tmpDir, "launch.yaml"))
+	if err != nil {
+		t.Fatalf("read launch.yaml: %v", err)
+	}
+	content := string(data)
+
+	if !strings.Contains(content, "last_profile: work") {
+		t.Errorf("launch.yaml missing 'last_profile: work'\n--- content ---\n%s", content)
+	}
+	if !strings.Contains(content, "model: claude-opus-4-6") {
+		t.Errorf("launch.yaml lost legacy 'model' key\n--- content ---\n%s", content)
+	}
+	if !strings.Contains(content, "bypass: true") {
+		t.Errorf("launch.yaml lost legacy 'bypass' key\n--- content ---\n%s", content)
 	}
 }

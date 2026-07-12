@@ -372,6 +372,29 @@ func TestMapModelPolicyToTier(t *testing.T) {
 	}
 }
 
+// TestMapModelPolicyToEffort asserts the runtime-LAUNCH effort projection of the
+// legacy {high,medium,low} ModelPolicy vocabulary: high→high, medium→medium,
+// low→low on the EFFORT axis. This is DISTINCT from MapModelPolicyToTier, which
+// projects high→max on the TIER axis. Empty/unknown → "" (no override), so an
+// absent model_policy preserves today's launch behavior byte-identically.
+func TestMapModelPolicyToEffort(t *testing.T) {
+	tests := []struct {
+		policy ModelPolicy
+		want   string
+	}{
+		{ModelPolicyHigh, "high"},
+		{ModelPolicyMedium, "medium"},
+		{ModelPolicyLow, "low"},
+		{ModelPolicy(""), ""},    // empty → no override (byte-identical to today)
+		{ModelPolicy("xyz"), ""}, // unknown → no override
+	}
+	for _, tt := range tests {
+		if got := MapModelPolicyToEffort(tt.policy); got != tt.want {
+			t.Errorf("MapModelPolicyToEffort(%q) = %q, want %q", tt.policy, got, tt.want)
+		}
+	}
+}
+
 // TestNormalizeToTier asserts the call-site resolver accepts BOTH the canonical
 // performance-tier vocabulary ({max, medium, low}) and the legacy ModelPolicy
 // vocabulary ({high, medium, low}), defaulting to medium (D6).

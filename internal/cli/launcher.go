@@ -54,6 +54,17 @@ func unifiedLaunchDefault(profileName, modeOverride string, extraArgs []string) 
 	// 1. Determine effective LLM mode (command decides mode, not profile)
 	mode := resolveMode(modeOverride)
 
+	// 2. Resolve last-used-profile fallback for bare launches (no -p flag).
+	// When profileName is empty and the default profile is unconfigured, fall
+	// back to the most recently -p-launched named profile recorded in
+	// launch.yaml. Explicit -p always wins; MOAI_NO_PROFILE_FALLBACK=1 opts out.
+	originalProfile := profileName
+	resolved := profile.ResolveLaunchProfile(profileName)
+	if resolved != profileName && resolved != "" {
+		fmt.Fprintf(os.Stderr, "Using last-used profile '%s' (default profile has no preferences). Use -p default to override.\n", resolved)
+		profileName = resolved
+	}
+
 	// 3. Find project root
 	root, err := findProjectRootFn()
 	if err != nil {
@@ -76,7 +87,19 @@ func unifiedLaunchDefault(profileName, modeOverride string, extraArgs []string) 
 		}
 	}
 
-	// 5. Launch claude
+	// 5. Record the last-used profile. Only NAMED profiles the user explicitly
+	// passed via -p are recorded — this uses originalProfile (what the user
+	// typed), not the resolved value. Best-effort: a write failure is logged
+	// to stderr but never blocks the launch. This runs AFTER mode-specific env
+	// setup succeeds and BEFORE launchClaude (which on POSIX does syscall.Exec
+	// and replaces the process, so no code runs after it).
+	if originalProfile != "" && originalProfile != "default" {
+		if err := profile.RecordLastUsedProfile(originalProfile); err != nil {
+			_, _ = fmt.Fprintf(os.Stderr, "Warning: failed to record last-used profile: %v\n", err)
+		}
+	}
+
+	// 6. Launch claude
 	return launchClaude(profileName, extraArgs)
 }
 
@@ -525,8 +548,15 @@ func launchClaudeDefault(profileName string, extraArgs []string) error {
 		}
 	}
 
-	// 6. Expand model string (e.g. "claude-opus-4-6[1m]" -> "claude-opus-4-6")
-	model = expandModelString(model)
+	// 6. Resolve model string. Under a GLM backend the --model flag MUST carry a
+	// slot alias (opus/sonnet/...) so it routes through the ANTHROPIC_DEFAULT_*_MODEL
+	// slot env that setGLMEnv configured; under a Claude backend short aliases
+	// expand to canonical ids as before (byte-identical to expandModelString).
+	glmBackend := false
+	if root, err := findProjectRoot(); err == nil {
+		glmBackend = resolveGLMBackendForLaunch(root)
+	}
+	model = resolveMainSessionModel(model, glmBackend)
 
 	// 7. Build args
 	buildArgs := func(withContinue bool) []string {
@@ -569,7 +599,17 @@ func launchClaudeDefault(profileName string, extraArgs []string) error {
 	// (syscall.Exec); no defer() functions run after that point. On Windows it
 	// spawns a child and exits with the child's code (syscall.Exec is POSIX-only
 	// — REQ-CGH-001). Ensure all cleanup and setup is complete before calling.
-	launchEnv := buildEnvForLaunch(prefs.EffortLevel, os.Environ())
+	effectiveEffort := resolveLaunchEffort(prefs.EffortLevel, prefs.ModelPolicy)
+	var launchEnv []string
+	if glmBackend {
+		// GLM backend: z.ai honors reasoning_effort, NOT Claude's 5-step effort.
+		// Derive ANTHROPIC_REASONING_EFFORT from the effective effort and strip the
+		// inert CLAUDE_CODE_EFFORT_LEVEL so a web-set effort reaches z.ai.
+		launchEnv = buildEnvForGLMLaunch(effectiveEffort, os.Environ())
+	} else {
+		// Claude backend: honors the 5-step effort vocabulary (CLAUDE_CODE_EFFORT_LEVEL).
+		launchEnv = buildEnvForLaunch(effectiveEffort, os.Environ())
+	}
 	return execOrSpawnClaude(claudeBin, buildArgs(false), launchEnv)
 }
 
@@ -730,12 +770,12 @@ func splitModelSuffix(model string) (base, suffix string) {
 // in base is replaced to avoid duplicates. When effortLevel is empty, base is
 // returned unchanged.
 //
-// @MX:NOTE: [AUTO] Effort injection point — separate from model routing (ModelPolicy⊥Effort).
+// @MX:NOTE: [AUTO] Effort injection point (Claude backend) — model ROUTING (ModelPolicy→model) is orthogonal to effort; effort SOURCING now falls back to a model_policy-derived effort (resolveLaunchEffort→MapModelPolicyToEffort) when prefs.EffortLevel is empty. The routing⊥effort invariant still holds.
 func buildEnvForLaunch(effortLevel string, base []string) []string {
 	if effortLevel == "" {
 		return base
 	}
-	const key = "CLAUDE_CODE_EFFORT_LEVEL"
+	key := config.EnvClaudeCodeEffortLevel
 	entry := key + "=" + effortLevel
 	result := make([]string, 0, len(base)+1)
 	replaced := false
@@ -751,6 +791,91 @@ func buildEnvForLaunch(effortLevel string, base []string) []string {
 		result = append(result, entry)
 	}
 	return result
+}
+
+// resolveLaunchEffort resolves the CLAUDE_CODE_EFFORT_LEVEL value for the launch
+// from the two profile levers: explicit prefs.EffortLevel always wins; otherwise
+// the model_policy-derived effort (template.MapModelPolicyToEffort) is used as a
+// fallback; both empty → "" (no override, byte-identical to today's launch).
+// model-ROUTING (prefs.Model → DO_CLAUDE_MODEL) remains orthogonal to effort
+// sourcing — only effort SOURCING reads model_policy here.
+func resolveLaunchEffort(effortLevel, modelPolicy string) string {
+	if effortLevel != "" {
+		return effortLevel
+	}
+	if modelPolicy != "" {
+		if e := template.MapModelPolicyToEffort(template.ModelPolicy(modelPolicy)); e != "" {
+			return e
+		}
+	}
+	return ""
+}
+
+// buildEnvForGLMLaunch returns an environment slice for a GLM-backed main
+// session. It strips any inherited CLAUDE_CODE_EFFORT_LEVEL (z.ai does NOT
+// implement Claude's 5-level effort — that var is inert under the z.ai proxy)
+// and injects ANTHROPIC_REASONING_EFFORT derived from the web-set effort via
+// the GLM effort overlay, so a web-set effort reaches z.ai through the channel
+// it honors. Any pre-existing ANTHROPIC_REASONING_EFFORT (setGLMEnv writes the
+// hardcoded coding-max default) is replaced so the prefs-derived value wins.
+// When the effort collapse disables thinking, no reasoning-effort entry is
+// emitted (reasoning_effort is moot when thinking is off).
+func buildEnvForGLMLaunch(effort string, base []string) []string {
+	result := make([]string, 0, len(base)+1)
+	for _, e := range base {
+		if strings.HasPrefix(e, config.EnvClaudeCodeEffortLevel+"=") {
+			continue // inert under z.ai — strip
+		}
+		if strings.HasPrefix(e, config.EnvAnthropicReasoningEffort+"=") {
+			continue // re-derived from effort below
+		}
+		result = append(result, e)
+	}
+	for k, v := range glmReasoningEnvVarsForEffort(effort) {
+		result = append(result, k+"="+v)
+	}
+	return result
+}
+
+// resolveMainSessionModel resolves the --model flag value for the main session,
+// GLM-aware. Under a Claude backend (glmBackend==false) it is byte-identical to
+// expandModelString (short alias → canonical id). Under a GLM backend
+// (glmBackend==true) it REVERSE-maps any canonical id back to its slot alias
+// (opus/sonnet/haiku/fable) via template.ModelAliasFromCanonicalID, so the
+// --model flag routes through the ANTHROPIC_DEFAULT_*_MODEL slot env that
+// setGLMEnv configured — z.ai's Anthropic-compat shim binds those env vars only
+// to slot aliases, and a literal canonical claude-* id is sent straight to the
+// z.ai proxy base URL, bypassing the slot→GLM-model mapping and silently
+// defeating the web-set model preference. Already-alias values pass through
+// unchanged; the [1m] suffix is preserved; unknown values pass through.
+func resolveMainSessionModel(prefsModel string, glmBackend bool) string {
+	if !glmBackend {
+		return expandModelString(prefsModel)
+	}
+	if prefsModel == "" {
+		return ""
+	}
+	base, suffix := splitModelSuffix(prefsModel)
+	alias := template.ModelAliasFromCanonicalID(base)
+	if suffix == "" {
+		return alias
+	}
+	return alias + suffix
+}
+
+// resolveGLMBackendForLaunch reports whether the main-session launch is under a
+// GLM backend, by reading the persisted team_mode from llm.yaml
+// (template.IsGLMBackend). applyGLMMode / applyCGMode persist team_mode BEFORE
+// launchClaude runs, so the llm.yaml signal is authoritative at this point. On
+// any read error it resolves false (safe default — the Claude-backend launch
+// path), matching the pre-existing behavior for a non-GLM checkout.
+func resolveGLMBackendForLaunch(root string) bool {
+	sectionsDir := filepath.Join(filepath.Clean(root), defs.MoAIDir, defs.SectionsSubdir)
+	llm, err := loadLLMSectionOnly(sectionsDir)
+	if err != nil {
+		return false
+	}
+	return template.IsGLMBackend(llm)
 }
 
 // syncBypassToSettingsLocal is a backward-compatible wrapper for

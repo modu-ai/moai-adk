@@ -7,6 +7,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/modu-ai/moai-adk/internal/profile"
 	"github.com/modu-ai/moai-adk/internal/template"
 )
 
@@ -799,5 +800,120 @@ func TestApplyGLMMode_ProcessEnvIsSet(t *testing.T) {
 	// Process env must have GLM vars set (inherited by syscall.Exec into claude).
 	if got := os.Getenv("ANTHROPIC_BASE_URL"); got == "" {
 		t.Error("ANTHROPIC_BASE_URL must be set in process env after applyGLMMode")
+	}
+}
+
+// TestUnifiedLaunch_FallsBackToLastUsedProfile verifies that bare `moai cc`
+// (profileName=="") resolves to the last-used named profile when the default
+// profile is empty and launch.yaml records a last_profile entry.
+func TestUnifiedLaunch_FallsBackToLastUsedProfile(t *testing.T) {
+	tmpDir := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(tmpDir, ".moai"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(filepath.Join(tmpDir, ".claude"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	// Profile base dir tree: empty base prefs, a real named profile, launch.yaml ledger.
+	profileBase := t.TempDir()
+	origBase := profile.BaseDirOverride
+	defer func() { profile.BaseDirOverride = origBase }()
+	profile.BaseDirOverride = profileBase
+
+	if err := os.WriteFile(filepath.Join(profileBase, "preferences.yaml"), []byte("{}\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	namedDir := filepath.Join(profileBase, "moai-adk")
+	if err := os.MkdirAll(namedDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(namedDir, "preferences.yaml"), []byte("model: opus[1m]\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(profileBase, "launch.yaml"), []byte("last_profile: moai-adk\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	t.Setenv("CLAUDE_CONFIG_DIR", "")
+
+	origDir, _ := os.Getwd()
+	defer func() { _ = os.Chdir(origDir) }()
+	if err := os.Chdir(tmpDir); err != nil {
+		t.Fatal(err)
+	}
+
+	origLaunch := launchClaudeFunc
+	defer func() { launchClaudeFunc = origLaunch }()
+
+	var launchedProfile string
+	launchClaudeFunc = func(p string, args []string) error {
+		launchedProfile = p
+		return nil
+	}
+
+	if err := unifiedLaunch("", "claude", nil); err != nil {
+		t.Fatalf("unifiedLaunch error: %v", err)
+	}
+
+	if launchedProfile != "moai-adk" {
+		t.Errorf("launched profile = %q, want %q (last-used fallback)", launchedProfile, "moai-adk")
+	}
+}
+
+func TestResolveLaunchEffort(t *testing.T) {
+	tests := []struct {
+		name        string
+		effortLevel string
+		modelPolicy string
+		want        string
+	}{
+		{"explicit effort wins over model_policy", "xhigh", "low", "xhigh"},
+		{"model_policy fallback high", "", "high", "high"},
+		{"model_policy fallback medium", "", "medium", "medium"},
+		{"model_policy fallback low", "", "low", "low"},
+		{"both empty no override", "", "", ""},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := resolveLaunchEffort(tt.effortLevel, tt.modelPolicy); got != tt.want {
+				t.Errorf("resolveLaunchEffort(%q, %q) = %q, want %q", tt.effortLevel, tt.modelPolicy, got, tt.want)
+			}
+		})
+	}
+}
+
+func TestResolveMainSessionModel_GLMAvoidsCanonicalID(t *testing.T) {
+	cases := []struct {
+		name       string
+		prefsModel string
+		glmBackend bool
+		want       string
+	}{
+		{"glm alias opus passes through", "opus", true, "opus"},
+		{"glm alias sonnet passes through", "sonnet", true, "sonnet"},
+		{"glm alias with 1m suffix preserved", "opus[1m]", true, "opus[1m]"},
+		{"glm canonical id reverse-mapped to alias", "claude-opus-4-8", true, "opus"},
+		{"glm deprecated canonical id reverse-mapped", "claude-opus-4-7", true, "opus"},
+		{"claude backend alias expands to canonical id", "opus", false, template.ModelIDOpus48},
+		{"claude backend canonical passes through", "claude-opus-4-8", false, "claude-opus-4-8"},
+		{"glm empty stays empty", "", true, ""},
+		{"glm unknown value passes through", "custom-xyz", true, "custom-xyz"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			got := resolveMainSessionModel(tc.prefsModel, tc.glmBackend)
+			if got != tc.want {
+				t.Errorf("resolveMainSessionModel(%q, %v) = %q, want %q",
+					tc.prefsModel, tc.glmBackend, got, tc.want)
+			}
+			if tc.glmBackend && got != "" {
+				base, _ := splitModelSuffix(got)
+				if strings.HasPrefix(base, "claude-") {
+					t.Errorf("GLM backend must not emit canonical claude-* id; base %q leaked (full %q)",
+						base, got)
+				}
+			}
+		})
 	}
 }

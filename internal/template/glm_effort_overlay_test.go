@@ -197,3 +197,42 @@ func TestSessionGLMReasoningState(t *testing.T) {
 		t.Errorf("SessionGLMReasoningState() = %+v, want thinking enabled + reasoning_effort=max", got)
 	}
 }
+
+// TestSessionGLMReasoningStateForEffort verifies the MAIN-SESSION reasoning
+// derivation that is driven by the web-set effort preference. Distinct from
+// SessionGLMReasoningState() (the coding-max session default used for sub-agents
+// and the empty-effort fallback), this helper collapses the user's prefs.EffortLevel
+// onto z.ai's 3-state reasoning control so a web-set effort actually reaches z.ai.
+func TestSessionGLMReasoningStateForEffort(t *testing.T) {
+	cases := []struct {
+		name             string
+		effort           string
+		wantName         string
+		wantThinking     bool
+		wantReasoningVal string
+	}{
+		{"low disables thinking", EffortLevelLow, GLMStateThinkingOff, false, ""},
+		{"medium → reasoning high", EffortLevelMedium, GLMStateReasoningHigh, true, GLMReasoningEffortHigh},
+		{"high → reasoning high", EffortLevelHigh, GLMStateReasoningHigh, true, GLMReasoningEffortHigh},
+		{"xhigh → reasoning max", EffortLevelXHigh, GLMStateReasoningMax, true, GLMReasoningEffortMax},
+		{"max → reasoning max", EffortLevelMax, GLMStateReasoningMax, true, GLMReasoningEffortMax},
+		{"empty falls back to session default", "", GLMStateReasoningMax, true, GLMReasoningEffortMax},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			got := SessionGLMReasoningStateForEffort(tc.effort)
+			if got.Name != tc.wantName {
+				t.Errorf("SessionGLMReasoningStateForEffort(%q).Name = %q, want %q",
+					tc.effort, got.Name, tc.wantName)
+			}
+			if got.ThinkingEnabled != tc.wantThinking {
+				t.Errorf("SessionGLMReasoningStateForEffort(%q).ThinkingEnabled = %v, want %v",
+					tc.effort, got.ThinkingEnabled, tc.wantThinking)
+			}
+			if got.ReasoningEffort != tc.wantReasoningVal {
+				t.Errorf("SessionGLMReasoningStateForEffort(%q).ReasoningEffort = %q, want %q",
+					tc.effort, got.ReasoningEffort, tc.wantReasoningVal)
+			}
+		})
+	}
+}

@@ -2885,42 +2885,21 @@ func applyWizardConfig(projectRoot string, result *wizard.WizardResult) error {
 // presetToSegments wrapper that consumed it was deleted, leaving this alias
 // unused. The canonical segment SSOT remains statusline.CanonicalSegments.
 
-// settingsLocalEnv represents the structure of .claude/settings.local.json.
-type settingsLocalEnv struct {
-	Env map[string]string `json:"env,omitempty"`
-}
-
-// updateSettingsLocalEnv updates a single environment variable in settings.local.json.
-// If the file doesn't exist, it creates a new one. If the env map doesn't exist, it creates it.
+// updateSettingsLocalEnv updates a single environment variable in
+// settings.local.json. If the file doesn't exist, it creates a new one. If the
+// env map doesn't exist, it creates it.
+//
+// SPEC-CLIFIX-CRITICAL-001 REQ-CRIT-001-001: round-trips as map[string]any so
+// unknown top-level keys (hooks, outputStyle, model, defaultMode, and any future
+// keys) survive the write. The closed settingsLocalEnv struct this function
+// previously marshaled is removed — marshaling it emitted only the env key and
+// silently wiped every other top-level key.
+// SPEC-CLIFIX-CONCURRENCY-001 REQ-CONC-001-001: route through the locked+atomic
+// mutateSettingsLocal seam so concurrent sessions cannot lose updates.
 func updateSettingsLocalEnv(settingsPath, key, value string) error {
-	var settings settingsLocalEnv
-
-	// Read existing settings if file exists
-	if data, err := os.ReadFile(settingsPath); err == nil {
-		if err := json.Unmarshal(data, &settings); err != nil {
-			return fmt.Errorf("parse settings.local.json: %w", err)
-		}
-	}
-
-	// Initialize env map if nil
-	if settings.Env == nil {
-		settings.Env = make(map[string]string)
-	}
-
-	// Set the environment variable
-	settings.Env[key] = value
-
-	// Marshal back to JSON
-	data, err := json.MarshalIndent(settings, "", "  ")
-	if err != nil {
-		return fmt.Errorf("marshal settings.local.json: %w", err)
-	}
-
-	if err := os.WriteFile(settingsPath, data, defs.FilePerm); err != nil {
-		return fmt.Errorf("write settings.local.json: %w", err)
-	}
-
-	return nil
+	return mutateSettingsLocal(settingsPath, func(m map[string]any) {
+		settingsEnvMap(m)[key] = value
+	})
 }
 
 // ensureGlobalSettingsEnv cleans up moai-managed settings from ~/.claude/settings.json.

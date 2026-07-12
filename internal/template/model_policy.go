@@ -390,6 +390,29 @@ func MapModelPolicyToTier(policy ModelPolicy) string {
 	}
 }
 
+// MapModelPolicyToEffort translates a legacy template.ModelPolicy value
+// ({high, medium, low}) to the runtime-LAUNCH effort level vocabulary
+// (EffortLevelHigh/Medium/Low): high→high, medium→medium, low→low. This is the
+// runtime-LAUNCH effort projection of the legacy vocabulary and is DISTINCT from
+// MapModelPolicyToTier — which projects high→max on the TIER axis {max, medium,
+// low} for the init/update apply pass. Reuse MapModelPolicyToTier for the tier
+// dimension and this function for the effort dimension; NEVER substitute one for
+// the other, since the vocabularies differ (high→max in tier vs high→high in
+// effort). An empty or unrecognized policy returns "" (no override), so an absent
+// model_policy preserves today's launch behavior byte-identically.
+func MapModelPolicyToEffort(policy ModelPolicy) string {
+	switch policy {
+	case ModelPolicyHigh:
+		return EffortLevelHigh
+	case ModelPolicyMedium:
+		return EffortLevelMedium
+	case ModelPolicyLow:
+		return EffortLevelLow
+	default:
+		return ""
+	}
+}
+
 // NormalizeToTier resolves any performance-policy string to the canonical tier
 // vocabulary {max, medium, low}. It accepts the canonical performance-tier
 // tokens verbatim and bridges the legacy ModelPolicy vocabulary via

@@ -173,6 +173,22 @@ func SessionGLMReasoningState() GLMReasoningState {
 	return glmReasoningMax
 }
 
+// SessionGLMReasoningStateForEffort derives the MAIN-SESSION GLM reasoning state
+// from the web-set effort preference. It is the prefs-driven counterpart to
+// SessionGLMReasoningState() (the coding-max session default used for sub-agents
+// and the empty-effort fallback): when effort is non-empty it collapses the
+// Claude effort onto z.ai's reasoning control, so a web-set effort actually
+// reaches z.ai instead of being silently dropped (z.ai does NOT implement
+// Claude's 5-level effort). When effort is empty it falls back to
+// SessionGLMReasoningState() (the coding-max default), preserving the sub-agent
+// / empty-effort behavior and existing tests.
+func SessionGLMReasoningStateForEffort(effort string) GLMReasoningState {
+	if effort != "" {
+		return CollapseClaudeEffortToGLM(effort)
+	}
+	return SessionGLMReasoningState()
+}
+
 // IsGLMBackend reports whether the effective session backend is GLM (REQ-MTP-026).
 // It reads the two llm.yaml-persisted intent signals ONLY: team_mode ∈ {cg, glm}
 // (the ACTUAL persisted GLM signals — `moai glm` writes team_mode="glm",

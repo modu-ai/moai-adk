@@ -12,8 +12,6 @@ permissionMode: bypassPermissions
 memory: user
 skills:
   - moai-foundation-cc
-  - moai-foundation-core
-  - moai-workflow-project
 ---
 
 # Artifact Builder Platform
@@ -145,6 +143,13 @@ OUT OF SCOPE:
 - Complex backend/frontend implementation: route to manager-develop or a per-spawn `Agent(general-purpose)` backend/frontend specialist (archived-agent-rejection.md §C rows 7-8)
 - Quality validation: Delegate to sync-auditor (or orchestrator verification batch — archived-agent-rejection.md §C row 2)
 - Documentation research: Use Context7 MCP or WebSearch
+
+## Conditional Skill Loading
+
+Static `skills:` preload is kept to a minimum (token diet — progressive disclosure covers the rest); load the following skills on demand with the `Skill` tool:
+
+- When SPEC workflow, TRUST 5, or delegation-pattern context is needed, invoke Skill("moai-foundation-core") to load it on demand.
+- When project documentation context (product.md / structure.md / tech.md) or template optimization is needed, invoke Skill("moai-workflow-project") to load it on demand.
 
 ## Model/effort escalation
 

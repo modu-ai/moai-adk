@@ -112,18 +112,21 @@ func TestUpdateSettingsLocalEnv(t *testing.T) {
 				t.Fatalf("unexpected error: %v", err)
 			}
 
-			// Verify the written file
+			// Verify the written file as map[string]any (SPEC-CLIFIX-CRITICAL-001
+			// REQ-CRIT-001-001: assertions must not depend on the closed struct that
+			// masked the top-level wipe).
 			data, err := os.ReadFile(settingsPath)
 			if err != nil {
 				t.Fatal(err)
 			}
 
-			var result settingsLocalEnv
+			var result map[string]any
 			if err := json.Unmarshal(data, &result); err != nil {
 				t.Fatalf("result is not valid JSON: %v", err)
 			}
-			if result.Env[tt.wantKey] != tt.wantValue {
-				t.Errorf("env[%q] = %q, want %q", tt.wantKey, result.Env[tt.wantKey], tt.wantValue)
+			env, _ := result["env"].(map[string]any)
+			if got, _ := env[tt.wantKey].(string); got != tt.wantValue {
+				t.Errorf("env[%q] = %q, want %q", tt.wantKey, got, tt.wantValue)
 			}
 		})
 	}
@@ -133,7 +136,9 @@ func TestUpdateSettingsLocalEnv_PreservesExistingKeys(t *testing.T) {
 	tmpDir := t.TempDir()
 	settingsPath := filepath.Join(tmpDir, "settings.local.json")
 
-	existing := `{"env":{"KEEP_THIS":"yes","ALSO_KEEP":"yes"}}`
+	// Fixture now carries a top-level outputStyle so the test cannot pass when
+	// updateSettingsLocalEnv marshals a closed struct that models only Env.
+	existing := `{"outputStyle":"MoAI-Learn","env":{"KEEP_THIS":"yes","ALSO_KEEP":"yes"}}`
 	if err := os.WriteFile(settingsPath, []byte(existing), 0o644); err != nil {
 		t.Fatal(err)
 	}
@@ -148,19 +153,68 @@ func TestUpdateSettingsLocalEnv_PreservesExistingKeys(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	var result settingsLocalEnv
+	var result map[string]any
 	if err := json.Unmarshal(data, &result); err != nil {
 		t.Fatal(err)
 	}
 
-	if result.Env["KEEP_THIS"] != "yes" {
-		t.Error("existing key KEEP_THIS should be preserved")
+	// SPEC-CLIFIX-CRITICAL-001 REQ-CRIT-001-001: top-level keys must survive.
+	if got, _ := result["outputStyle"].(string); got != "MoAI-Learn" {
+		t.Errorf("top-level outputStyle wiped: got %q, want %q", got, "MoAI-Learn")
 	}
-	if result.Env["ALSO_KEEP"] != "yes" {
-		t.Error("existing key ALSO_KEEP should be preserved")
+
+	env, _ := result["env"].(map[string]any)
+	if got, _ := env["KEEP_THIS"].(string); got != "yes" {
+		t.Errorf("existing env key KEEP_THIS should be preserved, got %q", got)
 	}
-	if result.Env["NEW"] != "new_val" {
-		t.Error("new key should be added")
+	if got, _ := env["ALSO_KEEP"].(string); got != "yes" {
+		t.Errorf("existing env key ALSO_KEEP should be preserved, got %q", got)
+	}
+	if got, _ := env["NEW"].(string); got != "new_val" {
+		t.Errorf("new env key NEW should be added, got %q", got)
+	}
+}
+
+// TestUpdateSettingsLocalEnv_PreservesTopLevelOutputStyle is the RED test for
+// SPEC-CLIFIX-CRITICAL-001 REQ-CRIT-001-001: updateSettingsLocalEnv MUST round-trip
+// the file as map[string]any so unknown top-level keys (outputStyle, model, ...)
+// survive the write. Under the buggy closed-struct marshal this FAILS because
+// marshaling settingsLocalEnv emits only the env key.
+func TestUpdateSettingsLocalEnv_PreservesTopLevelOutputStyle(t *testing.T) {
+	tmpDir := t.TempDir()
+	settingsPath := filepath.Join(tmpDir, "settings.local.json")
+
+	existing := `{"outputStyle":"MoAI-Learn","model":"claude-opus-4-8","env":{"KEEP":"yes"}}`
+	if err := os.WriteFile(settingsPath, []byte(existing), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := updateSettingsLocalEnv(settingsPath, "NEW_VAR", "v"); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	data, err := os.ReadFile(settingsPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	var result map[string]any
+	if err := json.Unmarshal(data, &result); err != nil {
+		t.Fatalf("rewritten file is not valid JSON: %v", err)
+	}
+
+	if got, _ := result["outputStyle"].(string); got != "MoAI-Learn" {
+		t.Errorf("outputStyle wiped: got %q, want %q (SPEC-CLIFIX-CRITICAL-001 REQ-CRIT-001-001)", got, "MoAI-Learn")
+	}
+	if got, _ := result["model"].(string); got != "claude-opus-4-8" {
+		t.Errorf("model wiped: got %q, want %q", got, "claude-opus-4-8")
+	}
+	env, _ := result["env"].(map[string]any)
+	if got, _ := env["KEEP"].(string); got != "yes" {
+		t.Errorf("env.KEEP should be preserved, got %q", got)
+	}
+	if got, _ := env["NEW_VAR"].(string); got != "v" {
+		t.Errorf("env.NEW_VAR should be set, got %q", got)
 	}
 }
 

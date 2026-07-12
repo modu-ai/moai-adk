@@ -237,6 +237,31 @@ func glmReasoningEnvVars() map[string]string {
 	return out
 }
 
+// glmReasoningEnvVarsForEffort returns the MAIN-SESSION reasoning-control env
+// injection derived from the web-set effort preference. It is the prefs-driven
+// counterpart to glmReasoningEnvVars() (which derives the hardcoded coding-max
+// session default, used for sub-agents and the empty-effort fallback). When
+// effort is non-empty it collapses the Claude effort onto z.ai's reasoning
+// control via SessionGLMReasoningStateForEffort; when empty it falls back to the
+// session default (glmReasoningEnvVars). Thinking-off states emit no
+// ANTHROPIC_REASONING_EFFORT entry (reasoning_effort is moot when thinking is
+// off). KEEP glmReasoningEnvVars() intact — injectGLMEnvForTeam calls it for the
+// sub-agent / settings.local.json parity wire point; this helper is ADDITIVE and
+// is consumed only by the main-session launch path.
+//
+// UNVERIFIED delivery (AC-MTP-032b run-phase empirical gate): whether z.ai
+// consumes ANTHROPIC_REASONING_EFFORT through the Anthropic-compat shim is a
+// run-phase empirical determination that needs a live z.ai session. This writes
+// the CORRECT env per the shim contract; z.ai honoring it is residual risk.
+func glmReasoningEnvVarsForEffort(effort string) map[string]string {
+	state := template.SessionGLMReasoningStateForEffort(effort)
+	out := make(map[string]string, 1)
+	if state.ThinkingEnabled {
+		out[config.EnvAnthropicReasoningEffort] = state.ReasoningEffort
+	}
+	return out
+}
+
 // runGLMSetup saves a GLM API key.
 func runGLMSetup(cmd *cobra.Command, args []string) error {
 	apiKey := ""

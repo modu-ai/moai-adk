@@ -13,10 +13,6 @@ permissionMode: bypassPermissions
 memory: project
 skills:
   - moai-foundation-core
-  - moai-foundation-thinking
-  - moai-foundation-quality
-  - moai-workflow-project
-  - moai-workflow-spec
 ---
 
 # Git Manager Agent
@@ -199,6 +195,16 @@ Execute only with `--auto-merge` flag AND all approvals obtained:
 
 **Input** (from sync-auditor or the orchestrator verification batch): Quality result, TRUST 5 status, commit approval, SPEC ID, language, git strategy.
 **Output**: Commit SHAs, branch info, push status, PR URL, operation summary.
+
+## Conditional Skill Loading
+
+Static `skills:` preload is kept to a minimum (token diet — progressive disclosure covers the rest); load the following skills on demand with the `Skill` tool:
+
+- When branch/PR strategy questions arise (merge method, branch naming, PR templates, conventional commits edge cases), invoke Skill("moai-ref-git-workflow") to load it on demand.
+- When SPEC context is needed for commit scoping or Tier-based PR routing, invoke Skill("moai-workflow-spec") to load it on demand.
+- When verifying quality gate status before a commit or PR, invoke Skill("moai-foundation-quality") to load it on demand.
+- When weighing non-trivial workflow trade-offs (release strategy, history implications), invoke Skill("moai-foundation-thinking") to load it on demand.
+- When project documentation context is needed for PR descriptions, invoke Skill("moai-workflow-project") to load it on demand.
 
 ## Model/effort escalation
 

@@ -6,7 +6,7 @@ description: |
   Use PROACTIVELY for GEARS-format (current) or EARS-format (legacy, 6-month backward-compatibility window) requirements, acceptance criteria, and user story documentation.
   Match user intent language-independently — do not require literal keyword matches.
   NOT for: run-phase code implementation (manager-develop), testing execution, deployment, code review, documentation sync (manager-docs)
-tools: Read, Write, Edit, Bash, Glob, Grep, TaskCreate, TaskUpdate, TaskList, TaskGet, WebFetch, mcp__context7, SendMessage
+tools: Read, Write, Edit, Bash, Glob, Grep, TaskCreate, TaskUpdate, TaskList, TaskGet, WebFetch, mcp__context7, Skill, SendMessage
 model: inherit
 effort: xhigh
 color: blue
@@ -14,14 +14,7 @@ permissionMode: bypassPermissions
 memory: project
 skills:
   - moai-foundation-core
-  - moai-foundation-thinking
-  - moai-foundation-quality
-  - moai-workflow-ddd
-  - moai-workflow-tdd
-  - moai-workflow-testing
-  - moai-workflow-project
   - moai-workflow-spec
-  - moai-workflow-worktree
 hooks:
   Stop:
     - hooks:
@@ -306,6 +299,18 @@ See `.claude/rules/moai/development/spec-frontmatter-schema.md` § Status Transi
 - Beginner: Detailed EARS explanations, confirm before writing
 - Intermediate: Balanced explanations, confirm complex decisions only
 - Expert: Concise responses, auto-proceed with standard patterns
+
+## Conditional Skill Loading
+
+Static `skills:` preload is kept to a minimum (token diet — progressive disclosure covers the rest); load the following skills on demand with the `Skill` tool:
+
+- When weighing architecture trade-offs, technology selection, or deep design decisions, invoke Skill("moai-foundation-thinking") to load it on demand.
+- When defining TRUST 5 quality criteria or gate thresholds in acceptance.md, invoke Skill("moai-foundation-quality") to load it on demand.
+- When the SPEC targets DDD-mode implementation (ANALYZE-PRESERVE-IMPROVE), invoke Skill("moai-workflow-ddd") to load it on demand.
+- When the SPEC targets TDD-mode implementation (RED-GREEN-REFACTOR), invoke Skill("moai-workflow-tdd") to load it on demand.
+- When authoring test strategy or coverage acceptance criteria, invoke Skill("moai-workflow-testing") to load it on demand.
+- When project documentation context (product.md / structure.md / tech.md) is needed, invoke Skill("moai-workflow-project") to load it on demand.
+- When planning a worktree-isolated SPEC flow (`--worktree` / L2 worktree), invoke Skill("moai-workflow-worktree") to load it on demand.
 
 ## Model/effort escalation
 

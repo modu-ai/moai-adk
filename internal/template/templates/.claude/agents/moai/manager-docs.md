@@ -14,10 +14,6 @@ permissionMode: bypassPermissions
 memory: project
 skills:
   - moai-foundation-core
-  - moai-foundation-thinking
-  - moai-foundation-quality
-  - moai-workflow-project
-  - moai-workflow-spec
 hooks:
   PostToolUse:
     - matcher: "Write|Edit"
@@ -156,6 +152,15 @@ When sync-phase reveals a need to modify SPEC body content — for example: a sc
 ### Cross-reference
 
 See `.claude/rules/moai/development/spec-frontmatter-schema.md` § Status Transition Ownership Matrix for the schema-level SSOT covering all 7 canonical transitions and the canonical commit subject patterns per transition.
+
+## Conditional Skill Loading
+
+Static `skills:` preload is kept to a minimum (token diet — progressive disclosure covers the rest); load the following skills on demand with the `Skill` tool:
+
+- When scaffolding or maintaining project documentation (product.md / structure.md / tech.md) or running docs generation, invoke Skill("moai-workflow-project") to load it on demand.
+- When reading SPEC artifacts or performing frontmatter status transitions, invoke Skill("moai-workflow-spec") to load it on demand.
+- When running TRUST 5 quality gate checks on documentation output, invoke Skill("moai-foundation-quality") to load it on demand.
+- When weighing documentation architecture trade-offs, invoke Skill("moai-foundation-thinking") to load it on demand.
 
 ## Model/effort escalation
 
