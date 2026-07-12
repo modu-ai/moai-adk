@@ -2,7 +2,7 @@
 id: SPEC-HOOK-DEADCODE-001
 title: "internal/hook package dead-code cleanup (3 corroborated scopes)"
 version: "0.1.0"
-status: in-progress
+status: completed
 created: 2026-07-03
 updated: 2026-07-12
 author: manager-spec
@@ -75,7 +75,13 @@ Aggregate verification: `go build ./...` exit 0, `go test ./internal/hook/... ./
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+```yaml
+sync_status: audit-ready
+sync_complete_at: 2026-07-12
+sync_commit_sha: pending-backfill-hook-deadcode
+```
+
+All 12 acceptance criteria (AC-HDC-001..012) confirmed PASS against `acceptance.md` (SSOT). CHANGELOG.md `[Unreleased] § Removed` entry added (M1/M2/M3 summary, 3500 LOC net removal, zero behavior change). Frontmatter `status: in-progress → completed` applied to spec.md, plan.md, acceptance.md, progress.md in the single sync commit (merged 3-phase close per SPEC-V3R6-LIFECYCLE-REDESIGN-001) — no README change (pure internal dead-code cleanup, zero user-facing CLI surface). `sync_commit_sha` is a placeholder pending backfill in a follow-up commit (self-referential-hazard exemption per spec-frontmatter-schema.md).
 
 ## §F Phase 0.95 Mode Selection
 
