@@ -493,6 +493,12 @@ func runInit(cmd *cobra.Command, args []string) error {
 
 	result, err := executor.Execute(ctx, opts)
 	if err != nil {
+		// REQ-TUX2-015: re-running init on an initialized project without
+		// --force is usually a template-refresh intent — redirect to
+		// `moai update` alongside the existing --force guidance.
+		if !getBoolFlag(cmd, "force") && strings.Contains(err.Error(), "already initialized") {
+			return fmt.Errorf("initialization failed: %w\n  Hint: this directory already contains a MoAI project — did you mean 'moai update' (refresh templates in place)? Re-run with --force only to reinitialize from scratch", err)
+		}
 		return fmt.Errorf("initialization failed: %w", err)
 	}
 

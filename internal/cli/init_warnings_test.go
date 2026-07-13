@@ -5,10 +5,13 @@ package cli
 
 import (
 	"bytes"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
 	"github.com/modu-ai/moai-adk/internal/cli/printer"
+	"github.com/modu-ai/moai-adk/internal/config"
 )
 
 // TestWarningCollector_SummaryPanelOnce asserts the consolidated stderr
@@ -112,5 +115,43 @@ func TestCompletionCardNextActions(t *testing.T) {
 	withWarn := buildInitSuccessCard("myproj", 12, 96, 3)
 	if !strings.Contains(withWarn, "3 warning") {
 		t.Errorf("card must point to the stderr warning summary when warnings exist, got:\n%s", withWarn)
+	}
+}
+
+// TestExistingProjectUpdateRedirectHint asserts REQ-TUX2-015 (AC-TUX2-015):
+// re-running moai init on an already-initialized project without --force
+// surfaces a redirect hint naming `moai update` as the likely intent.
+func TestExistingProjectUpdateRedirectHint(t *testing.T) {
+	tmpHome := t.TempDir()
+	t.Setenv("HOME", tmpHome)
+	t.Setenv(config.EnvSkipBinaryUpdate, "1")
+
+	origDeps := deps
+	deps = nil
+	t.Cleanup(func() { deps = origDeps })
+
+	projectDir := filepath.Join(t.TempDir(), "existing-proj")
+	if err := os.MkdirAll(filepath.Join(projectDir, ".moai"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	cmd := newInitTestCmd()
+	if err := cmd.Flags().Set("non-interactive", "true"); err != nil {
+		t.Fatal(err)
+	}
+	var out, errBuf bytes.Buffer
+	cmd.SetOut(&out)
+	cmd.SetErr(&errBuf)
+
+	err := runInit(cmd, []string{projectDir})
+	if err == nil {
+		t.Fatal("expected an already-initialized error without --force")
+	}
+	combined := err.Error() + errBuf.String()
+	if !strings.Contains(combined, "moai update") {
+		t.Errorf("error surface must include the 'moai update' redirect hint, got:\nerr=%v\nstderr=%s", err, errBuf.String())
+	}
+	if !strings.Contains(combined, "--force") {
+		t.Errorf("error surface must still mention --force, got:\nerr=%v\nstderr=%s", err, errBuf.String())
 	}
 }
