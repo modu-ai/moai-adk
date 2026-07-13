@@ -17,3 +17,15 @@ index:
   title: "Statusline System and PR Segment"
 "claude-md-guide":
   title: "CLAUDE.md Guide"
+"catalog-system":
+  title: "Catalog System"
+"decision-memory":
+  title: "Decision Memory System"
+"harness-profiles":
+  title: "Harness Profiles & Evaluation"
+"harness-v4-builder":
+  title: "Harness v4 Builder Advanced Guide"
+"hooks-reference":
+  title: "Hooks Event Reference"
+"ultracode-workflows":
+  title: "Dynamic Workflows and Ultracode"

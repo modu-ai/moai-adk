@@ -17,3 +17,15 @@ index:
   title: "状态栏系统与 PR 段"
 "claude-md-guide":
   title: "CLAUDE.md 指南"
+"catalog-system":
+  title: "目录系统"
+"decision-memory":
+  title: "决策记忆系统"
+"harness-profiles":
+  title: "Harness 配置与评估系统"
+"harness-v4-builder":
+  title: "Harness v4 Builder 深掘指南"
+"hooks-reference":
+  title: "Hooks事件参考"
+"ultracode-workflows":
+  title: "动态工作流和 Ultracode"

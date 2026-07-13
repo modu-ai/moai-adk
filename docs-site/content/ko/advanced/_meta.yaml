@@ -23,3 +23,9 @@ index:
   title: "하네스 프로필과 평가"
 "catalog-system":
   title: "카탈로그 시스템"
+"decision-memory":
+  title: "의사결정 메모리 시스템"
+"harness-v4-builder":
+  title: "Harness v4 Builder 심화 가이드"
+"ultracode-workflows":
+  title: "동적 워크플로우와 Ultracode"

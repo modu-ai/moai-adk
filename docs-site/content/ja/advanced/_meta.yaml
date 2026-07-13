@@ -17,3 +17,15 @@ index:
   title: "ステータスラインシステムとPRセグメント"
 "claude-md-guide":
   title: "CLAUDE.md ガイド"
+"catalog-system":
+  title: "カタログシステム"
+"decision-memory":
+  title: "意思決定メモリシステム"
+"harness-profiles":
+  title: "ハーネスプロファイルと評価システム"
+"harness-v4-builder":
+  title: "Harness v4 Builder 深掘りガイド"
+"hooks-reference":
+  title: "Hooksイベントリファレンス"
+"ultracode-workflows":
+  title: "動的ワークフローと Ultracode"
