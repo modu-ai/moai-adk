@@ -75,6 +75,7 @@ draft: false
 | --------- | -------------------- | -------------------- |
 | `--pr`   | 跳过 changelog 提示并自动打开 PR | `/moai sync --pr` |
 | `--merge` | 完成后自动合并 PR | `/moai sync --merge` |
+| `--skip-mx` | 跳过 MX 标签检查 | `/moai sync --skip-mx` |
 | `--team`  | 强制智能体团队模式 | `/moai sync --team`   |
 | `--solo`  | 强制子智能体模式 | `/moai sync --solo`   |
 

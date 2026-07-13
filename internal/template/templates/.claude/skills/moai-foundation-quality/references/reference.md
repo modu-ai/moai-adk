@@ -125,16 +125,17 @@ MX Tag validation is a cross-cutting concern validated during sync, not a
 separate phase. Tag types: `@MX:NOTE`, `@MX:WARN`, `@MX:ANCHOR`,
 `@MX:TODO`, `@MX:DEBT`.
 
-## Context7 MCP Integration
+## Best-Practices Documentation Lookup
 
-For best-practices validation against live framework documentation:
+For best-practices validation against live framework documentation, use
+WebSearch / WebFetch against the official documentation:
 
-1. Resolve: `mcp__context7__resolve-library-id(libraryName: "<framework>")`.
-2. Fetch: `mcp__context7__get-library-docs(libraryId: <id>, query: "<topic>")`.
+1. Search: `WebSearch("<framework> official documentation <topic>")` to find the authoritative docs URL.
+2. Fetch: `WebFetch(<url>)` to read the relevant section.
 
-Resolve at validation time — do not hardcode library IDs. If Context7 is
-unavailable, fall back to official docs via WebFetch (see agent-common-protocol
-§MCP Fallback Strategy).
+Confirm the URL at validation time — do not hardcode docs links. If a source
+is unreachable, fall back to established best-practice patterns (see
+agent-common-protocol §MCP Fallback Strategy).
 
 ## Coverage Thresholds
 

@@ -75,6 +75,7 @@ The default `auto` mode syncing only changed files is also a tokenomics design d
 | --------- | ------------------------------------ | -------------------- |
 | `--pr`   | Skip the changelog prompt and open a PR automatically | `/moai sync --pr` |
 | `--merge` | Auto-merge the PR after completion   | `/moai sync --merge` |
+| `--skip-mx` | Skip the MX tag check                | `/moai sync --skip-mx` |
 | `--team`  | Force agent team mode                | `/moai sync --team`  |
 | `--solo`  | Force sub-agent mode                 | `/moai sync --solo`  |
 

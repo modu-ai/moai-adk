@@ -180,16 +180,16 @@ See .claude/rules/moai/workflow/mx-tag-protocol.md for tag type definitions.
 
 <!-- @MX:WARN @MX:REASON - Future PRs may be tempted to add LLM-driven Level-to-agent dispatch here. The current static lookup table (lines 175-179) MUST remain a fixed mapping. Any LLM-decided dispatch fails TestAgentlessUtilityNoLLMControlFlow. -->
 
-[HARD] Agent delegation mandate: ALL fix tasks MUST be delegated to specialized agents. NEVER execute fixes directly.
+[HARD] Agent delegation mandate (Level 2+): ALL Level 2 and above fix tasks MUST be delegated to specialized agents. NEVER execute Level 2+ fixes directly. Level 1 (import sorting, whitespace, formatting) is exempt: the orchestrator runs the language's deterministic formatter command directly (e.g., gofmt/goimports, ruff format, prettier, rustfmt) without an Agent() spawn — a formatter run needs no agent specialization.
 
-Agent selection by fix level (domain expertise injected per-spawn per `.claude/rules/moai/workflow/archived-agent-rejection.md` §C):
-- Level 1 (import, formatting): manager-develop (or per-spawn `Agent(general-purpose)` backend/frontend specialist)
+Executor selection by fix level (static lookup table — domain expertise injected per-spawn per `.claude/rules/moai/workflow/archived-agent-rejection.md` §C):
+- Level 1 (import, formatting): orchestrator-direct formatter command (no Agent() spawn)
 - Level 2 (rename, type): manager-develop (cycle_type=ddd) or per-spawn `Agent(general-purpose)` refactoring specialist
 - Level 3 (logic, API): manager-develop subagent (after user approval)
 
 Execution order:
-- Level 1 fixes applied automatically via agent delegation
-- Level 2 fixes applied automatically with logging
+- Level 1 fixes applied automatically via the orchestrator-direct formatter command
+- Level 2 fixes applied automatically via agent delegation, with logging
 - Level 3 fixes require AskUserQuestion approval, then delegated to agent
 - Level 4 fixes listed in report as manual action items
 
@@ -313,7 +313,7 @@ Resume commands:
 7. Scan target files for @MX tags (Phase 3: Pre-Fix MX Context Scan)
 8. TaskCreate for all discovered issues
 9. If --dry: Display preview and exit
-10. Apply Level 1-2 fixes via agent delegation (with MX context)
+10. Apply Level 1 fixes orchestrator-direct via the formatter command; apply Level 2 fixes via agent delegation (with MX context)
 11. Request approval for Level 3 fixes via AskUserQuestion
 12. Verify fixes by re-running diagnostics
 13. Update @MX tags for modified files (Phase 6)

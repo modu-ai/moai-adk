@@ -1,8 +1,8 @@
 # Best Practices Validation
 
-How to validate code against up-to-date framework and library best practices
-using the Context7 MCP tools. MoAI does not ship a "best practices engine";
-the mechanism is: query Context7 for the latest docs, then compare the code
+How to validate code against up-to-date framework and library best practices.
+MoAI does not ship a "best practices engine"; the mechanism is: look up the
+latest official documentation via WebSearch / WebFetch, then compare the code
 against what those docs prescribe.
 
 ## Overview
@@ -13,10 +13,8 @@ framework's recommended pattern changes across versions), this validation
 relies on live documentation rather than a fixed rule set.
 
 The tools:
-- `mcp__context7__resolve-library-id` — resolve a framework/library name to
-  a Context7 library ID.
-- `mcp__context7__get-library-docs` — fetch the latest docs for a resolved
-  library, optionally scoped to a topic.
+- `WebSearch` — find candidate official-documentation sources for a framework or library.
+- `WebFetch` — fetch and verify the official documentation at a specific URL.
 
 ## Validation Process
 
@@ -25,20 +23,20 @@ To validate a change against best practices:
 1. **Identify the relevant libraries** in the change (frameworks, key
    dependencies). Read the dependency manifest (go.mod, package.json,
    requirements.txt / pyproject.toml, Cargo.toml, pom.xml, etc.).
-2. **Resolve each via Context7**:
-   `mcp__context7__resolve-library-id(libraryName: "<framework>")`.
-3. **Fetch the relevant docs**, scoped to the topic at hand
-   (e.g. "best-practices", "error-handling", "testing",
-   "performance"): `mcp__context7__get-library-docs(libraryId, query)`.
+2. **Locate the official documentation** for each library via `WebSearch`
+   (target the official docs site, e.g. `"<framework> official documentation"`).
+3. **Fetch the relevant docs**, scoped to the topic at hand (e.g.
+   "best-practices", "error-handling", "testing", "performance"), via
+   `WebFetch` against the official URLs surfaced by the search.
 4. **Compare** the code against the documented patterns. Note where the code
    diverges and whether the divergence is justified.
 5. **Report** the findings: what matches, what diverges, and the
    recommendation.
 
-If Context7 is unavailable, fall back to official documentation via WebFetch
-and established best-practice patterns. Architecture/analysis quality must
-not depend on MCP availability (see agent-common-protocol §MCP Fallback
-Strategy).
+If a documentation source cannot be reached, fall back to established
+best-practice patterns from industry experience. Architecture/analysis quality
+must not depend on a single source being available (see agent-common-protocol
+§MCP Fallback Strategy).
 
 ## Language-Neutral Validation
 
@@ -54,24 +52,24 @@ applies to any of them. Examples of what to validate per language family:
 | Testing | Does it use the language's test framework idiomatically? |
 | Dependency management | Are dependencies pinned and minimal? |
 
-## Context7 Library Mapping (illustrative)
+## Documentation Source Mapping (illustrative)
 
-Context7 library IDs follow the `/org/project` convention. Resolve via the
-MCP tool rather than hardcoding — the ID may change. Illustrative mappings
-for common quality tooling (resolve before use):
+Official documentation lives at well-known upstream URLs. Resolve via
+`WebSearch` rather than hardcoding — the URL may change. Illustrative home
+pages for common quality tooling:
 
-| Tool | Likely Context7 ID |
+| Tool | Official docs home |
 |------|-------------------|
-| eslint | /eslint/eslint |
-| prettier | /prettier/prettier |
-| ruff | /astral-sh/ruff |
-| golangci-lint | /golangci/golangci-lint |
-| clippy (rust) | /rust-lang/rust-clippy |
-| jest | /jestjs/jest |
-| pytest | /pytest-dev/pytest |
+| eslint | https://eslint.org/docs/latest |
+| prettier | https://prettier.io/docs |
+| ruff | https://docs.astral.sh/ruff |
+| golangci-lint | https://golangci-lint.run |
+| clippy (rust) | https://doc.rust-lang.org/clippy |
+| jest | https://jestjs.io/docs |
+| pytest | https://docs.pytest.org |
 
-Do not treat this table as authoritative — always resolve via the MCP tool
-at validation time.
+Do not treat this table as authoritative — always confirm the current URL via
+`WebSearch` / `WebFetch` at validation time.
 
 ## Custom Quality Checks
 
@@ -91,12 +89,11 @@ extensibility surface.
 
 ## What NOT to Do
 
-- Do NOT hardcode Context7 library IDs — resolve at validation time.
 - Do NOT treat one language's conventions as universal (Python's `black`
   is not relevant to a Go project; Go's `gofmt` is not relevant to a Rust
   project).
 - Do NOT present cached best-practice rules as "current" without re-checking
-  Context7 — best practices drift.
+  the official docs via `WebSearch` / `WebFetch` — best practices drift.
 
 ## Related
 

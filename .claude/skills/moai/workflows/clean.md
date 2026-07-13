@@ -57,7 +57,7 @@ See [Subcommand Classification matrix](../../rules/moai/workflow/spec-workflow.m
 
 ## Phase 1: Static Analysis Scan
 
-[HARD] Delegate static analysis to a per-spawn `Agent(general-purpose)` refactoring specialist (refactoring whitelist + ANALYZE-PRESERVE-IMPROVE instructions per `.claude/rules/moai/workflow/archived-agent-rejection.md` §C).
+[HARD] Delegate static analysis AND usage-graph analysis (Phases 1+2) to ONE combined per-spawn `Agent(general-purpose)` refactoring specialist (refactoring whitelist + ANALYZE-PRESERVE-IMPROVE instructions per `.claude/rules/moai/workflow/archived-agent-rejection.md` §C). The two phases share an identical whitelist and role, so a single combined analysis spawn performs Phase 1 then Phase 2 in one delegation — replacing the former two-spawn chain.
 
 Language-specific dead code detection (all 16 supported languages, equal treatment):
 
@@ -94,7 +94,7 @@ Scan Categories:
 
 ## Phase 2: Usage Graph Analysis
 
-[HARD] Delegate usage graph analysis to a per-spawn `Agent(general-purpose)` refactoring specialist.
+Performed by the SAME combined analysis spawn as Phase 1 (no separate Agent() spawn — see Phase 1).
 
 Build a usage graph to verify static analysis results:
 
@@ -161,7 +161,7 @@ If --dry flag: Display analysis results and exit without removing anything.
 
 <!-- @MX:WARN @MX:REASON - Phase 4 delegates to a per-spawn general-purpose refactoring specialist for the *executor* role. Do NOT extend this delegation to choose between Phase 4 and Phase 5; that would violate the agentless-pipeline contract. -->
 
-[HARD] Delegate removal to a per-spawn `Agent(general-purpose)` refactoring specialist.
+[HARD] Delegate safe removal AND test verification (Phases 4+5) to ONE combined per-spawn `Agent(general-purpose)` refactoring specialist — a single removal+verification spawn performs Phase 4 then Phase 5 in one delegation, replacing the former separate removal and verification spawns.
 
 Removal Strategy:
 
@@ -181,7 +181,7 @@ Safety Measures:
 
 ## Phase 5: Test Verification
 
-[HARD] Delegate test verification to the manager-develop subagent.
+Performed by the SAME combined removal+verification spawn as Phase 4 (no separate Agent() spawn — see Phase 4).
 
 After removals:
 - Run full test suite: `go test -race ./...` (Go) or equivalent
@@ -196,6 +196,8 @@ If tests fail:
 - Continue with remaining removals
 
 ## Phase 6: MX Tag Cleanup
+
+Executes orchestrator-direct (no Agent() spawn) — the worst-case spawn count for this workflow stays at 2 (the combined 1+2 analysis spawn and the combined 4+5 removal+verification spawn).
 
 After verified removals:
 - Remove @MX tags from deleted code
@@ -242,27 +244,23 @@ Next Steps (AskUserQuestion):
 
 ## Agent Chain Summary
 
-- Phase 1: per-spawn `Agent(general-purpose)` refactoring specialist (static analysis)
-- Phase 2: per-spawn `Agent(general-purpose)` refactoring specialist (usage graph analysis)
+- Phase 1+2: ONE combined per-spawn `Agent(general-purpose)` refactoring specialist (static analysis + usage graph analysis — spawn 1 of 2)
 - Phase 3: MoAI orchestrator (user approval via AskUserQuestion)
-- Phase 4: per-spawn `Agent(general-purpose)` refactoring specialist (safe removal)
-- Phase 5: manager-develop subagent (test verification)
-- Phase 6: MoAI orchestrator or a per-spawn `Agent(general-purpose)` refactoring specialist (MX tag cleanup)
+- Phase 4+5: ONE combined per-spawn `Agent(general-purpose)` refactoring specialist (safe removal + test verification — spawn 2 of 2)
+- Phase 5.5: MoAI orchestrator (MX tag cleanup, orchestrator-direct — no spawn)
 
 ## Execution Summary
 
 1. Parse arguments (extract flags: --dry, --safe-only, --file, --type, --aggressive)
-2. Delegate static analysis scan to a per-spawn `Agent(general-purpose)` refactoring specialist
-3. Delegate usage graph analysis to a per-spawn `Agent(general-purpose)` refactoring specialist
-4. Cross-check candidates against @MX tags (MX Tag Cross-Check)
-5. Classify results (Confirmed Dead, Test-Only, Likely Dead, False Positive)
-6. If --dry: Display analysis results and exit
-7. Present removal plan to user via AskUserQuestion
-8. Delegate safe removal to a per-spawn `Agent(general-purpose)` refactoring specialist
-9. Delegate test verification to manager-develop subagent
-10. Clean up @MX tags for removed code (Phase 6)
-11. TaskCreate/TaskUpdate for all candidates
-12. Report results with next step options
+2. Delegate static analysis scan + usage graph analysis (Phases 1+2) to ONE combined per-spawn `Agent(general-purpose)` refactoring specialist (spawn 1 of 2)
+3. Cross-check candidates against @MX tags (MX Tag Cross-Check)
+4. Classify results (Confirmed Dead, Test-Only, Likely Dead, False Positive)
+5. If --dry: Display analysis results and exit
+6. Present removal plan to user via AskUserQuestion
+7. Delegate safe removal + test verification (Phases 4+5) to ONE combined per-spawn `Agent(general-purpose)` refactoring specialist (spawn 2 of 2)
+8. Clean up @MX tags for removed code orchestrator-direct (Phase 5.5)
+9. TaskCreate/TaskUpdate for all candidates
+10. Report results with next step options
 
 ---
 

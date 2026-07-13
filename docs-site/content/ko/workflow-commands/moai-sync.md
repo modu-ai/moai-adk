@@ -75,6 +75,7 @@ Run 단계가 완료된 후 실행합니다:
 | --------- | -------------------- | -------------------- |
 | `--pr`   | changelog 프롬프트 건너뛰고 PR 자동 열기 | `/moai sync --pr` |
 | `--merge` | 완료 후 PR 자동 병합 | `/moai sync --merge` |
+| `--skip-mx` | MX 태그 검사 건너뛰기 | `/moai sync --skip-mx` |
 | `--team`  | 에이전트 팀 모드 강제 | `/moai sync --team`   |
 | `--solo`  | 하위 에이전트 모드 강제 | `/moai sync --solo`   |
 

@@ -155,6 +155,14 @@ Plan-auditor failure cases classified as INCONCLUSIVE:
 Retry limit (OPEN QUESTION Q3 resolution): Maximum 3 total plan-auditor invocations per `/moai run`
 call (including retries). After 3 INCONCLUSIVE results, force AskUserQuestion with proceed/abort only.
 
+### Tier S Single-Audit-Pass Default
+
+Where the SPEC frontmatter `tier:` is `S`, the Plan Audit Gate runs exactly ONE audit pass by default — the iterative verdict re-execution loop defaults OFF for Tier S: a PASS verdict is final without a score-threshold re-run. The audit always runs (once) for every tier — Tier S changes only the re-run loop, never whether the audit runs; this section introduces no skip of the audit itself. FAIL and INCONCLUSIVE verdicts still halt and escalate exactly per Steps 4b-4d above. Tier M/L iterative audit behavior (the retry ceilings and re-audit loop above) is unchanged.
+
+### FAIL Defect-List Delta Re-Check (plan-audit)
+
+When plan-auditor returns FAIL, the verdict carries a structured defect-list — finding id, artifact/file + location, severity, and required fix per entry (see the plan-auditor Output Format defect-list contract). The orchestrator routes fixes directly — an orchestrator-direct edit or a single re-delegation to manager-spec — and the confirming re-audit is scoped to the enumerated defect delta rather than a from-scratch full re-audit, within the existing iteration ceilings above. Verdict authority is NOT transferred: binding PASS/FAIL judgment stays with the plan-auditor — the delta scope reduces re-audit cost, and it never substitutes an orchestrator self-assessment for an auditor verdict.
+
 ## Phase 2: Environment Assessment (Conditional)
 
 Condition: Only executes when `memory_guard.enabled: true` in quality.yaml.

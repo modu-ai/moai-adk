@@ -164,7 +164,7 @@ Each module is loaded on demand. Load the one relevant to the current task.
 - [Proactive Analysis](modules/proactive-analysis.md) — how `/moai gate`,
   `/moai review`, and `/moai loop` surface quality issues proactively, and
   how to triage findings.
-- [Best Practices](modules/best-practices.md) — using Context7 MCP for
+- [Best Practices](modules/best-practices.md) — using WebSearch / WebFetch for
   up-to-date framework/library best practices, and validating against them.
 - [Integration Patterns](modules/integration-patterns.md) — how quality fits
   into the SPEC workflow phases (plan/run/sync) and the harness levels.

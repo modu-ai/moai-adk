@@ -79,14 +79,14 @@ If the extracted profile has ANY ambiguous field (domain too vague, goal unstate
 
 [HARD] Do NOT skip the Socratic rounds when clarity is below 100%. The name derivation (Phase 6) and approval gate (Phase 7) both depend on a fully-resolved profile.
 
-### Phase 4: Final-Round Harness-Generation Offer
+### Phase 4: Final-Round Harness-Generation Proposal (merged into the Phase 7 approval round)
 
-As the closing question of the Context-First Discovery interview — the **final-round** offer, once the profile has reached 100% clarity — the orchestrator surfaces the harness-generation proposal:
+Once the profile has reached 100% clarity, the harness-generation proposal —
 
 > "이 프로젝트에 `<type>` 개발 하네스를 생성할까요?"
 > ("Generate a `<type>` development harness for this project?")
 
-where `<type>` is the confirmed domain (from `.moai/project/harness-spec.yaml` `domain` when present, else the discovery-confirmed domain). This final-round harness proposal mirrors the post-project-type-confirmation proposal surfaced by `project/meta-harness.md` § 5.0 — both entry points converge on the same Builder handoff. This offer is a live interview step, not a documented aside: it is the last question the interview asks before name derivation. On acceptance, proceed to Phase 6 (name derivation) → Phase 7 (approval gate). On decline, halt without building.
+— is NOT asked as its own standalone round. `<type>` is the confirmed domain (from `.moai/project/harness-spec.yaml` `domain` when present, else the discovery-confirmed domain). The orchestrator proceeds directly to Phase 6 (name derivation), and this proposal text becomes the question of the Phase 7 approval gate: ONE AskUserQuestion round carries BOTH the harness-generation proposal AND the build approval, instead of two sequential rounds. Merging changes the round-trip count only — the same proposal wording and the same approval options are presented; declining (Abort) halts without building, exactly as the standalone offer did. This final-round harness proposal still mirrors the post-project-type-confirmation proposal surfaced by `project/meta-harness.md` § 5.0 — both entry points converge on the same Builder handoff.
 
 ## Phase 5: Schedule Retrofit Branch (existing harness + scheduling intent)
 
@@ -111,9 +111,11 @@ Derive the harness `<name>` from the confirmed profile (Phase 2 + 1.5). The name
 
 Surface the derived name to the user as part of the Phase 7 approval gate. If the user rejects the derived name via the "Modify" option, re-derive from the refined profile (do NOT ask the user to type a name statically — re-derivation keeps the name semantically tied to the request).
 
-## Phase 7: Approval Gate (orchestrator-issued AskUserQuestion)
+## Phase 7: Approval Gate (orchestrator-issued AskUserQuestion — single merged proposal+approval round)
 
 [HARD] Before delegating to the Builder Workflow, the orchestrator MUST obtain explicit approval via `AskUserQuestion`. This gate is mandatory and score-independent (a strong Context-First Discovery profile never authorizes skipping it — parallel to the Implementation Kickoff Approval human gate).
+
+This single round carries BOTH the final-round harness-generation proposal (Phase 1.6 — the "Generate a `<type>` development harness for this project?" question, with the derived name + confirmed profile surfaced in the question body) AND the build approval — one AskUserQuestion round instead of two sequential rounds. Merging co-locates the proposal with the approval; the gate itself is unchanged.
 
 `ToolSearch(query: "select:AskUserQuestion")` → `AskUserQuestion` with the canonical four-option pattern (first option `(권장)` / `(Recommended)`):
 

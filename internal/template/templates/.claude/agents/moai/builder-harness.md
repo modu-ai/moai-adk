@@ -84,7 +84,7 @@ OUT OF SCOPE:
 
 ### Phase 2: Research
 
-- Use Context7 MCP to gather latest documentation on the domain
+- Use WebSearch / WebFetch to gather latest documentation on the domain
 - Review existing artifacts of the same type for patterns and potential reuse
 - Identify reference implementations and best practices
 
@@ -142,7 +142,7 @@ OUT OF SCOPE:
 
 - Complex backend/frontend implementation: route to manager-develop or a per-spawn `Agent(general-purpose)` backend/frontend specialist (archived-agent-rejection.md §C rows 7-8)
 - Quality validation: Delegate to sync-auditor (or orchestrator verification batch — archived-agent-rejection.md §C row 2)
-- Documentation research: Use Context7 MCP or WebSearch
+- Documentation research: Use WebSearch / WebFetch
 
 ## Conditional Skill Loading
 

@@ -75,6 +75,7 @@ Run 段階が完了した後に実行します:
 | --------- | -------------------- | -------------------- |
 | `--pr`   | changelog プロンプトをスキップして PR を自動オープン | `/moai sync --pr` |
 | `--merge` | 完了後に PR を自動マージ | `/moai sync --merge` |
+| `--skip-mx` | MX タグチェックをスキップ | `/moai sync --skip-mx` |
 | `--team`  | エージェントチームモードを強制 | `/moai sync --team`   |
 | `--solo`  | サブエージェントモードを強制 | `/moai sync --solo`   |
 

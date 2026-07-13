@@ -163,7 +163,7 @@ Step 4 - Completion Condition Check:
 - If only coverage below target (zero errors + tests passing): route coverage-gap handling through `go test -cover` gap analysis + `/moai gate` (the documented coverage replacement path) for intelligent gap analysis and test generation instead of blind looping. Identify P1-P4 priority gaps and generate targeted tests.
 
 Step 5 - Task Generation:
-- [HARD] TaskCreate for all newly discovered issues with pending status
+- [HARD] Batched bookkeeping — at most ONE batched turn per iteration: consolidate ALL Task-tool bookkeeping for the iteration into a single turn of parallel Task-tool calls, with aggregate tasks per file/group. The batch covers TaskCreate for all newly discovered issues (pending status), the TaskUpdate `in_progress` transitions for the fixes this iteration starts, and the TaskUpdate `completed` transitions for the fixes it verifies — replacing the former 3-calls-per-issue cadence. The same task entries and status transitions are produced; only the call cadence changes (no record is dropped).
 
 Step 5.5 - Pre-Fix MX Context Scan:
 - Scan files with newly discovered issues for existing @MX tags
@@ -176,8 +176,8 @@ Step 5.5 - Pre-Fix MX Context Scan:
 - See .claude/rules/moai/workflow/mx-tag-protocol.md for tag type definitions
 
 Step 6 - Fix Execution:
-- [HARD] Before each fix: TaskUpdate to change item to in_progress
-- [HARD] Agent delegation mandate: ALL fix tasks MUST be delegated to specialized agents. NEVER execute fixes directly.
+- Status bookkeeping for started fixes rides the Step-5 per-iteration batch (`in_progress` transitions — no per-fix Task-tool call)
+- [HARD] Agent delegation mandate (Level 2+): ALL Level 2 and above fix tasks MUST be delegated to specialized agents. NEVER execute Level 2+ fixes directly. Level 1 (import sorting, whitespace, formatting) is exempt: the orchestrator runs the language's deterministic formatter command directly, without an Agent() spawn (the same Level-1 orchestrator-direct exception as fix.md Phase 3).
 
 Agent selection by issue type (domain expertise injected per-spawn per `.claude/rules/moai/workflow/archived-agent-rejection.md` §C):
 - Type errors, logic bugs: manager-develop subagent (or orchestrator verification batch)
@@ -193,7 +193,7 @@ Fix levels applied per --auto setting:
 - Level 4 (Manual): Not auto-fixed. Security, architecture
 
 Step 7 - Verification:
-- [HARD] After each fix: TaskUpdate to change item to completed
+- Status bookkeeping for verified fixes rides the Step-5 per-iteration batch (`completed` transitions — no per-fix Task-tool call)
 
 Step 7.5 - MX Tag Check:
 - After fixes applied, scan modified files for MX tag requirements
@@ -202,7 +202,7 @@ Step 7.5 - MX Tag Check:
   - Dangerous patterns introduced: Add @MX:WARN with @MX:REASON
   - Unresolved issues: Keep @MX:TODO
 - Remove resolved @MX:TODO tags for fixed issues
-- Generate MX_TAG_REPORT with tags added/removed/updated
+- Per-iteration tag ADD/REMOVE/UPDATE actions still apply here; the MX_TAG_REPORT itself is emitted ONCE at sweep exit, aggregated across all iterations (see § MX Tag Report below) — not per iteration
 - See .claude/rules/moai/workflow/mx-tag-protocol.md for tag rules
 
 Step 8 - Snapshot Save:
@@ -295,11 +295,11 @@ Each iteration includes MX tag management:
 | Refactoring | Update @MX:NOTE, check ANCHOR |
 | Security fix | Add @MX:NOTE with security context |
 
-**MX Tag Report:**
-After each iteration, include MX_TAG_REPORT section:
-- Tags Added: List new tags with file:line
-- Tags Removed: List resolved TODOs
-- Tags Updated: List modified tags
+**MX Tag Report (aggregate, once at sweep exit):**
+When the sweep exits (success, ceiling, or interruption), emit the MX_TAG_REPORT ONCE, aggregated across all iterations. Per-iteration tag ADD/REMOVE/UPDATE actions still apply during Step 7.5 — only the report cadence changes, and no record is dropped:
+- Tags Added: List new tags with file:line (all iterations)
+- Tags Removed: List resolved TODOs (all iterations)
+- Tags Updated: List modified tags (all iterations)
 - Attention Required: WARN tags requiring review
 
 ## Snapshot Management

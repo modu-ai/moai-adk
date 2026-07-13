@@ -65,9 +65,7 @@ Collect:
 
 If --lean flag: SHORT-CIRCUIT this phase entirely. Skip the comprehensive 4-perspective analysis (Perspectives 1-4 below) and jump directly to the "--lean Mode — Over-Engineering-Only Lean Audit" section. The narrowness IS the feature: correctness, security, and performance findings stay in the default (non-`--lean`) comprehensive review.
 
-[HARD] Delegate review to the sync-auditor subagent with all perspectives (independent skeptical quality scoring per `.claude/rules/moai/workflow/archived-agent-rejection.md` §C row 2).
-
-Delegate to the sync-auditor subagent with instructions to review from all 4 perspectives sequentially. (The `--team` parallel-review mode is retired with the Agent Teams static layer.)
+[HARD] The 4 perspectives execute as a Mode-4 parallel read-only fan-out: up to 4 concurrent read-only judges — one per perspective (Security / Performance / Quality / UX) — spawned in a single turn, within the 3-5 concurrent `Agent()` ceiling (`orchestration-mode-selection.md` §C.2). The sync-auditor subagent remains the binding synthesis and verdict owner (independent skeptical quality scoring per `.claude/rules/moai/workflow/archived-agent-rejection.md` §C row 2): the parallel judges' findings feed the sync-auditor synthesis, which renders the consolidated assessment. The fan-out changes execution shape only — never verdict ownership. (The `--team` parallel-review mode remains retired with the Agent Teams static layer; this is Mode 4 subagent fan-out, not a team.)
 
 At the finding stage, report every issue you find, including ones you are uncertain about or consider low-severity, each with a confidence level and an estimated severity. Do not filter for importance or confidence while finding — the verdict stage (must-pass thresholds + harmonic scoring) does the filtering downstream. The goal at this stage is coverage: surfacing a finding that later gets filtered out is preferable to silently dropping a real bug.
 
@@ -87,16 +85,24 @@ Enumerate project manifest files and run a vulnerability scan for each detected 
 Auto-detect language from project markers; run the dependency vulnerability scan via a per-spawn `Agent(general-purpose)` security reviewer (security whitelist + OWASP instructions per `.claude/rules/moai/workflow/archived-agent-rejection.md` §C row 9) with the detected manifest.
 Full OWASP checklist: load the retained `moai-ref-owasp-checklist` skill (OWASP Top 10 + dependency-scan + secrets patterns), which supplements the inline dependency and secrets scans above.
 
-#### Secrets Scan (Full Git History)
+#### Secrets Scan (Incremental with Checkpoint)
 
-Scan the full git history — not just the working tree — for credential leaks:
+Scan git history for credential leaks incrementally. A last-scanned-SHA checkpoint is recorded under `.moai/state/` (`.moai/state/secrets-scan-checkpoint.txt` — the HEAD SHA of the last completed scan).
+
+Where a checkpoint SHA exists, scan only the new commit range plus the working tree, then update the checkpoint to the current HEAD:
+
+```bash
+git log -p <last-sha>..HEAD -G '(-----BEGIN [A-Z]+ PRIVATE KEY-----|AKIA[0-9A-Z]{16}|ghp_[A-Za-z0-9]{36})'
+```
+
+Where no checkpoint exists (first run) OR an explicit full-scan flag is passed, run the full-history scan covering all commits reachable via `--all`, then record the checkpoint:
 
 ```bash
 git log -p --all -G '(-----BEGIN [A-Z]+ PRIVATE KEY-----|AKIA[0-9A-Z]{16}|ghp_[A-Za-z0-9]{36})'
 ```
 
 Cross-reference findings against `.gitignore` to distinguish historical leaks from working-tree exposure.
-This scan is separate from working-tree-only scanners and must cover all commits reachable via `--all`.
+This scan is separate from working-tree-only scanners. The incremental range plus checkpoint update produces the same coverage over time as the former every-review full scan — no finding class is dropped; only redundant re-scanning of already-covered history is removed.
 
 #### Data Isolation Check
 

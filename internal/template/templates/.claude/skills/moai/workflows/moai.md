@@ -143,7 +143,7 @@ The default pipeline declares these gates explicitly. Each is implemented by its
 1. **Plan-audit gate (plan-auditor)** — after Phase 2/1.5: the plan-auditor subagent independently audits the SPEC plan artifacts in a fresh context (bias prevention). FAIL/INCONCLUSIVE halts the pipeline and surfaces to the user.
 2. **Implementation Kickoff Approval (plan→run HUMAN GATE)** — presented exactly once per pipeline entry, at the plan→run boundary, via an orchestrator AskUserQuestion round. Score-independent: a plan-auditor PASS or skip-eligible score never bypasses it. A derived completion condition (router Step 2.8) does NOT authorize run-phase entry — only this gate does. All user preferences (tier, mode preference, PR strategy, chain scope) are drained at this gate.
 3. **Phase 4 Mode Selection (6-mode catalog)** — autonomous selection per `orchestration-mode-selection.md` §A, logged to progress.md; strictly downstream of Implementation Kickoff Approval. **Mode 6 (workflow fan-out) operational entry**: selectable ONLY when the §C.3 capability gate holds — Implementation Kickoff Approval passed + all preferences collected + scope ≥ ~30 files with one uniform mechanical transform and no inter-file dependency + runtime ≥ v2.1.154 with workflows not disabled. Before launch, record the selection + gate confirmations in `progress.md` §F Phase 4 Mode Selection; then launch the fan-out from the orchestrator (scaling, not nesting) — workflow agents cannot prompt the user, so every needed decision must already be drained.
-4. **Sync-audit gate (sync-auditor)** — after Phase 5: the sync-auditor subagent scores the sync output in a fresh context (4-dimension). FAIL/INCONCLUSIVE halts the chain — the pipeline never auto-completes past a failing gate.
+4. **Sync-audit gate (sync-auditor)** — after Phase 5: the sync-auditor subagent scores the sync output in a fresh context (4-dimension). FAIL/INCONCLUSIVE halts the chain — the pipeline never auto-completes past a failing gate. On FAIL, the sync-auditor verdict carries a structured defect-list (finding id / file+location / severity / required fix); the orchestrator routes fixes directly (orchestrator-direct edit or a single re-delegation) and the confirming re-audit is scoped to the enumerated defect delta rather than a from-scratch full re-audit — within the existing iteration ceilings. Verdict authority stays with the sync-auditor: the delta scope reduces re-audit cost, and it never substitutes an orchestrator self-assessment for an auditor verdict.
 
 ## Phase 4: Implementation (TDD or DDD based on development_mode)
 
@@ -234,14 +234,14 @@ Mode selection:
 10.5. **Phase 2 (Issue)**: Create GitHub Issue linked to SPEC (only when the `--issue` opt-in flag is set; default skips per the late-branch opt-in policy). See plan.md Phase 13.
 11. **Phase 3 (Annotate)**: Run annotation cycle (1-6 iterations) until user approves plan
 11.2. **Plan-audit gate**: plan-auditor independent audit of the plan artifacts (Pipeline Gates #1); FAIL/INCONCLUSIVE halts
-11.3. **Implementation Kickoff Approval**: plan→run HUMAN GATE — exactly once per pipeline entry, score-independent (Pipeline Gates #2)
-11.5. **Execution Mode Selection Gate**: After Phase 3 approval, before Phase 4 — shape preferences collected here feed Phase 4 mode selection (6-mode catalog, Pipeline Gates #3)
+11.3. **Implementation Kickoff Approval**: plan→run HUMAN GATE — exactly once per pipeline entry, score-independent (Pipeline Gates #2). Merged round: presented in a single AskUserQuestion call carrying both this Kickoff question AND the Step 11.5 execution-shape question (multi-question, ≤4 questions per call). The Kickoff question offers run-phase entry (Recommended) / additional review / abort; merging co-locates the two questions into one blocking round-trip and never removes, weakens, or auto-bypasses the Kickoff gate — declining Kickoff halts run-phase entry exactly as a standalone round would
+11.5. **Execution Mode Selection Gate**: co-located with Step 11.3 in the same single AskUserQuestion call (see 11.3) — shape preferences collected here feed Phase 4 mode selection (6-mode catalog, Pipeline Gates #3)
    - If `--team` flag: RETIRED — emit `MODE_TEAM_UNAVAILABLE`, fall back to execution_mode="sub-agent"
-   - If `--solo` flag: Skip Gate, auto-select execution_mode="sub-agent"
+   - If `--solo` flag: Skip the execution-shape question (auto-select execution_mode="sub-agent"); the Kickoff question still rides its own round
    - Otherwise (no flag):
      - Read .moai/config/sections/llm.yaml → team_mode ("" = cc, "glm" = glm, "cg" = cg)
      - Bash: test -n "$TMUX" && echo "tmux" || echo "no-tmux"
-     - AskUserQuestion: worktree+{mode} (Recommended if tmux available) | sub-agent
+     - Merged AskUserQuestion (single call, with Step 11.3): Q1 Kickoff — run-phase entry (Recommended) / additional review / abort; Q2 execution shape — worktree+{mode} (Recommended if tmux available) | sub-agent
    - Worktree selected: Launch new tmux session in worktree dir, terminate current pipeline
    - Sub-agent selected: Pass execution_mode + active_mode to Phase 2
    - See plan.md Decision Point 3.5 for full option details
@@ -267,6 +267,8 @@ Mode selection:
 14. **Phase 5 (Sync)**: Always manager-docs sub-agent (sync phase is always sub-agent) — entered via auto-chain on a `full-pipeline` contract, or via the "(Recommended)" next-step option on a `single-phase` contract
 14.5. **Sync-audit gate**: sync-auditor independent 4-dimension scoring (Pipeline Gates #4); FAIL/INCONCLUSIVE halts the chain
 15. Terminate with the Completion Report completion signal (or continue the Agentic Completion Loop while the completion condition is unmet)
+   - Full-pipeline completion close: when a `full-pipeline` contract completes successfully with no genuine pending decision, close with a clean completion statement and NO manufactured next-step question — the askuser-protocol § Completion-Report Next-Step Discipline "close with NO question" clause is the full-pipeline default. A genuine next-step decision, when one actually exists, still rides AskUserQuestion.
+   - `single-phase` contract completions keep the existing "(Recommended)" next-step chain question unchanged (Step 14 — the chain never fires silently)
 
 ---
 

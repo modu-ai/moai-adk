@@ -161,7 +161,6 @@ MCP Server Permissions:
 
 | MCP Server | Permissions |
 |------------|-------------|
-| Context7 | Library documentation access, API reference resolution, version checking |
 | Playwright | Browser automation, screenshot capture, UI simulation, E2E testing |
 | Pencil | Design system access, .pen file editing, design-to-code, style guides, variables |
 

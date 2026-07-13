@@ -43,7 +43,7 @@ MoAI-ADK does NOT use a tier hierarchy or a `{domain}-{role}` naming convention.
 ### Selection Decision Tree
 
 1. Read-only codebase exploration? Use the `Explore` subagent (Anthropic built-in).
-2. External documentation or API research? Use WebSearch / WebFetch / Context7 MCP tools.
+2. External documentation or API research? Use WebSearch / WebFetch.
 3. SPEC plan-phase authoring (spec / plan / acceptance / research / design)? Use the `manager-spec` subagent.
 4. Run-phase implementation (DDD / TDD / autofix)? Use the `manager-develop` subagent with the appropriate `cycle_type`.
 5. Sync-phase documentation (CHANGELOG / README / docs)? Use the `manager-docs` subagent.

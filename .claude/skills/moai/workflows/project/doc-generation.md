@@ -60,21 +60,19 @@ If PASS: Proceed to Phase 9 (Codemaps Generation).
 
 If FAIL: Enter retry loop.
 
-#### Step 3.1.3: Retry Loop (max 3 iterations)
+#### Step 3.1.3: Retry Loop (max 1 retry)
 
-On FAIL:
+On FAIL, the retry ceiling is 1 — a single regeneration + re-audit cycle (iteration 2 is the final audit). The former up-to-3-iteration regeneration loop is retired; the escalation AskUserQuestion fires as soon as the single retry fails.
 
-1. Delegate back to manager-docs: "Use the manager-docs subagent to revise .moai/project/ documents based on the review report at .moai/reports/plan-audit/PROJECT-review-{N}.md. Address all defects listed in the report."
+1. Delegate back to manager-docs: "Use the manager-docs subagent to revise .moai/project/ documents based on the review report at .moai/reports/plan-audit/PROJECT-review-1.md. Address all defects listed in the report."
 
-2. After manager-docs revision, re-invoke plan-auditor: "Use the plan-auditor subagent to audit project documents at .moai/project/ — document type: project, iteration {N+1}. Previous review report: .moai/reports/plan-audit/PROJECT-review-{N}.md"
+2. After manager-docs revision, re-invoke plan-auditor: "Use the plan-auditor subagent to audit project documents at .moai/project/ — document type: project, iteration 2. Previous review report: .moai/reports/plan-audit/PROJECT-review-1.md"
 
-3. Read new verdict from `.moai/reports/plan-audit/PROJECT-review-{N+1}.md`.
+3. Read new verdict from `.moai/reports/plan-audit/PROJECT-review-2.md`.
 
 4. If PASS: Proceed to Phase 9.
 
-5. If FAIL and iteration < 3: Repeat from step 1 with incremented iteration.
-
-6. If FAIL and iteration = 3: Escalate to user via AskUserQuestion with the final review report. Options:
+5. If FAIL after the single retry (iteration = 2): Escalate to user via AskUserQuestion with the final review report. Options:
    - Fix manually and retry: User edits documents, then re-run audit
    - Accept as-is: Proceed despite audit failure (user override)
    - Cancel: Stop project documentation generation

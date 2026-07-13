@@ -82,7 +82,7 @@ OUT OF SCOPE: Code implementation, deployment, security audits — route to mana
 
 ### Phase 4: Quality Assurance & Validation
 
-- Apply Context7 best practices for documentation standards
+- Apply established documentation best practices (WebSearch / WebFetch for up-to-date standards)
 - Run markdown linting rules for consistent formatting
 - Validate Mermaid diagram syntax
 - Check link integrity (internal and external)
