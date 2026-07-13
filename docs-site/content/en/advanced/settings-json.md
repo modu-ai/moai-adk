@@ -976,16 +976,6 @@ If your project uses `bun`, add it to `settings.local.json`.
 }
 ```
 
-### Enabling an MCP Server
-
-Enable the Context7 MCP server.
-
-```json
-{
-  ]
-}
-```
-
 ### Enabling the Sandbox
 
 Enable the sandbox for security, excluding Docker.
