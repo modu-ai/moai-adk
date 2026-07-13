@@ -69,9 +69,31 @@ Source: `grep -n '^func ' internal/cli/update.go` (3,276 LOC, 50 top-level funcs
 - `isUserAreaPath` (update.go:1313) — 0 non-test callers (purely tested). Test refs: same 6 files above.
 - `isUserOwnedNamespaceConservative` (protect.go:313) — stays in protect.go; calls `isUserOwnedNamespace` internally.
 
-### M3b characterization safety net — LANDED (separate commit)
+### M3b characterization safety net — LANDED
 
-See `internal/cli/update/characterization_test.go`. Suite green on UNDECOMPOSED update.go (M3d anchor established).
+File: `internal/cli/update_characterization_test.go` (package `cli` — accesses unexported helpers + `updateCmd`).
+
+8 characterization tests pin the observable behavior of the UNDECOMPOSED update.go that M3d decomposition MUST preserve (M3d safety-net anchor established):
+
+1. **TestUpdateFlagMatrixCharacterization** — flag surface (7 flags: config/-c, force, yes, templates-only, binary, dry-run, no-hooks)
+2. **TestUpdateFlagMutualExclusionCharacterization** — independent flag set/reset (4 subtests)
+3. **TestDetermineChangeTypeCharacterization** — golden values: `"update existing"` / `"new file"`
+4. **TestClassifyFileRiskCharacterization** — golden values: settings.json→high, rules/x.md→low, skills/hns-x→medium
+5. **TestValuesEqualCharacterization** — 3-way-merge equality helper (7 subtests incl. cross-type numeric equality int/uint/float)
+6. **TestIsSymlinkEntryCharacterization** — plain paths are NOT symlinks
+7. **TestNamespacePredicateSupersetCharacterization** — NFR-UNP-005: isUserOwnedNamespace is a superset for user-owned surfaces (directory-based paths; colon-format command names are NOT recognized — characterization-pinned behavior)
+8. **TestNamespaceProtectionE2EClassification** — bridges `update.Classify` to `isUserOwnedNamespace` (REQ-TUX3-002 reachability proven) + REQ-TUX3-014 label check
+9. **TestMoaiManagedClassificationCharacterization** — moai-managed template paths are NOT user-owned (update targets, not preserve)
+10. **TestFastPathVersionComparisonCharacterization** — getProjectConfigVersion contract (returns "0.0.0" default on empty project; deterministic)
+
+M3b gate (suite green on UNDECOMPOSED update.go):
+```
+go test ./internal/cli/ -run Characterization -count=1
+→ all 8 tests PASS (14 subtests)
+ok  github.com/modu-ai/moai-adk/internal/cli  0.456s
+```
+
+No regression confirmed: `go test ./internal/cli/...` all green; guard 5-family (`TestSplitHarnessNamespaceNoLeak` + `internal/merge/...`) PASS; cross-platform builds (darwin + windows) exit 0.
 
 ## §E.3 Run-phase Audit-Ready Signal
 
