@@ -47,7 +47,7 @@ m1_to_mN_commit_strategy: "2 commits direct to main (Hybrid Trunk Tier S): 31c5b
 
 ```yaml
 sync_complete_at: 2026-07-13
-sync_commit_sha: PENDING-BACKFILL  # backfilled in a follow-up commit per established placeholder-backfill pattern
+sync_commit_sha: 6976a4be9  # backfilled post-commit per established placeholder-backfill pattern
 sync_status: all-green
 ac_pass_count: 4  # matches spec.md §3 SSOT AC-DP-001..004 (grep -c '^### AC-DP-' spec.md → 4)
 changelog_entry_position: 1  # first entry under [Unreleased] > ### Added (verified: grep -c 'SPEC-DOCTOR-PROMOTION-001' CHANGELOG.md → 0 pre-emission, 1 post-emission)
