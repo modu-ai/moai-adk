@@ -1,16 +1,16 @@
 ---
-description: "Sync Phase 3~4 — Git Operations and Delivery (CI mirror, push/PR, auto-merge), Completion, Graceful Exit, Test Scenarios, and Custom Harness."
+description: "Sync Phase 13~14 — Git Operations and Delivery (CI mirror, push/PR, auto-merge), Completion, Graceful Exit, Test Scenarios, and Custom Harness."
 user-invocable: false
 metadata:
   parent: moai-workflow-sync
-  phase: "Phase 3~4: Git Delivery, Completion, and Auxiliary"
+  phase: "Phase 13~14: Git Delivery, Completion, and Auxiliary"
 ---
 
 <!-- TRACE PROBE: workflow-split baseline trace mechanism -->
 <!-- Activated by MOAI_TRACE_PHASES=1 environment variable -->
 <!-- Emits one line per Phase entry/exit to stderr in format: [trace] /moai sync Phase <N> <enter|exit> -->
 
-### Phase 3: Git Operations and Delivery
+### Phase 13: Git Operations and Delivery
 
 #### Step 3.0: Detect Git Workflow Strategy
 
@@ -354,7 +354,7 @@ Error handling:
 - On failure: Log warning with manual cleanup command
 - Message: "Worktree cleanup warning: {error}. Manual: `moai worktree done SPEC-{ID}`"
 
-### Phase 4: Completion and Next Steps
+### Phase 14: Completion and Next Steps
 
 #### Completion Report
 
@@ -405,14 +405,14 @@ When user aborts at any decision point:
 
 All of the following must be verified:
 
-- Phase 0: Deployment readiness verified (tests, migrations, env changes, backward compatibility)
-- Phase 0.5: Quality verification completed (tests, linter, type checker, deep code review with auto-fix)
-- Phase 0.55: Security scan completed (if security-sensitive files changed)
-- Phase 0.7: Coverage analysis completed (measurement, gap analysis, test generation, verification)
-- Phase 1: Prerequisites verified, project analyzed, divergence analysis completed, sync plan approved by user
-- Phase 2: Safety backup created and verified, documents synchronized, SPEC documents updated per lifecycle level, project documents updated (if applicable), quality verified, SPEC status updated
-- Phase 3: Changes committed, local CI mirror validated (Step 3.1.5: vet + test-race + lint + cross-compile — Windows skipped), delivered per git_workflow strategy (PR created for github_flow/gitflow, direct push for main_direct), auto-merge executed (if flagged and PR exists)
-- Phase 4: Completion report displayed with delivery result, appropriate next steps presented based on strategy and context
+- Phase 1: Deployment readiness verified (tests, migrations, env changes, backward compatibility)
+- Phase 7: Quality verification completed (tests, linter, type checker, deep code review with auto-fix)
+- Phase 8: Security scan completed (if security-sensitive files changed)
+- Phase 10: Coverage analysis completed (measurement, gap analysis, test generation, verification)
+- Phase 11: Prerequisites verified, project analyzed, divergence analysis completed, sync plan approved by user
+- Phase 12: Safety backup created and verified, documents synchronized, SPEC documents updated per lifecycle level, project documents updated (if applicable), quality verified, SPEC status updated
+- Phase 13: Changes committed, local CI mirror validated (Step 3.1.5: vet + test-race + lint + cross-compile — Windows skipped), delivered per git_workflow strategy (PR created for github_flow/gitflow, direct push for main_direct), auto-merge executed (if flagged and PR exists)
+- Phase 14: Completion report displayed with delivery result, appropriate next steps presented based on strategy and context
 
 ---
 
@@ -421,18 +421,18 @@ All of the following must be verified:
 ### Normal Flow
 **Prompt**: "/moai sync SPEC-AUTH-001"
 **Expected Result**:
-- Phase 0: Pre-sync quality gate passes (tests, lint)
-- Phase 0.5: Quality verification confirms TRUST 5 compliance
-- Phase 1: Divergence analysis shows implementation matches SPEC
+- Phase 1: Pre-sync quality gate passes (tests, lint)
+- Phase 7: Quality verification confirms TRUST 5 compliance
+- Phase 11: Divergence analysis shows implementation matches SPEC
 - Decision Point: User approves sync plan
-- Phase 2: Documentation updated (README, CHANGELOG, API docs)
-- Phase 2.2.1: SPEC status updated to "implemented"
-- Phase 3: Commits created, PR opened with summary
+- Phase 12: Documentation updated (README, CHANGELOG, API docs)
+- Phase 12: SPEC status updated to "implemented"
+- Phase 13: Commits created, PR opened with summary
 
 ### Partial Implementation Flow
 **Prompt**: "/moai sync SPEC-AUTH-001" (only backend implemented, frontend pending)
 **Expected Result**:
-- Phase 1.5: Divergence detected - 3/5 acceptance criteria met
+- Phase 11: Divergence detected - 3/5 acceptance criteria met
 - Sync plan notes partial implementation
 - SPEC status updated to "in-progress" (not "implemented")
 - Documentation reflects completed portions only
@@ -452,7 +452,7 @@ All of the following must be verified:
 
 정적 routing:
 
-- **moai-workflow-ci-loop** — Phase 4 (`gh pr create`) 성공 후 CI watch + auto-fix loop을 자동 호출하는 skill. HARD invocation contracts: `.claude/rules/moai/workflow/ci-watch-protocol.md` + `.claude/rules/moai/workflow/ci-autofix-protocol.md`. 30s polling, 30분 hard timeout, required vs auxiliary check 분류 후 ready-to-merge handoff 또는 max 3-iteration auto-fix 시도, semantic 실패는 즉시 escalation.
+- **moai-workflow-ci-loop** — Phase 14 (`gh pr create`) 성공 후 CI watch + auto-fix loop을 자동 호출하는 skill. HARD invocation contracts: `.claude/rules/moai/workflow/ci-watch-protocol.md` + `.claude/rules/moai/workflow/ci-autofix-protocol.md`. 30s polling, 30분 hard timeout, required vs auxiliary check 분류 후 ready-to-merge handoff 또는 max 3-iteration auto-fix 시도, semantic 실패는 즉시 escalation.
 
 이 skill은 `auto` 모드 sync에서 PR 생성 직후 무조건 호출되며, invocation contract에 따라 orchestrator가 다음을 보장한다: gh 인증 확인 → `.github/required-checks.yml` 존재 확인 → 양의 정수 PR 번호 → 90s 이내 활성 watch 부재.
 

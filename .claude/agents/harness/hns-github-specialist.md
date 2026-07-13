@@ -9,7 +9,6 @@ description: >
   SPEC-V3R6-DEV-HARNESS-CONSOLIDATION-001.
 tools: Read, Write, Edit, Bash, Grep, Glob
 effort: high
-isolation: worktree
 ---
 
 # Specialist: harness-github — Issue Fix and PR Review

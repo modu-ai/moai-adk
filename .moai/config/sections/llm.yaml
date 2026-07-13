@@ -2,6 +2,7 @@ llm:
     mode: ""
     team_mode: ""
     glm_env_var: GLM_API_KEY
+    plan_type: ""
     performance_tier: ""
     claude_models:
         high: opus

@@ -12,7 +12,6 @@ skills:
 tools: Read, Write, Edit, Grep, Glob, Bash
 model: inherit
 effort: high
-isolation: worktree
 ---
 
 # Hook / CI Specialist (moai-adk-go)
@@ -25,7 +24,6 @@ isolation: worktree
 |-------|-------|-----------|
 | `role` | hook-ci-specialist | Claude Code hook scripts + settings.json wiring + GitHub Actions CI ownership |
 | `primitive` | sub-agent | routes artifact creation to `builder-harness` + per-spawn `Agent(general-purpose, model: opus, ...)` for DevOps/CI work via ordinary `Agent()` spawn |
-| `isolation` | worktree | worktree materialization per LR-05 specialist-pattern requirement |
 | `effort` | high | intelligence-sensitive (hook event semantics, namespace-protection contract, template-neutrality CI guard judgment) |
 | `model` | inherit | matches frontmatter `model: inherit` ([1m]-safe per model-policy.md) |
 

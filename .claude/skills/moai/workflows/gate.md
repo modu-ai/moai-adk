@@ -36,7 +36,7 @@ Lightweight pre-commit quality gate. Runs lint, format check, type check, and te
 |----------|-------|-------|----------|
 | `/moai gate` | lint + format + type-check + test | Fast (<30s) | Before every commit |
 | `/moai review` | 4-perspective deep code review | Medium (2-5min) | Before PR, design review |
-| sync Phase 0.5 | Full quality + code review + coverage | Slow (5-10min) | Part of sync pipeline |
+| sync Phase 7 | Full quality + code review + coverage | Slow (5-10min) | Part of sync pipeline |
 
 ## Input
 
@@ -44,7 +44,7 @@ Lightweight pre-commit quality gate. Runs lint, format check, type check, and te
   - --fix: Auto-fix lint and format issues (default: report only)
   - --staged: Only check staged files (`git diff --staged`)
   - --file PATH: Check specific file(s) only
-  - --fresh: Force-fresh mode — disable ALL shared-snapshot consumption for this invocation (Phase 1.5 is skipped entirely; fresh executions are still recorded). Used by callers that require an independent re-run, e.g. the loop workflow's Step 1.5 Independent Final Pass.
+  - --fresh: Force-fresh mode — disable ALL shared-snapshot consumption for this invocation (Phase 1B is skipped entirely; fresh executions are still recorded). Used by callers that require an independent re-run, e.g. the loop workflow's Step 1.5 Independent Final Pass.
 
 ## Phase 1: Language Detection
 
@@ -68,7 +68,7 @@ Check indicator files in priority order (first match wins):
 - Scala: build.sbt → `sbt compile`, `sbt test`
 - Fallback: Skip language-specific checks, report "unknown language"
 
-## Phase 1.5: Shared Diagnostic Snapshot Consumption
+## Phase 1B: Shared Diagnostic Snapshot Consumption
 
 Before executing checks, query the shared diagnostic snapshot for the current working tree:
 

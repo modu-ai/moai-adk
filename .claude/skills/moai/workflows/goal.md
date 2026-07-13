@@ -143,5 +143,4 @@ tight.
 - `.claude/rules/moai/workflow/goal-directive.md` — native `/goal` semantics + the `/moai goal` PROGRAMMATIC counterpart row + Axis B.
 - `.claude/rules/moai/workflow/native-invocation-model.md` § Axis B — the HUMAN-ONLY automation justification.
 - `.claude/rules/moai/workflow/session-handoff.md` § Post-Paste /goal Follow-up Block — the post-paste native `/goal` is now an optional variant; Block 5 MAY carry `/moai goal "<condition>"`.
-- `internal/goal/` — the Go implementation (schema, state, prune, evaluate).
-- `internal/cli/hook_stop_goal.go` — the `moai hook stop-goal` verb.
+- The goal-engine Go package and the `moai hook stop-goal` verb (implementation-owned; see the local project source tree).

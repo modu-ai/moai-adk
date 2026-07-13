@@ -137,7 +137,7 @@ If --security flag: This perspective receives primary focus with deeper analysis
 
 ### Native /code-review compose (Axis A)
 
-Where native `/code-review` is auto-invocable, the orchestrator MAY invoke it via `Skill("code-review")` as one Phase 2 finding source, covering the correctness-bug + reuse/simplification/efficiency portion; its findings feed the sync-auditor synthesis. The Security review (Perspective 1), `@MX` tag-compliance (Phase 3), UX review (Perspective 4), and design review (Phase 4.5) composition is preserved — native `/code-review` augments, never replaces, the MoAI-specific perspectives.
+Where native `/code-review` is auto-invocable, the orchestrator MAY invoke it via `Skill("code-review")` as one Phase 2 finding source, covering the correctness-bug + reuse/simplification/efficiency portion; its findings feed the sync-auditor synthesis. The Security review (Perspective 1), `@MX` tag-compliance (Phase 3), UX review (Perspective 4), and design review (Phase 5) composition is preserved — native `/code-review` augments, never replaces, the MoAI-specific perspectives.
 
 Conditional-PROGRAMMATIC caveat: before relying on `Skill("code-review")`, verify auto-invocability at runtime — a bundled skill with `disable-model-invocation: true`, a session with `disableBundledSkills`, or a denied `Skill` tool all remove auto-invocability.
 
@@ -187,7 +187,7 @@ Produce a consolidated review report organized by severity:
 - TRUST 5 Score: N/5
 ```
 
-## Phase 5: Next Steps
+## Phase 6: Next Steps
 
 Present options via AskUserQuestion:
 
@@ -260,7 +260,7 @@ Close the audit with exactly one of these forms:
 
 ### Read-only, advisory, no verdict
 
-The --lean mode is read-only and advisory. It applies NO fixes, modifies NO files, and renders NO PASS/FAIL verdict — it is distinct from `/moai clean` (which removes code) and from the sync-auditor gate (which scores a verdict). It produces only a "what can be cut" list plus the net-reduction estimate. Remediation routes through the existing Phase 5 Next Steps (run `/moai fix`, create fix tasks, export the report, or dismiss) — the same as the rest of this skill.
+The --lean mode is read-only and advisory. It applies NO fixes, modifies NO files, and renders NO PASS/FAIL verdict — it is distinct from `/moai clean` (which removes code) and from the sync-auditor gate (which scores a verdict). It produces only a "what can be cut" list plus the net-reduction estimate. Remediation routes through the existing Phase 6 Next Steps (run `/moai fix`, create fix tasks, export the report, or dismiss) — the same as the rest of this skill.
 
 ### Doctrine cross-references (reuse, do not duplicate)
 
@@ -274,7 +274,7 @@ The --lean mode is read-only and advisory. It applies NO fixes, modifies NO file
 - Warnings grouped by file as aggregate tasks
 - Suggestions listed in report but not tracked as tasks
 
-## Phase 4.5: Design Review (Conditional)
+## Phase 5: Design Review (Conditional)
 
 When to run: --design or --critique flag is present, OR changed files include UI components (tsx, jsx, vue, svelte, css, scss)
 
@@ -313,7 +313,7 @@ Output: Craft critique report with severity-ranked findings and rebuild suggesti
 - Phase 1: MoAI orchestrator (change identification via git)
 - Phase 2-3: sync-auditor subagent (multi-perspective analysis; the Security perspective receives deeper focus when --security is set) — the dependency vulnerability sub-scan additionally delegates to a per-spawn `Agent(general-purpose)` security reviewer
 - Phase 4-5: MoAI orchestrator (consolidation and user interaction)
-- Phase 4.5 (conditional): per-spawn `Agent(general-purpose)` frontend specialist (if --design or --critique)
+- Phase 5 (conditional): per-spawn `Agent(general-purpose)` frontend specialist (if --design or --critique)
 
 ## Execution Summary
 

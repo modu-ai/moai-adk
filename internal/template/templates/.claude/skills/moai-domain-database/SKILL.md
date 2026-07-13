@@ -13,7 +13,7 @@ when_to_use: >
 
 license: Apache-2.0
 compatibility: Designed for Claude Code
-allowed-tools: Read, Write, Edit, Bash(psql:*), Bash(mysql:*), Bash(sqlite3:*), Bash(mongosh:*), Bash(redis-cli:*), Bash(npm:*), Bash(npx:*), Bash(prisma:*), Bash(neonctl:*), Bash(firebase:*), Bash(supabase:*), Grep, Glob, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
+allowed-tools: Read, Write, Edit, Bash(psql:*), Bash(mysql:*), Bash(sqlite3:*), Bash(mongosh:*), Bash(redis-cli:*), Bash(npm:*), Bash(npx:*), Bash(prisma:*), Bash(neonctl:*), Bash(firebase:*), Bash(supabase:*), Grep, Glob
 user-invocable: false
 metadata:
   version: "2.0.0"

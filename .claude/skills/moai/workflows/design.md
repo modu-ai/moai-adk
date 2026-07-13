@@ -44,7 +44,7 @@ skip this workflow entirely.
 
 Design enters ONLY after BOTH:
 
-1. **Plan-audit PASS** — the SPEC's plan-phase artifacts cleared Phase 0.5.
+1. **Plan-audit PASS** — the SPEC's plan-phase artifacts cleared Phase 1.
 2. **Implementation Kickoff Approval** — the plan→run human gate is cleared
    (design sits between plan-audit PASS and run-phase; it is downstream of
    Kickoff Approval exactly as run-phase is).
@@ -193,5 +193,5 @@ brand-consistency must-pass at sync.
 - **Agent body (H1-H9 verbatim)**: `.claude/agents/moai/manager-design.md`.
 - **Conditional route**: `.claude/rules/moai/workflow/spec-workflow.md` § SPEC Phase Discipline.
 - **Re-delegation template**: `.claude/rules/moai/development/manager-develop-prompt-template.md` § 1 (Section A-E).
-- **Plan-audit gate**: `.claude/rules/moai/workflow/spec-workflow.md` § Phase 0.5 Plan Audit Gate.
+- **Plan-audit gate**: `.claude/rules/moai/workflow/spec-workflow.md` § Phase 1 Plan Audit Gate.
 - **Kickoff Approval**: `.claude/rules/moai/workflow/orchestration-mode-selection.md` (Implementation Kickoff Approval mandatory-restoration).

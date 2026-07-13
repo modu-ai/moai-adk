@@ -54,7 +54,7 @@ For tag types, lifecycle rules, mandatory fields, and per-file limits, see: .cla
 | `--exclude pattern` | Additional exclude patterns (comma-separated) |
 | `--lang go,py,ts` | Scan only specified languages (default: auto-detect) |
 | `--threshold N` | Override fan_in threshold (default: 3) |
-| `--no-discovery` | Skip Phase 0 codebase discovery |
+| `--no-discovery` | Skip Phase 1 codebase discovery |
 
 ## Pipeline Contract (Agentless Classification)
 
@@ -84,7 +84,7 @@ See [Subcommand Classification matrix](../../rules/moai/workflow/spec-workflow.m
 
 ## Workflow Phases
 
-### Phase 0: Codebase Discovery
+### Phase 1: Codebase Discovery
 
 **Purpose**: Detect project languages and load context before scanning.
 
@@ -236,7 +236,7 @@ During DDD ANALYZE phase:
 
 ## Agent Chain Summary
 
-- Phase 0: Explore subagent (codebase discovery, language detection, project context loading)
+- Phase 1: Explore subagent (codebase discovery, language detection, project context loading)
 - Pass 1: Explore subagent or a per-spawn `Agent(general-purpose)` agent with backend scope (full file scan, priority queue generation)
 - Pass 2: a per-spawn `Agent(general-purpose)` agent with backend scope (selective deep read, tag description generation)
 - Pass 3: a per-spawn `Agent(general-purpose)` agent with backend scope (batch edit, tag insertion)

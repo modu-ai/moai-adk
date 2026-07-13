@@ -16,7 +16,6 @@ var acknowledgedUnloadedSections = []string{
 	"db",             // out-of-scope: separate SPEC (database config not yet runtime-consumed)
 	"github-actions", // out-of-scope: CI config, not consumed at runtime
 	"lsp",            // out-of-scope: LSP config not yet runtime-enforced (separate SPEC)
-	"mcp-matrix",     // out-of-scope: data resource read as prose-context by /moai project Phase 3.6; no typed loader by design
 	"mx",             // out-of-scope: ad-hoc parsing retained; struct neuverbalisation deferred (spec.md §2.2)
 	"observability",  // out-of-scope: observability config, separate SPEC
 	"project",        // out-of-scope: loaded via separate ProjectConfig loader path

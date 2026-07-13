@@ -812,9 +812,10 @@ func runTemplateSyncWithReporter(cmd *cobra.Command, reporter project.ProgressRe
 	// Note: .moai/config/sections/*.yaml files are already handled by
 	// restoreMoaiConfig with 3-way merge, so they are excluded here.
 	collectMergeableFiles := func(projectRoot string) []string {
-		// Fixed mergeable files at project root that are NOT handled by restoreMoaiConfig
+		// Fixed mergeable files at project root that are NOT handled by restoreMoaiConfig.
+		// .mcp.json is intentionally absent: MoAI no longer ships an MCP template
+		// (full MCP removal), so a user's .mcp.json is not a merge target.
 		return []string{
-			".mcp.json",
 			".claude/settings.json",
 			".moai/status_line.sh",
 		}

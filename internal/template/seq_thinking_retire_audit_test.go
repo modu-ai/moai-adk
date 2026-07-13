@@ -32,7 +32,7 @@ const SeqThinkingSentinel = "SEQ_THINKING_REINTRODUCED"
 // title-case + no hyphen and therefore does not match this regex.
 //
 // Tokens detected:
-//   - sequential-thinking         (.mcp.json server key, settings allow patterns)
+//   - sequential-thinking         (settings allow patterns)
 //   - sequentialthinking          (frontmatter tool token concatenation)
 //   - mcp__sequential-thinking__* (permission glob)
 //
@@ -56,9 +56,7 @@ var scanRoots = []string{
 // scanFiles lists individual non-source files to scan: configuration files
 // and root documentation.
 var scanFiles = []string{
-	".mcp.json",
 	".claude/settings.json",
-	"internal/template/templates/.mcp.json.tmpl",
 	"internal/template/templates/.claude/settings.json.tmpl",
 	"CLAUDE.md",
 }

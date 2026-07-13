@@ -14,7 +14,6 @@ skills:
 tools: Read, Write, Edit, Grep, Glob, Bash
 model: inherit
 effort: high
-isolation: worktree
 ---
 
 # CLI / Template Specialist (moai-adk-go)
@@ -27,7 +26,6 @@ isolation: worktree
 |-------|-------|-----------|
 | `role` | cli-template-specialist | CLI surface + go:embed template system ownership |
 | `primitive` | sub-agent | delegates to `manager-develop` via ordinary `Agent()` spawn (no worktree / dynamic-workflow / adversarial fan-out) |
-| `isolation` | worktree | worktree materialization per LR-05 specialist-pattern requirement |
 | `effort` | high | intelligence-sensitive (template-neutrality + 16-language parity judgment) |
 | `model` | inherit | matches frontmatter `model: inherit` ([1m]-safe per model-policy.md) |
 

@@ -188,7 +188,7 @@ The Agent Teams static layer that consumed these role profiles is RETIRED; a for
 
 #### `disallowedTools` MCP server-level enforcement
 
-When `disallowedTools` references an MCP tool (e.g. `mcp__context7__*`, `mcp__web_search_prime__webSearchPrime`), the restriction is enforced at the MCP server level: the tool's specs are not exposed to the agent at all, so the agent cannot invoke it even indirectly. This is stricter than the plain tool-deny behavior for built-in tools. Author agents with this in mind — a `disallowedTools` entry on an MCP tool is a hard gate, not a soft prompt.
+When `disallowedTools` references an MCP tool (e.g. `mcp__web_search_prime__webSearchPrime`), the restriction is enforced at the MCP server level: the tool's specs are not exposed to the agent at all, so the agent cannot invoke it even indirectly. This is stricter than the plain tool-deny behavior for built-in tools. Author agents with this in mind — a `disallowedTools` entry on an MCP tool is a hard gate, not a soft prompt.
 
 ### managed-settings precedence + nested closest-wins
 

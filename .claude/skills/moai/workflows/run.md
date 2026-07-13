@@ -36,7 +36,7 @@ triggers:
 
 Phase Owners: `manager-develop` (run-phase implementation — single-spawn per Anthropic's coding-task parallelism caveat "most coding tasks involve fewer truly parallelizable tasks than research"; `cycle_type` ∈ `{tdd, ddd, autofix}` per the canonical cycle-type contract) + `manager-git` (Tier L PR creation OR `--pr` flag per the canonical Tier-based PR routing policy) + `Explore` (read-only investigation when scope discovery needed).
 
-Phase 0.95 Mode Selection: orchestrator autonomous decision over the 6-mode catalog (trivial / background / agent-team / parallel / sub-agent / workflow) per `.claude/rules/moai/workflow/orchestration-mode-selection.md` §A, logged at `.moai/specs/SPEC-{ID}/progress.md` § Phase 0.95 Mode Selection. Phase 0.95 SHOULD be invoked before any manager-develop spawn for SPECs sized ≥ Tier M. The `--mode` dispatch axis below is a SEPARATE axis — see that rule's §G.1 crosswalk (correspondence, not merge).
+Phase 4 Mode Selection: orchestrator autonomous decision over the 6-mode catalog (trivial / background / agent-team / parallel / sub-agent / workflow) per `.claude/rules/moai/workflow/orchestration-mode-selection.md` §A, logged at `.moai/specs/SPEC-{ID}/progress.md` § Phase 4 Mode Selection. Phase 4 SHOULD be invoked before any manager-develop spawn for SPECs sized ≥ Tier M. The `--mode` dispatch axis below is a SEPARATE axis — see that rule's §G.1 crosswalk (correspondence, not merge).
 
 `cycle_type=autofix` mode: `/moai fix` workflow integration delegates to manager-develop with the utility-class pipeline 3-phase contract (localize → repair → validate per `.claude/rules/moai/workflow/spec-workflow.md` § Subcommand Classification) and the max-3-iteration contract per `.claude/rules/moai/workflow/ci-autofix-protocol.md`.
 
@@ -45,8 +45,8 @@ Phase 0.95 Mode Selection: orchestrator autonomous decision over the 6-mode cata
 | Phase Group | Sub-skill 경로 | 내용 |
 |------------|----------------|------|
 | Phase 0: Context Loading | `Read workflows/run/context-loading.md` | Mode dispatch, UltraThink, harness level, context loading, worktree path rules |
-| Phase 0.5~1.8: Phase Execution | `Read workflows/run/phase-execution.md` | Plan Audit Gate, environment assessment, JIT language detection, scale-based mode, analysis/planning, task decomposition, development mode routing |
-| Phase 2~4: Implementation | `Read workflows/run/task-decomposition.md` | DDD/TDD cycles, quality validation (Phase 2.5/2.8), git operations (Phase 3), completion guidance (Phase 4) |
+| Phase 1~1.8: Phase Execution | `Read workflows/run/phase-execution.md` | Plan Audit Gate, environment assessment, JIT language detection, scale-based mode, analysis/planning, task decomposition, development mode routing |
+| Phase 11~4: Implementation | `Read workflows/run/task-decomposition.md` | DDD/TDD cycles, quality validation (Phase 13/2.8), git operations (Phase 19), completion guidance (Phase 20) |
 | Mode Routing + Completion | `Read workflows/run/mode-orchestration.md` | Execution mode gate, mode dispatch routing, context propagation, completion criteria, test scenarios |
 
 ## Invocation Flow
@@ -55,9 +55,9 @@ Phase 0.95 Mode Selection: orchestrator autonomous decision over the 6-mode cata
 /moai run SPEC-XXX
   ├── [trace] /moai run Phase 0 enter
   │   Read workflows/run/context-loading.md  → Mode dispatch + context setup
-  ├── [trace] /moai run Phase 0.5 enter
+  ├── [trace] /moai run Phase 1 enter
   │   Read workflows/run/phase-execution.md  → Phase Sequence (0.5~1.8) + mode routing
-  ├── [trace] /moai run Phase 2 enter
+  ├── [trace] /moai run Phase 11 enter
   │   Read workflows/run/task-decomposition.md → Implementation + quality + git
   └── [trace] /moai run Mode enter
       Read workflows/run/mode-orchestration.md → Mode dispatch + completion criteria
@@ -72,24 +72,24 @@ Phase 0.95 Mode Selection: orchestrator autonomous decision over the 6-mode cata
 **Development mode**: `.moai/config/sections/quality.yaml` `development_mode` 설정 (`ddd` 또는 `tdd`)에 따라 자동 선택.
 
 **Mode dispatch** (`--mode` flag):
-- `autopilot` (기본): Phase 0.95 scale-based 선택 후 Phase 2A/2B 실행
+- `autopilot` (기본): Phase 4 scale-based 선택 후 Phase 11/2B 실행
 - `loop`: Ralph engine 위임 (see `loop.md`)
 - `team`: RETIRED — `--mode team` emits `MODE_TEAM_UNAVAILABLE` and falls back to `autopilot` (Agent Teams static layer retired)
 - `pipeline`: REJECTED — `MODE_PIPELINE_ONLY_UTILITY` 오류 반환
 
 **Harness levels**: `minimal` → skip optional phases | `standard` → all phases | `thorough` → GAN-loop Sprint Contract Protocol + sync-auditor
 
-**Phase 0.5 (Plan Audit Gate)**: 모든 harness level에서 SKIP 불가. SPEC plan 아티팩트 독립 감사 필수.
+**Phase 1 (Plan Audit Gate)**: 모든 harness level에서 SKIP 불가. SPEC plan 아티팩트 독립 감사 필수.
 
 **Worktree path rules**: [HARD] 모든 에이전트 프롬프트에 절대 경로 금지. project-root-relative 경로 사용.
 
 **Chaining (single-phase contract)**: an explicit `/moai run` invocation carries a `single-phase` pipeline contract — on run-phase completion, the sync chain is surfaced as the "(Recommended)" first option of the next-step AskUserQuestion; it never fires silently. The `full-pipeline` auto-chain applies only to the default `/moai` route (see `workflows/moai.md` § run→sync chaining policy).
 
-## Phase 0.95 Operational Entries (Mode 4 / Mode 6)
+## Phase 4 Operational Entries (Mode 4 / Mode 6)
 
 **Mode 4 (parallel) — research fan-out**: while pre-implementation work is research-heavy and multi-domain, the orchestrator spawns 3-5 concurrent read-only `Agent()` calls in a single turn for analysis fan-out (codebase exploration, external research, quality baseline). Implementation itself remains Mode 5 (sequential sub-agent) per the Anthropic coding-task parallelism caveat.
 
-**Mode 6 (workflow) — launch procedure**: candidate ONLY when the `orchestration-mode-selection.md` §C.3 capability gate holds — Implementation Kickoff Approval passed + all preferences collected + scope ≥ ~30 files with one uniform mechanical transform and no inter-file dependency + runtime ≥ v2.1.154 with workflows not disabled. Launch procedure: (1) verify each §C.3 precondition; (2) record the Mode 6 selection + gate confirmations in `progress.md` §F Phase 0.95 Mode Selection BEFORE launch; (3) launch the workflow fan-out from the orchestrator (scaling, not nesting); (4) workflow agents return blocker reports and never prompt the user — every needed decision is drained at Implementation Kickoff Approval first.
+**Mode 6 (workflow) — launch procedure**: candidate ONLY when the `orchestration-mode-selection.md` §C.3 capability gate holds — Implementation Kickoff Approval passed + all preferences collected + scope ≥ ~30 files with one uniform mechanical transform and no inter-file dependency + runtime ≥ v2.1.154 with workflows not disabled. Launch procedure: (1) verify each §C.3 precondition; (2) record the Mode 6 selection + gate confirmations in `progress.md` §F Phase 4 Mode Selection BEFORE launch; (3) launch the workflow fan-out from the orchestrator (scaling, not nesting); (4) workflow agents return blocker reports and never prompt the user — every needed decision is drained at Implementation Kickoff Approval first.
 
 ## On-Demand Sub-skill Loading
 
@@ -99,10 +99,10 @@ Phase 0.95 Mode Selection: orchestrator autonomous decision over the 6-mode cata
 # Phase 0: Context loading 및 mode dispatch 시작 시
 Read .claude/skills/moai/workflows/run/context-loading.md
 
-# Phase 0.5 (Plan Audit Gate) 진입 시
+# Phase 1 (Plan Audit Gate) 진입 시
 Read .claude/skills/moai/workflows/run/phase-execution.md
 
-# Phase 2 (Implementation) 진입 시
+# Phase 11 (Implementation) 진입 시
 Read .claude/skills/moai/workflows/run/task-decomposition.md
 
 # Mode dispatch 또는 completion criteria 확인 시
@@ -129,9 +129,9 @@ This section wires the run-phase autonomy mechanisms — the Implementation Kick
 
 ### 1. Implementation Kickoff Approval ordering (the human gate comes first)
 
-[HARD] Before any run-phase autonomy (a `/goal` set, a Mode 6 Workflow launch, or any autonomous loop), the orchestrator MUST have already obtained explicit Implementation Kickoff Approval approval. Implementation Kickoff Approval is the plan→run HUMAN GATE: a mandatory orchestrator-issued `AskUserQuestion` round (run-phase entry / further review / abort, first option marked "(Recommended)") presented after Phase 0.5 (Plan Audit Gate) and before Phase 0.95 (Mode Selection). The orchestrator emits this gate; it is never embedded inside a subagent body (subagents cannot prompt the user — the asymmetric boundary in `.claude/rules/moai/core/agent-common-protocol.md` § User Interaction Boundary).
+[HARD] Before any run-phase autonomy (a `/goal` set, a Mode 6 Workflow launch, or any autonomous loop), the orchestrator MUST have already obtained explicit Implementation Kickoff Approval approval. Implementation Kickoff Approval is the plan→run HUMAN GATE: a mandatory orchestrator-issued `AskUserQuestion` round (run-phase entry / further review / abort, first option marked "(Recommended)") presented after Phase 1 (Plan Audit Gate) and before Phase 4 (Mode Selection). The orchestrator emits this gate; it is never embedded inside a subagent body (subagents cannot prompt the user — the asymmetric boundary in `.claude/rules/moai/core/agent-common-protocol.md` § User Interaction Boundary).
 
-[HARD] Implementation Kickoff Approval is **score-independent**: the orchestrator emits the Implementation Kickoff Approval `AskUserQuestion` gate **regardless of the plan-auditor score**, including the high skip-eligible case. Skip-eligibility (a high autonomous-bypass score) applies ONLY to Phase 0.5 plan-auditor verdict re-execution — NOT to Implementation Kickoff Approval. A high plan-auditor score never authorizes skipping the Implementation Kickoff Approval human gate. This is the Implementation Kickoff Approval mandatory-restoration invariant per the Implementation Kickoff Approval mandatory-restoration policy.
+[HARD] Implementation Kickoff Approval is **score-independent**: the orchestrator emits the Implementation Kickoff Approval `AskUserQuestion` gate **regardless of the plan-auditor score**, including the high skip-eligible case. Skip-eligibility (a high autonomous-bypass score) applies ONLY to Phase 1 plan-auditor verdict re-execution — NOT to Implementation Kickoff Approval. A high plan-auditor score never authorizes skipping the Implementation Kickoff Approval human gate. This is the Implementation Kickoff Approval mandatory-restoration invariant per the Implementation Kickoff Approval mandatory-restoration policy.
 
 Because Implementation Kickoff Approval also drains all user preferences (Tier, mode preference, PR strategy), the orchestrator collects every preference at this gate BEFORE launching any autonomy — `/goal`-turn agents and Mode 6 Workflow agents cannot prompt the user mid-run, so the one decision that must involve the user is taken here.
 
@@ -187,7 +187,7 @@ The bounded self-diagnosis loop handles MECHANICAL run-phase failures fast (DIAG
 | Flat hierarchy | spawned BY THE ORCHESTRATOR (not manager-develop — subagents cannot spawn subagents); blocker reports never direct user prompts | `agent-common-protocol.md` § User Interaction Boundary |
 | Ledger | [HARD] each iteration appended to `progress.md` `## §E Recursive Self-Diagnosis Log` (iteration #, classification, root-cause, patch, VERIFY result, escalation reason); grep-verifiable via `grep -A 10 "Recursive Self-Diagnosis Log" .moai/specs/<SPEC-ID>/progress.md` | `runtime-recovery-doctrine.md` §3 invariant 4 (abort-closes-ledger) |
 
-This loop is COMPLEMENTARY to the independent audits (plan-auditor Phase 1, sync-auditor Phase 3) — self-audit handles mechanical failures fast; independent audit handles SPEC-quality assurance. See `orchestration-mode-selection.md` §J.3.
+This loop is COMPLEMENTARY to the independent audits (plan-auditor Phase 5, sync-auditor Phase 19) — self-audit handles mechanical failures fast; independent audit handles SPEC-quality assurance. See `orchestration-mode-selection.md` §J.3.
 
 ## Routing Ledger Recording
 

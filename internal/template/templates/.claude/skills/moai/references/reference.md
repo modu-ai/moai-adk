@@ -60,7 +60,7 @@ When operations have dependencies, chain them sequentially. Each Agent() call re
 
 Use Cases:
 
-- DDD/TDD Workflow: Phase 1 (planning) feeds Phase 2 (implementation) feeds Phase 2.5 (quality validation)
+- DDD/TDD Workflow: Phase 5 (planning) feeds Phase 11 (implementation) feeds Phase 13 (quality validation)
 - SPEC Creation: Explore agent results feed into manager-spec agent for document generation
 - Release Pipeline: Quality gates must pass before version selection, which must complete before tagging
 

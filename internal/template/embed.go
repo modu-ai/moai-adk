@@ -5,11 +5,11 @@
 // definitions, skill files, rules, output styles, configuration references,
 // and root files (CLAUDE.md, .gitignore).
 //
-// Runtime-generated files (settings.json, .mcp.json, .lsp.json) are
+// Runtime-generated files (settings.json, .lsp.json) are
 // intentionally excluded from the embedded templates per ADR-011
 // (Zero Runtime Template Expansion) and AD-001 (Go compiled hooks).
 // These files are generated programmatically via Go struct serialization
-// in settings.go (SettingsGenerator, MCPGenerator).
+// in settings.go (SettingsGenerator).
 package template
 
 import (

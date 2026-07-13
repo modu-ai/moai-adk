@@ -1,16 +1,16 @@
 ---
-description: "Sync Phase 1~2 — Analysis and Planning (with HUMAN GATE 2: Documentation Scope) and Execute Document Synchronization."
+description: "Sync Phase 11~12 — Analysis and Planning (with HUMAN GATE 2: Documentation Scope) and Execute Document Synchronization."
 user-invocable: false
 metadata:
   parent: moai-workflow-sync
-  phase: "Phase 1~2: Analysis, Planning, and Document Synchronization"
+  phase: "Phase 11~12: Analysis, Planning, and Document Synchronization"
 ---
 
 <!-- TRACE PROBE: workflow-split baseline trace mechanism -->
 <!-- Activated by MOAI_TRACE_PHASES=1 environment variable -->
 <!-- Emits one line per Phase entry/exit to stderr in format: [trace] /moai sync Phase <N> <enter|exit> -->
 
-### Phase 1: Analysis and Planning
+### Phase 11: Analysis and Planning
 
 #### Step 1.1: Verify Prerequisites
 
@@ -31,7 +31,7 @@ metadata:
 Detect if the current session is running within a MoAI worktree:
 - Check if current git directory path contains `/.moai/worktrees/` component
 - OR check if `.moai/worktrees/registry.json` has an active entry for current SPEC-ID
-- Store result as `is_worktree_context` boolean for use in Phase 3.4
+- Store result as `is_worktree_context` boolean for use in Phase 13
 
 This affects auto-merge behavior: worktree contexts default to auto-merge.
 
@@ -72,7 +72,7 @@ For each SPEC associated with the current sync:
 - Step 1.5.4: Generate Divergence Report
   - Categorize divergences: scope_expansion, unplanned_additions, deferred_items, structural_changes
   - Include: new_directories_created, new_dependencies_added, new_features_implemented
-  - This report feeds into Phase 2.2 (SPEC updates) and Phase 2.2.5 (project doc updates)
+  - This report feeds into Phase 12 (SPEC updates) and Phase 12 (project doc updates)
 
 - Step 1.5.5: Check SPEC Lifecycle
   - Read `lifecycle` from SPEC frontmatter (enum: `spec-anchored`|`spec-lite`|`exploratory`; default `spec-anchored` per `.claude/rules/moai/development/spec-frontmatter-schema.md`)
@@ -98,11 +98,11 @@ Tool: AskUserQuestion
 Display sync plan report and present options:
 
 - Proceed with Sync
-- Request Modifications (re-run Phase 1)
+- Request Modifications (re-run Phase 11)
 - Review Details (show full project results, re-ask)
 - Abort (exit with no changes)
 
-### Phase 2: Execute Document Synchronization
+### Phase 12: Execute Document Synchronization
 
 #### Step 2.1: Create Safety Backup
 
@@ -117,7 +117,7 @@ Before any modifications:
 
 Agent: manager-docs subagent
 
-Input: Approved sync plan, project verification results, changed files list, divergence report from Phase 1.5.
+Input: Approved sync plan, project verification results, changed files list, divergence report from Phase 11.
 
 Tasks for manager-docs:
 
@@ -134,7 +134,7 @@ All document updates use conversation_language setting.
 
 ##### Step 2.2.1: SPEC Document Update (Based on Divergence Report)
 
-Apply updates based on the SPEC `lifecycle` value detected in Phase 1.5.5:
+Apply updates based on the SPEC `lifecycle` value detected in Phase 11:
 
 spec-anchored (default):
 - Update spec.md requirements to reflect actual implementation
@@ -158,7 +158,7 @@ exploratory:
 
 Purpose: Update .moai/project/ documents when significant structural changes are detected.
 
-Condition: Execute this step ONLY when the divergence report from Phase 1.5 indicates:
+Condition: Execute this step ONLY when the divergence report from Phase 11 indicates:
 - New directories were created in the project
 - New dependencies or technologies were added
 - New major features or capabilities were implemented

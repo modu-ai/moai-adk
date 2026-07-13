@@ -26,7 +26,7 @@ Step 2 - SPEC ID Validation (all checks must pass):
 
 Composite domain rules: Maximum 2 domains recommended, maximum 3 allowed.
 
-### Phase 9.1: Tier Judgment Socratic Question (LEAN Workflow)
+### Phase 9: Tier Judgment Socratic Question (LEAN Workflow)
 
 [ZONE:Evolvable] [HARD] Before artifact creation begins, the orchestrator MUST present a Tier judgment AskUserQuestion to classify the SPEC's complexity tier (S, M, or L). This drives the artifact set, the manager-develop delegation prompt template applicability, and the plan-auditor PASS threshold. Origin: the LEAN-tier workflow policy.
 
@@ -306,13 +306,13 @@ Skipped when: develop_direct workflow, no flags and user chooses "Use current br
 
 Before evaluating any of the paths below (Worktree / Branch / Current Branch), the orchestrator MUST read `team.branch_creation.auto_enabled` from `.moai/config/sections/git-strategy.yaml`.
 
-- When `auto_enabled == false`: SKIP branch creation entirely. Cwd remains on the current branch (typically `main` — the default for Step 1 per SPEC Phase Discipline). SPEC files are committed to the current branch via the standard commit pipeline. Decision Point 3.5 mode-selection display MUST surface "Late-branch (main commit + late switch)" as the active mode to communicate the deferred-branch state to the user. Phase 13.0 BODP Gate STILL runs (with EntryPoint = `EntryPlanLateBranch`) — Late-branch does NOT bypass BODP, it only defers branch creation to Phase C (manual `git switch -c feat/SPEC-*` at PR time). Per the late-branch opt-in policy, no automated `git push origin main` is performed during this phase even if `team.automation.auto_push == true`.
+- When `auto_enabled == false`: SKIP branch creation entirely. Cwd remains on the current branch (typically `main` — the default for Step 1 per SPEC Phase Discipline). SPEC files are committed to the current branch via the standard commit pipeline. Decision Point 3.5 mode-selection display MUST surface "Late-branch (main commit + late switch)" as the active mode to communicate the deferred-branch state to the user. Phase 13 BODP Gate STILL runs (with EntryPoint = `EntryPlanLateBranch`) — Late-branch does NOT bypass BODP, it only defers branch creation to Phase C (manual `git switch -c feat/SPEC-*` at PR time). Per the late-branch opt-in policy, no automated `git push origin main` is performed during this phase even if `team.automation.auto_push == true`.
 
 - When `auto_enabled == true`: continue to the Worktree/Branch/Current Branch path evaluation below (existing behavior, unchanged).
 
 Reference: see `.claude/agents/moai/manager-git.md` § Late-Branch Invocation Pattern for the 4-phase procedure (A→D) the user follows after this skill defers branch creation.
 
-#### Phase 13.0: BODP Gate (공통)
+#### Phase 13: BODP Gate (공통)
 
 Both Worktree Path and Branch Path execute this gate immediately before delegating worktree/branch creation. Source: the CI-autonomy policy W7-T02.
 
@@ -339,7 +339,7 @@ Out of Scope (BODP Gate):
 #### Worktree Path (--worktree flag)
 
 Prerequisite: SPEC files MUST be committed before worktree creation.
-- Run **Phase 13.0: BODP Gate** above (EntryPoint = `EntryPlanWorktree`).
+- Run **Phase 13: BODP Gate** above (EntryPoint = `EntryPlanWorktree`).
 - Stage SPEC files: git add .moai/specs/SPEC-{ID}/
 - Create commit: feat(spec): Add SPEC-{ID} - {title}
 - Create worktree: `moai worktree new SPEC-{ID} --base <chosenBase>` (or `--from-current` when the user chose to continue on the current HEAD).
@@ -377,7 +377,7 @@ See `.claude/rules/moai/workflow/session-handoff.md` "Worktree-Anchored Resume P
 #### Branch Path (--branch flag or user choice)
 
 Agent: manager-git subagent
-- Run **Phase 13.0: BODP Gate** above (EntryPoint = `EntryPlanBranch`).
+- Run **Phase 13: BODP Gate** above (EntryPoint = `EntryPlanBranch`).
 - Delegate to manager-git with `base=<chosenBase>` derived from the gate answer.
 - Create branch: feature/SPEC-{ID}-{description} from `<chosenBase>`.
 - Set tracking upstream if remote exists.
@@ -527,7 +527,7 @@ All of the following must be verified:
   - plan_status: audit-ready
   ```
   This signal indicates plan artifacts (spec.md, plan.md, acceptance.md, tasks.md) are finalized
-  and ready for Plan Audit Gate validation at `/moai run` Phase 0.5.
+  and ready for Plan Audit Gate validation at `/moai run` Phase 1.
 
 ---
 

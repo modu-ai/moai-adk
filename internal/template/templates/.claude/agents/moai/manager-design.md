@@ -12,7 +12,6 @@ model: inherit
 effort: xhigh
 color: pink
 permissionMode: acceptEdits
-isolation: worktree
 memory: project
 skills:
   - moai-domain-frontend

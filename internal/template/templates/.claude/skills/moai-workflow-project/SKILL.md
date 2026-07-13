@@ -13,7 +13,7 @@ when_to_use: >
 
 license: Apache-2.0
 compatibility: Designed for Claude Code
-allowed-tools: Read, Write, Edit, Bash(git:*), Bash(npm:*), Bash(npx:*), Bash(uv:*), Bash(pip:*), Bash(ls:*), Bash(mkdir:*), Grep, Glob, WebFetch, WebSearch, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
+allowed-tools: Read, Write, Edit, Bash(git:*), Bash(npm:*), Bash(npx:*), Bash(uv:*), Bash(pip:*), Bash(ls:*), Bash(mkdir:*), Grep, Glob, WebFetch, WebSearch
 user-invocable: false
 metadata:
   version: "3.0.0"

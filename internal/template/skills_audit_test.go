@@ -12,7 +12,7 @@ import (
 // retired by SPEC-AGENT-TEAM-RETIRE-001.)
 //
 // Required patterns per tasks.md T-06:
-// (a) "Phase 0.5: Plan Audit Gate" header
+// (a) "Phase 1: Plan Audit Gate" header
 // (b) "plan-auditor" keyword
 // (c) "--skip-audit" keyword
 // (d) "INCONCLUSIVE" keyword
@@ -41,7 +41,7 @@ func TestSkillsContainPlanAuditGateMarkers(t *testing.T) {
 			name:     "solo run/phase-execution.md — plan audit gate markers",
 			filePath: ".claude/skills/moai/workflows/run/phase-execution.md",
 			requiredPatterns: []string{
-				"Phase 0.5: Plan Audit Gate",
+				"Phase 1: Plan Audit Gate",
 				"plan-auditor",
 				"--skip-audit",
 				"INCONCLUSIVE",
@@ -58,11 +58,11 @@ func TestSkillsContainPlanAuditGateMarkers(t *testing.T) {
 			},
 		},
 		{
-			// spec-workflow.md must document Phase 0.5 and its verdicts.
-			name:     "spec-workflow.md — Phase 0.5 documentation",
+			// spec-workflow.md must document Phase 1 and its verdicts.
+			name:     "spec-workflow.md — Phase 1 documentation",
 			filePath: ".claude/rules/moai/workflow/spec-workflow.md",
 			requiredPatterns: []string{
-				"Phase 0.5: Plan Audit Gate",
+				"Phase 1: Plan Audit Gate",
 				"plan-auditor",
 				"INCONCLUSIVE",
 				".moai/reports/plan-audit/",

@@ -36,7 +36,7 @@ triggers:
 
 Phase Owners: `manager-spec` (SPEC artifact authoring — spec.md/plan.md/acceptance.md/design.md/research.md/progress.md §F.1) + `Explore` (read-only codebase investigation; Anthropic built-in agent) + `manager-git` (worktree/branch creation when Phase 3 worktree env opt-in).
 
-Cross-reference: per-SPEC Phase 0.5 SKIP rationale recorded at `.moai/specs/SPEC-{ID}/progress.md` § Phase 0.5 SKIP Rationale; Phase 0.95 Mode Selection autopilot logging at `progress.md` § Phase 0.95 Mode Selection.
+Cross-reference: per-SPEC Phase 1 SKIP rationale recorded at `.moai/specs/SPEC-{ID}/progress.md` § Phase 1 SKIP Rationale; Phase 4 Mode Selection autopilot logging at `progress.md` § Phase 4 Mode Selection.
 
 ## Purpose
 
@@ -152,14 +152,14 @@ On successful plan completion (all SPEC files created, user approved), append to
 - plan_status: audit-ready
 ```
 
-This signal marks the plan artifacts as finalized and enables the Plan Audit Gate at `/moai run` Phase 0.5.
+This signal marks the plan artifacts as finalized and enables the Plan Audit Gate at `/moai run` Phase 1.
 
 
 ---
 
 Version: 2.8.0
 Updated: 2026-05-25
-Changes: Added test scenarios, Phase 0.9 JIT Language Detection.
+Changes: Added test scenarios, Phase 3 JIT Language Detection.
 
 ---
 

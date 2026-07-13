@@ -1,21 +1,21 @@
 ---
-description: "Project Phase 3/3.1/3.3/3.5/3.7/4.1a/4 — Documentation generation, audit, codemaps, LSP check, dev mode config, DB detection, and completion"
+description: "Project Phase 6/3.1/3.3/3.5/3.7/4.1a/4 — Documentation generation, audit, codemaps, LSP check, dev mode config, DB detection, and completion"
 user-invocable: false
 metadata:
   parent: moai-workflow-project
-  phase: "Phase 3/3.1/3.3/3.5/3.7/4.1a/4: Documentation Generation and Completion"
+  phase: "Phase 6/3.1/3.3/3.5/3.7/4.1a/4: Documentation Generation and Completion"
 ---
 
 <!-- TRACE PROBE: workflow-split baseline trace mechanism -->
 <!-- Activated by MOAI_TRACE_PHASES=1 environment variable -->
 
-## Phase 3: Documentation Generation
+## Phase 6: Documentation Generation
 
 [HARD] Delegate documentation generation to the manager-docs subagent.
 
 Pass to manager-docs:
 
-- Analysis Results from Phase 1 (or user input from Phase 0.5)
+- Analysis Results from Phase 3 (or user input from Phase 2)
 - User Confirmation from Phase 2
 - Output Directory: .moai/project/
 - Language: conversation_language from config
@@ -28,7 +28,7 @@ Output Files:
 
 ---
 
-## Phase 3.1: Independent Document Audit (Conditional)
+## Phase 7: Independent Document Audit (Conditional)
 
 Purpose: Prevent confirmation bias by running an adversarial audit of the generated project documents before proceeding to codemaps and completion. The auditor sees only the final documents — not the analysis reasoning — and is prompted to find defects, not rationalize acceptance.
 
@@ -40,7 +40,7 @@ Activation: Controlled by harness.yaml `plan_audit.enabled` setting.
 
 Skip Conditions:
 - harness.yaml `plan_audit.enabled: false`
-- Phase 3 produced no output files (documentation generation failed)
+- Phase 6 produced no output files (documentation generation failed)
 
 #### Step 3.1.1: Invoke plan-auditor
 
@@ -56,7 +56,7 @@ After plan-auditor completes, read the report at `.moai/reports/plan-audit/PROJE
 
 Extract the verdict line: `Verdict: PASS | FAIL`
 
-If PASS: Proceed to Phase 3.3 (Codemaps Generation).
+If PASS: Proceed to Phase 9 (Codemaps Generation).
 
 If FAIL: Enter retry loop.
 
@@ -70,7 +70,7 @@ On FAIL:
 
 3. Read new verdict from `.moai/reports/plan-audit/PROJECT-review-{N+1}.md`.
 
-4. If PASS: Proceed to Phase 3.3.
+4. If PASS: Proceed to Phase 9.
 
 5. If FAIL and iteration < 3: Repeat from step 1 with incremented iteration.
 
@@ -81,11 +81,11 @@ On FAIL:
 
 ---
 
-## Phase 3.2: harness-spec.yaml Emission
+## Phase 8: harness-spec.yaml Emission
 
-Purpose: Emit a machine-readable `.moai/project/harness-spec.yaml` artifact that carries the interview's structured answers forward into harness generation, so `project/meta-harness.md` Phase 5.1 and `harness-build-entry.md` Phase 1 consume the recorded intent instead of re-eliciting it.
+Purpose: Emit a machine-readable `.moai/project/harness-spec.yaml` artifact that carries the interview's structured answers forward into harness generation, so `project/meta-harness.md` Phase 15 and `harness-build-entry.md` Phase 3 consume the recorded intent instead of re-eliciting it.
 
-[HARD] This phase runs automatically after Phase 3 documentation generation, without user interaction. It READS the answers recorded in `.moai/project/interview.md` (written by the Phase 0.3 / Phase 1.5 interview) and maps them onto the 8-field schema below — it does NOT re-interview the user.
+[HARD] This phase runs automatically after Phase 6 documentation generation, without user interaction. It READS the answers recorded in `.moai/project/interview.md` (written by the Phase 2 / Phase 4 interview) and maps them onto the 8-field schema below — it does NOT re-interview the user.
 
 [HARD] Write the artifact to the project directory `.moai/project/harness-spec.yaml`. Re-run semantics: OVERWRITE — a second `/moai project` invocation regenerates it from the latest interview answers, matching the existing `interview.md` regeneration behavior (no merge / skip-if-present).
 
@@ -120,20 +120,20 @@ team_sharing: <enum>          # solo | team-shared (from the Stage B team-sharin
 | REQUIRED (base) | `domain`, `goal`, `constraints`, `scope` | Stage A — the clarity-scored discovery rounds (capped by `project.max_rounds`) | YES — Stage A cannot exit early while any is unanswered |
 | EXTENDED | `verification`, `ui_surface`, `external_systems`, `team_sharing` | **Stage B — the mandatory Round 4**, which always runs | N/A — Stage B is exempt from the cap, the early exit, and clarity scoring |
 
-Field mapping from `interview.md`: the vision / goal answer → `goal`; the domain / problem answer → `domain` (in the existing-project host this may be auto-populated from the Phase 1 codebase analysis); the scope answer → `scope`; the constraints answer → `constraints` (all four from Stage A, per each host's base-field coverage mapping); and the four Stage B extended axes → `verification` / `external_systems` / `ui_surface` / `team_sharing` respectively. A field the interview did not resolve is written as an explicit empty / null value (or omitted) so downstream consumers treat it as ABSENT (eligible for re-ask).
+Field mapping from `interview.md`: the vision / goal answer → `goal`; the domain / problem answer → `domain` (in the existing-project host this may be auto-populated from the Phase 3 codebase analysis); the scope answer → `scope`; the constraints answer → `constraints` (all four from Stage A, per each host's base-field coverage mapping); and the four Stage B extended axes → `verification` / `external_systems` / `ui_surface` / `team_sharing` respectively. A field the interview did not resolve is written as an explicit empty / null value (or omitted) so downstream consumers treat it as ABSENT (eligible for re-ask).
 
 The existing `.moai/project/interview.md` human-readable output is preserved unchanged; `harness-spec.yaml` is an additive machine-readable sibling, not a replacement.
 
 ---
 
-## Phase 3.3: Codemaps Generation
+## Phase 9: Codemaps Generation
 
 Purpose: Generate architecture documentation in `.moai/project/codemaps/` directory based on codebase analysis results from Phase 1.
 
-[HARD] This phase runs automatically after Phase 3 documentation generation.
+[HARD] This phase runs automatically after Phase 6 documentation generation.
 
 Agent Chain:
-- Explore subagent: Analyze codebase architecture (reuse Phase 1 results if available)
+- Explore subagent: Analyze codebase architecture (reuse Phase 3 results if available)
 - manager-docs subagent: Generate codemaps documentation files
 
 Output Files (in `.moai/project/codemaps/` directory):
@@ -144,14 +144,14 @@ Output Files (in `.moai/project/codemaps/` directory):
 - data-flow.md: Data flow paths, request lifecycle, state management patterns
 
 Skip Conditions:
-- New projects with no existing code (Phase 0.5 path): Skip codemaps generation, create placeholder `.moai/project/codemaps/overview.md` with project goals only
+- New projects with no existing code (Phase 2 path): Skip codemaps generation, create placeholder `.moai/project/codemaps/overview.md` with project goals only
 - User explicitly requests skip via AskUserQuestion in Phase 2
 
 For detailed codemaps generation process, delegate to codemaps workflow (workflows/codemaps.md).
 
 ---
 
-## Phase 3.5: Development Environment Check
+## Phase 10: Development Environment Check
 
 Goal: Verify LSP servers are installed for the detected technology stack.
 
@@ -175,7 +175,7 @@ Language-to-LSP Mapping (all 16 MoAI-supported languages, alphabetical):
 - TypeScript: typescript-language-server (check: which typescript-language-server)
 
 Note: The canonical language name for Dart/Flutter ecosystem is "Flutter",
-matching `.claude/skills/moai/workflows/sync.md` Phase 0.6.1. Per
+matching `.claude/skills/moai/workflows/sync.md` Phase 9. Per
 `.claude/rules/moai/development/coding-standards.md` § Language Policy
 (16-language neutrality contract), all 16 languages are treated as equal
 first-class citizens; the user's project marker files determine which
@@ -189,18 +189,18 @@ If LSP server is NOT installed, present AskUserQuestion:
 
 ---
 
-## Phase 3.6: MCP Server Provisioning
+## Phase 11: MCP Server Provisioning
 
 Goal: Provision the per-project-type MCP (Model Context Protocol) servers that make the
 downstream development loop productive (browser automation for a web frontend, a read-only
 DB server for a backend, etc.) by writing project-scope `.mcp.json` entries. This phase runs
-AFTER Phase 3.5 (LSP detection) and BEFORE Phase 3.7 (dev-mode config).
+AFTER Phase 10 (LSP detection) and BEFORE Phase 12 (dev-mode config).
 
 ### Step 3.6.1: Detect the project stack
 
-Reuse the existing language / framework detection from Phase 0 / Phase 1 PLUS the
+Reuse the existing language / framework detection from Phase 1 / Phase 3 PLUS the
 machine-readable stack signals recorded in `.moai/project/harness-spec.yaml` (emitted by
-Phase 3.2): the `external_systems` field (DB / APIs / services) and the `ui_surface` field
+Phase 8): the `external_systems` field (DB / APIs / services) and the `ui_surface` field
 (`has-ui` | `headless`). A `has-ui` project maps to the web-frontend row; an
 `external_systems` list naming a database maps to the backend-db row; a mobile marker maps
 to the mobile row.
@@ -248,24 +248,24 @@ concern.
 
 ### Step 3.6.5: Declined recommendation is not an error
 
-When the user rejects the recommendation entirely via AskUserQuestion, Phase 3.6 writes NO
-`.mcp.json` entry and proceeds to Phase 3.7 — a declined recommendation is not an error.
+When the user rejects the recommendation entirely via AskUserQuestion, Phase 11 writes NO
+`.mcp.json` entry and proceeds to Phase 12 — a declined recommendation is not an error.
 
 ---
 
-## Phase 3.7: Development Methodology Auto-Configuration
+## Phase 12: Development Methodology Auto-Configuration
 
-Goal: Automatically set the `development_mode` in `.moai/config/sections/quality.yaml` based on the project analysis results from Phase 0 and Phase 1.
+Goal: Automatically set the `development_mode` in `.moai/config/sections/quality.yaml` based on the project analysis results from Phase 1 and Phase 1.
 
 [HARD] This phase runs automatically without user interaction. No AskUserQuestion is needed.
 
 Auto-Detection Logic:
 
-For New Projects (Phase 0 classified as "New Project"):
+For New Projects (Phase 1 classified as "New Project"):
 - Set `development_mode: "tdd"` (test-first development)
 - Rationale: New projects benefit from test-first development with clean RED-GREEN-REFACTOR cycles
 
-For Existing Projects (Phase 0 classified as "Existing Project"):
+For Existing Projects (Phase 1 classified as "Existing Project"):
 - Step 1: Check for existing test files using Glob patterns across all 16 MoAI-supported languages (alphabetical): C++ (*_test.cpp, *_test.cc), C# (*Test.cs, *Tests.cs), Elixir (*_test.exs), Flutter (*_test.dart), Go (*_test.go), Java (*Test.java, *Tests.java), JavaScript (*.test.js, *.spec.js), Kotlin (*Test.kt), PHP (*Test.php), Python (*_test.py, test_*.py), R (test-*.R), Ruby (*_spec.rb, *_test.rb), Rust (tests/*.rs), Scala (*Test.scala, *Spec.scala), Swift (*Tests.swift), TypeScript (*.test.ts, *.spec.ts) — plus common test directories (tests/, __tests__/, spec/, test/)
 - Step 2: Estimate test coverage level based on test file count relative to source file count:
   - No test files found (0%): Set `development_mode: "ddd"` (need characterization tests first)
@@ -292,7 +292,7 @@ Methodology-to-Mode Mapping Reference:
 
 ## Detection Keywords Reference
 
-Full DB engine keywords, dependency manifest files (all 16 MoAI-supported languages), and ORM/ODM lists used by Phase 4.1a below.
+Full DB engine keywords, dependency manifest files (all 16 MoAI-supported languages), and ORM/ODM lists used by Phase 13 below.
 
 **DB engine keywords** (grepped against `tech.md`, case-insensitive): Relational/SQL (PostgreSQL, MySQL, MariaDB, SQLite, Oracle, SQL Server, CockroachDB, Supabase, Neon, Planetscale), NoSQL Document (MongoDB, Firestore, Firebase, Couchbase), NoSQL Key-Value (Redis, DynamoDB, Cassandra, ScyllaDB, Riak), Search/Analytics (Elasticsearch, ClickHouse, Snowflake, InfluxDB).
 
@@ -319,10 +319,10 @@ Full DB engine keywords, dependency manifest files (all 16 MoAI-supported langua
 
 ---
 
-## Phase 4.1a: DB Detection
+## Phase 13: DB Detection
 
 Purpose: Detect database technology from generated documentation and dependency
-files. Detected metadata is consumed by sync workflow Phase 0.08 (DB Schema Doc
+files. Detected metadata is consumed by sync workflow Phase 2 (DB Schema Doc
 Check) to drive automatic refresh via `moai hook db-schema-sync` when
 `db.auto_sync.enabled: true` is set in `.moai/config/sections/db.yaml` (the
 `auto_sync:` key is a nested object — `enabled:` is its toggle sub-key,
@@ -332,18 +332,18 @@ alongside `debounce_seconds`, `require_user_approval`, and `excluded_patterns`).
 
 Steps:
 
-1. Check `.moai/project/tech.md` exists. If not: set `detected_db=false` and skip to Phase 4.2.
+1. Check `.moai/project/tech.md` exists. If not: set `detected_db=false` and skip to Phase 14.
 2. Grep `tech.md` for DB engine keywords (case-insensitive). See Detection Keywords Reference above.
 3. Glob for dependency manifests across all 16 supported languages (see Detection Keywords Reference above).
 4. For each found manifest file ≤ 1 MB: grep for ORM/ODM keywords relevant to that language.
 5. Aggregate matches into: `{detected, matched_keywords[], source_files[], scanned_at, tech_md_hash}`.
 6. Write state artifact at `.moai/state/db-detection.json`.
-7. Proceed to Phase 4.2 with `detected_db` flag.
+7. Proceed to Phase 14 with `detected_db` flag.
 
-When `detected_db=true`, Phase 4.2 (Next Steps) emits a guidance note to enable
+When `detected_db=true`, Phase 14 (Next Steps) emits a guidance note to enable
 `db.auto_sync.enabled: true` in `.moai/config/sections/db.yaml`. The user opts in once,
 and subsequent `/moai sync` runs automatically refresh `.moai/project/db/` derived
-docs (schema.md, erd.mmd, migrations.md) via Phase 0.08 → `moai hook db-schema-sync`.
+docs (schema.md, erd.mmd, migrations.md) via Phase 2 → `moai hook db-schema-sync`.
 
 The `/moai db` slash command was retired (Bundle A, 2026-05-16). Initial DB
 documentation scaffolding is now handled by `.moai/project/db/` templates created
@@ -353,7 +353,7 @@ File size limit: 1 MB. Skip any manifest file larger than 1 MB to avoid scanning
 
 Tool choice: Grep with `-i` (case-insensitive) for keyword matching; Glob for manifest discovery.
 
-Edge case: If `.moai/project/tech.md` does not exist (e.g., Phase 3 failed or was skipped), Phase 4.1a SHALL skip gracefully without error, set `detected_db=false`, and proceed to Phase 4.2 with the original three options unchanged.
+Edge case: If `.moai/project/tech.md` does not exist (e.g., Phase 6 failed or was skipped), Phase 13 SHALL skip gracefully without error, set `detected_db=false`, and proceed to Phase 14 with the original three options unchanged.
 
 State artifact schema: `.moai/state/db-detection.json` contains:
 
@@ -367,11 +367,11 @@ State artifact schema: `.moai/state/db-detection.json` contains:
 }
 ```
 
-The `tech_md_hash` field enables stale-detection: if `tech.md` content changes between runs, Phase 4.2 can detect that the cached detection result is outdated and re-trigger Phase 4.1a.
+The `tech_md_hash` field enables stale-detection: if `tech.md` content changes between runs, Phase 14 can detect that the cached detection result is outdated and re-trigger Phase 13.
 
 ---
 
-## Phase 4: Completion
+## Phase 14: Completion
 
 ### Step 4.1: Content Summary Report
 
@@ -403,21 +403,21 @@ tech.md:
   - Key Dependencies: [top 3-5 packages]
 
 Codemaps: [N files generated] in .moai/project/codemaps/
-Development Mode: [tdd/ddd] (auto-configured in Phase 3.7)
+Development Mode: [tdd/ddd] (auto-configured in Phase 12)
 ```
 
 ### Step 4.2: Next Steps
 
-[HARD] After displaying the summary, read the `detected_db` flag from `.moai/state/db-detection.json` (written by Phase 4.1a), then use AskUserQuestion to present conditional options based on the three-way branch below.
+[HARD] After displaying the summary, read the `detected_db` flag from `.moai/state/db-detection.json` (written by Phase 13), then use AskUserQuestion to present conditional options based on the three-way branch below.
 
 **Branch A — DB detected, `.moai/project/db/` does NOT exist:**
 
 When `detected_db` is true AND `.moai/project/db/` is absent, present these options:
 
-- Enable automatic DB doc sync (Recommended): DB technology was detected in your project. Set `db.enabled: true` and `db.auto_sync.enabled: true` in `.moai/config/sections/db.yaml` (create the file if absent). Subsequent `/moai sync` runs will automatically generate and refresh `.moai/project/db/` via Phase 0.08 (`moai hook db-schema-sync`). Recommended before creating SPECs that depend on your data model.
+- Enable automatic DB doc sync (Recommended): DB technology was detected in your project. Set `db.enabled: true` and `db.auto_sync.enabled: true` in `.moai/config/sections/db.yaml` (create the file if absent). Subsequent `/moai sync` runs will automatically generate and refresh `.moai/project/db/` via Phase 2 (`moai hook db-schema-sync`). Recommended before creating SPECs that depend on your data model.
 - Create SPEC: Run `/moai plan` to define your first feature specification. This is the natural next step after project setup.
 - Review and Edit Documentation: Open the generated files for review and manual editing before proceeding.
-- Generate project-specific harness: Proceed to Phase 5/6 (`project/meta-harness.md`) to build a domain-specific harness (agents + skills) tailored to this project via the v4 harness Builder.
+- Generate project-specific harness: Proceed to Phase 15 (`project/meta-harness.md`) to build a domain-specific harness (agents + skills) tailored to this project via the v4 harness Builder.
 - Done: Complete the project setup workflow.
 
 When the user selects "Enable automatic DB doc sync": Display guidance to edit `.moai/config/sections/db.yaml` and then run `/moai sync` on the next milestone. Do NOT auto-modify the config file.
@@ -428,9 +428,9 @@ When `detected_db` is true AND `.moai/project/db/` already exists, present these
 
 - Create SPEC (Recommended): Run `/moai plan` to define your first feature specification. This is the natural next step after project setup.
 - Review and Edit Documentation: Open the generated files for review and manual editing before proceeding.
-- Generate project-specific harness: Proceed to Phase 5/6 (`project/meta-harness.md`) to build a domain-specific harness (agents + skills) tailored to this project via the v4 harness Builder.
+- Generate project-specific harness: Proceed to Phase 15 (`project/meta-harness.md`) to build a domain-specific harness (agents + skills) tailored to this project via the v4 harness Builder.
 - Done: Complete the project setup workflow.
-- Verify auto-sync enabled: DB documentation already exists. Confirm `db.auto_sync.enabled: true` in `.moai/config/sections/db.yaml`. When set, subsequent `/moai sync` runs automatically refresh `.moai/project/db/` via Phase 0.08 (`moai hook db-schema-sync`) on detected migration changes.
+- Verify auto-sync enabled: DB documentation already exists. Confirm `db.auto_sync.enabled: true` in `.moai/config/sections/db.yaml`. When set, subsequent `/moai sync` runs automatically refresh `.moai/project/db/` via Phase 2 (`moai hook db-schema-sync`) on detected migration changes.
 
 **Branch C — DB not detected:**
 
@@ -438,20 +438,20 @@ When `detected_db` is false, present the original three options plus the harness
 
 - Create SPEC (Recommended): Run `/moai plan` to define your first feature specification. This is the natural next step after project setup.
 - Review and Edit Documentation: Open the generated files for review and manual editing before proceeding.
-- Generate project-specific harness: Proceed to Phase 5/6 (`project/meta-harness.md`) to build a domain-specific harness (agents + skills) tailored to this project via the v4 harness Builder.
+- Generate project-specific harness: Proceed to Phase 15 (`project/meta-harness.md`) to build a domain-specific harness (agents + skills) tailored to this project via the v4 harness Builder.
 - Done: Complete the project setup workflow.
 
 ---
 
 ## Agent Chain Summary
 
-- Phase 0-2: MoAI orchestrator (AskUserQuestion for all user interaction)
-- Phase 1: Explore subagent (codebase analysis)
-- Phase 3: manager-docs subagent (documentation generation)
-- Phase 3.1: plan-auditor subagent (independent document audit, conditional)
-- Phase 3.2: MoAI orchestrator (harness-spec.yaml emission from interview.md answers, no user interaction)
-- Phase 3.3: Explore + manager-docs subagents (codemaps generation via codemaps workflow)
-- Phase 3.5: per-spawn `Agent(general-purpose)` devops specialist (optional LSP installation)
-- Phase 3.6: MoAI orchestrator (MCP server provisioning — matrix select + AskUserQuestion approval + additive `.mcp.json` write at project scope; subagent never prompts)
-- Phase 3.7: MoAI orchestrator (automatic development_mode configuration, no user interaction)
-- Phase 4.1a: MoAI orchestrator (automatic DB detection via Grep/Glob, no user interaction)
+- Phase 1-2: MoAI orchestrator (AskUserQuestion for all user interaction)
+- Phase 3: Explore subagent (codebase analysis)
+- Phase 6: manager-docs subagent (documentation generation)
+- Phase 7: plan-auditor subagent (independent document audit, conditional)
+- Phase 8: MoAI orchestrator (harness-spec.yaml emission from interview.md answers, no user interaction)
+- Phase 9: Explore + manager-docs subagents (codemaps generation via codemaps workflow)
+- Phase 10: per-spawn `Agent(general-purpose)` devops specialist (optional LSP installation)
+- Phase 11: MoAI orchestrator (MCP server provisioning — matrix select + AskUserQuestion approval + additive `.mcp.json` write at project scope; subagent never prompts)
+- Phase 12: MoAI orchestrator (automatic development_mode configuration, no user interaction)
+- Phase 13: MoAI orchestrator (automatic DB detection via Grep/Glob, no user interaction)

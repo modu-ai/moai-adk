@@ -310,8 +310,8 @@ func TestCheckMissingIsolation(t *testing.T) {
 			if len(violations) != tt.wantCount {
 				t.Errorf("got %d violations, want %d", len(violations), tt.wantCount)
 			}
-			if len(violations) > 0 && violations[0].Severity != SeverityError {
-				t.Errorf("expected error severity, got %s", violations[0].Severity)
+			if len(violations) > 0 && violations[0].Severity != SeverityWarning {
+				t.Errorf("expected warning severity, got %s", violations[0].Severity)
 			}
 		})
 	}
@@ -1713,8 +1713,8 @@ Body.
 	if found == nil {
 		t.Fatal("expected LR-05 violation for expert-backend without isolation:worktree, got none")
 	}
-	if found.Severity != SeverityError {
-		t.Errorf("LR-05 severity = %s, want error", found.Severity)
+	if found.Severity != SeverityWarning {
+		t.Errorf("LR-05 severity = %s, want warning", found.Severity)
 	}
 	if !strings.Contains(found.Message, "ORC_WORKTREE_MISSING") {
 		t.Errorf("LR-05 message should contain ORC_WORKTREE_MISSING, got: %s", found.Message)

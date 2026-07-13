@@ -160,18 +160,6 @@ whether to override the template defaults.
   shared multi-developer environments where one developer's auto-accept
   affects review discipline of others.
 
-### `enableAllProjectMcpServers`
-
-- **Template default**: unset (false — only explicitly-enabled MCP servers
-  load)
-- **Common customization**: `true` (auto-enables all MCP servers registered
-  in `.mcp.json`)
-- **When to customize**: project relies on multiple MCP servers (e.g.,
-  context7, browser automation, custom dev tools) and the developer wants
-  them all available without per-session config.
-- **When NOT to customize**: project has many registered-but-unused MCP
-  servers (causes startup latency on each session).
-
 ### `teammateMode` (runtime-managed)
 
 - **Template default**: unset (no teammate mode active)
@@ -197,7 +185,7 @@ whether to override the template defaults.
 
 ### Operating principle
 
-These 4 settings are documented here because user projects commonly need to
+These 3 settings are documented here because user projects commonly need to
 decide whether to customize them. The template ships with safe defaults
 (unset / Claude Code defaults). Your team adopts customizations as needed
 without inheriting maintainer-specific local doctrine.

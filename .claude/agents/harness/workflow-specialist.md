@@ -12,7 +12,6 @@ skills:
 tools: Read, Write, Edit, Grep, Glob, Bash
 model: inherit
 effort: high
-isolation: worktree
 ---
 
 # Workflow Specialist (moai-adk-go)
@@ -25,7 +24,6 @@ isolation: worktree
 |-------|-------|-----------|
 | `role` | workflow-specialist | SPEC plan/run/sync lifecycle + V3R6 3-phase close contract ownership |
 | `primitive` | sub-agent | routes each phase to its canonical retained agent (manager-spec / manager-develop / manager-docs / plan-auditor) via ordinary `Agent()` spawn |
-| `isolation` | worktree | worktree materialization per LR-05 specialist-pattern requirement |
 | `effort` | high | intelligence-sensitive (GEARS authoring, era classification, Implementation Kickoff Approval gate judgment) |
 | `model` | inherit | matches frontmatter `model: inherit` ([1m]-safe per model-policy.md) |
 
@@ -81,7 +79,7 @@ All four are retained agents. Do NOT reference archived agents anywhere.
   gate before run-phase entry. The orchestrator presents plan-phase artifacts
   + plan-auditor verdict via its exclusive user-decision channel and MUST obtain explicit
   approval before `/moai run`. This gate is NOT bypassed by a skip-eligible
-  plan-auditor verdict (≥0.90) — Phase 0.5 SKIP and Implementation Kickoff
+  plan-auditor verdict (≥0.90) — Phase 1 SKIP and Implementation Kickoff
   Approval are distinct decisions.
 - **Status transition ownership**: draft→in-progress by manager-develop (M1),
   in-progress→implemented by manager-docs (sync commit), implemented→completed

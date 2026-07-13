@@ -97,7 +97,7 @@ At invocation, load the active evaluator profile to determine dimension weights 
 Profile determines: dimension weights, pass thresholds, must-pass criteria, and hard thresholds.
 The "Evaluation Dimensions" table above reflects the built-in default profile. When a non-default profile is loaded, its weights and thresholds override these defaults.
 
-## Evaluation Contract Negotiation (Phase 2.0, thorough only)
+## Evaluation Contract Negotiation (Phase 10, thorough only)
 
 When invoked for contract negotiation before implementation:
 1. Review implementation plan from manager-develop
@@ -108,7 +108,7 @@ When invoked for contract negotiation before implementation:
 ## Intervention Modes
 
 - **final-pass** (standard harness): Single post-implementation evaluation
-- **per-iteration** (thorough harness): Phase 2.0 Evaluation Contract negotiation + post-implementation evaluation
+- **per-iteration** (thorough harness): Phase 10 Evaluation Contract negotiation + post-implementation evaluation
 
 ## Mode-Specific Deployment
 

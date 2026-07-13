@@ -44,17 +44,17 @@ This workflow is reached when the `harness` subcommand dispatcher (in `SKILL.md`
 - Context-First Discovery: CLAUDE.md §7 Rule 5 (trigger conditions + Socratic interview)
 - Skill namespace policy: `.claude/rules/moai/development/skill-authoring.md` § Skills Namespace Policy (`harness-*` user-owned vs `moai-harness-*` template-builder)
 - Companion learning-lifecycle workflow: `${CLAUDE_SKILL_DIR}/workflows/harness.md` (Branch A — reserved verbs)
-- Builder module (orchestrator-direct 4 phases): `${CLAUDE_SKILL_DIR}/workflows/harness-builder.md` (ANALYZE / PLAN / GENERATE / ACTIVATE — the orchestrator-side logic Phase 4 below transitions into)
+- Builder module (orchestrator-direct 4 phases): `${CLAUDE_SKILL_DIR}/workflows/harness-builder.md` (ANALYZE / PLAN / GENERATE / ACTIVATE — the orchestrator-side logic Phase 8 below transitions into)
 
 ## Input
 
 `$ARGUMENTS` — a natural-language harness-creation request (the full text after the `harness` subcommand keyword, MINUS any reserved verb). Example: `build a harness for CLI template development`.
 
-## Phase 0: Reserved-Verb Guard
+## Phase 1: Reserved-Verb Guard
 
 [HARD] If `$ARGUMENTS` (trimmed, first token) matches any reserved verb — the learning-lifecycle verbs (`status` / `apply` / `rollback` / `disable`) OR the v4-lifecycle verbs (`list` / `edit` / `remove` / `doctor`) — STOP — this is a misroute. The learning-lifecycle verbs belong to `${CLAUDE_SKILL_DIR}/workflows/harness.md`; the v4-lifecycle verbs (`list` / `edit` / `remove` / `doctor`) route to the `moai harness <verb>` Go binary subcommand. Re-emit the routing guidance and halt. This guard is defense-in-depth; the dispatcher in `SKILL.md` already filters, but this workflow body re-verifies to catch direct-invocation edge cases.
 
-## Phase 1: Context-First Discovery (extract domain / goal / constraints / scope)
+## Phase 2: Context-First Discovery (extract domain / goal / constraints / scope)
 
 Apply CLAUDE.md §7 Rule 5 (Context-First Discovery). The orchestrator extracts a preliminary profile from the raw request:
 
@@ -65,9 +65,9 @@ Apply CLAUDE.md §7 Rule 5 (Context-First Discovery). The orchestrator extracts 
 
 Emit the preliminary profile as a structured block BEFORE the Socratic round so the user can see what was extracted and correct it.
 
-**Consume `harness-spec.yaml` when present (pre-satisfaction).** When this workflow was reached via `/moai project` Phase 5.1 — or whenever `.moai/project/harness-spec.yaml` exists — the orchestrator FIRST loads that machine-readable artifact (written by `project/doc-generation.md` Phase 3.2) and uses its recorded fields to PRE-SATISFY the domain / goal / constraints / scope profile above. A field carrying a single concrete value in `harness-spec.yaml` is already-answered and MUST NOT be re-asked. Context-First Discovery re-asks ONLY fields that are absent or ambiguous in `harness-spec.yaml` (empty, null, a placeholder token such as `<string>` / `TODO` / `TBD`, or multi-valued without a single resolution) — it does not re-interview an already-answered field. The four extended axes recorded in `harness-spec.yaml` (`verification` / `external_systems` / `ui_surface` / `team_sharing`) likewise carry forward as additional pre-satisfied context.
+**Consume `harness-spec.yaml` when present (pre-satisfaction).** When this workflow was reached via `/moai project` Phase 15 — or whenever `.moai/project/harness-spec.yaml` exists — the orchestrator FIRST loads that machine-readable artifact (written by `project/doc-generation.md` Phase 8) and uses its recorded fields to PRE-SATISFY the domain / goal / constraints / scope profile above. A field carrying a single concrete value in `harness-spec.yaml` is already-answered and MUST NOT be re-asked. Context-First Discovery re-asks ONLY fields that are absent or ambiguous in `harness-spec.yaml` (empty, null, a placeholder token such as `<string>` / `TODO` / `TBD`, or multi-valued without a single resolution) — it does not re-interview an already-answered field. The four extended axes recorded in `harness-spec.yaml` (`verification` / `external_systems` / `ui_surface` / `team_sharing`) likewise carry forward as additional pre-satisfied context.
 
-### Phase 1.5: AskUserQuestion Socratic Rounds (when clarity < 100%)
+### Phase 3: AskUserQuestion Socratic Rounds (when clarity < 100%)
 
 If the extracted profile has ANY ambiguous field (domain too vague, goal unstated, constraints unenumerated, scope unclear), conduct AskUserQuestion Socratic rounds per `.claude/rules/moai/core/askuser-protocol.md`:
 
@@ -77,20 +77,20 @@ If the extracted profile has ANY ambiguous field (domain too vague, goal unstate
 4. Continue until intent clarity reaches 100%.
 5. Consolidate the confirmed profile into a structured block and proceed to Phase 2.
 
-[HARD] Do NOT skip the Socratic rounds when clarity is below 100%. The name derivation (Phase 2) and approval gate (Phase 3) both depend on a fully-resolved profile.
+[HARD] Do NOT skip the Socratic rounds when clarity is below 100%. The name derivation (Phase 6) and approval gate (Phase 7) both depend on a fully-resolved profile.
 
-### Phase 1.6: Final-Round Harness-Generation Offer
+### Phase 4: Final-Round Harness-Generation Offer
 
 As the closing question of the Context-First Discovery interview — the **final-round** offer, once the profile has reached 100% clarity — the orchestrator surfaces the harness-generation proposal:
 
 > "이 프로젝트에 `<type>` 개발 하네스를 생성할까요?"
 > ("Generate a `<type>` development harness for this project?")
 
-where `<type>` is the confirmed domain (from `.moai/project/harness-spec.yaml` `domain` when present, else the discovery-confirmed domain). This final-round harness proposal mirrors the post-project-type-confirmation proposal surfaced by `project/meta-harness.md` § 5.0 — both entry points converge on the same Builder handoff. This offer is a live interview step, not a documented aside: it is the last question the interview asks before name derivation. On acceptance, proceed to Phase 2 (name derivation) → Phase 3 (approval gate). On decline, halt without building.
+where `<type>` is the confirmed domain (from `.moai/project/harness-spec.yaml` `domain` when present, else the discovery-confirmed domain). This final-round harness proposal mirrors the post-project-type-confirmation proposal surfaced by `project/meta-harness.md` § 5.0 — both entry points converge on the same Builder handoff. This offer is a live interview step, not a documented aside: it is the last question the interview asks before name derivation. On acceptance, proceed to Phase 6 (name derivation) → Phase 7 (approval gate). On decline, halt without building.
 
-## Phase 1.7: Schedule Retrofit Branch (existing harness + scheduling intent)
+## Phase 5: Schedule Retrofit Branch (existing harness + scheduling intent)
 
-**Detection rule.** When the natural-language request references an EXISTING harness — the referenced name resolves to `.claude/commands/harness/<name>.md` — together with scheduling intent (a recurring-schedule request: "run X nightly", "on a schedule", "every 30 minutes", cron/loop phrasing), this workflow routes to the Schedule Retrofit branch below instead of the Builder creation pipeline. **Precedence:** Retrofit detection is evaluated BEFORE the Phase 2 name-collision handling — an existing-name + scheduling-intent request routes to this Retrofit branch, never to the collision re-derive path (`<name>-v2` / rename). A request whose referenced name matches no existing harness falls through to the normal Builder path (Phase 2 onward) — never an error.
+**Detection rule.** When the natural-language request references an EXISTING harness — the referenced name resolves to `.claude/commands/harness/<name>.md` — together with scheduling intent (a recurring-schedule request: "run X nightly", "on a schedule", "every 30 minutes", cron/loop phrasing), this workflow routes to the Schedule Retrofit branch below instead of the Builder creation pipeline. **Precedence:** Retrofit detection is evaluated BEFORE the Phase 6 name-collision handling — an existing-name + scheduling-intent request routes to this Retrofit branch, never to the collision re-derive path (`<name>-v2` / rename). A request whose referenced name matches no existing harness falls through to the normal Builder path (Phase 6 onward) — never an error.
 
 The branch runs the same recurrence question round the Builder folds into its PLAN→GENERATE gate: one orchestrator-issued AskUserQuestion capturing the interval and the mechanism preference, with option descriptions stating the /loop session-scoped vs Cron persistent trade-off and the discovery-only execution model (read-only analysis, findings persisted to a queue surface, no writes/commits/pushes, no run-phase entry).
 
@@ -100,29 +100,29 @@ The branch runs the same recurrence question round the Builder folds into its PL
 
 **Command-only target.** When the target harness is command-only (no manifest.json — a thin harness whose Runner-less shape is a deliberate design), the Retrofit branch registers the schedule via the same self-contained discovery prompt without fabricating a manifest, and informs the user that `list` / `doctor` schedule surfacing is unavailable for manifest-less harnesses (the declared schedule lives only in the scheduler registration). A retrofit never copies a project's local-only harness artifacts or manifests into template-managed or distributed trees — the edit binds to the target harness's own manifest location only.
 
-## Phase 2: Harness `<name>` Derivation
+## Phase 6: Harness `<name>` Derivation
 
-Derive the harness `<name>` from the confirmed profile (Phase 1 + 1.5). The name is NOT statically supplied by the user — the orchestrator derives it. Naming rules:
+Derive the harness `<name>` from the confirmed profile (Phase 2 + 1.5). The name is NOT statically supplied by the user — the orchestrator derives it. Naming rules:
 
 - Lowercase, hyphen-separated, ≤32 characters.
 - Reflects the domain (e.g., domain "CLI template development" → name `cli-template-dev`; domain "research" → name `research`).
 - MUST use the `harness-` prefix ONLY if it will live under the user-owned `.claude/skills/harness-*/` namespace. If it is a project-level harness without the `harness-` skill prefix, omit the prefix (the `/harness:<name>` command namespace is separate from the skill namespace).
 - MUST NOT collide with an existing harness name. Check `.claude/commands/harness/<name>.md` existence before confirming.
 
-Surface the derived name to the user as part of the Phase 3 approval gate. If the user rejects the derived name via the "Modify" option, re-derive from the refined profile (do NOT ask the user to type a name statically — re-derivation keeps the name semantically tied to the request).
+Surface the derived name to the user as part of the Phase 7 approval gate. If the user rejects the derived name via the "Modify" option, re-derive from the refined profile (do NOT ask the user to type a name statically — re-derivation keeps the name semantically tied to the request).
 
-## Phase 3: Approval Gate (orchestrator-issued AskUserQuestion)
+## Phase 7: Approval Gate (orchestrator-issued AskUserQuestion)
 
 [HARD] Before delegating to the Builder Workflow, the orchestrator MUST obtain explicit approval via `AskUserQuestion`. This gate is mandatory and score-independent (a strong Context-First Discovery profile never authorizes skipping it — parallel to the Implementation Kickoff Approval human gate).
 
 `ToolSearch(query: "select:AskUserQuestion")` → `AskUserQuestion` with the canonical four-option pattern (first option `(권장)` / `(Recommended)`):
 
-- **Build (권장)** — Proceed to Phase 4 (delegate to the Builder Workflow with the confirmed profile + derived name).
-- **Modify profile** — Return to Phase 1.5 with the user's refinement (e.g., narrow the domain, add a constraint). Re-derive the name in Phase 2.
+- **Build (권장)** — Proceed to Phase 8 (delegate to the Builder Workflow with the confirmed profile + derived name).
+- **Modify profile** — Return to Phase 3 with the user's refinement (e.g., narrow the domain, add a constraint). Re-derive the name in Phase 2.
 - **Rename** — Re-derive the harness `<name>` from the same profile with a different naming heuristic (the user hints at a preferred stem). Do NOT ask the user to type the name statically.
 - **Abort** — Stop. No files are modified. The request is recorded in `.moai/harness/build-requests/` for retrospective analysis (best-effort; the directory is created on first use).
 
-## Phase 4: Transition to the Orchestrator-Direct Builder
+## Phase 8: Transition to the Orchestrator-Direct Builder
 
 On `Build` approval, the orchestrator transitions directly into the Builder — it does NOT delegate to a dynamic-workflow script and does NOT spawn a separate Builder agent. The Builder is **orchestrator-side logic**: the orchestrator continues executing in the same session, running the 4 signal-driven phases (ANALYZE / PLAN / GENERATE / ACTIVATE) using ordinary `Agent()` spawn. Intermediate results are held in the orchestrator's session context.
 
@@ -137,7 +137,7 @@ On `Build` approval, the orchestrator transitions directly into the Builder — 
 
 **Carry-over invariant.** The confirmed profile + derived name from Phases 1-3 above is the single source of truth for the manifest's `source_request` field. The Builder MUST carry the original natural-language request verbatim into `manifest.json.source_request`.
 
-## Phase 5: Post-Build Summary
+## Phase 9: Post-Build Summary
 
 After the Builder's ACTIVATE phase completes, render a one-paragraph summary in the user's `conversation_language` covering:
 
@@ -150,9 +150,9 @@ After the Builder's ACTIVATE phase completes, render a one-paragraph summary in 
 
 | Symptom | Likely cause | Recovery |
 |---------|-------------|----------|
-| Reserved-verb misroute (Phase 0 fires) | Dispatcher misrouted a `status`/`apply`/`rollback`/`disable` call | Re-emit routing guidance; halt this workflow; user re-invokes via the correct path |
-| AskUserQuestion schema not loaded | Deferred-tool preload missed | The workflow body explicitly preloads via `ToolSearch(query: "select:AskUserQuestion")` before each Socratic round and the Phase 3 gate |
-| Derived name collides with existing harness | `.claude/commands/harness/<name>.md` already exists | Re-derive with a domain-specific suffix (e.g., `<name>-v2`) OR ask the user via the "Rename" Phase 3 option |
+| Reserved-verb misroute (Phase 1 fires) | Dispatcher misrouted a `status`/`apply`/`rollback`/`disable` call | Re-emit routing guidance; halt this workflow; user re-invokes via the correct path |
+| AskUserQuestion schema not loaded | Deferred-tool preload missed | The workflow body explicitly preloads via `ToolSearch(query: "select:AskUserQuestion")` before each Socratic round and the Phase 7 gate |
+| Derived name collides with existing harness | `.claude/commands/harness/<name>.md` already exists | Re-derive with a domain-specific suffix (e.g., `<name>-v2`) OR ask the user via the "Rename" Phase 7 option |
 | PLAN→GENERATE gate returns "Revise manifest" | User rejected the draft manifest at the Builder's approval gate | Return to PLAN with the user's refinement; re-derive specialists/patterns; re-present the gate |
 
 ## Cross-references

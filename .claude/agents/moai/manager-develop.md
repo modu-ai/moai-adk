@@ -11,7 +11,6 @@ model: inherit
 effort: xhigh
 color: green
 permissionMode: bypassPermissions
-isolation: worktree
 memory: project
 skills:
   - moai-foundation-core

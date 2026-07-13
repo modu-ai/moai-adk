@@ -195,7 +195,7 @@ If tests fail:
 - Mark the item as "False Positive" in the report
 - Continue with remaining removals
 
-## Phase 5.5: MX Tag Cleanup
+## Phase 6: MX Tag Cleanup
 
 After verified removals:
 - Remove @MX tags from deleted code
@@ -203,7 +203,7 @@ After verified removals:
 - Demote @MX:ANCHOR to @MX:NOTE if fan_in drops below 3
 - Generate MX tag change report
 
-## Phase 6: Report
+## Phase 7: Report
 
 Display removal report in user's conversation_language:
 
@@ -247,7 +247,7 @@ Next Steps (AskUserQuestion):
 - Phase 3: MoAI orchestrator (user approval via AskUserQuestion)
 - Phase 4: per-spawn `Agent(general-purpose)` refactoring specialist (safe removal)
 - Phase 5: manager-develop subagent (test verification)
-- Phase 5.5: MoAI orchestrator or a per-spawn `Agent(general-purpose)` refactoring specialist (MX tag cleanup)
+- Phase 6: MoAI orchestrator or a per-spawn `Agent(general-purpose)` refactoring specialist (MX tag cleanup)
 
 ## Execution Summary
 
@@ -260,7 +260,7 @@ Next Steps (AskUserQuestion):
 7. Present removal plan to user via AskUserQuestion
 8. Delegate safe removal to a per-spawn `Agent(general-purpose)` refactoring specialist
 9. Delegate test verification to manager-develop subagent
-10. Clean up @MX tags for removed code (Phase 5.5)
+10. Clean up @MX tags for removed code (Phase 6)
 11. TaskCreate/TaskUpdate for all candidates
 12. Report results with next step options
 

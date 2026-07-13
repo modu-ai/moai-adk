@@ -265,7 +265,7 @@ Language preferences in language.yaml:
 The MoAI Agent Teams static-orchestration layer is RETIRED. The former Teams-API
 experimental env-var gate, the `workflow.team` config block, and the team
 auto-selection thresholds were removed with it. A forced `--mode team` emits
-`MODE_TEAM_UNAVAILABLE` and falls back to sub-agent mode. The Phase 0.95
+`MODE_TEAM_UNAVAILABLE` and falls back to sub-agent mode. The Phase 4
 auto-select thresholds (≥ 3 domains / ≥ 10 files / score ≥ 7) now live as
 prose-only SSOT in
 `.claude/rules/moai/workflow/orchestration-mode-selection.md` §B.1.

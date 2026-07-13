@@ -11,7 +11,6 @@ description: >
   SPEC-V3R6-DEV-HARNESS-CONSOLIDATION-001.
 tools: Read, Write, Edit, Bash, WebFetch, WebSearch, Glob, Grep
 effort: high
-isolation: worktree
 ---
 
 # Specialist: harness-release-update — CC Upstream Change Tracker

@@ -319,7 +319,7 @@ The manifest is validated against the canonical schema before GENERATE completes
 **Content contract**:
 
 - The fragment reuses the `builder-harness` `artifact_type=mcp-server` scaffolder verbatim — this SPEC wires the existing capability into GENERATE; it does not reimplement the scaffolder.
-- Any secret in a written server entry uses `${VAR}` env-var expansion form (never an inlined literal token), matching the `/moai project` Phase 3.6 write discipline.
+- Any secret in a written server entry uses `${VAR}` env-var expansion form (never an inlined literal token), matching the `/moai project` Phase 11 write discipline.
 
 **Optional manifest `mcp` block (doctor-tolerant)**: when artifact 7 is emitted, the harness MAY record an OPTIONAL `mcp` block in `manifest.json` (e.g. `"mcp": { "servers": [ { "name": "playwright", "transport": "stdio" } ] }`). This block is TOLERATE-ONLY: the `moai harness doctor` reference-integrity gate tolerates it with zero code change, because the manifest decoder ignores unknown fields (no strict unknown-field rejection), so an unknown `mcp` block produces no doctor ERROR finding. Active schema validation of the `mcp` block is out of scope here, deferred to a follow-up code SPEC.
 

@@ -7,7 +7,7 @@ paths: ".claude/rules/moai/core/moai-constitution.md,CLAUDE.md"
 
 # Orchestrator Templates
 
-Orchestration patterns for the MoAI orchestrator when coordinating sub-agents. Each template maps onto a mode in the Phase 0.95 execution-mode catalog (`.claude/rules/moai/workflow/orchestration-mode-selection.md` §A) — the catalog decides WHICH mode; this file describes HOW to run it.
+Orchestration patterns for the MoAI orchestrator when coordinating sub-agents. Each template maps onto a mode in the Phase 4 execution-mode catalog (`.claude/rules/moai/workflow/orchestration-mode-selection.md` §A) — the catalog decides WHICH mode; this file describes HOW to run it.
 
 | Template | Catalog mode | Shape |
 |----------|--------------|-------|
@@ -187,7 +187,7 @@ Reserve it for genuinely-parallel high-volume work. Coding-heavy, multi-domain, 
 
 ## Team-orchestrator — RETIRED
 
-**Mode 3 — RETIRED.** The MoAI Agent Teams static orchestration layer is retired; the Phase 0.95 decision tree never selects it. The former team template (a lead agent spawning named teammates that coordinate through a shared task list and peer messages) is no longer a MoAI orchestration pattern.
+**Mode 3 — RETIRED.** The MoAI Agent Teams static orchestration layer is retired; the Phase 4 decision tree never selects it. The former team template (a lead agent spawning named teammates that coordinate through a shared task list and peer messages) is no longer a MoAI orchestration pattern.
 
 **Where its use cases went**:
 
@@ -287,4 +287,4 @@ The rationale is coordination cost: fan-out plus sequential covers the practical
 - Narrow the scope and re-delegate
 - Escalate to user for guidance
 
-These templates cover most MoAI orchestration scenarios. Mix and match as needed — but let the Phase 0.95 catalog pick the mode, and let the simplest sufficient template win.
+These templates cover most MoAI orchestration scenarios. Mix and match as needed — but let the Phase 4 catalog pick the mode, and let the simplest sufficient template win.

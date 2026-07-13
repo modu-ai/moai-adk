@@ -6,12 +6,11 @@ description: |
   Use PROACTIVELY for code implementation, refactoring, test-driven development, behavior preservation, and pipeline auto-fix execution.
   Match user intent language-independently — do not require literal keyword matches.
   NOT for: SPEC body authoring (spec.md / plan.md / acceptance.md / design.md / research.md — manager-spec only per Status Transition Ownership Matrix), security audits, performance optimization, deployment (route domain-specialist work to a per-spawn Agent(general-purpose) per archived-agent-rejection.md §C)
-tools: Read, Write, Edit, Bash, Grep, Glob, TaskCreate, TaskUpdate, TaskList, TaskGet, Skill, mcp__context7
+tools: Read, Write, Edit, Bash, Grep, Glob, TaskCreate, TaskUpdate, TaskList, TaskGet, Skill
 model: inherit
 effort: xhigh
 color: green
 permissionMode: bypassPermissions
-isolation: worktree
 memory: project
 skills:
   - moai-foundation-core

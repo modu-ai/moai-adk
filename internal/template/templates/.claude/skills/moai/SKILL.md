@@ -51,9 +51,9 @@ $ARGUMENTS
 
 ## Execution Mode Flags (mutually exclusive)
 
-- `--team`: Force Mode 3 (agent-team) of the Phase 0.95 6-mode catalog (`.claude/rules/moai/workflow/orchestration-mode-selection.md` §A), subject to its capability gate
+- `--team`: Force Mode 3 (agent-team) of the Phase 4 6-mode catalog (`.claude/rules/moai/workflow/orchestration-mode-selection.md` §A), subject to its capability gate
 - `--solo`: Force Mode 5 (sub-agent — single sequential agent per phase)
-- No flag: The orchestrator auto-selects from the full 6-mode catalog at Phase 0.95; the complexity auto-select thresholds are stated once in `orchestration-mode-selection.md` §B.1 (machine source: `workflow.yaml` `auto_selection`) and are not restated here
+- No flag: The orchestrator auto-selects from the full 6-mode catalog at Phase 4; the complexity auto-select thresholds are stated once in `orchestration-mode-selection.md` §B.1 (machine source: `workflow.yaml` `auto_selection`) and are not restated here
 
 The `--team` / `--solo` flags are forced overrides onto the catalog; the flag-free default resolves through the catalog decision tree (§B) and its capability gates. The `--mode` dispatch axis is a separate axis — see the crosswalk in `orchestration-mode-selection.md` §G.1 (correspondence, not merge).
 
@@ -130,10 +130,10 @@ For detailed orchestration: Read ${CLAUDE_SKILL_DIR}/workflows/sync.md
 
 ### gate - Pre-Commit Quality Gate
 
-Purpose: Lightweight pre-commit quality check running lint, format, type-check, and tests in parallel. Also integrated into run (Phase 2.75) and sync (Phase 0) workflows as automatic pre-checks.
+Purpose: Lightweight pre-commit quality check running lint, format, type-check, and tests in parallel. Also integrated into run (Phase 15) and sync (Phase 1) workflows as automatic pre-checks.
 Agents: Direct execution (no agent delegation)
 Flags: --fix, --staged, --file PATH
-Integration: Automatically invoked by run workflow (Phase 2.75) and sync workflow (Phase 0.0.1) with --fix behavior.
+Integration: Automatically invoked by run workflow (Phase 15) and sync workflow (Phase 1) with --fix behavior.
 For detailed orchestration: Read ${CLAUDE_SKILL_DIR}/workflows/gate.md
 
 ### goal - Condition-Declared Agentic Loop
@@ -301,7 +301,7 @@ Before loading the workflow body (Step 3), produce a requirement-analysis record
 1. **Requirement summary** (1-3 sentences): what the user asked for, restated in the orchestrator's own words.
 2. **Completion condition**: the end state that means "done". Where the condition is machine-verifiable (test exit code, lint-clean state, grep count, bounded turn count), express it in `/goal`-compatible transcript-measurable form per `.claude/rules/moai/workflow/goal-directive.md` (one measurable end state + a stated check + a bound clause). Do NOT invent a parallel evaluator: set the condition via `/goal` when the runtime supports it; otherwise the orchestrator evaluates the identical condition text per-turn (graceful degradation — no new machinery).
 3. **Pipeline contract**: `full-pipeline` (default natural-language route — run-phase completion auto-chains into sync) or `single-phase` (explicit `run`/`sync` subcommand — chaining is offered as the "(Recommended)" next-step option, never fired silently).
-4. **Orchestration-shape pre-signal**: an early input to the Phase 0.95 6-mode selection (`orchestration-mode-selection.md` §A) — noted here, decided at Phase 0.95.
+4. **Orchestration-shape pre-signal**: an early input to the Phase 4 6-mode selection (`orchestration-mode-selection.md` §A) — noted here, decided at Phase 4.
 
 Trivial-scope exemption: skip this step entirely for `feedback`, `gate`, `codemaps`, `sync` status mode, and any Stage-1-Clarify exception per `askuser-protocol.md` § Ambiguity Triggers and Exceptions.
 Socratic-first ordering: while intent clarity is below 100%, run the Socratic interview (per `askuser-protocol.md`) BEFORE deriving the completion condition — the condition encodes drained intent, never a guess.

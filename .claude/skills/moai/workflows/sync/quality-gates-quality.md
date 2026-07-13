@@ -1,16 +1,16 @@
 ---
-description: "Sync Phase 0.5~0.7 — Quality Verification, Security Scan, MX Tag Validation, and Coverage Analysis with Test Generation."
+description: "Sync Phase 7~10 — Quality Verification, Security Scan, MX Tag Validation, and Coverage Analysis with Test Generation."
 user-invocable: false
 metadata:
   parent: moai-workflow-sync
-  phase: "Phase 0.5~0.7: Quality Verification and Coverage"
+  phase: "Phase 7~10: Quality Verification and Coverage"
 ---
 
 <!-- TRACE PROBE: workflow-split baseline trace mechanism -->
 <!-- Activated by MOAI_TRACE_PHASES=1 environment variable -->
 <!-- Emits one line per Phase entry/exit to stderr in format: [trace] /moai sync Phase <N> <enter|exit> -->
 
-### Phase 0.5: Quality Verification
+### Phase 7: Quality Verification
 
 Purpose: Detect project language and run language-specific diagnostics (tests, linter, type checker) in parallel, followed by code review.
 
@@ -51,7 +51,7 @@ Collect all results with timeouts (180s for tests, 120s for others). Handle part
 If any tests fail, use AskUserQuestion:
 
 - Continue: Proceed with sync despite failures
-- Abort: Stop sync, fix tests first (exit to Phase 4 graceful exit)
+- Abort: Stop sync, fix tests first (exit to Phase 14 graceful exit)
 
 #### Step 0.5.4: Deep Code Review with Auto-Fix
 
@@ -76,7 +76,7 @@ Auto-Fix Behavior:
 
 Output:
 - Review report with findings by severity (critical, warning, suggestion)
-- @MX tag compliance status (integrated with Phase 0.6)
+- @MX tag compliance status (integrated with Phase 9)
 - Auto-fix log if corrections were applied
 
 #### LSP Quality Gates
@@ -90,7 +90,7 @@ The sync phase enforces LSP-based quality gates as configured in quality.yaml:
 
 Aggregate all results into a quality report showing status for test-runner, linter, type-checker, and code-review. Determine overall status (PASS or WARN).
 
-### Phase 0.55: Security Scan (Conditional)
+### Phase 8: Security Scan (Conditional)
 
 Purpose: Run a targeted security audit on changed files before PR creation. Catches security vulnerabilities that code review alone may miss.
 
@@ -101,7 +101,7 @@ Purpose: Run a targeted security audit on changed files before PR creation. Catc
 - User input handling files (form, input, validation, sanitize)
 - Configuration files with secrets (.env, config with credentials)
 
-**Skip condition**: If no changed files match security-sensitive patterns, skip to Phase 0.6. Log: "Security scan skipped: no security-sensitive files changed."
+**Skip condition**: If no changed files match security-sensitive patterns, skip to Phase 9. Log: "Security scan skipped: no security-sensitive files changed."
 
 #### Step 0.55.1: Security Analysis
 
@@ -125,12 +125,12 @@ Rationale: a transitive vulnerability may have been introduced by an unrelated d
 If CRITICAL findings exist:
 - Present findings via AskUserQuestion:
   - Fix now (Recommended): Delegate to a per-spawn `Agent(general-purpose)` security reviewer for auto-fix, then re-scan
-  - Continue with warning: Proceed to Phase 0.6 with security warnings embedded in PR description
+  - Continue with warning: Proceed to Phase 9 with security warnings embedded in PR description
   - Abort: Exit sync workflow
 
-If no CRITICAL findings: Proceed to Phase 0.6. Include any HIGH/MEDIUM findings in the sync report.
+If no CRITICAL findings: Proceed to Phase 9. Include any HIGH/MEDIUM findings in the sync report.
 
-### Phase 0.6: MX Tag Validation (Multi-Language)
+### Phase 9: MX Tag Validation (Multi-Language)
 
 Purpose: Ensure code has appropriate @MX annotations for AI agent context. Supports all 16 MoAI-ADK languages.
 
@@ -144,7 +144,7 @@ Purpose: Ensure code has appropriate @MX annotations for AI agent context. Suppo
 When P1/P2 violations are detected:
 1. Display full violation report with file:line references
 2. Show message: "Run /moai run to add missing tags, or use --skip-mx to bypass"
-3. Halt sync — do NOT proceed to Phase 0.7+
+3. Halt sync — do NOT proceed to Phase 10+
 
 Skip if `--skip-mx` flag is provided. When skipped, log: "MX validation skipped by user flag" in sync report.
 
@@ -235,7 +235,7 @@ When MX tags are added during sync:
 
 Status mode early exit: If mode is "status", display quality report and exit. No further phases execute.
 
-### Phase 0.7: Coverage Analysis and Test Generation
+### Phase 10: Coverage Analysis and Test Generation
 
 Purpose: Measure test coverage, identify gaps, and generate missing tests to meet coverage targets before documentation sync.
 

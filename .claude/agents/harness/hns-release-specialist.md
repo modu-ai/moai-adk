@@ -10,7 +10,6 @@ description: >
   SPEC-V3R6-DEV-HARNESS-CONSOLIDATION-001.
 tools: Read, Write, Edit, Grep, Glob, Bash
 effort: high
-isolation: worktree
 ---
 
 # Specialist: harness-release — Production Release (Enhanced GitHub Flow)

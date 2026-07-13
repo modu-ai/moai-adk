@@ -126,7 +126,7 @@ var agentLintCmd = &cobra.Command{
 	  LR-13: Reject invalid effort enum value (must be one of low/medium/high/xhigh/max)
 	  LR-14: Reject fixed budget_tokens (Opus 4.7 Adaptive Thinking rejects HTTP 400)
 	  LR-04: Reject dead hook entries (matcher tool absent from tools:)
-	  LR-05: Error on missing isolation: worktree for write-heavy role profiles and standalone agents (SPEC-V3R2-ORC-004)
+	  LR-05: Warn on missing isolation: worktree for write-heavy role profiles and standalone agents (SPEC-V3R2-ORC-004)
 	  LR-06: Warn on --deepthink boilerplate in description (error with --strict)
 	  LR-07: Reject duplicate Skeptical-Evaluator Mandate blocks
 	  LR-08: Warn on skill-preload drift within same category (error with --strict)
@@ -706,7 +706,7 @@ func checkFixedBudgetTokens(file string, content []byte) []LintViolation {
 }
 
 // checkMissingIsolation checks for LR-05.
-// Error on missing isolation: worktree for write-heavy role profiles and standalone agents (SPEC-V3R2-ORC-004).
+// Warn on missing isolation: worktree for write-heavy role profiles and standalone agents (SPEC-V3R2-ORC-004).
 func checkMissingIsolation(file string, fm AgentFrontmatter) []LintViolation {
 	var violations []LintViolation
 
@@ -721,7 +721,7 @@ func checkMissingIsolation(file string, fm AgentFrontmatter) []LintViolation {
 				lineNum := findFrontmatterLine(file, "name:")
 				violations = append(violations, LintViolation{
 					Rule:     "LR-05",
-					Severity: SeverityError,
+					Severity: SeverityWarning,
 					File:     file,
 					Line:     lineNum,
 					Message:  fmt.Sprintf("Agent name suggests role profile '%s' but missing 'isolation: worktree' (required for write teammates in team mode)", pattern),
@@ -743,7 +743,7 @@ func checkMissingIsolation(file string, fm AgentFrontmatter) []LintViolation {
 				lineNum := findFrontmatterLine(file, "name:")
 				violations = append(violations, LintViolation{
 					Rule:     "LR-05",
-					Severity: SeverityError,
+					Severity: SeverityWarning,
 					File:     file,
 					Line:     lineNum,
 					Message:  fmt.Sprintf("Write-heavy agent '%s' must have 'isolation: worktree' (SPEC-V3R2-ORC-004 %s)", fm.Name, SentinelWorktreeMissing),

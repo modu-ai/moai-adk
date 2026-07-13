@@ -36,12 +36,12 @@ For methodology details (DDD ANALYZE-PRESERVE-IMPROVE and TDD RED-GREEN-REFACTOR
 
 `/moai run` participates in the `--mode` axis with 4 valid values: `autopilot`, `loop`, `team`, `pipeline`. Each value selects a distinct execution style.
 
-> **Axis note**: the `--mode` flag set here is the DISPATCH axis — WHICH `/moai run` workflow variant runs. It is distinct from the Phase 0.95 execution-mode catalog (HOW the orchestrator spawns) in `.claude/rules/moai/workflow/orchestration-mode-selection.md` §A; the value-by-value correspondence is documented in that rule's §G.1 crosswalk (correspondence, not merge). The resolver pseudocode and sentinels below are unchanged.
+> **Axis note**: the `--mode` flag set here is the DISPATCH axis — WHICH `/moai run` workflow variant runs. It is distinct from the Phase 4 execution-mode catalog (HOW the orchestrator spawns) in `.claude/rules/moai/workflow/orchestration-mode-selection.md` §A; the value-by-value correspondence is documented in that rule's §G.1 crosswalk (correspondence, not merge). The resolver pseudocode and sentinels below are unchanged.
 
 ### Mode Values
 
-- **`autopilot` (default for harness `minimal` / `standard`)**: Single-lead orchestration via Phase 0.95 Scale-Based Mode Selection (Fix / Focused / Standard / Full Pipeline) → Phase 2A/2B per `quality.yaml development_mode`. Behaves as today's default `/moai run` invocation.
-- **`loop`**: Delegate to `Skill("moai-workflow-loop")` with the SPEC-ID and remaining args. Bypasses Phase 2A/2B and enters the Ralph engine per-iteration cycle (see `loop.md` Steps 1-9). `/moai loop SPEC-XXX` is an alias resolving to `/moai run --mode loop SPEC-XXX` with identical behavior.
+- **`autopilot` (default for harness `minimal` / `standard`)**: Single-lead orchestration via Phase 4 Scale-Based Mode Selection (Fix / Focused / Standard / Full Pipeline) → Phase 11/2B per `quality.yaml development_mode`. Behaves as today's default `/moai run` invocation.
+- **`loop`**: Delegate to `Skill("moai-workflow-loop")` with the SPEC-ID and remaining args. Bypasses Phase 11/2B and enters the Ralph engine per-iteration cycle (see `loop.md` Steps 1-9). `/moai loop SPEC-XXX` is an alias resolving to `/moai run --mode loop SPEC-XXX` with identical behavior.
 - **`team` (RETIRED)**: The `--mode team` dispatch value is retired (Agent Teams static layer — Mode 3 `agent-team` retired). A forced `--mode team` emits `MODE_TEAM_UNAVAILABLE` and the orchestrator falls back to `autopilot`.
 - **`pipeline`**: REJECTED on `/moai run`. Pipeline mode is reserved for utility subcommands (`fix`, `coverage`, `mx`, `codemaps`, `clean`). Passing `--mode pipeline` here triggers `MODE_PIPELINE_ONLY_UTILITY` (the same error key the utility subcommands share).
 
@@ -101,7 +101,7 @@ When the run phase begins, evaluate whether to activate deep analysis mode for t
 **UltraThink (primary deep reasoning trigger)**:
 - `ultrathink`: Extended reasoning within the current agent (Adaptive Thinking on Opus 4.7+) — deeper strategy analysis, more thorough trade-off evaluation
 
-When activated: Apply to Phase 1 (Strategy) for deeper architectural analysis. Log: "UltraThink mode activated for strategy phase: [reason]"
+When activated: Apply to Phase 5 (Strategy) for deeper architectural analysis. Log: "UltraThink mode activated for strategy phase: [reason]"
 
 ## Harness Level Routing
 
@@ -110,17 +110,17 @@ At Run phase entry, determine the pipeline depth:
 1. Receive harness level from orchestrator (moai.md Complexity Estimator) or default to standard
 2. Apply level-specific phase configuration:
    - **minimal**: Skip phases [0, 0.6, 2.0, 2.5, 2.75, 2.8a, 2.9, 2.10]. Direct implementation only.
-     Note: Phase 0.5 (Plan Audit Gate) is NEVER skipped, not even in minimal harness.
-   - **standard**: Execute all phases. sync-auditor in final-pass mode (Phase 2.8a only).
-   - **thorough**: Execute all phases. sync-auditor in per-milestone mode (Phase 2.0 + 2.8a). Milestone contract enabled.
+     Note: Phase 1 (Plan Audit Gate) is NEVER skipped, not even in minimal harness.
+   - **standard**: Execute all phases. sync-auditor in final-pass mode (Phase 16 only).
+   - **thorough**: Execute all phases. sync-auditor in per-milestone mode (Phase 10 + 2.8a). Milestone contract enabled.
 3. Load SPEC context (token-efficient):
    - If `.moai/specs/SPEC-{ID}/spec-compact.md` exists: Load spec-compact.md (~30% token savings)
    - Otherwise: Load full spec.md (backward compatible)
 4. Log harness level to progress.md for traceability
 
 Escalation: If a quality gate fails during execution, escalate harness level:
-- minimal → standard (on Phase 2.5 fail)
-- standard → thorough (on Phase 2.8a CRITICAL)
+- minimal → standard (on Phase 13 fail)
+- standard → thorough (on Phase 16 CRITICAL)
 - Maximum 2 escalations per SPEC run
 
 ## Context Loading
@@ -133,7 +133,7 @@ Before execution, load these essential files:
 - .moai/config/sections/git-strategy.yaml (auto_branch, branch creation policy)
 - .moai/config/sections/language.yaml (git_commit_messages setting)
 - .moai/specs/SPEC-{ID}/ directory (spec-compact.md preferred, or spec.md, plan.md, acceptance.md)
-- .moai/specs/SPEC-{ID}/progress.md (session resume context: if exists, load to identify completed phases and skip them; if absent, will be created at Phase 1 start)
+- .moai/specs/SPEC-{ID}/progress.md (session resume context: if exists, load to identify completed phases and skip them; if absent, will be created at Phase 5 start)
 - .moai/specs/SPEC-{ID}/tasks.md (task decomposition with planned files, if exists)
 - .moai/project/structure.md (architecture context for implementation decisions)
 - .moai/project/tech.md (technology stack context)
@@ -156,7 +156,7 @@ Before spawning implementation agents, load relevant lessons from auto-memory:
 
 ### Resume Check
 
-Before Phase 1, check if `.moai/specs/SPEC-{ID}/progress.md` exists:
+Before Phase 5, check if `.moai/specs/SPEC-{ID}/progress.md` exists:
 - If it exists: Load content, identify last completed phase checkpoint, skip all completed phases, resume from the next pending phase. Log: "Resuming SPEC-{ID} from Phase {N}"
 - If it does not exist: Create the file now with initial entry:
   ```

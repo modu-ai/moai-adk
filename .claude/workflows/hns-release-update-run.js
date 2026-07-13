@@ -1,3 +1,9 @@
+export const meta = {
+  name: "hns-release-update-run",
+  description: "(dev-only) release-update harness Runner — non-interactive CC release-notes research sweep (parallel per-version-delta impact analysis, read-only). Human-gated steps stay outside this run.",
+  phases: [{ title: "Research Sweep", detail: "one read-only Explore agent per version delta" }],
+};
+
 // hns-release-update-run.js — Runner for the release-update dev-maintainer harness.
 //
 // [DEV-ONLY] maintainer harness Runner. NOT distributed to user projects.

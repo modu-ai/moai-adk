@@ -12,7 +12,7 @@ when_to_use: >
 
 license: Apache-2.0
 compatibility: Designed for Claude Code
-allowed-tools: Read, Write, Grep, Glob, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
+allowed-tools: Read, Write, Grep, Glob
 user-invocable: false
 metadata:
   version: "1.1.0"

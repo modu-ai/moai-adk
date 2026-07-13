@@ -4,7 +4,7 @@ description: |
   Unified artifact-meta creation specialist — builds the scaffolding/structure of agents, skills, plugins, commands, hooks, MCP servers, and LSP servers. Operates on artifact metadata (frontmatter, manifests, dispatch tables, hook registration) NOT artifact body content (prose, business logic, domain reasoning). Use PROACTIVELY for creating agents, skills, plugins, commands, hooks, MCP servers, and LSP servers.
   Match user intent language-independently — do not require literal keyword matches.
   NOT for: SPEC body authoring (spec.md / plan.md / acceptance.md content — manager-spec only), code implementation, testing, documentation writing, git operations, production deployment
-tools: Read, Write, Edit, Grep, Glob, WebFetch, WebSearch, Bash, TaskCreate, TaskUpdate, TaskList, TaskGet, Skill, mcp__context7
+tools: Read, Write, Edit, Grep, Glob, WebFetch, WebSearch, Bash, TaskCreate, TaskUpdate, TaskList, TaskGet, Skill
 model: inherit
 effort: high
 color: purple

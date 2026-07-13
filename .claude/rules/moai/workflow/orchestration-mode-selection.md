@@ -1,5 +1,5 @@
 ---
-description: "Phase 0.95 Mode Selection — 6-mode autonomous decision tree for the MoAI orchestrator (trivial / background / agent-team / parallel / sub-agent / workflow). Read at every /moai run entry."
+description: "Phase 4 Mode Selection — 6-mode autonomous decision tree for the MoAI orchestrator (trivial / background / agent-team / parallel / sub-agent / workflow). Read at every /moai run entry."
 paths: ".moai/specs/**,.claude/skills/moai/workflows/run.md,.claude/skills/moai/workflows/plan.md,.claude/rules/moai/workflow/spec-workflow.md"
 metadata:
   version: "1.1.0"
@@ -7,13 +7,13 @@ metadata:
   tags: "orchestration, mode-selection, agent-teams, workflow, phase-0.95"
 ---
 
-# Orchestration Mode Selection — Phase 0.95
+# Orchestration Mode Selection — Phase 4
 
-Canonical 6-mode autonomous decision tree for the MoAI orchestrator. Activated at Phase 0.95 (after Phase 0.5 plan-auditor verdict, before Phase 1 implementation). The decision is autonomous (no `AskUserQuestion` round); the chosen mode and the selection rationale are logged to `progress.md § Mode Selection`.
+Canonical 6-mode autonomous decision tree for the MoAI orchestrator. Activated at Phase 4 (after Phase 1 plan-auditor verdict, before Phase 1 implementation). The decision is autonomous (no `AskUserQuestion` round); the chosen mode and the selection rationale are logged to `progress.md § Mode Selection`.
 
 > **Progression-mode axis co-located with Kickoff mandatory-restoration**: the Implementation Kickoff Approval gate (which this rule keeps mandatory and score-independent) also offers an autonomous-vs-semi-autonomous progression-mode choice — a post-approval progression selection, never a relaxation of the gate. The gate remains mandatory in both modes; the axis selects only what happens after the gate passes. See `.claude/skills/moai/workflows/goal.md` § Progression Mode.
 
-[ZONE:Frozen] [HARD] All Phase 0.95 execution modes are strictly downstream of Implementation Kickoff Approval (renamed from GATE-2) (the plan→run HUMAN GATE). The orchestrator reaches Phase 0.95 ONLY after Implementation Kickoff Approval user approval has already been obtained. Mode selection — including Mode 6 (workflow) — is never a substitute for Implementation Kickoff Approval and never a path that crosses the plan→run boundary ahead of the human gate. Implementation Kickoff Approval is mandatory and score-independent (a plan-auditor PASS or a high skip-eligible score never auto-bypasses it; skip-eligibility applies only to Phase 0.5 verdict re-execution, not to Implementation Kickoff Approval) per the Implementation Kickoff Approval mandatory-restoration policy.
+[ZONE:Frozen] [HARD] All Phase 4 execution modes are strictly downstream of Implementation Kickoff Approval (renamed from GATE-2) (the plan→run HUMAN GATE). The orchestrator reaches Phase 4 ONLY after Implementation Kickoff Approval user approval has already been obtained. Mode selection — including Mode 6 (workflow) — is never a substitute for Implementation Kickoff Approval and never a path that crosses the plan→run boundary ahead of the human gate. Implementation Kickoff Approval is mandatory and score-independent (a plan-auditor PASS or a high skip-eligible score never auto-bypasses it; skip-eligibility applies only to Phase 1 verdict re-execution, not to Implementation Kickoff Approval) per the Implementation Kickoff Approval mandatory-restoration policy.
 
 > Cross-reference: `.claude/rules/moai/workflow/spec-workflow.md` § Subcommand Classification covers the `--mode` flag matrix (autopilot / loop / team / pipeline) which interacts with — but is separate from — the 6-mode catalog below. The run-phase `/goal ac_converge` autonomy wiring point lives in `.claude/skills/moai/workflows/run.md` § Run-phase Autonomy (/goal ac_converge); `.claude/rules/moai/workflow/dynamic-workflows.md` is the source for the Workflow (Mode 6) primitive (16-concurrent / 1000-total cap) and the named-script-API prohibition.
 
@@ -21,7 +21,7 @@ Canonical 6-mode autonomous decision tree for the MoAI orchestrator. Activated a
 
 ## §A — Mode Catalog (6 modes)
 
-The orchestrator selects exactly one of the following modes per Phase 0.95 invocation.
+The orchestrator selects exactly one of the following modes per Phase 4 invocation.
 
 | # | Mode | Concurrency | Spawn Surface | When to prefer |
 |---|------|-------------|---------------|----------------|
@@ -39,7 +39,7 @@ Mode 5 is the **default fallback** when no other mode's selection criteria are u
 ## §B — Decision Tree
 
 ```
-START (Phase 0.95 Mode Selection)
+START (Phase 4 Mode Selection)
   │
   ├── Is task trivial (typo, single-line, no semantic change)?
   │   ├── YES → Mode 1: TRIVIAL (direct execution, no Agent() spawn)
@@ -85,11 +85,11 @@ The numeric auto-select thresholds — **≥ 3 domains, ≥ 10 files, or complex
 
 ### §B.1b Auto-mode pre-launch classifier (CC 2.1.178+)
 
-When Claude Code runs in **auto mode** (per-tool auto-approval, paired with `/goal` for unattended loops), a pre-launch classifier evaluates each subagent spawn before it is dispatched — the classifier gates whether a spawn proceeds without a per-tool approval prompt. This is a platform-level mechanism that runs ahead of the Phase 0.95 mode-selection logic documented here; Phase 0.95 selects which mode the orchestrator uses to structure work, while the auto-mode classifier gates the per-spawn approval surface underneath that choice. The two are complementary: `/goal` (see `.claude/rules/moai/workflow/goal-directive.md`) removes per-turn STOP prompts, auto mode removes per-tool approval prompts, and Phase 0.95 mode selection decides HOW the orchestrator fans out. An active auto-mode classifier does NOT relax Implementation Kickoff Approval (the plan-to-implement human gate) — the human gate is decided before any run-phase work begins, and the classifier only governs per-spawn approval latency within an already-approved run.
+When Claude Code runs in **auto mode** (per-tool auto-approval, paired with `/goal` for unattended loops), a pre-launch classifier evaluates each subagent spawn before it is dispatched — the classifier gates whether a spawn proceeds without a per-tool approval prompt. This is a platform-level mechanism that runs ahead of the Phase 4 mode-selection logic documented here; Phase 4 selects which mode the orchestrator uses to structure work, while the auto-mode classifier gates the per-spawn approval surface underneath that choice. The two are complementary: `/goal` (see `.claude/rules/moai/workflow/goal-directive.md`) removes per-turn STOP prompts, auto mode removes per-tool approval prompts, and Phase 4 mode selection decides HOW the orchestrator fans out. An active auto-mode classifier does NOT relax Implementation Kickoff Approval (the plan-to-implement human gate) — the human gate is decided before any run-phase work begins, and the classifier only governs per-spawn approval latency within an already-approved run.
 
 ### §B.2 Tie-breaker rules (boundary cases)
 
-Phase 0.95 boundary cases (scope at threshold ±1, ambiguous domain count, etc.) follow these defaults:
+Phase 4 boundary cases (scope at threshold ±1, ambiguous domain count, etc.) follow these defaults:
 
 - At threshold ±1 (9 vs 10 files; 2 vs 3 domains): default to the **simpler** mode (sub-agent over agent-team; sequential over parallel)
 - **Coding-heavy + multi-domain**: prefer Mode 5 over Mode 4 (Anthropic's coding-task parallelism caveat)
@@ -106,7 +106,7 @@ Phase 0.95 boundary cases (scope at threshold ±1, ambiguous domain count, etc.)
 
 ### §C.1 Mode 3 (Agent Teams) — RETIRED
 
-**Mode 3 — RETIRED.** The Agent Teams static orchestration layer is retired; the Phase 0.95 decision tree never selects Mode 3. Multi-domain research-heavy work routes to Mode 4 (parallel fanout); coding-heavy work routes to Mode 5 (sequential sub-agent); high-volume mechanical transformation routes to Mode 6 (workflow).
+**Mode 3 — RETIRED.** The Agent Teams static orchestration layer is retired; the Phase 4 decision tree never selects Mode 3. Multi-domain research-heavy work routes to Mode 4 (parallel fanout); coding-heavy work routes to Mode 5 (sequential sub-agent); high-volume mechanical transformation routes to Mode 6 (workflow).
 
 A forced `--mode team` request still resolves through the dispatch axis: it emits the canonical sentinel `MODE_TEAM_UNAVAILABLE` (per `.claude/rules/moai/workflow/spec-workflow.md` § Mode Dispatch) and the orchestrator continues with the fallback mode plus a `[mode-auto-downgrade]` info log. The native Claude Code teammate runtime (`moai cg` GLM teammate panes, `worktree --team` P1-P4 launch, `~/.claude/teams/` registry) is unaffected — only MoAI's static team-orchestration layer is retired.
 
@@ -114,7 +114,7 @@ A forced `--mode team` request still resolves through the dispatch axis: it emit
 
 Mode 4 is preferred via the unified compound clause:
 
-> `[Where the harness level is standard or thorough] [While the task scope is multi-domain (≥3 domains OR ≥10 files)] [When the orchestrator selects an execution mode in Phase 0.95]`, the orchestrator shall use parallel multi-spawn of retained agents (maximum 3-5 concurrent `Agent()` calls in a single message per Anthropic verbatim "Start with 3-5 teammates"). With Mode 3 (Agent Teams) retired, Mode 4 is the sole multi-domain parallel mode.
+> `[Where the harness level is standard or thorough] [While the task scope is multi-domain (≥3 domains OR ≥10 files)] [When the orchestrator selects an execution mode in Phase 4]`, the orchestrator shall use parallel multi-spawn of retained agents (maximum 3-5 concurrent `Agent()` calls in a single message per Anthropic verbatim "Start with 3-5 teammates"). With Mode 3 (Agent Teams) retired, Mode 4 is the sole multi-domain parallel mode.
 
 The 3-5 ceiling applies to Mode 4 (concurrent `Agent()` spawn calls). Exceeding the ceiling regresses to coordination overhead and contradicts Anthropic's published guidance.
 
@@ -146,7 +146,7 @@ When a Mode 6 Workflow agent or a `/goal`-turn agent lacks a required input, tha
 
 ## §D — Logging Contract (progress.md § Mode Selection)
 
-Per the canonical mode-logging policy, the orchestrator MUST record its mode-selection decision in `.moai/specs/SPEC-{ID}/progress.md` under a `## §F Phase 0.95 Mode Selection` section (preserving the `Mode Selection` token for the grep acceptance criterion) before spawning the first run-phase `Agent()` call. The `§F` letter is allocated by the canonical progress.md Section Map in `.claude/rules/moai/development/spec-frontmatter-schema.md` § progress.md Section Map — Mode Selection MUST NOT reuse `§E` (the `§E.*` namespace is reserved for the era.go-parsed lifecycle-phase structure; overloading it would collide with era classification).
+Per the canonical mode-logging policy, the orchestrator MUST record its mode-selection decision in `.moai/specs/SPEC-{ID}/progress.md` under a `## §F Phase 4 Mode Selection` section (preserving the `Mode Selection` token for the grep acceptance criterion) before spawning the first run-phase `Agent()` call. The `§F` letter is allocated by the canonical progress.md Section Map in `.claude/rules/moai/development/spec-frontmatter-schema.md` § progress.md Section Map — Mode Selection MUST NOT reuse `§E` (the `§E.*` namespace is reserved for the era.go-parsed lifecycle-phase structure; overloading it would collide with era classification).
 
 ### §D.1 Required content
 
@@ -187,15 +187,15 @@ The following patterns violate the orchestration mode selection contract:
 - **Asserting a typed/named Workflow script API** — a named `agent`-function, `parallel`-function, `pipeline`-function, or `phase`-function signature is NOT documented by Claude Code; describe the conceptual coordinate-agents → script-variable results → final-synthesis model instead (the named-script-API prohibition)
 - **Selecting Mode 6 without recording the Implementation Kickoff Approval-passed + preferences-collected confirmation in `progress.md`** — the §C.3 / §D.1 #5 logging precondition makes the autonomy decision auditable; skipping it leaves the Workflow launch unverifiable post-hoc
 - **Skipping the progress.md logging step** — fails the canonical mode-logging acceptance criterion; the decision is no longer auditable post-hoc
-- **Re-spawning the same mode for multiple consecutive milestones in Mode 5 without re-evaluating** — acceptable practice for a single SPEC, but when run-phase scope changes mid-flight (e.g., milestone scope-up via blocker report), the orchestrator SHOULD re-run Phase 0.95
-- **Substituting an `AskUserQuestion` round for the autonomous decision** — Phase 0.95 is autonomous by contract; user intervention belongs to Phase 0.5 verdict review (when verdict is FAIL or INCONCLUSIVE) or Implementation Kickoff Approval (plan-to-implement HUMAN GATE), not Phase 0.95
+- **Re-spawning the same mode for multiple consecutive milestones in Mode 5 without re-evaluating** — acceptable practice for a single SPEC, but when run-phase scope changes mid-flight (e.g., milestone scope-up via blocker report), the orchestrator SHOULD re-run Phase 4
+- **Substituting an `AskUserQuestion` round for the autonomous decision** — Phase 4 is autonomous by contract; user intervention belongs to Phase 1 verdict review (when verdict is FAIL or INCONCLUSIVE) or Implementation Kickoff Approval (plan-to-implement HUMAN GATE), not Phase 4
 
 ---
 
 ## §F — Cross-References
 
 - `.claude/rules/moai/workflow/spec-workflow.md` § Subcommand Classification — `--mode` flag matrix and Mode Dispatch sentinels (`MODE_UNKNOWN`, `MODE_TEAM_UNAVAILABLE`, `MODE_PIPELINE_ONLY_UTILITY`, `MODE_FLAG_IGNORED_FOR_UTILITY`)
-- `.claude/rules/moai/workflow/spec-workflow.md` § Phase 0.5 Plan Audit Gate — runs before Phase 0.95 and may produce `BYPASSED` / `INCONCLUSIVE` / `FAIL` verdicts that affect Phase 0.95 inputs
+- `.claude/rules/moai/workflow/spec-workflow.md` § Phase 1 Plan Audit Gate — runs before Phase 4 and may produce `BYPASSED` / `INCONCLUSIVE` / `FAIL` verdicts that affect Phase 4 inputs
 - `.claude/rules/moai/development/manager-develop-prompt-template.md` § Applicability — Tier S/M/L delegation template selection (interacts with Mode 5 sub-agent spawn prompts)
 - `.claude/rules/moai/workflow/archived-agent-rejection.md` — sibling rule documenting the orchestrator's rejection behavior when a paste-ready resume references an archived-agent name (independent of mode selection)
 - `.claude/rules/moai/workflow/dynamic-workflows.md` — the Workflow (Mode 6) primitive: 16-concurrent / 1000-total cap, no-mid-run-user-input semantics, Implementation Kickoff Approval-is-unaffected note, and the absence of a documented named-script API
@@ -210,9 +210,9 @@ The following patterns violate the orchestration mode selection contract:
 
 ## §G — Two-Axis Confusion Warning (Mode 6 wiring author)
 
-[ZONE:Frozen] [HARD] "Mode 6 (workflow)" added here is appended to ONE specific list: the **Phase 0.95 execution-mode catalog** in this file (`trivial` / `background` / `agent-team` / `parallel` / `sub-agent` → + `workflow`). This is a DIFFERENT axis from the `run.md` `--mode` **dispatch axis** (`autopilot` / `loop` / `team` / `pipeline`) documented in `.claude/rules/moai/workflow/spec-workflow.md` § Subcommand Classification and the `run.md` Mode Dispatch table. Both happen to be short lists, which is the confusion trap.
+[ZONE:Frozen] [HARD] "Mode 6 (workflow)" added here is appended to ONE specific list: the **Phase 4 execution-mode catalog** in this file (`trivial` / `background` / `agent-team` / `parallel` / `sub-agent` → + `workflow`). This is a DIFFERENT axis from the `run.md` `--mode` **dispatch axis** (`autopilot` / `loop` / `team` / `pipeline`) documented in `.claude/rules/moai/workflow/spec-workflow.md` § Subcommand Classification and the `run.md` Mode Dispatch table. Both happen to be short lists, which is the confusion trap.
 
-- **Execution-mode catalog** (Phase 0.95, where Mode 6 lands): governs HOW the orchestrator spawns — concurrency + spawn surface (direct / background `Agent` / implicit-team `Agent(name=...)` / parallel `Agent()` / sequential `Agent()` / **Workflow fan-out**).
+- **Execution-mode catalog** (Phase 4, where Mode 6 lands): governs HOW the orchestrator spawns — concurrency + spawn surface (direct / background `Agent` / implicit-team `Agent(name=...)` / parallel `Agent()` / sequential `Agent()` / **Workflow fan-out**).
 - **`--mode` dispatch axis** (CLI flag, NOT touched here): governs WHICH `/moai run` workflow variant runs — `autopilot` vs `loop` (Ralph) vs `team` vs the rejected `pipeline`.
 
 [ZONE:Frozen] [HARD] Mode 6 (`workflow`) is added ONLY to the execution-mode catalog. It is NOT a new `--mode` dispatch value; no `--mode workflow` flag is introduced; the `run.md` Mode Dispatch sentinel set (`MODE_UNKNOWN` / `MODE_TEAM_UNAVAILABLE` / `MODE_PIPELINE_ONLY_UTILITY`) is unchanged. The header cross-reference above already notes the two axes "interact with — but are separate from" each other; this separation is preserved.
@@ -221,18 +221,18 @@ The following patterns violate the orchestration mode selection contract:
 
 ## §G.1 — Dispatch-Axis Crosswalk (`--mode` values + scale-table labels → catalog modes)
 
-> **Correspondence, not merge.** This crosswalk documents how each `--mode` dispatch-axis value and each Phase 0.95 scale-table label CORRESPONDS to a catalog mode. It does NOT merge the two axes: per §G they remain separate, the `--mode` value set `{autopilot, loop, team, pipeline}` is unchanged, no `--mode workflow` value is introduced, and the Mode Dispatch sentinel set (`MODE_UNKNOWN` / `MODE_TEAM_UNAVAILABLE` / `MODE_PIPELINE_ONLY_UTILITY`) is untouched.
+> **Correspondence, not merge.** This crosswalk documents how each `--mode` dispatch-axis value and each Phase 4 scale-table label CORRESPONDS to a catalog mode. It does NOT merge the two axes: per §G they remain separate, the `--mode` value set `{autopilot, loop, team, pipeline}` is unchanged, no `--mode workflow` value is introduced, and the Mode Dispatch sentinel set (`MODE_UNKNOWN` / `MODE_TEAM_UNAVAILABLE` / `MODE_PIPELINE_ONLY_UTILITY`) is untouched.
 
 ### `--mode` dispatch-axis values → catalog modes
 
 | `--mode` value | Corresponds to catalog mode | Notes |
 |----------------|------------------------------|-------|
-| `autopilot` | Mode 5 (`sub-agent`) | Default single-lead orchestration; the Phase 0.95 scale-based selection chooses the envelope (see scale-label rows below). |
+| `autopilot` | Mode 5 (`sub-agent`) | Default single-lead orchestration; the Phase 4 scale-based selection chooses the envelope (see scale-label rows below). |
 | `loop` | Mode 5 (`sub-agent`) | Ralph-engine diagnostic fix-loop variant — sequential per-iteration delegation. The granularity differs (diagnostics, not phases) but the spawn shape is the Mode 5 sequential sub-agent. |
 | `team` | Mode 3 (`agent-team`) — RETIRED | Mode 3 is retired; a forced `--mode team` emits `MODE_TEAM_UNAVAILABLE` and falls back per the Mode Resolver. The dispatch value is retained for backward-compat + the CI sentinel audit; it no longer resolves to a live team mode. |
 | `pipeline` | Mode 5 (`sub-agent`) — utility subcommands only | Rejected on multi-agent subcommands (`MODE_PIPELINE_ONLY_UTILITY`); the utility subcommands are intrinsically pipeline-class, so `pipeline` names their fixed sequential direct / sub-agent execution shape — the `--mode pipeline` flag itself is ignored there (`MODE_FLAG_IGNORED_FOR_UTILITY`), not honored. |
 
-### Phase 0.95 scale-table labels → catalog modes
+### Phase 4 scale-table labels → catalog modes
 
 | Scale label | Corresponds to catalog mode | Envelope |
 |-------------|------------------------------|----------|
@@ -242,10 +242,10 @@ The following patterns violate the orchestration mode selection contract:
 | Full Pipeline | Mode 5 (`sub-agent`) | Full envelope — full sequential agent chain (plan → implement → audit → docs). |
 | Team | Mode 3 (`agent-team`) — RETIRED | Mode 3 is retired; a forced `--team` flag emits `MODE_TEAM_UNAVAILABLE` and falls back per §C.1. The scale label is retained for backward-compat; it no longer resolves to a live team mode. |
 
-Every `--mode` value and every scale label corresponds to exactly one catalog mode. Mode 1 (trivial), Mode 2 (background), Mode 4 (parallel), and Mode 6 (workflow) have NO dispatch-axis or scale-label counterpart — they are selectable only via the Phase 0.95 decision tree (§B). This asymmetry is expected and is further evidence the two axes are distinct.
+Every `--mode` value and every scale label corresponds to exactly one catalog mode. Mode 1 (trivial), Mode 2 (background), Mode 4 (parallel), and Mode 6 (workflow) have NO dispatch-axis or scale-label counterpart — they are selectable only via the Phase 4 decision tree (§B). This asymmetry is expected and is further evidence the two axes are distinct.
 
 ---
 
 Version: 1.3.0 (IGGDA Path B amendment retired — §H/§I/§J removed; Path A Implementation Kickoff Approval restored as the sole plan→run gate; IGGDA hook driver + audit-preservation guard removed from the template tree)
 Origin: derived from the canonical agent catalog and IGGDA policies.
-Status: Active — applies to all `/moai run` Phase 0.95 invocations
+Status: Active — applies to all `/moai run` Phase 4 invocations

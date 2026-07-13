@@ -238,7 +238,7 @@ User-generated artifacts:
 - A `skills:` frontmatter entry preloading the agent's companion `harness-<domain>-*` skill. This makes the domain skill load deterministically when the agent runs, rather than relying on auto-discovery which fails silently when the companion skill is absent from the agent's context.
 - A non-empty, trigger-shaped `description` frontmatter field naming the domain + the observable task-shape, so the orchestrator's `.moai/harness/main.md` Task-Shape Routing table can dispatch to it.
 
-Both fields are enforced at runtime by the Phase-6 post-generation smoke gate (`moai doctor harness`, see the `project/meta-harness.md` workflow Phase 7.3): a generated agent with an empty `description`, a dangling `skills:` reference (pointing at a non-existent `harness-*` dir), or NO `skills:` key at all causes the gate to FAIL. A `skills:`-less agent must not pass silently — that is the auto-discovery failure mode this contract closes. Full emission template + example: `project/meta-harness.md` § 6.4.1.
+Both fields are enforced at runtime by the Phase-6 post-generation smoke gate (`moai doctor harness`, see the `project/meta-harness.md` workflow Phase 7): a generated agent with an empty `description`, a dangling `skills:` reference (pointing at a non-existent `harness-*` dir), or NO `skills:` key at all causes the gate to FAIL. A `skills:`-less agent must not pass silently — that is the auto-discovery failure mode this contract closes. Full emission template + example: `project/meta-harness.md` § 6.4.1.
 
 ### Storage Roots
 

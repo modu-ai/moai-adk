@@ -16,7 +16,7 @@ func TestMergeUserFiles_PreservesCustomizations(t *testing.T) {
 	tempDir := t.TempDir()
 
 	userModified := `{
-  "mcpServers": {
+  "entries": {
     "user-modified": {
       "command": "user-command"
     },
@@ -26,7 +26,7 @@ func TestMergeUserFiles_PreservesCustomizations(t *testing.T) {
   }
 }`
 	newTemplate := `{
-  "mcpServers": {
+  "entries": {
     "template-entry": {
       "command": "template-command"
     }
@@ -34,14 +34,14 @@ func TestMergeUserFiles_PreservesCustomizations(t *testing.T) {
 }`
 
 	// Write the "new" template (simulating post-deployment state)
-	destPath := filepath.Join(tempDir, ".mcp.json")
+	destPath := filepath.Join(tempDir, ".merge-test.json")
 	if err := os.WriteFile(destPath, []byte(newTemplate), 0644); err != nil {
 		t.Fatalf("write new template: %v", err)
 	}
 
 	// Create backups with user's content
 	backups := []fileBackup{
-		{path: ".mcp.json", data: []byte(userModified)},
+		{path: ".merge-test.json", data: []byte(userModified)},
 	}
 
 	// Run merge
@@ -172,11 +172,11 @@ func TestMergeUserFiles_EdgeCases(t *testing.T) {
 			name: "identical content",
 			setup: func(t *testing.T, dir string) ([]fileBackup, string) {
 				content := `{"same": "content"}`
-				destPath := filepath.Join(dir, ".mcp.json")
+				destPath := filepath.Join(dir, ".merge-test.json")
 				if err := os.WriteFile(destPath, []byte(content), 0644); err != nil {
 					t.Fatal(err)
 				}
-				return []fileBackup{{path: ".mcp.json", data: []byte(content)}}, destPath
+				return []fileBackup{{path: ".merge-test.json", data: []byte(content)}}, destPath
 			},
 			verify: func(t *testing.T, dir string, content string, output string) {
 				result, _ := os.ReadFile(content)
@@ -219,9 +219,9 @@ func TestCollectMergeableFiles_ConfigSections(t *testing.T) {
 
 	// Create the collectMergeableFiles function inline for testing
 	collectMergeableFiles := func(projectRoot string) []string {
-		// Fixed mergeable files at project root that are NOT handled by restoreMoaiConfig
+		// Fixed mergeable files at project root that are NOT handled by restoreMoaiConfig.
+		// .mcp.json is intentionally absent (full MCP removal — no template ships it).
 		return []string{
-			".mcp.json",
 			".claude/settings.json",
 			".moai/status_line.sh",
 		}
@@ -246,7 +246,7 @@ func TestCollectMergeableFiles_ConfigSections(t *testing.T) {
 	result := collectMergeableFiles(tempDir)
 
 	// Verify only the fixed files are included
-	expectedFiles := []string{".mcp.json", ".claude/settings.json", ".moai/status_line.sh"}
+	expectedFiles := []string{".claude/settings.json", ".moai/status_line.sh"}
 	if len(result) != len(expectedFiles) {
 		t.Errorf("expected %d files, got %d", len(expectedFiles), len(result))
 	}

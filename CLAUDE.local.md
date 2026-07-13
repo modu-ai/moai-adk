@@ -120,8 +120,8 @@ Never add files directly to the local project directories without also adding th
 .claude/rules/moai/workflow/lifecycle-sync-gate.md         # Dev-only: maintainer lifecycle sync-gate rule (no template mirror, unreferenced by any shipped template file — intentional local-only)
 .claude/commands/harness/{release-update,github,release}*  # Dev-only: split maintainer harness entries (§21)
 .claude/commands/harness/release-update/manifest.json      # Dev-only: release-update harness manifest (§21)
-.claude/workflows/harness-release-update-run.js            # Dev-only: release-update harness Runner (§21)
-.claude/agents/harness/harness-{release-update,github,release}-specialist.md  # Dev-only: split harness specialists (§21, user-owned per §24)
+.claude/workflows/hns-release-update-run.js                # Dev-only: release-update harness Runner (§21)
+.claude/agents/harness/hns-{release-update,github,release}-specialist.md  # Dev-only: split harness specialists (§21, user-owned per §24)
 CLAUDE.local.md                # This file
 .moai/state/last-cc-version.json # Dev-only: CC tracking state (§21)
 .moai/research/cc-update-*.md  # Dev-only: CC update reports (§21)
@@ -824,7 +824,7 @@ See: `.moai/docs/git-local-workflow-doctrine.md`
 
 ## 24. Harness Namespace 분리 정책
 
-[HARD] Skills/Agents namespace는 "범용 배포" vs "사용자 생성"으로 분리한다. `moai-*` / `moai-harness-*` skill + `.claude/agents/{core,expert,meta}/` = template-managed (sync 시 overwrite) vs `harness-*` skill + `.claude/agents/harness/` = user-owned (`moai update`가 절대 삭제·수정 금지, 반드시 백업+보존). `internal/template/templates/`에 `harness-*` skill 또는 `.claude/agents/harness/` 디렉터리 누출 금지. §24.4 `moai update` 동작 contract(delete-vs-preserve 매트릭스) + §24.5 Phase 2 drift entry-condition 포함.
+[HARD] Skills/Agents namespace는 "범용 배포" vs "사용자 생성"으로 분리한다. `moai-*` / `moai-harness-*` skill + `.claude/agents/{core,expert,meta}/` = template-managed (sync 시 overwrite) vs `hns-*` skill(정식, SPEC-HNS-PREFIX-RENAME-001) + 레거시 `harness-*`/`my-harness-*` skill + `.claude/agents/harness/` = user-owned (`moai update`가 절대 삭제·수정 금지, 반드시 백업+보존). `internal/template/templates/`에 `hns-*`/`harness-*` skill 또는 `.claude/agents/harness/` 디렉터리 누출 금지. §24.4 `moai update` 동작 contract(delete-vs-preserve 매트릭스) + §24.5 Phase 2 drift entry-condition 포함.
 
 See: `.moai/docs/harness-namespace-doctrine.md`
 
