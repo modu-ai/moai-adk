@@ -1,6 +1,6 @@
 ---
 id: SPEC-HARNESS-CADENCE-BUILD-001
-version: "0.1.0"
+version: "0.1.1"
 status: draft
 updated: 2026-07-13
 ---
@@ -34,11 +34,11 @@ Integrate cadence (recurring schedules) into the v4 harness Builder under the us
 6. **Doctor severity is binary (ERROR/INFO)**: an invalid schedule is ERROR (invariant/schema violation blocks the gate); an absent schedule produces no finding. Do not introduce a WARN tier.
 7. **Shared-checkout races**: plan-phase artifacts are committed immediately (pathspec-scoped) per prior-incident discipline; run-phase spawns follow the pre-spawn sync check.
 
-### Open clarifications (resolve before Implementation Kickoff Approval)
+### Resolved clarifications (2026-07-13 — orchestrator AskUserQuestion round; decisions binding)
 
-- [NEEDS CLARIFICATION: command-only thin-harness schedule persistence — chosen design is registration-only (no manifest fabrication, REQ-HCB-052); alternative is relaxing v4manifest.Validate to accept a thin schedule-bearing manifest. Confirm registration-only is acceptable for github/release.]
-- [NEEDS CLARIFICATION: recurrence question placement — chosen design folds it into the existing PLAN→GENERATE gate round (one AskUserQuestion round, ≤4 questions); alternative is a separate post-gate round. Confirm gate-round placement.]
-- [NEEDS CLARIFICATION: schedule sub-field shape — chosen minimal 3-field form (interval/mechanism/mode); alternatives add `enabled` or registration bookkeeping fields. Confirm minimal shape (registration state deliberately NOT persisted, see spec Exclusions).]
+1. **Command-only thin-harness schedule persistence — DECIDED: registration-only.** No manifest fabrication for github/release; the Runner asymmetry is preserved and the `v4manifest.Validate` schema is untouched by the thin-harness path. REQ-HCB-052 stands as written; the rejected alternative (relaxing Validate to accept a thin schedule-bearing manifest) is closed.
+2. **Recurrence question placement — DECIDED: folded into the existing PLAN→GENERATE AskUserQuestion gate round.** One added question in the same round (the ≤4-question round limit is respected); option descriptions MUST state the `/loop` session-scoped vs Cron persistent trade-off AND the discovery-only execution model. REQ-HCB-001/002/005 stand as written; the rejected alternative (separate post-gate round) is closed.
+3. **Schedule field shape — DECIDED: minimal 3-field object.** `interval` / `mechanism: loop|cron` / `mode: "discovery-only"` literal; additive-only, absent-tolerated. NO `enabled` or registration bookkeeping fields — the runtime queue/CronList is the truth source for registration state. REQ-HCB-010..014 and the spec Exclusions stand as written.
 
 ## §C Pre-flight (run-phase entry checklist)
 
@@ -46,7 +46,7 @@ Integrate cadence (recurring schedules) into the v4 harness Builder under the us
 - [ ] Re-verify the 4 md byte-parity pairs still hold (`diff` ×4 — parallel sessions may have moved them)
 - [ ] Re-verify `v4manifest.Validate` signature and doctor axis-2 reuse unchanged (content-token grep, not line numbers)
 - [ ] Confirm no new `*CADENCE*` SPEC/branch landed since plan authoring
-- [ ] Resolve the three [NEEDS CLARIFICATION] markers via orchestrator AskUserQuestion rounds
+- [ ] Confirm the three resolved-clarification decisions (§B Resolved clarifications) still stand — no user reversal since the plan revision
 
 ## §D Constraints
 
@@ -84,9 +84,10 @@ Files: `internal/harness/v4manifest/types.go`, `internal/harness/v4manifest/vali
 
 Files (live tree): `.claude/rules/moai/workflow/cadence-bridge.md`, `.claude/skills/moai/workflows/harness-builder.md`, `.claude/skills/moai/workflows/harness-build-entry.md`.
 
-- cadence-bridge.md: Recipe 4 "Scheduled Harness Discovery" (recipe class; payload = self-contained discovery prompt template; interval guidance; read-only rationale; loop AND cron forms; Cron-unavailable degradation pointer) + eligibility-table row. Invariant sentence untouched, not restated (AC-HCB-022 pins count == 1).
+- cadence-bridge.md: Recipe 4 "Scheduled Harness Discovery" (recipe class; payload = self-contained discovery prompt template; interval guidance; read-only rationale; loop AND cron forms; Cron-unavailable degradation pointer) + eligibility-table row (data-row count 6 → 7). Invariant sentence untouched, not restated (AC-HCB-022 pins count == 1). The self-contained payload inlines the `.moai/reports/cadence/<date>.md` queue-path literal — file-level literal count rises 1 → 2 by design (AC-HCB-023 delta-frame; the +1 lives inside the Recipe 4 payload block).
 - harness-builder.md: (a) ANALYZE research sub-step (official CC docs via WebFetch/WebSearch, domain best practices, context7 resolve-library-id → query-docs; feeds PLAN aggregate; MCP-fallback + GLM-routing cross-refs; load-bearing-minimum skip clause); (b) PLAN gate gains the recurrence question + interval/mechanism capture + draft-manifest `schedule` recording; (c) Artifact 5 content contract lists optional `schedule` (3 sub-fields, discovery-only literal); (d) ACTIVATE gains the post-smoke-gate registration step (CronCreate prompt form / paste-ready `/loop` emission, session-scoped caveat).
-- harness-build-entry.md: Schedule Retrofit branch — detection (existing `.claude/commands/harness/<name>.md` + scheduling intent), recurrence round, manifest-bearing path (orchestrator-mediated manifest edit via `moai harness edit` path discovery, then registration), command-only path (registration-only, no manifest fabrication, user informed), dev-only isolation note.
+- harness-build-entry.md: Schedule Retrofit branch — detection (existing `.claude/commands/harness/<name>.md` + scheduling intent) evaluated BEFORE the existing Phase 2 name-collision matrix (existing-name + scheduling-intent routes to Retrofit, never to the `<name>-v2` re-derive/rename path — REQ-HCB-050 precedence pin); recurrence round, manifest-bearing path (orchestrator-mediated manifest edit via `moai harness edit` path discovery, then registration), command-only path (registration-only, no manifest fabrication, user informed), dev-only isolation note.
+- Anchor obligation (AC grep bounding): the new sections MUST carry the pinned heading anchors — a heading containing `Recurrence` (harness-builder.md PLAN gate), `Recipe 4` (cadence-bridge.md), `Schedule Retrofit` (harness-build-entry.md). The acceptance.md windowed greps awk-bound on these anchors (AC-HCB-001/002/021/024/051).
 - All text neutral (no SPEC IDs). REQs: HCB-001..005, 020..025, 030 (doctrine half), 040..044, 050..053.
 
 ### M3 — CLI lifecycle awareness (Priority: Medium) — mechanical, follows M1

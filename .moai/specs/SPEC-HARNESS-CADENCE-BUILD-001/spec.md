@@ -1,7 +1,7 @@
 ---
 id: SPEC-HARNESS-CADENCE-BUILD-001
 title: "Harness Builder Cadence Integration — build-time recurrence, discovery-queue scheduling, ANALYZE research, retroactive schedules"
-version: "0.1.0"
+version: "0.1.1"
 status: draft
 created: 2026-07-13
 updated: 2026-07-13
@@ -22,6 +22,7 @@ related_specs: [SPEC-CADENCE-BRIDGE-001, SPEC-V3R6-HARNESS-V4-001, SPEC-HARNESS-
 | Version | Date | Author | Description |
 |---------|------|--------|-------------|
 | 0.1.0 | 2026-07-13 | manager-spec | Initial draft — 4 capabilities (build-time recurrence question, discovery-queue scheduled execution, ANALYZE research sub-step, retroactive schedule path) under the preserved cadence-bridge HARD invariant |
+| 0.1.1 | 2026-07-13 | manager-spec | Plan-audit iter-1 revision — 3 clarifications RESOLVED via orchestrator AskUserQuestion (registration-only thin-harness / gate-round question placement / minimal 3-field schedule; recorded in plan.md §B); D2 AC-034 invocation-surface scoping, D3 AC-023 queue-path delta-frame, D4 new AC-HCB-002, D5 REQ-044 formal modal, D6 AC-025 severity align, D8 awk-bounded windowed greps + pinned anchors, D9 Retrofit-precedence pin |
 
 ## §A Context and Problem
 
@@ -82,11 +83,11 @@ Schedule declaration SSOT: the optional `schedule` object in the harness `manife
 - **REQ-HCB-041**: The research sub-step's findings shall feed the PLAN phase's manifest draft — pattern selection, specialist role definitions, and companion-skill content — as part of the ANALYZE aggregate the PLAN sub-agent reasons over.
 - **REQ-HCB-042**: **When** context7 MCP or web tools are unavailable or fail, the research sub-step shall degrade gracefully per the MCP Fallback Strategy (detect → inform → WebFetch fallback where possible → established best-practice patterns → continue) — a harness build never blocks on research availability.
 - **REQ-HCB-043**: **While** the session is GLM-backed, the research sub-step shall route web search / web fetch through the z.ai MCP tools per the GLM web-tooling routing table instead of the built-in WebSearch/WebFetch.
-- **REQ-HCB-044**: **Where** the confirmed domain is purely internal (no external libraries or external docs are relevant), the orchestrator may skip the research sub-step with a recorded rationale — consistent with the ANALYZE phase's existing load-bearing-minimum collapse policy.
+- **REQ-HCB-044**: **Where** the confirmed domain is purely internal (no external libraries or external docs are relevant), the orchestrator MAY skip the research sub-step; **When** the skip is taken, the orchestrator shall record the skip rationale — consistent with the ANALYZE phase's existing load-bearing-minimum collapse policy.
 
 ### Group 6 — Retroactive schedule path for existing harnesses (REQ-HCB-050..053)
 
-- **REQ-HCB-050**: **When** a natural-language `harness` request references an EXISTING harness (the name resolves to `.claude/commands/harness/<name>.md`) together with scheduling intent, the build-entry workflow shall route to a Schedule Retrofit branch instead of the Builder creation pipeline.
+- **REQ-HCB-050**: **When** a natural-language `harness` request references an EXISTING harness (the name resolves to `.claude/commands/harness/<name>.md`) together with scheduling intent, the build-entry workflow shall route to a Schedule Retrofit branch instead of the Builder creation pipeline. Retrofit detection shall be evaluated BEFORE the build-entry name-collision handling: an existing-name + scheduling-intent request routes to the Retrofit branch, never to the collision re-derive path (`<name>-v2` / rename).
 - **REQ-HCB-051**: The Schedule Retrofit branch shall run the same recurrence question round (REQ-HCB-002/005); **When** the target harness is manifest-bearing, the orchestrator shall apply an orchestrator-mediated edit adding the `schedule` object to its manifest.json, then register per REQ-HCB-030 (with `moai harness edit` as the path-discovery surface).
 - **REQ-HCB-052**: **When** the target harness is command-only (no manifest.json — e.g. the github/release maintainer harnesses, whose Runner-less shape is a deliberate design), the Retrofit branch shall register the schedule via the Recipe 4 discovery prompt WITHOUT fabricating a manifest, and shall inform the user that `list`/`doctor` schedule surfacing is unavailable for manifest-less harnesses.
 - **REQ-HCB-053**: The Retrofit branch shall not cause dev-only harness artifacts (release-update/github/release and their manifests) to appear under `internal/template/templates/` — the dev-only isolation contract is preserved.
