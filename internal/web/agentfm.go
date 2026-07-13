@@ -144,6 +144,31 @@ func agentEffortIsDefault(info agentfm.AgentInfo) bool {
 	return !info.EffortPresent && agentTierSuggestedEffort(info.Name) != ""
 }
 
+// agentDescriptionShort returns a compact one-line summary of the agent's
+// frontmatter description for display in the agentfm row (post-close polish,
+// SPEC-WEBCONF-SIMPLIFY-001). It collapses whitespace, extracts the first
+// sentence (up to the first ". " boundary), and truncates to ~140 characters
+// with an ellipsis. Empty/whitespace-only input returns "" (the templ skips
+// rendering when empty — graceful handling of agents lacking a description).
+func agentDescriptionShort(desc string) string {
+	desc = strings.TrimSpace(desc)
+	if desc == "" {
+		return ""
+	}
+	// Collapse all whitespace (newlines from YAML block/folded scalars) to single spaces.
+	desc = strings.Join(strings.Fields(desc), " ")
+	// Extract the first sentence — the period-space boundary.
+	if i := strings.Index(desc, ". "); i >= 0 {
+		desc = desc[:i+1]
+	}
+	// Truncate to a compact length with an ellipsis.
+	const maxLen = 140
+	if len(desc) > maxLen {
+		desc = desc[:maxLen-3] + "…"
+	}
+	return desc
+}
+
 // agentFMEdit는 agent 1종의 frontmatter 편집 제출이다.
 type agentFMEdit struct {
 	Agent        string

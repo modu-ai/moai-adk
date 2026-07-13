@@ -34,6 +34,7 @@ type AgentInfo struct {
 	Effort        string // frontmatter effort: 값 ("" = 키 부재)
 	EffortPresent bool   // effort 키 존재 여부 (부재는 유효 상태 — EC-7)
 	ParseOK       bool   // frontmatter 파싱 성공 여부 (실패 행은 편집 비활성)
+	Description   string // frontmatter description: 값 (role/tooltip 표시용, "" = 키 부재)
 }
 
 // List는 agentsDir의 *.md agent 파일 frontmatter 상태를 이름순으로 반환한다.
@@ -60,12 +61,14 @@ func List(agentsDir string) ([]AgentInfo, error) {
 		}
 		if fm, _, err := splitFrontmatter(path); err == nil {
 			var doc struct {
-				Model  string  `yaml:"model"`
-				Effort *string `yaml:"effort"`
+				Model       string  `yaml:"model"`
+				Effort      *string `yaml:"effort"`
+				Description string  `yaml:"description"`
 			}
 			if yaml.Unmarshal(fm, &doc) == nil {
 				info.ParseOK = true
 				info.Model = doc.Model
+				info.Description = doc.Description
 				if doc.Effort != nil {
 					info.Effort = *doc.Effort
 					info.EffortPresent = true

@@ -488,10 +488,27 @@ html[lang="zh"] body { font-family: "Pretendard", "Noto Sans CJK SC", system-ui,
 .agentfm-name {
   font-size: 15px; font-weight: 600; color: var(--fg-1);
 }
-.agentfm-group-header {
-  grid-column: 1 / -1; font-size: 13px; font-weight: 600; color: var(--fg-2);
-  margin: 8px 0 2px; padding-bottom: 4px; border-bottom: 1px solid var(--border);
-  text-transform: uppercase; letter-spacing: var(--tracking-label);
+/* SPEC-WEBCONF-SIMPLIFY-001 polish: agentfm sub-tabs (show one group at a time). */
+.agentfm-subtabs {
+  display: flex; gap: 0; border-bottom: 1px solid var(--border); margin-bottom: var(--space-5);
+}
+.agentfm-subtab {
+  font-family: var(--font-sans); font-size: 13px; font-weight: var(--fw-semibold);
+  color: var(--fg-3); background: none; border: none; cursor: pointer;
+  padding: 8px 16px; border-bottom: 2px solid transparent;
+  letter-spacing: var(--tracking-label); text-transform: uppercase;
+  transition: color var(--duration-fast) var(--easing-default),
+              border-color var(--duration-fast) var(--easing-default);
+}
+.agentfm-subtab:hover { color: var(--fg-1); }
+.agentfm-subtab.is-active {
+  color: var(--color-primary); border-bottom-color: var(--color-primary);
+}
+.agentfm-panel { display: none; }
+.agentfm-panel.is-active { display: block; }
+.agentfm-desc {
+  font-size: 11.5px; color: var(--fg-3); line-height: 1.4;
+  letter-spacing: var(--tracking-body); text-wrap: pretty;
 }
 .agentfm-default-tag {
   font-size: 10.5px; color: var(--fg-3); font-style: italic;

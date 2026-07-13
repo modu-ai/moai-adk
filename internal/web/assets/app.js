@@ -296,6 +296,37 @@
     }
   }
 
+  // wireAgentFMSubtabs 배선: agentfm 섹션 내의 sub-tab(subagents/harness) 클릭
+  // 시 .is-active 토글. 상위 wireTabs 와 별도 스코프(data-agentfm-* 속성 사용)로
+  // 동작하며, 두 그룹 중 한 그룹만 표시한다. 두 패널 모두 DOM 에 상주하므로
+  // 비활성 패널의 폼 필드도 제출된다 (atomic Save contract).
+  function wireAgentFMSubtabs() {
+    var btns = document.querySelectorAll("[data-agentfm-tab]");
+    if (btns.length === 0) {
+      return;
+    }
+    for (var i = 0; i < btns.length; i++) {
+      btns[i].addEventListener("click", function () {
+        var tabId = this.getAttribute("data-agentfm-tab");
+        var allBtns = document.querySelectorAll("[data-agentfm-tab]");
+        var allPanels = document.querySelectorAll("[data-agentfm-panel]");
+        for (var j = 0; j < allBtns.length; j++) {
+          allBtns[j].classList.remove("is-active");
+          allBtns[j].setAttribute("aria-selected", "false");
+        }
+        for (var k = 0; k < allPanels.length; k++) {
+          allPanels[k].classList.remove("is-active");
+        }
+        this.classList.add("is-active");
+        this.setAttribute("aria-selected", "true");
+        var panel = document.querySelector('[data-agentfm-panel="' + tabId + '"]');
+        if (panel) {
+          panel.classList.add("is-active");
+        }
+      });
+    }
+  }
+
   // initConsole 는 모든 콘솔 초기화를 한 곳에서 수행한다 — DOMContentLoaded(첫
   // 로드 / htmx 비활성 전체 새로고침) 와 htmx:afterSettle(boost body swap 직후)
   // 양쪽에서 호출된다. boost swap 은 body 전체를 교체하므로 새 요소는 리스너가
@@ -319,6 +350,8 @@
     // M5-b D1: 탭 nav 배선. CSS show/hide 만으로 동작 — 패널은 DOM 에 상주한다
     // (atomic Save contract: 비활성 패널의 필드도 제출됨).
     wireTabs();
+    // SPEC-WEBCONF-SIMPLIFY-001 polish: agentfm sub-tabs 배선.
+    wireAgentFMSubtabs();
   }
 
   document.addEventListener("DOMContentLoaded", initConsole);
