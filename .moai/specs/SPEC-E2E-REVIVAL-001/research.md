@@ -90,9 +90,9 @@ Source: `git show c6b04d39c~1:.claude/skills/moai/workflows/e2e.md` (452 lines; 
 - **Fit**: cross-platform including macOS via embedded mode; auto-detects the app binary; CLI runner output.
 - **Trade-offs**: WebdriverIO config surface is heavier than Playwright's; macOS restriction applies ONLY to the native-driver route (edge case E-1 steers macOS to embedded mode).
 
-### E3 — OS-level accessibility / computer-use (NATIVE-DESKTOP FALLBACK, opt-in)
+### E3 — OS-level accessibility / computer-use (NATIVE-DESKTOP — DEFERRED)
 
-- For non-Electron/non-Tauri native apps there is no dominant CLI-first cross-platform driver. OS-accessibility/computer-use approaches (screenshot + accessibility-tree + synthetic input) work but are token-expensive and non-deterministic — hence REQ-E2E-502: explicit opt-in with a token-cost warning, never a silent default. Scope confirmation pending (plan.md D-7).
+- For non-Electron/non-Tauri native apps there is no dominant CLI-first cross-platform driver. OS-accessibility/computer-use approaches (screenshot + accessibility-tree + synthetic input) work but are token-expensive and non-deterministic. RESOLVED (user decision 2026-07-13, plan.md D-7): DEFERRED to a follow-up SPEC — former REQ-E2E-502 removed at v0.1.1. This SPEC's detection still classifies `desktop-native` and reports the deferral via the REQ-E2E-007 graceful branch (spec.md §E Exclusions).
 
 ## §F Token-Cost Model (per-tool classification)
 
@@ -115,13 +115,13 @@ Escalation ladder (design.md §F): rung 1 CLI bounded-tail → rung 2 CLI struct
 - Agent files ARE byte-identical across trees except known sanitized pairs (manager-spec.md, builder-harness.md) — the new agent targets byte-identical
 - `.moai/specs/` dedup: only `SPEC-HARNESS-EXECUTE-E2E-001` (unrelated harness-telemetry bugfix, completed) shares the e2e token
 
-## §H Open Questions
+## §H Open Questions — RESOLVED (orchestrator AskUserQuestion round, 2026-07-13)
 
-Carried as [NEEDS CLARIFICATION] in plan.md §B and returned in the plan-phase blocker report:
+H-1 and H-2 were carried as clarification markers in plan.md §B (D-7 / D-8); H-3 was carried in THIS file only (an Out-of-Scope timing question, never a plan.md marker — the prior claim that all three were plan.md markers was inaccurate, corrected per audit iter-1 D11). All three are resolved and the markers removed at v0.1.1:
 
-1. **H-1 (= D-7)**: desktop-native (non-Electron/non-Tauri) opt-in fallback — in scope as opt-in, or deferred entirely?
-2. **H-2 (= D-8)**: Maestro as mobile default confirmed, or Appium-default preferred?
-3. **H-3**: docs-site 4-locale documentation timing — sync-phase of this SPEC, or follow-up?
+1. **H-1 (= D-7)**: desktop-native fallback → **DEFERRED to a follow-up SPEC** (REQ-E2E-502 removed; `desktop-native` detection routes to the REQ-E2E-007 graceful branch with a deferral notice).
+2. **H-2 (= D-8)**: mobile default → **Maestro CONFIRMED** (Appium fallback, Detox RN-conditional), as drafted.
+3. **H-3**: docs-site 4-locale documentation → **deferred to a follow-up** (stays Out of Scope; spec.md §E).
 
 ## Sources (fetched 2026-07-13)
 

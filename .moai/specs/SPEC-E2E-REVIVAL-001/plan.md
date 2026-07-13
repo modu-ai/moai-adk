@@ -11,16 +11,16 @@
 ## §B Key Decisions (highest change-likelihood first)
 
 - **D-1 — Agent name & placement**: `e2e-specialist` at `.claude/agents/moai/e2e-specialist.md` (FLAT moai/ layout, matching the 9 existing retained agents). Class: `core/specialist`. Rationale: "Define a custom subagent when you keep spawning the same kind of worker" (Anthropic best practices, already cited in CLAUDE.md §4); e2e execution is a recurring, tool-heavy, output-noisy worker profile that pollutes manager-develop's run-phase context. Alternative rejected: keeping manager-develop delegation (the retired design) — it conflates implementation-cycle ownership with test-execution ownership and forfeits the token-diet of a purpose-built agent.
-- **D-2 — Catalog expansion consequence**: adding a 10th MoAI-custom agent BREAKS the literal CLAUDE.md §4 claim "exactly 10 retained agents (9 MoAI-custom + 1 Explore)" present in BOTH trees (line-anchored at §4 first paragraph). The SPEC therefore owns updating: count text, catalog table row, Selection Decision Tree entry (new item: "E2E test execution across web/mobile/desktop? Use the e2e-specialist subagent"), in both trees. Missing any of the three leaves the agent inert-by-omission.
+- **D-2 — Catalog expansion consequence**: adding a 10th MoAI-custom agent BREAKS the literal CLAUDE.md §4 claim "exactly 10 retained agents (9 MoAI-custom + 1 Explore)" present in BOTH trees. The SPEC therefore owns updating: count text, catalog table row, Selection Decision Tree entry (new item 12: "E2E test execution across web/mobile/desktop? Use the e2e-specialist subagent"), in both trees. Missing any of the three leaves the agent inert-by-omission. AUDIT-EXTENDED (iter-1 D2): the count-literal surface is larger than CLAUDE.md §4 alone — repo-wide grep (`'10 retained agents|9 MoAI-custom|10-agent'`, re-executed 2026-07-13) measures **12 files / 24 sites** across both trees: CLAUDE.md ×3 sites, agent-authoring.md ×3, agent-patterns.md ×3 (incl. the MoAI-custom name enumeration), model-policy.md ×1, spec-workflow.md ×1, manager-design.md ×1 — each ×2 trees. All are in M3 scope per REQ-E2E-302. Line numbers drift between trees (local agent-authoring.md is offset +1 from the template) → anchor every edit by content token, never line number. Post-change invariance: stale-literal grep over the 12 touched files → 0 (CMD-019-INV).
 - **D-3 — Platform-toolchain matrix** (defaults; full comparison in research.md, full matrix in design.md §C):
   - web → **Playwright CLI** (default) | agent-browser (AI-exploratory) | chrome-devtools-mcp (perf/Lighthouse ONLY, MCP-tier) | Claude in Chrome (interactive debug ONLY, MCP-tier)
   - mobile → **Maestro** (default: declarative YAML flows, single-binary CLI, deterministic, low-token) | Appium 3.x (fallback: widest device/driver matrix, W3C WebDriver) | Detox (React-Native-specific gray-box option, auto-offered only when RN markers detected)
-  - desktop → **Playwright `_electron`** (Electron apps; experimental API — pin known-good version in skill prose) | **WebdriverIO + `@wdio/tauri-service`** (Tauri apps; embedded mode is cross-platform incl. macOS; native `tauri-driver` route is Windows/Linux-only) | `desktop-native` → OS-level accessibility/computer-use fallback, EXPLICIT OPT-IN with token-cost warning (REQ-E2E-502)
+  - desktop → **Playwright `_electron`** (Electron apps; experimental API — pin known-good version in skill prose) | **WebdriverIO + `@wdio/tauri-service`** (Tauri apps; embedded mode is cross-platform incl. macOS; native `tauri-driver` route is Windows/Linux-only) | `desktop-native` → automation DEFERRED to a follow-up SPEC (detection still classifies; workflow reports the deferral via the REQ-E2E-007 graceful branch)
 - **D-4 — Skill placement**: workflow file INSIDE the moai skill (`.claude/skills/moai/workflows/e2e.md`), exactly like the retired version and the 12 sibling workflows. Consequence: `expectedSkillCount` 28 is UNTOUCHED; only the moai skill's catalog hash moves (auto via `make build`). A new top-level skill directory was rejected: it would inflate session skill-listing budget and diverge from sibling subcommand precedent.
 - **D-5 — Token-minimization protocol** (design.md §F): 3-rung escalation ladder — (1) CLI with bounded tail + file-redirect; (2) CLI structured output (JSON reporters) parsed selectively; (3) MCP only for capabilities with no CLI equivalent (live perf traces, Lighthouse, interactive debugging), batched. The e2e-specialist body carries the ladder as [HARD]; the workflow's tool matrix carries the per-capability CLI-vs-MCP classification.
 - **D-6 — Tier L justification**: 6 artifacts (research.md + design.md required); 3 platform domains needing live-verified external research; cross-tree distribution with 4 CI-guard test surfaces; a retained-agent catalog expansion touching always-loaded CLAUDE.md in both trees. Tier S/M rejected: the agent-catalog change alone has repo-wide blast radius (always-loaded context), and the external-stack decisions demanded research artifacts.
-- **D-7 — Desktop-native fallback scope** [NEEDS CLARIFICATION: should the OS-level accessibility/computer-use fallback for non-Electron/non-Tauri desktop apps ship in this SPEC as an opt-in path (REQ-E2E-502 as written), or be deferred to a follow-up SPEC entirely?] — plan is written assuming opt-in-in-scope; flipping to deferred removes one workflow section and one AC (AC-E2E-006), no structural change.
-- **D-8 — Mobile default confirmation** [NEEDS CLARIFICATION: Maestro as the mobile default (Appium as fallback, Detox as RN-conditional) — confirm, or prefer Appium-default for its wider driver matrix?] — plan is written Maestro-default per the token-minimization requirement (single CLI binary, YAML flows, deterministic output); this is the highest-leverage reversible decision in the matrix.
+- **D-7 — Desktop-native fallback scope — RESOLVED (user decision via orchestrator AskUserQuestion, 2026-07-13)**: DEFERRED to a follow-up SPEC. REQ-E2E-502 removed from spec.md §B Group F; per the audit D6 split instruction, AC-E2E-006 was FIRST narrowed to REQ-E2E-007 only (no-target graceful exit keeps its own AC) and only the 502 half was removed. A detected `desktop-native` surface routes to the REQ-E2E-007 graceful branch with a deferral notice; a new Out-of-Scope H3 records the deferral.
+- **D-8 — Mobile default — RESOLVED (user decision via orchestrator AskUserQuestion, 2026-07-13)**: Maestro default CONFIRMED as drafted (Appium fallback, Detox RN-conditional), per the token-minimization requirement (single CLI binary, YAML flows, deterministic output).
 
 ## §C Pre-flight Verified Baseline (run-phase re-verify before M1)
 
@@ -36,6 +36,7 @@ All measured 2026-07-13 on this tree; re-run before implementation (parallel-ses
 8. Inspect one existing command pair (`run.md` local vs `run.md.tmpl` template) to replicate the exact render-pattern delta before authoring `e2e.md.tmpl` (sizes differ: local files are rendered; do NOT assume byte parity for the command pair)
 9. Mirror-parity registration: check whether any `.claude/skills/moai/workflows/*.md` path is registered in `rule_template_mirror_test.go` (`workflowOptMirroredPaths`) — follow sibling precedent for the new e2e.md (register iff siblings are registered)
 10. `.moai/specs/` dedup: no `SPEC-E2E-REVIVAL-*` exists (only `SPEC-HARNESS-EXECUTE-E2E-001`, unrelated: harness telemetry bugfix)
+11. Re-run the count-literal surface grep (D-2 / REQ-E2E-302): `grep -rEn '10 retained agents|9 MoAI-custom|10-agent' <12-file list>` — reconcile against HEAD before M3 (baseline 2026-07-13: 24 sites; the surface can grow between plan and run)
 
 ## §D Constraints
 
@@ -49,13 +50,13 @@ All measured 2026-07-13 on this tree; re-run before implementation (parallel-ses
 
 ## §E Self-Verification (run-phase exit gates)
 
-- E1: AC matrix PASS/FAIL table (all 26), each row citing an executed command + verbatim-output path
+- E1: AC matrix PASS/FAIL table (all 27), each row citing an executed command + verbatim-output path
 - E2: `go test ./internal/template/...` and `go test ./...` exit 0 (full suite, not just touched packages)
 - E3: `golangci-lint run` exit 0
 - E4: Subagent-boundary grep — e2e-specialist tools line clean of `Agent`/`AskUserQuestion`
 - E5: Both-tree parity evidence — `diff` outputs for skill + agent (expected identical), rendered-equivalence note for command pair
 - E6: Neutrality self-check — `grep -rn 'SPEC-E2E-REVIVAL\|REQ-E2E-' internal/template/templates/` → 0 matches
-- E7: `moai spec lint --strict .moai/specs/SPEC-E2E-REVIVAL-001` → 0 findings
+- E7: `moai spec lint --strict .moai/specs/SPEC-E2E-REVIVAL-001/spec.md` → 0 findings (the lint CLI takes the spec.md FILE; a directory argument fails with `ParseFailure … is a directory` — executed evidence, audit iter-1 D7)
 
 ## §F Milestones
 
@@ -63,7 +64,7 @@ All measured 2026-07-13 on this tree; re-run before implementation (parallel-ses
 
 - Author `internal/template/templates/.claude/agents/moai/e2e-specialist.md` per design.md §D: frontmatter (name, description with PROACTIVELY + "NOT for:" clause, tools CSV, `model: inherit`, `effort: high`, color, `permissionMode`, `memory: project`, `skills:` ≤2), body (scope, platform-toolchain execution knowledge, token-minimization ladder [HARD], blocker-report protocol, artifact-directory conventions, delegation-return contract).
 - Sync byte-identical copy to `.claude/agents/moai/e2e-specialist.md`.
-- Exit: file exists in both trees, byte-identical; frontmatter passes a manual field-by-field check against `agent_frontmatter_audit_test.go` expectations (CI check lands in M4 when the count constant moves).
+- Exit: file exists in both trees, byte-identical; frontmatter COMPLETENESS (name/description/tools CSV/model/effort/color/permissionMode/memory/skills) verified by MANUAL field-by-field checklist — `TestAgentFrontmatterAudit` guards retired-field cleanliness ONLY, not completeness (audit iter-1 D12); the CI runs land in M4 when the count constant moves.
 
 ### M2 — e2e workflow skill (template tree) — Priority: High
 
@@ -75,8 +76,9 @@ All measured 2026-07-13 on this tree; re-run before implementation (parallel-ses
 
 - Author `internal/template/templates/.claude/commands/moai/e2e.md.tmpl` (replicating the sibling render pattern measured in pre-flight #8) + local `.claude/commands/moai/e2e.md`.
 - SKILL.md (both trees): add `**e2e**` Priority 1 row (position: after `gate`, before `harness`, keeping alphabetic-cluster precedent of the existing list order); add e2e cue exemplars to Priority 3; add `e2e` to frontmatter description enumeration.
-- CLAUDE.md (both trees): §3 `Subcommands:` line + §4 count text ("exactly 11 retained agents (10 MoAI-custom + 1 Explore)") + §4 catalog table row + Selection Decision Tree entry.
-- Exit: grep-verifiable deltas per acceptance.md AC-E2E-017…021 (baseline 0 → 1 per surface, both trees).
+- CLAUDE.md (both trees): §3 `Subcommands:` line + the three §4 literal sites (count text → "exactly 11 retained agents (10 MoAI-custom + 1 Explore)"; "flat-hierarchy 10-agent consolidation rationale" → 11-agent; "one of the 10 retained agents above" → 11) + §4 catalog table row + Selection Decision Tree entry (appended as entry 12; manager-design stays entry 11).
+- Count-literal sweep (both trees, full REQ-E2E-302 surface): agent-authoring.md (3 sites), agent-patterns.md (3 sites incl. adding `e2e-specialist` to the MoAI-custom enumeration), model-policy.md (1 site), spec-workflow.md (1 site incl. named list), manager-design.md (1 site). Content-token anchored edits (line numbers drift +1 between trees for agent-authoring.md).
+- Exit: grep-verifiable deltas per acceptance.md AC-E2E-017…021 (baseline 0 → 1 per surface, both trees) + invariance CMD-019-INV → 0 stale literals over the 12-file surface.
 
 ### M4 — catalog.yaml + CI-guard constants + make build + embed verification — Priority: Medium (mechanical)
 

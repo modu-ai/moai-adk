@@ -38,7 +38,7 @@ Marker scan is read-only (Glob/Read), ecosystem-equal (no privileged language), 
 | `mobile` (flutter) | `pubspec.yaml` with `flutter:` | flutter (canonical name) — Maestro supports Flutter; note in option description |
 | `mobile` (native) | `*.xcodeproj`/`Package.swift` + iOS targets; `build.gradle` with `com.android.application` | Maestro/Appium capable |
 | `web` | web framework configs (next/nuxt/vite/astro/sveltekit/angular), `index.html` servers, or any HTTP-serving app in the 16-language matrix (Django/Rails/Spring/Fiber/…) | broadest class; framework list is exemplary, detection is marker-driven not framework-privileged |
-| `desktop-native` | native toolkit markers WITHOUT Electron/Tauri (e.g., pure `.xcodeproj` mac app, WinUI, Qt/GTK builds) | REQ-E2E-502 opt-in path |
+| `desktop-native` | native toolkit markers WITHOUT Electron/Tauri (e.g., pure `.xcodeproj` mac app, WinUI, Qt/GTK builds) | automation DEFERRED to a follow-up SPEC (user decision 2026-07-13); classify → report deferral → exit via REQ-E2E-007 graceful branch |
 | none | no markers above | REQ-E2E-007 graceful exit |
 
 `mixed` handling: enumerate matched surfaces; per-surface selection questions (REQ-E2E-003).
@@ -51,7 +51,7 @@ Marker scan is read-only (Glob/Read), ecosystem-equal (no privileged language), 
 | mobile | Maestro 2.6+ | Appium 3.x (complex native flows), Detox 20.x (RN detected only) | — |
 | desktop (electron) | Playwright `_electron` (experimental — caveat in prose) | — | — |
 | desktop (tauri) | WebdriverIO + `@wdio/tauri-service` (embedded mode; macOS-safe) | Selenium via tauri-driver (Win/Linux only) | — |
-| desktop-native | (opt-in) OS accessibility / computer-use | — | computer-use class, token-cost warning |
+| desktop-native | — (automation deferred to a follow-up SPEC; workflow emits a deferral notice via the graceful branch) | — | — |
 
 Recommendation modifiers (inherited from retired baseline, re-grounded):
 - `CI=true` env → bias Playwright CLI / headless everywhere; MCP-tier marked unavailable
