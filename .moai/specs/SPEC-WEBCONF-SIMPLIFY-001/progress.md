@@ -140,7 +140,7 @@ M4 delivers (1) the per-option description rendering mechanism (REQ-WC-015, desi
 ```yaml
 run_status: in-progress
 run_complete_at: null   # pending — run-phase not complete (M3 of 9 milestones)
-run_commit_sha: pending-backfill-m4   # latest run-phase commit (M4); M1=7b11d68bc, M2=e0061ad34, M3=cca120c70
+run_commit_sha: 5f97d32fe   # latest run-phase commit (M4); M1=7b11d68bc, M2=e0061ad34, M3=cca120c70
 m1_to_mN_commit_strategy: per-milestone commit + push to main (Route A — Hybrid Trunk 1-person OSS)
 ac_pass_count: 11         # M1 (005,006,016,017,021) + M2 (003a,003b,015) + M3 (001,002) + M4 (004) = 11 PASS; AC-WC-022/023/024 partial (en-only staging)
 ac_fail_count: 0
@@ -175,7 +175,7 @@ milestones:
     status: PASS
   M4:
     subject: "feat(SPEC-WEBCONF-SIMPLIFY-001): M4 simplified surfaces + description rendering mechanism"
-    sha: pending-backfill-m4
+    sha: 5f97d32fe
     acs: [AC-WC-004, AC-WC-024, AC-WC-022-partial, AC-WC-023-partial]
     status: PASS-WITH-DEBT
     debt: "AC-WC-022/023 (description mechanism) en-only — ko/ja/zh fieldDesc.* + agentfm descriptions + full Description population = M6"
