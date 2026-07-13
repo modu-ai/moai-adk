@@ -116,7 +116,7 @@ _<pending run-phase>_
 
 ```yaml
 sync_complete_at: 2026-07-13
-sync_commit_sha: "pending-backfill-DOCSITE-E2E-001"
+sync_commit_sha: "a7f4fcba6"
 sync_status: audit-ready
 sync_scope: "CHANGELOG.md [Unreleased] entry (1 bullet) + spec.md frontmatter status in-progress -> completed + this §E.4 block; docs-site content (41 files + menu/meta registration) and README e2e row were already authored/verified in run-phase (M1-M5) — no further edits required at sync"
 readme_check: "README.md e2e row (utility-commands table, CLI commands table) confirmed present pre-existing from SPEC-E2E-REVIVAL-001 — no edit needed"
