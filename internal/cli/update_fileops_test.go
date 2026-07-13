@@ -8,9 +8,10 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/modu-ai/moai-adk/internal/defs"
-	"github.com/modu-ai/moai-adk/internal/cli/update/plan"
 	"github.com/modu-ai/moai-adk/internal/cli/update/backup"
+	"github.com/modu-ai/moai-adk/internal/cli/update/deploy"
+	"github.com/modu-ai/moai-adk/internal/cli/update/plan"
+	"github.com/modu-ai/moai-adk/internal/defs"
 )
 
 // --- backup.BackupMoaiConfig additional edge case tests ---
@@ -992,7 +993,7 @@ func TestCleanMoaiManagedPaths_OnlyUserFilesPreserved(t *testing.T) {
 	}
 
 	var buf bytes.Buffer
-	err := cleanMoaiManagedPaths(root, &buf)
+	err := deploy.CleanMoaiManagedPaths(root, &buf)
 	if err != nil {
 		t.Fatalf("cleanMoaiManagedPaths failed: %v", err)
 	}

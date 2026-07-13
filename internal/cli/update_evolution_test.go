@@ -5,6 +5,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/modu-ai/moai-adk/internal/cli/update/deploy"
 	"github.com/modu-ai/moai-adk/internal/cli/update/plan"
 )
 
@@ -15,7 +17,7 @@ func TestScaffoldEvolutionDir_CreatesDirectoryTree(t *testing.T) {
 
 	root := t.TempDir()
 
-	if err := scaffoldEvolutionDir(root); err != nil {
+	if err := deploy.ScaffoldEvolutionDir(root); err != nil {
 		t.Fatalf("scaffoldEvolutionDir: %v", err)
 	}
 
@@ -58,7 +60,7 @@ func TestScaffoldEvolutionDir_ManifestContent(t *testing.T) {
 
 	root := t.TempDir()
 
-	if err := scaffoldEvolutionDir(root); err != nil {
+	if err := deploy.ScaffoldEvolutionDir(root); err != nil {
 		t.Fatalf("scaffoldEvolutionDir: %v", err)
 	}
 
@@ -91,7 +93,7 @@ func TestScaffoldEvolutionDir_Idempotent(t *testing.T) {
 	root := t.TempDir()
 
 	// First call.
-	if err := scaffoldEvolutionDir(root); err != nil {
+	if err := deploy.ScaffoldEvolutionDir(root); err != nil {
 		t.Fatalf("first scaffoldEvolutionDir: %v", err)
 	}
 
@@ -103,7 +105,7 @@ func TestScaffoldEvolutionDir_Idempotent(t *testing.T) {
 	}
 
 	// Second call — should not overwrite existing manifest.
-	if err := scaffoldEvolutionDir(root); err != nil {
+	if err := deploy.ScaffoldEvolutionDir(root); err != nil {
 		t.Fatalf("second scaffoldEvolutionDir: %v", err)
 	}
 
@@ -165,7 +167,7 @@ func TestScaffoldEvolutionDir_PreservesLearning(t *testing.T) {
 	}
 
 	// Run scaffolding — should not touch the learning file.
-	if err := scaffoldEvolutionDir(root); err != nil {
+	if err := deploy.ScaffoldEvolutionDir(root); err != nil {
 		t.Fatalf("scaffoldEvolutionDir: %v", err)
 	}
 

@@ -25,11 +25,12 @@ import (
 	"testing"
 
 	"github.com/modu-ai/moai-adk/internal/cli/uikit"
+	"github.com/modu-ai/moai-adk/internal/cli/update/backup"
+	"github.com/modu-ai/moai-adk/internal/cli/update/deploy"
+	"github.com/modu-ai/moai-adk/internal/cli/update/plan"
 	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/pkg/version"
 	"github.com/spf13/cobra"
-	"github.com/modu-ai/moai-adk/internal/cli/update/plan"
-	"github.com/modu-ai/moai-adk/internal/cli/update/backup"
 )
 
 // =============================================================================
@@ -669,7 +670,7 @@ func TestCleanMoaiManagedPaths_AllTargetsAbsent(t *testing.T) {
 	tmpDir := t.TempDir()
 	var buf bytes.Buffer
 
-	err := cleanMoaiManagedPaths(tmpDir, &buf)
+	err := deploy.CleanMoaiManagedPaths(tmpDir, &buf)
 	if err != nil {
 		t.Fatalf("cleanMoaiManagedPaths error: %v", err)
 	}
@@ -689,7 +690,7 @@ func TestCleanMoaiManagedPaths_WithExistingTarget(t *testing.T) {
 	}
 
 	var buf bytes.Buffer
-	err := cleanMoaiManagedPaths(tmpDir, &buf)
+	err := deploy.CleanMoaiManagedPaths(tmpDir, &buf)
 	if err != nil {
 		t.Fatalf("cleanMoaiManagedPaths error: %v", err)
 	}

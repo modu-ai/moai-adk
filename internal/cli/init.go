@@ -17,6 +17,7 @@ import (
 
 	"github.com/modu-ai/moai-adk/internal/cli/printer"
 	"github.com/modu-ai/moai-adk/internal/cli/uikit"
+	"github.com/modu-ai/moai-adk/internal/cli/update/deploy"
 	"github.com/modu-ai/moai-adk/internal/cli/wizard"
 	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/core/project"
@@ -550,7 +551,7 @@ func runInit(cmd *cobra.Command, args []string) error {
 	// This is also handled by template deployment, but scaffoldEvolutionDir ensures
 	// all required subdirectories and placeholder files are present even when the
 	// template fs doesn't track empty directories.
-	if err := scaffoldEvolutionDir(opts.ProjectRoot); err != nil {
+	if err := deploy.ScaffoldEvolutionDir(opts.ProjectRoot); err != nil {
 		p.Warn("Failed to scaffold evolution directory: %v", err)
 	}
 

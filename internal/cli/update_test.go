@@ -11,11 +11,12 @@ import (
 	"testing"
 	"time"
 
+	"github.com/modu-ai/moai-adk/internal/cli/update/backup"
+	"github.com/modu-ai/moai-adk/internal/cli/update/deploy"
+	"github.com/modu-ai/moai-adk/internal/cli/update/plan"
 	"github.com/modu-ai/moai-adk/internal/template"
 	"github.com/modu-ai/moai-adk/internal/update"
 	"github.com/modu-ai/moai-adk/pkg/version"
-	"github.com/modu-ai/moai-adk/internal/cli/update/plan"
-	"github.com/modu-ai/moai-adk/internal/cli/update/backup"
 )
 
 // buildSmartPATH is a test helper that builds a Smart PATH for a given home directory.
@@ -2585,7 +2586,7 @@ func TestCleanMoaiManagedPaths(t *testing.T) {
 			tt.setup(t, root)
 
 			var buf bytes.Buffer
-			err := cleanMoaiManagedPaths(root, &buf)
+			err := deploy.CleanMoaiManagedPaths(root, &buf)
 
 			if tt.wantErr {
 				if err == nil {
@@ -2708,7 +2709,7 @@ func TestMigrateLegacyMemoryDir(t *testing.T) {
 			tt.setup(t, root)
 
 			var buf bytes.Buffer
-			err := migrateLegacyMemoryDir(root, &buf)
+			err := deploy.MigrateLegacyMemoryDir(root, &buf)
 			if err != nil {
 				t.Fatalf("unexpected error: %v", err)
 			}
