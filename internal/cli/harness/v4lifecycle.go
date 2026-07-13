@@ -35,15 +35,21 @@ import (
 // RunnerTemplate read path (M3 runner_template.go readManifest).
 const v4CommandsDir = ".claude/commands/harness"
 
-// v4WorkflowsDir holds the Runner Workflow scripts (harness-<name>-run.js).
+// v4WorkflowsDir holds the Runner Workflow scripts (hns-<name>-run.js
+// canonical; legacy harness-<name>-run.js preserved).
 const v4WorkflowsDir = ".claude/workflows"
 
 // v4AgentsDir holds the specialist agent definitions (user-owned namespace).
 const v4AgentsDir = ".claude/agents/harness"
 
 // v4SkillsDir is the parent of the per-harness companion skill directories
-// (.claude/skills/harness-<name>-*/).
+// (.claude/skills/hns-<name>-*/ canonical; legacy .claude/skills/harness-<name>-*/).
 const v4SkillsDir = ".claude/skills"
+
+// v4ArtifactPrefixes are the recognized user-owned artifact-name prefixes for
+// the dual-pattern matcher, canonical generation first (SPEC-HNS-PREFIX-RENAME-001
+// REQ-HPR-010/011: hns- canonical, harness- legacy — both resolve).
+var v4ArtifactPrefixes = []string{"hns-", "harness-"}
 
 // listHarnessCommandNames scans the v4CommandsDir for *.md command files and
 // returns the set of known harness names (the file stems). It is the
@@ -69,29 +75,40 @@ func listHarnessCommandNames(projectRoot string) []string {
 }
 
 // harnessArtifactBelongsTo reports whether the artifact entryName (a file or dir
-// name in the harness-<name> namespace) belongs to the harness with the given
-// name, using the set of all known harness names to disambiguate prefix
-// collisions via longest-match (SPEC-CLIFIX-CRITICAL-001 REQ-CRIT-001-004).
+// name in the hns-<name> / legacy harness-<name> namespace) belongs to the
+// harness with the given name, using the set of all known harness names to
+// disambiguate prefix collisions via longest-match
+// (SPEC-CLIFIX-CRITICAL-001 REQ-CRIT-001-004; dual-pattern per
+// SPEC-HNS-PREFIX-RENAME-001 REQ-HPR-010/011).
 //
-// "harness-release-auditor-specialist.md" belongs to "release" (not
+// "hns-release-auditor-specialist.md" belongs to "release" (not
 // "release-update") because the longest matching name is "release".
-// "harness-release-update-auditor-specialist.md" belongs to "release-update"
-// because "release-update" is a longer match than "release".
+// "hns-release-update-auditor-specialist.md" belongs to "release-update"
+// because "release-update" is a longer match than "release". The same
+// longest-name-first discipline applies to the legacy harness- generation, so
+// a mixed-generation harness resolves as one entry.
 func harnessArtifactBelongsTo(entryName, name string, allNames []string) bool {
 	bestMatch := ""
 	for _, n := range allNames {
-		art := "harness-" + n
-		if entryName == art || strings.HasPrefix(entryName, art+"-") {
-			if len(n) > len(bestMatch) {
-				bestMatch = n
+		for _, prefix := range v4ArtifactPrefixes {
+			art := prefix + n
+			if entryName == art || strings.HasPrefix(entryName, art+"-") {
+				if len(n) > len(bestMatch) {
+					bestMatch = n
+				}
 			}
 		}
 	}
 	// Fall back to the bare name when allNames is empty (no command files found)
 	// so the helper degrades to a prefix+"-" or exact match against name alone.
 	if bestMatch == "" {
-		art := "harness-" + name
-		return entryName == art || strings.HasPrefix(entryName, art+"-")
+		for _, prefix := range v4ArtifactPrefixes {
+			art := prefix + name
+			if entryName == art || strings.HasPrefix(entryName, art+"-") {
+				return true
+			}
+		}
+		return false
 	}
 	return bestMatch == name
 }

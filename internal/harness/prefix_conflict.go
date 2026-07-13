@@ -1,5 +1,7 @@
-// Package harness — harness-* prefix conflict detector (canonical harness-*
-// + legacy my-harness-* per SPEC-V3R6-HARNESS-NAMESPACE-V2-001 REQ-HNS-005).
+// Package harness — user-skill prefix conflict detector (canonical hns-*
+// plus legacy harness-* / my-harness-* generations per
+// SPEC-HNS-PREFIX-RENAME-001 REQ-HPR-009 and SPEC-V3R6-HARNESS-NAMESPACE-V2-001
+// REQ-HNS-005).
 package harness
 
 import (
@@ -21,12 +23,12 @@ type Conflict struct {
 }
 
 // DetectPrefixConflicts scans skillsDir (typically `.claude/skills/`) for
-// `harness-*` (and legacy `my-harness-*`) directories and flags any whose
-// suffix collides with an existing `moai-*` skill (REQ-PH-009 indirect —
-// diagnostic warning).
+// `hns-*` (canonical) plus `harness-*` / `my-harness-*` (legacy generations)
+// directories and flags any whose suffix collides with an existing `moai-*`
+// skill (REQ-PH-009 indirect — diagnostic warning).
 //
 // Conflict heuristic:
-//  1. Strip "harness-" (or legacy "my-harness-") prefix → suffix S
+//  1. Strip "hns-" (or legacy "harness-" / "my-harness-") prefix → suffix S
 //  2. If a "moai-S" directory exists in the same skillsDir → conflict (suffix match)
 //  3. Else if any "moai-*" name has Levenshtein distance ≤ 2 from "moai-S" → conflict (close name)
 //
@@ -51,9 +53,9 @@ func DetectPrefixConflicts(skillsDir string) ([]Conflict, error) {
 		}
 		name := e.Name()
 		switch {
-		// SPEC-V3R6-HARNESS-NAMESPACE-V2-001: collect both harness-* (canonical)
-		// and my-harness-* (legacy, REQ-HNS-005 backward-compat).
-		case strings.HasPrefix(name, "harness-"), strings.HasPrefix(name, "my-harness-"):
+		// SPEC-HNS-PREFIX-RENAME-001: collect hns-* (canonical) plus harness-*
+		// and my-harness-* (legacy generations, REQ-HNS-005 backward-compat).
+		case strings.HasPrefix(name, "hns-"), strings.HasPrefix(name, "harness-"), strings.HasPrefix(name, "my-harness-"):
 			harnessNames = append(harnessNames, name)
 		case strings.HasPrefix(name, "moai-"):
 			moaiNames = append(moaiNames, name)
@@ -61,8 +63,10 @@ func DetectPrefixConflicts(skillsDir string) ([]Conflict, error) {
 	}
 	var conflicts []Conflict
 	for _, mh := range harnessNames {
-		// Strip whichever prefix the name carries (canonical harness- or legacy my-harness-).
-		suffix := strings.TrimPrefix(strings.TrimPrefix(mh, "my-harness-"), "harness-")
+		// Strip whichever prefix the name carries (canonical hns-, or legacy
+		// my-harness- / harness-). Order matters only for the my-harness- vs
+		// harness- overlap; hns- overlaps with neither.
+		suffix := strings.TrimPrefix(strings.TrimPrefix(strings.TrimPrefix(mh, "my-harness-"), "harness-"), "hns-")
 		expected := "moai-" + suffix
 		// Pass 1: exact suffix match
 		exactFound := false

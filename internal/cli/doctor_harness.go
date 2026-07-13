@@ -120,9 +120,9 @@ func checkLayer1Triggers(skillsDir string) (string, string) {
 	}
 	var problems []string
 	for _, e := range entries {
-		// SPEC-V3R6-HARNESS-NAMESPACE-V2-001: recognize both harness-* (canonical)
-		// and my-harness-* (legacy, REQ-HNS-005 backward-compat).
-		if !e.IsDir() || (!strings.HasPrefix(e.Name(), "harness-") && !strings.HasPrefix(e.Name(), "my-harness-")) {
+		// SPEC-HNS-PREFIX-RENAME-001: recognize hns-* (canonical) plus harness-*
+		// and my-harness-* (legacy generations, REQ-HNS-005 backward-compat).
+		if !e.IsDir() || (!strings.HasPrefix(e.Name(), "hns-") && !strings.HasPrefix(e.Name(), "harness-") && !strings.HasPrefix(e.Name(), "my-harness-")) {
 			continue
 		}
 		skillPath := filepath.Join(skillsDir, e.Name(), "SKILL.md")
@@ -268,12 +268,12 @@ func checkLayer6AgentActivation(agentsDir, skillsDir string) (string, string) {
 			continue
 		}
 
-		// REQ-HAW-013: harness-* references must resolve on disk (EC-4:
+		// REQ-HAW-013: hns-* / harness-* references must resolve on disk (EC-4:
 		// moai-* template skills are not resolved here).
-		// SPEC-V3R6-HARNESS-NAMESPACE-V2-001: recognize both harness-* (canonical)
-		// and my-harness-* (legacy, REQ-HNS-005 backward-compat).
+		// SPEC-HNS-PREFIX-RENAME-001: recognize hns-* (canonical) plus harness-*
+		// and my-harness-* (legacy generations, REQ-HNS-005 backward-compat).
 		for _, ref := range skillRefs {
-			if !strings.HasPrefix(ref, "harness-") && !strings.HasPrefix(ref, "my-harness-") {
+			if !strings.HasPrefix(ref, "hns-") && !strings.HasPrefix(ref, "harness-") && !strings.HasPrefix(ref, "my-harness-") {
 				continue
 			}
 			if _, err := os.Stat(filepath.Join(skillsDir, ref)); err != nil {

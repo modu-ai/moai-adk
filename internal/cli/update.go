@@ -1295,13 +1295,16 @@ func analyzeFiles(templates []string, projectRoot string) []merge.FileAnalysis {
 // isUserAreaPath returns true when the relative project path belongs to the
 // user customization area and must never be overwritten or deleted by moai update.
 //
-// Protected patterns (SPEC-V3R3-HARNESS-001 REQ-HARNESS-004 + SPEC-V3R6-HARNESS-NAMESPACE-V2-001):
-//   - .claude/skills/harness-*       (user harness skill directories — canonical, doctrine §24.1)
-//   - .claude/skills/my-harness-*    (user harness skill directories — legacy, REQ-HNS-005 backward-compat)
-//   - .claude/agents/harness/        (user harness agent directory — canonical)
+// Protected patterns (SPEC-V3R3-HARNESS-001 REQ-HARNESS-004 + SPEC-V3R6-HARNESS-NAMESPACE-V2-001
+// + SPEC-HNS-PREFIX-RENAME-001 tri-generation matrix):
+//   - .claude/skills/hns-*           (user harness skill directories — canonical, hns- generation)
+//   - .claude/skills/harness-*       (user harness skill directories — legacy gen-2, doctrine §24.1)
+//   - .claude/skills/my-harness-*    (user harness skill directories — legacy gen-3, REQ-HNS-005 backward-compat)
+//   - .claude/agents/harness/        (user harness agent directory — directory-level, generation-agnostic)
 //   - .claude/agents/my-harness/     (user harness agent directory — legacy, REQ-HNS-005 backward-compat)
 //
-// REQ-HNS-004: exact HasPrefix comparison (never Contains) so moai-harness-* is not misclassified.
+// REQ-HNS-004 / REQ-HPR-008: exact HasPrefix comparison (never Contains), byte-exact and
+// case-sensitive, so moai-harness-* is never misclassified as user-owned.
 // REQ-HNS-005: legacy my-harness-* retained during the deprecation window (sunset = follow-up chore SPEC).
 //
 // This function is called by cleanMoaiManagedPaths before any remove operation
@@ -1310,8 +1313,14 @@ func isUserAreaPath(rel string) bool {
 	// Normalize to forward slashes for consistent matching on all platforms.
 	norm := strings.ReplaceAll(rel, "\\", "/")
 
-	// .claude/skills/harness-* (canonical user-owned, any sub-path inside)
-	// @MX:NOTE: [AUTO] SPEC-V3R6-HARNESS-NAMESPACE-V2-001 M1 — canonical harness-* recognition.
+	// .claude/skills/hns-* (canonical user-owned, any sub-path inside)
+	// @MX:NOTE: [AUTO] SPEC-HNS-PREFIX-RENAME-001 M2 — canonical hns-* recognition (REQ-HPR-005).
+	if strings.HasPrefix(norm, ".claude/skills/hns-") {
+		return true
+	}
+
+	// .claude/skills/harness-* (legacy gen-2 user-owned, any sub-path inside)
+	// @MX:NOTE: [AUTO] SPEC-V3R6-HARNESS-NAMESPACE-V2-001 M1 — legacy harness-* recognition.
 	if strings.HasPrefix(norm, ".claude/skills/harness-") {
 		return true
 	}
@@ -1337,7 +1346,13 @@ func isUserAreaPath(rel string) bool {
 		return true
 	}
 
-	// .claude/workflows/harness-*.js (SPEC-V3R6-HARNESS-V4-001 M1 — user-generated Runner Workflows, AC-HV4-010b)
+	// .claude/workflows/hns-*.js (SPEC-HNS-PREFIX-RENAME-001 M2 — canonical user Runner Workflows, REQ-HPR-005)
+	// @MX:NOTE: [AUTO] SPEC-HNS-PREFIX-RENAME-001 M2 — hns- Runner Workflow user-owned.
+	if strings.HasPrefix(norm, ".claude/workflows/hns-") {
+		return true
+	}
+
+	// .claude/workflows/harness-*.js (SPEC-V3R6-HARNESS-V4-001 M1 — legacy user Runner Workflows, AC-HV4-010b)
 	// @MX:NOTE: [AUTO] SPEC-V3R6-HARNESS-V4-001 M1 — harness Runner Workflow user-owned.
 	if strings.HasPrefix(norm, ".claude/workflows/harness-") {
 		return true
@@ -1354,9 +1369,10 @@ func isUserAreaPath(rel string) bool {
 // call sites of isUserAreaPath remain in place; isUserOwnedNamespace is the new
 // authoritative user-owned check used by backup and sentinel logic.
 //
-// Protected patterns:
-//   - .claude/skills/harness-*       (REQ-HNS-001 canonical, doctrine §24.1)
-//   - .claude/skills/my-harness-*    (REQ-UNP-001 legacy, REQ-HNS-005 backward-compat)
+// Protected patterns (tri-generation matrix per SPEC-HNS-PREFIX-RENAME-001):
+//   - .claude/skills/hns-*           (canonical hns- generation, REQ-HPR-005)
+//   - .claude/skills/harness-*       (REQ-HNS-001 legacy gen-2, doctrine §24.1)
+//   - .claude/skills/my-harness-*    (REQ-UNP-001 legacy gen-3, REQ-HNS-005 backward-compat)
 //   - .claude/agents/harness/        (REQ-UNP-002 — overrides isMoaiManaged classification)
 //   - .moai/harness/                  (REQ-UNP-003)
 //   - .claude/skills/<custom>/        when prefix != "moai-" and name != "moai" (REQ-UNP-009)
@@ -1371,8 +1387,14 @@ func isUserOwnedNamespace(rel string) bool {
 	// Normalize to forward slashes for consistent matching on all platforms (NFR-UNP-003).
 	norm := strings.ReplaceAll(rel, "\\", "/")
 
-	// REQ-HNS-001: user harness skills (canonical harness-* prefix, doctrine §24.1)
-	// @MX:NOTE: [AUTO] SPEC-V3R6-HARNESS-NAMESPACE-V2-001 M1 — canonical harness-* recognition.
+	// REQ-HPR-005: user harness skills (canonical hns-* prefix)
+	// @MX:NOTE: [AUTO] SPEC-HNS-PREFIX-RENAME-001 M2 — canonical hns-* recognition.
+	if strings.HasPrefix(norm, ".claude/skills/hns-") {
+		return true
+	}
+
+	// REQ-HNS-001: user harness skills (legacy gen-2 harness-* prefix, doctrine §24.1)
+	// @MX:NOTE: [AUTO] SPEC-V3R6-HARNESS-NAMESPACE-V2-001 M1 — legacy harness-* recognition.
 	if strings.HasPrefix(norm, ".claude/skills/harness-") {
 		return true
 	}
@@ -1398,7 +1420,13 @@ func isUserOwnedNamespace(rel string) bool {
 		return true
 	}
 
-	// SPEC-V3R6-HARNESS-V4-001 M1 (AC-HV4-010b): .claude/workflows/harness-*.js user-generated Runner Workflows.
+	// SPEC-HNS-PREFIX-RENAME-001 M2 (REQ-HPR-005): .claude/workflows/hns-*.js canonical user Runner Workflows.
+	// @MX:NOTE: [AUTO] SPEC-HNS-PREFIX-RENAME-001 M2 — hns- Runner Workflow user-owned.
+	if strings.HasPrefix(norm, ".claude/workflows/hns-") {
+		return true
+	}
+
+	// SPEC-V3R6-HARNESS-V4-001 M1 (AC-HV4-010b): .claude/workflows/harness-*.js legacy user Runner Workflows.
 	// @MX:NOTE: [AUTO] SPEC-V3R6-HARNESS-V4-001 M1 — harness Runner Workflow user-owned.
 	if strings.HasPrefix(norm, ".claude/workflows/harness-") {
 		return true

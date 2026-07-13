@@ -69,8 +69,11 @@ type DoctorReport struct {
 var runnerManifestPathRE = regexp.MustCompile("MANIFEST_PATH\\s*=\\s*[\"'`]([^\"'`]+)[\"'`]")
 
 // runnerSpecialistRE extracts specialist agent name references
-// (harness-<x>-specialist) mentioned anywhere in a Runner JS.
-var runnerSpecialistRE = regexp.MustCompile(`harness-[a-z0-9-]+-specialist`)
+// (hns-<x>-specialist canonical, harness-<x>-specialist legacy — dual-pattern
+// per SPEC-HNS-PREFIX-RENAME-001 REQ-HPR-012) mentioned anywhere in a Runner JS.
+// Runner resolution itself needs NO dual pattern: Doctor resolves the Runner
+// from the manifest runner_workflow value via a prefix-agnostic path join.
+var runnerSpecialistRE = regexp.MustCompile(`(harness|hns)-[a-z0-9-]+-specialist`)
 
 // Doctor runs the v4 harness reference-integrity smoke gate over projectRoot.
 //

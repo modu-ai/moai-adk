@@ -31,7 +31,7 @@ var staticCoreAllowlist = []string{
 // Classification rules (REQ-HARNESS-003):
 //   - Name in staticCoreAllowlist   → "PASS"
 //   - Name has "moai-" prefix, NOT in allowlist → "WARN" (unknown moai- skill)
-//   - Name has "harness-" prefix → "INFO" (user customization detected — canonical + legacy my-harness-*)
+//   - Name has "hns-" / "harness-" / "my-harness-" prefix → "INFO" (user customization detected — canonical hns- + legacy generations)
 //   - Anything else                 → "INFO" (non-moai skill, no enforcement)
 func classifySkill(name string) string {
 	// Check allowlist first
@@ -47,9 +47,9 @@ func classifySkill(name string) string {
 	}
 
 	// User customization area
-	// SPEC-V3R6-HARNESS-NAMESPACE-V2-001: recognize both harness-* (canonical)
-	// and my-harness-* (legacy, REQ-HNS-005 backward-compat).
-	if strings.HasPrefix(name, "harness-") || strings.HasPrefix(name, "my-harness-") {
+	// SPEC-HNS-PREFIX-RENAME-001: recognize hns-* (canonical) plus harness-*
+	// and my-harness-* (legacy generations, REQ-HNS-005 backward-compat).
+	if strings.HasPrefix(name, "hns-") || strings.HasPrefix(name, "harness-") || strings.HasPrefix(name, "my-harness-") {
 		return "INFO"
 	}
 
