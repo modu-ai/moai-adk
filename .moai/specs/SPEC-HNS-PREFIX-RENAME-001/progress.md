@@ -87,7 +87,7 @@ m1_to_mN_commit_strategy: per-milestone commits M1..M4 on L1 worktree branch; or
 
 ```yaml
 sync_complete_at: 2026-07-13
-sync_commit_sha: pending-backfill-hns-prefix-rename-001  # this sync commit cannot reference its own SHA; backfilled in a follow-up chore commit per the SHA placeholder backfill exemption (D3)
+sync_commit_sha: f3a10ee143c5effca84e17eb577aa8d03b1c0346
 sync_status: audit-ready
 changelog_entry_position: top-of-Unreleased  # CHANGELOG.md [Unreleased] > Changed
 frontmatter_status_transitions:
