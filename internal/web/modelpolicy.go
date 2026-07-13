@@ -23,6 +23,7 @@ import (
 	"strings"
 
 	"github.com/modu-ai/moai-adk/internal/config"
+	"github.com/modu-ai/moai-adk/internal/manifest"
 	"github.com/modu-ai/moai-adk/internal/template"
 )
 
@@ -182,6 +183,72 @@ func (a *app) handleModelPolicyPlanType(w http.ResponseWriter, r *http.Request) 
 	}
 	if err := template.ApplyPlanType(a.cfg.ProjectRoot, planType); err != nil {
 		a.renderError(w, http.StatusInternalServerError, "could not persist plan_type: "+err.Error())
+		return
+	}
+	// Re-apply the {model, effort} tier profile to the shipped agent definition
+	// files so the plan_type switch takes effect on agents (mirrors `moai update`
+	// at internal/cli/update.go:420). The tier is resolved from the persisted
+	// llm.performance_tier; a non-initialized project (no manifest) is a no-op.
+	a.applyTierProfileToAgents(w, r)
+}
+
+// handleModelPolicyTier serves POST /model-policy/tier — the tier (performance_tier)
+// write path of the Model Policy surface, unified on the same page as plan_type.
+// It validates the posted value against the canonical {max, medium, low} set
+// (the vocabulary template.ApplyTierProfile + template.ValidPerformanceTiers
+// expect — NOT the legacy wizard {high, medium, low}). An out-of-set value is
+// rejected 4xx WITHOUT mutating llm.yaml or agent files. The loopback Host +
+// Sec-Fetch-Site gate for mutating methods is applied upstream by
+// hostCheckMiddleware. On success it persists performance_tier AND re-applies the
+// tier profile to the shipped agent .md frontmatter, then redirects (303) back to
+// the read-only page (Post/Redirect/Get).
+func (a *app) handleModelPolicyTier(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	if err := r.ParseForm(); err != nil {
+		http.Error(w, "bad request: could not parse form", http.StatusBadRequest)
+		return
+	}
+	tier := strings.TrimSpace(r.PostFormValue("performance_tier"))
+	if !template.IsValidPerformanceTier(tier) {
+		// Out-of-set value: reject 4xx and leave llm.yaml byte-identical.
+		http.Error(w, "invalid performance_tier: must be one of {max, medium, low}", http.StatusBadRequest)
+		return
+	}
+	if err := template.ApplyPerformanceTier(a.cfg.ProjectRoot, tier); err != nil {
+		a.renderError(w, http.StatusInternalServerError, "could not persist performance_tier: "+err.Error())
+		return
+	}
+	// Re-apply the {model, effort} tier profile to the shipped agent definition
+	// files so the tier switch takes effect on agents (mirrors `moai update`).
+	a.applyTierProfileToAgents(w, r)
+}
+
+// applyTierProfileToAgents resolves the effective {plan_type, tier} from the
+// persisted llm.yaml and runs template.ApplyTierProfile over the shipped agent
+// .md files, mirroring the internal/cli/update.go:417-420 reference path. The
+// manifest.Manager is constructed inline (no app-struct injection needed): a
+// non-initialized project (manifest.Load returns an empty manifest, or no agents
+// directory) degrades to a graceful no-op inside ApplyTierProfile. On error it
+// surfaces a 500 (the llm.yaml write already succeeded, but the agent re-apply
+// is the user-observable half of the change).
+//
+// @MX:NOTE: [AUTO] applyTierProfileToAgents — web entry point for ApplyTierProfile; mirrors update.go resolution
+func (a *app) applyTierProfileToAgents(w http.ResponseWriter, r *http.Request) {
+	projectRoot := a.cfg.ProjectRoot
+	mgr := manifest.NewManager()
+	// Load tolerates an absent manifest.json (returns an empty manifest, nil).
+	// The only error path is a corrupt manifest.json — which Load already
+	// auto-recovers (renames the corrupt file + seeds an empty manifest), leaving
+	// the manager usable. So the error is safe to ignore: ApplyTierProfile degrades
+	// to a no-op when no agents directory exists (non-initialized project).
+	_, _ = mgr.Load(projectRoot)
+	planType := template.ResolveProjectPlanType(projectRoot)
+	tier := template.ResolveProjectPerformanceTier(projectRoot)
+	if err := template.ApplyTierProfile(projectRoot, planType, tier, mgr); err != nil {
+		a.renderError(w, http.StatusInternalServerError, "could not re-apply tier profile to agents: "+err.Error())
 		return
 	}
 	http.Redirect(w, r, "/model-policy", http.StatusSeeOther)

@@ -50,6 +50,32 @@ templ modelPolicyPage(view modelPolicyView) {
 						<button type="submit" data-i18n="mp.plan.apply">Apply</button>
 					</form>
 				</section>
+				<section class="board-section" aria-labelledby="mp-tier-h">
+					<h2 id="mp-tier-h" data-i18n="mp.tier.title">Performance tier</h2>
+					<p class="board-section__desc" data-i18n="mp.tier.desc">llm.performance_tier — the model/effort tier column applied to the shipped agents (max / medium / low). Switching re-applies the matching tier profile to every shipped agent definition file.</p>
+					<p class="mp-plan-active">
+						<span data-i18n="mp.tier.active">Active tier</span>:
+						<code class="mp-plan-active-value">
+							if view.PerfTierIsEmpty {
+								medium
+							} else {
+								{ view.PerfTier }
+							}
+						</code>
+						if view.PerfTierIsEmpty {
+							<span class="mp-ro" data-i18n="mp.tier.default">(runtime default: medium — llm.performance_tier unset)</span>
+						}
+					</p>
+					<form class="mp-plan-form" method="post" action="/model-policy/tier">
+						<label class="mp-plan-label" for="mp-tier-select" data-i18n="mp.tier.select">Switch performance tier</label>
+						<select id="mp-tier-select" name="performance_tier">
+							for _, opt := range modelPolicyPerfTiers() {
+								<option value={ opt } selected?={ opt == view.PerfTier || (view.PerfTierIsEmpty && opt == "medium") }>{ opt }</option>
+							}
+						</select>
+						<button type="submit" data-i18n="mp.tier.apply">Apply</button>
+					</form>
+				</section>
 				<section class="board-section" aria-labelledby="mp-preview-h">
 					<h2 id="mp-preview-h" data-i18n="mp.plan.preview.title">Per-tier model / effort preview</h2>
 					<p class="board-section__desc" data-i18n="mp.plan.preview.desc">Both plans, all retained agents across the max / medium / low tiers. Values are derived from the Go tier-profile structure (single source).</p>

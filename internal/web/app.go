@@ -126,6 +126,11 @@ func (a *app) routes() http.Handler {
 	// mutating method (loopback Host + Sec-Fetch-Site same-origin). The page route
 	// /model-policy itself stays GET-only; no OTHER field becomes writable.
 	mux.HandleFunc("/model-policy/plan-type", a.handleModelPolicyPlanType)
+	// The tier (performance_tier) write path, unified on the same page as
+	// plan_type. POST-only; hostCheckMiddleware gates the mutating method. Both
+	// /model-policy/* write paths persist their llm.yaml scalar AND re-apply the
+	// tier profile to the shipped agent .md frontmatter (ApplyTierProfile).
+	mux.HandleFunc("/model-policy/tier", a.handleModelPolicyTier)
 	// SPEC-WEB-CONSOLE-011 M4: profile CRUD (create / delete) — POST-only,
 	// loopback-gated by hostCheckMiddleware. Switch reuses the existing
 	// GET /?profile=<name> load path (no dedicated route needed).

@@ -318,6 +318,15 @@ html[lang="zh"] body { font-family: "Pretendard", "Noto Sans CJK SC", system-ui,
 }
 .loopback__dot { width: 7px; height: 7px; border-radius: 50%; background: var(--color-success); box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-success) 20%, transparent); }
 .appbar__spacer { flex: 1; }
+/* Cross-page nav link in the settings appbar (mirrors the .board-nav back-link
+   pattern in board.templ). Plain anchor sized to match the appbar chrome. */
+.appbar-nav {
+  font-family: var(--font-sans); font-size: 13px; font-weight: var(--fw-semibold);
+  color: var(--fg-2); text-decoration: none; padding: 4px 10px;
+  border: 1px solid var(--border-1); border-radius: var(--radius-full);
+  background: var(--color-surface); white-space: nowrap;
+}
+.appbar-nav:hover { color: var(--fg-1); border-color: var(--accent); }
 /* Interface-language picker (REQ-WC5-003) — a compact appbar select. Inherits
    the .select chrome; constrained width keeps the appbar tidy. */
 .langpick-wrap { width: auto; min-width: 96px; }

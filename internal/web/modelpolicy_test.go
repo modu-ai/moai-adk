@@ -118,12 +118,13 @@ func TestModelPolicyView(t *testing.T) {
 }
 
 // TestModelPolicyView_ScopedWriteInvariant (AC-MTP-021, D2 sanctioned exception):
-// the Model Policy view carries EXACTLY ONE write affordance — the plan_type
-// selector form posting to /model-policy/plan-type. No OTHER field is writable,
-// there is no hx-post, and the <main> region's only <form> targets the scoped
-// persist endpoint. This supersedes the former READ-ONLY-no-form assertion, which
-// D2 (persisting plan_type selector) intentionally relaxes for exactly one field
-// (SPEC-MODEL-TIER-PLANTYPE-001 §B.4 sanctioned exception to REQ-WC13-021).
+// the Model Policy view carries EXACTLY TWO scoped write affordances — the plan_type
+// selector (POST /model-policy/plan-type) and the performance_tier selector (POST
+// /model-policy/tier), unified on one page. No OTHER field is writable, there is no
+// hx-post, and every <form> in the <main> region targets its scoped persist endpoint.
+// Both selectors re-apply the tier profile to the shipped agent .md frontmatter.
+// (SPEC-MODEL-TIER-PLANTYPE-001 §B.4 sanctioned exception to REQ-WC13-021, broadened
+// from one selector to two when the tier selector was unified onto the same page.)
 func TestModelPolicyView_ScopedWriteInvariant(t *testing.T) {
 	body := getModelPolicy(t, t.TempDir()).Body.String()
 	mainStart := strings.Index(body, "<main")
@@ -133,22 +134,28 @@ func TestModelPolicyView_ScopedWriteInvariant(t *testing.T) {
 	}
 	mainRegion := body[mainStart:mainEnd]
 
-	// Exactly one <form> in the model-policy content region — the plan_type selector.
-	if n := strings.Count(mainRegion, "<form"); n != 1 {
-		t.Errorf("<main> region <form> count = %d, want 1 (only the scoped plan_type selector)", n)
+	// Exactly two <form>s in the model-policy content region — plan_type + tier selectors.
+	if n := strings.Count(mainRegion, "<form"); n != 2 {
+		t.Errorf("<main> region <form> count = %d, want 2 (plan_type + performance_tier selectors)", n)
 	}
-	// That form MUST target the scoped persist endpoint, never the page route.
+	// Both forms MUST target their scoped persist endpoints, never the page route.
 	if !strings.Contains(mainRegion, `action="/model-policy/plan-type"`) {
 		t.Error("the plan_type selector form must POST to /model-policy/plan-type (scoped write path)")
 	}
-	// The single writable control is the plan_type field — no other field name is
-	// enrolled in a write path.
+	if !strings.Contains(mainRegion, `action="/model-policy/tier"`) {
+		t.Error("the performance_tier selector form must POST to /model-policy/tier (scoped write path)")
+	}
+	// The two writable controls are plan_type + performance_tier — no other field name
+	// is enrolled in a write path.
 	if !strings.Contains(mainRegion, `name="plan_type"`) {
 		t.Error("the scoped selector must expose the plan_type field")
 	}
-	// No htmx post affordance anywhere in the content region (D2 uses a plain form).
+	if !strings.Contains(mainRegion, `name="performance_tier"`) {
+		t.Error("the scoped selector must expose the performance_tier field")
+	}
+	// No htmx post affordance anywhere in the content region (both selectors use plain forms).
 	if strings.Contains(mainRegion, "hx-post") {
-		t.Error("model-policy <main> region must not carry an hx-post affordance (D2 scope is a plain form)")
+		t.Error("model-policy <main> region must not carry an hx-post affordance (scope is plain forms)")
 	}
 }
 
