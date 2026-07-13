@@ -156,6 +156,8 @@ See [Subcommand Classification matrix](../../rules/moai/workflow/spec-workflow.m
 
 **Purpose**: Insert tags into files.
 
+**<5-item orchestrator-direct rule**: Where the pending tag-insertion set is fewer than 5 items, the Pass 3 batch edit is performed orchestrator-direct (no Agent() spawn) — an agent spawn does not amortize for so few edits. Sets of 5 or more items keep the batch-edit agent delegation.
+
 **Steps**:
 1. One Edit call per file
 2. All tags for a given file inserted in single operation
@@ -239,7 +241,7 @@ During DDD ANALYZE phase:
 - Phase 0: Explore subagent (codebase discovery, language detection, project context loading)
 - Pass 1: Explore subagent or a per-spawn `Agent(general-purpose)` agent with backend scope (full file scan, priority queue generation)
 - Pass 2: a per-spawn `Agent(general-purpose)` agent with backend scope (selective deep read, tag description generation)
-- Pass 3: a per-spawn `Agent(general-purpose)` agent with backend scope (batch edit, tag insertion)
+- Pass 3: a per-spawn `Agent(general-purpose)` agent with backend scope (batch edit, tag insertion); pending sets of fewer than 5 items are edited orchestrator-direct (no spawn)
 
 
 ---

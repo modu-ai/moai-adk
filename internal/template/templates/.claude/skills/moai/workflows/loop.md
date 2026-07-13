@@ -177,7 +177,7 @@ Step 5.5 - Pre-Fix MX Context Scan:
 
 Step 6 - Fix Execution:
 - [HARD] Before each fix: TaskUpdate to change item to in_progress
-- [HARD] Agent delegation mandate: ALL fix tasks MUST be delegated to specialized agents. NEVER execute fixes directly.
+- [HARD] Agent delegation mandate (Level 2+): ALL Level 2 and above fix tasks MUST be delegated to specialized agents. NEVER execute Level 2+ fixes directly. Level 1 (import sorting, whitespace, formatting) is exempt: the orchestrator runs the language's deterministic formatter command directly, without an Agent() spawn (the same Level-1 orchestrator-direct exception as fix.md Phase 3).
 
 Agent selection by issue type (domain expertise injected per-spawn per `.claude/rules/moai/workflow/archived-agent-rejection.md` §C):
 - Type errors, logic bugs: manager-develop subagent (or orchestrator verification batch)
