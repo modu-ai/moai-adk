@@ -20,7 +20,7 @@ code_copied: "Copied"
 # Claude Design handoff — TOC / landing / 404
 toc_label: "On this page"
 hero_eyebrow: "Agentic Development Kit"
-hero_title: 'An AI development environment<br>for <span class="clay">quality code</span>'
+hero_title: 'An AI development environment for <span class="clay">quality code</span>'
 hero_lead: "MoAI-ADK is a Go-based development framework where the SPEC-First methodology and 10 dedicated AI agents work together. New to AI? No problem — we guide you down the easiest path."
 hero_cta_start: "Get started in 30 seconds"
 hero_cta_browse: "Browse commands"

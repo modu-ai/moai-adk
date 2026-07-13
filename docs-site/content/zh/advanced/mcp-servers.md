@@ -220,7 +220,6 @@ MCP 服务器在项目根目录的 `.mcp.json` 文件中配置。
 - [技能指南](/zh/advanced/skill-guide) - 技能与 MCP 工具的关系
 - [智能体指南](/zh/advanced/agent-guide) - 智能体对 MCP 工具的运用
 - [CLAUDE.md 指南](/zh/advanced/claude-md-guide) - MCP 相关配置参考
-- [Google Stitch 指南](/zh/advanced/stitch-guide) - 基于 AI 的 UI/UX 设计工具详细用法
 
 {{< callout type="info" >}}
 **提示**：Context7 在参考最新库文档时最为有用。引入新框架或升级到最新版本时启用 Context7，就能得到准确的代码。

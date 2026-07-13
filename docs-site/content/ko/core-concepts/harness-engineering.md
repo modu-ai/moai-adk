@@ -51,7 +51,7 @@ graph TB
 | 컴포넌트 | 설명 | 명령어 |
 |----------|------|--------|
 | **Self-Verify Loop** | 에이전트가 코드 작성 → 테스트 → 실패 → 수정 → 통과 사이클을 자율적으로 반복 | [`/moai loop`](/ko/utility-commands/moai-loop) |
-| **Context Map** | 코드베이스 아키텍처 맵과 문서를 항상 에이전트에게 제공 | [`/moai codemaps`](/ko/quality-commands/moai-codemaps) |
+| **Context Map** | 코드베이스 아키텍처 맵과 문서를 항상 에이전트에게 제공 | [`/moai codemaps`](/ko/utility-commands/moai-codemaps) |
 | **Session Persistence** | `progress.md`가 세션 간 완료된 단계를 추적하여 중단된 작업을 자동 재개 | [`/moai run SPEC-XXX`](/ko/workflow-commands/moai-run) |
 | **Failing Checklist** | 실행 시작 시 모든 수락 기준을 대기 태스크로 등록하고 구현 완료 시 체크 | [`/moai run SPEC-XXX`](/ko/workflow-commands/moai-run) |
 | **Language-Agnostic** | 16개 언어 지원: 언어를 자동 감지하고 올바른 LSP/린터/테스트/커버리지 도구 선택 | 모든 워크플로우 |

@@ -67,8 +67,6 @@ flowchart TD
 | 주제 | 설명 |
 |------|------|
 | [MCP 서버 활용](/ko/advanced/mcp-servers) | 외부 도구 연결 프로토콜 |
-| [Pencil 가이드](/ko/advanced/pencil-guide) | 디자인 협업 도구 연동 |
-| [Google Stitch 가이드](/ko/advanced/stitch-guide) | AI 기반 UI/UX 디자인 생성 도구 |
 
 {{< callout type="info" >}}
 각 문서는 독립적으로 읽을 수 있습니다. 다만 전체 아키텍처를 체계적으로 이해하고 싶다면 **스킬 가이드 → 에이전트 가이드 → 빌더 에이전트** 순서를 권합니다 — 지식 모듈에서 수행자로, 수행자에서 생성기로 이어지는 흐름이 하네스의 재귀 구조를 그대로 보여주기 때문입니다.

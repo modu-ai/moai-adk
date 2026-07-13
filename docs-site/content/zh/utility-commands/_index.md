@@ -23,7 +23,7 @@ v3 的第二大支柱 **智能体回路工程** 实际运转的地方就是本�
 | `/moai loop` | 迭代修复回路 | 反复执行诊断 → 修复 → 验证 | 想一次性解决多个错误时 |
 | `/moai fix` | 一次性自动修复 | 诊断 → 修复 → 完成(1 回) | 想快速修复 lint 错误或类型错误时 |
 | `/moai clean` | 移除死代码 | 静态分析 → 使用图 → 安全移除 | 想清理未使用代码时 |
-| `/moai mx` | @MX 标签扫描 | 3 阶段扫描 → 自动插入标签 | 想为代码添加 AI 上下文注解时 |
+| `/moai codemaps` | 架构文档生成 | 代码库扫描 → 自动生成结构文档 | 想生成项目架构文档时 |
 | `/moai feedback` | 提交反馈 | 自动创建 GitHub Issue | 想向 MoAI-ADK 提交 Bug 报告或改进建议时 |
 
 ## 命令关系图
@@ -38,12 +38,12 @@ flowchart TD
     B --> F["/moai loop<br/>迭代修复回路"]
     B --> G["/moai fix<br/>一次性自动修复"]
     C --> H["/moai clean<br/>移除死代码"]
-    C --> I["/moai mx<br/>@MX 标签扫描"]
+    C --> I["/moai codemaps<br/>架构文档生成"]
     D --> J["/moai feedback<br/>提交反馈"]
 
     E -->|内部使用| F
     F -->|只执行 1 回则为| G
-    H -->|与审查一起| I
+    H -->|清理后重新生成| I
 ```
 
 {{< callout type="info" >}}
@@ -54,6 +54,6 @@ flowchart TD
 - 代码错误很多,想反复修复 → `/moai loop`
 - 只想快速修复简单的 lint 错误 → `/moai fix`
 - 想清理未使用的代码 → `/moai clean`
-- 想为代码打标签让 AI 更好地理解 → `/moai mx`
+- 想生成项目架构文档 → `/moai codemaps`
 - MoAI-ADK 本身有问题 → `/moai feedback`
 {{< /callout >}}

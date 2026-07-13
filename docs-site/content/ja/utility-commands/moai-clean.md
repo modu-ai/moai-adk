@@ -204,5 +204,4 @@ Git で元に戻せます。MoAI は依存関係の逆順で除去してテス�
 ## 関連ドキュメント
 
 - [/moai fix - ワンショット自動修正](/utility-commands/moai-fix)
-- [/moai mx - @MX タグスキャン](/utility-commands/moai-mx)
-- [/moai review - コードレビュー](/quality-commands/moai-review)
+- [/moai codemaps - アーキテクチャドキュメント生成](/utility-commands/moai-codemaps)

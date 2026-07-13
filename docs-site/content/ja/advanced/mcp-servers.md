@@ -220,7 +220,6 @@ MCP ツールを使用するには `permissions.allow` に登録が必要です�
 - [スキルガイド](/ja/advanced/skill-guide) - スキルと MCP ツールの関係
 - [エージェントガイド](/ja/advanced/agent-guide) - エージェントの MCP ツール活用
 - [CLAUDE.md ガイド](/ja/advanced/claude-md-guide) - MCP 関連設定の参照
-- [Google Stitch ガイド](/ja/advanced/stitch-guide) - AI ベースの UI/UX デザインツール詳細活用法
 
 {{< callout type="info" >}}
 **ヒント**: Context7 は最新のライブラリドキュメントを参照するときに最も有用です。新しいフレームワークを導入したり最新バージョンにアップグレードするとき、Context7 を有効化すれば正確なコードが得られます。

@@ -204,5 +204,4 @@ flowchart TD
 ## 相关文档
 
 - [/moai fix - 一次性自动修复](/utility-commands/moai-fix)
-- [/moai mx - @MX 标签扫描](/utility-commands/moai-mx)
-- [/moai review - 代码审查](/quality-commands/moai-review)
+- [/moai codemaps - 架构文档生成](/utility-commands/moai-codemaps)

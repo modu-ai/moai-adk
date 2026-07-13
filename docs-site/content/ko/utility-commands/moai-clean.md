@@ -204,5 +204,4 @@ Git으로 되돌릴 수 있습니다. MoAI는 의존성 역순으로 제거하�
 ## 관련 문서
 
 - [/moai fix - 일회성 자동 수정](/utility-commands/moai-fix)
-- [/moai mx - @MX 태그 스캔](/utility-commands/moai-mx)
-- [/moai review - 코드 리뷰](/quality-commands/moai-review)
+- [/moai codemaps - 아키텍처 문서 생성](/utility-commands/moai-codemaps)

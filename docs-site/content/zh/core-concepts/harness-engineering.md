@@ -51,7 +51,7 @@ graph TB
 | 组件 | 说明 | 命令 |
 |----------|------|--------|
 | **Self-Verify Loop** | 智能体自主重复编码 → 测试 → 失败 → 修复 → 通过的循环 | [`/moai loop`](/zh/utility-commands/moai-loop) |
-| **Context Map** | 始终向智能体提供代码库架构图与文档 | [`/moai codemaps`](/zh/quality-commands/moai-codemaps) |
+| **Context Map** | 始终向智能体提供代码库架构图与文档 | [`/moai codemaps`](/zh/utility-commands/moai-codemaps) |
 | **Session Persistence** | `progress.md` 跨会话追踪已完成步骤，自动恢复中断的工作 | [`/moai run SPEC-XXX`](/zh/workflow-commands/moai-run) |
 | **Failing Checklist** | 执行开始时将所有验收标准注册为待办任务，实现完成后逐项勾选 | [`/moai run SPEC-XXX`](/zh/workflow-commands/moai-run) |
 | **Language-Agnostic** | 支持 16 种语言：自动检测语言并选择正确的 LSP/lint/测试/覆盖率工具 | 所有工作流 |

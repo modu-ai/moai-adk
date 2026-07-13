@@ -5,20 +5,15 @@ main:
 
   - name:
       ko: 책 — 실전 에이전틱 코딩
-      en: Book — Hands-on Agentic Coding
-      ja: 書籍 — 実戦エージェンティックコーディング
-      zh: 图书 — 实战代理式编码
-    ref: /book/
+    ref: https://book.mo.ai.kr
     icon: book
     defaultOpen: false
     external: true
+    ko_only: true
     sub:
       - name:
           ko: 랜딩 페이지
-          en: Landing Page
-          ja: ランディングページ
-          zh: 着陆页
-        ref: /book/
+        ref: https://book.mo.ai.kr
         external: true
 
   - name:
@@ -227,6 +222,12 @@ main:
           zh: /moai
         ref: /utility-commands/moai
       - name:
+          ko: /moai goal
+          en: /moai goal
+          ja: /moai goal
+          zh: /moai goal
+        ref: /utility-commands/moai-goal
+      - name:
           ko: /moai loop
           en: /moai loop
           ja: /moai loop
@@ -245,79 +246,17 @@ main:
           zh: /moai clean
         ref: /utility-commands/moai-clean
       - name:
-          ko: /moai mx
-          en: /moai mx
-          ja: /moai mx
-          zh: /moai mx
-        ref: /utility-commands/moai-mx
+          ko: /moai codemaps
+          en: /moai codemaps
+          ja: /moai codemaps
+          zh: /moai codemaps
+        ref: /utility-commands/moai-codemaps
       - name:
           ko: /moai feedback
           en: /moai feedback
           ja: /moai feedback
           zh: /moai feedback
         ref: /utility-commands/moai-feedback
-
-  - name:
-      ko: 품질 명령어
-      en: Quality Commands
-      ja: 品質コマンド
-      zh: 质量命令
-    ref: /quality-commands
-    icon: check_circle
-    defaultOpen: true
-    sub:
-      - name:
-          ko: /moai gate
-          en: /moai gate
-          ja: /moai gate
-          zh: /moai gate
-        ref: /quality-commands/moai-gate
-      - name:
-          ko: /moai review
-          en: /moai review
-          ja: /moai review
-          zh: /moai review
-        ref: /quality-commands/moai-review
-      - name:
-          ko: /moai codemaps
-          en: /moai codemaps
-          ja: /moai codemaps
-          zh: /moai codemaps
-        ref: /quality-commands/moai-codemaps
-
-  - name:
-      ko: 데이터베이스 스키마 관리
-      en: Database Schema Management
-      ja: データベーススキーマ管理
-      zh: 数据库架构管理
-    ref: /db
-    icon: database
-    defaultOpen: true
-    sub:
-      - name:
-          ko: 시작하기
-          en: Getting Started
-          ja: 始める
-          zh: 入门
-        ref: /db/getting-started
-      - name:
-          ko: 스키마 동기화
-          en: Schema Sync
-          ja: スキーマ同期
-          zh: 架构同步
-        ref: /db/schema-sync
-      - name:
-          ko: 마이그레이션 패턴
-          en: Migration Patterns
-          ja: マイグレーションパターン
-          zh: 迁移模式
-        ref: /db/migration-patterns
-      - name:
-          ko: 프로젝트 DB 디렉토리
-          en: Project DB Directory
-          ja: プロジェクト DB ディレクトリ
-          zh: 项目数据库目录
-        ref: /db/project-db-directory
 
   - name:
       ko: 멀티 LLM
@@ -490,18 +429,6 @@ main:
           ja: MCPサーバー活用ガイド
           zh: MCP 服务器使用指南
         ref: /advanced/mcp-servers
-      - name:
-          ko: Pencil 가이드
-          en: Pencil Guide
-          ja: Pencil ガイド
-          zh: Pencil 指南
-        ref: /advanced/pencil-guide
-      - name:
-          ko: Google Stitch 가이드
-          en: Google Stitch Guide
-          ja: Google Stitch ガイド
-          zh: Google Stitch 指南
-        ref: /advanced/stitch-guide
 
   - name:
       ko: 참여하기

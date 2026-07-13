@@ -224,5 +224,5 @@ MVC、Clean Architecture、Hexagonal、Layered Architecture など主要なパ�
 
 ## 関連ドキュメント
 
-- [/moai review - コードレビュー](/quality-commands/moai-review)
-- [/moai mx - @MX タグスキャン](/utility-commands/moai-mx)
+- [/moai clean - デッドコード除去](/utility-commands/moai-clean)
+- [/moai feedback - フィードバック提出](/utility-commands/moai-feedback)

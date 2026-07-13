@@ -20,7 +20,7 @@ code_copied: "已复制"
 # Claude Design handoff — TOC / landing / 404
 toc_label: "本页目录"
 hero_eyebrow: "Agentic Development Kit"
-hero_title: '为<span class="clay">高质量代码</span>而生的<br>AI 开发环境'
+hero_title: '为<span class="clay">高质量代码</span>而生的 AI 开发环境'
 hero_lead: "MoAI-ADK 是一个基于 Go 的开发框架，SPEC-First 方法论与 10 个专职 AI 智能体协同工作。第一次接触 AI 也没关系 — 我们带你走最容易的路。"
 hero_cta_start: "30 秒快速上手"
 hero_cta_browse: "浏览命令"

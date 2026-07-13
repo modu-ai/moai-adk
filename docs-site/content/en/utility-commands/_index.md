@@ -23,7 +23,7 @@ This section is where v3's second pillar, **agentic loop engineering**, actually
 | `/moai loop` | Iterative fix loop | Repeats diagnose → fix → verify | When you want to knock out many errors at once |
 | `/moai fix` | One-shot auto-fix | Diagnose → fix → done (once) | When you want to fix lint or type errors quickly |
 | `/moai clean` | Dead-code removal | Static analysis → usage graph → safe removal | When you want to clean up unused code |
-| `/moai mx` | @MX tag scan | 3-stage scan → automatic tag insertion | When you want to add AI-context annotations to code |
+| `/moai codemaps` | Architecture doc generation | Codebase scan → auto-generated structure docs | When you want to produce project architecture docs |
 | `/moai feedback` | Submit feedback | Auto-creates a GitHub issue | When sending a bug report or improvement proposal to MoAI-ADK |
 
 ## Command Relationship Map
@@ -38,12 +38,12 @@ flowchart TD
     B --> F["/moai loop<br/>iterative fix loop"]
     B --> G["/moai fix<br/>one-shot auto-fix"]
     C --> H["/moai clean<br/>dead-code removal"]
-    C --> I["/moai mx<br/>@MX tag scan"]
+    C --> I["/moai codemaps<br/>architecture doc generation"]
     D --> J["/moai feedback<br/>submit feedback"]
 
     E -->|used internally| F
     F -->|run just once| G
-    H -->|together with review| I
+    H -->|regenerate after cleanup| I
 ```
 
 {{< callout type="info" >}}
@@ -54,6 +54,6 @@ flowchart TD
 - Lots of errors in the code you want fixed iteratively → `/moai loop`
 - Just want simple lint errors fixed fast → `/moai fix`
 - Want to clean up unused code → `/moai clean`
-- Want tags so the AI understands the code better → `/moai mx`
+- Want to produce project architecture docs → `/moai codemaps`
 - A problem with MoAI-ADK itself → `/moai feedback`
 {{< /callout >}}

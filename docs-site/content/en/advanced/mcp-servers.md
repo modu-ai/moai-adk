@@ -220,7 +220,6 @@ To use MCP tools, they must be registered in `permissions.allow`.
 - [Skill Guide](/en/advanced/skill-guide) - the relationship between skills and MCP tools
 - [Agent Guide](/en/advanced/agent-guide) - how agents use MCP tools
 - [CLAUDE.md Guide](/en/advanced/claude-md-guide) - MCP-related configuration reference
-- [Google Stitch Guide](/en/advanced/stitch-guide) - detailed usage of the AI-powered UI/UX design tool
 
 {{< callout type="info" >}}
 **Tip**: Context7 is most useful when referencing the latest library documentation. Enable Context7 when adopting a new framework or upgrading to the latest version to get accurate code.

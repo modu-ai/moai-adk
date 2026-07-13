@@ -67,8 +67,6 @@ flowchart TD
 | 主题 | 说明 |
 |------|------|
 | [MCP 服务器应用](/zh/advanced/mcp-servers) | 外部工具连接协议 |
-| [Pencil 指南](/zh/advanced/pencil-guide) | 设计协作工具集成 |
-| [Google Stitch 指南](/zh/advanced/stitch-guide) | 基于 AI 的 UI/UX 设计生成工具 |
 
 {{< callout type="info" >}}
 每篇文档均可独立阅读。不过如果想系统地理解整体架构，推荐按 **技能指南 → 智能体指南 → 构建器智能体** 的顺序阅读 — 从知识模块到执行者、再从执行者到生成器的脉络，正是 Harness 递归结构的直接体现。

@@ -224,5 +224,5 @@ flowchart TD
 
 ## 相关文档
 
-- [/moai review - 代码审查](/quality-commands/moai-review)
-- [/moai mx - @MX 标签扫描](/utility-commands/moai-mx)
+- [/moai clean - 移除死代码](/utility-commands/moai-clean)
+- [/moai feedback - 提交反馈](/utility-commands/moai-feedback)

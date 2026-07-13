@@ -13,15 +13,9 @@
 "utility-commands":
   title: "유틸리티 명령어"
   weight: 40
-"quality-commands":
-  title: "품질 명령어"
-  weight: 50
 design:
   title: "디자인 시스템"
   weight: 60
-db:
-  title: "데이터베이스 스키마 관리"
-  weight: 70
 "multi-llm":
   title: "멀티 LLM"
   weight: 80

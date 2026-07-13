@@ -3,13 +3,15 @@ index:
   display: "hidden"
 moai:
   title: "/moai"
+"moai-goal":
+  title: "/moai goal"
 "moai-loop":
   title: "/moai loop"
 "moai-fix":
   title: "/moai fix"
 "moai-clean":
   title: "/moai clean"
-"moai-mx":
-  title: "/moai mx"
+"moai-codemaps":
+  title: "/moai codemaps"
 "moai-feedback":
   title: "/moai feedback"

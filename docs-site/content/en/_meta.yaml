@@ -13,15 +13,9 @@
 "utility-commands":
   title: "Utility Commands"
   weight: 40
-"quality-commands":
-  title: "Quality Commands"
-  weight: 50
 design:
   title: "Design System"
   weight: 60
-db:
-  title: "Database Schema Management"
-  weight: 70
 worktree:
   title: "Git Worktree"
   weight: 90

@@ -51,7 +51,7 @@ graph TB
 | コンポーネント | 説明 | コマンド |
 |----------|------|--------|
 | **Self-Verify Loop** | エージェントがコード作成 → テスト → 失敗 → 修正 → 合格のサイクルを自律的に反復 | [`/moai loop`](/ja/utility-commands/moai-loop) |
-| **Context Map** | コードベースのアーキテクチャマップと文書を常にエージェントに提供 | [`/moai codemaps`](/ja/quality-commands/moai-codemaps) |
+| **Context Map** | コードベースのアーキテクチャマップと文書を常にエージェントに提供 | [`/moai codemaps`](/ja/utility-commands/moai-codemaps) |
 | **Session Persistence** | `progress.md` がセッション間で完了したステップを追跡し、中断した作業を自動再開 | [`/moai run SPEC-XXX`](/ja/workflow-commands/moai-run) |
 | **Failing Checklist** | 実行開始時にすべての受け入れ基準を待機タスクとして登録し、実装完了時にチェック | [`/moai run SPEC-XXX`](/ja/workflow-commands/moai-run) |
 | **Language-Agnostic** | 16言語をサポート: 言語を自動検出し、正しい LSP/リンター/テスト/カバレッジツールを選択 | すべてのワークフロー |

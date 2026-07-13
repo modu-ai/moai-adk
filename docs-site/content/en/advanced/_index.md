@@ -67,8 +67,6 @@ If `CLAUDE.md` is the project's constitution, settings.json is the permission bo
 | Topic | Description |
 |------|------|
 | [Using MCP Servers](/en/advanced/mcp-servers) | The external tool connection protocol |
-| [Pencil Guide](/en/advanced/pencil-guide) | Design collaboration tool integration |
-| [Google Stitch Guide](/en/advanced/stitch-guide) | AI-powered UI/UX design generation tool |
 
 {{< callout type="info" >}}
 Each document can be read independently. If you want a systematic understanding of the whole architecture, however, we recommend the order **Skill Guide → Agent Guide → Builder Agents** — the flow from knowledge modules to performers, and from performers to generators, mirrors the recursive structure of the harness itself.

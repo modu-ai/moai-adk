@@ -51,7 +51,7 @@ Each component maps to a specific MoAI command:
 | Component | Description | Command |
 |----------|------|--------|
 | **Self-Verify Loop** | The agent autonomously repeats the write code → test → fail → fix → pass cycle | [`/moai loop`](/en/utility-commands/moai-loop) |
-| **Context Map** | Always provides the agent with an architecture map and docs of the codebase | [`/moai codemaps`](/en/quality-commands/moai-codemaps) |
+| **Context Map** | Always provides the agent with an architecture map and docs of the codebase | [`/moai codemaps`](/en/utility-commands/moai-codemaps) |
 | **Session Persistence** | `progress.md` tracks completed steps across sessions and auto-resumes interrupted work | [`/moai run SPEC-XXX`](/en/workflow-commands/moai-run) |
 | **Failing Checklist** | Registers every acceptance criterion as a pending task at run start and checks it off on completion | [`/moai run SPEC-XXX`](/en/workflow-commands/moai-run) |
 | **Language-Agnostic** | 16-language support: auto-detects the language and selects the right LSP/linter/test/coverage tools | Every workflow |

@@ -6,7 +6,7 @@
   {{- range hugo.Data.menu.main.main }}
     {{- /* skip a section whose own index page is absent for this language
            (draft-only multi-llm/contributing in en/ja/zh production); book is external */ -}}
-    {{- if or .external (site.GetPage .ref) -}}
+    {{- if and (or .external (site.GetPage .ref)) (or (not .ko_only) (eq $.Site.Language.Lang "ko")) -}}
     {{- $hasCurrent := false -}}
     {{- range .sub -}}
       {{- $subhref := partial "menu/href" . -}}
@@ -50,7 +50,7 @@
           {{- $href := partial "menu/href" . -}}
           {{- $isActive := and .ref (eq (printf "%s/" (trim $href "/")) (trim $current "/" | printf "%s/")) -}}
           <li>
-            <a class="cw-side-link{{ if $isActive }} active{{ end }}" href="{{ $href }}">
+            <a class="cw-side-link{{ if $isActive }} active{{ end }}" href="{{ $href }}"{{ if .external }} target="_blank" rel="noopener noreferrer"{{ end }}>
               <span class="cw-side-link-name">
                 <span class="cw-side-link-text">{{ partial "menu/name" .name }}{{- if .count }} <span class="cw-side-count">({{ .count }})</span>{{ end }}</span>
                 {{- if .badge }}<span class="cw-side-badge">{{ .badge }}</span>{{ end }}
