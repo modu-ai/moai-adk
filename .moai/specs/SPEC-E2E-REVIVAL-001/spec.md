@@ -2,7 +2,7 @@
 id: SPEC-E2E-REVIVAL-001
 title: "Revive /moai e2e as a multi-platform, token-minimized E2E testing subsystem (web + mobile + desktop)"
 version: "0.1.2"
-status: draft
+status: in-progress
 created: 2026-07-13
 updated: 2026-07-13
 author: manager-spec
