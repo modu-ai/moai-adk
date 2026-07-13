@@ -469,6 +469,13 @@ html[lang="zh"] body { font-family: "Pretendard", "Noto Sans CJK SC", system-ui,
   font-size: 12.5px; color: var(--fg-2); line-height: 1.45;
   letter-spacing: var(--tracking-body); margin: -2px 0 1px; text-wrap: pretty;
 }
+/* SPEC-WEBCONF-SIMPLIFY-001 M4 (REQ-WC-015, design.md §H.3): field-level description
+   rendered from FieldDef.Description (fieldDesc.* i18n key), muted helper text below
+   the label. Distinct from .field__desc (the legacy label hint). */
+.field-description {
+  font-size: 11.5px; color: var(--fg-3); line-height: 1.4;
+  letter-spacing: var(--tracking-body); margin: -4px 0 2px; text-wrap: pretty;
+}
 
 /* inputs + selects */
 .input, .select {

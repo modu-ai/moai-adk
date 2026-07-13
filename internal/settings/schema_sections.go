@@ -127,10 +127,10 @@ func withSelect(f FieldDef, keyPrefix string, values []string, emptyLabel, empty
 // 선택). 나머지 ~53개 검증 전용 키는 M4 다이어트에서 제거되었다 (struct 멤버와
 // yaml 로드는 보존 — backward compat).
 func gitStrategyFields() []FieldDef {
-	fields := []FieldDef{
-		withSelect(typedField(SectionGitStrategy, "git_strategy", "mode", TypeSelect),
-			"f.git_strategy.mode.opt.", []string{"manual", "personal", "team"}, "", ""),
-	}
+	modeField := withSelect(typedField(SectionGitStrategy, "git_strategy", "mode", TypeSelect),
+		"f.git_strategy.mode.opt.", []string{"manual", "personal", "team"}, "", "")
+	modeField.Description = "fieldDesc.git_strategy.mode"
+	fields := []FieldDef{modeField}
 	// merge_method 옵션은 config.ValidMergeMethods() SSOT에서 정렬 파생한다
 	// (REQ-WC14-011 — 리터럴 재선언 금지; B3 — map-range 비결정성 제거를 위해 정렬
 	// 후 사용. 정렬은 파생이지 재선언이 아님). 3개 profile 공유.
@@ -162,7 +162,9 @@ func gitStrategyFields() []FieldDef {
 func llmFields() []FieldDef {
 	var fields []FieldDef
 	for _, tier := range []string{"high", "medium", "low", "fable"} {
-		fields = append(fields, typedField(SectionLLM, "llm", "glm.models."+tier, TypeText))
+		f := typedField(SectionLLM, "llm", "glm.models."+tier, TypeText)
+		f.Description = "fieldDesc.llm.glm.models." + tier
+		fields = append(fields, f)
 	}
 	return fields
 }
@@ -178,6 +180,10 @@ func qualityExtraFields() []FieldDef {
 		return typedField(SectionQualityExtras, "quality", key, typ)
 	}
 	return []FieldDef{
+		// SPEC-WEBCONF-SIMPLIFY-001 M4 (REQ-WC-004 / AC-WC-004): single enable/disable
+		// toggle for the quality-extras feature, rendered on the launch tab (hand-built
+		// in fieldsetLaunch). The detailed DDD-gate fields below stay baked/hidden.
+		q("quality_extras_enabled", TypeBool),
 		q("ddd_settings.characterization_tests", TypeBool),
 		q("ddd_settings.behavior_snapshots", TypeBool),
 		q("ddd_settings.preserve_before_improve", TypeBool),

@@ -100,13 +100,27 @@ M3 removed the 11 tabs from the web UI and reclassified the 8 former seam sectio
 
 **Build evidence**: `make build` exit 0; `go build ./...` exit 0; `GOOS=windows GOARCH=amd64 go build ./...` exit 0; `go test ./internal/web/... ./internal/settings/...` all PASS; golangci-lint 0 issues; C-HRA-008 boundary 0 matches.
 
+### M4 evidence (simplified surfaces + description mechanism)
+
+M4 delivers (1) the per-option description rendering mechanism (REQ-WC-015, design.md §H option (a)), (2) verifies the already-simplified git_strategy/llm surfaces (REQ-WC-016), and (3) the quality_extras enable/disable toggle on the launch tab (REQ-WC-004 / AC-WC-004).
+
+**Description mechanism (REQ-WC-015, en-only staging — AC-WC-022/023 partial-PASS)**: `FieldDef.Description string` added (schema.go) carrying the `fieldDesc.<sectionID>.<fieldID>` i18n key; `fieldDescription(f)` templ helper renders `.field-description` (conditional on Description != "") in schemaToggleRow + schemaSelectRow; per-option `<option data-i18n-title=...>` (native title tooltip) + app.js applyI18n resolves `data-i18n-title`; `.field-description` CSS; en i18n keys added (fieldDesc.git_strategy.mode + 3 options + fieldDesc.llm.glm.models.{high,medium,low,fable} + f.quality.quality_extras_enabled.{title,desc}); Description populated on git_strategy.mode + llm.glm.models.*. **Partial (en only)**: ko/ja/zh of all fieldDesc.* + agentfm descriptions + Description on remaining fields = M6.
+
+**git_strategy surface (REQ-WC-016 / AC-WC-024 — PASS)**: verified at M4 target — exactly mode + {manual,personal,team}.{merge_method,hooks.pre_push} (7 fields); no per-provider nesting. TestM4GitStrategySurface PASS.
+
+**llm surface (PASS)**: exactly glm.models.{high,medium,low,fable}; mode/team_mode read-only display. TestM4LLMSurface PASS.
+
+**quality_extras toggle on launch (REQ-WC-004 / AC-WC-004 — PASS)**: new quality_extras_enabled FieldDef + QualityConfig.QualityExtrasEnabled + applyQualityKey case; toggle hand-built in fieldsetLaunch. TestM4QualityExtrasToggleOnLaunch PASS. TestM4DescriptionElementRenders PASS.
+
+**Build evidence**: make build (templ + assets re-embedded) exit 0; go build exit 0; windows/amd64 cross-build exit 0; web/settings tests all PASS; golangci-lint 0 issues; C-HRA-008 boundary 0 matches.
+
 ### Remaining ACs (pending their owning milestone)
 
 | AC ID | Owning milestone | Status |
 |-------|------------------|--------|
 | AC-WC-001 / AC-WC-002 (6-tab render, removed tabs absent) | M3 | PASS (consoleTabs 6 entries; 11 removed tabs absent from render + route reclassified) |
 | AC-WC-003a / AC-WC-003b (config keys persist + ship from template) | M2 | PASS (M2 portion — keys present with baked values in `internal/template/templates/`) |
-| AC-WC-004 (quality_extras toggle on launch tab) | M4 | PENDING |
+| AC-WC-004 (quality_extras toggle on launch tab) | M4 | PASS (toggle renders on launch tab + persists via typed quality path) |
 | AC-WC-007 (tier-click auto-suggest writes via agentfm.Patch) | M5 | PENDING (backend accessor `TierSuggestedModelEffort` ready; UI wiring is M5) |
 | AC-WC-008 (closed-set validation) | M5 | PENDING (closed sets `V4EffortValues`/`V4ModelValues` already exist; validator wiring is M5) |
 | AC-WC-009 (deep doctrine preserved) | M8 | PENDING (no doctrine file touched in M1) |
@@ -126,9 +140,9 @@ M3 removed the 11 tabs from the web UI and reclassified the 8 former seam sectio
 ```yaml
 run_status: in-progress
 run_complete_at: null   # pending — run-phase not complete (M3 of 9 milestones)
-run_commit_sha: cca120c70   # latest run-phase commit (M3); M1 was 7b11d68bc, M2 was e0061ad34
+run_commit_sha: pending-backfill-m4   # latest run-phase commit (M4); M1=7b11d68bc, M2=e0061ad34, M3=cca120c70
 m1_to_mN_commit_strategy: per-milestone commit + push to main (Route A — Hybrid Trunk 1-person OSS)
-ac_pass_count: 10         # M1 (005,006,016,017,021) + M2 (003a,003b,015) + M3 (001,002) = 10 PASS
+ac_pass_count: 11         # M1 (005,006,016,017,021) + M2 (003a,003b,015) + M3 (001,002) + M4 (004) = 11 PASS; AC-WC-022/023/024 partial (en-only staging)
 ac_fail_count: 0
 ac_pass_with_debt_count: 1   # M2 merge_method blocker (§D.Δ row 4 squash→Squash outside closed set) — debt, not fail
 preserve_list_post_run_count: 20   # Option A — all 20 agent .md files under .claude/agents/{moai,harness}/ untouched
@@ -159,7 +173,12 @@ milestones:
     sha: cca120c70
     acs: [AC-WC-001, AC-WC-002, AC-WC-010]
     status: PASS
-  M4: { status: pending, owner: surviving-tab-surfaces }
+  M4:
+    subject: "feat(SPEC-WEBCONF-SIMPLIFY-001): M4 simplified surfaces + description rendering mechanism"
+    sha: pending-backfill-m4
+    acs: [AC-WC-004, AC-WC-024, AC-WC-022-partial, AC-WC-023-partial]
+    status: PASS-WITH-DEBT
+    debt: "AC-WC-022/023 (description mechanism) en-only — ko/ja/zh fieldDesc.* + agentfm descriptions + full Description population = M6"
   M5: { status: pending, owner: agentfm-ui-redesign }
   M6: { status: pending, owner: i18n-assets }
   M7: { status: pending, owner: test-fallout }

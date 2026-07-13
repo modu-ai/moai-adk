@@ -228,6 +228,8 @@ func applyQualityKey(q *models.QualityConfig, key, v string) error {
 		return fmt.Errorf("settings: unknown quality key %q", key)
 	}
 	switch key {
+	case "quality_extras_enabled":
+		q.QualityExtrasEnabled = b
 	case "ddd_settings.characterization_tests":
 		q.DDDSettings.CharacterizationTests = b
 	case "ddd_settings.behavior_snapshots":

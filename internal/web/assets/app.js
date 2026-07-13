@@ -203,6 +203,17 @@
         nodes[i].textContent = str;
       }
     }
+    // SPEC-WEBCONF-SIMPLIFY-001 M4 (REQ-WC-015): resolve data-i18n-title into the
+    // native title attribute — used by per-option <option> descriptions (design.md
+    // §H.3, zero custom interaction JS — native hover tooltip) + field descriptions.
+    var titled = document.querySelectorAll("[data-i18n-title]");
+    for (var j = 0; j < titled.length; j++) {
+      var tkey = titled[j].getAttribute("data-i18n-title");
+      var tstr = dict[tkey];
+      if (typeof tstr === "string" && tstr.length > 0) {
+        titled[j].setAttribute("title", tstr);
+      }
+    }
   }
 
   function persistLang(locale) {

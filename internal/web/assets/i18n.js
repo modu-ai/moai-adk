@@ -349,6 +349,16 @@ window.MOAI_I18N = {
     "f.security.sandbox.required.desc": "Require sandboxed execution.",
     "f.security.sandbox.docker_image.title": "Sandbox Docker image",
     "f.security.sandbox.docker_image.desc": "Docker image used for sandboxed execution.",
+    "f.quality.quality_extras_enabled.title": "Quality extras",
+    "f.quality.quality_extras_enabled.desc": "Enable the advanced quality-extras feature (DDD gates).",
+    "fieldDesc.git_strategy.mode": "Git workflow mode (manual, personal, or team).",
+    "fieldDesc.git_strategy.mode.option.manual": "Local-only git — no remote push.",
+    "fieldDesc.git_strategy.mode.option.personal": "GitHub individual — push to your fork.",
+    "fieldDesc.git_strategy.mode.option.team": "GitHub team — branch protection + reviews.",
+    "fieldDesc.llm.glm.models.high": "GLM model for the high (Opus-slot) tier.",
+    "fieldDesc.llm.glm.models.medium": "GLM model for the medium (Sonnet-slot) tier.",
+    "fieldDesc.llm.glm.models.low": "GLM model for the low (Haiku-slot) tier.",
+    "fieldDesc.llm.glm.models.fable": "GLM model for the Fable tier.",
   },
 
   ko: {

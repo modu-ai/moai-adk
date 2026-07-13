@@ -143,6 +143,7 @@ type FieldDef struct {
 	EmptyLabelKey string            // 빈 옵션 라벨의 i18n 키
 	Validate      func(string) bool // 검증 술어 (nil이면 항상 유효)
 	I18nKey       string            // 두 스토어가 해석하는 공유 i18n 키 prefix (예: "f.model")
+	Description   string            // REQ-WC-015 field-level description i18n key (fieldDesc.<sectionID>.<fieldID> convention, design.md §H.1); empty = no description rendered
 	Persist       PersistTarget     // 값 영속화 대상
 }
 
