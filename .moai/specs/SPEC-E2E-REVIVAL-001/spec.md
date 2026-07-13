@@ -1,7 +1,7 @@
 ---
 id: SPEC-E2E-REVIVAL-001
 title: "Revive /moai e2e as a multi-platform, token-minimized E2E testing subsystem (web + mobile + desktop)"
-version: "0.1.1"
+version: "0.1.2"
 status: draft
 created: 2026-07-13
 updated: 2026-07-13
@@ -24,6 +24,7 @@ related_specs: [SPEC-SUBCOMMAND-RETIRE-001, SPEC-HARNESS-EXECUTE-E2E-001]
 |---------|------|--------|--------|
 | 0.1.0 | 2026-07-13 | manager-spec | Plan-phase artifact set authored (Tier L, 6 artifacts: spec/plan/acceptance/research/design/progress). Baseline: retired workflow recovered via `git show c6b04d39c~1:.claude/skills/moai/workflows/e2e.md` (452 lines, web-only). Tool stack verified live on 2026-07-13 (see research.md §Sources). |
 | 0.1.1 | 2026-07-13 | manager-spec | Audit-fix pass (plan-audit iter-1 FAIL 0.80, D1-D12). User-resolved (orchestrator AskUserQuestion round): D-7 desktop-native fallback DEFERRED to follow-up (REQ-E2E-502 removed; AC-E2E-006 first narrowed to REQ-E2E-007 per D6); D-8 Maestro mobile default CONFIRMED; H-3 docs-site deferred. D2: REQ-E2E-302 extended to the full re-measured 12-file/24-site count-literal surface + post-change invariance grep. D3: pipe-broken table-cell commands relocated to acceptance.md § Executable Command Block (unescaped, non-vacuous). D4: AC-E2E-027 added for REQ-E2E-405. D5: §A baseline corrected — catalog.yaml core.agents is 8, not 9 (builder-harness lives under harness_generated). D7: lint gates target spec.md FILE (directory arg fails with ParseFailure). D8: SPEC-THIN-CMDS-001 dropped from related_specs (survives only as a commands_audit_test.go provenance comment). D9/D10/D12: AC-E2E-012 count prose, GEARS Event-driven labels, TestAgentFrontmatterAudit coverage claims corrected. |
+| 0.1.2 | 2026-07-13 | manager-spec | Residual-fix pass (plan-audit iter-2 PASS-WITH-DEBT 0.88, D13-D15). D13: REQ-E2E-302 surface re-derived TRULY repo-wide, restructured into rings — ring 2 template-distributed skill modules (4 template files / 8 sites; the 4 LOCAL siblings observed TWO generations stale at "8 retained agents / 7 MoAI-custom" [7 sites] — run-phase normalizes both trees), ring 3 README.md (3 sites; ko/ja/zh carry no ERE-family matches → locale-language review), ring 4 Go tier-profile display pin (NEW REQ-E2E-305 + C-7 carve-out — hard-coded display list means no test fails on omission), docs-site 10-file inventory EXPLICITLY deferred (§E). CMD-019-INV widened to 19 files (re-measured baseline 38) + CMD-019-INV-B added for the local 8/7-era family (baseline 7). AC-E2E-028 added (28 ACs). D14: G3/E7 recalibrated to "0 errors" (pre-existing StatusGitConsistency WARNING expected until sync close). D15: AC-E2E-008 in-cell command moved to CMD-008. |
 
 ---
 
@@ -89,16 +90,26 @@ Distribution is via the TEMPLATE SOURCE (`internal/template/templates/`) per the
 
 - **REQ-E2E-300** (Ubiquitous): The `/moai` SKILL.md Intent Router Priority 1 subcommand list shall regain an `**e2e**` row routing to the e2e workflow, in BOTH trees.
 - **REQ-E2E-301** (Ubiquitous): The `moai` SKILL.md frontmatter `description` subcommand enumeration AND the `CLAUDE.md` §3 `Subcommands:` line shall include `e2e`, in BOTH trees.
-- **REQ-E2E-302** (Ubiquitous): The retained-agent count-literal surface shall be updated consistently in BOTH trees. Re-measured surface (repo-wide grep `'10 retained agents|9 MoAI-custom|10-agent'`, executed 2026-07-13: 12 files / 24 sites; content-token anchored — line numbers drift between trees):
+- **REQ-E2E-302** (Ubiquitous): The retained-agent count-literal surface shall be updated consistently in BOTH trees. A TRULY repo-wide grep (`'10 retained agents|9 MoAI-custom|10-agent'` over CLAUDE.md, README*, .claude, internal/template, internal/web, docs-site; re-executed 2026-07-13) structures the surface into rings. **Ring 1 — doctrine tree (12 files / 24 sites**; content-token anchored — line numbers drift between trees):
   - `CLAUDE.md` §4 (3 sites each tree): the count text ("exactly 10 retained agents (9 MoAI-custom + 1 Explore)" → "exactly 11 retained agents (10 MoAI-custom + 1 Explore)"), the "flat-hierarchy 10-agent consolidation rationale" sentence (→ 11-agent), the "one of the 10 retained agents above" sentence (→ 11); PLUS a catalog table row and a Selection Decision Tree entry for `e2e-specialist` (appended as entry 12; manager-design remains entry 11)
   - `.claude/rules/moai/development/agent-authoring.md` (3 sites each tree): "exactly 10 retained agents" / "10-agent retention ceiling" family → 11
   - `.claude/rules/moai/development/agent-patterns.md` (3 sites each tree): incl. the MoAI-custom name enumeration (gains `e2e-specialist`) and "all 9 MoAI-custom agents" → 10
   - `.claude/rules/moai/development/model-policy.md` (1 site each tree): "All 9 MoAI-custom retained agents … 10-agent catalog" → 10 / 11-agent
   - `.claude/rules/moai/workflow/spec-workflow.md` (1 site each tree): "exactly 10 retained agents (named list)" → 11 + named list gains `e2e-specialist`
   - `.claude/agents/moai/manager-design.md` (1 site each tree): "10 retained agents" → 11
-  After the update, a repo-wide invariance grep for the stale literal family over the 12 touched files shall return 0 matches (acceptance.md CMD-019-INV).
+
+  **Ring 2 — template-distributed skill modules (4 template files / 8 sites)**: `internal/template/templates/.claude/skills/moai-foundation-core/SKILL.md` (1 site), `…/moai-foundation-core/modules/agents-reference.md` (3 sites — this file IS the extended agent-catalog reference and gains an `e2e-specialist` table row, not just count edits), `…/moai-foundation-core/modules/INDEX.md` (3 sites), `…/moai-foundation-quality/SKILL.md` (1 site). OBSERVED PRE-EXISTING DRIFT (recorded baseline, audit iter-2 D13): the 4 LOCAL siblings are TWO generations stale — they carry the "8 retained agents / 7 MoAI-custom / 8-agent" family (7 sites measured) and ZERO 10/9-family matches. Run-phase normalizes BOTH trees to the 11/10 target content.
+
+  **Ring 3 — repo-root user docs**: `README.md` (3 sites measured). `README.ko.md` / `README.ja.md` / `README.zh.md` carry NO ERE-family matches (measured 2026-07-13); run-phase reviews their locale-language agent-count claims manually and updates any found (4-locale parity obligation).
+
+  **Ring 4 — Go display surface**: owned by REQ-E2E-305 below.
+
+  **Deferred ring — docs-site**: count-literal corrections across the 10-file docs-site inventory are EXPLICITLY deferred with the docs-site follow-up (§E Exclusions).
+
+  After the update, invariance greps over the touched files shall return 0 matches: **CMD-019-INV** (19-file in-scope surface, 10/9-family; measured baseline 38) AND **CMD-019-INV-B** (local skill siblings, 8/7-era family; measured baseline 7) — acceptance.md § Executable Command Block.
 - **REQ-E2E-303** (Capability gate): **Where** natural-language input expresses e2e-testing intent in any `conversation_language`, the Priority 3 semantic classification shall route to the e2e workflow (cue exemplars added to the P3 list; semantic, not literal-match).
 - **REQ-E2E-304** (Ubiquitous): `internal/template/catalog.yaml` `core.agents` shall gain an `e2e-specialist` entry (name/tier/path/version authored manually; hash computed by `make build` → `gen-catalog-hashes --all`). NOTE: the hash generator only UPDATES existing entries — it does not create them (verified in `gen-catalog-hashes.go`).
+- **REQ-E2E-305** (Ubiquitous): The Go tier-profile display surface shall gain an `e2e-specialist` row so the agent renders in the `moai web` model-policy preview: `tierProfileAgentOrder` + its per-agent tier-profile entries in `internal/template/model_policy.go`, with the display pins reconciled in the SAME commit — `model_policy_test.go` length pin 10 → 11, the 60-cell assertion → 66 (2 plans × 11 agents × 3 tiers), the "10 retained agents" test comments → 11; `internal/web/modelpolicy_test.go` per-plan row expectation 10 → 11 (and its "10 retained agents × 3 tiers" comment). This is a DATA-ROW + test-pin change under the C-7 carve-out (no new runtime logic). Rationale (audit iter-2 D13): the display list is hard-coded, so NO test fails on omission — without this REQ, e2e-specialist would be silently absent from the preview (doctrine-vs-display drift).
 
 ### Group E — Distribution & CI reconciliation
 
@@ -126,20 +137,20 @@ Distribution is via the TEMPLATE SOURCE (`internal/template/templates/`) per the
 - **C-4** [HARD] Template neutrality: zero internal-development traces in template content (existing CI guard is the gate).
 - **C-5** [HARD] All CI-guard tests, `go test ./...`, and `golangci-lint run` green at close.
 - **C-6** Token economy: the workflow skill body itself stays lean (~≤450 lines, at parity with the retired baseline despite 3× platform scope — achieved by matrix-driven structure over per-tool prose duplication).
-- **C-7** No new Go runtime code: this SPEC ships markdown/YAML template artifacts + test-constant updates only. The `moai` Go binary gains no new subcommand (the `/moai e2e` surface is slash-command-routed, exactly like the retired version).
+- **C-7** No new Go runtime LOGIC: this SPEC ships markdown/YAML template artifacts + test-constant updates + ONE Go data-row addition (the REQ-E2E-305 tier-profile display row in `model_policy.go` — carve-out added at v0.1.2 so the display surface tracks the catalog). The `moai` Go binary gains no new subcommand and no new control flow (the `/moai e2e` surface is slash-command-routed, exactly like the retired version).
 
 ---
 
 ## §D Acceptance Criteria Map
 
-The full AC matrix (27 ACs), Given-When-Then scenarios, edge cases, and Definition of Done live in `acceptance.md`. Mapping summary:
+The full AC matrix (28 ACs), Given-When-Then scenarios, edge cases, and Definition of Done live in `acceptance.md`. Mapping summary:
 
 | REQ group | ACs |
 |-----------|-----|
 | A (detection/selection) | AC-E2E-001 … AC-E2E-006 |
 | B (token minimization) | AC-E2E-007 … AC-E2E-011 |
 | C (artifacts) | AC-E2E-012 … AC-E2E-016 |
-| D (router/catalog reachability) | AC-E2E-017 … AC-E2E-021 |
+| D (router/catalog reachability) | AC-E2E-017 … AC-E2E-021, AC-E2E-028 |
 | E (distribution/CI) | AC-E2E-022 … AC-E2E-025, AC-E2E-027 |
 | F (boundaries) | AC-E2E-026 |
 
@@ -169,9 +180,10 @@ The exclusions below are out of scope for this SPEC.
 
 - Pixel-diff baselines, perceptual diffing, and visual-regression storage are a separate capability; only plain screenshot/trace capture ships here.
 
-### Out of Scope — docs-site 4-locale documentation
+### Out of Scope — docs-site 4-locale documentation and count-literal corrections
 
 - adk.mo.ai.kr documentation for the revived subcommand is deferred to a follow-up (user decision 2026-07-13).
+- The deferral EXPLICITLY covers the docs-site stale agent-count literals as well (audit iter-2 D13(d)): repo-wide grep (2026-07-13) inventories 10 docs-site files carrying the "10 retained agents|9 MoAI-custom|10-agent" family — content/en: advanced/builder-agents.md, advanced/claude-md-guide.md, claude-code/agentic/sub-agents.md, core-concepts/harness-engineering.md, core-concepts/what-is-moai-adk.md, getting-started/faq.md, multi-llm/model-policy.md, workflow-commands/moai-harness.md; content/ko: claude-code/agentic/sub-agents.md; layouts/index.html. The follow-up owns updating these to the 11/10 catalog under the 4-locale parity obligation.
 
 ### Out of Scope — Native-desktop (non-Electron/non-Tauri) automation fallback
 

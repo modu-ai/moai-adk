@@ -22,7 +22,7 @@
 | AC | REQ | Criterion | Executable check |
 |----|-----|-----------|------------------|
 | AC-E2E-007 | REQ-E2E-100 | CLI-first rule stated as [HARD] in BOTH the workflow skill and the agent body, with the per-capability CLI-vs-MCP tool matrix in the workflow | `grep -n '\[HARD\]' <workflow> <agent>` includes the CLI-first rule; matrix has token-cost column |
-| AC-E2E-008 | REQ-E2E-101 | Agent body carries the bounded-tail + file-redirect contract (≤50 lines OR ≤2KB; artifacts dir; citable paths) | `grep -n '50 lines\|2KB' <agent>` ≥1; redirect example present |
+| AC-E2E-008 | REQ-E2E-101 | Agent body carries the bounded-tail + file-redirect contract (≤50 lines OR ≤2KB; artifacts dir; citable paths) | Run **CMD-008** → ≥1; redirect example present |
 | AC-E2E-009 | REQ-E2E-102 | MCP batching rule (snapshot/batch over per-element round-trips) present in agent body | Section present in agent §token-minimization ladder rung 3 |
 | AC-E2E-010 | REQ-E2E-103, REQ-E2E-104 | Report/trace/recording artifacts persist under `e2e/` dirs, paths cited not inlined; `--record` uses native toolchain facility | Workflow Phase 4/5 specify artifact dirs + path-citation rule; no MCP-screenshot-loop recording path |
 | AC-E2E-011 | REQ-E2E-105 | Every default platform path executable CLI-only; no MCP server hard dependency | Tool matrix: each platform's DEFAULT row is CLI-class; MCP rows all marked conditional |
@@ -43,9 +43,10 @@
 |----|-----|-----------|--------------------------------------|
 | AC-E2E-017 | REQ-E2E-300 | Priority 1 router row restored in both SKILL.md trees | `grep -cE '^- \*\*e2e\*\*' <both SKILL.md>` : 0 → 1 each |
 | AC-E2E-018 | REQ-E2E-301 | Frontmatter description enumeration + CLAUDE.md §3 Subcommands line include `e2e`, both trees | `grep -c 'e2e' <SKILL.md frontmatter block>` 0 → ≥1; run **CMD-018** : 0 → 2 |
-| AC-E2E-019 | REQ-E2E-302 | FULL count-literal surface updated (12 files / 24 sites, both trees — spec.md REQ-E2E-302 list): CLAUDE.md count text + 2 further §4 literal sites + catalog table row + decision-tree entry 12; agent-authoring/agent-patterns/model-policy/spec-workflow/manager-design literals moved to 11-total / 10-MoAI-custom; enumerations gain `e2e-specialist` | `grep -c '11 retained agents'` 0 → 1 per CLAUDE.md (2 across both trees); `grep -c 'e2e-specialist' <both CLAUDE.md>` 0 → ≥2 each (table row + decision tree); INVARIANCE: run **CMD-019-INV** → 0 stale literals over all 12 touched files (baseline 2026-07-13: 24) |
+| AC-E2E-019 | REQ-E2E-302 | FULL in-scope count-literal surface updated per the spec.md REQ-E2E-302 rings: ring 1 doctrine (12 files/24 sites, both trees) + ring 2 template-skill modules (4 template files/8 sites, incl. the agents-reference.md `e2e-specialist` table row) with the two-generations-stale LOCAL siblings (8/7-era, 7 sites) normalized + ring 3 README.md (3 sites; ko/ja/zh locale-language review) | `grep -c '11 retained agents'` 0 → 1 per CLAUDE.md (2 across both trees); `grep -c 'e2e-specialist' <both CLAUDE.md>` 0 → ≥2 each (table row + decision tree); INVARIANCE: run **CMD-019-INV** (19-file widened surface) → 0 (measured baseline 2026-07-13: 38) AND **CMD-019-INV-B** (local skill siblings, 8/7-era family) → 0 (measured baseline: 7) |
 | AC-E2E-020 | REQ-E2E-303 | Priority 3 semantic-classification cue line for e2e-testing intent added, both trees | `grep -n 'e2e' <SKILL.md P3 section>` ≥1 each; cue line phrased as semantic exemplar (not literal-match requirement) |
 | AC-E2E-021 | REQ-E2E-304 | catalog.yaml core.agents entry with real (non-placeholder) 64-hex hash | `grep -A4 'name: e2e-specialist' internal/template/catalog.yaml` shows tier/path/hash/version; hash matches `^[0-9a-f]{64}$`; `go test -run TestAllAgentsInCatalog ./internal/template/` exit 0 |
+| AC-E2E-028 | REQ-E2E-305 | Go tier-profile display surface includes `e2e-specialist` (renders in the `moai web` model-policy preview) with all pins reconciled | `grep -c 'e2e-specialist' internal/template/model_policy.go` ≥1 (order list + profile entries); run **CMD-028** → ≥2 `=== RUN` lines AND exit 0 with the updated pins (length 11; 66-cell assertion; per-plan rows 11); stale "10 retained agents" comments in both test files are covered by CMD-019-INV (they are in its 19-file scope) |
 
 ### Group E — Distribution & CI reconciliation
 
@@ -68,6 +69,10 @@
 Pipe-bearing commands cannot live inside markdown table cells: cell escaping (`\|`) turns regex alternation into a literal-pipe match and shell pipes into broken arguments, making the checks vacuous (audit iter-1 D3, empirically confirmed). Run these verbatim from the repo root:
 
 ```bash
+# CMD-008 — bounded-tail contract presence in agent body, both trees (expected output: >=1 per file)
+grep -cnE '50 lines|2KB' .claude/agents/moai/e2e-specialist.md \
+  internal/template/templates/.claude/agents/moai/e2e-specialist.md
+
 # CMD-015 — agent tools-line boundary (expected output: 0)
 grep -h '^tools:' .claude/agents/moai/e2e-specialist.md \
   internal/template/templates/.claude/agents/moai/e2e-specialist.md \
@@ -81,8 +86,8 @@ go test -run 'TestAllAgentsInCatalog|TestCatalogReferencesValid' ./internal/temp
 # CMD-018 — CLAUDE.md §3 Subcommands line gains e2e in both trees (expected output: 2)
 grep 'Subcommands:' CLAUDE.md internal/template/templates/CLAUDE.md | grep -c e2e
 
-# CMD-019-INV — stale count-literal invariance over the 12-file REQ-E2E-302 surface
-# (baseline 2026-07-13: 24; expected post-change output: 0)
+# CMD-019-INV — stale count-literal invariance over the 19-file widened REQ-E2E-302 surface
+# (rings 1-3 + Go test files; measured baseline 2026-07-13: 38; expected post-change output: 0)
 grep -rEn '10 retained agents|9 MoAI-custom|10-agent' \
   CLAUDE.md internal/template/templates/CLAUDE.md \
   .claude/rules/moai/development/agent-authoring.md \
@@ -95,6 +100,22 @@ grep -rEn '10 retained agents|9 MoAI-custom|10-agent' \
   internal/template/templates/.claude/rules/moai/workflow/spec-workflow.md \
   .claude/agents/moai/manager-design.md \
   internal/template/templates/.claude/agents/moai/manager-design.md \
+  internal/template/templates/.claude/skills/moai-foundation-core/SKILL.md \
+  internal/template/templates/.claude/skills/moai-foundation-core/modules/agents-reference.md \
+  internal/template/templates/.claude/skills/moai-foundation-core/modules/INDEX.md \
+  internal/template/templates/.claude/skills/moai-foundation-quality/SKILL.md \
+  README.md \
+  internal/template/model_policy_test.go \
+  internal/web/modelpolicy_test.go \
+  | wc -l
+
+# CMD-019-INV-B — local skill siblings, two-generations-stale 8/7-era family
+# (measured baseline 2026-07-13: 7; expected post-change output: 0)
+grep -rEn '8 retained agents|7 MoAI-custom|8-agent' \
+  .claude/skills/moai-foundation-core/SKILL.md \
+  .claude/skills/moai-foundation-core/modules/agents-reference.md \
+  .claude/skills/moai-foundation-core/modules/INDEX.md \
+  .claude/skills/moai-foundation-quality/SKILL.md \
   | wc -l
 
 # CMD-025 — template neutrality leak scan (expected output: 0)
@@ -108,9 +129,14 @@ ls internal/template/templates/.claude/skills \
 # Scope: the Detection section of the workflow skill (both trees are identical per AC-E2E-013)
 sed -n '/Phase 0/,/Phase 0.5/p' internal/template/templates/.claude/skills/moai/workflows/e2e.md \
   | grep -icE 'primary (language|framework)|first-class (language|framework)|enabled.*planned'
+
+# CMD-028 — Go tier-profile display pins provably RUN and pass with e2e-specialist row
+# (expected: first command prints >=2; second prints exit=0)
+go test -v -run 'TierProfile' ./internal/template/ ./internal/web/ | grep -c '^=== RUN'
+go test -run 'TierProfile' ./internal/template/ ./internal/web/; echo "exit=$?"
 ```
 
-Note: `grep -c` prints `0` and exits 1 on no-match — the EXPECTED OUTPUT VALUE is the criterion, not the exit code, for the absence checks (CMD-015, CMD-019-INV, CMD-025, CMD-026, CMD-027).
+Note: `grep -c` prints `0` and exits 1 on no-match — the EXPECTED OUTPUT VALUE is the criterion, not the exit code, for the absence checks (CMD-015, CMD-019-INV, CMD-019-INV-B, CMD-025, CMD-026, CMD-027). CMD-008 is a presence check (≥1 per file).
 
 ## Given-When-Then Scenarios
 
@@ -167,15 +193,15 @@ Note: `grep -c` prints `0` and exits 1 on no-match — the EXPECTED OUTPUT VALUE
 
 - G1: `go test ./internal/template/...` exit 0 AND `go test ./...` exit 0 (full suite — no partial-suite success claims)
 - G2: `golangci-lint run` exit 0
-- G3: `moai spec lint --strict .moai/specs/SPEC-E2E-REVIVAL-001/spec.md` → 0 findings (FILE argument — a directory argument fails with `ParseFailure … is a directory`; audit iter-1 D7)
+- G3: `moai spec lint --strict .moai/specs/SPEC-E2E-REVIVAL-001/spec.md` → 0 ERRORS (FILE argument — a directory argument fails with `ParseFailure … is a directory`; iter-1 D7). The pre-existing `StatusGitConsistency` WARNING — frontmatter `draft`/`in-progress` vs git-implied status from this SPEC's own `feat()` commits — is EXPECTED until sync close and does NOT fail this gate (iter-2 D14). Do NOT suppress it via `lint.skip`.
 - G4: Template neutrality: AC-E2E-025 grep → 0 AND neutrality CI tests green
 - G5: Subagent boundary: AC-E2E-015 greps → 0 violations
 - G6: Both-tree parity: AC-E2E-013/014 diffs → exit 0
 
 ## Definition of Done
 
-1. All 27 ACs PASS with executed-command evidence (verification-claim integrity: command + verbatim output per row; unexecuted rows are Gaps, not passes).
+1. All 28 ACs PASS with executed-command evidence (verification-claim integrity: command + verbatim output per row; unexecuted rows are Gaps, not passes).
 2. G1–G6 green in a single final verification batch.
 3. `make build` completed after the last template edit; embedded FS carries all three artifacts (proven transitively by G1's catalog tests).
 4. progress.md §E.2/§E.3 populated by manager-develop with the evidence table.
-5. No modifications outside the declared surface: 3 template artifacts + 3 local siblings + 2 SKILL.md + 2 CLAUDE.md + the count-literal rule/agent files ×2 trees (agent-authoring.md, agent-patterns.md, model-policy.md, spec-workflow.md, manager-design.md — per REQ-E2E-302) + catalog.yaml + 2 test constants (+ optional mirror-test registration per pre-flight #9 — audit-verified precedent: sibling top-level workflow files are NOT in `workflowOptMirroredPaths`, so the default resolution is no-register).
+5. No modifications outside the declared surface: 3 template artifacts + 3 local siblings + 2 SKILL.md + 2 CLAUDE.md + the ring-1 count-literal rule/agent files ×2 trees (agent-authoring.md, agent-patterns.md, model-policy.md, spec-workflow.md, manager-design.md) + the ring-2 skill-module files ×2 trees (moai-foundation-core SKILL.md / modules/agents-reference.md / modules/INDEX.md + moai-foundation-quality SKILL.md) + README.md (+ ko/ja/zh only if locale-language count claims are found) + the REQ-E2E-305 Go display surface (model_policy.go + model_policy_test.go + internal/web/modelpolicy_test.go) + catalog.yaml + 2 test constants (+ optional mirror-test registration per pre-flight #9 — audit-verified precedent: sibling top-level workflow files are NOT in `workflowOptMirroredPaths`, so the default resolution is no-register).
