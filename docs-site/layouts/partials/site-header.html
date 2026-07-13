@@ -1,8 +1,10 @@
 <header class="gdoc-header" role="banner">
   <div class="cw-header-inner">
-    <a class="gdoc-brand cw-brand" href="/">
-      <span class="cw-brand-name">{{ site.Title }}</span>
-      <span class="cw-brand-ver">{{ site.Params.version }}</span>
+    {{- /* 브랜드: 로고 이미지 + MoAI-ADK + docs pill (Claude Design handoff topbar) */ -}}
+    <a class="gdoc-brand cw-brand" href="{{ "/" | relLangURL }}">
+      <img class="cw-brand-logo" src="{{ "moai-logo.png" | relURL }}" alt="MoAI-ADK" width="30" height="30" />
+      <span class="cw-brand-name">MoAI-ADK</span>
+      <span class="cw-brand-tag">docs</span>
     </a>
     <div class="cw-nav-search">
       <button type="button" class="cw-search-input" data-search-trigger aria-label="{{ i18n "search_aria" }}">
@@ -12,6 +14,8 @@
       </button>
     </div>
     <div class="cw-nav-actions">
+      {{- /* 버전 pill — hugo.toml params.version SSOT */ -}}
+      <a class="cw-ver-pill" href="https://github.com/modu-ai/moai-adk-go/releases" target="_blank" rel="noopener noreferrer" title="{{ site.Params.version }}">{{ site.Params.version }}</a>
       {{- /* 언어 선택 — KO/EN/JA/CN 4-locale. 현재 페이지의 번역본으로 링크, 없으면 해당 언어 홈으로 fallback */ -}}
       {{- $page := .Root -}}
       {{- $labels := dict "ko" "KO" "en" "EN" "ja" "JA" "zh" "CN" -}}

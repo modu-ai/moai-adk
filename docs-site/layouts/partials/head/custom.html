@@ -1,12 +1,21 @@
 {{- /* 모두의 클로드 Design System — custom head
-       Brand font Pretendard(sans) + Goorm Sans Code(mono) — Claude Warm Editorial */ -}}
+       Brand font Pretendard(sans) + MaruBuri(title serif) + Goorm Sans Code(mono)
+       — Claude Design handoff (모두의클로드 DS, Clay/Cream/Ink) */ -}}
 <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin />
 <link rel="preconnect" href="https://statics.goorm.io" crossorigin />
+<link rel="preconnect" href="https://hangeul.pstatic.net" crossorigin />
 <link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css" />
 <link rel="stylesheet" crossorigin href="https://statics.goorm.io/fonts/GoormSansCode/v1.0.1/GoormSansCode.min.css" />
 {{- /* 콘텐츠 해시 캐시 버스팅 — CSS 변경 시 URL 자동 변경 → 브라우저/CDN 캐시 강제 무효화 */ -}}
 {{- $brandHash := hash.FNV32a (readFile "static/moai-brand.css") -}}
 {{- $designHash := hash.FNV32a (readFile "static/moai-design.css") -}}
+{{- $tokensHash := hash.FNV32a (readFile "static/moai-docs-tokens.css") -}}
+{{- $themeHash := hash.FNV32a (readFile "static/moai-docs-theme.css") -}}
+{{- $themeJsHash := hash.FNV32a (readFile "static/moai-docs-theme.js") -}}
 <link rel="stylesheet" href="{{ "moai-brand.css" | relURL }}?h={{ $brandHash }}" />
 <link rel="stylesheet" href="{{ "moai-design.css" | relURL }}?h={{ $designHash }}" />
+{{- /* Claude Design handoff tokens + theme — MUST load after moai-brand.css (FROZEN) */ -}}
+<link rel="stylesheet" href="{{ "moai-docs-tokens.css" | relURL }}?h={{ $tokensHash }}" />
+<link rel="stylesheet" href="{{ "moai-docs-theme.css" | relURL }}?h={{ $themeHash }}" />
+<script defer src="{{ "moai-docs-theme.js" | relURL }}?h={{ $themeJsHash }}"></script>
 <link rel="icon" type="image/png" href="{{ "moai-logo.png" | relURL }}" />

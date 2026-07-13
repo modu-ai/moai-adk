@@ -118,8 +118,8 @@
         {{- if .TableOfContents -}}
         {{- $hasHeadings := gt (len (findRE "<h[23]" .Content)) 0 -}}
         {{- if $hasHeadings -}}
-        <aside class="cw-toc" aria-label="이 페이지에서">
-          <h6>이 페이지에서</h6>
+        <aside class="cw-toc" aria-label="{{ i18n "toc_label" }}">
+          <h6>{{ i18n "toc_label" }}</h6>
           {{ .TableOfContents }}
         </aside>
         {{- end -}}

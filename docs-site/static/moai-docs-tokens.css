@@ -1,0 +1,332 @@
+/* MoAI Docs — 모두의클로드 Design System token port
+ * Source: Claude Design handoff bundle (design-system tokens/*.css, verbatim port)
+ * Load order: AFTER moai-brand.css (FROZEN) — this file only DEFINES new tokens;
+ * component overrides live in moai-docs-theme.css (loaded last).
+ *
+ * Adaptations from the handoff (documented, intentional):
+ *  - fonts.css: Press Start 2P import + NeoDunggeunmo @font-face SKIPPED
+ *    (decorative pixel face, not used on docs pages).
+ *  - fonts.css: Pretendard/GoormSansCode @font-face SKIPPED — both already load
+ *    via head/custom.html CDN stylesheets; --font-sans/--font-mono stacks below
+ *    reference the CDN-registered family names ("Pretendard Variable",
+ *    "Goorm Sans Code").
+ *  - MaruBuri @font-face set (200/300/400/600/700) ported verbatim.
+ */
+
+/* ============================================================
+   fonts.css — MaruBuri (마루부리) warm Korean serif, titles only
+   ============================================================ */
+@font-face {
+  font-family: "MaruBuri";
+  src: url("https://hangeul.pstatic.net/hangeul_static/webfont/MaruBuri/MaruBuri-ExtraLight.woff2") format("woff2");
+  font-weight: 200;
+  font-display: swap;
+}
+@font-face {
+  font-family: "MaruBuri";
+  src: url("https://hangeul.pstatic.net/hangeul_static/webfont/MaruBuri/MaruBuri-Light.woff2") format("woff2");
+  font-weight: 300;
+  font-display: swap;
+}
+@font-face {
+  font-family: "MaruBuri";
+  src: url("https://hangeul.pstatic.net/hangeul_static/webfont/MaruBuri/MaruBuri-Regular.woff2") format("woff2");
+  font-weight: 400;
+  font-display: swap;
+}
+@font-face {
+  font-family: "MaruBuri";
+  src: url("https://hangeul.pstatic.net/hangeul_static/webfont/MaruBuri/MaruBuri-SemiBold.woff2") format("woff2");
+  font-weight: 600;
+  font-display: swap;
+}
+@font-face {
+  font-family: "MaruBuri";
+  src: url("https://hangeul.pstatic.net/hangeul_static/webfont/MaruBuri/MaruBuri-Bold.woff2") format("woff2");
+  font-weight: 700;
+  font-display: swap;
+}
+
+/* ============================================================
+   colors.css — Clay / Cream / Ink scales + semantic aliases
+   Sampled from the brand logo: terracotta clay on warm cream.
+   ============================================================ */
+:root {
+  /* ---- Brand: Clay (terracotta) — anchored on #D97757 ---- */
+  --clay-50:  #FCEEE7;
+  --clay-100: #F7D6C7;
+  --clay-200: #EFB79F;
+  --clay-300: #E79C7E;
+  --clay-400: #E08A6B;
+  --clay-500: #D97757;  /* primary — mascot body & infographic coral */
+  --clay-600: #C4633F;
+  --clay-700: #A44E2F;
+  --clay-800: #813D26;
+  --clay-900: #5C2B1C;
+
+  /* ---- Cream (warm neutrals / surfaces) ---- */
+  --cream-50:  #FDFAF5;
+  --cream-100: #FAF4EC;
+  --cream-200: #F8F0E8;  /* page background — sampled from logo */
+  --cream-300: #F1E7D9;
+  --cream-400: #E7D8C5;
+  --cream-500: #D9C5AC;
+
+  /* ---- Ink (warm-black text scale) ---- */
+  --ink-900: #211A14;
+  --ink-800: #33291F;
+  --ink-700: #4A3D30;
+  --ink-600: #6B5A48;
+  --ink-500: #8C7960;
+  --ink-400: #AE9C84;
+
+  /* ---- Pure / utility ---- */
+  --white: #FFFFFF;
+  --black: #15110D;
+  --charcoal: #2B2521;  /* warm charcoal — dark cards / callout surfaces */
+
+  /* ---- Semantic (status) ---- */
+  --success: #5B8C5A;
+  --success-soft: #E6EFE4;
+  --warning: #C98A2E;
+  --warning-soft: #F7EBD4;
+  --danger:  #C0503E;
+  --danger-soft:  #F6E0DA;
+  --info:    #4A6FA5;
+  --info-soft:    #E1E8F2;
+
+  /* ---- Semantic aliases ---- */
+  --bg-page:       var(--cream-200);
+  --bg-elevated:   var(--cream-100);
+  --surface-card:  var(--white);
+  --surface-sunken:var(--cream-300);
+  --surface-inset: var(--cream-100);
+  --surface-dark:  var(--charcoal);
+  --text-on-dark:  var(--cream-100);
+
+  --text-strong:   var(--ink-900);
+  --text-body:     var(--ink-800);
+  --text-muted:    var(--ink-600);
+  --text-subtle:   var(--ink-500);
+  --text-on-clay:  var(--cream-50);
+  --text-link:     var(--clay-600);
+
+  --accent:        var(--clay-500);
+  --accent-hover:  var(--clay-600);
+  --accent-press:  var(--clay-700);
+  --accent-soft:   var(--clay-50);
+
+  --border-subtle: var(--cream-400);
+  --border-default:var(--cream-500);
+  --border-strong: var(--ink-900);
+  --border-clay:   var(--clay-200);
+
+  --focus-ring:    var(--clay-500);
+}
+
+/* ============================================================
+   typography.css — MaruBuri titles / Pretendard body / Goorm code
+   ============================================================ */
+:root {
+  /* ---- Families (stacks adapted to CDN-registered names) ---- */
+  --font-sans: "Pretendard Variable", "Pretendard", "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
+  --font-body: var(--font-sans);
+  --font-title: "MaruBuri", "Nanum Myeongjo", serif;
+  --font-display: var(--font-title);
+  /* Legacy accent aliases — pixel face retired; resolve to Pretendard */
+  --font-pixel: var(--font-body);
+  --font-pixel-sm: var(--font-body);
+  --font-code: "Goorm Sans Code", "GoormSansCode", "D2Coding", ui-monospace, SFMono-Regular, Menlo, monospace;
+
+  /* ---- Type scale (rem, 16px base) ---- */
+  --text-3xs: 0.6875rem; /* 11 */
+  --text-2xs: 0.75rem;   /* 12 */
+  --text-xs:  0.8125rem; /* 13 */
+  --text-sm:  0.875rem;  /* 14 */
+  --text-md:  1rem;      /* 16 — body default */
+  --text-lg:  1.125rem;  /* 18 */
+  --text-xl:  1.375rem;  /* 22 */
+  --text-2xl: 1.75rem;   /* 28 */
+  --text-3xl: 2.25rem;   /* 36 */
+  --text-4xl: 3rem;      /* 48 */
+  --text-5xl: 4rem;      /* 64 */
+  --text-6xl: 5.5rem;    /* 88 */
+
+  /* ---- Weights (MaruBuri ships 200-700; 800/900 synthesize) ---- */
+  --fw-regular: 400;
+  --fw-medium:  500;
+  --fw-semibold:600;
+  --fw-bold:    700;
+  --fw-extra:   800;
+  --fw-black:   900;
+
+  /* ---- Line heights ---- */
+  --lh-tight:   1.1;
+  --lh-snug:    1.25;
+  --lh-normal:  1.5;
+  --lh-relaxed: 1.7;
+
+  /* ---- Letter spacing ---- */
+  --ls-tight:  -0.02em;
+  --ls-snug:   -0.01em;
+  --ls-normal: 0;
+  --ls-wide:   0.04em;
+  --ls-pixel:  0.02em;
+}
+
+/* ============================================================
+   spacing.css — 4px base grid + container widths
+   ============================================================ */
+:root {
+  --space-0: 0;
+  --space-1: 0.25rem;  /* 4 */
+  --space-2: 0.5rem;   /* 8 */
+  --space-3: 0.75rem;  /* 12 */
+  --space-4: 1rem;     /* 16 */
+  --space-5: 1.25rem;  /* 20 */
+  --space-6: 1.5rem;   /* 24 */
+  --space-7: 1.75rem;  /* 28 */
+  --space-8: 2rem;     /* 32 */
+  --space-9: 2.5rem;   /* 40 — prototype var(--space-9,40px) compat */
+  --space-10: 2.5rem;  /* 40 */
+  --space-12: 3rem;    /* 48 */
+  --space-16: 4rem;    /* 64 */
+  --space-20: 5rem;    /* 80 */
+  --space-24: 6rem;    /* 96 */
+  --space-32: 8rem;    /* 128 */
+
+  /* Container widths */
+  --container-sm: 640px;
+  --container-md: 820px;
+  --container-lg: 1080px;
+  --container-xl: 1280px;
+  --gutter: clamp(1.25rem, 4vw, 4rem);
+}
+
+/* ============================================================
+   effects.css — radius, border, soft + pop shadows, motion curves
+   ============================================================ */
+:root {
+  /* ---- Radii ---- */
+  --radius-none: 0;
+  --radius-xs: 4px;
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --radius-xl: 20px;
+  --radius-2xl: 28px;
+  --radius-pill: 999px;
+
+  /* ---- Borders ---- */
+  --border-w: 1.5px;
+  --border-w-bold: 2px;
+  --border-w-pixel: 3px;   /* chunky 8-bit outline */
+
+  /* ---- Soft warm shadows (elevation) ---- */
+  --shadow-xs: 0 1px 2px rgba(58, 38, 24, 0.06);
+  --shadow-sm: 0 2px 6px rgba(58, 38, 24, 0.08);
+  --shadow-md: 0 6px 18px rgba(58, 38, 24, 0.10);
+  --shadow-lg: 0 16px 40px rgba(58, 38, 24, 0.14);
+
+  /* ---- Pop / pixel offset (hard-edged, the logo's signature look) ---- */
+  --shadow-pop:    3px 3px 0 var(--ink-900);
+  --shadow-pop-clay: 3px 3px 0 var(--clay-600);
+  --shadow-pop-lg: 5px 5px 0 var(--ink-900);
+
+  /* ---- Focus ---- */
+  --ring: 0 0 0 3px rgba(208, 112, 80, 0.32);
+
+  /* ---- Motion ---- */
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+  --ease-pop: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --dur-fast: 120ms;
+  --dur-base: 200ms;
+  --dur-slow: 360ms;
+}
+
+/* ============================================================
+   motion.css — POP / RISE / PRESS signatures + reduced-motion
+   ============================================================ */
+:root {
+  --motion-tap: var(--dur-fast);     /* 120ms presses, toggles */
+  --motion-ui: var(--dur-base);      /* 200ms hovers, small UI */
+  --motion-enter: var(--dur-slow);   /* 360ms content entrances */
+  --motion-slow: 560ms;              /* big hero / section reveals */
+  --motion-stagger: 70ms;            /* stagger step for lists */
+  --press-travel: 3px;               /* matches --shadow-pop offset */
+}
+
+@keyframes pop-in {
+  0%   { opacity: 0; transform: scale(0.86); }
+  60%  { opacity: 1; transform: scale(1.04); }
+  100% { opacity: 1; transform: scale(1); }
+}
+@keyframes rise-in {
+  0%   { opacity: 0; transform: translateY(16px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+@keyframes fade-in {
+  from { opacity: 0; } to { opacity: 1; }
+}
+@keyframes marker-wipe {
+  from { transform: scaleX(0); }
+  to   { transform: scaleX(1); }
+}
+@keyframes blink {
+  0%, 49% { opacity: 1; } 50%, 100% { opacity: 0; }
+}
+@keyframes bob {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(-6px); }
+}
+@keyframes wiggle {
+  0%, 100% { transform: rotate(0deg); }
+  25% { transform: rotate(-3deg); } 75% { transform: rotate(3deg); }
+}
+@keyframes shimmer {
+  from { background-position: -150% 0; }
+  to   { background-position: 250% 0; }
+}
+
+.anim-pop   { animation: pop-in  var(--motion-enter) var(--ease-pop) both; }
+.anim-rise  { animation: rise-in var(--motion-enter) var(--ease-out) both; }
+.anim-fade  { animation: fade-in var(--motion-ui)    var(--ease-out) both; }
+.anim-bob   { animation: bob 2.6s var(--ease-in-out) infinite; }
+.anim-blink { animation: blink 1s steps(1, end) infinite; }
+
+.anim-stagger > * { animation: rise-in var(--motion-enter) var(--ease-out) both; }
+.anim-stagger > *:nth-child(1) { animation-delay: calc(var(--motion-stagger) * 0); }
+.anim-stagger > *:nth-child(2) { animation-delay: calc(var(--motion-stagger) * 1); }
+.anim-stagger > *:nth-child(3) { animation-delay: calc(var(--motion-stagger) * 2); }
+.anim-stagger > *:nth-child(4) { animation-delay: calc(var(--motion-stagger) * 3); }
+.anim-stagger > *:nth-child(5) { animation-delay: calc(var(--motion-stagger) * 4); }
+.anim-stagger > *:nth-child(6) { animation-delay: calc(var(--motion-stagger) * 5); }
+
+/* PRESS — the signature pixel tactile push. Pair with box-shadow: var(--shadow-pop). */
+.press-pixel {
+  transition: transform var(--motion-tap) var(--ease-out),
+              box-shadow var(--motion-tap) var(--ease-out);
+}
+.press-pixel:active {
+  transform: translate(var(--press-travel), var(--press-travel));
+  box-shadow: 0 0 0 transparent;
+}
+
+/* LIFT — soft hover for cards/links */
+.hover-lift {
+  transition: transform var(--motion-ui) var(--ease-out),
+              box-shadow var(--motion-ui) var(--ease-out);
+}
+.hover-lift:hover { transform: translateY(-3px); box-shadow: var(--shadow-lg); }
+
+/* Reduced motion: collapse to instant, keep end-state visible */
+@media (prefers-reduced-motion: reduce) {
+  .anim-pop, .anim-rise, .anim-fade, .anim-bob, .anim-blink,
+  .anim-stagger > * {
+    animation: none !important;
+    opacity: 1 !important;
+    transform: none !important;
+  }
+  .press-pixel, .hover-lift { transition: none !important; }
+}
