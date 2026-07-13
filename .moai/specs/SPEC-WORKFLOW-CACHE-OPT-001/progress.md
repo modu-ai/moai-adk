@@ -118,7 +118,7 @@ Scope delivered per milestone:
 
 ```yaml
 run_complete_at: 2026-07-13
-run_commit_sha: pending-backfill-m6   # M6 commit cannot self-reference; backfill = the commit carrying this §E.3
+run_commit_sha: 5b7691927   # M6 verification-sweep commit (backfilled per the D3 self-reference exemption)
 run_status: complete
 ac_pass_count: 36
 ac_fail_count: 0
