@@ -228,26 +228,16 @@ func shouldDistributeAll(cmd *cobra.Command) bool {
 // @MX:ANCHOR: [AUTO] runInit is the main entry point for project initialization
 // @MX:REASON: [AUTO] fan_in=3, called from init.go init(), coverage_test.go, init_coverage_test.go
 // runInit executes the project initialization workflow.
-// It first checks for a binary update so the latest templates are used.
+//
+// The binary self-update check is DEFERRED: it starts only after the wizard
+// has completed (and after the first phase output in non-interactive mode),
+// is check-only (no install, no re-exec), and surfaces as a non-blocking
+// stderr notice with the `moai update` hint at exit
+// (SPEC-CLI-TUX-V3-002 REQ-TUX2-001..004; see init_update_notice.go).
 func runInit(cmd *cobra.Command, args []string) error {
 	// Unified output gateway: warnings and progress go to stderr, data to
 	// stdout (SPEC-CLI-TUX-V3-001 REQ-CTX-012/016).
 	p := printer.New(printer.WithWriters(cmd.OutOrStdout(), cmd.ErrOrStderr()))
-
-	// Binary update step (non-fatal)
-	if !shouldSkipBinaryUpdate(cmd) {
-		updated, err := runBinaryUpdateStep(cmd)
-		if err != nil {
-			p.Warn("binary update check failed: %v", err)
-		}
-		if updated {
-			if err := reexecNewBinary(); err != nil {
-				p.Warn("failed to re-exec new binary: %v", err)
-			}
-			// reexecNewBinary replaces the process on success; only
-			// reach here if it failed.
-		}
-	}
 
 	// Git availability check (non-fatal warning)
 	if _, err := exec.LookPath("git"); err != nil {
@@ -373,20 +363,15 @@ func runInit(cmd *cobra.Command, args []string) error {
 		// Profile-level model policy is no longer applied here.
 	}
 
-	if !nonInteractive && isatty.IsTerminal(os.Stdin.Fd()) {
+	if !nonInteractive && isInteractiveStdin() {
 		// Print banner and welcome message
 		uikit.PrintBanner(version.GetVersion())
 		uikit.PrintWelcomeMessage()
 
 		// Use RunWithDefaultsModes when --standard or --advanced is set; otherwise
 		// fall back to RunWithDefaults for Quick mode backward-compat (REQ-IWE-006).
-		var result *wizard.WizardResult
-		var wizErr error
-		if standardMode {
-			result, wizErr = wizard.RunWithDefaultsModes(rootFlag, "", standardMode, advancedMode)
-		} else {
-			result, wizErr = wizard.RunWithDefaults(rootFlag, "")
-		}
+		// runWizardFn is the injectable wizard seam (REQ-TUX2-001 order contract).
+		result, wizErr := runWizardFn(rootFlag, "", standardMode, advancedMode)
 		if wizErr != nil {
 			if errors.Is(wizErr, wizard.ErrCancelled) {
 				_, _ = fmt.Fprintln(cmd.OutOrStderr(), "Initialization cancelled.")
@@ -492,6 +477,13 @@ func runInit(cmd *cobra.Command, args []string) error {
 
 	p.Info("Initializing MoAI project...")
 
+	// Deferred binary self-update check (REQ-TUX2-001/004): starts strictly
+	// after wizard completion and after the first phase output; never blocks
+	// phase execution; flushed as a stderr notice at exit. A wizard cancel
+	// returns before this point, so the cancel path has zero network side
+	// effects (acceptance.md §C).
+	flushUpdateNotice := startDeferredUpdateNotice(cmd)
+
 	result, err := executor.Execute(ctx, opts)
 	if err != nil {
 		return fmt.Errorf("initialization failed: %w", err)
@@ -560,6 +552,11 @@ func runInit(cmd *cobra.Command, args []string) error {
 
 	// Install pre-commit hook (REQ-PC-001). Fast-subset commit tier; --no-hooks opts out.
 	installPreCommitHookOptional(opts.ProjectRoot, getBoolFlag(cmd, "no-hooks"), cmd.ErrOrStderr())
+
+	// Deferred self-update notice (REQ-TUX2-002): non-blocking stderr notice
+	// with the `moai update` hint; a failed or in-flight check never affects
+	// the init result.
+	flushUpdateNotice(p)
 
 	return nil
 }
