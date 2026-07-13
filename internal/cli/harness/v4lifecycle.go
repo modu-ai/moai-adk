@@ -139,6 +139,13 @@ type HarnessEntry struct {
 	// ManifestPath is the absolute path to the manifest.json (may not exist
 	// when ManifestMissing is true).
 	ManifestPath string `json:"manifest_path"`
+
+	// Schedule is the harness's OPTIONAL declared recurring schedule from
+	// manifest.json. Nil when the manifest declares none — the JSON output
+	// omits the key entirely (omitempty), keeping schedule-less harnesses
+	// byte-identical to the pre-schedule baseline. The list surfaces the
+	// DECLARED schedule, not live registration state.
+	Schedule *v4manifest.Schedule `json:"schedule,omitempty"`
 }
 
 // ListHarnesses enumerates every harness under projectRoot by scanning
@@ -181,6 +188,7 @@ func ListHarnesses(projectRoot string) ([]HarnessEntry, error) {
 				entry.Domain = m.Domain
 				entry.EntryCommand = m.EntryCommand
 				entry.RunnerWorkflow = m.RunnerWorkflow
+				entry.Schedule = m.Schedule
 			}
 			// If JSON unmarshal fails, Domain stays empty but the harness is
 			// still listed (ManifestMissing=false because the file exists).
@@ -194,6 +202,24 @@ func ListHarnesses(projectRoot string) ([]HarnessEntry, error) {
 		return harnesses[i].Name < harnesses[j].Name
 	})
 	return harnesses, nil
+}
+
+// readDeclaredSchedule best-effort reads the named harness's manifest and
+// returns its declared schedule, or nil when the manifest is absent,
+// unreadable, or declares no schedule. Callers that need the schedule across
+// a destructive operation (remove) MUST call this BEFORE the operation — the
+// manifest is deleted by RemoveHarness, so post-removal reads see nothing.
+func readDeclaredSchedule(projectRoot, name string) *v4manifest.Schedule {
+	manifestPath := filepath.Join(projectRoot, v4CommandsDir, name, "manifest.json")
+	data, err := os.ReadFile(manifestPath)
+	if err != nil {
+		return nil
+	}
+	var m v4manifest.Manifest
+	if err := json.Unmarshal(data, &m); err != nil {
+		return nil
+	}
+	return m.Schedule
 }
 
 // HarnessEditPaths is the set of files EditHarness surfaces for editing. The
