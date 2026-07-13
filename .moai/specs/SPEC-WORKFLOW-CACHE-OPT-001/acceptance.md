@@ -7,7 +7,7 @@
 | AC | REQ | Verifies | Verification (single discriminating check) | Baseline → Post |
 |----|-----|----------|--------------------------------------------|-----------------|
 | AC-WCO-001 | REQ-SNAP-001 | Snapshot schema fields + loop-verdict-compatible conditions block | `go test -run 'TestSnapshotSchema' ./internal/verify/...` exit 0; test asserts presence of check id / command / exit / counts / timestamp / duration / key AND decodes a loop-verdict-shaped `conditions` block | no pkg → PASS |
-| AC-WCO-002 | REQ-SNAP-002 | Key = HEAD SHA + porcelain-v2 digest; any tree change invalidates | `go test -run 'TestSnapshotKey' ./internal/verify/...` exit 0; table cases: clean tree, dirty tracked edit, staged edit, ADD-untracked-file, HEAD advance — each yields a distinct key | no pkg → PASS |
+| AC-WCO-002 | REQ-SNAP-002 | Key = HEAD SHA + porcelain-v2 digest + diff-HEAD content hash (D13); any tree change invalidates | `go test -run 'TestSnapshotKey' ./internal/verify/...` exit 0; table cases: clean tree, dirty tracked edit, RE-EDIT of an already-dirty tracked file (D13 boundary: porcelain-v2 byte-identical, diff-hash leg must change the key → no reuse), staged edit, ADD-untracked-file, HEAD advance — each yields a distinct key | no pkg → PASS |
 | AC-WCO-003 | REQ-SNAP-003 | Freshness = key-equality AND 10-min TTL, E2E | `go test -run 'TestFreshness' ./internal/verify/...` exit 0; E2E: record → same-tree in-TTL check accepts → (a) mutate tracked file → stale, (b) add untracked file → stale, (c) injected clock past TTL (default 10 min; configurable value honored) → stale | no pkg → PASS |
 | AC-WCO-004 | REQ-SNAP-004 | CLI verb exists AND is registered (cross-file reachability) | `go run ./cmd/moai verify --help` exit 0 and usage lists `record` + `check` | verb absent → exit 0 |
 | AC-WCO-005 | REQ-SNAP-005 | gate.md consumes+produces via the real verb + defines force-fresh | gate.md names `moai verify` and `.moai/state/verify/` in a consumption step (each `grep -c` 0 → ≥1) AND gate.md documents the `--fresh` no-reuse mode (`grep -c '\-\-fresh' gate.md` 0 → ≥1; measured baseline: `grep -c fresh` = 0) AND AC-WCO-004 PASS (the named verb is invocable) | 0 → ≥1 (all legs) |
@@ -52,7 +52,7 @@
 
 ### Scenario 2 — Stale detection (safety path)
 - **Given** a snapshot recorded under key K
-- **When** any tracked-content, staged, or untracked-file change lands (recomputed porcelain-v2 digest changes) OR the 10-minute TTL elapses, and a consumer runs `moai verify check`
+- **When** any tracked-content change (including a re-edit of an already-dirty file — caught by the `git diff HEAD` content-hash leg), staged or untracked-file change (caught by the porcelain-v2 leg) lands OR the 10-minute TTL elapses, and a consumer runs `moai verify check`
 - **Then** the check exits stale, and the consumer re-executes the check instead of reusing — a stale snapshot is never cited as evidence.
 
 ### Scenario 3 — Loop success-exit independence (incl. gate-mediated path)
@@ -74,7 +74,7 @@
 
 1. **TOCTOU window**: tree mutates between `verify check` and the consumer's citation — freshness check runs at consumption time; doctrine instructs re-check on any intervening write step.
 2. **Flaky test recorded PASS**: bounded by the 10-minute TTL (Settled Decisions — key-equality alone is insufficient by design); Residual-risk section of consumer reports names flake risk when reusing.
-2b. **In-place edit of an already-listed untracked file**: outside the porcelain-v2 digest (accepted limitation, Settled Decisions) — mitigated by the TTL bound; named as Residual-risk in consumer reports.
+2b. **In-place edit of an already-listed untracked file**: outside all three key inputs — HEAD, porcelain-v2 digest, AND `git diff HEAD` content hash (untracked content appears in none of them; accepted limitation, Settled Decisions) — mitigated by the TTL bound; named as Residual-risk in consumer reports. (Re-edits of already-dirty TRACKED files are NOT a limitation — the diff-hash leg catches them per D13.)
 3. **Concurrent writers (two sessions, one checkout)**: atomic temp+rename write (goal/state.go pattern); last-writer-wins on identical key is benign (same tree ⇒ equivalent results); pre-spawn sync check remains the session-level guard.
 4. **`.moai/state/` unwritable**: fail-open — recording is skipped with an explicit note; consumers fall back to re-execution (never block, never fabricate).
 5. **Stop-hook deadline exceeded during key computation**: time-boxed per Advisory-Check Discipline; evaluator falls back to command re-execution (correctness preserved, optimization skipped).

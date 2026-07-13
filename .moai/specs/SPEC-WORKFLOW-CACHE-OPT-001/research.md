@@ -84,6 +84,6 @@ Every doc edit in M1-M5 is a local+template pair with `make build` re-verificati
 
 All three plan-time open questions are resolved; zero `NEEDS CLARIFICATION` markers remain. Outcomes recorded in plan.md § Settled decisions:
 
-1. **Snapshot key**: HEAD SHA + `git status --porcelain=v2` output digest — untracked/unstaged changes invalidate (REQ-SNAP-002).
+1. **Snapshot key**: HEAD SHA + `git status --porcelain=v2` output digest + `git diff HEAD` content hash — untracked/unstaged changes AND re-edits of already-dirty tracked files invalidate (REQ-SNAP-002; diff-hash leg added per iter-2 D13 — porcelain-v2 output is byte-identical across successive edits to an already-dirty file, so the user's porcelain-v2 decision is preserved additively, not replaced).
 2. **Freshness rule**: key-equality AND wall-clock TTL, default 10 minutes, configurable — both required (REQ-SNAP-003).
 3. **stop-goal matching**: exact byte-string match in M1; miss ⇒ existing re-execution; normalized check-id matching explicitly Out of Scope, M2+ candidate (REQ-SNAP-010 + spec.md §D).

@@ -9,7 +9,7 @@
 ```
 internal/verify/                 (new package — name mirrors .moai/state/verify/)
 ├── schema.go        Snapshot + CheckEntry + Conditions types (loop-verdict-compatible)
-├── key.go           Key() — HEAD SHA + porcelain-v2 digest
+├── key.go           Key() — HEAD SHA + porcelain-v2 digest + diff-HEAD content hash
 ├── freshness.go     Fresh() — key-equality AND TTL predicate
 └── store.go         atomic Load/Save (temp+rename, internal/goal/state.go pattern)
 
@@ -24,7 +24,7 @@ One snapshot JSON per key. Field shape (contract-level; exact Go naming is run-p
 
 ```json
 {
-  "key": "<head-sha>:<sha256(porcelain-v2)[:16]>",
+  "key": "<head-sha>:<sha256(porcelain-v2 || git-diff-HEAD)[:16]>",
   "recorded_at": "<ISO-8601>",
   "checks": [
     {
@@ -45,13 +45,16 @@ One snapshot JSON per key. Field shape (contract-level; exact Go naming is run-p
 
 The `conditions` block is read-compatible with the loop-verdict `conditions` shape (REQ-SNAP-001) — existing loop-verdict readers keep working; per-check `conditions` fields are populated only where applicable.
 
-### A.3 Key computation (key.go) — settled decision D1 #1
+### A.3 Key computation (key.go) — settled decision D1 #1, strengthened per iter-2 D13
 
-`key = HEAD commit SHA + digest(git status --porcelain=v2)`.
+`key = HEAD commit SHA + digest(git status --porcelain=v2 output ∥ git diff HEAD output)`.
 
-- Porcelain v2 lists staged/unstaged deltas AND untracked non-ignored paths → any tracked-content change, staged change, or untracked add/remove/rename invalidates the key.
-- Accepted limitation: an in-place content edit to an already-listed untracked file changes neither HEAD nor its porcelain line → outside the digest. Mitigated by the TTL (A.4) and named as Residual-risk in consumer reports.
-- Cost profile: two git subprocesses, constant w.r.t. repo history size — required for the stop-goal path (A.6).
+- Three inputs, each covering a distinct invalidation class:
+  - **HEAD SHA** — commit advance/switch.
+  - **porcelain-v2 digest** — file-set shape: staged/unstaged delta LISTING and untracked non-ignored paths (add/remove/rename).
+  - **`git diff HEAD` content hash** — worktree CONTENT deltas of tracked files. This leg is load-bearing: porcelain-v2 output is byte-identical across successive edits to an already-dirty tracked file (v2 lines carry HEAD/index object names, no worktree content hash — experimentally refuted in plan-audit iter-2 D13), so without the diff hash a re-edit of a dirty file would falsely read as fresh.
+- Remaining accepted limitation: an in-place content edit to an already-listed untracked file changes neither HEAD, its porcelain line, nor `git diff HEAD` (untracked content is outside all three inputs). Mitigated by the TTL (A.4) and named as Residual-risk in consumer reports.
+- Cost profile: three git subprocesses, constant w.r.t. repo HISTORY size (`git diff HEAD` scales with dirty-delta size, not history) — the Advisory-Check time-box (A.6) still binds on the stop-goal path.
 
 ### A.4 Freshness predicate (freshness.go) — settled decision D1 #2
 
