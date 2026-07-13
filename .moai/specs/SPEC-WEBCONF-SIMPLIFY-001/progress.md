@@ -144,6 +144,25 @@ M6 closes the 4-locale description parity: populates `Description` on the remain
 
 **Build evidence**: make build (i18n.js re-embedded) exit 0; go build exit 0; windows/amd64 cross-build exit 0; web/settings tests all PASS; golangci-lint 0 issues; C-HRA-008 boundary 0 matches.
 
+### M7+M8+M9 evidence (finalization — test sweep + doc cleanup + full-suite verify)
+
+**M7 (test consolidation sweep)**: NO stale references found. The mx_rawview_test.go sec.mx.* references are the M3 absence-assertion + an i18n dictionary-completeness check (TestSPEC014I18nKeysFourLocale — verifies key presence, not render). The sectionwrite_test.go WriteSectionViaSeam calls for workflow/harness/cache are the M3 rejection tests (call line; rejection asserted next line). All web/settings tests cohere + pass together.
+
+**M8 (web-config doc cleanup)**: NO-OP. find+xargs for dedicated web-config guidance docs describing the 11 removed tabs (beyond `.claude/rules/`) returned nothing. The removed-tab guidance IS the deep doctrine (`.claude/rules/moai/workflow/`), which is PRESERVED verbatim (REQ-WC-010). The 3 named doctrine files (mx-tag-protocol.md, context-window-management.md, cache-aware-execution.md) confirmed untouched. No docs deleted — Decision 4 honored.
+
+**M9 (full-suite final verification — the run-phase exit gate)**:
+- `make build` exit 0 (templates + assets embedded).
+- `go test ./...` FULL suite exit 0 — ALL packages PASS (no cross-package regression from M1-M6).
+- `go vet ./...` clean.
+- `golangci-lint run --timeout=2m` (full repo) → 0 issues.
+- Template-neutrality (§25): `grep -rn 'SPEC-WEBCONF\|REQ-WC-\|AC-WC-' internal/template/templates/.moai/config/sections/` → 0 matches.
+- GLM carve-out (C-4): `if mode == LLMModeGLM { return payload }` confirmed intact in InjectCacheControl.
+- 6-tab render smoke: TestM5bD1_AtomicSave_AllPanelsInDOM + TestM3/M4/M5 — all PASS.
+- C-HRA-008 boundary: `grep -rn 'AskUserQuestion\|mcp__askuser' internal/web/ internal/settings/ internal/harness/v4manifest/ | grep -v _test.go | grep -v //` → 0 matches.
+- Option A PRESERVE: `grep -rn '^tier:' .claude/agents/` → 0 matches.
+
+**Run-phase status: COMPLETE (M1-M9 all done).**
+
 ### Remaining ACs (pending their owning milestone)
 
 | AC ID | Owning milestone | Status |
@@ -153,24 +172,24 @@ M6 closes the 4-locale description parity: populates `Description` on the remain
 | AC-WC-004 (quality_extras toggle on launch tab) | M4 | PASS (toggle renders on launch tab + persists via typed quality path) |
 | AC-WC-007 (tier-suggested model+effort defaults rendered) | M5 | PASS (★-marked suggested options from TierSuggestedModelEffort; per-agent override via existing agentfm.Patch) |
 | AC-WC-008 (model+effort individually overrideable) | M5 | PASS (both selects remain individually editable; tier suggestion is display-only) |
-| AC-WC-009 (deep doctrine preserved) | M8 | PENDING (no doctrine file touched in M1) |
-| AC-WC-010 / AC-WC-011 (atomic save, GLM carve-out) | M3 / M2 | PENDING |
-| AC-WC-012 (web/settings test fallout) | M7 | PENDING |
+| AC-WC-009 (deep doctrine preserved) | M8 | PASS (M8 no-op — deep doctrine files untouched, no web-config docs to delete) |
+| AC-WC-010 / AC-WC-011 (atomic save, GLM carve-out) | M3 / M2 | PASS (M9 verified — atomic save intact via RouteExcluded; GLM-omit branch `if mode == LLMModeGLM { return payload }` confirmed) |
+| AC-WC-012 (web/settings test fallout) | M7 | PASS (M3-M6 test updates + M7 sweep — all cohere + pass) |
 | AC-WC-013 (4-locale i18n) | M6 | PASS (24 fieldDesc.* keys × 4 locales = parity; TestI18nKeySetParity zero exemptions; C-9 closed) |
-| AC-WC-014 (make build — templ regenerate) | M5+ | PENDING (no templ edit in M1; `go build ./...` exit 0 confirms Go compile green) |
+| AC-WC-014 (make build — templ regenerate) | M9 | PASS (M9 `make build` exit 0 — templ + assets embedded) |
 | AC-WC-015 (template-neutrality CI guard) | M2 | PASS (M2 — `grep` 0 SPEC-ID matches in baked sections) |
 | AC-WC-018 (max/inherit neutral badge) | M5 | PASS (agentTierBadge returns "custom" when effort=max or model=inherit) |
-| AC-WC-019 (full-suite regression `go test ./...`) | M9 | PENDING |
-| AC-WC-020 (render smoke) | M9 | PENDING |
+| AC-WC-019 (full-suite regression `go test ./...`) | M9 | PASS (`go test ./...` full suite exit 0 — all packages green) |
+| AC-WC-020 (render smoke) | M9 | PASS (6-tab smoke: TestM5bD1 + TestM3/M4/M5 all PASS) |
 
 ## §E.3 Run-phase Audit-Ready Signal
 
-**M1 + M2 + M3 partial** — multi-milestone Tier L SPEC; run-phase in-progress (M3 of M1–M9). This signal is completed at M9. The block below records the M1 + M2 + M3 portion.
+**Run-phase COMPLETE** — all 9 milestones (M1-M9) done. This signal is the run-phase exit gate.
 
 ```yaml
-run_status: in-progress
-run_complete_at: null   # pending — run-phase not complete (M3 of 9 milestones)
-run_commit_sha: d0ea1c84e   # latest run-phase commit (M6); M1=7b11d68bc, M2=e0061ad34, M3=cca120c70, M4=5f97d32fe, M5=0f13b4684
+run_status: complete
+run_complete_at: "2026-07-14"   # run-phase complete (M1-M9 all done)
+run_commit_sha: pending-backfill-m79   # latest run-phase commit (M7-M9 finalization); M1=7b11d68bc, M2=e0061ad34, M3=cca120c70, M4=5f97d32fe, M5=0f13b4684, M6=d0ea1c84e
 m1_to_mN_commit_strategy: per-milestone commit + push to main (Route A — Hybrid Trunk 1-person OSS)
 ac_pass_count: 16         # M1(5)+M2(3)+M3(2)+M4(1)+M5(3)+M6(2: 013,022/023-now-full) = 16 PASS; AC-WC-022/023 no longer partial (4-locale complete)
 ac_fail_count: 0
