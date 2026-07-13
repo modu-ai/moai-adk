@@ -85,7 +85,7 @@ m1_to_mN_commit_strategy: "per-milestone commits M1 (2c5d05a94) / M2 (d5a5b2992,
 
 ```yaml
 sync_complete_at: 2026-07-13
-sync_commit_sha: pending-backfill-desktop-native-e2e-001
+sync_commit_sha: 10735fb9a49b2e7be22cee049c772189c5d5cedf
 sync_status: complete
 changelog_entry_position: "[Unreleased] > Added, inserted before SPEC-DOCSITE-E2E-001"
 frontmatter_status_transitions:
