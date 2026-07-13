@@ -92,7 +92,7 @@ Evolution prose extended in ALL 4 locales of agent-guide.md (ko `10**으로`/ja 
 
 ```yaml
 run_complete_at: 2026-07-13
-run_commit_sha: "pending-backfill-M5"
+run_commit_sha: "66b8e9346"
 run_status: complete
 ac_pass_count: 20
 ac_fail_count: 0
