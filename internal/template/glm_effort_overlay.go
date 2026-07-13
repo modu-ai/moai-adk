@@ -99,14 +99,15 @@ func CollapseClaudeEffortToGLM(effort string) GLMReasoningState {
 	}
 }
 
-// glmCodingMaxOverrideAgents is the coding-max override set (REQ-MTP-028): the two
-// code-producing retained agents that z.ai recommends reasoning_effort: max for
-// coding tasks. manager-develop runs run-phase implementation; builder-harness
-// generates dynamic specialists. No other retained agent is a code-producer, so
-// no other agent is overridden. Named constant collection per §14.
+// glmCodingMaxOverrideAgents is the coding-max override set (REQ-MTP-028): the
+// single code-producing run-phase agent that z.ai recommends reasoning_effort:
+// max for coding tasks. manager-develop runs run-phase implementation at Claude
+// effort xhigh. builder-harness was removed by SPEC-GLM-EFFORT-TUNE-001 P1 — its
+// artifact-scaffolding role falls under the standard collapse
+// (high → reasoning-high) per the CG-mode cost-reduction goal. No other retained
+// agent is overridden. Named constant collection per §14.
 var glmCodingMaxOverrideAgents = map[string]bool{
 	"manager-develop": true,
-	"builder-harness": true,
 }
 
 // IsGLMCodingMaxOverrideAgent reports whether the agent is in the coding-max
@@ -117,7 +118,7 @@ func IsGLMCodingMaxOverrideAgent(agentName string) bool {
 
 // GLMCodingMaxOverrideAgents returns a copy of the coding-max override set as a
 // slice (unordered), for tests and display surfaces to assert the set membership
-// is exactly {manager-develop, builder-harness}.
+// is exactly {manager-develop} (singleton post SPEC-GLM-EFFORT-TUNE-001 P1).
 func GLMCodingMaxOverrideAgents() []string {
 	out := make([]string, 0, len(glmCodingMaxOverrideAgents))
 	for name := range glmCodingMaxOverrideAgents {
@@ -163,12 +164,12 @@ func ApplyGLMEffortOverlay(entry TierProfileEntry, agentName string, glmBackend 
 // Branch-B explicit-write delivery (REQ-MTP-030). Env vars and the
 // settings.local.json env block are session-global (no per-agent reasoning-control
 // channel through the z.ai shim), so the per-agent overlay collapses to one
-// session value: the coding-max override level (reasoning-max), because a
-// code-producing agent (manager-develop / builder-harness, in the override set)
-// is the representative active spawn under a GLM-backed MoAI session. The
-// per-agent collapse+override logic (ResolveGLMReasoning) remains defined and
-// unit-tested; the wire carries this session-level derived value (the documented
-// delivery-granularity limitation, research.md §D).
+// session value: the coding-max override level (reasoning-max), because
+// manager-develop (the singleton override-set member post SPEC-GLM-EFFORT-TUNE-001
+// P1) is the representative code-producing active spawn under a GLM-backed MoAI
+// session. The per-agent collapse+override logic (ResolveGLMReasoning) remains
+// defined and unit-tested; the wire carries this session-level derived value (the
+// documented delivery-granularity limitation, research.md §D).
 func SessionGLMReasoningState() GLMReasoningState {
 	return glmReasoningMax
 }

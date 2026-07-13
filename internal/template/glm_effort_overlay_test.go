@@ -82,9 +82,10 @@ func TestCollapseClaudeEffortToGLM(t *testing.T) {
 }
 
 // TestResolveGLMReasoning_CodingMaxOverride covers the REQ-MTP-028 coding-max
-// override (AC-MTP-030): manager-develop and builder-harness resolve to
-// reasoning-max REGARDLESS of the input effort; a non-override agent uses the
-// un-overridden collapse result.
+// override (AC-MTP-030): manager-develop resolves to reasoning-max REGARDLESS
+// of the input effort; builder-harness (removed from the override set by
+// SPEC-GLM-EFFORT-TUNE-001 P1, AC-GET-003) now follows the standard collapse;
+// a non-override agent uses the un-overridden collapse result.
 func TestResolveGLMReasoning_CodingMaxOverride(t *testing.T) {
 	tests := []struct {
 		name     string
@@ -92,10 +93,14 @@ func TestResolveGLMReasoning_CodingMaxOverride(t *testing.T) {
 		effort   string
 		wantName string
 	}{
-		// Override set → reasoning-max regardless of the collapse input.
+		// Override set (now {manager-develop} only) → reasoning-max regardless of the collapse input.
 		{"manager-develop input=low (would collapse thinking-off) → override max", "manager-develop", EffortLevelLow, GLMStateReasoningMax},
-		{"builder-harness input=medium (would collapse reasoning-high) → override max", "builder-harness", EffortLevelMedium, GLMStateReasoningMax},
 		{"manager-develop input=high → override max", "manager-develop", EffortLevelHigh, GLMStateReasoningMax},
+		{"manager-develop input=max → override agrees with collapse max", "manager-develop", EffortLevelMax, GLMStateReasoningMax},
+		// builder-harness (removed from override by SPEC-GLM-EFFORT-TUNE-001 P1) → standard collapse.
+		{"builder-harness input=low → thinking-off (collapse, no longer overridden)", "builder-harness", EffortLevelLow, GLMStateThinkingOff},
+		{"builder-harness input=high → reasoning-high (AC-GET-003 make-or-break)", "builder-harness", EffortLevelHigh, GLMStateReasoningHigh},
+		{"builder-harness input=xhigh → reasoning-max (collapse of xhigh, NOT override)", "builder-harness", EffortLevelXHigh, GLMStateReasoningMax},
 		// Non-override agent → un-overridden collapse result.
 		{"manager-git input=low → thinking-off (collapse, un-overridden)", "manager-git", EffortLevelLow, GLMStateThinkingOff},
 		{"manager-spec input=high → reasoning-high (collapse, un-overridden)", "manager-spec", EffortLevelHigh, GLMStateReasoningHigh},
@@ -111,26 +116,36 @@ func TestResolveGLMReasoning_CodingMaxOverride(t *testing.T) {
 	}
 }
 
-// TestGLMCodingMaxOverrideAgents_ExactlyTwo asserts the override set is EXACTLY
-// {manager-develop, builder-harness} — no third member (REQ-MTP-028 / AC-MTP-030).
-func TestGLMCodingMaxOverrideAgents_ExactlyTwo(t *testing.T) {
+// TestGLMCodingMaxOverrideAgents_ExactlyOne asserts the override set is EXACTLY
+// {manager-develop} — the single code-producing run-phase agent (z.ai coding-task
+// recommendation). builder-harness was removed by SPEC-GLM-EFFORT-TUNE-001 P1
+// (AC-GET-001); it falls under the standard collapse at reasoning-high.
+func TestGLMCodingMaxOverrideAgents_ExactlyOne(t *testing.T) {
 	got := GLMCodingMaxOverrideAgents()
 	sort.Strings(got)
-	want := []string{"builder-harness", "manager-develop"}
+	want := []string{"manager-develop"}
 	if len(got) != len(want) {
-		t.Fatalf("GLMCodingMaxOverrideAgents() has %d members %v, want exactly 2 %v", len(got), got, want)
+		t.Fatalf("GLMCodingMaxOverrideAgents() has %d members %v, want exactly 1 %v", len(got), got, want)
 	}
 	for i := range want {
 		if got[i] != want[i] {
 			t.Errorf("GLMCodingMaxOverrideAgents()[%d] = %q, want %q", i, got[i], want[i])
 		}
 	}
-	// Membership predicate agrees with the set.
-	if !IsGLMCodingMaxOverrideAgent("manager-develop") || !IsGLMCodingMaxOverrideAgent("builder-harness") {
-		t.Error("IsGLMCodingMaxOverrideAgent must be true for both override agents")
+	// Membership predicate agrees with the (now singleton) set.
+	if !IsGLMCodingMaxOverrideAgent("manager-develop") {
+		t.Error("IsGLMCodingMaxOverrideAgent must be true for manager-develop")
+	}
+	if IsGLMCodingMaxOverrideAgent("builder-harness") {
+		t.Error("IsGLMCodingMaxOverrideAgent must be false for builder-harness (removed by SPEC-GLM-EFFORT-TUNE-001 P1)")
 	}
 	if IsGLMCodingMaxOverrideAgent("manager-spec") || IsGLMCodingMaxOverrideAgent("sync-auditor") {
 		t.Error("IsGLMCodingMaxOverrideAgent must be false for non-override agents")
+	}
+	// AC-GET-003 make-or-break behavioral assertion: builder-harness now reaches
+	// reasoning-high under a high Claude effort (standard collapse), NOT reasoning-max.
+	if got := ResolveGLMReasoning("builder-harness", EffortLevelHigh); got.Name != GLMStateReasoningHigh {
+		t.Errorf("ResolveGLMReasoning(builder-harness, high).Name = %q, want %q (P1: no longer overridden)", got.Name, GLMStateReasoningHigh)
 	}
 }
 
