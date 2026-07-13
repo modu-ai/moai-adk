@@ -12,7 +12,7 @@ metadata:
   status: "active"
   updated: "2026-07-13"
   tags: "e2e, end-to-end, testing, web, mobile, desktop, playwright, maestro, appium, detox, electron, tauri, user-journey"
-  context7-libraries: "microsoft/playwright"
+  docs-libraries: "microsoft/playwright"
 
 # MoAI Extension: Progressive Disclosure
 progressive_disclosure:

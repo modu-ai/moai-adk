@@ -89,7 +89,7 @@ Automation for native desktop toolkits is not provided by this agent. Report the
 
 ## Token-Minimization Ladder [HARD]
 
-CLI-first is a hard rule: every capability achievable via CLI invocation MUST use the CLI path. MCP tools are permitted ONLY for capabilities the selected CLI cannot provide.
+[HARD] CLI-first: every capability achievable via CLI invocation MUST use the CLI path. MCP tools are permitted ONLY for capabilities the selected CLI cannot provide.
 
 1. **Rung 1 — CLI + bounded tail**: redirect full command output to `e2e/.runs/<timestamp>-<slug>.log`; surface in context ONLY the exit code + bounded tail (≤50 lines OR ≤2KB, whichever is smaller); cite the log path in the report.
 

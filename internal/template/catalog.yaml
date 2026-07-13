@@ -137,7 +137,7 @@ catalog:
             - name: e2e-specialist
               tier: core
               path: templates/.claude/agents/moai/e2e-specialist.md
-              hash: 3637c714f2b1957983ffa613d1d31ae79308332dbe88ebf6f6f6ebb3df8b59e9
+              hash: 20c16b1ec435ecbaee051ef205c033519e2dea177f9568d3a13060613cf3f8a5
               version: 1.0.0
     optional_packs:
         backend:
