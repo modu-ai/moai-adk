@@ -126,7 +126,7 @@ M3 removed the 11 tabs from the web UI and reclassified the 8 former seam sectio
 ```yaml
 run_status: in-progress
 run_complete_at: null   # pending — run-phase not complete (M3 of 9 milestones)
-run_commit_sha: pending-backfill-m3   # latest run-phase commit (M3); M1 was 7b11d68bc, M2 was e0061ad34
+run_commit_sha: cca120c70   # latest run-phase commit (M3); M1 was 7b11d68bc, M2 was e0061ad34
 m1_to_mN_commit_strategy: per-milestone commit + push to main (Route A — Hybrid Trunk 1-person OSS)
 ac_pass_count: 10         # M1 (005,006,016,017,021) + M2 (003a,003b,015) + M3 (001,002) = 10 PASS
 ac_fail_count: 0
@@ -156,7 +156,7 @@ milestones:
     debt: "§D.Δ row 4 merge_method squash→Squash NOT applied — capitalized 'Squash' is outside validMergeMethods={squash,merge,rebase} (internal/config/validation.go:274). merge_method remains lowercase 'squash' (valid). BLOCKER returned for orchestrator/user resolution."
   M3:
     subject: "feat(SPEC-WEBCONF-SIMPLIFY-001): M3 remove 11 tabs from web UI + reclassify routes to RouteExcluded"
-    sha: pending-backfill-m3
+    sha: cca120c70
     acs: [AC-WC-001, AC-WC-002, AC-WC-010]
     status: PASS
   M4: { status: pending, owner: surviving-tab-surfaces }
