@@ -1,7 +1,7 @@
 ---
 id: SPEC-WEBCONF-SIMPLIFY-001
 title: "moai web Configuration UI Simplification + Sub-Agent 4-Color Tier Redesign — Research"
-version: "0.2.0"
+version: "0.3.0"
 status: in-progress
 created: 2026-07-13
 updated: 2026-07-13
@@ -19,6 +19,7 @@ tier: L
 | Version | Date       | Change                                                          |
 |---------|------------|-----------------------------------------------------------------|
 | 0.2.0   | 2026-07-13 | Initial research authoring (Tier L artifact, iter-1 audit-fix). |
+| 0.3.0   | 2026-07-13 | In-progress amendment note: §A schema.go row gains `FieldDef.Description` (Refinement 2 / REQ-WC-015 per-option descriptions — design.md §H.1 option (a) hybrid). No other codebase-map content changed. |
 
 ---
 
@@ -27,7 +28,7 @@ tier: L
 | Concern                          | Path                                                                                                        | Confirmed | Notes                                                                                                              |
 |----------------------------------|-------------------------------------------------------------------------------------------------------------|-----------|--------------------------------------------------------------------------------------------------------------------|
 | Web handler entry                | `internal/cli/web.go` → `internal/web/server.go`                                                            | ✓         | Port default 3041.                                                                                                 |
-| SSOT schema                      | `internal/settings/schema.go` (`FieldDef`, `allFields()`, `SectionID` constants ~L25-53)                   | ✓         | `SectionStatusline`/`SectionQuality`/`SectionGitConvention` ~L26-36 UNAFFECTED (spec.md §D D12).                   |
+| SSOT schema                      | `internal/settings/schema.go` (`FieldDef`, `allFields()`, `SectionID` constants ~L25-53)                   | ✓         | `SectionStatusline`/`SectionQuality`/`SectionGitConvention` ~L26-36 UNAFFECTED (spec.md §D D12). v0.3.0: `FieldDef` gains a `Description string` field (i18n key) for REQ-WC-015 per-option descriptions — design.md §H.1 option (a) hybrid. |
 | Extension-section fields         | `internal/settings/schema_sections.go`                                                                      | ✓         | `V4EffortValues` / `V4ModelValues` accessors ~L46-47.                                                              |
 | Tab nav                          | `internal/web/schemaform.go:31-56` `consoleTabs()` + `:71-91` `schemaSectionMetas()`                        | ✓         | Removing a tab = delete entry + reclassify.                                                                        |
 | Persistence routing              | `internal/settings/sectionroute.go` (`RouteTypedSave` / `RouteSeam` / `RouteStatusline` / `RouteExcluded`)  | ✓         | Removed tabs → `RouteExcluded`.                                                                                    |

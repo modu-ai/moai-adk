@@ -1,7 +1,7 @@
 ---
 id: SPEC-WEBCONF-SIMPLIFY-001
 title: "moai web Configuration UI Simplification + Sub-Agent 4-Color Tier Redesign — Plan"
-version: "0.2.0"
+version: "0.3.0"
 status: in-progress
 created: 2026-07-13
 updated: 2026-07-13
@@ -20,6 +20,7 @@ tier: L
 |---------|------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | 0.1.0   | 2026-07-13 | Initial plan-phase authoring.                                                                                                                                           |
 | 0.2.0   | 2026-07-13 | iter-1 audit-fix. D3 Option A name-keyed tier table (display-only). M1.1/M1.2 rewritten. OQ-1/OQ-2 resolved (all 3 NEEDS CLARIFICATION removed, D1). C-7 rewritten. M5 stale-count-comment sweep (D13). Tier M → L. |
+| 0.3.0   | 2026-07-13 | In-progress amendment (M1 merged; M3–M6 unimplemented → zero rework). Refinement 1: M4 git_strategy surface expanded (`mode` → `mode` + `merge_method` + `hooks.pre_push`). Refinement 2: REQ-WC-015 per-option descriptions + C-9; M4/M5 field-description rendering; M6 i18n description strings (heaviest burden). design.md §H description-source mechanism. |
 
 ---
 
@@ -90,7 +91,7 @@ Before `/moai run SPEC-WEBCONF-SIMPLIFY-001`, the run-phase agent MUST verify:
 
 ## §D. Constraints (mirrored from spec.md §C)
 
-C-1 Template-First · C-2 Template-neutrality §25 · C-3 16-language neutrality §15 · C-4 GLM carve-out · C-5 Atomic save contract · C-6 Test fallout (update not delete) · C-7 No agent frontmatter rewrite for tier DISPLAY (Option A — effort files untouched; per-agent override via existing `agentfm.Patch`) · C-8 Closed-set validation against `V4EffortValues` / `V4ModelValues`.
+C-1 Template-First · C-2 Template-neutrality §25 · C-3 16-language neutrality §15 · C-4 GLM carve-out · C-5 Atomic save contract · C-6 Test fallout (update not delete) · C-7 No agent frontmatter rewrite for tier DISPLAY (Option A — effort files untouched; per-agent override via existing `agentfm.Patch`) · C-8 Closed-set validation against `V4EffortValues` / `V4ModelValues` · C-9 Description i18n 4-locale parity (Refinement 2).
 
 ---
 
@@ -173,11 +174,12 @@ The tier for each agent is CHOSEN by the agent's reasoning role. It is a static,
 - Update `internal/settings/schema.go` `allFields()` if it carries render-hints that would re-surface removed tabs.
 - The `front-launch` identifier is a phantom (D2) — no removal action; if a stale reference appears anywhere, delete it as dead code.
 
-### M4 — Simplified surviving-tab surfaces
+### M4 — Simplified surviving-tab surfaces + field descriptions [Refinement 1 + Refinement 2]
 
-- **git_strategy**: surface ONLY `mode` field in the UI; the rest are baked (M2).
+- **git_strategy**: surface the core fields `mode` + `merge_method` + `hooks.pre_push` for the active mode as top-level selectors (REQ-WC-016, Refinement 1); the per-provider nesting (`branch_creation`, `automation`, `commit_style`, `github_integration`, `push_to_remote`, `draft_pr`, `required_reviews`, `branch_protection`) bakes as template defaults (M2) and remains UI-hidden.
 - **llm**: surface ONLY `glm.models.{high, medium, low, fable}` tier mapping; hide `mode`, `team_mode`, `performance_tier`, `plan_type`, `claude_models` (baked).
 - **quality_extras**: replace the full tab with a single enable/disable toggle on the **`launch`** tab (OQ-1 resolved — D1).
+- **Field descriptions (Refinement 2, REQ-WC-015)**: each selectable field rendered across the `identity`, `language`, `launch`, `git_strategy`, and `llm` tabs SHALL render a localized description below the field label (per the design.md §H mechanism: `FieldDef.Description` i18n key resolved via `i18n.js`). Each `<option>` within a select carries a per-option description via the native `title` attribute. The description strings themselves are authored in M6 (4-locale).
 
 ### M5 — Sub-agent FM color-tier UI redesign + stale-comment sweep [D13]
 
@@ -189,13 +191,15 @@ The tier for each agent is CHOSEN by the agent's reasoning role. It is a static,
 - Update `fieldsetAgentFrontmatter` (`fieldsets.templ:361`) to thread the name-table accessor through.
 - Update `internal/web/agentfm.go:79-117` parse/validate to closed-set-validate against `V4EffortValues` / `V4ModelValues` (REQ-WC-009, C-8).
 - **Stale-comment sweep [D13]**: update `fieldsets.templ:357` "7 sub-agent" → "20 sub-agent" (actual catalog count); update `agentfm.go:49` "8 retained agents" → "10 moai-custom agents" (actual moai/ count; harness/ adds 10 more). Comments only — no behavior change.
+- **Tier option descriptions (Refinement 2, REQ-WC-015)**: the agentfm tab's tier-color picker options (🔴🟠🔵🩵 + the neutral "custom") and the model/effort selectors each carry a per-option description (via `title` attribute / i18n key per design.md §H). Description strings authored in M6.
 - Run `make build` (KI-6).
 
-### M6 — Frontend assets + 4-locale i18n
+### M6 — Frontend assets + 4-locale i18n (tier labels + per-field/option descriptions) [Refinement 2 makes this the heaviest milestone]
 
 - Add tier-label strings (color names, "custom" neutral label, tooltip text for `max`/`inherit`) to `internal/web/assets/i18n.js` in all four locales (en, ko, ja, zh).
-- Add the color-badge CSS to `internal/web/assets/console.css`.
-- Wire the tier-badge render in `internal/web/assets/app.js`.
+- **Per-field/option description strings (Refinement 2, REQ-WC-015, C-9)**: author `fieldDesc.<sectionID>.<fieldID>` entries (and `fieldDesc.<sectionID>.<fieldID>.option.<value>` for per-option) for every selectable field across the 6 surviving tabs, in all 4 locales. This is the single largest authoring burden in the SPEC — estimate ~200–400 strings per locale × 4 locales = ~800–1600 strings total. Recommended run-phase approach: draft `en` first, then translate to `ko`/`ja`/`zh`; consider mechanical aid where sensible. Budget accordingly.
+- Add the color-badge CSS + the `.field-description` muted-helper-text CSS class to `internal/web/assets/console.css`.
+- Wire the tier-badge render AND the field-description-below-label render in `internal/web/assets/app.js`.
 
 ### M7 — Test fallout updates
 
@@ -247,8 +251,8 @@ No unresolved clarification markers remain in this file or in research.md.
 
 ## §I. Cross-References
 
-- `spec.md` §B (REQ-WC-001..014) — the encoded requirements; §C (C-1..C-8) — constraints; §D — Out-of-Scope sub-headings; §D.Δ — deliberate default-change table; §E — baked keys-of-interest.
-- `design.md` §A–§G — Option A data-model design, name→tier table, UI architecture, rejected effort-derivation alternative.
+- `spec.md` §B (REQ-WC-001..016) — the encoded requirements; §C (C-1..C-9) — constraints; §D — Out-of-Scope sub-headings; §D.Δ — deliberate default-change table; §E — baked keys-of-interest.
+- `design.md` §A–§H — Option A data-model design, name→tier table, UI architecture, rejected effort-derivation alternative, description-source mechanism (§H).
 - `research.md` §A — verified codebase paths; §B — live-template key inventory; §C — 20-agent effort landscape.
 - `acceptance.md` §D — AC matrix mapped to REQs.
 - `CLAUDE.local.md` §2 (Template-First) / §15 (16-language neutrality) / §25 (template-internal-isolation).

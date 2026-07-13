@@ -1,7 +1,7 @@
 ---
 id: SPEC-WEBCONF-SIMPLIFY-001
 title: "moai web Configuration UI Simplification + Sub-Agent 4-Color Tier Redesign"
-version: "0.2.0"
+version: "0.3.0"
 status: in-progress
 created: 2026-07-13
 updated: 2026-07-13
@@ -20,6 +20,7 @@ tier: L
 |---------|------------|--------------|-------------------------------------------------------------------------------------------------------------------------------|
 | 0.1.0   | 2026-07-13 | manager-spec | Initial plan-phase authoring (4 locked inputs).                                                                               |
 | 0.2.0   | 2026-07-13 | manager-spec | iter-1 audit-fix (FAIL 0.69 → revise). D3 Option A name-keyed tier table (display-only, effort untouched). Tier M → L. Drop `front-launch` phantom. §E preserve-all-other-keys + project/handoff/quality_extras. Deliberate default-change flags. design.md + research.md authored (6-artifact Tier L set). |
+| 0.3.0   | 2026-07-13 | manager-spec | In-progress amendment (M1 merged; M3–M6 unimplemented → zero rework). Refinement 1: git_strategy surface scope expanded from `mode`-only to core fields (`mode` + `merge_method` + `hooks.pre_push`) — REQ-WC-016. Refinement 2: NEW REQ-WC-015 per-option descriptions (4-locale parity) + C-9. design.md §H description-source mechanism (option (a) hybrid: FieldDef.Description i18n key). |
 
 ---
 
@@ -91,6 +92,10 @@ The four LOCKED user decisions are encoded as REQ-WC-001 through REQ-WC-010. Eac
 
 **REQ-WC-014** The `moai web` console shall render its user-visible strings in all four shipped locales (en, ko, ja, zh) via the `internal/web/assets/i18n.js` dictionary; no new locale is added by this SPEC.
 
+**REQ-WC-015** [Refinement 2] Each selectable field and option rendered in the six surviving tabs (`identity`, `language`, `launch`, `git_strategy`, `llm`, `agentfm`) shall display a user-facing description in the active `conversation_language`, sourced from the `internal/web/assets/i18n.js` dictionary with 4-locale parity (en, ko, ja, zh). Where a field has selectable options, each option shall carry a per-option description.
+
+**REQ-WC-016** [Refinement 1] The `git_strategy` tab shall surface the core fields `mode`, `merge_method`, and `hooks.pre_push` for the active mode as top-level selectors; the per-provider nesting (`branch_creation`, `automation`, `commit_style`, `github_integration`, `push_to_remote`, `draft_pr`, `required_reviews`, `branch_protection`, etc.) shall bake as template defaults and remain UI-hidden.
+
 ---
 
 ## §C. Constraints
@@ -105,6 +110,7 @@ The four LOCKED user decisions are encoded as REQ-WC-001 through REQ-WC-010. Eac
 | C-6   | **Test fallout** — schema-section and route-coverage tests in `internal/settings/*_test.go` and `internal/web/*_test.go` WILL break and MUST be updated to reflect the new six-tab set, not blindly deleted. | `internal/settings/`, `internal/web/`               |
 | C-7   | [D3] **No agent frontmatter rewrite for tier DISPLAY** — the tier axis is a name-keyed lookup table; the 20 agent effort files are UNTOUCHED by the tier-display feature. Per-agent model/effort override remains via the EXISTING `agentfm.Patch` mechanism (writes `effort` and/or `model` only; NO new frontmatter key). | Decision 3 Option A + design.md §B                  |
 | C-8   | **Closed-set validation** — the model and effort selectors are validated against `V4EffortValues` / `V4ModelValues`; `max` effort and `inherit` model are valid selector values but receive no tier-color mapping (manual override sentinels, NOT a 5th/6th tier). | `internal/harness/v4manifest/schema.go`             |
+| C-9   | [Refinement 2] **Description i18n 4-locale parity** — every field/option description rendered by the surviving tabs MUST have a non-empty entry in all four locale dictionaries (en, ko, ja, zh) in `internal/web/assets/i18n.js`, keyed by the stable `fieldDesc.<sectionID>.<fieldID>` convention (design.md §H). | `internal/web/assets/i18n.js`, `internal/settings/schema.go` (`FieldDef.Description`) |
 
 ---
 
@@ -233,7 +239,7 @@ workflow:
     tmux_preferred: true
 ```
 
-### §E.4 git-strategy (SIMPLIFIED — UI exposes ONLY `mode`; full block baked)
+### §E.4 git-strategy (SIMPLIFIED — UI exposes core fields `mode` + `merge_method` + `hooks.pre_push`; per-provider nesting baked) [Refinement 1]
 
 ```yaml
 git_strategy:
@@ -252,7 +258,7 @@ git_strategy:
     merge_method: Squash
 ```
 
-The web UI exposes ONLY the `mode` field; the rest bake as template defaults.
+The web UI surfaces the core fields `mode`, `merge_method`, and `hooks.pre_push` for the active mode as top-level selectors (REQ-WC-016, Refinement 1); the per-provider nesting (`branch_creation`, `automation`, `commit_style`, `github_integration`, `push_to_remote`, `draft_pr`, `required_reviews`, `branch_protection`) bakes as template defaults and remains UI-hidden.
 
 ### §E.5 llm (SIMPLIFIED — UI exposes `glm.models.{high,medium,low,fable}` tier mapping; hides runtime-only `mode`/`team_mode`)
 

@@ -1,7 +1,7 @@
 ---
 id: SPEC-WEBCONF-SIMPLIFY-001
 title: "moai web Configuration UI Simplification + Sub-Agent 4-Color Tier Redesign — Acceptance"
-version: "0.2.0"
+version: "0.3.0"
 status: in-progress
 created: 2026-07-13
 updated: 2026-07-13
@@ -20,6 +20,7 @@ tier: L
 |---------|------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | 0.1.0   | 2026-07-13 | Initial plan-phase authoring.                                                                                                                               |
 | 0.2.0   | 2026-07-13 | iter-1 audit-fix. GWT-2/REQ-WC-002 drop `front-launch` (D2). GWT-4/AC-WC-004 pin to launch tab (D7). GWT-5/EC-1 rewrite for name-keyed table (D3). AC-WC-017 drop parenthetical (D9). "21 ACs" (D11). Tier M → L. |
+| 0.3.0   | 2026-07-13 | In-progress amendment. Refinement 1: GWT-17 + AC-WC-024 git_strategy core surface (`mode` + `merge_method` + `hooks.pre_push`). Refinement 2: GWT-18 + AC-WC-022 + AC-WC-023 per-option descriptions (REQ-WC-015, C-9). AC count 21 → 24. |
 
 ---
 
@@ -135,9 +136,21 @@ Every acceptance criterion is observable via a mechanical check: a `go test` ass
 **When** the agentfm UI renders their rows,
 **Then** each displays the 🩵 badge from the name-keyed lookup table — NOT a fallback, NOT "no badge". The name table is the source of truth; absent effort does not block tier display (Option A eliminates the iter-1 circular-dependency).
 
+### GWT-17 (git_strategy core fields surfaced — REQ-WC-016, MUST-PASS) [Refinement 1]
+
+**Given** the `git_strategy` tab is rendered,
+**When** an auditor enumerates the top-level selectors on the tab,
+**Then** exactly the three core fields `mode`, `merge_method`, and `hooks.pre_push` are surfaced as top-level selectors for the active mode, and the per-provider nesting (`branch_creation`, `automation`, `commit_style`, `github_integration`, `push_to_remote`, `draft_pr`, `required_reviews`, `branch_protection`) is NOT rendered (baked as template defaults).
+
+### GWT-18 (per-field/option descriptions rendered — REQ-WC-015 + C-9, MUST-PASS) [Refinement 2]
+
+**Given** a selectable field rendered on any of the six surviving tabs (`identity`, `language`, `launch`, `git_strategy`, `llm`, `agentfm`),
+**When** an auditor inspects the rendered field,
+**Then** the field displays a non-empty user-facing description in the active `conversation_language` below the field label, sourced from `internal/web/assets/i18n.js`; and where the field has selectable options, each option carries a per-option description.
+
 ---
 
-## §D. AC Matrix (traceability — 21 ACs) [D11]
+## §D. AC Matrix (traceability — 24 ACs) [D11 + Refinement 1/2]
 
 | AC ID      | Maps to REQ        | Severity    | Verification mechanism                                                                                           | GWT   |
 |------------|--------------------|-------------|------------------------------------------------------------------------------------------------------------------|-------|
@@ -163,8 +176,11 @@ Every acceptance criterion is observable via a mechanical check: a `go test` ass
 | AC-WC-019  | full-suite regression | MUST-PASS | `go test ./...` exits 0 (no cascade beyond web/settings; covers effort_mapping triple KI-8).                     | —     |
 | AC-WC-020  | render smoke        | SHOULD-PASS | Manual `moai web` launch confirms 6 tabs render and agentfm shows color badges.                                  | —     |
 | AC-WC-021  | absent-effort badge (EC-1) | MUST-PASS | The 3 hns-oss-docs-* agents (no `effort` FM) each render a 🩵 badge from the name table. [D3]                | GWT-16|
+| AC-WC-022  | REQ-WC-015 + C-9 (descriptions 4-locale) | MUST-PASS | Test enumerates every selectable field across the 6 surviving tabs and asserts each renders a non-empty description in all 4 locales (en/ko/ja/zh). [Refinement 2] | GWT-18|
+| AC-WC-023  | REQ-WC-015 (description i18n key convention) | MUST-PASS | `grep` i18n.js: description strings live under the `fieldDesc.<sectionID>.<fieldID>` (and per-option `fieldDesc.<sectionID>.<fieldID>.option.<value>`) convention; no ad-hoc keys. [Refinement 2] | GWT-18|
+| AC-WC-024  | REQ-WC-016 (git_strategy core surface) | MUST-PASS | Render test asserts the git_strategy tab surfaces exactly `mode` + `merge_method` + `hooks.pre_push` as top-level selectors; per-provider nesting is absent. [Refinement 1] | GWT-17|
 
-**Total: 21 ACs** (AC-WC-003 split into 003a/003b; AC-WC-021 added for the absent-effort case under Option A). [D11]
+**Total: 24 ACs** (AC-WC-003 split into 003a/003b; AC-WC-021 added for absent-effort under Option A; AC-WC-022/023/024 added by Refinement 1 + Refinement 2). [D11]
 
 ---
 
@@ -192,7 +208,7 @@ Where direct observation is impractical, indirect evidence is accepted:
 
 The SPEC is DONE when ALL of the following hold:
 
-1. All MUST-PASS ACs (AC-WC-001 through AC-WC-017, AC-WC-019, AC-WC-021) are green with observed command output cited in `progress.md §E.2`.
+1. All MUST-PASS ACs (AC-WC-001 through AC-WC-017, AC-WC-019, AC-WC-021, AC-WC-022, AC-WC-023, AC-WC-024) are green with observed command output cited in `progress.md §E.2`.
 2. `make build` exits 0.
 3. `go test ./...` exits 0.
 4. Template-neutrality CI guard passes.
@@ -214,7 +230,7 @@ The SPEC is DONE when ALL of the following hold:
 ## §I. Cross-References
 
 - `spec.md` §B (REQs) / §C (Constraints) / §D (Out of Scope) / §D.Δ (deliberate default-changes) / §E (baked keys-of-interest).
-- `design.md` §A–§G — Option A name-keyed table design.
+- `design.md` §A–§H — Option A name-keyed table design + description-source mechanism (§H).
 - `research.md` §A–§C — codebase map + live-template key inventory + 20-agent effort landscape.
 - `plan.md` §F (Milestones M1..M9) / §G (Open Questions — all resolved) / §H (Anti-Patterns).
 - `CLAUDE.local.md` §2 / §15 / §25 (Template-First, language neutrality, template-internal-isolation).

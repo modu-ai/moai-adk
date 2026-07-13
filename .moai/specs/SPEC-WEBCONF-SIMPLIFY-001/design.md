@@ -1,7 +1,7 @@
 ---
 id: SPEC-WEBCONF-SIMPLIFY-001
 title: "moai web Configuration UI Simplification + Sub-Agent 4-Color Tier Redesign — Design"
-version: "0.2.0"
+version: "0.3.0"
 status: in-progress
 created: 2026-07-13
 updated: 2026-07-13
@@ -19,6 +19,7 @@ tier: L
 | Version | Date       | Change                                                       |
 |---------|------------|--------------------------------------------------------------|
 | 0.2.0   | 2026-07-13 | Initial design authoring (Tier L artifact, iter-1 audit-fix). |
+| 0.3.0   | 2026-07-13 | In-progress amendment. Add §H description-source mechanism (REQ-WC-015, Refinement 2): option (a) hybrid — `FieldDef.Description` i18n key + `i18n.js` owns locale text. Former §H Cross-References → §I. |
 
 ---
 
@@ -145,11 +146,49 @@ Option A (name-keyed lookup table) eliminates all three: no file rewrite, no cir
 
 ---
 
-## §H. Cross-References
+## §H. Description-source mechanism (REQ-WC-015, Refinement 2)
 
-- `spec.md` §B REQ-WC-006..009 — the encoded tier requirements; §C C-7 (no agent-file rewrite for display) + C-8 (closed-set validation); §D.Δ (deliberate default-changes); §E (baked keys-of-interest).
-- `plan.md` §F M1 (data-model decision + 20-agent table) / M5 (UI redesign + stale-comment sweep).
-- `acceptance.md` §D AC-WC-005..008 / AC-WC-016..018 / AC-WC-021 — tier ACs.
+REQ-WC-015 requires every selectable field/option across the 6 surviving tabs to display a localized description. This section decides the data mechanism, the render location, and surfaces the i18n burden.
+
+### §H.1 Chosen mechanism — option (a) hybrid: `FieldDef.Description` i18n key + `i18n.js` owns the locale text
+
+Add a `Description string` field to `FieldDef` (`internal/settings/schema.go`). The field carries an **i18n KEY** (NOT inline text). The `internal/web/assets/i18n.js` dictionary owns the resolved per-locale text. Empty `Description` = the field has no description (render nothing).
+
+**Key convention**:
+- Field-level: `fieldDesc.<sectionID>.<fieldID>`
+- Per-option: `fieldDesc.<sectionID>.<fieldID>.option.<optionValue>`
+
+### §H.2 Why option (a) over (b) and (c)
+
+| Option | Verdict | Reason |
+|--------|---------|--------|
+| (a) `FieldDef.Description` = i18n key + `i18n.js` text | **CHOSEN** | Gives a testable anchor: a unit test enumerates `FieldDef` entries for the 6 surviving tabs, asserts each has a non-empty `Description` key, asserts that key exists in all 4 locale dicts. Schema declares presence + key; i18n owns text. Forward-compat (a field without a description has empty `Description`, no render). |
+| (b) Pure i18n-convention (`<section>.<field>` keys, no schema change) | Rejected | Cannot enumerate "which fields exist" without re-reading the schema, making the 4-locale parity test brittle (the test would have to mirror the field list in two places — schema + test fixture — inviting drift). |
+| (c) Inline text in `FieldDef.Description` | Rejected | Requires Go recompilation for any copy fix; does not natively support 4-locale parity (one inline string cannot serve 4 locales without a re-resolution layer, which collapses back to option (a)). |
+
+### §H.3 Render location — below the field label, as muted helper text
+
+The description renders **below the field label**, styled via a new `.field-description` CSS class in `internal/web/assets/console.css` (muted color, smaller font). This is cleaner than:
+
+- **Tooltip on hover** — hidden on touch/mobile, requires a hover affordance, delays the information.
+- **Info icon (ⓘ) with click** — extra click to read; adds a JS interaction for static text.
+
+For per-option descriptions within a `<select>`, each `<option>` carries a native `title` attribute (browser-native tooltip on hover, zero custom JS). The field-level description below the label explains the field; the per-option `title` gives on-hover detail per choice. This split matches the existing `fieldsets.templ` + `console.css` patterns (label + control + helper-text rows) without introducing a new widget.
+
+### §H.4 i18n burden (the heaviest part of M6)
+
+4 locales × (~20–30 selectable fields across the 6 surviving tabs) × (1 field-level description + 2–5 per-option descriptions where applicable). Estimate: **~200–400 strings per locale × 4 locales = ~800–1600 strings total**.
+
+This is the single largest authoring burden in the SPEC. M6 calls it out explicitly. Recommended run-phase approach: draft the `en` entries first (one pass over the schema's surviving-tab `FieldDef` set), then translate to `ko`/`ja`/`zh` (ideally with the `moai-domain-humanize` specialist for naturalization). The `FieldDef.Description` key convention keeps the string set grep-able and CI-validatable (AC-WC-022 + AC-WC-023).
+
+---
+
+## §I. Cross-References
+
+- `spec.md` §B REQ-WC-006..009 (tier) + REQ-WC-015 (descriptions) + REQ-WC-016 (git_strategy core surface); §C C-7 (no agent-file rewrite for display) + C-8 (closed-set validation) + C-9 (description i18n 4-locale parity); §D.Δ (deliberate default-changes); §E (baked keys-of-interest).
+- `plan.md` §F M1 (data-model decision + 20-agent table) / M4 (surviving-tab surfaces + field descriptions) / M5 (UI redesign + tier option descriptions + stale-comment sweep) / M6 (i18n description strings — heaviest).
+- `acceptance.md` §D AC-WC-005..008 / AC-WC-016..018 / AC-WC-021 (tier) + AC-WC-022..024 (descriptions + git_strategy surface).
 - `research.md` §C — the 20-agent effort landscape that motivated Option A.
 - `internal/harness/v4manifest/schema.go:43-74` — closed-set definitions the table respects.
 - `internal/settings/agentfm/agentfm.go` — the existing `Patch` mechanism reused for per-agent override (NO new frontmatter key).
+- `internal/settings/schema.go` `FieldDef` — gains the `Description string` field (option (a), §H.1).
