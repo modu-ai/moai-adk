@@ -158,7 +158,7 @@ M5 redesigns `agentFMRow` to render a display-only tier color badge per agent (R
 ```yaml
 run_status: in-progress
 run_complete_at: null   # pending — run-phase not complete (M3 of 9 milestones)
-run_commit_sha: pending-backfill-m5   # latest run-phase commit (M5); M1=7b11d68bc, M2=e0061ad34, M3=cca120c70, M4=5f97d32fe
+run_commit_sha: 0f13b4684   # latest run-phase commit (M5); M1=7b11d68bc, M2=e0061ad34, M3=cca120c70, M4=5f97d32fe
 m1_to_mN_commit_strategy: per-milestone commit + push to main (Route A — Hybrid Trunk 1-person OSS)
 ac_pass_count: 14         # M1(5) + M2(3) + M3(2) + M4(1) + M5(3: 007,008,018) = 14 PASS; AC-WC-022/023 partial (en-only staging)
 ac_fail_count: 0
@@ -199,7 +199,7 @@ milestones:
     debt: "AC-WC-022/023 (description mechanism) en-only — ko/ja/zh fieldDesc.* + agentfm descriptions + full Description population = M6"
   M5:
     subject: "feat(SPEC-WEBCONF-SIMPLIFY-001): M5 agentfm tier-badge UI redesign + tier-suggested defaults"
-    sha: pending-backfill-m5
+    sha: 0f13b4684
     acs: [AC-WC-005, AC-WC-007, AC-WC-008, AC-WC-009, AC-WC-017, AC-WC-018]
     status: PASS-WITH-DEBT
     debt: "agentfm tier/model/effort description strings en-only — ko/ja/zh = M6"
