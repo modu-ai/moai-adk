@@ -491,7 +491,7 @@ The Python-based MoAI-ADK (~73,000 lines) was completely rewritten in Go.
 
 > **Important distinction**: `moai` (terminal CLI) ≠ `/moai` (Claude Code slash command). The former is the Go binary you run in a shell (`moai init`, `moai doctor`); the latter is the AI workflow router you run inside Claude Code chat (`/moai plan`, `/moai run`). They are different tools.
 
-15 entries — 14 named subcommands plus the natural-language default:
+16 entries — 15 named subcommands plus the natural-language default:
 
 | Subcommand | Role |
 |------------|------|
@@ -500,6 +500,7 @@ The Python-based MoAI-ADK (~73,000 lines) was completely rewritten in Go.
 | `project` / `harness` | Project docs + harness generation · harness lifecycle |
 | `review` / `gate` / `clean` | Code review · pre-commit quality gate · dead-code removal |
 | `mx` / `codemaps` / `feedback` | @MX annotations · architecture docs · GitHub issue reporting |
+| `e2e` | Multi-platform E2E testing (web/mobile/desktop, CLI-first) |
 | *(natural language)* | Analyze-First routing into the autonomous plan → run → sync pipeline |
 
 ### CLI Commands (36 top-level)

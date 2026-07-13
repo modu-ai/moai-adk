@@ -92,4 +92,20 @@ evidence_dir: .moai/state/verify/e2e-revival/
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+Sync-phase executed 2026-07-13 by manager-docs (orchestrator-directed). Scope: CHANGELOG `[Unreleased]` entry, README 4-locale subcommand-table sync (`e2e` row missing from the M3-authored table — added here), and the 3-phase close (`in-progress → implemented → completed`, single sync commit).
+
+- CHANGELOG: 1 new `### Added` entry under `[Unreleased]`, B12 self-test — `grep -c 'SPEC-E2E-REVIVAL-001' CHANGELOG.md` → 1 (pre-emission was 0); AC count cross-checked against `acceptance.md` SSOT (`grep -oE 'AC-E2E-[0-9]{3}' acceptance.md | sort -u | wc -l` → 28, matches the "28/28 AC PASS" claim).
+- README sync: `README.md` §Specialist table + §Retained agent count were already current (landed in M3, `cc0156396`) across all 4 locales. The `/moai Slash Subcommands` table (§ line ~494-503) was found STALE in all 4 locales — the M3 SKILL.md/CLAUDE.md router update did not touch this README table, so the named-subcommand count stayed "15 entries — 14 named" with no `e2e` row. Corrected to "16 entries — 15 named" + a new `e2e` row in `README.md` / `README.ko.md` / `README.ja.md` / `README.zh.md` (4-locale parity).
+- docs-site 4-locale documentation: EXPLICITLY DEFERRED per spec.md §E Exclusions (user decision 2026-07-13) — not touched.
+- Frontmatter: `spec.md` `status: in-progress → completed` (merged 3-phase close, single sync commit; `updated:` unchanged at 2026-07-13, same-day sync).
+
+```yaml
+sync_complete_at: 2026-07-13
+sync_commit_sha: pending-backfill-e2e-revival-sync
+sync_status: audit-ready
+changelog_entry_position: "[Unreleased] > ### Added (first entry)"
+frontmatter_status_transitions:
+  spec_md: "in-progress -> completed"
+readme_locales_updated: [README.md, README.ko.md, README.ja.md, README.zh.md]
+docs_site_deferred: true
+```

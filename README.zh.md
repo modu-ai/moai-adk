@@ -491,7 +491,7 @@ MoAI-ADK 捕获你的 AskUserQuestion 决策并个性化未来的推荐：
 
 > **重要区分**：`moai` (终端 CLI) ≠ `/moai` (Claude Code 斜杠命令)。前者是在 shell 中运行的 Go 二进制 (`moai init`、`moai doctor`)；后者是在 Claude Code 聊天中运行的 AI 工作流路由器 (`/moai plan`、`/moai run`)。它们是不同的工具。
 
-15 个入口——14 个具名子命令加上自然语言默认入口：
+16 个入口——15 个具名子命令加上自然语言默认入口：
 
 | 子命令 | 角色 |
 |------------|------|
@@ -500,6 +500,7 @@ MoAI-ADK 捕获你的 AskUserQuestion 决策并个性化未来的推荐：
 | `project` / `harness` | 项目文档 + Harness 生成 · Harness 生命周期 |
 | `review` / `gate` / `clean` | 代码评审 · 提交前质量门 · 死代码清除 |
 | `mx` / `codemaps` / `feedback` | @MX 注解 · 架构文档 · GitHub issue 报告 |
+| `e2e` | 多平台 E2E 测试 (Web/移动端/桌面端，CLI 优先) |
 | *(自然语言)* | Analyze-First 路由进入自主的 plan → run → sync 流水线 |
 
 ### CLI 命令 (36 个顶级命令)

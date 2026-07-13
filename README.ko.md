@@ -491,7 +491,7 @@ Python 기반 MoAI-ADK (~73,000 라인)를 Go로 완전히 재작성했습니다
 
 > **중요한 구분**: `moai` (터미널 CLI) ≠ `/moai` (Claude Code 슬래시 커맨드). 전자는 셸에서 실행하는 Go 바이너리 (`moai init`, `moai doctor`)이고, 후자는 Claude Code 채팅 안에서 실행하는 AI 워크플로우 라우터 (`/moai plan`, `/moai run`)입니다. 서로 다른 도구입니다.
 
-15개 항목 — 이름 있는 서브커맨드 14개 + 자연어 기본 경로:
+16개 항목 — 이름 있는 서브커맨드 15개 + 자연어 기본 경로:
 
 | 서브커맨드 | 역할 |
 |------------|------|
@@ -500,6 +500,7 @@ Python 기반 MoAI-ADK (~73,000 라인)를 Go로 완전히 재작성했습니다
 | `project` / `harness` | 프로젝트 문서 + 하네스 생성 · 하네스 라이프사이클 |
 | `review` / `gate` / `clean` | 코드 리뷰 · 사전 커밋 품질 게이트 · 데드 코드 제거 |
 | `mx` / `codemaps` / `feedback` | @MX 어노테이션 · 아키텍처 문서 · GitHub 이슈 보고 |
+| `e2e` | 멀티플랫폼 E2E 테스트 (웹/모바일/데스크톱, CLI 우선) |
 | *(자연어)* | 자율 plan → run → sync 파이프라인으로의 Analyze-First 라우팅 |
 
 ### CLI 커맨드 (최상위 36개)
