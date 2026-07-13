@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MoAI 모델 티어 재설계 보고서 — Plan A/B (2026-07-12)</title>
+<style>
+  :root { --coral:#cc785c; --ink:#1f1d1a; --muted:#6b6559; --bg:#faf8f5; --card:#fff; --line:#e8e2d9; }
+  * { box-sizing:border-box; }
+  body { font-family:'Pretendard Variable',Pretendard,-apple-system,sans-serif; background:var(--bg); color:var(--ink); margin:0; padding:40px 24px; line-height:1.65; }
+  .wrap { max-width:1080px; margin:0 auto; }
+  h1 { font-size:1.6rem; border-bottom:3px solid var(--coral); padding-bottom:12px; }
+  h2 { font-size:1.25rem; color:var(--coral); margin-top:44px; }
+  h3 { font-size:1.05rem; margin-top:28px; }
+  table { border-collapse:collapse; width:100%; margin:16px 0; background:var(--card); font-size:0.88rem; }
+  th, td { border:1px solid var(--line); padding:7px 10px; text-align:left; }
+  th { background:#f3ede4; font-weight:700; }
+  td.num { text-align:right; font-variant-numeric:tabular-nums; }
+  .fable { color:#7c3aed; font-weight:600; }
+  .opus  { color:var(--coral); font-weight:600; }
+  .sonnet{ color:#2563eb; font-weight:600; }
+  .inherit{ color:var(--muted); }
+  .best { background:#fdf3ee; }
+  .worst{ background:#f6f6f6; color:var(--muted); }
+  .tag { display:inline-block; padding:1px 8px; border-radius:10px; font-size:0.75rem; background:#f3ede4; margin-left:6px; }
+  .note { background:#fff8ef; border-left:4px solid var(--coral); padding:12px 16px; margin:16px 0; font-size:0.9rem; }
+  .warn { background:#fdf0f0; border-left:4px solid #c0392b; padding:12px 16px; margin:16px 0; font-size:0.9rem; }
+  .src { font-size:0.8rem; color:var(--muted); }
+  code { background:#f3ede4; padding:1px 5px; border-radius:4px; font-family:'Goorm Sans Code',monospace; font-size:0.85em; }
+  .grid2 { display:grid; grid-template-columns:1fr 1fr; gap:20px; }
+  @media (max-width:800px){ .grid2 { grid-template-columns:1fr; } }
+</style>
+</head>
+<body><div class="wrap">
+
+<h1>MoAI 모델 티어 재설계 보고서 — Plan A(API) / Plan B(구독)</h1>
+<p class="src">작성: 2026-07-12 · 근거: DeepSWE 리더보드(deepswe.datacurve.ai, 113 tasks, 2026-07-09 갱신) + Anthropic 공식 헬프센터 · 대상: moai init / moai web 모델 정책 재설계</p>
+
+<h2>1. 리더보드 실측 분석</h2>
+<table>
+<tr><th>모델 [effort]</th><th>Pass@1</th><th>과제당 비용</th><th>출력 토큰</th><th>스텝</th><th>$/해결과제*</th><th>토큰/해결과제*</th></tr>
+<tr><td class="fable">claude-fable-5 [max]</td><td class="num">70% ±4</td><td class="num">$21.63</td><td class="num">119k</td><td class="num">88</td><td class="num">$30.9</td><td class="num">170k</td></tr>
+<tr class="best"><td class="opus">claude-opus-4.8 [max]</td><td class="num">59% ±2</td><td class="num">$13.22</td><td class="num">135k</td><td class="num">120</td><td class="num"><b>$22.4</b></td><td class="num">229k</td></tr>
+<tr class="worst"><td class="sonnet">claude-sonnet-5 [max]</td><td class="num">54% ±4</td><td class="num">$26.40</td><td class="num">214k</td><td class="num">268</td><td class="num">$48.9</td><td class="num">396k</td></tr>
+<tr><td class="sonnet">claude-sonnet-4.6 [high]</td><td class="num">30% ±4</td><td class="num">$5.52</td><td class="num">76k</td><td class="num">134</td><td class="num">$18.4</td><td class="num">253k</td></tr>
+</table>
+<p class="src">* $/해결과제 = 비용 ÷ Pass@1, 토큰/해결과제 = 출력토큰 ÷ Pass@1 (파생 계산). 참고: gpt-5.6-luna [max] 67% / $3.03이 전체 가성비 1위이나 본 설계는 Claude 생태계 내 선택으로 한정.</p>
+
+<h3>도출된 4가지 결론</h3>
+<ol>
+<li><b>sonnet-5 max는 Claude 계열 최악의 가성비.</b> opus-4.8 max보다 <b>비싸고</b>($26.40 vs $13.22) 점수는 낮다(54% vs 59%). 원인: 268 스텝·214k 토큰 — 최고 effort에서 과도한 재시도 루프. → <b>"높은 effort ≠ 높은 가치"</b>. 실행 에이전트에 sonnet을 쓸 때 xhigh/max로 올리는 것은 비용·속도·가용성 모두에서 손해일 개연성이 크다.</li>
+<li><b>API 가성비 1위는 Opus 4.8</b> ($22.4/해결과제). 품질 1위는 Fable 5 (70%, +11%p). Fable의 프리미엄은 해결과제당 +$8.5.</li>
+<li><b>가용성(토큰 소모) 관점에서도 fable(170k) &lt; opus(229k) &lt; sonnet-5(396k).</b> 구독 주간 한도는 토큰 기반이므로, <b>"싼 모델로 돌리면 쿼터가 절약된다"는 통념은 성립하지 않는다</b> — 약한 모델은 스텝을 3배 돌며 오히려 쿼터를 더 태운다. 단, 구독 쿼터 차감에 모델별 가중치(Opus 가중)가 있다는 점은 감안 필요.</li>
+<li><b>스텝 수 = 속도.</b> fable 88 &lt; opus 120 &lt; sonnet-5 268. 벽시계 시간에서도 상위 모델이 유리.</li>
+</ol>
+
+<div class="warn"><b>한계 고지 (검증 불가 영역):</b> 리더보드에는 Claude 모델의 effort 변형(low/medium/high/xhigh) 데이터가 <b>없다</b>(전부 max). 따라서 "sonnet xhigh vs high 품질 차이", "fable low의 가성비"는 직접 실증 불가. 본 설계의 effort 하향은 (a) sonnet-5 max의 루프 낭비 실측, (b) Opus 4.8 기본 effort가 high라는 Anthropic 공식 포지셔닝, (c) effort는 출력토큰에 준선형이라는 일반 특성에서 <b>추정</b>한 것이다. 도입 후 `.moai/state/verify/` 실측으로 보정을 권장.</p></div>
+
+<h2>2. 재설계 원칙</h2>
+<ol>
+<li><b>추론 집중 배치</b>: 설계·계획·감사·자문(spec, plan-auditor, sync-auditor, design, advisor)에 최상위 모델 + high 이상. 이 단계 품질이 하류 재작업(=토큰 낭비)을 결정.</li>
+<li><b>실행은 high 상한</b>: 구현·수행(develop, harness)은 sonnet <b>high</b>(xhigh 아님). 좋은 plan이 주어지면 실행 난도는 낮아지고, max-effort 루프 낭비를 차단.</li>
+<li><b>기계 작업은 최저가</b>: docs/git은 sonnet low — 추론 불필요.</li>
+<li><b>가용성 = 토큰/해결과제 최소화</b>: 재시도 루프를 만드는 조합(약한 모델 + 높은 effort)을 배제.</li>
+</ol>
+
+<h2>3. Plan A — API 종량제 (3-tier) <span class="tag">rev2</span></h2>
+<p><b>rev2 수정</b>: 단가는 sonnet($3/$15)이 opus($5/$25)의 절반이지만 과제당 비용은 opus $13.22 &lt; sonnet $26.40으로 역전(sonnet이 토큰 1.6배·스텝 2.2배 소모). 따라서 API에서는 <b>실행도 opus</b> — sonnet은 기계 작업에만 배치. 추론=Fable(품질 1위), 실행=opus(과제당 비용 1위), 기계=sonnet low.</p>
+<table>
+<tr><th>에이전트 (역할)</th><th>A-max<br><span class="tag">품질 우선</span></th><th>A-medium ★권장<br><span class="tag">품질·비용 균형</span></th><th>A-low<br><span class="tag">비용 최소</span></th></tr>
+<tr><td>manager-spec (계획·추론)</td><td class="fable">fable / high</td><td class="fable">fable / high</td><td class="opus">opus / high</td></tr>
+<tr><td>plan-auditor (감사·추론)</td><td class="fable">fable / high</td><td class="fable">fable / high</td><td class="opus">opus / high</td></tr>
+<tr><td>sync-auditor (감사·추론)</td><td class="fable">fable / high</td><td class="opus">opus / high</td><td class="opus">opus / medium</td></tr>
+<tr><td>manager-design (설계·추론)</td><td class="fable">fable / high</td><td class="fable">fable / high</td><td class="opus">opus / high</td></tr>
+<tr><td>super-advisor (자문·최고추론)</td><td class="fable">fable / xhigh</td><td class="fable">fable / high</td><td class="opus">opus / high</td></tr>
+<tr><td>manager-develop (구현·실행)</td><td class="fable">fable / high</td><td class="opus">opus / high</td><td class="opus">opus / medium</td></tr>
+<tr><td>builder-harness (생성·실행)</td><td class="opus">opus / high</td><td class="opus">opus / medium</td><td class="opus">opus / medium</td></tr>
+<tr><td>manager-docs (문서·기계)</td><td class="sonnet">sonnet / medium</td><td class="sonnet">sonnet / low</td><td class="sonnet">sonnet / low</td></tr>
+<tr><td>manager-git (git·기계)</td><td class="sonnet">sonnet / low</td><td class="sonnet">sonnet / low</td><td class="sonnet">sonnet / low</td></tr>
+<tr><td>Explore (읽기전용 탐색)</td><td class="inherit">inherit / medium</td><td class="inherit">inherit / low</td><td class="inherit">inherit / low</td></tr>
+</table>
+<div class="note">
+<b>티어별 논거</b><br>
+· <b>A-max</b>: 추론 전체 fable — 리더보드 품질 1위(70%)·토큰 효율 1위(170k/해결). develop까지 fable high(과제당 토큰이 sonnet의 43%라 체감 비용 격차는 명목가보다 작음). xhigh는 advisor 단 1곳(교착 해소 전용).<br>
+· <b>A-medium(권장)</b>: 계획·설계는 fable, 감사·실행은 opus — $/해결과제 1위($22.4) 모델을 소비량이 큰 실행에 배치. rev2에서 실행을 sonnet high→opus high로 전환(과제당 비용 역전 실측 반영).<br>
+· <b>A-low</b>: fable 프리미엄 제거, 추론·실행 전부 opus(가성비 1위), effort로만 차등.<br>
+· <b>rev2 한계 고지</b>: opus medium vs sonnet high 품질 동등성은 미실증(effort 변형 데이터 부재) — 과제당 토큰 효율 격차(135k vs 214k)가 effort 하향에서도 유지된다는 구조적 가정.<br>
+· <b>Plan B는 rev2 비적용</b>: 구독은 쿼터 구조가 제약 — Opus 시간은 가중 차감되는 희소 자원(Max 5x: Sonnet 140–280h vs Opus 15–35h)이라 실행은 Sonnet 시간으로 돌리는 opusplan 구조 유지.
+</div>
+
+<h2>4. Plan B — 구독 요금제 (3-tier, 가용성 최우선)</h2>
+<p>구독의 제약은 달러가 아니라 <b>주간 토큰 쿼터(전 모델 공유) + Opus 가중 차감</b>. 목표는 "쿼터당 해결 과제 수" 극대화 = 재시도 루프 배제 + Opus는 추론에만.</p>
+<table>
+<tr><th>에이전트 (역할)</th><th>B-max ★권장<br><span class="tag">Max 20x $200</span></th><th>B-medium<br><span class="tag">Max 5x $100</span></th><th>B-low<br><span class="tag">Pro $20</span></th></tr>
+<tr><td>manager-spec (계획·추론)</td><td class="opus">opus / high</td><td class="opus">opus / high</td><td class="opus">opus / medium</td></tr>
+<tr><td>plan-auditor (감사·추론)</td><td class="opus">opus / high</td><td class="opus">opus / medium</td><td class="sonnet">sonnet / high</td></tr>
+<tr><td>sync-auditor (감사·추론)</td><td class="opus">opus / high</td><td class="opus">opus / medium</td><td class="sonnet">sonnet / high</td></tr>
+<tr><td>manager-design (설계·추론)</td><td class="opus">opus / high</td><td class="opus">opus / medium</td><td class="sonnet">sonnet / high</td></tr>
+<tr><td>super-advisor (자문·최고추론)</td><td class="opus">opus / xhigh</td><td class="opus">opus / high</td><td class="opus">opus / medium</td></tr>
+<tr><td>manager-develop (구현·실행)</td><td class="sonnet">sonnet / high</td><td class="sonnet">sonnet / high</td><td class="sonnet">sonnet / high</td></tr>
+<tr><td>builder-harness (생성·실행)</td><td class="sonnet">sonnet / high</td><td class="sonnet">sonnet / medium</td><td class="sonnet">sonnet / medium</td></tr>
+<tr><td>manager-docs (문서·기계)</td><td class="sonnet">sonnet / low</td><td class="sonnet">sonnet / low</td><td class="sonnet">sonnet / low</td></tr>
+<tr><td>manager-git (git·기계)</td><td class="sonnet">sonnet / low</td><td class="sonnet">sonnet / low</td><td class="sonnet">sonnet / low</td></tr>
+<tr><td>Explore (읽기전용 탐색)</td><td class="inherit">inherit / medium</td><td class="inherit">inherit / low</td><td class="inherit">inherit / low</td></tr>
+</table>
+<div class="note">
+<b>티어별 논거</b><br>
+· <b>B-max(권장)</b>: Anthropic 공식 opusplan 패턴("계획은 Opus, 실행은 Sonnet")의 정밀 버전. 추론 6개는 opus high(Opus 4.8 공식 기본 effort), 실행은 sonnet <b>high</b> — 종전 설계의 sonnet xhigh를 high로 하향(sonnet-5 max 루프 낭비 실측 반영: 품질 이득 불확실 vs 토큰·시간 손해 확실). Opus 주간 한도(Max 20x 기준 24–40h)는 추론 단계만으로는 충분.<br>
+· <b>B-medium</b>: Opus 시간(15–35h)이 절반 이하이므로 opus high는 spec 1곳만, 감사·설계는 opus medium으로 강등. 실행 sonnet high 유지.<br>
+· <b>B-low(Pro)</b>: 검증 결과 Pro도 Opus 4.8 사용 가능하나 주간 한도가 작음. <b>opusplan 골격만 보존</b> — 진입점 2곳(spec의 계획 수립, advisor의 교착 해소)만 opus medium, 나머지 추론은 sonnet high. 전면 sonnet이 아니라 "Opus를 가장 레버리지 높은 지점에만" 배치.
+</div>
+
+<h2>5. 종전 설계 대비 변경 요약</h2>
+<table>
+<tr><th>항목</th><th>종전</th><th>재설계</th><th>근거</th></tr>
+<tr><td>실행 effort 상한</td><td>sonnet xhigh</td><td><b>sonnet high</b></td><td>sonnet-5 max: 268스텝·$26.40으로 opus보다 비싸고 낮은 점수 — effort 상향의 한계효용 부정</td></tr>
+<tr><td>A(API) 기본 권장</td><td>A-low (fable low 전면)</td><td><b>A-medium</b> (추론 fable high + 실행 opus high)</td><td>fable low 실증 데이터 부재; $/해결과제 최적은 역할 분리 조합</td></tr>
+<tr><td>A 실행 모델 (rev2)</td><td>sonnet high</td><td><b>opus high/medium</b></td><td>단가 우위(sonnet $3/$15)가 과제당 비용(opus $13.22 &lt; sonnet $26.40)에 역전 — sonnet 토큰 1.6배·스텝 2.2배. 구독(B)은 Opus 쿼터 희소성 때문에 sonnet 실행 유지</td></tr>
+<tr><td>A 추론 effort</td><td>xhigh~max</td><td><b>high</b> (advisor만 xhigh)</td><td>가용성 요구 + max의 비용 프리미엄 대비 이득 미실증</td></tr>
+<tr><td>B-low(Pro)</td><td>전면 sonnet</td><td><b>opusplan 축소형</b> (spec·advisor만 opus medium)</td><td>검증: Pro도 Opus 접근 가능(공식) + opusplan은 Anthropic 공식 권장 패턴</td></tr>
+<tr><td>B 실행</td><td>sonnet xhigh (B-medium)</td><td><b>sonnet high 통일</b></td><td>쿼터=토큰 기반, 루프 낭비가 가용성의 최대 적</td></tr>
+</table>
+
+<h2>6. 구현 매핑 (spawn-time 라우팅 파생 규칙)</h2>
+<p><code>workflow.yaml model_routing_profiles</code> 36-cell은 위 표에서 기계적으로 파생한다:</p>
+<ul>
+<li>phase→대표 에이전트 매핑: plan→manager-spec, run→manager-develop, sync→manager-docs, mx→manager-git</li>
+<li>SPEC Tier(S/M/L)는 effort ±1단만 조정 (예: B-max의 L-plan = opus high, S-plan = opus medium; run은 전 Tier sonnet high, S-run만 medium)</li>
+<li>선행 조건: <code>validRoutingModels</code>(internal/config/model_routing.go)에 <code>"fable"</code> 추가, <code>agentModelMap</code>/<code>agentEffortMap</code>(internal/template/model_policy.go)을 plan_type×tier 단일 프로파일 구조로 통합</li>
+</ul>
+
+<h2>7. 출처</h2>
+<ul class="src">
+<li>DeepSWE 리더보드 — https://deepswe.datacurve.ai/ (113 tasks, 2026-07-09, mini-swe-agent 통일 하네스)</li>
+<li>Use Claude Code with your Pro or Max plan — https://support.claude.com/en/articles/11145838</li>
+<li>What is the Pro plan? — https://support.claude.com/en/articles/8325606 (주간 한도 전 모델 공유)</li>
+<li>Claude Code Usage Limits — https://www.morphllm.com/claude-code-usage-limits (Max 플랜 Opus 자동전환 임계 20%/50%)</li>
+<li>Weekly Rate Limits — https://apidog.com/blog/weekly-rate-limits-claude-pro-max-guide/ (Opus 15–35h vs Sonnet 140–280h, Max 5x)</li>
+</ul>
+
+</div></body>
+</html>

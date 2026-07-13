@@ -1,0 +1,10 @@
+{
+  "confidence": 1,
+  "draft_id": "PROPOSAL-20260712-7a04cf51",
+  "generated_at": "2026-07-13T04:14:01Z",
+  "generator_version": "0.1.0",
+  "observation_count": 7,
+  "pattern_key": "agent_invocation:mcp__claude_ai_Linear__save_project:",
+  "source_ts": "2026-07-12T05:04:20Z",
+  "tier": "rule"
+}
