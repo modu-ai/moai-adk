@@ -102,9 +102,6 @@ MoAI-ADK 使用 4 个配置文件位置。
   "permissions": {},
   "enabledPlugins": {},
   "extraKnownMarketplaces": {},
-  "enableAllProjectMcpServers": false,
-  "enabledMcpjsonServers": [],
-  "disabledMcpjsonServers": [],
   "fileSuggestion": {},
   "alwaysThinkingEnabled": false,
   "maxThinkingTokens": 0,
@@ -271,7 +268,6 @@ Claude 工作时是否在 spinner 中显示提示。设为 `false` 禁用提示�
     "Read",                          // 仅工具名
     "Bash(git add:*)",               // Bash + 命令模式
     "Bash(pytest:*)",                // 通配符
-    "mcp__context7__resolve-library-id",  // MCP 工具
     "WebFetch(domain:example.com)"   // 域名模式
   ]
 }
@@ -804,9 +800,6 @@ Hook 配置的详细内容见 [Hooks 指南](/zh/advanced/hooks-guide)。
       "Bash(bun add:*)"
     ]
   },
-  "enabledMcpjsonServers": [
-    "context7"          // 个人启用的 MCP 服务器
-  ],
   "outputStyle": "Mr.Alfred"  // 个人偏好的输出风格
 }
 ```
@@ -983,15 +976,6 @@ MoAI-ADK 提供以下自定义 Hook。
 
 ### 启用 MCP 服务器
 
-启用 Context7 MCP 服务器。
-
-```json
-{
-  "enabledMcpjsonServers": [
-    "context7"
-  ]
-}
-```
 
 ### 启用沙箱
 
@@ -1117,7 +1101,6 @@ constitution:
 - [Claude Code 官方设置文档](https://code.claude.com/docs/en/settings) - 官方 Claude Code 配置
 - [Hooks 指南](/zh/advanced/hooks-guide) - Hook 配置详解
 - [CLAUDE.md 指南](/zh/advanced/claude-md-guide) - 项目指令配置
-- [MCP 服务器应用](/zh/advanced/mcp-servers) - MCP 服务器配置方法
 - [IAM 文档](https://code.claude.com/docs/en/iam) - 权限系统概览
 
 {{< callout type="info" >}}
