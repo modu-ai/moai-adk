@@ -132,6 +132,18 @@ M5 redesigns `agentFMRow` to render a display-only tier color badge per agent (R
 
 **Build evidence**: make build (templ + assets re-embedded) exit 0; go build exit 0; windows/amd64 cross-build exit 0; web/settings tests all PASS; golangci-lint 0 issues; C-HRA-008 boundary 0 matches.
 
+### M6 evidence (i18n 4-locale completion — REQ-WC-015/C-9 fully closed)
+
+M6 closes the 4-locale description parity: populates `Description` on the remaining git_strategy fields (merge_method ×3 profiles + hooks.pre_push ×3 profiles), adds the en `fieldDesc.git_strategy.{merge_method,hooks.pre_push}` keys, translates EVERY `fieldDesc.*` key to ko/ja/zh, and removes the M4 i18n parity exemption.
+
+**Description population**: git_strategy.{manual,personal,team}.{merge_method,hooks.pre_push} now carry `Description` (fieldDesc.git_strategy.{merge_method,hooks.pre_push}). All schema-driven surviving-tab fields (git_strategy + llm) now have Description set.
+
+**4-locale parity**: 24 `fieldDesc.*` keys per locale (en=ko=ja=zh=24 — verified via sed block-range grep). Keys: git_strategy.mode + 3 options + merge_method + hooks.pre_push (6); llm.glm.models.{high,medium,low,fable} (4); agentfm.{red,orange,blue,lightblue,custom} + model.{inherit,haiku,sonnet,opus} + effort.{low,medium,high,xhigh,max} (14). Plus f.quality.quality_extras_enabled.{title,desc} in all 4 locales (closes the M4 exemption).
+
+**Exemption removed**: TestI18nKeySetParity now passes with ZERO exemptions — the quality.quality_extras_enabled M4 staging skip is removed (ko/ja/zh entries now exist).
+
+**Build evidence**: make build (i18n.js re-embedded) exit 0; go build exit 0; windows/amd64 cross-build exit 0; web/settings tests all PASS; golangci-lint 0 issues; C-HRA-008 boundary 0 matches.
+
 ### Remaining ACs (pending their owning milestone)
 
 | AC ID | Owning milestone | Status |
@@ -144,7 +156,7 @@ M5 redesigns `agentFMRow` to render a display-only tier color badge per agent (R
 | AC-WC-009 (deep doctrine preserved) | M8 | PENDING (no doctrine file touched in M1) |
 | AC-WC-010 / AC-WC-011 (atomic save, GLM carve-out) | M3 / M2 | PENDING |
 | AC-WC-012 (web/settings test fallout) | M7 | PENDING |
-| AC-WC-013 (4-locale i18n) | M6 | PENDING |
+| AC-WC-013 (4-locale i18n) | M6 | PASS (24 fieldDesc.* keys × 4 locales = parity; TestI18nKeySetParity zero exemptions; C-9 closed) |
 | AC-WC-014 (make build — templ regenerate) | M5+ | PENDING (no templ edit in M1; `go build ./...` exit 0 confirms Go compile green) |
 | AC-WC-015 (template-neutrality CI guard) | M2 | PASS (M2 — `grep` 0 SPEC-ID matches in baked sections) |
 | AC-WC-018 (max/inherit neutral badge) | M5 | PASS (agentTierBadge returns "custom" when effort=max or model=inherit) |
@@ -158,9 +170,9 @@ M5 redesigns `agentFMRow` to render a display-only tier color badge per agent (R
 ```yaml
 run_status: in-progress
 run_complete_at: null   # pending — run-phase not complete (M3 of 9 milestones)
-run_commit_sha: 0f13b4684   # latest run-phase commit (M5); M1=7b11d68bc, M2=e0061ad34, M3=cca120c70, M4=5f97d32fe
+run_commit_sha: pending-backfill-m6   # latest run-phase commit (M6); M1=7b11d68bc, M2=e0061ad34, M3=cca120c70, M4=5f97d32fe, M5=0f13b4684
 m1_to_mN_commit_strategy: per-milestone commit + push to main (Route A — Hybrid Trunk 1-person OSS)
-ac_pass_count: 14         # M1(5) + M2(3) + M3(2) + M4(1) + M5(3: 007,008,018) = 14 PASS; AC-WC-022/023 partial (en-only staging)
+ac_pass_count: 16         # M1(5)+M2(3)+M3(2)+M4(1)+M5(3)+M6(2: 013,022/023-now-full) = 16 PASS; AC-WC-022/023 no longer partial (4-locale complete)
 ac_fail_count: 0
 ac_pass_with_debt_count: 1   # M2 merge_method blocker (§D.Δ row 4 squash→Squash outside closed set) — debt, not fail
 preserve_list_post_run_count: 20   # Option A — all 20 agent .md files under .claude/agents/{moai,harness}/ untouched
@@ -203,7 +215,11 @@ milestones:
     acs: [AC-WC-005, AC-WC-007, AC-WC-008, AC-WC-009, AC-WC-017, AC-WC-018]
     status: PASS-WITH-DEBT
     debt: "agentfm tier/model/effort description strings en-only — ko/ja/zh = M6"
-  M6: { status: pending, owner: i18n-assets }
+  M6:
+    subject: "feat(SPEC-WEBCONF-SIMPLIFY-001): M6 i18n 4-locale field/option descriptions (REQ-WC-015/C-9 complete)"
+    sha: pending-backfill-m6
+    acs: [AC-WC-013, AC-WC-022, AC-WC-023]
+    status: PASS
   M7: { status: pending, owner: test-fallout }
   M8: { status: pending, owner: docs-cleanup }
   M9: { status: pending, owner: final-verification }

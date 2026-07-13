@@ -86,11 +86,6 @@ func TestI18nKeySetParity(t *testing.T) {
 		if statuslineFields[f.Name] {
 			continue // statusline: schema-preserved, web-i18n-removed (M3 redesign)
 		}
-		// SPEC-WEBCONF-SIMPLIFY-001 M4: quality_extras_enabled toggle is staged
-		// en-only; ko/ja/zh labels land in M6. Skip its 4-locale parity check until M6.
-		if f.Name == "quality.quality_extras_enabled" {
-			continue
-		}
 		if strings.HasPrefix(f.I18nKey, "seg.") {
 			// Segment keys: the seg.<segment> label must exist in all 4 locales.
 			if !i18nKeyInAllLocales(t, f.I18nKey) {

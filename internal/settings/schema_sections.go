@@ -137,14 +137,14 @@ func gitStrategyFields() []FieldDef {
 	mergeMethods := append([]string{}, config.ValidMergeMethods()...)
 	sort.Strings(mergeMethods)
 	for _, profile := range []string{"manual", "personal", "team"} {
-		// hooks.pre_push (기존) — 런타임 reader (hook_pre_push.go:72).
-		fields = append(fields, typedField(SectionGitStrategy, "git_strategy", profile+".hooks.pre_push", TypeText))
-		// merge_method (M3) — 닫힌 enum select. 빈 문자열은 enum 비멤버이므로 저장은
-		// 항상 명시적 enum 값을 기록한다. absent-key 초기 표시는 "(project default)"
-		// 빈 옵션으로 유효 컴파일 기본값을 나타낸다 (REQ-WC14-010, AC-WC14-010c).
-		fields = append(fields, withSelect(
+		prePush := typedField(SectionGitStrategy, "git_strategy", profile+".hooks.pre_push", TypeText)
+		prePush.Description = "fieldDesc.git_strategy.hooks.pre_push"
+		fields = append(fields, prePush)
+		mergeMethod := withSelect(
 			typedField(SectionGitStrategy, "git_strategy", profile+".merge_method", TypeSelect),
-			"f.git_strategy.merge_method.opt.", mergeMethods, emptyLabelProjectDefault, "opt.project_default"))
+			"f.git_strategy.merge_method.opt.", mergeMethods, emptyLabelProjectDefault, "opt.project_default")
+		mergeMethod.Description = "fieldDesc.git_strategy.merge_method"
+		fields = append(fields, mergeMethod)
 	}
 	return fields
 }
