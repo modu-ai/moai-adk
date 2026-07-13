@@ -46,6 +46,29 @@ func v4ModelValues() []string {
 func V4EffortValues() []string { return v4EffortValues() }
 func V4ModelValues() []string  { return v4ModelValues() }
 
+// ─── Sub-agent tier accessors (SPEC-WEBCONF-SIMPLIFY-001 M1) ──────────────────
+//
+// 티어(tier)는 서브에이전트의 4색 추론-역할 분류다. 각 에이전트의 effort
+// frontmatter와는 독립적인 display-only 분류며 (design.md §B), canonical 테이블/
+// 접근자는 internal/harness/v4manifest에 있다. 여기선 웹 계층이 effort/model
+// closed-set 접근자(V4EffortValues/V4ModelValues)를 이미 임포트한 같은 패키지에서
+// 티어 표면도 함께 노출한다.
+
+// TierForAgent returns the display-only Tier for the named agent (keyed by
+// agent file stem, matching agentfm.AgentInfo.Name). The second return is
+// false when the name has no tier entry (a future agent not yet added to the
+// table — design.md EC-6).
+func TierForAgent(name string) (v4manifest.Tier, bool) {
+	return v4manifest.AgentTier(name)
+}
+
+// TierSuggestedModelEffort returns the suggested (model, effort) pair for the
+// tier (design.md §D). Applied only on explicit user action; writes via
+// agentfm.Patch, NOT a new tier: frontmatter key (C-7).
+func TierSuggestedModelEffort(t v4manifest.Tier) (model, effort string) {
+	return v4manifest.TierSuggestedModelEffort(t)
+}
+
 // NOTE: workflow.yaml team.role_profiles 키 목록을 반환하던 접근자와 그 isolation
 // closed-set 헬퍼는 Agent Teams 정적 레이어와 함께 제거되었다 — 웹 콘솔은 더 이상
 // Agent Teams 설정을 렌더하지 않는다 (SPEC-AGENT-TEAM-RETIRE-001).
