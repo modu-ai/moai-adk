@@ -1,7 +1,7 @@
 ---
 id: SPEC-HARNESS-CADENCE-BUILD-001
 title: "Harness Builder Cadence Integration — build-time recurrence, discovery-queue scheduling, ANALYZE research, retroactive schedules"
-version: "0.1.1"
+version: "0.1.2"
 status: draft
 created: 2026-07-13
 updated: 2026-07-13
@@ -23,6 +23,7 @@ related_specs: [SPEC-CADENCE-BRIDGE-001, SPEC-V3R6-HARNESS-V4-001, SPEC-HARNESS-
 |---------|------|--------|-------------|
 | 0.1.0 | 2026-07-13 | manager-spec | Initial draft — 4 capabilities (build-time recurrence question, discovery-queue scheduled execution, ANALYZE research sub-step, retroactive schedule path) under the preserved cadence-bridge HARD invariant |
 | 0.1.1 | 2026-07-13 | manager-spec | Plan-audit iter-1 revision — 3 clarifications RESOLVED via orchestrator AskUserQuestion (registration-only thin-harness / gate-round question placement / minimal 3-field schedule; recorded in plan.md §B); D2 AC-034 invocation-surface scoping, D3 AC-023 queue-path delta-frame, D4 new AC-HCB-002, D5 REQ-044 formal modal, D6 AC-025 severity align, D8 awk-bounded windowed greps + pinned anchors, D9 Retrofit-precedence pin |
+| 0.1.2 | 2026-07-13 | manager-spec | Plan-audit iter-2 revision (PASS-WITH-DEBT 0.90) — N1 (major): AC-034 clause-1 boundary grep delta-framed against the re-measured baseline of 5 pre-existing help-text matches (requirement = no NEW matches) + plan §E E4 mirror + exemption extended to documentation strings; minors swept: N2 AC-030 smoke-gate→CronCreate ordering mechanized (awk ACTIVATE window), N3 AC-051 ordering tokens pinned (recurrence/CronCreate), N4 awk flat-window + ordering-token authoring constraints recorded in plan M2 |
 
 ## §A Context and Problem
 

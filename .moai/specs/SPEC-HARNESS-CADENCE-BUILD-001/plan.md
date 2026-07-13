@@ -1,6 +1,6 @@
 ---
 id: SPEC-HARNESS-CADENCE-BUILD-001
-version: "0.1.1"
+version: "0.1.2"
 status: draft
 updated: 2026-07-13
 ---
@@ -64,7 +64,7 @@ Per-milestone evidence lands in `progress.md` §E.2 with verbatim command output
 - E1: AC matrix PASS/FAIL table (acceptance.md §D as the checklist)
 - E2: `go build ./...` + `make build` green
 - E3: `go test ./internal/harness/v4manifest/... ./internal/cli/harness/... -count=1` then full `go test ./...`
-- E4: boundary grep — no user-prompt tool tokens in `internal/cli/harness/`
+- E4: boundary grep — no NEW user-prompt tool tokens in `internal/cli/harness/` beyond the measured baseline of 5 pre-existing documentation/help-text string matches (delta-framed per acceptance.md AC-HCB-034)
 - E5: `golangci-lint run` on touched packages
 - E6: byte-parity `diff` ×4 + neutrality grep on `internal/template/templates/`
 - E7: `moai harness doctor` exit 0 on the real repo; `moai spec lint` findings for this SPEC = 0
@@ -87,7 +87,7 @@ Files (live tree): `.claude/rules/moai/workflow/cadence-bridge.md`, `.claude/ski
 - cadence-bridge.md: Recipe 4 "Scheduled Harness Discovery" (recipe class; payload = self-contained discovery prompt template; interval guidance; read-only rationale; loop AND cron forms; Cron-unavailable degradation pointer) + eligibility-table row (data-row count 6 → 7). Invariant sentence untouched, not restated (AC-HCB-022 pins count == 1). The self-contained payload inlines the `.moai/reports/cadence/<date>.md` queue-path literal — file-level literal count rises 1 → 2 by design (AC-HCB-023 delta-frame; the +1 lives inside the Recipe 4 payload block).
 - harness-builder.md: (a) ANALYZE research sub-step (official CC docs via WebFetch/WebSearch, domain best practices, context7 resolve-library-id → query-docs; feeds PLAN aggregate; MCP-fallback + GLM-routing cross-refs; load-bearing-minimum skip clause); (b) PLAN gate gains the recurrence question + interval/mechanism capture + draft-manifest `schedule` recording; (c) Artifact 5 content contract lists optional `schedule` (3 sub-fields, discovery-only literal); (d) ACTIVATE gains the post-smoke-gate registration step (CronCreate prompt form / paste-ready `/loop` emission, session-scoped caveat).
 - harness-build-entry.md: Schedule Retrofit branch — detection (existing `.claude/commands/harness/<name>.md` + scheduling intent) evaluated BEFORE the existing Phase 2 name-collision matrix (existing-name + scheduling-intent routes to Retrofit, never to the `<name>-v2` re-derive/rename path — REQ-HCB-050 precedence pin); recurrence round, manifest-bearing path (orchestrator-mediated manifest edit via `moai harness edit` path discovery, then registration), command-only path (registration-only, no manifest fabrication, user informed), dev-only isolation note.
-- Anchor obligation (AC grep bounding): the new sections MUST carry the pinned heading anchors — a heading containing `Recurrence` (harness-builder.md PLAN gate), `Recipe 4` (cadence-bridge.md), `Schedule Retrofit` (harness-build-entry.md). The acceptance.md windowed greps awk-bound on these anchors (AC-HCB-001/002/021/024/051).
+- Anchor obligation (AC grep bounding): the new sections MUST carry the pinned heading anchors — a heading containing `Recurrence` (harness-builder.md PLAN gate), `Recipe 4` (cadence-bridge.md), `Schedule Retrofit` (harness-build-entry.md). The acceptance.md windowed greps awk-bound on these anchors (AC-HCB-001/002/021/024/051). Flat-window constraint: the awk idiom closes each window at the FIRST subsequent heading of ANY level — keep all windowed tokens above any sub-heading inside each new anchored section, or repeat the anchor token in the sub-heading. Ordering-token discipline: in the Schedule Retrofit window name `CronCreate` only in the registration step (after `moai harness edit`, never in the recurrence-round prose), and in the ACTIVATE section place the registration step's first `CronCreate` mention after the smoke-gate paragraph (AC-HCB-030/051 first-match ordering).
 - All text neutral (no SPEC IDs). REQs: HCB-001..005, 020..025, 030 (doctrine half), 040..044, 050..053.
 
 ### M3 — CLI lifecycle awareness (Priority: Medium) — mechanical, follows M1
