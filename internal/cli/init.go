@@ -236,8 +236,12 @@ func shouldDistributeAll(cmd *cobra.Command) bool {
 // (SPEC-CLI-TUX-V3-002 REQ-TUX2-001..004; see init_update_notice.go).
 func runInit(cmd *cobra.Command, args []string) error {
 	// Unified output gateway: warnings and progress go to stderr, data to
-	// stdout (SPEC-CLI-TUX-V3-001 REQ-CTX-012/016).
-	p := printer.New(printer.WithWriters(cmd.OutOrStdout(), cmd.ErrOrStderr()))
+	// stdout (SPEC-CLI-TUX-V3-001 REQ-CTX-012/016). The warning collector
+	// wraps the printer so every Warn is re-emitted exactly once as a
+	// consolidated stderr summary panel when init terminates — success or
+	// failure (REQ-TUX2-013).
+	p := newWarnCollector(printer.New(printer.WithWriters(cmd.OutOrStdout(), cmd.ErrOrStderr())))
+	defer p.emitSummary(cmd.ErrOrStderr())
 
 	// Git availability check (non-fatal warning)
 	if _, err := exec.LookPath("git"); err != nil {
@@ -472,8 +476,11 @@ func runInit(cmd *cobra.Command, args []string) error {
 
 	// Use printer-backed console output for progress reporting
 	// (REQ-CTX-015: ProgressReporter events route through the Printer to
-	// stderr; the former project.ConsoleReporter wrote to stdout).
-	executor.SetReporter(newPrinterReporter(p))
+	// stderr; the former project.ConsoleReporter wrote to stdout). The
+	// spinner-backed reporter renders template deployment as an animated
+	// live line on a TTY and degrades to plain lines otherwise
+	// (REQ-TUX2-010/011).
+	executor.SetReporter(newSpinnerReporter(p))
 
 	p.Info("Initializing MoAI project...")
 
@@ -489,20 +496,20 @@ func runInit(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("initialization failed: %w", err)
 	}
 
-	// Display success card. Human-facing status belongs on stderr
-	// (internal/cli/CLAUDE.md Output streams; REQ-CTX-012); the card
-	// rendering itself stays on uikit.
-	details := []string{
-		uikit.RenderKeyValueLines([]uikit.KVPair{
-			{Key: "Directories", Value: fmt.Sprintf("%d created", len(result.CreatedDirs))},
-			{Key: "Files", Value: fmt.Sprintf("%d created", len(result.CreatedFiles))},
-		}),
-	}
+	// Route executor result warnings into the collector (they surface once,
+	// in the exit summary panel — REQ-TUX2-013) and display the completion
+	// card with the next-action sequence (REQ-TUX2-016). Human-facing status
+	// belongs on stderr (internal/cli/CLAUDE.md Output streams; REQ-CTX-012).
 	for _, w := range result.Warnings {
-		details = append(details, uikit.WarnStyle.Render("Warning: "+w))
+		p.Collect(w)
+	}
+	cardName := opts.ProjectName
+	if cardName == "" {
+		cardName = filepath.Base(opts.ProjectRoot)
 	}
 	_, _ = fmt.Fprintln(cmd.ErrOrStderr())
-	_, _ = fmt.Fprintln(cmd.ErrOrStderr(), uikit.RenderSuccessCard("MoAI project initialized", details...))
+	_, _ = fmt.Fprintln(cmd.ErrOrStderr(),
+		buildInitSuccessCard(cardName, len(result.CreatedDirs), len(result.CreatedFiles), p.Count()))
 
 	// Sync profile preferences to project config (after template deployment)
 	if err := profile.SyncToProjectConfig(opts.ProjectRoot, prefs); err != nil {

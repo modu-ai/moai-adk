@@ -34,7 +34,10 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"sync"
+	"time"
 
+	"charm.land/bubbles/v2/spinner"
 	"charm.land/lipgloss/v2"
 	"github.com/charmbracelet/colorprofile"
 	"github.com/mattn/go-isatty"
@@ -112,11 +115,13 @@ type ProgressHandle interface {
 type Option func(*settings)
 
 type settings struct {
-	stdout  io.Writer
-	stderr  io.Writer
-	mode    *Mode
-	theme   *tui.Theme
-	noColor *bool
+	stdout       io.Writer
+	stderr       io.Writer
+	mode         *Mode
+	theme        *tui.Theme
+	noColor      *bool
+	animate      *bool
+	animInterval *time.Duration
 }
 
 // WithWriters overrides the stdout / stderr writers (default: os.Stdout,
@@ -145,6 +150,23 @@ func WithNoColor(no bool) Option {
 	return func(s *settings) { s.noColor = &no }
 }
 
+// WithAnimatedHandles overrides the spinner-animation capability detection
+// (SPEC-CLI-TUX-V3-002 REQ-TUX2-010). By default the frame-cycling animator
+// runs only when the resolved mode is ModeTTY, motion is allowed, AND stderr
+// is a real terminal — buffer/pipe writers keep the legacy static
+// single-frame behavior so captured output stays deterministic. Reduced
+// motion and non-TTY fallbacks (REQ-TUX2-011) still win over a true
+// override: animation never runs when the handle is not in-place.
+func WithAnimatedHandles(on bool) Option {
+	return func(s *settings) { s.animate = &on }
+}
+
+// WithAnimationInterval overrides the spinner frame interval (tests).
+// The default is the bubbles v2 MiniDot cadence.
+func WithAnimationInterval(d time.Duration) Option {
+	return func(s *settings) { s.animInterval = &d }
+}
+
 // New constructs a Printer. Without options it writes to os.Stdout /
 // os.Stderr and resolves the mode from the environment.
 func New(opts ...Option) Printer {
@@ -154,6 +176,17 @@ func New(opts ...Option) Printer {
 	}
 
 	mode := resolveMode(s)
+
+	// Animation capability (REQ-TUX2-010): frame cycling requires a real
+	// terminal on stderr; the explicit option overrides detection (tests).
+	animate := mode == ModeTTY && isTTYFile(s.stderr)
+	if s.animate != nil {
+		animate = *s.animate
+	}
+	animInterval := spinner.MiniDot.FPS
+	if s.animInterval != nil {
+		animInterval = *s.animInterval
+	}
 
 	// Theme resolution is lazy: tokens are only needed for ModeTTY
 	// colouring. tui.ResolveOS honours NO_COLOR / MOAI_THEME and may query
@@ -177,7 +210,14 @@ func New(opts ...Option) Printer {
 		stderr = colorprofile.NewWriter(stderr, os.Environ())
 	}
 
-	return &printerImpl{stdout: s.stdout, stderr: stderr, mode: mode, theme: th}
+	return &printerImpl{
+		stdout:       s.stdout,
+		stderr:       stderr,
+		mode:         mode,
+		theme:        th,
+		animate:      animate,
+		animInterval: animInterval,
+	}
 }
 
 // resolveMode applies the construction-time mode contract (REQ-CTX-013):
@@ -244,10 +284,12 @@ const (
 
 // printerImpl is the concrete Printer.
 type printerImpl struct {
-	stdout io.Writer
-	stderr io.Writer
-	mode   Mode
-	theme  tui.Theme
+	stdout       io.Writer
+	stderr       io.Writer
+	mode         Mode
+	theme        tui.Theme
+	animate      bool
+	animInterval time.Duration
 }
 
 var _ Printer = (*printerImpl)(nil)
@@ -425,14 +467,26 @@ func (h *stepHandle) Fail(err error) {
 }
 
 // Spinner begins a spinner feedback line. Reduced motion and non-TTY
-// modes degrade to static, line-per-event output (REQ-CTX-007).
+// modes degrade to static, line-per-event output (REQ-CTX-007). On a
+// motion-allowed real terminal the handle cycles the bubbles v2 MiniDot
+// frames in a background animator (SPEC-CLI-TUX-V3-002 REQ-TUX2-010);
+// Done/Fail stops the animator before the final line — no frame is ever
+// emitted after the terminal event.
 func (p *printerImpl) Spinner(label string) SpinnerHandle {
-	h := &spinnerHandle{line: lineState{p: p, inPlace: p.mode == ModeTTY && !reducedMotion()}}
+	h := &spinnerHandle{
+		line:  lineState{p: p, inPlace: p.mode == ModeTTY && !reducedMotion()},
+		label: label,
+	}
 	if p.mode == ModeJSON {
 		p.event(jsonEvent{Level: "spinner", Event: "start", Name: label})
 		return h
 	}
 	h.line.start(p.spinnerMarker() + " " + label)
+	// The animator requires an in-place line (TTY + motion allowed) AND the
+	// printer-level animation capability (real terminal or test override).
+	if h.line.inPlace && p.animate {
+		h.startAnimator(spinner.MiniDot.Frames, p.animInterval)
+	}
 	return h
 }
 
@@ -445,8 +499,60 @@ func (p *printerImpl) spinnerMarker() string {
 	return p.paint(p.theme.Accent, spinnerStatic)
 }
 
+// spinnerHandle is the in-flight spinner line. The mutex serialises the
+// animator goroutine against Update/Done/Fail callers; the animator is
+// stopped (and joined) before the finish line is printed, so Complete/Fail
+// is a hard emission barrier (acceptance.md §C goroutine-lifecycle edge).
 type spinnerHandle struct {
-	line lineState
+	line     lineState
+	mu       sync.Mutex
+	label    string
+	frameIdx int
+	frames   []string
+	stopCh   chan struct{}
+	wg       sync.WaitGroup
+}
+
+// startAnimator launches the frame-cycling goroutine (bubbles v2 backend).
+func (h *spinnerHandle) startAnimator(frames []string, interval time.Duration) {
+	if interval <= 0 {
+		return
+	}
+	h.frames = frames
+	h.stopCh = make(chan struct{})
+	h.wg.Add(1)
+	go func() {
+		defer h.wg.Done()
+		ticker := time.NewTicker(interval)
+		defer ticker.Stop()
+		for {
+			select {
+			case <-h.stopCh:
+				return
+			case <-ticker.C:
+				h.mu.Lock()
+				if h.line.done {
+					h.mu.Unlock()
+					return
+				}
+				h.frameIdx = (h.frameIdx + 1) % len(h.frames)
+				p := h.line.p
+				h.line.update(p.paint(p.theme.Accent, h.frames[h.frameIdx]) + " " + h.label)
+				h.mu.Unlock()
+			}
+		}
+	}()
+}
+
+// stopAnimator signals and joins the animator goroutine. Must be called
+// WITHOUT h.mu held (the animator acquires it per frame).
+func (h *spinnerHandle) stopAnimator() {
+	if h.stopCh == nil {
+		return
+	}
+	close(h.stopCh)
+	h.wg.Wait()
+	h.stopCh = nil
 }
 
 func (h *spinnerHandle) Update(label string) {
@@ -458,7 +564,14 @@ func (h *spinnerHandle) Update(label string) {
 		p.event(jsonEvent{Level: "spinner", Event: "update", Msg: label})
 		return
 	}
-	h.line.update(p.spinnerMarker() + " " + label)
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	h.label = label
+	marker := p.spinnerMarker()
+	if h.frames != nil {
+		marker = p.paint(p.theme.Accent, h.frames[h.frameIdx])
+	}
+	h.line.update(marker + " " + label)
 }
 
 func (h *spinnerHandle) Done(format string, args ...any) {
@@ -472,6 +585,9 @@ func (h *spinnerHandle) Done(format string, args ...any) {
 		p.event(jsonEvent{Level: "spinner", Event: "done", Msg: msg})
 		return
 	}
+	h.stopAnimator()
+	h.mu.Lock()
+	defer h.mu.Unlock()
 	h.line.finish(p.paint(p.theme.Success, tui.StatusIcon("ok")) + " " + msg)
 }
 
@@ -486,6 +602,9 @@ func (h *spinnerHandle) Fail(format string, args ...any) {
 		p.event(jsonEvent{Level: "spinner", Event: "fail", Msg: msg})
 		return
 	}
+	h.stopAnimator()
+	h.mu.Lock()
+	defer h.mu.Unlock()
 	h.line.finish(p.paint(p.theme.Danger, tui.StatusIcon("err")) + " " + msg)
 }
 

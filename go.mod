@@ -3,6 +3,7 @@ module github.com/modu-ai/moai-adk
 go 1.26.4
 
 require (
+	charm.land/bubbles/v2 v2.1.1
 	charm.land/bubbletea/v2 v2.0.8
 	charm.land/fang/v2 v2.0.1
 	charm.land/huh/v2 v2.0.3
@@ -28,7 +29,6 @@ require (
 )
 
 require (
-	charm.land/bubbles/v2 v2.1.1 // indirect
 	github.com/a-h/parse v0.0.0-20250122154542-74294addb73e // indirect
 	github.com/andybalholm/brotli v1.2.1 // indirect
 	github.com/atotto/clipboard v0.1.4 // indirect
