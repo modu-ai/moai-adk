@@ -213,7 +213,7 @@ parallel_session_note: >
 
 ```yaml
 sync_complete_at: 2026-07-14
-sync_commit_sha: pending-backfill-tux2-sync
+sync_commit_sha: 62ba0aa70
 sync_status: complete
 changelog_entry_position: "Unreleased > Added, appended after SPEC-WEBCONF-SIMPLIFY-001 entry (before ### Changed)"
 frontmatter_status_transitions:
