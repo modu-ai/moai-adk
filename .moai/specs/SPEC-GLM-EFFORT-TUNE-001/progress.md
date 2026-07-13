@@ -64,7 +64,7 @@ related_specs: [SPEC-MODEL-TIER-PLANTYPE-001]
 
 ```yaml
 run_complete_at: 2026-07-14
-run_commit_sha: pending-backfill-M5  # self-referential — backfill in follow-up commit
+run_commit_sha: d3cf85a21  # M5 commit — backfilled per D3 SHA placeholder exemption
 run_status: complete
 ac_pass_count: 16
 ac_fail_count: 0
