@@ -1,8 +1,8 @@
 ---
 id: SPEC-DESKTOP-NATIVE-E2E-001
 title: "Desktop-native E2E automation lane: replace the /moai e2e desktop-native deferral with OS-accessibility toolchains (macOS + Windows + Linux)"
-version: "0.1.1"
-status: in-progress
+version: "0.1.2"
+status: completed
 created: 2026-07-13
 updated: 2026-07-13
 author: manager-spec
@@ -22,6 +22,7 @@ related_specs: [SPEC-E2E-REVIVAL-001]
 
 | Version | Date | Author | Change |
 |---------|------|--------|--------|
+| 0.1.2 | 2026-07-13 | manager-spec | Run-phase carve-out amendment (orchestrator re-delegation per the D-NEW-1 inline-fix pattern; AC-DNE-022 PASS-WITH-DEBT resolution). Run-phase surfaced a mechanical conflict: REQ-DNE-301's mandatory `make build` recomputes the e2e-specialist `hash:` field in `internal/template/catalog.yaml` (agent body edits invalidate the stored content-hash; `TestManifestHashFormat` enforces regeneration), colliding with REQ-DNE-302's blanket "shall not modify `catalog.yaml`". REQ-DNE-302 reworded with an explicit hash-regen carve-out: the prohibition binds entry/count/pin changes (no new/removed entries; `expectedAgentCount`/`expectedTotal` unchanged), while the mechanical `hash:`-line regeneration of EXISTING entries caused by `make build` is explicitly permitted (the one-line regen rode the M2 commit as a pre-authorized A3c cascade). Consistency cascade: C-2 final sentence + §A.3 CI-count-pins row aligned to the carve-out; acceptance.md AC-DNE-022 criterion re-tightened (`hash:`-line-only diff on catalog.yaml = PASS; entry/count/pin change = FAIL) with CMD-DNE-015 split accordingly. |
 | 0.1.1 | 2026-07-13 | manager-spec | Audit-fix pass (plan-audit iter-1 FAIL 0.81, defects D1-D9 + §D-map nit). D1 BLOCKING: CMD-DNE-001/003/006 section windows rewritten from the self-terminating `/start/,/^### /` awk range (empirically emits only the heading) to flag-awk (`{f=1;next} f&&/^#{2,3} /{exit} f`); CMD-DNE-006 window now ends at the next heading (`### MCP Escalation Ladder`). D2: CMD-DNE-009A re-anchored from vacuous bare macOS/Windows/Linux/Accessibility tokens to per-OS recipe-heading regex (`^#### .*(macOS\|Windows\|Linux)`, 0 today) + TCC×Accessibility compound anchor (0 today). D3: bare `EXPERIMENTAL` grep (matches the Electron caveat today) replaced with a FlaUI×EXPERIMENTAL co-occurrence grep (0 today). D4: CMD-DNE-002 ordering check moved inside the flag-awk Detection Matrix window (removes first-match drift from Supported Flags / host-OS rule lines). D5: AC-DNE-021 REQ column gains 303. D6: CMD-DNE-015 agent-count check switched from alias-sensitive `ls \| wc -l` (13) to `find … -name '*.md' \| wc -l` (10, both trees). D7: CMD-DNE-012 tees actual counts into EVID (was "see stdout above"). D8: REQ-DNE-008 extended — Phase 5 report-template platform enum `{web \| mobile \| desktop \| mixed}` gains `desktop-native`; new AC-DNE-008c + report-enum check in CMD-DNE-008. D9: REQ-DNE-305 GEARS label corrected to (Ubiquitous — invariance) matching its affirmative shall-phrasing. Nit: §D Group A AC range corrected to name 008a/b/c. All rewritten commands re-run on the current tree: new anchors 0 (fail-today-pass-after), preservation checks PASS, windows emit section bodies. |
 | 0.1.0 | 2026-07-13 | manager-spec | Plan-phase artifact set authored (Tier M, 4 artifacts: spec/plan/acceptance/progress). Origin: SPEC-E2E-REVIVAL-001 §E Exclusions deferred native-desktop automation to a follow-up SPEC (user decision 2026-07-13; former REQ-E2E-502 removed at parent v0.1.1). User decisions drained via orchestrator AskUserQuestion (2026-07-13): (1) **Scope = 3-OS full** — macOS + Windows + Linux recipes all documented; execution probes run only on the current host OS; macOS is locally verifiable, Windows/Linux recipes are declarative (verified by prose/structure ACs, not live runs). (2) **Tier M** — spec/plan/acceptance/progress only, plan-auditor standard depth. Toolchain matrix from verified 2026-07 research (see §A.2). Baselines measured live on this tree (see §A.3). |
 
@@ -69,7 +70,7 @@ WinAppDriver and appium-windows-driver are EXCLUDED (abandoned since 2020) — s
 | `--platform` enum (flags + argument-hints, both command surfaces) | `web\|mobile\|desktop` | `web\|mobile\|desktop\|desktop-native` |
 | Command template body | 6 non-empty LOC | <20 non-empty LOC (unchanged pattern) |
 | `desktop-native` token count | skill 3, agent 2 (per tree) | grows with the lane (reachability-anchored, not raw-count, per acceptance.md) |
-| CI count pins | `expectedAgentCount = 10`, `expectedTotal = 38` | UNCHANGED (no new agent, no catalog changes) |
+| CI count pins | `expectedAgentCount = 10`, `expectedTotal = 38` | UNCHANGED (no new agent; no catalog entry/count changes — `hash:`-line regen permitted per REQ-DNE-302 carve-out) |
 
 ---
 
@@ -112,7 +113,7 @@ WinAppDriver and appium-windows-driver are EXCLUDED (abandoned since 2020) — s
 
 - **REQ-DNE-300** (Ubiquitous): The workflow-skill pair and the agent pair shall remain byte-identical across the local and template trees after all edits (`diff` exit 0 per pair).
 - **REQ-DNE-301** (Event-driven): **When** template-tree authoring completes, `make build` shall be run so the embedded FS (`//go:embed all:templates`) recompiles with the edited artifacts.
-- **REQ-DNE-302** (Unwanted): The change shall not add any agent file, shall not modify `catalog.yaml`, `model_policy.go`, or any CI count pin (`expectedAgentCount` stays 10; `expectedTotal` stays 38) — body-only edits to existing artifacts.
+- **REQ-DNE-302** (Unwanted): The change shall not add any agent file, shall not modify `model_policy.go` or any CI count pin (`expectedAgentCount` stays 10; `expectedTotal` stays 38), and shall not add, remove, or otherwise alter any `catalog.yaml` entry beyond the carve-out below — body-only edits to existing artifacts. Carve-out (mechanical hash regen): the `hash:`-field content-hash regeneration of EXISTING `catalog.yaml` entries produced by the REQ-DNE-301-mandated `make build` (agent body edits invalidate the stored content-hash; `TestManifestHashFormat` enforces regeneration) is explicitly permitted and does not violate this prohibition.
 - **REQ-DNE-303** (Unwanted): Template-tree content shall not contain internal SPEC IDs, REQ/AC tokens, audit citations, internal work dates, commit SHAs, or CLAUDE.local references (template neutrality) — the existing neutrality CI guard shall pass unchanged.
 - **REQ-DNE-304** (Ubiquitous): The CI guards shall stay green: `TestCommandsThinPattern`, `TestCommandsFrontmatterConsistency`, the template neutrality guard, and `go test ./internal/template/...` exit 0.
 - **REQ-DNE-305** (Ubiquitous — invariance): After the edits, the deferral-wording family regex (`deferral notice|deferred to a follow-up|not yet provided|no opt-in automation path|not provided by this agent`) shall return 0 matches across the 4 skill/agent files in BOTH trees (measured baseline: skill 3 + agent 1 matching lines per tree), while the no-target graceful-exit text for genuinely target-less projects remains present.
@@ -122,7 +123,7 @@ WinAppDriver and appium-windows-driver are EXCLUDED (abandoned since 2020) — s
 ## §C Non-functional Constraints
 
 - **C-1** [HARD] Template-First: the template sibling is authored in the same change; the skill and agent pairs stay byte-identical across trees; `make build` runs after template edits.
-- **C-2** [HARD] NO new agent file — reuse e2e-specialist. Adding an agent breaks the CI pins (`expectedAgentCount = 10` in `catalog_tier_audit_test.go`) and the 66-cell tier matrix (`model_policy_test.go`). Body-only edits require no `catalog.yaml` / `model_policy.go` changes.
+- **C-2** [HARD] NO new agent file — reuse e2e-specialist. Adding an agent breaks the CI pins (`expectedAgentCount = 10` in `catalog_tier_audit_test.go`) and the 66-cell tier matrix (`model_policy_test.go`). Body-only edits require no `catalog.yaml` entry/count changes and no `model_policy.go` changes (the mechanical `hash:`-line regen of existing `catalog.yaml` entries via `make build` is permitted — REQ-DNE-302 carve-out).
 - **C-3** [HARD] Thin Command Pattern preserved: command body <20 non-empty LOC.
 - **C-4** [HARD] Subagent boundary: e2e-specialist never prompts users; missing prerequisites (Accessibility/TCC permission not granted, toolchain absent) produce blocker reports / orchestrator-surfaced install commands per the parent REQ-E2E-006 pattern.
 - **C-5** Token minimization first-class: CLI-output-first, bounded tail ≤50 lines/≤2KB, artifacts under project-local `e2e/` with citable paths (mirror parent REQ-E2E-100..104).

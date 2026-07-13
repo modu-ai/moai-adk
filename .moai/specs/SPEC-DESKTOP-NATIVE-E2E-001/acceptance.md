@@ -1,6 +1,6 @@
 # SPEC-DESKTOP-NATIVE-E2E-001 — Acceptance Criteria
 
-> Tier M. Sibling of `spec.md` (v0.1.1, status: draft). All executable commands live in § Executable Command Block (CMD-IDs) — never in table cells (pipe-escaping makes in-cell greps vacuous). ACs verify REACHABILITY (content anchored within its owning section, old text absent AND new text present, in BOTH trees), not bare token presence.
+> Tier M. Sibling of `spec.md` (v0.1.2, status: in-progress). All executable commands live in § Executable Command Block (CMD-IDs) — never in table cells (pipe-escaping makes in-cell greps vacuous). ACs verify REACHABILITY (content anchored within its owning section, old text absent AND new text present, in BOTH trees), not bare token presence.
 
 Path shorthands used below:
 
@@ -58,7 +58,7 @@ Path shorthands used below:
 |----|-----|------------------------|--------|
 | AC-DNE-020 | 300 | Skill pair diff exit 0 AND agent pair diff exit 0 (byte-identical after edits) | CMD-DNE-013 |
 | AC-DNE-021 | 301/303/304 | `make build` exit 0 AND `go test ./internal/template/...` exit 0 (thin-command, frontmatter-consistency, neutrality guards included) | CMD-DNE-014 |
-| AC-DNE-022 | 302 | Zero diff on the pinned-count files: `catalog.yaml`, `model_policy.go`, `catalog_tier_audit_test.go`, `catalog_loader_test.go`; no new file under `.claude/agents/` in either tree | CMD-DNE-015 |
+| AC-DNE-022 | 302 | Zero diff on `model_policy.go`, `catalog_tier_audit_test.go`, `catalog_loader_test.go`; on `catalog.yaml` a `hash:`-line-only diff (content-hash regen of EXISTING entries via `make build`, REQ-DNE-302 carve-out) is PASS, while any entry/count/pin change (new/removed entry, `expectedAgentCount`/`expectedTotal` delta) is FAIL; no new file under `.claude/agents/` in either tree | CMD-DNE-015 |
 | AC-DNE-023 | 305 | Deferral-wording family regex returns 0 matches across all 4 skill/agent files (baseline before edits: skill 3 + agent 1 matching lines per tree) | CMD-DNE-011 |
 | AC-DNE-024 | (gate) | `moai spec lint --strict` on this SPEC's spec.md reports 0 errors (StatusGitConsistency WARNING is expected until sync close) | CMD-DNE-016 |
 | AC-DNE-025 (OPTIONAL, non-gating) | 101 | macOS local smoke: `axcli --version` output captured if the tool is installed on the dev host; absence is NOT a failure (C-6) | CMD-DNE-017 |
@@ -235,9 +235,11 @@ diff "$L_AGENT" "$T_AGENT" > "$EVID/cmd-013-agent-pair.diff"; echo "agent-pair e
 make build > "$EVID/cmd-014-make-build.log" 2>&1; echo "make exit=$?"
 go test ./internal/template/... > "$EVID/cmd-014-go-test.log" 2>&1; echo "gotest exit=$?"; tail -20 "$EVID/cmd-014-go-test.log"
 
-# CMD-DNE-015 — pinned-count files untouched + no new agent files (PASS: empty diff list, agent file counts unchanged: 10 per tree)
-git diff --name-only -- internal/template/catalog.yaml internal/template/model_policy.go \
+# CMD-DNE-015 — pin integrity + no new agent files (PASS: no-touch trio diff list empty; catalog.yaml non-hash diff
+# lines empty — a hash:-line-only regen is permitted per the REQ-DNE-302 carve-out; agent file counts unchanged: 10 per tree)
+git diff --name-only -- internal/template/model_policy.go \
   internal/template/catalog_tier_audit_test.go internal/template/catalog_loader_test.go | tee "$EVID/cmd-015-pins.txt"
+git diff -U0 -- internal/template/catalog.yaml | grep -E '^[+-][^+-]' | grep -v 'hash:' | tee "$EVID/cmd-015-catalog-nonhash.txt"   # PASS: empty output (an entry/count/pin change surfaces here as FAIL)
 find .claude/agents/moai -name '*.md' | wc -l; find internal/template/templates/.claude/agents/moai -name '*.md' | wc -l   # PASS: 10 / 10 (`.md`-scoped; `ls | wc -l` counts non-agent entries)
 
 # CMD-DNE-016 — spec lint (PASS: 0 errors; StatusGitConsistency WARNING expected until sync close)

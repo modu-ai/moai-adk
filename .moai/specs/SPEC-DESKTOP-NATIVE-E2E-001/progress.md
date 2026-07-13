@@ -83,7 +83,26 @@ m1_to_mN_commit_strategy: "per-milestone commits M1 (2c5d05a94) / M2 (d5a5b2992,
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+```yaml
+sync_complete_at: 2026-07-13
+sync_commit_sha: pending-backfill-desktop-native-e2e-001
+sync_status: complete
+changelog_entry_position: "[Unreleased] > Added, inserted before SPEC-DOCSITE-E2E-001"
+frontmatter_status_transitions:
+  spec_md: "in-progress -> implemented -> completed (merged, this sync commit)"
+  plan_md: "no frontmatter status field (Tier M plan.md carries no separate status)"
+  acceptance_md: "no frontmatter status field (Tier M acceptance.md carries no separate status)"
+  progress_md: "this file; §E.4 populated on this sync commit"
+b12_self_test_a: "grep -c 'SPEC-DESKTOP-NATIVE-E2E-001' CHANGELOG.md == 0 before this edit (verified)"
+b12_self_test_b: "acceptance.md AC-DNE-* row count = 26 gating rows (25 clean PASS + 1 PASS-WITH-DEBT) + 1 optional non-gating (AC-DNE-025); CHANGELOG entry references '26/26 gating AC PASS'"
+b12_self_test_c: "file paths in CHANGELOG entry verified via ls: .claude/skills/moai/workflows/e2e.md, .claude/agents/moai/e2e-specialist.md, internal/template/templates/.claude/commands/moai/e2e.md.tmpl, .claude/commands/moai/e2e.md — all exist"
+canary_compliance_check:
+  byte_parity_skill_pair: "diff exit 0 (re-verified at sync)"
+  byte_parity_agent_pair: "diff exit 0 (re-verified at sync)"
+  catalog_yaml_nonhash_diff: "empty (re-verified at sync)"
+```
+
+Sync summary: single sync commit carries the CHANGELOG `[Unreleased]` entry + spec.md frontmatter `in-progress -> implemented -> completed` merged transition (`updated:` unchanged, already 2026-07-13) + this §E.4 block. No SPEC body content (spec.md §A-§E, plan.md, acceptance.md) modified beyond the frontmatter status field — the run-phase REQ-DNE-302 carve-out amendment (v0.1.2) was already committed to the working tree before this sync session began and rides this same commit per the task instructions. Evidence root: `.moai/state/verify/SPEC-DESKTOP-NATIVE-E2E-001/` (gitignored, cited by acceptance.md CMD-DNE-* commands). `sync_commit_sha` backfilled in a follow-up commit per the SHA placeholder backfill exemption (spec-frontmatter-schema.md).
 
 ## §F Phase 4 Mode Selection
 
