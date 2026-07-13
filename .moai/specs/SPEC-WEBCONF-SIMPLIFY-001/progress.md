@@ -189,7 +189,7 @@ M6 closes the 4-locale description parity: populates `Description` on the remain
 ```yaml
 run_status: complete
 run_complete_at: "2026-07-14"   # run-phase complete (M1-M9 all done)
-run_commit_sha: pending-backfill-m79   # latest run-phase commit (M7-M9 finalization); M1=7b11d68bc, M2=e0061ad34, M3=cca120c70, M4=5f97d32fe, M5=0f13b4684, M6=d0ea1c84e
+run_commit_sha: 7db2192db   # latest run-phase commit (M7-M9 finalization); M1=7b11d68bc, M2=e0061ad34, M3=cca120c70, M4=5f97d32fe, M5=0f13b4684, M6=d0ea1c84e
 m1_to_mN_commit_strategy: per-milestone commit + push to main (Route A — Hybrid Trunk 1-person OSS)
 ac_pass_count: 16         # M1(5)+M2(3)+M3(2)+M4(1)+M5(3)+M6(2: 013,022/023-now-full) = 16 PASS; AC-WC-022/023 no longer partial (4-locale complete)
 ac_fail_count: 0
