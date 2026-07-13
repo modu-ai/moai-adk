@@ -45,9 +45,25 @@ func GetBaseDir() string {
 }
 
 // GetCurrentName returns the current profile name based on CLAUDE_CONFIG_DIR.
+//
+// When CLAUDE_CONFIG_DIR is unset (the common `moai web` case — the cc/glm/cg
+// launchers set it only when spawning Claude Code), the function consults the
+// last-used-profile ledger (launch.yaml under GetBaseDir()) via
+// ResolveLaunchProfile and returns the recorded named profile if its directory
+// still exists. This keeps the web console's displayed profile in sync with the
+// profile a bare `moai cc` would actually launch. The ledger fallback honors
+// MOAI_NO_PROFILE_FALLBACK=1 (disabled) and the stale-record guard (directory
+// absent → "" → "default").
 func GetCurrentName() string {
 	configDir := os.Getenv(config.EnvClaudeConfigDir)
 	if configDir == "" {
+		// Ledger-aware fallback: a bare `moai web` should reflect the last-used
+		// named profile, not blindly report "default". ResolveLaunchProfile
+		// returns "" when the ledger is absent, stale, opted out, or corrupt —
+		// in all those cases we degrade to "default" (the original behavior).
+		if name := ResolveLaunchProfile(""); name != "" {
+			return name
+		}
 		return "default"
 	}
 

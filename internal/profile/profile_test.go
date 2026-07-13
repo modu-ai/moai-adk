@@ -35,6 +35,16 @@ func TestGetBaseDir_Override(t *testing.T) {
 }
 
 func TestGetCurrentName_Default(t *testing.T) {
+	// Isolate to a clean base dir so GetCurrentName's ledger fallback (via
+	// ResolveLaunchProfile) cannot read the real ~/.moai/claude-profiles/
+	// launch.yaml, which on the maintainer's machine records a named profile.
+	// A clean tmpDir has no launch.yaml → ResolveLaunchProfile returns "" →
+	// GetCurrentName returns "default", preserving this test's intent.
+	tmpDir := t.TempDir()
+	orig := BaseDirOverride
+	defer func() { BaseDirOverride = orig }()
+	BaseDirOverride = tmpDir
+
 	t.Setenv("CLAUDE_CONFIG_DIR", "")
 	name := GetCurrentName()
 	if name != "default" {
@@ -60,6 +70,35 @@ func TestGetCurrentName_UnrelatedPath(t *testing.T) {
 	name := GetCurrentName()
 	if name != "/some/random/path" {
 		t.Errorf("GetCurrentName() = %q, want raw path", name)
+	}
+}
+
+// TestGetCurrentName_LedgerFallback verifies that when CLAUDE_CONFIG_DIR is
+// unset (the common `moai web` case — the cc/glm/cg launchers only set it when
+// spawning Claude Code), GetCurrentName consults the launch.yaml ledger and
+// returns the last-used named profile if its directory still exists, rather
+// than blindly returning "default". This keeps `moai web`'s displayed profile
+// in sync with the profile a bare `moai cc` would actually launch.
+func TestGetCurrentName_LedgerFallback(t *testing.T) {
+	tmpDir := t.TempDir()
+	orig := BaseDirOverride
+	defer func() { BaseDirOverride = orig }()
+	BaseDirOverride = tmpDir
+
+	// Named profile directory must exist (stale-record guard).
+	if err := os.Mkdir(filepath.Join(tmpDir, "moai-adk"), 0o755); err != nil {
+		t.Fatalf("Mkdir(moai-adk): %v", err)
+	}
+	// Ledger pointing at the named profile.
+	if err := os.WriteFile(filepath.Join(tmpDir, "launch.yaml"), []byte("last_profile: moai-adk\n"), 0o644); err != nil {
+		t.Fatalf("WriteFile(launch.yaml): %v", err)
+	}
+
+	t.Setenv("CLAUDE_CONFIG_DIR", "")
+
+	got := GetCurrentName()
+	if got != "moai-adk" {
+		t.Errorf("GetCurrentName() = %q, want %q (ledger fallback)", got, "moai-adk")
 	}
 }
 
