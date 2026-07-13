@@ -5,8 +5,8 @@
 //   - .claude/skills/hns-*        (canonical user harness skill directories)
 //   - .claude/workflows/hns-*.js  (canonical user Runner Workflows)
 //
-// Both surfaces MUST be recognized as user-owned by isUserAreaPath AND
-// isUserOwnedNamespace, IN ADDITION TO the two legacy generations
+// Both surfaces MUST be recognized as user-owned by plan.IsUserAreaPath AND
+// plan.IsUserOwnedNamespace, IN ADDITION TO the two legacy generations
 // (harness-*, my-harness-*), so `moai update` preserves all three generations
 // (tri-generation recognition, REQ-HPR-005..008).
 //
@@ -23,10 +23,11 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"github.com/modu-ai/moai-adk/internal/cli/update/plan"
 )
 
 // TestUserOwnedNamespace_HNS pins REQ-HPR-005/REQ-HPR-008 on the authoritative
-// isUserOwnedNamespace classifier.
+// plan.IsUserOwnedNamespace classifier.
 func TestUserOwnedNamespace_HNS(t *testing.T) {
 	t.Parallel()
 
@@ -60,7 +61,7 @@ func TestUserOwnedNamespace_HNS(t *testing.T) {
 		// NOTE: .claude/skills/hnsx-foo/ IS user-owned via the pre-existing
 		// REQ-UNP-009 general custom-skill rule (any non-moai skill dir), NOT via
 		// the hns- prefix branch. The hns--specific exact-prefix negative is
-		// asserted on isUserAreaPath below (which has no general custom rule).
+		// asserted on plan.IsUserAreaPath below (which has no general custom rule).
 		{"hnsx skill user-owned via REQ-UNP-009 general rule", ".claude/skills/hnsx-foo/SKILL.md", true},
 	}
 
@@ -68,17 +69,17 @@ func TestUserOwnedNamespace_HNS(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			got := isUserOwnedNamespace(tt.rel)
+			got := plan.IsUserOwnedNamespace(tt.rel)
 			if got != tt.want {
-				t.Errorf("isUserOwnedNamespace(%q) = %v, want %v", tt.rel, got, tt.want)
+				t.Errorf("plan.IsUserOwnedNamespace(%q) = %v, want %v", tt.rel, got, tt.want)
 			}
 		})
 	}
 }
 
-// TestUserAreaPath_HNS pins the same hns- surfaces on the isUserAreaPath guard
+// TestUserAreaPath_HNS pins the same hns- surfaces on the plan.IsUserAreaPath guard
 // (used by cleanMoaiManagedPaths + the overlay write loop). Unlike
-// isUserOwnedNamespace, this guard has NO general custom-skill rule, so it is
+// plan.IsUserOwnedNamespace, this guard has NO general custom-skill rule, so it is
 // the surface where the exact `hns-` HasPrefix negative (hnsx-foo) is provable.
 func TestUserAreaPath_HNS(t *testing.T) {
 	t.Parallel()
@@ -114,9 +115,9 @@ func TestUserAreaPath_HNS(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			got := isUserAreaPath(tt.rel)
+			got := plan.IsUserAreaPath(tt.rel)
 			if got != tt.want {
-				t.Errorf("isUserAreaPath(%q) = %v, want %v", tt.rel, got, tt.want)
+				t.Errorf("plan.IsUserAreaPath(%q) = %v, want %v", tt.rel, got, tt.want)
 			}
 		})
 	}

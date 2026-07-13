@@ -24,6 +24,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/modu-ai/moai-adk/internal/cli/update/plan"
 	"github.com/modu-ai/moai-adk/internal/defs"
 )
 
@@ -150,7 +151,7 @@ func collectUserOwnedFilesWith(projectRoot string, classify func(string) bool) (
 // NOT be broadened by the conservative backup expansion (REQ-SEC-005 is a
 // backup-only concern).
 func collectUserOwnedFiles(projectRoot string) ([]string, error) {
-	return collectUserOwnedFilesWith(projectRoot, isUserOwnedNamespace)
+	return collectUserOwnedFilesWith(projectRoot, plan.IsUserOwnedNamespace)
 }
 
 // collectUserOwnedFilesConservative walks userOwnedScanRoots and returns the
@@ -257,11 +258,11 @@ func backupUserOwnedNamespace(projectRoot string) (string, error) {
 //
 // @MX:ANCHOR: [AUTO] assertNoUserOwnedNamespaceTouch is the namespace violation gate before destructive ops
 // @MX:REASON: [AUTO] REQ-UNP-006 sentinel — must run before any deploy/delete/merge to user-owned path; wired as a real pre-modification abort gate via verifyNamespaceBackupCoverage (SPEC-INTERNAL-SECURITY-001 REQ-SEC-006)
-func assertNoUserOwnedNamespaceTouch(plan []deployOp) error {
-	for _, op := range plan {
+func assertNoUserOwnedNamespaceTouch(deployPlan []deployOp) error {
+	for _, op := range deployPlan {
 		// Normalize separators for cross-platform match
 		relNorm := strings.ReplaceAll(op.rel, "\\", "/")
-		if isUserOwnedNamespace(relNorm) {
+		if plan.IsUserOwnedNamespace(relNorm) {
 			return fmt.Errorf("UPDATE_USER_NAMESPACE_VIOLATION: %s would touch user-owned path: %s",
 				op.action, op.rel)
 		}
@@ -326,7 +327,7 @@ func verifyNamespaceBackupCoverage(projectRoot, backupDir string) error {
 // @MX:NOTE: [AUTO] SPEC-INTERNAL-SECURITY-001 REQ-SEC-005 — conservative backup superset of isUserOwnedNamespace.
 func isUserOwnedNamespaceConservative(rel string) bool {
 	// Strict superset: anything the authoritative check classifies as user-owned.
-	if isUserOwnedNamespace(rel) {
+	if plan.IsUserOwnedNamespace(rel) {
 		return true
 	}
 

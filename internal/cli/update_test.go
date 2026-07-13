@@ -14,6 +14,7 @@ import (
 	"github.com/modu-ai/moai-adk/internal/template"
 	"github.com/modu-ai/moai-adk/internal/update"
 	"github.com/modu-ai/moai-adk/pkg/version"
+	"github.com/modu-ai/moai-adk/internal/cli/update/plan"
 )
 
 // buildSmartPATH is a test helper that builds a Smart PATH for a given home directory.
@@ -155,13 +156,13 @@ func TestGetProjectConfigVersion_FileSizeExceeds(t *testing.T) {
 
 	// Create file larger than 10MB
 	configPath := filepath.Join(configDir, "system.yaml")
-	largeContent := make([]byte, maxConfigSize+1)
+	largeContent := make([]byte, plan.MaxConfigSize+1)
 	if err := os.WriteFile(configPath, largeContent, 0644); err != nil {
 		t.Fatal(err)
 	}
 
 	// Should return error for oversized file
-	_, err := getProjectConfigVersion(tmpDir)
+	_, err := plan.GetProjectConfigVersion(tmpDir)
 	if err == nil {
 		t.Fatal("expected error for file exceeding size limit, got nil")
 	}
@@ -183,7 +184,7 @@ func TestGetProjectConfigVersion_ExactlyAtLimit(t *testing.T) {
 	// Create file exactly at 10MB limit with valid YAML
 	configPath := filepath.Join(configDir, "system.yaml")
 	validYAML := "moai:\n  template_version: \"1.0.0\"\n"
-	padding := make([]byte, maxConfigSize-len(validYAML))
+	padding := make([]byte, plan.MaxConfigSize-len(validYAML))
 	for i := range padding {
 		padding[i] = '#' // YAML comment padding
 	}
@@ -193,7 +194,7 @@ func TestGetProjectConfigVersion_ExactlyAtLimit(t *testing.T) {
 	}
 
 	// Should succeed with file at exact limit
-	version, err := getProjectConfigVersion(tmpDir)
+	version, err := plan.GetProjectConfigVersion(tmpDir)
 	if err != nil {
 		t.Fatalf("expected no error for file at size limit, got: %v", err)
 	}
@@ -219,7 +220,7 @@ func TestGetProjectConfigVersion_NormalSize(t *testing.T) {
 	}
 
 	// Should succeed with normal file
-	version, err := getProjectConfigVersion(tmpDir)
+	version, err := plan.GetProjectConfigVersion(tmpDir)
 	if err != nil {
 		t.Fatalf("expected no error for normal-sized file, got: %v", err)
 	}
@@ -234,7 +235,7 @@ func TestGetProjectConfigVersion_NonExistent(t *testing.T) {
 	tmpDir := t.TempDir()
 
 	// Should return "0.0.0" for non-existent file
-	version, err := getProjectConfigVersion(tmpDir)
+	version, err := plan.GetProjectConfigVersion(tmpDir)
 	if err != nil {
 		t.Fatalf("expected no error for non-existent file, got: %v", err)
 	}
@@ -264,7 +265,7 @@ func TestGetProjectConfigVersion_ValidParsing(t *testing.T) {
 	}
 
 	// Should correctly parse template_version
-	version, err := getProjectConfigVersion(tmpDir)
+	version, err := plan.GetProjectConfigVersion(tmpDir)
 	if err != nil {
 		t.Fatalf("expected no error for valid config, got: %v", err)
 	}
@@ -467,7 +468,7 @@ func TestGetProjectConfigVersion_EmptyTemplateVersion(t *testing.T) {
 	}
 
 	// Should return "0.0.0" for missing template_version
-	version, err := getProjectConfigVersion(tmpDir)
+	version, err := plan.GetProjectConfigVersion(tmpDir)
 	if err != nil {
 		t.Fatalf("expected no error for missing template_version, got: %v", err)
 	}
@@ -493,7 +494,7 @@ func TestGetProjectConfigVersion_InvalidYAML(t *testing.T) {
 	}
 
 	// Should return error for invalid YAML
-	_, err := getProjectConfigVersion(tmpDir)
+	_, err := plan.GetProjectConfigVersion(tmpDir)
 	if err == nil {
 		t.Fatal("expected error for invalid YAML, got nil")
 	}
@@ -547,9 +548,9 @@ func TestClassifyFileRisk(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := classifyFileRisk(tt.filename, tt.exists)
+			got := plan.ClassifyFileRisk(tt.filename, tt.exists)
 			if got != tt.want {
-				t.Errorf("classifyFileRisk(%q, %v) = %v, want %v", tt.filename, tt.exists, got, tt.want)
+				t.Errorf("plan.ClassifyFileRisk(%q, %v) = %v, want %v", tt.filename, tt.exists, got, tt.want)
 			}
 		})
 	}
@@ -595,9 +596,9 @@ func TestDetermineStrategy(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := determineStrategy(tt.filename)
+			got := plan.DetermineStrategy(tt.filename)
 			if string(got) != tt.want {
-				t.Errorf("determineStrategy(%q) = %v, want %v", tt.filename, got, tt.want)
+				t.Errorf("plan.DetermineStrategy(%q) = %v, want %v", tt.filename, got, tt.want)
 			}
 		})
 	}
@@ -623,9 +624,9 @@ func TestDetermineChangeType(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := determineChangeType(tt.exists)
+			got := plan.DetermineChangeType(tt.exists)
 			if got != tt.want {
-				t.Errorf("determineChangeType(%v) = %v, want %v", tt.exists, got, tt.want)
+				t.Errorf("plan.DetermineChangeType(%v) = %v, want %v", tt.exists, got, tt.want)
 			}
 		})
 	}
@@ -726,9 +727,9 @@ func TestIsMoaiManaged(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := isMoaiManaged(tt.path)
+			got := plan.IsMoaiManaged(tt.path)
 			if got != tt.want {
-				t.Errorf("isMoaiManaged(%q) = %v, want %v", tt.path, got, tt.want)
+				t.Errorf("plan.IsMoaiManaged(%q) = %v, want %v", tt.path, got, tt.want)
 			}
 		})
 	}
@@ -764,9 +765,9 @@ func TestIsMoaiManaged_OutputStyles(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := isMoaiManaged(tt.path)
+			got := plan.IsMoaiManaged(tt.path)
 			if got != tt.want {
-				t.Errorf("isMoaiManaged(%q) = %v, want %v", tt.path, got, tt.want)
+				t.Errorf("plan.IsMoaiManaged(%q) = %v, want %v", tt.path, got, tt.want)
 			}
 		})
 	}
@@ -797,9 +798,9 @@ func TestIsMoaiManaged_MoaiConfig(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := isMoaiManaged(tt.path)
+			got := plan.IsMoaiManaged(tt.path)
 			if got != tt.want {
-				t.Errorf("isMoaiManaged(%q) = %v, want %v", tt.path, got, tt.want)
+				t.Errorf("plan.IsMoaiManaged(%q) = %v, want %v", tt.path, got, tt.want)
 			}
 		})
 	}
@@ -843,9 +844,9 @@ func TestIsMoaiManaged_HarnessNotManaged(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := isMoaiManaged(tt.path)
+			got := plan.IsMoaiManaged(tt.path)
 			if got != tt.want {
-				t.Errorf("isMoaiManaged(%q) = %v, want %v", tt.path, got, tt.want)
+				t.Errorf("plan.IsMoaiManaged(%q) = %v, want %v", tt.path, got, tt.want)
 			}
 		})
 	}
@@ -985,18 +986,18 @@ func TestIsUserOwnedNamespace(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := isUserOwnedNamespace(tt.rel)
+			got := plan.IsUserOwnedNamespace(tt.rel)
 			if got != tt.want {
-				t.Errorf("isUserOwnedNamespace(%q) = %v, want %v", tt.rel, got, tt.want)
+				t.Errorf("plan.IsUserOwnedNamespace(%q) = %v, want %v", tt.rel, got, tt.want)
 			}
 		})
 	}
 }
 
 // TestIsUserOwnedNamespace_AdditivityWithIsUserAreaPath verifies NFR-UNP-005:
-// isUserOwnedNamespace returns true for every path previously matched by isUserAreaPath.
+// plan.IsUserOwnedNamespace returns true for every path previously matched by plan.IsUserAreaPath.
 func TestIsUserOwnedNamespace_AdditivityWithIsUserAreaPath(t *testing.T) {
-	// Paths that isUserAreaPath protects:
+	// Paths that plan.IsUserAreaPath protects:
 	previouslyCovered := []string{
 		".claude/skills/harness-test/SKILL.md",
 		".claude/skills/harness-foo/file.md",
@@ -1007,12 +1008,12 @@ func TestIsUserOwnedNamespace_AdditivityWithIsUserAreaPath(t *testing.T) {
 	for _, path := range previouslyCovered {
 		t.Run(path, func(t *testing.T) {
 			// Existing function must still return true (NFR-UNP-005 additivity)
-			if !isUserAreaPath(path) {
-				t.Errorf("isUserAreaPath(%q) regression: expected true", path)
+			if !plan.IsUserAreaPath(path) {
+				t.Errorf("plan.IsUserAreaPath(%q) regression: expected true", path)
 			}
 			// New function must return true for the same paths (strict superset)
-			if !isUserOwnedNamespace(path) {
-				t.Errorf("isUserOwnedNamespace(%q) additivity violation: expected true, got false", path)
+			if !plan.IsUserOwnedNamespace(path) {
+				t.Errorf("plan.IsUserOwnedNamespace(%q) additivity violation: expected true, got false", path)
 			}
 		})
 	}

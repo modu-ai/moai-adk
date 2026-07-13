@@ -28,6 +28,7 @@ import (
 	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/pkg/version"
 	"github.com/spf13/cobra"
+	"github.com/modu-ai/moai-adk/internal/cli/update/plan"
 )
 
 // =============================================================================
@@ -216,7 +217,7 @@ func TestRunTemplateSyncWithProgress_VersionMatchSkips(t *testing.T) {
 	tmpDir := t.TempDir()
 
 	// Write system.yaml with the SAME version as the current binary so
-	// getProjectConfigVersion returns a matching version and the function
+	// plan.GetProjectConfigVersion returns a matching version and the function
 	// prints "up-to-date" and returns nil without deploying templates.
 	currentVersion := version.GetVersion()
 	sectionsDir := filepath.Join(tmpDir, ".moai", "config", "sections")
@@ -1166,7 +1167,7 @@ func TestRunPrePush_EnforcementEnabled_EmptyStdin(t *testing.T) {
 }
 
 // =============================================================================
-// getProjectConfigVersion — success path with valid system.yaml
+// plan.GetProjectConfigVersion — success path with valid system.yaml
 // (update.go:931 — at 88.2%)
 // =============================================================================
 
@@ -1184,12 +1185,12 @@ func TestGetProjectConfigVersion_WithValidSystemYAML(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	ver, err := getProjectConfigVersion(tmpDir)
+	ver, err := plan.GetProjectConfigVersion(tmpDir)
 	if err != nil {
-		t.Fatalf("getProjectConfigVersion error: %v", err)
+		t.Fatalf("plan.GetProjectConfigVersion error: %v", err)
 	}
 	if ver == "" {
-		t.Error("getProjectConfigVersion should return non-empty version")
+		t.Error("plan.GetProjectConfigVersion should return non-empty version")
 	}
 }
 

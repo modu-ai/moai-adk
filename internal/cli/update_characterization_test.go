@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/modu-ai/moai-adk/internal/cli/update"
+	"github.com/modu-ai/moai-adk/internal/cli/update/plan"
 )
 
 // This file is the M3b characterization safety net (SPEC-CLI-TUX-V3-003,
@@ -83,8 +84,8 @@ func TestDetermineChangeTypeCharacterization(t *testing.T) {
 		{false, "new file"},
 	}
 	for _, tt := range tests {
-		if got := determineChangeType(tt.exists); got != tt.want {
-			t.Errorf("determineChangeType(%v) = %q, want %q", tt.exists, got, tt.want)
+		if got := plan.DetermineChangeType(tt.exists); got != tt.want {
+			t.Errorf("plan.DetermineChangeType(%v) = %q, want %q", tt.exists, got, tt.want)
 		}
 	}
 }
@@ -102,8 +103,8 @@ func TestClassifyFileRiskCharacterization(t *testing.T) {
 		{"skills/hns-x/SKILL.md", true, "medium"},
 	}
 	for _, tt := range tests {
-		if got := classifyFileRisk(tt.filename, tt.exists); got != tt.want {
-			t.Errorf("classifyFileRisk(%q, %v) = %q, want %q", tt.filename, tt.exists, got, tt.want)
+		if got := plan.ClassifyFileRisk(tt.filename, tt.exists); got != tt.want {
+			t.Errorf("plan.ClassifyFileRisk(%q, %v) = %q, want %q", tt.filename, tt.exists, got, tt.want)
 		}
 	}
 }
@@ -145,14 +146,14 @@ func TestIsSymlinkEntryCharacterization(t *testing.T) {
 // --- M3b-3: Namespace-protection predicate relationship characterization (NFR-UNP-005) ---
 
 // TestNamespacePredicateSupersetCharacterization pins the NFR-UNP-005 additivity
-// relationship: isUserOwnedNamespace is a STRICT SUPERSET of isUserAreaPath for
+// relationship: plan.IsUserOwnedNamespace is a STRICT SUPERSET of plan.IsUserAreaPath for
 // user-owned surfaces. Decomposition MUST move both predicates together with
 // this relationship intact.
 func TestNamespacePredicateSupersetCharacterization(t *testing.T) {
-	// Representative user-owned surfaces. Every path isUserAreaPath reports true
-	// for, isUserOwnedNamespace MUST ALSO report true (superset guarantee).
+	// Representative user-owned surfaces. Every path plan.IsUserAreaPath reports true
+	// for, plan.IsUserOwnedNamespace MUST ALSO report true (superset guarantee).
 	// NOTE: colon-separated command names (e.g. ".claude/commands/harness:my-team")
-	// are NOT recognized by isUserOwnedNamespace — the predicate uses
+	// are NOT recognized by plan.IsUserOwnedNamespace — the predicate uses
 	// directory-based paths (skills/hns-*, agents/harness/*), not colon-format
 	// names. This is the OBSERVED behavior the characterization pins.
 	userOwnedPaths := []string{
@@ -161,29 +162,29 @@ func TestNamespacePredicateSupersetCharacterization(t *testing.T) {
 		".claude/skills/my-custom-skill/SKILL.md",
 	}
 	for _, rel := range userOwnedPaths {
-		areaPath := isUserAreaPath(rel)
-		ownedNs := isUserOwnedNamespace(rel)
+		areaPath := plan.IsUserAreaPath(rel)
+		ownedNs := plan.IsUserOwnedNamespace(rel)
 		if !ownedNs {
-			t.Errorf("isUserOwnedNamespace(%q) = false; NFR-UNP-005 superset requires it to be true", rel)
+			t.Errorf("plan.IsUserOwnedNamespace(%q) = false; NFR-UNP-005 superset requires it to be true", rel)
 		}
-		// Document the relationship without hard-failing on isUserAreaPath
+		// Document the relationship without hard-failing on plan.IsUserAreaPath
 		// specifics (the guard suite owns exact path sets); the superset
 		// invariant is what decomposition must preserve.
 		if areaPath && !ownedNs {
-			t.Errorf("NFR-UNP-005 violation: isUserAreaPath(%q)=true but isUserOwnedNamespace=false (must be superset)", rel)
+			t.Errorf("NFR-UNP-005 violation: plan.IsUserAreaPath(%q)=true but plan.IsUserOwnedNamespace=false (must be superset)", rel)
 		}
 	}
 }
 
 // TestNamespaceProtectionE2EClassification bridges the NEW classification type
 // (update.Classify) to the ACTUAL namespace-protection predicate
-// (isUserOwnedNamespace). This proves REQ-TUX3-002 reachability: the preview
+// (plan.IsUserOwnedNamespace). This proves REQ-TUX3-002 reachability: the preview
 // classification derives from the SAME predicate the deploy stage enforces, and
 // a user-owned file classifies as ClassPreserveUserOwned.
 func TestNamespaceProtectionE2EClassification(t *testing.T) {
 	// Inject the real predicate into the classification model (the bridge M3c
 	// preview + M3e fallback will use).
-	pred := update.UserOwnedPredicate(isUserOwnedNamespace)
+	pred := update.UserOwnedPredicate(plan.IsUserOwnedNamespace)
 	tests := []struct {
 		rel       string
 		exists    bool
@@ -211,7 +212,7 @@ func TestNamespaceProtectionE2EClassification(t *testing.T) {
 
 // TestMoaiManagedClassificationCharacterization pins that moai-managed template
 // paths are NOT classified as user-owned (they are update/add candidates), and
-// isMoaiManaged recognizes them. This guards against the superset accidentally
+// plan.IsMoaiManaged recognizes them. This guards against the superset accidentally
 // swallowing moai-template paths.
 func TestMoaiManagedClassificationCharacterization(t *testing.T) {
 	moaiPaths := []string{
@@ -219,15 +220,15 @@ func TestMoaiManagedClassificationCharacterization(t *testing.T) {
 		".claude/agents/moai/manager-develop.md",
 	}
 	for _, rel := range moaiPaths {
-		// isMoaiManaged should recognize these (they are template-shipped).
-		if !isMoaiManaged(rel) {
-			// Not a hard failure (isMoaiManaged scope may differ), but document.
-			t.Logf("isMoaiManaged(%q) = false (moai-template path not recognized as managed)", rel)
+		// plan.IsMoaiManaged should recognize these (they are template-shipped).
+		if !plan.IsMoaiManaged(rel) {
+			// Not a hard failure (plan.IsMoaiManaged scope may differ), but document.
+			t.Logf("plan.IsMoaiManaged(%q) = false (moai-template path not recognized as managed)", rel)
 		}
 		// Crucially: user-owned predicate must NOT classify moai-managed paths
 		// as preserve — they are legitimate update targets.
-		if isUserOwnedNamespace(rel) {
-			t.Errorf("isUserOwnedNamespace(%q) = true for a moai-managed template path — update would wrongly preserve it", rel)
+		if plan.IsUserOwnedNamespace(rel) {
+			t.Errorf("plan.IsUserOwnedNamespace(%q) = true for a moai-managed template path — update would wrongly preserve it", rel)
 		}
 	}
 }
@@ -236,15 +237,15 @@ func TestMoaiManagedClassificationCharacterization(t *testing.T) {
 
 // TestFastPathVersionComparisonCharacterization pins the CONTRACT the
 // already-up-to-date fast path (runTemplateSyncWithReporter ~line 600) depends
-// on: getProjectConfigVersion returns the project's declared version, and the
+// on: plan.GetProjectConfigVersion returns the project's declared version, and the
 // fast-skip gate is `packageVersion == projectVersion && !force`. On a project
 // with NO config (or a non-matching version), the fast path MUST NOT trigger.
 func TestFastPathVersionComparisonCharacterization(t *testing.T) {
 	tmpDir := t.TempDir()
-	// No config written → getProjectConfigVersion should return a value that
+	// No config written → plan.GetProjectConfigVersion should return a value that
 	// does NOT spuriously match the package version (otherwise an empty project
 	// would wrongly skip template sync).
-	projectVersion, err := getProjectConfigVersion(tmpDir)
+	projectVersion, err := plan.GetProjectConfigVersion(tmpDir)
 	// The fast-path gate requires err == nil AND version match. On an empty
 	// project, either err != nil OR the version must differ from the package
 	// version — either way the fast skip must NOT fire for an empty project.
@@ -252,12 +253,12 @@ func TestFastPathVersionComparisonCharacterization(t *testing.T) {
 		// If a default version was returned, it must not equal the package
 		// version on a project with no real config (characterization: empty
 		// project does not take the fast skip).
-		t.Logf("getProjectConfigVersion(empty tmpDir) = %q (no error) — fast-path gate must compare against package version to avoid spurious skip", projectVersion)
+		t.Logf("plan.GetProjectConfigVersion(empty tmpDir) = %q (no error) — fast-path gate must compare against package version to avoid spurious skip", projectVersion)
 	}
 	// The contract that matters: the fast-path function exists and is callable,
 	// and its return is deterministic for the same input.
-	v2, err2 := getProjectConfigVersion(tmpDir)
+	v2, err2 := plan.GetProjectConfigVersion(tmpDir)
 	if v2 != projectVersion || (err2 == nil) != (err == nil) {
-		t.Errorf("getProjectConfigVersion not deterministic: first=(%q,%v), second=(%q,%v)", projectVersion, err, v2, err2)
+		t.Errorf("plan.GetProjectConfigVersion not deterministic: first=(%q,%v), second=(%q,%v)", projectVersion, err, v2, err2)
 	}
 }

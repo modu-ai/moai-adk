@@ -4,19 +4,23 @@
 //   - .claude/commands/harness/<name>.md   (user-generated /harness:<name> commands, AC-HV4-010a)
 //   - .claude/workflows/harness-<name>-run.js (user-generated Runner Workflows, AC-HV4-010b)
 //
-// Both surfaces MUST be recognized as user-owned by isUserAreaPath AND isUserOwnedNamespace
+// Both surfaces MUST be recognized as user-owned by plan.IsUserAreaPath AND plan.IsUserOwnedNamespace
 // so that `moai update` preserves them (NEVER deletes / overwrites) per the extended §24
 // namespace doctrine.
 //
 // Written BEFORE the M1 GREEN-phase extension — these tests FAIL initially because
-// isUserAreaPath / isUserOwnedNamespace do NOT yet recognize the two new patterns.
+// plan.IsUserAreaPath / plan.IsUserOwnedNamespace do NOT yet recognize the two new patterns.
 // The M1 GREEN phase adds the two HasPrefix checks that make them pass.
 //
 // @MX:NOTE: [AUTO] AC-HV4-010a/010b specification — pins commands/harness/ + workflows/harness-*.js user-owned.
 // @MX:SPEC: SPEC-V3R6-HARNESS-V4-001 acceptance.md AC-HV4-010a/010b
 package cli
 
-import "testing"
+import (
+	"testing"
+
+	"github.com/modu-ai/moai-adk/internal/cli/update/plan"
+)
 
 // TestIsUserOwnedNamespace_HarnessV4CommandsAndWorkflows pins AC-HV4-010a/010b:
 // `.claude/commands/harness/` and `.claude/workflows/harness-*.js` MUST be user-owned.
@@ -48,16 +52,16 @@ func TestIsUserOwnedNamespace_HarnessV4CommandsAndWorkflows(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			got := isUserOwnedNamespace(tt.rel)
+			got := plan.IsUserOwnedNamespace(tt.rel)
 			if got != tt.want {
-				t.Errorf("isUserOwnedNamespace(%q) = %v, want %v", tt.rel, got, tt.want)
+				t.Errorf("plan.IsUserOwnedNamespace(%q) = %v, want %v", tt.rel, got, tt.want)
 			}
 		})
 	}
 }
 
 // TestIsUserAreaPath_HarnessV4CommandsAndWorkflows pins the same two surfaces on the
-// older isUserAreaPath guard for consistency with isUserOwnedNamespace.
+// older plan.IsUserAreaPath guard for consistency with plan.IsUserOwnedNamespace.
 func TestIsUserAreaPath_HarnessV4CommandsAndWorkflows(t *testing.T) {
 	t.Parallel()
 
@@ -82,9 +86,9 @@ func TestIsUserAreaPath_HarnessV4CommandsAndWorkflows(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			got := isUserAreaPath(tt.rel)
+			got := plan.IsUserAreaPath(tt.rel)
 			if got != tt.want {
-				t.Errorf("isUserAreaPath(%q) = %v, want %v", tt.rel, got, tt.want)
+				t.Errorf("plan.IsUserAreaPath(%q) = %v, want %v", tt.rel, got, tt.want)
 			}
 		})
 	}

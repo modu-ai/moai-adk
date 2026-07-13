@@ -10,13 +10,17 @@
 //
 // Written BEFORE the M1 rename so all existing my-harness-* tests stay green
 // after M1 adds explicit harness-* recognition. These tests exercise the
-// isUserAreaPath and isUserOwnedNamespace predicates that M1 modifies.
+// plan.IsUserAreaPath and plan.IsUserOwnedNamespace predicates that M1 modifies.
 //
 // @MX:NOTE: [AUTO] AC-HNS-002/004/005 characterization — pins dual recognition + substring separation.
 // @MX:SPEC: SPEC-V3R6-HARNESS-NAMESPACE-V2-001 acceptance.md AC-HNS-002/004/005
 package cli
 
-import "testing"
+import (
+	"testing"
+
+	"github.com/modu-ai/moai-adk/internal/cli/update/plan"
+)
 
 // TestIsUserOwnedNamespace_HarnessV2DualRecognition pins REQ-HNS-005 backward-compat:
 // both harness-* (canonical) AND my-harness-* (legacy) are recognized as user-owned
@@ -51,18 +55,18 @@ func TestIsUserOwnedNamespace_HarnessV2DualRecognition(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			got := isUserOwnedNamespace(tt.rel)
+			got := plan.IsUserOwnedNamespace(tt.rel)
 			if got != tt.want {
-				t.Errorf("isUserOwnedNamespace(%q) = %v, want %v", tt.rel, got, tt.want)
+				t.Errorf("plan.IsUserOwnedNamespace(%q) = %v, want %v", tt.rel, got, tt.want)
 			}
 		})
 	}
 }
 
-// TestIsUserAreaPath_HarnessV2Canonical pins the isUserAreaPath predicate recognizes
+// TestIsUserAreaPath_HarnessV2Canonical pins the plan.IsUserAreaPath predicate recognizes
 // the canonical harness-* prefix (not just the legacy my-harness-*). This is the
 // older user-area guard; M1 adds explicit harness-* recognition to it for consistency
-// with isUserOwnedNamespace.
+// with plan.IsUserOwnedNamespace.
 func TestIsUserAreaPath_HarnessV2Canonical(t *testing.T) {
 	t.Parallel()
 
@@ -86,9 +90,9 @@ func TestIsUserAreaPath_HarnessV2Canonical(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			got := isUserAreaPath(tt.rel)
+			got := plan.IsUserAreaPath(tt.rel)
 			if got != tt.want {
-				t.Errorf("isUserAreaPath(%q) = %v, want %v", tt.rel, got, tt.want)
+				t.Errorf("plan.IsUserAreaPath(%q) = %v, want %v", tt.rel, got, tt.want)
 			}
 		})
 	}

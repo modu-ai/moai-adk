@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/modu-ai/moai-adk/internal/defs"
+	"github.com/modu-ai/moai-adk/internal/cli/update/plan"
 )
 
 // --- backupMoaiConfig additional edge case tests ---
@@ -1070,14 +1071,14 @@ func TestRunTemplateSyncWithProgress_VersionUpToDate(t *testing.T) {
 	}
 
 	// We cannot easily test the full function since it depends on cobra command
-	// and many subsystems. Instead, verify the sub-component getProjectConfigVersion
+	// and many subsystems. Instead, verify the sub-component plan.GetProjectConfigVersion
 	// works correctly.
-	ver, err := getProjectConfigVersion(tmpDir)
+	ver, err := plan.GetProjectConfigVersion(tmpDir)
 	if err != nil {
-		t.Fatalf("getProjectConfigVersion failed: %v", err)
+		t.Fatalf("plan.GetProjectConfigVersion failed: %v", err)
 	}
 	if ver != currentVersion {
-		t.Errorf("getProjectConfigVersion = %q, want %q", ver, currentVersion)
+		t.Errorf("plan.GetProjectConfigVersion = %q, want %q", ver, currentVersion)
 	}
 }
 
@@ -1085,12 +1086,12 @@ func TestGetProjectConfigVersion_MissingFile(t *testing.T) {
 	tmpDir := t.TempDir()
 
 	// No system.yaml exists, should return "0.0.0" to force update
-	ver, err := getProjectConfigVersion(tmpDir)
+	ver, err := plan.GetProjectConfigVersion(tmpDir)
 	if err != nil {
-		t.Fatalf("getProjectConfigVersion should not error for missing file, got: %v", err)
+		t.Fatalf("plan.GetProjectConfigVersion should not error for missing file, got: %v", err)
 	}
 	if ver != "0.0.0" {
-		t.Errorf("getProjectConfigVersion = %q, want %q for missing config", ver, "0.0.0")
+		t.Errorf("plan.GetProjectConfigVersion = %q, want %q for missing config", ver, "0.0.0")
 	}
 }
 
@@ -1106,11 +1107,11 @@ func TestGetProjectConfigVersion_ValidFile(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	ver, err := getProjectConfigVersion(tmpDir)
+	ver, err := plan.GetProjectConfigVersion(tmpDir)
 	if err != nil {
-		t.Fatalf("getProjectConfigVersion failed: %v", err)
+		t.Fatalf("plan.GetProjectConfigVersion failed: %v", err)
 	}
 	if ver != "2.5.0" {
-		t.Errorf("getProjectConfigVersion = %q, want %q", ver, "2.5.0")
+		t.Errorf("plan.GetProjectConfigVersion = %q, want %q", ver, "2.5.0")
 	}
 }

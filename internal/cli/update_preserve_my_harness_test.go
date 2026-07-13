@@ -1,6 +1,6 @@
 // SPEC-V3R3-HARNESS-001 / T-M3-02
-// RED phase: isUserAreaPath does not exist yet — test fails.
-// GREEN phase: implement isUserAreaPath + integrate into cleanMoaiManagedPaths → tests pass.
+// RED phase: plan.IsUserAreaPath does not exist yet — test fails.
+// GREEN phase: implement plan.IsUserAreaPath + integrate into cleanMoaiManagedPaths → tests pass.
 
 package cli
 
@@ -10,6 +10,7 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"github.com/modu-ai/moai-adk/internal/cli/update/plan"
 )
 
 // fileSHA256 returns the SHA-256 hex digest of a file.
@@ -54,9 +55,9 @@ func TestIsUserAreaPath(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			got := isUserAreaPath(tt.relPath)
+			got := plan.IsUserAreaPath(tt.relPath)
 			if got != tt.wantSkip {
-				t.Errorf("isUserAreaPath(%q) = %v, want %v", tt.relPath, got, tt.wantSkip)
+				t.Errorf("plan.IsUserAreaPath(%q) = %v, want %v", tt.relPath, got, tt.wantSkip)
 			}
 		})
 	}

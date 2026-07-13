@@ -5,6 +5,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"github.com/modu-ai/moai-adk/internal/cli/update/plan"
 )
 
 // TestScaffoldEvolutionDir_CreatesDirectoryTree verifies that scaffoldEvolutionDir
@@ -137,9 +138,9 @@ func TestIsMoaiManaged_EvolutionPaths(t *testing.T) {
 		tt := tt
 		t.Run(tt.path, func(t *testing.T) {
 			t.Parallel()
-			got := isMoaiManaged(tt.path)
+			got := plan.IsMoaiManaged(tt.path)
 			if got != tt.want {
-				t.Errorf("isMoaiManaged(%q) = %v, want %v", tt.path, got, tt.want)
+				t.Errorf("plan.IsMoaiManaged(%q) = %v, want %v", tt.path, got, tt.want)
 			}
 		})
 	}

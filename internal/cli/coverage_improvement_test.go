@@ -24,6 +24,7 @@ import (
 	"github.com/modu-ai/moai-adk/internal/update"
 	"github.com/modu-ai/moai-adk/pkg/version"
 	"github.com/spf13/cobra"
+	"github.com/modu-ai/moai-adk/internal/cli/update/plan"
 )
 
 // newTestLogger creates a silent slog.Logger for tests.
@@ -1925,7 +1926,7 @@ func TestGetGLMEnvPath_Valid(t *testing.T) {
 	}
 }
 
-// classifyFileRisk and determineStrategy — ensure full coverage
+// plan.ClassifyFileRisk and plan.DetermineStrategy — ensure full coverage
 func TestClassifyFileRisk_AllCases(t *testing.T) {
 	tests := []struct {
 		name     string
@@ -1941,9 +1942,9 @@ func TestClassifyFileRisk_AllCases(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := classifyFileRisk(tt.filename, tt.exists)
+			got := plan.ClassifyFileRisk(tt.filename, tt.exists)
 			if got != tt.want {
-				t.Errorf("classifyFileRisk(%q, %v) = %q, want %q", tt.filename, tt.exists, got, tt.want)
+				t.Errorf("plan.ClassifyFileRisk(%q, %v) = %q, want %q", tt.filename, tt.exists, got, tt.want)
 			}
 		})
 	}
@@ -2708,7 +2709,7 @@ func TestRunPrePush_WithValidCommits(t *testing.T) {
 
 // TestRunPrePush_EnforcementDisabled already exists earlier in this file
 
-// getProjectConfigVersion — test various scenarios
+// plan.GetProjectConfigVersion — test various scenarios
 // TestGetProjectConfigVersion_MissingFile already exists in update_fileops_test.go
 
 func TestGetProjectConfigVersion_WithVersion(t *testing.T) {
@@ -2723,7 +2724,7 @@ func TestGetProjectConfigVersion_WithVersion(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	ver, err := getProjectConfigVersion(tmpDir)
+	ver, err := plan.GetProjectConfigVersion(tmpDir)
 	if err != nil {
 		t.Fatalf("error: %v", err)
 	}
@@ -2744,7 +2745,7 @@ func TestGetProjectConfigVersion_EmptyVersion(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	ver, err := getProjectConfigVersion(tmpDir)
+	ver, err := plan.GetProjectConfigVersion(tmpDir)
 	if err != nil {
 		t.Fatalf("error: %v", err)
 	}
@@ -3389,7 +3390,7 @@ func TestRunTemplateSyncWithReporter_VersionMatch(t *testing.T) {
 	}
 
 	currentVersion := version.GetVersion()
-	// getProjectConfigVersion reads from moai.template_version, not system.template_version
+	// plan.GetProjectConfigVersion reads from moai.template_version, not system.template_version
 	systemYAML := fmt.Sprintf("moai:\n  template_version: %s\n", currentVersion)
 	if err := os.WriteFile(filepath.Join(sectionsDir, "system.yaml"), []byte(systemYAML), 0o644); err != nil {
 		t.Fatal(err)
@@ -5993,7 +5994,7 @@ func TestDetectGoBinPathForUpdate_WithHome(t *testing.T) {
 	}
 }
 
-// --- classifyFileRisk: all branches ---
+// --- plan.ClassifyFileRisk: all branches ---
 
 func TestClassifyFileRisk_HighRisk(t *testing.T) {
 	tests := []struct {
@@ -6007,29 +6008,29 @@ func TestClassifyFileRisk_HighRisk(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.filename, func(t *testing.T) {
-			got := classifyFileRisk(tt.filename, tt.exists)
+			got := plan.ClassifyFileRisk(tt.filename, tt.exists)
 			if got != tt.want {
-				t.Errorf("classifyFileRisk(%q, %v) = %q, want %q", tt.filename, tt.exists, got, tt.want)
+				t.Errorf("plan.ClassifyFileRisk(%q, %v) = %q, want %q", tt.filename, tt.exists, got, tt.want)
 			}
 		})
 	}
 }
 
 func TestClassifyFileRisk_LowRisk(t *testing.T) {
-	got := classifyFileRisk("new-file.md", false)
+	got := plan.ClassifyFileRisk("new-file.md", false)
 	if got != "low" {
 		t.Errorf("expected 'low' for new file, got %q", got)
 	}
 }
 
 func TestClassifyFileRisk_MediumRisk(t *testing.T) {
-	got := classifyFileRisk("existing.yaml", true)
+	got := plan.ClassifyFileRisk("existing.yaml", true)
 	if got != "medium" {
 		t.Errorf("expected 'medium' for existing file, got %q", got)
 	}
 }
 
-// --- determineStrategy: all branches ---
+// --- plan.DetermineStrategy: all branches ---
 
 func TestDetermineStrategy_AllTypes(t *testing.T) {
 	tests := []struct {
@@ -6045,7 +6046,7 @@ func TestDetermineStrategy_AllTypes(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.filename, func(t *testing.T) {
-			got := determineStrategy(tt.filename)
+			got := plan.DetermineStrategy(tt.filename)
 			// Compare string representation
 			gotStr := fmt.Sprintf("%v", got)
 			if !strings.Contains(gotStr, "") {
