@@ -346,6 +346,42 @@ main:
     defaultOpen: true
     sub:
       - name:
+          ko: 토크노믹스 개요
+          en: Tokenomics Overview
+          ja: トークノミクス概論
+          zh: 代币经济学概述
+        ref: /advanced/tokenomics-overview
+      - name:
+          ko: 토큰 예산 관리와 우아한 중단
+          en: Token Budget Management and Graceful Stop
+          ja: トークン予算管理と graceful stop
+          zh: 代币预算管理与优雅停止
+        ref: /advanced/token-budget
+      - name:
+          ko: 3-티어 에이전트 아키텍처 (No-Haiku)
+          en: 3-Tier Agent Architecture (No-Haiku)
+          ja: 3層エージェントアーキテクチャ (No-Haiku)
+          zh: 三层代理架构 (No-Haiku)
+        ref: /advanced/no-haiku-3tier
+      - name:
+          ko: plan_type 티어 프로필
+          en: plan_type Tier Profiles
+          ja: plan_type ティアプロファイル
+          zh: plan_type 层级配置
+        ref: /advanced/plan-type-profiles
+      - name:
+          ko: 하네스 자가 진화
+          en: Harness Self-Evolution
+          ja: ハーネス自己進化
+          zh: 线束自我进化
+        ref: /advanced/self-evolving
+      - name:
+          ko: 자율 연속 루프
+          en: Autonomous Continuation Loops
+          ja: 自律連続ループ
+          zh: 自主连续循环
+        ref: /advanced/autonomous-loops
+      - name:
           ko: 스킬 가이드
           en: Skill Guide
           ja: スキルガイド

@@ -1,6 +1,18 @@
 index:
   title: "詳細"
   display: "hidden"
+"tokenomics-overview":
+  title: "トークノミクス概論"
+"token-budget":
+  title: "トークン予算管理と graceful stop"
+"no-haiku-3tier":
+  title: "3層エージェントアーキテクチャ (No-Haiku)"
+"plan-type-profiles":
+  title: "plan_type ティアプロファイル"
+"self-evolving":
+  title: "ハーネス自己進化"
+"autonomous-loops":
+  title: "自律連続ループ"
 "skill-guide":
   title: "スキルガイド"
 "agent-guide":
