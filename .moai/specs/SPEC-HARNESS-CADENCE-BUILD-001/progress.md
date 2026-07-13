@@ -1,7 +1,7 @@
 ---
 id: SPEC-HARNESS-CADENCE-BUILD-001
 version: "0.1.2"
-status: implemented
+status: completed
 updated: 2026-07-13
 ---
 
@@ -93,4 +93,20 @@ m1_to_mN_commit_strategy: "per-milestone pathspec-scoped commits on the agent wo
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+```yaml
+sync_complete_at: 2026-07-13
+sync_commit_sha: PENDING_SELF  # backfilled in a follow-up commit after `git rev-parse HEAD`
+sync_status: PASS
+b12_self_test_a: "grep -c 'SPEC-HARNESS-CADENCE-BUILD-001' CHANGELOG.md (pre-emit) = 0 -> emission proceeded, no duplicate"
+b12_self_test_b: "acceptance.md unique AC-HCB-* rows = 36; progress.md §E.2 matrix = 36 rows (35 PASS + 1 PASS-WITH-DEBT) -> count match"
+b12_self_test_c: "file paths referenced in CHANGELOG entry verified via ls/find: internal/harness/v4manifest/, .claude/skills/moai/workflows/harness-builder.md, harness-build-entry.md, .claude/rules/moai/workflow/cadence-bridge.md, internal/cli/harness/ (list/remove/doctor + v4lifecycle_schedule_test.go) -- all present"
+changelog_entry_position: "Unreleased > Changed, inserted after SPEC-HNS-PREFIX-RENAME-001 entry"
+frontmatter_status_transitions:
+  spec_md: "in-progress -> implemented -> completed (merged 3-phase close, this commit)"
+  plan_md: "in-progress -> implemented -> completed (merged 3-phase close, this commit)"
+  acceptance_md: "in-progress -> implemented -> completed (merged 3-phase close, this commit)"
+  progress_md: "in-progress -> implemented -> completed (merged 3-phase close, this commit)"
+canary_compliance_check:
+  applicable: false
+  reason: "SPEC-HARNESS-CADENCE-BUILD-001 does not define a forward-looking canary/self-test policy that its own sync tests"
+```

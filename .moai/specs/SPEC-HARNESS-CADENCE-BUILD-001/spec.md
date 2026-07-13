@@ -2,7 +2,7 @@
 id: SPEC-HARNESS-CADENCE-BUILD-001
 title: "Harness Builder Cadence Integration — build-time recurrence, discovery-queue scheduling, ANALYZE research, retroactive schedules"
 version: "0.1.2"
-status: in-progress
+status: completed
 created: 2026-07-13
 updated: 2026-07-13
 author: manager-spec
