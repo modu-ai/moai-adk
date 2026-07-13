@@ -161,7 +161,7 @@ The quality gate auto-detects the project language and runs the appropriate tool
 - **Python**: `ruff` → `pytest`
 - **Rust**: `cargo clippy` → `cargo test`
 
-Tools that are not installed are skipped gracefully. Projects with no recognized language marker pass the gate silently.
+The four toolchains above are illustrative examples, not an exhaustive or privileged list — all 16 supported languages (go, python, typescript, javascript, rust, java, kotlin, csharp, ruby, php, elixir, cpp, scala, r, flutter, swift) are detected equally via project markers, each running its own standard lint/format/test toolchain. Tools that are not installed are skipped gracefully. Projects with no recognized language marker pass the gate silently.
 
 ---
 
