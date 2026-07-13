@@ -179,7 +179,7 @@ refresh.
 
 ```yaml
 run_complete_at: 2026-07-14
-run_commit_sha: pending-backfill-m2e
+run_commit_sha: d38a88a9d
 run_status: complete
 ac_pass_count: 18
 ac_fail_count: 0
@@ -193,6 +193,20 @@ cross_platform_build:
   linux_amd64: exit 0
 total_run_phase_files: 14   # 9 source/test files + go.mod + go.sum + spec.md frontmatter + progress.md (+ verify logs, gitignored)
 m1_to_mN_commit_strategy: per-milestone commits M2a..M2e on main (Route A Hybrid Trunk; push deferred to orchestrator)
+milestone_commits:
+  M2a: "681574852"
+  M2b: "9d216825e"
+  M2c: "d5f04baa4"
+  M2d: "8a4236a3e"
+  M2e: "d38a88a9d"
+parallel_session_note: >
+  A concurrent session landed unrelated commits interleaved with this run
+  (SPEC-WEBCONF-SIMPLIFY-001 docs + 747961d67 dead-code sweep, which deleted
+  internal/cli/init_layout.go — symbols this SPEC never touched). The full
+  verification batch (3-target builds, go test ./... 100/100 ok,
+  golangci-lint 0 issues, ratchet 38) was RE-RUN at the final HEAD after the
+  interleaved commits; all AC claims hold on the merged tree
+  (.moai/state/verify/tux-v3-002/final-*.log).
 ```
 
 ## §E.4 Sync-phase Audit-Ready Signal
