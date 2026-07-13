@@ -298,7 +298,7 @@ I need a team.
 ## Related Documents
 
 - [Harness v4 Builder Guide](/advanced/builder-agents) - Builder 4-phase details
-- [Agent Guide](/advanced/agent-guide) - Understanding the 10-agent catalog
+- [Agent Guide](/advanced/agent-guide) - Understanding the 11-agent catalog
 - [SPEC-Based Development](/workflow-commands/moai-plan) - SPEC workflow overview
 
 {{< callout type="info" >}}

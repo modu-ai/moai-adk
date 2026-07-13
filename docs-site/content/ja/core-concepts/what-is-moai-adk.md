@@ -4,7 +4,7 @@ weight: 20
 draft: false
 ---
 
-MoAI-ADK は **トークノミクス** (Token Economics) を目標とする **Agentic Development Kit** です。同じ品質のコードをより少ないトークンで、同じトークンでより高い品質を — モデル選択・推論の深さ・コンテキスト使用量をシステムが管理します。10個の専門 AI エージェントと27個のスキルが協力し、新規プロジェクトには TDD (既定値)、テストカバレッジの低い既存プロジェクトには DDD を自動的に適用します。
+MoAI-ADK は **トークノミクス** (Token Economics) を目標とする **Agentic Development Kit** です。同じ品質のコードをより少ないトークンで、同じトークンでより高い品質を — モデル選択・推論の深さ・コンテキスト使用量をシステムが管理します。11個の専門 AI エージェントと27個のスキルが協力し、新規プロジェクトには TDD (既定値)、テストカバレッジの低い既存プロジェクトには DDD を自動的に適用します。
 
 Go で書かれた単一バイナリ -- 依存関係なしにすべてのプラットフォームで即座に実行できます。
 
@@ -21,7 +21,7 @@ MoAI-ADK は **Claude Code の中でエージェントたちが相互に協力�
 | AI 開発チーム | MoAI-ADK | 役割 |
 |----------|----------|------|
 | プロダクトオーナー | ユーザー (開発者) | 何を作るかを決めます |
-| チームリード / Tech Lead | MoAI オーケストレーター | 全体の作業を調整し、10個のエージェントに委任します |
+| チームリード / Tech Lead | MoAI オーケストレーター | 全体の作業を調整し、11個のエージェントに委任します |
 | プランナー / Spec Writer | manager-spec | 要件を SPEC 文書にまとめます |
 | 開発者 / Engineers | manager-develop (ドメインコンテキストの注入) | 実際のコードを DDD/TDD で実装します |
 | QA / コードレビュアー | plan-auditor · sync-auditor | 計画と成果物を独立に監査します |
@@ -40,7 +40,7 @@ v3.0 の価値は3つの柱に要約されます。
 
 ### エージェンティックハーネス (Agentic Harness)
 
-コードを直接書く代わりに、エージェントがうまく働ける環境を設計します。10エージェントのカタログ、SPEC ベースの 3-phase ワークフロー (plan → run → sync)、TRUST 5 品質ゲート、自然言語のリクエストでプロジェクト専用のハーネスを生成する Harness v4 Builder がこの柱です。詳しい概念は [ハーネスエンジニアリング](/ja/core-concepts/harness-engineering) を参照してください。
+コードを直接書く代わりに、エージェントがうまく働ける環境を設計します。11エージェントのカタログ、SPEC ベースの 3-phase ワークフロー (plan → run → sync)、TRUST 5 品質ゲート、自然言語のリクエストでプロジェクト専用のハーネスを生成する Harness v4 Builder がこの柱です。詳しい概念は [ハーネスエンジニアリング](/ja/core-concepts/harness-engineering) を参照してください。
 
 ## なぜトークノミクスなのか
 
@@ -69,7 +69,7 @@ Python ベースの MoAI-ADK (~73,000行) を Go で完全に書き直しまし�
 
 ### 主要な数値 (v3.0 基準)
 
-- **10個** のエージェントカタログ (9 MoAI カスタム + 1 Anthropic ビルトイン `Explore`)
+- **11個** のエージェントカタログ (10 MoAI カスタム + 1 Anthropic ビルトイン `Explore`)
 - **27個** のスキル (template-managed)
 - **36個** の CLI コマンド · **15種** の `/moai` サブコマンド
 - **16個** のプログラミング言語をサポート
@@ -254,9 +254,9 @@ MoAI-ADK は **ハーネスエンジニアリング** (Harness Engineering) パ�
 
 ## AI エージェントのオーケストレーション
 
-MoAI は **戦略的オーケストレーター** です。直接コードを書かず、10個の保持エージェント (9 MoAI カスタム + 1 Anthropic ビルトイン `Explore`) に作業を委任します。中核となる設計原則は **計画と監査の分離** — 作った本人は検査しません。
+MoAI は **戦略的オーケストレーター** です。直接コードを書かず、11個の保持エージェント (10 MoAI カスタム + 1 Anthropic ビルトイン `Explore`) に作業を委任します。中核となる設計原則は **計画と監査の分離** — 作った本人は検査しません。
 
-### 10エージェントのカタログ
+### 11エージェントのカタログ
 
 | 分類 | エージェント | 役割 |
 |------|---------|------|
@@ -269,6 +269,7 @@ MoAI は **戦略的オーケストレーター** です。直接コードを書
 | | sync-auditor | 4次元の品質評価 (機能 40 · セキュリティ 25 · 職人性 20 · 一貫性 15) |
 | **Builder** | builder-harness | プロジェクト専用のハーネス (エージェント/スキル/コマンド) の生成 |
 | **Advisor** | super-advisor | 高推論のアドバイザリー (E1-E4 エスカレーション) |
+| **Specialist** | e2e-specialist | ウェブ/モバイル/デスクトップの E2E テスト実行 |
 | **ビルトイン** | Explore | 読み取り専用のコードベース探索 |
 
 ```mermaid
@@ -293,6 +294,10 @@ flowchart TD
         B2["super-advisor\n高推論アドバイザリー"]
     end
 
+    subgraph Specialist["Specialist (1つ)"]
+        S1["e2e-specialist\nE2E テスト実行"]
+    end
+
     subgraph Explore["ビルトイン (1つ)"]
         X1["Explore\n読み取り専用のコード分析"]
     end
@@ -300,6 +305,7 @@ flowchart TD
     MoAI --> Managers
     MoAI --> Evaluators
     MoAI --> BuilderAdvisor
+    MoAI --> Specialist
     MoAI --> Explore
 ```
 
@@ -607,7 +613,7 @@ MoAI-ADK をインストールすると、プロジェクトに次のような�
 my-project/
 ├── CLAUDE.md                  # MoAI の実行指針
 ├── .claude/
-│   ├── agents/moai/           # 9個の MoAI カスタムエージェント定義 (+ Explore ビルトイン)
+│   ├── agents/moai/           # 10個の MoAI カスタムエージェント定義 (+ Explore ビルトイン)
 │   ├── skills/moai-*/         # 27個のスキルモジュール
 │   ├── hooks/moai/            # 自動化フックスクリプト
 │   └── rules/moai/            # コーディングルールと標準

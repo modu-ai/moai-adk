@@ -100,7 +100,7 @@ MoAI-ADK 会根据 Claude Code 订阅套餐为智能体分配最优 AI 模型。
 
 ### 各层级智能体模型分配
 
-**10 个智能体目录**（9 个 MoAI 自定义 + 1 个 Anthropic 内置 `Explore`）中，MoAI 自定义智能体按层级分配模型。过去的 12 个归档智能体 (archived agents) 已不可用。
+**11 个智能体目录**（10 个 MoAI 自定义 + 1 个 Anthropic 内置 `Explore`）中，MoAI 自定义智能体按层级分配模型。过去的 12 个归档智能体 (archived agents) 已不可用。
 
 #### Manager Agents（5 个）
 
@@ -121,7 +121,7 @@ MoAI-ADK 会根据 Claude Code 订阅套餐为智能体分配最优 AI 模型。
 | builder-harness | opus | sonnet | haiku |
 | super-advisor | opus | opus | sonnet |
 
-内置 `Explore` 直接沿用会话模型。
+e2e-specialist 与内置 `Explore` 直接沿用会话模型 (`model: inherit`)。
 
 ### 设置方法
 

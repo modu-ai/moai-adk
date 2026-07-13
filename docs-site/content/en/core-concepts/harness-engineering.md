@@ -24,7 +24,7 @@ Harness engineering is where the three pillars of v3.0 meet.
 |------|------------------|
 | **Tokenomics** | The harness assigns model and reasoning depth per task and keeps the token budget |
 | **Agentic Loop Engineering** | Loops (`/moai loop`, the goal engine) run and accumulate observations, and the harness learns from them |
-| **Agentic Harness** | The 10-agent catalog, the 3-phase workflow, and the TRUST 5 gates form the execution environment |
+| **Agentic Harness** | The 11-agent catalog, the 3-phase workflow, and the TRUST 5 gates form the execution environment |
 
 The second pillar in particular is the key innovation. The realistic near-term path to AI's recursive self-improvement (RSI) is not modifying model weights directly, but **improving the harness around the model**. MoAI-ADK takes exactly this path — it recursively improves the harness (skills and agent guidance), not the model.
 

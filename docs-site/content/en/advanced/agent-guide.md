@@ -4,7 +4,7 @@ weight: 30
 draft: false
 ---
 
-A detailed guide to the catalog of 10 core agents in MoAI-ADK v3.0.
+A detailed guide to the catalog of 11 core agents in MoAI-ADK v3.0.
 
 {{< callout type="info" >}}
 **One-line summary**: Agents are a **team of specialists**, one for each field. MoAI, as team leader, distributes work to the right specialist — and the agent that authors a plan is always separated from the agent that audits it.
@@ -18,7 +18,7 @@ Built on Claude Code's **Sub-agent** system, each agent has an independent conte
 
 In a company analogy, MoAI is the CEO, Manager agents are department heads, Evaluator agents are quality inspectors, the Builder agent is the new-team creation officer, and the Advisor agent is an external consultant.
 
-The agent count was refined over the v3 period from 22 → 17 → 8 → **10**. More agents is not better — every delegation carries a context cost, so shrinking the catalog is itself part of tokenomics.
+The agent count was refined over the v3 period from 22 → 17 → 8 → 10 → **11**. More agents is not better — every delegation carries a context cost, so shrinking the catalog is itself part of tokenomics.
 
 ## The MoAI Orchestrator
 
@@ -33,9 +33,9 @@ MoAI is the **top-level coordinator** of MoAI-ADK. It analyzes user requests and
 | Parallel execution | Independent read-only tasks are delegated to multiple agents simultaneously |
 | Result consolidation | Agent execution results are aggregated and reported to the user |
 
-## The 10-Agent Core Catalog
+## The 11-Agent Core Catalog
 
-MoAI-ADK uses **10 core agents** (9 MoAI custom + 1 Anthropic built-in).
+MoAI-ADK uses **11 core agents** (10 MoAI custom + 1 Anthropic built-in).
 
 ### Manager Agents (5)
 
@@ -67,6 +67,12 @@ The key point is that planning and auditing are separated — the one who built 
 | Agent | Role | Characteristics |
 |----------|------|------|
 | `super-advisor` | High-reasoning consultation — deadlocks, design decision points, second opinions (E1-E4 escalation) | Non-binding prescriptions — the orchestrator makes the final call |
+
+### Specialist Agent (1)
+
+| Agent | Role | Characteristics |
+|----------|------|------|
+| `e2e-specialist` | E2E test execution across web/mobile/desktop (journey scripting, CLI-first suite runs, artifact management) | Execution owner of the `/moai e2e` workflow — selection questions stay with the orchestrator |
 
 ### Built-in Agent (1, Anthropic)
 
@@ -108,7 +114,7 @@ flowchart TD
 
 ## Agent Definition Files
 
-The 9 MoAI custom agents are defined as markdown files in the `.claude/agents/moai/` directory.
+The 10 MoAI custom agents are defined as markdown files in the `.claude/agents/moai/` directory.
 
 ### File Structure
 
@@ -123,6 +129,7 @@ The 9 MoAI custom agents are defined as markdown files in the `.claude/agents/mo
 ├── sync-auditor.md
 ├── builder-harness.md
 ├── super-advisor.md
+├── e2e-specialist.md
 └── (Explore: Anthropic 내장, 파일 없음)
 ```
 

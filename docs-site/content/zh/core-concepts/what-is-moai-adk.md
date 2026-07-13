@@ -4,7 +4,7 @@ weight: 20
 draft: false
 ---
 
-MoAI-ADK 是以 **代币经济学** (Token Economics) 为目标的 **Agentic Development Kit**。用更少的 token 得到同等质量的代码，用同样的 token 得到更高的质量 — 模型选择·推理深度·上下文用量都由系统管理。10 个专业 AI 智能体与 27 个技能协作，新项目自动应用 TDD（默认值），测试覆盖率低的现有项目自动应用 DDD。
+MoAI-ADK 是以 **代币经济学** (Token Economics) 为目标的 **Agentic Development Kit**。用更少的 token 得到同等质量的代码，用同样的 token 得到更高的质量 — 模型选择·推理深度·上下文用量都由系统管理。11 个专业 AI 智能体与 27 个技能协作，新项目自动应用 TDD（默认值），测试覆盖率低的现有项目自动应用 DDD。
 
 用 Go 编写的单体二进制 -- 无依赖，在所有平台上即刻运行。
 
@@ -21,7 +21,7 @@ MoAI-ADK 是**让智能体们在 Claude Code 内相互协作、执行智能体�
 | AI 开发团队 | MoAI-ADK | 角色 |
 |----------|----------|------|
 | 产品负责人 | 用户（开发者） | 决定要做什么 |
-| 团队领队 / Tech Lead | MoAI 编排器 | 协调全部工作，委派给 10 个智能体 |
+| 团队领队 / Tech Lead | MoAI 编排器 | 协调全部工作，委派给 11 个智能体 |
 | 策划 / Spec Writer | manager-spec | 把需求整理为 SPEC 文档 |
 | 开发者 / Engineers | manager-develop（注入领域上下文） | 用 DDD/TDD 实现实际代码 |
 | QA / 代码审查员 | plan-auditor · sync-auditor | 独立审计计划与产出 |
@@ -40,7 +40,7 @@ v3.0 的价值可以概括为三大支柱。
 
 ### 智能体挽具 (Agentic Harness)
 
-不直接写代码，而是设计让智能体高效工作的环境。10 个智能体目录、基于 SPEC 的 3-phase 工作流（plan → run → sync）、TRUST 5 质量门禁，以及用自然语言请求生成项目专属挽具的 Harness v4 Builder 构成这一支柱。详细概念请参考[挽具工程](/zh/core-concepts/harness-engineering)文档。
+不直接写代码，而是设计让智能体高效工作的环境。11 个智能体目录、基于 SPEC 的 3-phase 工作流（plan → run → sync）、TRUST 5 质量门禁，以及用自然语言请求生成项目专属挽具的 Harness v4 Builder 构成这一支柱。详细概念请参考[挽具工程](/zh/core-concepts/harness-engineering)文档。
 
 ## 为什么是代币经济学
 
@@ -69,7 +69,7 @@ MoAI-ADK 的答案有三条。
 
 ### 核心数字（以 v3.0 为准）
 
-- **10 个**智能体目录（9 个 MoAI 自定义 + 1 个 Anthropic 内置 `Explore`）
+- **11 个**智能体目录（10 个 MoAI 自定义 + 1 个 Anthropic 内置 `Explore`）
 - **27 个**技能 (template-managed)
 - **36 个** CLI 命令 · **15 种** `/moai` 子命令
 - 支持 **16 种**编程语言
@@ -254,9 +254,9 @@ MoAI-ADK 实现了 **挽具工程** (Harness Engineering) 范式 — 不是直�
 
 ## AI 智能体编排
 
-MoAI 是**战略编排器**。它不直接写代码，而是把工作委派给 10 个保留智能体（9 个 MoAI 自定义 + 1 个 Anthropic 内置 `Explore`）。核心设计原则是**规划与审计分离** — 谁做的东西不由谁来检查。
+MoAI 是**战略编排器**。它不直接写代码，而是把工作委派给 11 个保留智能体（10 个 MoAI 自定义 + 1 个 Anthropic 内置 `Explore`）。核心设计原则是**规划与审计分离** — 谁做的东西不由谁来检查。
 
-### 10 个智能体目录
+### 11 个智能体目录
 
 | 分类 | 智能体 | 角色 |
 |------|---------|------|
@@ -269,6 +269,7 @@ MoAI 是**战略编排器**。它不直接写代码，而是把工作委派给 1
 | | sync-auditor | 4 维质量评估（功能 40 · 安全 25 · 工艺 20 · 一致性 15） |
 | **Builder** | builder-harness | 生成项目专属挽具（智能体/技能/命令） |
 | **Advisor** | super-advisor | 高推理咨询（E1-E4 升级） |
+| **Specialist** | e2e-specialist | 网页/移动/桌面 E2E 测试执行 |
 | **内置** | Explore | 只读代码库探索 |
 
 ```mermaid
@@ -293,6 +294,10 @@ flowchart TD
         B2["super-advisor\n高推理咨询"]
     end
 
+    subgraph Specialist["Specialist（1 个）"]
+        S1["e2e-specialist\nE2E 测试执行"]
+    end
+
     subgraph Explore["内置（1 个）"]
         X1["Explore\n只读代码分析"]
     end
@@ -300,6 +305,7 @@ flowchart TD
     MoAI --> Managers
     MoAI --> Evaluators
     MoAI --> BuilderAdvisor
+    MoAI --> Specialist
     MoAI --> Explore
 ```
 
@@ -607,7 +613,7 @@ Task 工具完成时，PostToolUse 钩子会记录指标。用这些数据分析
 my-project/
 ├── CLAUDE.md                  # MoAI의 실행 지침서
 ├── .claude/
-│   ├── agents/moai/           # 9개 MoAI 커스텀 에이전트 정의 (+ Explore 빌트인)
+│   ├── agents/moai/           # 10개 MoAI 커스텀 에이전트 정의 (+ Explore 빌트인)
 │   ├── skills/moai-*/         # 27개 스킬 모듈
 │   ├── hooks/moai/            # 자동화 훅 스크립트
 │   └── rules/moai/            # 코딩 규칙 및 표준

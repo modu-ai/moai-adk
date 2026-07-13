@@ -100,7 +100,7 @@ MoAI は Claude Code の戦略的オーケストレーターです。
 
 ### 4. エージェントカタログ
 
-MoAI-ADK は **10 個の保持エージェント** (9 個の MoAI-custom + 1 個の Anthropic built-in) で構成されます。アーキテクチャ簡素化により、manager-strategy、manager-quality、manager-brain、manager-project など 12 個の archived エージェントは、特定ドメインへの per-spawn `Agent(general-purpose)` delegation に置き換えられました。
+MoAI-ADK は **11 個の保持エージェント** (10 個の MoAI-custom + 1 個の Anthropic built-in) で構成されます。アーキテクチャ簡素化により、manager-strategy、manager-quality、manager-brain、manager-project など 12 個の archived エージェントは、特定ドメインへの per-spawn `Agent(general-purpose)` delegation に置き換えられました。
 
 | 分類 | エージェント | 役割 |
 |------|----------|------|
@@ -108,6 +108,7 @@ MoAI-ADK は **10 個の保持エージェント** (9 個の MoAI-custom + 1 個
 | Evaluator (2) | plan-auditor, sync-auditor | 計画/完了フェーズの独立品質評価 |
 | Builder (1) | builder-harness | 動的なプロジェクト別ハーネス生成 |
 | Advisor (1) | super-advisor | 高推論コンサルティング (E1-E4 エスカレーション) |
+| Specialist (1) | e2e-specialist | ウェブ/モバイル/デスクトップの E2E テスト実行 |
 | Built-in (1) | Explore (Anthropic) | 読み取り専用のコードベース探索 |
 
 ### 5. SPEC ワークフロー

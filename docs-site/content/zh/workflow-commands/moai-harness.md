@@ -298,7 +298,7 @@ Builder 会自动:
 ## 相关文档
 
 - [Harness v4 Builder 指南](/advanced/builder-agents) - Builder 4-phase 详解
-- [智能体指南](/advanced/agent-guide) - 理解 10 个智能体目录
+- [智能体指南](/advanced/agent-guide) - 理解 11 个智能体目录
 - [基于 SPEC 的开发](/workflow-commands/moai-plan) - SPEC 工作流概览
 
 {{< callout type="info" >}}

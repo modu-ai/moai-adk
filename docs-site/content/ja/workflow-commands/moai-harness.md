@@ -298,7 +298,7 @@ Builder が自動で:
 ## 関連ドキュメント
 
 - [Harness v4 Builder ガイド](/advanced/builder-agents) - Builder 4-phase の詳細
-- [エージェントガイド](/advanced/agent-guide) - 10 エージェントカタログの理解
+- [エージェントガイド](/advanced/agent-guide) - 11 エージェントカタログの理解
 - [SPEC ベース開発](/workflow-commands/moai-plan) - SPEC ワークフローの概要
 
 {{< callout type="info" >}}

@@ -100,7 +100,7 @@ MoAI-ADK は Claude Code のサブスクリプションプランに合わせて�
 
 ### ティア別エージェントのモデル割り当て
 
-**10エージェントのカタログ** (9 MoAI カスタム + 1 Anthropic ビルトイン `Explore`) のうち、MoAI カスタムエージェントはティアに応じてモデルが割り当てられます。かつての12個のアーカイブ済みエージェント (archived agents) は利用できません。
+**11エージェントのカタログ** (10 MoAI カスタム + 1 Anthropic ビルトイン `Explore`) のうち、MoAI カスタムエージェントはティアに応じてモデルが割り当てられます。かつての12個のアーカイブ済みエージェント (archived agents) は利用できません。
 
 #### Manager Agents (5つ)
 
@@ -121,7 +121,7 @@ MoAI-ADK は Claude Code のサブスクリプションプランに合わせて�
 | builder-harness | opus | sonnet | haiku |
 | super-advisor | opus | opus | sonnet |
 
-ビルトインの `Explore` はセッションモデルをそのまま使用します。
+e2e-specialist とビルトインの `Explore` はセッションモデルをそのまま使用します (`model: inherit`)。
 
 ### 設定方法
 

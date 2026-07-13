@@ -100,7 +100,7 @@ Every request goes through a single ordered pipeline, regardless of input langua
 
 ### 4. Agent Catalog
 
-MoAI-ADK consists of **10 retained agents** (9 MoAI-custom + 1 Anthropic built-in). Through architecture simplification, 12 archived agents such as manager-strategy, manager-quality, manager-brain, and manager-project were replaced by per-spawn `Agent(general-purpose)` delegation for specific domains.
+MoAI-ADK consists of **11 retained agents** (10 MoAI-custom + 1 Anthropic built-in). Through architecture simplification, 12 archived agents such as manager-strategy, manager-quality, manager-brain, and manager-project were replaced by per-spawn `Agent(general-purpose)` delegation for specific domains.
 
 | Category | Agents | Role |
 |------|----------|------|
@@ -108,6 +108,7 @@ MoAI-ADK consists of **10 retained agents** (9 MoAI-custom + 1 Anthropic built-i
 | Evaluator (2) | plan-auditor, sync-auditor | Independent quality assessment at plan/completion stages |
 | Builder (1) | builder-harness | Dynamic per-project harness generation |
 | Advisor (1) | super-advisor | High-reasoning consultation (E1-E4 escalation) |
+| Specialist (1) | e2e-specialist | E2E test execution across web/mobile/desktop |
 | Built-in (1) | Explore (Anthropic) | Read-only codebase exploration |
 
 ### 5. SPEC Workflow

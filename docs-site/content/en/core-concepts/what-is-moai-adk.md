@@ -4,7 +4,7 @@ weight: 20
 draft: false
 ---
 
-MoAI-ADK is an **Agentic Development Kit** that aims for **Tokenomics** (Token Economics). Code of the same quality with fewer tokens, and higher quality for the same tokens — the system manages model selection, reasoning depth, and context usage. 10 specialist AI agents and 27 skills work together, applying TDD (the default) to new projects and DDD to existing projects with low test coverage, automatically.
+MoAI-ADK is an **Agentic Development Kit** that aims for **Tokenomics** (Token Economics). Code of the same quality with fewer tokens, and higher quality for the same tokens — the system manages model selection, reasoning depth, and context usage. 11 specialist AI agents and 27 skills work together, applying TDD (the default) to new projects and DDD to existing projects with low test coverage, automatically.
 
 A single binary written in Go -- runs immediately on every platform with zero dependencies.
 
@@ -21,7 +21,7 @@ MoAI-ADK is **a development kit that has agents collaborate on agentic coding in
 | AI development team | MoAI-ADK | Role |
 |----------|----------|------|
 | Product owner | The user (developer) | Decides what to build |
-| Team lead / Tech Lead | The MoAI orchestrator | Coordinates all work and delegates to the 10 agents |
+| Team lead / Tech Lead | The MoAI orchestrator | Coordinates all work and delegates to the 11 agents |
 | Planner / Spec Writer | manager-spec | Organizes requirements into SPEC documents |
 | Developers / Engineers | manager-develop (with domain context injected) | Implements the actual code with DDD/TDD |
 | QA / Code reviewers | plan-auditor · sync-auditor | Independently audit plans and deliverables |
@@ -40,7 +40,7 @@ The loop works on its own, and observations accumulate along the way. This pilla
 
 ### Agentic Harness
 
-Instead of writing code yourself, you design an environment where agents work well. This pillar is the 10-agent catalog, the SPEC-based 3-phase workflow (plan → run → sync), the TRUST 5 quality gates, and the Harness v4 Builder that creates project-specific harnesses from natural-language requests. For the full concept, see the [Harness Engineering](/en/core-concepts/harness-engineering) document.
+Instead of writing code yourself, you design an environment where agents work well. This pillar is the 11-agent catalog, the SPEC-based 3-phase workflow (plan → run → sync), the TRUST 5 quality gates, and the Harness v4 Builder that creates project-specific harnesses from natural-language requests. For the full concept, see the [Harness Engineering](/en/core-concepts/harness-engineering) document.
 
 ## Why Tokenomics
 
@@ -69,7 +69,7 @@ The Python-based MoAI-ADK (~73,000 lines) was completely rewritten in Go.
 
 ### Key Numbers (as of v3.0)
 
-- **10** agents in the catalog (9 MoAI custom + 1 Anthropic built-in `Explore`)
+- **11** agents in the catalog (10 MoAI custom + 1 Anthropic built-in `Explore`)
 - **27** skills (template-managed)
 - **36** CLI commands · **15** `/moai` subcommands
 - **16** programming languages supported
@@ -254,9 +254,9 @@ MoAI-ADK implements the **Harness Engineering** paradigm — designing the envir
 
 ## AI Agent Orchestration
 
-MoAI is the **strategic orchestrator**. It does not write code directly — it delegates work to the 10 retained agents (9 MoAI custom + 1 Anthropic built-in `Explore`). The core design principle is **separating planning from auditing** — the one who builds it does not inspect it.
+MoAI is the **strategic orchestrator**. It does not write code directly — it delegates work to the 11 retained agents (10 MoAI custom + 1 Anthropic built-in `Explore`). The core design principle is **separating planning from auditing** — the one who builds it does not inspect it.
 
-### The 10-Agent Catalog
+### The 11-Agent Catalog
 
 | Category | Agent | Role |
 |------|---------|------|
@@ -269,6 +269,7 @@ MoAI is the **strategic orchestrator**. It does not write code directly — it d
 | | sync-auditor | 4-dimension quality assessment (Functionality 40 · Security 25 · Craft 20 · Consistency 15) |
 | **Builder** | builder-harness | Project-specific harness (agents/skills/commands) generation |
 | **Advisor** | super-advisor | High-reasoning consultation (E1-E4 escalation) |
+| **Specialist** | e2e-specialist | E2E test execution across web/mobile/desktop |
 | **Built-in** | Explore | Read-only codebase exploration |
 
 ```mermaid
@@ -293,6 +294,10 @@ flowchart TD
         B2["super-advisor\nHigh-reasoning consultation"]
     end
 
+    subgraph Specialist["Specialist (1)"]
+        S1["e2e-specialist\nE2E test execution"]
+    end
+
     subgraph Explore["Built-in (1)"]
         X1["Explore\nRead-only code analysis"]
     end
@@ -300,6 +305,7 @@ flowchart TD
     MoAI --> Managers
     MoAI --> Evaluators
     MoAI --> BuilderAdvisor
+    MoAI --> Specialist
     MoAI --> Explore
 ```
 
@@ -607,7 +613,7 @@ Installing MoAI-ADK creates the following structure in your project.
 my-project/
 ├── CLAUDE.md                  # MoAI's execution directive
 ├── .claude/
-│   ├── agents/moai/           # 9 MoAI custom agent definitions (+ the Explore built-in)
+│   ├── agents/moai/           # 10 MoAI custom agent definitions (+ the Explore built-in)
 │   ├── skills/moai-*/         # 27 skill modules
 │   ├── hooks/moai/            # Automation hook scripts
 │   └── rules/moai/            # Coding rules and standards

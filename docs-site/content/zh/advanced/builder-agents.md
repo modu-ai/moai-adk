@@ -14,7 +14,7 @@ draft: false
 
 Harness v4 Builder 通过 `/moai:harness <自然语言请求>` **动态生成项目专属的专家团队**。
 
-通用智能体目录（10 个）对所有项目通用，而 Builder 生成的 Harness 是只存在于你项目中的定制团队。
+通用智能体目录（11 个）对所有项目通用，而 Builder 生成的 Harness 是只存在于你项目中的定制团队。
 
 ### 与旧版本的差异
 
@@ -174,7 +174,7 @@ Claude Code 运行时会为每个智能体创建 L1 worktree。
 ## 相关文档
 
 - [Harness v4 Builder 深入指南](/zh/advanced/harness-v4-builder) - Builder 4-phase 详解与 manifest 模式
-- [智能体指南](/zh/advanced/agent-guide) - 10 个核心智能体目录
+- [智能体指南](/zh/advanced/agent-guide) - 11 个核心智能体目录
 - [动态工作流](/zh/advanced/ultracode-workflows) - `/effort ultracode` 并行执行
 
 {{< callout type="info" >}}

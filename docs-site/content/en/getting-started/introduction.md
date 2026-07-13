@@ -28,7 +28,7 @@ The value of MoAI-ADK v3.0 comes down to three pillars.
 |------|-----------|----------|
 | **Tokenomics** | Intelligent resource allocation maximizing quality per cost | 3-tier model policy · CG mode · Token Circuit Breaker |
 | **Agentic Loop Engineering** | The loop works on its own; observations accumulate and the harness learns | `/moai goal` · `/moai loop` · Analyze-First routing |
-| **Agentic Harness** | Design the environment agents work in instead of writing code yourself | 10 agents · SPEC 3-phase · TRUST 5 |
+| **Agentic Harness** | Design the environment agents work in instead of writing code yourself | 11 agents · SPEC 3-phase · TRUST 5 |
 
 The details of each pillar are covered in the [Core Concepts](/en/core-concepts/) section. This page covers only what you need to get started.
 
@@ -145,7 +145,7 @@ MoAI-ADK is a complete rewrite of the Python Edition in Go, maximizing performan
 
 ### Key Numbers (as of v3.0)
 
-- **10** agents in the catalog (9 MoAI custom + 1 Anthropic built-in `Explore`)
+- **11** agents in the catalog (10 MoAI custom + 1 Anthropic built-in `Explore`)
 - **27** skills (template-managed)
 - **36** CLI commands · **15** `/moai` subcommands
 - **16** programming languages supported
@@ -165,9 +165,9 @@ MoAI-ADK is a complete rewrite of the Python Edition in Go, maximizing performan
 
 ## Key Features
 
-### The Agent Catalog (10 Agents)
+### The Agent Catalog (11 Agents)
 
-The MoAI orchestrator does not implement directly — it delegates work to 10 specialist agents. Planning and auditing are separated — the one who builds it does not inspect it.
+The MoAI orchestrator does not implement directly — it delegates work to 11 specialist agents. Planning and auditing are separated — the one who builds it does not inspect it.
 
 | Category | Count | Key agents |
 |----------|------|--------------|
@@ -175,6 +175,7 @@ The MoAI orchestrator does not implement directly — it delegates work to 10 sp
 | **Evaluator** | 2 | plan-auditor, sync-auditor |
 | **Builder** | 1 | builder-harness |
 | **Advisor** | 1 | super-advisor (high-reasoning consultation) |
+| **Specialist** | 1 | e2e-specialist (E2E test execution across web/mobile/desktop) |
 | **Built-in** | 1 | Explore (Anthropic built-in, read-only code analysis) |
 
 ### Model Policy (Tokenomics)

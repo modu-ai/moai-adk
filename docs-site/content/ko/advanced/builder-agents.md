@@ -14,7 +14,7 @@ draft: false
 
 Harness v4 Builder는 `/moai:harness <자연어 요청>`을 통해 **프로젝트 고유의 전문가 팀을 동적으로 생성**합니다.
 
-범용 에이전트 카탈로그 (10개)가 모든 프로젝트에 공통이라면, Builder가 만드는 하네스는 여러분의 프로젝트에만 존재하는 맞춤 팀입니다.
+범용 에이전트 카탈로그 (11개)가 모든 프로젝트에 공통이라면, Builder가 만드는 하네스는 여러분의 프로젝트에만 존재하는 맞춤 팀입니다.
 
 ### 이전 버전과의 차이
 
@@ -174,7 +174,7 @@ manifest의 `"worktree_isolation": "none"`으로 설정하면 L1 격리를 생�
 ## 관련 문서
 
 - [Harness v4 Builder 심화 가이드](/ko/advanced/harness-v4-builder) - Builder 4-phase 상세 및 manifest 스키마
-- [에이전트 가이드](/ko/advanced/agent-guide) - 10개 핵심 에이전트 카탈로그
+- [에이전트 가이드](/ko/advanced/agent-guide) - 11개 핵심 에이전트 카탈로그
 - [동적 워크플로우](/ko/advanced/ultracode-workflows) - `/effort ultracode` 병렬 실행
 
 {{< callout type="info" >}}

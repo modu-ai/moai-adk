@@ -100,7 +100,7 @@ MoAI-ADK는 Claude Code 구독 요금제에 맞춰 에이전트에 최적의 AI 
 
 ### 티어별 에이전트 모델 배정
 
-**10개 에이전트 카탈로그** (9 MoAI 커스텀 + 1 Anthropic 빌트인 `Explore`) 중 MoAI 커스텀 에이전트는 티어에 따라 모델이 배정됩니다. 과거의 12개 보관 에이전트 (archived agents) 는 이용할 수 없습니다.
+**11개 에이전트 카탈로그** (10 MoAI 커스텀 + 1 Anthropic 빌트인 `Explore`) 중 MoAI 커스텀 에이전트는 티어에 따라 모델이 배정됩니다. 과거의 12개 보관 에이전트 (archived agents) 는 이용할 수 없습니다.
 
 #### Manager Agents (5개)
 
@@ -121,7 +121,7 @@ MoAI-ADK는 Claude Code 구독 요금제에 맞춰 에이전트에 최적의 AI 
 | builder-harness | opus | sonnet | haiku |
 | super-advisor | opus | opus | sonnet |
 
-빌트인 `Explore`는 세션 모델을 그대로 따릅니다.
+e2e-specialist와 빌트인 `Explore`는 세션 모델을 그대로 따릅니다 (`model: inherit`).
 
 ### 설정 방법
 

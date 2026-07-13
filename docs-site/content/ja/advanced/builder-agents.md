@@ -14,7 +14,7 @@ draft: false
 
 Harness v4 Builder は `/moai:harness <自然言語リクエスト>` を通じて **プロジェクト固有の専門家チームを動的に生成** します。
 
-汎用エージェントカタログ (10 個) がすべてのプロジェクトに共通だとすれば、Builder が作るハーネスはあなたのプロジェクトにだけ存在するカスタムチームです。
+汎用エージェントカタログ (11 個) がすべてのプロジェクトに共通だとすれば、Builder が作るハーネスはあなたのプロジェクトにだけ存在するカスタムチームです。
 
 ### 以前のバージョンとの違い
 
@@ -174,7 +174,7 @@ manifest の `"worktree_isolation": "none"` に設定すると L1 分離を省�
 ## 関連ドキュメント
 
 - [Harness v4 Builder 深掘りガイド](/ja/advanced/harness-v4-builder) - Builder 4-phase 詳細と manifest スキーマ
-- [エージェントガイド](/ja/advanced/agent-guide) - 10 個のコアエージェントカタログ
+- [エージェントガイド](/ja/advanced/agent-guide) - 11 個のコアエージェントカタログ
 - [動的ワークフロー](/ja/advanced/ultracode-workflows) - `/effort ultracode` 並列実行
 
 {{< callout type="info" >}}

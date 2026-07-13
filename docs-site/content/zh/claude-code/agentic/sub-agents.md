@@ -14,7 +14,7 @@ Claude Code 的子智能体是在独立的上下文窗口中处理旁支任务�
 {{< /callout >}}
 
 {{< callout type="tip" >}}
-本页是 Claude Code 层面的概念概览。MoAI-ADK 如何构成与委派 10 个智能体目录（9 个 MoAI 自定义 + 1 个 Anthropic 内置 `Explore`），以及亲手创建智能体的实战方法，在[智能体指南](/advanced/agent-guide)与[构建者智能体指南](/advanced/builder-agents)中深入讲解。
+本页是 Claude Code 层面的概念概览。MoAI-ADK 如何构成与委派 11 个智能体目录（10 个 MoAI 自定义 + 1 个 Anthropic 内置 `Explore`），以及亲手创建智能体的实战方法，在[智能体指南](/advanced/agent-guide)与[构建者智能体指南](/advanced/builder-agents)中深入讲解。
 {{< /callout >}}
 
 ## 什么是子智能体
@@ -152,7 +152,7 @@ model: sonnet
 
 ## 深入请看 MoAI 智能体指南
 
-以上是 Claude Code 层面的子智能体概念。MoAI-ADK 在这套机制之上运营**10 个智能体的目录** —— Manager 系列（manager-spec / manager-develop / manager-docs / manager-git / manager-design）负责 plan→run→sync 生命周期，Evaluator 系列（plan-auditor / sync-auditor）负责独立审计，builder-harness 负责生成挽具脚手架，super-advisor 负责高推理咨询，Anthropic 内置的 `Explore` 负责只读探索。计划与审计相互分离 —— 制造者不自我检查 —— 是这份目录的核心设计。为每个智能体声明式地分配契合工作性质的模型与推理深度 (effort)，正是代币经济学"计划要深、实现要省、验证要独立"的原则。详情见下方的深入指南。
+以上是 Claude Code 层面的子智能体概念。MoAI-ADK 在这套机制之上运营**11 个智能体的目录** —— Manager 系列（manager-spec / manager-develop / manager-docs / manager-git / manager-design）负责 plan→run→sync 生命周期，Evaluator 系列（plan-auditor / sync-auditor）负责独立审计，builder-harness 负责生成挽具脚手架，super-advisor 负责高推理咨询，e2e-specialist 负责网页/移动/桌面的 E2E 测试执行，Anthropic 内置的 `Explore` 负责只读探索。计划与审计相互分离 —— 制造者不自我检查 —— 是这份目录的核心设计。为每个智能体声明式地分配契合工作性质的模型与推理深度 (effort)，正是代币经济学"计划要深、实现要省、验证要独立"的原则。详情见下方的深入指南。
 
 ## 相关文档
 

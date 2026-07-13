@@ -11,7 +11,7 @@ draft: false
 声明式地分配合适的模型。它配合 Claude Code 订阅计划最大化质量，同时避免
 速率限制错误。
 
-MoAI-ADK v3.0 的代理目录共 **10 个**（MoAI 自定义 9 个 + Anthropic 内置
+MoAI-ADK v3.0 的代理目录共 **11 个**（MoAI 自定义 10 个 + Anthropic 内置
 `Explore`），下面的分配表覆盖其中由模型策略直接分配的核心 7 个代理。
 
 ## 3 级策略概览

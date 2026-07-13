@@ -12,7 +12,7 @@ model for everything", it declaratively assigns the right model to each agent
 documentation and Git. It maximizes quality within your Claude Code
 subscription plan while preventing rate-limit errors.
 
-The MoAI-ADK v3.0 agent catalog contains **10** agents (9 MoAI-custom + the
+The MoAI-ADK v3.0 agent catalog contains **11** agents (10 MoAI-custom + the
 Anthropic built-in `Explore`); the assignment table below covers the 7 core
 agents the model policy assigns directly.
 

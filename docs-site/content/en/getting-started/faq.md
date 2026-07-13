@@ -100,7 +100,7 @@ MoAI-ADK assigns the optimal AI model to each agent according to your Claude Cod
 
 ### Agent Model Assignment per Tier
 
-Of the **10-agent catalog** (9 MoAI custom + 1 Anthropic built-in `Explore`), the MoAI custom agents are assigned models according to the tier. The 12 archived agents from earlier versions are not available.
+Of the **11-agent catalog** (10 MoAI custom + 1 Anthropic built-in `Explore`), the MoAI custom agents are assigned models according to the tier. The 12 archived agents from earlier versions are not available.
 
 #### Manager Agents (5)
 
@@ -121,7 +121,7 @@ Of the **10-agent catalog** (9 MoAI custom + 1 Anthropic built-in `Explore`), th
 | builder-harness | opus | sonnet | haiku |
 | super-advisor | opus | opus | sonnet |
 
-The built-in `Explore` follows the session model as-is.
+The e2e-specialist and the built-in `Explore` follow the session model as-is (`model: inherit`).
 
 ### How to Configure
 

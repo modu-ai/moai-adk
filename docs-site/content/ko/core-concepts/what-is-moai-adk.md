@@ -4,7 +4,7 @@ weight: 20
 draft: false
 ---
 
-MoAI-ADK는 **토크노믹스** (Token Economics) 를 목표로 하는 **Agentic Development Kit**입니다. 같은 품질의 코드를 더 적은 토큰으로, 같은 토큰으로 더 높은 품질을 — 모델 선택·추론 깊이·컨텍스트 사용량을 시스템이 관리합니다. 10개의 전문 AI 에이전트와 27개의 스킬이 협력하고, 새 프로젝트에는 TDD (기본값), 테스트 커버리지가 낮은 기존 프로젝트에는 DDD를 자동으로 적용합니다.
+MoAI-ADK는 **토크노믹스** (Token Economics) 를 목표로 하는 **Agentic Development Kit**입니다. 같은 품질의 코드를 더 적은 토큰으로, 같은 토큰으로 더 높은 품질을 — 모델 선택·추론 깊이·컨텍스트 사용량을 시스템이 관리합니다. 11개의 전문 AI 에이전트와 27개의 스킬이 협력하고, 새 프로젝트에는 TDD (기본값), 테스트 커버리지가 낮은 기존 프로젝트에는 DDD를 자동으로 적용합니다.
 
 Go로 작성된 단일 바이너리 -- 의존성 없이 모든 플랫폼에서 즉시 실행됩니다.
 
@@ -21,7 +21,7 @@ MoAI-ADK는 **Claude Code 안에서 에이전트들이 상호 협력하며 에�
 | AI 개발팀 | MoAI-ADK | 역할 |
 |----------|----------|------|
 | 프로덕트 오너 | 사용자 (개발자) | 무엇을 만들지 결정합니다 |
-| 팀 리드 / Tech Lead | MoAI 오케스트레이터 | 전체 작업을 조율하고 10개 에이전트에게 위임합니다 |
+| 팀 리드 / Tech Lead | MoAI 오케스트레이터 | 전체 작업을 조율하고 11개 에이전트에게 위임합니다 |
 | 기획자 / Spec Writer | manager-spec | 요구사항을 SPEC 문서로 정리합니다 |
 | 개발자 / Engineers | manager-develop (도메인 컨텍스트 주입) | 실제 코드를 DDD/TDD로 구현합니다 |
 | QA / 코드 리뷰어 | plan-auditor · sync-auditor | 계획과 결과물을 독립적으로 감사합니다 |
@@ -40,7 +40,7 @@ v3.0의 가치는 세 기둥으로 요약됩니다.
 
 ### 에이전틱 하네스 (Agentic Harness)
 
-코드를 직접 쓰는 대신, 에이전트가 잘 일할 환경을 설계합니다. 10개 에이전트 카탈로그, SPEC 기반 3-phase 워크플로우 (plan → run → sync), TRUST 5 품질 게이트, 자연어 요청으로 프로젝트 전용 하네스를 생성하는 Harness v4 Builder가 이 기둥입니다. 자세한 개념은 [하네스 엔지니어링](/ko/core-concepts/harness-engineering) 문서를 참조하세요.
+코드를 직접 쓰는 대신, 에이전트가 잘 일할 환경을 설계합니다. 11개 에이전트 카탈로그, SPEC 기반 3-phase 워크플로우 (plan → run → sync), TRUST 5 품질 게이트, 자연어 요청으로 프로젝트 전용 하네스를 생성하는 Harness v4 Builder가 이 기둥입니다. 자세한 개념은 [하네스 엔지니어링](/ko/core-concepts/harness-engineering) 문서를 참조하세요.
 
 ## 왜 토크노믹스인가
 
@@ -69,7 +69,7 @@ Python 기반 MoAI-ADK (~73,000줄)를 Go로 완전히 재작성했습니다.
 
 ### 핵심 수치 (v3.0 기준)
 
-- **10개** 에이전트 카탈로그 (9 MoAI 커스텀 + 1 Anthropic 빌트인 `Explore`)
+- **11개** 에이전트 카탈로그 (10 MoAI 커스텀 + 1 Anthropic 빌트인 `Explore`)
 - **27개** 스킬 (template-managed)
 - **36개** CLI 명령 · **15종** `/moai` 서브커맨드
 - **16개** 프로그래밍 언어 지원
@@ -254,9 +254,9 @@ MoAI-ADK는 **하네스 엔지니어링** (Harness Engineering) 패러다임을 
 
 ## AI 에이전트 오케스트레이션
 
-MoAI는 **전략적 오케스트레이터**입니다. 직접 코드를 작성하지 않고, 10개의 유지 에이전트 (9 MoAI 커스텀 + 1 Anthropic 빌트인 `Explore`) 에 작업을 위임합니다. 핵심 설계 원칙은 **계획과 감사의 분리** — 만든 사람이 검사하지 않습니다.
+MoAI는 **전략적 오케스트레이터**입니다. 직접 코드를 작성하지 않고, 11개의 유지 에이전트 (10 MoAI 커스텀 + 1 Anthropic 빌트인 `Explore`) 에 작업을 위임합니다. 핵심 설계 원칙은 **계획과 감사의 분리** — 만든 사람이 검사하지 않습니다.
 
-### 10개 에이전트 카탈로그
+### 11개 에이전트 카탈로그
 
 | 분류 | 에이전트 | 역할 |
 |------|---------|------|
@@ -269,6 +269,7 @@ MoAI는 **전략적 오케스트레이터**입니다. 직접 코드를 작성하
 | | sync-auditor | 4차원 품질 평가 (기능 40 · 보안 25 · 장인정신 20 · 일관성 15) |
 | **Builder** | builder-harness | 프로젝트 전용 하네스 (에이전트/스킬/커맨드) 생성 |
 | **Advisor** | super-advisor | 고추론 자문 (E1-E4 에스컬레이션) |
+| **Specialist** | e2e-specialist | 웹/모바일/데스크탑 E2E 테스트 실행 |
 | **빌트인** | Explore | 읽기 전용 코드베이스 탐색 |
 
 ```mermaid
@@ -293,6 +294,10 @@ flowchart TD
         B2["super-advisor\n고추론 자문"]
     end
 
+    subgraph Specialist["Specialist (1개)"]
+        S1["e2e-specialist\nE2E 테스트 실행"]
+    end
+
     subgraph Explore["빌트인 (1개)"]
         X1["Explore\n읽기 전용 코드 분석"]
     end
@@ -300,6 +305,7 @@ flowchart TD
     MoAI --> Managers
     MoAI --> Evaluators
     MoAI --> BuilderAdvisor
+    MoAI --> Specialist
     MoAI --> Explore
 ```
 
@@ -607,7 +613,7 @@ MoAI-ADK를 설치하면 프로젝트에 다음과 같은 구조가 생성됩니
 my-project/
 ├── CLAUDE.md                  # MoAI의 실행 지침서
 ├── .claude/
-│   ├── agents/moai/           # 9개 MoAI 커스텀 에이전트 정의 (+ Explore 빌트인)
+│   ├── agents/moai/           # 10개 MoAI 커스텀 에이전트 정의 (+ Explore 빌트인)
 │   ├── skills/moai-*/         # 27개 스킬 모듈
 │   ├── hooks/moai/            # 자동화 훅 스크립트
 │   └── rules/moai/            # 코딩 규칙 및 표준
