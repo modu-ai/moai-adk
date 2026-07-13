@@ -65,7 +65,7 @@ Loops accumulate observations; the harness learns; the instructions evolve. A Ro
 
 ### Pillar 3 — The Agentic Harness
 
-Instead of writing code directly, you design the environment where agents work well: a 10-agent catalog, a SPEC-based 3-phase workflow (plan → run → sync), the TRUST 5 quality gate, and a Harness v4 Builder that generates project-specific harnesses from a natural-language request.
+Instead of writing code directly, you design the environment where agents work well: an 11-agent catalog, a SPEC-based 3-phase workflow (plan → run → sync), the TRUST 5 quality gate, and a Harness v4 Builder that generates project-specific harnesses from a natural-language request.
 
 ---
 
@@ -189,7 +189,7 @@ Weng predicted that the near-term path to recursive self-improvement (RSI) is no
 | **Harness** — the execution/operations layer around a base model | MoAI-ADK = a Claude Code harness (single Go binary + CLAUDE.md orchestrator) |
 | **Pattern 1: Workflow Automation** — plan → execute → observe → improve goal loops | `/moai goal` engine, `/moai loop` Ralph Engine, Analyze-First routing |
 | **Pattern 2: File-System Persistent Memory** — "durable state in files" | `.moai/specs/`, `progress.md`, `usage-log.jsonl`, `.moai/state/`, session handoff |
-| **Pattern 3: Sub-agents & Backend Jobs** — make parallelism explicit and inspectable | 10 retained agents, `Agent()` spawns, dynamic workflows |
+| **Pattern 3: Sub-agents & Backend Jobs** — make parallelism explicit and inspectable | 11 retained agents, `Agent()` spawns, dynamic workflows |
 | **Self-Harness** — propose-evaluate-accept; bounded edits + regression gates | `internal/harness/` 4-tier ladder + 5-layer safety pipeline (applier = bounded edit, regression gate = verification) |
 | **Meta-Harness** — "a harness that optimizes harnesses" | `builder-harness` — the harness builds harnesses; `/moai project` auto-generates one |
 | **"Improve the improver"** — RSI's near-term path is deployment-system improvement | Recursive harness evolution — loops accumulate observations; the harness upgrades its own skill/agent instructions |
@@ -348,9 +348,9 @@ At the context-window threshold (50% on 1M-context models, 90% on 200K models), 
 
 Instead of writing code directly, you build the environment agents work in.
 
-### The 10-Agent Catalog
+### The 11-Agent Catalog
 
-10 retained agents: 9 MoAI-custom plus the Anthropic built-in `Explore`.
+11 retained agents: 10 MoAI-custom plus the Anthropic built-in `Explore`.
 
 | Category | Agent | Role |
 |----------|-------|------|
@@ -363,6 +363,7 @@ Instead of writing code directly, you build the environment agents work in.
 | | sync-auditor | 4-dimension quality scoring (Functionality 40 · Security 25 · Craft 20 · Consistency 15) |
 | **Builder** | builder-harness | Scaffolds project-specific agents, skills, commands, and hooks |
 | **Advisor** | super-advisor | On-demand high-reasoning consultation (E1-E4 escalation) |
+| **Specialist** | e2e-specialist | E2E test execution across web/mobile/desktop (CLI-first) |
 | **Built-in** | Explore | Read-only codebase exploration |
 
 Planning and auditing are separated by design — the author never grades its own work.

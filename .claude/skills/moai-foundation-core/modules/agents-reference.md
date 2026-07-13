@@ -8,7 +8,7 @@ Version: 3.0.0
 
 ## Quick Reference (30 seconds)
 
-MoAI delegates specialist tasks to **8 retained agents**: 7 MoAI-custom agents plus the Anthropic built-in `Explore`. The catalog is intentionally flat — agents are invoked through natural-language delegation, never via a `subagent_type` string literal in code.
+MoAI delegates specialist tasks to **11 retained agents**: 10 MoAI-custom agents plus the Anthropic built-in `Explore`. The catalog is intentionally flat — agents are invoked through natural-language delegation, never via a `subagent_type` string literal in code.
 
 | Agent | Phase scope |
 |-------|-------------|
@@ -19,6 +19,9 @@ MoAI delegates specialist tasks to **8 retained agents**: 7 MoAI-custom agents p
 | `plan-auditor` | Independent plan-phase audit, bias prevention, GEARS compliance |
 | `sync-auditor` | Independent post-implementation quality scoring (4 dimensions) |
 | `builder-harness` | Dynamic project-specific harness specialist generation |
+| `super-advisor` | On-demand high-reasoning consultation (non-binding, E1-E4 escalation) |
+| `manager-design` | Design-phase collaboration (Claude Design bidirectional sync) |
+| `e2e-specialist` | E2E test execution across web/mobile/desktop (CLI-first, token-minimized) |
 | `Explore` | Read-only codebase exploration (Anthropic built-in) |
 
 Agent Selection:
@@ -36,12 +39,12 @@ Delegation pattern (natural language, not a code call):
 
 ### Flat Catalog (no tiers)
 
-MoAI-ADK does NOT use a tier hierarchy or a `{domain}-{role}` naming convention. The catalog is a flat set of 8 retained agents, aligned with Anthropic's published guidance: "Subagents cannot spawn other subagents", "Start with 3-5 teammates for most workflows", and "Define a custom subagent when you keep spawning the same kind of worker".
+MoAI-ADK does NOT use a tier hierarchy or a `{domain}-{role}` naming convention. The catalog is a flat set of 11 retained agents, aligned with Anthropic's published guidance: "Subagents cannot spawn other subagents", "Start with 3-5 teammates for most workflows", and "Define a custom subagent when you keep spawning the same kind of worker".
 
 ### Selection Decision Tree
 
 1. Read-only codebase exploration? Use the `Explore` subagent (Anthropic built-in).
-2. External documentation or API research? Use WebSearch / WebFetch / Context7 MCP tools.
+2. External documentation or API research? Use WebSearch / WebFetch.
 3. SPEC plan-phase authoring (spec / plan / acceptance / research / design)? Use the `manager-spec` subagent.
 4. Run-phase implementation (DDD / TDD / autofix)? Use the `manager-develop` subagent with the appropriate `cycle_type`.
 5. Sync-phase documentation (CHANGELOG / README / docs)? Use the `manager-docs` subagent.
@@ -49,6 +52,9 @@ MoAI-ADK does NOT use a tier hierarchy or a `{domain}-{role}` naming convention.
 7. Plan-phase independent audit (bias prevention)? Use the `plan-auditor` subagent.
 8. Post-implementation quality scoring? Use the `sync-auditor` subagent.
 9. Dynamic specialist generation (project-specific harness)? Use the `builder-harness` subagent.
+10. On-demand high-reasoning consultation / second opinion (E1-E4 escalation)? Use the `super-advisor` subagent.
+11. Design-phase collaboration (Claude Design bidirectional sync, UI-surfaced SPECs)? Use the `manager-design` subagent.
+12. E2E test execution across web/mobile/desktop (journey scripting, CLI-first suite runs)? Use the `e2e-specialist` subagent.
 
 ### Retained Agents (detail)
 
@@ -61,11 +67,14 @@ MoAI-ADK does NOT use a tier hierarchy or a `{domain}-{role}` naming convention.
 | `plan-auditor` | meta / evaluator | Independent plan-phase audit, bias prevention, GEARS / EARS compliance verification |
 | `sync-auditor` | meta / evaluator | Independent skeptical quality assessment, 4-dimension scoring (Functionality / Security / Craft / Consistency) |
 | `builder-harness` | builder | Dynamic project-specific harness specialist generation |
+| `super-advisor` | meta / advisor | On-demand high-reasoning consultation; returns non-binding prescriptions (E1-E4 escalation entry) |
+| `manager-design` | core / manager | Design-phase collaboration (Claude Design bidirectional sync, D1-D5 pipeline) |
+| `e2e-specialist` | core / specialist | E2E test execution (web/mobile/desktop journey scripting, CLI-first runs, artifact management) |
 | `Explore` | Anthropic built-in | Read-only codebase exploration (invoked directly, no MoAI file) |
 
 ### Archived Agent Names (rejected at spawn)
 
-Legacy agent names from the former tiered catalog are **archived** and MUST NOT be spawned. This includes the old `{domain}-{role}` names (e.g. `code-backend`, `data-database`, `design-uiux`) and the former manager / expert names. When a delegation references an archived agent, the orchestrator rejects the spawn and routes the work to one of the 8 retained agents above, or to a per-spawn general-purpose agent with a domain whitelist. Domain-specific work (backend / frontend / security / performance / refactoring) is handled in run-phase by `manager-develop` or a per-spawn general-purpose agent, not by a dedicated tiered expert.
+Legacy agent names from the former tiered catalog are **archived** and MUST NOT be spawned. The archived set is: `manager-strategy`, `manager-quality`, `manager-brain`, `manager-project`, `claude-code-guide`, `researcher`, and the six `expert-*` agents (`expert-backend`, `expert-frontend`, `expert-security`, `expert-devops`, `expert-performance`, `expert-refactoring`). When a delegation references an archived agent, the orchestrator rejects the spawn (`ARCHIVED_AGENT_REJECTED`) and routes the work to one of the 11 retained agents above, or to a per-spawn general-purpose agent with a domain whitelist. Domain-specific work (backend / frontend / security / performance / refactoring) is handled in run-phase by `manager-develop` or a per-spawn general-purpose agent, not by a dedicated tiered expert.
 
 ---
 

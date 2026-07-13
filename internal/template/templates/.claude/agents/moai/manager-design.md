@@ -191,4 +191,4 @@ condition (canvas regression / brand-token reconciliation / tool registration).
 - **Design pipeline skill**: `.claude/skills/moai/workflows/design.md` (D1-D5).
 - **Conditional route**: `.claude/rules/moai/workflow/spec-workflow.md` § SPEC Phase Discipline (plan → design → run for UI-surfaced SPECs).
 - **Re-delegation template**: `.claude/rules/moai/development/manager-develop-prompt-template.md` § 1 (Section A-E).
-- **Agent catalog**: `CLAUDE.md` § 4 (10 retained agents — manager-design is entry 11 in the Selection Decision Tree).
+- **Agent catalog**: `CLAUDE.md` § 4 (11 retained agents — manager-design is entry 11 in the Selection Decision Tree).

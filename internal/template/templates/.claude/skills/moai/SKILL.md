@@ -3,7 +3,7 @@ name: moai
 description: >
   MoAI unified orchestrator for autonomous development. Routes natural
   language or subcommands (plan, run, sync, project, fix, loop, mx,
-  feedback, review, clean, codemaps, gate, harness) to specialized
+  feedback, review, clean, codemaps, gate, e2e, harness) to specialized
   agents.
 allowed-tools: Agent, AskUserQuestion, Skill, TaskCreate, TaskUpdate, TaskList, TaskGet, Bash, Read, Write, Edit, Glob, Grep
 argument-hint: "[subcommand] [args] | \"natural language task\""
@@ -73,6 +73,7 @@ The `--team` / `--solo` flags are forced overrides onto the catalog; the flag-fr
 - **clean** (aliases: dead-code): Identify and safely remove dead code
 - **codemaps**: Generate architecture documentation in `.moai/project/codemaps/`
 - **gate** (aliases: check, pre-commit): Lightweight pre-commit quality gate (lint+format+type-check+test)
+- **e2e** (aliases: e2e-test, end-to-end): Multi-platform end-to-end testing (web/mobile/desktop) with project-type auto-detection and CLI-first toolchain selection
 - **harness** (aliases: hrn, learn): harness lifecycle management — learning-lifecycle verbs (status / apply / rollback &lt;date&gt; / disable) + v4-lifecycle verbs (list / edit / remove / doctor), all dispatching through the unified `moai harness` Go-binary Cobra subcommand tree; the slash command is the documented user-facing entry point
 - **goal**: Condition-declared universal agentic loop — arm a completion condition (`/moai goal "<condition>"`), check status, clear, or resume; evaluated each turn-end by the `stop-goal` Stop hook
 
@@ -88,6 +89,7 @@ Only if BOTH Priority 1 AND Priority 2 did not match: Classify the intent of the
 
 - Planning and design language (design, architect, plan, spec, requirements, feature request) routes to **plan**
 - Quality gate language (format, check, pre-commit, quality gate) routes to **gate**
+- E2E and user-journey testing language (e2e, end-to-end test, browser test, mobile app test, desktop app test, user journey) routes to **e2e** — semantic exemplars; any conversation_language expressing e2e-testing intent routes identically
 - Security language (security, audit, owasp, vulnerability, injection, xss, csrf) routes to **review** (with `--security` scope)
 - Error and fix language (fix, error, bug, broken, failing, lint) routes to **fix**
 - Iterative and repeat language (keep fixing, until done, repeat, iterate, all errors) routes to **loop**
@@ -135,6 +137,13 @@ Agents: Direct execution (no agent delegation)
 Flags: --fix, --staged, --file PATH
 Integration: Automatically invoked by run workflow (Phase 15) and sync workflow (Phase 1) with --fix behavior.
 For detailed orchestration: Read ${CLAUDE_SKILL_DIR}/workflows/gate.md
+
+### e2e - Multi-Platform End-to-End Testing
+
+Purpose: Create and run E2E tests across web, mobile, and desktop applications with project-type auto-detection, CLI-first toolchain selection (Playwright, Maestro, Playwright-Electron, WebdriverIO + tauri-service), and token-minimized execution.
+Agents: e2e-specialist (primary — detection, journey mapping, script creation, execution, recording)
+Flags: --tool, --platform, --record, --url, --journey, --headless, --browser, --timeout, --retry
+For detailed orchestration: Read ${CLAUDE_SKILL_DIR}/workflows/e2e.md
 
 ### goal - Condition-Declared Agentic Loop
 

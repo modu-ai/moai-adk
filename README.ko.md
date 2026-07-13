@@ -65,7 +65,7 @@ MoAI-ADK의 답은 세 가지입니다:
 
 ### 기둥 3 — 에이전틱 하네스
 
-코드를 직접 작성하는 대신, 에이전트가 잘 일하는 환경을 설계합니다: 10-에이전트 카탈로그, SPEC 기반 3-페이즈 워크플로우 (plan → run → sync), TRUST 5 품질 게이트, 그리고 자연어 요청에서 프로젝트 전용 하네스를 생성하는 Harness v4 Builder.
+코드를 직접 작성하는 대신, 에이전트가 잘 일하는 환경을 설계합니다: 11-에이전트 카탈로그, SPEC 기반 3-페이즈 워크플로우 (plan → run → sync), TRUST 5 품질 게이트, 그리고 자연어 요청에서 프로젝트 전용 하네스를 생성하는 Harness v4 Builder.
 
 ---
 
@@ -189,7 +189,7 @@ Weng은 재귀적 자가 개선 (RSI)의 단기 경로가 "모델이 자기 가�
 | **Harness** — 베이스 모델을 둘러싼 실행/운영 계층 | MoAI-ADK = Claude Code 하네스 (단일 Go 바이너리 + CLAUDE.md 오케스트레이터) |
 | **Pattern 1: Workflow Automation** — plan → execute → observe → improve 목표 루프 | `/moai goal` 엔진, `/moai loop` Ralph Engine, Analyze-First 라우팅 |
 | **Pattern 2: File-System Persistent Memory** — "파일에 저장되는 지속 상태" | `.moai/specs/`, `progress.md`, `usage-log.jsonl`, `.moai/state/`, 세션 핸드오프 |
-| **Pattern 3: Sub-agents & Backend Jobs** — 병렬성을 명시적이고 점검 가능하게 | 10개 유지 에이전트, `Agent()` 스폰, 동적 워크플로우 |
+| **Pattern 3: Sub-agents & Backend Jobs** — 병렬성을 명시적이고 점검 가능하게 | 11개 유지 에이전트, `Agent()` 스폰, 동적 워크플로우 |
 | **Self-Harness** — propose-evaluate-accept; 제한된 편집 + 회귀 게이트 | `internal/harness/` 4-티어 사다리 + 5-계층 안전 파이프라인 (applier = 제한된 편집, 회귀 게이트 = 검증) |
 | **Meta-Harness** — "하네스를 최적화하는 하네스" | `builder-harness` — 하네스가 하네스를 만든다; `/moai project`가 자동 생성 |
 | **"Improve the improver"** — RSI의 단기 경로는 배포 시스템 개선 | 재귀적 하네스 진화 — 루프가 관찰을 축적하고, 하네스가 자신의 스킬/에이전트 지침을 업그레이드 |
@@ -348,9 +348,9 @@ moai harness disable     # turn learning off
 
 코드를 직접 작성하는 대신, 에이전트가 일하는 환경을 만듭니다.
 
-### 10-에이전트 카탈로그
+### 11-에이전트 카탈로그
 
-유지 에이전트 10개: MoAI 커스텀 9개 + Anthropic 내장 `Explore`.
+유지 에이전트 11개: MoAI 커스텀 10개 + Anthropic 내장 `Explore`.
 
 | 분류 | 에이전트 | 역할 |
 |----------|-------|------|
@@ -363,6 +363,7 @@ moai harness disable     # turn learning off
 | | sync-auditor | 4-차원 품질 채점 (Functionality 40 · Security 25 · Craft 20 · Consistency 15) |
 | **Builder** | builder-harness | 프로젝트 전용 에이전트, 스킬, 커맨드, 훅 스캐폴딩 |
 | **Advisor** | super-advisor | 온디맨드 고추론 자문 (E1-E4 에스컬레이션) |
+| **Specialist** | e2e-specialist | 웹/모바일/데스크톱 E2E 테스트 실행 (CLI 우선) |
 | **Built-in** | Explore | 읽기 전용 코드베이스 탐색 |
 
 계획과 감사는 설계상 분리되어 있습니다 — 작성자가 자기 작업을 채점하는 일은 없습니다.

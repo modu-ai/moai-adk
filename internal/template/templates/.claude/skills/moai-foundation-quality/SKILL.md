@@ -180,7 +180,7 @@ Each module is loaded on demand. Load the one relevant to the current task.
 
 ## Works Well With
 
-Agents (see CLAUDE.md §4 for the 10-agent catalog):
+Agents (see CLAUDE.md §4 for the 11-agent catalog):
 
 - `manager-develop` — run-phase implementation; owns the Tested and Unified
   principles through cycle_type.

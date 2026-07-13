@@ -46,7 +46,7 @@ Upstream tracking (Anthropic claude-code repository):
 Workaround pattern (`model: inherit`):
 - The subagent fully inherits the parent's model + context entitlement, eliminating the mismatch.
 - Reference implementation: `.claude/agents/moai/plan-auditor.md` has used `model: inherit`.
-- All 9 MoAI-custom retained agents under `.claude/agents/moai/` declare `model: inherit` (per the 10-agent catalog: 9 MoAI-custom + 1 Anthropic built-in `Explore`, aligned with CLAUDE.md §4). The No-Haiku policy (SPEC-AGENT-ARCH-V2-001 §D) retired the former `model: haiku` exception — `manager-docs` and `manager-git` moved from `model: haiku` to `model: sonnet` with `effort: low` (cost reduction via effort tiering, not model-class substitution).
+- All 10 MoAI-custom retained agents under `.claude/agents/moai/` declare `model: inherit` (per the 11-agent catalog: 10 MoAI-custom + 1 Anthropic built-in `Explore`, aligned with CLAUDE.md §4). The No-Haiku policy (SPEC-AGENT-ARCH-V2-001 §D) retired the former `model: haiku` exception — `manager-docs` and `manager-git` moved from `model: haiku` to `model: sonnet` with `effort: low` (cost reduction via effort tiering, not model-class substitution).
 
 Exceptions (do NOT migrate to inherit):
 - Documentation/example YAML inside skill bodies (`.claude/skills/moai-foundation-cc/reference/**/*.md`) — these mirror official Claude Code documentation and MUST show all valid values (`sonnet`, `opus`, `haiku`, `inherit`) for educational purposes.

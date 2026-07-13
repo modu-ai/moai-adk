@@ -115,10 +115,10 @@ Use Cases:
 ---
 
 ### 7. agents-reference.md
-Agent Catalog - Reference of MoAI-ADK's 10 retained agents (flat catalog, no tier hierarchy).
+Agent Catalog - Reference of MoAI-ADK's 11 retained agents (flat catalog, no tier hierarchy).
 
 Quick Access:
-- 10 retained agents (9 MoAI-custom + Explore)
+- 11 retained agents (10 MoAI-custom + Explore)
 - Natural-language delegation (no `subagent_type` code literal)
 - Selection decision tree
 - Archived agent names rejected at spawn
@@ -270,7 +270,7 @@ Detailed Reference: [TRUST 5 Framework Module](modules/trust-5-framework.md)
 | progressive-disclosure | 649 | 3 levels, 500-line limit, splitting | 4 |
 | modular-system | 665 | File structure, organization, discovery | 4 |
 | patterns | 33 | Cross-cutting foundational patterns | 4 |
-| agents-reference | 129 | 10 retained agents, flat catalog | 4 |
+| agents-reference | 132 | 11 retained agents, flat catalog | 4 |
 | commands-reference | 423 | core /moai commands, workflow, /clear rules | 4 |
 | execution-rules | 687 | Security, Git, compliance, RBAC | 4 |
 | Total | ~5,057 | 16 modules | 64 use cases |

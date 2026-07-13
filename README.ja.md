@@ -65,7 +65,7 @@ MoAI-ADK の答えは 3 つの要素からなります:
 
 ### 柱 3 — エージェンティックハーネス
 
-コードを直接書く代わりに、エージェントがうまく働ける環境を設計します: 10 エージェントカタログ、SPEC ベースの 3 フェーズワークフロー (plan → run → sync)、TRUST 5 品質ゲート、そして自然言語のリクエストからプロジェクト固有のハーネスを生成する Harness v4 Builder。
+コードを直接書く代わりに、エージェントがうまく働ける環境を設計します: 11 エージェントカタログ、SPEC ベースの 3 フェーズワークフロー (plan → run → sync)、TRUST 5 品質ゲート、そして自然言語のリクエストからプロジェクト固有のハーネスを生成する Harness v4 Builder。
 
 ---
 
@@ -189,7 +189,7 @@ Weng は、再帰的自己改善 (RSI) への短期的な道は「モデルが�
 | **Harness** — ベースモデルを取り巻く実行/運用レイヤー | MoAI-ADK = Claude Code ハーネス (単一 Go バイナリ + CLAUDE.md オーケストレーター) |
 | **Pattern 1: Workflow Automation** — plan → execute → observe → improve のゴールループ | `/moai goal` エンジン、`/moai loop` Ralph Engine、Analyze-First ルーティング |
 | **Pattern 2: File-System Persistent Memory** — 「ファイルに永続化された状態」 | `.moai/specs/`、`progress.md`、`usage-log.jsonl`、`.moai/state/`、セッションハンドオフ |
-| **Pattern 3: Sub-agents & Backend Jobs** — 並列性を明示的かつ検査可能にする | 10 の保持エージェント、`Agent()` スポーン、動的ワークフロー |
+| **Pattern 3: Sub-agents & Backend Jobs** — 並列性を明示的かつ検査可能にする | 11 の保持エージェント、`Agent()` スポーン、動的ワークフロー |
 | **Self-Harness** — propose-evaluate-accept、境界付き編集 + 回帰ゲート | `internal/harness/` 4 ティアラダー + 5 レイヤー安全パイプライン (applier = 境界付き編集、回帰ゲート = 検証) |
 | **Meta-Harness** — 「ハーネスを最適化するハーネス」 | `builder-harness` — ハーネスがハーネスを構築、`/moai project` が自動生成 |
 | **「Improve the improver」** — RSI の短期的な道はデプロイメントシステムの改善 | 再帰的ハーネス進化 — ループが観測を蓄積し、ハーネスが自身のスキル/エージェント指示をアップグレード |
@@ -348,9 +348,9 @@ moai harness disable     # turn learning off
 
 コードを直接書く代わりに、エージェントが働く環境を構築します。
 
-### 10 エージェントカタログ
+### 11 エージェントカタログ
 
-10 の保持エージェント: 9 つの MoAI カスタムと Anthropic ビルトインの `Explore`。
+11 の保持エージェント: 10 の MoAI カスタムと Anthropic ビルトインの `Explore`。
 
 | カテゴリ | エージェント | 役割 |
 |----------|-------|------|
@@ -363,6 +363,7 @@ moai harness disable     # turn learning off
 | | sync-auditor | 4 次元品質スコアリング (Functionality 40 · Security 25 · Craft 20 · Consistency 15) |
 | **Builder** | builder-harness | プロジェクト固有のエージェント・スキル・コマンド・フックをスキャフォールド |
 | **Advisor** | super-advisor | オンデマンドの高推論コンサルテーション (E1-E4 エスカレーション) |
+| **Specialist** | e2e-specialist | Web・モバイル・デスクトップの E2E テスト実行 (CLI 優先) |
 | **Built-in** | Explore | 読み取り専用のコードベース探索 |
 
 計画と監査は設計上分離されています — 作成者が自分の仕事を採点することはありません。

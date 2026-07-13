@@ -1,0 +1,7 @@
+---
+description: {{if eq .ConversationLanguage "ko"}}웹·모바일·데스크톱 E2E 테스트 생성 및 실행 (자동 감지, CLI 우선){{else if eq .ConversationLanguage "ja"}}Web・モバイル・デスクトップのE2Eテストを作成・実行（自動検出、CLI優先）{{else if eq .ConversationLanguage "zh"}}创建并运行Web、移动端和桌面端E2E测试（自动检测、CLI优先）{{else}}Create and run E2E tests across web, mobile, and desktop with auto-detection and CLI-first toolchains{{end}}
+argument-hint: "[--tool TOOL] [--platform web|mobile|desktop] [--record] [--journey NAME]"
+allowed-tools: Skill
+---
+
+Use Skill("moai") with arguments: e2e $ARGUMENTS

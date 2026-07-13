@@ -124,9 +124,9 @@ The `memory` field enables cross-session learning for agents. Three scope levels
 
 ## Agent Categories
 
-The MoAI agent catalog consists of exactly **10 retained agents** (9 MoAI-custom + 1 Anthropic built-in `Explore`), aligned with CLAUDE.md §4. The v2 architecture (SPEC-AGENT-ARCH-V2-001) added `super-advisor` (on-demand high-reasoning consultation) and `manager-design` (Claude Design collaboration) to the former 8-agent catalog. Previously-listed manager and expert agents beyond this set were archived during the catalog consolidation. Domain expertise formerly delivered by those static agents is now delivered through per-spawn `Agent(general-purpose)` parameter injection — see § Per-Spawn Domain Specialization below and `.claude/rules/moai/workflow/archived-agent-rejection.md` §C for the full archived-name enumeration and migration table.
+The MoAI agent catalog consists of exactly **11 retained agents** (10 MoAI-custom + 1 Anthropic built-in `Explore`), aligned with CLAUDE.md §4. The v2 architecture (SPEC-AGENT-ARCH-V2-001) added `super-advisor` (on-demand high-reasoning consultation) and `manager-design` (Claude Design collaboration) to the former 8-agent catalog. Previously-listed manager and expert agents beyond this set were archived during the catalog consolidation. Domain expertise formerly delivered by those static agents is now delivered through per-spawn `Agent(general-purpose)` parameter injection — see § Per-Spawn Domain Specialization below and `.claude/rules/moai/workflow/archived-agent-rejection.md` §C for the full archived-name enumeration and migration table.
 
-### Retained MoAI-custom Agents (9)
+### Retained MoAI-custom Agents (10)
 
 Coordinate the SPEC plan/design/run/sync/audit lifecycle:
 
@@ -139,6 +139,7 @@ Coordinate the SPEC plan/design/run/sync/audit lifecycle:
 - sync-auditor: Independent sync-phase quality 4-dimension scoring
 - super-advisor: On-demand high-reasoning consultation (non-binding prescriptions, E1-E4 escalation entry)
 - builder-harness: Dynamic project-specific harness specialist generation (new agents, skills, plugins, commands, hooks, MCP/LSP servers)
+- e2e-specialist: E2E test execution across web/mobile/desktop (journey scripting, CLI-first suite runs, artifact management)
 
 ### Anthropic Built-in (1)
 
@@ -278,7 +279,7 @@ START
   ├── Is this work recurring across SPEC sessions
   │   AND with substantially the same instructions each time?
   │   ├── YES → Author a static agent file under .claude/agents/moai/
-  │   │         (subject to the 10-agent retention ceiling per the
+  │   │         (subject to the 11-agent retention ceiling per the
   │   │         canonical agent catalog policy — exceeding the ceiling
   │   │         requires a dedicated revision SPEC)
   │   └── NO  → Use per-spawn Agent(general-purpose) injection
@@ -300,7 +301,7 @@ For the canonical per-spawn `Agent(general-purpose, ...)` spawn pattern with per
 - **Authoring a static agent file for one-off domain work** — if the spawn instructions vary substantially per invocation, the file is dead weight and trains the orchestrator to spawn an under-instructed agent
 - **Embedding domain knowledge in agent body** — domain knowledge belongs in the active conversation context (per-spawn prompt) where the orchestrator can tailor it to the current task; embedding it in agent body traps it behind explicit invocation
 - **Re-introducing archived agent files** — the 12 agents archived offline during the catalog consolidation MUST NOT be reintroduced under `.claude/agents/` without a dedicated revival SPEC justifying the recurrence criterion; see `.claude/rules/moai/workflow/archived-agent-rejection.md` § Anti-Patterns
-- **Adding a new MoAI-custom agent without a SPEC** — the 10-agent retention ceiling is an architectural invariant; new agent additions must justify the "keep spawning the same worker" criterion via a SPEC that documents recurrence evidence
+- **Adding a new MoAI-custom agent without a SPEC** — the 11-agent retention ceiling is an architectural invariant; new agent additions must justify the "keep spawning the same worker" criterion via a SPEC that documents recurrence evidence
 
 ## Extension-Mechanism Context-Cost Ladder
 

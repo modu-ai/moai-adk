@@ -65,7 +65,7 @@ MoAI-ADK 的答案分为三部分：
 
 ### 支柱 3 — Agentic Harness
 
-与其直接编写代码，不如设计一个让代理良好工作的环境：10 个代理的目录、基于 SPEC 的三阶段工作流 (plan → run → sync)、TRUST 5 质量门，以及能从自然语言请求生成项目专属 Harness 的 Harness v4 Builder。
+与其直接编写代码，不如设计一个让代理良好工作的环境：11 个代理的目录、基于 SPEC 的三阶段工作流 (plan → run → sync)、TRUST 5 质量门，以及能从自然语言请求生成项目专属 Harness 的 Harness v4 Builder。
 
 ---
 
@@ -189,7 +189,7 @@ Weng 预测，通往递归自我改进 (RSI) 的近期路径不是"模型编辑�
 | **Harness** —— 围绕基础模型的执行/运营层 | MoAI-ADK = Claude Code Harness (单一 Go 二进制 + CLAUDE.md 编排器) |
 | **模式 1：工作流自动化** —— plan → execute → observe → improve 目标循环 | `/moai goal` 引擎、`/moai loop` Ralph Engine、Analyze-First 路由 |
 | **模式 2：文件系统持久记忆** —— "把持久状态放进文件" | `.moai/specs/`、`progress.md`、`usage-log.jsonl`、`.moai/state/`、会话交接 |
-| **模式 3：子代理与后台作业** —— 让并行性显式且可检视 | 10 个保留代理、`Agent()` 生成、动态工作流 |
+| **模式 3：子代理与后台作业** —— 让并行性显式且可检视 | 11 个保留代理、`Agent()` 生成、动态工作流 |
 | **Self-Harness** —— 提案-评估-接受；受限编辑 + 回归门 | `internal/harness/` 四层阶梯 + 五层安全管线 (applier = 受限编辑，回归门 = 验证) |
 | **Meta-Harness** —— "优化 Harness 的 Harness" | `builder-harness` —— 用 Harness 构建 Harness；`/moai project` 自动生成一个 |
 | **"改进改进者"** —— RSI 的近期路径是部署系统的改进 | 递归 Harness 进化 —— 循环积累观察；Harness 升级自己的技能/代理指令 |
@@ -348,9 +348,9 @@ moai harness disable     # turn learning off
 
 与其直接编写代码，不如构建代理工作的环境。
 
-### 10 代理目录
+### 11 代理目录
 
-10 个保留代理：9 个 MoAI 自定义代理加上 Anthropic 内置的 `Explore`。
+11 个保留代理：10 个 MoAI 自定义代理加上 Anthropic 内置的 `Explore`。
 
 | 类别 | 代理 | 角色 |
 |----------|-------|------|
@@ -363,6 +363,7 @@ moai harness disable     # turn learning off
 | | sync-auditor | 四维质量评分 (Functionality 40 · Security 25 · Craft 20 · Consistency 15) |
 | **Builder** | builder-harness | 搭建项目专属的代理、技能、命令与钩子 |
 | **Advisor** | super-advisor | 按需高推理咨询 (E1-E4 升级) |
+| **Specialist** | e2e-specialist | Web/移动端/桌面端 E2E 测试执行 (CLI 优先) |
 | **Built-in** | Explore | 只读代码库探索 |
 
 规划与审计在设计上是分离的——作者绝不为自己的工作打分。
