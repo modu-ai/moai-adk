@@ -85,7 +85,22 @@ m1_to_mN_commit_strategy: per-milestone commits M1..M4 on L1 worktree branch; or
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+```yaml
+sync_complete_at: 2026-07-13
+sync_commit_sha: pending-backfill-hns-prefix-rename-001  # this sync commit cannot reference its own SHA; backfilled in a follow-up chore commit per the SHA placeholder backfill exemption (D3)
+sync_status: audit-ready
+changelog_entry_position: top-of-Unreleased  # CHANGELOG.md [Unreleased] > Changed
+frontmatter_status_transitions:
+  spec_md: "in-progress -> completed"
+  plan_md: "no change (frontmatter not tracked separately)"
+  acceptance_md: "no change (frontmatter not tracked separately)"
+  progress_md: "this file — §E.4 populated"
+b12_self_test_a: "grep -c 'SPEC-HNS-PREFIX-RENAME-001' CHANGELOG.md (pre-emission) = 0 -> emission proceeded"
+b12_self_test_b: "acceptance.md AC-HPR-* row count = 16; CHANGELOG entry states '16/16 AC PASS' — match"
+b12_self_test_c: "file paths cited in CHANGELOG entry verified via ls (skills/moai/workflows/harness-builder.md, harness-build-entry.md, moai/SKILL.md, moai-meta-harness/SKILL.md all exist under internal/template/templates/.claude/)"
+```
+
+MX Tag validation (sync sub-step, not a separate phase): no new exported functions requiring `@MX:ANCHOR`/`@MX:WARN` were introduced by this rename-only SPEC (prefix string constants + regex pattern updates only); existing MX annotations in touched files (`update.go`, `doctor_harness.go`, `prefix_conflict.go`, `frozen_guard.go`) preserved verbatim.
 
 ## §F Phase 0.95 Mode Selection
 

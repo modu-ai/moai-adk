@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- **[SPEC-HNS-PREFIX-RENAME-001](.moai/specs/SPEC-HNS-PREFIX-RENAME-001/spec.md)** — `/moai:harness` v4 Builder user-owned artifact prefix renamed from `harness-<name>` to lowercase `hns-<name>` (Tier M, 16/16 AC PASS). The rename spans four layers: **(1) Template Builder contract** — `harness-builder.md`, `harness-build-entry.md`, `moai/SKILL.md`, `moai-meta-harness/SKILL.md` (+ 5 secondary docs) now emit `hns-<name>-*` names for all six Builder artifact types. **(2) Go recognition logic** — `moai update` preservation, `moai harness list/edit/remove/doctor`, `moai doctor` skill-classification, frozen-guard, and prefix-conflict detection recognize `hns-*` as the new canonical user-owned prefix **in addition to** the two legacy generations (`harness-*`, `my-harness-*`) — tri-generation backward compatibility, verified end-to-end via `TestUpdateNamespaceHNS_TriGenerationPreservation` (7 artifacts across 3 generations survive `moai update` byte-identical, SHA-256 verified). **(3) CI guards** — the namespace-leak (`TestSplitHarnessNamespaceNoLeak`) and split-harness guards now cover both `harness-*` and `hns-*` patterns; a red-team probe (`hns-probe`) confirms the leak detector still fires on the new prefix. **(4) Local dev artifacts** — this repo's 3 dev-only specialists, 3 `harness-moaiadk-*` skills, and 1 Runner JS renamed to `hns-*` form with all cross-references updated. Directory structure is unchanged (`.claude/agents/harness/`, `.claude/commands/harness/`, `/harness:` command namespace keep their names — only artifact-name prefixes change). Zero test files deleted; full suite + cross-platform build (darwin/windows) green; template neutrality and language-neutrality guards pass with 0 leaked internal SPEC-ID references.
+
 ## [v3.0.0-rc11] - 2026-07-13
 
 ### Removed
