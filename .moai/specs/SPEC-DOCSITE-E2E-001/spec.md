@@ -2,7 +2,7 @@
 id: SPEC-DOCSITE-E2E-001
 title: "docs-site 4-locale /moai e2e documentation + 11-agent catalog count-literal normalization (deferred follow-up of SPEC-E2E-REVIVAL-001)"
 version: "0.1.1"
-status: in-progress
+status: completed
 created: 2026-07-13
 updated: 2026-07-13
 author: manager-spec
