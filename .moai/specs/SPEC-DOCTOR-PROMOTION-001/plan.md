@@ -18,7 +18,7 @@ Content-token anchors in `internal/cli/doctor.go` (line numbers from recon, drif
 
 - `DiagnosticCheck` struct (~:27), `checkGroup` (~:35), `runDoctor` (~:59)
 - Check registration in `runGroupedChecks` (~:157); `moaiChecks` group (~:172-185); model registration example `checkMigration(cwd, verbose)` (~:184, registered pattern to mirror)
-- Fix-suggestion aggregation (~:122-124)
+- Fix-suggestion aggregation (~:120-128 — collects CheckFail rows only; not applicable to this Warn-only check)
 - Path constants: `internal/defs/files.go` `SystemYAML`; `internal/defs/dirs.go` `MoAIDir`, `SectionsSubdir`
 - Version source: `pkg/version` `GetVersion()` (default `v3.0.0-rc11`); `moai init` stamp site `internal/core/project/initializer.go:399-406`
 - Test conventions: `internal/cli/doctor_new_test.go` (table-driven, `t.TempDir()` + fixture system.yaml, assert `Name`/`Status`/`Detail`)
@@ -36,7 +36,7 @@ Content-token anchors in `internal/cli/doctor.go` (line numbers from recon, drif
 
 Run as a single-turn read-only batch at run-phase completion:
 
-1. `go test -run TestCheckPluginDeployment ./internal/cli` → exit 0 (AC-DP-001)
+1. `grep -c 'func TestCheckPluginDeployment' internal/cli/doctor_promotion_test.go` → ≥ 1 AND `go test -run TestCheckPluginDeployment ./internal/cli` → exit 0 (AC-DP-001 — the grep clause defeats the vacuous "no tests to run" pass)
 2. `grep -c 'checkPluginDeployment' internal/cli/doctor.go` → ≥ 2 (AC-DP-002)
 3. `go test ./internal/cli` → exit 0 (AC-DP-003, golden + zero-noise preserve)
 4. `grep -n 'moai init' internal/cli/doctor_promotion_test.go` → ≥ 1 (AC-DP-004)
@@ -51,7 +51,7 @@ Decide and freeze: detection regex `plugin-deployed v(\d+\.\d+\.\d+)` applied to
 
 ### M2 — User-facing Detail text (UX flow)
 
-Fix the Warn Detail wording: it must carry (a) deployed plugin version, (b) current binary version from `GetVersion()`, (c) the literal promotion suggestion naming `moai init` as the path to the binary-managed template tree. Fix the check `Name` as "Plugin Deployment". Ensure the fix-suggestion aggregation path (doctor.go ~:122-124) picks the suggestion up consistently with sibling checks.
+Fix the Warn Detail wording: it must carry (a) deployed plugin version, (b) current binary version from `GetVersion()`, (c) the literal promotion suggestion naming `moai init` as the path to the binary-managed template tree. Fix the check `Name` as "Plugin Deployment". The suggestion rides the check's Detail text ONLY (gated by AC-DP-004); do NOT wire it into the fix-suggestion aggregation path — aggregation (doctor.go ~:120-128) collects CheckFail rows only, and this check never emits Fail (REQ-DP-004), so aggregation wiring is impossible by design.
 
 ### M3 — RED: `doctor_promotion_test.go`
 

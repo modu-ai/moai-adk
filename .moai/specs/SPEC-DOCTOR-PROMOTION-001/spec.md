@@ -1,7 +1,7 @@
 ---
 id: SPEC-DOCTOR-PROMOTION-001
 title: "Doctor detection of plugin-deployed marker with promotion suggestion"
-version: "0.1.0"
+version: "0.1.1"
 status: draft
 created: 2026-07-13
 updated: 2026-07-13
@@ -21,6 +21,7 @@ tier: S
 | Version | Date | Author | Changes |
 |---------|------|--------|---------|
 | 0.1.0 | 2026-07-13 | manager-spec | Initial draft — Tier S plan-phase artifact set (spec.md + plan.md, acceptance criteria inline in §3) |
+| 0.1.1 | 2026-07-13 | manager-spec | Plan-audit hardening — D1: anti-vacuous AC-DP-001 gate (grep for test func AND-ed with go test -run) |
 
 ## §1 Context and Motivation
 
@@ -62,7 +63,7 @@ All criteria are machine-verifiable. Commands run from the repo root `/Users/goo
 - When `go test -run TestCheckPluginDeployment ./internal/cli` is executed,
 - Then it exits 0.
 
-Gate: `go test -run TestCheckPluginDeployment ./internal/cli` → exit 0.
+Gate (anti-vacuous, BOTH must hold): `grep -c 'func TestCheckPluginDeployment' internal/cli/doctor_promotion_test.go` → ≥ 1 AND `go test -run TestCheckPluginDeployment ./internal/cli` → exit 0. At HEAD the `go test -run` clause alone passes vacuously ("no tests to run" → exit 0); the grep clause defeats that.
 
 ### AC-DP-002 — Check is registered in the doctor pipeline
 
