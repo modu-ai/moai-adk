@@ -68,7 +68,7 @@ Non-target, preserved verbatim (20): `agents/moai/builder-harness.md` (run-time 
 
 ```yaml
 run_complete_at: 2026-07-13
-run_commit_sha: pending-backfill-m4  # M4 commit cannot reference its own SHA; backfill follow-up
+run_commit_sha: 7873c8f8f552c0c1ac6932d7640a9dbeba196142  # M4 commit (backfilled per D3 exemption)
 run_status: audit-ready
 ac_pass_count: 16
 ac_fail_count: 0
