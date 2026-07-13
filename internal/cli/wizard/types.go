@@ -69,6 +69,11 @@ type Question struct {
 	Default     string                   // Default value
 	Required    bool                     // Whether the field is required
 	Condition   func(*WizardResult) bool // Condition for showing this question
+	// Group is an optional partition label for the unified multi-group form
+	// (SPEC-CLI-TUX-V3-002 REQ-TUX2-006): consecutive unconditional questions
+	// sharing the same Group label render on one form page. Empty is valid
+	// (label-less partition).
+	Group string
 }
 
 // Option represents a selectable option.
