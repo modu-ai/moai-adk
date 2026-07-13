@@ -194,12 +194,10 @@ Architecture:
 The retained safeguard is **concurrency, not backgrounding**: MoAI does not run two write-capable agents concurrently, and orchestrator work performed concurrently with a write-capable agent is **read-only**. This targets the actual hazard — a file-write race between agents — which forbidding background writes never addressed. The superseded restriction — a blanket ban on background Write/Edit — had its stated basis (background writes auto-denied) removed by v2.1.186 and no longer describes the runtime.
 
 Rules for agent spawning:
-- **Read-only tasks** (research, analysis, review): safe in the background; while one is in flight the orchestrator continues independent read-only work so queued progress pushes drain at tool-call boundaries.
+- **Read-only tasks** (research, analysis, review): safe in the background; while one is in flight the orchestrator continues independent read-only work.
 - **Write tasks** (implementation, refactoring, file creation): the runtime chooses foreground or background, and the permission prompt surfaces in the main session either way — do not force the mode via `background:`.
 - **Concurrency**: never run two write-capable agents at once; orchestrator work concurrent with a write-capable agent stays read-only.
 - **Pre-approved writes**: add path patterns to settings.json `permissions.allow` to reduce prompts.
-
-Interim progress reporting for a delegated agent — the dual-channel `TaskCreate`/`TaskUpdate` primary (documented, durable) and the best-effort `SendMessage` secondary (undocumented, immediate) — is governed by `.claude/rules/moai/workflow/progress-reporting-protocol.md`.
 
 ## Tool Usage Guidelines
 

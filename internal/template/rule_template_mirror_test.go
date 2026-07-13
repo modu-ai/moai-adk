@@ -55,11 +55,6 @@ var workflowOptMirroredPaths = []string{
 	// byte-parity holds and the template mirror is internal-content clean. Enrolled
 	// so future single-tree edits on this rule are caught at CI.
 	".claude/rules/moai/development/model-policy.md",
-	// progress-reporting-protocol.md mirror parity. The dual-channel progress
-	// reporting protocol (always-loaded canonical rule) is authored identifier-free
-	// so it lands byte-identically in both trees. Enrolled so a future single-tree
-	// edit on this always-loaded rule is caught at CI rather than shipping stale.
-	".claude/rules/moai/workflow/progress-reporting-protocol.md",
 	// Layer G — evaluator profile D7/D8 weight registration
 	".moai/config/evaluator-profiles/default.md",
 	".moai/config/evaluator-profiles/frontend.md",

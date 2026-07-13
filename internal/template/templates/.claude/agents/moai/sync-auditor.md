@@ -6,7 +6,7 @@ description: |
   Operates post-implementation only — once code exists and acceptance criteria are testable. Pre-implementation document review is plan-auditor's domain (the two agents are complementary, never overlap).
   Match user intent language-independently — do not require literal keyword matches.
   NOT for: SPEC plan-phase audit (that is plan-auditor's domain; sync-auditor is post-implementation only), code implementation, architecture design, documentation writing, git operations
-tools: Read, Grep, Glob, Bash, TaskCreate, TaskUpdate, TaskList, TaskGet, Skill, SendMessage
+tools: Read, Grep, Glob, Bash, TaskCreate, TaskUpdate, TaskList, TaskGet, Skill
 model: inherit
 effort: xhigh
 color: red
@@ -113,7 +113,6 @@ When invoked for contract negotiation before implementation:
 ## Mode-Specific Deployment
 
 - Sub-agent: Invoked via Agent(subagent_type="sync-auditor")
-- Team: Reviewer role teammate receives evaluation task via SendMessage
 - CG: Leader (Claude) performs evaluation directly without spawning agent
 
 ## HRN-003 Hierarchical Scoring Protocol
@@ -208,34 +207,3 @@ The Skill tool is for read-only reference loading only; auditor independence mea
 ## Model/effort escalation
 
 > **Model/effort escalation**: deep-reasoning escalation is an ORCHESTRATOR decision (this agent cannot spawn sub-agents — no `Agent` tool). See `.claude/rules/moai/development/model-policy.md`.
-
-## Progress Reporting Contract
-
-Report progress on two channels at each milestone boundary below.
-
-**Primary (durable).** At the start of your run, register the milestones below on the shared
-task list with `TaskCreate`. At each boundary, mark it with `TaskUpdate`. This is the
-officially documented channel and is the one the orchestrator relies on for correctness.
-
-**Secondary (immediate, best-effort).** At each boundary, also push one short status line:
-
-`SendMessage({ to: "main", summary: "<short label>", message: "[n/N] <what just completed> -> <what is next>" })`
-
-The `to: "main"` recipient is an undocumented runtime behavior. It works today, but it may
-stop working without notice — see the protocol rule. If the push fails, keep working; the
-task list still carries your progress.
-
-Milestones for this agent (N = 3):
-1. Artifacts read
-2. Four dimensions scored
-3. Verdict emitted
-
-Constraints (full protocol: `.claude/rules/moai/workflow/progress-reporting-protocol.md`):
-- **Status only — never a question.** A progress report is a statement. You MUST NOT ask the
-  user anything through either channel. When you need user input, return a blocker report to
-  the orchestrator instead. The user-question tool is unavailable to subagents at the platform
-  level, so the blocker report is the only path.
-- **Milestone-only.** Do not report on individual tool calls, file reads, or sub-steps.
-- Two lines maximum per push, English (the orchestrator relays in the user's language).
-- **Best-effort.** A reporting failure is never a work-stopping failure: do not retry-loop,
-  do not abort, do not surface it as an error.

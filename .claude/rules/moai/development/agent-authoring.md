@@ -155,7 +155,7 @@ Domain-specific implementation work (backend, frontend, security, devops, perfor
 
 **Key distinction from regular subagents**:
 - Regular subagents: spawned from main conversation, return results, cannot communicate with each other
-- Dynamic teammates: spawned with the Agent tool's `name` parameter — the team forms implicitly on first spawn (one team per session, no setup step), and the teammate gets Agent Teams tools (SendMessage, TaskList etc.) automatically injected by the framework. The `team_name` parameter is accepted but ignored as of Claude Code v2.1.178.
+- Dynamic teammates: spawned with the Agent tool's `name` parameter — the team forms implicitly on first spawn (one team per session, no setup step), and the teammate gets Agent Teams tools (TaskList etc.) automatically injected by the framework. The `team_name` parameter is accepted but ignored as of Claude Code v2.1.178.
 
 **Spawn pattern** (Agent Teams only):
 ```
@@ -254,7 +254,6 @@ Invoke agents via Agent tool:
 
 For team mode invocation:
 - Agent() with the `name` parameter to spawn teammates — the team forms implicitly on first spawn (one team per session, no setup step); the `team_name` parameter is accepted but ignored (Claude Code v2.1.178)
-- SendMessage for inter-teammate coordination
 - Team cleanup is automatic on session exit; no explicit teardown call is needed
 - See team-plan.md and team-run.md for complete workflow examples
 

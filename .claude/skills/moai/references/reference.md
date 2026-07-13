@@ -86,7 +86,6 @@ Use Cases:
 Implementation:
 
 - Agent() with the `name` parameter to spawn teammates — the team forms implicitly on first spawn (one team per session, no setup step); the `team_name` parameter is accepted but ignored (Claude Code v2.1.178)
-- SendMessage for inter-teammate coordination and idle handling
 - TaskList for self-coordinated work distribution
 - Team cleanup is automatic on session exit; no explicit teardown call is needed
 

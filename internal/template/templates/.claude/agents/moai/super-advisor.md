@@ -10,7 +10,7 @@ description: |
   second opinion before an irreversible delegation or escalation.
   Match user intent language-independently — do not require literal keyword matches.
   NOT for: gate verdicts (plan-auditor/sync-auditor own binding PASS/FAIL judgment); NOT for: implementation (use manager-develop); NOT for: SPEC body authoring (use manager-spec)
-tools: Read, Grep, Glob, Bash, WebFetch, Skill, TaskCreate, TaskUpdate, TaskList, TaskGet, SendMessage
+tools: Read, Grep, Glob, Bash, WebFetch, Skill, TaskCreate, TaskUpdate, TaskList, TaskGet
 model: inherit
 effort: xhigh
 color: yellow
@@ -99,33 +99,3 @@ resulting decision.
 - Advisor/Evaluator separation: `.claude/agents/moai/{plan-auditor,sync-auditor}.md` (`NOT for: consultation`).
 - Entry conditions (E1-E4) doctrine home: `.claude/rules/moai/core/agent-common-protocol.md` § Super-Advisor Escalation (E1-E4).
 - Per-spawn `Agent(general-purpose)` pattern basis: `.claude/rules/moai/workflow/archived-agent-rejection.md` §C.
-
-## Progress Reporting Contract
-
-Report progress on two channels at each milestone boundary below.
-
-**Primary (durable).** At the start of your run, register the milestones below on the shared
-task list with `TaskCreate`. At each boundary, mark it with `TaskUpdate`. This is the
-officially documented channel and is the one the orchestrator relies on for correctness.
-
-**Secondary (immediate, best-effort).** At each boundary, also push one short status line:
-
-`SendMessage({ to: "main", summary: "<short label>", message: "[n/N] <what just completed> -> <what is next>" })`
-
-The `to: "main"` recipient is an undocumented runtime behavior. It works today, but it may
-stop working without notice — see the protocol rule. If the push fails, keep working; the
-task list still carries your progress.
-
-Milestones for this agent (N = 2):
-1. Problem framed
-2. Prescription formed
-
-Constraints (full protocol: `.claude/rules/moai/workflow/progress-reporting-protocol.md`):
-- **Status only — never a question.** A progress report is a statement. You MUST NOT ask the
-  user anything through either channel. When you need user input, return a blocker report to
-  the orchestrator instead. The user-question tool is unavailable to subagents at the platform
-  level, so the blocker report is the only path.
-- **Milestone-only.** Do not report on individual tool calls, file reads, or sub-steps.
-- Two lines maximum per push, English (the orchestrator relays in the user's language).
-- **Best-effort.** A reporting failure is never a work-stopping failure: do not retry-loop,
-  do not abort, do not surface it as an error.

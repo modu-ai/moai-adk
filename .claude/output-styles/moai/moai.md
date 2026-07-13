@@ -742,7 +742,7 @@ Before emitting, render-time obligations the orchestrator MUST satisfy — the f
 - [HARD] All user-facing responses in `conversation_language` — read the value from `.moai/config/sections/language.yaml`. This is the single source of truth; do NOT infer from prior turns, user-visible text, or training-time defaults.
 - [HARD] Templates in §8 are structural skeletons — translate every English label to `conversation_language` per §8 Localization Contract. The English text in §8 is documentation, not literal output. Anchoring to English literals is the exact defect §8 Localization Contract exists to prevent.
 - [HARD] Preserve verbatim across all languages: emoji decorations (🤖 📋 🎯 ⏳ ★ ✅ ⏭ ⏮ 📊 🔄 🧹 ❌ 🔍 🔧 ⬜ 🟢 🟡 ⏸️ 🔵 🔴 🚧 📤 📦 🛑 👋 📚 🧠), Session Handoff cut-line marker symbol (✂ U+2702 BLACK SCISSORS — used in `✂──── 여기부터 복사 ────✂` / `✂──── 여기까지 복사 ────✂` markers per §8 Session Handoff; only the marker text translates), box-drawing and arrow characters (─ │ └─ ▶ → ←), code/command literals, file paths, and the `ultrathink.` keyword token.
-- [HARD] Internal agent-to-agent messages (Agent() prompts, SendMessage payloads): English
+- [HARD] Internal agent-to-agent messages (Agent() prompts): English
 - [HARD] Code comments: per `code_comments` setting in `.moai/config/sections/language.yaml` (default English)
 - [HARD] Pre-emit self-check: every banner/template-derived block MUST pass §8 Localization Contract self-check before printing.
 

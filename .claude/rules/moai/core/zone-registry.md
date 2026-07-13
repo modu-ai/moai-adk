@@ -1016,45 +1016,4 @@ moai constitution list --format json
   anchor: "#4-anti-death-spiral-hook-carve-out-documentation-only-policy"
   clause: "Recovery-Signal Carve-Out: while a turn is itself a recovery signal (recovering from a compact, prompt_too_long, max_output_tokens, media_size, or compact-failure), Stop/PostToolUse hooks SHOULD exit 0 rather than exit 2, so that recovery turns are NOT placed into the error → stop-hook-blocks → retry → error death-spiral; documentation-only policy guidance (current hooks do not parse stopReason; mechanical enforcement deferred to future SPEC-V3R6-HOOK-RECOVERY-SIGNAL-001)"
   canary_gate: true
-
-# --- progress-reporting-protocol.md (5 entries: V3R6-002..006 dual-channel progress reporting) ---
-- id: CONST-V3R6-002
-  zone: Frozen
-  zone_class: frozen-canonical
-  file: .claude/rules/moai/workflow/progress-reporting-protocol.md
-  anchor: "#5-the-boundary-status-never-a-question"
-  clause: "This protocol adds a status channel, never a question channel."
-  canary_gate: true
-
-- id: CONST-V3R6-003
-  zone: Evolvable
-  zone_class: evolvable-tuning
-  file: .claude/rules/moai/workflow/progress-reporting-protocol.md
-  anchor: "#2-the-two-channels"
-  clause: "The primary channel is load-bearing; the secondary is an immediacy enhancement layered on top of it."
-  canary_gate: false
-
-- id: CONST-V3R6-004
-  zone: Evolvable
-  zone_class: evolvable-tuning
-  file: .claude/rules/moai/workflow/progress-reporting-protocol.md
-  anchor: "#4-agent-side-contract"
-  clause: "never a per-tool-call event, an individual file read or write, a search, or any sub-step"
-  canary_gate: false
-
-- id: CONST-V3R6-005
-  zone: Evolvable
-  zone_class: evolvable-tuning
-  file: .claude/rules/moai/workflow/progress-reporting-protocol.md
-  anchor: "#7-orchestrator-side"
-  clause: "the orchestrator first emits a four-marker step roadmap in `conversation_language`"
-  canary_gate: false
-
-- id: CONST-V3R6-006
-  zone: Evolvable
-  zone_class: frozen-safety
-  file: .claude/rules/moai/workflow/progress-reporting-protocol.md
-  anchor: "#8-prohibitions"
-  clause: "MoAI does not run two write-capable agents concurrently, and orchestrator work concurrent with a write-capable agent is read-only."
-  canary_gate: false
 ```

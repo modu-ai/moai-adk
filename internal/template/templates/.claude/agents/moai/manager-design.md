@@ -7,7 +7,7 @@ description: |
   Match user intent language-independently — do not require literal keyword matches.
   NOT for: component code implementation (manager-develop), SPEC body
   authoring (manager-spec).
-tools: Read, Write, Edit, Grep, Glob, Bash, DesignSync, TaskCreate, TaskUpdate, TaskList, TaskGet, Skill, SendMessage
+tools: Read, Write, Edit, Grep, Glob, Bash, DesignSync, TaskCreate, TaskUpdate, TaskList, TaskGet, Skill
 model: inherit
 effort: xhigh
 color: pink
@@ -193,35 +193,3 @@ condition (canvas regression / brand-token reconciliation / tool registration).
 - **Conditional route**: `.claude/rules/moai/workflow/spec-workflow.md` § SPEC Phase Discipline (plan → design → run for UI-surfaced SPECs).
 - **Re-delegation template**: `.claude/rules/moai/development/manager-develop-prompt-template.md` § 1 (Section A-E).
 - **Agent catalog**: `CLAUDE.md` § 4 (10 retained agents — manager-design is entry 11 in the Selection Decision Tree).
-
-## Progress Reporting Contract
-
-Report progress on two channels at each milestone boundary below.
-
-**Primary (durable).** At the start of your run, register the milestones below on the shared
-task list with `TaskCreate`. At each boundary, mark it with `TaskUpdate`. This is the
-officially documented channel and is the one the orchestrator relies on for correctness.
-
-**Secondary (immediate, best-effort).** At each boundary, also push one short status line:
-
-`SendMessage({ to: "main", summary: "<short label>", message: "[n/N] <what just completed> -> <what is next>" })`
-
-The `to: "main"` recipient is an undocumented runtime behavior. It works today, but it may
-stop working without notice — see the protocol rule. If the push fails, keep working; the
-task list still carries your progress.
-
-Milestones for this agent (N = 4):
-1. Design context loaded
-2. First design pass complete
-3. Second design pass complete
-4. Sync-back complete
-
-Constraints (full protocol: `.claude/rules/moai/workflow/progress-reporting-protocol.md`):
-- **Status only — never a question.** A progress report is a statement. You MUST NOT ask the
-  user anything through either channel. When you need user input, return a blocker report to
-  the orchestrator instead. The user-question tool is unavailable to subagents at the platform
-  level, so the blocker report is the only path.
-- **Milestone-only.** Do not report on individual tool calls, file reads, or sub-steps.
-- Two lines maximum per push, English (the orchestrator relays in the user's language).
-- **Best-effort.** A reporting failure is never a work-stopping failure: do not retry-loop,
-  do not abort, do not surface it as an error.
