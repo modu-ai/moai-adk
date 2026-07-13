@@ -397,8 +397,17 @@ templ fieldsetAgentFrontmatter(view pageView) {
 		</div>
 		<div class="section__body">
 			<div class="grid">
+				<h4 class="agentfm-group-header" data-i18n="agentfm.group.moai">MoAI Core Agents</h4>
 				for _, agent := range view.AgentFMs {
-					@agentFMRow(agent, view.FieldErrors)
+					if agentIsMoaiCore(agent) {
+						@agentFMRow(agent, view.FieldErrors)
+					}
+				}
+				<h4 class="agentfm-group-header" data-i18n="agentfm.group.harness">Harness Specialists</h4>
+				for _, agent := range view.AgentFMs {
+					if !agentIsMoaiCore(agent) {
+						@agentFMRow(agent, view.FieldErrors)
+					}
 				}
 			</div>
 		</div>
@@ -414,41 +423,37 @@ templ agentFMRow(agent agentfm.AgentInfo, errs map[string]string) {
 				if agentTierBadge(agent.Name, agent.Model, agent.Effort).HasBadge {
 					<span class={ "agentfm-badge", templ.KV("agentfm-badge--custom", agentTierBadge(agent.Name, agent.Model, agent.Effort).IsCustom) } data-i18n-title={ agentTierBadge(agent.Name, agent.Model, agent.Effort).TooltipKey }>{ agentTierBadge(agent.Name, agent.Model, agent.Effort).Glyph }</span>
 				}
-				<code class="field__key">{ agent.Name }</code>
+				<code class="field__key agentfm-name">{ agent.Name }</code>
 			</span>
 			<span class="select-wrap">
 				<select class="select" name={ "agentfm." + agent.Name + ".model" } id={ "agentfm." + agent.Name + ".model" }>
-					<option value="" selected data-i18n="agentfm.keep">(keep current)</option>
 					for _, m := range agentFMModelValues() {
-						if m == agent.Model {
-							<option value={ m } data-i18n-title={ "fieldDesc.agentfm.model." + m }>{ m } ✓</option>
-						} else if agent.Model == "" && agentIsSuggestedModel(agent.Name, m) {
-							<option value={ m } data-i18n-title={ "fieldDesc.agentfm.model." + m }>{ m } ★</option>
+						if m == agentSelectedModel(agent) {
+							<option value={ m } selected data-i18n-title={ "fieldDesc.agentfm.model." + m }>{ m }</option>
 						} else {
 							<option value={ m } data-i18n-title={ "fieldDesc.agentfm.model." + m }>{ m }</option>
 						}
 					}
 				</select>
 			</span>
+			if agentModelIsDefault(agent) {
+				<span class="field__hint agentfm-default-tag" data-i18n="agentfm.default">(default)</span>
+			}
 			<span class="select-wrap">
 				<select class="select" name={ "agentfm." + agent.Name + ".effort" } id={ "agentfm." + agent.Name + ".effort" }>
-					<option value="" selected data-i18n="agentfm.keep">(keep current)</option>
 					for _, e := range agentFMEffortValues() {
-						if agent.EffortPresent && e == agent.Effort {
-							<option value={ e } data-i18n-title={ "fieldDesc.agentfm.effort." + e }>{ e } ✓</option>
-						} else if !agent.EffortPresent && agentIsSuggestedEffort(agent.Name, e) {
-							<option value={ e } data-i18n-title={ "fieldDesc.agentfm.effort." + e }>{ e } ★</option>
+						if e == agentSelectedEffort(agent) {
+							<option value={ e } selected data-i18n-title={ "fieldDesc.agentfm.effort." + e }>{ e }</option>
 						} else {
 							<option value={ e } data-i18n-title={ "fieldDesc.agentfm.effort." + e }>{ e }</option>
 						}
 					}
-					if agent.EffortPresent {
-						<option value="__absent__" data-i18n="agentfm.absent">(absent)</option>
-					} else {
-						<option value="__absent__" data-i18n="agentfm.absent">(absent) ✓</option>
-					}
+					<option value="__absent__" data-i18n="agentfm.absent">(absent)</option>
 				</select>
 			</span>
+			if agentEffortIsDefault(agent) {
+				<span class="field__hint agentfm-default-tag" data-i18n="agentfm.default">(default)</span>
+			}
 			<span class="field__hint" data-i18n="hint.effort.go_unbound">(Go 미독)</span>
 			if msg := fieldErrorMsg(errs, "agentfm."+agent.Name+".model"); msg != "" {
 				<span class="field-error">@icon("alert-circle")<span>{ msg }</span></span>

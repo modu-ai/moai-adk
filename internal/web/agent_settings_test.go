@@ -184,10 +184,10 @@ func TestAgentFMEditRoundTrip(t *testing.T) {
 	if !strings.Contains(content, "Sentinel body content (byte-preservation).") {
 		t.Error("body content lost")
 	}
-	// 재렌더에 현재 값 반영 (선택 마킹 ✓).
+	// 재렌더에 현재 값 반영 (selected 옵션으로 표시).
 	body := getIndex(t, a)
-	if !strings.Contains(body, "high ✓") {
-		t.Error("re-render does not reflect the patched effort value")
+	if !strings.Contains(body, `<option value="high" selected`) {
+		t.Error("re-render does not reflect the patched effort value (selected option)")
 	}
 }
 

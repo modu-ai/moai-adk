@@ -485,6 +485,17 @@ html[lang="zh"] body { font-family: "Pretendard", "Noto Sans CJK SC", system-ui,
   border-radius: var(--radius-sm); padding: 1px 5px; text-transform: uppercase;
   letter-spacing: var(--tracking-label);
 }
+.agentfm-name {
+  font-size: 15px; font-weight: 600; color: var(--fg-1);
+}
+.agentfm-group-header {
+  grid-column: 1 / -1; font-size: 13px; font-weight: 600; color: var(--fg-2);
+  margin: 8px 0 2px; padding-bottom: 4px; border-bottom: 1px solid var(--border);
+  text-transform: uppercase; letter-spacing: var(--tracking-label);
+}
+.agentfm-default-tag {
+  font-size: 10.5px; color: var(--fg-3); font-style: italic;
+}
 
 /* inputs + selects */
 .input, .select {

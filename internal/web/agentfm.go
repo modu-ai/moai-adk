@@ -87,6 +87,63 @@ func agentIsSuggestedEffort(name, e string) bool {
 	return se == e
 }
 
+// agentIsMoaiCore reports whether the agent lives in .claude/agents/moai/ (the 10
+// core agents) vs .claude/agents/harness/ (the 10 harness specialists). Derived
+// from the source directory path.
+func agentIsMoaiCore(info agentfm.AgentInfo) bool {
+	return strings.Contains(info.Path, string(filepath.Separator)+"moai"+string(filepath.Separator))
+}
+
+// agentTierSuggestedModel returns the tier-suggested model for the agent name
+// (design.md §D), or "" if the agent has no tier entry.
+func agentTierSuggestedModel(name string) string {
+	tier, ok := v4manifest.AgentTier(name)
+	if !ok {
+		return ""
+	}
+	sm, _ := v4manifest.TierSuggestedModelEffort(tier)
+	return sm
+}
+
+// agentTierSuggestedEffort returns the tier-suggested effort.
+func agentTierSuggestedEffort(name string) string {
+	tier, ok := v4manifest.AgentTier(name)
+	if !ok {
+		return ""
+	}
+	_, se := v4manifest.TierSuggestedModelEffort(tier)
+	return se
+}
+
+// agentSelectedModel returns the model the select should display as selected: the
+// agent's explicit frontmatter model, or — if absent — the tier-suggested default
+// (the "resolved effective value"). Used by the agentFMRow render.
+func agentSelectedModel(info agentfm.AgentInfo) string {
+	if info.Model != "" {
+		return info.Model
+	}
+	return agentTierSuggestedModel(info.Name)
+}
+
+// agentSelectedEffort returns the effort the select should display as selected.
+func agentSelectedEffort(info agentfm.AgentInfo) string {
+	if info.EffortPresent {
+		return info.Effort
+	}
+	return agentTierSuggestedEffort(info.Name)
+}
+
+// agentModelIsDefault reports whether the selected model is a derived (tier-
+// suggested) default for an absent-model agent (vs an explicit frontmatter value).
+func agentModelIsDefault(info agentfm.AgentInfo) bool {
+	return info.Model == "" && agentTierSuggestedModel(info.Name) != ""
+}
+
+// agentEffortIsDefault reports whether the selected effort is a derived default.
+func agentEffortIsDefault(info agentfm.AgentInfo) bool {
+	return !info.EffortPresent && agentTierSuggestedEffort(info.Name) != ""
+}
+
 // agentFMEdit는 agent 1종의 frontmatter 편집 제출이다.
 type agentFMEdit struct {
 	Agent        string
@@ -143,7 +200,9 @@ func parseAgentFMForm(r *http.Request, agents []agentfm.AgentInfo) ([]agentFMEdi
 			if !inList(agentFMModelValues(), v) {
 				errs["agentfm."+a.Name+".model"] = "invalid option"
 			} else if v != a.Model {
-				edit.Model = v
+				if a.Model != "" || v != agentTierSuggestedModel(a.Name) {
+					edit.Model = v
+				}
 			}
 		}
 		if v := r.PostFormValue("agentfm." + a.Name + ".effort"); v != "" {
@@ -155,7 +214,9 @@ func parseAgentFMForm(r *http.Request, agents []agentfm.AgentInfo) ([]agentFMEdi
 			case !inList(agentFMEffortValues(), v):
 				errs["agentfm."+a.Name+".effort"] = "invalid option"
 			case v != a.Effort || !a.EffortPresent:
-				edit.Effort = v
+				if a.EffortPresent || v != agentTierSuggestedEffort(a.Name) {
+					edit.Effort = v
+				}
 			}
 		}
 
