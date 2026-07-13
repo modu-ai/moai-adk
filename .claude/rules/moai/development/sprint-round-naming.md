@@ -20,7 +20,7 @@ paths: "**/.moai/specs/**,**/sprint-round-naming.md"
 | **Milestone** | An ordered within-SPEC work step (M1, M2, ... M6) within a Tier S/M/L lifecycle — the standard manager-develop delegation unit | Within one SPEC | 마일스톤 |
 | **Constitution** | Project-level governing principles and development guidelines (referenced for SDD vocabulary alignment) | Project-wide | 컨스티튜션 / 프로젝트 헌장 |
 
-> **Semantics note (AC-LR-009)**: `Epic` is a pure rename of the former `Sprint`. Only the label changes — the grouping concept (multi-SPEC bundle by schedule, release, or thematic focus) is identical. An Epic MAY carry a sequence number (`Epic 1`, `Epic 2`) for time-unit grouping OR a thematic name (`Epic Docs-v3`) for release-cut grouping; both forms are valid, matching the former Sprint flexibility.
+> **Semantics note **: `Epic` is a pure rename of the former `Sprint`. Only the label changes — the grouping concept (multi-SPEC bundle by schedule, release, or thematic focus) is identical. An Epic MAY carry a sequence number (`Epic 1`, `Epic 2`) for time-unit grouping OR a thematic name (`Epic Docs-v3`) for release-cut grouping; both forms are valid, matching the former Sprint flexibility.
 
 ### What `Milestone` absorbs (formerly `Round`)
 
@@ -91,7 +91,7 @@ The following terms are **RETIRED** from the canonical vocabulary. They appear h
 
 | Legacy term | Current canonical term | Disposition |
 |-------------|------------------------|-------------|
-| `Sprint` | `Epic` | Renamed (semantics preserved — AC-LR-009) |
+| `Sprint` | `Epic` | Renamed (semantics preserved) |
 | `Sprint N Lane A/B` | `Epic N Lane A/B` | Renamed (Lane retained) |
 | `cohort` | (folded into Epic) | Removed as standalone term; use "Epic N cohort" or "Epic N Lane X" for Epic-internal sub-grouping |
 | `Round` | (folded into Milestone) | Removed; use the Milestone sequence (M1~M6) for within-SPEC ordered steps |
@@ -159,9 +159,9 @@ When updating documents or memory entries that use a legacy alias:
 - `.claude/rules/moai/workflow/spec-workflow.md` § SPEC Complexity Tier — Milestone definitions
 - `.claude/rules/moai/workflow/session-handoff.md` — paste-ready resume format
 - `.claude/output-styles/moai/moai.md` §8 Localization Contract — `Epic [N]` protocol-token rendering across locales (preserved verbatim; header translation table governs locale render)
-- `.moai/specs/SPEC-V3R6-LIFECYCLE-REDESIGN-001/design.md` §C — Epic taxonomy design decision and migration mapping
+- the lifecycle-redesign design notes §C — Epic taxonomy design decision and migration mapping
 
 ---
 
-Version: 3.0.0 (Epic taxonomy rewrite — Sprint/cohort/Round/Wave retired as canonical terms; Epic / SPEC / Milestone / Constitution are the four canonical terms. Axis B of SPEC-V3R6-LIFECYCLE-REDESIGN-001.)
+Version: 3.0.0 (Epic taxonomy rewrite — Sprint/cohort/Round/Wave retired as canonical terms; Epic / SPEC / Milestone / Constitution are the four canonical terms. Axis B of the lifecycle-redesign SPEC.)
 Status: Active — applies to all new SPEC bodies, memory entries, paste-ready resume messages, and orchestrator session output

@@ -126,7 +126,7 @@ Each option description MUST include:
 
 ## Recommendation Placement Principles
 
-> Defined in SPEC-V3R6-ASKUSER-DECISION-MEMORY-001. Policy SSOT for recommendation placement (emission timing / question ordering / recommended-option rationale / precondition statement / adaptive strength).
+> This section defines the policy SSOT for recommendation placement (emission timing / question ordering / recommended-option rationale / precondition statement / adaptive strength).
 
 The AskUserQuestion `(Recommended)` label (locale token `(권장)` in Korean) MUST be grounded in the **statistically-majority rational default the user has selected** (observed in preference memory), NOT merely a policy default the system wants to push. This section defines the five principles of recommendation placement.
 
@@ -174,7 +174,7 @@ The AskUserQuestion `(Recommended)` label (locale token `(권장)` in Korean) MU
 - Autonomy buffer of the statistical-majority recommendation: this section §3 + §5 (adaptive strength) + recovery-control toggle (requirements-owned, out of this section's scope).
 - Precondition statement and transparency: `verification-claim-integrity.md §1.1 surface 3` (no unobserved-inference claim).
 
-> Observed evidence: AC-ADM-005..017 (SPEC-V3R6-ASKUSER-DECISION-MEMORY-001).
+> The recommendation placement principles above are evidence-based.
 
 ---
 
@@ -249,13 +249,13 @@ AskUserQuestion({
     options: [
       {
         label: "SPEC-V3R6-SPEC-ID-VALIDATION-001 (Recommended)",
-        description: "Add a SPEC ID regex pre-write self-check to the manager-spec body. Resolves the Epic 7 TMC-001 plan-phase L51 root cause.",
-        preview: "Tier:    S (minimal)\nScope:   manager-spec.md body + regex pre-write check\nFiles:   1-2 edit\nRisk:    Low — agent body edit, no behavior change\nL51 origin: Epic 7 TMC-001 plan-phase root cause\n"
+        description: "Add a SPEC ID regex pre-write self-check to the manager-spec body.",
+        preview: "Tier:    S (minimal)\nScope:   manager-spec.md body + regex pre-write check\nFiles:   1-2 edit\nRisk:    Low — agent body edit, no behavior change\n"
       },
       {
         label: "SPEC-V3R6-CATALOG-FRONTMATTER-AUDIT-001",
-        description: "Frontmatter schema audit + lint rule extension. Follow-up to the §24 namespace align.",
-        preview: "Tier:    M (standard)\nScope:   internal/spec/lint.go + catalog.yaml\nFiles:   3-5 edit\nRisk:    Med — lint rule extension can cascade\nOrigin:  §24 namespace align follow-up"
+        description: "Frontmatter schema audit + lint rule extension.",
+        preview: "Tier:    M (standard)\nScope:   internal/spec/lint.go + catalog.yaml\nFiles:   3-5 edit\nRisk:    Med — lint rule extension can cascade\nOrigin:  frontmatter schema audit follow-up"
       },
       {
         label: "SPEC-V3R6-CLI-INTEGRATION-001",
@@ -267,7 +267,7 @@ AskUserQuestion({
 })
 ```
 
-Note how each option's `preview` uses the same key set (`Tier`/`Scope`/`Files`/`Risk`/`Origin`-or-`L51 origin`), allowing the user to scan deltas vertically when navigating the option list.
+Note how each option's `preview` uses the same key set (`Tier`/`Scope`/`Files`/`Risk`/`Origin`), allowing the user to scan deltas vertically when navigating the option list.
 
 ### Cross-references
 

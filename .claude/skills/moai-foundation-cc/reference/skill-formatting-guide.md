@@ -132,7 +132,7 @@ Purpose: Principle of least privilege
 Examples:
 ```yaml
 # CORRECT: Minimal specific tools
-allowed-tools: Read
+allowed-tools: Read, WebFetch
 
 # CORRECT: Multiple tools for analysis
 allowed-tools: Read, Grep, Glob, WebFetch
@@ -196,7 +196,7 @@ Example:
 ```markdown
 ## Quick Reference (30 seconds)
 
-WebSearch/WebFetch server integration for real-time library documentation access. Resolve library names to Documentation IDs and fetch latest API documentation with progressive token disclosure for optimal performance.
+MCP server integration for real-time library documentation access (when a user provisions their own MCP server via Claude Code's native `.mcp.json`). Declare the MCP tools in `allowed-tools` so the skill can invoke them; Claude Code exposes the server's tool schemas at runtime.
 ```
 
 ### Section 2: Implementation Guide
@@ -593,14 +593,14 @@ Parallel Usage:
 
 ### MCP Integration Patterns
 
-Single MCP server (example: a user-provisioned server):
+Single MCP server (example: a user-provisioned docs server):
 ```yaml
-allowed-tools: mcp__example-server__tool-a, mcp__example-server__tool-b
+allowed-tools: mcp__example-docs__lookup, mcp__example-docs__fetch
 ```
 
 Multi-MCP integration (combine multiple user-provisioned servers):
 ```yaml
-allowed-tools: mcp__example-server__*, mcp__playwright__*
+allowed-tools: mcp__example-docs__*, mcp__playwright__*
 ```
 
 ---

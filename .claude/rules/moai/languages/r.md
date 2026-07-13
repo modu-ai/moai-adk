@@ -104,11 +104,11 @@ For comprehensive coverage including:
 - Performance optimization techniques
 - Production deployment with Docker and Posit Connect
 
-Apply the Quick Patterns and feature sections above together with the Documentation Integration mappings for these advanced topics; this guide is self-contained.
+Apply the Quick Patterns and feature sections above together with the Documentation References for these advanced topics; this guide is self-contained.
 
 ---
 
-## Documentation Integration
+## Documentation References
 
 - tidyverse/dplyr for data manipulation verbs
 - tidyverse/ggplot2 for grammar of graphics visualization

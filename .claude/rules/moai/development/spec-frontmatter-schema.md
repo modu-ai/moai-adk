@@ -213,5 +213,5 @@ labels: [auth, oauth2]   # WRONG — use tags: "auth, oauth2"
 
 ## Owning SPEC
 
-- Schema enforcement (`FrontmatterSchemaRule`): SPEC-V3R6-LIFECYCLE-REDESIGN-001
-- Close-subject convention + 3-phase close infix matcher: SPEC-V3R6-DRIFT-LEGACY-CONVENTION-001
+- Schema enforcement (`FrontmatterSchemaRule`): the lifecycle-redesign SPEC
+- Close-subject convention + 3-phase close infix matcher: the drift-detector convention SPEC

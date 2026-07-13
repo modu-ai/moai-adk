@@ -74,11 +74,11 @@ For comprehensive coverage including:
 - Production patterns (dependency injection, factories)
 - Extended testing with Google Test and Catch2
 
-Apply the Quick Patterns and feature sections above together with the Documentation Integration mappings for these advanced topics; this guide is self-contained.
+Apply the Quick Patterns and feature sections above together with the Documentation References for these advanced topics; this guide is self-contained.
 
 ---
 
-## Documentation Integration
+## Documentation References
 
 - /microsoft/vcpkg - Package manager
 - /conan-io/conan - Conan package manager

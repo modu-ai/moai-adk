@@ -58,15 +58,15 @@ Entity Configuration: Create a class implementing IEntityTypeConfiguration of yo
 
 ---
 
-## Documentation Integration
+## Documentation References
 
-For latest documentation, use WebSearch/WebFetch tools.
+For latest documentation, use WebSearch / WebFetch against the official Microsoft / .NET docs.
 
-For ASP.NET Core documentation, first resolve the library ID using  with "aspnetcore", then fetch docs using  with the resolved library ID and topic like "minimal-apis middleware".
+For ASP.NET Core documentation, WebSearch "ASP.NET Core minimal APIs middleware" and WebFetch the relevant learn.microsoft.com page.
 
-For Entity Framework Core documentation, resolve with "efcore" and fetch with topics like "dbcontext migrations".
+For Entity Framework Core documentation, WebSearch "EF Core dbcontext migrations" and fetch the official docs.
 
-For .NET Runtime documentation, resolve with "dotnet runtime" and fetch with topics like "collections threading".
+For .NET Runtime documentation, WebSearch ".NET runtime collections threading" and fetch the official docs.
 
 ---
 

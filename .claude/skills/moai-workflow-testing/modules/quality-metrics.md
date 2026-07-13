@@ -4,7 +4,7 @@
 > Parent: [Automated Code Review](./automated-code-review.md)
 > Complexity: Intermediate
 > Time: 15+ minutes
-> Dependencies: Python 3.8+, ast, radon, mccabe
+> Dependencies: source parser (AST), complexity tool for the host language
 
 ## Quick Reference
 
@@ -22,7 +22,7 @@ Maintainability Indices:
 - Technical Debt: Effort required to fix issues
 - Code Duplication: Repeated code patterns
 - Comment Ratio: Documentation coverage
-- Test Coverage: Test completeness (requires pytest-cov)
+- Test Coverage: Test completeness (requires the project's coverage tool)
 
 Code Smell Detection:
 - Long Methods: Functions exceeding length thresholds
@@ -33,36 +33,23 @@ Code Smell Detection:
 
 ### Core Implementation
 
-```python
-import ast
-from typing import Dict, List, Any
+The analyzer walks a parsed syntax tree (AST) and computes metrics. Use the host language's parser (e.g. Go `go/ast`, Python `ast`, TS compiler API, Rust `syn`, Java JavaParser); many languages also ship a dedicated complexity tool (Go `gocyclo`, Python `radon`/`mccabe`, JS `escomplex`).
 
+```text
 class QualityMetricsAnalyzer:
-    """Code quality and complexity analyzer."""
+    complexity_thresholds = {
+        cyclomatic: 10, cognitive: 15, nesting_depth: 4,
+        function_length: 50, parameter_count: 7
+    }
 
-    def __init__(self):
-        self.complexity_thresholds = {
-            'cyclomatic': 10,
-            'cognitive': 15,
-            'nesting_depth': 4,
-            'function_length': 50,
-            'parameter_count': 7
+    analyze_file_quality(file_path, content, tree):
+        return {
+            complexity:      complexity_metrics(tree),
+            maintainability: maintainability_metrics(content, tree),
+            code_smells:     detect_code_smells(file_path, content, tree),
+            documentation:   analyze_documentation(tree),
+            statistics:      file_statistics(content, tree)
         }
-
-    def analyze_file_quality(
-        self, file_path: str, content: str, tree: ast.AST
-    ) -> Dict[str, Any]:
-        """Analyze comprehensive file quality metrics."""
-
-        metrics = {
-            'complexity': self._calculate_complexity_metrics(tree),
-            'maintainability': self._calculate_maintainability_metrics(content, tree),
-            'code_smells': self._detect_code_smells(file_path, content, tree),
-            'documentation': self._analyze_documentation(tree),
-            'statistics': self._calculate_file_statistics(content, tree)
-        }
-
-        return metrics
 ```
 
 ---
@@ -71,54 +58,33 @@ class QualityMetricsAnalyzer:
 
 ### Cyclomatic Complexity
 
-```python
-def calculate_cyclomatic_complexity(self, node: ast.AST) -> int:
-    """Calculate cyclomatic complexity for an AST node."""
-
-    complexity = 1  # Base complexity
-
-    for child in ast.walk(node):
-        if isinstance(child, (
-            ast.If, ast.While, ast.For, ast.AsyncFor,
-            ast.ExceptHandler, ast.With, ast.AsyncWith
-        )):
+```text
+calculate_cyclomatic_complexity(node):
+    complexity = 1   # base
+    for child in walk(node):
+        if child is a decision point (if, while, for, catch, with/using, case):
             complexity += 1
-        elif isinstance(child, ast.BoolOp):
-            complexity += len(child.values) - 1
-        elif isinstance(child, ast.Match):  # Python 3.10+
-            complexity += len(child.cases)
-
+        if child is a boolean operator (and/or) with N operands:
+            complexity += (N - 1)
+        if child is a pattern-match with N cases:        # languages with match/switch-expr
+            complexity += N
     return complexity
 
-def analyze_function_complexity(self, file_path: str, tree: ast.AST) -> List[CodeIssue]:
-    """Analyze function complexity violations."""
-
+analyze_function_complexity(file_path, tree):
     issues = []
-
-    for node in ast.walk(tree):
-        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
-            complexity = self.calculate_cyclomatic_complexity(node)
-
-            if complexity > self.complexity_thresholds['cyclomatic']:
-                severity = "high" if complexity > 20 else "medium"
-
-                issue = CodeIssue(
-                    id=f"complexity_{node.lineno}",
-                    category=TrustCategory.USABILITY,
-                    severity=severity,
-                    issue_type="code_smell",
-                    title="High Cyclomatic Complexity",
-                    description=f"Function '{node.name}' has cyclomatic complexity {complexity}",
-                    file_path=file_path,
-                    line_number=node.lineno,
-                    column_number=1,
-                    code_snippet=f"def {node.name}(...): # complexity: {complexity}",
-                    suggested_fix=f"Consider refactoring '{node.name}' to reduce complexity",
-                    confidence=0.9,
-                    rule_violated="COMPLEXITY"
-                )
-                issues.append(issue)
-
+    for node in walk(tree, matching=FunctionDecl):
+        c = calculate_cyclomatic_complexity(node)
+        if c > complexity_thresholds.cyclomatic:
+            severity = "high" if c > 20 else "medium"
+            issues.append(CodeIssue(
+                id="complexity_" + node.line,
+                category=TrustCategory.USABILITY, severity=severity,
+                issue_type="code_smell", title="High Cyclomatic Complexity",
+                description="Function '" + node.name + "' has cyclomatic complexity " + c,
+                file_path=file_path, line_number=node.line, column_number=1,
+                code_snippet=signature(node) + "  # complexity: " + c,
+                suggested_fix="Consider refactoring '" + node.name + "' to reduce complexity",
+                confidence=0.9, rule_violated="COMPLEXITY"))
     return issues
 ```
 
@@ -130,246 +96,129 @@ Cyclomatic Complexity Interpretation:
 
 ### Nesting Depth Analysis
 
-```python
-def calculate_nesting_depth(self, node: ast.AST, current_depth: int = 0) -> int:
-    """Calculate maximum nesting depth for an AST node."""
-
+```text
+calculate_nesting_depth(node, current_depth = 0):
     max_depth = current_depth
-
-    for child in ast.walk(node):
-        if isinstance(child, (
-            ast.If, ast.While, ast.For, ast.AsyncFor,
-            ast.With, ast.AsyncWith, ast.Try
-        )):
-            if hasattr(child, 'lineno') and hasattr(node, 'lineno'):
-                if child.lineno > node.lineno:
-                    child_depth = self.calculate_nesting_depth(child, current_depth + 1)
-                    max_depth = max(max_depth, child_depth)
-
+    for child in nested_blocks_of(node):     # if/while/for/with/try bodies
+        max_depth = max(max_depth, calculate_nesting_depth(child, current_depth + 1))
     return max_depth
 
-def analyze_nesting_depth(self, file_path: str, tree: ast.AST) -> List[CodeIssue]:
-    """Analyze nesting depth violations."""
-
+analyze_nesting_depth(file_path, tree):
     issues = []
-
-    for node in ast.walk(tree):
-        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
-            max_depth = self.calculate_nesting_depth(node)
-
-            if max_depth > self.complexity_thresholds['nesting_depth']:
-                issue = CodeIssue(
-                    id=f"nesting_{node.lineno}",
-                    category=TrustCategory.USABILITY,
-                    severity="medium",
-                    issue_type="code_smell",
-                    title="Deep Nesting",
-                    description=f"Function '{node.name}' has nesting depth {max_depth}",
-                    file_path=file_path,
-                    line_number=node.lineno,
-                    column_number=1,
-                    code_snippet=f"def {node.name}(...): # nesting depth: {max_depth}",
-                    suggested_fix="Use early returns or extract methods to reduce nesting",
-                    confidence=0.8,
-                    rule_violated="NESTING_DEPTH"
-                )
-                issues.append(issue)
-
+    for node in walk(tree, matching=FunctionDecl):
+        d = calculate_nesting_depth(node)
+        if d > complexity_thresholds.nesting_depth:
+            issues.append(CodeIssue(
+                id="nesting_" + node.line,
+                category=TrustCategory.USABILITY, severity="medium",
+                issue_type="code_smell", title="Deep Nesting",
+                description="Function '" + node.name + "' has nesting depth " + d,
+                file_path=file_path, line_number=node.line, column_number=1,
+                code_snippet=signature(node) + "  # nesting depth: " + d,
+                suggested_fix="Use early returns or extract methods to reduce nesting",
+                confidence=0.8, rule_violated="NESTING_DEPTH"))
     return issues
 ```
 
 ### Function Length Analysis
 
-```python
-def analyze_function_length(self, file_path: str, tree: ast.AST) -> List[CodeIssue]:
-    """Analyze function length violations."""
-
+```text
+analyze_function_length(file_path, tree):
     issues = []
-    lines = None
-    max_lines = self.complexity_thresholds['function_length']
-
-    for node in ast.walk(tree):
-        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
-            if lines is None:
-                with open(file_path, 'r') as f:
-                    lines = f.readlines()
-
-            # Calculate function length (excluding docstring and blanks)
-            start_line = node.lineno - 1
-            end_line = node.end_lineno - 1 if node.end_lineno else start_line
-            func_lines = lines[start_line:end_line + 1]
-
-            # Remove docstring and blank lines
-            code_lines = []
-            in_docstring = False
-            for line in func_lines:
-                stripped = line.strip()
-                if not in_docstring and ('"""' in line or "'''" in line):
-                    in_docstring = True
-                    continue
-                if in_docstring and ('"""' in line or "'''" in line):
-                    in_docstring = False
-                    continue
-                if not in_docstring and stripped and not stripped.startswith('#'):
-                    code_lines.append(line)
-
-            if len(code_lines) > max_lines:
-                issue = CodeIssue(
-                    id=f"func_length_{node.lineno}",
-                    category=TrustCategory.USABILITY,
-                    severity="medium",
-                    issue_type="code_smell",
-                    title="Long Function",
-                    description=f"Function '{node.name}' is {len(code_lines)} lines long",
-                    file_path=file_path,
-                    line_number=node.lineno,
-                    column_number=1,
-                    code_snippet=f"def {node.name}(...): # {len(code_lines)} lines",
-                    suggested_fix=f"Break '{node.name}' into smaller, focused functions",
-                    confidence=0.8,
-                    rule_violated="FUNC_LENGTH"
-                )
-                issues.append(issue)
-
+    max_lines = complexity_thresholds.function_length
+    for node in walk(tree, matching=FunctionDecl):
+        # Count source lines of the function body, excluding the doc comment
+        # and blank lines.
+        code_lines = count_code_lines(node, excluding=[doc_comment, blank_lines])
+        if code_lines > max_lines:
+            issues.append(CodeIssue(
+                id="func_length_" + node.line,
+                category=TrustCategory.USABILITY, severity="medium",
+                issue_type="code_smell", title="Long Function",
+                description="Function '" + node.name + "' is " + code_lines + " lines long",
+                file_path=file_path, line_number=node.line, column_number=1,
+                code_snippet=signature(node) + "  # " + code_lines + " lines",
+                suggested_fix="Break '" + node.name + "' into smaller, focused functions",
+                confidence=0.8, rule_violated="FUNC_LENGTH"))
     return issues
 ```
 
 ### Parameter Count Analysis
 
-```python
-def analyze_parameter_count(self, file_path: str, tree: ast.AST) -> List[CodeIssue]:
-    """Analyze parameter count violations."""
-
+```text
+analyze_parameter_count(file_path, tree):
     issues = []
-
-    for node in ast.walk(tree):
-        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
-            param_count = len(node.args.args)
-            max_params = self.complexity_thresholds['parameter_count']
-
-            if param_count > max_params:
-                issue = CodeIssue(
-                    id=f"param_count_{node.lineno}",
-                    category=TrustCategory.USABILITY,
-                    severity="medium",
-                    issue_type="code_smell",
-                    title="Too Many Parameters",
-                    description=f"Function '{node.name}' has {param_count} parameters (max: {max_params})",
-                    file_path=file_path,
-                    line_number=node.lineno,
-                    column_number=1,
-                    code_snippet=f"def {node.name}({', '.join([arg.arg for arg in node.args.args[:3]])}, ...):",
-                    suggested_fix=f"Consider using a data class or configuration object for '{node.name}'",
-                    confidence=0.7,
-                    rule_violated="PARAMETER_COUNT"
-                )
-                issues.append(issue)
-
+    max_params = complexity_thresholds.parameter_count
+    for node in walk(tree, matching=FunctionDecl):
+        param_count = len(node.parameters)
+        if param_count > max_params:
+            issues.append(CodeIssue(
+                id="param_count_" + node.line,
+                category=TrustCategory.USABILITY, severity="medium",
+                issue_type="code_smell", title="Too Many Parameters",
+                description="Function '" + node.name + "' has " + param_count +
+                            " parameters (max: " + max_params + ")",
+                file_path=file_path, line_number=node.line, column_number=1,
+                code_snippet=signature(node),
+                suggested_fix="Consider grouping parameters into a data/option record for '" +
+                              node.name + "'",
+                confidence=0.7, rule_violated="PARAMETER_COUNT"))
     return issues
 ```
 
 ### Maintainability Index
 
-```python
-def calculate_maintainability_index(
-    self, content: str, tree: ast.AST
-) -> Dict[str, float]:
-    """Calculate maintainability index (MI)."""
-
-    # Calculate Halstead volume
-    volume = self._calculate_halstead_volume(content, tree)
-
-    # Calculate cyclomatic complexity
-    complexity = self._calculate_total_complexity(tree)
-
-    # Calculate lines of code
-    lines_of_code = len([line for line in content.split('\n') if line.strip()])
-
-    # Calculate comment ratio
-    comment_lines = len([line for line in content.split('\n') if line.strip().startswith('#')])
+```text
+calculate_maintainability_index(content, tree):
+    volume        = halstead_volume(content, tree)     # token-based vocabulary metric
+    complexity    = total_complexity(tree)
+    lines_of_code = count non-blank lines of content
+    comment_lines = count lines whose first non-blank token is a comment
     comment_ratio = comment_lines / max(lines_of_code, 1)
 
-    # Maintainability Index formula (MI)
-    # MI = 171 - 5.2 * ln(Halstead Volume) - 0.23 * Cyclomatic Complexity - 16.2 * ln(Lines of Code)
-    # MI = MI * (100 / (171 - 5.2 * ln(126) - 0.23 * 50 - 16.2 * ln(540)))  # Normalize
-
-    import math
-
-    mi = 171 - (5.2 * math.log(max(volume, 1))) - (0.23 * complexity) - (16.2 * math.log(max(lines_of_code, 1)))
-
-    # Adjust for comment ratio
-    mi = mi * (1 + comment_ratio)
-
-    # Normalize to 0-100 scale
-    mi_normalized = max(0, min(100, mi))
+    # Maintainability Index (MI), the standard formula:
+    #   MI = 171 - 5.2*ln(volume) - 0.23*complexity - 16.2*ln(loc)
+    mi = 171 - 5.2*ln(max(volume,1)) - 0.23*complexity - 16.2*ln(max(lines_of_code,1))
+    mi = mi * (1 + comment_ratio)        # adjust for comment ratio
+    mi = clamp(mi, 0, 100)               # normalize to 0-100
 
     return {
-        'mi_score': mi_normalized,
-        'mi_rating': self._get_mi_rating(mi_normalized),
-        'halstead_volume': volume,
-        'cyclomatic_complexity': complexity,
-        'lines_of_code': lines_of_code,
-        'comment_ratio': comment_ratio
+        mi_score: mi, mi_rating: mi_rating(mi),
+        halstead_volume: volume, cyclomatic_complexity: complexity,
+        lines_of_code: lines_of_code, comment_ratio: comment_ratio
     }
 
-def _get_mi_rating(self, mi_score: float) -> str:
-    """Get maintainability rating from MI score."""
-    if mi_score >= 85:
-        return "Excellent"
-    elif mi_score >= 70:
-        return "Good"
-    elif mi_score >= 55:
-        return "Moderate"
-    elif mi_score >= 40:
-        return "Poor"
-    else:
-        return "Very Poor"
+mi_rating(mi_score):
+    if mi_score >= 85: return "Excellent"
+    if mi_score >= 70: return "Good"
+    if mi_score >= 55: return "Moderate"
+    if mi_score >= 40: return "Poor"
+    return "Very Poor"
 ```
 
 ### Code Smell Detection
 
-```python
-def detect_code_smells(
-    self, file_path: str, content: str, tree: ast.AST
-) -> List[CodeIssue]:
-    """Detect various code smells."""
-
+```text
+detect_code_smells(file_path, content, tree):
     smells = []
-
-    # Long methods
-    smells.extend(self.analyze_function_length(file_path, tree))
-
-    # High complexity
-    smells.extend(self.analyze_function_complexity(file_path, tree))
-
-    # Deep nesting
-    smells.extend(self.analyze_nesting_depth(file_path, tree))
-
-    # Too many parameters
-    smells.extend(self.analyze_parameter_count(file_path, tree))
+    smells.extend(analyze_function_length(file_path, tree))
+    smells.extend(analyze_function_complexity(file_path, tree))
+    smells.extend(analyze_nesting_depth(file_path, tree))
+    smells.extend(analyze_parameter_count(file_path, tree))
 
     # God classes (too many methods)
-    for node in ast.walk(tree):
-        if isinstance(node, ast.ClassDef):
-            methods = [n for n in node.body if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef))]
-            if len(methods) > 20:
-                issue = CodeIssue(
-                    id=f"god_class_{node.lineno}",
-                    category=TrustCategory.USABILITY,
-                    severity="medium",
-                    issue_type="code_smell",
-                    title="God Class",
-                    description=f"Class '{node.name}' has {len(methods)} methods (max: 20)",
-                    file_path=file_path,
-                    line_number=node.lineno,
-                    column_number=1,
-                    code_snippet=f"class {node.name}:  # {len(methods)} methods",
-                    suggested_fix=f"Consider splitting '{node.name}' into smaller, focused classes",
-                    confidence=0.7,
-                    rule_violated="GOD_CLASS"
-                )
-                smells.append(issue)
-
+    for node in walk(tree, matching=ClassDecl):
+        methods = count of methods in node
+        if methods > 20:
+            smells.append(CodeIssue(
+                id="god_class_" + node.line,
+                category=TrustCategory.USABILITY, severity="medium",
+                issue_type="code_smell", title="God Class",
+                description="Class '" + node.name + "' has " + methods + " methods (max: 20)",
+                file_path=file_path, line_number=node.line, column_number=1,
+                code_snippet="class " + node.name + "  # " + methods + " methods",
+                suggested_fix="Consider splitting '" + node.name + "' into smaller, focused classes",
+                confidence=0.7, rule_violated="GOD_CLASS"))
     return smells
 ```
 
@@ -377,14 +226,14 @@ def detect_code_smells(
 
 ## Custom Thresholds
 
-```python
-# Customize complexity thresholds
+```text
+# Customize complexity thresholds to match project standards
 analyzer.complexity_thresholds = {
-    'cyclomatic': 15,        # More lenient
-    'cognitive': 20,
-    'nesting_depth': 5,
-    'function_length': 75,   # Allow longer functions
-    'parameter_count': 10    # Allow more parameters
+    cyclomatic: 15,       # more lenient
+    cognitive: 20,
+    nesting_depth: 5,
+    function_length: 75,  # allow longer functions
+    parameter_count: 10   # allow more parameters
 }
 ```
 

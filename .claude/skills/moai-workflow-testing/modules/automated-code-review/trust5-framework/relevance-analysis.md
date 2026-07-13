@@ -4,7 +4,7 @@
 > Parent: [TRUST 5 Framework](./trust5-framework.md)
 > Complexity: Advanced
 > Time: 10+ minutes
-> Dependencies: Python 3.8+, ast, requirements mapping
+> Dependencies: source parser (AST), requirements mapping
 
 ## Overview
 
@@ -14,34 +14,20 @@ Relevance (20% weight) validates requirements fulfillment and purpose alignment 
 
 ### Missing Requirement Detection
 
-```python
-def validate_requirements_traceability(
-    self, file_path: str, content: str, requirements: List[str]
-) -> List[CodeIssue]:
-    """Validate requirements traceability in code."""
-
+```text
+validate_requirements_traceability(file_path, content, requirements):
     issues = []
-
-    # Check for unimplemented requirements
-    for req_id, requirement in requirements:
-        if req_id not in content:
-            issue = CodeIssue(
-                id=f"missing_requirement_{req_id}",
-                category=TrustCategory.RELEVANCE,
-                severity="medium",
-                issue_type="documentation_issue",
-                title="Missing Requirement Implementation",
-                description=f"Requirement {req_id} not found in code",
-                file_path=file_path,
-                line_number=1,
-                column_number=1,
-                code_snippet=f"# TODO: Implement {req_id}: {requirement}",
-                suggested_fix=f"Implement requirement {req_id}: {requirement}",
-                confidence=0.8,
-                rule_violated="MISSING_REQUIREMENT"
-            )
-            issues.append(issue)
-
+    for (req_id, requirement) in requirements:
+        if req_id not in content:    # requirement identifier not referenced in code
+            issues.append(CodeIssue(
+                id="missing_requirement_" + req_id,
+                category=TrustCategory.RELEVANCE, severity="medium",
+                issue_type="documentation_issue", title="Missing Requirement Implementation",
+                description="Requirement " + req_id + " not found in code",
+                file_path=file_path, line_number=1, column_number=1,
+                code_snippet="# TODO: Implement " + req_id + ": " + requirement,
+                suggested_fix="Implement requirement " + req_id + ": " + requirement,
+                confidence=0.8, rule_violated="MISSING_REQUIREMENT"))
     return issues
 ```
 
@@ -49,50 +35,28 @@ def validate_requirements_traceability(
 
 ### Unused Function Detection
 
-```python
-def detect_dead_code(self, file_path: str, tree: ast.AST) -> List[CodeIssue]:
-    """Detect dead code (unused functions, classes, imports)."""
-
+```text
+detect_dead_code(file_path, tree):
     issues = []
+    defined = set of names from walk(tree, matching=FunctionDecl)
+    called  = set of names from walk(tree, matching=Call)
 
-    # Find all defined functions
-    defined_functions = set()
-    for node in ast.walk(tree):
-        if isinstance(node, ast.FunctionDef):
-            defined_functions.add(node.name)
+    unused = defined - called
+    # Exclude private/internal symbols (e.g. leading underscore) and known
+    # entry points (main, test functions, exported public symbols).
+    unused = [n for n in unused if not is_private_or_entry_point(n)]
 
-    # Find all called functions
-    called_functions = set()
-    for node in ast.walk(tree):
-        if isinstance(node, ast.Call):
-            if isinstance(node.func, ast.Name):
-                called_functions.add(node.func.id)
-
-    # Identify unused functions (excluding main, test functions)
-    unused_functions = defined_functions - called_functions
-    for func_name in unused_functions:
-        if not func_name.startswith('_') and func_name not in ['main', 'test']:
-            # Find the function definition node
-            for node in ast.walk(tree):
-                if isinstance(node, ast.FunctionDef) and node.name == func_name:
-                    issue = CodeIssue(
-                        id=f"dead_code_{node.lineno}",
-                        category=TrustCategory.RELEVANCE,
-                        severity="low",
-                        issue_type="code_smell",
-                        title="Dead Code",
-                        description=f"Function '{func_name}' is never called",
-                        file_path=file_path,
-                        line_number=node.lineno,
-                        column_number=1,
-                        code_snippet=f"def {func_name}(...):",
-                        suggested_fix=f"Remove unused function '{func_name}' or update references",
-                        confidence=0.6,
-                        rule_violated="DEAD_CODE"
-                    )
-                    issues.append(issue)
-                    break
-
+    for name in unused:
+        node = find_definition(tree, name)
+        issues.append(CodeIssue(
+            id="dead_code_" + node.line,
+            category=TrustCategory.RELEVANCE, severity="low",
+            issue_type="code_smell", title="Dead Code",
+            description="Function '" + name + "' is never called",
+            file_path=file_path, line_number=node.line, column_number=1,
+            code_snippet=signature(node),
+            suggested_fix="Remove unused function '" + name + "' or update references",
+            confidence=0.6, rule_violated="DEAD_CODE"))
     return issues
 ```
 
@@ -110,33 +74,19 @@ def detect_dead_code(self, file_path: str, tree: ast.AST) -> List[CodeIssue]:
 
 ### Purpose Alignment Analysis
 
-```python
-def check_purpose_alignment(
-    self, file_path: str, content: str, purpose: str
-) -> List[CodeIssue]:
-    """Check if code aligns with stated purpose."""
-
+```text
+check_purpose_alignment(file_path, content, purpose):
     issues = []
-
-    # Analyze code complexity vs purpose
-    complexity = self._calculate_complexity(content)
-
-    # Check for over-engineering
-    if complexity > self._get_expected_complexity(purpose):
-        issue = CodeIssue(
+    complexity = calculate_complexity(content)
+    if complexity > expected_complexity(purpose):
+        issues.append(CodeIssue(
             id="over_engineered",
-            category=TrustCategory.RELEVANCE,
-            severity="low",
-            issue_type="code_smell",
-            title="Over-Engineered Solution",
-            description=f"Code complexity exceeds purpose requirements",
+            category=TrustCategory.RELEVANCE, severity="low",
+            issue_type="code_smell", title="Over-Engineered Solution",
+            description="Code complexity exceeds what the stated purpose requires",
             file_path=file_path,
-            suggested_fix="Simplify implementation to match purpose",
-            confidence=0.7,
-            rule_violated="PURPOSE_MISALIGNMENT"
-        )
-        issues.append(issue)
-
+            suggested_fix="Simplify the implementation to match its purpose",
+            confidence=0.7, rule_violated="PURPOSE_MISALIGNMENT"))
     return issues
 ```
 

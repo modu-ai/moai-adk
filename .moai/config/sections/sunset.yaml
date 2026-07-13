@@ -1,21 +1,26 @@
+# Build to Delete Framework
+# Best harness gradually erases itself as agents grow.
+# Sunset conditions define when quality gates can be relaxed.
+# Gate names are language-agnostic; the runtime maps them to project-specific tools.
+
 # DORMANT: this config is typed and loaded, but no runtime hot path enforces these
 # conditions yet. The Go loader emits a once-per-session DORMANT notice. Preserved for
 # forward compatibility; behavioral enforcement awaits an activation SPEC.
 sunset:
-    conditions:
-        - action: advisor
-          description: Switch to advisory mode after 50 consecutive passes
-          gate: vet
-          metric: consecutive_passes
-          threshold: 50
-        - action: advisor
-          description: Switch to advisory mode after 30 consecutive passes
-          gate: lint
-          metric: consecutive_passes
-          threshold: 30
-        - action: advisor
-          description: Switch to advisory mode after 20 consecutive passes (never fully remove)
-          gate: test
-          metric: consecutive_passes
-          threshold: 20
-    enabled: true
+  enabled: true
+  conditions:
+    - gate: "vet"
+      metric: "consecutive_passes"
+      threshold: 50
+      action: "advisor"
+      description: "Switch to advisory mode after 50 consecutive passes"
+    - gate: "lint"
+      metric: "consecutive_passes"
+      threshold: 30
+      action: "advisor"
+      description: "Switch to advisory mode after 30 consecutive passes"
+    - gate: "test"
+      metric: "consecutive_passes"
+      threshold: 20
+      action: "advisor"
+      description: "Switch to advisory mode after 20 consecutive passes (never fully remove)"

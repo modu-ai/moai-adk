@@ -88,10 +88,10 @@ Usage:
 delegator = ResilientDelegation()
 
 result = await delegator.delegate_with_retry(
-    agent_type="code-backend",
-    prompt="Implement complex feature",
+    agent_type="general-purpose",
+    prompt="Implement complex feature (backend domain)",
     context=large_context,
-    fallback_agent="support-debug"
+    fallback_agent="manager-develop"
 )
 ```
 
@@ -107,33 +107,33 @@ async def hybrid_workflow(spec_id: str):
 
     # Phase 1: Sequential (SPEC → Design)
     spec = await Agent(
-        subagent_type="workflow-spec",
+        subagent_type="manager-spec",
         prompt=f"Generate SPEC {spec_id}"
     )
 
     design = await Agent(
-        subagent_type="api-designer",
-        prompt="Design API",
+        subagent_type="manager-develop",
+        prompt="Design API (cycle_type=ddd, backend/API domain)",
         context={"spec_id": spec.id}
     )
 
     execute_clear()
 
-    # Phase 2: Parallel (Implementation)
+    # Phase 2: Parallel (Implementation) — independent per-spawn domain agents
     impl_results = await Promise.all([
         Agent(
-            subagent_type="code-backend",
-            prompt="Backend",
+            subagent_type="general-purpose",
+            prompt="Backend (backend domain)",
             context={"spec_id": spec.id, "api": design}
         ),
         Agent(
-            subagent_type="code-frontend",
-            prompt="Frontend",
+            subagent_type="general-purpose",
+            prompt="Frontend (frontend domain)",
             context={"spec_id": spec.id, "api": design}
         ),
         Agent(
-            subagent_type="data-database",
-            prompt="Database",
+            subagent_type="general-purpose",
+            prompt="Database (database domain)",
             context={"spec_id": spec.id, "api": design}
         )
     ])
@@ -142,8 +142,8 @@ async def hybrid_workflow(spec_id: str):
 
     # Phase 3: Sequential (Testing → QA)
     tests = await Agent(
-        subagent_type="core-quality",
-        prompt="Integration tests",
+        subagent_type="manager-develop",
+        prompt="Integration tests (cycle_type=tdd)",
         context={
             "spec_id": spec.id,
             "backend": backend.summary,
@@ -153,8 +153,8 @@ async def hybrid_workflow(spec_id: str):
     )
 
     qa = await Agent(
-        subagent_type="core-quality",
-        prompt="Quality validation",
+        subagent_type="sync-auditor",
+        prompt="Quality validation (TRUST 5 scoring)",
         context={
             "spec_id": spec.id,
             "tests": tests.results,
@@ -184,8 +184,8 @@ async def conditional_parallel_workflow(requests: list):
     # Phase 1: Parallel analysis
     analyses = await Promise.all([
         Agent(
-            subagent_type="plan",
-            prompt=f"Analyze request",
+            subagent_type="general-purpose",
+            prompt=f"Analyze request (diagnostics)",
             context={"request": req}
         )
         for req in requests
@@ -200,24 +200,24 @@ async def conditional_parallel_workflow(requests: list):
         if analysis.category == "security":
             security_tasks.append(
                 Agent(
-                    subagent_type="security-expert",
-                    prompt="Handle security issue",
+                    subagent_type="general-purpose",
+                    prompt="Handle security issue (security domain)",
                     context={"analysis": analysis}
                 )
             )
         elif analysis.category == "feature":
             feature_tasks.append(
                 Agent(
-                    subagent_type="code-backend",
-                    prompt="Implement feature",
+                    subagent_type="manager-develop",
+                    prompt="Implement feature (cycle_type=ddd)",
                     context={"analysis": analysis}
                 )
             )
         elif analysis.category == "bug":
             bug_tasks.append(
                 Agent(
-                    subagent_type="support-debug",
-                    prompt="Debug issue",
+                    subagent_type="manager-develop",
+                    prompt="Debug issue (cycle_type=autofix)",
                     context={"analysis": analysis}
                 )
             )

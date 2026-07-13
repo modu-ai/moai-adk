@@ -13,7 +13,7 @@ Git worktree provides isolated working directories per SPEC for parallel develop
 
 ```bash
 # Create parallel SPECs with separate worktrees
-/moai:1-plan "login feature" "signup feature" --worktree
+/moai plan "login feature" "signup feature" --worktree
 ```
 
 Result: creates `project-worktrees` directory with SPEC-specific subdirectories.
@@ -33,29 +33,29 @@ Result: creates `project-worktrees` directory with SPEC-specific subdirectories.
 
 ```bash
 # Step 1: PLAN
-/moai:1-plan "user authentication system"
+/moai plan "user authentication system"
 
 # Step 2: RUN
-/moai:2-run SPEC-001
+/moai run SPEC-001
 
 # Step 3: SYNC
-/moai:3-sync SPEC-001
+/moai sync SPEC-001
 ```
 
 ### Parallel Workflow
 
 ```bash
 # Create multiple SPECs with worktrees
-/moai:1-plan "backend API" "frontend UI" "database schema" --worktree
+/moai plan "backend API" "frontend UI" "database schema" --worktree
 
 # Session 1 (backend API worktree)
-/moai:2-run SPEC-001
+/moai run SPEC-001
 
 # Session 2 (frontend UI worktree, separate terminal)
-/moai:2-run SPEC-002
+/moai run SPEC-002
 
 # Session 3 (database schema worktree, separate terminal)
-/moai:2-run SPEC-003
+/moai run SPEC-003
 ```
 
 ## Worktree Isolation Rules (Advisory — 2026-05-17 Policy)

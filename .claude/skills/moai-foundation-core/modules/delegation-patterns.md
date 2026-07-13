@@ -14,16 +14,18 @@ Core Principle: MoAI NEVER executes directly. All work via `Agent()` delegation 
 Three Primary Patterns:
 1. Sequential - Dependencies between agents (Phase 1 → Phase 2 → Phase 3)
 2. Parallel - Independent agents (Backend + Frontend + Docs simultaneously)
-3. Conditional - Analysis-driven routing (Security issue → security-expert)
+3. Conditional - Analysis-driven routing (security issue → per-spawn general-purpose with security instructions)
 
-Base Syntax:
+Base Syntax (illustrative pseudocode):
 ```python
 result = await Agent(
-    subagent_type="agent-name",
+    subagent_type="general-purpose",   # per-spawn delegation (domain carried in prompt)
     prompt="specific task description",
     context={"necessary": "data"}
 )
 ```
+
+> Note: in practice, retained agents (`manager-spec`, `manager-develop`, `manager-docs`, etc.) are invoked through natural-language delegation ("Use the {agent} subagent to {task}"), never a `subagent_type` code literal — see [agents-reference.md](agents-reference.md). The pseudocode below names agents illustratively to show flow; per-spawn `general-purpose` (with domain instructions in the prompt) is the canonical mechanism for cross-cutting domain work (security, performance, database). Legacy tiered names (`code-backend`, `security-expert`, `core-quality`, etc.) are archived and rejected at spawn.
 
 Agent Selection:
 - Simple (1 file): 1-2 agents sequential
@@ -62,24 +64,24 @@ async def implement_feature_sequential(feature_description: str):
 
     # Phase 1: SPEC Generation
     spec_result = await Agent(
-        subagent_type="workflow-spec",
+        subagent_type="manager-spec",
         prompt=f"Generate SPEC for: {feature_description}",
         context={"requirements": ["TRUST 5 compliance", "≥85% coverage"]}
     )
 
     execute_clear()  # Save tokens
 
-    # Phase 2: API Design (depends on SPEC)
+    # Phase 2: API Design (depends on SPEC) — run-phase implementation
     api_result = await Agent(
-        subagent_type="api-designer",
-        prompt="Design REST API for feature",
+        subagent_type="manager-develop",
+        prompt="Design REST API for feature (cycle_type=ddd, backend/API domain)",
         context={"spec_id": spec_result.spec_id}
     )
 
-    # Phase 3: Implementation (depends on API design)
+    # Phase 3: Implementation (depends on API design) — run-phase
     backend_result = await Agent(
-        subagent_type="code-backend",
-        prompt="Implement backend with DDD",
+        subagent_type="manager-develop",
+        prompt="Implement backend with DDD (cycle_type=ddd, backend domain)",
         context={"spec_id": spec_result.spec_id, "api_design": api_result}
     )
 
@@ -110,18 +112,18 @@ async def implement_feature_parallel(spec_id: str):
 
     results = await Promise.all([
         Agent(
-            subagent_type="code-backend",
-            prompt=f"Implement backend for {spec_id}",
+            subagent_type="general-purpose",
+            prompt=f"Implement backend for {spec_id} (backend domain)",
             context={"spec_id": spec_id, "focus": "API endpoints"}
         ),
         Agent(
-            subagent_type="code-frontend",
-            prompt=f"Implement UI for {spec_id}",
+            subagent_type="general-purpose",
+            prompt=f"Implement UI for {spec_id} (frontend domain)",
             context={"spec_id": spec_id, "focus": "Components"}
         ),
         Agent(
-            subagent_type="data-database",
-            prompt=f"Design database for {spec_id}",
+            subagent_type="general-purpose",
+            prompt=f"Design database for {spec_id} (database domain)",
             context={"spec_id": spec_id, "focus": "Schema"}
         )
     ])
@@ -130,8 +132,8 @@ async def implement_feature_parallel(spec_id: str):
 
     # Integration step (sequential, depends on parallel results)
     integration = await Agent(
-        subagent_type="core-quality",
-        prompt="Run integration tests",
+        subagent_type="manager-develop",
+        prompt="Run integration tests (cycle_type=tdd)",
         context={"backend": backend.summary, "frontend": frontend.summary}
     )
 
@@ -154,10 +156,10 @@ Use Case: Route to different agents based on analysis results.
 Flow Diagram:
 ```
 Analysis Agent → Determines issue type
-    → Security issue → security-expert
-    → Performance issue → performance-engineer
-    → Quality issue → core-quality
-    → Bug → support-debug
+    → Security issue → general-purpose (security instructions)
+    → Performance issue → general-purpose (performance instructions)
+    → Quality issue → sync-auditor
+    → Bug → manager-develop (autofix)
 ```
 
 Example:
@@ -166,29 +168,29 @@ async def handle_issue_conditional(issue_description: str):
     """Conditional routing based on issue analysis."""
 
     analysis = await Agent(
-        subagent_type="support-debug",
-        prompt=f"Analyze issue: {issue_description}",
+        subagent_type="general-purpose",
+        prompt=f"Analyze issue (diagnostics): {issue_description}",
         context={"focus": "classification"}
     )
 
     if analysis.category == "security":
         return await Agent(
-            subagent_type="security-expert",
-            prompt="Analyze and fix security issue",
+            subagent_type="general-purpose",
+            prompt="Analyze and fix security issue (security domain)",
             context={"issue": issue_description, "analysis": analysis.details}
         )
 
     elif analysis.category == "performance":
         return await Agent(
-            subagent_type="performance-engineer",
-            prompt="Optimize performance issue",
+            subagent_type="general-purpose",
+            prompt="Optimize performance issue (performance domain)",
             context={"issue": issue_description, "bottleneck": analysis.bottleneck}
         )
 
     else:
         return await Agent(
-            subagent_type="support-debug",
-            prompt="Debug and fix issue",
+            subagent_type="manager-develop",
+            prompt="Debug and fix issue (cycle_type=autofix)",
             context={"issue": issue_description, "analysis": analysis.details}
         )
 ```
@@ -206,16 +208,15 @@ For comprehensive implementation patterns including context optimization, error 
 
 ## Works Well With
 
-Agents (Delegation Targets):
-- workflow-spec - SPEC generation
-- workflow-ddd - DDD implementation
-- code-backend - Backend development
-- code-frontend - Frontend development
-- security-expert - Security analysis
-- core-quality - Quality validation
+Agents (Delegation Targets — see [agents-reference.md](agents-reference.md) for the full retained catalog):
+- manager-spec - SPEC / plan-phase authoring
+- manager-develop - Run-phase implementation (DDD/TDD/autofix); per-spawn general-purpose for backend/frontend domain work
+- manager-docs - Sync-phase documentation
+- sync-auditor - Quality validation (TRUST 5)
+- general-purpose (per-spawn, with domain instructions) - Security, performance, database, and other cross-cutting specialist work
 
 Skills:
-- moai-foundation-token-optimization - Context management
+- moai-foundation-core - Context management (see [token-optimization.md](token-optimization.md))
 
 Foundation Modules:
 - [Token Optimization](token-optimization.md) - Context passing strategies

@@ -17,7 +17,7 @@ Phase Allocation:
 - Documentation: 40K tokens
 
 /clear Execution Rules:
-1. Immediately after /moai:1-plan (saves 45-50K)
+1. Immediately after /moai plan (saves 45-50K)
 2. When context > 150K tokens
 3. After 50+ conversation messages
 
@@ -141,7 +141,7 @@ async def spec_then_implement():
  
  # Phase 1: SPEC Generation (heavy context)
  spec = await Agent(
- subagent_type="spec-builder",
+ subagent_type="manager-spec",
  prompt="Generate SPEC for user authentication"
  )
  # Context: ~75K tokens (conversation + SPEC content)
@@ -152,8 +152,8 @@ async def spec_then_implement():
  
  # Phase 2: Implementation (fresh context)
  impl = await Agent(
- subagent_type="ddd-implementer",
- prompt="Implement SPEC-001",
+ subagent_type="manager-develop",
+ prompt="Implement SPEC-001 (cycle_type=ddd)",
  context={
  "spec_id": "SPEC-001", # Minimal reference
  # SPEC content loaded from file, not conversation
@@ -486,11 +486,10 @@ class ContextOptimizer:
  """Extract only fields required by specific agent."""
  
  requirements = {
- "backend-expert": ["spec_id", "api_design", "database_schema"],
- "frontend-expert": ["spec_id", "api_endpoints", "ui_components"],
- "security-expert": ["spec_id", "threat_model", "dependencies"],
- "test-engineer": ["spec_id", "code_structure", "test_strategy"],
- "docs-manager": ["spec_id", "api_spec", "architecture"]
+ "manager-develop": ["spec_id", "cycle_type", "api_design", "database_schema", "code_structure", "test_strategy"],
+ "manager-docs": ["spec_id", "api_spec", "architecture"],
+ "sync-auditor": ["spec_id", "code_summary", "test_strategy"],
+ "general-purpose": ["spec_id", "domain", "api_endpoints", "ui_components", "threat_model", "dependencies"]
  }
  
  required = requirements.get(agent_type, ["spec_id"])
@@ -549,14 +548,14 @@ large_context = {
  "conversation_history": "..." * 20000 # 100KB history
 }
 
-# Optimize for backend-expert
-backend_context = optimizer.optimize_context(large_context, "backend-expert")
-# Result: Only spec_id, api_design, database_schema
+# Optimize for manager-develop (backend-domain implementation)
+backend_context = optimizer.optimize_context(large_context, "manager-develop")
+# Result: Only spec_id, cycle_type, api_design, database_schema
 # Size: ~25K tokens (vs 200K+ original)
 
 result = await Agent(
- subagent_type="backend-expert",
- prompt="Implement backend",
+ subagent_type="manager-develop",
+ prompt="Implement backend (cycle_type=ddd, backend domain)",
  context=backend_context # Optimized context
 )
 ```
@@ -686,16 +685,15 @@ for rec in report['recommendations']:
 ## Works Well With
 
 Skills:
-- moai-foundation-delegation-patterns - Context passing
-- moai-foundation-progressive-disclosure - Content structuring
-- moai-cc-memory - Context persistence
+- [moai-foundation-core](../SKILL.md) - Context management (see [delegation-patterns.md](delegation-patterns.md) and [progressive-disclosure.md](progressive-disclosure.md))
+- [moai-foundation-cc](../../moai-foundation-cc/SKILL.md) - Memory and session-handoff authoring (context persistence)
 
 Commands:
-- /clear - Context reset (mandatory after /moai:1-plan)
+- /clear - Context reset (mandatory after /moai plan)
 - /context - Check current token usage
-- /moai:1-plan - SPEC generation (30K budget)
-- /moai:2-run - DDD implementation (180K budget)
-- /moai:3-sync - Documentation (40K budget)
+- /moai plan - SPEC generation (30K budget)
+- /moai run - DDD implementation (180K budget)
+- /moai sync - Documentation (40K budget)
 
 Memory:
 - Skill("moai-foundation-core") modules/token-optimization.md - Optimization strategies

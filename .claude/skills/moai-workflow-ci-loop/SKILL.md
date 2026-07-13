@@ -164,7 +164,6 @@ fallback); `scripts/ci-autofix/log-fetch.sh` (failure log + PR diff);
 - `.claude/rules/moai/workflow/ci-watch-protocol.md` — HARD watch invocation contract
 - `.claude/rules/moai/workflow/ci-autofix-protocol.md` — HARD autofix invocation contract
 - `.github/required-checks.yml` — Wave 1 SSoT
-- `scripts/ci-mirror/run.sh` — Wave 1 local CI mirror
 
 ## Common Rationalizations
 

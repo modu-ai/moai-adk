@@ -3,7 +3,7 @@
 > Module: Comprehensive AI debugging with Documentation integration and intelligent error analysis
 > Complexity: Advanced
 > Time: 20+ minutes
-> Dependencies: Python 3.8+, WebSearch/WebFetch, asyncio, traceback, dataclasses
+> Dependencies: WebSearch/WebFetch, the host language's async and stack-introspection facilities
 
 ## Overview
 
@@ -54,89 +54,71 @@ System supports comprehensive error type categorization:
 
 ### Data Structures
 
-Core data classes for error analysis:
+Core data classes for error analysis (language-neutral; map each language's exception types onto the generic ErrorType values at runtime):
 
-```python
-from dataclasses import dataclass
-from enum import Enum
+```text
+enum ErrorType:
+    SYNTAX            # syntax / indentation issues
+    RUNTIME           # general runtime exceptions
+    IMPORT            # module import / dependency issues
+    TYPE_ERROR        # data type mismatches
+    VALUE_ERROR       # invalid value conversions
+    ATTRIBUTE_ERROR   # object member access issues
+    KEY_ERROR         # map/dict key access issues
+    NETWORK           # connection and timeout issues
+    DATABASE          # query / database operation issues
+    MEMORY            # allocation and heap issues
+    CONCURRENCY       # thread / locking / race issues
+    UNKNOWN           # uncategorized or novel errors
 
-class ErrorType(Enum):
-    """Classification of error types for intelligent handling."""
-    SYNTAX = "syntax_error"
-    RUNTIME = "runtime_error"
-    IMPORT = "import_error"
-    TYPE_ERROR = "type_error"
-    VALUE_ERROR = "value_error"
-    ATTRIBUTE_ERROR = "attribute_error"
-    KEY_ERROR = "key_error"
-    NETWORK = "network_error"
-    DATABASE = "database_error"
-    MEMORY = "memory_error"
-    CONCURRENCY = "concurrency_error"
-    UNKNOWN = "unknown_error"
+record ErrorAnalysis:
+    type:            ErrorType
+    confidence:      float
+    message:         text
+    traceback:       text
+    context:         Map<text, Any>
+    frequency:       int
+    severity:        text     # "low", "medium", "high", "critical"
+    likely_causes:   List<text>
+    suggested_fixes: List<text>
 
-@dataclass
-class ErrorAnalysis:
-    """Analysis of an error with classification and metadata."""
-    type: ErrorType
-    confidence: float
-    message: str
-    traceback: str
-    context: Dict[str, Any]
-    frequency: int
-    severity: str  # "low", "medium", "high", "critical"
-    likely_causes: List[str]
-    suggested_fixes: List[str]
+record Solution:
+    type:          text       # "docs_pattern", "ai_generated", "known_fix"
+    description:   text
+    code_example:  text
+    confidence:    float
+    impact:        text       # "low", "medium", "high"
+    dependencies:  List<text>
 
-@dataclass
-class Solution:
-    """Proposed solution for an error."""
-    type: str  # "docs_pattern", "ai_generated", "known_fix"
-    description: str
-    code_example: str
-    confidence: float
-    impact: str  # "low", "medium", "high"
-    dependencies: List[str]
-
-@dataclass
-class DebugAnalysis:
-    """Complete debug analysis with solutions and prevention strategies."""
-    error_type: ErrorType
-    confidence: float
-    docs_patterns: Dict[str, Any]
-    solutions: List[Solution]
-    prevention_strategies: List[str]
-    related_errors: List[str]
-    estimated_fix_time: str
+record DebugAnalysis:
+    error_type:           ErrorType
+    confidence:           float
+    docs_patterns:    Map<text, Any>
+    solutions:            List<Solution>
+    prevention_strategies:List<text>
+    related_errors:       List<text>
+    estimated_fix_time:   text
 ```
 
 ### Basic Usage Pattern
 
-Standard debugging workflow implementation:
+Standard debugging workflow implementation (the try/catch idiom varies by language; the analysis call shape is identical):
 
-```python
+```text
 debugger = AIDebugger(docs_client=docs)
-
 try:
     result = some_risky_operation()
-except Exception as e:
-    analysis = await debugger.debug_with_docs_patterns(
+catch e:
+    analysis = debugger.debug_with_docs_patterns(
         e,
-        {'file': __file__, 'function': 'some_risky_operation', 'language': 'python'},
-        '/project/src'
-    )
-
-    print(f"Error type: {analysis.error_type}")
-    print(f"Confidence: {analysis.confidence}")
-    print(f"Solutions found: {len(analysis.solutions)}")
-
-    for i, solution in enumerate(analysis.solutions, 1):
-        print(f"\nSolution {i}:")
-        print(f" Description: {solution.description}")
-        print(f" Confidence: {solution.confidence}")
-        print(f" Impact: {solution.impact}")
-        if solution.code_example:
-            print(f" Example:\n{solution.code_example}")
+        { file: current_file, function: "some_risky_operation", language: <lang> },
+        "/project/src")
+    print("Error type: " + analysis.error_type)
+    print("Confidence: " + analysis.confidence)
+    print("Solutions found: " + len(analysis.solutions))
+    for (i, solution) in enumerate(analysis.solutions, from=1):
+        print("Solution " + i + ": " + solution.description +
+              " (conf " + solution.confidence + ", impact " + solution.impact + ")")
 ```
 
 ---

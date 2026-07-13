@@ -82,7 +82,7 @@ For comprehensive coverage including:
 - Engineering best practices and coding guidelines
 - Async patterns and concurrency
 
-Apply the sections above together with the Documentation library mappings for these advanced topics (ownership and traits, optimization, coding standards); this guide is self-contained.
+Apply the sections above together with the Documentation References for these advanced topics (ownership and traits, optimization, coding standards); this guide is self-contained.
 
 ### Performance Optimization
 
@@ -98,7 +98,7 @@ Rate-Limited Operations: Create Arc-wrapped Semaphore with max permits. Map over
 
 ---
 
-## Documentation Integration
+## Documentation References
 
 Library Documentation Access:
 

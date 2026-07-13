@@ -1,169 +1,127 @@
-# TRUST 5 Validation Framework
+# TRUST 5 Principles
 
-Comprehensive TRUST 5 quality framework validation for enterprise code quality assurance.
+TRUST 5 is a mnemonic for five quality dimensions: **T**ested, **R**eadable,
+**U**nified, **S**ecured, **T**rackable. These are assessment questions to ask
+of any change, not a library or class to instantiate. MoAI enforces them
+through agents, the harness, and gate commands.
 
 ## Overview
 
-The TRUST 5 framework validates five core quality principles:
-- Testable - Test coverage and quality
-- Readable - Code clarity and maintainability
-- Unified - Consistent patterns and standards
-- Secured - Security compliance (OWASP)
-- Trackable - Version control and audit trails
+| Principle | Core question | Primary enforcement |
+|-----------|--------------|---------------------|
+| Tested | Does the change have tests, and are they green? | manager-develop (cycle_type), `/moai gate` |
+| Readable | Is the code clear to a new contributor? | Code review, `/moai review` |
+| Unified | Does it match existing file conventions? | Formatter + linter via `/moai gate` |
+| Secured | Are inputs validated and credentials protected? | OWASP checklist, `/moai review` |
+| Trackable | Is the commit traceable to a requirement? | Conventional Commits, SPEC references |
 
-## TRUST 5 Validator Implementation
+## Per-Principle Assessment
 
-```python
-class TRUST5Validator:
- """Comprehensive TRUST 5 quality framework validation"""
+Apply each principle as a checklist when reviewing a change. Do not skip a
+dimension with "not applicable" — if it genuinely does not apply, state why.
 
- VALIDATORS = {
- "testable": TestableValidator(),
- "readable": ReadableValidator(),
- "unified": UnifiedValidator(),
- "secured": SecuredValidator(),
- "trackable": TrackableValidator()
- }
+### T — Tested
 
- async def validate(self, codebase: str, thresholds: Dict[str, float]) -> TRUST5Result:
- """Execute complete TRUST 5 validation"""
+- Does the change include tests for the new or modified behavior?
+- Are the tests green (run the test command and show the output)?
+- Is coverage at or above the project threshold (85%+ default)?
+- For existing untested code touched by the change, are characterization
+  tests capturing current behavior before the change?
+- For bug fixes, was a failing reproduction test written first and then
+  fixed (Reproduction-First Bug Fix)?
 
- results = {}
+Thresholds: package-level 85% minimum, critical packages (cli, template,
+hook) 90%+. If coverage is below threshold, the gap is a defect to close,
+not an accepted state.
 
- for principle, validator in self.VALIDATORS.items():
- result = await validator.validate(
- codebase=codebase,
- threshold=thresholds.get(principle, 0.8)
- )
- results[principle] = result
+### R — Readable
 
- # Calculate overall TRUST 5 score
- overall_score = sum(r.score for r in results.values()) / len(results)
+- Is naming clear and intention-revealing (no abbreviations that need
+  decoding)?
+- Are comments present where the "why" is non-obvious, in the configured
+  code-comments language (English by default)?
+- Could a new contributor follow the logic without a walkthrough?
+- Is the change the simplest correct implementation (no unnecessary
+  abstraction — see Enforce Simplicity)?
 
- return TRUST5Result(
- principles=results,
- overall_score=overall_score,
- passed=overall_score >= thresholds.get("overall", 0.85),
- recommendations=self._generate_trust5_recommendations(results)
- )
+### U — Unified
 
-class TestableValidator:
- """Test-first principle validation"""
+- Does the change match the file's existing naming, error-handling, and
+  import conventions? (Consistency within a file beats personal preference.)
+- Is the code formatted with the project's formatter (gofmt, black,
+  prettier, rustfmt, etc.)?
+- Does it pass the project linter (golangci-lint, ruff, eslint, clippy,
+  etc.)?
+- Are there no global rule suppressions in linter config (per-line
+  suppression with a reason is acceptable)?
 
- async def validate(self, codebase: str, threshold: float) -> ValidationResult:
- """Validate test coverage and quality"""
+### S — Secured
 
- # Check test coverage
- coverage_result = await self._analyze_test_coverage(codebase)
+- Are all external inputs validated at trust boundaries?
+- For web-facing code, does it follow OWASP guidance (injection, XSS, CSRF,
+  authn/authz)? See moai-ref-owasp-checklist.
+- Are credentials / secrets kept out of version control (environment
+  variables or a secrets manager instead)?
+- Are dangerous operations (e.g. `rm -rf`, force-push, `DROP TABLE`)
+  gated behind explicit confirmation?
 
- # Validate test quality
- test_quality = await self._analyze_test_quality(codebase)
+### T — Trackable
 
- # Check test structure
- test_structure = await self._validate_test_structure(codebase)
+- Does the commit follow Conventional Commits (`feat`, `fix`, `docs`,
+  `refactor`, `test`, `chore`)?
+- Does it reference the SPEC or issue it implements (e.g. `feat(SPEC-{DOMAIN}-001):`)?
+- Can the change be traced back to a requirement through the commit
+  message or linked issue?
+- Are @MX annotations present where appropriate (`@MX:NOTE`,
+  `@MX:ANCHOR`, `@MX:WARN`, `@MX:TODO`)?
 
- score = (coverage_result.score * 0.5 +
- test_quality.score * 0.3 +
- test_structure.score * 0.2)
+## The "Not Applicable" Guard
 
- return ValidationResult(
- score=score,
- passed=score >= threshold,
- details={
- "coverage": coverage_result,
- "quality": test_quality,
- "structure": test_structure
- },
- recommendations=self._generate_testing_recommendations(
- coverage_result, test_quality, test_structure
- )
- )
+Skipping a TRUST 5 dimension with a bare "not applicable" is a red flag.
+If a dimension genuinely does not apply to a change, the assessment MUST
+state why. Examples of justified skips:
 
-class SecuredValidator:
- """Security principle validation with OWASP compliance"""
+- **Tested** on a docs-only change: "No executable code touched; no tests
+  required."
+- **Secured** on an internal refactor with no I/O change: "No trust
+  boundary or input surface changed."
 
- async def validate(self, codebase: str, threshold: float) -> ValidationResult:
- """Validate security compliance and vulnerabilities"""
+An unjustified skip is treated as an unverified dimension — it is a gap,
+not a pass.
 
- # OWASP Top 10 validation
- owasp_result = await self._validate_owasp_compliance(codebase)
+## How sync-auditor Scores
 
- # Security best practices
- security_practices = await self._validate_security_practices(codebase)
+`sync-auditor` provides independent skeptical assessment with 4-dimension
+scoring:
 
- # Dependency vulnerability scan
- dependency_scan = await self._scan_dependency_vulnerabilities(codebase)
+| Dimension | What it measures |
+|-----------|------------------|
+| Functionality | Does the change do what the SPEC requires? (maps to Tested) |
+| Security | Is it free of vulnerabilities? (maps to Secured) |
+| Craft | Is the code well-structured and readable? (maps to Readable + Unified) |
+| Consistency | Does it match conventions and the trackable trail? (maps to Unified + Trackable) |
 
- # Code security patterns
- code_security = await self._analyze_code_security(codebase)
+The overall score is the **harmonic mean** of the four dimensions, not the
+average — a single failing dimension drags the score down hard. This
+penalizes lopsided quality (e.g. functional but insecure) and reflects that
+all four matter. sync-auditor operates as a fresh-judgment auditor: it
+treats every claim as suspect until evidence is shown, and rejects when
+must-pass criteria fail regardless of nice-to-have scores.
 
- score = (owasp_result.score * 0.4 +
- security_practices.score * 0.3 +
- dependency_scan.score * 0.2 +
- code_security.score * 0.1)
+## Relationship to the Harness Level
 
- return ValidationResult(
- score=score,
- passed=score >= threshold,
- details={
- "owasp": owasp_result,
- "practices": security_practices,
- "dependencies": dependency_scan,
- "code_patterns": code_security
- },
- security_level=self._calculate_security_level(score),
- recommendations=self._generate_security_recommendations(
- owasp_result, security_practices, dependency_scan, code_security
- )
- )
-```
+The harness level determines whether sync-auditor runs at all:
 
-## Configuration
+- **minimal** — fast validation only; no sync-auditor scoring.
+- **standard** — default checks; no sync-auditor scoring unless invoked.
+- **thorough** — full sync-auditor + 4-dimension TRUST 5 scoring.
 
-```yaml
-trust5_framework:
- enabled: true
- thresholds:
- overall: 0.85
- testable: 0.90
- readable: 0.80
- unified: 0.85
- secured: 0.90
- trackable: 0.80
-```
+At minimal/standard, TRUST 5 is enforced by the gate commands and the
+manager-develop cycle. At thorough, it is additionally scored by
+sync-auditor as an independent check.
 
-## Quality Gate Pipeline
+## Related
 
-```python
-async def quality_gate_pipeline():
- """Integrate quality validation into CI/CD pipeline"""
-
- # Initialize quality orchestrator
- quality_orchestrator = QualityOrchestrator.from_config("quality-config.yaml")
-
- # Run comprehensive quality analysis
- quality_result = await quality_orchestrator.analyze_codebase(
- path="src/",
- languages=["python", "typescript"],
- quality_threshold=0.85
- )
-
- # Quality gate validation
- if not quality_result.trust5_validation.passed:
- print(" Quality gate failed!")
- print(f"Overall score: {quality_result.overall_score:.2f}")
-
- # Print failed principles
- for principle, result in quality_result.trust5_validation.principles.items():
- if not result.passed:
- print(f" {principle}: {result.score:.2f} (threshold: 0.80)")
-
- # Exit with error code
- sys.exit(1)
-
- print(" Quality gate passed!")
-```
-
-## Integration Examples
-
-See [Integration Patterns](integration-patterns.md) for CI/CD and GitHub Actions integration examples.
+- [Proactive Analysis](proactive-analysis.md) — how gates and reviews surface issues
+- [Best Practices](best-practices.md) — documentation-grounded standards validation
+- [Integration Patterns](integration-patterns.md) — quality across SPEC phases

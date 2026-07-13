@@ -105,7 +105,7 @@ xargs python extract_docs.py --output ./docs/api/
 
 - [`moai-docs-toolkit`](../moai-docs-toolkit/SKILL.md) - General documentation patterns
 - [`moai-domain-backend`](../moai-domain-backend/SKILL.md) - Backend API expertise
-- [`moai-docs-integration`](../moai-docs-integration/SKILL.md) - Latest framework docs
+- [`moai-ref-testing-pyramid`](../moai-ref-testing-pyramid/SKILL.md) - Test pyramid strategy
 
 ## Advanced Features
 
@@ -701,7 +701,7 @@ const sum = doubled.reduce((acc, n) => acc + n, 0); // 24
 ## Works Well With
 
 - [`moai-domain-frontend`](../moai-domain-frontend/SKILL.md) - Frontend development patterns
-- [`moai-docs-integration`](../moai-docs-integration/SKILL.md) - Latest framework docs
+- [`moai-ref-testing-pyramid`](../moai-ref-testing-pyramid/SKILL.md) - Test pyramid strategy
 - [`moai-web-performance`](../moai-web-performance/SKILL.md) - Performance optimization
 
 ## Advanced Features

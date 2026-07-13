@@ -3,11 +3,11 @@
 > Sub-module: Specific refactoring techniques with implementation details
 > Complexity: Intermediate to Advanced
 > Time: 15+ minutes per pattern
-> Dependencies: Python 3.8+, Rope, AST
+> Dependencies: source parser / refactoring tool for the host language
 
 ## Overview
 
-This module provides detailed implementation patterns for common refactoring operations, complete with code examples, risk assessments, and best practices.
+This module provides detailed implementation patterns for common refactoring operations, complete with before/after sketches, risk assessments, and best practices. Sketches use language-neutral pseudo-code; apply the same transformation with the host language's refactoring tool (e.g. Go `gopls`/`gofmt`, Python Rope, JS TS-LS, Rust rust-analyzer, IntelliJ).
 
 ---
 
@@ -26,37 +26,27 @@ Break down long methods into smaller, more manageable pieces that each handle a 
 
 ### Implementation
 
-```python
-# Before: Long method with multiple responsibilities
-def process_order(order):
-    # Validate order
-    if not order.items:
-        raise ValueError("Empty order")
+```text
+# Before: long method with multiple responsibilities
+process_order(order):
+    # validate
+    if order.items is empty: raise ValueError("Empty order")
     for item in order.items:
-        if item.quantity <= 0:
-            raise ValueError(f"Invalid quantity for {item.name}")
-    
-    # Calculate total
+        if item.quantity <= 0: raise ValueError("Invalid quantity for " + item.name)
+    # calculate total
     total = 0
-    for item in order.items:
-        total += item.price * item.quantity
-    
-    # Apply discount
-    if order.customer.is_vip:
-        total *= 0.9
-    
-    # Save to database
+    for item in order.items: total += item.price * item.quantity
+    # apply discount
+    if order.customer.is_vip: total *= 0.9
+    # persist
     db.execute("INSERT INTO orders ...", order)
-    for item in order.items:
-        db.execute("INSERT INTO order_items ...", item)
-    
-    # Send notification
+    for item in order.items: db.execute("INSERT INTO order_items ...", item)
+    # notify
     email.send(order.customer.email, "Order confirmed")
-    
     return total
 
-# After: Extracted methods with clear responsibilities
-def process_order(order):
+# After: extracted methods with clear responsibilities
+process_order(order):
     validate_order(order)
     total = calculate_order_total(order)
     apply_vip_discount(order)
@@ -64,31 +54,22 @@ def process_order(order):
     send_order_notification(order)
     return total
 
-def validate_order(order):
-    """Validate order items and quantities."""
-    if not order.items:
-        raise ValueError("Empty order")
+validate_order(order):
+    if order.items is empty: raise ValueError("Empty order")
     for item in order.items:
-        if item.quantity <= 0:
-            raise ValueError(f"Invalid quantity for {item.name}")
+        if item.quantity <= 0: raise ValueError("Invalid quantity for " + item.name)
 
-def calculate_order_total(order):
-    """Calculate total price for order items."""
+calculate_order_total(order):
     return sum(item.price * item.quantity for item in order.items)
 
-def apply_vip_discount(order):
-    """Apply VIP customer discount if applicable."""
-    if order.customer.is_vip:
-        order.total *= 0.9
+apply_vip_discount(order):
+    if order.customer.is_vip: order.total *= 0.9
 
-def save_order_to_database(order):
-    """Persist order and items to database."""
+save_order_to_database(order):
     db.execute("INSERT INTO orders ...", order)
-    for item in order.items:
-        db.execute("INSERT INTO order_items ...", item)
+    for item in order.items: db.execute("INSERT INTO order_items ...", item)
 
-def send_order_notification(order):
-    """Send order confirmation email to customer."""
+send_order_notification(order):
     email.send(order.customer.email, "Order confirmed")
 ```
 
@@ -125,26 +106,23 @@ Replace complex expressions with well-named variables to improve code readabilit
 
 ### Implementation
 
-```python
-# Before: Complex expressions inline
-if user.age >= 18 and user.has_valid_id and user.registration_date >= datetime.now() - timedelta(days=30):
+```text
+# Before: complex expressions inline
+if user.age >= 18 and user.has_valid_id and user.registered_within(30, days=now):
     grant_access(user)
-
-if order.total > 100 and order.customer.is_vip and order.shipping_adddess.country == "US":
+if order.total > 100 and order.customer.is_vip and order.shipping_address.country == "US":
     apply_free_shipping(order)
 
-# After: Extracted variables with clear names
+# After: extracted variables with clear names
 is_adult = user.age >= 18
 has_valid_identification = user.has_valid_id
-registered_recently = user.registration_date >= datetime.now() - timedelta(days=30)
-
+registered_recently = user.registered_within(30, days=now)
 if is_adult and has_valid_identification and registered_recently:
     grant_access(user)
 
 meets_free_shipping_threshold = order.total > 100
 is_vip_customer = order.customer.is_vip
-ships_domestically = order.shipping_adddess.country == "US"
-
+ships_domestically = order.shipping_address.country == "US"
 if meets_free_shipping_threshold and is_vip_customer and ships_domestically:
     apply_free_shipping(order)
 ```
@@ -179,21 +157,21 @@ Remove unnecessary variables that don't improve readability.
 
 ### Implementation
 
-```python
-# Before: Unnecessary intermediate variable
-def calculate_price(base_price, tax_rate):
+```text
+# Before: unnecessary intermediate variable
+calculate_price(base_price, tax_rate):
     final_price = base_price * (1 + tax_rate)
     return final_price
 
-# After: Inline the variable
-def calculate_price(base_price, tax_rate):
+# After: inline the variable
+calculate_price(base_price, tax_rate):
     return base_price * (1 + tax_rate)
 
-# Before: Variable used only once
+# Before: variable used only once
 message = "Hello, " + user.name
 print(message)
 
-# After: Inline directly
+# After: inline directly
 print("Hello, " + user.name)
 ```
 
@@ -228,8 +206,8 @@ Clean up and organize import statements for better maintainability.
 
 ### Implementation
 
-```python
-# Before: Disorganized imports
+```text
+# Before: disorganized imports
 import os
 import sys
 from datetime import datetime
@@ -238,18 +216,14 @@ import json
 from myapp.utils import calculate_total
 from collections import defaultdict
 
-# After: Organized imports (PEP 8 style)
-# Standard library imports
-import json
-import os
-import sys
+# After: organized in three groups with blank lines between
+# 1. standard-library imports
+import json, os, sys
 from collections import defaultdict
 from datetime import datetime
-
-# Third-party imports
+# 2. third-party imports
 import requests
-
-# Local application imports
+# 3. local application imports
 from myapp.models import User
 from myapp.utils import calculate_total
 ```
@@ -265,9 +239,9 @@ from myapp.utils import calculate_total
 
 1. Group imports: standard library, third-party, local
 2. Sort within each group alphabetically
-3. Use separate blank line between groups
+3. Use a blank line between groups
 4. Remove unused imports
-5. Use explicit imports over wildcards
+5. Prefer explicit imports over wildcards
 
 ---
 
@@ -286,23 +260,17 @@ Improve code clarity by using descriptive names that explain purpose.
 
 ### Implementation
 
-```python
-# Before: Non-descriptive names
-def calc(d):
-    return d * 1.1
-
-def proc(u, o):
-    if u.v:
-        o.s = True
+```text
+# Before: non-descriptive names
+calc(d): return d * 1.1
+proc(u, o):
+    if u.v: o.s = true
     return o
 
-# After: Descriptive names
-def calculate_price_with_tax(base_price):
-    return base_price * 1.1
-
-def process_order(user, order):
-    if user.is_verified:
-        order.status = OrderStatus.PROCESSED
+# After: descriptive names
+calculate_price_with_tax(base_price): return base_price * 1.1
+process_order(user, order):
+    if user.is_verified: order.status = PROCESSED
     return order
 ```
 
@@ -318,7 +286,7 @@ def process_order(user, order):
 
 1. Use verbs for methods (calculate, process, validate)
 2. Use nouns for variables and classes
-3. Follow language naming conventions (snake_case for Python)
+3. Follow the host language's naming convention (e.g. snake_case, camelCase, PascalCase)
 4. Rename across entire codebase consistently
 5. Update documentation and comments
 
@@ -339,42 +307,31 @@ Replace literal values with named constants for better maintainability.
 
 ### Implementation
 
-```python
-# Before: Magic numbers
-def calculate_shipping_cost(weight):
-    if weight < 5:
-        return 10
-    elif weight < 20:
-        return 20
-    else:
-        return 35
-
-def apply_discount(total):
-    if total > 100:
-        return total * 0.9
+```text
+# Before: magic numbers
+calculate_shipping_cost(weight):
+    if weight < 5:  return 10
+    elif weight < 20: return 20
+    else: return 35
+apply_discount(total):
+    if total > 100: return total * 0.9
     return total
 
-# After: Named constants
-FREE_SHIPPING_WEIGHT_THRESHOLD = 5
+# After: named constants (per the host language's constant idiom)
+FREE_SHIPPING_WEIGHT_THRESHOLD     = 5
 STANDARD_SHIPPING_WEIGHT_THRESHOLD = 20
-LIGHT_SHIPPING_COST = 10
+LIGHT_SHIPPING_COST    = 10
 STANDARD_SHIPPING_COST = 20
-HEAVY_SHIPPING_COST = 35
-
-DISCOUNT_THRESHOLD = 100
+HEAVY_SHIPPING_COST    = 35
+DISCOUNT_THRESHOLD  = 100
 DISCOUNT_PERCENTAGE = 0.9
 
-def calculate_shipping_cost(weight):
-    if weight < FREE_SHIPPING_WEIGHT_THRESHOLD:
-        return LIGHT_SHIPPING_COST
-    elif weight < STANDARD_SHIPPING_WEIGHT_THRESHOLD:
-        return STANDARD_SHIPPING_COST
-    else:
-        return HEAVY_SHIPPING_COST
-
-def apply_discount(total):
-    if total > DISCOUNT_THRESHOLD:
-        return total * DISCOUNT_PERCENTAGE
+calculate_shipping_cost(weight):
+    if weight < FREE_SHIPPING_WEIGHT_THRESHOLD:  return LIGHT_SHIPPING_COST
+    elif weight < STANDARD_SHIPPING_WEIGHT_THRESHOLD: return STANDARD_SHIPPING_COST
+    else: return HEAVY_SHIPPING_COST
+apply_discount(total):
+    if total > DISCOUNT_THRESHOLD: return total * DISCOUNT_PERCENTAGE
     return total
 ```
 
@@ -387,11 +344,11 @@ def apply_discount(total):
 
 ### Best Practices
 
-1. Use UPPER_SNAKE_CASE for constants
+1. Use the host language's constant-naming convention (often UPPER_SNAKE_CASE)
 2. Group related constants together
 3. Add comments explaining business logic
 4. Consider using enums for related constants
-5. Place constants at module level or in config class
+5. Place constants at module level or in a config type
 
 ---
 
@@ -410,54 +367,38 @@ Reduce complexity of conditional logic for better readability.
 
 ### Implementation
 
-```python
-# Before: Nested conditionals
-def calculate_discount(user, order):
+```text
+# Before: nested conditionals
+calculate_discount(user, order):
     if user:
         if user.is_active:
             if order.total > 100:
-                if user.is_vip:
-                    return 0.2
-                else:
-                    return 0.1
-            else:
-                return 0
-        else:
-            return 0
-    else:
-        return 0
+                if user.is_vip: return 0.2
+                else: return 0.1
+            else: return 0
+        else: return 0
+    else: return 0
 
-# After: Guard clauses and early returns
-def calculate_discount(user, order):
-    if not user or not user.is_active:
-        return 0
-    
-    if order.total <= 100:
-        return 0
-    
+# After: guard clauses and early returns
+calculate_discount(user, order):
+    if not user or not user.is_active: return 0
+    if order.total <= 100: return 0
     return 0.2 if user.is_vip else 0.1
 
-# Before: Complex boolean expression
-if (user.age >= 18 and user.has_valid_id and user.country == "US") or \
-   (user.age >= 21 and user.country == "EU") or \
-   (user.is_vip and user.age >= 16):
+# Before: complex boolean expression
+if (user.age >= 18 and user.has_valid_id and user.country == "US")
+ or (user.age >= 21 and user.country == "EU")
+ or (user.is_vip and user.age >= 16):
     grant_access(user)
 
-# After: Extract to helper method
-def is_eligible_for_access(user):
-    if user.is_vip and user.age >= 16:
-        return True
-    
-    if user.country == "US":
-        return user.age >= 18 and user.has_valid_id
-    
-    if user.country == "EU":
-        return user.age >= 21
-    
-    return False
+# After: extract to a helper method
+is_eligible_for_access(user):
+    if user.is_vip and user.age >= 16: return true
+    if user.country == "US": return user.age >= 18 and user.has_valid_id
+    if user.country == "EU": return user.age >= 21
+    return false
 
-if is_eligible_for_access(user):
-    grant_access(user)
+if is_eligible_for_access(user): grant_access(user)
 ```
 
 ### Risk Assessment
@@ -492,22 +433,17 @@ Extract complex conditional logic into separate methods.
 
 ### Implementation
 
-```python
-# Before: Complex conditional logic
-def calculate_shipping_cost(order):
-    if order.weight < 5 and order.destination.country == "US":
-        return 5.0
-    elif order.weight < 5 and order.destination.country != "US":
-        return 15.0
-    elif order.weight >= 5 and order.weight < 20 and order.destination.country == "US":
-        return 10.0
-    elif order.weight >= 5 and order.weight < 20 and order.destination.country != "US":
-        return 25.0
-    else:
-        return 50.0
+```text
+# Before: complex conditional logic
+calculate_shipping_cost(order):
+    if order.weight < 5 and order.destination.country == "US":  return 5.0
+    elif order.weight < 5 and order.destination.country != "US": return 15.0
+    elif 5 <= order.weight < 20 and order.destination.country == "US":  return 10.0
+    elif 5 <= order.weight < 20 and order.destination.country != "US": return 25.0
+    else: return 50.0
 
-# After: Decomposed into helper methods
-def calculate_shipping_cost(order):
+# After: decomposed into helper methods
+calculate_shipping_cost(order):
     if is_light_weight(order):
         return get_domestic_cost() if is_domestic(order) else get_international_cost(order.weight)
     elif is_medium_weight(order):
@@ -515,23 +451,12 @@ def calculate_shipping_cost(order):
     else:
         return get_heavy_weight_cost()
 
-def is_light_weight(order):
-    return order.weight < 5
-
-def is_medium_weight(order):
-    return 5 <= order.weight < 20
-
-def is_domestic(order):
-    return order.destination.country == "US"
-
-def get_domestic_cost():
-    return 5.0
-
-def get_international_cost(weight):
-    return 15.0 if weight < 5 else 25.0
-
-def get_heavy_weight_cost():
-    return 50.0
+is_light_weight(order):  return order.weight < 5
+is_medium_weight(order): return 5 <= order.weight < 20
+is_domestic(order):      return order.destination.country == "US"
+get_domestic_cost():     return 5.0
+get_international_cost(weight): return 15.0 if weight < 5 else 25.0
+get_heavy_weight_cost(): return 50.0
 ```
 
 ### Risk Assessment
@@ -544,7 +469,7 @@ def get_heavy_weight_cost():
 ### Best Practices
 
 1. Name condition methods to read like sentences
-2. Keep helper methods private (leading underscore)
+2. Keep helper methods private/internal
 3. Extract repeated logic into reusable methods
 4. Test each condition method independently
 5. Document business rules clearly
@@ -566,74 +491,33 @@ Extract functionality from a large class into separate, focused classes.
 
 ### Implementation
 
-```python
-# Before: Large class with multiple responsibilities
+```text
+# Before: large class with multiple responsibilities
 class OrderProcessor:
-    def __init__(self):
-        self.db = Database()
-        self.email_sender = EmailSender()
-        self.payment_gateway = PaymentGateway()
-    
-    def process_order(self, order):
-        # Validate
-        self.validate_order(order)
-        # Process payment
-        self.process_payment(order)
-        # Save to database
-        self.save_order(order)
-        # Send email
-        self.send_confirmation(order)
-    
-    def validate_order(self, order):
-        # Validation logic
-        pass
-    
-    def process_payment(self, order):
-        # Payment logic
-        pass
-    
-    def save_order(self, order):
-        # Database logic
-        pass
-    
-    def send_confirmation(self, order):
-        # Email logic
-        pass
+    db
+    email_sender
+    payment_gateway
+    process_order(order):
+        validate_order(order)        # validation
+        process_payment(order)       # payment
+        save_order(order)            # persistence
+        send_confirmation(order)     # email
+    validate_order(order): ...
+    process_payment(order): ...
+    save_order(order): ...
+    send_confirmation(order): ...
 
-# After: Separated concerns into different classes
-class OrderValidator:
-    def validate(self, order):
-        # Validation logic
-        pass
+# After: separated concerns into focused classes
+class OrderValidator: validate(order): ...
+class OrderRepository: save(order): ...
+class OrderConfirmationService: send_confirmation(order): ...
 
-class OrderRepository:
-    def __init__(self, db):
-        self.db = db
-    
-    def save(self, order):
-        # Database logic
-        pass
-
-class OrderConfirmationService:
-    def __init__(self, email_sender):
-        self.email_sender = email_sender
-    
-    def send_confirmation(self, order):
-        # Email logic
-        pass
-
-class OrderProcessor:
-    def __init__(self, validator, repository, confirmation_service, payment_gateway):
-        self.validator = validator
-        self.repository = repository
-        self.confirmation_service = confirmation_service
-        self.payment_gateway = payment_gateway
-    
-    def process_order(self, order):
-        self.validator.validate(order)
-        self.payment_gateway.process_payment(order)
-        self.repository.save(order)
-        self.confirmation_service.send_confirmation(order)
+class OrderProcessor(validator, repository, confirmation_service, payment_gateway):
+    process_order(order):
+        validator.validate(order)
+        payment_gateway.process_payment(order)
+        repository.save(order)
+        confirmation_service.send_confirmation(order)
 ```
 
 ### Risk Assessment
@@ -674,10 +558,8 @@ class OrderProcessor:
 
 ### Tools
 
-- Rope: Automated Python refactoring
-- PyCharm: Built-in refactoring tools
-- VS Code: Refactoring extensions
-- Black: Code formatting
+- Refactoring tools: the host language's IDE/LSP (PyCharm/Rope, VS Code, gopls, rust-analyzer, IntelliJ)
+- Formatter: the host language's formatter (gofmt, black, prettier, rustfmt)
 
 ### References
 

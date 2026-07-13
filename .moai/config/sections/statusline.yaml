@@ -1,19 +1,33 @@
 statusline:
-    segments:
-        cache_hit: true
-        claude_version: true
-        context: true
-        directory: true
-        effort_thinking: true
-        git_branch: true
-        git_status: true
-        moai_version: true
-        model: true
-        output_style: true
-        pr: true
-        session_time: true
-        task: true
-        usage_5h: true
-        usage_7d: true
-        worktree: true
-    theme: catppuccin-mocha
+  # Theme — exactly 2 themes exist: catppuccin-mocha (seeded) | catppuccin-latte
+  theme: "catppuccin-mocha"
+
+  # Individual segment toggles — the only runtime lever.
+  # All 16 segments default-on; graceful no-output handles inactive states.
+  segments:
+    # Line 1: model + version + session metadata
+    model: true
+    context: true
+    output_style: true
+    claude_version: true
+    moai_version: true
+    session_time: true
+    effort_thinking: true
+    # Cache-read-vs-cache-creation hit ratio indicator (early-warning of
+    # prompt-prefix churn). Config-toggleable; set false to hide.
+    cache_hit: true
+    # Line 2: context window + API usage bars
+    usage_5h: true
+    usage_7d: true
+    # Line 3: directory + git + workflow + PR
+    directory: true
+    git_status: true
+    git_branch: true
+    worktree: true
+    # Task segment — active SPEC workflow info. Renders as
+    # "📋 [<command> <SPEC-ID>-<stage>]" only when
+    # ~/.moai/state/last-session-state.json `active_task` is set.
+    task: true
+    # PR segment — renders as "#<number> ⌥<review_state>" only when stdin
+    # JSON includes a pr.* object.
+    pr: true

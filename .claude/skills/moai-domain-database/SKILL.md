@@ -22,7 +22,6 @@ metadata:
   updated: "2026-04-25"
   tags: "database, postgresql, mongodb, redis, oracle, data-patterns, performance, neon, supabase, firestore, cloud-database, serverless"
   author: "MoAI-ADK Team"
-  docs-libraries: "/neondatabase/neon, /supabase/supabase, /firebase/firebase-docs"
   related-skills: "moai-platform-database-cloud"
 
 # MoAI Extension: Progressive Disclosure

@@ -1,7 +1,7 @@
 # Database Documentation Configuration
 # Controls /moai db workflow, auto-sync hook, and schema documentation policy.
 #
-# Structure: 8 keys directly under `db:` (REQ-010)
+# Structure: 8 keys directly under `db:`
 #   - 5 system-fixed keys: enabled, dir, auto_sync, migration_patterns, engine
 #   - 3 interview-input keys: orm, multi_tenant, migration_tool (filled by `/moai db init`)
 

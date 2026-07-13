@@ -125,7 +125,7 @@ When a Bash command contains a destructive primitive, the orchestrator/agent SHA
 - SQL `DROP TABLE` / `TRUNCATE` — irreversible data loss
 - `chmod -R 777` — recursive world-writable (security hole)
 
-This cross-references the **Implementation Kickoff Approval** human-gate pattern in `CLAUDE.local.md` §19.1: irreversible / shared-system / hard-to-reverse actions require explicit user confirmation regardless of permission mode. The warn-only hook signal (§4) does NOT enforce this confirmation — confirmation is an orchestrator/agent obligation (doctrine-level), not a hook block.
+This cross-references the **Implementation Kickoff Approval** human-gate pattern: irreversible / shared-system / hard-to-reverse actions require explicit user confirmation regardless of permission mode. The warn-only hook signal (§4) does NOT enforce this confirmation — confirmation is an orchestrator/agent obligation (doctrine-level), not a hook block.
 
 ### (4) Warn-only, fail-open hook signal
 

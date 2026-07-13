@@ -101,11 +101,11 @@ For comprehensive coverage including:
 - CI/CD integration patterns
 - Complete RSpec testing patterns
 
-Apply the Quick Patterns and framework sections above together with the Documentation Integration mappings for these advanced topics; this guide is self-contained.
+Apply the Quick Patterns and framework sections above together with the Documentation References for these advanced topics; this guide is self-contained.
 
 ---
 
-## Documentation Integration
+## Documentation References
 
 - rails/rails for Ruby on Rails web framework
 - rspec/rspec for RSpec testing framework

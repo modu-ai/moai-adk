@@ -24,16 +24,16 @@ Per the canonical agent catalog policy, the `manager-develop` agent operates in 
 Each iteration of the autofix loop executes the three-step DIAGNOSE-PATCH-VERIFY pattern:
 
 1. **DIAGNOSE**: Read the failing CI check output (provided by the orchestrator from `scripts/ci-watch/run.sh`). Identify the root cause — lint rule violation, build error, type error, missing dependency, etc.
-2. **PATCH**: Apply a minimal fix that addresses the root cause without expanding scope. The autofix loop MUST NOT modify `.env`, `.env.*`, credentials files, secrets, or `scripts/ci-watch/run.sh` or any Wave 2 infrastructure scripts (per CONST-V3R5-011 + CONST-V3R5-013).
-3. **VERIFY**: Re-run the failing check locally; if exit 0, push the patch as a new commit on the PR branch (force-push and `--amend` are prohibited per CONST-V3R5-007). If still failing, increment the iteration counter and repeat from DIAGNOSE.
+2. **PATCH**: Apply a minimal fix that addresses the root cause without expanding scope. The autofix loop MUST NOT modify `.env`, `.env.*`, credentials files, secrets, or `scripts/ci-watch/run.sh` or any Wave 2 infrastructure scripts.
+3. **VERIFY**: Re-run the failing check locally; if exit 0, push the patch as a new commit on the PR branch. If still failing, increment the iteration counter and repeat from DIAGNOSE.
 
 ### autofix escalation contract
 
-After 3 iterations without success, the loop MUST halt and the orchestrator MUST trigger an `AskUserQuestion` blocking call (no auto-resume timeout per CONST-V3R5-006) presenting the user with at least: (a) continue with manual investigation, (b) revert the offending change and re-plan, (c) abort with structured failure report. Semantic failures (data race, deadlock, panic, test assertion failure) MUST NOT be auto-patched without human approval per CONST-V3R5-010.
+After 3 iterations without success, the loop MUST halt and the orchestrator MUST trigger an `AskUserQuestion` blocking call presenting the user with at least: (a) continue with manual investigation, (b) revert the offending change and re-plan, (c) abort with structured failure report. Semantic failures (data race, deadlock, panic, test assertion failure) MUST NOT be auto-patched without human approval.
 
 ### Logged at
 
-Every autofix iteration MUST be logged to `.moai/logs/ci-autofix/` with timestamp, patch summary, and CI result per CONST-V3R5-012.
+Every autofix iteration MUST be logged to `.moai/logs/ci-autofix/` with timestamp, patch summary, and CI result.
 
 
 
@@ -68,7 +68,7 @@ Mandatory to state:
 [ZONE:Evolvable] [HARD] The following 12 categories of known issues MUST be auto-included in the delegation prompt. Omission = re-delegation risk.
 
 **B1. Cross-platform Build Tags**
-- Force build tags when using the syscall package (lessons #21 W0 fix pattern)
+- Force build tags when using the syscall package
 - Recommended: separate files with `//go:build !windows` + `//go:build windows`
 - Verification: `GOOS=windows GOARCH=amd64 go build ./...` MUST pass
 
@@ -88,7 +88,7 @@ Mandatory to state:
 
 **B5. CI 3-tier Awareness**
 - spec-lint, golangci-lint, Test (per OS) can each fail separately
-- Distinguish the W1/W2 chicken-and-egg pattern vs NEW defects
+- pre-existing baseline vs NEW defect classification
 
 **B6. spec-lint Heading Convention**
 - `## Out of Scope` (h2) alone triggers a `MissingExclusions` ERROR
@@ -104,7 +104,7 @@ Mandatory to state:
 - Do NOT include unrelated untracked files in commits (`git add` specific paths only)
 
 **B9. Git Commit + Push Performed Directly (Hybrid Trunk 1-person OSS)**
-- manager-develop is recommended to perform commit + push directly within this SPEC scope (direct-to-main per .moai/docs/git-workflow-doctrine.md Tier S/M)
+- manager-develop is recommended to perform commit + push directly within this SPEC scope (direct-to-main — Hybrid Trunk 1-person OSS policy, Tier S/M)
 - Conventional Commits format required (`feat(SPEC-...): M{N} <subject>`)
 - Both per-M separate commits + final push, or per-M push, are allowed
 - Never use `--no-verify` (a warn-only pre-commit hook is normal)
@@ -218,8 +218,8 @@ $ golangci-lint run --timeout=2m
 
 Cases of non-compliance with this template — increased re-delegation risk:
 
-- Missing Section B → cross-platform build / cross-SPEC conflicts discovered after the fact (W3 case)
-- Missing Section E → the orchestrator verifies serially (~10 min extra loss in W3)
+- Missing Section B → cross-platform build / cross-SPEC conflicts discovered after the fact
+- Missing Section E → the orchestrator verifies serially (~10 min extra loss)
 - 1-liner delegation like "implement the SPEC" → manager-develop makes silent assumptions due to an insufficient prompt
 - Missing PRESERVE enumeration → unintended file modifications
 

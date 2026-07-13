@@ -4,7 +4,7 @@
 > Parent: [TRUST 5 Validation](../trust5-validation.md)
 > Complexity: Advanced
 > Time: 25+ minutes
-> Dependencies: Python 3.8+, WebSearch/WebFetch, ast
+> Dependencies: WebSearch/WebFetch, source parser (AST)
 
 ## Quick Reference
 
@@ -49,50 +49,23 @@ TRUST 5 Framework provides comprehensive code quality assessment across five ess
 
 ### Category-Specific Analysis Patterns
 
-```python
+```text
 class AdvancedTRUST5Analyzer:
-    """Advanced TRUST 5 analyzer with category-specific patterns."""
+    docs
+    category_patterns = {}
 
-    def __init__(self, docs_client=None):
-        self.docs = docs_client
-        self.category_patterns = {}
-
-    async def load_category_patterns(self) -> Dict[str, Any]:
-        """Load category-specific analysis patterns from Documentation."""
-
-        if not self.docs:
-            return self._get_default_patterns()
-
+    load_category_patterns():
+        if docs is none: return default_patterns()
         try:
-            # Load truthfulness patterns
-            truthfulness = await self.docs.get_library_docs(
-                docs_library_id="/code-correctness/python",
-                topic="logic error detection patterns 2025",
-                tokens=3000
-            )
-
-            # Load usability patterns
-            usability = await self.docs.get_library_docs(
-                docs_library_id="/code-quality/sonarqube",
-                topic="maintainability metrics code smells 2025",
-                tokens=4000
-            )
-
-            # Load safety patterns
-            safety = await self.docs.get_library_docs(
-                docs_library_id="/security/owasp",
-                topic="security vulnerability detection 2025",
-                tokens=5000
-            )
-
-            return {
-                'truthfulness': truthfulness,
-                'usability': usability,
-                'safety': safety
-            }
-
-        except Exception as e:
-            return self._get_default_patterns()
+            truthfulness = docs.get_library_docs("<code-correctness>",
+                            topic="logic error detection patterns", tokens=3000)
+            usability    = docs.get_library_docs("<code-quality/sonarqube>",
+                            topic="maintainability metrics code smells", tokens=4000)
+            safety       = docs.get_library_docs("<security/owasp>",
+                            topic="security vulnerability detection", tokens=5000)
+            return { truthfulness, usability, safety }
+        except e:
+            return default_patterns()
 ```
 
 ---

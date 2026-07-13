@@ -46,14 +46,14 @@ Overall Status: APPROVED for merge
 **Input**:
 ```bash
 # Phase 1: SPEC 생성
-/moai:1-plan "JWT 기반 사용자 인증 시스템 구현"
+/moai plan "JWT 기반 사용자 인증 시스템 구현"
 
 # Phase 2: DDD 실행 (Phase 1 완료 후 /clear 실행)
 /clear
-/moai:2-run SPEC-001
+/moai run SPEC-001
 
 # Phase 3: 문서화
-/moai:3-sync SPEC-001
+/moai sync SPEC-001
 ```
 
 **Output**:
@@ -276,17 +276,17 @@ await Agent(
 
 ```bash
 # 잘못된 예시
-/moai:1-plan "feature"  # 30K 사용
-/moai:2-run SPEC-001    # 이전 컨텍스트 유지 → 토큰 부족!
+/moai plan "feature"  # 30K 사용
+/moai run SPEC-001    # 이전 컨텍스트 유지 → 토큰 부족!
 ```
 
 **Solution**: Phase 완료 후 반드시 /clear 실행
 
 ```bash
 # 올바른 예시
-/moai:1-plan "feature"  # 30K 사용
+/moai plan "feature"  # 30K 사용
 /clear                  # 컨텍스트 초기화 (45-50K 절약)
-/moai:2-run SPEC-001    # 새로운 180K 예산으로 시작
+/moai run SPEC-001    # 새로운 180K 예산으로 시작
 ```
 
 ### Anti-Pattern 3: 과도한 순차 실행
