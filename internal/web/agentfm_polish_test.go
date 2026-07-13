@@ -128,6 +128,55 @@ func TestAgentFMDescriptionShown(t *testing.T) {
 	}
 }
 
+// TestAgentFMTierSortOrder verifies agents within each sub-tab render in tier
+// order (most expensive first: 🔴 → 🟠 → 🔵 → 🩵), with alphabetical secondary
+// within the same tier (post-close polish round 3).
+func TestAgentFMTierSortOrder(t *testing.T) {
+	root := t.TempDir()
+	// Moai sub-tab: seed one agent from each tier.
+	// 🔴 manager-spec, 🔴 plan-auditor, 🟠 manager-develop, 🔵 manager-docs.
+	seedAgentFMFile(t, root, "moai", "manager-spec", "", "")
+	seedAgentFMFile(t, root, "moai", "plan-auditor", "", "")
+	seedAgentFMFile(t, root, "moai", "manager-develop", "", "")
+	seedAgentFMFile(t, root, "moai", "manager-docs", "", "")
+	// Harness sub-tab: 🔵 quality-specialist, 🩵 hook-ci-specialist.
+	seedAgentFMFile(t, root, "harness", "quality-specialist", "", "")
+	seedAgentFMFile(t, root, "harness", "hook-ci-specialist", "", "")
+	body := renderAgentFMBody(t, root)
+
+	// Sub-tab panel: red agents before orange before blue.
+	// Use the form field name anchor (agentfm.<name>.model) to find document positions.
+	specPos := strings.Index(body, `agentfm.manager-spec.model`)
+	auditorPos := strings.Index(body, `agentfm.plan-auditor.model`)
+	devPos := strings.Index(body, `agentfm.manager-develop.model`)
+	docsPos := strings.Index(body, `agentfm.manager-docs.model`)
+	if specPos < 0 || auditorPos < 0 || devPos < 0 || docsPos < 0 {
+		t.Fatalf(`agent row anchors not found in render (spec=%d auditor=%d dev=%d docs=%d)`, specPos, auditorPos, devPos, docsPos)
+	}
+	// Red (manager-spec, plan-auditor) must come before orange (manager-develop).
+	if devPos < specPos || devPos < auditorPos {
+		t.Errorf(`orange agent (manager-develop pos=%d) must come AFTER red agents (manager-spec pos=%d, plan-auditor pos=%d)`, devPos, specPos, auditorPos)
+	}
+	// Orange (manager-develop) must come before blue (manager-docs).
+	if docsPos < devPos {
+		t.Errorf(`blue agent (manager-docs pos=%d) must come AFTER orange agent (manager-develop pos=%d)`, docsPos, devPos)
+	}
+	// Alphabetical within same tier (red): manager-spec before plan-auditor.
+	if auditorPos < specPos {
+		t.Errorf(`within red tier, manager-spec (pos=%d) should come before plan-auditor (pos=%d) alphabetically`, specPos, auditorPos)
+	}
+
+	// Harness sub-tab: blue (quality-specialist) before lightblue (hook-ci-specialist).
+	qualityPos := strings.Index(body, `agentfm.quality-specialist.model`)
+	hookCIPos := strings.Index(body, `agentfm.hook-ci-specialist.model`)
+	if qualityPos < 0 || hookCIPos < 0 {
+		t.Fatalf(`harness agent anchors not found (quality=%d hook-ci=%d)`, qualityPos, hookCIPos)
+	}
+	if hookCIPos < qualityPos {
+		t.Errorf(`lightblue agent (hook-ci-specialist pos=%d) must come AFTER blue agent (quality-specialist pos=%d)`, hookCIPos, qualityPos)
+	}
+}
+
 // TestAgentFMDescriptionAbsentGraceful verifies an agent WITHOUT a description
 // field renders gracefully (no empty desc span, row still functional — E7).
 func TestAgentFMDescriptionAbsentGraceful(t *testing.T) {

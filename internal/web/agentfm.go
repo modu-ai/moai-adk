@@ -65,6 +65,30 @@ func agentTierBadge(name, model, effort string) agentBadgeInfo {
 	}
 }
 
+// agentTierSortRank returns a sort rank for the agent's display-only tier
+// (lower = more expensive = renders first within each sub-tab). Used to order
+// the agentfm rows red-first (post-close polish round 3,
+// SPEC-WEBCONF-SIMPLIFY-001). red=0, orange=1, blue=2, lightblue=3,
+// unmapped=4 (agents without a tier table entry sort last).
+func agentTierSortRank(name string) int {
+	tier, ok := v4manifest.AgentTier(name)
+	if !ok {
+		return 4
+	}
+	switch tier {
+	case v4manifest.TierRed:
+		return 0
+	case v4manifest.TierOrange:
+		return 1
+	case v4manifest.TierBlue:
+		return 2
+	case v4manifest.TierLightBlue:
+		return 3
+	default:
+		return 4
+	}
+}
+
 // agentIsSuggestedModel reports whether m is the tier-suggested model for the
 // named agent (design.md §D). Used to mark the suggested option in the model
 // <select> when the agent's model is unset (empty=preserve sentinel).
@@ -189,8 +213,10 @@ func agentDirsFor(projectRoot string) []string {
 }
 
 // listAllAgentFMs는 모든 편집 대상 디렉터리(moai/ + harness/)의 agent
-// frontmatter를 이름순으로 병합한다. 개별 디렉터리는 이미 정렬되어 반환되지만
-// 두 디렉터리를 병합한 후 전체를 다시 정렬한다.
+// frontmatter를 tier-then-name 순으로 병합한다 (post-close polish round 3 —
+// 비싼 티어가 먼저: 🔴 → 🟠 → 🔵 → 🩵). 개별 디렉터리는 이미 정렬되어 반환되지만
+// 두 디렉터리를 병합한 후 전체를 다시 정렬한다. templ이 moai/harness 파티션을
+// 걸면서 상대 순서를 보존하므로 각 서브탭 내에서도 tier 순이 유지된다.
 func (a *app) listAllAgentFMs(projectRoot string) ([]agentfm.AgentInfo, error) {
 	var all []agentfm.AgentInfo
 	for _, dir := range agentDirsFor(projectRoot) {
@@ -200,7 +226,13 @@ func (a *app) listAllAgentFMs(projectRoot string) ([]agentfm.AgentInfo, error) {
 		}
 		all = append(all, agents...)
 	}
-	sort.Slice(all, func(i, j int) bool { return all[i].Name < all[j].Name })
+	sort.Slice(all, func(i, j int) bool {
+		ri, rj := agentTierSortRank(all[i].Name), agentTierSortRank(all[j].Name)
+		if ri != rj {
+			return ri < rj
+		}
+		return all[i].Name < all[j].Name
+	})
 	return all, nil
 }
 
