@@ -4,24 +4,24 @@ weight: 25
 draft: false
 ---
 
-This guide explains the `moai inventory` command for viewing active sessions, worktrees, and harnesses in your project.
+A guide to the `moai inventory` command, which queries your project's active sessions, worktrees, and harnesses.
 
 {{< callout type="info" >}}
-**One-line summary**: `moai inventory` provides a unified view of all active resources (sessions, worktrees, harnesses) in your project at a glance.
+**One-line summary**: `moai inventory` gives you an at-a-glance view of every active resource in the current project (sessions, worktrees, harnesses).
 {{< /callout >}}
 
 ## Overview
 
-`moai inventory` is a read-only command that provides an **integrated inventory** of your current project state.
+`moai inventory` is a read-only command that provides a **unified inventory** of the current project state. When you run several parallel sessions and worktrees, you need one place to answer "what is running right now?" — this command is that answer.
 
-### Query Targets
+### What It Queries
 
 | Resource | Description | Location |
-|----------|-------------|----------|
+|------|------|------|
 | **Active Sessions** | Currently running Claude Code sessions | `.moai/state/active-sessions.json` |
-| **Worktrees** | L2/L3 isolated branches for projects | `~/.moai/worktrees/<project>/` |
+| **Worktrees** | L2/L3 isolated branches for the project | `~/.moai/worktrees/<project>/` |
 | **Harnesses** | Generated dynamic agent teams | `.moai/harness/manifest.json` |
-| **SPEC Progress** | Progress tracking for active SPECs | `.moai/specs/SPEC-*/progress.md` |
+| **SPEC Progress** | Progress state of active SPECs | `.moai/specs/SPEC-*/progress.md` |
 
 ## Command Format
 
@@ -35,19 +35,19 @@ moai inventory [options]
 moai inventory
 ```
 
-Display inventory in basic text format.
+Prints the inventory in the default text format.
 
-### JSON Format Output
+### JSON Output
 
 ```bash
 moai inventory --json
 ```
 
-Output in structured JSON for automated analysis.
+Outputs structured JSON, useful for automated analysis.
 
 ### Filtering
 
-Query specific resource types:
+Query only a specific resource type:
 
 ```bash
 moai inventory --type sessions
@@ -56,16 +56,16 @@ moai inventory --type harnesses
 moai inventory --type specs
 ```
 
-### Detailed Information
+### Verbose Details
 
-Include additional information for each resource:
+Include extra information for each resource:
 
 ```bash
 moai inventory --verbose
 moai inventory --verbose --json
 ```
 
-## Text Format Output
+## Text Output
 
 ### Basic Output Example
 
@@ -95,7 +95,7 @@ SPEC-DOCS-001          in-progress     run        manager-develop  M3/6
 SPEC-AUTH-002          in-progress     run        manager-develop  M2/5
 ```
 
-### Detailed Information (`--verbose`)
+### Verbose Details (`--verbose`)
 
 ```
 ========== ACTIVE SESSIONS (VERBOSE) ==========
@@ -122,7 +122,7 @@ Worktree: SPEC-DOCS-001
   Commits:       2
 ```
 
-## JSON Format Output
+## JSON Output
 
 ### Schema
 
@@ -206,29 +206,29 @@ Worktree: SPEC-DOCS-001
 
 ## Practical Usage Examples
 
-### 1. Detect Multi-Session Race Conditions
+### 1. Detecting Multi-Session Contention
 
 ```bash
 moai inventory --type sessions
 
-# Look for multiple sessions handling the same SPEC → race condition risk
+# In the output, more than 1 session working the same SPEC → contention risk
 ```
 
-### 2. Review Worktree Cleanup Status
+### 2. Checking Worktrees for Cleanup
 
 ```bash
 moai inventory --type worktrees --verbose
 
-# Check for stale worktrees, then clean them
+# Identify old worktrees, then clean up
 moai worktree remove <name>
 ```
 
-### 3. Query Harness Team List
+### 3. Listing Harness Teams
 
 ```bash
 moai inventory --type harnesses --json | jq '.inventory.harnesses[] | {name, teammates, status}'
 
-# Example output:
+# Expected output:
 # {
 #   "name": "backend-team",
 #   "teammates": 3,
@@ -236,19 +236,19 @@ moai inventory --type harnesses --json | jq '.inventory.harnesses[] | {name, tea
 # }
 ```
 
-### 4. Track Active SPEC Progress
+### 4. Tracking Active SPEC Progress
 
 ```bash
 moai inventory --type specs | grep in-progress
 
-# See all currently in-progress SPECs
+# See every SPEC currently in progress
 ```
 
-### 5. Use in Automation Scripts
+### 5. Using It in Automation Scripts
 
 ```bash
 #!/bin/bash
-# Auto-cleanup stale worktrees
+# Automatic worktree cleanup script
 
 moai inventory --type worktrees --json | jq -r '.inventory.worktrees[] | select(.status == "stale") | .name' | while read name; do
   echo "Removing stale worktree: $name"
@@ -256,33 +256,33 @@ moai inventory --type worktrees --json | jq -r '.inventory.worktrees[] | select(
 done
 ```
 
-## Output Interpretation
+## Interpreting the Output
 
-### Status Field
+### The Status Field
 
 | Status | Meaning |
-|--------|---------|
+|--------|------|
 | `active` | Currently in use |
-| `idle` | Paused (session in explicit pause state) |
+| `idle` | Suspended (the session is explicitly paused) |
 | `stale` | Unused (no access for 7+ days) |
-| `error` | Error state (requires investigation) |
+| `error` | Error state (needs attention) |
 
-### Phase Field
+### The Phase Field
 
 | Phase | Description |
-|-------|-------------|
-| `plan` | Plan phase execution in progress |
-| `run` | Run phase execution in progress |
-| `sync` | Sync phase execution in progress |
-| `completed` | Completed state |
+|-------|------|
+| `plan` | Plan phase in progress |
+| `run` | Run phase in progress |
+| `sync` | Sync phase in progress |
+| `completed` | Completed |
 
-## Related Documentation
+## Related Documents
 
-- [SPEC-Based Development](/workflow-commands/moai-plan) — SPEC lifecycle
-- [Worktree Management](/getting-started/worktree) — Worktree isolation and lifecycle
-- [Harness v4 Builder](/advanced/builder-agents) — Dynamic team management
-- [CLI Reference](/getting-started/cli) — Other CLI commands
+- [SPEC-Based Development](/en/workflow-commands/moai-plan) - The SPEC lifecycle
+- [Worktree Management](/en/getting-started/worktree) - Worktree isolation and lifecycle
+- [Harness v4 Builder](/en/advanced/builder-agents) - Dynamic team management
+- [CLI Reference](/en/getting-started/cli) - Other CLI commands
 
 {{< callout type="info" >}}
-**Tip**: `moai inventory` can power automated cleanup scripts and monitoring dashboards. Automated analysis of JSON format keeps your project state always visible.
+**Tip**: `moai inventory` works well with automated cleanup scripts and monitoring dashboards. Parse the JSON output automatically and you always know the state of your project.
 {{< /callout >}}

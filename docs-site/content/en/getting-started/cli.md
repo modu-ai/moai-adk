@@ -4,7 +4,7 @@ weight: 90
 draft: false
 ---
 
-Reference all commands and options of the MoAI-ADK command-line interface.
+Reference for every command and option of the MoAI-ADK command-line interface. The terminal's `moai` (the Go binary) and Claude Code's `/moai` (the slash subcommand) are different tools — this document covers the terminal CLI.
 
 ## Command List
 
@@ -12,7 +12,7 @@ Reference all commands and options of the MoAI-ADK command-line interface.
 moai --help
 ```
 
-**Output Example:**
+**Example output:**
 
 ```
 MoAI-ADK - Agentic Development Kit for Claude Code
@@ -38,25 +38,25 @@ Flags:
 ```
 
 | Command | Description |
-|---------|-------------|
-| `moai init` | Initialize project (auto-detects language/framework/methodology) |
-| `moai doctor` | System diagnostics and environment verification |
+|--------|------|
+| `moai init` | Project initialization (auto-detects language/framework/methodology) |
+| `moai doctor` | System diagnosis and environment verification |
 | `moai status` | Project status summary (Git branch, quality metrics, etc.) |
-| `moai inventory` | Read-only integrated inventory (active sessions, worktrees, harnesses) (add `--json` for structured output) |
-| `moai update` | Update to the latest version (with automatic rollback support) |
-| `moai worktree` | Manage Git worktrees (parallel SPEC development) |
+| `moai inventory` | Read-only unified inventory of active sessions, worktrees, and harnesses (add `--json` for structured output) |
+| `moai update` | Update to the latest version (automatic rollback support) |
+| `moai worktree` | Git worktree management (parallel SPEC development) |
 | `moai hook` | Claude Code hook dispatcher |
-| `moai profile` | Manage profiles (list, setup, current, delete) |
-| `moai glm` | Switch to GLM backend (`--team`: GLM Worker mode) |
-| `moai claude`, `moai cc` | Switch to Claude backend |
-| `moai cg` | Enable CG mode — Claude leader + GLM teammates (tmux required) |
-| `moai version` | Display version, commit hash, and build date |
+| `moai profile` | Profile management (list, setup, current, delete) |
+| `moai glm` | Switch to the GLM backend (`--team`: GLM Worker mode) |
+| `moai claude`, `moai cc` | Switch to the Claude backend |
+| `moai cg` | Activate CG mode — Claude leader + GLM teammates (tmux required) |
+| `moai version` | Show version, commit hash, and build date |
 
 ---
 
 ## moai init
 
-Initialize a project.
+Initializes a project.
 
 ```bash
 moai init [PATH] [OPTIONS]
@@ -65,17 +65,17 @@ moai init [PATH] [OPTIONS]
 ### Options
 
 | Option | Description |
-|--------|-------------|
-| `-y, --non-interactive` | Non-interactive mode (use defaults) |
+|------|------|
+| `-y, --non-interactive` | Non-interactive mode (uses defaults) |
 | `--mode [personal\|team]` | Project mode |
 | `--locale [ko\|en\|ja\|zh]` | Preferred language (default: en) |
-| `--language TEXT` | Programming language (auto-detect if specified) |
+| `--language TEXT` | Programming language (auto-detected when omitted) |
 | `--force` | Force re-initialization without confirmation |
 
 ### Examples
 
 ```bash
-# Initialize new project
+# Initialize a new project
 moai init my-project
 
 # Korean, team mode
@@ -89,7 +89,7 @@ moai init --language python
 
 ## moai update
 
-Update MoAI-ADK to the latest version.
+Updates MoAI-ADK to the latest version.
 
 ```bash
 moai update [OPTIONS]
@@ -98,16 +98,16 @@ moai update [OPTIONS]
 ### Options
 
 | Option | Description |
-|--------|-------------|
+|------|------|
 | `--path PATH` | Project path (default: current directory) |
 | `--force` | Force update without backup |
-| `--check` | Check version only (no update) |
+| `--check` | Version check only (no update) |
 | `--project` | Sync project templates only |
 | `--templates-only` | Sync templates only (skip package upgrade) |
-| `--yes` | Auto confirm (CI/CD mode) |
-| `-c, --config` | Edit project config (same as initial setup wizard) |
-| `--merge` | Auto merge (preserve user changes) |
-| `--manual` | Manual merge (create guide) |
+| `--yes` | Auto-confirm (CI/CD mode) |
+| `-c, --config` | Edit the project settings (same as the initial setup wizard) |
+| `--merge` | Automatic merge (preserves user changes) |
+| `--manual` | Manual merge (generates a guide) |
 
 ### Examples
 
@@ -118,19 +118,19 @@ moai update --check
 # Force update
 moai update --force
 
-# Auto merge
+# Automatic merge
 moai update --merge
 ```
 
 {{< callout type="warning" >}}
-**Important:** `--force` option does not create backups. User changes may be lost.
+**Important:** the `--force` option creates no backup. User changes may be lost.
 {{< /callout >}}
 
 ---
 
 ## moai doctor
 
-Run system diagnostics.
+Runs the system diagnosis.
 
 ```bash
 moai doctor [OPTIONS]
@@ -139,24 +139,24 @@ moai doctor [OPTIONS]
 ### Options
 
 | Option | Description |
-|--------|-------------|
+|------|------|
 | `-v, --verbose` | Show detailed tool versions and language detection |
 | `--fix` | Suggest fixes for missing tools |
-| `--export PATH` | Export to JSON file |
-| `--check TEXT` | Check only specific tool |
-| `--check-commands` | Diagnose slash command loading issues |
+| `--export PATH` | Export to a JSON file |
+| `--check TEXT` | Check specific tools only |
+| `--check-commands` | Diagnose slash-command loading issues |
 | `--shell` | Diagnose shell and PATH configuration (WSL/Linux) |
 
 ### Examples
 
 ```bash
-# Full diagnostics
+# Full diagnosis
 moai doctor
 
-# Verbose diagnostics
+# Verbose diagnosis
 moai doctor --verbose
 
-# Suggest fixes
+# Fix suggestions
 moai doctor --fix
 ```
 
@@ -164,16 +164,16 @@ moai doctor --fix
 
 ## moai profile
 
-Manage profiles. Profiles provide isolated Claude Code configuration environments.
+Manages profiles. A profile provides an isolated Claude Code configuration environment.
 
 ### Profile Subcommands
 
 | Command | Description |
-|---------|-------------|
-| `moai profile list` | Show all available profiles |
-| `moai profile setup` | Create new profile with interactive wizard |
-| `moai profile current` | Show current active profile information |
-| `moai profile delete <name>` | Delete specified profile |
+|--------|------|
+| `moai profile list` | List all available profiles |
+| `moai profile setup` | Create a new profile with the interactive wizard |
+| `moai profile current` | Show info on the currently active profile |
+| `moai profile delete <name>` | Delete the specified profile |
 
 ### moai profile list
 
@@ -181,7 +181,7 @@ Manage profiles. Profiles provide isolated Claude Code configuration environment
 moai profile list
 ```
 
-Display all available profiles and the currently active profile.
+Shows all available profiles and the currently active one.
 
 ### moai profile setup
 
@@ -189,21 +189,21 @@ Display all available profiles and the currently active profile.
 moai profile setup
 ```
 
-Interactive wizard creates a new profile:
+An interactive wizard creates a new profile:
 
-1. **Profile Name**: Unique identifier (e.g., `work`, `personal`)
-2. **User Name**: Name Claude Code should use to address you
-3. **Language Settings**:
+1. **Profile name**: a unique identifier (e.g., `work`, `personal`)
+2. **User name**: the name Claude Code will address you by
+3. **Language settings**:
    - Conversation language (conversation_language)
    - Git commit language (git_commit_lang)
    - Code comment language (code_comment_lang)
    - Documentation language (doc_lang)
-4. **Model Settings**:
+4. **Model settings**:
    - Model policy (model_policy): high, medium, low
-   - Default model (model): inherit, opus, sonnet, haiku, 1M context model
-5. **Execution Settings**:
+   - Default model (model): inherit, opus, sonnet, haiku, 1M context models
+5. **Execution settings**:
    - Permission mode (permission_mode): default, acceptEdits
-6. **Display Settings**:
+6. **Display settings**:
    - Statusline mode (statusline_mode): off, basic, full
    - Statusline theme (statusline_theme): auto, light, dark, monokai, nord, dracula
    - Teammate display (teammate_display): auto, in-process, tmux
@@ -214,7 +214,7 @@ Interactive wizard creates a new profile:
 moai profile current
 ```
 
-Display information about the currently active profile.
+Shows info on the currently active profile.
 
 ### moai profile delete
 
@@ -222,38 +222,38 @@ Display information about the currently active profile.
 moai profile delete <name>
 ```
 
-Delete the specified profile and its directory.
+Deletes the specified profile and its directory.
 
-### Running with Profiles
+### Running with a Profile
 
-To run MoAI commands with a specific profile, use the `-p` flag:
+Use the `-p` flag to run MoAI commands with a profile:
 
 ```bash
-# Use specific profile with Claude mode
+# Use a specific profile in Claude mode
 moai cc -p work
 
-# Use specific profile with GLM mode
+# Use a specific profile in GLM mode
 moai glm -p personal
 
-# Use specific profile with CG mode
+# Use a specific profile in CG mode
 moai cg -p team-project
 ```
 
-The profile's Claude Code settings apply to that session.
+The profile's Claude Code configuration applies to that session.
 
 ### Profile vs MoAI Worktree
 
 | Feature | Profile | Worktree |
-|---------|---------|----------|
+|------|---------|----------|
 | **Purpose** | Claude Code configuration isolation | Project file isolation |
 | **Path** | `~/.moai/claude-profiles/<name>/` | `~/.moai/worktrees/<project>/<spec>/` |
-| **Use Case** | Manage different environment settings | Workspace for SPEC development |
+| **Use** | Managing different environment configs | Workspaces for SPEC development |
 
 ---
 
 ## moai glm
 
-Switch to GLM backend or update API key.
+Switches to the GLM backend or updates the API key.
 
 ```bash
 moai glm [OPTIONS] [API_KEY]
@@ -262,7 +262,7 @@ moai glm [OPTIONS] [API_KEY]
 ### Options
 
 | Option | Description |
-|--------|-------------|
+|------|------|
 | `-p, --profile TEXT` | Profile name to use |
 | `--team` | Start GLM Worker mode (Opus leader + GLM-5 teammates) |
 | `--help` | Show help |
@@ -270,63 +270,63 @@ moai glm [OPTIONS] [API_KEY]
 ### Usage
 
 ```bash
-# Switch to GLM backend
+# Switch to the GLM backend
 moai glm
 
-# Update API key
+# Update the API key
 moai glm <api-key>
 
-# Specify profile
+# Run with a specific profile
 moai glm -p work
 
-# Start GLM Worker mode (cost-effective team development)
+# Start GLM Worker mode (cost-efficient team development)
 moai glm --team
 
-# Get API key from z.ai
+# Get an API key from z.ai
 # https://z.ai/subscribe?ic=1NDV03BGWU
 ```
 
 ### GLM Worker Mode
 
-Using the `--team` option starts the cost-effective GLM Worker mode:
+The `--team` option starts the cost-efficient GLM Worker mode:
 
-- **Configuration**: Opus model leader agent + GLM-5 model teammate agents
-- **Benefit**: 70% cost savings compared to Claude, equivalent performance
-- **Use Case**: Optimize token costs for large-scale team-based development
+- **Composition**: a leader agent on the Opus model + teammate agents on the GLM-5 model
+- **Advantage**: 70% cost savings vs Claude, comparable performance
+- **Use**: token-cost optimization for large team-based development
 
-### Profile-based Login (v2.7.0+)
+### Profile-Based Configuration (v2.7.0+)
 
-`moai glm`, `moai cc`, and `moai cg` are now true login commands with persistent profile support. Profiles are stored at `~/.moai/claude-profiles/`.
+`moai glm`, `moai cc`, and `moai cg` are now login commands supporting persistent profiles. Profiles are stored in `~/.moai/claude-profiles/`.
 
-- Interactive profile setup wizard on first run
+- An interactive profile setup wizard runs on first use
 - Profiles persist across sessions
-- Switching from `moai glm` to `moai cg` automatically resets GLM settings
+- GLM settings are reset automatically when switching from `moai glm` to `moai cg`
 
 ---
 
 ## moai claude
 
-Switch to Claude backend (Anthropic API).
+Switches to the Claude backend (Anthropic API).
 
 ```bash
 $ moai claude [OPTIONS]
-# Or shorthand
+# or the short form
 $ moai cc [OPTIONS]
 ```
 
 ### Options
 
 | Option | Description |
-|--------|-------------|
+|------|------|
 | `-p, --profile TEXT` | Profile name to use |
 
 ### Usage
 
 ```bash
-# Switch to Claude backend
+# Switch to the Claude backend
 moai cc
 
-# Use specific profile
+# Run with a specific profile
 moai cc -p work
 ```
 
@@ -334,7 +334,7 @@ moai cc -p work
 
 ## moai cg
 
-Enable CG Mode (Claude + GLM Hybrid). The leader uses Claude API while teammates use GLM API via tmux session-level environment isolation.
+Activates CG mode (Claude + GLM hybrid). The leader uses the Claude API and teammates use the GLM API, implemented via tmux session-level environment-variable isolation.
 
 ```bash
 moai cg [OPTIONS]
@@ -343,72 +343,72 @@ moai cg [OPTIONS]
 ### Options
 
 | Option | Description |
-|--------|-------------|
+|------|------|
 | `-p, --profile TEXT` | Profile name to use |
 
 ### How It Works
 
-1. Injects GLM config into tmux session environment
-2. Removes GLM env from settings — leader pane uses Claude API
-3. Sets `CLAUDE_CODE_TEAMMATE_DISPLAY=tmux` — teammates inherit GLM env in new panes
+1. Injects the GLM settings into the tmux session environment
+2. Removes the GLM env from settings — the leader pane uses the Claude API
+3. Sets `CLAUDE_CODE_TEAMMATE_DISPLAY=tmux` — teammates inherit the GLM env in new panes
 
 ### Usage
 
 ```bash
-# 1. Save GLM API key (once)
+# 1. Save the GLM API key (first time only)
 moai glm sk-your-glm-api-key
 
-# 2. Enable CG mode (must be in tmux)
+# 2. Activate CG mode (run inside tmux)
 moai cg
 
-# 3. Start Claude Code in the SAME pane
+# 3. Start Claude Code in the same pane
 claude
 
-# 4. Run team workflow
-/moai --team "your task description"
+# 4. Run the team workflow
+/moai --team "task description"
 
-# Use specific profile
+# Run with a specific profile
 moai cg -p team-project
 ```
 
-### Important Notes
+### Caveats
 
 | Item | Description |
-|------|-------------|
-| **tmux Required** | Must run inside a tmux session. Set VS Code terminal default to tmux for convenience. |
-| **Leader Start Location** | MUST start Claude Code in the **same pane** where `moai cg` was run. |
-| **Session End** | session_end hook automatically clears tmux session env. |
+|------|------|
+| **tmux required** | Must run inside a tmux session. Setting VS Code's default terminal to tmux is convenient. |
+| **Leader start location** | Start Claude Code in the **same pane** where you ran `moai cg`. |
+| **Session end** | The session_end hook automatically cleans up the tmux session environment. |
 
 ### Mode Comparison
 
-| Command | Leader | Workers | tmux Required | Cost Savings | Use Case |
-|---------|--------|---------|---------------|--------------|----------|
-| `moai cc` | Claude | Claude | No | - | Maximum quality |
+| Command | Leader | Workers | tmux required | Cost savings | Use |
+|--------|------|------|-----------|-----------|------|
+| `moai cc` | Claude | Claude | No | - | Highest quality |
 | `moai glm` | GLM | GLM | Recommended | ~70% | Cost optimization |
 | `moai cg` | Claude | GLM | **Required** | **~60%** | Quality + cost balance |
 
 ### Display Modes
 
-| Mode | Description | Communication | Leader/Worker Separation |
-|------|-------------|---------------|--------------------------|
-| `in-process` | Default mode | SendMessage | Same env |
-| `tmux` | Split-pane display | SendMessage | Session env isolation |
+| Mode | Description | Communication | Leader/worker separation |
+|------|------|------|----------------|
+| `in-process` | Default mode | SendMessage | Same environment |
+| `tmux` | Split-pane display | SendMessage | Session-env isolation |
 
 {{< callout type="warning" >}}
-**New in v2.7.1**: CG mode is now the **default** team mode. When using `--team`, the system runs in CG mode automatically.
+**Changed in v2.7.1**: CG mode is now the **default** team mode. Using `--team` runs in CG mode without extra configuration.
 {{< /callout >}}
 
 ---
 
 ## moai status
 
-Check project status.
+Checks the project status.
 
 ```bash
 moai status
 ```
 
-**Output Example:**
+**Example output:**
 
 ```
 ╭────── Project Status ──────╮
@@ -420,18 +420,18 @@ moai status
 ╰────────────────────────────╯
 ```
 
-**Output Information:**
-- **Mode**: Work mode (personal, team, manual)
-- **Locale**: Language setting
-- **SPECs**: Number of active SPECs
-- **Branch**: Current branch
-- **Git Status**: Git status (Clean, Modified)
+**Output fields:**
+- **Mode**: working mode (personal, team, manual)
+- **Locale**: language setting
+- **SPECs**: number of active SPECs
+- **Branch**: current branch
+- **Git Status**: Git state (Clean, Modified)
 
 ---
 
 ## moai inventory
 
-Query the integrated read-only inventory of active sessions, worktrees, and harnesses.
+Queries the read-only unified inventory of active sessions, worktrees, and harnesses.
 
 ```bash
 moai inventory [OPTIONS]
@@ -440,31 +440,31 @@ moai inventory [OPTIONS]
 ### Options
 
 | Option | Description |
-|--------|-------------|
-| `--json` | Output structured JSON format |
+|------|------|
+| `--json` | Structured JSON output |
 
 ### Usage
 
 ```bash
-# View basic inventory
+# View the basic inventory
 moai inventory
 
 # Query in JSON format (for programmatic use)
 moai inventory --json
 ```
 
-**Output Information:**
-- **Active Sessions**: Currently running Claude Code sessions
-- **Worktree**: Active Git worktrees for parallel development
-- **Harnesses**: Registered development harnesses
+**Output info:**
+- **Active sessions**: currently running Claude Code sessions
+- **Worktrees**: active Git worktrees for parallel development
+- **Harnesses**: registered development harnesses
 
-For detailed information, see the [Inventory Management](./inventory) page.
+For details, see the [Inventory Management](./inventory) page.
 
 ---
 
 ## moai worktree
 
-Manage Git worktrees for parallel SPEC development.
+Manages Git worktrees for parallel SPEC development.
 
 ```bash
 moai worktree [OPTIONS] COMMAND [ARGS]...
@@ -473,19 +473,19 @@ moai worktree [OPTIONS] COMMAND [ARGS]...
 ### Subcommands
 
 | Command | Description |
-|---------|-------------|
-| `moai worktree new` | Create new worktree |
+|--------|------|
+| `moai worktree new` | Create a new worktree |
 | `moai worktree list` | List active worktrees |
 | `moai worktree switch` | Switch to a worktree |
-| `moai worktree go` | Navigate to worktree directory |
+| `moai worktree go` | Move to a worktree directory |
 | `moai worktree sync` | Sync with upstream |
-| `moai worktree remove` | Remove worktree |
+| `moai worktree remove` | Remove a worktree |
 | `moai worktree clean` | Clean up stale worktrees |
-| `moai worktree recover` | Recover from existing directory |
+| `moai worktree recover` | Recover from an existing directory |
 
 ### moai worktree new
 
-Create a new worktree.
+Creates a new worktree.
 
 ```bash
 moai worktree new [OPTIONS] SPEC_ID
@@ -494,31 +494,31 @@ moai worktree new [OPTIONS] SPEC_ID
 #### Options
 
 | Option | Description |
-|--------|-------------|
-| `-b, --branch TEXT` | User branch name |
+|------|------|
+| `-b, --branch TEXT` | Custom branch name |
 | `--base TEXT` | Base branch (default: main) |
 | `--repo PATH` | Repository path |
 | `--worktree-root PATH` | Worktree root path |
-| `-f, --force` | Force create even if exists |
-| `--glm` | Use GLM LLM settings |
-| `--llm-config PATH` | User LLM config file path |
+| `-f, --force` | Force creation even if it exists |
+| `--glm` | Use the GLM LLM configuration |
+| `--llm-config PATH` | Path to a custom LLM configuration file |
 
 #### Examples
 
 ```bash
-# Create worktree for SPEC-001
+# Create a worktree for SPEC-001
 moai worktree new SPEC-001
 
-# Specify user branch
+# Specify a custom branch
 moai worktree new SPEC-001 --branch feature-auth
 
-# Change base branch
+# Change the base branch
 moai worktree new SPEC-001 --base develop
 ```
 
 ### moai worktree list
 
-List active worktrees.
+Lists the active worktrees.
 
 ```bash
 moai worktree list [OPTIONS]
@@ -527,14 +527,14 @@ moai worktree list [OPTIONS]
 #### Options
 
 | Option | Description |
-|--------|-------------|
+|------|------|
 | `--format [table\|json]` | Output format |
 | `--repo PATH` | Repository path |
 | `--worktree-root PATH` | Worktree root path |
 
 ### moai worktree remove
 
-Remove a worktree.
+Removes a worktree.
 
 ```bash
 moai worktree remove [OPTIONS] SPEC_ID
@@ -543,28 +543,28 @@ moai worktree remove [OPTIONS] SPEC_ID
 #### Options
 
 | Option | Description |
-|--------|-------------|
-| `-f, --force` | Force remove uncommitted changes |
+|------|------|
+| `-f, --force` | Force removal with uncommitted changes |
 | `--repo PATH` | Repository path |
 | `--worktree-root PATH` | Worktree root path |
 
-### worktree Workflow
+### The Worktree Workflow
 
 ```mermaid
 flowchart TD
-    A[moai worktree new] --> B[Create Worktree]
-    B --> C[Development]
+    A[moai worktree new] --> B[Worktree created]
+    B --> C[Development proceeds]
     C --> D[moai worktree done]
-    D --> E[Merge to main branch]
+    D --> E[Merged into the base branch]
     E --> F[moai worktree clean]
-    F --> G[Remove Worktree]
+    F --> G[Worktree removed]
 ```
 
 ---
 
 ## moai hook
 
-Claude Code hook dispatcher for MoAI-ADK events.
+The Claude Code hook dispatcher for MoAI-ADK events.
 
 ```bash
 moai hook <event>
@@ -573,20 +573,20 @@ moai hook <event>
 ### Supported Events (16)
 
 | Event | Description |
-|-------|-------------|
+|-------|------|
 | `PreToolUse` | Before tool execution |
 | `PostToolUse` | After tool execution |
 | `Notification` | System notifications |
 | `Stop` | Session end |
-| `SubagentStop` | Subagent stop |
+| `SubagentStop` | Subagent termination |
 | `UserPromptSubmit` | User prompt submission |
 | `PreCompact` | Before context compaction |
 | `PostCompact` | After context compaction |
-| `PermissionRequest` | Permission request |
-| `PostToolFailure` | After tool execution failure |
+| `PermissionRequest` | Permission requests |
+| `PostToolFailure` | After a tool execution failure |
 | `SubagentStart` | Subagent start |
 | `TeammateIdle` | Teammate idle |
-| `TaskCompleted` | Task completed |
+| `TaskCompleted` | Task completion |
 | `WorktreeCreate` | Worktree creation |
 | `WorktreeRemove` | Worktree removal |
 | `model` | Model selection |
@@ -594,13 +594,13 @@ moai hook <event>
 ### Examples
 
 ```bash
-# Run PreToolUse hook
+# Run the PreToolUse hook
 moai hook PreToolUse
 
-# Run PostToolUse hook
+# Run the PostToolUse hook
 moai hook PostToolUse
 
-# Run UserPromptSubmit hook
+# User prompt submission hook
 moai hook UserPromptSubmit
 ```
 
@@ -608,23 +608,23 @@ moai hook UserPromptSubmit
 
 ## Statusline v3
 
-MoAI Statusline v3 displays real-time API usage in the Claude Code statusline.
+MoAI Statusline v3 displays real-time API usage in the Claude Code status line.
 
-### v3 New Features
+### New in v3
 
 | Feature | Description |
-|---------|-------------|
-| **RGB Gradient Colors** | Smooth color transitions based on usage ratio |
-| **5H/7D API Usage** | Display accumulated usage over 5 hours and 7 days |
-| **rate_limits Field Parsing** | Accurate limit information from Claude API responses |
+|------|------|
+| **RGB gradient colors** | Smooth color transitions by usage ratio |
+| **5H/7D API usage** | 5-hour / 7-day cumulative usage display |
+| **rate_limits field parsing** | Accurate limit info from Claude API responses |
 
 ### Color Gradient
 
-Colors transition smoothly based on usage ratio:
+Colors transition smoothly with the usage ratio:
 
 - **0-30%**: Green → Yellow (safe)
 - **31-70%**: Yellow → Orange (caution)
-- **71-100%**: Orange → Red (near limit)
+- **71-100%**: Orange → Red (near the limit)
 
 ### API Usage Display
 
@@ -632,13 +632,13 @@ Colors transition smoothly based on usage ratio:
 5H: 45K/200K (22%) | 7D: 180K/500K (36%)
 ```
 
-- **5H**: Usage over the last 5 hours
-- **7D**: Usage over the last 7 days
-- **Ratio**: Current usage as percentage of quota
+- **5H**: usage over the last 5 hours
+- **7D**: usage over the last 7 days
+- **Ratio**: usage relative to the current quota
 
-### Configuration
+### How to Configure
 
-Set up Statusline in the profile setup wizard (`moai profile setup`):
+Select the following options in the profile setup wizard (`moai profile setup`):
 
 1. **statusline_mode**: `off`, `basic`, `full`
 2. **statusline_theme**: `auto`, `light`, `dark`, `monokai`, `nord`, `dracula`
@@ -646,12 +646,12 @@ Set up Statusline in the profile setup wizard (`moai profile setup`):
 ### Usage
 
 ```bash
-# Configure Statusline during profile creation
+# Configure the statusline when creating a profile
 moai profile setup
-# → Choose statusline_mode: full
-# → Choose statusline_theme: auto
+# → select statusline_mode: full
+# → select statusline_theme: auto
 
-# Run with configured profile
+# Run with the profile
 moai cc -p my-profile
 ```
 
@@ -659,7 +659,7 @@ moai cc -p my-profile
 
 ## Task Metrics Logging
 
-MoAI-ADK automatically captures Task tool metrics during development sessions.
+MoAI-ADK automatically captures Task-tool metrics during development sessions.
 
 ### Log File
 
@@ -669,64 +669,65 @@ MoAI-ADK automatically captures Task tool metrics during development sessions.
 ### Captured Metrics
 
 | Metric | Description |
-|--------|-------------|
-| Token usage | Input/output token count |
-| Tool calls | List of tools used and call count |
+|--------|------|
+| Token usage | Input/output token counts |
+| Tool calls | List of tools used and call counts |
 | Duration | Task execution time |
 | Agent type | Type of agent executed |
 
-### Usage
+### Uses
 
 - Session analysis and performance optimization
 - Agent efficiency analysis
-- Token consumption tracking and cost management
+- Token-consumption tracking and cost management
 
-The PostToolUse hook automatically logs metrics when a Task tool completes.
+The PostToolUse hook logs metrics automatically when the Task tool completes.
 
 ---
 
-## Model Policy Settings
+## Model Policy Configuration
 
-MoAI-ADK assigns optimal AI models to agents based on your Claude Code subscription plan.
+MoAI-ADK assigns the optimal AI model to each agent according to your Claude Code subscription plan — the starting point of tokenomics. Heavier-reasoning phases like planning and auditing get the top models; repetitive work gets lightweight models.
 
 ### Policy Tiers
 
-| Policy | Plan | 🟣 Opus | 🔵 Sonnet | 🟡 Haiku |
-|--------|------|---------|-----------|----------|
-| **High** | Max $200/mo | 23 | 1 | 4 |
-| **Medium** | Max $100/mo | 4 | 19 | 5 |
-| **Low** | Plus $20/mo | 0 | 12 | 16 |
+| Policy | Plan | Characteristics |
+|------|--------|------|
+| **High** | Max $200/month | Highest quality — Opus assigned to planning and audits, maximum throughput |
+| **Medium** | Max $100/month | Balance of quality and cost |
+| **Low** | Plus $20/month | Economical, no Opus — Sonnet-centric allocation |
 
-### Configuration
+### How to Configure
 
 ```bash
 # During project initialization (interactive wizard)
 moai init my-project
 
-# Reconfigure existing project
+# Reconfigure an existing project
 moai update -c
 
 # Manual configuration (.moai/config/sections/user.yaml)
 # model_policy: high | medium | low
 ```
 
-> **Note**: The default policy is `High`. After running `moai update`, reconfigure settings with `moai update -c`.
+> **Note**: the default policy is `High`. After running `moai update`, configure the setting with `moai update -c`.
 
 ### 1M Context Models
 
-When selecting the default model in profile setup, you can choose from 1M context models:
+When selecting the **default model** during profile setup, you can choose 1M context variants. The `[1m]` suffix is not a separate model — it is Claude Code's native context-window modifier:
 
-- `claude-opus-4-6 1M context`
-- `claude-sonnet-4-6 1M context`
+- `opus` / `opus[1m]`
+- `sonnet` / `sonnet[1m]`
+- `fable` / `fable[1m]`
 
-These models are ideal for analyzing large codebases or working with lengthy documents.
+These variants suit large-codebase analysis and long-document work.
 
 ---
 
 ## Environment Variables
 
 | Variable | Description |
-|----------|-------------|
+|------|------|
 | `MOAI_API_KEY` | API key (Claude/GLM) |
 | `MOAI_MODE` | Execution mode (development/production) |
 | `MOAI_LOCALE` | Language setting (ko/en/ja/zh) |

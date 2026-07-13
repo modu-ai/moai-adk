@@ -5,6 +5,10 @@ weight: 40
 draft: false
 ---
 
+`.moai/project/db/`는 프로젝트 데이터베이스에 관한 단일 참조점입니다.
+자동 생성 파일 3개와 사용자 편집 템플릿 4개로 나뉘며, 자동 생성분은
+`/moai db refresh`가 관리하고 사용자 편집분은 갱신 중에도 보호됩니다.
+
 ## 7개 파일 템플릿 세트
 
 `/moai db init` 실행 시 `.moai/project/db/` 디렉토리에 다음 7개 파일이 자동으로 생성됩니다:
@@ -58,7 +62,7 @@ draft: false
 | created_at | timestamp | NOT NULL | 생성 시간 |
 ```
 
-**[HARD] 자동 생성** — `/moai db refresh` 시 완전히 재생성됩니다.
+**자동 생성 파일** — `/moai db refresh` 시 완전히 재생성되므로 직접 수정하지 마세요.
 
 ### erd.mmd
 
@@ -81,7 +85,7 @@ erDiagram
     }
 ```
 
-**[HARD] 자동 생성** — `/moai db refresh` 시 완전히 재생성됩니다.
+**자동 생성 파일** — `/moai db refresh` 시 완전히 재생성되므로 직접 수정하지 마세요.
 
 ### migrations.md
 
@@ -103,7 +107,7 @@ erDiagram
 - `2024-02-01` — 004_add_status.sql — 상태 필드 추가
 ```
 
-**[HARD] 자동 생성** — `/moai db refresh` 시 완전히 재생성됩니다.
+**자동 생성 파일** — `/moai db refresh` 시 완전히 재생성되므로 직접 수정하지 마세요.
 
 ### rls-policies.md
 
@@ -129,7 +133,9 @@ Supabase, PostgreSQL 등에서 Row-Level Security(RLS) 정책을 정의합니다
 
 ### queries.md
 
-AI 에이전트가 참고하는 일반적인 쿼리 패턴들입니다.
+AI 에이전트가 참고하는 일반적인 쿼리 패턴들입니다. 에이전트가 매번 쿼리를
+처음부터 추론하는 대신 검증된 패턴을 재사용하므로, 품질과 토큰 비용 양쪽에
+이득이 됩니다.
 
 내용:
 
@@ -157,30 +163,16 @@ ORDER BY month DESC;
 
 프로젝트의 초기 데이터 또는 테스트 데이터 패턴입니다.
 
-구조:
-
-```markdown
-# 시드 데이터
-
-## 개발 환경
-
-### 기본 사용자
+구조 예시 — 개발 환경 섹션에는 기본 계정 목록을 JSON으로 정리합니다:
 
 ```json
-{
-  "email": "admin@example.com",
-  "role": "admin"
-},
-{
-  "email": "user@example.com",
-  "role": "user"
-}
+[
+  { "email": "admin@example.com", "role": "admin" },
+  { "email": "user@example.com", "role": "user" }
+]
 ```
-
-## 프로덕션
 
 프로덕션 시드 데이터는 별도 저장소에 보관합니다.
-```
 
 이 파일은 사용자 편집용이므로 자동 갱신 시 보호됩니다.
 
@@ -237,7 +229,7 @@ _TBD_: 프로젝트의 RLS 정책을 여기에 입력하세요.
 자동 갱신 시에도 유지됩니다.
 ```
 
-## 생성된 스키마.md의 예제
+## 생성된 schema.md의 예제
 
 초기화 후 schema.md는 다음과 같은 형태입니다:
 

@@ -4,7 +4,7 @@ weight: 78
 draft: false
 ---
 
-Claude Code와 moai-adk-go 통합을 위한 **커스텀 statusline 시스템**입니다. Claude Code v2.1.139부터 effort/thinking, v2.1.145부터 workspace.repo + pr 필드가 stdin JSON에 추가되어 풍부한 컨텍스트를 표시할 수 있습니다.
+Claude Code와 moai-adk-go 통합을 위한 **커스텀 statusline 시스템**입니다. 토크노믹스는 측정에서 시작합니다 — 컨텍스트 사용률(CW%), 프롬프트 캐시 적중률, rate limit 소진율을 터미널 하단에 상시 표시해, 토큰 운용 상태를 한눈에 읽을 수 있게 합니다. Claude Code v2.1.139부터 effort/thinking, v2.1.145부터 workspace.repo + pr 필드가 stdin JSON에 추가되어 풍부한 컨텍스트를 표시할 수 있습니다.
 
 > MoAI 워크플로우는 PR 중심입니다. 모든 SPEC은 plan-PR → run-PR → sync-PR 사이클을 생성하므로, statusline에 현재 PR 번호 + 리뷰 상태 + 컨텍스트 사용률 + handoff 권고를 즉시 노출하면 개발 효율이 크게 높아집니다.
 
@@ -38,7 +38,7 @@ internal/statusline/renderer.go (3-line v3 layout)
 
 ## Line 1 — Info (7 segments)
 
-### 🤖 Model
+### Model
 
 - **포맷**: `🤖 <model display name>`
 - **데이터 소스**: stdin `model.display_name` (또는 string shorthand)
@@ -46,7 +46,7 @@ internal/statusline/renderer.go (3-line v3 layout)
 - **숨김 조건**: `model` field 부재 또는 `data.Metrics.Model == ""`
 - **세그먼트 키**: `model`
 
-### 🧠 Effort / Thinking
+### Effort / Thinking
 
 - **포맷**: `🧠 <level>[·t]`
 - **데이터 소스**: stdin `effort.level` + `thinking.enabled` (Claude Code v2.1.139+)
@@ -59,7 +59,9 @@ internal/statusline/renderer.go (3-line v3 layout)
 - **숨김 조건**: `effort` + `thinking` 모두 부재 (effort.level 빈 문자열 포함)
 - **세그먼트 키**: `effort_thinking`
 
-### 💾 캐시 히트율
+지금 세션이 어떤 추론 깊이로 돌고 있는지를 상시 확인할 수 있다는 점에서, 이 세그먼트는 모델 정책이 실제로 적용되고 있는지 검증하는 창이기도 합니다.
+
+### 캐시 히트율
 
 - **포맷**: `💾 <N>%` (N = cache_read / (cache_read + cache_creation) × 100, 소수점 버림)
 - **데이터 소스**: stdin `current_usage.cache_read_tokens` + `current_usage.cache_creation_tokens`
@@ -67,9 +69,11 @@ internal/statusline/renderer.go (3-line v3 layout)
 - **숨김 조건**: `current_usage` 부재 · `cache_creation == 0` (fresh cache write 없음) · 둘 다 0 — 값을 지어내지 않고 조용히 생략 (graceful degradation)
 - **토글**: `cache_hit: false` in statusline.yaml → 숨김 (default-on)
 - **세그먼트 키**: `cache_hit`
-- **참고**: 동일 💾 이모지가 Line 3 Git Status(`💾 +N M? ?`)에도 사용 — 본 세그먼트는 Line 1에 위치하며 백분율 포맷으로 구분. prompt-cache 재사용률 모니터링 (SPEC-TOKEN-EFFICIENCY-001 P0-2)
+- **참고**: 동일 `💾` 이모지가 Line 3 Git Status(`💾 +N M? ?`)에도 사용 — 본 세그먼트는 Line 1에 위치하며 백분율 포맷으로 구분. prompt-cache 재사용률 모니터링 (SPEC-TOKEN-EFFICIENCY-001 P0-2)
 
-### 🔅 Claude Code 버전
+캐시 히트율은 컨텍스트 다이어트의 효과 측정기입니다 — 항시 로드 지침을 줄이면 이 숫자가 올라가는 것을 즉시 볼 수 있습니다.
+
+### Claude Code 버전
 
 - **포맷**: `🔅 v<version>` (default) 또는 `🔅 cc v<version>` (full mode)
 - **데이터 소스**: stdin `version` 문자열
@@ -77,7 +81,7 @@ internal/statusline/renderer.go (3-line v3 layout)
 - **숨김 조건**: `version` 빈 문자열
 - **세그먼트 키**: `claude_version`
 
-### 🗿 MoAI 버전
+### MoAI 버전
 
 - **포맷**: `🗿 v<current>` 또는 업데이트 가능 시 `🗿 v<current> -> 🗿 v<latest>`
 - **데이터 소스**: `.moai/config/sections/system.yaml` `moai.version` + 백그라운드 update checker 결과
@@ -86,14 +90,14 @@ internal/statusline/renderer.go (3-line v3 layout)
   - `🗿 v2.18.0 -> 🗿 v2.20.0-rc1` (업데이트 권고)
 - **세그먼트 키**: `moai_version`
 
-### ⏳ 세션 시간
+### 세션 시간
 
 - **포맷**: `⏳ <X>h <Y>m` (≥1h) / `⏳ <X>m` (<1h) / `⏳ <X>d <Y>h` (≥24h)
 - **데이터 소스**: stdin `cost.total_duration_ms`
 - **예시**: `⏳ 4h 52m`, `⏳ 35m`, `⏳ 1d 3h`
 - **세그먼트 키**: `session_time`
 
-### 💬 Output Style
+### Output Style
 
 - **포맷**: `💬 <style name>`
 - **데이터 소스**: stdin `output_style.name`
@@ -103,25 +107,25 @@ internal/statusline/renderer.go (3-line v3 layout)
 
 ## Line 2 — Usage Bars (3 segments)
 
-### 🪫/🔋 CW (Context Window)
+### CW (Context Window)
 
 - **포맷**: `<icon> CW: <bar> <pct>% [(⚠️/clear)]`
 - **데이터 소스**:
   - bar: `context_window.context_window_size` × auto-compact threshold (default 85%) → scaled budget
   - 퍼센티지: `context_window.used_percentage` (사전 계산) 또는 `current_usage` tokens 합산
-  - (⚠️/clear) 활성 조건: `shouldShowHandoffGuide(data) == true`
+  - `(⚠️/clear)` 활성 조건: `shouldShowHandoffGuide(data) == true`
 - **이모지**:
-  - 🔋 (정상, <50% scaled)
-  - 🪫 (경고, 50-79% scaled)
-  - 🪫 (위험, ≥80% scaled, 색상 추가)
-- **(⚠️/clear) handoff suffix**:
+  - `🔋` (정상, <50% scaled)
+  - `🪫` (경고, 50-79% scaled)
+  - `🪫` (위험, ≥80% scaled, 색상 추가)
+- **`(⚠️/clear)` handoff suffix**:
   - 1M context 모델 (Opus 4.7): used_percentage ≥50% (raw context_window_size 기준)
   - 200K context 모델 (Sonnet/Haiku): used_percentage ≥90%
   - 의미: 다음 turn 시작 전에 `/clear` 권고 + paste-ready resume message 활용
 - **예시**: `🪫 CW: ███████░░░ 72% (⚠️/clear)`
 - **세그먼트 키**: `context`
 
-### 🔋 5H (5시간 rolling rate limit)
+### 5H (5시간 rolling rate limit)
 
 - **포맷**: `🔋 5H: <bar> <pct>% [(<reset>)]`
 - **데이터 소스**: stdin `rate_limits.five_hour.{used_percentage, resets_at}`
@@ -133,7 +137,7 @@ internal/statusline/renderer.go (3-line v3 layout)
 - **데이터 부재**: `rate_limits.five_hour == null` → bar 0%, reset `(rolling)`
 - **세그먼트 키**: `usage_5h`
 
-### 🔋 7D (7일 rolling rate limit)
+### 7D (7일 rolling rate limit)
 
 - **포맷**: `🔋 7D: <bar> <pct>% [(<reset>)]`
 - **데이터 소스**: stdin `rate_limits.seven_day.{used_percentage, resets_at}`
@@ -141,9 +145,11 @@ internal/statusline/renderer.go (3-line v3 layout)
 - **예시**: `🔋 7D: █░░░░░░░░░ 13% (May 28)`
 - **세그먼트 키**: `usage_7d`
 
+구독 요금제 사용자에게 5H/7D bar는 사실상 예산 게이지입니다 — rate limit 이 소진되기 전에 무거운 작업을 배치할지, CG 모드로 GLM 워커에 넘길지를 이 두 bar를 보고 판단할 수 있습니다.
+
 ## Line 3 — Git / PR (5 segments)
 
-### 📁 Directory
+### Directory
 
 - **포맷**: `📁 <directory name>`
 - **데이터 소스**: stdin `workspace.project_dir` (basename) 또는 `cwd`
@@ -151,7 +157,7 @@ internal/statusline/renderer.go (3-line v3 layout)
 - **숨김 조건**: `data.Directory` 빈 문자열
 - **세그먼트 키**: `directory`
 
-### 🔀 Repo + Branch (통합 세그먼트)
+### Repo + Branch (통합 세그먼트)
 
 - **포맷**: `🔀 <owner>/<name> (🅱️ <branch>[ ↑N][ ↓N][ +N])`
 - **데이터 소스**:
@@ -170,16 +176,16 @@ internal/statusline/renderer.go (3-line v3 layout)
 - **Worktree 모드**: `worktree` segment 활성 시 branch에 `[WT] ` prefix
 - **세그먼트 키**: `git_branch` (combined)
 
-### 💾 Git Status
+### Git Status
 
 - **포맷**: `💾 +<staged> M<modified> ?<untracked>`
 - **데이터 소스**: 로컬 git `git status --porcelain` 파싱
 - **예시**: `💾 +0 M1 ?1` (staged 0, modified 1, untracked 1)
 - **숨김 조건**: git 미가용
-- **참고**: 이전 mailbox 4종 emoji (📬/📫/📪/📭) 폐기, 통일된 💾 사용
+- **참고**: 이전 mailbox 4종 emoji (`📬`/`📫`/`📪`/`📭`) 폐기, 통일된 `💾` 사용
 - **세그먼트 키**: `git_status`
 
-### 📋 Task (활성 SPEC workflow)
+### Task (활성 SPEC workflow)
 
 - **포맷**: `📋 [<command> <SPEC-ID>-<stage>]`
 - **데이터 소스**: `~/.moai/state/last-session-state.json` `active_task` 필드 (해당 파일 작성 시점에만 노출)
@@ -187,7 +193,7 @@ internal/statusline/renderer.go (3-line v3 layout)
 - **숨김 조건**: 파일 부재 또는 `active_task` nil → segment 숨김
 - **세그먼트 키**: `task` (opt-in default off)
 
-### 💌 PR (활성 GitHub Pull Request)
+### PR (활성 GitHub Pull Request)
 
 - **포맷**: `💌 PR #<number> (⌥<review_state>)` (state 있을 때) / `💌 PR #<number>` (state 빈 문자열)
 - **데이터 소스**: stdin `pr.{number, url, review_state}` (Claude Code v2.1.146+)
@@ -214,7 +220,7 @@ internal/statusline/renderer.go (3-line v3 layout)
 
 ### 기본 구조
 
-`.moai/config/sections/statusline.yaml`에서 segment 활성화를 관리합니다:
+`.moai/config/sections/statusline.yaml`에서 segment 활성화를 관리합니다.
 
 ```yaml
 statusline:
@@ -246,23 +252,23 @@ statusline:
 
 | 세그먼트 | 라인 | 기본 활성 | stdin field |
 |---------|------|----------|-------------|
-| `model` | L1 | ✅ | `model.display_name` |
-| `effort_thinking` | L1 | ✅ | `effort.level` + `thinking.enabled` |
-| `claude_version` | L1 | ✅ | `version` |
-| `moai_version` | L1 | ✅ | (로컬 config) |
-| `session_time` | L1 | ✅ | `cost.total_duration_ms` |
-| `output_style` | L1 | ✅ | `output_style.name` |
-| `context` | L2 | ✅ | `context_window.*` |
-| `usage_5h` | L2 | ✅ | `rate_limits.five_hour.*` |
-| `usage_7d` | L2 | ✅ | `rate_limits.seven_day.*` |
-| `directory` | L3 | ✅ | `workspace.project_dir` |
-| `git_branch` (combined) | L3 | ✅ | `workspace.repo.*` + local git |
-| `git_status` | L3 | ✅ | local git |
-| `task` | L3 | ⚠️ opt-in | `~/.moai/state/last-session-state.json` |
-| `pr` | L3 | ✅ (v2.20.0-rc1+) | `pr.*` (Claude Code v2.1.146+) |
-| `worktree` | L3 | ❌ opt-in | `workspace.git_worktree` |
+| `model` | L1 | ✓ | `model.display_name` |
+| `effort_thinking` | L1 | ✓ | `effort.level` + `thinking.enabled` |
+| `claude_version` | L1 | ✓ | `version` |
+| `moai_version` | L1 | ✓ | (로컬 config) |
+| `session_time` | L1 | ✓ | `cost.total_duration_ms` |
+| `output_style` | L1 | ✓ | `output_style.name` |
+| `context` | L2 | ✓ | `context_window.*` |
+| `usage_5h` | L2 | ✓ | `rate_limits.five_hour.*` |
+| `usage_7d` | L2 | ✓ | `rate_limits.seven_day.*` |
+| `directory` | L3 | ✓ | `workspace.project_dir` |
+| `git_branch` (combined) | L3 | ✓ | `workspace.repo.*` + local git |
+| `git_status` | L3 | ✓ | local git |
+| `task` | L3 | opt-in | `~/.moai/state/last-session-state.json` |
+| `pr` | L3 | ✓ (v2.20.0-rc1+) | `pr.*` (Claude Code v2.1.146+) |
+| `worktree` | L3 | ✗ opt-in | `workspace.git_worktree` |
 
-## Handoff Guide — (⚠️/clear) 권고 기준
+## Handoff Guide — `(⚠️/clear)` 권고 기준
 
 CW bar의 `(⚠️/clear)` suffix는 컨텍스트 사용량이 모델별 임계값을 넘으면 활성화됩니다. 이는 SSE stall 위험을 사전에 방지하고 paste-ready resume message 활용을 권장하는 시각적 마커입니다.
 
@@ -274,7 +280,8 @@ CW bar의 `(⚠️/clear)` suffix는 컨텍스트 사용량이 모델별 임계�
 
 > 임계값은 `internal/statusline/renderer.go shouldShowHandoffGuide()` 함수에서 강제됩니다. 이 임계값은 `.claude/rules/moai/workflow/context-window-management.md` HARD rule과 일치합니다.
 
-활성화 시 사용자 흐름:
+활성화 시 사용자 흐름은 다음과 같습니다.
+
 1. `(⚠️/clear)` marker 노출
 2. 진행 중인 작업을 `progress.md` 등에 저장
 3. orchestrator가 paste-ready resume message 생성 (session-handoff.md 6-block 포맷)
@@ -283,7 +290,7 @@ CW bar의 `(⚠️/clear)` suffix는 컨텍스트 사용량이 모델별 임계�
 
 ## stdin JSON 스키마 참조
 
-Claude Code가 statusline 스크립트로 전달하는 stdin JSON 전체 필드 목록은 [공식 docs Available data](https://code.claude.com/docs/en/statusline#available-data)를 참조하세요. moai-adk-go는 다음 필드를 활용합니다:
+Claude Code가 statusline 스크립트로 전달하는 stdin JSON 전체 필드 목록은 [공식 docs Available data](https://code.claude.com/docs/en/statusline#available-data)를 참조하세요. moai-adk-go는 다음 필드를 활용합니다.
 
 ```json
 {
@@ -348,7 +355,7 @@ Claude Code가 statusline 스크립트로 전달하는 stdin JSON 전체 필드 
 - 현재 branch에 OPEN PR이 있는지 확인: `gh pr view`
 - `statusline.yaml`에 `pr: false`로 명시되었는지 확인
 
-### (⚠️/clear) 표시 안 됨
+### `(⚠️/clear)` 표시 안 됨
 
 - 1M context 모델: used_percentage 50% 미만 → 정상 (아직 임계값 미달)
 - 200K context 모델: used_percentage 90% 미만 → 정상
@@ -374,4 +381,4 @@ Claude Code 2.1.169+는 세션의 작업 디렉터리를 **프롬프트 캐시�
 
 ## 관련 문서
 
-- [Settings JSON](/advanced/settings-json) — Claude Code `statusLine` 필드 설정
+- [Settings JSON](/ko/advanced/settings-json) — Claude Code `statusLine` 필드 설정

@@ -4,72 +4,72 @@ weight: 55
 draft: false
 ---
 
-# /moai harness
-
-Create and manage dynamic project-specific expert teams with Harness v4 Builder.
+Creates a project-specific dynamic expert team (harness) and manages the harness learning lifecycle.
 
 {{< callout type="info" >}}
-**Slash command**: Type `/moai harness <natural-language request>` in Claude Code to invoke this command directly.
+**Slash command**: In Claude Code, type `/moai:harness <natural-language request>` to run this command directly.
 {{< /callout >}}
 
 ## Overview
 
-`/moai harness` invokes MoAI-ADK's **Harness v4 Builder** to automatically generate project-specific expert teams.
+`/moai:harness` runs MoAI-ADK's **Harness v4 Builder** to automatically generate a dynamic expert team tailored to your project's requirements.
 
-### What is Harness v4 Builder?
+This command lets you experience v3's third pillar, the **Agentic Harness**, first-hand — a recursive structure in which a harness builds a harness. When your project has a domain the general-purpose agent catalog cannot cover (e.g. a specific DB migration procedure, or in-house API conventions), you can scaffold an expert team for that domain from a single natural-language sentence. The generated harness connects to the **recursive self-learning** subsystem — as usage observations accumulate, the harness produces its own improvement proposals, and the guidance evolves through a user-approval gate.
 
-Harness v4 Builder uses a Socratic interview-based 4-phase workflow (ANALYZE → PLAN → GENERATE → ACTIVATE) to compose your team.
+### What Is the Harness v4 Builder?
+
+The Harness v4 Builder composes teams through a Socratic-interview-based 4-phase workflow (ANALYZE → PLAN → GENERATE → ACTIVATE).
 
 | Phase | Description |
-|-------|-------------|
-| ANALYZE | Analyzes project structure, languages, existing agents inventory |
-| PLAN | Decides team size (3-5 members), role definitions, worktree isolation |
-| GENERATE | Creates `.claude/agents/harness/` agent files, `.moai/harness/manifest.json` |
-| ACTIVATE | Registers team and enables `/harness:<name>` command |
+|------|------|
+| ANALYZE | Analyzes the project structure, languages used, and existing agent inventory |
+| PLAN | Decides the required team size (3-5 members), each member's role, and whether to isolate via worktree |
+| GENERATE | Generates `.claude/agents/harness/` agent files and `.moai/harness/manifest.json` |
+| ACTIVATE | Registers the team and activates the `/harness:<name>` command |
 
-## Usage
+## How to Use
 
-### Step 1: Request Team Generation
+### Step 1: Request a team in natural language
 
 ```bash
-> /moai harness <natural-language request>
+> /moai:harness <natural-language request>
 ```
 
 **Example:**
 ```
-Create an expert team for our Go backend project.
-We need specialists for DB migration, REST API endpoints, and unit testing.
+Build an expert team for our Go backend project.
+We need a team covering DB migrations, REST API endpoints, and unit tests.
 ```
 
-### Step 2: Builder Auto-Processes 4-Phase
+### Step 2: The Builder handles it automatically
 
-Builder executes phases automatically:
+The Builder runs the 4 phases automatically:
 
-1. **ANALYZE**: Detects Go, PostgreSQL, REST API tech stack
-2. **PLAN**: Decides 3-person team (DB Engineer, API Developer, Test Engineer)
+1. **ANALYZE**: detects the Go, PostgreSQL, and REST API tech stack
+2. **PLAN**: decides on a 3-member team of DB Engineer, API Developer, Test Engineer
 3. **GENERATE**:
    - `.claude/agents/harness/db-engineer.md`
    - `.claude/agents/harness/api-developer.md`
    - `.claude/agents/harness/test-engineer.md`
-   - `.moai/harness/manifest.json`
-4. **ACTIVATE**: Registers `/harness:backend-team` command
+   - generates `.moai/harness/manifest.json`
+4. **ACTIVATE**: registers the `/harness:backend-team` command
 
-### Step 3: Use Generated Team
+### Step 3: Use the generated team
 
-Team is automatically used in all subsequent work:
+After creation, the team is used automatically in all work:
 
 ```bash
 /moai run SPEC-BACKEND-001
-/moai run --team SPEC-BACKEND-001    # Force team mode
+/moai run --team SPEC-BACKEND-001    # force team mode
 ```
 
-MoAI analyzes SPEC complexity and auto-delegates teammates in manifest phase order.
+MoAI analyzes the SPEC's complexity and automatically delegates to team members in the manifest's phase order.
 
 ## Harness Management Commands
 
 ### harness list
 
-View all generated harnesses:
+List all created harnesses:
 
 ```bash
 /harness list
@@ -77,21 +77,21 @@ View all generated harnesses:
 
 ### harness:<name> status
 
-Check specific harness details:
+Detailed information for a specific harness:
 
 ```bash
 /harness:backend-team status
 ```
 
-Output includes:
+Output information:
 - Team member list and roles
-- Model selection (inherit, haiku, sonnet, opus)
-- Optional worktree isolation settings
+- Models in use (inherit, haiku, sonnet, opus)
+- Optional worktree isolation setting
 - Manifest version and creation date
 
 ### harness:<name> edit
 
-Modify manifest.json and agent definitions:
+Edit the manifest.json and agent definitions:
 
 ```bash
 /harness:backend-team edit
@@ -99,13 +99,13 @@ Modify manifest.json and agent definitions:
 
 Editable items:
 - Add/remove team members
-- Preload skill list
+- Skill preload list
 - Worktree isolation policy
-- Role-specific prompts
+- Per-role prompts
 
 ### harness:<name> remove
 
-Delete harness and related files:
+Delete a harness and its associated files:
 
 ```bash
 /harness:backend-team remove
@@ -114,12 +114,42 @@ Delete harness and related files:
 Deleted items:
 - `.claude/agents/harness/` agent definitions
 - `.moai/harness/manifest.json`
-- Registered `/harness:<name>` command
-- Worktree isolation policies
+- The registered `/harness:<name>` command
+- The worktree isolation policy
+
+## The Harness Learning Lifecycle — Recursive Self-Learning
+
+A harness is not a static artifact that ends at creation. The `/moai harness` subcommands manage the lifecycle of the **learning subsystem**.
+
+| Command | Description |
+|--------|------|
+| `moai harness status` | Check learning status (observation count, patterns, proposals) |
+| `moai harness apply` | Apply proposals (must pass the user-approval gate) |
+| `moai harness rollback` | Roll back the most recent apply |
+| `moai harness disable` | Disable learning |
+| `moai harness list` (v4) | List all learned rules |
+| `moai harness edit` (v4) | Edit rules directly |
+| `moai harness remove` (v4) | Delete rules |
+| `moai harness doctor` (v4) | Diagnose the learning system |
+
+**The 4-tier learning ladder** — as observations accumulate, the learning stage climbs:
+
+| Tier | Observations | Behavior |
+|------|---------|------|
+| TierObservation | ≥1 | Simple recording |
+| TierHeuristic | ≥3 | Pattern recognition |
+| TierRule | ≥5 | Rule formation |
+| TierAutoUpdate | ≥10 | Automatic update (user approval required) |
+
+**Artifacts**: the `.moai/harness/` directory (usage-log.jsonl, learned-rules.yaml)
+
+{{< callout type="warning" >}}
+Automatic evolution is only ever applied under the **user-approval gate**. The evaluator and approval authority sit outside the evolution loop, and you can restore at any time with `moai harness rollback`.
+{{< /callout >}}
 
 ## Manifest Structure
 
-Harness v4 defines teams with **manifest.json**.
+Harness v4 defines team composition via **manifest.json**.
 
 ### manifest.json Example
 
@@ -137,7 +167,7 @@ Harness v4 defines teams with **manifest.json**.
       "teammates": [
         {
           "name": "architect",
-          "role": "API Architecture Specialist",
+          "role": "API architecture specialist",
           "model": "inherit",
           "skills": ["moai-foundation-core"]
         }
@@ -148,17 +178,17 @@ Harness v4 defines teams with **manifest.json**.
       "teammates": [
         {
           "name": "db-engineer",
-          "role": "DB Design and Migration",
+          "role": "DB design and migrations",
           "model": "inherit"
         },
         {
           "name": "api-developer",
-          "role": "REST API Endpoints",
+          "role": "REST API endpoints",
           "model": "inherit"
         },
         {
           "name": "test-engineer",
-          "role": "Unit Testing",
+          "role": "Unit tests",
           "model": "haiku"
         }
       ]
@@ -170,34 +200,36 @@ Harness v4 defines teams with **manifest.json**.
 ### Phase Fields
 
 | Field | Description |
-|-------|-------------|
+|------|------|
 | `name` | Phase name (`plan`, `run`, `sync`) |
-| `teammates` | Array of team members for this phase |
+| `teammates` | Array of team members participating in this phase |
 
 ### Teammate Fields
 
 | Field | Default | Description |
-|-------|---------|-------------|
-| `name` | Required | Team member unique identifier |
-| `role` | Required | Role description |
+|------|--------|------|
+| `name` | required | Unique identifier for the team member |
+| `role` | required | Description of the member's role |
 | `model` | `inherit` | Model choice (`inherit`, `haiku`, `sonnet`, `opus`) |
-| `skills` | `[]` | Skills to preload |
+| `skills` | `[]` | List of skills to preload |
+
+Being able to assign a different model per team member (the `model` field) is an extension of the tokenomics design — there is no reason to use the same model for a reasoning-heavy role like architecture decisions and a lightweight role like repetitive test writing.
 
 ## Worktree Isolation
 
 Harness v4 supports optional worktree isolation.
 
-### L1_optional (Default)
+### L1_optional (default)
 
 ```json
 "worktree_isolation": "L1_optional"
 ```
 
-Claude Code automatically creates L1 worktrees when parallel team members conflict.
+Claude Code automatically creates an L1 worktree when it detects conflicts between parallel team members.
 
-- **Optional**: Isolation applied only on conflict detection
-- **Automatic**: Runtime detects conflicts and creates worktrees
-- **Cost**: Increased memory during isolation
+- **Optional**: isolation applies only on conflict
+- **Automatic**: the runtime creates it automatically after conflict detection
+- **Cost**: memory increases with worktree isolation
 
 ### none
 
@@ -205,70 +237,70 @@ Claude Code automatically creates L1 worktrees when parallel team members confli
 "worktree_isolation": "none"
 ```
 
-All team members work in project root (minimum memory usage).
+All team members work in the project root (minimum memory use).
 
-## Team Delegation Workflow
+## The Team Delegation Workflow
 
-Once a harness is active, MoAI automatically uses the team.
+Once a harness is active, MoAI uses that team automatically.
 
-### Team Delegation on SPEC Execution
+### Team Delegation During SPEC Execution
 
 ```bash
 > /moai run SPEC-BACKEND-001
 ```
 
-**MoAI's automatic decision:**
-1. Estimates SPEC complexity (file count, code lines)
-2. Selects appropriate harness
-3. Delegates teammates in manifest phase order sequentially/parallel
+**MoAI's automatic judgment:**
+1. Estimate SPEC complexity (file count, lines of code)
+2. Select the appropriate harness
+3. Delegate to team members sequentially/in parallel following the manifest's phase order
 
 ### Phase-Based Delegation Example
 
 ```
 PLAN Phase:
-  → architect teammate designs architecture
+  → the architect member handles architecture design
 
 RUN Phase:
-  → db-engineer and api-developer in parallel
-  → test-engineer sequentially for testing
+  → db-engineer and api-developer delegated in parallel
+  → test-engineer delegated sequentially (tests)
 
 SYNC Phase:
-  → Documentation generation and PR (default manager-docs)
+  → doc generation and PR authoring (default manager-docs)
 ```
 
-## Power of Natural Language Requests
+## The Power of Natural-Language Requests
 
-Harness v4 Builder understands Socratic interviews.
+The Harness v4 Builder discovers requirements through a Socratic interview.
 
-### Effective Request Examples
+### Effective Request Example
 
 ```
 Our team is developing a Python FastAPI backend.
-We need a team that excels at API endpoints, data validation, and error handling.
+We need a team that is strong at API endpoints, data validation, and error handling.
 ```
 
-Builder automatically:
-- Detects Python, FastAPI, asyncio tech stack
-- Decides on 3-5 person team size
-- Specializes each teammate's focus areas
-- Preloads necessary skills
+The Builder automatically:
+- Detects the Python, FastAPI, asyncio tech stack
+- Decides on a team size of 3-5
+- Sets each member's area of specialization
+- Preloads the necessary skills
 
-### Builder Asks on Unclear Requests
+### The Builder Asks About Unclear Requests
 
 ```
-We need a team.
+I need a team.
 
-→ Builder: What's your project's primary tech? (languages, frameworks)
-→ Builder: What areas should the team focus on? (backend, frontend, full-stack)
-→ Builder: Any special expertise needed?
+→ Builder: What are the project's main technologies? (language, framework)
+→ Builder: What area should the team focus on? (backend, frontend, everything)
+→ Builder: Any particular expertise you need?
 ```
 
-## Related Documentation
+## Related Documents
 
-- [Harness v4 Builder Guide](/advanced/builder-agents) - 4-phase details
-- [Agent Guide](/advanced/agent-guide) - 8 core agents
-- [SPEC-based Development](/workflow-commands/moai-plan) - SPEC workflow overview
+- [Harness v4 Builder Guide](/advanced/builder-agents) - Builder 4-phase details
+- [Agent Guide](/advanced/agent-guide) - Understanding the 10-agent catalog
+- [SPEC-Based Development](/workflow-commands/moai-plan) - SPEC workflow overview
 
 {{< callout type="info" >}}
-**Tip**: Once you create a harness, it's automatically reused in all subsequent work. Use `/harness:team-name` to manage it anytime.
+**Tip**: Once you create a harness, that team is used automatically in all subsequent work. You can reuse it at any time with the `/harness:team-name` command.
 {{< /callout >}}

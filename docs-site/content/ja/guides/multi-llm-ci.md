@@ -1,45 +1,37 @@
 ---
-title: "マルチLLM CIガイド"
-description: "GitHub Actionsで複数のAIモデルによるコードレビューを自動化"
-date: 2026-04-27
+title: "Multi-LLM CI ガイド"
+description: "GitHub Actions で複数の AI モデルによるコードレビューを自動化"
 draft: false
 weight: 10
 ---
 
-# マルチLLM CIガイド
-
-MoAI-ADKのマルチLLM CI機能を使用して、GitHub Actionsで複数のLLMによるコードレビューを設定する方法を説明します。
+MoAI-ADK の Multi-LLM CI 機能で、GitHub Actions に複数の LLM コードレビューを
+設定する方法を案内します。レビュアーも 1 つのモデルに縛られる理由はありません —
+モデルごとに強みと単価が異なるため、PR レビューにもマルチ LLM 配分というトークノミクス
+の観点がそのまま適用されます。
 
 ## 概要
 
-### マルチLLM CIとは？
+### Multi-LLM CI とは?
 
-MoAI-ADKのマルチLLM CI機能は、GitHub Actionsで複数のAIモデルを同時にコードレビューを実行する統合CI/CDパイプラインを提供します。
+MoAI-ADK の Multi-LLM CI 機能は、GitHub Actions で複数の AI モデルによる同時コードレビューを行う統合 CI/CD パイプラインを提供します。
 
-### 対応LLM
+### サポートする LLM
 
-| LLM | プロバイダー | トリガー方法 | 特徴 |
-|-----|----------|-------------|------|
-| **Claude** | Anthropic | `/claude` コメント | Issue/PRレビュー、OAuth認証 |
-| **Codex** | OpenAI | PRオープン時自動 | ⚠️ プライベートリポジトリのみ |
-| **Gemini** | Google | PRオープン時自動 | API Key認証 |
-| **GLM** | Zhipu AI | PRオープン時自動 | トークン認証 |
+| LLM | 提供者 | トリガー方式 | 特徴 |
+|-----|--------|-------------|------|
+| **Claude** | Anthropic | `/claude` コメント | Issue/PR レビュー、OAuth 認証 |
+| **Codex** | OpenAI | PR open 自動 | プライベートリポジトリ専用 |
+| **Gemini** | Google | PR open 自動 | API Key 認証 |
+| **GLM** | Zhipu AI | PR open 自動 | トークン認証 |
 
-### ユーザーメメリット
-
-- **同時マルチLLMレビュー**: 1つのPRで複数のLLMのフィードバックを同時に取得
-- **統一管理**: `moai github` CLIによる一貫した設定管理
-- **セキュア認証**: 各LLM専用の認証処理
-- **言語検出**: プロジェクト言語を自動検出し適切なLLMを割り当て
-
-## はじめに
+## はじめる
 
 ### 前提条件
 
-- macOS (arm64) - v1.0基準
-- Go 1.23+
-- GitHubリポジトリ
-- 各LLMアカウントとAPIトークン
+- MoAI-ADK のインストール (macOS · Linux · Windows)
+- GitHub repository
+- 各 LLM のアカウントと API トークン
 
 ### 初期設定
 
@@ -47,13 +39,13 @@ MoAI-ADKのマルチLLM CI機能は、GitHub Actionsで複数のAIモデルを�
 moai github init
 ```
 
-このコマンドが実行する処理:
-- `.github/workflows/` ディレクトリ作成
-- workflowテンプレート配布
-- composite actions配布
-- GitHub Secrets設定ガイド
+このコマンドが行う作業:
+- `.github/workflows/` ディレクトリの作成
+- workflow テンプレートの配置
+- composite actions の配置
+- GitHub Secrets 設定ガイド
 
-### LLM認証設定
+### LLM 認証設定
 
 ```bash
 # Claude (OAuth)
@@ -69,17 +61,17 @@ moai github auth gemini
 moai github auth glm
 ```
 
-### GitHub Secrets設定
+### GitHub Secrets の設定
 
-各LLMに必要なSecrets:
-- `CLAUDE_CODE_OAUTH_TOKEN` - Claude OAuthトークン
-- `CODEX_AUTH_JSON` - Codex認証JSON (base64エンコード)
+各 LLM に必要な Secrets:
+- `CLAUDE_CODE_OAUTH_TOKEN` - Claude OAuth トークン
+- `CODEX_AUTH_JSON` - Codex 認証 JSON (base64 エンコード)
 - `GEMINI_API_KEY` - Gemini API Key
-- `GLM_API_KEY` - GLM APIトークン
+- `GLM_API_KEY` - GLM API Token
 
-### 最初のPRテスト
+### 最初の PR テスト
 
-PRを作成すると自動的にLLM Panelコメントが追加されます:
+PR を作成すると、自動で LLM Panel コメントが追加されます:
 
 ```markdown
 ## LLM Code Review Status
@@ -98,15 +90,15 @@ Trigger individual reviews:
 - Add `/glm` comment to trigger GLM
 ```
 
-## LLM認証設定
+## LLM 認証の設定
 
-### Claude設定
+### Claude の設定
 
-#### OAuthトークン発行
+#### OAuth トークンの発行
 
-1. [Claude Code](https://claude.ai/download) インストール
-2. ログイン後OAuthトークン発行
-3. `.claude/settings.local.json`に自動保存
+1. [Claude Code](https://claude.ai/download) をインストール
+2. ログイン後、OAuth トークンを発行
+3. `.claude/settings.local.json` に自動保存
 
 #### moai github auth claude
 
@@ -116,17 +108,17 @@ moai github auth claude
 
 **対話型設定プロセス:**
 ```
-Claude OAuthトークンが見つかりません。
-Claude Codeをインストールしてログインしますか？ (y/n): y
+Claude OAuth トークンが見つかりません。
+Claude Code をインストールしてログインしますか? (y/n): y
 
-[確認済み] OAuthトークンがsettings.local.jsonに保存されました。
-GitHub Secret: CLAUDE_CODE_OAUTH_TOKENに次の値を設定してください:
+[確認済み] OAuth トークンが settings.local.json に保存されました。
+GitHub Secret: CLAUDE_CODE_OAUTH_TOKEN に次の値を設定してください:
 <token-value>
 ```
 
-### Codex設定 (プライベートリポジトリのみ)
+### Codex の設定 (プライベートリポジトリ専用)
 
-#### 認証JSON作成
+#### 認証 JSON の作成
 
 ```json
 {
@@ -143,46 +135,46 @@ moai github auth codex
 
 **対話型設定:**
 ```
-OpenAI auth.jsonファイルパス: ~/.codex/auth.json
-ファイルを読み込みGitHub Secretを生成します...
-⚠️ Codexはプライベートリポジトリでのみ使用可能です (REQ-SEC-001)
+OpenAI auth.json ファイルのパス: ~/.codex/auth.json
+ファイルを読み取って GitHub Secret を生成します...
+注意: Codex はプライベートリポジトリでのみ使用可能です (REQ-SEC-001)
 
-生成されたSecret:
+生成された Secret:
 CODEX_AUTH_JSON=eyJ0...
 ```
 
-### Gemini設定
+### Gemini の設定
 
 ```bash
 moai github auth gemini
 ```
 
-API Key入力後、自動的にGitHub Secret設定ガイド提供。
+API Key の入力後、自動で GitHub Secret 設定ガイドを提供。
 
-### GLM設定
+### GLM の設定
 
 ```bash
 moai github auth glm
 ```
 
-GLMトークンパス (`~/.moai/.env.glm`) から自動読み取り。
+GLM トークンのパス (`~/.moai/.env.glm`) から自動で読み取り。
 
-## Workflowテンプレート解説
+## Workflow テンプレートの理解
 
 ### llm-panel.yml
 
-**トリガー:** PRオープン時
+**トリガー:** PR opened
 
-**役割:** 各LLMの状態を視覚的に表示するパネルコメント自動作成
+**役割:** 各 LLM の状態を視覚的に表示するパネルコメントの自動生成
 
-**備考:** `/claude`, `/codex`, `/gemini`, `/glm` コメントで個別レビュートトリガー
+**備考:** `/claude`、`/codex`、`/gemini`、`/glm` コメントで個別レビューをトリガー
 
 ### claude.yml / claude-code-review.yml
 
-- **claude.yml**: Issueトリガー (初期レビュー)
-- **claude-code-review.yml**: PRトリガー (変更点レビュー)
+- **claude.yml**: Issue トリガー (ドラフトレビュー)
+- **claude-code-review.yml**: PR トリガー (変更内容レビュー)
 
-**特徴:** `/claude` コメントのみでトリガー
+**特徴:** `/claude` コメントでのみトリガー
 
 ### codex-review.yml
 
@@ -206,31 +198,31 @@ private-guard:
 ### gemini-review.yml
 
 - 自動言語検出 (detect-language action)
-- PR synchronize時自動トリガー
+- PR synchronized 時に自動トリガー
 
 ### glm-review.yml
 
-- GLM専用環境設定 (setup-glm-env action)
-- 環境変数自動注入
+- GLM 専用の環境設定 (setup-glm-env action)
+- 環境変数の自動注入
 
 ### Composite Actions
 
 #### detect-language
 
-**入力:** repositoryルートパス
-**出力:** language環境変数 (`detected_language`)
+**入力:** repository ルートパス
+**出力:** language 環境変数 (`detected_language`)
 
-**対応言語:** Go, Python, TypeScript, JavaScript, Rust, Java, Kotlin, C#, Ruby, PHP, Elixir, C++, Scala, R, Flutter, Swift (16言語)
+**サポート言語:** Go、Python、TypeScript、JavaScript、Rust、Java、Kotlin、C#、Ruby、PHP、Elixir、C++、Scala、R、Flutter、Swift (16 言語)
 
 #### setup-glm-env
 
-GLMチームモードで必要な環境変数設定:
+GLM チームモードで必要な環境変数の設定:
 - `ANTHROPIC_AUTH_TOKEN` (GLM endpoint)
 - `ANTHROPIC_BASE_URL` (https://glm.modu-ai.kr)
 
 ## 高度な設定
 
-### github-actions.yamlカスタマイズ
+### github-actions.yaml のカスタマイズ
 
 #### 基本構造
 
@@ -252,7 +244,7 @@ llm_review:
       glm: "/glm"
 ```
 
-#### 言語別LLM割り当て
+#### 言語別 LLM 割り当て
 
 ```yaml
 language_rules:
@@ -267,7 +259,7 @@ language_rules:
     - claude
 ```
 
-### Runnerバージョン管理
+### Runner バージョン管理
 
 #### 自動アップデート確認
 
@@ -285,54 +277,54 @@ moai github status
 Run: moai doctor --fix
 ```
 
-#### Doctor統合
+#### Doctor 統合
 
 ```bash
 moai doctor
 ```
 
-runnerバージョンチェックがシステム診断に統合されます (T-27)。
+runner のバージョンチェックがシステム診断に統合されます。
 
 ## トラブルシューティング
 
-### PRコメントトリガーが動作しない場合
+### PR コメントトリガーが動作しないとき
 
-#### チ�荷リスト
+#### Checklist
 
-1. ✅ GitHub Actions workflowが有効になっているか?
-   - Repository → Actions → workflows で確認
+1. GitHub Actions workflow が有効になっているか?
+   - Repository → Actions → workflows を確認
 
-2. ✅ GitHub Secretsが設定されているか?
+2. GitHub Secrets が設定されているか?
    - Settings → Secrets and variables → Actions
 
-3. ✅ Workflow permissionsが正しいか?
-   - `contents: read`, `pull-requests: write` が必要
+3. Workflow permissions が正しいか?
+   - `contents: read`、`pull-requests: write` が必要
 
-### LLM別エラー対応
+### LLM 別エラー対応
 
 #### Claude
 
 **Error:** `CLAUDE_CODE_OAUTH_TOKEN expired`
-**解決:** `moai github auth claude` 再実行
+**解決:** `moai github auth claude` を再実行
 
 #### Codex
 
 **Error:** `repository visibility check failed`
-**原因:** 公開リポジトリでCodex使用を試行
-**解決:** リポジトリをプライベートに変更
+**原因:** 公開リポジトリで Codex を使用しようとした
+**解決:** リポジトリをプライベートに切り替え
 
 #### Gemini
 
 **Error:** `GEMINI_API_KEY quota exceeded`
-**解決:** Google Cloud Consoleでquota増加
+**解決:** Google Cloud Console で quota を増設
 
 #### GLM
 
 **Error:** `GLM_API_KEY authentication failed`
-**解決:** `~/.moai/.env.glm` トークン確認
+**解決:** `~/.moai/.env.glm` のトークンを確認
 
 ## 次のステップ
 
-- [CLIリファレンス](/workflow-commands/)
-- [Workflow設定リファレンス](/advanced/settings-json/)
-- [セキュリティポリシー確認](/advanced/security-notes/)
+- [CLI リファレンス参照](/ja/workflow-commands/)
+- [Workflow 設定参照](/ja/advanced/settings-json/)
+- [セキュリティポリシーの確認](/ja/advanced/security-notes/)

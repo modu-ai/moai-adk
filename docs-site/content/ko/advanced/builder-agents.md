@@ -4,15 +4,17 @@ weight: 40
 draft: false
 ---
 
-MoAI-ADK 확장을 위한 Harness v4 Builder를 상세히 안내합니다.
+에이전틱 하네스의 마지막 조각은 재귀입니다 — 하네스가 하네스를 만듭니다. Harness v4 Builder는 자연어 요청 한 문장으로 프로젝트 고유의 전문가 팀을 생성하는 그 재귀 구조의 입구입니다.
 
 {{< callout type="info" >}}
-  **한 줄 요약**: Harness v4 Builder는 자연어 요청으로 프로젝트 고유의 전문가 팀을 동적으로 생성합니다. 4단계 워크플로우(ANALYZE → PLAN → GENERATE → ACTIVATE)와 manifest 기반 Runner로 구성됩니다.
+**한 줄 요약**: Harness v4 Builder는 자연어 요청으로 프로젝트 고유의 전문가 팀을 동적으로 생성합니다. 4단계 워크플로우 (ANALYZE → PLAN → GENERATE → ACTIVATE)와 manifest 기반 Runner로 구성됩니다.
 {{< /callout >}}
 
 ## Harness v4 Builder란?
 
 Harness v4 Builder는 `/moai:harness <자연어 요청>`을 통해 **프로젝트 고유의 전문가 팀을 동적으로 생성**합니다.
+
+범용 에이전트 카탈로그 (10개)가 모든 프로젝트에 공통이라면, Builder가 만드는 하네스는 여러분의 프로젝트에만 존재하는 맞춤 팀입니다.
 
 ### 이전 버전과의 차이
 
@@ -63,7 +65,7 @@ Harness v4 Builder는 `/moai:harness <자연어 요청>`을 통해 **프로젝�
 
 ## Manifest 기반 Runner
 
-Harness v4는 **Manifest 기반 Runner**를 사용하여 생성된 팀을 운영합니다.
+Harness v4는 **Manifest 기반 Runner**를 사용하여 생성된 팀을 운영합니다. 어떤 phase에 어떤 팀원이, 어떤 모델과 권한 모드로 투입되는지가 manifest 한 파일에 선언됩니다 — 모델 배정을 선언으로 관리하는 토크노믹스 원칙이 여기에도 적용됩니다.
 
 ### manifest.json 구조
 
@@ -142,7 +144,7 @@ Harness v4 Builder로 생성된 하네스는 `/harness:<name>` 명령어로 관�
 
 ### Builder의 동작 흐름
 
-1. ANALYZE: 프로젝트 구조(Go, PostgreSQL, REST API)를 분석
+1. ANALYZE: 프로젝트 구조 (Go, PostgreSQL, REST API)를 분석
 2. PLAN: 3명 팀 (API Designer, DB Specialist, Test Engineer) 결정
 3. GENERATE: 각 에이전트 정의와 manifest.json 생성
 4. ACTIVATE: 팀 활성화 및 `/harness:backend-team` 커맨드 등록
@@ -167,14 +169,14 @@ Claude Code 런타임이 에이전트당 L1 워크트리를 생성합니다.
 
 ### 비활성화
 
-manifest의 `"worktree_isolation": "none"`으로 설정하면 L1 격리 생략.
+manifest의 `"worktree_isolation": "none"`으로 설정하면 L1 격리를 생략합니다.
 
 ## 관련 문서
 
-- [Harness v4 Builder 심화 가이드](/advanced/harness-v4-builder) - Builder 4-phase 상세 및 manifest 스키마
-- [에이전트 가이드](/advanced/agent-guide) - 8개 핵심 에이전트 카탈로그
-- [동적 워크플로우](/advanced/ultracode-workflows) - `/effort ultracode` 병렬 실행
+- [Harness v4 Builder 심화 가이드](/ko/advanced/harness-v4-builder) - Builder 4-phase 상세 및 manifest 스키마
+- [에이전트 가이드](/ko/advanced/agent-guide) - 10개 핵심 에이전트 카탈로그
+- [동적 워크플로우](/ko/advanced/ultracode-workflows) - `/effort ultracode` 병렬 실행
 
 {{< callout type="info" >}}
-**팁**: Harness v4 Builder는 프로젝트마다 **커스텀 팀을 한 번만 생성**하면, 이후 모든 작업에서 자동으로 해당 팀이 위임됩니다. 처음 생성 후엔 `/harness:team-name`으로 언제든 재활용할 수 있습니다.
+**팁**: Harness v4 Builder로 프로젝트마다 **커스텀 팀을 한 번만 생성**하면, 이후 모든 작업에서 자동으로 해당 팀이 위임됩니다. 처음 생성 후엔 `/harness:team-name`으로 언제든 재활용할 수 있습니다.
 {{< /callout >}}

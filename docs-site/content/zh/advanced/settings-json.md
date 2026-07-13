@@ -1,92 +1,92 @@
 ---
 title: settings.json 指南
-weight: 60
+weight: 70
 draft: false
 ---
 
-Claude Code 的设置文件体系详细介绍。
+详细介绍 Claude Code 的配置文件体系。在把执行权限委托给智能体的 Harness 中，settings.json 是划定这条委托边界的文件 — 自动允许什么、什么需要询问、什么绝对拦截，全部在这里决定。
 
 {{< callout type="info" >}}
-**一句话总结**: `settings.json` 是 Claude Code 的 **控制塔**。权限、环境变量、Hook、安全策略在一处管理。
+**一句话总结**：`settings.json` 是 Claude Code 的 **管制塔**。权限、环境变量、Hook、安全策略在一处集中管理。
 {{< /callout >}}
 
-## 配置范围 (Configuration Scopes)
+## 配置作用域 (Configuration Scopes)
 
-Claude Code 使用 **范围系统** 决定配置应用的位置和共享对象。
+Claude Code 使用 **作用域系统** 决定配置生效的位置与共享对象。
 
-### 4 种范围类型
+### 4 种作用域类型
 
-| 范围 | 位置 | 影响对象 | 团队共享 | 优先级 |
+| 作用域 | 位置 | 影响对象 | 团队共享 | 优先级 |
 |------|------|-----------|---------|----------|
-| **Managed** | 系统级 `managed-settings.json` | 机器的所有用户 | ✅ (IT 部署) | 最高 |
-| **User** | `~/.claude/` | 用户个人 (所有项目) | ❌ | 低 |
-| **Project** | `.claude/` | 仓库的所有协作者 | ✅ (Git 追踪) | 中等 |
-| **Local** | `.claude/*.local.*` | 用户 (仅此仓库) | ❌ | 高 |
+| **Managed** | 系统级 `managed-settings.json` | 机器上的所有用户 | ✓（IT 分发） | 最高 |
+| **User** | `~/.claude/` | 用户个人（所有项目） | ✗ | 低 |
+| **Project** | `.claude/` | 仓库的所有协作者 | ✓（Git 跟踪） | 中 |
+| **Local** | `.claude/*.local.*` | 用户（仅本仓库） | ✗ | 高 |
 
-### 范围优先级
+### 按作用域的优先级
 
-当相同配置存在于多个范围时,更具体的范围优先:
+同一配置存在于多个作用域时，更具体的作用域优先。
 
 ```mermaid
 flowchart TD
-    A["配置请求"] --> B{Managed 配置<br>存在?}
-    B -->|是| C["使用 Managed<br>不可覆盖"]
-    B -->|否| D{Local 配置<br>存在?}
-    D -->|是| E["使用 Local<br>覆盖 Project/User"]
-    D -->|否| F{Project 配置<br>存在?}
-    F -->|是| G["使用 Project<br>覆盖 User"]
-    F -->|否| H["使用 User<br>默认值"]
+    A[配置请求] --> B{有 Managed<br>配置?}
+    B -->|是| C[使用 Managed<br>不可覆盖]
+    B -->|否| D{有 Local<br>配置?}
+    D -->|是| E[使用 Local<br>覆盖 Project/User]
+    D -->|否| F{有 Project<br>配置?}
+    F -->|是| G[使用 Project<br>覆盖 User]
+    F -->|否| H[使用 User<br>默认值]
 ```
 
-**优先级:** Managed > 命令行参数 > Local > Project > User
+**优先级：** Managed > 命令行参数 > Local > Project > User
 
-### 各范围的用途
+### 各作用域的用途
 
-**Managed 范围** - 用于:
-- 组织级安全策略
-- 不可覆盖的合规要求
-- IT/DevOps 部署的标准化配置
+**Managed 作用域** - 用于：
+- 组织范围强制适用的安全策略
+- 不可被覆盖的合规要求
+- IT/DevOps 分发的标准化配置
 
-**User 范围** - 用于:
-- 所有项目的个人设置 (主题、编辑器设置)
-- 所有项目使用的工具和插件
-- API 密钥和认证 (安全存储)
+**User 作用域** - 用于：
+- 想在所有项目使用的个人设置（主题、编辑器设置）
+- 在所有项目使用的工具与插件
+- API 密钥与认证（安全存储）
 
-**Project 范围** - 用于:
-- 团队共享设置 (权限、Hook、MCP 服务器)
-- 团队应具有的插件
-- 协作者间的工具标准化
+**Project 作用域** - 用于：
+- 团队共享设置（权限、Hook、MCP 服务器）
+- 团队应有的插件
+- 协作者之间的工具标准化
 
-**Local 范围** - 用于:
+**Local 作用域** - 用于：
 - 特定项目的个人覆盖
-- 与团队共享前测试设置
-- 对其他用户不生效的机器特定设置
+- 与团队共享前测试配置
+- 对其他用户不生效的按机器设置
 
 ## 文件位置
 
-MoAI-ADK 使用 4 个设置文件位置。
+MoAI-ADK 使用 4 个配置文件位置。
 
-| 文件 | 位置 | 用途 | Git 追踪 |
+| 文件 | 位置 | 用途 | Git 跟踪 |
 |------|------|------|----------|
-| `managed-settings.json` | 系统级* | 托管设置 (IT 部署) | 否 |
-| `settings.json` (User) | `~/.claude/settings.json` | 个人全局设置 | 否 |
-| `settings.json` (Project) | `.claude/settings.json` | 团队共享设置 | 是 |
-| `settings.local.json` | `.claude/settings.local.json` | 个人项目设置 | 否 |
+| `managed-settings.json` | 系统级* | 托管配置（IT 分发） | 否 |
+| `settings.json` (User) | `~/.claude/settings.json` | 个人全局配置 | 否 |
+| `settings.json` (Project) | `.claude/settings.json` | 团队共享配置 | 是 |
+| `settings.local.json` | `.claude/settings.local.json` | 个人项目配置 | 否 |
 
-**系统级位置:**
-- macOS: `/Library/Application Support/ClaudeCode/`
-- Linux/WSL: `/etc/claude-code/`
-- Windows: `C:\Program Files\ClaudeCode\`
+**系统级位置：**
+- macOS：`/Library/Application Support/ClaudeCode/`
+- Linux/WSL：`/etc/claude-code/`
+- Windows：`C:\Program Files\ClaudeCode\`
 
 {{< callout type="warning" >}}
-**注意**: `.claude/settings.json` 在 MoAI-ADK 更新时会被覆盖。个人设置必须写在 `settings.local.json` 或 `~/.claude/settings.json` 中。
+**注意**：`.claude/settings.json` 会在 MoAI-ADK 更新时被覆盖。个人配置务必写在 `settings.local.json` 或 `~/.claude/settings.json`。
 {{< /callout >}}
 
-## settings.json 是什么?
+## 什么是 settings.json？
 
-`settings.json` 是 Claude Code 的 **全局设置文件**。定义哪些命令自动允许、哪些命令阻止、执行哪些 Hook、环境变量设置为何值。
+`settings.json` 是 Claude Code 的 **全局配置文件**。它定义哪些命令自动允许、哪些命令拦截、执行哪些 Hook、设置哪些环境变量。
 
-## 整体结构
+## 完整结构
 
 ```json
 {
@@ -115,11 +115,11 @@ MoAI-ADK 使用 4 个设置文件位置。
 }
 ```
 
-## 核心设置参考
+## 核心配置参考
 
 ### model
 
-覆盖使用的默认模型。
+覆盖要使用的默认模型。
 
 ```json
 {
@@ -129,7 +129,7 @@ MoAI-ADK 使用 4 个设置文件位置。
 
 ### language
 
-设置 Claude 的默认响应语言。
+设置 Claude 的默认回复语言。
 
 ```json
 {
@@ -137,11 +137,11 @@ MoAI-ADK 使用 4 个设置文件位置。
 }
 ```
 
-支持语言: `"korean"`, `"japanese"`, `"spanish"`, `"french"` 等
+支持语言：`"korean"`、`"japanese"`、`"spanish"`、`"french"` 等
 
 ### cleanupPeriodDays
 
-启动时删除超过此期间的非活动会话。设置为 `0` 则立即删除所有会话。(默认值: 30 天)
+启动时删除比此期限更旧的非活动会话。设为 `0` 会立即删除所有会话。（默认：30 天）
 
 ```json
 {
@@ -151,7 +151,7 @@ MoAI-ADK 使用 4 个设置文件位置。
 
 ### autoUpdatesChannel
 
-遵循更新的发布渠道。
+跟随更新的发布通道。
 
 ```json
 {
@@ -159,12 +159,12 @@ MoAI-ADK 使用 4 个设置文件位置。
 }
 ```
 
-- `"stable"`: 大约一周前的版本,跳过主要回归
-- `"latest"` (默认值): 最新发布版本
+- `"stable"`：约一周前的版本，跳过重大回归
+- `"latest"`（默认）：最新发布
 
 ### spinnerTipsEnabled
 
-Claude 工作时是否在转圈器中显示提示。设置为 `false` 则禁用提示。(默认值: `true`)
+Claude 工作时是否在 spinner 中显示提示。设为 `false` 禁用提示。（默认：`true`）
 
 ```json
 {
@@ -174,7 +174,7 @@ Claude 工作时是否在转圈器中显示提示。设置为 `false` 则禁用�
 
 ### terminalProgressBarEnabled
 
-在支持的终端(如 Windows Terminal 和 iTerm2)中启用显示进度的终端进度条。(默认值: `true`)
+在 Windows Terminal、iTerm2 等支持的终端中启用显示进度的终端进度条。（默认：`true`）
 
 ```json
 {
@@ -184,7 +184,7 @@ Claude 工作时是否在转圈器中显示提示。设置为 `false` 则禁用�
 
 ### showTurnDuration
 
-响应后显示回合持续时间消息 (例如: "Cooked for 1m 6s")。设置为 `false` 则隐藏此消息。
+在响应后显示回合耗时消息（例："Cooked for 1m 6s"）。设为 `false` 隐藏此消息。
 
 ```json
 {
@@ -194,7 +194,7 @@ Claude 工作时是否在转圈器中显示提示。设置为 `false` 则禁用�
 
 ### respectGitignore
 
-控制 `@` 文件选择器是否遵守 `.gitignore` 模式。`true`(默认值) 则与 `.gitignore` 模式匹配的文件从建议中排除。
+控制 `@` 文件选择器是否遵守 `.gitignore` 模式。为 `true`（默认）时，匹配 `.gitignore` 模式的文件会从建议中排除。
 
 ```json
 {
@@ -204,7 +204,7 @@ Claude 工作时是否在转圈器中显示提示。设置为 `false` 则禁用�
 
 ### plansDirectory
 
-自定义保存计划文件的位置。路径相对于项目根目录。默认值: `~/.claude/plans`
+自定义计划文件的保存位置。路径相对于项目根目录。默认：`~/.claude/plans`
 
 ```json
 {
@@ -212,9 +212,9 @@ Claude 工作时是否在转圈器中显示提示。设置为 `false` 则禁用�
 }
 ```
 
-## 权限设置
+## 权限配置
 
-管理 Claude Code 可以执行的命令权限。
+管理 Claude Code 可执行命令的权限。权限设计的目标有两个 — 让安全的命令无需确认地流转、不打断智能体循环；让危险的命令在任何情况下都无法通过。
 
 ### 权限结构
 
@@ -243,33 +243,33 @@ Claude 工作时是否在转圈器中显示提示。设置为 `false` 则禁用�
 | `"default"` | 默认行为 |
 
 {{< callout type="info" >}}
-**参考**: 当前 MoAI-ADK 设置文件使用 `"defaultMode": "default"`。这可能是遗留值。
+**备注**：当前 MoAI-ADK 配置文件使用 `"defaultMode": "default"`。这可能是遗留值。
 {{< /callout >}}
 
-### allow (自动允许)
+### allow（自动允许）
 
-**无需用户确认即可立即执行**的命令列表。
+无需用户确认 **立即允许执行** 的命令列表。
 
-**默认允许的命令类别:**
+**默认允许的命令类别：**
 
 | 类别 | 命令示例 | 数量 |
 |----------|-------------|------|
 | 文件工具 | `Read`, `Write`, `Edit`, `Glob`, `Grep` | 7 个 |
-| Git 命令 | `git add`, `git commit`, `git diff`, `git log` 等 | 15 个+ |
+| Git 命令 | `git add`, `git commit`, `git diff`, `git log` 等 | 15 个以上 |
 | 包管理 | `npm`, `pip`, `uv`, `npx` | 4 个 |
-| 构建/测试 | `pytest`, `make`, `node`, `python` | 10 个+ |
-| 代码质量 | `ruff`, `black`, `prettier`, `eslint` | 6 个+ |
-| 探索工具 | `ls`, `find`, `tree`, `cat`, `head` | 10 个+ |
+| 构建/测试 | `pytest`, `make`, `node`, `python` | 10 个以上 |
+| 代码质量 | `ruff`, `black`, `prettier`, `eslint` | 6 个以上 |
+| 探索工具 | `ls`, `find`, `tree`, `cat`, `head` | 10 个以上 |
 | GitHub CLI | `gh issue`, `gh pr`, `gh repo view` | 2 个 |
 | MCP 工具 | `mcp__context7__*` | 2 个 |
 | 其他 | `AskUserQuestion`, `Task`, `Skill`, `TodoWrite` | 4 个 |
 
-**allow 格式示例:**
+**allow 格式示例：**
 
 ```json
 {
   "allow": [
-    "Read",                          // 仅工具名称
+    "Read",                          // 仅工具名
     "Bash(git add:*)",               // Bash + 命令模式
     "Bash(pytest:*)",                // 通配符
     "mcp__context7__resolve-library-id",  // MCP 工具
@@ -279,16 +279,16 @@ Claude 工作时是否在转圈器中显示提示。设置为 `false` 则禁用�
 }
 ```
 
-### ask (确认后执行)
+### ask（确认后执行）
 
-**请求用户确认后执行**的命令列表。
+**向用户请求确认后再执行** 的命令列表。
 
 ```json
 {
   "ask": [
-    "Bash(chmod:*)",       // 文件权限更改
-    "Bash(chown:*)",       // 所有权更改
-    "Bash(rm:*)",          // 文件删除
+    "Bash(chmod:*)",       // 更改文件权限
+    "Bash(chown:*)",       // 更改所有权
+    "Bash(rm:*)",          // 删除文件
     "Bash(sudo:*)",        // 管理员权限
     "Read(./.env)",        // 读取环境变量文件
     "Read(./.env.*)"       // 读取环境变量文件
@@ -296,44 +296,44 @@ Claude 工作时是否在转圈器中显示提示。设置为 `false` 则禁用�
 }
 ```
 
-**ask 工作方式:**
+**ask 的运作方式：**
 1. Claude Code 尝试执行该命令
-2. 向用户请求确认 "是否执行此命令?"
-3. 用户批准则执行,拒绝则中断
+2. 向用户请求"要执行这条命令吗？"的确认
+3. 用户批准则执行，拒绝则中止
 
-### deny (无条件阻止)
+### deny（无条件拦截）
 
-**任何情况下都绝不执行**的命令列表。
+在任何情况下都 **绝不执行** 的命令列表。
 
-**阻止类别:**
+**拦截类别：**
 
-| 类别 | 阻止模式 | 原因 |
+| 类别 | 拦截模式 | 理由 |
 |----------|-----------|------|
-| 敏感文件访问 | `Read(./secrets/**)`, `Write(~/.ssh/**)` | 保护安全凭证 |
-| 云凭证 | `Read(~/.aws/**)`, `Read(~/.config/gcloud/**)` | 保护云账户 |
-| 系统破坏 | `Bash(rm -rf /:*)`, `Bash(rm -rf ~:*)` | 系统保护 |
-| 危险 Git | `Bash(git push --force:*)`, `Bash(git reset --hard:*)` | 代码保护 |
-| 磁盘格式化 | `Bash(dd:*)`, `Bash(mkfs:*)`, `Bash(fdisk:*)` | 磁盘保护 |
+| 敏感文件访问 | `Read(./secrets/**)`, `Write(~/.ssh/**)` | 保护安全凭据 |
+| 云凭据 | `Read(~/.aws/**)`, `Read(~/.config/gcloud/**)` | 保护云账号 |
+| 系统破坏 | `Bash(rm -rf /:*)`, `Bash(rm -rf ~:*)` | 保护系统 |
+| 危险 Git | `Bash(git push --force:*)`, `Bash(git reset --hard:*)` | 保护代码 |
+| 磁盘格式化 | `Bash(dd:*)`, `Bash(mkfs:*)`, `Bash(fdisk:*)` | 保护磁盘 |
 | 系统命令 | `Bash(reboot:*)`, `Bash(shutdown:*)` | 系统稳定性 |
-| 数据库删除 | `Bash(DROP DATABASE:*)`, `Bash(TRUNCATE:*)` | 数据保护 |
+| 删除数据库 | `Bash(DROP DATABASE:*)`, `Bash(TRUNCATE:*)` | 保护数据 |
 
-**deny 格式示例:**
+**deny 格式示例：**
 
 ```json
 {
   "deny": [
-    "Read(./secrets/**)",           // 阻止读取秘密目录
-    "Write(~/.ssh/**)",             // 阻止修改 SSH 密钥
-    "Bash(git push --force:*)",     // 阻止强制推送
-    "Bash(rm -rf /:*)",            // 阻止删除根目录
-    "Bash(DROP DATABASE:*)"        // 阻止删除数据库
+    "Read(./secrets/**)",           // 拦截读取密钥目录
+    "Write(~/.ssh/**)",             // 拦截修改 SSH 密钥
+    "Bash(git push --force:*)",     // 拦截强制推送
+    "Bash(rm -rf /:*)",            // 拦截删除根目录
+    "Bash(DROP DATABASE:*)"        // 拦截删除数据库
   ]
 }
 ```
 
 ### additionalDirectories
 
-Claude 可以访问的额外工作目录。
+Claude 可访问的额外工作目录。
 
 ```json
 {
@@ -347,7 +347,7 @@ Claude 可以访问的额外工作目录。
 
 ### disableBypassPermissionsMode
 
-防止激活 `bypassPermissions` 模式。禁用 `--dangerously-skip-permissions` 命令行标志。
+阻止启用 `bypassPermissions` 模式。禁用 `--dangerously-skip-permissions` 命令行标志。
 
 ```json
 {
@@ -359,7 +359,7 @@ Claude 可以访问的额外工作目录。
 
 ### disableBundledSkills
 
-`disableBundledSkills` (布尔值，或其环境变量形式) 从发现中隐藏 Claude Code 捆绑 skills 和工作流 — 例如 `/deep-research`、内置斜杠命令 skills — 仅保留 enterprise + personal + project + plugin skills 可见。设为 `true` 以提供经过策划的、无捆绑的 skill 表面。
+`disableBundledSkills`（布尔值，或环境变量形式）会把 Claude Code 捆绑的 skills 与工作流 — 例如 `/deep-research`、内置斜杠命令 skills — 从 discovery 中隐藏，只显示 enterprise + personal + project + plugin skills。设为 `true` 可提供一个精选的无捆绑 skill 表面。
 
 ```json
 {
@@ -367,37 +367,37 @@ Claude 可以访问的额外工作目录。
 }
 ```
 
-`--safe-mode` CLI 标志在启动时而非通过设置应用相同的运行时效果 — 适用于锁定环境或调试某个行为是否源自捆绑 skill。MoAI-ADK 不会自动发出 `disableBundledSkills` 或传递 `--safe-mode`；两者均在此作为可用选项进行文档化。
+`--safe-mode` CLI 标志在启动时应用同样的运行时效果（而非通过 settings）— 在锁定环境或调试某行为是否源自捆绑 skill 时很有用。MoAI-ADK 不生成 `disableBundledSkills`，也不自动传递 `--safe-mode`。两者都在此记录为可用选项。
 
 ## 权限规则语法 (Permission Rule Syntax)
 
-权限规则遵循 `Tool` 或 `Tool(specifier)` 格式。参数范围通配符形式 `Tool(param:value)` 也受支持 — 例如 `WebFetch(domain:example.com)` 仅允许对该域的 WebFetch，`Bash(cmd:git status)` 匹配 `git status` 命令，值内部的 `*` 通配符可扩大匹配范围 (`WebFetch(domain:*.example.com)`、`Bash(cmd:git *)`)。此参数范围形式比普通 `Tool(specifier)` 形式提供更细粒度的控制。MoAI-ADK 目前不从其自身的设置生成器发出参数范围规则；该语法在此作为面向需要参数级权限控制的项目的可用选项进行文档化。
+权限规则遵循 `Tool` 或 `Tool(specifier)` 格式。也支持参数范围通配格式 `Tool(param:value)` — 例如 `WebFetch(domain:example.com)` 只允许对该域名的 WebFetch，`Bash(cmd:git status)` 匹配 `git status` 命令，值内部的 `*` 通配符可以扩大匹配范围（`WebFetch(domain:*.example.com)`、`Bash(cmd:git *)`）。这种参数范围格式比一般的 `Tool(specifier)` 格式提供更细粒度的控制。MoAI-ADK 目前不在自己的配置生成器中生成参数范围规则。此语法记录为需要参数级权限控制的项目的可用选项。
 
 ### 规则评估顺序
 
-当多个规则与同一工具使用匹配时,规则按以下顺序评估:
+多条规则匹配同一次工具使用时，按以下顺序评估。
 
-1. **Deny** 规则首先检查
-2. **Ask** 规则其次检查
-3. **Allow** 规则最后检查
+1. 先检查 **Deny** 规则
+2. 其次检查 **Ask** 规则
+3. 最后检查 **Allow** 规则
 
-第一个匹配的规则决定操作。即 deny 规则始终优先于 allow 规则。
+第一条匹配的规则决定行为。也就是说，deny 规则永远优先于 allow 规则。
 
-### 匹配工具的所有使用
+### 匹配某工具的所有使用
 
-要匹配工具的所有使用,仅使用工具名称而不加括号:
+要匹配某工具的所有使用，只写工具名不加括号。
 
 | 规则 | 效果 |
 |------|------|
 | `Bash` | 匹配 **所有** Bash 命令 |
-| `WebFetch` | 匹配 **所有** 网页获取请求 |
+| `WebFetch` | 匹配 **所有** Web 获取请求 |
 | `Read` | 匹配 **所有** 文件读取 |
 
-`Bash(*)` 与 `Bash` 相同,匹配所有 Bash 命令。两种语法可互换使用。
+`Bash(*)` 与 `Bash` 等价，匹配所有 Bash 命令。两种写法可以互换使用。
 
-### 用于细粒度控制的指定符
+### 使用指定符做细粒度控制
 
-在括号内添加指定符以匹配特定工具使用:
+在括号内添加指定符以匹配特定的工具使用。
 
 | 规则 | 效果 |
 |------|------|
@@ -407,7 +407,7 @@ Claude 可以访问的额外工作目录。
 
 ### 通配符模式
 
-Bash 规则支持 `*` 与 glob 模式。通配符可以出现在命令的开始、中间、结束等任何位置。
+Bash 规则支持带 `*` 的 glob 模式。通配符可以出现在命令的开头、中间、结尾等任意位置。
 
 ```json
 {
@@ -426,15 +426,15 @@ Bash 规则支持 `*` 与 glob 模式。通配符可以出现在命令的开始�
 }
 ```
 
-**重要:** `*` 前的空格很重要:
+**重要：** `*` 前的空格很关键。
 - `Bash(ls *)` 匹配 `ls -la` 但不匹配 `lsof`
-- `Bash(ls*)` 匹配两者
+- `Bash(ls*)` 两者都匹配
 
-**遗留语法:** `:*` 后缀语法 (例如: `Bash(npm run:*)`) 与 `*` 相同但不推荐使用。
+**遗留语法：** `:*` 后缀语法（例：`Bash(npm run:*)`）与 `*` 等效但已弃用。
 
-### 域名特定模式
+### 按域名的模式
 
-对于 WebFetch 等工具可以使用域名特定模式:
+对 WebFetch 等工具可以使用按域名的模式。
 
 ```json
 {
@@ -450,17 +450,17 @@ Bash 规则支持 `*` 与 glob 模式。通配符可以出现在命令的开始�
 }
 ```
 
-### 权限优先级图表
+### 权限优先级图
 
 ```mermaid
 flowchart TD
-    CMD["尝试执行命令"] --> CHECK_DENY{deny 列表<br>检查}
+    CMD["尝试执行命令"] --> CHECK_DENY{检查 deny<br>列表}
 
-    CHECK_DENY -->|匹配| BLOCK["阻止<br>绝对不可执行"]
-    CHECK_DENY -->|不匹配| CHECK_ALLOW{allow 列表<br>检查}
+    CHECK_DENY -->|匹配| BLOCK["拦截<br>绝对不可执行"]
+    CHECK_DENY -->|不匹配| CHECK_ALLOW{检查 allow<br>列表}
 
     CHECK_ALLOW -->|匹配| EXEC["立即执行"]
-    CHECK_ALLOW -->|不匹配| CHECK_ASK{ask 列表<br>检查}
+    CHECK_ALLOW -->|不匹配| CHECK_ASK{检查 ask<br>列表}
 
     CHECK_ASK -->|匹配| ASK["请求用户确认"]
     CHECK_ASK -->|不匹配| DEFAULT["默认行为<br>(defaultMode)"]
@@ -469,14 +469,14 @@ flowchart TD
     ASK -->|拒绝| BLOCK
 ```
 
-**优先级:** `deny` > `ask` > `allow` > `defaultMode`
+**优先级：** `deny` > `ask` > `allow` > `defaultMode`
 
-## 沙箱设置 (Sandbox Settings)
+## 沙箱配置 (Sandbox Settings)
 
-配置高级沙箱行为。沙箱在文件系统和网络中隔离 bash 命令。
+配置高级沙箱行为。沙箱把 bash 命令从文件系统与网络中隔离出来 — 如果说权限规则是逻辑防线，OS 沙箱就是物理防线。
 
 {{< callout type="warning" >}}
-**重要**: 文件系统和网络限制通过 Read、Edit、WebFetch 权限规则配置,而非通过沙箱设置。
+**重要：** 文件系统与网络限制通过 Read、Edit、WebFetch 权限规则配置，而不是通过沙箱配置。
 {{< /callout >}}
 
 ```json
@@ -499,23 +499,23 @@ flowchart TD
 }
 ```
 
-### 沙箱设置参考
+### 沙箱配置参考
 
 | 键 | 说明 | 示例 |
 |-----|------|------|
-| `enabled` | 启用 bash 沙箱 (macOS、Linux、WSL2)。默认值: false | `true` |
-| `autoAllowBashIfSandboxed` | 自动批准沙箱化的 bash 命令。默认值: true | `true` |
-| `excludedCommands` | 必须在沙箱外执行的命令 | `["docker", "git"]` |
-| `allowUnsandboxedCommands` | 允许命令通过 `dangerouslyDisableSandbox` 参数在沙箱外执行。默认值: true | `false` |
-| `network.allowUnixSockets` | 沙箱中可访问的 Unix 套接字路径 (SSH 代理等) | `["~/.ssh/agent-socket"]` |
-| `network.allowLocalBinding` | 允许绑定到 localhost 端口 (仅 macOS)。默认值: false | `true` |
-| `network.httpProxyPort` | 如果有自己的代理,HTTP 代理端口 | `8080` |
-| `network.socksProxyPort` | 如果有自己的代理,SOCKS5 代理端口 | `8081` |
-| `enableWeakerNestedSandbox` | 为无权限 Docker 环境启用弱沙箱 (仅 Linux、WSL2)。**安全性降低**。默认值: false | `true` |
+| `enabled` | 启用 bash 沙箱（macOS、Linux、WSL2）。默认：false | `true` |
+| `autoAllowBashIfSandboxed` | 自动批准沙箱内的 bash 命令。默认：true | `true` |
+| `excludedCommands` | 须在沙箱外执行的命令 | `["docker", "git"]` |
+| `allowUnsandboxedCommands` | 允许命令通过 `dangerouslyDisableSandbox` 参数在沙箱外执行。默认：true | `false` |
+| `network.allowUnixSockets` | 沙箱内可访问的 Unix socket 路径（SSH 代理等） | `["~/.ssh/agent-socket"]` |
+| `network.allowLocalBinding` | 允许绑定到 localhost 端口（仅 macOS）。默认：false | `true` |
+| `network.httpProxyPort` | 自带代理时的 HTTP 代理端口 | `8080` |
+| `network.socksProxyPort` | 自带代理时的 SOCKS5 代理端口 | `8081` |
+| `enableWeakerNestedSandbox` | 为无特权 Docker 环境启用较弱沙箱（仅 Linux、WSL2）。**安全性降低**。默认：false | `true` |
 
-## 归属设置 (Attribution Settings)
+## 归属配置 (Attribution Settings)
 
-Claude Code 为 git 提交和拉取请求添加归属。这些是单独配置的。
+Claude Code 会在 git 提交与 Pull Request 中添加归属信息。二者分开配置。
 
 ```json
 {
@@ -526,17 +526,17 @@ Claude Code 为 git 提交和拉取请求添加归属。这些是单独配置的
 }
 ```
 
-### 归属设置参考
+### 归属配置参考
 
 | 键 | 说明 |
 |-----|------|
-| `commit` | git 提交的归属 (包括预告片)。空字符串隐藏提交归属 |
-| `pr` | 拉取请求描述的归属。空字符串隐藏 PR 归属 |
+| `commit` | git 提交的归属（含 trailer）。空字符串隐藏提交归属 |
+| `pr` | Pull Request 描述的归属。空字符串隐藏 PR 归属 |
 
 ### 默认提交归属
 
 ```
-🤖 Generated with [Claude Code](https://code.claude.com)
+🤖 Generated with [Claude Code](https://claude.com/claude-code)
 
 Co-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>
 ```
@@ -547,9 +547,9 @@ Co-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>
 🤖 Generated with [Claude Code](https://claude.com/claude-code)
 ```
 
-## Hook 设置
+## Hook 配置
 
-注册响应 Claude Code 事件的脚本。
+注册对 Claude Code 事件做出反应的脚本。
 
 ```json
 {
@@ -583,12 +583,12 @@ Co-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>
         "hooks": [
           {
             "type": "command",
-            "command": "格式化器脚本路径",
+            "command": "格式化脚本路径",
             "timeout": 30000
           },
           {
             "type": "command",
-            "command": "语法检查器脚本路径",
+            "command": "lint 脚本路径",
             "timeout": 60000
           }
         ]
@@ -604,17 +604,17 @@ Co-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>
 |--------|------|
 | `SessionStart` | 会话开始时执行 |
 | `SessionEnd` | 会话结束时执行 |
-| `PreToolUse` | 工具使用前执行 |
-| `PostToolUse` | 工具使用后执行 |
+| `PreToolUse` | 使用工具前执行 |
+| `PostToolUse` | 使用工具后执行 |
 | `PreCompact` | 上下文压缩前执行 |
 
 {{< callout type="info" >}}
-Hook 设置的详细内容请参考 [Hooks 指南](/advanced/hooks-guide)。
+Hook 配置的详细内容见 [Hooks 指南](/zh/advanced/hooks-guide)。
 {{< /callout >}}
 
-## 插件设置 (Plugin Settings)
+## 插件配置 (Plugin Settings)
 
-插件相关设置。
+插件相关配置。
 
 ```json
 {
@@ -636,20 +636,20 @@ Hook 设置的详细内容请参考 [Hooks 指南](/advanced/hooks-guide)。
 
 ### enabledPlugins
 
-控制要激活的插件。格式: `"plugin-name@marketplace-name": true/false`
+控制要启用的插件。格式：`"plugin-name@marketplace-name": true/false`
 
-**范围:**
-- **User settings** (`~/.claude/settings.json`): 个人插件偏好
-- **Project settings** (`.claude/settings.json`): 团队共享的项目特定插件
-- **Local settings** (`.claude/settings.local.json`): 机器级覆盖 (不提交)
+**作用域：**
+- **User settings**（`~/.claude/settings.json`）：个人插件偏好
+- **Project settings**（`.claude/settings.json`）：与团队共享的按项目插件
+- **Local settings**（`.claude/settings.local.json`）：按机器覆盖（不提交）
 
 ### extraKnownMarketplaces
 
-定义额外的市场以在仓库中可用。通常用于仓库级设置,使团队成员可以访问所需的插件源。
+定义在仓库中可用的额外插件市场。通常用于仓库级配置，让团队成员能访问所需的插件来源。
 
-## MCP 设置 (MCP Settings)
+## MCP 配置 (MCP Settings)
 
-MCP (Model Context Protocol) 服务器相关设置。
+MCP (Model Context Protocol) 服务器相关配置。
 
 ```json
 {
@@ -659,7 +659,7 @@ MCP (Model Context Protocol) 服务器相关设置。
 }
 ```
 
-### MCP 设置参考
+### MCP 配置参考
 
 | 键 | 说明 | 示例 |
 |-----|------|------|
@@ -667,11 +667,11 @@ MCP (Model Context Protocol) 服务器相关设置。
 | `enabledMcpjsonServers` | 要批准的特定 MCP 服务器列表 | `["memory", "github"]` |
 | `disabledMcpjsonServers` | 要拒绝的特定 MCP 服务器列表 | `["filesystem"]` |
 | `allowedMcpServers` | 仅在 managed-settings.json 中使用。MCP 服务器允许列表 | `[{ "serverName": "github" }]` |
-| `deniedMcpServers` | 仅在 managed-settings.json 中使用。MCP 服务器拒绝列表 (优先应用) | `[{ "serverName": "filesystem" }]` |
+| `deniedMcpServers` | 仅在 managed-settings.json 中使用。MCP 服务器拒绝列表（优先适用） | `[{ "serverName": "filesystem" }]` |
 
-## 文件建议设置 (File Suggestion Settings)
+## 文件建议配置 (File Suggestion Settings)
 
-配置 `@` 文件路径自动完成的自定义命令。
+为 `@` 文件路径自动补全配置自定义命令。
 
 ```json
 {
@@ -682,11 +682,11 @@ MCP (Model Context Protocol) 服务器相关设置。
 }
 ```
 
-内置文件建议使用快速文件系统遍历,但大型单体仓库可以从项目特定索引中受益 (例如: 预构建的文件索引或自定义工具)。
+内置的文件建议使用快速文件系统遍历，但大型 monorepo 可以从按项目的索引（例如预构建的文件索引或自定义工具）中获益。
 
-## 扩展思考设置 (Extended Thinking Settings)
+## 扩展思考配置 (Extended Thinking Settings)
 
-扩展思考 (Extended Thinking) 相关设置。
+扩展思考 (Extended Thinking) 相关配置。推理代币也是代币 — 常开固然省事，但结合预算来调配才是代币经济学视角下的正解。
 
 ```json
 {
@@ -695,16 +695,16 @@ MCP (Model Context Protocol) 服务器相关设置。
 }
 ```
 
-### 扩展思考设置参考
+### 扩展思考配置参考
 
 | 键 | 说明 | 示例 |
 |-----|------|------|
-| `alwaysThinkingEnabled` | 默认在所有会话中启用扩展思考 | `true` |
-| `maxThinkingTokens` | 覆盖思考 token 预算 (默认值: 31999, 0 = 禁用) | `10000` |
+| `alwaysThinkingEnabled` | 在所有会话中默认启用扩展思考 | `true` |
+| `maxThinkingTokens` | 覆盖思考代币预算（默认：31999，0 = 禁用） | `10000` |
 
 ## 公司公告 (Company Announcements)
 
-启动时向用户显示的公告。提供多个公告时会随机循环。
+启动时展示给用户的公告。提供多条公告时会随机轮换。
 
 ```json
 {
@@ -716,7 +716,7 @@ MCP (Model Context Protocol) 服务器相关设置。
 }
 ```
 
-## 状态栏设置
+## 状态栏配置
 
 配置显示在 Claude Code 底部的状态栏。
 
@@ -733,12 +733,12 @@ MCP (Model Context Protocol) 服务器相关设置。
 
 | 字段 | 说明 |
 |------|------|
-| `type` | `"command"` (命令执行) |
-| `command` | 要执行的命令 (返回状态信息) |
+| `type` | `"command"`（执行命令） |
+| `command` | 要执行的命令（返回状态信息） |
 | `padding` | 内边距大小 |
-| `refreshInterval` | 刷新周期 (毫秒) |
+| `refreshInterval` | 刷新周期（毫秒） |
 
-## 输出样式设置
+## 输出风格配置
 
 ```json
 {
@@ -746,16 +746,16 @@ MCP (Model Context Protocol) 服务器相关设置。
 }
 ```
 
-输出样式决定 Claude Code 的响应格式。可以在 `settings.local.json` 中更改为个人偏好的样式。
+输出风格决定 Claude Code 的响应形式。可在 `settings.local.json` 中改为个人偏好的风格。
 
-## 环境变量设置
+## 环境变量配置
 
 在 `env` 部分设置控制 Claude Code 行为的环境变量。
 
 ### MoAI-ADK 环境变量
 
 {{< callout type="info" >}}
-**MoAI-ADK 扩展**: 此设置特定于 MoAI-ADK,不是官方 Claude Code 的一部分。
+**MoAI-ADK 扩展**：此配置是 MoAI-ADK 特有的，不属于官方 Claude Code。
 {{< /callout >}}
 
 ```json
@@ -768,7 +768,7 @@ MCP (Model Context Protocol) 服务器相关设置。
 
 | 变量 | 值 | 说明 |
 |------|-----|------|
-| `MOAI_CONFIG_SOURCE` | `"sections"` | MoAI 配置源方式 |
+| `MOAI_CONFIG_SOURCE` | `"sections"` | MoAI 配置来源方式 |
 
 ### 官方 Claude Code 环境变量
 
@@ -785,8 +785,8 @@ MCP (Model Context Protocol) 服务器相关设置。
 
 | 变量 | 值 | 说明 |
 |------|-----|------|
-| `ENABLE_TOOL_SEARCH` | `"auto"`, `"auto:N"`, `"true"`, `"false"` | MCP 工具搜索控制 |
-| `CLAUDE_AUTOCOMPACT_PCT_OVERRIDE` | `1`-`100` | 自动压缩触发百分比 (默认值: ~95%) |
+| `ENABLE_TOOL_SEARCH` | `"auto"`, `"auto:N"`, `"true"`, `"false"` | 控制 MCP 工具搜索 |
+| `CLAUDE_AUTOCOMPACT_PCT_OVERRIDE` | `1`-`100` | 自动压缩触发百分比（默认：约 95%） |
 | `CLAUDE_CODE_ENABLE_TELEMETRY` | `"1"` | 启用 OpenTelemetry 数据收集 |
 | `CLAUDE_CODE_DISABLE_BACKGROUND_TASKS` | `"1"` | 禁用后台任务 |
 | `DISABLE_AUTOUPDATER` | `"1"` | 禁用自动更新 |
@@ -794,18 +794,18 @@ MCP (Model Context Protocol) 服务器相关设置。
 | `HTTPS_PROXY` | URL | HTTPS 代理服务器 |
 
 {{< callout type="info" >}}
-**提示**: `ENABLE_TOOL_SEARCH` 值 `"auto:5"` 在上下文使用量为 5% 时激活工具搜索。`"auto"` 为默认 10%,`"true"` 始终启用,`"false"` 始终禁用。
+**提示**：`ENABLE_TOOL_SEARCH` 的值 `"auto:5"` 表示上下文使用量达 5% 时启用工具搜索。`"auto"` 默认 10%，`"true"` 始终开启，`"false"` 始终关闭。
 {{< /callout >}}
 
-### 工具搜索详情
+### 工具搜索详解
 
-`ENABLE_TOOL_SEARCH` 控制 MCP 工具搜索:
+`ENABLE_TOOL_SEARCH` 控制 MCP 工具搜索。它不把全部工具模式常驻加载，而是在需要时搜索并加载，因此在 MCP 服务器较多的环境中可以大幅节省上下文。
 
 | 值 | 说明 |
 |-----|------|
-| `"auto"` (默认值) | 在 10% 上下文时激活 |
-| `"auto:N"` | 自定义阈值 (例如: `"auto:5"` 为 5%) |
-| `"true"` | 始终激活 |
+| `"auto"`（默认） | 在 10% 上下文时启用 |
+| `"auto:N"` | 自定义阈值（例：`"auto:5"` 为 5%） |
+| `"true"` | 始终启用 |
 | `"false"` | 禁用 |
 
 ## settings.json vs settings.local.json
@@ -813,10 +813,10 @@ MCP (Model Context Protocol) 服务器相关设置。
 | 项目 | settings.json | settings.local.json |
 |------|---------------|---------------------|
 | 管理主体 | MoAI-ADK | 用户 |
-| Git 追踪 | 被追踪 | .gitignore |
+| Git 跟踪 | 跟踪 | .gitignore |
 | 更新时 | 覆盖 | 保留 |
-| 用途 | 团队共享设置 | 个人设置 |
-| 优先级 | 默认值 | 覆盖 (优先) |
+| 用途 | 团队共享配置 | 个人配置 |
+| 优先级 | 默认值 | 覆盖（优先） |
 
 ### settings.local.json 使用示例
 
@@ -829,21 +829,21 @@ MCP (Model Context Protocol) 服务器相关设置。
     ]
   },
   "enabledMcpjsonServers": [
-    "context7"          // 个人激活的 MCP 服务器
+    "context7"          // 个人启用的 MCP 服务器
   ],
-  "outputStyle": "Mr.Alfred"  // 个人偏好的输出样式
+  "outputStyle": "Mr.Alfred"  // 个人偏好的输出风格
 }
 ```
 
 {{< callout type="info" >}}
-`settings.local.json` 的设置与 `settings.json` 的设置 **合并**。相同键存在时 `settings.local.json` 优先。
+`settings.local.json` 的配置会 **合并** 到 `settings.json` 的配置中。存在相同键时 `settings.local.json` 优先。
 {{< /callout >}}
 
 ### settings.local.json 权限加固 (0o600) {#settings-local-json-permission}
 
-自 v2.20.0-rc1 起,`settings.local.json` 在创建和更新时强制使用 **`0o600`** (仅所有者 read/write) 权限。之前的 `0o644` 在多用户工作站上会将 `ANTHROPIC_AUTH_TOKEN` 等敏感凭证暴露给其他本地用户 (CWE-732 / CWE-552)。
+自 v2.20.0-rc1 起，`settings.local.json` 在创建、更新时被强制设为 **`0o600`**（仅所有者可读写）权限。以前的 `0o644` 在多用户工作站上存在 `ANTHROPIC_AUTH_TOKEN` 等敏感凭据暴露给其他本地用户的风险（CWE-732 / CWE-552）。
 
-**自检**:
+**自检**：
 
 ```bash
 # Linux
@@ -855,19 +855,19 @@ stat -f '%A' .claude/settings.local.json
 # 期望值: 600
 ```
 
-若权限不为 `600`,MoAI-ADK 将在下次会话开始时自动修正。如需立即修正,执行 `chmod 0600 .claude/settings.local.json`。
+若权限不是 `600`，MoAI-ADK 会在下次会话启动时自动修正。要立即修正，执行 `chmod 0600 .claude/settings.local.json`。
 
-完整的安全模型、威胁分析与额外自检流程请参见 [安全说明 — CWE-732](/zh/advanced/security-notes/#cwe-732)。
+详细的安全模型、威胁分析与额外检查流程见 [安全说明 — CWE-732](/zh/advanced/security-notes/#cwe-732)。
 
-## MoAI 专用设置
+## MoAI 专属配置
 
 {{< callout type="info" >}}
-**MoAI-ADK 扩展**: 此部分的设置特定于 MoAI-ADK,不包含在官方 Claude Code 文档中。
+**MoAI-ADK 扩展**：本节配置是 MoAI-ADK 特有的，不包含在官方 Claude Code 文档中。
 {{< /callout >}}
 
 ### MoAI 自定义 statusLine
 
-MoAI-ADK 提供自定义状态栏:
+MoAI-ADK 提供自定义状态栏。
 
 ```json
 {
@@ -882,23 +882,24 @@ MoAI-ADK 提供自定义状态栏:
 
 ### MoAI Statusline v3 功能
 
-MoAI-ADK statusline v3 包含以下功能：
+MoAI-ADK statusline v3 包含以下功能。
 
-- **RGB 渐变颜色**: 基于系统状态的动态颜色渐变
-- **5H/7D 使用量监控**: 5小时和7天 API 使用量条显示
-- **多行布局**: Compact（3行）、default 和 full 显示模式
-- **主题**:
-  - **MoAI Dark**（默认）: 带 RGB 渐变的深色主题
-  - **MoAI Light**: 适用于明亮环境的浅色主题
+- **RGB 渐变颜色**：随系统状态变化的动态颜色渐变
+- **5H/7D 用量监控**：显示 5 小时与 7 天 API 用量条
+- **多行布局**：Compact（3 行）、default、full 显示模式
+- **主题**：
+  - **MoAI Dark**（默认）：带 RGB 渐变的深色主题
+  - **MoAI Light**：面向明亮环境的浅色主题
 
 {{< callout type="info" >}}
-**注意**: 以前的主题（Default、Catppuccin Mocha、Catppuccin Latte）已重命名为 MoAI Dark/MoAI Light。
+**备注**：旧主题（Default、Catppuccin Mocha、Catppuccin Latte）已更名为 MoAI Dark/MoAI Light。
 {{< /callout >}}
 
-statusline 主题和段落在 `.moai/config/sections/statusline.yaml` 中配置。
+statusline 的主题与段在 `.moai/config/sections/statusline.yaml` 中配置。
+
 ### MoAI 自定义 Hooks
 
-MoAI-ADK 提供以下自定义 Hook:
+MoAI-ADK 提供以下自定义 Hook。
 
 ```json
 {
@@ -975,7 +976,7 @@ MoAI-ADK 提供以下自定义 Hook:
 }
 ```
 
-### MoAI 输出样式
+### MoAI 输出风格
 
 ```json
 {
@@ -983,13 +984,13 @@ MoAI-ADK 提供以下自定义 Hook:
 }
 ```
 
-此样式提供 Alfred AI 协调器的独特响应格式。
+该风格提供 Alfred AI 编排器专属的响应形式。
 
-## 实战示例: 设置自定义
+## 实战示例：定制配置
 
-### 添加新工具允许
+### 新增允许的工具
 
-如果项目使用 `bun`,在 `settings.local.json` 中添加。
+若项目使用 `bun`，添加到 `settings.local.json`。
 
 ```json
 {
@@ -1004,9 +1005,9 @@ MoAI-ADK 提供以下自定义 Hook:
 }
 ```
 
-### 激活 MCP 服务器
+### 启用 MCP 服务器
 
-激活 Context7 MCP 服务器。
+启用 Context7 MCP 服务器。
 
 ```json
 {
@@ -1016,9 +1017,9 @@ MoAI-ADK 提供以下自定义 Hook:
 }
 ```
 
-### 激活沙箱
+### 启用沙箱
 
-为安全激活沙箱并排除 Docker。
+为安全启用沙箱并排除 Docker。
 
 ```json
 {
@@ -1064,7 +1065,7 @@ MoAI-ADK 提供以下自定义 Hook:
 }
 ```
 
-### 自定义归属设置
+### 自定义归属配置
 
 ```json
 {
@@ -1075,14 +1076,74 @@ MoAI-ADK 提供以下自定义 Hook:
 }
 ```
 
+## v2.9.0 新增配置文件
+
+### Harness 配置 (harness.yaml)
+
+定义质量管线的深度级别与自动检测阈值。这是按变更规模调节验证成本的自适应质量的配置表面。
+
+**3 级深度级别：**
+
+| 级别 | 说明 | evaluator | 跳过的 Phase |
+|------|------|-----------|---------------|
+| minimal | 快速迭代（简单变更） | 停用 | 0, 0.5, 2.0, 2.5, 2.75, 2.8a, 2.9, 2.10 |
+| standard | 均衡质量（大多数开发） | final-pass | 无 |
+| thorough | 最高质量（关键功能） | per-sprint | 无 |
+
+```yaml
+# .moai/config/sections/harness.yaml
+harness:
+  default_level: standard
+  auto_detection:
+    minimal:
+      - "file_count <= 3 AND single_domain"
+      - "spec_type in [bugfix, docs, config]"
+    thorough:
+      - "security_keywords OR payment_keywords present"
+      - "spec_priority == critical"
+  levels:
+    thorough:
+      evaluator_profile: "strict"
+```
+
+### Constitution 配置 (constitution.yaml)
+
+以机器可读的形式定义项目技术约束。
+
+```yaml
+# .moai/config/sections/constitution.yaml
+constitution:
+  approved_languages: [go, typescript, python]
+  approved_frameworks: [cobra, viper, gin, react, next]
+  forbidden_patterns:
+    - "global mutable state"
+    - "panic() in library code"
+  security:
+    required_checks: [input-validation, sql-injection-prevention]
+    forbidden_practices: ["hardcoded credentials", "HTTP without TLS"]
+```
+
+### Evaluator Profiles (evaluator-profiles/)
+
+提供 4 种评估者档案。
+
+| 档案 | 说明 | Coverage | Security |
+|--------|------|----------|----------|
+| default | 标准怀疑式评估 | >= 85% | No Critical/High |
+| strict | 强化安全/可靠性（认证/支付） | >= 90% | ANY finding = FAIL |
+| lenient | 宽松评估（原型） | >= 60% | Critical only = FAIL |
+| frontend | 聚焦 UI/UX | N/A | WCAG AA required |
+
+档案文件位置：`.moai/config/evaluator-profiles/{name}.md`
+
 ## 相关文档
 
-- [Claude Code 官方设置文档](https://code.claude.com/docs/en/settings) - 官方 Claude Code 设置
-- [Hooks 指南](/advanced/hooks-guide) - Hook 设置详情
-- [CLAUDE.md 指南](/advanced/claude-md-guide) - 项目指令设置
-- [MCP 服务器使用](/advanced/mcp-servers) - MCP 服务器配置方法
-- [IAM 文档](https://code.claude.com/docs/en/iam) - 权限系统概述
+- [Claude Code 官方设置文档](https://code.claude.com/docs/en/settings) - 官方 Claude Code 配置
+- [Hooks 指南](/zh/advanced/hooks-guide) - Hook 配置详解
+- [CLAUDE.md 指南](/zh/advanced/claude-md-guide) - 项目指令配置
+- [MCP 服务器应用](/zh/advanced/mcp-servers) - MCP 服务器配置方法
+- [IAM 文档](https://code.claude.com/docs/en/iam) - 权限系统概览
 
 {{< callout type="info" >}}
-**提示**: 更改设置后需要重启 Claude Code 才能生效。`settings.local.json` 不被 Git 追踪,因此可以根据个人环境自由修改。
+**提示**：变更配置后需要重启 Claude Code 才会生效。`settings.local.json` 不被 Git 跟踪，可以按个人环境自由修改。
 {{< /callout >}}

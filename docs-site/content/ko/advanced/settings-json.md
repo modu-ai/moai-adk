@@ -4,7 +4,7 @@ weight: 70
 draft: false
 ---
 
-Claude Code의 설정 파일 체계를 상세히 안내합니다.
+Claude Code의 설정 파일 체계를 상세히 안내합니다. 에이전트에게 실행 권한을 위임하는 하네스에서 settings.json은 그 위임의 경계선을 긋는 파일입니다 — 무엇을 자동 허용하고, 무엇을 물어보고, 무엇을 절대 막을지가 전부 여기서 결정됩니다.
 
 {{< callout type="info" >}}
 **한 줄 요약**: `settings.json`은 Claude Code의 **관제탑**입니다. 권한, 환경 변수, Hook, 보안 정책을 한곳에서 관리합니다.
@@ -18,14 +18,14 @@ Claude Code는 **범위 시스템**을 사용하여 설정이 적용되는 위�
 
 | 범위 | 위치 | 영향 대상 | 팀 공유 | 우선순위 |
 |------|------|-----------|---------|----------|
-| **Managed** | 시스템 수준 `managed-settings.json` | 머신의 모든 사용자 | ✅ (IT 배포) | 최고 |
-| **User** | `~/.claude/` | 사용자 개인 (모든 프로젝트) | ❌ | 낮음 |
-| **Project** | `.claude/` | 저장소의 모든 협업자 | ✅ (Git 추적) | 중간 |
-| **Local** | `.claude/*.local.*` | 사용자 (이 저장소에서만) | ❌ | 높음 |
+| **Managed** | 시스템 수준 `managed-settings.json` | 머신의 모든 사용자 | ✓ (IT 배포) | 최고 |
+| **User** | `~/.claude/` | 사용자 개인 (모든 프로젝트) | ✗ | 낮음 |
+| **Project** | `.claude/` | 저장소의 모든 협업자 | ✓ (Git 추적) | 중간 |
+| **Local** | `.claude/*.local.*` | 사용자 (이 저장소에서만) | ✗ | 높음 |
 
 ### 범위별 우선순위
 
-동일한 설정이 여러 범위에 있는 경우, 더 구체적인 범위가 우선합니다:
+동일한 설정이 여러 범위에 있는 경우, 더 구체적인 범위가 우선합니다.
 
 ```mermaid
 flowchart TD
@@ -214,7 +214,7 @@ Windows Terminal 및 iTerm2와 같은 지원되는 터미널에서 진행률을 
 
 ## 권한 설정
 
-Claude Code가 실행할 수 있는 명령어의 권한을 관리합니다.
+Claude Code가 실행할 수 있는 명령어의 권한을 관리합니다. 권한 설계의 목표는 두 가지입니다 — 안전한 명령은 확인 없이 흐르게 해서 에이전틱 루프를 끊지 않는 것, 위험한 명령은 어떤 경우에도 통과하지 못하게 하는 것.
 
 ### 권한 구조
 
@@ -375,7 +375,7 @@ Claude가 접근할 수 있는 추가 작업 디렉토리입니다.
 
 ### 규칙 평가 순서
 
-여러 규칙이 동일한 도구 사용과 일치할 때, 규칙은 다음 순서로 평가됩니다:
+여러 규칙이 동일한 도구 사용과 일치할 때, 규칙은 다음 순서로 평가됩니다.
 
 1. **Deny** 규칙이 먼저 확인됨
 2. **Ask** 규칙이 두 번째로 확인됨
@@ -385,7 +385,7 @@ Claude가 접근할 수 있는 추가 작업 디렉토리입니다.
 
 ### 도구의 모든 사용 일치시키기
 
-도구의 모든 사용을 일치시키려면 괄호 없이 도구 이름만 사용하세요:
+도구의 모든 사용을 일치시키려면 괄호 없이 도구 이름만 사용하세요.
 
 | 규칙 | 효과 |
 |------|------|
@@ -397,7 +397,7 @@ Claude가 접근할 수 있는 추가 작업 디렉토리입니다.
 
 ### 세부 제어를 위한 지정자 사용
 
-괄호 안에 지정자를 추가하여 특정 도구 사용을 일치시킵니다:
+괄호 안에 지정자를 추가하여 특정 도구 사용을 일치시킵니다.
 
 | 규칙 | 효과 |
 |------|------|
@@ -426,7 +426,7 @@ Bash 규칙은 `*`와 함께 glob 패턴을 지원합니다. 와일드카드는 
 }
 ```
 
-**중요:** `*` 앞의 공백이 중요합니다:
+**중요:** `*` 앞의 공백이 중요합니다.
 - `Bash(ls *)`는 `ls -la`와 일치하지만 `lsof`는 일치하지 않음
 - `Bash(ls*)`는 둘 다와 일치
 
@@ -434,7 +434,7 @@ Bash 규칙은 `*`와 함께 glob 패턴을 지원합니다. 와일드카드는 
 
 ### 도메인별 패턴
 
-WebFetch와 같은 도구에 대해 도메인별 패턴을 사용할 수 있습니다:
+WebFetch와 같은 도구에 대해 도메인별 패턴을 사용할 수 있습니다.
 
 ```json
 {
@@ -473,7 +473,7 @@ flowchart TD
 
 ## 샌드박스 설정 (Sandbox Settings)
 
-고급 샌드박싱 동작을 구성합니다. 샌드박싱은 파일시스템과 네트워크에서 bash 명령을 격리합니다.
+고급 샌드박싱 동작을 구성합니다. 샌드박싱은 파일시스템과 네트워크에서 bash 명령을 격리합니다 — 권한 규칙이 논리적 방어선이라면, OS 샌드박스는 물리적 방어선입니다.
 
 {{< callout type="warning" >}}
 **중요:** 파일시스템 및 네트워크 제한은 Read, Edit, WebFetch 권한 규칙을 통해 구성되며, 샌드박스 설정을 통해서가 아닙니다.
@@ -609,7 +609,7 @@ Claude Code 이벤트에 반응하는 스크립트를 등록합니다.
 | `PreCompact` | 컨텍스트 압축 전 실행 |
 
 {{< callout type="info" >}}
-Hook 설정의 자세한 내용은 [Hooks 가이드](/advanced/hooks-guide)를 참고하세요.
+Hook 설정의 자세한 내용은 [Hooks 가이드](/ko/advanced/hooks-guide)를 참고하세요.
 {{< /callout >}}
 
 ## 플러그인 설정 (Plugin Settings)
@@ -686,7 +686,7 @@ MCP (Model Context Protocol) 서버 관련 설정입니다.
 
 ## 확장 사고 설정 (Extended Thinking Settings)
 
-확장 사고(Extended Thinking) 관련 설정입니다.
+확장 사고(Extended Thinking) 관련 설정입니다. 추론 토큰도 토큰입니다 — 항상 켜두면 편하지만, 예산과 함께 조율하는 것이 토크노믹스 관점의 정석입니다.
 
 ```json
 {
@@ -789,7 +789,7 @@ Claude Code 하단에 표시되는 상태 표시줄을 설정합니다.
 | `CLAUDE_AUTOCOMPACT_PCT_OVERRIDE` | `1`-`100` | 자동 압축 트리거 백분율 (기본값: ~95%) |
 | `CLAUDE_CODE_ENABLE_TELEMETRY` | `"1"` | OpenTelemetry 데이터 수집 활성화 |
 | `CLAUDE_CODE_DISABLE_BACKGROUND_TASKS` | `"1"` | 백그라운드 작업 비활성화 |
-| `DISABLE_AUTOUPDATER` | `"1"` | 자동 업�데이트 비활성화 |
+| `DISABLE_AUTOUPDATER` | `"1"` | 자동 업데이트 비활성화 |
 | `HTTP_PROXY` | URL | HTTP 프록시 서버 |
 | `HTTPS_PROXY` | URL | HTTPS 프록시 서버 |
 
@@ -799,7 +799,7 @@ Claude Code 하단에 표시되는 상태 표시줄을 설정합니다.
 
 ### 도구 검색 상세
 
-`ENABLE_TOOL_SEARCH`는 MCP 도구 검색을 제어합니다:
+`ENABLE_TOOL_SEARCH`는 MCP 도구 검색을 제어합니다. 도구 스키마를 전부 상시 로드하는 대신 필요할 때 검색해 로드하므로, MCP 서버가 많은 환경에서 컨텍스트를 크게 절약합니다.
 
 | 값 | 설명 |
 |-----|------|
@@ -867,7 +867,7 @@ stat -f '%A' .claude/settings.local.json
 
 ### MoAI 사용자 정의 statusLine
 
-MoAI-ADK는 사용자 정의 상태 표시줄을 제공합니다:
+MoAI-ADK는 사용자 정의 상태 표시줄을 제공합니다.
 
 ```json
 {
@@ -882,7 +882,7 @@ MoAI-ADK는 사용자 정의 상태 표시줄을 제공합니다:
 
 ### MoAI Statusline v3 기능
 
-MoAI-ADK statusline v3에는 다음이 포함됩니다:
+MoAI-ADK statusline v3에는 다음이 포함됩니다.
 
 - **RGB 그라디언트 색상**: 시스템 상태에 따른 동적 색상 그라디언트
 - **5H/7D 사용량 모니터링**: 5시간 및 7일 API 사용량 바 표시
@@ -896,9 +896,10 @@ MoAI-ADK statusline v3에는 다음이 포함됩니다:
 {{< /callout >}}
 
 statusline 테마와 세그먼트는 `.moai/config/sections/statusline.yaml`에서 설정합니다.
+
 ### MoAI 사용자 정의 Hooks
 
-MoAI-ADK는 다음 사용자 정의 Hook을 제공합니다:
+MoAI-ADK는 다음 사용자 정의 Hook을 제공합니다.
 
 ```json
 {
@@ -1079,7 +1080,7 @@ Context7 MCP 서버를 활성화합니다.
 
 ### Harness 설정 (harness.yaml)
 
-품질 파이프라인 깊이 수준과 자동 감지 임계값을 정의합니다.
+품질 파이프라인 깊이 수준과 자동 감지 임계값을 정의합니다. 변경의 크기에 맞춰 검증 비용을 조절하는 적응형 품질의 설정 표면입니다.
 
 **3단계 깊이 수준:**
 
@@ -1138,9 +1139,9 @@ constitution:
 ## 관련 문서
 
 - [Claude Code 공식 설정 문서](https://code.claude.com/docs/en/settings) - 공식 Claude Code 설정
-- [Hooks 가이드](/advanced/hooks-guide) - Hook 설정 상세
-- [CLAUDE.md 가이드](/advanced/claude-md-guide) - 프로젝트 지침 설정
-- [MCP 서버 활용](/advanced/mcp-servers) - MCP 서버 설정 방법
+- [Hooks 가이드](/ko/advanced/hooks-guide) - Hook 설정 상세
+- [CLAUDE.md 가이드](/ko/advanced/claude-md-guide) - 프로젝트 지침 설정
+- [MCP 서버 활용](/ko/advanced/mcp-servers) - MCP 서버 설정 방법
 - [IAM 문서](https://code.claude.com/docs/en/iam) - 권한 시스템 개요
 
 {{< callout type="info" >}}

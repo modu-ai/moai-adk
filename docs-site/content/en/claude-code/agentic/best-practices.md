@@ -2,197 +2,175 @@
 title: Best Practices
 weight: 90
 draft: false
-description: "Comprehensive strategies for using Claude Code effectively: context management, verification methods, planning workflows, environment setup, and integration with MoAI-ADK."
+description: "Patterns and strategies for using Claude Code effectively — a practical guide to verification-loop design, plan-first flow, context management, and environment setup."
 ---
 
 # Best Practices
 
-Claude Code is an agentic tool that reads code, runs commands, makes changes, and works through problems autonomously — so how you instruct it and how you have it verify its work determines the quality of the results.
+Claude Code is an agentic tool that autonomously reads files, runs commands, and makes changes. Unlike simply getting code reviewed, **how you instruct it and how you have it verify** largely determines result quality. The patterns on this page converge on one mindset — instead of hand-steering every turn, design the loop and the environment in which the agent runs well on its own.
 
 {{< callout type="info" >}}
-**Core Principle**: The context window fills up fast, and the fuller it gets, the worse performance becomes. Every best practice centers on **conserving context while giving precise signals**.
+**One-line summary**: Most problems share one root cause. **The context window fills fast, and as it fills, response quality drops while cost rises.** Every best practice is designed around this constraint.
 {{< /callout >}}
 
-## 1. Give Claude Verification Tools
+## Hand Over a Way to Verify
 
-Claude stops when the work "looks done." Without verification tools, you become the verification loop—catching every mistake one by one. Give Claude **a pass/fail check** and it runs the check itself, reads the result, and iterates until it passes.
+Claude stops when it gets the signal "the work seems done." Without tools to verify, you end up with a **verification loop where the user discovers every mistake**.
 
-A check can be anything that produces a signal you can read from the conversation: a test suite, a build exit code, a linter, a script comparing outputs against fixtures, a browser screenshot checked against a design.
+Provide verification Claude can run itself. A test suite, a build command, a linter, a screenshot-comparison script — anything Claude can read and react to works.
 
 | Strategy | Weak instruction | Recommended instruction |
-|----------|------------------|------------------------|
-| **Provide test cases** | "Implement validateEmail function" | "Write validateEmail. Test cases: user@example.com → true, invalid → false, user@.com → false. Run tests after implementation and confirm pass" |
-| **Visual verification for UI** | "Make the dashboard look better" | "[Screenshot attached] Implement this design. Take a result screenshot and compare against the original, listing any differences" |
-| **Root-cause fixing** | "Build is failing" | "Build fails with: [error text]. Find the root cause and fix it—don't hide the error, solve it" |
+|------|---------|-----------|
+| **Provide verification criteria** | `Implement a validateEmail function` | `Write a validateEmail function. Test cases: user@example.com is true, invalid is false, user@.com is false. Run the tests after implementing and confirm they pass` |
+| **Visual verification of UI changes** | `Make the dashboard look better` | `[Screenshot attached] Implement to match this design. Take a screenshot of the result, compare with the original, and list the differences` |
+| **Root-cause resolution** | `The build is failing` | `Build failure: [error text]. Find and fix the root cause. Resolve the error — do not hide it` |
 
-Verification methods differ in how strongly you enforce the check:
+Once verification is provided, Claude runs this cycle on its own:
 
-| Approach | Behavior | Best for |
-|----------|----------|----------|
-| **Within a prompt** | Request running the check and iterating in one message | General tasks completable immediately |
-| **`/goal` condition** | A separate evaluator rechecks every turn and continues until met | Automated verification across a session |
-| **Stop hook** | Runs a deterministic gate and blocks turn-end until it passes | Hard quality requirements |
-| **Verification subagent** | Fresh-context model tries to refute the result | Separating author from grader |
+1. Execute the work
+2. Run the verification
+3. Read the results
+4. Repeat until it passes
 
-The key is to **show evidence rather than claim success**. Receiving test output, command results with return values, and screenshots is faster than verifying yourself.
+This is why an unwatched session can still finish correctly. Demand evidence with completion reports — test output, commands run and their results, screenshots. It is faster than re-running things yourself. "Verifiable completion conditions + evidence-based judgment" is also the principle MoAI-ADK systematized into SPEC acceptance criteria (AC) and the TRUST 5 gates.
 
-{{< callout type="info" >}}
-**TL;DR**: A single verification check is autonomy itself — the difference between "a session you watch" and "a session you delegate" comes down to whether Claude has a check it can run on its own.
-{{< /callout >}}
+## The 4 Stages: Explore → Plan → Implement → Commit
 
-## 2. Explore → Plan → Implement in Four Stages
-
-Jumping straight into coding can produce **code that solves the wrong problem**. The recommended flow separates exploration from execution in four stages using plan mode.
+Jumping straight into coding can produce **code that solves the wrong problem**. Explore and plan first. Read-only turns are cheap and implementation turns are expensive, so this ordering is a matter of token economics as much as quality.
 
 ```mermaid
 flowchart TD
-    A["1️⃣ Explore<br/>plan mode<br/>Read files and ask questions"] --> B["2️⃣ Plan<br/>Write detailed implementation plan<br/>Edit with Ctrl+G"]
-    B --> C["3️⃣ Implement<br/>Exit plan mode<br/>Code and verify per plan"]
-    C --> D["4️⃣ Commit<br/>Descriptive message<br/>Create PR"]
+    A["1. Explore<br/>Enter plan mode<br/>Read files, ask questions"] --> B["2. Plan<br/>Detailed implementation plan<br/>Edit with Ctrl+G"]
+    B --> C["3. Implement<br/>Exit plan mode<br/>Code while verifying against the plan"]
+    C --> D["4. Commit<br/>Descriptive message<br/>Create the PR"]
 ```
 
-**Stage-by-stage detail**:
+Stage by stage:
 
-1. **Explore (plan mode)**: Read files and understand the structure without making changes.
+1. **Explore** (plan mode): read files and ask questions. No changes allowed.
+   ```text
+   In plan mode:
+   Read /src/auth and understand the session and login flows.
+   Also look at how secrets are managed via environment variables.
    ```
-   Read src/auth to understand the session and login flow.
-   Also check how secrets are managed via environment variables.
-   ```
+2. **Plan**: write a detailed implementation plan. `Ctrl+G` lets you edit it directly in your editor.
+3. **Implement**: exit plan mode and code. Run tests, verifying against the plan.
+4. **Commit**: commit with a descriptive message and create the PR.
 
-2. **Plan**: Write a detailed implementation plan. Edit it directly with `Ctrl+G` in the editor.
+For clearly scoped, simple work (fixing a typo, adding one line, renaming a variable), skipping the plan stage is fine. Planning is most effective **when scope is uncertain or multiple files change**. MoAI-ADK's plan→run→sync lifecycle and Implementation Kickoff Approval gate institutionalize these 4 stages as the SPEC workflow.
 
-3. **Implement**: Exit plan mode, then write code per the plan. Run tests and verify alignment with the plan as you go.
+## Provide Specific Context
 
-4. **Commit**: Write a descriptive commit message and create a PR.
-
-**Exception**: For small, clearly scoped tasks like fixing a typo, adding a log line, or renaming a variable, you can skip the plan stage. Planning delivers the most value when the approach is uncertain, multiple files change, or you're touching unfamiliar code.
-
-## 3. Be Specific with Context
-
-Claude can infer intent, but it cannot read your mind. Pointing to specific files, stating constraints, and referencing existing patterns cuts the correction loop in half.
+Claude can infer intent, but it cannot read minds. **The more specific you are, the fewer corrections needed** — and fewer corrections mean fewer tokens.
 
 | Strategy | Vague instruction | Recommended instruction |
-|----------|------------------|------------------------|
-| **Scope the task** | "Add tests to foo.py" | "Write tests for foo.py covering the logged-out edge case, avoiding mocks" |
-| **Point to the source** | "Why is this API weird?" | "Check the git history of ExecutionFactory and explain how the API evolved" |
-| **Reference patterns** | "Add a calendar widget" | "Look at existing home-screen widget patterns, especially HotDogWidget.php. Follow that pattern to build a calendar widget" |
-| **Describe the symptom** | "Fix the login bug" | "Login fails after session expires. Check the token refresh flow in src/auth/. Write a failing test that reproduces the bug, then fix it" |
+|------|---------|-----------|
+| **Constrain the scope** | `Add tests to foo.py` | `Write foo.py tests covering the logged-out edge case. No mocks` |
+| **Point to sources** | `Why is the ExecutionFactory API weird?` | `Look through ExecutionFactory's git history and summarize how the API evolved` |
+| **Reference patterns** | `Add a calendar widget` | `Study the existing widget implementation pattern on the home screen. HotDogWidget.php is a good example. Implement the calendar widget in that pattern` |
+| **Describe symptoms** | `Fix the login bug` | `Login fails after session expiry. Check the token-refresh flow in src/auth. Write a failing test that reproduces the bug first, then fix it` |
 
 ### Ways to Provide Rich Context
 
-- **@-reference files**: Instead of describing where code lives, use `@path/file` so Claude reads it before responding.
-- **Paste images**: Attach screenshots or design mockups directly.
-- **Provide URLs**: Give documentation or API reference URLs, then use `/permissions` to allowlist those domains.
-- **Pipe input**: Pass file contents directly like `cat error.log | claude`.
+- **Reference files with @**: point directly with `@path/file` instead of describing, and Claude reads it first
+- **Paste images**: attach screenshots or design mocks directly
+- **Provide URLs**: give doc/API reference URLs and allowlist the domain via `/permissions`
+- **Pipe input**: pass data directly with `cat error.log | claude`
 
-## 4. Set Up Your Environment
+## Set Up the Environment
 
-Small setup changes make every session more efficient.
+Small configuration changes make every session more efficient. Moving the corrections you repeat each session into the environment — that is where harness engineering starts.
 
-### Create CLAUDE.md
+### Writing CLAUDE.md
 
-A special file Claude reads at session start. Write project-specific details here: code style, workflow, test frameworks, repository etiquette, and architectural decisions.
-
-**Generate a baseline** with `/init` then refine it.
+A special file Claude reads at the start of every session. Write code style, workflows, and project setup. Auto-generating a draft with the `/init` command and refining it is fast. `/init` analyzes the project — detecting the build system, finding the test framework, learning code patterns — to produce the draft.
 
 **Include**:
-- Bash commands Claude cannot guess
-- Code-style rules different from the default
-- Test framework and how to run tests
-- Repository etiquette (branch naming, PR rules)
-- Architectural decisions specific to this project
+
+- Bash commands (things Claude cannot guess)
+- Code style rules (where they differ from defaults)
+- The test framework and how to run it
+- Repository etiquette (branch names, PR rules)
+- Architecture decisions (project-specific quirks)
 
 **Exclude**:
-- Things readable from code (API docs should be linked, not pasted)
+
+- Anything readable from the code (link API docs instead)
 - Frequently changing information
 
-### Permission Modes
+CLAUDE.md loads in full every session and consumes tokens, so as it grows, it needs a diet.
 
-By default, Claude asks for permission on every action that can change your system. Three options reduce friction while keeping you in control.
+### Configuring Permission Modes
 
-- **Auto mode** (`Shift+Tab`): A classifier model reviews commands and blocks only risky ones (privilege escalation, unknown infrastructure, adversarial content).
-- **Permission allowlist**: Use `/permissions` to approve safe commands like `npm run lint`, `git commit` in advance.
-- **Sandboxing**: Use `/sandbox` for OS-level isolation restricting filesystem and network access.
+The default has Claude requesting approval for every action. Safe but tedious.
 
-### Reversible vs Irreversible Actions
+- **Auto mode** (`Shift+Tab`): a classifier model judges risk and auto-approves.
+- **Permission allowlists**: pre-allow safe commands like `npm run lint` and `git commit`.
+- **Sandboxing**: OS-level isolation for freer work while keeping boundaries.
 
-- **Local, reversible actions** (file edits, running tests) can be performed freely. Stop with `Esc` or restore with `/rewind`.
-- **Hard-to-reverse actions** (force push, `rm -rf`, dropping tables, external publishing) must always get user confirmation.
-- **Never use verification-skipping flags** like `--no-verify`. Skipping checks hides problems; it does not solve them.
+### Leveraging CLI Tools
 
-## 5. Use CLI Tools Efficiently
+CLIs like `gh` (GitHub CLI), `aws`, and `gcloud` are highly context-efficient. If installed, Claude uses them automatically; if not, it falls back to APIs, which can be slower and more constrained.
 
-`gh` (GitHub CLI), `aws`, `gcloud` and similar tools are highly context-efficient. Claude uses them automatically if available; without them, API calls are slower and more limited.
+### Connecting MCP Servers
 
-## 6. Connect MCP Servers
-
-{{< callout type="info" >}}
-MCP (Model Context Protocol) — connect external tools directly to Claude.
-{{< /callout >}}
+Issue trackers, databases, and monitoring dashboards connect directly to Claude via MCP (Model Context Protocol).
 
 ```bash
 claude mcp add --transport http <server-name>
 ```
 
-Connect issue trackers, databases, and monitoring dashboards so Claude can query them directly.
-
-## 7. Extend with Skills and Subagents
+## Extending with Skills and Subagents
 
 ### Skills — Domain Knowledge
 
-Create `.claude/skills/SKILL.md` files to auto-load domain-specific guidance.
+Write a `SKILL.md` file in `.claude/skills/` to auto-load domain-specific guidance.
 
 ```markdown
 ---
 name: api-conventions
-description: Our REST API design rules
+description: REST API design rules for our service
 ---
 
 - URL paths: kebab-case
 - JSON properties: camelCase
-- Versioning: /v1/, /v2/ in path
+- Versions: included in the URL path (/v1/, /v2/)
 ```
 
-Skills load only when needed, keeping session context clean.
+It loads only when needed, so it never pollutes every session's context.
 
-### Subagents — Isolated Work
+### Subagents — Isolated Experts
 
-Delegate large explorations or deep analysis to subagents. They process work in their own context, return only summaries, keeping the main conversation clean.
+Delegate to a subagent when many files must be read or deep analysis is needed. It works in an independent context and returns only a summary, so the investigation's file reads never occupy the main session context.
 
-## 8. Session Management
+## Session Management
 
-### /clear for Context Separation
+### Separating Contexts with /clear
 
-Long projects with many tasks can benefit from context resets. Use `/clear` when moving between unrelated work or after context hits 150K tokens.
+When moving between tasks in a big project, running `/clear` to shed the previous context before starting new work keeps performance up.
 
-- After completing a phase
-- When context usage exceeds 150K tokens
-- When switching to unrelated tasks
+- After completing a stage of work
+- When context usage exceeds 150K
+- When switching to unrelated work
 
-### /rewind for Experimentation
+### Experimenting with Rewind
 
-Press `Esc` or use `/rewind` to step back and try different approaches while preserving context.
+The `Esc` key or `/rewind` command returns you to an earlier state. You can try a different approach while keeping context, enabling experimentation without fear of failure.
 
-### Delegate Large Explorations to Subagents
+### Delegate Investigation to Subagents
 
-When massive file exploration is needed, send a subagent instead. Read files pile up in the subagent's context, not your main session's.
+When large-scale exploration is needed, send a subagent. The files it reads never contaminate the main session context.
 
-## 9. Parallel Work: Multiple Sessions
+## Running Multiple Agents in Parallel
 
-Read-only tasks like analysis and review can run in parallel across separate sessions.
+Read-only analysis and review can proceed in parallel across multiple sessions.
 
-**Writer/Reviewer pattern**:
-- Session A (Writer): Implement code
-- Session B (Reviewer): Code review (independent perspective)
-- Session A: Reflect feedback
+- **Writer/Reviewer pattern**: session A (Writer) implements the code, session B (Reviewer) reviews from an independent perspective, then session A applies the feedback. This separation of the builder from the checker is the same principle MoAI-ADK institutionalized with its independent audit agents, plan-auditor / sync-auditor.
+- **Test/Code split**: session A writes the tests (TDD) and session B implements code that passes them.
 
-Or **Test/Code split**:
-- Session A: Test-first writing (TDD)
-- Session B: Implementation satisfying those tests
+## Automation and Scale
 
-## 10. Non-Interactive and Scaled Automation
-
-### Headless Mode
+### Non-Interactive Mode
 
 ```bash
 claude -p "prompt" --output-format json
@@ -200,28 +178,39 @@ claude -p "prompt" --output-format json
 
 Integrate Claude into CI pipelines, pre-commit hooks, and scripts.
 
-### Multiple Sessions in Parallel
+### Parallel Multi-Session Runs
 
-Run many SPECs concurrently or transform large file batches in parallel.
+Advance multiple SPECs at once, or transform large batches of files in parallel. Isolating with [worktrees](/claude-code/agentic/worktrees) so file edits never overlap is the safe way.
 
-### /goal for Autonomous Completion
+### Autonomous Completion with /goal
 
+```text
+/goal "all tests pass and coverage is at or above 85%"
 ```
-/goal "all tests pass and coverage is 85%"
-```
 
-Claude keeps working toward the condition automatically.
+Declare the completion condition and Claude iterates automatically, stopping when the goal is achieved. By this point your role has shifted from "instructing every turn" to "designing the loop" — MoAI-ADK's `/moai goal` and `/moai loop` are extensions coupling this loop to the project's quality tooling and SPEC lifecycle.
 
-## 11. Common Anti-Patterns to Avoid
+## Avoiding Common Failure Patterns
 
-| Anti-pattern | Problem | Remedy |
-|--------------|---------|--------|
-| **Kitchen sink session** | Unrelated tasks mixed, context full of noise | `/clear` between tasks |
-| **Repeated corrections** | Same problem fixed twice, failed approach pollutes context | After 2 failures, `/clear` and restart with specific prompt |
-| **Over-engineering** | Unrequested abstraction layers, defensive code | Keep only the minimum needed complexity |
-| **Trust-then-verify gap** | Plausible implementation misses edge cases | Always provide verification tools; if you cannot verify, don't ship |
-| **Infinite exploration** | Unscoped "investigate" instruction reads hundreds of files | Narrow scope or delegate to a subagent |
+| Pattern | Problem | Fix |
+|------|------|------|
+| **The kitchen-sink session** | Unrelated tasks mixed together pollute context | `/clear` between unrelated tasks |
+| **Repeated corrections** | The same problem recurs despite fixing it twice | `/clear`, then restart with better instructions |
+| **A bloated CLAUDE.md** | Instructions so long Claude ignores more than half | Prune ruthlessly. The test: "would it make a mistake without this rule?" |
+| **The trust-verify gap** | A plausible-looking implementation misses edge cases | Always provide verification (tests, screenshots, linters) |
+| **Endless exploration** | An unscoped "look into this" reads hundreds of files | State the scope or delegate to a subagent |
+
+## Related Documents
+
+- [Context Window](/claude-code/context-memory/context-window)
+- [Subagents](/claude-code/agentic/sub-agents)
+- [Goal-Directed Execution (/goal)](/claude-code/agentic/goal)
+- [Large Codebases](/claude-code/agentic/large-codebases)
 
 ## References
 
-This guide is based on Anthropic's official [Best practices for Claude Code](https://code.claude.com/docs/en/best-practices) documentation.
+- [Best practices for Claude Code (official docs)](https://code.claude.com/docs/en/best-practices)
+
+{{< callout type="tip" >}}
+If you take only one thing from this page, make it "hand over a way to verify." A verifiable completion condition is what lets the loop run itself, and a self-running loop is what gives every other best practice its power.
+{{< /callout >}}

@@ -1,14 +1,14 @@
 ---
 title: Initial Setup
-weight: 40
+weight: 50
 draft: false
 ---
 
-Complete your first setup using MoAI-ADK's interactive setup wizard. Configure your system for development in 9 steps.
+Complete your first-time setup with MoAI-ADK's interactive setup wizard. Across nine steps you configure language, Git automation scope, and execution mode to fit your development environment. Everything you choose here is saved as YAML files under `.moai/config/sections/`, so you can edit the files directly or re-run the wizard at any time.
 
 ## Starting the Setup Wizard
 
-### Creating New Project
+### Creating a New Project
 
 To create and initialize a new project:
 
@@ -16,11 +16,11 @@ To create and initialize a new project:
 moai init my-project
 ```
 
-This creates a `my-project` folder and initializes MoAI-ADK.
+This command creates the `my-project` folder and initializes MoAI-ADK.
 
-### Installing in Current Folder
+### Installing into the Current Folder
 
-To install MoAI-ADK in an existing project, navigate to that folder and run:
+To install MoAI-ADK into an existing project, move into that folder and run:
 
 ```bash
 cd my-existing-project
@@ -28,17 +28,17 @@ moai init
 ```
 
 {{< callout type="info" >}}
-`moai init` installs directly in the current folder. For new projects, use `moai init <project-name>`.
+`moai init` installs directly into the current folder. For a new project, create it with `moai init <project-name>`.
 {{< /callout >}}
 
-## 9-Step Setup Process
+## The 9-Step Setup Process
 
-### Step 1: Select Conversation Language
+### Step 1: Select the Conversation Language
 
-Select the language Claude will use to communicate with you.
+Choose the language Claude will respond in.
 
 ```bash
-? Select conversation language:
+? Select your conversation language:
 ▸ English - English
   Korean (한국어) - Korean
   Japanese (日本語) - Japanese
@@ -46,39 +46,39 @@ Select the language Claude will use to communicate with you.
 ```
 
 {{< callout type="info" >}}
-Language can be changed later in `.moai/config/sections/language.yaml`.
+You can change the language later in the `.moai/config/sections/language.yaml` file.
 {{< /callout >}}
 
-### Step 2: Enter Name
+### Step 2: Enter Your Name
 
-Used in configuration files. Press Enter to skip.
+Used in the settings file. You can press Enter to skip.
 
 ```bash
-? Enter name: [name]
+? Enter your name: [name]
 ```
 
-### Step 3: Select Git Automation Mode
+### Step 3: Select the Git Automation Mode
 
-Set the scope of Git operations Claude can perform.
+Sets the scope of Git operations Claude may perform.
 
 ```bash
 ? Select Git automation mode:
 ▸ Manual - AI does not commit or push
   Personal - AI can create branches and commit
-  Team - AI can create branches, commit, and create PRs
+  Team - AI can create branches, commit, and open PRs
 ```
 
-**Manual**: AI does not perform any Git operations. All commits and pushes are executed by the user directly.
-**Personal**: AI can create branches and commit. Suitable for personal projects.
-**Team**: AI handles branch creation, commits, and PR creation. Optimized for team collaboration workflows.
+**Manual**: The AI performs no Git operations. You run every commit and push yourself.
+**Personal**: The AI can create branches and commit. Good for personal projects.
+**Team**: The AI creates branches, commits, and opens PRs. Optimized for team collaboration workflows.
 
 {{< callout type="info" >}}
-Git settings are saved in `.moai/config/sections/git-strategy.yaml`. You can reconfigure at any time with `moai update -c`.
+The Git settings are saved to `.moai/config/sections/git-strategy.yaml`. You can reconfigure at any time with `moai update -c`.
 {{< /callout >}}
 
-### Step 4: Select Git Provider
+### Step 4: Select the Git Provider
 
-Select your project's Git hosting platform.
+Choose the project's Git hosting platform.
 
 ```bash
 ? Select Git provider:
@@ -86,9 +86,9 @@ Select your project's Git hosting platform.
   GitLab - GitLab.com or self-hosted GitLab
 ```
 
-### Step 5: Select Git Commit Message Language
+### Step 5: Select the Git Commit Message Language
 
-Select the language for writing commit messages.
+Choose the language used for commit messages.
 
 ```bash
 ? Select Git commit message language:
@@ -99,70 +99,70 @@ Select the language for writing commit messages.
 ```
 
 {{< callout type="info" >}}
-Commit message language can be set differently from code comment language.
+The commit message language can be set independently of the code comment language.
 {{< /callout >}}
 
-### Step 6: Select Code Comment Language
+### Step 6: Select the Code Comment Language
 
-Select the language for code comments.
+Choose the language used for code comments.
 
 ```bash
 ? Select code comment language:
-▸ Korean (한국어) - Comment in Korean
-  English - Comment in English
-  Japanese (日本語) - Comment in Japanese
-  Chinese (中文) - Comment in Chinese
+▸ Korean (한국어) - Comments in Korean
+  English - Comments in English
+  Japanese (日本語) - Comments in Japanese
+  Chinese (中文) - Comments in Chinese
 ```
 
 {{< callout type="info" >}}
-For most projects, using English for code comments is recommended.
+For most projects, English is the recommended code comment language.
 {{< /callout >}}
 
-### Step 7: Select Documentation Language
+### Step 7: Select the Documentation Language
 
-Select the language for documentation files.
+Choose the language used for documentation files.
 
 ```bash
 ? Select documentation language:
-▸ Korean (한국어) - Document in Korean
-  English - Document in English
-  Japanese (日本語) - Document in Japanese
-  Chinese (中文) - Document in Chinese
+▸ Korean (한국어) - Docs in Korean
+  English - Docs in English
+  Japanese (日本語) - Docs in Japanese
+  Chinese (中文) - Docs in Chinese
 ```
 
-### Step 8: Select Agent Teams Execution Mode
+### Step 8: Select the Agent Teams Execution Mode
 
 Configure whether MoAI uses Agent Teams (parallel) or sub-agents (sequential).
 
 ```bash
 ? Select Agent Teams execution mode:
-▸ Auto (Recommended) - Intelligent selection based on task complexity
-  Sub-agent (Classic) - Traditional single agent mode
-  Team (Experimental) - Parallel Agent Teams (requires experimental feature)
+▸ Auto (recommended) - Intelligent selection based on task complexity
+  Sub-agent (classic) - The traditional single-agent mode
+  Team (experimental) - Parallel Agent Teams (requires the experimental feature)
 ```
 
-**Auto**: Automatically selects the optimal mode based on task complexity. Recommended for most cases.
-**Sub-agent**: A single agent processes tasks sequentially. Suitable for highly dependent tasks.
-**Team**: Multiple specialized agents collaborate in parallel. Requires `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1` environment variable.
+**Auto**: Automatically selects the optimal mode based on task complexity. Recommended in most cases.
+**Sub-agent**: A single agent processes work sequentially. Good for highly dependent tasks.
+**Team**: Multiple specialist agents collaborate in parallel. Requires the `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1` environment variable.
 
-### Step 9: Select Teammate Display Mode
+### Step 9: Select the Teammate Display Mode
 
-Configure how Agent teammates are displayed. Split screen requires tmux.
+Configures how agent teammates are displayed. Split-screen requires tmux.
 
 ```bash
 ? Select teammate display mode:
-▸ Auto (Recommended) - tmux when available, in-process otherwise (default)
-  In-Process - Run in same terminal (works everywhere)
-  Tmux - tmux split screen (requires tmux/iTerm2)
+▸ Auto (recommended) - tmux when available, otherwise in-process (default)
+  In-Process - Runs in the same terminal (works anywhere)
+  Tmux - tmux split panes (requires tmux/iTerm2)
 ```
 
-**Auto**: Automatically detects tmux availability and selects the optimal display mode.
+**Auto**: Detects whether tmux is installed and selects the best display mode automatically.
 **In-Process**: Teammate work runs in the same terminal window. Works without tmux.
-**Tmux**: Visually monitor teammate work in tmux split screens.
+**Tmux**: Lets you visually monitor teammate work in tmux split panes.
 
-## Setup Completion
+## Setup Complete
 
-After completing all steps, configuration files will be created:
+Once all steps are finished, the configuration files are created:
 
 ```mermaid
 graph TD
@@ -176,7 +176,7 @@ graph TD
     E --> I[git-strategy.yaml]
 ```
 
-Check the generated configuration files:
+Take a look at the generated configuration files:
 
 ```bash
 cat .moai/config/sections/user.yaml
@@ -197,11 +197,11 @@ graph TB
     E --> E1[strategy: manual/personal/team<br>auto_commit, auto_push<br>pr_workflow]
 ```
 
-## Modifying Configuration
+## Modifying the Configuration
 
-Configuration can be modified at any time:
+You can modify the configuration at any time:
 
-### Manual Modification
+### Manual Editing
 
 ```bash
 # User settings
@@ -217,71 +217,47 @@ vim .moai/config/sections/quality.yaml
 vim .moai/config/sections/git-strategy.yaml
 ```
 
-### Reset Configuration
+### Reconfiguring
 
-Re-run the setup wizard to reconfigure all settings:
+You can re-run the setup wizard to reconfigure everything:
 
 ```bash
-# Re-run setup wizard (recommended)
+# Re-run the setup wizard (recommended)
 moai update -c
 
-# Or complete reset
+# Or a full reset
 moai init --reset
 ```
 
 {{< callout type="info" >}}
-`moai update -c` allows you to selectively reset only the items you want to change while keeping existing settings.
+The `moai update -c` command keeps your existing settings and lets you selectively reconfigure only the items you want to change.
 {{< /callout >}}
 
 {{< callout type="warning" >}}
-`moai init --reset` overwrites all existing settings. Backup important settings.
+The `moai init --reset` option overwrites all existing settings. Back up anything important first.
 {{< /callout >}}
 
-## Configuration Verification
+## Verifying the Configuration
 
-Verify that configuration is correctly set up:
-
-```bash
-moai doctor
-```
-
-Output example:
+Verify that the configuration is set up correctly:
 
 ```bash
 moai doctor
-Running system diagnostics...
-
-┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━┓
-┃ Check                                    ┃ Status ┃
-┡━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━┩
-│ Python >= 3.11                           │   ✓    │
-│ Git installed                            │   ✓    │
-│ Project structure (.moai/)               │   ✓    │
-│ Config file (.moai/config/config.yaml)   │   ✓    │
-└──────────────────────────────────────────┴────────┘
-
-✓ All checks passed
 ```
 
 This command verifies:
 
-- Python >= 3.11 installed
-- Git installed
-- Project structure (`.moai/` folder)
-- Configuration file (`.moai/config/config.yaml`)
+- Whether Git is installed
+- The project structure (the `.moai/` folder)
+- The configuration file (`.moai/config/config.yaml`)
+- Per-language development tool detection (use `--verbose` for details)
+
+If every item passes, an `All checks passed` message is shown. If tools are missing, `moai doctor --fix` offers fix suggestions.
 
 ## Next Steps
 
-Once setup is complete, follow the [Quick Start](./quickstart) guide to create your first project.
+With setup complete, follow the [Quick Start](./quickstart) guide to create your first project. You can view all commands and options at any time:
 
 ```bash
 moai --help
 ```
-
-You can see all commands and options.
-
----
-
-## Next Steps
-
-Learn how to create your first project in [Quick Start](./quickstart).

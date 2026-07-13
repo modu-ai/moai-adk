@@ -4,86 +4,103 @@ weight: 20
 draft: false
 ---
 
-MoAI-ADK is an AI-based development environment, a comprehensive toolkit for efficiently generating high-quality code.
+MoAI-ADK is an Agentic Development Kit that aims for **Tokenomics** (Token Economics). Code of the same quality with fewer tokens, and higher quality for the same tokens — the system manages model selection, reasoning depth, and context usage. Written in Go as a single binary, it runs immediately with zero dependencies.
 
 ## Notation Guide
 
-In this documentation, command prefixes indicate the execution environment:
+In this documentation, the prefix in code blocks indicates where the command runs:
 
-- **Claude Code** commands entered in the chat window
+- Commands typed into the **Claude Code** chat input
   ```bash
   > /moai plan "feature description"
   ```
 
-- **Terminal** commands entered in the terminal
+- Commands typed into the **terminal**
   ```bash
   moai init my-project
   ```
 
+## Core Value — The Three Pillars
+
+The value of MoAI-ADK v3.0 comes down to three pillars.
+
+| Pillar | One-line description | Representative tools |
+|------|-----------|----------|
+| **Tokenomics** | Intelligent resource allocation maximizing quality per cost | 3-tier model policy · CG mode · Token Circuit Breaker |
+| **Agentic Loop Engineering** | The loop works on its own; observations accumulate and the harness learns | `/moai goal` · `/moai loop` · Analyze-First routing |
+| **Agentic Harness** | Design the environment agents work in instead of writing code yourself | 10 agents · SPEC 3-phase · TRUST 5 |
+
+The details of each pillar are covered in the [Core Concepts](/en/core-concepts/) section. This page covers only what you need to get started.
+
 ## Core Concepts
 
-MoAI-ADK is based on **SPEC-based TDD/DDD** methodology and ensures code quality through the **TRUST 5** quality framework.
+MoAI-ADK is built on the **SPEC-based TDD/DDD** methodology and guarantees code quality through the **TRUST 5** quality framework.
 
-### What is SPEC? (Easy Understanding)
+### What is a SPEC? (The Easy Version)
 
-**SPEC** (Specification) is "documenting conversations with AI."
+A **SPEC** (Specification) is "recording your conversation with the AI as a document".
 
-The biggest problem with **Vibe Coding** is **context loss**:
-- Context discussed with AI for an hour **disappears** when the session ends
-- To continue work the next day, you must **re-explain everything from scratch**
-- For complex features, **results often differ from your intentions**
+The biggest problem with **vibe coding** (Vibe Coding) is **context loss**:
 
-**SPEC solves this problem:**
-- Permanently preserve requirements by **saving them to files**
-- Can **continue work** by reading just the SPEC even if the session ends
-- Define clearly without ambiguity using **EARS format**
+- What you discussed with the AI for an hour **disappears** when the session ends
+- To continue the next day, you have to **explain everything from scratch**
+- The more complex the feature, the more the result **diverges from your intent**
+
+**A SPEC solves this:**
+
+- Requirements are **saved as files** and preserved permanently
+- Even if the session drops, reading the SPEC lets you **pick up where you left off**
+- The EARS format defines requirements clearly, **without ambiguity**
+- No repeating the same explanation, so you **save tokens** too
 
 {{< callout type="info" >}}
-**One-line summary:** Yesterday's discussion about "JWT authentication + 1-hour expiration + refresh token" — no need to re-explain today. Just run `/moai run SPEC-AUTH-001` and start implementation immediately!
+**One-line summary:** Instead of re-explaining yesterday's "JWT auth + 1-hour expiry + refresh token" discussion, one line — `/moai run SPEC-AUTH-001` — starts the implementation immediately!
 {{< /callout >}}
 
-### What is TDD? (Easy Understanding)
+### What is TDD? (The Easy Version)
 
-**TDD** (Test-Driven Development) is "a method where you write tests before writing code."
+**TDD** (Test-Driven Development) is "writing the tests first, then developing".
 
-Using exam preparation as an analogy:
-- Write the **grading criteria (tests) first** — naturally fails since the feature doesn't exist yet
-- Write **minimal code to pass the criteria** — only what's necessary
-- **Polish the code** — improve quality while tests remain passing
+Think of it like writing an exam:
 
-MoAI-ADK automates this process using the **RED-GREEN-REFACTOR** cycle:
+- **Write the grading criteria (the tests) first** — with no feature yet, they naturally fail
+- **Write the minimum code that passes the criteria** — exactly as much as needed
+- **Polish it into better code** — improve while keeping the tests passing
 
-| Phase | Meaning | Action |
-|-------|---------|--------|
-| **RED** | Failure | Write tests for features that don't yet exist |
-| **GREEN** | Success | Write minimal code to make tests pass |
-| **REFACTOR** | Improvement | Improve code quality while keeping tests green |
+MoAI-ADK automates this process with the **RED-GREEN-REFACTOR** cycle:
 
-### What is DDD? (Easy Understanding)
+| Phase | Meaning | What happens |
+|------|------|--------|
+| **RED** | Fail | Write tests first for the feature that does not exist yet |
+| **GREEN** | Pass | Write the minimum code that passes the tests |
+| **REFACTOR** | Improve | Raise code quality while keeping the tests green |
 
-**DDD** (Domain-Driven Development) is "a method for safely improving existing code."
+### What is DDD? (The Easy Version)
 
-Using home renovation as an analogy:
-- **Don't demolish the existing house** — improve room by room
-- **Record the current state before renovation** (= characterization tests)
-- **Work room by room and verify each step** (= incremental improvement)
+**DDD** (Domain-Driven Development) is "a safe way to improve code".
 
-MoAI-ADK automates this process using the **ANALYZE-PRESERVE-IMPROVE** cycle:
+Think of it like remodeling a house:
 
-| Phase | Meaning | Action |
-|-------|---------|--------|
-| **ANALYZE** | Analysis | Understand current code structure and issues |
-| **PRESERVE** | Preservation | Record current behavior with tests (safety net) |
-| **IMPROVE** | Improvement | Gradually improve while passing tests |
+- Improve one room at a time, **without demolishing the house**
+- **Record the current state before remodeling** (= characterization tests)
+- **Work room by room, verifying each time** (= incremental improvement)
 
-### Choosing Your Development Methodology
+MoAI-ADK automates this process with the **ANALYZE-PRESERVE-IMPROVE** cycle:
 
-MoAI-ADK automatically selects the optimal methodology based on your project state.
+| Phase | Meaning | What happens |
+|------|------|--------|
+| **ANALYZE** | Analyze | Understand the current code structure and problems |
+| **PRESERVE** | Preserve | Record current behavior with tests (the safety net) |
+| **IMPROVE** | Improve | Improve bit by bit while the tests keep passing |
+
+### Choosing a Development Methodology
+
+MoAI-ADK automatically selects the optimal development methodology based on the project state.
 
 ```mermaid
 flowchart TD
-    A["Project Analysis"] --> B{"New project or<br/>10%+ test coverage?"}
-    B -->|"Yes"| C["TDD Default"]
+    A["Analyze project"] --> B{"New project or<br/>10%+ test coverage?"}
+    B -->|"Yes"| C["TDD default"]
     B -->|"No"| D{"Existing project<br/>< 10% coverage?"}
     D -->|"Yes"| E["DDD"]
     C --> F["RED → GREEN → REFACTOR"]
@@ -94,155 +111,127 @@ flowchart TD
 ```
 
 | Methodology | Target | Cycle |
-|------------|--------|-------|
+|--------|------|--------|
 | **TDD** | New projects or 10%+ coverage | RED → GREEN → REFACTOR |
-| **DDD** | Existing projects with < 10% coverage | ANALYZE → PRESERVE → IMPROVE |
+| **DDD** | Existing projects under 10% coverage | ANALYZE → PRESERVE → IMPROVE |
 
 {{< callout type="info" >}}
-MoAI-ADK v2.5.0+ uses binary methodology selection (TDD or DDD only). Hybrid mode has been removed for clarity and consistency. The methodology is auto-selected during `moai init`, and can be changed via `development_mode` in `.moai/config/sections/quality.yaml`.
+MoAI-ADK v2.5.0+ uses a binary methodology choice (TDD or DDD only). The hybrid mode was removed for clarity and consistency. The methodology is auto-selected at `moai init` and can be changed via `development_mode` in `.moai/config/sections/quality.yaml`.
 {{< /callout >}}
 
-### TRUST 5 Quality Framework
+### The TRUST 5 Quality Framework
 
-TRUST 5 is based on these 5 core principles:
+TRUST 5 is based on the following five core principles:
 
 | Principle | Description |
-|-----------|-------------|
+|------|------|
 | **T**ested | 85% coverage, characterization tests, behavior preservation |
 | **R**eadable | Clear naming conventions, consistent formatting |
-| **U**nified | Unified style guide, auto-formatting |
-| **S**ecured | OWASP compliance, security validation, vulnerability analysis |
-| **T**rackable | Structured commits, change history tracking |
+| **U**nified | Unified style guide, automatic formatting |
+| **S**ecured | OWASP compliance, security verification, vulnerability analysis |
+| **T**rackable | Structured commits, change-history tracking |
 
-## Go Edition Features
+## Go Edition Highlights
 
-MoAI-ADK 2.5 completely rewrote the Python Edition in Go, maximizing performance and efficiency.
+MoAI-ADK is a complete rewrite of the Python Edition in Go, maximizing performance and efficiency.
 
 | Item | Python Edition | Go Edition |
-|------|---------------|-----------|
+|------|---------------|------------|
 | Distribution | pip + venv + dependencies | **Single binary**, zero dependencies |
-| Startup Time | ~800ms interpreter boot | **~5ms** native execution |
+| Startup time | ~800ms interpreter boot | **~5ms** native execution |
 | Concurrency | asyncio / threading | **Native goroutines** |
-| Type Safety | Runtime (mypy optional) | **Compile-time enforcement** |
-| Cross-Platform | Python runtime required | **Pre-built binaries** (macOS, Linux, Windows) |
+| Type safety | Runtime (mypy optional) | **Compile-time enforced** |
+| Cross-platform | Requires Python runtime | **Prebuilt binaries** (macOS, Linux, Windows) |
 
-### Key Numbers
+### Key Numbers (as of v3.0)
 
-- **100K+** lines of Go code, **100+** packages
-- **85-100%** test coverage
-- **8** specialized AI agents + **27** skills
+- **10** agents in the catalog (9 MoAI custom + 1 Anthropic built-in `Explore`)
+- **27** skills (template-managed)
+- **36** CLI commands · **15** `/moai` subcommands
 - **16** programming languages supported
-- **27** Claude Code Hook events
+- A codebase developed on top of **487** SPEC documents
 
 ## System Requirements
 
-| Platform | Supported Environments | Notes |
-|----------|------------------------|-------|
+| Platform | Supported Environment | Notes |
+|--------|----------|------|
 | macOS | Terminal, iTerm2 | Fully supported |
 | Linux | Bash, Zsh | Fully supported |
 | Windows | **WSL (recommended)**, PowerShell 7.x+ | Native cmd.exe not supported |
 
-**Required:**
-- **Git** must be installed on all platforms
-- **Windows users**: WSL (Windows Subsystem for Linux) is recommended for the best experience
-
-## Core Values
-
-MoAI-ADK delivers these core values:
-
-- **SPEC-based TDD/DDD**: A structured methodology for documenting requirements and developing incrementally (TDD for new projects, DDD for legacy code)
-- **TRUST 5 Quality Framework**: Five principles ensuring test coverage, readability, unified style, security, and traceability
-- **8 Specialized Agents**: An AI agent team specialized for each development stage (7 MoAI custom + Anthropic built-in Explore)
-- **27 Skills**: Extensible skill library supporting diverse development scenarios
-- **Multilingual Support**: Support for Korean, English, Japanese, and Chinese
-- **Adaptive Thinking**: Use the `ultrathink` keyword with Opus 4.7+/4.8 and Sonnet 4.6 built-in reasoning modes to analyze complex problems
-- **Ralph-Style LSP Integration**: LSP-based autonomous workflow with real-time quality feedback
+**Prerequisites:**
+- **Git** must be installed on every platform
+- **Windows users**: For the best experience, WSL (Windows Subsystem for Linux) is recommended
 
 ## Key Features
 
-MoAI-ADK provides 8 specialized AI agents and 27 skills to automate and optimize your entire development workflow.
+### The Agent Catalog (10 Agents)
 
-### Agent Categories
+The MoAI orchestrator does not implement directly — it delegates work to 10 specialist agents. Planning and auditing are separated — the one who builds it does not inspect it.
 
-| Category | Count | Key Agents |
-|----------|-------|-----------|
-| **Manager** | 4 | manager-spec, manager-develop, manager-docs, manager-git |
+| Category | Count | Key agents |
+|----------|------|--------------|
+| **Manager** | 5 | manager-spec, manager-develop, manager-docs, manager-git, manager-design |
 | **Evaluator** | 2 | plan-auditor, sync-auditor |
 | **Builder** | 1 | builder-harness |
-| **Explore** | 1 | Anthropic built-in (read-only code analysis) |
+| **Advisor** | 1 | super-advisor (high-reasoning consultation) |
+| **Built-in** | 1 | Explore (Anthropic built-in, read-only code analysis) |
 
-### Model Policy (Token Optimization)
+### Model Policy (Tokenomics)
 
-MoAI-ADK allocates optimal AI models to 8 agents based on your Claude Code subscription tier, maximizing quality within usage limits.
+MoAI-ADK assigns the optimal AI model to each agent according to your Claude Code subscription plan. It maximizes quality within your plan's usage limits — heavier-reasoning phases like planning and auditing get the top models, while repetitive work gets lightweight models.
 
-| Policy | Tier | Opus | Sonnet | Haiku | Use Case |
-|--------|------|------|--------|-------|----------|
-| **High** | Max $200/month | 16 | 5 | 3 | Maximum quality, highest throughput |
-| **Medium** | Max $100/month | 3 | 17 | 4 | Balance quality and cost |
-| **Low** | Plus $20/month | 0 | 13 | 11 | Budget-conscious, Opus not included |
+| Policy | Plan | Characteristics |
+|------|--------|------|
+| **High** | Max $200/month | Highest quality — Opus assigned to planning and audits, maximum throughput |
+| **Medium** | Max $100/month | Balance of quality and cost |
+| **Low** | Plus $20/month | Economical, no Opus — Sonnet-centric allocation |
 
 {{< callout type="info" >}}
-The Plus $20 tier does not include Opus. Setting the **Low** policy ensures all agents use only Sonnet and Haiku to avoid usage limit errors. Higher tiers allocate Opus to core agents (security, strategy, architecture) and Sonnet/Haiku to general tasks.
+The Plus $20 plan does not include Opus. Setting the **Low** policy runs the full workflow without usage-limit errors even without the top models. On higher plans, Opus goes to the critical phases (planning, audits) while lighter models handle routine work.
 {{< /callout >}}
 
-#### Key Agent Model Allocation
+### Execution Modes and Orchestration
 
-| Agent | High | Medium | Low |
-|-------|------|--------|-----|
-| manager-spec, plan-auditor | Opus | Opus | Sonnet |
-| manager-develop, sync-auditor | Opus | Sonnet | Sonnet |
-| manager-docs, manager-git, builder-harness | Haiku → Sonnet | Haiku | Haiku |
-
-### Dual Execution Modes
-
-Provides two execution modes: `--solo` (Sub-Agent) and `--team` (Agent Teams). Both modes automatically determine sequential or parallel execution; without flags, the system analyzes task complexity to select the optimal mode.
-
-```mermaid
-flowchart TD
-    A["MoAI Orchestrator"] --> B{"Execution flag?"}
-    B -->|"--solo"| C["Sub-Agent Mode<br/>(Sequential)"]
-    B -->|"--team"| D["Agent Teams Mode<br/>(Parallel)"]
-    B -->|"No flag"| E{"Auto-analyze complexity"}
-
-    E -->|"3+ domains / 10+ files / score 7+"| D
-    E -->|"Other"| C
-
-    C --> F["Task → Expert Agent"]
-    D --> G["Agent(name=…) → SendMessage"]
-
-    style C fill:#2196F3,color:#fff
-    style D fill:#FF9800,color:#fff
-    style E fill:#4CAF50,color:#fff
-```
-
-| Flag | Mode | Execution |
-|------|------|-----------|
-| `--solo` | Sub-Agent Mode | Sequential delegation to expert agents |
-| `--team` | Agent Teams Mode | Parallel collaboration among team agents |
-| (none) | Auto-select | Auto-analyze based on complexity |
+Natural-language requests go through **Analyze-First** routing — whatever language you make the request in, intent is analyzed first and routed to the right workflow. The orchestrator picks one of sequential sub-agents (default), parallel sub-agent fan-out, or dynamic workflows based on task complexity.
 
 ```bash
-/moai run SPEC-AUTH-001          # Auto-select
-/moai run SPEC-AUTH-001 --team    # Force Agent Teams (parallel)
-/moai run SPEC-AUTH-001 --solo    # Force Sub-Agent (sequential)
+/moai run SPEC-AUTH-001           # Automatic selection based on complexity
+/moai run SPEC-AUTH-001 --solo    # Force sequential sub-agents
 ```
 
-### SPEC-First Workflow
+{{< callout type="info" >}}
+**Changed in v3.0**: The old Agent Teams static-orchestration layer has been retired. Forcing `--team` falls back to sub-agent mode. Claude Code's native teammate runtime — the tmux split panes of `moai cg` — is unaffected.
+{{< /callout >}}
 
-MoAI-ADK follows a 3-phase development workflow. The Run phase methodology is auto-selected based on project state:
+### The SPEC-First Workflow
+
+MoAI-ADK follows a 3-phase development workflow. The Run-phase methodology is auto-selected based on the project state:
 
 ```mermaid
 flowchart TD
-    A["Phase 1: SPEC<br/>/moai plan"] -->|"Define requirements in EARS format"| B{"Select methodology"}
+    A["Phase 1: SPEC<br/>/moai plan"] -->|"Define requirements in EARS format"| B{"Methodology selection"}
     B -->|"New project (TDD)"| C["Phase 2: TDD<br/>/moai run"]
     B -->|"Existing project (DDD)"| D["Phase 2: DDD<br/>/moai run"]
     C -->|"RED → GREEN → REFACTOR"| E["Phase 3: Docs<br/>/moai sync"]
     D -->|"ANALYZE → PRESERVE → IMPROVE"| E
-    E -->|"Documentation and deployment"| F["Complete"]
+    E -->|"Documentation and delivery"| F["Done"]
 
     style C fill:#4CAF50,color:#fff
     style D fill:#2196F3,color:#fff
 ```
+
+### The Agentic Loop
+
+Declare a completion condition and the loop works on its own:
+
+```text
+/moai goal "until all tests pass and lint is clean"     # Condition-declared loop
+/moai loop                                              # Diagnostic-driven iterative fixing (up to 100 iterations)
+/moai fix                                               # Single-pass auto-fix
+```
+
+`/moai loop` is a preset on top of the goal engine — it keeps fixing until the queue of issues found by the diagnostic tools is drained.
 
 ### Recommended Workflow Chains
 
@@ -251,7 +240,7 @@ flowchart TD
 /moai plan → /moai run SPEC-XXX → /moai sync SPEC-XXX
 ```
 
-**Bug fixes:**
+**Bug fixing:**
 ```
 /moai fix (or /moai loop) → /moai review → /moai sync
 ```
@@ -268,88 +257,88 @@ flowchart TD
 
 ## Multilingual Support
 
-MoAI-ADK supports 4 languages:
+MoAI-ADK supports the following four languages:
 
-- Korean
-- English
-- Japanese
-- Chinese
+- **Korean**
+- **English**
+- **Japanese**
+- **Chinese**
 
-You can select your preferred language during installation or change it directly in the configuration file.
+Choose your preferred language in the setup wizard, or change it directly in the configuration files.
 
 ## LSP Integration
 
-**LSP** (Language Server Protocol) is the standard communication protocol between code editors and language tools. It detects code errors, type errors, and linting results in real-time, providing immediate feedback.
+**LSP** (Language Server Protocol) is the standard communication protocol between code editors and language tools. It detects code errors, type errors, and lint results in real time, providing immediate feedback.
 
-**Ralph-Loop Style** is an autonomous workflow that uses LSP diagnostics as a feedback loop. When quality issues are detected, it automatically invokes the fix agent and repeats until quality standards are met.
+**Ralph-Loop Style** is an autonomous workflow that uses LSP diagnostics as a feedback loop. When a quality problem is detected, a fixing agent is invoked automatically, repeating until the quality bar is met.
 
-MoAI-ADK provides Ralph-Loop Style LSP integration for autonomous workflows:
+MoAI-ADK provides autonomous workflows through Ralph-Loop Style LSP integration:
 
-- **LSP-based completion auto-detection**: Real-time monitoring of code quality status
-- **Real-time regression detection**: Immediately detect impact of changes on existing functionality
-- **Auto-completion conditions**: Automatically mark complete when 0 errors, 0 type errors, 85% coverage achieved
+- **LSP-based automatic completion detection**: monitors code quality state in real time
+- **Real-time regression detection**: immediately detects the impact of changes on existing functionality
+- **Automatic completion conditions**: work is marked complete automatically at 0 errors, 0 type errors, and 85% coverage
 
 {{< callout type="info" >}}
-Ralph-Loop Style LSP integration automates quality gates in your development workflow, maintaining high code quality without manual intervention.
+Ralph-Loop Style LSP integration automates the quality gates of the development workflow, maintaining high code quality without manual intervention.
 {{< /callout >}}
 
-## Save 50-70% on Tokens with GLM
+## Saving Tokens with GLM (50-70%)
 
-GLM is a Claude Code-compatible AI model. Combining Claude Opus reader with GLM-5 teammates in **CG Mode** can save **50-70% of tokens** on implementation tasks.
+GLM is an AI model fully compatible with Claude Code. Combining a Claude leader with GLM teammates in **CG mode** can **save 50-70% of tokens** on implementation work — the flagship practical tool of the Tokenomics pillar.
 
-### CG Mode: Claude + GLM Agent Team
+### CG Mode: Claude + GLM Hybrid
 
-CG Mode has Claude Opus orchestrating the entire workflow while cost-effective GLM-5 teammates handle implementation tasks in parallel.
+In CG mode, Claude orchestrates the entire workflow while lower-cost GLM teammates handle implementation work in parallel.
 
 | Role | Model | Responsibilities |
-|------|-------|-----------------|
-| **Reader** | Claude Opus | Orchestration, architecture decisions, code review |
-| **Teammates** | GLM-5 | Code implementation, test writing, documentation |
+|------|------|---------|
+| **Leader** | Claude | Orchestration, architecture decisions, code review |
+| **Teammates** | GLM | Code implementation, test writing, documentation |
 
 | Task Type | Recommended Mode | Savings |
-|-----------|-----------------|---------|
-| Implementation-focused SPEC (`/moai run`) | CG Mode | **50-70% savings** |
-| Code generation, testing, documentation | CG Mode | **50-70% savings** |
-| Architecture design, security review | Claude only | Opus reasoning required |
+|----------|----------|---------|
+| Implementation-heavy SPECs (`/moai run`) | CG mode | **50-70% savings** |
+| Code generation, tests, documentation | CG mode | **50-70% savings** |
+| Architecture design, security review | Claude only | Deep reasoning required |
 
 ### GLM Switching Commands
 
 ```bash
-# Switch to GLM backend
+# Switch to the GLM backend
 moai glm
 
-# Start GLM Worker mode (Opus reader + GLM-5 teammates)
+# Start GLM worker mode (Claude leader + GLM teammates)
 moai glm --team
 
-# CG Mode (Claude reader + GLM teammates, tmux required)
+# CG mode (Claude leader + GLM teammates, requires tmux)
 moai cg
 
-# Return to Claude backend
+# Return to the Claude backend
 moai cc
 ```
 
 {{< callout type="info" >}}
-Don't have a GLM account? [Sign up for z.ai (additional 10% discount)](https://z.ai/subscribe?ic=1NDV03BGWU). Rewards from this link support **MoAI open source development**. Thank you!
+Don't have a GLM account yet? Sign up at [z.ai (extra 10% discount)](https://z.ai/subscribe?ic=1NDV03BGWU). Rewards from this referral link go toward **MoAI open-source development**.
 {{< /callout >}}
 
 ## Getting Started
 
 Follow these steps to begin your MoAI-ADK journey:
 
-1. **[Install](/getting-started/installation)** — Install MoAI-ADK on your system
-2. **[Setup](/getting-started/installation)** — Run the interactive setup wizard
-3. **[Quick Start](/getting-started/quickstart)** — Create your first project
-4. **[Core Concepts](/core-concepts/what-is-moai-adk)** — Deepen your understanding
+1. **[Installation](/en/getting-started/installation)** - Install MoAI-ADK on your system
+2. **[Initial Setup](/en/getting-started/init-wizard)** - Run the interactive setup wizard
+3. **[Quick Start](/en/getting-started/quickstart)** - Create your first project
+4. **[Core Concepts](/en/core-concepts/what-is-moai-adk)** - Deepen your understanding of MoAI-ADK
 
-## Key Advantages
+## Key Benefits
 
-| Advantage | Description |
-|-----------|-------------|
-| **Quality Assurance** | Maintain consistent quality with TRUST 5 framework |
-| **Productivity** | Reduce development time with AI agent automation |
-| **Cost Efficiency** | Save 70% cost with GLM 5 |
-| **Scalability** | Flexible expansion with modular architecture |
-| **Multilingual** | Support for 4 languages |
+| Benefit | Description |
+|------|------|
+| **Quality assurance** | Consistent quality via the TRUST 5 framework |
+| **Token efficiency** | Model policy + CG mode + Token Circuit Breaker — the system manages cost |
+| **Higher productivity** | AI agent automation shortens development time |
+| **Extensible** | Flexible extension via the modular architecture and the harness Builder |
+| **Multilingual** | 4 languages supported |
 
 ## Additional Resources
 

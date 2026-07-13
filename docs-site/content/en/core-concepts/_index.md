@@ -4,33 +4,47 @@ weight: 20
 draft: false
 ---
 
-Introduction to 4 core concepts for understanding MoAI-ADK.
+This section introduces the core concepts you need to understand MoAI-ADK v3.0. The value of v3.0 comes down to three pillars — **Tokenomics** (Token Economics), **Agentic Loop Engineering**, and the **Agentic Harness**. The documents in this section unpack, one by one, how those three pillars work in a real development flow.
 
 {{< callout type="info" >}}
-New here? Read from top to bottom to naturally understand the full picture of MoAI-ADK.
+New here? Read top to bottom in order and the full picture of MoAI-ADK falls into place naturally. Each document can also be read on its own.
 {{< /callout >}}
+
+## The Three Pillars
+
+| Pillar | Key Question | Representative Document |
+|------|----------|----------|
+| **Tokenomics** | How do we get the same quality with fewer tokens? | [What is MoAI-ADK?](/en/core-concepts/what-is-moai-adk) |
+| **Agentic Loop Engineering** | How does the loop work and learn on its own? | [Harness Engineering](/en/core-concepts/harness-engineering) |
+| **Agentic Harness** | How do we design an environment where agents work well? | [SPEC-Based Development](/en/core-concepts/spec-based-dev) · [TRUST 5](/en/core-concepts/trust-5) |
 
 ```mermaid
 flowchart TD
-    A["What is MoAI-ADK?"] --> B["SPEC-Based Development"]
-    B --> C["Domain-Driven Development"]
-    C --> D["TRUST 5 Quality"]
+    A["What is MoAI-ADK?"] --> B["Harness Engineering"]
+    B --> C["SPEC-Based Development"]
+    C --> D["Development Methodology (DDD/TDD)"]
+    D --> E["TRUST 5 Quality"]
+    E --> F["Constitution System"]
 
-    A -.- A1["Understand the necessity and<br>structure of AI agent framework"]
-    B -.- B1["Define requirements as documents<br>in Plan phase"]
-    C -.- C1["Safely improve existing code<br>in Run phase"]
-    D -.- D1["Validate all phases with<br>5 quality principles"]
+    A -.- A1["Understand the three pillars\nand the overall architecture"]
+    B -.- B1["The paradigm of designing\nthe environment agents work in"]
+    C -.- C1["The Plan phase: defining\nrequirements as documents"]
+    D -.- D1["The Run phase: implementing\ncode safely"]
+    E -.- E1["Verify every phase with\nfive quality principles"]
+    F -.- F1["The safeguard separating\nfrozen rules from evolvable rules"]
 ```
 
 ## Learning Order
 
 | Order | Document | Key Question |
-|-------|----------|--------------|
-| 1 | [What is MoAI-ADK?](/core-concepts/what-is-moai-adk) | Why do we need AI development tools, and how are they structured? |
-| 2 | [SPEC-Based Development](/core-concepts/spec-based-dev) | How do we clearly define and manage requirements? |
-| 3 | [Domain-Driven Development](/core-concepts/ddd) | How do we improve code without breaking existing functionality? |
-| 4 | [TRUST 5 Quality](/core-concepts/trust-5) | What standards ensure code quality? |
+|------|------|----------|
+| 1 | [What is MoAI-ADK?](/en/core-concepts/what-is-moai-adk) | What is MoAI-ADK, and why does it aim for tokenomics? |
+| 2 | [Harness Engineering](/en/core-concepts/harness-engineering) | What does it mean to design the environment instead of writing code directly? |
+| 3 | [SPEC-Based Development](/en/core-concepts/spec-based-dev) | How do we define and manage requirements clearly? |
+| 4 | [Development Methodology (DDD/TDD)](/en/core-concepts/ddd) | How do we improve existing code without breaking it? |
+| 5 | [TRUST 5 Quality](/en/core-concepts/trust-5) | By what standards is code quality guaranteed? |
+| 6 | [Constitution System](/en/core-concepts/constitution) | When the harness evolves on its own, what governs that evolution? |
 
 {{< callout type="info" >}}
-Each document can be read independently, but reading in order naturally connects MoAI-ADK's development philosophy. Define **what** to make with **SPEC**, safely make it with **DDD**, and validate quality with **TRUST 5**.
+Summarized as a flow: decide what to build with a **SPEC**, build it safely with **DDD/TDD**, and verify quality with **TRUST 5**. The **harness** wraps this entire loop, and as the loop runs the harness learns and its guidance evolves — the safeguard for that evolution is the **Constitution**.
 {{< /callout >}}

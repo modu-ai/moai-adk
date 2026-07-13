@@ -5,82 +5,95 @@ draft: false
 ---
 # ハーネスエンジニアリング
 
+## ハーネスエンジニアリングとは?
 
-## ハーネスエンジニアリングとは？
-
-MoAI-ADKは **ハーネスエンジニアリング(Harness Engineering)** パラダイムを実装しています。これは、開発者が直接コードを書く代わりに、**AIエージェントが最適なコードを生産できる環境(ハーネス)を設計する**アプローチです。
+MoAI-ADK は **ハーネスエンジニアリング** (Harness Engineering) パラダイムを実装しています。開発者が直接コードを書く代わりに、**AI エージェントが最適なコードを生産できる環境 (ハーネス) を設計する** アプローチです。
 
 > "Human steers, agents execute."
-> — エンジニアの役割は、コード作成からハーネス設計へと転換されます: SPEC、品質ゲート、フィードバックループ。
+> — エンジニアの役割はコード作成からハーネス設計へと転換します: SPEC、品質ゲート、フィードバックループ。
 
-従来のバイブコーディングは、AIに自由にコードを生成させた後、結果を手動でレビューします。ハーネスエンジニアリングはその逆です — **仕様(SPEC)、自動検証、継続的フィードバックループ**でAIエージェントを導き、一貫した品質のコードを生産します。
+従来のバイブコーディングは、AI に自由にコードを生成させた後、結果を手動でレビューします。ハーネスエンジニアリングはその逆です — **規格 (SPEC)、自動検証、継続的フィードバックループ** で AI エージェントをガイドし、一貫した品質のコードを生産します。
 
-## 7つの中核コンポーネント
+ハーネスとは何でしょうか? 基盤モデルを取り囲み、実行をオーケストレーションするシステム全体 — モデルがどう考え計画するか、ツールをどう呼び出すか、コンテキストをどう認識し管理するか、成果物をどこに保存するか、結果をどう評価するかを決定する層です。MoAI-ADK は Claude Code の上に載る、まさにこのハーネスです。
+
+## 3つの柱とハーネス
+
+ハーネスエンジニアリングは、v3.0 の3つの柱が交わる地点です。
+
+| 柱 | ハーネスにおける役割 |
+|------|------------------|
+| **トークノミクス** | ハーネスがタスクごとにモデル・推論の深さを割り当て、トークン予算を守ります |
+| **エージェンティックループエンジニアリング** | ループ (`/moai loop`、goal エンジン) が回って観察を蓄積し、ハーネスがその観察から学習します |
+| **エージェンティックハーネス** | 10エージェントのカタログ、3-phase ワークフロー、TRUST 5 ゲートが実行環境を構成します |
+
+特に2番目の柱が中核となるイノベーションです。AI の再帰的自己改善 (RSI) の現実的な短期経路は、モデルの重みを直接修正することではなく **モデルを取り囲むハーネスを改善すること** です。MoAI-ADK はまさにこの経路を取ります — モデルではなくハーネス (スキル・エージェント指針) を再帰的に改善します。
+
+## 7つのコアコンポーネント
 
 ```mermaid
 graph TB
-    subgraph Harness["🏗️ ハーネスエンジニアリング"]
+    subgraph Harness["ハーネスエンジニアリング"]
         direction TB
-        SF["📐 Scaffolding First<br/>空ファイルスタブ生成"] --> FC["✅ Failing Checklist<br/>受入基準タスク登録"]
-        FC --> SV["🔄 Self-Verify Loop<br/>コード→テスト→修正→合格"]
-        SV --> GC["🗑️ Garbage Collection<br/>デッドコード除去"]
-        GC --> CM["🗺️ Context Map<br/>アーキテクチャ文書維持"]
-        CM --> SP["💾 Session Persistence<br/>セッション間進捗追跡"]
-        SP --> LA["🌐 Language-Agnostic<br/>16言語自動検出"]
+        SF["Scaffolding First<br/>空ファイルのスタブ生成"] --> FC["Failing Checklist<br/>受け入れ基準のタスク登録"]
+        FC --> SV["Self-Verify Loop<br/>コード→テスト→修正→合格"]
+        SV --> GC["Garbage Collection<br/>デッドコード除去"]
+        GC --> CM["Context Map<br/>アーキテクチャ文書の維持"]
+        CM --> SP["Session Persistence<br/>セッション間の進捗追跡"]
+        SP --> LA["Language-Agnostic<br/>16言語の自動検出"]
         LA --> SF
     end
 
     style Harness fill:#f0f7ff,stroke:#1565C0
 ```
 
-各コンポーネントはMoAIの特定のコマンドにマッピングされます:
+各コンポーネントは MoAI の特定のコマンドにマッピングされます:
 
 | コンポーネント | 説明 | コマンド |
 |----------|------|--------|
-| **Self-Verify Loop** | エージェントがコード作成 → テスト → 失敗 → 修正 → 合格のサイクルを自律的に繰り返す | [`/moai loop`](/ja/utility-commands/moai-loop) |
-| **Context Map** | コードベースのアーキテクチャマップとドキュメントを常にエージェントに提供 | [`/moai codemaps`](/ja/quality-commands/moai-codemaps) |
-| **Session Persistence** | `progress.md`がセッション間で完了したステップを追跡し、中断された作業を自動的に再開 | [`/moai run SPEC-XXX`](/ja/workflow-commands/moai-run) |
-| **Failing Checklist** | 実行開始時にすべての受入基準を保留タスクとして登録し、実装完了時にチェック | [`/moai run SPEC-XXX`](/ja/workflow-commands/moai-run) |
-| **Language-Agnostic** | 16言語対応: 言語を自動検出し、適切なLSP/リンター/テスト/カバレッジツールを選択 | すべてのワークフロー |
-| **Garbage Collection** | デッドコード、AIスロップ(slop)、未使用のimportを定期的にスキャンして除去 | [`/moai clean`](/ja/utility-commands/moai-clean) |
-| **Scaffolding First** | 実装前に空ファイルスタブを先に生成し、コードのエントロピーを防止 | [`/moai run SPEC-XXX`](/ja/workflow-commands/moai-run) |
+| **Self-Verify Loop** | エージェントがコード作成 → テスト → 失敗 → 修正 → 合格のサイクルを自律的に反復 | [`/moai loop`](/ja/utility-commands/moai-loop) |
+| **Context Map** | コードベースのアーキテクチャマップと文書を常にエージェントに提供 | [`/moai codemaps`](/ja/quality-commands/moai-codemaps) |
+| **Session Persistence** | `progress.md` がセッション間で完了したステップを追跡し、中断した作業を自動再開 | [`/moai run SPEC-XXX`](/ja/workflow-commands/moai-run) |
+| **Failing Checklist** | 実行開始時にすべての受け入れ基準を待機タスクとして登録し、実装完了時にチェック | [`/moai run SPEC-XXX`](/ja/workflow-commands/moai-run) |
+| **Language-Agnostic** | 16言語をサポート: 言語を自動検出し、正しい LSP/リンター/テスト/カバレッジツールを選択 | すべてのワークフロー |
+| **Garbage Collection** | デッドコード、AI スロップ (slop)、未使用の import を定期的にスキャンして除去 | [`/moai clean`](/ja/utility-commands/moai-clean) |
+| **Scaffolding First** | 実装前に空のファイルスタブを先に生成し、コードエントロピーを防止 | [`/moai run SPEC-XXX`](/ja/workflow-commands/moai-run) |
 
 ## 動作原理
 
 ### 1. Scaffolding First (スキャフォールディング優先)
 
-`/moai run`が開始されると、エージェントはコードを書く前にまず必要なファイル構造を生成します:
+`/moai run` が始まると、エージェントはコードを書く前にまず必要なファイル構造を生成します:
 
 ```
 src/
 ├── auth/
-│   ├── handler.go      ← 空スタブ
-│   ├── handler_test.go  ← 空テスト
-│   ├── service.go       ← 空スタブ
-│   └── service_test.go  ← 空テスト
+│   ├── handler.go      ← 空のスタブ
+│   ├── handler_test.go  ← 空のテスト
+│   ├── service.go       ← 空のスタブ
+│   └── service_test.go  ← 空のテスト
 └── middleware/
-    └── jwt.go           ← 空スタブ
+    └── jwt.go           ← 空のスタブ
 ```
 
-この方式により、エージェントが無秩序にファイルを生成することを防ぎ、一貫したプロジェクト構造を維持します。
+この方式は、エージェントが無秩序にファイルを生成するのを防ぎ、一貫したプロジェクト構造を維持します。
 
 ### 2. Failing Checklist (失敗チェックリスト)
 
-SPECの受入基準が自動的にタスクリストに登録されます:
+SPEC の受け入れ基準が自動的にタスクリストに登録されます:
 
 ```
-- [ ] JWTトークン生成エンドポイント
+- [ ] JWT トークン生成エンドポイント
 - [ ] トークン検証ミドルウェア
-- [ ] リフレッシュトークンロジック
+- [ ] リフレッシュトークンのロジック
 - [ ] 期限切れトークンの処理
-- [ ] 85%以上のテストカバレッジ
+- [ ] 85%+ テストカバレッジ
 ```
 
-各項目が実装され、テストに合格するとチェックされます。すべての項目がチェックされて初めて作業が完了します。
+各項目が実装されテストに合格するとチェックされます。すべての項目がチェックされて初めて作業が完了します。
 
 ### 3. Self-Verify Loop (自己検証ループ)
 
-エージェントが自律的に実行する中核サイクル:
+エージェントが自律的に実行するコアサイクル:
 
 ```mermaid
 graph TD
@@ -91,19 +104,19 @@ graph TD
     C -->|"合格"| E["次の項目"]
 ```
 
-このループは`/moai loop`で最大100回まで繰り返され、収束検知(同じエラーが繰り返される場合は代替戦略を適用)を含みます。
+このループは `/moai loop` で最大100回まで反復され、収束検知 (同じエラーの繰り返し時に代替戦略を適用) を含みます。完了条件を自ら宣言したい場合は goal エンジン (`/moai goal "<条件>"`) を使います — 条件が満たされるかターン上限に達するまで、セッションが自ら働き続けます。
 
 ### 4. Context Map (コンテキストマップ)
 
-`/moai codemaps`が生成するアーキテクチャドキュメントは、コードベース全体の構造をエージェントに提供します。これにより、エージェントは:
+`/moai codemaps` が生成するアーキテクチャ文書は、エージェントにコードベースの全体構造を提供します。これによりエージェントは:
 
 - 既存コードと衝突しない実装方法を選択
-- 適切なパターンと規則に従う
+- 適切なパターンとルールに従う
 - 依存関係を理解し、影響範囲を把握
 
 ### 5. Session Persistence (セッション永続性)
 
-Claude Codeセッションが中断されても、`progress.md`が完了したステップを記録します:
+Claude Code のセッションが中断されても、`progress.md` が完了したステップを記録します:
 
 ```markdown
 ## Progress
@@ -113,43 +126,75 @@ Claude Codeセッションが中断されても、`progress.md`が完了した�
 - [ ] Phase 4: リファクタリング
 ```
 
-`/moai run --resume SPEC-XXX`で、中断した地点から自動的に再開されます。
+`/moai run --resume SPEC-XXX` で中断した地点から自動的に再開されます。
+
+## 自己進化ハーネス — ループがハーネスを育てる
+
+ハーネスは固定された環境ではありません。ループが回るほど観察が蓄積され、ハーネスがその観察から学習して自ら指針を改善します。
+
+```
+ループ実行 → 観察の蓄積 → パターン学習 → 指針の進化 (承認ゲート)
+```
+
+### 4層の学習ラダー
+
+| Tier | 観察数 | 動作 |
+|------|---------|------|
+| **観察** (Observation) | ≥1 | 単純記録 |
+| **ヒューリスティック** (Heuristic) | ≥3 | パターン認識 |
+| **ルール** (Rule) | ≥5 | ルール形成 |
+| **自動アップデート** (AutoUpdate) | ≥10 | 指針の自動修正 — **ユーザー承認必須** |
+
+### 安全装置
+
+自動進化が人間の監視なしに閉じたループを回ることはありません。評価者と権限統制は進化ループの **外** に置きます:
+
+- **5層の安全パイプライン** — スナップショットとロールバック (`moai harness rollback`) でいつでも復元できます
+- **ユーザー承認ゲート** — Tier-4 自動アップデートは必ずユーザー承認を経ます
+- **Constitution システム** — 不変ルール (FROZEN) は進化対象から除外されます ([Constitution システム](/ja/core-concepts/constitution) 参照)
+
+```bash
+moai harness status      # 学習状態の確認 (観察数、パターン、提案)
+moai harness apply       # 提案の適用 (ユーザー承認ゲートの通過が必要)
+moai harness rollback    # 直前の適用をロールバック
+moai harness disable     # 学習の無効化
+```
 
 ## 従来型開発 vs ハーネスエンジニアリング
 
 | 観点 | 従来型開発 | ハーネスエンジニアリング |
 |------|-----------|-----------------|
 | **開発者の役割** | コード作成者 | 環境設計者 |
-| **コード生産** | 手動作成 | AIエージェントによる自動生産 |
+| **コード生産** | 手動作成 | AI エージェントによる自動生産 |
 | **品質保証** | 事後レビュー | 組み込みの自動検証ループ |
 | **セッション継続性** | 手動メモ | 自動進捗追跡 |
 | **コード整理** | 技術的負債の蓄積 | 自動ガベージコレクション |
-| **ドキュメント化** | 別作業 | 自動アーキテクチャマップ生成 |
+| **ドキュメント化** | 別作業 | アーキテクチャマップの自動生成 |
+| **改善の方向** | ツールは固定、人が適応 | ループが観察を積み、ハーネスが進化 |
 
-## ハーネスネームスペースポリシー (template-managed vs user-owned)
+## ハーネスの名前空間ポリシー (template-managed vs user-owned)
 
-独自のカスタムスキルやエージェントを作成する際は、`moai update` がどの資産を上書き(overwrite)し、どの資産を保存(preserve)するかを知っておく必要があります。MoAI-ADK はネームスペースを **「パッケージ配布(template-managed)」** と **「ユーザー作成(user-owned)」** に明確に分離します。
+自分でカスタムスキルやエージェントを作るとき、`moai update` がどの資産を上書き (overwrite) し、どの資産を保存 (preserve) するかを知っておく必要があります。MoAI-ADK は名前空間を **「汎用配布 (template-managed)」** と **「ユーザー作成 (user-owned)」** に明確に分離します。
 
-| 区分 | ネームスペース / パス | 出所 | `moai update` の動作 |
+| 区分 | 名前空間 / パス | 出所 | `moai update` の動作 |
 | --- | --- | --- | --- |
-| **template-managed** | `moai-*` スキル(`moai-foundation-*`, `moai-workflow-*`, `moai-domain-*`, `moai-ref-*`, `moai-meta-*` を含む)、`moai-harness-*` スキル、`moai-meta-harness` | MoAI-ADK パッケージ (template) | **上書き** — 同期時に削除して再インストール |
-| **user-owned** | `harness-*` スキル、`.claude/agents/harness/` エージェント | ユーザープロジェクト | **保存** — `moai update` は決して削除・変更しない(バックアップして保存) |
+| **template-managed** | `moai-*` スキル (`moai-foundation-*`、`moai-workflow-*`、`moai-domain-*`、`moai-ref-*`、`moai-meta-*` を含む)、`moai-harness-*` スキル | MoAI-ADK パッケージ (template) | **上書き** — 同期時に削除して新規インストール |
+| **user-owned** | `hns-*` スキル (正式) + レガシー `harness-*` / `my-harness-*` スキル、`.claude/agents/harness/` エージェント | ユーザープロジェクト | **保存** — `moai update` は絶対に削除・修正しない (バックアップ後に保存) |
 
 ### template-managed (上書き対象)
 
-`moai-*` prefix スキルと `moai-harness-*` / `moai-meta-harness` は **MoAI-ADK パッケージが提供する汎用資産**です。すべてのユーザープロジェクトに配布され、`moai update` 実行時に最新の template で**上書き**されます。したがって、これらの資産を直接変更すると、次回の更新で変更内容が失われます。
+`moai-*` prefix のスキルと `moai-harness-*` は **MoAI-ADK パッケージが提供する汎用資産** です。すべてのユーザープロジェクトに配布され、`moai update` 実行時に最新の template で **上書き** されます。そのため、これらの資産を直接修正すると、次のアップデートで変更内容が失われます。
 
 ### user-owned (保存対象)
 
-`harness-*` prefix スキルと `.claude/agents/harness/` ディレクトリは **ユーザープロジェクトが所有**します。`moai update` はこれらを**決して削除・変更せず**、更新前にバックアップした上でそのまま保存します。
+`hns-*` prefix のスキル (Harness v4 Builder が生成する正式な名前空間) と `.claude/agents/harness/` ディレクトリは **ユーザープロジェクトが所有** します。前世代の prefix である `harness-*` / `my-harness-*` も同様に認識されます。`moai update` はこれらを **絶対に削除・修正せず**、アップデート前にバックアップしてそのまま保存します。
 
-### カスタムスキル作成者への示唆
+### カスタムスキル作成者への含意
 
-独自に作成したドメイン特化スキルやエージェントを `moai update` 後も残すには、**必ず `harness-*` prefix を使用**してください(エージェントは `.claude/agents/harness/` に配置)。`moai-*` または `moai-harness-*` prefix で作成すると template-managed と見なされ、次回の更新で上書きされます。
-
-> このネームスペース分離ポリシーの出所は `SPEC-V3R6-HARNESS-NAMESPACE-V2-001` (完了) です。
+自分で作ったドメイン特化スキルやエージェントが `moai update` 後も生き残るようにするには、**必ず `hns-*` prefix を使ってください** (エージェントは `.claude/agents/harness/` に配置)。`moai-*` または `moai-harness-*` prefix で作ると template-managed と見なされ、次のアップデートで上書きされます。`/moai harness "自然言語のリクエスト"` でハーネスを生成すると、Builder がこのルールに合った名前を自動的に割り当てます。
 
 ## 次のステップ
 
-- [SPECベース開発](/ja/core-concepts/spec-based-dev) — ハーネスの入力となるSPEC文書の作成方法
-- [TRUST 5品質](/ja/core-concepts/trust-5) — ハーネスが検証する5つの品質基準
+- [SPEC ベース開発](/ja/core-concepts/spec-based-dev) — ハーネスの入力となる SPEC 文書の書き方
+- [TRUST 5 品質](/ja/core-concepts/trust-5) — ハーネスが検証する5つの品質基準
+- [Constitution システム](/ja/core-concepts/constitution) — ハーネスの進化を統制する不変ルール

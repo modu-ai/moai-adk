@@ -4,7 +4,9 @@ weight: 110
 draft: false
 ---
 
-MoAI-ADK는 오픈소스 프로젝트이며 기여를 환영합니다! 이 가이드는 프로젝트에 기여하는 방법을 설명합니다.
+MoAI-ADK는 오픈소스 프로젝트이며 기여를 환영합니다! MoAI-ADK 자체도 SPEC
+기반 3-phase 워크플로우와 TRUST 5 품질 게이트로 개발됩니다 — 기여 절차의
+품질 기준(커버리지, 린트, 컨벤셔널 커밋)은 그 기준을 그대로 따릅니다.
 
 ## 빠른 시작
 
@@ -18,6 +20,8 @@ MoAI-ADK는 오픈소스 프로젝트이며 기여를 환영합니다! 이 가�
 8. Pull Request 생성
 
 ## 코드 품질 요구사항
+
+TRUST 5 프레임워크의 **T**ested / **T**rackable 기준이 그대로 적용됩니다:
 
 | 항목 | 기준 |
 |------|------|
@@ -98,7 +102,8 @@ make clean        # 빌드 산출물 정리
 
 ## 커뮤니티
 
-- **이슈 트래커**: [GitHub Issues](https://github.com/modu-ai/moai-adk/issues) — 버그 리포트, 기능 요청
+- **이슈 트래커**: [GitHub Issues](https://github.com/modu-ai/moai-adk/issues) — 버그 리포트, 기능 요청. MoAI-ADK 사용 중이라면 `/moai feedback`으로 세션 안에서 바로 이슈를 만들 수 있습니다
+- **Discord**: [Discord 커뮤니티](https://discord.gg/Z7E7Mdc5aN) — 실시간 소통, 팁 공유
 - **공식 문서**: [adk.mo.ai.kr](https://adk.mo.ai.kr)
 
 ## 라이선스

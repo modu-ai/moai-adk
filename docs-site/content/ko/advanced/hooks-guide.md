@@ -4,7 +4,7 @@ weight: 50
 draft: false
 ---
 
-Claude Code의 Hooks 시스템과 MoAI-ADK의 기본 Hook 스크립트를 상세히 안내합니다.
+Claude Code의 Hooks 시스템과 MoAI-ADK의 기본 Hook 스크립트를 상세히 안내합니다. 에이전틱 하네스에서 프롬프트는 "따라야 할 지침"이지만 훅은 "반드시 실행되는 코드"입니다 — 품질 게이트와 보안 방어선을 확률이 아닌 결정론 위에 세우는 계층이 바로 훅입니다.
 
 {{< callout type="info" >}}
 **한 줄 요약**: Hooks는 Claude Code의 **자동 반사 신경**입니다. 파일을 저장하면 자동으로 포맷팅하고, 위험한 명령은 자동으로 차단합니다.
@@ -31,9 +31,9 @@ flowchart TD
 
 ## Hook 이벤트 유형
 
-Claude Code는 **10가지 이벤트 유형**을 지원합니다.
+이 가이드에서는 자주 쓰는 핵심 이벤트를 다룹니다. (전체 29개 이벤트는 [Hooks 이벤트 레퍼런스](/ko/advanced/hooks-reference)를 참조하세요.)
 
-### 전체 이벤트 목록
+### 주요 이벤트 목록
 
 | 이벤트 | 실행 시점 | 주요 용도 |
 |--------|-----------|----------|
@@ -68,7 +68,7 @@ Claude Code가 컨텍스트 압축 작업 (`/clear` 명령 등)을 수행하기 
 도구가 호출되기 **전**에 실행됩니다. 도구 호출을 차단하거나 수정할 수 있습니다. 보안 검증, 위험 명령 차단에 사용합니다.
 
 #### 6. PermissionRequest
-권한 대화상자가 사용자에게 표시될 때 실행됩니다. 자동으로 허용하거나 거단할 수 있습니다.
+권한 대화상자가 사용자에게 표시될 때 실행됩니다. 자동으로 허용하거나 거부할 수 있습니다.
 
 #### 7. PostToolUse
 도구 호출이 **완료된 후**에 실행됩니다. 코드 포맷팅, 린트 검사, LSP 진단 수집에 사용합니다.
@@ -80,30 +80,30 @@ Claude Code가 컨텍스트 압축 작업 (`/clear` 명령 등)을 수행하기 
 Claude Code가 알림을 보낼 때 실행됩니다. 데스크톱 알림, 소리 알림 등으로 커스터마이징할 수 있습니다.
 
 #### 10. Stop
-Claude Code가 응답을 마쳤을 때 실행됩니다. 루프 제어, 완료 조건 확인에 사용합니다.
+Claude Code가 응답을 마쳤을 때 실행됩니다. 루프 제어, 완료 조건 확인에 사용합니다 — `/moai loop`와 goal 엔진이 이 이벤트 위에서 동작합니다.
 
 #### 11. SubagentStop
 하위 에이전트 작업이 완료되었을 때 실행됩니다. 하위 작업 결과를 처리하는 데 사용합니다.
 
 ### MoAI-ADK에서 구현된 이벤트
 
-MoAI-ADK는 다음 이벤트를 실제로 구현하고 있습니다:
+MoAI-ADK는 다음 이벤트를 실제로 구현하고 있습니다 (✓ = 구현, — = 공식 예시 참조).
 
 | 이벤트 | 상태 | Hook 파일 |
 |--------|------|-----------|
-| `SessionStart` | ✅ | `session_start__show_project_info.py` |
-| `PreToolUse` | ✅ | `pre_tool__security_guard.py` |
-| `PostToolUse` | ✅ | `post_tool__code_formatter.py`, `post_tool__linter.py`, `post_tool__ast_grep_scan.py`, `post_tool__lsp_diagnostic.py` |
-| `PreCompact` | ✅ | `pre_compact__save_context.py` |
-| `SessionEnd` | ✅ | `session_end__auto_cleanup.py` |
-| `Stop` | ✅ | `stop__loop_controller.py` |
-| `Setup` | ⚪ | 공식 예시 참조 |
-| `PermissionRequest` | ⚪ | 공식 예시 참조 |
-| `UserPromptSubmit` | ⚪ | 공식 예시 참조 |
-| `Notification` | ⚪ | 공식 예시 참조 |
-| `SubagentStop` | ⚪ | 공식 예시 참조 |
-| `TeammateIdle` | ✅ | 팀원 idle 감지 및 품질 검증 |
-| `TaskCompleted` | ✅ | 태스크 완료 검증 |
+| `SessionStart` | ✓ | `session_start__show_project_info.py` |
+| `PreToolUse` | ✓ | `pre_tool__security_guard.py` |
+| `PostToolUse` | ✓ | `post_tool__code_formatter.py`, `post_tool__linter.py`, `post_tool__ast_grep_scan.py`, `post_tool__lsp_diagnostic.py` |
+| `PreCompact` | ✓ | `pre_compact__save_context.py` |
+| `SessionEnd` | ✓ | `session_end__auto_cleanup.py` |
+| `Stop` | ✓ | `stop__loop_controller.py` |
+| `Setup` | — | 공식 예시 참조 |
+| `PermissionRequest` | — | 공식 예시 참조 |
+| `UserPromptSubmit` | — | 공식 예시 참조 |
+| `Notification` | — | 공식 예시 참조 |
+| `SubagentStop` | — | 공식 예시 참조 |
+| `TeammateIdle` | ✓ | 팀원 idle 감지 및 품질 검증 |
+| `TaskCompleted` | ✓ | 태스크 완료 검증 |
 
 {{< callout type="warning" >}}
 **SubagentStop 핸들러 미구현 이슈 (v2.9.0)**: `SubagentStop` 이벤트는 settings.json에 등록되어 있지만, Go 핸들러가 `deps.go`에 미등록 상태입니다. 현재는 빈 응답(`{}`)만 반환합니다.
@@ -125,7 +125,7 @@ MoAI-ADK는 다음 이벤트를 실제로 구현하고 있습니다:
 
 #### Team Shutdown Sequence [HARD]
 
-팀 종료 시 다음 순서를 **반드시** 따르세요:
+팀 종료 시 다음 순서를 **반드시** 따르세요.
 
 1. **shutdown_request 전송**: 각 팀원에게 `SendMessage(shutdown_request)` 전송
 2. **응답 대기**: 각 팀원으로부터 `shutdown_response approve:true` 수신
@@ -161,6 +161,8 @@ flowchart TD
     H -->|문제 발견| J["Claude Code에<br>피드백 전달"]
     J --> K["자동 수정 시도"]
 ```
+
+이 파이프라인이 에이전틱 루프의 피드백 절반을 담당합니다 — 에이전트가 쓰고, 훅이 검사하고, 문제가 있으면 다음 턴의 수정 입력이 됩니다.
 
 ## Claude Code 공식 예시
 
@@ -376,7 +378,6 @@ MoAI-ADK는 **11개의 기본 Hook 스크립트**를 제공합니다.
 | `post_tool__lsp_diagnostic.py` | PostToolUse | `Write\|Edit` | LSP 진단 결과 수집 | 기본값 |
 | `pre_compact__save_context.py` | PreCompact | 전체 | `/clear` 전 컨텍스트 저장 | 3초 |
 | `session_end__auto_cleanup.py` | SessionEnd | 전체 | 세션 종료 시 정리 작업 | 5초 |
-
 | `stop__loop_controller.py` | Stop | 전체 | Ralph 루프 제어 및 완료 확인 | 기본값 |
 | `quality_gate_with_lsp.py` | 수동 | 전체 | LSP 기반 품질 게이트 검증 | 기본값 |
 
@@ -419,7 +420,7 @@ MoAI-ADK는 **11개의 기본 Hook 스크립트**를 제공합니다.
 - 데이터베이스 삭제: `supabase db reset`, `neon database delete`
 - 위험한 파일 삭제: `rm -rf /`, `rm -rf .git`
 - Docker 전체 삭제: `docker system prune -a`
-- 강 푸시: `git push --force origin main`
+- 강제 푸시: `git push --force origin main`
 - Terraform 파괴: `terraform destroy`
 
 ### PostToolUse: Code Formatter (코드 포맷터)
@@ -498,7 +499,7 @@ ralph:
 
 ### PreCompact: 컨텍스트 저장
 
-`/clear` 실행 전에 **현재 컨텍스트를 파일로 저장**합니다.
+`/clear` 실행 전에 **현재 컨텍스트를 파일로 저장**합니다. 컨텍스트 임계에서 세션을 끊고 이어가는 핸드오프 흐름의 안전망입니다.
 
 **저장 위치:** `.moai/memory/context-snapshot.json`
 
@@ -514,7 +515,7 @@ ralph:
 
 ### SessionEnd: 자동 정리
 
-세션 종료 시 다음 작업을 수행합니다:
+세션 종료 시 다음 작업을 수행합니다.
 
 **P0 작업 (필수):**
 - 세션 메트릭 저장 (수정 파일 수, 커밋 수, 작업한 SPEC)
@@ -529,7 +530,7 @@ ralph:
 
 ### Stop: 루프 제어기
 
-Ralph Engine 피드백 루프를 제어합니다.
+Ralph Engine 피드백 루프를 제어합니다. `/moai loop`가 "다 고칠 때까지 반복"할 수 있는 것은 이 훅이 매 턴 종료 시점에 완료 조건을 기계적으로 판정하기 때문입니다.
 
 **완료 조건 확인:**
 - LSP 오류 수 (0 오류 목표)
@@ -832,7 +833,6 @@ Hook 스크립트는 표준 입력 (stdin)으로 JSON 데이터를 받습니다.
 ├── post_tool__lsp_diagnostic.py        # LSP 진단
 ├── pre_compact__save_context.py        # 컨텍스트 저장
 ├── session_end__auto_cleanup.py        # 자동 정리
-
 ├── stop__loop_controller.py            # 루프 제어기
 ├── quality_gate_with_lsp.py            # 품질 게이트
 └── lib/                                # 공유 라이브러리
@@ -855,7 +855,7 @@ Hook 스크립트는 표준 입력 (stdin)으로 JSON 데이터를 받습니다.
 
 ## 환경 변수로 Hook 비활성화
 
-특정 Hook을 환경 변수로 비활성화할 수 있습니다:
+특정 Hook을 환경 변수로 비활성화할 수 있습니다.
 
 | Hook | 환경 변수 |
 |------|-----------|
@@ -869,9 +869,10 @@ export MOAI_DISABLE_AST_GREP_SCAN=1
 
 ## 관련 문서
 
-- [settings.json 가이드](/advanced/settings-json) - Hook 설정 방법
-- [CLAUDE.md 가이드](/advanced/claude-md-guide) - 프로젝트 지침 관리
-- [에이전트 가이드](/advanced/agent-guide) - 에이전트와 Hook 연동
+- [Hooks 이벤트 레퍼런스](/ko/advanced/hooks-reference) - 29개 이벤트 전체 레퍼런스
+- [settings.json 가이드](/ko/advanced/settings-json) - Hook 설정 방법
+- [CLAUDE.md 가이드](/ko/advanced/claude-md-guide) - 프로젝트 지침 관리
+- [에이전트 가이드](/ko/advanced/agent-guide) - 에이전트와 Hook 연동
 
 {{< callout type="info" >}}
 **팁**: Hook은 MoAI-ADK의 품질 보장 핵심입니다. 코드 포맷팅과 린트 검사를 자동화하여 개발자가 로직에만 집중할 수 있게 합니다. 커스텀 Hook을 추가하여 프로젝트에 맞는 자동화를 구축하세요.

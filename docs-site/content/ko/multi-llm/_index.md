@@ -4,7 +4,10 @@ weight: 80
 draft: false
 ---
 
-MoAI-ADK는 Claude API 외에 **z.ai GLM**을 대안 AI 백엔드로 지원하여 멀티 LLM 개발 워크플로우를 가능하게 합니다.
+MoAI-ADK는 Claude API 외에 **z.ai GLM**을 대안 AI 백엔드로 지원합니다. 이는
+편의 기능이 아니라 v3.0의 핵심 가치인 **토크노믹스** (Token Economics)를
+실현하는 축입니다 — 같은 품질의 코드를 더 적은 비용으로 얻으려면, 작업마다
+알맞은 모델을 배정할 수 있어야 하기 때문입니다.
 
 ## z.ai GLM이란?
 
@@ -30,7 +33,8 @@ GLM(Generative Language Model)은 z.ai에서 제공하는 AI 모델 서비스로
 
 ## 3가지 실행 모드
 
-MoAI-ADK는 3가지 LLM 실행 모드를 제공합니다:
+MoAI-ADK는 3가지 LLM 실행 모드를 제공합니다. "무엇을 최적화할 것인가"에 따라
+고르면 됩니다:
 
 | 명령어 | 리더 | 워커 | tmux 필요 | 비용 절감 | 용도 |
 |--------|------|------|----------|----------|------|
@@ -40,7 +44,7 @@ MoAI-ADK는 3가지 LLM 실행 모드를 제공합니다:
 
 ```mermaid
 graph TD
-    A["🗿 MoAI 오케스트레이터"] --> B{"실행 모드 선택"}
+    A["MoAI 오케스트레이터"] --> B{"실행 모드 선택"}
     B -->|"moai cc"| C["Claude Only<br/>최고 품질"]
     B -->|"moai glm"| D["GLM Only<br/>비용 절감"]
     B -->|"moai cg"| E["CG 하이브리드<br/>균형"]
@@ -54,6 +58,10 @@ graph TD
     style E fill:#D97706,color:#fff
 ```
 
+CG 모드가 토크노믹스의 대표 사례입니다. 전략·계획·감사처럼 추론 품질이
+중요한 일은 Claude 리더가, 대량 구현처럼 물량이 중요한 일은 GLM 워커가
+맡습니다. 구현 중심 작업 기준 약 60-70%의 비용이 절감됩니다.
+
 ### 빠른 시작
 
 ```bash
@@ -66,9 +74,7 @@ moai glm           # GLM 전용
 moai cg            # CG 하이브리드 (tmux 필요)
 ```
 
-> **v2.7.1부터** CG 모드가 `--team` 플래그의 **기본 팀 모드**입니다. `moai cc` 또는 `moai glm`으로 명시적으로 변경하지 않는 한 CG 모드로 실행됩니다.
-
 ## 다음 단계
 
 - [CG 모드 (Claude + GLM)](/ko/multi-llm/cg-mode) — tmux 격리 아키텍처 상세
-- [모델 정책](/ko/multi-llm/model-policy) — 8개 에이전트별 모델 배정표
+- [모델 정책](/ko/multi-llm/model-policy) — 에이전트별 모델 배정표

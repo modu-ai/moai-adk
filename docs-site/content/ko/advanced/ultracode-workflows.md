@@ -4,7 +4,7 @@ weight: 42
 draft: false
 ---
 
-Claude Code의 동적 워크플로우 프리미티브와 MoAI-ADK의 Ultracode 통합을 안내합니다.
+에이전트 100개를 순차 위임하면 컨텍스트가 먼저 무너집니다. 동적 워크플로우는 계획을 Claude의 컨텍스트가 아닌 **스크립트 변수**에 두는 방식으로 이 문제를 풉니다 — 중간 결과는 스크립트에 머물고, 최종 결과만 세션으로 돌아옵니다. 대규모 팬아웃을 가능하게 하면서 컨텍스트 비용은 억제하는, 토크노믹스와 루프 엔지니어링이 만나는 지점입니다.
 
 {{< callout type="info" >}}
 **한 줄 요약**: 동적 워크플로우는 JavaScript로 작성된 자동화 스크립트로, 수십~수백 개의 에이전트를 병렬 조율합니다. Ultracode는 `/effort ultracode` 또는 `ultracode` 키워드로 트리거됩니다.
@@ -12,7 +12,7 @@ Claude Code의 동적 워크플로우 프리미티브와 MoAI-ADK의 Ultracode �
 
 ## 3가지 오케스트레이션 프리미티브
 
-MoAI-ADK는 **3가지 다른 오케스트레이션 프리미티브**를 제공하며, 각각은 다른 용도에 최적화되어 있습니다.
+MoAI-ADK는 **3가지 오케스트레이션 프리미티브**를 제공하며, 선택 기준은 "계획을 누가 들고 있는가"입니다.
 
 ### 1. Sequential Sub-agents (순차 위임)
 
@@ -33,7 +33,7 @@ MoAI 기본 모드 — 한 턴마다 하나의 에이전트를 차례로 위임�
 
 ### 2. Agent Teams (팀 협업)
 
-여러 팀원이 **공유 TaskList**로 협업하는 고급 모드입니다.
+여러 팀원이 **공유 TaskList**로 협업하는 모드입니다.
 
 | 특성 | 설명 |
 |------|------|
@@ -46,7 +46,11 @@ MoAI 기본 모드 — 한 턴마다 하나의 에이전트를 차례로 위임�
 **사용 시점**:
 - 여러 팀원이 병렬 작업
 - 크로스레이어 의존성 (백엔드 ↔ 프론트엔드)
-- 팀원 간 손꼽질과 리뷰 필요
+- 팀원 간 협업과 리뷰 필요
+
+{{< callout type="warning" >}}
+v3.0에서 MoAI의 Agent Teams **정적 오케스트레이션 계층은 은퇴**했습니다. `--team` 강제 시 sub-agent 모드로 폴백합니다. 네이티브 Claude Code teammate 런타임 (`moai cg`의 GLM pane 등)은 계속 동작합니다.
+{{< /callout >}}
 
 ### 3. Dynamic Workflows (동적 워크플로우)
 
@@ -110,7 +114,7 @@ flowchart TD
 
 ### ultracode 키워드
 
-단일 요청에서 워크플로우를 트리거합니다.
+세션 전체가 아니라 단일 요청에서만 워크플로우를 트리거하고 싶다면 키워드를 씁니다.
 
 ```bash
 > 우리 codebase의 모든 TODO 주석을 찾아서 분류해줘.
@@ -174,10 +178,10 @@ return summary;
 
 ### AskUserQuestion 제약
 
-워크플로우 에이전트는 사용자와 **직접 상호작용 불가**합니다.
+워크플로우 에이전트는 사용자와 **직접 상호작용할 수 없습니다**.
 
 ```
-❌ 워크플로우 에이전트가 사용자 질문 발생 → 불가능
+✗ 워크플로우 에이전트가 사용자 질문 발생 → 불가능
 ✓ MoAI 오케스트레이터가 사전에 모든 선택지 수집 → 워크플로우 실행
 ```
 
@@ -188,7 +192,7 @@ return summary;
 
 ### Implementation Kickoff Approval
 
-워크플로우 실행도 일반 run-phase와 동일하게 사용자 승인이 필요합니다.
+워크플로우 실행도 일반 run-phase와 동일하게 사용자 승인이 필요합니다. 대규모 팬아웃이라고 해서 휴먼 게이트가 사라지지는 않습니다.
 
 ```
 /moai run --workflow SPEC-XXX
@@ -199,7 +203,7 @@ return summary;
 
 ### 비용 인식
 
-동적 워크플로우는 **높은 토큰 소비**를 야기할 수 있습니다.
+동적 워크플로우는 컨텍스트를 아끼는 대신 **총 토큰 소비는 클 수 있습니다**. 팬아웃 규모가 곧 비용입니다.
 
 | 작업 | 에이전트 수 | 예상 비용 |
 |------|-----------|---------|
@@ -216,7 +220,7 @@ return summary;
 
 ### 활성화 조건
 
-동적 워크플로우는 다음 조건에서만 실행됩니다:
+동적 워크플로우는 다음 조건에서만 실행됩니다.
 
 1. Claude Code v2.1.154+
 2. 유료 플랜 (Pro 또는 Team)
@@ -224,7 +228,7 @@ return summary;
 
 ### 비활성화
 
-조직 또는 사용자 수준에서 비활성화 가능:
+조직 또는 사용자 수준에서 비활성화할 수 있습니다.
 
 ```bash
 /config
@@ -237,10 +241,10 @@ export CLAUDE_CODE_DISABLE_WORKFLOWS=1
 
 ## 관련 문서
 
-- [Harness v4 Builder](/advanced/builder-agents) - 동적 팀 생성
-- [에이전트 가이드](/advanced/agent-guide) - 에이전트 시스템 개요
-- [SPEC 기반 개발](/workflow-commands/moai-plan) - 통합 워크플로우
+- [빌더 에이전트와 하네스 v4](/ko/advanced/builder-agents) - 동적 팀 생성
+- [에이전트 가이드](/ko/advanced/agent-guide) - 에이전트 시스템 개요
+- [SPEC 기반 개발](/ko/workflow-commands/moai-plan) - 통합 워크플로우
 
 {{< callout type="info" >}}
-**팁**: 규모가 작다면 Sequential Sub-agents가 충분합니다. 동적 워크플로우는 "수십~수백 개의 독립적 작업을 병렬 조율해야 할 때"만 사용하세요.
+**팁**: 규모가 작다면 Sequential Sub-agents로 충분합니다. 동적 워크플로우는 "수십~수백 개의 독립적 작업을 병렬 조율해야 할 때"만 사용하세요 — 팬아웃 자체가 비용이라는 점을 잊지 마세요.
 {{< /callout >}}

@@ -5,37 +5,37 @@ draft: false
 description: "介绍 Claude Code 如何用 git 工作树隔离并行会话，从而无冲突地同时推进多项任务。"
 ---
 
-工作树 (worktree) 是从一个 git 仓库中分离出多个工作树的功能，让 Claude Code 的各个会话在不触碰彼此文件的情况下并行工作。
+工作树 (worktree) 是在一个 git 仓库中分离出多个工作树、让 Claude Code 会话互不触碰彼此文件地并行工作的功能。
 
 {{< callout type="info" >}}
-**一句话总结**: 工作树在共享同一个仓库的同时分离了工作目录和分支，从而让你能在一个终端里开发功能、在另一个终端里修复 bug，并行作业且互不冲突。
+**一句话总结**：工作树在共享同一仓库的同时分离工作目录与分支，让一个终端开发功能、另一个终端修 Bug 的并行工作无冲突地成为可能。
 {{< /callout >}}
 
 {{< callout type="tip" >}}
-本页仅起到概览 Claude Code 工作树概念的桥梁作用。关于在 MoAI-ADK 中将工作树实际应用于 SPEC 粒度并行开发的详细方法，请参阅 [Git Worktree 概览](/worktree)、[Git Worktree 完全指南](/worktree/guide)、[Git Worktree 实际使用示例](/worktree/examples)。
+本页只充当纵览 Claude Code 工作树概念的桥梁。在 MoAI-ADK 中把工作树实际应用于 SPEC 级并行开发的详细方法，请参考 [Git Worktree 概览](/worktree)、[Git Worktree 完全指南](/worktree/guide)、[Git Worktree 实际使用示例](/worktree/examples)。
 {{< /callout >}}
 
 ## 什么是工作树
 
-git 工作树是一个 **独立的工作目录** (separate working directory)，它拥有自己的文件和分支，同时与主检出共享相同的仓库历史和远程。也就是说，无需整体克隆仓库，你就能额外获得一个独立的工作空间。
+git 工作树是**独立的工作目录** (separate working directory)，拥有自己的文件与分支，同时与主检出共享同一份仓库历史与远程。也就是说，无需整仓克隆就多得到一个独立工作空间。
 
-| 项目 | 主检出 | 额外工作树 |
-|------|--------|-----------|
+| 区分 | 主检出 | 附加工作树 |
+|------|--------------|--------------|
 | 工作目录 | 1 个 | 独立目录 |
 | 分支 | 当前分支 | 独立分支 |
 | 仓库历史 | 共享 | 共享 |
 | 远程 (remote) | 共享 | 共享 |
 | 文件编辑隔离 | 基准 | 完全隔离 |
 
-关键在于 **共享与隔离的分离**。历史和远程在同一处统一管理，而文件编辑则按工作树完全分开。
+核心是**共享与隔离的分离**：历史与远程集中一处共同管理，只有文件编辑按树彻底分开。
 
-## 并行作业与隔离
+## 并行工作与隔离
 
-让每个 Claude Code 会话在各自的工作树中运行后，一个会话的编辑绝不会触及另一个会话的文件。因此以下这类同时作业变得安全：
+让每个 Claude Code 会话在自己的工作树中运行，一个会话的编辑就绝不会触及另一个会话的文件。于是以下并行工作变得安全。
 
-- 在终端 A 实现认证功能，同时在终端 B 修复一个无关的 bug
-- 同时推进不同分支，而构建/测试不会相互混淆
-- 即使一侧的实验失败，另一侧的工作树也不受影响
+- 终端 A 实现认证功能，终端 B 修复另一个 Bug
+- 同时推进不同分支，构建/测试互不混杂
+- 一边的实验失败也不影响另一边的工作树
 
 ```mermaid
 flowchart TD
@@ -43,60 +43,70 @@ flowchart TD
     Repo --> Main[主检出<br/>main 分支]
     Repo --> WT1[工作树 A<br/>feature-auth]
     Repo --> WT2[工作树 B<br/>bugfix-123]
-    WT1 --> S1[Claude Code 会话 1<br/>功能实现]
-    WT2 --> S2[Claude Code 会话 2<br/>bug 修复]
+    WT1 --> S1[Claude Code 会话 1<br/>实现功能]
+    WT2 --> S2[Claude Code 会话 2<br/>修复 Bug]
 ```
 
-工作树是在 Claude Code 中并行工作的多种方式之一。如果说工作树 **隔离文件编辑** (isolate file edits)，那么子代理和代理团队则 **协调工作本身** (coordinate the work)。两者可以配合使用，因此你也可以配置子代理，让它们各自在自己的工作树中执行并行编辑。
+工作树是 Claude Code 多种并行手段之一。工作树负责**隔离文件编辑** (isolate file edits)，而子智能体与智能体团队负责**协调工作本身** (coordinate the work)。两者可以搭配使用，例如让各子智能体在各自的工作树中执行并行编辑。
 
-## Claude Code 中的集成概览
+## 在 Claude Code 中的集成概览
 
-Claude Code 直接负责工作树的创建与清理。在概念层面只点出关键流程，如下所示。
+Claude Code 直接处理工作树的创建与清理。在概念层面梳理核心流程如下。
 
-### 在工作树中启动
+### 从工作树启动
 
-传入 `--worktree` (或 `-w`) 标志会创建一个隔离的工作树，并在其中启动 Claude。默认在仓库根目录的 `.claude/worktrees/<名称>/` 下创建，并生成一个形如 `worktree-<名称>` 的新分支。
+加 `--worktree`（或 `-w`）标志会创建隔离的工作树并在其中启动 Claude。默认在仓库根的 `.claude/worktrees/<名称>/` 下创建，并新建 `worktree-<名称>` 形式的分支。
 
 ```bash
 # 指定名称创建工作树
 claude --worktree feature-auth
 
-# 在另一个终端中创建第二个隔离会话
+# 在另一个终端开第二个隔离会话
 claude --worktree bugfix-123
+
+# 让基准分支从本地 HEAD 而非 origin/HEAD 分岔
+# （需要在设置中 worktree.baseRef: "head"）
+claude --worktree experimental
 ```
 
-省略名称时，Claude 会自动生成形如 `bright-running-fox` 的名称。会话过程中如果请求“在工作树中工作”，也可以用 `EnterWorktree` tool 来创建工作树。
+省略名称时 Claude 会自动生成 `bright-running-fox` 这样的名字。会话中途请求"在工作树里工作"，也可以通过 `EnterWorktree` 工具创建工作树。
 
-> 在某个目录中首次使用 `--worktree` 之前，必须先在该目录中运行一次 `claude`，并接受工作区信任 (workspace trust) 对话框。
+基准分支默认从 `origin/HEAD` 分岔。若想连未推送的提交一起包含，可用 `worktree.baseRef: "head"` 配置改为从本地 `HEAD` 分岔。
 
-### 基准分支与忽略文件的复制
+> 在某目录首次使用 `--worktree` 之前，需先在该目录运行一次 `claude` 并接受工作区信任 (workspace trust) 对话框。使用 `-p` 标志可在非交互模式下跳过信任对话框。
+
+### 基准分支与忽略文件复制
 
 | 项目 | 行为 | 备注 |
 |------|------|------|
-| 基准分支 | 默认从 `origin/HEAD` 分出 | 若没有远程则回退到本地 `HEAD` |
-| `worktree.baseRef` | 仅允许 `"fresh"` 或 `"head"` | `"head"` 会连未推送的提交一并带入 |
-| PR 基准分支 | `claude --worktree "#1234"` | 创建在 `.claude/worktrees/pr-1234` |
-| `.worktreeinclude` | 用 gitignore 语法复制忽略文件 | 将 `.env` 等未跟踪的文件自动复制到新树中 |
+| 基准分支 | 默认从 `origin/HEAD` 分岔 | 可用 `worktree.baseRef: "head"` 配置改为从本地 `HEAD` 分岔 |
+| 基于 PR 分岔 | `claude --worktree "#1234"` | 创建到 `.claude/worktrees/pr-1234` 目录 |
+| `.worktreeinclude` | 以 gitignore 语法复制被忽略文件 | 把 `.env` 等未被追踪的文件自动复制到新树 |
+| 工作区信任 | 首次使用时弹出信任对话框 | 可用 `-p` 标志跳过对话框 |
 
-在 `.gitignore` 中加入 `.claude/worktrees/`，可让工作树的内容不会作为未跟踪文件出现在主检出中。
+把 `.claude/worktrees/` 加进 `.gitignore`，工作树内容就不会在主检出中显示为未追踪文件。
 
-### 子代理隔离
+### 子智能体隔离
 
-子代理也可以各自在自己的工作树中运行，以防止并行编辑冲突。在自定义子代理的 frontmatter 中加入 `isolation: worktree`，即可使其始终被隔离。无任何更改即结束的子代理的临时工作树会被自动移除。
+子智能体也可以各自在工作树中运行，避免并行编辑冲突。在自定义子智能体定义的 frontmatter 中加上 `isolation: worktree`，它就始终在工作树中执行。
+
+无变更结束的子智能体的临时工作树会被自动移除。提示词变化时，之前的工作树也会被清理。
 
 ### 清理
 
-退出时的清理方式会因是否有更改而不同。
+工作树清理遵循以下标准。
 
-- 若没有提交、更改或未跟踪文件，工作树和分支会被自动移除。
-- 若有更改，Claude 会询问是保留还是移除。
-- 非交互式 (`-p`) 运行不会被自动清理，因此请用 `git worktree remove` 自行移除。
+- **干净状态**（无提交·变更·未追踪文件）：工作树与分支自动移除。
+- **有变更**：Claude 会询问保留还是移除。
+- **提示词变化**：之前创建的临时工作树自动移除。
+- **非交互执行**（`-p`）：不自动清理，需用 `git worktree remove` 手动移除。
+- **用 `--worktree` 标志创建的工作树**：不会被 `git worktree prune` 之类的工具自动清扫。
 
-对于 SVN、Perforce、Mercurial 等非 git 系统，可以用 `WorktreeCreate` / `WorktreeRemove` hook 自行定义创建与清理逻辑。
+把 `.claude/worktrees/` 加进 `.gitignore` 后，工作树目录本身不会显示为未追踪文件，主检出保持干净。
 
 ## 在 MoAI-ADK 中的深度运用
 
-MoAI-ADK 将这套工作树机制广泛运用于 SPEC 粒度的并行开发和多会话隔离。诸如在哪些场景下应当开启工作树、它如何与会话交接配合等实战内容，已整理在下面 MoAI-ADK 专用指南中，因此本页仅作概念介绍，更深入的内容通过链接引导。
+MoAI-ADK 把这套工作树机制广泛用于 SPEC 级并行开发与多会话隔离（`/moai plan --worktree`、`moai worktree` CLI）。要同时运转多个智能体循环，各循环的文件编辑必须互不污染，工作树恰好提供这份隔离 —— 可谓循环并行化的物理前提。何时应开启工作树、它与会话交接如何衔接等实战内容整理在下方 MoAI-ADK 专属指南中，本页止于概念介绍，深入内容以链接引导。
 
 ## 相关文档
 
@@ -106,8 +116,8 @@ MoAI-ADK 将这套工作树机制广泛运用于 SPEC 粒度的并行开发和�
 
 ## 参考资料
 
-- [Run parallel sessions with worktrees (Claude Code 官方文档)](https://code.claude.com/docs/en/worktrees)
+- [Worktrees — Claude Code 官方文档](https://code.claude.com/docs/en/worktrees)
 
 {{< callout type="tip" >}}
-如果你是首次引入工作树，请先把 `.claude/worktrees/` 加入 `.gitignore`。这样可以保持主检出干净，让你一眼就能看出哪个更改属于哪棵树。
+初次引入工作树时，请先把 `.claude/worktrees/` 加进 `.gitignore`。主检出保持干净，哪些变更属于哪棵树一目了然。
 {{< /callout >}}

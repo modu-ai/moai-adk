@@ -4,14 +4,16 @@ weight: 40
 draft: false
 ---
 
+Windows에서 MoAI-ADK를 사용할 때 알아야 할 환경 요구사항과 흔한 함정을 정리했습니다. 결론부터 말하면 **WSL이 가장 편합니다** — 네이티브 Windows 환경에서 겪는 경로·권한 문제 대부분이 WSL에서는 발생하지 않습니다.
+
 ## 지원 환경
 
 | 환경 | 지원 여부 | 비고 |
 |------|----------|------|
-| **WSL (권장)** | ✅ 완전 지원 | 최적의 경험 |
-| **PowerShell 7.x+** | ✅ 지원 | 대안 환경 |
-| PowerShell 5.x (레거시) | ❌ 미지원 | Windows PowerShell |
-| cmd.exe | ❌ 미지원 | 명령 프롬프트 |
+| **WSL (권장)** | {{< icon check ok >}} 완전 지원 | 최적의 경험 |
+| **PowerShell 7.x+** | {{< icon check ok >}} 지원 | 대안 환경 |
+| PowerShell 5.x (레거시) | {{< icon x danger >}} 미지원 | Windows PowerShell |
+| cmd.exe | {{< icon x danger >}} 미지원 | 명령 프롬프트 |
 
 **필수 요구사항:**
 - [Git for Windows](https://gitforwindows.org/) 설치 필수

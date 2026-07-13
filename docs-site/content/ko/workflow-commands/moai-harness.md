@@ -1,12 +1,10 @@
 ---
-title: /moai harness 명령어
+title: /moai harness
 weight: 55
 draft: false
 ---
 
-# /moai harness 명령어
-
-Harness v4 Builder로 프로젝트 고유의 동적 전문가 팀을 생성하고 관리합니다.
+프로젝트 고유의 동적 전문가 팀 (하네스)을 생성하고, 하네스 학습 라이프사이클을 관리합니다.
 
 {{< callout type="info" >}}
 **슬래시 커맨드**: Claude Code에서 `/moai:harness <자연어 요청>`을 입력하면 이 명령어를 바로 실행할 수 있습니다.
@@ -16,9 +14,11 @@ Harness v4 Builder로 프로젝트 고유의 동적 전문가 팀을 생성하�
 
 `/moai:harness`는 MoAI-ADK의 **Harness v4 Builder**를 실행하여 프로젝트 요구사항에 맞춘 동적 전문가 팀을 자동 생성합니다.
 
+v3의 세 번째 기둥인 **에이전틱 하네스**를 그대로 체감할 수 있는 명령어입니다 — 하네스가 하네스를 만드는 재귀 구조입니다. 범용 에이전트 카탈로그로 부족한 프로젝트 고유 영역 (예: 특정 DB 마이그레이션 절차, 사내 API 규약)이 있으면, 자연어 한 문장으로 그 영역의 전문가 팀을 스캐폴드할 수 있습니다. 생성된 하네스는 **재귀적 자가 학습** 서브시스템과 이어집니다 — 사용 관찰이 축적되면 하네스가 스스로 개선 제안을 만들고, 사용자 승인 게이트를 거쳐 지침이 진화합니다.
+
 ### Harness v4 Builder란?
 
-Harness v4 Builder는 Socratic 인터뷰 기반의 4-phase 워크플로우(ANALYZE → PLAN → GENERATE → ACTIVATE)로 팀을 구성합니다.
+Harness v4 Builder는 Socratic 인터뷰 기반의 4-phase 워크플로우 (ANALYZE → PLAN → GENERATE → ACTIVATE)로 팀을 구성합니다.
 
 | 단계 | 설명 |
 |------|------|
@@ -47,7 +47,7 @@ Builder가 4-phase를 자동 실행합니다:
 
 1. **ANALYZE**: Go, PostgreSQL, REST API 기술 스택 감지
 2. **PLAN**: DB Engineer, API Developer, Test Engineer 3인 팀 구성 결정
-3. **GENERATE**: 
+3. **GENERATE**:
    - `.claude/agents/harness/db-engineer.md`
    - `.claude/agents/harness/api-developer.md`
    - `.claude/agents/harness/test-engineer.md`
@@ -117,6 +117,36 @@ manifest.json과 에이전트 정의 편집:
 - 등록된 `/harness:<name>` 커맨드
 - 워크트리 격리 정책
 
+## 하네스 학습 라이프사이클 — 재귀적 자가 학습
+
+하네스는 생성하고 끝나는 정적 산출물이 아닙니다. `/moai harness` 서브커맨드로 **학습 서브시스템**의 라이프사이클을 관리합니다.
+
+| 명령어 | 설명 |
+|--------|------|
+| `moai harness status` | 학습 상태 확인 (관찰 수, 패턴, 제안) |
+| `moai harness apply` | 제안 적용 (사용자 승인 게이트 통과 필요) |
+| `moai harness rollback` | 직전 적용 롤백 |
+| `moai harness disable` | 학습 비활성화 |
+| `moai harness list` (v4) | 모든 학습 규칙 목록 |
+| `moai harness edit` (v4) | 규칙 직접 편집 |
+| `moai harness remove` (v4) | 규칙 삭제 |
+| `moai harness doctor` (v4) | 학습 시스템 진단 |
+
+**4계층 학습 사다리** — 관찰이 쌓일수록 학습 단계가 올라갑니다:
+
+| Tier | 관찰 수 | 동작 |
+|------|---------|------|
+| TierObservation | ≥1 | 단순 기록 |
+| TierHeuristic | ≥3 | 패턴 인식 |
+| TierRule | ≥5 | 규칙 형성 |
+| TierAutoUpdate | ≥10 | 자동 업데이트 (사용자 승인 필수) |
+
+**산출물**: `.moai/harness/` 디렉터리 (usage-log.jsonl, learned-rules.yaml)
+
+{{< callout type="warning" >}}
+자동 진화는 항상 **사용자 승인 게이트** 아래에서만 적용됩니다. 평가자와 승인 권한은 진화 루프 밖에 있으며, 언제든 `moai harness rollback`으로 복원할 수 있습니다.
+{{< /callout >}}
+
 ## Manifest 구조
 
 Harness v4는 **manifest.json**으로 팀 구성을 정의합니다.
@@ -182,6 +212,8 @@ Harness v4는 **manifest.json**으로 팀 구성을 정의합니다.
 | `role` | 필수 | 팀원의 역할 설명 |
 | `model` | `inherit` | 모델 선택 (`inherit`, `haiku`, `sonnet`, `opus`) |
 | `skills` | `[]` | 사전 로드할 스킬 목록 |
+
+팀원마다 모델을 다르게 지정할 수 있는 것 (`model` 필드)은 토크노믹스 설계의 연장입니다 — 아키텍처 결정처럼 추론이 무거운 역할과 반복적 테스트 작성처럼 가벼운 역할에 같은 모델을 쓸 이유가 없습니다.
 
 ## Worktree 격리
 
@@ -266,7 +298,7 @@ Builder가 자동으로:
 ## 관련 문서
 
 - [Harness v4 Builder 가이드](/advanced/builder-agents) - Builder 4-phase 상세
-- [에이전트 가이드](/advanced/agent-guide) - 8개 핵심 에이전트 이해
+- [에이전트 가이드](/advanced/agent-guide) - 10개 에이전트 카탈로그 이해
 - [SPEC 기반 개발](/workflow-commands/moai-plan) - SPEC 워크플로우 개요
 
 {{< callout type="info" >}}

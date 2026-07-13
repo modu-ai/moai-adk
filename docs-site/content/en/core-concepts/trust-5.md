@@ -4,81 +4,87 @@ weight: 70
 draft: false
 ---
 
-Detailed guide to 5 quality principles that all MoAI-ADK code must pass through.
+A detailed guide to the five quality principles every piece of MoAI-ADK code must pass. TRUST 5 is
+the quality gate of the agentic harness — no matter how fast an agent produces code, work is not
+recognized as complete unless it passes this gate.
 
 {{< callout type="info" >}}
-  **One-line summary:** TRUST 5 is an automated quality gate that verifies "is code tested, readable, consistent, secure, and trackable?"
+  **One-line summary:** TRUST 5 is an automated quality gate verifying "is the code tested, readable, consistent,
+  secure, and trackable?"
 {{< /callout >}}
 
 ## What is TRUST 5?
 
-TRUST 5 is **5 quality principles** that MoAI-ADK applies to all code. Both AI-generated and human-written code must pass these standards.
+TRUST 5 is the set of **five quality principles** MoAI-ADK applies to all code. AI-generated
+code and human-written code alike must pass these criteria.
 
-Using a daily life analogy, it's like building inspection for buildings. You must check structural safety, electrical wiring, plumbing, fire safety, and building permit documents before you can move in. Code is the same.
+By everyday analogy, it is like the final inspection of a building. Structural
+safety, electrical wiring, plumbing, fire safety, and permit paperwork must all be verified before
+anyone can move in. Code is the same.
 
-| Building Inspection | TRUST 5 | What's Checked |
-|---------------------|---------|----------------|
-| Structural safety | **T** (Tested) | Verify code works correctly with tests |
-| Electrical/plumbing blueprints | **R** (Readable) | Can other developers understand the code |
-| Building code compliance | **U** (Unified) | Matches project coding standards |
-| Fire/security systems | **S** (Secured) | No security vulnerabilities |
-| Permit documents | **T** (Trackable) | Change history clearly recorded |
+| Building inspection | TRUST 5           | What is checked                              |
+| ---------------- | ----------------- | -------------------------------------- |
+| Structural safety      | **T** (Tested)    | Verify the code actually works, via tests |
+| Electrical/plumbing blueprints | **R** (Readable)  | Can other developers understand the code?  |
+| Building-code compliance   | **U** (Unified)   | Does it match the project's coding conventions?          |
+| Fire/security systems   | **S** (Secured)   | Are there security vulnerabilities?                   |
+| Permit paperwork      | **T** (Trackable) | Is the change history clearly recorded?        |
 
 ```mermaid
 flowchart TD
-    Code["Code written"] --> T1["T: Tested<br>Test verification"]
-    T1 --> R["R: Readable<br>Readability verification"]
-    R --> U["U: Unified<br>Consistency verification"]
-    U --> S["S: Secured<br>Security verification"]
-    S --> T2["T: Trackable<br>Traceability verification"]
-    T2 --> Deploy["Ready to deploy"]
+    Code["Code complete"] --> T1["T: Tested\nTest verification"]
+    T1 --> R["R: Readable\nReadability verification"]
+    R --> U["U: Unified\nConsistency verification"]
+    U --> S["S: Secured\nSecurity verification"]
+    S --> T2["T: Trackable\nTraceability verification"]
+    T2 --> Deploy["Ready to ship"]
 
-    T1 -.- T1D["85%+ coverage<br>0 LSP type errors"]
-    R -.- RD["Clear names<br>0 LSP lint errors"]
-    U -.- UD["Consistent style<br>LSP warnings < 10"]
-    S -.- SD["OWASP Top 10<br>0 LSP security warnings"]
-    T2 -.- T2D["Conventional Commits<br>Issue tracking"]
+    T1 -.- T1D["85%+ coverage\nLSP 0 type errors"]
+    R -.- RD["Clear names\nLSP 0 lint errors"]
+    U -.- UD["Consistent style\nLSP warnings under 10"]
+    S -.- SD["OWASP Top 10\nLSP 0 security warnings"]
+    T2 -.- T2D["Conventional Commits\nIssue tracking"]
 ```
 
-## T - Tested (Tested)
+## T - Tested
 
-**Core:** All code must be verified with tests.
+**Core idea:** All code must be verified by tests.
 
-### What's Checked
+### What Is Checked
 
-| Check Item | Criteria | Description |
-|------------|----------|-------------|
-| Test Coverage | 85% or more | 85%+ of all code must be verified by tests |
-| Characterization Tests | Protect existing code | Tests to preserve existing behavior during refactoring |
-| LSP Type Errors | 0 | No type checking errors |
-| LSP Diagnostic Errors | 0 | No language server diagnostic errors |
+| Verification item       | Criterion           | Description                                                    |
+| --------------- | -------------- | ------------------------------------------------------- |
+| Test coverage | 85% or higher       | At least 85% of the code must be verified by tests       |
+| Characterization tests   | Protect existing code | Refactoring must be backed by tests preserving existing behavior |
+| LSP type errors   | 0            | Type checking must report no errors                      |
+| LSP diagnostic errors   | 0            | The language server must report no diagnostic errors                   |
 
 ### Why 85%?
 
-There's a reason we don't require 100%.
+There is a reason 100% is not required.
 
-| Coverage | Realistic Meaning |
-|----------|-------------------|
-| Under 60% | Major features may not be tested |
-| 60-84% | Basic features tested but edge cases may be missing |
-| **85-95%** | **Core logic and most edge cases verified (recommended)** |
-| 95-100% | Test maintenance cost starts to exceed benefits |
+| Coverage   | What it means in practice                                               |
+| ---------- | ----------------------------------------------------------- |
+| Under 60%   | Even major features may go untested                     |
+| 60-84%     | Basic functionality is tested but edge cases may be missed |
+| **85-95%** | **Core logic and most edge cases are verified (recommended)**    |
+| 95-100%    | The return on test maintenance cost starts to diminish        |
 
-### Best Practices
+### Best Practice
 
 ```python
 def calculate_discount(price: float, discount_rate: float) -> float:
-    """Calculate discounted price.
+    """Calculates the discounted price.
 
     Args:
-        price: Original price (0 or more)
+        price: Original price (0 or greater)
         discount_rate: Discount rate (0.0 ~ 1.0)
 
     Returns:
-        Discounted price
+        The discounted price
 
     Raises:
-        ValueError: For invalid input values
+        ValueError: Invalid input values
     """
     if price < 0:
         raise ValueError("Price cannot be less than 0")
@@ -86,7 +92,7 @@ def calculate_discount(price: float, discount_rate: float) -> float:
         raise ValueError("Discount rate must be between 0.0 and 1.0")
     return price * (1 - discount_rate)
 
-# Tests verify both normal and exception cases
+# Tests: verify both normal and exception cases
 def test_calculate_discount_normal():
     assert calculate_discount(10000, 0.1) == 9000
     assert calculate_discount(5000, 0.5) == 2500
@@ -103,57 +109,58 @@ def test_calculate_discount_invalid_rate():
 
 ---
 
-## R - Readable (Readable)
+## R - Readable
 
-**Core:** Code must be clear and easy to understand.
+**Core idea:** Code must be clear and easy to understand.
 
-### What's Checked
+### What Is Checked
 
-| Check Item | Criteria | Description |
-|------------|----------|-------------|
-| Naming Rules | Reveals intent | Variable, function, class names must be clear |
-| Code Comments | Explain complex logic | Comments explaining "why" (not "what") |
-| LSP Lint Errors | 0 | Pass all linter rules |
-| Function Length | Appropriate size | Functions shouldn't be too long |
+| Verification item     | Criterion                 | Description                                               |
+| ------------- | -------------------- | -------------------------------------------------- |
+| Naming conventions     | Intention-revealing names | Variable, function, and class names must be clear          |
+| Code comments     | Explanations for complex logic   | Comments should explain "why" it was done this way |
+| LSP lint errors | 0                  | All linter rules must pass                   |
+| Function length     | Appropriate size            | No single function should be too long                  |
 
-### Best Practices
+### Best Practice
 
 ```python
-# Bad: Can't tell what it does from the name
+# Bad: the name alone tells you nothing
 def calc(d, r):
     return d * (1 - r)
 
-# Good: Can understand the role just by reading the name
+# Good: the name alone tells you the role
 def calculate_discounted_price(original_price: float, discount_rate: float) -> float:
-    """Calculate price discounted by discount_rate from original_price."""
+    """Calculates the price discounted from the original price by the discount rate."""
     return original_price * (1 - discount_rate)
 ```
 
 {{< callout type="info" >}}
-  **Readability Tip:** Ask yourself "can I understand this 6 months from now?" If not, rename or add comments.
+  **Readability tip:** Ask yourself whether "you, six months from now" could understand this code
+  immediately. If not, rename things or add comments.
 {{< /callout >}}
 
 ---
 
-## U - Unified (Unified)
+## U - Unified
 
-**Core:** Maintain consistent code style across the entire project.
+**Core idea:** Maintain a consistent code style across the entire project.
 
-### What's Checked
+### What Is Checked
 
-| Check Item | Criteria | Description |
-|------------|----------|-------------|
-| Code Format | Auto-formatter applied | Python: ruff/black, JS: prettier |
-| Naming Rules | Follow project standards | No mixing snake_case, camelCase etc. |
-| Error Handling | Consistent pattern | Use same error handling approach everywhere |
-| LSP Warnings | Under 10 | Language server warnings under threshold |
+| Verification item | Criterion               | Description                                      |
+| --------- | ------------------ | ----------------------------------------- |
+| Code format | Auto-formatter applied   | Unified with ruff/black for Python, prettier for JS |
+| Naming rules | Follows the project standard | No mixing of snake_case, camelCase, etc.        |
+| Error handling | Unified patterns        | The same error-handling approach everywhere    |
+| LSP warnings  | Fewer than 10          | Language server warnings below the threshold              |
 
-### Best Practices
+### Best Practice
 
 ```python
-# Unified error handling pattern
+# A unified error-handling pattern
 class AppError(Exception):
-    """Application base error"""
+    """Base application error"""
     def __init__(self, message: str, code: int = 500):
         self.message = message
         self.code = code
@@ -164,11 +171,11 @@ class NotFoundError(AppError):
         super().__init__(f"{resource} '{id}' not found", code=404)
 
 class ValidationError(AppError):
-    """Input validation failed"""
+    """Input validation failure"""
     def __init__(self, field: str, reason: str):
-        super().__init__(f"'{field}' validation failed: {reason}", code=400)
+        super().__init__(f"Validation failed for '{field}': {reason}", code=400)
 
-# Use same pattern in all services
+# The same pattern used in every service
 def get_user(user_id: str) -> User:
     user = user_repository.find_by_id(user_id)
     if not user:
@@ -178,30 +185,30 @@ def get_user(user_id: str) -> User:
 
 ---
 
-## S - Secured (Secured)
+## S - Secured
 
-**Core:** All code must pass security verification.
+**Core idea:** All code must pass security verification.
 
-### What's Checked
+### What Is Checked
 
-| Check Item | Criteria | Description |
-|------------|----------|-------------|
-| OWASP Top 10 | Full compliance | Prevent most common web security vulnerabilities |
-| Dependency Scan | No vulnerable packages | Don't use libraries with known vulnerabilities |
-| Encryption Policy | Protect sensitive data | Passwords, tokens must be encrypted |
-| LSP Security Warnings | 0 | No security-related warnings |
+| Verification item     | Criterion               | Description                                      |
+| ------------- | ------------------ | ----------------------------------------- |
+| OWASP Top 10  | Full compliance          | Prevent the 10 most common web security vulnerabilities      |
+| Dependency scanning   | No vulnerable packages | No libraries with known vulnerabilities |
+| Encryption policy   | Protect sensitive data   | Passwords, tokens, etc. must be encrypted         |
+| LSP security warnings | 0                | No security-related warnings            |
 
-### Major Security Checks
+### Key Security Checks
 
-| Vulnerability | Prevention Method | Example |
-|---------------|-------------------|---------|
-| **SQL Injection** | Parameterized queries | `db.execute("SELECT * FROM users WHERE id = %s", (id,))` |
-| **XSS** | Output escaping | Auto-escape HTML output |
-| **Password Exposure** | bcrypt hashing | `bcrypt.hashpw(password, salt)` |
-| **Hardcoded Secret Keys** | Environment variables | `os.environ["SECRET_KEY"]` |
-| **CSRF** | Token verification | Include CSRF token in all state-changing requests |
+| Vulnerability                | Prevention         | Example                                                     |
+| --------------------- | ----------------- | -------------------------------------------------------- |
+| **SQL Injection**     | Parameterized queries | `db.execute("SELECT * FROM users WHERE id = %s", (id,))` |
+| **XSS**               | Output escaping   | Auto-escape when rendering HTML                             |
+| **Password exposure**     | bcrypt hashing       | `bcrypt.hashpw(password, salt)`                          |
+| **Hardcoded secrets** | Environment variables    | `os.environ["SECRET_KEY"]`                               |
+| **CSRF**              | Token verification         | Include a CSRF token in every state-changing request                     |
 
-### Best Practices
+### Best Practice
 
 ```python
 # Bad: SQL Injection vulnerability
@@ -209,7 +216,7 @@ def get_user(username: str) -> dict:
     query = f"SELECT * FROM users WHERE username = '{username}'"
     return db.execute(query)
 
-# Good: Safe with parameterized queries
+# Good: safe with a parameterized query
 def get_user(username: str) -> dict:
     query = "SELECT * FROM users WHERE username = %s"
     return db.execute(query, (username,))
@@ -217,116 +224,121 @@ def get_user(username: str) -> dict:
 
 ---
 
-## T - Trackable (Trackable)
+## T - Trackable
 
-**Core:** All changes must be clearly traceable.
+**Core idea:** Every change must be clearly traceable.
 
-### What's Checked
+### What Is Checked
 
-| Check Item | Criteria | Description |
-|------------|----------|-------------|
-| Commit Messages | Conventional Commits | `feat:`, `fix:`, `refactor:` etc. standard format |
-| Issue Links | GitHub Issues reference | Include related issue numbers in commits |
-| CHANGELOG | Maintain change log | Record changes shown to users |
-| LSP State Tracking | Record diagnostic history | Track LSP state changes to detect regression |
+| Verification item     | Criterion                 | Description                                      |
+| ------------- | -------------------- | ----------------------------------------- |
+| Commit messages   | Conventional Commits | Standard formats like `feat:`, `fix:`, `refactor:` |
+| Issue linking     | GitHub Issues references   | Include related issue numbers in commits                |
+| CHANGELOG     | Change log maintained       | Record user-facing change history          |
+| LSP state tracking | Diagnostic history recorded       | Track LSP state changes to detect regressions        |
 
-### Conventional Commits Format
+### The Conventional Commits Format
 
 ```bash
 # Structure: <type>(<scope>): <description>
 # Examples:
 
-# Add new feature
-$ git commit -m "feat(auth): Add JWT login API"
+# Add a new feature
+$ git commit -m "feat(auth): add JWT-based login API"
 
-# Fix bug
-$ git commit -m "fix(auth): Fix token expiration time calculation error"
+# Fix a bug
+$ git commit -m "fix(auth): fix token expiry calculation error"
 
 # Refactor
-$ git commit -m "refactor(auth): Separate auth logic into AuthService"
+$ git commit -m "refactor(auth): extract auth logic into AuthService"
 
 # Security improvement
-$ git commit -m "security(db): Prevent SQL Injection with parameterized queries"
+$ git commit -m "security(db): prevent SQL Injection with parameterized queries"
 ```
 
-**Commit Types:**
+**Commit types:**
 
-| Type | Description | Example |
-|------|-------------|---------|
-| `feat` | New feature | `feat(api): Add user list API` |
-| `fix` | Bug fix | `fix(auth): Fix login error message` |
-| `refactor` | Code improvement (no behavior change) | `refactor(db): Optimize queries` |
-| `security` | Security improvement | `security(auth): Environment variable for secret key` |
-| `docs` | Documentation change | `docs(readme): Update installation guide` |
-| `test` | Test add/modify | `test(auth): Add login test cases` |
+| Type       | Description                       | Example                                         |
+| ---------- | -------------------------- | -------------------------------------------- |
+| `feat`     | New feature                | `feat(api): add user list API`            |
+| `fix`      | Bug fix                  | `fix(auth): fix error message on login failure` |
+| `refactor` | Code improvement (no behavior change) | `refactor(db): optimize queries`                  |
+| `security` | Security improvement                  | `security(auth): move secret key to environment variable`         |
+| `docs`     | Documentation changes                  | `docs(readme): update installation guide`         |
+| `test`     | Test additions/changes           | `test(auth): add login test cases`      |
 
 ---
 
-## LSP Quality Gates
+## The LSP Quality Gate
 
-MoAI-ADK uses **LSP** (Language Server Protocol) to verify code quality in real-time. LSP is the system that shows errors with red underlines in your IDE.
+MoAI-ADK uses the **LSP** (Language Server Protocol) to verify code quality in real
+time. LSP is the very system that underlines errors in red in your IDE.
 
-### Phase-by-Phase LSP Thresholds
+### Per-Phase LSP Thresholds
 
-Different LSP standards apply to Plan, Run, and Sync phases.
+Each of the Plan, Run, and Sync phases applies different LSP criteria.
 
-| Phase | Error Allowance | Type Error Allowance | Lint Error Allowance | Warning Allowance | Regression Allowance |
-|-------|-----------------|---------------------|---------------------|------------------|---------------------|
-| **Plan** | Capture baseline | Capture baseline | Capture baseline | - | - |
-| **Run** | 0 | 0 | 0 | - | Not allowed |
-| **Sync** | 0 | - | - | Max 10 | Not allowed |
+| Phase     | Errors allowed       | Type errors allowed  | Lint errors allowed  | Warnings allowed | Regression allowed |
+| -------- | --------------- | --------------- | --------------- | --------- | --------- |
+| **Plan** | Baseline captured | Baseline captured | Baseline captured | -         | -         |
+| **Run**  | 0             | 0             | 0             | -         | Not allowed      |
+| **Sync** | 0             | -               | -               | Up to 10 | Not allowed      |
 
-**Meaning of Each Phase:**
+**What each phase means:**
 
-- **Plan Phase**: Capture current code's LSP state as "baseline." This becomes the reference.
-- **Run Phase**: LSP errors must be 0 at implementation completion. Errors shouldn't increase from baseline (no regression).
-- **Sync Phase**: LSP must be clean before documentation and PR creation. Warnings allowed up to 10.
+- **Plan phase:** The current code's LSP state is captured as the "baseline". This becomes
+  the reference line.
+- **Run phase:** LSP errors must be 0 when implementation completes. Errors must not increase
+  relative to the baseline (no regression).
+- **Sync phase:** LSP must be clean before documentation and PR creation. Up to
+  10 warnings are allowed.
 
 ```mermaid
 flowchart TD
-    P["Plan Phase<br>Capture LSP baseline"] --> R["Run Phase<br>0 errors, 0 type errors, 0 lint errors<br>No regression"]
-    R --> S["Sync Phase<br>0 errors, warnings under 10<br>Clean LSP state"]
-    S --> Deploy["Ready to deploy"]
+    P["Plan phase\nCapture LSP baseline"] --> R["Run phase\n0 errors, 0 type errors, 0 lint errors\nNo regression"]
+    R --> S["Sync phase\n0 errors, warnings 10 or fewer\nClean LSP state"]
+    S --> Deploy["Ready to ship"]
 
-    R -.- RCheck{"Error increase<br>from baseline?"}
-    RCheck -->|"Increase"| Block["Block: Regression detected"]
-    RCheck -->|"Same or decrease"| Pass["Pass"]
+    R -.- RCheck{"Errors increased\nvs baseline?"}
+    RCheck -->|"Increased"| Block["Blocked: regression detected"]
+    RCheck -->|"Same or fewer"| Pass["Pass"]
 ```
 
-## Ralph Engine Integration
+## Integration with the Ralph Engine
 
-**Ralph Engine** is MoAI-ADK's autonomous quality verification loop. Automatically detects and fixes code issues based on LSP diagnostic results.
+The **Ralph Engine** is MoAI-ADK's autonomous quality-verification loop. Based on LSP
+diagnostics, it automatically detects code problems and iterates on fixes.
 
 ```mermaid
 flowchart TD
     A["Code change"] --> B["Run LSP diagnostics"]
-    B --> C{"TRUST 5<br>all items pass?"}
-    C -->|"All pass"| D["Verification complete<br>Ready to deploy"]
-    C -->|"Some fail"| E["Ralph Engine<br>Auto fix attempt"]
+    B --> C{"TRUST 5\nall items pass?"}
+    C -->|"All pass"| D["Verification complete\nReady to ship"]
+    C -->|"Failing items"| E["Ralph Engine\nAutomatic fix attempt"]
     E --> F["Fixed code"]
     F --> B
 ```
 
-**How It Works:**
+**How it works:**
 
 1. When code changes, LSP runs diagnostics
-2. If items don't meet TRUST 5 standards, Ralph Engine attempts auto-fix
-3. Run LSP diagnostics again after fix to verify pass
-4. Repeat until pass (max 3 retries)
+2. If any item falls short of the TRUST 5 criteria, the Ralph Engine attempts an automatic fix
+3. After the fix, LSP diagnostics run again to check for a pass
+4. Repeats until it passes (up to 3 retries)
 
-**Related Commands:**
+**Related commands:**
 
 ```bash
-# Run auto fix
+# Run auto-fix
 > /moai fix
 
-# Repeat auto fix until complete
+# Auto-iterate fixes until done
 > /moai loop
 ```
 
 ## quality.yaml Configuration
 
-Manage TRUST 5 related settings in `.moai/config/sections/quality.yaml` file.
+TRUST 5 settings are managed in the `.moai/config/sections/quality.yaml` file.
 
 ### Key Settings
 
@@ -343,87 +355,90 @@ constitution:
     enabled: true
 
     plan:
-      require_baseline: true # Capture baseline at Plan start
+      require_baseline: true # Capture the baseline at Plan start
 
     run:
-      max_errors: 0 # Error allowance in Run phase: 0
-      max_type_errors: 0 # Type error allowance: 0
-      max_lint_errors: 0 # Lint error allowance: 0
-      allow_regression: false # No regression from baseline
+      max_errors: 0 # Errors allowed in Run phase: 0
+      max_type_errors: 0 # Type errors allowed: 0
+      max_lint_errors: 0 # Lint errors allowed: 0
+      allow_regression: false # No regression vs baseline
 
     sync:
-      max_errors: 0 # Error allowance in Sync phase: 0
-      max_warnings: 10 # Warning allowance: max 10
-      require_clean_lsp: true # Require clean LSP state
+      max_errors: 0 # Errors allowed in Sync phase: 0
+      max_warnings: 10 # Warnings allowed: up to 10
+      require_clean_lsp: true # Requires a clean LSP state
 
-    cache_ttl_seconds: 5 # LSP diagnostic cache time
-    timeout_seconds: 3 # LSP diagnostic timeout
+    cache_ttl_seconds: 5 # LSP diagnostics cache duration
+    timeout_seconds: 3 # LSP diagnostics timeout
 ```
 
-### Customization Tips
+### Configuration Customization Tips
 
-| Situation | Adjustment |
-|-----------|------------|
-| Early project, few tests | Lower `test_coverage_target` to 70, raise gradually |
-| Legacy code heavy | Temporarily set `allow_regression` to true |
-| Strict security needed | Set `max_warnings` to 0 |
+| Situation                                   | How to adjust                                                  |
+| -------------------------------------- | ---------------------------------------------------------- |
+| Early project with almost no tests | Lower `test_coverage_target` to 70 and raise it gradually |
+| Lots of legacy code                | Temporarily set `allow_regression` to true          |
+| Strict security requirements              | Set `max_warnings` to 0                          |
 
-## Real-World Application: Quality Gate Scenarios
+## In Practice: A Quality-Gate Pass Scenario
 
-Let's see how TRUST 5 applies in actual development.
+Let's see how TRUST 5 applies in real development.
 
-### Scenario: Implementing User Search API
+### Scenario: Implementing a User Search API
 
 ```bash
-# 1. Plan: Create SPEC (capture LSP baseline)
-> /moai plan "implement user search API"
+# 1. Plan: create the SPEC (LSP baseline captured)
+> /moai plan "Implement a user search API"
 ```
 
 ```bash
-# 2. Run: Implement with DDD (validate TRUST 5)
+# 2. Run: implement with DDD (TRUST 5 verification)
 > /moai run SPEC-SEARCH-001
 ```
 
-**TRUST 5 Validation in Run Phase:**
+**TRUST 5 verification in the Run phase:**
 
-| Item | Validation | Result |
-|------|-----------|--------|
-| **T** (Tested) | Test coverage 85%, 0 type errors | Pass |
-| **R** (Readable) | 0 lint errors, clear function names | Pass |
-| **U** (Unified) | ruff/black formatting applied, 3 LSP warnings | Pass |
-| **S** (Secured) | SQL Injection prevention, input validation | Pass |
-| **T** (Trackable) | Conventional Commit format, SPEC reference | Pass |
+| Item              | What was verified                            | Result |
+| ----------------- | ------------------------------------ | ---- |
+| **T** (Tested)    | Test coverage 85%, 0 type errors   | Pass |
+| **R** (Readable)  | 0 lint errors, clear function names    | Pass |
+| **U** (Unified)   | ruff/black formatting applied, 3 LSP warnings | Pass |
+| **S** (Secured)   | SQL Injection prevented, input validation      | Pass |
+| **T** (Trackable) | Conventional Commit format, SPEC referenced  | Pass |
 
 ```bash
-# 3. Sync: Generate docs and PR (final LSP clean check)
+# 3. Sync: generate docs and PR (final clean-LSP check)
 > /moai sync SPEC-SEARCH-001
 ```
 
-**Sync Phase Final Check:**
+**Final check in the Sync phase:**
 
 ```
-LSP Diagnostics:
+LSP diagnostic results:
 - Errors: 0
-- Type Errors: 0
-- Lint Errors: 0
-- Warnings: 3 (under threshold of 10)
-- Security Warnings: 0
+- Type errors: 0
+- Lint errors: 0
+- Warnings: 3 (below the threshold of 10)
+- Security warnings: 0
 
-TRUST 5 Complete Pass: Ready to deploy
+TRUST 5 fully passed: ready to ship
 ```
 
-## TRUST 5 At A Glance
+## TRUST 5 at a Glance
 
-| Principle | Core Question | Automated Tool | Criteria |
-|-----------|---------------|----------------|----------|
-| **T** (Tested) | Is code verified by tests? | pytest, LSP type checking | 85%+ coverage, 0 type errors |
-| **R** (Readable) | Can others understand? | ruff, eslint, LSP lint | 0 lint errors, clear names |
-| **U** (Unified) | Matches project standards? | black, prettier, LSP | Consistent format, warnings < 10 |
-| **S** (Secured) | No security vulnerabilities? | bandit, semgrep, LSP | OWASP compliance, 0 security warnings |
-| **T** (Trackable) | Is change history traceable? | commitlint, git | Conventional Commits |
+| Principle              | Key question                   | Automated verification tools         | Criteria                       |
+| ----------------- | --------------------------- | ---------------------- | -------------------------- |
+| **T** (Tested)    | Is it verified by tests?      | pytest, LSP type checking  | 85%+ coverage, 0 type errors |
+| **R** (Readable)  | Can others read it? | ruff, eslint, LSP lint | 0 lint errors, clear names   |
+| **U** (Unified)   | Does it match project conventions?     | black, prettier, LSP   | Consistent format, fewer than 10 warnings  |
+| **S** (Secured)   | Are there security vulnerabilities?       | bandit, semgrep, LSP   | OWASP compliance, 0 security warnings    |
+| **T** (Trackable) | Is the change history traceable?  | commitlint, git        | Conventional Commits       |
 
-## Related Documentation
+## Related Documents
 
-- [What is MoAI-ADK?](/en/core-concepts/what-is-moai-adk) — Understand the overall structure of MoAI-ADK
-- [SPEC-Based Development](/en/core-concepts/spec-based-dev) — Learn Plan phase where TRUST 5 is applied
-- [Domain-Driven Development](/en/core-concepts/ddd) — Learn Run phase where TRUST 5 is applied
+- [What is MoAI-ADK?](/en/core-concepts/what-is-moai-adk) -- Understand the overall structure
+  of MoAI-ADK
+- [SPEC-Based Development](/en/core-concepts/spec-based-dev) -- Learn the Plan phase
+  where TRUST 5 applies
+- [Domain-Driven Development](/en/core-concepts/ddd) -- Learn the Run phase
+  where TRUST 5 applies

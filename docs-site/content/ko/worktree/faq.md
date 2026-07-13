@@ -4,7 +4,7 @@ weight: 40
 draft: false
 ---
 
-Git Worktree 사용 중 발생하는 일반적인 문제들과 해결 방법을 정리했습니다.
+Git Worktree를 쓰다 보면 마주치는 질문과 문제를 한곳에 정리했습니다.
 
 ## 목차
 
@@ -55,16 +55,16 @@ graph TB
 
 ### Q: 왜 Worktree를 사용해야 하나요?
 
-**A**: 다음과 같은 이유로 Worktree 사용을 권장합니다:
+**A**: 병렬 개발과 토크노믹스, 두 가지 이유가 핵심입니다:
 
-1. **LLM 설정 독립성**: 각 SPEC마다 다른 LLM 사용 가능
-   - Plan 단계: Opus (고품질)
+1. **LLM 설정 독립성** — SPEC마다 다른 LLM을 배정할 수 있습니다
+   - Plan 단계: Opus (고품질 추론)
    - Implement 단계: GLM (저비용)
    - Document 단계: Sonnet (중간)
 
-2. **병렬 개발**: 동시에 여러 SPEC 개발 가능
-3. **충돌 방지**: 독립된 작업 공간으로 충돌 최소화
-4. **비용 절감**: GLM 사용으로 70% 비용 절감
+2. **병렬 개발** — 여러 SPEC을 동시에 진행할 수 있습니다
+3. **충돌 방지** — 독립된 작업 공간이 충돌을 최소화합니다
+4. **비용 절감** — 구현 단계에 GLM을 쓰면 약 70% 비용이 줄어듭니다
 
 ```mermaid
 graph TB
@@ -82,7 +82,7 @@ graph TB
 **A**: 아니요, 필수는 아니지만 **강력히 권장**합니다:
 
 - **단일 SPEC 개발**: Worktree 없이도 가능
-- **다중 SPEC 개발**: Worktree 필수적
+- **다중 SPEC 개발**: Worktree가 사실상 필수
 - **팀 협업**: Worktree로 충돌 방지
 - **비용 최적화**: Worktree로 LLM 분리
 
@@ -437,9 +437,9 @@ git worktree prune
 
 ### Q: 몇 개의 Worktree를 생성할 수 있나요?
 
-**A**: 이론적으로 무제한이지만 실제로는 다음 factors에 의해 제한됩니다:
+**A**: 이론적으로는 무제한이지만, 실제로는 다음 요인이 개수를 제한합니다:
 
-**제한 factors**:
+**제한 요인**:
 
 1. **디스크 공간**: 각 Worktree는 약 100MB-1GB 사용
 2. **메모리**: 각 Worktree에서 열린 세션
@@ -616,12 +616,11 @@ git worktree add SPEC-AUTH-001 origin/feature/SPEC-AUTH-001
 
 ## 관련 문서
 
-- [Git Worktree 개요](/worktree/index)
-- [완벽 가이드](./guide)
-- [실제 사용 예시](./examples)
+- [Git Worktree 개요](/ko/worktree/)
+- [완벽 가이드](/ko/worktree/guide)
+- [실제 사용 예시](/ko/worktree/examples)
 
 ## 추가 도움이 필요하신가요?
 
-- [GitHub Issues](https://github.com/MoAI-ADK/moai-adk/issues)
-- [Discord 커뮤니티](https://discord.gg/moai-adk)
-- [이메일 지원](mailto:support@moai-adk.org)
+- [GitHub Issues](https://github.com/modu-ai/moai-adk/issues) — 버그 리포트, 기능 요청
+- [Discord 커뮤니티](https://discord.gg/Z7E7Mdc5aN) — 실시간 소통, 팁 공유

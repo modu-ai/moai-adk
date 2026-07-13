@@ -1,26 +1,26 @@
 ---
 title: 初始设置
-weight: 40
+weight: 50
 draft: false
 ---
 
-使用 MoAI-ADK 的交互式设置向导完成您的首次设置。通过 9 步配置您的系统进行开发。
+通过 MoAI-ADK 的交互式设置向导完成首次设置。向导共 9 个步骤，按你的开发环境配置语言、Git 自动化范围与执行模式。这里设定的所有值都保存为 `.moai/config/sections/` 下的 YAML 文件，之后随时可以直接改文件，或重新运行向导来更改。
 
 ## 启动设置向导
 
 ### 创建新项目
 
-要创建并初始化新项目:
+要在创建新项目的同时进行初始化：
 
 ```bash
 moai init my-project
 ```
 
-这将创建一个 `my-project` 文件夹并初始化 MoAI-ADK。
+该命令会创建 `my-project` 文件夹并初始化 MoAI-ADK。
 
-### 在当前文件夹中安装
+### 安装到当前文件夹
 
-要在现有项目中安装 MoAI-ADK,请导航到该文件夹并运行:
+要在现有项目中安装 MoAI-ADK，请进入该文件夹后执行：
 
 ```bash
 cd my-existing-project
@@ -28,17 +28,17 @@ moai init
 ```
 
 {{< callout type="info" >}}
-`moai init` 直接在当前文件夹中安装。对于新项目,使用 `moai init <project-name>`。
+`moai init` 会直接安装到当前文件夹。新项目请用 `moai init <项目名>` 创建。
 {{< /callout >}}
 
-## 9 步设置过程
+## 9 步设置流程
 
-### 步骤 1: 选择对话语言
+### 第 1 步：选择对话语言
 
-选择 Claude 与您交流时使用的语言。
+选择 Claude 回复时使用的语言。
 
 ```bash
-? 选择对话语言:
+? 대화 언어를 선택하세요:
 ▸ English - English
   Korean (한국어) - Korean
   Japanese (日本語) - Japanese
@@ -46,123 +46,123 @@ moai init
 ```
 
 {{< callout type="info" >}}
-语言可以稍后在 `.moai/config/sections/language.yaml` 中更改。
+语言选择之后可以在 `.moai/config/sections/language.yaml` 文件中更改。
 {{< /callout >}}
 
-### 步骤 2: 输入姓名
+### 第 2 步：输入姓名
 
-用于配置文件。按 Enter 键可跳过。
+用于设置文件。按 Enter 可跳过。
 
 ```bash
-? 输入姓名: [name]
+? 이름 입력: [이름]
 ```
 
-### 步骤 3: 选择 Git 自动化模式
+### 第 3 步：选择 Git 自动化模式
 
 设置 Claude 可以执行的 Git 操作范围。
 
 ```bash
-? 选择 Git 自动化模式:
-▸ Manual - AI 不提交或推送
-  Personal - AI 可以创建分支和提交
-  Team - AI 可以创建分支、提交和创建 PR
+? Git 자동화 모드 선택:
+▸ Manual - AI가 커밋이나 푸시를 하지 않음
+  Personal - AI가 브랜치 생성 및 커밋 가능
+  Team - AI가 브랜치 생성, 커밋, PR 생성 가능
 ```
 
-**Manual**: AI 不执行任何 Git 操作。所有提交和推送由用户直接执行。
-**Personal**: AI 可以创建分支并提交。适合个人项目。
-**Team**: AI 执行分支创建、提交和 PR 创建。针对团队协作工作流进行了优化。
+**Manual**：AI 不执行任何 Git 操作。所有提交和推送均由用户亲自执行。
+**Personal**：AI 可以创建分支并提交。适合个人项目。
+**Team**：AI 可以创建分支、提交并创建 PR。为团队协作工作流优化。
 
 {{< callout type="info" >}}
-Git 设置保存在 `.moai/config/sections/git-strategy.yaml` 中。可以随时使用 `moai update -c` 命令重新配置。
+Git 设置保存在 `.moai/config/sections/git-strategy.yaml` 文件中。随时可以用 `moai update -c` 命令重新设置。
 {{< /callout >}}
 
-### 步骤 4: 选择 Git 提供商
+### 第 4 步：选择 Git 提供商
 
-选择您项目的 Git 托管平台。
+选择项目的 Git 托管平台。
 
 ```bash
-? 选择 Git 提供商:
+? Git 프로바이더 선택:
 ▸ GitHub - GitHub.com
-  GitLab - GitLab.com 或自托管 GitLab
+  GitLab - GitLab.com 또는 자체 호스팅 GitLab
 ```
 
-### 步骤 5: 选择 Git 提交消息语言
+### 第 5 步：选择 Git 提交信息语言
 
-选择编写提交消息使用的语言。
+选择编写提交信息时使用的语言。
 
 ```bash
-? 选择 Git 提交消息语言:
-▸ Korean (한국어) - 用韩语提交
-  English - 用英语提交
-  Japanese (日本語) - 用日语提交
-  Chinese (中文) - 用中文提交
+? Git 커밋 메시지 언어 선택:
+▸ Korean (한국어) - 한국어로 커밋
+  English - 영어로 커밋
+  Japanese (日本語) - 일본어로 커밋
+  Chinese (中文) - 중국어로 커밋
 ```
 
 {{< callout type="info" >}}
-提交消息语言可以与代码注释语言不同设置。
+提交信息语言可以与代码注释语言分别设置。
 {{< /callout >}}
 
-### 步骤 6: 选择代码注释语言
+### 第 6 步：选择代码注释语言
 
 选择代码注释使用的语言。
 
 ```bash
-? 选择代码注释语言:
-▸ Korean (한국어) - 用韩语注释
-  English - 用英语注释
-  Japanese (日本語) - 用日语注释
-  Chinese (中文) - 用中文注释
+? 코드 주석 언어 선택:
+▸ Korean (한국어) - 한국어로 주석
+  English - 영어로 주석
+  Japanese (日本語) - 일본어로 주석
+  Chinese (中文) - 중국어로 주석
 ```
 
 {{< callout type="info" >}}
-对于大多数项目，建议使用英语作为代码注释。
+大多数项目建议将代码注释语言设为英语。
 {{< /callout >}}
 
-### 步骤 7: 选择文档语言
+### 第 7 步：选择文档语言
 
 选择文档文件使用的语言。
 
 ```bash
-? 选择文档语言:
-▸ Korean (한국어) - 用韩语编写文档
-  English - 用英语编写文档
-  Japanese (日本語) - 用日语编写文档
-  Chinese (中文) - 用中文编写文档
+? 문서 언어 선택:
+▸ Korean (한국어) - 한국어로 문서
+  English - 영어로 문서
+  Japanese (日本語) - 일본어로 문서
+  Chinese (中文) - 중국어로 문서
 ```
 
-### 步骤 8: 选择 Agent Teams 执行模式
+### 第 8 步：选择 Agent Teams 执行模式
 
-配置 MoAI 使用 Agent Teams (并行) 还是 sub-agents (顺序)。
+设置 MoAI 使用 Agent Teams（并行）还是 sub-agents（顺序）。
 
 ```bash
-? 选择 Agent Teams 执行模式:
-▸ Auto (推荐) - 基于任务复杂度的智能选择
-  Sub-agent (经典) - 传统单智能体模式
-  Team (实验性) - 并行 Agent Teams (需要实验性功能)
+? Agent Teams 실행 모드 선택:
+▸ Auto (권장) - 작업 복잡도 기반 지능형 선택
+  Sub-agent (클래식) - 기존 단일 에이전트 모드
+  Team (실험적) - 병렬 Agent Teams (실험적 기능 필요)
 ```
 
-**Auto**: 根据任务复杂度自动选择最优模式。适用于大多数情况，推荐使用。
-**Sub-agent**: 单个智能体按顺序处理任务。适合高度依赖性的任务。
-**Team**: 多个专业智能体并行协作。需要 `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1` 环境变量。
+**Auto**：根据任务复杂度自动选择最优模式。大多数情况下推荐使用。
+**Sub-agent**：单个智能体按顺序处理任务。适合依赖性强的任务。
+**Team**：多个专业智能体并行协作。需要 `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1` 环境变量。
 
-### 步骤 9: 选择团队成员显示模式
+### 第 9 步：选择队友显示模式
 
-配置 Agent 团队成员的显示方式。分割屏幕需要 tmux。
+设置 Agent 队友的显示方式。分屏显示需要 tmux。
 
 ```bash
-? 选择团队成员显示模式:
-▸ Auto (推荐) - tmux 可用时使用 tmux，否则使用 in-process (默认)
-  In-Process - 在同一终端中运行 (任何地方都可用)
-  Tmux - tmux 分割屏幕 (需要 tmux/iTerm2)
+? 팀원 표시 모드 선택:
+▸ Auto (권장) - tmux 사용 가능 시 tmux, 없으면 in-process (기본값)
+  In-Process - 같은 터미널에서 실행 (어디서나 동작)
+  Tmux - tmux 분할 화면 (tmux/iTerm2 필요)
 ```
 
-**Auto**: 自动检测 tmux 是否可用，并选择最优显示模式。
-**In-Process**: 团队成员工作在同一终端窗口中运行。无需 tmux 也可工作。
-**Tmux**: 在 tmux 分割屏幕中直观监控团队成员工作。
+**Auto**：自动检测 tmux 是否安装，选择最优显示模式。
+**In-Process**：队友任务在同一终端窗口中运行。无需 tmux 也能工作。
+**Tmux**：以 tmux 分屏方式直观查看队友的工作。
 
 ## 设置完成
 
-完成所有步骤后,将创建配置文件:
+完成所有步骤后，会生成设置文件：
 
 ```mermaid
 graph TD
@@ -176,13 +176,13 @@ graph TD
     E --> I[git-strategy.yaml]
 ```
 
-检查生成的配置文件:
+查看生成的设置文件：
 
 ```bash
 cat .moai/config/sections/user.yaml
 ```
 
-## 配置结构
+## 设置结构
 
 ```mermaid
 graph TB
@@ -197,91 +197,67 @@ graph TB
     E --> E1[strategy: manual/personal/team<br>auto_commit, auto_push<br>pr_workflow]
 ```
 
-## 修改配置
+## 修改设置
 
-配置可以随时修改:
+设置随时可以修改：
 
 ### 手动修改
 
 ```bash
-# 用户设置
+# 사용자 설정
 vim .moai/config/sections/user.yaml
 
-# 语言设置
+# 언어 설정
 vim .moai/config/sections/language.yaml
 
-# 质量设置
+# 품질 설정
 vim .moai/config/sections/quality.yaml
 
-# Git 设置
+# Git 설정
 vim .moai/config/sections/git-strategy.yaml
 ```
 
-### 重置配置
+### 重新设置
 
-重新运行设置向导以重新配置所有设置:
+重新运行设置向导即可重新配置所有设置：
 
 ```bash
-# 重新运行设置向导 (推荐)
+# 설정 마법사 다시 실행 (권장)
 moai update -c
 
-# 或完全重置
+# 또는 전체 초기화
 moai init --reset
 ```
 
 {{< callout type="info" >}}
-`moai update -c` 允许您选择性地仅重置要更改的项目,同时保留现有设置。
+`moai update -c` 命令可以在保留现有设置的同时，仅选择性地重设想更改的项目。
 {{< /callout >}}
 
 {{< callout type="warning" >}}
-`moai init --reset` 会覆盖所有现有设置。备份重要设置。
+`moai init --reset` 选项会覆盖全部现有设置。重要设置请提前备份。
 {{< /callout >}}
 
-## 配置验证
+## 验证设置
 
-验证配置是否正确设置:
+确认设置是否正确配置：
 
 ```bash
 moai doctor
 ```
 
-输出示例:
+该命令验证以下内容：
 
-```bash
-moai doctor
-Running system diagnostics...
+- 是否安装 Git
+- 项目结构（`.moai/` 文件夹）
+- 设置文件（`.moai/config/config.yaml`）
+- 各语言开发工具检测（用 `--verbose` 查看详情）
 
-┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━┓
-┃ Check                                    ┃ Status ┃
-┡━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━┩
-│ Python >= 3.11                           │   ✓    │
-│ Git installed                            │   ✓    │
-│ Project structure (.moai/)               │   ✓    │
-│ Config file (.moai/config/config.yaml)   │   ✓    │
-└──────────────────────────────────────────┴────────┘
-
-✓ All checks passed
-```
-
-此命令验证:
-
-- Python >= 3.11 已安装
-- Git 已安装
-- 项目结构 (`.moai/` 文件夹)
-- 配置文件 (`.moai/config/config.yaml`)
+所有项目通过时会显示 `All checks passed` 消息。若缺少工具，可通过 `moai doctor --fix` 获取修复建议。
 
 ## 下一步
 
-设置完成后,按照[快速开始](./quickstart)指南创建您的第一个项目。
+设置完成后，请按照[快速开始](./quickstart)指南创建第一个项目。全部命令与选项随时可以查看：
 
 ```bash
 moai --help
 ```
-
-您可以查看所有命令和选项。
-
----
-
-## 下一步
-
-在[快速开始](./quickstart)中了解如何创建您的第一个项目。

@@ -4,22 +4,22 @@ weight: 25
 draft: false
 ---
 
-プロジェクトのアクティブセッション、ワークツリー、ハーネスを照会する `moai inventory` コマンドについて説明します。
+プロジェクトのアクティブセッション、ワークツリー、ハーネスを照会する `moai inventory` コマンドを案内します。
 
 {{< callout type="info" >}}
-**一行要約**: `moai inventory` は現在のプロジェクトのすべてのアクティブなリソース (セッション、ワークツリー、ハーネス) を一目で照会します。
+**一言要約**: `moai inventory` は、現在のプロジェクトのすべてのアクティブな資源(セッション、ワークツリー、ハーネス)を一目で照会します。
 {{< /callout >}}
 
 ## 概要
 
-`moai inventory` は読み取り専用コマンドで、現在のプロジェクト状態の**統合インベントリ**を提供します。
+`moai inventory` は読み取り専用のコマンドで、現在のプロジェクト状態の **統合インベントリ** を提供します。並列セッションや worktree を複数走らせていると「今、何が動いているんだっけ?」を一度に確認できる場所が必要になりますが、その答えがこのコマンドです。
 
 ### 照会対象
 
-| リソース | 説明 | 場所 |
-|---------|------|------|
+| 資源 | 説明 | 場所 |
+|------|------|------|
 | **Active Sessions** | 現在実行中の Claude Code セッション | `.moai/state/active-sessions.json` |
-| **Worktrees** | プロジェクト用の L2/L3 隔離ブランチ | `~/.moai/worktrees/<project>/` |
+| **Worktrees** | プロジェクト用の L2/L3 分離ブランチ | `~/.moai/worktrees/<project>/` |
 | **Harnesses** | 生成された動的エージェントチーム | `.moai/harness/manifest.json` |
 | **SPEC Progress** | アクティブな SPEC の進行状態 | `.moai/specs/SPEC-*/progress.md` |
 
@@ -29,25 +29,25 @@ draft: false
 moai inventory [options]
 ```
 
-### 基本的な使用
+### 基本の使い方
 
 ```bash
 moai inventory
 ```
 
-基本的なテキスト形式でインベントリを出力します。
+既定のテキスト形式でインベントリを出力します。
 
-### JSON 形式出力
+### JSON 形式での出力
 
 ```bash
 moai inventory --json
 ```
 
-構造化 JSON で出力して、自動分析に活用できます。
+構造化された JSON で出力し、自動分析に活用できます。
 
 ### フィルタリング
 
-特定のリソースタイプのみ照会:
+特定の資源タイプのみ照会:
 
 ```bash
 moai inventory --type sessions
@@ -58,16 +58,16 @@ moai inventory --type specs
 
 ### 詳細情報
 
-各リソースの追加情報を含む:
+各資源の追加情報を含める:
 
 ```bash
 moai inventory --verbose
 moai inventory --verbose --json
 ```
 
-## テキスト形式出力
+## テキスト形式の出力
 
-### 基本出力例
+### 基本出力の例
 
 ```
 MOAI Inventory for moai-adk-go
@@ -122,7 +122,7 @@ Worktree: SPEC-DOCS-001
   Commits:       2
 ```
 
-## JSON 形式出力
+## JSON 形式の出力
 
 ### スキーマ
 
@@ -204,31 +204,31 @@ Worktree: SPEC-DOCS-001
 }
 ```
 
-## 実践的な使用例
+## 実用的な使用例
 
-### 1. 複数セッション競合の検出
+### 1. マルチセッション競合の検知
 
 ```bash
 moai inventory --type sessions
 
-# 出力から同じ SPEC を処理するセッション > 1 個を検出 → 競合のリスク
+# 出力で同じ SPEC を扱うセッションが 1 つより多い場合 → 競合リスク
 ```
 
-### 2. ワークツリー整理確認
+### 2. Worktree の整理確認
 
 ```bash
 moai inventory --type worktrees --verbose
 
-# 古いワークツリーを確認した後にクリーンアップ
+# 古い worktree を確認して整理
 moai worktree remove <name>
 ```
 
-### 3. ハーネスチーム リスト照会
+### 3. Harness チームの一覧照会
 
 ```bash
 moai inventory --type harnesses --json | jq '.inventory.harnesses[] | {name, teammates, status}'
 
-# 予想される出力:
+# 期待される出力:
 # {
 #   "name": "backend-team",
 #   "teammates": 3,
@@ -236,7 +236,7 @@ moai inventory --type harnesses --json | jq '.inventory.harnesses[] | {name, tea
 # }
 ```
 
-### 4. アクティブな SPEC 進行状況追跡
+### 4. アクティブ SPEC の進捗追跡
 
 ```bash
 moai inventory --type specs | grep in-progress
@@ -248,7 +248,7 @@ moai inventory --type specs | grep in-progress
 
 ```bash
 #!/bin/bash
-# ワークツリー自動クリーンアップ スクリプト
+# Worktree 自動整理スクリプト
 
 moai inventory --type worktrees --json | jq -r '.inventory.worktrees[] | select(.status == "stale") | .name' | while read name; do
   echo "Removing stale worktree: $name"
@@ -256,7 +256,7 @@ moai inventory --type worktrees --json | jq -r '.inventory.worktrees[] | select(
 done
 ```
 
-## 出力の解釈
+## 出力の読み方
 
 ### Status フィールド
 
@@ -264,25 +264,25 @@ done
 |--------|------|
 | `active` | 現在使用中 |
 | `idle` | 一時停止 (セッションが明示的に一時停止状態) |
-| `stale` | 未使用 (7 日以上アクセスなし) |
+| `stale` | 未使用 (7日以上アクセスなし) |
 | `error` | エラー状態 (確認が必要) |
 
 ### Phase フィールド
 
 | Phase | 説明 |
 |-------|------|
-| `plan` | Plan 段階実行中 |
-| `run` | Run 段階実行中 |
-| `sync` | Sync 段階実行中 |
+| `plan` | Plan フェーズ実行中 |
+| `run` | Run フェーズ実行中 |
+| `sync` | Sync フェーズ実行中 |
 | `completed` | 完了状態 |
 
 ## 関連ドキュメント
 
-- [SPEC ベース開発](/workflow-commands/moai-plan) - SPEC ライフサイクル
-- [ワークツリー管理](/getting-started/worktree) - ワークツリー隔離とライフサイクル
+- [SPEC ベース開発](/workflow-commands/moai-plan) - SPEC のライフサイクル
+- [Worktree 管理](/getting-started/worktree) - Worktree の分離とライフサイクル
 - [Harness v4 Builder](/advanced/builder-agents) - 動的チーム管理
 - [CLI リファレンス](/getting-started/cli) - その他の CLI コマンド
 
 {{< callout type="info" >}}
-**ヒント**: `moai inventory` は自動クリーンアップスクリプトと監視ダッシュボードに活用できます。JSON 形式で自動分析すると、プロジェクト状態を常に把握できます。
+**ヒント**: `moai inventory` は自動整理スクリプトや監視ダッシュボードに活用できます。JSON 形式で自動分析すれば、プロジェクト状態を常に把握できます。
 {{< /callout >}}

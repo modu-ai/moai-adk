@@ -4,28 +4,28 @@ weight: 80
 draft: false
 ---
 
-Claude Code のコアガイドファイル体系を詳細に解説します。
+Claude Code のコア指針ファイル体系を詳しく解説します。`CLAUDE.md` は毎セッション必ずロードされるファイルなので、このファイルの一行一行がそのまま常時コンテキストコストです — 指針体系の設計はハーネス設計であると同時にトークノミクスでもあります。
 
 {{< callout type="info" >}}
-**一言でいうと**: `CLAUDE.md` はプロジェクトの**憲法**です。Claude Code がプロジェクトをどのように理解し、どのルールに従い、どのエージェントを呼び出すか、すべてこのファイルで決定されます。
+**ひと言要約**: `CLAUDE.md` はプロジェクトの **憲法** です。Claude Code がプロジェクトをどう理解し、どのルールに従い、どのエージェントを呼び出すかがすべてこのファイルで決まります。
 {{< /callout >}}
 
-## CLAUDE.md とは？
+## CLAUDE.md とは?
 
-`CLAUDE.md` は Claude Code がセッションを開始するとき**最初に読むガイドファイル**です。このファイルにプロジェクトのルール、エージェント構造、ワークフロー、品質基準などが定義されています。
+`CLAUDE.md` は Claude Code がセッション開始時に **最初に読む指針ファイル** です。このファイルにプロジェクトのルール、エージェント構造、ワークフロー、品質基準などが定義されています。
 
-人が新しい会社に入社すると従業員ハンドブックを読むのと同じように、Claude Code はセッションを開始するとき `CLAUDE.md` を読んでプロジェクトのコンテキストを把握します。
+人が新しい会社に入社したら社員ハンドブックを読むように、Claude Code はセッション開始時に `CLAUDE.md` を読んでプロジェクトの文脈を把握します。
 
 ## ファイル構造
 
-MoAI-ADK は 2 つのガイドファイルとルールディレクトリを使用します。
+MoAI-ADK は 2 つの指針ファイルとルールディレクトリを使用します。
 
 ```mermaid
 flowchart TD
     subgraph MAIN["CLAUDE.md (プロジェクトレベル)"]
         M1["コアアイデンティティ"]
         M2["リクエスト処理パイプライン"]
-        M3["コマンド参照"]
+        M3["コマンドリファレンス"]
         M4["エージェントカタログ"]
         M5["SPEC ワークフロー"]
         M6["品質ゲート"]
@@ -51,8 +51,8 @@ flowchart TD
 
 | ファイル/ディレクトリ | 用途 | Git 追跡 | 更新時 |
 |---------------|------|----------|-------------|
-| `CLAUDE.md` | MoAI-ADK コアガイド | はい | 上書き |
-| `CLAUDE.local.md` | 個人カスタムガイド | いいえ | 保存 |
+| `CLAUDE.md` | MoAI-ADK コア指針 | はい | 上書き |
+| `CLAUDE.local.md` | 個人カスタム指針 | いいえ | 保存 |
 | `.claude/rules/moai/` | 条件付き詳細ルール | はい | 上書き |
 | `.claude/rules/local/` | 個人カスタムルール | いいえ | 保存 |
 
@@ -70,49 +70,53 @@ MoAI は Claude Code の戦略的オーケストレーターです。
 ### HARD ルール (必須)
 - [HARD] 言語認識応答: ユーザーの conversation_language で応答
 - [HARD] 並列実行: 独立したツール呼び出しは並列実行
-- [HARD] XML タグ非表示: ユーザー対面応答に XML 非表示
+- [HARD] XML タグ非表示: ユーザー向け応答に XML 非表示
 - [HARD] Markdown 出力: すべてのコミュニケーションに Markdown 使用
 ```
 
-### 2. リクエスト処理パイプライン
+### 2. リクエスト処理パイプライン (Analyze-First)
 
-ユーザーリクエストを分析してルーティングする 4 段階パイプラインです。
+すべてのリクエストは入力言語と無関係に、1 つの順序化されたパイプラインを通ります。v3.0 の核心は **意図分析が常に先** という点です — 英語キーワードマッチングではなく、言語独立の意味分類でルーティングします。
 
-| 段階 | 説明 |
+| ステージ | 説明 |
 |------|------|
-| 1. 分析 | リクエストの複雑性評価、技術キーワード検出 |
-| 2. ルーティング | コマンドタイプに基づき適切なルート選択 |
-| 3. 実行 | エージェントに委任して作業実行 |
-| 4. 報告 | 統果統合およびユーザーに報告 |
+| 1. 意図分析 | リクエストの意図を言語独立に分類 (Analyze-First) |
+| 2. コンテキスト充足性チェック | 不足していれば実行前に Socratic インタビューで確認 |
+| 3. 実行計画の構成 | スキル/エージェント/ワークフローチェーン + オーケストレーションモード選択 |
+| 4. 承認ゲート | 実装着手承認 (plan→run ヒューマンゲート) を含む |
+| 5. 実行 → 検証 → 反復 | 受け入れ基準に対する検証、goal が設定されれば goal 評価者が終了判定 |
 
-### 3. コマンド参照
+### 3. コマンドリファレンス
 
-MoAI-ADK の 3 つのコマンドタイプを定義します。
+`/moai` がすべての MoAI 開発ワークフローの単一エントリポイントです。
 
-| タイプ | コマンド | 用途 |
+| 種別 | コマンド | 用途 |
 |------|--------|------|
-| Type A (ワークフロー) | `/moai project`, `/moai plan`, `/moai run`, `/moai sync` | 主要開発ワークフロー |
-| Type B (ユーティリティ) | `/moai`, `/moai fix`, `/moai loop` | 高速修正、自動化 |
-| Type C (フィードバック) | `/moai feedback` | 改善事項報告 |
+| SPEC パイプライン | `/moai plan`, `/moai run`, `/moai sync` | 3-phase 開発ワークフロー |
+| ループ/修正 | `/moai goal`, `/moai loop`, `/moai fix` | 条件宣言ループ、反復修正、単発修正 |
+| プロジェクト/ハーネス | `/moai project`, `/moai harness` | プロジェクトドキュメント + ハーネス生成/管理 |
+| 品質/ユーティリティ | `/moai review`, `/moai gate`, `/moai clean`, `/moai mx`, `/moai codemaps`, `/moai feedback` | レビュー、ゲート、クリーンアップ、注釈、ドキュメント、フィードバック |
+| (自然言語) | `/moai "リクエスト"` | Analyze-First ルーティング → 自律パイプライン |
 
 ### 4. エージェントカタログ
 
-MoAI-ADKは**8つの保持エージェント**（7つのMoAI独自エージェント + 1つのAnthropicビルトイン）で構成されます。アーキテクチャ簡素化により、manager-strategy、manager-quality、manager-brain、manager-project などの12個のアーカイブエージェントは特定ドメイン向けのper-spawn `Agent(general-purpose)` 委任に置き換えられました。
+MoAI-ADK は **10 個の保持エージェント** (9 個の MoAI-custom + 1 個の Anthropic built-in) で構成されます。アーキテクチャ簡素化により、manager-strategy、manager-quality、manager-brain、manager-project など 12 個の archived エージェントは、特定ドメインへの per-spawn `Agent(general-purpose)` delegation に置き換えられました。
 
-| 階層 | エージェント | 数 |
+| 分類 | エージェント | 役割 |
 |------|----------|------|
-| Manager | spec, develop, docs, git | 4 つ |
-| Evaluator | plan-auditor, sync-auditor | 2 つ |
-| Builder | builder-harness | 1 つ |
-| ビルトイン | Explore | 1 つ |
+| Manager (5) | manager-spec, manager-develop, manager-docs, manager-git, manager-design | コアライフサイクル各フェーズの専門家 |
+| Evaluator (2) | plan-auditor, sync-auditor | 計画/完了フェーズの独立品質評価 |
+| Builder (1) | builder-harness | 動的なプロジェクト別ハーネス生成 |
+| Advisor (1) | super-advisor | 高推論コンサルティング (E1-E4 エスカレーション) |
+| Built-in (1) | Explore (Anthropic) | 読み取り専用のコードベース探索 |
 
 ### 5. SPEC ワークフロー
 
-3 段階 SPEC ベース開発ワークフローを定義します。
+3 段階の SPEC ベース開発ワークフローを定義します。
 
 ```bash
-# Plan: SPEC ドキュメント作成 (30K トークン)
-> /moai plan "機能説明"
+# Plan: SPEC ドキュメント生成 (30K トークン)
+> /moai plan "機能の説明"
 
 # Run: DDD 実装 (180K トークン)
 > /moai run SPEC-XXX
@@ -125,31 +129,31 @@ MoAI-ADKは**8つの保持エージェント**（7つのMoAI独自エージェ�
 
 TRUST 5 フレームワークと LSP 品質ゲートを定義します。
 
-| 品質基準 | 要件 |
+| 品質基準 | 要求事項 |
 |-----------|----------|
-| Tested | 85%+ カバレッジ、LSP タイプエラー 0 |
+| Tested | 85%+ カバレッジ、LSP 型エラー 0 |
 | Readable | 明確な命名、LSP リントエラー 0 |
 | Unified | 一貫したスタイル、LSP 警告 10 以下 |
 | Secured | OWASP 準拠、LSP セキュリティ警告 0 |
 | Trackable | 明確なコミット、LSP 状態追跡 |
 
-### 7. ユーザー対話アーキテクチャ
+### 7. ユーザーインタラクションアーキテクチャ
 
-下位エージェントはユーザーと直接対話できません。
+サブエージェントはユーザーと直接会話できません。ユーザーとの接点は MoAI 一つに固定されます。
 
 ```mermaid
 flowchart TD
     USER["ユーザー"] --> MOAI["MoAI"]
     MOAI -->|"1. 情報収集"| USER
-    MOAI -->|"2. 作業委任"| AGENT["下位エージェント"]
+    MOAI -->|"2. 作業委任"| AGENT["サブエージェント"]
     AGENT -->|"3. 結果返却"| MOAI
     MOAI -->|"4. 結果報告"| USER
 
-    AGENT -.-x|"直接対話不可"| USER
+    AGENT -.-x|"直接会話不可"| USER
 
 ```
 
-### 8. 設定参照
+### 8. 構成リファレンス
 
 言語設定、ユーザー設定、プロジェクトルールを参照します。
 
@@ -164,7 +168,7 @@ language:
 
 ## CLAUDE.local.md 活用法
 
-`CLAUDE.local.md` は個人的なルールとメモを記述するファイルです。MoAI-ADK 更新とは関係なく保存されます。
+`CLAUDE.local.md` は個人的なルールとメモを書くファイルです。MoAI-ADK の更新と無関係に保存されます。
 
 ### 作成例
 
@@ -176,27 +180,27 @@ language:
 ### MDX レンダリングエラー防止
 - 強調表示と括弧の間に必ずスペース
 
-### Mermaid ダイアグラム方向
+### Mermaid ダイアグラムの方向
 - すべてのダイアグラムは縦方向 (flowchart TD)
 
 ## 個人メモ
 - DB マイグレーション前にバックアップ必須
-- API エンドポイント命名: kebab-case 使用
+- API エンドポイント命名: kebab-case を使用
 ```
 
-### 活用ヒント
+### 活用のヒント
 
-| 用途 | 内容例 |
+| 用途 | 内容の例 |
 |------|-----------|
-| コーディングルール | "変数名は camelCase、ファイル名は kebab-case" |
-| プロジェクトメモ | "認証は JWT、有効期限 24 時間、更新 7 日間" |
-| 禁止事項 | "console.log を本番コードに残さないこと" |
-| 好みパターン | "React コンポーネントは関数型のみ使用" |
-| MDX ルール | "強調と括弧の間スペース必須" |
+| コーディングルール | 「変数名は camelCase、ファイル名は kebab-case」 |
+| プロジェクトメモ | 「認証は JWT、期限 24 時間、更新 7 日」 |
+| 禁止事項 | 「console.log をプロダクションコードに残さない」 |
+| 好みのパターン | 「React コンポーネントは関数型のみ使用」 |
+| MDX ルール | 「強調と括弧の間にスペース必須」 |
 
 ## .claude/rules/ システム
 
-`.claude/rules/` ディレクトリには**条件付きでロードされる詳細ルール**が保存されます。
+`.claude/rules/` ディレクトリには **条件付きでロードされる詳細ルール** が保存されます。すべてのルールを CLAUDE.md に入れず条件付きファイルに分離する理由はただ一つ — 使わないルールがコンテキストを占有しないようにするためです。
 
 ### ディレクトリ構造
 
@@ -210,16 +214,16 @@ language:
 ├── workflow/                      # ワークフロー
 │   ├── workflow-modes.md          # Plan/Run/Sync 定義
 │   └── spec-workflow.md           # SPEC ワークフロー
-└── languages/                     # 言語別ルール (16 つ)
+└── languages/                     # 言語別ルール (16 個)
     ├── python.md
     ├── typescript.md
     ├── javascript.md
     └── ...
 ```
 
-### 条件付きローディング (paths フロントマター)
+### 条件付きロード (paths frontmatter)
 
-ルールファイルは `paths` フロントマターを通じて**特定ファイル作業時にのみロード**されます。
+ルールファイルは `paths` フロントマターを通じて **特定ファイルの作業時のみロード** されます。
 
 ```yaml
 ---
@@ -229,49 +233,49 @@ paths:
 ---
 
 # Python コーディングルール
-- ruff フォーマッター使用
-- type ヒント必須
+- ruff フォーマッターを使用
+- type hints 必須
 - docstring は Google スタイル
 ```
 
-このルールは Python ファイルを修正時のみロードされて**トークンを節約**します。
+このルールは Python ファイルを修正するときだけロードされ **トークンを節約** します。
 
-### ルールファイル種類
+### ルールファイルの種類
 
 | ディレクトリ | ファイル | ロード条件 |
 |----------|------|-----------|
 | `core/` | `moai-constitution.md` | 常にロード |
-| `development/` | `skill-authoring.md` | スキル関連作業時 |
+| `development/` | `skill-authoring.md` | スキル関連の作業時 |
 | `development/` | `coding-standards.md` | コード作業時 |
 | `workflow/` | `workflow-modes.md` | ワークフローコマンド時 |
-| `workflow/` | `spec-workflow.md` | SPEC 関連作業時 |
-| `languages/` | `python.md` 等 | 該当言語ファイル修正時 |
+| `workflow/` | `spec-workflow.md` | SPEC 関連の作業時 |
+| `languages/` | `python.md` など | 該当言語ファイルの修正時 |
 
 ## サイズ制限
 
-`CLAUDE.md` は**40,000 文字以下**を維持する必要があります。
+`CLAUDE.md` は **40,000 文字以下** を維持する必要があります。MoAI-ADK 自体も v3 期間中に CLAUDE.md をダイエットし続けてきました — 常時ロードの指針は短いほどすべてのセッションが安くなります。
 
-### サイズ超過時の対処法
+### サイズ超過時の対応方法
 
 ```mermaid
 flowchart TD
-    CHECK{"CLAUDE.md<br>40,000文字超過?"}
+    CHECK{"CLAUDE.md<br>40,000 文字超過?"}
 
-    CHECK -->|はい| MOVE["詳細内容を<br>.claude/rules/ に移動"]
+    CHECK -->|はい| MOVE["詳細内容を<br>.claude/rules/ へ移動"]
     CHECK -->|いいえ| OK["正常維持"]
 
-    MOVE --> REF["CLAUDE.md に<br>参照のみ残す"]
+    MOVE --> REF["CLAUDE.md には<br>参照だけ残す"]
     REF --> SLIM["コアルールのみ<br>CLAUDE.md に維持"]
 ```
 
-**対処戦略:**
+**対応戦略:**
 
-1. **詳細内容移動**: 長い説明は `.claude/rules/` ファイルに分離
-2. **参照使用**: `CLAUDE.md` で `@ファイルパス` で参照
-3. **コアのみ維持**: アイデンティティ、HARD ルール、エージェントカタログのみ維持
-4. **スキルに変換**: 長いパターン説明はスキルに変換
+1. **詳細内容の移動**: 長い説明は `.claude/rules/` ファイルへ分離
+2. **参照の使用**: `CLAUDE.md` から `@ファイルパス` で参照
+3. **核心のみ維持**: アイデンティティ、HARD ルール、エージェントカタログのみ維持
+4. **スキルへの転換**: 長いパターン説明はスキルに変換
 
-## 実戦例: CLAUDE.local.md カスタムルール
+## 実践例: CLAUDE.local.md カスタムルール
 
 ### フロントエンドプロジェクト
 
@@ -280,8 +284,8 @@ flowchart TD
 
 ## React ルール
 - コンポーネントは必ず関数型で作成
-- Props インターフェースはコンポーネントファイル上部で定義
-- 状態管理は Zustand 使用
+- Props インターフェースはコンポーネントファイル上部に定義
+- 状態管理は Zustand を使用
 - CSS は Tailwind CSS のみ使用
 
 ## 命名ルール
@@ -291,8 +295,8 @@ flowchart TD
 - API エンドポイント: kebab-case (/api/user-profiles)
 
 ## 禁止事項
-- any 型使用禁止
-- console.log 本番コードで禁止
+- any 型の使用禁止
+- console.log をプロダクションコードに禁止
 - default export 禁止 (named export のみ使用)
 ```
 
@@ -302,28 +306,30 @@ flowchart TD
 # プロジェクトローカル設定
 
 ## Python ルール
-- FastAPI 使用
+- FastAPI を使用
 - 非同期関数優先 (async/await)
-- Pydantic v2 モデル使用
+- Pydantic v2 モデルを使用
 - SQLAlchemy 2.0 スタイル
 
 ## データベースルール
 - マイグレーション前に必ずバックアップ
-- インデックスはクエリーパターン分析後追加
-- soft delete パターン使用 (is_deleted フラグ)
+- インデックスはクエリパターン分析後に追加
+- soft delete パターンを使用 (is_deleted フラグ)
 
 ## API ルール
 - RESTful エンドポイント命名
-- レスポンス形式統一: {"data": ..., "message": ...}
-- エラーコード標準化
+- 応答形式の統一: {"data": ..., "message": ...}
+- エラーコードの標準化
 ```
 
 ## CLAUDE.md、rules、skills の関係
 
+指針体系は 4 階層に分かれ、下の階層に行くほどロード条件が狭くなります。
+
 ```mermaid
 flowchart TD
-    subgraph HIERARCHY["ガイド体系階層"]
-        CLAUDE["CLAUDE.md<br>最上位ガイド (常にロード)"]
+    subgraph HIERARCHY["指針体系の階層"]
+        CLAUDE["CLAUDE.md<br>最上位指針 (常にロード)"]
         RULES[".claude/rules/<br>条件付きルール (paths マッチ時)"]
         SKILLS[".claude/skills/<br>専門知識 (トリガーマッチ時)"]
         AGENTS[".claude/agents/<br>エージェント定義 (委任時)"]
@@ -338,20 +344,20 @@ flowchart TD
 
 ```
 
-| 階層 | ファイル | ロード時期 | 役割 |
+| 階層 | ファイル | ロード時点 | 役割 |
 |------|------|-----------|------|
-| 1. CLAUDE.md | `CLAUDE.md` | 常時 | プロジェクトアイデンティティ、コアルール |
+| 1. CLAUDE.md | `CLAUDE.md` | 常に | プロジェクトアイデンティティ、コアルール |
 | 2. Rules | `.claude/rules/*.md` | ファイルパターンマッチ時 | 条件付き詳細ルール |
 | 3. Skills | `.claude/skills/*/skill.md` | トリガーマッチ時 | 専門知識、パターン |
-| 4. Agents | `.claude/agents/*.md` | 委任時 | 専門家ロール定義 |
+| 4. Agents | `.claude/agents/*.md` | 委任時 | 専門家の役割定義 |
 
 ## 関連ドキュメント
 
-- [スキルガイド](/advanced/skill-guide) - スキルシステム詳細
-- [エージェントガイド](/advanced/agent-guide) - エージェントシステム詳細
-- [settings.json ガイド](/advanced/settings-json) - 設定ファイル管理
-- [Hooks ガイド](/advanced/hooks-guide) - イベント自動化
+- [スキルガイド](/ja/advanced/skill-guide) - スキルシステム詳細
+- [エージェントガイド](/ja/advanced/agent-guide) - エージェントシステム詳細
+- [settings.json ガイド](/ja/advanced/settings-json) - 設定ファイル管理
+- [Hooks ガイド](/ja/advanced/hooks-guide) - イベント自動化
 
 {{< callout type="info" >}}
-**ヒント**: `CLAUDE.md` を直接修正するよりも `CLAUDE.local.md` に個人ルールを追加することを推奨します。MoAI-ADK 更新時にも個人ルールが安全に保存されます。
+**ヒント**: `CLAUDE.md` を直接修正するより、`CLAUDE.local.md` に個人ルールを追加することをお勧めします。MoAI-ADK の更新時にも個人ルールが安全に保存されます。
 {{< /callout >}}

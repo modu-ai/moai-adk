@@ -4,15 +4,16 @@ description: Default migration paths and configuration for 16 programming langua
 weight: 30
 draft: false
 ---
-# Migration Patterns
 
+MoAI-ADK supports 16 programming languages equally. The database workflow is
+no exception — it knows the default paths of each language's industry-standard
+migration tool, so most projects scan out of the box with no extra
+configuration.
 
-## Supported Languages and Tools
+## Supported languages and migration tools
 
-MoAI supports default migration paths for 16 programming languages, each using industry-standard tools.
-
-| Language | Migration Tool | Default Path Pattern |
-|----------|---------------|---------------------|
+| Language | Migration tool | Default path pattern |
+|------|-----------------|--------------|
 | Go | golang-migrate | `db/migrations/*.sql` or `migrations/*.sql` |
 | Python | Alembic | `alembic/versions/*.py` |
 | TypeScript | Prisma Migrate | `prisma/migrations/**/*.sql` |
@@ -30,12 +31,12 @@ MoAI supports default migration paths for 16 programming languages, each using i
 | Flutter | Drift | `assets/migrations/*.sql` |
 | Swift | GRDB | `Resources/Migrations/*.sql` |
 
-## Automatic Language Detection
+## Automatic language detection
 
-MoAI auto-detects your project language using:
+MoAI auto-detects the project language as follows:
 
 1. Check `project_markers` in `.moai/config/sections/language.yaml`
-2. Scan for language-specific marker files at project root:
+2. Scan the project root for language-specific marker files:
    - Go: `go.mod`
    - Python: `pyproject.toml`, `setup.py`
    - TypeScript/JavaScript: `package.json`
@@ -46,9 +47,10 @@ MoAI auto-detects your project language using:
    - C#: `*.csproj`
    - Elixir: `mix.exs`
 
-## Custom Migration Path Configuration
+## Custom migration path configuration
 
-If the default path doesn't match your project, manually specify it in `.moai/config/sections/db.yaml`:
+If the default path does not match your project, specify it manually in
+`.moai/config/sections/db.yaml`:
 
 ```yaml
 db:
@@ -61,7 +63,7 @@ db:
       language: "python"
 ```
 
-## Example: Migration Structure by Language
+## Examples: migration file structure per language
 
 ### Go (golang-migrate)
 
@@ -117,9 +119,9 @@ project/
 └── Gemfile
 ```
 
-## Multi-Language Project Configuration
+## Multi-language project configuration
 
-For microservices or monolithic structures with multiple languages:
+For microservices or a monorepo managing migrations across several languages:
 
 ```yaml
 db:
@@ -128,19 +130,19 @@ db:
     - path: "services/api/db/migrations"
       file_pattern: "*.sql"
       language: "go"
-    
+
     # Data pipeline (Python)
     - path: "services/analytics/alembic/versions"
       file_pattern: "*.py"
       language: "python"
-    
-    # Web app (TypeScript)
+
+    # Web application (TypeScript)
     - path: "apps/web/prisma/migrations"
       file_pattern: "*.sql"
       language: "typescript"
 ```
 
-## Migration Tool Selection Guide
+## Migration tool selection guide
 
 ### Prisma (TypeScript/JavaScript)
 
@@ -150,15 +152,15 @@ Pros:
 - Intuitive relationship definitions
 
 Cons:
-- Prisma ecosystem dependency
+- Depends on the Prisma ecosystem
 - Limited for complex migrations
 
 ### Alembic (Python)
 
 Pros:
-- Auto-migration generation
+- Auto-generation of migrations
 - Flexible customization
-- Complete SQLAlchemy integration
+- Full SQLAlchemy integration
 
 Cons:
 - Learning curve
@@ -167,12 +169,12 @@ Cons:
 ### Flyway (Java/Kotlin)
 
 Pros:
-- Multi-language migration support
+- Language-specific migration support
 - Strong validation
 - Watermark system
 
 Cons:
-- Complex configuration
+- Configuration complexity
 - Performance overhead
 
 ### golang-migrate (Go)
@@ -180,36 +182,36 @@ Cons:
 Pros:
 - Lightweight and fast
 - Clear Up/Down separation
-- Pure SQL usage
+- Pure SQL
 
 Cons:
-- No helper functions
+- No helper features
 - No auto-generation
 
-## Migration File Naming Conventions
+## Migration file naming conventions
 
-Recommended naming patterns per tool:
+Recommended naming conventions per tool:
 
-| Tool | Pattern | Example |
-|------|---------|---------|
+| Tool | Convention | Example |
+|------|------|------|
 | golang-migrate | `YYYYMMDDHHMMSS_description.up.sql` | `20240101120000_create_users.up.sql` |
 | Alembic | `rev_<hash>_description.py` | `rev_a001b002_add_email.py` |
-| Prisma | Timestamp folder | `20240101120000_init` |
+| Prisma | Timestamped folder | `20240101120000_init` |
 | Flyway | `V<version>__description.sql` | `V1__Create_users.sql` |
 | Rails | `YYYYMMDDHHMMSS_description.rb` | `20240101120000_create_users.rb` |
 | Laravel | `YYYY_MM_DD_HHMMSS_description.php` | `2024_01_01_120000_create_users.php` |
 
 ## Troubleshooting
 
-### Migration Files Not Scanned
+### Migration files are not scanned
 
-1. Check migration path:
+1. Check the migration path:
 
 ```bash
 ls -la $(path/to/migrations)
 ```
 
-2. Verify file pattern — confirm file extensions match expected pattern
+2. Check the file pattern — verify file extensions match the expected pattern
 
 3. Check language detection:
 
@@ -217,7 +219,7 @@ ls -la $(path/to/migrations)
 cat .moai/config/sections/language.yaml
 ```
 
-4. Set custom path:
+4. Configure a custom path:
 
 ```yaml
 db:
@@ -226,13 +228,13 @@ db:
       file_pattern: "*.sql"
 ```
 
-### Multiple Language Conflicts
+### Multiple language configurations conflict
 
-Separate each service with explicit paths:
+Clearly separate paths per service:
 
 ```yaml
 db:
   migration_patterns:
-    - path: "services/api/**"          # Backend only
-    - path: "apps/web/**"              # Web app only
+    - path: "services/api/**"          # backend only
+    - path: "apps/web/**"              # web app only
 ```

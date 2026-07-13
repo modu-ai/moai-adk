@@ -1,39 +1,41 @@
 ---
 title: Getting Started
-description: Step-by-step guide from installation to running your first MoAI-ADK project
+description: Step-by-step guide from installing MoAI-ADK to running your first project
 weight: 10
 draft: false
 ---
 
-Welcome to MoAI-ADK. Follow the **Introduction → Installation → Quick Start** path and you will have your first MoAI-ADK project running in under 30 minutes.
+This is the onboarding path for anyone meeting MoAI-ADK for the first time. Read in the order **Introduction → Installation → Quick Start** and you can have your first MoAI-ADK project running within 30 minutes. Installation is nothing more than downloading a single binary, and no extra runtime or dependency is needed to run your first SPEC.
 
 {{< callout type="info" >}}
-Already installed? Jump straight to [Quick Start](./quickstart). Looking for CLI flags, see [CLI Reference](./cli). Hitting an issue, try the [FAQ](./faq).
+If you have already finished installing, jump straight to the [Quick Start](./quickstart). Curious about CLI flags? See the [CLI Reference](./cli). Having trouble? Check the [FAQ](./faq).
 {{< /callout >}}
 
 ## Learning Flow
 
 ```mermaid
 flowchart TD
-    A["Introduction<br>WHAT/WHY"] --> B["Installation<br>Prerequisites"]
-    B --> C["Setup Wizard<br>moai init"]
-    C --> D["Quick Start<br>First SPEC"]
-    D --> E["Update<br>Keep Current"]
-    E --> F["CLI / FAQ<br>Reference"]
+    A["Introduction<br>WHAT/WHY"] --> B["Installation<br>Environment setup"]
+    B --> C["Initial Setup<br>moai init"]
+    C --> D["Quick Start<br>Run your first SPEC"]
+    D --> E["Update · Profile<br>Ongoing operation"]
+    E --> F["CLI · FAQ<br>Reference material"]
 ```
 
 ## Recommended Reading Order
 
-| Step | Document | What you will learn |
-|------|----------|---------------------|
-| 1 | [Introduction](./introduction) | What MoAI-ADK is and the problems it solves |
-| 2 | [Installation](./installation) | Install on macOS/Linux and verify prerequisites |
-| 3 | [Setup Wizard](./init-wizard) | Configure your project with `moai init` |
-| 4 | [Quick Start](./quickstart) | Create your first SPEC and run `/moai plan → run → sync` |
-| 5 | [Update](./update) | Keep your templates and binary up to date |
-| 6 | [CLI Reference](./cli) | Complete index of `moai` subcommands |
-| 7 | [FAQ](./faq) | Common installation and runtime issues |
+| Order | Document | Key Content |
+|------|------|----------|
+| 1 | [Introduction](./introduction) | What MoAI-ADK is and which problems it solves |
+| 2 | [Installation](./installation) | Installation and prerequisites on macOS/Linux |
+| 3 | [Windows Guide](./windows-guide) | Special considerations for Windows environments |
+| 4 | [Initial Setup](./init-wizard) | Configure your project with the `moai init` interactive wizard |
+| 5 | [Quick Start](./quickstart) | Create your first SPEC and run `/moai plan → run → sync` |
+| 6 | [Update](./update) | Keep templates on the latest version |
+| 7 | [Profile Management](./profile) | User profile, environment variables, and settings sync |
+| 8 | [CLI Reference](./cli) | Full subcommand index for the `moai` binary |
+| 9 | [FAQ](./faq) | Common issues during installation and execution, with solutions |
 
 {{< callout type="info" >}}
-**Next step**: After finishing installation, explore [Core Concepts](/en/core-concepts/) to learn about SPEC-based development, DDD, and the TRUST 5 quality framework.
+**Next step**: Once installation is done, head to [Core Concepts](/en/core-concepts/) to learn the three pillars of v3.0 — Tokenomics · Agentic Loop Engineering · Agentic Harness — and MoAI-ADK's design philosophy including SPEC, DDD, and TRUST 5.
 {{< /callout >}}

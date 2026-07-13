@@ -5,28 +5,41 @@ draft: false
 ---
 # 하네스 엔지니어링
 
-
 ## 하네스 엔지니어링이란?
 
-MoAI-ADK는 **하네스 엔지니어링(Harness Engineering)** 패러다임을 구현합니다. 이는 개발자가 직접 코드를 작성하는 대신, **AI 에이전트가 최적의 코드를 생산할 수 있는 환경(하네스)을 설계**하는 접근 방식입니다.
+MoAI-ADK는 **하네스 엔지니어링** (Harness Engineering) 패러다임을 구현합니다. 개발자가 직접 코드를 작성하는 대신, **AI 에이전트가 최적의 코드를 생산할 수 있는 환경 (하네스) 을 설계**하는 접근 방식입니다.
 
 > "Human steers, agents execute."
 > — 엔지니어의 역할은 코드 작성에서 하네스 설계로 전환됩니다: SPEC, 품질 게이트, 피드백 루프.
 
-기존 바이브코딩은 AI에게 자유롭게 코드를 생성하게 한 뒤 결과를 수동으로 검토합니다. 하네스 엔지니어링은 반대입니다 — **규격(SPEC), 자동 검증, 지속적 피드백 루프**로 AI 에이전트를 가이드하여 일관된 품질의 코드를 생산합니다.
+기존 바이브코딩은 AI에게 자유롭게 코드를 생성하게 한 뒤 결과를 수동으로 검토합니다. 하네스 엔지니어링은 반대입니다 — **규격 (SPEC), 자동 검증, 지속적 피드백 루프**로 AI 에이전트를 가이드하여 일관된 품질의 코드를 생산합니다.
+
+하네스란 무엇일까요? 기본 모델을 둘러싸고 실행을 오케스트레이션하는 시스템 전체 — 모델이 어떻게 생각하고 계획할지, 도구를 어떻게 호출할지, 컨텍스트를 어떻게 인지하고 관리할지, 산출물을 어디에 저장할지, 결과를 어떻게 평가할지를 결정하는 계층입니다. MoAI-ADK는 Claude Code 위에 얹히는 바로 이 하네스입니다.
+
+## 세 가지 기둥과 하네스
+
+하네스 엔지니어링은 v3.0의 세 기둥이 만나는 지점입니다.
+
+| 기둥 | 하네스에서의 역할 |
+|------|------------------|
+| **토크노믹스** | 하네스가 작업마다 모델·추론 깊이를 배정하고 토큰 예산을 지킵니다 |
+| **에이전틱 루프 엔지니어링** | 루프 (`/moai loop`, goal 엔진) 가 돌며 관찰을 축적하고, 하네스가 그 관찰로 학습합니다 |
+| **에이전틱 하네스** | 10개 에이전트 카탈로그, 3-phase 워크플로우, TRUST 5 게이트가 실행 환경을 구성합니다 |
+
+특히 두 번째 기둥이 핵심 혁신입니다. AI의 재귀적 자기 개선 (RSI) 의 현실적인 단기 경로는 모델 가중치를 직접 수정하는 것이 아니라 **모델을 둘러싼 하네스를 개선하는 것**입니다. MoAI-ADK는 정확히 이 경로를 취합니다 — 모델이 아니라 하네스 (스킬·에이전트 지침) 를 재귀적으로 개선합니다.
 
 ## 7가지 핵심 컴포넌트
 
 ```mermaid
 graph TB
-    subgraph Harness["🏗️ 하네스 엔지니어링"]
+    subgraph Harness["하네스 엔지니어링"]
         direction TB
-        SF["📐 Scaffolding First<br/>빈 파일 스텁 생성"] --> FC["✅ Failing Checklist<br/>수락 기준 태스크 등록"]
-        FC --> SV["🔄 Self-Verify Loop<br/>코드→테스트→수정→통과"]
-        SV --> GC["🗑️ Garbage Collection<br/>데드 코드 제거"]
-        GC --> CM["🗺️ Context Map<br/>아키텍처 문서 유지"]
-        CM --> SP["💾 Session Persistence<br/>세션 간 진행 추적"]
-        SP --> LA["🌐 Language-Agnostic<br/>16개 언어 자동 감지"]
+        SF["Scaffolding First<br/>빈 파일 스텁 생성"] --> FC["Failing Checklist<br/>수락 기준 태스크 등록"]
+        FC --> SV["Self-Verify Loop<br/>코드→테스트→수정→통과"]
+        SV --> GC["Garbage Collection<br/>데드 코드 제거"]
+        GC --> CM["Context Map<br/>아키텍처 문서 유지"]
+        CM --> SP["Session Persistence<br/>세션 간 진행 추적"]
+        SP --> LA["Language-Agnostic<br/>16개 언어 자동 감지"]
         LA --> SF
     end
 
@@ -42,7 +55,7 @@ graph TB
 | **Session Persistence** | `progress.md`가 세션 간 완료된 단계를 추적하여 중단된 작업을 자동 재개 | [`/moai run SPEC-XXX`](/ko/workflow-commands/moai-run) |
 | **Failing Checklist** | 실행 시작 시 모든 수락 기준을 대기 태스크로 등록하고 구현 완료 시 체크 | [`/moai run SPEC-XXX`](/ko/workflow-commands/moai-run) |
 | **Language-Agnostic** | 16개 언어 지원: 언어를 자동 감지하고 올바른 LSP/린터/테스트/커버리지 도구 선택 | 모든 워크플로우 |
-| **Garbage Collection** | 데드 코드, AI 슬롭(slop), 사용하지 않는 import를 주기적으로 스캔하고 제거 | [`/moai clean`](/ko/utility-commands/moai-clean) |
+| **Garbage Collection** | 데드 코드, AI 슬롭 (slop), 사용하지 않는 import를 주기적으로 스캔하고 제거 | [`/moai clean`](/ko/utility-commands/moai-clean) |
 | **Scaffolding First** | 구현 전에 빈 파일 스텁을 먼저 생성하여 코드 엔트로피 방지 | [`/moai run SPEC-XXX`](/ko/workflow-commands/moai-run) |
 
 ## 작동 원리
@@ -91,7 +104,7 @@ graph TD
     C -->|"통과"| E["다음 항목"]
 ```
 
-이 루프는 `/moai loop`에서 최대 100회까지 반복되며, 수렴 감지(같은 에러 반복 시 대안 전략 적용)를 포함합니다.
+이 루프는 `/moai loop`에서 최대 100회까지 반복되며, 수렴 감지 (같은 에러 반복 시 대안 전략 적용) 를 포함합니다. 완료 조건을 직접 선언하고 싶다면 goal 엔진 (`/moai goal "<조건>"`) 을 사용합니다 — 조건이 충족되거나 턴 한도에 닿을 때까지 세션이 스스로 일합니다.
 
 ### 4. Context Map (컨텍스트 맵)
 
@@ -115,6 +128,38 @@ Claude Code 세션이 중단되더라도 `progress.md`가 완료된 단계를 �
 
 `/moai run --resume SPEC-XXX`로 중단된 지점부터 자동으로 재개됩니다.
 
+## 자가 진화 하네스 — 루프가 하네스를 키운다
+
+하네스는 고정된 환경이 아닙니다. 루프가 돌수록 관찰이 쌓이고, 하네스가 그 관찰로 학습해 스스로 지침을 개선합니다.
+
+```
+루프 실행 → 관찰 축적 → 패턴 학습 → 지침 진화 (승인 게이트)
+```
+
+### 4-계층 학습 사다리
+
+| Tier | 관찰 수 | 동작 |
+|------|---------|------|
+| **관찰** (Observation) | ≥1 | 단순 기록 |
+| **휴리스틱** (Heuristic) | ≥3 | 패턴 인식 |
+| **규칙** (Rule) | ≥5 | 규칙 형성 |
+| **자동 업데이트** (AutoUpdate) | ≥10 | 지침 자동 수정 — **사용자 승인 필수** |
+
+### 안전장치
+
+자동 진화가 인간 감시 없이 닫힌 루프를 도는 일은 없습니다. 평가자와 권한 통제는 진화 루프의 **밖**에 둡니다:
+
+- **5-계층 안전 파이프라인** — 스냅샷과 롤백 (`moai harness rollback`) 으로 언제든 복원할 수 있습니다
+- **사용자 승인 게이트** — Tier-4 자동 업데이트는 반드시 사용자 승인을 거칩니다
+- **Constitution 시스템** — 불변 규칙 (FROZEN) 은 진화 대상에서 제외됩니다 ([Constitution 시스템](/ko/core-concepts/constitution) 참조)
+
+```bash
+moai harness status      # 학습 상태 확인 (관찰 수, 패턴, 제안)
+moai harness apply       # 제안 적용 (사용자 승인 게이트 통과 필요)
+moai harness rollback    # 직전 적용 롤백
+moai harness disable     # 학습 비활성화
+```
+
 ## 전통적 개발 vs 하네스 엔지니어링
 
 | 관점 | 전통적 개발 | 하네스 엔지니어링 |
@@ -125,31 +170,31 @@ Claude Code 세션이 중단되더라도 `progress.md`가 완료된 단계를 �
 | **세션 연속성** | 수동 메모 | 자동 진행 추적 |
 | **코드 정리** | 기술 부채 누적 | 자동 가비지 컬렉션 |
 | **문서화** | 별도 작업 | 자동 아키텍처 맵 생성 |
+| **개선 방향** | 도구는 고정, 사람이 적응 | 루프가 관찰을 쌓고 하네스가 진화 |
 
 ## 하네스 네임스페이스 정책 (template-managed vs user-owned)
 
-직접 커스텀 스킬이나 에이전트를 만들 때, `moai update`가 어떤 자산을 덮어쓰고(overwrite) 어떤 자산을 보존(preserve)하는지 알아야 합니다. MoAI-ADK는 네임스페이스를 **"범용 배포(template-managed)"** 와 **"사용자 생성(user-owned)"** 으로 명확히 분리합니다.
+직접 커스텀 스킬이나 에이전트를 만들 때, `moai update`가 어떤 자산을 덮어쓰고 (overwrite) 어떤 자산을 보존 (preserve) 하는지 알아야 합니다. MoAI-ADK는 네임스페이스를 **"범용 배포 (template-managed)"** 와 **"사용자 생성 (user-owned)"** 으로 명확히 분리합니다.
 
 | 구분 | 네임스페이스 / 경로 | 출처 | `moai update` 동작 |
 | --- | --- | --- | --- |
-| **template-managed** | `moai-*` 스킬 (`moai-foundation-*`, `moai-workflow-*`, `moai-domain-*`, `moai-ref-*`, `moai-meta-*` 포함), `moai-harness-*` 스킬, `moai-meta-harness` | MoAI-ADK 패키지 (template) | **덮어쓰기** — 동기화 시 삭제 후 신규 설치 |
-| **user-owned** | `harness-*` 스킬, `.claude/agents/harness/` 에이전트 | 사용자 프로젝트 | **보존** — `moai update`가 절대 삭제·수정하지 않음 (백업 후 보존) |
+| **template-managed** | `moai-*` 스킬 (`moai-foundation-*`, `moai-workflow-*`, `moai-domain-*`, `moai-ref-*`, `moai-meta-*` 포함), `moai-harness-*` 스킬 | MoAI-ADK 패키지 (template) | **덮어쓰기** — 동기화 시 삭제 후 신규 설치 |
+| **user-owned** | `hns-*` 스킬 (정식) + 레거시 `harness-*` / `my-harness-*` 스킬, `.claude/agents/harness/` 에이전트 | 사용자 프로젝트 | **보존** — `moai update`가 절대 삭제·수정하지 않음 (백업 후 보존) |
 
 ### template-managed (덮어쓰기 대상)
 
-`moai-*` prefix 스킬과 `moai-harness-*` / `moai-meta-harness`는 **MoAI-ADK 패키지가 제공하는 범용 자산**입니다. 모든 사용자 프로젝트에 배포되며, `moai update` 실행 시 최신 template으로 **덮어쓰기**됩니다. 따라서 이 자산을 직접 수정하면 다음 업데이트에서 변경 내용이 손실됩니다.
+`moai-*` prefix 스킬과 `moai-harness-*`는 **MoAI-ADK 패키지가 제공하는 범용 자산**입니다. 모든 사용자 프로젝트에 배포되며, `moai update` 실행 시 최신 template으로 **덮어쓰기**됩니다. 따라서 이 자산을 직접 수정하면 다음 업데이트에서 변경 내용이 손실됩니다.
 
 ### user-owned (보존 대상)
 
-`harness-*` prefix 스킬과 `.claude/agents/harness/` 디렉터리는 **사용자 프로젝트가 소유**합니다. `moai update`는 이들을 **절대 삭제하거나 수정하지 않으며**, 업데이트 전에 백업한 뒤 그대로 보존합니다.
+`hns-*` prefix 스킬 (Harness v4 Builder가 생성하는 정식 네임스페이스) 과 `.claude/agents/harness/` 디렉터리는 **사용자 프로젝트가 소유**합니다. 이전 세대 prefix인 `harness-*` / `my-harness-*` 도 동일하게 인식됩니다. `moai update`는 이들을 **절대 삭제하거나 수정하지 않으며**, 업데이트 전에 백업한 뒤 그대로 보존합니다.
 
 ### 커스텀 스킬 작성자를 위한 함의
 
-직접 만든 도메인 특화 스킬이나 에이전트가 `moai update` 후에도 살아남게 하려면 **반드시 `harness-*` prefix를 사용**하세요(에이전트는 `.claude/agents/harness/` 에 배치). `moai-*` 또는 `moai-harness-*` prefix로 만들면 template-managed로 간주되어 다음 업데이트에서 덮어쓰기됩니다.
-
-> 이 네임스페이스 분리 정책의 출처는 `SPEC-V3R6-HARNESS-NAMESPACE-V2-001` (완료) 입니다.
+직접 만든 도메인 특화 스킬이나 에이전트가 `moai update` 후에도 살아남게 하려면 **반드시 `hns-*` prefix를 사용**하세요 (에이전트는 `.claude/agents/harness/` 에 배치). `moai-*` 또는 `moai-harness-*` prefix로 만들면 template-managed로 간주되어 다음 업데이트에서 덮어쓰기됩니다. `/moai harness "자연어 요청"` 으로 하네스를 생성하면 Builder가 이 규칙에 맞는 이름을 자동으로 배정합니다.
 
 ## 다음 단계
 
 - [SPEC 기반 개발](/ko/core-concepts/spec-based-dev) — 하네스의 입력이 되는 SPEC 문서 작성법
 - [TRUST 5 품질](/ko/core-concepts/trust-5) — 하네스가 검증하는 5가지 품질 기준
+- [Constitution 시스템](/ko/core-concepts/constitution) — 하네스 진화를 통제하는 불변 규칙

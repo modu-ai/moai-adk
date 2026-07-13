@@ -1,161 +1,96 @@
 ---
 title: Pencil 指南
-weight: 90
+weight: 100
 draft: false
 ---
 
-Pencil MCP 服务器用于基于 AI 的 UI/UX 设计生成的综合指南。
+详细介绍如何利用 Pencil MCP 服务器生成基于 AI 的 UI/UX 设计。Pencil 用代码管理设计的哲学与 MoAI-ADK 的 Harness 哲学一脉相承 — 做成可版本管理、可评审、智能体可直接操作的形态。
 
 {{< callout type="info" >}}
-**一句话总结**: Pencil 是一个 **代码优先的设计工具**。通过 MCP 在 Claude Code 中直接生成 UI，使用 .pen 文件管理，并导出为生产代码。
+**一句话总结**：Pencil 是 **基于代码的设计工具**。通过 MCP 服务器可以直接在 Claude Code 中生成 UI，以 .pen 文件管理，并导出为生产代码。
 {{< /callout >}}
 
-## Pencil 是什么？
+## 什么是 Pencil？
 
-Pencil 是一个 **AI 驱动的设计工具**，可直接在您的开发环境中使用。它弥合了设计与代码之间的差距，使开发人员无需 Figma 等独立设计工具即可创建一致的 UI。
+Pencil 是可以直接在开发环境中操作的 **基于 AI 的设计工具**。它弥合设计与代码之间的鸿沟，让开发者无需 Figma 之类的独立设计工具也能生成一致的 UI。
 
 ```mermaid
 flowchart TD
-    A["文本提示"] --> B["Pencil MCP<br>DNA 代码生成"]
-    B --> C[".pen 文件渲染"]
-    C --> D["React 组件导出<br>Tailwind CSS"]
-    C --> E["设计迭代<br>版本控制"]
-    C --> F["团队协作<br>代码审查"]
+    A["文字提示词"] --> B["Pencil MCP<br>生成 DNA 代码"]
+    B --> C["渲染 .pen 文件"]
+    C --> D["导出 React 组件<br>Tailwind CSS"]
+    C --> E["设计迭代<br>版本管理"]
+    C --> F["团队共享<br>代码评审"]
 ```
 
 ### 主要功能
 
-| 功能 | 描述 |
+| 功能 | 说明 |
 |------|------|
-| **DNA 代码** | UI 的声明式代码格式（支持版本控制） |
-| **文本到设计** | 从自然语言描述生成 UI 界面 |
+| **DNA 代码** | 用声明式代码表达 UI（可版本管理） |
+| **文字生成设计** | 用自然语言描述生成 UI 界面 |
 | **.pen 文件** | 加密的设计文件格式 |
-| **React 导出** | 使用 Tailwind CSS 的生产代码 |
-| **无限画布** | 支持大规模设计项目 |
-| **团队协作** | 基于代码的设计审查 |
+| **React 导出** | 生成应用了 Tailwind CSS 的生产代码 |
+| **无限画布** | 支持大型设计项目 |
+| **团队协作** | 基于代码的设计评审 |
 
 {{< callout type="info" >}}
-Pencil 使用 **开放设计格式**。.pen 文件可以直接在代码库中管理。访问 https://pencil.dev 了解更多信息。
+Pencil 使用 **开源设计格式**，.pen 文件可以直接在代码库中管理。详情见 https://pencil.dev。
 {{< /callout >}}
 
-## 安装
+## 事前准备
 
-Pencil 可作为 IDE 扩展和独立的桌面应用程序使用。选择最适合您工作流程的选项。
-
-### VS Code 扩展
-
-1. 打开 VS Code
-2. 转到扩展（Cmd/Ctrl + Shift + X）
-3. 搜索 "Pencil"
-4. 点击 **安装**
-
-### Cursor 扩展
-
-1. 打开 Cursor
-2. 转到扩展
-3. 搜索 "Pencil"
-4. 点击 **安装**
-
-{{< callout type="warning" >}}
-**注意**: Cursor 的某些功能可能需要 Cursor Pro 订阅。查看 Cursor 定价以了解当前限制。
-{{< /callout >}}
-
-### 桌面应用程序
-
-**macOS:**
-- 从 Pencil 网站下载最新的 `.dmg` 文件
-- 将 Pencil 拖到应用程序文件夹
-- 启动 Pencil
-
-**Linux:**
-- 下载适合您发行版的软件包
-```bash
-# .deb 包示例
-sudo dpkg -i pencil-*.deb
-
-# .AppImage 示例
-chmod +x pencil-*.AppImage
-./pencil-*.AppImage
-```
-
-**Windows:**
-- Windows 用户应使用 VS Code 或 Cursor 扩展
-
-### 安装后
-
-1. **完成激活** - 您需要通过电子邮件激活 Pencil
-2. **登录 Claude Code** - AI 功能所需
-3. **打开欢迎文件** - 右键点击画布 → 打开欢迎文件
-4. **创建第一个设计** - 了解如何创建 .pen 文件
-
-## MCP 集成
-
-Pencil 通过 **模型上下文协议 (MCP)** 与 AI 助手深度集成，实现强大的设计自动化和工作流程。
+使用 Pencil MCP 需要以下设置。
 
 ### 支持的 AI 助手
 
-Pencil 通过 MCP 与多种 AI 工具配合使用：
+Pencil 通过 MCP (Model Context Protocol) 与多种 AI 工具集成。
 
-| AI 助手 | 说明 |
-|--------|------|
-| **Claude Code** | CLI 和 IDE |
-| **Claude Desktop** | 桌面应用程序 |
-| **Cursor** | AI 驱动的 IDE |
-| **Windsurf IDE** | Codeium |
-| **Codex CLI** | OpenAI |
-| **Antigravity IDE** | AI 开发环境 |
-| **OpenCode CLI** | 命令行工具 |
+| AI 工具 | 支持形式 | 备注 |
+|---------|----------|------|
+| **Claude Code** | CLI 与 IDE | 最推荐的方式 |
+| **Claude Desktop** | 桌面应用 | 适合个人使用 |
+| **Cursor** | AI-powered IDE | 代码库感知功能 |
+| **Windsurf IDE** | Codeium | 较新的 IDE 选项 |
+| **Codex CLI** | OpenAI | 基于终端的工作流 |
+| **Antigravity IDE** | 专用 IDE | Pencil 专属扩展 |
+| **OpenCode CLI** | CLI 环境 | 可脚本化 |
 
-### MCP 是什么？
+### Step 1: 安装 Pencil
 
-MCP 是一种协议，为 AI 助手提供与设计文件交互的工具。可以将其视为 API，让 AI 能够以编程方式读取和修改 `.pen` 文件。
+安装 Pencil 应用或 IDE 扩展。
 
-### 工作原理
+- **macOS/Windows/Linux**：下载 Pencil 桌面应用
+- **VS Code/VSCode-insiders**：安装 Pencil 扩展
+- **Cursor**：安装 Pencil 扩展
 
-1. **Pencil MCP 服务器在本地运行** - 设计操作无云依赖
-2. **AI 助手连接** - 当 Pencil 运行时通过 MCP 连接
-3. **AI 可以使用工具** 来读取、修改和生成设计
-4. **您保持控制** - AI 建议，您批准
+### Step 2: 运行 Pencil
+
+运行 Pencil 后 MCP 服务器会自动启动。无需额外安装或配置。
+
+```bash
+# 确认 Pencil 应用是否运行中
+# 若 Pencil 运行中, MCP 服务器会自动启动
+```
 
 ### 安全与隐私
 
 {{< callout type="info" >}}
-**本地优先**: Pencil MCP 服务器在您的机器上运行。设计文件保持本地。没有远程访问。
+**仅本地的安全性**：Pencil MCP 服务器 **完全在本地运行**。设计文件不会传输到远程服务器，所有设计数据都保存在本地机器上。
 {{< /callout >}}
 
 | 安全特性 | 说明 |
-|---------|------|
-| **仅本地** | MCP 服务器在您的机器上运行 |
-| **无远程访问** | 设计文件保持本地 |
-| **私有仓库** | 源代码尚未公开 |
-| **工具检查** | 在 IDE 设置中查看可用工具 |
+|----------|------|
+| **仅本地** | MCP 服务器只在用户机器上运行 |
+| **无远程访问** | 设计文件保留在本地 |
+| **私有仓库** | 源代码不公开 |
+| **工具检查** | 可在 IDE 设置中查看可用工具 |
 
 ## MCP 配置
 
-### .mcp.json 设置（可选）
+### Claude Code 配置
 
-Pencil MCP 服务器在您使用 Pencil 时自动运行。对于基本使用，无需额外配置。
-
-但是，如果您需要手动配置，可以在项目根目录的 `.mcp.json` 文件中添加 Pencil MCP 服务器。
-
-```json
-{
-  "mcpServers": {
-    "pencil": {
-      "command": "npx",
-      "args": ["-y", "@modelcontextprotocol/server-pencil"]
-    }
-  }
-}
-```
-
-{{< callout type="warning" >}}
-**重要**: Pencil MCP 在本地运行，无需 API 密钥。如果您的配置包含 `PENCIL_API_KEY`，请将其删除。
-{{< /callout >}}
-
-### settings.json 权限设置
-
-在 `permissions.allow` 中注册 MCP 工具。
+Pencil 运行中时，Claude Code 会自动检测 MCP 服务器。
 
 ```json
 {
@@ -167,71 +102,57 @@ Pencil MCP 服务器在您使用 Pencil 时自动运行。对于基本使用，�
 }
 ```
 
-### 验证连接
+### 确认连接
 
-**在 Cursor 中:**
-- 打开设置 → 工具和 MCP
-- 验证 Pencil 出现在 MCP 服务器列表中
+配置完成后即可在 Claude Code 中使用 Pencil 工具。
 
-**在 Codex CLI 中:**
-1. 先运行 Pencil
-2. 打开 Codex
-3. 运行 `/mcp`
-4. Pencil 应该出现在 MCP 列表中
+```bash
+# 在 Claude Code 中执行
+> 用 Pencil 生成一个登录按钮
+```
 
 ## MCP 工具列表
 
-AI 助手通过 MCP 连接到 Pencil 时，可以访问这些工具：
+Pencil MCP 提供多种工具。
 
-### 设计工具
-
-| 工具 | 用途 |
-|------|------|
-| `open_document` | 创建新的 .pen 文件或打开现有文件 |
-| `batch_design` | 一次创建/修改多个设计元素（插入、复制、更新、替换、移动、删除操作） |
-| `batch_get` | 一次检索多个节点信息（搜索模式、节点结构） |
-
-### 分析工具
+### 主要工具
 
 | 工具 | 用途 |
 |------|------|
-| `get_screenshot` | 捕获 .pen 文件的屏幕截图（渲染设计预览、验证视觉输出） |
-| `snapshot_layout` | 分析布局结构（检测定位问题、查找重叠元素） |
-| `get_editor_state` | 获取当前编辑器状态、选择信息、活动文件详情 |
-
-### 变量和主题
-
-| 工具 | 用途 |
-|------|------|
-| `get_variables` | 读取设计令牌 |
-| `set_variables` | 更新主题值、与 CSS 同步 |
-| `get_guidelines` | 获取设计指南（代码、表格、tailwind、落地页） |
-| `get_style_guide_tags` | 获取样式指南标签 |
-| `get_style_guide` | 基于标签或名称获取样式指南 |
-| `get_variables` | 提取当前变量和主题状态 |
-
-### 实用工具
-
-| 工具 | 用途 |
-|------|------|
-| `find_empty_space_on_canvas` | 在画布上查找指定方向和大小的空白区域 |
-| `search_all_unique_properties` | 递归搜索父节点上所有唯一属性 |
-| `replace_all_matching_properties` | 递归替换父节点上所有匹配属性 |
+| `open_document` | 创建新 .pen 文件或打开既有文件 |
+| `get_editor_state` | 查看当前编辑器状态、选区信息、活动文件 |
+| `batch_design` | 一次性创建/修改多个设计元素 |
+| `batch_get` | 一次性查询多个节点信息 |
+| `get_screenshot` | 截取 .pen 文件的截图 |
+| `snapshot_layout` | 分析布局结构 |
+| `get_guidelines` | 查询设计指南 |
+| `get_style_guide` | 查询样式指南 |
+| `get_style_guide_tags` | 搜索样式指南标签 |
+| `get_variables` | 读取设计变量/主题 |
+| `set_variables` | 设置设计变量/主题 |
+| `find_empty_space_on_canvas` | 在画布上寻找空白区域 |
+| `search_all_unique_properties` | 搜索所有唯一属性 |
+| `replace_all_matching_properties` | 更改所有匹配的属性 |
+| `generate_image` | 用 AI 生成图片 |
 
 ### 工具选择指南
 
 | 目的 | 使用的工具 |
-|------|-----------|
+|------|-------------|
 | 开始新设计 | `open_document` |
 | 创建组件 | `batch_design` |
 | 预览设计 | `get_screenshot` |
-| 分析布局 | `snapshot_layout` |
-| 导出设计 | 使用 Pencil Editor 导出 |
+| 导出设计 | 在 Pencil Editor 中 Export |
 | 参考样式 | `get_style_guide` |
+| 分析布局 | `snapshot_layout` |
+| 管理变量 | `get_variables`, `set_variables` |
+| 寻找空间 | `find_empty_space_on_canvas` |
+| 搜索属性 | `search_all_unique_properties` |
+| 批量更改 | `replace_all_matching_properties` |
 
 ## DNA 代码格式
 
-Pencil 使用 DNA 代码，一种用于表达 UI 的声明式格式。
+Pencil 使用一种叫 DNA 代码的声明式格式表达 UI。
 
 ### 基本结构
 
@@ -240,7 +161,7 @@ Pencil 使用 DNA 代码，一种用于表达 UI 的声明式格式。
 component Button {
   variant: primary
   size: medium
-  content: "点击我"
+  content: "点击这里"
   onClick: handleSubmit
 }
 ```
@@ -269,15 +190,15 @@ layout LoginForm {
 }
 ```
 
-### 设计令牌
+### 设计代币
 
 ```dna
-// 令牌引用
+// 引用代币
 color: primary.500
 spacing: md
 radius: lg
 
-// 令牌定义
+// 定义代币
 tokens {
   primary.500 = #3B82F6
   md = 16px
@@ -285,262 +206,49 @@ tokens {
 }
 ```
 
-## AI 集成工作流程
+## 设计生成工作流
 
-### 使用 Claude Code
-
-**前提条件：**
-1. 安装 Claude Code CLI
-2. 身份验证：`claude`
-3. 运行 Pencil
-4. 打开 `.pen` 文件
-
-**基本工作流程：**
-1. **打开 AI 提示面板：** 按 `Cmd/Ctrl + K`
-2. **寻求设计帮助：**
-```bash
-"创建一个带有邮箱和密码的登录表单"
-"向此页面添加导航栏"
-"为我的设计系统设计卡片组件"
-```
-3. **AI 使用 MCP 工具** 修改您的 `.pen` 文件
-4. **立即看到更改** 反映在画布上
-
-### 使用 Cursor
-
-**设置：**
-1. 在 Cursor 中安装 Pencil 扩展
-2. 完成激活
-3. 验证 MCP 连接：设置 → 工具和 MCP
-
-**Cursor 特定功能：**
-
-**内联编辑：**
-- 在 Pencil 中选择元素
-- 使用 Cursor 的 AI 聊天进行修改
-- 更改应用于 `.pen` 文件
-
-**代码库感知：**
-- Cursor 可以看到您的代码和设计
-- 要求在它们之间同步组件
-- 自动维护一致性
-
-{{< callout type="warning" >}}
-**常见问题：**
-- "Need Cursor Pro"：某些功能可能需要 Cursor Pro 订阅
-- 提示面板缺失：检查激活/登录状态，重启 Cursor，验证 MCP 连接
-{{< /callout >}}
-
-### 使用 Codex CLI
-
-**设置：**
-1. **先运行 Pencil** - 启动桌面应用程序或 IDE 扩展
-2. **在终端中打开 Codex**
-3. **验证 MCP 连接：** `/mcp`
-4. **Pencil 应该出现** 在 MCP 服务器列表中
-
-**使用 Codex 工作：**
-
-**终端中的设计提示：**
-```bash
-# 在 Codex CLI 中
-> 在 design.pen 中创建按钮组件
-> 向落地页添加主图区域
-> 基于蓝色生成配色方案
-```
-
-**好处：**
-- 命令行工作流程
-- 可脚本化的设计生成
-- 与构建工具集成
-
-## 设计生成工作流程
-
-使用 Pencil 生成设计的三个阶段模式。
+用 Pencil 生成设计的 3 阶段模式。
 
 ```mermaid
 flowchart TD
-    subgraph P1["阶段 1: 文本提示"]
-        TP["自然语言描述<br>创建一个登录页面"]
+    subgraph P1["Phase 1: 文字提示词"]
+        TP["输入自然语言描述<br>做一个登录页"]
     end
 
-    subgraph P2["阶段 2: DNA 代码生成"]
-        DC["DNA 代码生成<br>Pencil MCP 转换为代码"]
+    subgraph P2["Phase 2: 生成 DNA 代码"]
+        DC["生成 DNA 代码<br>Pencil MCP 完成代码转换"]
     end
 
-    subgraph P3["阶段 3: .pen 渲染"]
-        PR[".pen 文件渲染<br>视觉确认"]
+    subgraph P3["Phase 3: 渲染 .pen"]
+        PR["渲染 .pen 文件<br>可视化确认"]
     end
 
     P1 --> P2
     P2 --> P3
 ```
 
-### 实践示例：电商卡片
+### 实战示例：E-Commerce 卡片
 
 ```bash
-# 阶段 1：使用文本提示请求设计
-> 创建一个产品卡片。顶部是产品图片，中间是标题和价格，
-# 底部是购物车按钮。简洁的极简风格
+# Phase 1: 用文字提示词请求设计
+> 做一张商品卡片。顶部商品图片, 中间标题与价格,
+# 底部购物车按钮。干净的极简风格
 
-# 阶段 2：Pencil 生成 DNA 代码
+# Phase 2: Pencil 生成 DNA 代码
 # → component ProductCard { ... }
 
-# 阶段 3：渲染为 .pen 文件
-# → open_document 然后 batch_design
+# Phase 3: 渲染为 .pen 文件
+# → open_document 后用 batch_design 生成
 ```
 
 {{< callout type="info" >}}
-**核心**: Pencil **将设计作为代码管理**。.pen 文件可以通过 Git 进行版本控制，并集成到代码审查工作流程中。
+**关键**：Pencil **以代码管理设计**。.pen 文件可以用 Git 做版本管理，并整合进代码评审流程。
 {{< /callout >}}
 
-## 高级工作流程
+## 导出 React 组件
 
-### 自动化设计生成
-
-**样式指南：** 要求 AI 遵循特定的设计系统：
-
-```bash
-"使用 Material Design 原则创建仪表板"
-"使用现代、极简美学设计落地页"
-"按照 design-system.pen 中的设计系统构建组件"
-```
-
-**批量操作：**
-```bash
-"创建此按钮组件的 5 个变体"
-"生成包含所有输入类型的完整表单"
-"设计包含主图、功能、定价和页脚的整个落地页"
-```
-
-### 设计系统管理
-
-**一致性执行：**
-```bash
-"确保所有按钮使用主色变量"
-"更新所有标题以使用排版比例"
-"对所有元素应用 8px 间距网格"
-```
-
-**组件库：**
-```bash
-"创建包含所有变体的完整按钮组件"
-"生成表单输入组件（文本、选择、复选框、单选）"
-"构建包含图像、标题、描述和操作的卡片组件"
-```
-
-### 代码-设计工作流程
-
-**导入现有应用程序：**
-```bash
-"从 src/components 重新创建所有组件"
-"从我们的 Tailwind 配置导入设计系统"
-"分析代码库并创建匹配的设计"
-```
-
-**同步更改：**
-```bash
-"更新所有 React 组件以匹配 Pencil 设计"
-"将新配色方案应用于设计和代码"
-"在 CSS 和 Pencil 之间同步排版变量"
-```
-
-## 提示编写指南
-
-结构化的提示是在 Pencil 中获得良好结果的关键。
-
-### 有效提示示例
-
-**创建设计：**
-- "设计一个带有侧边栏和主内容区域的仪表板"
-- "创建一个包含 3 个层级的定价表"
-- "添加带有标题和 CTA 按钮的主图区域"
-
-**修改设计：**
-- "将所有主按钮更改为蓝色"
-- "使侧边栏更窄"
-- "在这些元素之间添加间距"
-
-**设计系统：**
-- "创建带有变体的按钮组件"
-- "基于 #3b82f6 生成配色方案"
-- "构建排版比例"
-
-**代码集成：**
-- "为此组件生成 React 代码"
-- "从我们的代码库导入 Header"
-- "从这些变量创建 Tailwind 配置"
-
-### 好提示 vs 坏提示
-
-| 坏提示 | 好提示 |
-|--------|--------|
-| "创建一个很酷的按钮" | "中等大小的主按钮，蓝色背景，'确认'文本，16px 内边距" |
-| "仪表板" | "带侧边栏导航的分析仪表板，顶部 3 个指标卡片（收入、用户、转化率），折线图，表格" |
-| "响应式" | "移动端：垂直堆叠，桌面端：3 列网格" |
-
-### 有效提示模板
-
-```
-创建一个 [组件类型]。
-包含 [组件列表]。
-布局为 [布局]。
-应用 [样式]。
-考虑 [响应式]。
-```
-
-{{< callout type="info" >}}
-**黄金法则**: 提示越 **具体** 越好。明确指定颜色、间距、对齐和交互。
-{{< /callout >}}
-
-### 迭代设计
-
-1. **从宽泛开始：** "创建仪表板布局"
-2. **细化：** "添加带有导航项的侧边栏"
-3. **细节：** "使用悬停状态设置导航项样式"
-4. **完善：** "调整间距以匹配 8px 网格"
-
-## 故障排除
-
-### 连接问题
-
-**"Claude Code 未连接"：**
-1. 确保 Claude Code 已登录：`claude`
-2. 重启 Pencil
-3. 在项目目录中打开终端并运行 `claude`
-
-**MCP 服务器未出现：**
-1. 验证 Pencil 正在运行
-2. 检查 IDE MCP 设置
-3. 重启 Pencil 和 AI 助手
-
-### 权限问题
-
-**"无法访问文件夹"：**
-- 接受权限提示
-- 检查系统文件夹权限
-- 使用适当的权限运行 IDE/Pencil
-
-**"权限提示从未出现"：**
-- 在单独的 Claude Code 会话中尝试操作
-- 检查通知设置
-- 验证 IDE 权限
-
-### AI 输出问题
-
-**"无效的 API 密钥"：**
-- 重新验证 Claude Code：`claude`
-- 检查冲突的身份验证配置
-- 清除环境变量
-
-**AI 做出意外的更改：**
-- 在提示中更具体
-- 要求 AI 在应用之前解释
-- 如有需要，使用版本控制恢复
-
-## React 组件导出
-
-在 Pencil Editor 中将 .pen 文件导出为 React 组件。
+可以在 Pencil Editor 中把 .pen 文件导出为 React 组件。
 
 ### 导出配置
 
@@ -590,67 +298,379 @@ export const Button = ({ variant = 'primary', size = 'medium', isLoading, childr
 };
 ```
 
+## 提示词编写指南
+
+要在 Pencil 中获得好结果，结构化的提示词很重要。
+
+### 好提示词 vs 坏提示词
+
+| 坏提示词 | 好提示词 |
+|--------------|--------------|
+| "做一个漂亮的按钮" | "蓝色背景的中等尺寸基础按钮。'确认' 文字, 16px 内边距" |
+| "仪表盘" | "带侧栏导航的分析仪表盘。顶部 3 张指标卡 (营收、用户、转化率)、折线图、表格" |
+| "响应式" | "移动端: 纵向堆叠, 桌面端: 3 列网格" |
+
+### 有效的提示词模板
+
+```
+生成 [组件类型]。
+包含 [组件列表]。
+以 [布局] 排布。
+应用 [样式]。
+考虑 [响应式]。
+```
+
+### 实战提示词示例
+
+**设计生成：**
+
+```bash
+# 生成仪表盘
+"做一个带侧栏与主内容区域的仪表盘"
+
+# 生成价格表
+"做一个 3 档价格表。基础、专业、企业"
+
+# 英雄区块
+"添加一个带标题与 CTA 按钮的英雄区块"
+```
+
+**设计修改：**
+
+```bash
+# 更改颜色
+"把所有基础按钮改成蓝色"
+
+# 调整尺寸
+"把侧栏做窄一点"
+
+# 添加间距
+"给这些元素之间加上间距"
+```
+
+**设计系统：**
+
+```bash
+# 按钮组件
+"做一个带变体的按钮组件"
+
+# 配色
+"以 #3b82f6 为基础生成配色"
+
+# 排版
+"做一套排版比例"
+```
+
+**代码集成：**
+
+```bash
+# React 代码
+"为这个组件生成 React 代码"
+
+# 导入
+"从我的代码库导入 Header"
+
+# Tailwind 配置
+"根据这些变量生成 Tailwind 配置"
+```
+
+{{< callout type="info" >}}
+**Golden Rule**：提示词 **越具体越好**。明确指定颜色、间距、对齐与交互。
+{{< /callout >}}
+
+## 在 Cursor 中使用
+
+Cursor 是基于 AI 的 IDE，与 Pencil 提供强大的集成。
+
+### 设置
+
+1. 在 Cursor 中安装 Pencil 扩展
+2. 完成激活
+3. Claude Code 认证
+4. 确认 MCP 连接：Settings → Tools & MCP
+
+### Cursor 专属功能
+
+**内联编辑：**
+
+- 在 Pencil 中选择元素
+- 用 Cursor 的 AI 聊天修改
+- 变更立即应用到 `.pen` 文件
+
+**代码库感知：**
+
+- Cursor 同时查看代码与设计
+- 可请求组件间同步
+- 自动保持一致性
+
+### 常见问题
+
+**"Need Cursor Pro"：**
+
+- 部分功能可能需要 Cursor Pro 订阅
+- 当前限制以 Cursor 价格表为准
+
+**提示词面板缺失：**
+
+- 确认激活/登录状态
+- 重启 Cursor
+- 在设置中确认 MCP 连接
+
+## 在 Codex CLI 中使用
+
+### 设置
+
+1. **先运行 Pencil** - 启动桌面应用或 IDE 扩展
+2. 在终端打开 Codex
+3. 确认 MCP 连接：`/mcp`
+4. **Pencil 应出现在 MCP 服务器列表中**
+
+### 用 Codex 工作
+
+**在终端中做设计提示：**
+
+```bash
+# 在 Codex CLI 中
+> 在 design.pen 中做一个按钮组件
+> 给落地页添加英雄区块
+> 以蓝色为基础生成配色方案
+```
+
+**优点：**
+
+- 命令行工作流
+- 可脚本化的设计生成
+- 与构建工具集成
+
+### 已知问题
+
+**Codex config.toml 被修改：**
+
+- Pencil 可能修改或复制配置
+- 该问题已确认并在调查中
+- 首次使用前备份配置
+
+## 高级工作流
+
+### 自动化设计生成
+
+**样式指南：**
+
+```bash
+# 遵循特定设计系统
+"用 Material Design 原则做一个仪表盘"
+
+"以现代极简美学设计一个落地页"
+
+"做一个遵循 design-system.pen 设计系统的组件"
+```
+
+**批量操作：**
+
+```bash
+# 按钮变体
+"给这个按钮组件做 5 种变体"
+
+# 完整表单
+"生成一个包含所有输入类型的完整表单"
+
+# 完整落地页
+"设计一个包含英雄、功能、价格、页脚的完整落地页"
+```
+
+### 设计系统管理
+
+**强制一致性：**
+
+```bash
+# 颜色变量
+"让所有按钮使用基础颜色变量"
+
+# 排版
+"把所有标题更新为使用排版比例"
+
+# 间距
+"给所有元素应用 8px 间距网格"
+```
+
+**组件库：**
+
+```bash
+# 按钮组件
+"做一个包含所有变体的完整按钮组件"
+
+# 表单输入
+"生成表单输入组件 (文本、下拉、复选框、单选)"
+
+# 卡片组件
+"做一个带图片、标题、描述、操作的卡片组件"
+```
+
+### 代码-设计工作流
+
+**导入既有应用：**
+
+```bash
+# 复现组件
+"在 Pencil 中复现 src/components 里的所有组件"
+
+# 导入设计系统
+"从 Tailwind 配置导入设计系统"
+
+# 分析代码库
+"分析代码库并做出匹配的设计"
+```
+
+**同步变更：**
+
+```bash
+# React 组件
+"把所有 React 组件更新为与 Pencil 设计一致"
+
+# 配色方案
+"把新配色方案同时应用到设计与代码"
+
+# 变量同步
+"在 CSS 与 Pencil 之间同步排版变量"
+```
+
 ## 最佳实践
 
-| 原则 | 描述 |
+| 原则 | 说明 |
 |------|------|
-| **代码优先** | 将设计作为代码管理，便于版本控制和协作 |
-| **迭代方法** | 从基本布局开始，然后逐步添加细节 |
-| **可访问性** | 始终指定 ARIA 标签、键盘导航 |
-| **响应式** | 始终包含移动端和桌面端行为 |
-| **设计系统** | 使用一致的令牌和组件 |
+| **代码优先** | 以代码管理设计，便于版本管理与协作 |
+| **渐进式改进** | 先生成基本布局，逐步添加细节 |
+| **包含无障碍** | 总是明确 ARIA 标签、键盘导航 |
+| **明确响应式** | 总是包含移动端与桌面端行为 |
+| **设计系统** | 使用一致的代币与组件 |
 
-### 渐进式增强策略
+### 渐进式改进策略
 
-复杂的界面分多次生成可以提高质量。
+复杂界面分多次生成质量会更好。
 
 ```mermaid
 flowchart TD
-    I1["迭代 1<br>带有核心组件的基本布局"] --> I2["迭代 2<br>添加样式"]
-    I2 --> I3["迭代 3<br>改进间距和对齐"]
-    I3 --> I4["迭代 4<br>添加状态和交互"]
+    I1["Iteration 1<br>以核心组件搭基本布局"] --> I2["Iteration 2<br>添加样式"]
+    I2 --> I3["Iteration 3<br>改进间距与对齐"]
+    I3 --> I4["Iteration 4<br>添加状态与交互"]
 ```
+
+### 有效的提示技巧
+
+**要具体：**
+
+- ✗ "做得更好一点"
+- ✓ "把按钮内边距加到 16px 并把颜色改成蓝色"
+
+**提供上下文：**
+
+- ✗ "加个表单"
+- ✓ "添加一个含邮箱、密码、保持登录复选框、提交按钮的登录表单"
+
+**引用设计系统：**
+
+- "使用既有按钮组件"
+- "遵循变量中的间距比例"
+- "与页头组件的样式保持一致"
 
 ### 验证
 
-AI 进行更改后：
-1. **在画布上视觉审查**
-2. **检查结构** 在图层面板中
-3. **测试交互** （如适用）
-4. **要求截图** 以验证复杂的布局
+AI 改动之后需要养成亲眼确认的习惯。
+
+1. 在画布上做视觉检查
+2. 在图层面板确认结构
+3. 视情况测试交互
+4. 复杂布局可请求截图确认
+
+## 问题排查
+
+### 连接问题
+
+**"Claude Code 未连接"：**
+
+1. 确认 Claude Code 登录：`claude`
+2. 重启 Pencil
+3. 在项目目录打开终端并执行 `claude`
+
+**MCP 服务器不出现：**
+
+1. 确认 Pencil 在运行
+2. 确认 IDE 的 MCP 设置
+3. 同时重启 Pencil 与 AI 助手
+
+### 权限问题
+
+**"无法访问文件夹"：**
+
+- 接受权限提示
+- 确认系统文件夹权限
+- 以适当权限运行 IDE/Pencil
+
+**"权限提示不显示"：**
+
+- 尝试在另一个 Claude Code 会话中操作
+- 确认通知设置
+- 确认 IDE 权限
+
+### AI 输出问题
+
+**"无效的 API 密钥"：**
+
+- 重新认证 Claude Code：`claude`
+- 检查冲突的认证配置
+- 清理环境变量
+
+**AI 做出意外变更：**
+
+- 把提示词写得更具体
+- 应用前请 AI 先说明
+- 必要时用版本管理回滚
+
+## 示例会话
+
+```bash
+# 1. 启动 Pencil 与 Claude Code
+claude
+# 2. 在 IDE 中打开 design.pen
+# 3. 按 Cmd + K 开始设计
+
+用户: "做一个现代风格的落地页英雄区块"
+AI: [以标题、副标题、CTA 按钮生成英雄区块]
+
+用户: "添加一个 3 列的功能区块"
+AI: [在英雄区块下方添加功能区块]
+
+用户: "让 CTA 按钮使用基础颜色变量"
+AI: [把按钮更新为使用颜色变量]
+
+用户: "为整个页面生成 React 代码"
+AI: [导出为带 Tailwind CSS 的 React 组件]
+
+# 4. 检查与修改
+# 5. 提交到 Git
+git add design.pen src/pages/landing.tsx
+git commit -m "Add landing page design and implementation"
+```
 
 ## 与 MoAI 一起使用
 
-MoAI 与 Pencil MCP 集成以实现自动化 UI 设计。
-
-```bash
-# MoAI 使用 Pencil 进行 UI 生成
-> /moai run --team
-# team-designer 代理使用 Pencil MCP 进行设计生成
-```
-
-### 团队模式设计工作流程
+MoAI 可以与 Pencil MCP 集成实现 UI 设计自动化。在 v3.0 中，`manager-design` 智能体专门负责设计协作（D1-D5 管线）— 当操作设计工具的任务与暴露到 UI 的 SPEC 相关联时，就会投入这个智能体。
 
 ```mermaid
 flowchart TD
-    REQ["用户请求"] --> SPEC["SPEC 文档<br>manager-spec"]
-    SPEC --> DESIGN["UI/UX 设计<br>team-designer + Pencil"]
-    DESIGN --> DEV["实现<br>team-frontend-dev"]
-    DESIGN --> TEST["测试<br>team-tester"]
+    REQ["用户请求"] --> SPEC["生成 SPEC 文档<br>manager-spec"]
+    SPEC --> DESIGN["UI/UX 设计<br>manager-design + Pencil MCP"]
+    DESIGN --> DEV["实现<br>manager-develop (frontend 上下文)"]
+    DESIGN --> TEST["测试<br>manager-develop (TDD)"]
 ```
 
 ## 相关文档
 
-- [MCP 服务器指南](/advanced/mcp-servers) - MCP 协议概述
-- [settings.json 指南](/advanced/settings-json) - MCP 服务器权限设置
-- [代理指南](/advanced/agent-guide) - MoAI 代理系统
-- [技能指南](/advanced/skill-guide) - moai-design-tools 技能
+- [MCP 服务器指南](/zh/advanced/mcp-servers) - MCP 协议概览
+- [settings.json 指南](/zh/advanced/settings-json) - MCP 服务器权限配置
+- [智能体指南](/zh/advanced/agent-guide) - MoAI 智能体系统
+- [技能指南](/zh/advanced/skill-guide) - moai-design-tools 技能
 
 {{< callout type="info" >}}
-**提示**: 最大化利用 Pencil 的关键是 **将设计作为代码管理**。使用 Git 管理 .pen 文件可以使设计版本跟踪和协作变得更加容易。
+**提示**：把 Pencil 用到极致的关键是 **以代码管理设计**。用 Git 管理 .pen 文件，设计的版本追踪与协作都会容易得多。
 {{< /callout >}}
-
-Sources:
-- [Pencil Documentation](https://docs.pencil.dev/)
-- [Installation - Pencil Documentation](https://docs.pencil.dev/getting-started/installation)
-- [AI Integration - Pencil Documentation](https://docs.pencil.dev/getting-started/ai-integration)

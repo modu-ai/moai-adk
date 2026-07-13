@@ -4,7 +4,7 @@ weight: 30
 draft: false
 ---
 
-MoAI-ADK 2.x를 시스템에 설치하는 방법을 안내합니다.
+MoAI-ADK를 시스템에 설치하는 방법을 안내합니다. 설치물은 Go로 빌드된 단일 바이너리 하나입니다 — Python도, 가상환경도, 패키지 매니저도 필요 없습니다.
 
 ## 라이선스
 
@@ -87,8 +87,8 @@ moai version
 #### 설치 옵션
 
 ```bash
-# 특정 버전 설치
-curl -fsSL https://raw.githubusercontent.com/modu-ai/moai-adk/main/install.sh | bash -s -- --version v3.0.0-rc6
+# 특정 버전 설치 (원하는 릴리스 태그 지정)
+curl -fsSL https://raw.githubusercontent.com/modu-ai/moai-adk/main/install.sh | bash -s -- --version <릴리스-태그>
 
 # 커스텀 디렉터리에 설치
 curl -fsSL https://raw.githubusercontent.com/modu-ai/moai-adk/main/install.sh | bash -s -- --install-dir /usr/local/bin
@@ -154,11 +154,11 @@ curl -fsSL https://raw.githubusercontent.com/modu-ai/moai-adk/main/install.sh | 
 
 ```bash
 moai version
-# 출력 예시: moai v3.0.0-rc6 (commit: abc1234, built: 2026-06-03)
+# 출력 예시: moai <버전> (commit: <해시>, built: <빌드 날짜>)
 ```
 
 {{< callout type="info" >}}
-2.x는 단일 Go 바이너리로, Python 런타임이나 가상환경이 필요하지 않습니다. 시작 시간이 약 800ms에서 5ms로 크게 향상되었습니다.
+Go 에디션 (v2.0+) 은 단일 바이너리로, Python 런타임이나 가상환경이 필요하지 않습니다. 시작 시간이 약 800ms에서 5ms로 크게 향상되었습니다.
 {{< /callout >}}
 
 ## WSL 지원

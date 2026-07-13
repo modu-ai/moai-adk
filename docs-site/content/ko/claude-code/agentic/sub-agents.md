@@ -14,7 +14,7 @@ Claude Code의 서브에이전트는 곁가지 작업을 별도의 컨텍스트 
 {{< /callout >}}
 
 {{< callout type="tip" >}}
-이 페이지는 Claude Code 차원의 개념 개요입니다. MoAI-ADK가 8개 에이전트 카탈로그를 어떻게 구성하고 위임하는지, 직접 에이전트를 만드는 실전 방법은 [에이전트 가이드](/advanced/agent-guide)와 [빌더 에이전트 가이드](/advanced/builder-agents)에서 깊이 다룹니다.
+이 페이지는 Claude Code 차원의 개념 개요입니다. MoAI-ADK가 10개 에이전트 카탈로그 (9 MoAI-custom + 1 Anthropic 내장 `Explore`)를 어떻게 구성하고 위임하는지, 직접 에이전트를 만드는 실전 방법은 [에이전트 가이드](/advanced/agent-guide)와 [빌더 에이전트 가이드](/advanced/builder-agents)에서 깊이 다룹니다.
 {{< /callout >}}
 
 ## 서브에이전트란
@@ -152,7 +152,7 @@ model: sonnet
 
 ## 깊이는 MoAI 에이전트 가이드로
 
-여기까지가 Claude Code 차원의 서브에이전트 개념입니다. MoAI-ADK가 이 메커니즘 위에서 어떤 에이전트 카탈로그를 운영하고, Plan-Run-Sync 워크플로우의 각 단계를 어떻게 위임하며, 프로젝트별 도메인 전문가 에이전트를 어떻게 생성하는지는 아래 심화 가이드에서 다룹니다.
+여기까지가 Claude Code 차원의 서브에이전트 개념입니다. MoAI-ADK는 이 메커니즘 위에 **10개 에이전트 카탈로그**를 운영합니다 — Manager 계열 (manager-spec / manager-develop / manager-docs / manager-git / manager-design)이 plan→run→sync 라이프사이클을, Evaluator 계열 (plan-auditor / sync-auditor)이 독립 감사를, builder-harness가 하네스 스캐폴드 생성을, super-advisor가 고추론 자문을, 그리고 Anthropic 내장 `Explore`가 읽기 전용 탐색을 담당합니다. 계획과 감사가 분리되어 있다는 점 — 만든 에이전트가 스스로 검사하지 않는다는 것 — 이 이 카탈로그의 핵심 설계입니다. 각 에이전트에 작업 성격에 맞는 모델과 추론 깊이 (effort)를 선언적으로 배정하는 것이 토크노믹스의 "계획은 깊게, 구현은 싸게, 검증은 독립적으로" 원칙입니다. 자세한 내용은 아래 심화 가이드에서 다룹니다.
 
 ## 관련 문서
 

@@ -174,7 +174,7 @@ flowchart TD
 
 ## MoAI-ADK의 /moai 명령과의 관계
 
-MoAI-ADK가 제공하는 `/moai`와 그 하위 명령 (`/moai plan`, `/moai run`, `/moai sync` 등)은 바로 이 슬래시 명령 메커니즘 위에 스킬로 구현되어 있습니다. 즉 MoAI-ADK는 Claude Code의 커스텀 명령 표준을 그대로 사용해, SPEC 기반 워크플로우를 한 줄 명령으로 노출합니다.
+MoAI-ADK가 제공하는 `/moai`와 그 하위 명령 (`/moai plan`, `/moai run`, `/moai sync` 등)은 바로 이 슬래시 명령 메커니즘 위에 스킬로 구현되어 있습니다. 즉 MoAI-ADK는 Claude Code의 커스텀 명령 표준을 그대로 사용해, SPEC 기반 워크플로우를 한 줄 명령으로 노출합니다. 서브커맨드 없이 자연어로 `/moai "로그인 버그 고쳐줘"`처럼 요청하면, 의도 분석 (Analyze-First)을 거쳐 알맞은 워크플로우로 라우팅됩니다 — 언어에 무관하게 동작하는 의미 기반 분류입니다.
 
 | 구분 | Claude Code 슬래시 명령 | MoAI-ADK `/moai` 명령 |
 | :--- | :--- | :--- |

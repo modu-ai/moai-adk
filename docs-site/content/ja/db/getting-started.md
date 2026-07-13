@@ -1,36 +1,40 @@
 ---
-title: 始める
+title: はじめる
 description: /moai db init でプロジェクトのデータベースメタデータを初期化
 weight: 10
 draft: false
 ---
 
+`/moai db init` を一度実行すれば、プロジェクトのデータベースメタデータが
+整います。以降はマイグレーションファイルを追加するたびにスキーマドキュメントが
+追随するため、エージェントもチームメンバーも常に最新のスキーマを同じ場所で確認できます。
+
 ## 前提条件
 
-データベースワークフローを開始する前に、以下が必要です:
+データベースワークフローを始める前に、次のものが必要です:
 
-1. `/moai project` で生成された `.moai/project/product.md` と `.moai/project/tech.md` ファイル
-2. サポートされるデータベースエンジン (PostgreSQL、MySQL、SQLite、MongoDB など)
+1. `/moai project` コマンドで生成された `.moai/project/product.md` と `.moai/project/tech.md` ファイル
+2. サポートされているデータベースエンジン (PostgreSQL、MySQL、SQLite、MongoDB など)
 3. ORM またはクエリビルダー (GORM、sqlc、Prisma、SQLAlchemy、ActiveRecord など)
 4. マイグレーションツール (golang-migrate、Flyway、Liquibase、Alembic など)
 
 ## ステップバイステップ初期化ガイド
 
-### ステップ 1: プロジェクトメタデータを確認
+### ステップ 1: プロジェクトメタデータの確認
 
-まず必要なファイルが存在するか確認します:
+まず `/moai project` が作成した必須ファイルが存在するか確認します:
 
 ```bash
 ls -la .moai/project/
-# これらのファイルが存在する必要があります:
+# 次のファイルが存在する必要があります:
 # - product.md
 # - tech.md
 # - structure.md
 ```
 
-これらのファイルが存在しない場合は、まず `/moai project` を実行してください。
+これらのファイルがない場合は、先に `/moai project` を実行してください。
 
-### ステップ 2: データベースメタデータを初期化
+### ステップ 2: データベースメタデータの初期化
 
 次に `/moai db init` コマンドを実行します:
 
@@ -38,63 +42,63 @@ ls -la .moai/project/
 /moai db init
 ```
 
-### ステップ 3: インタビュー質問に回答
+### ステップ 3: インタビュー質問への回答
 
-MoAI は 4つの対話型質問をします:
+MoAI は次の 4 項目について対話形式で質問します:
 
 1. **データベースエンジン** — 使用中のデータベース (PostgreSQL、MySQL、SQLite、MongoDB など)
-2. **ORM/クエリビルダー** — データアクセスレイヤーツール
-3. **マルチテナンシー戦略** — シングルスキーマ、テナント単位スキーマ、テナント単位DB、またはなし
+2. **ORM/クエリビルダー** — データアクセス層のツール
+3. **マルチテナント戦略** — シングルスキーマ、テナントごとのスキーマ、テナントごとの DB、またはなし
 4. **マイグレーションツール** — スキーマ変更管理ツール
 
 各質問に対して適切なオプションを選択します。
 
-### ステップ 4: 生成されたファイルを確認
+### ステップ 4: 生成されたファイルのレビュー
 
-初期化後、`.moai/project/db/` ディレクトリに以下のファイルが作成されます:
+初期化後、`.moai/project/db/` ディレクトリに次のファイルが生成されます:
 
 ```
 .moai/project/db/
-├── README.md              # DB セクション概要
-├── schema.md              # 自動生成テーブルレジストリ
+├── README.md              # DB セクションの概要
+├── schema.md              # 自動生成されるテーブルレジストリ
 ├── erd.mmd                # エンティティ関係図
-├── migrations.md          # マイグレーションファイルインデックス
+├── migrations.md          # マイグレーションファイルのインデックス
 ├── rls-policies.md        # Row-level security ルール (Supabase/Postgres)
-├── queries.md             # 共通クエリライブラリ
+├── queries.md             # 一般的なクエリライブラリ
 └── seed-data.md           # シードデータパターン
 ```
 
-ファイルの説明:
+各ファイルの役割:
 
-- `schema.md` — すべてのテーブル、列、データタイプ、制約を自動的に文書化
-- `erd.mmd` — Mermaid 構文でテーブル関係を可視化
-- `migrations.md` — 適用されたマイグレーションのタイムライン
-- `queries.md` — AI エージェントが参照する共通クエリ例
+- `schema.md` — すべてのテーブル、カラム、データ型、制約を自動でドキュメント化
+- `erd.mmd` — Mermaid 記法でテーブル関係を可視化
+- `migrations.md` — 適用済みマイグレーションファイルのタイムライン
+- `queries.md` — AI エージェントが参照する一般的なクエリ例のコレクション
 
-### ステップ 5: 最初のマイグレーションを作成して同期
+### ステップ 5: 最初のマイグレーションの作成と同期
 
-プロジェクトに新しいマイグレーションファイルを追加します。例えば、Go/golang-migrate の場合:
+新しいマイグレーションファイルをプロジェクトに追加します。例えば Go/golang-migrate の場合:
 
 ```bash
 # db/migrations/ ディレクトリにマイグレーションファイルを作成
 touch db/migrations/001_create_users_table.sql
 ```
 
-マイグレーションを作成してから、スキーマドキュメントをリフレッシュします:
+マイグレーションファイルを作成したら、次のコマンドでスキーマドキュメントを更新します:
 
 ```bash
 /moai db refresh
 ```
 
-このコマンド:
+このコマンドは:
 - すべてのマイグレーションファイルをスキャン
 - schema.md に新しいテーブル情報を追加
 - erd.mmd ダイアグラムを更新
-- migrations.md タイムラインをリフレッシュ
+- migrations.md タイムラインを更新
 
-### ステップ 6: ドリフトを確認する (オプション)
+### ステップ 6: ドリフト検証 (任意)
 
-ドリフトの有無を確認します:
+ドリフトがあるかどうかを確認するには:
 
 ```bash
 /moai db verify
@@ -102,20 +106,20 @@ touch db/migrations/001_create_users_table.sql
 
 結果:
 
-- `スキーマドキュメントが同期されています` — マイグレーションとドキュメントが一致
-- ドリフトレポート出力 — 差異の詳細を表示 (exit code: 1)
+- `スキーマドキュメントは同期されています` — マイグレーションとドキュメントが一致
+- ドリフトレポートの出力 — 差分の詳細を表示 (exit code: 1)
 
 ## トラブルシューティング
 
-### 「Missing prerequisite files」エラー
+### "Missing prerequisite files" エラー
 
-`.moai/project/product.md` と `.moai/project/tech.md` が存在しない場合:
+`.moai/project/product.md` と `.moai/project/tech.md` がない場合:
 
 ```bash
 /moai project
 ```
 
-このコマンドを実行してプロジェクトメタデータを生成してください。
+上記コマンドを先に実行してプロジェクトメタデータを生成してください。
 
 ### マイグレーションファイルが認識されない
 
@@ -125,9 +129,9 @@ touch db/migrations/001_create_users_table.sql
 cat .moai/config/sections/language.yaml
 ```
 
-`language` フィールドを確認してください。必要に応じて `.moai/config/sections/db.yaml` で `migration_patterns` を手動指定できます。
+`language` フィールドを確認し、必要であれば `.moai/config/sections/db.yaml` で `migration_patterns` を手動で指定できます。
 
-### 自動同期が機能しない
+### 自動同期が動作しない
 
 PostToolUse フックが正しく登録されているか確認します:
 
@@ -135,4 +139,4 @@ PostToolUse フックが正しく登録されているか確認します:
 grep -A5 "PostToolUse" .claude/settings.json
 ```
 
-フックが見つからない場合は、`/moai db init` を再度実行するか、`.claude/settings.json` に手動登録してください。
+フックがない場合は `/moai db init` を再実行するか、`.claude/settings.json` に手動で登録してください。

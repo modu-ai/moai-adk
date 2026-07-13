@@ -2,62 +2,62 @@
 title: MCP Servers
 weight: 30
 draft: false
-description: "A conceptual introduction to how Claude Code uses MCP to connect external tools, data, and APIs through a standard protocol."
+description: "A concept-level introduction to how Claude Code connects external tools, data, and APIs via MCP, a standard protocol."
 ---
 
-Through MCP, Claude Code can connect to external systems such as issue trackers, databases, and monitoring dashboards in a standardized way, reading from and operating on them directly.
+Through MCP, Claude Code connects external systems like issue trackers, databases, and monitoring dashboards in a standardized way, reading and operating them directly.
 
 {{< callout type="info" >}}
-**TL;DR**: MCP eliminates the copy-and-paste shuffle of moving data between tools and lets Claude Code operate external systems directly — it is the "standard wall socket" for AI-to-tool connections.
+**One-line summary**: MCP is the "standard power socket for AI-tool connections" — it eliminates copy-pasting data from other tools and lets Claude Code work with external systems directly.
 {{< /callout >}}
 
 {{< callout type="tip" >}}
-This page is a conceptual overview. The actual server registration, authentication, and how to put MCP to work in MoAI-ADK workflows are covered in detail, with a hands-on focus, in the [MCP Server Usage Guide](/advanced/mcp-servers).
+This page is a conceptual overview. Actual server registration, authentication, and usage in MoAI-ADK workflows are covered hands-on in the [MCP Server Guide](/advanced/mcp-servers).
 {{< /callout >}}
 
 ## What Is MCP
 
-MCP (Model Context Protocol) is an **open-source standard protocol** that links AI to external tools. Because it connects through the same specification regardless of model vendor or tool type, an MCP server you build once can be reused across many AI clients.
+MCP (Model Context Protocol) is an **open-source standard protocol** connecting AI and external tools. Because the same convention applies regardless of model vendor or tool type, an MCP server built once can be reused across multiple AI clients.
 
-An MCP server grants Claude Code access to tools, data, and APIs. Once connected, Claude can handle tasks like the following directly.
+An MCP server grants Claude Code access to tools, data, and APIs. Once connected, Claude handles things like these directly.
 
 | Scenario | Without MCP | With MCP connected |
 | --- | --- | --- |
-| Implementing issue-based features | Copy and paste the issue content | Read directly from the issue tracker and create a PR |
-| Monitoring analysis | Attach a dashboard screenshot | Query errors directly from Sentry and similar tools |
-| DB queries | Pass query results manually | Query PostgreSQL schemas and data directly |
+| Implementing a feature from an issue | Copy-paste the issue contents | Read directly from the issue tracker and create the PR |
+| Monitoring analysis | Attach dashboard screenshots | Query errors directly from Sentry and the like |
+| DB queries | Manually relay query results | Query PostgreSQL schema and data directly |
 
-> Servers that fetch external content carry a risk of prompt injection, so always verify that a server is trustworthy before connecting it.
+> Servers that ingest external content carry prompt-injection risk, so always verify a server is trustworthy before connecting.
 
 ## Server Types (Transports)
 
-MCP servers are categorized by the **transport** they use to communicate with Claude Code. HTTP is recommended, and legacy SSE has been deprecated.
+MCP servers are classified by the **transport** they use to communicate with Claude Code. HTTP is recommended; legacy SSE is deprecated.
 
-| Transport | Location | Best suited for | Notes |
+| Transport | Location | Best for | Notes |
 | --- | --- | --- | --- |
-| HTTP | Remote | Cloud SaaS integration | Recommended, OAuth 2.0 support |
-| stdio | Local process | System access, custom scripts | No automatic reconnection |
-| SSE | Remote | Legacy remote connections | Deprecated, replaced by HTTP |
-| WebSocket | Remote | When the server pushes events | HTTP or stdio preferred |
+| HTTP | Remote | Cloud SaaS integration | Recommended (OAuth 2.0 support) |
+| stdio | Local process | System access, custom scripts | No auto-reconnect |
+| SSE | Remote | Legacy remote connections | Deprecated; replaced by HTTP |
+| WebSocket | Remote | Servers that push events | HTTP or stdio preferred |
 
 ```mermaid
 flowchart TD
     CC[Claude Code]
-    CC -->|HTTP| Remote[Remote MCP Server<br>SaaS·API]
-    CC -->|stdio| Local[Local MCP Server<br>Process·Script]
-    Remote --> Ext1[Issue Tracker·Monitoring]
-    Local --> Ext2[Local DB·Filesystem]
+    CC -->|HTTP| Remote[Remote MCP servers<br>SaaS, APIs]
+    CC -->|stdio| Local[Local MCP servers<br>processes, scripts]
+    Remote --> Ext1[Issue trackers, monitoring]
+    Local --> Ext2[Local DBs, filesystem]
 ```
 
 ### Installation Overview
 
-You add a server with the `claude mcp add` family of commands. Place all options **before** the server name, and for stdio use `--` to separate the launch command.
+Add servers with the `claude mcp add` family of commands. All options go **before** the server name, and for stdio the execution command is separated by `--`.
 
 ```bash
 # Add a remote HTTP server (recommended)
 claude mcp add --transport http notion https://mcp.notion.com/mcp
 
-# Add a local stdio server (everything after -- is the launch command)
+# Add a local stdio server (after -- is the execution command)
 claude mcp add --transport stdio --env API_KEY=YOUR_KEY airtable \
   -- npx -y airtable-mcp-server
 
@@ -65,40 +65,42 @@ claude mcp add --transport stdio --env API_KEY=YOUR_KEY airtable \
 claude mcp list
 ```
 
-The `--scope` flag specifies where the configuration is saved. There are three levels: `local` (the default — just you, current project), `project` (shared with the team via `.mcp.json`), and `user` (all projects). When the same name exists in multiple places, precedence runs local > project > user.
+The `--scope` flag sets where the configuration is stored. There are three levels: `local` (default; just me, current project), `project` (team-shared via `.mcp.json`), and `user` (all projects). When the same name exists in multiple places, priority runs local > project > user.
 
 ## What a Server Exposes: Tools, Resources, Prompts
 
 An MCP server provides three kinds of capabilities to Claude Code.
 
-| Exposed item | Role | How to use it in Claude Code |
+| Exposed item | Role | How to use in Claude Code |
 | --- | --- | --- |
-| Tools | Actions or functions Claude invokes | Called automatically during work |
-| Resources | Referenceable data or documents | Mention with `@server:protocol://path` |
+| Tools | Actions/functions Claude calls | Auto-invoked during work |
+| Resources | Referenceable data and documents | Mention via `@server:protocol://path` |
 | Prompts | Predefined commands | `/mcp__servername__promptname` |
 
-For example, a resource can be pulled in with an `@` mention, just like a file.
+Resources, for example, can be pulled in with an `@` mention just like files.
 
 ```text
 Analyze @github:issue://123 and propose a fix
 ```
 
-Running the `/mcp` command within a session shows the list of connected servers along with each server's tool count and OAuth authentication status. For remote servers that require authentication, you log in through the browser OAuth flow from `/mcp`.
+Run `/mcp` inside a session to see the list of connected servers, each server's tool count, and OAuth authentication status. Remote servers requiring auth log in via the browser OAuth flow from `/mcp`.
 
-> Tool Search is enabled by default, so MCP tool definitions are not loaded into the context window until they are needed. Even with many connected servers, the context burden stays low.
+> Tool Search is enabled by default, so MCP tool definitions do not enter the context window until needed. Even with many servers connected, the context burden stays small.
 
-## Usage in MoAI-ADK
+## Use in MoAI-ADK
 
-MoAI-ADK integrates documentation-lookup MCP servers such as `mcp__context7` into its workflows. The practical details — server registration steps, authentication patterns, scope selection, and how MoAI agents invoke MCP tools — are gathered in a separate in-depth guide. Once you have grasped the concepts here, the recommended next step is to refer to that guide.
+MoAI-ADK integrates documentation-lookup MCPs like `mcp__context7` into its workflows, and the harness auto-composition stage of `/moai project` includes provisioning MCPs suited to the project domain.
 
-## Related Docs
+From a token perspective, note the Tool Search lazy loading above. MCP tool definitions are a fairly large chunk of context, but since they load only when needed, connecting several servers costs almost nothing at rest — one of the platform mechanisms MoAI-ADK's context diet leans on. Hands-on content — server registration procedures, auth patterns, scope selection, and how MoAI agents invoke MCP tools — is compiled in the separate advanced guide. Once you have the concept from this page, head there next.
 
-- [MCP Server Usage Guide](/advanced/mcp-servers)
+## Related Documents
+
+- [MCP Server Guide](/advanced/mcp-servers)
 
 ## References
 
 - [Connect Claude Code to tools via MCP](https://code.claude.com/docs/en/mcp)
 
 {{< callout type="tip" >}}
-We recommend starting with just one or two trustworthy servers added at `local` scope to confirm their behavior, and once their value for team sharing is proven, moving them to `--scope project` so that `.mcp.json` is included in version control.
+Start by adding just one or two trusted servers at `local` scope to verify behavior; once their value to the team is proven, move them to `--scope project` and put `.mcp.json` under version control.
 {{< /callout >}}

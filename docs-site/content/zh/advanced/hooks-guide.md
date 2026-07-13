@@ -4,134 +4,173 @@ weight: 50
 draft: false
 ---
 
-Claude Code 的 Hooks 系统和 MoAI-ADK 的默认 Hook 脚本详细介绍。
+详细介绍 Claude Code 的 Hooks 系统与 MoAI-ADK 的默认 Hook 脚本。在智能体 Harness 中，提示词是"应当遵守的指令"，而 Hook 是"一定会执行的代码" — 把质量门禁与安全防线建立在确定性而非概率之上的那一层，正是 Hook。
 
 {{< callout type="info" >}}
-**一句话总结**: Hooks 是 Claude Code 的 **自动反射神经**。文件保存后自动格式化,危险命令自动拦截。
+**一句话总结**：Hooks 是 Claude Code 的 **自动反射神经**。保存文件时自动格式化，危险命令自动拦截。
 {{< /callout >}}
 
-## Hooks 是什么?
+## 什么是 Hooks？
 
-Hooks 是响应 Claude Code 特定事件 **自动执行的脚本**。
+Hooks 是对 Claude Code 特定事件做出反应并 **自动执行的脚本**。
 
-用医生的反射神经检查来比喻:敲击膝盖时(事件发生)腿部会自动抬起(脚本执行),同样,Claude Code 修改文件时(PostToolUse 事件)会自动执行格式化器(代码整理)。
+用医生的反射神经检查来类比：敲击膝盖（事件发生）腿会自动抬起（脚本执行）；同样地，Claude Code 修改文件时（PostToolUse 事件），格式化工具会自动运行（整理代码）。
 
 ```mermaid
 flowchart TD
-    EVENT["Claude Code 事件发生"] --> MATCH{匹配器检查}
+    EVENT["Claude Code 事件发生"] --> MATCH{检查匹配器}
 
-    MATCH -->|匹配| HOOK["Hook 脚本执行"]
+    MATCH -->|匹配| HOOK["执行 Hook 脚本"]
     MATCH -->|不匹配| SKIP["通过"]
 
     HOOK --> RESULT{执行结果}
     RESULT -->|成功| CONTINUE["继续工作"]
-    RESULT -->|拦截| BLOCK["工作中止"]
+    RESULT -->|拦截| BLOCK["中断工作"]
     RESULT -->|警告| WARN["警告后继续"]
 ```
 
 ## Hook 事件类型
 
-Claude Code 支持 **10 种事件类型**。
+本指南介绍常用的核心事件。（完整 29 个事件见 [Hooks 事件参考](/zh/advanced/hooks-reference)。）
 
-### 完整事件列表
+### 主要事件列表
 
 | 事件 | 执行时机 | 主要用途 |
 |--------|-----------|----------|
-| `Setup` | 使用 `--init`,`--init-only`,`--maintenance` 标志启动时 | 初始设置、环境检查 |
-| `SessionStart` | 会话开始时 | 显示项目信息、环境初始化 |
-| `SessionEnd` | 会话结束时 | 清理工作、上下文保存 |
-| `PostSession` | 会话结束后 (self-hosted runner，CC 2.1.169+) | 会话后清理/遥测；在会话完全拆除后触发，晚于 `SessionEnd`。MoAI-ADK 目前不接入此钩子 — 作为面向 self-hosted 部署的可用选项进行文档化。 |
-| `PreCompact` | 上下文压缩前 (`/clear` 等) | 备份重要上下文 |
-| `PreToolUse` | 工具使用前 | 安全验证、拦截危险命令 |
-| **`PermissionRequest`** | 显示权限对话框时 | 自动允许/拒绝决定 |
-| `PostToolUse` | 工具使用后 | 代码格式化、语法检查、LSP 诊断 |
-| **`UserPromptSubmit`** | 用户提交提示时 | 提示预处理、验证 |
-| **`Notification`** | Claude Code 发送通知时 | 自定义桌面通知 |
-| `Stop` | 响应完成后 | 循环控制、完成条件检查 |
-| **`SubagentStop`** | 子代理任务完成后 | 处理子任务结果 |
+| `Setup` | 以 `--init`、`--init-only`、`--maintenance` 标志启动时 | 初始设置、环境检查 |
+| `SessionStart` | 会话开始时 | 显示项目信息、初始化环境 |
+| `SessionEnd` | 会话结束时 | 清理工作、保存上下文 |
+| `PostSession` | 会话结束后（self-hosted runner，CC 2.1.169+） | 会话后清理/遥测；在会话完全释放后、晚于 `SessionEnd` 触发。MoAI-ADK 目前未接线此 Hook — 记录为供 self-hosted 部署使用的可用选项。 |
+| `PreCompact` | 上下文压缩前（`/clear` 等） | 备份重要上下文 |
+| `PreToolUse` | 使用工具前 | 安全校验、拦截危险命令 |
+| **`PermissionRequest`** | 显示权限对话框时 | 自动允许/拒绝的决策 |
+| `PostToolUse` | 使用工具后 | 代码格式化、lint 检查、LSP 诊断 |
+| **`UserPromptSubmit`** | 用户提交提示词时 | 提示词预处理、校验 |
+| **`Notification`** | Claude Code 发送通知时 | 定制桌面通知 |
+| `Stop` | 响应完成后 | 循环控制、检查完成条件 |
+| **`SubagentStop`** | 子智能体任务完成后 | 处理子任务结果 |
 
-### 事件详细说明
+### 事件详解
 
 #### 1. Setup
-当 Claude Code 使用 `--init`、`--init-only` 或 `--maintenance` 标志启动时执行。用于初始设置工作和环境检查。
+Claude Code 以 `--init`、`--init-only` 或 `--maintenance` 标志启动时执行。用于初始设置工作与环境检查。
 
 #### 2. SessionStart
-会话开始或恢复现有会话时执行。用于显示项目状态、环境初始化。
+会话开始或恢复既有会话时执行。用于显示项目状态、初始化环境。
 
 #### 3. SessionEnd
-Claude Code 会话结束时执行。用于清理工作、上下文保存、指标收集。
+Claude Code 会话结束时执行。用于清理工作、保存上下文、收集指标。
 
 #### 4. PreCompact
-Claude Code 执行上下文压缩操作 (`/clear` 命令等) 之前执行。用于备份重要上下文。
+Claude Code 执行上下文压缩操作（`/clear` 命令等）之前执行。用于备份重要上下文。
 
 #### 5. PreToolUse
-工具调用 **之前** 执行。可以拦截或修改工具调用。用于安全验证、拦截危险命令。
+在工具被调用 **之前** 执行。可以拦截或修改工具调用。用于安全校验、拦截危险命令。
 
 #### 6. PermissionRequest
-向用户显示权限对话框时执行。可以自动允许或拒绝。
+权限对话框展示给用户时执行。可以自动允许或拒绝。
 
 #### 7. PostToolUse
-工具调用 **完成后** 执行。用于代码格式化、语法检查、LSP 诊断收集。
+工具调用 **完成之后** 执行。用于代码格式化、lint 检查、收集 LSP 诊断。
 
 #### 8. UserPromptSubmit
-用户提交提示时执行,**在 Claude 处理之前**。用于提示预处理、验证。
+用户提交提示词、Claude 处理 **之前** 执行。用于提示词预处理、校验。
 
 #### 9. Notification
-Claude Code 发送通知时执行。可以自定义桌面通知、声音通知等。
+Claude Code 发送通知时执行。可以定制为桌面通知、声音提醒等。
 
 #### 10. Stop
-Claude Code 完成响应时执行。用于循环控制、完成条件检查。
+Claude Code 完成响应时执行。用于循环控制、检查完成条件 — `/moai loop` 与 goal 引擎就运行在这个事件之上。
 
 #### 11. SubagentStop
-子代理任务完成时执行。用于处理子任务结果。
+子智能体任务完成时执行。用于处理子任务的结果。
 
 ### MoAI-ADK 已实现的事件
 
-MoAI-ADK 实际实现了以下事件:
+MoAI-ADK 实际实现了以下事件（✓ = 已实现，— = 参考官方示例）。
 
 | 事件 | 状态 | Hook 文件 |
 |--------|------|-----------|
-| `SessionStart` | ✅ | `session_start__show_project_info.py` |
-| `PreToolUse` | ✅ | `pre_tool__security_guard.py` |
-| `PostToolUse` | ✅ | `post_tool__code_formatter.py`, `post_tool__linter.py`, `post_tool__ast_grep_scan.py`, `post_tool__lsp_diagnostic.py` |
-| `PreCompact` | ✅ | `pre_compact__save_context.py` |
-| `SessionEnd` | ✅ | `session_end__auto_cleanup.py` |
-| `Stop` | ✅ | `stop__loop_controller.py` |
-| `Setup` | ⚪ | 参考官方示例 |
-| `PermissionRequest` | ⚪ | 参考官方示例 |
-| `UserPromptSubmit` | ⚪ | 参考官方示例 |
-| `Notification` | ⚪ | 参考官方示例 |
-| `SubagentStop` | ⚪ | 参考官方示例 |
+| `SessionStart` | ✓ | `session_start__show_project_info.py` |
+| `PreToolUse` | ✓ | `pre_tool__security_guard.py` |
+| `PostToolUse` | ✓ | `post_tool__code_formatter.py`, `post_tool__linter.py`, `post_tool__ast_grep_scan.py`, `post_tool__lsp_diagnostic.py` |
+| `PreCompact` | ✓ | `pre_compact__save_context.py` |
+| `SessionEnd` | ✓ | `session_end__auto_cleanup.py` |
+| `Stop` | ✓ | `stop__loop_controller.py` |
+| `Setup` | — | 参考官方示例 |
+| `PermissionRequest` | — | 参考官方示例 |
+| `UserPromptSubmit` | — | 参考官方示例 |
+| `Notification` | — | 参考官方示例 |
+| `SubagentStop` | — | 参考官方示例 |
+| `TeammateIdle` | ✓ | 检测团队成员空闲并校验质量 |
+| `TaskCompleted` | ✓ | 校验任务完成 |
+
+{{< callout type="warning" >}}
+**SubagentStop 处理器未实现问题 (v2.9.0)**：`SubagentStop` 事件已注册在 settings.json 中，但 Go 处理器未注册到 `deps.go`。目前只返回空响应（`{}`）。
+{{< /callout >}}
+
+### Agent Teams 事件详解 (v2.9.0)
+
+#### TeammateIdle 事件
+团队成员完成工作、进入空闲状态时执行。
+
+- `continue: false`（exit code 2）→ 拒绝空闲，成员继续执行额外工作
+- `continue: true`（默认）→ 批准空闲
+
+#### TaskCompleted 事件
+团队成员完成任务时执行。
+
+- Exit code 2 → 拒绝完成（需要修改）
+- Exit code 0（默认）→ 批准完成
+
+#### Team Shutdown Sequence [HARD]
+
+结束团队时 **必须** 遵循以下顺序。
+
+1. **发送 shutdown_request**：向每名成员发送 `SendMessage(shutdown_request)`
+2. **等待响应**：从每名成员收到 `shutdown_response approve:true`
+3. **[HARD] 清理 tmux pane**：显式结束 tmux pane
+   - 读取 `~/.claude/teams/{team-name}/config.json`
+   - 提取每名成员的 `tmuxPaneId`（例："%184"）
+   - 执行 `tmux kill-pane -t {paneId}`（从高索引开始）
+
+团队目录的清理在会话结束时自动执行。不需要显式调用 teardown（显式的团队 teardown 工具已在 Claude Code v2.1.178 中移除 — 每个会话拥有一个隐式团队，清理是自动的）。
+
+{{< callout type="warning" >}}
+**为什么必须清理 tmux pane？** `shutdown_response` 只是把成员在逻辑上标记为完成，并不会结束 tmux pane 进程。团队目录清理在会话结束时自动进行，但它不会结束 tmux pane 进程。若不显式结束 pane，pane 会无限存活，Leader 会卡在 "Drain" 状态。
+{{< /callout >}}
 
 ### 事件执行顺序
 
-一般文件修改工作中 Hook 的执行顺序。
+一次典型的文件修改工作中 Hook 的执行顺序如下。
 
 ```mermaid
 flowchart TD
-    A["Claude Code<br>尝试修改文件"] --> B["PreToolUse<br>安全验证"]
+    A["Claude Code<br>尝试修改文件"] --> B["PreToolUse<br>安全校验"]
 
     B -->|允许| C["Write/Edit<br>执行文件修改"]
-    B -->|拦截| BLOCK["工作中止<br>保护危险文件"]
+    B -->|拦截| BLOCK["中断工作<br>保护危险文件"]
 
-    C --> D["PostToolUse<br>代码格式化器"]
-    D --> E["PostToolUse<br>语法检查"]
+    C --> D["PostToolUse<br>代码格式化"]
+    D --> E["PostToolUse<br>lint 检查"]
     E --> F["PostToolUse<br>AST-grep 扫描"]
     F --> G["PostToolUse<br>LSP 诊断"]
 
     G --> H{结果}
     H -->|干净| I["工作完成"]
-    H -->|发现问题| J["向 Claude Code<br>传递反馈"]
+    H -->|发现问题| J["向 Claude Code<br>反馈"]
     J --> K["尝试自动修复"]
 ```
 
+这条管线承担了智能体循环反馈的一半 — 智能体写、Hook 检查，有问题就成为下一回合的修复输入。
+
 ## Claude Code 官方示例
 
-这些示例是 Claude Code 官方文档提供的标准模式。
+以下示例是 Claude Code 官方文档提供的标准模式。
 
 ### Bash 命令日志 Hook
 
-将所有 Bash 命令记录到日志文件。
+把所有 Bash 命令记录到日志文件。
 
 ```json
 {
@@ -173,9 +212,9 @@ flowchart TD
 }
 ```
 
-### Markdown 格式化器 Hook
+### Markdown 格式化 Hook
 
-自动检测并添加 Markdown 文件的语言标签。
+自动检测并补充 Markdown 文件的语言标签。
 
 ```json
 {
@@ -195,7 +234,7 @@ flowchart TD
 }
 ```
 
-`.claude/hooks/markdown_formatter.py` 文件:
+`.claude/hooks/markdown_formatter.py` 文件：
 
 ```python
 #!/usr/bin/env python3
@@ -227,7 +266,7 @@ def detect_language(code):
 
     # JavaScript detection
     if re.search(r'\\b(function\\s+\\w+\\s*\\(|const\\s+\\w+\\s*=)', s) or \
-       re.search('=>|console\\.(log|error)', s):
+       re.search(r'=>|console\\.(log|error)', s):
         return 'javascript'
 
     # Bash detection
@@ -281,7 +320,7 @@ except Exception as e:
 
 ### 桌面通知 Hook
 
-当 Claude 等待输入时显示桌面通知。
+Claude 等待输入时显示桌面通知。
 
 ```json
 {
@@ -303,7 +342,7 @@ except Exception as e:
 
 ### 文件保护 Hook
 
-拦截敏感文件的修改。
+拦截对敏感文件的修改。
 
 ```json
 {
@@ -331,67 +370,66 @@ MoAI-ADK 提供 **11 个默认 Hook 脚本**。
 
 | Hook 文件 | 事件 | 匹配器 | 角色 | 超时 |
 |-----------|--------|------|------|----------|
-| `session_start__show_project_info.py` | SessionStart | 全部 | 显示项目状态、更新检查 | 5 秒 |
+| `session_start__show_project_info.py` | SessionStart | 全部 | 显示项目状态、检查更新 | 5 秒 |
 | `pre_tool__security_guard.py` | PreToolUse | `Write\|Edit\|Bash` | 拦截危险文件修改/命令 | 5 秒 |
 | `post_tool__code_formatter.py` | PostToolUse | `Write\|Edit` | 自动代码格式化 | 30 秒 |
-| `post_tool__linter.py` | PostToolUse | `Write\|Edit` | 自动语法检查 | 60 秒 |
-| `post_tool__ast_grep_scan.py` | PostToolUse | `Write\|Edit` | AST 基础安全扫描 | 30 秒 |
-| `post_tool__lsp_diagnostic.py` | PostToolUse | `Write\|Edit` | LSP 诊断结果收集 | 默认值 |
+| `post_tool__linter.py` | PostToolUse | `Write\|Edit` | 自动 lint 检查 | 60 秒 |
+| `post_tool__ast_grep_scan.py` | PostToolUse | `Write\|Edit` | 基于 AST 的安全扫描 | 30 秒 |
+| `post_tool__lsp_diagnostic.py` | PostToolUse | `Write\|Edit` | 收集 LSP 诊断结果 | 默认值 |
 | `pre_compact__save_context.py` | PreCompact | 全部 | `/clear` 前保存上下文 | 3 秒 |
-| `session_end__auto_cleanup.py` | SessionEnd | 全部 | 会话结束时清理工作 | 5 秒 |
+| `session_end__auto_cleanup.py` | SessionEnd | 全部 | 会话结束时的清理工作 | 5 秒 |
+| `stop__loop_controller.py` | Stop | 全部 | Ralph 循环控制与完成确认 | 默认值 |
+| `quality_gate_with_lsp.py` | 手动 | 全部 | 基于 LSP 的质量门禁校验 | 默认值 |
 
-| `stop__loop_controller.py` | Stop | 全部 | Ralph 循环控制及完成检查 | 默认值 |
-| `quality_gate_with_lsp.py` | 手动 | 全部 | LSP 基础质量门控验证 | 默认值 |
+### SessionStart：显示项目信息
 
-### SessionStart: 显示项目信息
+会话开始时展示项目当前状态。
 
-会话开始时显示项目的当前状态。
-
-**显示信息:**
-- MoAI-ADK 版本及更新状态
-- 当前项目名称和技术栈
+**显示信息：**
+- MoAI-ADK 版本与是否可更新
+- 当前项目名称与技术栈
 - Git 分支、变更、最后提交
-- Git 策略 (Github-Flow 模式、Auto Branch 设置)
-- 语言设置(对话语言)
-- 上一次会话上下文 (SPEC 状态、任务列表)
-- 个性化欢迎消息或设置指南
+- Git 策略（Github-Flow 模式、Auto Branch 设置）
+- 语言设置（对话语言）
+- 上一会话上下文（SPEC 状态、任务列表）
+- 个性化欢迎信息或设置引导
 
-### PreToolUse: Security Guard (安全守卫)
+### PreToolUse：Security Guard（安全守卫）
 
-文件修改/命令执行前 **保护危险操作**。
+在文件修改/命令执行前 **保护危险操作**。
 
-**保护文件类别:**
+**受保护的文件：**
 
-| 类别 | 保护文件 | 原因 |
+| 类别 | 保护文件 | 理由 |
 |----------|-----------|------|
 | 密钥存储 | `secrets/`, `*.secrets.*`, `*.credentials.*` | 保护敏感信息 |
 | SSH 密钥 | `~/.ssh/*`, `id_rsa*`, `id_ed25519*` | 保护服务器访问密钥 |
 | 证书 | `*.pem`, `*.key`, `*.crt` | 保护证书文件 |
-| 云凭证 | `~/.aws/*`, `~/.gcloud/*`, `~/.azure/*`, `~/.kube/*` | 保护云账户 |
-| Git 内部 | `.git/*` | 保护 Git 仓库完整性 |
-| 令牌文件 | `*.token`, `.tokens/*`, `auth.json` | 保护认证令牌 |
+| 云凭据 | `~/.aws/*`, `~/.gcloud/*`, `~/.azure/*`, `~/.kube/*` | 保护云账号 |
+| Git 内部 | `.git/*` | 保障 Git 仓库完整性 |
+| Token 文件 | `*.token`, `.tokens/*`, `auth.json` | 保护认证 token |
 
-**注意:** `.env` 文件不受保护。允许开发者编辑环境变量。
+**注意：** 不保护 `.env` 文件。允许开发者编辑环境变量。
 
-**拦截行为:**
-- 检测对保护文件的 Write/Edit 尝试
-- 返回 JSON 格式 `"permissionDecision": "deny"` 响应
-- Claude Code 停止修改该文件
+**拦截行为：**
+- 检测对受保护文件的 Write/Edit 尝试
+- 以 JSON 形式返回 `"permissionDecision": "deny"` 响应
+- Claude Code 中止对该文件的修改
 
-**拦截危险 Bash 命令:**
-- 数据库删除: `supabase db reset`, `neon database delete`
-- 危险文件删除: `rm -rf /`, `rm -rf .git`
-- Docker 全部删除: `docker system prune -a`
-- 强制推送: `git push --force origin main`
-- Terraform 销毁: `terraform destroy`
+**拦截危险 Bash 命令：**
+- 删除数据库：`supabase db reset`, `neon database delete`
+- 危险文件删除：`rm -rf /`, `rm -rf .git`
+- Docker 全量删除：`docker system prune -a`
+- 强制推送：`git push --force origin main`
+- Terraform 销毁：`terraform destroy`
 
-### PostToolUse: Code Formatter (代码格式化器)
+### PostToolUse：Code Formatter（代码格式化）
 
 文件修改后 **自动整理代码**。
 
-**支持语言及格式化器:**
+**支持的语言与格式化工具：**
 
-| 语言 | 格式化器 (优先级) | 配置文件 |
+| 语言 | 格式化工具（优先级） | 配置文件 |
 |------|------------------|----------|
 | Python | `ruff format`, `black` | `pyproject.toml` |
 | TypeScript/JavaScript | `biome`, `prettier`, `eslint_d` | `.prettierrc`, `biome.json` |
@@ -404,51 +442,51 @@ MoAI-ADK 提供 **11 个默认 Hook 脚本**。
 | Swift | `swiftformat` | `.swiftformat` |
 | C# | `prettier` | `.prettierrc` |
 
-**排除对象:**
-- `.json`, `.lock`, `.min.js`, `.svg` 等
-- `node_modules`, `.git`, `dist`, `build` 目录
+**排除对象：**
+- `.json`、`.lock`、`.min.js`、`.svg` 等
+- `node_modules`、`.git`、`dist`、`build` 目录
 
-### PostToolUse: Linter (语法检查器)
+### PostToolUse：Linter（代码检查）
 
 文件修改后 **自动检查代码质量**。
 
-**支持语言及检查器:**
+**支持的语言与 linter：**
 
-| 语言 | 检查器 (优先级) | 检查项目 |
+| 语言 | Linter（优先级） | 检查项目 |
 |------|----------------|----------|
 | Python | `ruff check`, `flake8` | PEP 8、类型提示、复杂度 |
-| TypeScript/JavaScript | `eslint`, `biome lint`, `eslint_d` | 编码标准、潜在错误 |
+| TypeScript/JavaScript | `eslint`, `biome lint`, `eslint_d` | 编码标准、潜在缺陷 |
 | Go | `golangci-lint` | 代码质量、性能 |
 | Rust | `clippy` | Rust 惯用法、性能 |
 
-### PostToolUse: AST-grep 扫描
+### PostToolUse：AST-grep 扫描
 
-文件修改后 **扫描结构安全漏洞**。
+文件修改后 **扫描结构性安全漏洞**。
 
-**支持语言:**
-Python, JavaScript/TypeScript, Go, Rust, Java, Kotlin, C/C++, Ruby, PHP
+**支持的语言：**
+Python、JavaScript/TypeScript、Go、Rust、Java、Kotlin、C/C++、Ruby、PHP
 
-**扫描模式示例:**
-- SQL 注入漏洞 (字符串连接查询)
-- 硬编码密钥 (API 密钥、令牌)
+**扫描模式示例：**
+- SQL Injection 漏洞（字符串拼接查询）
+- 硬编码密钥（API 密钥、token）
 - 不安全的函数调用
 - 未使用的导入
 
-**配置:** `.claude/skills/moai-tool-ast-grep/rules/sgconfig.yml` 或项目根目录的 `sgconfig.yml`
+**配置：** `.claude/skills/moai-tool-ast-grep/rules/sgconfig.yml` 或项目根目录的 `sgconfig.yml`
 
-### PostToolUse: LSP 诊断
+### PostToolUse：LSP 诊断
 
-文件修改后 **收集 LSP(Language Server Protocol) 诊断信息**。
+文件修改后 **收集 LSP (Language Server Protocol) 诊断信息**。
 
-**支持语言:**
-Python, TypeScript/JavaScript, Go, Rust, Java, Kotlin, Ruby, PHP, C/C++
+**支持的语言：**
+Python、TypeScript/JavaScript、Go、Rust、Java、Kotlin、Ruby、PHP、C/C++
 
-**Fallback 诊断:**
-无法使用 LSP 时使用命令行工具:
-- Python: `ruff check --output-format=json`
-- TypeScript: `tsc --noEmit`
+**Fallback 诊断：**
+LSP 不可用时使用命令行工具：
+- Python：`ruff check --output-format=json`
+- TypeScript：`tsc --noEmit`
 
-**配置:** `.moai/config/sections/ralph.yaml`
+**配置：** `.moai/config/sections/ralph.yaml`
 
 ```yaml
 ralph:
@@ -459,51 +497,51 @@ ralph:
       severity_threshold: error  # error | warning | info
 ```
 
-### PreCompact: 上下文保存
+### PreCompact：保存上下文
 
-`/clear` 执行前 **将当前上下文保存到文件**。
+在执行 `/clear` 之前 **把当前上下文保存到文件**。这是在上下文临界点切断会话并延续工作的 handoff 流程的安全网。
 
-**保存位置:** `.moai/memory/context-snapshot.json`
+**保存位置：** `.moai/memory/context-snapshot.json`
 
-**保存内容:**
-- 当前活动 SPEC 状态 (ID、阶段、进度)
-- 进行中任务列表 (TodoWrite)
+**保存内容：**
+- 当前活动 SPEC 状态（ID、阶段、进度）
+- 进行中的任务列表 (TodoWrite)
 - 已完成任务列表
-- 修改文件列表
-- Git 状态信息 (分支、未提交的变更)
-- 核心决策事项
+- 已修改文件列表
+- Git 状态信息（分支、未提交变更）
+- 关键决策事项
 
-**归档:** 之前的快照自动归档到 `.moai/memory/context-archive/`
+**归档：** 旧快照自动保存到 `.moai/memory/context-archive/`。
 
-### SessionEnd: 自动清理
+### SessionEnd：自动清理
 
-会话结束时执行以下工作:
+会话结束时执行以下工作。
 
-**P0 任务 (必需):**
-- 保存会话指标 (修改文件数、提交数、工作的 SPEC)
-- 保存任务状态快照 (`.moai/memory/last-session-state.json`)
+**P0 工作（必须）：**
+- 保存会话指标（修改文件数、提交数、经手的 SPEC）
+- 保存工作状态快照（`.moai/memory/last-session-state.json`）
 - 未提交变更警告
 
-**P1 任务 (可选):**
-- 清理临时文件 (7 天以上的文件)
+**P1 工作（可选）：**
+- 清理临时文件（超过 7 天的文件）
 - 清理缓存文件
 - 扫描根目录文档管理违规
 - 生成会话摘要
 
-### Stop: 循环控制器
+### Stop：循环控制器
 
-控制 Ralph Engine 反馈循环。
+控制 Ralph Engine 反馈循环。`/moai loop` 之所以能"反复直到全部修好"，是因为这个 Hook 在每个回合结束时机械地判定完成条件。
 
-**完成条件检查:**
-- LSP 错误数 (目标 0 错误)
+**完成条件检查：**
+- LSP 错误数（目标 0 错误）
 - LSP 警告数
-- 测试通过情况
-- 覆盖率目标 (默认 85%)
-- 完成语句检测 (自然语言循环退出信号)
+- 测试是否通过
+- 覆盖率目标（默认 85%）
+- 完成语句检测（自然语言循环终止信号）
 
-**状态文件:** `.moai/cache/.moai_loop_state.json`
+**状态文件：** `.moai/cache/.moai_loop_state.json`
 
-**配置:** `.moai/config/sections/ralph.yaml`
+**配置：** `.moai/config/sections/ralph.yaml`
 
 ```yaml
 ralph:
@@ -520,15 +558,15 @@ ralph:
 
 ### Quality Gate with LSP
 
-使用 LSP 诊断验证质量门控。
+使用 LSP 诊断校验质量门禁。
 
-**质量标准:**
-- 最大错误数: 0 (默认值)
-- 最大警告数: 10 (默认值)
-- 类型错误: 0 允许
-- 语法错误: 0 允许
+**质量标准：**
+- 最大错误数：0（默认）
+- 最大警告数：10（默认）
+- 类型错误：允许 0 个
+- lint 错误：允许 0 个
 
-**配置:** `.moai/config/sections/quality.yaml`
+**配置：** `.moai/config/sections/quality.yaml`
 
 ```yaml
 constitution:
@@ -538,7 +576,7 @@ constitution:
     enabled: true
 ```
 
-**结果示例:**
+**结果示例：**
 ```json
 {
   "lsp_errors": 0,
@@ -557,28 +595,28 @@ MoAI Hooks 在 `lib/` 目录中提供共享功能模块。
 ```
 .claude/hooks/moai/lib/
 ├── __init__.py
-├── atomic_write.py           # 原子写入操作
+├── atomic_write.py           # 原子写操作
 ├── checkpoint.py             # 检查点管理
 ├── common.py                 # 通用工具
 ├── config.py                 # 配置管理
 ├── config_manager.py         # 配置管理器 (高级)
-├── config_validator.py       # 配置验证
+├── config_validator.py       # 配置校验
 ├── context_manager.py        # 上下文管理 (快照、归档)
-├── enhanced_output_style_detector.py  # 输出样式检测
+├── enhanced_output_style_detector.py  # 输出风格检测
 ├── file_utils.py             # 文件工具
 ├── git_collector.py          # Git 数据收集
-├── git_operations_manager.py # Git 运算管理器 (优化)
+├── git_operations_manager.py # Git 操作管理器 (已优化)
 ├── language_detector.py      # 语言检测
-├── language_validator.py     # 语言验证
-├── main.py                   # 主入口点
-├── memory_collector.py       # 内存收集
-├── metrics_tracker.py        # 指标追踪
+├── language_validator.py     # 语言校验
+├── main.py                   # 主入口
+├── memory_collector.py       # 记忆收集
+├── metrics_tracker.py        # 指标跟踪
 ├── models.py                 # 数据模型
 ├── path_utils.py             # 路径工具
 ├── project.py                # 项目相关
 ├── renderer.py               # 渲染器
 ├── timeout.py                # 超时处理
-├── tool_registry.py          # 工具注册表 (格式化器、语法检查器)
+├── tool_registry.py          # 工具注册表 (格式化、lint)
 ├── unified_timeout_manager.py # 统一超时管理器
 ├── update_checker.py         # 更新检查
 ├── version_reader.py         # 版本读取
@@ -587,14 +625,14 @@ MoAI Hooks 在 `lib/` 目录中提供共享功能模块。
     └── announcement_translator.py  # 公告翻译
 ```
 
-**主要模块:**
+**主要模块：**
 
-- **tool_registry.py**: 16 种编程语言的格式化器/语法检查器自动检测
-- **git_operations_manager.py**: 连接池、缓存优化的 Git 运算
-- **unified_timeout_manager.py**: 统一超时管理和优雅降级
-- **context_manager.py**: 上下文快照、归档、Memory MCP 载荷生成
+- **tool_registry.py**：自动检测 16 种编程语言的格式化工具/linter
+- **git_operations_manager.py**：通过连接池、缓存实现的优化 Git 操作
+- **unified_timeout_manager.py**：统一的超时管理与优雅降级
+- **context_manager.py**：上下文快照、归档、生成 Memory MCP 载荷
 
-## settings.json 中配置 Hook
+## 在 settings.json 中配置 Hook
 
 Hooks 在 `.claude/settings.json` 文件的 `hooks` 部分配置。
 
@@ -693,21 +731,21 @@ Hooks 在 `.claude/settings.json` 文件的 `hooks` 部分配置。
 
 | 字段 | 说明 | 示例 |
 |------|------|------|
-| `matcher` | 工具名称匹配模式 (正则) | `"Write\|Edit"` |
+| `matcher` | 工具名匹配模式（正则） | `"Write\|Edit"` |
 | `type` | Hook 类型 | `"command"` |
-| `command` | 执行命令 | Shell 脚本路径 |
-| `timeout` | 执行时间限制 (毫秒) | `5000` (5 秒) |
+| `command` | 要执行的命令 | Shell 脚本路径 |
+| `timeout` | 执行限时（毫秒） | `5000`（5 秒） |
 
 ### 匹配器模式
 
 | 模式 | 说明 |
 |------|------|
-| `""` (空字符串) | 匹配所有工具 |
+| `""`（空字符串） | 匹配所有工具 |
 | `"Write"` | 仅匹配 Write 工具 |
 | `"Write\|Edit"` | 匹配 Write 或 Edit 工具 |
 | `"Bash"` | 仅匹配 Bash 工具 |
 
-## 自定义 Hook 编写方法
+## 编写自定义 Hook
 
 ### 基本模板
 
@@ -730,11 +768,11 @@ def main():
 
     # 检查逻辑
     if file_path.endswith(".py"):
-        # Python 文件自定义检查
+        # 针对 Python 文件的自定义检查
         result = check_python_file(file_path)
 
         if result["has_issues"]:
-            # 向 Claude Code 传递反馈
+            # 向 Claude Code 反馈
             output = {
                 "hookSpecificOutput": {
                     "hookEventName": "PostToolUse",
@@ -744,7 +782,7 @@ def main():
             print(json.dumps(output))
             return
 
-    # 没有问题则抑制输出
+    # 无问题则抑制输出
     output = {"suppressOutput": True}
     print(json.dumps(output))
 
@@ -789,36 +827,35 @@ Hook 脚本通过标准输入 (stdin) 接收 JSON 数据。
 ├── __init__.py                        # 包初始化
 ├── session_start__show_project_info.py # 会话开始
 ├── pre_tool__security_guard.py         # 安全守卫
-├── post_tool__code_formatter.py        # 代码格式化器
-├── post_tool__linter.py                # 语法检查器
+├── post_tool__code_formatter.py        # 代码格式化
+├── post_tool__linter.py                # 代码检查
 ├── post_tool__ast_grep_scan.py         # AST-grep 扫描
 ├── post_tool__lsp_diagnostic.py        # LSP 诊断
-├── pre_compact__save_context.py        # 上下文保存
+├── pre_compact__save_context.py        # 保存上下文
 ├── session_end__auto_cleanup.py        # 自动清理
-
 ├── stop__loop_controller.py            # 循环控制器
-├── quality_gate_with_lsp.py            # 质量门控
+├── quality_gate_with_lsp.py            # 质量门禁
 └── lib/                                # 共享库
-    ├── atomic_write.py                 # 原子写入
+    ├── atomic_write.py                 # 原子写
     ├── checkpoint.py                   # 检查点
     ├── common.py                       # 通用工具
     ├── config.py                       # 配置
     ├── config_manager.py               # 配置管理器
-    ├── config_validator.py             # 配置验证
+    ├── config_validator.py             # 配置校验
     ├── context_manager.py              # 上下文管理
-    ├── git_operations_manager.py       # Git 运算管理
+    ├── git_operations_manager.py       # Git 操作管理
     ├── tool_registry.py                # 工具注册表
     ├── unified_timeout_manager.py      # 超时管理
     └── ...                             # 其他模块
 ```
 
 {{< callout type="warning" >}}
-**注意**: Hook 脚本超时设置过长会导致 Claude Code 响应变慢。建议格式化器 30 秒、语法检查器 60 秒、安全守卫 5 秒以内。
+**注意**：Hook 脚本的超时设置过长会拖慢 Claude Code 的响应。建议格式化 30 秒、lint 60 秒、安全守卫 5 秒以内。
 {{< /callout >}}
 
-## 环境变量禁用 Hook
+## 用环境变量禁用 Hook
 
-可以用环境变量禁用特定 Hook:
+可以用环境变量禁用特定 Hook。
 
 | Hook | 环境变量 |
 |------|-----------|
@@ -832,10 +869,11 @@ export MOAI_DISABLE_AST_GREP_SCAN=1
 
 ## 相关文档
 
-- [settings.json 指南](/advanced/settings-json) - Hook 配置方法
-- [CLAUDE.md 指南](/advanced/claude-md-guide) - 项目指令管理
-- [代理指南](/advanced/agent-guide) - 代理与 Hook 联动
+- [Hooks 事件参考](/zh/advanced/hooks-reference) - 29 个事件的完整参考
+- [settings.json 指南](/zh/advanced/settings-json) - Hook 配置方法
+- [CLAUDE.md 指南](/zh/advanced/claude-md-guide) - 项目指令管理
+- [智能体指南](/zh/advanced/agent-guide) - 智能体与 Hook 联动
 
 {{< callout type="info" >}}
-**提示**: Hook 是 MoAI-ADK 质量保证的核心。自动代码格式化和语法检查使开发者能专注于逻辑。添加自定义 Hook 构建适合项目的自动化。
+**提示**：Hook 是 MoAI-ADK 质量保障的核心。把代码格式化与 lint 检查自动化，让开发者专注于逻辑。添加自定义 Hook，构建适合你项目的自动化。
 {{< /callout >}}

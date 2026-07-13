@@ -6,21 +6,21 @@ draft: false
 # Profile Management
 
 
-MoAI-ADK's profile system lets you manage multiple Claude Code configurations in isolation.
+MoAI-ADK's profile system lets you manage multiple Claude Code configurations in isolation. Separate work vs. personal setups, or high-quality vs. cost-saving sessions, into one profile each, and you no longer need to change model, language, and display settings every time.
 
-## What Is a Profile?
+## What is a Profile?
 
-A profile is an **isolated Claude Code configuration directory** (`CLAUDE_CONFIG_DIR`). Each profile can maintain its own independent settings, model selection, and language environment.
+A profile is an **isolated Claude Code configuration directory** (`CLAUDE_CONFIG_DIR`). Each profile maintains independent settings, model selection, and language environment.
 
 ```
 ~/.moai/claude-profiles/
-├── default/           # default profile
+├── default/           # Default profile
 │   ├── settings.json
 │   └── settings.local.json
-├── work/              # work profile
+├── work/              # Work profile
 │   ├── settings.json
 │   └── settings.local.json
-└── personal/          # personal profile
+└── personal/          # Personal profile
     └── ...
 ```
 
@@ -28,7 +28,7 @@ A profile is an **isolated Claude Code configuration directory** (`CLAUDE_CONFIG
 
 ### moai profile list
 
-Displays every available profile.
+Displays all available profiles.
 
 ```bash
 moai profile list
@@ -39,15 +39,15 @@ moai profile list
 Runs the interactive setup wizard.
 
 ```bash
-moai profile setup          # set up the default profile
-moai profile setup work     # set up the "work" profile
+moai profile setup          # Set up the default profile
+moai profile setup work     # Set up the "work" profile
 ```
 
 **Wizard configuration items:**
-- **Identity**: User name, role
-- **Languages**: Conversation language, code comment language
-- **Model Settings**: Default model, 1M-context model selection
-- **Display**: Output style, status line settings
+- **Identity**: user name, role
+- **Languages**: conversation language, code comment language
+- **Model Settings**: default model, 1M context model selection
+- **Display**: output style, status line settings
 
 ### moai profile current
 
@@ -70,35 +70,37 @@ moai profile delete old-profile
 Specify a profile with the `-p` (or `--profile`) flag.
 
 ```bash
-moai cc -p work          # run Claude with the work profile
-moai glm -p cost-save    # run GLM with the cost-save profile
-moai cg -p team          # run CG mode with the team profile
+moai cc -p work          # Run Claude with the work profile
+moai glm -p cost-save    # Run GLM with the cost-save profile
+moai cg -p team          # Run CG mode with the team profile
 ```
 
 {{< callout type="info" >}}
-When no profile is specified, the default profile is used. The setup wizard starts automatically on first run.
+When no profile is specified, the default profile is used. On first run, the setup wizard starts automatically.
 {{< /callout >}}
 
-## Choosing a 1M-Context Model
+## Selecting a 1M Context Model
 
-When configuring a profile, you can choose a model that supports the 1M-token context window.
+When configuring a profile, you can select a model that supports a 1M context window. The `[1m]` suffix is not a separate model — it is Claude Code's native context-window modifier.
 
-**Supported models:**
-- `claude-opus-4-8[1m]` - Opus 4.8 (1M context)
-- `claude-sonnet-4-6[1m]` - Sonnet 4.6 (1M context)
+**Selectable model aliases:**
+- `opus` / `opus[1m]`
+- `sonnet` / `sonnet[1m]`
+- `fable` / `fable[1m]`
+- `haiku`, `opusplan`
 
-Select it in the "Model Settings" step of the setup wizard, or edit the profile configuration file directly.
+Select it in the "Model Settings" step of the setup wizard, or edit the profile settings file directly. 1M context models are well suited for analyzing large codebases or working with long documents.
 
 ## Behavior on Profile Switch
 
 | Switch | Behavior |
 |------|------|
-| `moai cc` → `moai glm` | GLM environment variables are injected automatically |
-| `moai glm` → `moai cc` | GLM environment variables are removed automatically |
-| `moai cc` → `moai cg` | GLM env is injected only into the tmux session; the Leader stays on Claude |
+| `moai cc` → `moai glm` | GLM environment variables injected automatically |
+| `moai glm` → `moai cc` | GLM environment variables removed automatically |
+| `moai cc` → `moai cg` | GLM env injected into the tmux session only; the Leader stays on Claude |
 
-## Related Documentation
+## Related Documents
 
-- [CLI Reference](/getting-started/cli) - Full CLI command reference
-- [Quick Start](/getting-started/quickstart) - Getting started for the first time
-- [Initial Setup](/getting-started/init-wizard) - Project initialization
+- [CLI Reference](/en/getting-started/cli) - Full CLI commands
+- [Quick Start](/en/getting-started/quickstart) - Getting started
+- [Initial Setup](/en/getting-started/init-wizard) - Project initialization

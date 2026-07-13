@@ -4,26 +4,26 @@ weight: 20
 draft: false
 ---
 
-A code review command that analyzes your codebase from **4 perspectives: Security, Performance, Quality, and UX**.
+The code review command that analyzes your codebase from 4 perspectives: **security, performance, quality, and UX**.
 
 {{< callout type="info" >}}
-**One-line summary**: `/moai review` is an "AI Code Reviewer". It simultaneously reviews from **4 perspectives** — OWASP security checks, performance analysis, TRUST 5 quality verification, and UX accessibility.
+**One-line summary**: `/moai review` is an "AI code reviewer." It **reviews from 4 perspectives simultaneously** — from OWASP security checks to performance analysis, TRUST 5 quality verification, and UX accessibility.
 {{< /callout >}}
 
 {{< callout type="info" >}}
-**Slash Command**: Type `/moai:review` in Claude Code to run this command directly. Type `/moai` alone to see the full list of available subcommands.
+**Slash command**: In Claude Code, type `/moai:review` to run this command directly. Typing just `/moai` shows the list of all available subcommands.
 {{< /callout >}}
 
 ## Overview
 
-Code review is at the heart of software quality. However, thoroughly checking security, performance, quality, and UX all at once is challenging. `/moai review` systematically analyzes code from 4 perspectives and produces a review report organized by severity.
+Code review is at the heart of software quality. But checking security, performance, quality, and UX all thoroughly is not easy. `/moai review` has the AI analyze the code systematically from 4 perspectives and produces a review report organized by severity.
 
-It also checks @MX tag compliance to help AI agents better understand the code.
+The default reviewer is **sync-auditor** — an independent evaluator, not the agent that wrote the code. The harness principle that whoever produced something never inspects it applies to the review command as well. @MX tag compliance is also checked, helping AI agents understand the code better.
 
 ## Usage
 
 ```bash
-# Review most recent commit changes
+# Review the changes in the most recent commit
 > /moai review
 
 # Review only staged changes
@@ -35,243 +35,246 @@ It also checks @MX tag compliance to help AI agents better understand the code.
 # Security-focused review
 > /moai review --security
 
-# Review specific file only
+# Review a specific file only
 > /moai review --file src/auth/service.py
 ```
 
 ## Supported Flags
 
 | Flag | Description | Example |
-|------|-------------|---------|
+|-------|------|------|
 | `--staged` | Review only staged (git add) changes | `/moai review --staged` |
-| `--branch BRANCH` | Compare against specified branch (default: main) | `/moai review --branch develop` |
-| `--security` | Focus primarily on security review (OWASP, injection, auth) | `/moai review --security` |
-| `--file PATH` | Review specific file(s) only | `/moai review --file src/auth/` |
-| `--team` | Agent Teams mode (4 expert reviewers analyze in parallel) | `/moai review --team` |
+| `--branch BRANCH` | Review against the given branch (default: main) | `/moai review --branch develop` |
+| `--security` | Focus on the security review (OWASP, injection, auth) | `/moai review --security` |
+| `--file PATH` | Review a specific file only | `/moai review --file src/auth/` |
+| `--team` | Agent team mode (4 specialist reviewers analyze in parallel) | `/moai review --team` |
 
-### --staged Flag
+### The --staged Flag
 
-Reviews only changes staged with `git add`. Useful for final checks before committing:
+Reviews only the changes staged with `git add`. Useful as a final check before committing:
 
 ```bash
 > git add src/auth/
 > /moai review --staged
 ```
 
-### --security Flag
+### The --security Flag
 
-Performs deeper analysis focused on the security perspective:
+Performs a deeper analysis focused on the security perspective:
 
 ```bash
 > /moai review --security
 ```
 
-Provides in-depth analysis of OWASP Top 10, injection risks, authentication/authorization logic, and secrets exposure.
+Analyzes the OWASP Top 10, injection risks, authentication/authorization logic, secret exposure, and more in depth.
 
-### --team Flag
+### The --team Flag
 
-4 expert review agents analyze simultaneously:
+Four specialist review agents analyze simultaneously:
 
 ```bash
 > /moai review --team
 ```
 
-Security, performance, quality, and UX specialists each review independently, enabling deeper analysis.
+Security, performance, quality, and UX specialists each review independently, enabling deeper analysis. Token consumption grows accordingly (about 4x), so it is economical to use it selectively on high-stakes changes like security and payments.
 
-## Execution Process
+## Execution Flow
 
-`/moai review` runs in 5 phases.
+`/moai review` runs in 5 steps.
 
 ```mermaid
 flowchart TD
-    Start["/moai review execution"] --> Phase1["Phase 1: Identify Change Scope"]
+    Start["/moai review run"] --> Phase1["Step 1: identify change scope"]
 
     Phase1 --> Scope{"Which flag?"}
     Scope -->|--staged| Staged["git diff --staged"]
     Scope -->|--branch| Branch["git diff BRANCH...HEAD"]
-    Scope -->|--file| File["Read specified files"]
+    Scope -->|--file| File["read the specified file"]
     Scope -->|none| Recent["git diff HEAD~1"]
 
-    Staged --> Phase2["Phase 2: 4-Perspective Analysis"]
+    Staged --> Phase2["Step 2: 4-perspective analysis"]
     Branch --> Phase2
     File --> Phase2
     Recent --> Phase2
 
-    Phase2 --> Security["Security Review"]
-    Phase2 --> Performance["Performance Review"]
-    Phase2 --> Quality["Quality Review"]
-    Phase2 --> UX["UX Review"]
+    Phase2 --> Security["Security review"]
+    Phase2 --> Performance["Performance review"]
+    Phase2 --> Quality["Quality review"]
+    Phase2 --> UX["UX review"]
 
-    Security --> Phase3["Phase 3: @MX Tag Compliance Check"]
+    Security --> Phase3["Step 3: @MX tag compliance check"]
     Performance --> Phase3
     Quality --> Phase3
     UX --> Phase3
 
-    Phase3 --> Phase4["Phase 4: Report Consolidation"]
-    Phase4 --> Phase5["Phase 5: Next Steps"]
+    Phase3 --> Phase4["Step 4: report consolidation"]
+    Phase4 --> Phase5["Step 5: next-step guidance"]
 ```
 
-### Phase 1: Identify Change Scope
+### Step 1: Identify the Change Scope
 
-Determines the review target based on flags:
+The review target is determined by the flag:
 
-| Condition | Command Used |
-|-----------|-------------|
+| Condition | Command used |
+|------|----------------|
 | `--staged` | `git diff --staged` |
 | `--branch BRANCH` | `git diff {BRANCH}...HEAD` |
-| `--file PATH` | Read specified files directly |
+| `--file PATH` | Reads the specified file directly |
 | No flag | `git diff HEAD~1` |
 
-### Phase 2: 4-Perspective Analysis
+Reviewing only the change scope rather than the whole codebase is also a design choice for token efficiency.
 
-Analyzes code from 4 expert perspectives:
+### Step 2: 4-Perspective Analysis
+
+The code is analyzed from 4 specialist perspectives:
 
 #### Perspective 1: Security Review
 
-| Check Item | Description |
-|------------|-------------|
-| OWASP Top 10 Compliance | Major web security vulnerability check |
-| Input Validation & Sanitization | User input handling safety |
-| Authentication/Authorization Logic | Access control implementation |
-| Secrets Exposure | API keys, passwords, token leaks |
-| Injection Risks | SQL, command, XSS, CSRF risks |
-| Dependency Vulnerabilities | Third-party library vulnerabilities |
+| Check | Description |
+|-----------|------|
+| OWASP Top 10 compliance | Checks for major web security vulnerabilities |
+| Input validation and sanitization | Safety of user-input handling |
+| Auth/authorization logic | Verifies access-control implementation |
+| Secret exposure | Leaked API keys, passwords, tokens |
+| Injection risks | SQL, command, XSS, CSRF risks |
+| Dependency vulnerabilities | Third-party library vulnerabilities |
 
 #### Perspective 2: Performance Review
 
-| Check Item | Description |
-|------------|-------------|
-| Algorithmic Complexity | O(n) analysis |
-| Database Query Efficiency | N+1 queries, missing indexes |
-| Memory Usage Patterns | Memory leaks, excessive allocation |
-| Caching Opportunities | Identifying cacheable areas |
-| Bundle Size Impact | Frontend change bundle size impact |
-| Concurrency Safety | Race conditions, deadlocks |
+| Check | Description |
+|-----------|------|
+| Algorithmic complexity | O(n) analysis |
+| Database query efficiency | N+1 queries, missing indexes |
+| Memory usage patterns | Memory leaks, excessive allocation |
+| Caching opportunities | Identifies cacheable spots |
+| Bundle size | Bundle-size impact of frontend changes |
+| Concurrency safety | Race conditions, deadlocks |
 
 #### Perspective 3: Quality Review
 
-| Check Item | Description |
-|------------|-------------|
-| TRUST 5 Compliance | Tested, Readable, Unified, Secured, Trackable |
-| Naming Conventions | Code readability |
-| Error Handling | Error handling completeness |
-| Test Coverage | Test existence for changed code |
-| Documentation | Public API documentation |
-| Project Pattern Consistency | Adherence to existing codebase patterns |
+| Check | Description |
+|-----------|------|
+| TRUST 5 compliance | Tested, Readable, Unified, Secured, Trackable |
+| Naming conventions | Code readability |
+| Error handling | Completeness of error handling |
+| Test coverage | Whether tests exist for the changed code |
+| Documentation | Whether public APIs are documented |
+| Project-pattern consistency | Adherence to existing codebase patterns |
 
 #### Perspective 4: UX Review
 
-| Check Item | Description |
-|------------|-------------|
-| User Flow Integrity | Whether changes break existing flows |
-| Error States | Error and edge cases from user perspective |
+| Check | Description |
+|-----------|------|
+| User flows | Whether existing flows break |
+| Error states | Errors and edge cases from the user's perspective |
 | Accessibility | WCAG, ARIA compliance |
-| Loading States | Loading indicators and feedback |
-| Breaking Changes | Public interface compatibility |
+| Loading states | Loading indicators and feedback |
+| Breaking changes | Public-interface compatibility |
 
-### Phase 3: @MX Tag Compliance Check
+### Step 3: @MX Tag Compliance Check
 
-Checks @MX tag compliance for changed files:
+Checks @MX tag compliance in the changed files:
 
-- New exported functions: Need `@MX:NOTE` or `@MX:ANCHOR`
-- High fan_in functions (>=3 callers): Must have `@MX:ANCHOR`
-- Dangerous patterns: Should have `@MX:WARN`
-- Untested public functions: Should have `@MX:TODO`
+- New exported functions: `@MX:NOTE` or `@MX:ANCHOR` needed
+- High fan_in functions (>=3 callers): `@MX:ANCHOR` required
+- Dangerous patterns: `@MX:WARN` needed
+- Untested public functions: `@MX:TODO` needed
 
-### Phase 4: Report Consolidation
+### Step 4: Report Consolidation
 
-Generates a consolidated report organized by severity:
+Produces a consolidated report organized by severity:
 
 ```
 ## Code Review Report
 
-### Critical Issues (must fix)
-- [SECURITY] src/auth/service.py:45: SQL injection risk
+### Critical issues (must fix)
+- [SECURITY] src/auth/service.py:45: possible SQL injection
 - [PERFORMANCE] src/api/handler.py:23: N+1 query pattern
 
-### Warnings (should fix)
-- [QUALITY] src/utils/helper.py:12: Missing error handling
-- [UX] src/components/Form.tsx:88: Missing accessibility attributes
+### Warnings (fix recommended)
+- [QUALITY] src/utils/helper.py:12: missing error handling
+- [UX] src/components/Form.tsx:88: missing accessibility attributes
 
-### Suggestions (nice to have)
-- [QUALITY] src/models/user.py:34: Method extraction recommended
+### Suggestions (possible improvements)
+- [QUALITY] src/models/user.py:34: method extraction recommended
 
-### @MX Tag Compliance
+### @MX tag compliance
 - Missing tags: 3
-- Outdated tags: 1
+- Stale tags: 1
 - Compliant files: 8/12
 
-### Overall Assessment
+### Overall assessment
 - Security: PASS
 - Performance: WARN
 - Quality: PASS
 - UX: WARN
-- TRUST 5 Score: 4/5
+- TRUST 5 score: 4/5
 ```
 
-### Phase 5: Next Steps
+### Step 5: Next-Step Guidance
 
-Guides next steps based on review results:
+Guides you to the next step based on the review results:
 
-- **Auto-fix**: Run `/moai fix` to auto-resolve Level 1-2 issues
-- **Create fix tasks**: Register each finding as individual tasks
-- **Export report**: Save review report to `.moai/reports/`
-- **Dismiss**: Acknowledge without immediate action
+- **Auto-fix**: resolve Level 1-2 issues automatically with `/moai fix`
+- **Create fix tasks**: register each finding as an individual task
+- **Export the report**: save the review report to `.moai/reports/`
+- **Close**: finish after reviewing, with no further action
 
 ## Agent Delegation Chain
 
 ```mermaid
 flowchart TD
-    User["User Request"] --> MoAI["MoAI Orchestrator"]
-    MoAI --> Identify["Identify Change Scope<br/>(git diff)"]
+    User["User request"] --> MoAI["MoAI orchestrator"]
+    MoAI --> Identify["Identify change scope<br/>(git diff)"]
     Identify --> Agent{"--team?"}
 
-    Agent -->|Yes| Team["Team Mode"]
-    Agent -->|No| Single["Single Agent"]
+    Agent -->|Yes| Team["Team mode"]
+    Agent -->|No| Single["Single agent"]
 
-    Team --> R1["Security Expert"]
-    Team --> R2["Performance Expert"]
-    Team --> R3["Quality Expert"]
-    Team --> R4["UX Expert"]
+    Team --> R1["Security specialist"]
+    Team --> R2["Performance specialist"]
+    Team --> R3["Quality specialist"]
+    Team --> R4["UX specialist"]
 
-    Single --> Quality["sync-auditor<br/>Sequential 4-perspective analysis"]
+    Single --> Quality["sync-auditor<br/>sequential 4-perspective analysis"]
 
-    R1 --> Consolidate["Report Consolidation"]
+    R1 --> Consolidate["Report consolidation"]
     R2 --> Consolidate
     R3 --> Consolidate
     R4 --> Consolidate
     Quality --> Consolidate
 
-    Consolidate --> Report["Review Report"]
+    Consolidate --> Report["Review report"]
 ```
 
-**Agent Roles:**
+**Agent roles:**
 
-| Agent | Role | Key Tasks |
-|-------|------|-----------|
-| **MoAI Orchestrator** | Change identification & result consolidation | git diff, report generation |
-| **sync-auditor** | Code quality analysis (default mode) | Sequential 4-perspective analysis |
-| **manager-develop** | Security-focused analysis (`--security`) | OWASP, injection, authentication |
+| Agent | Role | Main work |
+|----------|------|----------|
+| **MoAI orchestrator** | Change identification and result consolidation | git diff, report generation |
+| **sync-auditor** | Code-quality analysis (default mode) | Sequential 4-perspective analysis |
+| **manager-develop** | Security-focused analysis (`--security`) | OWASP, injection, auth |
 
-## FAQ
+## Frequently Asked Questions
 
-### Q: What's the difference between --team mode and default mode?
+### Q: What is the difference between --team mode and the default mode?
 
-Default mode uses a single `sync-auditor` agent to analyze all 4 perspectives sequentially. `--team` mode uses 4 expert reviewers analyzing simultaneously for deeper analysis, but consumes approximately 4x more tokens.
+In the default mode, the `sync-auditor` agent analyzes the 4 perspectives sequentially. In `--team` mode, 4 specialist reviewers analyze simultaneously — deeper, but consuming about 4x the tokens.
 
-### Q: What's the best flag combination for pre-PR review?
+### Q: What is the best flag combination for a pre-PR review?
 
-`/moai review --staged` is the most efficient for reviewing staged changes. For security-critical code, use `/moai review --staged --security`.
+Reviewing only the staged changes with `/moai review --staged` is the most efficient. When security matters, use `/moai review --staged --security`.
 
 ### Q: Can I skip the @MX tag check?
 
-Currently, @MX tag checking is always included. Results are shown in a separate section of the report, and tags are not added automatically.
+Currently the @MX tag check is always included. Its results appear as a separate section in the report, and tags are not added automatically.
 
-### Q: Can issues found in the review be auto-fixed?
+### Q: Can issues found in the review be fixed automatically?
 
-Yes, after the review you can run `/moai fix` to auto-fix Level 1-2 issues. Level 3-4 issues require manual review.
+Yes, after the review completes, run `/moai fix` in the next step to automatically fix Level 1-2 issues. Level 3-4 issues require manual confirmation.
 
-## Related Documentation
+## Related Documents
 
-- [/moai fix - One-shot Auto Fix](/utility-commands/moai-fix)
-- [/moai codemaps - Architecture Documentation](/quality-commands/moai-codemaps)
+- [/moai gate - pre-commit quality gate](/quality-commands/moai-gate)
+- [/moai fix - one-shot auto-fix](/utility-commands/moai-fix)
+- [/moai codemaps - architecture docs](/quality-commands/moai-codemaps)

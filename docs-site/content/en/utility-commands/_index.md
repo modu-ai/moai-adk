@@ -4,50 +4,56 @@ weight: 40
 draft: false
 ---
 
-Introduction to MoAI-ADK's automation and feedback commands.
+A collection of commands for autonomous automation, iterative fix loops, code management, and feedback.
 
 {{< callout type="info" >}}
-Utility commands are specialized for **quick automation and problem solving**, unlike workflow commands (`/moai plan`, `/moai run`, `/moai sync`).
+Unlike the workflow commands (`/moai plan`, `/moai run`, `/moai sync`), the utility commands specialize in **fast automation and problem solving**.
 {{< /callout >}}
+
+## The Execution Surface of Agentic Loop Engineering
+
+This section is where v3's second pillar, **agentic loop engineering**, actually runs. `/moai loop` is a diagnostic loop that iterates until the issue queue found by diagnostic tools is empty, and `/moai goal` is a condition-declared loop where you declare a completion condition and the session works on its own until the condition holds. `/moai fix` is the one-shot (single-pass) preset in the same family. The observations left behind as the loop runs become raw material for harness learning — the entrance to the recursive cycle where loops accumulate observations, the harness learns, and the guidance evolves.
 
 ## Command Comparison
 
-| Command | Purpose | Execution Method | When to Use |
-|---------|---------|------------------|-------------|
-| `/moai` | Full autonomous automation | Entire process from SPEC creation to documentation | Want to delegate a feature from start to finish |
-| `/moai loop` | Iterative fixing loop | Repeat diagnose → fix → verify | Want to fix multiple errors at once |
-| `/moai fix` | One-shot auto fix | Diagnose → fix → complete (once) | Want to quickly fix lint errors or type errors |
-| `/moai clean` | Dead code removal | Static analysis → usage graph → safe removal | Want to clean up unused code |
-| `/moai mx` | @MX tag scan | 3-pass scan → auto tag insertion | Want to add AI context annotations to code |
-| `/moai feedback` | Submit feedback | Auto-create GitHub issue | Want to send bug reports or improvement suggestions for MoAI-ADK |
+| Command | Purpose | Execution style | When to use |
+|--------|------|-----------|-----------|
+| `/moai` | Fully autonomous automation | The whole pipeline from SPEC creation to documentation | When you want to hand over a new feature end to end |
+| `/moai goal` | Condition-declared autonomous loop | Keeps taking turns until the completion condition holds | When you want to declare an end state like "until all tests pass" |
+| `/moai loop` | Iterative fix loop | Repeats diagnose → fix → verify | When you want to knock out many errors at once |
+| `/moai fix` | One-shot auto-fix | Diagnose → fix → done (once) | When you want to fix lint or type errors quickly |
+| `/moai clean` | Dead-code removal | Static analysis → usage graph → safe removal | When you want to clean up unused code |
+| `/moai mx` | @MX tag scan | 3-stage scan → automatic tag insertion | When you want to add AI-context annotations to code |
+| `/moai feedback` | Submit feedback | Auto-creates a GitHub issue | When sending a bug report or improvement proposal to MoAI-ADK |
 
-## Command Relationship Diagram
+## Command Relationship Map
 
 ```mermaid
 flowchart TD
-    A[Utility Commands] --> B[Automation Commands]
-    A --> C[Code Management Commands]
-    A --> D[Feedback Command]
+    A[Utility commands] --> B[Automation commands]
+    A --> C[Code management commands]
+    A --> D[Feedback commands]
 
-    B --> E["/moai<br/>Full Autonomous Automation"]
-    B --> F["/moai loop<br/>Iterative Fixing Loop"]
-    B --> G["/moai fix<br/>One-shot Auto Fix"]
-    C --> H["/moai clean<br/>Dead Code Removal"]
-    C --> I["/moai mx<br/>@MX Tag Scan"]
-    D --> J["/moai feedback<br/>Submit Feedback"]
+    B --> E["/moai<br/>fully autonomous automation"]
+    B --> F["/moai loop<br/>iterative fix loop"]
+    B --> G["/moai fix<br/>one-shot auto-fix"]
+    C --> H["/moai clean<br/>dead-code removal"]
+    C --> I["/moai mx<br/>@MX tag scan"]
+    D --> J["/moai feedback<br/>submit feedback"]
 
-    E -->|Uses internally| F
-    F -->|Execute once only| G
-    H -->|Combined with review| I
+    E -->|used internally| F
+    F -->|run just once| G
+    H -->|together with review| I
 ```
 
 {{< callout type="info" >}}
 **Not sure which command to use?**
 
-- Want to create a feature from scratch → `/moai`
-- Want to iteratively fix many errors in code → `/moai loop`
-- Want to quickly fix simple lint errors → `/moai fix`
+- Want to build a whole feature at once → `/moai`
+- "Work on your own until this condition is met" → `/moai goal`
+- Lots of errors in the code you want fixed iteratively → `/moai loop`
+- Just want simple lint errors fixed fast → `/moai fix`
 - Want to clean up unused code → `/moai clean`
-- Want AI to understand your code better with tags → `/moai mx`
-- Have problems with MoAI-ADK itself → `/moai feedback`
+- Want tags so the AI understands the code better → `/moai mx`
+- A problem with MoAI-ADK itself → `/moai feedback`
 {{< /callout >}}

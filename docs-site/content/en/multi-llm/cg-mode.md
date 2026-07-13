@@ -4,169 +4,193 @@ weight: 20
 draft: false
 ---
 
-## What is CG Mode?
+## What is CG mode?
 
-CG (Claude + GLM) mode is a hybrid mode where the **leader uses Claude API** and **workers use GLM API**. It's implemented through tmux session-level environment variable isolation.
+CG (Claude + GLM) mode is a hybrid mode where the leader uses the **Claude
+API** and the workers use the **GLM API**. It is implemented with
+tmux-session-level environment variable isolation and executes the Tokenomics
+split — "Claude plans deep, GLM implements cheap" — inside a single session.
+For implementation-heavy work, it saves roughly 60-70% of the cost.
 
 ## Architecture
 
 ```
-moai cg execution
+moai cg runs
     │
-    ├── 1. Inject GLM settings into tmux session environment variables
+    ├── 1. Inject GLM settings into the tmux session environment
     │      (ANTHROPIC_AUTH_TOKEN, BASE_URL, MODEL_* variables)
     │
     ├── 2. Remove GLM environment variables from settings.local.json
-    │      → Leader pane uses Claude API
+    │      → the leader pane uses the Claude API
     │
     ├── 3. Set CLAUDE_CODE_TEAMMATE_DISPLAY=tmux
-    │      → Workers inherit GLM environment variables in new panes
+    │      → workers inherit GLM env vars in new panes
     │
-    └── 4. Run Claude Code (replace current process)
+    └── 4. Launch Claude Code (replaces the current process)
 ```
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│  Leader (current tmux pane, Claude API)                     │
-│  - Run /moai --team to orchestrate workflows                │
-│  - Handle plan, quality, sync phases                        │
-│  - No GLM environment variables → Use Claude API            │
+│  Leader (current tmux pane, Claude API)                      │
+│  - Workflow orchestration                                    │
+│  - Handles plan, quality, and sync phases                    │
+│  - No GLM env vars → uses the Claude API                     │
 └──────────────────────┬──────────────────────────────────────┘
-                       │ Agent Teams (new tmux pane)
+                       │ Teammate spawn (new tmux pane)
                        ▼
 ┌─────────────────────────────────────────────────────────────┐
-│  Team Members (new tmux pane, GLM API)                      │
-│  - Inherit tmux session environment variables → Use GLM API │
-│  - Execute implementation work in run phase                 │
-│  - Communicate with leader via SendMessage                  │
+│  Teammates (new tmux panes, GLM API)                         │
+│  - Inherit tmux session env vars → use the GLM API           │
+│  - Execute implementation work in the run phase              │
+│  - Communicate with the leader via SendMessage               │
 └─────────────────────────────────────────────────────────────┘
 ```
 
-## How to Use
+## How to use it
 
-### Step 1: Save GLM API Key (First Time Only)
+### Step 1: save your GLM API key (once)
 
 ```bash
 moai glm sk-your-glm-api-key
 ```
 
-The key is securely stored in `~/.moai/.env.glm`.
+The key is stored safely in `~/.moai/.env.glm`.
 
-### Step 2: Check tmux Environment
+### Step 2: check your tmux environment
 
-If you're already using tmux, no need to create a new session.
+If you are already inside tmux, there is no need to create a new session.
 
 ```bash
-# If not using tmux:
+# If you are not in tmux:
 tmux new -s moai
 ```
 
-> **Tip**: Set VS Code terminal default to tmux to skip this step entirely.
+> **Tip**: setting tmux as your VS Code terminal default lets you skip this step entirely.
 
-### Step 3: Run CG Mode
+### Step 3: launch CG mode
 
 ```bash
 moai cg
 ```
 
-`moai cg` automatically runs Claude Code in the current pane. No need to run `claude` separately.
+`moai cg` automatically launches Claude Code in the current pane. There is no
+need to run `claude` separately.
 
-### Step 4: Execute Team Workflow
+### Step 4: run your workflow
 
 ```bash
-/moai --team "implement user authentication"
+/moai "Implement user authentication feature"
 ```
 
-## Important Notes
+From here it works as usual. The orchestrator (the leader, Claude) handles
+planning, quality, and sync, while implementation-heavy work is delegated to
+GLM teammates in new tmux panes.
+
+> **Note**: the old `--team` flag (the Agent Teams static-orchestration layer)
+> was retired in v3.0. Forcing it falls back to sub-agent mode. CG mode's
+> leader/worker separation runs on Claude Code's built-in teammate runtime
+> (tmux panes), and that runtime is preserved.
+
+## Important notes
 
 | Item | Description |
-|------|-------------|
-| **tmux environment** | No new session needed if already using tmux. Set VS Code terminal default to tmux for convenience |
-| **Auto-execution** | `moai cg` auto-runs Claude Code in current pane. No separate `claude` command needed |
-| **Session end** | session_end hook automatically cleans up tmux session environment variables → Next session uses Claude |
-| **Team communication** | SendMessage tool for leader↔worker communication |
-| **Mode switching** | `moai cg` auto-initializes GLM settings when switching from `moai glm` — no intermediate `moai cc` needed |
+|------|------|
+| **tmux environment** | No new session needed if you are already in tmux. Setting tmux as the VS Code terminal default is convenient |
+| **Auto launch** | `moai cg` auto-launches Claude Code in the current pane. No separate `claude` command needed |
+| **Session end** | The session_end hook automatically cleans up the tmux session env vars → the next session uses Claude |
+| **Team communication** | Leader↔worker communication via the SendMessage tool |
+| **Mode switching** | When switching from `moai glm`, `moai cg` auto-resets the GLM settings — no intermediate `moai cc` needed |
 
-## tmux Environment Variable Injection Security Model {#tmux-env-security}
+## tmux environment variable injection security model {#tmux-env-security}
 
-Starting with v2.20.0-rc1, when `moai cg` injects GLM token (`ANTHROPIC_AUTH_TOKEN`) into tmux session environment variables, it uses **source-file channel** (`tmux source-file <tmp>`) instead of **argv channel** (`tmux set-environment <KEY> <VALUE>`). The token is no longer exposed in plaintext to `ps auxe`, `/proc/<pid>/cmdline`, auditd logs, sysmon tracing, or crash dumps (CWE-214).
+Since v2.20.0-rc1, when `moai cg` injects the GLM token
+(`ANTHROPIC_AUTH_TOKEN`) into the tmux session environment, it uses the
+**source-file channel** (`tmux source-file <tmp>`) instead of the **argv
+channel** (`tmux set-environment <KEY> <VALUE>`). The token is no longer
+exposed in plaintext to `ps auxe`, `/proc/<pid>/cmdline`, auditd logs, sysmon
+traces, or crash dumps (CWE-214).
 
-### Injection Flow
+### Injection flow
 
-1. Create a temporary file under `~/.moai/run/` with `mkstemp` (mode `0o600` enforced)
-2. Write a single line: `set-environment -t <session> <KEY> <VALUE>`
-3. `moai cg` reads the file via `tmux source-file <tmp>` to inject into environment
-4. Delete the temporary file with `os.Remove` immediately after injection
+1. Create a temp file under `~/.moai/run/` with `mkstemp` (mode `0o600` enforced)
+2. Write a single `set-environment -t <session> <KEY> <VALUE>` line
+3. Have tmux read the file into the environment via `tmux source-file <tmp>`
+4. Unlink with `os.Remove` immediately after injection
 
-Only the temporary file path is exposed in argv; the token itself is not.
+Only the temp file path appears in argv — the token itself is never exposed.
 
-### Non-sensitive Values Keep argv Channel
+### Non-sensitive values stay on argv
 
-Non-sensitive values like `CLAUDE_CONFIG_DIR`, `ANTHROPIC_BASE_URL`, `ANTHROPIC_DEFAULT_*_MODEL` use the existing argv path (no security risk).
+Values that are not tokens — `CLAUDE_CONFIG_DIR`, `ANTHROPIC_BASE_URL`,
+`ANTHROPIC_DEFAULT_*_MODEL`, etc. — keep the existing argv path (no security
+threat).
 
-### User Responsibility
+### User responsibility
 
-The `~/.moai/.env.glm` source file must maintain `0o600` permissions in your environment. The `moai glm` command sets this automatically:
+The `~/.moai/.env.glm` source file must keep `0o600` permissions in your
+environment. The `moai glm` command sets this automatically:
 
 ```bash
 stat -c '%a' ~/.moai/.env.glm    # Linux: 600
 stat -f '%A' ~/.moai/.env.glm    # macOS: 600
 ```
 
-### Self-Audit
+### Self-check
 
-During CG mode execution, verify the token is not exposed in argv:
+Verify the token is not exposed in argv while CG mode is running:
 
 ```bash
-# After running moai cg in new tmux session
+# Inside a new tmux session after running moai cg
 ps auxe | grep -i 'tmux set-environment.*ANTHROPIC_AUTH_TOKEN'
-# Expected: 0 matches (token not in argv)
+# Expected: 0 matches (the token is not in argv)
 ```
 
-For detailed threat model, failure behavior (`ErrTmuxSensitiveInjectFailed` sentinel), and additional audit procedures, see [Security Notes — CWE-214](/en/advanced/security-notes/#cwe-214).
+For the detailed threat model, failure behavior (the
+`ErrTmuxSensitiveInjectFailed` sentinel), and additional checks, see
+[Security Notes — CWE-214](/en/advanced/security-notes/#cwe-214).
 
-## Display Modes
+## Display modes
 
-Agent Teams supports two display modes:
+The teammate runtime supports two display modes:
 
-| Mode | Description | Communication | Leader/Worker Separation |
-|------|-------------|----------------|--------------------------|
-| `in-process` | Default, all terminals | ✅ SendMessage | ❌ Same environment |
-| `tmux` | Split screen display | ✅ SendMessage | ✅ Session environment isolation |
+| Mode | Description | Communication | Leader/worker separation |
+|------|------|------|--------------|
+| `in-process` | Default mode, any terminal | SendMessage supported | No separation (same environment) |
+| `tmux` | Split-screen display | SendMessage supported | Session env-var isolation |
 
-> **CG mode can only separate leader/worker APIs in `tmux` display mode.**
+> **CG mode can only separate leader/worker APIs in the `tmux` display mode.**
 
-## Mode Comparison
+## Mode comparison
 
-| Command | Leader | Worker | tmux Required | Cost Savings | Use Case |
-|---------|--------|--------|---------------|--------------|----------|
-| `moai cc` | Claude | Claude | No | - | Complex tasks, highest quality |
+| Command | Leader | Workers | tmux required | Cost savings | Use case |
+|--------|------|------|----------|----------|------|
+| `moai cc` | Claude | Claude | No | - | Complex work, highest quality |
 | `moai glm` | GLM | GLM | Recommended | ~70% | Cost optimization |
 | `moai cg` | Claude | GLM | **Required** | **~60%** | Quality + cost balance |
 
-### When Should I Use CG Mode?
+### When should you use CG mode?
 
-**Good for CG Mode:**
+**Good fit for CG mode:**
 - Implementation-heavy SPEC execution (run phase)
-- Code generation work
+- Code generation
 - Test writing
 - Documentation generation
 
-**Better with Claude Only (cc):**
-- Architecture design/planning (Opus reasoning needed)
-- Security review (Claude's security training needed)
-- Complex debugging (advanced reasoning needed)
+**Good fit for Claude-only (cc):**
+- Architecture design/planning (needs Opus reasoning)
+- Security reviews (needs Claude's security training)
+- Complex debugging (needs advanced reasoning)
 
 ## Troubleshooting
 
-| Problem | Cause | Solution |
-|---------|-------|----------|
-| Workers using Claude API | tmux session environment variables not set | Re-run `moai cg` inside tmux |
-| `moai cg` doesn't run Claude Code | Executed outside tmux | Run `tmux new -s moai` then retry |
-| GLM environment variables persist after session end | session_end hook failed | Manually cleanup with `moai cc` |
+| Problem | Cause | Fix |
+|------|------|------|
+| Workers use the Claude API | tmux session env vars not set | Re-run `moai cg` inside tmux |
+| Claude Code does not launch after `moai cg` | Run outside tmux | `tmux new -s moai`, then re-run |
+| GLM env vars remain after the session ends | session_end hook failed | Clean up manually with `moai cc` |
 
-## Next Steps
+## Next steps
 
-- [Model Policy](/en/multi-llm/model-policy) — Agent-specific model assignment
-- [Dual Execution Mode](/en/getting-started/faq) — Sub-Agent vs Agent Teams
-- [CLI Reference](/en/getting-started/cli) — Detailed `moai cc`, `moai glm`, `moai cg`
+- [Model Policy](/en/multi-llm/model-policy) — per-agent model assignments
+- [FAQ](/en/getting-started/faq) — execution mode FAQ
+- [CLI Reference](/en/getting-started/cli) — moai cc, moai glm, moai cg details

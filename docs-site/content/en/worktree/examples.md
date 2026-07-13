@@ -1,31 +1,34 @@
 ---
-title: Git Worktree Real Usage Examples
+title: Git Worktree Real-World Examples
 weight: 30
 draft: false
 ---
 
-Learn how to apply Git Worktree in real projects through concrete examples.
+How Git Worktree runs in real projects — concrete scenarios from single-SPEC
+development to parallel development, team collaboration, and troubleshooting.
+Each scenario includes the Tokenomics decision of "which model goes to which
+phase".
 
-## Table of Contents
+## Table of contents
 
-1. [Single SPEC Development](#single-spec-development)
+1. [Single-SPEC Development](#single-spec-development)
 2. [Parallel SPEC Development](#parallel-spec-development)
-3. [Team Collaboration Scenarios](#team-collaboration-scenarios)
+3. [Team Collaboration Scenario](#team-collaboration-scenario)
 4. [Troubleshooting Cases](#troubleshooting-cases)
 
 ---
 
-## Single SPEC Development
+## Single-SPEC Development
 
-### Scenario: Implement User Authentication System
+### Scenario: implementing a user authentication system
 
-#### Step 1: SPEC Planning (Terminal 1)
+#### Step 1: SPEC planning (Terminal 1)
 
 ```bash
-# In project root
+# From the project root
 $ cd /path/to/your-project
 
-# Create SPEC plan
+# Create the SPEC plan
 > /moai plan "Implement JWT-based user authentication system" --worktree
 
 # Output
@@ -33,11 +36,11 @@ $ cd /path/to/your-project
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 Analyzing SPEC...
-  - Feature requirements: 8 found
+  - Functional requirements: 8 found
   - Technical requirements: 5 found
   - API endpoints: 6 identified
 
-Creating SPEC document...
+Generating SPEC documents...
   ✓ .moai/specs/SPEC-AUTH-001/spec.md
   ✓ .moai/specs/SPEC-AUTH-001/requirements.md
   ✓ .moai/specs/SPEC-AUTH-001/api-design.md
@@ -45,32 +48,34 @@ Creating SPEC document...
 Creating Worktree...
   ✓ Branch created: feature/SPEC-AUTH-001
   ✓ Worktree created: /path/to/your-project/.moai/worktrees/SPEC-AUTH-001
-  ✓ Branch checkout complete
+  ✓ Branch switched
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 Next steps:
-  1. Run in new terminal: moai worktree go SPEC-AUTH-001
-  2. Change LLM: moai glm
+  1. In a new terminal, run: moai worktree go SPEC-AUTH-001
+  2. Switch LLM: moai glm
   3. Start Claude: claude
   4. Start development: /moai run SPEC-AUTH-001
 
-Cost saving tip: Use 'moai glm' for 70% cost savings during implementation!
+Cost-saving tip: use 'moai glm' during implementation for 70% savings!
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
 
-#### Step 2: Enter Worktree and Implement (Terminal 2)
+#### Step 2: entering the Worktree and implementing (Terminal 2)
+
+Planning is done, so implementation switches to the low-cost model:
 
 ```bash
-# Open new terminal
+# Open a new terminal
 $ moai worktree go SPEC-AUTH-001
 
-# New terminal opens and moves to Worktree
-# Prompt changes
+# A new terminal opens and moves into the Worktree
+# The prompt changes
 (SPEC-AUTH-001) ~/moai-project/.moai/worktrees/SPEC-AUTH-001
 
-# Change LLM to low-cost model
+# Switch the LLM to the low-cost model
 (SPEC-AUTH-001) $ moai glm
-✓ LLM changed: GLM 5 (70% cost savings)
+✓ LLM switched: GLM 5 (70% cost savings)
 
 # Start Claude Code
 (SPEC-AUTH-001) $ claude
@@ -85,12 +90,12 @@ Type 'help' for available commands
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 Phase 1: ANALYZE
-  ✓ Requirement analysis complete
+  ✓ Requirements analysis complete
   ✓ Existing code analysis complete
-  ✓ Test coverage target: 85%
+  ✓ Test coverage: 85% target
 
 Phase 2: PRESERVE
-  ✓ Created 12 characterization tests
+  ✓ 12 characterization tests created
   ✓ Existing behavior preserved
 
 Phase 3: IMPROVE
@@ -107,11 +112,11 @@ Implementation complete!
 Next steps:
   1. Run tests: pytest tests/auth/
   2. Document: /moai sync SPEC-AUTH-001
-  3. Complete: moai worktree done SPEC-AUTH-001
+  3. Finish: moai worktree done SPEC-AUTH-001
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
 
-#### Step 3: Documentation (same Terminal 2)
+#### Step 3: documentation (same Terminal 2)
 
 ```bash
 # Run documentation
@@ -135,13 +140,13 @@ Next step: moai worktree done SPEC-AUTH-001 --push
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
 
-#### Step 4: Complete and Merge (Terminal 1)
+#### Step 4: completion and merge (Terminal 1)
 
 ```bash
-# Return to project root
+# Back at the project root
 $ cd /path/to/your-project
 
-# Complete Worktree
+# Complete the Worktree
 $ moai worktree done SPEC-AUTH-001 --push
 
 # Output
@@ -156,13 +161,13 @@ Completing Worktree: SPEC-AUTH-001
 2. Merging feature branch...
    ✓ Merge 'feature/SPEC-AUTH-001' into main
 
-3. Pushing to remote repository...
+3. Pushing to remote...
    ✓ github.com:username/repo.git
    ✓ Branch 'main' set up to track remote branch 'main'
 
-4. Cleaning Worktree...
-   ✓ Remove Worktree: .moai/worktrees/SPEC-AUTH-001
-   ✓ Remove branch: feature/SPEC-AUTH-001
+4. Cleaning up Worktree...
+   ✓ Worktree removed: .moai/worktrees/SPEC-AUTH-001
+   ✓ Branch removed: feature/SPEC-AUTH-001
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ✓ SPEC-AUTH-001 complete!
@@ -180,7 +185,10 @@ Total commits: 4
 
 ## Parallel SPEC Development
 
-### Scenario: Develop 3 SPECs Simultaneously
+### Scenario: developing 3 SPECs at once
+
+Planning is batched in one terminal on a high-reasoning model (Opus), then
+implementation switches to GLM and fans out across three terminals:
 
 ```mermaid
 graph TB
@@ -207,29 +215,29 @@ graph TB
     P3 --> I3
 ```
 
-#### Terminal 1: Planning (all SPECs)
+#### Terminal 1: planning (all SPECs)
 
 ```bash
-# SPEC 1: Authentication
+# SPEC 1: authentication
 > /moai plan "JWT authentication system" --worktree
-✓ SPEC-AUTH-001 creation complete
+✓ SPEC-AUTH-001 created
 
-# SPEC 2: Logging
+# SPEC 2: logging
 > /moai plan "Structured logging system" --worktree
-✓ SPEC-LOG-002 creation complete
+✓ SPEC-LOG-002 created
 
 # SPEC 3: API
 > /moai plan "REST API v2" --worktree
-✓ SPEC-API-003 creation complete
+✓ SPEC-API-003 created
 
-# Check Worktrees
+# Check the Worktrees
 moai worktree list
 SPEC-AUTH-001  feature/SPEC-AUTH-001  /path/to/SPEC-AUTH-001
 SPEC-LOG-002   feature/SPEC-LOG-002   /path/to/SPEC-LOG-002
 SPEC-API-003   feature/SPEC-API-003   /path/to/SPEC-API-003
 ```
 
-#### Terminal 2: AUTH-001 Implementation
+#### Terminal 2: implementing AUTH-001
 
 ```bash
 $ moai worktree go SPEC-AUTH-001
@@ -239,7 +247,7 @@ $ moai worktree go SPEC-AUTH-001
 # ... implementation in progress ...
 ```
 
-#### Terminal 3: LOG-002 Implementation
+#### Terminal 3: implementing LOG-002
 
 ```bash
 $ moai worktree go SPEC-LOG-002
@@ -249,7 +257,7 @@ $ moai worktree go SPEC-LOG-002
 # ... implementation in progress ...
 ```
 
-#### Terminal 4: API-003 Implementation
+#### Terminal 4: implementing API-003
 
 ```bash
 $ moai worktree go SPEC-API-003
@@ -259,10 +267,10 @@ $ moai worktree go SPEC-API-003
 # ... implementation in progress ...
 ```
 
-#### Monitor Parallel Progress
+#### Monitoring parallel progress
 
 ```bash
-# Check all Worktree status in Terminal 1
+# In Terminal 1, check every Worktree's status
 $ moai worktree status --verbose
 
 Worktree: SPEC-AUTH-001
@@ -286,9 +294,9 @@ Last activity: 7 minutes ago
 
 ---
 
-## Team Collaboration Scenarios
+## Team Collaboration Scenario
 
-### Scenario: 2 Developers Collaborating
+### Scenario: two developers collaborating
 
 ```mermaid
 graph TB
@@ -298,11 +306,11 @@ graph TB
     end
 
     subgraph Dev2["Developer B (Backend)"]
-        B1[SPEC-BE-001<br/>API Design]
-        B2[SPEC-BE-002<br/>Auth Service]
+        B1[SPEC-BE-001<br/>API design]
+        B2[SPEC-BE-002<br/>Auth service]
     end
 
-    subgraph Remote["Remote Repository"]
+    subgraph Remote["Remote repository"]
         R[main branch]
     end
 
@@ -312,56 +320,56 @@ graph TB
     B2 --> R
 ```
 
-#### Developer A: Frontend Development
+#### Developer A: frontend development
 
 ```bash
-# On Developer A's machine
+# On developer A's machine
 git clone https://github.com/team/project.git
 cd project
 
-# Create Frontend SPEC
+# Create a frontend SPEC
 > /moai plan "Login UI component" --worktree
 ✓ SPEC-FE-001 created
 
-# Develop in Worktree
+# Develop inside the Worktree
 moai worktree go SPEC-FE-001
 (SPEC-FE-001) $ moai glm
 (SPEC-FE-001) $ claude
 > /moai run SPEC-FE-001
 
-# After implementation, push to remote
+# Push to remote when done
 (SPEC-FE-001) $ exit
 moai worktree done SPEC-FE-001 --push
-✓ Complete and PR created
+✓ Done and PR created
 ```
 
-#### Developer B: Backend Development
+#### Developer B: backend development
 
 ```bash
-# On Developer B's machine
+# On developer B's machine
 git clone https://github.com/team/project.git
 cd project
 
-# Create Backend SPEC
+# Create a backend SPEC
 > /moai plan "Authentication API service" --worktree
 ✓ SPEC-BE-001 created
 
-# Develop in Worktree
+# Develop inside the Worktree
 moai worktree go SPEC-BE-001
 (SPEC-BE-001) $ moai glm
 (SPEC-BE-001) $ claude
 > /moai run SPEC-BE-001
 
-# After implementation, push to remote
+# Push to remote when done
 (SPEC-BE-001) $ exit
 moai worktree done SPEC-BE-001 --push
-✓ Complete and PR created
+✓ Done and PR created
 ```
 
-#### PR Merge and Integration
+#### PR merge and integration
 
 ```bash
-# By team lead or CI system
+# By the team lead or CI system
 gh pr list
 # FE-001  Login UI Component          Ready
 # BE-001  Authentication API Service  Ready
@@ -370,7 +378,7 @@ gh pr list
 gh pr merge FE-001 --merge
 gh pr merge BE-001 --merge
 
-# All developers stay up to date
+# Every developer stays up to date
 git pull origin main
 ```
 
@@ -378,19 +386,19 @@ git pull origin main
 
 ## Troubleshooting Cases
 
-### Case 1: Resolve Merge Conflict
+### Case 1: resolving a merge conflict
 
 ```bash
 $ moai worktree done SPEC-AUTH-001 --push
 
 # Output
-✗ Merge conflict occurred!
-Conflict files:
+✗ Merge conflict!
+Conflicting files:
   - src/auth/jwt.ts
   - tests/auth.test.ts
 
 Resolution steps:
-1. Edit conflict files to resolve
+1. Edit the conflicting files to resolve
 2. git add <file>
 3. git commit
 4. Re-run moai worktree done SPEC-AUTH-001 --push
@@ -400,10 +408,10 @@ Resolution steps:
 
 ```mermaid
 flowchart TD
-    A[Conflict detected] --> B[Check conflict files]
+    A[Conflict detected] --> B[Check conflicting files]
     B --> C[Open jwt.ts]
     C --> D[Find conflict markers]
-    D --> E[Manual merge]
+    D --> E[Merge manually]
     E --> F[git add jwt.ts]
     F --> G[git commit]
     G --> H[Re-run moai worktree done]
@@ -411,18 +419,18 @@ flowchart TD
 ```
 
 ```bash
-# Resolve conflict
+# Resolve the conflict
 cd .moai/worktrees/SPEC-AUTH-001
 code src/auth/jwt.ts
 
-# Check conflict markers
+# Check the conflict markers
 <<<<<<< HEAD
 const secret = process.env.JWT_SECRET;
 =======
 const secret = config.jwt.secret;
 >>>>>>> feature/SPEC-AUTH-001
 
-# Manually merge
+# Merge manually
 const secret = process.env.JWT_SECRET || config.jwt.secret;
 
 # Stage and commit
@@ -432,53 +440,53 @@ git commit -m "fix: resolve merge conflict in JWT config"
 # Retry completion
 cd /path/to/your-project
 moai worktree done SPEC-AUTH-001 --push
-✓ Complete!
+✓ Done!
 ```
 
-### Case 2: Recover Corrupted Worktree
+### Case 2: recovering a corrupted Worktree
 
 ```bash
 $ moai worktree go SPEC-AUTH-001
-✗ Worktree is corrupted.
+✗ The Worktree is corrupted.
 
 # Diagnose
 $ moai worktree status SPEC-AUTH-001
-✗ Worktree directory does not exist
+✗ The Worktree directory does not exist
 
 # Recover
 $ moai worktree remove SPEC-AUTH-001 --force
-✓ Removed existing Worktree
+✓ Existing Worktree removed
 
 $ moai worktree new SPEC-AUTH-001
-✓ Worktree recreation complete
+✓ Worktree recreated
 ```
 
-### Case 3: Insufficient Disk Space
+### Case 3: running out of disk space
 
 ```bash
 $ df -h
 Filesystem      Size  Used Avail Use%
 /dev/disk1     500G  480G   20G  96%
 
-# Clean old Worktrees
+# Clean up old Worktrees
 $ moai worktree clean --older-than 14
 
 # Worktrees to be cleaned:
-  - SPEC-OLD-001 (30 days ago)
-  - SPEC-OLD-002 (45 days ago)
-  - SPEC-OLD-003 (60 days ago)
+  - SPEC-OLD-001 (30 days old)
+  - SPEC-OLD-002 (45 days old)
+  - SPEC-OLD-003 (60 days old)
 
 Continue? [y/N] y
 
-✓ 3 Worktrees cleaned
-✓ 12GB disk space freed
+✓ 3 Worktrees cleaned up
+✓ 12GB of disk space reclaimed
 ```
 
 ---
 
 ## Real Project Workflow
 
-### Complete Development Cycle Example
+### Example of a complete development cycle
 
 ```mermaid
 sequenceDiagram
@@ -489,10 +497,10 @@ sequenceDiagram
     participant Git as Git Repository
     participant Remote as GitHub
 
-    Dev->>T1: /moai plan "feedback system"
+    Dev->>T1: /moai plan "Feedback system"
     T1->>Git: Create feature/SPEC-FB-001
-    Git->>Git: SPEC document commit
-    T1->>Dev: Worktree creation complete
+    Git->>Git: Commit SPEC documents
+    T1->>Dev: Worktree created
 
     Dev->>T2: moai worktree go SPEC-FB-001
     Dev->>T2: moai glm
@@ -504,57 +512,57 @@ sequenceDiagram
     Note over T3: b5e6f7a
 
     Dev->>T1: moai worktree done SPEC-FB-001
-    T1->>Git: Merge to main
+    T1->>Git: Merge into main
     Git->>Remote: Push
     Remote-->>Dev: PR created
 ```
 
 ---
 
-## Success Stories
+## Success Story
 
-### Case: Startup Application
+### Case: adoption at a startup
 
 ```bash
-# Situation: Need to develop 3 features simultaneously
-# Time: 1 week
+# Situation: 3 features must be developed at once
+# Timeline: 1 week
 # Developers: 2
 
-# Day 1: Plan all SPECs
+# Day 1: plan all SPECs
 > /moai plan "User management" --worktree
 > /moai plan "Payment system" --worktree
 > /moai plan "Notification system" --worktree
 
-# Days 2-4: Parallel implementation
-# Terminal 1: User management
+# Days 2-4: parallel implementation
+# Terminal 1: user management
 $ moai worktree go SPEC-USER-001 && moai glm
-# Terminal 2: Payment system
+# Terminal 2: payment system
 $ moai worktree go SPEC-PAY-001 && moai glm
-# Terminal 3: Notification system
+# Terminal 3: notification system
 $ moai worktree go SPEC-NOTIF-001 && moai glm
 
-# Days 5-6: Documentation and testing
+# Days 5-6: documentation and testing
 # Run /moai sync in each Worktree
 
-# Day 7: Merge
+# Day 7: merge
 $ moai worktree done SPEC-USER-001 --push
 $ moai worktree done SPEC-PAY-001 --push
 $ moai worktree done SPEC-NOTIF-001 --push
 
 # Results
 # - All 3 features completed
-# - 66% time savings with parallel development
-# - 70% cost savings with GLM
+# - 66% time saved through parallel development
+# - 70% cost saved by using GLM
 ```
 
 ---
 
 ## Tips and Tricks
 
-### Tip 1: Terminal Management
+### Tip 1: terminal management
 
 ```bash
-# Use tmux for session management
+# Manage sessions with tmux
 tmux new-session -d -s spec-user 'moai worktree go SPEC-USER-001'
 tmux new-session -d -s spec-pay 'moai worktree go SPEC-PAY-001'
 
@@ -567,10 +575,10 @@ spec-pay: 1 windows
 tmux attach-session -t spec-user
 ```
 
-### Tip 2: Progress Tracking
+### Tip 2: progress tracking
 
 ```bash
-# All Worktree progress
+# Progress across all Worktrees
 for spec in $(moai worktree list --porcelain | awk '{print $1}'); do
     echo "=== $spec ==="
     cd ~/.moai/worktrees/$spec
@@ -579,7 +587,7 @@ for spec in $(moai worktree list --porcelain | awk '{print $1}'); do
 done
 ```
 
-### Tip 3: Automation Script
+### Tip 3: automation script
 
 ```bash
 #!/bin/bash
@@ -593,18 +601,18 @@ echo "1. Creating SPEC plan..."
 echo "2. Entering Worktree..."
 moai worktree go $SPEC_ID
 
-echo "3. Changing LLM..."
+echo "3. Switching LLM..."
 moai glm
 
 echo "4. Starting Claude..."
 claude
 
 # Usage
-# ./auto-workflow.sh SPEC-AUTH-001 "authentication system"
+# ./auto-workflow.sh SPEC-AUTH-001 "Authentication system"
 ```
 
-## Related Documents
+## Related documentation
 
-- [Git Worktree Overview](./index)
-- [Complete Guide](./guide)
-- [FAQ](./faq)
+- [Git Worktree Overview](/en/worktree/)
+- [Complete Guide](/en/worktree/guide)
+- [FAQ](/en/worktree/faq)

@@ -4,7 +4,7 @@ weight: 90
 draft: false
 ---
 
-Claude Code의 MCP (Model Context Protocol) 서버를 활용하는 방법을 상세히 안내합니다.
+Claude Code의 MCP (Model Context Protocol) 서버를 활용하는 방법을 상세히 안내합니다. MCP는 하네스의 도구 확장 계층입니다 — 다만 서버 하나를 연결할 때마다 도구 스키마가 컨텍스트를 차지하므로, "필요한 서버만 연결한다"는 원칙이 여기서도 토크노믹스로 작동합니다.
 
 {{< callout type="info" >}}
 **한 줄 요약**: MCP는 Claude Code에 **외부 도구를 연결하는 USB 포트**입니다. Context7으로 최신 문서를 조회하고, Adaptive Thinking (via `--ultrathink` 키워드)으로 복잡한 문제를 분석합니다.
@@ -14,7 +14,7 @@ Claude Code의 MCP (Model Context Protocol) 서버를 활용하는 방법을 상
 
 MCP (Model Context Protocol)는 Claude Code에 **외부 도구와 서비스를 연결**하는 표준 프로토콜입니다.
 
-Claude Code는 기본적으로 파일 읽기/쓰기, 터미널 명령 등의 도구를 가지고 있습니다. MCP를 통해 이 도구 세트를 확장하여 라이브러리 문서 조회, 지식 그래프 저장, 단계적 추론 등의 기능을 추가할 수 있습니다.
+Claude Code는 기본적으로 파일 읽기/쓰기, 터미널 명령 등의 도구를 가지고 있습니다. MCP를 통해 이 도구 세트를 확장하여 라이브러리 문서 조회, 브라우저 자동화 등의 기능을 추가할 수 있습니다.
 
 ```mermaid
 flowchart TD
@@ -42,7 +42,7 @@ Context7은 **라이브러리 공식 문서를 실시간으로 조회**하는 MC
 
 ### 왜 필요한가?
 
-Claude Code의 학습 데이터는 특정 시점까지의 정보만 포함합니다. Context7을 사용하면 **최신 버전의 공식 문서**를 실시간으로 참조하여 정확한 코드를 생성할 수 있습니다.
+Claude Code의 학습 데이터는 특정 시점까지의 정보만 포함합니다. Context7을 사용하면 **최신 버전의 공식 문서**를 실시간으로 참조하여 정확한 코드를 생성할 수 있습니다. 잘못된 구버전 패턴으로 코드를 생성했다가 다시 고치는 왕복이야말로 가장 비싼 토큰 낭비입니다.
 
 | 상황 | Context7 없이 | Context7 사용 |
 |------|---------------|---------------|
@@ -101,7 +101,7 @@ Context7은 2단계로 동작합니다.
 
 `--ultrathink` 키워드는 Opus 4.7+/4.8 및 Sonnet 4.6의 **내장 추론 모드인 Adaptive Thinking**을 활성화합니다.
 
-초기 모델의 고정적인 `budget_tokens` 파라미터와 달리, 새로운 모델의 Adaptive Thinking은 **작업 복잡도에 따라 동적으로 추론 토큰을 할당**합니다. 추론 깊이는 고정 예산이 아닌 **effort** 파라미터 (`xhigh`, `high`, `medium`, `low`)로 제어됩니다.
+초기 모델의 고정적인 `budget_tokens` 파라미터와 달리, 새로운 모델의 Adaptive Thinking은 **작업 복잡도에 따라 동적으로 추론 토큰을 할당**합니다. 추론 깊이는 고정 예산이 아닌 **effort** 파라미터 (`xhigh`, `high`, `medium`, `low`)로 제어됩니다. "계획은 깊게, 구현은 싸게"라는 토크노믹스 배분에서 이 effort 축이 추론 깊이 쪽 레버입니다.
 
 ### `--ultrathink` 사용 시기
 
@@ -216,11 +216,11 @@ MCP 도구를 사용하려면 `permissions.allow`에 등록해야 합니다.
 
 ## 관련 문서
 
-- [settings.json 가이드](/advanced/settings-json) - MCP 서버 권한 설정
-- [스킬 가이드](/advanced/skill-guide) - 스킬과 MCP 도구의 관계
-- [에이전트 가이드](/advanced/agent-guide) - 에이전트의 MCP 도구 활용
-- [CLAUDE.md 가이드](/advanced/claude-md-guide) - MCP 관련 설정 참조
-- [Google Stitch 가이드](/advanced/stitch-guide) - AI 기반 UI/UX 디자인 도구 상세 활용법
+- [settings.json 가이드](/ko/advanced/settings-json) - MCP 서버 권한 설정
+- [스킬 가이드](/ko/advanced/skill-guide) - 스킬과 MCP 도구의 관계
+- [에이전트 가이드](/ko/advanced/agent-guide) - 에이전트의 MCP 도구 활용
+- [CLAUDE.md 가이드](/ko/advanced/claude-md-guide) - MCP 관련 설정 참조
+- [Google Stitch 가이드](/ko/advanced/stitch-guide) - AI 기반 UI/UX 디자인 도구 상세 활용법
 
 {{< callout type="info" >}}
 **팁**: Context7은 최신 라이브러리 문서를 참조할 때 가장 유용합니다. 새 프레임워크를 도입하거나 최신 버전으로 업그레이드할 때 Context7을 활성화하면 정확한 코드를 얻을 수 있습니다.

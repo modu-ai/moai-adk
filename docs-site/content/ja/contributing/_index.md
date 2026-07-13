@@ -4,26 +4,30 @@ weight: 110
 draft: false
 ---
 
-MoAI-ADK はオープンソースプロジェクトであり、皆様の貢献をお待ちしています。このガイドはプロジェクトへの貢献方法を説明します。
+MoAI-ADK はオープンソースプロジェクトであり、コントリビューションを歓迎します! MoAI-ADK 自体も SPEC
+ベースの 3-phase ワークフローと TRUST 5 品質ゲートで開発されています — 貢献手順の
+品質基準 (カバレッジ、リント、Conventional Commits) はその基準をそのまま踏襲します。
 
 ## クイックスタート
 
-1. リポジトリを**フォーク**します
-2. フィーチャーブランチを作成: `git checkout -b feature/my-feature`
-3. テストを作成 (新しいコードは TDD、既存コードは特性化テスト)
-4. すべてのテストが通ることを確認: `make test`
-5. リントが通ることを確認: `make lint`
-6. コードをフォーマット: `make fmt`
+1. リポジトリを **Fork** します
+2. 機能ブランチの作成: `git checkout -b feature/my-feature`
+3. テストの作成 (新規コードは TDD、既存コードは特性化テスト)
+4. すべてのテストの通過を確認: `make test`
+5. リントの通過を確認: `make lint`
+6. コードフォーマット: `make fmt`
 7. Conventional Commit メッセージでコミット
-8. プルリクエストを作成
+8. Pull Request の作成
 
 ## コード品質要件
+
+TRUST 5 フレームワークの **T**ested / **T**rackable 基準がそのまま適用されます:
 
 | 項目 | 基準 |
 |------|------|
 | テストカバレッジ | **85%** 以上 |
-| リントエラー | **0** 個 |
-| タイプエラー | **0** 個 |
+| リントエラー | **0** 件 |
+| 型エラー | **0** 件 |
 | コミットメッセージ | Conventional Commits 形式 |
 
 ## コミットメッセージ形式
@@ -31,24 +35,24 @@ MoAI-ADK はオープンソースプロジェクトであり、皆様の貢献�
 ```
 <type>(<scope>): <description>
 
-[オプションの本文]
+[任意の本文]
 
-[オプションのフッター]
+[任意のフッター]
 ```
 
 ### タイプ
 
 | タイプ | 説明 |
-|--------|------|
-| `feat` | 新しい機能 |
+|------|------|
+| `feat` | 新機能 |
 | `fix` | バグ修正 |
 | `docs` | ドキュメント変更 |
 | `style` | コードフォーマット (機能変更なし) |
 | `refactor` | リファクタリング (機能変更なし) |
 | `perf` | パフォーマンス改善 |
-| `test` | テスト追加/変更 |
-| `chore` | ビルド/ツール変更 |
-| `revert` | 前のコミットを戻す |
+| `test` | テストの追加/修正 |
+| `chore` | ビルド/ツールの変更 |
+| `revert` | 以前のコミットの取り消し |
 
 ### 例
 
@@ -59,7 +63,7 @@ test(settings): add TestEnsureGlobalSettingsEnv test cases
 docs(readme): update agent count and statistics
 ```
 
-## 開発環境セットアップ
+## 開発環境の設定
 
 ### 必須ツール
 
@@ -67,40 +71,41 @@ docs(readme): update agent count and statistics
 - **Git** — バージョン管理
 - **make** — ビルドコマンド
 
-### 主要コマンド
+### 主なコマンド
 
 ```bash
-make build        # プロジェクトをビルド
-make test         # テストを実行
-make test-race    # Race condition を検出
-make lint         # リンターを実行
-make fmt          # コードをフォーマット
-make install      # ローカルにインストール
-make clean        # ビルド成果物をクリーンアップ
+make build        # プロジェクトのビルド
+make test         # テストの実行
+make test-race    # Race condition 検出テスト
+make lint         # リンターの実行
+make fmt          # コードフォーマット
+make install      # ローカルインストール
+make clean        # ビルド成果物のクリーンアップ
 ```
 
-## プルリクエストガイド
+## Pull Request ガイド
 
 ### PR 作成時
 
 - 明確で簡潔なタイトル (70 文字以内)
 - 変更内容の要約 (Summary セクション)
 - テスト計画 (Test Plan セクション)
-- 関連イシューの参照 (例: `Fixes #123`)
+- 関連 Issue の参照 (例: `Fixes #123`)
 
 ### PR チェックリスト
 
-- [ ] テストを追加/更新
-- [ ] すべてのテストが通過 (`make test`)
-- [ ] リントが通過 (`make lint`)
+- [ ] テストの追加/更新
+- [ ] すべてのテストの通過 (`make test`)
+- [ ] リントの通過 (`make lint`)
 - [ ] コミットメッセージが Conventional Commits 形式
-- [ ] ドキュメントを更新 (必要に応じて)
+- [ ] ドキュメントの更新 (必要な場合)
 
 ## コミュニティ
 
-- **イシュートラッカー**: [GitHub Issues](https://github.com/modu-ai/moai-adk/issues) — バグレポート、機能リクエスト
+- **Issue トラッカー**: [GitHub Issues](https://github.com/modu-ai/moai-adk/issues) — バグレポート、機能リクエスト。MoAI-ADK を使用中なら `/moai feedback` でセッション内から直接 Issue を作成できます
+- **Discord**: [Discord コミュニティ](https://discord.gg/Z7E7Mdc5aN) — リアルタイムの交流、Tips の共有
 - **公式ドキュメント**: [adk.mo.ai.kr](https://adk.mo.ai.kr)
 
 ## ライセンス
 
-[Apache License 2.0](https://github.com/modu-ai/moai-adk/blob/main/LICENSE) — 自由に使用、変更、配布できます。
+[Apache License 2.0](https://github.com/modu-ai/moai-adk/blob/main/LICENSE) — 自由に使用、修正、配布できます。

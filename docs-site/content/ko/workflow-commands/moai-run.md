@@ -4,7 +4,7 @@ weight: 40
 draft: false
 ---
 
-SPEC 문서를 바탕으로 DDD (Domain-Driven Development) 방식으로 코드를 구현합니다.
+SPEC 문서를 바탕으로 코드를 구현하는 Run 단계 명령어입니다. 프로젝트 상태에 따라 TDD (RED-GREEN-REFACTOR) 또는 DDD (ANALYZE-PRESERVE-IMPROVE) 사이클이 적용되며, 이 문서는 기존 코드를 안전하게 개선하는 DDD 사이클을 중심으로 설명합니다.
 
 {{< callout type="info" >}}
 **슬래시 커맨드**: Claude Code에서 `/moai:run`을 입력하면 이 명령어를 바로 실행할 수 있습니다. `/moai`만 입력하면 사용 가능한 모든 서브커맨드 목록이 표시됩니다.
@@ -12,10 +12,9 @@ SPEC 문서를 바탕으로 DDD (Domain-Driven Development) 방식으로 코드�
 
 ## 개요
 
-`/moai run`은 MoAI-ADK 워크플로우의 **Phase 2 (Run)** 명령어입니다. Phase 1에서
-생성된 SPEC 문서를 읽고, **ANALYZE-PRESERVE-IMPROVE** 사이클을 통해 기존 기능을
-망가뜨리지 않으면서 안전하게 코드를 구현합니다. 내부적으로 **manager-develop**
-에이전트가 전체 과정을 관리합니다.
+`/moai run`은 MoAI-ADK 워크플로우의 **Phase 2 (Run)** 명령어입니다. Phase 1에서 생성된 SPEC 문서를 읽고, **ANALYZE-PRESERVE-IMPROVE** 사이클을 통해 기존 기능을 망가뜨리지 않으면서 안전하게 코드를 구현합니다. 내부적으로 **manager-develop** 에이전트가 전체 과정을 관리합니다.
+
+구현 단계는 3-Phase 파이프라인에서 토큰이 가장 많이 드는 단계입니다. 그래서 v3 토크노믹스 설계가 이 단계에 집중적으로 들어가 있습니다 — SPEC 요약본 (`spec-compact.md`) 자동 로드로 ~30% 토큰을 절약하고, SPEC 복잡도에 따라 검증 깊이를 조절하는 Harness Level Routing이 불필요한 감사 비용을 줄이며, 진행 상황이 파일로 저장되어 세션이 끊겨도 이어서 작업할 수 있습니다.
 
 {{< callout type="info" >}}
 **DDD를 집 리모델링으로 이해하기**
@@ -28,8 +27,7 @@ DDD의 ANALYZE-PRESERVE-IMPROVE 사이클은 **집 리모델링**과 같습니�
 | **PRESERVE** | 현재 상태 사진 찍기 | 특성화 테스트로 기존 동작 기록  |
 | **IMPROVE**  | 방 하나씩 리모델링  | 테스트를 통과하면서 조금씩 개선 |
 
-한 번에 집 전체를 부수면 위험하듯, 코드도 **조금씩 바꾸면서 매번 확인**하는 것이
-안전합니다.
+한 번에 집 전체를 부수면 위험하듯, 코드도 **조금씩 바꾸면서 매번 확인**하는 것이 안전합니다.
 
 {{< /callout >}}
 
@@ -64,8 +62,7 @@ Plan 단계에서 생성된 SPEC ID를 인자로 전달합니다:
 
 ## DDD 사이클
 
-`/moai run`은 **ANALYZE -> PRESERVE -> IMPROVE** 세 단계를 순서대로 실행합니다.
-각 단계에서 무슨 일이 일어나는지 자세히 살펴보겠습니다.
+`/moai run`은 **ANALYZE -> PRESERVE -> IMPROVE** 세 단계를 순서대로 실행합니다. 각 단계에서 무슨 일이 일어나는지 자세히 살펴보겠습니다.
 
 ### 1. ANALYZE (분석)
 
@@ -82,8 +79,7 @@ Plan 단계에서 생성된 SPEC ID를 인자로 전달합니다:
 
 ### 2. PRESERVE (보존)
 
-기존 코드의 현재 동작을 **특성화 테스트**로 기록합니다. 이 테스트는 리팩토링
-후에도 기존 기능이 그대로 동작하는지 확인하는 **안전망** 역할을 합니다.
+기존 코드의 현재 동작을 **특성화 테스트**로 기록합니다. 이 테스트는 리팩토링 후에도 기존 기능이 그대로 동작하는지 확인하는 **안전망** 역할을 합니다.
 
 {{< callout type="info" >}}
 **특성화 테스트란?**
@@ -99,8 +95,7 @@ Plan 단계에서 생성된 SPEC ID를 인자로 전달합니다:
 
 ### 3. IMPROVE (개선)
 
-SPEC 요구사항에 따라 **작은 단위로** 코드를 변경하고, 매번 테스트를 실행하여
-기존 동작이 보존되는지 확인합니다.
+SPEC 요구사항에 따라 **작은 단위로** 코드를 변경하고, 매번 테스트를 실행하여 기존 동작이 보존되는지 확인합니다.
 
 **핵심 원칙: 작은 변경 + 매번 검증**
 
@@ -168,6 +163,42 @@ flowchart TD
 
 ## 단계별 상세
 
+### Phase 0.9: JIT Language Detection (언어 자동 감지)
+
+프로젝트의 주요 언어를 자동 감지하여 에이전트 스폰 시 적절한 언어 스킬을 주입합니다. 16개 언어를 동등하게 지원합니다.
+
+| 감지 파일 | 언어 스킬 |
+|-----------|-----------|
+| `go.mod` | moai-lang-go |
+| `package.json` (typescript) | moai-lang-typescript |
+| `pyproject.toml` | moai-lang-python |
+| `Cargo.toml` | moai-lang-rust |
+| `pom.xml` / `build.gradle` | moai-lang-java |
+
+### Phase 0.95: Scale-Based Mode Selection (규모 기반 모드 선택)
+
+SPEC 규모에 따라 최적의 실행 모드를 자동 선택합니다. 작은 작업에 무거운 파이프라인을 돌리지 않는 것 — 이것도 토크노믹스입니다.
+
+| 패턴 | 기준 | 실행 모드 |
+|------|------|-----------|
+| 버그 수정 | 파일 ≤ 3, 단일 도메인 | **Fix Mode** |
+| 단일 기능 | 파일 ≤ 5, 단일 도메인 | **Focused Mode** |
+| 도메인 내 기능 | 파일 5-10 | **Standard Mode** |
+| 멀티 도메인 | 파일 ≥ 10 또는 도메인 ≥ 3 | **Full Pipeline** |
+| 대규모 변경 | complexity ≥ 7 + --team | **Team Mode** |
+
+### Harness Level Routing (품질 깊이 라우팅)
+
+Run phase 시작 시 SPEC 복잡도에 따라 품질 파이프라인 깊이를 자동 결정합니다.
+
+| 레벨 | 대상 | evaluator | 건너뛰는 Phase |
+|------|------|-----------|---------------|
+| **minimal** | 단순 버그 수정, 설정 변경 | 비활성 | 0, 0.5, 2.0, 2.5, 2.75, 2.8a |
+| **standard** | 일반 기능 개발 (기본값) | final-pass (Phase 2.8a만) | 없음 |
+| **thorough** | 보안/결제 등 중요 기능 | per-sprint (Phase 2.0 + 2.8a) | 없음 |
+
+실패 시 자동 에스컬레이션: minimal → standard → thorough (최대 2회)
+
 ### Phase 1: 분석 및 계획
 
 **manager-spec** 하위 에이전트가 다음 작업을 수행합니다:
@@ -179,8 +210,7 @@ flowchart TD
 - 복잡도 및 노력 추정
 - 단계별 접근 방식의 상세 실행 전략 생성
 
-**출력:** plan_summary, requirements 목록, success_criteria, effort_estimate를
-포함한 실행 계획
+**출력:** plan_summary, requirements 목록, success_criteria, effort_estimate를 포함한 실행 계획
 
 ### Phase 1.5: 작업 분해
 
@@ -196,6 +226,19 @@ flowchart TD
 
 **제약조건:** SPEC당 최대 10개 작업. 더 필요하면 SPEC 분할 권장
 
+태스크 분해 결과는 `.moai/specs/SPEC-{ID}/tasks.md`에 영속 기록됩니다. Git으로 추적 가능하며 Drift Guard가 참조합니다.
+
+### Phase 2.0: Sprint Contract (thorough 전용)
+
+thorough 레벨에서만 실행됩니다. sync-auditor와 구현 전 Done 기준을 사전 합의합니다.
+
+**계약 내용:**
+- 통과해야 할 구체적 테스트 케이스
+- 식별된 엣지 케이스
+- 하드 임계값 (커버리지 %, 성능 목표, 보안 요구사항)
+
+최대 2라운드 협상 후 evaluator 권고안으로 확정됩니다.
+
 ### Phase 2: DDD 구현
 
 **manager-develop** 하위 에이전트가 ANALYZE-PRESERVE-IMPROVE 사이클을 실행합니다:
@@ -208,8 +251,7 @@ flowchart TD
 - 커버리지 없는 코드 경로에 특성화 테스트 생성
 - 테스트 커버리지 85% 이상 달성
 
-**출력:** files_modified, characterization_tests_created, test_results,
-behavior_preserved, structural_metrics
+**출력:** files_modified, characterization_tests_created, test_results, behavior_preserved, structural_metrics
 
 ### Phase 2.5: 품질 검증
 
@@ -230,8 +272,26 @@ behavior_preserved, structural_metrics
 - 특성화 테스트 통과: 동작 스냅샷 일치
 - 구조적 개선: 결합도 및 응집도 지표 개선
 
-**출력:** trust_5_validation 결과, coverage_percentage, overall_status
-(PASS/WARNING/CRITICAL), issues_found
+**출력:** trust_5_validation 결과, coverage_percentage, overall_status (PASS/WARNING/CRITICAL), issues_found
+
+### Phase 2.8a/2.8b: 능동 평가와 정적 검증
+
+품질 평가가 두 단계로 나뉘어 실행됩니다:
+
+- **Phase 2.8a**: sync-auditor 능동 평가 (Functionality/Security/Craft/Consistency)
+- **Phase 2.8b**: sync-auditor TRUST 5 정적 검증
+
+{{< callout type="warning" >}}
+Security FAIL = 전체 FAIL. 최대 3회 수정-평가 사이클 후 사용자에게 보고됩니다.
+{{< /callout >}}
+
+### Drift Guard (범위 이탈 감지)
+
+DDD/TDD 사이클 완료 시 계획 대비 실제 변경을 비교합니다:
+
+- drift ≤ 20%: 정보 기록만
+- 20% < drift ≤ 30%: 경고
+- drift > 30%: Phase 2.7 재계획 게이트 트리거
 
 ### Phase 3: Git 작업 (조건부)
 
@@ -253,6 +313,10 @@ behavior_preserved, structural_metrics
 | 다른 기능 구현 | `/moai plan`으로 추가 SPEC 생성       |
 | 결과 검토      | 로컬에서 구현 및 테스트 커버리지 확인 |
 | 완료           | 세션 종료                             |
+
+## 토큰 절약 장치 — spec-compact.md
+
+Run phase 진입 시 SPEC 요약본을 자동 로드하여 **~30% 토큰을 절약**합니다. `.moai/specs/SPEC-{ID}/spec-compact.md`가 존재하면 전체 spec.md 대신 사용됩니다.
 
 ## 품질 게이트
 
@@ -420,110 +484,31 @@ Phase 4: 완료
 
 ### Q: 새 프로젝트에서 기존 코드가 없으면 PRESERVE 단계는 어떻게 되나요?
 
-기존 코드가 없으면 PRESERVE 단계는 **빠르게 통과**됩니다. 새 코드에 대한
-테스트를 IMPROVE 단계에서 함께 작성합니다.
+기존 코드가 없으면 PRESERVE 단계는 **빠르게 통과**됩니다. 새 코드에 대한 테스트를 IMPROVE 단계에서 함께 작성합니다.
+
+### Q: TDD와 DDD 중 어떤 사이클이 적용되나요?
+
+`quality.yaml`의 `development_mode` 설정을 따릅니다. 신규 기능 개발은 TDD (RED-GREEN-REFACTOR), 테스트 커버리지가 낮은 기존 프로젝트의 리팩토링은 DDD (ANALYZE-PRESERVE-IMPROVE)가 적합합니다.
 
 ### Q: 구현 도중 토큰이 부족하면 어떻게 하나요?
 
-manager-develop 에이전트가 **자동으로 진행 상황을 저장**합니다. `/clear` 후 다시
-`/moai run SPEC-XXX`를 실행하면 SPEC 문서를 기반으로 이어서 작업합니다.
+manager-develop 에이전트가 **자동으로 진행 상황을 저장**합니다. `/clear` 후 다시 `/moai run SPEC-XXX`를 실행하면 SPEC 문서를 기반으로 이어서 작업합니다.
 
 ### Q: 테스트 커버리지 85%를 달성하기 어려우면?
 
-`quality.yaml`에서 커버리지 목표를 조정할 수 있지만, **권장하지 않습니다**.
-85%는 핵심 로직이 테스트되었음을 보장하는 최소 기준입니다. 커버리지가 부족하면
-manager-develop가 누락된 테스트를 자동으로 추가합니다.
+`quality.yaml`에서 커버리지 목표를 조정할 수 있지만, **권장하지 않습니다**. 85%는 핵심 로직이 테스트되었음을 보장하는 최소 기준입니다. 커버리지가 부족하면 manager-develop가 누락된 테스트를 자동으로 추가합니다.
 
 ### Q: Phase 2.5에서 CRITICAL 상태가 나오면 어떻게 하나요?
 
-사용자에게 품질 이슈를 보고하고, 수정을 재시도할지 묻습니다. "예"를 선택하면
-IMPROVE 단계로 돌아가 수정을 계속합니다.
+사용자에게 품질 이슈를 보고하고, 수정을 재시도할지 묻습니다. "예"를 선택하면 IMPROVE 단계로 돌아가 수정을 계속합니다.
 
 ### Q: `/moai run`과 `/moai`의 차이는 무엇인가요?
 
-`/moai run`은 **이미 생성된 SPEC을 바탕으로 구현만** 수행합니다. `/moai`는 SPEC
-생성부터 구현, 문서화까지 **전체 워크플로우**를 자동으로 수행합니다.
-
-## v2.9.0 신규 기능
-
-### Harness Level Routing (품질 깊이 라우팅)
-
-Run phase 시작 시 SPEC 복잡도에 따라 품질 파이프라인 깊이를 자동 결정합니다.
-
-| 레벨 | 대상 | evaluator | 건너뛰는 Phase |
-|------|------|-----------|---------------|
-| **minimal** | 단순 버그 수정, 설정 변경 | 비활성 | 0, 0.5, 2.0, 2.5, 2.75, 2.8a |
-| **standard** | 일반 기능 개발 (기본값) | final-pass (Phase 2.8a만) | 없음 |
-| **thorough** | 보안/결제 등 중요 기능 | per-sprint (Phase 2.0 + 2.8a) | 없음 |
-
-실패 시 자동 에스컬레이션: minimal → standard → thorough (최대 2회)
-
-### Phase 0.9: JIT Language Detection (언어 자동 감지)
-
-프로젝트의 주요 언어를 자동 감지하여 에이전트 스폰 시 적절한 언어 스킬을 주입합니다.
-
-| 감지 파일 | 언어 스킬 |
-|-----------|-----------|
-| `go.mod` | moai-lang-go |
-| `package.json` (typescript) | moai-lang-typescript |
-| `pyproject.toml` | moai-lang-python |
-| `Cargo.toml` | moai-lang-rust |
-| `pom.xml` / `build.gradle` | moai-lang-java |
-
-### Phase 0.95: Scale-Based Mode Selection (규모 기반 모드 선택)
-
-SPEC 규모에 따라 최적의 실행 모드를 자동 선택합니다.
-
-| 패턴 | 기준 | 실행 모드 |
-|------|------|-----------|
-| 버그 수정 | 파일 ≤ 3, 단일 도메인 | **Fix Mode** |
-| 단일 기능 | 파일 ≤ 5, 단일 도메인 | **Focused Mode** |
-| 도메인 내 기능 | 파일 5-10 | **Standard Mode** |
-| 멀티 도메인 | 파일 ≥ 10 또는 도메인 ≥ 3 | **Full Pipeline** |
-| 대규모 변경 | complexity ≥ 7 + --team | **Team Mode** |
-
-### Phase 2.0: Sprint Contract (thorough 전용)
-
-thorough 레벨에서만 실행됩니다. sync-auditor와 구현 전 Done 기준을 사전 합의합니다.
-
-**계약 내용:**
-- 통과해야 할 구체적 테스트 케이스
-- 식별된 엣지 케이스
-- 하드 임계값 (커버리지 %, 성능 목표, 보안 요구사항)
-
-최대 2라운드 협상 후 evaluator 권고안으로 확정됩니다.
-
-### Phase 2.8a/2.8b 분리
-
-기존 Phase 2.8이 두 단계로 분리되었습니다:
-
-- **Phase 2.8a**: sync-auditor 능동 평가 (Functionality/Security/Craft/Consistency)
-- **Phase 2.8b**: sync-auditor TRUST 5 정적 검증 (기존 동작)
-
-{{< callout type="warning" >}}
-Security FAIL = 전체 FAIL. 최대 3회 수정-평가 사이클 후 사용자에게 보고됩니다.
-{{< /callout >}}
-
-### Drift Guard (범위 이탈 감지)
-
-DDD/TDD 사이클 완료 시 계획 대비 실제 변경을 비교합니다.
-
-- drift ≤ 20%: 정보 기록만
-- 20% < drift ≤ 30%: 경고
-- drift > 30%: Phase 2.7 재계획 게이트 트리거
-
-### tasks.md 영속 아티팩트
-
-태스크 분해를 `.moai/specs/SPEC-{ID}/tasks.md`에 기록합니다. Git 추적 가능하며 Drift Guard에서 참조합니다.
-
-### spec-compact.md
-
-Run phase 진입 시 SPEC 요약본을 자동 로드하여 ~30% 토큰을 절약합니다. `.moai/specs/SPEC-{ID}/spec-compact.md`가 존재하면 전체 spec.md 대신 사용됩니다.
+`/moai run`은 **이미 생성된 SPEC을 바탕으로 구현만** 수행합니다. `/moai`는 SPEC 생성부터 구현, 문서화까지 **전체 워크플로우**를 자동으로 수행합니다.
 
 ## 관련 문서
 
-- [도메인 주도 개발](/core-concepts/ddd) - ANALYZE-PRESERVE-IMPROVE 사이클 상세
-  설명
+- [도메인 주도 개발](/core-concepts/ddd) - ANALYZE-PRESERVE-IMPROVE 사이클 상세 설명
 - [TRUST 5 품질 시스템](/core-concepts/trust-5) - 품질 게이트 상세 설명
 - [/moai plan](./moai-plan) - 이전 단계: SPEC 문서 생성
 - [/moai sync](./moai-sync) - 다음 단계: 문서 동기화 및 PR

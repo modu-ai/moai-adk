@@ -4,24 +4,24 @@ weight: 25
 draft: false
 ---
 
-查询项目的活跃会话、worktree、harness 的 `moai inventory` 命令指南。
+本文介绍用于查询项目活跃会话、worktree 与挽具的 `moai inventory` 命令。
 
 {{< callout type="info" >}}
-**一句话总结**: `moai inventory` 是查询当前项目所有活跃资源（会话、worktree、harness）的读取专用命令。
+**一句话总结**：`moai inventory` 一目了然地查询当前项目的所有活跃资源（会话、worktree、挽具）。
 {{< /callout >}}
 
 ## 概述
 
-`moai inventory` 是读取专用命令，为当前项目状态提供**集成库存**。
+`moai inventory` 是只读命令，提供当前项目状态的**统一清单**。同时运行多个并行会话和 worktree 时，你需要一个能一次性回答"现在到底有什么在跑？"的地方 — 这个命令就是答案。
 
 ### 查询对象
 
-| 资源 | 描述 | 位置 |
+| 资源 | 说明 | 位置 |
 |------|------|------|
-| **活跃会话** | 当前运行的 Claude Code 会话 | `.moai/state/active-sessions.json` |
+| **Active Sessions** | 当前正在运行的 Claude Code 会话 | `.moai/state/active-sessions.json` |
 | **Worktrees** | 项目用 L2/L3 隔离分支 | `~/.moai/worktrees/<project>/` |
-| **Harnesses** | 生成的动态代理团队 | `.moai/harness/manifest.json` |
-| **SPEC 进度** | 活跃 SPEC 的进度状态 | `.moai/specs/SPEC-*/progress.md` |
+| **Harnesses** | 已生成的动态智能体团队 | `.moai/harness/manifest.json` |
+| **SPEC Progress** | 活跃 SPEC 的进度状态 | `.moai/specs/SPEC-*/progress.md` |
 
 ## 命令格式
 
@@ -29,13 +29,13 @@ draft: false
 moai inventory [options]
 ```
 
-### 基础使用
+### 基本用法
 
 ```bash
 moai inventory
 ```
 
-以基础文本格式输出库存。
+以默认文本格式输出清单。
 
 ### JSON 格式输出
 
@@ -43,11 +43,11 @@ moai inventory
 moai inventory --json
 ```
 
-以结构化 JSON 输出用于自动分析。
+以结构化 JSON 输出，可用于自动分析。
 
-### 筛选
+### 过滤
 
-仅查询特定资源类型:
+只查询特定资源类型：
 
 ```bash
 moai inventory --type sessions
@@ -58,7 +58,7 @@ moai inventory --type specs
 
 ### 详细信息
 
-包含每个资源的附加信息:
+包含各资源的附加信息：
 
 ```bash
 moai inventory --verbose
@@ -67,64 +67,64 @@ moai inventory --verbose --json
 
 ## 文本格式输出
 
-### 基础输出示例
+### 基本输出示例
 
 ```
 MOAI Inventory for moai-adk-go
 Project Root: /path/to/your-project
 Updated: 2026-07-01T10:15:00Z
 
-========== 活跃会话 ==========
-Session ID                              分支        SPEC ID            状态
-edc25996-04cb-4139-b2f6-c2968e7337db    main        SPEC-DOCS-001      进行中
-a1b2c3d4-e5f6-7890-1234-567890abcdef    feat/auth   SPEC-AUTH-002      运行阶段
+========== ACTIVE SESSIONS ==========
+Session ID                              Branch        SPEC ID            Status
+edc25996-04cb-4139-b2f6-c2968e7337db    main          SPEC-DOCS-001      in-progress
+a1b2c3d4-e5f6-7890-1234-567890abcdef    feat/auth     SPEC-AUTH-002      run-phase
 
 ========== WORKTREES ==========
-名称                    分支              创建日期       状态
-SPEC-DOCS-001          docs/rebuild      2026-07-01    活跃
-SPEC-AUTH-002          feat/auth         2026-07-01    活跃
+Name                    Branch              Created        Status
+SPEC-DOCS-001          docs/rebuild        2026-07-01     active
+SPEC-AUTH-002          feat/auth            2026-07-01     active
 
 ========== HARNESSES ==========
-名称                    版本      团队成员    Worktree 隔离    状态
-backend-team            1.0.0     3         L1_optional      活跃
-frontend-team           1.0.0     2         无              活跃
+Name                    Version    Teammates    Worktree Isolation    Status
+backend-team            1.0.0      3            L1_optional           active
+frontend-team           1.0.0      2            none                  active
 
-========== 活跃 SPECS ==========
-SPEC ID                 状态          阶段      拥有者           进度
-SPEC-DOCS-001          进行中        运行      manager-develop  M3/6
-SPEC-AUTH-002          进行中        运行      manager-develop  M2/5
+========== ACTIVE SPECS ==========
+SPEC ID                 Status          Phase      Owner           Progress
+SPEC-DOCS-001          in-progress     run        manager-develop  M3/6
+SPEC-AUTH-002          in-progress     run        manager-develop  M2/5
 ```
 
-### 详细信息 (`--verbose`)
+### 详细信息（`--verbose`）
 
 ```
-========== 活跃会话 (详细) ==========
+========== ACTIVE SESSIONS (VERBOSE) ==========
 
-会话: edc25996-04cb-4139-b2f6-c2968e7337db
-  创建:     2026-06-29T14:30:00Z
-  最后更新: 2026-07-01T10:15:00Z
-  分支:      main
-  SPEC ID:   SPEC-DOCS-001
-  状态:      进行中 (运行中 M3)
-  上下文:    ~145K / 200K 令牌 (73%)
-  模型:      claude-haiku-4-5
-  继续:      可用 (.moai/specs/SPEC-DOCS-001/progress.md)
+Session: edc25996-04cb-4139-b2f6-c2968e7337db
+  Created:     2026-06-29T14:30:00Z
+  Last Update: 2026-07-01T10:15:00Z
+  Branch:      main
+  SPEC ID:     SPEC-DOCS-001
+  Status:      in-progress (running M3)
+  Context:     ~145K / 200K tokens (73%)
+  Model:       claude-haiku-4-5
+  Resume:      available (.moai/specs/SPEC-DOCS-001/progress.md)
 
-========== WORKTREES (详细) ==========
+========== WORKTREES (VERBOSE) ==========
 
 Worktree: SPEC-DOCS-001
-  路径:           ~/.moai/worktrees/moai-adk-go/SPEC-DOCS-001
-  基础分支:       main (origin/main)
-  创建:           2026-07-01T08:00:00Z
-  会话:           edc25996-04cb-4139-b2f6-c2968e7337db
-  修改文件:       7
-  创建文件:       4
-  提交:           2
+  Path:         ~/.moai/worktrees/moai-adk-go/SPEC-DOCS-001
+  Base Branch:  main (origin/main)
+  Created:      2026-07-01T08:00:00Z
+  Session:      edc25996-04cb-4139-b2f6-c2968e7337db
+  Files Modified: 7
+  Files Created:  4
+  Commits:       2
 ```
 
 ## JSON 格式输出
 
-### 架构
+### Schema
 
 ```json
 {
@@ -139,7 +139,7 @@ Worktree: SPEC-DOCS-001
 }
 ```
 
-### 会话对象
+### Session 对象
 
 ```json
 {
@@ -193,7 +193,7 @@ Worktree: SPEC-DOCS-001
 ```json
 {
   "spec_id": "SPEC-DOCS-001",
-  "title": "文档 v3 重建",
+  "title": "Documentation v3 Rebuild",
   "status": "in-progress",
   "phase": "run",
   "current_milestone": 3,
@@ -204,31 +204,31 @@ Worktree: SPEC-DOCS-001
 }
 ```
 
-## 实用使用示例
+## 实用示例
 
-### 1. 多会话竞争检测
+### 1. 检测多会话竞争
 
 ```bash
 moai inventory --type sessions
 
-# 输出中检测到处理同一 SPEC 的会话 > 1 → 竞争风险
+# 출력에서 같은 SPEC을 다루는 세션 > 1개 감지 → 경합 위험
 ```
 
-### 2. Worktree 清理检查
+### 2. 确认 worktree 清理
 
 ```bash
 moai inventory --type worktrees --verbose
 
-# 确认旧 worktree 后进行清理
+# 오래된 worktree 확인 후 정리
 moai worktree remove <name>
 ```
 
-### 3. Harness 团队列表查询
+### 3. 查询 Harness 团队列表
 
 ```bash
 moai inventory --type harnesses --json | jq '.inventory.harnesses[] | {name, teammates, status}'
 
-# 预期输出:
+# 예상 출력:
 # {
 #   "name": "backend-team",
 #   "teammates": 3,
@@ -236,53 +236,53 @@ moai inventory --type harnesses --json | jq '.inventory.harnesses[] | {name, tea
 # }
 ```
 
-### 4. 活跃 SPEC 进度追踪
+### 4. 追踪活跃 SPEC 进度
 
 ```bash
-moai inventory --type specs | grep 进行中
+moai inventory --type specs | grep in-progress
 
-# 查看所有进行中的 SPEC
+# 현재 진행 중인 모든 SPEC 확인
 ```
 
-### 5. 自动化脚本中使用
+### 5. 在自动化脚本中使用
 
 ```bash
 #!/bin/bash
-# Worktree 自动清理脚本
+# Worktree 자동 정리 스크립트
 
 moai inventory --type worktrees --json | jq -r '.inventory.worktrees[] | select(.status == "stale") | .name' | while read name; do
-  echo "删除陈旧 worktree: $name"
+  echo "Removing stale worktree: $name"
   moai worktree remove "$name"
 done
 ```
 
-## 输出解释
+## 输出解读
 
 ### Status 字段
 
-| 状态 | 含义 |
-|------|------|
+| Status | 含义 |
+|--------|------|
 | `active` | 当前使用中 |
-| `idle` | 暂停 (会话明确暂停状态) |
-| `stale` | 未使用 (7 天以上未访问) |
-| `error` | 错误状态 (需要检查) |
+| `idle` | 暂停中（会话被显式置为暂停状态） |
+| `stale` | 未使用（7 天以上未访问） |
+| `error` | 错误状态（需要确认） |
 
 ### Phase 字段
 
-| 阶段 | 描述 |
-|------|------|
-| `plan` | 计划阶段运行中 |
-| `run` | 运行阶段运行中 |
-| `sync` | 同步阶段运行中 |
-| `completed` | 完成状态 |
+| Phase | 说明 |
+|-------|------|
+| `plan` | Plan 阶段执行中 |
+| `run` | Run 阶段执行中 |
+| `sync` | Sync 阶段执行中 |
+| `completed` | 已完成 |
 
 ## 相关文档
 
-- [SPEC 驱动开发](/workflow-commands/moai-plan) - SPEC 生命周期
-- [Worktree 管理](/getting-started/worktree) - Worktree 隔离和生命周期
-- [Harness v4 Builder](/advanced/builder-agents) - 动态团队管理
-- [CLI 参考](/getting-started/cli) - 其他 CLI 命令
+- [基于 SPEC 的开发](/zh/workflow-commands/moai-plan) - SPEC 生命周期
+- [Worktree 管理](/zh/getting-started/worktree) - Worktree 隔离与生命周期
+- [Harness v4 Builder](/zh/advanced/builder-agents) - 动态团队管理
+- [CLI 参考](/zh/getting-started/cli) - 其他 CLI 命令
 
 {{< callout type="info" >}}
-**提示**: `moai inventory` 可用于自动清理脚本和监控仪表板。使用 JSON 格式进行自动分析，始终掌握项目状态。
+**提示**：`moai inventory` 可用于自动清理脚本与监控看板。以 JSON 格式自动分析，就能随时掌握项目状态。
 {{< /callout >}}

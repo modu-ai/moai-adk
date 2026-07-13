@@ -4,8 +4,8 @@ weight: 20
 draft: false
 ---
 
-이 가이드는 Git Worktree를 사용한 MoAI-ADK 병렬 개발의 모든 측면을 상세히
-설명합니다.
+Git Worktree를 사용한 MoAI-ADK 병렬 개발의 모든 것 — 기초 개념부터 명령어
+레퍼런스, 워크플로우, 모범 사례까지 이 문서 한 편으로 정리합니다.
 
 ## 목차
 
@@ -21,8 +21,9 @@ draft: false
 
 ### Git Worktree란 무엇인가요?
 
-Git Worktree는 **동일한 Git 저장소를 여러 디렉토리에서 동시에 작업**할 수 있게
-해주는 Git의 기능입니다.
+Git Worktree는 **하나의 Git 저장소를 여러 디렉토리에서 동시에 작업**할 수 있게
+해주는 Git 내장 기능입니다. 브랜치를 오갈 때마다 `git checkout`으로 컨텍스트를
+갈아끼우는 대신, 브랜치마다 디렉토리를 하나씩 열어둡니다.
 
 ```mermaid
 graph TB
@@ -43,12 +44,14 @@ graph TB
 
 ### MoAI-ADK에서의 Worktree
 
-MoAI-ADK는 Git Worktree를 활용하여 **각 SPEC을 완전히 독립된 환경**에서 개발할
-수 있게 합니다:
+MoAI-ADK는 이 기능 위에 SPEC 단위의 격리 환경을 얹습니다. 각 SPEC이 완전히
+독립된 환경을 갖기 때문에, 에이전트가 병렬로 일해도 서로의 작업을 밟지
+않습니다:
 
-- **독립적인 Git 상태**: 각 Worktree는 자체 브랜치와 커밋 histories 유지
-- **분리된 LLM 설정**: 각 Worktree에서 다른 LLM 사용 가능
-- **격리된 작업 공간**: 파일 시스템 레벨의 완전한 분리
+- **독립적인 Git 상태** — 각 Worktree는 자체 브랜치와 커밋 이력을 유지합니다
+- **분리된 LLM 설정** — Worktree마다 다른 LLM 실행 모드를 쓸 수 있습니다.
+  계획에는 Claude, 구현에는 GLM을 배정하는 토크노믹스 운용이 여기서 나옵니다
+- **격리된 작업 공간** — 파일 시스템 레벨에서 완전히 분리됩니다
 
 ---
 
@@ -475,6 +478,9 @@ flowchart TD
 
 #### 전략 1: Plan과 Implement 분리
 
+토크노믹스의 기본 전략입니다. 계획 단계는 고추론 모델(Opus)로 몰아서 처리하고,
+구현 단계는 저비용 모델(GLM)로 병렬 분산합니다:
+
 ```mermaid
 graph TB
     subgraph Planning["Planning Phase (Opus)"]
@@ -561,6 +567,8 @@ moai worktree clean --older-than 30
 
 ### 3. LLM 선택 가이드
 
+작업 단계별로 모델을 나눠 배정하는 것이 Worktree 토크노믹스의 핵심입니다:
+
 ```mermaid
 graph TD
     A[작업 유형] --> B[Plan<br/>/moai plan]
@@ -613,7 +621,7 @@ git log --oneline --graph --all
 git diff main
 ```
 
-## v2.9.0 신규 기능
+## tmux 통합과 자동 머지
 
 ### moai worktree new --tmux 플래그
 
@@ -685,6 +693,6 @@ PR 머지 성공 시 자동 정리:
 
 ## 관련 문서
 
-- [Git Worktree 개요](./index)
-- [실제 사용 예시](./examples)
-- [자주 묻는 질문](./faq)
+- [Git Worktree 개요](/ko/worktree/)
+- [실제 사용 예시](/ko/worktree/examples)
+- [자주 묻는 질문](/ko/worktree/faq)

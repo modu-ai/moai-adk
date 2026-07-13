@@ -1,59 +1,53 @@
 ---
 title: "Multi-LLM CI Guide"
 description: "Automated code reviews with multiple AI models in GitHub Actions"
-date: 2026-04-27
 draft: false
 weight: 10
 ---
 
-# Multi-LLM CI Guide
-
-Learn how to set up automated code reviews with multiple LLMs in GitHub Actions using MoAI-ADK's Multi-LLM CI feature.
+This guide walks through setting up multi-LLM code review in GitHub Actions
+with MoAI-ADK's Multi-LLM CI feature. There is no reason to lock reviewers to
+a single model either — every model has different strengths and unit costs, so
+the Tokenomics perspective of multi-LLM allocation applies to PR reviews just
+the same.
 
 ## Overview
 
 ### What is Multi-LLM CI?
 
-MoAI-ADK's Multi-LLM CI feature provides an integrated CI/CD pipeline that performs code reviews with multiple AI models simultaneously in GitHub Actions.
+MoAI-ADK's Multi-LLM CI feature provides an integrated CI/CD pipeline that
+runs code reviews with multiple AI models simultaneously in GitHub Actions.
 
 ### Supported LLMs
 
-| LLM | Provider | Trigger | Features |
-|-----|----------|---------|----------|
-| **Claude** | Anthropic | `/claude` comment | Issue/PR review, OAuth auth |
-| **Codex** | OpenAI | Auto on PR open | ⚠️ Private repos only |
-| **Gemini** | Google | Auto on PR open | API Key auth |
-| **GLM** | Zhipu AI | Auto on PR open | Token auth |
+| LLM | Provider | Trigger | Notes |
+|-----|--------|-------------|------|
+| **Claude** | Anthropic | `/claude` comment | Issue/PR review, OAuth authentication |
+| **Codex** | OpenAI | Auto on PR open | Private repositories only |
+| **Gemini** | Google | Auto on PR open | API Key authentication |
+| **GLM** | Zhipu AI | Auto on PR open | Token authentication |
 
-### User Benefits
-
-- **Simultaneous multi-LL reviews**: Get feedback from multiple LLMs in a single PR
-- **Unified management**: Consistent setup via `moai github` CLI
-- **Secure authentication**: Dedicated auth handling for each LLM
-- **Language detection**: Auto-detects project language and assigns appropriate LLMs
-
-## Getting Started
+## Getting started
 
 ### Prerequisites
 
-- macOS (arm64) - v1.0 baseline
-- Go 1.23+
-- GitHub repository
-- LLM accounts and API tokens
+- MoAI-ADK installed (macOS · Linux · Windows)
+- A GitHub repository
+- An account and API token for each LLM
 
-### Initial Setup
+### Initial setup
 
 ```bash
 moai github init
 ```
 
-This command:
-- Creates `.github/workflows/` directory
-- Deploys workflow templates
-- Deploys composite actions
-- Guides GitHub Secrets setup
+What this command does:
+- Creates the `.github/workflows/` directory
+- Deploys the workflow templates
+- Deploys the composite actions
+- Guides you through the GitHub Secrets setup
 
-### LLM Authentication
+### LLM authentication setup
 
 ```bash
 # Claude (OAuth)
@@ -69,17 +63,17 @@ moai github auth gemini
 moai github auth glm
 ```
 
-### GitHub Secrets Setup
+### GitHub Secrets setup
 
-Required secrets for each LLM:
+Secrets required per LLM:
 - `CLAUDE_CODE_OAUTH_TOKEN` - Claude OAuth token
 - `CODEX_AUTH_JSON` - Codex auth JSON (base64 encoded)
 - `GEMINI_API_KEY` - Gemini API Key
 - `GLM_API_KEY` - GLM API Token
 
-### Testing Your First PR
+### Testing your first PR
 
-When you create a PR, an LLM Panel comment is automatically added:
+Opening a PR automatically adds an LLM Panel comment:
 
 ```markdown
 ## LLM Code Review Status
@@ -98,14 +92,14 @@ Trigger individual reviews:
 - Add `/glm` comment to trigger GLM
 ```
 
-## LLM Authentication
+## LLM authentication details
 
-### Claude Setup
+### Claude setup
 
-#### OAuth Token Issuance
+#### Issuing an OAuth token
 
 1. Install [Claude Code](https://claude.ai/download)
-2. Login and issue OAuth token
+2. Log in and issue an OAuth token
 3. Automatically saved to `.claude/settings.local.json`
 
 #### moai github auth claude
@@ -117,16 +111,16 @@ moai github auth claude
 **Interactive setup process:**
 ```
 Claude OAuth token not found.
-Would you like to install Claude Code and login? (y/n): y
+Would you like to install Claude Code and log in? (y/n): y
 
-[Confirmed] OAuth token saved to settings.local.json.
-Set GitHub Secret: CLAUDE_CODE_OAUTH_TOKEN to:
+[Confirmed] The OAuth token has been saved to settings.local.json.
+Set the following value in the GitHub Secret CLAUDE_CODE_OAUTH_TOKEN:
 <token-value>
 ```
 
-### Codex Setup (Private Repos Only)
+### Codex setup (private repos only)
 
-#### Auth JSON Creation
+#### Creating the auth JSON
 
 ```json
 {
@@ -144,51 +138,52 @@ moai github auth codex
 **Interactive setup:**
 ```
 OpenAI auth.json file path: ~/.codex/auth.json
-Reading file to generate GitHub Secret...
-⚠️ Codex is restricted to private repositories (REQ-SEC-001)
+Reading the file and creating the GitHub Secret...
+Note: Codex is only usable in private repositories (REQ-SEC-001)
 
 Generated Secret:
 CODEX_AUTH_JSON=eyJ0...
 ```
 
-### Gemini Setup
+### Gemini setup
 
 ```bash
 moai github auth gemini
 ```
 
-Enter API key and follow GitHub Secret setup guide.
+After you enter the API Key, the GitHub Secret setup guide is provided
+automatically.
 
-### GLM Setup
+### GLM setup
 
 ```bash
 moai github auth glm
 ```
 
-Automatically reads from GLM token path (`~/.moai/.env.glm`).
+Reads automatically from the GLM token path (`~/.moai/.env.glm`).
 
-## Workflow Templates
+## Understanding the workflow templates
 
 ### llm-panel.yml
 
 **Trigger:** PR opened
 
-**Purpose:** Automatically create a panel comment displaying status of each LLM
+**Role:** automatically creates the panel comment that visually shows each LLM's status
 
-**Note:** Individual reviews triggered via `/claude`, `/codex`, `/gemini`, `/glm` comments
+**Note:** trigger individual reviews with `/claude`, `/codex`, `/gemini`, `/glm` comments
 
 ### claude.yml / claude-code-review.yml
 
-- **claude.yml**: Issue trigger (initial review)
+- **claude.yml**: Issue trigger (draft review)
 - **claude-code-review.yml**: PR trigger (change review)
 
-**Feature:** Triggered by `/claude` comment only
+**Characteristic:** triggered only by the `/claude` comment
 
 ### codex-review.yml
 
-**Security Constraint:**
+**Security constraints:**
 - Only runs on `private` repos (REQ-SEC-001)
-- Visibility check blocks public repos
+- Blocks public repos via a `visibility` check
 
 **workflow:**
 ```yaml
@@ -205,8 +200,8 @@ private-guard:
 
 ### gemini-review.yml
 
-- Auto language detection (detect-language action)
-- Auto-triggered on PR synchronize
+- Automatic language detection (detect-language action)
+- Auto-triggered on PR synchronized
 
 ### glm-review.yml
 
@@ -220,19 +215,19 @@ private-guard:
 **Input:** repository root path
 **Output:** language environment variable (`detected_language`)
 
-**Supported Languages:** Go, Python, TypeScript, JavaScript, Rust, Java, Kotlin, C#, Ruby, PHP, Elixir, C++, Scala, R, Flutter, Swift (16 languages)
+**Supported languages:** Go, Python, TypeScript, JavaScript, Rust, Java, Kotlin, C#, Ruby, PHP, Elixir, C++, Scala, R, Flutter, Swift (16)
 
 #### setup-glm-env
 
-Sets up environment variables for GLM team mode:
+Sets the environment variables required by GLM team mode:
 - `ANTHROPIC_AUTH_TOKEN` (GLM endpoint)
 - `ANTHROPIC_BASE_URL` (https://glm.modu-ai.kr)
 
-## Advanced Configuration
+## Advanced configuration
 
-### github-actions.yaml Customization
+### Customizing github-actions.yaml
 
-#### Basic Structure
+#### Basic structure
 
 ```yaml
 # .moai/config/sections/github-actions.yaml
@@ -252,7 +247,7 @@ llm_review:
       glm: "/glm"
 ```
 
-#### Per-Language LLM Assignment
+#### Per-language LLM assignment
 
 ```yaml
 language_rules:
@@ -267,9 +262,9 @@ language_rules:
     - claude
 ```
 
-### Runner Version Management
+### Runner version management
 
-#### Automatic Update Check
+#### Checking for updates automatically
 
 ```bash
 moai github status
@@ -285,54 +280,54 @@ moai github status
 Run: moai doctor --fix
 ```
 
-#### Doctor Integration
+#### Doctor integration
 
 ```bash
 moai doctor
 ```
 
-Runner version check integrated into system diagnostics (T-27).
+The runner version check is integrated into the system diagnostics.
 
 ## Troubleshooting
 
-### PR Comment Triggers Not Working
+### PR comment triggers not working
 
 #### Checklist
 
-1. ✅ GitHub Actions workflow enabled?
-   - Repository → Actions → workflows
+1. Is the GitHub Actions workflow enabled?
+   - Check Repository → Actions → workflows
 
-2. ✅ GitHub Secrets configured?
+2. Are the GitHub Secrets configured?
    - Settings → Secrets and variables → Actions
 
-3. ✅ Workflow permissions correct?
-   - Requires `contents: read`, `pull-requests: write`
+3. Are the workflow permissions correct?
+   - `contents: read` and `pull-requests: write` are required
 
-### LLM-Specific Errors
+### Per-LLM error handling
 
 #### Claude
 
 **Error:** `CLAUDE_CODE_OAUTH_TOKEN expired`
-**Fix:** Re-run `moai github auth claude`
+**Fix:** re-run `moai github auth claude`
 
 #### Codex
 
 **Error:** `repository visibility check failed`
-**Cause:** Attempting to use Codex on public repo
-**Fix:** Make repository private
+**Cause:** attempting to use Codex on a public repo
+**Fix:** switch the repo to private
 
 #### Gemini
 
 **Error:** `GEMINI_API_KEY quota exceeded`
-**Fix:** Increase quota in Google Cloud Console
+**Fix:** increase the quota in the Google Cloud Console
 
 #### GLM
 
 **Error:** `GLM_API_KEY authentication failed`
-**Fix:** Verify token in `~/.moai/.env.glm`
+**Fix:** check the token in `~/.moai/.env.glm`
 
-## Next Steps
+## Next steps
 
-- [CLI Reference](/workflow-commands/)
-- [Workflow Configuration](/advanced/settings-json/)
-- [Security Policy](/advanced/security-notes/)
+- [CLI Reference](/en/workflow-commands/)
+- [Workflow Settings Reference](/en/advanced/settings-json/)
+- [Security Policy](/en/advanced/security-notes/)

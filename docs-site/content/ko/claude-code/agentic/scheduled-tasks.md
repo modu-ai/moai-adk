@@ -150,7 +150,7 @@ in 45 minutes, check whether the integration tests passed
 
 CI 파이프라인이나 GitHub Actions의 `schedule` 트리거로 `claude -p`를 비대화로 호출하면 세션에 묶이지 않는 cron 자동화를 구성할 수 있습니다. 정리하면, 세션 안의 빠른 폴링은 `/loop`, 로컬 파일·도구 접근이 필요한 무인 작업은 Desktop 예약 작업, 머신과 무관하게 확실히 돌려야 하는 작업은 Routines를 씁니다.
 
-MoAI-ADK 관점에서는 `/loop`을 SPEC 구현 중인 PR 점검이나 CI 상태 추적에 가볍게 활용하고, 정기 릴리스 추적 같은 무인 작업은 GitHub Actions 측 스케줄링으로 분리하는 것이 모범 사례입니다.
+MoAI-ADK 관점에서 예약 작업은 자율 실행 스펙트럼의 한 축입니다 — 조건이 충족될 때까지 매 턴 일하는 것은 `/goal` (그리고 MoAI의 `/moai goal`), 정해진 주기에 다시 들여다보는 것은 `/loop`의 몫입니다. 실전에서는 `/loop`을 SPEC 구현 중인 PR 점검이나 CI 상태 추적에 가볍게 활용하고, 정기 릴리스 추적 같은 무인 작업은 GitHub Actions 측 스케줄링으로 분리하는 것이 모범 사례입니다. 주기 실행은 매 반복이 토큰을 소비한다는 점도 잊지 마세요 — 폴링 간격이 곧 비용 다이얼입니다.
 
 ## 관련 문서
 

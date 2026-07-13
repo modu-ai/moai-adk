@@ -1,14 +1,14 @@
 ---
 title: "Multi-LLM CI 가이드"
 description: "GitHub Actions에서 여러 AI 모델로 코드 리뷰 자동화"
-date: 2026-04-27
 draft: false
 weight: 10
 ---
 
-# Multi-LLM CI 가이드
-
-MoAI-ADK의 Multi-LLM CI 기능을 사용하여 GitHub Actions에서 다양한 LLM으로 코드 리뷰를 설정하는 방법을 안내합니다.
+MoAI-ADK의 Multi-LLM CI 기능으로 GitHub Actions에서 여러 LLM 코드 리뷰를
+설정하는 방법을 안내합니다. 리뷰어도 하나의 모델에 묶일 이유가 없습니다 —
+모델마다 강점과 단가가 다르므로, PR 리뷰에도 멀티 LLM 배분이라는 토크노믹스
+관점이 그대로 적용됩니다.
 
 ## 개요
 
@@ -21,7 +21,7 @@ MoAI-ADK의 Multi-LLM CI 기능은 GitHub Actions에서 여러 AI 모델로 동�
 | LLM | 제공자 | 트리거 방식 | 특징 |
 |-----|--------|-------------|------|
 | **Claude** | Anthropic | `/claude` 코멘트 | Issue/PR 리뷰, OAuth 인증 |
-| **Codex** | OpenAI | PR open 자동 | ⚠️ 비공개 레포 전용 |
+| **Codex** | OpenAI | PR open 자동 | 비공개 레포 전용 |
 | **Gemini** | Google | PR open 자동 | API Key 인증 |
 | **GLM** | Zhipu AI | PR open 자동 | 토큰 인증 |
 
@@ -29,8 +29,7 @@ MoAI-ADK의 Multi-LLM CI 기능은 GitHub Actions에서 여러 AI 모델로 동�
 
 ### 사전 요구사항
 
-- macOS (arm64) - v1.0 기준
-- Go 1.23+
+- MoAI-ADK 설치 (macOS · Linux · Windows)
 - GitHub repository
 - 각 LLM 계정 및 API 토큰
 
@@ -138,7 +137,7 @@ moai github auth codex
 ```
 OpenAI auth.json 파일 경로: ~/.codex/auth.json
 파일을 읽어 GitHub Secret을 생성합니다...
-⚠️ Codex는 비공개 레포에서만 사용 가능합니다 (REQ-SEC-001)
+주의: Codex는 비공개 레포에서만 사용 가능합니다 (REQ-SEC-001)
 
 생성된 Secret:
 CODEX_AUTH_JSON=eyJ0...
@@ -292,13 +291,13 @@ runner 버전 체크가 시스템 진단에 통합됩니다.
 
 #### Checklist
 
-1. ✅ GitHub Actions workflow가 활성화되어 있는가?
+1. GitHub Actions workflow가 활성화되어 있는가?
    - Repository → Actions → workflows 확인
 
-2. ✅ GitHub Secrets가 설정되어 있는가?
+2. GitHub Secrets가 설정되어 있는가?
    - Settings → Secrets and variables → Actions
 
-3. ✅ Workflow permissions이 올바른가?
+3. Workflow permissions이 올바른가?
    - `contents: read`, `pull-requests: write` 필요
 
 ### LLM별 에러 대응
@@ -326,6 +325,6 @@ runner 버전 체크가 시스템 진단에 통합됩니다.
 
 ## 다음 단계
 
-- [CLI 레퍼런스 참조](/workflow-commands/)
-- [Workflow 설정 참조](/advanced/settings-json/)
-- [보안 정책 확인](/advanced/security-notes/)
+- [CLI 레퍼런스 참조](/ko/workflow-commands/)
+- [Workflow 설정 참조](/ko/advanced/settings-json/)
+- [보안 정책 확인](/ko/advanced/security-notes/)

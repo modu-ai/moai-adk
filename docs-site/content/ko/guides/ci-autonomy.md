@@ -4,13 +4,17 @@ weight: 10
 draft: false
 ---
 
-MoAI-ADK의 자율 CI/CD 시스템으로 풀리퀘스트 품질을 자동으로 관리합니다.
+MoAI-ADK의 자율 CI/CD 시스템은 풀리퀘스트 품질을 자동으로 관리합니다.
+로컬 세션에서 `/moai loop`가 하던 "진단 → 수정 → 검증" 루프를 CI까지
+연장한 것으로, 개발자가 수동으로 품질을 검증하지 않아도 CI가 스스로
+품질을 보장합니다 — 에이전틱 루프 엔지니어링을 저장소 수준에 적용한
+사례입니다.
 
 ## 개요
 
 SPEC-V3R3-CI-AUTONOMY-001에서 도입된 자율 CI/CD 시스템은 8개 티어로 구성된
-품질 자동화 인프라입니다. pre-push hook부터 auto-fix 루프까지, 개발자가 수동으로
-품질을 검증할 필요 없이 CI가 자동으로 품질을 보장합니다.
+품질 자동화 인프라입니다. push 전 로컬 검증(pre-push hook)부터 CI 실패 시
+자동 수정(auto-fix loop)까지 하나의 방어선으로 이어집니다.
 
 ## 8-Tier 아키텍처
 
@@ -27,7 +31,8 @@ SPEC-V3R3-CI-AUTONOMY-001에서 도입된 자율 CI/CD 시스템은 8개 티어�
 
 ## Pre-push Hook (T1)
 
-push 전에 로컬에서 자동으로 품질 검증을 실행합니다.
+push 전에 로컬에서 자동으로 품질 검증을 실행합니다. CI까지 갔다가 실패하고
+돌아오는 왕복 비용을 로컬에서 미리 끊는 첫 번째 방어선입니다.
 
 ```bash
 # 자동 설치됨 (moai init / moai update 시)
@@ -42,7 +47,8 @@ push 전에 로컬에서 자동으로 품질 검증을 실행합니다.
 
 ## Auto-fix Loop (T3)
 
-CI 실패 시 `/moai loop`를 자동으로 호출하여 에러를 수정합니다.
+CI 실패 시 `/moai loop`를 자동으로 호출하여 에러를 수정합니다. 로컬의
+진단형 자가 수정 루프가 CI 러너 위에서 그대로 돌아가는 구조입니다.
 
 ```yaml
 # .github/workflows/ci.yml (자동 생성)
@@ -76,6 +82,8 @@ CI 실패 시 `/moai loop`를 자동으로 호출하여 에러를 수정합니�
 ### 감사 추적
 
 모든 BODP 결정은 `.moai/branches/decisions/<branch-name>.md`에 기록됩니다.
+결정을 추측이 아닌 기록으로 남기는 것 — 증거 기반 완료 판정이라는 MoAI
+원칙이 브랜치 결정에도 적용됩니다.
 
 ## i18n Validator (T6)
 

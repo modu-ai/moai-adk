@@ -4,46 +4,53 @@ weight: 10
 draft: false
 ---
 
-MoAI-ADK's autonomous CI/CD system automatically manages pull-request quality.
+MoAI-ADK's autonomous CI/CD system manages pull request quality automatically.
+It extends the "diagnose → fix → verify" loop that `/moai loop` runs in a
+local session all the way into CI, so CI guarantees quality on its own without
+developers verifying it manually — a case of agentic loop engineering applied
+at the repository level.
 
 ## Overview
 
-The autonomous CI/CD system introduced in SPEC-V3R3-CI-AUTONOMY-001 is a quality
-automation infrastructure composed of 8 tiers. From the pre-push hook through the
-auto-fix loop, CI guarantees quality automatically — developers never need to verify
-quality by hand.
+Introduced in SPEC-V3R3-CI-AUTONOMY-001, the autonomous CI/CD system is a
+quality automation infrastructure composed of 8 tiers. It forms one continuous
+line of defense, from local pre-push verification (pre-push hook) to automatic
+fixes on CI failure (auto-fix loop).
 
-## 8-Tier Architecture
+## The 8-Tier architecture
 
 | Tier | Name | Priority | Description |
 |------|------|----------|------|
-| T1 | Pre-push Hook | P0 | Automated quality validation before push |
-| T2 | Branch Protection | P0 | Protection rules for the main branch |
-| T3 | Auto-fix Loop | P1 | Automatic fixes when CI fails |
-| T4 | Auxiliary Workflows | P2 | Cleanup of auxiliary workflows |
+| T1 | Pre-push Hook | P0 | Automatic quality verification before push |
+| T2 | Branch Protection | P0 | main branch protection rules |
+| T3 | Auto-fix Loop | P1 | Automatic fixes on CI failure |
+| T4 | Auxiliary Workflows | P2 | Auxiliary workflow housekeeping |
 | T5 | Worktree State Guard | P1 | Guarantees worktree state integrity |
-| T6 | i18n Validator | P2 | Validates 4-locale documentation consistency |
+| T6 | i18n Validator | P2 | 4-locale documentation consistency checks |
 | T7 | BODP | P0 | Branch Origin Decision Protocol |
 | T8 | Release Workflow | P1 | Release automation |
 
 ## Pre-push Hook (T1)
 
-Runs automated quality validation locally before every push.
+Runs quality verification locally and automatically before pushing. It is the
+first line of defense that cuts off, locally and in advance, the round-trip
+cost of failing in CI and coming back.
 
 ```bash
-# Installed automatically (during moai init / moai update)
+# Installed automatically (on moai init / moai update)
 .git/hooks/pre-push → moai hook pre-push
 ```
 
-Validations performed:
+Verifications executed:
 
-- `go vet` / `golangci-lint` (auto-detected based on the project's language)
-- `go test ./...` (test suite)
+- `go vet` / `golangci-lint` (auto-detected by project language)
+- `go test ./...` (the test suite)
 - MX tag integrity check
 
 ## Auto-fix Loop (T3)
 
-Automatically invokes `/moai loop` to fix errors when CI fails.
+On CI failure, `/moai loop` is invoked automatically to fix the errors. The
+local diagnostic self-fix loop runs unchanged on top of the CI runner.
 
 ```yaml
 # .github/workflows/ci.yml (auto-generated)
@@ -55,55 +62,58 @@ Automatically invokes `/moai loop` to fix errors when CI fails.
 
 ## BODP — Branch Origin Decision Protocol (T7)
 
-Automatically decides the base branch when creating a new branch or worktree.
+Automatically decides the base branch when creating a new branch/worktree.
 
-### 3-Signal Evaluation
+### 3-Signal evaluation
 
 | Signal | Source | Meaning |
 |--------|------|------|
 | Signal A | SPEC `depends_on` + diff path overlap | Code dependency |
-| Signal B | A `.moai/specs/<NewSpecID>/` match in `git status` | Same working-tree location |
-| Signal C | `gh pr list --head <branch> --state open` ≥ 1 | An open PR on the current branch |
+| Signal B | `.moai/specs/<NewSpecID>/` match in `git status` | Working tree co-location |
+| Signal C | `gh pr list --head <branch> --state open` ≥ 1 | Current branch PR |
 
-### Decision Matrix
+### Decision matrix
 
-| Signal | Decision |
+| Signals | Decision |
 |--------|------|
 | A only | `stacked` — based on the current branch |
 | B present | `continue` — continue in the current context |
 | C only | `stacked` — based on the current branch |
-| None present | `main` — based on origin/main |
+| None | `main` — based on origin/main |
 
-### Audit Trail
+### Audit trail
 
-Every BODP decision is recorded in `.moai/branches/decisions/<branch-name>.md`.
+Every BODP decision is recorded in
+`.moai/branches/decisions/<branch-name>.md`. Leaving decisions as records
+rather than guesses — the MoAI principle of evidence-based completion applies
+to branch decisions as well.
 
 ## i18n Validator (T6)
 
-Automatically validates consistency across the 4-locale documentation.
+Automatically verifies consistency across the 4-locale documentation.
 
 ```bash
 scripts/docs-i18n-check.sh
 ```
 
-Items validated:
+Checks:
 
-- File count/path parity across the 4 locales
-- Presence of a front matter `title`
-- Presence of an H1 heading
-- Compliance with the MoAI glossary
+- Matching file counts/paths across the 4 locales
+- Front matter `title` present
+- H1 heading present
+- MoAI glossary compliance
 
 ## Worktree State Guard (T5)
 
-Guarantees the integrity of a worktree's state:
+Guarantees the state integrity of worktrees:
 
 - Detects uncommitted changes
-- Checks whether the worktree is in sync with the main branch
-- Surfaces the state in `moai status`
+- Checks sync state between the worktree and the main branch
+- Shows status in `moai status`
 
-## Related Documentation
+## Related documentation
 
-- [Worktree Guide](/worktree/guide) — Complete Git Worktree guide
-- [/moai loop](/utility-commands/moai-loop) — The iterative fix loop
-- [/moai fix](/utility-commands/moai-fix) — Automatic error fixing
-- [Multi-LLM CI](/guides/multi-llm-ci) — Multi-LLM CI integration
+- [Worktree Guide](/en/worktree/guide) — the complete Git Worktree guide
+- [/moai loop](/en/utility-commands/moai-loop) — the iterative fix loop
+- [/moai fix](/en/utility-commands/moai-fix) — automatic error fixing
+- [Multi-LLM CI](/en/guides/multi-llm-ci) — Multi-LLM CI integration

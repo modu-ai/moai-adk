@@ -4,114 +4,116 @@ weight: 20
 draft: false
 ---
 
-Detailed guide to MoAI-ADK's skill system.
+A detailed guide to MoAI-ADK's skill system. Skills are the knowledge layer of the agentic harness — and, in that they "load only the needed knowledge at the needed moment," they are also where tokenomics is most concretely implemented.
 
 {{< callout type="info" >}}
 
-**What is a Skill?**
+**What is a skill?**
 
-Remember the helicopter scene from the 1999 movie **The Matrix**? Neo asks Trinity if she knows how to fly a helicopter, and she calls headquarters to tell them the helicopter model and asks them to send the operating manual.
+Remember the helicopter scene from the 1999 film **The Matrix**? When Neo asks Trinity whether she can fly a helicopter, Trinity calls headquarters, names the helicopter model, and asks for the operating program to be uploaded.
 
 <p align="center">
   <iframe
     width="720"
     height="360"
     src="https://www.youtube.com/embed/9Luu4itC-Zs"
-    title="The Matrix Helicopter Scene"
+    title="The Matrix helicopter scene"
     frameBorder="0"
     allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
     allowFullScreen
   ></iframe>
 </p>
 
-**Claude Code's skills** **are that **operating manual**. They load only the necessary knowledge at the moment it's needed, allowing the AI to immediately act like an expert.
+**Claude Code's skills** are exactly that **operating manual**. They load only the needed knowledge at the needed moment, letting the AI instantly act like an expert.
 
 {{< /callout >}}
 
-## What is a Skill?
+## What Is a Skill?
 
-A skill is a **knowledge module** that provides Claude Code with specialized knowledge in a specific domain.
+A skill is a **knowledge module** that provides Claude Code with specialized expertise in a particular field.
 
-To use a school analogy: Claude Code is the student and skills are textbooks. Just as you open a math textbook for math class and a science textbook for science class, Claude Code loads the Python skill when writing Python code and the Frontend skill when creating React UIs.
+In a school analogy, Claude Code is the student and skills are the textbooks. Just as you open the math textbook in math class and the science textbook in science class, Claude Code loads the Python skill when writing Python code and the Frontend skill when building a React UI.
 
 ```mermaid
 flowchart TD
-    USER[User Request] --> DETECT[Keyword Detection]
-    DETECT --> TRIGGER{Trigger Matching}
-    TRIGGER -->|Python Related| PY["moai-domain-backend<br>Backend Expertise"]
-    TRIGGER -->|React Related| FE["moai-domain-frontend<br>Frontend Expertise"]
-    TRIGGER -->|Security Related| SEC["moai-foundation-core<br>TRUST 5 Validation"]
-    TRIGGER -->|DB Related| DB["moai-domain-database<br>Database Expertise"]
+    USER[User request] --> DETECT[Keyword detection]
+    DETECT --> TRIGGER{Trigger matching}
+    TRIGGER -->|Python-related| PY["moai-domain-backend<br>Backend expertise"]
+    TRIGGER -->|React-related| FE["moai-domain-frontend<br>Frontend expertise"]
+    TRIGGER -->|Security-related| SEC["moai-foundation-core<br>TRUST 5 security principles"]
+    TRIGGER -->|DB-related| DB["moai-domain-database<br>Database expertise"]
 
-    PY --> AGENT[Inject Knowledge into Agent]
+    PY --> AGENT[Knowledge injected into agent]
     FE --> AGENT
     SEC --> AGENT
     DB --> AGENT
 ```
 
-**Without skills**: Claude Code responds with only general knowledge. **With skills**: Applies MoAI-ADK's rules, patterns, and best practices to respond.
+**Without skills**: Claude Code responds with general knowledge only. **With skills**: it responds by applying MoAI-ADK's rules, patterns, and best practices.
 
 ## Skill Categories
 
-MoAI-ADK template includes a total of **27 `moai-*` skills** across 5 capability categories (Foundation 4 + Workflow 8 + Domain 5 + Reference 8 + Meta/Harness 2 = 27). Plus a separate `moai` umbrella skill that routes requests to specialized skills. Users can additionally write `harness-*` custom skills per project. Programming-language support is delivered through rules under `rules/moai/languages/`, not as separate skills.
+The MoAI-ADK template includes a total of **27 `moai-*` skills**, classified into 5 functional categories (Foundation 4 + Workflow 8 + Domain 5 + Reference 8 + Meta/Harness 2 = 27). In addition, there is 1 separate `moai` umbrella skill that routes requests to specialized skills. In user projects, you can additionally author custom `harness-*` skills. Programming-language support is provided by rules under `rules/moai/languages/` and is not a separate skill.
+
+This number is also a result of dieting — the skill catalog was refined from 48 → 38 → 27 over the v3 period.
 
 ### Foundation (Core Philosophy) - 4
 
-| Skill Name                    | Description                                           |
-| ----------------------------- | ----------------------------------------------------- |
-| `moai-foundation-core`        | SPEC-based TDD/DDD, TRUST 5 framework, execution rules    |
-| `moai-foundation-cc`          | Claude Code extension patterns (Skills, Agents, hooks) |
-| `moai-foundation-thinking`    | Structured thinking, ideation, first principles analysis |
-| `moai-foundation-quality`     | Automatic code quality validation, TRUST 5 validation  |
+| Skill name                  | Description                                                |
+| -------------------------- | --------------------------------------------------- |
+| `moai-foundation-core`     | SPEC-based TDD/DDD, the TRUST 5 framework, execution rules    |
+| `moai-foundation-cc`       | Claude Code extension patterns (Skills, Agents, Hooks)       |
+| `moai-foundation-thinking` | Structured thinking, ideation, first-principles analysis             |
+| `moai-foundation-quality`  | Automatic code-quality verification, TRUST 5 validation             |
 
-### Workflow (Automation Workflows) - 8
+### Workflow (Automated Workflows) - 8
 
-| Skill Name                | Description                                     |
-| ------------------------- | ------------------------------------------------ |
-| `moai-workflow-spec`      | SPEC document creation, GEARS format, analysis   |
-| `moai-workflow-project`   | Project initialization, docs creation, language |
-| `moai-workflow-ddd`       | ANALYZE-PRESERVE-IMPROVE cycle                  |
-| `moai-workflow-tdd`       | RED-GREEN-REFACTOR test-driven development      |
-| `moai-workflow-testing`   | Test creation, debugging, code review           |
-| `moai-workflow-worktree`  | Git worktree based parallel development         |
-| `moai-workflow-loop`      | Ralph Engine autonomous loop, LSP integration   |
-| `moai-workflow-ci-loop`   | CI watch and auto-fix loop workflow             |
+| Skill name                | Description                                          |
+| ------------------------ | --------------------------------------------- |
+| `moai-workflow-spec`     | SPEC document creation, GEARS format, requirements analysis     |
+| `moai-workflow-project`  | Project initialization, docs generation, language setup         |
+| `moai-workflow-ddd`      | The ANALYZE-PRESERVE-IMPROVE cycle               |
+| `moai-workflow-tdd`      | RED-GREEN-REFACTOR test-driven development           |
+| `moai-workflow-testing`  | Test creation, debugging, code-review integration           |
+| `moai-workflow-worktree` | Git-worktree-based parallel development                   |
+| `moai-workflow-loop`     | Ralph Engine autonomous loop, LSP integration              |
+| `moai-workflow-ci-loop`  | CI watch and auto-fix loop workflow          |
 
 ### Domain (Domain Expertise) - 5
 
-| Skill Name                        | Description                                             |
-| --------------------------------- | ------------------------------------------------------- |
-| `moai-domain-backend`             | API design, microservices, database integration         |
-| `moai-domain-frontend`            | React 19, Next.js 16, Vue 3.5, component architecture   |
-| `moai-domain-database`            | PostgreSQL, MongoDB, Redis, advanced data patterns      |
-| `moai-domain-html-report`         | Markdown to single-file HTML renderer (6 modes, no external deps) |
-| `moai-domain-humanize`            | AI-text humanization, post-editing (KO/EN/JA/ZH)       |
+| Skill name                   | Description                                             |
+| --------------------------- | ------------------------------------------------ |
+| `moai-domain-backend`       | API design, microservices, database integration      |
+| `moai-domain-frontend`      | React 19, Next.js 16, Vue 3.5, component architecture |
+| `moai-domain-database`      | PostgreSQL, MongoDB, Redis, advanced data patterns     |
+| `moai-domain-html-report`   | Markdown → single-file HTML report renderer (6 modes, no external dependencies) |
+| `moai-domain-humanize`      | AI text humanization and post-editing (KO/EN/JA/ZH)    |
 
 ### Reference (Best Practices) - 8
 
-| Skill Name                   | Description                                              |
-| ----------------------------- | ------------------------------------------------------- |
-| `moai-ref-api-patterns`       | REST/GraphQL API design patterns, error handling        |
-| `moai-ref-git-workflow`       | Git workflow, branch strategies, Conventional Commits   |
-| `moai-ref-owasp-checklist`    | OWASP Top 10 security patterns, input validation        |
-| `moai-ref-react-patterns`     | React/Next.js component patterns, state management      |
-| `moai-ref-testing-pyramid`    | Test pyramid strategy, coverage targets                 |
-| `moai-ref-llm-security`       | LLM defense security (prompt injection, OWASP LLM Top 10) |
-| `moai-ref-secops`             | DevSecOps/container/API operational defense security   |
-| `moai-ref-supply-chain`       | Software supply chain defense security (SBOM, SLSA, Sigstore) |
+| Skill name                  | Description                                              |
+| -------------------------- | ------------------------------------------------- |
+| `moai-ref-api-patterns`    | REST/GraphQL API design patterns, error handling             |
+| `moai-ref-git-workflow`    | Git workflow, branch strategies, Conventional Commits |
+| `moai-ref-owasp-checklist` | OWASP Top 10 security patterns, input validation                 |
+| `moai-ref-react-patterns`  | React/Next.js component patterns, state management            |
+| `moai-ref-testing-pyramid` | Test pyramid strategy, coverage targets               |
+| `moai-ref-llm-security`    | AI/LLM defensive security (prompt injection, OWASP LLM Top 10) |
+| `moai-ref-secops`          | DevSecOps/container/API operational defensive security             |
+| `moai-ref-supply-chain`    | Software supply-chain defensive security (SBOM, SLSA, Sigstore) |
 
 ### Meta/Harness (System Extension) - 2
 
-| Skill Name              | Description                                        |
-| ----------------------- | -------------------------------------------------- |
-| `moai-meta-harness`     | Project-specific harness dynamic generation        |
-| `moai-harness-learner`  | Harness learning subsystem, auto-update proposals |
+| Skill name              | Description                                        |
+| ---------------------- | ------------------------------------------- |
+| `moai-meta-harness`    | Dynamic generation of project-specific agent teams         |
+| `moai-harness-learner` | The harness learning subsystem, auto-update proposals |
 
-> The 27 `moai-*` skills are included in MoAI-ADK templates by default, each loaded independently to save tokens. Users can additionally write project-specific `harness-*` custom skills.
+> The 27 `moai-*` skills ship with the MoAI-ADK template by default, and each skill loads independently to save tokens. Users can additionally author per-project custom `harness-*` skills.
 
-## Progressive Disclosure System
+## The Progressive Disclosure System
 
-MoAI-ADK's skills use a **3-level progressive disclosure** system. Loading all skills at once would waste tokens, so only the necessary amount is loaded incrementally.
+MoAI-ADK skills use a **3-level Progressive Disclosure** system. Loading every skill at once wastes tokens, so they load incrementally, only as needed. Think of it as the skill-layer implementation of the context diet.
 
 ```mermaid
 flowchart TD
@@ -121,51 +123,51 @@ flowchart TD
     end
 
     subgraph L2["Level 2: Body (~5,000 tokens)"]
-        B1["Full skill documentation"]
+        B1["Full skill document"]
         B2["Code examples, patterns"]
     end
 
-    subgraph L3["Level 3: Bundled (unlimited)"]
+    subgraph L3["Level 3: Bundle (unlimited)"]
         R1["modules/ directory"]
         R2["reference.md, examples.md"]
     end
 
     L1 -->|"On trigger match"| L2
-    L2 -->|"When deep info needed"| L3
+    L2 -->|"When deep information is needed"| L3
 
 ```
 
-### Role of Each Level
+### The Role of Each Level
 
-| Level   | Tokens     | Load Timing | Content                                  |
-| ------- | ---------- | ----------- | ---------------------------------------- |
-| Level 1 | ~100       | Always      | Skill name, description, trigger keywords |
-| Level 2 | ~5,000     | On trigger  | Full documentation, code examples, patterns |
-| Level 3 | Unlimited  | On demand   | modules/, reference.md, examples.md       |
+| Level    | Tokens   | Loaded when      | Content                                |
+| ------- | ------ | -------------- | ----------------------------------- |
+| Level 1 | ~100   | Always           | Skill name, description, trigger keywords      |
+| Level 2 | ~5,000 | On trigger match | Full document, code examples, patterns          |
+| Level 3 | Unlimited | On demand       | modules/, reference.md, examples.md |
 
 ### Token Savings
 
-- **Old method**: Load all 27 skills = ~135,000 tokens (impossible)
-- **Progressive disclosure**: Load only metadata = ~5,200 tokens (97% savings)
-- **On-demand load**: Only 2-3 skills needed for task = ~15,000 additional tokens
+- **Naive approach**: loading all 27 skills = about 135,000 tokens (infeasible)
+- **Progressive disclosure**: metadata only = about 5,200 tokens (97% savings)
+- **Load on demand**: only the 2-3 skills the task needs = about 15,000 additional tokens
 
-## Skill Trigger Mechanism
+## The Skill Trigger Mechanism
 
-Skills are automatically loaded via **4 trigger conditions**.
+Skills load automatically via **4 trigger conditions**.
 
 ```mermaid
 flowchart TD
-    REQ[User Request Analysis] --> KW{Keyword Detection}
-    REQ --> AG{Agent Invocation}
-    REQ --> PH{Workflow Phase}
-    REQ --> LN{Language Detection}
+    REQ[Analyze user request] --> KW{Keyword detection}
+    REQ --> AG{Agent invocation}
+    REQ --> PH{Workflow phase}
+    REQ --> LN{Language detection}
 
     KW -->|"api, database"| SKILL1[moai-domain-backend]
     AG -->|"manager-develop"| SKILL1
     PH -->|"run phase"| SKILL2[moai-workflow-ddd]
     LN -->|"Python file"| SKILL3[moai-domain-backend]
 
-    SKILL1 --> LOAD[Skill Load Complete]
+    SKILL1 --> LOAD[Skill loaded]
     SKILL2 --> LOAD
     SKILL3 --> LOAD
 ```
@@ -173,78 +175,79 @@ flowchart TD
 ### Trigger Configuration Example
 
 ```yaml
-# Define triggers in skill frontmatter
+# 스킬 프론트매터에서 트리거 정의
 triggers:
-  keywords: ["api", "database", "authentication"] # Keyword matching
-  agents: ["manager-spec", "manager-develop"] # On agent invocation
-  phases: ["plan", "run"] # Workflow phases
-  languages: ["python", "typescript"] # Programming language
+  keywords: ["api", "database", "authentication"] # 키워드 매칭
+  agents: ["manager-spec", "manager-develop"] # 에이전트 호출 시
+  phases: ["plan", "run"] # 워크플로우 단계
+  languages: ["python", "typescript"] # 프로그래밍 언어
 ```
 
-**Trigger Priority:**
+**Trigger priority:**
 
-1. **Keywords**: Load immediately when keyword detected in user message
-2. **Agents**: Auto-load when specific agent is invoked
-3. **Phases**: Load according to Plan/Run/Sync phase
-4. **Languages**: Load based on programming language of files being worked on
+1. **Keywords**: load immediately when a keyword is detected in the user message
+2. **Agents**: auto-load when a specific agent is invoked
+3. **Phases**: load according to the Plan/Run/Sync phase
+4. **Languages**: load according to the programming language of the file being worked on
 
-## Skill Usage
+## Using Skills
 
 ### Explicit Invocation
 
-You can directly invoke skills in Claude Code conversations.
+You can invoke a skill directly in a Claude Code conversation.
 
 ```bash
-# Invoke skills in Claude Code
+# Claude Code에서 스킬 호출
 > Skill("moai-domain-backend")
 > Skill("moai-domain-frontend")
 > Skill("moai-ref-api-patterns")
 ```
 
-### Auto Load
+### Automatic Loading
 
-In most cases, skills are **automatically loaded** via the trigger mechanism. Users don't need to invoke them directly; the conversation context is analyzed to activate appropriate skills.
+In most cases skills are **loaded automatically** by the trigger mechanism. The conversation context is analyzed and the appropriate skills are activated without the user invoking anything.
 
 ## Skill Directory Structure
 
-Skill files are located in the `.claude/skills/` directory.
+Skill files live in the `.claude/skills/` directory.
 
 ```
 .claude/skills/
-├── moai-foundation-core/       # Foundation category
-│   ├── SKILL.md                # Main skill document (under 500 lines)
-│   ├── modules/                # Deep documentation (unlimited)
+├── moai-foundation-core/       # Foundation 카테고리
+│   ├── skill.md                # 메인 스킬 문서 (500줄 이하)
+│   ├── modules/                # 심층 문서 (무제한)
 │   │   ├── trust-5-framework.md
 │   │   ├── spec-first-ddd.md
 │   │   └── delegation-patterns.md
-│   ├── examples.md             # Real-world examples
-│   └── reference.md            # External reference links
+│   ├── examples.md             # 실전 예시
+│   └── reference.md            # 외부 참조 링크
 │
-├── moai-domain-backend/        # Domain category
-│   ├── SKILL.md
+├── moai-domain-backend/        # Domain 카테고리
+│   ├── skill.md
 │   └── modules/
 │       ├── api-patterns.md
 │       └── microservices.md
 │
-└── my-skills/                  # User custom skills (excluded from updates)
+└── my-skills/                  # 사용자 커스텀 스킬 (업데이트 제외)
     └── my-custom-skill/
-        └── SKILL.md
+        └── skill.md
 ```
 
 {{< callout type="warning" >}}
-**Warning**: Skills with `moai-*` prefix are overwritten on MoAI-ADK updates. Personal skills must be created in `.claude/skills/my-skills/` directory.
+  **Warning**: Skills with the `moai-*` prefix are overwritten on MoAI-ADK updates.
+  Always create personal skills in the `.claude/skills/my-skills/` directory.
 {{< /callout >}}
 
 ### Skill File Structure
 
-Each skill's `SKILL.md` follows this structure.
+Each skill's `skill.md` follows this structure.
 
 ```markdown
 ---
 name: moai-domain-backend
 description: >
-  Backend development expert. API design, microservices, database integration
-  patterns provided. Use for API, web app, data pipeline development.
+  백엔드 개발 전문가. API 설계, 마이크로서비스, 데이터베이스 통합 패턴 제공.
+  API, 웹 앱, 데이터 파이프라인 개발 시 사용.
 version: 3.0.0
 category: domain
 status: active
@@ -253,65 +256,65 @@ triggers:
 allowed-tools: ["Read", "Grep", "Glob", "Bash", "Context7 MCP"]
 ---
 
-# Backend Development Expert
+# 백엔드 개발 전문가
 
 ## Quick Reference
 
-(Quick reference - 30 seconds)
+(빠른 참조 - 30초)
 
 ## Implementation Guide
 
-(Implementation guide - 5 minutes)
+(구현 가이드 - 5분)
 
 ## Advanced Patterns
 
-(Advanced patterns - 10 minutes+)
+(고급 패턴 - 10분+)
 
 ## Works Well With
 
-(Related skills/agents)
+(연관 스킬/에이전트)
 ```
 
-## Real-World Examples
+## Practical Examples
 
-### Auto Skill Load in Python Project
+### Automatic Skill Loading in a Python Project
 
-Scenario where user is working on a Python FastAPI project.
+A scenario where the user is working in a Python FastAPI project.
 
 ```bash
-# 1. User requests API development
-> Create a user authentication API with FastAPI
+# 1. 사용자가 API 개발을 요청
+> FastAPI로 사용자 인증 API를 만들어줘
 
-# 2. Keywords automatically detected by MoAI-ADK
-# "FastAPI" → moai-domain-backend trigger (Python patterns via rules/moai/languages/)
-# "authentication" → moai-domain-backend trigger
-# "API" → moai-domain-backend trigger
+# 2. MoAI-ADK가 자동으로 감지하는 키워드
+# "FastAPI" → moai-domain-backend 트리거 (Python 패턴은 rules/moai/languages/ 통해 제공)
+# "인증"    → moai-domain-backend 트리거
+# "API"     → moai-domain-backend 트리거
 
-# 3. Auto-loaded skills
-# - moai-domain-backend (Level 2): API design patterns, auth strategy
-# - moai-foundation-core (Level 1): TRUST 5 quality standards
+# 3. 자동 로드되는 스킬
+# - moai-domain-backend (Level 2): API 설계 패턴, 인증 전략
+# - moai-foundation-core (Level 1): TRUST 5 품질 기준
 
-# 4. Agent uses skill knowledge for implementation
-# - Apply FastAPI router patterns
-# - Apply JWT authentication best practices
-# - Auto-generate pytest tests
-# - Meet TRUST 5 quality standards
+# 4. 에이전트가 스킬 지식을 활용하여 구현
+# - FastAPI 라우터 패턴 적용
+# - JWT 인증 모범 사례 적용
+# - pytest 테스트 자동 생성
+# - TRUST 5 품질 기준 충족
 ```
 
 ### Skill Collaboration
 
-Process where multiple skills collaborate on a single task.
+How multiple skills cooperate on a single task.
 
 ```mermaid
 flowchart TD
-    REQ["User: Create full-stack app<br>with Supabase + Next.js"] --> ANALYZE[Request Analysis]
+    REQ["User: Build a full-stack app<br>with Supabase + Next.js"] --> ANALYZE[Analyze request]
 
     ANALYZE --> S1["moai-domain-frontend<br>React/Next.js patterns"]
     ANALYZE --> S2["moai-domain-backend<br>API design patterns"]
     ANALYZE --> S3["moai-domain-database<br>Database integration"]
     ANALYZE --> S4["moai-foundation-core<br>TRUST 5 quality"]
 
-    S1 --> IMPL[Integrated Implementation]
+    S1 --> IMPL[Integrated implementation]
     S2 --> IMPL
     S3 --> IMPL
     S4 --> IMPL
@@ -321,24 +324,26 @@ flowchart TD
 
 ## Skill Scope and Discovery
 
-### Nested `.claude/skills` loading
+### Nested `.claude/skills` Loading
 
-Claude Code discovers `.claude/skills/` not only at the project root but also in nested subdirectories (parent-walk), so a monorepo can place package-local skills in each package's own `.claude/skills/` directory. When you are working inside a nested directory that contains its own `.claude/skills/`, the skills in that nested directory are loaded alongside the root-level skills for the duration of the work in that subtree.
+Claude Code discovers `.claude/skills/` not only at the project root but also in nested subdirectories (parent-walk). Monorepos can therefore place package-local skills in each package's own `.claude/skills/` directory. When working inside a nested directory containing its own `.claude/skills/`, that nested directory's skills are loaded alongside the root-level skills while working within that subtree.
 
-### Closest-wins on name collision
+### closest-wins on Name Collisions
 
-When the same skill name appears in more than one `.claude/skills/` directory along the nested chain, the **closest-directory-wins** rule resolves the collision: the `.claude/skills/` nearest to the current working directory shadows the one further up the tree. This mirrors the precedence that already applies to agents, workflows, and output-styles under nested `.claude/` directories — the innermost `.claude/` wins. A package-local skill that intentionally overrides a root skill MUST keep the same name; renaming it would create a second skill rather than an override.
+When the same skill name appears in more than one `.claude/skills/` directory along the nesting chain, the **closest-directory-wins** rule resolves the conflict: the `.claude/skills/` closest to the current working directory shadows the one higher up the tree. This is the same precedent rule already applied to agents, workflows, and output-styles under nested `.claude/` directories — the innermost `.claude/` wins. A package-local skill that deliberately overrides a root skill must keep the same name. Renaming it creates a second skill, not an override.
 
-### `disableBundledSkills` toggle
+### The `disableBundledSkills` Toggle
 
-`disableBundledSkills` (settings.json boolean, or its environment-variable form) hides the Claude Code bundled skills and workflows — e.g. `/deep-research`, built-in slash-command skills — from discovery, leaving only enterprise + personal + project + plugin skills visible. Use it when shipping a curated, bundle-free skill surface. MoAI-ADK does not emit this toggle from its own generators; it is documented here as an available option.
+`disableBundledSkills` (a settings.json boolean, or its environment-variable form) hides Claude Code's bundled skills and workflows — e.g. `/deep-research`, built-in slash-command skills — from discovery, exposing only enterprise + personal + project + plugin skills. Use it when providing a curated, bundle-free skill surface. MoAI-ADK does not generate this toggle in its own generators. It is documented here as an available option. The companion `--safe-mode` launch flag is documented in the [Settings JSON Guide](/en/advanced/settings-json#disablebundledskills).
 
-## Related Documentation
+## Related Documents
 
-- [Agent Guide](/advanced/agent-guide) - Agent system that uses skills
-- [Builder Agents Guide](/advanced/builder-agents) - Custom skill creation
-- [CLAUDE.md Guide](/advanced/claude-md-guide) - Skill configuration and rules
+- [Agent Guide](/en/advanced/agent-guide) - the agent system that uses skills
+- [Builder Agents Guide](/en/advanced/builder-agents) - how to create custom skills
+- [CLAUDE.md Guide](/en/advanced/claude-md-guide) - skill configuration and the rules system
 
 {{< callout type="info" >}}
-**Tip**: The key to using skills effectively is **using appropriate keywords**. Requesting "Create a REST API with Python" will automatically activate the `moai-domain-backend` skill (Python patterns are provided via `rules/moai/languages/`) to generate optimal code.
+  **Tip**: The key to using skills well is **using the right keywords**. Ask "build
+  a REST API in Python" and the `moai-domain-backend` skill activates automatically
+  (Python patterns are provided via `rules/moai/languages/`) to generate optimal code.
 {{< /callout >}}

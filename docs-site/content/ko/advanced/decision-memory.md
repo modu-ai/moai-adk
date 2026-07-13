@@ -4,17 +4,17 @@ weight: 50
 draft: false
 ---
 
-# 의사결정 메모리 시스템
-
-MoAI의 사용자 선호도 학습 및 적응형 권장 시스템을 안내합니다.
+에이전틱 루프 엔지니어링의 출발점은 관찰입니다 — 루프가 돌 때마다 관찰이 쌓이고, 쌓인 관찰이 학습의 원료가 됩니다. 의사결정 메모리는 그 관찰 대상을 코드가 아니라 **사용자의 선택**으로 확장한 계층입니다.
 
 {{< callout type="info" >}}
-**한 줄 요약**: 의사결정 메모리는 사용자의 선택을 기억하고 향후 유사한 상황에서 개인화된 권장을 제공합니다.
+**한 줄 요약**: 의사결정 메모리는 사용자의 선택을 기억하고, 향후 유사한 상황에서 개인화된 권장을 제공합니다.
 {{< /callout >}}
 
 ## 시스템 개요
 
-의사결정 메모리(Decision Memory)는 MoAI-ADK의 **장기 학습 계층**입니다. AskUserQuestion 라운드에서 사용자의 선택을 관찰하고, 향후 동일한 의사결정 지점에서 통계적으로 다수 선택을 기반으로 적응형 권장을 제공합니다.
+의사결정 메모리(Decision Memory)는 MoAI-ADK의 **장기 학습 계층**입니다. AskUserQuestion 라운드에서 사용자의 선택을 관찰하고, 향후 동일한 의사결정 지점에서 통계적 다수 선택을 기반으로 적응형 권장을 제공합니다.
+
+중요한 건 방향입니다. 시스템이 밀고 싶은 기본값을 `(권장)`으로 포장하는 게 아니라, **사용자가 실제로 반복 선택해 온 것**이 권장이 됩니다.
 
 ### 핵심 원칙
 
@@ -29,7 +29,7 @@ MoAI의 사용자 선호도 학습 및 적응형 권장 시스템을 안내합�
 
 ### 1. 3-Tier Memory Layer (메모리 계층)
 
-의사결정 메모리는 3개 계층으로 구성됩니다.
+의사결정 메모리는 3개 계층으로 구성됩니다. 아래로 갈수록 오래 남습니다.
 
 #### L0: Immediate (즉시 메모리)
 - **범위**: 현재 세션 내
@@ -48,7 +48,7 @@ MoAI의 사용자 선호도 학습 및 적응형 권장 시스템을 안내합�
 
 ### 2. Adaptive Recommendation Placement (적응형 권장 배치)
 
-권장(첫 옵션의 `(권장)` 라벨)은 **관찰된 통계적 다수**에 근거합니다.
+권장(첫 옵션의 `(권장)` 라벨)은 **관찰된 통계적 다수**에 근거합니다. 관찰량에 따라 세 상태를 오갑니다.
 
 #### Cold-Start (초기 상태)
 - **관찰 < N**: 충분한 관찰 데이터 부재
@@ -66,13 +66,16 @@ MoAI의 사용자 선호도 학습 및 적응형 권장 시스템을 안내합�
 - **신뢰도**: 최고 (≥95% 신뢰도)
 
 #### 숙련도 기반 적응형 강도
+
+같은 권장이라도 상대에 따라 강도가 달라집니다. 전문가에게 강한 권장은 자율성을 침해하고, 초보자에게 약한 권장은 결정 피로만 늘리기 때문입니다.
+
 - **전문가 (세션 > 50)**: 약 추천 강도 (자율성 우선, inferred preference만 공개)
 - **초보자 (세션 < 10)**: 강 추천 강도 (`(권장)` 라벨 + 이유 명시)
 - **중급자 (10 ≤ 세션 ≤ 50)**: 중간 강도 (정황에 따라 조정)
 
 ### 3. PostToolUse Capture Hook (의사결정 포착)
 
-AskUserQuestion 응답이 도착하면 PostToolUse 훅이 자동으로 의사결정을 포착합니다.
+AskUserQuestion 응답이 도착하면 PostToolUse 훅이 자동으로 의사결정을 포착합니다. 사용자가 따로 기록할 일은 없습니다.
 
 #### 포착되는 데이터
 
@@ -98,7 +101,7 @@ AskUserQuestion 응답이 도착하면 PostToolUse 훅이 자동으로 의사결
 
 ### 4. Decay Policy (감쇠 정책)
 
-오래된 의사결정의 가중치를 점진적으로 감소시킵니다.
+3개월 전의 선택이 오늘의 선호를 대변하지는 않습니다. 오래된 의사결정의 가중치는 점진적으로 감소합니다.
 
 #### 감쇠 함수
 
@@ -122,11 +125,11 @@ weight(t) = initial_weight × exp(-decay_rate × days_ago)
 
 ### 5. Recovery Controls (복구 제어)
 
-의사결정 메모리의 오류 복구 및 재설정을 관리합니다.
+학습이 잘못된 방향으로 굳었을 때를 위해 오류 복구 및 재설정 수단이 제공됩니다.
 
 #### 메모리 초기화
 
-사용자가 학습된 선호도를 초기화할 수 있습니다:
+사용자가 학습된 선호도를 초기화할 수 있습니다.
 
 ```bash
 /moai memory reset
@@ -134,7 +137,7 @@ weight(t) = initial_weight × exp(-decay_rate × days_ago)
 
 #### 선호도 편집
 
-특정 의사결정 카테고리의 권장을 수정:
+특정 의사결정 카테고리의 권장을 수정합니다.
 
 ```bash
 /moai memory set <category> <preferred-option>
@@ -142,7 +145,7 @@ weight(t) = initial_weight × exp(-decay_rate × days_ago)
 
 #### 선호도 조회
 
-현재 학습된 선호도 확인:
+현재 학습된 선호도를 확인합니다.
 
 ```bash
 /moai memory list
@@ -150,7 +153,7 @@ weight(t) = initial_weight × exp(-decay_rate × days_ago)
 
 ## 의사결정 카테고리
 
-메모리가 추적하는 주요 의사결정 유형:
+메모리가 추적하는 주요 의사결정 유형입니다.
 
 | 카테고리 | 예시 |
 |----------|------|
@@ -161,6 +164,8 @@ weight(t) = initial_weight × exp(-decay_rate × days_ago)
 | **Team Mode** | Solo vs Agent Teams |
 | **Model Selection** | Model choice per task |
 | **Effort Level** | Effort 레벨 (low/medium/high/xhigh) |
+
+Model Selection과 Effort Level이 여기에 포함된다는 점에 주목할 만합니다 — 의사결정 메모리가 학습한 선호가 결국 모델·추론 깊이 배정으로 이어지므로, 이 시스템은 토크노믹스의 개인화 계층이기도 합니다.
 
 ## 통계적 다수 학습의 예시
 
@@ -192,7 +197,7 @@ TDD: 5회 선택  ← 통계적 다수
 
 ## Cold-Start 투명성
 
-관찰 부족 시 명시적 공개:
+관찰이 부족할 때는 그 사실을 숨기지 않고 명시적으로 공개합니다.
 
 ```
 선택지 1: Tier M (권장) — based on static default, 5 observations needed for personalization
@@ -200,7 +205,7 @@ TDD: 5회 선택  ← 통계적 다수
 선택지 3: Tier S
 ```
 
-사용자는 아직 학습 중인 상태임을 명확히 인식합니다.
+사용자는 아직 학습 중인 상태임을 명확히 인식할 수 있습니다.
 
 ## 숙련도 기반 강도 조정의 예
 
@@ -221,10 +226,10 @@ Tier M (권장) — 최근 선택 기반 제시
 
 ## 관련 문서
 
-- [AskUserQuestion 프로토콜](/advanced/agent-guide) - 권장 배치 규칙 (HARD)
-- [워크플로우 선택](/advanced/harness-v4-builder) - Tier 선택 및 의사결정
-- [메모리 시스템](/getting-started/memory) - 사용자 선호도 관리
+- [에이전트 가이드](/ko/advanced/agent-guide) - AskUserQuestion 권장 배치 규칙 (HARD)
+- [Harness v4 Builder 심화 가이드](/ko/advanced/harness-v4-builder) - Tier 선택 및 의사결정
+- [메모리 시스템](/ko/getting-started/memory) - 사용자 선호도 관리
 
 {{< callout type="info" >}}
-**팁**: 의사결정 메모리는 자동으로 작동합니다. 명시적 설정이 필요 없습니다. 사용자는 의사결정할 때마다 자동으로 학습됩니다.
+**팁**: 의사결정 메모리는 자동으로 작동합니다. 명시적 설정이 필요 없습니다 — 의사결정을 내릴 때마다 시스템이 조용히 학습합니다.
 {{< /callout >}}

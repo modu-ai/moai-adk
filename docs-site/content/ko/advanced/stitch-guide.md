@@ -4,7 +4,7 @@ weight: 110
 draft: false
 ---
 
-Google Stitch MCP 서버를 활용하여 AI 기반 UI/UX 디자인을 생성하는 방법을 상세히 안내합니다.
+Google Stitch MCP 서버를 활용하여 AI 기반 UI/UX 디자인을 생성하는 방법을 상세히 안내합니다. 에이전틱 하네스는 코드에만 머물지 않습니다 — 디자인 생성 도구를 MCP로 연결하면 UI 프로토타이핑도 같은 에이전틱 워크플로우 안에서 흐릅니다.
 
 {{< callout type="info" >}}
 **한 줄 요약**: Google Stitch는 **텍스트 설명만으로 UI 화면을 생성하는 AI 디자인 도구**입니다. MCP 서버를 통해 Claude Code에서 직접 UI를 생성하고, 디자인 컨텍스트를 추출하며, 프로덕션 코드로 내보낼 수 있습니다.
@@ -269,7 +269,7 @@ Stitch에서 좋은 결과를 얻으려면 구조화된 프롬프트가 중요�
 
 ### 점진적 개선 전략
 
-복잡한 화면은 여러 번에 나눠서 생성하면 품질이 향상됩니다.
+복잡한 화면은 여러 번에 나눠서 생성하면 품질이 향상됩니다. 반복 한 번 한 번이 곧 관찰-개선 루프입니다.
 
 ```mermaid
 flowchart TD
@@ -320,10 +320,10 @@ gcloud beta services mcp enable stitch.googleapis.com --project=YOUR_PROJECT_ID
 
 ## 관련 문서
 
-- [MCP 서버 활용](/advanced/mcp-servers) - MCP 프로토콜 개요 및 다른 MCP 서버
-- [settings.json 가이드](/advanced/settings-json) - MCP 서버 권한 설정
-- [스킬 가이드](/advanced/skill-guide) - moai-platform-stitch 스킬 활용
-- [에이전트 가이드](/advanced/agent-guide) - 에이전트 시스템과의 연동
+- [MCP 서버 활용](/ko/advanced/mcp-servers) - MCP 프로토콜 개요 및 다른 MCP 서버
+- [settings.json 가이드](/ko/advanced/settings-json) - MCP 서버 권한 설정
+- [스킬 가이드](/ko/advanced/skill-guide) - moai-platform-stitch 스킬 활용
+- [에이전트 가이드](/ko/advanced/agent-guide) - 에이전트 시스템과의 연동
 
 {{< callout type="info" >}}
 **팁**: Google Stitch를 최대한 활용하는 핵심은 **Designer Flow 패턴**입니다. 기존 화면에서 디자인 컨텍스트를 추출한 후 새 화면을 생성하면 프로젝트 전체에서 일관된 디자인을 유지할 수 있습니다.

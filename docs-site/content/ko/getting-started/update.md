@@ -4,7 +4,7 @@ weight: 70
 draft: false
 ---
 
-MoAI-ADK를 최신 버전으로 유지하고 스마트 업데이트 워크플로우를 통해 원활한 업그레이드를 수행하세요.
+MoAI-ADK를 최신 버전으로 유지하는 방법을 안내합니다. `moai update` 하나로 바이너리와 템플릿이 함께 갱신되며, 사용자가 만든 커스텀 자산은 자동으로 보존됩니다.
 
 ## 업데이트 명령
 
@@ -348,8 +348,8 @@ MoAI-ADK 업데이트 시 **CLAUDE.md**와 **settings.json**은 새 버전으로
 |------|------|------|
 | `CLAUDE.md` | 프로젝트 루트 | MoAI-ADK 관리 (업데이트 시 변경됨) |
 | `settings.json` | `.claude/` | MoAI-ADK 관리 (업데이트 시 변경됨) |
-| `CLAUDE.local.md` | 프로젝트 루트 | ✅ 프로젝트 개인 설정 (업데이트 영향 없음) |
-| `.claude/settings.local.json` | 프로젝트 | ✅ 프로젝트 개인 설정 (업데이트 영향 없음) |
+| `CLAUDE.local.md` | 프로젝트 루트 | {{< icon check ok >}} 프로젝트 개인 설정 (업데이트 영향 없음) |
+| `.claude/settings.local.json` | 프로젝트 | {{< icon check ok >}} 프로젝트 개인 설정 (업데이트 영향 없음) |
 
 **개인 설정 예시 (프로젝트 로컬):**
 
@@ -377,10 +377,7 @@ MoAI-ADK 업데이트 시 **CLAUDE.md**와 **settings.json**은 새 버전으로
 {
   "env": {
     "ANTHROPIC_AUTH_TOKEN": "YOUR-API-KEY",
-    "ANTHROPIC_BASE_URL": "https://api.z.ai/api/anthropic",
-    "ANTHROPIC_DEFAULT_HAIKU_MODEL": "glm-4.7-flashx",
-    "ANTHROPIC_DEFAULT_SONNET_MODEL": "glm-4.7",
-    "ANTHROPIC_DEFAULT_OPUS_MODEL": "glm-4.7"
+    "ANTHROPIC_BASE_URL": "https://api.z.ai/api/anthropic"
   },
   "permissions": {
     "allow": [
@@ -392,29 +389,8 @@ MoAI-ADK 업데이트 시 **CLAUDE.md**와 **settings.json**은 새 버전으로
   "enabledMcpjsonServers": [
     "context7"
   ],
-  "companyAnnouncements": [
-    "🗿 MoAI-ADK: 28개 전문 에이전트 + 52개 Skills로 SPEC-First DDD",
-    "⚡ /moai: 원스탑 Plan→Run→Sync 자동화 (지능형 라우팅)",
-    "🌳 moai worktree: 격리된 워크트리 환경에서 병렬 SPEC 개발",
-    "🤖 Expert Agents (8): backend, frontend, security, devops, debug, performance, refactoring, testing",
-    "🤖 Manager Agents (8): git, spec, ddd, tdd, docs, quality, project, strategy",
-    "🤖 Builder Agents (3): agent, skill, plugin",
-    "🤖 Team Agents (8, 실험적): researcher, analyst, architect, designer, backend-dev, frontend-dev, tester, quality",
-    "📋 워크플로우: /moai plan (SPEC) → /moai run (DDD) → /moai sync (Docs)",
-    "🚀 옵션: --team (병렬 Agent Teams), --ultrathink (Adaptive Thinking 깊은 분석), --loop (반복 자동 수정)",
-    "✅ 품질: TRUST 5 + 85%+ 커버리지 + Ralph Engine (LSP + AST-grep)",
-    "🔄 Git 전략: 3-Mode (Manual/Personal/Team) + Smart Merge 설정 업데이트",
-    "📚 팁: moai update --templates-only로 최신 skills와 agents 동기화",
-    "📚 팁: moai worktree new SPEC-XXX로 병렬 개발용 worktree 생성",
-    "⚙️ moai update -c: Model 가용성 설정 (high/medium/low) - Claude 요금제별 모델 구성",
-    "💡 하이브리드 모드: Plan은 Claude (Opus/Sonnet), Run/Sync는 GLM-5로 비용 절감",
-    "💡 병렬 개발: 터미널1은 Claude, 터미널2+는 'moai glm && claude'로 병렬 실행",
-    "💎 GLM-5 스폰서: z.ai 파트너십 - 비용 효율적인 AI로 동등한 성능",
-    "💬 모두의AI 공식 디스코드에서 다양한 에이전틱 코딩 정보를 받아보세요! https://discord.gg/Y3fRHb3tfw"
-  ],
   "_meta": {
     "description": "User-specific Claude Code settings (gitignored - never commit)",
-    "created_at": "2026-01-27T18:15:26.175926Z",
     "note": "Edit this file to customize your local development environment"
   }
 }
@@ -432,7 +408,8 @@ MoAI-ADK는 다음 폴더에서만 파일을 관리합니다:
 ```
 .claude/
 ├── agents/
-│   └── moai/                # MoAI-ADK 에이전트 (업데이트 대상)
+│   ├── moai/                # MoAI-ADK 에이전트 (업데이트 대상)
+│   └── harness/             # 사용자 하네스 에이전트 (업데이트 제외, 보존)
 │
 ├── hooks/
 │   └── moai/                # MoAI-ADK 훅 스크립트 (업데이트 대상)
@@ -440,7 +417,7 @@ MoAI-ADK는 다음 폴더에서만 파일을 관리합니다:
 ├── skills/
 │   ├── moai-*               # MoAI-ADK 스킬 (moai- 접두사, 업데이트 대상)
 │   │
-│   └── my-skills/           # ✅ 개인 스킬 (업데이트 제외)
+│   └── hns-*                # 사용자 생성 스킬 (업데이트 제외, 보존)
 │
 └── rules/
     └── moai/                # 규칙 파일 (moai 관리)
@@ -454,29 +431,25 @@ MoAI-ADK는 다음 폴더에서만 파일을 관리합니다:
 
 | 유형 | 위치 | 업데이트 영향 |
 |------|------|--------------|
-| **에이전트** | `agents/moai/` | ⚠️ **업데이트 시 변경됨** |
-| **훅** | `hooks/moai/` | ⚠️ **업데이트 시 변경됨** |
-| **스킬** | `skills/moai-*` | ⚠️ **업데이트 시 변경됨** |
-| **규칙** | `rules/moai/` | ⚠️ **업데이트 시 변경됨** |
-| **개인 에이전트** | `agents/my-agents/` | ✅ **업데이트 영향 없음** |
-| **개인 스킬** | `skills/my-skills/` | ✅ **업데이트 영향 없음** |
+| **에이전트** | `agents/moai/` | {{< icon warning warn >}} **업데이트 시 변경됨** |
+| **훅** | `hooks/moai/` | {{< icon warning warn >}} **업데이트 시 변경됨** |
+| **스킬** | `skills/moai-*` | {{< icon warning warn >}} **업데이트 시 변경됨** |
+| **규칙** | `rules/moai/` | {{< icon warning warn >}} **업데이트 시 변경됨** |
+| **사용자 에이전트** | `agents/harness/` | {{< icon check ok >}} **업데이트 영향 없음 (보존)** |
+| **사용자 스킬** | `skills/hns-*` (레거시 `harness-*`, `my-*` 포함) | {{< icon check ok >}} **업데이트 영향 없음 (보존)** |
 
 {{< callout type="warning" >}}
-**중요:** <code>moai-*</code> 접두사를 가진 스킬은 MoAI-ADK가 관리합니다. 개인적인 추가나 수정은 `my-*` 폴더나 별도 접두사를 사용하세요.
-{{< /callout >}}
-
-{{< callout type="warning" >}}
-**중요:** `moai/` 폴더 내의 파일은 업데이트 시 덮어 쓰일 수 있습니다. 개인적인 추가나 수정은 별도 폴더를 사용하세요.
+**중요:** <code>moai-*</code> 접두사를 가진 스킬은 MoAI-ADK가 관리하며 업데이트 시 덮어 쓰입니다. 직접 만든 스킬은 <code>hns-*</code> 접두사 (사용자 소유 네임스페이스) 를, 에이전트는 <code>.claude/agents/harness/</code> 디렉터리를 사용하세요. 자세한 정책은 [하네스 네임스페이스 정책](/ko/core-concepts/harness-engineering/#하네스-네임스페이스-정책-template-managed-vs-user-owned)을 참조하세요.
 {{< /callout >}}
 
 ### 파일 정리 방법
 
 ```bash
 # 개인 에이전트 이동 (예시)
-mv .claude/agents/my-agent.md .claude/my-agents/
+mv .claude/agents/moai/my-agent.md .claude/agents/harness/
 
-# 개인 스킬 이동 (예시)
-mv .claude/skills/my-skill.md .claude/my-skills/
+# 개인 스킬 이름 변경 (예시: hns- 접두사 부여)
+mv .claude/skills/my-skill .claude/skills/hns-my-skill
 ```
 
 ### 변경 로그

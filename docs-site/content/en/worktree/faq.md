@@ -4,86 +4,87 @@ weight: 40
 draft: false
 ---
 
-Common problems and solutions when using Git Worktree.
+Questions and problems you run into while using Git Worktree, collected in one
+place.
 
-## Table of Contents
+## Table of contents
 
 1. [Basic Concepts](#basic-concepts)
 2. [Usage](#usage)
 3. [Troubleshooting](#troubleshooting)
-4. [Performance & Optimization](#performance--optimization)
+4. [Performance and Optimization](#performance-and-optimization)
 5. [Team Collaboration](#team-collaboration)
 
 ---
 
 ## Basic Concepts
 
-### Q: What's the difference between Git Worktree and regular branches?
+### Q: How does Git Worktree differ from a regular branch?
 
-**A**: Git Worktree allows you to work in **physically separated directories**:
+**A**: Git Worktree lets you work in **physically separated directories**:
 
 ```mermaid
 graph TB
-    subgraph Traditional["Regular Branch Method"]
+    subgraph Traditional["Regular branch approach"]
         T1[Single directory]
         T2[Switch branches with<br/>git checkout]
-        T3[Context switching cost occurs]
+        T3[Context-switching cost]
     end
 
-    subgraph Worktree["Worktree Method"]
+    subgraph Worktree["Worktree approach"]
         W1[Directory 1<br/>feature/A]
         W2[Directory 2<br/>feature/B]
         W3[Directory 3<br/>main]
-        W4[Can work on multiple branches simultaneously]
+        W4[Work on multiple branches at once]
     end
 
     Traditional -.->|Inefficient| Worktree
 ```
 
-**Key Differences**:
+**Key differences**:
 
-| Feature          | Regular Branch         | Git Worktree    |
+| Feature       | Regular branch      | Git Worktree    |
 | ------------- | ------------------- | --------------- |
-| Working Directory | 1 shared            | N independent        |
-| Branch Switch   | `git checkout` needed | Just directory move |
-| Simultaneous Work | Not possible      | Possible            |
-| LLM Settings      | Shared              | Independent          |
-| Conflict Possibility   | High                | Low            |
+| Working directory | 1 shared        | N independent   |
+| Branch switching  | `git checkout` required | Just change directories |
+| Concurrent work   | Not possible    | Possible        |
+| LLM configuration | Shared          | Independent     |
+| Conflict risk     | High            | Low             |
 
 ---
 
 ### Q: Why should I use Worktree?
 
-**A**: We recommend using Worktree for the following reasons:
+**A**: Two reasons are central — parallel development and Tokenomics:
 
-1. **LLM Settings Independence**: Can use different LLMs for each SPEC
-   - Plan phase: Opus (high quality)
+1. **LLM configuration independence** — assign a different LLM per SPEC
+   - Plan phase: Opus (high-quality reasoning)
    - Implement phase: GLM (low cost)
    - Document phase: Sonnet (medium)
 
-2. **Parallel Development**: Can develop multiple SPECs simultaneously
-3. **Conflict Prevention**: Minimizes conflicts with isolated workspaces
-4. **Cost Savings**: 70% cost savings with GLM
+2. **Parallel development** — run multiple SPECs at the same time
+3. **Conflict prevention** — independent workspaces minimize conflicts
+4. **Cost savings** — using GLM for implementation cuts costs by roughly 70%
 
 ```mermaid
 graph TB
-    A[Not using Worktree] --> B[Same LLM applied<br/>to all sessions]
-    B --> C[High cost<br/>Only Opus used]
+    A[Without Worktree] --> B[Same LLM applied<br/>to every session]
+    B --> C[High cost<br/>Opus only]
 
-    D[Using Worktree] --> E[Independent LLM<br/>for each Worktree]
-    E --> F[70% cost savings<br/>Can use GLM]
+    D[With Worktree] --> E[Independent LLM<br/>per Worktree]
+    E --> F[70% cost savings<br/>GLM available]
 ```
 
 ---
 
-### Q: Is Worktree required in MoAI-ADK?
+### Q: Is Worktree mandatory in MoAI-ADK?
 
-**A**: No, it's not required but **strongly recommended**:
+**A**: No, it is not mandatory but **strongly recommended**:
 
-- **Single SPEC Development**: Possible without Worktree
-- **Multiple SPEC Development**: Worktree essential
-- **Team Collaboration**: Prevent conflicts with Worktree
-- **Cost Optimization**: Separate LLMs with Worktree
+- **Single-SPEC development**: possible without Worktree
+- **Multi-SPEC development**: Worktree is effectively required
+- **Team collaboration**: Worktree prevents conflicts
+- **Cost optimization**: Worktree separates LLMs
 
 ---
 
@@ -91,27 +92,27 @@ graph TB
 
 ### Q: How do I create a Worktree?
 
-**A**: There are two methods:
+**A**: There are two ways:
 
-**Method 1: Automatic Creation (Recommended)**
+**Method 1: automatic creation (recommended)**
 
 ```bash
-# Automatically create during SPEC planning phase
-> /moai plan "feature description" --worktree
+# Auto-created during SPEC planning
+> /moai plan "Feature description" --worktree
 
 # Automatically:
-# 1. Create SPEC document
-# 2. Create Worktree
-# 3. Create feature branch
+# 1. Creates SPEC documents
+# 2. Creates the Worktree
+# 3. Creates the feature branch
 ```
 
-**Method 2: Manual Creation**
+**Method 2: manual creation**
 
 ```bash
-# Manually create Worktree
+# Create a Worktree manually
 moai worktree new SPEC-AUTH-001
 
-# Create from specific branch
+# Create from a specific branch
 moai worktree new SPEC-AUTH-001 --from develop
 ```
 
@@ -122,11 +123,11 @@ moai worktree new SPEC-AUTH-001 --from develop
 **A**: Use the `moai worktree go` command:
 
 ```bash
-# Enter Worktree
+# Enter the Worktree
 moai worktree go SPEC-AUTH-001
 
-# New terminal opens and moves to Worktree
-# Prompt changes
+# A new terminal opens and moves into the Worktree
+# The prompt changes
 (SPEC-AUTH-001) $
 ```
 
@@ -136,7 +137,7 @@ moai worktree go SPEC-AUTH-001
 flowchart TD
     A[moai worktree go SPEC-ID] --> B[New terminal opens]
     B --> C[Move to Worktree directory]
-    C --> D{Change LLM?}
+    C --> D{Switch LLM?}
     D -->|Yes| E[moai glm]
     D -->|No| F[Start Claude]
     E --> F
@@ -145,9 +146,9 @@ flowchart TD
 
 ---
 
-### Q: Can I use multiple Worktrees simultaneously?
+### Q: Can I use multiple Worktrees at the same time?
 
-**A**: Yes, unlimited:
+**A**: Yes, without limit:
 
 ```bash
 # Terminal 1
@@ -165,11 +166,11 @@ moai worktree go SPEC-API-003
 # All can work simultaneously
 ```
 
-**Parallel work visualization**:
+**Parallel work visualized**:
 
 ```mermaid
 graph TB
-    subgraph Time["Time Progress"]
+    subgraph Time["Time elapsed"]
         T1[09:00]
         T2[10:00]
         T3[11:00]
@@ -212,10 +213,10 @@ graph TB
 # Basic completion (merge + cleanup)
 moai worktree done SPEC-AUTH-001
 
-# Including push to remote
+# Including a push to the remote
 moai worktree done SPEC-AUTH-001 --push
 
-# Remove only without merging
+# Remove only, without merging
 moai worktree done SPEC-AUTH-001 --no-merge
 ```
 
@@ -224,7 +225,7 @@ moai worktree done SPEC-AUTH-001 --no-merge
 ```mermaid
 flowchart TD
     A[moai worktree done SPEC-ID] --> B{--no-merge?}
-    B -->|Yes| C[Only remove Worktree]
+    B -->|Yes| C[Remove Worktree only]
     B -->|No| D[Switch to main]
     D --> E[Merge feature]
     E --> F{Conflict?}
@@ -233,7 +234,7 @@ flowchart TD
     H -->|Yes| I[Push to remote]
     H -->|No| J[Remove Worktree]
     I --> J
-    C --> K[Complete]
+    C --> K[Done]
     J --> K
     G --> L[User intervention needed]
 ```
@@ -242,36 +243,36 @@ flowchart TD
 
 ## Troubleshooting
 
-### Q: Worktree conflict occurred
+### Q: I got a Worktree merge conflict
 
-**A**: Resolve with the following steps:
+**A**: Resolve it with these steps:
 
 ```mermaid
 flowchart TD
-    A[Conflict occurred] --> B[Check conflict files]
-    B --> C[Open conflict files]
-    C --> D[Find conflict markers <<<<<<<]
-    D --> E[Manual merge]
+    A[Conflict occurs] --> B[Check conflicting files]
+    B --> C[Open the conflicting file]
+    C --> D[Find conflict markers &lt;&lt;&lt;&lt;&lt;&lt;&lt;]
+    D --> E[Merge manually]
     E --> F[git add]
     F --> G[git commit]
     G --> H[Re-run moai worktree done]
 ```
 
-**Real example**:
+**Concrete example**:
 
 ```bash
 moai worktree done SPEC-AUTH-001
-✗ Merge conflict occurred!
+✗ Merge conflict!
 
-# 1. Check conflict files
+# 1. Check conflicting files
 cd .moai/worktrees/SPEC-AUTH-001
 git status
-# Conflict file: src/auth/jwt.ts
+# Conflicting file: src/auth/jwt.ts
 
-# 2. Resolve conflict
+# 2. Resolve the conflict
 code src/auth/jwt.ts
 
-# 3. Check and edit conflict markers
+# 3. Check and fix the conflict markers
 <<<<<<< HEAD
 const secret = process.env.JWT_SECRET;
 =======
@@ -288,34 +289,34 @@ git commit -m "fix: resolve merge conflict"
 # 6. Retry completion
 cd /path/to/project
 moai worktree done SPEC-AUTH-001
-✓ Complete!
+✓ Done!
 ```
 
 ---
 
-### Q: Worktree is corrupted
+### Q: My Worktree is corrupted
 
-**A**: Recover with the following steps:
+**A**: Recover it with these steps:
 
 ```bash
 # 1. Diagnose
 moai worktree status SPEC-AUTH-001
-✗ Worktree directory does not exist
+✗ The Worktree directory does not exist
 
-# 2. Remove existing Worktree
+# 2. Remove the existing Worktree
 moai worktree remove SPEC-AUTH-001 --force
 
-# 3. Recreate Worktree
+# 3. Recreate the Worktree
 moai worktree new SPEC-AUTH-001
 
 # 4. Verify recovery
 moai worktree status SPEC-AUTH-001
-✓ Worktree is normal
+✓ Worktree healthy
 ```
 
 ---
 
-### Q: Insufficient disk space
+### Q: I'm running out of disk space
 
 **A**: Clean up old Worktrees:
 
@@ -326,29 +327,29 @@ $ du -sh .moai/worktrees/*
 1.8G    .moai/worktrees/SPEC-LOG-002
 3.2G    .moai/worktrees/SPEC-API-003
 
-# 2. Clean old Worktrees
+# 2. Clean up old Worktrees
 $ moai worktree clean --older-than 14
 
 # Worktrees to be cleaned:
-#   - SPEC-OLD-001 (30 days ago, 2.1GB)
-#   - SPEC-OLD-002 (45 days ago, 1.7GB)
+#   - SPEC-OLD-001 (30 days old, 2.1GB)
+#   - SPEC-OLD-002 (45 days old, 1.7GB)
 
 Continue? [y/N] y
 
-✓ 2 Worktrees cleaned
-✓ 3.8GB disk space freed
+✓ 2 Worktrees cleaned up
+✓ 3.8GB of disk space reclaimed
 ```
 
 **Cleanup strategy**:
 
 ```mermaid
 graph TD
-    A[Worktree cleanup needed] --> B{Merge complete?}
+    A[Worktree cleanup needed] --> B{Merged?}
     B -->|Yes| C[moai worktree done]
-    B -->|No| D{Over 14 days?}
+    B -->|No| D{Older than 14 days?}
     D -->|Yes| E[Check work status]
     D -->|No| F[Keep]
-    E --> G{Not needed?}
+    E --> G{No longer needed?}
     G -->|Yes| H[moai worktree remove]
     G -->|No| F
     C --> I[Cleanup complete]
@@ -358,35 +359,35 @@ graph TD
 
 ---
 
-### Q: LLM not working as expected
+### Q: The LLM is not behaving as expected
 
-**A**: Check Worktree-specific LLM settings:
+**A**: Check the per-Worktree LLM configuration:
 
 ```bash
-# Check current LLM
+# Check the current LLM
 moai config
 Current LLM: GLM 5
 
-# Change LLM in Worktree
+# Change the LLM inside a Worktree
 moai worktree go SPEC-AUTH-001
 (SPEC-AUTH-001) $ moai cc
-→ Changed to Claude Opus
+→ Switched to Claude Opus
 
-# Other Worktree unaffected
+# Other Worktrees are unaffected
 (SPEC-AUTH-001) $ exit
 moai worktree go SPEC-LOG-002
 (SPEC-LOG-002) $ moai config
-Current LLM: GLM 5 (no change)
+Current LLM: GLM 5 (unchanged)
 ```
 
 ---
 
-### Q: Git commands not working
+### Q: Git commands are not working
 
-**A**: Check if you're in the correct directory:
+**A**: Make sure you are in the right directory:
 
 ```bash
-# Check Worktree directory
+# Check the Worktree directory
 pwd
 /path/to/your-project/.moai/worktrees/SPEC-AUTH-001
 
@@ -395,24 +396,24 @@ git status
 On branch feature/SPEC-AUTH-001
 nothing to commit, working tree clean
 
-# If Git error occurs
+# If a Git error occurs
 git fetch --all
 git rebase origin/feature/SPEC-AUTH-001
 ```
 
 ---
 
-## Performance & Optimization
+## Performance and Optimization
 
 ### Q: Does Worktree affect performance?
 
-**A**: Minimal impact:
+**A**: The impact is minimal:
 
 **Advantages**:
 
-- Each Worktree is independent, so cache efficient
-- Fast Git operations (local branches)
-- Leverages file system cache
+- Each Worktree is independent, so caches stay efficient
+- Git operations are fast (local branches)
+- Takes advantage of file-system caching
 
 **Disadvantages**:
 
@@ -422,13 +423,13 @@ git rebase origin/feature/SPEC-AUTH-001
 **Optimization tips**:
 
 ```bash
-# 1. Remove unnecessary Worktrees
+# 1. Remove unneeded Worktrees
 moai worktree clean --merged-only
 
 # 2. Git garbage collection
 git gc --aggressive --prune=now
 
-# 3. Worktree pruning
+# 3. Prune Worktrees
 git worktree prune
 ```
 
@@ -436,13 +437,13 @@ git worktree prune
 
 ### Q: How many Worktrees can I create?
 
-**A**: Theoretically unlimited, but practically limited by:
+**A**: In theory, unlimited — but in practice, these factors constrain the count:
 
 **Limiting factors**:
 
-1. **Disk Space**: Each Worktree uses ~100MB-1GB
-2. **Memory**: Open sessions in each Worktree
-3. **File System**: Number of files open simultaneously
+1. **Disk space**: each Worktree uses roughly 100MB-1GB
+2. **Memory**: open sessions in each Worktree
+3. **File system**: number of files that can be open at once
 
 **Recommendations**:
 
@@ -452,7 +453,7 @@ git worktree prune
 
 ```mermaid
 graph TD
-    A[Determine Worktree count] --> B{Project size?}
+    A[Deciding Worktree count] --> B{Project size?}
     B -->|Small| C[5-10]
     B -->|Medium| D[3-5]
     B -->|Large| E[2-3]
@@ -464,18 +465,18 @@ graph TD
 
 ---
 
-### Q: Can I automatically clean Worktrees?
+### Q: Can Worktrees be cleaned up automatically?
 
-**A**: Yes, use periodic cleanup scripts:
+**A**: Yes, use a periodic cleanup script:
 
 ```bash
 #!/bin/bash
 # clean-worktrees.sh
 
-# Clean merged Worktrees
+# Clean up merged Worktrees
 moai worktree clean --merged-only
 
-# Clean Worktrees older than 30 days
+# Clean up Worktrees older than 30 days
 moai worktree clean --older-than 30
 
 # Git garbage collection
@@ -485,7 +486,7 @@ git gc --aggressive --prune=now
 echo "Worktree cleanup complete"
 ```
 
-**Set up cron job**:
+**Cron job setup**:
 
 ```bash
 # Run every Sunday at 2 AM
@@ -496,7 +497,7 @@ echo "Worktree cleanup complete"
 
 ## Team Collaboration
 
-### Q: How does the team use Worktree?
+### Q: How do teams use Worktree?
 
 **A**: We recommend the following workflow:
 
@@ -514,7 +515,7 @@ graph TB
         B3[Complete and PR]
     end
 
-    subgraph Remote["Remote Repository"]
+    subgraph Remote["Remote repository"]
         R[main branch]
     end
 
@@ -525,18 +526,18 @@ graph TB
 **Team collaboration guide**:
 
 1. **Worktree naming convention**: `SPEC-{category}-{number}`
-2. **Regular sync**: `git pull origin main`
-3. **Before PR review**: Complete testing locally
-4. **Conflict prevention**: Sync with `main` frequently
+2. **Sync regularly**: `git pull origin main`
+3. **Before PR review**: finish local testing
+4. **Avoid conflicts**: sync with `main` frequently
 
 ---
 
-### Q: How do I sync Worktree with remote repository?
+### Q: How do I sync a Worktree with the remote repository?
 
 **A**: Run `git pull` regularly:
 
 ```bash
-# Sync in each Worktree
+# Sync inside each Worktree
 moai worktree go SPEC-AUTH-001
 (SPEC-AUTH-001) $ git pull origin main
 
@@ -550,77 +551,76 @@ done
 
 ---
 
-### Q: How do I manage Worktree during PR review?
+### Q: How do I manage a Worktree during PR review?
 
 **A**: Use the following strategy:
 
 ```bash
-# Before PR creation
+# Before creating the PR
 moai worktree status SPEC-AUTH-001
-# Check status
+# Check the status
 
 git log main..feature/SPEC-AUTH-001
-# Check changes
+# Review the changes
 
 # During PR review
-# Keep Worktree (waiting for merge)
+# Keep the Worktree (awaiting merge)
 
 # After PR approval
 moai worktree done SPEC-AUTH-001 --push
-# Merge and cleanup
+# Merge and clean up
 
 # After PR rejection
 cd .moai/worktrees/SPEC-AUTH-001
-# Continue revision work
+# Continue with fixes
 ```
 
 ---
 
-## Additional Questions
+## More Questions
 
 ### Q: Can I use MoAI-ADK without Worktree?
 
-**A**: Yes, but not recommended:
+**A**: Yes, it is possible but not recommended:
 
 ```bash
 # Use without Worktree
-> /moai plan "feature description"
-# Skip Worktree creation step
+> /moai plan "Feature description"
+# The Worktree creation step is skipped
 
 # But the following problems occur:
-# 1. Same LLM applied to all sessions
-# 2. No parallel development possible
-# 3. Context switching cost
+# 1. The same LLM applies to every session
+# 2. No parallel development
+# 3. Context-switching cost
 ```
 
 ---
 
-### Q: Do I need to backup Worktree?
+### Q: Do I need to back up Worktrees?
 
-**A**: Worktree is managed by Git, so no separate backup needed:
+**A**: Worktrees are managed by Git, so no separate backup is needed:
 
 ```bash
-# Worktree is part of Git
-# Automatic backup when pushed to remote
+# Worktrees are part of Git
+# Pushing to the remote backs them up automatically
 
-# Push to remote regularly
+# Push to the remote regularly
 git push origin feature/SPEC-AUTH-001
 
-# Recover after Worktree loss
+# Recover a lost Worktree
 git fetch origin
 git worktree add SPEC-AUTH-001 origin/feature/SPEC-AUTH-001
 ```
 
 ---
 
-## Related Documents
+## Related documentation
 
-- [Git Worktree Overview](/worktree/index)
-- [Complete Guide](./guide)
-- [Real Usage Examples](./examples)
+- [Git Worktree Overview](/en/worktree/)
+- [Complete Guide](/en/worktree/guide)
+- [Real-World Examples](/en/worktree/examples)
 
-## Need More Help?
+## Need more help?
 
-- [GitHub Issues](https://github.com/MoAI-ADK/moai-adk/issues)
-- [Discord Community](https://discord.gg/moai-adk)
-- [Email Support](mailto:support@moai-adk.org)
+- [GitHub Issues](https://github.com/modu-ai/moai-adk/issues) — bug reports, feature requests
+- [Discord Community](https://discord.gg/Z7E7Mdc5aN) — real-time chat, tips

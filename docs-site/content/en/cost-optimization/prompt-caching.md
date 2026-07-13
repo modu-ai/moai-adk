@@ -4,38 +4,51 @@ weight: 30
 draft: false
 ---
 
-Prompt caching reduces inference costs by reusing identical prompt prefixes across requests at 90% discount (0.1x base cost). This guide explains the break-even rule, cache mechanisms, and when to enable caching in MoAI projects.
+Prompt caching reuses an identical prompt prefix across multiple requests to
+cut inference costs at a 90% discount (0.1x the base cost). If the "context
+diet" axis of MoAI-ADK Tokenomics is about shrinking the always-loaded
+context, prompt caching is about reusing the remaining context cheaply. This
+guide explains the break-even rule, the cache mechanics, and when to enable
+caching in a MoAI project.
 
-## Break-Even Rule
+## The break-even rule
 
-**Enable 1-hour cache only when your session generates 2 or more consecutive API requests.**
+**Only enable the 1-hour cache when a session makes 2 or more consecutive API requests.**
 
-Single-request sessions incur a 2x write premium with no cache reuse benefit — cost per request is higher than uncached baseline. For multi-turn interactions within 1 hour, caching pays for itself on the second request and saves 67%+ on subsequent requests.
+Single-request sessions (one-shot queries, single-turn commands) incur the 2x
+write premium with no cache-read benefit, so the per-request cost ends up
+higher than the uncached baseline. Conversely, with multi-turn interactions or
+repeated SPEC analysis within an hour, caching offsets its cost on the second
+request and saves 67% or more on subsequent ones.
 
-### Cost Comparison
+### Cost comparison
 
-Using Claude Opus 4.5 as reference:
+Based on Claude Opus 4.5:
 
-| Scenario | No Cache | With 1h Cache | Savings |
-|----------|----------|---------------|---------|
+| Scenario | No caching | With 1-hour cache | Savings |
+|---------|----------|-----------------|-------|
 | 1 request, 10K tokens | $0.05 | $0.0625 | -25% (premium) |
-| 2 requests, 10K + 10K | $0.10 | $0.0675 | 32% savings |
-| 3 requests, 10K + 10K + 10K | $0.15 | $0.0725 | 52% savings |
-| 5 requests, 5× 10K | $0.25 | $0.0825 | 67% savings |
+| 2 requests, 10K + 10K | $0.10 | $0.0625 + $0.005 = $0.0675 | 32% saved |
+| 3 requests, 10K + 10K + 10K | $0.15 | $0.0625 + 2×$0.005 = $0.0725 | 52% saved |
+| 5 requests, 10K + 10K + 10K + 10K + 10K | $0.25 | $0.0625 + 4×$0.005 = $0.0825 | 67% saved |
 
-Break-even is **2 requests**: the 2x write premium on the first request is recouped by 90%-discount cache reads on subsequent requests within the 1-hour TTL window.
+The break-even point is **2 requests**: the first request's 2x write premium
+is recovered by the 90%-discounted cache reads of subsequent requests inside
+the 1-hour TTL window.
 
-## How Cache Control Works
+## How cache control works
 
-When you enable cache control on a prompt prefix, the lifecycle follows this pattern:
+When cache control is enabled on a prompt prefix, the cache lifecycle follows
+this pattern:
 
-1. **First Request (Cache Write)**: Prefix written to cache after API response. Cost: `prefix_tokens × 2.0 (1h cache) or 1.25 (5m cache)`.
-2. **Subsequent Requests (Cache Read)**: Identical prefix within TTL retrieved from cache. Cost: `prefix_tokens × 0.1`.
-3. **Automatic Lookback**: System checks last 20 messages for cached prefix match. If found, read cost applies.
+1. **First request (cache write)**: the prefix is written to the cache after the API response completes. Cost: `prefix_tokens × 2.0 (1-hour cache) or 1.25 (5-minute cache)`.
+2. **Subsequent requests (cache read)**: if the prefix is identical and within TTL, it is retrieved from the cache. Cost: `prefix_tokens × 0.1`.
+3. **Automatic backtracking**: the system checks the last 20 messages for a cached prefix match. If found, the read cost applies.
 
-### Cache Batching Best Practices
+### Cache placement best practice
 
-Place the cache control breakpoint at **the last stable block before per-request data**:
+Place the cache-control breakpoint at **the last stable block before
+per-request data**:
 
 ```python
 # Correct: stable system prompt (cacheable)
@@ -49,14 +62,14 @@ response = client.messages.create(
             "cache_control": {"type": "ephemeral", "ttl": "1h"}
         }
     ],
-    # Changeable per-request data below (not cached)
+    # Mutable per-request data below (not cached)
     messages=[{"role": "user", "content": user_query}]
 )
 
-# Wrong: cache breakpoint on changing data
+# Wrong: cache breakpoint on mutable data
 # Current time: {timestamp}
 cache_control={"type": "ephemeral"}
-# ^ Will NEVER match—timestamp changes every request
+# ^ The timestamp changes every request, so it never matches
 ```
 
 ## Configuration: session_ttl and spec_ttl
@@ -65,96 +78,105 @@ MoAI caching is configured in `.moai/config/sections/cache.yaml`:
 
 ```yaml
 cache:
-  enabled: false  # Set to true to enable caching
-  session_ttl: "1h"  # Session-level cache TTL
+  enabled: false  # set to true to enable caching
+  session_ttl: "1h"  # session-level cache TTL
   spec_ttl: "5m"     # SPEC body cache TTL
-  min_cacheable_tokens: 2048  # Minimum tokens to cache
+  min_cacheable_tokens: 2048  # minimum tokens for a cache write
 ```
 
-### Opt-out via session_ttl: "off"
+### Opting out via session_ttl: "off"
 
-To disable caching for a specific session (e.g., when single-request workflow dominates):
+To disable caching for a given session (e.g., when one-shot requests
+dominate):
 
 ```yaml
 cache:
   enabled: true
-  session_ttl: "off"  # Disables session-level cache
-  spec_ttl: "5m"      # SPEC body cache still applies
+  session_ttl: "off"  # disable the cache for this session
+  spec_ttl: "5m"      # only the SPEC body cache is used
 ```
 
-When `session_ttl: "off"`:
+With `session_ttl: "off"`:
 - Session-level cache writes are skipped
-- SPEC body cache applies if configured
-- Useful for interrupt-driven workflows with single requests
+- SPEC body caching still applies if `spec_ttl` is configured
+- Useful for interrupt-driven workflows where single requests are the norm
 
-## Monitoring Cache Performance
+## Monitoring cache performance
 
-Use `moai doctor` to view cache hit rate and decide whether to enable caching:
+Use `moai doctor` to view the cache hit rate and decide whether to enable
+caching:
 
 ```bash
 moai doctor --cache-metrics
 ```
 
-Example output:
+Sample output:
 
 ```
 Cache performance (last 7 days):
   Cache hit rate: 67%
   Total cache reads: 450K tokens
   Total cache writes: 150K tokens
-  Savings: $2.15 (68% cost reduction vs no cache)
-  
+  Savings: $2.15 (68% cost reduction versus no caching)
+
 Single-turn request ratio: 12%  ⚠️ Warning: 12% of requests are single-turn
-                                   (no cache benefit for those).
+                            (no cache benefit for these).
 ```
 
-### Interpreting Metrics
+The MoAI statusline also shows a cache hit rate (cache_hit) segment, so you
+can see the effect of the context diet and your caching configuration right
+in the session.
 
-- **Hit rate > 60%**: Cache is effective. Keep enabled.
-- **Hit rate 30-60%**: Moderate benefit. Consider enabling for multi-turn sessions.
-- **Single-turn ratio > 30%**: Limited benefit. Verify the 2+ request assumption holds.
-- **Min token threshold warning**: Configure `min_cacheable_tokens` to avoid caching tiny prompts (overhead > savings).
+### Interpreting the metrics
 
-## When Cache Misses Occur
+- **Hit rate > 60%**: the cache is effective. Keep it enabled.
+- **Hit rate 30-60%**: moderate benefit. Consider enabling if your sessions are multi-turn heavy.
+- **Single-turn ratio > 30%**: limited caching benefit. Verify the 2+ request assumption still holds.
+- **Minimum-token threshold warnings**: configure `min_cacheable_tokens` to avoid caching small prompts (overhead > savings).
 
-Cache hits require:
-- ✓ Identical prompt prefix up to breakpoint
-- ✓ Within TTL window (1 hour or 5 minutes)
-- ✓ Same workspace/organization context
-- ✓ All blocks before breakpoint unchanged (tools, system, top-level parameters)
+## When cache misses happen
 
-Common cache miss causes:
-- ✗ Tool definitions changed (tool parameters differ)
+A cache hit requires:
+
+- ✓ An identical prompt prefix up to the breakpoint
+- ✓ Within the TTL window (1 hour or 5 minutes)
+- ✓ The same workspace/organization context
+- ✓ No changes to any block before the breakpoint (tools, system, top-level parameters)
+
+Cache misses (common causes):
+
+- ✗ Tool definition change (different tool parameters)
 - ✗ Web search toggled on/off
-- ✗ Images added or removed
+- ✗ Image added to or removed from the prefix
 - ✗ Extended thinking settings changed
-- ✗ Content before breakpoint differs (including whitespace)
+- ✗ Content before the breakpoint differs (including whitespace)
 
-## Minimum Token Thresholds
+## Minimum token thresholds
 
-Cache writes only issue when prefix exceeds model-specific minimum:
+A cache write is issued only when the prefix exceeds the per-model minimum:
 
 - **Claude Opus 4.5, 4.7, 4.8, Haiku 4.5**: 2,048 tokens minimum
 - **Claude Opus 4.1, Sonnet models, other Haiku versions**: 1,024 tokens minimum
 
-Requests below minimum silently fall back to uncached processing (no error).
+Requests below the minimum are processed without caching (no error —
+automatic fallback).
 
-## Pre-warming (Advanced)
+## Pre-warming (advanced)
 
-Eliminate cache-miss latency for first user interaction:
+To eliminate cache-miss latency on the first user interaction:
 
 ```python
-# Pre-warm cache (before users arrive)
+# Pre-warm the cache (before the user arrives)
 client.messages.create(
     model="claude-opus-4-8",
-    max_tokens=0,  # No output tokens billed
+    max_tokens=0,  # no output token billing
     system="Long system prompt (5000 tokens)...",
     cache_control={"type": "ephemeral", "ttl": "1h"},
     messages=[{"role": "user", "content": "warmup"}]
 )
 # Cost: system_tokens × $2.0/MTok (cache write)
 
-# Later: User request hits warm cache
+# Later: the user's request hits the warmed cache
 client.messages.create(
     model="claude-opus-4-8",
     max_tokens=1024,
@@ -162,14 +184,14 @@ client.messages.create(
     cache_control={"type": "ephemeral", "ttl": "1h"},
     messages=[{"role": "user", "content": user_input}]
 )
-# Cost: system_tokens × $0.1/MTok (cache read from warm cache)
+# Cost: system_tokens × $0.1/MTok (cache read from the warm-up)
 ```
 
 ## Summary
 
-- **Enable cache**: for sessions with 2+ consecutive API requests within 1 hour
-- **Disable cache**: for one-shot queries or interrupt-driven workflows
-- **Monitor**: use `moai doctor --cache-metrics` to measure actual hit rates
-- **Optimize**: place cache breakpoints on stable content (system prompt, instructions), not changing data (queries, timestamps)
+- **Enable caching**: sessions with 2+ consecutive API requests within an hour
+- **Disable caching**: one-shot queries or interrupt-driven workflows
+- **Monitor**: measure real hit rates with `moai doctor --cache-metrics` and the statusline cache_hit segment
+- **Optimize**: place cache breakpoints on stable content (system prompts, instructions), never on mutable data (queries, timestamps)
 
-For more details, see [Anthropic prompt caching documentation](https://platform.claude.com/docs/en/docs/build-with-claude/prompt-caching).
+For more details, see the [Anthropic prompt caching documentation](https://platform.claude.com/docs/en/docs/build-with-claude/prompt-caching).

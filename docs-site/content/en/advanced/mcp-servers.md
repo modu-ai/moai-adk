@@ -1,95 +1,95 @@
 ---
 title: MCP Servers Guide
-weight: 80
+weight: 90
 draft: false
 ---
 
-Detailed guide to leveraging Claude Code's MCP (Model Context Protocol) servers.
+A detailed guide to using Claude Code's MCP (Model Context Protocol) servers. MCP is the harness's tool-extension layer — but every connected server's tool schemas occupy context, so the principle of "connect only the servers you need" works here as tokenomics too.
 
 {{< callout type="info" >}}
-**One-line summary**: MCP is the **USB port that connects external tools** to Claude Code. Query up-to-date documentation with Context7, analyze complex problems with Adaptive Thinking (via `--ultrathink` keyword).
+**One-line summary**: MCP is the **USB port that connects external tools** to Claude Code. Look up the latest documentation with Context7, and analyze complex problems with Adaptive Thinking (via the `--ultrathink` keyword).
 {{< /callout >}}
 
-## What is MCP?
+## What Is MCP?
 
-MCP (Model Context Protocol) is a standard protocol that **connects external tools and services** to Claude Code.
+MCP (Model Context Protocol) is a standard protocol for **connecting external tools and services** to Claude Code.
 
-Claude Code has basic tools like file read/write and terminal commands. Through MCP, you can extend this toolset to add features like library documentation lookup, knowledge graph storage, step-by-step reasoning, and more.
+Claude Code natively has tools like file read/write and terminal commands. MCP extends this tool set with capabilities such as library documentation lookup and browser automation.
 
 ```mermaid
 flowchart TD
-    CC["Claude Code"] --> MCP_LAYER["MCP Protocol Layer"]
+    CC["Claude Code"] --> MCP_LAYER["MCP protocol layer"]
 
-    MCP_LAYER --> C7["Context7<br>Library Documentation Lookup"]
-    MCP_LAYER --> STITCH["Claude in Chrome<br>Browser Automation"]
+    MCP_LAYER --> C7["Context7<br>Library documentation lookup"]
+    MCP_LAYER --> CHROME["Claude in Chrome<br>Browser automation"]
 
-    C7 --> C7_OUT["Latest React, FastAPI<br>Official Documentation"]
-    STITCH --> STITCH_OUT["Web Page<br>Automation Testing"]
+    C7 --> C7_OUT["Latest React, FastAPI<br>official docs reference"]
+    CHROME --> CHROME_OUT["Web page<br>automated testing"]
 ```
 
 ## MCP Servers Used in MoAI
 
 ### MCP Server List
 
-| MCP Server | Purpose | Tools | Activation |
-|------------|---------|-------|------------|
+| MCP server | Purpose | Tools | Enabled via |
+|----------|------|------|--------|
 | **Context7** | Real-time library documentation lookup | `resolve-library-id`, `get-library-docs` | `.mcp.json` |
-| **Claude in Chrome** | Browser automation | `navigate`, `screenshot` etc. | `.mcp.json` |
+| **Claude in Chrome** | Browser automation | `navigate`, `screenshot`, etc. | `.mcp.json` |
 
 ## Using Context7
 
-Context7 is an MCP server that **queries library official documentation in real-time**.
+Context7 is an MCP server that **looks up official library documentation in real time**.
 
-### Why is it Needed?
+### Why Is It Needed?
 
-Claude Code's training data only includes information up to a certain point. With Context7, you can reference **the latest version of official documentation** in real-time to generate accurate code.
+Claude Code's training data only covers information up to a certain point in time. With Context7 you can reference **the latest version of official documentation** in real time and generate accurate code. The round trip of generating code from a wrong old-version pattern and then fixing it is the most expensive form of token waste.
 
 | Situation | Without Context7 | With Context7 |
-|-----------|-----------------|---------------|
-| React 19 new features | May not be in training data | Reference latest official docs |
-| Next.js 16 setup | May use old version patterns | Apply current version patterns |
-| FastAPI latest APIs | May use old syntax | Apply latest syntax |
+|------|---------------|---------------|
+| New React 19 features | May not be in training data | References latest official docs |
+| Next.js 16 configuration | May use previous-version patterns | Applies current-version patterns |
+| Latest FastAPI API | May use old-version syntax | Applies the latest syntax |
 
 ### How to Use
 
-Context7 operates in two stages.
+Context7 operates in two steps.
 
-**Stage 1: Query Library ID**
+**Step 1: library ID resolution**
 
 ```bash
-# Claude Code calls internally
-> Write code referencing React's latest documentation
+# Claude Code가 내부적으로 호출
+> React의 최신 문서를 참조해서 코드를 작성해줘
 
-# What Context7 does:
+# Context7이 수행하는 작업
 # mcp__context7__resolve-library-id("react")
-# → Library ID: /facebook/react
+# → 라이브러리 ID: /facebook/react
 ```
 
-**Stage 2: Search Documentation**
+**Step 2: documentation search**
 
 ```bash
-# Search docs for specific topic
+# 특정 주제의 문서 검색
 # mcp__context7__get-library-docs("/facebook/react", "useEffect cleanup")
-# → Returns useEffect cleanup function related content from React official docs
+# → React 공식 문서에서 useEffect 정리 함수 관련 내용 반환
 ```
 
-### Real-World Use Cases
+### A Practical Scenario
 
 ```bash
-# Scenario: Next.js 16 App Router setup
-> Set up project with Next.js 16
+# 시나리오: Next.js 16 App Router 설정
+> Next.js 16으로 프로젝트 설정을 해줘
 
-# Claude Code internal operation:
-# 1. Query Next.js latest docs with Context7
-# 2. Check App Router setup patterns
-# 3. Generate latest config files
-# 4. Apply official recommendations
+# Claude Code 내부 동작:
+# 1. Context7으로 Next.js 최신 문서 조회
+# 2. App Router 설정 패턴 확인
+# 3. 최신 설정 파일 생성
+# 4. 공식 권장 사항 반영
 ```
 
-### Supported Library Examples
+### Examples of Supported Libraries
 
 | Category | Libraries |
-|----------|-----------|
+|------|-----------|
 | Frontend | React, Next.js, Vue, Svelte, Angular |
 | Backend | FastAPI, Django, Express, NestJS, Spring |
 | Database | PostgreSQL, MongoDB, Redis, Prisma |
@@ -97,50 +97,50 @@ Context7 operates in two stages.
 | Infrastructure | Docker, Kubernetes, Terraform |
 | Other | TypeScript, Tailwind CSS, shadcn/ui |
 
-## Deep Reasoning with Adaptive Thinking
+## Adaptive Thinking via UltraThink
 
-The `--ultrathink` keyword activates Adaptive Thinking on Opus 4.7+ (including 4.8) and Sonnet 4.6 — the model's built-in reasoning mode that **dynamically allocates reasoning tokens based on task complexity**.
+The `--ultrathink` keyword activates **Adaptive Thinking, the built-in reasoning mode** of Opus 4.7+/4.8 and Sonnet 4.6.
 
-Unlike earlier models that used a fixed `budget_tokens` parameter, Adaptive Thinking on newer models intelligently scales reasoning depth based on the task. Control depth with the **effort** parameter (`xhigh`, `high`, `medium`, `low`) rather than a fixed budget.
+Unlike the fixed `budget_tokens` parameter of earlier models, the newer models' Adaptive Thinking **dynamically allocates reasoning tokens according to task complexity**. Reasoning depth is controlled by the **effort** parameter (`xhigh`, `high`, `medium`, `low`), not by a fixed budget. In the tokenomics allocation of "plan deeply, implement cheaply," this effort axis is the lever on the reasoning-depth side.
 
 ### When to Use `--ultrathink`
 
-Using the `--ultrathink` keyword activates enhanced analysis mode for complex problems.
+Using the `--ultrathink` keyword activates an enhanced analysis mode for complex problems.
 
 ```bash
-# Architecture analysis with UltraThink
-> Design an authentication system architecture --ultrathink
+# UltraThink로 아키텍처 분석
+> 인증 시스템 아키텍처를 설계해줘 --ultrathink
 
-# Deep reasoning on Opus 4.7+/4.8 or Sonnet 4.6 will:
-# 1. Dynamically allocate reasoning tokens (not fixed budget)
-# 2. Explore problem decomposition across multiple angles
-# 3. Evaluate trade-offs systematically
-# 4. Derive optimal solution with verified reasoning
+# Opus 4.7+/4.8 또는 Sonnet 4.6에서:
+# 1. 작업 복잡도에 따라 동적으로 추론 토큰 할당
+# 2. 여러 각도에서 문제 분해 탐색
+# 3. 트레이드오프를 체계적으로 평가
+# 4. 검증된 추론으로 최적 솔루션 도출
 ```
 
-### Activation Scenarios
+### When It Kicks In
 
-Adaptive Thinking activates in the following scenarios:
+Adaptive Thinking is useful in the following situations.
 
-| Scenario | Example |
-|----------|---------|
+| Situation | Example |
+|------|------|
 | Complex problem decomposition | "Design a microservices architecture" |
 | Affecting 3+ files | "Refactor the entire authentication system" |
-| Technology selection comparison | "JWT vs session authentication, which is better?" |
-| Trade-off analysis | "How to maintain performance while improving maintainability?" |
-| Breaking change review | "What impact will this API change have on existing clients?" |
+| Technology comparison | "JWT vs session authentication — which is better?" |
+| Trade-off analysis | "How do I improve performance while preserving maintainability?" |
+| Breaking-change review | "How does this API change affect existing clients?" |
 
 ### Model Compatibility
 
 - **Opus 4.8, Opus 4.7, Sonnet 4.6**: Adaptive Thinking (dynamically allocated reasoning)
-- **Haiku 4.5**: No extended thinking support (use `--ultrathink` keyword for no-op activation)
-- **Earlier models**: Upgrade to current Claude models for deep reasoning support
+- **Haiku 4.5**: extended reasoning not supported (the `--ultrathink` keyword is a no-op)
+- **Older models**: upgrading to a current Claude model enables deep reasoning
 
-## MCP Configuration
+## Configuring MCP
 
 ### .mcp.json Configuration
 
-Configure MCP servers in the `.mcp.json` file at the project root.
+MCP servers are configured in the `.mcp.json` file at the project root.
 
 ```json
 {
@@ -151,9 +151,9 @@ Configure MCP servers in the `.mcp.json` file at the project root.
 }
 ```
 
-### Activation in settings.local.json
+### Enabling in settings.local.json
 
-To personally enable a specific MCP server, add it to `settings.local.json`.
+To enable a specific MCP server personally, add it to `settings.local.json`.
 
 ```json
 {
@@ -163,9 +163,9 @@ To personally enable a specific MCP server, add it to `settings.local.json`.
 }
 ```
 
-### Permission Allow in settings.json
+### Allowing Permissions in settings.json
 
-To use MCP tools, you must register them in `permissions.allow`.
+To use MCP tools, they must be registered in `permissions.allow`.
 
 ```json
 {
@@ -178,51 +178,50 @@ To use MCP tools, you must register them in `permissions.allow`.
 }
 ```
 
-## Real-World Examples
+## Practical Examples
 
-### Using Context7 for Latest React Documentation
+### Referencing the Latest Docs with Context7 in a React Project
 
 ```bash
-# 1. User requests to use React 19's new features
-> Implement data fetching using React 19's use() hook
+# 1. 사용자가 React 19의 새 기능을 사용하고 싶다고 요청
+> React 19의 use() 훅을 사용해서 데이터 페칭을 구현해줘
 
-# 2. Claude Code internal operation
-# a) Query React library ID with Context7
+# 2. Claude Code 내부 동작
+# a) Context7으로 React 라이브러리 ID 조회
 #    → resolve-library-id("react") → "/facebook/react"
 #
-# b) Search React 19 use() related documentation
+# b) React 19 use() 관련 문서 검색
 #    → get-library-docs("/facebook/react", "use hook data fetching")
 #
-# c) Generate code based on latest official documentation
-#    → Apply correct use() hook usage
-#    → Use with Suspense boundary
-#    → Include error boundary handling
+# c) 최신 공식 문서 기반으로 코드 생성
+#    → use() 훅의 올바른 사용법 적용
+#    → Suspense 바운더리와 함께 사용
+#    → 에러 바운더리 처리 포함
 
-# 3. Result: Accurate code generation reflecting latest patterns
+# 3. 결과: 최신 패턴이 반영된 정확한 코드 생성
 ```
 
-### Using Adaptive Thinking for Complex Architecture Decisions
+### Using UltraThink for Complex Architecture Decisions
 
 ```bash
-# Architecture decision needed
-> Analyze whether to use JWT or session for our service authentication --ultrathink
+# 아키텍처 결정이 필요한 상황
+> 우리 서비스의 인증을 JWT로 할지 세션으로 할지 분석해줘 --ultrathink
 
-# Adaptive Thinking (Opus 4.7+/4.8 or Sonnet 4.6) will:
-# 1. Dynamically allocate reasoning based on complexity
-# 2. Analyze core concepts and trade-offs
-# 3. Evaluate service characteristics (SPA, mobile app support)
-# 4. Compare security, scalability, maintainability dimensions
-# 5. Derive optimal solution with verified reasoning
+# Adaptive Thinking이 동적으로 할당된 추론으로:
+# 1. 문제를 하위 문제로 분해
+# 2. 각 하위 문제를 단계적으로 분석
+# 3. 이전 결론을 재검토하고 수정
+# 4. 최적의 솔루션 도출
 ```
 
-## Related Documentation
+## Related Documents
 
-- [settings.json Guide](/advanced/settings-json) - MCP server permission configuration
-- [Skill Guide](/advanced/skill-guide) - Relationship between skills and MCP tools
-- [Agent Guide](/advanced/agent-guide) - MCP tool utilization by agents
-- [CLAUDE.md Guide](/advanced/claude-md-guide) - MCP-related configuration references
-- [Google Stitch Guide](/advanced/stitch-guide) - AI-powered UI/UX design tool detailed usage
+- [settings.json Guide](/en/advanced/settings-json) - MCP server permission configuration
+- [Skill Guide](/en/advanced/skill-guide) - the relationship between skills and MCP tools
+- [Agent Guide](/en/advanced/agent-guide) - how agents use MCP tools
+- [CLAUDE.md Guide](/en/advanced/claude-md-guide) - MCP-related configuration reference
+- [Google Stitch Guide](/en/advanced/stitch-guide) - detailed usage of the AI-powered UI/UX design tool
 
 {{< callout type="info" >}}
-**Tip**: Context7 is most useful when referencing the latest library documentation. Activate Context7 when adopting new frameworks or upgrading to the latest version to get accurate code.
+**Tip**: Context7 is most useful when referencing the latest library documentation. Enable Context7 when adopting a new framework or upgrading to the latest version to get accurate code.
 {{< /callout >}}

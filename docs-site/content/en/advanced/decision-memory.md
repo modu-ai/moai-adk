@@ -4,75 +4,78 @@ weight: 50
 draft: false
 ---
 
-# Decision Memory System
-
-MoAI's user preference learning and adaptive recommendation system.
+Agentic loop engineering begins with observation — every turn of the loop accumulates observations, and those observations become the raw material of learning. Decision memory is the layer that extends the object of observation from code to **the user's choices**.
 
 {{< callout type="info" >}}
-**One-line summary**: Decision Memory remembers user choices and provides personalized recommendations at similar decision points in the future.
+**One-line summary**: Decision memory remembers the user's choices and provides personalized recommendations in similar situations in the future.
 {{< /callout >}}
 
 ## System Overview
 
-Decision Memory is the **long-term learning layer** of MoAI-ADK. It observes user choices during AskUserQuestion rounds and provides adaptive recommendations based on statistically majority choices at future equivalent decision points.
+Decision Memory is MoAI-ADK's **long-term learning layer**. It observes user choices in AskUserQuestion rounds and, at the same decision points in the future, provides adaptive recommendations based on the statistical majority of those choices.
+
+Direction is what matters. The system does not wrap the default it wants to push in a `(Recommended)` label — what **the user has actually chosen repeatedly** becomes the recommendation.
 
 ### Core Principles
 
 | Principle | Description |
-|-----------|-------------|
-| **Observation-Based** | Learns from statistical majority of user choices (not policy defaults) |
-| **Transparency** | Always states the basis for recommendations (including cold-start state) |
-| **Autonomy** | Users can always reject recommendations |
-| **Adaptive Strength** | Recommendation intensity automatically adjusts based on user expertise level |
+|------|------|
+| **Observation-based** | Learns the statistical majority of user choices (not policy defaults) |
+| **Transparency** | The rationale for a recommendation is always stated (including cold-start status) |
+| **Autonomy** | The user can reject a recommendation at any time |
+| **Adaptive strength** | Recommendation strength is auto-adjusted by proficiency |
 
-## 5 Core Components
+## The 5 Components
 
 ### 1. 3-Tier Memory Layer
 
-Decision Memory consists of three layers.
+Decision memory consists of three tiers. The lower the tier, the longer it persists.
 
-#### L0: Immediate (Current Session)
-- **Scope**: Within the current session only
-- **Use**: Reference the option user just selected
-- **Persistence**: Discarded at session end
+#### L0: Immediate
+- **Scope**: within the current session
+- **Purpose**: referencing options the user just selected
+- **Persistence**: lost when the session ends
 
-#### L1: Session Span (Recent Sessions)
-- **Scope**: Most recent 3 sessions in the same project
-- **Use**: Recommendations based on recent preferences
-- **Persistence**: Auto-memory in `.claude/projects/{hash}/memory/`
+#### L1: Session Span
+- **Scope**: the last 3 sessions of the same project
+- **Purpose**: recommendations based on recent preferences
+- **Persistence**: auto-memory in `.claude/projects/{hash}/memory/`
 
-#### L2: Long-term (All Sessions)
-- **Scope**: All sessions (unlimited history)
-- **Use**: Statistical majority learning, long-term trends
+#### L2: Long-term
+- **Scope**: all sessions (unlimited)
+- **Purpose**: statistical-majority learning, long-term trends
 - **Persistence**: MEMORY.md + topic files (user-managed)
 
 ### 2. Adaptive Recommendation Placement
 
-Recommendations (the `(Recommended)` label on the first option) are grounded in **observed statistical majorities**.
+The recommendation (the `(Recommended)` label on the first option) is grounded in the **observed statistical majority**. It moves between three states depending on the amount of observation.
 
-#### Cold-Start (Initial State)
-- **Observations < N**: Insufficient data collected
-- **Recommendation basis**: Static default (explicitly disclosed)
-- **Display format**: `based on static default, N observations needed for personalization`
+#### Cold-Start
+- **Observations < N**: insufficient observation data
+- **Recommendation placement**: static default (explicitly disclosed)
+- **Display form**: `based on static default, N observations needed for personalization`
 
-#### Warm State (Learning Phase)
-- **Observations = N~M**: Partial learning
-- **Recommendation basis**: Observed majority + confidence signal
-- **Confidence**: Observation count × choice consistency
+#### Warm State
+- **Observations = N~M**: partial learning
+- **Recommendation placement**: observed majority + confidence signal
+- **Confidence**: observation count × choice consistency
 
-#### Mature State (Stable)
-- **Observations > M**: Sufficient learning
-- **Recommendation basis**: Strong majority with high confidence
-- **Confidence**: Highest (≥95% statistical significance)
+#### Mature State
+- **Observations > M**: sufficient learning
+- **Recommendation placement**: strong majority conviction (statistically significant)
+- **Confidence**: highest (≥95% confidence)
 
-#### Expertise-Based Adaptive Strength
-- **Expert (sessions > 50)**: Weak recommendation strength (autonomy-first, inferred preference disclosed only)
-- **Novice (sessions < 10)**: Strong recommendation strength (`(Recommended)` label + explicit reason)
-- **Intermediate (10 ≤ sessions ≤ 50)**: Medium strength (context-dependent adjustment)
+#### Proficiency-Based Adaptive Strength
+
+The same recommendation is delivered with different strength depending on the audience. A strong recommendation to an expert erodes autonomy, and a weak recommendation to a beginner only adds decision fatigue.
+
+- **Expert (sessions > 50)**: weak recommendation strength (autonomy first, only the inferred preference is disclosed)
+- **Beginner (sessions < 10)**: strong recommendation strength (`(Recommended)` label + stated rationale)
+- **Intermediate (10 ≤ sessions ≤ 50)**: medium strength (adjusted by context)
 
 ### 3. PostToolUse Capture Hook
 
-Decision capture is automatic when AskUserQuestion responses arrive via PostToolUse hook.
+When an AskUserQuestion response arrives, the PostToolUse hook automatically captures the decision. The user never has to record anything manually.
 
 #### Captured Data
 
@@ -80,8 +83,8 @@ Decision capture is automatic when AskUserQuestion responses arrive via PostTool
 {
   "decision_id": "moai-ask-001",
   "timestamp": "2026-07-01T10:00:00Z",
-  "question": "Select your next step",
-  "user_choice": "Option A (Recommended)",
+  "question": "다음 단계를 선택하세요",
+  "user_choice": "Option A (권장)",
   "all_options": ["Option A", "Option B", "Option C"],
   "context": {
     "spec_id": "SPEC-XXX-001",
@@ -93,12 +96,12 @@ Decision capture is automatic when AskUserQuestion responses arrive via PostTool
 
 #### Storage Locations
 
-- **During session**: `.moai/state/decisions/` (temporary JSON)
-- **Session end**: `~/.claude/projects/{hash}/memory/decisions.jsonl` (auto-memory)
+- **During the session**: `.moai/state/decisions/` (temporary JSON)
+- **At session end**: `~/.claude/projects/{hash}/memory/decisions.jsonl` (auto-memory)
 
 ### 4. Decay Policy
 
-Gradually reduces the weight of older decisions.
+A choice made three months ago does not represent today's preference. The weight of older decisions gradually decreases.
 
 #### Decay Function
 
@@ -108,41 +111,41 @@ weight(t) = initial_weight × exp(-decay_rate × days_ago)
 
 #### Defaults
 - **Initial weight**: 1.0
-- **Decay rate**: 0.1 (approximately 50% decay per 7 days)
-- **Retention period**: 90 days (then auto-archive)
+- **Decay rate**: 0.1 (about 50% decay every 7 days)
+- **Retention period**: 90 days (auto-archived afterward)
 
-#### Examples
+#### Example
 
 ```
-Yesterday's choice:  weight = 0.95
-7 days ago:          weight = 0.50
-30 days ago:         weight = 0.04
-90+ days:            Archived (excluded from recommendations)
+어제 선택: weight = 0.95
+7일 전 선택: weight = 0.50
+30일 전 선택: weight = 0.04
+90일 이상: 아카이브 (권장 반영 제외)
 ```
 
 ### 5. Recovery Controls
 
-Manages error recovery and resets for decision memory.
+For when learning has hardened in the wrong direction, error-recovery and reset tools are provided.
 
 #### Memory Reset
 
-Users can reset learned preferences:
+The user can reset learned preferences.
 
 ```bash
 /moai memory reset
 ```
 
-#### Preference Edit
+#### Preference Editing
 
-Modify recommendations for a specific decision category:
+Modify the recommendation for a specific decision category.
 
 ```bash
 /moai memory set <category> <preferred-option>
 ```
 
-#### Preference Query
+#### Preference Inspection
 
-View currently learned preferences:
+Check the currently learned preferences.
 
 ```bash
 /moai memory list
@@ -150,11 +153,11 @@ View currently learned preferences:
 
 ## Decision Categories
 
-Primary decision types tracked by memory:
+The main decision types the memory tracks.
 
 | Category | Example |
-|----------|---------|
-| **Tier Selection** | Choose Tier S/M/L |
+|----------|------|
+| **Tier Selection** | Choosing Tier S/M/L |
 | **Cycle Type** | DDD vs TDD mode |
 | **Worktree Strategy** | Main vs Branch vs Worktree |
 | **PR Routing** | Direct-to-main vs PR-based |
@@ -162,69 +165,71 @@ Primary decision types tracked by memory:
 | **Model Selection** | Model choice per task |
 | **Effort Level** | Effort level (low/medium/high/xhigh) |
 
-## Statistical Majority Learning Examples
+It is worth noting that Model Selection and Effort Level are included here — the preferences decision memory learns ultimately feed into model and reasoning-depth assignment, so this system is also the personalization layer of tokenomics.
+
+## Examples of Statistical-Majority Learning
 
 ### Scenario 1: Tier Selection
 
-After 10 Tier selection decisions:
+If the user has made 10 Tier selections:
 
 ```
-Tier S: 3 selections
-Tier M: 6 selections  ← Statistical majority (60%)
-Tier L: 1 selection
+Tier S: 3회 선택
+Tier M: 6회 선택  ← 통계적 다수 (60%)
+Tier L: 1회 선택
 
-Learning result: Tier M labeled (Recommended)
-Confidence: Moderate-High (6/10 = 60%, N=10)
-Recommendation text: "Tier M (Recommended) — based on 60% recent choices"
+학습 결과: Tier M이 (권장)으로 표시
+신뢰도: 중상 (6/10 = 60%, N=10)
+권장 문구: "Tier M (권장) — 최근 선택 60% 기반"
 ```
 
 ### Scenario 2: Cycle Type
 
 ```
-DDD: 4 selections
-TDD: 5 selections  ← Statistical majority
-Other: 1 selection
+DDD: 4회
+TDD: 5회 선택  ← 통계적 다수
+기타: 1회
 
-Learning result: TDD labeled (Recommended)
-Confidence: Moderate (5/10 = 50%, N=10)
-Recommendation text: "TDD (Recommended) — based on observation"
+학습 결과: TDD가 (권장)
+신뢰도: 중 (5/10 = 50%, N=10)
+권장 문구: "TDD (권장) — 관찰 기반"
 ```
 
 ## Cold-Start Transparency
 
-When observations are insufficient, explicit disclosure:
+When observations are insufficient, the fact is disclosed explicitly rather than hidden.
 
 ```
-Option 1: Tier M (Recommended) — based on static default, 5 observations needed for personalization
-Option 2: Tier L
-Option 3: Tier S
+선택지 1: Tier M (권장) — based on static default, 5 observations needed for personalization
+선택지 2: Tier L
+선택지 3: Tier S
 ```
 
-Users clearly understand the learning-in-progress state.
+The user can clearly recognize that the system is still learning.
 
-## Expertise-Based Strength Adjustment Examples
+## Examples of Proficiency-Based Strength Adjustment
 
-### Novice User (sessions < 10)
+### Beginner User (sessions < 10)
 ```
-Tier M (Recommended) — based on recent choices
-(Strong recommendation strength)
+Tier M (권장) — 최근 선택 기반 제시
+(강 추천 강도)
 ```
 
 ### Expert User (sessions > 50)
 ```
-Options:
-- Tier M (recent choice 60%)
+선택지들:
+- Tier M (최근 선택 60%)
 - Tier L
 - Tier S
-(Weak recommendation strength, inferred preference disclosed only)
+(약 추천 강도, inferred preference 공개만)
 ```
 
-## Related Documentation
+## Related Documents
 
-- [AskUserQuestion Protocol](/advanced/agent-guide) - Recommendation placement rules (HARD)
-- [Workflow Selection](/advanced/harness-v4-builder) - Tier selection and decision-making
-- [Memory System](/getting-started/memory) - User preference management
+- [Agent Guide](/en/advanced/agent-guide) - AskUserQuestion recommendation placement rules (HARD)
+- [Harness v4 Builder Advanced Guide](/en/advanced/harness-v4-builder) - tier selection and decision-making
+- [Memory System](/en/getting-started/memory) - managing user preferences
 
 {{< callout type="info" >}}
-**Tip**: Decision Memory operates automatically. No explicit configuration needed. Users are automatically learned as they make decisions.
+**Tip**: Decision memory works automatically. No explicit configuration is needed — the system learns quietly every time you make a decision.
 {{< /callout >}}

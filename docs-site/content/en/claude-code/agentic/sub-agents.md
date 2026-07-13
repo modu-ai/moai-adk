@@ -2,87 +2,97 @@
 title: Subagents
 weight: 10
 draft: false
-description: "Claude Code subagents are specialized workers for isolated tasks. Learn their constraints, optional fields (v2.1.172+), v2.1.186 background-mode permissions, and when to delegate."
+description: "An overview of Claude Code subagents — the concept, isolated-context delegation, and how to define them."
 ---
 
 # Subagents
 
-Claude Code subagents are delegated workers that handle side-tasks in a separate context window and return only a result summary to the main conversation.
+A Claude Code subagent is a delegated worker that handles side tasks in a separate context window and returns only a summary of the results to the main conversation.
 
 {{< callout type="info" >}}
-**TL;DR**: A subagent is a delegated worker that handles side-tasks such as exploration and verification in its own context, returning only a summary — keeping the main conversation clean.
+**One-line summary**: A subagent is a delegated worker that handles side jobs like exploration and verification in its own context and returns only a summary, keeping the main conversation clean.
 {{< /callout >}}
 
 {{< callout type="tip" >}}
-This page is a concept overview at the Claude Code level. How MoAI-ADK organizes its 8-agent catalog and delegates work, and the hands-on approach to building your own agents, are covered in depth in the [Agent Guide](/advanced/agent-guide) and the [Builder Agent Guide](/advanced/builder-agents).
+This page is a Claude Code-level conceptual overview. How MoAI-ADK composes and delegates its 10-agent catalog (9 MoAI-custom + 1 Anthropic built-in `Explore`), and the hands-on way to build your own agents, are covered in depth in the [Agent Guide](/advanced/agent-guide) and the [Builder Agents Guide](/advanced/builder-agents).
 {{< /callout >}}
 
 ## What Is a Subagent
 
-A subagent is a specialized AI worker dedicated to a particular kind of task. When a side-task arises that would otherwise flood the main conversation with search results, logs, and file contents, the subagent handles it in its **own context window** and returns only a result summary.
+A subagent is a specialized AI worker dedicated to a particular kind of task. When a side task arises that would flood the main conversation with search results, logs, and file contents, the subagent handles it in **its own context window** and returns only a summary.
 
-Each subagent independently owns the following.
+Each subagent independently has:
 
 | Component | Description |
-|-----------|-------------|
-| System prompt | The body of the subagent file becomes its role instructions verbatim |
-| Tool access | The tools it can use can be restricted via allow/deny lists |
-| Independent permissions | It inherits the main conversation's permissions but can add further restrictions |
-| Model selection | Cost can be lowered by using a fast, inexpensive model such as `haiku` |
+|-----------|------|
+| System prompt | The subagent file's body becomes the role instructions verbatim |
+| Tool access | Usable tools can be restricted via allow/deny lists |
+| Independent permissions | Inherits the main conversation's permissions but can add restrictions |
+| Model choice | Cost can be lowered with a fast, cheap model like `haiku` |
 
-Claude decides when to delegate by reading each subagent's `description`. Writing that description clearly is therefore the starting point for good delegation.
+Claude looks at each subagent's `description` to decide when to delegate. Writing a clear description is therefore the starting point of good delegation.
 
-Claude Code includes built-in subagents such as `Explore` (read-only codebase exploration with thoroughness options: quick/medium/very-thorough), `Plan` (plan-mode research), and `general-purpose` (combined exploration + modification tasks).
+Claude Code includes these built-in subagents:
 
-## Core Constraint: Subagent Nesting Depth (v2.1.172+)
+| Agent | Characteristics |
+|---------|------|
+| **Explore** | Read-only codebase exploration (Haiku, fast); the thoroughness option offers quick/medium/very-thorough |
+| **Plan** | Plan-mode research (read-only) |
+| **general-purpose** | Access to all tools; can both explore and modify |
 
-The most important structural constraint is **nesting depth**. Subagents can spawn other subagents, but subject to a **hard depth limit of 5 levels**.
+Explore and Plan skip the main session's CLAUDE.md and git status, running faster and lighter.
 
-### Depth Configuration
+## The Core Constraint: Subagents Cannot Spawn Subagents
 
-| Setting | Behavior | Enabled when |
-|---------|----------|--------------|
-| With `Agent` tool included | Nested spawning allowed | Frontmatter `tools:` field includes `Agent` |
-| Without `Agent` tool | No nested spawning | `Agent` tool omitted (or `disallowedTools:` blocks it) |
+This is the most important structural constraint. **Subagents cannot spawn other subagents.** Delegation descends only one level from the main conversation, and infinite nesting cannot occur.
 
-This constraint is also the foundation of MoAI-ADK's orchestration design. Only the orchestrator (the main session) directly spawns subagents, and an invoked agent at depth 4 cannot spawn further (depth-5 cap). As a result, instead of a hierarchical agent chain, MoAI-ADK follows a flat structure in which **the orchestrator invokes each step directly**.
+### After v2.1.172: Limited Nesting (Depth-5 Cap)
+
+Starting with Claude Code v2.1.172, **conditional subagent nesting** is possible. There is a configuration knob.
+
+| Setting | Behavior | Usage |
+|------|------|------|
+| Include `Agent` in the subagent definition (frontmatter `tools:` list) | Nesting allowed | Up to depth 5 (hard cap) |
+| Omit the `Agent` tool | Nesting prohibited | Flat orchestration only |
+
+This constraint is also the bedrock of MoAI-ADK's orchestration design. **Only the orchestrator (the main session) invokes subagents**, and an invoked agent may delegate again only if it does not hit the depth limit. So instead of hierarchical agent chains, the design follows a flat structure where **the orchestrator directly calls each stage** (MoAI's base principle).
 
 ```mermaid
 flowchart TD
-    M[Main conversation<br/>Orchestrator] --> A[Subagent A<br/>depth 1]
-    M --> B[Subagent B<br/>depth 1]
-    M --> C[Subagent C<br/>depth 1]
-    A -.->|Optional (depth ≤ 4)<br/>Requires Agent tool| X["Nested subagent<br/>depth 2"]
+    M[Main conversation<br/>Orchestrator] --> A[Subagent A<br/>Exploration]
+    M --> B[Subagent B<br/>Verification]
+    M --> C[Subagent C<br/>Implementation]
+    A -.->|Condition: with the Agent tool<br/>only up to depth 5| X["Nested subagent<br/>(limited)"]
     style X fill:#ffd,stroke:#c80
 ```
 
-The built-in `Plan` subagent exists separately for a reason: to perform research when plan mode needs context, without hitting the depth limit.
+This is also why the built-in `Plan` subagent exists separately: to perform research in plan mode when context is needed, without circumventing this constraint.
 
-## Background Mode Permissions (v2.1.186+)
+## Background Permission Prompts (v2.1.186)
 
-Subagents can run in the background (`background: true`). When a background subagent needs a permission for a tool like Bash or WebFetch:
+When running a subagent in the background (`background: true`) and it encounters a tool requiring permission (e.g., Bash, WebFetch):
 
-- **v2.1.186 and later**: The permission prompt surfaces in the main session (the user can press Esc to deny that one call only)
-- **Before v2.1.186**: The call was automatically rejected
+- **Before v2.1.186**: auto-denied (no permission prompt)
+- **From v2.1.186**: **the prompt appears in the main session** (Esc denies just that call)
 
-To avoid mid-run permission prompts when running long background tasks, pre-add needed tools to the allowlist in `settings.json`.
+So before starting long background work, it is best to pre-add the needed tools to the allow list in `settings.json`.
 
-## When to Use One
+## When to Use Them
 
-Subagents are most effective in situations like these.
+Subagents are most effective in situations like these:
 
-| Situation | Benefit |
-|-----------|---------|
-| Parallel exploration | Investigate multiple files and directories simultaneously, collect only the summaries |
+| Situation | Effect |
+|------|------|
+| Parallel exploration | Investigate multiple files/directories simultaneously and collect only summaries |
 | Independent verification | Check results in a separate context, free of the main conversation's bias |
 | Context isolation | Quarantine large logs and search results away from the main conversation |
-| Cost control | Route simple tasks to a fast model such as `haiku` |
+| Cost control | Route simple work to a fast model like `haiku` |
 
-Conversely, if a task finishes in a single response, or if it spans multiple steps that **require shared context**, it is better to handle it directly in the main conversation without delegation.
+Conversely, for work that finishes in a single response, or multi-stage work that **needs shared context**, handling it directly in the main conversation without delegation is better.
 
-## Definition Overview
+## Defining Subagents — Overview
 
-A subagent is defined as a Markdown file with YAML frontmatter. You can create one interactively with the `/agents` command, or write the file directly.
+A subagent is defined as a markdown file with YAML frontmatter. You can create one interactively with the `/agents` command or write the file directly.
 
 ```markdown
 ---
@@ -92,67 +102,67 @@ tools: Read, Glob, Grep
 model: sonnet
 ---
 
-You are a code reviewer. When invoked, you analyze code and provide
-concrete, actionable feedback on quality, security, and best practices.
+You are a code reviewer. When invoked, analyze the code and
+provide specific, actionable feedback on quality, security, and best practices.
 ```
 
 ### Required Fields
 
-- `name` — The subagent's identifier (used when delegating)
-- `description` — When to delegate (Claude reads only this to decide whether to invoke the agent)
+- `name` — the subagent's name (referenced when delegating)
+- `description` — explains when to delegate (Claude judges from this alone)
 
 ### Optional Fields
 
-| Field | Type | Purpose |
-|-------|------|---------|
-| `tools` | CSV string | Allow-list of tools (e.g., `Read, Glob, Grep`) |
-| `disallowedTools` | CSV string | Deny-list of tools (alternative to `tools:`) |
-| `model` | string | Model selection: `sonnet`, `opus`, `haiku`, `fable`, or specific model ID; default `inherit` |
-| `permissionMode` | enum | Default permissions (default, plan, acceptEdits, bypass) |
-| `maxTurns` | integer | Maximum turn limit for this agent |
-| `skills` | list | Skills to load by default |
-| `mcpServers` | list | MCP servers to connect |
-| `hooks` | list | Hook events to invoke |
-| `memory` | enum | Memory scope (user, project, local) |
-| `background` | bool | Run in the background (true/false) |
-| `effort` | enum | Reasoning effort (low, medium, high, xhigh, max) |
-| `isolation: worktree` | string | Run in an isolated worktree copy of the repository |
-| `color` | string | Color shown in agent view |
-| `initialPrompt` | string | Prompt to send when the subagent is first spawned |
+| Field | Function |
+|------|------|
+| `tools` | Allowed tools (comma-separated list) |
+| `disallowedTools` | Blocked tools (usable instead of an allowlist) |
+| `model` | Model choice: `sonnet`, `opus`, `haiku`, `fable`, or a specific model ID; default `inherit` (the main session model) |
+| `permissionMode` | Tool permission default (default, plan, acceptEdits, bypass) |
+| `maxTurns` | Maximum turn limit |
+| `skills` | Default skills to load |
+| `mcpServers` | MCP servers to connect |
+| `hooks` | Hook events to invoke |
+| `memory` | Memory scope (user, project, local) |
+| `background` | If `true`, runs in the background |
+| `effort` | Reasoning intensity (low, medium, high, xhigh, max) |
+| `isolation: worktree` | Works in an isolated copy of the repository |
+| `color` | Color shown in the agent view |
+| `initialPrompt` | The prompt used when the subagent is first spawned |
 
-Scope varies based on where the file is stored.
+Where the file lives determines its scope.
 
 | Location | Scope |
-|----------|-------|
-| `.claude/agents/` | Current project (include in version control to share with the team) |
-| `~/.claude/agents/` | All of your projects |
+|------|------|
+| `.claude/agents/` | The current project (put under version control to share with the team) |
+| `~/.claude/agents/` | All my projects |
 | A plugin's `agents/` | Wherever the plugin is enabled |
 
-### AskUserQuestion Unavailable in Subagents
+### AskUserQuestion Unavailable
 
-User-interaction tools such as `AskUserQuestion` cannot be used in a subagent. This is why, in MoAI-ADK, a subagent cannot ask the user directly and instead returns a **blocker report** to the orchestrator, which then asks the user via `AskUserQuestion`.
+User-interaction tools like `AskUserQuestion` cannot be used inside subagents (an asymmetric boundary). This is why, in MoAI-ADK, subagents cannot question the user directly and instead return a blocker report to the orchestrator.
 
-## /fork — Session Forking
+## `/fork` — Session Fork
 
-The `/fork <directive>` command lets you fork the current session's context into a new subagent-like context. The forked subagent:
+The `/fork <directive>` command forks the current session. The forked subagent:
 
-- Inherits the current conversation content
-- Leverages the parent session's prompt cache
-- Explores in a new direction independently
+- Inherits the current conversation contents
+- Leverages the parent's prompt cache
+- Explores in a new direction
 
-## For Depth, See the MoAI Agent Guide
+## Going Deeper via the MoAI Agent Guide
 
-That covers the subagent concept at the Claude Code level. How MoAI-ADK operates its 8-agent catalog on top of this mechanism, how it delegates each stage of the Plan-Run-Sync workflow, and how it generates project-specific domain-expert agents are covered in the advanced guides below.
+That covers the Claude Code-level subagent concept. MoAI-ADK operates a **10-agent catalog** on top of this mechanism — the Manager family (manager-spec / manager-develop / manager-docs / manager-git / manager-design) handles the plan→run→sync lifecycle, the Evaluator family (plan-auditor / sync-auditor) handles independent audits, builder-harness handles harness scaffold generation, super-advisor handles high-reasoning consultation, and the Anthropic built-in `Explore` handles read-only exploration. The separation of planning and auditing — the agent that built something never checks its own work — is the core design of this catalog. Declaratively assigning each agent the model and reasoning depth (effort) matched to its task is the tokenomics principle of "plan deeply, implement cheaply, verify independently." Details are covered in the advanced guides below.
 
-## Related Docs
+## Related Documents
 
 - [Agent Guide](/advanced/agent-guide)
-- [Builder Agent Guide](/advanced/builder-agents)
+- [Builder Agents Guide](/advanced/builder-agents)
 
 ## References
 
 - [Create custom subagents (Claude Code official docs)](https://code.claude.com/docs/en/sub-agents)
 
 {{< callout type="tip" >}}
-When you create a subagent, write the `description` concretely from the perspective of "when delegation should happen." Claude decides whether to delegate based solely on this description, so if it is vague, even a good tool may never be invoked.
+When creating a subagent, write the `description` concretely from the perspective of "when should this be delegated to?" Claude decides delegation from this description alone — if it is vague, a good tool goes uncalled.
 {{< /callout >}}

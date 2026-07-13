@@ -4,12 +4,12 @@ description: 16개 프로그래밍 언어의 기본 마이그레이션 경로 �
 weight: 30
 draft: false
 ---
-# 마이그레이션 패턴
 
+MoAI-ADK는 16개 프로그래밍 언어를 동등하게 지원합니다. 데이터베이스
+워크플로우도 마찬가지입니다 — 언어별 업계 표준 마이그레이션 도구의 기본
+경로를 알고 있어서, 대부분의 프로젝트는 별도 설정 없이 바로 스캔됩니다.
 
 ## 지원하는 언어와 마이그레이션 도구
-
-MoAI는 16개 프로그래밍 언어의 기본 마이그레이션 경로를 지원합니다. 각 언어는 업계 표준 도구를 사용합니다.
 
 | 언어 | 마이그레이션 도구 | 기본 경로 패턴 |
 |------|-----------------|--------------|
@@ -119,7 +119,7 @@ project/
 
 ## 멀티 언어 프로젝트 설정
 
-마이크로서비스나 모놀리식 구조에서 여러 언어의 마이그레이션을 관리하는 경우:
+마이크로서비스나 모노레포 구조에서 여러 언어의 마이그레이션을 함께 관리하는 경우:
 
 ```yaml
 db:
@@ -128,12 +128,12 @@ db:
     - path: "services/api/db/migrations"
       file_pattern: "*.sql"
       language: "go"
-    
+
     # 데이터 파이프라인 (Python)
     - path: "services/analytics/alembic/versions"
       file_pattern: "*.py"
       language: "python"
-    
+
     # 웹 애플리케이션 (TypeScript)
     - path: "apps/web/prisma/migrations"
       file_pattern: "*.sql"
@@ -194,7 +194,7 @@ db:
 |------|------|------|
 | golang-migrate | `YYYYMMDDHHMMSS_description.up.sql` | `20240101120000_create_users.up.sql` |
 | Alembic | `rev_<hash>_description.py` | `rev_a001b002_add_email.py` |
-| Prisma | 타임스탐프 폴더 | `20240101120000_init` |
+| Prisma | 타임스탬프 폴더 | `20240101120000_init` |
 | Flyway | `V<version>__description.sql` | `V1__Create_users.sql` |
 | Rails | `YYYYMMDDHHMMSS_description.rb` | `20240101120000_create_users.rb` |
 | Laravel | `YYYY_MM_DD_HHMMSS_description.php` | `2024_01_01_120000_create_users.php` |

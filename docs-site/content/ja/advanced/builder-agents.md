@@ -1,69 +1,71 @@
 ---
-title: ビルダーエージェントと Harness v4
+title: ビルダーエージェントとハーネス v4
 weight: 40
 draft: false
 ---
 
-MoAI-ADK 拡張のための Harness v4 Builder を詳細に解説します。
+エージェンティック・ハーネスの最後のピースは再帰です — ハーネスがハーネスを作ります。Harness v4 Builder は、自然言語のリクエストひと言でプロジェクト固有の専門家チームを生成する、その再帰構造の入り口です。
 
 {{< callout type="info" >}}
-  **一言でいうと**: Harness v4 Builder は自然言語リクエストでプロジェクト固有の専門家チームを動的に生成します。4 段階ワークフロー（ANALYZE → PLAN → GENERATE → ACTIVATE）と manifest ベース Runner で構成されます。
+**ひと言要約**: Harness v4 Builder は自然言語のリクエストでプロジェクト固有の専門家チームを動的に生成します。4 フェーズワークフロー (ANALYZE → PLAN → GENERATE → ACTIVATE) と manifest ベースの Runner で構成されます。
 {{< /callout >}}
 
-## Harness v4 Builder とは？
+## Harness v4 Builder とは?
 
-Harness v4 Builder は `/moai:harness <自然言語リクエスト>` を通じて**プロジェクト固有の専門家チームを動的に生成**します。
+Harness v4 Builder は `/moai:harness <自然言語リクエスト>` を通じて **プロジェクト固有の専門家チームを動的に生成** します。
 
-### 前バージョンとの違い
+汎用エージェントカタログ (10 個) がすべてのプロジェクトに共通だとすれば、Builder が作るハーネスはあなたのプロジェクトにだけ存在するカスタムチームです。
 
-| 区分 | 前バージョン（v3/静的モデル） | 現在（v4 Builder） |
+### 以前のバージョンとの違い
+
+| 区分 | 以前 (v3/静的モデル) | 現在 (v4 Builder) |
 |------|-----|-----------|
-| 生成方式 | 3 つのビルダーエージェント（ビルダー-スキル、ビルダー-エージェント、ビルダー-プラグイン） | 単一 Harness v4 Builder（動的生成） |
+| 生成方式 | 3 種類のビルダーエージェント (ビルダー・スキル、ビルダー・エージェント、ビルダー・プラグイン) | 単一の Harness v4 Builder (動的生成) |
 | ワークフロー | ユーザー定義構造 | 4-phase ANALYZE → PLAN → GENERATE → ACTIVATE |
-| 実行方式 | それぞれ独立的 | Manifest ベース Runner（選択的ワークツリー格離） |
-| 拡張性 | 限定的 | プロジェクトコンテキスト自動検知 |
+| 実行方式 | それぞれ独立 | Manifest ベースの Runner (選択的な worktree 分離) |
+| 拡張性 | 限定的 | プロジェクトコンテキストの自動検出 |
 
-## Harness v4 Builder 4-Phase ワークフロー
+## Harness v4 Builder 4-Phase Workflow
 
-### 1. ANALYZE（分析段階）
+### 1. ANALYZE (分析フェーズ)
 
 現在のプロジェクトを分析し、必要な専門性を把握します。
 
-- ソースコード構造分析
-- 使用言語とフレームワーク検知
-- 既存エージェント/スキルインベントリ調査
-- プロジェクト規模推定
+- ソースコード構造の分析
+- 使用言語とフレームワークの検出
+- 既存エージェント/スキルのインベントリ調査
+- プロジェクト規模の推定
 
-### 2. PLAN（計画段階）
+### 2. PLAN (計画フェーズ)
 
 必要な専門家チームの構成と役割を定義します。
 
-- チーム規模決定（3～5 チームメンバー）
-- 各チームメンバーの役割プロファイル定義
-- ワークツリー格離必要性判断
+- チーム規模の決定 (3〜5 メンバー)
+- 各メンバーの役割プロファイル定義
+- worktree 分離の必要性判断
 - Manifest スキーマ設計
 
-### 3. GENERATE（生成段階）
+### 3. GENERATE (生成フェーズ)
 
 実際のエージェント定義と設定を生成します。
 
-- `.claude/agents/harness/` 配下エージェントファイル生成
-- `.moai/harness/manifest.json` 生成（Runner 設定）
-- 役割別システムプロンプト作成
-- スキル事前ロードリスト定義
+- `.claude/agents/harness/` 配下にエージェントファイルを生成
+- `.moai/harness/manifest.json` を生成 (Runner 設定)
+- 役割別システムプロンプトの作成
+- スキル事前ロードリストの定義
 
-### 4. ACTIVATE（活性化段階）
+### 4. ACTIVATE (有効化フェーズ)
 
-生成されたハネスを即座に使用可能にします。
+生成されたハーネスをすぐに利用できるよう有効化します。
 
-- エージェント登録および検証
-- Manifest Runner 初期化
-- 選択的ワークツリー生成および格離設定
-- チームメンバー自動委任ルール活性化
+- エージェントの登録と検証
+- Manifest Runner の初期化
+- 選択的な worktree 作成と分離設定
+- チームメンバーの自動委任ルールの有効化
 
-## Manifest ベース Runner
+## Manifest ベースの Runner
 
-Harness v4 は**Manifest ベース Runner**を使用して生成されたチームを運用します。
+Harness v4 は **Manifest ベースの Runner** を使って生成されたチームを運用します。どの phase にどのメンバーが、どのモデルと権限モードで投入されるかが manifest 1 ファイルに宣言されます — モデル割り当てを宣言で管理するトークノミクス原則がここにも適用されます。
 
 ### manifest.json 構造
 
@@ -101,80 +103,80 @@ Harness v4 は**Manifest ベース Runner**を使用して生成されたチー�
 }
 ```
 
-### Runner 動作
+### Runner の動作
 
-1. **Phase 進入**: manifest の phase シーケンスに従って進行
+1. **Phase 進入**: manifest の phase シーケンスに沿って進行
 2. **Teammate Spawn**: 各 phase の teammates を動的に生成
-3. **Isolation 適用**: 条件付きワークツリー格離適用
+3. **Isolation 適用**: 条件付き worktree 分離を適用
 4. **Result Aggregation**: 各 teammate の結果を統合
 
-## Harness ライフサイクル コマンド
+## Harness Lifecycle Commands
 
-Harness v4 Builder で生成されたハネスは `/harness:<name>` コマンドで管理されます。
+Harness v4 Builder で生成されたハーネスは `/harness:<name>` コマンドで管理されます。
 
-### 使用可能なコマンド
+### 利用可能なコマンド
 
 ```bash
-# 生成されたハネス一覧表示
+# 生成されたハーネスの一覧表示
 /harness list
 
-# 特定ハネスの状態確認
+# 特定ハーネスの状態確認
 /harness:my-project-team status
 
-# ハネス設定編集
+# ハーネス設定の編集
 /harness:my-project-team edit
 
-# ハネス削除
+# ハーネスの削除
 /harness:my-project-team remove
 
-# Harness v4 Builder で新規ハネス生成
+# Harness v4 Builder で新しいハーネスを生成
 /moai:harness <自然言語リクエスト>
 ```
 
-## 自然言語リクエストでハネス生成
+## 自然言語リクエストでハーネスを生成
 
-### 基本使用法
+### 基本的な使い方
 
 ```bash
-> 私たちのバックエンドプロジェクトに合った専門家チームを作成してください。
-> API 設計、DB スキーマ、テストを担当するチームが必要です。
+> うちのバックエンドプロジェクトに合った専門家チームを作って。
+> API 設計、DB スキーマ、テストを担当するチームが必要。
 ```
 
 ### Builder の動作フロー
 
-1. ANALYZE: プロジェクト構造（Go、PostgreSQL、REST API）を分析
-2. PLAN: 3 人チーム（API Designer、DB Specialist、Test Engineer）決定
-3. GENERATE: 各エージェント定義と manifest.json 生成
-4. ACTIVATE: チーム活性化および `/harness:backend-team` コマンド登録
+1. ANALYZE: プロジェクト構造 (Go、PostgreSQL、REST API) を分析
+2. PLAN: 3 人チーム (API Designer、DB Specialist、Test Engineer) を決定
+3. GENERATE: 各エージェント定義と manifest.json を生成
+4. ACTIVATE: チームを有効化し `/harness:backend-team` コマンドを登録
 
 ### 生成結果の場所
 
-- エージェント定義: `.claude/agents/harness/api-designer.md`、`db-specialist.md`、...
+- エージェント定義: `.claude/agents/harness/api-designer.md`, `db-specialist.md`, ...
 - Manifest: `.moai/harness/manifest.json`
-- 選択的ワークツリー: `~/.moai/worktrees/<project>/`（ユーザーオプトイン時）
+- 選択的なワークツリー: `~/.moai/worktrees/<project>/` (ユーザー opt-in 時)
 
-## ワークツリー格離（選択的）
+## Worktree 分離 (選択的)
 
-Harness v4 は条件付きワークツリー格離をサポートします。
+Harness v4 は条件付き worktree 分離をサポートします。
 
-### L1 格離（Optional）
+### L1 分離 (Optional)
 
-Claude Code ランタイムがエージェント当たり L1 ワークツリーを生成します。
+Claude Code ランタイムがエージェントごとに L1 ワークツリーを作成します。
 
-- **使用時期**: 並列チームメンバーが同じファイルを編集するとき
-- **格離範囲**: 各チームメンバーのファイル書き込みが独立したワークツリーで発生
-- **コスト**: 追加メモリ + 並列利益相殺
+- **使用タイミング**: 並列メンバーが同じファイルを編集するとき
+- **分離範囲**: 各メンバーのファイル書き込みが独立したワークツリーで発生
+- **コスト**: 追加メモリ + 並列メリットの相殺
 
 ### 無効化
 
-manifest の `"worktree_isolation": "none"` で L1 格離スキップ。
+manifest の `"worktree_isolation": "none"` に設定すると L1 分離を省略します。
 
 ## 関連ドキュメント
 
-- [Harness v4 Builder 詳細ガイド](/ja/advanced/harness-v4-builder) - Builder 4-phase 詳細および manifest スキーマ
-- [エージェントガイド](/ja/advanced/agent-guide) - 8 つのコアエージェントカタログ
-- [ダイナミックワークフロー](/ja/advanced/ultracode-workflows) - `/effort ultracode` 並列実行
+- [Harness v4 Builder 深掘りガイド](/ja/advanced/harness-v4-builder) - Builder 4-phase 詳細と manifest スキーマ
+- [エージェントガイド](/ja/advanced/agent-guide) - 10 個のコアエージェントカタログ
+- [動的ワークフロー](/ja/advanced/ultracode-workflows) - `/effort ultracode` 並列実行
 
 {{< callout type="info" >}}
-**ヒント**: Harness v4 Builder はプロジェクトごとに**カスタムチームを一度だけ生成**すれば、その後すべての作業で自動的にそのチームが委任されます。初回生成後は `/harness:team-name` でいつでも再利用できます。
+**ヒント**: Harness v4 Builder でプロジェクトごとに **カスタムチームを一度だけ生成** すれば、以降のすべての作業でそのチームが自動的に委任されます。初回生成後は `/harness:team-name` でいつでも再利用できます。
 {{< /callout >}}

@@ -1,18 +1,18 @@
 ---
 title: マイグレーションパターン
-description: 16プログラミング言語のデフォルトマイグレーションパスと設定
+description: 16 プログラミング言語のデフォルトマイグレーションパスと設定
 weight: 30
 draft: false
 ---
-# マイグレーションパターン
 
+MoAI-ADK は 16 のプログラミング言語を同等にサポートします。データベース
+ワークフローも同様です — 言語ごとの業界標準マイグレーションツールのデフォルト
+パスを把握しているため、ほとんどのプロジェクトは追加設定なしですぐにスキャンされます。
 
-## サポートされている言語とツール
-
-MoAI は 16プログラミング言語のデフォルトマイグレーションパスをサポートしており、各言語は業界標準ツールを使用します。
+## サポートする言語とマイグレーションツール
 
 | 言語 | マイグレーションツール | デフォルトパスパターン |
-|------|------------------|---------------------|
+|------|-----------------|--------------|
 | Go | golang-migrate | `db/migrations/*.sql` または `migrations/*.sql` |
 | Python | Alembic | `alembic/versions/*.py` |
 | TypeScript | Prisma Migrate | `prisma/migrations/**/*.sql` |
@@ -32,23 +32,23 @@ MoAI は 16プログラミング言語のデフォルトマイグレーション
 
 ## 自動言語検出
 
-MoAI はプロジェクト言語を以下の方法で自動検出します:
+MoAI は次の方法でプロジェクトの言語を自動検出します:
 
 1. `.moai/config/sections/language.yaml` の `project_markers` を確認
 2. プロジェクトルートの言語別マーカーファイルをスキャン:
    - Go: `go.mod`
-   - Python: `pyproject.toml`、`setup.py`
+   - Python: `pyproject.toml`, `setup.py`
    - TypeScript/JavaScript: `package.json`
    - Rust: `Cargo.toml`
    - Ruby: `Gemfile`
    - PHP: `composer.json`
-   - Java/Kotlin: `pom.xml`、`build.gradle`
+   - Java/Kotlin: `pom.xml`, `build.gradle`
    - C#: `*.csproj`
    - Elixir: `mix.exs`
 
 ## カスタムマイグレーションパスの設定
 
-デフォルトパスがプロジェクトと合わない場合、`.moai/config/sections/db.yaml` で手動指定できます:
+デフォルトのパスがプロジェクトに合わない場合は、`.moai/config/sections/db.yaml` で手動指定できます:
 
 ```yaml
 db:
@@ -61,7 +61,7 @@ db:
       language: "python"
 ```
 
-## 例: 言語別マイグレーション構造
+## 例: 各言語のマイグレーションファイル構造
 
 ### Go (golang-migrate)
 
@@ -117,9 +117,9 @@ project/
 └── Gemfile
 ```
 
-## マルチ言語プロジェクト設定
+## マルチ言語プロジェクトの設定
 
-マイクロサービスまたはモノリシック構造で複数の言語を管理する場合:
+マイクロサービスやモノレポ構成で複数言語のマイグレーションをまとめて管理する場合:
 
 ```yaml
 db:
@@ -128,13 +128,13 @@ db:
     - path: "services/api/db/migrations"
       file_pattern: "*.sql"
       language: "go"
-    
+
     # データパイプライン (Python)
     - path: "services/analytics/alembic/versions"
       file_pattern: "*.py"
       language: "python"
-    
-    # Web アプリ (TypeScript)
+
+    # Web アプリケーション (TypeScript)
     - path: "apps/web/prisma/migrations"
       file_pattern: "*.sql"
       language: "typescript"
@@ -145,29 +145,29 @@ db:
 ### Prisma (TypeScript/JavaScript)
 
 長所:
-- シンプルな構文
+- シンプルな文法
 - 自動型生成
-- 直感的な関係定義
+- 直感的なリレーション定義
 
 短所:
-- Prisma エコシステムへの依存
+- Prisma エコシステムに依存
 - 複雑なマイグレーションに制限
 
 ### Alembic (Python)
 
 長所:
-- 自動マイグレーション生成
+- 自動マイグレーション生成機能
 - 柔軟なカスタマイズ
-- SQLAlchemy 完全統合
+- SQLAlchemy との完全統合
 
 短所:
 - 学習曲線
-- 複雑な初期設定
+- 初期設定が複雑
 
 ### Flyway (Java/Kotlin)
 
 長所:
-- 多言語マイグレーション対応
+- 言語別マイグレーションのサポート
 - 強力な検証
 - ウォーターマークシステム
 
@@ -179,19 +179,19 @@ db:
 
 長所:
 - 軽量で高速
-- Up/Down が明確
-- 純粋 SQL を使用
+- Up/Down の明確な区別
+- 純粋な SQL を使用
 
 短所:
-- ヘルパー機能なし
+- 補助機能なし
 - 自動生成不可
 
 ## マイグレーションファイルの命名規則
 
-ツールごとの推奨命名パターン:
+ツールごとの推奨命名規則:
 
-| ツール | パターン | 例 |
-|--------|---------|---|
+| ツール | 規則 | 例 |
+|------|------|------|
 | golang-migrate | `YYYYMMDDHHMMSS_description.up.sql` | `20240101120000_create_users.up.sql` |
 | Alembic | `rev_<hash>_description.py` | `rev_a001b002_add_email.py` |
 | Prisma | タイムスタンプフォルダ | `20240101120000_init` |
@@ -203,21 +203,21 @@ db:
 
 ### マイグレーションファイルがスキャンされない
 
-1. マイグレーションパスを確認:
+1. マイグレーションパスの確認:
 
 ```bash
 ls -la $(path/to/migrations)
 ```
 
-2. ファイルパターンを確認 — ファイル拡張子が期待されるパターンと一致するか
+2. ファイルパターンの確認 — ファイル拡張子が期待されるパターンと一致するか確認
 
-3. 言語検出を確認:
+3. 言語検出の確認:
 
 ```bash
 cat .moai/config/sections/language.yaml
 ```
 
-4. カスタムパスを設定:
+4. カスタムパスの設定:
 
 ```yaml
 db:
@@ -226,13 +226,13 @@ db:
       file_pattern: "*.sql"
 ```
 
-### 複数言語設定が競合
+### 複数言語の設定が衝突する
 
-各サービスのパスを明確に分離します:
+サービスごとのパスを明確に分離します:
 
 ```yaml
 db:
   migration_patterns:
-    - path: "services/api/**"          # バックエンドのみ
-    - path: "apps/web/**"              # Web アプリのみ
+    - path: "services/api/**"          # バックエンド専用
+    - path: "apps/web/**"              # Web アプリ専用
 ```

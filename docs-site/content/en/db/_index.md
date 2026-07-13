@@ -1,42 +1,52 @@
 ---
 title: Database Schema Management
-description: Automatically track and manage schemas, migrations, and seed data
+description: A workflow that automatically tracks and manages schemas, migrations, and seed data
 weight: 70
 draft: false
 ---
 
-MoAI-ADK's database workflow provides centralized management of your project's database metadata. With the `/moai db` command, you can scan migration files, automatically generate schema documentation, and detect drift between documentation and actual migrations.
+MoAI-ADK's database workflow manages your project's schema metadata centrally.
+The `/moai db` command scans migration files, auto-generates schema
+documentation, and detects drift between the documentation and the actual
+migrations.
 
-## Key Features
+This schema documentation is not just for humans. From the **agentic harness**
+perspective, `.moai/project/db/` is the agent's persistent context (file-based
+memory). Instead of re-reading migration files every session to reconstruct
+the schema, the agent references one curated schema document — dramatically
+reducing the tokens needed to obtain the same information. It is a case of
+Tokenomics applied all the way down to the documentation structure.
 
-- **Interactive Initialization** — Run `/moai db init` to select database engine, ORM, and migration tool, then automatically generate metadata templates
-- **Automatic Synchronization** — PostToolUse hook automatically detects migration file changes and refreshes documentation
-- **Drift Detection** — Use `/moai db verify` to detect inconsistencies between schema documentation and migration files
-- **16-Language Support** — Go, Python, TypeScript, Rust, Java, Kotlin, C#, Ruby, PHP, Elixir, C++, Scala, R, Flutter, Swift
+## Key features
 
-## Four Subcommands
+- **Interactive initialization** — choose your database engine, ORM, and migration tool with `/moai db init` and auto-generate the metadata templates
+- **Automatic sync** — a PostToolUse hook detects migration file changes and refreshes automatically
+- **Drift detection** — check for mismatches between the schema documentation and migration files with `/moai db verify`
+- **16 supported languages** — Go, Python, TypeScript, JavaScript, Rust, Java, Kotlin, C#, Ruby, PHP, Elixir, C++, Scala, R, Flutter, Swift
+
+## 4 subcommands
 
 ```bash
-/moai db init      # Initialize DB metadata via interactive interview
-/moai db refresh   # Rescan migration files and regenerate schema documentation
+/moai db init      # Initialize DB metadata through an interactive interview
+/moai db refresh   # Rescan migration files and regenerate schema docs
 /moai db verify    # Check for drift (read-only)
-/moai db list      # Display all tables as Markdown table
+/moai db list      # Show all tables as a Markdown table
 ```
 
-## When to Use
+## When to use it
 
-- Set up database metadata for new projects
-- Automatically update documentation after adding/editing migration files
-- Share current schema status with team members
-- Validate consistency between schema documentation and actual migration state
+- Set up database metadata when starting a new project
+- Auto-update documentation after adding/editing migration files
+- Share the current schema state with teammates
+- Verify consistency between the schema documentation and the actual migration state
 
-## Next Steps
+## Next steps
 
-- **[Getting Started](./getting-started.md)** — Run `/moai db init` and create your first migration
-- **[Schema Sync](./schema-sync.md)** — PostToolUse hook and automatic refresh mechanism
-- **[Migration Patterns](./migration-patterns.md)** — Default migration paths for 16 languages
-- **[Project DB Directory](./project-db-directory.md)** — Introduction to the 7-file template set
+- **[Getting Started](./getting-started.md)** — running `/moai db init` and your first migration
+- **[Schema Sync](./schema-sync.md)** — the PostToolUse hook and the automatic refresh mechanism
+- **[Migration Patterns](./migration-patterns.md)** — default migration paths for 16 languages
+- **[Project DB Directory](./project-db-directory.md)** — introducing the 7-file template set
 
-## Related Documentation
+## Related documentation
 
-See the [/moai db command reference](/db/getting-started) for more details.
+For more details, see the [/moai db command guide](/en/db/getting-started).

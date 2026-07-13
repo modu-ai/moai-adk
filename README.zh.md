@@ -5,14 +5,14 @@
 <h1 align="center">MoAI-ADK</h1>
 
 <p align="center">
-  <strong>Claude Code 的 Agentic Development Kit</strong>
+  <strong>为 Tokenomics 而构建的 Agentic 开发套件</strong>
 </p>
 
 <p align="center">
   <a href="./README.md">English</a> ·
   <a href="./README.ko.md">한국어</a> ·
   <a href="./README.ja.md">日本語</a> ·
-  <a href="./README.zh.md">中文</a>
+  中文
 </p>
 
 <p align="center">
@@ -26,82 +26,62 @@
 </p>
 
 <p align="center">
-  <a href="https://adk.mo.ai.kr"><strong>官方文档</strong></a>
+  <a href="https://adk.mo.ai.kr"><strong>官方文档</strong></a> ·
+  <a href="https://adk.mo.ai.kr/book">图书：Claude Code 实战 Agentic 编程</a> ·
+  <a href="https://discord.gg/Z7E7Mdc5aN">Discord</a>
 </p>
 
 ---
 
-> 📚 **[官方文档](https://adk.mo.ai.kr)**
+> **"Vibe Coding 的目的不是快速的生产力，而是代码质量。"**
+
+MoAI-ADK (Agentic Development Kit) 是一套以 **Tokenomics** (Token 经济学) 为北极星的 Agentic 开发套件：用更少的 Token 达到同样的代码质量，用同样的 Token 达到更高的质量。模型选择、推理深度和上下文使用由系统管理——而非听天由命。
+
+以 Go 编写的单一二进制文件。在 macOS、Linux、Windows 上零依赖即刻运行。
 
 ---
 
-> **"氛围编程的目的不是追求速度，而是代码质量。"**
+## 为什么是 Tokenomics
 
-MoAI-ADK 是专为 Claude Code 打造的**高性能 AI 开发环境**。26 个专业 AI 智能体与 47 个技能协同工作，助力产出高质量代码。新项目和功能开发默认采用 TDD，覆盖率低于 10% 的现有项目自动采用 DDD，并支持 Sub-Agent 与 Agent Teams 双执行模式。
+Token 价格持续下降，但 Agentic 开发消耗 Token 的速度比降价更快。并行运行的代理越来越多，上下文越来越长，推理越来越深——因此你的真实成本 **不由模型的标价决定，而由你如何运营 Token 决定**。
 
-使用 Go 编写的单一可执行文件 -- 零依赖，全平台即刻运行。
+MoAI-ADK 的答案分为三部分：
 
----
-
-## 为什么选择 MoAI-ADK？
-
-我们将基于 Python 的 MoAI-ADK（约 73,000 行）用 Go 完全重写。
-
-| 项目 | Python 版 | Go 版 |
-|------|-----------|-------|
-| 部署 | pip + venv + 依赖管理 | **单一可执行文件**，零依赖 |
-| 启动时间 | ~800ms 解释器启动 | **~5ms** 原生执行 |
-| 并发性 | asyncio / threading | **原生 goroutines** |
-| 类型安全 | 运行时（mypy 可选） | **编译时强制** |
-| 跨平台 | 需要 Python 运行时 | **预构建二进制**（macOS、Linux、Windows） |
-| 钩子执行 | Shell 包装器 + Python | **编译后的二进制**，JSON 协议 |
-
-### 核心数据
-
-- **38,700+ 行** Go 代码，**38 个**包
-- **85-100%** 测试覆盖率
-- **26 个**专业 AI 智能体 + **47 个**技能
-- **18 种**编程语言支持
-- **27 个** Claude Code 钩子事件
+1. **为每个任务分配合适的模型与推理深度**——深度规划、廉价实现、独立验证。
+2. **给上下文瘦身**——最小化常驻加载的指令，并度量提示缓存命中率。
+3. **让系统守护预算**——按代理跟踪 Token 用量，在触顶前优雅停止，绝不中途崩溃。
 
 ---
 
-## 硬件工程架构
+## 三大支柱
 
-MoAI-ADK 实现了**硬件工程（Harness Engineering）**范式 — 不直接编写代码，而是为 AI 智能体设计运行环境。
+### 支柱 1 — Tokenomics (Token 经济学)
 
-| 组件 | 说明 | 命令 |
-|------|------|------|
-| **自我验证循环** | 智能体自主执行代码编写→测试→失败→修复→通过的循环 | `/moai loop` |
-| **上下文地图** | 代码库架构图和文档始终可供智能体参考 | `/moai codemaps` |
-| **会话持久化** | `progress.md` 追踪已完成阶段，中断的执行自动恢复 | `/moai run SPEC-XXX` |
-| **失败清单** | 所有验收标准在运行开始时注册为 pending 任务，实现后标记为 completed | `/moai run SPEC-XXX` |
-| **语言无关** | 支持 16 种语言：自动检测语言，选择正确的 LSP/代码检查/测试/覆盖率工具 | 全部工作流 |
-| **垃圾回收** | 定期扫描并清除死代码、AI Slop 和未使用的导入 | `/moai clean` |
-| **脚手架优先** | 在实现前创建空文件桩，防止代码熵增 | `/moai run SPEC-XXX` |
+最大化每美元质量的智能资源分配。No-Haiku 三层模型策略 (max / medium / low)、感知计费方案的层级配置 (API 计量计费 vs. 订阅方案)、Claude × GLM 混合模式 (CG 模式，在实现密集型工作上降低 60-70% 成本)，以及在预算超支前优雅中止的 Token 断路器。
 
-> "人类负责把舵（Steer），智能体负责执行（Execute）。" — 工程师的角色从编写代码转变为设计硬件：SPEC、质量门禁和反馈循环。
+### 支柱 2 — 递归自我学习
+
+循环积累观察；Harness 学习；指令进化。Routing Observation Ledger 记录路由决策，Curator 将其转化为改进提案，四层学习阶梯 (观察 → 启发式 → 规则 → 自动更新) 升级 Harness——始终置于用户批准门之后。
+
+### 支柱 3 — Agentic Harness
+
+与其直接编写代码，不如设计一个让代理良好工作的环境：10 个代理的目录、基于 SPEC 的三阶段工作流 (plan → run → sync)、TRUST 5 质量门，以及能从自然语言请求生成项目专属 Harness 的 Harness v4 Builder。
 
 ---
 
-## 系统要求
+## v3 数字一览
 
-| 平台 | 支持环境 | 备注 |
-|------|---------|------|
-| macOS | Terminal, iTerm2 | 完全支持 |
-| Linux | Bash, Zsh | 完全支持 |
-| Windows | **WSL（推荐）**, PowerShell 7.x+ | 原生 cmd.exe 不支持 |
+从 v2.14.0 (2026-04-24) 到 v3.0.0-rc11 (2026-07-13) —— **80 天**：
 
-**前置条件：**
-- 所有平台必须安装 **Git**
-- **Windows 用户**：必须安装 [Git for Windows](https://gitforwindows.org/)（包含 Git Bash）
-  - 推荐使用 **WSL**（适用于 Linux 的 Windows 子系统）
-  - 也支持 PowerShell 7.x 及以上版本
-  - 旧版 Windows PowerShell 5.x 和 cmd.exe **不受支持**
+- 两个标签之间 **2,373 次提交** —— feat 727 · docs 517 · fix 240
+- **9 个候选版本** (rc1 → rc11)
+- 代理目录整合 **22 → 10** (更少的代理，更廉价的委派)
+- **480+ 份 SPEC 文档** 在 `.moai/specs/` 下驱动 SPEC 优先开发
+- **27** 个模板管理的 `moai-*` 技能 · **36** 个顶级 CLI 命令 · 支持 **16** 种编程语言
 
 ---
 
-## 快速入门
+## 快速开始
 
 ### 1. 安装
 
@@ -111,9 +91,9 @@ MoAI-ADK 实现了**硬件工程（Harness Engineering）**范式 — 不直接�
 curl -fsSL https://raw.githubusercontent.com/modu-ai/moai-adk/main/install.sh | bash
 ```
 
-#### Windows（PowerShell 7.x+）
+#### Windows (PowerShell 7.x+)
 
-> **推荐**：为获得最佳体验，请在 WSL 中使用上面的 Linux 安装命令。
+> **推荐**：为获得最佳体验，请使用 WSL 并执行上面的 Linux 安装命令。
 
 ```powershell
 irm https://raw.githubusercontent.com/modu-ai/moai-adk/main/install.ps1 | iex
@@ -121,991 +101,527 @@ irm https://raw.githubusercontent.com/modu-ai/moai-adk/main/install.ps1 | iex
 
 > 需要先安装 [Git for Windows](https://gitforwindows.org/)。
 
-#### 从源码构建（Go 1.26+）
+#### 从源码构建 (Go 1.26+)
 
 ```bash
 git clone https://github.com/modu-ai/moai-adk.git
 cd moai-adk && make build
 ```
 
-> 预构建二进制可在 [Releases](https://github.com/modu-ai/moai-adk/releases) 页面下载。
+> 预构建的二进制文件可在 [Releases](https://github.com/modu-ai/moai-adk/releases) 页面获取。
 
-### 2. Windows 特定问题
-
-#### 韩文用户名路径错误
-
-如果 Windows 用户名包含非 ASCII 字符（韩文、中文等），
-可能会因 Windows 8.3 短文件名转换而遇到 `EINVAL` 错误。
-
-**解决方案 1：** 设置替代临时目录：
-
-```bash
-# 命令提示符
-set MOAI_TEMP_DIR=C:\temp
-mkdir C:\temp 2>nul
-
-# PowerShell
-$env:MOAI_TEMP_DIR="C:\temp"
-New-Item -ItemType Directory -Path "C:\temp" -Force
-```
-
-**解决方案 2：** 禁用 8.3 文件名生成（需要管理员权限）：
-
-```bash
-fsutil 8dot3name set 1
-```
-
-**解决方案 3：** 使用仅包含 ASCII 字符的用户名创建新 Windows 用户帐户。
-
-### 3. 初始化项目
+### 2. 初始化项目
 
 ```bash
 moai init my-project
 ```
 
-交互式向导将自动检测语言、框架和方法论，并生成 Claude Code 集成文件。
+交互式向导会自动检测你的语言、框架和方法论，选择模型策略，并生成 Claude Code 集成文件。
 
-### 4. 在 Claude Code 中开始开发
+### 3. 用 Claude Code 开始开发
 
 ```bash
-# 启动 Claude Code 后
-/moai project                            # 生成项目文档（product.md, structure.md, tech.md）
-/moai plan "添加用户认证功能"              # 生成 SPEC 文档
-/moai run SPEC-AUTH-001                   # DDD/TDD 实现
-/moai sync SPEC-AUTH-001                  # 文档同步 & 创建 PR
-/moai github issues                      # GitHub issue自动化 (Agent Teams)
-/moai github pr 123                       # PR多角度审查 (multi-perspective)
+claude        # 在项目内启动 Claude Code
 ```
 
-```mermaid
-graph LR
-    A["🔍 /moai project"] --> B["📋 /moai plan"]
-    B -->|"SPEC 文档"| C["🔨 /moai run"]
-    C -->|"实现完成"| D["📄 /moai sync"]
-    D -->|"创建 PR"| E["✅ Done"]
+```text
+/moai plan "Add JWT login"      # 编写 SPEC
+/moai run SPEC-AUTH-001         # TDD/DDD 实现
+/moai sync SPEC-AUTH-001        # 同步文档 + 创建 PR
 ```
 
----
-
-## MoAI 开发方法论
-
-MoAI-ADK 根据项目状态自动选择最优的开发方法论。
+你也可以直接用自然语言提问——`/moai "fix the login bug"` 会经过意图分析 (Analyze-First 路由) 并落到正确的工作流，任何对话语言均可。
 
 ```mermaid
 flowchart TD
-    A["🔍 项目分析"] --> B{"新项目或<br/>10%+ 测试覆盖率？"}
-    B -->|"Yes"| C["TDD（默认）"]
-    B -->|"No"| D{"现有项目<br/>< 10% 覆盖率？"}
-    D -->|"Yes"| E["DDD"]
-    C --> F["RED → GREEN → REFACTOR"]
-    E --> G["ANALYZE → PRESERVE → IMPROVE"]
-
-    style C fill:#4CAF50,color:#fff
-    style E fill:#2196F3,color:#fff
+    A["/moai project"] --> B["/moai plan"]
+    B -->|"SPEC document"| C["/moai run"]
+    C -->|"implementation complete"| D["/moai sync"]
+    D -->|"PR created"| E["Done"]
 ```
 
-### TDD 方法论（默认）
+### 4. Windows 注意事项：非 ASCII 用户名路径
 
-新项目和功能开发推荐的默认方法论。先写测试，再实现代码。
+如果你的 Windows 用户名包含非 ASCII 字符 (韩文、中文等)，可能会遇到由 Windows 8.3 短文件名转换引起的 `EINVAL` 错误。解决办法：
 
-| 阶段 | 说明 |
-|------|------|
-| **RED** | 编写定义期望行为的失败测试 |
-| **GREEN** | 编写使测试通过的最小代码 |
-| **REFACTOR** | 在保持测试绿色的同时提升代码质量。REFACTOR 完成后 `/simplify` 自动运行。 |
+```powershell
+# Option 1: point MoAI at an ASCII-only temp directory
+$env:MOAI_TEMP_DIR="C:\temp"
+New-Item -ItemType Directory -Path "C:\temp" -Force
 
-对于棕地项目（现有代码库），TDD 增加了 **RED 前分析步骤**：在编写测试前先阅读现有代码，了解当前行为。
-
-### DDD 方法论（覆盖率 < 10% 的现有项目）
-
-专为测试覆盖率较低的现有项目安全重构而设计的方法论。
-
-```
-ANALYZE   → 分析现有代码和依赖关系，识别领域边界
-PRESERVE  → 编写特征测试，捕获当前行为快照
-IMPROVE   → 在测试保护下渐进改进。IMPROVE 完成后 /simplify 自动运行。
+# Option 2: disable 8.3 filename generation (requires admin)
+fsutil 8dot3name set 1
 ```
 
-> 方法论在 `moai init` 时自动选定（`--mode <ddd|tdd>`，默认: tdd），可在 `.moai/config/sections/quality.yaml` 的 `development_mode` 中修改。
->
-> **注意**：MoAI-ADK v2.5.0+ 采用二元方法论选择（仅 TDD 或 DDD）。混合模式已移除，以确保清晰性和一致性。
-
-### 自动质量 & 横向扩展层
-
-MoAI-ADK v2.6.0+ 集成了两个 MoAI **自主**调用的 Claude Code 原生技能 — 无需任何标志或手动命令。
-
-| 技能 | 作用 | 触发时机 |
-|------|------|---------|
-| `/simplify` | 质量强化 | TDD REFACTOR 和 DDD IMPROVE 阶段完成后**始终**运行 |
-| `/batch` | 横向扩展执行 | 任务复杂度超过阈值时自动触发 |
-
-**`/simplify` — 自动质量通道**
-
-使用并行智能体从复用机会、质量问题、效率以及 CLAUDE.md 合规性等维度审查变更代码，并自动修复发现的问题。无需配置，每个实现周期后由 MoAI 直接调用。
-
-**`/batch` — 并行横向扩展**
-
-在隔离的 git worktree 中启动数十个智能体，处理大规模并行工作。每个智能体运行测试并报告结果，MoAI 负责合并。各工作流的自动触发条件：
-
-| 工作流 | 触发条件 |
-|--------|---------|
-| `run` | 任务数 ≥ 5，或预测文件变更数 ≥ 10，或独立任务数 ≥ 3 |
-| `mx` | 源文件数 ≥ 50 |
-| `clean` | 确认的死代码项目 ≥ 20 |
+第三个选项是创建一个仅含 ASCII 用户名的 Windows 账户。
 
 ---
 
-## AI 智能体编排
+## 系统要求
 
-MoAI 是一个**战略编排器**。它不直接编写代码，而是将任务委托给 27 个专业智能体。
+| 平台 | 支持的环境 | 备注 |
+|----------|----------------------|-------|
+| macOS | Terminal, iTerm2 | 完全支持 |
+| Linux | Bash, Zsh | 完全支持 |
+| Windows | **WSL (推荐)**, PowerShell 7.x+ | 不支持原生 cmd.exe |
 
-```mermaid
-graph LR
-    U["👤 用户请求"] --> M["🗿 MoAI Orchestrator"]
+**前置条件：**
 
-    M --> MG["📋 Manager (8)"]
-    M --> EX["⚡ Expert (8)"]
-    M --> BL["🔧 Builder (3)"]
-    M --> EV["🔍 Evaluator (2)"]
-    M --> AG["🎨 Agency (6)"]
-
-    MG --> MG1["spec · ddd · tdd · docs<br/>quality · project · strategy · git"]
-    EX --> EX1["backend · frontend · security · devops<br/>performance · debug · testing · refactoring"]
-    BL --> BL1["agent · skill · plugin"]
-    EV --> EV1["sync-auditor · plan-auditor"]
-    AG --> AG1["planner · copywriter · designer<br/>builder · evaluator · learner"]
-
-    style M fill:#FF6B35,color:#fff
-    style MG fill:#4CAF50,color:#fff
-    style EX fill:#2196F3,color:#fff
-    style BL fill:#9C27B0,color:#fff
-    style EV fill:#FF5722,color:#fff
-    style AG fill:#FF9800,color:#fff
-```
-
-### 智能体分类
-
-| 分类 | 数量 | 智能体 | 职责 |
-|------|------|--------|------|
-| **Manager** | 8 | spec, ddd, tdd, docs, quality, project, strategy, git | 工作流编排、SPEC 生成、质量管理 |
-| **Expert** | 8 | backend, frontend, security, devops, performance, debug, testing, refactoring | 领域专业实现、分析、优化 |
-| **Builder** | 3 | agent, skill, plugin | 创建新的 MoAI 组件 |
-| **Evaluator** | 2 | sync-auditor, plan-auditor | 独立质量评估、计划阶段文档审计 |
-| **旧版 v2.x (已退役)** | 6 | planner, copywriter, designer, builder, evaluator, learner (吸收 — 参见 [SPEC-AGENCY-ABSORB-001](.moai/specs/SPEC-AGENCY-ABSORB-001/spec.md)) | 创意生产流水线 (历史引用) |
-
-### 47 个技能（渐进式披露）
-
-为优化 Token 效率，采用三级渐进式披露系统管理：
-
-| 分类 | 技能数 | 示例 |
-|------|--------|------|
-| **Foundation** | 5 | core, claude, philosopher, quality, context |
-| **Workflow** | 11 | spec, project, ddd, tdd, testing, worktree, thinking... |
-| **Domain** | 5 | backend, frontend, database, uiux, data-formats |
-| **Language** | 18 | Go, Python, TypeScript, Rust, Java, Kotlin, Swift, C++... |
-| **Platform** | 9 | Vercel, Supabase, Firebase, Auth0, Clerk, Railway... |
-| **Library** | 3 | shadcn, nextra, mermaid |
-| **Tool** | 2 | ast-grep, svg |
-| **Specialist** | 10 | Figma, Flutter, Electron, Pencil... |
+- 所有平台必须安装 **Git**
+- **Claude Code** —— MoAI-ADK 是面向 Claude Code 的 Harness
+- **Windows 用户**：**必须** 安装 [Git for Windows](https://gitforwindows.org/) (含 Git Bash)；**不支持** 旧版 Windows PowerShell 5.x 和 cmd.exe
+- **推荐**：`gh` CLI (PR 自动化) · `tmux` (CG 模式) · 你所用语言的 lint/测试工具链 (例如 `golangci-lint`)
 
 ---
 
-## 模型策略（Token 优化）
+## 设计谱系 — Harness Engineering
 
-MoAI-ADK 根据您的 Claude Code 订阅方案，为 26 个智能体分配最优 AI 模型。在方案的速率限制内最大化质量。
+MoAI-ADK 有意继承了 Lilian Weng 在 [**Harness Engineering for Self-Improvement**](https://lilianweng.github.io/posts/2026-07-04-harness/) (2026-07-04) 中提出的 Harness 工程框架，将其设计模式与自我改进循环转化为一个可运行的实现。
 
-| 策略 | 方案 | 🟣 Opus | 🔵 Sonnet | 🟡 Haiku | 适用场景 |
-|------|------|------|--------|-------|----------|
-| **High** | Max $200/月 | 22 | 1 | 4 | 最高质量，最大吞吐量 |
-| **Medium** | Max $100/月 | 4 | 18 | 5 | 质量与成本平衡 |
-| **Low** | Plus $20/月 | 0 | 11 | 16 | 经济实惠，无 Opus |
+> **什么是 Harness？** —— "Harness 是围绕基础模型的系统，它编排执行并决定模型如何思考与规划、如何调用工具与行动、如何感知与管理上下文、如何存储产物、如何评估结果。" —— Lilian Weng (2026-07-04)
 
-> **为什么重要？** Plus $20 方案不包含 Opus。设置为 `Low` 后，所有智能体仅使用 Sonnet 和 Haiku，避免速率限制错误。更高级方案可在关键智能体（安全、策略、架构）上使用 Opus，常规任务使用 Sonnet/Haiku。
+Weng 预测，通往递归自我改进 (RSI) 的近期路径不是"模型编辑自己的权重"，而是 **改进训练管线与部署系统——即 Harness**。MoAI-ADK 走的正是这条路：它递归改进的是 Harness (技能与代理指令)，而非模型权重。
 
-### 各档位智能体模型分配
+### 继承映射 — 从 Weng 的框架到 MoAI-ADK
 
-#### Manager Agents
+| Lilian Weng 的 Harness 概念 | MoAI-ADK 实现 |
+|---|---|
+| **Harness** —— 围绕基础模型的执行/运营层 | MoAI-ADK = Claude Code Harness (单一 Go 二进制 + CLAUDE.md 编排器) |
+| **模式 1：工作流自动化** —— plan → execute → observe → improve 目标循环 | `/moai goal` 引擎、`/moai loop` Ralph Engine、Analyze-First 路由 |
+| **模式 2：文件系统持久记忆** —— "把持久状态放进文件" | `.moai/specs/`、`progress.md`、`usage-log.jsonl`、`.moai/state/`、会话交接 |
+| **模式 3：子代理与后台作业** —— 让并行性显式且可检视 | 10 个保留代理、`Agent()` 生成、动态工作流 |
+| **Self-Harness** —— 提案-评估-接受；受限编辑 + 回归门 | `internal/harness/` 四层阶梯 + 五层安全管线 (applier = 受限编辑，回归门 = 验证) |
+| **Meta-Harness** —— "优化 Harness 的 Harness" | `builder-harness` —— 用 Harness 构建 Harness；`/moai project` 自动生成一个 |
+| **"改进改进者"** —— RSI 的近期路径是部署系统的改进 | 递归 Harness 进化 —— 循环积累观察；Harness 升级自己的技能/代理指令 |
+| **"评估器与权限位于循环之外"** —— 防御奖励劫持 | 第 5 层用户批准门 + 实现启动批准 —— 人类监督位于进化循环之外 |
+| **"人类沿栈上移，而非退出循环"** | 编排器是唯一的人类接触点；由 AskUserQuestion 把关的决策与 SPEC 批准门 |
 
-| 智能体 | High | Medium | Low |
-|--------|------|--------|-----|
-| manager-spec | 🟣 opus | 🟣 opus | 🔵 sonnet |
-| manager-strategy | 🟣 opus | 🟣 opus | 🔵 sonnet |
-| manager-develop | 🟣 opus | 🔵 sonnet | 🔵 sonnet |
-| manager-project | 🟣 opus | 🔵 sonnet | 🟡 haiku |
-| manager-docs | 🔵 sonnet | 🟡 haiku | 🟡 haiku |
-| manager-quality | 🟡 haiku | 🟡 haiku | 🟡 haiku |
-| manager-git | 🟡 haiku | 🟡 haiku | 🟡 haiku |
+> Weng 的警告被忠实遵守：评估器与权限控制必须留在 Harness 进化循环 **之外**。MoAI-ADK 将 Tier-4 自动更新绑定到用户批准门，使自动进化永远无法在没有人类监督的情况下作为闭环运行。
 
-#### Expert Agents
+---
 
-| 智能体 | High | Medium | Low |
-|--------|------|--------|-----|
-| expert-backend | 🟣 opus | 🔵 sonnet | 🔵 sonnet |
-| expert-frontend | 🟣 opus | 🔵 sonnet | 🔵 sonnet |
-| expert-security | 🟣 opus | 🟣 opus | 🔵 sonnet |
-| expert-debug | 🟣 opus | 🔵 sonnet | 🔵 sonnet |
-| expert-refactoring | 🟣 opus | 🔵 sonnet | 🔵 sonnet |
-| expert-devops | 🟣 opus | 🔵 sonnet | 🟡 haiku |
-| expert-performance | 🟣 opus | 🔵 sonnet | 🟡 haiku |
-| expert-testing | 🟣 opus | 🔵 sonnet | 🟡 haiku |
+## Tokenomics 深入解读
 
-#### Builder Agents
+### No-Haiku 三层模型策略
 
-| 智能体 | High | Medium | Low |
-|--------|------|--------|-----|
-| builder-agent | 🟣 opus | 🔵 sonnet | 🟡 haiku |
-| builder-skill | 🟣 opus | 🔵 sonnet | 🟡 haiku |
-| builder-plugin | 🟣 opus | 🔵 sonnet | 🟡 haiku |
+模型与推理深度 (effort) 按工作阶段和 SPEC 规模 (Tier S/M/L) 声明式分配。策略层级构成一个封闭集合——`max`、`medium`、`low`——由 `internal/config/model_routing.go` 中的 HARD lint 规则校验 (封闭集合：effort `low/medium/high/xhigh/max`、tier `S/M/L`、phase `plan/run/sync`)。
 
-#### Team Agents
+| 策略 | 目标方案 | 特点 |
+|--------|-------------|-----------|
+| **max** | Max $200/月 | 最高质量 —— 规划与审计使用 Opus 级模型 |
+| **medium** | Max $100/月 | 质量与成本均衡 |
+| **low** | Plus $20/月 | 无 Opus 访问 —— 以 Sonnet 为中心的路由 |
 
-| 智能体 | High | Medium | Low |
-|--------|------|--------|-----|
-| team-reader | 🟡 haiku | 🟡 haiku | 🟡 haiku |
-| team-coder | 🟣 opus | 🔵 sonnet | 🔵 sonnet |
-| team-tester | 🟣 opus | 🔵 sonnet | 🟡 haiku |
-| team-designer | 🟣 opus | 🔵 sonnet | 🟡 haiku |
-| team-validator | 🟡 haiku | 🟡 haiku | 🟡 haiku |
+"No-Haiku" 这个名字标志着 v3 的转变：不再把质量关键阶段路由到最便宜的模型——廉价模型只用在安全的地方，绝不用在需要独立判断的地方。
 
-### 配置方法
+### 感知计费方案的层级配置 (plan_type)
+
+同一工作流在 **API 计量计费 vs. 订阅方案** 下的最优分配不同。感知计费方案的配置为每种计费方案应用独立的 Tier × Phase 模型/effort 矩阵，并为 GLM 后端叠加 effort 覆盖层。
+
+### Claude × GLM 混合模式 (CG 模式)
+
+`moai cg` 以 Claude 为 leader、GLM 为 worker 运行：战略、规划与审计留在 Claude API 上，大批量实现交给 GLM。在实现密集型工作上可削减 **60-70%** 的成本。
+
+MoAI-ADK 支持 **z.ai GLM** 作为 Claude Code 的替代后端——无需任何代码修改。
+
+| 项目 | 详情 |
+|------|---------|
+| GLM Coding Plan | **$10/月** 起 ([z.ai](https://z.ai/subscribe?ic=1NDV03BGWU)) |
+| 兼容性 | 与 Claude Code 直接兼容 |
+| 模型 | glm-5.2[1m]、glm-4.7、glm-4.5-air 及免费模型 |
+
+**默认模型映射：**
+
+| Claude 层级 | GLM 模型 | 输入 (每 1M Token) | 输出 (每 1M Token) |
+|-------------|-----------|----------------------|------------------------|
+| Opus / Sonnet / Haiku / Fable | glm-5.2[1m] | $2.00 | $8.00 |
+
+> 四个 Claude 层级全部统一到单一 1M 上下文模型 `glm-5.2[1m]`。若在层级槽位之间混用 1M 上下文模型与 200K 上下文模型，会破坏代理生成的会话共享——1M 上下文会话与 200K 上下文会话无法共享。
+
+> `[1m]` 后缀激活 Claude Code 的 1M Token 上下文模式。Claude Code 会在调用上游 z.ai API 之前解析并剥离该后缀。此映射通过四个 `ANTHROPIC_DEFAULT_*_MODEL` 环境变量实现 (`OPUS`/`SONNET`/`HAIKU`/`FABLE`，最后一个自 Claude Code v2.1.202 起获得官方支持)，全部设为 `glm-5.2`。
+
+**模式对比：**
+
+| 命令 | Leader | Workers | tmux | 成本节省 | 适用场景 |
+|---------|--------|---------|------|--------------|----------|
+| `moai cc` | Claude | Claude | 否 | — | 复杂工作，最高质量 |
+| `moai glm` | GLM | GLM | 推荐 | ~70% | 最大化成本节省 |
+| `moai cg` | Claude | GLM | **必需** | **~60%** | 质量与成本平衡 |
+
+**CG 模式实操：**
 
 ```bash
-# 项目初始化时
-moai init my-project          # 交互式向导中选择模型策略
+# 1. Save your GLM API key (once)
+moai glm sk-your-glm-api-key
 
-# 重新配置现有项目
-moai update                   # 交互式提示每个配置步骤
+# 2. Make sure you are inside tmux (skip if already there)
+tmux new -s moai
+
+# 3. Launch CG mode (starts Claude Code automatically)
+moai cg
 ```
 
-在 `moai update` 期间，您会被询问：
-- **重置模型策略？** (y/n) - 重新运行模型策略配置向导
-- **更新 GLM 设置？** (y/n) - 在 settings.local.json 中配置 GLM 环境变量
+CG 模式通过 tmux 会话级环境变量将 leader 与 worker 隔离：GLM 配置注入 tmux 会话环境 (worker 在新 pane 中继承)，并从 `settings.local.json` 中移除 (leader pane 保持在 Claude API 上)。会话结束钩子会自动清理 tmux 环境。
 
-> 默认策略为 `High`。GLM 设置隔离在 `settings.local.json`（不提交到 Git）。
+### Token 断路器
+
+`internal/runtime/budget.go` 以"警告优先"策略按代理跟踪 Token 用量：用量攀升时发出警告，并在硬阈值处执行 **优雅中止** (保存进度 + 发出交接消息)。它绝不会自动清除你的会话。
+
+### 上下文瘦身 + 提示缓存
+
+- 常驻加载上下文预算守卫——精简的 CLAUDE.md 加上按路径限定的规则文件，压低每回合固定成本
+- **缓存命中率** 状态栏区段让瘦身效果实时可测
+- 验证输出遵循文件重定向契约——长日志写入磁盘；上下文只携带退出码和有界尾部
 
 ---
 
-## 双执行模式
+## 递归自我学习
 
-MoAI-ADK 同时提供 Claude Code 支持的 **Sub-Agent** 和 **Agent Teams** 两种执行模式。
+MoAI-ADK 的核心创新是一个代理从自身运行中学习的递归系统。它由两个动作组成：积累观察的循环，与从中进化的 Harness。
 
 ```mermaid
-graph TD
-    A["🗿 MoAI Orchestrator"] --> B{"选择执行模式"}
-    B -->|"--solo"| C["Sub-Agent 模式"]
-    B -->|"--team"| D["Agent Teams 模式"]
-    B -->|"默认（自动）"| E["自动选择"]
-
-    C --> F["顺序专家委托<br/>Task() → Expert Agent"]
-    D --> G["并行团队协作<br/>Agent(name=…) → SendMessage"]
-    E -->|"高复杂度"| D
-    E -->|"低复杂度"| C
-
-    style C fill:#2196F3,color:#fff
-    style D fill:#FF9800,color:#fff
-    style E fill:#4CAF50,color:#fff
+flowchart TD
+    A["User request"] --> B["Goal set via /moai goal"]
+    B --> C["Loop executes"]
+    C --> D["Observe results"]
+    D --> E{"Goal met?"}
+    E -->|"No"| C
+    E -->|"Yes"| F["Observations recorded"]
+    F --> G["Pattern learning (Curator)"]
+    G --> H["Instruction evolution (approval gate)"]
+    H --> C
 ```
 
-### Agent Teams 模式（默认）
+### 自我进化的 Harness
 
-MoAI-ADK 自动分析项目复杂度并选择最优执行模式：
+```
+loop runs → observations accumulate (Routing Ledger) → patterns learned (Curator) → instructions evolve (approval gate)
+```
 
-| 条件 | 选择模式 | 原因 |
-|------|----------|------|
-| 3+ 个领域 | Agent Teams | 多领域协调 |
-| 10+ 个受影响文件 | Agent Teams | 大规模变更 |
-| 复杂度评分 7+ | Agent Teams | 高度复杂 |
-| 其他 | Sub-Agent | 简单、可预测的工作流 |
-
-**Agent Teams 模式**采用并行团队开发：
-
-- 多个智能体同时工作，通过共享任务列表协作
-- 通过 `Agent(name=…)`（隐式团队）、`SendMessage` 和 `TaskList` 实现实时协调
-- 最适合大规模功能开发和多领域任务
+- **Routing Observation Ledger** (`internal/harness/routing/`) —— 以保护隐私的摘要形式记录路由决策与门禁证据
+- **四层学习阶梯** (`internal/harness/learner.go`) —— 观察 (≥1) → 启发式 (≥3) → 规则 (≥5) → 自动更新 (≥10，需用户批准)；置信度下限 0.70
+- **五层安全管线** —— observer (`internal/harness/observer.go`) → learner → applier (`internal/harness/applier.go`，快照优先的受限编辑) → 配置/标记更新器 → 用户批准门；每次应用都可通过 `moai harness rollback` 撤销
+- 产物位于 `.moai/harness/` 下 (`usage-log.jsonl`、已学习的规则)
 
 ```bash
-/moai plan "大型功能"          # 自动：researcher + analyst + architect 并行
-/moai run SPEC-XXX             # 自动：backend-dev + frontend-dev + tester 并行
-/moai run SPEC-XXX --team      # 强制 Agent Teams 模式
+moai harness status      # learning state: observations, patterns, proposals
+moai harness apply       # apply a proposal (passes the user approval gate)
+moai harness rollback    # revert the last application
+moai harness disable     # turn learning off
 ```
 
-**Agent Teams 质量钩子：**
-- **TeammateIdle Hook**：在智能体空闲前验证 LSP 质量门禁（错误、类型错误、Lint 错误）
-- **TaskCompleted Hook**：验证任务引用 SPEC-XXX 模式时 SPEC 文档存在
-- 所有验证使用优雅降级 - 警告已记录但工作继续
+### /moai goal — 声明式 Agentic 循环
 
-### Sub-Agent 模式（`--solo`）
+声明一个完成条件，会话就会持续工作，直到条件成立或达到回合上限 (默认 30)。在 `internal/goal/` 中实现为按会话的目标状态 (`.moai/state/goal/<session-id>.json`)，配备混合双层 Stop-hook 评估器——Tier 1 机械检查 (退出码、grep 计数、文件存在性、回合上限) 与 Tier 2 通过检查点进行的编排器自我评估。
 
-利用 Claude Code 的 `Task()` API 实现顺序智能体委托方式。
-
-- 将任务委托给一个专业智能体并获取结果
-- 按步骤依次执行 Manager → Expert → Quality
-- 适用于简单且可预测的工作流
-
-```bash
-/moai run SPEC-AUTH-001 --solo    # 强制 Sub-Agent 模式
+```text
+/moai goal "go test ./... exits 0 and every AC is recorded as PASS"
+/moai goal status
+/moai goal clear
 ```
+
+### /moai loop vs /moai fix — 诊断式自我修复
+
+`/moai loop` 是构建在 Ralph Engine (`internal/ralph/engine.go`) 之上的目标引擎预设：它并行运行 LSP 诊断 + AST-grep + linter 扫描，将发现从 Level 1 (可自动修复) 到 Level 4 (需要人工) 分类，并迭代直到队列清空——配备在同一错误重复出现时切换策略的收敛检测，以及作为安全停止的硬性迭代上限。
+
+| 命令 | 目标 | 执行方式 | 使用时机 |
+|---------|------|-----------|-------------|
+| `/moai fix` | 单遍修复 | 一次 扫描-分类-修复-验证 | 明确的错误、快速修复 |
+| `/moai loop` | 重复直到完成 | 诊断 → 分类 → 修复 → 验证 循环 | 复合错误、根因修复 |
+
+### Analyze-First 路由
+
+与语言无关的意图分析是 `/moai` 的默认路由。请求按语义分类——绝不依赖英文关键词匹配——因此任何对话语言都适用：
+
+1. 意图分析 (与语言无关的分类)
+2. 上下文充分性检查 (上下文不足时触发苏格拉底式访谈)
+3. 执行计划组合 (技能 / 代理 / 动态工作流链)
+4. 编排模式选择 (solo-sequential / parallel-subagents / dynamic-workflow)
+
+### 会话交接自动恢复
+
+在上下文窗口阈值处 (1M 上下文模型为 50%，200K 模型为 90%)，MoAI 发出一条可直接粘贴的恢复消息——包含进度状态、已应用的教训和可验证的前置条件——`/clear` 之后只需粘贴一次，下一个会话即可继续。
 
 ---
 
-## MoAI 工作流
+## Agentic Harness
 
-### Plan → Run → Sync 流水线
+与其直接编写代码，不如构建代理工作的环境。
 
-MoAI 的核心工作流由三个阶段组成：
+### 10 代理目录
+
+10 个保留代理：9 个 MoAI 自定义代理加上 Anthropic 内置的 `Explore`。
+
+| 类别 | 代理 | 角色 |
+|----------|-------|------|
+| **Manager** | manager-spec | plan 阶段 SPEC 编写 |
+| | manager-develop | run 阶段 TDD/DDD/autofix 实现 |
+| | manager-docs | sync 阶段文档 |
+| | manager-git | PR 创建与路由 |
+| | manager-design | design 阶段协作 (Claude Design) |
+| **Evaluator** | plan-auditor | 独立计划审计 (防止偏见) |
+| | sync-auditor | 四维质量评分 (Functionality 40 · Security 25 · Craft 20 · Consistency 15) |
+| **Builder** | builder-harness | 搭建项目专属的代理、技能、命令与钩子 |
+| **Advisor** | super-advisor | 按需高推理咨询 (E1-E4 升级) |
+| **Built-in** | Explore | 只读代码库探索 |
+
+规划与审计在设计上是分离的——作者绝不为自己的工作打分。
 
 ```mermaid
-graph TB
-    subgraph Plan ["📋 Plan 阶段"]
-        P1["代码库探索"] --> P2["需求分析"]
-        P2 --> P3["生成 SPEC 文档（EARS 格式）"]
+flowchart TD
+    U["User request"] --> M["MoAI Orchestrator"]
+    M --> MG1["Managers: spec / develop / docs / git / design"]
+    M --> EV["Evaluators: plan-auditor / sync-auditor"]
+    M --> BD["Builder: builder-harness"]
+    M --> AD["Advisor: super-advisor"]
+    M --> EX["Explore (built-in)"]
+```
+
+### SPEC 三阶段生命周期
+
+```
+/moai plan → [plan-auditor audit] → Implementation Kickoff Approval (human gate) → /moai run → /moai sync → [sync-auditor scoring]
+```
+
+- 生命周期恰好三个阶段——**plan → run → sync**
+- Tier S/M/L 规模分级决定验证深度与 PR 路由
+- GEARS 格式需求加验收标准 (AC) —— 完成与否由证据判定，而非"看起来完成了"
+
+```mermaid
+flowchart TB
+    subgraph Plan ["Plan Phase"]
+        P1["Explore codebase"] --> P2["Analyze requirements"]
+        P2 --> P3["Author SPEC (GEARS format)"]
     end
 
-    subgraph Run ["🔨 Run 阶段"]
-        R1["SPEC 分析 & 执行计划"] --> R2["DDD/TDD 实现"]
-        R2 --> R3["TRUST 5 质量验证"]
+    subgraph Run ["Run Phase"]
+        R1["Analyze SPEC, plan execution"] --> R2["TDD/DDD implementation"]
+        R2 --> R3["TRUST 5 quality validation"]
     end
 
-    subgraph Sync ["📄 Sync 阶段"]
-        S1["生成文档"] --> S2["更新 README/CHANGELOG"]
-        S2 --> S3["创建 Pull Request"]
+    subgraph Sync ["Sync Phase"]
+        S1["Generate documentation"] --> S2["Update README/CHANGELOG"]
+        S2 --> S3["Create pull request"]
     end
 
     Plan --> Run
     Run --> Sync
-
-    style Plan fill:#E3F2FD,stroke:#1565C0
-    style Run fill:#E8F5E9,stroke:#2E7D32
-    style Sync fill:#FFF3E0,stroke:#E65100
 ```
 
-#### 执行模式选择门
+### 开发方法论 — TDD 与 DDD
 
-从 Plan 阶段过渡到 Run 阶段时，MoAI 会自动检测当前执行环境（cc/glm/cg），并在实施开始前显示选择 UI，让用户确认或更改模式。
+MoAI-ADK 在 `moai init` 时根据项目状态选择方法论 (`--mode <ddd|tdd>`，默认：tdd)；之后可通过 `.moai/config/sections/quality.yaml` 中的 `development_mode` 更改。
 
 ```mermaid
-graph LR
-    A["Plan 完成"] --> B["环境检测"]
-    B --> C{"模式选择 UI"}
-    C -->|"CC"| D["仅 Claude 执行"]
-    C -->|"GLM"| E["仅 GLM 执行"]
-    C -->|"CG"| F["Claude 领导者 + GLM 工作者"]
+flowchart TD
+    A["Project analysis"] --> B{"New project or<br/>10%+ test coverage?"}
+    B -->|"Yes"| C["TDD (default)"]
+    B -->|"No"| D["DDD"]
+    C --> F["RED → GREEN → REFACTOR"]
+    D --> G["ANALYZE → PRESERVE → IMPROVE"]
 ```
 
-此门确保无论环境状态如何都使用正确的执行模式，防止实施过程中的模式不匹配。
+| 方法论 | 循环 | 适用于 |
+|-------------|-------|-----|
+| **TDD** (默认) | RED (失败测试) → GREEN (最小化通过) → REFACTOR (在绿灯测试下提升质量) | 新项目与功能开发 |
+| **DDD** | ANALYZE (依赖、领域边界) → PRESERVE (特征测试) → IMPROVE (在测试保护下增量变更) | 覆盖率 < 10% 的既有代码 |
 
-### /moai 子命令
+### TRUST 5 质量门
 
-所有子命令在 Claude Code 中以 `/moai <subcommand>` 方式调用。
+每次代码变更都按五项标准校验：
 
-#### 核心工作流
-
-| 子命令 | 别名 | 目的 | 关键标志 |
-|--------|------|------|----------|
-| `plan` | `spec` | 创建 SPEC 文档（EARS 格式） | `--worktree`, `--branch`, `--resume SPEC-XXX`, `--team`, `--tmux` |
-| `run` | `impl` | SPEC 的 DDD/TDD 实现 | `--resume SPEC-XXX`, `--team` |
-| `sync` | `docs`, `pr` | 文档同步、代码地图和创建 PR | `--merge`, `--skip-mx` |
-
-#### 质量与测试
-
-| 子命令 | 别名 | 目的 | 关键标志 |
-|--------|------|------|----------|
-| `fix` | — | 自动修复 LSP 错误、Lint、类型错误（单次执行） | `--dry`, `--seq`, `--level N`, `--resume`, `--team` |
-| `loop` | — | 迭代自动修复直至完成（最多 100 次） | `--max N`, `--auto-fix`, `--seq` |
-| `review` | `code-review` | 代码审查与安全和 @MX 标签合规检查 | `--staged`, `--branch`, `--security` |
-| `clean` | `refactor-clean` | 死代码识别和安全移除 | `--dry`, `--safe-only`, `--file PATH` |
-
-#### 文档与代码库
-
-| 子命令 | 别名 | 目的 | 关键标志 |
-|--------|------|------|----------|
-| `project` | `init` | 生成项目文档（product.md、structure.md、tech.md、.moai/project/codemaps/） | — |
-| `mx` | — | 扫描代码库并添加 @MX 代码级注解 | `--all`, `--dry`, `--priority P1-P4`, `--force`, `--team` |
-| `codemaps` | `update-codemaps` | 在 `.moai/project/codemaps/` 中生成架构文档 | `--force`, `--area AREA` |
-| `feedback` | `fb`, `bug`, `issue` | 收集用户反馈并创建 GitHub issues | — |
-
-#### 默认工作流
-
-| 子命令 | 目的 | 关键标志 |
-|--------|------|----------|
-| *(无)* | 完整自主 plan → run → sync 流水线。复杂度评分 >= 5 时自动生成 SPEC。 | `--loop`, `--max N`, `--branch`, `--pr`, `--resume SPEC-XXX`, `--team`, `--solo` |
-
-### 执行模式标志
-
-控制工作流执行期间智能体的调度方式：
-
-| 标志 | 模式 | 说明 |
-|------|------|------|
-| `--team` | Agent Teams | 并行团队执行。多个智能体同时工作。 |
-| `--solo` | Sub-Agent | 顺序单智能体委托（每阶段）。 |
-| *(默认)* | 自动 | 系统根据复杂度自动选择（域 >= 3、文件 >= 10 或评分 >= 7）。 |
-
-**`--team` 支持三种执行环境：**
-
-| 环境 | 命令 | 领导者 | 工作者 | 最适合 |
-|------|------|--------|--------|--------|
-| 仅 Claude | `moai cc` | Claude | Claude | 最高质量 |
-| 仅 GLM | `moai glm` | GLM | GLM | 最大成本节省 |
-| CG（Claude+GLM） | `moai cg` | Claude | GLM | 质量+成本平衡 |
-
-> **v2.7.1 新增**：CG 模式现在是**默认**团队模式。使用 `--team` 时，除非通过 `moai cc` 或 `moai glm` 明确更改，否则系统默认以 CG 模式运行。
-
-> **注意**：`moai cg` 使用 tmux pane 级别环境隔离来分离 Claude 领导者和 GLM 工作者。如果从 `moai glm` 切换，`moai cg` 会自动先重置 GLM 设置 -- 无需在中间运行 `moai cc`。
-
-### 自主开发循环（Ralph Engine）
-
-一个结合 LSP 诊断和 AST-grep 的自主错误修复引擎：
-
-```bash
-/moai fix       # 单次执行：扫描 → 分类 → 修复 → 验证
-/moai loop      # 循环修复：重复执行直到检测到完成标记（最多 100 次）
-```
-
-**Ralph Engine 工作流程：**
-1. **并行扫描**：同时运行 LSP 诊断 + AST-grep + Linters
-2. **自动分类**：将错误分为 Level 1（自动修复）至 Level 4（需用户介入）
-3. **收敛检测**：相同错误重复出现时启用备选策略
-4. **完成条件**：0 错误、0 类型错误、85%+ 覆盖率
-
-### 推荐工作流链
-
-**新功能开发：**
-```
-/moai plan → /moai run SPEC-XXX → /moai review → /moai sync SPEC-XXX
-```
-
-**Bug 修复：**
-```
-/moai fix (或 /moai loop) → /moai review → /moai sync
-```
-
-**重构：**
-```
-/moai plan → /moai clean → /moai run SPEC-XXX → /moai review → /moai codemaps
-```
-
-**文档更新：**
-```
-/moai codemaps → /moai sync
-```
-
----
-
-## TRUST 5 质量框架
-
-所有代码变更均通过五项质量标准验证：
-
-| 标准 | 说明 | 验证项 |
-|------|------|--------|
+| 标准 | 含义 | 校验 |
+|-----------|---------|------------|
 | **T**ested | 已测试 | 85%+ 覆盖率、特征测试、单元测试通过 |
-| **R**eadable | 可读性 | 清晰的命名规范、一致的代码风格、0 Lint 错误 |
-| **U**nified | 统一性 | 一致的格式化、导入顺序、遵循项目结构 |
-| **S**ecured | 安全性 | OWASP 合规、输入验证、0 安全警告 |
-| **T**rackable | 可追溯 | 约定式提交、Issue 引用、结构化日志 |
+| **R**eadable | 可读 | 命名清晰、风格一致、0 lint 错误 |
+| **U**nified | 统一 | 格式一致、import 排序、遵循项目结构 |
+| **S**ecured | 安全 | OWASP 合规、输入校验、0 安全警告 |
+| **T**rackable | 可追踪 | 约定式提交、issue 引用、结构化日志 |
+
+### Harness v4 Builder
+
+```text
+/moai harness "build me a harness for CLI template development"
+```
+
+自然语言请求经过领域/目标/约束提取和批准门，然后生成项目专属的代理、技能与命令。`/moai project` 生成项目文档 (product.md、structure.md、tech.md、codemaps/) 并同时自动配置一个 Harness。
+
+### 编排原语
+
+静态 Agent Teams 层已在 v3 退役。保留三种编排原语，按"计划由谁持有"选择：
+
+| 原语 | 形态 | 适用场景 |
+|-----------|-------|----------|
+| 顺序子代理 | 编排器逐回合委派 | 编码密集型工作 |
+| 并行扇出 | 单回合内多个只读 `Agent()` 调用 | 研究、评审、审计 |
+| 动态工作流 | 脚本编排数十个代理；结果保存在脚本变量中 | 代码库扫描、大型迁移 |
+
+原生 Claude Code teammate 运行时 (`moai cg` tmux pane) 不受此次退役影响。
+
+### 决策记忆
+
+MoAI-ADK 捕获你的 AskUserQuestion 决策并个性化未来的推荐：
+
+- **三层记忆** —— Core (热门偏好) / Recall (近期会话) / Archival (28 天 TTL，软删除)
+- **自适应放置** —— 问题在不确定性最高处触发 (p ≈ 0.5)；推荐遵循你被观察到的统计多数，而非系统默认值
+- **衰减策略** —— 幂律权重 `(age+1)^(-0.5)`；使用某偏好会刷新它
+- **控制** —— `moai preference list | decay-scan | toggle`；敏感的安全领域给出附带披露的中立推荐
 
 ---
 
-## 任务指标日志
+## 为什么选择 Go
 
-MoAI-ADK 在开发会话期间自动捕获任务工具指标：
+基于 Python 的 MoAI-ADK (约 73,000 行) 已用 Go 完全重写。
 
-- **位置**：`.moai/logs/task-metrics.jsonl`
-- **捕获指标**：Token 使用、工具调用、持续时间、智能体类型
-- **目的**：会话分析、性能优化、成本跟踪
-
-当 Task 工具完成时，指标由 PostToolUse 钩子记录。使用此数据分析智能体效率和优化 Token 消耗。
+| 方面 | Python 版 | Go 版 |
+|--------|---------------|------------|
+| 分发 | pip + venv + 依赖 | **单一二进制**，零依赖 |
+| 启动时间 | ~800ms 解释器启动 | **~5ms** 原生执行 |
+| 并发 | asyncio / threading | **原生 goroutine** |
+| 类型安全 | 运行时 (mypy 可选) | **编译期强制** |
+| 跨平台 | 需要 Python 运行时 | **预构建二进制** (macOS、Linux、Windows) |
+| 钩子执行 | Shell 包装器 + Python | **编译后二进制**，JSON 协议 |
 
 ---
 
-## CLI 命令
+## 工具参考
 
-| 命令 | 说明 |
-|------|------|
-| `moai init` | 交互式项目设置（自动检测语言/框架/方法论） |
-| `moai doctor` | 系统状态诊断与环境验证 |
-| `moai status` | 项目状态概览：Git 分支、质量指标等 |
-| `moai update` | 更新到最新版本（支持自动回滚） |
-| `moai update --check` | 仅检查更新，不安装 |
-| `moai update --project` | 仅同步项目模板 |
-| `moai worktree new <name>` | 创建新 Git worktree（并行分支开发）。添加 `--tmux` 可在 worktree 中自动创建 tmux 会话 |
-| `moai worktree list` | 列出活跃的 worktree |
-| `moai worktree switch <name>` | 切换 worktree |
-| `moai worktree sync` | 与上游同步 |
-| `moai worktree remove <name>` | 移除 worktree |
-| `moai worktree clean` | 清理过期 worktree |
-| `moai worktree go <name>` | 在当前 Shell 中导航到 worktree 目录 |
+### `/moai` 斜杠子命令
+
+> **重要区分**：`moai` (终端 CLI) ≠ `/moai` (Claude Code 斜杠命令)。前者是在 shell 中运行的 Go 二进制 (`moai init`、`moai doctor`)；后者是在 Claude Code 聊天中运行的 AI 工作流路由器 (`/moai plan`、`/moai run`)。它们是不同的工具。
+
+15 个入口——14 个具名子命令加上自然语言默认入口：
+
+| 子命令 | 角色 |
+|------------|------|
+| `plan` / `run` / `sync` | SPEC 三阶段流水线 |
+| `goal` / `loop` / `fix` | 声明式目标循环 · 迭代修复 · 单遍修复 |
+| `project` / `harness` | 项目文档 + Harness 生成 · Harness 生命周期 |
+| `review` / `gate` / `clean` | 代码评审 · 提交前质量门 · 死代码清除 |
+| `mx` / `codemaps` / `feedback` | @MX 注解 · 架构文档 · GitHub issue 报告 |
+| *(自然语言)* | Analyze-First 路由进入自主的 plan → run → sync 流水线 |
+
+### CLI 命令 (36 个顶级命令)
+
+`moai` 二进制注册了 36 个顶级命令。日常常用集合：
+
+| 命令 | 描述 |
+|---------|-------------|
+| `moai init` | 交互式项目设置 (语言/框架/方法论自动检测) |
+| `moai doctor` | 系统健康诊断与环境验证 |
+| `moai status` | 项目状态摘要 (Git 分支、质量指标) |
+| `moai update` | 更新到最新版本 (支持自动回滚) |
+| `moai update -c` | 重新运行 init 向导以编辑配置 (不同步模板) |
+| `moai cc` / `moai glm` / `moai cg` | 纯 Claude / 纯 GLM / Claude-leader + GLM-workers 混合会话 |
+| `moai worktree <new\|list\|switch\|sync\|remove\|clean\|go>` | 面向并行 SPEC 开发的 Git worktree 管理 |
+| `moai session <list\|register\|current>` | 多会话协调 |
+| `moai spec <audit\|archive\|lint\|list\|new>` | SPEC 生命周期工具 |
+| `moai goal <arm\|status\|clear>` | 目标引擎 CLI |
+| `moai harness <status\|apply\|rollback\|disable>` | Harness 学习生命周期 |
+| `moai handoff <save\|list>` | 会话交接记录 |
+| `moai preference <list\|decay-scan\|toggle>` | 决策记忆管理 |
 | `moai hook <event>` | Claude Code 钩子分发器 |
-| `moai glm` | 使用 GLM 5 API 启动 Claude Code（经济高效的替代方案） |
-| `moai cc` | 不使用 GLM 设置启动 Claude Code（仅 Claude 模式） |
-| `moai cg` | 启动 CG 模式 — Claude 领导者 + GLM 工作者（自动启动 Claude Code，需要 tmux） |
-| `moai version` | 版本、提交哈希、构建日期信息 |
+| `moai web` | Web 控制台 —— 设置 CRUD、SPEC 看板、代理配置 (en/ko/ja/zh) |
+| `moai inventory` | 会话、worktree 与 Harness 的只读清单 (支持 `--json`) |
+| `moai version` | 版本、提交哈希与构建日期 |
 
----
+另有注册：`mx`、`clean`、`codemaps`、`feedback`、`loop`、`lsp`、`ast-grep`、`agent`、`workflow`、`statusline`、`telemetry`、`constitution`、`state`、`tool-policy`、`migrate`、`profile`、`pr`、`github`、`research`。
 
-## CG 模式（Claude + GLM 混合）
+### 钩子
 
-CG 模式是一种混合模式，领导者使用 **Claude API**，工作者使用 **GLM API**。通过 tmux 会话级环境变量隔离实现。
+所有钩子事件都遵循 Claude Code hooks 协议，通过 JSON stdin/stdout 通信：
 
-### 工作原理
+- **27 种事件类型** —— SessionStart、PreToolUse、PostToolUse、SessionEnd、Stop、SubagentStop、PreCompact、PostCompact、TeammateIdle、TaskCompleted 等
+- **4 种钩子类型** —— command (shell 脚本)、prompt (LLM 评估)、agent (子代理验证)、http (webhook 端点)
+- 任务指标捕获到 `.moai/logs/task-metrics.jsonl`，用于会话分析与成本跟踪
 
-```
-moai cg 执行
-    │
-    ├── 1. 向 tmux 会话环境变量注入 GLM 配置
-    │      (ANTHROPIC_AUTH_TOKEN, BASE_URL, MODEL_* 变量)
-    │
-    ├── 2. 从 settings.local.json 移除 GLM 环境变量
-    │      → 领导者窗格使用 Claude API
-    │
-    ├── 3. 设置 CLAUDE_CODE_TEAMMATE_DISPLAY=tmux
-    │      → 工作者在新窗格中继承 GLM 环境变量
-    │
-    └── 4. 启动 Claude Code（替换当前进程）
+### 状态栏
 
-┌─────────────────────────────────────────────────────────────┐
-│  LEADER（当前 tmux 窗格，Claude API）                        │
-│  - 执行 /moai --team 时协调工作流                            │
-│  - 处理 plan、quality、sync 阶段                             │
-│  - 无 GLM 环境变量 → 使用 Claude API                         │
-└──────────────────────┬──────────────────────────────────────┘
-                       │ Agent Teams（新 tmux 窗格）
-                       ▼
-┌─────────────────────────────────────────────────────────────┐
-│  TEAMMATES（新 tmux 窗格，GLM API）                          │
-│  - 继承 tmux 会话环境变量 → 使用 GLM API                     │
-│  - 执行 run 阶段的实现任务                                   │
-│  - 通过 SendMessage 与领导者通信                             │
-└─────────────────────────────────────────────────────────────┘
-```
+MoAI 在 Claude Code 终端底部渲染丰富的状态栏：模型层级/effort、MoAI 版本 (含更新标记)、Git 分支与变更状态、上下文窗口用量 (CW%)、缓存命中率，以及会话成本/Token。
 
-### 使用方法
+CW% 带有两阶段 `/clear` 标记——在模型特定阈值处的软警告 (Opus 4.8、GLM-5.2[1m] 等 1M 上下文模型为 50%；200K 模型为 90%)，以及在绝对上限处的硬标记。Claude Code 会把 GLM-5.2 误报为 200K 模型 (上游 Issue #653)；MoAI 在 `internal/statusline/memory.go` 中将其修正为 1M，因此请信任 MoAI 状态栏的 CW%。
 
-```bash
-# 1. 保存 GLM API 密钥（首次）
-moai glm sk-your-glm-api-key
+### 输出风格
 
-# 2. 确认 tmux 环境（已在使用 tmux 则跳过）
-# 如果需要新的 tmux 会话:
-tmux new -s moai
+| 风格 | 特点 | 受众 |
+|-------|-----------|----------|
+| **MoAI** (expert) | 密集、简洁 | 有经验的开发者 |
+| **MoAI-Easy** (basic) | 友好、解释性 —— 产品默认值 | 新用户 |
+| **MoAI-Learn** (learn) | 苏格拉底式导师 | 学习者 |
 
-# 提示：将 VS Code 终端默认设置为 tmux，
-# 可自动在 tmux 环境中启动，跳过此步骤。
+通过 `/config` 切换 (存储在优先级最高的 `settings.local.json` 中)。输出风格在会话开始时只读取一次——更改在 `/clear` 或新会话后生效。
 
-# 3. 启动 CG 模式（自动启动 Claude Code）
-moai cg
+### @MX 标签系统
 
-# 4. 运行团队工作流
-/moai --team "任务描述"
-```
-
-### 注意事项
-
-| 项目 | 说明 |
-|------|------|
-| **tmux 环境** | 如果已在使用 tmux，无需创建新会话。将 VS Code 终端默认设置为 tmux 会更方便。 |
-| **自动启动** | `moai cg` 会在当前窗格自动启动 Claude Code。无需单独运行 `claude`。 |
-| **会话结束时** | session_end 钩子自动清除 tmux 会话环境变量 → 下个会话恢复使用 Claude |
-| **Agent Teams 通信** | 使用 SendMessage 工具可实现领导者↔工作者间通信 |
-
-### 模式对比
-
-| 命令 | 领导者 | 工作者 | 需要 tmux | 成本节省 | 使用场景 |
-|------|--------|--------|-----------|----------|----------|
-| `moai cc` | Claude | Claude | 否 | - | 复杂工作、最高质量 |
-| `moai glm` | GLM | GLM | 推荐 | ~70% | 成本优化 |
-| `moai cg` | Claude | GLM | **必需** | **~60%** | 质量与成本平衡 |
-
-### 显示模式
-
-Agent Teams 支持两种显示模式:
-
-| 模式 | 说明 | 通信 | 领导者/工作者分离 |
-|------|------|------|------------------|
-| `in-process` | 默认模式，所有终端 | ✅ SendMessage | ❌ 相同环境变量 |
-| `tmux` | 分割窗格显示 | ✅ SendMessage | ✅ 会话环境变量隔离 |
-
-**CG 模式仅在 `tmux` 显示模式下支持领导者/工作者 API 分离。**
-
----
-
-## Claude x GLM 多模型
-
-MoAI-ADK 支持 **z.ai GLM** 作为 Claude Code 的替代 AI 后端，实现多模型开发工作流。
-
-| 项目 | 详情 |
-|------|------|
-| GLM Coding Plan | **$10/月**起（[z.ai](https://z.ai/subscribe?ic=1NDV03BGWU)） |
-| 兼容性 | 无需修改代码，直接与 Claude Code 配合使用 |
-| 模型 | GLM-5、GLM-4.7、GLM-4.5-Air 及免费模型 |
-
-**默认模型映射：**
-
-| Claude 层级 | GLM 模型 | 输入（每百万 Token） | 输出（每百万 Token） |
-|------------|----------|-------------------|-------------------|
-| Opus | GLM-4.7 | $0.60 | $2.20 |
-| Sonnet | GLM-4.7 | $0.60 | $2.20 |
-| Haiku | GLM-4.5-Air | $0.20 | $1.10 |
-
-> 免费模型也可使用：GLM-4.7-Flash、GLM-4.5-Flash。完整价格详见 [z.ai Pricing](https://docs.z.ai/guides/overview/pricing)。
-
-**[注册 GLM Coding Plan](https://z.ai/subscribe?ic=1NDV03BGWU)**
-
----
-
-## @MX 标签系统
-
-MoAI-ADK 使用 **@MX 代码级注解系统**在 AI 智能体之间传递上下文、不变量和危险区域。
-
-### 什么是 @MX 标签？
-
-@MX 标签是内联代码注解，帮助 AI 智能体更快、更准确地理解您的代码库。
+@MX 标签是内联代码注解，在 AI 代理之间传递上下文、不变量契约与危险区域。
 
 ```go
-// @MX:ANCHOR: [AUTO] 钩子注册分发 - 5+ 个调用者
-// @MX:REASON: [AUTO] 所有钩子事件的中央入口点，变更影响范围广
+// @MX:ANCHOR: [AUTO] Hook registry dispatch - 5+ callers
+// @MX:REASON: [AUTO] Central entry point for all hook events, changes have wide impact
 func DispatchHook(event string, data []byte) error {
     // ...
 }
-
-// @MX:WARN: [AUTO] Goroutine 执行时没有 context.Context
-// @MX:REASON: [AUTO] 无法取消 goroutine，潜在资源泄漏
-func processAsync() {
-    go func() {
-        // ...
-    }()
-}
 ```
 
-### 标签类型
+| 标签 | 用途 | 触发条件 |
+|-----|---------|---------|
+| `@MX:ANCHOR` | 不变量契约 | fan_in >= 3 —— 变更影响面广 |
+| `@MX:WARN` | 危险区域 | goroutine、复杂度 >= 15、全局状态变更 |
+| `@MX:NOTE` | 上下文 | 魔法常量、缺失文档、业务规则 |
+| `@MX:TODO` | 未完成的工作 | 缺失测试、未实现的功能 |
 
-| 标签类型 | 用途 | 说明 |
-|---------|------|------|
-| `@MX:ANCHOR` | 重要合约 | fan_in >= 3 的函数，变更影响范围广 |
-| `@MX:WARN` | 危险区域 | Goroutines、复杂度 >= 15、全局状态变更 |
-| `@MX:NOTE` | 上下文 | 魔法常数、缺少 godoc、业务规则 |
-| `@MX:TODO` | 未完成工作 | 缺少测试、未实现的功能 |
+该系统优化信噪比：**只有 AI 必须最先注意到的代码才有标签。** 大多数代码不符合任何标准且不带标签——这是正常且有意为之的。阈值和每文件上限在 `.moai/config/sections/mx.yaml` 中配置；用 `/moai mx --all` 扫描 (或 `--dry`、`--priority P1`)。
 
-### 为什么不是每个代码都有 @MX 标签？
+### Worktree 隔离
 
-@MX 标签系统**不设计用于给所有代码添加标签**。核心原则是**"仅标记 AI 需要首先注意的最危险/最重要的代码。"**
+`/moai plan --worktree` 为每个 SPEC 提供隔离的 git worktree 以进行并行开发；`moai worktree` 管理其生命周期 (`new --tmux` 会在 worktree 内自动创建 tmux 会话)。
 
-| 优先级 | 条件 | 标签类型 |
-|--------|------|----------|
-| **P1（关键）** | fan_in >= 3 | `@MX:ANCHOR` |
-| **P2（危险）** | goroutine、复杂度 >= 15 | `@MX:WARN` |
-| **P3（上下文）** | 魔法常数、无 godoc | `@MX:NOTE` |
-| **P4（缺失）** | 无测试文件 | `@MX:TODO` |
+### 支持的 16 种语言
 
-**大多数代码不符合任何条件，因此没有标签。** 这是**正常的**。
-
-### 示例：标签决策
-
-```go
-// ❌ 无标签（fan_in = 1、低复杂度）
-func calculateTotal(items []Item) int {
-    total := 0
-    for _, item := range items {
-        total += item.Price
-    }
-    return total
-}
-
-// ✅ 添加了 @MX:ANCHOR（fan_in = 5）
-// @MX:ANCHOR: [AUTO] 配置管理器加载 - 5+ 个调用者
-// @MX:REASON: [AUTO] 所有 CLI 命令的入口点
-func LoadConfig() (*Config, error) {
-    // ...
-}
-```
-
-### 配置（`.moai/config/sections/mx.yaml`）
-
-```yaml
-thresholds:
-  fan_in_anchor: 3        # < 3 个调用者 = 无 ANCHOR
-  complexity_warn: 15     # < 15 复杂度 = 无 WARN
-  branch_warn: 8          # < 8 个分支 = 无 WARN
-
-limits:
-  anchor_per_file: 3      # 每个文件最多 3 个 ANCHOR 标签
-  warn_per_file: 5        # 每个文件最多 5 个 WARN 标签
-
-exclude:
-  - "**/*_generated.go"   # 排除生成的文件
-  - "**/vendor/**"        # 排除外部库
-  - "**/mock_*.go"        # 排除 mock 文件
-```
-
-### 运行 MX 标签扫描
-
-```bash
-# 扫描整个代码库（Go 项目）
-/moai mx --all
-
-# 仅预览（不修改文件）
-/moai mx --dry
-
-# 按优先级扫描（仅 P1）
-/moai mx --priority P1
-
-# 仅扫描特定语言
-/moai mx --all --lang go,python
-```
-
-### 为什么其他项目也有很少的 MX 标签
-
-| 情况 | 原因 |
-|------|------|
-| **新项目** | 大多数函数 fan_in = 0 → 无标签（正常） |
-| **小项目** | 函数少 = 简单的调用图 = 标签少 |
-| **高质量代码** | 低复杂度、无 goroutines → 无 WARN 标签 |
-| **高阈值** | `fan_in_anchor: 5` = 更少的标签 |
-
-### 核心原则
-
-@MX 标签系统优化**"信噪比"**：
-
-- ✅ **仅标记真正重要的代码** → AI 快速识别核心区域
-- ❌ **标记所有代码** → 增加噪音，重要标签更难找到
-
-
-## 数据库工作流: /moai db
-
-MoAI 项目的数据库元数据管理系统。通过四个子命令（init、refresh、verify、list）管理架构文档、迁移、ERD 图表和种子数据。
-
-### 快速开始
-
-```bash
-# 初始化数据库元数据（交互式问卷）
-/moai db init
-
-# 重新扫描迁移并更新架构文档
-/moai db refresh
-
-# 检查 schema.md 和迁移文件之间的偏差
-/moai db verify
-
-# 显示 schema.md 中的所有表
-/moai db list
-```
-
-### 子命令
-
-| 命令 | 目的 | 使用时机 |
-|------|------|---------|
-| **init** | 数据库引擎、ORM、多租户策略和迁移工具的交互式设置。在 `.moai/project/db/` 中脚手架 7 文件模板集 | 新项目初始化、任何数据库工作之前 |
-| **refresh** | 扫描迁移文件并从当前迁移状态重新生成 `schema.md`、`erd.mmd`（Mermaid ERD）和 `migrations.md` | 添加/修改迁移之后、里程碑同步时 |
-| **verify** | 只读偏差检测：比较 `schema.md` 表集与实际迁移文件，发现偏差时以非零状态退出 | PR 提交前、CI/CD 管道中 |
-| **list** | 只读表列表：以对齐的 Markdown 表格格式显示 `schema.md` 中的所有表 | 快速项目概览、文档审查 |
-
-### 目录结构
-
-`/moai db init` 在 `.moai/project/db/` 中创建以下结构：
-
-```plaintext
-.moai/project/db/
-├── README.md              # 数据库概览和设置说明
-├── schema.md              # 表架构文档（自动生成）
-├── erd.mmd                # Mermaid 格式的实体关系图
-├── migrations.md          # 迁移历史和顺序
-├── rls-policies.md        # 行级安全策略（PostgreSQL）
-├── queries.md             # 重要查询和性能注释
-└── seed-data.md           # 示例数据和播种说明
-```
-
-### 支持的数据库技术
-
-自动检测并支持 6 种迁移文件模式：
-
-| 迁移类型 | 文件模式 | 示例 |
-|--------|---------|------|
-| **Prisma** | `prisma/migrations/*/migration.sql` | `20260401120000_add_users_table/migration.sql` |
-| **Alembic** | `alembic/versions/*.py` | `a1b2c3d4e5f6_add_users_table.py` |
-| **Rails** | `db/migrate/*.rb` | `20260401120000_add_users_table.rb` |
-| **Raw SQL** | `db/migrations/*.sql` | `001_add_users_table.sql` |
-| **Supabase** | `supabase/migrations/*.sql` | `20260401120000_initial_schema.sql` |
-| **通用** | `migrations/*.sql` 或 `db/*.sql` | 支持自定义模式 |
-
-通过常见包路径支持 16 个编程语言生态系统（Go、Python、TypeScript、Java 等）。
-
-### 集成
-
-- **PostToolUse Hook**：编辑迁移文件时自动刷新 `schema.md`、`erd.mmd`、`migrations.md`
-- **偏差检测**：防止架构文档与实际迁移不同步
-- **Mermaid 图表**：为文档和设计审查自动生成 ERD 图表
-- **Phase 4.1a 数据库检测**：`/moai project` 根据检测到的数据库技术自动显示 `/moai db` 建议
-
-### 配置
-
-数据库设置存储在 `.moai/config/sections/db.yaml` 中：
-
-```yaml
-db:
-  enabled: true
-  dir: ".moai/project/db"
-  auto_sync: true
-  migration_patterns:
-    - "prisma/migrations/*/migration.sql"
-    - "alembic/versions/*.py"
-    - "db/migrate/*.rb"
-  engine: ""  # 在 init 问卷期间填充
-  orm: ""     # 在 init 问卷期间填充
-  multi_tenant: false
-  migration_tool: ""
-```
-
-### 工作流示例
-
-1. **新项目**：运行 `/moai db init`，回答关于数据库设置的 4 个问题
-2. **开发中**：照常创建迁移；`/moai db` 自动同步文档
-3. **PR 前**：运行 `/moai db verify` 检查架构偏差
-4. **审查**：在 PR 中参考 `.moai/project/db/erd.mmd` 进行架构视觉审查
-
-### 使用时机
-
-- **始终启用**：在 `moai init` 期间为任何具有数据库的项目启用
-- **Init**：新项目、数据库架构更改
-- **Refresh**：大型迁移工作后、主要提交前
-- **Verify**：CI/CD 管道的一部分、PR 前检查
-- **List**：快速参考、文档生成
+go · python · typescript · javascript · rust · java · kotlin · csharp · ruby · php · elixir · cpp · scala · r · flutter · swift —— 通过项目标记检测，每种语言运行各自的标准 lint/格式化/测试工具链。未安装的工具会被优雅跳过。
 
 ---
 
-## 常见问题
+## FAQ
 
-### Q: 为什么不是所有 Go 代码都有 @MX 标签？
+### Q: 为什么不是每个函数都有 @MX 标签？
 
-**A: 这是正常的。** @MX 标签是"按需添加的"。大多数代码足够简单安全，不需要标签。
+**这是正常的。** 标签只标记高扇入、复杂或危险的代码。每个项目中的大多数代码都不符合任何标签标准——未打标签的文件不是缺陷。
 
-| 问题 | 答案 |
-|------|------|
-| 没有标签是问题吗？ | **不是。** 大多数代码不需要标签。 |
-| 何时添加标签？ | **仅高 fan_in、复杂逻辑、危险模式** |
-| 所有项目都类似吗？ | **是的。** 每个项目中的大多数代码都没有标签。 |
-
-详见上方的 **"@MX 标签系统"** 部分。
-
----
-
-### Q: 如何自定义显示的状态栏段？
-
-Statusline v3 提供**多行布局**和实时 API 使用量监控：
-
-**Full 模式**（5 行 — 40 块独立条）：
-```
-🤖 Opus 4.6 │ 🔅 v2.1.74 │ 🗿 v2.7.12 │ ⏳ 5h 32m │ 💬 MoAI
-CW: 🔋 █████████████████████░░░░░░░░░░░░░░░░░░░ 52%
-5H: 🔋 █░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░ 4%
-7D: 🔋 ██████████████████████░░░░░░░░░░░░░░░░░░░ 56%
-📁 moai-adk-go │ 🅱️ main │ 📭 +0 M38 ?2
-```
-
-**默认（Default）模式**（3 行 — 10 块内联条）：
-```
-🤖 Opus 4.6 │ 🔅 v2.1.74 │ 🗿 v2.7.12 │ ⏳ 16m │ 💬 MoAI
-CW: 🔋 ██░░░░░░░░ 25% │ 5H: 🔋 █░░░░░░░░░ 12% │ 7D: 🔋 ░░░░░░░░░░ 3%
-📁 moai-adk-go │ 🅱️ fix/my-feature │ 📭 +0 M38 ?2
-```
-
-支持 2 种显示模式：
-
-- **Full**（5 行）：所有段 + 40 块使用量条独立行显示（model、context、usage bars、git、version、output style、directory）
-- **Default**（3 行）：核心段 + 10 块内联使用量条（model、context、usage bars、git status、branch、version）
-
-直接编辑 `.moai/config/sections/statusline.yaml`：
-
-```yaml
-statusline:
-  preset: default  # 或 full
-  segments:
-    model: true
-    context: true
-    usage_5h: true    # 5 小时 API 使用量条
-    usage_7d: true    # 7 天 API 使用量条
-    output_style: true
-    directory: true
-    git_status: true
-    claude_version: true
-    moai_version: true
-    git_branch: true
-```
-
-> **注意**：从 v2.7.8 开始，段预设选择 UI 已从 `moai init`/`moai update` 向导中移除。请直接在上述 YAML 文件中配置。
-
----
-
-### Q: 状态栏中的版本指示符是什么意思？
-
-MoAI 状态栏显示带有更新通知的版本信息：
+### Q: 状态栏里的版本指示器是什么意思？
 
 ```
-🗿 v2.2.2 ⬆️ v2.2.5
+🗿 v3.0.0-rc10 ⬆️ v3.0.0-rc11
 ```
 
-- **`v2.2.2`**：当前安装的版本
-- **`⬆️ v2.2.5`**：新版本可用于更新
+第一个值是已安装的 MoAI-ADK 版本；箭头表示有可用更新 (运行 `moai update` 即可清除)。它与 Claude Code 自身的版本指示器是分开的。
 
-当您在最新版本上时，只显示版本号：
-```
-🗿 v2.2.5
-```
+### Q: Claude Code 询问 "Allow external CLAUDE.md file imports?"
 
-**更新方法**：运行 `moai update`，更新通知将消失。
-
-**注意**：这与 Claude Code 的内置版本指示符（`🔅 v2.1.38`）不同。MoAI 指示符跟踪 MoAI-ADK 版本，Claude Code 单独显示其自身版本。
-
----
-
-### Q: 出现"允许外部 CLAUDE.md 文件导入？"警告
-
-打开项目时，Claude Code 可能显示关于外部文件导入的安全提示：
-
-```
-External imports:
-  /Users/<user>/.moai/config/sections/quality.yaml
-  /Users/<user>/.moai/config/sections/user.yaml
-  /Users/<user>/.moai/config/sections/language.yaml
-```
-
-**推荐操作**：选择 **"No, disable external imports"** ✅
-
-**为什么？**
-- 您的项目的 `.moai/config/sections/` 已包含这些文件
-- 项目特定设置优先于全局设置
-- 基本配置已嵌入 CLAUDE.md 文本
-- 禁用外部导入更安全且不影响功能
-
-**这些文件是什么？**
-- `quality.yaml`：TRUST 5 框架和开发方法论设置
-- `language.yaml`：语言偏好（对话、注释、提交）
-- `user.yaml`：用户名（可选，用于 Co-Authored-By 属性）
+请选择 **"No, disable external imports."** 你项目的 `.moai/config/sections/` 已经包含这些文件，项目级设置优先生效，而且禁用外部导入是更安全的选择，不会损失任何功能。
 
 ---
 
 ## 贡献
 
-欢迎贡献！详细指南请参阅 [CONTRIBUTING.md](CONTRIBUTING.md)。
-
-### 快速入门
+欢迎贡献！详细指南见 [CONTRIBUTING.md](CONTRIBUTING.md)。
 
 1. Fork 本仓库
 2. 创建功能分支：`git checkout -b feature/my-feature`
-3. 编写测试（新代码用 TDD，现有代码用特征测试）
-4. 确认所有测试通过：`make test`
-5. 确认 Lint 通过：`make lint`
-6. 格式化代码：`make fmt`
-7. 使用约定式提交信息提交
-8. 提交 Pull Request
+3. 编写测试 (新代码用 TDD，既有代码用特征测试)
+4. 确保测试、lint 与格式化通过：`make test` · `make lint` · `make fmt`
+5. 使用约定式提交消息并打开 pull request
 
-**代码质量要求**：85%+ 覆盖率 · 0 Lint 错误 · 0 类型错误 · 约定式提交
+**代码质量要求**：85%+ 覆盖率 · 0 lint 错误 · 0 类型错误 · 约定式提交
 
 ### 社区
 
-- [Issues](https://github.com/modu-ai/moai-adk/issues) -- Bug 报告、功能请求
+- [Discord](https://discord.gg/Z7E7Mdc5aN) —— 实时讨论与技巧
+- [Issues](https://github.com/modu-ai/moai-adk/issues) —— 缺陷报告、功能请求 (也可以在 Claude Code 内使用 `/moai feedback`)
 
 ---
 
-## Star History
+## Star 历史
 
 [![Star History Chart](https://api.star-history.com/svg?repos=modu-ai/moai-adk&type=date&legend=top-left)](https://www.star-history.com/#modu-ai/moai-adk&type=date&legend=top-left)
 
@@ -1113,9 +629,12 @@ External imports:
 
 ## 许可证
 
-[Apache License 2.0](./LICENSE) -- 详情请参阅 LICENSE 文件。
+[Apache License 2.0](./LICENSE) —— 详见 LICENSE 文件。
 
-## 相关链接
+## 链接
 
 - [官方文档](https://adk.mo.ai.kr)
+- [图书：Claude Code 实战 Agentic 编程](https://adk.mo.ai.kr/book)
+- [CHANGELOG](./CHANGELOG.md)
 - [Claude Code](https://docs.anthropic.com/en/docs/claude-code)
+- [Discord 社区](https://discord.gg/Z7E7Mdc5aN)

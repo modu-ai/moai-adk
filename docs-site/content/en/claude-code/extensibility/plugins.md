@@ -2,29 +2,29 @@
 title: Plugins and Marketplaces
 weight: 40
 draft: false
-description: "Explains how Claude Code plugins bundle commands, agents, skills, hooks, and MCP into a single package for distribution, and the discover-install-manage flow through marketplaces."
+description: "How Claude Code plugins bundle commands, agents, skills, hooks, and MCP into one package for distribution, and the flow of discovering, installing, and managing them via marketplaces."
 ---
 
-A Claude Code plugin is the unit that bundles scattered extensions into a single package to distribute to teams and the community, and a marketplace is the catalog where you discover and install those packages.
+A Claude Code plugin is the unit that bundles scattered extensions into one package for distribution to teams and the community, and a marketplace is the catalog where those packages are discovered and installed. Seen through the harness lens, this is the distribution layer that packages the materials from the previous three documents — skills, hooks, MCP — into "one installable piece of harness".
 
 {{< callout type="info" >}}
-**TL;DR**: A plugin is an "extension bundle" that packages commands, agents, skills, hooks, and MCP into one folder for versioning and distribution, while a marketplace is the app store you pick those bundles from.
+**One-line summary**: A plugin is an "extension bundle" that packs commands, agents, skills, hooks, and MCP into one folder, versioned and distributed — and a marketplace is the app store where you pick those bundles.
 {{< /callout >}}
 
 ## What Is a Plugin
 
-A plugin is a package that bundles several Claude Code extension elements into a single directory so they can be **shared, reused, and version-managed**. Unlike standalone settings placed directly in the `.claude/` directory, a plugin has an identity defined by a manifest file and is distributed to other projects and teams through a marketplace.
+A plugin is a package that bundles multiple Claude Code extension elements into one directory for **sharing, reuse, and versioning**. Unlike standalone configuration placed directly in the `.claude/` directory, a plugin has an identity via its manifest file and is distributed to other projects and teams through marketplaces.
 
-The difference between standalone settings and a plugin is clear.
+The difference between standalone configuration and a plugin is clear-cut.
 
-| Category | Standalone settings (`.claude/`) | Plugin |
+| Aspect | Standalone config (`.claude/`) | Plugin |
 |------|------------------------|----------|
 | Skill name | `/hello` | `/plugin-name:hello` (namespaced) |
-| Best fit | Personal workflows, project-only experiments | Team/community sharing, version releases, reuse across multiple projects |
+| Best for | Personal workflows, project-local experiments | Team/community sharing, versioned releases, reuse across projects |
 | Distribution | Manual copy | Install via `/plugin install` |
-| Conflict prevention | None | Automatic namespace separation by plugin name |
+| Collision prevention | None | Automatic namespacing by plugin name |
 
-The core of a plugin is the `.claude-plugin/plugin.json` **manifest**. This file defines the plugin's name, description, and version, and the `name` field becomes the namespace prefix for skills.
+The heart of a plugin is the `.claude-plugin/plugin.json` **manifest**. This file defines the plugin's name, description, and version, and the `name` field becomes the namespace prefix for its skills. The manifest is optional — a plugin works without one — but versioning and marketplace distribution are far easier with it.
 
 ```json
 {
@@ -35,44 +35,44 @@ The core of a plugin is the `.claude-plugin/plugin.json` **manifest**. This file
 }
 ```
 
-`version` is optional. If you specify it, updates are delivered to users only when you bump this value; if you omit it and distribute via git, the commit SHA acts as the version, so every commit is treated as a new version.
+`version` is optional. If specified, updates reach users only when you bump this value; if omitted and distributed via git, the commit SHA acts as the version and every commit is treated as a new version.
 
-> During development, use `claude --plugin-dir ./my-plugin` to load a local plugin directly without installing it for testing, and after changes apply them with `/reload-plugins` without restarting.
+> During development, load a local plugin without installing via `claude --plugin-dir ./my-plugin`, and after changes apply them without a restart via `/reload-plugins`.
 
 ## What a Plugin Can Contain
 
-In the plugin root, you place a directory per element. One common mistake is putting these directories inside `.claude-plugin/`, but `.claude-plugin/` should contain only `plugin.json`, and everything else must live in the **plugin root**.
+Place per-element directories at the plugin root (the plugin directory itself, not `.claude-plugin/`). **Important caution:** `.claude-plugin/` contains **only** `plugin.json`; all components — skills, commands, agents, hooks — live at the plugin root.
 
 | Element | Location | Contents |
 |------|------|-----------|
-| Skill | `skills/<name>/SKILL.md` | A capability the model invokes automatically based on context |
-| Command | `commands/*.md` | Slash commands (new plugins should prefer `skills/`) |
-| Agent | `agents/` | Custom subagent definitions |
-| hook | `hooks/hooks.json` | Event handlers (PostToolUse, etc.) |
-| MCP server | `.mcp.json` | Configuration for connecting external tools and services |
-| LSP server | `.lsp.json` | Code intelligence (language server) configuration |
-| Monitor | `monitors/monitors.json` | A background watcher that monitors logs and files in the background |
+| Skills | `skills/<name>/SKILL.md` | Capabilities the model auto-invokes by context |
+| Commands | `commands/*.md` | Slash commands (`skills/` recommended for new plugins) |
+| Agents | `agents/` | Custom subagent definitions |
+| Hooks | `hooks/hooks.json` | Event handlers (PostToolUse and the like) |
+| MCP servers | `.mcp.json` | External tool/service connection config |
+| LSP servers | `.lsp.json` | Code intelligence (language server) config |
+| Monitors | `monitors/monitors.json` | Background watchers observing logs and files |
 | Executables | `bin/` | Executables added to the Bash tool `PATH` while the plugin is active |
-| Default settings | `settings.json` | A default settings.json applied on activation (currently only the `agent` and `subagentStatusLine` keys are supported) |
+| Default settings | `settings.json` | Default settings.json applied on activation (currently only the `agent` and `subagentStatusLine` keys are supported) |
 
-In this way a single plugin can contain skills, hooks, and MCP at the same time, delivering "all the extensions needed for this work" in one install. For example, the `commit-commands` plugin bundles commit, push, and PR-creation skills together, and `pr-review-toolkit` ships agents dedicated to PR review.
+Because one plugin can carry skills, hooks, and MCP simultaneously, "every extension this job needs" arrives in a single install. For example, the `commit-commands` plugin bundles commit, push, and PR-creation skills, and `pr-review-toolkit` ships a set of agents dedicated to PR review.
 
-## Marketplace: Discover, Install, Manage
+## Marketplaces: Discover, Install, Manage
 
-A marketplace is a catalog containing a list of plugins someone created. Using it is a two-step process. First you **add** a catalog so you can browse it, then you **install** the plugins you want individually. It helps to think of registering an app store and downloading individual apps as separate things.
+A marketplace is a catalog holding a list of plugins someone has built. Usage is two steps: first **add** the catalog so you can browse it, then **install** individual plugins you want. Think of it as registering an app store versus downloading individual apps.
 
 ### Adding a Marketplace
 
-With `/plugin marketplace add` you can register various sources.
+`/plugin marketplace add` accepts various sources.
 
 ```bash
-# GitHub repository (owner/repo format)
+# GitHub repository (owner/repo form)
 /plugin marketplace add anthropics/claude-plugins-official
 
 # Other Git hosts (.git suffix required)
 /plugin marketplace add https://gitlab.com/company/plugins.git
 
-# Pin to a specific branch/tag
+# Pin a specific branch or tag
 /plugin marketplace add https://gitlab.com/company/plugins.git#v1.0.0
 
 # Local path / remote marketplace.json
@@ -93,31 +93,31 @@ The official Anthropic marketplace (`claude-plugins-official`) is automatically 
 
 ### Installing and Managing
 
-Running `/plugin` opens a plugin manager with four tabs: **Discover / Installed / Marketplaces / Errors**. In the detail panel of the Discover tab, before installing you can preview the Context cost estimate, the last update date, and the list of commands, agents, skills, hooks, MCP, and LSP that will be installed.
+Running `/plugin` opens the plugin manager with four tabs: **Discover / Installed / Marketplaces / Errors**. The detail panel in the Discover tab lets you preview, before installing, the estimated context cost, the last update date, and the list of commands, agents, skills, hooks, MCP, and LSP that will be installed.
 
 There are three install scopes.
 
 | Scope | Applies to | Recorded in |
 |------|-----------|-----------|
-| User | All of my projects | User settings |
-| Project | All collaborators of this repository | `.claude/settings.json` |
-| Local | Only me in this repository | Not shared with collaborators |
+| User | All my projects | User settings |
+| Project | All collaborators on this repository | `.claude/settings.json` |
+| Local | Just me on this repository | Not shared with collaborators |
 
-Install, enable, disable, and remove are also possible via the CLI.
+Install, enable, disable, and remove are also available via CLI.
 
 ```bash
-/plugin install plugin-name@marketplace-name   # Install (default user scope)
-/plugin disable plugin-name@marketplace-name    # Disable (not removed)
-/plugin enable  plugin-name@marketplace-name    # Re-enable
-/plugin uninstall plugin-name@marketplace-name  # Fully remove
-/reload-plugins                                 # Apply changes without restarting
+/plugin install plugin-name@marketplace-name   # install (default user scope)
+/plugin disable plugin-name@marketplace-name    # disable (does not remove)
+/plugin enable  plugin-name@marketplace-name    # re-enable
+/plugin uninstall plugin-name@marketplace-name  # remove entirely
+/reload-plugins                                 # apply changes without a restart
 ```
 
-At the team level, if you declare a marketplace in the `extraKnownMarketplaces` key of `.claude/settings.json`, Claude Code will guide collaborators through that marketplace and plugin installation when they trust the repository folder.
+At the team level, declare marketplaces under the `extraKnownMarketplaces` key in `.claude/settings.json`, and when a collaborator trusts the repository folder, Claude Code guides them through those marketplaces and plugin installs.
 
 ## Code Intelligence Plugins
 
-A code intelligence plugin activates Claude Code's built-in code intelligence tools through LSP (Language Server Protocol). It's the very technology that powers VS Code's code navigation. It works when you install a per-language plugin and the corresponding **language server binary** is present on the system.
+Code intelligence plugins activate Claude Code's built-in code intelligence tools via LSP (Language Server Protocol) — the very technology underpinning code navigation in VS Code. Install the per-language plugin, and the corresponding **language server binary** must be present on the system for it to work.
 
 | Language | Plugin | Required binary |
 |------|----------|-----------------|
@@ -127,35 +127,39 @@ A code intelligence plugin activates Claude Code's built-in code intelligence to
 | Rust | `rust-analyzer-lsp` | `rust-analyzer` |
 | Java | `jdtls-lsp` | `jdtls` |
 
-When the plugin is active, Claude gains two capabilities.
+With the plugin active, Claude gains two capabilities.
 
-- **Automatic diagnostics**: Every time Claude edits a file, the language server analyzes the change and automatically reports type errors, missing imports, and syntax errors. Without separately running a compiler or linter, it catches errors in the same turn and fixes them right away. When the "diagnostics found" indicator appears, press `Ctrl+O` to inspect them inline.
-- **Code navigation**: Go to definition, find references, hover type information, symbol lists, find implementations, and call hierarchy tracking are all possible. It provides far more accurate navigation than grep-based search.
+- **Automatic diagnostics**: every time Claude edits a file, the language server analyzes the change and automatically reports type errors, missing imports, and syntax errors. Without separately running a compiler or linter, Claude notices errors in the same turn and fixes them immediately. When "diagnostics found" appears, press `Ctrl+O` to view them inline.
+- **Code navigation**: go to definition, find references, hover type info, symbol lists, find implementations, and call-hierarchy tracing. Far more precise navigation than grep-based search.
 
-> If an `Executable not found in $PATH` error appears in the `/plugin` Errors tab, install the language server binary from the table above. `rust-analyzer`, `pyright`, and others can use a lot of memory on a large codebase, so if it's burdensome you can disable that plugin and rely on Claude's built-in search.
+> If an `Executable not found in $PATH` error shows in the `/plugin` Errors tab, install the language server binary from the table above. Note that `rust-analyzer`, `pyright`, and the like can use a lot of memory on a large codebase — if that is a burden, disable the plugin and rely on Claude's built-in search.
 
 ## Trust and Security
 
-Plugins and marketplaces are **components that require very high trust**. This is because they can execute arbitrary code with your permissions. Install only from sources you trust.
+Plugins and marketplaces are **components requiring very high trust**, because they can execute arbitrary code with your user permissions. Install only from sources you trust.
 
-- Anthropic does not control the MCP servers, files, and software included in a plugin, and does not verify that they behave as intended. For third-party plugins, review the homepage and the "Will install" list in the Discover tab yourself before installing.
-- Community marketplace plugins are distributed pinned to a specific commit SHA after passing Anthropic's automated verification and safety screening. Even so, the final trust judgment is up to the installer.
+- Anthropic does not control the MCP servers, files, or software included in plugins, and does not verify they behave as intended. Review a third-party plugin's homepage and the Discover tab's "Will install" list yourself before installing.
+- Community-marketplace plugins are distributed pinned to a specific commit SHA after passing Anthropic's automated verification and safety screening. The final trust judgment still belongs to the installer.
 - Organizations can restrict which marketplaces users may add via managed settings.
 
-## Plugin Install/Activation Flow
+## The Plugin Install and Activation Flow
 
 ```mermaid
 flowchart TD
-    A[Add marketplace<br>/plugin marketplace add] --> B[Browse plugins<br>/plugin Discover tab]
+    A[Add a marketplace<br>/plugin marketplace add] --> B[Browse plugins<br>/plugin Discover tab]
     B --> C{Do you trust<br>the source?}
-    C -- No --> D[Hold off install<br>Review homepage & Will install]
+    C -- No --> D[Hold off installing<br>Review homepage and Will install]
     C -- Yes --> E[Choose install scope<br>User / Project / Local]
     E --> F[Install<br>/plugin install]
     F --> G[Apply changes<br>/reload-plugins]
-    G --> H[Use namespaced skill<br>/plugin-name:skill]
+    G --> H[Use namespaced skills<br>/plugin-name:skill]
 ```
 
-## Related Docs
+## MoAI-ADK and Plugins
+
+MoAI-ADK itself is not a plugin — `moai init` deploys harness assets (skills, agents, hooks, settings) directly into the `.claude/` directory. Still, two things on this page apply directly to MoAI-ADK users. First, the **context cost** estimate in the Discover tab is a metric that reflects tokenomics thinking exactly — every time you install an extension, check how much always-on context it adds before deciding. Second, code intelligence (LSP) plugins are in the same family as the diagnostic signals MoAI-ADK's per-language quality gates use, so installing the LSP plugin for your language makes the loop that catches type errors in the same turn as the edit much tighter.
+
+## Related Documents
 
 - [Skills](/claude-code/extensibility/skills)
 - [Hooks](/claude-code/extensibility/hooks)
@@ -168,5 +172,5 @@ flowchart TD
 - [What Claude gains from code intelligence plugins](https://code.claude.com/docs/en/discover-plugins#what-claude-gains-from-code-intelligence-plugins)
 
 {{< callout type="tip" >}}
-If the plugin you want to install doesn't appear, the marketplace may be out of date. Refresh the list with `/plugin marketplace update <marketplace-name>` and try installing again.
+If a plugin you want to install is not visible, the marketplace may be stale. Refresh the list with `/plugin marketplace update <marketplace-name>` and try the install again.
 {{< /callout >}}

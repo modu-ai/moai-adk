@@ -4,8 +4,9 @@ weight: 30
 draft: false
 ---
 
-실제 프로젝트에서 Git Worktree를 활용하는 구체적인 예시들을 통해 실무 적용
-방법을 배워보세요.
+실제 프로젝트에서 Git Worktree를 어떻게 굴리는지, 단일 SPEC 개발부터 병렬
+개발·팀 협업·문제 해결까지 구체적인 시나리오로 살펴봅니다. 각 시나리오에는
+"어느 단계에 어떤 모델을 쓰는가"라는 토크노믹스 판단이 함께 들어 있습니다.
 
 ## 목차
 
@@ -60,6 +61,8 @@ Worktree 생성 중...
 ```
 
 #### 2단계: Worktree 진입 및 구현 (Terminal 2)
+
+계획이 끝났으니 구현은 저비용 모델로 전환합니다:
 
 ```bash
 # 새 터미널 열기
@@ -182,6 +185,9 @@ Worktree 완료 중: SPEC-AUTH-001
 ## 병렬 SPEC 개발
 
 ### 시나리오: 3개 SPEC 동시 개발
+
+계획은 한 터미널에서 고추론 모델(Opus)로 몰아서 처리하고, 구현은 GLM으로
+바꿔 세 터미널에 분산합니다:
 
 ```mermaid
 graph TB
@@ -606,6 +612,6 @@ claude
 
 ## 관련 문서
 
-- [Git Worktree 개요](./index)
-- [완벽 가이드](./guide)
-- [자주 묻는 질문](./faq)
+- [Git Worktree 개요](/ko/worktree/)
+- [완벽 가이드](/ko/worktree/guide)
+- [자주 묻는 질문](/ko/worktree/faq)

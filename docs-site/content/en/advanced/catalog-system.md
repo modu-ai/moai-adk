@@ -4,63 +4,67 @@ weight: 80
 draft: false
 ---
 
-Optimizes project initialization with a 3-tier catalog manifest and slim init.
+Tokenomics is not a principle that applies only to tokens. Every template file deployed into a project is ultimately a candidate for the context a session will load. The catalog system reduces this cost from the initialization stage on, following the principle of "deploy only what is needed."
 
 ## Overview
 
-The catalog system in MoAI-ADK v2.15+ manages every agent, skill, plugin, and rule
-through a **3-tier manifest**. `moai init --slim` deploys only the minimal templates
-a project actually needs, shortening initialization time.
+The catalog system in MoAI-ADK v2.15+ manages every agent, skill, plugin, and rule through a **3-tier manifest**. With `moai init --slim`, only the minimum templates a project needs are selected and deployed, so initialization is faster and the files left in the project stay lightweight.
 
-## 3-Tier Manifest
+## The 3-Tier Manifest
 
-| Tier | Description | Deployment criteria |
+Every deployable item belongs to one of three tiers.
+
+| Tier | Description | Deployment criterion |
 |------|------|----------|
 | **Tier 1 (Core)** | Core infrastructure — orchestrator, quality gates, base skills | Always deployed |
-| **Tier 2 (Standard)** | Standard extensions — language-specific rules, framework skills | Deployed when the project's language/framework is detected |
-| **Tier 3 (Optional)** | Optional — domain skills, platform-specific settings | Deployed only on explicit request or project configuration |
+| **Tier 2 (Standard)** | Standard extensions — per-language rules, framework skills | When the project language/framework is detected |
+| **Tier 3 (Optional)** | Optional — domain skills, platform-specific settings | On explicit request or project configuration |
 
-## Catalog File
+## The Catalog File
 
-The catalog manifest is defined in YAML format:
+The catalog manifest is defined in YAML format.
 
 ```yaml
-# Example catalog entry
+# 카탈로그 엔트리 예시
 - id: moai-workflow-tdd
   tier: 1                    # 1=Core, 2=Standard, 3=Optional
   type: skill
   path: .claude/skills/moai/workflows/tdd.md
-  languages: []              # empty array = all languages
+  languages: []              # 빈 배열 = 모든 언어
   frameworks: []
-  hash: abc123...             # content hash (integrity verification)
+  hash: abc123...             # 콘텐츠 해시 (무결성 검증)
 ```
 
-## SlimFS Filter
+The `hash` field carries a content hash, so the loader can verify whether a deployed file has been corrupted or arbitrarily modified.
 
-`moai init --slim` restricts the deployed files through the SlimFS filter:
+## The SlimFS Filter
+
+`moai init --slim` restricts deployed files through the SlimFS filter.
 
 ```bash
-# Full installation (all tiers)
+# 전체 설치 (모든 계층)
 moai init my-project
 
-# Slim installation (Tier 1 + detected Tier 2 only)
+# Slim 설치 (Tier 1 + 감지된 Tier 2만)
 moai init --slim my-project
 ```
 
 ### Filter Logic
 
+The filter operates in four steps.
+
 1. Tier 1 is always included
-2. Detects the project language (Go, Python, TypeScript, etc.)
-3. Includes only the Tier 2 entries matching the detected language
-4. Excludes Tier 3
+2. Project language detection (Go, Python, TypeScript, etc.)
+3. Only Tier 2 items matching the detected languages are included
+4. Tier 3 is excluded
 
 ## Typed Loader
 
-The `LoadCatalog()` function loads the manifest in a type-safe way:
+The `LoadCatalog()` function loads the manifest in a type-safe way. Because it validates struct by struct rather than relying on string parsing, manifest errors are caught before deployment.
 
-- Validates the 3-tier classification
-- Checks hash integrity (Hash Sentinel)
-- Detects missing fields
+- 3-tier classification validation
+- Hash integrity checks (Hash Sentinel)
+- Missing-field detection
 - 100% test coverage
 
 ## Using the Catalog
@@ -68,24 +72,26 @@ The `LoadCatalog()` function loads the manifest in a type-safe way:
 ### Project Initialization
 
 ```bash
-# Standard initialization — deploys all templates
+# 일반 초기화 — 모든 템플릿 배포
 moai init my-project
 
-# Slim initialization — deploys only the minimal templates
+# Slim 초기화 — 최소 템플릿만 배포
 moai init --slim my-project
 ```
 
 ### Updates
 
+Updates operate against the same catalog, so a project initialized with slim should also be updated with slim.
+
 ```bash
-# Catalog-based update
-moai update                  # updates all tiers
-moai update --slim           # updates in slim mode
+# 카탈로그 기반 업데이트
+moai update                  # 모든 계층 업데이트
+moai update --slim           # slim 모드로 업데이트
 ```
 
-## Related Documentation
+## Related Documents
 
-- [Installation](/getting-started/installation) — Installation guide
-- [Initial Setup](/getting-started/init-wizard) — init wizard
-- [Update](/getting-started/update) — Update guide
-- [Skill Guide](/advanced/skill-guide) — Skill authoring guide
+- [Installation](/en/getting-started/installation) — installation guide
+- [Initial Setup](/en/getting-started/init-wizard) — the init wizard
+- [Updating](/en/getting-started/update) — update guide
+- [Skill Guide](/en/advanced/skill-guide) — skill authoring guide

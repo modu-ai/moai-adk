@@ -6,227 +6,229 @@ draft: false
 tags: ["security", "cwe", "audit"]
 ---
 
-# Security Notes
+An agentic harness is a system that hands execution authority to agents. The more authority a system delegates, the more the security of its credentials and update paths forms the floor of harness trust. This page summarizes the **user-visible security changes** introduced as of MoAI-ADK v2.20.0-rc1. Each item includes its CWE mapping, the changed behavior, and self-audit commands.
 
-This page documents the **user-visible security changes** introduced in MoAI-ADK v2.20.0-rc1. Each entry includes the CWE mapping, the behavioral change, and self-audit commands.
+## Why — Why This Page Exists
 
-## Why this page exists
+`SPEC-V3R5-SECURITY-CRIT-001` (PR #1032, merge commit `03a2552a2`) corrected **3 P0 release-blocker security defects** found in code review between v2.14.0 and v2.20.0-rc1. This page codifies that correction, and the procedures for users to verify the new protections in their own environments, as official 4-locale guidance.
 
-`SPEC-V3R5-SECURITY-CRIT-001` (PR #1032, merge commit `03a2552a2`) corrected **three P0 release-blocker security defects** identified in the v2.14.0 → v2.20.0-rc1 code review. This page makes the corrections and user-side verification procedures part of the official 4-locale documentation.
+All three defects relate to the GLM integration + auto-update paths.
 
-All three defects relate to the GLM integration + auto-update paths:
+- **CWE-732 / CWE-552** — `.claude/settings.local.json` file mode enforced to `0o600` (owner-only read/write)
+- **CWE-214** — `moai cg` tmux environment-variable injection goes via source-file instead of argv (GLM token no longer visible in argv)
+- **CWE-345** — `moai update` checksum verification is mandatory (update refused on download failure)
 
-- **CWE-732 / CWE-552** — `.claude/settings.local.json` is now forced to mode `0o600` (owner-only read/write).
-- **CWE-214** — `moai cg` now injects tmux environment variables via source-file instead of argv, so GLM tokens are no longer visible in process listings.
-- **CWE-345** — `moai update` now performs mandatory checksum verification; download failure aborts the update.
-
-Each fix is locked by regression tests so future regressions are blocked.
+Each item is locked by regression tests, blocking future regressions.
 
 ## CWE-732 — settings.local.json Permission Hardening {#cwe-732}
 
-### What changed
+### What Changed
 
-`.claude/settings.local.json` is now created and updated with file mode **`0o600`** (owner-only read/write). Previously it was created with `0o644` (owner read/write + group/world read), which on multi-user workstations allowed other local users to read sensitive credentials including `ANTHROPIC_AUTH_TOKEN`.
+When `.claude/settings.local.json` is created or updated, its file permission is enforced to **`0o600`** (owner-only read/write). Previously it was created as `0o644` (owner read/write + group/world read), so on multi-user workstations other local users could read sensitive credentials such as `ANTHROPIC_AUTH_TOKEN`.
 
-### Threat model
+### Threat Model
 
-- **Attacker**: Low-privilege local user on the same host
-- **Attack surface**: Group/world read permission on `.claude/settings.local.json`
-- **Leaked data**: GLM API token (`ANTHROPIC_AUTH_TOKEN`), OAuth refresh token, other `settings.Env` values
+- **Attacker**: a low-privilege local user on the same host
+- **Attack surface**: the group/world read permission of `.claude/settings.local.json`
+- **Leaked information**: GLM API token (`ANTHROPIC_AUTH_TOKEN`), OAuth refresh token, other `settings.Env` values
 - **CWE mapping**: CWE-732 (Incorrect Permission Assignment for Critical Resource), CWE-552 (Files or Directories Accessible to External Parties)
 
-### Implementation location
+### Implementation Locations
 
-- `internal/hook/settings_io.go` — constant `secureSettingsMode os.FileMode = 0o600` + `writeSettingsSecure` helper
-- `internal/hook/session_start.go` — all `settings.local.json` writers (`ensureGLMCredentials`, `ensureClaudeEnvFile`)
+- `internal/hook/settings_io.go` — the `secureSettingsMode os.FileMode = 0o600` constant + the `writeSettingsSecure` helper
+- `internal/hook/session_start.go` — all `settings.local.json` writers, including `ensureGLMCredentials`, `ensureClaudeEnvFile`
 - `internal/hook/session_end.go` — GLM keys write-back path
 
-### Self-audit
+### Self-Audit
 
-Check the permission on your existing `settings.local.json`:
+Check the permission of your existing `settings.local.json`.
 
 ```bash
 # Linux
 stat -c '%a' .claude/settings.local.json
-# expect: 600
+# 기대값: 600
 
 # macOS
 stat -f '%A' .claude/settings.local.json
-# expect: 600
+# 기대값: 600
 ```
 
-If the permission shows `644` or anything looser, MoAI-ADK will auto-correct it to `0o600` on the next session start. To fix immediately:
+If the permission shows `644` or any looser value, MoAI-ADK automatically corrects it to `0o600` at the next session start. To correct it immediately:
 
 ```bash
 chmod 0600 .claude/settings.local.json
 ```
 
-### Trade-off
+### Impact (Trade-off)
 
-Workflows that expected the file to be `group-readable` (e.g., another OS user reading the same project directory — an extremely rare scenario) will break. This trade-off is intentional; the security recovery is the clear priority.
+Workflows that expect `group-readable` (the very rare scenario of a separate OS user reading the same project directory) may break. This trade-off is intentional; the security recovery is the clear priority.
 
-## CWE-214 — tmux IPC Token argv Exposure Mitigation {#cwe-214}
+## CWE-214 — Blocking tmux IPC Token argv Exposure {#cwe-214}
 
-### What changed
+### What Changed
 
-When `moai cg` (CG mode) injects the GLM token (`ANTHROPIC_AUTH_TOKEN`) into a tmux session environment, it now uses the **source-file channel** (`tmux source-file <tmp>`) instead of the **argv channel** (`tmux set-environment <KEY> <VALUE>`). The token is no longer visible in `ps auxe`, `/proc/<pid>/cmdline`, auditd logs, sysmon traces, or crash dumps.
+When `moai cg` (CG mode) injects the GLM token (`ANTHROPIC_AUTH_TOKEN`) into the tmux session environment, it uses the **source-file channel** (`tmux source-file <tmp>`) instead of the **argv channel** (`tmux set-environment <KEY> <VALUE>`). The token is no longer exposed in plaintext to `ps auxe`, `/proc/<pid>/cmdline`, auditd logs, sysmon traces, or crash dumps.
 
-### Implementation flow
+Since CG mode is the key savings mechanism of tokenomics (Claude leader + GLM workers, 60-70% savings), the security of its credential path is especially important.
 
-1. Create a temp file under `~/.moai/run/` via `mkstemp` (mode `0o600` by default + explicit `chmod 0o600`).
-2. Write a single line `set-environment -t <session> <KEY> <VALUE>` to the temp file.
-3. Invoke `tmux source-file <tmp>` so tmux reads the file and injects the variable.
-4. Immediately `os.Remove` the temp file.
+### Implementation Flow
 
-Only the temp file path is visible in argv. The token itself never appears in argv.
+1. A temp file is created under `~/.moai/run/` with `mkstemp` (mode `0o600` automatic + explicit `chmod 0o600`)
+2. A single `set-environment -t <session> <KEY> <VALUE>` line is written to the temp file
+3. `tmux source-file <tmp>` has tmux read that file and inject it into the environment
+4. Immediately after injection, the temp file is unlinked with `os.Remove`
 
-### Threat model
+Only the temp file path is exposed in argv; the token itself is not.
 
-- **Attacker**: Local user on the same host + system log collectors (`ps`, `/proc`, auditd, sysmon)
-- **Attack surface**: argv channel of tmux env injection
-- **Leaked data**: Momentary exposure of the GLM API token
+### Threat Model
+
+- **Attacker**: a local user on the same host + system log collection (`ps`, `/proc`, auditd, sysmon)
+- **Attack surface**: the argv channel of tmux env injection
+- **Leaked information**: momentary visibility of the GLM API token
 - **CWE mapping**: CWE-214 (Invocation of Process Using Visible Sensitive Information)
 
-### Implementation location
+### Implementation Locations
 
-- `internal/tmux/session.go` — `InjectSensitiveEnv` method, `sensitiveTempDir = ".moai/run"`, `mkstemp` + `chmod 0o600` + `tmux source-file` + `os.Remove`
-- `internal/tmux/errors.go` — `ErrTmuxSensitiveInjectFailed` sentinel
-- `internal/hook/glm_tmux.go` — `ensureTmuxGLMEnv` branches `ANTHROPIC_AUTH_TOKEN` to the sensitive path; non-sensitive values (URL, model names, etc.) keep the argv path.
+- `internal/tmux/session.go` — the `InjectSensitiveEnv` method, `sensitiveTempDir = ".moai/run"`, `mkstemp` + `chmod 0o600` + `tmux source-file` + `os.Remove`
+- `internal/tmux/errors.go` — the `ErrTmuxSensitiveInjectFailed` sentinel
+- `internal/hook/glm_tmux.go` — in `ensureTmuxGLMEnv`, only `ANTHROPIC_AUTH_TOKEN` branches to the sensitive path (other non-sensitive values such as URLs and model names keep the existing argv path)
 
-### Non-sensitive values keep argv
+### Non-sensitive Values Stay on argv
 
-`CLAUDE_CONFIG_DIR` (directory path), `ANTHROPIC_BASE_URL` (URL), `ANTHROPIC_DEFAULT_*_MODEL` (model names), and similar non-token values keep using the argv path. This is intentional and unrelated to the token leak risk.
+Values that are not tokens — `CLAUDE_CONFIG_DIR` (a directory path), `ANTHROPIC_BASE_URL` (a URL), `ANTHROPIC_DEFAULT_*_MODEL` (model names) — keep the argv path. This is explicit intent and unrelated to token leakage risk.
 
-### Failure behavior
+### Behavior on Failure
 
-If the source-file injection fails (disk full, `tmux source-file` failure, etc.), the implementation **does not fall back to argv** — it returns the `ErrTmuxSensitiveInjectFailed` sentinel and aborts the injection.
+If the source-file injection fails (disk full, tmux source-file failure, etc.), it does **not fall back to argv and leak** — it returns the `ErrTmuxSensitiveInjectFailed` sentinel error and aborts the injection itself. Not falling back to convenience on failure is the heart of this design.
 
-### Self-audit
+### Self-Audit
 
-Verify the token is not exposed in argv while CG mode is running:
+Check whether the token is exposed in argv while CG mode is running.
 
 ```bash
-# Inside a new tmux session after running moai cg
+# moai cg 실행 후 새 tmux 세션 내에서
 ps auxe | grep -i 'tmux set-environment.*ANTHROPIC_AUTH_TOKEN'
-# expect: 0 matches (token absent from argv)
+# 기대값: 0 matches (token 이 argv 에 없음)
 ```
 
-Verify the temp files are unlinked correctly:
+Check that the temp file is properly unlinked.
 
 ```bash
 ls -la ~/.moai/run/ 2>/dev/null
-# expect: empty directory or no stale files
+# 기대값: 빈 디렉터리 또는 stale 파일 없음
 ```
 
-If stale files remain in `~/.moai/run/` after a session ends, you may remove them manually — they are no longer a security risk (they were already targeted for unlink).
+If residual files remain in `~/.moai/run/` after session end, they can be removed manually (not a security threat — the files were already subject to an unlink attempt).
 
-### User responsibility
+### User Responsibility
 
-The `~/.moai/.env.glm` source file must retain `0o600` permission. `moai glm` sets this automatically:
+The `~/.moai/.env.glm` source file must keep `0o600` permission in your environment. The `moai glm` command sets this automatically.
 
 ```bash
 stat -c '%a' ~/.moai/.env.glm    # Linux: 600
 stat -f '%A' ~/.moai/.env.glm    # macOS: 600
 ```
 
-See: [CG Mode](/en/multi-llm/cg-mode/)
+Details: [CG Mode](/en/multi-llm/cg-mode/)
 
-## CWE-345 — Update Flow Mandatory Checksum Verification {#cwe-345}
+## CWE-345 — Mandatory Checksum Verification in the Update Flow {#cwe-345}
 
-### What changed
+### What Changed
 
-The `moai update` automatic update flow **cannot bypass checksum verification**. If the release's `checksums.txt` download fails or parsing fails, the system returns the sentinel error `ErrChecksumUnavailable` and **aborts** the update — no binary download is attempted.
+The `moai update` auto-update flow **cannot bypass checksum verification**. If downloading or parsing the release's `checksums.txt` fails, it returns the sentinel error `ErrChecksumUnavailable` and **aborts** the update flow — the binary download is not attempted.
 
-### Retry policy
+### Retry Policy
 
-`checksums.txt` downloads are retried **3 times** with exponential backoff:
+The `checksums.txt` download is retried **3 times** with exponential backoff.
 
 | Attempt | Wait time |
-|---------|-----------|
+|------|-----------|
 | 1st (immediate) | 0s |
-| 2nd retry | 2s |
-| 3rd retry | 4s |
-| no further retry | total wait ~6s before failure |
+| 2nd retry | 2s wait |
+| 3rd retry | 4s wait |
+| No further retries | Fails after ~6s total wait |
 
 (Internal implementation: base delay 2s × 2^(attempt-1) exponential backoff)
 
-If all retries fail, the update aborts with the `ErrChecksumUnavailable` sentinel. **No `--skip-checksum` opt-out exists.**
+If all retries fail, it terminates with the `ErrChecksumUnavailable` sentinel. **No bypass option such as `--skip-checksum` exists**.
 
 ### Defense-in-depth
 
-If `version.Checksum` arrives at `downloadAndVerify` as an empty string, the binary download is rejected and `ErrChecksumUnavailable` is returned. Two layers of protection (checker stage + updater stage) block silent bypass.
+If `downloadAndVerify` is reached with the `version.Checksum` field as an empty string, the binary download does not proceed and `ErrChecksumUnavailable` is returned. Dual protection (checker stage + updater stage) blocks silent bypass.
 
-### Threat model
+### Threat Model
 
-- **Attacker**: Network MITM (cannot block everything but can selectively block/throttle the `checksums.txt` URL)
-- **Attack surface**: Silent fallback that installed binaries without checksums.txt
-- **Outcome**: Silent installation of an unsigned backdoor binary
+- **Attacker**: a network MITM (cannot block everything, but can selectively block/throttle just the `checksums.txt` URL)
+- **Attack surface**: the silent fallback that used to install the binary even without checksums.txt
+- **Consequence**: unwarned installation of an unsigned backdoored binary
 - **CWE mapping**: CWE-345 (Insufficient Verification of Data Authenticity)
 
-### Implementation location
+### Implementation Locations
 
-- `internal/update/checker.go` — `downloadChecksumWithRetry(checksumsURL, archiveName, maxAttempts, baseDelay)` (`defaultChecksumMaxAttempts=3`, `defaultChecksumBaseDelay=2*time.Second`), `ErrChecksumUnavailable` sentinel
-- `internal/update/updater.go` — `downloadAndVerify` empty-checksum guard
-- Domain whitelist (`https://github.com/modu-ai/moai-adk/...`) is preserved unchanged (no SSRF surface change)
+- `internal/update/checker.go` — `downloadChecksumWithRetry(checksumsURL, archiveName, maxAttempts, baseDelay)` (`defaultChecksumMaxAttempts=3`, `defaultChecksumBaseDelay=2*time.Second`), the `ErrChecksumUnavailable` sentinel
+- `internal/update/updater.go` — the `downloadAndVerify` empty-checksum guard
+- The domain whitelist (`https://github.com/modu-ai/moai-adk/...`) is preserved as-is (no change to the SSRF surface)
 
-### Self-audit
+### Self-Audit
 
 ```bash
-# Verify release info + checksums.txt is reachable
+# release 정보 + checksums.txt 존재 확인
 moai update --check-only
 
-# Happy path (success case)
+# 정상 흐름 (성공 시)
 moai update
-# example output: Downloaded checksums.txt (verified)
+# 출력 예: Downloaded checksums.txt (verified)
 
-# Intentional failure case (e.g., after VPN disconnection)
+# checksums.txt 다운로드 실패 시 (의도적 차단 예: VPN 단절 후 실행)
 moai update
-# example output: error: checksum unavailable: persistent retry failure after 3 attempts
+# 출력 예: error: checksum unavailable: persistent retry failure after 3 attempts
 ```
 
-If you see an `ErrChecksumUnavailable` message:
+If the `ErrChecksumUnavailable` message appears, check the following.
 
-1. Check network connectivity (`curl -I https://github.com/modu-ai/moai-adk/releases/latest`)
-2. Verify your proxy/firewall allows the GitHub release-asset domain
-3. Consider transient GitHub CDN issues — retry after a short wait
-4. **No `--skip-checksum` opt-out is provided** — this is intentional policy
+1. Verify network connectivity (`curl -I https://github.com/modu-ai/moai-adk/releases/latest`)
+2. Verify your proxy / firewall allows the GitHub release asset domain
+3. Possible transient GitHub CDN outage — retry shortly
+4. **No bypass option such as `--skip-checksum` is provided** — this is intentional policy
 
-For persistent blocks, manual binary installation is recommended:
+For persistent blockage, manual binary installation is recommended.
 
 ```bash
-# Manual installation (you verify integrity yourself)
+# 수동 설치 (사용자가 직접 무결성 검증)
 curl -fsSL https://raw.githubusercontent.com/modu-ai/moai-adk/main/install.sh | bash
 ```
 
-See: [Update](/en/getting-started/update/)
+Details: [Updating](/en/getting-started/update/)
 
 ## Self-Audit Checklist
 
+All five items can be checked at once.
+
 ```bash
-# 1. CWE-732 — settings.local.json permission
+# 1. CWE-732 — settings.local.json 권한
 stat -c '%a' .claude/settings.local.json 2>/dev/null \
   || stat -f '%A' .claude/settings.local.json 2>/dev/null
-# expect: 600
+# 기대값: 600
 
-# 2. CWE-214 — token argv exposure while CG mode is active
+# 2. CWE-214 — CG 모드 실행 중 token argv 노출 (cg 모드 활성 상태에서)
 ps auxe 2>/dev/null | grep -i 'tmux set-environment.*ANTHROPIC_AUTH_TOKEN'
-# expect: 0 matches
+# 기대값: 0 matches
 
-# 3. CWE-214 — tmux sensitive temp directory integrity
+# 3. CWE-214 — tmux sensitive temp 디렉터리 정합성
 ls -la ~/.moai/run/ 2>/dev/null
-# expect: empty directory or no stale files
+# 기대값: 빈 디렉터리 또는 stale 파일 없음
 
-# 4. CWE-345 — Update flow checksum behavior
+# 4. CWE-345 — Update flow checksum 동작
 moai update --check-only
-# expect: release + checksums.txt confirmed
+# 기대값: release + checksums.txt 정상 확인
 
-# 5. GLM source file permission (user responsibility)
+# 5. GLM source 파일 권한 (사용자 책임)
 stat -c '%a' ~/.moai/.env.glm 2>/dev/null \
   || stat -f '%A' ~/.moai/.env.glm 2>/dev/null
-# expect: 600 (if the file exists)
+# 기대값: 600 (해당 파일이 존재하는 경우)
 ```
 
-If all five checks meet expectations, the v2.20.0-rc1 security hardening is operating correctly.
+If all 5 items meet the expected values, the v2.20.0-rc1 security hardening is functioning correctly.
 
 ## References
 
@@ -253,8 +255,8 @@ If all five checks meet expectations, the v2.20.0-rc1 security hardening is oper
 - [CWE-214](https://cwe.mitre.org/data/definitions/214.html) — Invocation of Process Using Visible Sensitive Information
 - [CWE-345](https://cwe.mitre.org/data/definitions/345.html) — Insufficient Verification of Data Authenticity
 
-### Related pages
+### Related Pages
 
-- [settings.json Guide](/en/advanced/settings-json/) — `settings.local.json` permission section
-- [Update](/en/getting-started/update/) — checksum verification section
-- [CG Mode](/en/multi-llm/cg-mode/) — tmux environment variable injection security model
+- [settings.json Guide](/en/advanced/settings-json/) — the `settings.local.json` permissions section
+- [Updating](/en/getting-started/update/) — the checksum verification section
+- [CG Mode](/en/multi-llm/cg-mode/) — the tmux environment-variable injection security model

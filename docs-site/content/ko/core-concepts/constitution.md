@@ -4,13 +4,13 @@ weight: 35
 draft: false
 ---
 
-MoAI-ADK의 불변 규칙(FROZEN)과 진화 가능한 규칙(Evolvable)을 관리하는 헌법적 제약 시스템입니다.
+MoAI-ADK의 불변 규칙 (FROZEN) 과 진화 가능한 규칙 (Evolvable) 을 관리하는 헌법적 제약 시스템입니다.
 
 ## 개요
 
-MoAI-ADK는 **Constitution(헌법)** 시스템을 통해 AI 에이전트가 임의로 변경할 수 없는
-불변 제약(FROZEN Zone)과 학습을 통해 개선할 수 있는 진화 가능 제약(Evolvable Zone)을
-구분합니다. 이는 하네스 엔지니어링의 핵심 안전 메커니즘입니다.
+[하네스 엔지니어링](/ko/core-concepts/harness-engineering)에서 보았듯, MoAI-ADK의 하네스는 루프가 축적한 관찰로 스스로 지침을 진화시킵니다. 그렇다면 무엇이 그 진화를 통제할까요? 답이 **Constitution (헌법)** 시스템입니다.
+
+Constitution은 AI 에이전트가 임의로 변경할 수 없는 불변 제약 (FROZEN Zone) 과 학습을 통해 개선할 수 있는 진화 가능 제약 (Evolvable Zone) 을 구분합니다. 평가 기준과 안전 규칙을 진화 루프의 **밖**에 두는 것 — 이것이 자가 진화 하네스가 폭주하지 않는 이유이자, 하네스 엔지니어링의 핵심 안전 메커니즘입니다.
 
 ## FROZEN vs Evolvable
 
@@ -74,7 +74,7 @@ FROZEN 조항은 `canary_gate: true`를 가집니다. 변경 전 canary 검증�
 
 ## 안전 아키텍처 (5계층)
 
-Constitution 시스템은 5계층 안전 아키텍처로 보호됩니다:
+Constitution 시스템은 5계층 안전 아키텍처로 보호됩니다. 하네스가 아무리 학습을 쌓아도, 변경은 아래 다섯 관문을 차례로 통과해야 합니다:
 
 ### Layer 1: Frozen Guard
 

@@ -4,21 +4,31 @@ weight: 90
 draft: false
 ---
 
-Git Worktree is a core feature in MoAI-ADK for parallel development. It provides complete isolation by allowing each SPEC to be developed in an independent environment.
+Git Worktree is the foundation of MoAI-ADK parallel development. It gives every
+SPEC a fully independent workspace, so you can run different Git states and
+different LLM configurations at the same time.
 
-## Why Do We Need Worktree?
+Seen through **Tokenomics** (Token Economics) — the core value of MoAI-ADK
+v3.0 — Worktree is the mechanism that actually delivers "plan deep, implement
+cheap". You use a high-reasoning Claude model in the planning terminal and a
+low-cost GLM in the implementation terminals — assigning the right model to
+each work phase is impossible without Worktree isolation.
 
-### Problem: Shared LLM Settings
+## Why do you need Worktree?
 
-In traditional MoAI-ADK, when you use `moai glm` or `moai cc` to change the LLM, **the same LLM is applied to all open sessions**. This causes the following issues:
+### Problem: LLM configuration is shared across sessions
 
-- **SPEC Interference**: LLM settings affect each other when developing different SPECs
-- **No Parallel Development**: Cannot develop multiple SPECs simultaneously
-- **Cost Inefficiency**: Must use expensive Opus in all sessions
+Without Worktree, switching the LLM backend with `moai glm` or `moai cc`
+applies **the same configuration to every open session** of the project. As a
+result:
 
-### Solution: Complete Isolation
+- **Cross-SPEC interference** — an LLM change made for one SPEC affects work on other SPECs
+- **No parallel development** — you cannot run multiple SPECs under different conditions at the same time
+- **Wasted tokens** — even simple implementation work runs on the expensive model
 
-With Git Worktree, each SPEC maintains **completely independent Git state and LLM settings**:
+### Solution: complete isolation
+
+With Git Worktree, each SPEC gets **its own Git state and LLM configuration**:
 
 ```mermaid
 graph TB
@@ -26,28 +36,28 @@ graph TB
     A --> C[Worktree 2<br/>SPEC-AUTH-002<br/>GLM 5]
     A --> D[Worktree 3<br/>SPEC-AUTH-003<br/>Claude Sonnet]
 
-    B --> E[Independent Work]
-    C --> F[Independent Work]
-    D --> G[Independent Work]
+    B --> E[Independent work]
+    C --> F[Independent work]
+    D --> G[Independent work]
 ```
 
-## Core Workflow
+## Core workflow
 
-### 3-Step Development Process
+### 3-phase development process
 
-MoAI-ADK development with Git Worktree consists of 3 steps:
+MoAI-ADK development with Worktree flows through three phases:
 
 ```mermaid
 flowchart TD
     subgraph Phase1["Phase 1: Plan (Terminal 1)"]
-        A1[/moai plan<br/>feature description<br/>--worktree/] --> A2[SPEC Document Created]
-        A2 --> A3[Worktree Auto Created]
-        A3 --> A4[Feature Branch Created]
+        A1[/moai plan<br/>feature description<br/>--worktree/] --> A2[SPEC document created]
+        A2 --> A3[Worktree auto-created]
+        A3 --> A4[Feature branch created]
     end
 
     subgraph Phase2["Phase 2: Implement (Terminals 2, 3, 4...)"]
         B1[moai worktree go SPEC-ID] --> B2[Enter Worktree]
-        B2 --> B3[moai glm<br/>Change LLM]
+        B2 --> B3[moai glm<br/>switch LLM]
         B3 --> B4[/moai run SPEC-ID]
         B4 --> B5[/moai sync SPEC-ID]
     end
@@ -62,11 +72,12 @@ flowchart TD
     Phase2 --> Phase3
 ```
 
-### Step-by-Step Details
+### Phase-by-phase details
 
-#### Step 1: Plan (Terminal 1)
+#### Phase 1: Plan (Terminal 1)
 
-Generate a SPEC document using Claude 4.5 Opus:
+Reasoning quality decides the outcome of the planning phase, so the SPEC
+document is authored with a Claude (Opus-class) model:
 
 ```bash
 > /moai plan "Add authentication system" --worktree
@@ -74,25 +85,26 @@ Generate a SPEC document using Claude 4.5 Opus:
 
 **What happens**:
 
-- Automatic creation of SPEC document in EARS format
-- Automatic creation of Worktree for that SPEC
-- Automatic creation and checkout of feature branch
+- SPEC document auto-generated in EARS format
+- A dedicated Worktree auto-created for the SPEC
+- Feature branch auto-created and checked out
 
-**Results**:
+**Outputs**:
 
 - `.moai/specs/SPEC-AUTH-001/spec.md`
-- New Worktree directory
-- `feature/SPEC-AUTH-001` branch
+- A new Worktree directory
+- The `feature/SPEC-AUTH-001` branch
 
-#### Step 2: Implement (Terminals 2, 3, 4...)
+#### Phase 2: Implement (Terminals 2, 3, 4...)
 
-Implement using GLM 5 or other cost-effective models:
+The implementation phase is high-volume, but the SPEC has already set the
+direction — so a cost-efficient model like GLM does the job well:
 
 ```bash
-# Enter Worktree (new terminal)
+# Enter the Worktree (new terminal)
 $ moai worktree go SPEC-AUTH-001
 
-# Change LLM
+# Switch LLM
 $ moai glm
 
 # Start development
@@ -101,70 +113,72 @@ $ claude
 > /moai sync SPEC-AUTH-001
 ```
 
-**Benefits**:
+**Advantages**:
 
 - Completely isolated working environment
-- GLM cost efficiency (70% savings vs Opus)
+- GLM cost efficiency (roughly 70% savings versus Opus)
 - Unlimited parallel development without conflicts
 
-#### Step 3: Merge & Cleanup
+#### Phase 3: Merge & Cleanup
 
 ```bash
 moai worktree done SPEC-AUTH-001              # main → merge → cleanup
 moai worktree done SPEC-AUTH-001 --push       # above + push to remote
 ```
 
-## Worktree Command Reference
+## Worktree command reference
 
-| Command                   | Description                       | Example                          |
+| Command                  | Description                | Example                        |
 | ------------------------ | -------------------------- | ------------------------------ |
-| `moai worktree new SPEC-ID`    | Create new Worktree           | `moai worktree new SPEC-AUTH-001`    |
-| `moai worktree go SPEC-ID`     | Enter Worktree (open new shell) | `moai worktree go SPEC-AUTH-001`     |
-| `moai worktree list`           | List Worktrees         | `moai worktree list`                 |
-| `moai worktree done SPEC-ID`   | Merge and cleanup               | `moai worktree done SPEC-AUTH-001`   |
-| `moai worktree remove SPEC-ID` | Remove Worktree              | `moai worktree remove SPEC-AUTH-001` |
-| `moai worktree status`         | Check Worktree status         | `moai worktree status`               |
-| `moai worktree clean`          | Cleanup merged Worktrees       | `moai worktree clean --merged-only`  |
-| `moai worktree config`         | Check Worktree settings         | `moai worktree config root`          |
+| `moai worktree new SPEC-ID`    | Create a new Worktree      | `moai worktree new SPEC-AUTH-001`    |
+| `moai worktree go SPEC-ID`     | Enter a Worktree (opens a new shell) | `moai worktree go SPEC-AUTH-001`     |
+| `moai worktree list`           | List Worktrees             | `moai worktree list`                 |
+| `moai worktree done SPEC-ID`   | Merge and clean up         | `moai worktree done SPEC-AUTH-001`   |
+| `moai worktree remove SPEC-ID` | Remove a Worktree          | `moai worktree remove SPEC-AUTH-001` |
+| `moai worktree status`         | Check Worktree status      | `moai worktree status`               |
+| `moai worktree clean`          | Clean up merged Worktrees  | `moai worktree clean --merged-only`  |
+| `moai worktree config`         | Inspect Worktree config    | `moai worktree config root`          |
 
-## Key Benefits of Worktree
+## Key advantages of Worktree
 
 ### 1. Complete Isolation
 
-Each SPEC maintains independent Git state:
+Each SPEC keeps an independent Git state:
 
 ```mermaid
 graph TB
     subgraph Main["Main Repository (main)"]
         M1[.moai/specs/]
-        M2[Sync with remote]
+        M2[Synced with remote]
     end
 
     subgraph WT1["Worktree 1 (SPEC-AUTH-001)"]
         W1A[feature/SPEC-AUTH-001]
-        W1B[Independent work directory]
-        W1C[Separate .moai/ config]
+        W1B[Independent working directory]
+        W1C[Separate .moai/ configuration]
     end
 
     subgraph WT2["Worktree 2 (SPEC-AUTH-002)"]
         W2A[feature/SPEC-AUTH-002]
-        W2B[Independent work directory]
-        W2C[Separate .moai/ config]
+        W2B[Independent working directory]
+        W2C[Separate .moai/ configuration]
     end
 
     Main -.-> WT1
     Main -.-> WT2
 ```
 
-**Benefits**:
+**Advantages**:
 
-- Can commit independently in each Worktree
-- Work without branch conflicts
-- Only completed SPECs are merged to main
+- Commit independently in each Worktree
+- Work without cross-branch conflicts
+- Only completed SPECs are merged into main
 
 ### 2. LLM Independence
 
-Each Worktree maintains separate LLM settings:
+Each Worktree keeps its own LLM execution mode. Three terminals can run
+differently — `moai cc` (Claude only), `moai glm` (GLM only), and `moai cg`
+(Claude leader + GLM worker hybrid) — without interfering with each other:
 
 ```mermaid
 sequenceDiagram
@@ -173,58 +187,58 @@ sequenceDiagram
     participant T3 as Terminal 3<br/>Worktree 3
     participant Main as Main Repository
 
-    T1->>T1: moai cc (Opus)
-    Note over T1: Plan with<br/>high-cost model
+    T1->>T1: moai cc (Claude)
+    Note over T1: Planning with a<br/>high-reasoning model
 
     T2->>T2: moai glm
-    Note over T2: Implement with<br/>low-cost model
+    Note over T2: Implementing with a<br/>low-cost model
 
-    T3->>T3: moai sonnet
-    Note over T3: Refactor with<br/>medium-cost model
+    T3->>T3: moai cg
+    Note over T3: Hybrid balancing<br/>quality and cost
 
-    par Parallel Work
+    par Parallel work
         T1->>Main: Plan work
         T2->>Main: Implement work
-        T3->>Main: Refactor work
+        T3->>Main: Implement work
     end
 
-    Main-->>T1: Only merge completed SPECs
-    Main-->>T2: Only merge completed SPECs
-    Main-->>T3: Only merge completed SPECs
+    Main-->>T1: Only completed SPECs merged
+    Main-->>T2: Only completed SPECs merged
+    Main-->>T3: Only completed SPECs merged
 ```
 
-### 3. Unlimited Parallel Development
+### 3. Unlimited Parallel
 
-Can develop multiple SPECs simultaneously:
+You can run multiple SPECs at the same time:
 
 ```bash
-# Terminal 1: Plan SPEC-AUTH-001
-> /moai plan "authentication system" --worktree
+# Terminal 1: plan SPEC-AUTH-001
+> /moai plan "Authentication system" --worktree
 
-# Terminal 2: Implement SPEC-AUTH-002 (GLM)
+# Terminal 2: implement SPEC-AUTH-002 (GLM)
 $ moai worktree go SPEC-AUTH-002
 $ moai glm
 > /moai run SPEC-AUTH-002
 
-# Terminal 3: Implement SPEC-AUTH-003 (GLM)
+# Terminal 3: implement SPEC-AUTH-003 (GLM)
 $ moai worktree go SPEC-AUTH-003
 $ moai glm
 > /moai run SPEC-AUTH-003
 
-# Terminal 4: Document SPEC-AUTH-004
+# Terminal 4: document SPEC-AUTH-004
 $ moai worktree go SPEC-AUTH-004
 > /moai sync SPEC-AUTH-004
 ```
 
 ### 4. Safe Merge
 
-Only completed SPECs are merged to main branch:
+Only completed SPECs are merged into the main branch:
 
 ```mermaid
 flowchart TB
-    subgraph Development["Worktrees in Development"]
-        D1[SPEC-AUTH-001<br/>In Progress]
-        D2[SPEC-AUTH-002<br/>In Progress]
+    subgraph Development["Worktrees in development"]
+        D1[SPEC-AUTH-001<br/>In progress]
+        D2[SPEC-AUTH-002<br/>In progress]
         D3[SPEC-AUTH-003<br/>Completed]
     end
 
@@ -233,38 +247,39 @@ flowchart TB
     end
 
     D3 -->|moai worktree done| M
-    D1 -.->|Not yet completed| M
-    D2 -.->|Not yet completed| M
+    D1 -.->|Not yet complete| M
+    D2 -.->|Not yet complete| M
 ```
 
-## Parallel Development Visualization
+## Parallel development visualized
 
-Working simultaneously in multiple terminals:
+This is what working across multiple terminals looks like. Assigning a
+different model to each phase is the heart of Tokenomics:
 
 ```mermaid
 graph TB
     subgraph Terminal1["Terminal 1: Planning"]
         T1A[/moai plan<br/>--worktree/]
-        T1B[Claude Opus<br/>High cost/High quality]
-        T1C[SPEC Document Created]
+        T1B[Claude Opus<br/>high cost / high quality]
+        T1C[SPEC document created]
     end
 
     subgraph Terminal2["Terminal 2: Implementing"]
         T2A[moai worktree go<br/>SPEC-AUTH-001]
-        T2B[moai glm<br/>Low cost]
-        T2C[/moai run<br/>DDD Implementation]
+        T2B[moai glm<br/>low cost]
+        T2C[/moai run<br/>DDD implementation]
     end
 
     subgraph Terminal3["Terminal 3: Implementing"]
         T3A[moai worktree go<br/>SPEC-AUTH-002]
-        T3B[moai glm<br/>Low cost]
-        T3C[/moai run<br/>DDD Implementation]
+        T3B[moai glm<br/>low cost]
+        T3C[/moai run<br/>DDD implementation]
     end
 
     subgraph Terminal4["Terminal 4: Documenting"]
         T4A[moai worktree go<br/>SPEC-AUTH-003]
-        T4B[moai sonnet<br/>Medium cost]
-        T4C[/moai sync<br/>Documentation]
+        T4B[moai cc<br/>Claude]
+        T4C[/moai sync<br/>documentation]
     end
 
     T1C --> T2A
@@ -272,14 +287,14 @@ graph TB
     T1C --> T4A
 ```
 
-## Next Steps
+## Next steps
 
-- **[Complete Guide](/worktree/faq)** - All Git Worktree commands and detailed usage
-- **[Real Examples](/worktree/faq)** - Real-world usage examples
-- **[FAQ](/worktree/faq)** - Frequently asked questions and troubleshooting
+- **[Complete Guide](/en/worktree/guide)** — every Worktree command and detailed usage
+- **[Real-World Examples](/en/worktree/examples)** — usage scenarios from real projects
+- **[FAQ](/en/worktree/faq)** — frequently asked questions and troubleshooting
 
-## Related Documents
+## Related documentation
 
 - [MoAI-ADK Documentation](https://adk.mo.ai.kr)
-- [SPEC System](/core-concepts/spec-based-dev/)
-- [DDD Workflow](/core-concepts/ddd/)
+- [SPEC System](/en/core-concepts/spec-based-dev/)
+- [DDD Workflow](/en/core-concepts/ddd/)

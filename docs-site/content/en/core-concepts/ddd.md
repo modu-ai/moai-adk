@@ -1,106 +1,108 @@
 ---
 title: Development Methodology (DDD/TDD)
-weight: 40
+weight: 50
 draft: false
 ---
 
-A detailed guide to MoAI-ADK's development methodology. Choose either TDD or DDD
-depending on your project's state.
+A detailed guide to MoAI-ADK's development methodologies. This is the discipline the agent
+follows when implementing code in the Run phase, choosing TDD or DDD according to the project's
+state. When the methodology is clear, the agent does not wander — the tests become the completion
+condition, the loop converges on its own, and no tokens are wasted on unnecessary retries.
 
 {{< callout type="info" >}}
-  **One-line summary:** New projects use **TDD** (RED-GREEN-REFACTOR), while
-  existing projects with little to no tests use **DDD** (ANALYZE-PRESERVE-IMPROVE).
-  You can also manually select the methodology in `quality.yaml`.
+  **One-line summary:** New projects use **TDD** (RED-GREEN-REFACTOR); existing projects with
+  almost no tests use **DDD** (ANALYZE-PRESERVE-IMPROVE).
+  You can also choose directly in `quality.yaml`.
 {{< /callout >}}
 
 ## Methodology Overview
 
-MoAI-ADK automatically selects the optimal development methodology based on your project's state.
+MoAI-ADK automatically selects the optimal development methodology based on the project's state.
 
 ```mermaid
 flowchart TD
-    A["Project Analysis"] --> B{"New Project?"}
+    A["Project analysis"] --> B{"New project?"}
     B -->|"Yes"| C["TDD\nRED-GREEN-REFACTOR"]
-    B -->|"No"| D{"Test Coverage?"}
-    D -->|"10% or above"| C
-    D -->|"Below 10%"| E["DDD\nANALYZE-PRESERVE-IMPROVE"]
+    B -->|"No"| D{"Test coverage?"}
+    D -->|"10% or more"| C
+    D -->|"Under 10%"| E["DDD\nANALYZE-PRESERVE-IMPROVE"]
 
     style C fill:#4CAF50,color:#fff
     style E fill:#2196F3,color:#fff
 ```
 
-| Project Type                              | Methodology | Cycle                     | Description                                      |
-| ----------------------------------------- | ----------- | ------------------------- | ------------------------------------------------ |
-| **New Project**                           | **TDD**     | RED-GREEN-REFACTOR        | Write tests first, then implement                |
-| **Existing Project** (Coverage >= 10%)    | **TDD**     | RED-GREEN-REFACTOR        | Extend TDD on partial test base                  |
-| **Existing Project** (Coverage < 10%)     | **DDD**     | ANALYZE-PRESERVE-IMPROVE  | Safe incremental improvement with characterization tests |
+| Project type                      | Methodology  | Cycle                    | Description                                     |
+| ---------------------------------- | ------- | ------------------------- | ---------------------------------------- |
+| **New project**                  | **TDD** | RED-GREEN-REFACTOR        | Write tests first, then implement              |
+| **Existing project** (coverage ≥ 10%) | **TDD** | RED-GREEN-REFACTOR        | Extend TDD on the partial test base          |
+| **Existing project** (coverage < 10%) | **DDD** | ANALYZE-PRESERVE-IMPROVE  | Safe incremental improvement with characterization tests       |
 
 {{< callout type="info" >}}
-  **You can choose the methodology manually:** Set `development_mode` to `tdd` or
-  `ddd` in `.moai/config/sections/quality.yaml` to override the automatic selection
-  and use your preferred methodology.
+  **You can choose the methodology yourself:** setting `development_mode` to `tdd` or `ddd` in
+  `.moai/config/sections/quality.yaml` overrides the automatic selection and uses the
+  methodology you want.
 {{< /callout >}}
 
 ## What is TDD?
 
-**TDD** (Test-Driven Development) is a development methodology where you **write
-tests first, then implement the minimal code to pass those tests**. It is
-MoAI-ADK's default methodology and is used for most projects.
+**TDD** (Test-Driven Development) is a development methodology where you **write the tests first,
+then implement the minimum code that passes those tests**. It is MoAI-ADK's default methodology,
+used in most projects.
 
-### RED-GREEN-REFACTOR Cycle
+### The RED-GREEN-REFACTOR Cycle
 
-TDD proceeds as a cycle that repeats three phases.
+TDD proceeds as a cycle repeating three phases.
 
 ```mermaid
 flowchart TD
     A["RED\nWrite a failing test"] --> B["GREEN\nPass the test with minimal code"]
-    B --> C["REFACTOR\nImprove code quality\nKeep tests passing"]
+    B --> C["REFACTOR\nImprove code quality\nTests keep passing"]
     C --> D{"All requirements\nimplemented?"}
     D -->|"No"| A
     D -->|"Yes"| E["Verify 85%+ test coverage"]
 ```
 
-### Step 1: RED (Write a Failing Test)
+### Phase 1: RED (Write a Failing Test)
 
-Write a **test first** for the feature you want to implement. Since no code exists
-yet, the test must fail.
+Write the **tests first** for the feature you will implement. Since the code does not exist yet,
+the tests must fail.
 
-**Key principles:**
+**Core principles:**
 
 - Write only one test at a time
-- Clearly describe the intended behavior using Given-When-Then
-- Confirm the test fails (if it doesn't fail, the test is meaningless)
+- Describe the intended behavior clearly with Given-When-Then
+- Confirm the test fails (a test that does not fail is meaningless)
 
-### Step 2: GREEN (Pass the Test with Minimal Code)
+### Phase 2: GREEN (Pass the Test with Minimal Code)
 
-Write the **simplest code** that makes the test pass.
+Write the **simplest code** that passes the test.
 
-**Key principles:**
+**Core principles:**
 
-- Do not optimize or abstract prematurely
-- Focus on correctness, elegance comes later
-- Stop once the test passes
+- No premature optimization or abstraction
+- Focus on correctness; elegance comes later
+- Stop when the test passes
 
-### Step 3: REFACTOR (Improve Code Quality)
+### Phase 3: REFACTOR (Improve Code Quality)
 
-Clean up the code while keeping all tests passing.
+Clean up the code while keeping the tests passing.
 
-**Key principles:**
+**Core principles:**
 
-- Remove duplicate code
+- Remove duplicated code
 - Improve variable and function names
 - Apply SOLID principles
-- Tests must continue to pass
+- The tests must keep passing
 
-### TDD Practical Example
+### A TDD Example in Practice
 
 ```python
-# RED: Write a failing test first
+# RED: write the failing test first
 def test_user_registration():
     """
-    GIVEN: Valid user information exists
-    WHEN: User registers
-    THEN: User is created and a welcome email is sent
+    GIVEN: valid user information exists, and
+    WHEN: the user registers,
+    THEN: the user is created and a welcome email is sent
     """
     user_service = UserService()
     result = user_service.register(
@@ -112,12 +114,12 @@ def test_user_registration():
     assert result.user.id is not None
     assert email_service.welcome_email_sent("newuser@example.com") is True
 
-# Run test (expected to fail - not implemented yet)
+# Run the tests (expected to fail - not implemented yet)
 # > pytest test_user_service.py - test_user_registration FAILED
 
 # ====================================
 
-# GREEN: Pass the test with minimal code
+# GREEN: pass the test with minimal code
 class UserService:
     def register(self, email: str, password: str) -> RegistrationResult:
         user = User.create(email, password)
@@ -125,12 +127,12 @@ class UserService:
         email_service.send_welcome(email)
         return RegistrationResult.success(user)
 
-# Run test (passes)
+# Run the tests (passing)
 # > pytest test_user_service.py - test_user_registration PASSED
 
 # ====================================
 
-# REFACTOR: Improve code quality (tests keep passing)
+# REFACTOR: improve code quality (tests keep passing)
 class UserService:
     def __init__(
         self,
@@ -151,83 +153,83 @@ class UserService:
         self.email_service.send_welcome(email)
         return RegistrationResult.success(user)
 
-# Run test (still passes)
+# Run the tests (still passing)
 # > pytest test_user_service.py - test_user_registration PASSED
 ```
 
-### TDD on Existing Projects (Brownfield Enhancement)
+### TDD in Existing Projects (Brownfield Enhancement)
 
-When using TDD on a project with existing code, a **Pre-RED step** is added:
+When using TDD in a project with existing code, a **Pre-RED phase** is added:
 
 1. **(Pre-RED)** Read the existing code in the target area and understand its current behavior
-2. **RED:** Write a failing test informed by your understanding of the existing code
-3. **GREEN:** Pass the test with minimal code
-4. **REFACTOR:** Improve code while keeping tests passing
+2. **RED:** Write failing tests based on your understanding of the existing code
+3. **GREEN:** Make the tests pass with minimal code
+4. **REFACTOR:** Improve the code while keeping the tests green
 
 {{< callout type="info" >}}
-  Even with existing code, you can use TDD if test coverage is 10% or above.
-  Because the Pre-RED step identifies existing behavior before writing tests,
-  you can safely preserve existing functionality while adding new features.
+  Even with existing code, TDD can be used if test coverage is 10% or higher.
+  Because tests are written after the Pre-RED phase establishes current behavior, you can add
+  new features while safely preserving existing functionality.
 {{< /callout >}}
 
 ## What is DDD?
 
-**DDD** (Domain-Driven Development) is a **safe code improvement method**. It is
-an approach that incrementally improves while respecting existing code. It is used
-for existing projects with very low test coverage (below 10%).
+**DDD** (Domain-Driven Development) is a **safe way to improve code**. It is an approach that
+respects existing code while improving it incrementally. It is used in existing projects with
+almost no tests (under 10%).
 
-### Home Remodeling Analogy
+### The House-Remodeling Analogy
 
-For those new to DDD, here is a **home remodeling** analogy. Imagine remodeling
-a 10-year-old house.
+For those new to DDD, here is an explanation by analogy to **remodeling a house**. Imagine
+remodeling a 10-year-old house.
 
-| Home Remodeling Stage       | DDD Stage             | What You Do                                    | Why It Matters                                                            |
-| --------------------------- | --------------------- | ---------------------------------------------- | ------------------------------------------------------------------------- |
-| Inspect the house           | **ANALYZE** (Analyze) | Check for wall cracks, plumbing condition       | You cannot fix what you do not understand                                 |
-| Take photos of current state | **PRESERVE** (Preserve) | Photograph every room to record               | Later when you wonder "was there a wall here?", you can check             |
-| Remodel one room at a time  | **IMPROVE** (Improve)  | Work on one room at a time and verify each time | If you demolish everything at once, you cannot tell where problems started |
+| Remodeling step      | DDD phase              | What happens                            | Why it matters                                                 |
+| --------------------- | --------------------- | ---------------------------------- | ----------------------------------------------------------- |
+| Inspect the house           | **ANALYZE**    | Find cracked walls, check the plumbing    | You cannot fix what you cannot locate                      |
+| Photograph the current state   | **PRESERVE**   | Photograph and record every room       | Later, when you wonder "was there a wall here?", you can check     |
+| Remodel one room at a time    | **IMPROVE**    | Work on one room at a time, verify each time | Demolish everything at once and you cannot tell where things broke     |
 
-**Wrong approach vs. right approach:**
+**The wrong way vs the right way:**
 
 ```
-Wrong approach: "Let's change all the code at once!"
-  --> High risk of breaking existing functionality
-  --> Hard to identify where problems occurred
+Wrong way: "I'll change the entire codebase at once!"
+  --> High risk of breaking existing features
+  --> When something goes wrong, it is hard to find where
 
-Right approach: "Record current behavior with tests, then change incrementally!"
-  --> Tests immediately tell you if existing functionality breaks
-  --> Just rollback the last change if problems occur
+Right way: "I'll record the current behavior with tests, then change things bit by bit!"
+  --> If an existing feature breaks, the tests tell you immediately
+  --> If something goes wrong, just revert the last change
 ```
 
-### ANALYZE-PRESERVE-IMPROVE Cycle
+### The ANALYZE-PRESERVE-IMPROVE Cycle
 
-MoAI-ADK's DDD proceeds as a cycle that repeats three phases.
+MoAI-ADK's DDD proceeds as a cycle repeating three phases.
 
 ```mermaid
 flowchart TD
     A["ANALYZE\nAnalyze code structure\nIdentify problems"] --> B["PRESERVE\nWrite characterization tests\nRecord current behavior"]
     B --> C["IMPROVE\nIncremental code improvement\nVerify tests pass"]
-    C --> D{"All tests\npassing?"}
-    D -->|"Pass"| E["Commit and\nproceed to next improvement"]
-    D -->|"Fail"| F["Rollback\nlast change"]
+    C --> D{"Did all tests\npass?"}
+    D -->|"Pass"| E["Commit and\nproceed to the next improvement"]
+    D -->|"Fail"| F["Revert the\nlast change"]
     F --> C
     E --> G{"All requirements\nimplemented?"}
-    G -->|"Not yet"| A
-    G -->|"Done"| H["Implementation Complete"]
+    G -->|"Still remaining"| A
+    G -->|"Done"| H["Implementation complete"]
 ```
 
-### Step 1: ANALYZE (Analyze)
+### Phase 1: ANALYZE
 
-Thoroughly analyze the existing code structure. Like a doctor examining a patient.
+Analyze the structure of the existing code thoroughly. It is like a doctor examining a patient.
 
-**Analysis items:**
+**What is analyzed:**
 
-| Analysis Target | What to Check                               | Analogy                          |
-| --------------- | ------------------------------------------- | -------------------------------- |
-| File Structure  | What files exist and how they are connected | Check the house blueprints       |
-| Dependencies    | Which modules depend on which               | Check the plumbing and wiring    |
-| Test Status     | How many existing tests there are           | Check existing insurance         |
-| Problems        | Duplicate code, security vulnerabilities, performance bottlenecks | Check for cracked walls, leaks |
+| Analysis target  | What is checked                          | Analogy               |
+| ---------- | ---------------------------------- | ------------------ |
+| File structure  | Which files exist and how they connect | Reviewing the house's floor plan     |
+| Dependencies     | Which modules depend on which modules | Checking plumbing and electrical wiring |
+| Test coverage | How many existing tests there are        | Checking existing insurance     |
+| Problems     | Duplicated code, security vulnerabilities, performance bottlenecks  | Cracked walls, leaks |
 
 **Example analysis report generated by manager-develop:**
 
@@ -236,45 +238,45 @@ Thoroughly analyze the existing code structure. Like a doctor examining a patien
 
 - Target: src/auth/ (authentication module)
 - Files: 8 Python files
-- Lines of code: 1,850 lines
+- Lines of code: 1,850
 - Test coverage: 5%
 
-## Discovered Problems
-1. Duplicate authentication logic (same code repeated in 3 places)
+## Problems Found
+1. Duplicated authentication logic (same code repeated in 3 places)
 2. Hardcoded secret key (written directly in config.py)
 3. SQL Injection vulnerability (user_repository.py)
 4. Insufficient tests (5%, target 85%)
 ```
 
-### Step 2: PRESERVE (Preserve)
+### Phase 2: PRESERVE
 
-Build a **safety net** to preserve existing behavior. The core of this phase is
-writing **characterization tests**.
+Build a **safety net** to preserve existing behavior. The core of this phase is writing
+**characterization tests**.
 
 {{< callout type="info" >}}
   **What are characterization tests?**
 
-  They are like **taking photos of the house before remodeling**.
+  They are like **taking photographs** of the current state before remodeling a house.
 
-  Regular tests check "is this working correctly?" But characterization tests
-  record "how is this currently working?"
+  A normal test checks "does this behave correctly?". A characterization
+  test records "how does this currently behave?".
 
-  They do not judge right or wrong -- they **record the fact that "it originally
-  worked like this."** Later, if tests fail after code changes, you immediately
-  know that existing behavior has changed.
+  In other words, it does not judge right or wrong — it **records the fact that
+  "it originally behaved this way"**. Later, if a test fails after a code change, you know
+  immediately that existing behavior has changed.
 {{< /callout >}}
 
 **Characterization test example:**
 
 ```python
 class TestExistingLoginBehavior:
-    """Characterization test recording the current login function behavior"""
+    """Characterization tests recording the current behavior of the existing login function"""
 
     def test_valid_login_returns_token(self):
         """
-        GIVEN: A registered user exists
-        WHEN: Login with correct password
-        THEN: Record the response returned by current implementation
+        GIVEN: a registered user exists, and
+        WHEN: they log in with the correct password,
+        THEN: record whatever response the current implementation returns
         """
         user = create_test_user(
             email="test@example.com",
@@ -283,13 +285,13 @@ class TestExistingLoginBehavior:
 
         result = login_service.login("test@example.com", "password123")
 
-        # Record current behavior as-is (not judging right or wrong)
+        # Record the current behavior as-is (no judgment of right or wrong)
         assert result["status"] == "success"
         assert result["token"] is not None
-        assert result["expires_in"] == 3600  # Current expiration time
+        assert result["expires_in"] == 3600  # current expiry time
 
     def test_wrong_password_returns_error(self):
-        """Record current behavior for login with wrong password"""
+        """Record the current behavior when logging in with a wrong password"""
         create_test_user(email="test@example.com", password="password123")
 
         result = login_service.login("test@example.com", "wrongpassword")
@@ -298,28 +300,28 @@ class TestExistingLoginBehavior:
         assert result["code"] == 401
 ```
 
-**Test writing strategy:**
+**Test-writing strategy:**
 
 ```mermaid
 flowchart TD
-    A["Analyze existing code"] --> B["List key behaviors"]
-    B --> C["Write characterization test\nfor each behavior"]
-    C --> D["Run all tests"]
-    D --> E{"All tests\npassing?"}
-    E -->|"Pass"| F["Safety net established\nReady to start refactoring"]
-    E -->|"Fail"| G["Fix tests\nAdjust to match current behavior"]
+    A["Analyze the existing code"] --> B["List the key behaviors"]
+    B --> C["Write a characterization test\nfor each behavior"]
+    C --> D["Run the full test suite"]
+    D --> E{"All tests\npass?"}
+    E -->|"Pass"| F["Safety net in place\nRefactoring can begin"]
+    E -->|"Fail"| G["Fix the tests\nAdjust to the current behavior"]
     G --> D
 ```
 
-### Step 3: IMPROVE (Improve)
+### Phase 3: IMPROVE
 
-Once characterization tests are in place, you can safely improve the code. The
-core principle is **divide changes into small steps**.
+With characterization tests in place, you can now improve the code safely. The core principle is
+**changing in small steps**.
 
-**Improvement process:**
+**The improvement process:**
 
 ```python
-# BEFORE: Code before improvement
+# BEFORE: code before improvement
 def login(email, password):
     # SQL Injection vulnerability
     user = db.query("SELECT * FROM users WHERE email = '" + email + "'")
@@ -330,20 +332,20 @@ def login(email, password):
 
 # ====================================
 
-# AFTER: Code after improvement (completed over 3 iterations)
+# AFTER: code after improvement (completed across 3 iterations)
 def login(email: str, password: str) -> LoginResult:
-    """Process user login."""
-    # Iteration 1: Use parameterized query to prevent SQL Injection
+    """Handles user login."""
+    # Iteration 1: prevent SQL Injection with parameterized queries
     user = user_repository.find_by_email(email)
 
     if not user:
         return LoginResult.failure("Invalid credentials")
 
-    # Iteration 2: Centralize authentication logic
+    # Iteration 2: centralize authentication logic
     if not auth_service.verify_password(user, password):
         return LoginResult.failure("Invalid credentials")
 
-    # Iteration 3: Separate token service
+    # Iteration 3: extract the token service
     token = token_service.generate(user.id)
     return LoginResult.success(token)
 ```
@@ -352,85 +354,85 @@ def login(email: str, password: str) -> LoginResult:
 
 ```mermaid
 flowchart TD
-    S1["Iteration 1: Small change\nFix SQL Injection"] --> T1["Run tests\nAll 156 pass"]
-    T1 --> C1["Commit: Save safe state"]
-    C1 --> S2["Iteration 2: Small change\nCentralize auth logic"]
+    S1["Iteration 1: small change\nFix SQL Injection"] --> T1["Run tests\nAll 156 pass"]
+    T1 --> C1["Commit: save the safe state"]
+    C1 --> S2["Iteration 2: small change\nCentralize auth logic"]
     S2 --> T2["Run tests\nAll 156 pass"]
-    T2 --> C2["Commit: Save safe state"]
-    C2 --> S3["Iteration 3: Small change\nSeparate token service"]
+    T2 --> C2["Commit: save the safe state"]
+    C2 --> S3["Iteration 3: small change\nExtract the token service"]
     S3 --> T3["Run tests\nAll 156 pass"]
-    T3 --> C3["Commit: Improvement complete"]
+    T3 --> C3["Commit: improvement complete"]
 ```
 
 {{< callout type="warning" >}}
-  **Core principle:** Always run tests after each change. If tests fail, just
-  rollback the last change. This is the power of "small steps." If you change
-  too much at once, it becomes hard to identify where the problem occurred.
+  **Core principle:** Run the tests after every change, without exception. If a test fails,
+  just revert the last change. This is the power of "small steps". Change too much at once
+  and it becomes hard to find where the problem crept in.
 {{< /callout >}}
 
 ## Methodology Comparison
 
-| Aspect              | TDD                          | DDD                           |
-| ------------------- | ---------------------------- | ----------------------------- |
-| **Test timing**     | Before writing code (RED)    | After analysis (PRESERVE)     |
-| **Coverage approach** | Strict per-commit standard | Gradual improvement           |
-| **Best for**        | New projects, 10%+ coverage  | Legacy with < 10% coverage    |
-| **Risk level**      | Medium (requires discipline) | Low (preserves behavior)      |
-| **Coverage exemptions** | Not allowed              | Allowed                       |
-| **Run Phase cycle** | RED-GREEN-REFACTOR           | ANALYZE-PRESERVE-IMPROVE      |
+| Aspect              | TDD                         | DDD                          |
+| ----------------- | --------------------------- | ---------------------------- |
+| **Test timing** | Before writing code (RED)          | After analysis (PRESERVE)           |
+| **Coverage approach** | Strict per-commit criteria            | Incremental improvement                  |
+| **Best situation**     | New projects, 10%+ coverage | Legacy under 10% coverage     |
+| **Risk level**     | Medium (discipline required)            | Low (behavior preserved)             |
+| **Coverage exceptions** | Not allowed                  | Allowed                         |
+| **Run Phase cycle** | RED-GREEN-REFACTOR       | ANALYZE-PRESERVE-IMPROVE     |
 
 {{< callout type="warning" >}}
   **Methodology selection guide:**
 
-  - **New projects** (greenfield): TDD (default)
-  - **Existing projects** (coverage 50% or above): TDD
-  - **Existing projects** (coverage 10-49%): TDD (using the Pre-RED step)
-  - **Existing projects** (coverage below 10%): DDD (gradual characterization testing)
+  - **New project** (greenfield): TDD (default)
+  - **Existing project** (coverage 50% or more): TDD
+  - **Existing project** (coverage 10-49%): TDD (using the Pre-RED phase)
+  - **Existing project** (coverage under 10%): DDD (incremental characterization tests)
 {{< /callout >}}
 
-## What are Characterization Tests?
+## What Are Characterization Tests?
 
-Characterization tests are the core tool of DDD. Let us take a closer look.
+Characterization tests are the core tool of DDD. Let's take a closer look.
 
-### Difference from Regular Tests
+### Difference from Normal Tests
 
-| Aspect          | Regular Tests                   | Characterization Tests           |
-| --------------- | ------------------------------- | -------------------------------- |
-| **Purpose**     | "Is this working correctly?"    | "How is this currently working?" |
-| **When written** | Before/after writing new code  | Before refactoring existing code |
-| **Criteria**    | Requirements (specification)    | Current actual behavior          |
-| **Analogy**     | Check if built to blueprint     | Take photos of the current house state |
+| Aspect          | Normal tests                     | Characterization tests                  |
+| ------------- | ------------------------------- | ------------------------------ |
+| **Purpose**      | "Does this behave correctly?"   | "How does this currently behave?" |
+| **When written** | Before/after writing new code              | Before refactoring existing code          |
+| **Standard**      | Requirements (the design document)               | Current actual behavior                 |
+| **Analogy**      | Verifying the house matches the blueprint        | Photographing the house's current state   |
 
 ### Writing Principles
 
-1. **Record only, do not judge**: Even if the current code has bugs, record that behavior as-is
-2. **Include edge cases**: Record all exceptional cases, not just normal ones
-3. **Make reproducible**: Tests must produce the same results every time they run
-4. **Make fast**: Characterization tests must run quickly so you can verify after each change
+1. **Record without judging**: even if the current code has bugs, record its behavior as-is
+2. **Include edge cases**: record not only normal cases but all exception cases too
+3. **Reproducible**: running the tests any number of times must yield the same result
+4. **Fast**: characterization tests must run fast so you can verify right after every change
 
-## How to Execute
+## How to Run
 
 ### Running TDD
 
-Once the SPEC document is ready, execute the TDD cycle with the following command.
+Once the SPEC document is ready, run the TDD cycle with the command below.
 
 ```bash
 # Run TDD (when development_mode: tdd)
 > /moai run SPEC-AUTH-001
 ```
 
-This command causes the **manager-develop agent** to automatically perform the
-RED-GREEN-REFACTOR cycle:
+Running this command has the **manager-develop agent** automatically execute the RED-GREEN-REFACTOR
+cycle:
 
 ```mermaid
 flowchart TD
-    A["Read SPEC document\nSPEC-AUTH-001"] --> B["RED\nWrite failing tests for each requirement"]
-    B --> C["GREEN\nPass tests with minimal code"]
-    C --> D["REFACTOR\nImprove code quality\nKeep tests passing"]
-    D --> E{"Next requirement\nexists?"}
+    A["Read the SPEC document\nSPEC-AUTH-001"] --> B["RED\nWrite failing tests per requirement"]
+    B --> C["GREEN\nPass the tests with minimal code"]
+    C --> D["REFACTOR\nImprove code quality\nKeep the tests green"]
+    D --> E{"Next requirement\nremaining?"}
     E -->|"Yes"| B
-    E -->|"No"| F["Final verification\nConfirm 85%+ coverage\nPass TRUST 5 gates"]
-    F --> G["Implementation complete\nReady to move to Sync phase"]
+    E -->|"No"| F["Final verification\nVerify 85%+ coverage\nPass the TRUST 5 gates"]
+    F --> G["Implementation complete\nReady for the Sync phase"]
 ```
 
 ### Running DDD
@@ -440,33 +442,33 @@ flowchart TD
 > /moai run SPEC-AUTH-001
 ```
 
-This command causes the **manager-develop agent** to automatically perform the
+Running this command has the **manager-develop agent** automatically execute the
 ANALYZE-PRESERVE-IMPROVE cycle:
 
 ```mermaid
 flowchart TD
-    A["Read SPEC document\nSPEC-AUTH-001"] --> B["ANALYZE\nAnalyze code structure\nIdentify dependencies"]
-    B --> C["PRESERVE\nWrite characterization tests\nEstablish baseline"]
-    C --> D["IMPROVE\nIteration 1: Centralize auth logic\nVerify tests pass"]
-    D --> E["IMPROVE\nIteration 2: Move secret key to env variable\nVerify tests pass"]
-    E --> F["IMPROVE\nIteration 3: Fix SQL Injection\nVerify tests pass"]
-    F --> G["Final verification\nConfirm 85%+ coverage\nPass TRUST 5 gates"]
-    G --> H["Implementation complete\nReady to move to Sync phase"]
+    A["Read the SPEC document\nSPEC-AUTH-001"] --> B["ANALYZE\nAnalyze code structure\nMap dependencies"]
+    B --> C["PRESERVE\nWrite characterization tests\nEstablish the baseline"]
+    C --> D["IMPROVE\nIteration 1: centralize auth logic\nVerify tests pass"]
+    D --> E["IMPROVE\nIteration 2: move secrets to env vars\nVerify tests pass"]
+    E --> F["IMPROVE\nIteration 3: fix SQL Injection\nVerify tests pass"]
+    F --> G["Final verification\nVerify 85%+ coverage\nPass the TRUST 5 gates"]
+    G --> H["Implementation complete\nReady for the Sync phase"]
 ```
 
 ## Methodology Configuration
 
-Configure the development methodology in the `.moai/config/sections/quality.yaml` file.
+The development methodology is configured in the `.moai/config/sections/quality.yaml` file.
 
 ### TDD Configuration (Default)
 
 ```yaml
 constitution:
-  development_mode: tdd  # Use TDD methodology
+  development_mode: tdd  # Use the TDD methodology
 
   tdd_settings:
-    test_first_required: true         # Tests must be written before implementation
-    red_green_refactor: true          # Follow RED-GREEN-REFACTOR cycle
+    test_first_required: true         # Tests required before implementation
+    red_green_refactor: true          # Follow the RED-GREEN-REFACTOR cycle
     min_coverage_per_commit: 80       # Minimum coverage per commit
     mutation_testing_enabled: false   # Mutation testing (optional)
 
@@ -477,94 +479,93 @@ constitution:
 
 ```yaml
 constitution:
-  development_mode: ddd  # Use DDD methodology
+  development_mode: ddd  # Use the DDD methodology
 
   ddd_settings:
     require_existing_tests: true      # Existing tests required before refactoring
     characterization_tests: true      # Auto-generate characterization tests
     behavior_snapshots: true          # Use snapshot tests
-    max_transformation_size: small    # Limit change size
-    preserve_before_improve: true     # Must preserve before improving
+    max_transformation_size: small    # Change-size limit
+    preserve_before_improve: true     # Preserve before improve is mandatory
 
   test_coverage_target: 85            # Overall coverage target
 ```
 
 **DDD max_transformation_size options:**
 
-| Value    | Change Scope                      | Recommended Situation                   |
-| -------- | --------------------------------- | --------------------------------------- |
-| `small`  | 1-2 files, simple refactoring     | General code improvement (recommended)  |
-| `medium` | 3-5 files, medium complexity      | Module structure changes                |
-| `large`  | 10+ files                         | Architecture changes (use with caution) |
+| Value       | Change scope                | Recommended situation                        |
+| -------- | ------------------------ | -------------------------------- |
+| `small`  | 1-2 files, simple refactoring | Typical code improvement (recommended)        |
+| `medium` | 3-5 files, medium complexity  | Module-structure changes                   |
+| `large`  | 10+ files           | Architecture changes (use with caution)        |
 
 {{< callout type="warning" >}}
-  Setting `max_transformation_size` to `large` changes many files at once,
-  making it difficult to identify the root cause when problems occur. It is
-  recommended to keep it at `small` whenever possible.
+  Setting `max_transformation_size` to `large` changes many files at once, making it
+  hard to diagnose problems when they occur. Keeping it at `small` is
+  recommended whenever possible.
 {{< /callout >}}
 
-## Practical Example: Legacy Code Refactoring
+## In Practice: Refactoring Legacy Code
 
-This is a scenario for refactoring an authentication module written 3 years ago.
-With test coverage at only 5%, the DDD methodology is used.
+A scenario refactoring an authentication module written 3 years ago. Test coverage is very low
+at 5%, so the DDD methodology is used.
 
-### Situation
+### The Situation
 
 ```
 Problems:
 - 2 SQL Injection vulnerabilities
 - Hardcoded secret key
-- Duplicate authentication logic in 3 places
+- Duplicated authentication logic in 3 places
 - Test coverage 5%
 - High code complexity
 ```
 
-### Execution Process
+### The Process
 
 ```bash
-# Step 1: Create SPEC (Plan)
-> /moai plan "Refactor legacy authentication system. Fix SQL Injection, move secret key to environment variables, centralize authentication logic"
+# Step 1: create the SPEC (Plan)
+> /moai plan "Refactor the legacy auth system. Fix SQL Injection, move secrets to env vars, centralize auth logic"
 
 # manager-spec creates SPEC-AUTH-REFACTOR-001
 ```
 
 ```bash
-# Step 2: Run DDD (Run)
+# Step 2: run DDD (Run)
 > /moai run SPEC-AUTH-REFACTOR-001
 
-# manager-develop executes ANALYZE-PRESERVE-IMPROVE cycle
-# ANALYZE: Analyze code, generate list of problems
-# PRESERVE: Write 156 characterization tests
-# IMPROVE: Incremental improvement over 3 iterations
+# manager-develop runs the ANALYZE-PRESERVE-IMPROVE cycle
+# ANALYZE: analyze the code, produce the list of problems
+# PRESERVE: write 156 characterization tests
+# IMPROVE: incremental improvement across 3 iterations
 ```
 
 ```bash
-# Step 3: Sync documentation (Sync)
+# Step 3: sync documentation (Sync)
 > /moai sync SPEC-AUTH-REFACTOR-001
 
-# manager-docs updates API documentation, generates refactoring report
+# manager-docs updates the API docs and generates a refactoring report
 ```
 
-### Results
+### The Results
 
-| Metric                       | Before | After       | Change               |
-| ---------------------------- | ------ | ----------- | -------------------- |
-| Test Coverage                | 5%     | 87%         | +82%                 |
-| SQL Injection Vulnerabilities | 2     | 0           | Fully removed        |
-| Hardcoded Secret Key         | Yes    | No          | Moved to env variable |
-| Duplicate Code               | 3      | 0           | Fully centralized    |
-| Code Complexity              | High   | 35% reduced | Structure improved   |
+| Metric               | Before | After    | Change           |
+| ------------------ | ------ | -------- | -------------- |
+| Test coverage    | 5%     | 87%      | +82%           |
+| SQL Injection vulnerabilities | 2  | 0      | Fully removed      |
+| Hardcoded secret key  | Present   | None     | Moved to env vars    |
+| Duplicated code          | 3 places    | 0      | Fully centralized    |
+| Code complexity        | High   | Reduced 35% | Structure improved      |
 
 {{< callout type="info" >}}
-  **Key takeaway:** Not a single existing behavior was changed during the
-  refactoring process. All 156 characterization tests passed on every iteration,
-  which means code quality was significantly improved without affecting existing
-  users.
+  **Key point:** Not a single existing behavior changed during the refactoring.
+  All 156 characterization tests passed on every iteration, so code quality was
+  greatly improved without affecting existing users.
 {{< /callout >}}
 
 ## Related Documents
 
-- [SPEC-Based Development](/core-concepts/spec-based-dev) -- A SPEC document is
-  required before executing the development methodology
-- [TRUST 5 Quality](/core-concepts/trust-5) -- Review the quality validation
-  criteria after implementation is complete
+- [SPEC-Based Development](/en/core-concepts/spec-based-dev) -- A SPEC document is needed
+  before running the development methodology
+- [TRUST 5 Quality](/en/core-concepts/trust-5) -- The quality-verification criteria
+  applied after implementation completes

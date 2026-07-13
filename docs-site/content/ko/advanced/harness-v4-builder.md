@@ -4,17 +4,17 @@ weight: 45
 draft: false
 ---
 
-Harness v4 Builder의 4-phase 워크플로우, Manifest 스키마, Runner 프리미티브를 상세히 안내합니다.
+[빌더 에이전트 가이드](/ko/advanced/builder-agents)가 Harness v4 Builder의 개요였다면, 이 문서는 설계도입니다 — 4-phase 워크플로우의 각 단계 산출물, Manifest 스키마 전체, Runner 프리미티브의 동작 규칙을 다룹니다.
 
 {{< callout type="info" >}}
-**한 줄 요약**: Harness v4 Builder는 Socratic 인터뷰로 필요한 전문성을 파악하고, manifest 기반 Runner로 동적 팀을 운영합니다.
+**한 줄 요약**: Harness v4 Builder는 Socratic 인터뷰로 필요한 전문성을 파악하고, manifest 기반 Runner로 동적 팀을 운영합니다. 어떤 팀원이 어떤 모델로 일할지는 코드가 아니라 manifest 선언으로 결정됩니다.
 {{< /callout >}}
 
 ## 4-Phase Workflow 상세
 
 ### Phase 1: ANALYZE (분석)
 
-현재 프로젝트의 기술 스택과 요구사항을 분석합니다.
+현재 프로젝트의 기술 스택과 요구사항을 분석합니다. 이 단계의 목표는 "이 프로젝트에 어떤 전문성이 부족한가"를 데이터로 답하는 것입니다.
 
 #### 분석 대상
 
@@ -45,7 +45,7 @@ analysis_result:
 
 ### Phase 2: PLAN (계획)
 
-ANALYZE 결과를 바탕으로 팀 구성을 설계합니다.
+ANALYZE 결과를 바탕으로 팀 구성을 설계합니다. 팀 규모부터 역할별 모델 배정까지, 비용에 영향을 주는 결정은 전부 이 단계에서 내려집니다.
 
 #### 계획 결정사항
 
@@ -57,9 +57,11 @@ ANALYZE 결과를 바탕으로 팀 구성을 설계합니다.
 | **모델 선택** | 역할별 추론 복잡도 | architect: inherit, tester: haiku |
 | **스킬 사전 로드** | 역할 전문성 필요 스킬 | moai-foundation-core, moai-domain-backend |
 
+역할별 모델 선택이 토크노믹스의 핵심입니다 — 설계는 깊은 추론이 필요한 모델에, 반복적인 테스트 작성은 저렴한 모델에 배정합니다.
+
 #### 계획 검증
 
-생성 전에 사용자에게 확인:
+생성 전에 사용자에게 확인합니다. 승인 게이트 없이 파일이 생성되는 일은 없습니다.
 
 ```
 계획된 팀 구성:
@@ -89,7 +91,7 @@ PLAN 승인 후 실제 에이전트 파일과 manifest를 생성합니다.
 └── tester.md
 ```
 
-각 파일은 YAML 프롬프트로 정의:
+각 파일은 YAML 프롬프트로 정의됩니다.
 
 ```yaml
 ---
@@ -109,9 +111,11 @@ model: inherit
 .moai/harness/manifest.json
 ```
 
-Phase와 Teammate 정의가 포함된 JSON (스키마는 § Manifest 스키마 참조).
+Phase와 Teammate 정의가 포함된 JSON입니다 (스키마는 § Manifest 스키마 참조).
 
 #### 생성 검증
+
+생성 직후 파일 존재와 정의 정확성을 직접 확인할 수 있습니다.
 
 ```bash
 ls .claude/agents/harness/
@@ -278,7 +282,7 @@ Team Teardown
 
 ### Runner 설정
 
-Runner의 동작은 manifest의 필드로 제어됩니다:
+Runner의 동작은 manifest의 필드로 제어됩니다.
 
 | 설정 | 의미 |
 |------|------|
@@ -306,7 +310,7 @@ Runner 생성 시:
 
 ### 격리 조건
 
-다음 중 하나라도 참이면 격리 활성화:
+다음 중 하나라도 참이면 격리가 활성화됩니다.
 
 1. **동일 파일 병렬 편집**: 두 팀원이 같은 파일을 동시에 수정
 2. **재귀적 디렉토리 쓰기**: 팀원들이 같은 디렉토리에 여러 파일 생성
@@ -322,9 +326,9 @@ Runner 생성 시:
 
 ## 관련 문서
 
-- [Harness v4 Builder 사용 가이드](/workflow-commands/moai-harness) - 커맨드 레퍼런스
-- [에이전트 가이드](/advanced/agent-guide) - 에이전트 정의 형식
-- [SPEC 기반 개발](/workflow-commands/moai-plan) - Harness와 SPEC 통합
+- [Harness v4 Builder 사용 가이드](/ko/workflow-commands/moai-harness) - 커맨드 레퍼런스
+- [에이전트 가이드](/ko/advanced/agent-guide) - 에이전트 정의 형식
+- [SPEC 기반 개발](/ko/workflow-commands/moai-plan) - Harness와 SPEC 통합
 
 {{< callout type="info" >}}
 **팁**: Manifest는 생성 후 `/harness:team-name edit`으로 언제든 수정할 수 있습니다. 팀원 추가, 스킬 변경, 격리 정책 조정이 모두 가능합니다.

@@ -1,10 +1,10 @@
 ---
 title: アップデート
-weight: 60
+weight: 70
 draft: false
 ---
 
-MoAI-ADK を最新の状態に保ち、スマートアップデートワークフローで円滑なアップグレードを行います。
+MoAI-ADK を最新バージョンに保つ方法を案内します。`moai update` 1つでバイナリとテンプレートが一緒に更新され、ユーザーが作成したカスタム資産は自動的に保存されます。
 
 ## アップデートコマンド
 
@@ -14,31 +14,31 @@ MoAI-ADK を最新バージョンにアップデートするには:
 moai update
 ```
 
-このコマンドは 3 段階のスマートアップデートワークフローを実行します。
+このコマンドは3段階のスマートアップデートワークフローを実行します。
 
-## 3 段階スマートアップデートワークフロー
+## 3段階スマートアップデートワークフロー
 
 ```mermaid
 flowchart TD
-    A[moai update を実行] --> B[ステージ 1: パッケージバージョンを確認]
-    B --> C[最新バージョンを確認]
-    C --> D[更新あり?]
+    A[moai update の実行] --> B[Stage 1: パッケージバージョンの確認]
+    B --> C[最新バージョンの確認]
+    C --> D[アップデート可能?]
 
-    D -->|はい| E[ステージ 2: 設定バージョンを比較]
-    D -->|いいえ| F[最新の状態です]
+    D -->|はい| E[Stage 2: 設定バージョンの比較]
+    D -->|いいえ| F[すでに最新の状態]
 
-    E --> G[設定フォーマットが変更?]
-    G -->|はい| H[設定マイグレーション]
-    G -->|いいえ| I[設定を保持]
+    E --> G[設定形式の変更?]
+    G -->|はい| H[設定のマイグレーション]
+    G -->|いいえ| I[設定の維持]
 
-    H --> J[ステージ 3: テンプレート同期]
+    H --> J[Stage 3: テンプレートの同期]
     I --> J
 
-    J --> K[テンプレートファイルを更新]
+    J --> K[テンプレートファイルの更新]
     K --> L[完了レポート]
 ```
 
-### ステージ 1: パッケージバージョンの確認
+### Stage 1: パッケージバージョンの確認
 
 まず、現在インストールされているバージョンと GitHub Releases の最新バージョンを比較します。
 
@@ -70,50 +70,50 @@ Release notes:
 Update available! Run 'moai update' to upgrade.
 ```
 
-### Mandatory Checksum 検証 {#checksum-verification}
+### チェックサムの必須検証 (Mandatory Checksum Verification) {#checksum-verification}
 
-v2.20.0-rc1 から `moai update` の binary ダウンロードは **checksum 検証を回避できません**。リリースの `checksums.txt` ダウンロードが失敗、またはパースが失敗した場合、sentinel エラー `ErrChecksumUnavailable` を返してアップデートフローを **abort** します — binary ダウンロードは試行しません。
+v2.20.0-rc1 から、`moai update` のバイナリダウンロードは **チェックサム検証を回避できません**。リリースの `checksums.txt` のダウンロードが失敗するか、パースが失敗すると、sentinel error `ErrChecksumUnavailable` を返してアップデートフローを **abort** します — バイナリのダウンロードを試みません。
 
 #### Retry ポリシー
 
-`checksums.txt` ダウンロードは指数バックオフで **3 回 retry** します:
+`checksums.txt` のダウンロードは **3回の retry** を指数バックオフで試行します:
 
 | 試行 | 待機時間 |
-|------|----------|
-| 1 回目 (即時) | 0s |
-| 2 回目 retry | 2s 待機 |
-| 3 回目 retry | 4s 待機 |
-| 追加 retry なし | 合計 約 6s 待機後に失敗 |
+|------|-----------|
+| 1回目 (即時) | 0s |
+| 2回目 retry | 2s 待機 |
+| 3回目 retry | 4s 待機 |
+| 追加 retry なし | 合計 ~6s 待機後に失敗 |
 
-(内部実装: base delay 2s × 2^(attempt-1) 指数バックオフ、checker 段階および updater 段階の defense-in-depth empty-checksum ガード)
+(内部実装: base delay 2s × 2^(attempt-1) の指数バックオフ、defense-in-depth として checker と updater の両段階で empty checksum を遮断)
 
-すべての retry が失敗した場合、以下のメッセージが出力されます:
+すべての retry が失敗すると、次のようなメッセージが出力されます:
 
 ```
 error: checksum unavailable: persistent retry failure after 3 attempts
 ```
 
-**`--skip-checksum` のような回避オプションは存在しません** (CWE-345 意図された方針)。
+**`--skip-checksum` のような回避オプションは存在しません** (CWE-345 の意図されたポリシー)。
 
 #### 失敗時の復旧手順
 
-1. **ネットワーク接続確認**:
+1. **ネットワーク接続の確認**:
    ```bash
    curl -I https://github.com/modu-ai/moai-adk/releases/latest
    ```
-2. **Proxy / firewall 確認** — GitHub release asset ドメイン (`github.com`、`objects.githubusercontent.com`) が許可されているか確認
-3. **一時的な GitHub CDN 障害の可能性** — しばらく後に再試行
-4. **手動 binary インストール** (恒久的に遮断される場合):
+2. **Proxy / firewall の確認** — GitHub release asset ドメイン (`github.com`, `objects.githubusercontent.com`) の許可状況
+3. **一時的な GitHub CDN 障害の可能性** — しばらくしてから再試行
+4. **手動バイナリインストール** (恒久的な遮断時):
    ```bash
    curl -fsSL https://raw.githubusercontent.com/modu-ai/moai-adk/main/install.sh | bash
    ```
-   手動インストール時はユーザー自身が無欠性を検証します。自動アップデートと同等の保護を得るには、GitHub Release から `checksums.txt` を別途取得して照合することを推奨します。
+   手動インストール時はユーザーが自ら完全性を検証するため、自動アップデートと同等の保護のために GitHub Release の `checksums.txt` を別途確認することを推奨します。
 
-詳細な脅威モデル、実装位置、監査手順は [セキュリティノート — CWE-345](/ja/advanced/security-notes/#cwe-345) を参照してください。
+詳細な脅威モデル、実装場所、点検手順は [セキュリティノート — CWE-345](/ja/advanced/security-notes/#cwe-345) を参照してください。
 
-### ステージ 2: 設定バージョンの比較
+### Stage 2: 設定バージョンの比較
 
-設定ファイルの形式と互換性を確認します。
+設定ファイルの形式と互換性を検査します。
 
 ```mermaid
 sequenceDiagram
@@ -123,18 +123,18 @@ sequenceDiagram
     participant Backup as バックアップ
 
     Update->>Current: 現在の設定を読み取り
-    Current->>Schema: バージョンを比較
+    Current->>Schema: バージョン比較
     alt 互換性の問題
         Schema->>Backup: 自動バックアップ
         Backup-->>Update: バックアップ完了
-        Update->>Schema: マイグレーションを実行
+        Update->>Schema: マイグレーションの実行
         Schema-->>Update: マイグレーション完了
-    else 互換性あり
+    else 互換
         Schema-->>Update: 変更なし
     end
 ```
 
-**確認ファイル:**
+**検査ファイル:**
 
 - `.moai/config/sections/user.yaml`
 - `.moai/config/sections/language.yaml`
@@ -143,7 +143,7 @@ sequenceDiagram
 **マイグレーション例:**
 
 ```yaml
-# 古い設定 (v1.2.0)
+# 以前の設定 (v1.2.0)
 development_mode: ddd
 test_coverage_target: 85
 
@@ -156,10 +156,10 @@ ddd_settings:
 ```
 
 {{< callout type="info" >}}
-`.moai/config/` の設定ファイルはマイグレーション前に常にバックアップされます。
+設定のマイグレーション前には、常に `.moai/config/` ディレクトリがバックアップされます。
 {{< /callout >}}
 
-### ステージ 3: テンプレート同期
+### Stage 3: テンプレートの同期
 
 プロジェクトテンプレートと基本ファイルを最新バージョンに同期します。
 
@@ -169,17 +169,17 @@ graph TD
     A --> C[エージェントテンプレート]
     A --> D[ドキュメントテンプレート]
 
-    B --> E[変更を検出]
+    B --> E[変更の検知]
     C --> E
     D --> E
 
-    E --> F{ユーザー変更あり?}
+    E --> F{ユーザーによる変更?}
 
-    F -->|いいえ| G[自動更新]
-    F -->|はい| H[マージオプションを提示]
+    F -->|いいえ| G[自動アップデート]
+    F -->|はい| H[マージオプションの提示]
 
     G --> I[同期完了]
-    H --> J[ユーザー選択]
+    H --> J[ユーザーの選択]
     J --> I
 ```
 
@@ -190,48 +190,48 @@ graph TD
 - `.claude/agents/` - エージェントテンプレート
 
 {{< callout type="info" >}}
-ユーザーが変更したテンプレートファイルは保持され、新しいバージョンでマージオプションが提示されます。
+ユーザーが修正したテンプレートファイルは保存され、新バージョンとのマージオプションが提供されます。
 {{< /callout >}}
 
 ## アップデートオプション
 
-### 動作モード
+### 動作方式
 
-| コマンド | バイナリ更新 | テンプレート同期 |
-|---------|-------------|---------------|
+| コマンド | バイナリアップデート | テンプレート同期 |
+|--------|-------------------|---------------|
 | `moai update` | O | O |
 | `moai update --binary` | O | X |
 | `moai update --templates-only` | X | O |
 
-### バイナリのみ更新
+### バイナリのみのアップデート
 
-MoAI-ADKバイナリのみを更新し、テンプレートは同期しません:
+MoAI-ADK バイナリのみアップデートし、テンプレートは同期しません:
 
 ```bash
 $ moai update --binary
 ```
 
-**使用場合:**
-- テンプレートを手動で変更した場合
-- テンプレート同期をスキップしたい場合
-- バイナリ更新のみが必要な場合
+**使用ケース:**
+- テンプレートを直接修正した場合
+- テンプレート同期をスキップしたいとき
+- 素早いバイナリアップデートだけが必要なとき
 
-### テンプレートのみ同期
+### テンプレートのみの同期
 
-テンプレートのみを同期し、バイナリは更新しません:
+テンプレートのみ同期し、バイナリはアップデートしません:
 
 ```bash
 $ moai update --templates-only
 ```
 
-**使用場合:**
-- 最新のスキルとエージェントテンプレートを適用
-- バイナリバージョンを維持しながらテンプレートのみを更新
-- 複数プロジェクトでテンプレート同期が必要な場合
+**使用ケース:**
+- 最新のスキルとエージェントテンプレートの適用
+- バイナリバージョンを維持しながらテンプレートのみ更新
+- 複数のプロジェクトでテンプレート同期が必要なとき
 
-### 更新のみ確認
+### チェックのみ (Check Only)
 
-実際のアップデートなしで利用可能なバージョンを確認:
+実際のアップデートなしに、利用可能なバージョンを確認します:
 
 ```bash
 $ moai update --check-only
@@ -239,7 +239,7 @@ $ moai update --check-only
 
 ### 自動アップデート
 
-確認なしで自動的にアップデート:
+確認なしに自動でアップデートを進めます:
 
 ```bash
 $ moai update --yes
@@ -247,15 +247,15 @@ $ moai update --yes
 
 ### 特定バージョン
 
-特定のバージョンにアップデート:
+特定バージョンにアップデートします:
 
 ```bash
 $ moai update --version 1.2.0
 ```
 
-### バックアップ保持
+### バックアップの保存
 
-アップデート失敗時の復元用にバックアップを保持:
+アップデート失敗時の復旧のためにバックアップを保存します:
 
 ```bash
 $ moai update --keep-backup
@@ -263,25 +263,25 @@ $ moai update --keep-backup
 
 ## アップデート後の手順
 
-### ステップ 1: バージョンを確認
+### ステップ 1: バージョン確認
 
 ```bash
 moai --version
 ```
 
-### ステップ 2: 設定を検証
+### ステップ 2: 設定の検証
 
 ```bash
 moai doctor
 ```
 
-### ステップ 3: 新機能を確認
+### ステップ 3: 新機能の確認
 
 ```bash
 moai --help
 ```
 
-新しく追加されたコマンドやオプションを確認します。
+新しく追加されたコマンドやオプションを確認してください。
 
 ## トラブルシューティング
 
@@ -291,45 +291,45 @@ moai --help
 Error: Update failed - permission denied
 ```
 
-**解決策:**
+**解決方法:**
 
 ```bash
-# curl で手動再インストール
+# curl を使って手動で再インストール
 curl -fsSL https://raw.githubusercontent.com/modu-ai/moai-adk/main/install.sh | bash
 
-# または特定バージョンを再インストール
+# または特定バージョンで再インストール
 moai update --version <VERSION>
 ```
 
-### 問題: 設定マイグレーションエラー
+### 問題: 設定マイグレーションのエラー
 
 ```bash
 Error: Config migration failed
 ```
 
-**解決策:**
+**解決方法:**
 
 ```bash
 # バックアップから復元
 cp -r .moai/config.bak .moai/config
 
-# 手動マイグレーション
+# 手動でマイグレーション
 vim .moai/config/sections/quality.yaml
 ```
 
-### 問題: テンプレートの競合
+### 問題: テンプレートの衝突
 
 ```bash
 Warning: Template conflicts detected
 ```
 
-**解決策:**
+**解決方法:**
 
 ```bash
-# 自動マージ (ユーザー変更を保持)
+# 自動マージ (ユーザーの変更を保存)
 $ moai update --merge
 
-# 手動マージ (バックアップを保持、マージガイドを作成)
+# 手動マージ (バックアップ保存、マージガイド生成)
 $ moai update --manual
 
 # 強制アップデート (バックアップなし)
@@ -338,49 +338,46 @@ $ moai update --force
 
 ## 個人設定の管理
 
-MoAI-ADK をアップデートすると、**CLAUDE.md** と **settings.json** は新しいバージョンで上書きされます。個人的な変更がある場合は、以下のように管理します。
+MoAI-ADK のアップデート時、**CLAUDE.md** と **settings.json** は新バージョンで上書きされます。個人的な修正がある場合は、次のように管理してください。
 
 ### .local ファイルの使用
 
-個人設定を別のファイルに保存して、アップデート時の上書きを防ぎます:
+個人設定は別ファイルに保存して、アップデート時の上書きを防ぎましょう:
 
-| ファイル | 場所 | 目的 |
-|------|----------|---------|
+| ファイル | 場所 | 用途 |
+|------|------|------|
 | `CLAUDE.md` | プロジェクトルート | MoAI-ADK 管理 (アップデート時に変更) |
 | `settings.json` | `.claude/` | MoAI-ADK 管理 (アップデート時に変更) |
-| `CLAUDE.local.md` | プロジェクトルート | ✅ プロジェクト個人設定 (アップデートの影響なし) |
-| `.claude/settings.local.json` | プロジェクト | ✅ プロジェクト個人設定 (アップデートの影響なし) |
+| `CLAUDE.local.md` | プロジェクトルート | {{< icon check ok >}} プロジェクト個人設定 (アップデートの影響なし) |
+| `.claude/settings.local.json` | プロジェクト | {{< icon check ok >}} プロジェクト個人設定 (アップデートの影響なし) |
 
-**個人設定例 (プロジェクトローカル):**
+**個人設定の例 (プロジェクトローカル):**
 
 ```markdown
 # CLAUDE.local.md
 
 ## ユーザー情報
 
-- 名前: John Developer
-- 役割: シニアソフトウェアエンジニア
-- 専門分野: バックエンド開発、DevOps
+- Name: John Developer
+- Role: Senior Software Engineer
+- Expertise: Backend Development, DevOps
 
-## 開発設定
+## 開発の好み
 
-- 言語: Python、TypeScript
-- フレームワーク: FastAPI、React
-- テスト: pytest、Jest
-- ドキュメント: Markdown、OpenAPI
+- 言語: Python, TypeScript
+- フレームワーク: FastAPI, React
+- テスト: pytest, Jest
+- ドキュメント: Markdown, OpenAPI
 ```
 
-**個人設定例 (settings):**
+**個人設定の例 (settings):**
 
 ```json
 // .claude/settings.local.json
 {
   "env": {
     "ANTHROPIC_AUTH_TOKEN": "YOUR-API-KEY",
-    "ANTHROPIC_BASE_URL": "https://api.z.ai/api/anthropic",
-    "ANTHROPIC_DEFAULT_HAIKU_MODEL": "glm-4.7-flashx",
-    "ANTHROPIC_DEFAULT_SONNET_MODEL": "glm-4.7",
-    "ANTHROPIC_DEFAULT_OPUS_MODEL": "glm-4.7"
+    "ANTHROPIC_BASE_URL": "https://api.z.ai/api/anthropic"
   },
   "permissions": {
     "allow": [
@@ -392,95 +389,72 @@ MoAI-ADK をアップデートすると、**CLAUDE.md** と **settings.json** �
   "enabledMcpjsonServers": [
     "context7"
   ],
-  "companyAnnouncements": [
-    "🗿 MoAI-ADK: 28個の専門エージェント + 52個のSkillsでSPEC-First DDD",
-    "⚡ /moai: ワンストップ Plan→Run→Sync 自動化（インテリジェントルーティング）",
-    "🌳 moai worktree: 隔離されたワークツリー環境で並列SPEC開発",
-    "🤖 Expert Agents (8): backend, frontend, security, devops, debug, performance, refactoring, testing",
-    "🤖 Manager Agents (8): git, spec, ddd, tdd, docs, quality, project, strategy",
-    "🤖 Builder Agents (3): agent, skill, plugin",
-    "🤖 Team Agents (8, 実験的): researcher, analyst, architect, designer, backend-dev, frontend-dev, tester, quality",
-    "📋 ワークフロー: /moai plan (SPEC) → /moai run (DDD) → /moai sync (Docs)",
-    "🚀 オプション: --team (並列Agent Teams)、--ultrathink (Adaptive Thinkingで深い分析)、--loop (反復自動修正)",
-    "✅ 品質: TRUST 5 + 85%+ カバレッジ + Ralph Engine (LSP + AST-grep)",
-    "🔄 Git戦略: 3-Mode (Manual/Personal/Team) + Smart Merge設定更新",
-    "📚 ヒント: moai update --templates-only で最新のskillsとagentsを同期",
-    "📚 ヒント: moai worktree new SPEC-XXX で並列開発用のworktreeを作成",
-    "⚙️ moai update -c: モデル可用性設定 (high/medium/low) - Claudeプラン別モデル構成",
-    "💡 ハイブリッドモード: PlanはClaude (Opus/Sonnet)、Run/SyncはGLM-5でコスト削減",
-    "💡 並列開発: ターミナル1はClaude、ターミナル2+は 'moai glm && claude' で並列実行",
-    "💎 GLM-5スポンサー: z.aiパートナーシップ - コスト効率の高いAIで同等のパフォーマンス"
-  ],
   "_meta": {
     "description": "User-specific Claude Code settings (gitignored - never commit)",
-    "created_at": "2026-01-27T18:15:26.175926Z",
     "note": "Edit this file to customize your local development environment"
   }
 }
 ```
 
 {{< callout type="info" >}}
-**設定優先順位:** Local > Project > User > Enterprise<br />
-<code>settings.local.json</code> はプロジェクト設定を上書きします。
+**設定の優先順位:** Local > Project > User > Enterprise<br />
+<code>settings.local.json</code> がプロジェクト設定をオーバーライドします。
 {{< /callout >}}
 
-### moai フォルダー構造
+### moai フォルダ構造
 
-MoAI-ADK は以下のフォルダーのファイルのみを管理します:
+MoAI-ADK は次のフォルダ内のファイルのみを管理します:
 
 ```
 .claude/
 ├── agents/
-│   └── moai/                # MoAI-ADK エージェント (アップデート対象)
+│   ├── moai/                # MoAI-ADK エージェント (アップデート対象)
+│   └── harness/             # ユーザーハーネスエージェント (アップデート対象外、保存)
 │
 ├── hooks/
 │   └── moai/                # MoAI-ADK フックスクリプト (アップデート対象)
 │
 ├── skills/
-│   ├── moai-*               # MoAI-ADK スキル (moai- プレフィックス、アップデート対象)
+│   ├── moai-*               # MoAI-ADK スキル (moai- prefix、アップデート対象)
 │   │
-│   └── my-skills/           # ✅ 個人スキル (アップデートなし)
+│   └── hns-*                # ユーザー作成スキル (アップデート対象外、保存)
 │
 └── rules/
     └── moai/                # ルールファイル (moai 管理)
-        ├── core/            # コア原則と憲法
-        ├── development/     # 開発ガイドラインと標準
-        ├── languages/       # 言語別ルール (16 言語)
-        └── workflow/        # ワークフロー段階定義
+        ├── core/            # Core principles and constitution
+        ├── development/     # Development guidelines and standards
+        ├── languages/       # Language-specific rules (16 languages)
+        └── workflow/        # Workflow phase definitions
 ```
 
 **命名規則:**
 
-| タイプ | 場所 | アップデートの影響 |
-|------|----------|---------------|
-| **エージェント** | `agents/moai/` | ⚠️ **アップデート時に変更** |
-| **フック** | `hooks/moai/` | ⚠️ **アップデート時に変更** |
-| **スキル** | `skills/moai-*` | ⚠️ **アップデート時に変更** |
-| **ルール** | `rules/moai/` | ⚠️ **アップデート時に変更** |
-| **個人エージェント** | `agents/my-agents/` | ✅ **アップデートの影響なし** |
-| **個人スキル** | `skills/my-skills/` | ✅ **アップデートの影響なし** |
+| 種類 | 場所 | アップデートの影響 |
+|------|------|--------------|
+| **エージェント** | `agents/moai/` | {{< icon warning warn >}} **アップデート時に変更** |
+| **フック** | `hooks/moai/` | {{< icon warning warn >}} **アップデート時に変更** |
+| **スキル** | `skills/moai-*` | {{< icon warning warn >}} **アップデート時に変更** |
+| **ルール** | `rules/moai/` | {{< icon warning warn >}} **アップデート時に変更** |
+| **ユーザーエージェント** | `agents/harness/` | {{< icon check ok >}} **アップデートの影響なし (保存)** |
+| **ユーザースキル** | `skills/hns-*` (レガシー `harness-*`、`my-*` を含む) | {{< icon check ok >}} **アップデートの影響なし (保存)** |
 
 {{< callout type="warning" >}}
-**重要:** `moai-*` プレフィックスを持つスキルは MoAI-ADK によって管理されます。個人の追加や変更には `my-*` フォルダーまたは別のプレフィックスを使用してください。
-{{< /callout >}}
-
-{{< callout type="warning" >}}
-**重要:** `moai/` フォルダーのファイルはアップデート時に上書きされる可能性があります。個人の追加や変更には別のフォルダーを使用してください。
+**重要:** <code>moai-*</code> prefix を持つスキルは MoAI-ADK が管理し、アップデート時に上書きされます。自作のスキルには <code>hns-*</code> prefix (ユーザー所有の名前空間) を、エージェントには <code>.claude/agents/harness/</code> ディレクトリを使ってください。詳しいポリシーは [ハーネスの名前空間ポリシー](/ja/core-concepts/harness-engineering/#ハーネスの名前空間ポリシー-template-managed-vs-user-owned) を参照してください。
 {{< /callout >}}
 
 ### ファイルの整理方法
 
 ```bash
-# 個人エージェントを移動 (例)
-mv .claude/agents/my-agent.md .claude/my-agents/
+# 個人エージェントの移動 (例)
+mv .claude/agents/moai/my-agent.md .claude/agents/harness/
 
-# 個人スキルを移動 (例)
-mv .claude/skills/my-skill.md .claude/my-skills/
+# 個人スキルの名前変更 (例: hns- prefix の付与)
+mv .claude/skills/my-skill .claude/skills/hns-my-skill
 ```
 
 ### 変更ログ
 
-最近の変更については [GitHub Releases](https://github.com/modu-ai/moai-adk/releases) を確認してください。
+最近の変更内容は [GitHub Releases](https://github.com/modu-ai/moai-adk/releases) を確認してください。
 
 ## ロールバック
 
@@ -495,17 +469,17 @@ cp -r .moai/config.bak .moai/config
 ```
 
 {{< callout type="warning" >}}
-ロールバック前に作業をコミットしてください。
+ロールバック前に現在の作業をコミットしてください。
 {{< /callout >}}
 
 ## 次のステップ
 
-アップデート完了後:
+アップデートを完了したら:
 
-1. **[変更ログを確認](/getting-started/update)** - 新機能を学ぶ
-2. **[コアコンセプト](/core-concepts/what-is-moai-adk)** - 新しいエージェントと機能をマスターする
-3. **[クイックスタート](/getting-started/quickstart)** - プロジェクトに新機能を適用する
+1. **[変更ログの確認](/getting-started/update)** - 新機能を学習
+2. **[コアコンセプト](/core-concepts/what-is-moai-adk)** - 新しいエージェントと機能の習得
+3. **[クイックスタート](/getting-started/quickstart)** - プロジェクトへの新機能の適用
 
 ---
 
-定期的にアップデートして、MoAI-ADK の最新機能と改善を活用してください!
+定期的にアップデートして、MoAI-ADK の最新機能と改善を活用しましょう!

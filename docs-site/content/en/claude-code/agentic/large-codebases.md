@@ -2,34 +2,40 @@
 title: Large Codebases
 weight: 80
 draft: false
-description: "Strategies for efficiently using Claude Code in million-line single trees or multi-package monorepos by narrowing context to only what the current task touches."
+description: "Context-narrowing strategies for using Claude Code efficiently in multi-million-line single trees or multi-package monorepos."
 ---
 
-Claude Code works regardless of scale, but as a codebase grows, the default behavior tuned for small projects starts to cause problems. Instructions and file reads unrelated to your task fill the context window, waste tokens, and ultimately degrade response quality.
+# Large Codebases
+
+Claude Code works well even on large codebases — whether a multi-million-line single repository or a monorepo of many packages. But the defaults assume a small project, so a **strategy of narrowing context to only what each task actually touches** is essential.
 
 {{< callout type="info" >}}
-**Core Principle**: The key to a large codebase is not "having everything read" but "loading only the part your current task touches into context."
+**One-line summary**: The real problem in a large codebase is not "many files" but **irrelevant guidance and files filling the context**. Irrelevant tokens degrade quality while raising cost — context narrowing IS tokenomics.
 {{< /callout >}}
 
-## 1. Start Location Determines Context Scope
+## Choosing Where to Start
 
-Where you run `claude` determines both the file access scope and the range of `CLAUDE.md` loaded at startup. It is the first thing to decide.
+Where you run `claude` determines everything that follows.
 
-| Start location | File access | CLAUDE.md loaded at startup | When it fits |
-| --- | --- | --- | --- |
-| **Repository root** | All files | Root only (subdirectories on demand when read) | Work spans multiple packages or subsystems |
-| **Subdirectory** | That subtree only | That directory plus all parent directories | Work is confined to one package or subsystem |
+| Starting location | File access scope | CLAUDE.md loaded | Best when |
+|---------|-----------|---------------|---------|
+| **Repository root** | Everything | Root only (subdirectories on demand) | Work spanning multiple packages/subsystems |
+| **A subdirectory** | Only that subtree | That directory + every ancestor | Work confined to one package/subsystem |
 
-**Tip**: If you are focused on a single package (e.g., `packages/api/`), just run `claude` from that directory. Other packages' instructions automatically stay out of context.
+If the work focuses on one package (say `packages/api/`), run `claude` in that directory. Guidance from `packages/web/` never loads in the first place, so the context lightens on its own without any effort spent pruning rules.
 
-## 2. Splitting CLAUDE.md by Directory
+## Splitting CLAUDE.md by Directory
 
-When you cram every rule into a single root `CLAUDE.md`, it either bloats by carrying every subsystem's rules or becomes useless by being too generic. When you split instructions per directory, Claude loads the repository-wide rules plus **only the rules for the code you're working on right now**.
+Cramming every rule into a single root CLAUDE.md creates three problems:
 
-**Root CLAUDE.md** (loaded by all sessions):
+- It gets too long, hurting readability
+- Trying to apply to every package makes it too generic to be useful
+- Guidance irrelevant to the task loads every session anyway
+
+The fix is layering: keep repo-wide rules at the root and put each area's rules in its own subdirectory.
 
 ```markdown
-# ./CLAUDE.md (root, loaded by all sessions)
+# ./CLAUDE.md (root, loaded in every session)
 This is a monorepo with three packages:
 - packages/api: Node.js REST API with Express, TypeScript, PostgreSQL
 - packages/web: React frontend with Vite, TypeScript, TailwindCSS
@@ -37,8 +43,6 @@ This is a monorepo with three packages:
 
 Run commands from the package directory.
 ```
-
-**Package-specific CLAUDE.md** (loaded only when working in that directory):
 
 ```markdown
 # ./packages/api/CLAUDE.md (loaded only when working in this directory)
@@ -51,11 +55,11 @@ This package is the REST API server.
 API routes are in src/routes/. Never write raw SQL in handlers.
 ```
 
-When you start in `packages/api/`, the root + packages/api/ CLAUDE.md load together, while `packages/web/`'s instructions never enter context. Commit these files to the repository so teammates can share them.
+When Claude starts in `packages/api/`, the root and `packages/api/` CLAUDE.md files both load, but the guidance in `packages/web/` does **not**.
 
-## 3. Excluding Irrelevant CLAUDE.md
+## Excluding Irrelevant CLAUDE.md Files
 
-When starting from the root, a subdirectory's `CLAUDE.md` loads the moment you read a file there. For areas you never work on—such as another team's package or legacy code—you can block them entirely with `claudeMdExcludes`.
+Skip guidance from other teams' packages or legacy code with the `claudeMdExcludes` setting.
 
 ```json
 {
@@ -66,11 +70,13 @@ When starting from the root, a subdirectory's `CLAUDE.md` loads the moment you r
 }
 ```
 
-Patterns are matched as globs against absolute paths, so to match anywhere in the tree, start with `**/`. For personal use, put them in `.claude/settings.local.json`.
+The root CLAUDE.md still loads; only the excluded packages' guidance leaves the context.
 
-## 4. Blocking Generated and Vendor Code
+## Blocking Generated and Vendor Code
 
-Claude's content search respects `.gitignore` by default, so `node_modules/`, `dist/`, and `build/` are excluded from search results without any extra configuration. Vendor SDKs or generated code that is committed to the repository can be blocked with `Read` deny rules in `permissions.deny`.
+Paths already in `.gitignore` (node_modules, dist, build) are automatically excluded from search results.
+
+For committed generated code or vendor SDKs, block reads outright with permission rules. Generated files are long and repetitive, making them an especially large context waste.
 
 ```json
 {
@@ -85,23 +91,20 @@ Claude's content search respects `.gitignore` by default, so `node_modules/`, `d
 }
 ```
 
-Deny rules cover both Claude's built-in file tools and recognizable Bash commands such as `cat`, `head`, `grep`, and `find`.
+## Code Intelligence (LSP) Plugins
 
-## 5. Code Intelligence (LSP) for Symbol Lookup
-
-Finding a symbol's definition or call sites can balloon into many file reads and grep calls. Attaching a code intelligence plugin (LSP-based) lets Claude query the language server directly for go-to-definition, find-references, and type-error checks.
+Reading a file line by line to locate a symbol definition is the most expensive exploration in token terms. Install a language-server plugin and go-to-definition, find-references, and direct type-error queries become available, dramatically cutting the file reads themselves.
 
 ```bash
 /plugin install typescript-lsp@claude-plugins-official
 ```
 
-The official marketplace provides plugins for major languages such as TypeScript, Python, Go, and Rust. Each developer machine must have that language's language server binary installed.
+- Major languages are supported: TypeScript, Python, Go, Rust, and more
+- The language's LSP binary must be installed on the system (see the [plugins document](/claude-code/extensibility/plugins))
 
-This feature pairs well with `claudeMdExcludes` and `Read` deny rules: the first two push irrelevant content out of context, while code intelligence keeps Claude from reading files to find definitions.
+## Checking Out Only the Needed Directories with Worktrees
 
-## 6. Narrowing Worktree Scope with Sparse Checkout
-
-The `--worktree` flag starts a session in a new worktree to isolate changes from the main checkout. You can apply a git sparse checkout with `worktree.sparsePaths` to check out only the needed directories to disk.
+Worktrees created via `--worktree` can check out **only the listed directories** — not everything — with the `worktree.sparsePaths` setting.
 
 ```json
 {
@@ -110,31 +113,29 @@ The `--worktree` flag starts a session in a new worktree to isolate changes from
       ".claude",
       "packages/api",
       "packages/shared"
-    ],
-    "symlinkDirectories": ["node_modules"]
+    ]
   }
 }
 ```
 
-Paths are relative to the repository root. List directories to check out; root-level files such as `package.json` are always included. Adding `symlinkDirectories` shares large directories like `node_modules` via symbolic links instead of duplicating them across worktrees.
-
-Benefits:
-- Faster worktree creation (partial checkout vs full)
-- Reduced disk space usage
-- Eliminate `node_modules` duplication across multiple worktrees
+- Creation gets faster (only the needed parts instead of a full copy)
+- Disk space is saved
+- `symlinkDirectories` can also eliminate node_modules duplication across worktrees.
 
 ```json
 {
   "worktree": {
     "sparsePaths": ["packages/api", "packages/shared"],
-    "symlinkDirectories": ["node_modules"]  // share main node_modules
+    "symlinkDirectories": ["node_modules"]
   }
 }
 ```
 
-## 7. Additional Directory Access for Cross-Package Work
+Directories listed under `symlinkDirectories` are shared as symbolic links to the main checkout's copy.
 
-When starting from one package directory but needing access to sibling packages:
+## Granting Access to Other Packages/Repositories
+
+If you started in one package but need to modify a sibling package, widen access with `additionalDirectories`.
 
 ```json
 {
@@ -147,17 +148,15 @@ When starting from one package directory but needing access to sibling packages:
 }
 ```
 
-Or grant access at invocation time:
+Runtime flags work instead of settings, too.
 
 ```bash
 claude --add-dir ../shared --add-dir ../web
 ```
 
-This lets you maintain per-package isolation while enabling explicit cross-package collaboration.
+## Per-Package Skills
 
-## 8. Adding Package-Specific Skills
-
-Each package can have automation commands (Skills) specific to that area.
+Each package can have skills for its own area. Skills load only when needed, making them a good vessel for package-specific knowledge with no context burden.
 
 ```bash
 mkdir -p packages/api/.claude/skills/api-testing
@@ -167,7 +166,7 @@ mkdir -p packages/api/.claude/skills/api-testing
 # packages/api/.claude/skills/api-testing/SKILL.md
 ---
 name: api-testing
-description: API package testing patterns
+description: Test patterns for the API package
 ---
 
 ## Test structure
@@ -182,19 +181,18 @@ Tests are in `src/__tests__/` mirroring `src/`.
 - `src/__tests__/helpers/auth.ts`: createTestUser(), getAuthToken()
 ```
 
-When working from `packages/api/`, the api-testing skill loads automatically. When working from `packages/web/`, it does not.
+Work in `packages/api` and the api-testing skill loads automatically; in `packages/web`, it does not.
 
-## 9. Coordinating Cross-Package Changes
+## Coordinating Cross-Package Work
 
-When a change spans multiple packages—such as fixing a shared type and all its call sites—two strategies help maintain consistency.
+When one change touches multiple packages (say, updating a shared type and fixing every call site), two principles apply:
 
-**One session for the entire change**: Handle the shared edit and its call sites together so the rationale for each edit stays consistent rather than re-deriving it per package.
+- **Handle the whole change in one session**: load the related files together to keep decisions consistent.
+- **Save the plan to a file first**: leave the plan in a markdown file. Long sessions get their context compacted, but a plan saved to disk never disappears. "Persist important state to files" is also a fundamental of operating agentic loops.
 
-**Save the plan beforehand**: Write and save the plan as a markdown file. Long sessions compact the context partway through, but a saved plan survives even when the conversation history is lost.
+## A Concrete Configuration Example: Monorepo
 
-## 10. Concrete Monorepo Configuration Example
-
-Here is a complete setup for a monorepo.
+Here is a complete configuration example. The root carries repo-wide deny rules, and each package carries its own worktree and access settings (in a MoAI-ADK project, workflow settings like `.moai/config/sections/workflow.yaml` also live at the root).
 
 **Root** (`.claude/settings.json`):
 
@@ -231,30 +229,42 @@ Here is a complete setup for a monorepo.
 }
 ```
 
-With this configuration:
-- `.claude/`, `packages/api/`, and `packages/shared/` are checked out only (worktree sparse)
-- Shared package is accessible
-- Generated and vendor files are blocked
+The effect of this configuration:
 
-## 11. Tips and Tricks for Large Codebases
+- Worktrees check out only `.claude/`, `packages/api/`, and `packages/shared/`
+- The shared package is accessible
+- Generated/vendor file access is blocked
 
-### Scope-Based Search
+## Tips and Tricks
 
-When making large changes, understand the impact scope first:
+### Scoped Searches
+
+Before making a big change, map the blast radius first. The habit of narrowing search scope reduces how many files must be read.
 
 ```bash
-grep -r "FunctionName" packages/api/  # search api only
-grep -r "FunctionName" packages/      # search all packages
+grep -r "FunctionName" packages/api/  # search only api
+grep -r "FunctionName" packages/      # all packages
 ```
 
 ### Layer-by-Layer Analysis
 
-When a change touches multiple layers (database, API, UI), understand each layer separately, then focus on one change per session.
+For changes touching multiple layers — DB, API, UI — understand each layer separately, and focus one session on one change.
 
 ### Documentation Directives
 
-After large changes, keep documentation synchronized. Add "update docs" to your change plan so documentation stays current with code changes.
+So docs do not go stale after a large change, include a "update docs" item in the change plan.
+
+## Related Documents
+
+- [Context Window](/claude-code/context-memory/context-window)
+- [Worktrees](/claude-code/agentic/worktrees)
+- [Best Practices](/claude-code/agentic/best-practices)
 
 ## References
 
-This guide is based on Anthropic's official [Set up Claude Code in a monorepo or large codebase](https://code.claude.com/docs/en/large-codebases) documentation. See also [Best practices for Claude Code](https://code.claude.com/docs/en/best-practices).
+- [Set up Claude Code in a monorepo or large codebase (official docs)](https://code.claude.com/docs/en/large-codebases)
+- [Best practices for Claude Code (official docs)](https://code.claude.com/docs/en/best-practices)
+
+{{< callout type="tip" >}}
+The easiest first move in a monorepo: "for single-package work, run `claude` in that package's directory." It cuts irrelevant guidance loading without touching a single config file — the highest-return habit for the cost.
+{{< /callout >}}

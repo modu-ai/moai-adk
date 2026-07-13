@@ -1,38 +1,41 @@
 ---
 title: Schema Sync
-description: Automatic schema synchronization mechanism via PostToolUse hook
+description: The automatic schema synchronization mechanism via the PostToolUse hook
 weight: 20
 draft: false
 ---
 
-## Architecture Overview
+## Architecture overview
 
-MoAI's database workflow automatically detects changes to migration files and synchronizes schema documentation. This is implemented through the PostToolUse hook.
+MoAI's database workflow automatically detects migration file changes and
+synchronizes the schema documentation. So that nobody has to remember to
+"update the docs", this observation loop is attached to Claude Code's
+PostToolUse hook — when the agent works, the documentation follows.
 
-## Event Flow
+## Event flow
 
 ```mermaid
 flowchart TD
-    A["Edit migration file<br/>Prisma/Alembic/Rails etc."] --> B["Claude Code<br/>Write/Edit event"]
+    A["Migration file edited<br/>Prisma/Alembic/Rails etc."] --> B["Claude Code<br/>Write/Edit event"]
     B --> C["PostToolUse hook triggered"]
     C --> D["Bash wrapper script<br/>.claude/hooks/moai/handle-db-sync.sh"]
     D --> E["moai hook db-schema-sync<br/>Go binary"]
-    E --> F["10-second debounce<br/>Ignore partial edits"]
+    E --> F["10-second debounce<br/>ignores partial edits"]
     F --> G["Scan migration files"]
-    G --> H["Compute schema<br/>Extract tables/columns"]
+    G --> H["Compute schema<br/>extract tables/columns"]
     H --> I["Generate proposal.json"]
-    I --> J["Wait for approval<br/>or apply automatically"]
-    J --> K["Update schema.md<br/>and erd.mmd"]
+    I --> J["Await user approval<br/>or auto-apply"]
+    J --> K["Update schema.md<br/>erd.mmd"]
 ```
 
-## Automatic Detection
+## Automatic detection mechanism
 
-### Supported Events
+### Supported events
 
-Automatic detection triggers when migration files change:
+Changes to migration files are detected automatically:
 
-| Language | Migration Path | File Pattern |
-|----------|---------------|-------------|
+| Language | Migration path | File pattern |
+|------|-----------------|---------|
 | Go | `db/migrations/` | `*.sql` |
 | Python | `alembic/versions/` | `*.py` |
 | TypeScript | `prisma/migrations/` | `*.sql` |
@@ -42,44 +45,45 @@ Automatic detection triggers when migration files change:
 | Ruby | `db/migrate/` | `*.rb` |
 | PHP | `database/migrations/` | `*.php` |
 
-### Debounce Window
+### Debounce window
 
-To prevent errors from partial edits, a **10-second debounce window** is implemented:
+Scanning on every file save would be wasteful, so a **10-second debounce
+window** is set to prevent false triggers from partial edits:
 
 - Migration file change detected
-- Wait 10 seconds
-- If no additional changes occur within 10 seconds, execute schema scan
-- If changes occur within 10 seconds, reset timer
+- Wait for 10 seconds
+- If no further changes within 10 seconds, run the schema scan
+- If another change occurs within 10 seconds, reset the timer
 
-## Configuration Options
+## Configuration options
 
-### Enable Automatic Sync
+### Enabling automatic sync
 
 Configure in `.moai/config/sections/db.yaml`:
 
 ```yaml
 db:
-  auto_sync: true              # Default: true
-  debounce_window_seconds: 10  # Default: 10 seconds
-  approval_required: false     # Default: false (auto-apply)
+  auto_sync: true              # default: true
+  debounce_window_seconds: 10  # default: 10 seconds
+  approval_required: false     # default: false (auto-apply)
 ```
 
-### Disable Automatic Sync
+### Disabling automatic sync
 
-To disable auto-sync for a project:
+To disable automatic sync for a specific project:
 
 ```yaml
 db:
   auto_sync: false
 ```
 
-In this case, manually sync with:
+In that case you must sync manually:
 
 ```bash
 /moai db refresh
 ```
 
-## Manual Synchronization
+## Manual sync
 
 Use the `/moai db refresh` command:
 
@@ -89,43 +93,43 @@ Use the `/moai db refresh` command:
 
 This command:
 
-1. Wait for user confirmation (REQ-024) — "Rebuild schema completely?"
-2. Full scan of all migration files
-3. Regenerate schema.md, erd.mmd, migrations.md
-4. Output summary
+1. Waits for user confirmation (REQ-024) — "Fully rebuild the schema?"
+2. Fully scans all migration files
+3. Regenerates schema.md, erd.mmd, and migrations.md
+4. Prints a result summary
 
-## Relationship to /moai sync
+## Relationship with /moai sync
 
-When running the full documentation sync workflow (`/moai sync`):
+When the full documentation sync workflow (`/moai sync`) runs:
 
-- Phase 0.08: DB schema automatically refreshed
-- Works independently from auto-sync hook
-- Performs integrated update of all documents
+- Phase 0.08: includes the automatic DB schema refresh
+- Operates independently of the automatic sync hook
+- Updates all documentation together
 
-## User Edit Content Protection
+## Protecting user-edited content
 
-During automatic sync, user-edited sections are protected:
+Sections you have edited stay protected even during automatic sync:
 
-- Tracks changes with SHA-256 hashing
-- Auto-detects user-edited sections
-- Only regenerated content is updated
+- Change tracking via SHA-256 hashes
+- User-edited regions detected automatically
+- Only auto-generated content is refreshed
 - User edits are preserved
 
 For example, in `schema.md`:
 
 ```markdown
-# Schema Documentation
+# Schema documentation
 
-## Auto-Generated Section
-[Updated automatically]
+## Auto-generated section
+[Refreshed automatically]
 
-## Custom Notes (User-Edited)
-[Preserved during auto-update]
+## Custom notes (user-edited)
+[Preserved during automatic refresh]
 ```
 
-## Verify Hook Registration
+## Verifying the hook configuration
 
-Check that the PostToolUse hook is correctly registered:
+Verify the PostToolUse hook is registered correctly:
 
 ```bash
 grep -A10 '"PostToolUse"' .claude/settings.json
@@ -144,36 +148,36 @@ Expected output:
 
 ## Troubleshooting
 
-### Hook Not Working
+### The hook is not firing
 
-1. Check hook script exists:
+1. Check the hook script exists:
 
 ```bash
 ls -la .claude/hooks/moai/handle-db-sync.sh
 ```
 
-2. Verify execute permissions:
+2. Check execute permissions:
 
 ```bash
 chmod +x .claude/hooks/moai/handle-db-sync.sh
 ```
 
-3. Check moai binary path:
+3. Check the `moai` binary path:
 
 ```bash
 which moai
 ```
 
-### Schema Update Incorrect
+### The schema refresh is wrong
 
-Disable auto-sync and validate manually:
+Disable automatic sync and verify manually:
 
 ```yaml
 db:
   auto_sync: false
 ```
 
-Then manually refresh to verify results:
+Then refresh manually and check the result:
 
 ```bash
 /moai db refresh

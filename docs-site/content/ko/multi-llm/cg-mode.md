@@ -6,7 +6,10 @@ draft: false
 
 ## CG 모드란?
 
-CG(Claude + GLM) 모드는 리더가 **Claude API**를 사용하고 워커가 **GLM API**를 사용하는 하이브리드 모드입니다. tmux 세션 수준의 환경 변수 격리를 통해 구현됩니다.
+CG(Claude + GLM) 모드는 리더가 **Claude API**를, 워커가 **GLM API**를 사용하는
+하이브리드 모드입니다. tmux 세션 수준의 환경 변수 격리로 구현되며, "계획은
+Claude가 깊게, 구현은 GLM이 싸게"라는 토크노믹스 배분을 한 세션 안에서
+실행합니다. 구현 중심 작업 기준 약 60-70% 비용이 절감됩니다.
 
 ## 아키텍처
 
@@ -28,11 +31,11 @@ moai cg 실행
 ```
 ┌─────────────────────────────────────────────────────────────┐
 │  리더 (현재 tmux pane, Claude API)                           │
-│  - /moai --team 실행 시 워크플로우 오케스트레이션             │
+│  - 워크플로우 오케스트레이션                                  │
 │  - plan, quality, sync 단계 처리                             │
 │  - GLM 환경변수 없음 → Claude API 사용                       │
 └──────────────────────┬──────────────────────────────────────┘
-                       │ Agent Teams (새 tmux pane)
+                       │ 팀원 spawn (새 tmux pane)
                        ▼
 ┌─────────────────────────────────────────────────────────────┐
 │  팀원 (새 tmux pane, GLM API)                                │
@@ -71,11 +74,19 @@ moai cg
 
 `moai cg`는 현재 pane에서 자동으로 Claude Code를 실행합니다. 별도로 `claude`를 실행할 필요가 없습니다.
 
-### 4단계: 팀 워크플로우 실행
+### 4단계: 워크플로우 실행
 
 ```bash
-/moai --team "사용자 인증 기능 구현"
+/moai "사용자 인증 기능 구현"
 ```
+
+이후는 평소와 같습니다. 오케스트레이터(리더, Claude)가 계획·품질·동기화를
+맡고, 구현 물량이 큰 작업은 새 tmux pane의 GLM 팀원에게 위임됩니다.
+
+> **참고**: 과거의 `--team` 플래그(Agent Teams 정적 오케스트레이션 계층)는
+> v3.0에서 은퇴했습니다. 강제로 지정해도 sub-agent 모드로 폴백됩니다. CG
+> 모드의 리더/워커 분리는 Claude Code 내장 teammate 런타임(tmux pane)으로
+> 동작하며, 이 런타임은 그대로 유지됩니다.
 
 ## 중요 사항
 
@@ -127,12 +138,12 @@ ps auxe | grep -i 'tmux set-environment.*ANTHROPIC_AUTH_TOKEN'
 
 ## 디스플레이 모드
 
-Agent Teams는 두 가지 디스플레이 모드를 지원합니다:
+teammate 런타임은 두 가지 디스플레이 모드를 지원합니다:
 
 | 모드 | 설명 | 통신 | 리더/워커 분리 |
 |------|------|------|--------------|
-| `in-process` | 기본 모드, 모든 터미널 | ✅ SendMessage | ❌ 같은 환경 |
-| `tmux` | 분할 화면 표시 | ✅ SendMessage | ✅ 세션 환경변수 격리 |
+| `in-process` | 기본 모드, 모든 터미널 | SendMessage 지원 | 분리 없음 (같은 환경) |
+| `tmux` | 분할 화면 표시 | SendMessage 지원 | 세션 환경변수 격리 |
 
 > **CG 모드는 `tmux` 디스플레이 모드에서만 리더/워커 API 분리가 가능합니다.**
 
@@ -168,5 +179,5 @@ Agent Teams는 두 가지 디스플레이 모드를 지원합니다:
 ## 다음 단계
 
 - [모델 정책](/ko/multi-llm/model-policy) — 에이전트별 모델 배정
-- [이중 실행 모드](/ko/getting-started/faq) — Sub-Agent vs Agent Teams
+- [자주 묻는 질문](/ko/getting-started/faq) — 실행 모드 관련 FAQ
 - [CLI 레퍼런스](/ko/getting-started/cli) — moai cc, moai glm, moai cg 상세

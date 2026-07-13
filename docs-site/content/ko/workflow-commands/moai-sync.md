@@ -4,7 +4,7 @@ weight: 50
 draft: false
 ---
 
-구현 완료된 코드의 문서를 동기화하고, Git 자동화를 통해 배포를 준비합니다.
+구현 완료된 코드의 문서를 동기화하고, Git 자동화를 통해 배포를 준비합니다. 3-Phase 라이프사이클의 마지막 단계입니다.
 
 {{< callout type="info" >}}
 **슬래시 커맨드**: Claude Code에서 `/moai:sync`를 입력하면 이 명령어를 바로 실행할 수 있습니다. `/moai`만 입력하면 사용 가능한 모든 서브커맨드 목록이 표시됩니다.
@@ -12,10 +12,9 @@ draft: false
 
 ## 개요
 
-`/moai sync`는 MoAI-ADK 워크플로우의 **Phase 3 (Sync)** 명령어입니다. Phase
-2에서 구현이 완료된 코드를 분석하여 문서를 자동 생성하고, Git 커밋 및 PR (Pull
-Request) 을 만들어 배포 준비를 완료합니다. 내부적으로 **manager-docs**
-에이전트가 전체 과정을 관리합니다.
+`/moai sync`는 MoAI-ADK 워크플로우의 **Phase 3 (Sync)** 명령어입니다. Phase 2에서 구현이 완료된 코드를 분석하여 문서를 자동 생성하고, Git 커밋 및 PR (Pull Request)을 만들어 배포 준비를 완료합니다. 내부적으로 **manager-docs** 에이전트가 전체 과정을 관리합니다.
+
+동기화 결과물은 **sync-auditor**가 독립적으로 평가합니다 — 문서를 만든 에이전트와 검사하는 에이전트가 분리되어 있어, "동기화했다"는 주장이 아니라 검증된 증거로 단계가 마무리됩니다.
 
 {{< callout type="info" >}}
 **왜 문서 동기화가 필요한가요?**
@@ -51,6 +50,8 @@ Run 단계가 완료된 후 실행합니다:
 | `force`       | 전체 문서 재생성            | 오류 복구, 대규모 리팩토링 |
 | `status`      | 읽기 전용 상태 확인         | 빠른 건강 체크             |
 | `project`     | 프로젝트 전체 문서 업데이트 | 마일스톤 완료, 주기 동기화 |
+
+기본 `auto` 모드가 변경 파일만 골라 동기화하는 것도 토크노믹스 설계입니다 — 매번 전체 문서를 다시 만들 이유가 없다면 그만큼의 토큰을 쓰지 않습니다.
 
 ### 모드별 사용법
 
@@ -208,20 +209,17 @@ flowchart TD
 
 **Step 4 - 코드 리뷰:**
 
-**sync-auditor** 하위 에이전트가 TRUST 5 품질 검증을 수행하고 종합 보고를
-생성합니다.
+**sync-auditor** 하위 에이전트가 TRUST 5 품질 검증을 수행하고 종합 보고를 생성합니다.
 
 **Step 5 - 품질 보고서 생성:**
 
-test-runner, linter, type-checker, code-review의 상태를 집계하고 전체 상태 (PASS
-또는 WARN)를 결정합니다.
+test-runner, linter, type-checker, code-review의 상태를 집계하고 전체 상태 (PASS 또는 WARN)를 결정합니다.
 
 ### Phase 1: 분석 및 계획
 
 **manager-docs** 하위 에이전트가 동기화 전략을 수립합니다.
 
-**출력:** documents_to_update, specs_requiring_sync,
-project_improvements_needed, estimated_scope
+**출력:** documents_to_update, specs_requiring_sync, project_improvements_needed, estimated_scope
 
 ### Phase 2: 문서 동기화 실행
 
@@ -259,8 +257,7 @@ project_improvements_needed, estimated_scope
 
 **Step 4 - SPEC 상태 업데이트:**
 
-완료된 SPEC의 상태를 일괄 업데이트하여 "completed"로 설정하고 버전 변경 및 상태
-전환을 기록합니다.
+완료된 SPEC의 상태를 일괄 업데이트하여 "completed"로 설정하고 버전 변경 및 상태 전환을 기록합니다.
 
 ### Phase 3: Git 작업 및 PR
 
@@ -331,8 +328,7 @@ project_improvements_needed, estimated_scope
 
 ### API 문서
 
-구현된 코드에서 API 엔드포인트, 함수 시그니처, 클래스 구조를 분석하여 문서를
-생성합니다.
+구현된 코드에서 API 엔드포인트, 함수 시그니처, 클래스 구조를 분석하여 문서를 생성합니다.
 
 | 문서 유형    | 내용                         | 생성 조건               |
 | ------------ | ---------------------------- | ----------------------- |
@@ -369,8 +365,7 @@ project_improvements_needed, estimated_scope
 
 ### 커밋 메시지 형식
 
-MoAI-ADK는 [Conventional Commits](https://www.conventionalcommits.org/) 형식을
-따릅니다:
+MoAI-ADK는 [Conventional Commits](https://www.conventionalcommits.org/) 형식을 따릅니다:
 
 | 접두사     | 용도      | 예시                                        |
 | ---------- | --------- | ------------------------------------------- |
@@ -382,9 +377,7 @@ MoAI-ADK는 [Conventional Commits](https://www.conventionalcommits.org/) 형식�
 
 ## PR 머지 후 CI 모니터링
 
-`/moai sync` 가 PR 을 생성한 직후, MoAI-ADK 는 두 단계의 자동 모니터링을
-실행합니다. Wave 1 은 CI 결과를 폴링하여 어느 required check 가 실패했는지
-판단하고, Wave 2 는 실패가 발생한 경우 자동 fix 루프에 진입합니다.
+`/moai sync` 가 PR 을 생성한 직후, MoAI-ADK 는 두 단계의 자동 모니터링을 실행합니다. Wave 1 은 CI 결과를 폴링하여 어느 required check 가 실패했는지 판단하고, Wave 2 는 실패가 발생한 경우 자동 fix 루프에 진입합니다. PR 생성 후에도 사람이 CI 화면을 지켜보는 대신 루프가 결과를 관찰하고 대응하는 — 에이전틱 루프 엔지니어링이 CI 영역까지 이어진 구조입니다.
 
 ### Wave 1 — CI 결과 폴링
 
@@ -445,6 +438,50 @@ Sync 단계의 품질 기준은 Run 단계보다 문서 중심입니다:
   `/moai run`으로 돌아가 코드 문제를 수정하거나, `/moai fix`로 빠르게 오류를
   수정하세요.
 {{< /callout >}}
+
+## 워크트리 컨텍스트 Auto-Merge
+
+워크트리 환경에서 실행 시 auto-merge가 기본 동작입니다.
+
+**워크트리 컨텍스트 감지:**
+- 현재 git 디렉토리 경로에 `/.moai/worktrees/` 포함 여부
+- 또는 `.moai/worktrees/registry.json`에 현재 SPEC-ID의 활성 항목 존재
+
+**플래그 동작:**
+
+| 플래그 | v2.8 이전 | v2.9.0 이후 |
+|--------|----------|------------|
+| (없음) | 머지 안 함 | 워크트리 컨텍스트에서 **자동 머지** |
+| `--merge` | 자동 머지 | **Deprecated** (경고 표시) |
+| `--no-merge` | N/A | 자동 머지 건너뛰기 |
+
+**Auto-merge 실행 조건:**
+1. 모든 CI/CD 체크 통과
+2. 머지 충돌 없음
+3. `--no-merge` 플래그 미설정
+
+{{< callout type="warning" >}}
+CI 실패 또는 충돌 시 자동 머지를 수행하지 않으며, 복구 명령어와 함께 오류를 보고합니다.
+{{< /callout >}}
+
+### 포스트-머지 자동 클린업
+
+PR 머지 성공 후 자동 정리를 수행합니다.
+
+**조건:** Auto-merge 성공 AND `workflow.worktree.auto_cleanup == true`
+
+**정리 항목:**
+1. 워크트리 디렉토리 제거
+2. 피처 브랜치 삭제 (`--delete-branch`)
+3. 워크트리 레지스트리 업데이트
+
+{{< callout type="info" >}}
+클린업 실패는 머지 결과에 영향을 주지 않습니다. 실패 시: `moai worktree done SPEC-{ID}`로 수동 정리하세요.
+{{< /callout >}}
+
+## `/cd` 캐시 보존 재개 (CC 2.1.169+)
+
+디렉터리 경계를 가로질러 다단계 워크플로우를 재개할 때 (예: run과 sync 사이에 L2 worktree 진입), Claude Code 2.1.169+는 `/cd <path>`를 제공합니다 — 세션의 작업 디렉터리를 **프롬프트 캐시를 보존하면서** 전환하는 명령으로, 누적된 추론 컨텍스트가 cwd 변경 시 재구축되는 대신 유지됩니다. 이는 새 터미널을 여는 것에 대한 캐시 보존 대안입니다: `/cd`는 컨텍스트를 유지하고, 새 터미널은 cold-start합니다. run-phase 컨텍스트를 유지하며 L2 worktree로 sync-phase에 진입할 때, `/cd <worktree-path>`가 마찰이 적은 경로입니다. 캐시 적중률이 곧 토큰 비용인 만큼, 프롬프트 캐시를 보존하는 습관은 토크노믹스 관점에서도 유효합니다. 전환이 `cwd` 필드에 반영되는 방식은 [Statusline 가이드](/ko/advanced/statusline)를 참조하세요.
 
 ## 실전 예시
 
@@ -539,18 +576,15 @@ $ gh pr view 42
 
 ### Q: PR을 자동으로 만들고 싶지 않으면?
 
-`git-strategy.yaml`에서 `auto_pr: false`로 설정하면 커밋까지만 자동으로
-수행합니다. PR은 원하는 시점에 직접 만들 수 있습니다.
+`git-strategy.yaml`에서 `auto_pr: false`로 설정하면 커밋까지만 자동으로 수행합니다. PR은 원하는 시점에 직접 만들 수 있습니다.
 
 ### Q: CHANGELOG 형식을 바꿀 수 있나요?
 
-현재는 [Keep a Changelog](https://keepachangelog.com) 형식을 기본으로
-사용합니다. 커스텀 형식은 향후 지원 예정입니다.
+현재는 [Keep a Changelog](https://keepachangelog.com) 형식을 기본으로 사용합니다. 커스텀 형식은 향후 지원 예정입니다.
 
 ### Q: 문서만 생성하고 Git 작업은 하지 않으려면?
 
-`git-strategy.yaml`에서 `auto_commit: false`로 설정하면 문서 생성만 수행합니다.
-Git 작업은 수동으로 진행할 수 있습니다.
+`git-strategy.yaml`에서 `auto_commit: false`로 설정하면 문서 생성만 수행합니다. Git 작업은 수동으로 진행할 수 있습니다.
 
 ### Q: 품질 게이트 실패 시 어떻게 하나요?
 
@@ -568,54 +602,7 @@ Git 작업은 수동으로 진행할 수 있습니다.
 
 ### Q: `/moai sync`와 `/moai`의 차이는 무엇인가요?
 
-`/moai sync`는 **구현 완료된 코드의 문서화만** 담당합니다. `/moai`는 SPEC
-생성부터 구현, 문서화까지 **전체 워크플로우**를 자동으로 수행합니다.
-
-## v2.9.0 신규 기능
-
-### 워크트리 컨텍스트 Auto-Merge
-
-워크트리 환경에서 실행 시 auto-merge가 기본 동작으로 변경됩니다.
-
-**워크트리 컨텍스트 감지:**
-- 현재 git 디렉토리 경로에 `/.moai/worktrees/` 포함 여부
-- 또는 `.moai/worktrees/registry.json`에 현재 SPEC-ID의 활성 항목 존재
-
-**플래그 동작 변경:**
-
-| 플래그 | v2.8 이전 | v2.9.0 이후 |
-|--------|----------|------------|
-| (없음) | 머지 안 함 | 워크트리 컨텍스트에서 **자동 머지** |
-| `--merge` | 자동 머지 | **Deprecated** (경고 표시) |
-| `--no-merge` | N/A | 자동 머지 건너뛰기 |
-
-**Auto-merge 실행 조건:**
-1. 모든 CI/CD 체크 통과
-2. 머지 충돌 없음
-3. `--no-merge` 플래그 미설정
-
-{{< callout type="warning" >}}
-CI 실패 또는 충돌 시 자동 머지를 수행하지 않으며, 복구 명령어와 함께 오류를 보고합니다.
-{{< /callout >}}
-
-### 포스트-머지 자동 클린업
-
-PR 머지 성공 후 자동 정리를 수행합니다.
-
-**조건:** Auto-merge 성공 AND `workflow.worktree.auto_cleanup == true`
-
-**정리 항목:**
-1. 워크트리 디렉토리 제거
-2. 피처 브랜치 삭제 (`--delete-branch`)
-3. 워크트리 레지스트리 업데이트
-
-{{< callout type="info" >}}
-클린업 실패는 머지 결과에 영향을 주지 않습니다. 실패 시: `moai worktree done SPEC-{ID}`로 수동 정리하세요.
-{{< /callout >}}
-
-## `/cd` 캐시 보존 재개 (CC 2.1.169+)
-
-디렉터리 경계를 가로질러 다단계 워크플로우를 재개할 때 (예: run과 sync 사이에 L2 worktree 진입), Claude Code 2.1.169+는 `/cd <path>`를 제공합니다 — 세션의 작업 디렉터리를 **프롬프트 캐시를 보존하면서** 전환하는 명령으로, 누적된 추론 컨텍스트가 cwd 변경 시 재구축되는 대신 유지됩니다. 이는 새 터미널을 여는 것에 대한 캐시 보존 대안입니다: `/cd`는 컨텍스트를 유지하고, 새 터미널은 cold-start합니다. run-phase 컨텍스트를 유지하며 L2 worktree로 sync-phase에 진입할 때, `/cd <worktree-path>`가 마찰이 적은 경로입니다. 전환이 `cwd` 필드에 반영되는 방식은 [Statusline 가이드](/ko/advanced/statusline)를 참조하세요.
+`/moai sync`는 **구현 완료된 코드의 문서화만** 담당합니다. `/moai`는 SPEC 생성부터 구현, 문서화까지 **전체 워크플로우**를 자동으로 수행합니다.
 
 ## 관련 문서
 

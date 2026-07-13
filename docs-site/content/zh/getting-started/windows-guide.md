@@ -1,58 +1,60 @@
 ---
-title: Windows使用指南
+title: Windows 使用指南
 weight: 40
 draft: false
 ---
+
+本文整理了在 Windows 上使用 MoAI-ADK 时需要了解的环境要求与常见陷阱。先说结论：**WSL 最省心** — 原生 Windows 环境中遇到的大部分路径·权限问题在 WSL 中都不会出现。
 
 ## 支持的环境
 
 | 环境 | 是否支持 | 备注 |
 |------|----------|------|
-| **WSL（推荐）** | ✅ 完全支持 | 最佳体验 |
-| **PowerShell 7.x+** | ✅ 支持 | 备选环境 |
-| PowerShell 5.x（旧版） | ❌ 不支持 | Windows PowerShell |
-| cmd.exe | ❌ 不支持 | 命令提示符 |
+| **WSL (推荐)** | {{< icon check ok >}} 完全支持 | 最佳体验 |
+| **PowerShell 7.x+** | {{< icon check ok >}} 支持 | 备选环境 |
+| PowerShell 5.x (旧版) | {{< icon x danger >}} 不支持 | Windows PowerShell |
+| cmd.exe | {{< icon x danger >}} 不支持 | 命令提示符 |
 
 **必要条件：**
 - 必须安装 [Git for Windows](https://gitforwindows.org/)
-- WSL 或 PowerShell 7.x 以上版本
+- WSL 或 PowerShell 7.x 以上
 
 ## 安装方法
 
-### WSL（推荐）
+### WSL (推荐)
 
-WSL在Windows上提供Linux环境，完整支持MoAI-ADK的所有功能。
+WSL 在 Windows 上提供 Linux 环境，可完整支持 MoAI-ADK 的全部功能。
 
 ```bash
-# 安装WSL（在管理员PowerShell中执行）
+# WSL 설치 (관리자 PowerShell에서 실행)
 wsl --install
 
-# 在WSL内安装MoAI-ADK
+# WSL 내에서 MoAI-ADK 설치
 curl -fsSL https://raw.githubusercontent.com/modu-ai/moai-adk/main/install.sh \
   | bash
 ```
 
 ### PowerShell 7.x+
 
-> **注**：为获得最佳体验，建议使用WSL。
+> **提示**：为获得最佳体验，建议使用 WSL。
 
 ```powershell
 irm https://raw.githubusercontent.com/modu-ai/moai-adk/main/install.ps1 | iex
 ```
 
-## 非ASCII用户名路径错误
+## 非 ASCII 用户名路径错误
 
 ### 问题现象
 
-如果Windows用户名包含中文、韩文等非ASCII字符，可能会发生 `EINVAL` 错误。这是Windows的8.3短文件名转换过程中产生的问题。
+当 Windows 用户名包含韩文、中文等非 ASCII 字符时，可能出现 `EINVAL` 错误。这是 Windows 8.3 短文件名转换过程引发的问题。
 
 ```
-Error: EINVAL: invalid argument, open 'C:\Users\王伟\AppData\Local\Temp\...'
+Error: EINVAL: invalid argument, open 'C:\Users\홍길동\AppData\Local\Temp\...'
 ```
 
-### 解决方法1：设置备用临时目录（推荐）
+### 解决方法 1：设置替代临时目录 (推荐)
 
-在仅包含ASCII字符的路径下创建临时目录：
+在仅包含 ASCII 字符的路径下创建临时目录：
 
 ```bash
 # Command Prompt
@@ -66,81 +68,81 @@ $env:MOAI_TEMP_DIR="C:\temp"
 New-Item -ItemType Directory -Path "C:\temp" -Force
 ```
 
-要永久设置该环境变量，请将 `MOAI_TEMP_DIR` 添加到系统环境变量中。
+若要永久设置环境变量，请在系统环境变量中添加 `MOAI_TEMP_DIR`。
 
-### 解决方法2：禁用8.3文件名生成
+### 解决方法 2：禁用 8.3 文件名生成
 
-以管理员权限执行：
+以管理员权限运行：
 
 ```bash
 fsutil 8dot3name set 1
 ```
 
-> **注意**：此设置会影响整个系统，部分旧版程序可能会受到影响。
+> **注意**：此设置影响整个系统，部分旧程序可能受到影响。
 
-### 解决方法3：创建ASCII用户账户
+### 解决方法 3：创建 ASCII 用户账户
 
-使用英文名称创建新的Windows用户账户，可从根本上解决路径问题。
+用英文名创建新的 Windows 用户账户，可从根本上解决路径问题。
 
-## WSL设置指南
+## WSL 设置指南
 
-### 安装WSL
+### 安装 WSL
 
 ```powershell
-# 在管理员PowerShell中执行
+# 관리자 PowerShell에서 실행
 wsl --install
 
-# 默认发行版：Ubuntu（推荐）
-# 重启后设置用户名和密码
+# 기본 배포판: Ubuntu (권장)
+# 재시작 후 사용자명 및 비밀번호 설정
 ```
 
-### 项目文件访问
+### 访问项目文件
 
-在WSL中访问Windows文件：
+在 WSL 中访问 Windows 文件：
 
 ```bash
-# 访问Windows文件系统
-cd /mnt/c/Users/用户名/projects/
+# Windows 파일시스템 접근
+cd /mnt/c/Users/사용자명/projects/
 
-# 使用WSL原生文件系统（更快）
+# WSL 네이티브 파일시스템 사용 (더 빠름)
 cd ~/projects/
 ```
 
-> **性能提示**：在WSL原生文件系统（`~/` 下）中工作，可以在没有跨文件系统开销的情况下获得最佳性能。
+> **性能提示**：在 WSL 原生文件系统（`~/` 下）中工作，可以避免跨文件系统开销，获得最佳性能。
 
-### VS Code集成
+### VS Code 联动
 
-1. 在VS Code中安装 [WSL扩展](https://marketplace.visualstudio.com/items?itemName=ms-vscode-remote.remote-wsl)
-2. 在WSL终端中执行 `code .`
-3. VS Code会自动以WSL模式打开
+1. 在 VS Code 中安装 [WSL 扩展](https://marketplace.visualstudio.com/items?itemName=ms-vscode-remote.remote-wsl)
+2. 在 WSL 终端中运行 `code .`
+3. VS Code 会自动以 WSL 模式打开
 
-## 在CG模式下使用tmux
+## 在 CG 模式中使用 tmux
 
-使用 [CG模式](/zh/multi-llm/cg-mode) 需要tmux。在WSL中安装：
+使用 [CG 模式](/zh/multi-llm/cg-mode)需要 tmux。在 WSL 中安装：
 
 ```bash
 # Ubuntu/Debian
 sudo apt install tmux
 
-# 启动tmux会话
+# tmux 세션 시작
 tmux new -s moai
 
-# 运行CG模式
+# CG 모드 실행
 moai cg
 ```
 
-## 故障排除
+## 问题排查
 
-| 问题 | 原因 | 解决方法 |
+| 问题 | 原因 | 解决 |
 |------|------|------|
-| `moai: command not found` | PATH中未包含Go bin目录 | 在 `.bashrc` 中添加 `export PATH="$HOME/go/bin:$PATH"` |
-| `EINVAL` 错误 | 非ASCII用户名 | 参见上文 [非ASCII用户名路径错误](#非ascii用户名路径错误) |
-| 权限被拒绝 | 安装脚本权限问题 | 执行 `chmod +x install.sh` 后重新运行 |
-| Git命令失败 | 未安装Git for Windows | 安装 [Git for Windows](https://gitforwindows.org/) |
-| 找不到tmux | 无法运行CG模式 | 执行 `sudo apt install tmux`（在WSL中） |
+| `moai: command not found` | PATH 未包含 Go bin 目录 | 在 `.bashrc` 中添加 `export PATH="$HOME/go/bin:$PATH"` |
+| `EINVAL` 错误 | 非 ASCII 用户名 | 参考上文[非 ASCII 用户名路径错误](#非-ascii-用户名路径错误) |
+| 权限被拒绝 | 安装脚本权限 | 执行 `chmod +x install.sh` 后重试 |
+| Git 命令失败 | 未安装 Git for Windows | 安装 [Git for Windows](https://gitforwindows.org/) |
+| 没有 tmux | 无法运行 CG 模式 | `sudo apt install tmux`（在 WSL 中） |
 
 ## 下一步
 
-- [安装](/zh/getting-started/installation) — 详细安装指南
+- [安装](/zh/getting-started/installation) — 安装详细指南
 - [初始设置](/zh/getting-started/init-wizard) — 项目初始化
-- [CG模式](/zh/multi-llm/cg-mode) — Claude + GLM混合模式
+- [CG 模式](/zh/multi-llm/cg-mode) — Claude + GLM 混合模式

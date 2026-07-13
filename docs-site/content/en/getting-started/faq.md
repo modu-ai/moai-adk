@@ -1,50 +1,66 @@
 ---
 title: Frequently Asked Questions
-weight: 80
+weight: 100
 draft: false
 ---
 
-Frequently asked questions and answers about MoAI-ADK.
+Frequently asked questions and answers about using MoAI-ADK.
 
 ---
 
-## Q: What does the version indicator in statusline mean?
+## Q: What is the difference between `moai` and `/moai`?
 
-The MoAI statusline shows version information with update notifications:
+They are two completely different things. This is the most common confusion, so let's clear it up first.
+
+| | `moai` (terminal CLI) | `/moai` (slash subcommand) |
+|---|---|---|
+| **Where it runs** | Terminal shell | Claude Code chat input |
+| **What it is** | Go binary | Claude Code skill invocation |
+| **Purpose** | Project setup, template deployment | AI agent development workflows |
+| **Example** | `moai init my-project` | `/moai plan "auth feature"` |
+
+- Running `moai plan` in the terminal does nothing — `/moai plan` is only valid inside Claude Code.
+- Typing `/moai init` in Claude Code does nothing — `moai init` is a terminal command.
+
+---
+
+## Q: What does the version display in the statusline mean?
+
+The MoAI statusline shows version information together with an update notification:
 
 ```
 🗿 v2.2.2 ⬆️ v2.2.5
 ```
 
-- **`v2.2.2`**: Currently installed version
-- **`⬆️ v2.2.5`**: New version available for update
+- **`v2.2.2`**: The currently installed version
+- **`⬆️ v2.2.5`**: A newer version available for update
 
-When you're on the latest version, only the version number is displayed:
+When you are on the latest version, only the version number is shown:
 
 ```
 🗿 v2.2.5
 ```
 
-**To update**: Run `moai update` and the update notification will disappear.
+**How to update**: Run `moai update` and the update notification disappears.
 
 {{< callout type="info" >}}
-**Note**: This is different from Claude Code's built-in version indicator (`🔅 v2.1.38`). The MoAI indicator tracks MoAI-ADK versions, while Claude Code shows its own version separately.
+**Note**: This is different from Claude Code's built-in version display (`🔅 v2.1.38`). The MoAI display tracks the MoAI-ADK version, while Claude Code displays its own version separately.
 {{< /callout >}}
 
 ---
 
-## Q: How do I customize which statusline segments are displayed?
+## Q: How do I customize the segments shown in the statusline?
 
-The statusline supports 4 display presets plus custom configuration:
+The statusline supports 4 display presets plus a custom configuration:
 
 | Preset | Description |
-|--------|-------------|
-| **Full** (default) | All 8 segments displayed |
-| **Compact** | Model + Context + Git Status + Branch only |
-| **Minimal** | Model + Context only |
-| **Custom** | Pick individual segments |
+|--------|------|
+| **Full** (default) | Shows all 8 segments |
+| **Compact** | Shows only Model + Context + Git Status + Branch |
+| **Minimal** | Shows only Model + Context |
+| **Custom** | Select individual segments |
 
-Configure during `moai init` / `moai update -c` wizard, or edit `.moai/config/sections/statusline.yaml`:
+Configure it in the `moai init` or `moai update -c` wizard, or edit `.moai/config/sections/statusline.yaml` directly:
 
 ```yaml
 statusline:
@@ -61,65 +77,69 @@ statusline:
 ```
 
 {{< callout type="info" >}}
-See [SPEC-STATUSLINE-001](https://github.com/modu-ai/moai-adk/blob/main/.moai/specs/SPEC-STATUSLINE-001/spec.md) for details.
+For details, see [SPEC-STATUSLINE-001](https://github.com/modu-ai/moai-adk/blob/main/.moai/specs/SPEC-STATUSLINE-001/spec.md).
 {{< /callout >}}
 
 ---
 
 ## Q: How do I choose a model policy?
 
-MoAI-ADK assigns optimal AI models to each agent based on your Claude Code subscription plan. This maximizes quality within your plan's rate limits.
+MoAI-ADK assigns the optimal AI model to each agent according to your Claude Code subscription plan. It is a tokenomics mechanism that maximizes quality within your plan's usage limits.
 
 ### Policy Tier Comparison
 
-| Policy | Plan | 🟣 Opus | 🔵 Sonnet | 🟡 Haiku | Best For |
-|--------|------|---------|-----------|----------|----------|
-| **High** | Max $200/mo | 5 | 1 | 1 | Maximum quality, highest throughput |
-| **Medium** | Max $100/mo | 2 | 3 | 2 | Balanced quality and cost |
-| **Low** | Plus $20/mo | 0 | 4 | 3 | Budget-friendly, no Opus access |
+| Policy | Plan | Characteristics |
+|------|--------|------|
+| **High** | Max $200/month | Highest quality — Opus assigned to planning and audits, maximum throughput |
+| **Medium** | Max $100/month | Balance of quality and cost |
+| **Low** | Plus $20/month | Economical, no Opus — Sonnet-centric allocation |
 
 {{< callout type="warning" >}}
-**Why does this matter?** The Plus $20 plan does not include Opus access. Setting `Low` ensures all agents use only Sonnet and Haiku, preventing rate limit errors. Higher plans benefit from Opus on critical agents (security, strategy, architecture) while using Sonnet/Haiku for routine tasks.
+**Why does this matter?** The Plus $20 plan does not include Opus. Setting `Low` runs every agent without Opus, preventing usage-limit errors. On higher plans, Opus goes to the critical phases (planning, audits) while lighter models handle routine work.
 {{< /callout >}}
 
-### Agent Model Assignment by Tier
+### Agent Model Assignment per Tier
 
-The following **8 retained agents** use model assignment based on tier. The 12 archived agents are not available.
+Of the **10-agent catalog** (9 MoAI custom + 1 Anthropic built-in `Explore`), the MoAI custom agents are assigned models according to the tier. The 12 archived agents from earlier versions are not available.
 
-#### Manager Agents (4)
-
-| Agent | High | Medium | Low |
-|-------|------|--------|-----|
-| manager-spec | 🟣 opus | 🟣 opus | 🔵 sonnet |
-| manager-develop | 🟣 opus | 🔵 sonnet | 🔵 sonnet |
-| manager-docs | 🔵 sonnet | 🟡 haiku | 🟡 haiku |
-| manager-git | 🟡 haiku | 🟡 haiku | 🟡 haiku |
-
-#### Evaluator & Builder Agents (3)
+#### Manager Agents (5)
 
 | Agent | High | Medium | Low |
-|-------|------|--------|-----|
-| plan-auditor | 🟣 opus | 🟣 opus | 🔵 sonnet |
-| sync-auditor | 🟣 opus | 🔵 sonnet | 🔵 sonnet |
-| builder-harness | 🟣 opus | 🔵 sonnet | 🟡 haiku |
+|---------|------|--------|-----|
+| manager-spec | opus | opus | sonnet |
+| manager-develop | opus | sonnet | sonnet |
+| manager-docs | sonnet | haiku | haiku |
+| manager-git | haiku | haiku | haiku |
+| manager-design | sonnet | sonnet | sonnet |
 
-### Configuration
+#### Evaluator · Builder · Advisor Agents (4)
+
+| Agent | High | Medium | Low |
+|---------|------|--------|-----|
+| plan-auditor | opus | opus | sonnet |
+| sync-auditor | opus | sonnet | sonnet |
+| builder-harness | opus | sonnet | haiku |
+| super-advisor | opus | opus | sonnet |
+
+The built-in `Explore` follows the session model as-is.
+
+### How to Configure
 
 ```bash
 # During project initialization
-moai init my-project          # Interactive wizard includes model policy selection
+moai init my-project          # Select the model policy in the interactive wizard
 
-# Reconfigure existing project
-moai update -c                # Re-runs the configuration wizard
+# Reconfigure an existing project
+moai update -c                # Re-run the setup wizard
 ```
 
 {{< callout type="info" >}}
-Default policy is `High`. After running `moai update`, a notice guides you to configure this setting via `moai update -c`.
+The default policy is `High`. After running `moai update`, you will be prompted to configure this setting with `moai update -c`.
 {{< /callout >}}
 
 ---
 
-## Q: "Allow external CLAUDE.md file imports?" warning appears
+## Q: I see an "Allow external CLAUDE.md file imports?" warning
 
 When opening a project, Claude Code may show a security prompt about external file imports:
 
@@ -131,33 +151,33 @@ External imports:
 ```
 
 {{< callout type="info" >}}
-**Recommended action**: Select **"No, disable external imports"** ✅
+**Recommended action:** Choose **"No, disable external imports"**.
 {{< /callout >}}
 
-**Why?**
-- Your project's `.moai/config/sections/` already contains these files
-- Project-specific settings take precedence over global settings
-- The essential configuration is already embedded in CLAUDE.md text
-- Disabling external imports is more secure and doesn't affect functionality
+**Why:**
+- These files already exist in your project's `.moai/config/sections/`
+- Project-level settings take precedence over global settings
+- The essential settings are already included in the CLAUDE.md text
+- Disabling external imports is safer and does not affect functionality
 
-**What are these files?**
+**What the files are:**
 - `quality.yaml`: TRUST 5 framework and development methodology settings
-- `language.yaml`: Language preferences (conversation, comments, commits)
-- `user.yaml`: User name (optional, for Co-Authored-By attribution)
+- `language.yaml`: Language settings (conversation, comments, commits)
+- `user.yaml`: User name (optional, used for Co-Authored-By)
 
 ---
 
-## Q: What is the difference between TDD and DDD methodologies?
+## Q: What is the difference between the TDD and DDD methodologies?
 
-MoAI-ADK v2.5.0+ uses **binary methodology selection** (TDD or DDD only). The hybrid mode has been removed for clarity and consistency.
+MoAI-ADK v2.5.0+ uses a **binary methodology choice** (TDD or DDD only). The hybrid mode was removed for clarity and consistency.
 
 ### Methodology Selection Guide
 
 ```mermaid
 flowchart TD
-    A["Project Analysis"] --> B{"New Project or<br/>10%+ Test Coverage?"}
+    A["Analyze project"] --> B{"New project or<br/>10%+ test coverage?"}
     B -->|"Yes"| C["TDD (default)"]
-    B -->|"No"| D{"Existing Project<br/>< 10% Coverage?"}
+    B -->|"No"| D{"Existing project<br/>< 10% coverage?"}
     D -->|"Yes"| E["DDD"]
     C --> F["RED → GREEN → REFACTOR"]
     E --> G["ANALYZE → PRESERVE → IMPROVE"]
@@ -168,40 +188,40 @@ flowchart TD
 
 ### TDD Methodology (Default)
 
-The default methodology for new projects and feature development. Write tests first, then implement.
+The default methodology recommended for new projects and feature development. Tests are written first.
 
 | Phase | Description |
-|-------|-------------|
-| **RED** | Write a failing test that defines expected behavior |
-| **GREEN** | Write minimal code to make the test pass |
-| **REFACTOR** | Improve code quality while keeping tests green |
+|------|------|
+| **RED** | Write a failing test that defines the expected behavior |
+| **GREEN** | Write the minimum code that passes the test |
+| **REFACTOR** | Improve code quality while keeping the tests green |
 
-For brownfield projects (existing codebases), TDD is enhanced with a **pre-RED analysis step**: read existing code to understand current behavior before writing tests.
+For brownfield projects (existing codebases), an **analysis phase before RED** is added: read the existing code to understand current behavior before writing tests.
 
-### DDD Methodology (Existing Projects with < 10% Coverage)
+### DDD Methodology (Existing Projects with < 10% Test Coverage)
 
-A methodology for safely refactoring existing projects with minimal test coverage.
+The methodology for safely refactoring existing projects with minimal test coverage.
 
 ```
 ANALYZE   → Analyze existing code and dependencies, identify domain boundaries
-PRESERVE  → Write characterization tests, capture current behavior snapshots
-IMPROVE   → Improve incrementally under test protection
+PRESERVE  → Write characterization tests, capture current-behavior snapshots
+IMPROVE   → Improve incrementally while protected by tests
 ```
 
 ### Methodology Selection Table
 
 | Project State | Test Coverage | Recommended Methodology | Reason |
-|--------------|---------------|-------------------------|--------|
+|--------------|---------------|-------------|------|
 | New project | N/A | TDD | Test-first development |
-| Existing project | 50%+ | TDD | Strong test base exists |
-| Existing project | 10-49% | TDD | Can expand tests |
-| Existing project | < 10% | DDD | Gradual characterization tests needed |
+| Existing project | 50%+ | TDD | A test base exists |
+| Existing project | 10-49% | TDD | Tests can be extended |
+| Existing project | < 10% | DDD | Incremental characterization tests needed |
 
-### Configuration
+### How to Configure
 
 ```bash
-# Auto-detect during project initialization
-moai init my-project          # --mode <ddd|tdd> flag to specify
+# Auto-detected during project initialization
+moai init my-project          # Can be specified with the --mode <ddd|tdd> flag
 
 # Manual configuration
 # Edit .moai/config/sections/quality.yaml
@@ -209,42 +229,42 @@ development_mode: tdd         # or ddd
 ```
 
 {{< callout type="info" >}}
-**Note:** The hybrid mode from v2.5.0 and earlier has been removed. You must now clearly select either TDD or DDD.
+**Note:** The pre-v2.5.0 hybrid mode was removed. You must now choose either TDD or DDD explicitly.
 {{< /callout >}}
 
 ---
 
-## Q: Why doesn't my code have @MX tags?
+## Q: Why does my code have no @MX tags?
 
-This is **completely normal**. The @MX tag system is designed to mark only the most dangerous and important code that AI needs to notice first.
+This is **completely normal**. The @MX tag system is designed to mark only the most dangerous and important code the AI should look at first.
 
 | Question | Answer |
-|----------|--------|
-| Is having no tags a problem? | **No.** Most code doesn't need tags. |
-| When are tags added? | Only for **high fan_in** (>= 3 callers), **complex logic** (>= 15 complexity), or **danger patterns** (goroutines without context). |
-| Are all projects similar? | **Yes.** Most code in every project has no tags. |
+|------|------|
+| Is it a problem if there are no tags? | **No.** Most code does not need tags. |
+| When are tags added? | Only for **high fan_in** (callers >= 3), **complex logic** (complexity >= 15), and **risky patterns** (goroutines without context). |
+| Is it similar across projects? | **Yes.** In every project, most code carries no tags. |
 
-### Tag Priority
+### Tag Priorities
 
 | Priority | Condition | Tag Type |
-|----------|-----------|----------|
-| **P1 (Critical)** | fan_in >= 3 | `@MX:ANCHOR` |
-| **P2 (Danger)** | goroutine, complexity >= 15 | `@MX:WARN` |
-| **P3 (Context)** | magic constant, no godoc | `@MX:NOTE` |
-| **P4 (Missing)** | no test file | `@MX:TODO` |
+|---------|------|----------|
+| **P1 (critical)** | fan_in >= 3 | `@MX:ANCHOR` |
+| **P2 (risky)** | goroutines, complexity >= 15 | `@MX:WARN` |
+| **P3 (context)** | magic constants, missing godoc | `@MX:NOTE` |
+| **P4 (missing)** | no test file | `@MX:TODO` |
 
 To scan your codebase for @MX tags:
 
 ```bash
 /moai mx --all        # Full scan
-/moai mx --dry        # Preview only
-/moai mx --priority P1  # Critical only
+/moai mx --dry        # Preview
+/moai mx --priority P1  # Critical items only
 ```
 
 ---
 
-## Have more questions?
+## More Questions?
 
 - [GitHub Discussions](https://github.com/modu-ai/moai-adk/discussions) — Questions, ideas, feedback
 - [Issues](https://github.com/modu-ai/moai-adk/issues) — Bug reports, feature requests
-- [Discord Community](https://discord.gg/moai-adk) — Real-time chat, tips sharing
+- [Discord Community](https://discord.gg/Z7E7Mdc5aN) — Real-time chat, tips

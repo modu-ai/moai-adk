@@ -4,7 +4,7 @@ weight: 100
 draft: false
 ---
 
-Pencil MCP 서버를 활용하여 AI 기반 UI/UX 디자인을 생성하는 방법을 상세히 안내합니다.
+Pencil MCP 서버를 활용하여 AI 기반 UI/UX 디자인을 생성하는 방법을 상세히 안내합니다. 디자인을 코드로 관리한다는 Pencil의 철학은 MoAI-ADK의 하네스 철학과 같은 결입니다 — 버전 관리되고, 리뷰 가능하고, 에이전트가 직접 다룰 수 있는 형태로 만드는 것.
 
 {{< callout type="info" >}}
 **한 줄 요약**: Pencil은 **코드 기반 디자인 툴**입니다. MCP 서버를 통해 Claude Code에서 직접 UI를 생성하고, .pen 파일로 관리하며, 프로덕션 코드로 내보낼 수 있습니다.
@@ -133,6 +133,7 @@ Pencil MCP는 다양한 도구를 제공합니다.
 | `find_empty_space_on_canvas` | 캔버스에서 빈 공간 찾기 |
 | `search_all_unique_properties` | 모든 고유 속성 검색 |
 | `replace_all_matching_properties` | 일치하는 모든 속성 변경 |
+| `generate_image` | AI로 이미지 생성 |
 
 ### 도구 선택 가이드
 
@@ -148,34 +149,6 @@ Pencil MCP는 다양한 도구를 제공합니다.
 | 공간 찾기 | `find_empty_space_on_canvas` |
 | 속성 검색 | `search_all_unique_properties` |
 | 일괄 변경 | `replace_all_matching_properties` |
-
-## MCP 도구 목록
-
-Pencil MCP는 다양한 도구를 제공합니다.
-
-### 주요 도구
-
-| 도구 | 용도 |
-|------|------|
-| `open_document` | 새 .pen 파일 생성 또는 기존 파일 열기 |
-| `batch_design` | 여러 디자인 요소를 한 번에 생성/수정 |
-| `batch_get` | 여러 노드 정보를 한 번에 조회 |
-| `get_screenshot` | .pen 파일의 스크린샷 캡처 |
-| `snapshot_layout` | 레이아웃 구조 분석 |
-| `get_guidelines` | 디자인 가이드라인 조회 |
-| `get_style_guide` | 스타일 가이드 조회 |
-| `set_variables` | 디자인 변수 설정 |
-| `generate_image` | AI로 이미지 생성 |
-
-### 도구 선택 가이드
-
-| 목적 | 사용할 도구 |
-|------|-------------|
-| 새 디자인 시작 | `open_document` |
-| 컴포넌트 생성 | `batch_design` |
-| 디자인 미리보기 | `get_screenshot` |
-| 디자인 내보내기 | Pencil Editor에서 Export |
-| 스타일 참조 | `get_style_guide` |
 
 ## DNA 코드 포맷
 
@@ -586,13 +559,13 @@ flowchart TD
 
 **구체적이세요:**
 
-- ❌ "더 좋게 만들어줘"
-- ✅ "버튼 패딩을 16px으로 늘리고 색상을 파란색으로 변경해주세요"
+- ✗ "더 좋게 만들어줘"
+- ✓ "버튼 패딩을 16px으로 늘리고 색상을 파란색으로 변경해주세요"
 
 **컨텍스트 제공:**
 
-- ❌ "양식 추가"
-- ✅ "이메일, 비밀번호, 로그인 유지 체크박스, 제출 버튼이 있는 로그인 양식 추가"
+- ✗ "양식 추가"
+- ✓ "이메일, 비밀번호, 로그인 유지 체크박스, 제출 버튼이 있는 로그인 양식 추가"
 
 **디자인 시스템 참조:**
 
@@ -602,7 +575,7 @@ flowchart TD
 
 ### 검증
 
-AI가 변경한 후:
+AI가 변경한 후에는 눈으로 확인하는 습관이 필요합니다.
 
 1. 캔버스에서 시각적으로 검토
 2. 레이어 패널에서 구조 확인
@@ -681,28 +654,22 @@ git commit -m "랜딩 페이지 디자인 및 구현 추가"
 
 ## MoAI와 함께 사용
 
-MoAI는 Pencil MCP와 통합하여 UI 디자인을 자동화할 수 있습니다.
-
-```bash
-# MoAI가 Pencil을 사용하여 UI 생성
-> /moai run --team
-# team-designer 에이전트가 Pencil MCP를 사용하여 디자인 생성
-```
-
-### 팀 모드 디자인 워크플로우
+MoAI는 Pencil MCP와 통합하여 UI 디자인을 자동화할 수 있습니다. v3.0에서는 `manager-design` 에이전트가 디자인 협업 (D1-D5 파이프라인)을 전담합니다 — 디자인 도구를 다루는 작업이 UI에 노출된 SPEC과 연결될 때 이 에이전트가 투입됩니다.
 
 ```mermaid
 flowchart TD
     REQ["사용자 요청"] --> SPEC["SPEC 문서 생성<br>manager-spec"]
-    SPEC --> DESIGN["UI/UX 디자인<br>team-designer + Pencil"]
-    DESIGN --> DEV["구현<br>team-frontend-dev"]
-    DESIGN --> TEST["테스트<br>team-tester"]
+    SPEC --> DESIGN["UI/UX 디자인<br>manager-design + Pencil MCP"]
+    DESIGN --> DEV["구현<br>manager-develop (frontend 컨텍스트)"]
+    DESIGN --> TEST["테스트<br>manager-develop (TDD)"]
 ```
 
-- [MCP 서버 가이드](/advanced/mcp-servers) - MCP 프로토콜 개요
-- [settings.json 가이드](/advanced/settings-json) - MCP 서버 권한 설정
-- [에이전트 가이드](/advanced/agent-guide) - MoAI 에이전트 시스템
-- [스킬 가이드](/advanced/skill-guide) - moai-design-tools 스킬
+## 관련 문서
+
+- [MCP 서버 가이드](/ko/advanced/mcp-servers) - MCP 프로토콜 개요
+- [settings.json 가이드](/ko/advanced/settings-json) - MCP 서버 권한 설정
+- [에이전트 가이드](/ko/advanced/agent-guide) - MoAI 에이전트 시스템
+- [스킬 가이드](/ko/advanced/skill-guide) - moai-design-tools 스킬
 
 {{< callout type="info" >}}
 **팁**: Pencil을 최대한 활용하는 핵심은 **디자인을 코드로 관리**하는 것입니다. .pen 파일을 Git으로 관리하면 디자인 버전 추적과 협업이 훨씬 쉬워집니다.

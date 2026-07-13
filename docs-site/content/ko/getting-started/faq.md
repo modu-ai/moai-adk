@@ -8,6 +8,22 @@ MoAI-ADK 사용 중 자주 묻는 질문과 답변입니다.
 
 ---
 
+## Q: `moai`와 `/moai`는 뭐가 다른가요?
+
+완전히 다른 두 가지입니다. 가장 흔한 혼동이니 먼저 짚고 갑니다.
+
+| | `moai` (터미널 CLI) | `/moai` (슬래시 서브커맨드) |
+|---|---|---|
+| **실행 위치** | 터미널 셸 | Claude Code 대화창 |
+| **정체** | Go 바이너리 | Claude Code 스킬 호출 |
+| **용도** | 프로젝트 설정, 템플릿 배포 | AI 에이전트 개발 워크플로우 |
+| **예시** | `moai init my-project` | `/moai plan "인증 기능"` |
+
+- 터미널에서 `moai plan`을 실행하면 동작하지 않습니다 — `/moai plan`은 Claude Code 안에서만 유효합니다.
+- Claude Code에서 `/moai init`을 입력해도 동작하지 않습니다 — `moai init`은 터미널 명령입니다.
+
+---
+
 ## Q: statusline의 버전 표시는 무엇을 의미하나요?
 
 MoAI statusline은 버전 정보와 업데이트 알림을 함께 표시합니다:
@@ -68,40 +84,44 @@ statusline:
 
 ## Q: 모델 정책을 어떻게 선택하나요?
 
-MoAI-ADK는 Claude Code 구독 요금제에 맞춰 8개 에이전트에 최적의 AI 모델을 할당합니다. 요금제의 사용량 제한 내에서 품질을 극대화합니다.
+MoAI-ADK는 Claude Code 구독 요금제에 맞춰 에이전트에 최적의 AI 모델을 할당합니다. 요금제의 사용량 제한 내에서 품질을 극대화하는 토크노믹스 장치입니다.
 
 ### 정책 티어 비교
 
-| 정책 | 요금제 | 🟣 Opus | 🔵 Sonnet | 🟡 Haiku | 용도 |
-|------|--------|------|--------|-------|------|
-| **High** | Max $200/월 | 5 | 1 | 1 | 최고 품질, 최대 처리량 |
-| **Medium** | Max $100/월 | 2 | 3 | 2 | 품질과 비용의 균형 |
-| **Low** | Plus $20/월 | 0 | 4 | 3 | 경제적, Opus 미포함 |
+| 정책 | 요금제 | 특징 |
+|------|--------|------|
+| **High** | Max $200/월 | 최고 품질 — 계획·감사에 Opus 배정, 최대 처리량 |
+| **Medium** | Max $100/월 | 품질과 비용의 균형 |
+| **Low** | Plus $20/월 | 경제적, Opus 미포함 — Sonnet 중심 배분 |
 
 {{< callout type="warning" >}}
-**왜 중요한가요?** Plus $20 요금제는 Opus를 포함하지 않습니다. `Low`로 설정하면 모든 에이전트가 Sonnet과 Haiku만 사용하여 사용량 제한 오류를 방지합니다. 상위 요금제에서는 핵심 에이전트(보안, 전략, 아키텍처)에 Opus를, 일반 작업에 Sonnet/Haiku를 배분합니다.
+**왜 중요한가요?** Plus $20 요금제는 Opus를 포함하지 않습니다. `Low`로 설정하면 모든 에이전트가 Opus 없이 동작하여 사용량 제한 오류를 방지합니다. 상위 요금제에서는 핵심 단계 (계획, 감사) 에 Opus를, 일반 작업에 경량 모델을 배분합니다.
 {{< /callout >}}
 
 ### 티어별 에이전트 모델 배정
 
-다음 **8개의 유지된 에이전트** (retained agents)는 티어에 따라 모델이 배정됩니다. 12개의 보관된 에이전트 (archived agents)는 이용 불가능합니다.
+**10개 에이전트 카탈로그** (9 MoAI 커스텀 + 1 Anthropic 빌트인 `Explore`) 중 MoAI 커스텀 에이전트는 티어에 따라 모델이 배정됩니다. 과거의 12개 보관 에이전트 (archived agents) 는 이용할 수 없습니다.
 
-#### Manager Agents (4개)
-
-| 에이전트 | High | Medium | Low |
-|---------|------|--------|-----|
-| manager-spec | 🟣 opus | 🟣 opus | 🔵 sonnet |
-| manager-develop | 🟣 opus | 🔵 sonnet | 🔵 sonnet |
-| manager-docs | 🔵 sonnet | 🟡 haiku | 🟡 haiku |
-| manager-git | 🟡 haiku | 🟡 haiku | 🟡 haiku |
-
-#### Evaluator & Builder Agents (3개)
+#### Manager Agents (5개)
 
 | 에이전트 | High | Medium | Low |
 |---------|------|--------|-----|
-| plan-auditor | 🟣 opus | 🟣 opus | 🔵 sonnet |
-| sync-auditor | 🟣 opus | 🔵 sonnet | 🔵 sonnet |
-| builder-harness | 🟣 opus | 🔵 sonnet | 🟡 haiku |
+| manager-spec | opus | opus | sonnet |
+| manager-develop | opus | sonnet | sonnet |
+| manager-docs | sonnet | haiku | haiku |
+| manager-git | haiku | haiku | haiku |
+| manager-design | sonnet | sonnet | sonnet |
+
+#### Evaluator · Builder · Advisor Agents (4개)
+
+| 에이전트 | High | Medium | Low |
+|---------|------|--------|-----|
+| plan-auditor | opus | opus | sonnet |
+| sync-auditor | opus | sonnet | sonnet |
+| builder-harness | opus | sonnet | haiku |
+| super-advisor | opus | opus | sonnet |
+
+빌트인 `Explore`는 세션 모델을 그대로 따릅니다.
 
 ### 설정 방법
 
@@ -131,7 +151,7 @@ External imports:
 ```
 
 {{< callout type="info" >}}
-**권장 조치:** **"No, disable external imports"** 선택 ✅
+**권장 조치:** **"No, disable external imports"** 를 선택하세요.
 {{< /callout >}}
 
 **이유:**
@@ -149,7 +169,7 @@ External imports:
 
 ## Q: TDD와 DDD 방법론의 차이는 무엇인가요?
 
-MoAI-ADK v2.5.0+는 **이진 방법론 선택** (TDD 또는 DDD만)을 사용합니다. 명확성과 일관성을 위해 hybrid 모드는 제거되었습니다.
+MoAI-ADK v2.5.0+는 **이진 방법론 선택** (TDD 또는 DDD만) 을 사용합니다. 명확성과 일관성을 위해 hybrid 모드는 제거되었습니다.
 
 ### 방법론 선택 가이드
 
@@ -176,7 +196,7 @@ flowchart TD
 | **GREEN** | 테스트를 통과하는 최소 코드 작성 |
 | **REFACTOR** | 테스트를 유지하면서 코드 품질 개선 |
 
-브라운필드 프로젝트(기존 코드베이스)에서는 **RED 전 분석 단계**가 추가됩니다: 테스트 작성 전에 기존 코드를 읽어 현재 동작을 파악합니다.
+브라운필드 프로젝트 (기존 코드베이스) 에서는 **RED 전 분석 단계**가 추가됩니다: 테스트 작성 전에 기존 코드를 읽어 현재 동작을 파악합니다.
 
 ### DDD 방법론 (테스트 커버리지 < 10% 기존 프로젝트)
 
@@ -247,4 +267,4 @@ development_mode: tdd         # 또는 ddd
 
 - [GitHub Discussions](https://github.com/modu-ai/moai-adk/discussions) — 질문, 아이디어, 피드백
 - [Issues](https://github.com/modu-ai/moai-adk/issues) — 버그 리포트, 기능 요청
-- [Discord 커뮤니티](https://discord.gg/moai-adk) — 실시간 소통, 팁 공유
+- [Discord 커뮤니티](https://discord.gg/Z7E7Mdc5aN) — 실시간 소통, 팁 공유

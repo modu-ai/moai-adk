@@ -1,18 +1,17 @@
 ---
 title: 迁移模式
-description: 16 种编程语言的默认迁移路径和配置
+description: 16 种编程语言的默认迁移路径与配置
 weight: 30
 draft: false
 ---
-# 迁移模式
 
+MoAI-ADK 平等支持 16 种编程语言。数据库工作流也一样 —— 它了解各语言业界
+标准迁移工具的默认路径，因此大多数项目无需额外配置即可直接扫描。
 
-## 支持的语言和工具
-
-MoAI 支持 16 种编程语言的默认迁移路径，各语言都使用行业标准工具。
+## 支持的语言与迁移工具
 
 | 语言 | 迁移工具 | 默认路径模式 |
-|------|--------|-----------|
+|------|-----------------|--------------|
 | Go | golang-migrate | `db/migrations/*.sql` 或 `migrations/*.sql` |
 | Python | Alembic | `alembic/versions/*.py` |
 | TypeScript | Prisma Migrate | `prisma/migrations/**/*.sql` |
@@ -24,31 +23,31 @@ MoAI 支持 16 种编程语言的默认迁移路径，各语言都使用行业�
 | Ruby | Rails ActiveRecord | `db/migrate/*.rb` |
 | PHP | Laravel Migrations | `database/migrations/*.php` |
 | Elixir | Ecto | `priv/repo/migrations/*.exs` |
-| C++ | 无标准 (约定) | `db/migrations/*.sql` |
+| C++ | 无标准（惯例） | `db/migrations/*.sql` |
 | Scala | Slick / Flyway | `src/main/resources/db/migration/V*.sql` |
-| R | 无标准 (约定) | `migrations/*.sql` |
+| R | 无标准（惯例） | `migrations/*.sql` |
 | Flutter | Drift | `assets/migrations/*.sql` |
 | Swift | GRDB | `Resources/Migrations/*.sql` |
 
 ## 自动语言检测
 
-MoAI 使用以下方法自动检测你的项目语言:
+MoAI 通过以下方式自动检测项目语言：
 
-1. 检查 `.moai/config/sections/language.yaml` 中的 `project_markers`
-2. 扫描项目根的特定于语言的标记文件:
+1. 检查 `.moai/config/sections/language.yaml` 的 `project_markers`
+2. 扫描项目根目录中各语言的标记文件：
    - Go: `go.mod`
-   - Python: `pyproject.toml`、`setup.py`
+   - Python: `pyproject.toml`, `setup.py`
    - TypeScript/JavaScript: `package.json`
    - Rust: `Cargo.toml`
    - Ruby: `Gemfile`
    - PHP: `composer.json`
-   - Java/Kotlin: `pom.xml`、`build.gradle`
+   - Java/Kotlin: `pom.xml`, `build.gradle`
    - C#: `*.csproj`
    - Elixir: `mix.exs`
 
 ## 自定义迁移路径配置
 
-如果默认路径与你的项目不匹配，在 `.moai/config/sections/db.yaml` 中手动指定:
+若默认路径与项目不符，可在 `.moai/config/sections/db.yaml` 中手动指定：
 
 ```yaml
 db:
@@ -61,7 +60,7 @@ db:
       language: "python"
 ```
 
-## 示例: 按语言的迁移结构
+## 示例：各语言的迁移文件结构
 
 ### Go (golang-migrate)
 
@@ -119,7 +118,7 @@ project/
 
 ## 多语言项目配置
 
-对于有多种语言的微服务或单体结构:
+在微服务或 monorepo 结构中一起管理多种语言的迁移时：
 
 ```yaml
 db:
@@ -128,12 +127,12 @@ db:
     - path: "services/api/db/migrations"
       file_pattern: "*.sql"
       language: "go"
-    
+
     # 数据管道 (Python)
     - path: "services/analytics/alembic/versions"
       file_pattern: "*.py"
       language: "python"
-    
+
     # Web 应用 (TypeScript)
     - path: "apps/web/prisma/migrations"
       file_pattern: "*.sql"
@@ -144,53 +143,53 @@ db:
 
 ### Prisma (TypeScript/JavaScript)
 
-优点:
-- 简洁语法
-- 自动类型生成
+优点：
+- 语法简单
+- 自动生成类型
 - 直观的关系定义
 
-缺点:
-- Prisma 生态系统依赖
-- 复杂迁移有限制
+缺点：
+- 依赖 Prisma 生态
+- 复杂迁移受限
 
 ### Alembic (Python)
 
-优点:
-- 自动迁移生成
-- 灵活定制
-- 完整 SQLAlchemy 集成
+优点：
+- 自动生成迁移功能
+- 灵活的自定义
+- 与 SQLAlchemy 完全集成
 
-缺点:
+缺点：
 - 学习曲线
-- 复杂的初始设置
+- 初始配置复杂
 
 ### Flyway (Java/Kotlin)
 
-优点:
-- 多语言迁移支持
+优点：
+- 支持按语言的迁移
 - 强大的验证
-- 水位线系统
+- 水印系统
 
-缺点:
-- 配置复杂
+缺点：
+- 配置复杂度
 - 性能开销
 
 ### golang-migrate (Go)
 
-优点:
+优点：
 - 轻量且快速
-- Up/Down 分明
-- 纯 SQL 使用
+- Up/Down 划分清晰
+- 使用纯 SQL
 
-缺点:
-- 无辅助函数
-- 无自动生成
+缺点：
+- 没有辅助功能
+- 无法自动生成
 
-## 迁移文件命名约定
+## 迁移文件命名规范
 
-每个工具的推荐命名模式:
+各工具的推荐命名规范：
 
-| 工具 | 模式 | 示例 |
+| 工具 | 规范 | 示例 |
 |------|------|------|
 | golang-migrate | `YYYYMMDDHHMMSS_description.up.sql` | `20240101120000_create_users.up.sql` |
 | Alembic | `rev_<hash>_description.py` | `rev_a001b002_add_email.py` |
@@ -199,25 +198,25 @@ db:
 | Rails | `YYYYMMDDHHMMSS_description.rb` | `20240101120000_create_users.rb` |
 | Laravel | `YYYY_MM_DD_HHMMSS_description.php` | `2024_01_01_120000_create_users.php` |
 
-## 故障排除
+## 问题排查
 
-### 迁移文件未被扫描
+### 迁移文件没有被扫描
 
-1. 检查迁移路径:
+1. 确认迁移路径：
 
 ```bash
 ls -la $(path/to/migrations)
 ```
 
-2. 验证文件模式 — 确认文件扩展名与预期模式匹配
+2. 确认文件模式 —— 检查文件扩展名是否与预期模式一致
 
-3. 检查语言检测:
+3. 确认语言检测：
 
 ```bash
 cat .moai/config/sections/language.yaml
 ```
 
-4. 设置自定义路径:
+4. 配置自定义路径：
 
 ```yaml
 db:
@@ -226,13 +225,13 @@ db:
       file_pattern: "*.sql"
 ```
 
-### 多种语言配置冲突
+### 多语言配置发生冲突
 
-分开每个服务的路径:
+明确分离各服务的路径：
 
 ```yaml
 db:
   migration_patterns:
-    - path: "services/api/**"          # 仅后端
-    - path: "apps/web/**"              # 仅 Web 应用
+    - path: "services/api/**"          # 后端专用
+    - path: "apps/web/**"              # Web 应用专用
 ```

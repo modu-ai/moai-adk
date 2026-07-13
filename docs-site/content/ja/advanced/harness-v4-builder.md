@@ -4,26 +4,26 @@ weight: 45
 draft: false
 ---
 
-Harness v4 Builder の4フェーズワークフロー、Manifest スキーマ、Runner プリミティブについて詳しくガイドします。
+[ビルダーエージェントガイド](/ja/advanced/builder-agents)が Harness v4 Builder の概要だったとすれば、このドキュメントは設計図です — 4-phase ワークフローの各段階の成果物、Manifest スキーマ全体、Runner プリミティブの動作ルールを扱います。
 
 {{< callout type="info" >}}
-**一行要約**: Harness v4 Builder はSocratic インタビューで必要な専門性を把握し、manifest ベースの Runner で動的チームを運用します。
+**ひと言要約**: Harness v4 Builder は Socratic インタビューで必要な専門性を把握し、manifest ベースの Runner で動的チームを運用します。どのメンバーがどのモデルで働くかは、コードではなく manifest の宣言で決まります。
 {{< /callout >}}
 
 ## 4-Phase Workflow 詳細
 
-### Phase 1: ANALYZE（分析）
+### Phase 1: ANALYZE (分析)
 
-現在のプロジェクトの技術スタックと要件を分析します。
+現在のプロジェクトの技術スタックと要求事項を分析します。このフェーズの目標は「このプロジェクトにどの専門性が不足しているか」をデータで答えることです。
 
 #### 分析対象
 
-- **プロジェクト構造**: ディレクトリ階層、コアパッケージ識別
-- **使用言語**: Go、Python、TypeScript、Java など検出
-- **フレームワーク**: REST API、gRPC、FastAPI、Django など認識
-- **既存エージェント**: `.claude/agents/` 既存定義カタログ
+- **プロジェクト構造**: ディレクトリ階層、コアパッケージの識別
+- **使用言語**: Go、Python、TypeScript、Java などを検出
+- **フレームワーク**: REST API、gRPC、FastAPI、Django などを認識
+- **既存エージェント**: `.claude/agents/` の既存定義カタログ
 - **プロジェクト規模**: ファイル数、コード行数ベースの推定
-- **依存関係**: `go.mod`、`package.json`、`pyproject.toml` 分析
+- **依存関係**: `go.mod`、`package.json`、`pyproject.toml` を分析
 
 #### 成果物
 
@@ -43,42 +43,44 @@ analysis_result:
     - Test coverage automation
 ```
 
-### Phase 2: PLAN（計画）
+### Phase 2: PLAN (計画)
 
-ANALYZE 結果に基づいてチーム構成を設計します。
+ANALYZE の結果をもとにチーム構成を設計します。チーム規模から役割別モデル割り当てまで、コストに影響する決定はすべてこのフェーズで下されます。
 
-#### 計画決定事項
+#### 計画の決定事項
 
-| 項目 | 決定方式 | 例示 |
+| 項目 | 決定方式 | 例 |
 |------|---------|------|
-| **チームサイズ** | プロジェクト複雑度 × 必要専門性 | 3~5名 |
-| **役割プロファイル** | Anthropic role_profiles（researcher/architect/implementer/tester/designer/reviewer） | architect、implementer、tester |
-| **Worktree 隔離** | 並行チームメンバー衝突の可能性 | L1_optional（オプション隔離） |
-| **モデル選択** | 役割別推論複雑度 | architect: inherit、tester: haiku |
-| **スキル事前ロード** | 役割専門性必要スキル | moai-foundation-core、moai-domain-backend |
+| **チーム規模** | プロジェクト複雑度 × 必要な専門性 | 3〜5 名 |
+| **役割プロファイル** | Anthropic role_profiles (researcher/architect/implementer/tester/designer/reviewer) | architect, implementer, tester |
+| **Worktree 分離** | 並列メンバーの衝突可能性 | L1_optional (選択的分離) |
+| **モデル選択** | 役割別の推論複雑度 | architect: inherit, tester: haiku |
+| **スキル事前ロード** | 役割の専門性に必要なスキル | moai-foundation-core, moai-domain-backend |
 
-#### 計画検証
+役割別のモデル選択がトークノミクスの核心です — 設計は深い推論が必要なモデルに、反復的なテスト作成は安価なモデルに割り当てます。
 
-生成前にユーザーに確認:
+#### 計画の検証
+
+生成前にユーザーへ確認します。承認ゲートなしでファイルが生成されることはありません。
 
 ```
 計画されたチーム構成:
 - チーム名: Backend Development Team
-- チームメンバー 3名:
-  ① architect（model: inherit）
-  ② implementer（model: inherit）
-  ③ tester（model: haiku）
-- Worktree 隔離: L1_optional
+- メンバー 3 名:
+  ① architect (model: inherit)
+  ② implementer (model: inherit)
+  ③ tester (model: haiku)
+- Worktree 分離: L1_optional
 - Manifest: .moai/harness/manifest.json
 
 この構成で進めますか?
 ```
 
-### Phase 3: GENERATE（生成）
+### Phase 3: GENERATE (生成)
 
-PLAN 承認後に実際のエージェントファイルと manifest を生成します。
+PLAN 承認後、実際のエージェントファイルと manifest を生成します。
 
-#### 生成成果物
+#### 生成物
 
 **1. エージェント定義ファイル**
 
@@ -89,18 +91,18 @@ PLAN 承認後に実際のエージェントファイルと manifest を生成�
 └── tester.md
 ```
 
-各ファイルはYAML プロンプトで定義:
+各ファイルは YAML プロンプトで定義されます。
 
 ```yaml
 ---
 name: architect
-description: API アーキテクチャ設計専門家
+description: API アーキテクチャ設計の専門家
 tools: Read, Write, Edit, Grep, Glob, Bash
 model: inherit
 ---
 
 あなたはこのプロジェクトの API アーキテクチャ専門家です。
-[役割別詳細指針]
+[役割別の詳細指針]
 ```
 
 **2. Manifest ファイル**
@@ -109,13 +111,15 @@ model: inherit
 .moai/harness/manifest.json
 ```
 
-Phase と Teammate 定義を含む JSON（スキーマは § Manifest スキーマ参照）。
+Phase と Teammate の定義を含む JSON です (スキーマは § Manifest スキーマ参照)。
 
-#### 生成検証
+#### 生成の検証
+
+生成直後にファイルの存在と定義の正確性を直接確認できます。
 
 ```bash
 ls .claude/agents/harness/
-# architect.md、implementer.md、tester.md を確認
+# architect.md, implementer.md, tester.md を確認
 
 ls .moai/harness/
 # manifest.json を確認
@@ -124,40 +128,40 @@ grep -c "\"name\": \"architect\"" .moai/harness/manifest.json
 # phase 定義が正確か確認
 ```
 
-### Phase 4: ACTIVATE（活性化）
+### Phase 4: ACTIVATE (有効化)
 
-生成されたハーネスを登録し、即座に使用可能にします。
+生成されたハーネスを登録し、すぐに使用可能にします。
 
-#### 活性化ステップ
+#### 有効化の手順
 
-1. **エージェント検証**: 各エージェントファイル構文確認
-2. **Manifest 検証**: JSON スキーマおよびフィールド検証
-3. **コマンド登録**: `/harness:backend-team` コマンド活性化
+1. **エージェント検証**: 各エージェントファイルの文法確認
+2. **Manifest 検証**: JSON スキーマとフィールドの検証
+3. **コマンド登録**: `/harness:backend-team` コマンドの有効化
 4. **Runner 初期化**: Manifest ベースの Runner 開始準備
-5. **Worktree 生成**（オプション）: L1 隔離活性化条件設定
+5. **Worktree 作成** (選択的): L1 分離の有効化条件を設定
 
-#### 活性化確認
+#### 有効化の確認
 
 ```bash
 /harness list
 # backend-team が表示される
 
 /harness:backend-team status
-# チームメンバー3名、モデル、ステータス確認
+# メンバー 3 名、モデル、状態を確認
 ```
 
 ## Manifest スキーマ
 
-### 最上位フィールド
+### トップレベルフィールド
 
 | フィールド | 型 | 必須 | 説明 |
-|-----------|------|------|------|
+|------|------|------|------|
 | `spec_id` | string | はい | `HARNESS-{DOMAIN}-{NUM}` 形式 |
 | `name` | string | はい | チーム表示名 |
 | `version` | string | はい | Semantic versioning `X.Y.Z` |
 | `created_at` | string | はい | ISO 8601 タイムスタンプ |
 | `worktree_isolation` | enum | はい | `L1_optional` \| `none` |
-| `phases` | array | はい | Phase オブジェクト配列 |
+| `phases` | array | はい | Phase オブジェクトの配列 |
 
 ### Phase オブジェクト
 
@@ -170,10 +174,10 @@ grep -c "\"name\": \"architect\"" .moai/harness/manifest.json
 ```
 
 | フィールド | 型 | 説明 |
-|-----------|------|------|
+|------|------|------|
 | `name` | string | `plan` \| `run` \| `sync` |
-| `description` | string | Phase 目標説明 |
-| `teammates` | array | Teammate オブジェクト配列 |
+| `description` | string | Phase 目標の説明 |
+| `teammates` | array | Teammate オブジェクトの配列 |
 
 ### Teammate オブジェクト
 
@@ -189,15 +193,15 @@ grep -c "\"name\": \"architect\"" .moai/harness/manifest.json
 ```
 
 | フィールド | デフォルト | 説明 |
-|-----------|--------|------|
-| `name` | 必須 | チームメンバー ID（ハイフン使用、スペースなし） |
-| `role` | 必須 | 役割説明（自由テキスト） |
-| `model` | `inherit` | `inherit`、`haiku`、`sonnet`、`opus` |
-| `mode` | `acceptEdits` | 権限モード（`acceptEdits`、`default`、`bypassPermissions`） |
-| `skills` | `[]` | 事前ロードスキル配列（例: `["moai-foundation-core"]`） |
-| `isolation` | なし | `worktree_optional`（worktree 隔離条件付き活性化） |
+|------|--------|------|
+| `name` | 必須 | メンバー ID (ハイフン使用、空白なし) |
+| `role` | 必須 | 役割の説明 (自由テキスト) |
+| `model` | `inherit` | `inherit`, `haiku`, `sonnet`, `opus` |
+| `mode` | `acceptEdits` | 権限モード (`acceptEdits`, `default`, `bypassPermissions`) |
+| `skills` | `[]` | 事前ロードスキルの配列 (例: `["moai-foundation-core"]`) |
+| `isolation` | なし | `worktree_optional` (worktree 分離の条件付き有効化) |
 
-### 完全な例示
+### 全体の例
 
 ```json
 {
@@ -253,79 +257,79 @@ grep -c "\"name\": \"architect\"" .moai/harness/manifest.json
 
 ## Runner プリミティブ
 
-Manifest ベースの Runner は生成されたチームを実行します。
+Manifest ベースの Runner が生成されたチームを実行します。
 
-### Runner ライフサイクル
+### Runner のライフサイクル
 
 ```
 Team Spawn
   ↓
 [Phase 1: plan]
-  → Teammate(architect) 生成と委譲
-  → 結果収集
+  → Teammate(architect) を生成して委任
+  → 結果を収集
   ↓
 [Phase 2: run]
-  → Teammate(db-engineer) 並行生成
-  → Teammate(api-developer) 並行生成
-  → Teammate(test-engineer) 順序生成
-  → 結果収集と統合
+  → Teammate(db-engineer) を並列生成
+  → Teammate(api-developer) を並列生成
+  → Teammate(test-engineer) を順次生成
+  → 結果の収集と統合
   ↓
 [Phase 3: sync]
-  → 基本 manager-docs 実行
+  → デフォルトの manager-docs を実行
   ↓
 Team Teardown
 ```
 
 ### Runner 設定
 
-Runner の動作は manifest のフィールドで制御されます:
+Runner の動作は manifest のフィールドで制御されます。
 
 | 設定 | 意味 |
 |------|------|
-| `worktree_isolation: "L1_optional"` | 衝突検出時に自動隔離適用 |
-| `worktree_isolation: "none"` | 隔離無効化 |
-| `model: "inherit"` | 親セッションモデル継承 |
-| `model: "haiku"` | Haiku モデル強制（コスト最適） |
+| `worktree_isolation: "L1_optional"` | 衝突検出時に自動分離を適用 |
+| `worktree_isolation: "none"` | 分離を無効化 |
+| `model: "inherit"` | 親セッションのモデルを継承 |
+| `model: "haiku"` | Haiku モデルを強制 (コスト最適) |
 | `skills: ["..."]` | 事前ロードスキル |
 
-## Worktree 隔離ルール
+## Worktree 分離ルール
 
-### L1_optional 動作
+### L1_optional の動作
 
 ```
 Runner 生成時:
-├── チームメンバー 1: メインプロジェクトルート
-├── チームメンバー 2: メインプロジェクトルート
+├── メンバー 1: メインプロジェクトルート
+├── メンバー 2: メインプロジェクトルート
 └── 衝突検出時
-    ├── チームメンバー 2 → L1 ワークツリーに転換
-    └── チームメンバー 1 はメイン維持（または両方転換）
+    ├── メンバー 2 → L1 ワークツリーへ切り替え
+    └── メンバー 1 はメイン維持 (またはメンバー 1 も切り替え)
 
 結果:
-└── ファイル衝突回避 ✓
+└── ファイル衝突の回避 ✓
 ```
 
-### 隔離条件
+### 分離条件
 
-次のいずれかに該当する場合、隔離を活性化:
+次のいずれかが真であれば分離が有効化されます。
 
-1. **同一ファイル並行編集**: 2つのチームメンバーが同じファイルを同時に修正
-2. **再帰的ディレクトリ書き込み**: チームメンバーが同じディレクトリに複数ファイル作成
-3. **依存関係競合**: チームメンバー A の出力がチームメンバー B の入力（順序重要）
+1. **同一ファイルの並列編集**: 2 人のメンバーが同じファイルを同時に修正
+2. **再帰的なディレクトリ書き込み**: メンバーたちが同じディレクトリに複数ファイルを生成
+3. **依存関係の競合**: メンバー A の出力がメンバー B の入力 (順序が重要)
 
-### 非隔離（none）選択時
+### 非分離 (none) 選択時
 
 ```
-すべてのチームメンバーがメインプロジェクトで作業
-利点: 最小メモリ、高速並行
+すべてのメンバーがメインプロジェクトで作業
+利点: 最小メモリ、高速な並列
 欠点: 衝突の可能性
 ```
 
 ## 関連ドキュメント
 
-- [Harness v4 Builder 使用ガイド](/workflow-commands/moai-harness) - コマンドリファレンス
-- [エージェントガイド](/advanced/agent-guide) - エージェント定義形式
-- [SPEC ベース開発](/workflow-commands/moai-plan) - Harness と SPEC 統合
+- [Harness v4 Builder 使用ガイド](/ja/workflow-commands/moai-harness) - コマンドリファレンス
+- [エージェントガイド](/ja/advanced/agent-guide) - エージェント定義フォーマット
+- [SPEC ベース開発](/ja/workflow-commands/moai-plan) - Harness と SPEC の統合
 
 {{< callout type="info" >}}
-**ヒント**: Manifest は生成後に `/harness:team-name edit` でいつでも修正できます。チームメンバー追加、スキル変更、隔離ポリシー調整がすべて可能です。
+**ヒント**: Manifest は生成後 `/harness:team-name edit` でいつでも修正できます。メンバー追加、スキル変更、分離ポリシーの調整がすべて可能です。
 {{< /callout >}}

@@ -1,153 +1,153 @@
 ---
 title: 更新
-weight: 60
+weight: 70
 draft: false
 ---
 
-保持 MoAI-ADK 更新,使用智能更新工作流进行平滑升级。
+本文介绍让 MoAI-ADK 保持最新版本的方法。一条 `moai update` 就能同时更新二进制与模板，用户创建的自定义资产会自动保留。
 
 ## 更新命令
 
-要将 MoAI-ADK 更新到最新版本:
+要将 MoAI-ADK 更新到最新版本：
 
 ```bash
 moai update
 ```
 
-此命令运行 3 阶段智能更新工作流。
+该命令执行 3 阶段智能更新工作流。
 
 ## 3 阶段智能更新工作流
 
 ```mermaid
 flowchart TD
-    A[运行 moai update] --> B[阶段 1: 检查包版本]
-    B --> C[检查最新版本]
-    C --> D[有可用更新?]
+    A[执行 moai update] --> B[Stage 1: 检查包版本]
+    B --> C[确认最新版本]
+    C --> D[可更新？]
 
-    D -->|是| E[阶段 2: 比较配置版本]
-    D -->|否| F[已是最新版本]
+    D -->|是| E[Stage 2: 比较配置版本]
+    D -->|否| F[已是最新状态]
 
-    E --> G[配置格式更改?]
+    E --> G[配置格式变更？]
     G -->|是| H[配置迁移]
     G -->|否| I[保留配置]
 
-    H --> J[阶段 3: 模板同步]
+    H --> J[Stage 3: 模板同步]
     I --> J
 
     J --> K[更新模板文件]
     K --> L[完成报告]
 ```
 
-### 阶段 1: 检查包版本
+### Stage 1：检查包版本
 
-首先,比较当前安装的版本与 GitHub Releases 上的最新版本。
+首先比较当前已安装版本与 GitHub Releases 上的最新版本。
 
 ```bash
-# 检查当前版本
+# 현재 버전 확인
 moai --version
 
-# 检查可用更新
+# 사용 가능한 업데이트 확인
 moai update --check-only
 ```
 
-**检查项目:**
+**检查项目：**
 
-- 当前安装的版本
+- 当前已安装的版本
 - GitHub Releases 最新版本
-- 更新日志 (新功能、错误修复、兼容性)
+- 变更日志（新功能、Bug 修复、兼容性）
 
-**输出示例:**
+**输出示例：**
 
 ```
-当前版本: 1.2.0
-最新版本: 1.3.0
+Current version: 1.2.0
+Latest version: 1.3.0
 
-发布说明:
-- 添加新的 manager-develop 代理
-- 改进令牌优化
-- 修复 SPEC 验证问题
+Release notes:
+- Add new manager-develop agent
+- Improve token optimization
+- Fix SPEC validation issues
 
-有可用更新! 运行 'moai update' 进行升级。
+Update available! Run 'moai update' to upgrade.
 ```
 
-### 强制 checksum 验证 (Mandatory Checksum Verification) {#checksum-verification}
+### 校验和强制验证 (Mandatory Checksum Verification) {#checksum-verification}
 
-自 v2.20.0-rc1 起,`moai update` 的 binary 下载 **无法绕过 checksum 验证**。如果 release 的 `checksums.txt` 下载失败或解析失败,系统返回 sentinel 错误 `ErrChecksumUnavailable` 并 **中止** 更新流程 — 不会尝试下载 binary。
+自 v2.20.0-rc1 起，`moai update` 的二进制下载**无法绕过校验和验证**。若 release 的 `checksums.txt` 下载失败或解析失败，将返回 sentinel error `ErrChecksumUnavailable` 并**中止**更新流程 — 不会尝试下载二进制。
 
 #### Retry 策略
 
-`checksums.txt` 下载以指数退避 **重试 3 次**:
+`checksums.txt` 下载会以指数退避进行 **3 次 retry**：
 
 | 尝试 | 等待时间 |
-|------|----------|
-| 第 1 次 (立即) | 0s |
+|------|-----------|
+| 第 1 次（立即） | 0s |
 | 第 2 次 retry | 等待 2s |
 | 第 3 次 retry | 等待 4s |
-| 无更多 retry | 合计 约 6s 等待后失败 |
+| 无更多 retry | 累计等待约 6s 后失败 |
 
-(内部实现: base delay 2s × 2^(attempt-1) 指数退避; defense-in-depth 在 checker 阶段和 updater 阶段均阻断空 checksum)
+（内部实现：base delay 2s × 2^(attempt-1) 指数退避，作为 defense-in-depth 在 checker 与 updater 两个阶段都拦截 empty checksum）
 
-所有 retry 失败时,输出如下信息:
+所有 retry 都失败时输出如下消息：
 
 ```
 error: checksum unavailable: persistent retry failure after 3 attempts
 ```
 
-**不存在 `--skip-checksum` 绕过选项** (CWE-345 有意的策略)。
+**不存在 `--skip-checksum` 之类的绕过选项**（CWE-345 有意为之的策略）。
 
-#### 失败时的恢复流程
+#### 失败时的恢复步骤
 
-1. **检查网络连通性**:
+1. **确认网络连接**：
    ```bash
    curl -I https://github.com/modu-ai/moai-adk/releases/latest
    ```
-2. **验证 proxy / firewall** — 确认 GitHub release asset 域名 (`github.com`、`objects.githubusercontent.com`) 已被允许
-3. **考虑临时性 GitHub CDN 故障** — 稍后重试
-4. **手动 binary 安装** (持续阻塞时):
+2. **检查 Proxy / firewall** — 是否放行 GitHub release asset 域名（`github.com`、`objects.githubusercontent.com`）
+3. **可能是暂时性的 GitHub CDN 故障** — 稍后重试
+4. **手动安装二进制**（长期被拦截时）：
    ```bash
    curl -fsSL https://raw.githubusercontent.com/modu-ai/moai-adk/main/install.sh | bash
    ```
-   手动安装时由用户自行验证完整性。为获得与自动更新等效的保护,建议从 GitHub Release 单独获取 `checksums.txt` 并对照。
+   手动安装时由用户自行验证完整性，为获得与自动更新同等的保护，建议另行核对 GitHub Release 的 `checksums.txt`。
 
-完整威胁模型、实现位置与自检流程请参见 [安全说明 — CWE-345](/zh/advanced/security-notes/#cwe-345)。
+详细威胁模型、实现位置、检查步骤请参考[安全笔记 — CWE-345](/zh/advanced/security-notes/#cwe-345)。
 
-### 阶段 2: 比较配置版本
+### Stage 2：比较配置版本
 
-检查配置文件格式和兼容性。
+检查配置文件的格式与兼容性。
 
 ```mermaid
 sequenceDiagram
     participant Update as 更新命令
     participant Current as 当前配置
-    participant Schema as 配置架构
+    participant Schema as 配置 Schema
     participant Backup as 备份
 
     Update->>Current: 读取当前配置
-    Current->>Schema: 比较版本
+    Current->>Schema: 版本比较
     alt 兼容性问题
         Schema->>Backup: 自动备份
         Backup-->>Update: 备份完成
-        Update->>Schema: 运行迁移
+        Update->>Schema: 执行迁移
         Schema-->>Update: 迁移完成
     else 兼容
-        Schema-->>Update: 无更改
+        Schema-->>Update: 无变更
     end
 ```
 
-**检查的文件:**
+**检查文件：**
 
 - `.moai/config/sections/user.yaml`
 - `.moai/config/sections/language.yaml`
 - `.moai/config/sections/quality.yaml`
 
-**迁移示例:**
+**迁移示例：**
 
 ```yaml
-# 旧配置 (v1.2.0)
+# 이전 설정 (v1.2.0)
 development_mode: ddd
 test_coverage_target: 85
 
-# 新配置 (v1.3.0)
+# 새로운 설정 (v1.3.0)
 development_mode: ddd
 test_coverage_target: 85
 ddd_settings:
@@ -156,24 +156,24 @@ ddd_settings:
 ```
 
 {{< callout type="info" >}}
-`.moai/config/` 中的配置文件在迁移前始终会备份。
+配置迁移前总是会备份 `.moai/config/` 目录。
 {{< /callout >}}
 
-### 阶段 3: 模板同步
+### Stage 3：模板同步
 
-将项目模板和基础文件同步到最新版本。
+将项目模板与基础文件同步到最新版本。
 
 ```mermaid
 graph TD
     A[模板同步] --> B[SKILL.md 模板]
-    A --> C[代理模板]
+    A --> C[智能体模板]
     A --> D[文档模板]
 
-    B --> E[检测更改]
+    B --> E[变更检测]
     C --> E
     D --> E
 
-    E --> F{用户更改?}
+    E --> F{用户有修改？}
 
     F -->|否| G[自动更新]
     F -->|是| H[提供合并选项]
@@ -183,55 +183,55 @@ graph TD
     J --> I
 ```
 
-**同步的文件:**
+**同步文件：**
 
 - `.moai/templates/` - 项目模板
 - `.claude/skills/` - 技能模板
-- `.claude/agents/` - 代理模板
+- `.claude/agents/` - 智能体模板
 
 {{< callout type="info" >}}
-用户修改的模板文件会被保留,新版本会提供合并选项。
+用户修改过的模板文件会被保留，并提供与新版本的合并选项。
 {{< /callout >}}
 
 ## 更新选项
 
-### 操作模式
+### 工作方式
 
 | 命令 | 二进制更新 | 模板同步 |
-|---------|-----------|----------|
+|--------|-------------------|---------------|
 | `moai update` | O | O |
 | `moai update --binary` | O | X |
 | `moai update --templates-only` | X | O |
 
 ### 仅更新二进制
 
-仅更新 MoAI-ADK 二进制文件，不同步模板:
+只更新 MoAI-ADK 二进制，不同步模板：
 
 ```bash
 $ moai update --binary
 ```
 
-**使用场景:**
-- 当您手动修改了模板时
-- 当您想跳过模板同步时
-- 仅需要二进制更新时
+**使用场景：**
+- 亲自修改过模板
+- 想跳过模板同步
+- 只需要快速的二进制更新
 
 ### 仅同步模板
 
-仅同步模板，不更新二进制:
+只同步模板，不更新二进制：
 
 ```bash
 $ moai update --templates-only
 ```
 
-**使用场景:**
-- 应用最新的技能和代理模板
-- 保持二进制版本的同时更新模板
-- 需要在多个项目中同步模板时
+**使用场景：**
+- 应用最新的技能与智能体模板
+- 保持二进制版本不变，仅更新模板
+- 需要在多个项目间同步模板
 
-### 仅检查
+### 仅检查 (Check Only)
 
-检查可用版本而不实际更新:
+不实际更新，仅确认可用版本：
 
 ```bash
 $ moai update --check-only
@@ -239,7 +239,7 @@ $ moai update --check-only
 
 ### 自动更新
 
-自动更新而无需确认:
+无需确认，自动进行更新：
 
 ```bash
 $ moai update --yes
@@ -247,7 +247,7 @@ $ moai update --yes
 
 ### 特定版本
 
-更新到特定版本:
+更新到特定版本：
 
 ```bash
 $ moai update --version 1.2.0
@@ -255,132 +255,129 @@ $ moai update --version 1.2.0
 
 ### 保留备份
 
-保留备份以便在更新失败时恢复:
+为更新失败时的恢复保留备份：
 
 ```bash
 $ moai update --keep-backup
 ```
 
-## 更新后步骤
+## 更新后的步骤
 
-### 步骤 1: 检查版本
+### 第 1 步：确认版本
 
 ```bash
 moai --version
 ```
 
-### 步骤 2: 验证配置
+### 第 2 步：验证配置
 
 ```bash
 moai doctor
 ```
 
-### 步骤 3: 检查新功能
+### 第 3 步：确认新功能
 
 ```bash
 moai --help
 ```
 
-检查新添加的命令或选项。
+查看新增的命令或选项。
 
-## 故障排除
+## 问题排查
 
-### 问题: 更新失败
+### 问题：更新失败
 
 ```bash
-错误: 更新失败 - 权限被拒绝
+Error: Update failed - permission denied
 ```
 
-**解决方案:**
+**解决方法：**
 
 ```bash
-# 使用 curl 手动重新安装
+# curl을 사용하여 수동 재설치
 curl -fsSL https://raw.githubusercontent.com/modu-ai/moai-adk/main/install.sh | bash
 
-# 或重新安装特定版本
+# 또는 특정 버전으로 재설치
 moai update --version <VERSION>
 ```
 
-### 问题: 配置迁移错误
+### 问题：配置迁移错误
 
 ```bash
-错误: 配置迁移失败
+Error: Config migration failed
 ```
 
-**解决方案:**
+**解决方法：**
 
 ```bash
-# 从备份恢复
+# 백업에서 복원
 cp -r .moai/config.bak .moai/config
 
-# 手动迁移
+# 수동으로 마이그레이션
 vim .moai/config/sections/quality.yaml
 ```
 
-### 问题: 模板冲突
+### 问题：模板冲突
 
 ```bash
-警告: 检测到模板冲突
+Warning: Template conflicts detected
 ```
 
-**解决方案:**
+**解决方法：**
 
 ```bash
-# 自动合并 (保留用户更改)
+# 자동 병합 (사용자 변경 보존)
 $ moai update --merge
 
-# 手动合并 (保留备份,创建合并指南)
+# 수동 병합 (백업 보존, 병합 가이드 생성)
 $ moai update --manual
 
-# 强制更新 (无备份)
+# 강제 업데이트 (백업 없음)
 $ moai update --force
 ```
 
 ## 个人设置管理
 
-更新 MoAI-ADK 时,**CLAUDE.md** 和 **settings.json** 会被新版本覆盖。如果您有个人修改,请按以下方式管理。
+MoAI-ADK 更新时，**CLAUDE.md** 与 **settings.json** 会被新版本覆盖。如果有个人修改，请按以下方式管理。
 
 ### 使用 .local 文件
 
-将个人设置存储在单独的文件中,以防止在更新期间被覆盖:
+将个人设置保存到单独文件，防止更新时被覆盖：
 
 | 文件 | 位置 | 用途 |
-|------|----------|---------|
-| `CLAUDE.md` | 项目根目录 | MoAI-ADK 管理 (更新时更改) |
-| `settings.json` | `.claude/` | MoAI-ADK 管理 (更新时更改) |
-| `CLAUDE.local.md` | 项目根目录 | ✅ 项目个人设置 (不受更新影响) |
-| `.claude/settings.local.json` | 项目 | ✅ 项目个人设置 (不受更新影响) |
+|------|------|------|
+| `CLAUDE.md` | 项目根目录 | MoAI-ADK 管理（更新时会变更） |
+| `settings.json` | `.claude/` | MoAI-ADK 管理（更新时会变更） |
+| `CLAUDE.local.md` | 项目根目录 | {{< icon check ok >}} 项目个人设置（不受更新影响） |
+| `.claude/settings.local.json` | 项目 | {{< icon check ok >}} 项目个人设置（不受更新影响） |
 
-**个人设置示例 (项目本地):**
+**个人设置示例（项目本地）：**
 
 ```markdown
 # CLAUDE.local.md
 
-## 用户信息
+## 사용자 정보
 
-- 姓名: 张三
-- 角色: 高级软件工程师
-- 专长: 后端开发、DevOps
+- Name: John Developer
+- Role: Senior Software Engineer
+- Expertise: Backend Development, DevOps
 
-## 开发偏好
+## 개발 선호도
 
-- 语言: Python、TypeScript
-- 框架: FastAPI、React
-- 测试: pytest、Jest
-- 文档: Markdown、OpenAPI
+- 언어: Python, TypeScript
+- 프레임워크: FastAPI, React
+- 테스트: pytest, Jest
+- 문서: Markdown, OpenAPI
 ```
 
-**个人设置示例 (settings):**
+**个人设置示例 (settings)：**
 
 ```json
 // .claude/settings.local.json
 {
   "env": {
     "ANTHROPIC_AUTH_TOKEN": "YOUR-API-KEY",
-    "ANTHROPIC_BASE_URL": "https://api.z.ai/api/anthropic",
-    "ANTHROPIC_DEFAULT_HAIKU_MODEL": "glm-4.7-flashx",
-    "ANTHROPIC_DEFAULT_SONNET_MODEL": "glm-4.7",
-    "ANTHROPIC_DEFAULT_OPUS_MODEL": "glm-4.7"
+    "ANTHROPIC_BASE_URL": "https://api.z.ai/api/anthropic"
   },
   "permissions": {
     "allow": [
@@ -392,120 +389,97 @@ $ moai update --force
   "enabledMcpjsonServers": [
     "context7"
   ],
-  "companyAnnouncements": [
-    "🗿 MoAI-ADK: 8个专业代理 + 32个技能的SPEC-First DDD",
-    "⚡ /moai: 一站式 Plan→Run→Sync 自动化（智能路由）",
-    "🌳 moai worktree: 在隔离的工作树环境中并行SPEC开发",
-    "🤖 Expert Agents (8): backend, frontend, security, devops, debug, performance, refactoring, testing",
-    "🤖 Manager Agents (8): git, spec, ddd, tdd, docs, quality, project, strategy",
-    "🤖 Builder Agents (3): agent, skill, plugin",
-    "🤖 Team Agents (8, 实验性): researcher, analyst, architect, designer, backend-dev, frontend-dev, tester, quality",
-    "📋 工作流程: /moai plan (SPEC) → /moai run (DDD) → /moai sync (Docs)",
-    "🚀 选项: --team (并行Agent Teams)、--ultrathink (Adaptive Thinking深度分析)、--loop (迭代自动修复)",
-    "✅ 质量: TRUST 5 + 85%+ 覆盖率 + Ralph Engine (LSP + AST-grep)",
-    "🔄 Git策略: 3-Mode (Manual/Personal/Team) + Smart Merge配置更新",
-    "📚 提示: moai update --templates-only 同步最新的skills和agents",
-    "📚 提示: moai worktree new SPEC-XXX 创建并行开发的worktree",
-    "⚙️ moai update -c: 模型可用性设置 (high/medium/low) - 按Claude计划等级配置模型",
-    "💡 混合模式: Plan使用Claude (Opus/Sonnet)，Run/Sync使用GLM-5节省成本",
-    "💡 并行开发: 终端1运行Claude，终端2+运行 'moai glm && claude' 并行执行",
-    "💎 GLM-5赞助商: z.ai合作伙伴关系 - 高性价比AI，同等性能"
-  ],
   "_meta": {
-    "description": "用户特定的 Claude Code 设置 (gitignored - 永不提交)",
-    "created_at": "2026-01-27T18:15:26.175926Z",
-    "note": "编辑此文件以自定义您的本地开发环境"
+    "description": "User-specific Claude Code settings (gitignored - never commit)",
+    "note": "Edit this file to customize your local development environment"
   }
 }
 ```
 
 {{< callout type="info" >}}
-**配置优先级:** 本地 > 项目 > 用户 > 企业<br />
-<code>settings.local.json</code> 覆盖项目设置。
+**设置优先级：** Local > Project > User > Enterprise<br />
+<code>settings.local.json</code> 会覆盖项目设置。
 {{< /callout >}}
 
 ### moai 文件夹结构
 
-MoAI-ADK 仅管理以下文件夹中的文件:
+MoAI-ADK 只在以下文件夹中管理文件：
 
 ```
 .claude/
 ├── agents/
-│   └── moai/                # MoAI-ADK 代理 (更新目标)
+│   ├── moai/                # MoAI-ADK 에이전트 (업데이트 대상)
+│   └── harness/             # 사용자 하네스 에이전트 (업데이트 제외, 보존)
 │
 ├── hooks/
-│   └── moai/                # MoAI-ADK hook 脚本 (更新目标)
+│   └── moai/                # MoAI-ADK 훅 스크립트 (업데이트 대상)
 │
 ├── skills/
-│   ├── moai-*               # MoAI-ADK 技能 (moai- 前缀,更新目标)
+│   ├── moai-*               # MoAI-ADK 스킬 (moai- 접두사, 업데이트 대상)
 │   │
-│   └── my-skills/           # ✅ 个人技能 (不更新)
+│   └── hns-*                # 사용자 생성 스킬 (업데이트 제외, 보존)
 │
 └── rules/
-    └── moai/                # 规则文件 (moai 管理)
-        ├── core/            # 核心原则和宪法
-        ├── development/     # 开发指南和标准
-        ├── languages/       # 语言特定规则 (16 种语言)
-        └── workflow/        # 工作流阶段定义
+    └── moai/                # 규칙 파일 (moai 관리)
+        ├── core/            # Core principles and constitution
+        ├── development/     # Development guidelines and standards
+        ├── languages/       # Language-specific rules (16 languages)
+        └── workflow/        # Workflow phase definitions
 ```
 
-**命名约定:**
+**命名规则：**
 
 | 类型 | 位置 | 更新影响 |
-|------|----------|---------------|
-| **代理** | `agents/moai/` | ⚠️ **更新时更改** |
-| **Hooks** | `hooks/moai/` | ⚠️ **更新时更改** |
-| **技能** | `skills/moai-*` | ⚠️ **更新时更改** |
-| **规则** | `rules/moai/` | ⚠️ **更新时更改** |
-| **个人代理** | `agents/my-agents/` | ✅ **不受更新影响** |
-| **个人技能** | `skills/my-skills/` | ✅ **不受更新影响** |
+|------|------|--------------|
+| **智能体** | `agents/moai/` | {{< icon warning warn >}} **更新时会变更** |
+| **钩子** | `hooks/moai/` | {{< icon warning warn >}} **更新时会变更** |
+| **技能** | `skills/moai-*` | {{< icon warning warn >}} **更新时会变更** |
+| **规则** | `rules/moai/` | {{< icon warning warn >}} **更新时会变更** |
+| **用户智能体** | `agents/harness/` | {{< icon check ok >}} **不受更新影响（保留）** |
+| **用户技能** | `skills/hns-*`（含旧版 `harness-*`、`my-*`） | {{< icon check ok >}} **不受更新影响（保留）** |
 
 {{< callout type="warning" >}}
-**重要:** 带 `moai-*` 前缀的技能由 MoAI-ADK 管理。对于个人添加或修改,使用 `my-*` 文件夹或单独的前缀。
+**重要：** 带 <code>moai-*</code> 前缀的技能由 MoAI-ADK 管理，更新时会被覆盖。自己创建的技能请使用 <code>hns-*</code> 前缀（用户所有的命名空间），智能体请使用 <code>.claude/agents/harness/</code> 目录。详细策略请参考[挽具命名空间策略](/zh/core-concepts/harness-engineering/#挽具命名空间策略-template-managed-vs-user-owned)。
 {{< /callout >}}
 
-{{< callout type="warning" >}}
-**重要:** `moai/` 文件夹中的文件在更新期间可能被覆盖。对于个人添加或修改,请使用单独的文件夹。
-{{< /callout >}}
-
-### 如何组织文件
+### 文件整理方法
 
 ```bash
-# 移动个人代理 (示例)
-mv .claude/agents/my-agent.md .claude/my-agents/
+# 개인 에이전트 이동 (예시)
+mv .claude/agents/moai/my-agent.md .claude/agents/harness/
 
-# 移动个人技能 (示例)
-mv .claude/skills/my-skill.md .claude/my-skills/
+# 개인 스킬 이름 변경 (예시: hns- 접두사 부여)
+mv .claude/skills/my-skill .claude/skills/hns-my-skill
 ```
 
-### 更新日志
+### 变更日志
 
-查看 [GitHub Releases](https://github.com/modu-ai/moai-adk/releases) 了解最新更改。
+最新变更请查看 [GitHub Releases](https://github.com/modu-ai/moai-adk/releases)。
 
 ## 回滚
 
-如果更新后出现问题,您可以回滚到以前的版本:
+更新后出现问题时，可以回滚到旧版本：
 
 ```bash
-# 回滚到特定版本
+# 특정 버전으로 롤백
 moai update --version 1.2.0
 
-# 或从备份恢复
+# 또는 백업에서 복원
 cp -r .moai/config.bak .moai/config
 ```
 
 {{< callout type="warning" >}}
-回滚前提交您的工作。
+回滚前请先提交当前工作。
 {{< /callout >}}
 
 ## 下一步
 
-更新完成后:
+完成更新后：
 
-1. **[查看更新日志](/getting-started/update)** - 了解新功能
-2. **[核心概念](/core-concepts/what-is-moai-adk)** - 掌握新代理和功能
-3. **[快速开始](/getting-started/quickstart)** - 将新功能应用到您的项目
+1. **[查看变更日志](/zh/getting-started/update)** - 学习新功能
+2. **[核心概念](/zh/core-concepts/what-is-moai-adk)** - 熟悉新智能体与新功能
+3. **[快速开始](/zh/getting-started/quickstart)** - 在项目中应用新功能
 
 ---
 
-定期更新以充分利用 MoAI-ADK 的最新功能和改进!
+定期更新，善用 MoAI-ADK 的最新功能与改进！

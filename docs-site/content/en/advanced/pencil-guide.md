@@ -1,158 +1,96 @@
 ---
 title: Pencil Guide
-weight: 90
+weight: 100
 draft: false
 ---
 
-Comprehensive guide to using Pencil MCP server for AI-powered UI/UX design generation.
+A detailed guide to generating AI-powered UI/UX designs using the Pencil MCP server. Pencil's philosophy of managing design as code is cut from the same cloth as MoAI-ADK's harness philosophy — making things version-controlled, reviewable, and directly manipulable by agents.
 
 {{< callout type="info" >}}
-**One-line summary**: Pencil is a **code-first design tool**. Generate UI directly in Claude Code using MCP, manage with .pen files, and export to production code.
+**One-line summary**: Pencil is a **code-based design tool**. Through its MCP server you can generate UIs directly from Claude Code, manage them as .pen files, and export them to production code.
 {{< /callout >}}
 
-## What is Pencil?
+## What Is Pencil?
 
-Pencil is an **AI-powered design tool** that works directly in your development environment. It bridges the gap between design and code, allowing developers to create consistent UI without separate design tools like Figma.
+Pencil is an **AI-powered design tool** you can work with directly in your development environment. It closes the gap between design and code, letting developers generate consistent UIs without a separate design tool like Figma.
 
 ```mermaid
 flowchart TD
-    A["Text Prompt"] --> B["Pencil MCP<br>DNA Code Generation"]
-    B --> C[".pen File Rendering"]
-    C --> D["React Component Export<br>Tailwind CSS"]
-    C --> E["Design Iteration<br>Version Control"]
-    C --> F["Team Collaboration<br>Code Review"]
+    A["Text prompt"] --> B["Pencil MCP<br>DNA code generation"]
+    B --> C[".pen file rendering"]
+    C --> D["React component export<br>Tailwind CSS"]
+    C --> E["Design iteration<br>Version control"]
+    C --> F["Team sharing<br>Code review"]
 ```
 
 ### Key Features
 
 | Feature | Description |
-|---------|-------------|
-| **DNA Code** | Declarative code format for UI (version control friendly) |
-| **Text-to-Design** | Generate UI screens from natural language descriptions |
-| **.pen Files** | Encrypted design file format |
-| **React Export** | Production code with Tailwind CSS |
-| **Infinite Canvas** | Support for large-scale design projects |
-| **Team Collaboration** | Code-based design reviews |
+|------|------|
+| **DNA code** | Expresses UI as declarative code (version-controllable) |
+| **Text-to-design** | Generates UI screens from natural-language descriptions |
+| **.pen files** | An encrypted design file format |
+| **React export** | Generates production code with Tailwind CSS applied |
+| **Infinite canvas** | Supports large-scale design projects |
+| **Team collaboration** | Code-based design review |
 
 {{< callout type="info" >}}
-Pencil uses an **open design format**. .pen files can be managed directly in your codebase. Visit https://pencil.dev for more information.
+Pencil uses an **open-source design format**, and .pen files can be managed directly in your codebase. See https://pencil.dev for details.
 {{< /callout >}}
 
 ## Prerequisites
 
-To use Pencil MCP, you need the following setup.
+Using the Pencil MCP requires the following setup.
+
+### Supported AI Assistants
+
+Pencil integrates with a variety of AI tools via MCP (Model Context Protocol).
+
+| AI tool | Support form | Notes |
+|---------|----------|------|
+| **Claude Code** | CLI and IDE | The most recommended path |
+| **Claude Desktop** | Desktop app | Good for personal use |
+| **Cursor** | AI-powered IDE | Codebase-aware features |
+| **Windsurf IDE** | Codeium | A newer IDE option |
+| **Codex CLI** | OpenAI | Terminal-based workflow |
+| **Antigravity IDE** | Dedicated IDE | Pencil-dedicated extension |
+| **OpenCode CLI** | CLI environment | Scriptable |
 
 ### Step 1: Install Pencil
 
-Pencil is available as an IDE extension and a standalone desktop application.
+Install the Pencil app or IDE extension.
 
-#### VS Code Extension
+- **macOS/Windows/Linux**: download the Pencil desktop app
+- **VS Code/VSCode-insiders**: install the Pencil extension
+- **Cursor**: install the Pencil extension
 
-1. Open VS Code
-2. Go to Extensions (Cmd/Ctrl + Shift + X)
-3. Search for "Pencil"
-4. Click **Install**
+### Step 2: Run Pencil
 
-#### Cursor Extension
-
-1. Open Cursor
-2. Go to Extensions
-3. Search for "Pencil"
-4. Click **Install**
-
-#### Desktop Application
-
-**macOS:**
-
-1. Download the latest `.dmg` from the Pencil website
-2. Drag Pencil to your Applications folder
-3. Launch Pencil (right-click → Open if you see a security warning)
-
-**Linux:**
+When Pencil runs, the MCP server starts automatically. No separate installation or configuration is needed.
 
 ```bash
-# Example for .deb package
-sudo dpkg -i pencil-*.deb
-
-# Example for .AppImage
-chmod +x pencil-*.AppImage
-./pencil-*.AppImage
+# Pencil 앱이 실행 중인지 확인
+# Pencil이 실행 중이면 MCP 서버가 자동으로 시작됩니다
 ```
 
-{{< callout type="warning" >}}
-**Windows**: The desktop app is not currently available. Windows users should use the VS Code or Cursor extension.
+### Security and Privacy
+
+{{< callout type="info" >}}
+**Local-only security**: the Pencil MCP server runs **entirely locally**. Design files are never sent to remote servers, and all design data stays on the local machine.
 {{< /callout >}}
 
-### Step 2: Install Claude Code CLI
-
-Pencil's AI features require Claude Code to be installed and authenticated.
-
-```bash
-# Install Claude Code CLI
-npm install -g @anthropic-ai/claude-code-cli
-
-# Or using the official installer
-curl https://claude.ai/cli/install.sh | sh
-```
-
-### Step 3: Authenticate Claude Code
-
-```bash
-# Login to Claude Code
-claude
-
-# Follow the browser authentication flow
-```
-
-### Step 4: Complete Pencil Activation
-
-1. Open Pencil (IDE extension or desktop app)
-2. Complete the activation process with your email
-3. Open the welcome file (Right-click canvas → Open Welcome File)
+| Security property | Description |
+|----------|------|
+| **Local-only** | The MCP server runs only on your machine |
+| **No remote access** | Design files stay local |
+| **Private storage** | Source code is not made public |
+| **Tool inspection** | Available tools can be reviewed in IDE settings |
 
 ## MCP Configuration
 
-### What is MCP?
+### Claude Code Configuration
 
-MCP (Model Context Protocol) is a protocol that gives AI assistants tools to interact with your design files. Think of it as an API that lets AI read and modify `.pen` files programmatically.
-
-### How It Works
-
-1. **Pencil MCP Server runs locally** - No cloud dependency for design operations
-2. **AI assistants connect** via MCP when Pencil is running
-3. **AI can use tools** to read, modify, and generate designs
-4. **You stay in control** - AI suggests, you approve
-
-### Automatic Setup
-
-The Pencil MCP server starts automatically when you open Pencil. No additional configuration is needed for basic use.
-
-**In Cursor:**
-
-- Open Settings → Tools & MCP
-- Verify Pencil appears in the MCP server list
-
-**In Codex CLI:**
-
-1. Run Pencil first
-2. Open Codex
-3. Run `/mcp`
-4. Pencil should appear in the MCP list
-
-### Security & Privacy
-
-{{< callout type="info" >}}
-**Local-only Operation**: The Pencil MCP server runs on your machine. Design files stay local, and there is no remote access to your designs.
-{{< /callout >}}
-
-- **Local-only**: MCP server runs on your machine
-- **No remote access**: Design files stay local
-- **Repository is private**: Source code not yet public
-- **Tool inspection**: View available tools in IDE settings
-
-### settings.json Permission Setup
-
-If you want to explicitly configure MCP tools in Claude Code:
+With Pencil running, Claude Code detects the MCP server automatically.
 
 ```json
 {
@@ -164,196 +102,66 @@ If you want to explicitly configure MCP tools in Claude Code:
 }
 ```
 
-## Supported AI Assistants
+### Connection Check
 
-Pencil works with multiple AI tools through MCP:
+Once configured, you can use the Pencil tools from Claude Code.
 
-| AI Assistant | Platform | Notes |
-|--------------|----------|-------|
-| **Claude Code** | CLI and IDE | Full support |
-| **Claude Desktop** | Desktop App | Full support |
-| **Cursor** | AI-powered IDE | Full support with extension |
-| **Windsurf IDE** | Codeium | Full support |
-| **Codex CLI** | OpenAI | Terminal-based workflow |
-| **Antigravity IDE** | IDE | Full support |
-| **OpenCode CLI** | CLI | Full support |
+```bash
+# Claude Code에서 실행
+> Pencil로 로그인 버튼을 생성해줘
+```
 
 ## MCP Tool List
 
-When AI assistants connect to Pencil via MCP, they get access to these tools:
+The Pencil MCP provides a range of tools.
 
-### Design Tools
+### Main Tools
 
 | Tool | Purpose |
-|------|---------|
-| `open_document` | Create new .pen file or open existing file |
+|------|------|
+| `open_document` | Create a new .pen file or open an existing one |
+| `get_editor_state` | Check the current editor state, selection, active file |
 | `batch_design` | Create/modify multiple design elements at once |
-| `batch_get` | Retrieve multiple node information at once |
-
-### Analysis Tools
-
-| Tool | Purpose |
-|------|---------|
-| `get_screenshot` | Capture screenshot of .pen file |
-| `snapshot_layout` | Analyze layout structure |
-| `get_editor_state` | Get current editor context and selection |
-
-### Design Resources
-
-| Tool | Purpose |
-|------|---------|
-| `get_guidelines` | Get design guidelines |
-| `get_style_guide` | Get style guide |
-| `get_style_guide_tags` | Get style guide tags for design inspiration |
-| `get_variables` | Extract design tokens and theme values |
-| `set_variables` | Update design variables and themes |
-
-### Advanced Tools
-
-| Tool | Purpose |
-|------|---------|
-| `find_empty_space_on_canvas` | Find empty space for new elements |
-| `search_all_unique_properties` | Search for all unique properties |
-| `replace_all_matching_properties` | Replace all matching properties |
+| `batch_get` | Retrieve multiple node infos at once |
+| `get_screenshot` | Capture a screenshot of a .pen file |
+| `snapshot_layout` | Analyze the layout structure |
+| `get_guidelines` | Retrieve design guidelines |
+| `get_style_guide` | Retrieve the style guide |
+| `get_style_guide_tags` | Search style-guide tags |
+| `get_variables` | Read design variables/themes |
+| `set_variables` | Set design variables/themes |
+| `find_empty_space_on_canvas` | Find empty space on the canvas |
+| `search_all_unique_properties` | Search all unique properties |
+| `replace_all_matching_properties` | Change all matching properties |
+| `generate_image` | Generate an image with AI |
 
 ### Tool Selection Guide
 
-| Purpose | Tool to Use |
-|---------|-------------|
-| Start new design | `open_document` |
+| Goal | Tool to use |
+|------|-------------|
+| Start a new design | `open_document` |
 | Create components | `batch_design` |
-| Preview design | `get_screenshot` |
-| Analyze layout | `snapshot_layout` |
+| Preview the design | `get_screenshot` |
+| Export the design | Export from the Pencil Editor |
 | Reference styles | `get_style_guide` |
-| Update theme | `set_variables` |
-| Export design | Use Pencil Editor Export |
+| Analyze the layout | `snapshot_layout` |
+| Manage variables | `get_variables`, `set_variables` |
+| Find space | `find_empty_space_on_canvas` |
+| Search properties | `search_all_unique_properties` |
+| Bulk changes | `replace_all_matching_properties` |
 
-## Using with Claude Code
+## The DNA Code Format
 
-### Basic Workflow
-
-1. **Open AI prompt panel**: Press `Cmd/Ctrl + K`
-2. **Ask for design help**:
-   - "Create a login form with email and password"
-   - "Add a navigation bar to this page"
-   - "Design a card component for my design system"
-3. **AI uses MCP tools** to modify your `.pen` file
-4. **See changes** reflected in the canvas immediately
-
-### Example Prompts
-
-**Creating designs:**
-
-- "Design a dashboard with sidebar and main content area"
-- "Create a pricing table with 3 tiers"
-- "Add a hero section with heading and CTA button"
-
-**Modifying designs:**
-
-- "Change all primary buttons to blue"
-- "Make the sidebar narrower"
-- "Add spacing between these elements"
-
-**Design systems:**
-
-- "Create a button component with variants"
-- "Generate a color palette based on #3b82f6"
-- "Build a typography scale"
-
-**Code integration:**
-
-- "Generate React code for this component"
-- "Import the Header from my codebase"
-- "Create Tailwind config from these variables"
-
-## Using with Cursor
-
-### Setup
-
-1. Install Pencil extension in Cursor
-2. Complete activation
-3. Authenticate Claude Code
-4. Verify MCP connection: Settings → Tools & MCP
-
-### Cursor-Specific Features
-
-**Inline editing:**
-
-- Select elements in Pencil
-- Use Cursor's AI chat to modify
-- Changes apply to `.pen` file
-
-**Codebase awareness:**
-
-- Cursor can see both your code and designs
-- Ask to sync components between them
-- Maintain consistency automatically
-
-### Common Issues
-
-**"Need Cursor Pro":**
-
-- Some features may require Cursor Pro subscription
-- Check Cursor's pricing for current limitations
-
-**Prompt panel missing:**
-
-- Check activation/login status
-- Restart Cursor
-- Verify MCP connection in settings
-
-**Extension doesn't connect:**
-
-- Ensure Claude Code is logged in (`claude` CLI)
-- Complete the activation process
-- Check that Pencil MCP server is connected
-
-## Using with Codex CLI
-
-### Setup
-
-1. **Run Pencil first** - Start the desktop app or IDE extension
-2. **Open Codex** in your terminal
-3. **Verify MCP connection**: `/mcp`
-4. **Pencil should appear** in the MCP server list
-
-### Working with Codex
-
-**Design prompts in terminal:**
-
-```bash
-# In Codex CLI
-> Create a button component in design.pen
-> Add a hero section to the landing page
-> Generate a color scheme based on blue
-```
-
-**Benefits:**
-
-- Command-line workflow
-- Scriptable design generation
-- Integrate with build tools
-
-### Known Issues
-
-**Codex config.toml modifications:**
-
-- Pencil may modify or duplicate the config
-- Issue is acknowledged and under investigation
-- Backup your config before first use
-
-## DNA Code Format
-
-Pencil uses DNA code, a declarative format for expressing UI.
+Pencil expresses UI in a declarative format called DNA code.
 
 ### Basic Structure
 
 ```dna
-// Button component DNA code
+// 버튼 컴포넌트 DNA 코드
 component Button {
   variant: primary
   size: medium
-  content: "Click me"
+  content: "클릭하세요"
   onClick: handleSubmit
 }
 ```
@@ -361,22 +169,22 @@ component Button {
 ### Layout Structure
 
 ```dna
-// Login form layout
+// 로그인 폼 레이아웃
 layout LoginForm {
   direction: column
   spacing: 16
   children: [
     Input {
-      placeholder: "Email"
+      placeholder: "이메일"
       type: email
     }
     Input {
-      placeholder: "Password"
+      placeholder: "비밀번호"
       type: password
     }
     Button {
       variant: primary
-      content: "Sign In"
+      content: "로그인"
     }
   ]
 }
@@ -385,12 +193,12 @@ layout LoginForm {
 ### Design Tokens
 
 ```dna
-// Token references
+// 토큰 참조
 color: primary.500
 spacing: md
 radius: lg
 
-// Token definitions
+// 토큰 정의
 tokens {
   primary.500 = #3B82F6
   md = 16px
@@ -398,105 +206,49 @@ tokens {
 }
 ```
 
-## Design Generation Workflow
+## The Design Generation Workflow
 
-Three-phase pattern for generating designs with Pencil.
+The 3-phase pattern for generating designs with Pencil.
 
 ```mermaid
 flowchart TD
-    subgraph P1["Phase 1: Text Prompt"]
-        TP["Natural language description<br>Create a login page"]
+    subgraph P1["Phase 1: Text prompt"]
+        TP["Enter a natural-language description<br>Build a login page"]
     end
 
-    subgraph P2["Phase 2: DNA Code Generation"]
-        DC["DNA code generation<br>Pencil MCP converts to code"]
+    subgraph P2["Phase 2: DNA code generation"]
+        DC["DNA code generated<br>Pencil MCP converts to code"]
     end
 
-    subgraph P3["Phase 3: .pen Rendering"]
-        PR[".pen file rendering<br>Visual confirmation"]
+    subgraph P3["Phase 3: .pen rendering"]
+        PR[".pen file rendered<br>Visual confirmation"]
     end
 
     P1 --> P2
     P2 --> P3
 ```
 
-### Practical Example: E-Commerce Card
+### Practical Example: An E-Commerce Card
 
 ```bash
-# Phase 1: Request design with text prompt
-> Create a product card. Product image at top, title and price in middle,
-# cart button at bottom. Clean minimal style
+# Phase 1: 텍스트 프롬프트로 디자인 요청
+> 제품 카드를 만들어줘. 상단에 제품 이미지, 중간에 제목과 가격,
+# 하단에 장바구니 버튼. 깔끔한 미니멀 스타일로
 
-# Phase 2: Pencil generates DNA code
+# Phase 2: Pencil이 DNA 코드 생성
 # → component ProductCard { ... }
 
-# Phase 3: Render to .pen file
-# → open_document then batch_design
+# Phase 3: .pen 파일로 렌더링
+# → open_document 후 batch_design으로 생성
 ```
 
 {{< callout type="info" >}}
-**Key**: Pencil **manages designs as code**. .pen files can be version controlled with Git and integrated into code review workflows.
+**Key point**: Pencil **manages design as code**. .pen files can be version-controlled with Git and integrated into your code review process.
 {{< /callout >}}
 
-## Advanced Workflows
+## Exporting React Components
 
-### Automated Design Generation
-
-**Style guides**: Ask AI to follow specific design systems:
-
-```
-"Create a dashboard using Material Design principles"
-"Design a landing page with modern, minimal aesthetics"
-"Build components following our design system in design-system.pen"
-```
-
-**Batch operations:**
-
-```
-"Create 5 variations of this button component"
-"Generate a complete form with all input types"
-"Design an entire landing page with hero, features, pricing, and footer"
-```
-
-### Design System Management
-
-**Consistency enforcement:**
-
-```
-"Ensure all buttons use the primary color variable"
-"Update all headings to use the typography scale"
-"Apply 8px spacing grid to all elements"
-```
-
-**Component library:**
-
-```
-"Create a complete button component with all variants"
-"Generate form input components (text, select, checkbox, radio)"
-"Build a card component with image, title, description, and actions"
-```
-
-### Code-Design Workflows
-
-**Import existing app:**
-
-```
-"Recreate all components from src/components in Pencil"
-"Import the design system from our Tailwind config"
-"Analyze the codebase and create matching designs"
-```
-
-**Sync changes:**
-
-```
-"Update all React components to match the Pencil designs"
-"Apply the new color scheme to both design and code"
-"Sync typography variables between CSS and Pencil"
-```
-
-## React Component Export
-
-Export .pen files to React components in Pencil Editor.
+The Pencil Editor can export .pen files as React components.
 
 ### Export Configuration
 
@@ -540,7 +292,7 @@ export const Button = ({ variant = 'primary', size = 'medium', isLoading, childr
 
   return (
     <button className={`${baseStyles} ${variantStyles[variant]} ${sizeStyles[size]}`} {...props}>
-      {isLoading ? 'Loading...' : children}
+      {isLoading ? '로딩 중...' : children}
     </button>
   );
 };
@@ -548,75 +300,287 @@ export const Button = ({ variant = 'primary', size = 'medium', isLoading, childr
 
 ## Prompt Writing Guide
 
-Structured prompts are key to getting good results with Pencil.
+Structured prompts are essential for good results with Pencil.
 
-### Good vs Bad Prompts
+### Good Prompts vs Bad Prompts
 
-| Bad Prompt | Good Prompt |
-|-----------|-------------|
-| "Create a cool button" | "Medium-sized primary button with blue background, 'Confirm' text, 16px padding" |
-| "Dashboard" | "Analytics dashboard with sidebar nav, 3 metric cards at top (revenue, users, conversion), line chart, table" |
-| "Responsive" | "Mobile: vertical stack, desktop: 3-column grid" |
+| Bad prompt | Good prompt |
+|--------------|--------------|
+| "Make a nice button" | "A medium primary button with a blue background. 'Confirm' text, 16px padding" |
+| "A dashboard" | "An analytics dashboard with sidebar navigation. 3 metric cards on top (revenue, users, conversion), a line chart, a table" |
+| "Responsive" | "Mobile: vertical stack; desktop: 3-column grid" |
 
-### Effective Prompt Template
+### An Effective Prompt Template
 
 ```
-Create a [component type].
-Include [component list].
-Layout as [layout].
-Apply [style].
-Consider [responsive].
+[컴포넌트 유형]을 생성해줘.
+[컴포넌트 목록] 포함.
+[레이아웃]으로 배치.
+[스타일] 적용.
+[반응형] 고려.
 ```
 
-### Best Practices for Effective Prompting
+### Practical Prompt Examples
 
-**Be specific:**
+**Design generation:**
 
-- ❌ "Make it better"
-- ✅ "Increase the button padding to 16px and change color to blue"
+```bash
+# 대시보드 생성
+"사이드바와 메인 콘텐츠 영역이 있는 대시보드를 만들어줘"
 
-**Provide context:**
+# 가격표 생성
+"3단계 가격표를 만들어줘. 기본, 프로, 엔터프라이즈"
 
-- ❌ "Add a form"
-- ✅ "Add a login form with email, password, remember me checkbox, and submit button"
+# 히어로 섹션
+"제목과 CTA 버튼이 있는 히어로 섹션을 추가해줘"
+```
 
-**Reference design systems:**
+**Design modification:**
 
-- "Use our existing button component"
-- "Follow the spacing scale from our variables"
-- "Match the style of the header component"
+```bash
+# 색상 변경
+"모든 기본 버튼을 파란색으로 변경해줘"
 
-### Iterative Design
+# 크기 조정
+"사이드바를 더 좁게 만들어줘"
 
-1. **Start broad**: "Create a dashboard layout"
-2. **Refine**: "Add a sidebar with navigation items"
-3. **Detail**: "Style the nav items with hover states"
-4. **Polish**: "Adjust spacing to match 8px grid"
+# 간격 추가
+"이 요소들 사이에 간격을 추가해줘"
+```
+
+**Design systems:**
+
+```bash
+# 버튼 컴포넌트
+"변형이 있는 버튼 컴포넌트를 만들어줘"
+
+# 색상 팔레트
+"#3b82f6을 기반으로 색상 팔레트를 생성해줘"
+
+# 타이포그래피
+"타이포그래피 스케일을 만들어줘"
+```
+
+**Code integration:**
+
+```bash
+# React 코드
+"이 컴포넌트에 대한 React 코드를 생성해줘"
+
+# 가져오기
+"내 코드베이스에서 Header를 가져와줘"
+
+# Tailwind 설정
+"이 변수들로부터 Tailwind 설정을 만들어줘"
+```
 
 {{< callout type="info" >}}
-**Golden Rule**: Be **specific** in prompts. Specify colors, spacing, alignment, and interactions clearly.
+**Golden Rule**: the **more specific** the prompt, the better. State colors, spacing, alignment, and interactions clearly.
 {{< /callout >}}
+
+## Using with Cursor
+
+Cursor is an AI-powered IDE with strong Pencil integration.
+
+### Setup
+
+1. Install the Pencil extension in Cursor
+2. Complete activation
+3. Authenticate Claude Code
+4. Verify the MCP connection: Settings → Tools & MCP
+
+### Cursor-Specific Features
+
+**Inline editing:**
+
+- Select an element in Pencil
+- Modify it via Cursor's AI chat
+- Changes apply immediately to the `.pen` file
+
+**Codebase awareness:**
+
+- Cursor sees both the code and the design
+- Request synchronization between components
+- Automatic consistency maintenance
+
+### Common Issues
+
+**"Need Cursor Pro":**
+
+- Some features may require a Cursor Pro subscription
+- Check Cursor's pricing page for current limitations
+
+**Missing prompt panel:**
+
+- Verify activation/login state
+- Restart Cursor
+- Check the MCP connection in settings
+
+## Using with Codex CLI
+
+### Setup
+
+1. **Run Pencil first** - start the desktop app or IDE extension
+2. Open Codex in the terminal
+3. Check the MCP connection: `/mcp`
+4. **Pencil should appear in the MCP server list**
+
+### Working with Codex
+
+**Design prompts from the terminal:**
+
+```bash
+# Codex CLI에서
+> design.pen에 버튼 컴포넌트를 만들어줘
+> 랜딩 페이지에 히어로 섹션을 추가해줘
+> 파란색을 기반으로 색상 구성표를 생성해줘
+```
+
+**Advantages:**
+
+- Command-line workflow
+- Scriptable design generation
+- Integration with build tools
+
+### Known Issues
+
+**Codex config.toml modification:**
+
+- Pencil may modify or duplicate the configuration
+- The issue is confirmed and under investigation
+- Back up your configuration before first use
+
+## Advanced Workflows
+
+### Automated Design Generation
+
+**Style guides:**
+
+```bash
+# 특정 디자인 시스템 따르기
+"Material Design 원칙을 사용하여 대시보드를 만들어줘"
+
+"현대적인 미니멀 미학으로 랜딩 페이지를 디자인해줘"
+
+"design-system.pen의 디자인 시스템을 따르는 컴포넌트를 만들어줘"
+```
+
+**Batch operations:**
+
+```bash
+# 버튼 변형
+"이 버튼 컴포넌트의 5가지 변형을 만들어줘"
+
+# 완전한 양식
+"모든 입력 유형이 있는 완전한 양식을 생성해줘"
+
+# 전체 랜딩 페이지
+"히어로, 기능, 가격, 푸터가 있는 전체 랜딩 페이지를 디자인해줘"
+```
+
+### Design System Management
+
+**Enforcing consistency:**
+
+```bash
+# 색상 변수
+"모든 버튼이 기본 색상 변수를 사용하도록 해줘"
+
+# 타이포그래피
+"모든 제목이 타이포그래피 스케일을 사용하도록 업데이트해줘"
+
+# 간격
+"모든 요소에 8px 간격 그리드를 적용해줘"
+```
+
+**Component libraries:**
+
+```bash
+# 버튼 컴포넌트
+"모든 변형이 있는 완전한 버튼 컴포넌트를 만들어줘"
+
+# 양식 입력
+"양식 입력 컴포넌트 (텍스트, 선택, 체크박스, 라디오)를 생성해줘"
+
+# 카드 컴포넌트
+"이미지, 제목, 설명, 작업이 있는 카드 컴포넌트를 만들어줘"
+```
+
+### Code-Design Workflows
+
+**Importing an existing app:**
+
+```bash
+# 컴포넌트 재현
+"src/components의 모든 컴포넌트를 Pencil에서 재현해줘"
+
+# 디자인 시스템 가져오기
+"Tailwind 설정에서 디자인 시스템을 가져와줘"
+
+# 코드베이스 분석
+"코드베이스를 분석하고 일치하는 디자인을 만들어줘"
+```
+
+**Synchronizing changes:**
+
+```bash
+# React 컴포넌트
+"모든 React 컴포넌트를 Pencil 디자인과 일치하도록 업데이트해줘"
+
+# 색상 구성표
+"새 색상 구성표를 디자인과 코드에 모두 적용해줘"
+
+# 변수 동기화
+"CSS와 Pencil 간에 타이포그래피 변수를 동기화해줘"
+```
 
 ## Best Practices
 
 | Principle | Description |
-|-----------|-------------|
-| **Code First** | Manage designs as code for easier version control and collaboration |
-| **Iterative Approach** | Start with basic layout, then add details progressively |
-| **Accessibility** | Always specify ARIA labels, keyboard navigation |
-| **Responsive** | Always include mobile and desktop behaviors |
-| **Design System** | Use consistent tokens and components |
+|------|------|
+| **Code first** | Manage design as code for easy version control and collaboration |
+| **Incremental refinement** | Generate the basic layout first, then add details incrementally |
+| **Include accessibility** | Always specify ARIA labels and keyboard navigation |
+| **State responsiveness** | Always include mobile and desktop behavior |
+| **Design system** | Use consistent tokens and components |
 
-### Progressive Enhancement Strategy
+### The Incremental Refinement Strategy
 
-Complex screens yield better quality when generated in multiple iterations.
+Complex screens turn out better when generated over several passes.
 
 ```mermaid
 flowchart TD
     I1["Iteration 1<br>Basic layout with core components"] --> I2["Iteration 2<br>Add styling"]
-    I2 --> I3["Iteration 3<br>Improve spacing and alignment"]
+    I2 --> I3["Iteration 3<br>Refine spacing and alignment"]
     I3 --> I4["Iteration 4<br>Add states and interactions"]
 ```
+
+### Effective Prompting
+
+**Be specific:**
+
+- ✗ "Make it better"
+- ✓ "Increase the button padding to 16px and change the color to blue"
+
+**Provide context:**
+
+- ✗ "Add a form"
+- ✓ "Add a login form with email, password, a remember-me checkbox, and a submit button"
+
+**Reference the design system:**
+
+- "Use the existing button component"
+- "Follow the spacing scale from the variables"
+- "Match the header component's styling"
+
+### Verification
+
+After the AI makes changes, build the habit of checking with your own eyes.
+
+1. Review visually on the canvas
+2. Check the structure in the layers panel
+3. Test interactions where applicable
+4. Request a screenshot to verify complex layouts
 
 ## Troubleshooting
 
@@ -624,90 +588,89 @@ flowchart TD
 
 **"Claude Code not connected":**
 
-1. Ensure Claude Code is logged in: `claude`
+1. Verify Claude Code login: `claude`
 2. Restart Pencil
-3. Open terminal in project directory and run `claude`
+3. Open a terminal in the project directory and run `claude`
 
 **MCP server not appearing:**
 
 1. Verify Pencil is running
-2. Check IDE MCP settings
+2. Check the IDE MCP settings
 3. Restart both Pencil and the AI assistant
 
 ### Permission Issues
 
-**"Can't access folders":**
+**"Cannot access folder":**
 
-- Accept permission prompts
+- Accept the permission prompt
 - Check system folder permissions
-- Run IDE/Pencil with proper permissions
+- Run the IDE/Pencil with appropriate permissions
 
-**"Permission prompt never appeared":**
+**"Permission prompt not showing":**
 
-- Try operation in separate Claude Code session
+- Try working in a separate Claude Code session
 - Check notification settings
-- Verify IDE permissions
+- Check IDE permissions
 
 ### AI Output Issues
 
 **"Invalid API key":**
 
 - Re-authenticate Claude Code: `claude`
-- Check for conflicting auth configs
+- Check for conflicting authentication settings
 - Clear environment variables
 
 **AI makes unexpected changes:**
 
-- Be more specific in prompts
-- Ask AI to explain before applying
-- Use version control to revert if needed
+- Write more specific prompts
+- Ask the AI to explain before applying
+- Revert via version control if needed
 
-### Extension Issues
+## Example Session
 
-**Extension installed but doesn't connect:**
+```bash
+# 1. Pencil과 Claude Code 시작
+claude
+# 2. IDE에서 design.pen 열기
+# 3. Cmd + K를 누르고 디자인 시작
 
-- Verify Claude Code is logged in
-- Complete the activation process
-- Restart your IDE
+사용자: "현대적인 랜딩 페이지 히어로 섹션을 만들어줘"
+AI: [제목, 부제, CTA 버튼으로 히어로 생성]
 
-**Activation email not received:**
+사용자: "3열로 된 기능 섹션을 추가해줘"
+AI: [히어로 아래에 기능 섹션 추가]
 
-- Check spam/junk folder
-- Try a different email address
-- Reinstall the extension
+사용자: "CTA 버튼이 기본 색상 변수를 사용하도록 해줘"
+AI: [버튼을 색상 변수 사용으로 업데이트]
+
+사용자: "이 전체 페이지에 대한 React 코드를 생성해줘"
+AI: [Tailwind CSS가 있는 React 컴포넌트로 내보내기]
+
+# 4. 검토 및 수정
+# 5. Git에 커밋
+git add design.pen src/pages/landing.tsx
+git commit -m "랜딩 페이지 디자인 및 구현 추가"
+```
 
 ## Using with MoAI
 
-MoAI integrates with Pencil MCP for automated UI design.
-
-```bash
-# MoAI uses Pencil for UI generation
-> /moai run --team
-# team-designer agent uses Pencil MCP for design generation
-```
-
-### Team Mode Design Workflow
+MoAI can integrate with the Pencil MCP to automate UI design. In v3.0 the `manager-design` agent owns design collaboration (the D1-D5 pipeline) — it is deployed when design-tool work connects to a UI-surfaced SPEC.
 
 ```mermaid
 flowchart TD
-    REQ["User Request"] --> SPEC["SPEC Document<br>manager-spec"]
-    SPEC --> DESIGN["UI/UX Design<br>team-designer + Pencil"]
-    DESIGN --> DEV["Implementation<br>team-frontend-dev"]
-    DESIGN --> TEST["Testing<br>team-tester"]
+    REQ["User request"] --> SPEC["SPEC document creation<br>manager-spec"]
+    SPEC --> DESIGN["UI/UX design<br>manager-design + Pencil MCP"]
+    DESIGN --> DEV["Implementation<br>manager-develop (frontend context)"]
+    DESIGN --> TEST["Testing<br>manager-develop (TDD)"]
 ```
 
 ## Related Documents
 
-- [MCP Servers Guide](/advanced/mcp-servers) - MCP protocol overview
-- [settings.json Guide](/advanced/settings-json) - MCP server permission setup
-- [Agent Guide](/advanced/agent-guide) - MoAI agent system
-- [Skill Guide](/advanced/skill-guide) - moai-design-tools skill
-
-## Sources
-
-- [Installation - Pencil Documentation](https://docs.pencil.dev/getting-started/installation)
-- [AI Integration - Pencil Documentation](https://docs.pencil.dev/getting-started/ai-integration)
+- [MCP Servers Guide](/en/advanced/mcp-servers) - MCP protocol overview
+- [settings.json Guide](/en/advanced/settings-json) - MCP server permission configuration
+- [Agent Guide](/en/advanced/agent-guide) - the MoAI agent system
+- [Skill Guide](/en/advanced/skill-guide) - the moai-design-tools skill
 
 {{< callout type="info" >}}
-**Tip**: The key to maximizing Pencil is **managing designs as code**. Managing .pen files with Git makes design version tracking and collaboration much easier.
+**Tip**: The key to getting the most out of Pencil is **managing design as code**. Managing .pen files with Git makes design version tracking and collaboration much easier.
 {{< /callout >}}

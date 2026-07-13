@@ -4,369 +4,331 @@ weight: 20
 draft: false
 ---
 
-Fully autonomous automation command. When you provide a goal, MoAI autonomously executes the **plan → run → sync** pipeline.
+The fully autonomous automation command. When the user provides a goal, MoAI autonomously runs the **plan → run → sync** pipeline.
 
 {{< callout type="info" >}}
-  **One-line summary**: `/moai` is a "fully autonomous automation" command. You just describe the feature you want in natural language, and MoAI automatically performs **the entire process** from SPEC creation to implementation and documentation.
+  **One-line summary**: `/moai` is the "fully autonomous automation" command. You simply describe
+  the feature you want in natural language, and MoAI performs **the entire process automatically**,
+  from SPEC creation through implementation to documentation.
 {{< /callout >}}
 
 {{< callout type="info" >}}
-**Slash Command Support**: All MoAI subcommands are wrapped as skills. Simply type `/moai` to see the full list of available subcommands. Each subcommand can also be run directly as `/moai:fix`, `/moai:loop`, `/moai:review`, etc.
+**Slash command support**: all MoAI subcommands are wrapped as skills, so typing just `/moai` shows the list of available subcommands. Each subcommand can also be run directly in the form `/moai:fix`, `/moai:loop`, `/moai:review`, and so on.
 {{< /callout >}}
 
 ## Overview
 
-`/moai` is the **fully autonomous automation workflow** command of MoAI-ADK. There's no need to execute subcommands separately - the entire development process is automated with a single command:
+`/moai` is MoAI-ADK's **fully autonomous automation workflow** command. Without running sub-commands separately, the entire development process is automated with a single command:
 
-1. **SPEC Creation** (manager-spec)
-2. **DDD Implementation** (manager-develop)
-3. **Documentation Synchronization** (manager-docs)
+1. **SPEC creation** (manager-spec)
+2. **DDD/TDD implementation** (manager-develop — per development_mode in quality.yaml)
+3. **Doc synchronization** (manager-docs)
+
+## Analyze-First Routing
+
+Starting with v3, `/moai`'s default routing is **Analyze-First** — language-independent intent analysis. It classifies the meaning of the request rather than matching English keywords, so requests in any `conversation_language` are routed with the same quality.
+
+Routing proceeds in this order:
+
+1. **Intent analysis**: classify the intent of the user's request (regardless of input language)
+2. **Context-sufficiency check**: if insufficient, clarify through a Socratic interview
+3. **Execution-plan composition**: choose the skill / agent / dynamic-workflow chain
+4. **Orchestration mode selection** (Phase 0.95): solo-sequential / parallel-subagents / dynamic-workflow
+
+That is, even typing plain natural language without a subcommand, like `/moai "fix the login bug"`, is routed through intent analysis to the right workflow (the fix family for a fix, or the plan→run→sync pipeline for a new feature).
 
 ## Usage
 
 ```bash
 # Basic usage
-> /moai "Description of the feature you want to implement"
+> /moai "description of the feature you want"
 
-# With worktree
+# With a worktree
 > /moai "feature description" --worktree
 
-# With branch
+# With a branch
 > /moai "feature description" --branch
 
 # Enable loop mode
 > /moai "feature description" --loop
 
-# Resume existing SPEC
+# Resume an existing SPEC
 > /moai --resume SPEC-AUTH-001
 ```
 
 ## Supported Flags
 
-| Flag                | Description                             | Example                           |
-| ------------------- | --------------------------------------- | --------------------------------- |
-| `--loop`            | Enable automatic iterative fixing       | `/moai "feature" --loop`          |
-| `--max N`           | Specify maximum iterations (default 100) | `/moai "feature" --loop --max 10` |
-| `--branch`          | Auto-create feature branch              | `/moai "feature" --branch`        |
-| `--pr`              | Auto-create PR after completion         | `/moai "feature" --pr`            |
-| `--resume SPEC-XXX` | Resume existing SPEC work                | `/moai --resume SPEC-AUTH-001`     |
-| `--team`            | Force Agent Teams mode                  | `/moai "feature" --team`          |
-| `--solo`            | Force sub-agent mode                    | `/moai "feature" --solo`          |
+| Flag                | Description                              | Example                        |
+| ------------------- | ---------------------------------------- | ------------------------------ |
+| `--loop`            | Enable automatic iterative fixing after implementation | `/moai "feature" --loop`  |
+| `--max N`           | Set the maximum number of iterations (default 100) | `/moai "feature" --loop --max 10` |
+| `--branch`          | Auto-create a feature branch             | `/moai "feature" --branch`     |
+| `--pr`              | Auto-create a PR after completion        | `/moai "feature" --pr`         |
+| `--resume SPEC-XXX` | Resume existing SPEC work                | `/moai --resume SPEC-AUTH-001` |
+| `--team`            | Force agent team mode                    | `/moai "feature" --team`       |
+| `--solo`            | Force sub-agent mode                     | `/moai "feature" --solo`       |
 
-### --loop Flag
+### The --loop Flag
 
-Automatically executes iterative fixing after implementation to resolve all errors:
+Automatically runs iterative fixing after implementation completes, fixing all errors:
 
 ```bash
 > /moai "JWT authentication system" --loop
 ```
 
-When using this option:
+When you use this option:
 
-1. Create SPEC
+1. SPEC creation
 2. DDD implementation
-3. **Auto-run loop** (resolve LSP errors, test failures, coverage issues)
-4. Document synchronization
+3. **Automatic loop execution** (resolves LSP errors, test failures, coverage gaps)
+4. Doc synchronization
 5. PR creation
 
 {{< callout type="info" >}}
-  The `--loop` option **completely automates post-implementation cleanup** to maximize productivity.
+  The `--loop` option **fully automates post-implementation cleanup**, maximizing
+  productivity.
 {{< /callout >}}
 
-### --team / --solo Flags
+### The --team / --solo Flags and Orchestration Modes
 
-The `--team` flag forces Agent Teams mode, enabling multiple specialized agents to **collaborate in parallel**:
+Run without a flag and MoAI looks at the size of the work and auto-selects the orchestration mode:
 
-```bash
-> /moai "feature description" --team
-```
+**Auto-selection criteria** (when no flag is given):
 
-#### Prerequisites
-
-Both conditions must be met to use Agent Teams mode:
-
-1. Environment variable: `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1` (set in settings.json)
-2. Configuration file: `workflow.team.enabled: true` (`.moai/config/sections/workflow.yaml`)
-
-#### Mode Selection
+- Affected domains >= 3 → parallel execution
+- Modified files >= 10 → parallel execution
+- Complexity score >= 7 → parallel execution
+- Otherwise → sub-agent mode (sequential execution)
 
 | Flag | Behavior |
-| ---- | -------- |
-| `--team` | Force Agent Teams mode (parallel execution) |
+| ------ | ---- |
+| `--team` | Force agent team mode |
 | `--solo` | Force sub-agent mode (sequential execution) |
-| (none) | Auto-select based on complexity |
-
-**Auto-selection criteria** (when no flag):
-
-- Affected domains >= 3 → Team mode
-- Modified files >= 10 → Team mode
-- Complexity score >= 7 → Team mode
-- Otherwise → Sub-agent mode
-
-#### Team Composition
-
-**Plan Phase Team:**
-
-| Agent | Role | Key Tasks |
-| ----- | ---- | --------- |
-| **researcher** | Codebase exploration | Related code, reference implementations, dependency analysis |
-| **analyst** | Requirements analysis | User stories, acceptance criteria, edge cases |
-| **architect** | Technical design | Architecture decisions, alternative evaluation, trade-offs |
-
-**Run Phase Team:**
-
-| Agent | Role | Key Tasks |
-| ----- | ---- | --------- |
-| **backend-dev** | Backend implementation | API, business logic, database |
-| **frontend-dev** | Frontend implementation | UI components, state management, styling |
-| **tester** | Test writing | Unit, integration, E2E tests |
-
-#### File Ownership
-
-In team mode, each agent **exclusively owns** specific file patterns to prevent conflicts:
-
-| Agent | Owned File Patterns |
-| ----- | ------------------- |
-| backend-dev | `src/**/*.go`, `internal/**`, `pkg/**` |
-| frontend-dev | `src/**/*.tsx`, `src/**/*.css`, `public/**` |
-| tester | `**/*_test.go`, `**/*.test.ts`, `**/*.spec.ts` |
-
-#### Token Cost
-
-Agent teams consume more tokens since each agent uses its own independent context window:
-
-| Team Pattern | Agent Count | Expected Multiplier |
-| ------------ | ----------- | ------------------- |
-| Plan research | 3 | ~3x |
-| Implementation | 3 | ~3x |
-| Investigation | 3 | ~2x (haiku) |
+| (none) | Complexity-based auto-selection |
 
 {{< callout type="warning" >}}
-  `--team` mode is an experimental feature. It is most effective for complex
-  cross-layer tasks. For simple single-domain tasks, `--solo` mode is more
-  efficient.
+**v3.0.0-rc11 change**: the Agent Teams static-orchestration layer is **retired**. Forcing `--team` falls back to sub-agent mode with `MODE_TEAM_UNAVAILABLE`. Parallel execution is handled by parallel sub-agent fan-out and 2 dynamic workflows (plan-phase parallel research fan-out, sync-phase 4-dimension quality evaluation), while the native teammate runtime (`moai cg` tmux panes) remains intact.
 {{< /callout >}}
 
-## Execution Process
+Parallel execution increases token usage because each agent uses an independent context window. For simple single-domain work, `--solo` (sequential) is more economical — which is why scale-based auto-selection is the default.
 
-The entire process that `/moai` performs internally:
+## Execution Flow
+
+The full process `/moai` performs internally:
 
 ```mermaid
 flowchart TD
-    A["Execute Command<br/>/moai 'feature description'"] --> B{--resume?}
-    B -->|Yes| C["Load SPEC<br/>Continue work"]
-    B -->|No| D["Phase 0<br/>Parallel Exploration"]
+    A["Run command<br/>/moai 'feature description'"] --> B{--resume?}
+    B -->|Yes| C["Load SPEC<br/>continue work"]
+    B -->|No| D["Phase 0<br/>parallel exploration"]
 
-    subgraph D["Phase 0: Parallel Exploration (15-30s)"]
-        D1["Explore Subagent<br/>Codebase analysis"]
-        D2["Research Subagent<br/>External documentation research"]
-        D3["Quality Subagent<br/>Quality baseline check"]
+    subgraph D["Phase 0: parallel exploration (15-30 s)"]
+        D1["Explore subagent<br/>codebase analysis"]
+        D2["Research subagent<br/>external docs research"]
+        D3["Quality subagent<br/>quality baseline check"]
     end
 
-    D --> E{"Single Domain?"}
-    E -->|Yes| F["Delegate directly to<br/>expert agent"]
-    E -->|No| G["Continue Phase 1"]
+    D --> E{"Single domain?"}
+    E -->|Yes| F["Delegate directly to<br/>a specialist agent"]
+    E -->|No| G["Continue to Phase 1"]
 
-    C --> G["Phase 1<br/>SPEC Creation"]
-    G --> H["Call manager-spec"]
-    H --> I["Create EARS format SPEC"]
+    C --> G["Phase 1<br/>SPEC creation"]
+    G --> H["Invoke manager-spec"]
+    H --> I["Create EARS-format SPEC"]
     I --> J[".moai/specs/SPEC-XXX/spec.md"]
 
-    J --> K["Phase 2<br/>DDD Implementation"]
+    J --> K["Phase 2<br/>DDD implementation"]
 
-    K --> L["Call manager-develop<br/>Strategic planning"]
-    L --> M["Call manager-develop<br/>ANALYZE-PRESERVE-IMPROVE"]
-    M --> N{"Implementation complete?"}
-    N -->|No| M
-    N -->|Yes| O{"--loop?"}
+    K --> L["Invoke manager-develop<br/>DDD/TDD cycle (per quality.yaml)"]
+    L --> M{"Implementation complete?"}
+    M -->|No| L
+    M -->|Yes| N{"--loop?"}
 
-    O -->|Yes| P["Run auto loop"]
-    P --> Q["Resolve all issues"]
-    O -->|No| Q
+    N -->|Yes| O["Run automatic loop"]
+    O --> P["Resolve all issues"]
+    N -->|No| P
 
-    Q --> R["Phase 3<br/>Document Sync"]
+    P --> Q["Phase 3<br/>doc synchronization"]
 
-    R --> S["Call manager-docs<br/>Generate documents"]
-    S --> T{"--pr?"}
-    T -->|Yes| U["Create PR"]
-    T -->|No| V["Completion signal"]
-    U --> V
+    Q --> R["Invoke manager-docs<br/>generate docs"]
+    R --> S{"--pr?"}
+    S -->|Yes| T["Create PR"]
+    S -->|No| U["Completion signal"]
+    T --> U
 ```
 
-**Key Points:**
+**Key points:**
 
-- **Phase 0 (Parallel Exploration)**: Three agents run simultaneously for 2-3x speed improvement
-- **Single Domain Routing**: Simple tasks are delegated directly to expert agents, skipping SPEC
-- **Completion Signal**: States in the Completion Report that the work is complete
+- **Phase 0 (parallel exploration)**: three agents run at the same time for a 2-3x speedup
+- **Single-domain routing**: simple work is delegated directly to a specialist agent, skipping the SPEC
+- **Completion signal**: on completion, the completion report explicitly states the work is done
 
-## Phase-by-Phase Details
+## Phase Details
 
-### Phase 0: Parallel Exploration (Optional)
+### Phase 0: Parallel Exploration (optional)
 
-Three agents run **simultaneously** to quickly understand project context:
+Three agents run **simultaneously** to quickly grasp the project context:
 
-| Agent    | Role              | Tasks                                           |
-| -------- | ----------------- | ---------------------------------------------- |
-| **Explore**  | Codebase analysis | Find related files, architecture patterns, existing implementations |
-| **Research** | External doc research | Official docs, API docs, similar implementation examples |
-| **Quality**  | Quality baseline  | Test coverage, lint status, technical debt    |
+| Agent        | Role                | Work                                          |
+| ------------ | ------------------- | --------------------------------------------- |
+| **Explore**  | Codebase analysis   | Discovers relevant files, architecture patterns, existing implementations |
+| **Research** | External docs research | Official docs, API docs, similar implementation examples |
+| **Quality**  | Quality baseline    | Test coverage, lint status, technical debt    |
 
-**Speed Improvement**: Parallel execution is 2-3x faster than sequential (15-30s vs 45-90s)
+**Speedup:** parallel execution is 2-3x faster than sequential (15-30 s vs 45-90 s)
 
-**Single Domain Routing:**
+**Single-domain routing:**
 
-- Single domain tasks (e.g., "SQL optimization"): Delegate directly to domain expert agent without SPEC creation
-- Multi-domain tasks: Proceed with full workflow
+- Single-domain work (e.g. "SQL optimization"): delegated directly to a specialist agent, no SPEC creation
+- Multi-domain work: proceeds through the full workflow
 
 ### Phase 1: SPEC Creation
 
-The **manager-spec** subagent creates EARS format SPEC documents:
+The **manager-spec** subagent creates an EARS-format SPEC document:
 
 - .moai/specs/SPEC-XXX/spec.md
-- EARS format requirements
+- EARS-format requirements
 - Given-When-Then acceptance criteria
-- Content written in conversation_language
+- Content written in the conversation_language
 
-### Phase 2: DDD Implementation Loop
+### Phase 2: DDD/TDD Implementation Loop
 
-**[HARD] Agent Delegation Rule**: All implementation work must be delegated to specialized agents. Direct implementation is prohibited even after auto-compact.
+The **manager-develop** subagent implements based on the SPEC:
 
-**Expert Agent Selection:**
+- DDD cycle: ANALYZE-PRESERVE-IMPROVE (refactoring existing code)
+- TDD cycle: RED-GREEN-REFACTOR (new feature development)
+- Automatic domain-context injection (backend, frontend, security, database, etc.)
 
-| Task Type          | Agent                         |
-| ------------------ | ----------------------------- |
-| Backend logic      | manager-develop subagent       |
-| Frontend components| manager-develop subagent      |
-| Test creation      | manager-develop subagent       |
-| Bug fixing         | manager-develop subagent         |
-| Refactoring        | manager-develop subagent   |
-| Security fixes     | manager-develop subagent      |
+**quality.yaml development_mode setting:**
 
-**Loop Behavior (when --loop or ralph.yaml loop.enabled is true):**
+- `development_mode: ddd` → uses the DDD cycle (improving existing code)
+- `development_mode: tdd` → uses the TDD cycle (new feature development, default)
+
+**Loop behavior (with --loop or when loop.enabled is true):**
 
 ```
-problem exists AND iteration < max:
-  1. Run diagnostics (parallel by default)
-  2. Delegate fix to appropriate expert agent
-  3. Verify fix results
-  4. Check whether completion conditions are satisfied
-  5. Exit loop when the completion sentence is detected
+While issues exist AND iterations < maximum:
+  1. Run diagnostics (LSP errors, test failures, coverage)
+  2. Delegate fixes to manager-develop
+  3. Verify the fix results
+  4. Check whether the completion condition is met
+  5. Exit the loop when the completion sentence is detected
 ```
 
-### Phase 3: Document Synchronization
+### Phase 3: Doc Synchronization
 
-The **manager-docs** subagent synchronizes implementation with documentation:
+The **manager-docs** subagent synchronizes the implementation and the docs:
 
-- Generate API documentation
-- Update README
-- Add to CHANGELOG
-- State that the work is complete on success
+- API doc generation
+- README update
+- CHANGELOG addition
+- On success, explicitly states the work is complete
 
 ## TODO Management
 
-**[HARD] TodoWrite Tool Required**: Must use TodoWrite for all task tracking
+**[HARD] The TodoWrite tool is mandatory:** TodoWrite must be used for all work tracking
 
-- When issue found: TodoWrite (pending status)
-- Before starting work: TodoWrite (in_progress status)
-- After completing work: TodoWrite (completed status)
-- Prohibit printing TODO list as text
+- On discovering an issue: TodoWrite (pending state)
+- Before starting work: TodoWrite (in_progress state)
+- After completing work: TodoWrite (completed state)
+- Printing the TODO list as plain text is forbidden
 
 ## Completion Signal
 
-When all workflow phases complete successfully, MoAI states that the work is complete in the Completion Report (banner / prose) so the result is unambiguous.
+When every workflow stage completes successfully, MoAI explicitly states completion in the completion report (banner/prose) to make the outcome unambiguous.
 
 ## LLM Mode Routing
 
-Automatic routing based on llm.yaml settings:
+A core tokenomics device. Based on the llm.yaml setting, Claude and GLM are routed automatically per phase — enabling a hybrid where Claude handles strategy and planning while low-cost GLM handles bulk implementation.
 
-| Mode          | Plan Phase     | Run Phase      |
+| Mode          | Plan phase     | Run phase      |
 | ------------- | -------------- | -------------- |
 | `claude-only` | Claude         | Claude         |
 | `hybrid`      | Claude         | GLM (worktree) |
 | `glm-only`    | GLM (worktree) | GLM (worktree) |
 
-## Practical Examples
+## Worked Example
 
-### Example: Full Automation of JWT Authentication System
+### Example: Fully Automating a JWT Authentication System
 
-**Step 1: Execute Command**
+**Step 1: Run the command**
 
 ```bash
 > /moai "JWT-based user authentication system: signup, login, token refresh" --worktree --loop --pr
 ```
 
-**Step 2: Phase 0 - Parallel Exploration**
+**Step 2: Phase 0 - parallel exploration**
 
 ```
-[Starting parallel exploration]
-  Explore subagent: Analyzing src/auth/...
-  Research subagent: Researching JWT best practices...
-  Quality subagent: Confirming test coverage 32%...
+[Parallel exploration started]
+  Explore subagent: analyzing src/auth/...
+  Research subagent: researching JWT best practices...
+  Quality subagent: confirming 32% test coverage...
 
-[Exploration complete - 23s]
-  Files found: 4
+[Exploration complete - 23 s]
+  Files discovered: 4
   Recommended libraries: PyJWT, bcrypt
-  Baseline: LSP 0 errors, coverage 32%
+  Baseline: 0 LSP errors, 32% coverage
 ```
 
-**Step 3: Phase 1 - SPEC Creation**
+**Step 3: Phase 1 - SPEC creation**
 
 ```
-[Calling manager-spec]
+[Invoking manager-spec]
   SPEC ID: SPEC-AUTH-001
   Requirements: 5 (EARS format)
   Acceptance criteria: 3 scenarios
 
-  User approval: Complete
+  User approval: complete
 ```
 
-**Step 4: Phase 2 - DDD Implementation**
+**Step 4: Phase 2 - DDD implementation**
 
 ```
-[manager-develop]
-  Work decomposition: 7 tasks
+[manager-spec]
+  Task decomposition: 7 tasks
   Strategic planning complete
 
 [manager-develop]
-  ANALYZE: Code structure analysis complete
-  PRESERVE: Wrote 12 characterization tests
-  IMPROVE: 7 tasks implementation complete
+  ANALYZE: code structure analysis complete
+  PRESERVE: 12 characterization tests written
+  IMPROVE: 7 tasks implemented
 
 [sync-auditor]
-  TRUST 5: All pillars passed
+  TRUST 5: all pillars pass
   Coverage: 89%
   Status: PASS
 ```
 
-**Step 5: Auto Loop (--loop)**
+**Step 5: Automatic loop (--loop)**
 
 ```
-[Starting loop - iteration 1/100]
-  Diagnostics: Found 2 type errors
-  Fix: Delegated to manager-develop subagent
-  Verify: All errors resolved
+[Loop started - iteration 1/100]
+  Diagnostics: 2 type errors found
+  Fix: delegated to the manager-develop subagent
+  Verify: all errors resolved
 
-[Loop complete - 1 iteration]
-  Completion conditions met!
+[Loop finished - 1 iteration]
+  Completion condition met!
 ```
 
-**Step 6: Phase 3 - Document Synchronization**
+**Step 6: Phase 3 - doc synchronization**
 
 ```
 [manager-docs]
-  API documentation: docs/api/auth.md created
-  README: Updated usage section
-  CHANGELOG: Added v1.1.0 entries
+  API docs: docs/api/auth.md created
+  README: usage section updated
+  CHANGELOG: v1.1.0 entry added
   SPEC-AUTH-001: ACTIVE → COMPLETED
 ```
 
-**Step 7: Complete**
+**Step 7: Done**
 
 ```
-[Complete]
+[Done]
   SPEC: SPEC-AUTH-001
   Commits: 7
-  Tests: 36/36 passed
+  Tests: 36/36 pass
   Coverage: 89%
   PR: #42 created (Draft → Ready)
 
@@ -375,27 +337,31 @@ Automatic routing based on llm.yaml settings:
 
 ## Frequently Asked Questions
 
-### Q: What's the difference between `/moai` and subcommands?
+### Q: What is the difference between `/moai` and its sub-commands?
 
-| Command       | Scope          | When to Use                     |
-| ------------- | -------------- | ------------------------------- |
-| `/moai`       | Full automation| Want quick full automation      |
-| `/moai plan`  | SPEC only      | Want to review SPEC first        |
-| `/moai run`   | Implementation only| SPEC already exists        |
-| `/moai sync`  | Documentation only| Update docs after implementation |
+| Command      | Scope           | When to use                          |
+| ------------ | --------------- | ------------------------------------ |
+| `/moai`      | Full automation | When you want fast full automation   |
+| `/moai plan` | SPEC creation only | When you want to review the SPEC first |
+| `/moai run`  | Implementation only | When a SPEC already exists       |
+| `/moai sync` | Documentation only | When updating only docs after implementation |
 
 ### Q: When should I use the --loop flag?
 
-Use when you want to automatically fix all errors after implementation. Especially useful for cleanup after large refactoring.
+Use it when you want all errors fixed automatically after implementation. It is especially useful for cleanup after large refactorings.
 
-### Q: What is single domain routing?
+### Q: What is single-domain routing?
 
-Single domain tasks (e.g., "SQL query optimization") are delegated directly to the domain expert agent without SPEC creation, saving time.
+Single-domain work (e.g. "optimize SQL queries") is delegated directly to the specialist agent for that domain without SPEC creation, saving time.
+
+### Q: Can I make requests in a language other than English?
+
+Yes. Analyze-First routing is language-independent intent analysis, so requests in Korean, Japanese, Chinese, or any other language behave identically.
 
 ## Related Documents
 
 - [/moai plan](/workflow-commands/moai-plan) - SPEC creation details
 - [/moai run](/workflow-commands/moai-run) - DDD implementation details
-- [/moai sync](/workflow-commands/moai-sync) - Document synchronization details
-- [/moai loop](/utility-commands/moai-loop) - Iterative fixing loop details
+- [/moai sync](/workflow-commands/moai-sync) - Doc synchronization details
+- [/moai loop](/utility-commands/moai-loop) - Iterative fix loop details
 - [/moai fix](/utility-commands/moai-fix) - One-shot auto-fix details
