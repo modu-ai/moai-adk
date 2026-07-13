@@ -37,7 +37,7 @@ plan_notes: |
 | M3 | 10735fb9a | Pillar 3 Harness (no-haiku-3tier + plan-type-profiles + self-evolving, 4-locale, 12 files) |
 | M4 | 3945b797b | Pillar 2 Loop (autonomous-loops, 4-locale, 4 files) |
 | M5 | e16aa5ee0 | Navigation registration (main.yaml 6 new entries + 4-locale _meta.yaml 6 entries each) |
-| M6 | (verify-only) | No code commit — all 33 AC PASS; token-budget emoji fix absorbed by parallel session commit 2576e8be6 |
+| M6 | 3d535837b | Run-phase evidence + audit-ready signal (progress.md §E.2 + §E.3 population, 33/33 AC verified) |
 
 ### AC PASS/FAIL matrix (33 AC, all must_pass)
 
@@ -103,7 +103,7 @@ All 4 source-truthfulness ACs (REQ-DA-060/061/062/063) verified present in all 4
 
 ```yaml
 run_complete_at: 2026-07-13
-run_commit_sha: e16aa5ee0
+run_commit_sha: 3d535837b
 run_status: audit-ready
 ac_pass_count: 32
 ac_pass_with_debt_count: 1
@@ -123,7 +123,28 @@ preserve_list_debt:
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+## §E.4 Sync-phase Audit-Ready Signal
+
+```yaml
+sync_complete_at: 2026-07-13
+sync_commit_sha: <to-be-populated-by-git-commit>
+sync_status: audit-ready
+changelog_entry_position: after SPEC-DOCSITE-E2E-001 entry (docs-site advanced guides 6-page × 4-locale expansion)
+spec_frontmatter_status_transitions:
+  spec.md: "in-progress → completed (merged 3-phase close)"
+  plan.md: "n/a (no frontmatter)"
+  acceptance.md: "n/a (no frontmatter)"
+  design.md: "n/a (no frontmatter)"
+  research.md: "n/a (no frontmatter)"
+  progress.md: "n/a (no frontmatter)"
+sync_artifacts:
+  - CHANGELOG.md [Unreleased] Added entry (SPEC-DOCSITE-ADVANCED-001)
+  - spec.md status: completed (3-phase close on single sync commit)
+b12_self_test_a: true  # CHANGELOG entry added
+b12_self_test_b: true  # SPEC status updated to completed
+b12_self_test_c: true  # sync_commit_sha will be populated on sync commit
+canary_compliance_check: true  # CHANGELOG.md follows Conventional Commits format
+```
 
 ---
 

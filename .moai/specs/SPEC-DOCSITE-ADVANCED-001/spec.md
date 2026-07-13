@@ -2,7 +2,7 @@
 id: SPEC-DOCSITE-ADVANCED-001
 title: "docs-site v3.0 Advanced Guides — 6-page × 4-locale content expansion + advanced/_meta.yaml parity debt fix"
 version: "0.1.0"
-status: in-progress
+status: completed
 created: 2026-07-13
 updated: 2026-07-13
 author: manager-spec
