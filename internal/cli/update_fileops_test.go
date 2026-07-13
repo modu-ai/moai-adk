@@ -249,7 +249,7 @@ func TestRestoreMoaiConfigLegacy_RestoresFiles(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	err := restoreMoaiConfigLegacy(tmpDir, backupDir, configDir)
+	err := backup.RestoreMoaiConfigLegacy(tmpDir, backupDir, configDir)
 	if err != nil {
 		t.Fatalf("restoreMoaiConfigLegacy failed: %v", err)
 	}
@@ -293,7 +293,7 @@ func TestRestoreMoaiConfigLegacy_SkipsMetadata(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	err := restoreMoaiConfigLegacy(tmpDir, backupDir, configDir)
+	err := backup.RestoreMoaiConfigLegacy(tmpDir, backupDir, configDir)
 	if err != nil {
 		t.Fatalf("restoreMoaiConfigLegacy failed: %v", err)
 	}
@@ -336,7 +336,7 @@ func TestRestoreMoaiConfigLegacy_MergesWithExistingTarget(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	err := restoreMoaiConfigLegacy(tmpDir, backupDir, configDir)
+	err := backup.RestoreMoaiConfigLegacy(tmpDir, backupDir, configDir)
 	if err != nil {
 		t.Fatalf("restoreMoaiConfigLegacy failed: %v", err)
 	}
@@ -368,7 +368,7 @@ func TestRestoreMoaiConfigLegacy_EmptyBackup(t *testing.T) {
 	}
 
 	// Should complete without error
-	err := restoreMoaiConfigLegacy(tmpDir, backupDir, configDir)
+	err := backup.RestoreMoaiConfigLegacy(tmpDir, backupDir, configDir)
 	if err != nil {
 		t.Fatalf("restoreMoaiConfigLegacy should succeed with empty backup, got: %v", err)
 	}
@@ -407,7 +407,7 @@ func TestRestoreMoaiConfigLegacy_SkipsSymlinkEntry(t *testing.T) {
 		t.Skipf("symlink unsupported on this platform: %v", err)
 	}
 
-	if err := restoreMoaiConfigLegacy(tmpDir, backupDir, configDir); err != nil {
+	if err := backup.RestoreMoaiConfigLegacy(tmpDir, backupDir, configDir); err != nil {
 		t.Fatalf("restoreMoaiConfigLegacy failed: %v", err)
 	}
 
@@ -454,7 +454,7 @@ func TestRestoreMoaiConfigLegacy_RejectsTraversalTarget(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if err := restoreMoaiConfigLegacy(tmpDir, backupDir, configDir); err != nil {
+	if err := backup.RestoreMoaiConfigLegacy(tmpDir, backupDir, configDir); err != nil {
 		t.Fatalf("restoreMoaiConfigLegacy failed: %v", err)
 	}
 
@@ -500,7 +500,7 @@ func TestRestoreMoaiConfig_SkipsSymlinkEntry(t *testing.T) {
 		t.Skipf("symlink unsupported on this platform: %v", err)
 	}
 
-	if err := restoreMoaiConfig(tmpDir, backupDir); err != nil {
+	if err := backup.RestoreMoaiConfig(tmpDir, backupDir, nil); err != nil {
 		t.Fatalf("restoreMoaiConfig failed: %v", err)
 	}
 
@@ -530,7 +530,7 @@ func TestRestoreMoaiConfigLegacy_AllowsRegularInConfigFile(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if err := restoreMoaiConfigLegacy(tmpDir, backupDir, configDir); err != nil {
+	if err := backup.RestoreMoaiConfigLegacy(tmpDir, backupDir, configDir); err != nil {
 		t.Fatalf("restoreMoaiConfigLegacy failed: %v", err)
 	}
 
@@ -590,7 +590,7 @@ func TestRestoreMoaiConfig_RejectsSymlinkedParentDir(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		if err := restoreMoaiConfig(tmpDir, backupDir); err != nil {
+		if err := backup.RestoreMoaiConfig(tmpDir, backupDir, nil); err != nil {
 			t.Fatalf("restoreMoaiConfig failed: %v", err)
 		}
 
@@ -628,7 +628,7 @@ func TestRestoreMoaiConfig_RejectsSymlinkedParentDir(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		if err := restoreMoaiConfigLegacy(tmpDir, backupDir, configDir); err != nil {
+		if err := backup.RestoreMoaiConfigLegacy(tmpDir, backupDir, configDir); err != nil {
 			t.Fatalf("restoreMoaiConfigLegacy failed: %v", err)
 		}
 
@@ -684,7 +684,7 @@ func TestRestoreMoaiConfig_RejectsDeepNonexistentUnderSymlinkedParent(t *testing
 			t.Fatal(err)
 		}
 
-		if err := restoreMoaiConfig(tmpDir, backupDir); err != nil {
+		if err := backup.RestoreMoaiConfig(tmpDir, backupDir, nil); err != nil {
 			t.Fatalf("restoreMoaiConfig failed: %v", err)
 		}
 
@@ -722,7 +722,7 @@ func TestRestoreMoaiConfig_RejectsDeepNonexistentUnderSymlinkedParent(t *testing
 			t.Fatal(err)
 		}
 
-		if err := restoreMoaiConfigLegacy(tmpDir, backupDir, configDir); err != nil {
+		if err := backup.RestoreMoaiConfigLegacy(tmpDir, backupDir, configDir); err != nil {
 			t.Fatalf("restoreMoaiConfigLegacy failed: %v", err)
 		}
 
@@ -847,7 +847,7 @@ func TestRestoreMoaiConfig_FallsBackToLegacyWhenNoSections(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	err := restoreMoaiConfig(tmpDir, backupDir)
+	err := backup.RestoreMoaiConfig(tmpDir, backupDir, nil)
 	if err != nil {
 		t.Fatalf("restoreMoaiConfig should fall back to legacy, got: %v", err)
 	}
@@ -901,7 +901,7 @@ func TestRestoreMoaiConfig_3WayMergeWithTemplateDefaults(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	err := restoreMoaiConfig(tmpDir, backupDir)
+	err := backup.RestoreMoaiConfig(tmpDir, backupDir, nil)
 	if err != nil {
 		t.Fatalf("restoreMoaiConfig failed: %v", err)
 	}
@@ -949,7 +949,7 @@ func TestRestoreMoaiConfig_SkipsNonYAMLFiles(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	err := restoreMoaiConfig(tmpDir, backupDir)
+	err := backup.RestoreMoaiConfig(tmpDir, backupDir, nil)
 	if err != nil {
 		t.Fatalf("restoreMoaiConfig failed: %v", err)
 	}

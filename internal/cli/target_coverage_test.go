@@ -747,7 +747,7 @@ func TestRestoreMoaiConfigLegacy_WithFiles(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	err := restoreMoaiConfigLegacy(tmpDir, backupDir, configDir)
+	err := backup.RestoreMoaiConfigLegacy(tmpDir, backupDir, configDir)
 	if err != nil {
 		t.Fatalf("restoreMoaiConfigLegacy error: %v", err)
 	}
@@ -782,7 +782,7 @@ func TestRestoreMoaiConfigLegacy_MergesExistingFile(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	err := restoreMoaiConfigLegacy(tmpDir, backupDir, configDir)
+	err := backup.RestoreMoaiConfigLegacy(tmpDir, backupDir, configDir)
 	if err != nil {
 		t.Fatalf("restoreMoaiConfigLegacy error: %v", err)
 	}
@@ -815,7 +815,7 @@ func TestRestoreMoaiConfigLegacy_SkipsMetadataFile(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	err := restoreMoaiConfigLegacy(tmpDir, backupDir, configDir)
+	err := backup.RestoreMoaiConfigLegacy(tmpDir, backupDir, configDir)
 	if err != nil {
 		t.Fatalf("restoreMoaiConfigLegacy error: %v", err)
 	}

@@ -1,11 +1,13 @@
-// Package backup contains the config backup, restore-rotation, and path-containment
-// guard functions extracted from the root update command during M3d-A decomposition
-// (SPEC-CLI-TUX-V3-003). Behavior is byte-identical to the pre-decomposition
-// implementation; only the package location changed.
+// Package backup contains the config backup, restore, restore-rotation,
+// path-containment guard, and YAML merge functions extracted from the root
+// update command during M3d-A decomposition (SPEC-CLI-TUX-V3-003). Behavior is
+// byte-identical to the pre-decomposition implementation; only the package
+// location changed.
 //
-// The restoreMoaiConfig / restoreMoaiConfigLegacy functions remain in package cli
-// because they call mergeYAML3Way / mergeYAMLDeep (MERGE cluster). They will move
-// here when the MERGE subpackage is extracted (M3d-B).
+// The merge-history noise-suppression ledger (recordMergeFallback + the
+// merge-history.json counter) stays in package cli and is invoked from
+// RestoreMoaiConfig via a MergeFallbackRecorder callback seam, so that the
+// ledger subsystem is not dragged across the package boundary.
 package backup
 
 import (

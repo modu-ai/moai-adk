@@ -1136,7 +1136,7 @@ func TestRestoreMoaiConfig_WithSectionsBackup(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	err := restoreMoaiConfig(tmpDir, backupDir)
+	err := backup.RestoreMoaiConfig(tmpDir, backupDir, nil)
 	if err != nil {
 		t.Fatalf("restoreMoaiConfig error: %v", err)
 	}
@@ -1168,7 +1168,7 @@ func TestRestoreMoaiConfig_LegacyBackup(t *testing.T) {
 	}
 
 	// Should fallback to legacy restore
-	err := restoreMoaiConfig(tmpDir, backupDir)
+	err := backup.RestoreMoaiConfig(tmpDir, backupDir, nil)
 	if err != nil {
 		t.Fatalf("restoreMoaiConfig legacy error: %v", err)
 	}
@@ -2586,7 +2586,7 @@ func TestRestoreMoaiConfig_2WayMerge(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	err := restoreMoaiConfig(tmpDir, backupDir)
+	err := backup.RestoreMoaiConfig(tmpDir, backupDir, nil)
 	if err != nil {
 		t.Fatalf("restoreMoaiConfig error: %v", err)
 	}
@@ -2622,7 +2622,7 @@ func TestRestoreMoaiConfig_LegacyFallback(t *testing.T) {
 	}
 
 	// Should fall through to legacy path
-	err := restoreMoaiConfig(tmpDir, backupDir)
+	err := backup.RestoreMoaiConfig(tmpDir, backupDir, nil)
 	if err != nil {
 		t.Fatalf("restoreMoaiConfig legacy error: %v", err)
 	}
@@ -2663,7 +2663,7 @@ func TestRestoreMoaiConfig_3WayMerge(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	err := restoreMoaiConfig(tmpDir, backupDir)
+	err := backup.RestoreMoaiConfig(tmpDir, backupDir, nil)
 	if err != nil {
 		t.Fatalf("restoreMoaiConfig 3-way error: %v", err)
 	}
@@ -4195,7 +4195,7 @@ func TestRestoreMoaiConfigLegacy_WithMerge(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	err := restoreMoaiConfigLegacy(tmpDir, backupDir, configDir)
+	err := backup.RestoreMoaiConfigLegacy(tmpDir, backupDir, configDir)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -4230,7 +4230,7 @@ func TestRestoreMoaiConfigLegacy_NewFile(t *testing.T) {
 	configDir := filepath.Join(tmpDir, "config")
 	// Don't create config/sections - let the function create it
 
-	err := restoreMoaiConfigLegacy(tmpDir, backupDir, configDir)
+	err := backup.RestoreMoaiConfigLegacy(tmpDir, backupDir, configDir)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -5420,7 +5420,7 @@ func TestRestoreMoaiConfig_3WayMergeFallbackTo2Way(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	err := restoreMoaiConfig(tmpDir, backupDir)
+	err := backup.RestoreMoaiConfig(tmpDir, backupDir, nil)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -5457,7 +5457,7 @@ func TestRestoreMoaiConfig_CustomSectionNotInTemplate(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	err := restoreMoaiConfig(tmpDir, backupDir)
+	err := backup.RestoreMoaiConfig(tmpDir, backupDir, nil)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -5491,7 +5491,7 @@ func TestRestoreMoaiConfig_SkipsNonYAML(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	err := restoreMoaiConfig(tmpDir, backupDir)
+	err := backup.RestoreMoaiConfig(tmpDir, backupDir, nil)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -5718,7 +5718,7 @@ func TestMergeYAML3Way_UserModified(t *testing.T) {
 	oldData := []byte("language:\n  conversation_language: ko\n")
 	baseData := []byte("language:\n  conversation_language: en\n")
 
-	merged, err := mergeYAML3Way(newData, oldData, baseData)
+	merged, err := backup.MergeYAML3Way(newData, oldData, baseData)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -5735,7 +5735,7 @@ func TestMergeYAML3Way_SystemFieldAlwaysNew(t *testing.T) {
 	oldData := []byte("moai:\n  template_version: 1.0.0\n  setting: old\n")
 	baseData := []byte("moai:\n  template_version: 1.0.0\n  setting: original\n")
 
-	merged, err := mergeYAML3Way(newData, oldData, baseData)
+	merged, err := backup.MergeYAML3Way(newData, oldData, baseData)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -5748,7 +5748,7 @@ func TestMergeYAML3Way_SystemFieldAlwaysNew(t *testing.T) {
 }
 
 func TestMergeYAML3Way_InvalidYAML(t *testing.T) {
-	_, err := mergeYAML3Way([]byte("invalid[yaml"), []byte("ok: true"), []byte("ok: true"))
+	_, err := backup.MergeYAML3Way([]byte("invalid[yaml"), []byte("ok: true"), []byte("ok: true"))
 	if err == nil {
 		t.Error("expected error for invalid YAML")
 	}
@@ -6088,7 +6088,7 @@ func TestRestoreMoaiConfigLegacy_SkipsTemplateDefaults(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	err := restoreMoaiConfigLegacy(tmpDir, backupDir, configDir)
+	err := backup.RestoreMoaiConfigLegacy(tmpDir, backupDir, configDir)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -6549,7 +6549,7 @@ func TestRestoreMoaiConfigLegacy_TargetNotExist(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	err := restoreMoaiConfigLegacy(tmpDir, backupDir, configDir)
+	err := backup.RestoreMoaiConfigLegacy(tmpDir, backupDir, configDir)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -6590,7 +6590,7 @@ func TestRestoreMoaiConfigLegacy_SkipsMetadataAndTemplateDefaults(t *testing.T) 
 		t.Fatal(err)
 	}
 
-	err := restoreMoaiConfigLegacy(tmpDir, backupDir, configDir)
+	err := backup.RestoreMoaiConfigLegacy(tmpDir, backupDir, configDir)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -6626,7 +6626,7 @@ func TestRestoreMoaiConfigLegacy_MergeWithExistingTarget(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	err := restoreMoaiConfigLegacy(tmpDir, backupDir, configDir)
+	err := backup.RestoreMoaiConfigLegacy(tmpDir, backupDir, configDir)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}

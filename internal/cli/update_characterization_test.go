@@ -129,7 +129,7 @@ func TestValuesEqualCharacterization(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := valuesEqual(tt.a, tt.b); got != tt.want {
+			if got := backup.ValuesEqual(tt.a, tt.b); got != tt.want {
 				t.Errorf("valuesEqual(%v, %v) = %v, want %v", tt.a, tt.b, got, tt.want)
 			}
 		})

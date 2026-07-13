@@ -1348,7 +1348,7 @@ func TestRestoreMoaiConfig_MergeBehavior(t *testing.T) {
 	}
 
 	// Restore from backup
-	if err := restoreMoaiConfig(tmpDir, backupDir); err != nil {
+	if err := backup.RestoreMoaiConfig(tmpDir, backupDir, nil); err != nil {
 		t.Fatalf("restoreMoaiConfig failed: %v", err)
 	}
 
@@ -1406,7 +1406,7 @@ func TestRestoreMoaiConfig_MissingDirectory(t *testing.T) {
 	}
 
 	// Restore from backup - should create directory and restore file
-	if err := restoreMoaiConfig(tmpDir, backupDir); err != nil {
+	if err := backup.RestoreMoaiConfig(tmpDir, backupDir, nil); err != nil {
 		t.Fatalf("restoreMoaiConfig failed: %v", err)
 	}
 
@@ -2868,7 +2868,7 @@ func TestRestoreMoaiConfig_CustomSectionPreserved(t *testing.T) {
 	}
 
 	// Restore from backup
-	if err := restoreMoaiConfig(tmpDir, backupDir); err != nil {
+	if err := backup.RestoreMoaiConfig(tmpDir, backupDir, nil); err != nil {
 		t.Fatalf("restoreMoaiConfig failed: %v", err)
 	}
 
