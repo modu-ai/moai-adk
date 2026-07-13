@@ -12,6 +12,7 @@ package cli
 
 import (
 	"bytes"
+	"context"
 	"os"
 	"path/filepath"
 	"strings"
@@ -24,6 +25,7 @@ import (
 	"github.com/modu-ai/moai-adk/internal/cli/printer"
 	"github.com/modu-ai/moai-adk/internal/cli/wizard"
 	"github.com/modu-ai/moai-adk/internal/config"
+	"github.com/modu-ai/moai-adk/internal/update"
 	"github.com/modu-ai/moai-adk/pkg/version"
 )
 
@@ -395,4 +397,67 @@ func TestInitNonInteractiveDeferredUpdateNotice(t *testing.T) {
 	if strings.Contains(out.String(), "moai update") && !strings.Contains(out.String(), "slim mode") {
 		t.Errorf("update notice must not leak to stdout, got:\n%s", out.String())
 	}
+}
+
+// fakeUpdateChecker implements update.Checker for the deferred-check test.
+type fakeUpdateChecker struct {
+	available bool
+	info      *update.VersionInfo
+	err       error
+}
+
+func (f *fakeUpdateChecker) CheckLatest(context.Context) (*update.VersionInfo, error) {
+	return f.info, f.err
+}
+
+func (f *fakeUpdateChecker) IsUpdateAvailable(string) (bool, *update.VersionInfo, error) {
+	return f.available, f.info, f.err
+}
+
+// TestDeferredUpdateNotice_DefaultCheckPaths covers defaultDeferredUpdateCheck
+// against an injected deps.UpdateChecker: available / up-to-date / error —
+// strictly CHECK-ONLY (no orchestrator, no install path touched).
+func TestDeferredUpdateNotice_DefaultCheckPaths(t *testing.T) {
+	origDeps := deps
+	t.Cleanup(func() { deps = origDeps })
+
+	cmd := newInitTestCmd()
+
+	t.Run("nil-deps", func(t *testing.T) {
+		deps = nil
+		res := defaultDeferredUpdateCheck(cmd)
+		if res == nil || res.Available || res.Err != nil {
+			t.Errorf("nil deps must return an empty non-available result, got %+v", res)
+		}
+	})
+
+	t.Run("available", func(t *testing.T) {
+		deps = &Dependencies{UpdateChecker: &fakeUpdateChecker{
+			available: true,
+			info:      &update.VersionInfo{Version: "v9.9.9"},
+		}}
+		res := defaultDeferredUpdateCheck(cmd)
+		if res.Err != nil || !res.Available || res.LatestVersion != "v9.9.9" {
+			t.Errorf("expected available v9.9.9, got %+v", res)
+		}
+		if res.CurrentVersion == "" {
+			t.Error("current version must be populated")
+		}
+	})
+
+	t.Run("up-to-date", func(t *testing.T) {
+		deps = &Dependencies{UpdateChecker: &fakeUpdateChecker{available: false}}
+		res := defaultDeferredUpdateCheck(cmd)
+		if res.Err != nil || res.Available {
+			t.Errorf("expected non-available result, got %+v", res)
+		}
+	})
+
+	t.Run("check-error", func(t *testing.T) {
+		deps = &Dependencies{UpdateChecker: &fakeUpdateChecker{err: os.ErrDeadlineExceeded}}
+		res := defaultDeferredUpdateCheck(cmd)
+		if res.Err == nil {
+			t.Errorf("expected error result, got %+v", res)
+		}
+	})
 }
