@@ -37,8 +37,8 @@ Execution owner: the **e2e-specialist** subagent performs detection probes, jour
 
 ## Supported Flags
 
-- `--tool TOOL`: Force toolchain selection, skipping the selection question. Options: playwright, agent-browser, chrome-devtools-mcp, claude-in-chrome, maestro, appium, detox, playwright-electron, wdio-tauri (default: ask via the orchestrator's AskUserQuestion)
-- `--platform web|mobile|desktop`: Force the platform classification when markers are ambiguous
+- `--tool TOOL`: Force toolchain selection, skipping the selection question. Options: playwright, agent-browser, chrome-devtools-mcp, claude-in-chrome, maestro, appium, detox, playwright-electron, wdio-tauri, axcli, appium-mac2, flaui-webdriver, pywinauto, dogtail (default: ask via the orchestrator's AskUserQuestion)
+- `--platform web|mobile|desktop|desktop-native`: Force the platform classification when markers are ambiguous
 - `--record`: Record runs via the selected toolchain's NATIVE trace/recording facility
 - `--url URL`: Target URL for web testing (default: auto-detect from project config)
 - `--journey NAME`: Run a specific named user journey only
@@ -70,7 +70,7 @@ The marker scan treats all supported project ecosystems equally — detection is
 | `mobile` (flutter) | `pubspec.yaml` containing `flutter:`; `lib/main.dart` | Maestro supports Flutter apps |
 | `mobile` (native) | `*.xcodeproj` / `Package.swift` with iOS targets; `build.gradle` with `com.android.application` | Maestro/Appium capable |
 | `web` | Web framework configs (next/nuxt/vite/astro/sveltekit/angular); `index.html` servers; any HTTP-serving app in any supported language ecosystem (Django, Rails, Spring, Fiber, Phoenix, Laravel, ...) | Broadest class; the framework list is exemplary — detection is marker-driven |
-| `desktop-native` | Native toolkit markers WITHOUT Electron/Tauri (pure `.xcodeproj` macOS app, WinUI, Qt/GTK builds) | Automation not yet provided — see the graceful branch below |
+| `desktop-native` | Native toolkit markers WITHOUT Electron/Tauri — AppKit (`.xcodeproj` / `Package.swift` with a macOS app target, no electron/tauri dependencies), WinUI/Win32 (`.vcxproj` / WinUI 3 project files), Qt (`CMakeLists.txt` with Qt `find_package` / `.pro` files), GTK (meson or CMake with gtk dependencies) | Routes to the desktop-native automation lane — per-OS accessibility toolchain selection in Phase 0.5 |
 | `mixed` | Two or more platform classes matched | Enumerate matched surfaces; per-surface selection in Phase 0.5 |
 | none | No markers above | Graceful exit — see below |
 
@@ -78,7 +78,11 @@ The marker scan treats all supported project ecosystems equally — detection is
 
 When NO e2e-able surface is detected (for example a pure library with no web/mobile/desktop entry point), report "no e2e target detected" listing the marker evidence consulted, and exit WITHOUT creating any `e2e/` artifacts.
 
-A detected `desktop-native` surface (non-Electron/non-Tauri native desktop app) routes to this SAME graceful branch with a deferral notice: OS-level native-desktop automation is not yet provided by this workflow — report the classification with marker evidence and exit gracefully. There is no opt-in automation path for `desktop-native`.
+A detected `desktop-native` surface does NOT take this branch: it routes into the desktop-native automation lane — Phase 0.5 toolchain selection over the per-OS accessibility recipes owned by the e2e-specialist agent (axcli on macOS; FlaUI.WebDriver on Windows; dogtail on Linux). The graceful branch remains reserved for genuinely target-less projects.
+
+### Host-OS Rule (desktop-native recipes)
+
+The desktop-native lane documents recipes for all three OSes (macOS, Windows, Linux). When a documented recipe's target OS differs from the host OS, that recipe is treated as declarative documentation for this host — no live probe or execution is attempted, and the report states the host-OS/target-OS mismatch. Execution probes run only for the host OS.
 
 ### Toolchain Probe + Installation
 
@@ -93,6 +97,12 @@ After classification, the e2e-specialist probes the DEFAULT toolchain for each d
 | agent-browser (alternative) | `agent-browser --version` | `npm i -g agent-browser && agent-browser install` |
 | Appium (fallback) | `appium --version` | `npm i -g appium && appium driver install uiautomator2` (Android) / `appium driver install xcuitest` (iOS) |
 | Detox (RN only) | `npx detox --version` | `npm i -D detox @config-plugins/detox` + per-app native build configuration |
+| axcli (desktop-native macOS) | `axcli --version` | `cargo install axcli` — PIN the version (young project); record the pinned version in the flow header |
+| appium-mac2-driver (desktop-native macOS fallback) | `appium driver list --installed` | `npm i -g appium && appium driver install mac2` (requires Xcode) |
+| FlaUI.WebDriver (desktop-native Windows) | `GET /status` smoke probe against the running server | Download the PINNED FlaUI.WebDriver release (v0.4.0); start the server, then probe `/status` |
+| pywinauto (desktop-native Windows fallback) | `python -c "import pywinauto"` | `pip install pywinauto` |
+| dogtail (desktop-native Linux) | `python -c "import dogtail"` | `pip install dogtail` (requires distribution at-spi2 packages) |
+| ydotool (desktop-native Linux fallback) | `ydotool --version` | Install via the distribution package manager (Wayland); `xdotool` for X11 |
 
 Missing-toolchain sequence (per selected toolchain):
 
@@ -119,6 +129,7 @@ Recommendation modifiers:
 - `--record` → prefer toolchains with a native trace/recording facility (Playwright trace, Maestro recording)
 - Explicit performance/Lighthouse ask → chrome-devtools-mcp becomes the recommended row FOR THAT CAPABILITY only
 - React Native markers detected → Detox appears as an RN-conditional alternative with a factual trade-off description
+- `desktop-native` surface detected → the host-OS accessibility default is the recommended row (axcli on macOS; FlaUI.WebDriver on Windows; dogtail on Linux); recipes for other OSes are surfaced as declarative documentation only (Host-OS Rule)
 
 ## Tool Matrix (per-capability CLI-vs-MCP classification)
 
@@ -133,6 +144,12 @@ Recommendation modifiers:
 | mobile | Detox | CLI | Low-mid | React Native ONLY (gray-box RN synchronization); offered when RN markers detected |
 | desktop (electron) | **Playwright `_electron`** (default) | CLI | Low (reuses the web Playwright install) | Electron apps. API is EXPERIMENTAL — carry the caveat in reports. Native OS dialogs bypass Playwright: mock them in the Electron MAIN process via `evaluate()` |
 | desktop (tauri) | **WebdriverIO + `@wdio/tauri-service`** (default) | CLI | Low-mid (CLI runner output) | Tauri apps. Embedded-WebDriver mode is cross-platform INCLUDING macOS; the native tauri-driver route is Windows/Linux only — never steer macOS projects there |
+| desktop-native (macOS) | **axcli** (default) | CLI | Low (filtered AX-tree text snapshot — hundreds of tokens per read) | AppKit / native macOS apps via the AXUIElement accessibility tree; background-safe actions, Playwright-like selectors; version PINNED in the recipe |
+| desktop-native (macOS) | appium-mac2 + WebdriverIO (fallback) | CLI + server | Mid (session-based specs) | Fallback when axcli cannot express a flow; reuses the Tauri WDIO lane; requires Xcode |
+| desktop-native (Windows) | **FlaUI.WebDriver + WebdriverIO** (default, declarative) | CLI + server | Mid (W3C WebDriver2 over UIA3) | WinUI/Win32/Qt-on-Windows apps; EXPERIMENTAL — pin the version, `GET /status` smoke probe |
+| desktop-native (Windows) | pywinauto (fallback, declarative) | CLI | Mid (`print_control_identifiers()` UIA tree dump) | Python UIA scripting fallback |
+| desktop-native (Linux) | **dogtail** (default, declarative) | CLI | Low-mid (AT-SPI2 tree queries) | GTK/Qt apps via AT-SPI2; Qt needs `QT_LINUX_ACCESSIBILITY_ALWAYS_ON=1`; Wayland is GNOME-only (ponytail) |
+| desktop-native (Linux) | ydotool / xdotool + screenshot verification (fallback, declarative) | CLI | High (blind input + screenshot verification) | Non-GNOME Wayland (ydotool) / X11 (xdotool) blind injection PAIRED with screenshot verification |
 
 Every platform's DEFAULT row is CLI-class. MCP rows are conditional-only: they require `.mcp.json` registration + session restart and are never a prerequisite for the default path.
 
@@ -235,7 +252,7 @@ The ORCHESTRATOR renders the report in the user's conversation_language from the
 ```markdown
 ## E2E Test Report
 
-### Platform: {web | mobile | desktop | mixed} — Tool: {selected toolchain}
+### Platform: {web | mobile | desktop | desktop-native | mixed} — Tool: {selected toolchain}
 
 ### Results Summary
 | Journey | Status | Duration | Artifacts |
@@ -279,7 +296,7 @@ Next steps (ORCHESTRATOR AskUserQuestion): Fix failing tests (Recommended) / Rer
 ## Execution Summary
 
 1. Parse arguments (--tool, --platform, --record, --url, --journey, --headless, --browser, --timeout, --retry)
-2. Phase 0: delegate detection to the e2e-specialist; classify platform; probe defaults; graceful exit when no target (incl. `desktop-native` deferral notice)
+2. Phase 0: delegate detection to the e2e-specialist; classify platform; probe defaults (host OS only for `desktop-native`); graceful exit when no target
 3. Phase 0.5: orchestrator AskUserQuestion selection (per-surface on `mixed`); `--tool` bypasses
 4. Missing toolchain: probe → surface install command for approval → install → re-probe
 5. Phase 1: delegate journey mapping; orchestrator presents journey options

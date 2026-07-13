@@ -2,7 +2,7 @@
 id: SPEC-DESKTOP-NATIVE-E2E-001
 title: "Desktop-native E2E automation lane: replace the /moai e2e desktop-native deferral with OS-accessibility toolchains (macOS + Windows + Linux)"
 version: "0.1.1"
-status: draft
+status: in-progress
 created: 2026-07-13
 updated: 2026-07-13
 author: manager-spec
