@@ -22,12 +22,74 @@ plan_status: audit-ready
 
 ## §E.2 Run-phase Evidence
 
-_<pending run-phase>_
+Run-phase executed 2026-07-13 by manager-develop (cycle_type=tdd) in L1 worktree `worktree-agent-a45698e9be95b3450` (base fast-forwarded to 86cdbd97d). Commits: M1 `16fc75bc6`, M2 `a9d2879b0`, M3 `f55aefef3`, M4 (this commit). Verbatim evidence files: `.moai/state/verify/hns-rename/` (gitignored runtime state).
+
+### AC PASS/FAIL matrix (16/16 PASS)
+
+| AC | Status | Verification Command | Actual Output (tail) |
+|----|--------|---------------------|----------------------|
+| AC-HPR-001 | PASS | `grep -c 'harness-<name>'` + `grep -c 'hns-<name>'` on 4 template contract docs | `harness-<name>`=0 in all 4; `hns-<name>`: SKILL.md 1 / harness-builder.md 12 (all 6 artifact-type contracts) / harness-build-entry.md 2 / moai-meta-harness 1 |
+| AC-HPR-002 | PASS | `diff -q` 4 template↔live pairs (+4 secondary pairs) | 8/8 `PARITY OK` |
+| AC-HPR-003 | PASS | `go test ./internal/cli/ -run 'TestUserOwnedNamespace_HNS\|TestUserAreaPath_HNS'` | `ok internal/cli` — hns- user-owned; `hnsx-foo`/`hnsfoo`/`HNS-x` NOT matched (exact byte-exact HasPrefix); moai-harness-learner NOT user-owned |
+| AC-HPR-004 | PASS | `go test ./internal/cli/ -run TestUpdateNamespaceHNS_TriGenerationPreservation` | E2E t.TempDir sandbox: 7 artifacts across 3 generations survive `cleanMoaiManagedPaths` byte-identical (SHA-256) |
+| AC-HPR-005 | PASS | full suite incl. pre-existing template-overwrite tests, assertions unmodified | `go test -count=1 ./...` exit 0 (evidence: m4-full-suite.log) |
+| AC-HPR-006 | PASS | `go test ./internal/cli/harness/ -run 'TestListHarnesses\|TestEditHarness\|TestRemoveHarness\|TestHarnessArtifactBelongsTo' -v` | 14 PASS incl. TestListHarnesses_HNSManifest, TestRemoveHarness_MixedGeneration (hns- Runner + legacy specialist removed atomically, bystanders untouched), hns-release-update shadowing case |
+| AC-HPR-007 | PASS | `go test ./internal/cli/harness/ -run TestDoctor -v` + `go test ./internal/harness/ -run 'PrefixConflict\|Frozen' -v` | TestRunnerSpecialistRE_HNSDualPattern PASS (both generations matched); TestDoctor_HNSHarness_Passes PASS **pre-change** (proves manifest-driven prefix-agnostic Runner resolution — REQ-HPR-012 ground truth); TestDoctor_HNSDanglingSpecialist_Detected PASS; TestFrozenGuard_HNSAllowed + TestDetectPrefixConflicts_HNSPrefix PASS |
+| AC-HPR-008 | PASS | `./bin/moai harness doctor; echo exit=$?` + `go run ./cmd/moai doctor` | doctor: `Scanned 3 harness(es): 0 ERROR, 2 INFO` exit=0 (hns- Runner + specialist resolve); `moai doctor` emits no hns- complaint (classifySkill hns-→INFO pinned by TestClassifySkill_HNS); Harness 5-Layer L1-L6 FAIL verified byte-identical to pre-M3 baseline a9d2879b0 via git-archive checkout — pre-existing dev-repo state, no delta |
+| AC-HPR-009 | PASS | `go test ./internal/template/ -run TestSplitHarnessNamespaceNoLeak -v` | PASS; `splitHarnessAgentPrefixes` carries BOTH `harness-{release-update,github,release}` AND `hns-{release-update,github,release}` |
+| AC-HPR-010 | PASS | red-team: plant `templates/.claude/skills/hns-probe/SKILL.md` → test → revert → test | Planted: `FAIL ... Leaked entries: [.claude/skills/hns-probe]`; reverted: `ok` (evidence: m4-redteam-planted.txt / m4-redteam-reverted.txt) |
+| AC-HPR-011 | PASS | scoped stale-ref sweep (acceptance formula, case-sensitive) | **0 matches** after M4 (m4-stale-ref-final.txt); post-M3 interim 10 matches were all `.moai/docs/dev-only-commands-isolation.md` (resolved in M4) |
+| AC-HPR-012 | PASS | `grep -rc` over the 10 pinned non-target files, before M1 vs after M4 | sorted per-file counts identical (ac012-baseline-before-m1.txt vs ac012-after-m4.txt); 29-file classification table below |
+| AC-HPR-013 | PASS | Read doctrine docs | harness-namespace-doctrine.md: §24.1 hns- canonical row + legacy row, §24.4 hns- update-contract rows, new §24.6 rename record (Builder emits hns- only, tri-generation recognition); dev-only-commands-isolation.md: artifact tables + checklists → hns- names + dual-name CI guard note |
+| AC-HPR-014 | PASS | `make build && go test -count=1 ./... ; echo exit=$?` + neutrality | make build exit=0; full suite exit=0 (99 pkgs ok); TestLanguageNeutrality + TestInternalContentLeak PASS; `grep -r 'SPEC-HNS-PREFIX-RENAME' internal/template/templates/` = 0 |
+| AC-HPR-015 | PASS | `git log --stat 86cdbd97d..HEAD -- CLAUDE.local.md` | CLAUDE.local.md absent from every SPEC commit; §21/§24 pointer flag list delivered in the completion report |
+| AC-HPR-016 | PASS | `go test ./internal/cli/... ./internal/harness/... ./internal/template/... -count=1` + `git log --diff-filter=D --stat -- '*_test.go'` | all legacy-prefix tests PASS with assertions unmodified; 0 test files deleted; Runner JS L56/L91 show `hns-release-update-specialist` |
+
+### REQ-HPR-004 — 29-file template classification table
+
+Rename-target, edited (9): `skills/moai/SKILL.md` (contract line + namespace dual-pattern statement), `skills/moai/workflows/harness-builder.md` (GENERATE contract, 12 tokens), `skills/moai/workflows/harness-build-entry.md` (2 tokens + agent path), `skills/moai-meta-harness/SKILL.md` (Runner contract), `skills/moai/workflows/harness.md` (Tier-4 apply-target prose → dual-pattern), `skills/moai-meta-harness/references/seven-phase-workflow.md` (generation contract → hns-), `skills/moai/workflows/project/meta-harness.md` (L1 trigger table + smoke-gate dangling-ref prose), `skills/moai-harness-learner/SKILL.md` (auto-update targets → tri-generation), `rules/moai/development/skill-authoring.md` (Skills Namespace Policy + Deprecated Skill Slots concrete names).
+
+Non-target, preserved verbatim (20): `agents/moai/builder-harness.md` (run-time verification: only `harness-generated` tier label — plan's "likely rename-target" overridden by observation), `hooks/moai/handle-harness-observe{,-stop,-subagent-stop,-user-prompt-submit}.sh.tmpl` ×4 (hook names), `settings.json.tmpl` (hook entries), `.moai/config/sections/{harness,interview,workflow}.yaml` + `system.yaml.tmpl` ×4 (config keys/state paths), `rules/moai/core/agent-common-protocol.md` + `rules/moai/core/hooks-system.md` (hook names), `rules/moai/development/coding-standards.md` + `rules/moai/workflow/runtime-recovery-doctrine.md` (generic prose), `workflows/project/{codebase-analysis,doc-generation,mode-detection}.md` ×3 + `workflows/project.md` + `workflows/run/context-loading.md` (state paths/prose), `skills/moai-meta-harness/references/agent-cross-references.md` (0 artifact tokens — verified).
+
+### Coverage non-regression (touched packages, measured both sides)
+
+| Package | Pre-SPEC baseline | Post-M4 | Delta |
+|---------|-------------------|---------|-------|
+| internal/cli | 72.8% | 72.8% | ±0 (pre-existing sub-85% baseline; non-regression satisfied per acceptance §F) |
+| internal/cli/harness | 74.4% | 74.8% | +0.4 |
+| internal/harness | 87.3% | 87.3% | ±0 |
+| internal/template | 85.3% | 85.3% | ±0 |
+
+### Cascade follow-ups (L46, within scope envelope)
+
+- `internal/template/catalog.yaml` SHA256 regen via `gen-catalog-hashes.go --all` (A3c pattern — M1 SKILL.md body edits invalidated 3 stored hashes; regen in M2 commit + re-run by `make build` in M4).
 
 ## §E.3 Run-phase Audit-Ready Signal
 
-_<pending run-phase>_
+```yaml
+run_complete_at: 2026-07-13
+run_commit_sha: pending-backfill-m4  # M4 commit cannot reference its own SHA; backfill follow-up
+run_status: audit-ready
+ac_pass_count: 16
+ac_fail_count: 0
+preserve_list_post_run_count: 0  # zero deletions/modifications of user-owned-prefix artifacts by any test or build step
+l44_pre_commit_fetch: n/a  # L1 worktree branch; integration push owned by orchestrator (worktree cannot push branch to main directly)
+l44_post_push_fetch: n/a
+new_warnings_or_lints_introduced: 0  # golangci-lint 0 issues; go vet clean
+cross_platform_build:
+  darwin: exit 0 (go build ./...)
+  windows: exit 0 (GOOS=windows GOARCH=amd64 go build ./...)
+total_run_phase_files: 62  # git diff --stat 86cdbd97d..HEAD (M1 19 + M2 16 + M3 17 + M4 doctrine/progress/catalog)
+m1_to_mN_commit_strategy: per-milestone commits M1..M4 on L1 worktree branch; orchestrator integrates to main (cherry-pick/merge per stale-worktree lesson)
+```
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
 _<pending sync-phase>_
+
+## §F Phase 0.95 Mode Selection
+
+- Inputs: tier=M, scope≈45 files (templates 29 + Go 8 + tests + local 7), domains=3 (template docs / Go code / local artifacts), language mix=md+go, concurrency benefit=LOW (coding-heavy, M2-before-M3 hard ordering)
+- Mode evaluation: trivial NO (multi-file semantic) / background NO (write) / agent-team RETIRED / parallel NO (coding-heavy) / workflow NO (multi-rule, inter-file dependency, <30 uniform) / sub-agent YES
+- Decision: sub-agent
+- Justification: M1→M4 milestones are sequentially dependent (Go dual-pattern recognition must land before local rename); coding-heavy work defaults to sequential per Anthropic coding-task parallelism caveat.
