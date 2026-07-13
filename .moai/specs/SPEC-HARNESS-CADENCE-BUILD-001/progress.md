@@ -95,7 +95,7 @@ m1_to_mN_commit_strategy: "per-milestone pathspec-scoped commits on the agent wo
 
 ```yaml
 sync_complete_at: 2026-07-13
-sync_commit_sha: PENDING_SELF  # backfilled in a follow-up commit after `git rev-parse HEAD`
+sync_commit_sha: e9373c838ae57ce9c5200433b8a303e2c17460ba
 sync_status: PASS
 b12_self_test_a: "grep -c 'SPEC-HARNESS-CADENCE-BUILD-001' CHANGELOG.md (pre-emit) = 0 -> emission proceeded, no duplicate"
 b12_self_test_b: "acceptance.md unique AC-HCB-* rows = 36; progress.md §E.2 matrix = 36 rows (35 PASS + 1 PASS-WITH-DEBT) -> count match"
