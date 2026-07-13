@@ -76,7 +76,7 @@ Run-phase executed 2026-07-13 by manager-develop (cycle_type=tdd, Mode 5 sequent
 
 ```yaml
 run_complete_at: 2026-07-13
-run_commit_sha: pending-backfill-m5
+run_commit_sha: 5f22d9022ff69c13d272be2bdb105450d970f1f2
 run_status: audit-ready
 ac_pass_count: 28
 ac_fail_count: 0
@@ -86,7 +86,7 @@ cross_platform_build:
   native: exit 0
   windows_amd64: exit 0
 total_run_phase_files: 39   # 3 new artifacts ×2 trees (agent/workflow ×2 + command pair) + SKILL.md ×2 + CLAUDE.md ×2 + ring1 rule/agent files ×2 trees (10) + ring2 skill files ×2 trees (8) + README ×4 + catalog.yaml + 4 Go test files + model_policy.go + spec.md + progress.md
-m1_to_mN_commit_strategy: per-milestone pathspec-scoped commits on main (Route A Hybrid Trunk), M1=8190c3340 M2=a500fafe8 M3=cc0156396 M4=3235a7233 M5=pending-backfill
+m1_to_mN_commit_strategy: per-milestone pathspec-scoped commits on main (Route A Hybrid Trunk), M1=8190c3340 M2=a500fafe8 M3=cc0156396 M4=3235a7233 M5=5f22d9022
 evidence_dir: .moai/state/verify/e2e-revival/
 ```
 
