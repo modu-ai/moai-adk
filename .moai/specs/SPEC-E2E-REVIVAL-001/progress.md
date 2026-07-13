@@ -101,7 +101,7 @@ Sync-phase executed 2026-07-13 by manager-docs (orchestrator-directed). Scope: C
 
 ```yaml
 sync_complete_at: 2026-07-13
-sync_commit_sha: pending-backfill-e2e-revival-sync
+sync_commit_sha: 79bafd5f8f6a2d721708efd0b87921fce24a95da
 sync_status: audit-ready
 changelog_entry_position: "[Unreleased] > ### Added (first entry)"
 frontmatter_status_transitions:
