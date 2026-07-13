@@ -7,8 +7,8 @@ description: >-
   the parallel read-only verification batch at run/sync-phase completion.
   Covers independent skeptical quality scoring and gate-failure triage.
 skills:
-  - harness-moaiadk-patterns
-  - harness-moaiadk-best-practices
+  - hns-moaiadk-patterns
+  - hns-moaiadk-best-practices
 tools: Read, Write, Edit, Grep, Glob, Bash
 model: inherit
 effort: high

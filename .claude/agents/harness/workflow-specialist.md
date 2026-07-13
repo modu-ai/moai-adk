@@ -7,8 +7,8 @@ description: >-
   classification + grandfather clause, and the Implementation Kickoff Approval
   human gate before run-phase entry. Covers adding a SPEC and closing one.
 skills:
-  - harness-moaiadk-patterns
-  - harness-moaiadk-best-practices
+  - hns-moaiadk-patterns
+  - hns-moaiadk-best-practices
 tools: Read, Write, Edit, Grep, Glob, Bash
 model: inherit
 effort: high

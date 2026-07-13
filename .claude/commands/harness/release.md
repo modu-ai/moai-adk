@@ -8,6 +8,6 @@ allowed-tools: Agent
 
 Run the `release` harness. Pure human-gated specialist — no Runner, no manifest (no non-interactive fan-out).
 
-Use the `harness-release-specialist` subagent with arguments: $ARGUMENTS
+Use the `hns-release-specialist` subagent with arguments: $ARGUMENTS
 
 The specialist is human-gated: the orchestrator holds every AskUserQuestion gate (version selection, production-release final approval). The specialist returns blocker reports for any user decision.

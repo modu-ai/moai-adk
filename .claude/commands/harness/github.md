@@ -8,6 +8,6 @@ allowed-tools: Agent
 
 Run the `github` harness. Pure human-gated specialist — no Runner, no manifest (no non-interactive fan-out).
 
-Use the `harness-github-specialist` subagent with arguments: $ARGUMENTS
+Use the `hns-github-specialist` subagent with arguments: $ARGUMENTS
 
 The specialist is human-gated: the orchestrator holds every AskUserQuestion gate (PR creation approval, review submission). The specialist returns blocker reports for any user decision.

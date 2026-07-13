@@ -332,13 +332,13 @@ per-language guidance, and `.claude/rules/moai/development/coding-standards.md`
 
 ### Deprecated Skill Slots (split into three independent harnesses)
 
-The following dev-only skill slots were retired and their workflows live as three INDEPENDENT dev-maintainer harnesses under the user-owned harness namespace (`.claude/agents/harness/harness-{release-update,github,release}-specialist.md` + `.claude/commands/harness/{release-update,github,release}.md`; only release-update carries a Runner + `.claude/commands/harness/release-update/manifest.json`; see agent-authoring.md § Agent Directory Convention). Each thin command routes directly to its matching specialist. These three workflows were first consolidated into a single unified entry by the harness-consolidation effort, then split into three independent harnesses by the harness-split effort (which reverses the unified-entry decision). The earlier intermediate migration into `.claude/agents/local/*-specialist.md` (with `/97-release-update`, `/98-github` thin wrappers) and the standalone `/99-release` command were all removed during the consolidation step.
+The following dev-only skill slots were retired and their workflows live as three INDEPENDENT dev-maintainer harnesses under the user-owned harness namespace (`.claude/agents/harness/hns-{release-update,github,release}-specialist.md` + `.claude/commands/harness/{release-update,github,release}.md`; only release-update carries a Runner + `.claude/commands/harness/release-update/manifest.json`; see agent-authoring.md § Agent Directory Convention). Each thin command routes directly to its matching specialist. These three workflows were first consolidated into a single unified entry by the harness-consolidation effort, then split into three independent harnesses by the harness-split effort (which reverses the unified-entry decision). The earlier intermediate migration into `.claude/agents/local/*-specialist.md` (with `/97-release-update`, `/98-github` thin wrappers) and the standalone `/99-release` command were all removed during the consolidation step.
 
 | Retired Skill / Command | Current Target | Entry Point |
 |---------------|------------------|-------------|
-| `.claude/skills/moai/workflows/release-update.md` (97 series) | `.claude/agents/harness/harness-release-update-specialist.md` | `/harness:release-update` |
-| `.claude/skills/moai/workflows/github.md` (98 series) | `.claude/agents/harness/harness-github-specialist.md` | `/harness:github` |
-| `.claude/skills/moai/workflows/release.md` (99 series) | `.claude/agents/harness/harness-release-specialist.md` | `/harness:release` |
+| `.claude/skills/moai/workflows/release-update.md` (97 series) | `.claude/agents/harness/hns-release-update-specialist.md` | `/harness:release-update` |
+| `.claude/skills/moai/workflows/github.md` (98 series) | `.claude/agents/harness/hns-github-specialist.md` | `/harness:github` |
+| `.claude/skills/moai/workflows/release.md` (99 series) | `.claude/agents/harness/hns-release-specialist.md` | `/harness:release` |
 
 Each split harness preserves the structural fidelity of its workflow body. Routing shifted from `Skill("moai/workflows/<name>")` / `Use the <name>-specialist subagent` to `/harness:<name>` direct dispatch. The harness artifacts live in the user-owned namespace (`moai update` preserves them); they are dev-only and never distributed to user projects.
 

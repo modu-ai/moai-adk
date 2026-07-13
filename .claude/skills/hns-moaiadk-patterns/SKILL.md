@@ -1,5 +1,5 @@
 ---
-name: harness-moaiadk-patterns
+name: hns-moaiadk-patterns
 description: >
   moai-adk-go domain-patterns reference for the 4 harness specialists
   (cli-template-specialist, quality-specialist, workflow-specialist,

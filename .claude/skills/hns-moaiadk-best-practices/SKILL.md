@@ -1,5 +1,5 @@
 ---
-name: harness-moaiadk-best-practices
+name: hns-moaiadk-best-practices
 description: >
   moai-adk-go best-practices reference for the 4 harness specialists
   (cli-template-specialist, quality-specialist, workflow-specialist,

@@ -1,5 +1,5 @@
 ---
-name: harness-github-specialist
+name: hns-github-specialist
 description: >
   (dev-only) github harness specialist — GitHub issue-fix and PR-review for
   moai-adk-go maintainers. NOT distributed to user projects. Uses gh CLI to

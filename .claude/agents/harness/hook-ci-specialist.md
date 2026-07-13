@@ -7,8 +7,8 @@ description: >-
   the template-neutrality CI guard, or the moai update namespace-protection
   contract. Covers adding a hook, adding a CI workflow, and wiring a command.
 skills:
-  - harness-moaiadk-patterns
-  - harness-moaiadk-best-practices
+  - hns-moaiadk-patterns
+  - hns-moaiadk-best-practices
 tools: Read, Write, Edit, Grep, Glob, Bash
 model: inherit
 effort: high
@@ -82,12 +82,12 @@ agent. It never prompts the user directly.
   `internal/template/templates/**` carries no internal-dev content (SPEC IDs,
   REQ tokens, commit SHAs, macOS-bias paths). The pre-PR contributor checklist
   is in CLAUDE.local.md §2.1.
-- **`moai update` namespace protection**: `harness-*` skills (with the legacy
-  `my-harness-*` form retained during the deprecation window), the
-  `.claude/agents/harness/` directory, and `.moai/harness/` are USER-OWNED.
-  `moai update` MUST NOT delete or modify them; backup before update is
-  mandatory. Never leak `harness-*` or `my-harness-*` content into
-  `internal/template/templates/`.
+- **`moai update` namespace protection**: `hns-*` skills (with the legacy
+  `harness-*` and `my-harness-*` generations retained during the deprecation
+  window), the `.claude/agents/harness/` directory, and `.moai/harness/` are
+  USER-OWNED. `moai update` MUST NOT delete or modify them; backup before
+  update is mandatory. Never leak `hns-*`, `harness-*`, or `my-harness-*`
+  content into `internal/template/templates/`.
 - **Dev-only commands isolation** (CLAUDE.local.md §21): `97-*`, `98-*`,
   `99-*` slash commands are local moai-adk development only; never distribute
   via templates.

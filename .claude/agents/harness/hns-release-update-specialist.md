@@ -1,5 +1,5 @@
 ---
-name: harness-release-update-specialist
+name: hns-release-update-specialist
 description: >
   (dev-only) release-update harness specialist — Claude Code upstream change tracker for
   moai-adk-go maintainers. NOT distributed to user projects. Tracks new CC
@@ -30,7 +30,7 @@ generates an actionable update plan (or umbrella SPEC directory for large diffs)
 synchronizes docs-site (4-locale) + README, and opens a PR via manager-git.
 
 The non-interactive research sweep (parallel per-version CC-release-notes
-analysis) is modeled by the Runner (`.claude/workflows/harness-release-update-run.js`).
+analysis) is modeled by the Runner (`.claude/workflows/hns-release-update-run.js`).
 ALL human-gated work (user approval, PR creation, gh CLI interaction) is held by
 this specialist and the orchestrator — the Runner never prompts the user.
 

@@ -1,12 +1,12 @@
 ---
-name: harness-moaiadk-dev-reference
+name: hns-moaiadk-dev-reference
 description: moai-adk-go local dev reference — version management/release process (sec 5), shell-script hook development (sec 7), build & dev commands (sec 10). Load only when performing these specific tasks.
 ---
 
-# harness-moaiadk-dev-reference
+# hns-moaiadk-dev-reference
 
 > moai-adk-go 로컬 dev 레퍼런스 — `CLAUDE.local.md` §5/§7/§10 의 작업 특화 상세를 이곳으로 이관 (lazy-load). 세션마다 필요 없는 참고 자료. 항상-로드 컨텍스트 절감용.
-> 소유: `harness-*` 네임스페이스 (user-owned, `moai update` 보존 — CLAUDE.local.md §24). 템플릿 미러 금지.
+> 소유: `hns-*` 네임스페이스 (user-owned, `moai update` 보존 — CLAUDE.local.md §24). 템플릿 미러 금지.
 
 ---
 

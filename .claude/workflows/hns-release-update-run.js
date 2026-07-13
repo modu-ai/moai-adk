@@ -1,4 +1,4 @@
-// harness-release-update-run.js — Runner for the release-update dev-maintainer harness.
+// hns-release-update-run.js — Runner for the release-update dev-maintainer harness.
 //
 // [DEV-ONLY] maintainer harness Runner. NOT distributed to user projects.
 //
@@ -53,7 +53,7 @@ function selectResearchSweepTargets(args) {
       `Do NOT modify any file, do NOT open a pull request, do NOT prompt the user — ` +
       `return the table only. Every human-gated step (user sign-off, docs sync, ` +
       `pull-request creation) is handled by the ` +
-      `harness-release-update-specialist sub-agent outside this run.`,
+      `hns-release-update-specialist sub-agent outside this run.`,
   }));
 }
 
@@ -88,7 +88,7 @@ async function run({ agent, args }) {
     note:
       "Non-interactive research sweep only. Human-gated work (user sign-off, " +
       "docs-site 4-locale sync, pull-request creation) is delegated to " +
-      "harness-release-update-specialist; the orchestrator holds every " +
+      "hns-release-update-specialist; the orchestrator holds every " +
       "human-decision gate before and after this run. github and release " +
       "capabilities have no non-interactive fan-out and are not modeled here.",
   };

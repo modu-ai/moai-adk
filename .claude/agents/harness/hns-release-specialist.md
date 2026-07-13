@@ -1,5 +1,5 @@
 ---
-name: harness-release-specialist
+name: hns-release-specialist
 description: >
   (dev-only) release harness specialist — MoAI-ADK production release for
   moai-adk-go maintainers. NOT distributed to user projects. Implements Enhanced

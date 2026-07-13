@@ -9,8 +9,8 @@ description: >-
   wiring a new template file, recompiling embedded assets, and resolving
   config-rendering bugs.
 skills:
-  - harness-moaiadk-patterns
-  - harness-moaiadk-best-practices
+  - hns-moaiadk-patterns
+  - hns-moaiadk-best-practices
 tools: Read, Write, Edit, Grep, Glob, Bash
 model: inherit
 effort: high
