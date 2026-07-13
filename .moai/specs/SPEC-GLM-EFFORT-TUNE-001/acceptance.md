@@ -2,7 +2,7 @@
 id: SPEC-GLM-EFFORT-TUNE-001
 title: "GLM effort overlay configuration tune-up (P1/P2/P4) — acceptance criteria"
 version: "0.1.0"
-status: in-progress
+status: completed
 created: 2026-07-14
 updated: 2026-07-14
 author: manager-spec

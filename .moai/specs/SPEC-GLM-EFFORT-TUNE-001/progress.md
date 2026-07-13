@@ -2,7 +2,7 @@
 id: SPEC-GLM-EFFORT-TUNE-001
 title: "GLM effort overlay configuration tune-up (P1/P2/P4) — progress"
 version: "0.1.0"
-status: in-progress
+status: completed
 created: 2026-07-14
 updated: 2026-07-14
 author: manager-spec
@@ -83,4 +83,16 @@ m1_to_mN_commit_strategy: per-milestone  # M1=570441fde, M2=cdd1686a4, M3=0a33f2
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+```yaml
+sync_complete_at: 2026-07-14
+sync_commit_sha: <pending-backfill-d3-exemption>  # will be backfilled per D3 SHA placeholder exemption after sync commit
+sync_status: complete
+changelog_entry_emitted: true  # CHANGELOG.md [Unreleased] entry added
+frontmatter_transitions:
+  spec.md: in-progress → completed
+  plan.md: in-progress → completed
+  acceptance.md: in-progress → completed
+  design.md: draft → completed
+  research.md: draft → completed
+  progress.md: in-progress → completed
+```
