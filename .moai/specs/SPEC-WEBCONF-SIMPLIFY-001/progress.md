@@ -83,7 +83,7 @@ tier: L
 ```yaml
 run_status: in-progress
 run_complete_at: null   # pending — run-phase not complete (M1 of 9 milestones)
-run_commit_sha: pending-backfill-m1   # self-referential — backfilled in a follow-up commit (D3 placeholder exemption)
+run_commit_sha: 7b11d68bc   # self-referential — backfilled in a follow-up commit (D3 placeholder exemption)
 m1_to_mN_commit_strategy: per-milestone commit + push to main (Route A — Hybrid Trunk 1-person OSS)
 ac_pass_count: 5          # M1-relevant ACs PASS: AC-WC-005, 006, 016, 017, 021
 ac_fail_count: 0
@@ -96,12 +96,12 @@ coverage:
   settings: "88.5% of statements"
 new_warnings_or_lints_introduced: 0   # golangci-lint: 0 issues (baseline was also 0)
 subagent_boundary: "grep -rn 'AskUserQuestion|mcp__askuser' internal/harness/v4manifest/ internal/settings/ | grep -v _test.go → 0 matches (C-HRA-008 clean)"
-l44_pre_commit_fetch: pending   # pre-push git fetch result recorded post-push
-l44_post_push_fetch: pending
+l44_pre_commit_fetch: "origin/main...HEAD divergence = 0 1 (local ahead by 1 — clean, no parallel race at push)"
+l44_post_push_fetch: "3d535837b..7b11d68bc main -> main (push succeeded; Route A admin-bypass for branch protection + 5s pre-push warn — normal)"
 milestones:
   M1:
     subject: "feat(SPEC-WEBCONF-SIMPLIFY-001): M1 sub-agent 4-color tier data-model + name-keyed lookup table"
-    sha: pending-backfill-m1
+    sha: 7b11d68bc
     acs: [AC-WC-005, AC-WC-006, AC-WC-016, AC-WC-017, AC-WC-021]
     status: PASS
   M2: { status: pending, owner: template-defaults-baking }
