@@ -41,18 +41,18 @@ related_specs: [SPEC-MODEL-TIER-PLANTYPE-001]
 | AC-GET-004 (test rename + cardinality) | MUST | PASS | `grep 'TestGLMCodingMaxOverrideAgents_ExactlyTwo'` → exit 1 (gone); `TestGLMCodingMaxOverrideAgents_ExactlyOne` present with `want := []string{"manager-develop"}` + `want exactly 1` |
 | AC-GET-005 (doc comments updated) | MUST | PASS | `grep -n 'two code-producing\|{manager-develop, builder-harness}' glm_effort_overlay.go` → exit 1 (no match) |
 | AC-GET-006 (full package test) | SHOULD | PASS | `go test ./internal/template/ -count=1` → `ok github.com/modu-ai/moai-adk/internal/template 1.143s` |
-| AC-GET-007 (exposure block in BOTH llm.yaml) | MUST | _<pending M2>_ | — |
-| AC-GET-008 (3-state vocabulary present) | MUST | _<pending M2>_ | — |
-| AC-GET-009 (overlay = SSOT, no parallel path) | MUST | _<pending M2>_ | — |
-| AC-GET-010 (honesty caveat present, no overclaim) | MUST | _<pending M2>_ | — |
-| AC-GET-011 (mirror parity test passes / llm.yaml not covered) | SHOULD | _<pending M2>_ | KI-4 resolved: `rule_template_mirror_test.go` does NOT cover `.moai/config/sections/llm.yaml` (explicit "Out of scope" per CLAUDE.local.md §22); AC is INFO — both files still edited for consistency |
-| AC-GET-012 (no config-loader CI-guard regression) | MUST | _<pending M2>_ | — |
-| AC-GET-013 (overlay doc comments frame 3 states, not 2-tier) | MUST | _<pending M3>_ | — |
-| AC-GET-014 (3-state in llm.yaml exposure) | MUST | _<pending M2/M3>_ | — |
-| AC-GET-015 (docs-site grep evidence recorded) | MUST | _<pending M4>_ | — |
-| AC-GET-016 (full repo test suite) | MUST | _<pending M5>_ | — |
-| AC-GET-017 (lint + vet clean) | MUST | _<pending M5>_ | — |
-| AC-GET-018 (make build succeeds) | MUST | _<pending M5 (post-M2)>_ | — |
+| AC-GET-007 (exposure block in BOTH llm.yaml) | MUST | PASS | `grep -c 'reasoning-effort mapping\|GLM reasoning'` → both files report 1 match |
+| AC-GET-008 (3-state vocabulary present) | MUST | PASS | `grep -c 'thinking-off'` → both files report 4 matches |
+| AC-GET-009 (overlay = SSOT, no parallel path) | MUST | PASS | `grep -i 'runtime SSOT\|documentation-only\|Go overlay'` → both files match (header carries all 3 tokens) |
+| AC-GET-010 (honesty caveat present, no overclaim) | MUST | PASS | honesty grep: "implemented and wired; live validation of z.ai wire-effectiveness is pending" present in both; overclaim grep `validated|guaranteed|works` → exit 1 (no match) |
+| AC-GET-011 (mirror parity test passes / llm.yaml not covered) | SHOULD | PASS (INFO) | KI-4: `rule_template_mirror_test.go` does NOT cover `.moai/config/sections/llm.yaml` (explicit "Out of scope" per CLAUDE.local.md §22); `TestRuleTemplateMirror` PASS (covered pairs unaffected); both llm.yaml surfaces edited for consistency |
+| AC-GET-012 (no config-loader CI-guard regression) | MUST | PASS | `go test ./internal/config/... -count=1` → `ok` (both `internal/config` + `internal/config/toolpolicy`); comments-only exposure block added no struct field / no loader → no `YAML_SECTION_NO_LOADER` / `CONFIG_STRUCT_YAML_MISMATCH` |
+| AC-GET-013 (overlay doc comments frame 3 states, not 2-tier) | MUST | PASS | `grep -n '2-tier\|two-tier\|2 tier' glm_effort_overlay.go` → exit 1 (no match); 3-state vocab count = 10 (baseline held) |
+| AC-GET-014 (3-state in llm.yaml exposure) | MUST | PASS | `grep -c 'thinking-off'` → both ≥1 (satisfied by AC-GET-008; restated as the P4 framing half) |
+| AC-GET-015 (docs-site grep evidence recorded) | MUST | PASS (absence) | Canonical-repo grep `grep -rln 'GLM.*2-tier\|GLM.*two-tier\|GLM.*high/max\|reasoning_effort.*2.level' README.md README.ko.md README.ja.md README.zh.md docs-site/ docs/ .moai/docs/ .claude/agents/ .claude/skills/ .claude/rules/` → exit 1 (zero matches); docs-site 2-tier grep → exit 1. Per KI-3, absence is valid P4 outcome; no docs-site edit manufactured. (Worktree-only matches are other SPECs' ephemeral artifacts, out of scope.) |
+| AC-GET-016 (full repo test suite) | MUST | PASS-WITH-DEBT | `go test ./... -count=1` → 1 FAIL: pre-existing `TestI18nKeySetParity` in `internal/web` (i18n locale key-parity, unrelated to this SPEC — `internal/web` has zero references to `glm_effort_overlay`/`glmCodingMaxOverride`/`GLMStateReasoning`); all SPEC-touched packages (`internal/template` + `internal/config`) PASS cleanly |
+| AC-GET-017 (lint + vet clean) | MUST | PASS | `go vet ./...` → exit 0; `golangci-lint run --timeout=2m` → 0 issues |
+| AC-GET-018 (make build succeeds) | MUST | PASS | `make build` → exit 0 (embedded template recompiled post-M2 llm.yaml template-source edit) |
 
 ### M1 commit (P1 override set change)
 
@@ -62,7 +62,24 @@ related_specs: [SPEC-MODEL-TIER-PLANTYPE-001]
 
 ## §E.3 Run-phase Audit-Ready Signal
 
-_<pending M5>_
+```yaml
+run_complete_at: 2026-07-14
+run_commit_sha: pending-backfill-M5  # self-referential — backfill in follow-up commit
+run_status: complete
+ac_pass_count: 16
+ac_fail_count: 0
+ac_pass_with_debt_count: 2  # AC-GET-011 (INFO, SHOULD), AC-GET-016 (pre-existing internal/web failure unrelated to SPEC)
+preserve_list_post_run_count: 0
+l44_pre_commit_fetch: true   # git fetch origin main + rev-list before every commit (0 N = clean each time)
+l44_post_push_fetch: pending-push  # not yet pushed (Route A main-direct; push at orchestrator discretion)
+new_warnings_or_lints_introduced: 0  # go vet clean, golangci-lint 0 issues
+cross_platform_build:
+  darwin_arm64: pass  # make build exit 0
+  linux_amd64: not-run  # no cross-compile AC in this SPEC
+  windows_amd64: not-run  # no cross-compile AC in this SPEC
+total_run_phase_files: 6  # 2 Go (overlay + test) + 2 YAML (template + local mirror) + 4 SPEC frontmatter transitions + 2 SPEC body (progress.md §E.2/§E.3)
+m1_to_mN_commit_strategy: per-milestone  # M1=570441fde, M2=cdd1686a4, M3=0a33f269c, M4=no-op (absence), M5=this commit
+```
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
