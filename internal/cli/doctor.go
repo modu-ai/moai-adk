@@ -10,6 +10,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"runtime"
 	"strings"
 
@@ -182,6 +183,7 @@ func runGroupedChecks(verbose bool, filterCheck string) []checkGroup {
 		}},
 		{"Harness 5-Layer", func(v bool) DiagnosticCheck { return runHarnessCheck(cwd) }},
 		{"Migration", func(v bool) DiagnosticCheck { return checkMigration(cwd, v) }},
+		{"Plugin Deployment", func(v bool) DiagnosticCheck { return checkPluginDeployment(cwd, v) }},
 	}
 
 	workspaceChecks := []checkFunc{
@@ -835,6 +837,60 @@ func checkMigration(projectDir string, verbose bool) DiagnosticCheck {
 		check.Detail += fmt.Sprintf("last applied: %s (version %d)", lastApplied.Name, lastApplied.Version)
 	}
 
+	return check
+}
+
+// pluginDeployedVersionRe matches a version: key whose value carries the
+// plugin-deployed marker. The leading [ \t]* accepts BOTH the top-level
+// `version:` key shape and the `moai:`-rooted (indented) shape, while the
+// anchor at line start excludes `template_version:` (SPEC-DOCTOR-PROMOTION-001 REQ-DP-001).
+var pluginDeployedVersionRe = regexp.MustCompile(`(?m)^[ \t]*version:[ \t]*['"]?plugin-deployed v(\d+\.\d+\.\d+)['"]?`)
+
+// systemYAMLVersionKeyRe recognizes any version: key for the graceful parse-note path.
+var systemYAMLVersionKeyRe = regexp.MustCompile(`(?m)^[ \t]*version:`)
+
+// checkPluginDeployment detects a plugin-deployed marker in system.yaml and
+// suggests promotion to the binary-managed template tree via 'moai init'.
+// Suggestion-only: it never writes files and never returns Fail
+// (SPEC-DOCTOR-PROMOTION-001 REQ-DP-001..004).
+func checkPluginDeployment(projectDir string, verbose bool) DiagnosticCheck {
+	check := DiagnosticCheck{Name: "Plugin Deployment", Status: uikit.CheckOK}
+
+	systemPath := filepath.Join(projectDir, defs.MoAIDir, defs.SectionsSubdir, defs.SystemYAML)
+	data, err := os.ReadFile(systemPath)
+	if err != nil {
+		if os.IsNotExist(err) {
+			check.Message = "no plugin marker (binary-managed)"
+			return check
+		}
+		// Unreadable file present: degrade gracefully, never Fail (REQ-DP-004).
+		check.Status = uikit.CheckWarn
+		check.Message = "system.yaml unreadable"
+		check.Detail = fmt.Sprintf("parse note: %v", err)
+		return check
+	}
+
+	m := pluginDeployedVersionRe.FindSubmatch(data)
+	if m == nil {
+		if !systemYAMLVersionKeyRe.Match(data) {
+			// No recognizable version key: graceful parse note, still OK (REQ-DP-004).
+			check.Message = "no plugin marker (no version key recognized)"
+			if verbose {
+				check.Detail = "parse note: no version key found in " + systemPath
+			}
+			return check
+		}
+		check.Message = "no plugin marker (binary-managed)"
+		return check
+	}
+
+	deployed := "v" + string(m[1])
+	binary := version.GetVersion()
+	check.Status = uikit.CheckWarn
+	check.Message = fmt.Sprintf("plugin-deployed %s (binary %s)", deployed, binary)
+	check.Detail = fmt.Sprintf(
+		"templates were deployed by plugin at %s; current binary is %s — run 'moai init' to promote to the binary-managed template tree",
+		deployed, binary)
 	return check
 }
 

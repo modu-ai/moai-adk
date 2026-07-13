@@ -2,7 +2,7 @@
 id: SPEC-DOCTOR-PROMOTION-001
 title: "Doctor detection of plugin-deployed marker with promotion suggestion"
 version: "0.1.1"
-status: draft
+status: in-progress
 created: 2026-07-13
 updated: 2026-07-13
 author: manager-spec
