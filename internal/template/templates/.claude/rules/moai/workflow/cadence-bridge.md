@@ -35,6 +35,7 @@ This invariant is stated once, here, at the catalog level — it is NOT restated
 | `/moai review --lean` | advisory-only | "Read-only and advisory: applies no fixes, modifies no files, renders no PASS/FAIL verdict" — an over-engineering-only lean scan. |
 | `.moai/state/loop-verdict-*.json` read | prose-reader | Reads a persisted ceiling-exit / one-shot-residue file left by the loop workflow; no tool invocation and no mutation — a plain file read. |
 | Level-1 fix.md class (formatting, import-sorting) | uncommitted-edit-only | The catalog invariant's sole write-adjacent exception: a working-tree edit is permitted, but it is never committed and never pushed by a scheduled run. |
+| Harness discovery prompt (Recipe 4) | discovery-only | A self-contained read-only analysis prompt scoped to a built harness's domain; it finds drift and gaps, persists findings to the queue surface per the Discovery-to-Queue Contract, and applies no fixes and modifies no files beyond that queue record. |
 
 **Not cadence-eligible** — these MUST NOT appear in any recipe or be added to this table: `/moai run`, `/moai sync`, `/moai loop`, and `/moai fix` beyond the Level-1-no-commit carve-out above, or any other subcommand that mutates git state. Scheduling any of these is out of scope for this catalog (see spec-level Out of Scope; a would-be recipe substituting one of these in is explicitly unsanctioned).
 
@@ -64,6 +65,22 @@ periodic read: .moai/state/loop-verdict-*.json
 
 Interval guidance: periodic (e.g. daily or weekly, less time-sensitive than the other two) — this recipe re-surfaces ceiling-exit or one-shot-residue leftovers that the loop workflow already persisted; there is no new work to detect between reads, only accumulated leftovers to resurface. Read-only rationale: the recipe is a **prose reader** of an already-persisted JSON file (schema: `.claude/skills/moai/workflows/loop.md` § Remaining-Issue Persistence — `exit_kind`, `remaining_issues[]`, etc.); it never invokes a tool and never mutates the file it reads.
 
+### Recipe 4 — Scheduled Harness Discovery
+
+Recipe class covering scheduled discovery runs for any built harness. The scheduled payload is a **self-contained discovery prompt** — it names the harness and its domain scope and embeds its execution constraints inline, so a scheduled turn carries those constraints even when this rule file is not loaded. The payload deliberately does NOT invoke the harness entry command: the entry command dispatches write-capable specialists, and a scheduled run must never reach that dispatch path. Payload template (substitute the placeholders; loop and cron forms below):
+
+```
+Discovery run for the <harness-name> harness (domain: <harness-domain-scope>).
+Perform read-only analysis only: scan this harness's domain scope for drift,
+gaps, and stale artifacts. Queue persistence: record any findings to the
+active TaskList when a session ledger is live, otherwise to
+.moai/reports/cadence/<date>.md, and surface them at the next interactive
+session. Beyond that queue record: no writes, no commits, no pushes, and no
+run-phase entry.
+```
+
+Loop form (session-scoped — the armed loop dies with the session and must be re-armed per session): `/loop <interval> <discovery prompt above>`. Cron form (persistent across sessions): register the same discovery prompt via CronCreate with the chosen interval; CronList inspects and CronDelete unregisters it. Interval guidance: match the harness's drift tempo — `30m` for fast-moving domains, `nightly` for typical documentation or review harnesses, weekly for slow-moving ones. Read-only rationale: the payload performs analysis only and persists findings per the existing Discovery-to-Queue Contract (the section below — the queue mechanism is reused verbatim; no new queue surface is introduced). Where Cron tools are unavailable in the runtime version, this recipe degrades to the native `/loop` form only, consistent with the catalog's existing fallback clause.
+
 ## Discovery-to-Queue Contract
 
 **When** a cadence run FINDS work — gate failures, lean-review findings, or unresolved verdict leftovers — the cadence run SHALL persist the discovery to a queue surface: the active TaskList when a session ledger is live, otherwise a backlog record at `.moai/reports/cadence/<date>.md` (an orchestrator-written local artifact, no Go loader — the reports namespace is the analyze-what-exists home for this kind of record). The discovery SHALL surface to the user at the next interactive session.
@@ -79,7 +96,7 @@ Not every discovery pathway belongs on a cadence. A recipe here is appropriate w
 - **Concurrent session holds the checkout**: the read-only recipes (drift watcher, lean review, backlog re-discovery) are race-safe by construction — they do not write. The backlog-record write (when a session ledger is not live) follows the standard multi-session pre-spawn check discipline, or degrades to report-only output if a race is detected.
 - **`.moai/state/loop-verdict-*.json` absent**: recipe 3 completes as a no-op with an informational note, not an error — absence means no ceiling exits have occurred yet, or the producing mechanism has not landed.
 - **A pasted recipe substitutes a write-capable subcommand** (e.g. `/loop 30m /moai fix`): this is explicitly unsanctioned per the catalog invariant and the eligibility table above; reviewers and orchestrators reject it on sight. Mechanical blocking of such a substitution is out of scope for this doctrine-only bridge.
-- **Cron tools unavailable in the runtime version**: recipes degrade to native `/loop` only; no functionality is lost for the three recipes above, since none require Cron specifically.
+- **Cron tools unavailable in the runtime version**: recipes degrade to native `/loop` only; no functionality is lost for Recipes 1-3, since none require Cron specifically. Recipe 4's cron form degrades to its session-scoped `/loop` form — cross-session persistence is lost until a later session re-arms the loop.
 
 ## Cross-References
 
