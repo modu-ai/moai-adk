@@ -25,6 +25,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/modu-ai/moai-adk/internal/cli/update/report"
 	"github.com/modu-ai/moai-adk/pkg/version"
 	"github.com/spf13/cobra"
 )
@@ -37,7 +38,7 @@ import (
 // "Template sync complete" pill (content token Label: "Template sync complete").
 func TestUpdate_Characterize_TemplateSyncComplete_EmitsHooksGuidance(t *testing.T) {
 	var buf bytes.Buffer
-	emitHooksReviewGuidance(&buf)
+	report.EmitHooksReviewGuidance(&buf)
 	got := buf.String()
 
 	// AC-CS-003: literal substring /hooks (NOT case-insensitive, NOT regex).

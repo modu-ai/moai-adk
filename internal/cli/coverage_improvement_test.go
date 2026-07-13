@@ -18,6 +18,7 @@ import (
 	"github.com/modu-ai/moai-adk/internal/cli/uikit"
 	"github.com/modu-ai/moai-adk/internal/cli/update/backup"
 	"github.com/modu-ai/moai-adk/internal/cli/update/deploy"
+	updatemerge "github.com/modu-ai/moai-adk/internal/cli/update/merge"
 	"github.com/modu-ai/moai-adk/internal/cli/update/plan"
 	"github.com/modu-ai/moai-adk/internal/cli/wizard"
 	"github.com/modu-ai/moai-adk/internal/cli/worktree"
@@ -5033,7 +5034,7 @@ func TestAnalyzeMergeChanges_Output(t *testing.T) {
 	deployer := template.NewDeployerWithForceUpdate(embedded, true)
 
 	tmpDir := t.TempDir()
-	analysis := analyzeMergeChanges(deployer, tmpDir)
+	analysis := updatemerge.AnalyzeMergeChanges(deployer, tmpDir)
 
 	// Should have some files from templates
 	if len(analysis.Files) == 0 {

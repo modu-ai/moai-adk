@@ -153,6 +153,20 @@ Orchestrator Trust-but-verify (2026-07-14, fresh batch; evidence `/tmp/moai-veri
 
 **BLOCKER — 3/6 DEPLOY funcs entangled (M3d-B2 scope):** The remaining 3 DEPLOY funcs (`runTemplateSyncWithReporter`, `runTemplateSyncWithProgress`, `runAgencyMigrationAdapter`) reference root-`cli`-package-local helpers (analyzeMergeChanges, confirmViaPreview, resolveTheme, getBoolFlag, migrateAgencyRunner, MigrateError, ErrMigrateNoSource). Moving them to the leaf `deploy` package would create a circular import (deploy → cli + cli → deploy). The M3d-A2 precedent resolved an analogous entanglement via a nil-safe callback seam (`MergeFallbackRecorder`); applying the same pattern to 10+ helpers across 3 funcs is scope creep that would cause a 5th thrash (4 prior thrashes/autocompacts documented in M3d-A root-cause). Per the subpackage-per-spawn anti-thrash rule, M3d-B1 moves ONLY the 3 clean leaf funcs and STOPS. The 3 entangled funcs are deferred to M3d-B2 (callback-seam extraction, separate spawn).
 
+### M3d-B2 merge + report subpackages — LANDED (5-subpackage decomposition COMPLETE; orchestrator-committed after spawn thrash)
+
+**M3d-B2 spawn thrashed** (5th autocompact) after creating the merge + report subpackages but before commit + §E.2 Edit (progress.md Edit hit the same harness read-state bug as M3c/M3d-A2). Orchestrator verified the working-tree artifacts GREEN and committed directly (the spawn's code work is intact; only the commit + §E.2 record were not reached).
+
+Created:
+- `internal/cli/update/merge/merge.go` (234 lines, `package merge`) — MERGE-bucket orchestration funcs (mergeGitignoreFile, mergeUserFiles, buildMergeAnalysis, analyzeMergeChanges moved; the 5 YAML-merge helpers remain in `backup/merge.go` as config-restore helpers — option (a), lowest-thrash, no circular import).
+- `internal/cli/update/report/report.go` (23 lines, `package report`) — `emitHooksReviewGuidance` → `report.EmitHooksReviewGuidance`.
+- `update.go`: −229 lines; imports `updatemerge ".../update/merge"` + `".../update/report"` added.
+- 4 test files: import-path/qualifier adjustments ONLY (assertion bodies UNMODIFIED, REQ-TUX3-005).
+
+**5-subpackage decomposition COMPLETE** per AC-TUX3-004: `internal/cli/update/{plan,backup,deploy,merge,report}` all exist. update.go: 3,276 → ~1,730 lines (대폭 감소 MET). The 3 entangled DEPLOY funcs (`runTemplateSyncWithReporter/WithProgress`, `runAgencyMigrationAdapter`) remain in root as **orchestration glue** — AC-TUX3-004 accepts root retaining "cobra wiring + orchestration glue" given "대폭 감소"; callback-seam extraction deferred (documented debt).
+
+Orchestrator Trust-but-verify (2026-07-14): `go test ./... -count=1` exit 0 (FULL repo green); guard 5-family (TestSplitHarnessNamespaceNoLeak + cli `Namespace|SecurityM2` + internal/merge) green UNMODIFIED; characterization (M3b safety net) green; `go build ./...` exit 0. /goal conditions "go test ./... exits 0" + "lint 0" + "namespace 가드 green" MET. Remaining for 20/20 AC: M3e (confirm.go v2 + outcome card, AC-TUX3-011~013) + M3f (coherence integration test AC-TUX3-016, coverage AC-TUX3-018, ratchet AC-TUX3-020, full-suite AC-TUX3-019).
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<pending run-phase>_

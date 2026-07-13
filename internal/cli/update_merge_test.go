@@ -6,6 +6,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	updatemerge "github.com/modu-ai/moai-adk/internal/cli/update/merge"
 )
 
 // TestMergeUserFiles_PreservesCustomizations tests that mergeUserFiles
@@ -40,13 +42,13 @@ func TestMergeUserFiles_PreservesCustomizations(t *testing.T) {
 	}
 
 	// Create backups with user's content
-	backups := []fileBackup{
-		{path: ".merge-test.json", data: []byte(userModified)},
+	backups := []updatemerge.FileBackup{
+		{Path: ".merge-test.json", Data: []byte(userModified)},
 	}
 
 	// Run merge
 	var out bytes.Buffer
-	if err := mergeUserFiles(tempDir, backups, &out); err != nil {
+	if err := updatemerge.MergeUserFiles(tempDir, backups, &out); err != nil {
 		t.Fatalf("mergeUserFiles: %v", err)
 	}
 
@@ -89,12 +91,12 @@ export CUSTOM_VAR="user-value"
 		t.Fatalf("write template: %v", err)
 	}
 
-	backups := []fileBackup{
-		{path: ".moai/status_line.sh", data: []byte(userContent)},
+	backups := []updatemerge.FileBackup{
+		{Path: ".moai/status_line.sh", Data: []byte(userContent)},
 	}
 
 	var out bytes.Buffer
-	if err := mergeUserFiles(tempDir, backups, &out); err != nil {
+	if err := updatemerge.MergeUserFiles(tempDir, backups, &out); err != nil {
 		t.Fatalf("mergeUserFiles: %v", err)
 	}
 
@@ -126,12 +128,12 @@ func TestMergeUserFiles_FileRemovedInNewTemplate(t *testing.T) {
 
 	// Don't create the destination file (simulating removal from template)
 
-	backups := []fileBackup{
-		{path: ".removed.json", data: []byte(userContent)},
+	backups := []updatemerge.FileBackup{
+		{Path: ".removed.json", Data: []byte(userContent)},
 	}
 
 	var out bytes.Buffer
-	if err := mergeUserFiles(tempDir, backups, &out); err != nil {
+	if err := updatemerge.MergeUserFiles(tempDir, backups, &out); err != nil {
 		t.Fatalf("mergeUserFiles: %v", err)
 	}
 
@@ -153,14 +155,14 @@ func TestMergeUserFiles_EdgeCases(t *testing.T) {
 
 	tests := []struct {
 		name    string
-		setup   func(t *testing.T, dir string) ([]fileBackup, string)
+		setup   func(t *testing.T, dir string) ([]updatemerge.FileBackup, string)
 		verify  func(t *testing.T, dir string, content string, output string)
 		wantErr bool
 	}{
 		{
 			name: "empty backup list",
-			setup: func(t *testing.T, dir string) ([]fileBackup, string) {
-				return []fileBackup{}, ""
+			setup: func(t *testing.T, dir string) ([]updatemerge.FileBackup, string) {
+				return []updatemerge.FileBackup{}, ""
 			},
 			verify: func(t *testing.T, dir string, content string, output string) {
 				if output != "" {
@@ -170,13 +172,13 @@ func TestMergeUserFiles_EdgeCases(t *testing.T) {
 		},
 		{
 			name: "identical content",
-			setup: func(t *testing.T, dir string) ([]fileBackup, string) {
+			setup: func(t *testing.T, dir string) ([]updatemerge.FileBackup, string) {
 				content := `{"same": "content"}`
 				destPath := filepath.Join(dir, ".merge-test.json")
 				if err := os.WriteFile(destPath, []byte(content), 0644); err != nil {
 					t.Fatal(err)
 				}
-				return []fileBackup{{path: ".merge-test.json", data: []byte(content)}}, destPath
+				return []updatemerge.FileBackup{{Path: ".merge-test.json", Data: []byte(content)}}, destPath
 			},
 			verify: func(t *testing.T, dir string, content string, output string) {
 				result, _ := os.ReadFile(content)
@@ -195,7 +197,7 @@ func TestMergeUserFiles_EdgeCases(t *testing.T) {
 			backups, targetPath := tt.setup(t, tempDir)
 
 			var out bytes.Buffer
-			err := mergeUserFiles(tempDir, backups, &out)
+			err := updatemerge.MergeUserFiles(tempDir, backups, &out)
 
 			if (err != nil) != tt.wantErr {
 				t.Errorf("mergeUserFiles() error = %v, wantErr %v", err, tt.wantErr)

@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"io/fs"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -22,7 +21,9 @@ import (
 	"github.com/modu-ai/moai-adk/internal/cli/update"
 	"github.com/modu-ai/moai-adk/internal/cli/update/backup"
 	"github.com/modu-ai/moai-adk/internal/cli/update/deploy"
+	updatemerge "github.com/modu-ai/moai-adk/internal/cli/update/merge"
 	"github.com/modu-ai/moai-adk/internal/cli/update/plan"
+	"github.com/modu-ai/moai-adk/internal/cli/update/report"
 	"github.com/modu-ai/moai-adk/internal/cli/wizard"
 	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/core/project"
@@ -44,12 +45,6 @@ import (
 // from the theme. Kept as a comment for historical reference; the migration
 // eliminated 22 "\r"-pair sites that previously caused trailing-character
 // corruption when short messages overwrote longer progress messages.
-
-// fileBackup holds a file path and its backed-up content for merging.
-type fileBackup struct {
-	path string
-	data []byte
-}
 
 var updateCmd = &cobra.Command{
 	Use:     "update",
@@ -423,22 +418,6 @@ func applyUpdateTierProfile(projectRoot, planTypeFlag string) error {
 	return nil
 }
 
-// emitHooksReviewGuidance writes the advisory /hooks review guidance line.
-//
-// Claude Code captures a snapshot of .claude/settings.json hooks at session
-// startup and uses that snapshot throughout the session. When `moai update`
-// re-renders the template (the "Template sync complete" branch), any running
-// CC session's snapshot is stale — new/changed hooks do not take effect until
-// the user reviews the /hooks menu or restarts Claude Code. This is ADVISORY
-// only (CC auto-warns on external modification); it is a stdout message, never
-// an interactive prompt (C-HRA-008 / REQ-PGN-012 subagent boundary).
-//
-// @MX:NOTE: [AUTO] Advisory /hooks review guidance (SPEC-HOOK-CONFIG-SAFETY-001).
-// @MX:SPEC: SPEC-HOOK-CONFIG-SAFETY-001
-func emitHooksReviewGuidance(w io.Writer) {
-	_, _ = fmt.Fprintln(w, "Hooks: running Claude Code sessions need a /hooks review (or a Claude Code restart) for new or changed hooks to take effect.")
-}
-
 // shouldSkipBinaryUpdate returns true when the binary update step should
 // be skipped. This happens in three cases:
 //  1. The --templates-only flag is set (update command only).
@@ -652,7 +631,7 @@ func runTemplateSyncWithReporter(cmd *cobra.Command, reporter project.ProgressRe
 	deployer := template.NewDeployerWithRendererAndForceUpdate(embedded, renderer, true)
 
 	// Analyze merge and get user confirmation
-	analysis := analyzeMergeChanges(deployer, projectRoot)
+	analysis := updatemerge.AnalyzeMergeChanges(deployer, projectRoot)
 
 	_, _ = fmt.Fprintln(out)
 	_, _ = fmt.Fprintln(out, tui.Section("Analyzing merge changes", tui.SectionOpts{Theme: &th}))
@@ -801,7 +780,7 @@ func runTemplateSyncWithReporter(cmd *cobra.Command, reporter project.ProgressRe
 	// Backup of user's .gitignore content for EntryMerge after deploy
 	var gitignoreBackup []byte
 	// Backups of mergeable files for 3-way merge after deploy
-	var mergeableBackups []fileBackup
+	var mergeableBackups []updatemerge.FileBackup
 
 	// collectMergeableFiles returns a list of files that should be merged
 	// using the 3-way merge engine during update.
@@ -893,7 +872,7 @@ func runTemplateSyncWithReporter(cmd *cobra.Command, reporter project.ProgressRe
 			for _, mf := range mergeableFiles {
 				mfPath := filepath.Join(projectRoot, mf)
 				if data, readErr := os.ReadFile(mfPath); readErr == nil {
-					mergeableBackups = append(mergeableBackups, fileBackup{path: mf, data: data})
+					mergeableBackups = append(mergeableBackups, updatemerge.FileBackup{Path: mf, Data: data})
 				}
 			}
 			if reporter != nil {
@@ -933,7 +912,7 @@ func runTemplateSyncWithReporter(cmd *cobra.Command, reporter project.ProgressRe
 			// Merge .gitignore: preserve user-added patterns via EntryMerge
 			if len(gitignoreBackup) > 0 {
 				gitignorePath := filepath.Join(projectRoot, ".gitignore")
-				if mergeErr := mergeGitignoreFile(gitignorePath, gitignoreBackup); mergeErr != nil {
+				if mergeErr := updatemerge.MergeGitignoreFile(gitignorePath, gitignoreBackup); mergeErr != nil {
 					_, _ = fmt.Fprintf(out, "  %s .gitignore merge warning: %v\n", uikit.SymWarning(), mergeErr)
 				} else {
 					_, _ = fmt.Fprintf(out, "  %s .gitignore user patterns preserved\n", uikit.SymSuccess())
@@ -941,7 +920,7 @@ func runTemplateSyncWithReporter(cmd *cobra.Command, reporter project.ProgressRe
 			}
 			// Merge user-customized files using 3-way merge engine
 			if len(mergeableBackups) > 0 {
-				if err := mergeUserFiles(projectRoot, mergeableBackups, out); err != nil {
+				if err := updatemerge.MergeUserFiles(projectRoot, mergeableBackups, out); err != nil {
 					_, _ = fmt.Fprintf(out, "  %s File merge warning: %v\n", uikit.SymWarning(), err)
 				}
 			}
@@ -966,7 +945,7 @@ func runTemplateSyncWithReporter(cmd *cobra.Command, reporter project.ProgressRe
 
 	_, _ = fmt.Fprintln(out)
 	_, _ = fmt.Fprintln(out, tui.Pill(tui.PillOpts{Kind: tui.PillOk, Solid: false, Label: "Template sync complete", Theme: &th}))
-	emitHooksReviewGuidance(out)
+	report.EmitHooksReviewGuidance(out)
 
 	_, _ = fmt.Fprintln(out)
 	_, _ = fmt.Fprintln(out, "To reconfigure project settings (development mode, git, model policy), run:")
@@ -1033,7 +1012,7 @@ func runTemplateSyncWithProgress(cmd *cobra.Command) (skipped bool, err error) {
 		}
 
 		deployer := template.NewDeployerWithForceUpdate(embedded, true)
-		analysis := analyzeMergeChanges(deployer, projectRoot)
+		analysis := updatemerge.AnalyzeMergeChanges(deployer, projectRoot)
 
 		_, _ = fmt.Fprintln(out)
 		_, _ = fmt.Fprintln(out, tui.Section("Analyzing merge changes", tui.SectionOpts{Theme: &th}))
@@ -1052,199 +1031,6 @@ func runTemplateSyncWithProgress(cmd *cobra.Command) (skipped bool, err error) {
 	return false, runTemplateSyncWithReporter(cmd, consoleReporter, true)
 }
 
-// mergeGitignoreFile reads the newly deployed .gitignore template and merges
-// user-specific patterns from the backup. Template content is kept as-is;
-// user-added lines (not present in the template) are appended under a
-// "User Custom Patterns" header.
-func mergeGitignoreFile(gitignorePath string, userBackup []byte) error {
-	templateContent, err := os.ReadFile(gitignorePath)
-	if err != nil {
-		return fmt.Errorf("read new .gitignore: %w", err)
-	}
-
-	// Build a set of non-blank, non-comment lines from the template
-	templateLines := strings.Split(string(templateContent), "\n")
-	templateSet := make(map[string]bool, len(templateLines))
-	for _, line := range templateLines {
-		trimmed := strings.TrimSpace(line)
-		if trimmed != "" && !strings.HasPrefix(trimmed, "#") {
-			templateSet[trimmed] = true
-		}
-	}
-
-	// Collect user-specific lines that are not in the new template
-	userLines := strings.Split(string(userBackup), "\n")
-	var userAdditions []string
-	for _, line := range userLines {
-		trimmed := strings.TrimSpace(line)
-		if trimmed == "" || strings.HasPrefix(trimmed, "#") {
-			continue
-		}
-		if !templateSet[trimmed] {
-			userAdditions = append(userAdditions, line)
-		}
-	}
-
-	if len(userAdditions) == 0 {
-		return nil // No user-specific patterns to preserve
-	}
-
-	// Append user additions to the template content
-	result := string(templateContent)
-	if !strings.HasSuffix(result, "\n") {
-		result += "\n"
-	}
-	result += "\n# User Custom Patterns (preserved by moai update)\n"
-	for _, line := range userAdditions {
-		result += line + "\n"
-	}
-
-	return os.WriteFile(gitignorePath, []byte(result), defs.FilePerm)
-}
-
-// mergeUserFiles performs 3-way merge for user-customized files after template deployment.
-// It uses the manifest's TemplateHash as the base, user's backed-up content as current,
-// and the newly deployed template as updated. This preserves user customizations while
-// incorporating template changes.
-func mergeUserFiles(projectRoot string, backups []fileBackup, out io.Writer) error {
-	// Load embedded templates to get original template content for base version
-	embedded, err := template.EmbeddedTemplates()
-	if err != nil {
-		return fmt.Errorf("load embedded templates: %w", err)
-	}
-
-	// Load manifest to get template hashes for base version
-	mgr := manifest.NewManager()
-	if _, loadErr := mgr.Load(projectRoot); loadErr != nil {
-		return fmt.Errorf("load manifest: %w", loadErr)
-	}
-
-	// Create merge engine
-	engine := merge.NewEngine()
-
-	var mergedCount int
-	for _, fb := range backups {
-		destPath := filepath.Join(projectRoot, fb.path)
-
-		// Read newly deployed file (updated version)
-		updatedContent, err := os.ReadFile(destPath)
-		if err != nil {
-			// File might not exist in new template version - keep user's version
-			if writeErr := os.WriteFile(destPath, fb.data, defs.FilePerm); writeErr != nil {
-				return fmt.Errorf("restore removed file %s: %w", fb.path, writeErr)
-			}
-			_, _ = fmt.Fprintf(out, "  %s %s preserved (removed in new template)\n", uikit.SymSuccess(), fb.path)
-			mergedCount++
-			continue
-		}
-
-		// Get original template content from embedded filesystem for base version
-		// Try both with and without leading dot
-		possiblePaths := []string{fb.path, strings.TrimPrefix(fb.path, ".")}
-		var baseContent []byte
-		for _, p := range possiblePaths {
-			if data, readErr := fs.ReadFile(embedded, p); readErr == nil {
-				baseContent = data
-				break
-			}
-		}
-
-		// Perform 3-way merge: base (original template), current (user's backup), updated (new template)
-		// If base is not available, treat as new file - preserve user content
-		if baseContent == nil {
-			// No base available - this might be a user-created file
-			// Prefer user's content but merge if compatible
-			if string(fb.data) == string(updatedContent) {
-				continue // No change needed
-			}
-			// Keep user's version as-is
-			if err := os.WriteFile(destPath, fb.data, defs.FilePerm); err != nil {
-				return fmt.Errorf("restore user file %s: %w", fb.path, err)
-			}
-			_, _ = fmt.Fprintf(out, "  %s %s user content preserved\n", uikit.SymSuccess(), fb.path)
-			mergedCount++
-			continue
-		}
-
-		// Use merge engine for proper 3-way merge
-		result, mergeErr := engine.MergeFile(context.Background(), fb.path, baseContent, fb.data, updatedContent)
-		if mergeErr != nil {
-			// Merge failed - preserve user's version
-			_, _ = fmt.Fprintf(out, "  %s %s merge failed, preserving user version: %v\n", uikit.SymWarning(), fb.path, mergeErr)
-			if err := os.WriteFile(destPath, fb.data, defs.FilePerm); err != nil {
-				return fmt.Errorf("preserve user file %s: %w", fb.path, err)
-			}
-			mergedCount++
-			continue
-		}
-
-		// Write merged result
-		if err := os.WriteFile(destPath, result.Content, defs.FilePerm); err != nil {
-			return fmt.Errorf("write merged file %s: %w", fb.path, err)
-		}
-
-		// Report merge status
-		if result.HasConflict {
-			_, _ = fmt.Fprintf(out, "  %s %s merged with conflicts (user version preferred)\n", uikit.SymWarning(), fb.path)
-		} else {
-			_, _ = fmt.Fprintf(out, "  %s %s user customizations preserved\n", uikit.SymSuccess(), fb.path)
-		}
-		mergedCount++
-	}
-
-	if mergedCount > 0 {
-		_, _ = fmt.Fprintf(out, "  %s Merged %d file(s) with 3-way merge engine\n", uikit.SymSuccess(), mergedCount)
-	}
-
-	return nil
-}
-
-// buildMergeAnalysis creates a summary from individual file analysis results.
-// It counts high/medium/low risk files, determines overall risk level,
-// identifies conflicts, and generates a human-readable summary.
-func buildMergeAnalysis(files []merge.FileAnalysis) merge.MergeAnalysis {
-	var highRisk, medRisk, lowRisk int
-	for _, f := range files {
-		switch f.RiskLevel {
-		case "high":
-			highRisk++
-		case "medium":
-			medRisk++
-		case "low":
-			lowRisk++
-		}
-	}
-
-	overallRisk := "low"
-	hasConflicts := false
-	if highRisk > 0 {
-		overallRisk = "high"
-		hasConflicts = true
-	} else if medRisk > 0 {
-		overallRisk = "medium"
-	}
-
-	summary := fmt.Sprintf("Found %d files to sync", len(files))
-	if highRisk > 0 {
-		summary += fmt.Sprintf(" (%d high-risk files)", highRisk)
-	}
-
-	return merge.MergeAnalysis{
-		Files:        files,
-		HasConflicts: hasConflicts,
-		SafeToMerge:  highRisk == 0,
-		Summary:      summary,
-		RiskLevel:    overallRisk,
-	}
-}
-
-// analyzeMergeChanges performs a quick analysis of template files that will be modified.
-// It evaluates risk levels based on file types and existing content:
-//   - High risk: CLAUDE.md, settings.json (core config files)
-//   - Medium risk: Existing files being updated
-//   - Low risk: New files being created
-//
-// Returns a MergeAnalysis with file-by-file risk assessment and recommended strategies.
 // toPreviewInputs maps a merge.MergeAnalysis into the neutral
 // update.FilePreviewInput slice consumed by the preview entry point (M3c
 // convergence, SPEC-CLI-TUX-V3-003 plan Known Issue #7). The Exists/Conflict
@@ -1294,12 +1080,6 @@ func confirmViaPreview(analysis merge.MergeAnalysis, projectRoot string) (bool, 
 			"rerun with --yes to auto-confirm in a non-TTY environment")
 	}
 	return update.PreviewClassification(toPreviewInputs(analysis, projectRoot), plan.IsUserOwnedNamespace, update.PreviewOptions{Interactive: true})
-}
-
-func analyzeMergeChanges(deployer template.Deployer, projectRoot string) merge.MergeAnalysis {
-	templates := deployer.ListTemplates()
-	files := plan.AnalyzeFiles(templates, projectRoot)
-	return buildMergeAnalysis(files)
 }
 
 // @MX:NOTE: [AUTO] runShellEnvConfig — M4-S4d-2 DDD migration. tui.Section header,

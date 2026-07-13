@@ -13,6 +13,7 @@ import (
 
 	"github.com/modu-ai/moai-adk/internal/cli/update/backup"
 	"github.com/modu-ai/moai-adk/internal/cli/update/deploy"
+	updatemerge "github.com/modu-ai/moai-adk/internal/cli/update/merge"
 	"github.com/modu-ai/moai-adk/internal/cli/update/plan"
 	"github.com/modu-ai/moai-adk/internal/template"
 	"github.com/modu-ai/moai-adk/internal/update"
@@ -2736,7 +2737,7 @@ func TestMergeGitignoreFile_PreservesUserPatterns(t *testing.T) {
 	// User's backup had template patterns PLUS custom patterns
 	userBackup := []byte("# Go\n*.exe\n*.test\n*.out\nvendor/\n\n# IDE\n.idea/\n.vscode/\n\n# My custom patterns\nmy-secret.txt\nbuild-output/\n.env.local\n")
 
-	if err := mergeGitignoreFile(gitignorePath, userBackup); err != nil {
+	if err := updatemerge.MergeGitignoreFile(gitignorePath, userBackup); err != nil {
 		t.Fatalf("mergeGitignoreFile failed: %v", err)
 	}
 
@@ -2783,7 +2784,7 @@ func TestMergeGitignoreFile_NoUserAdditions(t *testing.T) {
 
 	userBackup := []byte("*.exe\n*.test\nvendor/\n")
 
-	if err := mergeGitignoreFile(gitignorePath, userBackup); err != nil {
+	if err := updatemerge.MergeGitignoreFile(gitignorePath, userBackup); err != nil {
 		t.Fatalf("mergeGitignoreFile failed: %v", err)
 	}
 
@@ -2814,7 +2815,7 @@ func TestMergeGitignoreFile_EmptyBackup(t *testing.T) {
 	}
 
 	// Empty user backup — nothing to merge
-	if err := mergeGitignoreFile(gitignorePath, []byte("")); err != nil {
+	if err := updatemerge.MergeGitignoreFile(gitignorePath, []byte("")); err != nil {
 		t.Fatalf("mergeGitignoreFile failed: %v", err)
 	}
 
