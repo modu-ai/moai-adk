@@ -64,18 +64,26 @@ Default pipeline (`workflows/moai.md` Execution Summary) blocking rounds: Step 8
 
 ## §F — Contradiction Ledger (cross-lens; must be resolved consciously)
 
-1. **Step 1.5 independence vs snapshot reuse**: loop.md Step 1.5 exists to make success-exit evidence non-self-referential. Naive snapshot injection there would dissolve the loop's only independent check. Resolution: REQ-SNAP-009 carve-out (Step 1.5 never consumes same-run snapshots; may produce for downstream).
+1. **Step 1.5 independence vs snapshot reuse — including the gate-mediated path**: loop.md Step 1.5 exists to make success-exit evidence non-self-referential, and Step 1.5 is defined as "a fresh-context re-run of the diagnostic gate" (loop.md Step 1.5) — so once gate.md becomes a snapshot consumer (REQ-SNAP-005), the same-run Step-3 snapshot would flow back TRANSITIVELY through the gate layer (tree unchanged at success-exit ⇒ key still fresh). A loop-side carve-out sentence alone has no gate-side knob (plan-audit iter-1 D7). Resolution: REQ-SNAP-009 carve-out + the gate force-fresh mechanism — `/moai gate --fresh` disables all snapshot consumption, and Step 1.5 MUST invoke the gate with `--fresh` (pinned by AC-WCO-005 gate-side + AC-WCO-009 loop-side legs).
 2. **run.md "Phase 0.5 SKIP 불가" vs Tier S inversion**: resolved by precision — the audit still ALWAYS runs once for every tier; only the iterative re-execution loop is tiered (REQ-AUDIT-001 + plan.md Custom-3). The sentence must be amended, not deleted.
 3. **[HARD] delegation mandate vs Level-1 direct execution**: the mandate's rationale (specialization, quality gates) doesn't apply to deterministic formatter runs; the static-dispatch guard test constrains the edit shape (plan.md Custom-2).
 4. **VCI "no unobserved claim" vs reuse-without-re-running**: NOT a contradiction under §2 attribution — the snapshot IS the observed evidence (command + verbatim result), and the freshness key makes the attribution valid for the current tree. Stale reuse would be the violation; REQ-SNAP-003/011 close it.
 5. **Advisory-check discipline vs stop-goal key computation**: Stop-hook path must stay constant-cost/time-boxed; fallback is re-execution (plan.md Custom-1). The optimization may be skipped; correctness never is.
 
-## §G — Template-Mirror Verification (live measurement, 2026-07-13)
+## §G — Template-Mirror Verification (live measurement, 2026-07-13; corrected per plan-audit iter-1 D3)
 
-All 16 target doc files verified **MIRROR-BYTE-EQ** against `internal/template/templates/.claude/`: gate.md, moai.md, loop.md, fix.md, clean.md, codemaps.md, review.md, mx.md, feedback.md, harness-build-entry.md, project/codebase-analysis.md, project/doc-generation.md, run/task-decomposition.md, sync/quality-gates-context.md, SKILL.md, rules/moai/workflow/cache-aware-execution.md. Every doc edit in M1-M5 is therefore a local+template pair with `make build` re-verification (classification is time-varying — re-measure at run-phase entry, per the template-subset lesson).
+The **19-file edit-target inventory** (17 workflow + 2 agent; derived from plan.md §F milestones) was live-measured against `internal/template/templates/.claude/`:
 
-## §H — Open Questions (mirrored in plan.md §D)
+- **18 files MIRROR-BYTE-EQ** — workflow root: gate.md, moai.md, loop.md, fix.md, clean.md, codemaps.md, review.md, mx.md, feedback.md, harness-build-entry.md, run.md (11); workflow sub-dir: run/task-decomposition.md, run/phase-execution.md, sync/quality-gates-context.md, sync/delivery.md, project/codebase-analysis.md, project/doc-generation.md (6); agents: plan-auditor.md (1).
+- **1 file sanitized-divergent** — `agents/moai/sync-auditor.md`: exactly one content line differs (local `(SPEC-V3R2-HRN-003)` ↔ template `(HRN-003)`), a pre-existing §25 internal-SPEC-ID sanitization. This makes plain byte-parity unsatisfiable for agent files → the REQ-GUARD-004 split parity rule (byte-parity for workflow files, sanitized-parity for agent files).
+- **Cite-only, NOT edit targets** (removed from the earlier 16-file claim): `skills/moai/SKILL.md`, `rules/moai/workflow/cache-aware-execution.md`.
 
-1. [NEEDS CLARIFICATION: snapshot key — untracked-file participation] — see plan.md §D #1.
-2. [NEEDS CLARIFICATION: per-layer freshness TTL] — see plan.md §D #2.
-3. [NEEDS CLARIFICATION: stop-goal command-matching granularity] — see plan.md §D #3.
+Every doc edit in M1-M5 is a local+template pair with `make build` re-verification (classification is time-varying — re-measure at run-phase entry via the plan.md §C 19-file pre-flight loop, per the template-subset lesson).
+
+## §H — Open Questions (RESOLVED — plan-audit iter-1 D1, user decisions)
+
+All three plan-time open questions are resolved; zero `NEEDS CLARIFICATION` markers remain. Outcomes recorded in plan.md § Settled decisions:
+
+1. **Snapshot key**: HEAD SHA + `git status --porcelain=v2` output digest — untracked/unstaged changes invalidate (REQ-SNAP-002).
+2. **Freshness rule**: key-equality AND wall-clock TTL, default 10 minutes, configurable — both required (REQ-SNAP-003).
+3. **stop-goal matching**: exact byte-string match in M1; miss ⇒ existing re-execution; normalized check-id matching explicitly Out of Scope, M2+ candidate (REQ-SNAP-010 + spec.md §D).

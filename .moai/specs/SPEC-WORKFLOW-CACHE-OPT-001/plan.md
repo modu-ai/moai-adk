@@ -1,26 +1,27 @@
 # plan.md — SPEC-WORKFLOW-CACHE-OPT-001
 
-> Tier **L**. Go code (new snapshot engine + `internal/goal` integration + CLI verb) + 16 template-mirrored workflow/doctrine files + 5 axes. Shared findings: `./research.md`.
+> Tier **L**. Go code (new snapshot engine + `internal/goal` integration + CLI verb) + 19 template-mirrored doc files (17 workflow + 2 agent) + 5 axes. Shared findings: `./research.md`; M1 architecture: `./design.md`.
 >
-> **Tier rationale**: file_count ≥ 16 doc surfaces + new Go package + `cmd/moai` registration + `internal/goal` change → multi-domain (Go source, workflow skills, rules, template mirrors) with `thorough` harness per the Complexity Estimator (`file_count >= 10 AND domain_count >= 2 → thorough`). A tightly-scoped M was considered (M1-only Go + M2+ doc edits) but the gate-merging axis touches Kickoff-adjacent surfaces whose regression cost is high — Tier L's full A-E delegation template and thorough audit envelope are warranted.
+> **Tier rationale**: file_count = 19 doc surfaces + new Go package + `cmd/moai` registration + `internal/goal` change → multi-domain (Go source, workflow skills, agent files, template mirrors) with `thorough` harness per the Complexity Estimator (`file_count >= 10 AND domain_count >= 2 → thorough`). A tightly-scoped M was considered (M1-only Go + M2+ doc edits) but the gate-merging axis touches Kickoff-adjacent surfaces whose regression cost is high — Tier L's full A-E delegation template and thorough audit envelope are warranted. Tier L artifact set (5 files incl. design.md) satisfied per plan-audit iter-1 D9.
 
 Milestones are ordered by **decision reversibility** — the decisions most likely to change (data model, evaluator integration, user-facing gate flows) lead; mechanical doc edits trail.
 
 ## §A — Context
 
 - **Work location**: repo root `/Users/goos/MoAI/moai-adk-go`, branch `main` (Hybrid Trunk direct-push per git-workflow doctrine).
-- **SPEC artifacts**: `.moai/specs/SPEC-WORKFLOW-CACHE-OPT-001/{spec,plan,acceptance,progress,research}.md`.
+- **SPEC artifacts**: `.moai/specs/SPEC-WORKFLOW-CACHE-OPT-001/{spec,plan,acceptance,design,research,progress}.md` (Tier L 5-artifact set + progress skeleton).
 - **Existing infrastructure (EXTEND, do not rebuild)**:
   - `.moai/state/verify/<session>/` — gitignored per-session evidence log dirs already in active use (agent-common-protocol § Evidence persistence obligation). The snapshot artifact joins this namespace.
   - `internal/goal/` — goal engine (schema.go / evaluate.go / state.go / prune.go). `evaluate.go` `CmdRunner` re-executes Tier-1 mechanical condition commands each turn-end; `state.go` already implements atomic per-session JSON persistence (reuse the pattern for the snapshot store).
   - loop-verdict JSON (`loop.md` § Remaining-Issue Persistence) — seed shape for the snapshot `conditions` block.
   - `.moai/cache/loop-snapshots/` — best-effort, no mechanical writer; REQ-SNAP-008 gives loop diagnostics a mechanical writer in the shared schema (the cache dir stays as-is for resume snapshots).
-- **Target doc surfaces** (all verified MIRROR-BYTE-EQ against `internal/template/templates/` at plan time — every edit is a local+template pair):
-  - Axis 1: `workflows/gate.md`, `workflows/run/task-decomposition.md` (Phase 2.75), `workflows/sync/quality-gates-context.md` (Phase 0), `workflows/loop.md` (Steps 1/3/1.5)
-  - Axis 2: `workflows/moai.md` (Steps 11.3+11.5), `workflows/project/codebase-analysis.md` (Stage B), `workflows/harness-build-entry.md`, `workflows/feedback.md`
-  - Axis 3: `workflows/fix.md`, `workflows/loop.md` (Step 6), `workflows/codemaps.md`, `workflows/clean.md`, `workflows/mx.md`
-  - Axis 4: `workflows/run.md` + `workflows/run/phase-execution.md` (Tier S audit default), `workflows/project/doc-generation.md` (Phase 3.1 retry), auditor output contract surfaces (`.claude/agents/moai/plan-auditor.md`, `.claude/agents/moai/sync-auditor.md` — defect-list format)
+- **Target doc surfaces — 19-file edit-target inventory** (17 workflow + 2 agent; live-measured at plan time: 18 MIRROR-BYTE-EQ, `sync-auditor.md` sanitized-divergent by one line per D2/REQ-GUARD-004; every edit is a local+template pair):
+  - Axis 1: `workflows/gate.md` (+ `--fresh` mode per REQ-SNAP-005/009), `workflows/run/task-decomposition.md` (Phase 2.75), `workflows/sync/quality-gates-context.md` (Phase 0), `workflows/loop.md` (Steps 1/3/1.5)
+  - Axis 2: `workflows/moai.md` (Steps 11.3+11.5 + full-pipeline completion close), `workflows/sync/delivery.md` (Phase 4 "Completion and Next Steps" — REQ-GATE-004 second surface), `workflows/project/codebase-analysis.md` (Stage B), `workflows/harness-build-entry.md`, `workflows/feedback.md`
+  - Axis 3: `workflows/fix.md`, `workflows/loop.md` (Step 6), `workflows/codemaps.md`, `workflows/clean.md` (incl. Phase 5.5 orchestrator-direct pin), `workflows/mx.md`
+  - Axis 4: `workflows/run.md` + `workflows/run/phase-execution.md` (Tier S audit default), `workflows/project/doc-generation.md` (Phase 3.1 retry), auditor output contract surfaces (`.claude/agents/moai/plan-auditor.md`, `.claude/agents/moai/sync-auditor.md` — defect-list format; sanitized-parity class)
   - Axis 5: `workflows/loop.md` (Steps 5/6/7/7.5), `workflows/review.md` (Phase 2 + secrets scan)
+  - Unique-file roll-up (19): root workflows `gate, moai, loop, fix, clean, codemaps, review, mx, feedback, harness-build-entry, run` (11) + sub-dir `run/task-decomposition, run/phase-execution, sync/quality-gates-context, sync/delivery, project/codebase-analysis, project/doc-generation` (6) + agents `plan-auditor, sync-auditor` (2). Cite-only (NOT edit targets): `SKILL.md`, `rules/moai/workflow/cache-aware-execution.md`.
 - **Go surfaces**: new `internal/verify/` package (name provisional — see Settled Decisions), `cmd/moai` / `internal/cli` verb registration, `internal/goal/evaluate.go` snapshot-aware path + tests.
 
 ## §B — Known Issues (auto-injected, filtered to relevant categories)
@@ -46,9 +47,16 @@ git branch --show-current && git rev-parse HEAD
 go build ./... && GOOS=windows GOARCH=amd64 go build ./...
 golangci-lint run --timeout=2m 2>&1 | tail -5
 
-# 2. Template parity baseline for the 16 target files (must be byte-equal BEFORE edits)
-for f in gate.md moai.md loop.md fix.md clean.md codemaps.md review.md mx.md feedback.md harness-build-entry.md; do \
-  cmp -s .claude/skills/moai/workflows/$f internal/template/templates/.claude/skills/moai/workflows/$f && echo "EQ $f" || echo "DIFF $f"; done
+# 2. Template parity baseline for ALL 19 edit-target files
+#    (expected: 18 EQ; agents/moai/sync-auditor.md DIFF by exactly the documented §25 sanitized line)
+W=.claude/skills/moai/workflows; T=internal/template/templates/.claude
+for f in gate.md moai.md loop.md fix.md clean.md codemaps.md review.md mx.md feedback.md harness-build-entry.md run.md \
+         run/task-decomposition.md run/phase-execution.md sync/quality-gates-context.md sync/delivery.md \
+         project/codebase-analysis.md project/doc-generation.md; do \
+  cmp -s $W/$f $T/skills/moai/workflows/$f && echo "EQ $f" || echo "DIFF $f"; done
+for f in plan-auditor.md sync-auditor.md; do \
+  cmp -s .claude/agents/moai/$f $T/agents/moai/$f && echo "EQ agents/$f" || echo "DIFF agents/$f"; done
+diff .claude/agents/moai/sync-auditor.md $T/agents/moai/sync-auditor.md   # expect exactly the (SPEC-V3R2-HRN-003)↔(HRN-003) line
 
 # 3. Guard tests that constrain this SPEC's edits
 grep -rn "TestAgentlessUtilityNoLLMControlFlow" internal/ --include="*.go" -l
@@ -67,18 +75,19 @@ grep -rn "Retired\|superseded" internal/goal | head -5 || echo "no conflicts"
 - **Forbidden**: `git add -A` / `git add .`; `--no-verify`; force-push; committing `.moai/state/**` or `.moai/cache/**`; editing archived agent files; removing CI sentinels.
 - **Required**: Template-First pairing per milestone (local edit + `internal/template/templates/` mirror + `make build`); Conventional Commits with `🗿 MoAI` trailer; new Go package coverage ≥ 85%.
 
-### Open decisions — resolve before Implementation Kickoff Approval
-
-1. **[NEEDS CLARIFICATION: snapshot key — untracked-file participation]** Should untracked (non-ignored) files participate in the working-tree content hash? They affect test outcomes (a new untracked `_test.go` changes `go test` results), but hashing untracked content adds cost and edge cases (large untracked dirs). Options: (a) include untracked non-ignored paths+mtimes via `git status --porcelain=v2` digest (cheap, catches presence/rename, misses in-place content edits of untracked files), (b) full content hash including untracked (safest, slowest), (c) tracked-only (fastest, known false-fresh window). Recommendation: (a).
-2. **[NEEDS CLARIFICATION: per-layer freshness TTL]** Is key-equality alone sufficient (same tree ⇒ reuse regardless of age), or should a wall-clock TTL additionally bound reuse (flaky-test staleness, environment drift)? Options: (a) no TTL — pure key equality, (b) global TTL (e.g., 30 min), (c) per-layer TTL table (gate lenient / sync Phase 0 strict). The chosen rule becomes the REQ-SNAP-003 "layer's freshness-acceptance rule".
-3. **[NEEDS CLARIFICATION: stop-goal command-matching granularity]** REQ-SNAP-010 matches a Tier-1 condition to a snapshot entry — by exact command-string equality, or via a canonical check-id mapping (e.g., normalize `go test ./...` variants)? Exact-match is safe but low-hit-rate; normalization raises hit rate but risks false matches. Recommendation: exact-match in M1, normalization as follow-up.
-
 ### Settled decisions
 
+All clarification markers are resolved — zero `[NEEDS CLARIFICATION]` markers remain in plan.md/research.md.
+
+- **Snapshot key composition** (user decision, plan-audit iter-1 D1 #1): the key = HEAD commit SHA + digest of `git status --porcelain=v2` output. Untracked and unstaged changes invalidate the snapshot (porcelain v2 lists untracked non-ignored paths and all staged/unstaged deltas). Known accepted limitation: an in-place content edit to an already-listed untracked file that changes neither the porcelain line nor HEAD is outside the digest — recorded as Residual-risk in consumer reports, mitigated by the TTL bound below.
+- **Freshness rule** (user decision, plan-audit iter-1 D1 #2): reuse requires key-equality AND wall-clock TTL — `recorded_at` within TTL, default **10 minutes**, configurable. Both conditions necessary; either failing ⇒ stale ⇒ re-execute.
+- **stop-goal command matching** (user decision, plan-audit iter-1 D1 #3): exact byte-string match of the condition command in M1; on miss, fall back to the existing re-execution path unchanged. Normalized check-id matching is explicitly Out of Scope (spec.md §D; M2+ follow-up candidate).
 - **Package name**: `internal/verify` (mirrors the `.moai/state/verify/` namespace). If a name collision emerges at run-phase, `internal/diagsnap` is the fallback — record the change in progress.md §E.2.
 - **CLI surface**: `moai verify record` (stdin JSON or flag-driven single-check record) + `moai verify check --key-current [--check <id>]` (freshness query, exit 0 fresh / exit 1 stale). Registered in the root command tree — registration is a separately-pinned AC (cross-file reachability lesson).
+- **Gate force-fresh mode** (plan-audit iter-1 D7): `/moai gate --fresh` disables ALL snapshot consumption for that invocation (fresh executions still recorded). loop.md Step 1.5 MUST invoke the gate with `--fresh` — this closes the gate-mediated self-consumption path (REQ-SNAP-005/009).
 - **Snapshot file layout**: one JSON per key under `.moai/state/verify/snapshots/<key-prefix>.json`, atomic write via the `internal/goal/state.go` temp+rename pattern; single-checkout scope (multi-session sharing out of scope).
 - **Tier S inversion semantics**: audit ALWAYS runs once for every tier; Tier S removes only the iterative re-execution loop (PASS final on first pass; FAIL/INCONCLUSIVE halts + escalates as today).
+- **Agent-file parity model** (plan-audit iter-1 D2): workflow files = byte-parity; `.claude/agents/moai/*.md` = sanitized-parity (byte-equal after normalizing internal long-form SPEC-ID refs to sanitized short form; known instance: sync-auditor.md `(SPEC-V3R2-HRN-003)` ↔ `(HRN-003)`). Never copy internal SPEC IDs into the template (§25 neutrality CI guard).
 
 ## §E — Self-Verification (run-phase completion deliverables)
 
@@ -90,7 +99,7 @@ Per verification-claim-integrity §3 (Claim / Evidence / Baseline-attribution / 
 - **E4**: subagent-boundary grep (B3) → 0 matches.
 - **E5**: `golangci-lint run` — NEW issues 0 (baseline distinguished).
 - **E6**: per-milestone commit SHAs + push state.
-- **E7**: template parity sweep — all touched files byte-equal local vs template after `make build`.
+- **E7**: template parity sweep after `make build` — all touched workflow files byte-equal (`cmp -s`); touched agent files sanitized-parity (diff confined to the documented §25 SPEC-ID sanitization lines; verbatim diff output cited).
 
 ## §F — Milestones (decision-reversibility order)
 
@@ -98,10 +107,10 @@ Per verification-claim-integrity §3 (Claim / Evidence / Baseline-attribution / 
 
 The only milestone with Go code; highest change-likelihood decisions (schema, key, freshness, evaluator integration) land here for earliest review.
 
-1. `internal/verify/` package: schema (REQ-SNAP-001, loop-verdict-compatible `conditions` block), key computation (REQ-SNAP-002 + clarification #1 resolution), freshness check (REQ-SNAP-003 + clarification #2), atomic store. Table-driven tests incl. an E2E freshness test: record → same-tree reuse PASS → touch tracked file → stale detected.
+1. `internal/verify/` package: schema (REQ-SNAP-001, loop-verdict-compatible `conditions` block), key computation (REQ-SNAP-002 — HEAD SHA + porcelain-v2 digest), freshness check (REQ-SNAP-003 — key-equality AND 10-min-default configurable TTL), atomic store. Table-driven tests incl. an E2E freshness test: record → same-tree in-TTL reuse PASS → (a) touch tracked file → stale, (b) add untracked file → stale, (c) advance clock past TTL → stale. Full architecture: design.md.
 2. `moai verify` CLI verbs + root-tree registration + `--help` smoke.
-3. `internal/goal/evaluate.go`: snapshot-aware Tier-1 path (REQ-SNAP-010, clarification #3), time-boxed key computation with re-execution fallback (Custom-1), verdict payload attribution field; tests with fake runner proving (a) fresh-hit reuse, (b) stale re-execution, (c) deadline fallback.
-4. Doctrine injection: gate.md (REQ-SNAP-005 produce+consume), run/task-decomposition.md Phase 2.75 (REQ-SNAP-006), sync/quality-gates-context.md Phase 0 (REQ-SNAP-007), loop.md Steps 1/3 (REQ-SNAP-008) + Step 1.5 independence carve-out sentence (REQ-SNAP-009) + VCI attribution wording (REQ-SNAP-011).
+3. `internal/goal/evaluate.go`: snapshot-aware Tier-1 path (REQ-SNAP-010 — exact byte-string command match; miss ⇒ existing re-execution), time-boxed key computation with re-execution fallback (Custom-1), verdict payload attribution field; tests with fake runner proving (a) exact-match fresh-hit reuse (call-count 0), (b) stale/miss re-execution, (c) deadline fallback.
+4. Doctrine injection: gate.md (REQ-SNAP-005 produce+consume + `--fresh` force-fresh mode per D7), run/task-decomposition.md Phase 2.75 (REQ-SNAP-006), sync/quality-gates-context.md Phase 0 (REQ-SNAP-007), loop.md Steps 1/3 (REQ-SNAP-008) + Step 1.5 independence carve-out incl. the `gate --fresh` invocation (REQ-SNAP-009) + VCI attribution wording (REQ-SNAP-011).
 5. Template mirror + `make build` + full test suite.
 
 ### M2 — Gate merging (axis 2; user-facing flow decisions)
@@ -110,13 +119,13 @@ The only milestone with Go code; highest change-likelihood decisions (schema, ke
 2. project/codebase-analysis.md Stage B: one multi-question call for remaining axes (REQ-GATE-002); Stage B always-runs semantics untouched.
 3. harness-build-entry.md: proposal + approval single round (REQ-GATE-003).
 4. feedback.md: single 3-question round (REQ-GATE-005).
-5. moai.md + sync delivery surface: full-pipeline success closes with no manufactured next-step question (REQ-GATE-004); single-phase "(Recommended)" chain retained.
+5. Full-pipeline completion close on BOTH surfaces (REQ-GATE-004): moai.md completion step AND `workflows/sync/delivery.md` Phase 4 "Completion and Next Steps" — no manufactured next-step question on full-pipeline success; single-phase "(Recommended)" chain retained on both.
 6. Template mirror + build.
 
 ### M3 — Audit improvement (axis 4; protocol-shape decisions)
 
 1. run.md Quick Reference + run/phase-execution.md: Tier S single-pass default with precise wording (Custom-3; REQ-AUDIT-001).
-2. plan-auditor.md + sync-auditor.md output contract: structured defect-list on FAIL (REQ-AUDIT-002); orchestrator delta re-check flow documented in the owning workflow bodies; verdict authority sentence (REQ-AUDIT-004).
+2. plan-auditor.md + sync-auditor.md output contract: structured defect-list on FAIL (REQ-AUDIT-002); orchestrator delta re-check flow documented in the owning workflow bodies (`workflows/run/phase-execution.md` for plan-audit, `workflows/moai.md` Pipeline Gates for sync-audit); verdict authority sentence (REQ-AUDIT-004). Agent-file edits follow sanitized-parity (Settled Decisions).
 3. project/doc-generation.md Phase 3.1: retry cap 3 → 1 (REQ-AUDIT-003).
 4. Template mirror + build.
 
@@ -125,7 +134,7 @@ The only milestone with Go code; highest change-likelihood decisions (schema, ke
 1. fix.md Phase 3 + Execution Summary: Level-1 orchestrator-direct formatter path; delegation mandate re-scoped to Level 2+ (REQ-DELEG-001); keep static dispatch table shape (Custom-2, REQ-DELEG-006).
 2. loop.md Step 6: same exception (REQ-DELEG-002).
 3. codemaps.md: 3-spawn → ≤1-spawn restructure (REQ-DELEG-003).
-4. clean.md: 4-spawn → 2-spawn restructure (REQ-DELEG-004); approval + @MX:ANCHOR safety text preserved.
+4. clean.md: 4-spawn → 2-spawn restructure (REQ-DELEG-004); Phase 5.5 pinned orchestrator-direct (specialist alternative removed — worst case stays ≤2); approval + @MX:ANCHOR safety text preserved.
 5. mx.md: <5-item orchestrator-direct Pass 3 (REQ-DELEG-005).
 6. Template mirror + build.
 
@@ -145,13 +154,15 @@ The only milestone with Go code; highest change-likelihood decisions (schema, ke
 
 - **Self-referential success-exit**: loop Step 1.5 consuming the same run's snapshot (violates REQ-SNAP-009 — the exact failure mode the independent pass exists to prevent).
 - **Gate deletion disguised as merging**: removing the Kickoff question or making it conditional on plan-auditor score. Merging = one AskUserQuestion call carrying both questions; nothing else.
-- **TTL-less blind reuse across trees**: accepting a snapshot on partial key match ("HEAD same, tree probably same") — key equality is binary.
+- **Partial-freshness reuse**: accepting a snapshot on partial key match ("HEAD same, tree probably same") or past the TTL ("only 12 minutes old") — the freshness predicate is binary on BOTH legs (key equality AND in-TTL), per REQ-SNAP-003.
+- **Gate-mediated self-consumption**: loop Step 1.5 invoking `/moai gate` WITHOUT `--fresh`, letting the same-run snapshot flow back through the gate layer (D7; violates REQ-SNAP-009 transitively).
 - **Snapshot-as-permission**: citing a snapshot to skip a HUMAN GATE or hook. The snapshot replaces re-execution of a check, never an approval.
 - **Vacuous-grep ACs**: token-presence checks without reachability (CLI verb text present but unregistered; doctrine names an engine that doesn't build). Every consumer AC pairs doctrine text with the mechanical surface it invokes.
 - **Kitchen-sink commits**: `git add -A` absorbing parallel-session artifacts.
 
 ## §H — Cross-References
 
+- design.md (this dir) — M1 snapshot-contract architecture (schema, key, freshness, store, consumer wiring, force-fresh mechanism).
 - research.md (this dir) — duplication inventory with file:line anchors, contradiction ledger, existing-infra survey.
 - `.claude/rules/moai/workflow/cache-aware-execution.md` — Phase 1 doctrine (motivation; cite-only).
 - `.claude/rules/moai/core/verification-claim-integrity.md` §2/§3 — attribution rules REQ-SNAP-011 binds to.
