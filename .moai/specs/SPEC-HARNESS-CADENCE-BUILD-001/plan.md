@@ -1,7 +1,7 @@
 ---
 id: SPEC-HARNESS-CADENCE-BUILD-001
 version: "0.1.2"
-status: draft
+status: in-progress
 updated: 2026-07-13
 ---
 

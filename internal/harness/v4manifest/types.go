@@ -46,6 +46,36 @@ type Manifest struct {
 
 	// RunnerWorkflow is the Runner Workflow filename harness-<name>-run.js.
 	RunnerWorkflow string `json:"runner_workflow"`
+
+	// Schedule is the OPTIONAL recurring-schedule declaration. Nil means the
+	// harness is one-shot (user-initiated only) — the manifest is
+	// shape-identical to the pre-schedule baseline (omitempty: no empty/null
+	// key is emitted). When present, all three sub-fields are required and
+	// Mode MUST be the exact literal "discovery-only" (see Schedule godoc).
+	Schedule *Schedule `json:"schedule,omitempty"`
+}
+
+// Schedule declares an optional recurring schedule for a harness. Scheduled
+// runs execute in discovery-only mode: read-only analysis with findings
+// persisted to a queue surface — never commits, never pushes, never enters
+// run-phase. The Mode field is an explicit machine-checkable invariant
+// marker: it is declared verbatim in the manifest and never defaulted or
+// inferred by the decoder, so any future write-mode proposal fails
+// validation loudly instead of passing silently.
+type Schedule struct {
+	// Interval is the recurrence interval — a duration form ("30m"), a
+	// named cadence ("nightly"), or a cron expression ("0 3 * * *").
+	// Non-empty required.
+	Interval string `json:"interval"`
+
+	// Mechanism selects the scheduling mechanism: "loop" (native /loop,
+	// session-scoped — dies with the session) or "cron" (Cron tools,
+	// persistent across sessions).
+	Mechanism string `json:"mechanism"`
+
+	// Mode is the execution-mode invariant marker. MUST be the exact
+	// literal "discovery-only"; any other value is rejected by Validate.
+	Mode string `json:"mode"`
 }
 
 // Specialist is a single specialist role definition within the manifest

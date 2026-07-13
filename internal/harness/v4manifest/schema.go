@@ -73,6 +73,24 @@ var validModels = map[string]bool{
 	ModelOpus:    true,
 }
 
+// Schedule mechanisms. "loop" is the native /loop scheduler (session-scoped);
+// "cron" is the Cron tools registration (persistent across sessions).
+const (
+	MechanismLoop = "loop"
+	MechanismCron = "cron"
+)
+
+// validMechanisms is the closed set of the 2 schedule mechanisms.
+var validMechanisms = map[string]bool{
+	MechanismLoop: true,
+	MechanismCron: true,
+}
+
+// ScheduleModeDiscoveryOnly is the sole valid schedule mode literal.
+// Scheduled harness runs are discovery-only: read-only analysis, findings
+// persisted to a queue surface, no writes/commits/pushes, no run-phase entry.
+const ScheduleModeDiscoveryOnly = "discovery-only"
+
 // 6-pattern catalog (design §E). Patterns are selected/combined dynamically
 // by the PLAN phase; the selection is recorded in manifest.patterns.
 // AC-HV4-004b requires patterns[] entries to be from this catalog (no custom
