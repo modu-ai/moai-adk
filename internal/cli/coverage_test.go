@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"errors"
-	"fmt"
 	"io"
 	"os"
 	"path/filepath"
@@ -1139,37 +1138,6 @@ func setupMinimalConfig(t *testing.T, dir string) {
 	if err := os.WriteFile(
 		filepath.Join(sectionsDir, "quality.yaml"),
 		[]byte("constitution:\n  development_mode: ddd\n"),
-		0o644,
-	); err != nil {
-		t.Fatal(err)
-	}
-}
-
-// setupMinimalConfigWithMode creates a minimal .moai config with a specific mode.
-// Currently unused but kept for future test expansions.
-func setupMinimalConfigWithMode(t *testing.T, dir string, mode string) { //nolint:unused
-	t.Helper()
-	sectionsDir := filepath.Join(dir, ".moai", "config", "sections")
-	if err := os.MkdirAll(sectionsDir, 0o755); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.WriteFile(
-		filepath.Join(sectionsDir, "user.yaml"),
-		[]byte("user:\n  name: test\n"),
-		0o644,
-	); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.WriteFile(
-		filepath.Join(sectionsDir, "language.yaml"),
-		[]byte("language:\n  conversation_language: en\n"),
-		0o644,
-	); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.WriteFile(
-		filepath.Join(sectionsDir, "quality.yaml"),
-		fmt.Appendf(nil, "constitution:\n  development_mode: %s\n", mode),
 		0o644,
 	); err != nil {
 		t.Fatal(err)

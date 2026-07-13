@@ -97,22 +97,6 @@ func (f *fakeQueryTransport) simulateNotification(method string, params json.Raw
 	}
 }
 
-// callCount returns how many times a given LSP method was invoked.
-// Test helper for sibling tests added in follow-up PRs.
-//
-//nolint:unused // helper for follow-up coverage tests
-func (f *fakeQueryTransport) callCount(method string) int {
-	f.mu.Lock()
-	defer f.mu.Unlock()
-	n := 0
-	for _, m := range f.callLog {
-		if m == method {
-			n++
-		}
-	}
-	return n
-}
-
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------

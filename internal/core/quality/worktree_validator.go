@@ -47,21 +47,6 @@ func NewWorktreeValidator(gateFactory GateFactory, config QualityConfig, logger 
 	}, nil
 }
 
-// DefaultGateFactory creates a GateFactory that builds TrustGate instances
-// with the provided LSP client.
-func DefaultGateFactory(lsp LSPClient) GateFactory {
-	return func(config QualityConfig) Gate {
-		validators := []Validator{
-			NewTestedValidator(lsp, config.TestCoverageTarget, 0),
-			NewReadableValidator(lsp),
-		}
-		return NewTrustGate(config, validators,
-			WithPhase(PhaseRun),
-			WithLSPClient(lsp),
-		)
-	}
-}
-
 // Validate runs TRUST 5 quality gates for the specified worktree directory.
 func (v *worktreeValidator) Validate(ctx context.Context, wtPath string) (*Report, error) {
 	return v.ValidateWithConfig(ctx, wtPath, v.config)

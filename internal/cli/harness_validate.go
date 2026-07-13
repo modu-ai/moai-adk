@@ -4,7 +4,6 @@ package cli
 // REQ-HRN-001-006/010/012, AC-HRN-001-04/05/07.
 
 import (
-	"errors"
 	"fmt"
 	"os"
 
@@ -173,12 +172,4 @@ func parentDir(path string) string {
 		}
 	}
 	return path
-}
-
-// ValidateHarnessErrors is a helper that checks harness errors via errors.Is.
-// Used by tests.
-func ValidateHarnessErrors(err error) (isFloor, isDrift bool) {
-	isFloor = errors.Is(err, config.ErrPassThresholdFloor)
-	isDrift = errors.Is(err, config.ErrSchemaDrift)
-	return
 }

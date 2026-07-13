@@ -90,13 +90,6 @@ func WithIdleShutdownSeconds(seconds int) ManagerOption {
 	}
 }
 
-// WithManagerLogger sets the logger for the Manager.
-func WithManagerLogger(logger *slog.Logger) ManagerOption {
-	return func(m *Manager) {
-		m.logger = logger
-	}
-}
-
 // WithReaperInterval sets the tick interval of the reaper goroutine.
 // Used in tests to shorten the interval for fast idle detection.
 // Default: 30 seconds.

@@ -28,7 +28,7 @@ var validPrimitives = map[string]bool{
 
 // Isolation modes (design §C.2). Per-specialist, conditional (REQ-HV4-007).
 const (
-	IsolationNone    = "none"
+	IsolationNone     = "none"
 	IsolationWorktree = "worktree"
 )
 
@@ -96,12 +96,12 @@ const ScheduleModeDiscoveryOnly = "discovery-only"
 // AC-HV4-004b requires patterns[] entries to be from this catalog (no custom
 // patterns).
 const (
-	PatternPipeline                 = "Pipeline"
-	PatternFanOutFanIn              = "Fan-out/Fan-in"
-	PatternExpertPool               = "Expert Pool"
-	PatternProducerReviewer         = "Producer-Reviewer"
-	PatternSupervisor               = "Supervisor"
-	PatternHierarchicalDelegation   = "Hierarchical Delegation"
+	PatternPipeline               = "Pipeline"
+	PatternFanOutFanIn            = "Fan-out/Fan-in"
+	PatternExpertPool             = "Expert Pool"
+	PatternProducerReviewer       = "Producer-Reviewer"
+	PatternSupervisor             = "Supervisor"
+	PatternHierarchicalDelegation = "Hierarchical Delegation"
 )
 
 // validPatterns is the closed set of the 6-pattern catalog.
@@ -143,14 +143,6 @@ const (
 	TierBlue      Tier = "blue"      // 🔵 — moderate reasoning
 	TierLightBlue Tier = "lightblue" // 🩵 — light / narrow-scope
 )
-
-// validTiers is the closed set of the 4 tiers.
-var validTiers = map[Tier]bool{
-	TierRed:       true,
-	TierOrange:    true,
-	TierBlue:      true,
-	TierLightBlue: true,
-}
 
 // tierColors maps each tier to its render glyph (design.md §C/D). The UI
 // layer (moai-web agentfm, M5) renders the glyph as the color badge. An
@@ -267,10 +259,4 @@ func AllAgentTiers() map[string]Tier {
 		out[k] = v
 	}
 	return out
-}
-
-// IsValidTier reports whether t is one of the 4 closed-set tier values.
-// Useful for input validation at surfaces that accept a Tier literal.
-func IsValidTier(t Tier) bool {
-	return validTiers[t]
 }

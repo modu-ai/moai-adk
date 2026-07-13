@@ -136,66 +136,6 @@ func (r *Renderer) renderDefaultV3(data *StatusData) string {
 	return strings.Join(lines, "\n")
 }
 
-// renderFullV3 renders the full mode 5-line layout.
-//
-// L1: 🤖 Model │ 🔅 v2.1.50 │ 🗿 v2.8.0 │ ⏳ 2h 34m │ 💬 MoAI
-// L2: CW: 🪫 ████████████████████████████████████░░░░ 88%
-// L3: 5H: 🔋 ██████████████████░░░░░░░░░░░░░░░░░░░░░░ 45%
-// L4: 7D: 🪫 ████████████████████████████████░░░░░░░░ 82%
-// L5: 📁 moai-adk-go │ 🅱️ feat/auth ↑2↓1 │ 📊 +3 M2 ?1
-// nolint:unused // SPEC-V3R6-CI-BASELINE-DRIFT-001 §D.1 deferred (v3 statusline selector)
-func (r *Renderer) renderFullV3(data *StatusData) string {
-	var lines []string
-
-	// L1: model, Claude version, MoAI version, session time, output style (no prefix)
-	l1 := r.renderInfoLine(data, false)
-	if l1 != "" {
-		lines = append(lines, l1)
-	}
-
-	// L2: CW bar (40 blocks, standalone line)
-	cwPct := r.contextPercent(data)
-	if cwPct >= 0 {
-		lines = append(lines, renderUsageBar("CW:", cwPct, 40, r.noColor))
-	}
-
-	// L3: 5H bar (40 blocks, standalone line) with reset time - defaults to 0% when no data
-	// Prefer RateLimits (from Claude Code v2.1.80+ statusline JSON) over Usage (MoAI API call)
-	pct5H := 0
-	var reset5H string
-	if data.RateLimits != nil && data.RateLimits.FiveHour != nil {
-		pct5H = int(data.RateLimits.FiveHour.UsedPercentage)
-		reset5H = formatResetTimeRelative(data.RateLimits.FiveHour.ResetsAt)
-	} else if data.Usage != nil && data.Usage.Usage5H != nil {
-		pct5H = int(data.Usage.Usage5H.Percentage)
-		reset5H = formatResetTimeRelative(data.Usage.Usage5H.ResetsAt)
-	}
-	lines = append(lines, renderUsageBarWithReset("5H:", pct5H, 40, r.noColor, reset5H))
-
-	// L4: 7D bar (40 blocks, standalone line) with reset date - defaults to 0% when no data
-	pct7D := 0
-	var reset7D string
-	if data.RateLimits != nil && data.RateLimits.SevenDay != nil {
-		pct7D = int(data.RateLimits.SevenDay.UsedPercentage)
-		reset7D = formatResetTimeAbsolute(data.RateLimits.SevenDay.ResetsAt)
-	} else if data.Usage != nil && data.Usage.Usage7D != nil {
-		pct7D = int(data.Usage.Usage7D.Percentage)
-		reset7D = formatResetTimeAbsolute(data.Usage.Usage7D.ResetsAt)
-	}
-	lines = append(lines, renderUsageBarWithReset("7D:", pct7D, 40, r.noColor, reset7D))
-
-	// L5: directory, branch, git status
-	l5 := r.renderDirGitLine(data)
-	if l5 != "" {
-		lines = append(lines, l5)
-	}
-
-	if len(lines) == 0 {
-		return ""
-	}
-	return strings.Join(lines, "\n")
-}
-
 // ─────────────────────────────────────────────────────────────────────────────
 // Common line renderers
 // ─────────────────────────────────────────────────────────────────────────────
@@ -779,16 +719,6 @@ func parseResetTime(resetTime interface{}) time.Time {
 	default:
 		return time.Time{}
 	}
-}
-
-// contextPercent returns the context window usage percentage (0~100).
-// Returns -1 if unavailable or total budget is 0.
-// nolint:unused // SPEC-V3R6-CI-BASELINE-DRIFT-001 §D.1 deferred (v3 statusline selector)
-func (r *Renderer) contextPercent(data *StatusData) int {
-	if !data.Memory.Available || data.Memory.TokenBudget <= 0 {
-		return -1
-	}
-	return usagePercent(data.Memory.TokensUsed, data.Memory.TokenBudget)
 }
 
 // renderGitBranch renders the git branch string with optional ahead/behind suffix.
