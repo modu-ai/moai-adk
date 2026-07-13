@@ -246,7 +246,7 @@ milestones:
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-sync_commit_sha: pending-backfill-SPEC-WEBCONF-SIMPLIFY-001
+sync_commit_sha: af8e2fe00
 
 ## §F Phase 4 Mode Selection
 
