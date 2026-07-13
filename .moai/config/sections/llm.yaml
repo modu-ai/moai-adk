@@ -18,6 +18,34 @@ llm:
             opus: glm-5.2
             sonnet: glm-4.7
             haiku: glm-4.5-air
+        # ── GLM reasoning-effort mapping (documentation-only — the Go overlay at
+        #    internal/template/glm_effort_overlay.go is the runtime SSOT) ──
+        #
+        # z.ai does NOT implement Claude's 5-level effort vocabulary. The overlay
+        # collapses Claude effort onto z.ai's 3 reachable reasoning states:
+        #
+        #   thinking-off    thinking=disabled, reasoning_effort moot   ← Claude low
+        #   reasoning-high  thinking=enabled,  reasoning_effort=high   ← Claude medium/high
+        #   reasoning-max   thinking=enabled,  reasoning_effort=max    ← Claude xhigh/max
+        #
+        # Collapse table (5 Claude levels → 3 GLM states):
+        #   low      → thinking-off
+        #   medium   → reasoning-high
+        #   high     → reasoning-high
+        #   xhigh    → reasoning-max
+        #   max      → reasoning-max
+        #   (unrecognized → reasoning-max; totality clause — never under-reason)
+        #
+        # Coding-max override (z.ai "reasoning_effort: max for coding tasks"):
+        #   manager-develop forces reasoning-max regardless of its collapse result.
+        #   builder-harness was removed from the override set (SPEC-GLM-EFFORT-TUNE-001
+        #   P1) and now follows the standard collapse (high → reasoning-high).
+        #
+        # manager-git occupies the thinking-off tier (its Claude effort is low across
+        # all tiers → CollapseClaudeEffortToGLM("low") = thinking-off).
+        #
+        # Wire state: the overlay is implemented and wired; live validation of z.ai
+        # wire-effectiveness is pending (SPEC-MODEL-TIER-PLANTYPE-001 follow-up #1).
     default_model: ""
     quality_model: ""
     speed_model: ""
