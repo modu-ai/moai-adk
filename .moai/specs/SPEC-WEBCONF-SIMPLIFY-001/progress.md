@@ -114,6 +114,24 @@ M4 delivers (1) the per-option description rendering mechanism (REQ-WC-015, desi
 
 **Build evidence**: make build (templ + assets re-embedded) exit 0; go build exit 0; windows/amd64 cross-build exit 0; web/settings tests all PASS; golangci-lint 0 issues; C-HRA-008 boundary 0 matches.
 
+### M5 evidence (agentfm tier-badge UI redesign)
+
+M5 redesigns `agentFMRow` to render a display-only tier color badge per agent (REQ-WC-006, design.md §E) + tier-suggested model/effort defaults (REQ-WC-007) + per-option descriptions (REQ-WC-015). The badge comes from the M1 name-keyed lookup table (Option A — effort files untouched).
+
+**agentFMRow redesign (fieldsets.templ)**: `agentTierBadge(name, model, effort)` Go helper returns the badge (🔴🟠🔵🩵 from `v4manifest.TierColor(AgentTier(name))`; neutral "custom" when effort=max or model=inherit per EC-2/AC-WC-018). Rendered as `.agentfm-badge` span in the label with `data-i18n-title` tooltip. Model/effort `<select>`s mark the tier-suggested option with ★ when the agent's value is unset (design.md §D). Per-option `data-i18n-title` on every model/effort option (M4 mechanism).
+
+**parse/validate confirmed (REQ-WC-009, C-8)**: `parseAgentFMForm` already closed-set-validates model against `agentFMModelValues()` + effort against `agentFMEffortValues()` — no gap found; no strengthening needed.
+
+**D13 stale-comment sweep**: fieldsets.templ "7 sub-agent" → "20 sub-agent"; agentfm.go "8 retained agents" → "10 moai-custom agents" (+ "20 total").
+
+**en i18n + CSS**: fieldDesc.agentfm.{red,orange,blue,lightblue,custom} + fieldDesc.agentfm.model.{inherit,haiku,sonnet,opus} + fieldDesc.agentfm.effort.{low,medium,high,xhigh,max} added (en only — ko/ja/zh = M6). `.agentfm-badge` + `.agentfm-badge--custom` CSS.
+
+**M5 tests**: TestM5AgentTierBadgeAll20Agents (distribution 🔴×4/🟠×4/🔵×5/🩵×7), TestM5AgentTierBadgeCustomOverride (max/inherit → custom), TestM5AgentTierSuggestedMarkers (tier→suggested pair), TestM5AgentFMRenderBadgeAndSelects (render smoke). All PASS.
+
+**PRESERVE (C-7 / AC-WC-017)**: `grep -rn '^tier:' .claude/agents/moai/ .claude/agents/harness/` → 0 matches. 20 agent effort files untouched.
+
+**Build evidence**: make build (templ + assets re-embedded) exit 0; go build exit 0; windows/amd64 cross-build exit 0; web/settings tests all PASS; golangci-lint 0 issues; C-HRA-008 boundary 0 matches.
+
 ### Remaining ACs (pending their owning milestone)
 
 | AC ID | Owning milestone | Status |
@@ -121,15 +139,15 @@ M4 delivers (1) the per-option description rendering mechanism (REQ-WC-015, desi
 | AC-WC-001 / AC-WC-002 (6-tab render, removed tabs absent) | M3 | PASS (consoleTabs 6 entries; 11 removed tabs absent from render + route reclassified) |
 | AC-WC-003a / AC-WC-003b (config keys persist + ship from template) | M2 | PASS (M2 portion — keys present with baked values in `internal/template/templates/`) |
 | AC-WC-004 (quality_extras toggle on launch tab) | M4 | PASS (toggle renders on launch tab + persists via typed quality path) |
-| AC-WC-007 (tier-click auto-suggest writes via agentfm.Patch) | M5 | PENDING (backend accessor `TierSuggestedModelEffort` ready; UI wiring is M5) |
-| AC-WC-008 (closed-set validation) | M5 | PENDING (closed sets `V4EffortValues`/`V4ModelValues` already exist; validator wiring is M5) |
+| AC-WC-007 (tier-suggested model+effort defaults rendered) | M5 | PASS (★-marked suggested options from TierSuggestedModelEffort; per-agent override via existing agentfm.Patch) |
+| AC-WC-008 (model+effort individually overrideable) | M5 | PASS (both selects remain individually editable; tier suggestion is display-only) |
 | AC-WC-009 (deep doctrine preserved) | M8 | PENDING (no doctrine file touched in M1) |
 | AC-WC-010 / AC-WC-011 (atomic save, GLM carve-out) | M3 / M2 | PENDING |
 | AC-WC-012 (web/settings test fallout) | M7 | PENDING |
 | AC-WC-013 (4-locale i18n) | M6 | PENDING |
 | AC-WC-014 (make build — templ regenerate) | M5+ | PENDING (no templ edit in M1; `go build ./...` exit 0 confirms Go compile green) |
 | AC-WC-015 (template-neutrality CI guard) | M2 | PASS (M2 — `grep` 0 SPEC-ID matches in baked sections) |
-| AC-WC-018 (max/inherit neutral badge) | M5 | PENDING (UI layer; M1 table excludes sentinels per design.md §D) |
+| AC-WC-018 (max/inherit neutral badge) | M5 | PASS (agentTierBadge returns "custom" when effort=max or model=inherit) |
 | AC-WC-019 (full-suite regression `go test ./...`) | M9 | PENDING |
 | AC-WC-020 (render smoke) | M9 | PENDING |
 
@@ -140,9 +158,9 @@ M4 delivers (1) the per-option description rendering mechanism (REQ-WC-015, desi
 ```yaml
 run_status: in-progress
 run_complete_at: null   # pending — run-phase not complete (M3 of 9 milestones)
-run_commit_sha: 5f97d32fe   # latest run-phase commit (M4); M1=7b11d68bc, M2=e0061ad34, M3=cca120c70
+run_commit_sha: pending-backfill-m5   # latest run-phase commit (M5); M1=7b11d68bc, M2=e0061ad34, M3=cca120c70, M4=5f97d32fe
 m1_to_mN_commit_strategy: per-milestone commit + push to main (Route A — Hybrid Trunk 1-person OSS)
-ac_pass_count: 11         # M1 (005,006,016,017,021) + M2 (003a,003b,015) + M3 (001,002) + M4 (004) = 11 PASS; AC-WC-022/023/024 partial (en-only staging)
+ac_pass_count: 14         # M1(5) + M2(3) + M3(2) + M4(1) + M5(3: 007,008,018) = 14 PASS; AC-WC-022/023 partial (en-only staging)
 ac_fail_count: 0
 ac_pass_with_debt_count: 1   # M2 merge_method blocker (§D.Δ row 4 squash→Squash outside closed set) — debt, not fail
 preserve_list_post_run_count: 20   # Option A — all 20 agent .md files under .claude/agents/{moai,harness}/ untouched
@@ -179,7 +197,12 @@ milestones:
     acs: [AC-WC-004, AC-WC-024, AC-WC-022-partial, AC-WC-023-partial]
     status: PASS-WITH-DEBT
     debt: "AC-WC-022/023 (description mechanism) en-only — ko/ja/zh fieldDesc.* + agentfm descriptions + full Description population = M6"
-  M5: { status: pending, owner: agentfm-ui-redesign }
+  M5:
+    subject: "feat(SPEC-WEBCONF-SIMPLIFY-001): M5 agentfm tier-badge UI redesign + tier-suggested defaults"
+    sha: pending-backfill-m5
+    acs: [AC-WC-005, AC-WC-007, AC-WC-008, AC-WC-009, AC-WC-017, AC-WC-018]
+    status: PASS-WITH-DEBT
+    debt: "agentfm tier/model/effort description strings en-only — ko/ja/zh = M6"
   M6: { status: pending, owner: i18n-assets }
   M7: { status: pending, owner: test-fallout }
   M8: { status: pending, owner: docs-cleanup }

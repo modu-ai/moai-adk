@@ -37,6 +37,56 @@ func agentFMEffortValues() []string {
 	return []string{v4manifest.EffortLow, v4manifest.EffortMedium, v4manifest.EffortHigh, v4manifest.EffortXhigh, v4manifest.EffortMax}
 }
 
+// agentBadgeInfo carries the M5 tier-badge display data for one agent row
+// (SPEC-WEBCONF-SIMPLIFY-001 M5, REQ-WC-006/007/008, design.md §E).
+type agentBadgeInfo struct {
+	Glyph      string // emoji glyph (🔴🟠🔵🩵) or "custom" for the override-sentinel badge
+	TooltipKey string // fieldDesc.agentfm.<tier|custom> i18n key (M4 description mechanism)
+	HasBadge   bool   // false for unmapped agents (EC-6 — no badge rendered)
+	IsCustom   bool   // true when model=inherit or effort=max (EC-2 / AC-WC-018 neutral badge)
+}
+
+// agentTierBadge computes the display-only tier badge for an agent row. The badge
+// comes from the name-keyed lookup table (design.md §C — Option A, NOT from the
+// agent's effort file). When the agent's current model/effort is an override
+// sentinel (max/inherit), the badge is a neutral "custom" marker (EC-2, AC-WC-018).
+func agentTierBadge(name, model, effort string) agentBadgeInfo {
+	if effort == v4manifest.EffortMax || model == v4manifest.ModelInherit {
+		return agentBadgeInfo{Glyph: "custom", TooltipKey: "fieldDesc.agentfm.custom", HasBadge: true, IsCustom: true}
+	}
+	tier, ok := v4manifest.AgentTier(name)
+	if !ok {
+		return agentBadgeInfo{} // unmapped agent — no badge (EC-6)
+	}
+	return agentBadgeInfo{
+		Glyph:      v4manifest.TierColor(tier),
+		TooltipKey: "fieldDesc.agentfm." + string(tier),
+		HasBadge:   true,
+	}
+}
+
+// agentIsSuggestedModel reports whether m is the tier-suggested model for the
+// named agent (design.md §D). Used to mark the suggested option in the model
+// <select> when the agent's model is unset (empty=preserve sentinel).
+func agentIsSuggestedModel(name, m string) bool {
+	tier, ok := v4manifest.AgentTier(name)
+	if !ok {
+		return false
+	}
+	sm, _ := v4manifest.TierSuggestedModelEffort(tier)
+	return sm == m
+}
+
+// agentIsSuggestedEffort reports whether e is the tier-suggested effort.
+func agentIsSuggestedEffort(name, e string) bool {
+	tier, ok := v4manifest.AgentTier(name)
+	if !ok {
+		return false
+	}
+	_, se := v4manifest.TierSuggestedModelEffort(tier)
+	return se == e
+}
+
 // agentFMEdit는 agent 1종의 frontmatter 편집 제출이다.
 type agentFMEdit struct {
 	Agent        string
@@ -46,8 +96,8 @@ type agentFMEdit struct {
 }
 
 // agentDirsFor는 frontmatter 편집 대상 디렉터리 목록이다 (live 파일 전용).
-// 8 retained agents는 .claude/agents/moai/ 에, harness specialists는
-// .claude/agents/harness/ 에 위치한다 (namespace doctrine, CLAUDE.local.md §24).
+// 10 moai-custom agents는 .claude/agents/moai/ 에, 10 harness specialists는
+// .claude/agents/harness/ 에 위치한다 (20 total; namespace doctrine, CLAUDE.local.md §24).
 // M5-a B6 — 단일 디렉터리에서 다중 디렉터리 해상도로 확장.
 func agentDirsFor(projectRoot string) []string {
 	return []string{

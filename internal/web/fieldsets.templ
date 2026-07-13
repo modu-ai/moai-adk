@@ -379,7 +379,7 @@ templ schemaRawBlock(name, content, noteKey string) {
 // LLM 섹션에서 편집(교차 참조 노트), (b) role_profiles + (d) workflow_agents는
 // 제네릭 Agent Settings fieldset(SectionAgentSettings)이 렌더한다.
 
-// fieldsetAgentFrontmatter는 7개 sub-agent의 model/effort frontmatter 편집 표를
+// fieldsetAgentFrontmatter는 20개 sub-agent의 model/effort frontmatter 편집 표를
 // 렌더한다. 지속 경고("moai update가 덮어쓸 수 있음", REQ-WC11-028) + llm 교차
 // 참조 + dynamic-workflows taxonomy 참조(REQ-WC11-026)를 포함한다. effort의
 // "(absent)" 옵션은 키 삭제를 의미한다 (EC-7).
@@ -410,15 +410,22 @@ templ fieldsetAgentFrontmatter(view pageView) {
 templ agentFMRow(agent agentfm.AgentInfo, errs map[string]string) {
 	if agent.ParseOK {
 		<div class="field">
-			<span class="field__label"><code class="field__key">{ agent.Name }</code></span>
+			<span class="field__label">
+				if agentTierBadge(agent.Name, agent.Model, agent.Effort).HasBadge {
+					<span class={ "agentfm-badge", templ.KV("agentfm-badge--custom", agentTierBadge(agent.Name, agent.Model, agent.Effort).IsCustom) } data-i18n-title={ agentTierBadge(agent.Name, agent.Model, agent.Effort).TooltipKey }>{ agentTierBadge(agent.Name, agent.Model, agent.Effort).Glyph }</span>
+				}
+				<code class="field__key">{ agent.Name }</code>
+			</span>
 			<span class="select-wrap">
 				<select class="select" name={ "agentfm." + agent.Name + ".model" } id={ "agentfm." + agent.Name + ".model" }>
 					<option value="" selected data-i18n="agentfm.keep">(keep current)</option>
 					for _, m := range agentFMModelValues() {
 						if m == agent.Model {
-							<option value={ m }>{ m } ✓</option>
+							<option value={ m } data-i18n-title={ "fieldDesc.agentfm.model." + m }>{ m } ✓</option>
+						} else if agent.Model == "" && agentIsSuggestedModel(agent.Name, m) {
+							<option value={ m } data-i18n-title={ "fieldDesc.agentfm.model." + m }>{ m } ★</option>
 						} else {
-							<option value={ m }>{ m }</option>
+							<option value={ m } data-i18n-title={ "fieldDesc.agentfm.model." + m }>{ m }</option>
 						}
 					}
 				</select>
@@ -428,9 +435,11 @@ templ agentFMRow(agent agentfm.AgentInfo, errs map[string]string) {
 					<option value="" selected data-i18n="agentfm.keep">(keep current)</option>
 					for _, e := range agentFMEffortValues() {
 						if agent.EffortPresent && e == agent.Effort {
-							<option value={ e }>{ e } ✓</option>
+							<option value={ e } data-i18n-title={ "fieldDesc.agentfm.effort." + e }>{ e } ✓</option>
+						} else if !agent.EffortPresent && agentIsSuggestedEffort(agent.Name, e) {
+							<option value={ e } data-i18n-title={ "fieldDesc.agentfm.effort." + e }>{ e } ★</option>
 						} else {
-							<option value={ e }>{ e }</option>
+							<option value={ e } data-i18n-title={ "fieldDesc.agentfm.effort." + e }>{ e }</option>
 						}
 					}
 					if agent.EffortPresent {
