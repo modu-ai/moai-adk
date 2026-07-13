@@ -79,7 +79,7 @@ Phase 0.95 Mode Selection: orchestrator autonomous decision over the 6-mode cata
 
 **Harness levels**: `minimal` → skip optional phases | `standard` → all phases | `thorough` → GAN-loop Sprint Contract Protocol + sync-auditor
 
-**Phase 0.5 (Plan Audit Gate)**: 모든 harness level에서 SKIP 불가. SPEC plan 아티팩트 독립 감사 필수.
+**Phase 0.5 (Plan Audit Gate)**: 모든 harness level에서 SKIP 불가. SPEC plan 아티팩트 독립 감사 필수. The audit always runs (once) for every tier — Tier S changes only the re-run loop, never whether the audit runs: for Tier S SPECs the gate applies a single audit pass by default (the iterative verdict re-execution loop defaults OFF; a PASS verdict is final without a score-threshold re-run, while FAIL/INCONCLUSIVE still halts and escalates as today). Tier M/L iterative audit behavior is unchanged. See `workflows/run/phase-execution.md` § Tier S Single-Audit-Pass Default.
 
 **Worktree path rules**: [HARD] 모든 에이전트 프롬프트에 절대 경로 금지. project-root-relative 경로 사용.
 

@@ -76,14 +76,16 @@ Overall Verdict: PASS | FAIL
 | Craft (20%) | {n}/100 | PASS/FAIL/UNVERIFIED | {evidence} |
 | Consistency (15%) | {n}/100 | PASS/FAIL/UNVERIFIED | {evidence} |
 
-### Findings
-- [{severity}] {file}:{line} - {description}
+### Findings (structured defect-list)
+- {finding id F1..Fn} [{severity}] {file}:{line} - {description} - Required fix: {concrete, actionable fix instruction}
 
 ### Recommendations
 - {actionable fix suggestion}
 ```
 
 At the finding stage, report every issue you find, including ones you are uncertain about or consider low-severity, each with a confidence level and an estimated severity. Do not filter for importance or confidence while finding — the verdict stage (must-pass thresholds + harmonic scoring) does the filtering downstream. The goal at this stage is coverage: surfacing a finding that later gets filtered out is preferable to silently dropping a real bug.
+
+On a FAIL verdict, the Findings list above is the structured defect-list (finding id / file+location / severity / required fix) the orchestrator consumes: fixes are routed directly from it, and the confirming re-audit is scoped to the enumerated defect delta rather than a from-scratch full re-audit — within the existing iteration ceilings. Verdict authority stays with this agent: the delta scope reduces re-audit cost, and it never substitutes an orchestrator self-assessment for an auditor verdict.
 
 ## Evaluator Profile Loading
 

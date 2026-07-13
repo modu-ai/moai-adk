@@ -405,11 +405,12 @@ Overall Score: {0.0-1.0}
 | Testability | {score} | {0.25/0.50/0.75/1.0 band} | {line citations} |
 | Traceability | {score} | {0.25/0.50/0.75/1.0 band} | {line citations} |
 
-## Defects Found
-D1. spec.md:L{N} — {description} — Severity: critical | major | minor
-D2. spec.md:L{N} — {description} — Severity: critical | major | minor
+## Defects Found (structured defect-list)
+D1. {finding id} — {artifact/file}:L{N} — {description} — Severity: critical | major | minor — Required fix: {concrete, actionable fix instruction}
+D2. {finding id} — {artifact/file}:L{N} — {description} — Severity: critical | major | minor — Required fix: {concrete, actionable fix instruction}
 ...
 (If no defects found: "No defects found — see Chain-of-Verification Pass for confirmation.")
+(On a FAIL verdict this defect-list is the machine-consumable fix route: the orchestrator routes fixes directly from it, and the confirming re-audit is scoped to this enumerated defect delta rather than a from-scratch full re-audit — within the Retry Loop Contract ceilings. Verdict authority stays with this agent: the delta scope reduces re-audit cost, and it never substitutes an orchestrator self-assessment for an auditor verdict.)
 
 ## Chain-of-Verification Pass
 Second-look findings: {new defects discovered} | {none — first pass was thorough, verified by re-reading sections: {list}}
