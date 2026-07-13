@@ -45,7 +45,18 @@ m1_to_mN_commit_strategy: "2 commits direct to main (Hybrid Trunk Tier S): 31c5b
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase — owned by manager-docs>_
+```yaml
+sync_complete_at: 2026-07-13
+sync_commit_sha: PENDING-BACKFILL  # backfilled in a follow-up commit per established placeholder-backfill pattern
+sync_status: all-green
+ac_pass_count: 4  # matches spec.md §3 SSOT AC-DP-001..004 (grep -c '^### AC-DP-' spec.md → 4)
+changelog_entry_position: 1  # first entry under [Unreleased] > ### Added (verified: grep -c 'SPEC-DOCTOR-PROMOTION-001' CHANGELOG.md → 0 pre-emission, 1 post-emission)
+frontmatter_status_transitions:
+  spec_md: "in-progress -> implemented -> completed (merged 3-phase close on this sync commit)"
+b12_self_test_a: "grep -c 'SPEC-DOCTOR-PROMOTION-001' CHANGELOG.md (pre-emission) -> 0, halt-not-triggered"
+b12_self_test_b: "grep -cE '^### AC-DP-' spec.md -> 4; CHANGELOG entry references 4/4 AC PASS -> match"
+b12_self_test_c: "ls internal/cli/doctor.go internal/cli/doctor_promotion_test.go -> both exist, verified before CHANGELOG claim"
+```
 
 ## §F Phase 0.95 Mode Selection
 

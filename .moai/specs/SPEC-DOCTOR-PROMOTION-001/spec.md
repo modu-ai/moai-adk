@@ -1,8 +1,8 @@
 ---
 id: SPEC-DOCTOR-PROMOTION-001
 title: "Doctor detection of plugin-deployed marker with promotion suggestion"
-version: "0.1.1"
-status: in-progress
+version: "0.1.2"
+status: completed
 created: 2026-07-13
 updated: 2026-07-13
 author: manager-spec
@@ -22,6 +22,7 @@ tier: S
 |---------|------|--------|---------|
 | 0.1.0 | 2026-07-13 | manager-spec | Initial draft — Tier S plan-phase artifact set (spec.md + plan.md, acceptance criteria inline in §3) |
 | 0.1.1 | 2026-07-13 | manager-spec | Plan-audit hardening — D1: anti-vacuous AC-DP-001 gate (grep for test func AND-ed with go test -run) |
+| 0.1.2 | 2026-07-13 | manager-docs | Sync-phase close — CHANGELOG entry, progress.md §E.4, status in-progress → implemented → completed (merged 3-phase close) |
 
 ## §1 Context and Motivation
 
