@@ -328,7 +328,7 @@ per-language guidance, and `.claude/rules/moai/development/coding-standards.md`
 |--------|-------|-----------------|------------------------|
 | `moai-foundation-*` / `moai-workflow-*` / `moai-domain-*` / `moai-ref-*` / `moai-meta-*` | core framework + workflow + domain + reference | template | **delete then reinstall** (overwrite) |
 | `moai-harness-*` | **harness builder/lifecycle** (currently only `moai-harness-learner`; `moai-meta-harness` is a deprecated legacy-redirect) | template | **delete then reinstall** (overwrite) |
-| **`harness-*`** | **user-generated** — created by the v4 harness Builder (`builder-harness` agent via `/moai harness`) | user project | **NEVER delete/modify + preserve backup** (Go enforcement recognizes `harness-*` + `my-harness-*` legacy dual-recognition) |
+| **`hns-*`** | **user-generated** — created by the v4 harness Builder (`builder-harness` agent via `/moai harness`) | user project | **NEVER delete/modify + preserve backup** (Go enforcement recognizes canonical `hns-*` plus the legacy `harness-*` and `my-harness-*` generations — tri-generation recognition) |
 
 ### Deprecated Skill Slots (split into three independent harnesses)
 
@@ -345,11 +345,11 @@ Each split harness preserves the structural fidelity of its workflow body. Routi
 ### Rules
 
 - [HARD] The `moai-*` namespace (all prefixes) is template-distributed. If the user modifies it directly, the next `moai update` overwrites it — user customizations are lost.
-- [HARD] The `harness-*` namespace is user-owned. `moai update` MUST NOT delete, modify, or sync skills in this namespace. Backup is mandatory.
-- [HARD] Per-project domain skills emitted by the v4 harness Builder (`builder-harness` agent via `/moai harness`) MUST use the **`harness-*` prefix only**. Emitting under `moai-harness-*` or any other `moai-*` prefix violates the contract. (The legacy `moai-meta-harness` skill is deprecated and only redirects to the v4 Builder.)
+- [HARD] The `hns-*` namespace is user-owned, as are the legacy `harness-*` and `my-harness-*` generations. `moai update` MUST NOT delete, modify, or sync skills in these namespaces. Backup is mandatory.
+- [HARD] Per-project domain skills emitted by the v4 harness Builder (`builder-harness` agent via `/moai harness`) MUST use the **`hns-*` prefix only**. Emitting under `moai-harness-*` or any other `moai-*` prefix violates the contract. (The legacy `moai-meta-harness` skill is deprecated and only redirects to the v4 Builder.)
 - [HARD] Do NOT mistake the `moai-harness-*` namespace for per-project artifacts — this namespace is framework-builder-only and currently comprises `moai-harness-learner` (with the deprecated legacy-redirect `moai-meta-harness`).
-- [HARD] Distinguish `harness-*` (user-owned) vs `moai-harness-*` (template builder) as substrings: prefix matching MUST use an exact startsWith comparison; the `*harness-*` substring pattern is prohibited due to false-positive risk.
-- [HARD] CI guard: a leak of `internal/template/templates/.claude/skills/harness-*` MUST fail lint (the `TestNamespaceLeakHarnessSkills` sentinel detects the `harness-` pattern).
+- [HARD] Distinguish `hns-*` / legacy `harness-*` (user-owned) vs `moai-harness-*` (template builder) as substrings: prefix matching MUST use an exact startsWith comparison; the `*harness-*` substring pattern is prohibited due to false-positive risk.
+- [HARD] CI guard: a leak of `internal/template/templates/.claude/skills/hns-*` or `internal/template/templates/.claude/skills/harness-*` MUST fail lint (the namespace-leak sentinel detects both the `hns-` and `harness-` patterns).
 
 ### Cross-References
 

@@ -140,4 +140,4 @@ The 5-Layer Safety Pipeline (L1 Frozen Guard → L2 Canary Check → L3 Contradi
 - `.claude/skills/moai-*/**`
 - `.claude/rules/moai/**`
 
-Only user-area skills (`.claude/skills/harness-*/`) and agents (`.claude/agents/harness/`) are valid auto-update targets.
+Only user-area skills (`.claude/skills/hns-*/`, plus legacy `.claude/skills/harness-*/` and `.claude/skills/my-harness-*/` generations) and agents (`.claude/agents/harness/`) are valid auto-update targets.

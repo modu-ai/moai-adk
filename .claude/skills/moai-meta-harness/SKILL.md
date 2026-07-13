@@ -46,7 +46,7 @@ progressive_disclosure:
 > - An **orchestrator-direct 4-phase Builder** (ANALYZE -> PLAN -> GENERATE ->
 >   ACTIVATE) that holds the plan in Claude's session context and can call
 >   AskUserQuestion at the PLAN->GENERATE approval gate (first-class boundary).
-> - A **manifest-driven dynamic-workflow Runner** (`harness-<name>-run.js`) that
+> - A **manifest-driven dynamic-workflow Runner** (`hns-<name>-run.js`) that
 >   reads `manifest.json` and dispatches specialists per their declared
 >   `primitive` (sub-agent / dynamic-workflow / worktree / /goal /
 >   adversarial-fan-out) — no heuristic re-derivation.

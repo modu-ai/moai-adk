@@ -70,7 +70,7 @@ exists, then verifies all five with the smoke gate (7.3):
 
 | Layer | Mechanism | Owner |
 |-------|-----------|-------|
-| L1 | `harness-*` skill frontmatter triggers (paths / keywords / agents / phases) | Phase 5/6 (generation) |
+| L1 | `hns-*` skill frontmatter triggers (paths / keywords / agents / phases) | Phase 5/6 (generation) |
 | L2 | `.moai/config/sections/workflow.yaml` `harness:` section | Phase 5/6 (generation) |
 | L3 | `CLAUDE.md` `<!-- moai:harness-start -->` ~ `<!-- moai:harness-end -->` marker block | **Phase 7 (install)** |
 | L4 | `.claude/skills/moai/workflows/{plan,run,sync,design}.md` static `@.moai/harness/` import line | Phase 5/6 (already present in workflow files) |
@@ -111,8 +111,9 @@ incomplete — covering:
 - CLAUDE.md does not contain exactly one paired
   `<!-- moai:harness-start -->` / `<!-- moai:harness-end -->` block (L3 marker).
 - a generated `.claude/agents/harness/*.md` agent has an empty `description`.
-- a generated agent's `skills:` preload references a `harness-*` skill
-  directory that does not exist on disk (dangling skill reference).
+- a generated agent's `skills:` preload references a `hns-*` (or legacy
+  `harness-*`) skill directory that does not exist on disk (dangling skill
+  reference).
 - a generated agent OMITS the `skills:` frontmatter key entirely (the runtime
   enforcement of the `skills:` preload emission contract — a `skills:`-less agent
   would otherwise pass silently and reproduce the auto-discovery failure mode

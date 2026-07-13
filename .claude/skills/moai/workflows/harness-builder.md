@@ -34,7 +34,7 @@ Purpose: This module documents the **Builder**, the orchestrator-direct processi
 
 The Builder is **orchestrator-side logic**. It is NOT a dynamic-workflow script and it is NOT a separate subagent. The orchestrator runs the 4 phases using ordinary `Agent()` spawn; intermediate results are held in the orchestrator's session context (the plan lives in Claude's context, NOT in a script). This is what makes the PLAN→GENERATE approval gate first-class: because the orchestrator holds the boundary directly, `AskUserQuestion` is available at that stage boundary.
 
-> **Architecture note (orchestrator-direct pivot).** An earlier design specified the Builder as a Claude Code dynamic-workflow script. That design was superseded because a dynamic-workflow script cannot call `AskUserQuestion` mid-run, which made the PLAN→GENERATE approval gate unreachable. Orchestrator-direct processing resolves the contradiction. The **Runner** (`harness-<name>-run.js`) STAYS a dynamic-workflow script — execution runs INSIDE the generated `/harness:<name>` command. Only the Builder (creation) is orchestrator-direct.
+> **Architecture note (orchestrator-direct pivot).** An earlier design specified the Builder as a Claude Code dynamic-workflow script. That design was superseded because a dynamic-workflow script cannot call `AskUserQuestion` mid-run, which made the PLAN→GENERATE approval gate unreachable. Orchestrator-direct processing resolves the contradiction. The **Runner** (`hns-<name>-run.js`) STAYS a dynamic-workflow script — execution runs INSIDE the generated `/harness:<name>` command. Only the Builder (creation) is orchestrator-direct.
 
 ## Authoritative Sources
 
@@ -212,7 +212,7 @@ NO mandatory top-level worktree wraps the Builder or Runner. `Agent(isolation:"w
 
 ## GENERATE Output Contract (5 base artifact types + mandatory verify skill + optional artifact 7)
 
-The GENERATE phase emits 5 base artifact types PLUS a **mandatory** `harness-<name>-verify` companion skill (artifact 6, § Artifact 6 below), plus an OPTIONAL MCP fragment (artifact 7, § Artifact 7 below) emitted only when the harness PLAN declares an MCP need. This contract is the handoff spec M3 (manifest + Runner engine) and M4 (command generation + lifecycle) consume. Each artifact has a fixed location and a content contract.
+The GENERATE phase emits 5 base artifact types PLUS a **mandatory** `hns-<name>-verify` companion skill (artifact 6, § Artifact 6 below), plus an OPTIONAL MCP fragment (artifact 7, § Artifact 7 below) emitted only when the harness PLAN declares an MCP need. This contract is the handoff spec M3 (manifest + Runner engine) and M4 (command generation + lifecycle) consume. Each artifact has a fixed location and a content contract.
 
 ### Artifact 1 — Thin-wrapper entry command
 
@@ -222,11 +222,11 @@ The GENERATE phase emits 5 base artifact types PLUS a **mandatory** `harness-<na
 
 - YAML frontmatter: `description` (one-sentence), `argument-hint`, `allowed-tools: Skill`.
 - Body: a thin routing wrapper (under 20 LOC) that dispatches to the harness's Runner Workflow. No workflow logic inline.
-- The command MUST reference the Runner Workflow filename (`harness-<name>-run.js`).
+- The command MUST reference the Runner Workflow filename (`hns-<name>-run.js`).
 
 ### Artifact 2 — Runner Workflow
 
-**Path**: `.claude/workflows/harness-<name>-run.js`
+**Path**: `.claude/workflows/hns-<name>-run.js`
 **Purpose**: the dynamic-workflow script that consumes `manifest.json` and dispatches specialists per their declared `primitive`.
 **Content contract**:
 
@@ -238,7 +238,7 @@ The GENERATE phase emits 5 base artifact types PLUS a **mandatory** `harness-<na
 
 ### Artifact 3 — Specialist sub-agent definitions
 
-**Path**: `.claude/agents/harness/harness-<name>-*-specialist.md`
+**Path**: `.claude/agents/harness/hns-<name>-*-specialist.md`
 **Purpose**: one sub-agent definition per specialist role.
 **Content contract**:
 
@@ -260,13 +260,13 @@ Before any file/code work, read the relevant companion SKILL.md.
 
 ### Artifact 4 — Companion Progressive-Disclosure skills
 
-**Path**: `.claude/skills/harness-<name>-*/SKILL.md`
+**Path**: `.claude/skills/hns-<name>-*/SKILL.md`
 **Purpose**: companion skills that carry domain-specific guidance the specialists and the Runner reference.
 **Content contract**:
 
 - YAML frontmatter per the skill-authoring schema (description, paths, metadata, triggers).
 - Body: progressive-disclosure structure (Quick Reference / Implementation Guide / Advanced) per skill-writing-craft.
-- The skill namespace is `harness-<name>-*` (user-owned per the Skills Namespace Policy — `moai update` preserves it).
+- The skill namespace is `hns-<name>-*` (user-owned per the Skills Namespace Policy — `moai update` preserves it).
 
 ### Artifact 5 — manifest.json (the SSOT)
 
@@ -274,25 +274,25 @@ Before any file/code work, read the relevant companion SKILL.md.
 **Purpose**: the single source of truth the Runner reads for its dispatch logic.
 **Content contract** (8 top-level fields, per the canonical manifest schema):
 
-- `name` — the harness name (kebab-case, DNS-safe, matches `/harness:<name>` and `harness-<name>-run.js`).
+- `name` — the harness name (kebab-case, DNS-safe, matches `/harness:<name>` and `hns-<name>-run.js`).
 - `domain` — short human-readable domain description.
 - `source_request` — the original natural-language request verbatim (carried from the entry workflow's confirmed profile).
 - `patterns` — array of pattern names from the 6-pattern catalog (≥1 entry).
 - `specialists` — non-empty array of specialist objects, each with `role`, `primitive`, `isolation`, `effort`, `model`.
 - `sprint_contract` — object with `dimensions` (array) and `thresholds` (map).
 - `entry_command` — the `/harness:<name>` string.
-- `runner_workflow` — the `harness-<name>-run.js` filename.
+- `runner_workflow` — the `hns-<name>-run.js` filename.
 
 The manifest is validated against the canonical schema before GENERATE completes. A manifest failing validation regresses to PLAN for correction.
 
-### Artifact 6 — Verify skill (mandatory — `harness-<name>-verify`)
+### Artifact 6 — Verify skill (mandatory — `hns-<name>-verify`)
 
-**Path**: `.claude/skills/harness-<name>-verify/SKILL.md`
+**Path**: `.claude/skills/hns-<name>-verify/SKILL.md`
 **Purpose**: give the generated harness a runnable check it can execute — the strongest Anthropic theme for generated harnesses ("give Claude a check it can run"). This skill mirrors the official `/run-skill-generator` bundled skill: it discovers the project's build / launch / test recipe ONCE from a clean environment and codifies it, so every subsequent run has a deterministic runnable verification loop instead of re-discovering how to build and test each time.
 **Mandatory — ALWAYS emitted**: unlike the optional artifact 7 (MCP fragment), the verify skill is a mandatory artifact of EVERY generated harness set. It is NOT gated on any `harness-spec.yaml` field.
 **Content contract**:
 
-- YAML frontmatter per the skill-authoring schema (description, paths, metadata, triggers), under the `harness-<name>-verify` name (user-owned `harness-*` namespace).
+- YAML frontmatter per the skill-authoring schema (description, paths, metadata, triggers), under the `hns-<name>-verify` name (user-owned `hns-*` namespace).
 - Body: the discovered build / launch / test recipe — the exact commands to build the project, launch it, and run its test suite from a clean checkout — plus the runnable check the harness invokes to confirm the project is in a working state.
 - The recipe is discovered ONCE (the `/run-skill-generator` pattern) and committed; the harness reuses it rather than re-deriving the recipe on each run.
 

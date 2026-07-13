@@ -2,7 +2,7 @@
 id: SPEC-HNS-PREFIX-RENAME-001
 title: "Harness User-Artifact Prefix Rename: harness-* → hns-* with Dual-Pattern Backward Compatibility"
 version: "0.1.1"
-status: draft
+status: in-progress
 created: 2026-07-13
 updated: 2026-07-13
 author: manager-spec
