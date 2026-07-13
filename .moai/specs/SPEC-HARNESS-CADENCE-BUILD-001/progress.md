@@ -72,7 +72,7 @@ updated: 2026-07-13
 
 ```yaml
 run_complete_at: 2026-07-13
-run_commit_sha: pending-backfill-m5-evidence-commit  # M1 b3be952c8 / M2 0cc25cec8 / M3 a941e861f / M4 b8a5c6ce7; M5 = the commit carrying this section (self-referential — backfill in the next commit or at sync)
+run_commit_sha: 05dda2222  # M1 b3be952c8 / M2 0cc25cec8 / M3 a941e861f / M4 b8a5c6ce7; M5 = the commit carrying this section (self-referential — backfill in the next commit or at sync)
 run_status: PASS-WITH-DEBT
 ac_pass_count: 35
 ac_pass_with_debt_count: 1  # AC-HCB-073 — pre-existing transient StatusGitConsistency WARNING, self-resolving at sync close
