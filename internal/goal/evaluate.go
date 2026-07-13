@@ -13,6 +13,16 @@ type CmdRunner interface {
 	Run(ctx context.Context, cmd string) (exitCode int, output string, err error)
 }
 
+// SnapshotSource resolves a fresh recorded result for a Tier-1 mechanical
+// condition by EXACT byte-string command match (no normalization — a variant
+// differing by one byte never matches). ok=false on miss, stale snapshot,
+// key-computation error, or time-box exceed; the caller then executes the
+// command exactly as today. The production source is internal/verify.Source
+// (structural match — this package does not import it); tests inject a fake.
+type SnapshotSource interface {
+	Lookup(ctx context.Context, cmd string) (exitCode int, attribution string, ok bool)
+}
+
 // FailedCond records a failed mechanical condition plus its output tail so the
 // orchestrator's confirm AskUserQuestion can surface WHY the goal is not
 // satisfied (REQ-GLE-010 ↔ REQ-GLE-028 reconciliation — the failed-condition
@@ -50,13 +60,23 @@ type Verdict struct {
 	Stagnation       bool            `json:"stagnation,omitempty"`
 	Verdict          *CeilingVerdict `json:"verdict,omitempty"`
 	Yielded          bool            `json:"yielded,omitempty"`
+	// SnapshotAttribution records, per reused Tier-1 condition, the snapshot
+	// citation (path + key + command + recorded exit) — the evidence-attribution
+	// trail for results served from the shared diagnostic snapshot instead of
+	// re-execution.
+	SnapshotAttribution []string `json:"snapshot_attribution,omitempty"`
 }
 
 // Eval carries the evaluator's injectable dependencies.
 type Eval struct {
 	Runner              CmdRunner
-	StagnationThreshold int // default DefaultStagnationThreshold when zero
+	StagnationThreshold int  // default DefaultStagnationThreshold when zero
 	NativeGoalActive    bool // set when the runtime signals an active native /goal (REQ-GLE-016)
+	// Snapshot, when non-nil, is consulted before executing a Tier-1 mechanical
+	// condition: an exact-match fresh entry reuses the recorded exit code
+	// without a CmdRunner call. nil preserves the pre-existing behavior
+	// unchanged (strictly additive contract).
+	Snapshot SnapshotSource
 }
 
 // DefaultStagnationThreshold is the number of consecutive identical progress
@@ -140,15 +160,32 @@ func (e *Eval) Evaluate(ctx context.Context, g *Goal) (Verdict, bool) {
 		return v, false
 	}
 
-	// Step 5: Tier 1 — run mechanical conditions.
+	// Step 5: Tier 1 — evaluate mechanical conditions. A fresh snapshot entry
+	// exactly matching the condition command (byte-string equality) reuses the
+	// recorded exit code without executing; any miss/stale falls back to the
+	// existing CmdRunner execution path unchanged.
 	var failed []FailedCond
+	var attributions []string
 	hasMechanical := false
 	for _, c := range g.Conditions {
 		if c.Type != ConditionMechanical {
 			continue
 		}
 		hasMechanical = true
-		exit, out, err := e.Runner.Run(ctx, c.Cmd)
+		var exit int
+		var out string
+		var err error
+		reused := false
+		if e.Snapshot != nil {
+			if recordedExit, attr, ok := e.Snapshot.Lookup(ctx, c.Cmd); ok {
+				exit, reused = recordedExit, true
+				out = "(reused from " + attr + ")"
+				attributions = append(attributions, attr)
+			}
+		}
+		if !reused {
+			exit, out, err = e.Runner.Run(ctx, c.Cmd)
+		}
 		expect := c.ExpectExit
 		condFailed := err != nil || exit != expect
 		if condFailed {
@@ -174,7 +211,7 @@ func (e *Eval) Evaluate(ctx context.Context, g *Goal) (Verdict, bool) {
 		// All mechanical conditions passed and no model conditions exist.
 		g.Status = StatusSatisfied
 		e.appendProgress(g, "all conditions satisfied")
-		return Verdict{}, false
+		return Verdict{SnapshotAttribution: attributions}, false
 	}
 
 	// A block is needed. Build the failed-condition detail (rides the plain
@@ -189,12 +226,13 @@ func (e *Eval) Evaluate(ctx context.Context, g *Goal) (Verdict, bool) {
 	if g.ProgressionMode == ProgressionSemiAutonomous {
 		e.appendProgress(g, "semi-autonomous checkpoint")
 		v := Verdict{
-			Decision:     "block",
-			Reason:       fmt.Sprintf("semi-autonomous checkpoint: orchestrator to confirm continuation (turn %d of %d)", g.TurnsUsed, g.Ceiling.MaxTurns),
-			Mode:         string(ProgressionSemiAutonomous),
-			Turn:         g.TurnsUsed,
-			Ceiling:      g.Ceiling.MaxTurns,
-			LastProgress: lastProgress(g),
+			Decision:            "block",
+			Reason:              fmt.Sprintf("semi-autonomous checkpoint: orchestrator to confirm continuation (turn %d of %d)", g.TurnsUsed, g.Ceiling.MaxTurns),
+			Mode:                string(ProgressionSemiAutonomous),
+			Turn:                g.TurnsUsed,
+			Ceiling:             g.Ceiling.MaxTurns,
+			LastProgress:        lastProgress(g),
+			SnapshotAttribution: attributions,
 		}
 		if len(failed) > 0 {
 			v.FailedConditions = failed
@@ -204,7 +242,7 @@ func (e *Eval) Evaluate(ctx context.Context, g *Goal) (Verdict, bool) {
 
 	// Autonomous mode: plain block — the detail IS the reason (REQ-GLE-010).
 	e.appendProgress(g, detail)
-	return Verdict{Decision: "block", Reason: detail}, true
+	return Verdict{Decision: "block", Reason: detail, SnapshotAttribution: attributions}, true
 }
 
 // blockReason builds the failed-condition + tail detail that rides the block.

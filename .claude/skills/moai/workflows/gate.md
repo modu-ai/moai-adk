@@ -44,6 +44,7 @@ Lightweight pre-commit quality gate. Runs lint, format check, type check, and te
   - --fix: Auto-fix lint and format issues (default: report only)
   - --staged: Only check staged files (`git diff --staged`)
   - --file PATH: Check specific file(s) only
+  - --fresh: Force-fresh mode — disable ALL shared-snapshot consumption for this invocation (Phase 1.5 is skipped entirely; fresh executions are still recorded). Used by callers that require an independent re-run, e.g. the loop workflow's Step 1.5 Independent Final Pass.
 
 ## Phase 1: Language Detection
 
@@ -66,6 +67,16 @@ Check indicator files in priority order (first match wins):
 - Flutter: pubspec.yaml → `dart analyze`, `flutter test`
 - Scala: build.sbt → `sbt compile`, `sbt test`
 - Fallback: Skip language-specific checks, report "unknown language"
+
+## Phase 1.5: Shared Diagnostic Snapshot Consumption
+
+Before executing checks, query the shared diagnostic snapshot for the current working tree:
+
+- Run `moai verify check --key-current` (optionally per category via `--check <id>`). Exit 0 = a fresh snapshot exists (key equality AND within the TTL, default 10 minutes); exit 1 = stale or missing.
+- Where a fresh snapshot covers a check category this gate would run, REUSE the recorded result instead of re-executing that check. The reuse cites the snapshot path, key, original command, and recorded exit code as its evidence — the snapshot IS the observed evidence, and the freshness rule is what keeps the attribution valid (per `.claude/rules/moai/core/verification-claim-integrity.md` §2). Mark reused rows in the report table, e.g. `Test | PASS (snapshot) | ...`.
+- A stale snapshot is NEVER cited as evidence — on key mismatch or TTL expiry, re-execute the check.
+- Force-fresh mode: when invoked with `--fresh`, skip this phase entirely — consume NO snapshot for ANY check category; execute every check. Fresh executions are still recorded (see Snapshot Recording below). The loop workflow's Step 1.5 Independent Final Pass MUST invoke this gate with `--fresh`, so a same-run snapshot cannot flow back through the gate layer.
+- Snapshot reuse replaces re-execution of a check, never an approval — it does not substitute for any HUMAN GATE or hook decision.
 
 ## Phase 2: Execute Checks in Parallel
 
@@ -105,6 +116,10 @@ When --staged flag is provided:
 When --file flag is provided:
 - Only check specified file(s)
 - Tests run only matching test files if discoverable
+
+### Snapshot Recording
+
+After each executed (non-reused) full-scope check completes, record its result into the shared snapshot store under `.moai/state/verify/` via `moai verify record --check-id <category> --command "<exact command>" --exit <code> --duration-ms <ms>`, so downstream consumers (run-phase pre-review gate, sync pre-sync gate, the stop-goal evaluator) can reuse it while the tree is unchanged and the TTL holds. Scoped runs (`--staged`, `--file`) skip recording — a partial-scope result must not masquerade as a full-scope one. Recording is fail-open: when the state directory is unwritable, note it in the report and continue — never block the gate on recording.
 
 ## Phase 3: Report Results
 

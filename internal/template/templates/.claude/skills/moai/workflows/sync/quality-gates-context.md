@@ -139,6 +139,7 @@ Purpose: Run the gate workflow (workflows/gate.md) as a fast pre-check before th
 
 #### Step 0.0.1: Gate Execution
 
+- Snapshot consumption: query the shared diagnostic snapshot first (`moai verify check --key-current`). Where a fresh snapshot covers the full-test-suite check (recorded by the run-phase pre-review gate or a prior gate on the unchanged tree, within the TTL), consume it instead of re-running the full suite — the gate_report cites the snapshot path, key, original command, and recorded exit code as its full-suite evidence (per `.claude/rules/moai/core/verification-claim-integrity.md` §2). A stale snapshot is never cited as evidence: on key mismatch or TTL expiry, run the full suite as below and record the fresh result via `moai verify record`.
 - Execute gate workflow equivalent: lint + format + type-check + test in parallel
 - Auto-fix any fixable issues (lint auto-fix, format auto-fix)
 - If unfixable errors remain: Present summary and offer options via AskUserQuestion

@@ -159,9 +159,13 @@ Purpose: Run lightweight quality gate checks before the full review phase. This 
 
 Execution: Always runs. Equivalent to `/moai gate --fix` on modified files.
 
+Snapshot consumption: before the batch, query the shared diagnostic snapshot with `moai verify check --key-current`. Where a fresh snapshot (key equality AND within the TTL) covers a check category this phase would run, consume the recorded result instead of re-executing it — the gate_report cites the snapshot path, key, original command, and recorded exit code as that category's evidence (per `.claude/rules/moai/core/verification-claim-integrity.md` §2 — the snapshot is the observed evidence; the freshness rule keeps the attribution valid). A stale snapshot is never cited: on key mismatch or TTL expiry, execute the check as below.
+
 Steps: Run language-specific lint, formatter check, and type-checker as a single-turn multi-Bash parallel batch (per `.claude/rules/moai/core/agent-common-protocol.md` § Parallel Execution) — one Bash tool call per check within the same assistant turn, each redirecting verbatim output to `/tmp/moai-verify/` and surfacing only exit code + bounded-tail summary in context (the file-redirect contract). Auto-fix any fixable issues (`--fix` behavior) after the batch completes. If unfixable errors remain: Report and block (must fix before review).
 
-Output: gate_report with pass/fail per check category. If all pass, continue to Phase 2.8a.
+Snapshot recording: record this phase's own fresh executions back into the snapshot via `moai verify record` (exact command string, exit code, parsed counts) so downstream consumers — sync Phase 0 (`gate-sync-1`), the stop-goal evaluator — can reuse them while the tree is unchanged and the TTL holds. Recording is fail-open (unwritable state dir → note and continue).
+
+Output: gate_report with pass/fail per check category (reused categories marked with their snapshot citation). If all pass, continue to Phase 2.8a.
 
 ## Phase 2.8a: Active Quality Evaluation (sync-auditor)
 

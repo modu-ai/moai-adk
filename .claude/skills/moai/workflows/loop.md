@@ -112,14 +112,15 @@ Before arming the goal preset, the scan stage builds a **FINITE** issue queue fr
 Each iteration executes the following steps in order:
 
 Step 1 - Completion Predicate Check (mechanical, not sentinel-based):
-- Re-evaluate the previous iteration's PARSED Step-3 diagnostics (exit codes, error count, test pass/fail, coverage percentage — persisted with the Step 8 iteration snapshot) against ralph.yaml `loop.completion` (zero_errors, tests_pass, coverage_threshold, zero_warnings).
+- Re-evaluate the previous iteration's PARSED Step-3 diagnostics (exit codes, error count, test pass/fail, coverage percentage) against ralph.yaml `loop.completion` (zero_errors, tests_pass, coverage_threshold, zero_warnings). The mechanical read surface is the shared diagnostic snapshot under `.moai/state/verify/` (written by Step 3 via `moai verify record` — the shared-schema formalization of the former Step-8-only persistence); the Step 8 iteration snapshot under `.moai/cache/loop-snapshots/` remains the resume artifact.
 - The completion sentence "All loop completion conditions satisfied; exiting loop." is DISPLAY-ONLY (emitted by Step 4 as a report string) — it carries no exit authority. Do NOT exit on detecting this sentence in the previous response; the mechanical predicate re-evaluation above is the only exit-eligible signal.
 - If the mechanical predicate holds (all loop.completion conditions satisfied on the previous iteration's parsed diagnostics): proceed to Step 1.5 (Independent Final Pass) before declaring success-exit.
 - If the predicate does not hold: continue the loop (Step 2 onward) as a normal iteration.
 
 Step 1.5 - Independent Final Pass (entered only when Step 1's predicate holds):
 - Execute an independent verification pass that is NOT the loop executor's own claim — a fresh-context re-run of the diagnostic gate, distinct from this loop's own Step 3 measurement.
-- Primary vehicle: re-run `/moai gate` (a fresh mechanical gate invocation, independent of this loop's iteration state).
+- Independence carve-out: Step 1.5 shall NOT consume a snapshot produced by the same loop run — directly OR transitively through a consuming layer. The independent pass exists to keep success-exit evidence non-self-referential; reusing the loop's own Step-3 snapshot (whose key is still fresh at success-exit, the tree being unchanged) would make the confirmation circular.
+- Primary vehicle: re-run the gate in force-fresh mode — `/moai gate --fresh` — a fresh mechanical gate invocation, independent of this loop's iteration state. Because the gate is itself a snapshot consumer, the `--fresh` flag is what closes the gate-mediated path: it disables ALL snapshot consumption for that invocation, so the same-run Step-3 snapshot cannot flow back through the gate layer. Step 1.5's own force-fresh gate results MAY be recorded for downstream consumers (e.g. sync Phase 0).
 - Fallback vehicle (when `/moai gate` is unavailable in the environment): spawn a read-only verifier `Agent()` (no Write/Edit tools) to re-run the same diagnostic commands and report results. The verifier never prompts the user (subagent boundary — blocker reports only).
 - Divergence rule: if the independent pass's observed diagnostics (error count, test result, coverage) diverge from the builder-observed (Step 3) diagnostics, the loop does NOT exit with success — it continues to the next iteration, or escalates per the existing no-progress escalation rule if the same divergence repeats across consecutive checks.
 - Degradation (independent pass unavailable): do NOT silently claim full verification. Record the gap explicitly (Gaps section of the eventual exit report — see § Completion Conditions) and continue to the next iteration rather than exit with an unconfirmed success.
@@ -152,6 +153,7 @@ Step 3 - Parallel Diagnostics:
 - Tool 4: Coverage measurement (coverage.py, c8, go test -cover, cargo tarpaulin)
 - Collect results using Read on each background task's output file path
 - Aggregate into unified diagnostic report with metrics: error count, warning count, test pass rate, coverage percentage
+- Record the parsed diagnostics into the shared diagnostic snapshot via `moai verify record` (one entry per diagnostic command: exact command string, exit code, parsed counts) — the mechanical writer for the shared schema. Step 1's completion predicate re-reads this snapshot; downstream consumers (the gate, sync Phase 0) may also reuse it while it stays fresh (key equality AND TTL). Every reuse cites the snapshot path, key, original command, and recorded exit code as its evidence, and a stale snapshot is never cited (per `.claude/rules/moai/core/verification-claim-integrity.md` §2 — the snapshot is the observed evidence; the freshness rule keeps the attribution valid).
 
 If --sequential flag: Run LSP, then AST-grep, then Tests, then Coverage sequentially.
 

@@ -10,6 +10,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/modu-ai/moai-adk/internal/goal"
+	"github.com/modu-ai/moai-adk/internal/verify"
 )
 
 // stopGoalHookTimeout bounds a single mechanical-condition command. Goal cmds
@@ -74,7 +75,13 @@ func runStopGoalHook(cmd *cobra.Command, _ []string) error {
 		// No armed goal → no block.
 		return nil
 	}
-	e := &goal.Eval{Runner: realCmdRunner{}}
+	// Snapshot source: a fresh shared-diagnostic-snapshot entry exactly matching
+	// a Tier-1 condition command reuses the recorded exit code instead of
+	// re-executing. The lookup is memoized (one key computation per turn-end)
+	// and time-boxed per the Advisory-Check Discipline — on deadline exceed or
+	// any error it degrades to command re-execution; correctness never depends
+	// on the optimization.
+	e := &goal.Eval{Runner: realCmdRunner{}, Snapshot: &verify.Source{ProjectRoot: root}}
 	verdict, block := e.Evaluate(context.Background(), g)
 	// Persist the updated goal (turns incremented, status set, progress appended).
 	if err := goal.SaveGoal(root, g); err != nil {

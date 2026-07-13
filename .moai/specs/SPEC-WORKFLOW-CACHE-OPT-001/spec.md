@@ -2,7 +2,7 @@
 id: SPEC-WORKFLOW-CACHE-OPT-001
 title: "Workflow Bottleneck Phase 2 — shared diagnostic snapshot contract + gate merging + delegation relaxation + audit defect-lists + bookkeeping batching"
 version: "0.1.2"
-status: draft
+status: in-progress
 created: 2026-07-13
 updated: 2026-07-13
 author: manager-spec
