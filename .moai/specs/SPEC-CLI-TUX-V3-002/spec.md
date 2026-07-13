@@ -2,7 +2,7 @@
 id: SPEC-CLI-TUX-V3-002
 title: "moai init Redesign — Deferred Self-Update + Unified Wizard + Live Progress (CLI TUX v3 — M2)"
 version: "0.1.1"
-status: in-progress
+status: completed
 created: 2026-07-13
 updated: 2026-07-14
 author: manager-spec

@@ -211,4 +211,22 @@ parallel_session_note: >
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+```yaml
+sync_complete_at: 2026-07-14
+sync_commit_sha: pending-backfill-tux2-sync
+sync_status: complete
+changelog_entry_position: "Unreleased > Added, appended after SPEC-WEBCONF-SIMPLIFY-001 entry (before ### Changed)"
+frontmatter_status_transitions:
+  spec_md: "in-progress -> completed"
+  updated_field_refreshed_to: 2026-07-14
+b12_self_test_a: "grep -c 'SPEC-CLI-TUX-V3-002' CHANGELOG.md (pre-emission) -> 0 (no duplicate entry risk)"
+b12_self_test_b: "acceptance.md AC-count grep -cE '^\\| AC-TUX2-[0-9]+' -> 18; matches progress.md §E.2 AC matrix (18 rows) and run ac_pass_count: 18"
+b12_self_test_c: "file-path verification via ls: internal/cli/, internal/cli/wizard/, internal/cli/printer/, go.mod all exist"
+notes: >
+  A follow-up run-phase commit (ec8f6ccad, test(SPEC-CLI-TUX-V3-002): cover
+  defaultDeferredUpdateCheck paths via fake update.Checker) landed after the
+  recorded run_commit_sha (d38a88a9d) and before this sync — a coverage-only
+  addition (defaultDeferredUpdateCheck 23.1% -> 92.3%), no AC or behavior
+  impact; included in the verified commit range per the sync task brief
+  (681574852..ec8f6ccad on origin/main).
+```
