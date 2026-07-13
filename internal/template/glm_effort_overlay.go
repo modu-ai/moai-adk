@@ -7,7 +7,7 @@ package template
 // effort ({low, medium, high, xhigh, max}) that the plan_type tier profile
 // produced (§B.6/§B.7) onto z.ai's 3-state reasoning control (thinking-off +
 // reasoning_effort ∈ {high, max}), with a coding-max override for the
-// code-producing agents. It is an OVERLAY, not a third plan_type: plan_type stays
+// code-producing run-phase agent (manager-develop). It is an OVERLAY, not a third plan_type: plan_type stays
 // {api, subscription} and the overlay remaps only the EFFORT dimension. The MODEL
 // dimension is already carried under GLM by the llm.glm.models tier→GLM env
 // mapping (ANTHROPIC_DEFAULT_*), so the overlay never touches model.
@@ -136,7 +136,7 @@ func GLMCodingMaxOverrideAgents() []string {
 func ResolveGLMReasoning(agentName, claudeEffort string) GLMReasoningState {
 	if IsGLMCodingMaxOverrideAgent(agentName) {
 		// Coding-max override (z.ai coding-task recommendation) — lifts the collapse
-		// result to reasoning-max for the code-producing agents.
+		// result to reasoning-max for the code-producing run-phase agent (manager-develop).
 		return glmReasoningMax
 	}
 	return CollapseClaudeEffortToGLM(claudeEffort)
