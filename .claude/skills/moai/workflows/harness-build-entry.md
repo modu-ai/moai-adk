@@ -88,6 +88,18 @@ As the closing question of the Context-First Discovery interview — the **final
 
 where `<type>` is the confirmed domain (from `.moai/project/harness-spec.yaml` `domain` when present, else the discovery-confirmed domain). This final-round harness proposal mirrors the post-project-type-confirmation proposal surfaced by `project/meta-harness.md` § 5.0 — both entry points converge on the same Builder handoff. This offer is a live interview step, not a documented aside: it is the last question the interview asks before name derivation. On acceptance, proceed to Phase 2 (name derivation) → Phase 3 (approval gate). On decline, halt without building.
 
+## Phase 1.7: Schedule Retrofit Branch (existing harness + scheduling intent)
+
+**Detection rule.** When the natural-language request references an EXISTING harness — the referenced name resolves to `.claude/commands/harness/<name>.md` — together with scheduling intent (a recurring-schedule request: "run X nightly", "on a schedule", "every 30 minutes", cron/loop phrasing), this workflow routes to the Schedule Retrofit branch below instead of the Builder creation pipeline. **Precedence:** Retrofit detection is evaluated BEFORE the Phase 2 name-collision handling — an existing-name + scheduling-intent request routes to this Retrofit branch, never to the collision re-derive path (`<name>-v2` / rename). A request whose referenced name matches no existing harness falls through to the normal Builder path (Phase 2 onward) — never an error.
+
+The branch runs the same recurrence question round the Builder folds into its PLAN→GENERATE gate: one orchestrator-issued AskUserQuestion capturing the interval and the mechanism preference, with option descriptions stating the /loop session-scoped vs Cron persistent trade-off and the discovery-only execution model (read-only analysis, findings persisted to a queue surface, no writes/commits/pushes, no run-phase entry).
+
+**Manifest-bearing target.** When the target harness carries a manifest.json in its per-harness subdirectory, the orchestrator applies an orchestrator-mediated edit adding the `schedule` object (`interval` / `mechanism` / `mode: "discovery-only"`) to that manifest — `moai harness edit <name>` is the path-discovery surface (it prints the manifest path for the orchestrator-mediated edit; the CLI itself performs no schedule mutation).
+
+**Registration.** After the manifest edit, the orchestrator registers the schedule exactly as the Builder's ACTIVATE registration step does: `mechanism: "cron"` → issue CronCreate carrying the self-contained discovery prompt from the cadence-bridge recipe catalog; `mechanism: "loop"` → emit the paste-ready `/loop <interval> <discovery prompt>` line with the session-scoped caveat. `moai harness list` then surfaces the declared schedule for later sessions.
+
+**Command-only target.** When the target harness is command-only (no manifest.json — a thin harness whose Runner-less shape is a deliberate design), the Retrofit branch registers the schedule via the same self-contained discovery prompt without fabricating a manifest, and informs the user that `list` / `doctor` schedule surfacing is unavailable for manifest-less harnesses (the declared schedule lives only in the scheduler registration). A retrofit never copies a project's local-only harness artifacts or manifests into template-managed or distributed trees — the edit binds to the target harness's own manifest location only.
+
 ## Phase 2: Harness `<name>` Derivation
 
 Derive the harness `<name>` from the confirmed profile (Phase 1 + 1.5). The name is NOT statically supplied by the user — the orchestrator derives it. Naming rules:
