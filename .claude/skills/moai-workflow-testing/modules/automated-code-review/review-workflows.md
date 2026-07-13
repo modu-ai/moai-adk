@@ -39,7 +39,7 @@ async def automated_review_workflow(
     """Execute automated code review workflow."""
 
     # Initialize reviewer
-    reviewer = AutomatedCodeReviewer(context7_client=context7)
+    reviewer = AutomatedCodeReviewer(docs_client=docs)
 
     # Run review
     report = await reviewer.review_codebase(

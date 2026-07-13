@@ -4,7 +4,7 @@
 > Parent: [TRUST 5 Validation](../trust5-validation.md)
 > Complexity: Advanced
 > Time: 25+ minutes
-> Dependencies: Python 3.8+, Context7 MCP, ast
+> Dependencies: Python 3.8+, WebSearch/WebFetch, ast
 
 ## Quick Reference
 
@@ -53,34 +53,34 @@ TRUST 5 Framework provides comprehensive code quality assessment across five ess
 class AdvancedTRUST5Analyzer:
     """Advanced TRUST 5 analyzer with category-specific patterns."""
 
-    def __init__(self, context7_client=None):
-        self.context7 = context7_client
+    def __init__(self, docs_client=None):
+        self.docs = docs_client
         self.category_patterns = {}
 
     async def load_category_patterns(self) -> Dict[str, Any]:
-        """Load category-specific analysis patterns from Context7."""
+        """Load category-specific analysis patterns from Documentation."""
 
-        if not self.context7:
+        if not self.docs:
             return self._get_default_patterns()
 
         try:
             # Load truthfulness patterns
-            truthfulness = await self.context7.get_library_docs(
-                context7_library_id="/code-correctness/python",
+            truthfulness = await self.docs.get_library_docs(
+                docs_library_id="/code-correctness/python",
                 topic="logic error detection patterns 2025",
                 tokens=3000
             )
 
             # Load usability patterns
-            usability = await self.context7.get_library_docs(
-                context7_library_id="/code-quality/sonarqube",
+            usability = await self.docs.get_library_docs(
+                docs_library_id="/code-quality/sonarqube",
                 topic="maintainability metrics code smells 2025",
                 tokens=4000
             )
 
             # Load safety patterns
-            safety = await self.context7.get_library_docs(
-                context7_library_id="/security/owasp",
+            safety = await self.docs.get_library_docs(
+                docs_library_id="/security/owasp",
                 topic="security vulnerability detection 2025",
                 tokens=5000
             )
@@ -112,7 +112,7 @@ class AdvancedTRUST5Analyzer:
 - Unused variable declarations
 - Variable shadowing across scopes
 
-**Implementation**: See [Truthfulness Analysis](./trust5-framework/truthfulness-analysis.md) for detailed logic validation, data flow analysis, and Context7 integration patterns.
+**Implementation**: See [Truthfulness Analysis](./trust5-framework/truthfulness-analysis.md) for detailed logic validation, data flow analysis, and Documentation integration patterns.
 
 ### Relevance Analysis
 
@@ -168,7 +168,7 @@ class AdvancedTRUST5Analyzer:
 - Error handling best practices
 - Input validation completeness
 
-**Implementation**: See [Safety Analysis](./trust5-framework/safety-analysis.md) for advanced security analysis, resource leak detection, and Context7 OWASP integration.
+**Implementation**: See [Safety Analysis](./trust5-framework/safety-analysis.md) for advanced security analysis, resource leak detection, and Documentation OWASP integration.
 
 ### Timeliness Analysis
 
@@ -224,7 +224,7 @@ TRUST 5 uses weighted scoring with category-specific weights:
 ## Best Practices
 
 1. **Pattern Customization**: Customize category-specific patterns for project context
-2. **Context7 Integration**: Leverage latest patterns from Context7 for accuracy
+2. **Documentation Integration**: Leverage latest patterns from Documentation for accuracy
 3. **Weight Adjustment**: Adjust category weights based on project priorities
 4. **Trend Analysis**: Track score trends over time for improvement monitoring
 5. **Team Alignment**: Ensure category definitions align with team understanding

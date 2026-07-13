@@ -93,22 +93,22 @@ record CodeReviewReport:
     recommendations:         List<text>
     critical_issues:         List<CodeIssue>
     review_duration:         float
-    context7_patterns_used:  List<text>
+    docs_patterns_used:  List<text>
 ```
 
 ## AutomatedCodeReviewer Class
 
 ```text
 class AutomatedCodeReviewer:
-    context7
-    context7_analyzer
+    docs
+    docs_analyzer
     static_analyzer
     analysis_patterns = {}
     review_history = []
 
     review_codebase(project_path, include_patterns = none, exclude_patterns = none):
         start_time = now()
-        analysis_patterns = context7_analyzer.load_analysis_patterns()
+        analysis_patterns = docs_analyzer.load_analysis_patterns()
         files = find_files_to_review(project_path, include_patterns, exclude_patterns)
         file_results = [review_single_file(p) for p in files]
         return generate_comprehensive_report(project_path, file_results, now() - start_time)
@@ -126,10 +126,10 @@ class AutomatedCodeReviewer:
             return syntax_error_result(file_path, content, e)
 
         static_results  = static_analyzer.run_all_analyses(file_path)
-        context7_issues = perform_context7_analysis(file_path, content, tree)
+        docs_issues = perform_docs_analysis(file_path, content, tree)
         custom_issues   = perform_custom_analysis(file_path, content, tree)
 
-        all_issues = convert_static_issues(static_results, file_path) + context7_issues + custom_issues
+        all_issues = convert_static_issues(static_results, file_path) + docs_issues + custom_issues
         metrics       = calculate_file_metrics(content, tree)
         trust_scores  = calculate_trust_scores(all_issues, metrics)
 
@@ -156,29 +156,29 @@ class AutomatedCodeReviewer:
         return sorted(files)
 ```
 
-## Context7CodeAnalyzer Class
+## DocumentationCodeAnalyzer Class
 
 ```text
-class Context7CodeAnalyzer:
-    context7
+class DocumentationCodeAnalyzer:
+    docs
     analysis_patterns  = {}
     security_patterns  = {}
     performance_patterns = {}
 
     load_analysis_patterns(language = "python"):
-        if context7 is none: return default_analysis_patterns()
+        if docs is none: return default_analysis_patterns()
         try:
-            security    = context7.get_library_docs("<security/semgrep>",
+            security    = docs.get_library_docs("<security/semgrep>",
                             topic="security vulnerability detection patterns", tokens=4000)
-            performance = context7.get_library_docs("<performance/profiling>",
+            performance = docs.get_library_docs("<performance/profiling>",
                             topic="performance anti-patterns code analysis", tokens=3000)
-            quality     = context7.get_library_docs("<code-quality/linters>",
+            quality     = docs.get_library_docs("<code-quality/linters>",
                             topic="code quality best practices smells detection", tokens=4000)
             security_patterns    = security
             performance_patterns = performance
             return { security, performance, quality }
         except e:
-            log("Failed to load Context7 patterns: " + e)
+            log("Failed to load Documentation patterns: " + e)
             return default_analysis_patterns()
 
     default_analysis_patterns():

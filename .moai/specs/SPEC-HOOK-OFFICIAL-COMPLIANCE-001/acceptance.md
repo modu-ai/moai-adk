@@ -1,3 +1,5 @@
+> **[REMOVED 2026-07-13]** The `gateguard-fact-force.sh` PreToolUse advisory hook referenced in AC-026 below has been FULLY DECOMMISSIONED from both the local working tree and the distribution template. The hook script, `MOAI_FACT_FORCE` env var, `.moai/state/fact-force/` state dir, and `.moai/logs/fact-force-skip.log` skip log are all removed. References below are preserved as historical decision-record content only.
+
 # acceptance.md — SPEC-HOOK-OFFICIAL-COMPLIANCE-001
 
 > Binary acceptance criteria. Each AC states its verification command, expected output, and REQ traceability. Run-phase reports each per the verification-claim-integrity 5-section format.

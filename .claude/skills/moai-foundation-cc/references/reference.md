@@ -121,7 +121,7 @@ Hook Configuration (settings.json):
 
 ### MCP Server Integration
 
-Context7 Integration:
+Documentation Integration:
 - Use for real-time documentation lookup
 - Two-step pattern: resolve library ID, then fetch docs
 - Supports token-limited responses

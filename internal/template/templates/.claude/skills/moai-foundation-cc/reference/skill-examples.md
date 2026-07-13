@@ -25,7 +25,7 @@ Examples Cover: Documentation skills, language-specific patterns, domain experti
 ---
 name: moai-docs-api-generator
 description: Generate comprehensive API documentation from OpenAPI specifications and code comments. Use when you need to create, update, or analyze API documentation for REST/GraphQL services.
-allowed-tools: Read, Write, Edit, Grep, Glob, WebFetch, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
+allowed-tools: Read, Write, Edit, Grep, Glob, WebFetch
 version: 1.2.0
 tags: [documentation, api, openapi, graphql]
 updated: 2025-11-25
@@ -105,7 +105,7 @@ xargs python extract_docs.py --output ./docs/api/
 
 - [`moai-docs-toolkit`](../moai-docs-toolkit/SKILL.md) - General documentation patterns
 - [`moai-domain-backend`](../moai-domain-backend/SKILL.md) - Backend API expertise
-- [`moai-context7-integration`](../moai-context7-integration/SKILL.md) - Latest framework docs
+- [`moai-ref-testing-pyramid`](../moai-ref-testing-pyramid/SKILL.md) - Test pyramid strategy
 
 ## Advanced Features
 
@@ -298,7 +298,7 @@ function standardizeJSDoc(comment) {
 ---
 name: moai-python-testing-expert
 description: Comprehensive Python testing expertise covering pytest, unittest, mocking, and test-driven development patterns. Use when writing tests, setting up test infrastructure, or improving test coverage and quality.
-allowed-tools: Read, Write, Edit, Bash, Grep, Glob, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
+allowed-tools: Read, Write, Edit, Bash, Grep, Glob
 version: 1.1.0
 tags: [python, testing, pytest, ddd, quality]
 updated: 2025-11-25
@@ -511,7 +511,7 @@ class TestUserCreationTransaction:
 ---
 name: moai-modern-javascript-patterns
 description: Modern JavaScript and TypeScript patterns including ES2023+, async programming, functional programming, and type-safe development. Use when implementing modern web applications or libraries.
-allowed-tools: Read, Write, Edit, Grep, Glob, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
+allowed-tools: Read, Write, Edit, Grep, Glob
 version: 1.3.0
 tags: [javascript, typescript, es2023, patterns, web]
 updated: 2025-11-25
@@ -701,7 +701,7 @@ const sum = doubled.reduce((acc, n) => acc + n, 0); // 24
 ## Works Well With
 
 - [`moai-domain-frontend`](../moai-domain-frontend/SKILL.md) - Frontend development patterns
-- [`moai-context7-integration`](../moai-context7-integration/SKILL.md) - Latest framework docs
+- [`moai-ref-testing-pyramid`](../moai-ref-testing-pyramid/SKILL.md) - Test pyramid strategy
 - [`moai-web-performance`](../moai-web-performance/SKILL.md) - Performance optimization
 
 ## Advanced Features
@@ -847,7 +847,7 @@ class RateLimitedApi {
 ---
 name: moai-security-analysis-expert
 description: Comprehensive security analysis expertise covering OWASP Top 10, vulnerability assessment, secure coding practices, and compliance validation. Use when conducting security audits, implementing security controls, or validating security measures.
-allowed-tools: Read, Write, Edit, Grep, Glob, Bash, WebFetch, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
+allowed-tools: Read, Write, Edit, Grep, Glob, Bash, WebFetch
 version: 1.2.0
 tags: [security, owasp, vulnerability, compliance, audit]
 updated: 2025-11-25
@@ -1155,7 +1155,7 @@ class SecurityMonitor:
 ---
 name: moai-workflow-automation-expert
 description: Workflow automation expertise covering CI/CD pipelines, DevOps automation, infrastructure as code, and deployment strategies. Use when setting up automated workflows, CI/CD pipelines, or infrastructure management.
-allowed-tools: Read, Write, Edit, Bash, Grep, Glob, WebFetch, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
+allowed-tools: Read, Write, Edit, Bash, Grep, Glob, WebFetch
 version: 1.1.0
 tags: [automation, cicd, devops, infrastructure, workflow]
 updated: 2025-11-25

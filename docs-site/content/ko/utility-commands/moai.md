@@ -33,7 +33,7 @@ v3부터 `/moai`의 기본 라우팅은 **Analyze-First** — 언어 독립적 �
 1. **의도 분석**: 사용자 요청의 의도를 분류 (입력 언어와 무관)
 2. **컨텍스트 충분성 확인**: 불충분하면 Socratic 인터뷰로 명확화
 3. **실행 계획 구성**: 스킬 / 에이전트 / 동적 워크플로우 체인 선택
-4. **오케스트레이션 모드 선택** (Phase 0.95): solo-sequential / parallel-subagents / dynamic-workflow
+4. **오케스트레이션 모드 선택** (Phase 4): solo-sequential / parallel-subagents / dynamic-workflow
 
 즉 `/moai "로그인 버그 고쳐줘"`처럼 서브커맨드 없이 자연어만 입력해도, 의도 분석을 거쳐 알맞은 워크플로우 (수정이면 fix 계열, 신규 기능이면 plan→run→sync 파이프라인)로 연결됩니다.
 

@@ -225,7 +225,7 @@ Works Well With Section:
 
 MCP Integration (if applicable):
 - [ ] MCP tools properly declared in allowed-tools
-- [ ] Two-step Context7 pattern used where appropriate
+- [ ] Two-step Documentation pattern used where appropriate
 - [ ] Proper error handling for MCP calls
 - [ ] Fallback strategies are documented
 

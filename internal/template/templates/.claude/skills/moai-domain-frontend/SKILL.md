@@ -22,7 +22,6 @@ metadata:
   updated: "2026-03-28"
   tags: "frontend, react, nextjs, vue, ui, components"
   author: "MoAI-ADK Team"
-  context7-libraries: "/facebook/react, /vercel/next.js, /vuejs/vue"
 ---
 
 # Frontend Development Specialist

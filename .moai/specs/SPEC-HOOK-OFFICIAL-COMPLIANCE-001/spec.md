@@ -16,6 +16,8 @@ depends_on: []
 related_specs: [SPEC-HOOK-SESSIONSTART-PROBE-001, SPEC-HOOK-FACTFORCE-ADVISORY-001, SPEC-DIVECC-HOOK-FAILURE-MODE-AUDIT-001, SPEC-V3R6-HOOK-ASYNC-EXPAND-001]
 ---
 
+> **[REMOVED 2026-07-13]** The `gateguard-fact-force.sh` PreToolUse advisory hook referenced in REQ-HOC-017 / AC-026 has been FULLY DECOMMISSIONED from both the local working tree and the distribution template (`internal/template/templates/`). The hook script, its `MOAI_FACT_FORCE` opt-out env var, its `.moai/state/fact-force/` state dir, and its `.moai/logs/fact-force-skip.log` skip log are all removed. References to `gateguard-fact-force` / `MOAI_FACT_FORCE` below are preserved as historical decision-record content only; the feature no longer exists in code, config, or doctrine.
+
 # SPEC-HOOK-OFFICIAL-COMPLIANCE-001 — Template Hooks Official-Doc Compliance
 
 ## HISTORY

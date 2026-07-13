@@ -1,13 +1,13 @@
-# Playwright Best Practices & Context7 Integration
+# Playwright Best Practices & Documentation Integration
 
 ## Official Documentation
 - Playwright Official: https://playwright.dev/
 - Python Documentation: https://playwright.dev/python/
 - API Reference: https://playwright.dev/python/docs/api/class-playwright
 
-## Context7 MCP Integration
+## WebSearch/WebFetch Integration
 - Latest Patterns: Access via `/microsoft/playwright` library ID
-- Version-Specific: Context7 provides version-specific best practices
+- Version-Specific: Documentation provides version-specific best practices
 - Community Knowledge: Leverages collective testing wisdom
 - Real-Time Updates: Always current with latest Playwright releases
 

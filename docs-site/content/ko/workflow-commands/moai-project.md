@@ -98,7 +98,7 @@ Claude Code는 새로운 대화를 시작할 때 프로젝트에 대해 아무�
 flowchart TD
     Start["/moai project 실행"] --> Q1{프로젝트 타입은?}
 
-    Q1 -->|신규 프로젝트| New["Phase 0.5: 정보 수집"]
+    Q1 -->|신규 프로젝트| New["Phase 1: 정보 수집"]
     Q1 -->|기존 프로젝트| Exist["Phase 1: 코드베이스 분석"]
 
     New --> NewQ["프로젝트 목적"]
@@ -115,7 +115,7 @@ flowchart TD
     Conf -->|승인| Gen
     Conf -->|취소| End["종료"]
 
-    Gen --> LSP["Phase 3.5: LSP 확인"]
+    Gen --> LSP["Phase 4: LSP 확인"]
     LSP --> Complete["Phase 4: 완료"]
 ```
 
@@ -137,7 +137,7 @@ flowchart TD
 | **신규 프로젝트** | 처음부터 시작하는 프로젝트. 정보를 수집형식으로 진행 |
 | **기존 프로젝트** | 이미 코드가 있는 프로젝트. 코드를 자동으로 분석      |
 
-### Phase 0.5: 신규 프로젝트 정보 수집
+### Phase 1: 신규 프로젝트 정보 수집
 
 신규 프로젝트를 선택한 경우, 다음 정보를 수집합니다:
 
@@ -211,7 +211,7 @@ flowchart TD
 
 **전달 내용**:
 
-- Phase 1 분석 결과 (또는 Phase 0.5 사용자 입력)
+- Phase 1 분석 결과 (또는 Phase 1 사용자 입력)
 - Phase 2 사용자 확인
 - 출력 디렉토리: `.moai/project/`
 - 언어: config의 conversation_language
@@ -224,7 +224,7 @@ flowchart TD
 | **structure.md** | 디렉토리 트리, 각 디렉토리의 목적, 핵심 파일 위치, 모듈 구성             |
 | **tech.md**      | 기술 스택 개요, 프레임워크 선택 근거, 개발 환경 요구사항, 빌드/배포 설정 |
 
-### Phase 3.5: 개발 환경 확인
+### Phase 4: 개발 환경 확인
 
 감지된 기술 스택에 맞는 LSP 서버가 설치되어 있는지 확인합니다.
 
@@ -506,7 +506,7 @@ AI가 프로젝트의 기술 스택과 구조를 이미 알고 있으므로 더 
 ```mermaid
 flowchart TD
     Start["/moai project 실행"] --> Phase0["Phase 0: 타입 감지"]
-    Phase0 --> Phase05["Phase 0.5: 정보 수집<br/>(신규 프로젝트)"]
+    Phase0 --> Phase05["Phase 1: 정보 수집<br/>(신규 프로젝트)"]
     Phase0 --> Phase1["Phase 1: 코드베이스 분석<br/>(기존 프로젝트)"]
 
     Phase1 --> Explore["Explore 하위 에이전트<br/>코드 분석 위임"]
@@ -516,7 +516,7 @@ flowchart TD
     Phase2 -->|승인| Phase3
 
     Phase3 --> Docs["manager-docs 하위 에이전트<br/>문서 생성 위임"]
-    Docs --> Phase35["Phase 3.5: LSP 확인"]
+    Docs --> Phase35["Phase 4: LSP 확인"]
 
     Phase35 --> DevOps["manager-develop 하위 에이전트<br/>LSP 설치 (선택사항)"]
     DevOps --> Phase4["Phase 4: 완료"]
@@ -538,7 +538,7 @@ SPEC을 생성할 수는 있지만, AI가 프로젝트의 기술 스택이나 �
 
 ### Q: LSP 서버가 없으면 어떻게 되나요?
 
-LSP 서버가 없어도 문서 생성은 진행됩니다. 다만, 이후 `/moai run` 단계에서 코드 품질 진단이 제한될 수 있습니다. Phase 3.5에서 LSP 설치 안내를 제공합니다.
+LSP 서버가 없어도 문서 생성은 진행됩니다. 다만, 이후 `/moai run` 단계에서 코드 품질 진단이 제한될 수 있습니다. Phase 4에서 LSP 설치 안내를 제공합니다.
 
 ## 관련 문서
 

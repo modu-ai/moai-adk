@@ -3,7 +3,7 @@
 > Module: AI-powered code refactoring with technical debt analysis and safe transformation
 > Complexity: Advanced
 > Time: 25+ minutes
-> Dependencies: Python 3.8+, Rope, AST, Context7 MCP, asyncio, dataclasses
+> Dependencies: Python 3.8+, Rope, AST, WebSearch/WebFetch, asyncio, dataclasses
 
 ## Overview
 
@@ -43,7 +43,7 @@ TechnicalDebtAnalyzer:
 AIRefactorer:
 - Integrates technical debt analysis with refactoring opportunities
 - Creates safe execution plans with risk assessment
-- Leverages Context7 MCP for latest refactoring patterns
+- Leverages WebSearch/WebFetch for latest refactoring patterns
 - Uses Rope library for safe code transformations
 
 RefactorPlan:
@@ -62,8 +62,8 @@ RefactorPlan:
 # Install required dependencies
 pip install rope ast-visitor
 
-# For Context7 integration (optional but recommended)
-pip install context7-client
+# For Documentation integration (optional but recommended)
+pip install docs-client
 ```
 
 ### Basic Usage
@@ -74,7 +74,7 @@ from smart_refactoring import AIRefactorer
 
 async def main():
     # Initialize refactoring system
-    refactorer = AIRefactorer(context7_client=None)
+    refactorer = AIRefactorer(docs_client=None)
     
     # Analyze and create refactoring plan
     refactor_plan = await refactorer.refactor_with_intelligence(
@@ -293,7 +293,7 @@ For detailed refactoring techniques and best practices, see:
 
 - Rope: Python refactoring library
 - AST: Python built-in AST module
-- Context7 MCP: Latest refactoring patterns (optional)
+- WebSearch/WebFetch: Latest refactoring patterns (optional)
 
 ### Related Modules
 

@@ -74,7 +74,7 @@ Allowed Tools (4 categories):
 | `Agent()` | Agent delegation | `Agent("general-purpose", "Implement the API (backend domain)")` |
 | `AskUserQuestion()` | User interaction | `AskUserQuestion(questions=[...])` |
 | `Skill()` | Knowledge invocation | `Skill("moai-foundation-core")` |
-| `MCP Servers` | External integrations | Context7, Playwright, Pencil |
+| `MCP Servers` | External integrations | Playwright, Pencil |
 
 Forbidden Tools (Why?):
 

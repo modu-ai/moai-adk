@@ -16,6 +16,8 @@ related_specs: [SPEC-HARNESS-RATCHET-REWIRE-001, SPEC-TOKEN-BUDGET-STOP-001]
 tags: "observation-sinks, log-hygiene, pruning, sync-gate, dormancy-annotation, write-only-logs, workflow-reflex"
 ---
 
+> **[REMOVED 2026-07-13]** The `gateguard-fact-force.sh` PreToolUse advisory hook and its `.moai/logs/fact-force-skip.log` skip log (referenced in finding H4 and REQ-OBH-003 below) have been FULLY DECOMMISSIONED from both the local working tree and the distribution template. The hook script, `MOAI_FACT_FORCE` env var, `.moai/state/fact-force/` state dir, and `.moai/logs/fact-force-skip.log` skip log are all removed. REQ-OBH-003 (fact-force-skip.log documented write-only) is now moot — the log is never produced. References below are preserved as historical decision-record content only.
+
 # SPEC-OBSERVE-HYGIENE-001 — Observation Sink Hygiene
 
 ## Epic Context

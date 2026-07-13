@@ -4,7 +4,7 @@
 > Parent: [TRUST 5 Framework](./trust5-framework.md)
 > Complexity: Advanced
 > Time: 15+ minutes
-> Dependencies: source parser (AST), Context7 MCP
+> Dependencies: source parser (AST), WebSearch/WebFetch
 
 ## Overview
 
@@ -17,7 +17,7 @@ Safety (20% weight) validates security and error handling through security vulne
 ```text
 perform_advanced_security_analysis(file_path, content, tree):
     issues = []
-    # Load latest security patterns from Context7
+    # Load latest security patterns from Documentation
     security_patterns = load_category_patterns()
     safety_patterns   = security_patterns.safety default {}
 
@@ -61,11 +61,11 @@ detect_resource_leaks(tree):
 6. **Weak Cryptography**: Insecure algorithms or key sizes
 7. **Hardcoded Secrets**: Passwords, API keys in source
 
-### Context7 Integration
+### Documentation Integration
 
 ```text
 # Load safety patterns
-safety = context7.get_library_docs(
+safety = docs.get_library_docs(
     "<security/owasp>",
     topic="security vulnerability detection",
     tokens=5000)

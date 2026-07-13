@@ -1,7 +1,7 @@
-# DDD with Context7 - Core Classes
+# DDD with Documentation - Core Classes
 
 > Sub-module: Core class implementations for DDD workflow management
-> Parent: [DDD with Context7](../ddd-context7.md)
+> Parent: DDD module overview (see the main moai-workflow-testing SKILL)
 
 The sketches below describe the shape of the DDD workflow objects in language-neutral pseudo-code. Implement them in the host project's language using its native enums/records/async idioms; test-runner and coverage commands should use the project's actual toolchain.
 
@@ -86,7 +86,7 @@ record DDDSession:
     test_cases:          List<TestCase>
     implementation_files:List<text>
     metrics:             Map<text, Any>
-    context7_patterns:   Map<text, Any>
+    docs_patterns:   Map<text, Any>
     started_at:          timestamp
     last_activity:       timestamp
 ```
@@ -104,7 +104,7 @@ record DDDCycleResult:
     improve_phase_result:       Map<text, Any>
     final_coverage:             float
     total_time:                 float
-    context7_patterns_applied:  List<text>
+    docs_patterns_applied:  List<text>
     behavior_preserved:         bool
 ```
 
@@ -113,14 +113,14 @@ record DDDCycleResult:
 ```text
 class DDDManager:
     project_path
-    context7            # optional client
-    context7_integration
+    docs            # optional client
+    docs_integration
     test_generator
     current_session
 
     start_ddd_session(feature_name):
         session_id = "ddd_" + feature_name + "_" + now_epoch()
-        patterns = await context7_integration.load_ddd_patterns()
+        patterns = await docs_integration.load_ddd_patterns()
         session = DDDSession(
             id=session_id,
             project_path=project_path,
@@ -128,7 +128,7 @@ class DDDManager:
             test_cases=[],
             implementation_files=[],
             metrics={ analyze:0, preserve:0, improve:0 },
-            context7_patterns=patterns,
+            docs_patterns=patterns,
             started_at=now(), last_activity=now())
         current_session = session
         return session
@@ -164,7 +164,7 @@ class DDDManager:
             improve_phase_result=improve_result,
             final_coverage=coverage.total_coverage,
             total_time=now() - cycle_start,
-            context7_patterns_applied=patterns_applied,
+            docs_patterns_applied=patterns_applied,
             behavior_preserved=improve_result.behavior_preserved)
 ```
 
@@ -221,7 +221,7 @@ execute_preserve_phase(specification, target_function, analyze_result):
 execute_improve_phase(specification, preserve_result):
     current_session.current_phase = DDDPhase.IMPROVE
 
-    improve_patterns = context7_integration.get_improvement_patterns()
+    improve_patterns = docs_integration.get_improvement_patterns()
     improvements     = generate_improvements(preserve_result.implementation, improve_patterns)
 
     patterns_applied = []
@@ -280,7 +280,6 @@ run_coverage_analysis():
 ## Related Sub-modules
 
 - [Test Generation](./test-generation.md) - AI-powered test creation
-- [Context7 Patterns](./context7-patterns.md) - Pattern integration
 
 ---
 

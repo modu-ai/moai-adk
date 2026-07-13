@@ -337,7 +337,7 @@ def _generate_comprehensive_report(
         recommendations=recommendations,
         critical_issues=critical_issues,
         review_duration=duration,
-        context7_patterns_used=list(self.analysis_patterns.keys())
+        docs_patterns_used=list(self.analysis_patterns.keys())
     )
 
 def _generate_recommendations(

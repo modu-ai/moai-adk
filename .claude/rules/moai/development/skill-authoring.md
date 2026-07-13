@@ -46,7 +46,7 @@ Common metadata keys:
 - modularized: Whether content is split into modules ("true" or "false")
 - tags: Comma-separated tag list as single string
 - author: Skill author name
-- context7-libraries: Comma-separated library identifiers for Context7 MCP
+- docs-libraries: Comma-separated library identifiers for WebSearch/WebFetch
 - related-skills: Comma-separated related skill names
 - aliases: Comma-separated alternative names
 
@@ -77,7 +77,7 @@ description: >
   Use YAML folded scalar (>) for multi-line descriptions.
 license: Apache-2.0
 compatibility: Designed for Claude Code
-allowed-tools: Read, Grep, Glob, Bash, mcp__context7__resolve-library-id, mcp__context7__query-docs
+allowed-tools: Read, Grep, Glob, Bash
 user-invocable: false
 effort: low
 shell: bash
@@ -148,7 +148,7 @@ MoAI's 3-level disclosure sits on top of two runtime budgets the Claude Code hos
 ## Tool Permissions by Category
 
 Foundation Skills:
-- Allowed: Read, Grep, Glob, Context7 MCP
+- Allowed: Read, Grep, Glob, WebSearch/WebFetch
 - Never: Bash, Agent
 
 Workflow Skills:
@@ -161,7 +161,7 @@ Domain Skills:
 - Never: AskUserQuestion, Agent
 
 Language Skills:
-- Allowed: Read, Grep, Glob, Bash, Context7 MCP
+- Allowed: Read, Grep, Glob, Bash, WebSearch/WebFetch
 - Conditional: Write, Edit (implementation tasks only)
 - Never: AskUserQuestion, Agent
 

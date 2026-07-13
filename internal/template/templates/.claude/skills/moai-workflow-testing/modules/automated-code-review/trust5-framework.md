@@ -4,7 +4,7 @@
 > Parent: [TRUST 5 Validation](../trust5-validation.md)
 > Complexity: Advanced
 > Time: 25+ minutes
-> Dependencies: Context7 MCP, source parser (AST)
+> Dependencies: WebSearch/WebFetch, source parser (AST)
 
 ## Quick Reference
 
@@ -51,17 +51,17 @@ TRUST 5 Framework provides comprehensive code quality assessment across five ess
 
 ```text
 class AdvancedTRUST5Analyzer:
-    context7
+    docs
     category_patterns = {}
 
     load_category_patterns():
-        if context7 is none: return default_patterns()
+        if docs is none: return default_patterns()
         try:
-            truthfulness = context7.get_library_docs("<code-correctness>",
+            truthfulness = docs.get_library_docs("<code-correctness>",
                             topic="logic error detection patterns", tokens=3000)
-            usability    = context7.get_library_docs("<code-quality/sonarqube>",
+            usability    = docs.get_library_docs("<code-quality/sonarqube>",
                             topic="maintainability metrics code smells", tokens=4000)
-            safety       = context7.get_library_docs("<security/owasp>",
+            safety       = docs.get_library_docs("<security/owasp>",
                             topic="security vulnerability detection", tokens=5000)
             return { truthfulness, usability, safety }
         except e:
@@ -85,7 +85,7 @@ class AdvancedTRUST5Analyzer:
 - Unused variable declarations
 - Variable shadowing across scopes
 
-**Implementation**: See [Truthfulness Analysis](./trust5-framework/truthfulness-analysis.md) for detailed logic validation, data flow analysis, and Context7 integration patterns.
+**Implementation**: See [Truthfulness Analysis](./trust5-framework/truthfulness-analysis.md) for detailed logic validation, data flow analysis, and Documentation integration patterns.
 
 ### Relevance Analysis
 
@@ -141,7 +141,7 @@ class AdvancedTRUST5Analyzer:
 - Error handling best practices
 - Input validation completeness
 
-**Implementation**: See [Safety Analysis](./trust5-framework/safety-analysis.md) for advanced security analysis, resource leak detection, and Context7 OWASP integration.
+**Implementation**: See [Safety Analysis](./trust5-framework/safety-analysis.md) for advanced security analysis, resource leak detection, and Documentation OWASP integration.
 
 ### Timeliness Analysis
 
@@ -197,7 +197,7 @@ TRUST 5 uses weighted scoring with category-specific weights:
 ## Best Practices
 
 1. **Pattern Customization**: Customize category-specific patterns for project context
-2. **Context7 Integration**: Leverage latest patterns from Context7 for accuracy
+2. **Documentation Integration**: Leverage latest patterns from Documentation for accuracy
 3. **Weight Adjustment**: Adjust category weights based on project priorities
 4. **Trend Analysis**: Track score trends over time for improvement monitoring
 5. **Team Alignment**: Ensure category definitions align with team understanding

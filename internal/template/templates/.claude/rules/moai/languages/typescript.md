@@ -102,9 +102,9 @@ Import atom from jotai and atomWithStorage from jotai/utils. Create countAtom wi
 
 ## Advanced Patterns
 
-For comprehensive coverage including advanced TypeScript patterns, performance optimization, testing strategies, and deployment configurations, apply the framework sections above together with the Context7 Integration mappings; this guide is self-contained.
+For comprehensive coverage including advanced TypeScript patterns, performance optimization, testing strategies, and deployment configurations, apply the framework sections above together with the Documentation References; this guide is self-contained.
 
-## Context7 Integration
+## Documentation References
 
 For TypeScript documentation, use microsoft/TypeScript with decorators satisfies topics. For React 19, use facebook/react with server-components use-hook. For Next.js 16, use vercel/next.js with app-router server-actions. For tRPC, use trpc/trpc with procedures middleware. For Zod, use colinhacks/zod with schema validation.
 

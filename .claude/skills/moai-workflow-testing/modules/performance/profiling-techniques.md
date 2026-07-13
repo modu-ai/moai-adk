@@ -248,7 +248,7 @@ print(f"Average Memory: {avg_metrics.get('avg_memory_mb', 0):.1f}MB")
 ```python
 async def _detect_cpu_bottlenecks(
     self, cpu_profiles: List[FunctionProfile],
-    context7_patterns: Dict[str, Any] = None
+    docs_patterns: Dict[str, Any] = None
 ) -> List[PerformanceBottleneck]:
     bottlenecks = []
     total_cpu_time = sum(p.cumulative_time for p in cpu_profiles)
@@ -270,7 +270,7 @@ async def _detect_cpu_bottlenecks(
             severity = "low"
 
         optimization_type, suggestions, estimated_improvement = \
-            await self._generate_cpu_optimization_suggestions(profile, context7_patterns)
+            await self._generate_cpu_optimization_suggestions(profile, docs_patterns)
 
         bottleneck = PerformanceBottleneck(
             function_name=profile.name,
@@ -294,7 +294,7 @@ async def _detect_cpu_bottlenecks(
 ```python
 async def _detect_memory_bottlenecks(
     self, memory_profile: Dict[str, Any],
-    context7_patterns: Dict[str, Any] = None
+    docs_patterns: Dict[str, Any] = None
 ) -> List[PerformanceBottleneck]:
     bottlenecks = []
 
@@ -321,7 +321,7 @@ async def _detect_memory_bottlenecks(
 
                 optimization_type, suggestions, estimated_improvement = \
                     await self._generate_memory_optimization_suggestions(
-                        memory_usage, context7_patterns
+                        memory_usage, docs_patterns
                     )
 
                 bottleneck = PerformanceBottleneck(
@@ -426,20 +426,20 @@ Monitor key metrics over time:
 - Alert on significant degradation
 - Maintain performance history
 
-## Integration with Context7
+## Integration with Documentation
 
 ### AI-Powered Analysis
 
 ```python
 async def detect_bottlenecks(
     self, profile_results: Dict[str, Any],
-    context7_patterns: Dict[str, Any] = None
+    docs_patterns: Dict[str, Any] = None
 ) -> List[PerformanceBottleneck]:
-    if not context7_patterns:
+    if not docs_patterns:
         return await self._rule_based_detection(profile_results)
     
-    optimization_patterns = await self.context7.get_library_docs(
-        context7_library_id="/performance/python-profiling",
+    optimization_patterns = await self.docs.get_library_docs(
+        docs_library_id="/performance/python-profiling",
         topic="advanced performance optimization patterns 2025",
         tokens=5000
     )

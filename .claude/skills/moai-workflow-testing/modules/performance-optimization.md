@@ -3,7 +3,7 @@
 > Module: Real-time performance profiling, bottleneck detection, and optimization strategies
 > Complexity: Advanced
 > Time: 30+ minutes
-> Dependencies: Python 3.8+, cProfile, memory_profiler, psutil, Context7 MCP, asyncio
+> Dependencies: Python 3.8+, cProfile, memory_profiler, psutil, WebSearch/WebFetch, asyncio
 
 ## Overview
 
@@ -14,7 +14,7 @@ Performance optimization module providing comprehensive profiling, bottleneck de
 - **Real-time Monitoring**: Continuous performance tracking with alerting
 - **Multi-dimensional Profiling**: CPU, memory, and line-level profiling
 - **Intelligent Detection**: Automatic bottleneck identification with severity scoring
-- **AI-Powered Suggestions**: Context7-based optimization recommendations
+- **AI-Powered Suggestions**: Documentation-based optimization recommendations
 - **Comprehensive Planning**: Structured optimization plans with risk assessment
 
 ## Module Structure
@@ -55,7 +55,7 @@ Key Features:
 
 Usage:
 ```python
-profiler = PerformanceProfiler(context7_client=context7)
+profiler = PerformanceProfiler(docs_client=docs)
 profiler.start_profiling(['cpu', 'memory', 'line'])
 # ... code to profile ...
 results = profiler.stop_profiling()
@@ -108,10 +108,10 @@ print(f"Risk: {plan.risk_level}")
 ### 5. AI-Powered Optimization
 [ai-optimization.md](./performance-optimization/ai-optimization.md)
 
-Intelligent optimization suggestions using Context7 documentation integration.
+Intelligent optimization suggestions using Documentation documentation integration.
 
 Key Features:
-- Context7 integration for latest performance patterns
+- Documentation integration for latest performance patterns
 - Algorithm complexity analysis and recommendations
 - Data structure optimization suggestions
 - Concurrency improvement strategies
@@ -119,7 +119,7 @@ Key Features:
 
 Usage:
 ```python
-optimizer = IntelligentOptimizer(context7_client=context7)
+optimizer = IntelligentOptimizer(docs_client=docs)
 suggestions = await optimizer.get_ai_optimization_suggestions(
     bottlenecks,
     codebase_context={'project_type': 'web_api'}
@@ -132,7 +132,7 @@ Complete performance optimization workflow:
 
 ```python
 # Initialize profiler
-profiler = PerformanceProfiler(context7_client=context7)
+profiler = PerformanceProfiler(docs_client=docs)
 
 # Start profiling
 profiler.start_profiling(['cpu', 'memory', 'line'])
@@ -152,7 +152,7 @@ planner = OptimizationPlanner(detector)
 plan = await planner.create_optimization_plan(bottlenecks)
 
 # Get AI suggestions
-optimizer = IntelligentOptimizer(context7_client)
+optimizer = IntelligentOptimizer(docs_client)
 ai_suggestions = await optimizer.get_ai_optimization_suggestions(
     bottlenecks,
     codebase_context={'project_type': 'web_api'}
@@ -246,27 +246,27 @@ print(f"Risk level: {plan.risk_level}")
 4. **Gradual Rollout**: Use feature flags and gradual deployment
 5. **Monitoring**: Set up performance monitoring and alerting
 
-## Integration with Context7
+## Integration with Documentation
 
-The AI-powered optimization module integrates with Context7 to provide:
+The AI-powered optimization module integrates with Documentation to provide:
 
 - Latest performance optimization patterns from official documentation
 - Algorithm complexity analysis and best practices
 - Framework-specific optimization techniques
 - Real-time documentation updates for 2025+ patterns
 
-Context7 Queries:
+Documentation Queries:
 ```python
 # Performance optimization patterns
-await context7.get_library_docs(
-    context7_library_id="/performance/python-profiling",
+await docs.get_library_docs(
+    docs_library_id="/performance/python-profiling",
     topic="advanced performance optimization patterns 2025",
     tokens=5000
 )
 
 # Algorithm optimization
-await context7.get_library_docs(
-    context7_library_id="/algorithms/python",
+await docs.get_library_docs(
+    docs_library_id="/algorithms/python",
     topic="algorithm optimization big-O complexity reduction",
     tokens=3000
 )
@@ -300,7 +300,7 @@ Required:
 - tracemalloc (standard library)
 
 Optional:
-- Context7 MCP (AI-powered suggestions)
+- WebSearch/WebFetch (AI-powered suggestions)
 - asyncio (async profiling support)
 
 ## Module Versions

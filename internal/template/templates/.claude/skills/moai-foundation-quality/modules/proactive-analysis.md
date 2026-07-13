@@ -106,5 +106,5 @@ an unobserved defect claim.
 ## Related
 
 - [TRUST 5 Principles](trust5-validation.md) — the dimensions this analysis feeds
-- [Best Practices](best-practices.md) — Context7-powered standards validation
+- [Best Practices](best-practices.md) — documentation-grounded standards validation
 - [Integration Patterns](integration-patterns.md) — quality across SPEC phases

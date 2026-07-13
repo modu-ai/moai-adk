@@ -1,3 +1,5 @@
+> **[REMOVED 2026-07-13]** The `gateguard-fact-force.sh` PreToolUse advisory hook referenced in M7 / REQ-HOC-017 / AC-026 below has been FULLY DECOMMISSIONED from both the local working tree and the distribution template. The hook script, `MOAI_FACT_FORCE` env var, `.moai/state/fact-force/` state dir, and `.moai/logs/fact-force-skip.log` skip log are all removed. References below are preserved as historical decision-record content only.
+
 # plan.md — SPEC-HOOK-OFFICIAL-COMPLIANCE-001
 
 > **Plan-phase only.** This document decomposes the 8 audit recommendations into 8 milestones (M1-M8) with per-Rec dedup verdicts. No code or hook/rule file is modified at plan-phase.

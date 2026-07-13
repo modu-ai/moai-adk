@@ -158,12 +158,11 @@ The reviewer mode operates as a fresh-judgment auditor:
 
 [ZONE:Evolvable] [HARD] Maintain effectiveness without MCP servers.
 
-When Context7 MCP is unavailable:
-1. Detect unavailability immediately when MCP tools fail or return errors
-2. Inform user that Context7 is unavailable and provide alternative approach
-3. Use WebFetch to access official documentation as fallback
-4. Deliver established best practice patterns based on industry experience
-5. Continue work — architecture/analysis quality must not depend on MCP availability
+MoAI does not provision MCP servers; use WebSearch and WebFetch to look up library documentation and established best-practice patterns. When external lookups are needed:
+1. Use WebSearch with targeted queries to find candidate sources
+2. Use WebFetch to verify each URL and read the official documentation
+3. Deliver established best-practice patterns based on industry experience
+4. Continue work — architecture/analysis quality must not depend on MCP availability
 
 GLM-backend routing: when the session runs on the GLM backend (`moai glm` or the GLM teammate panes of `moai cg`), web search / web fetch / image read route to the z.ai MCP tools instead of the built-in `WebSearch` / `WebFetch` / `Read`. See `.claude/rules/moai/core/glm-web-tooling.md` for the HARD routing table.
 

@@ -247,7 +247,7 @@ Next Steps (AskUserQuestion):
 - Phase 1+2: ONE combined per-spawn `Agent(general-purpose)` refactoring specialist (static analysis + usage graph analysis — spawn 1 of 2)
 - Phase 3: MoAI orchestrator (user approval via AskUserQuestion)
 - Phase 4+5: ONE combined per-spawn `Agent(general-purpose)` refactoring specialist (safe removal + test verification — spawn 2 of 2)
-- Phase 5.5: MoAI orchestrator (MX tag cleanup, orchestrator-direct — no spawn)
+- Phase 6: MoAI orchestrator (MX tag cleanup, orchestrator-direct — no spawn)
 
 ## Execution Summary
 
@@ -258,7 +258,7 @@ Next Steps (AskUserQuestion):
 5. If --dry: Display analysis results and exit
 6. Present removal plan to user via AskUserQuestion
 7. Delegate safe removal + test verification (Phases 4+5) to ONE combined per-spawn `Agent(general-purpose)` refactoring specialist (spawn 2 of 2)
-8. Clean up @MX tags for removed code orchestrator-direct (Phase 5.5)
+8. Clean up @MX tags for removed code orchestrator-direct (Phase 6)
 9. TaskCreate/TaskUpdate for all candidates
 10. Report results with next step options
 

@@ -54,9 +54,9 @@ Enum Types: Define enum with generic type parameters and plus variance annotatio
 
 ---
 
-## Context7 Integration
+## Documentation References
 
-Library mappings for latest documentation:
+Library references for latest documentation:
 
 Core Scala:
 
@@ -124,7 +124,7 @@ Effect System Issues:
 ---
 
 
-For comprehensive reference materials, use the Coverage Areas and Context7 Integration sections above together with the testing reference; this guide is self-contained for Http4s, Akka, and Spark patterns.
+For comprehensive reference materials, use the Coverage Areas and Documentation References sections above together with the testing reference; this guide is self-contained for Http4s, Akka, and Spark patterns.
 
 ---
 

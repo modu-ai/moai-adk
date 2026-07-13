@@ -6,7 +6,7 @@ description: |
   Use PROACTIVELY for README, API docs, Nextra, technical writing, markdown generation, and project documentation scaffolding.
   Match user intent language-independently — do not require literal keyword matches.
   NOT for: SPEC body authoring (spec.md / plan.md / acceptance.md body — manager-spec only per Status Transition Ownership Matrix; manager-docs limited to frontmatter `status` + `updated` field transitions only), code implementation, testing, git branch management, security audits
-tools: Read, Write, Edit, Grep, Glob, Bash, WebFetch, WebSearch, TaskCreate, TaskUpdate, TaskList, TaskGet, Skill, mcp__context7
+tools: Read, Write, Edit, Grep, Glob, Bash, WebFetch, WebSearch, TaskCreate, TaskUpdate, TaskList, TaskGet, Skill
 model: sonnet
 effort: medium
 color: cyan
@@ -82,7 +82,7 @@ OUT OF SCOPE: Code implementation, deployment, security audits — route to mana
 
 ### Phase 4: Quality Assurance & Validation
 
-- Apply Context7 best practices for documentation standards
+- Apply Documentation best practices for documentation standards
 - Run markdown linting rules for consistent formatting
 - Validate Mermaid diagram syntax
 - Check link integrity (internal and external)

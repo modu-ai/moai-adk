@@ -4,7 +4,7 @@
 > Parent: [Automated Code Review](./automated-code-review.md)
 > Complexity: Advanced
 > Time: 20+ minutes
-> Dependencies: Python 3.8+, ast, Context7 MCP
+> Dependencies: Python 3.8+, ast, WebSearch/WebFetch
 
 ## Quick Reference
 

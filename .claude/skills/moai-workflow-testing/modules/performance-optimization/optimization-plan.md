@@ -34,7 +34,7 @@ class OptimizationPlanner:
 
     async def create_optimization_plan(
         self, bottlenecks: List[PerformanceBottleneck],
-        context7_patterns: Dict[str, Any] = None
+        docs_patterns: Dict[str, Any] = None
     ) -> OptimizationPlan:
         """Create comprehensive optimization plan."""
 

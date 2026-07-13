@@ -4,7 +4,7 @@
 > Parent: [TRUST 5 Framework](./trust5-framework.md)
 > Complexity: Advanced
 > Time: 10+ minutes
-> Dependencies: source parser (AST), Context7 MCP
+> Dependencies: source parser (AST), WebSearch/WebFetch
 
 ## Overview
 
@@ -69,11 +69,11 @@ analyze_data_flow(file_path, tree):
 6. **Unused Variables**: Variables defined but never read
 7. **Variable Shadowing**: Inner scope variables hiding outer scope
 
-### Context7 Integration
+### Documentation Integration
 
 ```text
 # Load truthfulness patterns (use the host language's correctness library id)
-truthfulness = context7.get_library_docs(
+truthfulness = docs.get_library_docs(
     "<code-correctness/<language>>",
     topic="logic error detection patterns",
     tokens=3000)

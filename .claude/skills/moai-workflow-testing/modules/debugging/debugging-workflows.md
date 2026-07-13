@@ -8,14 +8,14 @@
 
 ### AIDebugger Class Structure
 
-Complete AIDebugger implementation with Context7 integration, pattern matching, and solution generation. For data class definitions (ErrorType, ErrorAnalysis, Solution, DebugAnalysis), see [ai-debugging.md](../ai-debugging.md).
+Complete AIDebugger implementation with Documentation integration, pattern matching, and solution generation. For data class definitions (ErrorType, ErrorAnalysis, Solution, DebugAnalysis), see [ai-debugging.md](../ai-debugging.md).
 
 ```python
 class AIDebugger:
-    """AI-powered debugging with Context7 integration."""
+    """AI-powered debugging with Documentation integration."""
 
-    def __init__(self, context7_client=None):
-        self.context7 = context7_client
+    def __init__(self, docs_client=None):
+        self.docs = docs_client
         self.error_patterns = self._load_error_patterns()
         self.error_history = {}
         self.pattern_cache = {}
@@ -34,7 +34,7 @@ class AIDebugger:
                     'Check import path',
                     'Resolve circular dependencies'
                 ],
-                'context7_topics': [
+                'docs_topics': [
                     'python import system best practices',
                     'module resolution troubleshooting',
                     'dependency management'
@@ -50,7 +50,7 @@ class AIDebugger:
                     'Verify module import',
                     'Add missing attribute or method'
                 ],
-                'context7_topics': [
+                'docs_topics': [
                     'python attribute access patterns',
                     'object-oriented debugging',
                     'introspection techniques'
@@ -67,7 +67,7 @@ class AIDebugger:
                     'Verify function signatures',
                     'Add type validation'
                 ],
-                'context7_topics': [
+                'docs_topics': [
                     'python type system debugging',
                     'function signature validation',
                     'type checking best practices'
@@ -84,7 +84,7 @@ class AIDebugger:
                     'Add error handling for conversions',
                     'Check value ranges'
                 ],
-                'context7_topics': [
+                'docs_topics': [
                     'input validation patterns',
                     'data conversion error handling',
                     'value range checking'
@@ -98,25 +98,25 @@ class AIDebugger:
 Complete debug workflow implementation with error classification, pattern matching, solution generation, and prevention strategies:
 
 ```python
-    async def debug_with_context7_patterns(
+    async def debug_with_docs_patterns(
         self, error: Exception, context: Dict, codebase_path: str
     ) -> DebugAnalysis:
-        """Debug using AI pattern recognition and Context7 best practices."""
+        """Debug using AI pattern recognition and Documentation best practices."""
 
         # Classify error with high accuracy
         error_analysis = await self._classify_error_with_ai(error, context)
 
-        # Get Context7 patterns if available
-        context7_patterns = {}
-        if self.context7:
-            context7_patterns = await self._get_context7_patterns(error_analysis)
+        # Get Documentation patterns if available
+        docs_patterns = {}
+        if self.docs:
+            docs_patterns = await self._get_docs_patterns(error_analysis)
 
         # Match against known patterns
         pattern_matches = self._match_error_patterns(error, error_analysis)
 
         # Generate comprehensive solutions
         solutions = await self._generate_solutions(
-            error_analysis, context7_patterns, pattern_matches, context
+            error_analysis, docs_patterns, pattern_matches, context
         )
 
         # Suggest prevention strategies
@@ -128,7 +128,7 @@ Complete debug workflow implementation with error classification, pattern matchi
         return DebugAnalysis(
             error_type=error_analysis.type,
             confidence=error_analysis.confidence,
-            context7_patterns=context7_patterns,
+            docs_patterns=docs_patterns,
             solutions=solutions,
             prevention_strategies=prevention,
             related_errors=self._find_related_errors(error_analysis),
@@ -224,42 +224,42 @@ AI-enhanced error classification with context awareness using type mapping, mess
         return ErrorType.UNKNOWN
 ```
 
-### Context7 Integration
+### Documentation Integration
 
 Automatic documentation retrieval for latest debugging patterns and best practices with intelligent caching:
 
 ```python
-    async def _get_context7_patterns(
+    async def _get_docs_patterns(
         self, error_analysis: ErrorAnalysis
     ) -> Dict[str, Any]:
-        """Get latest debugging patterns from Context7."""
+        """Get latest debugging patterns from Documentation."""
 
         cache_key = f"{error_analysis.type.value}_{error_analysis.message[:30]}"
         if cache_key in self.pattern_cache:
             return self.pattern_cache[cache_key]
 
-        # Determine appropriate Context7 libraries based on error type
-        context7_queries = self._build_context7_queries(error_analysis)
+        # Determine appropriate Documentation libraries based on error type
+        docs_queries = self._build_docs_queries(error_analysis)
 
         patterns = {}
-        if self.context7:
-            for library_id, topic in context7_queries:
+        if self.docs:
+            for library_id, topic in docs_queries:
                 try:
-                    result = await self.context7.get_library_docs(
-                        context7_library_id=library_id,
+                    result = await self.docs.get_library_docs(
+                        docs_library_id=library_id,
                         topic=topic,
                         tokens=4000
                     )
                     patterns[library_id] = result
                 except Exception as e:
-                    print(f"Context7 query failed for {library_id}: {e}")
+                    print(f"Documentation query failed for {library_id}: {e}")
 
         # Cache results
         self.pattern_cache[cache_key] = patterns
         return patterns
 
-    def _build_context7_queries(self, error_analysis: ErrorAnalysis) -> List[tuple]:
-        """Build Context7 queries based on error analysis."""
+    def _build_docs_queries(self, error_analysis: ErrorAnalysis) -> List[tuple]:
+        """Build Documentation queries based on error analysis."""
 
         queries = []
 
@@ -291,8 +291,8 @@ Self-improving debugger that learns from successful fixes with pattern recogniti
 class LearningDebugger(AIDebugger):
     """Debugger that learns from fixed errors."""
 
-    def __init__(self, context7_client=None):
-        super().__init__(context7_client)
+    def __init__(self, docs_client=None):
+        super().__init__(docs_client)
         self.learned_patterns = {}
         self.successful_fixes = {}
 
@@ -372,12 +372,12 @@ Complete usage examples for common debugging scenarios:
 
 ```python
 # Basic usage
-debugger = AIDebugger(context7_client=context7)
+debugger = AIDebugger(docs_client=docs)
 
 try:
     result = some_risky_operation()
 except Exception as e:
-    analysis = await debugger.debug_with_context7_patterns(
+    analysis = await debugger.debug_with_docs_patterns(
         e,
         {'file': __file__, 'function': 'some_risky_operation', 'language': 'python'},
         '/project/src'
@@ -399,7 +399,7 @@ except Exception as e:
 try:
     data = process_user_input(user_data)
 except Exception as e:
-    analysis = await debugger.debug_with_context7_patterns(
+    analysis = await debugger.debug_with_docs_patterns(
         e,
         {
             'file': __file__,

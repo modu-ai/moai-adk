@@ -1,7 +1,7 @@
-# DDD with Context7 - Core Classes
+# DDD with Documentation - Core Classes
 
 > Sub-module: Core class implementations for DDD workflow management
-> Parent: [DDD with Context7](../ddd-context7.md)
+> Parent: DDD module overview (see the main moai-workflow-testing SKILL)
 
 ## Enumerations
 
@@ -93,7 +93,7 @@ class DDDSession:
     test_cases: List[TestCase]
     implementation_files: List[str]
     metrics: Dict[str, Any]
-    context7_patterns: Dict[str, Any]
+    docs_patterns: Dict[str, Any]
     started_at: float
     last_activity: float
 ```
@@ -113,7 +113,7 @@ class DDDCycleResult:
     improve_phase_result: Dict[str, Any]
     final_coverage: float
     total_time: float
-    context7_patterns_applied: List[str]
+    docs_patterns_applied: List[str]
     behavior_preserved: bool
 ```
 
@@ -121,21 +121,21 @@ class DDDCycleResult:
 
 ```python
 class DDDManager:
-    """Manages DDD workflow with Context7 integration."""
+    """Manages DDD workflow with Documentation integration."""
 
-    def __init__(self, project_path: str, context7_client=None):
+    def __init__(self, project_path: str, docs_client=None):
         self.project_path = project_path
-        self.context7 = context7_client
-        self.context7_integration = Context7DDDIntegration(context7_client)
-        self.test_generator = TestGenerator(context7_client)
+        self.docs = docs_client
+        self.docs_integration = DocumentationDDDIntegration(docs_client)
+        self.test_generator = TestGenerator(docs_client)
         self.current_session: Optional[DDDSession] = None
 
     async def start_ddd_session(self, feature_name: str) -> DDDSession:
         """Start a new DDD session."""
         session_id = f"ddd_{feature_name}_{int(time.time())}"
 
-        # Load Context7 patterns
-        patterns = await self.context7_integration.load_ddd_patterns()
+        # Load Documentation patterns
+        patterns = await self.docs_integration.load_ddd_patterns()
 
         session = DDDSession(
             id=session_id,
@@ -144,7 +144,7 @@ class DDDManager:
             test_cases=[],
             implementation_files=[],
             metrics={'analyze_phases': 0, 'preserve_phases': 0, 'improve_phases': 0},
-            context7_patterns=patterns,
+            docs_patterns=patterns,
             started_at=time.time(),
             last_activity=time.time()
         )
@@ -162,7 +162,7 @@ class DDDManager:
             self.current_session = await self.start_ddd_session("default")
 
         cycle_start = time.time()
-        context7_patterns_applied = []
+        docs_patterns_applied = []
 
         # ANALYZE Phase - Understand existing code and behavior
         analyze_result = await self._execute_analyze_phase(specification)
@@ -179,7 +179,7 @@ class DDDManager:
             specification, preserve_result
         )
         self.current_session.metrics['improve_phases'] += 1
-        context7_patterns_applied.extend(improve_result.get('patterns_applied', []))
+        docs_patterns_applied.extend(improve_result.get('patterns_applied', []))
 
         # Run final coverage
         coverage = await self._run_coverage_analysis()
@@ -194,7 +194,7 @@ class DDDManager:
             improve_phase_result=improve_result,
             final_coverage=coverage.get('total_coverage', 0.0),
             total_time=time.time() - cycle_start,
-            context7_patterns_applied=context7_patterns_applied,
+            docs_patterns_applied=docs_patterns_applied,
             behavior_preserved=improve_result.get('behavior_preserved', True)
         )
 ```
@@ -286,8 +286,8 @@ async def _execute_improve_phase(
     """Execute IMPROVE phase - refactor with behavior preservation."""
     self.current_session.current_phase = DDDPhase.IMPROVE
 
-    # Get improvement patterns from Context7
-    improve_patterns = await self.context7_integration.get_improvement_patterns()
+    # Get improvement patterns from Documentation
+    improve_patterns = await self.docs_integration.get_improvement_patterns()
 
     # Generate improvements
     improvements = await self._generate_improvements(
@@ -387,7 +387,7 @@ async def _run_coverage_analysis(self) -> Dict[str, Any]:
 ## Related Sub-modules
 
 - [Test Generation](./test-generation.md) - AI-powered test creation
-- [Context7 Patterns](./context7-patterns.md) - Pattern integration
+- [Documentation Patterns](./docs-patterns.md) - Pattern integration
 
 ---
 

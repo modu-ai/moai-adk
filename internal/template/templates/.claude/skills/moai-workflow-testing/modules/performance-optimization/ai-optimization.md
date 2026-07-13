@@ -1,9 +1,9 @@
 # AI-Powered Optimization
 
-> Module: Intelligent optimization suggestions using Context7
+> Module: Intelligent optimization suggestions using Documentation
 > Complexity: Advanced
 > Time: 20+ minutes
-> Dependencies: Context7 MCP
+> Dependencies: WebSearch/WebFetch
 
 ## Core Implementation
 
@@ -11,24 +11,24 @@
 
 ```text
 Component: IntelligentOptimizer
-Purpose: Suggest the best optimizations using AI (Context7) with a rule-based fallback.
+Purpose: Suggest the best optimizations using AI (Documentation) with a rule-based fallback.
 
 State:
-  context7_client      // optional AI documentation client; null = rules-only mode
+  docs_client      // optional AI documentation client; null = rules-only mode
   optimization_history // log of past suggestions, used to learn over time
   performance_models   // map of profiled baselines per hot path
 
 Operation get_ai_optimization_suggestions(bottlenecks, codebase_context) -> suggestions:
   // Graceful degradation: with no AI client, fall back to deterministic rules.
-  IF context7_client is null:
+  IF docs_client is null:
     RETURN rule_based_suggestions(bottlenecks)
 
   TRY:
-    opt_patterns  = context7_client.get_library_docs(
+    opt_patterns  = docs_client.get_library_docs(
                       library_id="<performance/profiling>",
                       topic="advanced performance optimization patterns",
                       tokens=5000)
-    algo_patterns = context7_client.get_library_docs(
+    algo_patterns = docs_client.get_library_docs(
                       library_id="<algorithms/complexity>",
                       topic="algorithm optimization big-O complexity reduction",
                       tokens=3000)
@@ -170,7 +170,7 @@ The pseudocode is language-neutral. The `bottleneck.type` and `bottleneck.metric
 
 ```text
 # Get AI-powered optimization suggestions
-optimizer = new IntelligentOptimizer(context7_client = context7)
+optimizer = new IntelligentOptimizer(docs_client = docs)
 suggestions = await optimizer.get_ai_optimization_suggestions(
     bottlenecks,
     codebase_context = { project_type:    "web_api",
@@ -188,7 +188,7 @@ for each (category, items) in suggestions:
 
 ## Best Practices
 
-1. **Context7 Integration**: Use latest documentation for up-to-date patterns
+1. **Documentation Integration**: Use latest documentation for up-to-date patterns
 2. **Hybrid Approach**: Combine AI suggestions with rule-based heuristics
 3. **Codebase Context**: Provide project context for better recommendations
 4. **Learning System**: Track optimization history for continuous improvement

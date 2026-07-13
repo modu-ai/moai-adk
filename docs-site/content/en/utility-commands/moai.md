@@ -33,7 +33,7 @@ Routing proceeds in this order:
 1. **Intent analysis**: classify the intent of the user's request (regardless of input language)
 2. **Context-sufficiency check**: if insufficient, clarify through a Socratic interview
 3. **Execution-plan composition**: choose the skill / agent / dynamic-workflow chain
-4. **Orchestration mode selection** (Phase 0.95): solo-sequential / parallel-subagents / dynamic-workflow
+4. **Orchestration mode selection** (Phase 4): solo-sequential / parallel-subagents / dynamic-workflow
 
 That is, even typing plain natural language without a subcommand, like `/moai "fix the login bug"`, is routed through intent analysis to the right workflow (the fix family for a fix, or the plan→run→sync pipeline for a new feature).
 

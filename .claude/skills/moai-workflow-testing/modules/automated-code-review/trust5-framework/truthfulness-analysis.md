@@ -4,7 +4,7 @@
 > Parent: [TRUST 5 Framework](./trust5-framework.md)
 > Complexity: Advanced
 > Time: 10+ minutes
-> Dependencies: Python 3.8+, ast, Context7 MCP
+> Dependencies: Python 3.8+, ast, WebSearch/WebFetch
 
 ## Overview
 
@@ -111,12 +111,12 @@ def analyze_data_flow(self, file_path: str, tree: ast.AST) -> List[CodeIssue]:
 6. **Unused Variables**: Variables defined but never read
 7. **Variable Shadowing**: Inner scope variables hiding outer scope
 
-### Context7 Integration
+### Documentation Integration
 
 ```python
 # Load truthfulness patterns
-truthfulness = await self.context7.get_library_docs(
-    context7_library_id="/code-correctness/python",
+truthfulness = await self.docs.get_library_docs(
+    docs_library_id="/code-correctness/python",
     topic="logic error detection patterns 2025",
     tokens=3000
 )

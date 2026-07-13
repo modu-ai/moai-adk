@@ -32,7 +32,7 @@ Jenkins:
 
 ```text
 automated_review_workflow(project_path, pr_number = none, fail_on_quality_gate = true):
-    reviewer = AutomatedCodeReviewer(context7_client=context7)
+    reviewer = AutomatedCodeReviewer(docs_client=docs)
 
     # Review the codebase; use the host language's source globs
     report = reviewer.review_codebase(

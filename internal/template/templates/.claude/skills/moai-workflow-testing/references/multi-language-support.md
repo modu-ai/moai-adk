@@ -153,7 +153,7 @@ all 16 supported languages are treated equally.
 
 Map each concern — testing, coverage, static analysis/style, security,
 performance — to the standard tool for the target language. When unsure, use
-Context7 MCP (`mcp__context7__resolve-library-id`) to look up the current
+WebSearch/WebFetch (`mcp__docs__resolve-library-id`) to look up the current
 recommended testing/profiling library for the language. If a recognized tool is
 not installed, the quality gate skips it gracefully (per CLAUDE.md §7
 Language-Specific Guidelines).

@@ -33,7 +33,7 @@ v3 から `/moai` のデフォルトルーティングは **Analyze-First** — 
 1. **意図分析**: ユーザーリクエストの意図を分類 (入力言語とは無関係)
 2. **コンテキスト十分性の確認**: 不十分な場合は Socratic インタビューで明確化
 3. **実行計画の構成**: スキル / エージェント / 動的ワークフローチェーンの選択
-4. **オーケストレーションモードの選択** (Phase 0.95): solo-sequential / parallel-subagents / dynamic-workflow
+4. **オーケストレーションモードの選択** (Phase 4): solo-sequential / parallel-subagents / dynamic-workflow
 
 つまり `/moai "ログインのバグを直して"` のようにサブコマンドなしで自然言語だけ入力しても、意図分析を経て適切なワークフロー (修正なら fix 系、新機能なら plan→run→sync パイプライン) につながります。
 

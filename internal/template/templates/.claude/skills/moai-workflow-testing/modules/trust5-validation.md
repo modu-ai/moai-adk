@@ -4,7 +4,7 @@
 > Parent: [Automated Code Review](./automated-code-review.md)
 > Complexity: Advanced
 > Time: 20+ minutes
-> Dependencies: source parser, Context7 MCP
+> Dependencies: source parser, WebSearch/WebFetch
 
 ## Quick Reference
 

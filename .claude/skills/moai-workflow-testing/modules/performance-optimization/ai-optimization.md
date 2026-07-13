@@ -1,9 +1,9 @@
 # AI-Powered Optimization
 
-> Module: Intelligent optimization suggestions using Context7
+> Module: Intelligent optimization suggestions using Documentation
 > Complexity: Advanced
 > Time: 20+ minutes
-> Dependencies: Context7 MCP, asyncio
+> Dependencies: WebSearch/WebFetch, asyncio
 
 ## Core Implementation
 
@@ -16,8 +16,8 @@ import asyncio
 class IntelligentOptimizer:
     """Optimizer that uses AI to suggest the best optimizations."""
 
-    def __init__(self, context7_client=None):
-        self.context7 = context7_client
+    def __init__(self, docs_client=None):
+        self.docs = docs_client
         self.optimization_history = []
         self.performance_models = {}
 
@@ -25,22 +25,22 @@ class IntelligentOptimizer:
         self, bottlenecks: List[PerformanceBottleneck],
         codebase_context: Dict[str, Any]
     ) -> Dict[str, Any]:
-        """Get AI-powered optimization suggestions using Context7."""
+        """Get AI-powered optimization suggestions using Documentation."""
 
-        if not self.context7:
+        if not self.docs:
             return self._get_rule_based_suggestions(bottlenecks)
 
         # Get latest performance optimization patterns
         try:
-            optimization_patterns = await self.context7.get_library_docs(
-                context7_library_id="/performance/python-profiling",
+            optimization_patterns = await self.docs.get_library_docs(
+                docs_library_id="/performance/python-profiling",
                 topic="advanced performance optimization patterns 2025",
                 tokens=5000
             )
 
             # Get algorithm complexity patterns
-            algorithm_patterns = await self.context7.get_library_docs(
-                context7_library_id="/algorithms/python",
+            algorithm_patterns = await self.docs.get_library_docs(
+                docs_library_id="/algorithms/python",
                 topic="algorithm optimization big-O complexity reduction",
                 tokens=3000
             )
@@ -100,7 +100,7 @@ class IntelligentOptimizer:
     def _suggest_algorithm_improvement(
         self, bottleneck: PerformanceBottleneck, algo_patterns: Dict
     ) -> Dict[str, Any]:
-        """Suggest algorithmic improvements based on Context7 patterns."""
+        """Suggest algorithmic improvements based on Documentation patterns."""
 
         # Analyze function name and code to identify algorithm type
         function_name = bottleneck.function_name.lower()
@@ -212,7 +212,7 @@ class IntelligentOptimizer:
 
 ```python
 # Get AI-powered optimization suggestions
-optimizer = IntelligentOptimizer(context7_client=context7)
+optimizer = IntelligentOptimizer(docs_client=docs)
 ai_suggestions = await optimizer.get_ai_optimization_suggestions(
     bottlenecks,
     codebase_context={'project_type': 'web_api', 'language': 'python'}
@@ -230,7 +230,7 @@ for category, items in ai_suggestions.items():
 
 ## Best Practices
 
-1. **Context7 Integration**: Use latest documentation for up-to-date patterns
+1. **Documentation Integration**: Use latest documentation for up-to-date patterns
 2. **Hybrid Approach**: Combine AI suggestions with rule-based heuristics
 3. **Codebase Context**: Provide project context for better recommendations
 4. **Learning System**: Track optimization history for continuous improvement

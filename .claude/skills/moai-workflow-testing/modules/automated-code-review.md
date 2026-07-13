@@ -3,7 +3,7 @@
 > Module: AI-powered automated code review with TRUST 5 validation framework and comprehensive quality analysis
 > Complexity: Advanced
 > Time: 35+ minutes
-> Dependencies: Python 3.8+, Context7 MCP, ast, pylint, flake8, bandit, mypy
+> Dependencies: Python 3.8+, WebSearch/WebFetch, ast, pylint, flake8, bandit, mypy
 
 ## Quick Reference
 
@@ -24,7 +24,7 @@ Static Analysis Integration:
 - bandit: Security vulnerability scanning
 - mypy: Type checking and validation
 
-Context7-Enhanced Analysis:
+Documentation-Enhanced Analysis:
 - Up-to-date security patterns from OWASP and Semgrep
 - Performance anti-patterns from profiling best practices
 - Code quality patterns from SonarQube standards
@@ -42,7 +42,7 @@ from moai_workflow_testing.automated_code_review import (
 )
 
 # Initialize automated code reviewer
-reviewer = AutomatedCodeReviewer(context7_client=context7)
+reviewer = AutomatedCodeReviewer(docs_client=docs)
 
 # Review entire codebase
 report = await reviewer.review_codebase(
@@ -86,7 +86,7 @@ Info: Suggestions and best practice recommendations
 
 ### Basic Code Review Workflow
 
-Step 1: Initialize the automated code reviewer with optional Context7 client for enhanced pattern detection
+Step 1: Initialize the automated code reviewer with optional Documentation client for enhanced pattern detection
 
 Step 2: Review the codebase by specifying:
 - Project path to analyze
@@ -138,7 +138,7 @@ Configure analysis patterns to match project standards:
 
 ```python
 # Access analysis patterns
-patterns = await reviewer.context7_analyzer.load_analysis_patterns()
+patterns = await reviewer.docs_analyzer.load_analysis_patterns()
 
 # Customize quality thresholds
 patterns['quality']['long_functions']['max_lines'] = 100
@@ -177,7 +177,7 @@ See [static-analysis.md](./static-analysis.md) for:
 ### Security Analysis
 
 See [security-analysis.md](./security-analysis.md) for:
-- Context7-enhanced security pattern detection
+- Documentation-enhanced security pattern detection
 - OWASP Top 10 vulnerability scanning
 - SQL injection, command injection, path traversal detection
 - Security fix suggestions with references
@@ -201,14 +201,12 @@ See [automated-code-review/trust5-framework.md](./automated-code-review/trust5-f
 - Custom rule creation
 - Integration with external validation tools
 
-### Context7 Integration
+### Documentation Integration
 
-See [automated-code-review/context7-integration.md](./automated-code-review/context7-integration.md) for:
-- Context7 MCP integration patterns
-- Real-time pattern loading
-- Security vulnerability databases
-- Performance optimization libraries
-- Code quality standards integration
+When up-to-date framework or library patterns are needed during review, use WebSearch / WebFetch against the official documentation:
+- Search for the framework's official docs site
+- Fetch the relevant section (security, performance, code-quality) to ground pattern recommendations
+- Fall back to established best-practice patterns when a source is unreachable
 
 ### Review Workflows
 
@@ -224,12 +222,12 @@ See [automated-code-review/review-workflows.md](./automated-code-review/review-w
 ## Best Practices
 
 1. Comprehensive Coverage: Analyze code across all TRUST 5 dimensions for complete quality assessment
-2. Context Integration: Leverage Context7 for up-to-date security and quality patterns
+2. Context Integration: Leverage Documentation for up-to-date security and quality patterns
 3. Actionable Feedback: Provide specific, implementable suggestions with code examples
 4. Severity Prioritization: Focus on critical and high-severity issues first for maximum impact
 5. Continuous Integration: Integrate into CI/CD pipeline for automated reviews on every commit
 6. Custom Thresholds: Adjust analysis thresholds to match project standards and team preferences
-7. Regular Updates: Keep Context7 patterns current for latest vulnerability detection
+7. Regular Updates: Keep Documentation patterns current for latest vulnerability detection
 8. Team Consistency: Use consistent review rules across entire codebase for uniform quality
 
 ---
@@ -252,7 +250,6 @@ automated-code-review.md (this file)
 ├── quality-metrics.md (code quality, complexity, metrics)
 └── automated-code-review/
     ├── trust5-framework.md (deep dive into TRUST 5 categories)
-    ├── context7-integration.md (Context7 MCP integration)
     └── review-workflows.md (CI/CD and team workflows)
 ```
 

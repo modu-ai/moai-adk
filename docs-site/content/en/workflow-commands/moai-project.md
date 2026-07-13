@@ -98,7 +98,7 @@ Organizes the technology information used in the project:
 flowchart TD
     Start["/moai project run"] --> Q1{Project type?}
 
-    Q1 -->|New project| New["Phase 0.5: information gathering"]
+    Q1 -->|New project| New["Phase 1: information gathering"]
     Q1 -->|Existing project| Exist["Phase 1: codebase analysis"]
 
     New --> NewQ["Project purpose"]
@@ -115,7 +115,7 @@ flowchart TD
     Conf -->|Approve| Gen
     Conf -->|Cancel| End["Exit"]
 
-    Gen --> LSP["Phase 3.5: LSP check"]
+    Gen --> LSP["Phase 4: LSP check"]
     LSP --> Complete["Phase 4: done"]
 ```
 
@@ -137,7 +137,7 @@ The project type is checked first.
 | **New project**     | A project starting from scratch. Proceeds by gathering information |
 | **Existing project** | A project that already has code. The code is analyzed automatically |
 
-### Phase 0.5: New-Project Information Gathering
+### Phase 1: New-Project Information Gathering
 
 If you chose a new project, the following information is collected:
 
@@ -211,7 +211,7 @@ Document generation is delegated to the **manager-docs agent**.
 
 **Handed-off contents**:
 
-- Phase 1 analysis results (or Phase 0.5 user input)
+- Phase 1 analysis results (or Phase 1 user input)
 - Phase 2 user confirmation
 - Output directory: `.moai/project/`
 - Language: the config's conversation_language
@@ -224,7 +224,7 @@ Document generation is delegated to the **manager-docs agent**.
 | **structure.md** | Directory tree, purpose of each directory, key file locations, module composition |
 | **tech.md**      | Tech stack overview, framework rationale, dev environment requirements, build/deploy settings |
 
-### Phase 3.5: Development Environment Check
+### Phase 4: Development Environment Check
 
 Checks whether an LSP server matching the detected tech stack is installed.
 
@@ -506,7 +506,7 @@ Since the AI already knows the project's tech stack and structure, it can genera
 ```mermaid
 flowchart TD
     Start["/moai project run"] --> Phase0["Phase 0: type detection"]
-    Phase0 --> Phase05["Phase 0.5: information gathering<br/>(new project)"]
+    Phase0 --> Phase05["Phase 1: information gathering<br/>(new project)"]
     Phase0 --> Phase1["Phase 1: codebase analysis<br/>(existing project)"]
 
     Phase1 --> Explore["Explore subagent<br/>code analysis delegation"]
@@ -516,7 +516,7 @@ flowchart TD
     Phase2 -->|Approve| Phase3
 
     Phase3 --> Docs["manager-docs subagent<br/>document generation delegation"]
-    Docs --> Phase35["Phase 3.5: LSP check"]
+    Docs --> Phase35["Phase 4: LSP check"]
 
     Phase35 --> DevOps["manager-develop subagent<br/>LSP installation (optional)"]
     DevOps --> Phase4["Phase 4: done"]
@@ -538,7 +538,7 @@ Yes, monorepo structures are supported. Run it from the root directory and it an
 
 ### Q: What happens if there is no LSP server?
 
-Document generation proceeds even without an LSP server. However, code-quality diagnostics may be limited in the later `/moai run` phase. Phase 3.5 provides LSP installation guidance.
+Document generation proceeds even without an LSP server. However, code-quality diagnostics may be limited in the later `/moai run` phase. Phase 4 provides LSP installation guidance.
 
 ## Related Documents
 

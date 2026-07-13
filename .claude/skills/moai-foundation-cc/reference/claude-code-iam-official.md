@@ -263,7 +263,7 @@ Enterprise Policy Framework:
  "Write": ["path:./workspace/", "path:./temp/"]
  },
  "mcpServers": {
- "allowed": ["context7", "figma", "company-internal-mcp"],
+ "allowed": ["docs", "figma", "company-internal-mcp"],
  "blocked": ["custom-unverified-mcp", "external-scanner"]
  },
  "roles": {
@@ -319,7 +319,7 @@ MCP Server Configuration:
 ```json
 {
  "allowedMcpServers": [
- "context7",
+ "docs",
  "figma-dev-mode-mcp-server",
  "playwright",
  "company-internal-mcp"
@@ -330,7 +330,7 @@ MCP Server Configuration:
  "external-scanner-mcp"
  ],
  "mcpServerPermissions": {
- "context7": {
+ "docs": {
  "allowed": ["resolve-library-id", "get-library-docs"],
  "rateLimit": {
  "requestsPerMinute": 60,

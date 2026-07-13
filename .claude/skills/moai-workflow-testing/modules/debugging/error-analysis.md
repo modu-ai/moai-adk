@@ -33,10 +33,10 @@ def _match_error_patterns(
         return {
             'matched_patterns': matched_patterns,
             'solutions': pattern_data['solutions'],
-            'context7_topics': pattern_data['context7_topics']
+            'docs_topics': pattern_data['docs_topics']
         }
 
-    return {'matched_patterns': [], 'solutions': [], 'context7_topics': []}
+    return {'matched_patterns': [], 'solutions': [], 'docs_topics': []}
 ```
 
 ### Solution Generation
@@ -46,7 +46,7 @@ Multi-source solution generation with confidence scoring:
 ```python
 async def _generate_solutions(
     self, error_analysis: ErrorAnalysis,
-    context7_patterns: Dict, pattern_matches: Dict,
+    docs_patterns: Dict, pattern_matches: Dict,
     context: Dict
 ) -> List[Solution]:
     """Generate comprehensive solutions using multiple sources."""
@@ -65,12 +65,12 @@ async def _generate_solutions(
         )
         solutions.append(solution)
 
-    # Context7-based solutions
-    for library_id, docs in context7_patterns.items():
+    # Documentation-based solutions
+    for library_id, docs in docs_patterns.items():
         if docs and 'solutions' in docs:
             for sol in docs['solutions']:
                 solution = Solution(
-                    type='context7_pattern',
+                    type='docs_pattern',
                     description=sol['description'],
                     code_example=sol.get('code_example', ''),
                     confidence=sol.get('confidence', 0.7),
@@ -80,7 +80,7 @@ async def _generate_solutions(
                 solutions.append(solution)
 
     # AI-generated solutions
-    if self.context7 and len(solutions) < 3:
+    if self.docs and len(solutions) < 3:
         ai_solutions = await self._generate_ai_solutions(error_analysis, context)
         solutions.extend(ai_solutions)
 
@@ -391,7 +391,7 @@ def get_error_frequency(self, error: Exception) -> int:
 
 ### Cache Management
 
-Optimize Context7 query caching:
+Optimize Documentation query caching:
 
 ```python
 def clear_error_history(self):
@@ -430,9 +430,9 @@ Prevention Strategy Implementation: Prioritize prevention strategies based on er
 
 Learning Integration: Record successful fixes to improve pattern recognition and solution accuracy over time
 
-Performance Optimization: Use caching for Context7 queries and implement batch processing for multiple errors
+Performance Optimization: Use caching for Documentation queries and implement batch processing for multiple errors
 
-Documentation Updates: Maintain error pattern database with latest solutions and Context7 topics for continuous improvement
+Documentation Updates: Maintain error pattern database with latest solutions and Documentation topics for continuous improvement
 
 ---
 

@@ -163,7 +163,7 @@ flowchart TD
 
 ## 段階別の詳細
 
-### Phase 0.9: JIT Language Detection (言語の自動検出)
+### Phase 3: JIT Language Detection (言語の自動検出)
 
 プロジェクトの主要言語を自動検出し、エージェントのスポーン時に適切な言語スキルを注入します。16 言語を同等にサポートします。
 
@@ -175,7 +175,7 @@ flowchart TD
 | `Cargo.toml` | moai-lang-rust |
 | `pom.xml` / `build.gradle` | moai-lang-java |
 
-### Phase 0.95: Scale-Based Mode Selection (規模ベースのモード選択)
+### Phase 4: Scale-Based Mode Selection (規模ベースのモード選択)
 
 SPEC の規模に応じて最適な実行モードを自動選択します。小さな作業に重いパイプラインを回さないこと — これもトークノミクスです。
 
@@ -194,8 +194,8 @@ Run phase 開始時、SPEC の複雑度に応じて品質パイプラインの�
 | レベル | 対象 | evaluator | スキップする Phase |
 |------|------|-----------|---------------|
 | **minimal** | 単純なバグ修正、設定変更 | 非アクティブ | 0, 0.5, 2.0, 2.5, 2.75, 2.8a |
-| **standard** | 一般的な機能開発 (デフォルト) | final-pass (Phase 2.8a のみ) | なし |
-| **thorough** | セキュリティ/決済など重要機能 | per-sprint (Phase 2.0 + 2.8a) | なし |
+| **standard** | 一般的な機能開発 (デフォルト) | final-pass (Phase 16 のみ) | なし |
+| **thorough** | セキュリティ/決済など重要機能 | per-sprint (Phase 10 + 2.8a) | なし |
 
 失敗時は自動エスカレーション: minimal → standard → thorough (最大 2 回)
 
@@ -212,7 +212,7 @@ Run phase 開始時、SPEC の複雑度に応じて品質パイプラインの�
 
 **出力:** plan_summary、requirements 一覧、success_criteria、effort_estimate を含む実行計画
 
-### Phase 1.5: 作業分解
+### Phase 6: 作業分解
 
 承認された実行計画をアトミックでレビュー可能な作業に分解します:
 
@@ -228,7 +228,7 @@ Run phase 開始時、SPEC の複雑度に応じて品質パイプラインの�
 
 タスク分解の結果は `.moai/specs/SPEC-{ID}/tasks.md` に永続記録されます。Git で追跡可能で、Drift Guard が参照します。
 
-### Phase 2.0: Sprint Contract (thorough 専用)
+### Phase 10: Sprint Contract (thorough 専用)
 
 thorough レベルでのみ実行されます。sync-auditor と実装前に Done 基準を事前合意します。
 
@@ -253,7 +253,7 @@ thorough レベルでのみ実行されます。sync-auditor と実装前に Don
 
 **出力:** files_modified、characterization_tests_created、test_results、behavior_preserved、structural_metrics
 
-### Phase 2.5: 品質検証
+### Phase 13: 品質検証
 
 **sync-auditor** サブエージェントが TRUST 5 検証を行います:
 
@@ -274,12 +274,12 @@ thorough レベルでのみ実行されます。sync-auditor と実装前に Don
 
 **出力:** trust_5_validation の結果、coverage_percentage、overall_status (PASS/WARNING/CRITICAL)、issues_found
 
-### Phase 2.8a/2.8b: 能動評価と静的検証
+### Phase 16/2.8b: 能動評価と静的検証
 
 品質評価が 2 段階に分かれて実行されます:
 
-- **Phase 2.8a**: sync-auditor の能動評価 (Functionality/Security/Craft/Consistency)
-- **Phase 2.8b**: sync-auditor の TRUST 5 静的検証
+- **Phase 16**: sync-auditor の能動評価 (Functionality/Security/Craft/Consistency)
+- **Phase 17**: sync-auditor の TRUST 5 静的検証
 
 {{< callout type="warning" >}}
 Security FAIL = 全体 FAIL。最大 3 回の修正-評価サイクルの後、ユーザーに報告されます。
@@ -291,7 +291,7 @@ DDD/TDD サイクル完了時、計画に対する実際の変更を比較しま
 
 - drift ≤ 20%: 情報記録のみ
 - 20% < drift ≤ 30%: 警告
-- drift > 30%: Phase 2.7 再計画ゲートをトリガー
+- drift > 30%: Phase 14 再計画ゲートをトリガー
 
 ### Phase 3: Git 作業 (条件付き)
 
@@ -380,12 +380,12 @@ Phase 1: 戦略計画
 
 ---
 
-#### Phase 1.5: 作業分解
+#### Phase 6: 作業分解
 
 実装作業を細かい単位に分けます。
 
 ```bash
-Phase 1.5: 作業分解
+Phase 6: 作業分解
 - TASK-001: ユーザーモデルの定義
 - TASK-002: パスワードハッシュユーティリティ
 - TASK-003: JWT トークンの生成/検証
@@ -434,12 +434,12 @@ IMPROVE 段階:
 
 ---
 
-#### Phase 2.5: 品質検証
+#### Phase 13: 品質検証
 
 TRUST 5 の柱で品質を検証します。
 
 ```bash
-Phase 2.5: 品質検証
+Phase 13: 品質検証
 - TRUST 5 の柱すべて通過
 - テストカバレッジ: 89%
 - LSP エラー: 0 件
@@ -498,7 +498,7 @@ manager-develop エージェントが **自動で進捗を保存** します。`
 
 `quality.yaml` でカバレッジ目標を調整できますが、**推奨しません**。85% はコアロジックがテストされていることを保証する最低基準です。カバレッジが不足すると manager-develop が欠落したテストを自動で追加します。
 
-### Q: Phase 2.5 で CRITICAL 状態になったらどうなりますか?
+### Q: Phase 13 で CRITICAL 状態になったらどうなりますか?
 
 ユーザーに品質問題を報告し、修正を再試行するか尋ねます。「はい」を選択すると IMPROVE 段階に戻って修正を続けます。
 

@@ -3,7 +3,7 @@
 > Module: Performance bottleneck detection and analysis
 > Complexity: Advanced
 > Time: 25+ minutes
-> Dependencies: Context7 MCP (optional)
+> Dependencies: WebSearch/WebFetch (optional)
 
 ## Core Implementation
 
@@ -29,22 +29,22 @@ record PerformanceBottleneck:
     code_snippet:         text
 
 class BottleneckDetector(profiler):
-    detect_bottlenecks(profile_results, context7_patterns = none):
+    detect_bottlenecks(profile_results, docs_patterns = none):
         bottlenecks = []
-        if "cpu_profile"      in profile_results: bottlenecks.extend(detect_cpu_bottlenecks(profile_results.cpu_profile, context7_patterns))
-        if "memory_profile"   in profile_results: bottlenecks.extend(detect_memory_bottlenecks(profile_results.memory_profile, context7_patterns))
-        if "realtime_metrics" in profile_results: bottlenecks.extend(detect_realtime_bottlenecks(profile_results.realtime_metrics, context7_patterns))
+        if "cpu_profile"      in profile_results: bottlenecks.extend(detect_cpu_bottlenecks(profile_results.cpu_profile, docs_patterns))
+        if "memory_profile"   in profile_results: bottlenecks.extend(detect_memory_bottlenecks(profile_results.memory_profile, docs_patterns))
+        if "realtime_metrics" in profile_results: bottlenecks.extend(detect_realtime_bottlenecks(profile_results.realtime_metrics, docs_patterns))
         sort bottlenecks descending by impact_score
         return bottlenecks
 
-    detect_cpu_bottlenecks(cpu_profiles, context7_patterns = none):
+    detect_cpu_bottlenecks(cpu_profiles, docs_patterns = none):
         bottlenecks = []
         total_cpu_time = sum(p.cumulative_time for p in cpu_profiles)
         for profile in cpu_profiles:
             if profile.cumulative_time < 0.01: continue
             impact = profile.cumulative_time / max(total_cpu_time, 0.001)
             severity = critical if impact > 0.5 else high if impact > 0.2 else medium if impact > 0.1 else low
-            (opt_type, suggestions, est) = generate_cpu_optimization_suggestions(profile, context7_patterns)
+            (opt_type, suggestions, est) = generate_cpu_optimization_suggestions(profile, docs_patterns)
             bottlenecks.append(PerformanceBottleneck(
                 function_name=profile.name, file_path=profile.file_path, line_number=profile.line_number,
                 bottleneck_type="cpu", severity=severity, impact_score=impact,
@@ -54,7 +54,7 @@ class BottleneckDetector(profiler):
                 estimated_improvement=est, code_snippet=get_code_snippet(profile.file_path, profile.line_number)))
         return bottlenecks
 
-    detect_memory_bottlenecks(memory_profile, context7_patterns = none):
+    detect_memory_bottlenecks(memory_profile, docs_patterns = none):
         bottlenecks = []
         if memory_profile has memory_by_function:
             by_fn = memory_profile.memory_by_function
@@ -64,7 +64,7 @@ class BottleneckDetector(profiler):
                 impact = usage / max(max_mem, 1)
                 severity = critical if impact > 0.7 else high if impact > 0.4 else medium if impact > 0.2 else low
                 (file_path, line_number) = split_location(func_key)
-                (opt_type, suggestions, est) = generate_memory_optimization_suggestions(usage, context7_patterns)
+                (opt_type, suggestions, est) = generate_memory_optimization_suggestions(usage, docs_patterns)
                 bottlenecks.append(PerformanceBottleneck(
                     function_name="Function at " + func_key, file_path, line_number,
                     bottleneck_type="memory", severity, impact_score=impact,
@@ -74,7 +74,7 @@ class BottleneckDetector(profiler):
                     estimated_improvement=est, code_snippet=get_code_snippet(file_path, line_number)))
         return bottlenecks
 
-    detect_realtime_bottlenecks(realtime_metrics, context7_patterns = none):
+    detect_realtime_bottlenecks(realtime_metrics, docs_patterns = none):
         bottlenecks = []
         avg_cpu = realtime_metrics.avg_cpu_percent default 0
         if avg_cpu > 80:
@@ -96,7 +96,7 @@ class BottleneckDetector(profiler):
                 estimated_improvement="30-60% memory reduction", code_snippet="# system-wide memory optimization"))
         return bottlenecks
 
-    generate_cpu_optimization_suggestions(profile, context7_patterns = none):
+    generate_cpu_optimization_suggestions(profile, docs_patterns = none):
         if profile.call_count > 10000 and profile.per_call_time > 0.001:
             return (CACHING, ["Memoize expensive calls","Add an LRU cache for hot functions"], "50-90% for repeated calls")
         if profile.cumulative_time > 1.0 and profile.call_count > 100:
@@ -105,7 +105,7 @@ class BottleneckDetector(profiler):
             return (CONCURRENCY, ["Parallelize long-running operations","Use async processing","Use a worker pool for CPU-bound tasks"], "30-70% with proper concurrency")
         return (ALGORITHM_IMPROVEMENT, ["Profile line-by-line","Check for unnecessary loops","Optimize string/regex operations"], "10-40% with micro-optimizations")
 
-    generate_memory_optimization_suggestions(memory_usage, context7_patterns = none):
+    generate_memory_optimization_suggestions(memory_usage, docs_patterns = none):
         if memory_usage > 100*MB:
             return (MEMORY_OPTIMIZATION, ["Stream large datasets","Use generators","Process in chunks"], "60-90% memory reduction")
         if memory_usage > 10*MB:

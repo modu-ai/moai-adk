@@ -118,9 +118,9 @@ MCP Server Setup:
 ```json
 {
  "mcpServers": {
- "context7": {
+ "docs": {
  "command": "npx",
- "args": ["@upstash/context7-mcp"],
+ "args": ["@upstash/docs-mcp"],
  "env": {
  "CONTEXT7_API_KEY": "$CONTEXT7_KEY"
  },
@@ -141,7 +141,7 @@ MCP Permission Management:
 ```json
 {
  "mcpPermissions": {
- "context7": {
+ "docs": {
  "allowed": ["resolve-library-id", "get-library-docs"],
  "rateLimit": {
  "requestsPerMinute": 60,

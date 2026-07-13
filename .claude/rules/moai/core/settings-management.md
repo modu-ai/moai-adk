@@ -30,56 +30,13 @@ The genuine Claude Code `/config` slash command (distinct from MoAI's `.moai`-pr
 
 ### MCP Configuration
 
-`.mcp.json` - MCP server definitions:
-
-- mcpServers: Server command and arguments
-- Environment variables for servers
-
-Standard MCP servers in MoAI-ADK:
-
-- context7: Library documentation lookup
-- pencil: .pen file design editing. Used by a per-spawn `Agent(general-purpose)` frontend specialist (sub-agent mode) and the designer role_profile (team mode). Absorbed by manager-design as primary consumer — the `.pen` editor MCP remains registered; its design-phase orchestration now flows through the `manager-design` agent (D1-D5 Claude Design pipeline).
-- claude-in-chrome: Browser automation
-- z.ai MCP servers (optional, GLM backend): three separate servers registered via `moai glm tools enable [vision|websearch|webreader|all]` — `zai-mcp-server` (npx stdio, GLM-4.6V vision tools), `web_search_prime` (HTTP, `webSearchPrime`), `web_reader` (HTTP, `webReader`). Under `moai glm` / `moai cg` GLM panes these replace the built-in `WebSearch` / `WebFetch` / `Read`-on-image per `.claude/rules/moai/core/glm-web-tooling.md`.
+MoAI-ADK no longer ships or provisions MCP servers via `.mcp.json`. Users may still configure Claude Code's native MCP support directly — see the official Claude Code MCP documentation. The GLM-backend z.ai web-tooling servers (`zai-mcp-server`, `web_search_prime`, `web_reader`) remain available via `moai glm tools enable` under a GLM session; see `.claude/rules/moai/core/glm-web-tooling.md` for the HARD routing table.
 
 > Sequential Thinking MCP was retired in an earlier deep-reasoning consolidation. Use the `ultrathink` keyword (Adaptive Thinking on Opus 4.7+ / 4.8) for deep reasoning.
 
-**`alwaysLoad` field (Claude Code v2.1.119+)**
+**`alwaysLoad` field (Claude Code v2.1.119+)** — Claude Code supports an `"alwaysLoad": true` field on MCP server entries in a user-authored `.mcp.json`; when set, the server's tool schema loads at session start instead of via the deferred-load default. This is a Claude Code platform feature documented for reference; MoAI-ADK does not emit it from its own templates.
 
-Claude Code v2.1.119 added the `"alwaysLoad": true` field to MCP server entries in `.mcp.json`.
-When this field is set to `true`, the server's tool schema is loaded immediately at session start (instead of the deferred-load default).
-
-MoAI-ADK default configuration:
-- `context7`: `"alwaysLoad": true` — loaded eagerly because documentation lookups occur frequently every session
-
-```json
-{
-  "mcpServers": {
-    "context7": {
-      "$comment": "Up-to-date documentation and code examples via Context7",
-      "alwaysLoad": true,
-      "command": "/bin/bash",
-      "args": ["-l", "-c", "exec npx -y @upstash/context7-mcp@latest"]
-    }
-  }
-}
-```
-
-
-MCP tools are deferred by default and must be loaded before use. Exception: servers with `alwaysLoad: true` are loaded at session start automatically.
-
-1. Use ToolSearch to find and load the tool
-2. Then call the loaded tool directly
-
-Example flow:
-- ToolSearch("context7 docs") loads mcp__context7__* tools
-- mcp__context7__resolve-library-id is then available
-- With `alwaysLoad: true`, this step is unnecessary for context7
-
-MCP rules:
-- Always use ToolSearch before calling MCP tools (unless server has alwaysLoad: true)
-- Prefer MCP tools over manual alternatives
-- Authenticated URLs require specialized MCP tools
+MCP tools (when a user configures their own `.mcp.json`) are deferred by default and must be loaded before use. Use ToolSearch to find and load the tool, then call it directly. Authenticated URLs may require specialized MCP tools.
 
 **Claude Code v2.1.119-121 Hook Changes**:
 
@@ -101,11 +58,6 @@ MCP rules:
 Reference: https://code.claude.com/docs/en/settings.
 
 **`model` — shipped deliberately (contrast with the unset settings above)**: unlike the settings in the table above, `settings.json.tmpl` DOES pin `"model": "sonnet"`. This is intentional: it gives user projects a cost-predictable default model rather than inheriting whatever model the user's Claude Code client happens to default to. Users remain free to override the default via `/model` or their own project/user settings — the template pin is a starting point, not a lock-in.
-
-**Context7 Usage** - For up-to-date library documentation:
-
-1. resolve-library-id: Find library identifier
-2. query-docs: Retrieve documentation
 
 **Adaptive Thinking Usage** - For complex analysis requiring deeper reasoning:
 

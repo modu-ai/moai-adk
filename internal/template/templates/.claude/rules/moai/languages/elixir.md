@@ -68,11 +68,11 @@ For comprehensive coverage including:
 - Security best practices
 - CI/CD integration patterns
 
-Apply the Quick Patterns and framework sections above together with the Context7 library mappings for these advanced topics; this guide is self-contained.
+Apply the Quick Patterns and framework sections above together with the Documentation References for these advanced topics; this guide is self-contained.
 
 ---
 
-## Context7 Integration
+## Documentation References
 
 - /elixir-lang/elixir - Elixir language documentation
 - /phoenixframework/phoenix - Phoenix web framework

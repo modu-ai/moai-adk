@@ -168,7 +168,7 @@ The **manager-spec** agent performs the following:
 - Identifies the implementation plan and technical constraints
 - Verifies library versions (stable versions only, no beta/alpha)
 
-### Phase 1.5: Pre-Validation Gate
+### Phase 3: Pre-Validation Gate
 
 Prevents common errors before SPEC creation:
 

@@ -93,11 +93,11 @@ Composite Primary Keys via CompositePrimaryKey in Meta. URL reverse with query p
 
 ## Advanced Patterns
 
-For comprehensive coverage including advanced async patterns, large-scale service architecture, performance profiling, and production deployment configurations, apply the Quick Patterns and framework sections above together with the Context7 Integration mappings; this guide is self-contained.
+For comprehensive coverage including advanced async patterns, large-scale service architecture, performance profiling, and production deployment configurations, apply the Quick Patterns and framework sections above together with the Documentation Integration mappings; this guide is self-contained.
 
 ---
 
-## Context7 Integration
+## Documentation Integration
 
 - tiangolo/fastapi - FastAPI framework
 - django/django - Django web framework

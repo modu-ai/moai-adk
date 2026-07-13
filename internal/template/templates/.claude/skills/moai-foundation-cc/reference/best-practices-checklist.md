@@ -225,7 +225,7 @@ Works Well With Section:
 
 MCP Integration (if applicable):
 - [ ] MCP tools properly declared in allowed-tools
-- [ ] Two-step Context7 pattern used where appropriate
+- [ ] WebSearch/WebFetch used for external documentation lookups where appropriate
 - [ ] Proper error handling for MCP calls
 - [ ] Fallback strategies are documented
 

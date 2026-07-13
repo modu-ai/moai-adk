@@ -128,12 +128,12 @@ def assess_code_organization(self, file_path: str, tree: ast.AST) -> List[CodeIs
 6. **Duplicate Code**: Similar code blocks repeated
 7. **Poor Documentation**: Missing or unclear docstrings
 
-### Context7 Integration
+### Documentation Integration
 
 ```python
 # Load usability patterns
-usability = await self.context7.get_library_docs(
-    context7_library_id="/code-quality/sonarqube",
+usability = await self.docs.get_library_docs(
+    docs_library_id="/code-quality/sonarqube",
     topic="maintainability metrics code smells 2025",
     tokens=4000
 )

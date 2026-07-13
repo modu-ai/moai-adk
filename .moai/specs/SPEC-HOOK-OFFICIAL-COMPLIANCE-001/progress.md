@@ -1,3 +1,5 @@
+> **[REMOVED 2026-07-13]** The `gateguard-fact-force.sh` PreToolUse advisory hook referenced in AC-026 evidence below has been FULLY DECOMMISSIONED from both the local working tree and the distribution template. The hook script, `MOAI_FACT_FORCE` env var, `.moai/state/fact-force/` state dir, and `.moai/logs/fact-force-skip.log` skip log are all removed. References below are preserved as historical decision-record content only.
+
 # progress.md — SPEC-HOOK-OFFICIAL-COMPLIANCE-001
 
 > Plan-phase skeleton. Run-phase evidence (§E.2/§E.3) is populated by manager-develop; sync-phase close (§E.4) by manager-docs. This file carries ONLY the §E.1 plan-phase signal at creation; §E.2-§E.4 are placeholder headings (no populated evidence, commit SHAs, or audit-ready YAML at plan-phase).

@@ -31,7 +31,7 @@ record FunctionProfile:
     optimization_suggestions: List<text>   # default []
 
 class PerformanceProfiler:
-    context7
+    docs
     cpu_profiler = none
     memory_profiler = none
     line_profiler = none
@@ -100,7 +100,7 @@ class PerformanceProfiler:
 
 ```text
 # Initialize the performance profiler
-profiler = PerformanceProfiler(context7_client=context7)
+profiler = PerformanceProfiler(docs_client=docs)
 
 # Example function to profile
 expensive_function(n):

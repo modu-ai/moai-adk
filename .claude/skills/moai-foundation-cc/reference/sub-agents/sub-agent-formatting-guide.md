@@ -145,7 +145,7 @@ tools: Read, Write, Edit, Bash
 tools: Read, Grep, Glob, WebFetch
 
 # CORRECT: Documentation tools with MCP
-tools: Read, Write, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
+tools: Read, Write
 
 # WRONG: YAML array format
 tools: [Read, Write, Bash]
@@ -198,7 +198,7 @@ Loading: Skills available automatically, no explicit invocation needed
 Examples:
 ```yaml
 # Load language and domain skills
-skills: moai-domain-backend, moai-context7-integration
+skills: moai-domain-backend, moai-docs-integration
 
 # Load quality and documentation skills
 skills: moai-foundation-quality, moai-docs-generation, moai-cc-claude-code
@@ -335,9 +335,9 @@ Examples: `code-backend`, `code-frontend`, `data-database`
 ---
 name: code-backend
 description: Use PROACTIVELY for backend architecture, API design, server implementation, database integration, or microservices architecture. Called from /moai:1-plan and task delegation workflows.
-tools: Read, Write, Edit, Bash, WebFetch, Grep, Glob, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
+tools: Read, Write, Edit, Bash, WebFetch, Grep, Glob
 model: sonnet
-skills: moai-domain-backend, moai-essentials-perf, moai-context7-integration
+skills: moai-domain-backend, moai-essentials-perf, moai-docs-integration
 ---
 
 # Backend Expert 
@@ -888,7 +888,7 @@ Multi-capability Design:
 ---
 name: full-stack-developer
 description: Use PROACTIVELY for complete application development including frontend, backend, database, and deployment. Called from /moai:2-run comprehensive implementation and task delegation workflows.
-tools: Read, Write, Edit, Bash, Grep, Glob, WebFetch, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
+tools: Read, Write, Edit, Bash, Grep, Glob, WebFetch
 model: sonnet
 skills: moai-domain-backend, moai-domain-frontend, moai-domain-database, moai-devops-expert, moai-security-expert
 ---

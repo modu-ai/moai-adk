@@ -1,10 +1,10 @@
-# Security Analysis with Context7
+# Security Analysis with Documentation
 
-> Module: Context7-enhanced security pattern detection and vulnerability scanning
+> Module: Documentation-enhanced security pattern detection and vulnerability scanning
 > Parent: [Automated Code Review](./automated-code-review.md)
 > Complexity: Advanced
 > Time: 20+ minutes
-> Dependencies: Python 3.8+, Context7 MCP, re, ast, bandit
+> Dependencies: Python 3.8+, WebSearch/WebFetch, re, ast, bandit
 
 ## Quick Reference
 
@@ -38,7 +38,7 @@ API Security:
 - CORS misconfiguration
 - API version management
 
-Context7 Integration:
+Documentation Integration:
 - OWASP Top 10 patterns
 - Semgrep security rules
 - Real-time vulnerability database
@@ -52,28 +52,28 @@ import re
 from typing import Dict, List, Any
 
 class SecurityAnalyzer:
-    """Security vulnerability analyzer with Context7 integration."""
+    """Security vulnerability analyzer with Documentation integration."""
 
-    def __init__(self, context7_client=None):
-        self.context7 = context7_client
+    def __init__(self, docs_client=None):
+        self.docs = docs_client
         self.security_patterns = {}
 
     async def load_security_patterns(self) -> Dict[str, Any]:
-        """Load security patterns from Context7."""
-        if not self.context7:
+        """Load security patterns from Documentation."""
+        if not self.docs:
             return self._get_default_security_patterns()
 
         try:
             # Load OWASP Top 10 patterns
-            owasp_patterns = await self.context7.get_library_docs(
-                context7_library_id="/security/owasp",
+            owasp_patterns = await self.docs.get_library_docs(
+                docs_library_id="/security/owasp",
                 topic="OWASP Top 10 vulnerability patterns 2025",
                 tokens=5000
             )
 
             # Load Semgrep security rules
-            semgrep_patterns = await self.context7.get_library_docs(
-                context7_library_id="/security/semgrep",
+            semgrep_patterns = await self.docs.get_library_docs(
+                docs_library_id="/security/semgrep",
                 topic="security vulnerability detection patterns",
                 tokens=4000
             )
@@ -84,7 +84,7 @@ class SecurityAnalyzer:
             }
 
         except Exception as e:
-            print(f"Failed to load Context7 security patterns: {e}")
+            print(f"Failed to load Documentation security patterns: {e}")
             return self._get_default_security_patterns()
 ```
 
@@ -313,15 +313,15 @@ async def analyze_weak_cryptography(self, file_path: str, content: str) -> List[
 
 ---
 
-## Context7-Enhanced Analysis
+## Documentation-Enhanced Analysis
 
 ### Real-Time Vulnerability Database
 
 ```python
-async def analyze_with_context7_patterns(
+async def analyze_with_docs_patterns(
     self, file_path: str, content: str
 ) -> List[CodeIssue]:
-    """Analyze code using Context7 security patterns."""
+    """Analyze code using Documentation security patterns."""
 
     issues = []
 
@@ -405,7 +405,7 @@ def get_security_fix_suggestion(self, vulnerability_type: str) -> str:
 
 ## Best Practices
 
-1. Context7 Integration: Leverage real-time vulnerability databases for latest threats
+1. Documentation Integration: Leverage real-time vulnerability databases for latest threats
 2. Comprehensive Coverage: Check all OWASP Top 10 vulnerability categories
 3. Severity Accuracy: Use confidence scores to prioritize fixes
 4. Actionable Guidance: Provide specific fix suggestions with code examples
@@ -420,7 +420,6 @@ def get_security_fix_suggestion(self, vulnerability_type: str) -> str:
 
 - [TRUST 5 Validation](./trust5-validation.md): Safety category analysis
 - [static-analysis.md](./static-analysis.md): bandit integration for security scanning
-- [automated-code-review/context7-integration.md](./automated-code-review/context7-integration.md): Context7 MCP patterns
 
 ---
 

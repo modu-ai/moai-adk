@@ -163,7 +163,7 @@ flowchart TD
 
 ## Phase Details
 
-### Phase 0.9: JIT Language Detection
+### Phase 3: JIT Language Detection
 
 Automatically detects the project's primary language and injects the appropriate language skill when spawning agents. All 16 languages are supported equally.
 
@@ -175,7 +175,7 @@ Automatically detects the project's primary language and injects the appropriate
 | `Cargo.toml` | moai-lang-rust |
 | `pom.xml` / `build.gradle` | moai-lang-java |
 
-### Phase 0.95: Scale-Based Mode Selection
+### Phase 4: Scale-Based Mode Selection
 
 Automatically selects the optimal execution mode based on the SPEC's scale. Not running a heavy pipeline for a small task — that too is tokenomics.
 
@@ -194,8 +194,8 @@ At the start of the run phase, the quality-pipeline depth is determined automati
 | Level | Target | evaluator | Skipped phases |
 |------|------|-----------|---------------|
 | **minimal** | Simple bug fixes, config changes | disabled | 0, 0.5, 2.0, 2.5, 2.75, 2.8a |
-| **standard** | Regular feature development (default) | final-pass (Phase 2.8a only) | none |
-| **thorough** | Critical features such as security/payments | per-sprint (Phase 2.0 + 2.8a) | none |
+| **standard** | Regular feature development (default) | final-pass (Phase 16 only) | none |
+| **thorough** | Critical features such as security/payments | per-sprint (Phase 10 + 2.8a) | none |
 
 Automatic escalation on failure: minimal → standard → thorough (up to 2 times)
 
@@ -212,7 +212,7 @@ The **manager-spec** subagent performs the following:
 
 **Output:** an execution plan including plan_summary, a requirements list, success_criteria, and effort_estimate
 
-### Phase 1.5: Task Decomposition
+### Phase 6: Task Decomposition
 
 Breaks the approved execution plan into atomic, reviewable tasks:
 
@@ -228,7 +228,7 @@ Breaks the approved execution plan into atomic, reviewable tasks:
 
 The task decomposition result is persistently recorded in `.moai/specs/SPEC-{ID}/tasks.md`. It is trackable via Git and referenced by the Drift Guard.
 
-### Phase 2.0: Sprint Contract (thorough only)
+### Phase 10: Sprint Contract (thorough only)
 
 Runs only at the thorough level. The Done criteria are pre-agreed with sync-auditor before implementation.
 
@@ -253,7 +253,7 @@ The **manager-develop** subagent runs the ANALYZE-PRESERVE-IMPROVE cycle:
 
 **Output:** files_modified, characterization_tests_created, test_results, behavior_preserved, structural_metrics
 
-### Phase 2.5: Quality Verification
+### Phase 13: Quality Verification
 
 The **sync-auditor** subagent performs TRUST 5 verification:
 
@@ -274,12 +274,12 @@ The **sync-auditor** subagent performs TRUST 5 verification:
 
 **Output:** trust_5_validation results, coverage_percentage, overall_status (PASS/WARNING/CRITICAL), issues_found
 
-### Phase 2.8a/2.8b: Active Evaluation and Static Verification
+### Phase 16/2.8b: Active Evaluation and Static Verification
 
 Quality evaluation runs in two stages:
 
-- **Phase 2.8a**: sync-auditor active evaluation (Functionality/Security/Craft/Consistency)
-- **Phase 2.8b**: sync-auditor TRUST 5 static verification
+- **Phase 16**: sync-auditor active evaluation (Functionality/Security/Craft/Consistency)
+- **Phase 17**: sync-auditor TRUST 5 static verification
 
 {{< callout type="warning" >}}
 Security FAIL = overall FAIL. After up to 3 fix-evaluate cycles, the result is reported to the user.
@@ -291,7 +291,7 @@ When the DDD/TDD cycle completes, actual changes are compared against the plan:
 
 - drift ≤ 20%: informational record only
 - 20% < drift ≤ 30%: warning
-- drift > 30%: triggers the Phase 2.7 replanning gate
+- drift > 30%: triggers the Phase 14 replanning gate
 
 ### Phase 3: Git Operations (conditional)
 
@@ -380,12 +380,12 @@ Phase 1: Strategic planning
 
 ---
 
-#### Phase 1.5: Task Decomposition
+#### Phase 6: Task Decomposition
 
 Breaks the implementation work into fine-grained units.
 
 ```bash
-Phase 1.5: Task decomposition
+Phase 6: Task decomposition
 - TASK-001: Define the user model
 - TASK-002: Password hashing utility
 - TASK-003: JWT token creation/verification
@@ -434,12 +434,12 @@ IMPROVE stage:
 
 ---
 
-#### Phase 2.5: Quality Verification
+#### Phase 13: Quality Verification
 
 Verifies quality against the TRUST 5 pillars.
 
 ```bash
-Phase 2.5: Quality verification
+Phase 13: Quality verification
 - All TRUST 5 pillars pass
 - Test coverage: 89%
 - LSP errors: 0
@@ -498,7 +498,7 @@ The manager-develop agent **saves progress automatically**. After `/clear`, run 
 
 You can adjust the coverage target in `quality.yaml`, but this is **not recommended**. 85% is the minimum bar guaranteeing that core logic is tested. If coverage falls short, manager-develop automatically adds the missing tests.
 
-### Q: What happens if Phase 2.5 returns a CRITICAL status?
+### Q: What happens if Phase 13 returns a CRITICAL status?
 
 The quality issues are reported to the user, and you are asked whether to retry fixes. Choosing "yes" returns to the IMPROVE stage and continues fixing.
 

@@ -191,7 +191,7 @@ generate_comprehensive_report(project_path, file_results, duration):
         overall_trust_score, overall_category_scores,
         summary_metrics, recommendations,
         critical_issues, review_duration=duration,
-        context7_patterns_used=keys(analysis_patterns))
+        docs_patterns_used=keys(analysis_patterns))
 
 generate_recommendations(category_scores, issues):
     recommendations = []

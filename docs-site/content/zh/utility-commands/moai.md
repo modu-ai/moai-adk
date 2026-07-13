@@ -33,7 +33,7 @@ draft: false
 1. **意图分析**: 对用户请求的意图分类(与输入语言无关)
 2. **上下文充分性检查**: 不充分时通过苏格拉底式访谈澄清
 3. **构建执行计划**: 选择技能 / 智能体 / 动态工作流链
-4. **选择编排模式** (Phase 0.95): solo-sequential / parallel-subagents / dynamic-workflow
+4. **选择编排模式** (Phase 4): solo-sequential / parallel-subagents / dynamic-workflow
 
 也就是说,即使像 `/moai "帮我修复登录 bug"` 这样只输入自然语言而不带子命令,也会经过意图分析连接到合适的工作流(修复类走 fix 系列,新功能走 plan→run→sync 流水线)。
 

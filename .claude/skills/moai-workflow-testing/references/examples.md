@@ -15,7 +15,7 @@ from moai_workflow_testing import DDDManager, TestSpecification, TestType
 # DDD 매니저 초기화
 ddd_manager = DDDManager(
     project_path="/project/src",
-    context7_client=context7
+    docs_client=docs
 )
 
 # 테스트 스펙 정의
@@ -100,7 +100,7 @@ cycle_results = await ddd_manager.run_full_ddd_cycle(
     "threshold": 85,
     "status": "PASS"
   },
-  "context7_patterns_applied": [
+  "docs_patterns_applied": [
     "JWT best practices 2025",
     "Password hashing with bcrypt",
     "Secure token storage patterns"
@@ -152,7 +152,7 @@ class TestAuthentication:
             )
 ```
 
-**Explanation**: DDD 매니저는 Context7에서 최신 패턴을 가져와 RED(실패하는 테스트 생성) → GREEN(테스트 통과하는 구현) → REFACTOR(코드 개선) 사이클을 자동으로 수행합니다. 커버리지 85% 이상을 보장합니다.
+**Explanation**: DDD 매니저는 Documentation에서 최신 패턴을 가져와 RED(실패하는 테스트 생성) → GREEN(테스트 통과하는 구현) → REFACTOR(코드 개선) 사이클을 자동으로 수행합니다. 커버리지 85% 이상을 보장합니다.
 
 ---
 
@@ -165,14 +165,14 @@ class TestAuthentication:
 from moai_workflow_testing import AIDebugger
 
 # AI 디버거 초기화
-debugger = AIDebugger(context7_client=context7)
+debugger = AIDebugger(docs_client=docs)
 
 # 에러 발생 상황
 try:
     result = await process_payment(order_id="ORD-123")
 except Exception as e:
     # AI 디버깅 실행
-    analysis = await debugger.debug_with_context7_patterns(
+    analysis = await debugger.debug_with_docs_patterns(
         exception=e,
         context={
             "file": "src/payments/processor.py",
@@ -233,7 +233,7 @@ except Exception as e:
       "impact": "medium"
     }
   ],
-  "context7_references": [
+  "docs_references": [
     "Python retry patterns 2025",
     "Circuit breaker best practices",
     "httpx connection pooling guide"
@@ -248,7 +248,7 @@ except Exception as e:
 }
 ```
 
-**Explanation**: AI 디버거는 예외를 분류하고, 근본 원인을 분석하며, Context7에서 최신 해결 패턴을 가져와 우선순위별 해결책을 제시합니다. 코드 제안과 노력/영향 평가가 포함됩니다.
+**Explanation**: AI 디버거는 예외를 분류하고, 근본 원인을 분석하며, Documentation에서 최신 해결 패턴을 가져와 우선순위별 해결책을 제시합니다. 코드 제안과 노력/영향 평가가 포함됩니다.
 
 ---
 
@@ -261,7 +261,7 @@ except Exception as e:
 from moai_workflow_testing import AutomatedCodeReviewer
 
 # 코드 리뷰어 초기화
-reviewer = AutomatedCodeReviewer(context7_client=context7)
+reviewer = AutomatedCodeReviewer(docs_client=docs)
 
 # 코드베이스 리뷰 실행
 review_report = await reviewer.review_codebase(
@@ -434,7 +434,7 @@ jobs:
 from moai_workflow_testing import PerformanceProfiler
 
 # 프로파일러 초기화
-profiler = PerformanceProfiler(context7_client=context7)
+profiler = PerformanceProfiler(docs_client=docs)
 
 # 프로파일링 시작
 profiler.start_profiling(

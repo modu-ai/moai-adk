@@ -98,11 +98,11 @@ Define rootCmd as cobra.Command with Use, Short fields. In init, add PersistentF
 
 ## Advanced Patterns
 
-For comprehensive coverage including advanced concurrency patterns (thread pools, lock-free structures), large-scale service architecture, performance profiling, and production deployment configurations, apply the Quick Patterns and framework sections above together with the Context7 Integration mappings; this guide is self-contained.
+For comprehensive coverage including advanced concurrency patterns (thread pools, lock-free structures), large-scale service architecture, performance profiling, and production deployment configurations, apply the Quick Patterns and framework sections above together with the Documentation References; this guide is self-contained.
 
 ---
 
-## Context7 Integration
+## Documentation References
 
 - golang/go - Go language and stdlib
 - gofiber/fiber - Fiber web framework

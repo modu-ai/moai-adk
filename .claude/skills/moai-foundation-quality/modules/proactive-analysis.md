@@ -18,8 +18,8 @@ The Proactive Quality Scanner automatically detects code quality issues and prov
 class ProactiveQualityScanner:
  """Proactive code quality issue detection and analysis"""
 
- def __init__(self, context7_client: Context7Client):
- self.context7_client = context7_client
+ def __init__(self, docs_client: DocumentationClient):
+ self.docs_client = docs_client
  self.issue_detectors = self._initialize_detectors()
  self.pattern_analyzer = CodePatternAnalyzer()
 
@@ -67,15 +67,15 @@ class ProactiveQualityScanner:
 
  issues = []
 
- # Get language-specific performance patterns from Context7
+ # Get language-specific performance patterns from Documentation
  for language in self._detect_languages(codebase):
  try:
  # Resolve library ID
- library_id = await self.context7_client.resolve_library_id(language)
+ library_id = await self.docs_client.resolve_library_id(language)
 
  # Get performance best practices
- perf_docs = await self.context7_client.get_library_docs(
- context7CompatibleLibraryID=library_id,
+ perf_docs = await self.docs_client.get_library_docs(
+ docsCompatibleLibraryID=library_id,
  topic="performance",
  tokens=3000
  )
@@ -106,7 +106,7 @@ class ProactiveQualityScanner:
 ```python
 # Initialize proactive scanner
 proactive_scanner = ProactiveQualityScanner(
- context7_client=context7_client,
+ docs_client=docs_client,
  rule_engine=BestPracticesEngine()
 )
 

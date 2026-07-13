@@ -98,7 +98,7 @@ Claude Code は新しい会話を始めるとき、プロジェクトについ�
 flowchart TD
     Start["/moai project 実行"] --> Q1{プロジェクトタイプは?}
 
-    Q1 -->|新規プロジェクト| New["Phase 0.5: 情報収集"]
+    Q1 -->|新規プロジェクト| New["Phase 1: 情報収集"]
     Q1 -->|既存プロジェクト| Exist["Phase 1: コードベース分析"]
 
     New --> NewQ["プロジェクトの目的"]
@@ -115,7 +115,7 @@ flowchart TD
     Conf -->|承認| Gen
     Conf -->|キャンセル| End["終了"]
 
-    Gen --> LSP["Phase 3.5: LSP 確認"]
+    Gen --> LSP["Phase 4: LSP 確認"]
     LSP --> Complete["Phase 4: 完了"]
 ```
 
@@ -137,7 +137,7 @@ flowchart TD
 | **新規プロジェクト** | ゼロから始めるプロジェクト。情報を収集形式で進行 |
 | **既存プロジェクト** | すでにコードがあるプロジェクト。コードを自動で分析      |
 
-### Phase 0.5: 新規プロジェクトの情報収集
+### Phase 1: 新規プロジェクトの情報収集
 
 新規プロジェクトを選択した場合、次の情報を収集します:
 
@@ -211,7 +211,7 @@ flowchart TD
 
 **伝達内容**:
 
-- Phase 1 の分析結果 (または Phase 0.5 のユーザー入力)
+- Phase 1 の分析結果 (または Phase 1 のユーザー入力)
 - Phase 2 のユーザー確認
 - 出力ディレクトリ: `.moai/project/`
 - 言語: config の conversation_language
@@ -224,7 +224,7 @@ flowchart TD
 | **structure.md** | ディレクトリツリー、各ディレクトリの目的、中核ファイルの位置、モジュール構成             |
 | **tech.md**      | 技術スタックの概要、フレームワーク選択の根拠、開発環境の要件、ビルド/デプロイ設定 |
 
-### Phase 3.5: 開発環境の確認
+### Phase 4: 開発環境の確認
 
 検出された技術スタックに合った LSP サーバーがインストールされているかを確認します。
 
@@ -506,7 +506,7 @@ AI がプロジェクトの技術スタックと構造をすでに知ってい�
 ```mermaid
 flowchart TD
     Start["/moai project 実行"] --> Phase0["Phase 0: タイプ検出"]
-    Phase0 --> Phase05["Phase 0.5: 情報収集<br/>(新規プロジェクト)"]
+    Phase0 --> Phase05["Phase 1: 情報収集<br/>(新規プロジェクト)"]
     Phase0 --> Phase1["Phase 1: コードベース分析<br/>(既存プロジェクト)"]
 
     Phase1 --> Explore["Explore サブエージェント<br/>コード分析の委任"]
@@ -516,7 +516,7 @@ flowchart TD
     Phase2 -->|承認| Phase3
 
     Phase3 --> Docs["manager-docs サブエージェント<br/>ドキュメント生成の委任"]
-    Docs --> Phase35["Phase 3.5: LSP 確認"]
+    Docs --> Phase35["Phase 4: LSP 確認"]
 
     Phase35 --> DevOps["manager-develop サブエージェント<br/>LSP インストール (オプション)"]
     DevOps --> Phase4["Phase 4: 完了"]
@@ -538,7 +538,7 @@ SPEC を生成することはできますが、AI がプロジェクトの技術
 
 ### Q: LSP サーバーがない場合はどうなりますか?
 
-LSP サーバーがなくてもドキュメント生成は進行します。ただし、以降の `/moai run` 段階でコード品質診断が制限されることがあります。Phase 3.5 で LSP のインストール案内を提供します。
+LSP サーバーがなくてもドキュメント生成は進行します。ただし、以降の `/moai run` 段階でコード品質診断が制限されることがあります。Phase 4 で LSP のインストール案内を提供します。
 
 ## 関連ドキュメント
 

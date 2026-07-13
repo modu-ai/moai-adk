@@ -100,7 +100,7 @@ class CodeReviewReport:
     recommendations: List[str]
     critical_issues: List[CodeIssue]
     review_duration: float
-    context7_patterns_used: List[str]
+    docs_patterns_used: List[str]
 ```
 
 ## AutomatedCodeReviewer Class
@@ -109,9 +109,9 @@ class CodeReviewReport:
 class AutomatedCodeReviewer:
     """Main automated code reviewer with TRUST 5 validation."""
 
-    def __init__(self, context7_client=None):
-        self.context7 = context7_client
-        self.context7_analyzer = Context7CodeAnalyzer(context7_client)
+    def __init__(self, docs_client=None):
+        self.docs = docs_client
+        self.docs_analyzer = DocumentationCodeAnalyzer(docs_client)
         self.static_analyzer = StaticAnalysisTools()
         self.analysis_patterns = {}
         self.review_history = []
@@ -125,7 +125,7 @@ class AutomatedCodeReviewer:
         start_time = time.time()
 
         # Load analysis patterns
-        self.analysis_patterns = await self.context7_analyzer.load_analysis_patterns()
+        self.analysis_patterns = await self.docs_analyzer.load_analysis_patterns()
 
         # Find files to review
         files_to_review = self._find_files_to_review(
@@ -161,8 +161,8 @@ class AutomatedCodeReviewer:
         # Run static analyses
         static_results = await self.static_analyzer.run_all_analyses(file_path)
 
-        # Perform Context7-enhanced analysis
-        context7_issues = await self._perform_context7_analysis(file_path, content, tree)
+        # Perform Documentation-enhanced analysis
+        docs_issues = await self._perform_docs_analysis(file_path, content, tree)
 
         # Perform custom analysis
         custom_issues = await self._perform_custom_analysis(file_path, content, tree)
@@ -170,7 +170,7 @@ class AutomatedCodeReviewer:
         # Combine all issues
         all_issues = []
         all_issues.extend(self._convert_static_issues(static_results, file_path))
-        all_issues.extend(context7_issues)
+        all_issues.extend(docs_issues)
         all_issues.extend(custom_issues)
 
         # Calculate metrics and scores
@@ -222,40 +222,40 @@ class AutomatedCodeReviewer:
         return sorted(files)
 ```
 
-## Context7CodeAnalyzer Class
+## DocumentationCodeAnalyzer Class
 
 ```python
-class Context7CodeAnalyzer:
-    """Integration with Context7 for code analysis patterns."""
+class DocumentationCodeAnalyzer:
+    """Integration with Documentation for code analysis patterns."""
 
-    def __init__(self, context7_client=None):
-        self.context7 = context7_client
+    def __init__(self, docs_client=None):
+        self.docs = docs_client
         self.analysis_patterns = {}
         self.security_patterns = {}
         self.performance_patterns = {}
 
     async def load_analysis_patterns(self, language: str = "python") -> Dict[str, Any]:
-        """Load code analysis patterns from Context7."""
-        if not self.context7:
+        """Load code analysis patterns from Documentation."""
+        if not self.docs:
             return self._get_default_analysis_patterns()
 
         try:
-            security_patterns = await self.context7.get_library_docs(
-                context7_library_id="/security/semgrep",
+            security_patterns = await self.docs.get_library_docs(
+                docs_library_id="/security/semgrep",
                 topic="security vulnerability detection patterns 2025",
                 tokens=4000
             )
             self.security_patterns = security_patterns
 
-            performance_patterns = await self.context7.get_library_docs(
-                context7_library_id="/performance/python-profiling",
+            performance_patterns = await self.docs.get_library_docs(
+                docs_library_id="/performance/python-profiling",
                 topic="performance anti-patterns code analysis 2025",
                 tokens=3000
             )
             self.performance_patterns = performance_patterns
 
-            quality_patterns = await self.context7.get_library_docs(
-                context7_library_id="/code-quality/sonarqube",
+            quality_patterns = await self.docs.get_library_docs(
+                docs_library_id="/code-quality/sonarqube",
                 topic="code quality best practices smells detection 2025",
                 tokens=4000
             )
@@ -266,11 +266,11 @@ class Context7CodeAnalyzer:
                 'quality': quality_patterns
             }
         except Exception as e:
-            print(f"Failed to load Context7 patterns: {e}")
+            print(f"Failed to load Documentation patterns: {e}")
             return self._get_default_analysis_patterns()
 
     def _get_default_analysis_patterns(self) -> Dict[str, Any]:
-        """Get default analysis patterns when Context7 is unavailable."""
+        """Get default analysis patterns when Documentation is unavailable."""
         return {
             'security': {
                 'sql_injection': [r"execute\([^)]*\+[^)]*\)", r"format\s*\("],

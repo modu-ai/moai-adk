@@ -123,5 +123,5 @@ sync-auditor as an independent check.
 ## Related
 
 - [Proactive Analysis](proactive-analysis.md) — how gates and reviews surface issues
-- [Best Practices](best-practices.md) — Context7-powered standards validation
+- [Best Practices](best-practices.md) — documentation-grounded standards validation
 - [Integration Patterns](integration-patterns.md) — quality across SPEC phases

@@ -171,7 +171,7 @@ func TestPruneObservationLogs_NonTraceFilesUntouched(t *testing.T) {
 	t.Parallel()
 	logsDir := t.TempDir()
 	now := time.Now()
-	for _, name := range []string{"fact-force-skip.log", "hook-skip.log", "sync-quality-gate.log", "status-transition-audit.log"} {
+	for _, name := range []string{"hook-skip.log", "sync-quality-gate.log", "status-transition-audit.log"} {
 		p := filepath.Join(logsDir, name)
 		if err := os.WriteFile(p, []byte("data"), 0o644); err != nil {
 			t.Fatal(err)
@@ -184,7 +184,7 @@ func TestPruneObservationLogs_NonTraceFilesUntouched(t *testing.T) {
 	if stats.TraceZeroBytePruned != 0 || stats.TraceAgedPruned != 0 || stats.TaskMetricsAged != 0 {
 		t.Errorf("non-trace logs must not be pruned, got %+v", stats)
 	}
-	for _, name := range []string{"fact-force-skip.log", "hook-skip.log", "sync-quality-gate.log", "status-transition-audit.log"} {
+	for _, name := range []string{"hook-skip.log", "sync-quality-gate.log", "status-transition-audit.log"} {
 		if _, err := os.Stat(filepath.Join(logsDir, name)); err != nil {
 			t.Errorf("non-trace log %s must survive: %v", name, err)
 		}

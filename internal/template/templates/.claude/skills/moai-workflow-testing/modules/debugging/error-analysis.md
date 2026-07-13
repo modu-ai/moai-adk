@@ -24,9 +24,9 @@ match_error_patterns(error, error_analysis):
         return {
             matched_patterns: matched,
             solutions:        pattern_data.solutions,
-            context7_topics:  pattern_data.context7_topics
+            docs_topics:  pattern_data.docs_topics
         }
-    return { matched_patterns: [], solutions: [], context7_topics: [] }
+    return { matched_patterns: [], solutions: [], docs_topics: [] }
 ```
 
 ### Solution Generation
@@ -34,7 +34,7 @@ match_error_patterns(error, error_analysis):
 Multi-source solution generation with confidence scoring:
 
 ```text
-generate_solutions(error_analysis, context7_patterns, pattern_matches, context):
+generate_solutions(error_analysis, docs_patterns, pattern_matches, context):
     solutions = []
 
     # Pattern-based solutions
@@ -45,16 +45,16 @@ generate_solutions(error_analysis, context7_patterns, pattern_matches, context):
             code_example=generate_pattern_example(pattern, context),
             confidence=0.85, impact='medium'))
 
-    # Context7-based solutions
-    for (library_id, docs) in context7_patterns:
+    # Documentation-based solutions
+    for (library_id, docs) in docs_patterns:
         if docs has 'solutions':
             for sol in docs.solutions:
                 solutions.append(Solution(
-                    type='context7_pattern', description=sol.description,
+                    type='docs_pattern', description=sol.description,
                     confidence=sol.confidence or 0.7))
 
     # AI-generated solutions when few candidates exist
-    if context7 available and len(solutions) < 3:
+    if docs available and len(solutions) < 3:
         solutions.extend(generate_ai_solutions(error_analysis, context))
 
     sort solutions descending by (confidence, impact)
@@ -247,7 +247,7 @@ error_frequency(error):
 
 ### Cache Management
 
-Optimize Context7 query caching:
+Optimize Documentation query caching:
 
 ```text
 clear_error_history():
@@ -277,9 +277,9 @@ Prevention Strategy Implementation: Prioritize prevention strategies based on er
 
 Learning Integration: Record successful fixes to improve pattern recognition and solution accuracy over time
 
-Performance Optimization: Use caching for Context7 queries and implement batch processing for multiple errors
+Performance Optimization: Use caching for Documentation queries and implement batch processing for multiple errors
 
-Documentation Updates: Maintain error pattern database with latest solutions and Context7 topics for continuous improvement
+Documentation Updates: Maintain error pattern database with latest solutions and Documentation topics for continuous improvement
 
 ---
 

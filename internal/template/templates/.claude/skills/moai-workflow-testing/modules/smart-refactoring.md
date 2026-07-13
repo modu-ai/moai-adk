@@ -3,7 +3,7 @@
 > Module: AI-powered code refactoring with technical debt analysis and safe transformation
 > Complexity: Advanced
 > Time: 25+ minutes
-> Dependencies: source parser (AST), the project's refactoring tool, Context7 MCP (optional)
+> Dependencies: source parser (AST), the project's refactoring tool, WebSearch/WebFetch (optional)
 
 ## Overview
 
@@ -43,7 +43,7 @@ TechnicalDebtAnalyzer:
 AIRefactorer:
 - Integrates technical debt analysis with refactoring opportunities
 - Creates safe execution plans with risk assessment
-- Leverages Context7 MCP for latest refactoring patterns
+- Leverages WebSearch/WebFetch for latest refactoring patterns
 - Uses the host language's refactoring tooling for safe code transformations
 
 RefactorPlan:
@@ -58,13 +58,13 @@ RefactorPlan:
 
 ### Setup
 
-Use the host language's own refactoring tooling — no extra packages are required for the workflow itself. Examples per language: Python Rope / pyrefly; Go `gopls` refactor; TS/JS language-server rename/extract; Rust rust-analyzer; IntelliJ family. Context7 MCP integration is optional.
+Use the host language's own refactoring tooling — no extra packages are required for the workflow itself. Examples per language: Python Rope / pyrefly; Go `gopls` refactor; TS/JS language-server rename/extract; Rust rust-analyzer; IntelliJ family. WebSearch/WebFetch integration is optional.
 
 ### Basic Usage
 
 ```text
-# Initialize the refactoring system (Context7 client is optional)
-refactorer = AIRefactorer(context7_client=none)
+# Initialize the refactoring system (Documentation client is optional)
+refactorer = AIRefactorer(docs_client=none)
 
 # Analyze and create a refactoring plan
 plan = refactorer.refactor_with_intelligence(
@@ -268,7 +268,7 @@ For detailed refactoring techniques and best practices, see:
 
 - Refactoring tool: the host language's refactoring library/LSP (Rope, gopls, rust-analyzer, etc.)
 - Source parser: the host language's AST module
-- Context7 MCP: Latest refactoring patterns (optional)
+- WebSearch/WebFetch: Latest refactoring patterns (optional)
 
 ### Related Modules
 

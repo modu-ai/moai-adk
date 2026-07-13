@@ -20,7 +20,7 @@ record OptimizationPlan:
     validation_strategy:         text
 
 class OptimizationPlanner(detector):
-    create_optimization_plan(bottlenecks, context7_patterns = none):
+    create_optimization_plan(bottlenecks, docs_patterns = none):
         prioritized  = prioritize_bottlenecks(bottlenecks)
         execution_order       = create_execution_order(prioritized)
         total_improvement     = estimate_total_improvement(prioritized)

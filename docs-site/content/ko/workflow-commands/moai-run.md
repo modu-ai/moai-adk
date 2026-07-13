@@ -163,7 +163,7 @@ flowchart TD
 
 ## 단계별 상세
 
-### Phase 0.9: JIT Language Detection (언어 자동 감지)
+### Phase 3: JIT Language Detection (언어 자동 감지)
 
 프로젝트의 주요 언어를 자동 감지하여 에이전트 스폰 시 적절한 언어 스킬을 주입합니다. 16개 언어를 동등하게 지원합니다.
 
@@ -175,7 +175,7 @@ flowchart TD
 | `Cargo.toml` | moai-lang-rust |
 | `pom.xml` / `build.gradle` | moai-lang-java |
 
-### Phase 0.95: Scale-Based Mode Selection (규모 기반 모드 선택)
+### Phase 4: Scale-Based Mode Selection (규모 기반 모드 선택)
 
 SPEC 규모에 따라 최적의 실행 모드를 자동 선택합니다. 작은 작업에 무거운 파이프라인을 돌리지 않는 것 — 이것도 토크노믹스입니다.
 
@@ -194,8 +194,8 @@ Run phase 시작 시 SPEC 복잡도에 따라 품질 파이프라인 깊이를 �
 | 레벨 | 대상 | evaluator | 건너뛰는 Phase |
 |------|------|-----------|---------------|
 | **minimal** | 단순 버그 수정, 설정 변경 | 비활성 | 0, 0.5, 2.0, 2.5, 2.75, 2.8a |
-| **standard** | 일반 기능 개발 (기본값) | final-pass (Phase 2.8a만) | 없음 |
-| **thorough** | 보안/결제 등 중요 기능 | per-sprint (Phase 2.0 + 2.8a) | 없음 |
+| **standard** | 일반 기능 개발 (기본값) | final-pass (Phase 16만) | 없음 |
+| **thorough** | 보안/결제 등 중요 기능 | per-sprint (Phase 10 + 2.8a) | 없음 |
 
 실패 시 자동 에스컬레이션: minimal → standard → thorough (최대 2회)
 
@@ -212,7 +212,7 @@ Run phase 시작 시 SPEC 복잡도에 따라 품질 파이프라인 깊이를 �
 
 **출력:** plan_summary, requirements 목록, success_criteria, effort_estimate를 포함한 실행 계획
 
-### Phase 1.5: 작업 분해
+### Phase 6: 작업 분해
 
 승인된 실행 계획을 원자적이고 검토 가능한 작업으로 분해합니다:
 
@@ -228,7 +228,7 @@ Run phase 시작 시 SPEC 복잡도에 따라 품질 파이프라인 깊이를 �
 
 태스크 분해 결과는 `.moai/specs/SPEC-{ID}/tasks.md`에 영속 기록됩니다. Git으로 추적 가능하며 Drift Guard가 참조합니다.
 
-### Phase 2.0: Sprint Contract (thorough 전용)
+### Phase 10: Sprint Contract (thorough 전용)
 
 thorough 레벨에서만 실행됩니다. sync-auditor와 구현 전 Done 기준을 사전 합의합니다.
 
@@ -253,7 +253,7 @@ thorough 레벨에서만 실행됩니다. sync-auditor와 구현 전 Done 기준
 
 **출력:** files_modified, characterization_tests_created, test_results, behavior_preserved, structural_metrics
 
-### Phase 2.5: 품질 검증
+### Phase 13: 품질 검증
 
 **sync-auditor** 하위 에이전트가 TRUST 5 검증을 수행합니다:
 
@@ -274,12 +274,12 @@ thorough 레벨에서만 실행됩니다. sync-auditor와 구현 전 Done 기준
 
 **출력:** trust_5_validation 결과, coverage_percentage, overall_status (PASS/WARNING/CRITICAL), issues_found
 
-### Phase 2.8a/2.8b: 능동 평가와 정적 검증
+### Phase 16/2.8b: 능동 평가와 정적 검증
 
 품질 평가가 두 단계로 나뉘어 실행됩니다:
 
-- **Phase 2.8a**: sync-auditor 능동 평가 (Functionality/Security/Craft/Consistency)
-- **Phase 2.8b**: sync-auditor TRUST 5 정적 검증
+- **Phase 16**: sync-auditor 능동 평가 (Functionality/Security/Craft/Consistency)
+- **Phase 17**: sync-auditor TRUST 5 정적 검증
 
 {{< callout type="warning" >}}
 Security FAIL = 전체 FAIL. 최대 3회 수정-평가 사이클 후 사용자에게 보고됩니다.
@@ -291,7 +291,7 @@ DDD/TDD 사이클 완료 시 계획 대비 실제 변경을 비교합니다:
 
 - drift ≤ 20%: 정보 기록만
 - 20% < drift ≤ 30%: 경고
-- drift > 30%: Phase 2.7 재계획 게이트 트리거
+- drift > 30%: Phase 14 재계획 게이트 트리거
 
 ### Phase 3: Git 작업 (조건부)
 
@@ -380,12 +380,12 @@ Phase 1: 전략 계획
 
 ---
 
-#### Phase 1.5: 작업 분해
+#### Phase 6: 작업 분해
 
 구현 작업을 세부 단위로 나눕니다.
 
 ```bash
-Phase 1.5: 작업 분해
+Phase 6: 작업 분해
 - TASK-001: 사용자 모델 정의
 - TASK-002: 비밀번호 해싱 유틸리티
 - TASK-003: JWT 토큰 생성/검증
@@ -434,12 +434,12 @@ IMPROVE 단계:
 
 ---
 
-#### Phase 2.5: 품질 검증
+#### Phase 13: 품질 검증
 
 TRUST 5 기둥으로 품질을 검증합니다.
 
 ```bash
-Phase 2.5: 품질 검증
+Phase 13: 품질 검증
 - TRUST 5 기둥 모두 통과
 - 테스트 커버리지: 89%
 - LSP 오류: 0개
@@ -498,7 +498,7 @@ manager-develop 에이전트가 **자동으로 진행 상황을 저장**합니�
 
 `quality.yaml`에서 커버리지 목표를 조정할 수 있지만, **권장하지 않습니다**. 85%는 핵심 로직이 테스트되었음을 보장하는 최소 기준입니다. 커버리지가 부족하면 manager-develop가 누락된 테스트를 자동으로 추가합니다.
 
-### Q: Phase 2.5에서 CRITICAL 상태가 나오면 어떻게 하나요?
+### Q: Phase 13에서 CRITICAL 상태가 나오면 어떻게 하나요?
 
 사용자에게 품질 이슈를 보고하고, 수정을 재시도할지 묻습니다. "예"를 선택하면 IMPROVE 단계로 돌아가 수정을 계속합니다.
 

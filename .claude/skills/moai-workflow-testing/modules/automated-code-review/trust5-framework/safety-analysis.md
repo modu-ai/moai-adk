@@ -4,7 +4,7 @@
 > Parent: [TRUST 5 Framework](./trust5-framework.md)
 > Complexity: Advanced
 > Time: 15+ minutes
-> Dependencies: Python 3.8+, ast, Context7 MCP
+> Dependencies: Python 3.8+, ast, WebSearch/WebFetch
 
 ## Overview
 
@@ -22,7 +22,7 @@ async def perform_advanced_security_analysis(
 
     issues = []
 
-    # Load latest security patterns from Context7
+    # Load latest security patterns from Documentation
     security_patterns = await self.load_category_patterns()
     safety_patterns = security_patterns.get('safety', {})
 
@@ -93,12 +93,12 @@ def _detect_resource_leaks(self, tree: ast.AST) -> List[CodeIssue]:
 6. **Weak Cryptography**: Insecure algorithms or key sizes
 7. **Hardcoded Secrets**: Passwords, API keys in source
 
-### Context7 Integration
+### Documentation Integration
 
 ```python
 # Load safety patterns
-safety = await self.context7.get_library_docs(
-    context7_library_id="/security/owasp",
+safety = await self.docs.get_library_docs(
+    docs_library_id="/security/owasp",
     topic="security vulnerability detection 2025",
     tokens=5000
 )

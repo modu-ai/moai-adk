@@ -311,17 +311,17 @@ class IntelligentOptimizer(PerformanceProfiler):
         self, bottlenecks: List[PerformanceBottleneck],
         codebase_context: Dict[str, Any]
     ) -> Dict[str, Any]:
-        if not self.context7:
+        if not self.docs:
             return self._get_rule_based_suggestions(bottlenecks)
         
-        optimization_patterns = await self.context7.get_library_docs(
-            context7_library_id="/performance/python-profiling",
+        optimization_patterns = await self.docs.get_library_docs(
+            docs_library_id="/performance/python-profiling",
             topic="advanced performance optimization patterns 2025",
             tokens=5000
         )
         
-        algorithm_patterns = await self.context7.get_library_docs(
-            context7_library_id="/algorithms/python",
+        algorithm_patterns = await self.docs.get_library_docs(
+            docs_library_id="/algorithms/python",
             topic="algorithm optimization big-O complexity reduction",
             tokens=3000
         )

@@ -4,7 +4,7 @@ description: |
   Unified artifact-meta creation specialist — builds the scaffolding/structure of agents, skills, plugins, commands, hooks, MCP servers, and LSP servers. Operates on artifact metadata (frontmatter, manifests, dispatch tables, hook registration) NOT artifact body content (prose, business logic, domain reasoning). Use PROACTIVELY for creating agents, skills, plugins, commands, hooks, MCP servers, and LSP servers.
   Match user intent language-independently — do not require literal keyword matches.
   NOT for: SPEC body authoring (spec.md / plan.md / acceptance.md content — manager-spec only), code implementation, testing, documentation writing, git operations, production deployment
-tools: Read, Write, Edit, Grep, Glob, WebFetch, WebSearch, Bash, TaskCreate, TaskUpdate, TaskList, TaskGet, Skill, mcp__context7
+tools: Read, Write, Edit, Grep, Glob, WebFetch, WebSearch, Bash, TaskCreate, TaskUpdate, TaskList, TaskGet, Skill
 model: inherit
 effort: high
 color: purple
@@ -84,7 +84,7 @@ OUT OF SCOPE:
 
 ### Phase 2: Research
 
-- Use Context7 MCP to gather latest documentation on the domain
+- Use WebSearch/WebFetch to gather latest documentation on the domain
 - Review existing artifacts of the same type for patterns and potential reuse
 - Identify reference implementations and best practices
 
@@ -142,7 +142,7 @@ OUT OF SCOPE:
 
 - Complex backend/frontend implementation: route to manager-develop or a per-spawn `Agent(general-purpose)` backend/frontend specialist (archived-agent-rejection.md §C rows 7-8)
 - Quality validation: Delegate to sync-auditor (or orchestrator verification batch — archived-agent-rejection.md §C row 2)
-- Documentation research: Use Context7 MCP or WebSearch
+- Documentation research: Use WebSearch/WebFetch or WebSearch
 
 ## Conditional Skill Loading
 

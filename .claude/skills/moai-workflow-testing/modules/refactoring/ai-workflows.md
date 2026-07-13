@@ -1,13 +1,13 @@
 # AI-Powered Refactoring Workflows
 
-> Sub-module: AI-assisted refactoring workflows with Context7 integration
+> Sub-module: AI-assisted refactoring workflows with Documentation integration
 > Complexity: Advanced
 > Time: 20+ minutes
-> Dependencies: Python 3.8+, Context7 MCP, AST, Rope
+> Dependencies: Python 3.8+, WebSearch/WebFetch, AST, Rope
 
 ## Overview
 
-This module provides advanced AI-assisted refactoring workflows that leverage Context7 MCP for real-time access to latest refactoring patterns, best practices, and framework-specific guidance.
+This module provides advanced AI-assisted refactoring workflows that leverage WebSearch/WebFetch for real-time access to latest refactoring patterns, best practices, and framework-specific guidance.
 
 ---
 
@@ -21,8 +21,8 @@ Detect and respect project-specific conventions for intelligent refactoring:
 class ContextAwareRefactorer(AIRefactorer):
     """Refactorer that considers project context and conventions."""
 
-    def __init__(self, context7_client=None):
-        super().__init__(context7_client)
+    def __init__(self, docs_client=None):
+        super().__init__(docs_client)
         self.project_conventions = {}
         self.api_boundaries = set()
 
@@ -140,37 +140,37 @@ async def _identify_api_boundaries(self, codebase_path: str):
 
 ---
 
-## Context7 Integration
+## Documentation Integration
 
 ### Real-Time Pattern Retrieval
 
-Fetch latest refactoring patterns from Context7:
+Fetch latest refactoring patterns from Documentation:
 
 ```python
-async def get_context7_refactoring_patterns(self) -> Dict[str, Any]:
-    """Get latest refactoring patterns from Context7."""
+async def get_docs_refactoring_patterns(self) -> Dict[str, Any]:
+    """Get latest refactoring patterns from Documentation."""
 
     patterns = {}
-    if self.context7:
+    if self.docs:
         try:
             # Rope patterns
-            rope_patterns = await self.context7.get_library_docs(
-                context7_library_id="/python-rope/rope",
+            rope_patterns = await self.docs.get_library_docs(
+                docs_library_id="/python-rope/rope",
                 topic="safe refactoring patterns technical debt 2025",
                 tokens=4000
             )
             patterns['rope'] = rope_patterns
 
             # General refactoring best practices
-            refactoring_patterns = await self.context7.get_library_docs(
-                context7_library_id="/refactoring/guru",
+            refactoring_patterns = await self.docs.get_library_docs(
+                docs_library_id="/refactoring/guru",
                 topic="code refactoring best practices design patterns 2025",
                 tokens=3000
             )
             patterns['general'] = refactoring_patterns
 
         except Exception as e:
-            print(f"Failed to get Context7 patterns: {e}")
+            print(f"Failed to get Documentation patterns: {e}")
 
     return patterns
 ```
@@ -204,8 +204,8 @@ async def get_framework_patterns(self, framework: str) -> Dict[str, Any]:
     config = framework_patterns[framework]
     
     try:
-        patterns = await self.context7.get_library_docs(
-            context7_library_id=config['library_id'],
+        patterns = await self.docs.get_library_docs(
+            docs_library_id=config['library_id'],
             topic=config['topic'],
             tokens=5000
         )
@@ -239,18 +239,18 @@ async def intelligent_refactoring_pipeline(
     # Step 2: Analyze technical debt
     debt_items = await self.technical_debt_analyzer.analyze(codebase_path)
     
-    # Step 3: Get Context7 patterns
-    context7_patterns = await self.get_context7_refactoring_patterns()
+    # Step 3: Get Documentation patterns
+    docs_patterns = await self.get_docs_refactoring_patterns()
     
     if framework:
         framework_patterns = await self.get_framework_patterns(framework)
-        context7_patterns['framework'] = framework_patterns
+        docs_patterns['framework'] = framework_patterns
     
     # Step 4: Identify opportunities with AI
     opportunities = await self._identify_refactor_opportunities(
         codebase_path, 
         debt_items, 
-        context7_patterns
+        docs_patterns
     )
     
     # Step 5: Filter by risk and conventions
@@ -263,7 +263,7 @@ async def intelligent_refactoring_pipeline(
     refactor_plan = self._create_safe_refactor_plan(
         filtered_opportunities,
         debt_items,
-        context7_patterns
+        docs_patterns
     )
     
     return refactor_plan
@@ -589,7 +589,7 @@ async def post_refactoring_analysis(
 3. Run tests after every change
 4. Revert immediately on test failure
 5. Document all changes in commit messages
-6. Use Context7 for latest patterns and practices
+6. Use Documentation for latest patterns and practices
 7. Respect project conventions when refactoring
 8. Prioritize low-risk, high-impact changes first
 9. Monitor performance impact of changes
@@ -599,7 +599,7 @@ async def post_refactoring_analysis(
 
 ## Resources
 
-### Context7 MCP Libraries
+### WebSearch/WebFetch Libraries
 
 - Python Rope: `/python-rope/rope`
 - Refactoring Guru: `/refactoring/guru`

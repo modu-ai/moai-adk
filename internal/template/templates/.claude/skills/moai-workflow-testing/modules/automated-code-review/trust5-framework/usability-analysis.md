@@ -82,11 +82,11 @@ assess_code_organization(file_path, tree):
 6. **Duplicate Code**: Similar code blocks repeated
 7. **Poor Documentation**: Missing or unclear doc comments
 
-### Context7 Integration
+### Documentation Integration
 
 ```text
 # Load usability patterns
-usability = context7.get_library_docs(
+usability = docs.get_library_docs(
     "<code-quality/sonarqube>",
     topic="maintainability metrics code smells",
     tokens=4000)

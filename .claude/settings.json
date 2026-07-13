@@ -46,16 +46,6 @@
           }
         ],
         "matcher": "Write|Edit|Bash"
-      },
-      {
-        "hooks": [
-          {
-            "command": "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/gateguard-fact-force.sh\"",
-            "timeout": 5,
-            "type": "command"
-          }
-        ],
-        "matcher": "Read|Edit|Write"
       }
     ],
     "PostToolUse": [
@@ -323,10 +313,6 @@
       "ExitWorktree",
       "EnterPlanMode",
       "ExitPlanMode",
-      "ListMcpResourcesTool",
-      "ReadMcpResourceTool",
-      "mcp__context7__get-library-docs",
-      "mcp__context7__resolve-library-id",
       "Bash(git status:*)",
       "Bash(git log:*)",
       "Bash(git diff:*)",
@@ -493,6 +479,5 @@
     "pr": "🗿 MoAI",
     "sessionUrl": false
   },
-  "enableAllProjectMcpServers": true,
   "respectGitignore": true
 }

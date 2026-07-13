@@ -13,7 +13,7 @@ when_to_use: >
 
 license: Apache-2.0
 compatibility: Designed for Claude Code
-allowed-tools: Read, Write, Edit, Bash(psql:*), Bash(mysql:*), Bash(sqlite3:*), Bash(mongosh:*), Bash(redis-cli:*), Bash(npm:*), Bash(npx:*), Bash(prisma:*), Bash(neonctl:*), Bash(firebase:*), Bash(supabase:*), Grep, Glob, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
+allowed-tools: Read, Write, Edit, Bash(psql:*), Bash(mysql:*), Bash(sqlite3:*), Bash(mongosh:*), Bash(redis-cli:*), Bash(npm:*), Bash(npx:*), Bash(prisma:*), Bash(neonctl:*), Bash(firebase:*), Bash(supabase:*), Grep, Glob
 user-invocable: false
 metadata:
   version: "2.0.0"
@@ -22,7 +22,7 @@ metadata:
   updated: "2026-04-25"
   tags: "database, postgresql, mongodb, redis, oracle, data-patterns, performance, neon, supabase, firestore, cloud-database, serverless"
   author: "MoAI-ADK Team"
-  context7-libraries: "/neondatabase/neon, /supabase/supabase, /firebase/firebase-docs"
+  docs-libraries: "/neondatabase/neon, /supabase/supabase, /firebase/firebase-docs"
   related-skills: "moai-platform-database-cloud"
 
 # MoAI Extension: Progressive Disclosure

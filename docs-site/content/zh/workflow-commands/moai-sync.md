@@ -121,7 +121,7 @@ Sync 完成后自动合并 PR 并清理分支:
 
 ```mermaid
 flowchart TD
-    A["执行命令<br/>/moai sync"] --> B["Phase 0.5<br/>质量验证"]
+    A["执行命令<br/>/moai sync"] --> B["Phase 7<br/>质量验证"]
 
     B --> C["检测项目语言"]
     C --> D["执行并行诊断"]
@@ -176,7 +176,7 @@ flowchart TD
 
 ## 各阶段详解
 
-### Phase 0.5: 质量验证(并行诊断)
+### Phase 7: 质量验证(并行诊断)
 
 在文档同步前验证项目质量。
 
@@ -508,12 +508,12 @@ manager-docs 智能体为文档同步执行的 4 个 Phase。
 
 ---
 
-#### Phase 0.5: 质量验证
+#### Phase 7: 质量验证
 
 在生成文档前验证项目状态。
 
 ```bash
-Phase 0.5: 质量验证
+Phase 7: 质量验证
   项目语言: Python
   测试: 36/36 通过
   Linter: 0 错误

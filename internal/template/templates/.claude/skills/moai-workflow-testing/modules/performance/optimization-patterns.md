@@ -244,13 +244,13 @@ validation_strategy(bottlenecks):
 
 ```text
 get_ai_optimization_suggestions(bottlenecks, codebase_context):
-    if context7 unavailable:
+    if docs unavailable:
         return rule_based_suggestions(bottlenecks)
 
-    optimization_patterns = context7.get_library_docs(
+    optimization_patterns = docs.get_library_docs(
         topic="advanced performance optimization patterns",
         tokens=5000)
-    algorithm_patterns = context7.get_library_docs(
+    algorithm_patterns = docs.get_library_docs(
         topic="algorithm optimization big-O complexity reduction",
         tokens=3000)
 

@@ -98,7 +98,7 @@ Claude Code 在开始新对话时对项目一无所知。
 flowchart TD
     Start["执行 /moai project"] --> Q1{项目类型是?}
 
-    Q1 -->|新项目| New["Phase 0.5: 收集信息"]
+    Q1 -->|新项目| New["Phase 1: 收集信息"]
     Q1 -->|既有项目| Exist["Phase 1: 分析代码库"]
 
     New --> NewQ["项目目的"]
@@ -115,7 +115,7 @@ flowchart TD
     Conf -->|批准| Gen
     Conf -->|取消| End["结束"]
 
-    Gen --> LSP["Phase 3.5: 检查 LSP"]
+    Gen --> LSP["Phase 4: 检查 LSP"]
     LSP --> Complete["Phase 4: 完成"]
 ```
 
@@ -137,7 +137,7 @@ flowchart TD
 | **新项目** | 从零开始的项目。以信息收集的形式进行 |
 | **既有项目** | 已有代码的项目。自动分析代码      |
 
-### Phase 0.5: 收集新项目信息
+### Phase 1: 收集新项目信息
 
 选择新项目时,收集以下信息:
 
@@ -211,7 +211,7 @@ flowchart TD
 
 **传递内容**:
 
-- Phase 1 分析结果(或 Phase 0.5 用户输入)
+- Phase 1 分析结果(或 Phase 1 用户输入)
 - Phase 2 用户确认
 - 输出目录: `.moai/project/`
 - 语言: config 的 conversation_language
@@ -224,7 +224,7 @@ flowchart TD
 | **structure.md** | 目录树、各目录的用途、核心文件位置、模块构成             |
 | **tech.md**      | 技术栈概览、框架选择依据、开发环境要求、构建/部署设置 |
 
-### Phase 3.5: 检查开发环境
+### Phase 4: 检查开发环境
 
 确认是否安装了与检测到的技术栈匹配的 LSP 服务器。
 
@@ -506,7 +506,7 @@ AI 已经了解项目的技术栈与结构,因此能生成更精准的 SPEC。
 ```mermaid
 flowchart TD
     Start["执行 /moai project"] --> Phase0["Phase 0: 检测类型"]
-    Phase0 --> Phase05["Phase 0.5: 收集信息<br/>(新项目)"]
+    Phase0 --> Phase05["Phase 1: 收集信息<br/>(新项目)"]
     Phase0 --> Phase1["Phase 1: 分析代码库<br/>(既有项目)"]
 
     Phase1 --> Explore["Explore 子智能体<br/>委派代码分析"]
@@ -516,7 +516,7 @@ flowchart TD
     Phase2 -->|批准| Phase3
 
     Phase3 --> Docs["manager-docs 子智能体<br/>委派文档生成"]
-    Docs --> Phase35["Phase 3.5: 检查 LSP"]
+    Docs --> Phase35["Phase 4: 检查 LSP"]
 
     Phase35 --> DevOps["manager-develop 子智能体<br/>安装 LSP(可选)"]
     DevOps --> Phase4["Phase 4: 完成"]
@@ -538,7 +538,7 @@ flowchart TD
 
 ### Q: 没有 LSP 服务器会怎样?
 
-即使没有 LSP 服务器,文档生成也会进行。只是在之后的 `/moai run` 阶段,代码质量诊断可能受限。Phase 3.5 会提供 LSP 安装指南。
+即使没有 LSP 服务器,文档生成也会进行。只是在之后的 `/moai run` 阶段,代码质量诊断可能受限。Phase 4 会提供 LSP 安装指南。
 
 ## 相关文档
 

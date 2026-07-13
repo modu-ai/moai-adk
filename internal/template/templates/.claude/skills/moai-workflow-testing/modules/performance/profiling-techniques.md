@@ -176,7 +176,7 @@ avg_metrics      = monitor.get_average_metrics(5)
 ### CPU Bottleneck Detection
 
 ```text
-detect_cpu_bottlenecks(cpu_profiles, context7_patterns = none):
+detect_cpu_bottlenecks(cpu_profiles, docs_patterns = none):
     bottlenecks = []
     total_cpu_time = sum(p.cumulative_time for p in cpu_profiles)
 
@@ -190,7 +190,7 @@ detect_cpu_bottlenecks(cpu_profiles, context7_patterns = none):
                    else low
 
         (opt_type, suggestions, est_improvement) =
-            generate_cpu_optimization_suggestions(profile, context7_patterns)
+            generate_cpu_optimization_suggestions(profile, docs_patterns)
 
         bottlenecks.append(PerformanceBottleneck(
             function_name=profile.name,
@@ -205,7 +205,7 @@ detect_cpu_bottlenecks(cpu_profiles, context7_patterns = none):
 ### Memory Bottleneck Detection
 
 ```text
-detect_memory_bottlenecks(memory_profile, context7_patterns = none):
+detect_memory_bottlenecks(memory_profile, docs_patterns = none):
     bottlenecks = []
     if memory_profile has memory_by_function:
         by_fn = memory_profile.memory_by_function
@@ -217,7 +217,7 @@ detect_memory_bottlenecks(memory_profile, context7_patterns = none):
                        else high if impact > 0.4
                        else medium if impact > 0.2
                        else low
-            (opt_type, suggestions, est) = generate_memory_optimization_suggestions(usage, context7_patterns)
+            (opt_type, suggestions, est) = generate_memory_optimization_suggestions(usage, docs_patterns)
             bottlenecks.append(PerformanceBottleneck(
                 function_name="Function at " + func_key,
                 bottleneck_type="memory", severity=severity, impact_score=impact,
@@ -309,16 +309,16 @@ Monitor key metrics over time:
 - Alert on significant degradation
 - Maintain performance history
 
-## Integration with Context7
+## Integration with Documentation
 
 ### AI-Powered Analysis
 
 ```text
-detect_bottlenecks(profile_results, context7_patterns = none):
-    if context7_patterns is none:
+detect_bottlenecks(profile_results, docs_patterns = none):
+    if docs_patterns is none:
         return rule_based_detection(profile_results)
 
-    optimization_patterns = context7.get_library_docs(
+    optimization_patterns = docs.get_library_docs(
         topic="advanced performance optimization patterns",
         tokens=5000)
     return ai_enhanced_detection(profile_results, optimization_patterns)

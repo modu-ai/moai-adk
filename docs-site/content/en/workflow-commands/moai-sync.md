@@ -121,7 +121,7 @@ The full process `/moai sync` performs internally:
 
 ```mermaid
 flowchart TD
-    A["Run command<br/>/moai sync"] --> B["Phase 0.5<br/>quality verification"]
+    A["Run command<br/>/moai sync"] --> B["Phase 7<br/>quality verification"]
 
     B --> C["Detect project language"]
     C --> D["Run parallel diagnostics"]
@@ -176,7 +176,7 @@ flowchart TD
 
 ## Phase Details
 
-### Phase 0.5: Quality Verification (parallel diagnostics)
+### Phase 7: Quality Verification (parallel diagnostics)
 
 Verifies project quality before doc synchronization.
 
@@ -507,12 +507,12 @@ The 4 phases the manager-docs agent runs for doc synchronization.
 
 ---
 
-#### Phase 0.5: Quality Verification
+#### Phase 7: Quality Verification
 
 Verifies project state before doc generation.
 
 ```bash
-Phase 0.5: Quality verification
+Phase 7: Quality verification
   Project language: Python
   Tests: 36/36 pass
   Linter: 0 errors

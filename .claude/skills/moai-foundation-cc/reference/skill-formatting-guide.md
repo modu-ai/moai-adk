@@ -132,7 +132,7 @@ Purpose: Principle of least privilege
 Examples:
 ```yaml
 # CORRECT: Minimal specific tools
-allowed-tools: Read, mcp__context7__resolve-library-id
+allowed-tools: Read
 
 # CORRECT: Multiple tools for analysis
 allowed-tools: Read, Grep, Glob, WebFetch
@@ -196,7 +196,7 @@ Example:
 ```markdown
 ## Quick Reference (30 seconds)
 
-Context7 MCP server integration for real-time library documentation access. Resolve library names to Context7 IDs and fetch latest API documentation with progressive token disclosure for optimal performance.
+WebSearch/WebFetch server integration for real-time library documentation access. Resolve library names to Documentation IDs and fetch latest API documentation with progressive token disclosure for optimal performance.
 ```
 
 ### Section 2: Implementation Guide
@@ -593,24 +593,14 @@ Parallel Usage:
 
 ### MCP Integration Patterns
 
-Context7 Integration:
+Single MCP server (example: a user-provisioned server):
 ```yaml
-allowed-tools: mcp__context7__resolve-library-id, mcp__context7__get-library-docs
+allowed-tools: mcp__example-server__tool-a, mcp__example-server__tool-b
 ```
 
-```python
-# Two-step pattern
-library_id = await mcp__context7__resolve-library_id("library-name")
-docs = await mcp__context7__get-library_docs(
- context7CompatibleLibraryID=library_id,
- topic="specific-topic",
- tokens=3000
-)
-```
-
-Multi-MCP Integration:
+Multi-MCP integration (combine multiple user-provisioned servers):
 ```yaml
-allowed-tools: mcp__context7__*, mcp__playwright__*
+allowed-tools: mcp__example-server__*, mcp__playwright__*
 ```
 
 ---

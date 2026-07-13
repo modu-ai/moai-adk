@@ -1,13 +1,13 @@
 # AI-Powered Refactoring Workflows
 
-> Sub-module: AI-assisted refactoring workflows with Context7 integration
+> Sub-module: AI-assisted refactoring workflows with Documentation integration
 > Complexity: Advanced
 > Time: 20+ minutes
-> Dependencies: Context7 MCP, source parser (AST), the host language's refactoring tool
+> Dependencies: WebSearch/WebFetch, source parser (AST), the host language's refactoring tool
 
 ## Overview
 
-This module provides advanced AI-assisted refactoring workflows that leverage Context7 MCP for real-time access to latest refactoring patterns, best practices, and framework-specific guidance.
+This module provides advanced AI-assisted refactoring workflows that leverage WebSearch/WebFetch for real-time access to latest refactoring patterns, best practices, and framework-specific guidance.
 
 ---
 
@@ -71,27 +71,27 @@ identify_api_boundaries(codebase_path):
 
 ---
 
-## Context7 Integration
+## Documentation Integration
 
 ### Real-Time Pattern Retrieval
 
-Fetch latest refactoring patterns from Context7:
+Fetch latest refactoring patterns from Documentation:
 
 ```text
-get_context7_refactoring_patterns():
+get_docs_refactoring_patterns():
     patterns = {}
-    if context7 available:
+    if docs available:
         try:
-            patterns.tool = context7.get_library_docs(
+            patterns.tool = docs.get_library_docs(
                 "<host-language-refactor-tool>",   # e.g. python-rope, gopls, rust-analyzer
                 topic="safe refactoring patterns technical debt",
                 tokens=4000)
-            patterns.general = context7.get_library_docs(
+            patterns.general = docs.get_library_docs(
                 "<refactoring/guru>",
                 topic="code refactoring best practices design patterns",
                 tokens=3000)
         except e:
-            log("Failed to get Context7 patterns: " + e)
+            log("Failed to get Documentation patterns: " + e)
     return patterns
 ```
 
@@ -101,7 +101,7 @@ Get refactoring patterns specific to a framework. Populate the table with the pr
 
 ```text
 get_framework_patterns(framework):
-    # Map each framework to its Context7 library id + topic. Examples:
+    # Map each framework to its Documentation library id + topic. Examples:
     #   web (python):  django / fastapi / flask
     #   web (go):      gin / echo / chi
     #   web (node):    express / nestjs / fastify
@@ -112,7 +112,7 @@ get_framework_patterns(framework):
     if framework not in framework_patterns: return {}
     config = framework_patterns[framework]
     try:
-        return context7.get_library_docs(config.library_id, config.topic, tokens=5000)
+        return docs.get_library_docs(config.library_id, config.topic, tokens=5000)
     except e:
         log("Failed to get " + framework + " patterns: " + e)
         return {}
@@ -134,19 +134,19 @@ intelligent_refactoring_pipeline(codebase_path, framework = none, max_risk_level
     # Step 2: analyze technical debt
     debt_items = technical_debt_analyzer.analyze(codebase_path)
 
-    # Step 3: fetch Context7 patterns (+ framework-specific if requested)
-    context7_patterns = get_context7_refactoring_patterns()
+    # Step 3: fetch Documentation patterns (+ framework-specific if requested)
+    docs_patterns = get_docs_refactoring_patterns()
     if framework:
-        context7_patterns.framework = get_framework_patterns(framework)
+        docs_patterns.framework = get_framework_patterns(framework)
 
     # Step 4: identify opportunities with AI
-    opportunities = identify_refactor_opportunities(codebase_path, debt_items, context7_patterns)
+    opportunities = identify_refactor_opportunities(codebase_path, debt_items, docs_patterns)
 
     # Step 5: filter by risk and conventions
     filtered = filter_by_conventions_and_risk(opportunities, max_risk_level)
 
     # Step 6: create a safe execution plan
-    return create_safe_refactor_plan(filtered, debt_items, context7_patterns)
+    return create_safe_refactor_plan(filtered, debt_items, docs_patterns)
 
 filter_by_conventions_and_risk(opportunities, max_risk_level):
     risk_order = { low: 1, medium: 2, high: 3 }
@@ -299,7 +299,7 @@ post_refactoring_analysis(codebase_path, execution_results):
 3. Run tests after every change
 4. Revert immediately on test failure
 5. Document all changes in commit messages
-6. Use Context7 for latest patterns and practices
+6. Use Documentation for latest patterns and practices
 7. Respect project conventions when refactoring
 8. Prioritize low-risk, high-impact changes first
 9. Monitor performance impact of changes
@@ -309,7 +309,7 @@ post_refactoring_analysis(codebase_path, execution_results):
 
 ## Resources
 
-### Context7 MCP Libraries
+### WebSearch/WebFetch Libraries
 
 - Host-language refactor tools: rope, gopls, rust-analyzer, TS language server
 - General: `/refactoring/guru`

@@ -97,9 +97,9 @@ Create test class with Testcontainers and SpringBootTest annotations. Define sta
 
 ---
 
-## Context7 Integration
+## Documentation References
 
-Library mappings for latest documentation:
+Library references for latest documentation:
 
 - spring-projects/spring-boot for Spring Boot 3.5 documentation
 - spring-projects/spring-framework for Spring Framework core

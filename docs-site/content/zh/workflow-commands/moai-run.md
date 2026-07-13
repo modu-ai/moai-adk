@@ -162,7 +162,7 @@ flowchart TD
 
 ## 各阶段详解
 
-### Phase 0.9: JIT Language Detection (语言自动检测)
+### Phase 3: JIT Language Detection (语言自动检测)
 
 自动检测项目的主要语言,在生成智能体时注入合适的语言技能。平等支持 16 种语言。
 
@@ -174,7 +174,7 @@ flowchart TD
 | `Cargo.toml` | moai-lang-rust |
 | `pom.xml` / `build.gradle` | moai-lang-java |
 
-### Phase 0.95: Scale-Based Mode Selection (基于规模的模式选择)
+### Phase 4: Scale-Based Mode Selection (基于规模的模式选择)
 
 根据 SPEC 规模自动选择最优执行模式。不为小任务运转沉重的流水线 — 这也是令牌经济学。
 
@@ -193,8 +193,8 @@ flowchart TD
 | 级别 | 对象 | evaluator | 跳过的 Phase |
 |------|------|-----------|---------------|
 | **minimal** | 简单 Bug 修复、配置变更 | 停用 | 0, 0.5, 2.0, 2.5, 2.75, 2.8a |
-| **standard** | 一般功能开发(默认) | final-pass (仅 Phase 2.8a) | 无 |
-| **thorough** | 安全/支付等关键功能 | per-sprint (Phase 2.0 + 2.8a) | 无 |
+| **standard** | 一般功能开发(默认) | final-pass (仅 Phase 16) | 无 |
+| **thorough** | 安全/支付等关键功能 | per-sprint (Phase 10 + 2.8a) | 无 |
 
 失败时自动升级: minimal → standard → thorough(最多 2 次)
 
@@ -211,7 +211,7 @@ flowchart TD
 
 **输出:** 包含 plan_summary、requirements 列表、success_criteria、effort_estimate 的执行计划
 
-### Phase 1.5: 工作分解
+### Phase 6: 工作分解
 
 将已批准的执行计划分解为原子化、可审查的工作:
 
@@ -227,7 +227,7 @@ flowchart TD
 
 任务分解结果持久记录于 `.moai/specs/SPEC-{ID}/tasks.md`。可通过 Git 追踪,并由 Drift Guard 引用。
 
-### Phase 2.0: Sprint Contract (仅 thorough)
+### Phase 10: Sprint Contract (仅 thorough)
 
 仅在 thorough 级别执行。在实现前与 sync-auditor 预先商定 Done 标准。
 
@@ -252,7 +252,7 @@ flowchart TD
 
 **输出:** files_modified、characterization_tests_created、test_results、behavior_preserved、structural_metrics
 
-### Phase 2.5: 质量验证
+### Phase 13: 质量验证
 
 **sync-auditor** 子智能体执行 TRUST 5 验证:
 
@@ -273,12 +273,12 @@ flowchart TD
 
 **输出:** trust_5_validation 结果、coverage_percentage、overall_status (PASS/WARNING/CRITICAL)、issues_found
 
-### Phase 2.8a/2.8b: 主动评估与静态验证
+### Phase 16/2.8b: 主动评估与静态验证
 
 质量评估分为两个阶段执行:
 
-- **Phase 2.8a**: sync-auditor 主动评估 (Functionality/Security/Craft/Consistency)
-- **Phase 2.8b**: sync-auditor TRUST 5 静态验证
+- **Phase 16**: sync-auditor 主动评估 (Functionality/Security/Craft/Consistency)
+- **Phase 17**: sync-auditor TRUST 5 静态验证
 
 {{< callout type="warning" >}}
 Security FAIL = 整体 FAIL。最多 3 次修复-评估循环后向用户报告。
@@ -290,7 +290,7 @@ Security FAIL = 整体 FAIL。最多 3 次修复-评估循环后向用户报告�
 
 - drift ≤ 20%: 仅记录信息
 - 20% < drift ≤ 30%: 警告
-- drift > 30%: 触发 Phase 2.7 重新规划门禁
+- drift > 30%: 触发 Phase 14 重新规划门禁
 
 ### Phase 3: Git 操作(条件性)
 
@@ -378,12 +378,12 @@ Phase 1: 策略规划
 
 ---
 
-#### Phase 1.5: 工作分解
+#### Phase 6: 工作分解
 
 将实现工作拆分为细粒度单元。
 
 ```bash
-Phase 1.5: 工作分解
+Phase 6: 工作分解
 - TASK-001: 定义用户模型
 - TASK-002: 密码哈希工具
 - TASK-003: JWT 令牌生成/验证
@@ -432,12 +432,12 @@ IMPROVE 阶段:
 
 ---
 
-#### Phase 2.5: 质量验证
+#### Phase 13: 质量验证
 
 按 TRUST 5 支柱验证质量。
 
 ```bash
-Phase 2.5: 质量验证
+Phase 13: 质量验证
 - TRUST 5 支柱全部通过
 - 测试覆盖率: 89%
 - LSP 错误: 0 个
@@ -496,7 +496,7 @@ manager-develop 智能体会 **自动保存进度**。执行 `/clear` 后再次�
 
 可以在 `quality.yaml` 中调整覆盖率目标,但 **不推荐**。85% 是保证核心逻辑已被测试的最低标准。覆盖率不足时,manager-develop 会自动补充缺失的测试。
 
-### Q: Phase 2.5 出现 CRITICAL 状态怎么办?
+### Q: Phase 13 出现 CRITICAL 状态怎么办?
 
 会向用户报告质量问题,并询问是否重试修复。选择"是"则返回 IMPROVE 阶段继续修复。
 

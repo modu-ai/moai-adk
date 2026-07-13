@@ -52,8 +52,8 @@ class FunctionProfile:
 class PerformanceProfiler:
     """Advanced performance profiler with bottleneck detection."""
 
-    def __init__(self, context7_client=None):
-        self.context7 = context7_client
+    def __init__(self, docs_client=None):
+        self.docs = docs_client
         self.profiler = None
         self.memory_profiler = None
         self.line_profiler = None
@@ -234,7 +234,7 @@ class PerformanceProfiler:
 
 ```python
 # Initialize performance profiler
-profiler = PerformanceProfiler(context7_client=context7)
+profiler = PerformanceProfiler(docs_client=docs)
 
 # Example function to profile
 def expensive_function(n):

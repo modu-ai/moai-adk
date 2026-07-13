@@ -8,11 +8,11 @@
 
 ### AIDebugger Class Structure
 
-Complete AIDebugger implementation with Context7 integration, pattern matching, and solution generation. For data class definitions (ErrorType, ErrorAnalysis, Solution, DebugAnalysis), see [ai-debugging.md](../ai-debugging.md). The error categories below are generic; map each language's exception types onto them (e.g. ImportError/ModuleNotFoundError, AttributeError, TypeError, ValueError).
+Complete AIDebugger implementation with Documentation integration, pattern matching, and solution generation. For data class definitions (ErrorType, ErrorAnalysis, Solution, DebugAnalysis), see [ai-debugging.md](../ai-debugging.md). The error categories below are generic; map each language's exception types onto them (e.g. ImportError/ModuleNotFoundError, AttributeError, TypeError, ValueError).
 
 ```text
 class AIDebugger:
-    context7
+    docs
     error_patterns = load_error_patterns()   # generic-category -> {patterns, solutions, topics}
     error_history = {}
     pattern_cache = {}
@@ -24,14 +24,14 @@ class AIDebugger:
             solutions: ["Install the missing dependency",
                         "Check the import path / module specifier",
                         "Resolve circular dependencies"],
-            context7_topics: ["module resolution", "dependency management"]
+            docs_topics: ["module resolution", "dependency management"]
           },
           MEMBER_ACCESS: {
             patterns:  ["has no member", "no such attribute", "is not a function"],
             solutions: ["Check the object type and available members",
                         "Verify the module import / member name",
                         "Add the missing member or method"],
-            context7_topics: ["attribute access patterns", "introspection techniques"]
+            docs_topics: ["attribute access patterns", "introspection techniques"]
           },
           TYPE: {
             patterns:  ["unsupported operand types", "wrong number of arguments",
@@ -39,14 +39,14 @@ class AIDebugger:
             solutions: ["Check data types before operations",
                         "Verify the function signature",
                         "Add type validation / conversion"],
-            context7_topics: ["type system debugging", "type checking best practices"]
+            docs_topics: ["type system debugging", "type checking best practices"]
           },
           VALUE: {
             patterns:  ["invalid value", "cannot convert", "out of range", "empty"],
             solutions: ["Validate input data format",
                         "Add error handling for conversions",
                         "Check value ranges"],
-            context7_topics: ["input validation patterns", "data conversion error handling"]
+            docs_topics: ["input validation patterns", "data conversion error handling"]
           }
         }
 ```
@@ -56,20 +56,20 @@ class AIDebugger:
 Complete debug workflow implementation with error classification, pattern matching, solution generation, and prevention strategies:
 
 ```text
-    debug_with_context7_patterns(error, context, codebase_path):
+    debug_with_docs_patterns(error, context, codebase_path):
         # Classify the error
         error_analysis = classify_error_with_ai(error, context)
 
-        # Fetch Context7 patterns if available
-        context7_patterns = {}
-        if context7 available:
-            context7_patterns = get_context7_patterns(error_analysis)
+        # Fetch Documentation patterns if available
+        docs_patterns = {}
+        if docs available:
+            docs_patterns = get_docs_patterns(error_analysis)
 
         # Match against known patterns
         pattern_matches = match_error_patterns(error, error_analysis)
 
         # Generate comprehensive solutions
-        solutions = generate_solutions(error_analysis, context7_patterns, pattern_matches, context)
+        solutions = generate_solutions(error_analysis, docs_patterns, pattern_matches, context)
 
         # Suggest prevention strategies
         prevention = suggest_prevention_strategies(error_analysis, context)
@@ -80,7 +80,7 @@ Complete debug workflow implementation with error classification, pattern matchi
         return DebugAnalysis(
             error_type=error_analysis.type,
             confidence=error_analysis.confidence,
-            context7_patterns=context7_patterns,
+            docs_patterns=docs_patterns,
             solutions=solutions,
             prevention_strategies=prevention,
             related_errors=find_related_errors(error_analysis),
@@ -133,28 +133,28 @@ AI-enhanced error classification with context awareness using type mapping, mess
         return UNKNOWN
 ```
 
-### Context7 Integration
+### Documentation Integration
 
 Automatic documentation retrieval for latest debugging patterns and best practices with intelligent caching:
 
 ```text
-    get_context7_patterns(error_analysis):
+    get_docs_patterns(error_analysis):
         cache_key = error_analysis.type + "_" + first 30 chars of message
         if cache_key in pattern_cache: return pattern_cache[cache_key]
 
-        queries = build_context7_queries(error_analysis)
+        queries = build_docs_queries(error_analysis)
         patterns = {}
-        if context7 available:
+        if docs available:
             for (library_id, topic) in queries:
                 try:
-                    patterns[library_id] = context7.get_library_docs(
+                    patterns[library_id] = docs.get_library_docs(
                         library_id, topic, tokens=4000)
                 except e:
-                    log("Context7 query failed for " + library_id + ": " + e)
+                    log("Documentation query failed for " + library_id + ": " + e)
         pattern_cache[cache_key] = patterns
         return patterns
 
-    build_context7_queries(error_analysis):
+    build_docs_queries(error_analysis):
         queries = []
         # Base debugging library / docs
         queries.append(("<debugging-library>",
@@ -235,11 +235,11 @@ Complete usage examples for common debugging scenarios. The try/catch idiom vari
 
 ```text
 # Basic usage
-debugger = AIDebugger(context7_client=context7)
+debugger = AIDebugger(docs_client=docs)
 try:
     result = some_risky_operation()
 catch e:
-    analysis = debugger.debug_with_context7_patterns(
+    analysis = debugger.debug_with_docs_patterns(
         e,
         { file: current_file, function: "some_risky_operation", language: <lang> },
         "/project/src")
@@ -253,7 +253,7 @@ catch e:
 try:
     data = process_user_input(user_data)
 catch e:
-    analysis = debugger.debug_with_context7_patterns(
+    analysis = debugger.debug_with_docs_patterns(
         e,
         { file: current_file, function: "process_user_input", language: <lang>,
           framework: <framework>, operation_type: "data_processing",

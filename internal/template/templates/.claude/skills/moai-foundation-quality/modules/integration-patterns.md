@@ -114,4 +114,4 @@ the spec-workflow rule for the full team-quality contract.
 
 - [TRUST 5 Principles](trust5-validation.md) — the dimensions enforced per phase
 - [Proactive Analysis](proactive-analysis.md) — gate and review triage
-- [Best Practices](best-practices.md) — Context7-powered standards validation
+- [Best Practices](best-practices.md) — documentation-grounded standards validation

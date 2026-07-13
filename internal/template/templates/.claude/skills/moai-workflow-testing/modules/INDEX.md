@@ -13,29 +13,29 @@ This modules directory contains detailed implementation modules for the moai-wor
 ### Root Level Modules
 
 #### [AI-Powered Debugging](./ai-debugging.md)
-Complexity: Advanced | Time: 20+ minutes | Dependencies: Context7 MCP (optional)
+Complexity: Advanced | Time: 20+ minutes | Dependencies: the host language's async and stack-introspection facilities
 
-- Intelligent error classification with Context7 patterns
+- Intelligent error classification with documentation-sourced patterns
 - AI-driven solution generation with confidence scoring
 - Learning debugger that improves from previous fixes
 - Real-time error pattern recognition and prevention strategies
 
 Key Features:
-- Context7 integration for latest debugging patterns
+- WebSearch / WebFetch integration for latest debugging patterns
 - Error frequency tracking and analysis
 - Automated solution generation with multiple approaches
 - Performance-aware debugging with minimal overhead
 
 ### [Smart Refactoring](./smart-refactoring.md)
-Complexity: Advanced | Time: 25+ minutes | Dependencies: AST/refactoring tool for your language, Context7 MCP
+Complexity: Advanced | Time: 25+ minutes | Dependencies: AST/refactoring tool for your language
 
 - Technical debt analysis with comprehensive code scanning
 - Safe automated refactoring with risk assessment
-- AI-driven refactoring suggestions with Context7 patterns
+- AI-driven refactoring suggestions grounded in official docs
 - Dependency-aware refactoring with impact analysis
 
 Key Features:
-- Context7 refactoring patterns integration
+- Documentation-grounded refactoring patterns
 - Safe transformation planning with rollback strategies
 - Technical debt prioritization and quantification
 - Project-aware refactoring with convention detection
@@ -50,35 +50,21 @@ Complexity: Advanced | Time: 30+ minutes | Dependencies: CPU/memory profiler for
 
 Key Features:
 - Multi-dimensional performance analysis
-- Intelligent optimization suggestions with Context7 patterns
+- Intelligent optimization suggestions grounded in official docs
 - Continuous monitoring with alerting capabilities
 - Performance regression detection and prevention
-
-### [DDD with Context7](./ddd-context7.md)
-Complexity: Advanced | Time: 25+ minutes | Dependencies: test runner for your language, Context7 MCP
-
-- ANALYZE-PRESERVE-IMPROVE cycle automation with AI assistance
-- Context7-enhanced test generation and pattern matching
-- Intelligent characterization test generation from specifications
-- Automated test suite optimization and maintenance
-
-Key Features:
-- Context7 testing patterns and best practices
-- AI-powered characterization test generation with coverage optimization
-- Comprehensive behavior preservation management
-- Automated test execution with quality validation
 
 ### [Automated Code Review](./automated-code-review.md)
 Complexity: Advanced | Time: 35+ minutes | Dependencies: static analyzers for your language
 
 - TRUST 5 framework validation with AI analysis
 - Multi-tool static analysis integration and aggregation
-- Context7 security patterns and vulnerability detection
+- Documentation-grounded security patterns and vulnerability detection
 - Automated fix suggestions with diff generation
 
 Key Features:
 - Comprehensive TRUST 5 category scoring
-- Context7 security and quality pattern integration
+- Documentation-grounded security and quality pattern integration
 - Automated issue detection with prioritization
 - Integration with CI/CD pipelines and quality gates
 
@@ -86,7 +72,6 @@ Key Features:
 
 #### [Automated Code Review](./automated-code-review/)
 Comprehensive code review workflows with TRUST 5 framework integration.
-- `context7-integration.md` - Context7 integration for code review
 - `review-workflows.md` - Code review workflow patterns
 - `trust5-framework.md` - TRUST 5 framework overview
 - `trust5-framework/` - TRUST 5 sub-components directory
@@ -118,13 +103,6 @@ AI-powered refactoring workflows.
 - `ai-workflows.md` - AI refactoring workflows
 - `patterns.md` - Refactoring patterns
 
-#### [DDD with Context7](./ddd-context7/)
-Domain-driven development with Context7 integration.
-- `advanced-features.md` - Advanced DDD features
-- `analyze-preserve-improve.md` - ANALYZE-PRESERVE-IMPROVE cycle
-- `test-generation.md` - Automated test generation
-- `test-patterns.md` - DDD testing patterns
-
 #### [Core DDD](./ddd/)
 Core DDD documentation.
 - `core-classes.md` - Core DDD classes and patterns
@@ -146,7 +124,7 @@ language-appropriate toolchain:
 - Performance Optimization: profile (CPU/memory/IO), detect bottlenecks, plan optimization
 - Smart Refactoring: scan technical debt, plan safe transforms, verify with tests
 - Automated Code Review: run static analysis, score against TRUST 5, prioritize issues
-- DDD with Context7: ANALYZE-PRESERVE-IMPROVE, characterization tests first
+- DDD: ANALYZE-PRESERVE-IMPROVE, characterization tests first
 
 ### Unified Workflow Integration
 
@@ -159,7 +137,7 @@ multi-language reference linked above).
 ## Module Dependencies
 
 ### Core Dependencies
-- Context7 MCP: For pattern integration and AI assistance (optional; modules degrade gracefully without it)
+- WebSearch / WebFetch: for latest pattern integration and AI assistance (optional; modules degrade gracefully using established best-practice patterns when documentation is unreachable)
 - The project's own test runner, linter, and profiler (language-dependent — see multi-language reference)
 
 ### Module-Specific Tools (examples per language)
@@ -176,12 +154,12 @@ multi-language reference linked above).
 3. Combine selectively: Use only the modules relevant to your workflow
 
 ### Integration Guidelines
-1. Context7 Integration: Enable Context7 for enhanced AI capabilities
+1. Documentation Lookup: Use WebSearch / WebFetch to ground AI suggestions in current official docs
 2. Performance Considerations: Monitor overhead of analysis tools
 3. Quality Gates: Configure appropriate thresholds for your project
 
 ### Maintenance
-1. Regular Updates: Keep Context7 patterns current
+1. Regular Updates: Keep documentation references current
 2. Tool Versions: Maintain compatible static analysis tool versions
 3. Pattern Evolution: Update patterns as best practices evolve
 
@@ -230,7 +208,7 @@ Related: [Other Module](./other-module.md) | [Related Module](./related-module.m
 - Comprehensive documentation with examples
 - Error handling and edge case coverage
 - Performance considerations and optimizations
-- Context7 integration where appropriate
+- Documentation-grounded patterns where appropriate
 - Cross-module compatibility testing
 
 ### Validation Checklist
@@ -258,5 +236,5 @@ When contributing to modules:
 ---
 
 Last Updated: 2026-01-06
-Module Count: 12 root-level modules + 7 thematic subdirectories
+Module Count: 11 root-level modules + 6 thematic subdirectories
 Maintained by: MoAI-ADK Development Workflow Team

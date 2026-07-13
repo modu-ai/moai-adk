@@ -58,11 +58,11 @@ Entity Configuration: Create a class implementing IEntityTypeConfiguration of yo
 
 ---
 
-## Context7 Integration
+## Documentation Integration
 
-For latest documentation, use Context7 MCP tools.
+For latest documentation, use WebSearch/WebFetch tools.
 
-For ASP.NET Core documentation, first resolve the library ID using mcp__context7__resolve-library-id with "aspnetcore", then fetch docs using mcp__context7__query-docs with the resolved library ID and topic like "minimal-apis middleware".
+For ASP.NET Core documentation, first resolve the library ID using  with "aspnetcore", then fetch docs using  with the resolved library ID and topic like "minimal-apis middleware".
 
 For Entity Framework Core documentation, resolve with "efcore" and fetch with topics like "dbcontext migrations".
 

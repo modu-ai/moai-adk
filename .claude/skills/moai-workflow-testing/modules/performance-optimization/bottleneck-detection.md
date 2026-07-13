@@ -3,7 +3,7 @@
 > Module: Performance bottleneck detection and analysis
 > Complexity: Advanced
 > Time: 25+ minutes
-> Dependencies: asyncio, Context7 MCP
+> Dependencies: asyncio, WebSearch/WebFetch
 
 ## Core Implementation
 
@@ -49,7 +49,7 @@ class BottleneckDetector:
 
     async def detect_bottlenecks(
         self, profile_results: Dict[str, Any],
-        context7_patterns: Dict[str, Any] = None
+        docs_patterns: Dict[str, Any] = None
     ) -> List[PerformanceBottleneck]:
         """Detect performance bottlenecks from profiling results."""
 
@@ -58,21 +58,21 @@ class BottleneckDetector:
         # Analyze CPU bottlenecks
         if 'cpu_profile' in profile_results:
             cpu_bottlenecks = await self._detect_cpu_bottlenecks(
-                profile_results['cpu_profile'], context7_patterns
+                profile_results['cpu_profile'], docs_patterns
             )
             bottlenecks.extend(cpu_bottlenecks)
 
         # Analyze memory bottlenecks
         if 'memory_profile' in profile_results:
             memory_bottlenecks = await self._detect_memory_bottlenecks(
-                profile_results['memory_profile'], context7_patterns
+                profile_results['memory_profile'], docs_patterns
             )
             bottlenecks.extend(memory_bottlenecks)
 
         # Analyze real-time metrics
         if 'realtime_metrics' in profile_results:
             realtime_bottlenecks = await self._detect_realtime_bottlenecks(
-                profile_results['realtime_metrics'], context7_patterns
+                profile_results['realtime_metrics'], docs_patterns
             )
             bottlenecks.extend(realtime_bottlenecks)
 
@@ -82,7 +82,7 @@ class BottleneckDetector:
 
     async def _detect_cpu_bottlenecks(
         self, cpu_profiles: List,
-        context7_patterns: Dict[str, Any] = None
+        docs_patterns: Dict[str, Any] = None
     ) -> List[PerformanceBottleneck]:
         """Detect CPU-related bottlenecks."""
 
@@ -112,7 +112,7 @@ class BottleneckDetector:
 
             # Generate optimization suggestions
             optimization_type, suggestions, estimated_improvement = await self._generate_cpu_optimization_suggestions(
-                profile, context7_patterns
+                profile, docs_patterns
             )
 
             bottleneck = PerformanceBottleneck(
@@ -140,7 +140,7 @@ class BottleneckDetector:
 
     async def _detect_memory_bottlenecks(
         self, memory_profile: Dict[str, Any],
-        context7_patterns: Dict[str, Any] = None
+        docs_patterns: Dict[str, Any] = None
     ) -> List[PerformanceBottleneck]:
         """Detect memory-related bottlenecks."""
 
@@ -182,7 +182,7 @@ class BottleneckDetector:
 
                     # Generate optimization suggestions
                     optimization_type, suggestions, estimated_improvement = await self._generate_memory_optimization_suggestions(
-                        memory_usage, context7_patterns
+                        memory_usage, docs_patterns
                     )
 
                     bottleneck = PerformanceBottleneck(
@@ -208,7 +208,7 @@ class BottleneckDetector:
 
     async def _detect_realtime_bottlenecks(
         self, realtime_metrics: Dict[str, Any],
-        context7_patterns: Dict[str, Any] = None
+        docs_patterns: Dict[str, Any] = None
     ) -> List[PerformanceBottleneck]:
         """Detect bottlenecks from real-time monitoring."""
 
@@ -265,7 +265,7 @@ class BottleneckDetector:
 
     async def _generate_cpu_optimization_suggestions(
         self, profile,
-        context7_patterns: Dict[str, Any] = None
+        docs_patterns: Dict[str, Any] = None
     ) -> tuple:
         """Generate CPU optimization suggestions for a function."""
 
@@ -311,7 +311,7 @@ class BottleneckDetector:
 
     async def _generate_memory_optimization_suggestions(
         self, memory_usage: int,
-        context7_patterns: Dict[str, Any] = None
+        docs_patterns: Dict[str, Any] = None
     ) -> tuple:
         """Generate memory optimization suggestions."""
 

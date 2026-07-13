@@ -67,11 +67,11 @@ Attribute-based routing and controllers. Doctrine ORM with entity attributes and
 
 ## Advanced Patterns
 
-For comprehensive coverage including advanced domain modeling, queue/job pipeline patterns (Redis/SQS), Laravel Octane for high-throughput PHP, and production deployment configurations, apply the Quick Patterns and framework sections above together with the Context7 Integration mappings; this guide is self-contained.
+For comprehensive coverage including advanced domain modeling, queue/job pipeline patterns (Redis/SQS), Laravel Octane for high-throughput PHP, and production deployment configurations, apply the Quick Patterns and framework sections above together with the Documentation References; this guide is self-contained.
 
 ---
 
-## Context7 Integration
+## Documentation References
 
 - laravel/framework - Laravel framework
 - symfony/symfony - Symfony framework

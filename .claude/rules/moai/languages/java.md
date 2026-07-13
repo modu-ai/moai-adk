@@ -97,7 +97,7 @@ Create test class with Testcontainers and SpringBootTest annotations. Define sta
 
 ---
 
-## Context7 Integration
+## Documentation Integration
 
 Library mappings for latest documentation:
 

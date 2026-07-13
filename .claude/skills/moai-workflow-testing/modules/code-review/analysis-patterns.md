@@ -11,7 +11,7 @@
 async def _analyze_security_patterns(
     self, file_path: str, content: str
 ) -> List[CodeIssue]:
-    """Analyze security patterns using Context7."""
+    """Analyze security patterns using Documentation."""
     issues = []
     security_patterns = self.analysis_patterns.get('security', {})
     lines = content.split('\n')
@@ -52,7 +52,7 @@ async def _analyze_security_patterns(
 async def _analyze_performance_patterns(
     self, file_path: str, content: str
 ) -> List[CodeIssue]:
-    """Analyze performance patterns using Context7."""
+    """Analyze performance patterns using Documentation."""
     issues = []
     performance_patterns = self.analysis_patterns.get('performance', {})
     lines = content.split('\n')

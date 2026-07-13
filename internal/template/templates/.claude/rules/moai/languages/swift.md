@@ -69,7 +69,7 @@ This guide is self-contained. Use the sections below as the primary reference fo
 - async/await bridge patterns
 - Integration with SwiftUI
 
-## Context7 Integration
+## Documentation References
 
 ### Core Swift
 
@@ -100,7 +100,7 @@ Async Test with MainActor: Apply @MainActor attribute to test class extending XC
 
 ## Resources
 
-For architecture patterns, network-layer design, SwiftData, and production-ready code examples, use the Coverage Areas and Context7 Integration sections above; this guide is self-contained.
+For architecture patterns, network-layer design, SwiftData, and production-ready code examples, use the Coverage Areas and Documentation References sections above; this guide is self-contained.
 
 ---
 

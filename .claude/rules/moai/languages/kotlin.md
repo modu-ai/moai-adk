@@ -8,7 +8,7 @@ paths: "**/*.kt,**/*.kts,**/build.gradle.kts"
 ---
 
 
-Kotlin 2.2+ Expert - K2 compiler, coroutines, Ktor, Compose Multiplatform with Context7 integration.
+Kotlin 2.2+ Expert - K2 compiler, coroutines, Ktor, Compose Multiplatform with Documentation integration.
 
 
 Core Capabilities:
@@ -69,7 +69,7 @@ Use plugins block with kotlin("jvm") and kotlin("plugin.serialization") with ver
 
 ---
 
-## Context7 Integration
+## Documentation Integration
 
 Library mappings for latest documentation:
 
@@ -80,7 +80,7 @@ Library mappings for latest documentation:
 - `/jetbrains/compose-multiplatform` - Compose Multiplatform
 - `/arrow-kt/arrow` - Arrow functional programming
 
-Usage: Call mcp__context7__resolve-library-id to obtain the library ID, then mcp__context7__query-docs with that ID, a topic string for specific areas, and a tokens parameter for response size.
+Usage: Call  to obtain the library ID, then  with that ID, a topic string for specific areas, and a tokens parameter for response size.
 
 ---
 

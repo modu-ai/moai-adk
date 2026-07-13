@@ -159,7 +159,7 @@ See [CI/CD integration patterns (GitHub Actions + Docker)](${CLAUDE_SKILL_DIR}/r
 
 ### E2E / Browser Testing
 
-Playwright patterns (Page Object Model, cross-browser, visual regression) and Context7 integration. See [Playwright best practices](${CLAUDE_SKILL_DIR}/references/playwright-best-practices.md).
+Playwright patterns (Page Object Model, cross-browser, visual regression) and documentation-lookup integration. See [Playwright best practices](${CLAUDE_SKILL_DIR}/references/playwright-best-practices.md).
 
 ---
 
@@ -172,7 +172,6 @@ the [modules index](${CLAUDE_SKILL_DIR}/modules/INDEX.md), or jump to a stage:
 - [AI-Powered Debugging](${CLAUDE_SKILL_DIR}/modules/ai-debugging.md) — error classification + solution candidates
 - [Smart Refactoring](${CLAUDE_SKILL_DIR}/modules/smart-refactoring.md) — technical-debt analysis + safe transforms
 - [Performance Optimization](${CLAUDE_SKILL_DIR}/modules/performance-optimization.md) — profiling + bottleneck detection
-- [DDD with Context7](${CLAUDE_SKILL_DIR}/modules/ddd-context7.md) — ANALYZE-PRESERVE-IMPROVE + characterization tests
 - [Automated Code Review](${CLAUDE_SKILL_DIR}/modules/automated-code-review.md) — TRUST 5 scoring + static analysis
 
 ---

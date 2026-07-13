@@ -110,11 +110,11 @@ Create biome.json with schema URL. Enable organizeImports. Set linter enabled wi
 
 ## Advanced Patterns
 
-For comprehensive coverage including advanced async patterns, module system details, performance optimization, and production deployment configurations, apply the framework sections above together with the Context7 Integration mappings; this guide is self-contained.
+For comprehensive coverage including advanced async patterns, module system details, performance optimization, and production deployment configurations, apply the framework sections above together with the Documentation Integration mappings; this guide is self-contained.
 
-## Context7 Integration
+## Documentation Integration
 
-For Node.js documentation, use context7 get library docs with nodejs/node and topics like esm modules async. For Express, use expressjs/express with middleware routing. For Fastify, use fastify/fastify with plugins hooks. For Hono, use honojs/hono with middleware validators. For Vitest, use vitest-dev/vitest with mocking coverage.
+For Node.js documentation, use docs get library docs with nodejs/node and topics like esm modules async. For Express, use expressjs/express with middleware routing. For Fastify, use fastify/fastify with plugins hooks. For Hono, use honojs/hono with middleware validators. For Vitest, use vitest-dev/vitest with mocking coverage.
 
 ---
 

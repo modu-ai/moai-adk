@@ -1,34 +1,34 @@
 # Best Practices Enforcement
 
-Context7-powered best practices validation and automated standards enforcement.
+Documentation-powered best practices validation and automated standards enforcement.
 
 ## Overview
 
-The Best Practices Engine validates coding standards and best practices using real-time documentation from Context7, ensuring code follows latest framework and language standards.
+The Best Practices Engine validates coding standards and best practices using real-time documentation from Documentation, ensuring code follows latest framework and language standards.
 
 ## Best Practices Engine Implementation
 
 ```python
 class BestPracticesEngine:
- """Context7-powered best practices validation and enforcement"""
+ """Documentation-powered best practices validation and enforcement"""
 
- def __init__(self, context7_client: Context7Client):
- self.context7_client = context7_client
+ def __init__(self, docs_client: DocumentationClient):
+ self.docs_client = docs_client
  self.language_rules = self._load_language_rules()
  self.practice_validators = self._initialize_validators()
 
- async def validate(self, codebase: str, languages: List[str], context7_docs: bool = True) -> PracticesResult:
+ async def validate(self, codebase: str, languages: List[str], docs_docs: bool = True) -> PracticesResult:
  """Validate coding best practices with real-time documentation"""
 
  validation_results = {}
 
  for language in languages:
- # Get latest best practices from Context7
- if context7_docs:
+ # Get latest best practices from Documentation
+ if docs_docs:
  try:
- library_id = await self.context7_client.resolve_library_id(language)
- latest_docs = await self.context7_client.get_library_docs(
- context7CompatibleLibraryID=library_id,
+ library_id = await self.docs_client.resolve_library_id(language)
+ latest_docs = await self.docs_client.get_library_docs(
+ docsCompatibleLibraryID=library_id,
  topic="best-practices",
  tokens=5000
  )
@@ -39,7 +39,7 @@ class BestPracticesEngine:
  )
 
  except Exception as e:
- logger.warning(f"Failed to get Context7 docs for {language}: {e}")
+ logger.warning(f"Failed to get Documentation docs for {language}: {e}")
  # Fallback to cached rules
  validation_result = await self._validate_with_cached_rules(
  codebase, language
@@ -73,7 +73,7 @@ class BestPracticesEngine:
  language: str,
  latest_docs: str
  ) -> LanguageValidationResult:
- """Validate code against latest language standards from Context7"""
+ """Validate code against latest language standards from Documentation"""
 
  # Extract best practices from documentation
  best_practices = await self._extract_best_practices_from_docs(latest_docs)
@@ -135,7 +135,7 @@ class BestPracticesEngine:
 ```yaml
 best_practices:
  enabled: true
- context7_integration: true
+ docs_integration: true
  auto_update_standards: true
  compliance_target: 0.85
 
@@ -157,7 +157,7 @@ best_practices:
  linter: "eslint"
 ```
 
-## Context7 Library Mappings
+## Documentation Library Mappings
 
 ```python
 QUALITY_LIBRARY_MAPPINGS = {

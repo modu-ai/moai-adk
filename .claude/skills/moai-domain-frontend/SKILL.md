@@ -13,7 +13,7 @@ when_to_use: >
 
 license: Apache-2.0
 compatibility: Designed for Claude Code
-allowed-tools: Read, Grep, Glob, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
+allowed-tools: Read, Grep, Glob
 user-invocable: false
 metadata:
   version: "2.1.0"
@@ -22,7 +22,7 @@ metadata:
   updated: "2026-03-28"
   tags: "frontend, react, nextjs, vue, ui, components"
   author: "MoAI-ADK Team"
-  context7-libraries: "/facebook/react, /vercel/next.js, /vuejs/vue"
+  docs-libraries: "/facebook/react, /vercel/next.js, /vuejs/vue"
 ---
 
 # Frontend Development Specialist

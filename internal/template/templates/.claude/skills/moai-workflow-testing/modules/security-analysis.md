@@ -1,10 +1,10 @@
-# Security Analysis with Context7
+# Security Analysis with Documentation
 
-> Module: Context7-enhanced security pattern detection and vulnerability scanning
+> Module: Documentation-enhanced security pattern detection and vulnerability scanning
 > Parent: [Automated Code Review](./automated-code-review.md)
 > Complexity: Advanced
 > Time: 20+ minutes
-> Dependencies: Context7 MCP, regex engine, source parser, security scanner
+> Dependencies: WebSearch/WebFetch, regex engine, source parser, security scanner
 
 ## Quick Reference
 
@@ -38,7 +38,7 @@ API Security:
 - CORS misconfiguration
 - API version management
 
-Context7 Integration:
+Documentation Integration:
 - OWASP Top 10 patterns
 - Semgrep security rules
 - Real-time vulnerability database
@@ -47,28 +47,28 @@ Context7 Integration:
 
 ### Core Implementation
 
-The analyzer loads detection patterns from Context7 (or a built-in default set) and runs them over source text as regexes. The patterns themselves are language-sensitive and should be loaded per-language; the orchestration logic below is language-neutral.
+The analyzer loads detection patterns from Documentation (or a built-in default set) and runs them over source text as regexes. The patterns themselves are language-sensitive and should be loaded per-language; the orchestration logic below is language-neutral.
 
 ```text
 class SecurityAnalyzer:
-    context7
+    docs
     security_patterns = {}
 
     load_security_patterns():
-        if context7 is none:
+        if docs is none:
             return default_security_patterns()
         try:
-            owasp = context7.get_library_docs(
+            owasp = docs.get_library_docs(
                 "<security/owasp>",
                 topic="OWASP Top 10 vulnerability patterns",
                 tokens=5000)
-            semgrep = context7.get_library_docs(
+            semgrep = docs.get_library_docs(
                 "<security/semgrep>",
                 topic="security vulnerability detection patterns",
                 tokens=4000)
             return { owasp, semgrep }
         except e:
-            log("Failed to load Context7 security patterns: " + e)
+            log("Failed to load Documentation security patterns: " + e)
             return default_security_patterns()
 ```
 
@@ -229,12 +229,12 @@ analyze_weak_cryptography(file_path, content):
 
 ---
 
-## Context7-Enhanced Analysis
+## Documentation-Enhanced Analysis
 
 ### Real-Time Vulnerability Database
 
 ```text
-analyze_with_context7_patterns(file_path, content):
+analyze_with_docs_patterns(file_path, content):
     issues = []
     security_patterns = load_security_patterns()
     if 'owasp'   in security_patterns: issues.extend(analyze_owasp_patterns  (file_path, content, security_patterns.owasp))
@@ -285,7 +285,7 @@ security_fix_suggestion(vulnerability_type):
 
 ## Best Practices
 
-1. Context7 Integration: Leverage real-time vulnerability databases for latest threats
+1. Documentation Integration: Leverage real-time vulnerability databases for latest threats
 2. Comprehensive Coverage: Check all OWASP Top 10 vulnerability categories
 3. Severity Accuracy: Use confidence scores to prioritize fixes
 4. Actionable Guidance: Provide specific fix suggestions with code examples
@@ -300,7 +300,7 @@ security_fix_suggestion(vulnerability_type):
 
 - [TRUST 5 Validation](./trust5-validation.md): Safety category analysis
 - [static-analysis.md](./static-analysis.md): security scanner integration for vulnerability scanning
-- [automated-code-review/context7-integration.md](./automated-code-review/context7-integration.md): Context7 MCP patterns
+- [automated-code-review/docs-integration.md](./automated-code-review/docs-integration.md): WebSearch/WebFetch patterns
 
 ---
 
