@@ -21,6 +21,7 @@ import (
 	"github.com/charmbracelet/huh"
 	"github.com/mattn/go-isatty"
 	"github.com/modu-ai/moai-adk/internal/cli/printer"
+	"github.com/modu-ai/moai-adk/internal/cli/update"
 	"github.com/modu-ai/moai-adk/internal/cli/uikit"
 	"github.com/modu-ai/moai-adk/internal/cli/wizard"
 	"github.com/modu-ai/moai-adk/internal/config"
@@ -674,7 +675,7 @@ func runTemplateSyncWithReporter(cmd *cobra.Command, reporter project.ProgressRe
 		_, _ = fmt.Fprintln(out, tui.CheckLine("info", "Auto-confirm", "CI/CD mode", "", &th))
 	} else {
 		var err error
-		proceed, err = merge.ConfirmMerge(analysis)
+		proceed, err = confirmViaPreview(analysis, projectRoot)
 		if err != nil {
 			if reporter != nil {
 				reporter.StepError(err)
@@ -1035,7 +1036,7 @@ func runTemplateSyncWithProgress(cmd *cobra.Command) (skipped bool, err error) {
 
 		_, _ = fmt.Fprintln(out)
 		_, _ = fmt.Fprintln(out, tui.Section("Analyzing merge changes", tui.SectionOpts{Theme: &th}))
-		proceed, cerr := merge.ConfirmMerge(analysis)
+		proceed, cerr := confirmViaPreview(analysis, projectRoot)
 		if cerr != nil {
 			return false, fmt.Errorf("confirm merge for %d files (risk: %s): %w",
 				len(analysis.Files), analysis.RiskLevel, cerr)
@@ -1582,6 +1583,57 @@ func buildMergeAnalysis(files []merge.FileAnalysis) merge.MergeAnalysis {
 //   - Low risk: New files being created
 //
 // Returns a MergeAnalysis with file-by-file risk assessment and recommended strategies.
+// toPreviewInputs maps a merge.MergeAnalysis into the neutral
+// update.FilePreviewInput slice consumed by the preview entry point (M3c
+// convergence, SPEC-CLI-TUX-V3-003 plan Known Issue #7). The Exists/Conflict
+// derivation mirrors the same signals the deploy stage enforces — Exists from
+// os.Stat (mirrors analyzeFiles), Conflict from RiskLevel=="high" (mirrors
+// buildMergeAnalysis hasConflicts). The classification itself (which file is
+// preserved/added/updated/conflict) is derived downstream by update.Classify
+// via the injected isUserOwnedNamespace predicate (REQ-TUX3-001/002 single
+// source of truth — this mapping introduces NO parallel heuristic).
+func toPreviewInputs(analysis merge.MergeAnalysis, projectRoot string) []update.FilePreviewInput {
+	inputs := make([]update.FilePreviewInput, 0, len(analysis.Files))
+	for _, fa := range analysis.Files {
+		_, statErr := os.Stat(filepath.Join(projectRoot, fa.Path))
+		inputs = append(inputs, update.FilePreviewInput{
+			RelPath:  fa.Path,
+			Exists:   statErr == nil,
+			Conflict: fa.RiskLevel == "high",
+			Diff:     fa.Changes,
+		})
+	}
+	return inputs
+}
+
+// confirmViaPreview is the single convergence surface for BOTH merge.ConfirmMerge
+// call sites in this file (plan Known Issue #7). It launches the Bubble Tea v2
+// TUI (AC-TUX3-008/009) when stdin is a terminal, classifying through
+// update.Classify with the shared isUserOwnedNamespace predicate
+// (REQ-TUX3-001/002/014 — no parallel heuristic, `preserved (user-owned)` label
+// derived from the shared predicate).
+//
+// Behavior preservation relative to the prior merge.ConfirmMerge calls: both
+// call sites reach this helper ONLY on the interactive (non-skipped, non-auto)
+// path — the skip-confirm and --yes (autoConfirm) branches short-circuit
+// upstream and set proceed=true directly, byte-identical to before. When stdin
+// is NOT a terminal, the user cannot be asked interactively, so this helper
+// returns an error directing them to --yes — mirroring both the explicit
+// Windows guard that merge.ConfirmMerge carried (confirm.go REQ-CFS-007/008)
+// and the de-facto tea.Run() non-TTY failure on darwin/linux that the v1
+// ConfirmMerge relied on. It MUST NOT silently proceed in the non-TTY case:
+// that would bypass the confirmation gate the caller explicitly entered (the
+// caller did not pass --yes), changing which files get deployed. The
+// preview-fallback's proceed=true semantics belong to the --yes abstraction,
+// which never reaches this helper.
+func confirmViaPreview(analysis merge.MergeAnalysis, projectRoot string) (bool, error) {
+	if !isatty.IsTerminal(os.Stdin.Fd()) {
+		return false, fmt.Errorf("merge confirmation UI requires an interactive terminal; " +
+			"rerun with --yes to auto-confirm in a non-TTY environment")
+	}
+	return update.PreviewClassification(toPreviewInputs(analysis, projectRoot), isUserOwnedNamespace, update.PreviewOptions{Interactive: true})
+}
+
 func analyzeMergeChanges(deployer template.Deployer, projectRoot string) merge.MergeAnalysis {
 	templates := deployer.ListTemplates()
 	files := analyzeFiles(templates, projectRoot)
