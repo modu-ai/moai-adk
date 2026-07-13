@@ -65,7 +65,7 @@ Parallel-session note: a concurrent session (SPEC-DOCSITE-ADVANCED-001) interlea
 
 ```yaml
 run_complete_at: 2026-07-13
-run_commit_sha: pending-backfill-m5
+run_commit_sha: 4e1b8c5f39745ef7cdddfc7c75440bed01ed9955
 run_status: complete
 ac_pass_count: 26  # 25 clean PASS + 1 PASS-WITH-DEBT (AC-DNE-022, catalog hash-regen cascade)
 ac_fail_count: 0
