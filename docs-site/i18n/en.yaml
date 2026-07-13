@@ -40,6 +40,6 @@ card_desc_core_concepts: "SPEC, DDD, TRUST 5 — the principles that hold MoAI-A
 card_desc_workflow_commands: "/moai plan·run·sync — the 3-phase development workflow commands."
 card_desc_quality_commands: "/moai gate·review·codemaps — the quality gate commands."
 card_desc_utility_commands: "Helper commands for setup, sessions, and maintenance."
-card_desc_advanced: "Extend your workflow with agents, skills, MCP, and hooks."
+card_desc_advanced: "Extend your workflow with agents, skills, and hooks."
 card_desc_worktree: "Unlimited parallel development in fully isolated workspaces."
 card_desc_db: "Schema sync and migration patterns."

@@ -93,7 +93,7 @@ flowchart TD
     Q1 -->|예| EXPLORE["Explore 하위 에이전트<br>코드 구조 파악"]
     Q1 -->|아니오| Q2{외부 문서/API<br>조사 필요?}
 
-    Q2 -->|예| WEB["WebSearch / WebFetch<br>Context7 MCP"]
+    Q2 -->|예| WEB["WebSearch / WebFetch"]
     Q2 -->|아니오| Q3{워크플로우<br>조정 필요?}
 
     Q3 -->|예| MANAGER["Manager-* 에이전트<br>프로세스 관리"]

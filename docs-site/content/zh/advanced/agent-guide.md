@@ -93,7 +93,7 @@ flowchart TD
     Q1 -->|是| EXPLORE["Explore 子智能体<br>把握代码结构"]
     Q1 -->|否| Q2{需要调研<br>外部文档/API?}
 
-    Q2 -->|是| WEB["WebSearch / WebFetch<br>Context7 MCP"]
+    Q2 -->|是| WEB["WebSearch / WebFetch"]
     Q2 -->|否| Q3{需要工作流<br>协调?}
 
     Q3 -->|是| MANAGER["Manager-* 智能体<br>流程管理"]

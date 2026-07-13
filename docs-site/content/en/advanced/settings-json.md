@@ -53,7 +53,7 @@ flowchart TD
 - API keys and authentication (stored securely)
 
 **Project scope** - use for:
-- Team-shared settings (permissions, hooks, MCP servers)
+- Team-shared settings (permissions, hooks)
 - Plugins the team should have
 - Tool standardization across collaborators
 
@@ -102,9 +102,6 @@ MoAI-ADK uses 4 settings file locations.
   "permissions": {},
   "enabledPlugins": {},
   "extraKnownMarketplaces": {},
-  "enableAllProjectMcpServers": false,
-  "enabledMcpjsonServers": [],
-  "disabledMcpjsonServers": [],
   "fileSuggestion": {},
   "alwaysThinkingEnabled": false,
   "maxThinkingTokens": 0,
@@ -261,7 +258,6 @@ The list of commands **allowed to run immediately** without user confirmation.
 | Code quality | `ruff`, `black`, `prettier`, `eslint` | 6+ |
 | Exploration tools | `ls`, `find`, `tree`, `cat`, `head` | 10+ |
 | GitHub CLI | `gh issue`, `gh pr`, `gh repo view` | 2 |
-| MCP tools | `mcp__context7__*` | 2 |
 | Other | `AskUserQuestion`, `Task`, `Skill`, `TodoWrite` | 4 |
 
 **allow format examples:**
@@ -272,7 +268,6 @@ The list of commands **allowed to run immediately** without user confirmation.
     "Read",                          // 도구 이름만
     "Bash(git add:*)",               // Bash + 명령어 패턴
     "Bash(pytest:*)",                // 와일드카드
-    "mcp__context7__resolve-library-id",  // MCP 도구
     "Bash(npm run *)",               // 공백 구분 (새로운 형식)
     "WebFetch(domain:example.com)"   // 도메인 패턴
   ]
@@ -647,28 +642,6 @@ Controls which plugins are enabled. Format: `"plugin-name@marketplace-name": tru
 
 Defines additional marketplaces to make available in the repository. Typically used in repository-level settings so team members can access the required plugin sources.
 
-## MCP Settings
-
-MCP (Model Context Protocol) server settings.
-
-```json
-{
-  "enableAllProjectMcpServers": true,
-  "enabledMcpjsonServers": ["memory", "github"],
-  "disabledMcpjsonServers": ["filesystem"]
-}
-```
-
-### MCP Settings Reference
-
-| Key | Description | Example |
-|-----|------|------|
-| `enableAllProjectMcpServers` | Auto-approves all MCP servers defined in the project's `.mcp.json` file | `true` |
-| `enabledMcpjsonServers` | List of specific MCP servers to approve | `["memory", "github"]` |
-| `disabledMcpjsonServers` | List of specific MCP servers to reject | `["filesystem"]` |
-| `allowedMcpServers` | managed-settings.json only. MCP server allowlist | `[{ "serverName": "github" }]` |
-| `deniedMcpServers` | managed-settings.json only. MCP server denylist (takes precedence) | `[{ "serverName": "filesystem" }]` |
-
 ## File Suggestion Settings
 
 Configures a custom command for `@` file-path autocompletion.
@@ -785,7 +758,7 @@ The `env` section sets environment variables that control Claude Code's behavior
 
 | Variable | Value | Description |
 |------|-----|------|
-| `ENABLE_TOOL_SEARCH` | `"auto"`, `"auto:N"`, `"true"`, `"false"` | Controls MCP tool search |
+| `ENABLE_TOOL_SEARCH` | `"auto"`, `"auto:N"`, `"true"`, `"false"` | Controls tool search |
 | `CLAUDE_AUTOCOMPACT_PCT_OVERRIDE` | `1`-`100` | Auto-compact trigger percentage (default: ~95%) |
 | `CLAUDE_CODE_ENABLE_TELEMETRY` | `"1"` | Enables OpenTelemetry data collection |
 | `CLAUDE_CODE_DISABLE_BACKGROUND_TASKS` | `"1"` | Disables background tasks |
@@ -799,7 +772,7 @@ The `env` section sets environment variables that control Claude Code's behavior
 
 ### Tool Search Details
 
-`ENABLE_TOOL_SEARCH` controls MCP tool search. Instead of loading all tool schemas permanently, they are searched and loaded on demand — a large context saving in environments with many MCP servers.
+`ENABLE_TOOL_SEARCH` controls tool search. Instead of loading all tool schemas permanently, they are searched and loaded on demand — a large context saving in environments with many servers.
 
 | Value | Description |
 |-----|------|
@@ -828,8 +801,6 @@ The `env` section sets environment variables that control Claude Code's behavior
       "Bash(bun add:*)"
     ]
   },
-  "enabledMcpjsonServers": [
-    "context7"          // 개인적으로 활성화하는 MCP 서버
   ],
   "outputStyle": "Mr.Alfred"  // 개인 선호 출력 스타일
 }
@@ -1011,8 +982,6 @@ Enable the Context7 MCP server.
 
 ```json
 {
-  "enabledMcpjsonServers": [
-    "context7"
   ]
 }
 ```
@@ -1141,7 +1110,6 @@ Profile file location: `.moai/config/evaluator-profiles/{name}.md`
 - [Official Claude Code settings docs](https://code.claude.com/docs/en/settings) - official Claude Code settings
 - [Hooks Guide](/en/advanced/hooks-guide) - hook configuration details
 - [CLAUDE.md Guide](/en/advanced/claude-md-guide) - project instruction configuration
-- [Using MCP Servers](/en/advanced/mcp-servers) - MCP server configuration
 - [IAM docs](https://code.claude.com/docs/en/iam) - permission system overview
 
 {{< callout type="info" >}}

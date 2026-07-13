@@ -386,9 +386,6 @@ Store personal settings in separate files to protect them from being overwritten
       "Bash(bun run build)"
     ]
   },
-  "enabledMcpjsonServers": [
-    "context7"
-  ],
   "_meta": {
     "description": "User-specific Claude Code settings (gitignored - never commit)",
     "note": "Edit this file to customize your local development environment"

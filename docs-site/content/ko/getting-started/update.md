@@ -386,9 +386,6 @@ MoAI-ADK 업데이트 시 **CLAUDE.md**와 **settings.json**은 새 버전으로
       "Bash(bun run build)"
     ]
   },
-  "enabledMcpjsonServers": [
-    "context7"
-  ],
   "_meta": {
     "description": "User-specific Claude Code settings (gitignored - never commit)",
     "note": "Edit this file to customize your local development environment"

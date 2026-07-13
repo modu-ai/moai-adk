@@ -53,7 +53,7 @@ flowchart TD
 - API 키 및 인증 (안전하게 저장)
 
 **Project 범위** - 다음에 사용:
-- 팀 공유 설정 (권한, Hook, MCP 서버)
+- 팀 공유 설정 (권한, Hook)
 - 팀이 가져야 할 플러그인
 - 협업자 간 도구 표준화
 
@@ -102,9 +102,6 @@ MoAI-ADK는 4개의 설정 파일 위치를 사용합니다.
   "permissions": {},
   "enabledPlugins": {},
   "extraKnownMarketplaces": {},
-  "enableAllProjectMcpServers": false,
-  "enabledMcpjsonServers": [],
-  "disabledMcpjsonServers": [],
   "fileSuggestion": {},
   "alwaysThinkingEnabled": false,
   "maxThinkingTokens": 0,
@@ -261,7 +258,6 @@ Claude Code를 열 때의 기본 권한 모드입니다.
 | 코드 품질 | `ruff`, `black`, `prettier`, `eslint` | 6개+ |
 | 탐색 도구 | `ls`, `find`, `tree`, `cat`, `head` | 10개+ |
 | GitHub CLI | `gh issue`, `gh pr`, `gh repo view` | 2개 |
-| MCP 도구 | `mcp__context7__*` | 2개 |
 | 기타 | `AskUserQuestion`, `Task`, `Skill`, `TodoWrite` | 4개 |
 
 **allow 형식 예시:**
@@ -272,7 +268,6 @@ Claude Code를 열 때의 기본 권한 모드입니다.
     "Read",                          // 도구 이름만
     "Bash(git add:*)",               // Bash + 명령어 패턴
     "Bash(pytest:*)",                // 와일드카드
-    "mcp__context7__resolve-library-id",  // MCP 도구
     "Bash(npm run *)",               // 공백 구분 (새로운 형식)
     "WebFetch(domain:example.com)"   // 도메인 패턴
   ]
@@ -647,28 +642,6 @@ Hook 설정의 자세한 내용은 [Hooks 가이드](/ko/advanced/hooks-guide)�
 
 저장소에서 사용 가능하게 만들 추가 마켓플레이스를 정의합니다. 일반적으로 저장소 수준 설정에서 사용하여 팀 구성원이 필요한 플러그인 소스에 접근할 수 있도록 합니다.
 
-## MCP 설정 (MCP Settings)
-
-MCP (Model Context Protocol) 서버 관련 설정입니다.
-
-```json
-{
-  "enableAllProjectMcpServers": true,
-  "enabledMcpjsonServers": ["memory", "github"],
-  "disabledMcpjsonServers": ["filesystem"]
-}
-```
-
-### MCP 설정 참조
-
-| 키 | 설명 | 예시 |
-|-----|------|------|
-| `enableAllProjectMcpServers` | 프로젝트 `.mcp.json` 파일에 정의된 모든 MCP 서버 자동 승인 | `true` |
-| `enabledMcpjsonServers` | 승인할 특정 MCP 서버 목록 | `["memory", "github"]` |
-| `disabledMcpjsonServers` | 거부할 특정 MCP 서버 목록 | `["filesystem"]` |
-| `allowedMcpServers` | managed-settings.json에서만 사용. MCP 서버 허용목록 | `[{ "serverName": "github" }]` |
-| `deniedMcpServers` | managed-settings.json에서만 사용. MCP 서버 거부목록 (우선 적용) | `[{ "serverName": "filesystem" }]` |
-
 ## 파일 제안 설정 (File Suggestion Settings)
 
 `@` 파일 경로 자동완성을 위한 사용자 정의 명령을 구성합니다.
@@ -785,7 +758,7 @@ Claude Code 하단에 표시되는 상태 표시줄을 설정합니다.
 
 | 변수 | 값 | 설명 |
 |------|-----|------|
-| `ENABLE_TOOL_SEARCH` | `"auto"`, `"auto:N"`, `"true"`, `"false"` | MCP 도구 검색 제어 |
+| `ENABLE_TOOL_SEARCH` | `"auto"`, `"auto:N"`, `"true"`, `"false"` | 도구 검색 제어 |
 | `CLAUDE_AUTOCOMPACT_PCT_OVERRIDE` | `1`-`100` | 자동 압축 트리거 백분율 (기본값: ~95%) |
 | `CLAUDE_CODE_ENABLE_TELEMETRY` | `"1"` | OpenTelemetry 데이터 수집 활성화 |
 | `CLAUDE_CODE_DISABLE_BACKGROUND_TASKS` | `"1"` | 백그라운드 작업 비활성화 |
@@ -799,7 +772,7 @@ Claude Code 하단에 표시되는 상태 표시줄을 설정합니다.
 
 ### 도구 검색 상세
 
-`ENABLE_TOOL_SEARCH`는 MCP 도구 검색을 제어합니다. 도구 스키마를 전부 상시 로드하는 대신 필요할 때 검색해 로드하므로, MCP 서버가 많은 환경에서 컨텍스트를 크게 절약합니다.
+`ENABLE_TOOL_SEARCH`는 도구 검색을 제어합니다. 도구 스키마를 전부 상시 로드하는 대신 필요할 때 검색해 로드하므로, 여러 서버 환경에서 컨텍스트를 크게 절약합니다.
 
 | 값 | 설명 |
 |-----|------|
@@ -828,8 +801,6 @@ Claude Code 하단에 표시되는 상태 표시줄을 설정합니다.
       "Bash(bun add:*)"
     ]
   },
-  "enabledMcpjsonServers": [
-    "context7"          // 개인적으로 활성화하는 MCP 서버
   ],
   "outputStyle": "Mr.Alfred"  // 개인 선호 출력 스타일
 }
@@ -1005,15 +976,9 @@ MoAI-ADK는 다음 사용자 정의 Hook을 제공합니다.
 }
 ```
 
-### MCP 서버 활성화
 
-Context7 MCP 서버를 활성화합니다.
 
-```json
 {
-  "enabledMcpjsonServers": [
-    "context7"
-  ]
 }
 ```
 
@@ -1141,7 +1106,6 @@ constitution:
 - [Claude Code 공식 설정 문서](https://code.claude.com/docs/en/settings) - 공식 Claude Code 설정
 - [Hooks 가이드](/ko/advanced/hooks-guide) - Hook 설정 상세
 - [CLAUDE.md 가이드](/ko/advanced/claude-md-guide) - 프로젝트 지침 설정
-- [MCP 서버 활용](/ko/advanced/mcp-servers) - MCP 서버 설정 방법
 - [IAM 문서](https://code.claude.com/docs/en/iam) - 권한 시스템 개요
 
 {{< callout type="info" >}}

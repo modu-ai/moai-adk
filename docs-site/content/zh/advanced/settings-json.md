@@ -261,7 +261,6 @@ Claude 工作时是否在 spinner 中显示提示。设为 `false` 禁用提示�
 | 代码质量 | `ruff`, `black`, `prettier`, `eslint` | 6 个以上 |
 | 探索工具 | `ls`, `find`, `tree`, `cat`, `head` | 10 个以上 |
 | GitHub CLI | `gh issue`, `gh pr`, `gh repo view` | 2 个 |
-| MCP 工具 | `mcp__context7__*` | 2 个 |
 | 其他 | `AskUserQuestion`, `Task`, `Skill`, `TodoWrite` | 4 个 |
 
 **allow 格式示例：**
@@ -273,7 +272,6 @@ Claude 工作时是否在 spinner 中显示提示。设为 `false` 禁用提示�
     "Bash(git add:*)",               // Bash + 命令模式
     "Bash(pytest:*)",                // 通配符
     "mcp__context7__resolve-library-id",  // MCP 工具
-    "Bash(npm run *)",               // 空格分隔 (新格式)
     "WebFetch(domain:example.com)"   // 域名模式
   ]
 }
@@ -647,28 +645,6 @@ Hook 配置的详细内容见 [Hooks 指南](/zh/advanced/hooks-guide)。
 
 定义在仓库中可用的额外插件市场。通常用于仓库级配置，让团队成员能访问所需的插件来源。
 
-## MCP 配置 (MCP Settings)
-
-MCP (Model Context Protocol) 服务器相关配置。
-
-```json
-{
-  "enableAllProjectMcpServers": true,
-  "enabledMcpjsonServers": ["memory", "github"],
-  "disabledMcpjsonServers": ["filesystem"]
-}
-```
-
-### MCP 配置参考
-
-| 键 | 说明 | 示例 |
-|-----|------|------|
-| `enableAllProjectMcpServers` | 自动批准项目 `.mcp.json` 文件中定义的所有 MCP 服务器 | `true` |
-| `enabledMcpjsonServers` | 要批准的特定 MCP 服务器列表 | `["memory", "github"]` |
-| `disabledMcpjsonServers` | 要拒绝的特定 MCP 服务器列表 | `["filesystem"]` |
-| `allowedMcpServers` | 仅在 managed-settings.json 中使用。MCP 服务器允许列表 | `[{ "serverName": "github" }]` |
-| `deniedMcpServers` | 仅在 managed-settings.json 中使用。MCP 服务器拒绝列表（优先适用） | `[{ "serverName": "filesystem" }]` |
-
 ## 文件建议配置 (File Suggestion Settings)
 
 为 `@` 文件路径自动补全配置自定义命令。
@@ -785,7 +761,7 @@ MCP (Model Context Protocol) 服务器相关配置。
 
 | 变量 | 值 | 说明 |
 |------|-----|------|
-| `ENABLE_TOOL_SEARCH` | `"auto"`, `"auto:N"`, `"true"`, `"false"` | 控制 MCP 工具搜索 |
+| `ENABLE_TOOL_SEARCH` | `"auto"`, `"auto:N"`, `"true"`, `"false"` | 控制工具搜索 |
 | `CLAUDE_AUTOCOMPACT_PCT_OVERRIDE` | `1`-`100` | 自动压缩触发百分比（默认：约 95%） |
 | `CLAUDE_CODE_ENABLE_TELEMETRY` | `"1"` | 启用 OpenTelemetry 数据收集 |
 | `CLAUDE_CODE_DISABLE_BACKGROUND_TASKS` | `"1"` | 禁用后台任务 |
@@ -799,7 +775,7 @@ MCP (Model Context Protocol) 服务器相关配置。
 
 ### 工具搜索详解
 
-`ENABLE_TOOL_SEARCH` 控制 MCP 工具搜索。它不把全部工具模式常驻加载，而是在需要时搜索并加载，因此在 MCP 服务器较多的环境中可以大幅节省上下文。
+`ENABLE_TOOL_SEARCH` 控制工具搜索。它不把全部工具模式常驻加载，而是在需要时搜索并加载，因此在 服务器较多的环境中可以大幅节省上下文。
 
 | 值 | 说明 |
 |-----|------|

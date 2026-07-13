@@ -93,7 +93,7 @@ flowchart TD
     Q1 -->|Yes| EXPLORE["Explore sub-agent<br>Understand code structure"]
     Q1 -->|No| Q2{External docs/API<br>research needed?}
 
-    Q2 -->|Yes| WEB["WebSearch / WebFetch<br>Context7 MCP"]
+    Q2 -->|Yes| WEB["WebSearch / WebFetch"]
     Q2 -->|No| Q3{Workflow<br>coordination needed?}
 
     Q3 -->|Yes| MANAGER["Manager-* agents<br>Process management"]

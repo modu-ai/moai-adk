@@ -423,12 +423,6 @@ main:
           ja: CLAUDE.md ガイド
           zh: CLAUDE.md 指南
         ref: /advanced/claude-md-guide
-      - name:
-          ko: MCP 서버 활용 가이드
-          en: MCP Servers Guide
-          ja: MCPサーバー活用ガイド
-          zh: MCP 服务器使用指南
-        ref: /advanced/mcp-servers
 
   - name:
       ko: 참여하기

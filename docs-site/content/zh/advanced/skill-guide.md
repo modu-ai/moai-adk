@@ -253,7 +253,7 @@ category: domain
 status: active
 triggers:
   keywords: ["api", "database", "microservices", "authentication"]
-allowed-tools: ["Read", "Grep", "Glob", "Bash", "Context7 MCP"]
+allowed-tools: ["Read", "Grep", "Glob", "Bash"]
 ---
 
 # 后端开发专家

@@ -93,7 +93,7 @@ flowchart TD
     Q1 -->|はい| EXPLORE["Explore サブエージェント<br>コード構造の把握"]
     Q1 -->|いいえ| Q2{外部ドキュメント/API<br>調査が必要?}
 
-    Q2 -->|はい| WEB["WebSearch / WebFetch<br>Context7 MCP"]
+    Q2 -->|はい| WEB["WebSearch / WebFetch"]
     Q2 -->|いいえ| Q3{ワークフロー<br>調整が必要?}
 
     Q3 -->|はい| MANAGER["Manager-* エージェント<br>プロセス管理"]

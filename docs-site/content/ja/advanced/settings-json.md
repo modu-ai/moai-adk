@@ -102,9 +102,6 @@ MoAI-ADK は 4 つの設定ファイル位置を使用します。
   "permissions": {},
   "enabledPlugins": {},
   "extraKnownMarketplaces": {},
-  "enableAllProjectMcpServers": false,
-  "enabledMcpjsonServers": [],
-  "disabledMcpjsonServers": [],
   "fileSuggestion": {},
   "alwaysThinkingEnabled": false,
   "maxThinkingTokens": 0,
@@ -261,7 +258,6 @@ Claude Code を開くときのデフォルト権限モードです。
 | コード品質 | `ruff`, `black`, `prettier`, `eslint` | 6 個+ |
 | 探索ツール | `ls`, `find`, `tree`, `cat`, `head` | 10 個+ |
 | GitHub CLI | `gh issue`, `gh pr`, `gh repo view` | 2 個 |
-| MCP ツール | `mcp__context7__*` | 2 個 |
 | その他 | `AskUserQuestion`, `Task`, `Skill`, `TodoWrite` | 4 個 |
 
 **allow の形式例:**
@@ -272,7 +268,6 @@ Claude Code を開くときのデフォルト権限モードです。
     "Read",                          // ツール名のみ
     "Bash(git add:*)",               // Bash + コマンドパターン
     "Bash(pytest:*)",                // ワイルドカード
-    "mcp__context7__resolve-library-id",  // MCP ツール
     "Bash(npm run *)",               // スペース区切り (新しい形式)
     "WebFetch(domain:example.com)"   // ドメインパターン
   ]
@@ -653,34 +648,22 @@ MCP (Model Context Protocol) サーバー関連の設定です。
 
 ```json
 {
-  "enableAllProjectMcpServers": true,
-  "enabledMcpjsonServers": ["memory", "github"],
-  "disabledMcpjsonServers": ["filesystem"]
 }
 ```
 
-### MCP 設定リファレンス
 
 | キー | 説明 | 例 |
 |-----|------|------|
-| `enableAllProjectMcpServers` | プロジェクト `.mcp.json` ファイルに定義されたすべての MCP サーバーを自動承認 | `true` |
-| `enabledMcpjsonServers` | 承認する特定の MCP サーバーのリスト | `["memory", "github"]` |
-| `disabledMcpjsonServers` | 拒否する特定の MCP サーバーのリスト | `["filesystem"]` |
-| `allowedMcpServers` | managed-settings.json でのみ使用。MCP サーバーの許可リスト | `[{ "serverName": "github" }]` |
-| `deniedMcpServers` | managed-settings.json でのみ使用。MCP サーバーの拒否リスト (優先適用) | `[{ "serverName": "filesystem" }]` |
 
 ## ファイル提案設定 (File Suggestion Settings)
 
 `@` ファイルパス自動補完のためのカスタムコマンドを構成します。
 
-```json
 {
-  "fileSuggestion": {
     "type": "command",
     "command": "~/.claude/file-suggestion.sh"
   }
 }
-```
 
 組み込みのファイル提案は高速なファイルシステム走査を使いますが、大きなモノレポはプロジェクト別インデックス (例: 事前ビルドされたファイルインデックスやカスタムツール) の恩恵を受けられます。
 
@@ -785,7 +768,7 @@ Claude Code 下部に表示されるステータスバーを設定します。
 
 | 変数 | 値 | 説明 |
 |------|-----|------|
-| `ENABLE_TOOL_SEARCH` | `"auto"`, `"auto:N"`, `"true"`, `"false"` | MCP ツール検索の制御 |
+| `ENABLE_TOOL_SEARCH` | `"auto"`, `"auto:N"`, `"true"`, `"false"` | ツール検索の制御 |
 | `CLAUDE_AUTOCOMPACT_PCT_OVERRIDE` | `1`-`100` | 自動圧縮トリガーのパーセンテージ (デフォルト: ~95%) |
 | `CLAUDE_CODE_ENABLE_TELEMETRY` | `"1"` | OpenTelemetry データ収集の有効化 |
 | `CLAUDE_CODE_DISABLE_BACKGROUND_TASKS` | `"1"` | バックグラウンドタスクの無効化 |
@@ -799,7 +782,7 @@ Claude Code 下部に表示されるステータスバーを設定します。
 
 ### ツール検索の詳細
 
-`ENABLE_TOOL_SEARCH` は MCP ツール検索を制御します。ツールスキーマをすべて常時ロードする代わりに、必要なときに検索してロードするため、MCP サーバーが多い環境でコンテキストを大きく節約します。
+`ENABLE_TOOL_SEARCH` は ツール検索を制御します。ツールスキーマをすべて常時ロードする代わりに、必要なときに検索してロードするため、サーバーが多い環境でコンテキストを大きく節約します。
 
 | 値 | 説明 |
 |-----|------|
@@ -828,8 +811,6 @@ Claude Code 下部に表示されるステータスバーを設定します。
       "Bash(bun add:*)"
     ]
   },
-  "enabledMcpjsonServers": [
-    "context7"          // 個人的に有効化する MCP サーバー
   ],
   "outputStyle": "Mr.Alfred"  // 個人の好みの出力スタイル
 }
@@ -1005,17 +986,11 @@ MoAI-ADK は次のカスタム Hook を提供します。
 }
 ```
 
-### MCP サーバーの有効化
 
 Context7 MCP サーバーを有効化します。
 
-```json
 {
-  "enabledMcpjsonServers": [
-    "context7"
-  ]
 }
-```
 
 ### サンドボックスの有効化
 
@@ -1141,7 +1116,6 @@ constitution:
 - [Claude Code 公式設定ドキュメント](https://code.claude.com/docs/en/settings) - 公式 Claude Code 設定
 - [Hooks ガイド](/ja/advanced/hooks-guide) - Hook 設定詳細
 - [CLAUDE.md ガイド](/ja/advanced/claude-md-guide) - プロジェクト指針設定
-- [MCP サーバー活用](/ja/advanced/mcp-servers) - MCP サーバー設定方法
 - [IAM ドキュメント](https://code.claude.com/docs/en/iam) - 権限システム概要
 
 {{< callout type="info" >}}
