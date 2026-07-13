@@ -127,7 +127,7 @@ preserve_list_debt:
 
 ```yaml
 sync_complete_at: 2026-07-13
-sync_commit_sha: <to-be-populated-by-git-commit>
+sync_commit_sha: 0ec0ecdd4
 sync_status: audit-ready
 changelog_entry_position: after SPEC-DOCSITE-E2E-001 entry (docs-site advanced guides 6-page × 4-locale expansion)
 spec_frontmatter_status_transitions:
