@@ -85,7 +85,7 @@ m1_to_mN_commit_strategy: per-milestone  # M1=570441fde, M2=cdd1686a4, M3=0a33f2
 
 ```yaml
 sync_complete_at: 2026-07-14
-sync_commit_sha: <pending-backfill-d3-exemption>  # will be backfilled per D3 SHA placeholder exemption after sync commit
+sync_commit_sha: e013d4c86bd1190b48e03aa26a4dd89488e7f092  # sync commit SHA (backfilled per D3 exemption)
 sync_status: complete
 changelog_entry_emitted: true  # CHANGELOG.md [Unreleased] entry added
 frontmatter_transitions:
