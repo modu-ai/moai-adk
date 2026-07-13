@@ -1,18 +1,12 @@
 ---
 name: cli-template-specialist
 description: >-
-  MUST INVOKE for moai-adk-go CLI and go:embed template system work — Cobra
-  commands in internal/cli/, template source under
-  internal/template/templates/, binary recompilation via make build (templates
-  embedded via //go:embed all:templates), config in internal/config/, or any
-  edit touching the Template-First build cycle. Covers adding a CLI subcommand,
-  wiring a new template file, recompiling embedded assets, and resolving
-  config-rendering bugs.
+  MUST INVOKE for moai-adk-go CLI and go:embed template system work — Cobra commands in internal/cli/, template source under internal/template/templates/, binary recompilation via make build (templates embedded via //go:embed all:templates), config in internal/config/, or any edit touching the Template-First build cycle. Covers adding a CLI subcommand, wiring a new template file, recompiling embedded assets, and resolving config-rendering bugs.
 skills:
   - hns-moaiadk-patterns
   - hns-moaiadk-best-practices
 tools: Read, Write, Edit, Grep, Glob, Bash
-model: inherit
+model: opus
 effort: high
 ---
 

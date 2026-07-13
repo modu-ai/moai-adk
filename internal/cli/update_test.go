@@ -15,6 +15,7 @@ import (
 	"github.com/modu-ai/moai-adk/internal/update"
 	"github.com/modu-ai/moai-adk/pkg/version"
 	"github.com/modu-ai/moai-adk/internal/cli/update/plan"
+	"github.com/modu-ai/moai-adk/internal/cli/update/backup"
 )
 
 // buildSmartPATH is a test helper that builds a Smart PATH for a given home directory.
@@ -1046,9 +1047,9 @@ func TestBackupMoaiConfig_CreateBackup(t *testing.T) {
 	}
 
 	// Create backup
-	backupDir, err := backupMoaiConfig(tmpDir)
+	backupDir, err := backup.BackupMoaiConfig(tmpDir)
 	if err != nil {
-		t.Fatalf("backupMoaiConfig failed: %v", err)
+		t.Fatalf("backup.BackupMoaiConfig failed: %v", err)
 	}
 
 	// Verify backup directory path format
@@ -1116,7 +1117,7 @@ func TestBackupMoaiConfig_CreateBackup(t *testing.T) {
 		t.Fatalf("read metadata file: %v", err)
 	}
 
-	var metadata BackupMetadata
+	var metadata backup.BackupMetadata
 	if err := json.Unmarshal(metadataData, &metadata); err != nil {
 		t.Fatalf("unmarshal metadata: %v", err)
 	}
@@ -1156,9 +1157,9 @@ func TestBackupMoaiConfig_NoConfigDir(t *testing.T) {
 	tmpDir := t.TempDir()
 
 	// Should return empty string without error
-	backupDir, err := backupMoaiConfig(tmpDir)
+	backupDir, err := backup.BackupMoaiConfig(tmpDir)
 	if err != nil {
-		t.Fatalf("backupMoaiConfig should not error when no config exists, got: %v", err)
+		t.Fatalf("backup.BackupMoaiConfig should not error when no config exists, got: %v", err)
 	}
 	if backupDir != "" {
 		t.Errorf("backupDir should be empty when no config exists, got: %s", backupDir)
@@ -1211,7 +1212,7 @@ func TestCleanupOldBackups(t *testing.T) {
 	}
 
 	// Test cleanup with keep_count=5
-	deletedCount := cleanup_old_backups(tmpDir, 5)
+	deletedCount := backup.CleanupOldBackups(tmpDir, 5)
 	if deletedCount != 5 {
 		t.Errorf("should delete 5 old backups, got: %d", deletedCount)
 	}
@@ -1238,13 +1239,13 @@ func TestCleanupOldBackups(t *testing.T) {
 	}
 
 	// Test cleanup with keep_count=10 (no deletion)
-	deletedCount = cleanup_old_backups(tmpDir, 10)
+	deletedCount = backup.CleanupOldBackups(tmpDir, 10)
 	if deletedCount != 0 {
 		t.Errorf("should not delete any backups with keep_count=10, got: %d", deletedCount)
 	}
 
 	// Test cleanup with keep_count=0 (delete all)
-	deletedCount = cleanup_old_backups(tmpDir, 0)
+	deletedCount = backup.CleanupOldBackups(tmpDir, 0)
 	if deletedCount != 5 {
 		t.Errorf("should delete all 5 backups with keep_count=0, got: %d", deletedCount)
 	}
@@ -1291,7 +1292,7 @@ func TestCleanupOldBackups_InvalidBackupPattern(t *testing.T) {
 	}
 
 	// Should return 0 for invalid backup names
-	deletedCount := cleanup_old_backups(tmpDir, 5)
+	deletedCount := backup.CleanupOldBackups(tmpDir, 5)
 	if deletedCount != 0 {
 		t.Errorf("should not delete any invalid backups, got: %d", deletedCount)
 	}
@@ -1302,7 +1303,7 @@ func TestCleanupOldBackups_NoBackupsDir(t *testing.T) {
 	tmpDir := t.TempDir()
 
 	// Should return 0 without error
-	deletedCount := cleanup_old_backups(tmpDir, 5)
+	deletedCount := backup.CleanupOldBackups(tmpDir, 5)
 	if deletedCount != 0 {
 		t.Errorf("should return 0 when no backups exist, got: %d", deletedCount)
 	}
@@ -1329,9 +1330,9 @@ func TestRestoreMoaiConfig_MergeBehavior(t *testing.T) {
 	}
 
 	// Create backup
-	backupDir, err := backupMoaiConfig(tmpDir)
+	backupDir, err := backup.BackupMoaiConfig(tmpDir)
 	if err != nil {
-		t.Fatalf("backupMoaiConfig failed: %v", err)
+		t.Fatalf("backup.BackupMoaiConfig failed: %v", err)
 	}
 
 	// Verify backup contains sections/system.yaml
@@ -1394,9 +1395,9 @@ func TestRestoreMoaiConfig_MissingDirectory(t *testing.T) {
 	}
 
 	// Create backup
-	backupDir, err := backupMoaiConfig(tmpDir)
+	backupDir, err := backup.BackupMoaiConfig(tmpDir)
 	if err != nil {
-		t.Fatalf("backupMoaiConfig failed: %v", err)
+		t.Fatalf("backup.BackupMoaiConfig failed: %v", err)
 	}
 
 	// Delete the questions directory (simulating template without this directory)
@@ -1427,8 +1428,8 @@ func TestRestoreMoaiConfig_MissingDirectory(t *testing.T) {
 }
 
 func TestBackupMetadata_Structure(t *testing.T) {
-	// Test BackupMetadata struct marshaling
-	metadata := BackupMetadata{
+	// Test backup.BackupMetadata struct marshaling
+	metadata := backup.BackupMetadata{
 		Timestamp:     "20250205_143022",
 		Description:   "config_backup",
 		BackedUpItems: []string{".moai/config/config.yaml", ".moai/config/settings.yaml"},
@@ -1441,13 +1442,13 @@ func TestBackupMetadata_Structure(t *testing.T) {
 	// Test marshaling
 	data, err := json.MarshalIndent(metadata, "", "  ")
 	if err != nil {
-		t.Fatalf("marshal BackupMetadata failed: %v", err)
+		t.Fatalf("marshal backup.BackupMetadata failed: %v", err)
 	}
 
 	// Test unmarshaling
-	var decoded BackupMetadata
+	var decoded backup.BackupMetadata
 	if err := json.Unmarshal(data, &decoded); err != nil {
-		t.Fatalf("unmarshal BackupMetadata failed: %v", err)
+		t.Fatalf("unmarshal backup.BackupMetadata failed: %v", err)
 	}
 
 	// Verify all fields match
@@ -2852,9 +2853,9 @@ func TestRestoreMoaiConfig_CustomSectionPreserved(t *testing.T) {
 	}
 
 	// Create backup (includes both standard and custom)
-	backupDir, err := backupMoaiConfig(tmpDir)
+	backupDir, err := backup.BackupMoaiConfig(tmpDir)
 	if err != nil {
-		t.Fatalf("backupMoaiConfig failed: %v", err)
+		t.Fatalf("backup.BackupMoaiConfig failed: %v", err)
 	}
 
 	// Simulate template sync: remove custom section (template doesn't have it)

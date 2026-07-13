@@ -30,8 +30,8 @@ GLM-5.2(`moai glm` / `moai cg` GLMパネル)は1Mコンテキストモデルな�
 
 statuslineはコンテキストバーに`/clear`ヒントを2段階で表示します。
 
-- {{< icon warning warn >}} **ソフトマーカー** `(⚠️/clear)` — バンドのソフトしきい値で表示。ユーザーが判断して`/clear`を実行できる勧告シグナルです。
-- {{< icon warning danger >}} **ハードマーカー** `(🛑/clear!)` — auto-compact認識天井で表示。次のアクションは必ず`/clear`でなければなりません。
+- {{< icon warning warn >}} **ソフトマーカー** — statuslineのコンテキストバーに`/clear`ヒントが警告色とともに表示されます。バンドのソフトしきい値で現れ、ユーザーが判断して`/clear`を実行できる勧告シグナルです。
+- {{< icon warning danger >}} **ハードマーカー** — statuslineのコンテキストバーに`/clear`ヒントが強い警告色とともに表示されます。auto-compact認識天井で現れ、次のアクションは必ず`/clear`でなければなりません。
 
 ハード天井はauto-compactしきい値近くに設定されるため、ランタイムのauto-compactが先に発動してハードマーカーは実際には稀にしかトリガーされません。これはauto-compact認識公式の意図されたトレードオフです。
 

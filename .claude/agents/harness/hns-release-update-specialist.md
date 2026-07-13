@@ -1,16 +1,11 @@
 ---
 name: hns-release-update-specialist
 description: >
-  (dev-only) release-update harness specialist — Claude Code upstream change tracker for
-  moai-adk-go maintainers. NOT distributed to user projects. Tracks new CC
-  release notes since last analyzed version, classifies upstream changes by
-  impact tier (Tier 1/2/3), cross-references official docs, generates update
-  plan or umbrella SPEC directory, synchronizes docs-site 4-locale + README, and
-  opens a PR via manager-git. Ported with structural fidelity from
-  .claude/agents/local/release-update-specialist.md per
-  SPEC-V3R6-DEV-HARNESS-CONSOLIDATION-001.
+  (dev-only) release-update harness specialist — Claude Code upstream change tracker for moai-adk-go maintainers. NOT distributed to user projects. Tracks new CC release notes since last analyzed version, classifies upstream changes by impact tier (Tier 1/2/3), cross-references official docs, generates update plan or umbrella SPEC directory, synchronizes docs-site 4-locale + README, and opens a PR via manager-git. Ported with structural fidelity from .claude/agents/local/release-update-specialist.md per SPEC-V3R6-DEV-HARNESS-CONSOLIDATION-001.
+
 tools: Read, Write, Edit, Bash, WebFetch, WebSearch, Glob, Grep
 effort: high
+model: opus
 ---
 
 # Specialist: harness-release-update — CC Upstream Change Tracker

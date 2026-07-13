@@ -1,9 +1,21 @@
 git_strategy:
+    mode: manual
+    provider: github
     github_username: ""
     gitlab:
         instance_url: ""
     manual:
+        workflow: github-flow
+        environment: local
+        github_integration: false
+        push_to_remote: false
         auto_checkpoint: disabled
+        branch_prefix: ""
+        main_branch: ""
+        draft_pr: false
+        required_reviews: 0
+        branch_protection: false
+        merge_method: squash
         automation:
             auto_branch: false
             auto_commit: true
@@ -15,19 +27,22 @@ git_strategy:
         commit_style:
             format: conventional
             scope_required: false
-        environment: local
-        github_integration: false
         hooks:
-            commit_msg: warn
             pre_commit: enforce
             pre_push: warn
-        push_to_remote: false
-        workflow: github-flow
-    mode: team
+            commit_msg: warn
     personal:
-        # 1-person OSS Hybrid Trunk (2026-05-22): Tier S 미만은 main 직접 commit,
-        # Tier M/L 또는 SPEC sync 시만 feat 브랜치 + PR. auto_branch/auto_pr 활성으로
-        # SPEC 워크플로우 시 자동 브랜치 + PR. branch_prefix는 feat/SPEC- (실제 사용 형식 일치).
+        workflow: github-flow
+        environment: github
+        github_integration: true
+        push_to_remote: true
+        auto_checkpoint: ""
+        branch_prefix: feat/SPEC-
+        main_branch: main
+        draft_pr: false
+        required_reviews: 0
+        branch_protection: false
+        merge_method: squash
         automation:
             auto_branch: true
             auto_commit: true
@@ -36,28 +51,25 @@ git_strategy:
         branch_creation:
             auto_enabled: true
             prompt_always: true
-        branch_prefix: feat/SPEC-
         commit_style:
             format: conventional
             scope_required: false
-        environment: github
-        github_integration: true
         hooks:
-            commit_msg: warn
             pre_commit: enforce
             pre_push: enforce
-        main_branch: main
-        push_to_remote: true
-        workflow: github-flow
-    provider: github
+            commit_msg: warn
     team:
-        # 1-person OSS Hybrid Trunk (2026-05-22):
-        # auto_branch/auto_pr/auto_enabled 재활성 — SPEC 워크플로우 시 자동 브랜치 + PR 생성.
-        # branch_prefix: feature/SPEC- → feat/SPEC- (PR #1043/#1044 실제 사용 형식 일치).
-        # draft_pr: true → false (1인 OSS이므로 즉시 ready, draft 단계 불필요).
-        # required_reviews: 1 → 0 (외부 contributor 없음 — self admin merge).
-        # hooks.pre_push: warn → enforce (main push 보호, local lint/test 검증 강제).
-        # Tier S 미만은 main 직접 commit (Hybrid 첫번째 옵션), Tier M/L만 PR.
+        workflow: github-flow
+        environment: github
+        github_integration: true
+        push_to_remote: true
+        auto_checkpoint: ""
+        branch_prefix: feat/SPEC-
+        main_branch: main
+        draft_pr: false
+        required_reviews: 0
+        branch_protection: true
+        merge_method: squash
         automation:
             auto_branch: true
             auto_commit: true
@@ -66,19 +78,15 @@ git_strategy:
         branch_creation:
             auto_enabled: true
             prompt_always: true
-        branch_prefix: feat/SPEC-
-        branch_protection: true
         commit_style:
             format: conventional
             scope_required: true
-        draft_pr: false
-        environment: github
-        github_integration: true
         hooks:
-            commit_msg: warn
             pre_commit: enforce
             pre_push: enforce
-        main_branch: main
-        push_to_remote: true
-        required_reviews: 0
-        workflow: github-flow
+            commit_msg: warn
+    auto_branch: false
+    branch_prefix: moai/
+    commit_style: conventional
+    worktree_root: ""
+    gitlab_instance_url: ""

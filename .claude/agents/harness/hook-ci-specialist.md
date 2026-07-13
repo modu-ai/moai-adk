@@ -1,16 +1,12 @@
 ---
 name: hook-ci-specialist
 description: >-
-  MUST INVOKE for moai-adk-go hook and CI work — shell-script hooks under
-  .claude/hooks/moai/*.sh, settings.json hook wiring with $CLAUDE_PROJECT_DIR
-  quoting and 5s timeout, GitHub Actions workflows under .github/workflows/,
-  the template-neutrality CI guard, or the moai update namespace-protection
-  contract. Covers adding a hook, adding a CI workflow, and wiring a command.
+  MUST INVOKE for moai-adk-go hook and CI work — shell-script hooks under .claude/hooks/moai/*.sh, settings.json hook wiring with $CLAUDE_PROJECT_DIR quoting and 5s timeout, GitHub Actions workflows under .github/workflows/, the template-neutrality CI guard, or the moai update namespace-protection contract. Covers adding a hook, adding a CI workflow, and wiring a command.
 skills:
   - hns-moaiadk-patterns
   - hns-moaiadk-best-practices
 tools: Read, Write, Edit, Grep, Glob, Bash
-model: inherit
+model: opus
 effort: high
 ---
 

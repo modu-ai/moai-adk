@@ -29,6 +29,7 @@ import (
 	"github.com/modu-ai/moai-adk/pkg/version"
 	"github.com/spf13/cobra"
 	"github.com/modu-ai/moai-adk/internal/cli/update/plan"
+	"github.com/modu-ai/moai-adk/internal/cli/update/backup"
 )
 
 // =============================================================================
@@ -590,7 +591,7 @@ func TestRunPrePush_EnforcementDisabled_ReturnsNilImmediately(t *testing.T) {
 }
 
 // =============================================================================
-// backupMoaiConfig — success path: config dir exists
+// backup.BackupMoaiConfig — success path: config dir exists
 // (update.go:977 — at 66.7%)
 // =============================================================================
 
@@ -608,12 +609,12 @@ func TestBackupMoaiConfig_ConfigDirExists(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	backupDir, err := backupMoaiConfig(tmpDir)
+	backupDir, err := backup.BackupMoaiConfig(tmpDir)
 	if err != nil {
-		t.Fatalf("backupMoaiConfig error: %v", err)
+		t.Fatalf("backup.BackupMoaiConfig error: %v", err)
 	}
 	if backupDir == "" {
-		t.Error("backupMoaiConfig should return non-empty backup dir when config exists")
+		t.Error("backup.BackupMoaiConfig should return non-empty backup dir when config exists")
 	}
 	if _, statErr := os.Stat(backupDir); statErr != nil {
 		t.Errorf("backup directory should exist, got stat error: %v", statErr)
@@ -626,9 +627,9 @@ func TestBackupMoaiConfig_ConfigDirNotExist(t *testing.T) {
 	tmpDir := t.TempDir()
 	// No .moai/config dir
 
-	backupDir, err := backupMoaiConfig(tmpDir)
+	backupDir, err := backup.BackupMoaiConfig(tmpDir)
 	if err != nil {
-		t.Fatalf("backupMoaiConfig should not error when config dir missing, got: %v", err)
+		t.Fatalf("backup.BackupMoaiConfig should not error when config dir missing, got: %v", err)
 	}
 	if backupDir != "" {
 		t.Errorf("backupDir should be empty when config dir doesn't exist, got %q", backupDir)
@@ -648,9 +649,9 @@ func TestBackupMoaiConfig_PathIsFile(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	_, err := backupMoaiConfig(tmpDir)
+	_, err := backup.BackupMoaiConfig(tmpDir)
 	if err == nil {
-		t.Error("backupMoaiConfig should error when config path is a file, not a directory")
+		t.Error("backup.BackupMoaiConfig should error when config path is a file, not a directory")
 	}
 	if !strings.Contains(err.Error(), "not a directory") {
 		t.Errorf("error should mention 'not a directory', got: %v", err)
@@ -695,7 +696,7 @@ func TestCleanMoaiManagedPaths_WithExistingTarget(t *testing.T) {
 }
 
 // =============================================================================
-// saveTemplateDefaults — success path
+// backup.SaveTemplateDefaults — success path
 // (update.go:1099 — at 71.4%)
 // =============================================================================
 
@@ -708,15 +709,15 @@ func TestSaveTemplateDefaults_CreatesSubdirs(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	err := saveTemplateDefaults(destDir)
+	err := backup.SaveTemplateDefaults(destDir)
 	if err != nil {
-		t.Fatalf("saveTemplateDefaults error: %v", err)
+		t.Fatalf("backup.SaveTemplateDefaults error: %v", err)
 	}
 
 	// Verify sections subdirectory was created
 	sectionsDir := filepath.Join(destDir, "sections")
 	if _, statErr := os.Stat(sectionsDir); statErr != nil {
-		t.Errorf("sections directory should exist after saveTemplateDefaults: %v", statErr)
+		t.Errorf("sections directory should exist after backup.SaveTemplateDefaults: %v", statErr)
 	}
 }
 

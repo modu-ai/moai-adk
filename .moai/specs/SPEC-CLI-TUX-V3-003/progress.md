@@ -95,6 +95,50 @@ ok  github.com/modu-ai/moai-adk/internal/cli  0.456s
 
 No regression confirmed: `go test ./internal/cli/...` all green; guard 5-family (`TestSplitHarnessNamespaceNoLeak` + `internal/merge/...`) PASS; cross-platform builds (darwin + windows) exit 0.
 
+### M3c change-preview TUI + fallback + user-owned visibility — LANDED (commit f4f378360)
+
+5 files, +728/-2: `update.go` (54-line convergence — `confirmViaPreview` single entry @ line 1609; call sites 678/1039 routed through it; behavior-preserving: non-TTY confirm path mirrors old tea.Run failure, TTY preview and `--yes`/non-TTY fallback produce the SAME classification decision) + new `internal/cli/update/{preview.go (88), preview_tui.go (258, bubbletea v2 table+viewport), preview_fallback.go (71), preview_test.go (268, 11 contract tests)}`.
+
+Preview consumes the M3a `class.go` shared model (`Classify` + `UserOwnedPredicate`) — NO parallel heuristic (REQ-TUX3-002). `preserved (user-owned)` label in BOTH TUI table and text fallback, derived from the shared predicate (REQ-TUX3-014).
+
+M3c gate (AC-TUX3-008/009/010/014 PASS; AC-TUX3-015 mapped):
+- AC-TUX3-008: TestPreviewTable* (per-class counts + every-file row + classification-matches-Classify) PASS
+- AC-TUX3-009: TestPreviewSelectRowReachesDiffViewport + TestPreviewDiffViewportEscReturnsToTable PASS
+- AC-TUX3-010: TestPreviewFallback* (non-TTY text summary + zero-ANSI under NO_COLOR + zero-ANSI when piped) PASS
+- AC-TUX3-014: TestPreservedLabel* (TUI table + text fallback + derived-from-shared-predicate) PASS
+- AC-TUX3-015: maps to guard 5-family (green) + M3b namespace E2E characterization (green)
+
+Orchestrator Trust-but-verify (2026-07-14, independent batch; evidence `.moai/state/verify/86ac7ac3/`):
+- commit f4f378360 on origin/main, divergence `0 0`
+- `go test ./internal/cli/update/...` green (preview + class tests)
+- namespace guard 5-family: TestSplitHarnessNamespaceNoLeak + cli `Namespace|SecurityM2` + internal/merge all green, UNMODIFIED
+- `go build ./...` + `GOOS=windows GOARCH=amd64 go build ./...` + `go vet ./internal/cli/...` all exit 0 (LSP go-list "undefined: ChangeClass" / BrokenImport diagnostics confirmed FAKE — gopls workspace issue, NOT build errors; actual go build resolves the same-package symbols)
+- `golangci-lint run`: 0 issues
+- bubbletea v2 v2.0.8 + bubbles v2 v2.1.1 in use (REQ-TUX3-017 first half — landed by SPEC-CLI-TUX-V3-002)
+
+**Note (§E.2 recorded by orchestrator):** the manager-develop spawn reported this M3c evidence block as a BLOCKER — its 4 Edit attempts on progress.md failed with "File has not been read yet" despite preceding Reads (harness read-state tracker issue, system-injected context between Read and Edit). `git status` confirmed progress.md was NOT modified by the spawn. The orchestrator records this block directly (ledger-closure / evidence-persistence obligation; the evidence was fully drafted and verified).
+
+acceptance.md wording fixes owed to manager-spec (forbidden ownership crossing — NOT edited by manager-develop):
+- AC-TUX3-009/010 `-run` regexes use `\|` (RE2 literal-pipe escape, NOT alternation) → should be `|`; tests verified green with the corrected form
+- AC-TUX3-015 `UserAssetPreservation` test-name absent in the suite → maps to guard 5-family + M3b characterization
+
+KNOWN UNRELATED FAILURES surfaced by `go test ./...` (NOT M3c regressions — pre-existing / local-env):
+- internal/config `TestAuditLoaderCompleteness`: local untracked `.moai/config/sections/report.yaml` (26 B, Jul 14 02:46, NOT in git) triggers `YAML_SECTION_NO_LOADER: report`. CI (no report.yaml) is green. The file is working-tree-only; provenance under investigation (harness automation / token-accounting report path).
+- internal/settings `TestApplySchemaEditsAllFieldsRoundTrip` + internal/web `TestI18nKeySetParity` / `TestDataI18nKeysSubsetOfDictionary`: ISOLATED runs are GREEN (verified) → flaky under `go test ./...` parallel execution (shared-state / test-order dependent). M3c commit did NOT touch these packages (`git show --stat f4f378360` = update.go + preview* only).
+These are tracked as out-of-SPEC-003-scope (WEBCONF-SIMPLIFY residual / local-env / test-flakiness); M3c itself is green.
+
+### M3d-A update.go decomposition (PLAN + BACKUP) — IN PROGRESS (2 spawns; namespace-predicate move HARD-gate cleared)
+
+**M3d-A spawn-1 (commit `be3cf0b4d`) — PLAN subpackage LANDED**: 8 funcs moved to `internal/cli/update/plan/` (classifyFileRisk, determineStrategy, determineChangeType, analyzeFiles, isUserAreaPath, **isUserOwnedNamespace** [ANCHOR predicate], isMoaiManaged, getProjectConfigVersion). Namespace-predicate move is the worst-case-risk gate: `isUserOwnedNamespace` → `plan.IsUserOwnedNamespace`; `update_namespace_protect.go` calls updated; variable `plan` renamed `deployPlan` to avoid collision with the new `plan` package import. Guard-test diff (`be3cf0b4d~1..be3cf0b4d`) shows ONLY import-path/qualifier/variable-rename lines — NO assertion-logic change (REQ-TUX3-005 satisfied). Orchestrator verification: guard 5-family (TestSplitHarnessNamespaceNoLeak + cli Namespace|SecurityM2 + internal/merge) all green; `go test ./internal/cli/...` green; characterization (M3b safety net) green; go build exit 0.
+
+**M3d-A spawn-2 thrashed (autocompact)** after committing PLAN and progressing BACKUP. Working-tree state at thrash (orchestrator-verified GREEN, not broken):
+- `internal/cli/update/backup/backup.go` (439 lines, `package backup`) — 6 BACKUP funcs moved: BackupMoaiConfig, SaveTemplateDefaults, CleanupOldBackups, IsSymlinkEntry, RestoreTargetContained, ParentChainContained.
+- `restoreMoaiConfig` (update.go:1548) + `restoreMoaiConfigLegacy` (update.go:1655) remain in root update.go — 2/8 BACKUP funcs NOT yet moved (M3d-A2 scope).
+- `go build ./...` exit 0; `go test ./internal/cli/...` green; characterization green; guard 5-family green.
+- Modified (uncommitted): update.go, update_namespace_protect.go, coverage_improvement_test.go, target_coverage_test.go, update_characterization_test.go, update_fileops_test.go, update_test.go, update_archive.go + untracked backup/.
+
+**Root-cause of repeated thrashes (M3a#1, M3c#1, M3d-A#1, M3d-A#2)**: a single spawn carrying a full subpackage move (8+ funcs + 6 guard-test import edits + repeated verify cycles) overflows the context. Mitigation: subpackage-per-spawn (PLAN done alone; BACKUP split: 6 funcs landed green, restore* 2 funcs → M3d-A2). CHUNKED-READ discipline (no >200-line file whole; sed-extract to temp) is necessary but NOT sufficient — scope-per-spawn must also shrink.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<pending run-phase>_

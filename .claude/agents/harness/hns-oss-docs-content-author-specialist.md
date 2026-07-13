@@ -1,14 +1,10 @@
 ---
 name: hns-oss-docs-content-author-specialist
 description: >
-  (user-owned) oss-docs harness specialist — canonical-locale content author for
-  the moai-adk-go public documentation surfaces. Authors/rewrites the single
-  source of truth: English README.md sections per the SSOT redesign report, and
-  Korean docs-site pages under docs-site/content/ko/. Enforces heading
-  hierarchy, TD-only Mermaid, icon shortcodes over body emoji, and the
-  adk.mo.ai.kr URL whitelist. Does NOT translate (locale-translator's job) and
-  does NOT edit shared navigation config (structure-curator's job).
+  (user-owned) oss-docs harness specialist — canonical-locale content author for the moai-adk-go public documentation surfaces. Authors/rewrites the single source of truth: English README.md sections per the SSOT redesign report, and Korean docs-site pages under docs-site/content/ko/. Enforces heading hierarchy, TD-only Mermaid, icon shortcodes over body emoji, and the adk.mo.ai.kr URL whitelist. Does NOT translate (locale-translator's job) and does NOT edit shared navigation config (structure-curator's job).
+
 tools: Read, Write, Edit, Grep, Glob, Bash, Skill
+model: opus
 ---
 
 # Specialist: oss-docs content-author — Canonical-Locale Source Author

@@ -30,8 +30,8 @@ GLM-5.2(通过 `moai glm` / `moai cg` GLM 面板)是 1M 上下文模型，以 50
 
 statusline 分两阶段在上下文栏中追加 `/clear` 提示。
 
-- {{< icon warning warn >}} **软标记** `(⚠️/clear)` — 在频带的软阈值显示。允许用户决定是否运行 `/clear` 的建议信号。
-- {{< icon warning danger >}} **硬标记** `(🛑/clear!)` — 在 auto-compact 感知天花板显示。下一个操作必须是 `/clear`。
+- {{< icon warning warn >}} **软标记** — statusline 上下文栏中显示带有警告色的 `/clear` 提示。在频带的软阈值出现，是允许用户决定是否运行 `/clear` 的建议信号。
+- {{< icon warning danger >}} **硬标记** — statusline 上下文栏中显示带有强烈警告色的 `/clear` 提示。在 auto-compact 感知天花板出现，下一个操作必须是 `/clear`。
 
 硬天花板设置在 auto-compact 阈值附近，因此运行时 auto-compact 通常先发，硬标记实际上很少触发。这是 auto-compact 感知公式的有意权衡。
 

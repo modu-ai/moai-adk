@@ -1,16 +1,12 @@
 ---
 name: quality-specialist
 description: >-
-  MUST INVOKE for moai-adk-go quality-gate enforcement — TRUST 5 framework,
-  Go toolchain validation (go vet, golangci-lint, go test), coverage targets
-  (85% package / 90% critical cli/template/hook), LSP phase gates, or running
-  the parallel read-only verification batch at run/sync-phase completion.
-  Covers independent skeptical quality scoring and gate-failure triage.
+  MUST INVOKE for moai-adk-go quality-gate enforcement — TRUST 5 framework, Go toolchain validation (go vet, golangci-lint, go test), coverage targets (85% package / 90% critical cli/template/hook), LSP phase gates, or running the parallel read-only verification batch at run/sync-phase completion. Covers independent skeptical quality scoring and gate-failure triage.
 skills:
   - hns-moaiadk-patterns
   - hns-moaiadk-best-practices
 tools: Read, Write, Edit, Grep, Glob, Bash
-model: inherit
+model: opus
 effort: high
 ---
 

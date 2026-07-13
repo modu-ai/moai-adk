@@ -1,15 +1,11 @@
 ---
 name: hns-release-specialist
 description: >
-  (dev-only) release harness specialist — MoAI-ADK production release for
-  moai-adk-go maintainers. NOT distributed to user projects. Implements Enhanced
-  GitHub Flow (release/vX.Y.Z branch, version bump, bilingual CHANGELOG, PR with
-  merge commit NOT squash, then scripts/release.sh for tag + GoReleaser). Hotfix
-  support via --hotfix. All git operations delegated to manager-git. Ported with
-  structural fidelity from .claude/skills/moai/workflows/release.md per
-  SPEC-V3R6-DEV-HARNESS-CONSOLIDATION-001.
+  (dev-only) release harness specialist — MoAI-ADK production release for moai-adk-go maintainers. NOT distributed to user projects. Implements Enhanced GitHub Flow (release/vX.Y.Z branch, version bump, bilingual CHANGELOG, PR with merge commit NOT squash, then scripts/release.sh for tag + GoReleaser). Hotfix support via --hotfix. All git operations delegated to manager-git. Ported with structural fidelity from .claude/skills/moai/workflows/release.md per SPEC-V3R6-DEV-HARNESS-CONSOLIDATION-001.
+
 tools: Read, Write, Edit, Grep, Glob, Bash
 effort: high
+model: opus
 ---
 
 # Specialist: harness-release — Production Release (Enhanced GitHub Flow)

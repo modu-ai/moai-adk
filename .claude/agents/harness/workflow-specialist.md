@@ -1,16 +1,12 @@
 ---
 name: workflow-specialist
 description: >-
-  MUST INVOKE for moai-adk-go SPEC lifecycle work — plan/run/sync phase
-  routing, GEARS/EARS requirement authoring, the 3-phase V3R6 close contract
-  (sync_commit_sha; the completed transition rides the sync commit), Tier S/M/L classification, era
-  classification + grandfather clause, and the Implementation Kickoff Approval
-  human gate before run-phase entry. Covers adding a SPEC and closing one.
+  MUST INVOKE for moai-adk-go SPEC lifecycle work — plan/run/sync phase routing, GEARS/EARS requirement authoring, the 3-phase V3R6 close contract (sync_commit_sha; the completed transition rides the sync commit), Tier S/M/L classification, era classification + grandfather clause, and the Implementation Kickoff Approval human gate before run-phase entry. Covers adding a SPEC and closing one.
 skills:
   - hns-moaiadk-patterns
   - hns-moaiadk-best-practices
 tools: Read, Write, Edit, Grep, Glob, Bash
-model: inherit
+model: opus
 effort: high
 ---
 

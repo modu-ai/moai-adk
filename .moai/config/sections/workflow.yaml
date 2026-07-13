@@ -33,13 +33,13 @@ workflow:
     # Values are validated against the closed sets: model in
     # {inherit, sonnet, opus}, effort in {low, medium, high, xhigh, max}.
     workflow_agents:
-        read-only-extract: { model: sonnet, effort: low }
-        mechanical-transform: { model: sonnet, effort: medium }
-        synthesize: { model: sonnet, effort: high }
-        research: { model: sonnet, effort: high }
-        verify-judge: { model: sonnet, effort: xhigh }
-        implement: { model: sonnet, effort: xhigh }
-        design-architecture: { model: opus, effort: xhigh }
+        read-only-extract: {model: sonnet, effort: low}
+        mechanical-transform: {model: sonnet, effort: medium}
+        synthesize: {model: sonnet, effort: high}
+        research: {model: sonnet, effort: high}
+        verify-judge: {model: sonnet, effort: xhigh}
+        implement: {model: sonnet, effort: xhigh}
+        design-architecture: {model: opus, effort: xhigh}
     # model_routing: LEGACY flat block (Tier x Phase -> {model, effort}).
     # DEPRECATED — retained as a `medium` profile alias for one backward-compat
     # cycle (plan.md §D D6, SPEC-AGENT-ARCH-V2-001 M3b). Values mirror the
@@ -50,18 +50,18 @@ workflow:
     # {plan, run, sync, mx}. Closed sets: model in
     # {inherit, sonnet, opus, glm, fable}, effort in {low, medium, high, xhigh, max}.
     model_routing:
-        S-plan: { model: sonnet, effort: medium }
-        S-run: { model: sonnet, effort: high }
-        S-sync: { model: sonnet, effort: low }
-        S-mx: { model: sonnet, effort: low }
-        M-plan: { model: sonnet, effort: medium }
-        M-run: { model: sonnet, effort: xhigh }
-        M-sync: { model: sonnet, effort: medium }
-        M-mx: { model: sonnet, effort: low }
-        L-plan: { model: opus, effort: high }
-        L-run: { model: sonnet, effort: xhigh }
-        L-sync: { model: sonnet, effort: high }
-        L-mx: { model: sonnet, effort: medium }
+        S-plan: {model: sonnet, effort: medium}
+        S-run: {model: sonnet, effort: high}
+        S-sync: {model: sonnet, effort: low}
+        S-mx: {model: sonnet, effort: low}
+        M-plan: {model: sonnet, effort: medium}
+        M-run: {model: sonnet, effort: xhigh}
+        M-sync: {model: sonnet, effort: medium}
+        M-mx: {model: sonnet, effort: low}
+        L-plan: {model: opus, effort: high}
+        L-run: {model: sonnet, effort: xhigh}
+        L-sync: {model: sonnet, effort: high}
+        L-mx: {model: sonnet, effort: medium}
     # model_routing_profiles: No-Haiku 3-tier policy (SPEC-AGENT-ARCH-V2-001
     # M3, design.md §D.5) — perfTier -> (Tier x Phase) -> {model, effort}.
     # 3 perfTiers (max/medium/low) × 12 cells (S/M/L × plan/run/sync/mx) = 36
@@ -71,44 +71,44 @@ workflow:
     # {inherit, sonnet, opus, glm, fable}, effort in {low, medium, high, xhigh, max}.
     model_routing_profiles:
         max:
-            S-plan: { model: opus, effort: high }
-            S-run: { model: sonnet, effort: xhigh }
-            S-sync: { model: sonnet, effort: medium }
-            S-mx: { model: sonnet, effort: low }
-            M-plan: { model: opus, effort: xhigh }
-            M-run: { model: sonnet, effort: xhigh }
-            M-sync: { model: sonnet, effort: medium }
-            M-mx: { model: sonnet, effort: low }
-            L-plan: { model: opus, effort: xhigh }
-            L-run: { model: sonnet, effort: xhigh }
-            L-sync: { model: sonnet, effort: high }
-            L-mx: { model: sonnet, effort: medium }
+            S-plan: {model: opus, effort: high}
+            S-run: {model: sonnet, effort: xhigh}
+            S-sync: {model: sonnet, effort: medium}
+            S-mx: {model: sonnet, effort: low}
+            M-plan: {model: opus, effort: xhigh}
+            M-run: {model: sonnet, effort: xhigh}
+            M-sync: {model: sonnet, effort: medium}
+            M-mx: {model: sonnet, effort: low}
+            L-plan: {model: opus, effort: xhigh}
+            L-run: {model: sonnet, effort: xhigh}
+            L-sync: {model: sonnet, effort: high}
+            L-mx: {model: sonnet, effort: medium}
         medium:
-            S-plan: { model: sonnet, effort: medium }
-            S-run: { model: sonnet, effort: high }
-            S-sync: { model: sonnet, effort: low }
-            S-mx: { model: sonnet, effort: low }
-            M-plan: { model: sonnet, effort: medium }
-            M-run: { model: sonnet, effort: xhigh }
-            M-sync: { model: sonnet, effort: medium }
-            M-mx: { model: sonnet, effort: low }
-            L-plan: { model: opus, effort: high }
-            L-run: { model: sonnet, effort: xhigh }
-            L-sync: { model: sonnet, effort: high }
-            L-mx: { model: sonnet, effort: medium }
+            S-plan: {model: sonnet, effort: medium}
+            S-run: {model: sonnet, effort: high}
+            S-sync: {model: sonnet, effort: low}
+            S-mx: {model: sonnet, effort: low}
+            M-plan: {model: sonnet, effort: medium}
+            M-run: {model: sonnet, effort: xhigh}
+            M-sync: {model: sonnet, effort: medium}
+            M-mx: {model: sonnet, effort: low}
+            L-plan: {model: opus, effort: high}
+            L-run: {model: sonnet, effort: xhigh}
+            L-sync: {model: sonnet, effort: high}
+            L-mx: {model: sonnet, effort: medium}
         low:
-            S-plan: { model: sonnet, effort: medium }
-            S-run: { model: sonnet, effort: high }
-            S-sync: { model: sonnet, effort: low }
-            S-mx: { model: sonnet, effort: low }
-            M-plan: { model: sonnet, effort: medium }
-            M-run: { model: sonnet, effort: high }
-            M-sync: { model: sonnet, effort: low }
-            M-mx: { model: sonnet, effort: low }
-            L-plan: { model: sonnet, effort: xhigh }
-            L-run: { model: sonnet, effort: xhigh }
-            L-sync: { model: sonnet, effort: medium }
-            L-mx: { model: sonnet, effort: low }
+            S-plan: {model: sonnet, effort: medium}
+            S-run: {model: sonnet, effort: high}
+            S-sync: {model: sonnet, effort: low}
+            S-mx: {model: sonnet, effort: low}
+            M-plan: {model: sonnet, effort: medium}
+            M-run: {model: sonnet, effort: high}
+            M-sync: {model: sonnet, effort: low}
+            M-mx: {model: sonnet, effort: low}
+            L-plan: {model: sonnet, effort: xhigh}
+            L-run: {model: sonnet, effort: xhigh}
+            L-sync: {model: sonnet, effort: medium}
+            L-mx: {model: sonnet, effort: low}
     worktree:
         # 2026-05-22: auto_create false (user policy feedback_worktree_autonomous 정렬).
         # L1 worktree는 Claude Code runtime autonomous — MoAI orchestrator는 자동 생성 안함.

@@ -10,7 +10,7 @@
 //     substituted for colons (Windows-safe filenames) per REQ-UNP-010.
 //
 // Three distinct backup roots coexist after this SPEC:
-//   - .moai-backups/                                  (config backups; backupMoaiConfig)
+//   - .moai-backups/                                  (config backups; backup.BackupMoaiConfig)
 //   - .moai/archive/skills/v2.16-drift-<compact>/     (archive-drift; update_archive.go)
 //   - .moai/backups/update-<hyphenated-ISO>/          (this file)
 //
@@ -25,6 +25,7 @@ import (
 	"time"
 
 	"github.com/modu-ai/moai-adk/internal/cli/update/plan"
+	"github.com/modu-ai/moai-adk/internal/cli/update/backup"
 	"github.com/modu-ai/moai-adk/internal/defs"
 )
 
@@ -57,7 +58,7 @@ type deployOp struct {
 // separator preserve ISO-8601 readability.
 //
 // Distinct from defs.BackupTimestampFormat ("20060102_150405") used by
-// backupMoaiConfig, and from update_archive.go driftStamp format
+// backup.BackupMoaiConfig, and from update_archive.go driftStamp format
 // ("20060102T150405Z"). Three formats, three concerns.
 func newNamespaceBackupStamp() string {
 	return time.Now().UTC().Format("2006-01-02T15-04-05Z")
@@ -97,7 +98,7 @@ func resolveNamespaceBackupDir(projectRoot, stamp string) (string, error) {
 //
 // Symlinks are ALWAYS skipped (REQ-SEC-003): a symlink inside a user-owned
 // namespace must not have its dereferenced target content recorded into the
-// backup. The guard reuses isSymlinkEntry (update.go) — the same Lstat-based
+// backup. The guard reuses backup.IsSymlinkEntry (update.go) — the same Lstat-based
 // pattern proven in SPEC-SEC-HARDEN-003 — so no new pattern is invented.
 func collectUserOwnedFilesWith(projectRoot string, classify func(string) bool) ([]string, error) {
 	var results []string
@@ -120,7 +121,7 @@ func collectUserOwnedFilesWith(projectRoot string, classify func(string) bool) (
 			}
 			// REQ-SEC-003 / AC-SEC-003b: skip symlinks so copyFile never
 			// records the link's dereferenced target content into the backup.
-			if isSymlinkEntry(path) {
+			if backup.IsSymlinkEntry(path) {
 				return nil
 			}
 			rel, relErr := filepath.Rel(projectRoot, path)

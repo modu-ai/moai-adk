@@ -30,8 +30,8 @@ GLM-5.2 (via `moai glm` / `moai cg` GLM panels) is a 1M-context model and is ope
 
 The statusline appends a `/clear` hint to the context bar in two stages.
 
-- {{< icon warning warn >}} **Soft marker** `(⚠️/clear)` — displayed at the band's soft threshold. An advisory signal allowing the user to decide whether to run `/clear`.
-- {{< icon warning danger >}} **Hard marker** `(🛑/clear!)` — displayed at the auto-compact-aware ceiling. The next action MUST be `/clear`.
+- {{< icon warning warn >}} **Soft marker** — a `/clear` hint is displayed in the statusline context bar with a warning color. It appears at the band's soft threshold as an advisory signal allowing the user to decide whether to run `/clear`.
+- {{< icon warning danger >}} **Hard marker** — a `/clear` hint is displayed in the statusline context bar with a strong warning color. It appears at the auto-compact-aware ceiling; the next action MUST be `/clear`.
 
 The hard ceiling is set near the auto-compact threshold, so runtime auto-compact frequently preempts it and the hard marker rarely fires in practice. This is an intentional tradeoff of the auto-compact-aware formula.
 

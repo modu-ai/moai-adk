@@ -430,6 +430,12 @@ main:
           zh: Hooks事件参考
         ref: /advanced/hooks-reference
       - name:
+          ko: MX TAG 시스템
+          en: MX TAG System
+          ja: MX TAG システム
+          zh: MX TAG 系统
+        ref: /advanced/mx-tags
+      - name:
           ko: settings.json 가이드
           en: settings.json Guide
           ja: settings.json ガイド

@@ -19,6 +19,7 @@ var acknowledgedUnloadedSections = []string{
 	"mx",             // out-of-scope: ad-hoc parsing retained; struct neuverbalisation deferred (spec.md §2.2)
 	"observability",  // out-of-scope: observability config, separate SPEC
 	"project",        // out-of-scope: loaded via separate ProjectConfig loader path
+	"report",         // out-of-scope: settings-seam only (report.format select in moai web launch tab, persisted via internal/settings) — not consumed by Loader.Load() chain
 	"security",       // out-of-scope: security config, partial loader via separate path
 	"sunset",         // out-of-scope: DORMANT — struct defined but no runtime hot path (REQ-MIG003-006)
 	"system",         // out-of-scope: SystemConfig has partial loader via template

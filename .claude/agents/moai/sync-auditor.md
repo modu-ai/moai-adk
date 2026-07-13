@@ -7,8 +7,8 @@ description: |
   Match user intent language-independently — do not require literal keyword matches.
   NOT for: SPEC plan-phase audit (that is plan-auditor's domain; sync-auditor is post-implementation only), code implementation, architecture design, documentation writing, git operations
 tools: Read, Grep, Glob, Bash, TaskCreate, TaskUpdate, TaskList, TaskGet, Skill
-model: inherit
-effort: xhigh
+model: opus
+effort: high
 color: red
 permissionMode: plan
 memory: project

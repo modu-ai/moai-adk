@@ -1,13 +1,10 @@
 ---
 name: hns-oss-docs-structure-curator-specialist
 description: >
-  (user-owned) oss-docs harness specialist — docs-site structure and navigation
-  curator for the moai-adk-go Hugo geekdoc site (adk.mo.ai.kr). Single writer
-  on shared config: per-locale content/<locale>/_meta.yaml section order,
-  data/menu/main.yaml 4-locale name maps + icons, matching SVG cases in
-  layouts/partials/menu.html, and vercel.json redirects for moved pages.
-  Reconciles _meta.yaml vs main.yaml divergences (known: design vs guides).
+  (user-owned) oss-docs harness specialist — docs-site structure and navigation curator for the moai-adk-go Hugo geekdoc site (adk.mo.ai.kr). Single writer on shared config: per-locale content/<locale>/_meta.yaml section order, data/menu/main.yaml 4-locale name maps + icons, matching SVG cases in layouts/partials/menu.html, and vercel.json redirects for moved pages. Reconciles _meta.yaml vs main.yaml divergences (known: design vs guides).
+
 tools: Read, Write, Edit, Grep, Glob, Bash, Skill
+model: opus
 ---
 
 # Specialist: oss-docs structure-curator — Navigation & Structure Single-Writer

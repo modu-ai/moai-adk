@@ -25,6 +25,7 @@ import (
 	"github.com/modu-ai/moai-adk/pkg/version"
 	"github.com/spf13/cobra"
 	"github.com/modu-ai/moai-adk/internal/cli/update/plan"
+	"github.com/modu-ai/moai-adk/internal/cli/update/backup"
 )
 
 // newTestLogger creates a silent slog.Logger for tests.
@@ -1025,7 +1026,7 @@ func TestResolveConventionName_EnvVar(t *testing.T) {
 // TestIsEnforceOnPushEnabled_* removed - exists in hook_pre_push_test.go
 
 // =============================================================================
-// backupMoaiConfig — update.go:977 (previously 66.7%)
+// backup.BackupMoaiConfig — update.go:977 (previously 66.7%)
 // =============================================================================
 
 // TestBackupMoaiConfig_NoConfigDir removed - exists in update_test.go
@@ -1046,9 +1047,9 @@ func TestBackupMoaiConfig_WithConfigFiles(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	backupDir, err := backupMoaiConfig(tmpDir)
+	backupDir, err := backup.BackupMoaiConfig(tmpDir)
 	if err != nil {
-		t.Fatalf("backupMoaiConfig error: %v", err)
+		t.Fatalf("backup.BackupMoaiConfig error: %v", err)
 	}
 	if backupDir == "" {
 		t.Fatal("backup dir should not be empty")
@@ -1393,12 +1394,12 @@ func TestRunHookEvent_NilDeps(t *testing.T) {
 // TestRenderSimpleFallback removed - exists in statusline_test.go
 
 // =============================================================================
-// cleanup_old_backups — update.go:1258 (increase coverage)
+// backup.CleanupOldBackups — update.go:1258 (increase coverage)
 // =============================================================================
 
 func TestCleanupOldBackups_NoBackupDir(t *testing.T) {
 	tmpDir := t.TempDir()
-	deleted := cleanup_old_backups(tmpDir, 5)
+	deleted := backup.CleanupOldBackups(tmpDir, 5)
 	if deleted != 0 {
 		t.Errorf("should delete 0 when no backup dir, got %d", deleted)
 	}
@@ -1425,7 +1426,7 @@ func TestCleanupOldBackups_ExceedsKeepCount(t *testing.T) {
 	}
 
 	// Keep only 2
-	deleted := cleanup_old_backups(tmpDir, 2)
+	deleted := backup.CleanupOldBackups(tmpDir, 2)
 	if deleted != 3 {
 		t.Errorf("should delete 3, got %d", deleted)
 	}
@@ -1950,13 +1951,13 @@ func TestClassifyFileRisk_AllCases(t *testing.T) {
 	}
 }
 
-// saveTemplateDefaults — test writes actual template defaults
+// backup.SaveTemplateDefaults — test writes actual template defaults
 func TestSaveTemplateDefaults_Success(t *testing.T) {
 	tmpDir := t.TempDir()
 
-	err := saveTemplateDefaults(tmpDir)
+	err := backup.SaveTemplateDefaults(tmpDir)
 	if err != nil {
-		t.Fatalf("saveTemplateDefaults error: %v", err)
+		t.Fatalf("backup.SaveTemplateDefaults error: %v", err)
 	}
 
 	// Verify sections directory was created
@@ -2300,7 +2301,7 @@ func TestRunCG_NoAPIKey(t *testing.T) {
 	}
 }
 
-// backupMoaiConfig — test backup with sections directory
+// backup.BackupMoaiConfig — test backup with sections directory
 func TestBackupMoaiConfig_WithSections(t *testing.T) {
 	tmpDir := t.TempDir()
 	sectionsDir := filepath.Join(tmpDir, ".moai", "config", "sections")
@@ -2314,9 +2315,9 @@ func TestBackupMoaiConfig_WithSections(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	backupPath, err := backupMoaiConfig(tmpDir)
+	backupPath, err := backup.BackupMoaiConfig(tmpDir)
 	if err != nil {
-		t.Fatalf("backupMoaiConfig error: %v", err)
+		t.Fatalf("backup.BackupMoaiConfig error: %v", err)
 	}
 	if backupPath == "" {
 		t.Fatal("expected non-empty backup path")
@@ -3272,10 +3273,10 @@ func TestDetectGoBinPathForUpdate_EmptyHome(t *testing.T) {
 	t.Logf("detectGoBinPathForUpdate with empty home: %q", path)
 }
 
-// cleanup_old_backups — test cleanup
+// backup.CleanupOldBackups — test cleanup
 func TestCleanupOldBackups_NoBackups(t *testing.T) {
 	tmpDir := t.TempDir()
-	deleted := cleanup_old_backups(tmpDir, 3)
+	deleted := backup.CleanupOldBackups(tmpDir, 3)
 	if deleted != 0 {
 		t.Errorf("expected 0 deleted, got %d", deleted)
 	}
@@ -3293,7 +3294,7 @@ func TestCleanupOldBackups_WithExcess(t *testing.T) {
 		}
 	}
 
-	deleted := cleanup_old_backups(tmpDir, 3)
+	deleted := backup.CleanupOldBackups(tmpDir, 3)
 	if deleted != 2 {
 		t.Errorf("expected 2 deleted, got %d", deleted)
 	}
@@ -3305,13 +3306,13 @@ func TestCleanupOldBackups_WithExcess(t *testing.T) {
 	}
 }
 
-// saveTemplateDefaults — verify template defaults are saved
+// backup.SaveTemplateDefaults — verify template defaults are saved
 func TestSaveTemplateDefaults_VerifyContent(t *testing.T) {
 	tmpDir := t.TempDir()
 
-	err := saveTemplateDefaults(tmpDir)
+	err := backup.SaveTemplateDefaults(tmpDir)
 	if err != nil {
-		t.Fatalf("saveTemplateDefaults error: %v", err)
+		t.Fatalf("backup.SaveTemplateDefaults error: %v", err)
 	}
 
 	// Should have sections/ with yaml files
@@ -4244,12 +4245,12 @@ func TestRestoreMoaiConfigLegacy_NewFile(t *testing.T) {
 	}
 }
 
-// --- saveTemplateDefaults: exercises embedded template saving ---
+// --- backup.SaveTemplateDefaults: exercises embedded template saving ---
 
 func TestSaveTemplateDefaults_CreatesFiles(t *testing.T) {
 	tmpDir := t.TempDir()
 
-	err := saveTemplateDefaults(tmpDir)
+	err := backup.SaveTemplateDefaults(tmpDir)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -4374,7 +4375,7 @@ func TestGetGLMEnvPath_WithHOME(t *testing.T) {
 	}
 }
 
-// --- backupMoaiConfig: with sections including subdirectories ---
+// --- backup.BackupMoaiConfig: with sections including subdirectories ---
 
 func TestBackupMoaiConfig_WithSubdirs(t *testing.T) {
 	tmpDir := t.TempDir()
@@ -4393,7 +4394,7 @@ func TestBackupMoaiConfig_WithSubdirs(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	backupPath, err := backupMoaiConfig(tmpDir)
+	backupPath, err := backup.BackupMoaiConfig(tmpDir)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -5501,7 +5502,7 @@ func TestRestoreMoaiConfig_SkipsNonYAML(t *testing.T) {
 	}
 }
 
-// --- backupMoaiConfig: error paths ---
+// --- backup.BackupMoaiConfig: error paths ---
 
 func TestBackupMoaiConfig_StatError(t *testing.T) {
 	tmpDir := t.TempDir()
@@ -5515,7 +5516,7 @@ func TestBackupMoaiConfig_StatError(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	_, err := backupMoaiConfig(tmpDir)
+	_, err := backup.BackupMoaiConfig(tmpDir)
 	if err == nil {
 		t.Fatal("expected error for non-directory config path")
 	}
@@ -5753,7 +5754,7 @@ func TestMergeYAML3Way_InvalidYAML(t *testing.T) {
 	}
 }
 
-// --- cleanup_old_backups: edge cases ---
+// --- backup.CleanupOldBackups: edge cases ---
 
 func TestCleanupOldBackups_NonDirBackupPath(t *testing.T) {
 	tmpDir := t.TempDir()
@@ -5767,7 +5768,7 @@ func TestCleanupOldBackups_NonDirBackupPath(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	result := cleanup_old_backups(tmpDir, 3)
+	result := backup.CleanupOldBackups(tmpDir, 3)
 	if result != 0 {
 		t.Errorf("expected 0 deleted, got %d", result)
 	}
@@ -5790,7 +5791,7 @@ func TestCleanupOldBackups_InvalidPatterns(t *testing.T) {
 		}
 	}
 
-	result := cleanup_old_backups(tmpDir, 1)
+	result := backup.CleanupOldBackups(tmpDir, 1)
 	if result != 0 {
 		t.Errorf("expected 0 deleted (no valid patterns), got %d", result)
 	}
@@ -6340,7 +6341,7 @@ func TestRunUpdate_TemplatesOnlySkipsBinary(t *testing.T) {
 	_ = runUpdate(cmd, nil)
 }
 
-// --- backupMoaiConfig ---
+// --- backup.BackupMoaiConfig ---
 
 func TestBackupMoaiConfig_WithSections_Phase6(t *testing.T) {
 	tmpDir := t.TempDir()
@@ -6364,9 +6365,9 @@ func TestBackupMoaiConfig_WithSections_Phase6(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	backupDir, err := backupMoaiConfig(tmpDir)
+	backupDir, err := backup.BackupMoaiConfig(tmpDir)
 	if err != nil {
-		t.Fatalf("backupMoaiConfig error: %v", err)
+		t.Fatalf("backup.BackupMoaiConfig error: %v", err)
 	}
 
 	if backupDir == "" {
@@ -6401,7 +6402,7 @@ func TestBackupMoaiConfig_NotADirectory(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	_, err := backupMoaiConfig(tmpDir)
+	_, err := backup.BackupMoaiConfig(tmpDir)
 	if err == nil {
 		t.Error("expected error when config is not a directory")
 	}
@@ -6413,7 +6414,7 @@ func TestBackupMoaiConfig_NotADirectory(t *testing.T) {
 func TestBackupMoaiConfig_NoConfigDir_Phase6(t *testing.T) {
 	tmpDir := t.TempDir()
 
-	dir, err := backupMoaiConfig(tmpDir)
+	dir, err := backup.BackupMoaiConfig(tmpDir)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -6494,14 +6495,14 @@ func TestCleanMoaiManagedPaths_AllPathsMissing(t *testing.T) {
 	}
 }
 
-// --- saveTemplateDefaults ---
+// --- backup.SaveTemplateDefaults ---
 
 func TestSaveTemplateDefaults(t *testing.T) {
 	tmpDir := t.TempDir()
 
-	err := saveTemplateDefaults(tmpDir)
+	err := backup.SaveTemplateDefaults(tmpDir)
 	if err != nil {
-		t.Fatalf("saveTemplateDefaults error: %v", err)
+		t.Fatalf("backup.SaveTemplateDefaults error: %v", err)
 	}
 
 	// Verify sections directory was created
@@ -6878,11 +6879,11 @@ func TestRemoveGLMEnv_NonexistentPath(t *testing.T) {
 	}
 }
 
-// --- cleanup_old_backups ---
+// --- backup.CleanupOldBackups ---
 
 func TestCleanupOldBackups_PrunesOldBackups(t *testing.T) {
 	tmpDir := t.TempDir()
-	// cleanup_old_backups uses defs.BackupsDir = ".moai-backups"
+	// backup.CleanupOldBackups uses defs.BackupsDir = ".moai-backups"
 	backupBaseDir := filepath.Join(tmpDir, ".moai-backups")
 
 	// Create 5 backup directories with different timestamps.
@@ -6907,7 +6908,7 @@ func TestCleanupOldBackups_PrunesOldBackups(t *testing.T) {
 	}
 
 	// Keep only 2 backups
-	deleted := cleanup_old_backups(tmpDir, 2)
+	deleted := backup.CleanupOldBackups(tmpDir, 2)
 
 	if deleted != 3 {
 		t.Errorf("expected 3 deleted, got %d", deleted)
@@ -6923,7 +6924,7 @@ func TestCleanupOldBackups_PrunesOldBackups(t *testing.T) {
 func TestCleanupOldBackups_MissingDir(t *testing.T) {
 	tmpDir := t.TempDir()
 
-	deleted := cleanup_old_backups(tmpDir, 5)
+	deleted := backup.CleanupOldBackups(tmpDir, 5)
 	if deleted != 0 {
 		t.Errorf("expected 0 deleted when no backup dir, got %d", deleted)
 	}

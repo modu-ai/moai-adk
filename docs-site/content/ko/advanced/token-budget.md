@@ -30,8 +30,8 @@ GLM-5.2(`moai glm` / `moai cg` GLM 패널)는 1M 컨텍스트 모델이므로 50
 
 statusline은 컨텍스트 바에 `/clear` 힌트를 2단계로 표시합니다.
 
-- {{< icon warning warn >}} **소프트 마커** `(⚠️/clear)` — 밴드의 소프트 임계에서 표시. 사용자가 판단하여 `/clear`를 실행할 수 있는 권고 신호입니다.
-- {{< icon warning danger >}} **하드 마커** `(🛑/clear!)` — auto-compact 인식 천장에서 표시. 다음 액션은 반드시 `/clear`여야 합니다.
+- {{< icon warning warn >}} **소프트 마커** — statusline 컨텍스트 바에 `/clear` 힌트가 경고 색상과 함께 표시됩니다. 밴드의 소프트 임계에서 나타나며, 사용자가 판단하여 `/clear`를 실행할 수 있는 권고 신호입니다.
+- {{< icon warning danger >}} **하드 마커** — statusline 컨텍스트 바에 `/clear` 힌트가 강한 경고 색상과 함께 표시됩니다. auto-compact 인식 천장에서 나타나며, 다음 액션은 반드시 `/clear`여야 합니다.
 
 하드 천장은 auto-compact 임계값 가까이 설정되므로, 런타임 auto-compact가 먼저 발동하여 하드 마커는 실제로는 드물게 트리거됩니다. 이는 auto-compact 인식 공식의 의도된 트레이드오프입니다.
 

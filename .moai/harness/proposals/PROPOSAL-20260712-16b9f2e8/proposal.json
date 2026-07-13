@@ -1,7 +1,7 @@
 {
   "confidence": 1,
   "draft_id": "PROPOSAL-20260712-16b9f2e8",
-  "generated_at": "2026-07-13T04:14:01Z",
+  "generated_at": "2026-07-13T16:23:20Z",
   "generator_version": "0.1.0",
   "observation_count": 145,
   "pattern_key": "tool_failure:Bash:UnknownFailure",

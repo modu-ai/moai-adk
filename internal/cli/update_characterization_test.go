@@ -6,6 +6,7 @@ import (
 
 	"github.com/modu-ai/moai-adk/internal/cli/update"
 	"github.com/modu-ai/moai-adk/internal/cli/update/plan"
+	"github.com/modu-ai/moai-adk/internal/cli/update/backup"
 )
 
 // This file is the M3b characterization safety net (SPEC-CLI-TUX-V3-003,
@@ -138,8 +139,8 @@ func TestValuesEqualCharacterization(t *testing.T) {
 // TestIsSymlinkEntryCharacterization pins that a plain path string is NOT
 // classified as a symlink entry (the restore helpers use this to skip symlinks).
 func TestIsSymlinkEntryCharacterization(t *testing.T) {
-	if isSymlinkEntry("plain/path/to/file") {
-		t.Error("isSymlinkEntry(plain path) = true, want false (plain paths are not symlinks)")
+	if backup.IsSymlinkEntry("plain/path/to/file") {
+		t.Error("backup.IsSymlinkEntry(plain path) = true, want false (plain paths are not symlinks)")
 	}
 }
 

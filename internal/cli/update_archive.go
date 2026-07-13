@@ -22,6 +22,7 @@ import (
 	"time"
 
 	"github.com/modu-ai/moai-adk/internal/tui"
+	"github.com/modu-ai/moai-adk/internal/cli/update/backup"
 )
 
 // archiveVersion is the version tag used for the archive directory.
@@ -232,7 +233,7 @@ func copyDirAll(srcDir, dstDir string) error {
 
 		// REQ-SEC-003: skip symlinks so the archive copy does not dereference a
 		// link and record its target content (CWE-61 symlink-following write).
-		if isSymlinkEntry(path) {
+		if backup.IsSymlinkEntry(path) {
 			return nil
 		}
 
@@ -363,7 +364,7 @@ func copyFile(src, dst string) error {
 	// Defense-in-depth: refuse to dereference a symlink source. os.Stat (below)
 	// and os.Open both follow symlinks; an Lstat check here keeps the contract
 	// explicit even though upstream callers already skip symlinks.
-	if isSymlinkEntry(src) {
+	if backup.IsSymlinkEntry(src) {
 		return fmt.Errorf("copy %s → %s: refusing to dereference symlink source", src, dst)
 	}
 

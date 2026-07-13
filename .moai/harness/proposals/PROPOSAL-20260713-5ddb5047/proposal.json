@@ -1,0 +1,10 @@
+{
+  "confidence": 1,
+  "draft_id": "PROPOSAL-20260713-5ddb5047",
+  "generated_at": "2026-07-13T16:23:20Z",
+  "generator_version": "0.1.0",
+  "observation_count": 5,
+  "pattern_key": "tool_failure:Bash:OOMKilled",
+  "source_ts": "2026-07-13T11:59:39Z",
+  "tier": "rule"
+}

@@ -1,14 +1,11 @@
 ---
 name: hns-github-specialist
 description: >
-  (dev-only) github harness specialist — GitHub issue-fix and PR-review for
-  moai-adk-go maintainers. NOT distributed to user projects. Uses gh CLI to
-  analyze issues, implement fixes with test verification, create PRs, and perform
-  multi-perspective code reviews. Ported with structural fidelity from
-  .claude/agents/local/github-specialist.md per
-  SPEC-V3R6-DEV-HARNESS-CONSOLIDATION-001.
+  (dev-only) github harness specialist — GitHub issue-fix and PR-review for moai-adk-go maintainers. NOT distributed to user projects. Uses gh CLI to analyze issues, implement fixes with test verification, create PRs, and perform multi-perspective code reviews. Ported with structural fidelity from .claude/agents/local/github-specialist.md per SPEC-V3R6-DEV-HARNESS-CONSOLIDATION-001.
+
 tools: Read, Write, Edit, Bash, Grep, Glob
 effort: high
+model: opus
 ---
 
 # Specialist: harness-github — Issue Fix and PR Review
