@@ -285,6 +285,7 @@ var expectedTierProfiles = map[string]map[string][3]tierProfileExpectCell{
 		"super-advisor":   {{"fable", "xhigh"}, {"fable", "high"}, {"opus", "high"}},
 		"manager-develop": {{"fable", "high"}, {"opus", "high"}, {"opus", "medium"}},
 		"builder-harness": {{"opus", "high"}, {"opus", "medium"}, {"opus", "medium"}},
+		"e2e-specialist":  {{"opus", "high"}, {"opus", "medium"}, {"opus", "medium"}},
 		"manager-docs":    {{"sonnet", "medium"}, {"sonnet", "low"}, {"sonnet", "low"}},
 		"manager-git":     {{"sonnet", "low"}, {"sonnet", "low"}, {"sonnet", "low"}},
 		"Explore":         {{"inherit", "medium"}, {"inherit", "low"}, {"inherit", "low"}},
@@ -297,6 +298,7 @@ var expectedTierProfiles = map[string]map[string][3]tierProfileExpectCell{
 		"super-advisor":   {{"opus", "xhigh"}, {"opus", "high"}, {"opus", "medium"}},
 		"manager-develop": {{"sonnet", "high"}, {"sonnet", "high"}, {"sonnet", "high"}},
 		"builder-harness": {{"sonnet", "high"}, {"sonnet", "medium"}, {"sonnet", "medium"}},
+		"e2e-specialist":  {{"sonnet", "high"}, {"sonnet", "medium"}, {"sonnet", "medium"}},
 		"manager-docs":    {{"sonnet", "low"}, {"sonnet", "low"}, {"sonnet", "low"}},
 		"manager-git":     {{"sonnet", "low"}, {"sonnet", "low"}, {"sonnet", "low"}},
 		"Explore":         {{"inherit", "medium"}, {"inherit", "low"}, {"inherit", "low"}},
@@ -307,7 +309,7 @@ var tierColumnOrder = [3]string{"max", "medium", "low"}
 
 // TestTierProfileMatrixFidelity (AC-MTP-006, REQ-MTP-006..009) asserts every
 // (plan × tier × agent) cell of GetTierProfileEntry equals the spec.md §B.6/§B.7
-// {model, effort} pair. 2 plans × 10 agents × 3 tiers = 60 asserted cells.
+// {model, effort} pair. 2 plans × 11 agents × 3 tiers = 66 asserted cells.
 func TestTierProfileMatrixFidelity(t *testing.T) {
 	asserted := 0
 	for plan, agents := range expectedTierProfiles {
@@ -327,20 +329,21 @@ func TestTierProfileMatrixFidelity(t *testing.T) {
 			}
 		}
 	}
-	if asserted != 60 {
-		t.Errorf("asserted %d cells, want 60 (2 plans × 10 agents × 3 tiers)", asserted)
+	if asserted != 66 {
+		t.Errorf("asserted %d cells, want 66 (2 plans × 11 agents × 3 tiers)", asserted)
 	}
 }
 
-// TestTierProfiles_AllTenAgents (REQ-MTP-009) asserts both plans carry explicit
-// rows for all 10 retained agents — the auditors, manager-design, and
-// super-advisor moved off implicit inherit; Explore is retained as an explicit
+// TestTierProfiles_AllElevenAgents (REQ-MTP-009) asserts both plans carry explicit
+// rows for all 11 retained agents — the auditors, manager-design, and
+// super-advisor moved off implicit inherit; e2e-specialist added by
+// SPEC-E2E-REVIVAL-001; Explore is retained as an explicit
 // inherit row for display/derivation surfaces.
-func TestTierProfiles_AllTenAgents(t *testing.T) {
+func TestTierProfiles_AllElevenAgents(t *testing.T) {
 	agents := []string{
 		"manager-spec", "plan-auditor", "sync-auditor", "manager-design",
-		"super-advisor", "manager-develop", "builder-harness", "manager-docs",
-		"manager-git", "Explore",
+		"super-advisor", "manager-develop", "builder-harness", "e2e-specialist",
+		"manager-docs", "manager-git", "Explore",
 	}
 	for _, plan := range []string{"api", "subscription"} {
 		for _, a := range agents {
@@ -771,14 +774,14 @@ func TestResolveProjectPerformanceTier(t *testing.T) {
 }
 
 // TestTierProfileAgents covers the model-policy preview accessor (M4): it returns
-// exactly the 10 retained agents in stable display order, includes Explore for the
+// exactly the 11 retained agents in stable display order, includes Explore for the
 // display/derivation surface, every listed agent resolves in both plan profiles,
 // and the returned slice is a defensive copy the caller cannot use to mutate the
 // package-level order.
 func TestTierProfileAgents(t *testing.T) {
 	agents := TierProfileAgents()
-	if len(agents) != 10 {
-		t.Fatalf("TierProfileAgents() returned %d agents, want 10", len(agents))
+	if len(agents) != 11 {
+		t.Fatalf("TierProfileAgents() returned %d agents, want 11", len(agents))
 	}
 	foundExplore := false
 	for _, a := range agents {

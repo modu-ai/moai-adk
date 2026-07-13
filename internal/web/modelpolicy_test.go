@@ -358,7 +358,7 @@ func TestModelPolicyActivePlan(t *testing.T) {
 }
 
 // TestModelPolicyDualPlanPreview (AC-MTP-020 + AC-MTP-023 single source): both plan
-// previews render all 10 retained agents × 3 tiers, and an asserted cell value is
+// previews render all 11 retained agents × 3 tiers, and an asserted cell value is
 // READ FROM the Go tier-profile structure — proving the web layer derives the matrix
 // rather than duplicating it as a literal.
 func TestModelPolicyDualPlanPreview(t *testing.T) {
@@ -377,10 +377,10 @@ func TestModelPolicyDualPlanPreview(t *testing.T) {
 			t.Errorf("preview missing agent row %q", agent)
 		}
 	}
-	// Each plan preview must render 10 agents × 3 tier cells → 30 tier <td> per plan.
-	// Assert the aggregate row count via the agent-row marker (10 agents × 2 plans).
+	// Each plan preview must render 11 agents × 3 tier cells → 33 tier <td> per plan.
+	// Assert the aggregate row count via the agent-row marker (11 agents × 2 plans).
 	if n := strings.Count(body, `class="mp-plan-row"`); n != len(template.TierProfileAgents())*2 {
-		t.Errorf("mp-plan-row count = %d, want %d (10 agents × 2 plans)", n, len(template.TierProfileAgents())*2)
+		t.Errorf("mp-plan-row count = %d, want %d (11 agents × 2 plans)", n, len(template.TierProfileAgents())*2)
 	}
 
 	// Structure-derived cross-check (single-source guarantee): api/max/super-advisor

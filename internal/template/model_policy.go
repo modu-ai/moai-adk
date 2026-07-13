@@ -283,7 +283,9 @@ var tierColumnIndex = map[string]int{
 //
 // The api rows equal spec.md §B.6 (Plan A rev2) and the subscription rows equal
 // spec.md §B.7 (Plan B), copied cell-for-cell — these values are settled design
-// input (verified 60/60 against the model-tier-redesign report) and MUST NOT be
+// input (the original 60 cells verified 60/60 against the model-tier-redesign
+// report; the e2e-specialist row added by SPEC-E2E-REVIVAL-001 mirrors the
+// builder-harness execution-class profile, 66 cells total) and MUST NOT be
 // re-derived or "improved" without a spec change. Auditors, manager-design, and
 // super-advisor carry explicit rows (moved off implicit inherit); Explore keeps
 // an inherit row for display/derivation surfaces only (the apply pass skips it).
@@ -299,6 +301,7 @@ var tierProfiles = map[string]map[string]tierProfileRow{
 		"super-advisor":   {{"fable", "xhigh"}, {"fable", "high"}, {"opus", "high"}},
 		"manager-develop": {{"fable", "high"}, {"opus", "high"}, {"opus", "medium"}},
 		"builder-harness": {{"opus", "high"}, {"opus", "medium"}, {"opus", "medium"}},
+		"e2e-specialist":  {{"opus", "high"}, {"opus", "medium"}, {"opus", "medium"}},
 		"manager-docs":    {{"sonnet", "medium"}, {"sonnet", "low"}, {"sonnet", "low"}},
 		"manager-git":     {{"sonnet", "low"}, {"sonnet", "low"}, {"sonnet", "low"}},
 		"Explore":         {{modelInherit, "medium"}, {modelInherit, "low"}, {modelInherit, "low"}},
@@ -312,13 +315,14 @@ var tierProfiles = map[string]map[string]tierProfileRow{
 		"super-advisor":   {{"opus", "xhigh"}, {"opus", "high"}, {"opus", "medium"}},
 		"manager-develop": {{"sonnet", "high"}, {"sonnet", "high"}, {"sonnet", "high"}},
 		"builder-harness": {{"sonnet", "high"}, {"sonnet", "medium"}, {"sonnet", "medium"}},
+		"e2e-specialist":  {{"sonnet", "high"}, {"sonnet", "medium"}, {"sonnet", "medium"}},
 		"manager-docs":    {{"sonnet", "low"}, {"sonnet", "low"}, {"sonnet", "low"}},
 		"manager-git":     {{"sonnet", "low"}, {"sonnet", "low"}, {"sonnet", "low"}},
 		"Explore":         {{modelInherit, "medium"}, {modelInherit, "low"}, {modelInherit, "low"}},
 	},
 }
 
-// tierProfileAgentOrder is the canonical display/derivation order of the 10
+// tierProfileAgentOrder is the canonical display/derivation order of the 11
 // retained agents for the model-policy preview surfaces (REQ-MTP-009 — Explore is
 // included for display even though the apply pass skips its inherit row). The order
 // matches the spec.md §B.6/§B.7 matrix row order so the web preview reads top-down
@@ -331,6 +335,7 @@ var tierProfileAgentOrder = []string{
 	"super-advisor",
 	"manager-develop",
 	"builder-harness",
+	"e2e-specialist",
 	"manager-docs",
 	"manager-git",
 	"Explore",
