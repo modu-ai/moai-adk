@@ -17,7 +17,7 @@ workflow:
         after_run: false
         enabled: true
         token_threshold: 150000
-    execution_mode: team
+    execution_mode: auto
     # Iteration-ceiling precedence: CLI --max flag > ralph.yaml loop.max_iterations
     # > workflow.yaml loop_prevention.max_iterations (this block — the lowest-
     # precedence documented ceiling surface for the diagnostic fix-loop). The

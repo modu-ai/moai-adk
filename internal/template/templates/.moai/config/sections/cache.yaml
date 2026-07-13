@@ -9,7 +9,7 @@
 # GLM caches automatically based on content similarity; see usage.prompt_tokens_details.cached_tokens.
 cacheStrategy:
   # Toggle cache_control injection. Ships disabled; flip to true to opt in.
-  enabled: false
+  enabled: true
   # Session-start breakpoint TTL. Enum: "1h" | "5m" | "off".
   #   "1h"  → +100% cache_write on first turn, -90% cache_read on every later turn
   #   "5m"  → +25% cache_write, shorter window (best for short sessions)
