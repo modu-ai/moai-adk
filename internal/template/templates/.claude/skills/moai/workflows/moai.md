@@ -234,14 +234,14 @@ Mode selection:
 10.5. **Phase 1.2 (Issue)**: Create GitHub Issue linked to SPEC (only when the `--issue` opt-in flag is set; default skips per the late-branch opt-in policy). See plan.md Phase 2.5.
 11. **Phase 1.5 (Annotate)**: Run annotation cycle (1-6 iterations) until user approves plan
 11.2. **Plan-audit gate**: plan-auditor independent audit of the plan artifacts (Pipeline Gates #1); FAIL/INCONCLUSIVE halts
-11.3. **Implementation Kickoff Approval**: plan→run HUMAN GATE — exactly once per pipeline entry, score-independent (Pipeline Gates #2)
-11.5. **Execution Mode Selection Gate**: After Phase 1.5 approval, before Phase 2 — shape preferences collected here feed Phase 0.95 mode selection (6-mode catalog, Pipeline Gates #3)
+11.3. **Implementation Kickoff Approval**: plan→run HUMAN GATE — exactly once per pipeline entry, score-independent (Pipeline Gates #2). Merged round: presented in a single AskUserQuestion call carrying both this Kickoff question AND the Step 11.5 execution-shape question (multi-question, ≤4 questions per call). The Kickoff question offers run-phase entry (Recommended) / additional review / abort; merging co-locates the two questions into one blocking round-trip and never removes, weakens, or auto-bypasses the Kickoff gate — declining Kickoff halts run-phase entry exactly as a standalone round would
+11.5. **Execution Mode Selection Gate**: co-located with Step 11.3 in the same single AskUserQuestion call (see 11.3) — shape preferences collected here feed Phase 0.95 mode selection (6-mode catalog, Pipeline Gates #3)
    - If `--team` flag: RETIRED — emit `MODE_TEAM_UNAVAILABLE`, fall back to execution_mode="sub-agent"
-   - If `--solo` flag: Skip Gate, auto-select execution_mode="sub-agent"
+   - If `--solo` flag: Skip the execution-shape question (auto-select execution_mode="sub-agent"); the Kickoff question still rides its own round
    - Otherwise (no flag):
      - Read .moai/config/sections/llm.yaml → team_mode ("" = cc, "glm" = glm, "cg" = cg)
      - Bash: test -n "$TMUX" && echo "tmux" || echo "no-tmux"
-     - AskUserQuestion: worktree+{mode} (Recommended if tmux available) | sub-agent
+     - Merged AskUserQuestion (single call, with Step 11.3): Q1 Kickoff — run-phase entry (Recommended) / additional review / abort; Q2 execution shape — worktree+{mode} (Recommended if tmux available) | sub-agent
    - Worktree selected: Launch new tmux session in worktree dir, terminate current pipeline
    - Sub-agent selected: Pass execution_mode + active_mode to Phase 2
    - See plan.md Decision Point 3.5 for full option details
@@ -267,6 +267,8 @@ Mode selection:
 14. **Phase 3 (Sync)**: Always manager-docs sub-agent (sync phase is always sub-agent) — entered via auto-chain on a `full-pipeline` contract, or via the "(Recommended)" next-step option on a `single-phase` contract
 14.5. **Sync-audit gate**: sync-auditor independent 4-dimension scoring (Pipeline Gates #4); FAIL/INCONCLUSIVE halts the chain
 15. Terminate with the Completion Report completion signal (or continue the Agentic Completion Loop while the completion condition is unmet)
+   - Full-pipeline completion close: when a `full-pipeline` contract completes successfully with no genuine pending decision, close with a clean completion statement and NO manufactured next-step question — the askuser-protocol § Completion-Report Next-Step Discipline "close with NO question" clause is the full-pipeline default. A genuine next-step decision, when one actually exists, still rides AskUserQuestion.
+   - `single-phase` contract completions keep the existing "(Recommended)" next-step chain question unchanged (Step 14 — the chain never fires silently)
 
 ---
 
