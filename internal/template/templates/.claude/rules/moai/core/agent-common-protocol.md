@@ -478,6 +478,9 @@ turn where deferred tools may be needed. See
 - The canonical CI-status-query acceptance criterion (recorded in the
   predecessor workflow optimization rule) verifies this section contains
   `gh pr checks --json` and `jq` literals in proximity.
+- `.claude/rules/moai/workflow/cache-aware-execution.md` — prompt-cache-aware
+  ordering (stagger-spawn for parallel same-type agents, gate placement,
+  session-loaded file edit timing).
 
 ## Time Estimation
 
