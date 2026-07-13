@@ -115,7 +115,7 @@ Surface the derived name to the user as part of the Phase 7 approval gate. If th
 
 [HARD] Before delegating to the Builder Workflow, the orchestrator MUST obtain explicit approval via `AskUserQuestion`. This gate is mandatory and score-independent (a strong Context-First Discovery profile never authorizes skipping it — parallel to the Implementation Kickoff Approval human gate).
 
-This single round carries BOTH the final-round harness-generation proposal (Phase 1.6 — the "Generate a `<type>` development harness for this project?" question, with the derived name + confirmed profile surfaced in the question body) AND the build approval — one AskUserQuestion round instead of two sequential rounds. Merging co-locates the proposal with the approval; the gate itself is unchanged.
+This single round carries BOTH the final-round harness-generation proposal (Phase 4 — the "Generate a `<type>` development harness for this project?" question, with the derived name + confirmed profile surfaced in the question body) AND the build approval — one AskUserQuestion round instead of two sequential rounds. Merging co-locates the proposal with the approval; the gate itself is unchanged.
 
 `ToolSearch(query: "select:AskUserQuestion")` → `AskUserQuestion` with the canonical four-option pattern (first option `(권장)` / `(Recommended)`):
 
