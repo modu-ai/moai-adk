@@ -16,14 +16,14 @@ func TestM5bD1_AtomicSave_AllPanelsInDOM(t *testing.T) {
 
 	// 1. All 15 tabpanels present in DOM.
 	panelCount := strings.Count(body, `class="tabpanel`)
-	if panelCount < 15 {
-		t.Errorf("expected >= 15 tabpanel divs in DOM (atomic Save contract), found %d", panelCount)
+	if panelCount < 6 {
+		t.Errorf("expected >= 6 tabpanel divs in DOM (6-tab console, atomic Save contract — SPEC-WEBCONF-SIMPLIFY-001 M3), found %d", panelCount)
 	}
 
-	// 2. Tab nav present with data-tab attributes.
+	// 2. Tab nav present with data-tab attributes (6 surviving tabs).
 	tabCount := strings.Count(body, `data-tab=`)
-	if tabCount < 15 {
-		t.Errorf("expected >= 15 data-tab buttons, found %d", tabCount)
+	if tabCount < 6 {
+		t.Errorf("expected >= 6 data-tab buttons (6-tab console — M3), found %d", tabCount)
 	}
 
 	// 3. First tab + first panel are active.

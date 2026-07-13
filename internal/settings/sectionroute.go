@@ -57,30 +57,21 @@ var sectionRoutes = map[string]SectionRoute{
 	"quality":        RouteTypedSave,
 	"git-convention": RouteTypedSave,
 
-	// 10섹션 계약 중 typed 경로 (REQ-WC11-010/012).
+	// 10섹션 계약 중 typed 경로 (REQ-WC11-010/012) — surviving web-writable.
 	"git-strategy": RouteTypedSave,
 	"llm":          RouteTypedSave,
 
-	// seam 전용 6섹션 (REQ-WC11-017). db(settings SSOT)와 research(FieldDef
-	// 0개 + 콘솔 탭 미등재의 유령 쓰기 경로였다 — SPEC-WEB-CONSOLE-012
-	// REQ-WC12-010)는 콘솔 표면에서 제거되어 더 이상 seam-writable이 아니다 —
-	// 미등재 → RouteExcluded.
-	"workflow":      RouteSeam,
-	"harness":       RouteSeam,
-	"ralph":         RouteSeam,
-	"feedback":      RouteSeam,
-	"observability": RouteSeam,
-	"security":      RouteSeam,
-
-	// SPEC-WEB-CONSOLE-013 M1 신규 seam 등재 (REQ-WC13-002). handoff.yaml은
-	// SessionStart 주입 게이트(internal/hook/handoff_inject.go)가 소비하는
-	// 실런타임 섹션이고, cache는 REQ-WC13-001의 부분 supersede로 machine/state
-	// 제외군을 이탈했다 (최상위 키 cacheStrategy — sectionwrite.go 가드 참조).
-	"handoff": RouteSeam,
-	"cache":   RouteSeam,
-
 	// statusline은 기존 전용 경로 유지 (M6은 노출 fan-out만).
 	"statusline": RouteStatusline,
+
+	// SPEC-WEBCONF-SIMPLIFY-001 M3: the 8 former seam sections (workflow, harness,
+	// ralph, feedback, observability, security, handoff, cache) are reclassified
+	// to RouteExcluded — their tabs are removed and their web write path is gone.
+	// They are absent from this map, so RouteForSection returns the zero value
+	// (RouteExcluded). Their config keys persist in the baked template YAML for
+	// runtime consumption (REQ-WC-003). project/mx were already RouteExcluded
+	// (zero-value); quality_extras shares the "quality" file (RouteTypedSave —
+	// main SectionQuality D12-unaffected; M4 adds the enable/disable toggle).
 }
 
 // RouteForSection은 섹션 파일 base name의 웹 콘솔 쓰기 경로를 반환한다.
@@ -89,27 +80,29 @@ func RouteForSection(name string) SectionRoute {
 	return sectionRoutes[name]
 }
 
-// SeamSections는 yamlpatch seam이 유일한 쓰기 경로인 8개 섹션을 반환한다
-// (REQ-WC11-017 + SPEC-WEB-CONSOLE-013 REQ-WC13-002). 순서는 spec.md §1.1
-// 결정 3의 열거 순서 + 013 신규 2종(handoff, cache) 후행이다 (db는 콘솔
-// 표면에서 제거됨 — settings SSOT; research는 SPEC-WEB-CONSOLE-012
-// REQ-WC12-010에서 폐선).
+// SeamSections는 yamlpatch seam이 유일한 쓰기 경로인 섹션을 반환한다.
+// SPEC-WEBCONF-SIMPLIFY-001 M3가 기존 8개 seam 섹션을 전부 RouteExcluded로
+// 재분류하여 현재 이 목록은 비어 있다. seam 메커니즘(yamlpatch.PatchFile) 자체는
+// 잔존하며, 향후 SPEC이 seam 섹션을 재추가하면 여기에 다시 열거한다.
 func SeamSections() []string {
-	return []string{"workflow", "harness", "ralph", "feedback", "observability", "security", "handoff", "cache"}
+	return []string{}
 }
 
-// ExcludedSections는 명시적 제외군(REQ-WC11-018)을 반환한다: machine/state 섹션 +
-// 대형 정책 파일 + 미지명 잔여 섹션(2026-07-03 실측 4종). cache는
-// SPEC-WEB-CONSOLE-013 REQ-WC13-001의 부분 supersede로 이 열거에서 제거되어
-// RouteSeam으로 재분류되었다. RouteForSection은 이 목록 외의 임의 미등재
-// 이름에도 동일하게 RouteExcluded를 반환한다.
+// ExcludedSections는 명시적 제외군을 반환한다: machine/state 섹션 + 대형 정책
+// 파일 + 미지명 잔여 섹션 + SPEC-WEBCONF-SIMPLIFY-001 M3로 재분류된 8개 전
+// seam 섹션. RouteForSection은 이 목록 외의 임의 미등재 이름에도 동일하게
+// RouteExcluded를 반환한다 (zero value).
 func ExcludedSections() []string {
 	return []string{
-		// machine/state 섹션 (cache 제외 — REQ-WC13-001).
+		// machine/state 섹션.
 		"state", "system", "project", "sunset",
 		// 대형 정책 파일.
 		"tool-policy", "lsp", "mx",
 		// 미지명 잔여 섹션.
 		"constitution", "context", "design", "interview",
+		// SPEC-WEBCONF-SIMPLIFY-001 M3: 8 former seam sections reclassified to
+		// RouteExcluded (tabs removed, web write path gone, config keys persist
+		// in baked template YAML for runtime consumption — REQ-WC-003).
+		"workflow", "harness", "ralph", "feedback", "observability", "security", "handoff", "cache",
 	}
 }

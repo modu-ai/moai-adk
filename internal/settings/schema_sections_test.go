@@ -21,6 +21,15 @@ func seedTypedFixtures(t *testing.T, root string, names ...string) {
 	}
 }
 
+// m3ReclassifiedSeamSections는 SPEC-WEBCONF-SIMPLIFY-001 M3가 RouteExcluded로
+// 재분류한 8개 전 seam 섹션이다. 이 섹션들의 PersistSeam FieldDef 정의는 잔존하며
+// (config keys persist), WriteSectionViaSeam이 이제 쓰기를 거부한다 (web write
+// path removed). 구조 불변식 검증에서 이 섹션들을 엄격 RouteSeam 체크에서 제외한다.
+var m3ReclassifiedSeamSections = map[string]bool{
+	"workflow": true, "harness": true, "ralph": true, "feedback": true,
+	"observability": true, "security": true, "handoff": true, "cache": true,
+}
+
 // TestSchemaSectionsRegistered는 M2b 확장 스키마의 구조 불변식을 검증한다:
 // (i) 확장 섹션 전부에 필드 ≥ 1 (ii) 필드명 유일 (iii) seam 필드의 섹션은
 // RouteSeam으로 라우팅 (iv) typed 필드의 섹션은 typed applier 대상
@@ -39,8 +48,14 @@ func TestSchemaSectionsRegistered(t *testing.T) {
 
 		switch f.Persist.Kind {
 		case PersistSeam:
-			if RouteForSection(f.Persist.Section) != RouteSeam {
-				t.Errorf("field %q: seam persist targets non-seam section %q", f.Name, f.Persist.Section)
+			// SPEC-WEBCONF-SIMPLIFY-001 M3: 8 former seam sections reclassified to
+			// RouteExcluded — their PersistSeam field defs remain (config keys
+			// persist) but WriteSectionViaSeam now rejects writes. Exempt them from
+			// the strict RouteSeam invariant (the route gate is the security boundary).
+			if !m3ReclassifiedSeamSections[f.Persist.Section] {
+				if RouteForSection(f.Persist.Section) != RouteSeam {
+					t.Errorf("field %q: seam persist targets non-seam section %q", f.Name, f.Persist.Section)
+				}
 			}
 			if len(f.Persist.Path) == 0 {
 				t.Errorf("field %q: seam persist without path", f.Name)
@@ -68,27 +83,28 @@ func TestSchemaSectionsRegistered(t *testing.T) {
 	}
 }
 
-// TestApplySchemaEditsSeamRoundTrip은 seam 필드 편집이 WriteSectionViaSeam 경유로
-// 파일에 반영되고 주석이 보존됨을 검증한다 (REQ-WC11-017; AC-WC11-004 인프라 계층).
+// TestApplySchemaEditsSeamRoundTrip은 SPEC-WEBCONF-SIMPLIFY-001 M3 이후 seam 섹션
+// 편집이 거부됨을 검증한다. M3가 workflow를 RouteExcluded로 재분류하여
+// WriteSectionViaSeam이 오류를 반환하고, ApplySchemaEdits가 이를 전파하며, 디스크의
+// workflow.yaml이 바이트 단위로 무변경임을 확인한다 (REQ-WC-003 — config keys
+// persist, web write path removed).
 func TestApplySchemaEditsSeamRoundTrip(t *testing.T) {
 	t.Parallel()
 	root := t.TempDir()
 	before := seedSectionFixture(t, root, "workflow")
 
-	// 구 workflow.team.max_teammates seam 필드는 Agent Teams 정적 레이어와 함께
-	// 제거되었다 (SPEC-AGENT-TEAM-RETIRE-001 M2) — 잔존 workflow seam 필드로 교체.
 	err := ApplySchemaEdits(root, map[string]string{
 		"workflow.token_budget.plan": "31000",
 	})
-	if err != nil {
-		t.Fatalf("ApplySchemaEdits: %v", err)
+	if err == nil {
+		t.Fatal("ApplySchemaEdits(workflow): want rejection error (M3 RouteExcluded), got nil")
 	}
 	after := readSection(t, root, "workflow")
-	if !strings.Contains(after, "plan: 31000") {
-		t.Errorf("seam edit not persisted:\n%s", after)
+	if strings.Contains(after, "plan: 31000") {
+		t.Errorf("rejected seam edit leaked to disk:\n%s", after)
 	}
 	if got, want := sectionCommentLines(after), sectionCommentLines(before); strings.Join(got, "\n") != strings.Join(want, "\n") {
-		t.Error("comments not preserved by seam routing")
+		t.Error("comments not preserved after rejected seam routing")
 	}
 }
 
@@ -499,6 +515,11 @@ func TestApplySchemaEditsAllFieldsRoundTrip(t *testing.T) {
 	edits := map[string]string{}
 	for _, f := range AllFields() {
 		if f.Persist.Kind != PersistSeam && f.Persist.Kind != PersistTypedSection {
+			continue
+		}
+		// SPEC-WEBCONF-SIMPLIFY-001 M3: skip fields whose section is web-unwritable
+		// (the 8 former seam sections are now RouteExcluded — web write path removed).
+		if RouteForSection(f.Persist.Section) == RouteExcluded {
 			continue
 		}
 		switch f.Type {

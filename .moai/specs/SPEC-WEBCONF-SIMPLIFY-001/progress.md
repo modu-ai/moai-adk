@@ -85,11 +85,26 @@ M2 baked the 11 removed tabs' values into `internal/template/templates/.moai/con
 
 **Build evidence**: `make build` exit 0 (templates re-embedded via `//go:embed all:templates`); `go build ./...` exit 0; `GOOS=windows GOARCH=amd64 go build ./...` exit 0; `go test ./internal/template/... ./internal/settings/...` all PASS (no schema break).
 
+### M3 evidence (tab-set reduction + route reclassification)
+
+M3 removed the 11 tabs from the web UI and reclassified the 8 former seam sections to `RouteExcluded` (config keys persist in baked YAML for runtime consumption — REQ-WC-003; web write path removed). The 6 surviving tabs: `identity, language, launch, git_strategy, llm, agentfm`.
+
+**Source edits (atomic — all in the same commit per KI-1/AP-3)**:
+- `internal/web/schemaform.go`: `consoleTabs()` 16→6 entries; `schemaSectionMetas()` 12→2 entries (only `SectionGitStrategy` + `SectionLLM` survive as generic fieldsets).
+- `internal/settings/sectionroute.go`: 8 former seam sections (workflow, harness, ralph, feedback, observability, security, handoff, cache) removed from `sectionRoutes` (zero-value `RouteExcluded`); `SeamSections()` → empty; `ExcludedSections()` += the 8 (11→19). `project`/`mx` were already zero-value `RouteExcluded`; `quality_extras` shares the `quality` file (stays `RouteTypedSave` — main SectionQuality D12-unaffected; M4 adds the toggle).
+- `WriteSectionViaSeam` route gate now rejects all 8 (the web write path is gone); `ApplySchemaEdits` propagates the rejection. `allFields()` NOT pruned (config keys persist as field definitions; the route is the security boundary — forged writes blocked at the gate).
+
+**Test updates (C-6 — UPDATED not deleted; 18 tests across 8 files)**: sectionroute_test.go (3 tests: route table, SeamSections len 0, ExcludedSections len 19); sectionwrite_test.go (golden success tests → rejection tests + 8 added to rejection list); schema_sections_test.go (TestSchemaSectionsRegistered M3-exemption + 2 round-trip tests skip RouteExcluded); web/schema_sections_test.go (5 tests: render-smoke trimmed to surviving sections, save tests for removed sections assert file-unchanged); web/schema_render_test.go (skip removed-section fields); web/m5b_verify_test.go (panel/tab counts 15→6); web/mx_rawview_test.go (mx markers present→absent); web/scope_contract_test.go (8 seam→RouteExcluded + added to exclusions).
+
+**M3-touched ACs**: AC-WC-001 (6-tab render) — PASS; AC-WC-002 (11 removed tabs absent) — PASS; AC-WC-010 (atomic save intact — WriteSectionViaSeam rejects removed sections) — PASS.
+
+**Build evidence**: `make build` exit 0; `go build ./...` exit 0; `GOOS=windows GOARCH=amd64 go build ./...` exit 0; `go test ./internal/web/... ./internal/settings/...` all PASS; golangci-lint 0 issues; C-HRA-008 boundary 0 matches.
+
 ### Remaining ACs (pending their owning milestone)
 
 | AC ID | Owning milestone | Status |
 |-------|------------------|--------|
-| AC-WC-001 / AC-WC-002 (6-tab render, removed tabs absent) | M3 | PENDING |
+| AC-WC-001 / AC-WC-002 (6-tab render, removed tabs absent) | M3 | PASS (consoleTabs 6 entries; 11 removed tabs absent from render + route reclassified) |
 | AC-WC-003a / AC-WC-003b (config keys persist + ship from template) | M2 | PASS (M2 portion — keys present with baked values in `internal/template/templates/`) |
 | AC-WC-004 (quality_extras toggle on launch tab) | M4 | PENDING |
 | AC-WC-007 (tier-click auto-suggest writes via agentfm.Patch) | M5 | PENDING (backend accessor `TierSuggestedModelEffort` ready; UI wiring is M5) |
@@ -106,14 +121,14 @@ M2 baked the 11 removed tabs' values into `internal/template/templates/.moai/con
 
 ## §E.3 Run-phase Audit-Ready Signal
 
-**M1 + M2 partial** — multi-milestone Tier L SPEC; run-phase in-progress (M2 of M1–M9). This signal is completed at M9. The block below records the M1 + M2 portion.
+**M1 + M2 + M3 partial** — multi-milestone Tier L SPEC; run-phase in-progress (M3 of M1–M9). This signal is completed at M9. The block below records the M1 + M2 + M3 portion.
 
 ```yaml
 run_status: in-progress
-run_complete_at: null   # pending — run-phase not complete (M2 of 9 milestones)
-run_commit_sha: e0061ad34   # latest run-phase commit (M2); M1 was 7b11d68bc
+run_complete_at: null   # pending — run-phase not complete (M3 of 9 milestones)
+run_commit_sha: pending-backfill-m3   # latest run-phase commit (M3); M1 was 7b11d68bc, M2 was e0061ad34
 m1_to_mN_commit_strategy: per-milestone commit + push to main (Route A — Hybrid Trunk 1-person OSS)
-ac_pass_count: 8          # M1 (005,006,016,017,021) + M2 (003a,003b,015) = 8 PASS
+ac_pass_count: 10         # M1 (005,006,016,017,021) + M2 (003a,003b,015) + M3 (001,002) = 10 PASS
 ac_fail_count: 0
 ac_pass_with_debt_count: 1   # M2 merge_method blocker (§D.Δ row 4 squash→Squash outside closed set) — debt, not fail
 preserve_list_post_run_count: 20   # Option A — all 20 agent .md files under .claude/agents/{moai,harness}/ untouched
@@ -139,7 +154,11 @@ milestones:
     acs: [AC-WC-003a, AC-WC-003b, AC-WC-015]
     status: PASS-WITH-DEBT
     debt: "§D.Δ row 4 merge_method squash→Squash NOT applied — capitalized 'Squash' is outside validMergeMethods={squash,merge,rebase} (internal/config/validation.go:274). merge_method remains lowercase 'squash' (valid). BLOCKER returned for orchestrator/user resolution."
-  M3: { status: pending, owner: tab-reduction }
+  M3:
+    subject: "feat(SPEC-WEBCONF-SIMPLIFY-001): M3 remove 11 tabs from web UI + reclassify routes to RouteExcluded"
+    sha: pending-backfill-m3
+    acs: [AC-WC-001, AC-WC-002, AC-WC-010]
+    status: PASS
   M4: { status: pending, owner: surviving-tab-surfaces }
   M5: { status: pending, owner: agentfm-ui-redesign }
   M6: { status: pending, owner: i18n-assets }

@@ -33,24 +33,8 @@ func consoleTabs() []consoleTab {
 		{ID: "identity", LabelKey: "sec.identity.title", Baseline: "Identity"},
 		{ID: "language", LabelKey: "sec.language.title", Baseline: "Language"},
 		{ID: "launch", LabelKey: "sec.launch.title", Baseline: "Launch"},
-		{ID: "project", LabelKey: "sec.project.title", Baseline: "Project"},
-		// 10 섹션 확장 (SchemaSectionIDs 순서와 일치).
-		{ID: "quality_extras", LabelKey: "sec.quality_extras.title", Baseline: "Quality (advanced)"},
 		{ID: "git_strategy", LabelKey: "sec.git_strategy.title", Baseline: "Git Strategy"},
 		{ID: "llm", LabelKey: "sec.llm.title", Baseline: "LLM"},
-		{ID: "workflow", LabelKey: "sec.workflow.title", Baseline: "Workflow"},
-		{ID: "harness", LabelKey: "sec.harness.title", Baseline: "Harness"},
-		{ID: "ralph", LabelKey: "sec.ralph.title", Baseline: "MoAI-Loop"},
-		{ID: "feedback", LabelKey: "sec.feedback.title", Baseline: "Feedback"},
-		{ID: "observability", LabelKey: "sec.observability.title", Baseline: "Observability"},
-		{ID: "security", LabelKey: "sec.security.title", Baseline: "Security"},
-		// SPEC-WEB-CONSOLE-014 M4: mx raw-only 섹션 (편집 필드 0 — raw view만).
-		{ID: "mx", LabelKey: "sec.mx.title", Baseline: "MX Annotations"},
-		// SPEC-WEB-CONSOLE-013 M2 신규 섹션 (SchemaSectionIDs 순서와 일치).
-		{ID: "handoff", LabelKey: "sec.handoff.title", Baseline: "Handoff"},
-		{ID: "cache", LabelKey: "sec.cache.title", Baseline: "Prompt Cache"},
-		// agent_settings 탭(Agent Teams team.role_profiles)은 Agent Teams 정적
-		// 레이어와 함께 제거되었다 (SPEC-AGENT-TEAM-RETIRE-001). agentfm 탭은 유지.
 		{ID: "agentfm", LabelKey: "sec.agentfm.title", Baseline: "Sub-agent Frontmatter"},
 	}
 }
@@ -70,23 +54,8 @@ type schemaSectionMeta struct {
 // 반환한다 (settings.SchemaSectionIDs와 동순).
 func schemaSectionMetas() []schemaSectionMeta {
 	return []schemaSectionMeta{
-		{settings.SectionQualityExtras, "check-circle", "Quality (advanced)", "DDD gate toggles — characterization tests, behavior snapshots, preserve-before-improve."},
 		{settings.SectionGitStrategy, "folder-git", "Git Strategy", "Git workflow mode and per-mode pre-push hook action (skip/warn/enforce)."},
 		{settings.SectionLLM, "rocket", "LLM", "GLM backend model tier mappings (high/medium/low/fable)."},
-		{settings.SectionWorkflow, "panel-bottom", "Workflow", "Workflow execution, auto-clear, token budget, and worktree settings."},
-		{settings.SectionHarness, "check-circle", "Harness", "Quality harness levels, escalation, and learning subsystem."},
-		{settings.SectionRalph, "rocket", "MoAI-Loop", "MoAI-Loop instruction injection — lint and warning severity as systemMessage."},
-		{settings.SectionFeedback, "alert-circle", "Feedback", "Feedback workflow target repository."},
-		{settings.SectionObservability, "panel-bottom", "Observability", "Trace, report, and hook metrics settings."},
-		{settings.SectionSecurity, "check-circle", "Security", "Permission strictness and sandbox settings (pattern lists are read-only)."},
-		// SPEC-WEB-CONSOLE-014 M4: mx raw-only 섹션 (편집 필드 0; SchemaSectionIDs
-		// 미포함 — 편집 필드 ≥1 불변식 위반 방지). danger_categories / test_paths
-		// raw view만 렌더한다.
-		{settings.SectionMx, "alert-circle", "MX Annotations", "MX code-annotation policy — danger categories and test-path exclusions (read-only)."},
-		{settings.SectionHandoff, "power", "Handoff", "Auto-resume handoff at session boundaries — mode (manual/auto) and startup hint."},
-		{settings.SectionCache, "rocket", "Prompt Cache", "Anthropic prompt caching — enable cache_control injection and session breakpoint TTL."},
-		// SectionAgentSettings(Agent Teams team.role_profiles)는 Agent Teams 정적
-		// 레이어와 함께 제거되었다 (SPEC-AGENT-TEAM-RETIRE-001).
 	}
 }
 

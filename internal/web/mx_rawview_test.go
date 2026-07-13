@@ -14,17 +14,19 @@ import (
 // the section header (sec.mx.title), the mx panel container (data-panel="mx"),
 // and the two raw-block code chips (mx.danger_categories / mx.test_paths) are
 // present in the rendered body.
+// TestMXRawViewRendered verifies SPEC-WEBCONF-SIMPLIFY-001 M3: the mx tab is
+// removed from the web console. None of its render markers should appear (mx
+// config keys persist in the baked template YAML for runtime consumption —
+// REQ-WC-003; the web write path is gone — RouteExcluded).
 func TestMXRawViewRendered(t *testing.T) {
 	body := renderIndexBody(t, profile.ProfilePreferences{})
 
-	for _, want := range []string{
+	for _, marker := range []string{
 		`data-i18n="sec.mx.title"`,
 		`data-panel="mx"`,
-		`mx.danger_categories`,
-		`mx.test_paths`,
 	} {
-		if !strings.Contains(body, want) {
-			t.Errorf("rendered page missing mx raw-view marker %q", want)
+		if strings.Contains(body, marker) {
+			t.Errorf("rendered page contains removed-tab marker %q (M3 removed the mx tab)", marker)
 		}
 	}
 }

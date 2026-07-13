@@ -62,9 +62,34 @@ func TestWebRendersSchemaFieldSet(t *testing.T) {
 		statuslineFields[f.Name] = true
 	}
 
+	// SPEC-WEBCONF-SIMPLIFY-001 M3: skip fields belonging to removed sections
+	// (their tabs/fieldsets are removed; fields are schema-preserved but
+	// web-not-rendered — config keys persist in baked template YAML, REQ-WC-003).
+	m3RemovedSections := map[settings.SectionID]bool{
+		settings.SectionQualityExtras: true,
+		settings.SectionWorkflow:      true,
+		settings.SectionHarness:       true,
+		settings.SectionRalph:         true,
+		settings.SectionFeedback:      true,
+		settings.SectionObservability: true,
+		settings.SectionSecurity:      true,
+		settings.SectionMx:            true,
+		settings.SectionHandoff:       true,
+		settings.SectionCache:         true,
+	}
+	m3RemovedFields := map[string]bool{}
+	for _, f := range settings.AllFields() {
+		if m3RemovedSections[f.Section] {
+			m3RemovedFields[f.Name] = true
+		}
+	}
+
 	for _, f := range names {
 		if statuslineFields[f] {
 			continue // statusline: schema-preserved, web-not-rendered (M3 redesign)
+		}
+		if m3RemovedFields[f] {
+			continue // M3: removed-section field — schema-preserved, web-not-rendered
 		}
 		control := schemaFieldToWebControlName(f)
 		// The control appears as name="<control>" (selects, inputs) or

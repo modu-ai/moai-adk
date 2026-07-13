@@ -99,33 +99,26 @@ func TestSchemaSectionsRenderSmoke(t *testing.T) {
 	}
 	body := rec.Body.String()
 
-	// M2b 확장 섹션 각각 대표 스칼라 1개의 폼 컨트롤 (AC-WC11-016 렌더 half).
-	// M4 다이어트: research 섹션 제거, quality/ralph/llm 대표 필드를 KEPT 필드로
-	// 교체 (performance_tier/coverage_threshold/loop.max_iterations는 제거됨).
+	// SPEC-WEBCONF-SIMPLIFY-001 M3: only the 2 surviving schema-rendered sections
+	// (git_strategy, llm) render form controls. The 10 removed sections' fields are
+	// schema-preserved but web-not-rendered (tabs removed — REQ-WC-003).
 	for _, name := range []string{
 		"git_strategy.mode",
 		"llm.glm.models.high",
-		"quality.ddd_settings.characterization_tests",
-		// 구 workflow.team.max_teammates 대표 필드는 Agent Teams 정적 레이어와 함께
-		// 제거되었다 (SPEC-AGENT-TEAM-RETIRE-001 M2) — 잔존 workflow seam 필드로 교체.
-		"workflow.token_budget.plan",
-		"harness.default_profile",
-		"ralph.lint_as_instruction",
-		"feedback.repository",
-		"observability.retention_days",
-		"security.sandbox.docker_image",
 	} {
 		if !strings.Contains(body, `name="`+name+`"`) {
-			t.Errorf("rendered page missing form control %q", name)
+			t.Errorf("rendered page missing form control %q (surviving section)", name)
 		}
 	}
 
-	// 제외군 섹션 폼 컨트롤 0 (AC-WC11-018 렌더 half). cache 섹션은
-	// SPEC-WEB-CONSOLE-013에서 seam-writable로 재분류되었고 그 필드는
-	// cacheStrategy.* 이름을 쓴다 — "cache." prefix는 잔여 제외군 가드에서 제거.
-	for _, prefix := range []string{"state.", "system.", "sunset.", "tool-policy.", "lsp.", "mx.", "constitution.", "context.", "interview."} {
+	// 제외군 + M3-removed 섹션 폼 컨트롤 0 (AC-WC11-018 렌더 half + M3 reclassified).
+	for _, prefix := range []string{
+		"state.", "system.", "sunset.", "tool-policy.", "lsp.", "mx.", "constitution.", "context.", "interview.",
+		// SPEC-WEBCONF-SIMPLIFY-001 M3: 8 former seam sections removed from UI.
+		"workflow.", "harness.", "ralph.", "feedback.", "observability.", "security.", "handoff.", "cacheStrategy.",
+	} {
 		if strings.Contains(body, `name="`+prefix) {
-			t.Errorf("excluded section control rendered: name=%q...", prefix)
+			t.Errorf("excluded/removed section control rendered: name=%q...", prefix)
 		}
 	}
 
@@ -139,14 +132,9 @@ func TestSchemaSectionsRenderSmoke(t *testing.T) {
 		t.Error("read-only note not rendered")
 	}
 
-	// raw view 블록 (AC-WC11-063): rawview 렌더 + 내부 input 컨트롤 0.
-	// 구 workflow.team.patterns raw block은 Agent Teams 정적 레이어와 함께 제거되었다
-	// (SPEC-AGENT-TEAM-RETIRE-001 M2) — harness.levels로 검증한다.
-	for _, marker := range []string{"harness.levels"} {
-		if !strings.Contains(body, marker) {
-			t.Errorf("raw view block %q not rendered", marker)
-		}
-	}
+	// SPEC-WEBCONF-SIMPLIFY-001 M3: raw view blocks belonged to removed sections
+	// (harness.levels, security.*, mx.*) — none render after M3. The rawview
+	// input-control guard below is retained (no-op when no rawview blocks exist).
 	rest := body
 	for {
 		start := strings.Index(rest, `<details class="rawview">`)
@@ -165,42 +153,20 @@ func TestSchemaSectionsRenderSmoke(t *testing.T) {
 	}
 }
 
-// TestSaveWorkflowRoutesThroughSeam은 AC-WC11-004의 행동 완결이다: POST /save의
-// workflow 스칼라 편집이 yamlpatch seam으로만 라우팅되어 대상 라인만 변경되고
-// 주석/미모델링 키가 보존된다 (REQ-WC11-005/017). 구 workflow.team.max_teammates
-// 편집 필드는 Agent Teams 정적 레이어와 함께 제거되어(SPEC-AGENT-TEAM-RETIRE-001
-// M2) workflow.token_budget.plan으로 교체했다. 미모델링 team.patterns 블록 보존
-// 검증은 유지된다 — 이제 team 블록 전체가 미모델링이므로 seam이 이를 무손상
-// 보존함을 확인한다.
+// TestSaveWorkflowRoutesThroughSeam은 SPEC-WEBCONF-SIMPLIFY-001 M3 이후 workflow
+// 섹션이 RouteExcluded로 재분류되어 web write path가 제거되었음을 검증한다.
+// POST /save의 workflow 필드 제출은 WriteSectionViaSeam에서 거부되고, 디스크의
+// workflow.yaml이 바이트 단위로 무변경이다 (REQ-WC-003 — config keys persist,
+// web write path removed).
 func TestSaveWorkflowRoutesThroughSeam(t *testing.T) {
 	a, root := newSchemaTestApp(t)
 	before := readSectionFile(t, root, "workflow")
 
-	rec := postSave(t, a, url.Values{"workflow.token_budget.plan": {"31000"}})
-	if rec.Code != http.StatusOK {
-		t.Fatalf("POST /save status = %d, want 200 (body: %.300s)", rec.Code, rec.Body.String())
-	}
+	postSave(t, a, url.Values{"workflow.token_budget.plan": {"31000"}})
 
 	after := readSectionFile(t, root, "workflow")
-	beforeLines := strings.Split(before, "\n")
-	afterLines := strings.Split(after, "\n")
-	if len(beforeLines) != len(afterLines) {
-		t.Fatalf("workflow.yaml line count drifted: %d → %d", len(beforeLines), len(afterLines))
-	}
-	changed := 0
-	for i := range beforeLines {
-		if beforeLines[i] != afterLines[i] {
-			changed++
-			if !strings.Contains(afterLines[i], "plan: 31000") {
-				t.Errorf("unexpected changed line: %q", afterLines[i])
-			}
-		}
-	}
-	if changed != 1 {
-		t.Errorf("changed lines = %d, want exactly 1 (seam line-scoped edit)", changed)
-	}
-	if !strings.Contains(after, "patterns:") || !strings.Contains(after, "design_implementation:") {
-		t.Error("unmodeled team.patterns lost — typed re-marshal suspected (REQ-WC11-005 violation)")
+	if after != before {
+		t.Errorf("workflow.yaml mutated by a removed-section POST (M3 RouteExcluded must block the write):\nbefore:\n%s\nafter:\n%s", before, after)
 	}
 }
 
@@ -277,24 +243,16 @@ func TestSaveExcludedSectionForgedPost(t *testing.T) {
 	}
 }
 
-// TestSaveSchemaSmokeAllSections는 AC-WC11-016의 저장 half다: 각 섹션 스칼라
-// 1개를 단일 POST로 저장하고 디스크 반영을 제네릭 리더로 확인한다. M4 다이어트로
-// research 섹션이 제거되고 quality/ralph 대표 필드가 bool KEPT 필드로 교체되었다.
+// TestSaveSchemaSmokeAllSections는 SPEC-WEBCONF-SIMPLIFY-001 M3 이후 surviving
+// schema-rendered sections(git_strategy, llm)의 저장 라운드트립을 검증한다.
+// M3가 8개 seam 섹션을 RouteExcluded로 재분류하여 이들의 저장은 거부된다 —
+// 본 스모크는 surviving typed 섹션만 다룬다.
 func TestSaveSchemaSmokeAllSections(t *testing.T) {
 	a, root := newSchemaTestApp(t)
 
 	form := url.Values{
-		"git_strategy.team.hooks.pre_push":                      {"skip"},
-		"llm.glm.models.high":                                   {"glm-test"},
-		"quality.ddd_settings.characterization_tests__present":  {"1"},
-		"quality.ddd_settings.characterization_tests":           {"on"},
-		"workflow.token_budget.plan":                            {"31000"},
-		"harness.escalation.max_escalations":                    {"3"},
-		"ralph.warn_as_instruction__present":                    {"1"},
-		"ralph.warn_as_instruction":                             {"on"},
-		"feedback.repository":                                   {"example-org/fork"},
-		"observability.retention_days":                          {"45"},
-		"security.sandbox.docker_image":                         {"alpine:3.20"},
+		"git_strategy.team.hooks.pre_push": {"skip"},
+		"llm.glm.models.high":              {"glm-test"},
 	}
 	rec := postSave(t, a, form)
 	if rec.Code != http.StatusOK {
@@ -306,15 +264,8 @@ func TestSaveSchemaSmokeAllSections(t *testing.T) {
 		t.Fatal(err)
 	}
 	for name, want := range map[string]string{
-		"git_strategy.team.hooks.pre_push":             "skip",
-		"llm.glm.models.high":                          "glm-test",
-		"quality.ddd_settings.characterization_tests":  "true",
-		"workflow.token_budget.plan":                   "31000",
-		"harness.escalation.max_escalations":           "3",
-		"ralph.warn_as_instruction":                    "true",
-		"feedback.repository":                          "example-org/fork",
-		"observability.retention_days":                 "45",
-		"security.sandbox.docker_image":                "alpine:3.20",
+		"git_strategy.team.hooks.pre_push": "skip",
+		"llm.glm.models.high":              "glm-test",
 	} {
 		if got := values[name]; got != want {
 			t.Errorf("persisted %q = %q, want %q", name, got, want)
@@ -330,28 +281,15 @@ func TestHandoffModeValidation(t *testing.T) {
 	before := readSectionFile(t, root, "handoff")
 
 	// (1) 닫힌 집합 밖 값 → 4xx + 파일 무변경.
-	rec := postSave(t, a, url.Values{"handoff.mode": {"bogus"}})
-	if rec.Code != http.StatusBadRequest {
-		t.Fatalf("POST handoff.mode=bogus status = %d, want 400 (body: %.300s)", rec.Code, rec.Body.String())
-	}
+	postSave(t, a, url.Values{"handoff.mode": {"bogus"}})
 	if got := readSectionFile(t, root, "handoff"); got != before {
-		t.Error("handoff.yaml changed despite validation reject (atomic reject violated)")
+		t.Error("handoff.yaml changed despite M3 RouteExcluded (write must be blocked)")
 	}
 
 	// (2) 유효 값 auto → 200 + seam 반영 + guide/주석 보존.
-	rec2 := postSave(t, a, url.Values{"handoff.mode": {"auto"}})
-	if rec2.Code != http.StatusOK {
-		t.Fatalf("POST handoff.mode=auto status = %d, want 200 (body: %.300s)", rec2.Code, rec2.Body.String())
-	}
-	after := readSectionFile(t, root, "handoff")
-	if !strings.Contains(after, "mode: auto") {
-		t.Errorf("handoff.mode=auto not persisted:\n%s", after)
-	}
-	if !strings.Contains(after, "guide: false") {
-		t.Errorf("handoff.guide clobbered by mode edit — seam line-scope violated:\n%s", after)
-	}
-	if !strings.Contains(after, "# guide:") {
-		t.Error("handoff.yaml comments not preserved by seam write")
+	postSave(t, a, url.Values{"handoff.mode": {"auto"}})
+	if got := readSectionFile(t, root, "handoff"); got != before {
+		t.Error("handoff.yaml changed by auto POST despite M3 RouteExcluded (write must be blocked)")
 	}
 }
 
@@ -363,33 +301,18 @@ func TestCacheSessionTTLValidation(t *testing.T) {
 	a, root := newSchemaTestApp(t)
 	before := readSectionFile(t, root, "cache")
 
-	rec := postSave(t, a, url.Values{"cacheStrategy.session_ttl": {"2h"}})
-	if rec.Code != http.StatusBadRequest {
-		t.Fatalf("POST session_ttl=2h status = %d, want 400 (body: %.300s)", rec.Code, rec.Body.String())
-	}
+	postSave(t, a, url.Values{"cacheStrategy.session_ttl": {"2h"}})
 	if got := readSectionFile(t, root, "cache"); got != before {
-		t.Error("cache.yaml changed despite closed-set reject (atomic reject violated)")
+		t.Error("cache.yaml changed despite M3 RouteExcluded (write must be blocked)")
 	}
 
 	// 유효 값 off + enabled 토글 → 반영 + 미노출 키 보존.
-	rec2 := postSave(t, a, url.Values{
+	postSave(t, a, url.Values{
 		"cacheStrategy.session_ttl":      {"off"},
 		"cacheStrategy.enabled__present": {"1"},
 		"cacheStrategy.enabled":          {"on"},
 	})
-	if rec2.Code != http.StatusOK {
-		t.Fatalf("POST session_ttl=off status = %d, want 200 (body: %.300s)", rec2.Code, rec2.Body.String())
-	}
-	after := readSectionFile(t, root, "cache")
-	if !strings.Contains(after, "session_ttl: off") && !strings.Contains(after, "session_ttl: \"off\"") {
-		t.Errorf("session_ttl=off not persisted:\n%s", after)
-	}
-	if !strings.Contains(after, "enabled: true") {
-		t.Errorf("cacheStrategy.enabled not persisted:\n%s", after)
-	}
-	for _, keep := range []string{"spec_ttl", "min_cacheable_tokens"} {
-		if !strings.Contains(after, keep) {
-			t.Errorf("unexposed key %q lost after seam edit (REQ-WC13-006):\n%s", keep, after)
-		}
+	if got := readSectionFile(t, root, "cache"); got != before {
+		t.Error("cache.yaml changed by off/enabled POST despite M3 RouteExcluded (write must be blocked)")
 	}
 }

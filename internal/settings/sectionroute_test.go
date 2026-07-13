@@ -2,35 +2,34 @@ package settings
 
 import "testing"
 
-// TestRouteForSectionTable은 라우팅 테이블의 4분류(typed/seam/statusline/excluded)
-// 를 전수 검증한다 (REQ-WC11-016/017/018 — design.md §A.3).
+// TestRouteForSectionTable은 라우팅 테이블의 분류(typed/statusline/excluded)를
+// 전수 검증한다. SPEC-WEBCONF-SIMPLIFY-001 M3가 기존 8개 seam 섹션을
+// RouteExcluded로 재분류하여 현재 RouteSeam에 등록된 섹션은 없다
+// (REQ-WC-003 — config keys persist, web write path removed).
 func TestRouteForSectionTable(t *testing.T) {
 	t.Parallel()
 
 	cases := map[string]SectionRoute{
-		// typed.
+		// typed (surviving web-writable).
 		"user":           RouteTypedSave,
 		"language":       RouteTypedSave,
 		"quality":        RouteTypedSave,
 		"git-convention": RouteTypedSave,
 		"git-strategy":   RouteTypedSave,
 		"llm":            RouteTypedSave,
-		// seam ×8 (research는 SPEC-WEB-CONSOLE-012 M1에서 폐선 — FieldDef 0개
-		// + 콘솔 탭 미등재의 유령 쓰기 경로였다, REQ-WC12-010; handoff/cache는
-		// SPEC-WEB-CONSOLE-013 M1에서 신규 등재 — REQ-WC13-002, cache는
-		// REQ-WC11-018 제외군에서 부분 supersede, REQ-WC13-001).
-		"workflow":      RouteSeam,
-		"harness":       RouteSeam,
-		"ralph":         RouteSeam,
-		"feedback":      RouteSeam,
-		"observability": RouteSeam,
-		"security":      RouteSeam,
-		"handoff":       RouteSeam,
-		"cache":         RouteSeam,
 		// 기존 전용 경로.
 		"statusline": RouteStatusline,
-		// 제외군 + 미등재 (research/db는 미등재 → RouteExcluded, 동일 선례).
-		// SPEC-WEB-CONSOLE-014 AC-WC14-051: sunset/tool-policy/mx 명시 RouteExcluded 핀.
+		// SPEC-WEBCONF-SIMPLIFY-001 M3: 8 former seam sections reclassified to
+		// RouteExcluded (tabs removed, config keys persist — REQ-WC-003).
+		"workflow":      RouteExcluded,
+		"harness":       RouteExcluded,
+		"ralph":         RouteExcluded,
+		"feedback":      RouteExcluded,
+		"observability": RouteExcluded,
+		"security":      RouteExcluded,
+		"handoff":       RouteExcluded,
+		"cache":         RouteExcluded,
+		// 기존 제외군 + 미등재 (zero-value RouteExcluded).
 		"state":       RouteExcluded,
 		"sunset":      RouteExcluded,
 		"tool-policy": RouteExcluded,
@@ -47,47 +46,45 @@ func TestRouteForSectionTable(t *testing.T) {
 	}
 }
 
-// TestSeamSectionsMatchesRoutes는 SeamSections 열거와 라우팅 테이블의 정합을
-// 검증한다 — 열거에 있는 섹션은 전부 RouteSeam이어야 한다.
+// TestSeamSectionsMatchesRoutes는 SeamSections 열거가 M3 이후 비어 있음을 검증한다
+// (SPEC-WEBCONF-SIMPLIFY-001 M3 — 8개 seam 섹션이 전부 RouteExcluded로
+// 재분류되어 현재 seam-writable 섹션은 없다).
 func TestSeamSectionsMatchesRoutes(t *testing.T) {
 	t.Parallel()
 	seam := SeamSections()
-	if len(seam) != 8 {
-		t.Fatalf("SeamSections() length = %d, want 8 (handoff/cache added — REQ-WC13-002)", len(seam))
+	if len(seam) != 0 {
+		t.Fatalf("SeamSections() length = %d, want 0 (M3 reclassified all 8 seam sections to RouteExcluded)", len(seam))
 	}
-	present := map[string]bool{}
-	for _, name := range seam {
-		present[name] = true
-	}
-	for _, want := range []string{"handoff", "cache"} {
-		if !present[want] {
-			t.Errorf("SeamSections() missing %q (REQ-WC13-002)", want)
-		}
-	}
-	for _, name := range seam {
-		if got := RouteForSection(name); got != RouteSeam {
-			t.Errorf("seam section %q routes to %d, want RouteSeam", name, got)
-		}
-		if name == "research" {
-			t.Error("research must not be enumerated as a seam section (REQ-WC12-010)")
+	// M3 이전에 seam이었던 8개 섹션이 전부 RouteExcluded로 라우팅되는지 확인.
+	for _, name := range []string{"workflow", "harness", "ralph", "feedback", "observability", "security", "handoff", "cache"} {
+		if got := RouteForSection(name); got != RouteExcluded {
+			t.Errorf("former seam section %q routes to %d, want RouteExcluded (M3)", name, got)
 		}
 	}
 }
 
-// TestExcludedSectionsAllRejected는 명시적 제외군 전원이 RouteExcluded임을
-// 검증한다 (REQ-WC11-018).
+// TestExcludedSectionsAllRejected는 명시적 제외군 전원이 RouteExcluded임을 검증한다.
+// SPEC-WEBCONF-SIMPLIFY-001 M3가 8개 전 seam 섹션을 제외군에 추가했다
+// (기존 11 + M3 8 = 19).
 func TestExcludedSectionsAllRejected(t *testing.T) {
 	t.Parallel()
 	excluded := ExcludedSections()
-	if len(excluded) != 11 {
-		t.Fatalf("ExcludedSections() length = %d, want 11 (cache reclassified seam-writable — REQ-WC13-001)", len(excluded))
+	if len(excluded) != 19 {
+		t.Fatalf("ExcludedSections() length = %d, want 19 (11 original + 8 M3-reclassified)", len(excluded))
 	}
 	for _, name := range excluded {
 		if got := RouteForSection(name); got != RouteExcluded {
 			t.Errorf("excluded section %q routes to %d, want RouteExcluded", name, got)
 		}
-		if name == "cache" {
-			t.Error("cache must not be enumerated in ExcludedSections (REQ-WC13-001 partial supersede of REQ-WC11-018)")
+	}
+	// M3로 추가된 8개 섹션이 제외군에 명시되어 있는지 확인.
+	present := map[string]bool{}
+	for _, name := range excluded {
+		present[name] = true
+	}
+	for _, name := range []string{"workflow", "harness", "ralph", "feedback", "observability", "security", "handoff", "cache"} {
+		if !present[name] {
+			t.Errorf("M3-reclassified section %q missing from ExcludedSections()", name)
 		}
 	}
 }

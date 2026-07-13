@@ -29,16 +29,16 @@ func TestScopeContractEditableSections(t *testing.T) {
 		}
 	}
 
-	// seam 전용 8종: typed Save() 경로 부재 — yamlpatch seam이 유일한 쓰기 경로
-	// (REQ-WC11-017; workflow.yaml typed re-marshal 금지 REQ-WC11-005;
-	// handoff/cache는 SPEC-WEB-CONSOLE-013 M1 신규 등재 — REQ-WC13-002/005).
+	// SPEC-WEBCONF-SIMPLIFY-001 M3: 8 former seam sections reclassified to
+	// RouteExcluded (tabs removed, web write path gone, config keys persist in
+	// baked template YAML — REQ-WC-003).
 	for _, name := range []string{
 		"workflow", "harness", "ralph",
 		"feedback", "observability", "security",
 		"handoff", "cache",
 	} {
-		if got := settings.RouteForSection(name); got != settings.RouteSeam {
-			t.Errorf("section %q: route = %d, want RouteSeam", name, got)
+		if got := settings.RouteForSection(name); got != settings.RouteExcluded {
+			t.Errorf("section %q: route = %d, want RouteExcluded (M3 reclassified)", name, got)
 		}
 	}
 
@@ -69,10 +69,9 @@ func TestScopeContractExclusions(t *testing.T) {
 		"state", "system", "project", "sunset",
 		"tool-policy", "lsp", "mx",
 		"constitution", "context", "design", "interview",
-		// 콘솔 표면에서 폐선된 섹션 (db: REQ-WC11-019 계보 + 콘솔 표면 제거,
-		// settings SSOT — REQ-WC11-018 잔여군 아님 / research:
-		// SPEC-WEB-CONSOLE-012 M1 — 미등재 → RouteExcluded).
 		"db", "research",
+		// SPEC-WEBCONF-SIMPLIFY-001 M3: 8 former seam sections reclassified.
+		"workflow", "harness", "ralph", "feedback", "observability", "security", "handoff", "cache",
 	}
 	for _, name := range excluded {
 		if got := settings.RouteForSection(name); got != settings.RouteExcluded {
