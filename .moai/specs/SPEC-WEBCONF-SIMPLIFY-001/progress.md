@@ -39,7 +39,7 @@ tier: L
 
 ## §E.2 Run-phase Evidence
 
-**M1-only evidence** (multi-milestone Tier L SPEC; M2–M9 append their own evidence in later delegation chunks). The ACs verified below are the M1-relevant tier-model backend ACs — the name→tier lookup table, the accessors, and the Option-A preservation assertions. All other ACs (tab reduction M3, template baking M2, UI M5, i18n M6, test fallout M7, docs M8, full-suite M9) are pending their owning milestone and enumerated at the bottom of this section.
+**M1 + M2 evidence** (multi-milestone Tier L SPEC; M3–M9 append their own evidence in later delegation chunks). M1 verified the tier-model backend ACs; M2 verified the template-defaults baking ACs. All other ACs (tab reduction M3, UI M5, i18n M6, test fallout M7, docs M8, full-suite M9) are pending their owning milestone and enumerated at the bottom of this section.
 
 ### M1 AC matrix (tier-model backend)
 
@@ -58,12 +58,40 @@ tier: L
 - `git status --short .claude/agents/moai/ .claude/agents/harness/` → empty (0 agent files modified).
 - `grep -rn '^tier:' .claude/agents/moai/ .claude/agents/harness/` → 0 matches (no new FM key written).
 
-### Non-M1 ACs (pending their owning milestone)
+### M2 evidence (template defaults baked — commit e0061ad34)
+
+M2 baked the 11 removed tabs' values into `internal/template/templates/.moai/config/sections/*.yaml` so `moai init` / `moai update` distribute them as shipped defaults. 8 of 9 §D.Δ deliberate default-changes applied; 1 (merge_method capitalization) returned as a structured blocker (E7).
+
+**§D.Δ deltas applied (8/9)**:
+
+| Section.key | Old → New | File |
+|-------------|-----------|------|
+| `workflow.execution_mode` | `team` → `auto` | workflow.yaml |
+| `security.permission.strict_mode` | `false` → `true` | security.yaml |
+| `cache.cacheStrategy.enabled` | `false` → `true` | cache.yaml |
+| `harness.effort_mapping.minimal` | `medium` → `low` | harness.yaml |
+| `harness.effort_mapping.standard` | `high` → `medium` | harness.yaml |
+| `harness.effort_mapping.thorough` | `xhigh` → `high` | harness.yaml |
+| `git-strategy.personal.hooks.pre_push` | `warn` → `enforce` | git-strategy.yaml.tmpl |
+| `git-strategy.team.hooks.pre_push` | `warn` → `enforce` | git-strategy.yaml.tmpl |
+
+**§D.Δ delta NOT applied (1/9 — BLOCKER)**: `git-strategy.*.merge_method` `squash` → `Squash` (capitalized). `"Squash"` is outside the config closed set `validMergeMethods = {squash, merge, rebase}` (all lowercase, `internal/config/validation.go:274`). Baking it would ship a config that fails `validateGitStrategyMergeMethod` on every `moai init`. `merge_method` remains lowercase `squash` (valid) pending orchestrator/user resolution. Manual-mode `pre_push` correctly stays `warn` (§E.4 — not in §D.Δ).
+
+**Preserve-all-other-keys (D4) verified**: `git diff --stat` = 5 files, 8 insertions / 8 deletions — every deletion is a value line, every insertion is the replacement value. Zero key deletions, zero structural changes. research.md §B live keys confirmed present post-edit via grep: harness (plan_audit_global/levels/model_upgrade_review.checklist/rate_limit = 8 matches), workflow (workflow_agents/model_routing/model_routing_profiles/session_name_pattern = 9 matches), security (extra_*_patterns/network_allowlist/env_scrub_extra = 9 matches), llm (performance_tier/plan_type/claude_models/base_url = 5 matches, no edit).
+
+**§E keys-of-interest already matching live (no edit needed)**: harness default_profile/evaluator/mode_defaults/auto_detection/escalation/learning; workflow auto_clear/loop_prevention/token_budget/worktree; security sandbox; cache session_ttl; llm glm.models/mode/team_mode; handoff mode=manual/guide=false. ralph/feedback/observability/mx/project/quality bake as-is (§E.7/§E.9/§E.10 — no edit).
+
+**M2-touched ACs**: AC-WC-003a (REQ-WC-003 keys persist) — M2 portion PASS (all keys present with baked values); AC-WC-003b (REQ-WC-005 values ship from template) — PASS (baked into `internal/template/templates/`); AC-WC-015 (C-2 template-neutrality) — PASS (`grep -rn 'SPEC-WEBCONF\|REQ-WC-\|AC-WC-' internal/template/templates/.moai/config/sections/` → 0 matches).
+
+**Build evidence**: `make build` exit 0 (templates re-embedded via `//go:embed all:templates`); `go build ./...` exit 0; `GOOS=windows GOARCH=amd64 go build ./...` exit 0; `go test ./internal/template/... ./internal/settings/...` all PASS (no schema break).
+
+### Remaining ACs (pending their owning milestone)
 
 | AC ID | Owning milestone | Status |
 |-------|------------------|--------|
 | AC-WC-001 / AC-WC-002 (6-tab render, removed tabs absent) | M3 | PENDING |
-| AC-WC-003a / AC-WC-003b / AC-WC-004 (config keys persist, quality_extras toggle) | M2 / M4 | PENDING |
+| AC-WC-003a / AC-WC-003b (config keys persist + ship from template) | M2 | PASS (M2 portion — keys present with baked values in `internal/template/templates/`) |
+| AC-WC-004 (quality_extras toggle on launch tab) | M4 | PENDING |
 | AC-WC-007 (tier-click auto-suggest writes via agentfm.Patch) | M5 | PENDING (backend accessor `TierSuggestedModelEffort` ready; UI wiring is M5) |
 | AC-WC-008 (closed-set validation) | M5 | PENDING (closed sets `V4EffortValues`/`V4ModelValues` already exist; validator wiring is M5) |
 | AC-WC-009 (deep doctrine preserved) | M8 | PENDING (no doctrine file touched in M1) |
@@ -71,22 +99,23 @@ tier: L
 | AC-WC-012 (web/settings test fallout) | M7 | PENDING |
 | AC-WC-013 (4-locale i18n) | M6 | PENDING |
 | AC-WC-014 (make build — templ regenerate) | M5+ | PENDING (no templ edit in M1; `go build ./...` exit 0 confirms Go compile green) |
-| AC-WC-015 (template-neutrality CI guard) | M2 | PENDING (no template edit in M1) |
+| AC-WC-015 (template-neutrality CI guard) | M2 | PASS (M2 — `grep` 0 SPEC-ID matches in baked sections) |
 | AC-WC-018 (max/inherit neutral badge) | M5 | PENDING (UI layer; M1 table excludes sentinels per design.md §D) |
 | AC-WC-019 (full-suite regression `go test ./...`) | M9 | PENDING |
 | AC-WC-020 (render smoke) | M9 | PENDING |
 
 ## §E.3 Run-phase Audit-Ready Signal
 
-**M1 partial** — multi-milestone Tier L SPEC; run-phase in-progress (M1 of M1–M9). This signal is completed at M9. The block below records the M1 portion.
+**M1 + M2 partial** — multi-milestone Tier L SPEC; run-phase in-progress (M2 of M1–M9). This signal is completed at M9. The block below records the M1 + M2 portion.
 
 ```yaml
 run_status: in-progress
-run_complete_at: null   # pending — run-phase not complete (M1 of 9 milestones)
-run_commit_sha: 7b11d68bc   # self-referential — backfilled in a follow-up commit (D3 placeholder exemption)
+run_complete_at: null   # pending — run-phase not complete (M2 of 9 milestones)
+run_commit_sha: e0061ad34   # latest run-phase commit (M2); M1 was 7b11d68bc
 m1_to_mN_commit_strategy: per-milestone commit + push to main (Route A — Hybrid Trunk 1-person OSS)
-ac_pass_count: 5          # M1-relevant ACs PASS: AC-WC-005, 006, 016, 017, 021
+ac_pass_count: 8          # M1 (005,006,016,017,021) + M2 (003a,003b,015) = 8 PASS
 ac_fail_count: 0
+ac_pass_with_debt_count: 1   # M2 merge_method blocker (§D.Δ row 4 squash→Squash outside closed set) — debt, not fail
 preserve_list_post_run_count: 20   # Option A — all 20 agent .md files under .claude/agents/{moai,harness}/ untouched
 cross_platform_build:
   native: "go build ./... exit 0"
@@ -104,7 +133,12 @@ milestones:
     sha: 7b11d68bc
     acs: [AC-WC-005, AC-WC-006, AC-WC-016, AC-WC-017, AC-WC-021]
     status: PASS
-  M2: { status: pending, owner: template-defaults-baking }
+  M2:
+    subject: "feat(SPEC-WEBCONF-SIMPLIFY-001): M2 bake removed-tab defaults into template sections"
+    sha: e0061ad34
+    acs: [AC-WC-003a, AC-WC-003b, AC-WC-015]
+    status: PASS-WITH-DEBT
+    debt: "§D.Δ row 4 merge_method squash→Squash NOT applied — capitalized 'Squash' is outside validMergeMethods={squash,merge,rebase} (internal/config/validation.go:274). merge_method remains lowercase 'squash' (valid). BLOCKER returned for orchestrator/user resolution."
   M3: { status: pending, owner: tab-reduction }
   M4: { status: pending, owner: surviving-tab-surfaces }
   M5: { status: pending, owner: agentfm-ui-redesign }
