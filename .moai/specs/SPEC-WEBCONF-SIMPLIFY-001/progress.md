@@ -170,7 +170,7 @@ M6 closes the 4-locale description parity: populates `Description` on the remain
 ```yaml
 run_status: in-progress
 run_complete_at: null   # pending — run-phase not complete (M3 of 9 milestones)
-run_commit_sha: pending-backfill-m6   # latest run-phase commit (M6); M1=7b11d68bc, M2=e0061ad34, M3=cca120c70, M4=5f97d32fe, M5=0f13b4684
+run_commit_sha: d0ea1c84e   # latest run-phase commit (M6); M1=7b11d68bc, M2=e0061ad34, M3=cca120c70, M4=5f97d32fe, M5=0f13b4684
 m1_to_mN_commit_strategy: per-milestone commit + push to main (Route A — Hybrid Trunk 1-person OSS)
 ac_pass_count: 16         # M1(5)+M2(3)+M3(2)+M4(1)+M5(3)+M6(2: 013,022/023-now-full) = 16 PASS; AC-WC-022/023 no longer partial (4-locale complete)
 ac_fail_count: 0
@@ -217,7 +217,7 @@ milestones:
     debt: "agentfm tier/model/effort description strings en-only — ko/ja/zh = M6"
   M6:
     subject: "feat(SPEC-WEBCONF-SIMPLIFY-001): M6 i18n 4-locale field/option descriptions (REQ-WC-015/C-9 complete)"
-    sha: pending-backfill-m6
+    sha: d0ea1c84e
     acs: [AC-WC-013, AC-WC-022, AC-WC-023]
     status: PASS
   M7: { status: pending, owner: test-fallout }
