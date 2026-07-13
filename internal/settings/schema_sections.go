@@ -320,6 +320,21 @@ func cacheFields() []FieldDef {
 	}
 }
 
+// reportFormatValues는 report.format의 닫힌 집합이다 (html+md / md).
+// moai-domain-html-report skill이 읽어 출력 포맷을 결정한다.
+var reportFormatValues = []string{"html+md", "md"}
+
+// reportFields는 report 섹션의 편집 FieldDef를 반환한다: format(select).
+// launch tab에 렌더되며 (fieldsetLaunch가 schemaSelectRow로 호출), seam 경로
+// (report.yaml)로 영속화된다. Description은 fieldDesc.report.format i18n 키로
+// field-level 설명 문단을 방출한다.
+func reportFields() []FieldDef {
+	f := withSelect(seamField(SectionReport, "report", TypeSelect, "report", "format"),
+		"f.report.format.opt.", reportFormatValues, "", "")
+	f.Description = "fieldDesc.report.format"
+	return []FieldDef{f}
+}
+
 // NOTE: agent-settings 웹 렌더 표면(team.role_profiles — 7 profiles ×
 // {model, effort, isolation, mode})은 Agent Teams 정적 레이어와 함께 제거되었다
 // (SPEC-AGENT-TEAM-RETIRE-001). 웹 콘솔은 더 이상 Agent Teams 설정을 렌더하지
@@ -336,6 +351,7 @@ func sectionExtraFields() []FieldDef {
 	fields = append(fields, seamSectionFields()...)
 	fields = append(fields, handoffFields()...) // SPEC-WEB-CONSOLE-013 M2
 	fields = append(fields, cacheFields()...)    // SPEC-WEB-CONSOLE-013 M2
+	fields = append(fields, reportFields()...)   // report.format (launch tab)
 	return fields
 }
 

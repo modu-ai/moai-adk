@@ -39,6 +39,8 @@ var sectionRootKeys = map[string]map[string]bool{
 	// base name과 달리 cacheStrategy다 (2026-07-10 실측).
 	"handoff": {"handoff": true},
 	"cache":   {"cacheStrategy": true},
+	// report — moai-domain-html-report skill 출력 포맷 (launch tab select).
+	"report": {"report": true},
 }
 
 // WriteSectionViaSeam은 projectRoot의 .moai/config/sections/<section>.yaml에

@@ -64,6 +64,9 @@ var sectionRoutes = map[string]SectionRoute{
 	// statusline은 기존 전용 경로 유지 (M6은 노출 fan-out만).
 	"statusline": RouteStatusline,
 
+	// report — seam-writable (report.format select, moai-domain-html-report output).
+	"report": RouteSeam,
+
 	// SPEC-WEBCONF-SIMPLIFY-001 M3: the 8 former seam sections (workflow, harness,
 	// ralph, feedback, observability, security, handoff, cache) are reclassified
 	// to RouteExcluded — their tabs are removed and their web write path is gone.

@@ -45,6 +45,9 @@ const (
 	SectionHandoff SectionID = "handoff" // seam 전용 (mode select / guide bool)
 	SectionCache   SectionID = "cache"   // seam 전용 (cacheStrategy.enabled/session_ttl)
 
+	// report 섹션 — moai-domain-html-report skill 출력 포맷 (seam 전용, launch tab).
+	SectionReport SectionID = "report" // seam 전용 (report.format select)
+
 	// SPEC-WEB-CONSOLE-014 M4: mx는 편집 필드 0개의 raw-only 렌더 그룹이다 (mx는
 	// RouteExcluded — 쓰기 경로 없음). SchemaSectionIDs()에는 포함되지 않으며(편집
 	// 필드 ≥1 불변식 위반 방지), 웹의 schemaSectionMetas()가 raw-only 섹션으로
@@ -76,6 +79,7 @@ func AllSections() []SectionID {
 		SectionSecurity,
 		SectionHandoff,
 		SectionCache,
+		SectionReport,
 	}
 }
 

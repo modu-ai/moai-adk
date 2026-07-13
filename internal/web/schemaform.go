@@ -36,6 +36,7 @@ func consoleTabs() []consoleTab {
 		{ID: "git_strategy", LabelKey: "sec.git_strategy.title", Baseline: "Git Strategy"},
 		{ID: "llm", LabelKey: "sec.llm.title", Baseline: "LLM"},
 		{ID: "agentfm", LabelKey: "sec.agentfm.title", Baseline: "Sub-agent Frontmatter"},
+		{ID: "report", LabelKey: "sec.report.title", Baseline: "Report"},
 	}
 }
 
@@ -56,6 +57,7 @@ func schemaSectionMetas() []schemaSectionMeta {
 	return []schemaSectionMeta{
 		{settings.SectionGitStrategy, "folder-git", "Git Strategy", "Git workflow mode and per-mode pre-push hook action (skip/warn/enforce)."},
 		{settings.SectionLLM, "rocket", "LLM", "GLM backend model tier mappings (high/medium/low/fable)."},
+		{settings.SectionReport, "panel-bottom", "Report", "Output format for the HTML report skill (report.format: html+md or md)."},
 	}
 }
 
