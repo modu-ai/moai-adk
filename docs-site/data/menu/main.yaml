@@ -257,6 +257,12 @@ main:
           ja: /moai feedback
           zh: /moai feedback
         ref: /utility-commands/moai-feedback
+      - name:
+          ko: /moai e2e
+          en: /moai e2e
+          ja: /moai e2e
+          zh: /moai e2e
+        ref: /utility-commands/moai-e2e
 
   - name:
       ko: 멀티 LLM
