@@ -523,7 +523,7 @@ Python 기반 MoAI-ADK (~73,000 라인)를 Go로 완전히 재작성했습니다
 | `moai handoff <save\|list>` | 세션 핸드오프 기록 |
 | `moai preference <list\|decay-scan\|toggle>` | 결정 메모리 관리 |
 | `moai hook <event>` | Claude Code 훅 디스패처 |
-| `moai web` | Web Console — 설정 CRUD, SPEC 보드, 에이전트 구성 (en/ko/ja/zh) |
+| `moai web` | Web Console — 6탭 설정 콘솔 (identity, language, launch, git_strategy, llm, agentfm) + 서브 에이전트 4색 티어 배지 (en/ko/ja/zh) |
 | `moai inventory` | 세션, worktree, 하네스의 읽기 전용 인벤토리 (`--json` 지원) |
 | `moai version` | 버전, 커밋 해시, 빌드 날짜 |
 

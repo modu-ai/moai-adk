@@ -1,10 +1,10 @@
 ---
 id: SPEC-WEBCONF-SIMPLIFY-001
 title: "moai web Configuration UI Simplification + Sub-Agent 4-Color Tier Redesign — Progress"
-version: "0.2.0"
-status: in-progress
+version: "0.3.0"
+status: completed
 created: 2026-07-13
-updated: 2026-07-13
+updated: 2026-07-14
 author: manager-spec
 priority: P1
 phase: "v3.1.0 target"
@@ -246,7 +246,7 @@ milestones:
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase — populated by manager-docs>_
+sync_commit_sha: pending-backfill-SPEC-WEBCONF-SIMPLIFY-001
 
 ## §F Phase 4 Mode Selection
 

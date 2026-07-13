@@ -523,7 +523,7 @@ The `moai` binary registers 36 top-level commands. The everyday set:
 | `moai handoff <save\|list>` | Session handoff records |
 | `moai preference <list\|decay-scan\|toggle>` | Decision-memory management |
 | `moai hook <event>` | Claude Code hook dispatcher |
-| `moai web` | Web Console — settings CRUD, SPEC board, agent configuration (en/ko/ja/zh) |
+| `moai web` | Web Console — 6-tab configuration console with sub-agent 4-color tier badges (en/ko/ja/zh) |
 | `moai inventory` | Read-only inventory of sessions, worktrees, and harnesses (`--json` supported) |
 | `moai version` | Version, commit hash, and build date |
 
