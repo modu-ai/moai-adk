@@ -65,6 +65,51 @@ func TestSettingsTemplateValidJSON(t *testing.T) {
 	}
 }
 
+// TestSettingsTemplateSubprocessEnvScrubOSConditional guards the #1081 fix:
+// CLAUDE_CODE_SUBPROCESS_ENV_SCRUB=1 causes Claude Code to write 0-byte stub
+// dotfiles into $HOME on Linux/bash (notably ~/.bash_profile), which shadows
+// ~/.profile and strips ~/.local/bin from PATH. The env key MUST be excluded
+// when Platform=="linux" and preserved on darwin/windows.
+func TestSettingsTemplateSubprocessEnvScrubOSConditional(t *testing.T) {
+	const key = "CLAUDE_CODE_SUBPROCESS_ENV_SCRUB"
+
+	cases := []struct {
+		platform    string
+		wantPresent bool
+	}{
+		{"linux", false},
+		{"darwin", true},
+		{"windows", true},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.platform, func(t *testing.T) {
+			ctx := testContext(tc.platform)
+			output := renderTemplate(t, ".claude/settings.json.tmpl", ctx)
+
+			// Rendered output must remain valid JSON regardless of the conditional.
+			trimmed := strings.TrimSpace(output)
+			if !json.Valid([]byte(trimmed)) {
+				t.Fatalf("rendered settings.json is not valid JSON for platform %s:\n%s", tc.platform, trimmed)
+			}
+
+			var settings map[string]any
+			if err := json.Unmarshal([]byte(trimmed), &settings); err != nil {
+				t.Fatalf("Unmarshal error for platform %s: %v", tc.platform, err)
+			}
+			env, ok := settings["env"].(map[string]any)
+			if !ok {
+				t.Fatalf("missing env section for platform %s", tc.platform)
+			}
+
+			_, present := env[key]
+			if present != tc.wantPresent {
+				t.Errorf("platform %s: env[%q] present=%v, want %v", tc.platform, key, present, tc.wantPresent)
+			}
+		})
+	}
+}
+
 func TestSettingsTemplateRequiredHooks(t *testing.T) {
 	ctx := testContext("darwin")
 	output := renderTemplate(t, ".claude/settings.json.tmpl", ctx)

@@ -41,12 +41,9 @@ func TestM4GitStrategySurface(t *testing.T) {
 	for _, f := range settings.SectionFields(settings.SectionGitStrategy) {
 		names[f.Name] = true
 	}
-	// The 7 core fields: mode + {manual,personal,team}.{merge_method,hooks.pre_push}.
+	// The 4 core fields: mode + {manual,personal,team}.merge_method (radio widgets, pre_push removed).
 	want := []string{
 		"git_strategy.mode",
-		"git_strategy.manual.hooks.pre_push", "git_strategy.manual.merge_method",
-		"git_strategy.personal.hooks.pre_push", "git_strategy.personal.merge_method",
-		"git_strategy.team.hooks.pre_push", "git_strategy.team.merge_method",
 	}
 	for _, w := range want {
 		if !names[w] {

@@ -82,7 +82,10 @@ func GoosArch() string {
 func PrintBanner(version string) {
 	th := ResolveTheme()
 	bannerStyle := lipgloss.NewStyle().Foreground(lipgloss.Color(th.Accent))
-	dimStyle := lipgloss.NewStyle().Faint(true)
+	// Secondary text uses the theme Body colour (readable, subordinate to the
+	// coral accent) rather than the ANSI Faint attribute, which renders at
+	// reduced intensity and is illegible on many dark terminal backgrounds.
+	dimStyle := lipgloss.NewStyle().Foreground(lipgloss.Color(th.Body))
 
 	fmt.Println(bannerStyle.Render(moaiBanner))
 	fmt.Println(dimStyle.Render("  Modu-AI's Agentic Development Kit w/ SuperAgent MoAI"))
@@ -104,7 +107,8 @@ func PrintWelcomeMessage() {
 	titleStyle := lipgloss.NewStyle().
 		Foreground(lipgloss.Color(th.Accent)).
 		Bold(true)
-	dimStyle := lipgloss.NewStyle().Faint(true)
+	// Body colour instead of the ANSI Faint attribute — see PrintBanner.
+	dimStyle := lipgloss.NewStyle().Foreground(lipgloss.Color(th.Body))
 
 	fmt.Println(titleStyle.Render("Welcome to MoAI-ADK Project Initialization!"))
 	fmt.Println()

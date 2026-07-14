@@ -117,17 +117,29 @@ func withSelect(f FieldDef, keyPrefix string, values []string, emptyLabel, empty
 	return f
 }
 
+// withRadio는 필드를 닫힌 옵션 집합의 라디오 버튼 그룹으로 전환한다 (멤버십 검증 포함).
+func withRadio(f FieldDef, keyPrefix string, values []string, emptyLabel, emptyKey string) FieldDef {
+	opts := optionDefsFromValues(keyPrefix, values)
+	f.Type = TypeRadio
+	f.Options = opts
+	f.EmptyLabel = emptyLabel
+	f.EmptyLabelKey = emptyKey
+	f.Validate = func(v string) bool { return inOptionValues(opts, v) }
+	return f
+}
+
 // ─── git-strategy (REQ-WC11-010 — typed dirty-flag Save) ────────────────────
 
 // gitStrategyFields는 웹 편집 노출 대상 git-strategy 필드를 반환한다: mode
-// (ActiveModeProfile 선택키) + 3개 profile의 hooks.pre_push(hook_pre_push.go:72
-// 런타임 소비자 — skip/warn/enforce) + 3개 profile의 merge_method
-// (SPEC-WEB-CONSOLE-014 M3 — SPEC-MERGE-METHOD-CONFIG-001 REQ-MMC-007 agent-prose
-// consumer: sync delivery/manager-git가 active mode의 값으로 gh pr merge 플래그
-// 선택). 나머지 ~53개 검증 전용 키는 M4 다이어트에서 제거되었다 (struct 멤버와
+// (ActiveModeProfile 선택키) + 3개 profile의 merge_method (SPEC-WEB-CONSOLE-014
+// M3 — SPEC-MERGE-METHOD-CONFIG-001 REQ-MMC-007 agent-prose consumer: sync
+// delivery/manager-git가 active mode의 값으로 gh pr merge 플래그 선택). 모두
+// 라디오 버튼(withRadio)으로 렌더링한다. hooks.pre_push는 웹 편집면에서
+// 제거되었다 — yaml 값과 hook_pre_push.go 런타임 소비자는 보존(기본값 사용).
+// 나머지 ~53개 검증 전용 키는 M4 다이어트에서 제거되었다 (struct 멤버와
 // yaml 로드는 보존 — backward compat).
 func gitStrategyFields() []FieldDef {
-	modeField := withSelect(typedField(SectionGitStrategy, "git_strategy", "mode", TypeSelect),
+	modeField := withRadio(typedField(SectionGitStrategy, "git_strategy", "mode", TypeRadio),
 		"f.git_strategy.mode.opt.", []string{"manual", "personal", "team"}, "", "")
 	modeField.Description = "fieldDesc.git_strategy.mode"
 	fields := []FieldDef{modeField}
@@ -137,11 +149,8 @@ func gitStrategyFields() []FieldDef {
 	mergeMethods := append([]string{}, config.ValidMergeMethods()...)
 	sort.Strings(mergeMethods)
 	for _, profile := range []string{"manual", "personal", "team"} {
-		prePush := typedField(SectionGitStrategy, "git_strategy", profile+".hooks.pre_push", TypeText)
-		prePush.Description = "fieldDesc.git_strategy.hooks.pre_push"
-		fields = append(fields, prePush)
-		mergeMethod := withSelect(
-			typedField(SectionGitStrategy, "git_strategy", profile+".merge_method", TypeSelect),
+		mergeMethod := withRadio(
+			typedField(SectionGitStrategy, "git_strategy", profile+".merge_method", TypeRadio),
 			"f.git_strategy.merge_method.opt.", mergeMethods, emptyLabelProjectDefault, "opt.project_default")
 		mergeMethod.Description = "fieldDesc.git_strategy.merge_method"
 		fields = append(fields, mergeMethod)

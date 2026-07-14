@@ -89,6 +89,7 @@ type FieldType string
 const (
 	TypeSelect      FieldType = "select"       // 단일 선택 (huh.Select / <select>)
 	TypeMultiSelect FieldType = "multi-select" // 다중 선택 (huh.MultiSelect / 세그먼트 체크박스 묶음)
+	TypeRadio       FieldType = "radio"        // 단일 선택 라디오 버튼 (<input type=radio>)
 	TypeText        FieldType = "text"         // 자유 텍스트 (huh.Input / <input type=text>)
 	TypeInt         FieldType = "int"          // 정수 (<input type=number>)
 	TypeFloat       FieldType = "float"        // 실수 (<input type=number step=0.01>)

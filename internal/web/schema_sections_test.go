@@ -251,8 +251,7 @@ func TestSaveSchemaSmokeAllSections(t *testing.T) {
 	a, root := newSchemaTestApp(t)
 
 	form := url.Values{
-		"git_strategy.team.hooks.pre_push": {"skip"},
-		"llm.glm.models.high":              {"glm-test"},
+		"llm.glm.models.high": {"glm-test"},
 	}
 	rec := postSave(t, a, form)
 	if rec.Code != http.StatusOK {
@@ -264,8 +263,7 @@ func TestSaveSchemaSmokeAllSections(t *testing.T) {
 		t.Fatal(err)
 	}
 	for name, want := range map[string]string{
-		"git_strategy.team.hooks.pre_push": "skip",
-		"llm.glm.models.high":              "glm-test",
+		"llm.glm.models.high": "glm-test",
 	} {
 		if got := values[name]; got != want {
 			t.Errorf("persisted %q = %q, want %q", name, got, want)

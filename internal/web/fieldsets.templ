@@ -245,6 +245,8 @@ templ schemaFieldWidget(view pageView, f settings.FieldDef) {
 			@schemaToggleRow(f, view.SchemaValues[f.Name] == "true")
 		case settings.TypeSelect:
 			@schemaSelectRow(f, view.SchemaValues[f.Name], view.FieldErrors)
+		case settings.TypeRadio:
+			@schemaRadioRow(f, view.SchemaValues[f.Name], view.FieldErrors)
 		case settings.TypeInt:
 			@schemaNumberRow(f, view.SchemaValues[f.Name], "1", view.FieldErrors)
 		case settings.TypeFloat:
@@ -344,6 +346,46 @@ templ schemaSelectRow(f settings.FieldDef, value string, errs map[string]string)
 				}
 			</select>
 		</span>
+		@fieldDescription(f)
+		if msg := fieldErrorMsg(errs, f.Name); msg != "" {
+			<span class="field-error">@icon("alert-circle")<span>{ msg }</span></span>
+		}
+	</div>
+}
+
+// schemaRadioRow — 닫힌 옵션 라디오 버튼 그룹. EmptyLabel이 있으면 빈 옵션을 렌더한다.
+// M5-b D3: field__title + field__desc 추가.
+templ schemaRadioRow(f settings.FieldDef, value string, errs map[string]string) {
+	<div class={ "field", templ.KV("has-error", hasFieldError(errs, f.Name)) }>
+		<span class="field__label">
+			<span class="field__title" data-i18n={ f.I18nKey + ".title" }>{ schemaFieldTitle(f) }</span>
+			<code class="field__key">{ f.Name }</code>
+		</span>
+		<span class="field__desc" data-i18n={ f.I18nKey + ".desc" }>{ schemaFieldDesc(f) }</span>
+		<div class="radio-group">
+			if f.EmptyLabel != "" {
+				<label class="radio">
+					if value == "" {
+						<input type="radio" id={ f.Name + "--empty" } name={ f.Name } value="" checked/>
+					} else {
+						<input type="radio" id={ f.Name + "--empty" } name={ f.Name } value=""/>
+					}
+					<span class="radio__box"><span class="radio__tick">@icon("check")</span></span>
+					<span data-i18n={ f.EmptyLabelKey }>{ f.EmptyLabel }</span>
+				</label>
+			}
+			for _, opt := range f.Options {
+				<label class="radio">
+					if opt.Value == value {
+						<input type="radio" id={ f.Name + "--" + opt.Value } name={ f.Name } value={ opt.Value } checked/>
+					} else {
+						<input type="radio" id={ f.Name + "--" + opt.Value } name={ f.Name } value={ opt.Value }/>
+					}
+					<span class="radio__box"><span class="radio__tick">@icon("check")</span></span>
+					<span data-i18n={ opt.I18nKey } data-i18n-title={ f.Description + ".option." + opt.Value }>{ opt.Value }</span>
+				</label>
+			}
+		</div>
 		@fieldDescription(f)
 		if msg := fieldErrorMsg(errs, f.Name); msg != "" {
 			<span class="field-error">@icon("alert-circle")<span>{ msg }</span></span>

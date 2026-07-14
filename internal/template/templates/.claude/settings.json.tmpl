@@ -402,7 +402,9 @@
     "ENABLE_TOOL_SEARCH": "1",
     "MOAI_CONFIG_SOURCE": "sections",
     "CLAUDE_CODE_NO_FLICKER": "1",
+{{- if ne .Platform "linux"}}
     "CLAUDE_CODE_SUBPROCESS_ENV_SCRUB": "1",
+{{- end}}
     "PATH": "{{jsonEscape .SmartPATH}}"
   },
   "permissions": {

@@ -117,9 +117,7 @@ func TestApplySchemaEditsGitStrategyTyped(t *testing.T) {
 	seedTypedFixtures(t, root, "git-strategy", "llm", "quality")
 
 	err := ApplySchemaEdits(root, map[string]string{
-		"git_strategy.mode":                  "personal",
-		"git_strategy.team.hooks.pre_push":   "enforce",
-		"git_strategy.manual.hooks.pre_push": "skip",
+		"git_strategy.mode": "personal",
 		// SPEC-WEB-CONSOLE-014 M3 (AC-WC14-010b): merge_method 라운드트립 확장.
 		"git_strategy.team.merge_method":     "rebase",
 		"git_strategy.personal.merge_method": "merge",
@@ -156,12 +154,6 @@ func TestApplySchemaEditsGitStrategyTyped(t *testing.T) {
 	}
 	if doc.GS.Mode != "personal" {
 		t.Errorf("mode = %q, want personal", doc.GS.Mode)
-	}
-	if doc.GS.Team.Hooks.PrePush != "enforce" {
-		t.Errorf("team.hooks.pre_push = %q, want enforce", doc.GS.Team.Hooks.PrePush)
-	}
-	if doc.GS.Manual.Hooks.PrePush != "skip" {
-		t.Errorf("manual.hooks.pre_push = %q, want skip", doc.GS.Manual.Hooks.PrePush)
 	}
 	if doc.GS.Team.MergeMethod != "rebase" {
 		t.Errorf("team.merge_method = %q, want rebase", doc.GS.Team.MergeMethod)
@@ -200,8 +192,8 @@ func TestMergeMethodFieldsExposed(t *testing.T) {
 			t.Errorf("merge_method field %q missing", name)
 			continue
 		}
-		if f.Type != TypeSelect {
-			t.Errorf("%q type = %q, want select", name, f.Type)
+		if f.Type != TypeRadio {
+			t.Errorf("%q type = %q, want radio", name, f.Type)
 		}
 		if gotOpts := f.SelectOptions(); !reflect.DeepEqual(gotOpts, wantOpts) {
 			t.Errorf("%q options = %v, want sorted-from-SSOT %v", name, gotOpts, wantOpts)
@@ -374,9 +366,8 @@ func TestSchemaCurrentValuesReadsAllSections(t *testing.T) {
 		"ralph.warn_as_instruction":                    "false",
 		"feedback.repository":                          "modu-ai/moai-adk",
 		"observability.retention_days":                 "30",
-		"security.permission.strict_mode":              "false",
-		"git_strategy.mode":                            "team",
-		"git_strategy.team.hooks.pre_push":             "enforce",
+		"security.permission.strict_mode": "false",
+		"git_strategy.mode":           "team",
 		"llm.glm.models.high":                          "glm-5.2",
 		"quality.ddd_settings.characterization_tests":  "true",
 		"quality.ddd_settings.behavior_snapshots":      "true",
