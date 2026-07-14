@@ -154,6 +154,37 @@ $ grep -cn 'p\.Data\|p\.Info\|p\.Success' internal/cli/migration.go | tr -d ' '
                                                                                      → 6   (reachability: Data×2 + Info×1 + Success×2 + printer.New×3 construction sites)
 ```
 
+### M4 milestone — tmux_integration.go (5 fmt.Printf → Info; stdout→stderr)
+
+Migrates the 5 consecutive `fmt.Printf` calls in the "Print log output" block of
+`CreateTmuxSession` to `p.Info(...)`. Simplest milestone: all 5 calls map to the
+SAME method (`Info`), no composed strings, no Korean. Channel change stdout→stderr;
+these are status lines with no scripted consumer, so Reversibility risk is LOW.
+
+Mechanism: injectable `tmuxSessionPrinterFactory` (package-level function var),
+mirroring the existing `tmuxSessionFactory` / `isTmuxAvailableFunc` convention —
+no signature change, preserves all 4 existing sec_harden callers + the `new.go`
+production caller (no `new.go` touch).
+
+Characterization test `tmux_integration_m4_test.go` pins the 5 lines byte-for-byte
+on stderr in ModePlain (fixed "·" info glyph, no ANSI). The "· " prefix is emitted
+exclusively by the Printer status path, so observing it on stderr is the
+reachability proof that `p.Info` was actually called (AC-TUX3-021).
+
+```
+$ go build ./internal/cli/...                                                       → exit 0
+$ go vet ./internal/cli/...                                                         → exit 0
+$ go test ./internal/cli/worktree/ -run 'TestCreateTmuxSession_ResultBlock_OnStderrViaPrinter' -count=1 -v
+                                                                                     → exit 0 (PASS — 1/1)
+$ go test ./internal/cli/worktree/... -count=1                                      → exit 0
+$ grep -rn 'fmt\.Print' internal/cli --include='*.go' | grep -v _test.go | wc -l
+                                                                                     → 14  (was 19 after M3; −5 this milestone; AC-TUX3-020 migratable-set COMPLETE — banner 12 TUI + branch_protection 1 dead EXCLUDED per M1 arch gate)
+$ grep -c 'fmt\.Printf\|fmt\.Println\|fmt\.Print(' internal/cli/worktree/tmux_integration.go | tr -d ' '
+                                                                                     → 0   (AC-TUX3-021 PASS for tmux_integration.go)
+$ grep -n 'p\.Info(' internal/cli/worktree/tmux_integration.go | grep -v '^[0-9]*:[ \t]*//' | wc -l
+                                                                                     → 5   (reachability: 5 actual p.Info calls lines 115-119, comment-excluded)
+```
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 **M2-local readiness statement** (NOT full run-phase completion — M3/M4/M5 still pending):
