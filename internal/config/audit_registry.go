@@ -59,6 +59,8 @@ var yamlAuditExceptions = map[string]string{
 	"interview":    "deferred to SPEC-V3R2-MIG-003 — yaml-only artifact, no Go loader",
 	"design":       "deferred to SPEC-V3R2-MIG-003 — yaml-only artifact, no Go loader",
 	"harness":      "deferred to SPEC-V3R2-MIG-003 — yaml-only artifact, no Go loader",
+	// Delegation map is consumed by the orchestrator (CLAUDE.md), not by Go code.
+	"delegation": "orchestrator-consumed delegation map — yaml-only artifact, no Go loader",
 }
 
 // GetYAMLToStructRegistry returns a copy of the yaml→struct registry.

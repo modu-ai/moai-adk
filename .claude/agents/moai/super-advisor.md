@@ -93,6 +93,12 @@ A super-advisor prescription is structured:
 The orchestrator reads the prescription, may accept / modify / reject it, and owns the
 resulting decision.
 
+## Conditional Skill Loading
+
+Static `skills:` preload is kept to a minimum (token diet — progressive disclosure covers the rest); load the following skill on demand with the `Skill` tool:
+
+- When a consultation calls for first-principles reasoning or explicit trade-off analysis, invoke Skill("moai-foundation-thinking") to load it on demand.
+
 ## Cross-References
 
 - Design authority (architecture SSOT): `.moai/reports/agent-architecture-redesign-v2-20260709.html` (§01 change ② + §05).

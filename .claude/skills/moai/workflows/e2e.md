@@ -253,6 +253,7 @@ The orchestrator groups Phase 3 failures/improvement findings by blast radius:
 ### Delegation Contract
 
 Each `manager-develop` spawn (cycle_type=autofix):
+- **Skill injection** (skill-routing.md §1): inject `At start, invoke Skill("moai-workflow-ddd") for the autofix repair cycle.` plus 0-3 domain `moai-ref-*` skills matched to the failing journey's domain (e.g. frontend → moai-ref-react-patterns, backend → moai-ref-api-patterns; per `.moai/config/sections/delegation.yaml` domain_skills)
 - **Input**: failing journey(s) + bounded failure excerpt + artifact path (`e2e/.runs/<log>`) + exact reproduction
 - **Cycle**: localize → repair → validate (manager-develop autofix)
 - **Validate**: MUST re-run the relevant e2e spec locally (not the full suite) to confirm the fix before returning

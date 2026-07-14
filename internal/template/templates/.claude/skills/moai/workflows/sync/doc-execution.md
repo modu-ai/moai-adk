@@ -47,6 +47,8 @@ Scan ALL source files (not just changed files) for:
 
 Agent: manager-docs subagent
 
+Skill injection (applies to every manager-docs spawn in this workflow, per skill-routing.md §1): inject `At start, invoke Skill("moai-workflow-project") for the sync-phase documentation cycle.` into each manager-docs spawn prompt (per `.moai/config/sections/delegation.yaml` sync designation).
+
 Create synchronization strategy based on Git changes, mode, project verification results, and deployment readiness report from Phase 0. Output: documents to update, SPECs requiring sync, project improvements needed, estimated scope, deployment notes to include in PR.
 
 #### Step 1.5: SPEC-Implementation Divergence Analysis

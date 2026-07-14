@@ -184,8 +184,8 @@ See .claude/rules/moai/workflow/mx-tag-protocol.md for tag type definitions.
 
 Executor selection by fix level (static lookup table — domain expertise injected per-spawn per `.claude/rules/moai/workflow/archived-agent-rejection.md` §C):
 - Level 1 (import, formatting): orchestrator-direct formatter command (no Agent() spawn)
-- Level 2 (rename, type): manager-develop (cycle_type=ddd) or per-spawn `Agent(general-purpose)` refactoring specialist
-- Level 3 (logic, API): manager-develop subagent (after user approval)
+- Level 2 (rename, type): manager-develop (cycle_type=ddd) or per-spawn `Agent(general-purpose)` refactoring specialist — inject `At start, invoke Skill("moai-workflow-ddd") for the DDD refactor cycle.`
+- Level 3 (logic, API): manager-develop subagent (after user approval) — inject the cycle_type skill (`moai-workflow-ddd`|`moai-workflow-tdd`) plus 0-3 domain `moai-ref-*` skills per the mission domain (`.moai/config/sections/delegation.yaml` domain_skills; per skill-routing.md §1)
 
 Execution order:
 - Level 1 fixes applied automatically via the orchestrator-direct formatter command

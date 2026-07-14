@@ -57,7 +57,7 @@ See [Subcommand Classification matrix](../../rules/moai/workflow/spec-workflow.m
 
 ## Phase 1: Static Analysis Scan
 
-[HARD] Delegate static analysis AND usage-graph analysis (Phases 1+2) to ONE combined per-spawn `Agent(general-purpose)` refactoring specialist (refactoring whitelist + ANALYZE-PRESERVE-IMPROVE instructions per `.claude/rules/moai/workflow/archived-agent-rejection.md` §C). The two phases share an identical whitelist and role, so a single combined analysis spawn performs Phase 1 then Phase 2 in one delegation — replacing the former two-spawn chain.
+[HARD] Delegate static analysis AND usage-graph analysis (Phases 1+2) to ONE combined per-spawn `Agent(general-purpose)` refactoring specialist (refactoring whitelist + ANALYZE-PRESERVE-IMPROVE instructions per `.claude/rules/moai/workflow/archived-agent-rejection.md` §C). Inject `At start, invoke Skill("moai-workflow-ddd") for the ANALYZE-PRESERVE-IMPROVE cycle.` (per `.moai/config/sections/delegation.yaml`; skill-routing.md §1). The two phases share an identical whitelist and role, so a single combined analysis spawn performs Phase 1 then Phase 2 in one delegation — replacing the former two-spawn chain.
 
 Language-specific dead code detection (all 16 supported languages, equal treatment):
 
@@ -161,7 +161,7 @@ If --dry flag: Display analysis results and exit without removing anything.
 
 <!-- @MX:WARN @MX:REASON - Phase 4 delegates to a per-spawn general-purpose refactoring specialist for the *executor* role. Do NOT extend this delegation to choose between Phase 4 and Phase 5; that would violate the agentless-pipeline contract. -->
 
-[HARD] Delegate safe removal AND test verification (Phases 4+5) to ONE combined per-spawn `Agent(general-purpose)` refactoring specialist — a single removal+verification spawn performs Phase 4 then Phase 5 in one delegation, replacing the former separate removal and verification spawns.
+[HARD] Delegate safe removal AND test verification (Phases 4+5) to ONE combined per-spawn `Agent(general-purpose)` refactoring specialist — a single removal+verification spawn performs Phase 4 then Phase 5 in one delegation, replacing the former separate removal and verification spawns. Inject `At start, invoke Skill("moai-workflow-ddd") for the ANALYZE-PRESERVE-IMPROVE cycle.` (per `.moai/config/sections/delegation.yaml`; skill-routing.md §1).
 
 Removal Strategy:
 

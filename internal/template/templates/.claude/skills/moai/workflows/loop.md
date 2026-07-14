@@ -181,10 +181,12 @@ Step 6 - Fix Execution:
 
 Agent selection by issue type (domain expertise injected per-spawn per `.claude/rules/moai/workflow/archived-agent-rejection.md` §C):
 - Type errors, logic bugs: manager-develop subagent (or orchestrator verification batch)
-- Import/module issues: manager-develop (or per-spawn `Agent(general-purpose)` backend/frontend specialist)
-- Test failures: manager-develop subagent
-- Security issues: per-spawn `Agent(general-purpose)` security reviewer
+- Import/module issues: manager-develop (or per-spawn `Agent(general-purpose)` backend/frontend specialist) — inject `At start, invoke Skill("moai-ref-api-patterns")` for backend import/module work
+- Test failures: manager-develop subagent — inject `At start, invoke Skill("moai-ref-testing-pyramid")` for test-suite structure
+- Security issues: per-spawn `Agent(general-purpose)` security reviewer — inject `At start, invoke Skill("moai-ref-owasp-checklist") for the OWASP Top 10 baseline.`
 - Performance issues: per-spawn `Agent(general-purpose)` performance specialist
+
+Skill injection: per skill-routing.md §1, before each spawn inject 0-3 `At start, invoke Skill("<name>") for <reason>` lines from the delegation map (`.moai/config/sections/delegation.yaml`), matched to the issue type's domain (security → moai-ref-owasp-checklist, test → moai-ref-testing-pyramid, backend import/module → moai-ref-api-patterns).
 
 Fix levels applied per --auto setting:
 - Level 1 (Immediate): No approval. Import sorting, whitespace

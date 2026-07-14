@@ -25,7 +25,7 @@ progressive_disclosure:
 # MoAI Extension: Triggers
 triggers:
   keywords: ["harness", "harness status", "harness apply", "harness rollback", "harness disable", "tier 4", "harness proposal", "harness evolve"]
-  agents: ["moai-harness-learner"]
+  agents: ["builder-harness"]
   phases: ["harness"]
 ---
 

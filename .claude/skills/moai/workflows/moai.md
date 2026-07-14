@@ -154,13 +154,13 @@ The default pipeline declares these gates explicitly. Each is implemented by its
 - **development_mode: tdd** (default): Use `manager-develop` (RED-GREEN-REFACTOR)
 - **development_mode: ddd**: Use `manager-develop` (ANALYZE-PRESERVE-IMPROVE)
 
-Domain-specialist selection (for domain-specific work) — per `.claude/rules/moai/workflow/archived-agent-rejection.md` §C, domain expertise is injected at delegation time via a per-spawn `Agent(general-purpose)` with the domain whitelist + domain instructions, NOT a static expert agent file:
-- Backend logic: manager-develop (or per-spawn `Agent(general-purpose)` backend specialist)
-- Frontend components: manager-develop (or per-spawn `Agent(general-purpose)` frontend specialist)
-- Test creation: manager-develop subagent
+Domain-specialist selection (for domain-specific work) — per `.claude/rules/moai/workflow/archived-agent-rejection.md` §C, domain expertise is injected at delegation time via a per-spawn `Agent(general-purpose)` with the domain whitelist + domain instructions, NOT a static expert agent file. Each spawn also carries 0-3 injected `moai-ref-*`/`moai-domain-*` skills per the delegation map (`.moai/config/sections/delegation.yaml` domain_skills; skill-routing.md §1):
+- Backend logic: manager-develop (or per-spawn `Agent(general-purpose)` backend specialist) → Skill("moai-ref-api-patterns")
+- Frontend components: manager-develop (or per-spawn `Agent(general-purpose)` frontend specialist) → Skill("moai-ref-react-patterns")
+- Test creation: manager-develop subagent → Skill("moai-ref-testing-pyramid")
 - Bug fixing: manager-develop + orchestrator verification batch (lint + test + coverage)
-- Refactoring: manager-develop (cycle_type=ddd) or per-spawn `Agent(general-purpose)` refactoring specialist
-- Security fixes: per-spawn `Agent(general-purpose)` security reviewer (or Stop hook dependency-manifest audit)
+- Refactoring: manager-develop (cycle_type=ddd) or per-spawn `Agent(general-purpose)` refactoring specialist → Skill("moai-workflow-ddd")
+- Security fixes: per-spawn `Agent(general-purpose)` security reviewer (or Stop hook dependency-manifest audit) → Skill("moai-ref-owasp-checklist")
 
 Loop behavior (when --loop flag or workflow.yaml loop_prevention settings enabled) — this is the run-phase diagnostic fix-loop (Ralph-style, bounded by `loop_prevention.max_iterations`), DISTINCT from the pipeline-level § Agentic Completion Loop below (bounded by `agentic_loop.max_iterations`):
 - While issues exist AND iteration less than max:

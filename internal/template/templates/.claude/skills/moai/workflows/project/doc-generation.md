@@ -11,7 +11,7 @@ metadata:
 
 ## Phase 6: Documentation Generation
 
-[HARD] Delegate documentation generation to the manager-docs subagent.
+[HARD] Delegate documentation generation to the manager-docs subagent. Inject `At start, invoke Skill("moai-workflow-project") for project-documentation generation.` into the spawn prompt (per `.moai/config/sections/delegation.yaml` project designation; skill-routing.md §1).
 
 Pass to manager-docs:
 
@@ -132,7 +132,7 @@ Purpose: Generate architecture documentation in `.moai/project/codemaps/` direct
 
 Agent Chain:
 - Explore subagent: Analyze codebase architecture (reuse Phase 3 results if available)
-- manager-docs subagent: Generate codemaps documentation files
+- manager-docs subagent: Generate codemaps documentation files (inject `At start, invoke Skill("moai-workflow-project")` per skill-routing.md §1)
 
 Output Files (in `.moai/project/codemaps/` directory):
 - overview.md: High-level architecture summary, design patterns, system boundaries

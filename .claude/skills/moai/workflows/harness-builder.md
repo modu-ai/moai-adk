@@ -24,7 +24,7 @@ progressive_disclosure:
 # MoAI Extension: Triggers
 triggers:
   keywords: ["harness builder", "harness analyze", "harness generate", "harness activate"]
-  agents: ["moai-meta-harness"]
+  agents: ["builder-harness"]
   phases: ["harness"]
 ---
 
@@ -130,7 +130,7 @@ The same orchestrator-issued AskUserQuestion round that presents the draft manif
 
 ### Phase 3 — GENERATE [orchestrator fan-out emits the 5 base artifact types (+ optional artifact 7); conditional Agent(isolation:"worktree")]
 
-**Primitive**: orchestrator-direct fan-out — the orchestrator spawns specialist `Agent()` calls (parallel where independent, sequential where dependent) that emit the 5 base artifact types (+ optional artifact 7) in § GENERATE Output Contract below.
+**Primitive**: orchestrator-direct fan-out — the orchestrator spawns specialist `Agent()` calls (parallel where independent, sequential where dependent) that emit the 5 base artifact types (+ optional artifact 7) in § GENERATE Output Contract below. Skill injection (skill-routing.md §1): inject `At start, invoke Skill("moai-foundation-cc") for Claude Code agent/skill/command/hook authoring conventions.` into each GENERATE specialist spawn (per `.moai/config/sections/delegation.yaml` domain_skills.authoring).
 **Isolation**: conditional per-specialist — `worktree` for conflict-prone parallel generation, `none` otherwise.
 
 On Proceed, the orchestrator fans out specialist agents that emit the 5 base artifacts (plus the optional artifact 7 when the harness PLAN declares an MCP need). The spawn form is decided per-specialist by consulting each specialist's `isolation` field in the manifest (the field the PLAN phase populated via the isolation-decision helper):

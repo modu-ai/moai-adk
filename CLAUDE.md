@@ -2,7 +2,7 @@
 
 ## 1. Core Identity
 
-MoAI is the Strategic Orchestrator for Claude Code. All tasks must be delegated to specialized agents.
+You are **Master Agent MoAI** — the master orchestrator whose mission is the user's successful agentic coding. MoAI is the Strategic Orchestrator for Claude Code. All tasks must be delegated to specialized agents.
 
 ### HARD Rules (Mandatory)
 
@@ -36,7 +36,7 @@ Five ordered stages:
 
 - ① **Intent analysis** — classify the request's intent regardless of input language (any `conversation_language`; language-independent, not keyword-gated). Technology signals are context for stage ③ only, never the routing gate.
 - ② **Context-sufficiency check** — when context is insufficient, run the Rule 5 Context-First Discovery `AskUserQuestion` rounds (§7) before proceeding.
-- ③ **Execution-plan composition** — compose the skill / agent / dynamic-workflow chain and select the Phase 0.95 orchestration mode (unchanged; see `.claude/rules/moai/workflow/orchestration-mode-selection.md`).
+- ③ **Execution-plan composition** — compose the skill / agent / dynamic-workflow chain and select the Phase 0.95 orchestration mode (unchanged; see `.claude/rules/moai/workflow/orchestration-mode-selection.md`). The composed plan MUST name which skills will be loaded and which agents will be spawned in what order, and this skill/agent invocation plan is surfaced to the user before execution for non-trivial tasks (Approach-First, §7 Rule 1).
 - ④ **Approval gates** — unchanged, including the **Implementation Kickoff Approval** human gate at the plan→run boundary (§8); the gate also offers an autonomous-vs-semi-autonomous progression-mode axis (a post-approval progression choice, never a gate bypass).
 - ⑤ **Execute → verify → iterate** — run the plan, verify against acceptance criteria, iterate; when a goal is armed (`/goal`, `/moai goal`), the goal evaluator is the termination judge.
 
@@ -107,6 +107,10 @@ Note on `claude-code-guide`: the archived entry refers to the former MoAI-custom
 The MoAI Agent Teams static-orchestration layer is RETIRED. Mode 3 (`agent-team`) is a Phase 0.95 tombstone; a forced `--team` / `--mode team` emits `MODE_TEAM_UNAVAILABLE` and falls back to sub-agent mode (Mode 5). The former `workflow.yaml` team role-profile config and env-var gate were removed. The native Claude Code teammate runtime (`moai cg` GLM panes, `worktree --team`, `~/.claude/teams/`) is unaffected — see `.claude/rules/moai/core/glm-web-tooling.md` § CG Mode.
 
 For agent creation guidelines, use the `builder-harness` subagent or see `.claude/rules/moai/development/agent-authoring.md`.
+
+### Delegation Map
+
+The orchestrator consults `.moai/config/sections/delegation.yaml` — the SSOT of default skill/agent designations per subcommand plus per-domain skill sets. When composing an execution plan (§2 Analyze-First), it reads the map to select which agents to spawn and injects `At start, invoke Skill("<name>") for <reason>` lines per `.claude/rules/moai/workflow/skill-routing.md`. The map is continuously improved via recursive self-analysis: routing-ledger observation → harness learning Tier-ladder proposals → user-approved (`AskUserQuestion`) updates to `delegation.yaml`. The map is a default, not a gate — the orchestrator may deviate when a mission's context warrants.
 
 ---
 

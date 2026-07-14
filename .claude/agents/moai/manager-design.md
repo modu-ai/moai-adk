@@ -9,7 +9,7 @@ description: |
   authoring (manager-spec).
 tools: Read, Write, Edit, Grep, Glob, Bash, DesignSync, TaskCreate, TaskUpdate, TaskList, TaskGet, Skill
 model: opus
-effort: xhigh
+effort: high
 color: pink
 permissionMode: acceptEdits
 memory: project
@@ -184,6 +184,13 @@ condition (canvas regression / brand-token reconciliation / tool registration).
 - Gate verdicts (PASS/FAIL) — route to `plan-auditor` / `sync-auditor`.
 - Invoke `/design-login` or `/design-sync` — they are user-only TUI commands;
   this agent guides their use, never invokes them.
+
+## Conditional Skill Loading
+
+Static `skills:` preload is kept to a minimum (token diet — progressive disclosure covers the rest); load the following skills on demand with the `Skill` tool:
+
+- When producing a design→implementation handoff or reasoning about component structure, invoke Skill("moai-ref-react-patterns") to load it on demand.
+- When weighing design trade-offs or deep design-direction decisions, invoke Skill("moai-foundation-thinking") to load it on demand.
 
 ## Cross-References
 

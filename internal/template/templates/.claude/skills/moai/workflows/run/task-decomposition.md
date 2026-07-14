@@ -14,6 +14,8 @@ metadata:
 
 Agent: manager-develop subagent
 
+Skill injection: per skill-routing.md §1, the manager-develop spawn prompt MUST carry the cycle_type skill (`moai-workflow-ddd` here; `moai-workflow-tdd` in tdd mode) plus 0-3 domain `moai-ref-*` skills matched to the mission domain (backend → moai-ref-api-patterns, frontend → moai-ref-react-patterns, database → moai-domain-database, per `.moai/config/sections/delegation.yaml` domain_skills), each as an `At start, invoke Skill("<name>") for <reason>` line.
+
 Input: Approved execution plan from Phase 5 plus task decomposition from Phase 6. Include `.moai/project/structure.md` and `.moai/project/tech.md` as onboarding context in the agent prompt so the implementation agent understands the project's architecture conventions before writing code.
 
 Requirements:

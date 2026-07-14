@@ -23,7 +23,7 @@ progressive_disclosure:
 # MoAI Extension: Triggers
 triggers:
   keywords: ["harness build", "build a harness", "create a harness", "harness for"]
-  agents: ["moai-meta-harness"]
+  agents: ["builder-harness"]
   phases: ["harness"]
 ---
 

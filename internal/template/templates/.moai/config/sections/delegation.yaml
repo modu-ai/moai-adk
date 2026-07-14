@@ -1,0 +1,98 @@
+# Delegation Map — default skill/agent designations per /moai subcommand.
+#
+# SSOT consumed by CLAUDE.md orchestration. The orchestrator reads this map
+# when composing execution plans (Analyze-First, CLAUDE.md section 2) and
+# injects `At start, invoke Skill("<name>") for <reason>` lines into Agent()
+# spawn prompts per .claude/rules/moai/workflow/skill-routing.md section 1.
+#
+# Learning loop: routing usage is observed via the append-only routing ledger
+# (.moai/state/routing-ledger.jsonl, opt-in and fail-open) and the harness
+# learning subsystem (.moai/harness/) proposes updates through the 4-tier
+# proposal ladder. A Tier-4 change to this file requires user approval via
+# AskUserQuestion (auto_apply is false).
+#
+# Agent names are the 11 retained agents (CLAUDE.md section 4). Skill names are
+# template-distributed moai-* skills. Zero designations is valid — an entry may
+# route to orchestrator-direct execution with no agent and no skill.
+delegation:
+    version: 1
+    learning:
+        observe: routing-ledger        # usage observation source (opt-in)
+        propose_via: harness-tier-ladder
+        auto_apply: false              # Tier-4 gate — user approval required
+
+    # Default agent + skill designations per subcommand. `agents` lists the
+    # retained agents the workflow spawns; `skills` lists the workflow skills
+    # the orchestrator injects at spawn (per skill-routing.md).
+    subcommands:
+        plan:
+            agents: [manager-spec, plan-auditor, Explore]
+            skills: [moai-workflow-spec, moai-foundation-thinking]
+        run:
+            agents: [manager-develop]      # cycle_type ddd|tdd per quality.yaml
+            skills: [moai-workflow-tdd, moai-workflow-ddd]
+        sync:
+            agents: [manager-docs, sync-auditor]
+            skills: [moai-workflow-project, moai-workflow-ci-loop]
+        project:
+            agents: [Explore, manager-docs]
+            skills: [moai-workflow-project]
+        fix:
+            agents: [manager-develop]      # cycle_type autofix
+            skills: [moai-workflow-ddd, moai-workflow-ci-loop]
+        loop:
+            agents: [manager-develop]      # cycle_type autofix, iterated
+            skills: [moai-workflow-loop, moai-workflow-ci-loop]
+        mx:
+            agents: [Explore]              # annotation via Agent(general-purpose)
+            skills: []
+        feedback:
+            agents: []                     # orchestrator-direct via gh CLI
+            skills: []
+        review:
+            agents: [sync-auditor]         # judges via Agent(general-purpose)
+            skills: [moai-foundation-quality, moai-ref-owasp-checklist]
+        clean:
+            agents: [manager-develop]      # dead-code removal, refactoring scope
+            skills: [moai-workflow-ddd]
+        codemaps:
+            agents: [Explore, manager-docs]
+            skills: [moai-workflow-project]
+        gate:
+            agents: []                     # direct execution, no delegation
+            skills: []
+        e2e:
+            agents: [e2e-tester]
+            skills: [moai-foundation-quality, moai-ref-testing-pyramid]
+        harness:
+            agents: [builder-harness]
+            skills: [moai-meta-harness, moai-harness-learner]
+        goal:
+            agents: []                     # orchestrator + stop-goal Stop hook
+            skills: []
+        default:                           # natural-language autonomous pipeline
+            agents: [Explore, manager-spec, plan-auditor, manager-develop, manager-docs, sync-auditor]
+            skills: [moai-workflow-spec, moai-workflow-tdd]
+
+    # Domain skills the orchestrator injects per mission domain (0-3 per spawn,
+    # per skill-routing.md section 1). Matched against the mission's domain
+    # signal; zero matches is valid.
+    domain_skills:
+        backend:   [moai-ref-api-patterns, moai-domain-backend]
+        frontend:  [moai-ref-react-patterns, moai-domain-frontend]
+        database:  [moai-domain-database]
+        security:  [moai-ref-owasp-checklist, moai-ref-llm-security, moai-ref-secops, moai-ref-supply-chain]
+        testing:   [moai-ref-testing-pyramid, moai-workflow-testing]
+        git:       [moai-ref-git-workflow]
+        authoring: [moai-foundation-cc]
+
+    # Per-agent conditional skills (mirrors each agent's Conditional Skill
+    # Loading section). The agent loads these on demand when its stated trigger
+    # arises, not preemptively.
+    agents:
+        manager-spec:    [moai-workflow-spec, moai-foundation-thinking]
+        manager-develop: [moai-workflow-tdd, moai-workflow-ddd]
+        manager-docs:    [moai-workflow-project]
+        e2e-tester:      [moai-foundation-quality, moai-ref-testing-pyramid]
+        manager-design:  [moai-ref-react-patterns, moai-foundation-thinking]
+        super-advisor:   [moai-foundation-thinking]

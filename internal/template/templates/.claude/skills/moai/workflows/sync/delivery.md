@@ -236,6 +236,7 @@ Detect current branch:
    - Labels: auto-detected from changed files
 4. If PR exists: Update with comment summarizing sync changes
 5. Display PR URL to user
+6. After `gh pr create` success: invoke `Skill("moai-workflow-ci-loop")` to start the CI watch + auto-fix loop (HARD invocation contracts per `.claude/rules/moai/workflow/ci-watch-protocol.md` + `.claude/rules/moai/workflow/ci-autofix-protocol.md`; the sync delegation skill per `.moai/config/sections/delegation.yaml`).
 
 **Main branch** (direct commit):
 - Push directly: `git push origin {main_branch}`

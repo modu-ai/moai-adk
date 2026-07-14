@@ -167,6 +167,13 @@ Every completion returns:
 3. **Failure excerpts**: bounded tail per failed journey (exit code + the failing assertion context), with the full-log path cited
 4. **Environment notes**: toolchain versions probed, device/simulator state, headless/headed mode
 
+## Conditional Skill Loading
+
+Static `skills:` preload is kept to a minimum (token diet — progressive disclosure covers the rest); load the following skills on demand with the `Skill` tool:
+
+- When running gate / TRUST 5 quality checks on a suite run, invoke Skill("moai-foundation-quality") to load it on demand.
+- When deciding test-suite structure or the unit/integration/E2E balance for a journey, invoke Skill("moai-ref-testing-pyramid") to load it on demand.
+
 ## Subagent Boundary
 
 - The `tools` list excludes nested agent spawning and user-question channels by design; results return to the orchestrator, which owns all user interaction.

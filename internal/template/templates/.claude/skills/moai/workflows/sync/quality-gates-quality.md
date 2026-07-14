@@ -69,7 +69,7 @@ Evaluation Dimensions:
 - Consistency (15%): Codebase pattern adherence, code style consistency
 
 Auto-Fix Behavior:
-- If critical issues found: Delegate auto-fix to manager-develop or a per-spawn `Agent(general-purpose)` domain specialist (per `.claude/rules/moai/workflow/archived-agent-rejection.md` §C)
+- If critical issues found: Delegate auto-fix to manager-develop or a per-spawn `Agent(general-purpose)` domain specialist (per `.claude/rules/moai/workflow/archived-agent-rejection.md` §C) — inject the cycle_type skill (`moai-workflow-ddd`|`moai-workflow-tdd`) plus 0-3 domain `moai-ref-*` skills per the mission domain (`.moai/config/sections/delegation.yaml`; per skill-routing.md §1)
 - Re-run review after fix to verify resolution
 - Maximum 3 auto-fix iterations for critical issues before escalating to user
 - Warnings and suggestions are logged in report but do not block pipeline
@@ -117,7 +117,7 @@ Delegate to a per-spawn `Agent(general-purpose)` security reviewer loading the r
 Audit ALL of the following manifest files present at project root — dependency surface must be checked at every sync to detect drift from transitive vulnerability changes unrelated to this SPEC:
 `go.mod`, `package.json`, `requirements.txt`, `Cargo.toml`, `pyproject.toml`, `Gemfile`, `composer.json`, `mix.exs`, `Package.swift`, `pubspec.yaml`.
 
-When any manifest is detected, the dependency vulnerability scan runs automatically via the Stop hook (`.claude/hooks/moai/sync-phase-quality-gate.sh`) as a mechanical check outside agent delegation. If the Stop hook path is unavailable, a per-spawn `Agent(general-purpose)` security reviewer MAY perform the same scan as a fallback.
+When any manifest is detected, the dependency vulnerability scan runs automatically via the Stop hook (`.claude/hooks/moai/sync-phase-quality-gate.sh`) as a mechanical check outside agent delegation. If the Stop hook path is unavailable, a per-spawn `Agent(general-purpose)` security reviewer MAY perform the same scan as a fallback — inject `At start, invoke Skill("moai-ref-supply-chain") for the dependency / transitive-vulnerability baseline.` (per skill-routing.md §1).
 Rationale: a transitive vulnerability may have been introduced by an unrelated dependency update since the last sync, even if no manifest file was modified in the current SPEC.
 
 #### Step 0.55.2: Security Gate Decision

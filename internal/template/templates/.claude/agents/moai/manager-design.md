@@ -185,6 +185,13 @@ condition (canvas regression / brand-token reconciliation / tool registration).
 - Invoke `/design-login` or `/design-sync` — they are user-only TUI commands;
   this agent guides their use, never invokes them.
 
+## Conditional Skill Loading
+
+Static `skills:` preload is kept to a minimum (token diet — progressive disclosure covers the rest); load the following skills on demand with the `Skill` tool:
+
+- When producing a design→implementation handoff or reasoning about component structure, invoke Skill("moai-ref-react-patterns") to load it on demand.
+- When weighing design trade-offs or deep design-direction decisions, invoke Skill("moai-foundation-thinking") to load it on demand.
+
 ## Cross-References
 
 - **Design authority**: `.moai/reports/agent-architecture-redesign-v2-20260709.html` §04.

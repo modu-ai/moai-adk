@@ -6,7 +6,7 @@ catalog:
             - name: moai
               tier: core
               path: templates/.claude/skills/moai/
-              hash: 3be9e44752d77448c70a97e6461da2d4e2bc348131be83af213a0a8821433614
+              hash: 67a8502b837c4c7e313f8de1d185a6ecc12e49cc8ffe3056d0d4227c4d42ea07
               version: 1.0.0
             - name: moai-foundation-cc
               tier: core
@@ -127,17 +127,17 @@ catalog:
             - name: super-advisor
               tier: core
               path: templates/.claude/agents/moai/super-advisor.md
-              hash: 5bf170cfb0d353a2f7e43630a45e3c45b842e70ad23bc962864479f10f400b11
+              hash: 3ead4c234ababc731e0cc12e445b781ce36fcd4e93a0f26e1aa2020446811b22
               version: 1.0.0
             - name: manager-design
               tier: core
               path: templates/.claude/agents/moai/manager-design.md
-              hash: 9c70df4ee9b147f355a79d93245d3134011ed9f58592797bd7ebfce8e7108424
+              hash: d252878c3467946177833bcc6907cbf822ed491e48fb2759d0146491a17955d7
               version: 1.0.0
             - name: e2e-tester
               tier: core
               path: templates/.claude/agents/moai/e2e-tester.md
-              hash: e108c2ce8dce94f0449af1fb3cbc980fb616b5766911d8de669c5f116871271b
+              hash: e8b57600567d8025f5596b449dda5de69130d8ef77462e5910c2958e7c2a5287
               version: 1.0.0
     optional_packs:
         backend:

@@ -67,6 +67,8 @@ If --lean flag: SHORT-CIRCUIT this phase entirely. Skip the comprehensive 4-pers
 
 [HARD] The 4 perspectives execute as a Mode-4 parallel read-only fan-out: up to 4 concurrent read-only judges — one per perspective (Security / Performance / Quality / UX) — spawned in a single turn, within the 3-5 concurrent `Agent()` ceiling (`orchestration-mode-selection.md` §C.2). The sync-auditor subagent remains the binding synthesis and verdict owner (independent skeptical quality scoring per `.claude/rules/moai/workflow/archived-agent-rejection.md` §C row 2): the parallel judges' findings feed the sync-auditor synthesis, which renders the consolidated assessment. The fan-out changes execution shape only — never verdict ownership. (The `--team` parallel-review mode remains retired with the Agent Teams static layer; this is Mode 4 subagent fan-out, not a team.)
 
+Per-perspective skill injection (skill-routing.md §1): each read-only judge is a `Agent(general-purpose)` spawned with the perspective's skill injected — Security → `At start, invoke Skill("moai-ref-owasp-checklist")`; Quality → `Skill("moai-foundation-quality")`; UX → `Skill("moai-ref-react-patterns")` (per `.moai/config/sections/delegation.yaml`).
+
 At the finding stage, report every issue you find, including ones you are uncertain about or consider low-severity, each with a confidence level and an estimated severity. Do not filter for importance or confidence while finding — the verdict stage (must-pass thresholds + harmonic scoring) does the filtering downstream. The goal at this stage is coverage: surfacing a finding that later gets filtered out is preferable to silently dropping a real bug.
 
 ### Perspective 1: Security Review
@@ -111,7 +113,7 @@ Verify the following boundaries are intact:
 - **PII separation**: PII is never written to logs, metrics, or telemetry endpoints.
 - **Shared-state leakage**: No mutable globals that carry request-scoped data across concurrent requests.
 
-For all three subsections above, the canonical security procedure is `Skill("moai")` `security` workflow.
+For all three subsections above, the canonical security procedure is this workflow's `--security` phase (Perspective 1: Security Review) plus the sync-phase dependency-manifest quality gate (`workflows/sync/quality-gates-quality.md`), with the OWASP baseline supplied by `Skill("moai-ref-owasp-checklist")`.
 
 If --security flag: This perspective receives primary focus with deeper analysis.
 
@@ -286,7 +288,7 @@ When to run: --design or --critique flag is present, OR changed files include UI
 
 ### --design: Extract Design Patterns
 
-Agent: per-spawn `Agent(general-purpose)` frontend specialist (frontend whitelist per `.claude/rules/moai/workflow/archived-agent-rejection.md` §C row 8)
+Agent: per-spawn `Agent(general-purpose)` frontend specialist (frontend whitelist per `.claude/rules/moai/workflow/archived-agent-rejection.md` §C row 8) — inject `At start, invoke Skill("moai-ref-react-patterns")` and `Skill("moai-domain-frontend")` (per `.moai/config/sections/delegation.yaml` domain_skills.frontend; skill-routing.md §1)
 
 Tasks:
 1. Scan UI files for repeated patterns: spacing values, radius values, color tokens, button/card patterns, depth strategy (borders vs shadows)
@@ -299,7 +301,7 @@ Output: Design pattern report with deviation list (file:line references)
 
 ### --critique: Post-Build Craft Review
 
-Agent: per-spawn `Agent(general-purpose)` frontend specialist (frontend whitelist per `.claude/rules/moai/workflow/archived-agent-rejection.md` §C row 8)
+Agent: per-spawn `Agent(general-purpose)` frontend specialist (frontend whitelist per `.claude/rules/moai/workflow/archived-agent-rejection.md` §C row 8) — inject `At start, invoke Skill("moai-ref-react-patterns")` and `Skill("moai-domain-frontend")` (per `.moai/config/sections/delegation.yaml` domain_skills.frontend; skill-routing.md §1)
 
 Tasks:
 1. Read `.moai/design/system.md` for design direction context

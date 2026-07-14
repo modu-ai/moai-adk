@@ -36,6 +36,8 @@ triggers:
 
 Phase Owners: `manager-develop` (run-phase implementation — single-spawn per Anthropic's coding-task parallelism caveat "most coding tasks involve fewer truly parallelizable tasks than research"; `cycle_type` ∈ `{tdd, ddd, autofix}` per the canonical cycle-type contract) + `manager-git` (Tier L PR creation OR `--pr` flag per the canonical Tier-based PR routing policy) + `Explore` (read-only investigation when scope discovery needed).
 
+Skill injection: at each `manager-develop` spawn the orchestrator injects the cycle_type skill (`moai-workflow-tdd` | `moai-workflow-ddd`) plus 0-3 domain `moai-ref-*` skills matched to the mission domain, as `At start, invoke Skill("<name>") for <reason>` lines, per `.claude/rules/moai/workflow/skill-routing.md` §1 and the delegation map (`.moai/config/sections/delegation.yaml`).
+
 Phase 4 Mode Selection: orchestrator autonomous decision over the 6-mode catalog (trivial / background / agent-team / parallel / sub-agent / workflow) per `.claude/rules/moai/workflow/orchestration-mode-selection.md` §A, logged at `.moai/specs/SPEC-{ID}/progress.md` § Phase 4 Mode Selection. Phase 4 SHOULD be invoked before any manager-develop spawn for SPECs sized ≥ Tier M. The `--mode` dispatch axis below is a SEPARATE axis — see that rule's §G.1 crosswalk (correspondence, not merge).
 
 `cycle_type=autofix` mode: `/moai fix` workflow integration delegates to manager-develop with the utility-class pipeline 3-phase contract (localize → repair → validate per `.claude/rules/moai/workflow/spec-workflow.md` § Subcommand Classification) and the max-3-iteration contract per `.claude/rules/moai/workflow/ci-autofix-protocol.md`.

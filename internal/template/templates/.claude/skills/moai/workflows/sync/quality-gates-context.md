@@ -143,7 +143,7 @@ Purpose: Run the gate workflow (workflows/gate.md) as a fast pre-check before th
 - Execute gate workflow equivalent: lint + format + type-check + test in parallel
 - Auto-fix any fixable issues (lint auto-fix, format auto-fix)
 - If unfixable errors remain: Present summary and offer options via AskUserQuestion
-  - Fix errors (Recommended): Delegate to manager-develop subagent for targeted fixes
+  - Fix errors (Recommended): Delegate to manager-develop subagent for targeted fixes (inject the cycle_type skill `moai-workflow-ddd`|`moai-workflow-tdd` + 0-3 domain `moai-ref-*` per skill-routing.md §1)
   - Skip gate: Proceed to Phase 3 (errors will be caught later but at higher cost)
   - Abort: Exit sync workflow
 
@@ -208,7 +208,7 @@ Purpose: Verify the implementation is deployment-ready before quality verificati
 - Run full test suite for detected project language
 - Verify all tests pass (zero failures required)
 - If tests fail: Present failure summary and offer options via AskUserQuestion
-  - Fix and retry (Recommended): Delegate to manager-develop subagent
+  - Fix and retry (Recommended): Delegate to manager-develop subagent (inject the cycle_type skill `moai-workflow-ddd`|`moai-workflow-tdd` + 0-3 domain `moai-ref-*` per skill-routing.md §1)
   - Continue anyway: Proceed with warning
   - Abort: Exit sync workflow
 
