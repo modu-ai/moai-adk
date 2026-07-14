@@ -7,10 +7,10 @@ description: >
   output, and reports results with citable artifact paths.
 user-invocable: false
 metadata:
-  version: "3.0.0"
+  version: "3.1.0"
   category: "workflow"
   status: "active"
-  updated: "2026-07-13"
+  updated: "2026-07-14"
   tags: "e2e, end-to-end, testing, web, mobile, desktop, playwright, maestro, appium, detox, electron, tauri, user-journey"
   docs-libraries: "microsoft/playwright"
 
@@ -46,6 +46,7 @@ Execution owner: the **e2e-tester** subagent performs detection probes, journey 
 - `--browser BROWSER`: Browser for Playwright (default: chromium). Options: chromium, firefox, webkit
 - `--timeout N`: Test timeout in seconds (default: 30)
 - `--retry N`: Retries for failed tests (default: 1). Retries re-run ONLY the failed specs, never the full suite silently
+- `--autofix`: Enable autonomous fix delegation. On Phase 3 failure/improvement findings, the orchestrator groups findings (parallel for independent, sequential for dependent), delegates each group to `manager-develop` (cycle_type=autofix), and re-runs Phase 3 — looping up to 3 iterations until green or user escalation. One Implementation Kickoff Approval gates the whole loop
 
 ## Hard Rules — Token Minimization
 
@@ -232,6 +233,44 @@ npx playwright test e2e/ > e2e/.runs/$(date +%Y%m%d-%H%M%S)-suite.log 2>&1; \
 - Retries (`--retry N`) re-run ONLY failed specs
 - MCP-tier execution (Rung 3) applies only to the conditional capabilities in the Tool Matrix, batched
 
+## Phase 3.5: Autofix Delegation (--autofix only)
+
+Activates ONLY when `--autofix` is set AND Phase 3 produced failures or improvement findings. Skipped entirely when Phase 3 is green (proceeds straight to Phase 4/5) or when `--autofix` is absent (Phase 3 failures route to the normal Phase 5 next-step question).
+
+### Kickoff Approval (one-time gate)
+
+[HARD] Before the FIRST fix delegation of the loop, the ORCHESTRATOR obtains a single Implementation Kickoff Approval via AskUserQuestion — "enter autonomous autofix loop (manager-develop cycle_type=autofix, max 3 iterations, parallel-where-safe)". This one approval covers the entire loop; subsequent iterations do NOT re-ask. Declining falls back to the standard Phase 5 manual next-step.
+
+### Finding Grouping (orchestrator, blast-radius analysis)
+
+The orchestrator groups Phase 3 failures/improvement findings by blast radius:
+
+- **Independent group → parallel fan-out**: findings touching disjoint files/modules with zero overlap spawn as concurrent `manager-develop` delegations (Mode 4 ceiling: 3-5 concurrent).
+- **Dependent group → sequential**: findings touching the same module/file (cascade risk) are bundled into ONE `manager-develop` delegation processed in order.
+
+[HARD] Write-capable agents never run concurrently on overlapping scope (`agent-common-protocol.md` § Background Agent Execution). Orchestrator work concurrent with a write-capable agent stays read-only.
+
+### Delegation Contract
+
+Each `manager-develop` spawn (cycle_type=autofix):
+- **Input**: failing journey(s) + bounded failure excerpt + artifact path (`e2e/.runs/<log>`) + exact reproduction
+- **Cycle**: localize → repair → validate (manager-develop autofix)
+- **Validate**: MUST re-run the relevant e2e spec locally (not the full suite) to confirm the fix before returning
+
+### Loop Control
+
+```
+iteration = 0
+while iteration < 3 and not green:
+    delegate grouped fixes → manager-develop (autofix)   # parallel-where-safe
+    re-run Phase 3 (CLI-first, bounded output)
+    iteration++
+green             → Phase 5 (success report)
+iteration == 3    → escalate to user (remaining failures + artifact paths + AskUserQuestion)
+```
+
+Max 3 iterations mirrors `ci-autofix-protocol.md`. On exhaustion the orchestrator reports remaining failures with citable artifact paths and asks the user how to proceed (manual fix / re-run with adjusted scope / abort).
+
 ## Phase 4: Recording (optional)
 
 Applies when `--record` is set. [HARD] Delegate recording to the **e2e-tester** subagent using the selected toolchain's NATIVE facility — never MCP screenshot loops:
@@ -290,6 +329,7 @@ Next steps (ORCHESTRATOR AskUserQuestion): Fix failing tests (Recommended) / Rer
 - Phase 1: e2e-tester (journey mapping)
 - Phase 2: e2e-tester (script creation)
 - Phase 3: e2e-tester (CLI-first execution)
+- Phase 3.5 (--autofix only): orchestrator (grouping + Kickoff Approval) → manager-develop autofix (parallel-where-safe)
 - Phase 4: e2e-tester (native-facility recording)
 - Phase 5: MoAI orchestrator (report + next-step question)
 
@@ -302,6 +342,7 @@ Next steps (ORCHESTRATOR AskUserQuestion): Fix failing tests (Recommended) / Rer
 5. Phase 1: delegate journey mapping; orchestrator presents journey options
 6. Phase 2: delegate script creation per toolchain conventions
 7. Phase 3: delegate execution — CLI-first, bounded tail, file-redirect, selective JSON triage
+7.5. (if --autofix and Phase 3 not green) Phase 3.5: group findings → Kickoff Approval (1회) → manager-develop autofix (parallel independent / sequential dependent) → re-run; max 3 iterations or green; else escalate
 8. Phase 4: if --record, native-facility recording only
 9. TaskCreate/TaskUpdate for all journeys
 10. Phase 5: report in conversation_language with citable artifact paths
