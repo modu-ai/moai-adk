@@ -11,7 +11,7 @@
    1. Brand-variable remap (re-tints every existing component)
    ============================================================ */
 :root {
-  --color-primary: var(--accent);              /* 마스코트 녹색 #3d7d5f — var(--accent)=clay-500 */
+  --color-primary: var(--accent);              /* 시그니처 녹색 #3d7d5f — var(--accent)=clay-500 */
   --color-primary-hover: var(--accent-hover);
   --color-primary-active: var(--accent-press);
   --color-ink: var(--ink-900);
@@ -63,7 +63,7 @@ body {
 /* H2 섹션 번호 배지: clay-500 wash(연함) → clay-700 진하게 + 배경 강화 */
 .gdoc-markdown h2::before {
   color: #265240 !important;
-  background: rgba(164, 78, 47, 0.14) !important;
+  background: rgba(38, 82, 64, 0.14) !important;
 }
 
 .cw-side::-webkit-scrollbar { width: 8px; }
@@ -459,12 +459,12 @@ body {
    --term-divider 헤더·거터 구분선 */
 .gdoc-markdown .code-card {
   --term-bg: #15120E;
-  --term-head: #1F1A14;
+  --term-head: #15120E;
   --term-fg: #EEDFCF;
   --term-dim: rgba(238, 223, 207, 0.66);   /* 헤더 bash 라벨·복사 버튼 가독성 (0.34→0.66) */
   --term-divider: rgba(255, 255, 255, 0.07);
   border-radius: var(--radius-lg) !important;
-  border: 1.5px solid #0E0B08 !important;
+  border: none !important;
   box-shadow: var(--shadow-sm) !important;
   background: var(--term-bg) !important;
   overflow: hidden;
@@ -472,7 +472,7 @@ body {
 /* header row: near-black title bar, language label left + copy right */
 .gdoc-markdown .code-card .code-chrome {
   background: var(--term-head) !important;
-  border-bottom: 1px solid var(--term-divider) !important;
+  border-bottom: none !important;
   height: auto !important;
   padding: 8px 14px !important;
 }
@@ -536,37 +536,23 @@ body {
 .gdoc-markdown .code-card .highlight,
 .gdoc-markdown .code-card .chroma,
 .gdoc-markdown .code-card .highlight > .chroma,
-.gdoc-markdown .code-card .lntable,
-.gdoc-markdown .code-card .lntable td,
-.gdoc-markdown .code-card .lntd,
 .gdoc-markdown .code-card pre,
 .gdoc-markdown .code-card pre.chroma {
   background: var(--term-bg) !important;
   color: var(--term-fg) !important;
 }
-/* line-number gutter: dim numbers + subtle right divider (밝은 박스 제거) */
-.gdoc-markdown .code-card .lntable td.lntd:first-child,
-.gdoc-markdown .code-card .lntable td.lntd:first-child pre,
-.gdoc-markdown .code-card .chroma .lnt,
-.gdoc-markdown .code-card .chroma .ln {
-  background: var(--term-bg) !important;
-  color: var(--term-dim) !important;
-}
-.gdoc-markdown .code-card .lntable td.lntd:first-child {
-  border-right: 1px solid var(--term-divider) !important;
-}
 .gdoc-markdown .code-card .chroma code { color: var(--term-fg) !important; }
 /* prototype token accents on the near-black ground */
 .gdoc-markdown .code-card .chroma .c, .gdoc-markdown .code-card .chroma .c1, .gdoc-markdown .code-card .chroma .cm,
-.gdoc-markdown .code-card .chroma .ch, .gdoc-markdown .code-card .chroma .cs { color: #8C7960 !important; font-style: italic; }
+.gdoc-markdown .code-card .chroma .ch, .gdoc-markdown .code-card .chroma .cs { color: #8a908e !important; font-style: italic; }
 .gdoc-markdown .code-card .chroma .k, .gdoc-markdown .code-card .chroma .kd, .gdoc-markdown .code-card .chroma .kn,
-.gdoc-markdown .code-card .chroma .kt, .gdoc-markdown .code-card .chroma .nb, .gdoc-markdown .code-card .chroma .nt { color: #E7B98A !important; }
+.gdoc-markdown .code-card .chroma .kt, .gdoc-markdown .code-card .chroma .nb, .gdoc-markdown .code-card .chroma .nt { color: #5a9a7e !important; }
 .gdoc-markdown .code-card .chroma .s, .gdoc-markdown .code-card .chroma .s1, .gdoc-markdown .code-card .chroma .s2,
 .gdoc-markdown .code-card .chroma .sb, .gdoc-markdown .code-card .chroma .sd { color: #85bda0 !important; }
 
 /* terminal shortcode card follows the same near-black ground */
 .gdoc-markdown .term-card { background: #15120E !important; }
-.gdoc-markdown .term-card .code-chrome { background: #1F1A14 !important; border-bottom: 1px solid rgba(255,255,255,0.07) !important; }
+.gdoc-markdown .term-card .code-chrome { background: #1F1A14 !important; border-bottom: none !important; }
 .gdoc-markdown .term-card .term-pre { background: #15120E !important; color: #EEDFCF !important; }
 
 /* ④ 코드 글씨 더 진하게: 볼드 + 밝은 cream */
@@ -577,10 +563,8 @@ body {
   font-weight: 600 !important;
   color: #F6ECDD !important;
 }
-/* ⑤ 라인번호 거터 잔여 밝은 박스/포커스 아웃라인/테두리 제거 + 스크롤바 다크 */
+/* ⑤ 잔여 밝은 박스/포커스 아웃라인/테두리 제거 + 스크롤바 다크 */
 .gdoc-markdown .code-card pre,
-.gdoc-markdown .code-card .lntd pre,
-.gdoc-markdown .code-card .lntd code,
 .gdoc-markdown .code-card .chroma {
   border: 0 !important;
   outline: 0 !important;
@@ -592,10 +576,6 @@ body {
 .gdoc-markdown .code-card .chroma:focus-visible {
   outline: 0 !important;
   box-shadow: none !important;
-}
-.gdoc-markdown .code-card .lntable td.lntd:first-child code,
-.gdoc-markdown .code-card .lntable td.lntd:first-child .chroma {
-  background: var(--term-bg) !important;
 }
 /* geekdoc 전역 code { background: var(--code-accent-color-lite) }(크림)가
    코드 본문 셀 code 요소에 살아남는 문제 — 카드 내부 code/line은 배경 투명 강제 */
@@ -842,9 +822,8 @@ footer.cw-footer {
 .md-hero { position: relative; }
 .md-hero-mascot {
   float: right;
-  width: 150px; height: 150px;
+  width: 150px; height: auto;
   margin: 0 0 12px 28px;
-  shape-outside: circle(50%);
   filter: drop-shadow(0 6px 16px rgba(61, 125, 95, 0.15));
 }
 .md-hero::after { content: ""; display: table; clear: both; }
@@ -853,7 +832,7 @@ footer.cw-footer {
 }
 .md-404-mascot {
   display: block;
-  width: 120px; height: 120px;
+  width: 120px; height: auto;
   margin: 0 auto 8px;
   filter: drop-shadow(0 6px 16px rgba(61, 125, 95, 0.18));
 }
@@ -863,89 +842,52 @@ footer.cw-footer {
   margin: 28px 0 12px;
   opacity: 0.85;
 }
-.md-divider-mascot img { width: 64px; height: 64px; }
+.md-divider-mascot img { width: 72px; height: auto; }
 .cw-brand-mascot {
-  height: 28px; width: 28px;
+  height: 30px; width: auto;
   object-fit: contain;
-  border-radius: 6px;
 }
-
-/* ============================================================
-   13. Accent-color toolbox (FAB + palette popover)
-   ============================================================ */
-.md-toolbox { position: fixed; right: 20px; bottom: 20px; z-index: 60; font-family: var(--font-sans); }
-.md-tk-fab {
-  width: 46px;
-  height: 46px;
-  border-radius: var(--radius-pill);
-  border: 2px solid var(--accent);
-  background: var(--surface-card);
-  color: var(--accent);
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  box-shadow: var(--shadow-pop);
-  transition: transform var(--dur-fast) var(--ease-out);
-}
-.md-tk-fab:hover { transform: translateY(-2px); }
-.md-tk-fab svg { width: 22px; height: 22px; }
-.md-tk-pop {
-  position: absolute;
-  right: 0;
-  bottom: 58px;
-  width: 208px;
-  background: var(--surface-card);
-  border: 1.5px solid var(--border-default);
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-lg);
-  padding: 14px;
-  opacity: 0;
-  visibility: hidden;
-  transform: translateY(8px) scale(0.97);
-  transform-origin: bottom right;
-  transition: all var(--dur-fast) var(--ease-out);
-}
-.md-toolbox.open .md-tk-pop { opacity: 1; visibility: visible; transform: none; }
-.md-tk-title {
-  font-size: 12px;
-  font-weight: 700;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  color: var(--text-subtle);
-  margin-bottom: 10px;
-}
-.md-tk-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-.md-tk-sw {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 7px 9px;
-  border-radius: var(--radius-md);
-  border: 1.5px solid var(--border-subtle);
-  background: var(--bg-page);
-  color: var(--text-body);
-  font-size: 13px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all var(--dur-fast);
-  font-family: inherit;
-}
-.md-tk-sw:hover { border-color: var(--border-default); }
-.md-tk-sw.on { border-color: var(--accent); background: var(--accent-soft); }
-.md-tk-dot {
-  width: 15px;
-  height: 15px;
-  border-radius: 5px;
-  flex: none;
-  box-shadow: 2px 2px 0 color-mix(in srgb, #211A14 20%, transparent);
-}
-.md-tk-nm { white-space: nowrap; }
 
 /* ============================================================
    14. Responsive
    ============================================================ */
 @media (max-width: 860px) {
   .md-hero { padding: 28px 24px; }
-  .md-toolbox { right: 14px; bottom: 14px; }
 }
+
+/* ============================================================
+   15. Mascot green theme 강화 — 스크롤/헤더/푸터 (회색 마스코트 + 녹색 액센트)
+   ============================================================ */
+/* 전역 스크롤바 — 녹색 */
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb {
+  background: rgba(61, 125, 95, 0.35);
+  border-radius: 999px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+::-webkit-scrollbar-thumb:hover { background: rgba(61, 125, 95, 0.55); background-clip: padding-box; }
+html { scrollbar-color: rgba(61, 125, 95, 0.4) transparent; scrollbar-width: thin; }
+/* 사이드바/TOC 스크롤 — 녹색 */
+.sidebar::-webkit-scrollbar-thumb,
+.cw-side::-webkit-scrollbar-thumb { background: rgba(61, 125, 95, 0.28); }
+
+/* 헤더 — 녹색 tint + 녹색 border (이전 neutral cream → 테마 녹색) */
+.gdoc-header {
+  background: linear-gradient(180deg, rgba(61, 125, 95, 0.22) 0%, rgba(61, 125, 95, 0.10) 100%) !important;
+  border-bottom: 1.5px solid rgba(61, 125, 95, 0.45) !important;
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+}
+
+/* 푸터 — 녹색 gradient 배경 */
+.gdoc-footer.cw-footer,
+footer.cw-footer {
+  background: linear-gradient(180deg, rgba(61, 125, 95, 0.10) 0%, rgba(61, 125, 95, 0.22) 100%) !important;
+  border-top: 1.5px solid rgba(61, 125, 95, 0.40) !important;
+}
+/* 푸터 브랜드 — 모두의AI 로고 + copyleft */
+.cw-footer-brand { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+.cw-footer-logo { width: 28px; height: auto; }
+.cw-footer-copy { font-family: var(--font-mono); font-size: 13px; font-weight: 600; color: var(--fg-1); letter-spacing: -0.01em; }
