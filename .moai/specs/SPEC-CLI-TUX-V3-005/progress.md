@@ -198,7 +198,7 @@ Remaining milestones: **M3** migration.go (8 calls), **M4** tmux_integration.go 
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-sync_commit_sha: pending-backfill-sync (orchestrator-direct sync, GLM fallback per feedback-glm-orchestrator-direct-sync-mx)
+sync_commit_sha: 2cde0da97a70678ea281dd53381d2b5f91d7b427
 
 3-phase close (plan→run→sync) complete. Run-phase delivered M2-M4 (24 migratable calls migrated) + errcheck fix; ratchet 38→14 (AC-TUX3-020 PASS). All 5 AC verified (020 ratchet / 021 method-usage / 022 behavior via characterization tests / 023 coverage 74.1% SHOULD / 024 gap-site disposition). Single sync commit carries the `in-progress → completed` transition; sync_commit_sha backfilled in a follow-up commit (self-referential hazard — a commit does not know its own SHA, D3 placeholder-backfill exemption).
 
