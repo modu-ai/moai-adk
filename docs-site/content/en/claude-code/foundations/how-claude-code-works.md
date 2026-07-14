@@ -9,6 +9,8 @@ description: "The agentic loop, core components, and permission model of Claude 
 
 This page explains the workings of the agentic loop, in which Claude Code understands code and completes tasks by executing tools directly.
 
+{{< mascot talking >}}
+
 {{< callout type="info" >}}
 **One-line summary**: Claude Code is a terminal-native coding agent that pairs a reasoning model with acting tools and repeats "gather context → take action → verify results" on its own — and all three MoAI-ADK pillars stand on this loop.
 {{< /callout >}}

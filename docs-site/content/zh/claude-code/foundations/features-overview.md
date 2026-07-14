@@ -9,6 +9,8 @@ description: "在一页中梳理 Claude Code 的核心功能与扩展层，并�
 
 本页是一站式纵览 Claude Code 全部功能、帮助您快速把握每项功能究竟解决什么问题的中枢。
 
+{{< mascot talking >}}
+
 {{< callout type="info" >}}
 **一句话总结**：Claude Code 的结构是——在推理代码的模型上挂载文件编辑·搜索·执行等内置工具，再在其上层层叠加上下文·扩展·自动化层。
 {{< /callout >}}

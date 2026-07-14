@@ -7,6 +7,8 @@ description: "The four extension points that widen Claude Code's capabilities (s
 
 This group covers the four ways to extend Claude Code's behavior beyond its built-in capabilities. It explains, concept-first, the flow of modularizing expertise with skills, attaching automation to events with hooks, connecting external tools with MCP, and shipping all of it as one package with plugins.
 
+{{< mascot coding >}}
+
 These four are exactly the materials for building an **Agentic Harness**. In harness engineering — designing an environment where the agent works well instead of writing the code yourself — skills carry the agent's knowledge, hooks carry deterministic discipline, MCP carries the connection to the outside world, and plugins carry the deployment unit for the combination. What MoAI-ADK deploys with a single `moai init`, and what `/moai project` generates project-specifically, are ultimately combinations of these materials.
 
 {{< callout type="info" >}}

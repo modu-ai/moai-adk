@@ -6,6 +6,8 @@ draft: false
 
 本节介绍理解 MoAI-ADK v3.0 所需的核心概念。v3.0 的价值可以概括为三大支柱 — **代币经济学** (Token Economics)、**智能体循环工程** (Agentic Loop Engineering)，以及 **智能体挽具** (Agentic Harness)。本节的文档将逐一展开这三大支柱在实际开发流程中的运作方式。
 
+{{< mascot talking >}}
+
 {{< callout type="info" >}}
 初次接触吗？从上到下按顺序阅读，MoAI-ADK 的全貌会自然浮现。每篇文档也都可以独立阅读。
 {{< /callout >}}

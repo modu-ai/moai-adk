@@ -7,6 +7,8 @@ description: "Claude Code의 슬래시 명령어 — 내장 명령, 마크다운
 
 # 슬래시 명령어
 
+{{< mascot coding >}}
+
 슬래시 명령어 (slash command)는 세션 안에서 `/`로 시작하는 한 줄로 Claude Code를 직접 조작하는 가장 빠른 방법입니다.
 
 {{< callout type="info" >}}

@@ -6,6 +6,8 @@ draft: false
 
 A guide to installing MoAI-ADK on your system. The installation is a single Go-built binary — no Python, no virtual environment, no package manager required.
 
+{{< mascot talking >}}
+
 ## License
 
 MoAI-ADK {{< version >}} and later is distributed under the **Apache-2.0 license**.

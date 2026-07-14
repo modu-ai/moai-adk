@@ -7,6 +7,8 @@ description: "여러 Claude Code 세션이 공유 TaskList로 협업하는 에�
 
 # 에이전트 팀
 
+{{< mascot coding >}}
+
 에이전트 팀 (Agent Teams)은 여러 Claude Code 세션을 하나의 팀으로 묶어 공유 작업 목록과 상호 메시징으로 협업하게 하는 실험적 기능입니다.
 
 {{< callout type="info" >}}

@@ -8,6 +8,8 @@ MoAI-ADK 是开源项目，欢迎贡献！MoAI-ADK 自身也是用基于 SPEC �
 工作流和 TRUST 5 质量门开发的 —— 贡献流程的质量标准（覆盖率、Lint、
 Conventional Commit）沿用同一套标准。
 
+{{< mascot coding >}}
+
 ## 快速开始
 
 1. **Fork** 仓库

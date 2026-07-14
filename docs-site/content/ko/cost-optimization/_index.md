@@ -9,6 +9,8 @@ MoAI-ADK 토크노믹스는 두 축으로 추론 비용을 절감합니다. **�
 컨텍스트를 90% 할인된 비용으로 재사용하는 축입니다. 이 섹션은 캐싱을 언제
 활성화할지 판단하는 손익분기 규칙과 설정 방법을 다룹니다.
 
+{{< mascot bubble >}}
+
 ## 이 섹션의 문서
 
 - [프롬프트 캐싱 — 손익분기 분석 및 구현 가이드](/ko/cost-optimization/prompt-caching) — 2개 요청 손익분기 규칙, `cacheStrategy` 설정, statusline 모니터링

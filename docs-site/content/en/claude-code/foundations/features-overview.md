@@ -9,6 +9,8 @@ description: "A hub page that lays out Claude Code's core features and extension
 
 This page is a hub that gives you a bird's-eye view of everything Claude Code offers and helps you quickly grasp exactly which problem each feature solves.
 
+{{< mascot talking >}}
+
 {{< callout type="info" >}}
 **One-line summary**: Claude Code is a model that reasons about code with built-in tools for file editing, search, and execution attached, with context, extension, and automation layers stacked on top.
 {{< /callout >}}

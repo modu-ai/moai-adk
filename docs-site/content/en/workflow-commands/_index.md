@@ -6,6 +6,8 @@ draft: false
 
 A set of commands that run the SPEC-based 3-Phase lifecycle (plan → run → sync).
 
+{{< mascot coding >}}
+
 ## The Center of the Agentic Harness — the 3-Phase Lifecycle
 
 One of the core values of MoAI-ADK v3 is the **Agentic Harness**. Instead of writing code directly, you design the environment where agents work well — SPEC documents, quality gates, and feedback loops. The workflow commands run the **plan → run → sync** pipeline, the central axis of this harness.

@@ -7,6 +7,8 @@ description: "The context window, memory, prompt caching, and checkpointing for 
 
 This group covers the context window, memory, prompt caching, and checkpointing that Claude Code uses to sustain long sessions reliably. It is for developers who want to reduce context loss and cost growth in large tasks or development spanning multiple sessions.
 
+{{< mascot coding >}}
+
 In agentic development, what determines cost is not the model price sheet but **how you operate tokens**. What and how much you put in context, whether you reuse the unchanging parts via cache, whether you persist knowledge to files across sessions — these four mechanisms are the technical foundation of what MoAI-ADK calls **Tokenomics** (Token Economics).
 
 {{< callout type="info" >}}

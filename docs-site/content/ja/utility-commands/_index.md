@@ -6,6 +6,8 @@ draft: false
 
 自律的な自動化と反復修正ループ、コード管理、フィードバックコマンドの集まりです。
 
+{{< mascot coding >}}
+
 {{< callout type="info" >}}
 ユーティリティコマンドはワークフローコマンド (`/moai plan`、`/moai run`、`/moai sync`) とは異なり、**素早い自動化と問題解決** に特化したコマンドです。
 {{< /callout >}}

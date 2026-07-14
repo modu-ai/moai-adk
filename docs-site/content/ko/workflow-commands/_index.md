@@ -6,6 +6,8 @@ draft: false
 
 SPEC 기반 3-Phase 라이프사이클 (plan → run → sync)을 실행하는 명령어 모음입니다.
 
+{{< mascot coding >}}
+
 ## 에이전틱 하네스의 중심 — 3-Phase 라이프사이클
 
 MoAI-ADK v3의 핵심 가치 중 하나는 **에이전틱 하네스** (Agentic Harness)입니다. 코드를 직접 쓰는 대신, 에이전트가 잘 일할 환경 — SPEC 문서, 품질 게이트, 피드백 루프 — 을 설계한다는 뜻입니다. 워크플로우 명령어는 이 하네스의 중심축인 **plan → run → sync** 파이프라인을 실행합니다.

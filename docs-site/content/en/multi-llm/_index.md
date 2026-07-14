@@ -10,6 +10,8 @@ backend. This is not a convenience feature — it is the axis that realizes
 quality of code at a lower cost, you must be able to assign the right model to
 each task.
 
+{{< mascot talking >}}
+
 ## What is z.ai GLM?
 
 GLM (Generative Language Model) is an AI model service provided by z.ai that

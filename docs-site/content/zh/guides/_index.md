@@ -9,6 +9,8 @@ draft: false
 理念 —— 回路守护质量（代理式回路工程）、模型分配守护成本（托克诺米克斯）
 —— 扩展到 CI 环境的内容。
 
+{{< mascot talking >}}
+
 ## 指南列表
 
 - [自主 CI/CD](./ci-autonomy) —— 从 pre-push 钩子到 auto-fix 回路的 8-Tier 质量自动化

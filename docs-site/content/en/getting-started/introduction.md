@@ -6,6 +6,8 @@ draft: false
 
 MoAI-ADK is an Agentic Development Kit aimed at **Tokenomics** (Token Economics). The same quality of code with fewer tokens, higher quality for the same tokens — the system manages model selection, reasoning depth, and context usage. As a single binary written in Go, it runs immediately with no dependencies.
 
+{{< mascot talking >}}
+
 ## Notation
 
 In this documentation, a code block's prefix indicates the execution environment:

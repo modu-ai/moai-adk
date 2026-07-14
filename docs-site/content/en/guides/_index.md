@@ -9,6 +9,8 @@ A collection of guides for operating MoAI-ADK. Both documents extend the core
 ideas of v3.0 — loops guard quality (agentic loop engineering) and model
 assignment guards cost (Tokenomics) — into the CI environment.
 
+{{< mascot talking >}}
+
 ## Guide list
 
 - [Autonomous CI/CD](./ci-autonomy) — 8-Tier quality automation, from the pre-push hook to the auto-fix loop

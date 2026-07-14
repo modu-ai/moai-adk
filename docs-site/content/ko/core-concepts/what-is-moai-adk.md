@@ -8,6 +8,8 @@ MoAI-ADK는 **토크노믹스** (Token Economics) 를 목표로 하는 **Agentic
 
 Go로 작성된 단일 바이너리 -- 의존성 없이 모든 플랫폼에서 즉시 실행됩니다.
 
+{{< mascot talking >}}
+
 {{< callout type="info" >}}
 **한 줄 요약:** MoAI-ADK는 "AI와 나눈 대화를 문서 (SPEC) 로 남기고, 안전하게 코드를 개선 (DDD/TDD) 하며, 품질을 자동 검증 (TRUST 5) 하는" 일을 — **토큰 비용까지 시스템이 관리하면서** 수행하는 에이전틱 개발 키트입니다.
 {{< /callout >}}

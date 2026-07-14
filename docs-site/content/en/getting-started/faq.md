@@ -6,6 +6,8 @@ draft: false
 
 Frequently asked questions and answers about using MoAI-ADK.
 
+
+{{< mascot talking >}}
 ---
 
 ## Q: What is the difference between `moai` and `/moai`?

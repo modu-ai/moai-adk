@@ -6,6 +6,8 @@ draft: false
 
 执行基于 SPEC 的 3-Phase 生命周期(plan → run → sync)的命令集合。
 
+{{< mascot coding >}}
+
 ## 智能体挽具的核心 — 3-Phase 生命周期
 
 MoAI-ADK v3 的核心价值之一是 **智能体挽具** (Agentic Harness)。它的含义是:与其直接编写代码,不如设计一个让智能体高效工作的环境 — SPEC 文档、质量门禁、反馈回路。工作流命令执行这一挽具的中枢 — **plan → run → sync** 流水线。

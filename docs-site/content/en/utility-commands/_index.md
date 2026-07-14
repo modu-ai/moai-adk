@@ -6,6 +6,8 @@ draft: false
 
 A collection of commands for autonomous automation, iterative fix loops, code management, and feedback.
 
+{{< mascot coding >}}
+
 {{< callout type="info" >}}
 Unlike the workflow commands (`/moai plan`, `/moai run`, `/moai sync`), the utility commands specialize in **fast automation and problem solving**.
 {{< /callout >}}

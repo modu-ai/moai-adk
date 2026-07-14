@@ -6,6 +6,8 @@ draft: false
 
 自主自动化、迭代修复回路、代码管理与反馈命令的集合。
 
+{{< mascot coding >}}
+
 {{< callout type="info" >}}
 与工作流命令(`/moai plan`, `/moai run`, `/moai sync`)不同,实用命令是专注于 **快速自动化与问题解决** 的命令。
 {{< /callout >}}

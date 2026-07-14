@@ -9,6 +9,8 @@ description: "拓展 Claude Code 功能的四个扩展点（技能、钩子、MC
 
 这四者正是搭建**智能体挽具** (Agentic Harness) 的原材料。在"与其亲手写代码，不如设计让智能体好好工作的环境"这一挽具工程中，技能负责智能体的知识，钩子负责确定性纪律，MCP 负责与外部世界的连接，插件则是这些组合的分发单元。MoAI-ADK 通过一次 `moai init` 部署的，以及 `/moai project` 为项目专门生成的，归根结底都是这些原材料的组合。
 
+{{< mascot coding >}}
+
 {{< callout type="info" >}}
 **一句话总结**：理解技能·钩子·MCP·插件这四个扩展点，就能把 Claude Code 打造成项目专属的挽具。
 {{< /callout >}}

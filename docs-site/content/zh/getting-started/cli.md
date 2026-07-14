@@ -6,6 +6,8 @@ draft: false
 
 在此查阅在终端执行的 `moai`(Go 二进制)的所有命令与标志。它与在 Claude Code 对话窗输入的 `/moai`(斜杠子命令)是完全不同的工具 —— 本页只讲终端 CLI。
 
+{{< mascot coding >}}
+
 ## 命令树
 
 ```bash

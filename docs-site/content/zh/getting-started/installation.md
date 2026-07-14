@@ -6,6 +6,8 @@ draft: false
 
 介绍在系统中安装 MoAI-ADK 的方法。安装物是用 Go 构建的单一二进制 —— 无需 Python、虚拟环境或包管理器。
 
+{{< mascot talking >}}
+
 ## 许可证
 
 MoAI-ADK {{< version >}} 及以上在 **Apache-2.0 许可证** 下分发。

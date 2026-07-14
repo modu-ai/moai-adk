@@ -6,6 +6,8 @@ draft: false
 
 MoAI-ADK의 내부 구조를 뜯어보고 싶은 개발자를 위한 섹션입니다. 기본 워크플로우(plan → run → sync)에 익숙해졌다면, 여기서 하네스가 실제로 어떻게 조립되어 있는지 확인할 수 있습니다.
 
+{{< mascot talking >}}
+
 {{< callout type="info" >}}
 이 섹션의 문서들은 v3.0의 세 기둥 — **토크노믹스** (Token Economics), **에이전틱 루프 엔지니어링** (Agentic Loop Engineering), **에이전틱 하네스** (Agentic Harness) — 가운데 주로 세 번째 기둥의 구현 세부를 다룹니다. 에이전트가 코드를 잘 쓰게 만드는 비결은 모델이 아니라, 모델을 둘러싼 환경 설계에 있습니다.
 {{< /callout >}}

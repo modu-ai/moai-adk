@@ -9,6 +9,8 @@ MoAI-ADK は Claude API に加えて **z.ai GLM** を代替 AI バックエン�
 実現する軸です — 同じ品質のコードをより少ないコストで得るには、タスクごとに
 適切なモデルを割り当てられる必要があるからです。
 
+{{< mascot talking >}}
+
 ## z.ai GLM とは?
 
 GLM (Generative Language Model) は z.ai が提供する AI モデルサービスで、Claude Code と互換性があります。コード変更なしに環境変数だけで切り替えが可能です。

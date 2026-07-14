@@ -7,6 +7,8 @@ draft: false
 
 This is the onboarding path for anyone meeting MoAI-ADK for the first time. Read in the order **Introduction → Installation → Quick Start** and you can have your first MoAI-ADK project running within 30 minutes. Installation is nothing more than downloading a single binary, and no extra runtime or dependency is needed to run your first SPEC.
 
+{{< mascot talking >}}
+
 {{< callout type="info" >}}
 If you have already finished installing, jump straight to the [Quick Start](./quickstart). Curious about CLI flags? See the [CLI Reference](./cli). Having trouble? Check the [FAQ](./faq).
 {{< /callout >}}

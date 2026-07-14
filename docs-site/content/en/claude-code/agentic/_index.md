@@ -7,6 +7,8 @@ description: "Orchestration primitives like subagents, agent teams, and dynamic 
 
 This group covers Claude Code's agent orchestration and autonomous execution. It is for developers who want to go beyond a single conversation — delegating to multiple workers, collaborating as a team, and fanning out large-scale work with scripts.
 
+{{< mascot coding >}}
+
 Centered on the three orchestration primitives — subagents, agent teams, and dynamic workflows — it continues through worktree isolation, goal-directed execution, scheduled tasks, large-codebase exploration, and best practices. What MoAI-ADK calls **Agentic Loop Engineering** — designing the loop itself instead of having a human intervene every turn, and training the harness with the observations the loop leaves behind — is built precisely on the mechanisms in this group (`/goal`'s condition-evaluation loop, subagent delegation, workflow fan-out).
 
 {{< callout type="info" >}}

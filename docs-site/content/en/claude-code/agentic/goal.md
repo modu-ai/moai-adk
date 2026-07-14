@@ -9,6 +9,8 @@ description: "The /goal command: set a completion condition once and Claude Code
 
 The `/goal` command is an autonomous-continuation mechanism: define a verifiable completion condition once, and Claude Code keeps working on its own every turn until the condition is met.
 
+{{< mascot coding >}}
+
 {{< callout type="info" >}}
 **One-line summary**: At the end of every turn a fast model judges "is the condition met?", and if not, the next turn starts on its own — so you never need to type another prompt until the finish.
 {{< /callout >}}
