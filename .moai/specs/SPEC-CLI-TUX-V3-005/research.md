@@ -69,14 +69,14 @@ Result: **38**
 |------|-------------|------------------------|----------------|-------|
 | 99 | `fmt.Printf("No checkpoint found for phase %s, SPEC %s\n", ...)` | `p.Info(...)` | stdout → stderr | Status message, not data |
 | 110 | `fmt.Println(string(data))` (JSON) | `p.Data(state)` or `p.Data(string(data))` | stdout → stdout (preserved) | JSON mode: structured; text: string |
-| 120-123 | `fmt.Printf("Phase: %s\n", ...)` (4 lines) | `p.Data(multiLineString)` or restructure | stdout → stdout (preserved) | Multi-line human format — see NEEDS CLARIFICATION |
+| 120-123 | `fmt.Printf("Phase: %s\n", ...)` (4 lines) | `p.Data(multiLineString)` or restructure | stdout → stdout (preserved) | Multi-line human format — [DECISION: Data() composed string per user 2026-07-14] |
 | 125 | `fmt.Printf("Blocker: kind=%s...\n", ...)` | (part of human format block) | stdout → stdout | Conditional line within human format |
 | 129 | `fmt.Printf("Checkpoint:\n %s\n", ...)` | (part of human format block) | stdout → stdout | Conditional line within human format |
 | 149 | `fmt.Println("No blockers found")` | `p.Info(...)` | stdout → stderr | Status message |
 | 175 | `fmt.Println("No outstanding blockers found")` | `p.Info(...)` | stdout → stderr | Status message |
 | 185 | `fmt.Println(string(data))` (JSON blocker) | `p.Data(latestBlocker)` | stdout → stdout (preserved) | JSON output |
 
-**Channel decision**: `moai state show` output is currently all-stdout. The status messages ("No checkpoint found", "No blockers found") should move to stderr (Info), while the JSON/data output stays on stdout (Data). The human-readable multi-line block (lines 120-129) is a structured data display — [NEEDS CLARIFICATION: should human-format state display go to stdout via Data() or be reformatted as JSON-only with human rendering through Info()?].
+**Channel decision**: `moai state show` output is currently all-stdout. The status messages ("No checkpoint found", "No blockers found") should move to stderr (Info), while the JSON/data output stays on stdout (Data). The human-readable multi-line block (lines 120-129) is a structured data display — [DECISION 2026-07-14: route to stdout via Data() as a composed multi-line string (preserves stdout behavior for scripted consumers of `moai state show`)].
 
 ### C.2 `internal/cli/migration.go` (8 calls) — MIGRATION TARGET
 
@@ -91,7 +91,7 @@ Result: **38**
 | 111 | `fmt.Printf("최근 적용: %s (버전 %d)\n", ...)` | (human status block) | stdout → stdout or stderr | Korean human format |
 | 149 | `fmt.Printf("성공: 버전 %d로 롤백됨\n", ...)` | `p.Success(...)` | stdout → stderr | Korean success message |
 
-**Channel decision**: Same pattern as state.go — `--json` flag uses `p.Data()`, human format is status output. The human-format block (lines 104-111) is a multi-line status display that maps to multiple `p.Info()` calls or a single composed Data() call. [NEEDS CLARIFICATION: same human-format question as state.go].
+**Channel decision**: Same pattern as state.go — `--json` flag uses `p.Data()`, human format is status output. The human-format block (lines 104-111) is a multi-line status display that maps to a single composed `p.Data()` call. [DECISION 2026-07-14: stdout Data() composed string, same as state.go (per user 2026-07-14)].
 
 ### C.3 `internal/cli/worktree/tmux_integration.go` (5 calls) — MIGRATION TARGET
 
@@ -123,6 +123,8 @@ Result: **38**
 
 **Context**: `ttyConfirmer` is annotated `nolint:unused` with comment "SPEC-V3R6-CI-BASELINE-DRIFT-001 §D.1 deferred (interactive prompt path)". The ACTIVE code path uses `yesConfirmer` (always returns true) with the `--yes-branch-protection` flag. `ttyConfirmer` is RETAINED for a follow-up interactive prompt SPEC but is currently dead code.
 
+**Source self-contradiction note (D5)**: the `Confirmer` interface doc (branch_protection.go:19-20) says "uses an interactive TTY confirmer by default", while the `ttyConfirmer` type comment says "Currently unwired". The dead-code premise rests on the `nolint:unused` linter directive (golangci-lint's unused analyzer), which is the authoritative signal — the doc/type-comment contradiction is in the source, not a SPEC reasoning error.
+
 **Gap**: The Printer interface has NO interactive prompt method. The Printer is a one-way output gateway (stderr/stdout writes only); it does not read stdin.
 
 **Disposition options**:
@@ -130,14 +132,14 @@ Result: **38**
 2. **Migrate the Printf to `p.Info(prompt)`**: but the prompt is an interactive write-expecting-read, and Info adds a newline + glyph, breaking the prompt format.
 3. **Defer to the follow-up interactive prompt SPEC**: when `ttyConfirmer` is activated, the Printer may need a `Prompt` method or the prompt stays on a raw writer.
 
-**Recommendation**: Option 1 (exclude from scope). The line counts toward the baseline (38) but is dead code. [NEEDS CLARIFICATION: should ttyConfirmer's dead-code fmt.Print* be migrated for ratchet credit, or explicitly excluded as deferred code?]
+**Recommendation**: Option 1 (exclude from scope) — CONFIRMED. The line counts toward the baseline (38) but is dead code. [DECISION 2026-07-14: EXCLUDED as linter-confirmed dead code (nolint:unused). No migration; the 24 migratable sites suffice for the ratchet.]
 
 ### C.6 `internal/cli/uikit/banner.go` (12 calls) — GAP (TUI render)
 
 | Lines | Current calls | Pattern |
 |-------|--------------|---------|
-| 90-101 | `PrintBanner` — 8 calls | `fmt.Println(bannerStyle.Render(...))`, `fmt.Println(dimStyle.Render(...))`, `fmt.Println()` (blank lines), `fmt.Println("  " + pillRow)` |
-| 113-117 | `PrintWelcomeMessage` — 4 calls | `fmt.Println(titleStyle.Render(...))`, `fmt.Println(dimStyle.Render(...))`, `fmt.Println()` |
+| 90-101 | `PrintBanner` — 7 calls | `fmt.Println(bannerStyle.Render(...))`, `fmt.Println(dimStyle.Render(...))`, `fmt.Println()` (blank lines), `fmt.Println("  " + pillRow)` |
+| 113-117 | `PrintWelcomeMessage` — 5 calls | `fmt.Println(titleStyle.Render(...))`, `fmt.Println(dimStyle.Render(...))`, `fmt.Println()` |
 
 **Context**: `PrintBanner` and `PrintWelcomeMessage` render rich TUI content using lipgloss styles (`bannerStyle`, `dimStyle`, `titleStyle`). The styled content is pre-rendered via `lipgloss.Style.Render()` into a string, then written to stdout via `fmt.Println`. Blank lines (`fmt.Println()`) are spacing elements in the visual layout.
 
@@ -149,7 +151,7 @@ Result: **38**
 2. **Exclude banner.go as TUI render out-of-scope** — banner output is architecturally distinct from CLI status/data output. It is a visual branding element rendered at command entry, not a command-result output. The ratchet AC is satisfied without these 12 calls.
 3. **Route banner through Data()** — treat the banner string as data output. Semantically incorrect (banner is not machine-consumable data), but technically works since `Data()` does `fmt.Fprintln(stdout, v)` for string values in text modes.
 
-**Recommendation**: Option 2 (exclude as TUI render). Banner rendering is a distinct architectural concern from CLI output-channel discipline. The Printer interface was designed for status/data events, not for rich visual layout. Forcing banner through Printer would either require an interface extension (option 1, adding complexity) or semantic misuse of Data() (option 3). [NEEDS CLARIFICATION: should uikit/banner.go's 12 fmt.Print* calls be migrated to Printer, or excluded as TUI render out-of-scope?]
+**Recommendation**: Option 2 (exclude as TUI render) — CONFIRMED. Banner rendering is a distinct architectural concern from CLI output-channel discipline. The Printer interface was designed for status/data events, not for rich visual layout. Forcing banner through Printer would either require an interface extension (option 1, adding complexity) or semantic misuse of Data() (option 3). [DECISION 2026-07-14: EXCLUDED as TUI render (lipgloss). 12 calls remain in baseline; ratchet met by the 24 migratable sites. No interface extension.]
 
 ---
 
@@ -189,7 +191,7 @@ These patterns are NOT matched by the ratchet grep (`fmt.Fprintf` with an explic
 
 Ordered by decision-reversibility (highest-reversibility first):
 
-1. **M1 — Architecture gate (banner.go + branch_protection.go scope decision)**: determines whether the Printer interface needs extension. MUST be resolved before any code migration. This is a [NEEDS CLARIFICATION] gate.
+1. **M1 — Architecture gate (banner.go + branch_protection.go scope decision)**: RESOLVED 2026-07-14. Both gap sites EXCLUDED (banner.go as TUI render, branch_protection.go as dead code). The Printer interface needs NO extension. The gate is cleared — proceed directly to M2.
 2. **M2 — state.go (11 calls)**: medium risk. Mix of JSON data and human format. Channel routing decision needed. Characterization tests required.
 3. **M3 — migration.go (8 calls)**: medium risk. Same pattern as state.go, Korean strings. Characterization tests required.
 4. **M4 — worktree/tmux_integration.go (5 calls)**: lowest risk. Pure status output, direct Info() mapping. Needs Printer wiring (signature change).

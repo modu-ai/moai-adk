@@ -16,9 +16,9 @@ The `printer.Printer` interface (`internal/cli/printer/printer.go`, SPEC-CLI-TUX
 
 | Issue | Impact | Disposition |
 |-------|--------|-------------|
-| `uikit/banner.go` has no compatible Printer method | 12 calls blocked | M1 architecture gate — [NEEDS CLARIFICATION] |
+| `uikit/banner.go` has no compatible Printer method | 12 calls blocked | M1 gate RESOLVED — [DECISION: excluded as TUI render per user 2026-07-14] |
 | `branch_protection.go` prompt is interactive (Printer is one-way) | 1 call blocked | M1 gate — exclude as dead code (recommended) |
-| `state.go` human-format is multi-line stdout text | Channel semantics unclear | M2 characterization + [NEEDS CLARIFICATION] |
+| `state.go` human-format is multi-line stdout text | Channel resolved | M2 characterization — [DECISION: stdout via Data() composed string per user 2026-07-14] |
 | `tmux_integration.go` functions lack Printer parameter | Wiring required | M4 signature change to accept Printer |
 | Baseline includes commented-out line (`new.go:433`) | Count inflated by 1 | Document as dead code; ratchet satisfied regardless |
 
@@ -67,9 +67,9 @@ Run-phase manager-develop will populate:
 - Decision recorded for `branch_protection.go` (1 call): migrate / exclude as dead code / defer
 - If interface extension is approved: updated research.md §A with the new method contract
 
-**[NEEDS CLARIFICATION: should uikit/banner.go's 12 fmt.Print\* calls be migrated to Printer (requiring a new styled-stdout method), or excluded as TUI render out-of-scope? Default recommendation: exclude.]**
+**[DECISION 2026-07-14: uikit/banner.go's 12 fmt.Print\* calls are EXCLUDED as TUI render (lipgloss). Printer is a status/data-event gateway, not a rich-visual-layout layer. The 12 calls remain in the baseline; the ratchet is satisfied by the 24 migratable sites. No Printer interface extension.]**
 
-**[NEEDS CLARIFICATION: should branch_protection.go's ttyConfirmer dead-code fmt.Printf prompt be migrated for ratchet credit, or explicitly excluded as nolint:unused deferred code? Default recommendation: exclude.]**
+**[DECISION 2026-07-14: branch_protection.go's ttyConfirmer dead-code fmt.Printf prompt is EXCLUDED as linter-confirmed dead code (nolint:unused; active path is yesConfirmer + --yes-branch-protection). Printer has no prompt method (one-way gateway); migrating dead code has no practical effect.]**
 
 **Reversibility**: HIGH — this decision shapes the interface surface for all subsequent milestones. Getting it wrong means reworking migrations.
 
@@ -86,9 +86,9 @@ Run-phase manager-develop will populate:
 **Mapping** (from research.md §C.1):
 - JSON output (lines 110, 185) → `p.Data(...)`
 - Status messages (lines 99, 149, 175) → `p.Info(...)`
-- Human-format block (lines 120-129) → [NEEDS CLARIFICATION: Data() with composed string, or restructure]
+- Human-format block (lines 120-129) → [DECISION: Data() with composed multi-line string per user 2026-07-14]
 
-**[NEEDS CLARIFICATION: should the human-format state display (printPhaseStateHuman, lines 120-129) route to stdout via Data() as a composed multi-line string, or should it be reformatted as JSON-only with human rendering through stderr Info() calls?]**
+**[DECISION 2026-07-14: the human-format state display (printPhaseStateHuman, lines 120-129) routes to stdout via Data() as a composed multi-line string. Rationale: preserves existing stdout behavior — scripted consumers of `moai state show` are unaffected. Most conservative, behavior-preserving option.]**
 
 **Reversibility**: MEDIUM — channel routing changes affect scripted consumers.
 
@@ -102,7 +102,7 @@ Run-phase manager-develop will populate:
 - JSON output (line 99) → `p.Data(...)`
 - Success messages (lines 58, 149) → `p.Success(...)`
 - Status messages (line 54) → `p.Info(...)`
-- Human-format block (lines 104-111) → same [NEEDS CLARIFICATION] as M2
+- Human-format block (lines 104-111) → [DECISION: stdout Data() composed string, same as M2 per user 2026-07-14]
 
 **Reversibility**: MEDIUM — same channel routing concern as M2.
 

@@ -62,7 +62,7 @@ Each AC traces to a REQ in spec.md §B and is verified by an observable command.
 |-------|-------|
 | **REQ** | REQ-TUX3-022 |
 | **Severity** | MUST-PASS |
-| **Command** | `go test -run 'Test.*Characterization\|Test.*Output\|Test.*Print' ./internal/cli/... -v` |
+| **Command** | (1) `go test -run 'Test.*Characterization\|Test.*Output\|Test.*Print' ./internal/cli/... -v` (all pass) AND (2) `go test -list -run 'Test.*Characterization\|Test.*Output\|Test.*Print' ./internal/cli/... 2>&1 \| grep -c '^Test'` ≥ 1 (guards vacuous pass — a `-run` pattern matching zero tests exits 0). Pin specific test function names after M2-M4 characterization tests are written. |
 | **Pass condition** | All characterization tests pass. Each migrated function has at least one characterization test capturing pre-migration stdout/stderr output. Channel re-routing (stdout→stderr for status messages) is documented as an intentional, tested behavior change — NOT a silent regression. |
 | **Evidence** | Test output showing all characterization tests green; test source files listing |
 
@@ -82,7 +82,7 @@ Each AC traces to a REQ in spec.md §B and is verified by an observable command.
 |-------|-------|
 | **REQ** | REQ-TUX3-024 |
 | **Severity** | MUST-PASS |
-| **Command** | `grep -rn 'Out of Scope\|NEEDS CLARIFICATION\|deferred\|excluded' .moai/specs/SPEC-CLI-TUX-V3-005/spec.md` |
+| **Command** | Per-gap-site anchors (each gap site must have a specific disposition in spec.md §C): `grep -c 'banner.go' .moai/specs/SPEC-CLI-TUX-V3-005/spec.md` ≥ 1 AND `grep -c 'branch_protection' .moai/specs/SPEC-CLI-TUX-V3-005/spec.md` ≥ 1. Replaces the generic keyword grep which any unrelated "excluded" occurrence satisfied. |
 | **Pass condition** | Every gap site identified in research.md §D (banner.go, branch_protection.go) has an explicit disposition recorded in spec.md §C (Out of Scope) or plan.md §F M1. No gap site is silently left without a rationale. |
 | **Evidence** | spec.md Out-of-Scope section + plan.md M1 decision block |
 

@@ -128,7 +128,8 @@ The `internal/cli/printer` package **shall** maintain test coverage ≥ 85.0% ac
 | Risk | Likelihood | Impact | Mitigation |
 |------|-----------|--------|------------|
 | Channel re-routing breaks scripted consumers of stdout output | Medium | High | Characterization tests capture exact pre-migration stdout/stderr split; channel changes are intentional and documented |
-| `uikit/banner.go` migration requires Printer interface extension | Medium | Medium | M1 architecture gate decides before any code migration; default = exclude as TUI render |
+| `uikit/banner.go` migration requires Printer interface extension | Medium | Medium | M1 gate RESOLVED 2026-07-14: EXCLUDED as TUI render (lipgloss) per user decision |
+| `branch_protection.go` ttyConfirmer interactive prompt | Low | Low | EXCLUDED 2026-07-14 as linter-confirmed dead code (nolint:unused); Printer has no prompt method; active path is yesConfirmer + --yes-branch-protection |
 | `state.go` human-format output has no clean Printer method (multi-line stdout text) | Medium | Medium | Characterization tests + channel decision in research.md §C; Data() with string argument is the likely mapping |
 | Baseline drift if unrelated `fmt.Print*` calls are added during migration | Low | Medium | Re-measure baseline at run-phase start; record in progress.md §E.2 |
 

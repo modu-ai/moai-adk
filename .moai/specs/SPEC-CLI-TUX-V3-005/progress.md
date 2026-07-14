@@ -41,7 +41,7 @@ era: V3R6
 
 ### Phase 3 (Context-First Discovery) — SKIP
 
-**Rationale**: Intent clarity is 100%. The orchestrator's investigation (this session) fully established: (a) the 38-call baseline and per-file distribution, (b) the existing Printer interface method catalogue (printer.go:64-112), (c) the call-site classification (24 migratable, 13 gap, 1 dead code), (d) the dependency chain (SPEC-001 completed, SPEC-003 completed). The two remaining [NEEDS CLARIFICATION] items (banner.go scope, branch_protection.go dead-code disposition) are M1-gate decisions that require user input at the Implementation Kickoff Approval, not Socratic discovery rounds. The domain (CLI output layer) is familiar; no Unknown-Unknowns are suspected.
+**Rationale**: Intent clarity is 100%. The orchestrator's investigation (this session) fully established: (a) the 38-call baseline and per-file distribution, (b) the existing Printer interface method catalogue (printer.go:64-112), (c) the call-site classification (24 migratable, 13 gap, 1 dead code), (d) the dependency chain (SPEC-001 completed, SPEC-003 completed). The three clarification items (banner.go scope, branch_protection.go dead-code, state.go/migration.go human-format channel) were M1-gate decisions RESOLVED 2026-07-14 via user AskUserQuestion — see §D below. All three resolved with the default-recommended option (exclude / exclude / stdout Data() composed string). The domain (CLI output layer) is familiar; no Unknown-Unknowns are suspected.
 
 ---
 
@@ -55,15 +55,15 @@ era: V3R6
 
 ---
 
-## §D. [NEEDS CLARIFICATION] Items (gate Implementation Kickoff Approval)
+## §D. Resolved Decisions (formerly open clarification items; resolved 2026-07-14 via user AskUserQuestion)
 
 These items MUST be resolved via orchestrator AskUserQuestion before run-phase entry:
 
-1. **[NEEDS CLARIFICATION: uikit/banner.go scope]** — Should the 12 `fmt.Print*` calls in banner.go (TUI render via lipgloss) be migrated to Printer (requiring a new styled-stdout interface method), or excluded as TUI render out-of-scope? Default recommendation: exclude. (See research.md §C.6, plan.md §F M1.)
+1. **[DECISION 2026-07-14: uikit/banner.go scope — EXCLUDED as TUI render]** — The 12 `fmt.Print*` calls in banner.go (TUI render via lipgloss) are EXCLUDED; Printer interface not extended. (See research.md §C.6, plan.md §F M1.)
 
-2. **[NEEDS CLARIFICATION: branch_protection.go ttyConfirmer]** — Should the 1 `fmt.Printf` prompt in `ttyConfirmer.Confirm()` (dead code, `nolint:unused`) be migrated for ratchet credit, or excluded as deferred code? Default recommendation: exclude. (See research.md §C.5, plan.md §F M1.)
+2. **[DECISION 2026-07-14: branch_protection.go ttyConfirmer — EXCLUDED as dead code]** — The 1 `fmt.Printf` prompt in `ttyConfirmer.Confirm()` (dead code, `nolint:unused`) is EXCLUDED; active path is yesConfirmer + --yes-branch-protection. (See research.md §C.5, plan.md §F M1.)
 
-3. **[NEEDS CLARIFICATION: state.go/migration.go human-format channel]** — Should the multi-line human-readable state/migration display route to stdout via `Data()` (as a composed string) or be restructured? This affects 6+ call sites across state.go and migration.go. (See research.md §C.1/C.2, plan.md §F M2.)
+3. **[DECISION 2026-07-14: state.go/migration.go human-format — stdout Data() composed string]** — The multi-line human-readable state/migration display routes to stdout via `Data()` (composed string); scripted consumers unaffected. (See research.md §C.1/C.2, plan.md §F M2.)
 
 ---
 
