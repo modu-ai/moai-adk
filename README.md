@@ -174,6 +174,12 @@ A third option is creating a Windows account with an ASCII-only username.
 
 ---
 
+## Visual Identity — Mascot Theme
+
+The documentation site ([adk.mo.ai.kr](https://adk.mo.ai.kr)) and the `moai web` console share the **Mascot green** theme — `#3d7d5f`, derived from the 모두의AI character mascot (MascotCoding / MascotTalking / MascotBubble). The mascot appears as an emotional anchor across the hero, the 404 page, and section dividers.
+
+---
+
 ## Design Lineage — Harness Engineering
 
 MoAI-ADK deliberately inherits the harness-engineering framework laid out in Lilian Weng's [**Harness Engineering for Self-Improvement**](https://lilianweng.github.io/posts/2026-07-04-harness/) (2026-07-04), translating its design patterns and self-improvement loop into a working implementation.

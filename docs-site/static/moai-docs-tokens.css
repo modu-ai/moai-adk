@@ -52,17 +52,17 @@
    Sampled from the brand logo: terracotta clay on warm cream.
    ============================================================ */
 :root {
-  /* ---- Brand: Clay (terracotta) — anchored on #D97757 ---- */
-  --clay-50:  #FCEEE7;
-  --clay-100: #F7D6C7;
-  --clay-200: #EFB79F;
-  --clay-300: #E79C7E;
-  --clay-400: #E08A6B;
-  --clay-500: #D97757;  /* primary — mascot body & infographic coral */
-  --clay-600: #C4633F;
-  --clay-700: #A44E2F;
-  --clay-800: #813D26;
-  --clay-900: #5C2B1C;
+  /* ---- Brand: Mascot green — anchored on #3d7d5f (마스코트 본체색 rgb 61,125,95) ---- */
+  --clay-50:  #eef6f1;
+  --clay-100: #d6ebde;
+  --clay-200: #aed4be;
+  --clay-300: #85bda0;
+  --clay-400: #5da681;
+  --clay-500: #3d7d5f;  /* primary — 마스코트 본체색 (was terracotta #D97757) */
+  --clay-600: #31684f;
+  --clay-700: #265240;
+  --clay-800: #1c3d30;
+  --clay-900: #132a1f;
 
   /* ---- Cream (warm neutrals / surfaces) ---- */
   --cream-50:  #FDFAF5;

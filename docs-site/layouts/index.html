@@ -9,6 +9,9 @@
   >
     <div class="md-home">
       <div class="md-hero anim-rise">
+        <img class="md-hero-mascot" loading="lazy" decoding="async"
+             src="{{ "mascots/mascot-coding.png" | relURL }}"
+             width="150" height="150" alt="MoAI 마스코트 캐릭터" />
         <span class="md-eyebrow">{{ i18n "hero_eyebrow" }}</span>
         <h1>{{ i18n "hero_title" | safeHTML }}</h1>
         <p class="md-hero-lead">{{ i18n "hero_lead" }}</p>
@@ -29,6 +32,9 @@
         </div>
       </div>
 
+      <div class="md-divider-mascot" aria-hidden="true">
+        <img loading="lazy" decoding="async" src="{{ "mascots/mascot-talking.png" | relURL }}" width="64" height="64" alt="" />
+      </div>
       <div class="md-section-head">
         <h2>{{ i18n "browse_title" }}</h2>
         <span class="pill">{{ i18n "browse_pill" }}</span>

@@ -174,6 +174,12 @@ fsutil 8dot3name set 1
 
 ---
 
+## 비주얼 아이덴티티 — 마스코트 테마
+
+문서 사이트([adk.mo.ai.kr](https://adk.mo.ai.kr))와 `moai web` 콘솔은 모두의AI 캐릭터 마스코트(MascotCoding / MascotTalking / MascotBubble)에서 파생한 **마스코트 녹색** 테마(`#3d7d5f`)를 공유합니다. 마스코트는 히어로, 404 페이지, 섹션 디바이더에서 정서적 앵커로 등장합니다.
+
+---
+
 ## 설계 계보 — 하네스 엔지니어링
 
 MoAI-ADK는 Lilian Weng의 [**Harness Engineering for Self-Improvement**](https://lilianweng.github.io/posts/2026-07-04-harness/) (2026-07-04)에 제시된 하네스 엔지니어링 프레임워크를 의도적으로 승계하며, 그 설계 패턴과 자가 개선 루프를 동작하는 구현으로 옮겼습니다.

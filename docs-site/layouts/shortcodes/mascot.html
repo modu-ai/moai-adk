@@ -1,0 +1,16 @@
+{{- /* 마스코트 캐릭터 shortcode — '모두의AI Design System' 마스코트 PNG.
+       원본 자산 moai-logo-3/5/6 을 용도별로 매핑(메인/대화/글로벌).
+       사용: {{< mascot coding >}} / {{< mascot bubble 120 >}} / {{< mascot talking 200 "hero" >}}
+       variant(1번째): coding | talking | bubble (기본 coding)
+       size(2번째, optional): 너비 px. 기본 160.
+       class(3번째, optional): 추가 클래스(예: hero, inline, divider). */ -}}
+{{- $variant := .Get 0 | default "coding" -}}
+{{- $size := .Get 1 | default "160" -}}
+{{- $extra := .Get 2 | default "" -}}
+{{- $valid := slice "coding" "talking" "bubble" -}}
+{{- if not (in $valid $variant) -}}{{ errorf "mascot shortcode: unknown variant %q (use coding | talking | bubble)" $variant }}{{- end -}}
+<img class="cw-mascot cw-mascot--{{ $variant }}{{ with $extra }} cw-mascot--{{ . }}{{ end }}"
+     loading="lazy" decoding="async"
+     src="{{ printf "mascots/mascot-%s.png" $variant | relURL }}"
+     width="{{ $size }}" height="auto"
+     alt="MoAI 마스코트 캐릭터" />

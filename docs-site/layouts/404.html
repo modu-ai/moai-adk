@@ -18,6 +18,9 @@
       {{ partial "site-header" (dict "Root" . "MenuEnabled" false) }}
 
       <main class="md-404">
+        <img class="md-404-mascot" loading="lazy" decoding="async"
+             src="{{ "mascots/mascot-bubble.png" | relURL }}"
+             width="120" height="120" alt="MoAI 마스코트 캐릭터" />
         <div class="big">404</div>
         <h2>{{ i18n "notfound_title" }}</h2>
         <p>{{ i18n "notfound_text" }}</p>

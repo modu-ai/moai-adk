@@ -3,7 +3,9 @@
     {{- /* 브랜드: 로고 이미지 + MoAI-ADK + docs pill (Claude Design handoff topbar) */ -}}
     <a class="gdoc-brand cw-brand" href="{{ "/" | relLangURL }}">
       {{- /* 브랜드 로고 — 모아이 석상 이모지 🗿 (브랜드 마크) */ -}}
-      <span class="cw-brand-logo cw-brand-moai" role="img" aria-label="MoAI-ADK 모아이 로고">🗿</span>
+      <img class="cw-brand-logo cw-brand-mascot" loading="lazy" decoding="async"
+           src="{{ "mascots/mascot-coding.png" | relURL }}"
+           width="28" height="28" alt="MoAI-ADK 마스코트 로고" />
       <span class="cw-brand-name">MoAI-ADK</span>
       <span class="cw-brand-tag">docs</span>
     </a>

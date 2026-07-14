@@ -106,7 +106,7 @@
 
 :root {
   /* ── Brand Color (Notion 가이드라인 명시 3색 — 변경 금지) ── */
-  --color-primary: #144a46;          /* 어두운 청록 — CTA, 타이틀, 아이콘 */
+  --color-primary: #3d7d5f;          /* 어두운 청록 — CTA, 타이틀, 아이콘 */
   --color-primary-hover: #0e3835;
   --color-primary-active: #0a2825;
   --color-ink: #09110f;              /* 본문 텍스트 (#000 대체) */
@@ -145,9 +145,9 @@
   --border-focus-ring: rgba(20, 74, 70, 0.12);
 
   /* ── Signature gradient (코어 자산) ── */
-  --gradient-signature: linear-gradient(135deg, #144a46 0%, #09110f 100%);
+  --gradient-signature: linear-gradient(135deg, #3d7d5f 0%, #09110f 100%);
   --gradient-signature-soft: linear-gradient(135deg, rgba(20,74,70,0.08) 0%, rgba(9,17,15,0.04) 100%);
-  --gradient-signature-dark: linear-gradient(135deg, #22938a 0%, #144a46 100%);
+  --gradient-signature-dark: linear-gradient(135deg, #5a9a7e 0%, #3d7d5f 100%);
 
   /* ── Type families ──
      Inter / JetBrains Mono 의 Google Fonts @import 는 제거됐다(REQ-WC4-001).
@@ -245,8 +245,8 @@
 [data-theme="dark"] {
   --color-bg: #0e1513;
   --color-surface: #1a1f1d;
-  --color-primary: #22938a;
-  --color-primary-hover: #2bafa3;
+  --color-primary: #5a9a7e;
+  --color-primary-hover: #aed4be;
   --color-ink: #e8eae9;
   --fg-1: #e8eae9;
   --fg-2: #a8aeac;
@@ -254,7 +254,7 @@
   --border-1: rgba(255, 255, 255, 0.08);
   --border-2: rgba(255, 255, 255, 0.06);
   --border-strong: rgba(255, 255, 255, 0.16);
-  --gradient-signature: linear-gradient(135deg, #22938a 0%, #144a46 100%);
+  --gradient-signature: linear-gradient(135deg, #5a9a7e 0%, #3d7d5f 100%);
 }
 
 /* ── Base / semantic typography ── */
@@ -396,8 +396,8 @@ html[lang="zh"] body { font-family: "Pretendard", "Noto Sans CJK SC", system-ui,
 .banner__text { font-size: var(--text-sm); margin: 0; color: var(--fg-1); }
 .banner--success { background: color-mix(in srgb, var(--color-success) 9%, var(--color-surface)); border-color: color-mix(in srgb, var(--color-success) 38%, transparent); color: var(--color-success); }
 .banner--error   { background: color-mix(in srgb, var(--color-danger) 9%, var(--color-surface));  border-color: color-mix(in srgb, var(--color-danger) 38%, transparent);  color: var(--color-danger); }
-[data-theme="dark"] .banner--success { color: #4cc8b8; }
-[data-theme="dark"] .banner--error { color: #e8806f; }
+[data-theme="dark"] .banner--success { color: #85bda0; }
+[data-theme="dark"] .banner--error { color: #5a9a7e; }
 
 /* ============================================================
    Fieldset / section card
@@ -568,7 +568,7 @@ html[lang="zh"] body { font-family: "Pretendard", "Noto Sans CJK SC", system-ui,
   font-size: 13px; font-weight: var(--fw-medium); color: var(--color-danger);
   letter-spacing: var(--tracking-body);
 }
-[data-theme="dark"] .field-error, [data-theme="dark"] .field.has-error .field__title { color: #e8806f; }
+[data-theme="dark"] .field-error, [data-theme="dark"] .field.has-error .field__title { color: #5a9a7e; }
 .field-error svg { width: 15px; height: 15px; flex: none; }
 
 /* ============================================================

@@ -174,6 +174,12 @@ fsutil 8dot3name set 1
 
 ---
 
+## 视觉识别 — 吉祥物主题
+
+文档站点([adk.mo.ai.kr](https://adk.mo.ai.kr))与 `moai web` 控制台共享 **吉祥物绿** 主题 —— `#3d7d5f`，源自 모두의AI 角色吉祥物(MascotCoding / MascotTalking / MascotBubble)。吉祥物在主视觉区、404 页面、章节分隔处作为情感锚点出现。
+
+---
+
 ## 设计谱系 — Harness Engineering
 
 MoAI-ADK 有意继承了 Lilian Weng 在 [**Harness Engineering for Self-Improvement**](https://lilianweng.github.io/posts/2026-07-04-harness/) (2026-07-04) 中提出的 Harness 工程框架，将其设计模式与自我改进循环转化为一个可运行的实现。

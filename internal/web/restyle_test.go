@@ -65,7 +65,7 @@ func TestConsoleCSSEmbedded(t *testing.T) {
 
 	// Brand tokens present (AC-WC4-001).
 	for _, want := range []string{
-		"--color-primary: #144a46",
+		"--color-primary: #3d7d5f",
 		"--color-bg: #f3f3f3",
 		"--gradient-signature:",
 		`[data-theme="dark"]`,

@@ -174,6 +174,12 @@ fsutil 8dot3name set 1
 
 ---
 
+## ビジュアルアイデンティティ — マスコットテーマ
+
+ドキュメントサイト([adk.mo.ai.kr](https://adk.mo.ai.kr))と `moai web` コンソールは、모두의AI のキャラクターマスコット(MascotCoding / MascotTalking / MascotBubble)から派生した **マスコットグリーン** テーマ(`#3d7d5f`)を共有します。マスコットはヒーロー、404ページ、セクション区切りで感情的なアンカーとして登場します。
+
+---
+
 ## 設計の系譜 — ハーネスエンジニアリング
 
 MoAI-ADK は、Lilian Weng の [**Harness Engineering for Self-Improvement**](https://lilianweng.github.io/posts/2026-07-04-harness/) (2026-07-04) で示されたハーネスエンジニアリングのフレームワークを意図的に継承し、その設計パターンと自己改善ループを動作する実装へと翻訳しています。

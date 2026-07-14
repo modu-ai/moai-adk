@@ -11,7 +11,7 @@
    1. Brand-variable remap (re-tints every existing component)
    ============================================================ */
 :root {
-  --color-primary: var(--accent);              /* #cc785c coral → #D97757 clay */
+  --color-primary: var(--accent);              /* 마스코트 녹색 #3d7d5f — var(--accent)=clay-500 */
   --color-primary-hover: var(--accent-hover);
   --color-primary-active: var(--accent-press);
   --color-ink: var(--ink-900);
@@ -54,15 +54,15 @@ body {
 /* 본문 클레이 링크 가독성: clay-600(밝음) → clay-700 어둡게 (버튼/카드 제외) */
 .gdoc-markdown a:not(.md-btn):not(.md-doc-card):not(.md-eyebrow),
 .gdoc-page .md-home-content a:not(.md-btn):not(.md-doc-card) {
-  color: #A44E2F !important;
+  color: #265240 !important;
 }
 .gdoc-markdown a:not(.md-btn):not(.md-doc-card):not(.md-eyebrow):hover,
 .gdoc-page .md-home-content a:not(.md-btn):not(.md-doc-card):hover {
-  color: #813D26 !important;
+  color: #1c3d30 !important;
 }
 /* H2 섹션 번호 배지: clay-500 wash(연함) → clay-700 진하게 + 배경 강화 */
 .gdoc-markdown h2::before {
-  color: #A44E2F !important;
+  color: #265240 !important;
   background: rgba(164, 78, 47, 0.14) !important;
 }
 
@@ -562,7 +562,7 @@ body {
 .gdoc-markdown .code-card .chroma .k, .gdoc-markdown .code-card .chroma .kd, .gdoc-markdown .code-card .chroma .kn,
 .gdoc-markdown .code-card .chroma .kt, .gdoc-markdown .code-card .chroma .nb, .gdoc-markdown .code-card .chroma .nt { color: #E7B98A !important; }
 .gdoc-markdown .code-card .chroma .s, .gdoc-markdown .code-card .chroma .s1, .gdoc-markdown .code-card .chroma .s2,
-.gdoc-markdown .code-card .chroma .sb, .gdoc-markdown .code-card .chroma .sd { color: #E79C7E !important; }
+.gdoc-markdown .code-card .chroma .sb, .gdoc-markdown .code-card .chroma .sd { color: #85bda0 !important; }
 
 /* terminal shortcode card follows the same near-black ground */
 .gdoc-markdown .term-card { background: #15120E !important; }
@@ -837,6 +837,38 @@ footer.cw-footer {
 }
 .md-404 p { color: var(--text-muted); max-width: 42ch; margin: 0 0 22px; line-height: 1.6; }
 .md-404 .md-hero-cta { justify-content: center; }
+
+/* ── 마스코트 캐릭터 배치 (Mascot green 테마, MascotCoding/Talking/Bubble) ── */
+.md-hero { position: relative; }
+.md-hero-mascot {
+  float: right;
+  width: 150px; height: 150px;
+  margin: 0 0 12px 28px;
+  shape-outside: circle(50%);
+  filter: drop-shadow(0 6px 16px rgba(61, 125, 95, 0.15));
+}
+.md-hero::after { content: ""; display: table; clear: both; }
+@media (max-width: 720px) {
+  .md-hero-mascot { float: none; display: block; margin: 0 auto 16px; width: 110px; height: 110px; }
+}
+.md-404-mascot {
+  display: block;
+  width: 120px; height: 120px;
+  margin: 0 auto 8px;
+  filter: drop-shadow(0 6px 16px rgba(61, 125, 95, 0.18));
+}
+.md-divider-mascot {
+  display: flex;
+  justify-content: center;
+  margin: 28px 0 12px;
+  opacity: 0.85;
+}
+.md-divider-mascot img { width: 64px; height: 64px; }
+.cw-brand-mascot {
+  height: 28px; width: 28px;
+  object-fit: contain;
+  border-radius: 6px;
+}
 
 /* ============================================================
    13. Accent-color toolbox (FAB + palette popover)
