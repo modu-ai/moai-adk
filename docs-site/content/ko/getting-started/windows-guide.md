@@ -46,43 +46,31 @@ irm https://raw.githubusercontent.com/modu-ai/moai-adk/main/install.ps1 | iex
 
 ### 문제 현상
 
-Windows 사용자명에 한글, 중국어 등 비-ASCII 문자가 포함된 경우, `EINVAL` 에러가 발생할 수 있습니다. 이는 Windows의 8.3 짧은 파일명 변환 과정에서 발생하는 문제입니다.
+Windows 사용자명에 한글, 중국어 등 비-ASCII 문자가 포함된 경우, 일부 레거시 도구나 8.3 짧은 파일명 변환 과정에서 경로 처리 문제가 발생할 수 있습니다. 홈 디렉터리 경로에 비-ASCII 문자가 섞여 있으면 특정 명령이 실패할 수 있습니다.
 
 ```
-Error: EINVAL: invalid argument, open 'C:\Users\홍길동\AppData\Local\Temp\...'
+C:\Users\홍길동\...
 ```
 
-### 해결 방법 1: 대체 임시 디렉터리 설정 (권장)
+이 경우 아래 방법으로 ASCII 전용 경로 환경을 마련하는 것이 가장 확실합니다.
 
-ASCII 문자만 포함된 경로에 임시 디렉터리를 생성합니다:
+### 해결 방법 1: 8.3 파일명 생성 활성화
 
-```bash
-# Command Prompt
-set MOAI_TEMP_DIR=C:\temp
-mkdir C:\temp 2>/dev/null
-```
+8.3 짧은 파일명(ASCII 대체 경로)이 생성되도록 관리자 권한으로 설정합니다.
 
 ```powershell
-# PowerShell
-$env:MOAI_TEMP_DIR="C:\temp"
-New-Item -ItemType Directory -Path "C:\temp" -Force
-```
-
-환경 변수를 영구적으로 설정하려면 시스템 환경 변수에 `MOAI_TEMP_DIR`을 추가하세요.
-
-### 해결 방법 2: 8.3 파일명 생성 비활성화
-
-관리자 권한으로 실행:
-
-```bash
 fsutil 8dot3name set 1
 ```
 
 > **주의**: 이 설정은 시스템 전체에 영향을 미칩니다. 일부 레거시 프로그램이 영향을 받을 수 있습니다.
 
-### 해결 방법 3: ASCII 사용자 계정 생성
+### 해결 방법 2: ASCII 사용자 계정 생성
 
-영어 이름으로 새 Windows 사용자 계정을 생성하면 경로 문제를 근본적으로 해결합니다.
+영어 이름으로 새 Windows 사용자 계정을 생성하면 홈 디렉터리 경로 문제를 근본적으로 해결합니다.
+
+### 해결 방법 3: WSL 사용
+
+가장 권장하는 방법은 WSL(아래 [WSL 설정 가이드](#wsl-설정-가이드) 참조) 환경에서 작업하는 것입니다. WSL 네이티브 파일시스템은 비-ASCII 홈 경로 문제의 영향을 받지 않습니다.
 
 ## WSL 설정 가이드
 
@@ -135,8 +123,8 @@ moai cg
 
 | 문제 | 원인 | 해결 |
 |------|------|------|
-| `moai: command not found` | PATH에 Go bin 디렉터리 미포함 | `export PATH="$HOME/go/bin:$PATH"`를 `.bashrc`에 추가 |
-| `EINVAL` 에러 | 한글 사용자명 | 위의 [한글 사용자명 경로 에러](#한글-사용자명-경로-에러) 참조 |
+| `moai: command not found` | PATH에 설치 디렉터리 미포함 | 설치 스크립트는 `~/.local/bin`에 설치 — `export PATH="$HOME/.local/bin:$PATH"`를 `.bashrc`에 추가 (`go install`로 설치한 경우 `$HOME/go/bin`) |
+| 한글 경로 처리 실패 | 한글 사용자명 | 위의 [한글 사용자명 경로 에러](#한글-사용자명-경로-에러) 참조 |
 | 권한 거부 | 설치 스크립트 권한 | `chmod +x install.sh` 후 재실행 |
 | Git 명령 실패 | Git for Windows 미설치 | [Git for Windows](https://gitforwindows.org/) 설치 |
 | tmux 없음 | CG 모드 실행 불가 | `sudo apt install tmux` (WSL에서) |

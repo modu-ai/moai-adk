@@ -98,11 +98,11 @@ flowchart TB
 flowchart TB
     A["요구사항 입력"] --> B["EARS 형식 분석"]
     B --> C["SPEC 문서 생성"]
-    C --> D["SPEC-001 저장"]
+    C --> D["SPEC-AUTH-001 저장"]
     D --> E["요구사항 검증"]
 ```
 
-생성된 SPEC 문서는 `.moai/specs/SPEC-001/spec.md`에 저장됩니다.
+생성된 SPEC 문서는 `.moai/specs/SPEC-AUTH-001/spec.md`에 저장됩니다 (SPEC ID는 `SPEC-<도메인>-<번호>` 형식).
 
 {{< callout type="warning" >}}
 SPEC 생성 후 `/clear` 명령으로 컨텍스트를 비우세요. 결정 사항은 이미 SPEC 파일에 남아 있으므로, 대화 기록을 유지할 이유가 없습니다 — 토큰 절약의 기본기입니다.
@@ -114,14 +114,14 @@ SPEC 문서를 바탕으로 구현을 진행합니다.
 
 ```bash
 > /clear
-> /moai run SPEC-001
+> /moai run SPEC-AUTH-001
 ```
 
 MoAI-ADK는 프로젝트 상태에 따라 최적의 개발 방법론을 자동으로 선택합니다.
 
 ```mermaid
 flowchart TD
-    A["/moai run SPEC-001"] --> B{"프로젝트 분석"}
+    A["/moai run SPEC-AUTH-001"] --> B{"프로젝트 분석"}
     B -->|"신규 프로젝트 또는<br/>테스트 커버리지 10%+"| C["TDD<br/>RED → GREEN → REFACTOR"]
     B -->|"기존 프로젝트<br/>커버리지 10% 미만"| D["DDD<br/>ANALYZE → PRESERVE → IMPROVE"]
     C --> E["TRUST 5 품질 게이트"]
@@ -220,7 +220,7 @@ flowchart TD
 
 ```bash
 > /clear
-> /moai sync SPEC-001
+> /moai sync SPEC-AUTH-001
 ```
 
 이 명령은 다음을 수행합니다:
@@ -261,11 +261,11 @@ sequenceDiagram
 
     Dev->>Plan: 기능 요구사항 입력
     Plan->>Plan: EARS 형식으로 분석
-    Plan-->>Dev: SPEC-001 문서
+    Plan-->>Dev: SPEC-AUTH-001 문서
 
     Note over Dev: /clear 실행
 
-    Dev->>Run: SPEC-001 실행
+    Dev->>Run: SPEC-AUTH-001 실행
     Run->>Run: TDD/DDD 사이클 수행
     Run->>Run: 테스트 생성 (85%+)
     Run-->>Dev: 구현 완료
@@ -321,11 +321,11 @@ flowchart TB
 > /clear
 
 # 3. 구현
-> /moai run SPEC-001
+> /moai run SPEC-AUTH-001
 > /clear
 
 # 4. 문서화 및 PR
-> /moai sync SPEC-001
+> /moai sync SPEC-AUTH-001
 ```
 
 ### 예제 2: 복잡한 기능 (자연어 자동화)
@@ -369,7 +369,7 @@ my-first-project/
 │   │   ├── structure.md             # 디렉토리 구조
 │   │   └── tech.md                  # 기술 스택
 │   ├── specs/
-│   │   └── SPEC-001/
+│   │   └── SPEC-AUTH-001/
 │   │       └── spec.md              # 요구사항 명세서
 │   └── memory/
 │       └── checkpoints/             # 세션 체크포인트
@@ -391,22 +391,21 @@ moai doctor
 
 이 명령은 다음을 확인합니다:
 
-- LSP 진단 (오류, 경고)
-- 테스트 커버리지
-- 린터 상태
-- 보안 검증
+- Claude Code 설정
+- 의존성 검증 (git, go 등 도구 설치 여부)
+- 환경 진단
+
+세부 진단은 하위 명령어로 실행합니다 — `moai doctor config` (설정), `moai doctor hook` (훅 커버리지), `moai doctor permission` (권한), `moai doctor sandbox` (샌드박스).
 
 ```mermaid
 graph TD
-    A["moai doctor"] --> B["LSP 진단"]
-    A --> C["테스트 커버리지"]
-    A --> D["린터 상태"]
-    A --> E["보안 검증"]
+    A["moai doctor"] --> B["Claude Code 설정"]
+    A --> C["의존성 검증"]
+    A --> D["환경 진단"]
 
     B --> F["종합 보고서"]
     C --> F
     D --> F
-    E --> F
 ```
 
 ## 유용한 팁
@@ -418,9 +417,9 @@ graph TD
 ```bash
 > /moai plan "복잡한 기능 구현"
 > /clear  # 세션 초기화
-> /moai run SPEC-001
+> /moai run SPEC-AUTH-001
 > /clear
-> /moai sync SPEC-001
+> /moai sync SPEC-AUTH-001
 ```
 
 ### 버그 수정 및 자동화

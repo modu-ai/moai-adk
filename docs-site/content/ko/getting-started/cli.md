@@ -24,8 +24,19 @@ moai --help
 
 ```bash
 moai version
-# 출력 예시: moai <버전> (commit: <해시>, built: <빌드 날짜>)
 ```
+
+```text
+╭────────────────────────╮
+│                        │
+│  moai-adk v3.0.0-rc11  │
+│                        │
+│                        │
+╰────────────────────────╯
+ v3.0.0-rc11   none   built unknown
+```
+
+박스 배너 아래 줄은 `<버전>   <커밋 해시>   built <빌드 시각>` 순서로 표시됩니다. `go install` 등 ldflags 없이 빌드한 경우 커밋은 `none`, 빌드 시각은 `unknown` 으로 나옵니다.
 
 ---
 
@@ -47,6 +58,13 @@ moai init [project-name] [OPTIONS]
 | `--all` | 카탈로그 전체 항목 배포 (core + optional packs + harness-generated) |
 | `--standard` | Phase 1 질문 표시 (project mode, harness profile, LSP, quality gates, design) |
 | `--advanced` | Phase 1 + Phase 2 질문 표시 (`--standard` 포함; Phase 2는 선행 조건 충족 시만) |
+| `--mode <ddd\|tdd>` | 개발 방법론 (기본값: tdd) |
+| `--language <lang>` | 주 프로그래밍 언어 |
+| `--framework <name>` | 프레임워크 이름 (기본값: 자동 감지 또는 "none") |
+| `--name <name>` | 프로젝트 이름 (기본값: 디렉토리 이름) |
+| `--root <path>` | 프로젝트 루트 디렉토리 (기본값: 현재 디렉토리) |
+| `--git-mode <manual\|personal\|team>` | Git 워크플로우 모드 (기본값: manual) |
+| `--git-provider <github\|gitlab>` | Git 제공자 |
 | `--project-mode <personal\|team>` | 프로젝트 모드 (기본값: personal) |
 | `--harness-profile <profile>` | 하네스 평가자 프로필 (default, strict, lenient, frontend) |
 | `--enable-lsp` | LSP 연동 활성화 (기본값: false) |
@@ -142,11 +160,11 @@ moai doctor [OPTIONS]
 
 | 명령어 | 설명 |
 |--------|------|
-| `moai doctor sandbox` | 샌드박스 환경 진단 |
-| `moai doctor permission` | 권한 설정 진단 |
-| `moai doctor hook` | 훅 로딩 문제 진단 |
-| `moai doctor config dump` | 현재 설정을 JSON으로 덤프 |
-| `moai doctor config diff` | 로컬 설정과 템플릿 기본값 비교 |
+| `moai doctor sandbox` | 샌드박스 백엔드 가용성 진단 |
+| `moai doctor permission` | 권한 해석 진단 |
+| `moai doctor hook` | 27개 훅 이벤트 커버리지 표 표시 |
+| `moai doctor config dump` | 병합된 설정을 provenance 와 함께 덤프 |
+| `moai doctor config diff <tier-a> <tier-b>` | 두 설정 티어를 비교 |
 
 ### 예시
 
@@ -231,9 +249,9 @@ Claude Code 훅 이벤트를 처리하는 디스패처입니다. `settings.json`
 moai hook <event>
 ```
 
-### 지원 이벤트 (26개)
+### 지원 서브커맨드 (약 38개)
 
-모든 이벤트 이름은 kebab-case 입니다.
+`moai hook` 디스패처는 표준 Claude Code 훅 이벤트와 MoAI 전용 내부 액션을 합쳐 약 38개의 서브커맨드를 제공합니다. 모든 이름은 kebab-case 입니다. 아래는 대표적인 이벤트입니다.
 
 | 이벤트 | 설명 |
 |-------|------|
@@ -264,6 +282,17 @@ moai hook <event>
 | `elicitation` | MCP elicitation 요청 |
 | `elicitation-result` | MCP elicitation 결과 |
 
+MoAI 전용 서브커맨드도 포함됩니다.
+
+| 서브커맨드 | 설명 |
+|-------|------|
+| `stop-goal` | 턴 종료 시 활성 세션 goal 평가 |
+| `pre-push` | 커밋 메시지를 컨벤션에 맞게 검증 |
+| `spec-status` | git 커밋 시 SPEC status 자동 갱신 |
+| `harness-classify` | 하네스 분류기 실행 및 티어 승급 기록 |
+| `harness-observe` · `harness-observe-stop` · `harness-observe-subagent-stop` · `harness-observe-user-prompt-submit` | 하네스 사용 로그 기록 |
+| `db-schema-sync` | PostToolUse 훅에서 DB 스키마 변경 감지 |
+
 훅은 사용자가 직접 실행하지 않습니다 — Claude Code의 `settings.json` 이 자동으로 호출합니다.
 
 ---
@@ -280,46 +309,151 @@ moai worktree <COMMAND> [ARGS]...
 
 | 명령어 | 설명 |
 |--------|------|
-| `moai worktree new <SPEC_ID>` | 새 worktree 생성 |
+| `moai worktree new [branch-name]` | 새 worktree 생성 |
 | `moai worktree list` | 활성 worktree 목록 |
-| `moai worktree go <SPEC_ID>` | worktree 디렉토리로 이동 |
-| `moai worktree remove <SPEC_ID>` | worktree 제거 |
-| `moai worktree clean` | 오래된 worktree 정리 |
-| `moai worktree recover` | 기존 디렉토리에서 복구 |
+| `moai worktree go [branch-name]` | worktree 경로를 **출력** (셸 이동용) |
+| `moai worktree switch [branch-name]` | worktree 로 전환 |
+| `moai worktree done [branch-name]` | worktree 완료 및 정리 |
+| `moai worktree sync [branch-name]` | base 브랜치와 worktree 동기화 |
+| `moai worktree remove [path]` | worktree 제거 |
+| `moai worktree config [key] [value]` | worktree 설정 조회/변경 |
 | `moai worktree status` | worktree 상태 조회 |
+| `moai worktree clean` | 오래된 worktree 참조 정리 |
+| `moai worktree recover` | worktree 레지스트리 복구 |
+| `moai worktree snapshot` | 작업 트리 상태 스냅샷 캡처 |
+| `moai worktree restore` | 스냅샷 HEAD 상태로 작업 트리 복원 |
+| `moai worktree verify` | 작업 트리 상태를 스냅샷과 대조 검증 |
+
+`moai worktree go` 는 디렉토리를 바꾸지 않고 경로만 출력합니다. 실제 이동은 셸에서 다음과 같이 감싸 사용합니다.
+
+```bash
+cd "$(moai worktree go my-branch)"
+```
 
 ---
 
 ## moai cc / moai cg / moai glm
 
-Claude Code를 시작하면서 백엔드를 선택하는 런치 명령어입니다. 세 명령어 모두 `-p <profile>` 플래그로 프로필을 지정할 수 있고, `--` 이후의 인자를 Claude Code에 그대로 전달합니다.
+Claude Code를 시작하면서 백엔드를 선택하는 런치 명령어입니다. 세 명령어 모두 `-p <profile>` 플래그로 프로필을 지정할 수 있습니다. `--` 이후의 인자를 Claude Code에 그대로 전달하는 것은 `moai cc` 와 `moai glm` 만 지원합니다 (`moai cg` 는 미지원).
 
 ```bash
 moai cc [-p profile] [-- claude-args...]
-moai cg [-p profile] [-- claude-args...]
 moai glm [-p profile] [-- claude-args...]
+moai cg [-p profile]
 ```
 
 | 명령어 | 리더 | 워커 | tmux 필수 | 용도 |
 |--------|------|------|-----------|------|
 | `moai cc` | Claude | Claude | 아니오 | 최고 품질 (단일 백엔드) |
-| `moai glm` | GLM | GLM | 권장 | 비용 최적화 (GLM 단독) |
+| `moai glm` | GLM | GLM | 아니오 | 비용 최적화 (GLM 단독) |
 | `moai cg` | Claude | GLM | 필수 | 품질 + 비용 균형 (하이브리드) |
 
-`moai cg` 는 CG 모드 (Claude 리더 + GLM 팀원) 를 활성화합니다. tmux 세션 내에서 실행해야 하며, GLM 환경변수를 tmux 세션에 주입하고 리더 창은 Claude API를 사용합니다.
+`moai cg` 는 CG 모드 (Claude 리더 + GLM 팀원) 를 활성화합니다. tmux 세션 내에서 실행해야 하며, GLM 환경변수를 tmux 세션에 주입하고 리더 창은 Claude API를 사용합니다. `moai cg` 는 설정 후 현재 창에서 곧바로 Claude Code를 실행하므로 별도의 `claude` 실행 단계가 필요 없습니다.
 
 ```bash
 # 1. GLM API 키 저장 (최초 1회)
-moai glm sk-your-glm-api-key
+moai glm setup sk-your-glm-api-key
 
-# 2. CG 모드 활성화 (tmux 내에서 실행)
+# 2. CG 모드 활성화 (tmux 내에서 실행 — Claude Code가 현재 창에서 바로 시작됨)
 moai cg
-
-# 3. 같은 창에서 Claude Code 시작
-claude
 ```
 
 자세한 CG 모드 안내는 [소개 — GLM으로 토큰 절약](./introduction#glm으로-토큰-절약-5070) 을 참조하세요.
+
+### 런치 플래그
+
+세 런치 명령어가 공통으로 지원하는 플래그입니다.
+
+| 플래그 | 설명 |
+|--------|------|
+| `-p, --profile <name>` | 이름 있는 Claude 프로필 사용 |
+| `--permission-mode <mode>` | 권한 모드 (default, acceptEdits, plan, auto, bypassPermissions, dontAsk) |
+| `-b, --bypass` | `--permission-mode bypassPermissions` 단축 |
+
+`moai cc` 는 추가로 다음 플래그를 지원합니다.
+
+| 플래그 | 설명 |
+|--------|------|
+| `-c, --continue` | 이전 세션 이어가기 |
+| `-m, --model <model>` | 모델 선택 덮어쓰기 |
+| `--chrome` / `--no-chrome` | Chrome MCP 토글 |
+
+> `auto` 권한 모드는 GLM(제3자 제공자)에서는 사용할 수 없습니다 — `moai cc` 또는 `moai cg` 에서만 지원됩니다.
+
+### moai glm 하위 명령어
+
+| 명령어 | 설명 |
+|--------|------|
+| `moai glm setup <api-key>` | GLM API 키 저장 |
+| `moai glm status` | 현재 GLM 자격증명 상태 표시 |
+| `moai glm tools` | Z.AI MCP 서버 도구 관리 (활성/비활성) |
+
+---
+
+## moai goal
+
+현재 세션에 조건 기반 자율 goal 루프를 등록·조회·해제합니다. 조건이 충족될 때까지 매 턴 종료 시 평가됩니다.
+
+```bash
+moai goal <COMMAND>
+```
+
+| 명령어 | 설명 |
+|--------|------|
+| `moai goal arm <condition>` | 활성 세션에 goal 등록·활성화 |
+| `moai goal status` | 활성 세션의 goal 상태 출력 |
+| `moai goal clear` | 활성 세션의 goal 해제 |
+
+---
+
+## moai handoff
+
+`/clear` 경계를 넘어 세션을 이어가기 위한 auto-resume 핸드오프 대기 레코드를 관리합니다.
+
+```bash
+moai handoff <COMMAND>
+```
+
+| 명령어 | 설명 |
+|--------|------|
+| `moai handoff save` | 붙여넣기용 resume 본문을 대기 레코드로 저장 |
+| `moai handoff clear` | 대기 핸드오프 레코드 제거 |
+
+---
+
+## moai session
+
+다중 세션 레이스 완화를 위한 활성 세션 조율 레지스트리를 관리합니다.
+
+```bash
+moai session <COMMAND>
+```
+
+| 명령어 | 설명 |
+|--------|------|
+| `moai session current` | 현재 오케스트레이터 세션 UUID 출력 |
+| `moai session list` | 활성 세션 목록 (`--filter-spec` 로 필터링 가능) |
+| `moai session register <session_id> <spec_id> <phase>` | 레지스트리에 세션 등록 |
+| `moai session deregister <session_id>` | 레지스트리에서 세션 제거 (idempotent) |
+| `moai session heartbeat <session_id>` | 세션 last_heartbeat 갱신 |
+| `moai session purge` | 오래된 항목 제거 (기본값: 마지막 heartbeat 30분 초과) |
+| `moai session doctor` | 세션 레지스트리가 비어 있는 원인 진단 |
+
+---
+
+## moai web
+
+브라우저 기반 설정 편집기인 MoAI Web Console를 실행합니다.
+
+```bash
+moai web [OPTIONS]
+```
+
+| 플래그 | 설명 |
+|--------|------|
+| `--port <N>` | 127.0.0.1 에 바인딩할 TCP 포트 (기본값: 3041) |
+| `--no-open` | 브라우저 자동 열기 안 함 |
+| `--no-reuse` | 오래된 moai 인스턴스로부터 포트 회수 안 함 |
 
 ---
 
