@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	tea "github.com/charmbracelet/bubbletea"
+	tea "charm.land/bubbletea/v2"
 )
 
 func TestConfirmModel_Init(t *testing.T) {
@@ -31,7 +31,7 @@ func TestConfirmModel_Update_AcceptWithY(t *testing.T) {
 	}
 
 	// Simulate pressing 'y'
-	updatedModel, cmd := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'y'}})
+	updatedModel, cmd := m.Update(tea.KeyPressMsg(tea.Key{Code: 'y', Text: "y"}))
 
 	result := updatedModel.(confirmModel)
 
@@ -58,7 +58,7 @@ func TestConfirmModel_Update_CancelWithN(t *testing.T) {
 	}
 
 	// Simulate pressing 'n'
-	updatedModel, cmd := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'n'}})
+	updatedModel, cmd := m.Update(tea.KeyPressMsg(tea.Key{Code: 'n', Text: "n"}))
 
 	result := updatedModel.(confirmModel)
 
@@ -85,7 +85,7 @@ func TestConfirmModel_Update_CancelWithCtrlC(t *testing.T) {
 	}
 
 	// Simulate pressing Ctrl+C
-	updatedModel, cmd := m.Update(tea.KeyMsg{Type: tea.KeyCtrlC})
+	updatedModel, cmd := m.Update(tea.KeyPressMsg(tea.Key{Code: 'c', Mod: tea.ModCtrl}))
 
 	result := updatedModel.(confirmModel)
 
