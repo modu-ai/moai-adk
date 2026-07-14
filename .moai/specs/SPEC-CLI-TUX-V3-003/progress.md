@@ -169,11 +169,72 @@ Orchestrator Trust-but-verify (2026-07-14): `go test ./... -count=1` exit 0 (FUL
 
 ## §E.3 Run-phase Audit-Ready Signal
 
-_<pending run-phase>_
+run_status: audit-ready
+run_complete_at: 2026-07-14
+run_commit_sha: f7bf7407b
+run_summary: "M3a~M3f complete — 5-subpackage decomposition + change-preview TUI + confirm.go v2 + outcome card; 18/20 AC clean PASS (AC-TUX3-018 partial, AC-TUX3-020 debt); go test ./... exit 0; golangci-lint clean on SPEC-003 scope; namespace guard 5-family UNMODIFIED green."
+ac_matrix:
+  AC-TUX3-001: PASS   # ChangeClass enum — class.go
+  AC-TUX3-002: PASS   # UserOwnedPredicate inject — no parallel heuristic
+  AC-TUX3-003: PASS   # ChangeClass.String labels
+  AC-TUX3-004: PASS   # 5-subpackage decomposition (3 entangled funcs stay as orchestration glue — debt)
+  AC-TUX3-005: PASS   # guard-test import-path adjustments only, assertion bodies UNMODIFIED
+  AC-TUX3-006: PASS   # update.go LOC drop (3276 → ~1730)
+  AC-TUX3-007: PASS   # bubbletea v2 / bubbles v2 state
+  AC-TUX3-008: PASS   # preview table per-class counts + every-file row
+  AC-TUX3-009: PASS   # row-select → diff-viewport; Esc returns to table
+  AC-TUX3-010: PASS   # text fallback: NO_COLOR / piped → zero ANSI
+  AC-TUX3-011: PASS   # confirm.go v2 bubbles-list promotion
+  AC-TUX3-012: PASS   # unified outcome card
+  AC-TUX3-013: PASS   # @MX:DEBT/CEILING/UPGRADE 3 tags RESOLVED (removed)
+  AC-TUX3-014: PASS   # "preserved (user-owned)" label in TUI + fallback, derived from shared predicate
+  AC-TUX3-015: PASS   # namespace guard 5-family UNMODIFIED green (maps to guard + M3b characterization)
+  AC-TUX3-016: PASS   # coherence_test.go — Classify↔isUserOwnedNamespace reachability
+  AC-TUX3-017: PASS   # bubbletea v2 v2.0.8 + bubbles v2 v2.1.1 in use
+  AC-TUX3-018: PARTIAL # coverage: report 92.9% · plan 95.0% · merge 90.3% ✓; deploy 74.7% · backup 75.2% — error-handling paths debt
+  AC-TUX3-019: PASS   # golangci-lint clean on SPEC-003 scope (errcheck + staticcheck fixed in f7bf7407b)
+  AC-TUX3-020: DEBT    # fmt.Print* ratchet holds at baseline 38 (no regression); Printer migration is follow-up
+ac_pass_count: 18
+ac_partial_count: 1
+ac_debt_count: 1
+verdict: PASS-WITH-DEBT
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+sync_status: audit-ready
+sync_complete_at: 2026-07-14
+sync_commit_sha: pending-backfill-<this-commit>
+sync_summary: "3-phase close (PASS-WITH-DEBT). Single sync commit carries the in-progress → implemented → completed transition on spec.md frontmatter + CHANGELOG [Unreleased] entry + progress.md §E.3/§E.4. SPEC body UNCHANGED (frontmatter status + updated only). No separate Mx chore commit (MX Tag validated as sync sub-step: confirm.go @MX:DEBT 3 tags confirmed removed; 3 ANCHOR + 12 NOTE + 3 REASON + 1 SPEC across the new subpackages)."
+changelog_entry_position: "[Unreleased] / Added (single entry, dedup-verified: grep -c 'SPEC-CLI-TUX-V3-003' CHANGELOG.md == 1 pre-edit, 0 → halt-guard passed)"
+frontmatter_status_transitions:
+  spec.md: "in-progress → completed (single sync commit carries the terminal transition)"
+  plan.md: "n/a (plan-phase artifact — not transitioned at sync)"
+  acceptance.md: "n/a (acceptance-phase artifact — not transitioned at sync)"
+  progress.md: "§E.3 + §E.4 populated this commit"
+b12_self_test_a: "pre-emission grep: grep -c 'SPEC-CLI-TUX-V3-003' CHANGELOG.md == 0 (pre-edit) → emission SAFE (no duplicate)"
+b12_self_test_b: "AC count match: acceptance.md SSOT has 20 unique AC-TUX3-* IDs; CHANGELOG entry references 18 clean + 018 partial + 020 debt = 20 total ✓"
+b12_self_test_c: "file-path verification: internal/cli/update/{plan,backup,deploy,merge,report}/ ls-confirmed; internal/cli/update/class.go + preview*.go ls-confirmed; internal/merge/confirm.go ls-confirmed; update_characterization_test.go + coherence_test.go ls-confirmed"
+canary_compliance_check:
+  acceptance_md_regex_wording: "AC-TUX3-009/010 `-run` regexes use `\\|` (RE2 literal-pipe, not alternation) — acceptance.md wording fix owed to manager-spec (forbidden ownership crossing; NOT edited in sync-phase)"
+  acceptance_md_test_name: "AC-TUX3-015 names `UserAssetPreservation` test absent from suite — maps to guard 5-family + M3b characterization; acceptance.md wording fix owed to manager-spec"
+  ac_tux3_018_deploy_backup_coverage: "deploy 74.7% · backup 75.2% < 85% target — error-handling paths; manager-develop judged gap reasonable; ratchet follow-up"
+  ac_tux3_020_printer_migration: "fmt.Print* ratchet baseline 38 unchanged (no regression); Printer migration is larger follow-up SPEC scope"
+debt_register:
+  - id: AC-TUX3-018
+    kind: coverage-gap
+    scope: "internal/cli/update/deploy (74.7%) + internal/cli/update/backup (75.2%) error-handling paths"
+    target: "≥85% coverage"
+    owner: follow-up
+  - id: AC-TUX3-020
+    kind: ratchet-hold
+    scope: "internal/cli non-test fmt.Print* (baseline 38, no regression)"
+    target: "Printer migration — migrate remaining call sites to internal/cli/printer"
+    owner: follow-up
+  - id: acceptance-wording
+    kind: doc-fix-owed
+    scope: "acceptance.md AC-TUX3-009/010 regex `\\|` → `|`; AC-TUX3-015 test-name → guard mapping"
+    target: "manager-spec body edit (forbidden ownership crossing)"
+    owner: manager-spec
 
 ## §F Phase 4 Mode Selection
 
