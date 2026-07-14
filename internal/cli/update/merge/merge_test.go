@@ -191,7 +191,9 @@ func TestMergeUserFiles_FileRemovedInNewTemplate(t *testing.T) {
 	// Create manifest
 	mgr := manifest.NewManager()
 	manifestPath := filepath.Join(tmpDir, ".moai", "manifest.json")
-	os.MkdirAll(filepath.Dir(manifestPath), 0755)
+	if err := os.MkdirAll(filepath.Dir(manifestPath), 0755); err != nil {
+		t.Fatalf("failed to create manifest dir: %v", err)
+	}
 	if err := os.WriteFile(manifestPath, []byte(`{"version":"1","files":{}}`), defs.FilePerm); err != nil {
 		t.Fatalf("failed to create manifest: %v", err)
 	}
@@ -201,7 +203,9 @@ func TestMergeUserFiles_FileRemovedInNewTemplate(t *testing.T) {
 
 	// Create parent directory for the file
 	targetDir := filepath.Join(tmpDir, ".moai", "config", "sections")
-	os.MkdirAll(targetDir, 0755)
+	if err := os.MkdirAll(targetDir, 0755); err != nil {
+		t.Fatalf("failed to create target dir: %v", err)
+	}
 
 	// User backup for a file that won't exist in new template
 	backups := []FileBackup{
@@ -241,7 +245,9 @@ func TestMergeUserFiles_NewFileNoBase(t *testing.T) {
 	// Setup manifest
 	mgr := manifest.NewManager()
 	manifestPath := filepath.Join(tmpDir, ".moai", "manifest.json")
-	os.MkdirAll(filepath.Dir(manifestPath), 0755)
+	if err := os.MkdirAll(filepath.Dir(manifestPath), 0755); err != nil {
+		t.Fatalf("failed to create manifest dir: %v", err)
+	}
 	if err := os.WriteFile(manifestPath, []byte(`{"version":"1","files":{}}`), defs.FilePerm); err != nil {
 		t.Fatalf("failed to create manifest: %v", err)
 	}
@@ -553,8 +559,12 @@ func TestAnalyzeMergeChanges_Integration(t *testing.T) {
 	}
 
 	// Create some files to simulate existing project
-	os.MkdirAll(filepath.Join(tmpDir, ".moai", "config"), 0755)
-	os.WriteFile(filepath.Join(tmpDir, "CLAUDE.md"), []byte("# Docs\n"), defs.FilePerm)
+	if err := os.MkdirAll(filepath.Join(tmpDir, ".moai", "config"), 0755); err != nil {
+		t.Fatalf("failed to create config dir: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(tmpDir, "CLAUDE.md"), []byte("# Docs\n"), defs.FilePerm); err != nil {
+		t.Fatalf("failed to create CLAUDE.md: %v", err)
+	}
 
 	result := AnalyzeMergeChanges(deployer, tmpDir)
 
@@ -710,8 +720,12 @@ func TestMergeUserFiles_MultipleFiles(t *testing.T) {
 	// Create multiple test files
 	file1Path := filepath.Join(tmpDir, "test1.txt")
 	file2Path := filepath.Join(tmpDir, "test2.txt")
-	os.WriteFile(file1Path, []byte("content1"), defs.FilePerm)
-	os.WriteFile(file2Path, []byte("content2"), defs.FilePerm)
+	if err := os.WriteFile(file1Path, []byte("content1"), defs.FilePerm); err != nil {
+		t.Fatalf("failed to create test1.txt: %v", err)
+	}
+	if err := os.WriteFile(file2Path, []byte("content2"), defs.FilePerm); err != nil {
+		t.Fatalf("failed to create test2.txt: %v", err)
+	}
 
 	backups := []FileBackup{
 		{Path: "test1.txt", Data: []byte("backup1")},

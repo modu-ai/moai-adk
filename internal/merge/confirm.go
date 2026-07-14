@@ -82,12 +82,12 @@ func (m confirmModel) Init() tea.Cmd {
 
 	// Create list model with default delegate
 	delegate := list.NewDefaultDelegate()
-	lst := list.New(items, delegate, 0, 0) // width/height set in View
-	lst.SetShowStatusBar(false)
-	lst.SetFilteringEnabled(false)
-	lst.SetShowPagination(false)
-	lst.SetShowHelp(false)
-	m.list = &lst
+	m.list = &list.Model{}
+	*m.list = list.New(items, delegate, 0, 0) // width/height set in View
+	m.list.SetShowStatusBar(false)
+	m.list.SetFilteringEnabled(false)
+	m.list.SetShowPagination(false)
+	m.list.SetShowHelp(false)
 
 	// Initialize all files as selected
 	m.selectedFiles = make([]bool, len(m.analysis.Files))
