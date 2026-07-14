@@ -242,6 +242,32 @@ debt_register:
     target: "manager-spec body edit (forbidden ownership crossing)"
     owner: manager-spec
 
+### Amendment Re-close (2026-07-14)
+
+amendment_sync_status: audit-ready
+amendment_sync_complete_at: 2026-07-14
+sync_commit_sha: pending-backfill-amendment
+amendment_sync_summary: "Amendment re-close (2nd close of SPEC-CLI-TUX-V3-003). The SPEC was amended (commit 313482ca4, completed → in-progress) to complete AC-TUX3-018 coverage. AC-TUX3-018 NOW DONE: deploy 97.5% (commit 6fb84a280) + backup 88.6% (commit 8d7106c59); report 92.9% / plan 95.0% / merge 90.3% unchanged ≥85%. D1 resolved: acceptance.md §D.5 reconciled (commit 36eeb3280) — 19 AC PASS + AC-TUX3-020 split (debt). AC-TUX3-020 (Printer migration) EXCLUDED — split to a separate SPEC (not yet authored; debt_register carries it). 19/20 AC clean. Single sync commit carries the in-progress → implemented → completed transition (amendment re-close). SPEC body UNCHANGED (frontmatter status + updated only). acceptance.md / plan.md body NOT modified (manager-spec owned; D1 already resolved by commit 36eeb3280)."
+amendment_changelog_entry_position: "[Unreleased] / Changed (amendment re-close entry, dedup-verified: grep -c 'SPEC-CLI-TUX-V3-003' CHANGELOG.md == 1 pre-edit = original close only → amendment emission SAFE)"
+amendment_frontmatter_status_transitions:
+  spec.md: "in-progress → completed (amendment re-close, single sync commit carries the terminal transition)"
+  plan.md: "n/a (plan-phase artifact — not transitioned at amendment sync)"
+  acceptance.md: "n/a (acceptance-phase artifact — D1 §D.5 reconciliation already landed in commit 36eeb3280 by manager-spec)"
+  progress.md: "§E.4 amendment re-close block populated this commit"
+amendment_b12_self_test_a: "pre-emission grep: grep -c 'SPEC-CLI-TUX-V3-003' CHANGELOG.md == 1 (original close entry only, no duplicate amendment entry) → emission SAFE"
+amendment_b12_self_test_b: "AC count match: acceptance.md §D.5 reconciled to 19 AC PASS + AC-TUX3-020 split (debt); CHANGELOG amendment entry references 19/20 AC clean ✓"
+amendment_b12_self_test_c: "file-path verification: internal/cli/update/{deploy,backup}/ ls-confirmed (coverage commits 6fb84a280 + 8d7106c59); acceptance.md §D.5 ls-confirmed (commit 36eeb3280)"
+amendment_canary_compliance_check:
+  ac_tux3_018_resolved: "deploy 97.5% + backup 88.6% — both ≥85% target (commits 6fb84a280 + 8d7106c59); AC-TUX3-018 PASS"
+  ac_tux3_020_split: "Printer migration split to separate SPEC (not yet authored); debt_register carries it; fmt.Print* ratchet baseline 38 unchanged"
+  d1_acceptance_reconciled: "acceptance.md §D.5 reconciled (commit 36eeb3280) — 19 AC PASS + AC-TUX3-020 split (debt)"
+amendment_debt_register:
+  - id: AC-TUX3-020
+    kind: split-to-separate-spec
+    scope: "internal/cli non-test fmt.Print* Printer migration"
+    target: "Separate SPEC (not yet authored) — migrate remaining call sites to internal/cli/printer"
+    owner: follow-up
+
 ## §F Phase 4 Mode Selection
 
 decided_at: 2026-07-14 (run kickoff)
