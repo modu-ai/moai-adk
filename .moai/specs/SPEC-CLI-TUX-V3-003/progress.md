@@ -203,7 +203,7 @@ verdict: PASS-WITH-DEBT
 
 sync_status: audit-ready
 sync_complete_at: 2026-07-14
-sync_commit_sha: pending-backfill-<this-commit>
+sync_commit_sha: 4321ecc9c
 sync_summary: "3-phase close (PASS-WITH-DEBT). Single sync commit carries the in-progress → implemented → completed transition on spec.md frontmatter + CHANGELOG [Unreleased] entry + progress.md §E.3/§E.4. SPEC body UNCHANGED (frontmatter status + updated only). No separate Mx chore commit (MX Tag validated as sync sub-step: confirm.go @MX:DEBT 3 tags confirmed removed; 3 ANCHOR + 12 NOTE + 3 REASON + 1 SPEC across the new subpackages)."
 changelog_entry_position: "[Unreleased] / Added (single entry, dedup-verified: grep -c 'SPEC-CLI-TUX-V3-003' CHANGELOG.md == 1 pre-edit, 0 → halt-guard passed)"
 frontmatter_status_transitions:
