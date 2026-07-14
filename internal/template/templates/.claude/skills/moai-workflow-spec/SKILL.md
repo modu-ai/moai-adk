@@ -302,7 +302,7 @@ These routing rules decide what is out of scope for a SPEC document (and where i
 - manager-develop: DDD/TDD implementation based on SPEC requirements
 - /moai gate skill (or sync-phase-quality-gate.sh Stop hook): TRUST 5 quality validation and gate enforcement (former manager-quality role)
 
-For migration scenarios and validation scripts: [reference/migration-guide.md](reference/migration-guide.md).
+For migration scenarios and validation scripts: [references/migration-guide.md](references/migration-guide.md).
 
 ---
 
