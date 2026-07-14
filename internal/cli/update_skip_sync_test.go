@@ -96,7 +96,7 @@ func TestSkipSyncNoArchive(t *testing.T) {
 		// terminal output of the sync step; no "Legacy skill archive"
 		// nor "archive:" lines may appear in the sync output buffer.
 		output := buf.String()
-		if !strings.Contains(output, "up-to-date") {
+		if !strings.Contains(output, "Up to date") {
 			t.Errorf("expected 'up-to-date' in output, got: %q", output)
 		}
 		if strings.Contains(output, "Legacy skill archive") {

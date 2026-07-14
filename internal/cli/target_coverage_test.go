@@ -257,7 +257,7 @@ func TestRunTemplateSyncWithProgress_VersionMatchSkips(t *testing.T) {
 	}
 
 	output := buf.String()
-	if !strings.Contains(output, "up-to-date") {
+	if !strings.Contains(output, "Up to date") {
 		t.Errorf("output should contain 'up-to-date', got: %q", output)
 	}
 }

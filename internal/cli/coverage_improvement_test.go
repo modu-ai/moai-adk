@@ -2802,7 +2802,7 @@ func TestRunTemplateSyncWithProgress_VersionMatch(t *testing.T) {
 	}
 
 	output := buf.String()
-	if !strings.Contains(output, "up-to-date") {
+	if !strings.Contains(output, "Up to date") {
 		t.Errorf("expected up-to-date message, got: %s", output)
 	}
 }
@@ -3420,7 +3420,7 @@ func TestRunTemplateSyncWithReporter_VersionMatch(t *testing.T) {
 	}
 
 	output := buf.String()
-	if !strings.Contains(output, "up-to-date") {
+	if !strings.Contains(output, "Up to date") {
 		t.Errorf("expected up-to-date message, got: %s", output)
 	}
 }
@@ -3473,7 +3473,7 @@ func TestRunTemplateSyncWithReporter_FullDeploy(t *testing.T) {
 	}
 
 	output := buf.String()
-	if !strings.Contains(output, "Template sync complete") {
+	if !strings.Contains(output, "Updated") {
 		t.Errorf("expected sync complete message, got: %s", output)
 	}
 }
@@ -4333,7 +4333,7 @@ func TestRunTemplateSyncWithProgress_VersionMismatch(t *testing.T) {
 	}
 
 	output := buf.String()
-	if !strings.Contains(output, "Template sync complete") {
+	if !strings.Contains(output, "Updated") {
 		t.Errorf("expected sync complete, got: %s", output)
 	}
 }

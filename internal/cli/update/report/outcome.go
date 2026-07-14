@@ -38,7 +38,7 @@ func RenderOutcome(kind OutcomeKind, fileCount int, backupPath string) string {
 
 	switch kind {
 	case OutcomeAlreadyUpToDate:
-		result = "✓ Up to date"
+		result = "✓ Up to date · Skipping sync"
 		if backupPath != "" {
 			result += "\n\nBackup: " + backupPath
 			result += "\nRecover: moai update --restore-config " + backupPath

@@ -242,7 +242,7 @@ func runUpdate(cmd *cobra.Command, _ []string) error {
 			// reexecNewBinary replaces the process on success, so we only
 			// reach here if it failed.
 		} else if binaryOnly {
-			_, _ = fmt.Fprintln(out, tui.Pill(tui.PillOpts{Kind: tui.PillInfo, Solid: false, Label: "Already up to date", Theme: &th}))
+			_, _ = fmt.Fprintln(out, tui.Pill(tui.PillOpts{Kind: tui.PillInfo, Solid: false, Label: report.RenderOutcome(report.OutcomeAlreadyUpToDate, 0, ""), Theme: &th}))
 			return nil
 		}
 	}
@@ -581,7 +581,7 @@ func runTemplateSyncWithReporter(cmd *cobra.Command, reporter project.ProgressRe
 			reporter.StepComplete("Already up-to-date")
 		}
 		_, _ = fmt.Fprintln(out)
-		_, _ = fmt.Fprintln(out, tui.Pill(tui.PillOpts{Kind: tui.PillOk, Solid: false, Label: "Template version up-to-date · Skipping sync", Theme: &th}))
+		_, _ = fmt.Fprintln(out, tui.Pill(tui.PillOpts{Kind: tui.PillOk, Solid: false, Label: report.RenderOutcome(report.OutcomeAlreadyUpToDate, 0, ""), Theme: &th}))
 		return nil
 	}
 
@@ -944,7 +944,7 @@ func runTemplateSyncWithReporter(cmd *cobra.Command, reporter project.ProgressRe
 	}
 
 	_, _ = fmt.Fprintln(out)
-	_, _ = fmt.Fprintln(out, tui.Pill(tui.PillOpts{Kind: tui.PillOk, Solid: false, Label: "Template sync complete", Theme: &th}))
+	_, _ = fmt.Fprintln(out, tui.Pill(tui.PillOpts{Kind: tui.PillOk, Solid: false, Label: report.RenderOutcome(report.OutcomeUpdatedFiles, len(analysis.Files), configBackupPath), Theme: &th}))
 	report.EmitHooksReviewGuidance(out)
 
 	_, _ = fmt.Fprintln(out)
@@ -1000,7 +1000,7 @@ func runTemplateSyncWithProgress(cmd *cobra.Command) (skipped bool, err error) {
 	projectVersion, verr := plan.GetProjectConfigVersion(projectRoot)
 	if verr == nil && packageVersion == projectVersion && !forceUpdate {
 		_, _ = fmt.Fprintln(out)
-		_, _ = fmt.Fprintln(out, tui.Pill(tui.PillOpts{Kind: tui.PillOk, Solid: false, Label: "Template version up-to-date · Skipping sync", Theme: &th}))
+		_, _ = fmt.Fprintln(out, tui.Pill(tui.PillOpts{Kind: tui.PillOk, Solid: false, Label: report.RenderOutcome(report.OutcomeAlreadyUpToDate, 0, ""), Theme: &th}))
 		return true, nil
 	}
 
