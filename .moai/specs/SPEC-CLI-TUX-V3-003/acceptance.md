@@ -44,7 +44,7 @@
 
 ## §D.5 Quality Gate / Definition of Done
 
-- 20 AC 전 행 PASS — verbatim 명령 출력을 progress.md §E.2에 인용 (vci §3 5-section 형식).
+- 19 AC PASS (AC-TUX3-018 deploy/backup coverage ≥85% 완료 via amendment re-close) + AC-TUX3-020 (Printer migration)은 별도 SPEC으로 split (debt) — amendment re-close 기준. verbatim 명령 출력은 progress.md §E.2에 인용 (vci §3 5-section 형식).
 - M3a~M3f 마일스톤별 커밋 분리; 분해(M3d)는 모듈별 이동 커밋으로 세분 + 각 커밋 후 가드 테스트 green 기록.
 - namespace 가드 5계열 assertion 무수정 증명(diff 인용) — 본 SPEC의 HARD 게이트.
 - 신규 `internal/cli/update/*` 커버리지 각 ≥ 85%, cli/template/hook 비회귀, ratchet baseline 미만.
