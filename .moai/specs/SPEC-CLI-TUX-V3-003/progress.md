@@ -246,7 +246,7 @@ debt_register:
 
 amendment_sync_status: audit-ready
 amendment_sync_complete_at: 2026-07-14
-sync_commit_sha: pending-backfill-amendment
+sync_commit_sha: bc20d5e2d
 amendment_sync_summary: "Amendment re-close (2nd close of SPEC-CLI-TUX-V3-003). The SPEC was amended (commit 313482ca4, completed → in-progress) to complete AC-TUX3-018 coverage. AC-TUX3-018 NOW DONE: deploy 97.5% (commit 6fb84a280) + backup 88.6% (commit 8d7106c59); report 92.9% / plan 95.0% / merge 90.3% unchanged ≥85%. D1 resolved: acceptance.md §D.5 reconciled (commit 36eeb3280) — 19 AC PASS + AC-TUX3-020 split (debt). AC-TUX3-020 (Printer migration) EXCLUDED — split to a separate SPEC (not yet authored; debt_register carries it). 19/20 AC clean. Single sync commit carries the in-progress → implemented → completed transition (amendment re-close). SPEC body UNCHANGED (frontmatter status + updated only). acceptance.md / plan.md body NOT modified (manager-spec owned; D1 already resolved by commit 36eeb3280)."
 amendment_changelog_entry_position: "[Unreleased] / Changed (amendment re-close entry, dedup-verified: grep -c 'SPEC-CLI-TUX-V3-003' CHANGELOG.md == 1 pre-edit = original close only → amendment emission SAFE)"
 amendment_frontmatter_status_transitions:
