@@ -79,11 +79,39 @@ Plan-phase artifacts (spec.md, plan.md, acceptance.md, research.md, progress.md)
 
 ## §E.2 Run-phase Evidence
 
-_<pending run-phase>_
+**M2 milestone complete** — 11 `fmt.Print*` calls in `internal/cli/state.go` migrated to `printer.Printer` methods (Data/Info).
+
+Migration mapping (orchestrator-verified, working tree = state.go migrated + state_m2_test.go present):
+
+- **Printer construction**: `printer.New(printer.WithWriters(cmd.OutOrStdout(), cmd.ErrOrStderr()))` injected into RunE closures at `state.go:49` and `state.go:68`. Function signatures `runStateDump` (:76), `printPhaseStateHuman` (:129), `runShowBlocker` (:152) accept `p printer.Printer` parameter.
+- **JSON output → p.Data**: `state.go:120`, `state.go:206` (`p.Data(string(data))`). stdout preserved — scripted JSON consumers byte-identical.
+- **Status messages → p.Info**: `state.go:107` ("No checkpoint found"), `state.go:168` ("No blockers found"), `state.go:195` ("No outstanding blockers found"). **Channel re-routed stdout→stderr** (p.Info writes stderr) — non-payload status text moved off the scripted-consumer stdout channel.
+- **Human-format → p.Data composed string**: `state.go:148` (`p.Data(strings.Join(lines, "\n"))`). Per DECISION 2026-07-14, the multi-line `printPhaseStateHuman` output is composed into a single string then emitted via `p.Data`, preserving stdout. Byte-identical to the prior `fmt.Print*` path for scripted consumers.
+
+Characterization tests (`state_m2_test.go`) pin both stdout and stderr paths and assert the channel split (JSON/human-format on stdout, status messages on stderr).
+
+**AC mechanical verification** (orchestrator-verified verbatim — injected, NOT re-run by manager-develop):
+
+```
+$ go build ./internal/cli/...                                                        → exit 0
+$ go test ./internal/cli/ -run 'M2|Checkpoint|Blocker|PhaseState|State' -count=1     → exit 0, "ok github.com/modu-ai/moai-adk/internal/cli 0.444s"
+$ go test ./internal/cli/... -count=1                                                → exit 0 (17 packages all ok)
+$ go vet ./internal/cli/...                                                          → exit 0
+$ go test ./internal/cli/ -cover -count=1                                            → "ok ... 17.298s coverage: 73.8% of statements"
+$ grep -rn 'fmt\.Printf\|fmt\.Println\|fmt\.Print(' internal/cli/state.go | grep -v _test.go | wc -l
+                                                                                     → 0   (AC-TUX3-021 PASS)
+```
 
 ## §E.3 Run-phase Audit-Ready Signal
 
-_<pending run-phase>_
+**M2-local readiness statement** (NOT full run-phase completion — M3/M4/M5 still pending):
+
+- **AC-TUX3-021 (method-usage) — PASS**: 0 `fmt.Print*` calls in `state.go` (grep verbatim above); all 11 migrated sites reach Printer methods via the construction+signature chain documented in §E.2.
+- **AC-TUX3-022 (behavior preservation via characterization tests) — PASS**: `state_m2_test.go` pins stdout/stderr byte output for JSON, human-format, and status-message paths; full `./internal/cli/...` suite green (exit 0).
+- **AC-TUX3-020 (ratchet) — PARTIAL (M2-local)**: global `fmt.Print*` count 38→27 after M2 (state.go 11 removed). Final 38→14 target requires M3 (migration.go, 8 calls) + M4 (tmux_integration.go, 5 calls). Not yet at run-phase exit.
+- **AC-TUX3-023 (coverage) — SHOULD-PASS**: 73.8% (≥ pre-state after `state_m2_test.go` added; precise pre/post delta is a manager-docs sync-phase concern).
+
+Remaining milestones: **M3** migration.go (8 calls), **M4** tmux_integration.go (5 calls), **M5** ratchet verify (38→14 final). M2 is an intermediate run-phase milestone; this §E.3 records M2-local readiness, not the terminal run-phase signal.
 
 ## §E.4 Sync-phase Audit-Ready Signal
 

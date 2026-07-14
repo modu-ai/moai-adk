@@ -2,7 +2,7 @@
 id: SPEC-CLI-TUX-V3-005
 title: "AC-TUX3-020 Printer Migration — fmt.Print* Ratchet Succession"
 version: "0.1.0"
-status: draft
+status: in-progress
 created: 2026-07-14
 updated: 2026-07-14
 author: manager-spec
