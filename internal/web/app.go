@@ -115,22 +115,6 @@ func (a *app) routes() http.Handler {
 	// (REQ-WC11-044/045/046). hostCheckMiddleware 는 GET 을 게이트하지 않으므로
 	// 보드 읽기는 다른 읽기 라우트와 동일하게 통과한다.
 	mux.HandleFunc("/specs", a.handleBoard)
-	// SPEC-WEB-CONSOLE-013 M3: /model-policy 는 READ-ONLY Model Policy 뷰다.
-	// handleModelPolicy 가 GET 이외 메서드를 405 로 거부하며 쓰기 경로·FieldDef·
-	// status 전이가 전혀 없다 (REQ-WC13-020/021). hostCheckMiddleware 는 GET 을
-	// 게이트하지 않으므로 보드와 동일하게 읽기 통과한다.
-	mux.HandleFunc("/model-policy", a.handleModelPolicy)
-	// SPEC-MODEL-TIER-PLANTYPE-001 M4: the single sanctioned write path of the
-	// Model Policy surface — a plan_type selector that persists exactly
-	// llm.plan_type (§B.4 / REQ-MTP-021). POST-only; hostCheckMiddleware gates the
-	// mutating method (loopback Host + Sec-Fetch-Site same-origin). The page route
-	// /model-policy itself stays GET-only; no OTHER field becomes writable.
-	mux.HandleFunc("/model-policy/plan-type", a.handleModelPolicyPlanType)
-	// The tier (performance_tier) write path, unified on the same page as
-	// plan_type. POST-only; hostCheckMiddleware gates the mutating method. Both
-	// /model-policy/* write paths persist their llm.yaml scalar AND re-apply the
-	// tier profile to the shipped agent .md frontmatter (ApplyTierProfile).
-	mux.HandleFunc("/model-policy/tier", a.handleModelPolicyTier)
 	// SPEC-WEB-CONSOLE-011 M4: profile CRUD (create / delete) — POST-only,
 	// loopback-gated by hostCheckMiddleware. Switch reuses the existing
 	// GET /?profile=<name> load path (no dedicated route needed).

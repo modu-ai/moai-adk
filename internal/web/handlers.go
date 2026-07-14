@@ -66,6 +66,17 @@ type pageView struct {
 	// (7 agents — model/effort, effort 부재는 유효 상태 EC-7).
 	AgentFMs []agentfm.AgentInfo
 
+	// ActivePlanType / PerfTier: the plan_type + performance_tier selectors,
+	// migrated into the TOP of the agentfm panel from the retired standalone
+	// Model Policy page (goal-to-test, non-SPEC). ActivePlanType is the
+	// EFFECTIVE plan (llm.plan_type resolved to the subscription default when
+	// absent); PerfTier is the RAW llm.performance_tier value — the *IsEmpty
+	// flags drive the "(default: ...)" empty-value hints.
+	ActivePlanType  string
+	PlanTypeIsEmpty bool
+	PerfTier        string
+	PerfTierIsEmpty bool
+
 	// Banner is an optional status/error message; BannerKind is "ok" or "error".
 	Banner     string
 	BannerKind string
@@ -316,6 +327,11 @@ func (a *app) handleSave(w http.ResponseWriter, r *http.Request) {
 	agents, _ := a.listAllAgentFMs(a.cfg.ProjectRoot)
 	agentEdits, agentErrs := parseAgentFMForm(r, agents)
 
+	// goal-to-test (non-SPEC): parse the plan_type / performance_tier selectors
+	// now hosted at the top of the agentfm panel (migrated from the retired
+	// standalone Model Policy page).
+	planType, perfTier, planTierErrs := parsePlanTypeTierForm(r)
+
 	// REQ-WC-008 / REQ-WC3-001/002 / REQ-WC7-007: run ALL validators and merge
 	// their FieldErrors. Any failure → atomic reject (EC-2): leave ALL persisted
 	// state unchanged and re-render with per-field errors.
@@ -330,6 +346,9 @@ func (a *app) handleSave(w http.ResponseWriter, r *http.Request) {
 		fieldErrs[k] = v
 	}
 	for k, v := range agentErrs {
+		fieldErrs[k] = v
+	}
+	for k, v := range planTierErrs {
 		fieldErrs[k] = v
 	}
 	if len(fieldErrs) > 0 {
@@ -381,6 +400,16 @@ func (a *app) handleSave(w http.ResponseWriter, r *http.Request) {
 	if err := a.applySchemaEdits(a.cfg.ProjectRoot, schemaEdits); err != nil {
 		a.renderErrorPage(w, prefs, selected, devMode, convention,
 			"profile preferences saved, but section config write failed: "+err.Error())
+		return
+	}
+
+	// goal-to-test (non-SPEC): persist plan_type / performance_tier (each only
+	// when changed) and re-apply the tier profile to the shipped agent files.
+	// Runs BEFORE patchAgentFM so an explicit per-agent override submitted in
+	// the same request still wins over the re-applied tier-profile baseline.
+	if err := applyPlanTypeTierEdits(a.cfg.ProjectRoot, planType, perfTier); err != nil {
+		a.renderErrorPage(w, prefs, selected, devMode, convention,
+			"profile preferences saved, but plan_type/performance_tier apply failed: "+err.Error())
 		return
 	}
 

@@ -206,7 +206,7 @@ func TestAppbarRendered(t *testing.T) {
 	for _, marker := range []string{
 		`class="appbar"`,       // appbar present
 		`class="brand__badge"`, // signature-gradient brand badge
-		`모두의AI`,                // brand name
+		`MoAI-ADK`,             // brand name (mascot green theme rebrand)
 		`class="loopback"`,     // loopback indicator
 		`id="themeToggle"`,     // theme toggle button
 		`id="uiLangSelect"`,    // S3 langpick (the non-colliding interface id)

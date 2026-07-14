@@ -20,8 +20,11 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/harness/v4manifest"
+	"github.com/modu-ai/moai-adk/internal/manifest"
 	"github.com/modu-ai/moai-adk/internal/settings/agentfm"
+	"github.com/modu-ai/moai-adk/internal/template"
 )
 
 // agentFMAbsent는 effort "(absent)" 상태의 폼 와이어 값이다 (EC-7 — 키 삭제).
@@ -35,6 +38,92 @@ func agentFMModelValues() []string {
 
 func agentFMEffortValues() []string {
 	return []string{v4manifest.EffortLow, v4manifest.EffortMedium, v4manifest.EffortHigh, v4manifest.EffortXhigh, v4manifest.EffortMax}
+}
+
+// agentFMPlanTypeOptions returns the plan-type selector options in a stable
+// order (api first, subscription second). Migrated from the retired standalone
+// Model Policy page (SPEC-MODEL-TIER-PLANTYPE-001 §B.4) into the top of this
+// panel — plan_type / performance_tier were the only two write affordances the
+// (otherwise read-only) model-routing surface ever carried.
+func agentFMPlanTypeOptions() []string {
+	return []string{config.PlanTypeAPI, config.PlanTypeSubscription}
+}
+
+// agentFMPerfTierOptions returns the closed-set performance-tier selector
+// options (max/medium/low — the No-Haiku 3-tier vocabulary validated by
+// template.IsValidPerformanceTier). DISTINCT from the Launch section's
+// model_policy (init-time agent frontmatter policy, high/medium/low).
+func agentFMPerfTierOptions() []string {
+	return template.ValidPerformanceTiers()
+}
+
+// parsePlanTypeTierForm parses the plan_type / performance_tier selectors now
+// hosted at the top of the agentfm panel. An empty submission preserves the
+// current value (mirrors the agentfm empty=preserve convention); a non-empty
+// out-of-set value is rejected as a per-field error joining the existing
+// atomic-reject mechanism (no partial persistence).
+func parsePlanTypeTierForm(r *http.Request) (planType, perfTier string, errs map[string]string) {
+	errs = map[string]string{}
+	planType = strings.TrimSpace(r.PostFormValue("plan_type"))
+	if planType != "" && !config.IsValidPlanType(planType) {
+		errs["plan_type"] = "invalid option"
+	}
+	perfTier = strings.TrimSpace(r.PostFormValue("performance_tier"))
+	if perfTier != "" && !template.IsValidPerformanceTier(perfTier) {
+		errs["performance_tier"] = "invalid option"
+	}
+	return planType, perfTier, errs
+}
+
+// applyPlanTypeTierEdits persists the plan_type / performance_tier selectors
+// (each only when non-empty AND changed from the persisted value) and
+// re-applies the {model, effort} tier profile to the shipped agent .md
+// frontmatter — mirroring the internal/cli/update.go:417-420 reference path
+// (formerly wired at the retired standalone Model Policy page's two POST
+// routes). The tier profile is re-applied ONLY when something actually
+// changed, so an unrelated settings save never clobbers a manually-pinned
+// agentfm override; callers MUST run this BEFORE applyAgentFMEdits so an
+// explicit per-agent override submitted in the same request still wins.
+func applyPlanTypeTierEdits(projectRoot, planType, perfTier string) error {
+	if planType == "" && perfTier == "" {
+		return nil
+	}
+	mgr := config.NewConfigManager()
+	cfg, err := mgr.LoadRaw(projectRoot)
+	if err != nil {
+		return fmt.Errorf("agentfm: load llm config: %w", err)
+	}
+
+	changed := false
+	if planType != "" && planType != cfg.LLM.PlanType {
+		if err := template.ApplyPlanType(projectRoot, planType); err != nil {
+			return fmt.Errorf("agentfm: apply plan_type: %w", err)
+		}
+		changed = true
+	}
+	if perfTier != "" && perfTier != cfg.LLM.PerformanceTier {
+		if err := template.ApplyPerformanceTier(projectRoot, perfTier); err != nil {
+			return fmt.Errorf("agentfm: apply performance_tier: %w", err)
+		}
+		changed = true
+	}
+	if !changed {
+		return nil
+	}
+
+	// Re-apply the {model, effort} tier profile to the shipped agent definition
+	// files (mirrors internal/cli/update.go:417-420 / the former
+	// applyTierProfileToAgents at the retired standalone Model Policy page's
+	// routes). A non-initialized project (no manifest, no agents directory)
+	// degrades to a graceful no-op inside ApplyTierProfile.
+	mfMgr := manifest.NewManager()
+	_, _ = mfMgr.Load(projectRoot)
+	resolvedPlan := template.ResolveProjectPlanType(projectRoot)
+	resolvedTier := template.ResolveProjectPerformanceTier(projectRoot)
+	if err := template.ApplyTierProfile(projectRoot, resolvedPlan, resolvedTier, mfMgr); err != nil {
+		return fmt.Errorf("agentfm: re-apply tier profile: %w", err)
+	}
+	return nil
 }
 
 // agentBadgeInfo carries the M5 tier-badge display data for one agent row

@@ -11,7 +11,7 @@ import templruntime "github.com/a-h/templ/runtime"
 // SPEC-WEB-CONSOLE-011 M5 — READ-ONLY SPEC board Templ component.
 //
 // boardPage renders the standalone SPEC dashboard (GET /specs). It reuses the
-// package-level brandBadgeSVG / foucHeadScript constants and the @icon component
+// package-level foucHeadScript constant and the @icon component
 // from the settings page, but is a SEPARATE page with its own <html> shell — it
 // carries NO <form>, NO write control, and NO status-transition affordance
 // (REQ-WC11-046). The remediation string for each MUST-FIX finding renders as a
@@ -332,15 +332,7 @@ func boardAppbar(view boardView) templ.Component {
 			templ_7745c5c3_Var13 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 34, "<header class=\"appbar\"><span class=\"brand\" aria-label=\"모두의AI — MoAI\"><span class=\"brand__badge\">")
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		templ_7745c5c3_Err = templ.Raw(brandBadgeSVG).Render(ctx, templ_7745c5c3_Buffer)
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 35, "</span> <span class=\"brand__name\">모두의AI</span></span> <span class=\"appbar__divider\"></span> <span class=\"loopback\"><span class=\"loopback__dot\"></span>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 34, "<header class=\"appbar\"><span class=\"brand\" aria-label=\"MoAI-ADK\"><span class=\"brand__badge\"><img class=\"brand__mascot\" src=\"/static/mascots/mascot-coding.png\" alt=\"MoAI-ADK\" width=\"28\" height=\"28\"></span> <span class=\"brand__name\">MoAI-ADK</span></span> <span class=\"appbar__divider\"></span> <span class=\"loopback\"><span class=\"loopback__dot\"></span>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -353,7 +345,7 @@ func boardAppbar(view boardView) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 36, "</span> <span class=\"appbar__spacer\"></span> <a class=\"board-nav\" href=\"/\" data-i18n=\"board.nav.settings\">Settings</a> <span class=\"select-wrap langpick-wrap\"><select class=\"select langpick\" id=\"uiLangSelect\" aria-label=\"Interface language\" title=\"Interface language\"><option value=\"en\">English</option> <option value=\"ko\">한국어</option> <option value=\"ja\">日本語</option> <option value=\"zh\">中文</option></select></span> <button class=\"iconbtn\" id=\"themeToggle\" type=\"button\" aria-label=\"Toggle light / dark theme\" title=\"Toggle theme\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 35, "</span> <span class=\"appbar__spacer\"></span> <a class=\"board-nav\" href=\"/\" data-i18n=\"board.nav.settings\">Settings</a> <span class=\"select-wrap langpick-wrap\"><select class=\"select langpick\" id=\"uiLangSelect\" aria-label=\"Interface language\" title=\"Interface language\"><option value=\"en\">English</option> <option value=\"ko\">한국어</option> <option value=\"ja\">日本語</option> <option value=\"zh\">中文</option></select></span> <button class=\"iconbtn\" id=\"themeToggle\" type=\"button\" aria-label=\"Toggle light / dark theme\" title=\"Toggle theme\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -365,7 +357,7 @@ func boardAppbar(view boardView) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 37, "</button></header>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 36, "</button></header>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -396,7 +388,7 @@ func boardBanner(view boardView) templ.Component {
 			templ_7745c5c3_Var15 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 38, "<div class=\"banner banner--error\" role=\"status\" aria-live=\"polite\"><span class=\"banner__icon\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 37, "<div class=\"banner banner--error\" role=\"status\" aria-live=\"polite\"><span class=\"banner__icon\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -404,7 +396,7 @@ func boardBanner(view boardView) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 39, "</span><div class=\"banner__body\"><p class=\"banner__text\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 38, "</span><div class=\"banner__body\"><p class=\"banner__text\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -417,7 +409,7 @@ func boardBanner(view boardView) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 40, "</p></div></div>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 39, "</p></div></div>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

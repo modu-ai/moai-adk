@@ -3,7 +3,7 @@ package web
 // SPEC-WEB-CONSOLE-011 M5 — READ-ONLY SPEC board Templ component.
 //
 // boardPage renders the standalone SPEC dashboard (GET /specs). It reuses the
-// package-level brandBadgeSVG / foucHeadScript constants and the @icon component
+// package-level foucHeadScript constant and the @icon component
 // from the settings page, but is a SEPARATE page with its own <html> shell — it
 // carries NO <form>, NO write control, and NO status-transition affordance
 // (REQ-WC11-046). The remediation string for each MUST-FIX finding renders as a
@@ -101,11 +101,11 @@ templ boardPage(view boardView) {
 // langpick and theme toggle are wired by the same app.js initConsole path.
 templ boardAppbar(view boardView) {
 	<header class="appbar">
-		<span class="brand" aria-label="모두의AI — MoAI">
+		<span class="brand" aria-label="MoAI-ADK">
 			<span class="brand__badge">
-				@templ.Raw(brandBadgeSVG)
+				<img class="brand__mascot" src="/static/mascots/mascot-coding.png" alt="MoAI-ADK" width="28" height="28"/>
 			</span>
-			<span class="brand__name">모두의AI</span>
+			<span class="brand__name">MoAI-ADK</span>
 		</span>
 		<span class="appbar__divider"></span>
 		<span class="loopback"><span class="loopback__dot"></span>{ view.BindAddr }</span>

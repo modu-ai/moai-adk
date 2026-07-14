@@ -39,17 +39,7 @@ const foucHeadScript = `<script>
     })();
   </script>`
 
-// brandBadgeSVG is the 모두의AI brand badge — a fixed inline SVG distinct from the
-// lucide icon subset (page.html.tmpl ~36-44). Compile-time constant; templ.Raw safe.
-const brandBadgeSVG = `<svg width="21" height="27" viewBox="0 0 40 50" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-          <path d="M8 40 L32 40 L34 50 L6 50 Z" fill="#fff"/>
-          <path d="M12 4 L28 4 L31 16 L30.5 34 L25 42 L15 42 L9.5 34 L9 16 Z" fill="#fff"/>
-          <path d="M9 16 L31 16 L30.6 21 L9.4 21 Z" fill="#0c3a37"/>
-          <path d="M12.5 22 L18 22 L17.4 27 L13.1 27 Z" fill="#0a2825"/>
-          <path d="M22 22 L27.5 22 L26.9 27 L22.6 27 Z" fill="#0a2825"/>
-          <path d="M18.7 20.5 L21.3 20.5 L23 33 L17 33 Z" fill="#1d6b62"/>
-          <path d="M15.5 35 L24.5 35 L24 38.5 L16 38.5 Z" fill="#0a2825"/>
-        </svg>`
+// The header brand badge is the mascot image (mascot-coding.png) served from /static/mascots/.
 
 // saveAction builds the form action target, appending ?profile=<selected> when a
 // profile is selected (mirrors `/save{{if .SelectedProfile}}?profile=...{{end}}`).
@@ -167,15 +157,14 @@ templ page(view pageView) {
 // form) + themeToggle.
 templ appbar(view pageView) {
 	<header class="appbar">
-		<span class="brand" aria-label="모두의AI — MoAI">
+		<span class="brand" aria-label="MoAI-ADK">
 			<span class="brand__badge">
-				@templ.Raw(brandBadgeSVG)
+				<img class="brand__mascot" src="/static/mascots/mascot-coding.png" alt="MoAI-ADK" width="28" height="28"/>
 			</span>
-			<span class="brand__name">모두의AI</span>
+			<span class="brand__name">MoAI-ADK</span>
 		</span>
 		<span class="appbar__divider"></span>
 		<span class="loopback"><span class="loopback__dot"></span>{ view.BindAddr }</span>
-		<a class="appbar-nav" href="/model-policy" data-i18n="app.nav.modelpolicy">Model Policy</a>
 		<span class="appbar__spacer"></span>
 		<span class="select-wrap langpick-wrap">
 			<select class="select langpick" id="uiLangSelect" aria-label="Interface language" title="Interface language">

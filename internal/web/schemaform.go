@@ -12,7 +12,9 @@ package web
 import (
 	"net/http"
 	"strconv"
+	"strings"
 
+	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/settings"
 )
 
@@ -143,6 +145,22 @@ func (a *app) applySchemaCurrent(view *pageView) error {
 	if agents, err := a.listAllAgentFMs(a.cfg.ProjectRoot); err == nil {
 		view.AgentFMs = agents
 	}
+
+	// goal-to-test (non-SPEC): seed the plan_type / performance_tier selectors
+	// now rendered at the top of the agentfm panel (migrated from the retired
+	// standalone Model Policy page). llm.yaml is read directly — these two
+	// fields are deliberately NOT part of the generic schema (the M4 diet
+	// excluded them because their write path re-applies the tier profile to
+	// shipped agent files, unlike the plain yamlpatch/typed writes
+	// ApplySchemaEdits performs).
+	cfg, err := config.NewConfigManager().LoadRaw(a.cfg.ProjectRoot)
+	if err != nil {
+		return err
+	}
+	view.ActivePlanType = cfg.LLM.EffectivePlanType()
+	view.PlanTypeIsEmpty = strings.TrimSpace(cfg.LLM.PlanType) == ""
+	view.PerfTier = cfg.LLM.PerformanceTier
+	view.PerfTierIsEmpty = strings.TrimSpace(cfg.LLM.PerformanceTier) == ""
 	return nil
 }
 

@@ -21,7 +21,7 @@ import (
 // self-hosted HTMX foundation, REQ-WC6-006/015) is added here and served at
 // /static/htmx.min.js with zero CDN, preserving the offline invariant.
 //
-//go:embed assets/console.css assets/app.js assets/i18n.js assets/htmx.min.js assets/fonts
+//go:embed assets/console.css assets/app.js assets/i18n.js assets/htmx.min.js assets/fonts assets/mascots
 var assetsFS embed.FS
 
 // staticFS exposes the CSS/JS/font assets under their bare paths so the

@@ -142,11 +142,11 @@
   --border-1: #d4d4d4;
   --border-2: #eaeaea;
   --border-strong: #bcbcbc;
-  --border-focus-ring: rgba(20, 74, 70, 0.12);
+  --border-focus-ring: rgba(61, 125, 95, 0.12);
 
   /* ── Signature gradient (코어 자산) ── */
   --gradient-signature: linear-gradient(135deg, #3d7d5f 0%, #09110f 100%);
-  --gradient-signature-soft: linear-gradient(135deg, rgba(20,74,70,0.08) 0%, rgba(9,17,15,0.04) 100%);
+  --gradient-signature-soft: linear-gradient(135deg, rgba(61, 125, 95,0.08) 0%, rgba(9,17,15,0.04) 100%);
   --gradient-signature-dark: linear-gradient(135deg, #5a9a7e 0%, #3d7d5f 100%);
 
   /* ── Type families ──
@@ -221,7 +221,7 @@
   --shadow-md: 0 4px 12px rgba(9, 17, 15, 0.08);
   --shadow-lg: 0 8px 24px rgba(9, 17, 15, 0.10);
   --shadow-xl: 0 16px 48px rgba(9, 17, 15, 0.12);
-  --shadow-signature: 0 8px 32px rgba(20, 74, 70, 0.20); /* hover only */
+  --shadow-signature: 0 8px 32px rgba(61, 125, 95, 0.20); /* hover only */
 
   /* ── Motion ── */
   --duration-instant: 75ms;
@@ -304,6 +304,7 @@ html[lang="zh"] body { font-family: "Pretendard", "Noto Sans CJK SC", system-ui,
   background: var(--gradient-signature); box-shadow: var(--shadow-xs);
   display: inline-flex; align-items: center; justify-content: center;
 }
+.brand__badge img.brand__mascot { width: 28px; height: 28px; object-fit: contain; border-radius: 4px; }
 .brand__name {
   font-family: var(--font-sans); font-weight: var(--fw-black); font-size: 17px;
   letter-spacing: -0.03em; color: var(--fg-1);
