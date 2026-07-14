@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 
@@ -37,6 +38,57 @@ func (m *mockDeployer) ListTemplates() []string {
 
 func (m *mockDeployer) ValidateAll(_ context.Context, _ *template.TemplateContext) error {
 	return nil
+}
+
+// capturingDeployer records the TemplateContext passed to Deploy so tests can
+// assert on init-path context wiring (e.g. Platform population).
+type capturingDeployer struct {
+	captured *template.TemplateContext
+}
+
+func (m *capturingDeployer) Deploy(_ context.Context, _ string, _ manifest.Manager, ctx *template.TemplateContext) error {
+	m.captured = ctx
+	return nil
+}
+
+func (m *capturingDeployer) ExtractTemplate(_ string) ([]byte, error) { return nil, nil }
+func (m *capturingDeployer) ListTemplates() []string                  { return nil }
+func (m *capturingDeployer) ValidateAll(_ context.Context, _ *template.TemplateContext) error {
+	return nil
+}
+
+// TestInit_PlatformDefaultsToGOOS guards the #1081 fix wiring: the init flow
+// leaves InitOptions.Platform empty (init.go never sets it), so without a
+// runtime.GOOS default the OS-conditional in settings.json.tmpl would render
+// with Platform=="" and never exclude the Linux key. This asserts Init()
+// populates the TemplateContext Platform with runtime.GOOS when opts.Platform
+// is empty, making the template conditional effective on the init path.
+func TestInit_PlatformDefaultsToGOOS(t *testing.T) {
+	root := t.TempDir()
+	mgr := manifest.NewManager()
+	dep := &capturingDeployer{}
+	init := NewInitializer(dep, mgr, nil)
+
+	opts := InitOptions{
+		ProjectRoot:     root,
+		ProjectName:     "plat-test",
+		Language:        "Go",
+		UserName:        "testuser",
+		ConvLang:        "en",
+		DevelopmentMode: "ddd",
+		// Platform intentionally left empty — mirrors the real init.go path.
+	}
+
+	if _, err := init.Init(context.Background(), opts); err != nil {
+		t.Fatalf("Init() error = %v", err)
+	}
+
+	if dep.captured == nil {
+		t.Fatal("deployer was not invoked; cannot verify Platform wiring")
+	}
+	if dep.captured.Platform != runtime.GOOS {
+		t.Errorf("init TemplateContext Platform = %q, want runtime.GOOS %q", dep.captured.Platform, runtime.GOOS)
+	}
 }
 
 // --- Initializer tests ---
@@ -185,6 +237,66 @@ func TestInit_QualityYAMLContent(t *testing.T) {
 	}
 	if qualYAMLData.Constitution.TestCoverageTarget != 85 {
 		t.Errorf("test_coverage_target = %d, want 85", qualYAMLData.Constitution.TestCoverageTarget)
+	}
+}
+
+// TestInit_ReportYAMLWithSelectedFormat verifies report.yaml is written with the
+// caller-selected format (fallback path, no deployer).
+func TestInit_ReportYAMLWithSelectedFormat(t *testing.T) {
+	root := t.TempDir()
+	init := NewInitializer(nil, nil, nil)
+
+	opts := InitOptions{
+		ProjectRoot:     root,
+		ProjectName:     "my-app",
+		Language:        "Go",
+		UserName:        "test",
+		ConvLang:        "en",
+		DevelopmentMode: "tdd",
+		ReportFormat:    "md",
+	}
+
+	_, err := init.Init(context.Background(), opts)
+	if err != nil {
+		t.Fatalf("Init() error = %v", err)
+	}
+
+	reportPath := filepath.Join(root, ".moai", "config", "sections", "report.yaml")
+	assertFileExists(t, reportPath)
+	var reportData reportYAML
+	readYAML(t, reportPath, &reportData)
+	if reportData.Report.Format != "md" {
+		t.Errorf("report.format = %q, want %q", reportData.Report.Format, "md")
+	}
+}
+
+// TestInit_ReportYAMLDefaultsToHTMLMD verifies an empty ReportFormat resolves to
+// the html+md default at persistence time.
+func TestInit_ReportYAMLDefaultsToHTMLMD(t *testing.T) {
+	root := t.TempDir()
+	init := NewInitializer(nil, nil, nil)
+
+	opts := InitOptions{
+		ProjectRoot:     root,
+		ProjectName:     "my-app",
+		Language:        "Go",
+		UserName:        "test",
+		ConvLang:        "en",
+		DevelopmentMode: "tdd",
+		// ReportFormat intentionally empty
+	}
+
+	_, err := init.Init(context.Background(), opts)
+	if err != nil {
+		t.Fatalf("Init() error = %v", err)
+	}
+
+	reportPath := filepath.Join(root, ".moai", "config", "sections", "report.yaml")
+	assertFileExists(t, reportPath)
+	var reportData reportYAML
+	readYAML(t, reportPath, &reportData)
+	if reportData.Report.Format != "html+md" {
+		t.Errorf("report.format = %q, want %q (default)", reportData.Report.Format, "html+md")
 	}
 }
 
@@ -716,6 +828,12 @@ func readYAML(t *testing.T, path string, target any) {
 }
 
 // --- YAML structs for test assertions ---
+
+type reportYAML struct {
+	Report struct {
+		Format string `yaml:"format"`
+	} `yaml:"report"`
+}
 
 type userYAML struct {
 	User userSection `yaml:"user"`

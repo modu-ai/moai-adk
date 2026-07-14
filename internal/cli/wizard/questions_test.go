@@ -2,41 +2,84 @@ package wizard
 
 import "testing"
 
-// TestDevelopmentModeQuestion verifies the development_mode question is present and valid.
-func TestDevelopmentModeQuestion(t *testing.T) {
+// TestReportFormatQuestion verifies the report_format question is present and valid.
+func TestReportFormatQuestion(t *testing.T) {
 	questions := DefaultQuestions("/tmp/test-project")
 
-	q := QuestionByID(questions, "development_mode")
+	q := QuestionByID(questions, "report_format")
 	if q == nil {
-		t.Fatal("development_mode question not found")
+		t.Fatal("report_format question not found")
 		return // staticcheck SA5011 guard
 	}
 
 	if q.Type != QuestionTypeSelect {
-		t.Errorf("development_mode should be QuestionTypeSelect, got %v", q.Type)
+		t.Errorf("report_format should be QuestionTypeSelect, got %v", q.Type)
 	}
 
 	if len(q.Options) != 2 {
-		t.Fatalf("development_mode should have 2 options, got %d", len(q.Options))
+		t.Fatalf("report_format should have 2 options, got %d", len(q.Options))
 	}
 
-	expectedValues := []string{"tdd", "ddd"}
+	// The closed value set mirrors internal/settings reportFormatValues.
+	expectedValues := []string{"html+md", "md"}
 	for i, expected := range expectedValues {
 		if q.Options[i].Value != expected {
 			t.Errorf("option %d value = %q, want %q", i, q.Options[i].Value, expected)
 		}
 	}
 
-	if q.Default != "tdd" {
-		t.Errorf("development_mode default = %q, want %q", q.Default, "tdd")
+	if q.Default != "html+md" {
+		t.Errorf("report_format default = %q, want %q", q.Default, "html+md")
 	}
 
 	if q.Condition != nil {
-		t.Error("development_mode should have no condition (always visible)")
+		t.Error("report_format should have no condition (always visible)")
 	}
 
 	if !q.Required {
-		t.Error("development_mode should be required")
+		t.Error("report_format should be required")
+	}
+}
+
+// TestSaveAnswerReportFormat verifies saveAnswer stores the report_format correctly.
+func TestSaveAnswerReportFormat(t *testing.T) {
+	result := &WizardResult{}
+	locale := ""
+
+	saveAnswer("report_format", "html+md", result, &locale)
+	if result.ReportFormat != "html+md" {
+		t.Errorf("expected ReportFormat 'html+md', got %q", result.ReportFormat)
+	}
+
+	saveAnswer("report_format", "md", result, &locale)
+	if result.ReportFormat != "md" {
+		t.Errorf("expected ReportFormat 'md', got %q", result.ReportFormat)
+	}
+}
+
+// TestReportFormatTranslationsExist verifies translations exist for report_format.
+func TestReportFormatTranslationsExist(t *testing.T) {
+	locales := []string{"ko", "ja", "zh"}
+
+	for _, locale := range locales {
+		langTrans, ok := translations[locale]
+		if !ok {
+			t.Fatalf("translations for locale %q not found", locale)
+		}
+		trans, ok := langTrans["report_format"]
+		if !ok {
+			t.Errorf("translation for 'report_format' in locale %q not found", locale)
+			continue
+		}
+		if trans.Title == "" {
+			t.Errorf("translation for 'report_format' in locale %q has empty title", locale)
+		}
+		if trans.Description == "" {
+			t.Errorf("translation for 'report_format' in locale %q has empty description", locale)
+		}
+		if len(trans.Options) != 2 {
+			t.Errorf("locale %q: report_format should have 2 option translations, got %d", locale, len(trans.Options))
+		}
 	}
 }
 
@@ -52,8 +95,7 @@ func TestQuestionOrder(t *testing.T) {
 	expectedIDs := []string{
 		"project_name",
 		"model_policy",
-		"plan_type",
-		"development_mode",
+		"report_format",
 		"git_mode",
 		"git_provider",
 		"gitlab_instance_url",
@@ -128,6 +170,10 @@ func TestRemovedQuestionsAbsent(t *testing.T) {
 		"code_comment_lang",
 		"doc_lang",
 		// model_policy intentionally NOT listed here: it was re-added as a project-level question
+		// plan_type and development_mode were removed as interactive questions; they
+		// now default silently (subscription / tdd) and are flag-only overrides.
+		"plan_type",
+		"development_mode",
 		"agent_teams_mode",
 		"max_teammates",
 		"default_model",
@@ -152,8 +198,7 @@ func TestQuestionsAllPresent(t *testing.T) {
 	expectedIDs := []string{
 		"project_name",
 		"model_policy",
-		"plan_type",
-		"development_mode",
+		"report_format",
 		"git_mode",
 		"git_provider",
 		"gitlab_instance_url",
@@ -196,40 +241,6 @@ func TestGitConditionalFilteredByMode(t *testing.T) {
 	}
 	if !providerFound {
 		t.Error("git_provider should be visible when git_mode is 'team'")
-	}
-}
-
-// TestPlanTypeQuestion (REQ-MTP-017) verifies the plan-type wizard question:
-// present in DefaultQuestions, recommended/default option is subscription, and
-// the closed-set options are exactly {subscription, api}.
-func TestPlanTypeQuestion(t *testing.T) {
-	questions := DefaultQuestions("/tmp/test-project")
-
-	q := QuestionByID(questions, "plan_type")
-	if q == nil {
-		t.Fatal("plan_type question not found in DefaultQuestions")
-		return // staticcheck SA5011 guard
-	}
-	if q.Type != QuestionTypeSelect {
-		t.Errorf("plan_type should be QuestionTypeSelect, got %v", q.Type)
-	}
-	if q.Default != "subscription" {
-		t.Errorf("plan_type default = %q, want %q (recommended)", q.Default, "subscription")
-	}
-	if !q.Required {
-		t.Error("plan_type should be required")
-	}
-	if q.Condition != nil {
-		t.Error("plan_type should have no condition (always visible in Quick mode)")
-	}
-	wantValues := []string{"subscription", "api"}
-	if len(q.Options) != len(wantValues) {
-		t.Fatalf("plan_type should have %d options, got %d", len(wantValues), len(q.Options))
-	}
-	for i, want := range wantValues {
-		if q.Options[i].Value != want {
-			t.Errorf("plan_type option %d value = %q, want %q", i, q.Options[i].Value, want)
-		}
 	}
 }
 

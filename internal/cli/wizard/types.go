@@ -21,8 +21,13 @@ type WizardResult struct {
 
 	// Plan type (project-level billing context) — api or subscription
 	// (SPEC-MODEL-TIER-PLANTYPE-001 M3, REQ-MTP-017). Empty resolves to the
-	// subscription default at persistence time.
+	// subscription default at persistence time. No longer an interactive
+	// question — populated only via the --plan-type flag.
 	PlanType string // Billing plan: api, subscription
+
+	// Report format — html+md or md. Persisted to report.yaml at init.
+	// Empty resolves to the html+md default at persistence time.
+	ReportFormat string // Report output format: html+md, md
 
 	// Git settings
 	GitMode           string // Git automation mode: manual, personal, team

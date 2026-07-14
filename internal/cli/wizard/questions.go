@@ -10,14 +10,19 @@ import (
 // DefaultQuestions returns the standard set of questions for project initialization.
 // The questions follow this order:
 // 1. Project name (required)
-// 2. Development mode
-// 3. Git mode
-// 4. Git provider (conditional)
-// 5. GitLab instance URL (conditional)
-// 6. GitHub username (conditional)
-// 7. GitHub token (conditional)
-// 8. GitLab username (conditional)
-// 9. GitLab token (conditional)
+// 2. Model policy
+// 3. Report format
+// 4. Git mode
+// 5. Git provider (conditional)
+// 6. GitLab instance URL (conditional)
+// 7. GitHub username (conditional)
+// 8. GitHub token (conditional)
+// 9. GitLab username (conditional)
+// 10. GitLab token (conditional)
+//
+// plan_type and development_mode are NO LONGER interactive questions — they
+// default silently (plan_type → subscription at persistence; development_mode →
+// tdd in init.go) and remain overridable via the --plan-type / --mode flags.
 func DefaultQuestions(projectRoot string) []Question {
 	// Use current directory name as default project name
 	defaultProjectName := filepath.Base(projectRoot)
@@ -51,35 +56,24 @@ func DefaultQuestions(projectRoot string) []Question {
 			Default:  "high",
 			Required: true,
 		},
-		// 3. Plan Type (billing context) — api vs subscription
+		// 3. Report Format — html+md vs md.
+		// The value set mirrors internal/settings reportFormatValues (the closed
+		// set {"html+md", "md"} consumed by the moai-domain-html-report skill via
+		// report.format). Keep these two Values in sync with that SSOT.
 		{
-			ID:          "plan_type",
+			ID:          "report_format",
 			Group:       "Project",
 			Type:        QuestionTypeSelect,
-			Title:       "Select billing plan type",
-			Description: "Selects the model tier profile matched to your Claude billing context.",
+			Title:       "Select report format",
+			Description: "Controls whether reports are generated as HTML+Markdown or Markdown only.",
 			Options: []Option{
-				{Label: "Subscription (Recommended)", Value: "subscription", Desc: "Claude subscription (weekly quota) — opus-weighted tiers"},
-				{Label: "API", Value: "api", Desc: "API-metered billing — cost-optimized per-task tiers"},
+				{Label: "HTML + Markdown (Recommended)", Value: "html+md", Desc: "Generate both an HTML report (browser-viewable) and Markdown"},
+				{Label: "Markdown only", Value: "md", Desc: "Generate Markdown reports only (lighter, diff-friendly)"},
 			},
-			Default:  "subscription",
+			Default:  "html+md",
 			Required: true,
 		},
-		// 3. Development Mode
-		{
-			ID:          "development_mode",
-			Group:       "Project",
-			Type:        QuestionTypeSelect,
-			Title:       "Select development methodology",
-			Description: "Controls the development workflow cycle used during implementation.",
-			Options: []Option{
-				{Label: "TDD (Recommended)", Value: "tdd", Desc: "Test-Driven Development: RED-GREEN-REFACTOR"},
-				{Label: "DDD", Value: "ddd", Desc: "Domain-Driven Development: ANALYZE-PRESERVE-IMPROVE"},
-			},
-			Default:  "tdd",
-			Required: true,
-		},
-		// 3. Git Mode
+		// 4. Git Mode
 		{
 			ID:          "git_mode",
 			Group:       "Git",

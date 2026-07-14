@@ -412,6 +412,11 @@ func runInit(cmd *cobra.Command, args []string) error {
 		if opts.PlanType == "" && result.PlanType != "" {
 			opts.PlanType = result.PlanType
 		}
+		// Report format is wizard-only (no CLI flag); empty resolves to the
+		// html+md default at persistence time (initializer.writeReportConfig).
+		if opts.ReportFormat == "" && result.ReportFormat != "" {
+			opts.ReportFormat = result.ReportFormat
+		}
 		// Apply Phase 1 wizard results (only when StandardMode was active)
 		if result.StandardMode {
 			if result.ProjectMode != "" {
@@ -431,6 +436,16 @@ func runInit(cmd *cobra.Command, args []string) error {
 	// Default git provider to "github" for backward compatibility
 	if opts.GitProvider == "" {
 		opts.GitProvider = "github"
+	}
+
+	// development_mode is no longer an interactive wizard question; TDD is the
+	// silent default. The --mode flag still overrides (opts.DevelopmentMode was
+	// set from the flag above). Setting a concrete value here — rather than
+	// leaving it empty — makes phase.go take the explicitly-set validated branch
+	// and skip methodology auto-detection (which would otherwise fall back to
+	// ddd on an empty value).
+	if opts.DevelopmentMode == "" {
+		opts.DevelopmentMode = "tdd"
 	}
 
 	// Build dependencies

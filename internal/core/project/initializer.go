@@ -8,6 +8,7 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"time"
 
@@ -42,6 +43,7 @@ type InitOptions struct {
 	SkipShellConfig   bool     // If true, skip shell environment configuration.
 	ModelPolicy       string   // Token consumption tier: "high", "medium", "low".
 	PlanType          string   // Billing plan type: "api" or "subscription" (empty → persisted/subscription default).
+	ReportFormat      string   // Report output format: "html+md" or "md" (empty → html+md default).
 
 	// Phase 1 wizard fields (REQ-IWE-001..005) — populated from wizard result or CLI flags.
 	ProjectMode               string // project.mode: personal, team (B1)
@@ -116,6 +118,16 @@ var claudeDirs = []string{
 func (i *projectInitializer) Init(ctx context.Context, opts InitOptions) (*InitResult, error) {
 	opts.ProjectRoot = filepath.Clean(opts.ProjectRoot)
 
+	// Default the target platform to the running OS when the caller (init.go)
+	// left it empty. Both template-context call sites below (deployTemplates,
+	// generateConfigsFallback) pass opts.Platform verbatim, so setting it once
+	// here makes the settings.json.tmpl OS-conditional (e.g. the #1081
+	// CLAUDE_CODE_SUBPROCESS_ENV_SCRUB Linux exclusion) effective on the init
+	// path — which otherwise rendered with an empty Platform.
+	if opts.Platform == "" {
+		opts.Platform = runtime.GOOS
+	}
+
 	if err := ctx.Err(); err != nil {
 		return nil, err
 	}
@@ -183,6 +195,18 @@ func (i *projectInitializer) Init(ctx context.Context, opts InitOptions) (*InitR
 		if err := template.ApplyTierProfile(opts.ProjectRoot, planType, tier, i.manifestMgr); err != nil {
 			i.logger.Warn("failed to apply tier profile", "error", err)
 		}
+	}
+
+	// Step 3c: Persist the resolved report format to report.yaml. This runs on
+	// BOTH the deployer path (overriding the template default html+md with the
+	// wizard/flag-selected value) and the fallback path (which does not emit
+	// report.yaml otherwise). Empty resolves to html+md.
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
+	if err := i.writeReportConfig(opts, result); err != nil {
+		result.Warnings = append(result.Warnings, fmt.Sprintf("report config: %s", err))
+		i.logger.Warn("report config write failed", "error", err)
 	}
 
 	// Step 4: Create CLAUDE.md
@@ -427,6 +451,28 @@ func (i *projectInitializer) generateConfigsFallback(opts InitOptions, result *I
 		return fmt.Errorf("phase 1 config: %w", err)
 	}
 
+	return nil
+}
+
+// writeReportConfig persists the resolved report format to
+// .moai/config/sections/report.yaml. It runs unconditionally after template
+// deployment so the wizard/flag-selected value overrides the template default
+// (html+md). An empty opts.ReportFormat resolves to the html+md default. The
+// closed set of accepted values ({"html+md", "md"}) is owned by the
+// internal/settings reportFormatValues SSOT.
+func (i *projectInitializer) writeReportConfig(opts InitOptions, result *InitResult) error {
+	format := opts.ReportFormat
+	if format == "" {
+		format = "html+md"
+	}
+	sectionsDir := filepath.Clean(filepath.Join(opts.ProjectRoot, defs.MoAIDir, defs.SectionsSubdir))
+	content := fmt.Sprintf("report:\n  format: %s\n", format)
+	reportPath := filepath.Join(sectionsDir, defs.ReportYAML)
+	if err := os.WriteFile(reportPath, []byte(content), defs.FilePerm); err != nil {
+		return fmt.Errorf("write report.yaml: %w", err)
+	}
+	result.CreatedFiles = append(result.CreatedFiles,
+		filepath.Join(defs.MoAIDir, defs.SectionsSubdir, defs.ReportYAML))
 	return nil
 }
 

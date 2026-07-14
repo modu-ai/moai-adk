@@ -90,9 +90,10 @@ func TestDefaultQuestions(t *testing.T) {
 		t.Errorf("expected project_name default 'test-project', got %q", q.Default)
 	}
 
-	// Verify development_mode question IS in wizard
-	if QuestionByID(questions, "development_mode") == nil {
-		t.Error("development_mode question should be in wizard")
+	// Verify report_format question IS in wizard (development_mode was removed as
+	// an interactive question and now defaults to tdd silently).
+	if QuestionByID(questions, "report_format") == nil {
+		t.Error("report_format question should be in wizard")
 	}
 }
 
@@ -201,6 +202,7 @@ func TestSaveAnswer_AllFields(t *testing.T) {
 	}{
 		{"project_name", "myproject", func() bool { return result.ProjectName == "myproject" }, "ProjectName=myproject"},
 		{"development_mode", "ddd", func() bool { return result.DevelopmentMode == "ddd" }, "DevelopmentMode=ddd"},
+		{"report_format", "md", func() bool { return result.ReportFormat == "md" }, "ReportFormat=md"},
 		{"git_mode", "personal", func() bool { return result.GitMode == "personal" }, "GitMode=personal"},
 		{"git_provider", "gitlab", func() bool { return result.GitProvider == "gitlab" }, "GitProvider=gitlab"},
 		{"github_username", "ghuser", func() bool { return result.GitHubUsername == "ghuser" }, "GitHubUsername=ghuser"},
@@ -431,15 +433,20 @@ func TestWizardResultGitLabFields(t *testing.T) {
 	}
 }
 
-func TestDevelopmentModeInWizard(t *testing.T) {
+func TestReportFormatInWizard(t *testing.T) {
 	questions := DefaultQuestions("/tmp/test")
 
-	q := QuestionByID(questions, "development_mode")
+	q := QuestionByID(questions, "report_format")
 	if q == nil {
-		t.Fatal("development_mode question should be in wizard")
+		t.Fatal("report_format question should be in wizard")
 	}
-	if q.Default != "tdd" {
-		t.Errorf("development_mode default should be 'tdd', got %q", q.Default)
+	if q.Default != "html+md" {
+		t.Errorf("report_format default should be 'html+md', got %q", q.Default)
+	}
+
+	// development_mode is no longer an interactive question.
+	if QuestionByID(questions, "development_mode") != nil {
+		t.Error("development_mode should no longer be an interactive question")
 	}
 }
 
@@ -573,14 +580,14 @@ func TestStepperTotal_DynamicDenominator(t *testing.T) {
 		result *WizardResult
 		want   int
 	}{
-		// Quick mode, git manual: 5 unconditional questions
-		// (project_name, model_policy, plan_type, development_mode, git_mode).
-		{"manual", &WizardResult{GitMode: "manual"}, 5},
+		// Quick mode, git manual: 4 unconditional questions
+		// (project_name, model_policy, report_format, git_mode).
+		{"manual", &WizardResult{GitMode: "manual"}, 4},
 		// personal+github reveals git_provider + github_username + github_token.
-		{"personal-github", &WizardResult{GitMode: "personal", GitProvider: "github"}, 8},
+		{"personal-github", &WizardResult{GitMode: "personal", GitProvider: "github"}, 7},
 		// personal+gitlab reveals git_provider + gitlab_instance_url +
 		// gitlab_username + gitlab_token.
-		{"personal-gitlab", &WizardResult{GitMode: "personal", GitProvider: "gitlab"}, 9},
+		{"personal-gitlab", &WizardResult{GitMode: "personal", GitProvider: "gitlab"}, 8},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -594,8 +601,8 @@ func TestStepperTotal_DynamicDenominator(t *testing.T) {
 	// Standard mode expands the denominator further (Phase 1 questions).
 	all := append(DefaultQuestions("/tmp/steppertotal"), Phase1Questions("/tmp/steppertotal")...)
 	std := &WizardResult{GitMode: "manual", StandardMode: true, DesignEnabled: true}
-	if got := stepperDenominator(all, std); got != 12 {
-		t.Errorf("standard-mode denominator: expected 12 (5 + 7 Phase 1), got %d", got)
+	if got := stepperDenominator(all, std); got != 11 {
+		t.Errorf("standard-mode denominator: expected 11 (4 + 7 Phase 1), got %d", got)
 	}
 	// Single dynamic source invariant: stepperDenominator == TotalVisibleQuestions.
 	if stepperDenominator(all, std) != TotalVisibleQuestions(all, std) {

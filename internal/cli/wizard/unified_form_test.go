@@ -92,17 +92,16 @@ func TestUnifiedForm_MultiGroupSinglePage(t *testing.T) {
 	for _, want := range []string{
 		"Enter project name",
 		"Select model policy",
-		"Select billing plan type",
-		"Select development methodology",
+		"Select report format",
 	} {
 		if !strings.Contains(frame, want) {
 			t.Errorf("Project group page must render %q (unified multi-field page), frame:\n%s", want, frame)
 		}
 	}
-	// Initial state: 5 visible questions (git conditionals hidden) — the
-	// stepper note renders "1 / 5" (dynamic denominator, REQ-TUX2-008).
-	if !strings.Contains(frame, "1 / 5") {
-		t.Errorf("stepper note must render dynamic denominator '1 / 5', frame:\n%s", frame)
+	// Initial state: 4 visible questions (git conditionals hidden) — the
+	// stepper note renders "1 / 4" (dynamic denominator, REQ-TUX2-008).
+	if !strings.Contains(frame, "1 / 4") {
+		t.Errorf("stepper note must render dynamic denominator '1 / 4', frame:\n%s", frame)
 	}
 }
 
@@ -124,8 +123,7 @@ func TestUnifiedForm_ConditionalGroupsAppear(t *testing.T) {
 	d.typeText("uniproj")
 	d.enter() // project_name -> model_policy
 	d.enter() // model_policy (high)
-	d.enter() // plan_type (subscription)
-	d.enter() // development_mode (tdd) -> next group
+	d.enter() // report_format (html+md) -> next group
 
 	// Group 2 (Git): git_mode manual -> personal (one cursor down).
 	frame := d.view()
@@ -139,10 +137,10 @@ func TestUnifiedForm_ConditionalGroupsAppear(t *testing.T) {
 	if !strings.Contains(frame, "Select your Git provider") {
 		t.Fatalf("conditional git_provider group must appear for personal mode, frame:\n%s", frame)
 	}
-	// Dynamic denominator grew: git_provider visible -> 6 total; provider
+	// Dynamic denominator grew: git_provider visible -> 5 total; provider
 	// answer pending so github/gitlab questions are still hidden.
-	if !strings.Contains(frame, "6 / 6") {
-		t.Errorf("git_provider stepper must render '6 / 6' (dynamic), frame:\n%s", frame)
+	if !strings.Contains(frame, "5 / 5") {
+		t.Errorf("git_provider stepper must render '5 / 5' (dynamic), frame:\n%s", frame)
 	}
 	d.enter() // git_provider = github -> github_username group
 
@@ -150,9 +148,9 @@ func TestUnifiedForm_ConditionalGroupsAppear(t *testing.T) {
 	if !strings.Contains(frame, "GitHub username") {
 		t.Fatalf("github_username group must appear for github provider, frame:\n%s", frame)
 	}
-	// Provider answered: github_username + github_token now visible -> 7/8.
-	if !strings.Contains(frame, "7 / 8") {
-		t.Errorf("github_username stepper must render '7 / 8' (dynamic), frame:\n%s", frame)
+	// Provider answered: github_username + github_token now visible -> 6/7.
+	if !strings.Contains(frame, "6 / 7") {
+		t.Errorf("github_username stepper must render '6 / 7' (dynamic), frame:\n%s", frame)
 	}
 	d.typeText("octocat")
 	d.enter() // github_username
@@ -163,13 +161,12 @@ func TestUnifiedForm_ConditionalGroupsAppear(t *testing.T) {
 	}
 
 	want := WizardResult{
-		ProjectName:     "uniproj",
-		ModelPolicy:     "high",
-		PlanType:        "subscription",
-		DevelopmentMode: "tdd",
-		GitMode:         "personal",
-		GitProvider:     "github",
-		GitHubUsername:  "octocat",
+		ProjectName:    "uniproj",
+		ModelPolicy:    "high",
+		ReportFormat:   "html+md",
+		GitMode:        "personal",
+		GitProvider:    "github",
+		GitHubUsername: "octocat",
 	}
 	if *result != want {
 		t.Errorf("WizardResult mismatch:\n got: %+v\nwant: %+v", *result, want)
@@ -187,8 +184,7 @@ func TestUnifiedForm_ManualModeSkipsConditionals(t *testing.T) {
 	d.typeText("quickproj")
 	d.enter() // project_name
 	d.enter() // model_policy
-	d.enter() // plan_type
-	d.enter() // development_mode
+	d.enter() // report_format
 
 	frame := d.view()
 	if strings.Contains(frame, "Select your Git provider") {
@@ -213,8 +209,9 @@ func TestBuildFormGroups_Partition(t *testing.T) {
 	questions := DefaultQuestions("/tmp/unified-partition")
 
 	groups := buildFormGroups(questions, result, &locale)
-	// DefaultQuestions: 4 unconditional "Project" + 1 unconditional "Git"
-	// (git_mode) + 6 conditional git questions = 1 + 1 + 6 = 8 groups.
+	// DefaultQuestions: 3 unconditional "Project" (project_name, model_policy,
+	// report_format) + 1 unconditional "Git" (git_mode) + 6 conditional git
+	// questions = 1 + 1 + 6 = 8 groups.
 	if len(groups) != 8 {
 		t.Errorf("expected 8 groups (Project, Git, 6 conditionals), got %d", len(groups))
 	}

@@ -333,6 +333,8 @@ func saveAnswer(id, value string, result *WizardResult, locale *string) {
 		result.PlanType = value
 	case "development_mode":
 		result.DevelopmentMode = value
+	case "report_format":
+		result.ReportFormat = value
 	case "git_mode":
 		result.GitMode = value
 	case "git_provider":
@@ -421,7 +423,7 @@ func moaiWizardStyles(isDark bool) *huh.Styles {
 	t.Focused.Card = t.Focused.Base
 	t.Focused.Title = t.Focused.Title.Foreground(fg(c.Primary)).Bold(true)
 	t.Focused.NoteTitle = t.Focused.NoteTitle.Foreground(fg(c.Primary)).Bold(true).MarginBottom(1)
-	t.Focused.Description = t.Focused.Description.Foreground(fg(c.Muted))
+	t.Focused.Description = t.Focused.Description.Foreground(fg(c.Body))
 	t.Focused.ErrorIndicator = t.Focused.ErrorIndicator.Foreground(fg(c.Error))
 	t.Focused.ErrorMessage = t.Focused.ErrorMessage.Foreground(fg(c.Error))
 	t.Focused.SelectSelector = t.Focused.SelectSelector.Foreground(fg(c.Primary)).SetString("▸ ")
@@ -464,6 +466,7 @@ type wizardTokenSet struct {
 	Warning         string
 	Error           string
 	Muted           string
+	Body            string
 	Text            string
 	Border          string
 	ButtonFg        string
@@ -487,6 +490,7 @@ func wizardTokens(isDark bool) wizardTokenSet {
 		Warning:         th.Warning,
 		Error:           th.Danger,
 		Muted:           th.Dim,
+		Body:            th.Body,
 		Text:            th.Fg,
 		Border:          th.Rule,
 		ButtonFg:        buttonFg,

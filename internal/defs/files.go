@@ -28,4 +28,5 @@ const (
 	HarnessYAML     = "harness.yaml"
 	LSPYAML         = "lsp.yaml"
 	DesignYAML      = "design.yaml"
+	ReportYAML      = "report.yaml"
 )
