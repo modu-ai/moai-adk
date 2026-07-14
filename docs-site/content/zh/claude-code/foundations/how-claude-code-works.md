@@ -9,7 +9,6 @@ description: "讲解在终端中运行的智能体编码工具 Claude Code 的�
 
 本文讲解 Claude Code 理解代码、直接执行工具并完成任务的智能体循环的工作原理。
 
-{{< mascot talking >}}
 
 {{< callout type="info" >}}
 **一句话总结**：Claude Code 是把负责推理的模型与负责行动的工具绑在一起、自主重复"收集上下文 → 采取行动 → 验证结果"的终端原生编码智能体，MoAI-ADK 的三大支柱全部建立在这一循环之上。

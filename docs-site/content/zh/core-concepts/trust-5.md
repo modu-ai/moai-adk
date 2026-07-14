@@ -8,7 +8,6 @@ draft: false
 智能体 harness 的质量门禁 —— 无论智能体生产代码有多快,若不能通过这道
 门禁,就不被认定为完成。
 
-{{< mascot talking >}}
 
 {{< callout type="info" >}}
   **一句话概括:** TRUST 5 是验证"代码是否已测试、是否易读、是否一致、

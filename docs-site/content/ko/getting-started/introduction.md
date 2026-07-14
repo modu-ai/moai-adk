@@ -6,7 +6,6 @@ draft: false
 
 MoAI-ADK는 **토크노믹스** (Token Economics) 를 목표로 하는 Agentic Development Kit입니다. 같은 품질의 코드를 더 적은 토큰으로, 같은 토큰으로 더 높은 품질을 — 모델 선택, 추론 깊이, 컨텍스트 사용량을 시스템이 관리합니다. Go로 작성된 단일 바이너리라 의존성 없이 바로 실행됩니다.
 
-{{< mascot talking >}}
 
 ## 표기법 안내
 

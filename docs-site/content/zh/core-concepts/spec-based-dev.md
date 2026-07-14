@@ -6,7 +6,6 @@ draft: false
 
 本文详细介绍 MoAI-ADK 基于 SPEC 的开发方法论。SPEC 既是智能体挽具的输入，也是代币经济学的隐藏工具 — 需求留在文件里，即使断开会话、用 `/clear` 清空上下文，也能凭 SPEC 一行接着干，不必重复同样的解释、白白烧掉 token。
 
-{{< mascot talking >}}
 
 {{< callout type="info" >}}
   **一句话总结：** SPEC 就是"把与 AI 的对话留成文档"。即使会话中断，只要有 SPEC，随时都能接着干。

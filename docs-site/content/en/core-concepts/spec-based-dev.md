@@ -6,7 +6,6 @@ draft: false
 
 A detailed guide to MoAI-ADK's SPEC-based development methodology. The SPEC is the input to the agentic harness and a hidden tool of tokenomics — with requirements preserved as files, you can end a session or empty the context with `/clear` and still continue the work from a single SPEC line, never burning tokens on repeating the same explanation.
 
-{{< mascot talking >}}
 
 {{< callout type="info" >}}
   **One-line summary:** A SPEC is "recording your conversation with the AI as a document". Even

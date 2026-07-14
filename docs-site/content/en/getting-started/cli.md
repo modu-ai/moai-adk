@@ -6,7 +6,6 @@ draft: false
 
 A reference for every command and flag of `moai` (the Go binary) that you run in the terminal. It is a completely different tool from `/moai` (the slash subcommand) that you type in the Claude Code chat — this page covers only the terminal CLI.
 
-{{< mascot coding >}}
 
 ## Command tree
 

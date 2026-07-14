@@ -9,7 +9,6 @@ description: "Claude Code's slash commands — built-in commands, custom command
 
 A slash command — a single line starting with `/` inside a session — is the fastest way to operate Claude Code directly.
 
-{{< mascot coding >}}
 
 {{< callout type="info" >}}
 **One-line summary**: A single line of input starting with `/` puts session control at your fingertips — from switching models to clearing context to running workflows you built yourself.

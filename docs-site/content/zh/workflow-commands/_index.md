@@ -6,7 +6,6 @@ draft: false
 
 执行基于 SPEC 的 3-Phase 生命周期(plan → run → sync)的命令集合。
 
-{{< mascot coding >}}
 
 ## 智能体挽具的核心 — 3-Phase 生命周期
 

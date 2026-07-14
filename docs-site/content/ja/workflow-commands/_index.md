@@ -6,7 +6,6 @@ draft: false
 
 SPEC ベースの 3-Phase ライフサイクル (plan → run → sync) を実行するコマンド群です。
 
-{{< mascot coding >}}
 
 ## エージェンティックハーネスの中心 — 3-Phase ライフサイクル
 

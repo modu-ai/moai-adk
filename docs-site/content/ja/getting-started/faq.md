@@ -7,7 +7,6 @@ draft: false
 MoAI-ADK 使用中によくある質問と回答です。
 
 
-{{< mascot talking >}}
 ---
 
 ## Q: `moai` と `/moai` は何が違いますか?
@@ -230,9 +229,6 @@ moai init my-project          # --mode <ddd|tdd> フラグで指定可能
 development_mode: tdd         # または ddd
 ```
 
-{{< callout type="info" >}}
-**参考:** v2.5.0 以前の hybrid モードは除去されました。今は TDD または DDD のいずれかを明確に選択する必要があります。
-{{< /callout >}}
 
 ---
 

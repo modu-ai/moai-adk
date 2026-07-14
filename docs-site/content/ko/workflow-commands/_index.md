@@ -6,7 +6,6 @@ draft: false
 
 SPEC 기반 3-Phase 라이프사이클 (plan → run → sync)을 실행하는 명령어 모음입니다.
 
-{{< mascot coding >}}
 
 ## 에이전틱 하네스의 중심 — 3-Phase 라이프사이클
 

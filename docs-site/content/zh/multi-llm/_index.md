@@ -8,7 +8,6 @@ MoAI-ADK 除 Claude API 外，还支持 **z.ai GLM** 作为备选 AI 后端。�
 便利功能，而是实现 v3.0 核心价值 **托克诺米克斯** (Token Economics) 的
 支柱 —— 要以更低成本获得同等质量的代码，就必须能为每项工作分配合适的模型。
 
-{{< mascot talking >}}
 
 ## 什么是 z.ai GLM？
 

@@ -10,7 +10,6 @@ is the axis that reuses the remaining context at a 90%-discounted cost. This
 section covers the break-even rule for deciding when to enable caching and how to
 configure it.
 
-{{< mascot bubble >}}
 
 ## Documents in this section
 

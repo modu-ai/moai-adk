@@ -9,7 +9,6 @@ A collection of guides for operating MoAI-ADK. Both documents extend the core
 ideas of v3.0 — loops guard quality (agentic loop engineering) and model
 assignment guards cost (Tokenomics) — into the CI environment.
 
-{{< mascot talking >}}
 
 ## Guide list
 

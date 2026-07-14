@@ -8,7 +8,6 @@ MoAI-ADK is an **Agentic Development Kit** that aims for **Tokenomics** (Token E
 
 A single binary written in Go -- runs immediately on every platform with zero dependencies.
 
-{{< mascot talking >}}
 
 {{< callout type="info" >}}
 **One-line summary:** MoAI-ADK is an agentic development kit that "records your conversations with the AI as documents (SPECs), improves code safely (DDD/TDD), and verifies quality automatically (TRUST 5)" — **while the system also manages token cost**.

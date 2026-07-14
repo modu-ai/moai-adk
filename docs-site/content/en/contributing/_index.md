@@ -9,7 +9,6 @@ itself is developed with the SPEC-based 3-phase workflow and the TRUST 5
 quality gates — the quality bar for contributions (coverage, lint,
 conventional commits) follows those same standards.
 
-{{< mascot coding >}}
 
 ## Quick start
 

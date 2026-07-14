@@ -7,7 +7,6 @@ description: "A 4-group learning path for understanding Claude Code from scratch
 
 This section is a learning path for understanding Claude Code, Anthropic's terminal CLI, from scratch. It is a guide for developers who are new to Claude Code, and for anyone who wants a precise grasp of the foundation MoAI-ADK operates on.
 
-{{< mascot coding >}}
 
 Claude Code is a coding agent that runs in the terminal — it reads and modifies code, executes commands, and works through conversation with the developer. MoAI-ADK is an orchestration layer that runs on top of Claude Code, and its three core values — **Tokenomics** (Token Economics), **Agentic Loop Engineering** (recursive self-learning), and the **Agentic Harness** — are all built on the fundamental Claude Code mechanisms covered in this section. You cannot design tokenomics without knowing the context window and prompt caching, you cannot understand agentic loops without knowing subagents and `/goal`, and you cannot build a harness without knowing skills, hooks, and MCP.
 

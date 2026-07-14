@@ -7,7 +7,6 @@ draft: false
 
 这是为初次接触 MoAI-ADK 的用户准备的入门路径。按 **介绍 → 安装 → 快速开始** 的顺序阅读，30 分钟内即可运行第一个 MoAI-ADK 项目。安装只需下载一个单体二进制文件，运行第一个 SPEC 也不需要额外的运行时或依赖。
 
-{{< mascot talking >}}
 
 {{< callout type="info" >}}
 如果已经完成安装，请直接前往[快速开始](./quickstart)。想了解 CLI 标志请查看 [CLI 参考](./cli)，遇到问题请查看[常见问题](./faq)。

@@ -9,7 +9,6 @@ description: "Claude Code 的斜杠命令 —— 整理内置命令、用 Markdo
 
 斜杠命令 (slash command) 是在会话内用一行以 `/` 开头的输入直接操控 Claude Code 的最快方式。
 
-{{< mascot coding >}}
 
 {{< callout type="info" >}}
 **一句话总结**：一行以 `/` 开头的输入，就能在指尖掌控会话 —— 从切换模型、清理上下文，到运行您亲手打造的工作流。

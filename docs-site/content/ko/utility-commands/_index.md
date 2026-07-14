@@ -6,7 +6,6 @@ draft: false
 
 자율 자동화와 반복 수정 루프, 코드 관리, 피드백 명령어 모음입니다.
 
-{{< mascot coding >}}
 
 {{< callout type="info" >}}
 유틸리티 명령어는 워크플로우 명령어 (`/moai plan`, `/moai run`, `/moai sync`) 와 달리, **빠른 자동화와 문제 해결**에 특화된 명령어입니다.

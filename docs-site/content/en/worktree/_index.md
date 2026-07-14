@@ -14,7 +14,6 @@ cheap". You use a high-reasoning Claude model in the planning terminal and a
 low-cost GLM in the implementation terminals — assigning the right model to
 each work phase is impossible without Worktree isolation.
 
-{{< mascot coding >}}
 
 ## Why do you need Worktree?
 

@@ -6,7 +6,6 @@ draft: false
 
 MoAI-ADK 是以 **代币经济学**(Token Economics)为目标的 Agentic Development Kit。用更少的 token 产出同等质量的代码,用同样的 token 获得更高的质量 —— 模型选择、推理深度、上下文用量都由系统管理。它是用 Go 编写的单一二进制,无需依赖即可直接运行。
 
-{{< mascot talking >}}
 
 ## 表记法说明
 

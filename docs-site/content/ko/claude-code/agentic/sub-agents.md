@@ -7,7 +7,6 @@ description: "Claude Code 서브에이전트의 개념과 격리된 컨텍스트
 
 # 서브에이전트
 
-{{< mascot coding >}}
 
 Claude Code의 서브에이전트는 곁가지 작업을 별도의 컨텍스트 윈도우에서 처리하고 결과 요약만 메인 대화로 돌려주는 위임 작업자입니다.
 

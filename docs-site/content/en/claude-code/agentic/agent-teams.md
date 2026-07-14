@@ -9,7 +9,6 @@ description: "The structure, recommended size, and activation of agent teams, wh
 
 Agent Teams is an experimental feature that binds multiple Claude Code sessions into one team, collaborating through a shared task list and mutual messaging.
 
-{{< mascot coding >}}
 
 {{< callout type="info" >}}
 **One-line summary**: If a subagent is a one-way worker reporting only to the leader, an agent team is a group of peers who talk to each other, claim work directly, and exchange verification.

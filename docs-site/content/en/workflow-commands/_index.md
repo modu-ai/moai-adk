@@ -6,7 +6,6 @@ draft: false
 
 A set of commands that run the SPEC-based 3-Phase lifecycle (plan → run → sync).
 
-{{< mascot coding >}}
 
 ## The Center of the Agentic Harness — the 3-Phase Lifecycle
 

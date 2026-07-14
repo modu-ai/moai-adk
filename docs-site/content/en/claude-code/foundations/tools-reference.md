@@ -9,7 +9,6 @@ description: "The purpose of Claude Code's built-in tools, the read/write distin
 
 This page covers the built-in tools Claude Code uses to understand and modify a codebase, and how permissions attach to each tool.
 
-{{< mascot coding >}}
 
 {{< callout type="info" >}}
 **One-line summary**: Tool names are identifiers used verbatim in permission rules, subagent tool lists, and hook matchers — so knowing each tool's read/write nature and permission behavior lets you design Claude Code's safety boundaries yourself.

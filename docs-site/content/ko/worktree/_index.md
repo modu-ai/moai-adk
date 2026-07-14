@@ -8,7 +8,6 @@ Git Worktree는 MoAI-ADK 병렬 개발의 기반입니다. SPEC마다 완전히 
 공간을 만들어, 서로 다른 Git 상태와 서로 다른 LLM 설정을 동시에 굴릴 수 있게
 합니다.
 
-{{< mascot coding >}}
 
 MoAI-ADK v3.0의 핵심 가치인 **토크노믹스** (Token Economics) 관점에서 보면,
 Worktree는 "계획은 깊게, 구현은 싸게"를 실제로 실행하는 장치입니다. 계획

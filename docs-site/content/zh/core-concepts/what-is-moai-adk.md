@@ -8,7 +8,6 @@ MoAI-ADK 是以 **代币经济学**(Token Economics)为目标的 **Agentic Devel
 
 用 Go 编写的单一二进制 —— 无依赖即可在所有平台上即时运行。
 
-{{< mascot talking >}}
 
 {{< callout type="info" >}}
 **一句话概括:** MoAI-ADK 是一个把"将与 AI 的对话作为文档(SPEC)留存、安全地改进代码(DDD/TDD)、自动验证质量(TRUST 5)"的工作 —— **连 token 成本也由系统管理** —— 一并完成的智能体开发套件。

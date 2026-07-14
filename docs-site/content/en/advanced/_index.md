@@ -6,7 +6,6 @@ draft: false
 
 This section is for developers who want to take MoAI-ADK apart and see how it works inside. Once you are comfortable with the basic workflow (plan → run → sync), this is where you can see how the harness is actually assembled.
 
-{{< mascot talking >}}
 
 {{< callout type="info" >}}
 The documents in this section cover mainly the third of v3.0's three pillars — **Tokenomics** (Token Economics), **Agentic Loop Engineering**, and the **Agentic Harness** — namely the implementation details of the harness. The secret to making agents write good code is not the model, but the design of the environment around the model.

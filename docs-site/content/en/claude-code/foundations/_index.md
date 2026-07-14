@@ -7,7 +7,6 @@ description: "From how Claude Code works to interactive usage, slash commands, t
 
 This group covers the fundamentals you need before using Claude Code in earnest. You will learn, in order, how the agentic loop works, what features exist, how to type in interactive mode, how to use slash commands and tools, and where settings are stored. Everything you learn here — the loop, tools, permissions, the settings directory — is exactly the material MoAI-ADK builds its harness on.
 
-{{< mascot talking >}}
 
 {{< callout type="info" >}}
 **Learning goal (one-line summary)**: Understand how Claude Code works and its core usage interfaces, so you can follow the workflow documents and MoAI-ADK harness design that come later without getting stuck.

@@ -9,7 +9,6 @@ description: "整理 Claude Code 内置工具的用途、读取/写入的区分�
 
 本文整理 Claude Code 理解与修改代码库时使用的内置工具，以及各工具与权限如何关联。
 
-{{< mascot coding >}}
 
 {{< callout type="info" >}}
 **一句话总结**：工具名称是在权限规则、子智能体工具列表、hook 匹配器中原样使用的标识符，因此了解工具的读/写性质与权限行为，就能亲手设计 Claude Code 的安全边界。

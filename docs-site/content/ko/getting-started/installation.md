@@ -6,7 +6,6 @@ draft: false
 
 MoAI-ADK를 시스템에 설치하는 방법을 안내합니다. 설치물은 Go로 빌드된 단일 바이너리 하나입니다 — Python도, 가상환경도, 패키지 매니저도 필요 없습니다.
 
-{{< mascot talking >}}
 
 ## 라이선스
 

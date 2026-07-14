@@ -8,7 +8,6 @@ A detailed guide to the five quality principles every piece of MoAI-ADK code mus
 the quality gate of the agentic harness — no matter how fast an agent produces code, work is not
 recognized as complete unless it passes this gate.
 
-{{< mascot talking >}}
 
 {{< callout type="info" >}}
   **One-line summary:** TRUST 5 is an automated quality gate verifying "is the code tested, readable, consistent,

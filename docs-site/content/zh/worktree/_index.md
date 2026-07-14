@@ -12,7 +12,6 @@ Worktree 是把"计划要深、实现要省"真正落地的装置。计划终端
 Claude 模型，实现终端使用低成本的 GLM —— 按工作阶段分配合适的模型这件事，
 没有 Worktree 隔离就无法实现。
 
-{{< mascot coding >}}
 
 ## 为什么需要 Worktree？
 
