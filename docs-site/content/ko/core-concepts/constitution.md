@@ -58,6 +58,11 @@ CONST-V3R2-NNN (3자리 이상 zero-padding)
 150+: 신규 추가
 ```
 
+> **ID 접두사는 시대(era)에 걸쳐 있습니다**: `CONST-V3R2-NNN`은 예시일 뿐이며,
+> ID 접두사는 조항이 도입된 시대를 반영합니다 (`CONST-V3R2-NNN`,
+> `CONST-V3R5-NNN`, `CONST-V3R6-NNN` 등). V3R2로 고정된 것이 아니라, 이후
+> 시대에 추가된 조항은 해당 시대 접두사를 사용합니다.
+
 ### Canary Gate
 
 FROZEN 조항은 `canary_gate: true`를 가집니다. 변경 전 canary 검증이 필수입니다.
@@ -97,9 +102,12 @@ Constitution 시스템은 5계층 안전 아키텍처로 보호됩니다. 하네
 
 | 파라미터 | 기본값 | 설명 |
 |-----------|--------|------|
-| `max_evolution_rate_per_week` | 3 | 주간 최대 진화 횟수 |
-| `cooldown_hours` | 24 | 진화 간 최소 대기 시간 |
-| `max_active_learnings` | 50 | 활성 학습 항목 최대 수 |
+| `learning.rate_limit.max_per_week` | 3 | 7일 슬라이딩 윈도우 내 최대 업데이트 횟수 |
+| `learning.rate_limit.cooldown_hours` | 24 | 업데이트 간 최소 대기 시간 (시간) |
+
+> 위 두 키는 `harness.yaml`의 `learning.rate_limit` 아래에 정의됩니다. (별도
+> 개념인 Lessons Protocol의 "프로젝트당 활성 lesson 50개 상한"과 혼동하지
+> 마세요 — 그 50은 진화 속도 제한이 아니라 lesson 메모리 항목 수 상한입니다.)
 
 ### Layer 5: Human Oversight
 

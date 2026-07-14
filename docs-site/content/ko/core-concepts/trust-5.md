@@ -8,7 +8,6 @@ MoAI-ADK의 모든 코드가 통과해야 하는 5가지 품질 원칙을 상세
 에이전틱 하네스의 품질 게이트입니다 — 에이전트가 아무리 빠르게 코드를 생산해도, 이
 게이트를 통과하지 못하면 완료로 인정되지 않습니다.
 
-{{< mascot talking >}}
 
 {{< callout type="info" >}}
   **한 줄 요약:** TRUST 5는 "코드가 테스트되었는가, 읽기 쉬운가, 일관성 있는가,
@@ -337,7 +336,13 @@ flowchart TD
 1. 코드가 변경되면 LSP가 진단을 실행합니다
 2. TRUST 5 기준에 미달하는 항목이 있으면 Ralph Engine이 자동 수정을 시도합니다
 3. 수정 후 다시 LSP 진단을 실행하여 통과 여부를 확인합니다
-4. 통과할 때까지 반복합니다 (최대 3회 재시도)
+4. 통과할 때까지 반복합니다 (연산당 최대 3회 재시도)
+
+> 여기서 "3회"는 **개별 연산당 재시도 상한**(`workflow.yaml`의
+> `loop_prevention.max_retries_per_operation`)입니다. 이는 **루프 반복 상한**과
+> 별개의 개념입니다 — 진단 기반 수정 루프의 상한은
+> `workflow.yaml`의 `loop_prevention.max_iterations`(기본 100), `/moai fix` 루프
+> 프리셋의 상한은 `agentic_loop.max_iterations`(기본 10)로 각각 관리됩니다.
 
 **관련 명령어:**
 
@@ -384,6 +389,11 @@ constitution:
     cache_ttl_seconds: 5 # LSP 진단 캐시 시간
     timeout_seconds: 3 # LSP 진단 타임아웃
 ```
+
+> **설정 파일 위치 구분**: 위에 보이는 LSP **품질 게이트 임계값**(`max_errors`,
+> `max_warnings` 등)은 `quality.yaml`의 `lsp_quality_gates` 아래에 있습니다.
+> 반면 LSP **클라이언트 런타임 설정**(LSP 활성화 스위치, 언어별 서버 구성)은
+> 별도 파일인 `.moai/config/sections/lsp.yaml`에서 관리됩니다.
 
 ### 설정 커스터마이즈 팁
 

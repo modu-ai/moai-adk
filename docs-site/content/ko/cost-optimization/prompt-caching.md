@@ -66,32 +66,38 @@ cache_control={"type": "ephemeral"}
 # ^ 타임스탬프가 매 요청마다 변하므로 절대 일치하지 않음
 ```
 
-## 설정: session_ttl과 spec_ttl
+## 설정: session_ttl
 
-MoAI 캐싱은 `.moai/config/sections/cache.yaml`에서 설정됩니다:
+MoAI 캐싱은 `.moai/config/sections/cache.yaml`에서 설정됩니다. 템플릿은
+캐싱이 **활성화된 상태**로 배포되며, 설정 키는 `enabled`와 `session_ttl`
+두 가지입니다:
 
 ```yaml
 cacheStrategy:
-  enabled: false  # 캐싱을 활성화하려면 true로 설정
+  enabled: true      # 템플릿 기본값: 활성화 (비활성화하려면 false)
   session_ttl: "1h"  # 세션 수준 캐시 TTL — 허용값: 1h · 5m · off
-  spec_ttl: "5m"     # SPEC 본문 캐시 TTL
-  min_cacheable_tokens: 2048  # 캐시 기록 최소 토큰
 ```
+
+> `spec_ttl`, `min_cacheable_tokens`는 템플릿 `cache.yaml`의 키가 아니라 Go
+> 런타임 내부 기본값입니다. 사용자 설정 파일에는 위 두 키(`enabled`,
+> `session_ttl`)만 존재합니다.
+
+> **GLM 백엔드**: z.ai(GLM)는 콘텐츠 유사도 기반 **암묵적 캐싱**을 사용하므로
+> MoAI가 `cache_control` 헤더를 주입하지 않습니다. 위 설정은 Anthropic API
+> 백엔드에만 적용됩니다.
 
 ### session_ttl: "off"를 통한 선택 해제
 
-특정 세션에서 캐싱을 비활성화하려면(예: 원샷 요청이 지배적일 때):
+특정 세션에서 세션 수준 캐싱을 비활성화하려면(예: 원샷 요청이 지배적일 때):
 
 ```yaml
 cacheStrategy:
   enabled: true
-  session_ttl: "off"  # 이 세션에서 캐시 비활성화 (허용값: 1h · 5m · off)
-  spec_ttl: "5m"      # SPEC 본문만 캐시 사용
+  session_ttl: "off"  # 세션 수준 캐시 비활성화 (허용값: 1h · 5m · off)
 ```
 
 `session_ttl: "off"`일 때:
 - 세션 수준 캐시 기록이 건너뜀
-- `spec_ttl`이 구성되면 SPEC 본문 캐시는 계속 적용
 - 단일 요청이 일반적인 중단 기반 워크플로우에 유용
 
 ## 캐시 성능 모니터링
@@ -106,7 +112,7 @@ MoAI statusline의 캐시 적중률(cache_hit) 세그먼트로 실시간 히트�
 - **히트율 > 60%**: 캐시가 효과적입니다. 활성화 유지하세요.
 - **히트율 30-60%**: 중간 정도의 이득. 세션이 다중 턴 중심이면 활성화 고려하세요.
 - **단일 턴 비율 > 30%**: 캐싱의 이득이 제한적입니다. 2개 이상 요청 가정이 유지되는지 확인하세요.
-- **최소 토큰 임계값 경고**: `min_cacheable_tokens`를 구성하여 작은 프롬프트 캐싱을 피하세요(오버헤드 > 절감).
+- **최소 토큰 임계값**: 작은 프롬프트는 캐싱 오버헤드가 절감을 넘어설 수 있습니다. MoAI 런타임은 내부 기본 최소 토큰 임계값(`min_cacheable_tokens`) 아래의 프롬프트를 캐시하지 않습니다.
 
 ## 캐시 미스가 발생하는 경우
 

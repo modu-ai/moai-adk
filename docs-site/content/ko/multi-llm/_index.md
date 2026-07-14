@@ -9,7 +9,6 @@ MoAI-ADK는 Claude API 외에 **z.ai GLM**을 대안 AI 백엔드로 지원합�
 실현하는 축입니다 — 같은 품질의 코드를 더 적은 비용으로 얻으려면, 작업마다
 알맞은 모델을 배정할 수 있어야 하기 때문입니다.
 
-{{< mascot talking >}}
 
 ## z.ai GLM이란?
 
@@ -19,17 +18,25 @@ GLM(Generative Language Model)은 z.ai에서 제공하는 AI 모델 서비스로
 |------|------|
 | **GLM 코딩 플랜** | 월 **$10**부터 ([가입 링크](https://z.ai/subscribe?ic=1NDV03BGWU)) |
 | **호환성** | Claude Code와 호환 — 코드 변경 없음 |
-| **모델** | glm-5.2[1m], GLM-4.7, GLM-4.5-Air, 무료 모델 |
+| **모델** | glm-5.2, GLM-4.7, GLM-4.5-Air, 무료 모델 |
 
 ## 기본 모델 매핑
 
-| Claude 티어 | GLM 모델 | 입력 (1M 토큰당) | 출력 (1M 토큰당) |
-|-------------|----------|-----------------|-----------------|
-| Opus / Sonnet / Haiku / Fable | glm-5.2[1m] | $2.00 | $8.00 |
+MoAI-ADK는 Claude 티어별로 서로 다른 GLM 모델을 배정합니다. 4개의 Claude Code
+`ANTHROPIC_DEFAULT_*_MODEL` 환경변수로 구현됩니다:
 
-> 4개 Claude 티어(Opus, Sonnet, Haiku, Fable) 모두 `glm-5.2[1m]` 단일 모델(1M 컨텍스트)로 통일됩니다. GLM 모델을 opus→glm-5.2, sonnet→glm-4.7, haiku→glm-4.5-air처럼 티어별로 다르게 매핑하지 않는 이유는, 1M 컨텍스트 모델과 200K 컨텍스트 모델을 같은 세션에 섞어 쓸 수 없기 때문입니다 — 에이전트 spawn 시 1M 컨텍스트 윈도우를 가진 모델과 200K 모델이 세션을 공유하지 못하는 문제가 발생합니다.
+| Claude 티어 | 환경변수 | GLM 모델 | 컨텍스트 |
+|-------------|----------|----------|----------|
+| Opus | `ANTHROPIC_DEFAULT_OPUS_MODEL` | glm-5.2 | 1M |
+| Sonnet | `ANTHROPIC_DEFAULT_SONNET_MODEL` | glm-4.7 | 202K |
+| Haiku | `ANTHROPIC_DEFAULT_HAIKU_MODEL` | glm-4.5-air | 128K |
+| Fable | `ANTHROPIC_DEFAULT_FABLE_MODEL` | glm-5.2 | 1M |
 
-> 이 매핑은 4개의 Claude Code `ANTHROPIC_DEFAULT_*_MODEL` 환경변수(`ANTHROPIC_DEFAULT_OPUS_MODEL`, `ANTHROPIC_DEFAULT_SONNET_MODEL`, `ANTHROPIC_DEFAULT_HAIKU_MODEL`, `ANTHROPIC_DEFAULT_FABLE_MODEL`)로 구현되며, 모두 `glm-5.2`로 설정됩니다. Fable 환경변수는 Claude Code v2.1.202부터 공식 지원됩니다.
+> Opus 슬롯(메인 세션 + 상속 에이전트)과 Fable 슬롯은 1M 컨텍스트의 `glm-5.2`를,
+> Sonnet 슬롯은 202K의 `glm-4.7`을, Haiku 슬롯은 128K의 `glm-4.5-air`를 사용합니다.
+> 이 티어별 차등 매핑은 `llm.yaml`의 `glm.models` (high/medium/low/fable)로
+> 설정하며, 각각 위 환경변수로 주입됩니다. Fable 환경변수는 Claude Code
+> v2.1.202부터 공식 지원됩니다.
 
 > 무료 모델도 제공됩니다: GLM-4.7-Flash, GLM-4.5-Flash. 전체 가격은 [z.ai Pricing](https://docs.z.ai/guides/overview/pricing)을 참조하세요.
 
@@ -68,7 +75,7 @@ CG 모드가 토크노믹스의 대표 사례입니다. 전략·계획·감사�
 
 ```bash
 # 1. GLM API 키 저장 (최초 1회)
-moai glm sk-your-glm-api-key
+moai glm setup sk-your-glm-api-key
 
 # 2. 모드 선택
 moai cc            # Claude 전용

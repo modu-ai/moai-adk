@@ -6,7 +6,6 @@ draft: false
 
 MoAI-ADK v3.0을 이해하는 데 필요한 핵심 개념을 소개합니다. v3.0의 가치는 세 가지 기둥으로 요약됩니다 — **토크노믹스** (Token Economics), **에이전틱 루프 엔지니어링** (Agentic Loop Engineering), 그리고 **에이전틱 하네스** (Agentic Harness). 이 섹션의 문서들은 그 세 기둥이 실제 개발 흐름에서 어떻게 작동하는지 하나씩 풀어냅니다.
 
-{{< mascot talking >}}
 
 {{< callout type="info" >}}
 처음이신가요? 위에서 아래로 순서대로 읽으면 MoAI-ADK의 전체 그림이 자연스럽게 그려집니다. 각 문서는 독립적으로 읽어도 무방합니다.

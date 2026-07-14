@@ -466,7 +466,8 @@ flowchart TD
 
 ```yaml
 constitution:
-  development_mode: tdd  # TDD 방법론 사용
+  development_mode: tdd            # TDD 방법론 사용 (해당 SPEC의 하네스 레벨 자동 선택을 무시하고 고정)
+  session_effort_default: "xhigh" # Opus 4.7+ 세션 기본 추론 깊이 (에이전트별 override가 없을 때)
 
   tdd_settings:
     test_first_required: true         # 구현 전 테스트 작성 필수
@@ -476,6 +477,10 @@ constitution:
 
   test_coverage_target: 85            # 전체 커버리지 목표
 ```
+
+> `development_mode`를 명시적으로 고정하면 복잡도 추정기의 하네스 레벨
+> 자동 선택(minimal/standard/thorough)에 우선하여 지정한 방법론(TDD/DDD)이
+> 강제됩니다.
 
 ### DDD 설정
 

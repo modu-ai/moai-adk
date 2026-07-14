@@ -12,16 +12,17 @@ draft: false
 맞춰 품질을 극대화하면서 요율 제한 에러를 방지합니다.
 
 MoAI-ADK v3.0의 에이전트 카탈로그는 **11개** (MoAI 커스텀 10개 + Anthropic
-내장 `Explore`)이며, 아래 배정표는 그중 모델 정책이 직접 배정하는 핵심 7개
-에이전트를 다룹니다.
+내장 `Explore`)입니다. **No-Haiku 정책** 아래에서 모든 워커 에이전트는 티어와
+무관하게 **Sonnet 5로 고정**되며, 정책 티어가 제어하는 축은 두 가지뿐입니다 —
+(a) Opus를 어디에 배치할지, (b) Sonnet의 추론 깊이(effort)를 얼마나 낮출지.
 
 ## 3단계 정책 개요
 
-| 정책 (performance_tier) | CLI 플래그 | 플랜 | Opus | Sonnet | 적합한 용도 |
-|------------------------|-----------|------|------|--------|-----------|
-| **max** | `--model-policy max` | Max $200/월 | 5 | 2 | 최고 품질, 최대 처리량 |
-| **medium** (기본) | `--model-policy medium` | Max $100/월 | 2 | 5 | 품질과 비용의 균형 |
-| **low** | `--model-policy low` | Plus $20/월 | 0 | 7 | 저예산, Opus 미포함 |
+| 정책 (performance_tier) | CLI 플래그 | 플랜 | Opus 배치 | 워커 | 적합한 용도 |
+|------------------------|-----------|------|-----------|------|-----------|
+| **max** | `--model-policy max` | Max $200/월 | 5개 지점 | Sonnet 고정 | 최고 품질, 최대 처리량 |
+| **medium** (기본) | `--model-policy medium` | Max $100/월 | 2개 지점 (on-demand) | Sonnet 고정 | 품질과 비용의 균형 |
+| **low** | `--model-policy low` | Plus $20/월 | 없음 (0) | Sonnet 고정 | 저예산, Opus 미포함 |
 
 > **이름 축**: `llm.yaml`의 `performance_tier` 필드와 CLI 플래그 `--model-policy`는
 > 동일하게 `max`/`medium`/`low` 세 값을 사용하며 1:1로 매핑됩니다 (별도 변환
@@ -31,41 +32,48 @@ MoAI-ADK v3.0의 에이전트 카탈로그는 **11개** (MoAI 커스텀 10개 + 
 > subscription)를 결정하는 `plan_type` 필드와는 별개 축입니다. 사용자 이름 등은
 > `user.yaml`에 따로 보관됩니다.
 
-> **왜 중요한가요?** Plus $20 플랜은 Opus에 접근할 수 없습니다. `low` 정책을 설정하면 모든 에이전트가 Sonnet만 사용하여 요율 제한 에러를 방지합니다. 상위 플랜은 핵심 에이전트(계획, 감사)에 Opus를 배정하고 일상 작업에는 Sonnet을 사용합니다.
+> **왜 중요한가요?** Plus $20 플랜은 Opus에 접근할 수 없습니다. `low` 정책을 설정하면 모든 에이전트가 Sonnet만 사용하여 요율 제한 에러를 방지합니다. 상위 플랜은 핵심 지점(계획 작성, 감사, 자문)에만 Opus를 배정하고 나머지는 Sonnet을 사용합니다.
 
 ## 에이전트별 모델 배정표
 
-### Manager Agents (4개)
+모든 워커 에이전트는 Sonnet 5로 고정되며, Opus는 아래 특정 지점에만
+배치됩니다. (오케스트레이터 메인 세션도 `max`에서 Opus로 동작하지만, 이는
+spawn되는 에이전트가 아니므로 표에는 포함하지 않습니다.)
+
+### Manager Agents (5개)
 
 | 에이전트 | max | medium | low |
 |---------|-----|--------|-----|
-| manager-spec | opus | opus | sonnet |
-| manager-develop | opus | sonnet | sonnet |
+| manager-spec (plan) | opus | opus (Tier L만) | sonnet |
+| manager-develop | sonnet | sonnet | sonnet |
 | manager-docs | sonnet | sonnet | sonnet |
 | manager-git | sonnet | sonnet | sonnet |
+| manager-design | sonnet | sonnet | sonnet |
 
-### Evaluator & Builder Agents (3개)
+### Evaluator · Advisor · Builder Agents (4개)
 
 | 에이전트 | max | medium | low |
 |---------|-----|--------|-----|
-| plan-auditor | opus | opus | sonnet |
+| plan-auditor | opus | sonnet | sonnet |
 | sync-auditor | opus | sonnet | sonnet |
-| builder-harness | opus | sonnet | sonnet |
+| super-advisor | opus | opus | sonnet |
+| builder-harness | sonnet | sonnet | sonnet |
 
 > Anthropic 내장 `Explore`는 읽기 전용 탐색 에이전트로 별도 배정 없이
 > 동작합니다. Agent Teams 정적 계층(정적 role profile)은 v3.0에서
 > 은퇴했으며, 병렬 작업은 sub-agent 병렬 실행과 동적 워크플로우가
 > 대체합니다. `moai cg`의 teammate 런타임(tmux pane)은 그대로 유지됩니다.
 
-> **Haiku 제거 (v3.0)**: 과거 Haiku 슬롯은 `sonnet`/`effort:low`로
-> 대체되었습니다. `manager-git`과 `manager-docs`의 가벼운 작업이 이에
-> 해당하며, 모델은 Sonnet이지만 추론 깊이를 낮춰 비용을 절감합니다.
+> **Haiku 제거 (v3.0)**: 과거 Haiku 슬롯(문서화·MX 태깅·Git 절차)은
+> `sonnet`/`effort:low`로 대체되었습니다. 모델은 Sonnet이지만 추론 깊이를
+> 낮춰 비용을 절감하는 방식이며, 모델 클래스를 낮춘 것이 아닙니다.
 
 ## 배정 원칙
 
-- **항상 Opus**: 계획 감사(plan-auditor), SPEC 작성(manager-spec) — 높은 추론 능력 필요
-- **항상 Sonnet/effort:low**: Git(manager-git) — 가볍고 빠른 작업
-- **플랜에 따라 변동**: 구현(manager-develop, cycle_type=tdd/ddd) — 플랜이 높을수록 Opus
+- **모든 워커는 Sonnet 고정**: manager-develop, manager-docs, manager-git, manager-design, builder-harness — 티어는 Opus 배치 위치와 Sonnet effort 조정 폭만 제어
+- **max에서 Opus 배치 (5개 지점)**: 오케스트레이터, super-advisor, manager-spec(plan), plan-auditor, sync-auditor — 높은 추론 능력이 필요한 곳
+- **medium은 Opus 최소화 (2개 지점, on-demand)**: super-advisor와 Tier L 계획(manager-spec)에만 Opus, 나머지는 Sonnet
+- **low는 Opus 0**: 자문(super-advisor)까지 포함해 전부 Sonnet, effort 티어링으로만 조절
 
 계획을 만든 에이전트가 감사하지 않도록 plan-auditor와 sync-auditor는 독립
 배정을 유지합니다 — 비용 축과 품질 축(편향 방지)이 함께 설계된 표입니다.

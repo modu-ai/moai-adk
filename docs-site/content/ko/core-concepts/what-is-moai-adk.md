@@ -8,7 +8,6 @@ MoAI-ADK는 **토크노믹스** (Token Economics) 를 목표로 하는 **Agentic
 
 Go로 작성된 단일 바이너리 -- 의존성 없이 모든 플랫폼에서 즉시 실행됩니다.
 
-{{< mascot talking >}}
 
 {{< callout type="info" >}}
 **한 줄 요약:** MoAI-ADK는 "AI와 나눈 대화를 문서 (SPEC) 로 남기고, 안전하게 코드를 개선 (DDD/TDD) 하며, 품질을 자동 검증 (TRUST 5) 하는" 일을 — **토큰 비용까지 시스템이 관리하면서** 수행하는 에이전틱 개발 키트입니다.
@@ -73,10 +72,10 @@ Python 기반 MoAI-ADK (~73,000줄)를 Go로 완전히 재작성했습니다.
 
 - **11개** 에이전트 카탈로그 (10 MoAI 커스텀 + 1 Anthropic 빌트인 `Explore`)
 - **27개** 스킬 (template-managed)
-- **36개** CLI 명령 · **15종** `/moai` 서브커맨드
+- **약 37개** CLI 명령 · **14종** `/moai` 서브커맨드
 - **16개** 프로그래밍 언어 지원
 - **3단계 하네스** (minimal / standard / thorough) — SPEC 복잡도에 따른 적응형 품질 게이트
-- **504개** SPEC 문서 기반으로 개발된 코드베이스
+- **SPEC 기반 워크플로우** (plan → run → sync) 로 개발된 코드베이스
 
 ### 바이브코딩의 문제점
 
@@ -319,12 +318,10 @@ flowchart TD
 | 카테고리 | 예시 |
 |----------|------|
 | **Foundation** | core, cc, thinking, quality |
-| **Workflow** | spec, project, ddd, tdd, testing, worktree |
-| **Domain** | backend, frontend, database, html-report |
-| **Language** | Go, Python, TypeScript, Rust, Java, Kotlin, Swift, C++... |
-| **Platform** | Vercel, Supabase, Firebase, Auth0, Clerk... |
-| **Reference** | REST/GraphQL patterns, OWASP, git workflow |
-| **Tool** | ast-grep, svg |
+| **Workflow** | spec, project, ddd, tdd, testing, worktree, loop, ci-loop |
+| **Domain** | backend, frontend, database, html-report, humanize |
+| **Reference** | api-patterns, owasp-checklist, git-workflow, react-patterns, testing-pyramid, llm-security, secops, supply-chain |
+| **Harness** | harness-learner, meta-harness |
 
 ## MoAI 워크플로우
 
@@ -338,7 +335,7 @@ flowchart TD
 
     subgraph Plan["1. Plan 단계"]
         P1["코드베이스 탐색"] --> P2["요구사항 분석"]
-        P2 --> P3["SPEC 문서 생성\nEARS 형식"]
+        P2 --> P3["SPEC 문서 생성\nGEARS 형식"]
     end
 
     Plan --> Run
@@ -400,7 +397,7 @@ flowchart TD
 
 | 서브커맨드 | 별칭 | 용도 | 주요 플래그 |
 |-----------|------|------|-----------|
-| `plan` | `spec` | SPEC 문서 생성 (EARS 형식) | `--worktree`, `--branch`, `--resume SPEC-XXX` |
+| `plan` | `spec` | SPEC 문서 생성 (GEARS 형식) | `--worktree`, `--branch`, `--resume SPEC-XXX` |
 | `run` | `impl` | SPEC의 DDD/TDD 구현 | `--resume SPEC-XXX` |
 | `sync` | `docs`, `pr` | 문서 동기화, 코드맵, PR 생성 | `--merge`, `--skip-mx` |
 
@@ -473,15 +470,12 @@ MoAI 오케스트레이터는 작업 복잡도를 분석해 실행 형태를 선
 
 ```bash
 # 1. GLM API 키 저장 (한 번만)
-moai glm sk-your-glm-api-key
+moai glm setup sk-your-glm-api-key
 
-# 2. CG 모드 활성화
+# 2. CG 모드 활성화 (tmux 세션 안에서 실행 — Claude Code가 자동 시작)
 moai cg
 
-# 3. 같은 패인에서 Claude Code 시작 (중요!)
-claude
-
-# 4. 워크플로우 실행
+# 3. 워크플로우 실행
 /moai "작업 설명"
 ```
 
