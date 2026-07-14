@@ -35,6 +35,15 @@ const contextUsageSchemaVersion = 1
 // inline literals (§14 hardcoding-prevention).
 const contextUsageFreshWindow = 12 * time.Hour
 
+// templateSourceEmbedPath is the path-component marker for the moai-adk-go
+// template embed source tree. The //go:embed all:templates directive in
+// internal/template/embed.go compiles this tree (including dot-prefixed dirs
+// like .moai/) into the distributed binary, so writeContextUsage MUST NOT
+// write context-usage.json here — otherwise a runtime artifact leaks into the
+// binary on make build. Built from filepath.Separator (not a bare "/" literal)
+// so the guard is cross-platform (§14 hardcoding-prevention).
+const templateSourceEmbedPath = "internal" + string(filepath.Separator) + "template" + string(filepath.Separator) + "templates"
+
 // contextUsageRecord is the on-disk schema for
 // <projectDir>/.moai/state/context-usage.json (REQ-THRESHOLD-010).
 //
@@ -77,6 +86,33 @@ func bandLabel(cwSize int) string {
 	return "standard"
 }
 
+// isTemplateSourceDir reports whether dir resolves into the moai-adk-go
+// template embed source tree (internal/template/templates). The match is on a
+// directory-component boundary, NOT a bare substring: .../internal/template/
+// templates and .../internal/template/templates/.claude/hooks/moai match, but
+// .../internalXtemplateXtemplates and .../internal/template/templates_bar do
+// NOT. A user project dir never carries this path component, so the guard is
+// inert for normal user projects. Empty dir returns false. Resolution to
+// absolute via filepath.Abs falls back to dir on error (best-effort).
+func isTemplateSourceDir(dir string) bool {
+	if dir == "" {
+		return false
+	}
+	abs, err := filepath.Abs(dir)
+	if err != nil {
+		abs = dir
+	}
+	abs = filepath.Clean(abs)
+	sep := string(filepath.Separator)
+	marker := sep + templateSourceEmbedPath
+	// abs IS the templates dir (relative fallback), OR ends with the marker
+	// (marker is the last path component), OR contains the marker bounded by a
+	// trailing separator (marker is an interior component — a subdir of it).
+	return abs == templateSourceEmbedPath ||
+		strings.HasSuffix(abs, marker) ||
+		strings.Contains(abs, marker+sep)
+}
+
 // writeContextUsage persists the current context-usage snapshot to
 // <projDir>/.moai/state/context-usage.json using the atomic temp-file +
 // rename pattern of WriteModelCache (MkdirAll + write-temp + rename). It is
@@ -85,10 +121,12 @@ func bandLabel(cwSize int) string {
 // the write is unconditional with respect to Mode/Guide (REQ-THRESHOLD-007).
 //
 // It skips (no write, no panic) when the source signal is absent
-// (mem.Available == false or non-positive window) or the project dir cannot be
-// resolved (projDir == "").
+// (mem.Available == false or non-positive window), the project dir cannot be
+// resolved (projDir == ""), or projDir resolves into the template embed source
+// tree (isTemplateSourceDir — prevents //go:embed all:templates from leaking a
+// runtime artifact into the distributed binary).
 func writeContextUsage(projDir, sessionID string, writerPID int, mem MemoryData, stage handoffStage) {
-	if !mem.Available || mem.ContextWindowSize <= 0 || projDir == "" {
+	if !mem.Available || mem.ContextWindowSize <= 0 || projDir == "" || isTemplateSourceDir(projDir) {
 		return
 	}
 

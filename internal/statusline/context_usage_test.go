@@ -379,3 +379,110 @@ func TestResolveProjectDir_Chain(t *testing.T) {
 		t.Errorf("nil input should fall back to os.Getwd(), got empty")
 	}
 }
+
+// TestWriteContextUsage_TemplateSourceGuard — the write MUST NOT create
+// context-usage.json when projDir resolves into the moai-adk-go template embed
+// source tree (internal/template/templates). The //go:embed all:templates
+// directive in internal/template/embed.go includes dot-prefixed dirs (.moai/),
+// so a write here would leak a runtime artifact into the distributed binary.
+func TestWriteContextUsage_TemplateSourceGuard(t *testing.T) {
+	t.Parallel()
+
+	m := MemoryData{ContextWindowSize: 256_000, TokensUsed: 230_400, Available: true}
+
+	// (a) projDir IS the templates dir.
+	root := t.TempDir()
+	templatesDir := filepath.Join(root, "internal", "template", "templates")
+	if err := os.MkdirAll(templatesDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	writeContextUsage(templatesDir, "sess-guard", 1, m, handoffStageSoft)
+	if _, err := os.Stat(usagePath(templatesDir)); !os.IsNotExist(err) {
+		t.Errorf("(a) no file expected inside templates source dir, got: %v", err)
+	}
+
+	// (b) projDir is a deep subdir of templates (mimics a hook path).
+	deep := filepath.Join(templatesDir, ".claude", "hooks", "moai")
+	if err := os.MkdirAll(deep, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	writeContextUsage(deep, "sess-guard", 1, m, handoffStageSoft)
+	if _, err := os.Stat(usagePath(deep)); !os.IsNotExist(err) {
+		t.Errorf("(b) no file expected inside templates source subdir, got: %v", err)
+	}
+}
+
+// TestWriteContextUsage_TemplateSourceGuard_InertForNormalDir — the guard must
+// NOT trigger for a normal project dir; the existing write behavior is preserved.
+func TestWriteContextUsage_TemplateSourceGuard_InertForNormalDir(t *testing.T) {
+	t.Parallel()
+
+	proj := t.TempDir()
+	m := MemoryData{ContextWindowSize: 256_000, TokensUsed: 230_400, Available: true}
+	writeContextUsage(proj, "sess-normal", 1, m, handoffStageSoft)
+	if _, err := os.Stat(usagePath(proj)); err != nil {
+		t.Fatalf("file expected for normal dir (guard must be inert), got: %v", err)
+	}
+}
+
+// TestWriteContextUsage_TemplateSourceGuard_SubstringNoMatch — a dir whose name
+// merely CONTAINS the segment characters but is NOT a real
+// internal/template/templates path component must still get the write (guard
+// does not falsely trigger on substring matches).
+func TestWriteContextUsage_TemplateSourceGuard_SubstringNoMatch(t *testing.T) {
+	t.Parallel()
+
+	m := MemoryData{ContextWindowSize: 256_000, TokensUsed: 230_400, Available: true}
+	root := t.TempDir()
+
+	// (a) segments fused with X — not a path component.
+	fused := filepath.Join(root, "internalXtemplateXtemplates")
+	if err := os.MkdirAll(fused, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	writeContextUsage(fused, "sess-fused", 1, m, handoffStageSoft)
+	if _, err := os.Stat(usagePath(fused)); err != nil {
+		t.Errorf("(a) file expected for substring-only dir, got: %v", err)
+	}
+
+	// (b) real component path but with a _bar suffix on the last segment.
+	barDir := filepath.Join(root, "internal", "template", "templates_bar")
+	if err := os.MkdirAll(barDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	writeContextUsage(barDir, "sess-bar", 1, m, handoffStageSoft)
+	if _, err := os.Stat(usagePath(barDir)); err != nil {
+		t.Errorf("(b) file expected for _bar suffix dir, got: %v", err)
+	}
+}
+
+// TestIsTemplateSourceDir — direct unit test for the directory-component
+// boundary matcher. Covers the exact-match, subdir, substring-non-match, and
+// suffix-non-match cases across absolute and relative inputs.
+func TestIsTemplateSourceDir(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name string
+		dir  string
+		want bool
+	}{
+		{"empty", "", false},
+		{"exact templates dir (absolute)", "/home/user/repo/internal/template/templates", true},
+		{"subdir of templates (deep path)", "/home/user/repo/internal/template/templates/.claude/hooks/moai", true},
+		{"root-level templates dir", "/internal/template/templates", true},
+		{"substring fused no match", "/tmp/internalXtemplateXtemplates", false},
+		{"suffix _bar no match", "/tmp/internal/template/templates_bar", false},
+		{"normal project dir", "/home/user/myproject", false},
+		{"normal dir with internal subdir (not template tree)", "/home/user/myproject/internal/cli", false},
+		{"normal dir ending in template (singular)", "/home/user/repo/internal/template", false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			if got := isTemplateSourceDir(tt.dir); got != tt.want {
+				t.Errorf("isTemplateSourceDir(%q) = %v, want %v", tt.dir, got, tt.want)
+			}
+		})
+	}
+}
