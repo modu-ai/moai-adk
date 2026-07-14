@@ -102,6 +102,58 @@ $ grep -rn 'fmt\.Printf\|fmt\.Println\|fmt\.Print(' internal/cli/state.go | grep
                                                                                      → 0   (AC-TUX3-021 PASS)
 ```
 
+---
+
+### M3 milestone — migration.go (8 fmt.Print* → Data/Info/Success)
+
+**Scope**: `internal/cli/migration.go` (single-file DDD cycle) + new `internal/cli/migration_m3_test.go`. Follows the exact M2 pattern (state.go, committed 72e22b876).
+
+**8-call mapping applied** (no behavior change; channel re-routing for status messages only):
+
+| # | Line | Pre-migration | Post-migration | Channel |
+|---|------|---------------|----------------|---------|
+| 1 | 57   | `fmt.Println("실행할 pending 마이그레이션이 없습니다.")` | `p.Info("실행할 pending 마이그레이션이 없습니다.")` | stdout→stderr (status) |
+| 2 | 61   | `fmt.Printf("성공: %d개 마이그레이션 적용됨 (버전: %v)\n", ...)` | `p.Success("성공: %d개 마이그레이션 적용됨 (버전: %v)", ...)` | stdout→stderr (status) |
+| 3 | 103  | `fmt.Println(string(data))` | `_ = p.Data(string(data))` | stdout (JSON data) |
+| 4 | 110  | `fmt.Printf("현재 버전: %d\n", current)` | composed-string `lines[0]` | stdout (data) |
+| 5 | 112  | `fmt.Printf("Pending 마이그레이션 (%d개): %v\n", ...)` | composed-string `lines[1]` (pending>0) | stdout (data) |
+| 6 | 114  | `fmt.Println("Pending 마이그레이션 없음 (최신 상태)")` | composed-string `lines[1]` (pending==0) | stdout (data) |
+| 7 | 117  | `fmt.Printf("최근 적용: %s (버전 %d)\n", ...)` | composed-string `lines[2]` (lastApplied) | stdout (data) |
+| 8 | 157  | `fmt.Printf("성공: 버전 %d로 롤백됨\n", v)` | `p.Success("성공: 버전 %d로 롤백됨", v)` | stdout→stderr (status) |
+
+**DECISION 2026-07-14 (composed-string pattern)**: calls #4-#7 (human-format block) are composed into a single `[]string` and emitted via one `p.Data(strings.Join(lines, "\n"))`. This is byte-identical to the pre-migration sequential `fmt.Printf` block: `Data(non-JSON)` = `fmt.Fprintln(stdout, v)`, and `strings.Join(lines, "\n")` + Fprintln's trailing `\n` reproduces the sequential N-line output exactly. Golden-master tests (below) verify byte-identity empirically.
+
+**Channel convention (per CLAUDE.md internal/cli output-stream)**: stdout = machine-readable data (JSON + human block), stderr = human status messages (Info/Success). 3 status calls (#1, #2, #8) move stdout→stderr; 5 data calls (#3, #4, #5, #6, #7) stay stdout. This is the documented convention, not a behavior regression — the data payloads (what scripts pipe) are unchanged.
+
+**Korean strings preserved byte-for-byte (UTF-8)**: all 8 Korean strings carried verbatim into the new `p.Info` / `p.Success` / `p.Data` call arguments. No `\uXXXX` escapes introduced. `grep -rn 'fmt.Print' migration.go` = 0 (comment wording avoids the `fmt.Print*` substring to prevent the AC-TUX3-020 false-positive — comment says "sequential stdout writes").
+
+**Characterization tests** (`migration_m3_test.go`, 6 tests, all PASS):
+
+| Test | Branch covered | Assertion |
+|------|----------------|-----------|
+| `TestM3_Status_JSON_NoLastApplied` | line 103 (JSON Data) | stdout byte-identical 73-byte golden master; stderr empty |
+| `TestM3_Status_Human_NoPending_NoLastApplied` | lines 110+114 (human Data) | stdout byte-identical 72-byte golden master; stderr empty |
+| `TestM3_Status_Human_WithLastApplied` | lines 110+114+117 (human Data + lastApplied) | stdout byte-identical 120-byte golden master; stderr empty |
+| `TestM3_Status_JSON_WithLastApplied` | line 103 (JSON Data + nested lastApplied) | stdout byte-identical 172-byte golden master; stderr empty |
+| `TestM3_Run_NoPending` | line 57 (Info, channel change) | stdout empty; stderr contains Korean text |
+| `TestM3_PrinterFormats_UnreachableBranches` | lines 61, 112, 157 (byte-pin at Printer level) | apply-success, pending>0, rollback-success format strings byte-pinned |
+
+**Registry caveat**: the cli test binary does NOT import `internal/migration/migrations`, so m001/m002 never `Register()` and the registry is empty. This makes `Pending()` always empty and `Apply()` always return `[]`, so the apply-success (61), pending>0 (112), and rollback-success (157) branches cannot be reached via the Runner. Those three call sites are byte-pinned at the Printer-call level in `TestM3_PrinterFormats_UnreachableBranches`, using the identical Printer methods whose byte-identity the reachable command-level tests prove.
+
+**Verification (bounded verbatim outputs, redirected to `/tmp/m3-verify/`)**:
+```
+$ go build ./internal/cli/...                                                       → exit 0
+$ go vet ./internal/cli/...                                                         → exit 0
+$ go test ./internal/cli/ -run 'M3' -count=1 -v > /tmp/m3-verify/m3-tests.log       → exit 0 (6/6 PASS)
+$ go test ./internal/cli/... -count=1 > /tmp/m3-verify/cli-full.log                 → exit 0 (17 packages all ok)
+$ grep -rn 'fmt\.Print' internal/cli --include='*.go' | grep -v _test.go | wc -l
+                                                                                     → 19  (was 27 after M2; −8 this milestone; AC-TUX3-020 PARTIAL — M4 tmux 5 calls still pending, target 14)
+$ grep -c 'fmt\.Printf\|fmt\.Println\|fmt\.Print(' internal/cli/migration.go | tr -d ' '
+                                                                                     → 0   (AC-TUX3-021 PASS for migration.go)
+$ grep -cn 'p\.Data\|p\.Info\|p\.Success' internal/cli/migration.go | tr -d ' '
+                                                                                     → 6   (reachability: Data×2 + Info×1 + Success×2 + printer.New×3 construction sites)
+```
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 **M2-local readiness statement** (NOT full run-phase completion — M3/M4/M5 still pending):
