@@ -8,55 +8,80 @@ draft: false
 
 ## 개요
 
-MoAI-ADK v2.15+의 카탈로그 시스템은 모든 에이전트, 스킬, 플러그인, 규칙을 **3계층 매니페스트**로 관리합니다. `moai init --slim`을 사용하면 프로젝트에 필요한 최소 템플릿만 골라 배포하므로 초기화가 빨라지고, 프로젝트에 남는 파일도 가벼워집니다.
+MoAI-ADK의 카탈로그 시스템은 모든 에이전트, 스킬, 규칙을 **3계층 매니페스트**(`catalog.yaml`)로 관리합니다. 기본 배포는 **slim 모드**로 핵심 템플릿(core)만 배포하여 초기화가 빠르고 프로젝트에 남는 파일도 가벼워집니다. 전체 배포가 필요하면 `--all` 플래그를 사용합니다.
 
 ## 3계층 매니페스트
 
 모든 배포 대상은 세 계층 중 하나에 속합니다.
 
-| 계층 | 설명 | 배포 기준 |
-|------|------|----------|
-| **Tier 1 (Core)** | 핵심 인프라 — 오케스트레이터, 품질 게이트, 기본 스킬 | 항상 배포 |
-| **Tier 2 (Standard)** | 표준 확장 — 언어별 규칙, 프레임워크 스킬 | 프로젝트 언어/프레임워크 감지 시 |
-| **Tier 3 (Optional)** | 선택적 — 도메인 스킬, 플랫폼별 설정 | 명시적 요청 또는 프로젝트 설정 시 |
+| 계층 | catalog.yaml 키 | 설명 | 배포 기준 |
+|------|-----------------|------|----------|
+| **Core** | `catalog.core` | 핵심 인프라 — 오케스트레이터, 품질 게이트, 기본 스킬/에이전트 | 항상 배포 (slim 모드 기본) |
+| **Optional Packs** | `catalog.optional_packs` | 도메인 확장 — backend, frontend, design, devops, deployment, testing 팩 | `--all` 플래그 시 배포 |
+| **Harness-generated** | `catalog.harness_generated` | 하네스가 동적 생성한 에이전트/스킬 | `--all` 플래그 시 배포 |
 
 ## 카탈로그 파일
 
-카탈로그 매니페스트는 YAML 형식으로 정의됩니다.
+카탈로그 매니페스트는 `internal/template/catalog.yaml`에 YAML 형식으로 정의됩니다.
 
 ```yaml
-# 카탈로그 엔트리 예시
-- id: moai-workflow-tdd
-  tier: 1                    # 1=Core, 2=Standard, 3=Optional
-  type: skill
-  path: .claude/skills/moai/workflows/tdd.md
-  languages: []              # 빈 배열 = 모든 언어
-  frameworks: []
-  hash: abc123...             # 콘텐츠 해시 (무결성 검증)
+catalog:
+  core:                        # 항상 배포 (slim 모드 기본)
+    skills:
+      - name: moai-workflow-tdd
+        tier: core
+        path: templates/.claude/skills/moai-workflow-tdd/
+        hash: 6f89fb72...      # 콘텐츠 해시 (무결성 검증)
+        version: 1.0.0
+    agents:
+      - name: manager-spec
+        tier: core
+        path: templates/.claude/agents/moai/manager-spec.md
+        hash: a1b2c3d4...
+        version: 1.0.0
+  optional_packs:              # --all 플래그 시 배포
+    backend:
+      - name: moai-domain-backend
+        tier: optional-pack:backend
+        path: templates/.claude/skills/moai-domain-backend/
+        hash: ...
+    frontend:
+      - name: moai-domain-frontend
+        tier: optional-pack:frontend
+        path: templates/.claude/skills/moai-domain-frontend/
+        hash: ...
+  harness_generated:           # --all 플래그 시 배포
+    skills: []
+    agents:
+      - name: builder-harness
+        tier: harness-generated
+        path: templates/.claude/agents/moai/builder-harness.md
+        hash: ...
 ```
 
-`hash` 필드가 콘텐츠 해시를 담고 있어, 배포된 파일이 손상되거나 임의로 바뀌었는지 로더가 검증할 수 있습니다.
+각 엔트리는 `name`, `tier`, `path`, `hash`, `version` 필드를 가집니다. `hash` 필드가 콘텐츠 해시를 담고 있어, 배포된 파일이 손상되거나 임의로 바뀌었는지 로더가 검증할 수 있습니다. 스킬 디렉토리 내부의 진입점 파일은 `SKILL.md`입니다 (소문자 `skill.md`가 아님).
 
-## SlimFS 필터
+## Slim 모드와 --all 플래그
 
-`moai init --slim`은 SlimFS 필터를 통해 배포 파일을 제한합니다.
+기본 배포는 **slim 모드**로 `catalog.core`만 배포합니다. 전체 배포가 필요하면 `--all` 플래그 또는 `MOAI_DISTRIBUTE_ALL=1` 환경변수를 사용합니다.
 
 ```bash
-# 전체 설치 (모든 계층)
+# Slim 설치 (기본 — core만)
 moai init my-project
 
-# Slim 설치 (Tier 1 + 감지된 Tier 2만)
-moai init --slim my-project
+# 전체 설치 (core + optional_packs + harness_generated)
+moai init --all my-project
+
+# 환경변수로 전체 설치
+MOAI_DISTRIBUTE_ALL=1 moai init my-project
 ```
 
-### 필터 로직
+### 배포 로직
 
-필터는 네 단계로 동작합니다.
+배포는 두 단계로 동작합니다.
 
-1. Tier 1은 항상 포함
-2. 프로젝트 언어 감지 (Go, Python, TypeScript 등)
-3. 감지된 언어에 해당하는 Tier 2 항목만 포함
-4. Tier 3은 제외
+1. `catalog.core` (skills + agents)는 항상 포함 — slim 모드의 기본
+2. `--all` 플래그 또는 `MOAI_DISTRIBUTE_ALL=1` 환경변수가 설정된 경우 `catalog.optional_packs`와 `catalog.harness_generated`를 추가 배포
 
 ## Typed Loader
 
@@ -72,21 +97,20 @@ moai init --slim my-project
 ### 프로젝트 초기화
 
 ```bash
-# 일반 초기화 — 모든 템플릿 배포
+# 기본 초기화 — core만 배포 (slim 모드)
 moai init my-project
 
-# Slim 초기화 — 최소 템플릿만 배포
-moai init --slim my-project
+# 전체 초기화 — core + optional_packs + harness_generated
+moai init --all my-project
 ```
 
 ### 업데이트
 
-업데이트도 같은 카탈로그를 기준으로 동작하므로, slim으로 초기화한 프로젝트는 slim으로 업데이트하면 됩니다.
+`moai update`는 동일한 카탈로그를 기준으로 동작합니다. slim으로 초기화한 프로젝트는 core만, `--all`로 초기화한 프로젝트는 전체를 업데이트합니다.
 
 ```bash
 # 카탈로그 기반 업데이트
-moai update                  # 모든 계층 업데이트
-moai update --slim           # slim 모드로 업데이트
+moai update                  # 초기화 모드에 따라 자동 결정
 ```
 
 ## 관련 문서

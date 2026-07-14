@@ -130,20 +130,33 @@ TODO 주석을 코드베이스 전반에서 추적하는 CLI 도구를 설계 �
 
 | 모드 | 특징 | 필요 조건 |
 |------|------|---------|
-| **인프로세스 (in-process)** | 모든 팀원이 메인 터미널 안에서 동작 | 추가 설정 없음 (기본값) |
-| **스플릿 페인 (split panes)** | 팀원마다 별도 창을 띄움 | tmux 또는 iTerm2 필요 (v2.1.186+) |
+| **인프로세스** (in-process) | 모든 팀원이 메인 터미널 안에서 동작 | 추가 설정 없음 (기본값) |
+| **스플릿 페인** (split panes) | 팀원마다 별도 창을 띄움 | tmux 또는 iTerm2 (`it2` CLI) 필요 |
 
-기본값은 **in-process** (v2.1.179부터, 이전에는 `"auto"`였음)이므로, 어디서든 추가 설정 없이 쓸 수 있습니다. 만약 split-pane 모드로 강제하고 싶다면:
+기본값은 `in-process`입니다 (v2.1.179부터, 이전에는 `auto`였음). 어디서든 추가 설정 없이 쓸 수 있으며, split-pane 모드로 전환하려면 `teammateMode` 설정 값을 변경합니다.
+
+`teammateMode`에 지정할 수 있는 값은 네 가지입니다.
+
+| 값 | 동작 | 비고 |
+|------|------|------|
+| `in-process` | 모든 팀원이 메인 터미널에서 동작 | 기본값 (v2.1.179+) |
+| `auto` | tmux 세션 안이거나 `it2` CLI가 설치된 iTerm2면 split pane, 그 외에는 in-process로 폴백 | v2.1.179 이전 기본값 |
+| `tmux` | split-pane 강제 — 터미널 환경에 따라 tmux 또는 iTerm2를 자동 감지 | tmux 설치 필요 |
+| `iterm2` | iTerm2 네이티브 split pane 강제 | v2.1.186+, `it2` CLI 필요 |
+
+`~/.claude/settings.json`에서 지정합니다.
 
 ```json
 {
-  "teammateMode": "in-process"
+  "teammateMode": "auto"
 }
 ```
 
-위 값을 원하는 모드로 바꾸거나, 단일 세션 한정으로 `--teammate-mode in-process` 플래그로 강제할 수 있습니다.
+단일 세션 한정으로 `--teammate-mode auto` 플래그로 덮어쓸 수도 있습니다.
 
-팀원은 기본적으로 리더의 `/model` 선택을 상속하지 않습니다. 프롬프트에서 모델을 지정하지 않았을 때 사용할 모델은 `/config`의 **Default teammate model**에서 설정합니다.
+split-pane 모드에는 외부 도구가 필요합니다. tmux는 시스템 패키지 매니저로 설치하고, iTerm2는 [`it2` CLI](https://github.com/mkusaka/it2) 설치 후 iTerm2 설정 (Settings → General → Magic → Enable Python API)에서 Python API를 활성화해야 합니다.
+
+팀원은 기본적으로 리더의 `/model` 선택을 상속하지 않습니다. 프롬프트에서 모델을 지정하지 않았을 때 사용할 모델은 `/config`의 **Default teammate model**에서 설정합니다. 단, v2.1.186부터 팀원은 리더의 effort level을 상속합니다 (split-pane 모드에서는 v2.1.186부터 적용, 이전 버전은 리더의 effort를 전달하지 않음).
 
 ## 품질 게이트 hook
 

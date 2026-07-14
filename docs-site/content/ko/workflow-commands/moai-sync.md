@@ -73,11 +73,15 @@ Run 단계가 완료된 후 실행합니다:
 
 | 플래그    | 설명                 | 예시                 |
 | --------- | -------------------- | -------------------- |
-| `--pr`   | changelog 프롬프트 건너뛰고 PR 자동 열기 | `/moai sync --pr` |
-| `--merge` | 완료 후 PR 자동 병합 | `/moai sync --merge` |
+| `--pr`   | changelog 프롬프트 건너뛰고 PR 자동 열기 (Tier L 또는 리뷰 필요 시) | `/moai sync --pr` |
 | `--skip-mx` | MX 태그 검사 건너뛰기 | `/moai sync --skip-mx` |
-| `--team`  | 에이전트 팀 모드 강제 | `/moai sync --team`   |
-| `--solo`  | 하위 에이전트 모드 강제 | `/moai sync --solo`   |
+
+{{< callout type="warning" >}}
+`--merge` 및 `--team` / `--solo` 플래그는 **Deprecated** 또는 **제거**되었습니다.
+
+- `--merge`: Hybrid Trunk 1-person OSS 운영에서 Tier S/M은 main 직접 push가 기본 동작이므로 PR 자동 병합이 더 이상 필요하지 않습니다. Tier L에서 PR을 생성한 후 병합이 필요하면 `gh pr merge`를 수동으로 실행하세요.
+- `--team` / `--solo`: Agent Teams 정적 오케스트레이션 계층이 RETIRED되었습니다. `--team`은 `MODE_TEAM_UNAVAILABLE` 폴백을 발생시키며, 서브에이전트 모드가 유일한 모드이므로 `--solo`도 의미가 없습니다.
+{{< /callout >}}
 
 ### --pr 플래그
 
@@ -89,25 +93,18 @@ changelog 프롬프트를 건너뛰고 자동으로 PR을 엽니다:
 
 **사용 사례**: changelog 정보를 수동으로 입력하지 않고 빠르게 PR을 만들고 싶을 때. changelog는 PR 리뷰 중에 나중에 추가할 수 있습니다.
 
-### --merge 플래그
+### Tier-based PR 라우팅
 
-Sync 완료 후 자동으로 PR을 병합하고 브랜치를 정리합니다:
+PR 생성 여부는 SPEC tier에 따라 자동 결정됩니다 (Hybrid Trunk 1-person OSS 기본 동작):
 
-```bash
-> /moai sync --merge
-```
+| Tier | PR 생성 | 실행 주체 |
+| ---- | ------- | --------- |
+| **Tier S** (≤ 300 LOC, < 5 files) | main 직접 push (PR 없음) | manager-develop 또는 orchestrator |
+| **Tier M** (300-1000 LOC, 5-15 files) | main 직접 push (PR 없음) | manager-develop 또는 orchestrator |
+| **Tier L** (> 1000 LOC 또는 constitutional) | `feat/SPEC-XXX` 브랜치에서 PR via manager-git | manager-git |
+| **명시적 `--pr`** (모든 tier) | `feat/SPEC-XXX` 브랜치에서 PR via manager-git | manager-git |
 
-**작업 흐름:**
-
-1. CI/CD 상태 확인 (gh pr checks)
-2. 머지 충돌 확인 (gh pr view --json mergeable)
-3. 통과 및 병합 가능 시: 자동 병합 (gh pr merge --squash --delete-branch)
-4. develop 브랜치로 체크아웃, pull, 로컬 브랜치 삭제
-
-{{< callout type="info" >}}
-  `--merge` 옵션은 **CI/CD가 통과한 경우에만** PR을 자동 병합합니다. 안전한
-  자동화를 보장합니다.
-{{< /callout >}}
+Tier S/M은 CI 4 status checks + pre-push hook이 안전을 보장하므로 main에 직접 push합니다. Tier L은 광범위한 scope로 인해 PR review window와 풀 CI 매트릭스 검증이 필요합니다.
 
 **토큰 효율화 전략:**
 
@@ -160,18 +157,13 @@ flowchart TD
     W -->|FAIL| G
     W -->|PASS| X["Phase 3<br/>Git 작업"]
 
-    X --> Y["manager-git 호출<br/>변경 파일 스테이징"]
+    X --> Y["변경 파일 스테이징"]
     Y --> Z["커밋 생성"]
-    Z --> AA{"--merge 플래그?"}
-    AA -->|예| AB["PR 상태 확인"]
-    AB --> AC["자동 병합"]
-    AB --> AD["병합 건너뜀"]
-    AC --> AE["완료"]
-    AD --> AE
-    AA -->|아니오| AF{"Team 모드?"}
-    AF -->|예| AG["PR Ready 전환"]
-    AF -->|아니오| AE
-    AG --> AE
+    Z --> AA{"Tier L 또는 --pr?"}
+    AA -->|예| AB["manager-git 호출<br/>PR 생성 (feat/SPEC-XXX)"]
+    AB --> AC["완료"]
+    AA -->|아니오| AD["main 직접 push<br/>(Tier S/M, Hybrid Trunk)"]
+    AD --> AC
 ```
 
 ## 단계별 상세
@@ -270,19 +262,16 @@ test-runner, linter, type-checker, code-review의 상태를 집계하고 전체 
 - 동기화된 문서, 프로젝트 수리, SPEC 업데이트를 나열하는 단일 커밋 생성
 - git log로 커밋 검증
 
-**Step 2 - PR Ready 전환 (Team 모드만):**
+**Step 2 - Tier-based PR 라우팅:**
 
-- git_strategy.mode에서 설정 확인
-- Team 모드이면: Draft PR에서 Ready로 전환 (gh pr ready)
-- 설정된 경우 리뷰어 지정 및 라벨 할당
-- Personal 모드이면: 건너뜀
+SPEC tier에 따라 Git 작업 경로가 결정됩니다:
 
-**Step 3 - 자동 병합 (--merge 플래그 시):**
+- **Tier S/M** (기본): main 브랜치에 직접 push. CI 4 status checks + pre-push hook이 안전을 보장합니다.
+- **Tier L 또는 `--pr` 플래그**: `feat/SPEC-XXX` 브랜치에서 manager-git이 PR을 생성합니다 (`gh pr create`). PR 생성 후 리뷰어 지정 및 라벨 할당이 수행됩니다.
 
-- gh pr checks로 CI/CD 상태 확인
-- gh pr view --json mergeable로 머지 충돌 확인
-- 통과하고 병합 가능하면: gh pr merge --squash --delete-branch 실행
-- develop 체크아웃, pull, 로컬 브랜치 삭제
+{{< callout type="info" >}}
+`--merge` 플래그는 Deprecated되었습니다. Tier L PR을 병합하려면 CI 통과 후 `gh pr merge --squash --delete-branch`를 수동으로 실행하세요.
+{{< /callout >}}
 
 ### Phase 4: 완료 및 다음 단계
 
@@ -320,8 +309,8 @@ test-runner, linter, type-checker, code-review의 상태를 집계하고 전체 
 | -------------- | ------------------------ |
 | 다음 SPEC 생성 | `/moai plan` 실행        |
 | 새 세션 시작   | `/clear` 실행            |
-| PR 검토        | Team 모드: gh pr view    |
-| 개발 계속      | Personal 모드: 계속 작업 |
+| PR 검토        | Tier L: `gh pr view`     |
+| 개발 계속      | Tier S/M: 계속 작업      |
 
 ## 생성되는 문서
 
@@ -438,6 +427,21 @@ Sync 단계의 품질 기준은 Run 단계보다 문서 중심입니다:
   품질 게이트를 통과하지 못하면 문서 생성과 PR 생성이 **중단**됩니다. 먼저
   `/moai run`으로 돌아가 코드 문제를 수정하거나, `/moai fix`로 빠르게 오류를
   수정하세요.
+{{< /callout >}}
+
+## Sync 단계 Human Gates
+
+Sync 과정에는 두 개의 HUMAN GATE가 존재합니다. 이 게이트는 자동 통과 대상이 아니며, FAIL 또는 INCONCLUSIVE 판정 시 체인이 중단됩니다.
+
+| 게이트 | 이름 | 시점 | 역할 |
+| ------ | ---- | ---- | ---- |
+| `gate-sync-1` | Pre-Sync Quality | Phase 3 진입 전 | 작업 트리가 clean하고 모든 테스트가 통과하는지 확인 |
+| `gate-sync-2` | Documentation Scope | 문서 생성 범위 승인 | divergence report를 사용자가 검토하고 문서 재생성 범위 승인 |
+
+`gate-sync-1`은 코드 품질이 sync 진입 조건을 만족하는지 검증합니다 — 테스트 실패나 더러운 작업 트리가 있으면 문서 생성으로 진행하지 않습니다. `gate-sync-2`는 어떤 문서를 다시 생성할지 사용자가 확인하는 승인 단계입니다 — 자동 생성이 의도치 않은 문서 변경을 만드는 것을 방지합니다.
+
+{{< callout type="warning" >}}
+sync-auditor 판정이 FAIL/INCONCLUSIVE이거나 게이트가 차단하면 체인이 중단됩니다. 게이트 통과 없이 자동 완료되지 않습니다.
 {{< /callout >}}
 
 ## 워크트리 컨텍스트 Auto-Merge
@@ -561,7 +565,7 @@ Phase 2: 문서 동기화
 ```bash
 Phase 3: Git 작업
   커밋 생성: docs(auth): synchronize documentation for SPEC-AUTH-001
-  PR 상태: Draft → Ready (Team 모드)
+  Push: main 직접 push (Tier M, Hybrid Trunk)
 ```
 
 **4단계: 생성된 PR 확인**
@@ -577,7 +581,7 @@ $ gh pr view 42
 
 ### Q: PR을 자동으로 만들고 싶지 않으면?
 
-`git-strategy.yaml`에서 `auto_pr: false`로 설정하면 커밋까지만 자동으로 수행합니다. PR은 원하는 시점에 직접 만들 수 있습니다.
+Tier S/M SPEC은 Hybrid Trunk 운영에서 기본적으로 main에 직접 push하므로 PR이 생성되지 않습니다. Tier L에서도 PR 대신 커밋만 남겨두려면, sync 완료 후 수동으로 `git push` 시점을 조절할 수 있습니다.
 
 ### Q: CHANGELOG 형식을 바꿀 수 있나요?
 

@@ -13,9 +13,12 @@
 "utility-commands":
   title: "实用命令"
   weight: 40
-design:
-  title: "设计系统"
-  weight: 60
+"cost-optimization":
+  title: "成本优化"
+  weight: 50
+guides:
+  title: "指南"
+  weight: 85
 worktree:
   title: "Git 工作树"
   weight: 90

@@ -1,327 +1,94 @@
 ---
-title: "Multi-LLM CI 가이드"
-description: "GitHub Actions에서 여러 AI 모델로 코드 리뷰 자동화"
+title: "GitHub 연동 가이드"
+description: "moai github 서브커맨드로 이슈를 파싱하고 SPEC과 연결하기"
 draft: false
 weight: 10
 ---
 
-MoAI-ADK의 Multi-LLM CI 기능으로 GitHub Actions에서 여러 LLM 코드 리뷰를
-설정하는 방법을 안내합니다. 리뷰어도 하나의 모델에 묶일 이유가 없습니다 —
-모델마다 강점과 단가가 다르므로, PR 리뷰에도 멀티 LLM 배분이라는 토크노믹스
-관점이 그대로 적용됩니다.
+MoAI-ADK의 GitHub 연동 기능은 GitHub 이슈를 파싱하고 SPEC 문서와 연결하는
+경량 CLI 도구를 제공합니다. 모든 명령은 로컬에 설치된 `gh` CLI를 통해
+현재 리포지토리의 이슈 데이터를 가져옵니다.
 
-## 개요
+> **범위 안내**: 이 페이지는 실제로 배포되는 `moai github` 서브커맨드와
+> 함께 제공되는 GitHub Actions 자산만 다룹니다. 여러 LLM을 PR에 패널로
+> 붙이는 "멀티 LLM 리뷰 패널"은 현재 배포 릴리스에 포함되어 있지 않습니다.
 
-### Multi-LLM CI란?
-
-MoAI-ADK의 Multi-LLM CI 기능은 GitHub Actions에서 여러 AI 모델로 동시에 코드 리뷰를 수행하는 통합 CI/CD 파이프라인을 제공합니다.
-
-### 지원하는 LLM
-
-| LLM | 제공자 | 트리거 방식 | 특징 |
-|-----|--------|-------------|------|
-| **Claude** | Anthropic | `/claude` 코멘트 | Issue/PR 리뷰, OAuth 인증 |
-| **Codex** | OpenAI | PR open 자동 | 비공개 레포 전용 |
-| **Gemini** | Google | PR open 자동 | API Key 인증 |
-| **GLM** | Zhipu AI | PR open 자동 | 토큰 인증 |
-
-## 시작하기
-
-### 사전 요구사항
+## 사전 요구사항
 
 - MoAI-ADK 설치 (macOS · Linux · Windows)
-- GitHub repository
-- 각 LLM 계정 및 API 토큰
+- GitHub CLI (`gh`) 설치 및 인증 (`gh auth login`)
+- GitHub 리포지토리
 
-### 초기 설정
+## moai github 서브커맨드
 
-```bash
-moai github init
-```
+`moai github`는 두 개의 활성 서브커맨드를 제공합니다. 공통으로
+`--dry-run` 플래그를 지원하여 실제 변경 없이 수행할 작업만 미리 볼 수
+있습니다.
 
-이 명령이 수행하는 작업:
-- `.github/workflows/` 디렉토리 생성
-- workflow 템플릿 배포
-- composite actions 배포
-- GitHub Secrets 설정 가이드
-
-### LLM 인증 설정
+### 이슈 파싱: `moai github parse-issue`
 
 ```bash
-# Claude (OAuth)
-moai github auth claude
-
-# Codex (비공개 레포)
-moai github auth codex
-
-# Gemini
-moai github auth gemini
-
-# GLM
-moai github auth glm
+moai github parse-issue 123
 ```
 
-### GitHub Secrets 설정
+`gh` CLI로 지정한 번호의 이슈를 가져와 번호·제목·작성자·라벨·본문
+요약·코멘트 수를 카드 형태로 출력합니다.
 
-각 LLM별 필요한 Secrets:
-- `CLAUDE_CODE_OAUTH_TOKEN` - Claude OAuth 토큰
-- `CODEX_AUTH_JSON` - Codex 인증 JSON (base64 인코딩)
-- `GEMINI_API_KEY` - Gemini API Key
-- `GLM_API_KEY` - GLM API Token
-
-### 첫 번째 PR 테스트
-
-PR을 생성하면 자동으로 LLM Panel 코멘트가 추가됩니다:
-
-```markdown
-## LLM Code Review Status
-
-| LLM | Status |
-|-----|--------|
-| Claude | Pending (add `/claude` comment) |
-| Codex | ✓ Ready |
-| Gemini | ⚠️ Token missing |
-| GLM | ✓ Ready |
-
-Trigger individual reviews:
-- Add `/claude` comment to trigger Claude
-- Add `/codex` comment to trigger Codex
-- Add `/gemini` comment to trigger Gemini
-- Add `/glm` comment to trigger GLM
-```
-
-## LLM 인증 설정
-
-### Claude 설정
-
-#### OAuth 토큰 발급
-
-1. [Claude Code](https://claude.ai/download) 설치
-2. 로그인 후 OAuth 토큰 발급
-3. `.claude/settings.local.json`에 자동 저장
-
-#### moai github auth claude
+### SPEC 연결: `moai github link-spec`
 
 ```bash
-moai github auth claude
+moai github link-spec 123 SPEC-ISSUE-123
 ```
 
-**대화형 설정 프로세스:**
-```
-Claude OAuth 토큰을 찾을 수 없습니다.
-Claude Code를 설치하고 로그인해 주시겠습니까? (y/n): y
-
-[확인됨] OAuth 토큰이 settings.local.json에 저장되었습니다.
-GitHub Secret: CLAUDE_CODE_OAUTH_TOKEN에 다음 값을 설정하세요:
-<token-value>
-```
-
-### Codex 설정 (비공개 레포 전용)
-
-#### 인증 JSON 생성
-
-```json
-{
-  "token": "sk-...",
-  "base_url": "https://api.openai.com/v1"
-}
-```
-
-#### moai github auth codex
+GitHub 이슈와 SPEC 문서 사이에 양방향 링크를 만들고, 그 매핑을
+`.moai/github-spec-registry.json`에 저장합니다. SPEC ID는 저장 전에
+형식 검증을 거칩니다.
 
 ```bash
-moai github auth codex
+# 실제 변경 없이 계획만 확인
+moai github link-spec 123 SPEC-ISSUE-123 --dry-run
 ```
 
-**대화형 설정:**
-```
-OpenAI auth.json 파일 경로: ~/.codex/auth.json
-파일을 읽어 GitHub Secret을 생성합니다...
-주의: Codex는 비공개 레포에서만 사용 가능합니다 (REQ-SEC-001)
+## 함께 배포되는 GitHub Actions 자산
 
-생성된 Secret:
-CODEX_AUTH_JSON=eyJ0...
-```
+`moai init`은 `.github/` 아래에 다음 두 자산을 배포합니다.
 
-### Gemini 설정
+### Label Sync 워크플로우 (`.github/workflows/label-sync.yml`)
 
-```bash
-moai github auth gemini
-```
+`.github/labels.yml`을 단일 진실 공급원으로 삼아 리포지토리 라벨을
+동기화합니다.
 
-API Key 입력 후 자동으로 GitHub Secret 설정 가이드 제공.
+- **트리거**: `workflow_dispatch` (수동, `dry_run` 입력 지원) 또는
+  `.github/labels.yml` / 워크플로우 파일이 `main`에 push될 때 자동 실행
+- **권한**: `issues: write`, `pull-requests: write`, `contents: read`
+- **동작**: EndBug/label-sync 액션으로 `labels.yml` → 리포 라벨 반영
 
-### GLM 설정
+### detect-language 컴포지트 액션 (`.github/actions/detect-language/action.yml`)
 
-```bash
-moai github auth glm
-```
+리포지토리의 첫 번째 소스 파일 확장자를 기준으로 주 언어를 감지하여
+`language` 출력값으로 내보냅니다.
 
-GLM 토큰 경로 (`~/.moai/.env.glm`)에서 자동 읽기.
-
-## Workflow 템플릿 이해
-
-### llm-panel.yml
-
-**트리거:** PR opened
-
-**역할:** 각 LLM의 상태를 시각적으로 표시하는 패널 코멘트 자동 생성
-
-**비고:** `/claude`, `/codex`, `/gemini`, `/glm` 코멘트로 개별 리뷰 트리거
-
-### claude.yml / claude-code-review.yml
-
-- **claude.yml**: Issue 트리거 (초안 리뷰)
-- **claude-code-review.yml**: PR 트리거 (변경사항 리뷰)
-
-**특징:** `/claude` 코멘트로만 트리거
-
-### codex-review.yml
-
-**보안 제약:**
-- `private` 레포에서만 동작 (REQ-SEC-001)
-- `visibility` 체크로 공개 레포 차단
-
-**workflow:**
-```yaml
-private-guard:
-  runs-on: ubuntu-latest
-  steps:
-    - name: Check Repository Visibility
-      run: |
-        if [[ "${{ github.repository_visibility }}" == "public" ]]; then
-          echo "::error::Codex review is restricted to private repositories"
-          exit 1
-        fi
-```
-
-### gemini-review.yml
-
-- 자동 언어 감지 (detect-language action)
-- PR synchronized 시 자동 트리거
-
-### glm-review.yml
-
-- GLM 전용 환경 설정 (setup-glm-env action)
-- 환경 변수 자동 주입
-
-### Composite Actions
-
-#### detect-language
-
-**입력:** repository 루트 경로
-**출력:** language 환경 변수 (`detected_language`)
-
-**지원 언어:** Go, Python, TypeScript, JavaScript, Rust, Java, Kotlin, C#, Ruby, PHP, Elixir, C++, Scala, R, Flutter, Swift (16개)
-
-#### setup-glm-env
-
-GLM 팀 모드에서 필요한 환경 변수 설정:
-- `ANTHROPIC_AUTH_TOKEN` (GLM endpoint)
-- `ANTHROPIC_BASE_URL` (https://glm.modu-ai.kr)
-
-## 고급 설정
-
-### github-actions.yaml 커스터마이징
-
-#### 기본 구조
-
-```yaml
-# .moai/config/sections/github-actions.yaml
-llm_review:
-  enabled: true
-  runners:
-    claude: true
-    codex: true
-    gemini: true
-    glm: true
-  triggers:
-    on_pr_open: true
-    on_comment:
-      claude: "/claude"
-      codex: "/codex"
-      gemini: "/gemini"
-      glm: "/glm"
-```
-
-#### 언어별 LLM 할당
-
-```yaml
-language_rules:
-  go:
-    - gemini
-    - claude
-  python:
-    - claude
-    - glm
-  typescript:
-    - codex
-    - claude
-```
-
-### Runner 버전 관리
-
-#### 자동 업데이트 확인
-
-```bash
-moai github status
-```
-
-**출력 예시:**
-```
-✓ GitHub Actions Runner
-  Version: 2.700.1 (10 days old)
-  Status: OK
-
-⚠️ Update available: 2.701.0
-Run: moai doctor --fix
-```
-
-#### Doctor 통합
-
-```bash
-moai doctor
-```
-
-runner 버전 체크가 시스템 진단에 통합됩니다.
+- **지원 언어 (16개)**: Go, Python, TypeScript, JavaScript, Rust, Java,
+  Kotlin, C#, Ruby, PHP, Elixir, C++, Scala, R, Flutter, Swift
+- **구현 메모**: `find ... -print -quit`로 첫 매치 후 즉시 종료하여
+  `set -o pipefail` 환경에서 broken-pipe 실패를 피합니다
 
 ## 트러블슈팅
 
-### PR 코멘트 트리거가 동작하지 않을 때
+### `gh` 명령을 찾을 수 없을 때
 
-#### Checklist
+`moai github` 서브커맨드는 로컬 `gh` CLI에 의존합니다. `gh --version`으로
+설치를 확인하고, `gh auth login`으로 인증을 마치세요.
 
-1. GitHub Actions workflow가 활성화되어 있는가?
-   - Repository → Actions → workflows 확인
+### 이슈를 가져오지 못할 때
 
-2. GitHub Secrets가 설정되어 있는가?
-   - Settings → Secrets and variables → Actions
+현재 디렉터리가 대상 리포지토리의 작업 트리 안에 있는지, 그리고 `gh`가
+해당 리포에 접근 권한이 있는지 확인하세요.
 
-3. Workflow permissions이 올바른가?
-   - `contents: read`, `pull-requests: write` 필요
+### SPEC ID 검증 실패
 
-### LLM별 에러 대응
-
-#### Claude
-
-**Error:** `CLAUDE_CODE_OAUTH_TOKEN expired`
-**해결:** `moai github auth claude` 재실행
-
-#### Codex
-
-**Error:** `repository visibility check failed`
-**원인:** 공개 레포에서 Codex 사용 시도
-**해결:** 레포를 비공개로 전환
-
-#### Gemini
-
-**Error:** `GEMINI_API_KEY quota exceeded`
-**해결:** Google Cloud Console에서 quota 증설
-
-#### GLM
-
-**Error:** `GLM_API_KEY authentication failed`
-**해결:** `~/.moai/.env.glm` 토큰 확인
+`link-spec`은 `SPEC-` 접두사를 따르는 유효한 SPEC ID만 받습니다. ID
+형식을 확인한 뒤 재실행하세요.
 
 ## 다음 단계
 

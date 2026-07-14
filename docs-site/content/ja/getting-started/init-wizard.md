@@ -4,7 +4,7 @@ weight: 50
 draft: false
 ---
 
-MoAI-ADK のインタラクティブ設定ウィザードで初期設定を完了しましょう。9つのステップを通じて、言語、Git 自動化の範囲、実行モードを開発環境に合わせて構成します。ここで決めた値はすべて `.moai/config/sections/` 配下の YAML ファイルに保存されるため、後からいつでもファイルを直接編集したり、ウィザードを再実行して変更できます。
+MoAI-ADK のインタラクティブな設定ウィザードで最初の設定を完了しましょう。言語、Git 自動化の範囲、モデルポリシー、ハーネスプロファイルを開発環境に合わせて構成します。ここで決めた値はすべて `.moai/config/sections/` 配下の YAML ファイルに保存されるので、後からいつでもファイルを直接直したりウィザードを再実行したりして変更できます。
 
 ## 設定ウィザードの開始
 
@@ -16,11 +16,11 @@ MoAI-ADK のインタラクティブ設定ウィザードで初期設定を完�
 moai init my-project
 ```
 
-このコマンドは `my-project` フォルダを作成し、MoAI-ADK を初期化します。
+このコマンドは `my-project` フォルダを作成し MoAI-ADK を初期化します。
 
-### 現在のフォルダにインストール
+### 既存フォルダへのインストール
 
-既存プロジェクトに MoAI-ADK をインストールするには、そのフォルダに移動してから実行します:
+既存プロジェクトに MoAI-ADK をインストールするには、該当フォルダに移動して実行してください:
 
 ```bash
 cd my-existing-project
@@ -28,10 +28,33 @@ moai init
 ```
 
 {{< callout type="info" >}}
-`moai init` は現在のフォルダに直接インストールします。新規プロジェクトは `moai init <プロジェクト名>` で作成してください。
+`moai init` は現在のフォルダにそのままインストールします。新規プロジェクトは `moai init <プロジェクト名>` で作成してください。
 {{< /callout >}}
 
-## 9ステップの設定プロセス
+## ウィザードモード
+
+初期化ウィザードは質問の深さに応じて 3 つのモードで動作します。
+
+| モード | フラグ | 質問範囲 |
+|------|--------|----------|
+| **Quick** (デフォルト値) | (なし) | 核心設定のみ — 言語、名前、Git、モデルポリシー |
+| **Standard** | `--standard` | Quick + Phase 1 質問 (project mode, harness profile, LSP, quality, design) |
+| **Advanced** | `--advanced` | Standard + Phase 2 質問 (前提条件を満たす場合のみ) |
+
+```bash
+# 基本ウィザード (Quick)
+moai init my-project
+
+# Phase 1 質問を含む
+moai init my-project --standard
+
+# Phase 1 + Phase 2 質問を含む
+moai init my-project --advanced
+```
+
+## Quick モード (デフォルト)
+
+フラグなしで実行すると核心設定のみを尋ねます。ほとんどのユーザーに十分です。
 
 ### ステップ 1: 会話言語の選択
 
@@ -39,19 +62,17 @@ Claude が応答する言語を選択します。
 
 ```bash
 ? 会話言語を選択してください:
-▸ English - English
-  Korean (한국어) - Korean
-  Japanese (日本語) - Japanese
-  Chinese (中文) - Chinese
+▸ English
+  Korean (한국어)
+  Japanese (日本語)
+  Chinese (中文)
 ```
 
-{{< callout type="info" >}}
-言語選択は後から `.moai/config/sections/language.yaml` ファイルで変更できます。
-{{< /callout >}}
+この設定は `.moai/config/sections/language.yaml` に保存されます。
 
 ### ステップ 2: 名前の入力
 
-設定ファイルに使用されます。Enter を押してスキップできます。
+設定ファイルに使われるユーザー名です。Enter を押してスキップできます。
 
 ```bash
 ? 名前を入力: [名前]
@@ -59,21 +80,21 @@ Claude が応答する言語を選択します。
 
 ### ステップ 3: Git 自動化モードの選択
 
-Claude が実行できる Git 操作の範囲を設定します。
+Claude が行える Git 作業の範囲を設定します。
 
 ```bash
 ? Git 自動化モードを選択:
-▸ Manual - AI はコミットやプッシュを行わない
-  Personal - AI がブランチ作成とコミットを実行可能
-  Team - AI がブランチ作成、コミット、PR 作成まで実行可能
+▸ Manual - AI がコミットやプッシュをしない
+  Personal - AI がブランチ生成およびコミット可能
+  Team - AI がブランチ生成、コミット、PR 生成が可能
 ```
 
-**Manual**: AI が Git 操作を実行しません。すべてのコミットとプッシュはユーザーが直接実行します。
-**Personal**: AI がブランチを作成しコミットできます。個人プロジェクトに適しています。
-**Team**: AI がブランチ作成、コミット、PR 作成まで実行します。チームコラボレーションのワークフローに最適化されています。
+- **Manual**: AI が Git 作業を行いません。すべてのコミットとプッシュはユーザーが自ら実行します。
+- **Personal**: AI がブランチを生成しコミットできます。個人プロジェクトに適しています。
+- **Team**: AI がブランチ生成、コミット、PR 生成まで行います。チーム協業ワークフローに最適化されています。
 
 {{< callout type="info" >}}
-Git 設定は `.moai/config/sections/git-strategy.yaml` ファイルに保存されます。`moai update -c` コマンドでいつでも再設定できます。
+Git 設定は `.moai/config/sections/git-strategy.yaml` ファイルに保存されます。
 {{< /callout >}}
 
 ### ステップ 4: Git プロバイダーの選択
@@ -86,79 +107,111 @@ Git 設定は `.moai/config/sections/git-strategy.yaml` ファイルに保存さ
   GitLab - GitLab.com またはセルフホスト GitLab
 ```
 
-### ステップ 5: Git コミットメッセージ言語の選択
+### ステップ 5: コミットメッセージ言語
 
-コミットメッセージの作成に使用する言語を選択します。
+コミットメッセージ作成に使う言語を選択します。コードコメント言語と異なる設定にできます。
 
-```bash
-? Git コミットメッセージ言語を選択:
-▸ Korean (한국어) - 韓国語でコミット
-  English - 英語でコミット
-  Japanese (日本語) - 日本語でコミット
-  Chinese (中文) - 中国語でコミット
-```
+### ステップ 6: コードコメント言語
 
-{{< callout type="info" >}}
-コミットメッセージの言語は、コードコメントの言語とは別に設定できます。
-{{< /callout >}}
+コードコメントに使う言語を選択します。ほとんどのプロジェクトでは英語を推奨します。
 
-### ステップ 6: コードコメント言語の選択
+### ステップ 7: ドキュメント言語
 
-コードコメントに使用する言語を選択します。
+ドキュメントファイルに使う言語を選択します。
+
+### ステップ 8: パフォーマンスティア (モデルポリシー)
+
+エージェントに割り当てる AI モデルティアを選択します — トークノミクスの核心設定です。
 
 ```bash
-? コードコメント言語を選択:
-▸ Korean (한국어) - 韓国語でコメント
-  English - 英語でコメント
-  Japanese (日本語) - 日本語でコメント
-  Chinese (中文) - 中国語でコメント
+? パフォーマンスティアを選択:
+▸ medium (推奨) - 品質とコストのバランス
+  max - 最高品質、計画・監査に Opus 割り当て
+  low - 経済的、Sonnet 中心の配分
 ```
 
-{{< callout type="info" >}}
-ほとんどのプロジェクトでは、コードコメントの言語として英語を使うことをおすすめします。
-{{< /callout >}}
+| ティア | 特徴 |
+|------|------|
+| **max** | 最高品質 — 計画・監査に Opus 割り当て、最大の推論深度 |
+| **medium** (デフォルト値) | 品質とコストのバランス |
+| **low** | 経済的 — Sonnet 中心の配分 |
 
-### ステップ 7: ドキュメント言語の選択
+この設定は `.moai/config/sections/llm.yaml` の `performance_tier` フィールドに保存されます。
 
-ドキュメントファイルに使用する言語を選択します。
+### ステップ 9: 料金プランタイプ (plan_type)
+
+課金方式に応じたモデル割り当てプロファイルを選択します。
 
 ```bash
-? ドキュメント言語を選択:
-▸ Korean (한국어) - 韓国語でドキュメント
-  English - 英語でドキュメント
-  Japanese (日本語) - 日本語でドキュメント
-  Chinese (中文) - 中国語でドキュメント
+? 料金プランタイプを選択:
+▸ subscription (推奨) - サブスクリプション料金プラン (週間割当量の最適化)
+  api - API 使用量ベースの課金 (タスク別のコスト最適化)
 ```
 
-### ステップ 8: Agent Teams 実行モードの選択
+この設定は `.moai/config/sections/llm.yaml` の `plan_type` フィールドに保存されます。同じパフォーマンスティアでも料金プランタイプに応じてモデル割り当てが変わります。
 
-MoAI が Agent Teams (並列) または sub-agents (順次) を使用するように設定します。
+## Standard モード (Phase 1 質問)
+
+`--standard` フラグを与えると Quick モードのすべての質問に加えて Phase 1 質問が表示されます。
+
+### project mode
+
+プロジェクトの協業モードを選択します。
 
 ```bash
-? Agent Teams 実行モードを選択:
-▸ Auto (推奨) - 作業の複雑さに基づくインテリジェントな選択
-  Sub-agent (クラシック) - 従来の単一エージェントモード
-  Team (実験的) - 並列 Agent Teams (実験的機能が必要)
+? Select project mode:
+▸ Personal (Recommended) - Solo developer
+  Team - Multi-developer setup
 ```
 
-**Auto**: 作業の複雑さに応じて自動的に最適なモードを選択します。ほとんどの場合に推奨されます。
-**Sub-agent**: 単一のエージェントが順次作業を処理します。依存関係が強い作業に適しています。
-**Team**: 複数の専門エージェントが並列で協業します。`CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1` 環境変数が必要です。
+### harness evaluator profile
 
-### ステップ 9: チームメイト表示モードの選択
-
-Agent チームメイトの表示方法を設定します。分割画面には tmux が必要です。
+品質評価者のデフォルトプロファイルを選択します。
 
 ```bash
-? チームメイト表示モードを選択:
-▸ Auto (推奨) - tmux が利用可能なら tmux、なければ in-process (既定値)
-  In-Process - 同じターミナルで実行 (どこでも動作)
-  Tmux - tmux 分割画面 (tmux/iTerm2 が必要)
+? Select default harness evaluator profile:
+▸ default
+  strict
+  lenient
+  frontend
 ```
 
-**Auto**: tmux のインストール有無を自動検出し、最適な表示モードを選択します。
-**In-Process**: チームメイトの作業が同じターミナルウィンドウで実行されます。tmux なしでも動作します。
-**Tmux**: tmux の分割画面でチームメイトの作業を視覚的に確認できます。
+### LSP integration
+
+run ステップで言語サーバー診断を有効化するか選択します。デフォルト値は無効 (opt-in) です。
+
+### quality gates
+
+TRUST 5 品質ゲートの強制有無とカバレッジ例外の許可有無を選択します。
+
+- **Enforce quality gates** (デフォルト値: Yes) — 品質ゲート失敗時に実装の進行を遮断
+- **Allow coverage exemptions** (デフォルト値: No) — 特定のファイル/パッケージをカバレッジ対象から除外
+
+### design workflow
+
+MoAI デザインパイプラインと Claude Design 連携を有効化するか選択します。
+
+- **Enable design workflow** (デフォルト値: Yes)
+- **Enable Claude Design integration** (デフォルト値: Yes、design 有効化時のみ表示)
+
+## Advanced モード (Phase 2 質問)
+
+`--advanced` フラグは `--standard` を含み、追加で Phase 2 質問を表示します。Phase 2 質問は run ステップ完了などの前提条件が満たされた場合にのみ表示され、条件がなければ自動的にスキップされ案内メッセージが出力されます。
+
+## 非対話型モード (CI/CD)
+
+フラグですべての値を指定するとウィザードなしで初期化できます:
+
+```bash
+moai init my-project \
+  --non-interactive \
+  --project-mode personal \
+  --model-policy medium \
+  --plan-type subscription \
+  --harness-profile default \
+  --enable-lsp=false \
+  --enforce-quality
+```
 
 ## 設定完了
 
@@ -166,40 +219,18 @@ Agent チームメイトの表示方法を設定します。分割画面には t
 
 ```mermaid
 graph TD
-    A[.moai/] --> B[config/]
-    A --> C[specs/]
-    A --> D[memory/]
-    B --> E[sections/]
-    E --> F[user.yaml]
-    E --> G[language.yaml]
-    E --> H[quality.yaml]
-    E --> I[git-strategy.yaml]
-```
-
-生成された設定ファイルを確認してみましょう:
-
-```bash
-cat .moai/config/sections/user.yaml
-```
-
-## 設定の構造
-
-```mermaid
-graph TB
-    A[.moai/config/sections/] --> B[user.yaml<br>ユーザー情報]
-    A --> C[language.yaml<br>言語設定]
-    A --> D[quality.yaml<br>品質設定]
-    A --> E[git-strategy.yaml<br>Git 設定]
-
-    B --> B1[name]
-    C --> C1[conversation_language<br>commit_language, code_comments<br>documentation_language]
-    D --> D1[development_mode<br>enforce_quality<br>test_coverage_target]
-    E --> E1[strategy: manual/personal/team<br>auto_commit, auto_push<br>pr_workflow]
+    A[".moai/"] --> B["config/"]
+    A --> C["specs/"]
+    A --> D["memory/"]
+    B --> E["sections/"]
+    E --> F["user.yaml"]
+    E --> G["language.yaml"]
+    E --> H["quality.yaml"]
+    E --> I["llm.yaml"]
+    E --> J["git-strategy.yaml"]
 ```
 
 ## 設定の修正
-
-設定はいつでも修正できます:
 
 ### 手動修正
 
@@ -210,31 +241,24 @@ vim .moai/config/sections/user.yaml
 # 言語設定
 vim .moai/config/sections/language.yaml
 
+# モデルポリシー (パフォーマンスティア)
+vim .moai/config/sections/llm.yaml
+
 # 品質設定
 vim .moai/config/sections/quality.yaml
-
-# Git 設定
-vim .moai/config/sections/git-strategy.yaml
 ```
 
 ### 再設定
 
-設定ウィザードを再実行して、すべての設定を再構成できます:
+設定ウィザードを再実行して構成を変更できます:
 
 ```bash
 # 設定ウィザードの再実行 (推奨)
 moai update -c
-
-# または全体を初期化
-moai init --reset
 ```
 
 {{< callout type="info" >}}
-`moai update -c` コマンドは、既存の設定を維持しながら、変更したい項目だけを選択的に再設定できます。
-{{< /callout >}}
-
-{{< callout type="warning" >}}
-`moai init --reset` オプションは既存の設定をすべて上書きします。重要な設定はバックアップしておいてください。
+`moai update -c` コマンドは既存の設定を維持しながら変更したい項目だけを選択的に再設定できます。
 {{< /callout >}}
 
 ## 設定の検証
@@ -245,18 +269,11 @@ moai init --reset
 moai doctor
 ```
 
-このコマンドは以下を検証します:
-
-- Git のインストール有無
-- プロジェクト構造 (`.moai/` フォルダ)
-- 設定ファイル (`.moai/config/config.yaml`)
-- 言語別の開発ツール検出 (`--verbose` で詳細確認)
-
-すべての項目が合格すると `All checks passed` メッセージが表示されます。不足しているツールがある場合は、`moai doctor --fix` で修正提案を受けられます。
+このコマンドは Git のインストール有無、プロジェクト構造 (`.moai/` フォルダ)、設定ファイル、言語別の開発ツールを検証します。`--verbose` で詳細を確認できます。
 
 ## 次のステップ
 
-設定が完了したら、[クイックスタート](./quickstart) ガイドに従って最初のプロジェクトを作成してみましょう。全コマンドとオプションはいつでも確認できます:
+設定が完了したら [クイックスタート](./quickstart) ガイドに従って最初のプロジェクトを作成してみましょう。
 
 ```bash
 moai --help

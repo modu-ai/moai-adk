@@ -22,6 +22,8 @@ v3 的第二大支柱 **智能体回路工程** 实际运转的地方就是本�
 | `/moai goal` | 条件声明型自主回路 | 持续轮次直到满足完成条件 | 想声明"直到所有测试通过"这样的终态时 |
 | `/moai loop` | 迭代修复回路 | 反复执行诊断 → 修复 → 验证 | 想一次性解决多个错误时 |
 | `/moai fix` | 一次性自动修复 | 诊断 → 修复 → 完成(1 回) | 想快速修复 lint 错误或类型错误时 |
+| `/moai gate` | 提交前质量门禁 | lint·格式化·类型·测试并行检查(<30 秒) | 提交前想快速确认通过/失败时 |
+| `/moai mx` | @MX 代码注释 | 扫描代码库 → 插入 @MX 标签 | 想植入 AI 上下文用的代码锚点·风险标注时 |
 | `/moai clean` | 移除死代码 | 静态分析 → 使用图 → 安全移除 | 想清理未使用代码时 |
 | `/moai codemaps` | 架构文档生成 | 代码库扫描 → 自动生成结构文档 | 想生成项目架构文档时 |
 | `/moai feedback` | 提交反馈 | 自动创建 GitHub Issue | 想向 MoAI-ADK 提交 Bug 报告或改进建议时 |
@@ -39,6 +41,8 @@ flowchart TD
     B --> G["/moai fix<br/>一次性自动修复"]
     C --> H["/moai clean<br/>移除死代码"]
     C --> I["/moai codemaps<br/>架构文档生成"]
+    C --> K["/moai gate<br/>提交前质量门禁"]
+    C --> L["/moai mx<br/>@MX 代码注释"]
     D --> J["/moai feedback<br/>提交反馈"]
 
     E -->|内部使用| F
@@ -53,6 +57,8 @@ flowchart TD
 - "直到满足这个条件为止自己搞定" → `/moai goal`
 - 代码错误很多,想反复修复 → `/moai loop`
 - 只想快速修复简单的 lint 错误 → `/moai fix`
+- 提交前只想快速确认通过/失败 → `/moai gate`
+- 想植入 AI 上下文用的代码注释(@MX) → `/moai mx`
 - 想清理未使用的代码 → `/moai clean`
 - 想生成项目架构文档 → `/moai codemaps`
 - MoAI-ADK 本身有问题 → `/moai feedback`

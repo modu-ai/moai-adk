@@ -27,6 +27,29 @@ Harness v4 Builder 通过基于苏格拉底式访谈的 4-phase 工作流(ANALYZ
 | GENERATE | 生成 `.claude/agents/harness/` 智能体文件、`.moai/harness/manifest.json` |
 | ACTIVATE | 注册团队并激活 `/harness:<name>` 命令 |
 
+## 单一 `harness` 子命令路由
+
+`moai harness` 是单一 Cobra 子命令树,根据第一个参数($ARGUMENTS 的第一个 token)分流到三条路径之一 —— 是一种不引入额外命令的 **argument-branching 路由**。
+
+| 第一个 token | 路由目标 | 说明 |
+| ------- | ----------- | ---- |
+| `status` / `apply` / `rollback` / `disable` | **Branch A — 学习生命周期** | 观察积累 → 模式 → 规则 → 自动进化建议的 4 层学习系统管理 |
+| `list` / `edit` / `remove` / `doctor` | **Branch A.1 — v4 生命周期** | 枚举已生成的 harness、编辑、原子删除、引用完整性诊断 |
+| 其他(自然语言) | **Branch B — harness 构建入口** | 用 v4 Builder 的 ANALYZE → PLAN → GENERATE → ACTIVATE 4-phase 生成新 harness |
+
+```mermaid
+flowchart TD
+    A["moai harness &lt;第一个 token&gt;"] --> B{"预留动词?"}
+    B -->|status / apply / rollback / disable| C["Branch A<br/>学习生命周期"]
+    B -->|list / edit / remove / doctor| D["Branch A.1<br/>v4 生命周期"]
+    B -->|自然语言请求| E["Branch B<br/>harness 构建入口"]
+    E --> F["ANALYZE → PLAN → GENERATE → ACTIVATE"]
+    C --> G["文件系统操作<br/>(Go 二进制 Cobra 子命令)"]
+    D --> G
+```
+
+所有动词都通过 `moai harness <verb>` Go 二进制 Cobra 子命令树同样地 dispatch —— 学习动词与 v4 动词并不分离到不同的 Go 二进制。
+
 ## 使用方法
 
 ### 第 1 步: 用自然语言请求创建团队
@@ -65,72 +88,75 @@ Builder 自动执行 4-phase:
 
 MoAI 分析 SPEC 复杂度后,按照 manifest 的 phase 顺序自动向团队成员委派工作。
 
-## Harness 管理命令
+## Harness v4 生命周期管理 (Branch A.1)
 
-### harness list
+已生成的 harness 用 `moai harness` 子命令管理。四个 v4 生命周期动词以 Go 二进制 Cobra 子命令 dispatch。
 
-查看所有已创建的挽具列表:
+### moai harness list
+
+查看所有已生成的 harness 列表:
 
 ```bash
-/harness list
+moai harness list
 ```
 
-### harness:<name> status
+输出信息:harness 名称、领域、入口命令、manifest 中声明的调度(仅在声明时显示)。
 
-查看特定挽具的详细信息:
+### moai harness edit <name>
+
+显示 manifest.json 与智能体定义文件路径以引导编辑 —— manifest 是 SSOT:
 
 ```bash
-/harness:backend-team status
+moai harness edit backend-team
 ```
 
-输出信息:
-- 团队成员列表及角色
-- 使用的模型 (inherit, haiku, sonnet, opus)
-- 可选的 worktree 隔离设置
-- Manifest 版本及创建日期
+编辑对象:
+- `.claude/commands/harness/<name>/manifest.json` (SSOT)
+- `.claude/agents/harness/hns-<name>*-specialist.md` (专家定义)
+- `.claude/skills/hns-<name>*/` (伴随技能)
 
-### harness:<name> edit
+### moai harness remove <name>
 
-编辑 manifest.json 与智能体定义:
-
-```bash
-/harness:backend-team edit
-```
-
-可修改的项目:
-- 添加/移除团队成员
-- 技能预加载列表
-- Worktree 隔离策略
-- 各角色的提示词
-
-### harness:<name> remove
-
-删除挽具及关联文件:
+原子地删除 harness 及所有关联文件:
 
 ```bash
-/harness:backend-team remove
+moai harness remove backend-team
 ```
 
 被删除的项目:
-- `.claude/agents/harness/` 智能体定义
-- `.moai/harness/manifest.json`
-- 已注册的 `/harness:<name>` 命令
-- Worktree 隔离策略
+- `.claude/commands/harness/<name>.md` (thin-wrapper command)
+- `.claude/commands/harness/<name>/manifest.json` (SSOT)
+- `.claude/workflows/hns-<name>-run.js` (Runner)
+- `.claude/agents/harness/hns-<name>*-specialist.md` (专家)
+- `.claude/skills/hns-<name>*/` (伴随技能)
 
-## 挽具学习生命周期 — 递归式自我学习
+{{< callout type="warning" >}}
+`remove` 以 fail-closed 方式运行 —— 若产出物中缺少任何一个,则中止删除并报告缺失文件。保证不留下 orphan 产出物。
+{{< /callout >}}
 
-挽具不是创建完就结束的静态产物。通过 `/moai harness` 子命令管理 **学习子系统** 的生命周期。
+### moai harness doctor
+
+验证所有 harness 引用完整性的 smoke gate:
+
+```bash
+moai harness doctor
+```
+
+检查项目:
+- 所有 harness 的 manifest / specialist / skill 文件是否存在
+- manifest 与产出物之间的交叉引用是否一致
+- 调度声明的 schema 有效性(无效时为 ERROR 严重度)
+
+## 挽具学习生命周期 — 递归式自我学习 (Branch A)
+
+harness 不是创建完就结束的静态产物。用 `moai harness` 子命令管理 **学习子系统** 的生命周期。学习动词(status / apply / rollback / disable)路由到 Branch A。
 
 | 命令 | 说明 |
 |--------|------|
-| `moai harness status` | 查看学习状态(观察数、模式、建议) |
-| `moai harness apply` | 应用建议(需通过用户批准门禁) |
-| `moai harness rollback` | 回滚上一次应用 |
-| `moai harness disable` | 禁用学习 |
-| `moai harness list` (v4) | 列出所有学习规则 |
-| `moai harness edit` (v4) | 直接编辑规则 |
-| `moai harness remove` (v4) | 删除规则 |
-| `moai harness doctor` (v4) | 诊断学习系统 |
+| `moai harness status` | 查看学习状态(观察数、模式、建议、tier 分布、rate-limit 窗口) |
+| `moai harness apply` | 应用 Tier-4 建议(需通过编排器 AskUserQuestion 批准门禁) |
+| `moai harness rollback <YYYY-MM-DD>` | 回滚到指定日期的快照(日期参数必需) |
+| `moai harness disable` | 禁用学习(设置 harness.yaml `learning.enabled: false`) |
 
 **4 层学习阶梯** — 观察越积累,学习层级越高:
 
@@ -139,13 +165,27 @@ MoAI 分析 SPEC 复杂度后,按照 manifest 的 phase 顺序自动向团队成
 | TierObservation | ≥1 | 单纯记录 |
 | TierHeuristic | ≥3 | 模式识别 |
 | TierRule | ≥5 | 形成规则 |
-| TierAutoUpdate | ≥10 | 自动更新(必须经用户批准) |
+| TierAutoUpdate | ≥10 | 自动更新建议(必须经用户批准) |
 
-**产出物**: `.moai/harness/` 目录 (usage-log.jsonl, learned-rules.yaml)
+**产出物**: `.moai/harness/` 目录 (usage-log.jsonl, learned-rules.yaml, proposals/, learning-history/snapshots/)
+
+### Tier-4 应用门禁
+
+Tier-4 (TierAutoUpdate) 建议在修改文件前 **必须** 经过编排器发起的 `AskUserQuestion` 轮次。工作流本体在编排器的主上下文中运行,子智能体不能直接调用 `AskUserQuestion` —— 子智能体需要用户输入时返回结构化 blocker report,由编排器重新执行门禁。
+
+批准时执行 5-layer safety pipeline:
+
+1. **FrozenGuard** —— path-prefix check(阻断受保护路径的修改)
+2. **Schema validation** —— 建议字段的 schema 验证
+3. **Diff inspection** —— 检查变更内容
+4. **Rate-limit window** —— 每周最多 3 次,24 小时冷却(harness.yaml `rate_limit` SSOT)
+5. **Snapshot creation** —— 把修改前的快照保存到 `.moai/harness/learning-history/snapshots/<ISO-DATE>/`
 
 {{< callout type="warning" >}}
-自动演化始终只在 **用户批准门禁** 之下应用。评估者与批准权限位于演化回路之外,并且随时可以用 `moai harness rollback` 恢复。
+`moai harness apply --execute --id <proposal-id>` CLI 路径是 **独立的 ungated trust boundary** —— 不经 `AskUserQuestion` 批准门禁,直接以 Go execute pipeline 应用。CLI 进程无法向用户提示,因此 `--execute` 是为在调用前已通过其他方式获得批准的调用者准备的显式 opt-in。默认 `apply`(无 `--execute`)是 payload-only,仅输出 JSON 而不修改文件。
 {{< /callout >}}
+
+自动演化始终只在 **用户批准门禁** 之下应用。随时可以用 `moai harness rollback <YYYY-MM-DD>` 恢复。
 
 ## Manifest 结构
 

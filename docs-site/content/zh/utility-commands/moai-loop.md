@@ -66,14 +66,27 @@ draft: false
 限制迭代次数:
 
 ```bash
-# 最多迭代 10 次
-> /moai loop --max 10
+# 最多迭代 20 次
+> /moai loop --max 20
 ```
 
 {{< callout type="warning" >}}
-  为防止无限循环,默认值为 100 次。大多数情况下 10 次以内即可
-  完成。
+  为防止无限循环,默认值为 10 次 (`ralph.yaml` 的 `loop.max_iterations`)。
+  迭代上限优先级依次为 CLI `--max` 标志 > `ralph.yaml` `loop.max_iterations` >
+  `workflow.yaml` `loop_prevention.max_iterations`。
 {{< /callout >}}
+
+### --lens 标志
+
+除默认扫描镜头(LSP · lint · 测试失败 · 评审镜头 [安全, @MX])之外,用 opt-in 镜头拓宽扫描范围:
+
+| 镜头 | 追加的问题 |
+|------|---------------|
+| `clean` | 死代码(未使用函数·import·文件) |
+| `simplify` | 过度设计(over-engineering)发现项 |
+| `coverage` | 覆盖率不足之处(仅在覆盖率门禁开启时供给问题) |
+
+只有镜头发现的东西才会进入队列,循环绝不执行扫描队列之外的"凭空改进"。
 
 ## 执行过程
 
@@ -312,11 +325,14 @@ DONE
 
 ### Q: 只想修复特定类型的错误?
 
-请使用 `--stop-on` 标志:
+请使用 `--errors` 标志只修复错误、跳过警告,或用 `--lens` 标志调整扫描范围:
 
 ```bash
-# 在 Level 3 及以上中断(安全、逻辑错误手动处理)
-> /moai loop --stop-on 3
+# 只修复错误(跳过警告)
+> /moai loop --errors
+
+# 添加死代码、覆盖率透镜
+> /moai loop --lens clean,coverage
 ```
 
 ### Q: `/moai loop` 和 `/moai` 有什么区别?
@@ -329,7 +345,7 @@ DONE
 
 ### Q: 回路陷入死锁状态怎么办?
 
-AI 连续 5 次重复同一错误时,会自动中断并请求用户介入。此时请直接查看代码或提供提示。
+AI 连续 N 次未能解决同一失败签名时(停滞检测),会自动中断并附带 5 段式证据判定请求用户介入。此时请直接查看代码或提供提示。
 
 ## 相关文档
 

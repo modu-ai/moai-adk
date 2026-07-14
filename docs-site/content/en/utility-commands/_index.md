@@ -22,6 +22,8 @@ This section is where v3's second pillar, **agentic loop engineering**, actually
 | `/moai goal` | Condition-declared autonomous loop | Keeps taking turns until the completion condition holds | When you want to declare an end state like "until all tests pass" |
 | `/moai loop` | Iterative fix loop | Repeats diagnose → fix → verify | When you want to knock out many errors at once |
 | `/moai fix` | One-shot auto-fix | Diagnose → fix → done (once) | When you want to fix lint or type errors quickly |
+| `/moai gate` | Pre-commit quality gate | Lint · format · type · test in parallel (<30s) | When you want a fast pass/fail check before committing |
+| `/moai mx` | @MX code annotations | Codebase scan → @MX tag insertion | When you want to plant AI-context code anchors and danger markers |
 | `/moai clean` | Dead-code removal | Static analysis → usage graph → safe removal | When you want to clean up unused code |
 | `/moai codemaps` | Architecture doc generation | Codebase scan → auto-generated structure docs | When you want to produce project architecture docs |
 | `/moai feedback` | Submit feedback | Auto-creates a GitHub issue | When sending a bug report or improvement proposal to MoAI-ADK |
@@ -39,6 +41,8 @@ flowchart TD
     B --> G["/moai fix<br/>one-shot auto-fix"]
     C --> H["/moai clean<br/>dead-code removal"]
     C --> I["/moai codemaps<br/>architecture doc generation"]
+    C --> K["/moai gate<br/>pre-commit quality gate"]
+    C --> L["/moai mx<br/>@MX code annotations"]
     D --> J["/moai feedback<br/>submit feedback"]
 
     E -->|used internally| F
@@ -53,6 +57,8 @@ flowchart TD
 - "Work on your own until this condition is met" → `/moai goal`
 - Lots of errors in the code you want fixed iteratively → `/moai loop`
 - Just want simple lint errors fixed fast → `/moai fix`
+- Just want a fast pass/fail check before committing → `/moai gate`
+- Want to plant AI-context code annotations (@MX) → `/moai mx`
 - Want to clean up unused code → `/moai clean`
 - Want to produce project architecture docs → `/moai codemaps`
 - A problem with MoAI-ADK itself → `/moai feedback`

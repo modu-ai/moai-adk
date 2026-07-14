@@ -269,6 +269,49 @@ flowchart TD
 - **审查文档**: 打开生成的文件进行审查
 - **开始新会话**: 清空上下文重新开始
 
+## 扩展阶段 (Phase 8-16)
+
+在基础文档生成 (Phase 0-4) 之后,`/moai project` 会执行综合配置项目环境的扩展阶段。
+
+```mermaid
+flowchart TD
+    A["Phase 4: 完成<br/>(基础文档生成)"] --> B["Phase 8<br/>harness-spec.yaml"]
+    B --> C["Phase 11<br/>MCP 供给"]
+    C --> D["Phase 12<br/>Dev Methodology"]
+    D --> E["Phase 13<br/>DB 检测"]
+    E --> F["Phase 14<br/>完成摘要"]
+    F --> G{"生成 harness?"}
+    G -->|是| H["Phase 15<br/>进入 v4 Builder"]
+    H --> I["Phase 16<br/>5-Layer 激活"]
+    G -->|否| J["结束"]
+    I --> J
+```
+
+### Phase 8: harness-spec.yaml 桥接
+
+从访谈答复生成 `.moai/project/harness-spec.yaml`。该文件以 8 字段 schema 把项目上下文传递给 harness 构建器,起桥接作用 —— 无需用户交互,从 interview.md 答复中自动提取。
+
+### Phase 11: MCP 服务器供给
+
+检测技术栈,并从 `mcp-matrix.yaml` 中选择合适的 MCP 服务器。编排器批准后以追加写入 (additive write) 记入 `.mcp.json` —— 不覆盖既有的 MCP 设置。
+
+### Phase 13: DB 检测
+
+用 Grep/Glob 检测 DB 关键字以生成 `db-detection.json`。支持的 DB 引擎类别:
+
+- **Relational/SQL**: PostgreSQL, MySQL, MariaDB, SQLite, Oracle, SQL Server, CockroachDB, Supabase, Neon, Planetscale
+- **NoSQL Document**: MongoDB, Firestore, Firebase, Couchbase
+- **NoSQL Key-Value**: Redis, DynamoDB, Cassandra, ScyllaDB, Riak
+- **Search/Analytics**: Elasticsearch, ClickHouse, Snowflake, InfluxDB
+
+### Phase 15-16: v4 Builder 联动
+
+Phase 15 重定向到 v4 harness 构建器 —— Context-First Discovery + 编排器直接的 4-phase Builder (ANALYZE → PLAN → GENERATE → ACTIVATE) 生成 harness。Phase 16 通过安装 CLAUDE.md 标记 + 注册 main.md 路由器执行 5-Layer 激活,并在生成后运行 smoke gate。
+
+{{< callout type="info" >}}
+Phase 15-16 是可选阶段 —— `/moai project` 执行时若需要生成 harness 则进行,否则在 Phase 14 完成。
+{{< /callout >}}
+
 ## 何时使用?
 
 ### 必须执行的情况

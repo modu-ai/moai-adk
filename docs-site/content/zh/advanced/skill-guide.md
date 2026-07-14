@@ -238,6 +238,23 @@ triggers:
   个人技能务必创建在 `.claude/skills/my-skills/` 目录。
 {{< /callout >}}
 
+### 技能命名空间
+
+技能前缀区分 **分发主体**,`moai update` 的行为也不同。
+
+| 前缀 | 所有权 | `moai update` 行为 |
+|--------|--------|-------------------|
+| `moai-*` / `moai-harness-*` | template-managed | 覆盖 (sync) |
+| `hns-*` | user-owned (harness) | 保留 (禁止修改·删除) |
+| (无前缀) / 其他 | user-owned (个人) | 保留 |
+
+`hns-*` 前缀表示用户创建的 harness 技能,`moai update` 绝不覆盖或删除。不得把 `hns-*` 技能镜像到模板中(CI 守卫会检测)。
+
+{{< callout type="warning" >}}
+  **注意**:带 `moai-*` 前缀的技能在 MoAI-ADK 更新时会被覆盖。
+  个人技能与 harness 技能请创建在 `hns-*` 前缀或无前缀的目录。
+{{< /callout >}}
+
 ### 技能文件结构
 
 每个技能的 `skill.md` 遵循以下结构。

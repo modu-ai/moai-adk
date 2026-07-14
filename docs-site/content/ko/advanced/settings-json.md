@@ -105,8 +105,8 @@ MoAI-ADK는 4개의 설정 파일 위치를 사용합니다.
   "fileSuggestion": {},
   "alwaysThinkingEnabled": false,
   "maxThinkingTokens": 0,
-  "statusLine": {},
-  "outputStyle": "",
+  "statusLine": { "type": "command", "command": "moai statusline" },
+  "outputStyle": "MoAI-Easy",
   "cleanupPeriodDays": 30,
   "env": {}
 }
@@ -218,7 +218,7 @@ Claude Code가 실행할 수 있는 명령어의 권한을 관리합니다. 권�
 ```json
 {
   "permissions": {
-    "defaultMode": "default",
+    "defaultMode": "acceptEdits",
     "allow": [],
     "ask": [],
     "deny": [],
@@ -230,17 +230,17 @@ Claude Code가 실행할 수 있는 명령어의 권한을 관리합니다. 권�
 
 ### defaultMode
 
-Claude Code를 열 때의 기본 권한 모드입니다.
+Claude Code를 열 때의 기본 권한 모드입니다. 유효한 값은 다음 4가지입니다.
 
 | 값 | 설명 |
 |-----|------|
-| `"acceptEdits"` | 파일 편집 자동 허용 |
-| `"allowEdits"` | 파일 편집 허용 |
-| `"rejectEdits"` | 파일 편집 거부 |
-| `"default"` | 기본 동작 |
+| `"default"` | 기본 동작 — 각 작업마다 사용자 확인 |
+| `"acceptEdits"` | 파일 편집 자동 허용 (기본값) |
+| `"plan"` | 계획 모드 — 읽기 전용, 파일 수정 불가 |
+| `"bypassPermissions"` | 모든 권한 자동 허용 (위험, `disableBypassPermissionsMode`로 차단 가능) |
 
 {{< callout type="info" >}}
-**참고**: 현재 MoAI-ADK 설정 파일은 `"defaultMode": "default"`를 사용합니다. 이는 레거시 값일 수 있습니다.
+**기본값**: MoAI-ADK 템플릿은 `"defaultMode": "acceptEdits"`를 사용합니다. 이는 개발 흐름에서 파일 편집 프롬프트를 줄이면서 위험 명령은 여전히 확인하도록 균형을 맞춥니다.
 {{< /callout >}}
 
 ### allow (자동 허용)
@@ -697,9 +697,9 @@ Claude Code 하단에 표시되는 상태 표시줄을 설정합니다.
 {
   "statusLine": {
     "type": "command",
-    "command": "${SHELL:-/bin/bash} -l -c 'uv run --no-sync moai-adk statusline'",
+    "command": "moai statusline",
     "padding": 0,
-    "refreshInterval": 300
+    "refreshInterval": 10
   }
 }
 ```
@@ -715,11 +715,11 @@ Claude Code 하단에 표시되는 상태 표시줄을 설정합니다.
 
 ```json
 {
-  "outputStyle": "R2-D2"
+  "outputStyle": "MoAI-Easy"
 }
 ```
 
-출력 스타일은 Claude Code의 응답 형식을 결정합니다. `settings.local.json`에서 개인 선호 스타일로 변경할 수 있습니다.
+출력 스타일은 Claude Code의 응답 형식을 결정합니다. MoAI-ADK 템플릿은 기본값으로 `"MoAI-Easy"`를 사용하며, `settings.local.json`에서 개인 선호 스타일로 변경할 수 있습니다.
 
 ## 환경 변수 설정
 
@@ -748,7 +748,7 @@ Claude Code 하단에 표시되는 상태 표시줄을 설정합니다.
 ```json
 {
   "env": {
-    "ENABLE_TOOL_SEARCH": "auto:5",
+    "ENABLE_TOOL_SEARCH": "1",
     "CLAUDE_AUTOCOMPACT_PCT_OVERRIDE": "50"
   }
 }
@@ -758,7 +758,7 @@ Claude Code 하단에 표시되는 상태 표시줄을 설정합니다.
 
 | 변수 | 값 | 설명 |
 |------|-----|------|
-| `ENABLE_TOOL_SEARCH` | `"auto"`, `"auto:N"`, `"true"`, `"false"` | 도구 검색 제어 |
+| `ENABLE_TOOL_SEARCH` | `"1"`, `"auto"`, `"auto:N"`, `"true"`, `"false"` | 도구 검색 제어 (MoAI 기본값: `"1"`) |
 | `CLAUDE_AUTOCOMPACT_PCT_OVERRIDE` | `1`-`100` | 자동 압축 트리거 백분율 (기본값: ~95%) |
 | `CLAUDE_CODE_ENABLE_TELEMETRY` | `"1"` | OpenTelemetry 데이터 수집 활성화 |
 | `CLAUDE_CODE_DISABLE_BACKGROUND_TASKS` | `"1"` | 백그라운드 작업 비활성화 |
@@ -767,7 +767,7 @@ Claude Code 하단에 표시되는 상태 표시줄을 설정합니다.
 | `HTTPS_PROXY` | URL | HTTPS 프록시 서버 |
 
 {{< callout type="info" >}}
-**팁**: `ENABLE_TOOL_SEARCH` 값 `"auto:5"`는 컨텍스트 사용량이 5%일 때 도구 검색을 활성화합니다. `"auto"`는 기본 10%, `"true"`는 항상 켜기, `"false"`는 항상 끕니다.
+**팁**: MoAI-ADK 템플릿은 `ENABLE_TOOL_SEARCH`를 `"1"`로 설정합니다 — 지연 도구 로딩(deferred tool preload)을 활성화하여 세션 시작 시 전체 도구 스키마를 로드하지 않고 필요할 때 검색해 로드합니다. `"auto"`는 컨텍스트 사용량 10%에서 활성화, `"auto:N"`은 N%에서 활성화, `"false"`는 항상 끕니다.
 {{< /callout >}}
 
 ### 도구 검색 상세
@@ -801,8 +801,7 @@ Claude Code 하단에 표시되는 상태 표시줄을 설정합니다.
       "Bash(bun add:*)"
     ]
   },
-  ],
-  "outputStyle": "Mr.Alfred"  // 개인 선호 출력 스타일
+  "outputStyle": "MoAI-Easy"  // 개인 선호 출력 스타일
 }
 ```
 
@@ -844,9 +843,9 @@ MoAI-ADK는 사용자 정의 상태 표시줄을 제공합니다.
 {
   "statusLine": {
     "type": "command",
-    "command": "${SHELL:-/bin/bash} -l -c 'uv run --no-sync moai-adk statusline'",
+    "command": "moai statusline",
     "padding": 0,
-    "refreshInterval": 300
+    "refreshInterval": 10
   }
 }
 ```
@@ -951,11 +950,11 @@ MoAI-ADK는 다음 사용자 정의 Hook을 제공합니다.
 
 ```json
 {
-  "outputStyle": "Mr.Alfred"
+  "outputStyle": "MoAI-Easy"
 }
 ```
 
-이 스타일은 Alfred AI 오케스트레이터의 고유한 응답 형식을 제공합니다.
+`MoAI-Easy`는 MoAI-ADK의 기본 출력 스타일로, 친근하고 간결한 응답 형식을 제공합니다.
 
 ## 실전 예시: 설정 커스터마이징
 
@@ -973,12 +972,6 @@ MoAI-ADK는 다음 사용자 정의 Hook을 제공합니다.
       "Bash(bun run:*)"
     ]
   }
-}
-```
-
-
-
-{
 }
 ```
 

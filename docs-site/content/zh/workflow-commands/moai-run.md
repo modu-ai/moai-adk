@@ -198,6 +198,28 @@ flowchart TD
 
 失败时自动升级: minimal → standard → thorough(最多 2 次)
 
+### Plan Audit Gate
+
+`/moai run` 进入时最先执行的必需门禁。**plan-auditor** 子智能体独立审计 plan 阶段编写的 SPEC 产出物。
+
+- plan-auditor 是与 manager-spec 独立的智能体 —— 制作的智能体不检查自己的结果
+- 若 SPEC 产出物哈希未变更且上次判定分数 ≥ 0.90,则 skip-eligible(复用缓存的判定)
+- 否则 plan-auditor 重新执行并给出新判定
+- PASS / PASS-with-debt / FAIL 三种判定
+
+{{< callout type="warning" >}}
+Plan Audit Gate 的 skip 策略(省略 plan-auditor 重新执行)基于分数。但下面的 **Implementation Kickoff Approval** 是与分数无关的独立用户批准门禁,任何情况下都不可绕过(REQ-ATR-015)。
+{{< /callout >}}
+
+### Implementation Kickoff Approval
+
+通过 Plan Audit Gate 后、开始实现前获取用户明确批准的 **人工门禁(HUMAN GATE)**。
+
+- 将 plan-auditor 判定摘要 + SPEC 产出物提示给用户
+- 用 `AskUserQuestion` 提示"进入 run / 追加审查 / 中断"三个选项
+- 即使分数在 0.90 以上,即使是 PASS-with-debt,该批准也不会被省略
+- 只有在用户批准后实现阶段才开始
+
 ### Phase 1: 分析与规划
 
 **manager-spec** 子智能体执行以下工作:

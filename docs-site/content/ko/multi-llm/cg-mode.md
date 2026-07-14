@@ -22,7 +22,7 @@ moai cg 실행
     ├── 2. settings.local.json에서 GLM 환경변수 제거
     │      → 리더 pane은 Claude API 사용
     │
-    ├── 3. CLAUDE_CODE_TEAMMATE_DISPLAY=tmux 설정
+    ├── 3. settings.local.json에 teammateMode: "tmux" 설정
     │      → 워커들은 새 pane에서 GLM 환경변수 상속
     │
     └── 4. Claude Code 실행 (현재 프로세스 대체)
@@ -136,14 +136,23 @@ ps auxe | grep -i 'tmux set-environment.*ANTHROPIC_AUTH_TOKEN'
 
 자세한 위협 모델, 실패 시 동작 (`ErrTmuxSensitiveInjectFailed` sentinel), 추가 점검 절차는 [보안 노트 — CWE-214](/ko/advanced/security-notes/#cwe-214) 를 참조하세요.
 
-## 디스플레이 모드
+## 디스플레이 모드 (teammateMode)
 
-teammate 런타임은 두 가지 디스플레이 모드를 지원합니다:
+`teammateMode`는 Claude Code 내장 디스플레이 설정으로, `settings.local.json`에
+저장됩니다. MoAI의 team-mode(과거 `--team` 플래그, v3.0 은퇴)와는 다른
+개념입니다 — teammate 런타임 자체는 Claude Code가 제공하며, `teammateMode`는
+그 표시 방식만 제어합니다.
 
-| 모드 | 설명 | 통신 | 리더/워커 분리 |
-|------|------|------|--------------|
-| `in-process` | 기본 모드, 모든 터미널 | SendMessage 지원 | 분리 없음 (같은 환경) |
-| `tmux` | 분할 화면 표시 | SendMessage 지원 | 세션 환경변수 격리 |
+| 값 | 설명 | 리더/워커 분리 | CG 모드 |
+|------|------|--------------|---------|
+| `in-process` | 기본값, 같은 터미널 인라인 | 불가 | 미사용 |
+| `auto` | 환경 자동 감지 | 미지원 | 미사용 |
+| `tmux` | tmux 분할 화면 | 세션 환경변수 격리 | {{< icon check ok >}} 사용 |
+| `iterm2` | iTerm2 분할 화면 | 미지원 | 미사용 |
+
+`moai cg`와 `moai glm`은 `settings.local.json`의 `teammateMode`를 `"tmux"`로
+설정하고, `moai cc`는 빈 값으로 해제합니다. 과거의 `CLAUDE_CODE_TEAMMATE_DISPLAY`
+환경변수는 `teammateMode` 설정이 우선합니다.
 
 > **CG 모드는 `tmux` 디스플레이 모드에서만 리더/워커 API 분리가 가능합니다.**
 

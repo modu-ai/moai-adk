@@ -46,16 +46,27 @@ MoAI-ADK 的自主 CI/CD 系统自动管理拉取请求质量。它把本地会�
 
 ## Auto-fix Loop (T3)
 
-CI 失败时自动调用 `/moai loop` 修复错误。本地的诊断式自我修复回路原样
-跑在 CI 运行器之上。
+`/moai sync` 创建 PR 之后，CI 监视脚本与 CI 回路技能一起运行"诊断 → 修复
+→ 重新验证"回路。它把本地的诊断式自我修复回路延伸到了 PR 流水线之上。
 
-```yaml
-# .github/workflows/ci.yml (自动生成)
-- name: Auto-fix on failure
-  if: failure()
-  run: |
-    claude -p "/moai loop --max-iterations 3"
+**CI 监视脚本 (`scripts/ci-watch/run.sh`)**
+
+```bash
+sh scripts/ci-watch/run.sh <PR_NUMBER> [BRANCH]
 ```
+
+- 以 30 秒间隔轮询 `gh pr checks`，区分必需 (required) 检查与
+  辅助 (auxiliary) 检查
+- 退出码：`0` 全部通过 · `2` 必需检查失败（向 stdout 输出结构化
+  JSON 交接）· `3` 30 分钟硬超时 · `1` 错误
+- 必需检查清单从 SSoT 文件读取，并支持用于测试的环境变量
+  覆盖 (`MOAI_CIWATCH_GH`、`CIWATCH_TIMEOUT_SECONDS` 等)
+
+**CI 回路技能 (`moai-workflow-ci-loop`)**
+
+当监视脚本交接一个必需失败时，`moai-workflow-ci-loop` 技能会对失败
+进行分类，并最多尝试 3 次安全的自动修补。语义层级的失败（自动修复有
+风险的情形）会上报给用户。
 
 ## BODP — Branch Origin Decision Protocol (T7)
 

@@ -170,22 +170,23 @@ flowchart TD
 
 ## 智能体委派链
 
+`/moai clean` 通过 2 次 `Agent(general-purpose)` 重构专家 spawn 执行(并非专用的 named 智能体,而是在 spawn 时注入重构白名单 + ANALYZE-PRESERVE-IMPROVE 指令的通用智能体)。第 1·2 步为一次组合 spawn,第 4·5 步为另一次组合 spawn,第 6 步由编排器直接执行(不 spawn)。
+
 ```mermaid
 flowchart TD
     User["用户请求"] --> MoAI["MoAI 编排器"]
-    MoAI --> Refactor1["manager-develop<br/>静态分析扫描"]
-    Refactor1 --> Refactor2["manager-develop<br/>使用图分析"]
-    Refactor2 --> MoAI2["MoAI 编排器<br/>用户批准"]
-    MoAI2 --> Refactor3["manager-develop<br/>安全移除"]
-    Refactor3 --> Testing["manager-develop<br/>测试验证"]
-    Testing --> Complete["完成"]
+    MoAI --> Refactor1["Agent(general-purpose) 重构专家<br/>静态分析 + 使用图(组合 spawn 1)"]
+    Refactor1 --> MoAI2["MoAI 编排器<br/>用户批准"]
+    MoAI2 --> Refactor2["Agent(general-purpose) 重构专家<br/>安全移除 + 测试验证(组合 spawn 2)"]
+    Refactor2 --> MoAI3["MoAI 编排器<br/>@MX 标签整理(直接)"]
+    MoAI3 --> Complete["完成"]
 ```
 
 | 智能体 | 角色 | 主要工作 |
 |----------|------|----------|
-| **manager-develop** | 分析与移除 | 静态分析、使用图、安全移除 |
-| **manager-develop** | 验证 | 运行测试套件、确认回归 |
-| **MoAI 编排器** | 协调 | 用户批准、@MX 标签整理 |
+| **Agent(general-purpose) 重构专家**(spawn 1) | 分析 | 静态分析 + 使用图(第 1·2 步组合) |
+| **Agent(general-purpose) 重构专家**(spawn 2) | 移除与验证 | 安全移除 + 运行测试套件·确认回归(第 4·5 步组合) |
+| **MoAI 编排器** | 协调 | 用户批准、@MX 标签整理(第 6 步,直接) |
 
 ## 常见问题
 

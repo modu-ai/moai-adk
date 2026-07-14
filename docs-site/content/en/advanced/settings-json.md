@@ -265,11 +265,11 @@ The list of commands **allowed to run immediately** without user confirmation.
 ```json
 {
   "allow": [
-    "Read",                          // 도구 이름만
-    "Bash(git add:*)",               // Bash + 명령어 패턴
-    "Bash(pytest:*)",                // 와일드카드
-    "Bash(npm run *)",               // 공백 구분 (새로운 형식)
-    "WebFetch(domain:example.com)"   // 도메인 패턴
+    "Read",                          // tool name only
+    "Bash(git add:*)",               // Bash + command pattern
+    "Bash(pytest:*)",                // wildcard
+    "Bash(npm run *)",               // space-separated (new format)
+    "WebFetch(domain:example.com)"   // domain pattern
   ]
 }
 ```
@@ -281,12 +281,12 @@ The list of commands that run **after asking the user for confirmation**.
 ```json
 {
   "ask": [
-    "Bash(chmod:*)",       // 파일 권한 변경
-    "Bash(chown:*)",       // 소유권 변경
-    "Bash(rm:*)",          // 파일 삭제
-    "Bash(sudo:*)",        // 관리자 권한
-    "Read(./.env)",        // 환경 변수 파일 읽기
-    "Read(./.env.*)"       // 환경 변수 파일 읽기
+    "Bash(chmod:*)",       // change file permissions
+    "Bash(chown:*)",       // change ownership
+    "Bash(rm:*)",          // delete files
+    "Bash(sudo:*)",        // administrator privileges
+    "Read(./.env)",        // read environment variable file
+    "Read(./.env.*)"       // read environment variable file
   ]
 }
 ```
@@ -317,11 +317,11 @@ The list of commands that will **never run** under any circumstances.
 ```json
 {
   "deny": [
-    "Read(./secrets/**)",           // 비밀 디렉토리 읽기 차단
-    "Write(~/.ssh/**)",             // SSH 키 수정 차단
-    "Bash(git push --force:*)",     // 강제 푸시 차단
-    "Bash(rm -rf /:*)",            // 루트 삭제 차단
-    "Bash(DROP DATABASE:*)"        // DB 삭제 차단
+    "Read(./secrets/**)",           // block reading the secrets directory
+    "Write(~/.ssh/**)",             // block modifying SSH keys
+    "Bash(git push --force:*)",     // block force push
+    "Bash(rm -rf /:*)",            // block root deletion
+    "Bash(DROP DATABASE:*)"        // block DB deletion
   ]
 }
 ```
@@ -555,7 +555,7 @@ Registers scripts that respond to Claude Code events.
         "hooks": [
           {
             "type": "command",
-            "command": "스크립트 경로"
+            "command": "script path"
           }
         ]
       }
@@ -566,7 +566,7 @@ Registers scripts that respond to Claude Code events.
         "hooks": [
           {
             "type": "command",
-            "command": "보안 가드 스크립트 경로",
+            "command": "security guard script path",
             "timeout": 5000
           }
         ]
@@ -578,12 +578,12 @@ Registers scripts that respond to Claude Code events.
         "hooks": [
           {
             "type": "command",
-            "command": "포맷터 스크립트 경로",
+            "command": "formatter script path",
             "timeout": 30000
           },
           {
             "type": "command",
-            "command": "린터 스크립트 경로",
+            "command": "linter script path",
             "timeout": 60000
           }
         ]
@@ -797,12 +797,12 @@ The `env` section sets environment variables that control Claude Code's behavior
 {
   "permissions": {
     "allow": [
-      "Bash(bun:*)",     // 개인적으로 사용하는 도구
+      "Bash(bun:*)",     // personally used tool
       "Bash(bun add:*)"
     ]
   },
   ],
-  "outputStyle": "Mr.Alfred"  // 개인 선호 출력 스타일
+  "outputStyle": "Mr.Alfred"  // personally preferred output style
 }
 ```
 
@@ -819,11 +819,11 @@ From v2.20.0-rc1, `settings.local.json` is enforced to **`0o600`** (owner-only r
 ```bash
 # Linux
 stat -c '%a' .claude/settings.local.json
-# 기대값: 600
+# Expected: 600
 
 # macOS
 stat -f '%A' .claude/settings.local.json
-# 기대값: 600
+# Expected: 600
 ```
 
 If the permission is not `600`, MoAI-ADK corrects it automatically at the next session start. To correct it immediately, run `chmod 0600 .claude/settings.local.json`.

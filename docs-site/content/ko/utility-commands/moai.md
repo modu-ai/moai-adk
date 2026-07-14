@@ -61,12 +61,14 @@ v3부터 `/moai`의 기본 라우팅은 **Analyze-First** — 언어 독립적 �
 | 플래그              | 설명                             | 예시                           |
 | ------------------- | -------------------------------- | ------------------------------ |
 | `--loop`            | 구현 후 자동 반복 수정 활성화    | `/moai "기능" --loop`          |
-| `--max N`           | 최대 반복 횟수 지정 (기본값 100) | `/moai "기능" --loop --max 10` |
+| `--max N`           | 루프 반복 상한 지정 (기본값은 설정 기반, `ralph.yaml` `loop.max_iterations` = 10) | `/moai "기능" --loop --max 20` |
+| `--sequential`      | Phase 1 탐색 에이전트를 병렬 대신 순차 실행 | `/moai "기능" --sequential`    |
 | `--branch`          | 자동 feature 브랜치 생성         | `/moai "기능" --branch`        |
 | `--pr`              | 완료 후 자동 PR 생성             | `/moai "기능" --pr`            |
+| `--issue`           | SPEC 생성 (plan 단계) 후 GitHub 이슈 생성 opt-in (없으면 late-branch opt-in 정책에 따라 건너뜀) | `/moai "기능" --issue` |
 | `--resume SPEC-XXX` | 기존 SPEC 작업 재개              | `/moai --resume SPEC-AUTH-001` |
-| `--team`            | 에이전트 팀 모드 강제            | `/moai "기능" --team`          |
-| `--solo`            | 하위 에이전트 모드 강제          | `/moai "기능" --solo`          |
+| `--solo`            | 하위 에이전트 모드 강제 (순차 실행) | `/moai "기능" --solo`          |
+| `--team`            | (은퇴) `MODE_TEAM_UNAVAILABLE`과 함께 하위 에이전트 모드로 폴백 | `/moai "기능" --team`          |
 
 ### --loop 플래그
 
@@ -89,7 +91,7 @@ v3부터 `/moai`의 기본 라우팅은 **Analyze-First** — 언어 독립적 �
   극대화합니다.
 {{< /callout >}}
 
-### --team / --solo 플래그와 오케스트레이션 모드
+### --solo 플래그와 오케스트레이션 모드
 
 플래그 없이 실행하면 MoAI가 작업 규모를 보고 오케스트레이션 모드를 자동 선택합니다:
 
@@ -102,8 +104,8 @@ v3부터 `/moai`의 기본 라우팅은 **Analyze-First** — 언어 독립적 �
 
 | 플래그 | 동작 |
 | ------ | ---- |
-| `--team` | 에이전트 팀 모드 강제 |
 | `--solo` | 하위 에이전트 모드 강제 (순차 실행) |
+| `--team` | (은퇴) `MODE_TEAM_UNAVAILABLE`과 함께 하위 에이전트 모드로 폴백 |
 | (없음) | 복잡도 기반 자동 선택 |
 
 {{< callout type="warning" >}}
@@ -134,7 +136,7 @@ flowchart TD
 
     C --> G["Phase 1<br/>SPEC 생성"]
     G --> H["manager-spec 호출"]
-    H --> I["EARS 형식 SPEC 생성"]
+    H --> I["GEARS 형식 SPEC 생성"]
     I --> J[".moai/specs/SPEC-XXX/spec.md"]
 
     J --> K["Phase 2<br/>DDD 구현"]
@@ -184,12 +186,16 @@ flowchart TD
 
 ### Phase 1: SPEC 생성
 
-**manager-spec** 하위 에이전트가 EARS 형식 SPEC 문서를 생성합니다:
+**manager-spec** 하위 에이전트가 GEARS 형식 SPEC 문서를 생성합니다:
 
 - .moai/specs/SPEC-XXX/spec.md
-- EARS 형식 요구사항
+- GEARS 형식 요구사항
 - Given-When-Then 인수 기준
 - conversation_language로 작성된 콘텐츠
+
+{{< callout type="info" >}}
+**GEARS 형식**이 현재 SPEC 요구사항의 정식 형식입니다. 예전 문서·구성에서 보이는 **EARS**는 레거시 명칭이며, GEARS로 대체되었습니다.
+{{< /callout >}}
 
 ### Phase 2: DDD/TDD 구현 루프
 
@@ -276,7 +282,7 @@ flowchart TD
 ```
 [manager-spec 호출]
   SPEC ID: SPEC-AUTH-001
-  요구사항: 5개 (EARS 형식)
+  요구사항: 5개 (GEARS 형식)
   인수 기준: 3개 시나리오
 
   사용자 승인: 완료

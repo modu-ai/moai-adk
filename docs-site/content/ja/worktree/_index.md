@@ -5,29 +5,29 @@ draft: false
 ---
 
 Git Worktree は MoAI-ADK 並列開発の基盤です。SPEC ごとに完全に独立した作業
-空間を作り、異なる Git 状態と異なる LLM 設定を同時に走らせられるように
+空間を作り、異なる Git 状態と異なる LLM 設定を同時に回せるように
 します。
 
-MoAI-ADK v3.0 の中核的な価値である **トークノミクス** (Token Economics) の観点から見ると、
+MoAI-ADK v3.0 の核心的な価値である **トークノミクス** (Token Economics) の観点で見ると、
 Worktree は「計画は深く、実装は安く」を実際に実行する装置です。計画
 ターミナルでは高推論の Claude モデルを使い、実装ターミナルでは低コストの GLM を使う
-というように — 作業フェーズごとに適切なモデルを割り当てることは、Worktree の分離なしには
+ように — 作業ステップごとに適切なモデルを割り当てることが Worktree の隔離なしには
 不可能だからです。
 
-## なぜ Worktree が必要なのか?
+## なぜ Worktree が必要ですか?
 
 ### 問題: LLM 設定がセッション間で共有される
 
-Worktree なしで `moai glm` や `moai cc` で LLM バックエンドを変更すると、同じプロジェクトの
-**開いているすべてのセッションに同一の設定が適用** されます。その結果:
+Worktree なしに `moai glm` や `moai cc` で LLM バックエンドを変えると、同じプロジェクトの
+**すべての開いたセッションに同じ設定が適用** されます。その結果:
 
-- **SPEC 間の干渉** — ある SPEC で変更した LLM 設定が別の SPEC の作業に影響します
-- **並列開発が不可能** — 複数の SPEC を同時に異なる条件で進められません
-- **トークンの浪費** — 単純な実装タスクまですべて高コストモデルで回ります
+- **SPEC 間の干渉** — ある SPEC で変えた LLM 設定が他の SPEC の作業に影響を与えます
+- **並列開発が不可** — 複数の SPEC を同時に異なる条件で進められません
+- **トークンの浪費** — 単純な実装作業まですべて高コストのモデルで回ります
 
-### 解決: 完全な分離
+### 解決: 完全な隔離
 
-Git Worktree を使うと、各 SPEC が **独立した Git 状態と LLM 設定** を持ちます:
+Git Worktree を使うと各 SPEC が **独立した Git 状態と LLM 設定** を持ちます:
 
 ```mermaid
 graph TB
@@ -40,22 +40,22 @@ graph TB
     D --> G[独立した作業]
 ```
 
-## コアワークフロー
+## 核心ワークフロー
 
-### 3 フェーズの開発プロセス
+### 3 段階の開発プロセス
 
-Worktree を活用した MoAI-ADK 開発は 3 つのフェーズで流れます:
+Worktree を活用した MoAI-ADK 開発は 3 段階で流れます:
 
 ```mermaid
 flowchart TD
     subgraph Phase1["Phase 1: Plan (Terminal 1)"]
         A1[/moai plan<br/>feature description<br/>--worktree/] --> A2[SPEC ドキュメント生成]
-        A2 --> A3[Worktree 自動作成]
-        A3 --> A4[Feature ブランチ作成]
+        A2 --> A3[Worktree 自動生成]
+        A3 --> A4[Feature ブランチ生成]
     end
 
     subgraph Phase2["Phase 2: Implement (Terminals 2, 3, 4...)"]
-        B1[moai worktree go SPEC-ID] --> B2[Worktree に入る]
+        B1[moai worktree go SPEC-ID] --> B2[Worktree 進入]
         B2 --> B3[moai glm<br/>LLM 変更]
         B3 --> B4[/moai run SPEC-ID]
         B4 --> B5[/moai sync SPEC-ID]
@@ -64,29 +64,29 @@ flowchart TD
     subgraph Phase3["Phase 3: Merge & Cleanup"]
         C1[moai worktree done SPEC-ID] --> C2[main チェックアウト]
         C2 --> C3[マージ]
-        C3 --> C4[クリーンアップ]
+        C3 --> C4[整理]
     end
 
     Phase1 --> Phase2
     Phase2 --> Phase3
 ```
 
-### フェーズごとの詳細説明
+### 段階別の詳細説明
 
-#### フェーズ 1: Plan (Terminal 1)
+#### ステップ 1: Plan (Terminal 1)
 
-計画フェーズは推論品質が結果を左右するため、Claude (Opus 級) モデルで SPEC ドキュメントを
+計画ステップは推論品質が結果を左右するので Claude (Opus 級) モデルで SPEC ドキュメントを
 作成します:
 
 ```bash
-> /moai plan "認証システムの追加" --worktree
+> /moai plan "認証システム追加" --worktree
 ```
 
 **作業内容**:
 
-- EARS 形式の SPEC ドキュメントの自動生成
-- 当該 SPEC 専用の Worktree の自動作成
-- Feature ブランチの自動作成と切り替え
+- EARS 形式の SPEC ドキュメント自動生成
+- その SPEC 専用の Worktree 自動生成
+- Feature ブランチの自動生成および切替
 
 **成果物**:
 
@@ -94,13 +94,13 @@ flowchart TD
 - 新しい Worktree ディレクトリ
 - `feature/SPEC-AUTH-001` ブランチ
 
-#### フェーズ 2: Implement (Terminals 2, 3, 4...)
+#### ステップ 2: Implement (Terminals 2, 3, 4...)
 
-実装フェーズは物量が多い代わりに SPEC がすでに方向を定めているため、GLM のようなコスト
-効率の良いモデルが役目を果たします:
+実装ステップは物量が多い代わりに SPEC がすでに方向を定めた状態なので、GLM のようなコスト
+効率的なモデルが役割を果たします:
 
 ```bash
-# Worktree に入る (新しいターミナル)
+# Worktree 進入 (新しいターミナル)
 $ moai worktree go SPEC-AUTH-001
 
 # LLM 変更
@@ -114,33 +114,33 @@ $ claude
 
 **利点**:
 
-- 完全に分離された作業環境
+- 完全に隔離された作業環境
 - GLM のコスト効率 (Opus 比で約 70% 削減)
 - 衝突のない無制限の並列開発
 
-#### フェーズ 3: Merge & Cleanup
+#### ステップ 3: Cleanup
 
 ```bash
-moai worktree done SPEC-AUTH-001              # main → マージ → クリーンアップ
-moai worktree done SPEC-AUTH-001 --push       # 上記の作業 + リモートリポジトリへ push
+moai worktree done SPEC-AUTH-001                    # worktree 整理 (マージ/プッシュは git で別途実行)
+moai worktree done SPEC-AUTH-001 --delete-branch    # 整理 + ローカルブランチ削除
 ```
 
 ## Worktree コマンドリファレンス
 
 | コマンド                   | 説明                       | 使用例                      |
 | ------------------------ | -------------------------- | ------------------------------ |
-| `moai worktree new SPEC-ID`    | 新しい Worktree の作成           | `moai worktree new SPEC-AUTH-001`    |
-| `moai worktree go SPEC-ID`     | Worktree に入る (新しいシェルを開く) | `moai worktree go SPEC-AUTH-001`     |
-| `moai worktree list`           | Worktree 一覧の表示         | `moai worktree list`                 |
-| `moai worktree done SPEC-ID`   | マージとクリーンアップ               | `moai worktree done SPEC-AUTH-001`   |
-| `moai worktree remove SPEC-ID` | Worktree の削除              | `moai worktree remove SPEC-AUTH-001` |
-| `moai worktree status`         | Worktree の状態確認         | `moai worktree status`               |
+| `moai worktree new SPEC-ID`    | 新しい Worktree 生成           | `moai worktree new SPEC-AUTH-001`    |
+| `moai worktree go SPEC-ID`     | Worktree 進入 (新しいシェルを開く) | `moai worktree go SPEC-AUTH-001`     |
+| `moai worktree list`           | Worktree 一覧表示         | `moai worktree list`                 |
+| `moai worktree done SPEC-ID`   | マージおよび整理               | `moai worktree done SPEC-AUTH-001`   |
+| `moai worktree remove SPEC-ID` | Worktree 削除              | `moai worktree remove SPEC-AUTH-001` |
+| `moai worktree status`         | Worktree 状態確認         | `moai worktree status`               |
 | `moai worktree clean`          | マージ済み Worktree の整理       | `moai worktree clean --merged-only`  |
-| `moai worktree config`         | Worktree 設定の確認         | `moai worktree config root`          |
+| `moai worktree config`         | Worktree 設定確認         | `moai worktree config root`          |
 
-## Worktree の主な利点
+## Worktree の核心的な利点
 
-### 1. 完全な分離 (Complete Isolation)
+### 1. 完全な隔離 (Complete Isolation)
 
 各 SPEC は独立した Git 状態を維持します:
 
@@ -154,13 +154,13 @@ graph TB
     subgraph WT1["Worktree 1 (SPEC-AUTH-001)"]
         W1A[feature/SPEC-AUTH-001]
         W1B[独立した作業ディレクトリ]
-        W1C[個別の .moai/ 設定]
+        W1C[別の .moai/ 設定]
     end
 
     subgraph WT2["Worktree 2 (SPEC-AUTH-002)"]
         W2A[feature/SPEC-AUTH-002]
         W2B[独立した作業ディレクトリ]
-        W2C[個別の .moai/ 設定]
+        W2C[別の .moai/ 設定]
     end
 
     Main -.-> WT1
@@ -175,9 +175,9 @@ graph TB
 
 ### 2. LLM 独立性 (LLM Independence)
 
-各 Worktree は個別の LLM 実行モードを維持します。以下のように 3 つのターミナルがそれぞれ
+各 Worktree は別の LLM 実行モードを維持します。下記のように 3 つのターミナルがそれぞれ
 `moai cc` (Claude 専用)、`moai glm` (GLM 専用)、`moai cg` (Claude リーダー + GLM ワーカーの
-ハイブリッド) で異なって動作しても、互いに干渉しません:
+ハイブリッド) で異なって回っても互いに干渉しません:
 
 ```mermaid
 sequenceDiagram
@@ -211,20 +211,20 @@ sequenceDiagram
 同時に複数の SPEC を進められます:
 
 ```bash
-# Terminal 1: SPEC-AUTH-001 の計画
+# Terminal 1: SPEC-AUTH-001 計画
 > /moai plan "認証システム" --worktree
 
-# Terminal 2: SPEC-AUTH-002 の実装 (GLM)
+# Terminal 2: SPEC-AUTH-002 実装 (GLM)
 $ moai worktree go SPEC-AUTH-002
 $ moai glm
 > /moai run SPEC-AUTH-002
 
-# Terminal 3: SPEC-AUTH-003 の実装 (GLM)
+# Terminal 3: SPEC-AUTH-003 実装 (GLM)
 $ moai worktree go SPEC-AUTH-003
 $ moai glm
 > /moai run SPEC-AUTH-003
 
-# Terminal 4: SPEC-AUTH-004 のドキュメント化
+# Terminal 4: SPEC-AUTH-004 ドキュメント化
 $ moai worktree go SPEC-AUTH-004
 > /moai sync SPEC-AUTH-004
 ```
@@ -252,7 +252,7 @@ flowchart TB
 
 ## 並列開発の可視化
 
-複数のターミナルで同時に作業する様子です。フェーズごとにモデルが異なって割り当てられる
+複数のターミナルで同時に作業する様子です。ステップごとにモデルが異なって割り当てられる
 ことがトークノミクスの核心です:
 
 ```mermaid
@@ -290,7 +290,7 @@ graph TB
 
 - **[完全ガイド](/ja/worktree/guide)** — すべての Worktree コマンドと詳細な使い方
 - **[実際の使用例](/ja/worktree/examples)** — 実際のプロジェクトでの使用事例
-- **[よくある質問](/ja/worktree/faq)** — FAQ とトラブルシューティング
+- **[よくある質問](/ja/worktree/faq)** — FAQ および問題解決
 
 ## 関連ドキュメント
 

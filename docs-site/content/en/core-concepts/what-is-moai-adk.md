@@ -73,7 +73,7 @@ The Python-based MoAI-ADK (~73,000 lines) was completely rewritten in Go.
 - **27** skills (template-managed)
 - **36** CLI commands · **15** `/moai` subcommands
 - **16** programming languages supported
-- A codebase developed on top of **487** SPEC documents
+- A codebase developed on top of **504** SPEC documents
 
 ### The Problems with Vibe Coding
 
@@ -406,7 +406,7 @@ All subcommands run inside Claude Code as `/moai <subcommand>`.
 | Subcommand | Purpose | Key flags |
 |-----------|------|-----------|
 | `goal` | Condition-declared autonomous continuation loop (until the condition is met or the turn limit) | `status`, `clear` |
-| `loop` | Diagnostic-driven iterative auto-fixing (a preset on the goal engine, up to 100 iterations) | `--max N`, `--auto-fix`, `--seq` |
+| `loop` | Diagnostic-driven iterative auto-fixing (a preset on the goal engine, up to 10 iterations by default) | `--max N`, `--auto-fix`, `--seq` |
 | `fix` | Auto-fix LSP errors, lint, type errors (single pass) | `--dry`, `--seq`, `--level N`, `--resume` |
 
 #### Quality and Codebase
@@ -454,7 +454,7 @@ The practical tool of the Tokenomics pillar. A hybrid mode where the Leader uses
 ```
 ┌─────────────────────────────────────────────────────────────┐
 │  LEADER (current tmux pane, Claude API)                      │
-│  - Orchestrates the workflow when /moai --team runs          │
+│  - Orchestrates with /moai commands after activating moai cg │
 │  - Handles the plan, quality, and sync phases                │
 │  - No GLM env → uses the Claude API                          │
 └──────────────────────┬──────────────────────────────────────┘
@@ -478,8 +478,8 @@ moai cg
 # 3. Start Claude Code in the same pane (important!)
 claude
 
-# 4. Run the team workflow
-/moai --team "task description"
+# 4. Run the workflow
+/moai "task description"
 ```
 
 | Command | Leader | Workers | tmux required | Cost savings | Use case |
@@ -494,7 +494,7 @@ An autonomous error-fixing engine combining LSP diagnostics with AST-grep:
 
 ```bash
 /moai fix       # Single pass: scan → classify → fix → verify
-/moai loop      # Iterative fixing: repeat until the completion condition is met (up to 100 iterations)
+/moai loop      # Iterative fixing: repeat until the completion condition is met (up to 10 iterations by default)
 ```
 
 **How the Ralph Engine works:**
@@ -575,11 +575,11 @@ The @MX tag system is designed to **mark only the most dangerous and important c
 
 MoAI-ADK assigns the optimal AI model to each agent according to your Claude Code subscription plan. The goal is maximizing quality within the plan's usage limits — heavier-reasoning phases like planning and auditing get the top models, while repetitive implementation and documentation get lightweight models.
 
-| Policy | Plan | Characteristics |
-|------|--------|------|
-| **High** | Max $200/month | Highest quality — Opus assigned to planning and audits, maximum throughput |
-| **Medium** | Max $100/month | Balance of quality and cost |
-| **Low** | Plus $20/month | Economical, no Opus — Sonnet-centric allocation |
+| Policy | Characteristics |
+|------|------|
+| **max** | Highest quality — Opus assigned to planning and audits, maximum throughput |
+| **medium** (default) | Balance of quality and cost |
+| **low** | Economical, no Opus — Sonnet-centric allocation |
 
 ### How to Configure
 
@@ -592,7 +592,7 @@ moai update                   # Interactive prompts for each setup step
 ```
 
 {{< callout type="info" >}}
-The default policy is `High`. GLM settings are isolated in `settings.local.json` (never committed to Git). The config key is `model_policy: high | medium | low`.
+The default policy is `medium`. GLM settings are isolated in `settings.local.json` (never committed to Git). The config key is `performance_tier: max | medium | low` in `llm.yaml` (`--high`/`--low` are deprecated aliases of `--model-policy max`/`low`). The subscription/API billing axis is a separate `plan_type: api | subscription`.
 {{< /callout >}}
 
 ## Task Metrics Logging

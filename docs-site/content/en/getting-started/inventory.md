@@ -4,285 +4,179 @@ weight: 25
 draft: false
 ---
 
-A guide to the `moai inventory` command, which queries your project's active sessions, worktrees, and harnesses.
+A guide to the `moai inventory` command, which shows the current project's active sessions, worktrees, and harnesses at a glance.
 
 {{< callout type="info" >}}
-**One-line summary**: `moai inventory` gives you an at-a-glance view of every active resource in the current project (sessions, worktrees, harnesses).
+**One-line summary**: `moai inventory` shows the current project's active resources (sessions, worktrees, harnesses) read-only. With `--json` you get structured output for use in scripts.
 {{< /callout >}}
 
 ## Overview
 
-`moai inventory` is a read-only command that provides a **unified inventory** of the current project state. When you run several parallel sessions and worktrees, you need one place to answer "what is running right now?" — this command is that answer.
+`moai inventory` is a read-only command that provides a unified view to check "what is running right now?" at once when you operate multiple parallel sessions and worktrees.
 
-### What It Queries
+### What it shows
 
-| Resource | Description | Location |
-|------|------|------|
-| **Active Sessions** | Currently running Claude Code sessions | `.moai/state/active-sessions.json` |
-| **Worktrees** | L2/L3 isolated branches for the project | `~/.moai/worktrees/<project>/` |
-| **Harnesses** | Generated dynamic agent teams | `.moai/harness/manifest.json` |
-| **SPEC Progress** | Progress state of active SPECs | `.moai/specs/SPEC-*/progress.md` |
+| Resource | Description | Data source |
+|------|------|------------|
+| **Sessions** | Active Claude Code sessions | `.moai/state/active-sessions.json` |
+| **Worktrees** | Git worktrees for the project | Git worktree list |
+| **Harnesses** | Registered harnesses | `.moai/harness/` manifests |
 
-## Command Format
+## Command form
 
 ```bash
-moai inventory [options]
+moai inventory [OPTIONS]
 ```
 
-### Basic Usage
+### Flags
+
+| Flag | Description |
+|------|------|
+| `--json` | Structured JSON output (machine-readable) |
+| `--project-root <path>` | Project root path (default: current directory) |
+
+This command supports only the two flags above. There are no filtering or verbose-mode flags — do any needed processing on the `--json` output with `jq` or similar.
+
+## Basic use
 
 ```bash
 moai inventory
 ```
 
-Prints the inventory in the default text format.
+Prints a text-format summary of sessions, worktrees, and harnesses.
 
-### JSON Output
+## JSON output
 
 ```bash
 moai inventory --json
 ```
 
-Outputs structured JSON, useful for automated analysis.
+Outputs structured JSON for use in automated analysis or CI scripts.
 
-### Filtering
+## JSON schema
 
-Query only a specific resource type:
-
-```bash
-moai inventory --type sessions
-moai inventory --type worktrees
-moai inventory --type harnesses
-moai inventory --type specs
-```
-
-### Verbose Details
-
-Include extra information for each resource:
-
-```bash
-moai inventory --verbose
-moai inventory --verbose --json
-```
-
-## Text Output
-
-### Basic Output Example
-
-```
-MOAI Inventory for moai-adk-go
-Project Root: /path/to/your-project
-Updated: 2026-07-01T10:15:00Z
-
-========== ACTIVE SESSIONS ==========
-Session ID                              Branch        SPEC ID            Status
-edc25996-04cb-4139-b2f6-c2968e7337db    main          SPEC-DOCS-001      in-progress
-a1b2c3d4-e5f6-7890-1234-567890abcdef    feat/auth     SPEC-AUTH-002      run-phase
-
-========== WORKTREES ==========
-Name                    Branch              Created        Status
-SPEC-DOCS-001          docs/rebuild        2026-07-01     active
-SPEC-AUTH-002          feat/auth            2026-07-01     active
-
-========== HARNESSES ==========
-Name                    Version    Teammates    Worktree Isolation    Status
-backend-team            1.0.0      3            L1_optional           active
-frontend-team           1.0.0      2            none                  active
-
-========== ACTIVE SPECS ==========
-SPEC ID                 Status          Phase      Owner           Progress
-SPEC-DOCS-001          in-progress     run        manager-develop  M3/6
-SPEC-AUTH-002          in-progress     run        manager-develop  M2/5
-```
-
-### Verbose Details (`--verbose`)
-
-```
-========== ACTIVE SESSIONS (VERBOSE) ==========
-
-Session: edc25996-04cb-4139-b2f6-c2968e7337db
-  Created:     2026-06-29T14:30:00Z
-  Last Update: 2026-07-01T10:15:00Z
-  Branch:      main
-  SPEC ID:     SPEC-DOCS-001
-  Status:      in-progress (running M3)
-  Context:     ~145K / 200K tokens (73%)
-  Model:       claude-haiku-4-5
-  Resume:      available (.moai/specs/SPEC-DOCS-001/progress.md)
-
-========== WORKTREES (VERBOSE) ==========
-
-Worktree: SPEC-DOCS-001
-  Path:         ~/.moai/worktrees/moai-adk-go/SPEC-DOCS-001
-  Base Branch:  main (origin/main)
-  Created:      2026-07-01T08:00:00Z
-  Session:      edc25996-04cb-4139-b2f6-c2968e7337db
-  Files Modified: 7
-  Files Created:  4
-  Commits:       2
-```
-
-## JSON Output
-
-### Schema
+The top-level structure of the `--json` output consists of three sections.
 
 ```json
 {
-  "inventory": {
-    "project_root": "/path/to/your-project",
-    "timestamp": "2026-07-01T10:15:00Z",
-    "sessions": [...],
-    "worktrees": [...],
-    "harnesses": [...],
-    "specs": [...]
-  }
+  "sessions": { ... },
+  "worktrees": { ... },
+  "harnesses": { ... }
 }
 ```
 
-### Session Object
+Each section has `count`, `entries`, and an optional `error` field.
+
+### Session entry
 
 ```json
 {
-  "session_id": "edc25996-04cb-4139-b2f6-c2968e7337db",
-  "created_at": "2026-06-29T14:30:00Z",
-  "branch": "main",
+  "session_id": "edc25996",
   "spec_id": "SPEC-DOCS-001",
-  "status": "in-progress",
-  "context_usage": {
-    "current": 145000,
-    "total": 200000,
-    "percentage": 72.5
-  },
-  "model": "claude-haiku-4-5",
-  "resume_available": true
+  "phase": "run"
 }
 ```
 
-### Worktree Object
+| Field | Description |
+|------|------|
+| `session_id` | Session ID (short form, first 8 characters) |
+| `spec_id` | Linked SPEC ID |
+| `phase` | Current phase (`plan`, `run`, `sync`, `mx`) |
+
+### Worktree entry
 
 ```json
 {
-  "name": "SPEC-DOCS-001",
-  "path": "~/.moai/worktrees/moai-adk-go/SPEC-DOCS-001",
-  "base_branch": "main",
-  "created_at": "2026-07-01T08:00:00Z",
-  "session_id": "edc25996-04cb-4139-b2f6-c2968e7337db",
-  "status": "active",
-  "files_modified": 7,
-  "files_created": 4,
-  "commits": 2
+  "branch": "feat/auth",
+  "path": "/home/user/.moai/worktrees/project/SPEC-AUTH-001",
+  "head": "a1b2c3d4"
 }
 ```
 
-### Harness Object
+| Field | Description |
+|------|------|
+| `branch` | Worktree branch name |
+| `path` | Worktree filesystem path |
+| `head` | HEAD commit hash (short form, first 8 characters) |
+
+### Harness entry
 
 ```json
 {
   "name": "backend-team",
-  "version": "1.0.0",
-  "created_at": "2026-07-01T10:00:00Z",
-  "teammates": 3,
-  "worktree_isolation": "L1_optional",
-  "status": "active",
-  "manifest_path": ".moai/harness/manifest.json"
+  "domain": "backend",
+  "manifest_missing": false
 }
 ```
 
-### SPEC Object
+| Field | Description |
+|------|------|
+| `name` | Harness name |
+| `domain` | Harness domain |
+| `manifest_missing` | Whether the manifest file is missing (`true` means the configuration is incomplete) |
+
+### Full output example
 
 ```json
 {
-  "spec_id": "SPEC-DOCS-001",
-  "title": "Documentation v3 Rebuild",
-  "status": "in-progress",
-  "phase": "run",
-  "current_milestone": 3,
-  "total_milestones": 6,
-  "owner": "manager-develop",
-  "progress_file": ".moai/specs/SPEC-DOCS-001/progress.md",
-  "created_at": "2026-06-20T09:00:00Z"
+  "sessions": {
+    "count": 2,
+    "entries": [
+      { "session_id": "edc25996", "spec_id": "SPEC-DOCS-001", "phase": "run" },
+      { "session_id": "a1b2c3d4", "spec_id": "SPEC-AUTH-002", "phase": "plan" }
+    ]
+  },
+  "worktrees": {
+    "count": 1,
+    "entries": [
+      { "branch": "feat/auth", "path": "/home/user/.moai/worktrees/project/SPEC-AUTH-001", "head": "a1b2c3d4" }
+    ]
+  },
+  "harnesses": {
+    "count": 1,
+    "entries": [
+      { "name": "backend-team", "domain": "backend", "manifest_missing": false }
+    ]
+  }
 }
 ```
 
-## Practical Usage Examples
+## Practical usage examples
 
-### 1. Detecting Multi-Session Contention
+### 1. Detect multi-session contention
 
-```bash
-moai inventory --type sessions
-
-# In the output, more than 1 session working the same SPEC → contention risk
-```
-
-### 2. Checking Worktrees for Cleanup
+If two or more sessions are working on the same SPEC, there is a contention risk.
 
 ```bash
-moai inventory --type worktrees --verbose
-
-# Identify old worktrees, then clean up
-moai worktree remove <name>
+moai inventory --json | jq '[.sessions.entries[] | .spec_id] | group_by(.) | map(select(length > 1))'
 ```
 
-### 3. Listing Harness Teams
+### 2. List active worktree branches
 
 ```bash
-moai inventory --type harnesses --json | jq '.inventory.harnesses[] | {name, teammates, status}'
-
-# Expected output:
-# {
-#   "name": "backend-team",
-#   "teammates": 3,
-#   "status": "active"
-# }
+moai inventory --json | jq -r '.worktrees.entries[].branch'
 ```
 
-### 4. Tracking Active SPEC Progress
+### 3. Find harnesses with a missing manifest
+
+A harness with `manifest_missing: true` is in an incomplete configuration state.
 
 ```bash
-moai inventory --type specs | grep in-progress
-
-# See every SPEC currently in progress
+moai inventory --json | jq '.harnesses.entries[] | select(.manifest_missing)'
 ```
 
-### 5. Using It in Automation Scripts
+### 4. Distribution of currently in-progress phases
 
 ```bash
-#!/bin/bash
-# Automatic worktree cleanup script
-
-moai inventory --type worktrees --json | jq -r '.inventory.worktrees[] | select(.status == "stale") | .name' | while read name; do
-  echo "Removing stale worktree: $name"
-  moai worktree remove "$name"
-done
+moai inventory --json | jq '[.sessions.entries[].phase] | group_by(.) | map({phase: .[0], count: length})'
 ```
 
-## Interpreting the Output
+## Related documents
 
-### The Status Field
-
-| Status | Meaning |
-|--------|------|
-| `active` | Currently in use |
-| `idle` | Suspended (the session is explicitly paused) |
-| `stale` | Unused (no access for 7+ days) |
-| `error` | Error state (needs attention) |
-
-### The Phase Field
-
-| Phase | Description |
-|-------|------|
-| `plan` | Plan phase in progress |
-| `run` | Run phase in progress |
-| `sync` | Sync phase in progress |
-| `completed` | Completed |
-
-## Related Documents
-
-- [SPEC-Based Development](/en/workflow-commands/moai-plan) - The SPEC lifecycle
-- [Worktree Management](/en/getting-started/worktree) - Worktree isolation and lifecycle
-- [Harness v4 Builder](/en/advanced/builder-agents) - Dynamic team management
-- [CLI Reference](/en/getting-started/cli) - Other CLI commands
+- [CLI Reference](./cli) — full CLI commands
+- [Project Status](./status) — the `moai status` command
+- [SPEC-based Development](/en/workflow-commands/moai-plan) — the SPEC lifecycle
 
 {{< callout type="info" >}}
-**Tip**: `moai inventory` works well with automated cleanup scripts and monitoring dashboards. Parse the JSON output automatically and you always know the state of your project.
+**Tip**: `moai inventory --json` can be used in monitoring dashboards and CI scripts. Since it is a read-only command, it is safe to automate.
 {{< /callout >}}

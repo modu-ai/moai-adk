@@ -3,8 +3,6 @@ title: 프로필 관리
 weight: 80
 draft: false
 ---
-# 프로필 관리
-
 
 MoAI-ADK의 프로필 시스템으로 여러 Claude Code 설정을 격리하여 관리합니다. 업무용과 개인용, 고품질 세션과 비용 절감 세션을 프로필 하나씩으로 분리해 두면 모델·언어·표시 설정을 매번 바꿀 필요가 없습니다.
 
@@ -87,7 +85,6 @@ moai cg -p team          # team 프로필로 CG 모드 실행
 - `opus` / `opus[1m]`
 - `sonnet` / `sonnet[1m]`
 - `fable` / `fable[1m]`
-- `haiku`, `opusplan`
 
 설정 위자드의 "Model Settings" 단계에서 선택하거나, 프로필 설정 파일을 직접 수정합니다. 1M 컨텍스트 모델은 대용량 코드베이스 분석이나 긴 문서 작업에 적합합니다.
 

@@ -13,6 +13,17 @@ recognized as complete unless it passes this gate.
   secure, and trackable?"
 {{< /callout >}}
 
+### Harness levels (3 tiers)
+
+The TRUST 5 quality gate is applied at three depths depending on the SPEC scope. The Complexity
+Estimator automatically determines the harness level based on the SPEC scope.
+
+| Level        | Name | Verification scope                                       |
+| ----------- | ---- | ----------------------------------------------------- |
+| `minimal`   | Minimal | Fast verification — only the core gates pass          |
+| `standard`  | Standard | Basic verification — runs the basic quality gates (default) |
+| `thorough`  | Thorough | Full verification — sync-auditor independent assessment + full TRUST 5 |
+
 ## What is TRUST 5?
 
 TRUST 5 is the set of **five quality principles** MoAI-ADK applies to all code. AI-generated

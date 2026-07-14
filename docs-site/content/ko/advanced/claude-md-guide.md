@@ -108,7 +108,7 @@ MoAI-ADK는 **11개 보존 에이전트** (10개 MoAI-custom + 1개 Anthropic bu
 | Evaluator (2) | plan-auditor, sync-auditor | 계획/완료 단계 독립적 품질 평가 |
 | Builder (1) | builder-harness | 동적 프로젝트별 하네스 생성 |
 | Advisor (1) | super-advisor | 고추론 자문 (E1-E4 에스컬레이션) |
-| Specialist (1) | e2e-tester | 웹/모바일/데스크탑 E2E 테스트 실행 |
+| Specialist (1) | e2e-tester | 웹/모바일/데스크탑 E2E 테스트 실행 (`/moai e2e`) |
 | Built-in (1) | Explore (Anthropic) | 읽기 전용 코드베이스 탐색 |
 
 ### 5. SPEC 워크플로우
@@ -124,6 +124,9 @@ MoAI-ADK는 **11개 보존 에이전트** (10개 MoAI-custom + 1개 Anthropic bu
 
 # Sync: 문서 동기화 (40K 토큰)
 > /moai sync SPEC-XXX
+
+# E2E: 웹/모바일/데스크탑 E2E 테스트 실행
+> /moai e2e
 ```
 
 ### 6. 품질 게이트
@@ -213,8 +216,7 @@ language:
 │   ├── skill-authoring.md         # 스킬 작성 가이드
 │   └── coding-standards.md        # 코딩 표준
 ├── workflow/                      # 워크플로우
-│   ├── workflow-modes.md          # Plan/Run/Sync 정의
-│   └── spec-workflow.md           # SPEC 워크플로우
+│   └── spec-workflow.md           # SPEC 워크플로우 (Plan/Run/Sync 정의)
 └── languages/                     # 언어별 규칙 (16개)
     ├── python.md
     ├── typescript.md
@@ -248,8 +250,7 @@ paths:
 | `core/` | `moai-constitution.md` | 항상 로드 |
 | `development/` | `skill-authoring.md` | 스킬 관련 작업 시 |
 | `development/` | `coding-standards.md` | 코드 작업 시 |
-| `workflow/` | `workflow-modes.md` | 워크플로우 명령 시 |
-| `workflow/` | `spec-workflow.md` | SPEC 관련 작업 시 |
+| `workflow/` | `spec-workflow.md` | 워크플로우 명령·SPEC 관련 작업 시 |
 | `languages/` | `python.md` 등 | 해당 언어 파일 수정 시 |
 
 ## 크기 제한

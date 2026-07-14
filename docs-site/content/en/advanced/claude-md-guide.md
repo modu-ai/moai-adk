@@ -63,15 +63,15 @@ flowchart TD
 Defines the role of the MoAI orchestrator and the HARD rules.
 
 ```markdown
-## 1. 핵심 정체성
+## 1. Core Identity
 
-MoAI는 Claude Code의 전략적 오케스트레이터입니다.
+MoAI is the strategic orchestrator for Claude Code.
 
-### HARD 규칙 (필수)
-- [HARD] 언어 인식 응답: 사용자의 conversation_language로 응답
-- [HARD] 병렬 실행: 독립적인 도구 호출은 병렬 실행
-- [HARD] XML 태그 비표시: 사용자 대면 응답에 XML 비표시
-- [HARD] Markdown 출력: 모든 커뮤니케이션에 Markdown 사용
+### HARD Rules (required)
+- [HARD] Language-aware responses: respond in the user's conversation_language
+- [HARD] Parallel execution: run independent tool calls in parallel
+- [HARD] No XML tags: no XML in user-facing responses
+- [HARD] Markdown output: use Markdown for all communication
 ```
 
 ### 2. Request Processing Pipeline (Analyze-First)
@@ -108,7 +108,7 @@ MoAI-ADK consists of **11 retained agents** (10 MoAI-custom + 1 Anthropic built-
 | Evaluator (2) | plan-auditor, sync-auditor | Independent quality assessment at plan/completion stages |
 | Builder (1) | builder-harness | Dynamic per-project harness generation |
 | Advisor (1) | super-advisor | High-reasoning consultation (E1-E4 escalation) |
-| Specialist (1) | e2e-tester | E2E test execution across web/mobile/desktop |
+| Specialist (1) | e2e-tester | E2E test execution across web/mobile/desktop (`/moai e2e`) |
 | Built-in (1) | Explore (Anthropic) | Read-only codebase exploration |
 
 ### 5. SPEC Workflow
@@ -116,14 +116,17 @@ MoAI-ADK consists of **11 retained agents** (10 MoAI-custom + 1 Anthropic built-
 Defines the 3-phase SPEC-based development workflow.
 
 ```bash
-# Plan: SPEC 문서 생성 (30K 토큰)
-> /moai plan "기능 설명"
+# Plan: create SPEC document (30K tokens)
+> /moai plan "feature description"
 
-# Run: DDD 구현 (180K 토큰)
+# Run: DDD implementation (180K tokens)
 > /moai run SPEC-XXX
 
-# Sync: 문서 동기화 (40K 토큰)
+# Sync: documentation sync (40K tokens)
 > /moai sync SPEC-XXX
+
+# E2E: run web/mobile/desktop E2E tests
+> /moai e2e
 ```
 
 ### 6. Quality Gates
@@ -160,11 +163,11 @@ References language settings, user settings, and project rules.
 
 ```yaml
 language:
-  conversation_language: ko           # 사용자 응답 언어
-  agent_prompt_language: en           # 에이전트 내부 언어
-  git_commit_messages: en             # Git 커밋 메시지
-  code_comments: en                   # 코드 주석
-  documentation: en                   # 문서 파일
+  conversation_language: ko           # user response language
+  agent_prompt_language: en           # agent internal language
+  git_commit_messages: en             # Git commit messages
+  code_comments: en                   # code comments
+  documentation: en                   # documentation files
 ```
 
 ## Using CLAUDE.local.md
@@ -174,19 +177,19 @@ language:
 ### Example
 
 ```markdown
-# 프로젝트 로컬 설정
+# Project local settings
 
-## 문서 작성 가이드라인
+## Documentation guidelines
 
-### MDX 렌더링 오류 방지
-- 강조 표시와 괄호 사이에 반드시 공백
+### Prevent MDX rendering errors
+- Always put a space between emphasis markers and parentheses
 
-### Mermaid 다이어그램 방향
-- 모든 다이어그램은 세로 방향 (flowchart TD)
+### Mermaid diagram direction
+- All diagrams vertical (flowchart TD)
 
-## 개인 메모
-- DB 마이그레이션 전 백업 필수
-- API 엔드포인트 네이밍: kebab-case 사용
+## Personal notes
+- Always back up before DB migration
+- API endpoint naming: use kebab-case
 ```
 
 ### Usage Tips
@@ -207,15 +210,14 @@ The `.claude/rules/` directory stores **conditionally loaded detailed rules**. T
 
 ```
 .claude/rules/moai/
-├── core/                          # 핵심 원칙
-│   └── moai-constitution.md       # TRUST 5, 핵심 규칙
-├── development/                   # 개발 표준
-│   ├── skill-authoring.md         # 스킬 작성 가이드
-│   └── coding-standards.md        # 코딩 표준
-├── workflow/                      # 워크플로우
-│   ├── workflow-modes.md          # Plan/Run/Sync 정의
-│   └── spec-workflow.md           # SPEC 워크플로우
-└── languages/                     # 언어별 규칙 (16개)
+├── core/                          # core principles
+│   └── moai-constitution.md       # TRUST 5, core rules
+├── development/                   # development standards
+│   ├── skill-authoring.md         # skill authoring guide
+│   └── coding-standards.md        # coding standards
+├── workflow/                      # workflows
+│   └── spec-workflow.md           # SPEC workflow (Plan/Run/Sync definitions)
+└── languages/                     # per-language rules (16)
     ├── python.md
     ├── typescript.md
     ├── javascript.md
@@ -233,10 +235,10 @@ paths:
   - "**/pyproject.toml"
 ---
 
-# Python 코딩 규칙
-- ruff 포맷터 사용
-- type hints 필수
-- docstring은 Google 스타일
+# Python coding rules
+- use the ruff formatter
+- type hints required
+- Google-style docstrings
 ```
 
 This rule loads only when Python files are being modified, **saving tokens**.
@@ -248,8 +250,7 @@ This rule loads only when Python files are being modified, **saving tokens**.
 | `core/` | `moai-constitution.md` | Always loaded |
 | `development/` | `skill-authoring.md` | During skill-related work |
 | `development/` | `coding-standards.md` | During code work |
-| `workflow/` | `workflow-modes.md` | On workflow commands |
-| `workflow/` | `spec-workflow.md` | During SPEC-related work |
+| `workflow/` | `spec-workflow.md` | On workflow commands / SPEC-related work |
 | `languages/` | `python.md`, etc. | When editing files of that language |
 
 ## Size Limit
@@ -281,46 +282,46 @@ flowchart TD
 ### Frontend Project
 
 ```markdown
-# 프로젝트 로컬 설정
+# Project local settings
 
-## React 규칙
-- 컴포넌트는 반드시 함수형으로 작성
-- Props 인터페이스는 컴포넌트 파일 상단에 정의
-- 상태 관리는 Zustand 사용
-- CSS는 Tailwind CSS만 사용
+## React rules
+- Components must be written as functional components
+- Define the Props interface at the top of the component file
+- Use Zustand for state management
+- Use Tailwind CSS only for CSS
 
-## 네이밍 규칙
-- 컴포넌트: PascalCase (UserProfile.tsx)
-- 유틸리티: camelCase (formatDate.ts)
-- 상수: UPPER_SNAKE_CASE (MAX_RETRY_COUNT)
-- API 엔드포인트: kebab-case (/api/user-profiles)
+## Naming rules
+- Components: PascalCase (UserProfile.tsx)
+- Utilities: camelCase (formatDate.ts)
+- Constants: UPPER_SNAKE_CASE (MAX_RETRY_COUNT)
+- API endpoints: kebab-case (/api/user-profiles)
 
-## 금지 사항
-- any 타입 사용 금지
-- console.log 프로덕션 코드에 금지
-- default export 금지 (named export만 사용)
+## Prohibitions
+- No use of the any type
+- No console.log in production code
+- No default export (named exports only)
 ```
 
 ### Backend Project
 
 ```markdown
-# 프로젝트 로컬 설정
+# Project local settings
 
-## Python 규칙
-- FastAPI 사용
-- 비동기 함수 우선 (async/await)
-- Pydantic v2 모델 사용
-- SQLAlchemy 2.0 스타일
+## Python rules
+- Use FastAPI
+- Prefer async functions (async/await)
+- Use Pydantic v2 models
+- SQLAlchemy 2.0 style
 
-## 데이터베이스 규칙
-- 마이그레이션 전 반드시 백업
-- 인덱스는 쿼리 패턴 분석 후 추가
-- soft delete 패턴 사용 (is_deleted 플래그)
+## Database rules
+- Always back up before migration
+- Add indexes after analyzing query patterns
+- Use the soft-delete pattern (is_deleted flag)
 
-## API 규칙
-- RESTful 엔드포인트 네이밍
-- 응답 형식 통일: {"data": ..., "message": ...}
-- 에러 코드 표준화
+## API rules
+- RESTful endpoint naming
+- Unified response format: {"data": ..., "message": ...}
+- Standardized error codes
 ```
 
 ## The Relationship Between CLAUDE.md, Rules, and Skills

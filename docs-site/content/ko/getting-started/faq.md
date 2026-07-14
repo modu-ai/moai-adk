@@ -86,16 +86,16 @@ statusline:
 
 MoAI-ADK는 Claude Code 구독 요금제에 맞춰 에이전트에 최적의 AI 모델을 할당합니다. 요금제의 사용량 제한 내에서 품질을 극대화하는 토크노믹스 장치입니다.
 
-### 정책 티어 비교
+### 티어 비교
 
-| 정책 | 요금제 | 특징 |
-|------|--------|------|
-| **High** | Max $200/월 | 최고 품질 — 계획·감사에 Opus 배정, 최대 처리량 |
-| **Medium** | Max $100/월 | 품질과 비용의 균형 |
-| **Low** | Plus $20/월 | 경제적, Opus 미포함 — Sonnet 중심 배분 |
+| 티어 | 특징 |
+|------|------|
+| **max** | 최고 품질 — 계획·감사에 Opus 배정, 최대 추론 깊이 |
+| **medium** (기본값) | 품질과 비용의 균형 |
+| **low** | 경제적 — Sonnet 중심 배분 |
 
 {{< callout type="warning" >}}
-**왜 중요한가요?** Plus $20 요금제는 Opus를 포함하지 않습니다. `Low`로 설정하면 모든 에이전트가 Opus 없이 동작하여 사용량 제한 오류를 방지합니다. 상위 요금제에서는 핵심 단계 (계획, 감사) 에 Opus를, 일반 작업에 경량 모델을 배분합니다.
+**왜 중요한가요?** `low` 티어는 상위 모델 (Opus) 없이도 전체 워크플로우가 동작하도록 설계되었습니다. 사용량 제한 오류를 방지하면서도 핵심 작업을 수행할 수 있습니다. `max` 티어에서는 핵심 단계 (계획, 감사) 에 Opus를, 일반 작업에 경량 모델을 배정합니다.
 {{< /callout >}}
 
 ### 티어별 에이전트 모델 배정
@@ -104,24 +104,24 @@ MoAI-ADK는 Claude Code 구독 요금제에 맞춰 에이전트에 최적의 AI 
 
 #### Manager Agents (5개)
 
-| 에이전트 | High | Medium | Low |
-|---------|------|--------|-----|
+| 에이전트 | max | medium | low |
+|---------|-----|--------|-----|
 | manager-spec | opus | opus | sonnet |
 | manager-develop | opus | sonnet | sonnet |
-| manager-docs | sonnet | haiku | haiku |
-| manager-git | haiku | haiku | haiku |
+| manager-docs | sonnet | sonnet | sonnet |
+| manager-git | sonnet | sonnet | sonnet |
 | manager-design | sonnet | sonnet | sonnet |
 
 #### Evaluator · Builder · Advisor Agents (4개)
 
-| 에이전트 | High | Medium | Low |
-|---------|------|--------|-----|
+| 에이전트 | max | medium | low |
+|---------|-----|--------|-----|
 | plan-auditor | opus | opus | sonnet |
 | sync-auditor | opus | sonnet | sonnet |
-| builder-harness | opus | sonnet | haiku |
+| builder-harness | opus | sonnet | sonnet |
 | super-advisor | opus | opus | sonnet |
 
-e2e-specialist와 빌트인 `Explore`는 세션 모델을 그대로 따릅니다 (`model: inherit`).
+e2e-tester와 빌트인 `Explore`는 세션 모델을 그대로 따릅니다 (`model: inherit`).
 
 ### 설정 방법
 
@@ -134,7 +134,7 @@ moai update -c                # 설정 마법사 재실행
 ```
 
 {{< callout type="info" >}}
-기본 정책은 `High`입니다. `moai update` 실행 후, `moai update -c`로 이 설정을 구성하도록 안내가 표시됩니다.
+기본 티어는 `medium` 입니다. `moai update -c`로 설정 마법사를 다시 실행하여 변경할 수 있습니다.
 {{< /callout >}}
 
 ---

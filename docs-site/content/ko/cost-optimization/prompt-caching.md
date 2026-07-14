@@ -21,7 +21,7 @@ draft: false
 
 ### 비용 비교
 
-Claude Opus 4.5를 기준으로:
+Claude Opus 4.8을 기준으로:
 
 | 시나리오 | 캐싱 없음 | 1시간 캐시 포함 | 절감 |
 |---------|----------|-----------------|-------|
@@ -71,9 +71,9 @@ cache_control={"type": "ephemeral"}
 MoAI 캐싱은 `.moai/config/sections/cache.yaml`에서 설정됩니다:
 
 ```yaml
-cache:
+cacheStrategy:
   enabled: false  # 캐싱을 활성화하려면 true로 설정
-  session_ttl: "1h"  # 세션 수준 캐시 TTL
+  session_ttl: "1h"  # 세션 수준 캐시 TTL — 허용값: 1h · 5m · off
   spec_ttl: "5m"     # SPEC 본문 캐시 TTL
   min_cacheable_tokens: 2048  # 캐시 기록 최소 토큰
 ```
@@ -83,9 +83,9 @@ cache:
 특정 세션에서 캐싱을 비활성화하려면(예: 원샷 요청이 지배적일 때):
 
 ```yaml
-cache:
+cacheStrategy:
   enabled: true
-  session_ttl: "off"  # 이 세션에서 캐시 비활성화
+  session_ttl: "off"  # 이 세션에서 캐시 비활성화 (허용값: 1h · 5m · off)
   spec_ttl: "5m"      # SPEC 본문만 캐시 사용
 ```
 
@@ -96,27 +96,10 @@ cache:
 
 ## 캐시 성능 모니터링
 
-`moai doctor`를 사용하여 캐시 히트율을 보고 캐싱 활성화 여부를 결정하세요:
-
-```bash
-moai doctor --cache-metrics
-```
-
-출력 예시:
-
-```
-캐시 성능 (지난 7일):
-  캐시 히트율: 67%
-  총 캐시 읽기: 450K 토큰
-  총 캐시 기록: 150K 토큰
-  절감: $2.15 (캐싱 없는 경우 대비 68% 비용 절감)
-
-단일 턴 요청 비율: 12%  ⚠️ 경고: 요청의 12%가 단일 턴
-                            (이들에 대한 캐시 이득 없음).
-```
-
-MoAI statusline에도 캐시 적중률(cache_hit) 세그먼트가 표시되어, 컨텍스트
-다이어트와 캐싱 설정의 효과를 세션 중에 바로 확인할 수 있습니다.
+MoAI statusline의 캐시 적중률(cache_hit) 세그먼트로 실시간 히트율을
+확인하여 캐싱 활성화 여부를 결정하세요. 이 세그먼트는 세션이 진행되는
+동안 캐시 읽기 대비 기록 비율을 표시하므로, 컨텍스트 다이어트와 캐싱
+설정의 효과를 세션 중에 바로 확인할 수 있습니다.
 
 ### 메트릭 해석
 
@@ -146,8 +129,8 @@ MoAI statusline에도 캐시 적중률(cache_hit) 세그먼트가 표시되어, 
 
 캐시 기록은 접두사가 언어 모델별 최소값을 초과할 때만 발행됩니다:
 
-- **Claude Opus 4.5, 4.7, 4.8, Haiku 4.5**: 2,048 토큰 최소
-- **Claude Opus 4.1, Sonnet 모델, 기타 Haiku 버전**: 1,024 토큰 최소
+- **Claude Opus 4.7 / 4.8, Haiku 4.5**: 2,048 토큰 최소
+- **Sonnet 계열 및 기타 Haiku 버전**: 1,024 토큰 최소
 
 최소값 미만의 요청은 캐싱 없이 처리됩니다(오류 없음 — 자동 폴백).
 
@@ -181,7 +164,7 @@ client.messages.create(
 
 - **캐시 활성화**: 1시간 내 2개 이상의 연속 API 요청이 있는 세션
 - **캐시 비활성화**: 원샷 쿼리 또는 중단 기반 워크플로우
-- **모니터링**: `moai doctor --cache-metrics`와 statusline cache_hit 세그먼트로 실제 히트율 측정
+- **모니터링**: statusline cache_hit 세그먼트로 실제 히트율 측정
 - **최적화**: 캐시 중단점을 안정적 콘텐츠(시스템 프롬프트, 지시)에 배치하고 변경 데이터(쿼리, 타임스탬프)에는 배치하지 마세요
 
 자세한 내용은 [Anthropic 프롬프트 캐싱 문서](https://platform.claude.com/docs/en/docs/build-with-claude/prompt-caching)를 참조하세요.

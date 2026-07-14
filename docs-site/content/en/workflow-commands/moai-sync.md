@@ -73,11 +73,15 @@ The default `auto` mode syncing only changed files is also a tokenomics design d
 
 | Flag      | Description                          | Example              |
 | --------- | ------------------------------------ | -------------------- |
-| `--pr`   | Skip the changelog prompt and open a PR automatically | `/moai sync --pr` |
-| `--merge` | Auto-merge the PR after completion   | `/moai sync --merge` |
+| `--pr`   | Skip the changelog prompt and open a PR automatically (Tier L or when review is needed) | `/moai sync --pr` |
 | `--skip-mx` | Skip the MX tag check                | `/moai sync --skip-mx` |
-| `--team`  | Force agent team mode                | `/moai sync --team`  |
-| `--solo`  | Force sub-agent mode                 | `/moai sync --solo`  |
+
+{{< callout type="warning" >}}
+The `--merge` and `--team` / `--solo` flags have been **Deprecated** or **removed**.
+
+- `--merge`: In Hybrid Trunk 1-person OSS operation, Tier S/M push directly to main by default, so PR auto-merge is no longer needed. If a merge is needed after creating a PR at Tier L, run `gh pr merge` manually.
+- `--team` / `--solo`: The Agent Teams static-orchestration layer has been RETIRED. `--team` triggers a `MODE_TEAM_UNAVAILABLE` fallback, and since sub-agent mode is the only mode, `--solo` is meaningless too.
+{{< /callout >}}
 
 ### The --pr Flag
 
@@ -89,25 +93,18 @@ Skips the changelog prompt and opens a PR automatically:
 
 **Use case**: when you want to create a PR quickly without entering changelog information manually. The changelog can be added later during PR review.
 
-### The --merge Flag
+### Tier-based PR routing
 
-Automatically merges the PR and cleans up the branch after sync completes:
+Whether a PR is created is decided automatically by the SPEC tier (the Hybrid Trunk 1-person OSS default behavior):
 
-```bash
-> /moai sync --merge
-```
+| Tier | PR creation | Executor |
+| ---- | ------- | --------- |
+| **Tier S** (≤ 300 LOC, < 5 files) | direct push to main (no PR) | manager-develop or orchestrator |
+| **Tier M** (300-1000 LOC, 5-15 files) | direct push to main (no PR) | manager-develop or orchestrator |
+| **Tier L** (> 1000 LOC or constitutional) | PR from a `feat/SPEC-XXX` branch via manager-git | manager-git |
+| **Explicit `--pr`** (any tier) | PR from a `feat/SPEC-XXX` branch via manager-git | manager-git |
 
-**Workflow:**
-
-1. Check CI/CD status (gh pr checks)
-2. Check for merge conflicts (gh pr view --json mergeable)
-3. If passing and mergeable: auto-merge (gh pr merge --squash --delete-branch)
-4. Check out the develop branch, pull, delete the local branch
-
-{{< callout type="info" >}}
-  The `--merge` option auto-merges the PR **only when CI/CD has passed**. This guarantees
-  safe automation.
-{{< /callout >}}
+Tier S/M push directly to main because the CI 4 status checks + pre-push hook guarantee safety. Tier L requires a PR review window and full CI matrix verification due to its broad scope.
 
 **Token-efficiency strategies:**
 
@@ -437,6 +434,21 @@ The Sync phase's quality criteria are more documentation-centric than the Run ph
 {{< callout type="warning" >}}
   If the quality gate fails, doc generation and PR creation are **halted**. First go back to
   `/moai run` to fix code issues, or use `/moai fix` to fix errors quickly.
+{{< /callout >}}
+
+## Sync-phase Human Gates
+
+The sync process has two HUMAN GATEs. These gates are not auto-passed, and the chain is halted on a FAIL or INCONCLUSIVE verdict.
+
+| Gate | Name | Timing | Role |
+| ------ | ---- | ---- | ---- |
+| `gate-sync-1` | Pre-Sync Quality | Before entering Phase 3 | Confirm the working tree is clean and all tests pass |
+| `gate-sync-2` | Documentation Scope | Approve the doc generation scope | The user reviews the divergence report and approves the doc regeneration scope |
+
+`gate-sync-1` verifies that code quality meets the sync entry conditions — if there are test failures or a dirty working tree, it does not proceed to doc generation. `gate-sync-2` is an approval step where the user confirms which documents to regenerate — it prevents automatic generation from making unintended document changes.
+
+{{< callout type="warning" >}}
+If the sync-auditor verdict is FAIL/INCONCLUSIVE or a gate blocks, the chain is halted. It does not auto-complete without passing the gates.
 {{< /callout >}}
 
 ## Worktree-Context Auto-Merge

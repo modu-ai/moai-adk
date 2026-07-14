@@ -213,8 +213,8 @@ Claude Code 대화에서 직접 스킬을 호출할 수 있습니다.
 
 ```
 .claude/skills/
-├── moai-foundation-core/       # Foundation 카테고리
-│   ├── skill.md                # 메인 스킬 문서 (500줄 이하)
+├── moai-foundation-core/       # Foundation 카테고리 (template-managed)
+│   ├── SKILL.md                # 메인 스킬 문서 (500줄 이하)
 │   ├── modules/                # 심층 문서 (무제한)
 │   │   ├── trust-5-framework.md
 │   │   ├── spec-first-ddd.md
@@ -222,25 +222,39 @@ Claude Code 대화에서 직접 스킬을 호출할 수 있습니다.
 │   ├── examples.md             # 실전 예시
 │   └── reference.md            # 외부 참조 링크
 │
-├── moai-domain-backend/        # Domain 카테고리
-│   ├── skill.md
+├── moai-domain-backend/        # Domain 카테고리 (template-managed)
+│   ├── SKILL.md
 │   └── modules/
 │       ├── api-patterns.md
 │       └── microservices.md
 │
-└── my-skills/                  # 사용자 커스텀 스킬 (업데이트 제외)
-    └── my-custom-skill/
-        └── skill.md
+├── hns-my-harness/             # 사용자 하네스 스킬 (user-owned, hns-* 접두사)
+│   └── SKILL.md
+│
+└── my-custom-skill/            # 사용자 커스텀 스킬 (user-owned)
+    └── SKILL.md
 ```
+
+### 스킬 네임스페이스
+
+스킬 접두사는 **배포 주체**를 구분하며, `moai update` 동작이 다릅니다.
+
+| 접두사 | 소유권 | `moai update` 동작 |
+|--------|--------|-------------------|
+| `moai-*` / `moai-harness-*` | template-managed | 덮어쓰기 (sync) |
+| `hns-*` | user-owned (하네스) | 보존 (수정·삭제 금지) |
+| (접두사 없음) / 기타 | user-owned (개인) | 보존 |
+
+`hns-*` 접두사는 사용자가 생성한 하네스 스킬을 의미하며, `moai update`가 절대 덮어쓰거나 삭제하지 않습니다. 템플릿에 `hns-*` 스킬을 미러링하면 안 됩니다 (CI 가드가 감지).
 
 {{< callout type="warning" >}}
   **주의**: `moai-*` 접두사가 붙은 스킬은 MoAI-ADK 업데이트 시 덮어쓰기됩니다.
-  개인 스킬은 반드시 `.claude/skills/my-skills/` 디렉토리에 생성하세요.
+  개인 스킬과 하네스 스킬은 `hns-*` 접두사 또는 접두사 없는 디렉토리에 생성하세요.
 {{< /callout >}}
 
 ### 스킬 파일 구조
 
-각 스킬의 `skill.md`는 다음 구조를 따릅니다.
+각 스킬의 `SKILL.md`는 다음 구조를 따릅니다.
 
 ```markdown
 ---

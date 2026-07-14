@@ -64,7 +64,7 @@ statusline 支持 4 种显示预设与自定义设置：
 
 ```yaml
 statusline:
-  preset: compact  # 또는 full, minimal, custom
+  preset: compact  # 或 full, minimal, custom
   segments:
     model: true
     context: true
@@ -126,11 +126,11 @@ e2e-tester 与内置 `Explore` 直接沿用会话模型 (`model: inherit`)。
 ### 设置方法
 
 ```bash
-# 프로젝트 초기화 시
-moai init my-project          # 대화형 마법사에서 모델 정책 선택
+# 项目初始化时
+moai init my-project          # 在交互式向导中选择模型策略
 
-# 기존 프로젝트 재설정
-moai update -c                # 설정 마법사 재실행
+# 既有项目重新设置
+moai update -c                # 重新运行设置向导
 ```
 
 {{< callout type="info" >}}
@@ -203,9 +203,9 @@ flowchart TD
 用于在测试覆盖率极低的现有项目中安全重构的方法论。
 
 ```
-ANALYZE   → 기존 코드와 의존성 분석, 도메인 경계 식별
-PRESERVE  → 특성 테스트 작성, 현재 동작 스냅샷 캡처
-IMPROVE   → 테스트로 보호된 상태에서 점진적 개선
+ANALYZE   → 分析既有代码与依赖,识别领域边界
+PRESERVE  → 编写特性化测试,捕获当前行为快照
+IMPROVE   → 在受测试保护的状态下渐进式改进
 ```
 
 ### 方法论选择表
@@ -220,12 +220,12 @@ IMPROVE   → 테스트로 보호된 상태에서 점진적 개선
 ### 设置方法
 
 ```bash
-# 프로젝트 초기화 시 자동 감지
-moai init my-project          # --mode <ddd|tdd> 플래그로 지정 가능
+# 项目初始化时自动检测
+moai init my-project          # 可用 --mode <ddd|tdd> 标志指定
 
-# 수동 설정
-# .moai/config/sections/quality.yaml 편집
-development_mode: tdd         # 또는 ddd
+# 手动设置
+# 编辑 .moai/config/sections/quality.yaml
+development_mode: tdd         # 或 ddd
 ```
 
 {{< callout type="info" >}}
@@ -256,9 +256,9 @@ development_mode: tdd         # 또는 ddd
 用 @MX 标签扫描代码库：
 
 ```bash
-/moai mx --all        # 전체 스캔
-/moai mx --dry        # 미리보기
-/moai mx --priority P1  # 치명적 항목만
+/moai mx --all        # 全部扫描
+/moai mx --dry        # 预览
+/moai mx --priority P1  # 仅致命项
 ```
 
 ---

@@ -103,11 +103,11 @@ EARS 提供 5 种需求模式。
 - id: REQ-001
   type: ubiquitous
   priority: HIGH
-  text: "시스템은 모든 사용자 입력을 검증해야 한다"
+  text: "系统必须验证所有用户输入"
   acceptance_criteria:
-    - "모든 입력값에 대해 타입 검증 수행"
-    - "SQL Injection 방지를 위한 파라미터화된 쿼리 사용"
-    - "XSS 방지를 위한 출력 이스케이프"
+    - "对所有输入值执行类型验证"
+    - "使用参数化查询防止 SQL Injection"
+    - "输出转义防止 XSS"
 ```
 
 **日常比喻：** 就像"开车时必须始终系安全带"，没有特别条件，一直要遵守。
@@ -132,14 +132,14 @@ flowchart TD
   type: event-driven
   priority: HIGH
   text: |
-    WHEN 사용자가 로그인 버튼을 클릭하면,
-    IF 이메일과 비밀번호가 유효하면,
-    THEN JWT 토큰을 발급하고 대시보드로 리다이렉트해야 한다
+    WHEN 用户点击登录按钮时,
+    IF 邮箱与密码有效,
+    THEN 必须签发 JWT 令牌并重定向到仪表盘
   acceptance_criteria:
-    - given: "등록된 사용자 계정이 있고"
-      when: "올바른 이메일과 비밀번호로 로그인하면"
-      then: "200 응답과 함께 JWT 토큰 발급"
-      and: "토큰 만료 시간은 1시간"
+    - given: "已有注册的用户账户"
+      when: "用正确的邮箱与密码登录"
+      then: "返回 200 响应并签发 JWT 令牌"
+      and: "令牌过期时间为 1 小时"
 ```
 
 **日常比喻：** 就像"门铃响了 (WHEN)，用监控确认是认识的人 (IF)，就开门 (THEN)"。
@@ -157,12 +157,12 @@ flowchart TD
   type: state-driven
   priority: MEDIUM
   text: |
-    WHILE 사용자가 로그인된 상태인 동안,
-    시스템은 세션을 5분마다 갱신해야 한다
+    WHILE 用户处于登录状态期间,
+    系统必须每 5 分钟刷新一次会话
   acceptance_criteria:
-    - "마지막 활동으로부터 5분 경과 시 자동 갱신"
-    - "세션 만료 5분 전 알림 표시"
-    - "30분 무활동 시 자동 로그아웃"
+    - "距上次活动过去 5 分钟时自动刷新"
+    - "会话过期前 5 分钟显示提醒"
+    - "30 分钟无活动时自动登出"
 ```
 
 **日常比喻：** 就像"空调开着的期间 (WHILE)，必须把室温维持在 25 度"。
@@ -179,20 +179,20 @@ flowchart TD
 - id: REQ-004
   type: unwanted
   priority: CRITICAL
-  text: "시스템은 비밀번호를 평문으로 저장하면 안 된다"
+  text: "系统不得以明文存储密码"
   acceptance_criteria:
-    - "비밀번호는 bcrypt로 해싱 (cost factor 12)"
-    - "해싱되지 않은 비밀번호가 로그에 포함되지 않음"
-    - "데이터베이스에 평문 비밀번호 저장 불가"
+    - "密码用 bcrypt 哈希 (cost factor 12)"
+    - "未哈希的密码不出现在日志中"
+    - "数据库中不可存储明文密码"
 
 - id: REQ-005
   type: unwanted
   priority: CRITICAL
-  text: "시스템은 하드코딩된 비밀키를 사용하면 안 된다"
+  text: "系统不得使用硬编码的密钥"
   acceptance_criteria:
-    - "모든 비밀키는 환경 변수 또는 비밀 관리자 사용"
-    - "코드에 비밀키 포함되지 않음"
-    - "Git 커밋에 비밀키 포함 방지"
+    - "所有密钥使用环境变量或密钥管理器"
+    - "代码中不包含密钥"
+    - "防止密钥进入 Git 提交"
 ```
 
 **日常比喻：** 就像"不能把钥匙放在门口地垫下面"，明示不该做的事。
@@ -209,10 +209,10 @@ flowchart TD
 - id: REQ-006
   type: optional
   priority: LOW
-  text: "가능하다면, 시스템은 로그인 시 이메일 알림을 발송해야 한다"
+  text: "如果可能,系统应在登录时发送邮件通知"
   acceptance_criteria:
-    - "이메일 서버가 구성된 경우에만 동작"
-    - "알림 비활성화 옵션 제공"
+    - "仅在配置了邮件服务器时运行"
+    - "提供关闭通知的选项"
 ```
 
 **日常比喻：** 就像"有时间的话再做个甜点就好了"，有更好，没有也无妨。
@@ -243,88 +243,88 @@ SPEC 文档由 **manager-spec 智能体**自动生成。开发者无需背 EARS 
 
 ```yaml
 ---
-id: SPEC-AUTH-001               # 고유 식별자
-title: 사용자 인증 시스템         # 명확하고 간결한 제목
+id: SPEC-AUTH-001               # 唯一标识符
+title: 用户认证系统               # 明确简洁的标题
 priority: HIGH                  # HIGH, MEDIUM, LOW
-status: ACTIVE                  # DRAFT, ACTIVE, IN_PROGRESS, COMPLETED
-created: 2025-01-12             # 생성일
-updated: 2025-01-12             # 최종 수정일
-author: 개발팀                   # 작성자
-version: 1.0.0                  # 문서 버전
+status: draft                   # draft, in-progress, implemented, completed
+created: 2025-01-12             # 创建日
+updated: 2025-01-12             # 最后修改日
+author: 开发团队                 # 作者
+version: 1.0.0                  # 文档版本
 ---
 
-# 사용자 인증 시스템
+# 用户认证系统
 
-## 개요
-JWT 기반 사용자 인증 시스템 구현
+## 概述
+实现基于 JWT 的用户认证系统
 
-## 요구사항
+## 需求
 ### Ubiquitous
-- 시스템은 모든 API 요청에 인증을 요구해야 한다
+- 系统必须对所有 API 请求要求认证
 
 ### Event-driven
-- WHEN 사용자가 로그인하면, THEN JWT를 발급해야 한다
+- WHEN 用户登录时, THEN 必须签发 JWT
 
 ### Unwanted
-- 시스템은 비밀번호를 평문으로 저장하면 안 된다
+- 系统不得以明文存储密码
 
-## 제약 조건
-- API 응답 시간 500ms 이내
-- 비밀번호 bcrypt 해싱 (cost factor 12)
+## 约束条件
+- API 响应时间 500ms 以内
+- 密码 bcrypt 哈希 (cost factor 12)
 
-## 의존성
-- Redis (세션 관리)
-- PostgreSQL (사용자 데이터)
+## 依赖
+- Redis (会话管理)
+- PostgreSQL (用户数据)
 ```
 
 ### plan.md -- 实现计划
 
 ```markdown
-# 구현 계획
+# 实现计划
 
-## 작업 분해
-1. 사용자 모델 및 마이그레이션 생성
-2. JWT 토큰 발급/검증 유틸리티 구현
-3. 로그인/회원가입 API 엔드포인트 구현
-4. 인증 미들웨어 구현
-5. Refresh Token 갱신 로직 구현
+## 任务分解
+1. 创建用户模型与迁移
+2. 实现 JWT 令牌签发/验证工具
+3. 实现登录/注册 API 端点
+4. 实现认证中间件
+5. 实现 Refresh Token 刷新逻辑
 
-## 기술 스택
+## 技术栈
 - Go 1.23 + Fiber v2
 - PostgreSQL 16 + GORM
-- Redis 7 (세션/토큰 저장)
+- Redis 7 (会话/令牌存储)
 
-## 위험 분석
-| 위험 | 영향 | 완화 전략 |
+## 风险分析
+| 风险 | 影响 | 缓解策略 |
 | --- | --- | --- |
-| 토큰 탈취 | HIGH | Refresh Token 회전, HttpOnly 쿠키 |
-| 무차별 대입 | MEDIUM | Rate Limiting, 계정 잠금 |
+| 令牌窃取 | HIGH | Refresh Token 轮换, HttpOnly cookie |
+| 暴力破解 | MEDIUM | Rate Limiting, 账户锁定 |
 ```
 
 ### acceptance.md -- 验收标准
 
 ```markdown
-# 인수 기준
+# 验收标准
 
-## 시나리오
+## 场景
 
-### AC-01: 정상 로그인
-- **Given** 등록된 사용자 계정이 있고
-- **When** 올바른 이메일과 비밀번호로 로그인하면
-- **Then** 200 응답과 JWT 토큰 세트 반환
+### AC-01: 正常登录
+- **Given** 已有注册的用户账户
+- **When** 用正确的邮箱与密码登录
+- **Then** 返回 200 响应与 JWT 令牌组
 
-### AC-02: 잘못된 자격증명
-- **Given** 등록된 사용자 계정이 있고
-- **When** 잘못된 비밀번호로 로그인하면
-- **Then** 401 응답과 일반적인 오류 메시지 반환
+### AC-02: 错误的凭据
+- **Given** 已有注册的用户账户
+- **When** 用错误的密码登录
+- **Then** 返回 401 响应与通用错误消息
 
-## 엣지 케이스
-- 만료된 Refresh Token으로 갱신 시 401 응답
-- 동시 로그인 제한 초과 시 가장 오래된 세션 만료
+## 边界情况
+- 用过期的 Refresh Token 刷新时返回 401 响应
+- 超出并发登录限制时最旧的会话过期
 
-## 품질 게이트
-- API 응답 시간: 500ms 이내 (P95)
-- 테스트 커버리지: 85% 이상
+## 质量门禁
+- API 响应时间: 500ms 以内 (P95)
+- 测试覆盖率: 85% 以上
 ```
 
 ## SPEC 工作流
@@ -344,8 +344,8 @@ flowchart TD
 **执行方法：**
 
 ```bash
-# SPEC 생성 명령어
-> /moai plan "사용자 인증 기능 구현"
+# SPEC 生成命令
+> /moai plan "实现用户认证功能"
 ```
 
 执行该命令后，以下步骤自动进行：
@@ -368,9 +368,9 @@ flowchart TD
 .moai/
 └── specs/
     ├── SPEC-AUTH-001/
-    │   ├── spec.md          # EARS 요구사항
-    │   ├── plan.md          # 구현 계획
-    │   └── acceptance.md    # 인수 기준
+    │   ├── spec.md          # EARS 需求
+    │   ├── plan.md          # 实现计划
+    │   └── acceptance.md    # 验收标准
     ├── SPEC-PAYMENT-001/
     │   ├── spec.md
     │   ├── plan.md
@@ -407,8 +407,8 @@ flowchart TD
 以下是实际执行 `/moai plan` 生成的 SPEC 示例。
 
 ```bash
-# SPEC 생성
-> /moai plan "JWT 기반 사용자 인증 시스템. 로그인, 회원가입, 토큰 갱신 기능 포함"
+# 生成 SPEC
+> /moai plan "基于 JWT 的用户认证系统。包含登录、注册、令牌刷新功能"
 ```
 
 如下，在 `.moai/specs/SPEC-AUTH-001/` 目录中生成 3 个文件。
@@ -418,109 +418,109 @@ flowchart TD
 ```yaml
 ---
 id: SPEC-AUTH-001
-title: JWT 기반 사용자 인증 시스템
+title: 基于 JWT 的用户认证系统
 priority: HIGH
-status: ACTIVE
+status: draft
 created: 2025-01-15
 version: 1.0.0
 ---
 
-# JWT 기반 사용자 인증 시스템
+# 基于 JWT 的用户认证系统
 
-## 개요
-JWT 토큰을 사용한 사용자 인증 시스템.
-로그인, 회원가입, 토큰 갱신 기능을 구현한다.
+## 概述
+使用 JWT 令牌的用户认证系统。
+实现登录、注册、令牌刷新功能。
 
-## 요구사항
+## 需求
 
 ### Ubiquitous
-- REQ-U01: 시스템은 모든 인증 토큰을 HTTPS로만 전송해야 한다
-- REQ-U02: 시스템은 모든 사용자 입력을 검증해야 한다
+- REQ-U01: 系统必须仅通过 HTTPS 传输所有认证令牌
+- REQ-U02: 系统必须验证所有用户输入
 
 ### Event-driven
-- REQ-E01: WHEN 사용자가 회원가입 폼을 제출하면,
-  IF 이메일이 중복되지 않으면,
-  THEN 계정을 생성하고 환영 이메일을 발송해야 한다
-- REQ-E02: WHEN 사용자가 로그인하면,
-  IF 자격증명이 유효하면,
-  THEN Access Token (1시간)과 Refresh Token (7일)을 발급해야 한다
+- REQ-E01: WHEN 用户提交注册表单时,
+  IF 邮箱不重复,
+  THEN 必须创建账户并发送欢迎邮件
+- REQ-E02: WHEN 用户登录时,
+  IF 凭据有效,
+  THEN 必须签发 Access Token (1 小时) 与 Refresh Token (7 天)
 
 ### Unwanted
-- REQ-N01: 시스템은 비밀번호를 평문으로 저장하면 안 된다
-- REQ-N02: 시스템은 만료된 Refresh Token으로 새 토큰을 발급하면 안 된다
+- REQ-N01: 系统不得以明文存储密码
+- REQ-N02: 系统不得用过期的 Refresh Token 签发新令牌
 
 ### Optional
-- REQ-O01: 가능하다면, 소셜 로그인 (Google, GitHub)을 지원해야 한다
+- REQ-O01: 如果可能,应支持社交登录 (Google, GitHub)
 
-## 제약 조건
-- 비밀번호: bcrypt (cost factor 12)
-- Access Token 만료: 1시간
-- Refresh Token 만료: 7일
-- API 응답 시간: 500ms 이내 (P95)
+## 约束条件
+- 密码: bcrypt (cost factor 12)
+- Access Token 过期: 1 小时
+- Refresh Token 过期: 7 天
+- API 响应时间: 500ms 以内 (P95)
 ```
 
 **plan.md -- 实现计划：**
 
 ```markdown
-# 구현 계획
+# 实现计划
 
-## 작업 분해
-1. 사용자 모델 및 DB 마이그레이션 생성
-2. 비밀번호 해싱 유틸리티 구현
-3. JWT 토큰 발급/검증 유틸리티 구현
-4. 회원가입 API 엔드포인트 구현
-5. 로그인 API 엔드포인트 구현
-6. 인증 미들웨어 구현
-7. Refresh Token 갱신 로직 구현
+## 任务分解
+1. 创建用户模型与 DB 迁移
+2. 实现密码哈希工具
+3. 实现 JWT 令牌签发/验证工具
+4. 实现注册 API 端点
+5. 实现登录 API 端点
+6. 实现认证中间件
+7. 实现 Refresh Token 刷新逻辑
 
-## 기술 스택
+## 技术栈
 - Go 1.23 + Fiber v2
 - PostgreSQL 16 + GORM
-- Redis 7 (Refresh Token 저장)
+- Redis 7 (Refresh Token 存储)
 
-## 위험 분석
-| 위험 | 영향 | 완화 전략 |
+## 风险分析
+| 风险 | 影响 | 缓解策略 |
 | --- | --- | --- |
-| 토큰 탈취 | HIGH | Refresh Token 회전, HttpOnly 쿠키 |
-| 무차별 대입 | MEDIUM | Rate Limiting, 계정 잠금 |
+| 令牌窃取 | HIGH | Refresh Token 轮换, HttpOnly cookie |
+| 暴力破解 | MEDIUM | Rate Limiting, 账户锁定 |
 ```
 
 **acceptance.md -- 验收标准：**
 
 ```markdown
-# 인수 기준
+# 验收标准
 
-## 시나리오
+## 场景
 
-### AC-01: 정상 로그인
-- **Given** 등록된 사용자 계정이 있고
-- **When** 올바른 이메일과 비밀번호로 로그인하면
-- **Then** 200 응답과 JWT 토큰 세트 (Access + Refresh) 반환
+### AC-01: 正常登录
+- **Given** 已有注册的用户账户
+- **When** 用正确的邮箱与密码登录
+- **Then** 返回 200 响应与 JWT 令牌组 (Access + Refresh)
 
-### AC-02: 잘못된 비밀번호
-- **Given** 등록된 사용자 계정이 있고
-- **When** 잘못된 비밀번호로 로그인하면
-- **Then** 401 응답
+### AC-02: 错误的密码
+- **Given** 已有注册的用户账户
+- **When** 用错误的密码登录
+- **Then** 返回 401 响应
 
-### AC-03: 중복 회원가입
-- **Given** 이미 등록된 이메일이 있고
-- **When** 같은 이메일로 회원가입하면
-- **Then** 409 응답
+### AC-03: 重复注册
+- **Given** 已有已注册的邮箱
+- **When** 用相同的邮箱注册
+- **Then** 返回 409 响应
 
-### AC-04: 토큰 갱신
-- **Given** 유효한 Refresh Token이 있고
-- **When** 토큰 갱신을 요청하면
-- **Then** 새로운 Access Token 반환
+### AC-04: 令牌刷新
+- **Given** 已有有效的 Refresh Token
+- **When** 请求令牌刷新
+- **Then** 返回新的 Access Token
 
-## 품질 게이트
-- API 응답 시간: 500ms 이내 (P95)
-- 테스트 커버리지: 85% 이상
+## 质量门禁
+- API 响应时间: 500ms 以内 (P95)
+- 测试覆盖率: 85% 以上
 ```
 
 **用这个 SPEC 开始实现：**
 
 ```bash
-# SPEC 확인 후 구현 시작
+# 确认 SPEC 后开始实现
 > /moai run SPEC-AUTH-001
 ```
 

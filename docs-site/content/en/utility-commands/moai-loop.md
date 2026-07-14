@@ -51,9 +51,8 @@ Run it without arguments and it automatically finds and fixes every problem in t
 
 | Flag                                      | Description                          | Example                       |
 | ----------------------------------------- | ------------------------------------ | ----------------------------- |
-| `--max N` (or `--max-iterations`)         | Limit the maximum iterations (default 100) | `/moai loop --max 10`   |
-| `--path <path>`                           | Target a specific path only          | `/moai loop --path src/auth/` |
-| `--stop-on {level}`                       | Stop at or above a certain level     | `/moai loop --stop-on 3`      |
+| `--max N` (or `--max-iterations`)         | Limit the maximum iterations (default 10) | `/moai loop --max 20`   |
+| `--lens {clean\|simplify\|coverage}`      | Add scan lenses (comma-separated, opt-in) | `/moai loop --lens clean,coverage` |
 | `--auto` (or `--auto-fix`)                | Enable auto-fix (default Level 1)    | `/moai loop --auto`           |
 | `--sequential` (or `--seq`)               | Sequential diagnostics instead of parallel | `/moai loop --sequential` |
 | `--errors` (or `--errors-only`)           | Fix errors only, skip warnings       | `/moai loop --errors`         |
@@ -66,14 +65,27 @@ Run it without arguments and it automatically finds and fixes every problem in t
 Limits the number of iterations:
 
 ```bash
-# Iterate at most 10 times
-> /moai loop --max 10
+# Iterate up to 20 times
+> /moai loop --max 20
 ```
 
 {{< callout type="warning" >}}
-  The default is 100 iterations to prevent infinite loops. Most cases finish within
-  10 iterations.
+  To prevent infinite loops, the default is 10 iterations (`ralph.yaml`'s `loop.max_iterations`).
+  The iteration-ceiling priority is CLI `--max` flag > `ralph.yaml` `loop.max_iterations` >
+  `workflow.yaml` `loop_prevention.max_iterations`.
 {{< /callout >}}
+
+### The --lens Flag
+
+In addition to the default scan lenses (LSP · lint · test failures · review lenses [security, @MX]), opt-in lenses widen the scan scope:
+
+| Lens | Issues added |
+|------|---------------|
+| `clean` | Dead code (unused functions · imports · files) |
+| `simplify` | Over-engineering findings |
+| `coverage` | Coverage gaps (supplies issues only when the coverage gate is on) |
+
+Only what a lens finds is placed in the queue; the loop never performs "invented improvements" outside the scanned queue.
 
 ## Execution Flow
 
@@ -150,21 +162,21 @@ Two safeguards prevent infinite loops. Letting a loop run indefinitely also wast
 ```mermaid
 flowchart TD
     A[Run iteration] --> B{Maximum iterations<br/>exceeded?}
-    B -->|Yes: over 100| C["Force stop<br/>report to user"]
-    B -->|No| D{5 consecutive<br/>no-progress iterations?}
-    D -->|Yes: same error repeats| E["Deadlock detected<br/>request user intervention"]
+    B -->|Yes: ceiling reached| C["Force stop<br/>5-section verdict + persist residual issues"]
+    B -->|No| D{N consecutive<br/>no-progress iterations?}
+    D -->|Yes: same failure repeats| E["Stagnation detected<br/>request user intervention"]
     D -->|No| F[Continue to next iteration]
 ```
 
 | Safeguard              | Condition               | Behavior                                          |
 | ---------------------- | ----------------------- | ------------------------------------------------- |
-| **Max iteration limit** | Over 100 iterations    | Force-stops the loop and reports the current state |
-| **No-progress detection** | Same error 5 times in a row | Judged a deadlock; requests user intervention |
+| **Max iteration limit** | Iteration ceiling reached (default 10) | Force-stops the loop, issues a 5-section verdict (Claim / Evidence / Baseline-attribution / Gaps / Residual-risk), and persists residual issues to `.moai/state/loop-verdict-<id>.json` |
+| **Stagnation detection** | N consecutive no-progress iterations (same failure signature) | Judged a stagnation; issues a 5-section verdict and requests user intervention |
 
 {{< callout type="warning" >}}
-  **What if a deadlock occurs?** If the AI fails to fix the same error 5 times in a row,
-  it stops automatically and requests your intervention. In that case, inspect the error
-  yourself or provide a hint.
+  **What if a stagnation occurs?** If the AI fails to resolve the same failure signature
+  consecutively, it stops automatically and requests your intervention with a 5-section
+  evidence verdict. In that case, inspect the error yourself or provide a hint.
 {{< /callout >}}
 
 ## Completion Conditions
@@ -276,19 +288,19 @@ $ pytest --tb=short
 **Execution log:**
 
 ```
-[Iteration 1/100]
+[Iteration 1/10]
   Diagnostics: 5 LSP errors, 3 test failures, coverage 71%
   TODO: 7 fix tasks generated
   Fix: 5 type errors resolved
   Verify: 0 LSP errors, 2 test failures, coverage 71%
 
-[Iteration 2/100]
+[Iteration 2/10]
   Diagnostics: 2 test failures, coverage 71%
   TODO: 2 fix tasks generated
   Fix: 2 test-logic fixes
   Verify: 0 LSP errors, 0 test failures, coverage 74%
 
-[Iteration 3/100]
+[Iteration 3/10]
   Diagnostics: coverage 74% (target 85%)
   TODO: 3 test-addition tasks generated
   Fix: missing test cases added
@@ -312,11 +324,14 @@ You can limit iterations with the `--max` flag, or interrupt with `Ctrl+C`. The 
 
 ### Q: What if I only want a specific type of error fixed?
 
-Use the `--stop-on` flag:
+Use the `--errors` flag to fix errors only and skip warnings, or the `--lens` flag to adjust the scan scope:
 
 ```bash
-# Stop at Level 3 and above (handle security and logic errors manually)
-> /moai loop --stop-on 3
+# Fix errors only (skip warnings)
+> /moai loop --errors
+
+# Add the dead-code and coverage lenses
+> /moai loop --lens clean,coverage
 ```
 
 ### Q: What is the difference between `/moai loop` and `/moai`?
@@ -329,7 +344,7 @@ Use the `--stop-on` flag:
 
 ### Q: What happens when the loop hits a deadlock?
 
-If the AI repeats the same error 5 times in a row, it stops automatically and requests your intervention. In that case, inspect the code yourself or provide a hint.
+If the AI fails to resolve the same failure signature N times in a row (stagnation detection), it stops automatically and requests your intervention with a 5-section evidence verdict. In that case, inspect the code yourself or provide a hint.
 
 ## Related Documents
 

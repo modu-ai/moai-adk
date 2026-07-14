@@ -45,7 +45,9 @@ Plan 단계에서 생성된 SPEC ID를 인자로 전달합니다:
 
 {{< callout type="warning" >}}
   `/moai run` 실행 전에 반드시 `/clear`를 실행하세요. Plan 단계에서 사용한
-  토큰을 정리해야 Run 단계에서 **200K 토큰을 온전히 활용**할 수 있습니다.
+  토큰을 정리해야 Run 단계에서 컨텍스트 윈도우를 온전히 활용할 수 있습니다.
+  GLM-5.2 및 Opus 4.8은 1M 컨텍스트 (권장 사용량 50%), Sonnet/Haiku 계열은
+  200K 컨텍스트 (권장 사용량 90%)입니다.
 {{< /callout >}}
 
 ## 지원 플래그
@@ -53,7 +55,6 @@ Plan 단계에서 생성된 SPEC ID를 인자로 전달합니다:
 | 플래그              | 설명                  | 예시                               |
 | ------------------- | --------------------- | ---------------------------------- |
 | `--resume SPEC-XXX` | 중단된 구현 작업 재개 | `/moai run --resume SPEC-AUTH-001` |
-| `--team`            | 에이전트 팀 모드 강제 | `/moai run SPEC-AUTH-001 --team`   |
 | `--solo`            | 하위 에이전트 모드 강제 | `/moai run SPEC-AUTH-001 --solo`   |
 
 **Resume 기능:**
@@ -117,10 +118,10 @@ flowchart TD
 
 ```mermaid
 flowchart TD
-    A["명령어 실행<br/>/moai run SPEC-XXX"] --> B["manager-spec 호출"]
+    A["명령어 실행<br/>/moai run SPEC-XXX"] --> B["Plan Audit Gate<br/>plan-auditor 감사"]
     B --> C["전략 계획 수립"]
 
-    C --> D{"사용자 승인"}
+    C --> D{"Implementation Kickoff<br/>Approval (사용자 승인)"}
     D -->|아니오| E["종료"]
     D -->|예| F["작업 분해<br/>최대 10개 태스크"]
 
@@ -185,7 +186,6 @@ SPEC 규모에 따라 최적의 실행 모드를 자동 선택합니다. 작은 
 | 단일 기능 | 파일 ≤ 5, 단일 도메인 | **Focused Mode** |
 | 도메인 내 기능 | 파일 5-10 | **Standard Mode** |
 | 멀티 도메인 | 파일 ≥ 10 또는 도메인 ≥ 3 | **Full Pipeline** |
-| 대규모 변경 | complexity ≥ 7 + --team | **Team Mode** |
 
 ### Harness Level Routing (품질 깊이 라우팅)
 
@@ -199,9 +199,31 @@ Run phase 시작 시 SPEC 복잡도에 따라 품질 파이프라인 깊이를 �
 
 실패 시 자동 에스컬레이션: minimal → standard → thorough (최대 2회)
 
+### Plan Audit Gate
+
+`/moai run` 진입 시 가장 먼저 실행되는 필수 게이트입니다. **plan-auditor** 서브에이전트가 plan 단계에서 작성된 SPEC 산출물을 독립적으로 감사합니다.
+
+- plan-auditor는 manager-spec과 독립된 에이전트 — 만든 에이전트가 자신의 결과를 검사하지 않습니다
+- SPEC 산출물 해시가 변경되지 않았고 이전 판정 점수 ≥ 0.90인 경우 skip-eligible (캐시된 판정 재사용)
+- 그렇지 않으면 plan-auditor가 재실행되어 새 판정을 내립니다
+- PASS / PASS-with-debt / FAIL 3가지 판정
+
+{{< callout type="warning" >}}
+Plan Audit Gate의 skip 정책(plan-auditor 재실행 생략)은 점수 기반입니다. 그러나 아래의 **Implementation Kickoff Approval**은 점수와 무관한 별도의 사용자 승인 게이트이며, 어떤 경우에도 우회할 수 없습니다 (REQ-ATR-015).
+{{< /callout >}}
+
+### Implementation Kickoff Approval
+
+Plan Audit Gate 통과 후, 구현을 시작하기 전 사용자의 명시적 승인을 받는 **인간 게이트 (HUMAN GATE)**입니다.
+
+- plan-auditor 판정 요약 + SPEC 산출물을 사용자에게 제시
+- `AskUserQuestion`으로 "run 진입 / 추가 검토 / 중단" 3가지 옵션 제시
+- 점수가 0.90 이상이어도, PASS-with-debt여도, 이 승인은 생략되지 않습니다
+- 사용자 승인 후에야 구현 단계가 시작됩니다
+
 ### Phase 1: 분석 및 계획
 
-**manager-spec** 하위 에이전트가 다음 작업을 수행합니다:
+**manager-develop** 하위 에이전트가 다음 작업을 수행합니다:
 
 - SPEC 문서 완전 분석
 - 요구사항 및 성공 기준 추출

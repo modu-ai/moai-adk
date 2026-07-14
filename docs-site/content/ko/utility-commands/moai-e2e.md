@@ -55,7 +55,7 @@ flowchart TD
 | 플래그 | 설명 | 예시 |
 |-------|------|------|
 | `--tool TOOL` | 툴체인 강제 지정 (선택 질문 생략) | `/moai e2e --tool maestro` |
-| `--platform web\|mobile\|desktop` | 플랫폼 분류 강제 지정 | `/moai e2e --platform web` |
+| `--platform web\|mobile\|desktop\|desktop-native` | 플랫폼 분류 강제 지정 | `/moai e2e --platform desktop-native` |
 | `--record` | 툴체인의 네이티브 기록 기능으로 실행 기록 | `/moai e2e --record` |
 | `--url URL` | 웹 테스트 대상 URL 지정 | `/moai e2e --url http://localhost:3000` |
 | `--journey NAME` | 지정한 사용자 여정만 실행 | `/moai e2e --journey checkout` |
@@ -75,8 +75,13 @@ flowchart TD
 | **모바일** | Maestro | Appium (폴백), Detox (React Native 한정) | iOS / Android / Flutter 지원, 선언적 YAML 플로우 |
 | **데스크탑 (Electron)** | Playwright `_electron` | — | 웹 Playwright 설치를 재사용. API는 실험적 (experimental) — 보고서에 명시 |
 | **데스크탑 (Tauri)** | WebdriverIO + `@wdio/tauri-service` | — | 임베디드 WebDriver 모드는 macOS 포함 크로스 플랫폼 |
+| **데스크탑-네이티브 (macOS)** | axcli | appium-mac2 + WebdriverIO (폴백) | AppKit·네이티브 macOS 앱을 AXUIElement 접근성 트리로 제어. 버전 PIN |
+| **데스크탑-네이티브 (Windows)** | FlaUI.WebDriver + WebdriverIO | pywinauto (폴백) | WinUI/Win32/Qt. W3C WebDriver2 over UIA3. 실험적 — 버전 PIN |
+| **데스크탑-네이티브 (Linux)** | dogtail | ydotool/xdotool + 스크린샷 검증 (폴백) | GTK/Qt를 AT-SPI2로 제어. Wayland는 GNOME 한정 |
 
 선택한 툴체인이 설치되어 있지 않으면, 설치 명령어를 먼저 제시하고 승인 후 설치 → 버전 재확인 → 진행합니다.
+
+데스크탑-네이티브 레인은 세 OS (macOS·Windows·Linux) 의 접근성 레시피를 모두 문서화하지만, **호스트 OS 규칙**에 따라 호스트와 다른 OS의 레시피는 선언적 문서로만 취급하고 실제 프로브·실행은 호스트 OS에 대해서만 수행합니다.
 
 ## 프로젝트 유형 자동 감지
 
@@ -90,6 +95,7 @@ flowchart TD
 | 모바일 (Flutter) | `flutter:`가 포함된 `pubspec.yaml`, `lib/main.dart` |
 | 모바일 (네이티브) | iOS 타깃의 `*.xcodeproj`, `com.android.application`이 있는 `build.gradle` |
 | 웹 | next/nuxt/vite/astro 등 웹 프레임워크 설정, `index.html`, HTTP 서빙 앱 전반 |
+| 데스크탑-네이티브 | Electron/Tauri 없이 네이티브 툴킷 마커만 — AppKit (`.xcodeproj`/`Package.swift`의 macOS 앱 타깃, electron/tauri 의존성 없음), WinUI/Win32 (`.vcxproj`), Qt (`CMakeLists.txt`의 Qt `find_package`/`.pro`), GTK (gtk 의존성) |
 | 혼합 (mixed) | 두 개 이상의 플랫폼 마커가 동시에 감지 — 표면별로 각각 툴체인 선택 |
 
 ## 실행 과정
@@ -167,7 +173,7 @@ flowchart TD
 
 테스트할 E2E 표면이 감지되지 않으면 (예: 웹/모바일/데스크탑 진입점이 없는 순수 라이브러리), 어떤 마커를 확인했는지 근거와 함께 **"E2E 대상 없음"**을 보고하고 `e2e/` 아티팩트를 만들지 않은 채 정상 종료합니다.
 
-Electron도 Tauri도 아닌 **네이티브 데스크탑 앱** (순수 macOS 앱, WinUI, Qt/GTK 등) 이 감지된 경우에도 같은 분기로 진행합니다 — OS 수준 네이티브 데스크탑 자동화는 아직 제공되지 않으며, 분류 근거와 함께 유예 (deferral) 안내를 보고하고 정상 종료합니다.
+Electron도 Tauri도 아닌 **네이티브 데스크탑 앱** (순수 macOS 앱, WinUI, Qt/GTK 등) 이 감지되면 이 분기로 가지 않습니다 — 데스크탑-네이티브 자동화 레인 (macOS의 axcli, Windows의 FlaUI.WebDriver, Linux의 dogtail) 으로 라우팅되어 정상적으로 테스트가 진행됩니다. "E2E 대상 없음" 분기는 어떤 표면도 없는 순수 라이브러리에만 예약되어 있습니다.
 
 ## 에이전트 위임 체인
 

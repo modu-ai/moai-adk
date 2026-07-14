@@ -13,9 +13,12 @@
 "utility-commands":
   title: "ユーティリティコマンド"
   weight: 40
-design:
-  title: "デザインシステム"
-  weight: 60
+"cost-optimization":
+  title: "コスト最適化"
+  weight: 50
+guides:
+  title: "ガイド"
+  weight: 85
 worktree:
   title: "Git Worktree"
   weight: 90

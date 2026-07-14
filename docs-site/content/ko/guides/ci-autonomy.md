@@ -47,16 +47,28 @@ push 전에 로컬에서 자동으로 품질 검증을 실행합니다. CI까지
 
 ## Auto-fix Loop (T3)
 
-CI 실패 시 `/moai loop`를 자동으로 호출하여 에러를 수정합니다. 로컬의
-진단형 자가 수정 루프가 CI 러너 위에서 그대로 돌아가는 구조입니다.
+`/moai sync`가 PR을 생성한 뒤, CI 감시 스크립트와 CI 루프 스킬이 함께
+"진단 → 수정 → 재검증" 루프를 돌립니다. 로컬의 진단형 자가 수정 루프를
+PR 파이프라인 위로 연장한 구조입니다.
 
-```yaml
-# .github/workflows/ci.yml (자동 생성)
-- name: Auto-fix on failure
-  if: failure()
-  run: |
-    claude -p "/moai loop --max-iterations 3"
+**CI 감시 스크립트 (`scripts/ci-watch/run.sh`)**
+
+```bash
+sh scripts/ci-watch/run.sh <PR_NUMBER> [BRANCH]
 ```
+
+- 30초 간격으로 `gh pr checks`를 폴링하며 필수(required) 체크와
+  보조(auxiliary) 체크를 분류합니다
+- 종료 코드: `0` 전체 통과 · `2` 필수 체크 실패(구조화 JSON 핸드오프를
+  stdout으로 출력) · `3` 30분 하드 타임아웃 · `1` 오류
+- required 체크 목록은 SSoT 파일에서 읽으며, 테스트용 환경변수
+  오버라이드(`MOAI_CIWATCH_GH`, `CIWATCH_TIMEOUT_SECONDS` 등)를 지원합니다
+
+**CI 루프 스킬 (`moai-workflow-ci-loop`)**
+
+감시 스크립트가 필수 실패를 핸드오프하면, `moai-workflow-ci-loop` 스킬이
+실패를 분류하고 안전한 자동 패치를 최대 3회까지 시도합니다. 의미 수준의
+실패(자동 수정이 위험한 경우)는 사용자에게 에스컬레이션합니다.
 
 ## BODP — Branch Origin Decision Protocol (T7)
 
@@ -113,4 +125,4 @@ scripts/docs-i18n-check.sh
 - [워크트리 가이드](/ko/worktree/guide) — Git Worktree 완벽 가이드
 - [/moai loop](/ko/utility-commands/moai-loop) — 반복 수정 루프
 - [/moai fix](/ko/utility-commands/moai-fix) — 자동 에러 수정
-- [멀티 LLM CI](/ko/guides/multi-llm-ci) — Multi-LLM CI 통합
+- [GitHub 연동 가이드](/ko/guides/multi-llm-ci) — 이슈 파싱·SPEC 링크

@@ -269,6 +269,49 @@ Displays a completion message in the user's language.
 - **Review documents**: open and review the generated files
 - **Start a new session**: clear the context and start fresh
 
+## Extended phases (Phase 8-16)
+
+After the basic document generation (Phase 0-4), `/moai project` performs extended phases that comprehensively configure the project environment.
+
+```mermaid
+flowchart TD
+    A["Phase 4: Completion<br/>(basic document generation)"] --> B["Phase 8<br/>harness-spec.yaml"]
+    B --> C["Phase 11<br/>MCP provisioning"]
+    C --> D["Phase 12<br/>Dev Methodology"]
+    D --> E["Phase 13<br/>DB detection"]
+    E --> F["Phase 14<br/>completion summary"]
+    F --> G{"Create a harness?"}
+    G -->|Yes| H["Phase 15<br/>v4 Builder entry"]
+    H --> I["Phase 16<br/>5-Layer activation"]
+    G -->|No| J["Exit"]
+    I --> J
+```
+
+### Phase 8: harness-spec.yaml bridge
+
+Generates `.moai/project/harness-spec.yaml` from the interview answers. This file, with its 8-field schema, acts as a bridge conveying project context to the harness builder — it is extracted automatically from the interview.md answers without user interaction.
+
+### Phase 11: MCP server provisioning
+
+Detects the tech stack and selects suitable MCP servers from `mcp-matrix.yaml`. After orchestrator approval, it appends to `.mcp.json` (an additive write) — it does not overwrite existing MCP settings.
+
+### Phase 13: DB detection
+
+Detects DB keywords via Grep/Glob to generate `db-detection.json`. Supported DB engine categories:
+
+- **Relational/SQL**: PostgreSQL, MySQL, MariaDB, SQLite, Oracle, SQL Server, CockroachDB, Supabase, Neon, Planetscale
+- **NoSQL Document**: MongoDB, Firestore, Firebase, Couchbase
+- **NoSQL Key-Value**: Redis, DynamoDB, Cassandra, ScyllaDB, Riak
+- **Search/Analytics**: Elasticsearch, ClickHouse, Snowflake, InfluxDB
+
+### Phase 15-16: v4 Builder integration
+
+Phase 15 redirects to the v4 harness builder — Context-First Discovery + the orchestrator-direct 4-phase Builder (ANALYZE → PLAN → GENERATE → ACTIVATE) creates the harness. Phase 16 performs 5-Layer activation by installing the CLAUDE.md marker + registering the main.md router, and runs a smoke gate after creation.
+
+{{< callout type="info" >}}
+Phase 15-16 are optional — they proceed if harness creation is needed when `/moai project` runs, and otherwise it completes at Phase 14.
+{{< /callout >}}
+
 ## When to Use
 
 ### Must run when

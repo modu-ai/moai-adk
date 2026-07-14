@@ -150,7 +150,7 @@ Environment variables can be managed persistently via the `CwdChanged` and `File
 
 ```bash
 # .claude/hooks/moai/handle-cwd-changed.sh
-# CLAUDE_ENV_FILE을 통해 환경 변수 영속화
+# Persist environment variables via CLAUDE_ENV_FILE
 echo "MOAI_PROJECT_DIR=$(pwd)" >> "$CLAUDE_ENV_FILE"
 ```
 

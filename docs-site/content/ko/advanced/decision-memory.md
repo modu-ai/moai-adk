@@ -25,7 +25,7 @@ draft: false
 | **자율성** | 사용자는 권장을 언제든 거부 가능 |
 | **적응형 강도** | 숙련도에 따라 권장의 강도 자동 조정 |
 
-## 5 구성 요소
+## 4 구성 요소
 
 ### 1. 3-Tier Memory Layer (메모리 계층)
 
@@ -48,24 +48,40 @@ draft: false
 
 ### 2. Adaptive Recommendation Placement (적응형 권장 배치)
 
-권장(첫 옵션의 `(권장)` 라벨)은 **관찰된 통계적 다수**에 근거합니다. 관찰량에 따라 세 상태를 오갑니다.
+권장 배치는 5원칙으로 구성됩니다 (SSOT: `.claude/rules/moai/core/askuser-protocol.md` § Recommendation Placement Principles).
 
-#### Cold-Start (초기 상태)
+#### 원칙 1 — 방출 시점 (정보 이익 정렬)
+
+오케스트레이터가 다가오는 의사결정의 불확실성 p를 추정할 때, p ≈ 0.5 (Fisher information I = p(1−p)가 최대인 결정 경계)에서 AskUserQuestion으로 해당 질문을 방출합니다. p가 0 또는 1에 가까울 때 (거의 확실)는 통계적 다수 옵션으로 자동 해결하고 질문을 생략합니다.
+
+#### 원칙 2 — 질문 순서 (정보 이익 내림차순)
+
+하나의 AskUserQuestion 호출에 여러 질문을 배치할 때, 정보 이익이 가장 높은 질문을 먼저 배치합니다. 사용자가 핵심 결정을 먼저 완료하고 낮은 가치의 질문은 나중에 만나도록 합니다.
+
+#### 원칙 3 — 권장 옵션 (통계적 다수 합리적 기본값)
+
+권장(첫 옵션의 `(권장)` 라벨)은 **관찰된 통계적 다수**에 근거합니다. 시스템이 밀고 싶은 정책 기본값이 아니라 사용자가 실제로 반복 선택한 옵션이 권장이 됩니다. 관찰량에 따라 세 상태를 오갑니다.
+
+##### Cold-Start (초기 상태)
 - **관찰 < N**: 충분한 관찰 데이터 부재
 - **권장 배치**: 정적 기본값 (명시적으로 공개)
 - **표시 방식**: `based on static default, N observations needed for personalization`
 
-#### Warm State (학습 중)
+##### Warm State (학습 중)
 - **관찰 = N~M**: 부분 학습
 - **권장 배치**: 관찰된 다수 + 신뢰도 신호
 - **신뢰도**: 관찰 수 × 선택 일관성
 
-#### Mature State (안정화)
+##### Mature State (안정화)
 - **관찰 > M**: 충분한 학습
 - **권장 배치**: 강한 다수 확신 (통계적으로 유의)
 - **신뢰도**: 최고 (≥95% 신뢰도)
 
-#### 숙련도 기반 적응형 강도
+#### 원칙 4 — 전제 조건 명시
+
+권장 옵션의 설명은 해당 권장이 성립하는 전제 조건을 명시해야 합니다. 사용자가 전제가 위배되었을 때 즉시 거부할 수 있도록 `"Recommended when <전제조건>"` 형태로 제시합니다. 전제가 명시되지 않은 권장은 설계 결함입니다.
+
+#### 원칙 5 — 숙련도 기반 적응형 강도
 
 같은 권장이라도 상대에 따라 강도가 달라집니다. 전문가에게 강한 권장은 자율성을 침해하고, 초보자에게 약한 권장은 결정 피로만 늘리기 때문입니다.
 
@@ -123,34 +139,6 @@ weight(t) = initial_weight × exp(-decay_rate × days_ago)
 90일 이상: 아카이브 (권장 반영 제외)
 ```
 
-### 5. Recovery Controls (복구 제어)
-
-학습이 잘못된 방향으로 굳었을 때를 위해 오류 복구 및 재설정 수단이 제공됩니다.
-
-#### 메모리 초기화
-
-사용자가 학습된 선호도를 초기화할 수 있습니다.
-
-```bash
-/moai memory reset
-```
-
-#### 선호도 편집
-
-특정 의사결정 카테고리의 권장을 수정합니다.
-
-```bash
-/moai memory set <category> <preferred-option>
-```
-
-#### 선호도 조회
-
-현재 학습된 선호도를 확인합니다.
-
-```bash
-/moai memory list
-```
-
 ## 의사결정 카테고리
 
 메모리가 추적하는 주요 의사결정 유형입니다.
@@ -161,7 +149,6 @@ weight(t) = initial_weight × exp(-decay_rate × days_ago)
 | **Cycle Type** | DDD vs TDD 모드 |
 | **Worktree Strategy** | Main vs Branch vs Worktree |
 | **PR Routing** | Direct-to-main vs PR-based |
-| **Team Mode** | Solo vs Agent Teams |
 | **Model Selection** | Model choice per task |
 | **Effort Level** | Effort 레벨 (low/medium/high/xhigh) |
 
@@ -228,7 +215,7 @@ Tier M (권장) — 최근 선택 기반 제시
 
 - [에이전트 가이드](/ko/advanced/agent-guide) - AskUserQuestion 권장 배치 규칙 (HARD)
 - [Harness v4 Builder 심화 가이드](/ko/advanced/harness-v4-builder) - Tier 선택 및 의사결정
-- [메모리 시스템](/ko/getting-started/memory) - 사용자 선호도 관리
+- [메모리 시스템](/ko/claude-code/context-memory/memory) - 사용자 선호도 관리
 
 {{< callout type="info" >}}
 **팁**: 의사결정 메모리는 자동으로 작동합니다. 명시적 설정이 필요 없습니다 — 의사결정을 내릴 때마다 시스템이 조용히 학습합니다.

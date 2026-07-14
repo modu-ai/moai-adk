@@ -23,7 +23,7 @@ request and saves 67% or more on subsequent ones.
 
 ### Cost comparison
 
-Based on Claude Opus 4.5:
+Based on Claude Opus 4.8:
 
 | Scenario | No caching | With 1-hour cache | Savings |
 |---------|----------|-----------------|-------|
@@ -77,9 +77,9 @@ cache_control={"type": "ephemeral"}
 MoAI caching is configured in `.moai/config/sections/cache.yaml`:
 
 ```yaml
-cache:
+cacheStrategy:
   enabled: false  # set to true to enable caching
-  session_ttl: "1h"  # session-level cache TTL
+  session_ttl: "1h"  # session-level cache TTL — allowed: 1h · 5m · off
   spec_ttl: "5m"     # SPEC body cache TTL
   min_cacheable_tokens: 2048  # minimum tokens for a cache write
 ```
@@ -90,9 +90,9 @@ To disable caching for a given session (e.g., when one-shot requests
 dominate):
 
 ```yaml
-cache:
+cacheStrategy:
   enabled: true
-  session_ttl: "off"  # disable the cache for this session
+  session_ttl: "off"  # disable the cache for this session (allowed: 1h · 5m · off)
   spec_ttl: "5m"      # only the SPEC body cache is used
 ```
 
@@ -103,29 +103,10 @@ With `session_ttl: "off"`:
 
 ## Monitoring cache performance
 
-Use `moai doctor` to view the cache hit rate and decide whether to enable
-caching:
-
-```bash
-moai doctor --cache-metrics
-```
-
-Sample output:
-
-```
-Cache performance (last 7 days):
-  Cache hit rate: 67%
-  Total cache reads: 450K tokens
-  Total cache writes: 150K tokens
-  Savings: $2.15 (68% cost reduction versus no caching)
-
-Single-turn request ratio: 12%  ⚠️ Warning: 12% of requests are single-turn
-                            (no cache benefit for these).
-```
-
-The MoAI statusline also shows a cache hit rate (cache_hit) segment, so you
-can see the effect of the context diet and your caching configuration right
-in the session.
+Check the real-time hit rate via the MoAI statusline's cache hit rate
+(cache_hit) segment to decide whether to enable caching. This segment shows the
+ratio of cache reads to writes as the session progresses, so you can see the
+effect of the context diet and your caching configuration right in the session.
 
 ### Interpreting the metrics
 
@@ -155,8 +136,8 @@ Cache misses (common causes):
 
 A cache write is issued only when the prefix exceeds the per-model minimum:
 
-- **Claude Opus 4.5, 4.7, 4.8, Haiku 4.5**: 2,048 tokens minimum
-- **Claude Opus 4.1, Sonnet models, other Haiku versions**: 1,024 tokens minimum
+- **Claude Opus 4.7 / 4.8, Haiku 4.5**: 2,048 tokens minimum
+- **Sonnet models and other Haiku versions**: 1,024 tokens minimum
 
 Requests below the minimum are processed without caching (no error —
 automatic fallback).
@@ -191,7 +172,7 @@ client.messages.create(
 
 - **Enable caching**: sessions with 2+ consecutive API requests within an hour
 - **Disable caching**: one-shot queries or interrupt-driven workflows
-- **Monitor**: measure real hit rates with `moai doctor --cache-metrics` and the statusline cache_hit segment
+- **Monitor**: measure the real hit rate with the statusline cache_hit segment
 - **Optimize**: place cache breakpoints on stable content (system prompts, instructions), never on mutable data (queries, timestamps)
 
 For more details, see the [Anthropic prompt caching documentation](https://platform.claude.com/docs/en/docs/build-with-claude/prompt-caching).

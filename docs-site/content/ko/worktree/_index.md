@@ -118,11 +118,11 @@ $ claude
 - GLM 비용 효율 (Opus 대비 약 70% 절감)
 - 충돌 없는 무제한 병렬 개발
 
-#### 3단계: Merge & Cleanup
+#### 3단계: Cleanup
 
 ```bash
-moai worktree done SPEC-AUTH-001              # main → 병합 → 정리
-moai worktree done SPEC-AUTH-001 --push       # 위 작업 + 원격 저장소에 푸시
+moai worktree done SPEC-AUTH-001                    # worktree 정리 (병합/푸시는 git으로 별도 수행)
+moai worktree done SPEC-AUTH-001 --delete-branch    # 정리 + 로컬 브랜치 삭제
 ```
 
 ## Worktree 명령어 참조

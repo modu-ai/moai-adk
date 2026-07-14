@@ -73,7 +73,8 @@ Python 기반 MoAI-ADK (~73,000줄)를 Go로 완전히 재작성했습니다.
 - **27개** 스킬 (template-managed)
 - **36개** CLI 명령 · **15종** `/moai` 서브커맨드
 - **16개** 프로그래밍 언어 지원
-- **487개** SPEC 문서 기반으로 개발된 코드베이스
+- **3단계 하네스** (minimal / standard / thorough) — SPEC 복잡도에 따른 적응형 품질 게이트
+- **504개** SPEC 문서 기반으로 개발된 코드베이스
 
 ### 바이브코딩의 문제점
 
@@ -406,7 +407,7 @@ flowchart TD
 | 서브커맨드 | 용도 | 주요 플래그 |
 |-----------|------|-----------|
 | `goal` | 완료 조건 선언형 자율 연속 루프 (조건 충족 또는 턴 한도까지) | `status`, `clear` |
-| `loop` | 진단 기반 반복 자동 수정 (goal 엔진 위의 프리셋, 최대 100회) | `--max N`, `--auto-fix`, `--seq` |
+| `loop` | 진단 기반 반복 자동 수정 (goal 엔진 위의 프리셋, 기본 최대 10회) | `--max N`, `--auto-fix`, `--seq` |
 | `fix` | LSP 오류, 린트, 타입 오류 자동 수정 (단일 패스) | `--dry`, `--seq`, `--level N`, `--resume` |
 
 #### 품질 및 코드베이스
@@ -454,7 +455,7 @@ MoAI 오케스트레이터는 작업 복잡도를 분석해 실행 형태를 선
 ```
 ┌─────────────────────────────────────────────────────────────┐
 │  LEADER (현재 tmux 패인, Claude API)                         │
-│  - /moai --team 실행 시 워크플로우 오케스트레이션             │
+│  - moai cg 활성화 후 /moai 명령으로 오케스트레이션            │
 │  - plan, quality, sync 단계 처리                             │
 │  - GLM 환경 없음 → Claude API 사용                           │
 └──────────────────────┬──────────────────────────────────────┘
@@ -478,8 +479,8 @@ moai cg
 # 3. 같은 패인에서 Claude Code 시작 (중요!)
 claude
 
-# 4. 팀 워크플로우 실행
-/moai --team "작업 설명"
+# 4. 워크플로우 실행
+/moai "작업 설명"
 ```
 
 | 명령어 | Leader | Workers | tmux 필요 | 비용 절감 | 사용 사례 |
@@ -494,7 +495,7 @@ LSP 진단과 AST-grep을 결합한 자율 오류 수정 엔진입니다:
 
 ```bash
 /moai fix       # 단일 패스: 스캔 → 분류 → 수정 → 검증
-/moai loop      # 반복 수정: 완료 조건 충족까지 반복 (최대 100회)
+/moai loop      # 반복 수정: 완료 조건 충족까지 반복 (기본 최대 10회)
 ```
 
 **Ralph Engine 작동 방식:**
@@ -575,11 +576,11 @@ MoAI-ADK는 AI 에이전트 간 컨텍스트, 불변량, 위험 영역을 전달
 
 MoAI-ADK는 Claude Code 구독 요금제에 맞춰 에이전트에 최적의 AI 모델을 할당합니다. 요금제의 사용량 제한 내에서 품질을 극대화하는 것이 목표입니다 — 계획·감사처럼 추론이 무거운 단계에는 상위 모델을, 반복적 구현·문서화에는 경량 모델을 배정합니다.
 
-| 정책 | 요금제 | 특징 |
-|------|--------|------|
-| **High** | Max $200/월 | 최고 품질 — 계획·감사에 Opus 배정, 최대 처리량 |
-| **Medium** | Max $100/월 | 품질과 비용의 균형 |
-| **Low** | Plus $20/월 | 경제적, Opus 미포함 — Sonnet 중심 배분 |
+| 정책 | 특징 |
+|------|------|
+| **max** | 최고 품질 — 계획·감사에 Opus 배정, 최대 처리량 |
+| **medium** (기본) | 품질과 비용의 균형 |
+| **low** | 경제적, Opus 미포함 — Sonnet 중심 배분 |
 
 ### 설정 방법
 
@@ -592,7 +593,7 @@ moai update                   # 각 설정 단계에 대한 대화형 프롬프�
 ```
 
 {{< callout type="info" >}}
-기본 정책은 `High`입니다. GLM 설정은 `settings.local.json`에 격리됩니다 (Git에 커밋되지 않음). 설정 키는 `model_policy: high | medium | low` 입니다.
+기본 정책은 `medium`입니다. GLM 설정은 `settings.local.json`에 격리됩니다 (Git에 커밋되지 않음). 설정 키는 `llm.yaml`의 `performance_tier: max | medium | low` 입니다 (`--high`/`--low`는 각각 `--model-policy max`/`low`의 deprecated 별칭). 구독/API 요금제 축은 별도의 `plan_type: api | subscription`으로 분리됩니다.
 {{< /callout >}}
 
 ## Task 메트릭 로깅

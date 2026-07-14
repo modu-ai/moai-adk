@@ -101,6 +101,8 @@ that tests can verify.
 
 EARS provides five types of requirement patterns.
 
+{{< icon info >}} **GEARS note (v3.0.0+)**: GEARS (Generalized Approach to Requirements Syntax) was introduced as the new official requirements notation. EARS retains backward compatibility for 6 months, and the existing SPEC workflow rules still use the EARS notation. New SPECs are recommended to use the GEARS notation.
+
 ### 1. Ubiquitous (Always True)
 
 Requirements the system must **always** satisfy. They apply unconditionally, at all times.

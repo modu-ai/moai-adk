@@ -53,7 +53,6 @@ Pass the SPEC ID created in the Plan phase as an argument:
 | Flag                | Description                     | Example                            |
 | ------------------- | ------------------------------- | ---------------------------------- |
 | `--resume SPEC-XXX` | Resume interrupted implementation | `/moai run --resume SPEC-AUTH-001` |
-| `--team`            | Force agent team mode           | `/moai run SPEC-AUTH-001 --team`   |
 | `--solo`            | Force sub-agent mode            | `/moai run SPEC-AUTH-001 --solo`   |
 
 **Resume feature:**
@@ -185,7 +184,6 @@ Automatically selects the optimal execution mode based on the SPEC's scale. Not 
 | Single feature | files ≤ 5, single domain | **Focused Mode** |
 | In-domain feature | files 5-10 | **Standard Mode** |
 | Multi-domain | files ≥ 10 or domains ≥ 3 | **Full Pipeline** |
-| Large-scale change | complexity ≥ 7 + --team | **Team Mode** |
 
 ### Harness Level Routing (quality-depth routing)
 
@@ -199,9 +197,31 @@ At the start of the run phase, the quality-pipeline depth is determined automati
 
 Automatic escalation on failure: minimal → standard → thorough (up to 2 times)
 
+### Plan Audit Gate
+
+The first mandatory gate that runs on entering `/moai run`. The **plan-auditor** sub-agent independently audits the SPEC artifacts authored in the plan phase.
+
+- plan-auditor is an agent independent of manager-spec — the agent that created the artifacts does not inspect its own results
+- If the SPEC-artifact hash has not changed and the previous verdict score is ≥ 0.90, it is skip-eligible (the cached verdict is reused)
+- Otherwise, plan-auditor re-runs and issues a new verdict
+- 3 verdicts: PASS / PASS-with-debt / FAIL
+
+{{< callout type="warning" >}}
+The Plan Audit Gate's skip policy (skipping the plan-auditor re-run) is score-based. However, the **Implementation Kickoff Approval** below is a separate user-approval gate independent of score, and cannot be bypassed under any circumstances (REQ-ATR-015).
+{{< /callout >}}
+
+### Implementation Kickoff Approval
+
+A **HUMAN GATE** that obtains the user's explicit approval after passing the Plan Audit Gate and before starting implementation.
+
+- Presents the plan-auditor verdict summary + the SPEC artifacts to the user
+- Presents 3 options via `AskUserQuestion`: "enter run / additional review / abort"
+- Even if the score is ≥ 0.90, and even if it is PASS-with-debt, this approval is not skipped
+- The implementation phase begins only after user approval
+
 ### Phase 1: Analysis and Planning
 
-The **manager-spec** subagent performs the following:
+The **manager-develop** subagent performs the following:
 
 - Fully analyzes the SPEC document
 - Extracts requirements and success criteria

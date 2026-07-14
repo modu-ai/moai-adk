@@ -49,16 +49,29 @@ Verifications executed:
 
 ## Auto-fix Loop (T3)
 
-On CI failure, `/moai loop` is invoked automatically to fix the errors. The
-local diagnostic self-fix loop runs unchanged on top of the CI runner.
+After `/moai sync` creates a PR, the CI watch script and the CI loop skill
+together run a "diagnose → fix → re-verify" loop. It is the local diagnostic
+self-fix loop extended on top of the PR pipeline.
 
-```yaml
-# .github/workflows/ci.yml (auto-generated)
-- name: Auto-fix on failure
-  if: failure()
-  run: |
-    claude -p "/moai loop --max-iterations 3"
+**CI watch script (`scripts/ci-watch/run.sh`)**
+
+```bash
+sh scripts/ci-watch/run.sh <PR_NUMBER> [BRANCH]
 ```
+
+- Polls `gh pr checks` at 30-second intervals, classifying required checks vs.
+  auxiliary checks
+- Exit codes: `0` all passed · `2` required check failed (emits a structured
+  JSON handoff to stdout) · `3` 30-minute hard timeout · `1` error
+- The required-check list is read from an SSoT file, and it supports
+  environment-variable overrides for testing (`MOAI_CIWATCH_GH`,
+  `CIWATCH_TIMEOUT_SECONDS`, etc.)
+
+**CI loop skill (`moai-workflow-ci-loop`)**
+
+When the watch script hands off a required failure, the `moai-workflow-ci-loop`
+skill classifies the failure and attempts safe automated patches up to 3 times.
+Semantic-level failures (where auto-fixing is risky) are escalated to the user.
 
 ## BODP — Branch Origin Decision Protocol (T7)
 
@@ -116,4 +129,4 @@ Guarantees the state integrity of worktrees:
 - [Worktree Guide](/en/worktree/guide) — the complete Git Worktree guide
 - [/moai loop](/en/utility-commands/moai-loop) — the iterative fix loop
 - [/moai fix](/en/utility-commands/moai-fix) — automatic error fixing
-- [Multi-LLM CI](/en/guides/multi-llm-ci) — Multi-LLM CI integration
+- [GitHub Integration Guide](/en/guides/multi-llm-ci) — issue parsing · SPEC linking

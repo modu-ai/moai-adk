@@ -4,14 +4,12 @@ weight: 20
 draft: false
 ---
 
-Everything about MoAI-ADK parallel development with Git Worktree — from basic
-concepts to the command reference, workflows, and best practices, all in one
-document.
+Everything about MoAI-ADK parallel development with Git Worktree — from basic concepts through the command reference, workflows, and best practices, all in this one document.
 
 ## Table of contents
 
 1. [Worktree Basics](#worktree-basics)
-2. [Command Reference](#command-reference)
+2. [Detailed Command Reference](#detailed-command-reference)
 3. [Workflow Guide](#workflow-guide)
 4. [Advanced Features](#advanced-features)
 5. [Best Practices](#best-practices)
@@ -22,16 +20,13 @@ document.
 
 ### What is Git Worktree?
 
-Git Worktree is a built-in Git feature that lets you **work on one Git
-repository from multiple directories at the same time**. Instead of swapping
-context with `git checkout` every time you switch branches, you keep one
-directory open per branch.
+Git Worktree is a built-in Git feature that lets you **work on one Git repository in multiple directories at once**. Instead of swapping context with `git checkout` every time you move between branches, you keep one directory open per branch.
 
 ```mermaid
 graph TB
     subgraph Traditional["Traditional approach"]
         T1[Single working directory]
-        T2[Branch switching required]
+        T2[Branch switch required]
         T3[Context-switching cost]
     end
 
@@ -41,24 +36,20 @@ graph TB
         W3[Worktree 3<br/>main]
     end
 
-    Traditional -.->|Inconvenient| Worktree
+    Traditional -.->|inconvenient| Worktree
 ```
 
 ### Worktree in MoAI-ADK
 
-MoAI-ADK layers SPEC-level isolated environments on top of this feature.
-Because every SPEC gets a fully independent environment, agents working in
-parallel never step on each other's work:
+MoAI-ADK layers SPEC-level isolated environments on top of this feature. Because each SPEC has a fully independent environment, agents can work in parallel without stepping on each other's work:
 
 - **Independent Git state** — each Worktree keeps its own branch and commit history
-- **Separate LLM configuration** — each Worktree can use a different LLM
-  execution mode. This is where the Tokenomics practice of assigning Claude
-  to planning and GLM to implementation comes from
+- **Separate LLM setting** — each Worktree can use a different LLM execution mode. This is where the tokenomics practice of assigning Claude to planning and GLM to implementation comes from
 - **Isolated workspace** — fully separated at the file-system level
 
 ---
 
-## Command Reference
+## Detailed Command Reference
 
 ### moai worktree new
 
@@ -72,25 +63,30 @@ moai worktree new SPEC-ID [options]
 
 #### Parameters
 
-- **SPEC-ID** (required): ID of the SPEC to create (e.g., `SPEC-AUTH-001`)
+- **SPEC-ID** (required): the ID of the SPEC to create (e.g. `SPEC-AUTH-001`)
 
 #### Options
 
-- `-b, --branch BRANCH`: specify the branch name to use (default: `feature/SPEC-ID`)
-- `--from BASE`: specify the base branch (default: `main`)
-- `--force`: force re-creation if the Worktree already exists
+- `--path PATH`: specify the Worktree path directly (default: `.moai/worktrees/<SPEC-ID>` for a SPEC ID, otherwise `../<branch-name>`)
+- `--base BRANCH`: base branch (default: `origin/main`, auto-fetched). For local-only commits, use `--base main`
+- `--from-current`: use the current HEAD as the base (skips `git fetch origin main`, mutually exclusive with `--base`)
+- `--tmux`: create a tmux session after creating the Worktree
+- `--team`: automatically start a Claude/GLM session in the new Worktree
 
 #### Examples
 
 ```bash
-# Basic usage
+# Basic usage (based on origin/main)
 moai worktree new SPEC-AUTH-001
 
-# Create from a specific branch
-moai worktree new SPEC-AUTH-001 --from develop
+# Create based on local main
+moai worktree new SPEC-AUTH-001 --base main
 
-# Force re-creation
-moai worktree new SPEC-AUTH-001 --force
+# Create based on the current HEAD
+moai worktree new SPEC-AUTH-001 --from-current
+
+# Create with a tmux session
+moai worktree new SPEC-AUTH-001 --tmux
 ```
 
 #### How it works
@@ -106,18 +102,18 @@ sequenceDiagram
     CLI->>Git: git worktree add
     Git->>Git: Create feature/SPEC-AUTH-001 branch
     Git->>FS: Create ~/.moai/worktrees/{ProjectName}/SPEC-AUTH-001/ directory
-    Git->>Git: Checkout branch
+    Git->>Git: Check out the branch
     CLI->>CLI: Copy .moai/config settings
     CLI->>User: Worktree created
 
-    Note over User,FS: A fully independent environment<br/>created for SPEC-AUTH-001
+    Note over User,FS: A fully independent environment<br/>for SPEC-AUTH-001 is created
 ```
 
 ---
 
 ### moai worktree go
 
-Enters a Worktree and starts a new shell session.
+Prints the Worktree path. It emits only the path string to standard output for shell navigation, and does not start a shell session directly. Use it combined with the shell's `cd`.
 
 #### Syntax
 
@@ -127,21 +123,20 @@ moai worktree go SPEC-ID
 
 #### Parameters
 
-- **SPEC-ID** (required): ID of the Worktree to enter
+- **SPEC-ID** (required): the ID of the Worktree whose path to print
 
 #### Examples
 
 ```bash
-# Enter the Worktree
+# Print the path only
 moai worktree go SPEC-AUTH-001
 
-# Switch LLM after entering
+# Move to the printed path
+cd "$(moai worktree go SPEC-AUTH-001)"
+
+# Start development after moving
 moai glm
-
-# Start Claude Code
 claude
-
-# Start working
 > /moai run SPEC-AUTH-001
 ```
 
@@ -151,18 +146,15 @@ claude
 flowchart TD
     A[moai worktree go SPEC-ID] --> B{Worktree exists?}
     B -->|No| C[Error message]
-    B -->|Yes| D[Resolve Worktree path]
-    D --> E[Start a new terminal session]
-    E --> F[Move to the Worktree directory]
-    F --> G[Set environment variables]
-    G --> H[Show new shell prompt]
+    B -->|Yes| D[Print Worktree path to stdout]
+    D --> E["Use in the shell, e.g. cd \"$(...)\""]
 ```
 
 ---
 
 ### moai worktree list
 
-Lists all Worktrees.
+Displays a list of all Worktrees.
 
 #### Syntax
 
@@ -172,8 +164,7 @@ moai worktree list [options]
 
 #### Options
 
-- `-v, --verbose`: include detailed information
-- `--porcelain`: output in a parseable format
+- `-v, --verbose`: include detailed information for each Worktree
 
 #### Examples
 
@@ -194,7 +185,7 @@ SPEC-AUTH-003  feature/SPEC-AUTH-003  /path/to/worktree/SPEC-AUTH-003
 
 ### moai worktree done
 
-Completes work in a Worktree, merges, and cleans up.
+Removes the Worktree and optionally deletes the branch. **It does not merge or push** — handle the merge into the base branch separately with `git merge` or a PR.
 
 #### Syntax
 
@@ -204,25 +195,25 @@ moai worktree done SPEC-ID [options]
 
 #### Parameters
 
-- **SPEC-ID** (required): ID of the Worktree to complete
+- **SPEC-ID** (required): the ID of the Worktree to complete
 
 #### Options
 
-- `--push`: push to the remote after merging
-- `--no-merge`: remove the Worktree without merging
-- `--force`: force the merge even with conflicts
+- `--force`: force removal even with uncommitted changes
+- `--delete-branch`: also delete the branch after removing the Worktree
+- `--auto`: quiet mode for automation (e.g. cleanup after a PR merge)
 
 #### Examples
 
 ```bash
-# Basic merge and cleanup
+# Remove the Worktree
 moai worktree done SPEC-AUTH-001
 
-# Push to the remote
-moai worktree done SPEC-AUTH-001 --push
+# Remove the Worktree + delete the branch
+moai worktree done SPEC-AUTH-001 --delete-branch
 
-# Remove only, without merging
-moai worktree done SPEC-AUTH-001 --no-merge
+# Auto cleanup after PR merge (no output)
+moai worktree done SPEC-AUTH-001 --auto
 ```
 
 #### How it works
@@ -231,79 +222,68 @@ moai worktree done SPEC-AUTH-001 --no-merge
 flowchart TD
     A[moai worktree done SPEC-ID] --> B{Worktree exists?}
     B -->|No| C[Error message]
-    B -->|Yes| D{--no-merge?}
-    D -->|Yes| E[Remove Worktree only]
-    D -->|No| F[Switch to main branch]
-    F --> G[Merge feature branch]
-    G --> H{Merge conflict?}
-    H -->|Yes| I[Conflict resolution needed]
-    H -->|No| J{--push?}
-    J -->|Yes| K[Push to remote]
-    J -->|No| L[Remove Worktree]
-    K --> L
-    E --> M[Done]
-    L --> M
-    I --> N[Manual intervention needed]
+    B -->|Yes| D[Remove Worktree]
+    D --> E{--delete-branch?}
+    E -->|Yes| F[Delete branch]
+    E -->|No| G[Keep branch]
+    F --> H[Done]
+    G --> H[Done]
 ```
 
 ---
 
 ### moai worktree remove
 
-Removes a Worktree (without merging).
+Removes a Worktree (no merge). The branch is kept.
 
 #### Syntax
 
 ```bash
-moai worktree remove SPEC-ID [options]
+moai worktree remove PATH [options]
 ```
 
 #### Parameters
 
-- **SPEC-ID** (required): ID of the Worktree to remove
+- **PATH** (required): the path of the Worktree to remove
 
 #### Options
 
-- `--force`: force removal even with pending changes
-- `--keep-branch`: keep the branch, remove only the Worktree
+- `--force`: force removal even with uncommitted changes
 
 #### Examples
 
 ```bash
 # Basic removal
-moai worktree remove SPEC-AUTH-001
+moai worktree remove .moai/worktrees/SPEC-AUTH-001
 
 # Force removal
-moai worktree remove SPEC-AUTH-001 --force
-
-# Keep the branch
-moai worktree remove SPEC-AUTH-001 --keep-branch
+moai worktree remove .moai/worktrees/SPEC-AUTH-001 --force
 ```
 
 ---
 
 ### moai worktree status
 
-Checks the status of Worktrees.
+Checks the status of a Worktree.
 
 #### Syntax
 
 ```bash
-moai worktree status [SPEC-ID]
+moai worktree status [options]
 ```
 
-#### Parameters
+#### Options
 
-- **SPEC-ID** (optional): check the status of a specific Worktree (all are shown if omitted)
+- `--all`: show all detailed information, including full commit hashes
 
 #### Examples
 
 ```bash
-# All Worktree statuses
+# Worktree status
 moai worktree status
 
-# A specific Worktree's status
-moai worktree status SPEC-AUTH-001
+# All detailed information
+moai worktree status --all
 
 # Sample output
 Worktree: SPEC-AUTH-001
@@ -327,28 +307,24 @@ moai worktree clean [options]
 
 #### Options
 
-- `--merged-only`: clean up merged Worktrees only
-- `--older-than DAYS`: clean up Worktrees older than N days
-- `--dry-run`: show what would be removed, without removing
+- `--merged-only`: remove only Worktrees whose branch is merged into base
+- `--base BRANCH`: the base branch used for the `--merged-only` judgment (default: `main`)
 
 #### Examples
 
 ```bash
-# Clean up merged Worktrees
+# Clean up merged Worktrees (base=main)
 moai worktree clean --merged-only
 
-# Clean up Worktrees older than 7 days
-moai worktree clean --older-than 7
-
-# Preview
-moai worktree clean --dry-run
+# Clean up against a different base branch
+moai worktree clean --merged-only --base develop
 ```
 
 ---
 
 ### moai worktree config
 
-Inspects or modifies Worktree settings.
+Checks or modifies Worktree settings.
 
 #### Syntax
 
@@ -358,8 +334,8 @@ moai worktree config [key] [value]
 
 #### Parameters
 
-- **key** (optional): configuration key
-- **value** (optional): configuration value
+- **key** (optional): the setting key
+- **value** (optional): the setting value
 
 #### Examples
 
@@ -378,14 +354,14 @@ moai worktree config root /new/path/to/worktrees
 
 ## Workflow Guide
 
-### Complete development cycle
+### The complete development cycle
 
 ```mermaid
 flowchart TD
     Start(( )) -->|"Plan with Worktree"| Plan["Plan"]
     Plan -->|"Worktree created"| Implement["Implement"]
     Implement -->|"DDD implementation"| Implement
-    Implement -->|"Docs sync"| Document["Document"]
+    Implement -->|"Documentation sync"| Document["Document"]
     Document -->|"Code review"| Review["Review"]
     Review -->|"Approved"| Merge["Merge"]
     Review -->|"Changes needed"| Implement
@@ -396,7 +372,7 @@ flowchart TD
 
 ```bash
 # In Terminal 1
-> /moai plan "Implement user authentication system" --worktree
+> /moai plan "Implement a user authentication system" --worktree
 ```
 
 **Output**:
@@ -405,15 +381,15 @@ flowchart TD
 ✓ SPEC document created: .moai/specs/SPEC-AUTH-001/spec.md
 ✓ Worktree created: ~/.moai/worktrees/{ProjectName}/SPEC-AUTH-001
 ✓ Branch created: feature/SPEC-AUTH-001
-✓ Branch switched
+✓ Branch switch complete
 
 Next steps:
-1. In a new terminal, run: moai worktree go SPEC-AUTH-001
-2. Switch LLM: moai glm
+1. Run in a new terminal: moai worktree go SPEC-AUTH-001
+2. Change LLM: moai glm
 3. Start development: claude
 ```
 
-### Step 2: Implementation (Phase 2)
+### Step 2: implementation (Phase 2)
 
 ```bash
 # In Terminal 2
@@ -436,7 +412,7 @@ sequenceDiagram
     participant Git as Git Repository
 
     T1->>Git: Create feature/SPEC-AUTH-001
-    T1->>T2: Worktree creation complete
+    T1->>T2: Notify that the Worktree is created
 
     T2->>T2: moai worktree go SPEC-AUTH-001
     T2->>T2: moai glm
@@ -448,42 +424,40 @@ sequenceDiagram
     T2->>Git: Documentation commit
 ```
 
-### Step 3: Completion and merge (Phase 3)
+### Step 3: completion and merge (Phase 3)
 
 ```bash
-# In Terminal 2, after finishing work
+# After finishing work in Terminal 2 (push is handled separately via git/PR)
 exit
 
-# In Terminal 1
-moai worktree done SPEC-AUTH-001 --push
+# After handling the base-branch merge with git merge or a PR,
+# clean up the Worktree from Terminal 1
+moai worktree done SPEC-AUTH-001 --delete-branch
 ```
 
 **Process**:
 
 ```mermaid
 flowchart TD
-    A[Work complete] --> B[moai worktree done SPEC-ID]
-    B --> C{Switch to main}
-    C --> D[Merge feature branch]
-    D --> E{Conflict?}
-    E -->|Yes| F[Resolve conflict]
-    E -->|No| G[Push to remote]
-    F --> G
-    G --> H[Remove Worktree]
-    H --> I[Done]
+    A[Work complete] --> B[Merge into base via git merge or PR]
+    B --> C[moai worktree done SPEC-ID]
+    C --> D[Remove Worktree]
+    D --> E{--delete-branch?}
+    E -->|Yes| F[Delete branch]
+    E -->|No| G[Keep branch]
+    F --> H[Done]
+    G --> H[Done]
 ```
 
 ---
 
 ## Advanced Features
 
-### Parallel work strategies
+### Parallel-work strategies
 
-#### Strategy 1: Separate Plan and Implement
+#### Strategy 1: separate Plan and Implement
 
-The baseline Tokenomics strategy. Batch the planning phase on a
-high-reasoning model (Opus), then fan the implementation phase out across
-low-cost models (GLM):
+This is the basic tokenomics strategy. Do the planning stage in bulk with a high-reasoning model (Opus), and spread the implementation stage in parallel with a low-cost model (GLM):
 
 ```mermaid
 graph TB
@@ -502,13 +476,13 @@ graph TB
     Planning --> Implementation
 ```
 
-#### Strategy 2: Concurrent development
+#### Strategy 2: concurrent development
 
 ```bash
-# Terminal 1: plan SPEC-001
+# Terminal 1: SPEC-001 Plan
 > /moai plan "Authentication" --worktree
 
-# Terminal 2: plan SPEC-002 (after it finishes)
+# Terminal 2: SPEC-002 Plan (after completion)
 > /moai plan "Logging" --worktree
 
 # Terminals 3, 4, 5: parallel implementation
@@ -523,7 +497,7 @@ moai worktree go SPEC-003 && moai glm  # Terminal 5
 # Check the current Worktree
 moai worktree status
 
-# Switch to another Worktree
+# Switch to a different Worktree
 moai worktree go SPEC-AUTH-002
 
 # Or move directly
@@ -547,31 +521,28 @@ flowchart TD
 
 ## Best Practices
 
-### 1. Worktree naming conventions
+### 1. Worktree naming convention
 
 ```bash
 # Good examples
-moai worktree new SPEC-AUTH-001      # clear SPEC ID
-moai worktree new SPEC-FRONTEND-007  # category included
+moai worktree new SPEC-AUTH-001      # Clear SPEC ID
+moai worktree new SPEC-FRONTEND-007  # Includes category
 
 # Examples to avoid
-moai worktree new feature-branch     # no SPEC ID
-moai worktree new temp               # ambiguous name
+moai worktree new feature-branch     # No SPEC ID
+moai worktree new temp               # Ambiguous name
 ```
 
 ### 2. Regular cleanup
 
 ```bash
-# Run weekly
+# Regularly clean up merged Worktrees
 moai worktree clean --merged-only
-
-# Run monthly
-moai worktree clean --older-than 30
 ```
 
 ### 3. LLM selection guide
 
-Assigning models per work phase is the heart of Worktree Tokenomics:
+Assigning models per work stage is the heart of Worktree tokenomics:
 
 ```mermaid
 graph TD
@@ -579,18 +550,18 @@ graph TD
     A --> C[Implement<br/>/moai run]
     A --> D[Document<br/>/moai sync]
 
-    B --> E[Claude Opus<br/>high cost / high quality]
+    B --> E[Claude Opus<br/>high cost/high quality]
     C --> F[GLM 5<br/>low cost]
     D --> G[Claude Sonnet<br/>medium cost]
 ```
 
-### 4. Commit message conventions
+### 4. Commit message convention
 
 ```bash
 # When committing in a Worktree
 git commit -m "feat(SPEC-AUTH-001): implement JWT-based authentication
 
-- Add JWT token generation/verification logic
+- Add JWT token creation/verification logic
 - Implement refresh token rotation
 - Invalidate tokens on logout
 
@@ -601,7 +572,7 @@ Co-Authored-By: Claude <noreply@anthropic.com>"
 
 ```bash
 # Use a separate terminal per Worktree
-# iTerm2, VS Code, or tmux recommended
+# iTerm2, VS Code, or tmux is recommended
 
 # tmux example
 tmux new-session -d -s spec-001 'moai worktree go SPEC-001'
@@ -611,36 +582,35 @@ tmux new-session -d -s spec-002 'moai worktree go SPEC-002'
 tmux attach-session -t spec-001
 ```
 
-### 6. Progress tracking
+### 6. Tracking progress
 
 ```bash
 # Check all Worktree statuses
-moai worktree status --verbose
+moai worktree status --all
 
 # Check the Git log
 cd ~/.moai/worktrees/{ProjectName}/SPEC-AUTH-001
 git log --oneline --graph --all
 
-# Check changes
+# Check the changes
 git diff main
 ```
 
-## tmux Integration and Auto-merge
+## tmux Integration and Auto-Merge
 
 ### The moai worktree new --tmux flag
 
-Automatically creates a tmux session for isolated development inside the
-worktree environment.
+Automatically creates a tmux session, enabling isolated development in the Worktree environment.
 
 ```bash
 moai worktree new SPEC-AUTH-001 --tmux
 ```
 
-**Flow:**
+**Behavior flow:**
 1. Create the Worktree (existing behavior)
 2. Auto-create a tmux session (name: `moai-{ProjectName}-{SPEC-ID}`)
-3. Inject environment variables per LLM mode (GLM/CG mode)
-4. cd into the Worktree and run `/moai run {SPEC-ID}`
+3. Inject environment variables depending on the LLM mode (GLM/CG mode)
+4. cd into the Worktree, then run `/moai run {SPEC-ID}`
 
 ```bash
 # Attach the tmux session
@@ -648,17 +618,16 @@ tmux attach-session -t moai-my-project-SPEC-AUTH-001
 ```
 
 {{< callout type="info" >}}
-If tmux is not installed, graceful degradation applies: a manual cd guidance message is shown.
+If tmux is not installed, graceful degradation kicks in: a manual cd guidance message is shown.
 {{< /callout >}}
 
 ### Execution mode selection gate (Decision Point 3.5)
 
-After `/moai plan` completes and before Run starts, the execution mode is
-auto-detected and the user is asked to choose.
+After `/moai plan` completes and before Run starts, the execution mode is auto-detected and the user is asked to choose.
 
 **When tmux is available (3 options):**
-- Worktree + \{current mode\} (Recommended): create the worktree + tmux session
-- Team Mode: parallel Agent Teams execution
+- Worktree + \{current mode\} (Recommended): create a Worktree + tmux session
+- Team Mode: parallel execution via Agent Teams
 - Sub-agent Mode: sequential execution
 
 **When tmux is unavailable (2 options):**
@@ -667,28 +636,28 @@ auto-detected and the user is asked to choose.
 
 ### Auto-merge default behavior
 
-Running `/moai sync` in a worktree context auto-merges by default.
+Running `/moai sync` in a Worktree context makes auto-merge the default behavior.
 
 | Flag | Behavior |
 |--------|------|
-| (none) | Auto-merge in worktree context |
+| (none) | Auto-merge in the Worktree context |
 | `--no-merge` | Skip the auto-merge |
-| `--merge` | Deprecated (warning shown) |
+| `--merge` | Deprecated (shows a warning) |
 
-### Post-merge auto-cleanup
+### Post-merge auto cleanup
 
-On successful PR merge, automatic cleanup runs:
-- Remove the worktree directory
+Automatic cleanup on a successful PR merge:
+- Remove the Worktree directory
 - Delete the feature branch (`--delete-branch`)
 - Update the registry
 
 {{< callout type="warning" >}}
-Cleanup failures do not affect the merge outcome. On failure, clean up manually: `moai worktree done SPEC-{ID}`
+A cleanup failure does not affect the merge result. On failure, clean up manually: `moai worktree done SPEC-{ID}`
 {{< /callout >}}
 
 ### Error handling (errors.go)
 
-Structured error types with recovery commands are provided.
+Provides structured error types and recovery commands.
 
 | Error type | Description | Recovery command |
 |-----------|------|-----------|
@@ -697,8 +666,8 @@ Structured error types with recovery commands are provided.
 | `AutoMergeBlockedError` | Auto-merge blocked | `/moai sync {SPEC-ID}` |
 | `CleanupFailedError` | Cleanup failed | `moai worktree done {SPEC-ID}` |
 
-## Related documentation
+## Related Documents
 
 - [Git Worktree Overview](/en/worktree/)
-- [Real-World Examples](/en/worktree/examples)
+- [Practical Examples](/en/worktree/examples)
 - [FAQ](/en/worktree/faq)

@@ -39,8 +39,6 @@ Run it without arguments and it scans the current project for errors and auto-fi
 | `--security` (or `--include-security`) | Include security issues | `/moai fix --security` |
 | `--no-fmt` (or `--no-format`) | Skip formatting fixes | `/moai fix --no-fmt` |
 | `--resume [ID]` (or `--resume-from`) | Resume from a snapshot (latest if `latest`) | `/moai fix --resume` |
-| `--team` | Force agent team mode | `/moai fix --team` |
-| `--solo` | Force sub-agent mode | `/moai fix --solo` |
 
 ### The --dry Flag
 
@@ -235,6 +233,18 @@ Serious problems that **affect security**. User approval is mandatory, and manua
 - "There are many failing tests and I want them all fixed" → `/moai loop`
 {{< /callout >}}
 
+## Residual Issue Handoff (handed to loop)
+
+Because `/moai fix` is a one-shot (single) pipeline, issues that a single scan-fix-verify cannot resolve may remain. The kinds of remaining issues:
+
+- **Level 4 manual items** (security · architecture — auto-fixing forbidden)
+- **Unresolved errors** (items the repair stage could not fix)
+- **Phase 5 regression-guard failures** (regressions that could neither be reverted nor reported)
+
+When such residue remains, the fix workflow persists it to `.moai/state/loop-verdict-<id>.json` with `exit_kind: "one-shot-residue"` and `iterations_used: 1`. This schema is identical to `/moai loop`'s residue-persistence schema.
+
+The report only **suggests** entering `/moai loop` for re-fixable residue; the fix workflow does not auto-invoke `/moai loop` or any other subcommand. When you re-enter `/moai loop` yourself, the persisted residue is incorporated as items in the loop's scan queue, and the goal-preset sweep drains them.
+
 ## Agent Delegation Chain
 
 The agent delegation flow of the `/moai fix` command:
@@ -339,13 +349,9 @@ Yes, Level 3-4 issues each require approval. However, you can check first with `
 
 You can revert with Git. It is a good idea to commit before fixing, or back up with `git stash`.
 
-### Q: What if I only want to fix specific files?
+### Q: What happens to residual issues that could not be fixed?
 
-Use the `--path` flag:
-
-```bash
-> /moai fix --path src/auth/
-```
+When `/moai fix` exits leaving residual issues (Level 4 manual items, unresolved errors, Phase 5 regression-guard failures), the residue is persisted to `.moai/state/loop-verdict-<id>.json` with `exit_kind: "one-shot-residue"`. The report only **suggests** entering `/moai loop` for re-fixable residue (it does not auto-invoke it), and when you re-enter `/moai loop` this residue enters the loop queue as scan items.
 
 ### Q: What is the difference between `/moai fix` and `/moai`?
 

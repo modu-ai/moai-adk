@@ -121,7 +121,7 @@ flowchart TD
 
 ### 第 2 步: 架构分析
 
-`manager-docs` 智能体分析探索结果:
+编排器基于探索结果与确定性工具(例如 `go list -deps -json` + `go doc`,或项目语言的等价依赖·文档提取器)**直接** 分析(不 spawn 单独的智能体):
 
 - 按层分类模块(表现、业务、数据、基础设施)
 - 识别高 fan-in 模块(`@MX:ANCHOR` 候选)
@@ -181,28 +181,27 @@ flowchart TD
 
 ## 智能体委派链
 
+`/moai codemaps` 唯一的智能体 spawn 是第 1 步的 `Explore`(只读)。第 2·3 步的分析与文档生成、第 4 步的验证,全部由编排器直接执行。
+
 ```mermaid
 flowchart TD
     User["用户请求"] --> MoAI["MoAI 编排器"]
     MoAI --> Phase1["第 1 步: 探索"]
-    Phase1 --> Explore["Explore 智能体<br/>(只读)"]
+    Phase1 --> Explore["Explore 智能体<br/>(只读,唯一的 spawn)"]
 
-    Explore --> Phase23["第 2-3 步: 分析与生成"]
-    Phase23 --> Docs["manager-docs<br/>(分析 + 生成文档)"]
+    Explore --> Phase23["第 2-3 步: 分析与生成<br/>编排器直接"]
 
-    Docs --> Phase4["第 4 步: 验证"]
-    Phase4 --> MoAI2["MoAI 编排器"]
+    Phase23 --> Phase4["第 4 步: 验证<br/>编排器直接"]
 
-    MoAI2 --> Report["第 5 步: 报告"]
+    Phase4 --> Report["第 5 步: 报告"]
 ```
 
 **智能体角色:**
 
 | 智能体 | 角色 | 主要工作 |
 |----------|------|----------|
-| **MoAI 编排器** | 协调工作流、验证、报告 | 解析标志、验证、用户交互 |
-| **Explore** | 探索代码库(只读) | 目录结构、模块边界、依赖映射 |
-| **manager-docs** | 架构分析与生成文档 | 模块分类、依赖分析、撰写代码地图文件 |
+| **Explore** | 探索代码库(只读)—— 唯一的 Agent() spawn | 目录结构、模块边界、依赖映射 |
+| **MoAI 编排器** | 分析·生成·验证·报告(全部直接) | 用探索结果 + 确定性工具进行模块分类·依赖分析·撰写代码地图文件,验证,用户交互 |
 
 ## 常见问题
 

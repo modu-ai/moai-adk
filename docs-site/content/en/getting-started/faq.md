@@ -86,16 +86,16 @@ For details, see [SPEC-STATUSLINE-001](https://github.com/modu-ai/moai-adk/blob/
 
 MoAI-ADK assigns the optimal AI model to each agent according to your Claude Code subscription plan. It is a tokenomics mechanism that maximizes quality within your plan's usage limits.
 
-### Policy Tier Comparison
+### Tier Comparison
 
-| Policy | Plan | Characteristics |
-|------|--------|------|
-| **High** | Max $200/month | Highest quality — Opus assigned to planning and audits, maximum throughput |
-| **Medium** | Max $100/month | Balance of quality and cost |
-| **Low** | Plus $20/month | Economical, no Opus — Sonnet-centric allocation |
+| Tier | Characteristics |
+|------|------|
+| **max** | Highest quality — Opus assigned to planning and auditing, maximum reasoning depth |
+| **medium** (default) | Balance of quality and cost |
+| **low** | Economical — Sonnet-centric allocation |
 
 {{< callout type="warning" >}}
-**Why does this matter?** The Plus $20 plan does not include Opus. Setting `Low` runs every agent without Opus, preventing usage-limit errors. On higher plans, Opus goes to the critical phases (planning, audits) while lighter models handle routine work.
+**Why does this matter?** The `low` tier is designed so the whole workflow works without higher-tier models (Opus). It can perform core work while preventing usage-limit errors. The `max` tier assigns Opus to the core phases (planning, auditing) and lightweight models to general work.
 {{< /callout >}}
 
 ### Agent Model Assignment per Tier
@@ -104,21 +104,21 @@ Of the **11-agent catalog** (10 MoAI custom + 1 Anthropic built-in `Explore`), t
 
 #### Manager Agents (5)
 
-| Agent | High | Medium | Low |
-|---------|------|--------|-----|
+| Agent | max | medium | low |
+|---------|-----|--------|-----|
 | manager-spec | opus | opus | sonnet |
 | manager-develop | opus | sonnet | sonnet |
-| manager-docs | sonnet | haiku | haiku |
-| manager-git | haiku | haiku | haiku |
+| manager-docs | sonnet | sonnet | sonnet |
+| manager-git | sonnet | sonnet | sonnet |
 | manager-design | sonnet | sonnet | sonnet |
 
 #### Evaluator · Builder · Advisor Agents (4)
 
-| Agent | High | Medium | Low |
-|---------|------|--------|-----|
+| Agent | max | medium | low |
+|---------|-----|--------|-----|
 | plan-auditor | opus | opus | sonnet |
 | sync-auditor | opus | sonnet | sonnet |
-| builder-harness | opus | sonnet | haiku |
+| builder-harness | opus | sonnet | sonnet |
 | super-advisor | opus | opus | sonnet |
 
 The e2e-tester and the built-in `Explore` follow the session model as-is (`model: inherit`).
@@ -134,7 +134,7 @@ moai update -c                # Re-run the setup wizard
 ```
 
 {{< callout type="info" >}}
-The default policy is `High`. After running `moai update`, you will be prompted to configure this setting with `moai update -c`.
+The default tier is `medium`. Change it by re-running the setup wizard with `moai update -c`.
 {{< /callout >}}
 
 ---

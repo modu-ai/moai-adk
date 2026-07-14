@@ -175,12 +175,12 @@ flowchart TD
 ### Trigger Configuration Example
 
 ```yaml
-# 스킬 프론트매터에서 트리거 정의
+# Define triggers in the skill frontmatter
 triggers:
-  keywords: ["api", "database", "authentication"] # 키워드 매칭
-  agents: ["manager-spec", "manager-develop"] # 에이전트 호출 시
-  phases: ["plan", "run"] # 워크플로우 단계
-  languages: ["python", "typescript"] # 프로그래밍 언어
+  keywords: ["api", "database", "authentication"] # keyword matching
+  agents: ["manager-spec", "manager-develop"] # when an agent is invoked
+  phases: ["plan", "run"] # workflow phase
+  languages: ["python", "typescript"] # programming language
 ```
 
 **Trigger priority:**
@@ -197,7 +197,7 @@ triggers:
 You can invoke a skill directly in a Claude Code conversation.
 
 ```bash
-# Claude Code에서 스킬 호출
+# Invoke a skill in Claude Code
 > Skill("moai-domain-backend")
 > Skill("moai-domain-frontend")
 > Skill("moai-ref-api-patterns")
@@ -213,22 +213,22 @@ Skill files live in the `.claude/skills/` directory.
 
 ```
 .claude/skills/
-├── moai-foundation-core/       # Foundation 카테고리
-│   ├── skill.md                # 메인 스킬 문서 (500줄 이하)
-│   ├── modules/                # 심층 문서 (무제한)
+├── moai-foundation-core/       # Foundation category
+│   ├── skill.md                # main skill document (500 lines or fewer)
+│   ├── modules/                # in-depth documents (unlimited)
 │   │   ├── trust-5-framework.md
 │   │   ├── spec-first-ddd.md
 │   │   └── delegation-patterns.md
-│   ├── examples.md             # 실전 예시
-│   └── reference.md            # 외부 참조 링크
+│   ├── examples.md             # real-world examples
+│   └── reference.md            # external reference links
 │
-├── moai-domain-backend/        # Domain 카테고리
+├── moai-domain-backend/        # Domain category
 │   ├── skill.md
 │   └── modules/
 │       ├── api-patterns.md
 │       └── microservices.md
 │
-└── my-skills/                  # 사용자 커스텀 스킬 (업데이트 제외)
+└── my-skills/                  # user custom skills (excluded from updates)
     └── my-custom-skill/
         └── skill.md
 ```
@@ -236,6 +236,23 @@ Skill files live in the `.claude/skills/` directory.
 {{< callout type="warning" >}}
   **Warning**: Skills with the `moai-*` prefix are overwritten on MoAI-ADK updates.
   Always create personal skills in the `.claude/skills/my-skills/` directory.
+{{< /callout >}}
+
+### Skill Namespaces
+
+A skill prefix distinguishes the **distribution owner**, and `moai update` behaves differently.
+
+| Prefix | Ownership | `moai update` behavior |
+|--------|--------|-------------------|
+| `moai-*` / `moai-harness-*` | template-managed | Overwrite (sync) |
+| `hns-*` | user-owned (harness) | Preserve (no modify/delete) |
+| (no prefix) / other | user-owned (personal) | Preserve |
+
+The `hns-*` prefix means a user-created harness skill, which `moai update` never overwrites or deletes. You must not mirror `hns-*` skills in the template (a CI guard detects it).
+
+{{< callout type="warning" >}}
+  **Note**: Skills with the `moai-*` prefix are overwritten on a MoAI-ADK update.
+  Create personal skills and harness skills in a `hns-*`-prefixed or prefix-less directory.
 {{< /callout >}}
 
 ### Skill File Structure
@@ -246,8 +263,8 @@ Each skill's `skill.md` follows this structure.
 ---
 name: moai-domain-backend
 description: >
-  백엔드 개발 전문가. API 설계, 마이크로서비스, 데이터베이스 통합 패턴 제공.
-  API, 웹 앱, 데이터 파이프라인 개발 시 사용.
+  Backend development specialist. Provides API design, microservices, and database integration patterns.
+  Use when developing APIs, web apps, or data pipelines.
 version: 3.0.0
 category: domain
 status: active
@@ -256,23 +273,23 @@ triggers:
 allowed-tools: ["Read", "Grep", "Glob", "Bash"]
 ---
 
-# 백엔드 개발 전문가
+# Backend Development Specialist
 
 ## Quick Reference
 
-(빠른 참조 - 30초)
+(quick reference - 30 seconds)
 
 ## Implementation Guide
 
-(구현 가이드 - 5분)
+(implementation guide - 5 minutes)
 
 ## Advanced Patterns
 
-(고급 패턴 - 10분+)
+(advanced patterns - 10 minutes+)
 
 ## Works Well With
 
-(연관 스킬/에이전트)
+(related skills/agents)
 ```
 
 ## Practical Examples
@@ -282,23 +299,23 @@ allowed-tools: ["Read", "Grep", "Glob", "Bash"]
 A scenario where the user is working in a Python FastAPI project.
 
 ```bash
-# 1. 사용자가 API 개발을 요청
-> FastAPI로 사용자 인증 API를 만들어줘
+# 1. The user requests API development
+> Build a user authentication API with FastAPI
 
-# 2. MoAI-ADK가 자동으로 감지하는 키워드
-# "FastAPI" → moai-domain-backend 트리거 (Python 패턴은 rules/moai/languages/ 통해 제공)
-# "인증"    → moai-domain-backend 트리거
-# "API"     → moai-domain-backend 트리거
+# 2. Keywords MoAI-ADK detects automatically
+# "FastAPI" → moai-domain-backend trigger (Python patterns come from rules/moai/languages/)
+# "authentication" → moai-domain-backend trigger
+# "API"     → moai-domain-backend trigger
 
-# 3. 자동 로드되는 스킬
-# - moai-domain-backend (Level 2): API 설계 패턴, 인증 전략
-# - moai-foundation-core (Level 1): TRUST 5 품질 기준
+# 3. Skills loaded automatically
+# - moai-domain-backend (Level 2): API design patterns, authentication strategies
+# - moai-foundation-core (Level 1): TRUST 5 quality standards
 
-# 4. 에이전트가 스킬 지식을 활용하여 구현
-# - FastAPI 라우터 패턴 적용
-# - JWT 인증 모범 사례 적용
-# - pytest 테스트 자동 생성
-# - TRUST 5 품질 기준 충족
+# 4. The agent implements using skill knowledge
+# - Applies FastAPI router patterns
+# - Applies JWT authentication best practices
+# - Auto-generates pytest tests
+# - Meets TRUST 5 quality standards
 ```
 
 ### Skill Collaboration

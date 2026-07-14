@@ -3,8 +3,6 @@ title: Profile Management
 weight: 80
 draft: false
 ---
-# Profile Management
-
 
 MoAI-ADK's profile system lets you manage multiple Claude Code configurations in isolation. Separate work vs. personal setups, or high-quality vs. cost-saving sessions, into one profile each, and you no longer need to change model, language, and display settings every time.
 
@@ -87,7 +85,6 @@ When configuring a profile, you can select a model that supports a 1M context wi
 - `opus` / `opus[1m]`
 - `sonnet` / `sonnet[1m]`
 - `fable` / `fable[1m]`
-- `haiku`, `opusplan`
 
 Select it in the "Model Settings" step of the setup wizard, or edit the profile settings file directly. 1M context models are well suited for analyzing large codebases or working with long documents.
 

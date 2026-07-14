@@ -4,16 +4,16 @@ weight: 30
 draft: false
 ---
 
-This guide covers installing MoAI-ADK on your system. The install artifact is a single binary built with Go — no Python, no virtual environment, no package manager needed.
+A guide to installing MoAI-ADK on your system. The installation is a single Go-built binary — no Python, no virtual environment, no package manager required.
 
 ## License
 
 MoAI-ADK {{< version >}} and later is distributed under the **Apache-2.0 license**.
 
-Commercial use, modification, and distribution are free, with no obligation to publish source code. See the [Apache License 2.0](https://www.apache.org/licenses/LICENSE-2.0) for details.
+Commercial use, modification, and distribution are free, with no obligation to open-source your code. For details, see [Apache License 2.0](https://www.apache.org/licenses/LICENSE-2.0).
 
 {{< callout type="info" >}}
-**Note**: MoAI-ADK 1.x (the Python version) was GPL-3.0 licensed. Starting with v2.0.0, it was rewritten in Go and relicensed under Apache-2.0.
+**Note**: MoAI-ADK 1.x (the Python version) was under the GPL-3.0 license. From v2.0.0 it was rewritten in Go and changed to Apache-2.0.
 {{< /callout >}}
 
 ## Prerequisites
@@ -28,9 +28,9 @@ MoAI-ADK is an extension framework that runs on top of Claude Code. Claude Code 
 claude --version
 ```
 
-If you have not installed it yet, see the [official Claude Code documentation](https://docs.anthropic.com/en/docs/claude-code).
+If you have not installed it yet, see the [Claude Code official documentation](https://docs.anthropic.com/en/docs/claude-code).
 
-### 2. Git (Required)
+### 2. Git (required)
 
 MoAI-ADK uses a Git-based workflow. Git must be installed on your system.
 
@@ -39,28 +39,28 @@ git --version
 ```
 
 {{< callout type="warning" >}}
-**Windows users**: You must use a **Git Bash** or **WSL** environment. Command Prompt (cmd.exe) is not supported.
+**Windows users**: You must use **Git Bash** or **WSL**. Command Prompt (cmd.exe) is not supported.
 
 If Git is not installed:
-- **Windows**: Install Git for Windows from [git-scm.com](https://git-scm.com). Git Bash is installed along with it.
+- **Windows**: Install Git for Windows from [git-scm.com](https://git-scm.com). Git Bash is installed alongside it.
 - **macOS**: `xcode-select --install` or [git-scm.com](https://git-scm.com)
 - **Linux**: `sudo apt install git` (Ubuntu/Debian) or `sudo dnf install git` (Fedora)
 {{< /callout >}}
 
-### System Requirements
+### System requirements
 
 | Item | Requirement |
 |------|---------|
-| **Operating system** | macOS, Linux, Windows (Git Bash / WSL) |
+| **OS** | macOS, Linux, Windows (Git Bash / WSL) |
 | **Architecture** | amd64, arm64 |
-| **Memory** | Minimum 4GB RAM |
-| **Disk** | Minimum 100MB free space |
+| **Memory** | 4GB RAM minimum |
+| **Disk** | 100MB free space minimum |
 
-## Installation Methods
+## Installation methods
 
-### Method 1: Quick Install (Recommended)
+### Method 1: Quick install (recommended)
 
-Installs the latest version automatically with a single command.
+Automatically installs the latest version with a single command.
 
 **macOS / Linux / WSL / Git Bash:**
 
@@ -75,16 +75,16 @@ irm https://raw.githubusercontent.com/modu-ai/moai-adk/main/install.ps1 | iex
 ```
 
 {{< callout type="info" >}}
-The install script automatically detects your platform, downloads the prebuilt binary from GitHub, verifies the SHA256 checksum, and configures your PATH. No Python or separate runtime is required.
+The install script automatically detects the platform, downloads a pre-built binary from GitHub, verifies the SHA256 checksum, and configures the PATH. No Python or separate runtime is required.
 {{< /callout >}}
 
-Once installation is complete, verify it:
+Once the install completes, verify it:
 
 ```bash
 moai version
 ```
 
-#### Install Options
+#### Install options
 
 ```bash
 # Install a specific version (specify the desired release tag)
@@ -94,7 +94,7 @@ curl -fsSL https://raw.githubusercontent.com/modu-ai/moai-adk/main/install.sh | 
 curl -fsSL https://raw.githubusercontent.com/modu-ai/moai-adk/main/install.sh | bash -s -- --install-dir /usr/local/bin
 ```
 
-### Method 2: Build from Source
+### Method 2: Build from source
 
 If you have a Go development environment, you can build directly from source.
 
@@ -104,30 +104,30 @@ cd moai-adk
 make build
 ```
 
-The built binary is generated at `./bin/moai`. Copy it to a location on your PATH:
+The built binary is created at `./bin/moai`. Copy it to a location on your PATH:
 
 ```bash
 cp ./bin/moai ~/.local/bin/
 ```
 
-### Install Location
+### Install location
 
-The install script chooses the install directory in this order:
+The install script determines the install directory in the following order:
 
 | Platform | Priority |
 |--------|---------|
 | **macOS / Linux** | `$GOBIN` → `$GOPATH/bin` → `~/.local/bin` |
 | **Windows** | `%LOCALAPPDATA%\Programs\moai` |
 
-## Migrating from 1.x
+## Migration for 1.x users
 
 {{< callout type="error" >}}
-**MoAI-ADK 1.x (Python version) users must uninstall the old version first.**
+**MoAI-ADK 1.x (Python version) users must remove the old version first.**
 
-1.x and 2.x use the same `moai` command, so a leftover old version causes conflicts.
+Since 1.x and 2.x use the same `moai` command, a leftover old version causes conflicts.
 {{< /callout >}}
 
-### Step 1: Remove the Old 1.x
+### Step 1: remove the old 1.x
 
 ```bash
 # If installed with uv
@@ -137,20 +137,20 @@ uv tool uninstall moai-adk
 pip uninstall moai-adk
 ```
 
-### Step 2: Back Up Existing Settings (Optional)
+### Step 2: back up your old settings (optional)
 
 ```bash
-# If you want to back up your existing settings
+# If you want to back up your old settings
 cp -r ~/.moai ~/.moai-v1-backup
 ```
 
-### Step 3: Install 2.x
+### Step 3: install 2.x
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/modu-ai/moai-adk/main/install.sh | bash
 ```
 
-### Step 4: Verify the Installation
+### Step 4: verify the installation
 
 ```bash
 moai version
@@ -158,12 +158,12 @@ moai version
 ```
 
 {{< callout type="info" >}}
-The Go edition (v2.0+) is a single binary that needs no Python runtime or virtual environment. Startup time improved dramatically, from about 800ms to 5ms.
+The Go edition (v2.0+) is a single binary that needs no Python runtime or virtual environment. Startup time improved dramatically from about 800ms to 5ms.
 {{< /callout >}}
 
-## WSL Support
+## WSL support
 
-For Windows users, here is how to install and use MoAI-ADK in a WSL (Windows Subsystem for Linux) environment.
+For Windows users, here is how to install and use MoAI-ADK in the WSL (Windows Subsystem for Linux) environment.
 
 ### Installing WSL
 
@@ -173,19 +173,19 @@ If WSL is not installed, run the following in PowerShell (as administrator):
 wsl --install
 ```
 
-After installing, restart Windows and Ubuntu is installed automatically.
+After installing and restarting Windows, Ubuntu is installed automatically.
 
 ### Installing MoAI-ADK in WSL
 
-Use the same command as on Linux from a WSL terminal:
+In the WSL terminal, use the same command as Linux:
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/modu-ai/moai-adk/main/install.sh | bash
 ```
 
-### Path Handling
+### Path handling
 
-In WSL, you need to distinguish Windows paths from WSL paths:
+In WSL you must distinguish Windows paths from WSL paths:
 
 | Windows path | WSL path |
 |-------------|----------|
@@ -193,18 +193,18 @@ In WSL, you need to distinguish Windows paths from WSL paths:
 | `D:\Projects\myapp` | `/mnt/d/Projects/myapp` |
 
 {{< callout type="info" >}}
-**Recommended**: Creating projects on WSL's Linux filesystem (`~/projects/`) improves I/O performance 2-5x. Accessing the Windows filesystem (`/mnt/c/`) can degrade performance.
+**Recommended**: Creating projects on the WSL Linux filesystem (`~/projects/`) improves I/O performance 2-5x. Accessing the Windows filesystem (`/mnt/c/`) can degrade performance.
 {{< /callout >}}
 
-### WSL Best Practices
+### WSL best practices
 
-1. **Use the Linux filesystem**: Create projects under the `~/projects/` directory
-2. **Configure Git credentials**: Set up Git credentials in WSL separately from Windows
-3. **Recommended terminal**: Use Windows Terminal to manage multiple WSL distributions
+1. **Use the Linux filesystem**: create projects in the `~/projects/` directory
+2. **Set up Git credentials**: configure Git credentials in WSL separately from Windows
+3. **Recommended terminal**: use Windows Terminal to manage multiple WSL distributions
 
-### WSL Troubleshooting
+### WSL troubleshooting
 
-#### PATH Not Loading
+#### PATH not loaded
 
 ```bash
 # Add to ~/.bashrc or ~/.zshrc
@@ -212,14 +212,14 @@ source ~/.cargo/env
 export PATH="$HOME/.local/bin:$PATH"
 ```
 
-#### Hook/MCP Server Execution Permission Issues
+#### Hook / MCP server execute-permission issues
 
 ```bash
 # Grant execute permission
 chmod +x ~/.claude/hooks/moai/*.sh
 ```
 
-#### Slow Access to Windows Paths
+#### Slow Windows path access
 
 Move your project to the Linux filesystem:
 
@@ -229,36 +229,36 @@ cp -r /mnt/c/Users/name/project ~/projects/
 cd ~/projects/project
 ```
 
-## pip and uv Tool Conflicts
+## pip and uv tool conflicts
 
-A common issue for MoAI-ADK 1.x (Python version) users.
+A common problem MoAI-ADK 1.x (Python version) users can encounter.
 
-### The Problem
+### Problem description
 
-pip and uv install packages to different locations. Mixing the two tools can cause the `moai` command to run an unexpected version.
+pip and uv install packages to different locations. Mixing the two tools can make the `moai` command run an unexpected version.
 
 ### Symptoms
 
 - Running `moai version` shows a 1.x version
-- `command not found: moai` errors
-- The binary runs from a different path than `which moai` shows
+- A `command not found: moai` error occurs
+- It runs from a path different from `which moai`
 
 ### Cause
 
 1. pip installs to the system Python path
 2. uv tool installs to `~/.local/bin` or `~/.cargo/bin`
-3. Depending on PATH order, a different version runs
+3. A different version runs depending on the PATH order
 
 ### Solution
 
-#### Complete Removal, Then Reinstall
+#### Fully remove, then reinstall
 
 ```bash
 # 1. Remove all existing versions
 uv tool uninstall moai-adk 2>/dev/null || true
 pip uninstall moai-adk -y 2>/dev/null || true
 
-# 2. Check for and delete leftover binaries
+# 2. Find and delete leftover binaries
 which moai && rm $(which moai) 2>/dev/null || true
 ls ~/.local/bin/moai && rm ~/.local/bin/moai 2>/dev/null || true
 
@@ -269,25 +269,25 @@ curl -fsSL https://raw.githubusercontent.com/modu-ai/moai-adk/main/install.sh | 
 moai version
 ```
 
-#### Update Your Shell Configuration
+#### Update your shell configuration
 
 ```bash
 # Add to ~/.bashrc or ~/.zshrc
 export PATH="$HOME/.local/bin:$PATH"
 
-# Apply the change
+# Apply the configuration
 source ~/.bashrc  # or source ~/.zshrc
 ```
 
 ### Prevention
 
-1. MoAI-ADK 2.x is a Go binary with no relation to Python
-2. Uninstall 1.x (the Python version) before installing 2.x
+1. MoAI-ADK 2.x is a Go binary unrelated to Python
+2. Remove 1.x (Python version) before installing 2.x
 3. Do not use pip and uv tool at the same time
 
-## Installation Troubleshooting
+## Installation troubleshooting
 
-### Problem: Command Not Found
+### Problem: command not found
 
 ```bash
 command not found: moai
@@ -316,7 +316,7 @@ echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.bashrc
 source ~/.bashrc
 ```
 
-### Problem: Permission Denied
+### Problem: permission denied
 
 ```bash
 Permission denied
@@ -328,12 +328,12 @@ Permission denied
 chmod +x ~/.local/bin/moai
 ```
 
-### Problem: 1.x and 2.x Conflict
+### Problem: 1.x and 2.x conflict
 
-If the old version of the `moai` command is running:
+If an older `moai` command runs:
 
 ```bash
-# Check which moai is running
+# Check which moai runs
 which moai
 
 # If 1.x remains, remove it
@@ -341,21 +341,21 @@ uv tool uninstall moai-adk
 # or
 pip uninstall moai-adk
 
-# Restart the terminal and verify 2.x
+# Restart the terminal, then verify 2.x
 moai version
 ```
 
-## Next Steps After Installation
+## Next steps after installation
 
 Once installation is complete, initialize a project:
 
-### Create a New Project
+### Create a new project
 
 ```bash
 moai init my-project
 ```
 
-### Apply to an Existing Project
+### Apply to an existing project
 
 ```bash
 cd my-existing-project
@@ -370,56 +370,45 @@ To upgrade to the latest version:
 moai update
 ```
 
-### Update Options
+### Update options
 
 ```bash
 # Check the version only (no update)
 moai update --check
 
-# Sync templates only (skip package upgrade)
+# Sync templates only (skip the binary update)
 moai update --templates-only
 
-# Configuration edit mode (re-run the init wizard)
-moai update --config
+# Config edit mode (re-run the setup wizard)
 moai update -c
 
-# Force update without backup
+# Force update (user changes are backed up, then overwritten)
 moai update --force
 
-# Auto-approve mode (approve all confirmations automatically)
+# Auto-approve mode (CI/CD)
 moai update --yes
 ```
 
-### Merge Strategies
-
-```bash
-# Force automatic merge (default)
-moai update --merge
-
-# Force manual merge
-moai update --manual
-```
-
 {{< callout type="info" >}}
-**Automatically preserved items**: User settings, custom agents, custom commands, custom skills, custom hooks, SPEC documents, and reports are preserved automatically during updates.
+**Auto-preserved items**: User settings, custom agents, custom commands, custom skills, custom hooks, SPEC documents, and reports are preserved automatically on update. Template files you modified are backed up and then 3-way merged.
 {{< /callout >}}
 
-For details, see the [Update Guide](https://adk.mo.ai.kr/getting-started/update).
+For details, see the [Update guide](https://adk.mo.ai.kr/getting-started/update).
 
 ## Uninstalling
 
-To remove MoAI-ADK completely, delete the binary and the configuration directory:
+To fully remove MoAI-ADK, delete the binary and the settings directory:
 
 ```bash
-# Delete the binary (using the result of which moai)
+# Delete the binary (delete the result of which moai)
 rm "$(which moai)"
 
-# Delete the configuration directory (optional)
+# Delete the settings directory (optional)
 rm -rf "$HOME/.moai"
 ```
 
 ---
 
-## Next Steps
+## Next steps
 
-Learn how to configure MoAI-ADK in the [Initial Setup Wizard](./init-wizard).
+Learn how to configure MoAI-ADK in the [Initial Setup wizard](./init-wizard).

@@ -46,11 +46,11 @@ Check the permission of your existing `settings.local.json`.
 ```bash
 # Linux
 stat -c '%a' .claude/settings.local.json
-# 기대값: 600
+# Expected: 600
 
 # macOS
 stat -f '%A' .claude/settings.local.json
-# 기대값: 600
+# Expected: 600
 ```
 
 If the permission shows `644` or any looser value, MoAI-ADK automatically corrects it to `0o600` at the next session start. To correct it immediately:
@@ -106,16 +106,16 @@ If the source-file injection fails (disk full, tmux source-file failure, etc.), 
 Check whether the token is exposed in argv while CG mode is running.
 
 ```bash
-# moai cg 실행 후 새 tmux 세션 내에서
+# Inside a new tmux session after running moai cg
 ps auxe | grep -i 'tmux set-environment.*ANTHROPIC_AUTH_TOKEN'
-# 기대값: 0 matches (token 이 argv 에 없음)
+# Expected: 0 matches (token is not present in argv)
 ```
 
 Check that the temp file is properly unlinked.
 
 ```bash
 ls -la ~/.moai/run/ 2>/dev/null
-# 기대값: 빈 디렉터리 또는 stale 파일 없음
+# Expected: empty directory or no stale files
 ```
 
 If residual files remain in `~/.moai/run/` after session end, they can be removed manually (not a security threat — the files were already subject to an unlink attempt).
@@ -172,16 +172,16 @@ If `downloadAndVerify` is reached with the `version.Checksum` field as an empty 
 ### Self-Audit
 
 ```bash
-# release 정보 + checksums.txt 존재 확인
+# Verify release info + checksums.txt existence
 moai update --check-only
 
-# 정상 흐름 (성공 시)
+# Normal flow (on success)
 moai update
-# 출력 예: Downloaded checksums.txt (verified)
+# Example output: Downloaded checksums.txt (verified)
 
-# checksums.txt 다운로드 실패 시 (의도적 차단 예: VPN 단절 후 실행)
+# When checksums.txt download fails (intentional block, e.g. running after a VPN disconnect)
 moai update
-# 출력 예: error: checksum unavailable: persistent retry failure after 3 attempts
+# Example output: error: checksum unavailable: persistent retry failure after 3 attempts
 ```
 
 If the `ErrChecksumUnavailable` message appears, check the following.
@@ -194,7 +194,7 @@ If the `ErrChecksumUnavailable` message appears, check the following.
 For persistent blockage, manual binary installation is recommended.
 
 ```bash
-# 수동 설치 (사용자가 직접 무결성 검증)
+# Manual installation (verify integrity yourself)
 curl -fsSL https://raw.githubusercontent.com/modu-ai/moai-adk/main/install.sh | bash
 ```
 
@@ -205,27 +205,27 @@ Details: [Updating](/en/getting-started/update/)
 All five items can be checked at once.
 
 ```bash
-# 1. CWE-732 — settings.local.json 권한
+# 1. CWE-732 — settings.local.json permission
 stat -c '%a' .claude/settings.local.json 2>/dev/null \
   || stat -f '%A' .claude/settings.local.json 2>/dev/null
-# 기대값: 600
+# Expected: 600
 
-# 2. CWE-214 — CG 모드 실행 중 token argv 노출 (cg 모드 활성 상태에서)
+# 2. CWE-214 — token argv exposure while CG mode is running (with cg mode active)
 ps auxe 2>/dev/null | grep -i 'tmux set-environment.*ANTHROPIC_AUTH_TOKEN'
-# 기대값: 0 matches
+# Expected: 0 matches
 
-# 3. CWE-214 — tmux sensitive temp 디렉터리 정합성
+# 3. CWE-214 — tmux sensitive temp directory integrity
 ls -la ~/.moai/run/ 2>/dev/null
-# 기대값: 빈 디렉터리 또는 stale 파일 없음
+# Expected: empty directory or no stale files
 
-# 4. CWE-345 — Update flow checksum 동작
+# 4. CWE-345 — Update flow checksum behavior
 moai update --check-only
-# 기대값: release + checksums.txt 정상 확인
+# Expected: release + checksums.txt verified normally
 
-# 5. GLM source 파일 권한 (사용자 책임)
+# 5. GLM source file permission (user responsibility)
 stat -c '%a' ~/.moai/.env.glm 2>/dev/null \
   || stat -f '%A' ~/.moai/.env.glm 2>/dev/null
-# 기대값: 600 (해당 파일이 존재하는 경우)
+# Expected: 600 (when the file exists)
 ```
 
 If all 5 items meet the expected values, the v2.20.0-rc1 security hardening is functioning correctly.

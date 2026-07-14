@@ -13,12 +13,15 @@
 "utility-commands":
   title: "유틸리티 명령어"
   weight: 40
-design:
-  title: "디자인 시스템"
-  weight: 60
+"cost-optimization":
+  title: "비용 최적화"
+  weight: 50
 "multi-llm":
   title: "멀티 LLM"
   weight: 80
+guides:
+  title: "가이드"
+  weight: 85
 worktree:
   title: "깃 워크트리"
   weight: 90

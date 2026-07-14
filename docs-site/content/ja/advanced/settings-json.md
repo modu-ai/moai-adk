@@ -4,28 +4,28 @@ weight: 70
 draft: false
 ---
 
-Claude Code の設定ファイル体系を詳しく解説します。エージェントに実行権限を委任するハーネスにおいて、settings.json はその委任の境界線を引くファイルです — 何を自動許可し、何を確認し、何を絶対にブロックするかがすべてここで決まります。
+Claude Code の設定ファイル体系を詳しく案内します。エージェントに実行権限を委任するハーネスで settings.json はその委任の境界線を引くファイルです — 何を自動許可し、何を尋ね、何を絶対に止めるかがすべてここで決まります。
 
 {{< callout type="info" >}}
-**ひと言要約**: `settings.json` は Claude Code の **管制塔** です。権限、環境変数、Hook、セキュリティポリシーを一か所で管理します。
+**一行要約**: `settings.json` は Claude Code の **管制塔** です。権限、環境変数、Hook、セキュリティポリシーを 1 か所で管理します。
 {{< /callout >}}
 
-## 設定スコープ (Configuration Scopes)
+## 設定範囲 (Configuration Scopes)
 
-Claude Code は **スコープシステム** を使って、設定が適用される場所と共有対象を決定します。
+Claude Code は **範囲システム** を使って設定が適用される場所と共有対象を決定します。
 
-### 4 つのスコープタイプ
+### 4 つの範囲タイプ
 
-| スコープ | 場所 | 影響対象 | チーム共有 | 優先順位 |
+| 範囲 | 場所 | 影響対象 | チーム共有 | 優先順位 |
 |------|------|-----------|---------|----------|
-| **Managed** | システムレベル `managed-settings.json` | マシンのすべてのユーザー | ✓ (IT 配布) | 最高 |
-| **User** | `~/.claude/` | ユーザー個人 (すべてのプロジェクト) | ✗ | 低 |
-| **Project** | `.claude/` | リポジトリのすべての協業者 | ✓ (Git 追跡) | 中 |
-| **Local** | `.claude/*.local.*` | ユーザー (このリポジトリのみ) | ✗ | 高 |
+| **Managed** | システムレベルの `managed-settings.json` | マシンのすべてのユーザー | ✓ (IT 配布) | 最高 |
+| **User** | `~/.claude/` | ユーザー個人 (すべてのプロジェクト) | ✗ | 低い |
+| **Project** | `.claude/` | リポジトリのすべての協業者 | ✓ (Git 追跡) | 中間 |
+| **Local** | `.claude/*.local.*` | ユーザー (このリポジトリのみ) | ✗ | 高い |
 
-### スコープ別優先順位
+### 範囲別の優先順位
 
-同じ設定が複数のスコープにある場合、より具体的なスコープが優先されます。
+同じ設定が複数の範囲にある場合、より具体的な範囲が優先します。
 
 ```mermaid
 flowchart TD
@@ -35,43 +35,43 @@ flowchart TD
     D -->|はい| E[Local を使用<br>Project/User をオーバーライド]
     D -->|いいえ| F{Project 設定<br>あり?}
     F -->|はい| G[Project を使用<br>User をオーバーライド]
-    F -->|いいえ| H[User を使用<br>デフォルト]
+    F -->|いいえ| H[User を使用<br>デフォルト値]
 ```
 
 **優先順位:** Managed > コマンドライン引数 > Local > Project > User
 
-### 各スコープの用途
+### 各範囲の使いどころ
 
-**Managed スコープ** - 次に使用:
+**Managed 範囲** - 次に使用:
 - 組織全体に適用するセキュリティポリシー
-- 上書き不可能なコンプライアンス要件
-- IT/DevOps が配布する標準化された構成
+- 再定義不可能なコンプライアンス要件
+- IT/DevOps から配布する標準化された構成
 
-**User スコープ** - 次に使用:
-- すべてのプロジェクトで使いたい個人設定 (テーマ、エディタ設定)
-- すべてのプロジェクトで使うツールとプラグイン
-- API キーと認証 (安全に保管)
+**User 範囲** - 次に使用:
+- すべてのプロジェクトで望む個人設定 (テーマ、エディタ設定)
+- すべてのプロジェクトで使うツールおよびプラグイン
+- API キーおよび認証 (安全に保存)
 
-**Project スコープ** - 次に使用:
-- チーム共有設定 (権限、Hook、MCP サーバー)
+**Project 範囲** - 次に使用:
+- チーム共有設定 (権限、Hook)
 - チームが持つべきプラグイン
 - 協業者間のツール標準化
 
-**Local スコープ** - 次に使用:
-- 特定プロジェクトでの個人オーバーライド
+**Local 範囲** - 次に使用:
+- 特定のプロジェクトの個人オーバーライド
 - チームと共有する前の設定テスト
-- 他のユーザーには動作しないマシン固有の設定
+- 他のユーザーには動作しないマシン別の設定
 
 ## ファイルの場所
 
-MoAI-ADK は 4 つの設定ファイル位置を使用します。
+MoAI-ADK は 4 つの設定ファイルの場所を使います。
 
 | ファイル | 場所 | 用途 | Git 追跡 |
 |------|------|------|----------|
 | `managed-settings.json` | システムレベル* | 管理型設定 (IT 配布) | いいえ |
-| `settings.json` (User) | `~/.claude/settings.json` | 個人グローバル設定 | いいえ |
+| `settings.json` (User) | `~/.claude/settings.json` | 個人のグローバル設定 | いいえ |
 | `settings.json` (Project) | `.claude/settings.json` | チーム共有設定 | はい |
-| `settings.local.json` | `.claude/settings.local.json` | 個人プロジェクト設定 | いいえ |
+| `settings.local.json` | `.claude/settings.local.json` | 個人のプロジェクト設定 | いいえ |
 
 **システムレベルの場所:**
 - macOS: `/Library/Application Support/ClaudeCode/`
@@ -79,12 +79,12 @@ MoAI-ADK は 4 つの設定ファイル位置を使用します。
 - Windows: `C:\Program Files\ClaudeCode\`
 
 {{< callout type="warning" >}}
-**注意**: `.claude/settings.json` は MoAI-ADK の更新時に上書きされます。個人設定は必ず `settings.local.json` または `~/.claude/settings.json` に書いてください。
+**注意**: `.claude/settings.json` は MoAI-ADK アップデート時に上書きされます。個人設定は必ず `settings.local.json` または `~/.claude/settings.json` に書いてください。
 {{< /callout >}}
 
 ## settings.json とは?
 
-`settings.json` は Claude Code の **グローバル設定ファイル** です。どのコマンドを自動許可し、どのコマンドをブロックし、どの Hook を実行し、環境変数を何に設定するかを定義します。
+`settings.json` は Claude Code の **グローバル設定ファイル** です。どのコマンドを自動許可し、どのコマンドを遮断するか、どの Hook を実行するか、環境変数を何に設定するかを定義します。
 
 ## 全体構造
 
@@ -105,18 +105,18 @@ MoAI-ADK は 4 つの設定ファイル位置を使用します。
   "fileSuggestion": {},
   "alwaysThinkingEnabled": false,
   "maxThinkingTokens": 0,
-  "statusLine": {},
-  "outputStyle": "",
+  "statusLine": { "type": "command", "command": "moai statusline" },
+  "outputStyle": "MoAI-Easy",
   "cleanupPeriodDays": 30,
   "env": {}
 }
 ```
 
-## コア設定リファレンス
+## 核心設定リファレンス
 
 ### model
 
-使用するデフォルトモデルを上書きします。
+使用する基本モデルを再定義します。
 
 ```json
 {
@@ -126,7 +126,7 @@ MoAI-ADK は 4 つの設定ファイル位置を使用します。
 
 ### language
 
-Claude のデフォルト応答言語を設定します。
+Claude の基本応答言語を設定します。
 
 ```json
 {
@@ -134,11 +134,11 @@ Claude のデフォルト応答言語を設定します。
 }
 ```
 
-サポート言語: `"korean"`, `"japanese"`, `"spanish"`, `"french"` など
+対応言語: `"korean"`, `"japanese"`, `"spanish"`, `"french"` など
 
 ### cleanupPeriodDays
 
-この期間より古い非アクティブセッションを起動時に削除します。`0` に設定するとすべてのセッションを即座に削除します。(デフォルト: 30 日)
+この期間より古い非アクティブなセッションを起動時に削除します。`0` に設定するとすべてのセッションを即座に削除します。(デフォルト値: 30 日)
 
 ```json
 {
@@ -148,7 +148,7 @@ Claude のデフォルト応答言語を設定します。
 
 ### autoUpdatesChannel
 
-更新を追跡するリリースチャネルです。
+アップデートを追うリリースチャネルです。
 
 ```json
 {
@@ -156,12 +156,12 @@ Claude のデフォルト応答言語を設定します。
 }
 ```
 
-- `"stable"`: 1 週間程度経過したバージョン、主要なリグレッションをスキップ
-- `"latest"` (デフォルト): 最新リリース
+- `"stable"`: 1 週間ほど経ったバージョン、主要な回帰をスキップ
+- `"latest"` (デフォルト値): 最も新しいリリース
 
 ### spinnerTipsEnabled
 
-Claude が作業している間、スピナーにヒントを表示するかどうかです。`false` に設定するとヒントを無効化します。(デフォルト: `true`)
+Claude が作業する間スピナーにヒントを表示するかどうかです。`false` に設定するとヒントを無効化します。(デフォルト値: `true`)
 
 ```json
 {
@@ -171,7 +171,7 @@ Claude が作業している間、スピナーにヒントを表示するかど�
 
 ### terminalProgressBarEnabled
 
-Windows Terminal や iTerm2 などのサポートされるターミナルで進捗を表示するターミナルプログレスバーを有効化します。(デフォルト: `true`)
+Windows Terminal や iTerm2 のような対応ターミナルで進行率を表示するターミナル進行率バーを有効化します。(デフォルト値: `true`)
 
 ```json
 {
@@ -181,7 +181,7 @@ Windows Terminal や iTerm2 などのサポートされるターミナルで進�
 
 ### showTurnDuration
 
-応答後にターン所要時間メッセージを表示します (例: "Cooked for 1m 6s")。`false` に設定するとこのメッセージを隠します。
+応答後にターンの所要時間メッセージを表示します (例: "Cooked for 1m 6s")。`false` に設定するとこのメッセージを隠します。
 
 ```json
 {
@@ -191,7 +191,7 @@ Windows Terminal や iTerm2 などのサポートされるターミナルで進�
 
 ### respectGitignore
 
-`@` ファイルピッカーが `.gitignore` パターンを尊重するかどうかを制御します。`true` (デフォルト) の場合、`.gitignore` パターンにマッチするファイルは提案から除外されます。
+`@` ファイルセレクターが `.gitignore` パターンを遵守するかどうかを制御します。`true` (デフォルト値) なら `.gitignore` パターンに一致するファイルが提案から除外されます。
 
 ```json
 {
@@ -201,7 +201,7 @@ Windows Terminal や iTerm2 などのサポートされるターミナルで進�
 
 ### plansDirectory
 
-プランファイルを保存する場所をカスタマイズします。パスはプロジェクトルートに相対的です。デフォルト: `~/.claude/plans`
+プランファイルを保存する場所をカスタマイズします。パスはプロジェクトルートに相対的です。デフォルト値: `~/.claude/plans`
 
 ```json
 {
@@ -211,14 +211,14 @@ Windows Terminal や iTerm2 などのサポートされるターミナルで進�
 
 ## 権限設定
 
-Claude Code が実行できるコマンドの権限を管理します。権限設計の目標は 2 つです — 安全なコマンドは確認なしで流してエージェンティック・ループを断ち切らないこと、危険なコマンドはいかなる場合も通過させないこと。
+Claude Code が実行できるコマンドの権限を管理します。権限設計の目標は 2 つです — 安全なコマンドは確認なしで流れるようにしてエージェンティックループを切らないこと、危険なコマンドはどんな場合も通過させないこと。
 
 ### 権限構造
 
 ```json
 {
   "permissions": {
-    "defaultMode": "default",
+    "defaultMode": "acceptEdits",
     "allow": [],
     "ask": [],
     "deny": [],
@@ -230,26 +230,26 @@ Claude Code が実行できるコマンドの権限を管理します。権限�
 
 ### defaultMode
 
-Claude Code を開くときのデフォルト権限モードです。
+Claude Code を開くときの基本権限モードです。有効な値は次の 4 つです。
 
 | 値 | 説明 |
 |-----|------|
-| `"acceptEdits"` | ファイル編集を自動許可 |
-| `"allowEdits"` | ファイル編集を許可 |
-| `"rejectEdits"` | ファイル編集を拒否 |
-| `"default"` | デフォルト動作 |
+| `"default"` | 基本動作 — 各作業ごとにユーザー確認 |
+| `"acceptEdits"` | ファイル編集を自動許可 (デフォルト値) |
+| `"plan"` | 計画モード — 読み取り専用、ファイル修正不可 |
+| `"bypassPermissions"` | すべての権限を自動許可 (危険、`disableBypassPermissionsMode` で遮断可能) |
 
 {{< callout type="info" >}}
-**参考**: 現在の MoAI-ADK 設定ファイルは `"defaultMode": "default"` を使用します。これはレガシー値の可能性があります。
+**デフォルト値**: MoAI-ADK テンプレートは `"defaultMode": "acceptEdits"` を使います。これは開発フローでファイル編集プロンプトを減らしつつ危険なコマンドは依然として確認するようにバランスを取ります。
 {{< /callout >}}
 
 ### allow (自動許可)
 
-ユーザー確認なしで **即座に実行が許可される** コマンドのリストです。
+ユーザー確認なしで **即座に実行が許可される** コマンドの一覧です。
 
-**デフォルト許可コマンドのカテゴリ:**
+**基本許可コマンドのカテゴリ:**
 
-| カテゴリ | コマンド例 | 数 |
+| カテゴリ | コマンドの例 | 個数 |
 |----------|-------------|------|
 | ファイルツール | `Read`, `Write`, `Edit`, `Glob`, `Grep` | 7 個 |
 | Git コマンド | `git add`, `git commit`, `git diff`, `git log` など | 15 個+ |
@@ -260,7 +260,7 @@ Claude Code を開くときのデフォルト権限モードです。
 | GitHub CLI | `gh issue`, `gh pr`, `gh repo view` | 2 個 |
 | その他 | `AskUserQuestion`, `Task`, `Skill`, `TodoWrite` | 4 個 |
 
-**allow の形式例:**
+**allow 形式の例:**
 
 ```json
 {
@@ -268,7 +268,7 @@ Claude Code を開くときのデフォルト権限モードです。
     "Read",                          // ツール名のみ
     "Bash(git add:*)",               // Bash + コマンドパターン
     "Bash(pytest:*)",                // ワイルドカード
-    "Bash(npm run *)",               // スペース区切り (新しい形式)
+    "Bash(npm run *)",               // 空白区切り (新しい形式)
     "WebFetch(domain:example.com)"   // ドメインパターン
   ]
 }
@@ -276,13 +276,13 @@ Claude Code を開くときのデフォルト権限モードです。
 
 ### ask (確認後に実行)
 
-ユーザーに **確認を要求してから実行される** コマンドのリストです。
+ユーザーに **確認を要請してから実行** されるコマンドの一覧です。
 
 ```json
 {
   "ask": [
-    "Bash(chmod:*)",       // ファイル権限変更
-    "Bash(chown:*)",       // 所有権変更
+    "Bash(chmod:*)",       // ファイル権限の変更
+    "Bash(chown:*)",       // 所有権の変更
     "Bash(rm:*)",          // ファイル削除
     "Bash(sudo:*)",        // 管理者権限
     "Read(./.env)",        // 環境変数ファイルの読み取り
@@ -293,35 +293,35 @@ Claude Code を開くときのデフォルト権限モードです。
 
 **ask の動作方式:**
 1. Claude Code が該当コマンドの実行を試行
-2. ユーザーに「このコマンドを実行しますか?」と確認を要求
+2. ユーザーに「このコマンドを実行しますか?」確認を要請
 3. ユーザーが承認すれば実行、拒否すれば中断
 
-### deny (無条件ブロック)
+### deny (無条件遮断)
 
-いかなる状況でも **絶対に実行されない** コマンドのリストです。
+どんな状況でも **絶対に実行されない** コマンドの一覧です。
 
-**ブロックカテゴリ:**
+**遮断カテゴリ:**
 
-| カテゴリ | ブロックパターン | 理由 |
+| カテゴリ | 遮断パターン | 理由 |
 |----------|-----------|------|
-| 機密ファイルアクセス | `Read(./secrets/**)`, `Write(~/.ssh/**)` | セキュリティクレデンシャルの保護 |
-| クラウド認証情報 | `Read(~/.aws/**)`, `Read(~/.config/gcloud/**)` | クラウドアカウントの保護 |
-| システム破壊 | `Bash(rm -rf /:*)`, `Bash(rm -rf ~:*)` | システム保護 |
-| 危険な Git | `Bash(git push --force:*)`, `Bash(git reset --hard:*)` | コード保護 |
-| ディスクフォーマット | `Bash(dd:*)`, `Bash(mkfs:*)`, `Bash(fdisk:*)` | ディスク保護 |
-| システムコマンド | `Bash(reboot:*)`, `Bash(shutdown:*)` | システム安定性 |
-| DB 削除 | `Bash(DROP DATABASE:*)`, `Bash(TRUNCATE:*)` | データ保護 |
+| 機密ファイルアクセス | `Read(./secrets/**)`, `Write(~/.ssh/**)` | セキュリティ資格情報の保護 |
+| クラウド資格情報 | `Read(~/.aws/**)`, `Read(~/.config/gcloud/**)` | クラウドアカウントの保護 |
+| システム破壊 | `Bash(rm -rf /:*)`, `Bash(rm -rf ~:*)` | システムの保護 |
+| 危険な Git | `Bash(git push --force:*)`, `Bash(git reset --hard:*)` | コードの保護 |
+| ディスクフォーマット | `Bash(dd:*)`, `Bash(mkfs:*)`, `Bash(fdisk:*)` | ディスクの保護 |
+| システムコマンド | `Bash(reboot:*)`, `Bash(shutdown:*)` | システムの安定性 |
+| DB 削除 | `Bash(DROP DATABASE:*)`, `Bash(TRUNCATE:*)` | データの保護 |
 
-**deny の形式例:**
+**deny 形式の例:**
 
 ```json
 {
   "deny": [
-    "Read(./secrets/**)",           // シークレットディレクトリの読み取りブロック
-    "Write(~/.ssh/**)",             // SSH キー修正のブロック
-    "Bash(git push --force:*)",     // 強制プッシュのブロック
-    "Bash(rm -rf /:*)",            // ルート削除のブロック
-    "Bash(DROP DATABASE:*)"        // DB 削除のブロック
+    "Read(./secrets/**)",           // 秘密ディレクトリの読み取りを遮断
+    "Write(~/.ssh/**)",             // SSH キーの修正を遮断
+    "Bash(git push --force:*)",     // 強制プッシュを遮断
+    "Bash(rm -rf /:*)",            // ルート削除を遮断
+    "Bash(DROP DATABASE:*)"        // DB 削除を遮断
   ]
 }
 ```
@@ -354,7 +354,7 @@ Claude がアクセスできる追加の作業ディレクトリです。
 
 ### disableBundledSkills
 
-`disableBundledSkills` (ブール値、または環境変数形式) は Claude Code のバンドル skills およびワークフロー — 例: `/deep-research`、組み込みスラッシュコマンド skills — を discovery から隠し、enterprise + personal + project + plugin skills だけを見えるようにします。`true` に設定して、厳選されたバンドルなしの skill 表面を提供します。
+`disableBundledSkills` (ブール値、または環境変数の形) は Claude Code のバンドル skills およびワークフロー — 例: `/deep-research`、内蔵スラッシュコマンド skills — を discovery から隠し、enterprise + personal + project + plugin skills のみを見せます。`true` に設定して選別されたバンドルなしの skill 表面を提供します。
 
 ```json
 {
@@ -362,47 +362,47 @@ Claude がアクセスできる追加の作業ディレクトリです。
 }
 ```
 
-`--safe-mode` CLI フラグは settings ではなく起動時点で同じランタイム効果を適用します — ロックされた環境や、ある動作がバンドル skill 起源かをデバッグするときに便利です。MoAI-ADK は `disableBundledSkills` を生成したり `--safe-mode` を自動で渡したりしません。どちらも利用可能なオプションとしてここに文書化されます。
+`--safe-mode` CLI フラグは settings ではなく起動時点で同じランタイム効果を適用します — ロックされた環境や、ある動作がバンドル skill から起源したかをデバッグするときに有用です。MoAI-ADK は `disableBundledSkills` を生成したり `--safe-mode` を自動的に渡したりしません。両方とも利用可能なオプションとしてここに文書化されます。
 
 ## 権限ルール構文 (Permission Rule Syntax)
 
-権限ルールは `Tool` または `Tool(specifier)` 形式に従います。パラメータスコープのワイルドカード形式 `Tool(param:value)` もサポートされます — 例: `WebFetch(domain:example.com)` は該当ドメインへの WebFetch のみ許可、`Bash(cmd:git status)` は `git status` コマンドにマッチ、値内部の `*` ワイルドカードでマッチ範囲を広げられます (`WebFetch(domain:*.example.com)`, `Bash(cmd:git *)`)。このパラメータスコープ形式は一般の `Tool(specifier)` 形式より細かい制御を提供します。MoAI-ADK は現在、自前の設定ジェネレーターでパラメータスコープルールを生成しません。この構文はパラメータレベルの権限制御が必要なプロジェクト向けの利用可能なオプションとして文書化されます。
+権限ルールは `Tool` または `Tool(specifier)` 形式に従います。パラメータ範囲ワイルドカード形式である `Tool(param:value)` も対応します — 例: `WebFetch(domain:example.com)` は該当ドメインへの WebFetch のみを許可、`Bash(cmd:git status)` は `git status` コマンドにマッチ、値の内部の `*` ワイルドカードでマッチ範囲を広げられます (`WebFetch(domain:*.example.com)`, `Bash(cmd:git *)`)。このパラメータ範囲形式は一般的な `Tool(specifier)` 形式よりきめ細かい制御を提供します。MoAI-ADK は現在自身の設定生成器でパラメータ範囲ルールを生成しません。この構文はパラメータレベルの権限制御が必要なプロジェクトのための利用可能なオプションとして文書化されます。
 
 ### ルール評価順序
 
-複数のルールが同じツール使用にマッチするとき、ルールは次の順序で評価されます。
+複数のルールが同じツール使用に一致するとき、ルールは次の順序で評価されます。
 
 1. **Deny** ルールが最初に確認される
 2. **Ask** ルールが 2 番目に確認される
 3. **Allow** ルールが最後に確認される
 
-最初にマッチしたルールが動作を決定します。つまり、deny ルールは常に allow ルールより優先されます。
+最初に一致するルールが動作を決定します。つまり、deny ルールが常に allow ルールより優先します。
 
-### ツールのすべての使用にマッチさせる
+### ツールのすべての使用に一致させる
 
-ツールのすべての使用にマッチさせるには、括弧なしのツール名だけを使ってください。
-
-| ルール | 効果 |
-|------|------|
-| `Bash` | **すべての** Bash コマンドにマッチ |
-| `WebFetch` | **すべての** Web フェッチリクエストにマッチ |
-| `Read` | **すべての** ファイル読み取りにマッチ |
-
-`Bash(*)` は `Bash` と同じで、すべての Bash コマンドにマッチします。2 つの構文は相互に交換可能です。
-
-### 細かい制御のための指定子の使用
-
-括弧内に指定子を追加して特定のツール使用にマッチさせます。
+ツールのすべての使用に一致させるには、括弧なしでツール名だけを使ってください。
 
 | ルール | 効果 |
 |------|------|
-| `Bash(npm run build)` | 正確なコマンド `npm run build` にマッチ |
-| `Read(./.env)` | 現在のディレクトリの `.env` ファイル読み取りにマッチ |
-| `WebFetch(domain:example.com)` | example.com へのフェッチリクエストにマッチ |
+| `Bash` | **すべての** Bash コマンドに一致 |
+| `WebFetch` | **すべての** ウェブ取得リクエストに一致 |
+| `Read` | **すべての** ファイル読み取りに一致 |
+
+`Bash(*)` は `Bash` と同じで、すべての Bash コマンドに一致します。2 つの構文を相互に交換して使えます。
+
+### 詳細な制御のための指定子の使用
+
+括弧の中に指定子を追加して特定のツール使用に一致させます。
+
+| ルール | 効果 |
+|------|------|
+| `Bash(npm run build)` | 正確なコマンド `npm run build` に一致 |
+| `Read(./.env)` | 現在のディレクトリの `.env` ファイル読み取りに一致 |
+| `WebFetch(domain:example.com)` | example.com への取得リクエストに一致 |
 
 ### ワイルドカードパターン
 
-Bash ルールは `*` と共に glob パターンをサポートします。ワイルドカードはコマンドの先頭、中間、末尾などあらゆる位置に置けます。
+Bash ルールは `*` とともに glob パターンに対応します。ワイルドカードはコマンドの先頭、中間、末尾などすべての位置に現れることができます。
 
 ```json
 {
@@ -421,15 +421,15 @@ Bash ルールは `*` と共に glob パターンをサポートします。ワ�
 }
 ```
 
-**重要:** `*` の前のスペースが重要です。
-- `Bash(ls *)` は `ls -la` にマッチしますが `lsof` にはマッチしません
-- `Bash(ls*)` は両方にマッチします
+**重要:** `*` の前の空白が重要です。
+- `Bash(ls *)` は `ls -la` に一致しますが `lsof` には一致しません
+- `Bash(ls*)` は両方に一致します
 
-**レガシー構文:** `:*` サフィックス構文 (例: `Bash(npm run:*)`) は `*` と同一ですが、非推奨です。
+**レガシー構文:** `:*` 接尾辞構文 (例: `Bash(npm run:*)`) は `*` と同じですが使われません。
 
 ### ドメイン別パターン
 
-WebFetch のようなツールにはドメイン別パターンを使えます。
+WebFetch のようなツールに対してドメイン別パターンを使えます。
 
 ```json
 {
@@ -445,20 +445,20 @@ WebFetch のようなツールにはドメイン別パターンを使えます�
 }
 ```
 
-### 権限優先順位のダイアグラム
+### 権限優先順位ダイアグラム
 
 ```mermaid
 flowchart TD
-    CMD["コマンド実行の試行"] --> CHECK_DENY{deny リスト<br>確認}
+    CMD["コマンド実行の試行"] --> CHECK_DENY{deny 一覧<br>確認}
 
-    CHECK_DENY -->|マッチ| BLOCK["ブロック<br>絶対に実行不可"]
-    CHECK_DENY -->|不一致| CHECK_ALLOW{allow リスト<br>確認}
+    CHECK_DENY -->|マッチ| BLOCK["遮断<br>絶対に実行不可"]
+    CHECK_DENY -->|不一致| CHECK_ALLOW{allow 一覧<br>確認}
 
-    CHECK_ALLOW -->|マッチ| EXEC["即時実行"]
-    CHECK_ALLOW -->|不一致| CHECK_ASK{ask リスト<br>確認}
+    CHECK_ALLOW -->|マッチ| EXEC["即座に実行"]
+    CHECK_ALLOW -->|不一致| CHECK_ASK{ask 一覧<br>確認}
 
-    CHECK_ASK -->|マッチ| ASK["ユーザー確認の要求"]
-    CHECK_ASK -->|不一致| DEFAULT["デフォルト動作<br>(defaultMode)"]
+    CHECK_ASK -->|マッチ| ASK["ユーザー確認を要請"]
+    CHECK_ASK -->|不一致| DEFAULT["基本動作<br>(defaultMode)"]
 
     ASK -->|承認| EXEC
     ASK -->|拒否| BLOCK
@@ -468,10 +468,10 @@ flowchart TD
 
 ## サンドボックス設定 (Sandbox Settings)
 
-高度なサンドボックス動作を構成します。サンドボックスはファイルシステムとネットワークから bash コマンドを隔離します — 権限ルールが論理的防衛線だとすれば、OS サンドボックスは物理的防衛線です。
+高度なサンドボックス化の動作を構成します。サンドボックス化はファイルシステムとネットワークから bash コマンドを隔離します — 権限ルールが論理的な防衛線なら、OS サンドボックスは物理的な防衛線です。
 
 {{< callout type="warning" >}}
-**重要:** ファイルシステムおよびネットワークの制限は Read、Edit、WebFetch 権限ルールを通じて構成され、サンドボックス設定を通じてではありません。
+**重要:** ファイルシステムおよびネットワークの制限は Read, Edit, WebFetch の権限ルールを通じて構成され、サンドボックス設定を通じてではありません。
 {{< /callout >}}
 
 ```json
@@ -498,15 +498,15 @@ flowchart TD
 
 | キー | 説明 | 例 |
 |-----|------|------|
-| `enabled` | bash サンドボックスの有効化 (macOS, Linux, WSL2)。デフォルト: false | `true` |
-| `autoAllowBashIfSandboxed` | サンドボックスされた bash コマンドの自動承認。デフォルト: true | `true` |
-| `excludedCommands` | サンドボックス外で実行すべきコマンド | `["docker", "git"]` |
-| `allowUnsandboxedCommands` | `dangerouslyDisableSandbox` パラメータでコマンドがサンドボックス外で実行されるのを許可。デフォルト: true | `false` |
+| `enabled` | bash サンドボックス化を有効化 (macOS, Linux, WSL2)。デフォルト値: false | `true` |
+| `autoAllowBashIfSandboxed` | サンドボックス化された bash コマンドを自動承認。デフォルト値: true | `true` |
+| `excludedCommands` | サンドボックス外部で実行すべきコマンド | `["docker", "git"]` |
+| `allowUnsandboxedCommands` | `dangerouslyDisableSandbox` パラメータを通じてコマンドがサンドボックス外部で実行されるのを許可。デフォルト値: true | `false` |
 | `network.allowUnixSockets` | サンドボックスからアクセスできる Unix ソケットパス (SSH エージェントなど) | `["~/.ssh/agent-socket"]` |
-| `network.allowLocalBinding` | localhost ポートへのバインドを許可 (macOS のみ)。デフォルト: false | `true` |
-| `network.httpProxyPort` | 自前のプロキシを持ち込む場合の HTTP プロキシポート | `8080` |
-| `network.socksProxyPort` | 自前のプロキシを持ち込む場合の SOCKS5 プロキシポート | `8081` |
-| `enableWeakerNestedSandbox` | 権限のない Docker 環境向けの弱いサンドボックスを有効化 (Linux, WSL2 のみ)。**セキュリティ低下**。デフォルト: false | `true` |
+| `network.allowLocalBinding` | localhost ポートへのバインドを許可 (macOS のみ)。デフォルト値: false | `true` |
+| `network.httpProxyPort` | 自前のプロキシを持ち込みたい場合の HTTP プロキシポート | `8080` |
+| `network.socksProxyPort` | 自前のプロキシを持ち込みたい場合の SOCKS5 プロキシポート | `8081` |
+| `enableWeakerNestedSandbox` | 権限のない Docker 環境のための弱いサンドボックスを有効化 (Linux, WSL2 のみ)。**セキュリティ低下**。デフォルト値: false | `true` |
 
 ## 帰属設定 (Attribution Settings)
 
@@ -525,10 +525,10 @@ Claude Code は git コミットとプルリクエストに帰属を追加しま
 
 | キー | 説明 |
 |-----|------|
-| `commit` | git コミット用の帰属 (トレーラー含む)。空文字列はコミット帰属を非表示 |
-| `pr` | プルリクエスト説明用の帰属。空文字列は PR 帰属を非表示 |
+| `commit` | git コミットのための帰属 (トレーラーを含む)。空文字列はコミット帰属を隠す |
+| `pr` | プルリクエスト説明のための帰属。空文字列は PR 帰属を隠す |
 
-### デフォルトのコミット帰属
+### 基本コミット帰属
 
 ```
 🤖 Generated with [Claude Code](https://claude.com/claude-code)
@@ -536,7 +536,7 @@ Claude Code は git コミットとプルリクエストに帰属を追加しま
 Co-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>
 ```
 
-### デフォルトの PR 帰属
+### 基本 PR 帰属
 
 ```
 🤖 Generated with [Claude Code](https://claude.com/claude-code)
@@ -544,7 +544,7 @@ Co-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>
 
 ## Hook 設定
 
-Claude Code のイベントに反応するスクリプトを登録します。
+Claude Code イベントに反応するスクリプトを登録します。
 
 ```json
 {
@@ -555,7 +555,7 @@ Claude Code のイベントに反応するスクリプトを登録します。
         "hooks": [
           {
             "type": "command",
-            "command": "スクリプトパス"
+            "command": "スクリプトのパス"
           }
         ]
       }
@@ -593,7 +593,7 @@ Claude Code のイベントに反応するスクリプトを登録します。
 }
 ```
 
-### Hook イベントの種類
+### Hook イベントタイプ
 
 | イベント | 説明 |
 |--------|------|
@@ -604,7 +604,7 @@ Claude Code のイベントに反応するスクリプトを登録します。
 | `PreCompact` | コンテキスト圧縮前に実行 |
 
 {{< callout type="info" >}}
-Hook 設定の詳細は [Hooks ガイド](/ja/advanced/hooks-guide)を参照してください。
+Hook 設定の詳しい内容は [Hooks ガイド](/ja/advanced/hooks-guide) を参考にしてください。
 {{< /callout >}}
 
 ## プラグイン設定 (Plugin Settings)
@@ -633,30 +633,33 @@ Hook 設定の詳細は [Hooks ガイド](/ja/advanced/hooks-guide)を参照し�
 
 有効化するプラグインを制御します。形式: `"plugin-name@marketplace-name": true/false`
 
-**スコープ:**
-- **User settings** (`~/.claude/settings.json`): 個人のプラグイン好み
+**範囲:**
+- **User settings** (`~/.claude/settings.json`): 個人のプラグイン選好
 - **Project settings** (`.claude/settings.json`): チームと共有するプロジェクト別プラグイン
-- **Local settings** (`.claude/settings.local.json`): マシン固有のオーバーライド (コミットされない)
+- **Local settings** (`.claude/settings.local.json`): マシン別のオーバーライド (コミットされない)
 
 ### extraKnownMarketplaces
 
-リポジトリで利用可能にする追加のマーケットプレイスを定義します。通常、リポジトリレベル設定で使い、チームメンバーが必要なプラグインソースにアクセスできるようにします。
+リポジトリで利用可能にする追加のマーケットプレイスを定義します。一般的にはリポジトリレベルの設定で使い、チームメンバーが必要なプラグインソースにアクセスできるようにします。
 
 ## ファイル提案設定 (File Suggestion Settings)
 
-`@` ファイルパス自動補完のためのカスタムコマンドを構成します。
+`@` ファイルパスの自動補完のためのカスタムコマンドを構成します。
 
+```json
 {
+  "fileSuggestion": {
     "type": "command",
     "command": "~/.claude/file-suggestion.sh"
   }
 }
+```
 
-組み込みのファイル提案は高速なファイルシステム走査を使いますが、大きなモノレポはプロジェクト別インデックス (例: 事前ビルドされたファイルインデックスやカスタムツール) の恩恵を受けられます。
+内蔵のファイル提案は速いファイルシステム走査を使いますが、大きなモノレポはプロジェクト別のインデックス化 (例: 事前ビルドされたファイルインデックスやカスタムツール) の恩恵を受けられます。
 
 ## 拡張思考設定 (Extended Thinking Settings)
 
-拡張思考 (Extended Thinking) 関連の設定です。推論トークンもトークンです — 常時オンにすると楽ですが、予算と共に調律するのがトークノミクス観点の定石です。
+拡張思考 (Extended Thinking) 関連の設定です。推論トークンもトークンです — 常にオンにしておくと便利ですが、予算とともに調整するのがトークノミクスの観点での定石です。
 
 ```json
 {
@@ -669,12 +672,12 @@ Hook 設定の詳細は [Hooks ガイド](/ja/advanced/hooks-guide)を参照し�
 
 | キー | 説明 | 例 |
 |-----|------|------|
-| `alwaysThinkingEnabled` | すべてのセッションでデフォルトで拡張思考を有効化 | `true` |
-| `maxThinkingTokens` | 思考トークン予算の上書き (デフォルト: 31999、0 = 無効化) | `10000` |
+| `alwaysThinkingEnabled` | すべてのセッションでデフォルト的に拡張思考を有効化 | `true` |
+| `maxThinkingTokens` | 思考トークン予算の再定義 (デフォルト値: 31999、0 = 無効化) | `10000` |
 
-## 会社アナウンス (Company Announcements)
+## 会社のお知らせ (Company Announcements)
 
-起動時にユーザーへ表示するアナウンスです。複数のアナウンスを提供するとランダムに循環します。
+起動時にユーザーに表示するお知らせです。複数のお知らせを提供するとランダムに循環します。
 
 ```json
 {
@@ -694,9 +697,9 @@ Claude Code 下部に表示されるステータスバーを設定します。
 {
   "statusLine": {
     "type": "command",
-    "command": "${SHELL:-/bin/bash} -l -c 'uv run --no-sync moai-adk statusline'",
+    "command": "moai statusline",
     "padding": 0,
-    "refreshInterval": 300
+    "refreshInterval": 10
   }
 }
 ```
@@ -706,17 +709,17 @@ Claude Code 下部に表示されるステータスバーを設定します。
 | `type` | `"command"` (コマンド実行) |
 | `command` | 実行するコマンド (状態情報を返す) |
 | `padding` | パディングサイズ |
-| `refreshInterval` | 更新周期 (ミリ秒) |
+| `refreshInterval` | 更新間隔 (ミリ秒) |
 
 ## 出力スタイル設定
 
 ```json
 {
-  "outputStyle": "R2-D2"
+  "outputStyle": "MoAI-Easy"
 }
 ```
 
-出力スタイルは Claude Code の応答形式を決定します。`settings.local.json` で個人の好みのスタイルに変更できます。
+出力スタイルは Claude Code の応答形式を決定します。MoAI-ADK テンプレートはデフォルト値として `"MoAI-Easy"` を使い、`settings.local.json` で個人の好みのスタイルに変更できます。
 
 ## 環境変数設定
 
@@ -725,7 +728,7 @@ Claude Code 下部に表示されるステータスバーを設定します。
 ### MoAI-ADK 環境変数
 
 {{< callout type="info" >}}
-**MoAI-ADK 拡張**: この設定は MoAI-ADK 固有であり、公式 Claude Code の一部ではありません。
+**MoAI-ADK 拡張**: この設定は MoAI-ADK に特有で、公式の Claude Code の一部ではありません。
 {{< /callout >}}
 
 ```json
@@ -745,36 +748,36 @@ Claude Code 下部に表示されるステータスバーを設定します。
 ```json
 {
   "env": {
-    "ENABLE_TOOL_SEARCH": "auto:5",
+    "ENABLE_TOOL_SEARCH": "1",
     "CLAUDE_AUTOCOMPACT_PCT_OVERRIDE": "50"
   }
 }
 ```
 
-### 主要環境変数リファレンス
+### 主要な環境変数リファレンス
 
 | 変数 | 値 | 説明 |
 |------|-----|------|
-| `ENABLE_TOOL_SEARCH` | `"auto"`, `"auto:N"`, `"true"`, `"false"` | ツール検索の制御 |
-| `CLAUDE_AUTOCOMPACT_PCT_OVERRIDE` | `1`-`100` | 自動圧縮トリガーのパーセンテージ (デフォルト: ~95%) |
+| `ENABLE_TOOL_SEARCH` | `"1"`, `"auto"`, `"auto:N"`, `"true"`, `"false"` | ツール検索の制御 (MoAI デフォルト値: `"1"`) |
+| `CLAUDE_AUTOCOMPACT_PCT_OVERRIDE` | `1`-`100` | 自動圧縮トリガーの百分率 (デフォルト値: ~95%) |
 | `CLAUDE_CODE_ENABLE_TELEMETRY` | `"1"` | OpenTelemetry データ収集の有効化 |
-| `CLAUDE_CODE_DISABLE_BACKGROUND_TASKS` | `"1"` | バックグラウンドタスクの無効化 |
-| `DISABLE_AUTOUPDATER` | `"1"` | 自動更新の無効化 |
+| `CLAUDE_CODE_DISABLE_BACKGROUND_TASKS` | `"1"` | バックグラウンド作業の無効化 |
+| `DISABLE_AUTOUPDATER` | `"1"` | 自動アップデートの無効化 |
 | `HTTP_PROXY` | URL | HTTP プロキシサーバー |
 | `HTTPS_PROXY` | URL | HTTPS プロキシサーバー |
 
 {{< callout type="info" >}}
-**ヒント**: `ENABLE_TOOL_SEARCH` の値 `"auto:5"` は、コンテキスト使用量が 5% のときツール検索を有効化します。`"auto"` はデフォルト 10%、`"true"` は常にオン、`"false"` は常にオフです。
+**ヒント**: MoAI-ADK テンプレートは `ENABLE_TOOL_SEARCH` を `"1"` に設定します — 遅延ツールロード (deferred tool preload) を有効化してセッション開始時にツールスキーマ全体をロードせず、必要なときに検索してロードします。`"auto"` はコンテキスト使用量 10% で有効化、`"auto:N"` は N% で有効化、`"false"` は常にオフです。
 {{< /callout >}}
 
 ### ツール検索の詳細
 
-`ENABLE_TOOL_SEARCH` は ツール検索を制御します。ツールスキーマをすべて常時ロードする代わりに、必要なときに検索してロードするため、サーバーが多い環境でコンテキストを大きく節約します。
+`ENABLE_TOOL_SEARCH` はツール検索を制御します。ツールスキーマを全部常時ロードする代わりに必要なときに検索してロードするので、複数サーバー環境でコンテキストを大きく節約します。
 
 | 値 | 説明 |
 |-----|------|
-| `"auto"` (デフォルト) | コンテキスト 10% で有効化 |
-| `"auto:N"` | カスタム閾値 (例: `"auto:5"` は 5%) |
+| `"auto"` (デフォルト値) | 10% コンテキストで有効化 |
+| `"auto:N"` | ユーザー指定の閾値 (例: `"auto:5"` は 5%) |
 | `"true"` | 常に有効化 |
 | `"false"` | 無効化 |
 
@@ -784,11 +787,11 @@ Claude Code 下部に表示されるステータスバーを設定します。
 |------|---------------|---------------------|
 | 管理主体 | MoAI-ADK | ユーザー |
 | Git 追跡 | 追跡される | .gitignore |
-| 更新時 | 上書き | 保存 |
+| アップデート時 | 上書き | 保存 |
 | 用途 | チーム共有設定 | 個人設定 |
-| 優先順位 | デフォルト | オーバーライド (優先) |
+| 優先順位 | デフォルト値 | オーバーライド (優先) |
 
-### settings.local.json の活用例
+### settings.local.json 活用例
 
 ```json
 {
@@ -798,20 +801,19 @@ Claude Code 下部に表示されるステータスバーを設定します。
       "Bash(bun add:*)"
     ]
   },
-  ],
-  "outputStyle": "Mr.Alfred"  // 個人の好みの出力スタイル
+  "outputStyle": "MoAI-Easy"  // 個人の好みの出力スタイル
 }
 ```
 
 {{< callout type="info" >}}
-`settings.local.json` の設定は `settings.json` の設定に **マージ** されます。同じキーがあれば `settings.local.json` が優先されます。
+`settings.local.json` の設定は `settings.json` の設定に **マージ** されます。同じキーがあれば `settings.local.json` が優先します。
 {{< /callout >}}
 
 ### settings.local.json 権限強化 (0o600) {#settings-local-json-permission}
 
-v2.20.0-rc1 から `settings.local.json` は生成・更新時に **`0o600`** (所有者専用 read/write) 権限が強制されます。以前の `0o644` は、マルチユーザーワークステーションで `ANTHROPIC_AUTH_TOKEN` などの機密クレデンシャルが他のローカルユーザーに露出するリスクがありました (CWE-732 / CWE-552)。
+v2.20.0-rc1 から `settings.local.json` は生成・更新時に **`0o600`** (所有者専用 read/write) 権限が強制されます。以前の `0o644` はマルチユーザーワークステーションで `ANTHROPIC_AUTH_TOKEN` などの機密資格情報が他のローカルユーザーに露出するリスクがありました (CWE-732 / CWE-552)。
 
-**セルフ点検**:
+**自己点検**:
 
 ```bash
 # Linux
@@ -823,14 +825,14 @@ stat -f '%A' .claude/settings.local.json
 # 期待値: 600
 ```
 
-権限が `600` でなければ、MoAI-ADK が次のセッション開始時に自動で是正します。すぐに是正するには `chmod 0600 .claude/settings.local.json` を実行してください。
+権限が `600` でなければ MoAI-ADK が次のセッション開始時に自動的に是正します。即座に是正するには `chmod 0600 .claude/settings.local.json` を実行してください。
 
-詳細なセキュリティモデル、脅威分析、追加点検手順は [セキュリティノート — CWE-732](/ja/advanced/security-notes/#cwe-732) を参照してください。
+詳しいセキュリティモデル、脅威分析、追加の点検手順は [セキュリティノート — CWE-732](/ja/advanced/security-notes/#cwe-732) を参照してください。
 
 ## MoAI 専用設定
 
 {{< callout type="info" >}}
-**MoAI-ADK 拡張**: このセクションの設定は MoAI-ADK 固有であり、公式 Claude Code ドキュメントには含まれません。
+**MoAI-ADK 拡張**: このセクションの設定は MoAI-ADK に特有で、公式の Claude Code ドキュメントに含まれません。
 {{< /callout >}}
 
 ### MoAI カスタム statusLine
@@ -841,9 +843,9 @@ MoAI-ADK はカスタムステータスバーを提供します。
 {
   "statusLine": {
     "type": "command",
-    "command": "${SHELL:-/bin/bash} -l -c 'uv run --no-sync moai-adk statusline'",
+    "command": "moai statusline",
     "padding": 0,
-    "refreshInterval": 300
+    "refreshInterval": 10
   }
 }
 ```
@@ -852,15 +854,15 @@ MoAI-ADK はカスタムステータスバーを提供します。
 
 MoAI-ADK statusline v3 には次が含まれます。
 
-- **RGB グラデーションカラー**: システム状態に応じた動的なカラーグラデーション
-- **5H/7D 使用量モニタリング**: 5 時間および 7 日の API 使用量バー表示
-- **マルチラインレイアウト**: Compact (3 行)、default、full の表示モード
+- **RGB グラデーション色**: システム状態に応じた動的な色グラデーション
+- **5H/7D 使用量モニタリング**: 5 時間および 7 日の API 使用量バーの表示
+- **マルチラインレイアウト**: Compact (3 行)、default、full のディスプレイモード
 - **テーマ**:
-  - **MoAI Dark** (デフォルト): RGB グラデーションのあるダークテーマ
-  - **MoAI Light**: 明るい環境向けのライトテーマ
+  - **MoAI Dark** (デフォルト値): RGB グラデーションのあるダークテーマ
+  - **MoAI Light**: 明るい環境のためのライトテーマ
 
 {{< callout type="info" >}}
-**参考**: 以前のテーマ (Default, Catppuccin Mocha, Catppuccin Latte) は MoAI Dark/MoAI Light に名称変更されました。
+**参考**: 以前のテーマ (Default, Catppuccin Mocha, Catppuccin Latte) は MoAI Dark/MoAI Light に名前が変更されました。
 {{< /callout >}}
 
 statusline のテーマとセグメントは `.moai/config/sections/statusline.yaml` で設定します。
@@ -948,15 +950,15 @@ MoAI-ADK は次のカスタム Hook を提供します。
 
 ```json
 {
-  "outputStyle": "Mr.Alfred"
+  "outputStyle": "MoAI-Easy"
 }
 ```
 
-このスタイルは Alfred AI オーケストレーターの固有の応答形式を提供します。
+`MoAI-Easy` は MoAI-ADK の基本出力スタイルで、親しみやすく簡潔な応答形式を提供します。
 
 ## 実践例: 設定のカスタマイズ
 
-### 新しいツール許可の追加
+### 新しいツールの許可を追加
 
 プロジェクトで `bun` を使うなら、`settings.local.json` に追加します。
 
@@ -973,10 +975,9 @@ MoAI-ADK は次のカスタム Hook を提供します。
 }
 ```
 
-
 ### サンドボックスの有効化
 
-セキュリティのためサンドボックスを有効化し、Docker を除外します。
+セキュリティのためにサンドボックスを有効化して Docker を除外します。
 
 ```json
 {
@@ -1001,7 +1002,7 @@ MoAI-ADK は次のカスタム Hook を提供します。
 
 ### カスタム Hook の追加
 
-個人 Hook を登録します。
+個人の Hook を登録します。
 
 ```json
 {
@@ -1033,17 +1034,17 @@ MoAI-ADK は次のカスタム Hook を提供します。
 }
 ```
 
-## v2.9.0 新規設定ファイル
+## v2.9.0 の新規設定ファイル
 
 ### Harness 設定 (harness.yaml)
 
-品質パイプラインの深度レベルと自動検出の閾値を定義します。変更の大きさに合わせて検証コストを調整する適応型品質の設定サーフェスです。
+品質パイプラインの深度レベルと自動検出の閾値を定義します。変更の大きさに合わせて検証コストを調節する適応型品質の設定表面です。
 
 **3 段階の深度レベル:**
 
 | レベル | 説明 | evaluator | スキップする Phase |
 |------|------|-----------|---------------|
-| minimal | 高速イテレーション (簡単な変更) | 無効 | 0, 0.5, 2.0, 2.5, 2.75, 2.8a, 2.9, 2.10 |
+| minimal | 速い反復 (簡単な変更) | 非有効 | 0, 0.5, 2.0, 2.5, 2.75, 2.8a, 2.9, 2.10 |
 | standard | バランスの取れた品質 (ほとんどの開発) | final-pass | なし |
 | thorough | 最大品質 (重要な機能) | per-sprint | なし |
 
@@ -1086,7 +1087,7 @@ constitution:
 
 | プロファイル | 説明 | Coverage | Security |
 |--------|------|----------|----------|
-| default | 標準の懐疑的評価 | >= 85% | No Critical/High |
+| default | 標準的な懐疑的評価 | >= 85% | No Critical/High |
 | strict | 強化されたセキュリティ/信頼性 (認証/決済) | >= 90% | ANY finding = FAIL |
 | lenient | 緩和された評価 (プロトタイプ) | >= 60% | Critical only = FAIL |
 | frontend | UI/UX 集中 | N/A | WCAG AA required |
@@ -1095,11 +1096,11 @@ constitution:
 
 ## 関連ドキュメント
 
-- [Claude Code 公式設定ドキュメント](https://code.claude.com/docs/en/settings) - 公式 Claude Code 設定
-- [Hooks ガイド](/ja/advanced/hooks-guide) - Hook 設定詳細
-- [CLAUDE.md ガイド](/ja/advanced/claude-md-guide) - プロジェクト指針設定
-- [IAM ドキュメント](https://code.claude.com/docs/en/iam) - 権限システム概要
+- [Claude Code 公式設定ドキュメント](https://code.claude.com/docs/en/settings) - 公式の Claude Code 設定
+- [Hooks ガイド](/ja/advanced/hooks-guide) - Hook 設定の詳細
+- [CLAUDE.md ガイド](/ja/advanced/claude-md-guide) - プロジェクト指針の設定
+- [IAM ドキュメント](https://code.claude.com/docs/en/iam) - 権限システムの概要
 
 {{< callout type="info" >}}
-**ヒント**: 設定を変更した後は Claude Code の再起動で適用されます。`settings.local.json` は Git に追跡されないので、個人環境に合わせて自由に修正してください。
+**ヒント**: 設定を変更した後は Claude Code を再起動しないと適用されません。`settings.local.json` は Git に追跡されないので、個人環境に合わせて自由に修正してください。
 {{< /callout >}}

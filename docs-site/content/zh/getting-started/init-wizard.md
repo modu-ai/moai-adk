@@ -4,13 +4,13 @@ weight: 50
 draft: false
 ---
 
-通过 MoAI-ADK 的交互式设置向导完成首次设置。向导共 9 个步骤，按你的开发环境配置语言、Git 自动化范围与执行模式。这里设定的所有值都保存为 `.moai/config/sections/` 下的 YAML 文件，之后随时可以直接改文件，或重新运行向导来更改。
+通过 MoAI-ADK 的交互式设置向导完成首次设置。按你的开发环境配置语言、Git 自动化范围、模型策略、harness 配置文件。这里设定的所有值都会保存为 `.moai/config/sections/` 下的 YAML 文件,之后随时可以直接改文件,或重新运行向导来更改。
 
 ## 启动设置向导
 
 ### 创建新项目
 
-要在创建新项目的同时进行初始化：
+想在创建新项目的同时初始化:
 
 ```bash
 moai init my-project
@@ -18,9 +18,9 @@ moai init my-project
 
 该命令会创建 `my-project` 文件夹并初始化 MoAI-ADK。
 
-### 安装到当前文件夹
+### 安装到既有文件夹
 
-要在现有项目中安装 MoAI-ADK，请进入该文件夹后执行：
+想在既有项目中安装 MoAI-ADK,请移动到该文件夹后运行:
 
 ```bash
 cd my-existing-project
@@ -31,232 +31,249 @@ moai init
 `moai init` 会直接安装到当前文件夹。新项目请用 `moai init <项目名>` 创建。
 {{< /callout >}}
 
-## 9 步设置流程
+## 向导模式
 
-### 第 1 步：选择对话语言
+初始化向导按提问的深度分三种模式运行。
 
-选择 Claude 回复时使用的语言。
+| 模式 | 标志 | 提问范围 |
+|------|--------|----------|
+| **Quick**(默认) | (无) | 仅核心设置 —— 语言、名称、Git、模型策略 |
+| **Standard** | `--standard` | Quick + Phase 1 提问(project mode, harness profile, LSP, quality, design) |
+| **Advanced** | `--advanced` | Standard + Phase 2 提问(仅在满足前置条件时) |
 
 ```bash
-? 대화 언어를 선택하세요:
-▸ English - English
-  Korean (한국어) - Korean
-  Japanese (日本語) - Japanese
-  Chinese (中文) - Chinese
+# 默认向导(Quick)
+moai init my-project
+
+# 含 Phase 1 提问
+moai init my-project --standard
+
+# 含 Phase 1 + Phase 2 提问
+moai init my-project --advanced
 ```
+
+## Quick 模式(默认)
+
+不带标志运行时只询问核心设置。对大多数用户已经足够。
+
+### 第 1 步:选择对话语言
+
+选择 Claude 回复所用的语言。
+
+```bash
+? 选择对话语言:
+▸ English
+  Korean (한국어)
+  Japanese (日本語)
+  Chinese (中文)
+```
+
+该设置保存到 `.moai/config/sections/language.yaml`。
+
+### 第 2 步:输入名称
+
+配置文件中使用的用户名。可按 Enter 跳过。
+
+```bash
+? 输入名称: [名称]
+```
+
+### 第 3 步:选择 Git 自动化模式
+
+设置 Claude 可执行的 Git 操作范围。
+
+```bash
+? 选择 Git 自动化模式:
+▸ Manual - AI 不进行提交或推送
+  Personal - AI 可创建分支并提交
+  Team - AI 可创建分支、提交、创建 PR
+```
+
+- **Manual**:AI 不执行 Git 操作。所有提交与推送由用户亲自执行。
+- **Personal**:AI 可创建分支并提交。适合个人项目。
+- **Team**:AI 可执行创建分支、提交,直至创建 PR。为团队协作工作流优化。
 
 {{< callout type="info" >}}
-语言选择之后可以在 `.moai/config/sections/language.yaml` 文件中更改。
+Git 设置保存到 `.moai/config/sections/git-strategy.yaml` 文件。
 {{< /callout >}}
 
-### 第 2 步：输入姓名
-
-用于设置文件。按 Enter 可跳过。
-
-```bash
-? 이름 입력: [이름]
-```
-
-### 第 3 步：选择 Git 自动化模式
-
-设置 Claude 可以执行的 Git 操作范围。
-
-```bash
-? Git 자동화 모드 선택:
-▸ Manual - AI가 커밋이나 푸시를 하지 않음
-  Personal - AI가 브랜치 생성 및 커밋 가능
-  Team - AI가 브랜치 생성, 커밋, PR 생성 가능
-```
-
-**Manual**：AI 不执行任何 Git 操作。所有提交和推送均由用户亲自执行。
-**Personal**：AI 可以创建分支并提交。适合个人项目。
-**Team**：AI 可以创建分支、提交并创建 PR。为团队协作工作流优化。
-
-{{< callout type="info" >}}
-Git 设置保存在 `.moai/config/sections/git-strategy.yaml` 文件中。随时可以用 `moai update -c` 命令重新设置。
-{{< /callout >}}
-
-### 第 4 步：选择 Git 提供商
+### 第 4 步:选择 Git 提供方
 
 选择项目的 Git 托管平台。
 
 ```bash
-? Git 프로바이더 선택:
+? 选择 Git 提供方:
 ▸ GitHub - GitHub.com
-  GitLab - GitLab.com 또는 자체 호스팅 GitLab
+  GitLab - GitLab.com 或自托管 GitLab
 ```
 
-### 第 5 步：选择 Git 提交信息语言
+### 第 5 步:提交信息语言
 
-选择编写提交信息时使用的语言。
+选择撰写提交信息所用的语言。可与代码注释语言设为不同。
+
+### 第 6 步:代码注释语言
+
+选择代码注释所用的语言。大多数项目推荐英语。
+
+### 第 7 步:文档语言
+
+选择文档文件所用的语言。
+
+### 第 8 步:性能层级(模型策略)
+
+选择分配给智能体的 AI 模型层级 —— 这是代币经济学的核心设置。
 
 ```bash
-? Git 커밋 메시지 언어 선택:
-▸ Korean (한국어) - 한국어로 커밋
-  English - 영어로 커밋
-  Japanese (日本語) - 일본어로 커밋
-  Chinese (中文) - 중국어로 커밋
+? 选择性能层级:
+▸ medium (推荐) - 质量与成本的平衡
+  max - 最高质量,计划·审计分配 Opus
+  low - 经济,以 Sonnet 为中心分配
 ```
 
-{{< callout type="info" >}}
-提交信息语言可以与代码注释语言分别设置。
-{{< /callout >}}
+| 层级 | 特点 |
+|------|------|
+| **max** | 最高质量 —— 计划·审计分配 Opus,最大推理深度 |
+| **medium**(默认) | 质量与成本的平衡 |
+| **low** | 经济 —— 以 Sonnet 为中心分配 |
 
-### 第 6 步：选择代码注释语言
+该设置保存到 `.moai/config/sections/llm.yaml` 的 `performance_tier` 字段。
 
-选择代码注释使用的语言。
+### 第 9 步:计费套餐类型(plan_type)
+
+选择依计费方式而定的模型分配配置文件。
 
 ```bash
-? 코드 주석 언어 선택:
-▸ Korean (한국어) - 한국어로 주석
-  English - 영어로 주석
-  Japanese (日本語) - 일본어로 주석
-  Chinese (中文) - 중국어로 주석
+? 选择计费套餐类型:
+▸ subscription (推荐) - 订阅套餐(周配额优化)
+  api - 基于 API 用量计费(按任务成本优化)
 ```
 
-{{< callout type="info" >}}
-大多数项目建议将代码注释语言设为英语。
-{{< /callout >}}
+该设置保存到 `.moai/config/sections/llm.yaml` 的 `plan_type` 字段。即使性能层级相同,也会因计费套餐类型不同而使模型分配不同。
 
-### 第 7 步：选择文档语言
+## Standard 模式(Phase 1 提问)
 
-选择文档文件使用的语言。
+给出 `--standard` 标志时,除 Quick 模式的所有提问外还会显示 Phase 1 提问。
+
+### project mode
+
+选择项目协作模式。
 
 ```bash
-? 문서 언어 선택:
-▸ Korean (한국어) - 한국어로 문서
-  English - 영어로 문서
-  Japanese (日本語) - 일본어로 문서
-  Chinese (中文) - 중국어로 문서
+? Select project mode:
+▸ Personal (Recommended) - Solo developer
+  Team - Multi-developer setup
 ```
 
-### 第 8 步：选择 Agent Teams 执行模式
+### harness evaluator profile
 
-设置 MoAI 使用 Agent Teams（并行）还是 sub-agents（顺序）。
+选择质量评估器的默认配置文件。
 
 ```bash
-? Agent Teams 실행 모드 선택:
-▸ Auto (권장) - 작업 복잡도 기반 지능형 선택
-  Sub-agent (클래식) - 기존 단일 에이전트 모드
-  Team (실험적) - 병렬 Agent Teams (실험적 기능 필요)
+? Select default harness evaluator profile:
+▸ default
+  strict
+  lenient
+  frontend
 ```
 
-**Auto**：根据任务复杂度自动选择最优模式。大多数情况下推荐使用。
-**Sub-agent**：单个智能体按顺序处理任务。适合依赖性强的任务。
-**Team**：多个专业智能体并行协作。需要 `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1` 环境变量。
+### LSP integration
 
-### 第 9 步：选择队友显示模式
+选择是否在 run 阶段启用语言服务器诊断。默认为禁用(opt-in)。
 
-设置 Agent 队友的显示方式。分屏显示需要 tmux。
+### quality gates
+
+选择是否强制 TRUST 5 质量门禁以及是否允许覆盖率例外。
+
+- **Enforce quality gates**(默认: Yes)—— 质量门禁失败时阻断实现推进
+- **Allow coverage exemptions**(默认: No)—— 将特定文件/包排除在覆盖率对象之外
+
+### design workflow
+
+选择是否启用 MoAI 设计流水线与 Claude Design 联动。
+
+- **Enable design workflow**(默认: Yes)
+- **Enable Claude Design integration**(默认: Yes,仅在启用 design 时显示)
+
+## Advanced 模式(Phase 2 提问)
+
+`--advanced` 标志包含 `--standard`,并额外显示 Phase 2 提问。Phase 2 提问仅在满足 run 阶段完成等前置条件时显示,无条件时会自动跳过并输出提示消息。
+
+## 非交互模式(CI/CD)
+
+用标志指定所有值即可无需向导完成初始化:
 
 ```bash
-? 팀원 표시 모드 선택:
-▸ Auto (권장) - tmux 사용 가능 시 tmux, 없으면 in-process (기본값)
-  In-Process - 같은 터미널에서 실행 (어디서나 동작)
-  Tmux - tmux 분할 화면 (tmux/iTerm2 필요)
+moai init my-project \
+  --non-interactive \
+  --project-mode personal \
+  --model-policy medium \
+  --plan-type subscription \
+  --harness-profile default \
+  --enable-lsp=false \
+  --enforce-quality
 ```
-
-**Auto**：自动检测 tmux 是否安装，选择最优显示模式。
-**In-Process**：队友任务在同一终端窗口中运行。无需 tmux 也能工作。
-**Tmux**：以 tmux 分屏方式直观查看队友的工作。
 
 ## 设置完成
 
-完成所有步骤后，会生成设置文件：
+完成所有步骤后会生成配置文件:
 
 ```mermaid
 graph TD
-    A[.moai/] --> B[config/]
-    A --> C[specs/]
-    A --> D[memory/]
-    B --> E[sections/]
-    E --> F[user.yaml]
-    E --> G[language.yaml]
-    E --> H[quality.yaml]
-    E --> I[git-strategy.yaml]
-```
-
-查看生成的设置文件：
-
-```bash
-cat .moai/config/sections/user.yaml
-```
-
-## 设置结构
-
-```mermaid
-graph TB
-    A[.moai/config/sections/] --> B[user.yaml<br>用户信息]
-    A --> C[language.yaml<br>语言设置]
-    A --> D[quality.yaml<br>质量设置]
-    A --> E[git-strategy.yaml<br>Git 设置]
-
-    B --> B1[name]
-    C --> C1[conversation_language<br>commit_language, code_comments<br>documentation_language]
-    D --> D1[development_mode<br>enforce_quality<br>test_coverage_target]
-    E --> E1[strategy: manual/personal/team<br>auto_commit, auto_push<br>pr_workflow]
+    A[".moai/"] --> B["config/"]
+    A --> C["specs/"]
+    A --> D["memory/"]
+    B --> E["sections/"]
+    E --> F["user.yaml"]
+    E --> G["language.yaml"]
+    E --> H["quality.yaml"]
+    E --> I["llm.yaml"]
+    E --> J["git-strategy.yaml"]
 ```
 
 ## 修改设置
 
-设置随时可以修改：
-
 ### 手动修改
 
 ```bash
-# 사용자 설정
+# 用户设置
 vim .moai/config/sections/user.yaml
 
-# 언어 설정
+# 语言设置
 vim .moai/config/sections/language.yaml
 
-# 품질 설정
-vim .moai/config/sections/quality.yaml
+# 模型策略(性能层级)
+vim .moai/config/sections/llm.yaml
 
-# Git 설정
-vim .moai/config/sections/git-strategy.yaml
+# 质量设置
+vim .moai/config/sections/quality.yaml
 ```
 
 ### 重新设置
 
-重新运行设置向导即可重新配置所有设置：
+可重新运行设置向导来更改配置:
 
 ```bash
-# 설정 마법사 다시 실행 (권장)
+# 重新运行设置向导(推荐)
 moai update -c
-
-# 또는 전체 초기화
-moai init --reset
 ```
 
 {{< callout type="info" >}}
-`moai update -c` 命令可以在保留现有设置的同时，仅选择性地重设想更改的项目。
-{{< /callout >}}
-
-{{< callout type="warning" >}}
-`moai init --reset` 选项会覆盖全部现有设置。重要设置请提前备份。
+`moai update -c` 命令可在保留既有设置的同时,只选择性地重新设置想更改的项目。
 {{< /callout >}}
 
 ## 验证设置
 
-确认设置是否正确配置：
+确认设置是否正确配置:
 
 ```bash
 moai doctor
 ```
 
-该命令验证以下内容：
-
-- 是否安装 Git
-- 项目结构（`.moai/` 文件夹）
-- 设置文件（`.moai/config/config.yaml`）
-- 各语言开发工具检测（用 `--verbose` 查看详情）
-
-所有项目通过时会显示 `All checks passed` 消息。若缺少工具，可通过 `moai doctor --fix` 获取修复建议。
+该命令会验证 Git 是否安装、项目结构(`.moai/` 文件夹)、配置文件、各语言的开发工具。可用 `--verbose` 确认详情。
 
 ## 下一步
 
-设置完成后，请按照[快速开始](./quickstart)指南创建第一个项目。全部命令与选项随时可以查看：
+设置完成后,请跟随[快速开始](./quickstart)指南创建你的第一个项目。
 
 ```bash
 moai --help

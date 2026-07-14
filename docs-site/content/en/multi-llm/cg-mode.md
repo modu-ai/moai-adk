@@ -23,7 +23,7 @@ moai cg runs
     ├── 2. Remove GLM environment variables from settings.local.json
     │      → the leader pane uses the Claude API
     │
-    ├── 3. Set CLAUDE_CODE_TEAMMATE_DISPLAY=tmux
+    ├── 3. Set teammateMode: "tmux" in settings.local.json
     │      → workers inherit GLM env vars in new panes
     │
     └── 4. Launch Claude Code (replaces the current process)
@@ -149,14 +149,24 @@ For the detailed threat model, failure behavior (the
 `ErrTmuxSensitiveInjectFailed` sentinel), and additional checks, see
 [Security Notes — CWE-214](/en/advanced/security-notes/#cwe-214).
 
-## Display modes
+## Display mode (teammateMode)
 
-The teammate runtime supports two display modes:
+`teammateMode` is a Claude Code built-in display setting, stored in
+`settings.local.json`. It is a different concept from MoAI's team-mode (the old
+`--team` flag, retired in v3.0) — the teammate runtime itself is provided by
+Claude Code, and `teammateMode` controls only its display style.
 
-| Mode | Description | Communication | Leader/worker separation |
-|------|------|------|--------------|
-| `in-process` | Default mode, any terminal | SendMessage supported | No separation (same environment) |
-| `tmux` | Split-screen display | SendMessage supported | Session env-var isolation |
+| Value | Description | Leader/worker separation | CG mode |
+|------|------|--------------|---------|
+| `in-process` | Default, inline in the same terminal | No | Not used |
+| `auto` | Auto-detect environment | Not supported | Not used |
+| `tmux` | tmux split screen | Session env-var isolation | {{< icon check ok >}} Used |
+| `iterm2` | iTerm2 split screen | Not supported | Not used |
+
+`moai cg` and `moai glm` set `teammateMode` to `"tmux"` in
+`settings.local.json`, and `moai cc` clears it to an empty value. The
+`teammateMode` setting takes precedence over the old
+`CLAUDE_CODE_TEAMMATE_DISPLAY` environment variable.
 
 > **CG mode can only separate leader/worker APIs in the `tmux` display mode.**
 

@@ -27,13 +27,13 @@ A **custom statusline system** for the Claude Code and moai-adk-go integration. 
 ```
 Claude Code stdin (JSON)
     ↓
-internal/statusline/types.go (StdinData 파싱)
+internal/statusline/types.go (StdinData parsing)
     ↓
 internal/statusline/builder.go (CollectMemory, CollectMetrics, etc.)
     ↓
 internal/statusline/renderer.go (3-line v3 layout)
     ↓
-.moai/status_line.sh → 터미널 표시
+.moai/status_line.sh → terminal display
 ```
 
 ## Line 1 — Info (7 segments)
@@ -224,7 +224,7 @@ Segment activation is managed in `.moai/config/sections/statusline.yaml`.
 
 ```yaml
 statusline:
-  theme: catppuccin-mocha    # 색상 테마
+  theme: catppuccin-mocha    # color theme
   segments:
     # Line 1
     model: true
@@ -246,6 +246,20 @@ statusline:
     task: true             # opt-in default off in older versions
     pr: true               # default on per v2.20.0-rc1
     worktree: false
+```
+
+### Refresh Interval
+
+The statusline's refresh interval is set via `statusLine.refreshInterval` in `settings.json` (unit: **seconds**, default `10`). This is a Claude Code runtime setting, not `.moai/config/sections/statusline.yaml`. Too low a value increases CPU usage; too high a value delays how quickly context-usage changes are reflected.
+
+```json
+{
+  "statusLine": {
+    "type": "command",
+    "command": "$CLAUDE_PROJECT_DIR/.moai/status_line.sh",
+    "refreshInterval": 10
+  }
+}
 ```
 
 ### Segment Activation Matrix
@@ -370,7 +384,7 @@ For the full list of stdin JSON fields Claude Code passes to the statusline scri
 ### Verification Command
 
 ```bash
-# stdin fixture로 statusline 실 출력 확인
+# Verify actual statusline output with a stdin fixture
 NOW=$(date +%s)
 echo '{"session_id":"test","model":{"display_name":"Opus 4.7"},"workspace":{"repo":{"host":"github.com","owner":"modu-ai","name":"moai-adk"}},"version":"2.1.146","output_style":{"name":"MoAI"},"context_window":{"used_percentage":62,"context_window_size":1000000},"exceeds_200k_tokens":true,"effort":{"level":"xhigh"},"thinking":{"enabled":true},"rate_limits":{"five_hour":{"used_percentage":56,"resets_at":'$((NOW + 2820))'},"seven_day":{"used_percentage":13,"resets_at":'$((NOW + 518400))'}},"cost":{"total_duration_ms":17520000},"pr":{"number":1234,"url":"https://github.com/modu-ai/moai-adk/pull/1234","review_state":"approved"}}' | moai statusline
 ```

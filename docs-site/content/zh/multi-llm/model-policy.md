@@ -89,7 +89,18 @@ moai update
 # - Update GLM settings? (y/n) — 配置 GLM 环境变量
 ```
 
-> 默认策略为 `High`。GLM 配置被隔离在 `settings.local.json` 中，不会提交到 Git。
+### 用 CLI 标志直接设置
+
+```bash
+moai init my-project --model-policy max     # 最高质量 (以 Opus 为中心)
+moai init my-project --model-policy medium  # 平衡 (默认值)
+moai init my-project --model-policy low     # 仅 Sonnet, 不使用 Opus
+```
+
+`--model-policy` 接受 `max`/`medium`/`low` 三个值,并原样保存到 `llm.yaml` 的
+`performance_tier` 字段。已弃用的 `--high` 标志是 `--model-policy max` 的别名。
+
+> 默认策略为 `medium`(llm.yaml `performance_tier: "medium"`,对应 CLI `--model-policy medium` —— 无值时解释为 `medium`)。GLM 配置隔离在 `settings.local.json` 中,不会提交到 Git。
 
 ## 下一步
 

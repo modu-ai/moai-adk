@@ -131,19 +131,32 @@ Agent teams support two display modes.
 | Mode | Characteristics | Requirements |
 |------|------|---------|
 | **In-process** | All teammates run inside the main terminal | No extra setup (default) |
-| **Split panes** | A separate pane per teammate | Requires tmux or iTerm2 (v2.1.186+) |
+| **Split panes** | A separate pane per teammate | Requires tmux or iTerm2 (`it2` CLI) |
 
-The default is **in-process** (since v2.1.179; previously `"auto"`), so it works anywhere without extra setup. To force a specific mode:
+The default is `in-process` (since v2.1.179; previously `"auto"`). It works anywhere without extra setup; to switch to split-pane mode, change the `teammateMode` setting.
+
+There are four values you can assign to `teammateMode`.
+
+| Value | Behavior | Notes |
+|------|------|------|
+| `in-process` | All teammates run in the main terminal | Default (v2.1.179+) |
+| `auto` | Split pane inside a tmux session or iTerm2 with the `it2` CLI installed, otherwise falls back to in-process | Pre-v2.1.179 default |
+| `tmux` | Force split-pane — auto-detects tmux or iTerm2 by terminal environment | Requires tmux |
+| `iterm2` | Force iTerm2 native split panes | v2.1.186+, requires the `it2` CLI |
+
+Set it in `~/.claude/settings.json`.
 
 ```json
 {
-  "teammateMode": "in-process"
+  "teammateMode": "auto"
 }
 ```
 
-Change the value above to the mode you want, or force it for a single session with the `--teammate-mode in-process` flag.
+You can also override it for a single session with the `--teammate-mode auto` flag.
 
-Teammates do not inherit the lead's `/model` selection by default. The model used when the prompt does not specify one is set under **Default teammate model** in `/config`.
+Split-pane mode requires external tools. Install tmux with your system package manager; for iTerm2, install the [`it2` CLI](https://github.com/mkusaka/it2) and then enable the Python API in iTerm2 settings (Settings → General → Magic → Enable Python API).
+
+Teammates do not inherit the lead's `/model` selection by default. The model used when the prompt does not specify one is set under **Default teammate model** in `/config`. However, since v2.1.186 teammates inherit the lead's effort level (applied in split-pane mode from v2.1.186; earlier versions do not pass the lead's effort).
 
 ## Quality-Gate Hooks
 

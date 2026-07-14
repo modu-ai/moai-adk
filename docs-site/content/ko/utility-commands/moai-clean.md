@@ -170,22 +170,23 @@ flowchart TD
 
 ## 에이전트 위임 체인
 
+`/moai clean`은 `Agent(general-purpose)` 리팩토링 스페셜리스트 스폰 2회로 실행됩니다 (전용 named 에이전트가 아니라, 리팩토링 화이트리스트 + ANALYZE-PRESERVE-IMPROVE 지침이 스폰 시점에 주입되는 범용 에이전트). 1·2단계는 하나의 결합 스폰, 4·5단계는 또 하나의 결합 스폰, 6단계는 오케스트레이터 직접 (스폰 없음) 입니다.
+
 ```mermaid
 flowchart TD
     User["사용자 요청"] --> MoAI["MoAI 오케스트레이터"]
-    MoAI --> Refactor1["manager-develop<br/>정적 분석 스캔"]
-    Refactor1 --> Refactor2["manager-develop<br/>사용 그래프 분석"]
-    Refactor2 --> MoAI2["MoAI 오케스트레이터<br/>사용자 승인"]
-    MoAI2 --> Refactor3["manager-develop<br/>안전 제거"]
-    Refactor3 --> Testing["manager-develop<br/>테스트 검증"]
-    Testing --> Complete["완료"]
+    MoAI --> Refactor1["Agent(general-purpose) 리팩토링 스페셜리스트<br/>정적 분석 + 사용 그래프 (결합 스폰 1)"]
+    Refactor1 --> MoAI2["MoAI 오케스트레이터<br/>사용자 승인"]
+    MoAI2 --> Refactor2["Agent(general-purpose) 리팩토링 스페셜리스트<br/>안전 제거 + 테스트 검증 (결합 스폰 2)"]
+    Refactor2 --> MoAI3["MoAI 오케스트레이터<br/>@MX 태그 정리 (직접)"]
+    MoAI3 --> Complete["완료"]
 ```
 
 | 에이전트 | 역할 | 주요 작업 |
 |----------|------|----------|
-| **manager-develop** | 분석 및 제거 | 정적 분석, 사용 그래프, 안전 제거 |
-| **manager-develop** | 검증 | 테스트 스위트 실행, 회귀 확인 |
-| **MoAI 오케스트레이터** | 조율 | 사용자 승인, @MX 태그 정리 |
+| **Agent(general-purpose) 리팩토링 스페셜리스트** (스폰 1) | 분석 | 정적 분석 + 사용 그래프 (1·2단계 결합) |
+| **Agent(general-purpose) 리팩토링 스페셜리스트** (스폰 2) | 제거 및 검증 | 안전 제거 + 테스트 스위트 실행·회귀 확인 (4·5단계 결합) |
+| **MoAI 오케스트레이터** | 조율 | 사용자 승인, @MX 태그 정리 (6단계, 직접) |
 
 ## 자주 묻는 질문
 

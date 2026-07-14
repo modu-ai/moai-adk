@@ -4,9 +4,7 @@ weight: 30
 draft: false
 ---
 
-通过具体场景来看 Git Worktree 在真实项目中如何运转 —— 从单一 SPEC 开发到
-并行开发、团队协作与问题排查。每个场景都附带"哪个阶段用哪个模型"的
-托克诺米克斯判断。
+通过具体场景来看 Git Worktree 在真实项目中如何运转 —— 从单一 SPEC 开发到并行开发、团队协作与问题排查。每个场景都附带"哪个阶段用哪个模型"的托克诺米克斯判断。
 
 ## 目录
 
@@ -19,9 +17,9 @@ draft: false
 
 ## 单一 SPEC 开发
 
-### 场景：实现用户认证系统
+### 场景: 实现用户认证系统
 
-#### 第 1 步：SPEC 计划 (Terminal 1)
+#### 第 1 步: SPEC 计划 (Terminal 1)
 
 ```bash
 # 在项目根目录
@@ -34,17 +32,17 @@ $ cd /path/to/your-project
 ✓ MoAI-ADK SPEC Manager v2.0
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-分析 SPEC 中...
+正在分析 SPEC...
   - 功能需求: 发现 8 个
   - 技术需求: 发现 5 个
   - API 端点: 识别 6 个
 
-生成 SPEC 文档中...
+正在生成 SPEC 文档...
   ✓ .moai/specs/SPEC-AUTH-001/spec.md
   ✓ .moai/specs/SPEC-AUTH-001/requirements.md
   ✓ .moai/specs/SPEC-AUTH-001/api-design.md
 
-创建 Worktree 中...
+正在创建 Worktree...
   ✓ 创建分支: feature/SPEC-AUTH-001
   ✓ 创建 Worktree: /path/to/your-project/.moai/worktrees/SPEC-AUTH-001
   ✓ 分支切换完成
@@ -52,29 +50,29 @@ $ cd /path/to/your-project
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 下一步:
   1. 在新终端运行: moai worktree go SPEC-AUTH-001
-  2. 切换 LLM: moai glm
+  2. 更换 LLM: moai glm
   3. 启动 Claude: claude
   4. 开始开发: /moai run SPEC-AUTH-001
 
-省钱提示: 实现阶段用 'moai glm' 可节省 70% 成本!
+省钱提示: 在实现阶段用 'moai glm' 可节省 70% 成本!
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
 
-#### 第 2 步：进入 Worktree 并实现 (Terminal 2)
+#### 第 2 步: 进入 Worktree 并实现 (Terminal 2)
 
-计划已完成，实现切换到低成本模型：
+计划已完成,实现阶段切换到低成本模型:
 
 ```bash
 # 打开新终端
 $ moai worktree go SPEC-AUTH-001
 
-# 打开新终端并移动到 Worktree
+# 新终端打开并移动到 Worktree
 # 提示符发生变化
 (SPEC-AUTH-001) ~/moai-project/.moai/worktrees/SPEC-AUTH-001
 
-# 将 LLM 切换为低成本模型
+# 把 LLM 换成低成本模型
 (SPEC-AUTH-001) $ moai glm
-✓ LLM 切换: GLM 5 (节省 70% 成本)
+✓ LLM 已更换: GLM 5 (节省 70% 成本)
 
 # 启动 Claude Code
 (SPEC-AUTH-001) $ claude
@@ -91,16 +89,16 @@ Type 'help' for available commands
 Phase 1: ANALYZE
   ✓ 需求分析完成
   ✓ 现有代码分析完成
-  ✓ 测试覆盖率: 目标 85%
+  ✓ 测试覆盖率: 85% 目标
 
 Phase 2: PRESERVE
-  ✓ 生成 12 个特征化测试
-  ✓ 确认现有行为已保留
+  ✓ 生成 12 个特性化测试
+  ✓ 确认现有行为得到保留
 
 Phase 3: IMPROVE
   ✓ 实现 JWT 认证中间件
   ✓ 实现刷新令牌轮换
-  ✓ 实现登出令牌失效
+  ✓ 实现登出时令牌失效
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 实现完成!
@@ -115,17 +113,17 @@ Phase 3: IMPROVE
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
 
-#### 第 3 步：文档化（同一 Terminal 2）
+#### 第 3 步: 文档化 (同一个 Terminal 2)
 
 ```bash
-# 运行文档化
+# 执行文档化
 > /moai sync SPEC-AUTH-001
 
 # 输出
 ✓ MoAI-ADK Documentation Generator v2.0
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-生成文档中...
+正在生成文档...
   ✓ API 文档: docs/api/auth.md
   ✓ 架构图: docs/diagrams/auth-flow.mmd
   ✓ 用户指南: docs/guides/authentication.md
@@ -135,48 +133,32 @@ Phase 3: IMPROVE
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 文档化完成!
-下一步: moai worktree done SPEC-AUTH-001 --push
+下一步: 合并到 base (git merge/PR) 后,moai worktree done SPEC-AUTH-001
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
 
-#### 第 4 步：完成与合并 (Terminal 1)
+#### 第 4 步: 合并到 base 并清理 (Terminal 1)
+
+`moai worktree done` 不会执行合并、推送。先用 `git merge` 或 PR 处理到 base 分支的合并,然后只清理 Worktree。
 
 ```bash
 # 回到项目根目录
 $ cd /path/to/your-project
 
-# 完成 Worktree
-$ moai worktree done SPEC-AUTH-001 --push
+# 合并到 base 分支 (git 或 PR)
+$ git checkout main
+$ git merge feature/SPEC-AUTH-001
+$ git push origin main
+
+# 清理 Worktree + 删除分支
+$ moai worktree done SPEC-AUTH-001 --delete-branch
 
 # 输出
-✓ MoAI-ADK Worktree Manager v2.0
+✓ Done: worktree for branch feature/SPEC-AUTH-001
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-正在完成 Worktree: SPEC-AUTH-001
-
-1. 切换到 main 分支...
-   ✓ Switched to branch 'main'
-
-2. 合并 feature 分支...
-   ✓ Merge 'feature/SPEC-AUTH-001' into main
-
-3. 推送到远程仓库...
-   ✓ github.com:username/repo.git
-   ✓ Branch 'main' set up to track remote branch 'main'
-
-4. 清理 Worktree...
-   ✓ 移除 Worktree: .moai/worktrees/SPEC-AUTH-001
-   ✓ 移除分支: feature/SPEC-AUTH-001
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-✓ SPEC-AUTH-001 完成!
-
-总计提交: 4 个
-  - 2e9b4c3 docs: authentication documentation
-  - 7c8d9e0 feat: refresh token rotation
-  - 4f3a2b1 feat: JWT authentication middleware
-  - b5e6f7a feat: token invalidation on logout
-
+  Path: .moai/worktrees/SPEC-AUTH-001
+  Worktree removed.
+  Branch feature/SPEC-AUTH-001 deleted.
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
 
@@ -184,10 +166,9 @@ $ moai worktree done SPEC-AUTH-001 --push
 
 ## 并行 SPEC 开发
 
-### 场景：同时开发 3 个 SPEC
+### 场景: 同时开发 3 个 SPEC
 
-计划集中在一个终端由高推理模型 (Opus) 完成，实现则切换为 GLM 分散到三个
-终端：
+计划在一个终端用高推理模型 (Opus) 集中处理,实现则换成 GLM 分散到三个终端:
 
 ```mermaid
 graph TB
@@ -214,7 +195,7 @@ graph TB
     P3 --> I3
 ```
 
-#### Terminal 1: 计划（所有 SPEC）
+#### Terminal 1: 计划 (所有 SPEC)
 
 ```bash
 # SPEC 1: 认证
@@ -229,7 +210,7 @@ graph TB
 > /moai plan "REST API v2" --worktree
 ✓ SPEC-API-003 创建完成
 
-# 查看 Worktree
+# 确认 Worktree
 moai worktree list
 SPEC-AUTH-001  feature/SPEC-AUTH-001  /path/to/SPEC-AUTH-001
 SPEC-LOG-002   feature/SPEC-LOG-002   /path/to/SPEC-LOG-002
@@ -269,8 +250,8 @@ $ moai worktree go SPEC-API-003
 #### 监控并行进度
 
 ```bash
-# 在 Terminal 1 查看所有 Worktree 状态
-$ moai worktree status --verbose
+# 在 Terminal 1 确认所有 Worktree 状态
+$ moai worktree status --all
 
 Worktree: SPEC-AUTH-001
 Branch: feature/SPEC-AUTH-001
@@ -295,7 +276,7 @@ Last activity: 7 minutes ago
 
 ## 团队协作场景
 
-### 场景：2 名开发者协作
+### 场景: 2 名开发者协作
 
 ```mermaid
 graph TB
@@ -319,7 +300,7 @@ graph TB
     B2 --> R
 ```
 
-#### 开发者 A：Frontend 开发
+#### 开发者 A: Frontend 开发
 
 ```bash
 # 在开发者 A 的机器上
@@ -336,13 +317,15 @@ moai worktree go SPEC-FE-001
 (SPEC-FE-001) $ claude
 > /moai run SPEC-FE-001
 
-# 实现完成后推送到远程
+# 实现完成后推送分支 + 创建 PR (git/gh)
 (SPEC-FE-001) $ exit
-moai worktree done SPEC-FE-001 --push
-✓ 完成并创建了 PR
+git push -u origin feature/SPEC-FE-001
+gh pr create --fill
+# PR 合并后清理 Worktree
+moai worktree done SPEC-FE-001 --delete-branch
 ```
 
-#### 开发者 B：Backend 开发
+#### 开发者 B: Backend 开发
 
 ```bash
 # 在开发者 B 的机器上
@@ -359,16 +342,18 @@ moai worktree go SPEC-BE-001
 (SPEC-BE-001) $ claude
 > /moai run SPEC-BE-001
 
-# 实现完成后推送到远程
+# 实现完成后推送分支 + 创建 PR (git/gh)
 (SPEC-BE-001) $ exit
-moai worktree done SPEC-BE-001 --push
-✓ 完成并创建了 PR
+git push -u origin feature/SPEC-BE-001
+gh pr create --fill
+# PR 合并后清理 Worktree
+moai worktree done SPEC-BE-001 --delete-branch
 ```
 
 #### PR 合并与集成
 
 ```bash
-# 在团队负责人或 CI 系统中
+# 在团队负责人或 CI 系统上
 gh pr list
 # FE-001  Login UI Component          Ready
 # BE-001  Authentication API Service  Ready
@@ -385,41 +370,37 @@ git pull origin main
 
 ## 问题排查案例
 
-### 案例 1：解决合并冲突
+### 案例 1: 解决合并冲突
+
+合并发生在 `git merge` 或 PR 中,因此冲突也在那个阶段产生。Worktree CLI 不参与合并。
 
 ```bash
-$ moai worktree done SPEC-AUTH-001 --push
+$ git checkout main
+$ git merge feature/SPEC-AUTH-001
 
 # 输出
 ✗ 发生合并冲突!
 冲突文件:
   - src/auth/jwt.ts
   - tests/auth.test.ts
-
-解决步骤:
-1. 编辑冲突文件并解决
-2. git add <文件>
-3. git commit
-4. 重新运行 moai worktree done SPEC-AUTH-001 --push
 ```
 
-**解决过程**：
+**解决过程**:
 
 ```mermaid
 flowchart TD
-    A[检测到冲突] --> B[确认冲突文件]
+    A[git merge 检测到冲突] --> B[确认冲突文件]
     B --> C[打开 jwt.ts]
     C --> D[查找冲突标记]
     D --> E[手动合并]
     E --> F[git add jwt.ts]
     F --> G[git commit]
-    G --> H[重新运行 moai worktree done]
-    H --> I[成功!]
+    G --> H[用 moai worktree done 清理]
+    H --> I[完成]
 ```
 
 ```bash
 # 解决冲突
-cd .moai/worktrees/SPEC-AUTH-001
 code src/auth/jwt.ts
 
 # 确认冲突标记
@@ -435,50 +416,43 @@ const secret = process.env.JWT_SECRET || config.jwt.secret;
 # staging 后提交
 git add src/auth/jwt.ts
 git commit -m "fix: resolve merge conflict in JWT config"
+git push origin main
 
-# 重试完成
-cd /path/to/your-project
-moai worktree done SPEC-AUTH-001 --push
+# 合并结束后清理 Worktree
+moai worktree done SPEC-AUTH-001 --delete-branch
 ✓ 完成!
 ```
 
-### 案例 2：修复损坏的 Worktree
+### 案例 2: 恢复损坏的 Worktree
 
 ```bash
 $ moai worktree go SPEC-AUTH-001
 ✗ Worktree 已损坏。
 
 # 诊断
-$ moai worktree status SPEC-AUTH-001
+$ moai worktree status
 ✗ Worktree 目录不存在
 
-# 修复
-$ moai worktree remove SPEC-AUTH-001 --force
-✓ 移除现有 Worktree
+# 恢复
+$ moai worktree remove .moai/worktrees/SPEC-AUTH-001 --force
+✓ 已移除现有 Worktree
 
 $ moai worktree new SPEC-AUTH-001
-✓ Worktree 重建完成
+✓ Worktree 重新创建完成
 ```
 
-### 案例 3：磁盘空间不足
+### 案例 3: 清理已合并的 Worktree
 
 ```bash
 $ df -h
 Filesystem      Size  Used Avail Use%
 /dev/disk1     500G  480G   20G  96%
 
-# 清理旧的 Worktree
-$ moai worktree clean --older-than 14
+# 只清理已合并到 base 的 Worktree
+$ moai worktree clean --merged-only
 
-# 将被清理的 Worktree:
-  - SPEC-OLD-001 (30 天前)
-  - SPEC-OLD-002 (45 天前)
-  - SPEC-OLD-003 (60 天前)
-
-是否继续? [y/N] y
-
-✓ 清理 3 个 Worktree 完成
-✓ 释放 12GB 磁盘空间
+✓ 已合并的 Worktree 清理完成
+✓ 释放磁盘空间
 ```
 
 ---
@@ -510,21 +484,21 @@ sequenceDiagram
     T3->>Git: 文档化提交
     Note over T3: b5e6f7a
 
-    Dev->>T1: moai worktree done SPEC-FB-001
-    T1->>Git: 合并到 main
+    Dev->>Git: 通过 git merge 或 PR 合并到 base
     Git->>Remote: 推送
-    Remote-->>Dev: PR 已创建
+    Dev->>T1: moai worktree done SPEC-FB-001
+    T1-->>Dev: Worktree 清理完成
 ```
 
 ---
 
 ## 成功案例
 
-### 案例：在初创公司的应用
+### 案例: 在初创公司的应用
 
 ```bash
 # 情况: 需要同时开发 3 个功能
-# 时间: 1 周
+# 时间: 一周
 # 开发者: 2 名
 
 # 第 1 天: 计划所有 SPEC
@@ -541,16 +515,16 @@ $ moai worktree go SPEC-PAY-001 && moai glm
 $ moai worktree go SPEC-NOTIF-001 && moai glm
 
 # 第 5-6 天: 文档化与测试
-# 在各 Worktree 中运行 /moai sync
+# 在各 Worktree 中执行 /moai sync
 
-# 第 7 天: 合并
-$ moai worktree done SPEC-USER-001 --push
-$ moai worktree done SPEC-PAY-001 --push
-$ moai worktree done SPEC-NOTIF-001 --push
+# 第 7 天: 合并到 base (git merge/PR) 后清理 Worktree
+$ moai worktree done SPEC-USER-001 --delete-branch
+$ moai worktree done SPEC-PAY-001 --delete-branch
+$ moai worktree done SPEC-NOTIF-001 --delete-branch
 
 # 结果
 # - 3 个功能全部完成
-# - 并行开发缩短 66% 时间
+# - 并行开发缩短了开发流程
 # - 使用 GLM 节省 70% 成本
 ```
 
@@ -558,10 +532,10 @@ $ moai worktree done SPEC-NOTIF-001 --push
 
 ## 技巧与窍门
 
-### 技巧 1：终端管理
+### 技巧 1: 终端管理
 
 ```bash
-# 使用 tmux 管理会话
+# 用 tmux 管理会话
 tmux new-session -d -s spec-user 'moai worktree go SPEC-USER-001'
 tmux new-session -d -s spec-pay 'moai worktree go SPEC-PAY-001'
 
@@ -574,19 +548,20 @@ spec-pay: 1 windows
 tmux attach-session -t spec-user
 ```
 
-### 技巧 2：跟踪进度
+### 技巧 2: 跟踪进度
 
 ```bash
 # 所有 Worktree 的进度
-for spec in $(moai worktree list --porcelain | awk '{print $1}'); do
+moai worktree list --verbose
+for spec in SPEC-USER-001 SPEC-PAY-001 SPEC-NOTIF-001; do
     echo "=== $spec ==="
-    cd ~/.moai/worktrees/$spec
+    cd "$(moai worktree go $spec)"
     git log --oneline -5
     echo ""
 done
 ```
 
-### 技巧 3：自动化脚本
+### 技巧 3: 自动化脚本
 
 ```bash
 #!/bin/bash
@@ -600,7 +575,7 @@ echo "1. 生成 SPEC 计划..."
 echo "2. 进入 Worktree..."
 moai worktree go $SPEC_ID
 
-echo "3. 切换 LLM..."
+echo "3. 更换 LLM..."
 moai glm
 
 echo "4. 启动 Claude..."

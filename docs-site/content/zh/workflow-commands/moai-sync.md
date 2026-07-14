@@ -440,6 +440,21 @@ Sync 阶段的质量标准比 Run 阶段更侧重文档:
   错误。
 {{< /callout >}}
 
+## Sync 阶段 Human Gates
+
+Sync 过程中存在两个 HUMAN GATE。这些门禁不是自动通过对象,判定为 FAIL 或 INCONCLUSIVE 时链条会中断。
+
+| 门禁 | 名称 | 时机 | 作用 |
+| ------ | ---- | ---- | ---- |
+| `gate-sync-1` | Pre-Sync Quality | 进入 Phase 3 前 | 确认工作树 clean 且所有测试通过 |
+| `gate-sync-2` | Documentation Scope | 批准文档生成范围 | 由用户审阅 divergence report 并批准文档重生成范围 |
+
+`gate-sync-1` 验证代码质量是否满足进入 sync 的条件 —— 若有测试失败或脏的工作树,则不进入文档生成。`gate-sync-2` 是由用户确认要重新生成哪些文档的批准步骤 —— 防止自动生成造成意料之外的文档变更。
+
+{{< callout type="warning" >}}
+sync-auditor 判定为 FAIL/INCONCLUSIVE 或门禁阻断时链条会中断。不会在未通过门禁的情况下自动完成。
+{{< /callout >}}
+
 ## Worktree 上下文 Auto-Merge
 
 在 worktree 环境中执行时,auto-merge 是默认行为。

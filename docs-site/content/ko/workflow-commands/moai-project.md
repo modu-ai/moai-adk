@@ -244,10 +244,9 @@ flowchart TD
 | Scala                 | metals                     | -                                  |
 | Swift                 | sourcekit-lsp              | -                                  |
 | Elixir                | elixir-ls                  | -                                  |
-| Dart/Flutter          | dart language-server       | Dart SDK 내장                      |
+| Flutter               | dart language-server       | Dart SDK 내장                      |
 | C#                    | OmniSharp 또는 csharp-ls   | -                                  |
 | R                     | languageserver (R 패키지)  | -                                  |
-| Lua                   | lua-language-server        | -                                  |
 
 **LSP 미설치 시 옵션**:
 
@@ -268,6 +267,49 @@ flowchart TD
 - **SPEC 작성**: `/moai plan`으로 기능 명세서 정의
 - **문서 검토**: 생성된 파일 열어서 검토
 - **새 세션 시작**: 컨텍스트 지우고 새로 시작
+
+## 확장 단계 (Phase 8-16)
+
+기본 문서 생성 (Phase 0-4) 이후, `/moai project`는 프로젝트 환경을 종합적으로 구성하는 확장 단계를 수행합니다.
+
+```mermaid
+flowchart TD
+    A["Phase 4: 완료<br/>(기본 문서 생성)"] --> B["Phase 8<br/>harness-spec.yaml"]
+    B --> C["Phase 11<br/>MCP 프로비저닝"]
+    C --> D["Phase 12<br/>Dev Methodology"]
+    D --> E["Phase 13<br/>DB 감지"]
+    E --> F["Phase 14<br/>완료 요약"]
+    F --> G{"하네스 생성?"}
+    G -->|예| H["Phase 15<br/>v4 Builder 진입"]
+    H --> I["Phase 16<br/>5-Layer 활성화"]
+    G -->|아니오| J["종료"]
+    I --> J
+```
+
+### Phase 8: harness-spec.yaml 브리지
+
+인터뷰 답변에서 `.moai/project/harness-spec.yaml`을 생성합니다. 이 파일은 8-필드 스키마로 프로젝트 맥락을 하네스 빌더에게 전달하는 브리지 역할을 합니다 — 사용자 상호작용 없이 interview.md 답변에서 자동 추출됩니다.
+
+### Phase 11: MCP 서버 프로비저닝
+
+기술 스택을 감지하고 `mcp-matrix.yaml`에서 적합한 MCP 서버를 선택합니다. 오케스트레이터 승인 후 `.mcp.json`에 추가 기록 (additive write) — 기존 MCP 설정을 덮어쓰지 않습니다.
+
+### Phase 13: DB 감지
+
+Grep/Glob으로 DB 키워드를 감지하여 `db-detection.json`을 생성합니다. 지원 DB 엔진 카테고리:
+
+- **Relational/SQL**: PostgreSQL, MySQL, MariaDB, SQLite, Oracle, SQL Server, CockroachDB, Supabase, Neon, Planetscale
+- **NoSQL Document**: MongoDB, Firestore, Firebase, Couchbase
+- **NoSQL Key-Value**: Redis, DynamoDB, Cassandra, ScyllaDB, Riak
+- **Search/Analytics**: Elasticsearch, ClickHouse, Snowflake, InfluxDB
+
+### Phase 15-16: v4 Builder 연동
+
+Phase 15는 v4 하네스 빌더로 리다이렉트합니다 — Context-First Discovery + 오케스트레이터 직접 4-phase Builder (ANALYZE → PLAN → GENERATE → ACTIVATE)가 하네스를 생성합니다. Phase 16은 CLAUDE.md 마커 설치 + main.md 라우터 등록으로 5-Layer 활성화를 수행하고, 생성 후 smoke gate를 실행합니다.
+
+{{< callout type="info" >}}
+Phase 15-16은 선택 단계입니다 — `/moai project` 실행 시 하네스 생성이 필요하면 진행되고, 그렇지 않으면 Phase 14에서 완료됩니다.
+{{< /callout >}}
 
 ## 언제 사용하나?
 

@@ -147,28 +147,52 @@ flowchart TD
 
 ## SPEC 生成阶段
 
-### Phase 1A: 项目分析(可选)
+`/moai plan` 遵循由 15 个 Phase 与 2 个 Decision Point 构成的结构化工作流。Phase 1-3 是上下文发现,Phase 4-7 是深度访谈,Phase 8 之后才是正式的 SPEC 组装。
 
-当请求模糊或需要了解项目状况时执行:
+### Phase 1-3: 上下文发现
 
-| 执行条件                | 跳过条件               |
-| ------------------------ | ----------------------- |
-| 请求不明确            | SPEC 标题明确        |
-| 需要发现现有文件/模式 | resume 场景         |
-| 项目状态不确定     | 已存在既有 SPEC 上下文 |
+| Phase | 名称 | 说明 |
+|-------|------|------|
+| Phase 1 | Brain 建议检测 | 扫描 Brain IDEA 并识别 SPEC 候选 |
+| Phase 2 | 项目探索(可选) | `Explore` 子智能体分析代码库 |
+| Phase 3 | 明确度评估 | 基于 1-10 分的明确度评估与跳过条件 |
 
-### Phase 1B: SPEC 规划
+当请求模糊或需要把握项目状况时执行 Phase 1-3。明确的请求可在 Phase 3 跳过。
+
+### Phase 4-7: 深度访谈
+
+在明确度分数为 4-10 时执行:
+
+| Phase | 名称 | 说明 |
+|-------|------|------|
+| Phase 4 | 深度访谈循环 | 1-5 轮主题中心访谈 |
+| Phase 5 | UltraThink 自动激活 | 复杂度 ≥ 7 时激活扩展推理 |
+| Phase 6 | 深度研究 | `Explore` 子智能体产出 research.md |
+| Phase 7 | 设计方向 | 检测到 UI/UX 关键词时的意图优先设计方向 |
+
+### Phase 8: SPEC 规划
 
 **manager-spec** 智能体执行以下工作:
 
 - 分析项目文档 (product.md, structure.md, tech.md)
 - 提出并命名 1-3 个 SPEC 候选
 - 检查重复 SPEC (.moai/specs/)
-- 设计 EARS 结构
+- 设计 GEARS 结构(也允许 EARS 遗留格式)
 - 识别实现计划与技术约束条件
 - 确认库版本(仅稳定版,排除 beta/alpha)
 
-### Phase 3: 预验证门禁
+### Decision Point 1: 用户批准门禁 (HUMAN GATE)
+
+Phase 8 完成后,用户必须明确批准才能进入下一阶段。有 4 个选项:
+
+| 选择 | 含义 |
+|------|------|
+| **Proceed** | 以当前 SPEC 继续 |
+| **Annotate** | 反映反馈后重写(1-6 轮迭代) |
+| **Draft** | 把 SPEC 保留为 draft 状态并等待 |
+| **Cancel** | 中止 SPEC 生成 |
+
+### Phase 9: 预验证门禁
 
 在生成 SPEC 之前防止常见错误:
 
@@ -188,16 +212,16 @@ flowchart TD
 
 **复合域规则:** 建议最多 2 个域(例: UPDATE-REFACTOR-001),最多允许 3 个
 
-### Phase 2: 生成 SPEC 文档
+### Phase 10: 生成 SPEC 文档
 
 三个文件同时生成:
 
 **spec.md:**
 
-- YAML frontmatter(7 个必填字段: id, version, status, created, updated, author,
-  priority)
+- YAML frontmatter(**12 个必填字段**: id, title, version, status, created, updated,
+  author, priority, phase, module, lifecycle, tags)
 - HISTORY 部分(紧跟在 frontmatter 之后)
-- 完整的 EARS 结构(5 种需求类型)
+- 完整的 GEARS/EARS 结构(5 种需求类型)
 - 以 conversation_language 编写的内容
 
 **plan.md:**
@@ -218,15 +242,42 @@ flowchart TD
 - 验收标准: 至少 2 个 Given/When/Then 场景
 - 技术术语与函数名保持英文
 
-### Phase 3: 设置 Git 环境(条件性)
+### Phase 11: plan-auditor 独立审计
 
-**执行条件:** Phase 2 完成 AND 满足以下之一:
+**plan-auditor** 子智能体独立审计 manager-spec 编写的 SPEC 产出物。遵循制作的智能体不检查自己结果的 **独立审计原则**。
 
-- 提供了 --worktree 标志
-- 提供了 --branch 标志,或用户选择创建分支
-- 配置允许创建分支 (git_strategy 设置)
+- 最多 3 轮迭代 (Retry Loop Contract)
+- 每轮出现分数回退时给出 STOP 信号 + 缩小范围建议
+- PASS / PASS-with-debt / FAIL 三种判定
+- 审计报告保存到 `.moai/reports/plan-audit/`
 
-**跳过时机:** develop_direct 工作流,无标志且选择"使用当前分支"
+### Phase 12: 创建 GitHub issue(条件性)
+
+若无 `--no-issue` 标志则创建 GitHub issue 并与 SPEC 建立双向引用。从 v3.0.0 起 issue 创建默认省略,可用 `--issue` 标志显式启用。
+
+### Phase 13: 设置 Git 环境(条件性)
+
+通过 **BODP (Branch Origin Decision Protocol) 门禁** 决定分支策略:
+
+- **--worktree**(最高优先):创建独立的 Git 工作树
+- **--branch**(次选):创建传统的 feature 分支
+- **保持当前分支**:无标志时在当前 checkout 上继续
+
+### Phase 14: MX 标签规划
+
+识别在实现阶段要添加的 `@MX` 代码注释目标:
+
+- `@MX:ANCHOR` —— 不变契约(high fan_in 函数)
+- `@MX:WARN` —— 危险区间(goroutine, 复杂度 ≥ 15)
+- `@MX:NOTE` —— 上下文/意图记录
+
+### Phase 15: SPEC 质量门禁
+
+验证 GEARS/EARS 需求与验收标准(AC)之间的覆盖,并执行安全范围检查。
+
+### Decision Point 2/3/3.5: 执行模式选择
+
+SPEC 生成完成后选择下一步。详情请参阅 [Decision Point 3.5 部分](#decision-point-35-执行模式选择门禁)。
 
 ## 输出结果
 
@@ -487,13 +538,13 @@ WHEN input is null is detected, the system shall return an error.
 
 2. **问题排序 — 信息增益降序** — 需要多个问题时,按估算信息增益从高到低排序,让最重要的决策先被做出。
 
-3. **统计多数的理性默认值** — 推荐选项(带 `(권장)` 标记)反映决策记录中观察到的多数选择,**而非系统策略默认值**。数据不足时(cold-start)会公开 *"基于默认设置,个性化需 N 次观察"*。
+3. **统计多数的理性默认值** — 推荐选项(带 `(推荐)` 标记)反映决策记录中观察到的多数选择,**而非系统策略默认值**。数据不足时(cold-start)会公开 *"基于默认设置,个性化需 N 次观察"*。
 
 4. **公开前提条件** — 每个推荐选项以 *"Recommended when <precondition>"* 格式明示成立的前提条件,便于立即评估权衡。
 
 5. **基于熟练度的自适应强度** — 推荐强度按会话计数调节:
-   - **专家**(20+ 会话): 弱强度 — 仅公开 inferred preference,不使用 `(권장)` override(info-centric,尊重自主性)
-   - **一般用户**(5-19 会话): 强强度 — `(권장)` + 透明的依据说明
+   - **专家**(20+ 会话): 弱强度 — 仅公开 inferred preference,不使用 `(推荐)` override(info-centric,尊重自主性)
+   - **一般用户**(5-19 会话): 强强度 — `(推荐)` + 透明的依据说明
    - **Cold-start**(<5 会话): 中立强度 — 无 override,应用系统默认值
 
 ### 隐私与安全

@@ -235,6 +235,18 @@ def get_user(user_id):
 - "测试失败很多,想全部修复" → `/moai loop`
 {{< /callout >}}
 
+## 残余问题移交(交接给 loop)
+
+`/moai fix` 是单次(1 回)流水线,因此可能残留一次扫描-修复-验证无法解决的问题。残留问题的种类:
+
+- **Level 4 手动项**(安全·架构 —— 禁止自动修复)
+- **未解决的错误**(在 repair 阶段未能修复的项)
+- **Phase 5 回归守卫失败**(既未回退也未报告的回归)
+
+出现此类残留时,fix 工作流会把它持久化到 `.moai/state/loop-verdict-<id>.json`,记为 `exit_kind: "one-shot-residue"`、`iterations_used: 1`。该 schema 与 `/moai loop` 的残留持久化 schema 相同。
+
+报告对可再修复的残留仅 **建议** 进入 `/moai loop`,fix 工作流不会自动调用 `/moai loop` 或其他子命令。用户亲自重新进入 `/moai loop` 后,持久化的残留会作为条目并入循环的扫描队列,由 goal-preset 扫荡清空。
+
 ## 智能体委派链
 
 `/moai fix` 命令的智能体委派流程:

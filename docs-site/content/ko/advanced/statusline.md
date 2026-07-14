@@ -25,7 +25,11 @@ Claude Code와 moai-adk-go 통합을 위한 **커스텀 statusline 시스템**�
 ### 데이터 흐름
 
 ```
-Claude Code stdin (JSON)
+Claude Code (stdin JSON 전달)
+    ↓
+.moai/status_line.sh (shell wrapper — settings.json statusLine.command)
+    ↓
+moai statusline (Go binary)
     ↓
 internal/statusline/types.go (StdinData 파싱)
     ↓
@@ -33,7 +37,7 @@ internal/statusline/builder.go (CollectMemory, CollectMetrics, etc.)
     ↓
 internal/statusline/renderer.go (3-line v3 layout)
     ↓
-.moai/status_line.sh → 터미널 표시
+터미널 표시
 ```
 
 ## Line 1 — Info (7 segments)
@@ -246,6 +250,20 @@ statusline:
     task: true             # opt-in default off in older versions
     pr: true               # default on per v2.20.0-rc1
     worktree: false
+```
+
+### 새로고침 주기
+
+Statusline의 새로고침 주기는 `settings.json`의 `statusLine.refreshInterval`로 설정합니다 (단위: **초**, 기본값 `10`). `.moai/config/sections/statusline.yaml`이 아닌 Claude Code 런타임 설정에 해당합니다. 값이 너무 낮으면 CPU 사용량이 늘어나고, 너무 높으면 컨텍스트 사용률 변화가 늦게 반영됩니다.
+
+```json
+{
+  "statusLine": {
+    "type": "command",
+    "command": "$CLAUDE_PROJECT_DIR/.moai/status_line.sh",
+    "refreshInterval": 10
+  }
+}
 ```
 
 ### Segment 활성 매트릭스

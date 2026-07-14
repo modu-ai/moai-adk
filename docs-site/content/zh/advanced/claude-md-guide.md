@@ -124,6 +124,9 @@ MoAI-ADK 由 **11 个保留智能体**（10 个 MoAI-custom + 1 个 Anthropic bu
 
 # Sync: 文档同步 (40K 代币)
 > /moai sync SPEC-XXX
+
+# E2E: 运行 Web/移动端/桌面端 E2E 测试
+> /moai e2e
 ```
 
 ### 6. 质量门禁

@@ -61,12 +61,14 @@ That is, even typing plain natural language without a subcommand, like `/moai "f
 | Flag                | Description                              | Example                        |
 | ------------------- | ---------------------------------------- | ------------------------------ |
 | `--loop`            | Enable automatic iterative fixing after implementation | `/moai "feature" --loop`  |
-| `--max N`           | Set the maximum number of iterations (default 100) | `/moai "feature" --loop --max 10` |
+| `--max N`           | Set the loop iteration ceiling (default is config-based, `ralph.yaml` `loop.max_iterations` = 10) | `/moai "feature" --loop --max 20` |
+| `--sequential`      | Run the Phase 1 exploration agents sequentially instead of in parallel | `/moai "feature" --sequential` |
 | `--branch`          | Auto-create a feature branch             | `/moai "feature" --branch`     |
 | `--pr`              | Auto-create a PR after completion        | `/moai "feature" --pr`         |
+| `--issue`           | Opt in to GitHub issue creation after SPEC creation (plan phase); skipped otherwise per the late-branch opt-in policy | `/moai "feature" --issue` |
 | `--resume SPEC-XXX` | Resume existing SPEC work                | `/moai --resume SPEC-AUTH-001` |
-| `--team`            | Force agent team mode                    | `/moai "feature" --team`       |
-| `--solo`            | Force sub-agent mode                     | `/moai "feature" --solo`       |
+| `--solo`            | Force sub-agent mode (sequential execution) | `/moai "feature" --solo`       |
+| `--team`            | (retired) falls back to sub-agent mode with `MODE_TEAM_UNAVAILABLE` | `/moai "feature" --team`       |
 
 ### The --loop Flag
 
@@ -89,7 +91,7 @@ When you use this option:
   productivity.
 {{< /callout >}}
 
-### The --team / --solo Flags and Orchestration Modes
+### The --solo Flag and Orchestration Modes
 
 Run without a flag and MoAI looks at the size of the work and auto-selects the orchestration mode:
 
@@ -102,8 +104,8 @@ Run without a flag and MoAI looks at the size of the work and auto-selects the o
 
 | Flag | Behavior |
 | ------ | ---- |
-| `--team` | Force agent team mode |
 | `--solo` | Force sub-agent mode (sequential execution) |
+| `--team` | (retired) falls back to sub-agent mode with `MODE_TEAM_UNAVAILABLE` |
 | (none) | Complexity-based auto-selection |
 
 {{< callout type="warning" >}}

@@ -248,6 +248,20 @@ statusline:
     worktree: false
 ```
 
+### 刷新周期
+
+Statusline 的刷新周期由 `settings.json` 的 `statusLine.refreshInterval` 设置(单位:**秒**,默认值 `10`)。它属于 Claude Code 运行时设置,而非 `.moai/config/sections/statusline.yaml`。值太低会增加 CPU 占用,太高则上下文使用率变化反映得慢。
+
+```json
+{
+  "statusLine": {
+    "type": "command",
+    "command": "$CLAUDE_PROJECT_DIR/.moai/status_line.sh",
+    "refreshInterval": 10
+  }
+}
+```
+
 ### 段启用矩阵
 
 | 段 | 行 | 默认启用 | stdin field |

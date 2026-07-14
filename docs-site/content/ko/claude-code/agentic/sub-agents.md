@@ -36,7 +36,7 @@ Claude Code에는 다음과 같은 내장 서브에이전트가 포함되어 있
 
 | 에이전트 | 특징 |
 |---------|------|
-| **Explore** | 읽기 전용 코드베이스 탐색 (Haiku, 신속); thoroughness 옵션으로 quick/medium/very-thorough 선택 가능 |
+| **Explore** | 읽기 전용 코드베이스 탐색; v2.1.198부터 메인 세션 모델을 상속 (Claude API에서는 Opus까지만, 이전 버전은 Haiku 고정). thoroughness 옵션으로 quick/medium/very-thorough 선택 가능 |
 | **Plan** | 플랜 모드 리서치 (읽기 전용) |
 | **general-purpose** | 모든 도구 접근 가능, 탐색과 수정 모두 가능 |
 
@@ -68,14 +68,16 @@ flowchart TD
 
 내장 `Plan` 서브에이전트가 별도로 존재하는 이유도 여기에 있습니다. 플랜 모드에서 컨텍스트가 필요할 때 이 제약을 우회하지 않으면서 리서치를 수행하기 위함입니다.
 
-## 백그라운드 권한 프롬프트 (v2.1.186)
+## 백그라운드 실행 (v2.1.186 / v2.1.198)
 
-서브에이전트를 백그라운드로 실행할 때 (`background: true`), 권한이 필요한 도구를 만나면 (예: Bash, WebFetch):
+서브에이전트는 백그라운드에서 실행할 수 있으며, v2.1.198부터는 **백그라운드가 기본값**입니다 — Claude가 결과를 즉시 필요로 할 때만 포어그라운드에서 실행하고, 그 외에는 백그라운드에서 돌립니다.
+
+백그라운드 서브에이전트가 권한이 필요한 도구를 만나면 (예: Bash, WebFetch):
 
 - **v2.1.186 이전**: 자동 거부 (권한 프롬프트 없음)
-- **v2.1.186 이후**: **메인 세션에 프롬프트가 표시**됨 (Esc로 해당 호출만 거부 가능)
+- **v2.1.186 이후**: **메인 세션에 프롬프트가 표시**됨 (Esc로 해당 호출만 거부 가능; v2.1.186부터 프롬프트에 스폰한 서브에이전트 이름 표시)
 
-따라서 긴 백그라운드 작업을 시작하기 전에 필요한 도구를 `settings.json`의 허용 목록에 미리 추가하는 것이 좋습니다.
+긴 백그라운드 작업을 시작하기 전에 필요한 도구를 `settings.json`의 허용 목록에 미리 추가하면 프롬프트 빈도를 줄일 수 있습니다.
 
 ## 언제 쓰나
 
@@ -92,7 +94,7 @@ flowchart TD
 
 ## 정의 방법 개요
 
-서브에이전트는 YAML 프론트매터를 가진 마크다운 파일로 정의합니다. `/agents` 명령으로 대화형 생성할 수도 있고, 파일을 직접 작성할 수도 있습니다.
+서브에이전트는 YAML 프론트매터를 가진 마크다운 파일로 정의합니다. Claude에게 생성을 요청하거나 파일을 직접 작성할 수 있습니다. v2.1.198부터 `/agents` 명령은 더 이상 대화형 생성 위저드를 열지 않고, Claude에게 요청하거나 `.claude/agents/` 디렉터리를 직접 편집하라는 안내만 출력합니다 (파일 형식과 저장 위치는 변경 없음).
 
 ```markdown
 ---
@@ -116,15 +118,15 @@ model: sonnet
 | 필드 | 기능 |
 |------|------|
 | `tools` | 허용할 도구 (쉼표 구분 목록) |
-| `disallowedTools` | 차단할 도구 (許可리스트 대신 사용 가능) |
+| `disallowedTools` | 차단할 도구 (허용 목록 대신 사용 가능) |
 | `model` | 모델 선택: `sonnet`, `opus`, `haiku`, `fable`, 또는 특정 모델 ID; 기본값 `inherit` (메인 세션 모델) |
-| `permissionMode` | 도구 권한 기본값 (default, plan, acceptEdits, bypass) |
+| `permissionMode` | 도구 권한 기본값 (`default`, `acceptEdits`, `plan`, `bypassPermissions`, `auto`, `dontAsk`); 플러그인 서브에이전트는 무시됨 |
 | `maxTurns` | 최대 턴 수 제한 |
 | `skills` | 로드할 기본 스킬들 |
 | `mcpServers` | 연결할 MCP 서버 |
 | `hooks` | 호출할 Hook 이벤트 |
 | `memory` | 메모리 범위 (user, project, local) |
-| `background` | `true`면 백그라운드 실행 |
+| `background` | `true`면 항상 백그라운드 실행 (결과를 즉시 필요로 해도); 미지정 시 Claude가 선택하며 v2.1.198부터 기본 백그라운드 |
 | `effort` | 추론 강도 (low, medium, high, xhigh, max) |
 | `isolation: worktree` | 격리된 저장소 사본에서 작업 |
 | `color` | 에이전트 뷰에 표시할 색상 |

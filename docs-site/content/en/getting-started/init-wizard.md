@@ -4,13 +4,13 @@ weight: 50
 draft: false
 ---
 
-Complete your first-time setup with MoAI-ADK's interactive setup wizard. Across nine steps you configure language, Git automation scope, and execution mode to fit your development environment. Everything you choose here is saved as YAML files under `.moai/config/sections/`, so you can edit the files directly or re-run the wizard at any time.
+Complete your first setup through MoAI-ADK's interactive setup wizard. It configures the language, Git automation scope, model policy, and harness profile to match your development environment. Every value you set here is saved as a YAML file under `.moai/config/sections/`, so you can change it any time later by editing the file directly or re-running the wizard.
 
-## Starting the Setup Wizard
+## Starting the setup wizard
 
-### Creating a New Project
+### Create a new project
 
-To create and initialize a new project:
+To initialize while creating a new project:
 
 ```bash
 moai init my-project
@@ -18,7 +18,7 @@ moai init my-project
 
 This command creates the `my-project` folder and initializes MoAI-ADK.
 
-### Installing into the Current Folder
+### Install into an existing folder
 
 To install MoAI-ADK into an existing project, move into that folder and run:
 
@@ -31,177 +31,208 @@ moai init
 `moai init` installs directly into the current folder. For a new project, create it with `moai init <project-name>`.
 {{< /callout >}}
 
-## The 9-Step Setup Process
+## Wizard modes
 
-### Step 1: Select the Conversation Language
+The initialization wizard operates in three modes, depending on the depth of questions.
+
+| Mode | Flag | Question scope |
+|------|--------|----------|
+| **Quick** (default) | (none) | Core settings only — language, name, Git, model policy |
+| **Standard** | `--standard` | Quick + Phase 1 questions (project mode, harness profile, LSP, quality, design) |
+| **Advanced** | `--advanced` | Standard + Phase 2 questions (only when prerequisites are met) |
+
+```bash
+# Default wizard (Quick)
+moai init my-project
+
+# Include Phase 1 questions
+moai init my-project --standard
+
+# Include Phase 1 + Phase 2 questions
+moai init my-project --advanced
+```
+
+## Quick mode (default)
+
+Run without flags, it asks only the core settings. This is sufficient for most users.
+
+### Step 1: choose the conversation language
 
 Choose the language Claude will respond in.
 
 ```bash
-? Select your conversation language:
-▸ English - English
-  Korean (한국어) - Korean
-  Japanese (日本語) - Japanese
-  Chinese (中文) - Chinese
+? Choose the conversation language:
+▸ English
+  Korean (한국어)
+  Japanese (日本語)
+  Chinese (中文)
 ```
 
-{{< callout type="info" >}}
-You can change the language later in the `.moai/config/sections/language.yaml` file.
-{{< /callout >}}
+This setting is saved in `.moai/config/sections/language.yaml`.
 
-### Step 2: Enter Your Name
+### Step 2: enter your name
 
-Used in the settings file. You can press Enter to skip.
+The user name used in the config files. Press Enter to skip.
 
 ```bash
 ? Enter your name: [name]
 ```
 
-### Step 3: Select the Git Automation Mode
+### Step 3: choose the Git automation mode
 
-Sets the scope of Git operations Claude may perform.
+Sets the scope of Git operations Claude can perform.
 
 ```bash
-? Select Git automation mode:
-▸ Manual - AI does not commit or push
-  Personal - AI can create branches and commit
-  Team - AI can create branches, commit, and open PRs
+? Choose the Git automation mode:
+▸ Manual - the AI does not commit or push
+  Personal - the AI can create branches and commit
+  Team - the AI can create branches, commit, and create PRs
 ```
 
-**Manual**: The AI performs no Git operations. You run every commit and push yourself.
-**Personal**: The AI can create branches and commit. Good for personal projects.
-**Team**: The AI creates branches, commits, and opens PRs. Optimized for team collaboration workflows.
+- **Manual**: the AI does not perform Git operations. You run all commits and pushes yourself.
+- **Personal**: the AI can create branches and commit. Suited for personal projects.
+- **Team**: the AI performs branch creation, commits, and even PR creation. Optimized for team collaboration workflows.
 
 {{< callout type="info" >}}
-The Git settings are saved to `.moai/config/sections/git-strategy.yaml`. You can reconfigure at any time with `moai update -c`.
+Git settings are saved in the `.moai/config/sections/git-strategy.yaml` file.
 {{< /callout >}}
 
-### Step 4: Select the Git Provider
+### Step 4: choose the Git provider
 
 Choose the project's Git hosting platform.
 
 ```bash
-? Select Git provider:
+? Choose the Git provider:
 ▸ GitHub - GitHub.com
   GitLab - GitLab.com or self-hosted GitLab
 ```
 
-### Step 5: Select the Git Commit Message Language
+### Step 5: commit message language
 
-Choose the language used for commit messages.
+Choose the language used for writing commit messages. It can be set differently from the code-comment language.
 
-```bash
-? Select Git commit message language:
-▸ Korean (한국어) - Commit in Korean
-  English - Commit in English
-  Japanese (日本語) - Commit in Japanese
-  Chinese (中文) - Commit in Chinese
-```
+### Step 6: code comment language
 
-{{< callout type="info" >}}
-The commit message language can be set independently of the code comment language.
-{{< /callout >}}
+Choose the language used for code comments. English is recommended for most projects.
 
-### Step 6: Select the Code Comment Language
-
-Choose the language used for code comments.
-
-```bash
-? Select code comment language:
-▸ Korean (한국어) - Comments in Korean
-  English - Comments in English
-  Japanese (日本語) - Comments in Japanese
-  Chinese (中文) - Comments in Chinese
-```
-
-{{< callout type="info" >}}
-For most projects, English is the recommended code comment language.
-{{< /callout >}}
-
-### Step 7: Select the Documentation Language
+### Step 7: documentation language
 
 Choose the language used for documentation files.
 
-```bash
-? Select documentation language:
-▸ Korean (한국어) - Docs in Korean
-  English - Docs in English
-  Japanese (日本語) - Docs in Japanese
-  Chinese (中文) - Docs in Chinese
-```
+### Step 8: performance tier (model policy)
 
-### Step 8: Select the Agent Teams Execution Mode
-
-Configure whether MoAI uses Agent Teams (parallel) or sub-agents (sequential).
+Choose the AI model tier assigned to agents — the core Tokenomics setting.
 
 ```bash
-? Select Agent Teams execution mode:
-▸ Auto (recommended) - Intelligent selection based on task complexity
-  Sub-agent (classic) - The traditional single-agent mode
-  Team (experimental) - Parallel Agent Teams (requires the experimental feature)
+? Choose the performance tier:
+▸ medium (Recommended) - balance of quality and cost
+  max - highest quality, Opus assigned to planning and auditing
+  low - economical, Sonnet-centric allocation
 ```
 
-**Auto**: Automatically selects the optimal mode based on task complexity. Recommended in most cases.
-**Sub-agent**: A single agent processes work sequentially. Good for highly dependent tasks.
-**Team**: Multiple specialist agents collaborate in parallel. Requires the `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1` environment variable.
+| Tier | Characteristics |
+|------|------|
+| **max** | Highest quality — Opus assigned to planning and auditing, maximum reasoning depth |
+| **medium** (default) | Balance of quality and cost |
+| **low** | Economical — Sonnet-centric allocation |
 
-### Step 9: Select the Teammate Display Mode
+This setting is saved in the `performance_tier` field of `.moai/config/sections/llm.yaml`.
 
-Configures how agent teammates are displayed. Split-screen requires tmux.
+### Step 9: pricing plan type (plan_type)
+
+Choose the model-assignment profile based on billing method.
 
 ```bash
-? Select teammate display mode:
-▸ Auto (recommended) - tmux when available, otherwise in-process (default)
-  In-Process - Runs in the same terminal (works anywhere)
-  Tmux - tmux split panes (requires tmux/iTerm2)
+? Choose the pricing plan type:
+▸ subscription (Recommended) - subscription plan (weekly quota optimized)
+  api - API usage-based billing (per-task cost optimized)
 ```
 
-**Auto**: Detects whether tmux is installed and selects the best display mode automatically.
-**In-Process**: Teammate work runs in the same terminal window. Works without tmux.
-**Tmux**: Lets you visually monitor teammate work in tmux split panes.
+This setting is saved in the `plan_type` field of `.moai/config/sections/llm.yaml`. Even at the same performance tier, model assignment differs by pricing plan type.
 
-## Setup Complete
+## Standard mode (Phase 1 questions)
 
-Once all steps are finished, the configuration files are created:
+With the `--standard` flag, all Quick-mode questions plus Phase 1 questions are shown.
+
+### project mode
+
+Choose the project collaboration mode.
+
+```bash
+? Select project mode:
+▸ Personal (Recommended) - Solo developer
+  Team - Multi-developer setup
+```
+
+### harness evaluator profile
+
+Choose the default profile of the quality evaluator.
+
+```bash
+? Select default harness evaluator profile:
+▸ default
+  strict
+  lenient
+  frontend
+```
+
+### LSP integration
+
+Choose whether to enable language-server diagnostics in the run phase. The default is disabled (opt-in).
+
+### quality gates
+
+Choose whether to enforce the TRUST 5 quality gates and whether to allow coverage exemptions.
+
+- **Enforce quality gates** (default: Yes) — block implementation from proceeding when a quality gate fails
+- **Allow coverage exemptions** (default: No) — exclude specific files/packages from coverage
+
+### design workflow
+
+Choose whether to enable the MoAI design pipeline and Claude Design integration.
+
+- **Enable design workflow** (default: Yes)
+- **Enable Claude Design integration** (default: Yes, shown only when design is enabled)
+
+## Advanced mode (Phase 2 questions)
+
+The `--advanced` flag includes `--standard`, and additionally shows Phase 2 questions. Phase 2 questions are shown only when prerequisites — such as run-phase completion — are met; if there is no such condition, they are skipped automatically with a guidance message.
+
+## Non-interactive mode (CI/CD)
+
+By specifying all values with flags, you can initialize without the wizard:
+
+```bash
+moai init my-project \
+  --non-interactive \
+  --project-mode personal \
+  --model-policy medium \
+  --plan-type subscription \
+  --harness-profile default \
+  --enable-lsp=false \
+  --enforce-quality
+```
+
+## Setup complete
+
+Once all steps are done, the config files are created:
 
 ```mermaid
 graph TD
-    A[.moai/] --> B[config/]
-    A --> C[specs/]
-    A --> D[memory/]
-    B --> E[sections/]
-    E --> F[user.yaml]
-    E --> G[language.yaml]
-    E --> H[quality.yaml]
-    E --> I[git-strategy.yaml]
+    A[".moai/"] --> B["config/"]
+    A --> C["specs/"]
+    A --> D["memory/"]
+    B --> E["sections/"]
+    E --> F["user.yaml"]
+    E --> G["language.yaml"]
+    E --> H["quality.yaml"]
+    E --> I["llm.yaml"]
+    E --> J["git-strategy.yaml"]
 ```
 
-Take a look at the generated configuration files:
+## Editing the configuration
 
-```bash
-cat .moai/config/sections/user.yaml
-```
-
-## Configuration Structure
-
-```mermaid
-graph TB
-    A[.moai/config/sections/] --> B[user.yaml<br>User info]
-    A --> C[language.yaml<br>Language settings]
-    A --> D[quality.yaml<br>Quality settings]
-    A --> E[git-strategy.yaml<br>Git settings]
-
-    B --> B1[name]
-    C --> C1[conversation_language<br>commit_language, code_comments<br>documentation_language]
-    D --> D1[development_mode<br>enforce_quality<br>test_coverage_target]
-    E --> E1[strategy: manual/personal/team<br>auto_commit, auto_push<br>pr_workflow]
-```
-
-## Modifying the Configuration
-
-You can modify the configuration at any time:
-
-### Manual Editing
+### Manual editing
 
 ```bash
 # User settings
@@ -210,53 +241,39 @@ vim .moai/config/sections/user.yaml
 # Language settings
 vim .moai/config/sections/language.yaml
 
+# Model policy (performance tier)
+vim .moai/config/sections/llm.yaml
+
 # Quality settings
 vim .moai/config/sections/quality.yaml
-
-# Git settings
-vim .moai/config/sections/git-strategy.yaml
 ```
 
-### Reconfiguring
+### Reconfiguration
 
-You can re-run the setup wizard to reconfigure everything:
+Re-run the setup wizard to change the configuration:
 
 ```bash
 # Re-run the setup wizard (recommended)
 moai update -c
-
-# Or a full reset
-moai init --reset
 ```
 
 {{< callout type="info" >}}
-The `moai update -c` command keeps your existing settings and lets you selectively reconfigure only the items you want to change.
+The `moai update -c` command lets you keep existing settings while selectively reconfiguring only the items you want to change.
 {{< /callout >}}
 
-{{< callout type="warning" >}}
-The `moai init --reset` option overwrites all existing settings. Back up anything important first.
-{{< /callout >}}
+## Validating the configuration
 
-## Verifying the Configuration
-
-Verify that the configuration is set up correctly:
+Check that the configuration is set up correctly:
 
 ```bash
 moai doctor
 ```
 
-This command verifies:
+This command validates whether Git is installed, the project structure (the `.moai/` folder), the config files, and language-specific development tools. Check details with `--verbose`.
 
-- Whether Git is installed
-- The project structure (the `.moai/` folder)
-- The configuration file (`.moai/config/config.yaml`)
-- Per-language development tool detection (use `--verbose` for details)
+## Next steps
 
-If every item passes, an `All checks passed` message is shown. If tools are missing, `moai doctor --fix` offers fix suggestions.
-
-## Next Steps
-
-With setup complete, follow the [Quick Start](./quickstart) guide to create your first project. You can view all commands and options at any time:
+Once setup is complete, follow the [Quick Start](./quickstart) guide to create your first project.
 
 ```bash
 moai --help

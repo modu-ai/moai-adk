@@ -101,6 +101,8 @@ flowchart TD
 
 EARS는 5가지 유형의 요구사항 패턴을 제공합니다.
 
+{{< icon info >}} **GEARS 노트 (v3.0.0+)**: GEARS (Generalized Approach to Requirements Syntax) 가 새 공식 요구사항 표기법으로 도입되었습니다. EARS는 6개월간 하위 호환성을 유지하며, 기존 SPEC 워크플로우 규칙은 여전히 EARS 표기를 사용합니다. 신규 SPEC은 GEARS 표기를 권장합니다.
+
 ### 1. Ubiquitous (항상 참)
 
 시스템이 **항상** 준수해야 하는 요구사항입니다. 조건 없이 항상 적용됩니다.
@@ -263,7 +265,7 @@ SPEC 문서는 **manager-spec 에이전트**가 자동으로 생성합니다. �
 id: SPEC-AUTH-001               # 고유 식별자
 title: 사용자 인증 시스템         # 명확하고 간결한 제목
 priority: HIGH                  # HIGH, MEDIUM, LOW
-status: ACTIVE                  # DRAFT, ACTIVE, IN_PROGRESS, COMPLETED
+status: draft                   # draft, in-progress, implemented, completed
 created: 2025-01-12             # 생성일
 updated: 2025-01-12             # 최종 수정일
 author: 개발팀                   # 작성자
@@ -409,20 +411,20 @@ flowchart TD
 
 ```mermaid
 flowchart TD
-    Start(( )) -->|"/moai plan 실행"| DRAFT["DRAFT\n작성 중"]
-    DRAFT -->|"검토 완료"| ACTIVE["ACTIVE\n승인 완료"]
-    ACTIVE -->|"/moai run 실행"| IN_PROGRESS["IN_PROGRESS\n구현 중"]
-    IN_PROGRESS -->|"구현 완료"| COMPLETED["COMPLETED\n완료"]
-    ACTIVE -->|"요구사항 거부"| REJECTED["REJECTED\n거부"]
+    Start(( )) -->|"/moai plan 실행"| draft["draft\n작성 중"]
+    draft -->|"/moai run 실행"| in_progress["in-progress\n구현 중"]
+    in_progress -->|"구현 완료"| implemented["implemented\n구현 완료"]
+    implemented -->|"/moai sync 실행"| completed["completed\n완료"]
+    draft -->|"요구사항 거부"| rejected["rejected\n거부"]
 ```
 
-| 상태          | 의미                       | 다음 가능한 상태      |
-| ------------- | -------------------------- | --------------------- |
-| `DRAFT`       | 작성 중, 검토 필요         | ACTIVE, REJECTED      |
-| `ACTIVE`      | 승인 완료, 구현 준비됨     | IN_PROGRESS, REJECTED |
-| `IN_PROGRESS` | 구현 진행 중               | COMPLETED, REJECTED   |
-| `COMPLETED`   | 모든 인수 기준 충족, 완료  | (최종 상태)           |
-| `REJECTED`    | 요구사항 거부, 재작성 필요 | (최종 상태)           |
+| 상태           | 의미                       | 다음 가능한 상태      |
+| -------------- | -------------------------- | --------------------- |
+| `draft`        | 작성 중, 검토 필요         | in-progress, rejected |
+| `in-progress`  | 구현 진행 중               | implemented, rejected |
+| `implemented`  | 구현 완료, 동기화 대기     | completed             |
+| `completed`    | 모든 인수 기준 충족, 완료  | (최종 상태)           |
+| `rejected`     | 요구사항 거부, 재작성 필요 | (최종 상태)           |
 
 ## 실전 예시: JWT 인증 SPEC
 
@@ -442,7 +444,7 @@ flowchart TD
 id: SPEC-AUTH-001
 title: JWT 기반 사용자 인증 시스템
 priority: HIGH
-status: ACTIVE
+status: draft
 created: 2025-01-15
 version: 1.0.0
 ---

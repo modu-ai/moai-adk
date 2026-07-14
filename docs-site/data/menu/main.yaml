@@ -62,6 +62,12 @@ main:
           zh: 快速开始
         ref: /getting-started/quickstart
       - name:
+          ko: 프로젝트 상태
+          en: Project Status
+          ja: プロジェクト状態
+          zh: 项目状态
+        ref: /getting-started/status
+      - name:
           ko: 업데이트
           en: Update
           ja: アップデート
@@ -252,6 +258,18 @@ main:
           zh: /moai codemaps
         ref: /utility-commands/moai-codemaps
       - name:
+          ko: /moai gate
+          en: /moai gate
+          ja: /moai gate
+          zh: /moai gate
+        ref: /utility-commands/moai-gate
+      - name:
+          ko: /moai mx
+          en: /moai mx
+          ja: /moai mx
+          zh: /moai mx
+        ref: /utility-commands/moai-mx
+      - name:
           ko: /moai feedback
           en: /moai feedback
           ja: /moai feedback
@@ -263,6 +281,22 @@ main:
           ja: /moai e2e
           zh: /moai e2e
         ref: /utility-commands/moai-e2e
+
+  - name:
+      ko: 비용 최적화
+      en: Cost Optimization
+      ja: コスト最適化
+      zh: 成本优化
+    ref: /cost-optimization
+    icon: database
+    defaultOpen: true
+    sub:
+      - name:
+          ko: 프롬프트 캐싱
+          en: Prompt Caching
+          ja: プロンプトキャッシング
+          zh: 提示词缓存
+        ref: /cost-optimization/prompt-caching
 
   - name:
       ko: 멀티 LLM

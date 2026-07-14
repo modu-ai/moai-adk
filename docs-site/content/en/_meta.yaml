@@ -13,9 +13,12 @@
 "utility-commands":
   title: "Utility Commands"
   weight: 40
-design:
-  title: "Design System"
-  weight: 60
+"cost-optimization":
+  title: "Cost Optimization"
+  weight: 50
+guides:
+  title: "Guides"
+  weight: 85
 worktree:
   title: "Git Worktree"
   weight: 90

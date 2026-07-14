@@ -4,285 +4,179 @@ weight: 25
 draft: false
 ---
 
-プロジェクトのアクティブセッション、ワークツリー、ハーネスを照会する `moai inventory` コマンドを案内します。
+現在のプロジェクトのアクティブセッション、ワークツリー、ハーネスを一目で照会する `moai inventory` コマンドを案内します。
 
 {{< callout type="info" >}}
-**一言要約**: `moai inventory` は、現在のプロジェクトのすべてのアクティブな資源(セッション、ワークツリー、ハーネス)を一目で照会します。
+**一行要約**: `moai inventory` は現在のプロジェクトのアクティブリソース (セッション、ワークツリー、ハーネス) を読み取り専用で照会します。`--json` で構造化された出力を受け取ってスクリプトに活用できます。
 {{< /callout >}}
 
 ## 概要
 
-`moai inventory` は読み取り専用のコマンドで、現在のプロジェクト状態の **統合インベントリ** を提供します。並列セッションや worktree を複数走らせていると「今、何が動いているんだっけ?」を一度に確認できる場所が必要になりますが、その答えがこのコマンドです。
+`moai inventory` は読み取り専用コマンドで、並列セッションとワークツリーを複数運用するときに「今、何が動いているか?」を一度に確認する統合ビューを提供します。
 
 ### 照会対象
 
-| 資源 | 説明 | 場所 |
-|------|------|------|
-| **Active Sessions** | 現在実行中の Claude Code セッション | `.moai/state/active-sessions.json` |
-| **Worktrees** | プロジェクト用の L2/L3 分離ブランチ | `~/.moai/worktrees/<project>/` |
-| **Harnesses** | 生成された動的エージェントチーム | `.moai/harness/manifest.json` |
-| **SPEC Progress** | アクティブな SPEC の進行状態 | `.moai/specs/SPEC-*/progress.md` |
+| リソース | 説明 | データソース |
+|------|------|------------|
+| **Sessions** | アクティブな Claude Code セッション | `.moai/state/active-sessions.json` |
+| **Worktrees** | プロジェクト用の Git ワークツリー | Git worktree 一覧 |
+| **Harnesses** | 登録されたハーネス | `.moai/harness/` マニフェスト |
 
 ## コマンド形式
 
 ```bash
-moai inventory [options]
+moai inventory [OPTIONS]
 ```
 
-### 基本の使い方
+### フラグ
+
+| フラグ | 説明 |
+|------|------|
+| `--json` | 構造化された JSON 出力 (マシンリーダブル) |
+| `--project-root <path>` | プロジェクトルートパス (デフォルト値: 現在のディレクトリ) |
+
+このコマンドは上記 2 つのフラグのみをサポートします。フィルタリングや詳細モードのフラグはありません — 必要な加工は `--json` 出力を `jq` などで処理します。
+
+## 基本的な使用
 
 ```bash
 moai inventory
 ```
 
-既定のテキスト形式でインベントリを出力します。
+テキスト形式でセッション・ワークツリー・ハーネスの要約を出力します。
 
-### JSON 形式での出力
+## JSON 形式出力
 
 ```bash
 moai inventory --json
 ```
 
-構造化された JSON で出力し、自動分析に活用できます。
+構造化された JSON で出力し、自動分析や CI スクリプトに活用できます。
 
-### フィルタリング
+## JSON スキーマ
 
-特定の資源タイプのみ照会:
-
-```bash
-moai inventory --type sessions
-moai inventory --type worktrees
-moai inventory --type harnesses
-moai inventory --type specs
-```
-
-### 詳細情報
-
-各資源の追加情報を含める:
-
-```bash
-moai inventory --verbose
-moai inventory --verbose --json
-```
-
-## テキスト形式の出力
-
-### 基本出力の例
-
-```
-MOAI Inventory for moai-adk-go
-Project Root: /path/to/your-project
-Updated: 2026-07-01T10:15:00Z
-
-========== ACTIVE SESSIONS ==========
-Session ID                              Branch        SPEC ID            Status
-edc25996-04cb-4139-b2f6-c2968e7337db    main          SPEC-DOCS-001      in-progress
-a1b2c3d4-e5f6-7890-1234-567890abcdef    feat/auth     SPEC-AUTH-002      run-phase
-
-========== WORKTREES ==========
-Name                    Branch              Created        Status
-SPEC-DOCS-001          docs/rebuild        2026-07-01     active
-SPEC-AUTH-002          feat/auth            2026-07-01     active
-
-========== HARNESSES ==========
-Name                    Version    Teammates    Worktree Isolation    Status
-backend-team            1.0.0      3            L1_optional           active
-frontend-team           1.0.0      2            none                  active
-
-========== ACTIVE SPECS ==========
-SPEC ID                 Status          Phase      Owner           Progress
-SPEC-DOCS-001          in-progress     run        manager-develop  M3/6
-SPEC-AUTH-002          in-progress     run        manager-develop  M2/5
-```
-
-### 詳細情報 (`--verbose`)
-
-```
-========== ACTIVE SESSIONS (VERBOSE) ==========
-
-Session: edc25996-04cb-4139-b2f6-c2968e7337db
-  Created:     2026-06-29T14:30:00Z
-  Last Update: 2026-07-01T10:15:00Z
-  Branch:      main
-  SPEC ID:     SPEC-DOCS-001
-  Status:      in-progress (running M3)
-  Context:     ~145K / 200K tokens (73%)
-  Model:       claude-haiku-4-5
-  Resume:      available (.moai/specs/SPEC-DOCS-001/progress.md)
-
-========== WORKTREES (VERBOSE) ==========
-
-Worktree: SPEC-DOCS-001
-  Path:         ~/.moai/worktrees/moai-adk-go/SPEC-DOCS-001
-  Base Branch:  main (origin/main)
-  Created:      2026-07-01T08:00:00Z
-  Session:      edc25996-04cb-4139-b2f6-c2968e7337db
-  Files Modified: 7
-  Files Created:  4
-  Commits:       2
-```
-
-## JSON 形式の出力
-
-### スキーマ
+`--json` 出力のトップレベル構造は 3 つのセクションで構成されます。
 
 ```json
 {
-  "inventory": {
-    "project_root": "/path/to/your-project",
-    "timestamp": "2026-07-01T10:15:00Z",
-    "sessions": [...],
-    "worktrees": [...],
-    "harnesses": [...],
-    "specs": [...]
-  }
+  "sessions": { ... },
+  "worktrees": { ... },
+  "harnesses": { ... }
 }
 ```
 
-### Session オブジェクト
+各セクションは `count`、`entries`、そしてオプションの `error` フィールドを持ちます。
+
+### Session エントリ
 
 ```json
 {
-  "session_id": "edc25996-04cb-4139-b2f6-c2968e7337db",
-  "created_at": "2026-06-29T14:30:00Z",
-  "branch": "main",
+  "session_id": "edc25996",
   "spec_id": "SPEC-DOCS-001",
-  "status": "in-progress",
-  "context_usage": {
-    "current": 145000,
-    "total": 200000,
-    "percentage": 72.5
-  },
-  "model": "claude-haiku-4-5",
-  "resume_available": true
+  "phase": "run"
 }
 ```
 
-### Worktree オブジェクト
+| フィールド | 説明 |
+|------|------|
+| `session_id` | セッション ID (短縮形、最初の 8 文字) |
+| `spec_id` | 連携された SPEC ID |
+| `phase` | 現在の Phase (`plan`, `run`, `sync`, `mx`) |
+
+### Worktree エントリ
 
 ```json
 {
-  "name": "SPEC-DOCS-001",
-  "path": "~/.moai/worktrees/moai-adk-go/SPEC-DOCS-001",
-  "base_branch": "main",
-  "created_at": "2026-07-01T08:00:00Z",
-  "session_id": "edc25996-04cb-4139-b2f6-c2968e7337db",
-  "status": "active",
-  "files_modified": 7,
-  "files_created": 4,
-  "commits": 2
+  "branch": "feat/auth",
+  "path": "/home/user/.moai/worktrees/project/SPEC-AUTH-001",
+  "head": "a1b2c3d4"
 }
 ```
 
-### Harness オブジェクト
+| フィールド | 説明 |
+|------|------|
+| `branch` | ワークツリーのブランチ名 |
+| `path` | ワークツリーのファイルシステムパス |
+| `head` | HEAD コミットハッシュ (短縮形、最初の 8 文字) |
+
+### Harness エントリ
 
 ```json
 {
   "name": "backend-team",
-  "version": "1.0.0",
-  "created_at": "2026-07-01T10:00:00Z",
-  "teammates": 3,
-  "worktree_isolation": "L1_optional",
-  "status": "active",
-  "manifest_path": ".moai/harness/manifest.json"
+  "domain": "backend",
+  "manifest_missing": false
 }
 ```
 
-### SPEC オブジェクト
+| フィールド | 説明 |
+|------|------|
+| `name` | ハーネス名 |
+| `domain` | ハーネスドメイン |
+| `manifest_missing` | マニフェストファイルの欠落有無 (`true` なら設定が不完全) |
+
+### 全出力例
 
 ```json
 {
-  "spec_id": "SPEC-DOCS-001",
-  "title": "Documentation v3 Rebuild",
-  "status": "in-progress",
-  "phase": "run",
-  "current_milestone": 3,
-  "total_milestones": 6,
-  "owner": "manager-develop",
-  "progress_file": ".moai/specs/SPEC-DOCS-001/progress.md",
-  "created_at": "2026-06-20T09:00:00Z"
+  "sessions": {
+    "count": 2,
+    "entries": [
+      { "session_id": "edc25996", "spec_id": "SPEC-DOCS-001", "phase": "run" },
+      { "session_id": "a1b2c3d4", "spec_id": "SPEC-AUTH-002", "phase": "plan" }
+    ]
+  },
+  "worktrees": {
+    "count": 1,
+    "entries": [
+      { "branch": "feat/auth", "path": "/home/user/.moai/worktrees/project/SPEC-AUTH-001", "head": "a1b2c3d4" }
+    ]
+  },
+  "harnesses": {
+    "count": 1,
+    "entries": [
+      { "name": "backend-team", "domain": "backend", "manifest_missing": false }
+    ]
+  }
 }
 ```
 
 ## 実用的な使用例
 
-### 1. マルチセッション競合の検知
+### 1. 多重セッション競合の検出
+
+同じ SPEC を扱うセッションが 2 つ以上あれば競合のリスクがあります。
 
 ```bash
-moai inventory --type sessions
-
-# 出力で同じ SPEC を扱うセッションが 1 つより多い場合 → 競合リスク
+moai inventory --json | jq '[.sessions.entries[] | .spec_id] | group_by(.) | map(select(length > 1))'
 ```
 
-### 2. Worktree の整理確認
+### 2. アクティブなワークツリーブランチ一覧
 
 ```bash
-moai inventory --type worktrees --verbose
-
-# 古い worktree を確認して整理
-moai worktree remove <name>
+moai inventory --json | jq -r '.worktrees.entries[].branch'
 ```
 
-### 3. Harness チームの一覧照会
+### 3. マニフェスト欠落ハーネスを探す
+
+`manifest_missing: true` のハーネスは設定が不完全な状態です。
 
 ```bash
-moai inventory --type harnesses --json | jq '.inventory.harnesses[] | {name, teammates, status}'
-
-# 期待される出力:
-# {
-#   "name": "backend-team",
-#   "teammates": 3,
-#   "status": "active"
-# }
+moai inventory --json | jq '.harnesses.entries[] | select(.manifest_missing)'
 ```
 
-### 4. アクティブ SPEC の進捗追跡
+### 4. 現在進行中の Phase 分布
 
 ```bash
-moai inventory --type specs | grep in-progress
-
-# 現在進行中のすべての SPEC を確認
+moai inventory --json | jq '[.sessions.entries[].phase] | group_by(.) | map({phase: .[0], count: length})'
 ```
-
-### 5. 自動化スクリプトでの使用
-
-```bash
-#!/bin/bash
-# Worktree 自動整理スクリプト
-
-moai inventory --type worktrees --json | jq -r '.inventory.worktrees[] | select(.status == "stale") | .name' | while read name; do
-  echo "Removing stale worktree: $name"
-  moai worktree remove "$name"
-done
-```
-
-## 出力の読み方
-
-### Status フィールド
-
-| Status | 意味 |
-|--------|------|
-| `active` | 現在使用中 |
-| `idle` | 一時停止 (セッションが明示的に一時停止状態) |
-| `stale` | 未使用 (7日以上アクセスなし) |
-| `error` | エラー状態 (確認が必要) |
-
-### Phase フィールド
-
-| Phase | 説明 |
-|-------|------|
-| `plan` | Plan フェーズ実行中 |
-| `run` | Run フェーズ実行中 |
-| `sync` | Sync フェーズ実行中 |
-| `completed` | 完了状態 |
 
 ## 関連ドキュメント
 
-- [SPEC ベース開発](/workflow-commands/moai-plan) - SPEC のライフサイクル
-- [Worktree 管理](/getting-started/worktree) - Worktree の分離とライフサイクル
-- [Harness v4 Builder](/advanced/builder-agents) - 動的チーム管理
-- [CLI リファレンス](/getting-started/cli) - その他の CLI コマンド
+- [CLI リファレンス](./cli) — すべての CLI コマンド
+- [プロジェクト状態](./status) — `moai status` コマンド
+- [SPEC ベース開発](/ja/workflow-commands/moai-plan) — SPEC ライフサイクル
 
 {{< callout type="info" >}}
-**ヒント**: `moai inventory` は自動整理スクリプトや監視ダッシュボードに活用できます。JSON 形式で自動分析すれば、プロジェクト状態を常に把握できます。
+**ヒント**: `moai inventory --json` はモニタリングダッシュボードと CI スクリプトに活用できます。読み取り専用コマンドなので安全に自動化できます。
 {{< /callout >}}
