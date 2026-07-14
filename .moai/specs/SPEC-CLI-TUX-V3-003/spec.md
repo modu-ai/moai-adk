@@ -1,8 +1,8 @@
 ---
 id: SPEC-CLI-TUX-V3-003
 title: "moai update Decomposition + Change-Preview TUI (CLI TUX v3 — M3)"
-version: "0.1.1"
-status: completed
+version: "0.2.0"
+status: in-progress
 created: 2026-07-13
 updated: 2026-07-14
 author: manager-spec
@@ -15,6 +15,7 @@ era: V3R6
 tier: L
 depends_on: [SPEC-CLI-TUX-V3-001]
 related_specs: [SPEC-CLI-TUX-V3-002]
+amendment_of: SPEC-CLI-TUX-V3-003
 ---
 
 # SPEC-CLI-TUX-V3-003 — `moai update` 분해 + 변경 프리뷰 TUI (CLI TUX 현대화 M3: U-1~U-4)
@@ -25,6 +26,15 @@ related_specs: [SPEC-CLI-TUX-V3-002]
 |---------|------|--------|--------|
 | 0.1.0 | 2026-07-13 | manager-spec | Initial draft — CLI TUX 현대화 계획 보고서(`.moai/reports/moai-cli-tux-modernization-plan-20260710.html`) §4 M3 + §5 U-1~U-4로부터 작성 |
 | 0.1.1 | 2026-07-14 | manager-spec | plan-audit iter-1 delta-fix — D1: AC-TUX3-017 재앵커(indirect 잔존 허용 + first-party importer 실측 = internal/merge 3파일; 브리프의 "internal/cli 테스트 4파일"은 주석/skip 문자열 grep 노이즈로 정정), D2: §F 게이트 AC 번호 교정(M3c ↔ M3e), D3: progress.md §E.2 deferred-design-artifact 기록 의무 노트, D4: AC-TUX3-005 --stat → full-diff 증거 |
+
+## Amendments
+
+In-place amendment reopening the completed SPEC for AC-TUX3-018 coverage completion only.
+
+- **Prior completed version**: `0.1.1`
+- **prior_completed_sha**: `5ddb73f04`
+- **Rationale**: AC-TUX3-018 deploy/backup subpackage coverage completion (error-handling test hardening to ≥85% target — internal/cli/update/deploy at 74.7% and internal/cli/update/backup at 75.2% at close). AC-TUX3-020 (fmt.Print* ratchet hold / Printer migration) is split to a separate SPEC and explicitly excluded from this amendment's scope (progress.md §E.2 documents the larger Printer-migration follow-up).
+- **Amendment scope (affected AC)**: AC-TUX3-018 ONLY (internal/cli/update/{deploy,backup} subpackage error-handling paths). AC-TUX3-020 EXCLUDED.
 
 ## §A Context
 
