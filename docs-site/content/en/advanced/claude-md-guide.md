@@ -108,7 +108,7 @@ MoAI-ADK consists of **11 retained agents** (10 MoAI-custom + 1 Anthropic built-
 | Evaluator (2) | plan-auditor, sync-auditor | Independent quality assessment at plan/completion stages |
 | Builder (1) | builder-harness | Dynamic per-project harness generation |
 | Advisor (1) | super-advisor | High-reasoning consultation (E1-E4 escalation) |
-| Specialist (1) | e2e-specialist | E2E test execution across web/mobile/desktop |
+| Specialist (1) | e2e-tester | E2E test execution across web/mobile/desktop |
 | Built-in (1) | Explore (Anthropic) | Read-only codebase exploration |
 
 ### 5. SPEC Workflow

@@ -62,17 +62,17 @@ Evolution prose extended in ALL 4 locales of agent-guide.md (ko `10**으로`/ja 
 
 ### Enumeration-surface classification (CMD-C applicability, per REQ-DSE-103)
 
-| File family | Classification | e2e-specialist insertion |
+| File family | Classification | e2e-tester insertion |
 |-------------|----------------|--------------------------|
 | advanced/agent-guide.md ×4 | ENUMERATION (full catalog guide) | `### Specialist` section + table row + file-tree entry (grep-c = 2/locale) |
 | claude-code/agentic/sub-agents.md ×4 | ENUMERATION (role prose L155) | named in role enumeration (1/locale) |
-| getting-started/introduction.md ×4 | ENUMERATION (category table) | `Specialist | 1 | e2e-specialist` row (1/locale) |
+| getting-started/introduction.md ×4 | ENUMERATION (category table) | `Specialist | 1 | e2e-tester` row (1/locale) |
 | getting-started/faq.md ×4 | ENUMERATION (tier-assignment tables) | named in session-model prose grounded in `model: inherit` frontmatter (1/locale) |
 | advanced/claude-md-guide.md ×4 | ENUMERATION (category table) | `Specialist (1)` row (1/locale) |
 | core-concepts/what-is-moai-adk.md ×4 | ENUMERATION (table + mermaid) | table row + `Specialist` mermaid subgraph (2/locale) |
 | advanced/builder-agents.md ×4 | COUNT-ONLY (catalog referenced in contrast to harness) | none — 0 is correct |
 | core-concepts/harness-engineering.md ×4 | COUNT-ONLY (pillar-table cell) | none — 0 is correct |
-| multi-llm/model-policy.md ×4 | COUNT-ONLY (catalog count sentence; assignment table is an explicit 7-agent policy subset, and e2e-specialist is `model: inherit`, not tier-assigned) | none — 0 is correct |
+| multi-llm/model-policy.md ×4 | COUNT-ONLY (catalog count sentence; assignment table is an explicit 7-agent policy subset, and e2e-tester is `model: inherit`, not tier-assigned) | none — 0 is correct |
 | workflow-commands/moai-harness.md ×4 | COUNT-ONLY (related-docs link text) | none — 0 is correct |
 | layouts/index.html | COUNT-ONLY stat row (REQ-DSE-105) | none — grep-c = 0 is the CORRECT result per audit D6 |
 

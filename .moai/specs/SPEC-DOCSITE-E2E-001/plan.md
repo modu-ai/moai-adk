@@ -6,7 +6,7 @@
 
 - **Provenance**: deferred follow-up of SPEC-E2E-REVIVAL-001 (completed, sync push `4cef092b7`). Deferral clause: its spec.md §E "Out of Scope — docs-site 4-locale documentation and count-literal corrections".
 - **Write scope**: `docs-site/**` + this SPEC directory ONLY. Zero Go, zero template tree, zero doctrine tree.
-- **Content source of truth (run-phase re-read)**: `.claude/skills/moai/workflows/e2e.md` (workflow phases: Detection → Selection → Journey Mapping → Script Creation → Execution → Recording → Report), `.claude/agents/moai/e2e-specialist.md`, `.claude/commands/moai/e2e.md`. Do NOT author page content from this SPEC's summary prose — re-read the live artifacts.
+- **Content source of truth (run-phase re-read)**: `.claude/skills/moai/workflows/e2e.md` (workflow phases: Detection → Selection → Journey Mapping → Script Creation → Execution → Recording → Report), `.claude/agents/moai/e2e-tester.md`, `.claude/commands/moai/e2e.md`. Do NOT author page content from this SPEC's summary prose — re-read the live artifacts.
 - **Structure decisions already measured** (spec.md §A.2): section = `utility-commands`; path = `content/{locale}/utility-commands/moai-e2e.md`; menu = sub-entry in existing utility-commands section (no icon, no menu.html change); `_meta.yaml` entry × 4; frontmatter = `title: /moai e2e` + shared weight + `draft: false`; canonical authoring locale = **ko** (chain ko → en → ja/zh per `.moai/docs/docs-site-i18n-rules.md` §17.3).
 - **Plan-phase measured baselines** (spec.md §A.1): Ring A 10 files/12 matches; Ring A′ 14 matches (≥1 false positive: `agent-view.md` parallelism prose); Ring B ko 19 / ja 19 / zh 21; Ring B′ (widened D1 any-gap pattern) ko 9 / ja 9 / zh 9. ALL baselines re-measured at run-phase pre-flight (REQ-DSE-104) — the surface moves.
 
@@ -27,7 +27,7 @@
 - **P2 Pre-spawn sync check**: `git fetch origin main` + `git rev-list --count --left-right origin/main...HEAD` + `moai session list --json --filter-spec=SPEC-DOCSITE-E2E-001` per agent-common-protocol.md § Pre-Spawn Sync Check.
 - **P3 Baseline re-measurement (REQ-DSE-104)**: run CMD-PRE-1..4 (acceptance.md § Executable Command Block); record the reconciled inventory (files + counts + per-match catalog-count/false-positive classification) in progress.md §E.2 BEFORE editing.
 - **P4 Hugo baseline**: `cd docs-site && hugo --minify` — capture warning/exit baseline (B5).
-- **P5 Content-source read**: Read `.claude/skills/moai/workflows/e2e.md`, `.claude/agents/moai/e2e-specialist.md`, `.claude/commands/moai/e2e.md` in full.
+- **P5 Content-source read**: Read `.claude/skills/moai/workflows/e2e.md`, `.claude/agents/moai/e2e-tester.md`, `.claude/commands/moai/e2e.md` in full.
 - **P6 Sibling weight scan**: `grep -H "^weight:" docs-site/content/en/utility-commands/*.md` (B6).
 
 ## §D Constraints (DO NOT VIOLATE)
@@ -44,7 +44,7 @@ Per verification-claim-integrity.md §3 (Claim / Evidence / Baseline-attribution
 - **E1**: AC-DSE-001..020 binary PASS/FAIL matrix with verbatim command outputs (CMD block IDs cited).
 - **E2**: `hugo --minify` exit code + warning delta vs P4 baseline + `public/sitemap.xml` existence.
 - **E3**: Ring invariance grep outputs (CMD-A, CMD-B family) — expect 0 outside documented false positives; false-positive list enumerated verbatim.
-- **E4**: Reachability outputs (CMD-C e2e-specialist enumeration per file; CMD-E menu; CMD-G built-site nav).
+- **E4**: Reachability outputs (CMD-C e2e-tester enumeration per file; CMD-E menu; CMD-G built-site nav).
 - **E5**: 4-locale parity outputs (CMD-D existence + meta; H2 section-count parity per locale).
 - **E6**: Commit SHA list + push state + confirmation that every commit was pathspec-scoped (`git show --stat` per commit).
 - **E7**: `moai spec lint .moai/specs/SPEC-DOCSITE-E2E-001/spec.md` → 0 errors (a `StatusGitConsistency` WARNING is structural until sync close — expected, do not chase; do NOT add `lint.skip`).
@@ -68,7 +68,7 @@ Per verification-claim-integrity.md §3 (Claim / Evidence / Baseline-attribution
 
 ### M4 — Count-literal normalization sweep (mechanical)
 - Apply the P3 reconciled inventory: Ring A (12 English ERE matches → 11/10 forms), Ring A′ (catalog-count matches only; extend `22 → 17 → 8 → 10` → `… → 11`; skip documented false positives), Ring B/B′ (locale-language forms per-locale), `layouts/index.html` stat row → 11.
-- Enumeration reachability (REQ-DSE-103): insert a real `e2e-specialist` entry into each catalog-enumeration surface (B7) — table row / role prose / list item as the surface's local structure dictates, all 4 locales where the surface exists per-locale.
+- Enumeration reachability (REQ-DSE-103): insert a real `e2e-tester` entry into each catalog-enumeration surface (B7) — table row / role prose / list item as the surface's local structure dictates, all 4 locales where the surface exists per-locale.
 - Priority: Medium (mechanical; large file count but single transform intent).
 
 ### M5 — Verification & close
@@ -78,7 +78,7 @@ Per verification-claim-integrity.md §3 (Claim / Evidence / Baseline-attribution
 
 ## §G Anti-Patterns
 
-- Bumping a count literal without naming `e2e-specialist` in the adjacent enumeration (token presence ≠ reachability — REQ-DSE-103).
+- Bumping a count literal without naming `e2e-tester` in the adjacent enumeration (token presence ≠ reachability — REQ-DSE-103).
 - Blind `sed` across locales (per-file judgment mandated; ja/zh spacing conventions differ — e.g. ja `10 個の` with spaces).
 - Authoring en first (ko is canonical — §17.3).
 - Landing ko-only / partial locales (same-commit-set obligation).

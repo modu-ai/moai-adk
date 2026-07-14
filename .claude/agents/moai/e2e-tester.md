@@ -1,5 +1,5 @@
 ---
-name: e2e-specialist
+name: e2e-tester
 description: |
   End-to-end test execution specialist for web, mobile, and desktop applications.
   Owns project-type detection probes, toolchain probing and installation, user-journey

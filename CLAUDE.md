@@ -76,7 +76,7 @@ The MoAI agent catalog consists of exactly **11 retained agents** (10 MoAI-custo
 9. Dynamic specialist generation (project-specific harness)? Use the `builder-harness` subagent
 10. On-demand high-reasoning consultation / second opinion (E1-E4 escalation)? Use the `super-advisor` subagent
 11. Design-phase collaboration (Claude Design bidirectional sync, UI-surfaced SPECs)? Use the `manager-design` subagent
-12. E2E test execution across web/mobile/desktop (journey scripting, CLI-first suite runs)? Use the `e2e-specialist` subagent
+12. E2E test execution across web/mobile/desktop (journey scripting, CLI-first suite runs)? Use the `e2e-tester` subagent
 
 ### Retained Agents (11 total)
 
@@ -91,7 +91,7 @@ The MoAI agent catalog consists of exactly **11 retained agents** (10 MoAI-custo
 | `builder-harness` | builder | Dynamic project-specific harness specialist generation | `.claude/agents/moai/builder-harness.md` |
 | `super-advisor` | meta/advisor | On-demand high-reasoning consultation (non-binding prescriptions, E1-E4 escalation) | `.claude/agents/moai/super-advisor.md` |
 | `manager-design` | core/manager | Design-phase collaboration (Claude Design bidirectional sync, D1-D5 pipeline) | `.claude/agents/moai/manager-design.md` |
-| `e2e-specialist` | core/specialist | E2E test execution (web/mobile/desktop journey scripting, CLI-first runs, artifact management) | `.claude/agents/moai/e2e-specialist.md` |
+| `e2e-tester` | core/specialist | E2E test execution (web/mobile/desktop journey scripting, CLI-first runs, artifact management) | `.claude/agents/moai/e2e-tester.md` |
 | `Explore` | Anthropic built-in | Read-only codebase exploration (no MoAI file — invoked directly) | claude.com/docs/en/sub-agents |
 
 ### Archived Agents (legacy references rejected at spawn)

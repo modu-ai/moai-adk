@@ -108,7 +108,7 @@ MoAI-ADK は **11 個の保持エージェント** (10 個の MoAI-custom + 1 �
 | Evaluator (2) | plan-auditor, sync-auditor | 計画/完了フェーズの独立品質評価 |
 | Builder (1) | builder-harness | 動的なプロジェクト別ハーネス生成 |
 | Advisor (1) | super-advisor | 高推論コンサルティング (E1-E4 エスカレーション) |
-| Specialist (1) | e2e-specialist | ウェブ/モバイル/デスクトップの E2E テスト実行 |
+| Specialist (1) | e2e-tester | ウェブ/モバイル/デスクトップの E2E テスト実行 |
 | Built-in (1) | Explore (Anthropic) | 読み取り専用のコードベース探索 |
 
 ### 5. SPEC ワークフロー

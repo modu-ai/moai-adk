@@ -10,15 +10,15 @@ moai SKILL.md Intent Router (Priority 1: **e2e** row)
    │
    ▼
 workflow skill: .claude/skills/moai/workflows/e2e.md   ← orchestrator-facing playbook
-   │  Phase 0   detection (delegated: e2e-specialist, read-only probe)
+   │  Phase 0   detection (delegated: e2e-tester, read-only probe)
    │  Phase 0.5 selection (ORCHESTRATOR AskUserQuestion — never the agent)
-   │  Phase 1   journey mapping (e2e-specialist)
-   │  Phase 2   script creation (e2e-specialist)
-   │  Phase 3   execution (e2e-specialist, CLI-first)
-   │  Phase 4   recording — optional (e2e-specialist, native facility)
+   │  Phase 1   journey mapping (e2e-tester)
+   │  Phase 2   script creation (e2e-tester)
+   │  Phase 3   execution (e2e-tester, CLI-first)
+   │  Phase 4   recording — optional (e2e-tester, native facility)
    │  Phase 5   report (orchestrator, conversation_language)
    ▼
-agent: .claude/agents/moai/e2e-specialist.md           ← execution owner
+agent: .claude/agents/moai/e2e-tester.md           ← execution owner
    │  returns: bounded results + artifact paths | blocker report
    ▼
 project artifacts: e2e/{*.spec.*, flows/*.yaml, traces/, recordings/, screenshots/}
@@ -59,13 +59,13 @@ Recommendation modifiers (inherited from retired baseline, re-grounded):
 - explicit perf/Lighthouse ask → chrome-devtools-mcp becomes the recommended row FOR THAT CAPABILITY only
 - All questions ride the orchestrator's AskUserQuestion; first option carries the locale-appropriate Recommended label; descriptions carry install-state + factual trade-offs (bias-prevention rule).
 
-## §D e2e-specialist Agent Contract
+## §D e2e-tester Agent Contract
 
 Frontmatter draft (template-neutral prose; final wording at M1):
 
 ```yaml
 ---
-name: e2e-specialist
+name: e2e-tester
 description: |
   End-to-end test execution specialist for web, mobile, and desktop applications.
   Owns toolchain probing, journey script authoring, CLI-first test execution with
@@ -92,13 +92,13 @@ Contract points:
 
 ## §E Workflow Skill Design (delta vs retired baseline)
 
-Frontmatter: `user-invocable: false`; triggers keywords (e2e, end-to-end, browser test, mobile test, maestro, playwright, user journey…); `agents: ["e2e-specialist"]`; fresh version lineage.
+Frontmatter: `user-invocable: false`; triggers keywords (e2e, end-to-end, browser test, mobile test, maestro, playwright, user journey…); `agents: ["e2e-tester"]`; fresh version lineage.
 
 | Phase | Retired (web-only) | Revived |
 |-------|--------------------|---------|
 | 0 | tool detection (4 web tools) | PROJECT-TYPE detection first (§B), then per-platform toolchain probe |
 | 0.5 | AskUserQuestion tool selection | unchanged pattern; per-surface questions on `mixed`; `--tool` bypass |
-| 1 | journey mapping via manager-develop | journey mapping via e2e-specialist; journey format inherited |
+| 1 | journey mapping via manager-develop | journey mapping via e2e-tester; journey format inherited |
 | 2 | script creation (spec.ts / agent tasks) | + Maestro flow YAML, Appium/WDIO specs, `_electron` fixtures, tauri-service config |
 | 3 | execution (CLI or MCP) | CLI-first [HARD]; MCP escalation ladder; bounded-tail output contract |
 | 4 | recording (traces/GIF) | native facilities only; MCP screenshot-loop recording removed |
@@ -106,7 +106,7 @@ Frontmatter: `user-invocable: false`; triggers keywords (e2e, end-to-end, browse
 
 Flags: inherit all 8 retired flags; `--browser` applies to web only; add `--platform web|mobile|desktop` (forces classification when markers ambiguous).
 
-Delegation directives: Phases 0, 1, 2, 3, 4 each carry "Delegate to the e2e-specialist subagent" (AC-E2E-016 requires ≥3 named references; design places 5).
+Delegation directives: Phases 0, 1, 2, 3, 4 each carry "Delegate to the e2e-tester subagent" (AC-E2E-016 requires ≥3 named references; design places 5).
 
 ## §F Token-Minimization Protocol (embedded in agent body as [HARD])
 
@@ -120,7 +120,7 @@ Delegation directives: Phases 0, 1, 2, 3, 4 each carry "Delegate to the e2e-spec
 
 Order of operations (single logical change-set; M1→M4):
 1. Template tree: agent → workflow → command (`.md.tmpl` replicating sibling render pattern)
-2. `catalog.yaml`: manual `core.agents` entry — `name: e2e-specialist / tier: core / path: templates/.claude/agents/moai/e2e-specialist.md / hash: <placeholder> / version: 1.0.0`
+2. `catalog.yaml`: manual `core.agents` entry — `name: e2e-tester / tier: core / path: templates/.claude/agents/moai/e2e-tester.md / hash: <placeholder> / version: 1.0.0`
 3. CI constants: `expectedAgentCount` 9→10 (+ ledger comment), `expectedTotal` 37→38 (+ comment); `expectedSkillCount` untouched
 4. `make build` → gen-catalog-hashes `--all` fills the real hash + refreshes the changed moai-skill hash; binary re-embeds
 5. Local sync: byte-identical copies for agent + workflow; rendered command; SKILL.md + CLAUDE.md edits applied to BOTH trees in the same commit

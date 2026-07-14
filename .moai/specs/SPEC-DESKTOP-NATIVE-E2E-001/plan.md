@@ -17,8 +17,8 @@
 |---|------|--------------|
 | 1 | `.claude/skills/moai/workflows/e2e.md` | Detection Matrix row rework, graceful-exit rework, flags, Tool Matrix + probe-table rows, Execution Summary |
 | 2 | `internal/template/templates/.claude/skills/moai/workflows/e2e.md` | byte-identical mirror of #1 |
-| 3 | `.claude/agents/moai/e2e-specialist.md` | `### desktop-native` stub → per-OS recipes; artifact-conventions row |
-| 4 | `internal/template/templates/.claude/agents/moai/e2e-specialist.md` | byte-identical mirror of #3 |
+| 3 | `.claude/agents/moai/e2e-tester.md` | `### desktop-native` stub → per-OS recipes; artifact-conventions row |
+| 4 | `internal/template/templates/.claude/agents/moai/e2e-tester.md` | byte-identical mirror of #3 |
 | 5 | `internal/template/templates/.claude/commands/moai/e2e.md.tmpl` | argument-hint `--platform` + `desktop-native` |
 | 6 | `.claude/commands/moai/e2e.md` | same argument-hint delta (render-pattern parity, NOT byte parity) |
 
@@ -58,7 +58,7 @@ git branch --show-current && git rev-parse HEAD
 
 # P2. Re-measure byte-parity of both pairs (must be exit 0 before editing)
 diff -q .claude/skills/moai/workflows/e2e.md internal/template/templates/.claude/skills/moai/workflows/e2e.md
-diff -q .claude/agents/moai/e2e-specialist.md internal/template/templates/.claude/agents/moai/e2e-specialist.md
+diff -q .claude/agents/moai/e2e-tester.md internal/template/templates/.claude/agents/moai/e2e-tester.md
 
 # P3. Re-measure the deferral-family baseline (expect skill=3, agent=1 per tree; if drifted, re-derive)
 grep -cE "deferral notice|deferred to a follow-up|not yet provided|no opt-in automation path|not provided by this agent" \
@@ -109,7 +109,7 @@ The user-facing routing surface: what the Detection Matrix row claims, how the g
 - Add the host-OS/declarative-recipe rule (REQ-DNE-009) near Phase 0; drop the Execution Summary deferral mention (REQ-DNE-008).
 - Edit the LOCAL file first for review, then mirror byte-identically to the template sibling (or edit both in lockstep) — pair parity is checked in M4.
 
-### M2 — e2e-specialist per-OS recipes (toolchain-content decisions)
+### M2 — e2e-tester per-OS recipes (toolchain-content decisions)
 
 - Replace the `### desktop-native` stub with three OS subsections per §A.2 of spec.md: macOS (axcli pinned default + appium-mac2/WDIO fallback + TCC prerequisite, REQ-DNE-101..103), Windows declarative (FlaUI.WebDriver pinned + `GET /status` probe; pywinauto fallback, REQ-DNE-104/105), Linux declarative (dogtail 2.x + AT-SPI2 prerequisites + Qt env + Wayland caveat; ydotool/xdotool + screenshot-verify fallback, REQ-DNE-106/107).
 - Add the last-resort section: AX-tree snapshot loop + computer-use screenshot-loop cost caveat (REQ-DNE-108) and the token-cost ordering + bounded-tail wiring (REQ-DNE-110).

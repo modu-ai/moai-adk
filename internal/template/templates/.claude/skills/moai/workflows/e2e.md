@@ -23,7 +23,7 @@ progressive_disclosure:
 # MoAI Extension: Triggers
 triggers:
   keywords: ["e2e", "end-to-end", "e2e test", "browser test", "mobile test", "desktop test", "playwright", "maestro", "user journey"]
-  agents: ["e2e-specialist"]
+  agents: ["e2e-tester"]
   phases: ["e2e"]
 ---
 
@@ -33,7 +33,7 @@ Purpose: Create and run end-to-end tests that validate complete user flows throu
 
 Flow: Detection → Selection → Journey Mapping → Script Creation → Execution → Recording (optional) → Report
 
-Execution owner: the **e2e-specialist** subagent performs detection probes, journey mapping, script creation, execution, and recording. The ORCHESTRATOR owns every user-facing question in this workflow — the e2e-specialist receives all selections via its spawn prompt and never prompts the user.
+Execution owner: the **e2e-tester** subagent performs detection probes, journey mapping, script creation, execution, and recording. The ORCHESTRATOR owns every user-facing question in this workflow — the e2e-tester receives all selections via its spawn prompt and never prompts the user.
 
 ## Supported Flags
 
@@ -50,13 +50,13 @@ Execution owner: the **e2e-specialist** subagent performs detection probes, jour
 ## Hard Rules — Token Minimization
 
 - [HARD] **CLI-first**: every capability achievable via CLI invocation uses the CLI path. MCP tools are used ONLY for capabilities the selected CLI cannot provide (see the Tool Matrix token-cost column).
-- [HARD] **Bounded output**: the e2e-specialist redirects verbose run output to files under `e2e/.runs/` and surfaces only exit code + bounded tail in context, citing the file path.
+- [HARD] **Bounded output**: the e2e-tester redirects verbose run output to files under `e2e/.runs/` and surfaces only exit code + bounded tail in context, citing the file path.
 - [HARD] **No MCP hard dependency**: every default platform path is fully executable with CLI-only tools. MCP-tier tools are conditional additions, never prerequisites.
 - [HARD] **Artifacts by path**: reports, traces, screenshots, and recordings are persisted under project-local `e2e/` directories and cited by path — never inlined into context.
 
 ## Phase 0: Project-Type Detection
 
-[HARD] Delegate detection to the **e2e-specialist** subagent (read-only marker scan via Glob/Read).
+[HARD] Delegate detection to the **e2e-tester** subagent (read-only marker scan via Glob/Read).
 
 ### Detection Matrix
 
@@ -78,7 +78,7 @@ The marker scan treats all supported project ecosystems equally — detection is
 
 When NO e2e-able surface is detected (for example a pure library with no web/mobile/desktop entry point), report "no e2e target detected" listing the marker evidence consulted, and exit WITHOUT creating any `e2e/` artifacts.
 
-A detected `desktop-native` surface does NOT take this branch: it routes into the desktop-native automation lane — Phase 0.5 toolchain selection over the per-OS accessibility recipes owned by the e2e-specialist agent (axcli on macOS; FlaUI.WebDriver on Windows; dogtail on Linux). The graceful branch remains reserved for genuinely target-less projects.
+A detected `desktop-native` surface does NOT take this branch: it routes into the desktop-native automation lane — Phase 0.5 toolchain selection over the per-OS accessibility recipes owned by the e2e-tester agent (axcli on macOS; FlaUI.WebDriver on Windows; dogtail on Linux). The graceful branch remains reserved for genuinely target-less projects.
 
 ### Host-OS Rule (desktop-native recipes)
 
@@ -86,7 +86,7 @@ The desktop-native lane documents recipes for all three OSes (macOS, Windows, Li
 
 ### Toolchain Probe + Installation
 
-After classification, the e2e-specialist probes the DEFAULT toolchain for each detected platform:
+After classification, the e2e-tester probes the DEFAULT toolchain for each detected platform:
 
 | Toolchain | Version probe | Install command |
 |-----------|---------------|-----------------|
@@ -108,7 +108,7 @@ Missing-toolchain sequence (per selected toolchain):
 
 1. **Probe**: run the version probe. On success, proceed.
 2. **Surface**: on failure, the ORCHESTRATOR presents the exact install command(s) to the user for approval via AskUserQuestion.
-3. **Install**: upon approval, the e2e-specialist performs the installation.
+3. **Install**: upon approval, the e2e-tester performs the installation.
 4. **Re-probe**: re-run the version probe and confirm the version BEFORE Phase 1 begins.
 
 Mobile probes must distinguish "CLI missing" from "no booted device/simulator" — each failure gets its own remedy (install command vs `xcrun simctl boot <device>` / `emulator -avd <name>`).
@@ -121,7 +121,7 @@ If `--tool` is NOT provided: the ORCHESTRATOR presents the toolchain options for
 
 - The first option carries the locale-appropriate Recommended label per the defaults in the Tool Matrix below
 - Every option description states install status (from the Phase 0 probe) + factual trade-offs in neutral language (bias-prevention rule)
-- The e2e-specialist NEVER presents these questions; it receives the final selection via its spawn prompt
+- The e2e-tester NEVER presents these questions; it receives the final selection via its spawn prompt
 
 Recommendation modifiers:
 
@@ -153,7 +153,7 @@ Recommendation modifiers:
 
 Every platform's DEFAULT row is CLI-class. MCP rows are conditional-only: they require `.mcp.json` registration + session restart and are never a prerequisite for the default path.
 
-### MCP Escalation Ladder (embedded in the e2e-specialist as a hard rule)
+### MCP Escalation Ladder (embedded in the e2e-tester as a hard rule)
 
 1. **Rung 1 — CLI + bounded tail**: full output → `e2e/.runs/<timestamp>-<slug>.log`; context gets exit code + bounded tail; log path cited.
 2. **Rung 2 — CLI structured reporters**: JSON-class reporter output parsed selectively (failed specs only) instead of verbose re-runs.
@@ -161,22 +161,22 @@ Every platform's DEFAULT row is CLI-class. MCP rows are conditional-only: they r
 
 ## Phase 1: Journey Mapping
 
-[HARD] Delegate journey mapping to the **e2e-specialist** subagent.
+[HARD] Delegate journey mapping to the **e2e-tester** subagent.
 
 If `--journey` is provided: load the specified journey definition and skip to Phase 2.
 
-Journey discovery (e2e-specialist, read-only):
+Journey discovery (e2e-tester, read-only):
 
 - Read project documentation (`.moai/project/product.md`) for feature descriptions
 - Analyze route definitions (routes.ts, urls.py, router.go, navigation graphs, deep-link manifests) for available paths
 - Identify forms, authentication flows, and CRUD operations
 - Map critical user paths (login, main feature, error handling); for mobile: launch → onboarding → core flow; for desktop: window open → menu actions → dialog flows
 
-The e2e-specialist returns the discovered journey list; the ORCHESTRATOR presents it via AskUserQuestion:
+The e2e-tester returns the discovered journey list; the ORCHESTRATOR presents it via AskUserQuestion:
 
 - Test all journeys (Recommended): most comprehensive coverage, longest execution
 - Select specific journeys: focus on recently changed features
-- Define custom journey: the user describes a flow; the e2e-specialist scripts it from the description
+- Define custom journey: the user describes a flow; the e2e-tester scripts it from the description
 
 Journey Definition Format:
 
@@ -193,7 +193,7 @@ Steps:
 
 ## Phase 2: Script Creation
 
-[HARD] Delegate test script creation to the **e2e-specialist** subagent.
+[HARD] Delegate test script creation to the **e2e-tester** subagent.
 
 Per-toolchain file conventions:
 
@@ -215,7 +215,7 @@ Script quality expectations:
 
 ## Phase 3: Execution
 
-[HARD] Delegate test execution to the **e2e-specialist** subagent — CLI-first, bounded output.
+[HARD] Delegate test execution to the **e2e-tester** subagent — CLI-first, bounded output.
 
 Execution pattern (Rung 1, all CLI toolchains):
 
@@ -234,7 +234,7 @@ npx playwright test e2e/ > e2e/.runs/$(date +%Y%m%d-%H%M%S)-suite.log 2>&1; \
 
 ## Phase 4: Recording (optional)
 
-Applies when `--record` is set. [HARD] Delegate recording to the **e2e-specialist** subagent using the selected toolchain's NATIVE facility — never MCP screenshot loops:
+Applies when `--record` is set. [HARD] Delegate recording to the **e2e-tester** subagent using the selected toolchain's NATIVE facility — never MCP screenshot loops:
 
 | Toolchain | Native facility | Output |
 |-----------|-----------------|--------|
@@ -247,7 +247,7 @@ Recording conventions: descriptive filenames (`login_flow`, `checkout_process`),
 
 ## Phase 5: Report
 
-The ORCHESTRATOR renders the report in the user's conversation_language from the e2e-specialist's return contract (per-journey status, artifact paths, bounded failure excerpts):
+The ORCHESTRATOR renders the report in the user's conversation_language from the e2e-tester's return contract (per-journey status, artifact paths, bounded failure excerpts):
 
 ```markdown
 ## E2E Test Report
@@ -285,18 +285,18 @@ Next steps (ORCHESTRATOR AskUserQuestion): Fix failing tests (Recommended) / Rer
 
 ## Agent Chain Summary
 
-- Phase 0: e2e-specialist (detection probes + toolchain probe/install)
+- Phase 0: e2e-tester (detection probes + toolchain probe/install)
 - Phase 0.5: MoAI orchestrator (AskUserQuestion selection; `--tool` bypass)
-- Phase 1: e2e-specialist (journey mapping)
-- Phase 2: e2e-specialist (script creation)
-- Phase 3: e2e-specialist (CLI-first execution)
-- Phase 4: e2e-specialist (native-facility recording)
+- Phase 1: e2e-tester (journey mapping)
+- Phase 2: e2e-tester (script creation)
+- Phase 3: e2e-tester (CLI-first execution)
+- Phase 4: e2e-tester (native-facility recording)
 - Phase 5: MoAI orchestrator (report + next-step question)
 
 ## Execution Summary
 
 1. Parse arguments (--tool, --platform, --record, --url, --journey, --headless, --browser, --timeout, --retry)
-2. Phase 0: delegate detection to the e2e-specialist; classify platform; probe defaults (host OS only for `desktop-native`); graceful exit when no target
+2. Phase 0: delegate detection to the e2e-tester; classify platform; probe defaults (host OS only for `desktop-native`); graceful exit when no target
 3. Phase 0.5: orchestrator AskUserQuestion selection (per-surface on `mixed`); `--tool` bypasses
 4. Missing toolchain: probe → surface install command for approval → install → re-probe
 5. Phase 1: delegate journey mapping; orchestrator presents journey options

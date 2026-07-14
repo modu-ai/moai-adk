@@ -175,7 +175,7 @@ MoAI オーケストレーターは直接実装せず、11個の専門エージ�
 | **Evaluator** | 2個 | plan-auditor, sync-auditor |
 | **Builder** | 1個 | builder-harness |
 | **Advisor** | 1個 | super-advisor (高推論アドバイザー) |
-| **Specialist** | 1個 | e2e-specialist (ウェブ/モバイル/デスクトップの E2E テスト実行) |
+| **Specialist** | 1個 | e2e-tester (ウェブ/モバイル/デスクトップの E2E テスト実行) |
 | **ビルトイン** | 1個 | Explore (Anthropic 内蔵、読み取り専用のコード分析) |
 
 ### モデルポリシー (トークノミクス)

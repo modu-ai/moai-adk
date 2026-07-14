@@ -152,21 +152,21 @@ flowchart TD
 
 ## 智能体委派链
 
-`/moai e2e` 的执行主体是 **e2e-specialist** 智能体。所有面向用户的选择问题由 MoAI 编排器负责，e2e-specialist 只接收选择结果并执行。
+`/moai e2e` 的执行主体是 **e2e-tester** 智能体。所有面向用户的选择问题由 MoAI 编排器负责，e2e-tester 只接收选择结果并执行。
 
 ```mermaid
 flowchart TD
     User["用户请求"] --> Orchestrator["MoAI 编排器"]
-    Orchestrator --> Detect["e2e-specialist<br/>平台检测 + 工具链探测"]
+    Orchestrator --> Detect["e2e-tester<br/>平台检测 + 工具链探测"]
     Detect --> Ask["编排器<br/>工具链·旅程选择问题"]
-    Ask --> Exec["e2e-specialist<br/>编写脚本 + CLI 执行 + 记录"]
+    Ask --> Exec["e2e-tester<br/>编写脚本 + CLI 执行 + 记录"]
     Exec --> Report["编排器<br/>结果报告"]
 ```
 
 | 智能体 | 角色 | 主要工作 |
 |----------|------|----------|
 | **MoAI 编排器** | 选择与报告 | 工具链/旅程选择问题、结果报告渲染 |
-| **e2e-specialist** | 执行专责 | 检测探测、旅程映射、脚本编写、CLI 执行、记录 |
+| **e2e-tester** | 执行专责 | 检测探测、旅程映射、脚本编写、CLI 执行、记录 |
 
 ## 相关文档
 

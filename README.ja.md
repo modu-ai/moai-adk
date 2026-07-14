@@ -363,7 +363,7 @@ moai harness disable     # turn learning off
 | | sync-auditor | 4 次元品質スコアリング (Functionality 40 · Security 25 · Craft 20 · Consistency 15) |
 | **Builder** | builder-harness | プロジェクト固有のエージェント・スキル・コマンド・フックをスキャフォールド |
 | **Advisor** | super-advisor | オンデマンドの高推論コンサルテーション (E1-E4 エスカレーション) |
-| **Specialist** | e2e-specialist | Web・モバイル・デスクトップの E2E テスト実行 (CLI 優先) |
+| **Specialist** | e2e-tester | Web・モバイル・デスクトップの E2E テスト実行 (CLI 優先) |
 | **Built-in** | Explore | 読み取り専用のコードベース探索 |
 
 計画と監査は設計上分離されています — 作成者が自分の仕事を採点することはありません。

@@ -24,7 +24,7 @@ Source: `git show c6b04d39c~1:.claude/skills/moai/workflows/e2e.md` (452 lines; 
 ### Strengthen
 
 - Token-cost principle: was a descriptive table column → becomes [HARD] requirements (CLI-first REQ-E2E-100, bounded-tail REQ-E2E-101, no-MCP-hard-dependency REQ-E2E-105)
-- Delegation target: was manager-develop (+ per-spawn general-purpose) → becomes the dedicated `e2e-specialist`
+- Delegation target: was manager-develop (+ per-spawn general-purpose) → becomes the dedicated `e2e-tester`
 - Platform scope: web-only → web + mobile + desktop with project-type detection ahead of tool detection
 
 ### Drop / correct (stale facts)

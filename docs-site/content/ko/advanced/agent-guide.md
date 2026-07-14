@@ -72,7 +72,7 @@ MoAI-ADK는 **11개 핵심 에이전트** (10개 MoAI 사용자 정의 + 1개 An
 
 | 에이전트 | 역할 | 특징 |
 |----------|------|------|
-| `e2e-specialist` | 웹/모바일/데스크탑 E2E 테스트 실행 (여정 스크립팅, CLI 우선 스위트 실행, 아티팩트 관리) | `/moai e2e` 워크플로우의 실행 주체 — 선택 질문은 오케스트레이터 담당 |
+| `e2e-tester` | 웹/모바일/데스크탑 E2E 테스트 실행 (여정 스크립팅, CLI 우선 스위트 실행, 아티팩트 관리) | `/moai e2e` 워크플로우의 실행 주체 — 선택 질문은 오케스트레이터 담당 |
 
 ### 내장 에이전트 (1개, Anthropic)
 
@@ -129,7 +129,7 @@ flowchart TD
 ├── sync-auditor.md
 ├── builder-harness.md
 ├── super-advisor.md
-├── e2e-specialist.md
+├── e2e-tester.md
 └── (Explore: Anthropic 내장, 파일 없음)
 ```
 

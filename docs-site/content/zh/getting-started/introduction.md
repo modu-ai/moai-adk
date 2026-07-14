@@ -175,7 +175,7 @@ MoAI 编排器不直接实现，而是把工作委派给 11 个专业智能体�
 | **Evaluator** | 2 个 | plan-auditor、sync-auditor |
 | **Builder** | 1 个 | builder-harness |
 | **Advisor** | 1 个 | super-advisor（高推理顾问） |
-| **Specialist** | 1 个 | e2e-specialist（网页/移动/桌面 E2E 测试执行） |
+| **Specialist** | 1 个 | e2e-tester（网页/移动/桌面 E2E 测试执行） |
 | **内置** | 1 个 | Explore（Anthropic 内置，只读代码分析） |
 
 ### 模型策略（代币经济学）

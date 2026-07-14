@@ -175,7 +175,7 @@ The MoAI orchestrator does not implement directly — it delegates work to 11 sp
 | **Evaluator** | 2 | plan-auditor, sync-auditor |
 | **Builder** | 1 | builder-harness |
 | **Advisor** | 1 | super-advisor (high-reasoning consultation) |
-| **Specialist** | 1 | e2e-specialist (E2E test execution across web/mobile/desktop) |
+| **Specialist** | 1 | e2e-tester (E2E test execution across web/mobile/desktop) |
 | **Built-in** | 1 | Explore (Anthropic built-in, read-only code analysis) |
 
 ### Model Policy (Tokenomics)

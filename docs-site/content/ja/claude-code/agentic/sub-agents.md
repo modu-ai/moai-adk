@@ -152,7 +152,7 @@ model: sonnet
 
 ## 深掘りは MoAI エージェントガイドへ
 
-ここまでが Claude Code レベルのサブエージェントの概念です。MoAI-ADK はこのメカニズムの上に **11 エージェントカタログ** を運用します — Manager 系 (manager-spec / manager-develop / manager-docs / manager-git / manager-design) が plan→run→sync のライフサイクルを、Evaluator 系 (plan-auditor / sync-auditor) が独立監査を、builder-harness がハーネススキャフォールドの生成を、super-advisor が高推論のアドバイスを、e2e-specialist がウェブ/モバイル/デスクトップの E2E テスト実行を、そして Anthropic 組み込みの `Explore` が読み取り専用の探索を担います。計画と監査が分離されている点 — 作ったエージェントが自ら検査しないこと — がこのカタログの中核設計です。各エージェントに作業の性質に合ったモデルと推論の深さ (effort) を宣言的に割り当てることが、トークノミクスの「計画は深く、実装は安く、検証は独立に」という原則です。詳細は以下の応用ガイドで扱います。
+ここまでが Claude Code レベルのサブエージェントの概念です。MoAI-ADK はこのメカニズムの上に **11 エージェントカタログ** を運用します — Manager 系 (manager-spec / manager-develop / manager-docs / manager-git / manager-design) が plan→run→sync のライフサイクルを、Evaluator 系 (plan-auditor / sync-auditor) が独立監査を、builder-harness がハーネススキャフォールドの生成を、super-advisor が高推論のアドバイスを、e2e-tester がウェブ/モバイル/デスクトップの E2E テスト実行を、そして Anthropic 組み込みの `Explore` が読み取り専用の探索を担います。計画と監査が分離されている点 — 作ったエージェントが自ら検査しないこと — がこのカタログの中核設計です。各エージェントに作業の性質に合ったモデルと推論の深さ (effort) を宣言的に割り当てることが、トークノミクスの「計画は深く、実装は安く、検証は独立に」という原則です。詳細は以下の応用ガイドで扱います。
 
 ## 関連ドキュメント
 

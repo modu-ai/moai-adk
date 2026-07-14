@@ -28,7 +28,7 @@ var expectedAgentTiers = map[string]Tier{
 	"manager-develop": TierOrange,
 	"manager-design":   TierOrange,
 	"builder-harness":  TierOrange,
-	"e2e-specialist":   TierOrange,
+	"e2e-tester":   TierOrange,
 	// 🔵 — moderate reasoning (×5)
 	"manager-docs":            TierBlue,
 	"manager-git":             TierBlue,

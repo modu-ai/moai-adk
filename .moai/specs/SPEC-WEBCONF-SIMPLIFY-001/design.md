@@ -61,7 +61,7 @@ Hand-curated by reasoning role. This is the source of truth for badge color. It 
 | `manager-develop`                    | 🟠   | Run-phase DDD/TDD implementation; heavy reasoning bounded by the SPEC.              |
 | `manager-design`                     | 🟠   | D1-D5 design pipeline; creative + structural synthesis.                             |
 | `builder-harness`                    | 🟠   | Dynamic harness / specialist generation; structural reasoning.                      |
-| `e2e-specialist`                     | 🟠   | Web/mobile/desktop journey scripting; cross-platform complexity.                    |
+| `e2e-tester`                     | 🟠   | Web/mobile/desktop journey scripting; cross-platform complexity.                    |
 | `manager-docs`                       | 🔵   | Sync-phase documentation; template-driven, moderate reasoning.                      |
 | `manager-git`                        | 🔵   | PR creation per Tier routing; procedural git ops.                                   |
 | `quality-specialist`                 | 🔵   | TRUST 5 validation; checklist-driven quality checks.                               |

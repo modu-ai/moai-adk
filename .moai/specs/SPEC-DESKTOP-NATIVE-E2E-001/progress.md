@@ -42,7 +42,7 @@ Evidence root: `EVID = .moai/state/verify/SPEC-DESKTOP-NATIVE-E2E-001/` (gitigno
 | AC-DNE-019 | CMD-DNE-012 (same) | `local-hint=1` | PASS |
 | AC-DNE-020 | CMD-DNE-013 → `EVID/cmd-013-{skill,agent}-pair.diff` | `skill-pair exit=0` / `agent-pair exit=0` (empty diffs) | PASS |
 | AC-DNE-021 | CMD-DNE-014 → `EVID/cmd-014-{make-build,go-test}.log` | `make exit=0` / `gotest exit=0` (`ok internal/template 1.330s`) | PASS |
-| AC-DNE-022 | CMD-DNE-015 → `EVID/cmd-015-pins.txt` | pinned-file `git diff --name-only` EMPTY; agent counts 10/10; counts/pins unchanged. DEBT: commit d5a5b2992 (M2) carries a 1-line `catalog.yaml` e2e-specialist content-hash regen — mechanically forced by REQ-DNE-301 `make build` (gen-catalog-hashes) after the in-scope agent body edit (`TestManifestHashFormat` re-computes hashes; skipping the regen fails AC-DNE-021). No entry added/removed; `expectedAgentCount` 10 / `expectedTotal` 38 untouched. REQ-DNE-302 wording ("shall not modify catalog.yaml") needs a hash-regen carve-out at sync. | PASS-WITH-DEBT |
+| AC-DNE-022 | CMD-DNE-015 → `EVID/cmd-015-pins.txt` | pinned-file `git diff --name-only` EMPTY; agent counts 10/10; counts/pins unchanged. DEBT: commit d5a5b2992 (M2) carries a 1-line `catalog.yaml` e2e-tester content-hash regen — mechanically forced by REQ-DNE-301 `make build` (gen-catalog-hashes) after the in-scope agent body edit (`TestManifestHashFormat` re-computes hashes; skipping the regen fails AC-DNE-021). No entry added/removed; `expectedAgentCount` 10 / `expectedTotal` 38 untouched. REQ-DNE-302 wording ("shall not modify catalog.yaml") needs a hash-regen carve-out at sync. | PASS-WITH-DEBT |
 | AC-DNE-023 | CMD-DNE-011 → `EVID/cmd-011-deferral-family.txt` | deferral-family regex `0` in all 4 files (baseline was skill 3 + agent 1 per tree) | PASS |
 | AC-DNE-024 | CMD-DNE-016 → `EVID/cmd-016-lint.txt` | `0 error(s), 1 warning(s)` — sole warning is the structurally-expected StatusGitConsistency (until sync close) | PASS |
 | AC-DNE-025 (OPTIONAL, non-gating) | CMD-DNE-017 → `EVID/cmd-017-axcli.txt` | `axcli` not installed on dev host (exit 127) — absence is NOT a failure per C-6; evidence captured | N/A (non-gating) |
@@ -95,7 +95,7 @@ frontmatter_status_transitions:
   progress_md: "this file; §E.4 populated on this sync commit"
 b12_self_test_a: "grep -c 'SPEC-DESKTOP-NATIVE-E2E-001' CHANGELOG.md == 0 before this edit (verified)"
 b12_self_test_b: "acceptance.md AC-DNE-* row count = 26 gating rows (25 clean PASS + 1 PASS-WITH-DEBT) + 1 optional non-gating (AC-DNE-025); CHANGELOG entry references '26/26 gating AC PASS'"
-b12_self_test_c: "file paths in CHANGELOG entry verified via ls: .claude/skills/moai/workflows/e2e.md, .claude/agents/moai/e2e-specialist.md, internal/template/templates/.claude/commands/moai/e2e.md.tmpl, .claude/commands/moai/e2e.md — all exist"
+b12_self_test_c: "file paths in CHANGELOG entry verified via ls: .claude/skills/moai/workflows/e2e.md, .claude/agents/moai/e2e-tester.md, internal/template/templates/.claude/commands/moai/e2e.md.tmpl, .claude/commands/moai/e2e.md — all exist"
 canary_compliance_check:
   byte_parity_skill_pair: "diff exit 0 (re-verified at sync)"
   byte_parity_agent_pair: "diff exit 0 (re-verified at sync)"

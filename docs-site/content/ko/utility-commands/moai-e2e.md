@@ -152,21 +152,21 @@ Electron도 Tauri도 아닌 **네이티브 데스크탑 앱** (순수 macOS 앱,
 
 ## 에이전트 위임 체인
 
-`/moai e2e`의 실행 주체는 **e2e-specialist** 에이전트입니다. 모든 사용자 선택 질문은 MoAI 오케스트레이터가 담당하고, e2e-specialist는 선택 결과를 전달받아 실행만 수행합니다.
+`/moai e2e`의 실행 주체는 **e2e-tester** 에이전트입니다. 모든 사용자 선택 질문은 MoAI 오케스트레이터가 담당하고, e2e-tester는 선택 결과를 전달받아 실행만 수행합니다.
 
 ```mermaid
 flowchart TD
     User["사용자 요청"] --> Orchestrator["MoAI 오케스트레이터"]
-    Orchestrator --> Detect["e2e-specialist<br/>플랫폼 감지 + 툴체인 프로브"]
+    Orchestrator --> Detect["e2e-tester<br/>플랫폼 감지 + 툴체인 프로브"]
     Detect --> Ask["오케스트레이터<br/>툴체인·여정 선택 질문"]
-    Ask --> Exec["e2e-specialist<br/>스크립트 작성 + CLI 실행 + 기록"]
+    Ask --> Exec["e2e-tester<br/>스크립트 작성 + CLI 실행 + 기록"]
     Exec --> Report["오케스트레이터<br/>결과 보고"]
 ```
 
 | 에이전트 | 역할 | 주요 작업 |
 |----------|------|----------|
 | **MoAI 오케스트레이터** | 선택과 보고 | 툴체인/여정 선택 질문, 결과 보고 렌더링 |
-| **e2e-specialist** | 실행 전담 | 감지 프로브, 여정 매핑, 스크립트 작성, CLI 실행, 기록 |
+| **e2e-tester** | 실행 전담 | 감지 프로브, 여정 매핑, 스크립트 작성, CLI 실행, 기록 |
 
 ## 관련 문서
 

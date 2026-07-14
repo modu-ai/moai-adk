@@ -285,7 +285,7 @@ var expectedTierProfiles = map[string]map[string][3]tierProfileExpectCell{
 		"super-advisor":   {{"fable", "xhigh"}, {"fable", "high"}, {"opus", "high"}},
 		"manager-develop": {{"fable", "high"}, {"opus", "high"}, {"opus", "medium"}},
 		"builder-harness": {{"opus", "high"}, {"opus", "medium"}, {"opus", "medium"}},
-		"e2e-specialist":  {{"opus", "high"}, {"opus", "medium"}, {"opus", "medium"}},
+		"e2e-tester":  {{"opus", "high"}, {"opus", "medium"}, {"opus", "medium"}},
 		"manager-docs":    {{"sonnet", "medium"}, {"sonnet", "low"}, {"sonnet", "low"}},
 		"manager-git":     {{"sonnet", "low"}, {"sonnet", "low"}, {"sonnet", "low"}},
 		"Explore":         {{"inherit", "medium"}, {"inherit", "low"}, {"inherit", "low"}},
@@ -298,7 +298,7 @@ var expectedTierProfiles = map[string]map[string][3]tierProfileExpectCell{
 		"super-advisor":   {{"opus", "xhigh"}, {"opus", "high"}, {"opus", "medium"}},
 		"manager-develop": {{"sonnet", "high"}, {"sonnet", "high"}, {"sonnet", "high"}},
 		"builder-harness": {{"sonnet", "high"}, {"sonnet", "medium"}, {"sonnet", "medium"}},
-		"e2e-specialist":  {{"sonnet", "high"}, {"sonnet", "medium"}, {"sonnet", "medium"}},
+		"e2e-tester":  {{"sonnet", "high"}, {"sonnet", "medium"}, {"sonnet", "medium"}},
 		"manager-docs":    {{"sonnet", "low"}, {"sonnet", "low"}, {"sonnet", "low"}},
 		"manager-git":     {{"sonnet", "low"}, {"sonnet", "low"}, {"sonnet", "low"}},
 		"Explore":         {{"inherit", "medium"}, {"inherit", "low"}, {"inherit", "low"}},
@@ -336,13 +336,13 @@ func TestTierProfileMatrixFidelity(t *testing.T) {
 
 // TestTierProfiles_AllElevenAgents (REQ-MTP-009) asserts both plans carry explicit
 // rows for all 11 retained agents — the auditors, manager-design, and
-// super-advisor moved off implicit inherit; e2e-specialist added by
+// super-advisor moved off implicit inherit; e2e-tester added by
 // SPEC-E2E-REVIVAL-001; Explore is retained as an explicit
 // inherit row for display/derivation surfaces.
 func TestTierProfiles_AllElevenAgents(t *testing.T) {
 	agents := []string{
 		"manager-spec", "plan-auditor", "sync-auditor", "manager-design",
-		"super-advisor", "manager-develop", "builder-harness", "e2e-specialist",
+		"super-advisor", "manager-develop", "builder-harness", "e2e-tester",
 		"manager-docs", "manager-git", "Explore",
 	}
 	for _, plan := range []string{"api", "subscription"} {

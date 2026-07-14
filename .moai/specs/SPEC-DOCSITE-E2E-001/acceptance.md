@@ -19,7 +19,7 @@
 | AC-DSE-011 | REQ-DSE-101 | Ring A′: every catalog-count match updated (incl. `22 → 17 → 8 → 10` → `… → 11`); residual matches are ONLY the documented false positives, enumerated verbatim in progress.md §E.2 | CMD-A2 |
 | AC-DSE-012 | REQ-DSE-102 | Ring B/B′ invariance per locale: 10-family and 9-family digit-boundary greps → 0 catalog-count residuals (documented false positives enumerated) | CMD-B, CMD-B2 |
 | AC-DSE-013 | REQ-DSE-104 | Run-phase pre-flight re-measurement executed BEFORE first edit; reconciled inventory (counts + per-match classification) recorded in progress.md §E.2 | CMD-PRE-1..4 outputs quoted in §E.2 |
-| AC-DSE-014 | REQ-DSE-103 | `e2e-specialist` NAMED in every applicable enumeration surface (per reconciled inventory), each locale variant included | CMD-C |
+| AC-DSE-014 | REQ-DSE-103 | `e2e-tester` NAMED in every applicable enumeration surface (per reconciled inventory), each locale variant included | CMD-C |
 | AC-DSE-015 | REQ-DSE-105 | `layouts/index.html` stat row renders 11 (agent count); comment updated | CMD-C2 |
 | AC-DSE-016 | REQ-DSE-200 | `hugo --minify` exit 0, zero NEW warnings vs pre-flight baseline; `public/sitemap.xml` exists | CMD-F |
 | AC-DSE-017 | REQ-DSE-201 | Built site nav reaches the new page in all 4 locales | CMD-G |
@@ -37,7 +37,7 @@
 ### Scenario 2 — Agent-count consistency after normalization
 - **Given** the run-phase sweep completed,
 - **When** any docs-site page previously claiming the 10/9 catalog is read in any of the 4 locales,
-- **Then** the page states the 11-catalog (11 retained = 10 MoAI-custom + 1 Explore) AND names `e2e-specialist` in its enumeration where the catalog members are listed; the ring invariance greps return 0 catalog-count residuals (AC-DSE-010/011/012/014).
+- **Then** the page states the 11-catalog (11 retained = 10 MoAI-custom + 1 Explore) AND names `e2e-tester` in its enumeration where the catalog members are listed; the ring invariance greps return 0 catalog-count residuals (AC-DSE-010/011/012/014).
 
 ### Scenario 3 — Surface drift between plan and run (edge)
 - **Given** parallel sessions modified docs-site between plan authoring and run entry,
@@ -96,7 +96,7 @@ grep -rn -E "(^|[^0-9])9[^0-9]{0,8}(MoAI|커스텀|사용자 정의|カスタム
 
 # ---- Reachability (AC-DSE-014/015; NOT mere token presence) ----
 
-# CMD-C — e2e-specialist named per enumeration surface (audit D5: iterate the EXPLICIT REQ-DSE-103
+# CMD-C — e2e-tester named per enumeration surface (audit D5: iterate the EXPLICIT REQ-DSE-103
 #          file list — never derive the iteration set from post-change 11-tokens, which is circular.
 #          Expect: >=1 for every file the progress.md §E.2 reconciled inventory classifies as an
 #          enumeration surface; 0 acceptable ONLY for files classified count-only in §E.2)
@@ -106,15 +106,15 @@ for base in advanced/agent-guide.md claude-code/agentic/sub-agents.md getting-st
             multi-llm/model-policy.md workflow-commands/moai-harness.md; do
   for L in en ko ja zh; do
     f="docs-site/content/$L/$base"
-    [ -f "$f" ] && { printf "%s: " "$f"; grep -c "e2e-specialist" "$f"; }
+    [ -f "$f" ] && { printf "%s: " "$f"; grep -c "e2e-tester" "$f"; }
   done
 done
 
 # CMD-C2 — landing stat row (audit D6 expectations: the agent-count stat renders 11, AND
-#           grep -c "e2e-specialist" = 0 is the CORRECT result — the stat row renders counts,
+#           grep -c "e2e-tester" = 0 is the CORRECT result — the stat row renders counts,
 #           not member names; REQ-DSE-105 owns this surface, REQ-DSE-103 excludes it)
 grep -n -E "(^|[^0-9])11([^0-9]|$)" docs-site/layouts/index.html | grep -iE "agent|에이전트"
-grep -c "e2e-specialist" docs-site/layouts/index.html
+grep -c "e2e-tester" docs-site/layouts/index.html
 
 # ---- New page + navigation (AC-DSE-001/004/005/006/007) ----
 

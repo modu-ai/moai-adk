@@ -121,7 +121,7 @@ MoAI-ADK は Claude Code のサブスクリプションプランに合わせて�
 | builder-harness | opus | sonnet | haiku |
 | super-advisor | opus | opus | sonnet |
 
-e2e-specialist とビルトインの `Explore` はセッションモデルをそのまま使用します (`model: inherit`)。
+e2e-tester とビルトインの `Explore` はセッションモデルをそのまま使用します (`model: inherit`)。
 
 ### 設定方法
 

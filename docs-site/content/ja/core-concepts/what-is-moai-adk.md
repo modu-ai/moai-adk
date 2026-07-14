@@ -269,7 +269,7 @@ MoAI は **戦略的オーケストレーター** です。直接コードを書
 | | sync-auditor | 4次元の品質評価 (機能 40 · セキュリティ 25 · 職人性 20 · 一貫性 15) |
 | **Builder** | builder-harness | プロジェクト専用のハーネス (エージェント/スキル/コマンド) の生成 |
 | **Advisor** | super-advisor | 高推論のアドバイザリー (E1-E4 エスカレーション) |
-| **Specialist** | e2e-specialist | ウェブ/モバイル/デスクトップの E2E テスト実行 |
+| **Specialist** | e2e-tester | ウェブ/モバイル/デスクトップの E2E テスト実行 |
 | **ビルトイン** | Explore | 読み取り専用のコードベース探索 |
 
 ```mermaid
@@ -295,7 +295,7 @@ flowchart TD
     end
 
     subgraph Specialist["Specialist (1つ)"]
-        S1["e2e-specialist\nE2E テスト実行"]
+        S1["e2e-tester\nE2E テスト実行"]
     end
 
     subgraph Explore["ビルトイン (1つ)"]

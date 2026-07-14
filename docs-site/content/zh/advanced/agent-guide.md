@@ -72,7 +72,7 @@ MoAI-ADK 使用 **11 个核心智能体**（10 个 MoAI 自定义 + 1 个 Anthro
 
 | 智能体 | 角色 | 特点 |
 |----------|------|------|
-| `e2e-specialist` | 网页/移动/桌面 E2E 测试执行（旅程脚本、CLI 优先套件执行、产物管理） | `/moai e2e` 工作流的执行主体 — 选择问题由编排器负责 |
+| `e2e-tester` | 网页/移动/桌面 E2E 测试执行（旅程脚本、CLI 优先套件执行、产物管理） | `/moai e2e` 工作流的执行主体 — 选择问题由编排器负责 |
 
 ### 内置智能体（1 个，Anthropic）
 
@@ -129,7 +129,7 @@ flowchart TD
 ├── sync-auditor.md
 ├── builder-harness.md
 ├── super-advisor.md
-├── e2e-specialist.md
+├── e2e-tester.md
 └── (Explore: Anthropic 内置，无文件)
 ```
 

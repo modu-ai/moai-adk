@@ -72,7 +72,7 @@ The key point is that planning and auditing are separated — the one who built 
 
 | Agent | Role | Characteristics |
 |----------|------|------|
-| `e2e-specialist` | E2E test execution across web/mobile/desktop (journey scripting, CLI-first suite runs, artifact management) | Execution owner of the `/moai e2e` workflow — selection questions stay with the orchestrator |
+| `e2e-tester` | E2E test execution across web/mobile/desktop (journey scripting, CLI-first suite runs, artifact management) | Execution owner of the `/moai e2e` workflow — selection questions stay with the orchestrator |
 
 ### Built-in Agent (1, Anthropic)
 
@@ -129,7 +129,7 @@ The 10 MoAI custom agents are defined as markdown files in the `.claude/agents/m
 ├── sync-auditor.md
 ├── builder-harness.md
 ├── super-advisor.md
-├── e2e-specialist.md
+├── e2e-tester.md
 └── (Explore: Anthropic 내장, 파일 없음)
 ```
 

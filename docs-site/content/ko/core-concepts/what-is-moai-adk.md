@@ -269,7 +269,7 @@ MoAI는 **전략적 오케스트레이터**입니다. 직접 코드를 작성하
 | | sync-auditor | 4차원 품질 평가 (기능 40 · 보안 25 · 장인정신 20 · 일관성 15) |
 | **Builder** | builder-harness | 프로젝트 전용 하네스 (에이전트/스킬/커맨드) 생성 |
 | **Advisor** | super-advisor | 고추론 자문 (E1-E4 에스컬레이션) |
-| **Specialist** | e2e-specialist | 웹/모바일/데스크탑 E2E 테스트 실행 |
+| **Specialist** | e2e-tester | 웹/모바일/데스크탑 E2E 테스트 실행 |
 | **빌트인** | Explore | 읽기 전용 코드베이스 탐색 |
 
 ```mermaid
@@ -295,7 +295,7 @@ flowchart TD
     end
 
     subgraph Specialist["Specialist (1개)"]
-        S1["e2e-specialist\nE2E 테스트 실행"]
+        S1["e2e-tester\nE2E 테스트 실행"]
     end
 
     subgraph Explore["빌트인 (1개)"]

@@ -121,7 +121,7 @@ Of the **11-agent catalog** (10 MoAI custom + 1 Anthropic built-in `Explore`), t
 | builder-harness | opus | sonnet | haiku |
 | super-advisor | opus | opus | sonnet |
 
-The e2e-specialist and the built-in `Explore` follow the session model as-is (`model: inherit`).
+The e2e-tester and the built-in `Explore` follow the session model as-is (`model: inherit`).
 
 ### How to Configure
 

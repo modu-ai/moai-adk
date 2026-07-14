@@ -269,7 +269,7 @@ MoAI 是**战略编排器**。它不直接写代码，而是把工作委派给 1
 | | sync-auditor | 4 维质量评估（功能 40 · 安全 25 · 工艺 20 · 一致性 15） |
 | **Builder** | builder-harness | 生成项目专属挽具（智能体/技能/命令） |
 | **Advisor** | super-advisor | 高推理咨询（E1-E4 升级） |
-| **Specialist** | e2e-specialist | 网页/移动/桌面 E2E 测试执行 |
+| **Specialist** | e2e-tester | 网页/移动/桌面 E2E 测试执行 |
 | **内置** | Explore | 只读代码库探索 |
 
 ```mermaid
@@ -295,7 +295,7 @@ flowchart TD
     end
 
     subgraph Specialist["Specialist（1 个）"]
-        S1["e2e-specialist\nE2E 测试执行"]
+        S1["e2e-tester\nE2E 测试执行"]
     end
 
     subgraph Explore["内置（1 个）"]

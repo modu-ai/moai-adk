@@ -140,7 +140,7 @@ Surveyed at plan-phase by `grep -m1 -E '^effort:'` across all 20 agent files:
 | `manager-develop`                    | `xhigh`         | 🟠        | ✗ (mismatch) |
 | `manager-design`                     | `xhigh`         | 🟠        | ✗ (mismatch) |
 | `builder-harness`                    | `high`          | 🟠        | ✓       |
-| `e2e-specialist`                     | `high`          | 🟠        | ✓       |
+| `e2e-tester`                     | `high`          | 🟠        | ✓       |
 | `manager-docs`                       | `medium`        | 🔵        | ✓       |
 | `manager-git`                        | `low`           | 🔵        | ✗ (mismatch) |
 | `quality-specialist`                 | `high`          | 🔵        | ✗ (mismatch) |

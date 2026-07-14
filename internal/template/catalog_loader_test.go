@@ -52,7 +52,7 @@ func TestLoadCatalog(t *testing.T) {
 	// core skill), net +1 = 42.
 	// SPEC-SUBCOMMAND-RETIRE-001 (2026-07-01): retired 7 dependent skills of 5 /moai
 	// subcommands (2 core.skills + 5 optional-pack:design); agents unchanged, net -7 = 35.
-	// SPEC-E2E-REVIVAL-001 (2026-07-13): e2e-specialist agent added (core.agents,
+	// SPEC-E2E-REVIVAL-001 (2026-07-13): e2e-tester agent added (core.agents,
 	// /moai e2e revival), net +1 = 38.
 	const expectedTotal = 38
 	if len(all) != expectedTotal {

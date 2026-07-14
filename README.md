@@ -363,7 +363,7 @@ Instead of writing code directly, you build the environment agents work in.
 | | sync-auditor | 4-dimension quality scoring (Functionality 40 · Security 25 · Craft 20 · Consistency 15) |
 | **Builder** | builder-harness | Scaffolds project-specific agents, skills, commands, and hooks |
 | **Advisor** | super-advisor | On-demand high-reasoning consultation (E1-E4 escalation) |
-| **Specialist** | e2e-specialist | E2E test execution across web/mobile/desktop (CLI-first) |
+| **Specialist** | e2e-tester | E2E test execution across web/mobile/desktop (CLI-first) |
 | **Built-in** | Explore | Read-only codebase exploration |
 
 Planning and auditing are separated by design — the author never grades its own work.
@@ -503,9 +503,9 @@ The Python-based MoAI-ADK (~73,000 lines) was completely rewritten in Go.
 | `e2e` | Multi-platform E2E testing (web/mobile/desktop, CLI-first) |
 | *(natural language)* | Analyze-First routing into the autonomous plan → run → sync pipeline |
 
-### CLI Commands (36 top-level)
+### CLI Commands (37 top-level)
 
-The `moai` binary registers 36 top-level commands. The everyday set:
+The `moai` binary registers 37 top-level commands across three cobra groups (launch / project / tools). The everyday set:
 
 | Command | Description |
 |---------|-------------|
@@ -527,19 +527,19 @@ The `moai` binary registers 36 top-level commands. The everyday set:
 | `moai inventory` | Read-only inventory of sessions, worktrees, and harnesses (`--json` supported) |
 | `moai version` | Version, commit hash, and build date |
 
-Also registered: `mx`, `clean`, `codemaps`, `feedback`, `loop`, `lsp`, `ast-grep`, `agent`, `workflow`, `statusline`, `telemetry`, `constitution`, `state`, `tool-policy`, `migrate`, `profile`, `pr`, `github`, `research`.
+Also registered: `mx`, `clean`, `loop`, `lsp`, `ast-grep`, `agent`, `workflow`, `statusline`, `telemetry`, `constitution`, `state`, `tool-policy`, `migrate`, `migration`, `verify`, `profile`, `pr`, `github`, `research`.
 
 ### Hooks
 
-All hook events follow the Claude Code hooks protocol with JSON stdin/stdout communication:
+All hook events follow the Claude Code hooks protocol with JSON stdin/stdout communication. The `moai hook <event>` dispatcher (one kebab-case subcommand per event) is invoked by shell wrappers (`handle-*.sh`) that Claude Code calls directly:
 
-- **27 event types** — SessionStart, PreToolUse, PostToolUse, SessionEnd, Stop, SubagentStop, PreCompact, PostCompact, TeammateIdle, TaskCompleted, and more
+- **26 event types** (kebab-case) — `session-start`, `pre-tool`, `post-tool`, `stop`, `subagent-start`, `subagent-stop`, `user-prompt-submit`, `notification`, `task-created`, `task-completed`, `teammate-idle`, `config-change`, and more (full list: `moai hook --help`)
 - **4 hook types** — command (shell scripts), prompt (LLM evaluation), agent (subagent verification), http (webhook endpoints)
 - Task metrics are captured to `.moai/logs/task-metrics.jsonl` for session analytics and cost tracking
 
 ### Statusline
 
-MoAI renders a rich statusline at the bottom of the Claude Code terminal: model tier/effort, MoAI version (with update marker), Git branch and change state, context-window usage (CW%), cache hit rate, and session cost/tokens.
+MoAI renders a rich statusline at the bottom of the Claude Code terminal via the `moai statusline` command (10-second `refreshInterval`): model tier/effort, MoAI version (with update marker), Git branch and change state, context-window usage (CW%), cache hit rate, and session cost/tokens.
 
 CW% carries a two-stage `/clear` marker — a soft warning at the model-specific threshold (50% on 1M-context models such as Opus 4.8 and GLM-5.2[1m]; 90% on 200K models) and a hard marker at the absolute ceiling. Claude Code misreports GLM-5.2 as a 200K model (upstream Issue #653); MoAI corrects it to 1M in `internal/statusline/memory.go`, so trust the MoAI statusline CW%.
 
@@ -571,6 +571,7 @@ func DispatchHook(event string, data []byte) error {
 | `@MX:WARN` | Danger zones | goroutines, complexity >= 15, global state mutation |
 | `@MX:NOTE` | Context | Magic constants, missing docs, business rules |
 | `@MX:TODO` | Incomplete work | Missing tests, unimplemented features |
+| `@MX:DEBT` | Deliberate working simplification | Known limit (`@MX:CEILING`) + revisit trigger (`@MX:UPGRADE`) |
 
 The system optimizes signal-to-noise: **only the code AI must notice first gets a tag.** Most code meets no criterion and carries no tag — that is normal and intended. Thresholds and per-file limits are configured in `.moai/config/sections/mx.yaml`; scan with `/moai mx --all` (or `--dry`, `--priority P1`).
 

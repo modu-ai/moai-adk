@@ -363,7 +363,7 @@ moai harness disable     # turn learning off
 | | sync-auditor | 4-차원 품질 채점 (Functionality 40 · Security 25 · Craft 20 · Consistency 15) |
 | **Builder** | builder-harness | 프로젝트 전용 에이전트, 스킬, 커맨드, 훅 스캐폴딩 |
 | **Advisor** | super-advisor | 온디맨드 고추론 자문 (E1-E4 에스컬레이션) |
-| **Specialist** | e2e-specialist | 웹/모바일/데스크톱 E2E 테스트 실행 (CLI 우선) |
+| **Specialist** | e2e-tester | 웹/모바일/데스크톱 E2E 테스트 실행 (CLI 우선) |
 | **Built-in** | Explore | 읽기 전용 코드베이스 탐색 |
 
 계획과 감사는 설계상 분리되어 있습니다 — 작성자가 자기 작업을 채점하는 일은 없습니다.

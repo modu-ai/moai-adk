@@ -284,7 +284,7 @@ var tierColumnIndex = map[string]int{
 // The api rows equal spec.md §B.6 (Plan A rev2) and the subscription rows equal
 // spec.md §B.7 (Plan B), copied cell-for-cell — these values are settled design
 // input (the original 60 cells verified 60/60 against the model-tier-redesign
-// report; the e2e-specialist row added by SPEC-E2E-REVIVAL-001 mirrors the
+// report; the e2e-tester row added by SPEC-E2E-REVIVAL-001 mirrors the
 // builder-harness execution-class profile, 66 cells total) and MUST NOT be
 // re-derived or "improved" without a spec change. Auditors, manager-design, and
 // super-advisor carry explicit rows (moved off implicit inherit); Explore keeps
@@ -301,7 +301,7 @@ var tierProfiles = map[string]map[string]tierProfileRow{
 		"super-advisor":   {{"fable", "xhigh"}, {"fable", "high"}, {"opus", "high"}},
 		"manager-develop": {{"fable", "high"}, {"opus", "high"}, {"opus", "medium"}},
 		"builder-harness": {{"opus", "high"}, {"opus", "medium"}, {"opus", "medium"}},
-		"e2e-specialist":  {{"opus", "high"}, {"opus", "medium"}, {"opus", "medium"}},
+		"e2e-tester":  {{"opus", "high"}, {"opus", "medium"}, {"opus", "medium"}},
 		"manager-docs":    {{"sonnet", "medium"}, {"sonnet", "low"}, {"sonnet", "low"}},
 		"manager-git":     {{"sonnet", "low"}, {"sonnet", "low"}, {"sonnet", "low"}},
 		"Explore":         {{modelInherit, "medium"}, {modelInherit, "low"}, {modelInherit, "low"}},
@@ -315,7 +315,7 @@ var tierProfiles = map[string]map[string]tierProfileRow{
 		"super-advisor":   {{"opus", "xhigh"}, {"opus", "high"}, {"opus", "medium"}},
 		"manager-develop": {{"sonnet", "high"}, {"sonnet", "high"}, {"sonnet", "high"}},
 		"builder-harness": {{"sonnet", "high"}, {"sonnet", "medium"}, {"sonnet", "medium"}},
-		"e2e-specialist":  {{"sonnet", "high"}, {"sonnet", "medium"}, {"sonnet", "medium"}},
+		"e2e-tester":  {{"sonnet", "high"}, {"sonnet", "medium"}, {"sonnet", "medium"}},
 		"manager-docs":    {{"sonnet", "low"}, {"sonnet", "low"}, {"sonnet", "low"}},
 		"manager-git":     {{"sonnet", "low"}, {"sonnet", "low"}, {"sonnet", "low"}},
 		"Explore":         {{modelInherit, "medium"}, {modelInherit, "low"}, {modelInherit, "low"}},
@@ -335,7 +335,7 @@ var tierProfileAgentOrder = []string{
 	"super-advisor",
 	"manager-develop",
 	"builder-harness",
-	"e2e-specialist",
+	"e2e-tester",
 	"manager-docs",
 	"manager-git",
 	"Explore",

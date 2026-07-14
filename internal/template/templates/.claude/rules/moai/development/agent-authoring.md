@@ -139,7 +139,7 @@ Coordinate the SPEC plan/design/run/sync/audit lifecycle:
 - sync-auditor: Independent sync-phase quality 4-dimension scoring
 - super-advisor: On-demand high-reasoning consultation (non-binding prescriptions, E1-E4 escalation entry)
 - builder-harness: Dynamic project-specific harness specialist generation (new agents, skills, plugins, commands, hooks, MCP/LSP servers)
-- e2e-specialist: E2E test execution across web/mobile/desktop (journey scripting, CLI-first suite runs, artifact management)
+- e2e-tester: E2E test execution across web/mobile/desktop (journey scripting, CLI-first suite runs, artifact management)
 
 ### Anthropic Built-in (1)
 

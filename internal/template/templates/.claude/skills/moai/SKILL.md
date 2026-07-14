@@ -141,7 +141,7 @@ For detailed orchestration: Read ${CLAUDE_SKILL_DIR}/workflows/gate.md
 ### e2e - Multi-Platform End-to-End Testing
 
 Purpose: Create and run E2E tests across web, mobile, and desktop applications with project-type auto-detection, CLI-first toolchain selection (Playwright, Maestro, Playwright-Electron, WebdriverIO + tauri-service), and token-minimized execution.
-Agents: e2e-specialist (primary — detection, journey mapping, script creation, execution, recording)
+Agents: e2e-tester (primary — detection, journey mapping, script creation, execution, recording)
 Flags: --tool, --platform, --record, --url, --journey, --headless, --browser, --timeout, --retry
 For detailed orchestration: Read ${CLAUDE_SKILL_DIR}/workflows/e2e.md
 

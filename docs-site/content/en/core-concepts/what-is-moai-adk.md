@@ -269,7 +269,7 @@ MoAI is the **strategic orchestrator**. It does not write code directly — it d
 | | sync-auditor | 4-dimension quality assessment (Functionality 40 · Security 25 · Craft 20 · Consistency 15) |
 | **Builder** | builder-harness | Project-specific harness (agents/skills/commands) generation |
 | **Advisor** | super-advisor | High-reasoning consultation (E1-E4 escalation) |
-| **Specialist** | e2e-specialist | E2E test execution across web/mobile/desktop |
+| **Specialist** | e2e-tester | E2E test execution across web/mobile/desktop |
 | **Built-in** | Explore | Read-only codebase exploration |
 
 ```mermaid
@@ -295,7 +295,7 @@ flowchart TD
     end
 
     subgraph Specialist["Specialist (1)"]
-        S1["e2e-specialist\nE2E test execution"]
+        S1["e2e-tester\nE2E test execution"]
     end
 
     subgraph Explore["Built-in (1)"]

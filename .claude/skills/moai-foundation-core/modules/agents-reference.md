@@ -21,7 +21,7 @@ MoAI delegates specialist tasks to **11 retained agents**: 10 MoAI-custom agents
 | `builder-harness` | Dynamic project-specific harness specialist generation |
 | `super-advisor` | On-demand high-reasoning consultation (non-binding, E1-E4 escalation) |
 | `manager-design` | Design-phase collaboration (Claude Design bidirectional sync) |
-| `e2e-specialist` | E2E test execution across web/mobile/desktop (CLI-first, token-minimized) |
+| `e2e-tester` | E2E test execution across web/mobile/desktop (CLI-first, token-minimized) |
 | `Explore` | Read-only codebase exploration (Anthropic built-in) |
 
 Agent Selection:
@@ -54,7 +54,7 @@ MoAI-ADK does NOT use a tier hierarchy or a `{domain}-{role}` naming convention.
 9. Dynamic specialist generation (project-specific harness)? Use the `builder-harness` subagent.
 10. On-demand high-reasoning consultation / second opinion (E1-E4 escalation)? Use the `super-advisor` subagent.
 11. Design-phase collaboration (Claude Design bidirectional sync, UI-surfaced SPECs)? Use the `manager-design` subagent.
-12. E2E test execution across web/mobile/desktop (journey scripting, CLI-first suite runs)? Use the `e2e-specialist` subagent.
+12. E2E test execution across web/mobile/desktop (journey scripting, CLI-first suite runs)? Use the `e2e-tester` subagent.
 
 ### Retained Agents (detail)
 
@@ -69,7 +69,7 @@ MoAI-ADK does NOT use a tier hierarchy or a `{domain}-{role}` naming convention.
 | `builder-harness` | builder | Dynamic project-specific harness specialist generation |
 | `super-advisor` | meta / advisor | On-demand high-reasoning consultation; returns non-binding prescriptions (E1-E4 escalation entry) |
 | `manager-design` | core / manager | Design-phase collaboration (Claude Design bidirectional sync, D1-D5 pipeline) |
-| `e2e-specialist` | core / specialist | E2E test execution (web/mobile/desktop journey scripting, CLI-first runs, artifact management) |
+| `e2e-tester` | core / specialist | E2E test execution (web/mobile/desktop journey scripting, CLI-first runs, artifact management) |
 | `Explore` | Anthropic built-in | Read-only codebase exploration (invoked directly, no MoAI file) |
 
 ### Archived Agent Names (rejected at spawn)

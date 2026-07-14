@@ -6,8 +6,8 @@ Path shorthands used below:
 
 - `L-SKILL` = `.claude/skills/moai/workflows/e2e.md`
 - `T-SKILL` = `internal/template/templates/.claude/skills/moai/workflows/e2e.md`
-- `L-AGENT` = `.claude/agents/moai/e2e-specialist.md`
-- `T-AGENT` = `internal/template/templates/.claude/agents/moai/e2e-specialist.md`
+- `L-AGENT` = `.claude/agents/moai/e2e-tester.md`
+- `T-AGENT` = `internal/template/templates/.claude/agents/moai/e2e-tester.md`
 - `T-CMD` = `internal/template/templates/.claude/commands/moai/e2e.md.tmpl`
 - `L-CMD` = `.claude/commands/moai/e2e.md`
 - `EVID` = `.moai/state/verify/SPEC-DESKTOP-NATIVE-E2E-001/`
@@ -31,7 +31,7 @@ Path shorthands used below:
 | AC-DNE-008b | 009 | The host-OS rule text (non-host recipes are declarative; probes run only on the host OS) appears ≥1 in BOTH skill files | CMD-DNE-008 |
 | AC-DNE-008c | 008 | Phase 5 report-template platform enum gains `desktop-native`: the `### Platform: {…}` template line contains `desktop-native` inside the braces (≥1) — in BOTH trees | CMD-DNE-008 |
 
-### Group B — e2e-specialist per-OS recipes (REQ-DNE-100..112)
+### Group B — e2e-tester per-OS recipes (REQ-DNE-100..112)
 
 | AC | REQ | Criterion (observable) | Verify |
 |----|-----|------------------------|--------|
@@ -88,7 +88,7 @@ Path shorthands used below:
 ### S4 — macOS TCC permission missing (blocker, not prompt)
 
 - **Given** the macOS lane selected with `axcli` installed but Accessibility (TCC) permission not granted to the executing terminal,
-- **When** the e2e-specialist attempts the first AX-tree snapshot,
+- **When** the e2e-tester attempts the first AX-tree snapshot,
 - **Then** it returns a structured `## Missing Inputs`-style blocker report naming the System Settings grant path, and the ORCHESTRATOR surfaces the remediation — the agent never prompts the user and never silently fails.
 
 ## Edge Cases
@@ -108,8 +108,8 @@ All commands run from the project root. Evidence redirected under `EVID` (`mkdir
 EVID=.moai/state/verify/SPEC-DESKTOP-NATIVE-E2E-001; mkdir -p "$EVID"
 L_SKILL=.claude/skills/moai/workflows/e2e.md
 T_SKILL=internal/template/templates/.claude/skills/moai/workflows/e2e.md
-L_AGENT=.claude/agents/moai/e2e-specialist.md
-T_AGENT=internal/template/templates/.claude/agents/moai/e2e-specialist.md
+L_AGENT=.claude/agents/moai/e2e-tester.md
+T_AGENT=internal/template/templates/.claude/agents/moai/e2e-tester.md
 
 # CMD-DNE-001 — detection-row positive markers, anchored INSIDE the Detection Matrix section (both trees)
 # PASS: each of the 4 toolkit families found ≥1 within the section window, per tree (8 PASS lines total)

@@ -54,7 +54,7 @@ See `spec.md` §A. The `moai web` console tab sprawl (17 tabs) and the absence o
 
 Confirmed by `ls .claude/agents/{moai,harness}/` — exactly 20 `.md` files:
 
-- **moai/ (10)**: builder-harness, e2e-specialist, manager-design, manager-develop, manager-docs, manager-git, manager-spec, plan-auditor, super-advisor, sync-auditor.
+- **moai/ (10)**: builder-harness, e2e-tester, manager-design, manager-develop, manager-docs, manager-git, manager-spec, plan-auditor, super-advisor, sync-auditor.
 - **harness/ (10)**: cli-template-specialist, hns-github-specialist, hns-oss-docs-content-author-specialist, hns-oss-docs-locale-translator-specialist, hns-oss-docs-structure-curator-specialist, hns-release-specialist, hns-release-update-specialist, hook-ci-specialist, quality-specialist, workflow-specialist.
 
 `Explore` (Anthropic built-in) is NOT in `.claude/agents/` and is NOT editable via agentfm — excluded from the 20.
@@ -142,7 +142,7 @@ The tier for each agent is CHOSEN by the agent's reasoning role. It is a static,
 | `manager-develop`                    | 🟠   | Run-phase DDD/TDD implementation; heavy reasoning but bounded by the SPEC.                                  |
 | `manager-design`                     | 🟠   | D1-D5 design pipeline; creative + structural synthesis.                                                     |
 | `builder-harness`                    | 🟠   | Dynamic harness / specialist generation; structural reasoning about agent/skill architecture.               |
-| `e2e-specialist`                     | 🟠   | Web/mobile/desktop journey scripting; cross-platform complexity.                                            |
+| `e2e-tester`                     | 🟠   | Web/mobile/desktop journey scripting; cross-platform complexity.                                            |
 | `manager-docs`                       | 🔵   | Sync-phase documentation; template-driven, moderate reasoning.                                              |
 | `manager-git`                        | 🔵   | PR creation per Tier routing; procedural git ops.                                                           |
 | `quality-specialist`                 | 🔵   | TRUST 5 validation; checklist-driven quality checks.                                                        |

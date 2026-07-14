@@ -15,7 +15,7 @@ Run-phase executed 2026-07-13 by manager-develop (cycle_type=tdd, Mode 5 sequent
 
 | Milestone | Commit | Scope |
 |-----------|--------|-------|
-| M1 | `8190c3340` | e2e-specialist agent (both trees, byte-identical) + spec.md draft→in-progress |
+| M1 | `8190c3340` | e2e-tester agent (both trees, byte-identical) + spec.md draft→in-progress |
 | M2 | `a500fafe8` | e2e workflow skill (both trees, 294 lines) |
 | M3 | `cc0156396` | thin command pair + SKILL.md router + CLAUDE.md §3/§4 + count-literal rings 1-3 (28 files) |
 | M4 | `3235a7233` | catalog.yaml entry + expectedAgentCount 10 / expectedTotal 38 / wantTotal 38 + model_policy tier-profile pin (66 cells) + make build |
@@ -40,19 +40,19 @@ Run-phase executed 2026-07-13 by manager-develop (cycle_type=tdd, Mode 5 sequent
 | AC-E2E-013 | PASS | `diff` workflow both trees + `grep -c 'user-invocable: false'` | WORKFLOW-IDENTICAL; count 1; `m5-final-parity.log` |
 | AC-E2E-014 | PASS | `diff` agent both trees + manual field checklist + `go test -run TestAgentFrontmatterAudit` | AGENT-IDENTICAL; frontmatter complete (name/description w/ PROACTIVELY+NOT-for/tools CSV no leading `-`/model inherit/effort high/color cyan/permissionMode default/memory project/skills 1 entry); audit exit 0 |
 | AC-E2E-015 | PASS | CMD-015 + `grep -c 'Missing Inputs'` | `0` violations; Missing Inputs = 1; `m5-cmd015.log`, `m5-final-parity.log` |
-| AC-E2E-016 | PASS | `grep -c e2e-specialist <workflow>` + `test -f` + CMD-016 | 22 references (≥3); both agent paths exist; CMD-016 → 2 `=== RUN` + exit 0; `m5-cmd016.log` |
+| AC-E2E-016 | PASS | `grep -c e2e-tester <workflow>` + `test -f` + CMD-016 | 22 references (≥3); both agent paths exist; CMD-016 → 2 `=== RUN` + exit 0; `m5-cmd016.log` |
 | AC-E2E-017 | PASS | `grep -cE '^- \*\*e2e\*\*'` both SKILL.md | 1 each (baseline 0); `m5-ac017-020-router.log` |
 | AC-E2E-018 | PASS | frontmatter grep + CMD-018 | description enumeration carries e2e (1); CMD-018 → 2; `m5-cmd018.log` |
-| AC-E2E-019 | PASS | `grep -c '11 retained agents'` + `grep -c e2e-specialist` CLAUDE.md + CMD-019-INV + CMD-019-INV-B | 2 + 2 per tree; INV → 0 (baseline 38); INV-B → 0 (baseline 7); `m5-cmd019-inv.log`, `m5-cmd019-invb.log` |
+| AC-E2E-019 | PASS | `grep -c '11 retained agents'` + `grep -c e2e-tester` CLAUDE.md + CMD-019-INV + CMD-019-INV-B | 2 + 2 per tree; INV → 0 (baseline 38); INV-B → 0 (baseline 7); `m5-cmd019-inv.log`, `m5-cmd019-invb.log` |
 | AC-E2E-020 | PASS | `grep -n 'routes to \*\*e2e\*\*'` P3 section | L92 both trees, phrased as semantic exemplar ("any conversation_language … routes identically") |
-| AC-E2E-021 | PASS | `grep -A4 'name: e2e-specialist' catalog.yaml` + hash regex + `TestAllAgentsInCatalog` | tier core / path resolves / version 1.0.0 / hash `20c16b1ec435…` matches `^[0-9a-f]{64}$` (regenerated after M5 agent edit); test exit 0; `m5-ac021-catalog.log` (pre-M5 hash), `m5-make-build-2.log` (final hash) |
+| AC-E2E-021 | PASS | `grep -A4 'name: e2e-tester' catalog.yaml` + hash regex + `TestAllAgentsInCatalog` | tier core / path resolves / version 1.0.0 / hash `20c16b1ec435…` matches `^[0-9a-f]{64}$` (regenerated after M5 agent edit); test exit 0; `m5-ac021-catalog.log` (pre-M5 hash), `m5-make-build-2.log` (final hash) |
 | AC-E2E-022 | PASS | `git show --stat` M1-M5 | Every commit carries template + local siblings together (no local-only additions); parity diffs green; `m5-ac022-provenance.log` |
 | AC-E2E-023 | PASS | constants greps | `expectedAgentCount = 10` (L234), `expectedTotal = 38` (L57), `expectedSkillCount = 28` STILL present (L158), `wantTotal = 38` (embed_catalog_test.go L48, same pin class); ledger comments adjacent; `m5-ac023-028-constants.log` |
 | AC-E2E-024 | PASS | `make build` + `go test ./internal/template/...` | build exit 0 (×2 runs); template tests exit 0; `m5-make-build-2.log`, `m5-final-template-tests.log` |
 | AC-E2E-025 | PASS | CMD-025 | `0` matches; neutrality CI tests green within suite; `m5-cmd025.log`, re-verified post-M5-edit in `m5-final-parity.log` → 0 |
 | AC-E2E-026 | PASS | CMD-026 + expectedSkillCount + AC-015 | `0` design-pack dirs; `expectedSkillCount = 28` passing; boundary greps 0; `m5-cmd026.log` |
 | AC-E2E-027 | PASS | manual matrix review + CMD-027 | ≥2 markers per platform class; web class documented marker-driven ("framework list is exemplary"); CMD-027 → 0; `m5-cmd027.log` |
-| AC-E2E-028 | PASS | `grep -c e2e-specialist model_policy.go` + CMD-028 | 4 references (order list + 2 profile rows + comment); CMD-028 → 12 `=== RUN` + exit 0 with pins (len 11, 66 cells); `m5-cmd028.log` |
+| AC-E2E-028 | PASS | `grep -c e2e-tester model_policy.go` + CMD-028 | 4 references (order list + 2 profile rows + comment); CMD-028 → 12 `=== RUN` + exit 0 with pins (len 11, 66 cells); `m5-cmd028.log` |
 
 ### Quality gates (G1-G6)
 

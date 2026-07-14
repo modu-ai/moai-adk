@@ -35,7 +35,7 @@ SPEC-SUBCOMMAND-RETIRE-001 (commit c6b04d39c, 2026-07-01) permanently removed th
 This SPEC revives the capability as a modern subsystem with three deltas over the retired baseline:
 
 1. **Platform expansion**: web + **mobile** (Maestro / Appium / Detox) + **desktop** (Playwright-Electron for Electron apps, WebdriverIO + tauri-service for Tauri apps), selected via project-type auto-detection. Native-desktop (non-Electron/non-Tauri) automation is DEFERRED to a follow-up SPEC (user decision 2026-07-13; see §E Exclusions).
-2. **Dedicated specialist agent**: a new `e2e-specialist` retained agent (the retired version delegated to manager-develop; no dedicated agent ever existed).
+2. **Dedicated specialist agent**: a new `e2e-tester` retained agent (the retired version delegated to manager-develop; no dedicated agent ever existed).
 3. **Token-minimization as a first-class requirement**: CLI-output-first execution, bounded output tails, file-redirect for verbose logs, MCP only when CLI cannot do the job.
 
 Distribution is via the TEMPLATE SOURCE (`internal/template/templates/`) per the Template-First Rule, with catalog.yaml and CI-guard count-constant reconciliation.
@@ -47,7 +47,7 @@ Distribution is via the TEMPLATE SOURCE (`internal/template/templates/`) per the
 | `.claude/skills/moai/SKILL.md` Priority 1 router (both trees) | 14 subcommand rows, **no** `e2e` row (`grep -c` for `e2e`: 0) | 15 rows, `e2e` row restored |
 | `CLAUDE.md` §3 `Subcommands:` line (both trees) | 13 tokens, no `e2e` | 14 tokens incl. `e2e` |
 | `CLAUDE.md` §4 agent catalog (both trees) | "exactly **10 retained agents** (9 MoAI-custom + 1 `Explore`)" | 11 retained (10 MoAI-custom + 1 `Explore`) |
-| `.claude/agents/moai/*.md` (both trees) | 9 files | 10 files (+ `e2e-specialist.md`) |
+| `.claude/agents/moai/*.md` (both trees) | 9 files | 10 files (+ `e2e-tester.md`) |
 | `.claude/commands/moai/` | 13 files per tree (local `.md`, template `.md.tmpl`) | 14 per tree (+ `e2e`) |
 | `internal/template/catalog_tier_audit_test.go` | `expectedSkillCount = 28` (L158), `expectedAgentCount = 9` (L231) | 28 (UNCHANGED — see note), 10 |
 | `internal/template/catalog_loader_test.go` | `expectedTotal = 37` (L55) | 38 |
@@ -64,7 +64,7 @@ Distribution is via the TEMPLATE SOURCE (`internal/template/templates/`) per the
 - **REQ-E2E-001** (Ubiquitous): The e2e workflow shall auto-detect the project platform type (`web` / `mobile` / `desktop` / `mixed`) from project markers before any toolchain selection (marker matrix: design.md §B).
 - **REQ-E2E-002** (Event-driven): **When** project-type detection completes, the workflow shall map the detected type to the default toolchain per the platform-toolchain matrix (web → Playwright CLI; mobile → Maestro; desktop → Playwright-Electron for Electron apps, WebdriverIO + `@wdio/tauri-service` for Tauri apps).
 - **REQ-E2E-003** (Event-driven): **When** more than one platform type is detected (`mixed`), the workflow shall enumerate per-platform toolchain candidates and surface the selection through the ORCHESTRATOR's AskUserQuestion channel (one question per platform surface, recommended option first).
-- **REQ-E2E-004** (Ubiquitous): The workflow shall route ALL user-facing toolchain/journey selection through the orchestrator's AskUserQuestion channel; the e2e-specialist agent shall obtain selections exclusively via its spawn prompt.
+- **REQ-E2E-004** (Ubiquitous): The workflow shall route ALL user-facing toolchain/journey selection through the orchestrator's AskUserQuestion channel; the e2e-tester agent shall obtain selections exclusively via its spawn prompt.
 - **REQ-E2E-005** (Capability gate): **Where** a `--tool <name>` flag is provided, the workflow shall bypass the selection question and use the named toolchain directly.
 - **REQ-E2E-006** (Event-driven): **When** the selected toolchain is detected as not installed (version probe fails), the workflow shall surface the exact install command(s) and, upon user approval via the orchestrator, perform the installation and re-verify with a version probe before proceeding.
 - **REQ-E2E-007** (Event-driven): **When** no e2e-able surface is detected (e.g., a pure library with no web/mobile/desktop entry point), the workflow shall report "no e2e target detected" with the marker evidence and exit gracefully without creating test artifacts. A detected `desktop-native` surface (non-Electron/non-Tauri) routes to this same graceful branch with a deferral notice (automation deferred to a follow-up SPEC — see §E Exclusions).
@@ -72,8 +72,8 @@ Distribution is via the TEMPLATE SOURCE (`internal/template/templates/`) per the
 ### Group B — Token minimization (first-class)
 
 - **REQ-E2E-100** (Ubiquitous): The subsystem shall execute CLI-output-first: every capability achievable via CLI invocation shall use the CLI path; MCP tools shall be used ONLY for capabilities the selected CLI cannot provide (the per-capability classification lives in the workflow's tool matrix).
-- **REQ-E2E-101** (Ubiquitous): The e2e-specialist shall bound in-context command output to exit code + bounded tail (≤50 lines OR ≤2KB, whichever is smaller), redirecting verbose output to files under the run-artifacts directory with citable paths (file-redirect contract, `agent-common-protocol.md` §Parallel Execution).
-- **REQ-E2E-102** (State-driven): **While** an MCP-backed tool is active, the e2e-specialist shall prefer snapshot/batch reads (accessibility tree, DOM snapshot, aggregated trace insights) over per-element round-trips.
+- **REQ-E2E-101** (Ubiquitous): The e2e-tester shall bound in-context command output to exit code + bounded tail (≤50 lines OR ≤2KB, whichever is smaller), redirecting verbose output to files under the run-artifacts directory with citable paths (file-redirect contract, `agent-common-protocol.md` §Parallel Execution).
+- **REQ-E2E-102** (State-driven): **While** an MCP-backed tool is active, the e2e-tester shall prefer snapshot/batch reads (accessibility tree, DOM snapshot, aggregated trace insights) over per-element round-trips.
 - **REQ-E2E-103** (Event-driven): **When** a test run produces reports (HTML report, traces, screenshots, recordings), the workflow shall persist them under project-local `e2e/` artifact directories and cite paths in the report — never inline the artifact content.
 - **REQ-E2E-104** (Capability gate): **Where** recording is requested (`--record`), the workflow shall use the selected toolchain's native trace/recording facility (Playwright trace, Maestro recording, agent-browser trace) rather than MCP screenshot loops.
 - **REQ-E2E-105** (Unwanted): The subsystem shall not require any MCP server as a hard dependency; every default platform path shall be fully executable with CLI-only tools.
@@ -82,23 +82,23 @@ Distribution is via the TEMPLATE SOURCE (`internal/template/templates/`) per the
 
 - **REQ-E2E-200** (Ubiquitous): The template source shall gain a thin command wrapper at `internal/template/templates/.claude/commands/moai/e2e.md.tmpl` conforming to the Thin Command Pattern: frontmatter with `description` + `allowed-tools` (CSV string), body <20 non-empty lines containing a `Skill(` invocation or `subagent` delegation directive (enforced by `TestCommandsThinPattern`).
 - **REQ-E2E-201** (Ubiquitous): The template source shall gain a workflow skill at `internal/template/templates/.claude/skills/moai/workflows/e2e.md` with `user-invocable: false` frontmatter and the phase structure: Detection → Selection → Journey Mapping → Script Creation → Execution → Recording (optional) → Report.
-- **REQ-E2E-202** (Ubiquitous): The template source shall gain a dedicated agent at `internal/template/templates/.claude/agents/moai/e2e-specialist.md` conforming to retained-agent frontmatter conventions (name, description with "NOT for:" clause, `tools:` CSV, `model: inherit`, `effort`, `color`, `permissionMode`, `memory`, `skills:` YAML array ≤2 entries).
-- **REQ-E2E-203** (Unwanted): The e2e-specialist agent shall not list `Agent` in its `tools:` CSV and shall not list or invoke `AskUserQuestion`; when required inputs are missing, it shall return the structured `## Missing Inputs` blocker report (`agent-common-protocol.md` §Blocker Report Format).
-- **REQ-E2E-204** (Ubiquitous): The workflow skill body shall delegate detection, script creation, and execution phases to the `e2e-specialist` subagent BY NAME, and the agent file shall exist at the path that delegation resolves to, in BOTH trees (cross-file reachability, not token presence).
+- **REQ-E2E-202** (Ubiquitous): The template source shall gain a dedicated agent at `internal/template/templates/.claude/agents/moai/e2e-tester.md` conforming to retained-agent frontmatter conventions (name, description with "NOT for:" clause, `tools:` CSV, `model: inherit`, `effort`, `color`, `permissionMode`, `memory`, `skills:` YAML array ≤2 entries).
+- **REQ-E2E-203** (Unwanted): The e2e-tester agent shall not list `Agent` in its `tools:` CSV and shall not list or invoke `AskUserQuestion`; when required inputs are missing, it shall return the structured `## Missing Inputs` blocker report (`agent-common-protocol.md` §Blocker Report Format).
+- **REQ-E2E-204** (Ubiquitous): The workflow skill body shall delegate detection, script creation, and execution phases to the `e2e-tester` subagent BY NAME, and the agent file shall exist at the path that delegation resolves to, in BOTH trees (cross-file reachability, not token presence).
 
 ### Group D — Router & catalog reachability
 
 - **REQ-E2E-300** (Ubiquitous): The `/moai` SKILL.md Intent Router Priority 1 subcommand list shall regain an `**e2e**` row routing to the e2e workflow, in BOTH trees.
 - **REQ-E2E-301** (Ubiquitous): The `moai` SKILL.md frontmatter `description` subcommand enumeration AND the `CLAUDE.md` §3 `Subcommands:` line shall include `e2e`, in BOTH trees.
 - **REQ-E2E-302** (Ubiquitous): The retained-agent count-literal surface shall be updated consistently in BOTH trees. A TRULY repo-wide grep (`'10 retained agents|9 MoAI-custom|10-agent'` over CLAUDE.md, README*, .claude, internal/template, internal/web, docs-site; re-executed 2026-07-13) structures the surface into rings. **Ring 1 — doctrine tree (12 files / 24 sites**; content-token anchored — line numbers drift between trees):
-  - `CLAUDE.md` §4 (3 sites each tree): the count text ("exactly 10 retained agents (9 MoAI-custom + 1 Explore)" → "exactly 11 retained agents (10 MoAI-custom + 1 Explore)"), the "flat-hierarchy 10-agent consolidation rationale" sentence (→ 11-agent), the "one of the 10 retained agents above" sentence (→ 11); PLUS a catalog table row and a Selection Decision Tree entry for `e2e-specialist` (appended as entry 12; manager-design remains entry 11)
+  - `CLAUDE.md` §4 (3 sites each tree): the count text ("exactly 10 retained agents (9 MoAI-custom + 1 Explore)" → "exactly 11 retained agents (10 MoAI-custom + 1 Explore)"), the "flat-hierarchy 10-agent consolidation rationale" sentence (→ 11-agent), the "one of the 10 retained agents above" sentence (→ 11); PLUS a catalog table row and a Selection Decision Tree entry for `e2e-tester` (appended as entry 12; manager-design remains entry 11)
   - `.claude/rules/moai/development/agent-authoring.md` (3 sites each tree): "exactly 10 retained agents" / "10-agent retention ceiling" family → 11
-  - `.claude/rules/moai/development/agent-patterns.md` (3 sites each tree): incl. the MoAI-custom name enumeration (gains `e2e-specialist`) and "all 9 MoAI-custom agents" → 10
+  - `.claude/rules/moai/development/agent-patterns.md` (3 sites each tree): incl. the MoAI-custom name enumeration (gains `e2e-tester`) and "all 9 MoAI-custom agents" → 10
   - `.claude/rules/moai/development/model-policy.md` (1 site each tree): "All 9 MoAI-custom retained agents … 10-agent catalog" → 10 / 11-agent
-  - `.claude/rules/moai/workflow/spec-workflow.md` (1 site each tree): "exactly 10 retained agents (named list)" → 11 + named list gains `e2e-specialist`
+  - `.claude/rules/moai/workflow/spec-workflow.md` (1 site each tree): "exactly 10 retained agents (named list)" → 11 + named list gains `e2e-tester`
   - `.claude/agents/moai/manager-design.md` (1 site each tree): "10 retained agents" → 11
 
-  **Ring 2 — template-distributed skill modules (4 template files / 8 sites)**: `internal/template/templates/.claude/skills/moai-foundation-core/SKILL.md` (1 site), `…/moai-foundation-core/modules/agents-reference.md` (3 sites — this file IS the extended agent-catalog reference and gains an `e2e-specialist` table row, not just count edits), `…/moai-foundation-core/modules/INDEX.md` (3 sites), `…/moai-foundation-quality/SKILL.md` (1 site). OBSERVED PRE-EXISTING DRIFT (recorded baseline, audit iter-2 D13): the 4 LOCAL siblings are TWO generations stale — they carry the "8 retained agents / 7 MoAI-custom / 8-agent" family (7 sites measured) and ZERO 10/9-family matches. Run-phase normalizes BOTH trees to the 11/10 target content.
+  **Ring 2 — template-distributed skill modules (4 template files / 8 sites)**: `internal/template/templates/.claude/skills/moai-foundation-core/SKILL.md` (1 site), `…/moai-foundation-core/modules/agents-reference.md` (3 sites — this file IS the extended agent-catalog reference and gains an `e2e-tester` table row, not just count edits), `…/moai-foundation-core/modules/INDEX.md` (3 sites), `…/moai-foundation-quality/SKILL.md` (1 site). OBSERVED PRE-EXISTING DRIFT (recorded baseline, audit iter-2 D13): the 4 LOCAL siblings are TWO generations stale — they carry the "8 retained agents / 7 MoAI-custom / 8-agent" family (7 sites measured) and ZERO 10/9-family matches. Run-phase normalizes BOTH trees to the 11/10 target content.
 
   **Ring 3 — repo-root user docs**: `README.md` (3 sites measured). `README.ko.md` / `README.ja.md` / `README.zh.md` carry NO ERE-family matches (measured 2026-07-13); run-phase reviews their locale-language agent-count claims manually and updates any found (4-locale parity obligation).
 
@@ -108,8 +108,8 @@ Distribution is via the TEMPLATE SOURCE (`internal/template/templates/`) per the
 
   After the update, invariance greps over the touched files shall return 0 matches: **CMD-019-INV** (19-file in-scope surface, 10/9-family; measured baseline 38) AND **CMD-019-INV-B** (local skill siblings, 8/7-era family; measured baseline 7) — acceptance.md § Executable Command Block.
 - **REQ-E2E-303** (Capability gate): **Where** natural-language input expresses e2e-testing intent in any `conversation_language`, the Priority 3 semantic classification shall route to the e2e workflow (cue exemplars added to the P3 list; semantic, not literal-match).
-- **REQ-E2E-304** (Ubiquitous): `internal/template/catalog.yaml` `core.agents` shall gain an `e2e-specialist` entry (name/tier/path/version authored manually; hash computed by `make build` → `gen-catalog-hashes --all`). NOTE: the hash generator only UPDATES existing entries — it does not create them (verified in `gen-catalog-hashes.go`).
-- **REQ-E2E-305** (Ubiquitous): The Go tier-profile display surface shall gain an `e2e-specialist` row so the agent renders in the `moai web` model-policy preview: `tierProfileAgentOrder` + its per-agent tier-profile entries in `internal/template/model_policy.go`, with the display pins reconciled in the SAME commit — `model_policy_test.go` length pin 10 → 11, the 60-cell assertion → 66 (2 plans × 11 agents × 3 tiers), the "10 retained agents" test comments → 11; `internal/web/modelpolicy_test.go` per-plan row expectation 10 → 11 (and its "10 retained agents × 3 tiers" comment). This is a DATA-ROW + test-pin change under the C-7 carve-out (no new runtime logic). Rationale (audit iter-2 D13): the display list is hard-coded, so NO test fails on omission — without this REQ, e2e-specialist would be silently absent from the preview (doctrine-vs-display drift).
+- **REQ-E2E-304** (Ubiquitous): `internal/template/catalog.yaml` `core.agents` shall gain an `e2e-tester` entry (name/tier/path/version authored manually; hash computed by `make build` → `gen-catalog-hashes --all`). NOTE: the hash generator only UPDATES existing entries — it does not create them (verified in `gen-catalog-hashes.go`).
+- **REQ-E2E-305** (Ubiquitous): The Go tier-profile display surface shall gain an `e2e-tester` row so the agent renders in the `moai web` model-policy preview: `tierProfileAgentOrder` + its per-agent tier-profile entries in `internal/template/model_policy.go`, with the display pins reconciled in the SAME commit — `model_policy_test.go` length pin 10 → 11, the 60-cell assertion → 66 (2 plans × 11 agents × 3 tiers), the "10 retained agents" test comments → 11; `internal/web/modelpolicy_test.go` per-plan row expectation 10 → 11 (and its "10 retained agents × 3 tiers" comment). This is a DATA-ROW + test-pin change under the C-7 carve-out (no new runtime logic). Rationale (audit iter-2 D13): the display list is hard-coded, so NO test fails on omission — without this REQ, e2e-tester would be silently absent from the preview (doctrine-vs-display drift).
 
 ### Group E — Distribution & CI reconciliation
 
@@ -123,7 +123,7 @@ Distribution is via the TEMPLATE SOURCE (`internal/template/templates/`) per the
 ### Group F — Boundaries
 
 - **REQ-E2E-500** (Unwanted): The revival shall not resurrect any of the 7 retired design-pack skills (`moai-domain-ideation`, `moai-domain-research`, `moai-domain-brand-design`, `moai-domain-copywriting`, `moai-domain-design-handoff`, `moai-workflow-design`, `moai-workflow-gan-loop`) nor the other 4 retired subcommands (design/brain/coverage/security).
-- **REQ-E2E-501** (Ubiquitous): The e2e-specialist shall operate within the subagent boundary: blocker reports instead of prompts, results returned to the orchestrator, no nested agent spawning.
+- **REQ-E2E-501** (Ubiquitous): The e2e-tester shall operate within the subagent boundary: blocker reports instead of prompts, results returned to the orchestrator, no nested agent spawning.
 
 > REQ-E2E-502 (desktop-native opt-in fallback) was REMOVED at v0.1.1 — the user deferred native-desktop automation to a follow-up SPEC. The `desktop-native` detection classification remains and routes to the REQ-E2E-007 graceful branch with a deferral notice.
 
@@ -133,7 +133,7 @@ Distribution is via the TEMPLATE SOURCE (`internal/template/templates/`) per the
 
 - **C-1** [HARD] Template-First: no file lands in local `.claude/` without a template-tree sibling authored first.
 - **C-2** [HARD] Thin Command Pattern: command body <20 non-empty lines (`TestCommandsThinPattern` R3).
-- **C-3** [HARD] Subagent boundary: e2e-specialist never prompts the user (Frozen-zone rule).
+- **C-3** [HARD] Subagent boundary: e2e-tester never prompts the user (Frozen-zone rule).
 - **C-4** [HARD] Template neutrality: zero internal-development traces in template content (existing CI guard is the gate).
 - **C-5** [HARD] All CI-guard tests, `go test ./...`, and `golangci-lint run` green at close.
 - **C-6** Token economy: the workflow skill body itself stays lean (~≤450 lines, at parity with the retired baseline despite 3× platform scope — achieved by matrix-driven structure over per-tool prose duplication).

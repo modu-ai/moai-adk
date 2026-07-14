@@ -231,7 +231,7 @@ The orchestrator composes the domain instructions inline at delegation time rath
 
 ### When to Author a Static Agent File Instead
 
-Reserve `.claude/agents/*.md` static files for agents meeting Anthropic's "keep spawning the same kind of worker with the same instructions" criterion. The 10 MoAI-custom retained agents (`manager-spec`, `manager-develop`, `manager-design`, `manager-docs`, `manager-git`, `plan-auditor`, `sync-auditor`, `super-advisor`, `builder-harness`, `e2e-specialist`) all satisfy this criterion via recurring SPEC-phase invocations. Domain-specific work that does NOT recur with identical instructions across SPEC sessions belongs in per-spawn pattern, not in a static file.
+Reserve `.claude/agents/*.md` static files for agents meeting Anthropic's "keep spawning the same kind of worker with the same instructions" criterion. The 10 MoAI-custom retained agents (`manager-spec`, `manager-develop`, `manager-design`, `manager-docs`, `manager-git`, `plan-auditor`, `sync-auditor`, `super-advisor`, `builder-harness`, `e2e-tester`) all satisfy this criterion via recurring SPEC-phase invocations. Domain-specific work that does NOT recur with identical instructions across SPEC sessions belongs in per-spawn pattern, not in a static file.
 
 See `.claude/rules/moai/development/agent-authoring.md` § Static Agent File vs Per-Spawn Specialization Decision Tree for the authoring decision tree.
 

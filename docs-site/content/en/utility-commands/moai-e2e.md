@@ -152,21 +152,21 @@ A **native desktop app** that is neither Electron nor Tauri (pure macOS app, Win
 
 ## Agent Delegation Chain
 
-The execution owner of `/moai e2e` is the **e2e-specialist** agent. All user-facing selection questions belong to the MoAI orchestrator; e2e-specialist receives the selections and performs the execution only.
+The execution owner of `/moai e2e` is the **e2e-tester** agent. All user-facing selection questions belong to the MoAI orchestrator; e2e-tester receives the selections and performs the execution only.
 
 ```mermaid
 flowchart TD
     User["User request"] --> Orchestrator["MoAI orchestrator"]
-    Orchestrator --> Detect["e2e-specialist<br/>platform detection + toolchain probe"]
+    Orchestrator --> Detect["e2e-tester<br/>platform detection + toolchain probe"]
     Detect --> Ask["Orchestrator<br/>toolchain and journey selection questions"]
-    Ask --> Exec["e2e-specialist<br/>script creation + CLI execution + recording"]
+    Ask --> Exec["e2e-tester<br/>script creation + CLI execution + recording"]
     Exec --> Report["Orchestrator<br/>result report"]
 ```
 
 | Agent | Role | Main tasks |
 |----------|------|----------|
 | **MoAI orchestrator** | Selection and reporting | Toolchain/journey selection questions, result-report rendering |
-| **e2e-specialist** | Execution owner | Detection probes, journey mapping, script creation, CLI execution, recording |
+| **e2e-tester** | Execution owner | Detection probes, journey mapping, script creation, CLI execution, recording |
 
 ## Related Documents
 

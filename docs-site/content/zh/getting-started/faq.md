@@ -121,7 +121,7 @@ MoAI-ADK 会根据 Claude Code 订阅套餐为智能体分配最优 AI 模型。
 | builder-harness | opus | sonnet | haiku |
 | super-advisor | opus | opus | sonnet |
 
-e2e-specialist 与内置 `Explore` 直接沿用会话模型 (`model: inherit`)。
+e2e-tester 与内置 `Explore` 直接沿用会话模型 (`model: inherit`)。
 
 ### 设置方法
 

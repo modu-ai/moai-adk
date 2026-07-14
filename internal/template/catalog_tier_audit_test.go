@@ -228,7 +228,7 @@ func TestAllAgentsInCatalog(t *testing.T) {
 	// 7 retained MoAI-custom agents (4 core + 3 meta) + 1 Anthropic built-in Explore
 	// (no MoAI file). 12 phantom/domain-expert agents archived to
 	// .moai/backups/agent-archive-2026-05-25/.
-	// SPEC-E2E-REVIVAL-001 (2026-07-13): e2e-specialist added (10th MoAI-custom
+	// SPEC-E2E-REVIVAL-001 (2026-07-13): e2e-tester added (10th MoAI-custom
 	// retained agent — /moai e2e revival, web/mobile/desktop E2E execution owner);
 	// net +1 = 10.
 	const expectedAgentCount = 10

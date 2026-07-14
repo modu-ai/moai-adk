@@ -363,7 +363,7 @@ moai harness disable     # turn learning off
 | | sync-auditor | 四维质量评分 (Functionality 40 · Security 25 · Craft 20 · Consistency 15) |
 | **Builder** | builder-harness | 搭建项目专属的代理、技能、命令与钩子 |
 | **Advisor** | super-advisor | 按需高推理咨询 (E1-E4 升级) |
-| **Specialist** | e2e-specialist | Web/移动端/桌面端 E2E 测试执行 (CLI 优先) |
+| **Specialist** | e2e-tester | Web/移动端/桌面端 E2E 测试执行 (CLI 优先) |
 | **Built-in** | Explore | 只读代码库探索 |
 
 规划与审计在设计上是分离的——作者绝不为自己的工作打分。

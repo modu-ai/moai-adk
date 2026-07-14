@@ -108,7 +108,7 @@ MoAI-ADK는 **11개 보존 에이전트** (10개 MoAI-custom + 1개 Anthropic bu
 | Evaluator (2) | plan-auditor, sync-auditor | 계획/완료 단계 독립적 품질 평가 |
 | Builder (1) | builder-harness | 동적 프로젝트별 하네스 생성 |
 | Advisor (1) | super-advisor | 고추론 자문 (E1-E4 에스컬레이션) |
-| Specialist (1) | e2e-specialist | 웹/모바일/데스크탑 E2E 테스트 실행 |
+| Specialist (1) | e2e-tester | 웹/모바일/데스크탑 E2E 테스트 실행 |
 | Built-in (1) | Explore (Anthropic) | 읽기 전용 코드베이스 탐색 |
 
 ### 5. SPEC 워크플로우

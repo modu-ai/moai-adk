@@ -12,7 +12,7 @@
 |----|-----|-----------|------------------|
 | AC-E2E-001 | REQ-E2E-001 | Workflow skill contains a project-marker detection matrix covering web, mobile, desktop, and mixed classifications, with ≥2 marker examples per platform class | Read `internal/template/templates/.claude/skills/moai/workflows/e2e.md` §Detection; matrix table present with 4 platform rows; markers treat ecosystems equally (no "primary" language) |
 | AC-E2E-002 | REQ-E2E-002 | Platform-toolchain matrix maps each detected type to a default: web→Playwright CLI, mobile→Maestro, desktop→Playwright-Electron/WebdriverIO+tauri-service | Matrix table present; defaults match design.md §C; each default's install + version-probe command included |
-| AC-E2E-003 | REQ-E2E-003, REQ-E2E-004 | All selection questions are specified as ORCHESTRATOR AskUserQuestion instructions; zero instructions direct the e2e-specialist to prompt | `grep -n 'AskUserQuestion' <workflow>` — every hit sits in orchestrator-addressed prose; `grep -c 'specialist.*AskUserQuestion'` semantic review → 0 agent-prompts directives |
+| AC-E2E-003 | REQ-E2E-003, REQ-E2E-004 | All selection questions are specified as ORCHESTRATOR AskUserQuestion instructions; zero instructions direct the e2e-tester to prompt | `grep -n 'AskUserQuestion' <workflow>` — every hit sits in orchestrator-addressed prose; `grep -c 'specialist.*AskUserQuestion'` semantic review → 0 agent-prompts directives |
 | AC-E2E-004 | REQ-E2E-005 | `--tool` flag documented in Supported Flags and short-circuits selection | Flag row present; Phase 0.5 contains the bypass branch |
 | AC-E2E-005 | REQ-E2E-006 | Missing-toolchain path: version probe → install command surface → approval → re-probe | Phase 0 install section contains probe-install-reprobe sequence for each default toolchain |
 | AC-E2E-006 | REQ-E2E-007 | No-target graceful exit specified; a detected `desktop-native` surface routes to the SAME graceful branch with a deferral notice (native-desktop automation deferred per user decision — former REQ-E2E-502 removed at v0.1.1) | Workflow contains the "no e2e target" report branch incl. the `desktop-native` deferral notice; NO opt-in automation path present for `desktop-native` |
@@ -35,7 +35,7 @@
 | AC-E2E-013 | REQ-E2E-201 | Workflow skill exists in both trees, `user-invocable: false`, identical content | `diff .claude/skills/moai/workflows/e2e.md internal/template/templates/.claude/skills/moai/workflows/e2e.md` exit 0; `grep -c 'user-invocable: false'` = 1 |
 | AC-E2E-014 | REQ-E2E-202 | Agent file exists in both trees, byte-identical, frontmatter complete (name/description/tools CSV/model/effort/color/permissionMode/memory/skills) | `diff` exit 0; `grep -c '^tools:'` = 1 and value is CSV (no leading `-`); frontmatter COMPLETENESS verified by MANUAL field-by-field checklist — no CI test proves completeness; `TestAgentFrontmatterAudit` (run additionally, exit 0) guards retired-field cleanliness ONLY (audit iter-1 D12) |
 | AC-E2E-015 | REQ-E2E-203 | Agent tools line excludes Agent and AskUserQuestion; body contains the `## Missing Inputs` blocker-report contract | Run **CMD-015** → 0; `grep -c 'Missing Inputs' <agent>` ≥1 |
-| AC-E2E-016 | REQ-E2E-204 | Cross-file reachability chain: workflow delegates to `e2e-specialist` by name in ≥3 phase sections AND the agent file exists at the resolving path in both trees AND catalog registers it | `grep -c 'e2e-specialist' <workflow>` ≥3; `test -f` both agent paths; run **CMD-016** → ≥2 `=== RUN` lines AND exit 0 (both tests provably executed — a non-matching `-run` pattern exits 0 vacuously) |
+| AC-E2E-016 | REQ-E2E-204 | Cross-file reachability chain: workflow delegates to `e2e-tester` by name in ≥3 phase sections AND the agent file exists at the resolving path in both trees AND catalog registers it | `grep -c 'e2e-tester' <workflow>` ≥3; `test -f` both agent paths; run **CMD-016** → ≥2 `=== RUN` lines AND exit 0 (both tests provably executed — a non-matching `-run` pattern exits 0 vacuously) |
 
 ### Group D — Router & catalog reachability (baseline-delta greps, both trees)
 
@@ -43,10 +43,10 @@
 |----|-----|-----------|--------------------------------------|
 | AC-E2E-017 | REQ-E2E-300 | Priority 1 router row restored in both SKILL.md trees | `grep -cE '^- \*\*e2e\*\*' <both SKILL.md>` : 0 → 1 each |
 | AC-E2E-018 | REQ-E2E-301 | Frontmatter description enumeration + CLAUDE.md §3 Subcommands line include `e2e`, both trees | `grep -c 'e2e' <SKILL.md frontmatter block>` 0 → ≥1; run **CMD-018** : 0 → 2 |
-| AC-E2E-019 | REQ-E2E-302 | FULL in-scope count-literal surface updated per the spec.md REQ-E2E-302 rings: ring 1 doctrine (12 files/24 sites, both trees) + ring 2 template-skill modules (4 template files/8 sites, incl. the agents-reference.md `e2e-specialist` table row) with the two-generations-stale LOCAL siblings (8/7-era, 7 sites) normalized + ring 3 README.md (3 sites; ko/ja/zh locale-language review) | `grep -c '11 retained agents'` 0 → 1 per CLAUDE.md (2 across both trees); `grep -c 'e2e-specialist' <both CLAUDE.md>` 0 → ≥2 each (table row + decision tree); INVARIANCE: run **CMD-019-INV** (19-file widened surface) → 0 (measured baseline 2026-07-13: 38) AND **CMD-019-INV-B** (local skill siblings, 8/7-era family) → 0 (measured baseline: 7) |
+| AC-E2E-019 | REQ-E2E-302 | FULL in-scope count-literal surface updated per the spec.md REQ-E2E-302 rings: ring 1 doctrine (12 files/24 sites, both trees) + ring 2 template-skill modules (4 template files/8 sites, incl. the agents-reference.md `e2e-tester` table row) with the two-generations-stale LOCAL siblings (8/7-era, 7 sites) normalized + ring 3 README.md (3 sites; ko/ja/zh locale-language review) | `grep -c '11 retained agents'` 0 → 1 per CLAUDE.md (2 across both trees); `grep -c 'e2e-tester' <both CLAUDE.md>` 0 → ≥2 each (table row + decision tree); INVARIANCE: run **CMD-019-INV** (19-file widened surface) → 0 (measured baseline 2026-07-13: 38) AND **CMD-019-INV-B** (local skill siblings, 8/7-era family) → 0 (measured baseline: 7) |
 | AC-E2E-020 | REQ-E2E-303 | Priority 3 semantic-classification cue line for e2e-testing intent added, both trees | `grep -n 'e2e' <SKILL.md P3 section>` ≥1 each; cue line phrased as semantic exemplar (not literal-match requirement) |
-| AC-E2E-021 | REQ-E2E-304 | catalog.yaml core.agents entry with real (non-placeholder) 64-hex hash | `grep -A4 'name: e2e-specialist' internal/template/catalog.yaml` shows tier/path/hash/version; hash matches `^[0-9a-f]{64}$`; `go test -run TestAllAgentsInCatalog ./internal/template/` exit 0 |
-| AC-E2E-028 | REQ-E2E-305 | Go tier-profile display surface includes `e2e-specialist` (renders in the `moai web` model-policy preview) with all pins reconciled | `grep -c 'e2e-specialist' internal/template/model_policy.go` ≥1 (order list + profile entries); run **CMD-028** → ≥2 `=== RUN` lines AND exit 0 with the updated pins (length 11; 66-cell assertion; per-plan rows 11); stale "10 retained agents" comments in both test files are covered by CMD-019-INV (they are in its 19-file scope) |
+| AC-E2E-021 | REQ-E2E-304 | catalog.yaml core.agents entry with real (non-placeholder) 64-hex hash | `grep -A4 'name: e2e-tester' internal/template/catalog.yaml` shows tier/path/hash/version; hash matches `^[0-9a-f]{64}$`; `go test -run TestAllAgentsInCatalog ./internal/template/` exit 0 |
+| AC-E2E-028 | REQ-E2E-305 | Go tier-profile display surface includes `e2e-tester` (renders in the `moai web` model-policy preview) with all pins reconciled | `grep -c 'e2e-tester' internal/template/model_policy.go` ≥1 (order list + profile entries); run **CMD-028** → ≥2 `=== RUN` lines AND exit 0 with the updated pins (length 11; 66-cell assertion; per-plan rows 11); stale "10 retained agents" comments in both test files are covered by CMD-019-INV (they are in its 19-file scope) |
 
 ### Group E — Distribution & CI reconciliation
 
@@ -70,12 +70,12 @@ Pipe-bearing commands cannot live inside markdown table cells: cell escaping (`\
 
 ```bash
 # CMD-008 — bounded-tail contract presence in agent body, both trees (expected output: >=1 per file)
-grep -cnE '50 lines|2KB' .claude/agents/moai/e2e-specialist.md \
-  internal/template/templates/.claude/agents/moai/e2e-specialist.md
+grep -cnE '50 lines|2KB' .claude/agents/moai/e2e-tester.md \
+  internal/template/templates/.claude/agents/moai/e2e-tester.md
 
 # CMD-015 — agent tools-line boundary (expected output: 0)
-grep -h '^tools:' .claude/agents/moai/e2e-specialist.md \
-  internal/template/templates/.claude/agents/moai/e2e-specialist.md \
+grep -h '^tools:' .claude/agents/moai/e2e-tester.md \
+  internal/template/templates/.claude/agents/moai/e2e-tester.md \
   | grep -cE '\bAgent\b|AskUserQuestion'
 
 # CMD-016 — catalog reachability tests provably RUN and pass
@@ -130,7 +130,7 @@ ls internal/template/templates/.claude/skills \
 sed -n '/Phase 0/,/Phase 0.5/p' internal/template/templates/.claude/skills/moai/workflows/e2e.md \
   | grep -icE 'primary (language|framework)|first-class (language|framework)|enabled.*planned'
 
-# CMD-028 — Go tier-profile display pins provably RUN and pass with e2e-specialist row
+# CMD-028 — Go tier-profile display pins provably RUN and pass with e2e-tester row
 # (expected: first command prints >=2; second prints exit=0)
 go test -v -run 'TierProfile' ./internal/template/ ./internal/web/ | grep -c '^=== RUN'
 go test -run 'TierProfile' ./internal/template/ ./internal/web/; echo "exit=$?"
@@ -143,7 +143,7 @@ Note: `grep -c` prints `0` and exits 1 on no-match — the EXPECTED OUTPUT VALUE
 ### S1 — Web project detection (happy path)
 - **Given** a user project with `playwright.config.ts` absent but `package.json` + `next.config.js` present
 - **When** the user runs `/moai e2e`
-- **Then** detection classifies `web`, the orchestrator presents toolchain options with "Playwright CLI (Recommended)" first, and upon selection the e2e-specialist receives the choice via spawn prompt (never prompting itself).
+- **Then** detection classifies `web`, the orchestrator presents toolchain options with "Playwright CLI (Recommended)" first, and upon selection the e2e-tester receives the choice via spawn prompt (never prompting itself).
 
 ### S2 — React Native mobile project
 - **Given** a project with `ios/` + `android/` + `react-native` in package.json dependencies
@@ -167,7 +167,7 @@ Note: `grep -c` prints `0` and exits 1 on no-match — the EXPECTED OUTPUT VALUE
 
 ### S6 — Verbose output containment
 - **Given** a Playwright run producing a 4,000-line failure log
-- **When** the e2e-specialist reports results
+- **When** the e2e-tester reports results
 - **Then** the in-context report carries exit code + ≤50-line tail + the full log's citable file path under the artifacts dir — never the full log inline.
 
 ### S7 — Router precedence
@@ -176,7 +176,7 @@ Note: `grep -c` prints `0` and exits 1 on no-match — the EXPECTED OUTPUT VALUE
 - **Then** Priority 1 matches `e2e` on the FIRST WORD after the command, routes to the e2e workflow, and "checkout flow on staging" passes through as context (not a routing signal).
 
 ### S8 — Agent boundary under missing input
-- **Given** the e2e-specialist is spawned without a target URL for a web journey
+- **Given** the e2e-tester is spawned without a target URL for a web journey
 - **When** it reaches the navigation step
 - **Then** it returns a structured `## Missing Inputs` blocker report naming the parameter and stops — no free-form question, no AskUserQuestion attempt.
 
