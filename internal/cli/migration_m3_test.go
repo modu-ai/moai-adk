@@ -84,8 +84,14 @@ func TestM3_Status_JSON_NoLastApplied(t *testing.T) {
 	dir := seedMigrationDir(t, 999999, "")
 	chdir(t, dir)
 
-	migrationStatusCmd.Flags().Set("json", "true")
-	t.Cleanup(func() { migrationStatusCmd.Flags().Set("json", "false") })
+	if err := migrationStatusCmd.Flags().Set("json", "true"); err != nil {
+		t.Fatalf("set json flag: %v", err)
+	}
+	t.Cleanup(func() {
+		if err := migrationStatusCmd.Flags().Set("json", "false"); err != nil {
+			t.Fatalf("reset json flag: %v", err)
+		}
+	})
 
 	stdout := &bytes.Buffer{}
 	stderr := &bytes.Buffer{}
@@ -118,7 +124,9 @@ func TestM3_Status_Human_NoPending_NoLastApplied(t *testing.T) {
 	dir := seedMigrationDir(t, 999999, "")
 	chdir(t, dir)
 
-	migrationStatusCmd.Flags().Set("json", "false")
+	if err := migrationStatusCmd.Flags().Set("json", "false"); err != nil {
+		t.Fatalf("set json flag: %v", err)
+	}
 
 	stdout := &bytes.Buffer{}
 	stderr := &bytes.Buffer{}
@@ -148,7 +156,9 @@ func TestM3_Status_Human_WithLastApplied(t *testing.T) {
 	dir := seedMigrationDir(t, 999999, m2SuccessLog)
 	chdir(t, dir)
 
-	migrationStatusCmd.Flags().Set("json", "false")
+	if err := migrationStatusCmd.Flags().Set("json", "false"); err != nil {
+		t.Fatalf("set json flag: %v", err)
+	}
 
 	stdout := &bytes.Buffer{}
 	stderr := &bytes.Buffer{}
@@ -178,8 +188,14 @@ func TestM3_Status_JSON_WithLastApplied(t *testing.T) {
 	dir := seedMigrationDir(t, 999999, m2SuccessLog)
 	chdir(t, dir)
 
-	migrationStatusCmd.Flags().Set("json", "true")
-	t.Cleanup(func() { migrationStatusCmd.Flags().Set("json", "false") })
+	if err := migrationStatusCmd.Flags().Set("json", "true"); err != nil {
+		t.Fatalf("set json flag: %v", err)
+	}
+	t.Cleanup(func() {
+		if err := migrationStatusCmd.Flags().Set("json", "false"); err != nil {
+			t.Fatalf("reset json flag: %v", err)
+		}
+	})
 
 	stdout := &bytes.Buffer{}
 	stderr := &bytes.Buffer{}
