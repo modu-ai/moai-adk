@@ -167,6 +167,12 @@ Created:
 
 Orchestrator Trust-but-verify (2026-07-14): `go test ./... -count=1` exit 0 (FULL repo green); guard 5-family (TestSplitHarnessNamespaceNoLeak + cli `Namespace|SecurityM2` + internal/merge) green UNMODIFIED; characterization (M3b safety net) green; `go build ./...` exit 0. /goal conditions "go test ./... exits 0" + "lint 0" + "namespace 가드 green" MET. Remaining for 20/20 AC: M3e (confirm.go v2 + outcome card, AC-TUX3-011~013) + M3f (coherence integration test AC-TUX3-016, coverage AC-TUX3-018, ratchet AC-TUX3-020, full-suite AC-TUX3-019).
 
+### Amendment — AC-TUX3-018 deploy coverage completion (M1, commit `6fb84a280`)
+
+**M1 deploy subpackage coverage — LANDED**: AC-TUX3-018 deploy coverage debt cleared. Added `internal/cli/update/deploy/deploy_error_test.go` (369 lines, error-path tests) covering all testable `if err != nil` branches in deploy.go: CleanMoaiManagedPaths (stat/remove/glob/config/migrate errors), MigrateLegacyMemoryDir (rename/remove-legacy errors), ScaffoldEvolutionDir (mkdirall/gitkeep/manifest/changelog write errors). Coverage: 74.7% → 97.5% (≥85% target MET). Remaining 2.5% is `filepath.Glob`'s `ErrBadPattern` branch (deploy.go:78-81), unreachable with a valid `moai*` pattern. Permission-based tests skip when `os.Geteuid()==0` (root bypasses EACCES); the MkdirAll ENOTDIR test needs no root skip (file-as-dir works everywhere).
+
+Orchestrator Trust-but-verify (2026-07-14, fresh batch; evidence `/tmp/moai-verify-tux3/`): `go test -count=1 -cover ./internal/cli/update/deploy/` → `coverage: 97.5% of statements` (exit 0); `go build ./...` exit 0; `GOOS=windows GOARCH=amd64 go build ./...` exit 0; PRESERVE confirmed — `go test -count=1 -cover ./internal/cli/update/{report,plan,merge}/` → report 92.9% · plan 95.0% · merge 90.3% (all ≥85%, UNCHANGED); `grep -rn 'AskUserQuestion' internal/cli/update/deploy/ | grep -v _test.go` → 0 (subagent boundary clean); `golangci-lint run --timeout=2m` → 6 pre-existing errcheck in `merge_test.go` (OUT OF SCOPE, PRESERVE), 0 NEW in deploy; `git rev-list --count --left-right origin/main...HEAD` = `0 0` (synced).
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 run_status: audit-ready
