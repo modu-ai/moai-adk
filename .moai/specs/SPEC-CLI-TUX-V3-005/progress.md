@@ -88,3 +88,28 @@ _<pending run-phase>_
 ## §E.4 Sync-phase Audit-Ready Signal
 
 _<pending sync-phase>_
+
+## §F Phase 4 Mode Selection
+
+**Input parameters**:
+- tier: M
+- scope: 5 non-test files (state.go, migration.go, tmux_integration.go, banner.go, branch_protection.go); 24 migratable call sites
+- domain count: 1 (CLI output layer)
+- file language mix: Go (100%)
+- concurrency benefit: LOW (coding-heavy migration per Anthropic coding-task parallelism caveat)
+
+**Mode evaluation**:
+- Mode 1 (trivial): NO — multi-file migration with characterization tests
+- Mode 2 (background): NO — write-capable implementation work
+- Mode 3 (agent-team): RETIRED
+- Mode 4 (parallel): NO — coding-heavy, single domain, few parallelizable tasks
+- Mode 5 (sub-agent): SELECTED — sequential per-milestone DDD cycles
+- Mode 6 (workflow): NO — semantic per-file migration (not a single uniform mechanical transform); <30 files
+
+**Decision**: sub-agent (Mode 5)
+
+**Justification**: Tier M single-domain coding-heavy migration. Each milestone (M2 state.go 11 calls, M3 migration.go 8 calls, M4 tmux_integration.go 5 calls) is an independent DDD ANALYZE-PRESERVE-IMPROVE cycle on one file — sequential sub-agent per milestone matches Anthropic's coding-task parallelism caveat ("most coding tasks involve fewer truly parallelizable tasks than research"). M1 architecture gate already RESOLVED (3 decisions recorded 2026-07-14: banner.go excluded, ttyConfirmer excluded, human-format stdout Data()). M5 is ratchet verification. Per-milestone dispatch also avoids the autocompact-thrash hazard of a single large-scope spawn.
+
+**Implementation Kickoff Approval**: OBTAINED 2026-07-14 (user AskUserQuestion — run-phase entry approved, score-independent mandatory gate cleared).
+
+**Plan Audit Gate (Phase 1)**: PASS 0.95 (plan-auditor iter-2, 2026-07-14). skip-eligible (score ≥0.90 + artifact hash stable post-acd7d8046 + within 24h) — Phase 1 re-execution skipped; the iter-2 audit IS the verdict of record.
