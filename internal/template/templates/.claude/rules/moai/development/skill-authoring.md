@@ -134,8 +134,25 @@ Level 2 (Body):
 
 Level 3 (Bundled):
 - Tokens: Variable
-- Content: reference.md, modules/, examples/
+- Content: reference.md (single root file), references/ (multi-file directory), reference/ (single directory, Claude Code Pattern 2), modules/, examples/, INDEX.md (module index)
 - Loading: On-demand by Claude
+
+### Skill Directory Layout
+
+MoAI skills follow the Agent Skills standard with MoAI-specific extensions. The bundled directory layout (Level 3) accepts any of the following optional supporting locations, chosen by skill size and content shape:
+
+| Path | Form | Status | Use |
+|------|------|--------|-----|
+| `reference.md` | root file | official SSOT | single external-links / API-docs file (simple skills) |
+| `references/` | multi-file directory | MoAI official extension | multiple reference files grouped together (large skills, e.g. a `claude-code-*-official.md` series) |
+| `reference/` | single directory | Claude Code Pattern 2 (Anthropic `skills.md` bigquery example) | domain-specific reference organization |
+| `modules/` | multi-file directory | MoAI official (`modular-system.md`) | topic-focused deep-dive content, self-contained |
+| `examples.md` | root file | official | copy-paste-ready working examples |
+| `scripts/` | directory | official | executable utility scripts |
+| `templates/` | directory | official | reusable file templates |
+| `INDEX.md` | root file (inside `modules/`) | MoAI convention | optional human-readable index of the modules in a `modules/` directory |
+
+A skill MAY use `reference.md`, `references/`, and `reference/` independently or together based on its content volume. `modular-system.md` (inside the `moai-foundation-core` skill) is the canonical deep-dive on this layout.
 
 ### Skill Listing Budget and Compaction (Claude Code runtime)
 

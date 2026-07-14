@@ -20,7 +20,8 @@ Standard Structure:
  pattern-b.md
  pattern-c.md
  examples.md # Working code samples (optional)
- reference.md # External links/API docs (optional)
+ reference.md # External links/API docs (optional, single root file)
+ references/ # Multi-file reference directory (optional, large skills)
  scripts/ # Utility scripts (optional)
  helper.sh
  templates/ # Templates (optional)
@@ -31,7 +32,9 @@ File Principles:
 1. SKILL.md ≤500 lines (hard limit)
 2. modules/ = Topic-focused, self-contained
 3. examples.md = Copy-paste ready
-4. reference.md = External resources
+4. reference.md = External resources (single root file)
+5. references/ = Multi-file reference directory (large skills)
+6. INDEX.md = Optional module index inside modules/
 
 Cross-Reference Syntax:
 ```markdown
