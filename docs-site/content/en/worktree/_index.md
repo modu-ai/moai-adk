@@ -122,8 +122,8 @@ $ claude
 #### Phase 3: Merge & Cleanup
 
 ```bash
-moai worktree done SPEC-AUTH-001              # main → merge → cleanup
-moai worktree done SPEC-AUTH-001 --push       # above + push to remote
+moai worktree done SPEC-AUTH-001                    # worktree cleanup (merge/push done separately via git)
+moai worktree done SPEC-AUTH-001 --delete-branch    # cleanup + delete local branch
 ```
 
 ## Worktree command reference

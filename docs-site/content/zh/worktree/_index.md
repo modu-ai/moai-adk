@@ -118,8 +118,8 @@ $ claude
 #### 第 3 阶段：Merge & Cleanup
 
 ```bash
-moai worktree done SPEC-AUTH-001              # main → 合并 → 清理
-moai worktree done SPEC-AUTH-001 --push       # 上述操作 + 推送到远程仓库
+moai worktree done SPEC-AUTH-001                    # worktree 清理（合并/推送通过 git 另行执行）
+moai worktree done SPEC-AUTH-001 --delete-branch    # 清理 + 删除本地分支
 ```
 
 ## Worktree 命令参考
