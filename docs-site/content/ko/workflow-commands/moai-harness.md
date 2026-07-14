@@ -4,7 +4,7 @@ weight: 55
 draft: false
 ---
 
-프로젝트 고유의 동적 전문가 팀 (하네스)을 생성하고, 하네스 학습 라이프사이클을 관리합니다.
+프로젝트 고유의 전문가 세트 (하네스)를 생성하고, 하네스 학습 라이프사이클을 관리합니다.
 
 {{< callout type="info" >}}
 **슬래시 커맨드**: Claude Code에서 `/moai:harness <자연어 요청>`을 입력하면 이 명령어를 바로 실행할 수 있습니다.
@@ -12,20 +12,20 @@ draft: false
 
 ## 개요
 
-`/moai:harness`는 MoAI-ADK의 **Harness v4 Builder**를 실행하여 프로젝트 요구사항에 맞춘 동적 전문가 팀을 자동 생성합니다.
+`/moai:harness`는 MoAI-ADK의 **Harness v4 Builder**를 실행하여 프로젝트 요구사항에 맞춘 전문가 세트를 자동 생성합니다. Builder는 오케스트레이터가 직접 구동하며 (Agent Teams 정적 계층이 아님), 생성된 하네스는 manifest 기반 Runner가 서브에이전트(sub-agent) 또는 dynamic-workflow 프리미티브로 전문가를 디스패치합니다.
 
 v3의 세 번째 기둥인 **에이전틱 하네스**를 그대로 체감할 수 있는 명령어입니다 — 하네스가 하네스를 만드는 재귀 구조입니다. 범용 에이전트 카탈로그로 부족한 프로젝트 고유 영역 (예: 특정 DB 마이그레이션 절차, 사내 API 규약)이 있으면, 자연어 한 문장으로 그 영역의 전문가 팀을 스캐폴드할 수 있습니다. 생성된 하네스는 **재귀적 자가 학습** 서브시스템과 이어집니다 — 사용 관찰이 축적되면 하네스가 스스로 개선 제안을 만들고, 사용자 승인 게이트를 거쳐 지침이 진화합니다.
 
 ### Harness v4 Builder란?
 
-Harness v4 Builder는 Socratic 인터뷰 기반의 4-phase 워크플로우 (ANALYZE → PLAN → GENERATE → ACTIVATE)로 팀을 구성합니다.
+Harness v4 Builder는 Socratic 인터뷰 기반의 4-phase 워크플로우 (ANALYZE → PLAN → GENERATE → ACTIVATE)로 전문가 세트를 구성합니다. 오케스트레이터가 직접 4-phase를 진행하며, dynamic-workflow 스크립트가 아닙니다.
 
 | 단계 | 설명 |
 |------|------|
 | ANALYZE | 프로젝트 구조, 사용 언어, 기존 에이전트 인벤토리 분석 |
-| PLAN | 필요한 팀 규모(3~5명), 각 팀원의 역할, worktree 격리 여부 결정 |
-| GENERATE | `.claude/agents/harness/` 에이전트 파일, `.moai/harness/manifest.json` 생성 |
-| ACTIVATE | 팀 등록 및 `/harness:<name>` 커맨드 활성화 |
+| PLAN | 필요한 전문가 수(3~5개), 각 전문가 역할, worktree 격리 여부 결정 |
+| GENERATE | `.claude/agents/harness/hns-<name>*-specialist.md` 전문가 파일, `.claude/commands/harness/<name>/manifest.json` (SSOT), `.claude/workflows/hns-<name>-run.js` Runner 생성 |
+| ACTIVATE | manifest 등록 및 `/harness:<name>` 커맨드 활성화 (smoke gate) |
 
 ## 단일 `harness` 서브커맨드 라우팅
 
@@ -69,13 +69,14 @@ DB 마이그레이션, REST API 엔드포인트, 단위 테스트를 각각 담�
 Builder가 4-phase를 자동 실행합니다:
 
 1. **ANALYZE**: Go, PostgreSQL, REST API 기술 스택 감지
-2. **PLAN**: DB Engineer, API Developer, Test Engineer 3인 팀 구성 결정
+2. **PLAN**: DB Engineer, API Developer, Test Engineer 3개 전문가 역할 구성 결정
 3. **GENERATE**:
-   - `.claude/agents/harness/db-engineer.md`
-   - `.claude/agents/harness/api-developer.md`
-   - `.claude/agents/harness/test-engineer.md`
-   - `.moai/harness/manifest.json` 생성
-4. **ACTIVATE**: `/harness:backend-team` 커맨드 등록
+   - `.claude/agents/harness/hns-backend-team-db-specialist.md`
+   - `.claude/agents/harness/hns-backend-team-api-specialist.md`
+   - `.claude/agents/harness/hns-backend-team-test-specialist.md`
+   - `.claude/commands/harness/backend-team/manifest.json` (SSOT)
+   - `.claude/workflows/hns-backend-team-run.js` (Runner)
+4. **ACTIVATE**: `/harness:backend-team` 커맨드 등록 (smoke gate)
 
 ### 3단계: 생성된 팀 활용
 
@@ -188,7 +189,7 @@ Tier-4 (TierAutoUpdate) 제안은 파일 수정 전 **반드시** 오케스트�
 
 ## Manifest 구조
 
-Harness v4는 **manifest.json**으로 팀 구성을 정의합니다.
+Harness v4는 **manifest.json** (`.claude/commands/harness/<name>/manifest.json`, SSOT)으로 전문가 세트 구성을 정의합니다. Runner는 이 manifest를 읽어 각 phase의 전문가를 오케스트레이터-직접 서브에이전트 또는 dynamic-workflow 프리미티브로 디스패치합니다 — Agent Teams 정적 계층에 등록하는 방식이 아닙니다.
 
 ### manifest.json 예시
 
@@ -278,30 +279,30 @@ Claude Code가 병렬 팀원 간 충돌 감지 시 자동으로 L1 워크트리�
 
 모든 팀원이 프로젝트 루트에서 작업합니다 (최소 메모리 사용).
 
-## 팀 위임 워크플로우
+## 전문가 디스패치 워크플로우
 
-Harness가 활성화되면 MoAI는 해당 팀을 자동으로 활용합니다.
+Harness가 활성화되면 manifest 기반 Runner가 해당 전문가 세트를 자동으로 활용합니다.
 
-### SPEC 실행 시 팀 위임
+### SPEC 실행 시 전문가 디스패치
 
 ```bash
 > /moai run SPEC-BACKEND-001
 ```
 
-**MoAI의 자동 판단:**
+**오케스트레이터-직접 판단:**
 1. SPEC 복잡도 추정 (파일 수, 코드 라인 수)
 2. 적합한 하네스 선택
-3. manifest phase 순서대로 팀원 순차/병렬 위임
+3. manifest phase 순서대로 전문가를 서브에이전트(sub-agent) 또는 dynamic-workflow 프리미티브로 디스패치
 
-### Phase 기반 위임 예시
+### Phase 기반 디스패치 예시
 
 ```
 PLAN Phase:
-  → architect 팀원이 아키텍처 설계 담당
+  → architect 전문가가 아키텍처 설계 담당
 
 RUN Phase:
-  → db-engineer, api-developer 병렬 위임
-  → test-engineer 순차 위임 (테스트)
+  → db-specialist, api-specialist 순차 서브에이전트 디스패치
+  → test-specialist 서브에이전트 디스패치 (테스트)
 
 SYNC Phase:
   → 문서 생성 및 PR 작성 (기본 manager-docs)

@@ -53,7 +53,7 @@ draft: false
 | ---------------------------------------- | -------------------------------- | ----------------------------- |
 | `--max N` (또는 `--max-iterations`)      | 최대 반복 횟수 제한 (기본값 10)  | `/moai loop --max 20`         |
 | `--lens {clean\|simplify\|coverage}`     | 스캔 렌즈 추가 (쉼표 구분, opt-in) | `/moai loop --lens clean,coverage` |
-| `--auto` (또는 `--auto-fix`)             | 자동 수정 활성화 (기본 Level 1)  | `/moai loop --auto`           |
+| `--auto-fix`                             | 자동 수정 활성화 (기본 Level 1)  | `/moai loop --auto-fix`       |
 | `--sequential` (또는 `--seq`)            | 순차 진단 instead of 병렬        | `/moai loop --sequential`     |
 | `--errors` (또는 `--errors-only`)        | 오류만 수정, 경고 건너뜀         | `/moai loop --errors`         |
 | `--coverage` (또는 `--include-coverage`) | 커버리지 포함 (기본값 85%)       | `/moai loop --coverage`       |
@@ -251,20 +251,25 @@ flowchart TD
     Todo --> Loop["루프 시작"]
 
     Loop --> Fix["manager-develop에<br/>수정 위임"]
-    Fix --> Verify["sync-auditor<br/>검증"]
-
-    Verify --> Complete{"완료 조건?"}
-    Complete -->|아니오| Loop
-    Complete -->|예| Done["완료"]
+    Fix --> Predicate{"기계적 완료 술어<br/>(큐 소진 + 진단 clean)?"}
+    Predicate -->|아니오| Loop
+    Predicate -->|예| FinalPass["Step 1.5<br/>독립 최종 검증"]
+    FinalPass --> Done["완료"]
 ```
+
+**완료 판정 — 기계적 술어 + 독립 최종 검증:**
+
+루프의 성공 종료는 **기계적 완료 술어**로 판정합니다 — 이슈 큐가 비었고 진단(LSP/AST-grep/테스트/커버리지)이 clean한지를 오케스트레이터가 직접 확인합니다. 별도의 감사 에이전트(sync-auditor)가 완료를 판정하지 않습니다.
+
+술어가 충족되면 **Step 1.5 독립 최종 검증(Independent Final Pass)**이 성공 종료 경로로 실행됩니다 — `/moai gate --fresh`를 새 컨텍스트로 돌리거나 read-only 검증 Agent를 spawn하여, 루프가 자신을 검사하지 않도록 독립적으로 최종 상태를 확인합니다.
 
 **에이전트 역할:**
 
 | 에이전트                | 역할      | 주요 작업            |
 | ----------------------- | --------- | -------------------- |
-| **MoAI 오케스트레이터** | 루프 조율 | 진단 조율, 사용자 보고 |
+| **MoAI 오케스트레이터** | 루프 조율 + 완료 술어 판정 | 진단 조율, 기계적 완료 술어 확인, 사용자 보고 |
 | **manager-develop**     | 루프 관리 및 수정 실행 | TODO 생성, 실제 코드 수정 (cycle_type=autofix) |
-| **sync-auditor**        | 품질 검증 | 완료 조건 확인       |
+| **`/moai gate --fresh` 또는 read-only 검증 Agent** | Step 1.5 독립 최종 검증 | 성공 종료 전 독립 컨텍스트에서 최종 상태 확인 |
 
 ## 실전 예시
 

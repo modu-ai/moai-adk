@@ -52,14 +52,24 @@ Plan 단계에서 생성된 SPEC ID를 인자로 전달합니다:
 
 ## 지원 플래그
 
-| 플래그              | 설명                  | 예시                               |
-| ------------------- | --------------------- | ---------------------------------- |
-| `--resume SPEC-XXX` | 중단된 구현 작업 재개 | `/moai run --resume SPEC-AUTH-001` |
+| 플래그              | 설명                    | 예시                               |
+| ------------------- | ----------------------- | ---------------------------------- |
+| `--resume SPEC-XXX` | 중단된 구현 작업 재개   | `/moai run --resume SPEC-AUTH-001` |
 | `--solo`            | 하위 에이전트 모드 강제 | `/moai run SPEC-AUTH-001 --solo`   |
+| `--mode <값>`       | 디스패치 축 지정        | `/moai run SPEC-AUTH-001 --mode loop` |
 
 **Resume 기능:**
 
 재실행 시 마지막 성공한 단계 체크포인트부터 이어서 작업합니다.
+
+**`--mode` 디스패치 축:**
+
+`--mode`는 `/moai run` 워크플로우 변형을 선택하는 별도의 축입니다 (Phase 4의 6-모드 실행 카탈로그와는 다른 축):
+
+- `autopilot` (기본): Phase 4 규모 기반 선택 후 구현 실행
+- `loop`: Ralph 엔진 진단형 루프에 위임 (`loop.md` 참조)
+- `team`: 은퇴 — `MODE_TEAM_UNAVAILABLE`을 발생시키고 `autopilot`으로 폴백 (Agent Teams 정적 계층 은퇴)
+- `pipeline`: 거부 — `MODE_PIPELINE_ONLY_UTILITY` 오류 반환 (pipeline 모드는 유틸리티 서브커맨드 전용)
 
 ## DDD 사이클
 
@@ -296,12 +306,9 @@ thorough 레벨에서만 실행됩니다. sync-auditor와 구현 전 Done 기준
 
 **출력:** trust_5_validation 결과, coverage_percentage, overall_status (PASS/WARNING/CRITICAL), issues_found
 
-### Phase 16/2.8b: 능동 평가와 정적 검증
+### Phase 19: sync-auditor 독립 감사
 
-품질 평가가 두 단계로 나뉘어 실행됩니다:
-
-- **Phase 16**: sync-auditor 능동 평가 (Functionality/Security/Craft/Consistency)
-- **Phase 17**: sync-auditor TRUST 5 정적 검증
+thorough 레벨에서 sync-auditor 서브에이전트가 4차원 (Functionality/Security/Craft/Consistency) 능동 평가와 TRUST 5 정적 검증을 수행합니다. 만든 에이전트가 아닌 독립 감사자가 품질을 판정합니다.
 
 {{< callout type="warning" >}}
 Security FAIL = 전체 FAIL. 최대 3회 수정-평가 사이클 후 사용자에게 보고됩니다.
@@ -315,7 +322,7 @@ DDD/TDD 사이클 완료 시 계획 대비 실제 변경을 비교합니다:
 - 20% < drift ≤ 30%: 경고
 - drift > 30%: Phase 14 재계획 게이트 트리거
 
-### Phase 3: Git 작업 (조건부)
+### Phase 19: Git 작업 (조건부)
 
 **manager-git** 하위 에이전트가 Git 자동화를 수행합니다:
 
@@ -325,7 +332,7 @@ DDD/TDD 사이클 완료 시 계획 대비 실제 변경을 비교합니다:
 - git_strategy.automation.auto_branch가 true이면 feature 브랜치 생성
 - auto_branch가 false이면 현재 브랜치에 직접 커밋
 
-### Phase 4: 완료 및 안내
+### Phase 20: 완료 및 안내
 
 사용자에게 다음 옵션을 제시합니다:
 
@@ -473,24 +480,24 @@ Phase 13: 품질 검증
 
 ---
 
-#### Phase 3: Git 작업
+#### Phase 19: Git 작업
 
 Conventional Commits으로 커밋을 생성합니다.
 
 ```bash
-Phase 3: Git 작업
+Phase 19: Git 작업
 - 브랜치: feature/SPEC-AUTH-001
 - 커밋 7개 생성 (Conventional Commits)
 ```
 
 ---
 
-#### Phase 4: 완료
+#### Phase 20: 완료
 
 구현이 완료되면 다음 단계로 안내합니다.
 
 ```bash
-Phase 4: 완료
+Phase 20: 완료
 - 구현 완료
 - 다음 단계: /moai sync
 ```

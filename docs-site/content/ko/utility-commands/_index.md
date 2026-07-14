@@ -28,6 +28,8 @@ v3의 두 번째 기둥인 **에이전틱 루프 엔지니어링**이 실제로 
 | `/moai mx` | @MX 코드 주석 | 코드베이스 스캔 → @MX 태그 삽입 | AI 맥락용 코드 앵커·위험 표시를 심고 싶을 때 |
 | `/moai clean` | 데드 코드 제거 | 정적 분석 → 사용 그래프 → 안전 제거 | 미사용 코드를 정리하고 싶을 때 |
 | `/moai codemaps` | 아키텍처 문서 생성 | 코드베이스 스캔 → 구조 문서 자동 생성 | 프로젝트 아키텍처 문서를 만들고 싶을 때 |
+| `/moai review` | 다관점 코드 리뷰 | 보안·성능·품질·UX 판정 + @MX 준수 검사 | PR/변경분을 다관점으로 검토하고 싶을 때 |
+| `/moai e2e` | E2E 테스트 | web/mobile/desktop 자동 감지 + CLI-first 실행 | 사용자 여정 E2E 테스트를 만들고 실행하고 싶을 때 |
 | `/moai feedback` | 피드백 제출 | GitHub 이슈 자동 생성 | MoAI-ADK에 버그 리포트나 개선 제안을 보낼 때 |
 
 ## 명령어 관계도
@@ -45,12 +47,18 @@ flowchart TD
     C --> I["/moai codemaps<br/>아키텍처 문서 생성"]
     C --> K["/moai gate<br/>커밋 전 품질 게이트"]
     C --> L["/moai mx<br/>@MX 코드 주석"]
+    C --> M["/moai review<br/>다관점 코드 리뷰"]
+    C --> N["/moai e2e<br/>E2E 테스트"]
     D --> J["/moai feedback<br/>피드백 제출"]
 
     E -->|내부에서 사용| F
     F -->|1회만 실행하면| G
     H -->|정리 후 재생성| I
 ```
+
+{{< callout type="info" >}}
+SPEC 3-Phase 라이프사이클 명령어 (`/moai plan`, `run`, `sync`, `project`, `design`, `harness`)는 [워크플로우 명령어](/workflow-commands/) 섹션을 참조하세요. `/moai` 오케스트레이터가 라우팅하는 전체 15개 서브커맨드 목록도 그 섹션에 있습니다.
+{{< /callout >}}
 
 {{< callout type="info" >}}
 **어떤 명령어를 써야 할지 모르겠다면?**

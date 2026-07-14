@@ -42,6 +42,36 @@ flowchart TD
 `/moai harness`는 하네스 학습 서브시스템 관리용 보조 명령어입니다 — CLAUDE.md 변경을 모니터링하고 티어 기반 자동 업데이트를 제안합니다.
 {{< /callout >}}
 
+## 전체 서브커맨드 (15개)
+
+`/moai` 오케스트레이터는 15개 서브커맨드를 라우팅합니다. 이 섹션(워크플로우)은 SPEC 3-Phase 라이프사이클 명령어를, [유틸리티 명령어](/utility-commands/) 섹션은 자동화·수정 루프·코드 관리·피드백 명령어를 다룹니다.
+
+**워크플로우 명령어 (이 섹션):**
+
+| 서브커맨드 | 목적 |
+|-----------|------|
+| [`/moai plan`](./moai-plan) | SPEC 문서 생성 |
+| [`/moai run`](./moai-run) | DDD/TDD 구현 |
+| [`/moai sync`](./moai-sync) | 문서 동기화 및 PR |
+| [`/moai project`](./moai-project) | 프로젝트 문서 생성 |
+| [`/moai design`](./moai-design) | 디자인 단계 협업 (manager-design D1-D5) |
+| [`/moai harness`](./moai-harness) | 하네스 생성 및 학습 라이프사이클 |
+
+**유틸리티 명령어 ([유틸리티 섹션](/utility-commands/)):**
+
+| 서브커맨드 | 목적 |
+|-----------|------|
+| [`/moai fix`](/utility-commands/moai-fix) | 일회성 자동 수정 |
+| [`/moai loop`](/utility-commands/moai-loop) | 반복 수정 루프 |
+| [`/moai mx`](/utility-commands/moai-mx) | @MX 코드 주석 |
+| [`/moai feedback`](/utility-commands/moai-feedback) | GitHub 이슈 피드백 |
+| [`/moai review`](/utility-commands/moai-review) | 다관점 코드 리뷰 (보안·@MX) |
+| [`/moai clean`](/utility-commands/moai-clean) | 데드 코드 제거 |
+| [`/moai codemaps`](/utility-commands/moai-codemaps) | 아키텍처 코드맵 생성 |
+| [`/moai gate`](/utility-commands/moai-gate) | 커밋 전 품질 게이트 |
+| [`/moai e2e`](/utility-commands/moai-e2e) | 멀티 플랫폼 E2E 테스트 |
+| [`/moai goal`](/utility-commands/moai-goal) | 조건 선언형 자율 루프 |
+
 ## 빠른 시작
 
 ```bash

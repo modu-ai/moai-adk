@@ -71,42 +71,45 @@ draft: false
 
 ## 실행 과정
 
-`/moai clean`은 6단계로 실행됩니다.
+`/moai clean`은 7단계로 실행됩니다.
 
 ```mermaid
 flowchart TD
     Start["/moai clean 실행"] --> Phase1["1단계: 정적 분석 스캔"]
 
-    Phase1 --> Phase2["2단계: 사용 그래프 분석"]
-
-    Phase2 --> Phase3["3단계: 분류"]
-    Phase3 --> Classify{"분류 결과"}
+    Phase1 --> Phase2["2단계: 사용 그래프 분석 및 분류"]
+    Phase2 --> Classify{"분류 결과"}
     Classify --> Dead["확실한 데드 코드"]
     Classify --> TestOnly["테스트 전용"]
     Classify --> Likely["가능성 있는 데드 코드"]
     Classify --> False["오탐 (실제 사용 중)"]
 
-    Dead --> Approval{"--dry?"}
-    Approval -->|예| Report["분석 결과 표시 후 종료"]
-    Approval -->|아니오| Phase4["4단계: 안전 제거"]
+    Dead --> Phase3{"3단계: 제거 계획 승인<br/>(AskUserQuestion / --dry?)"}
+    Phase3 -->|--dry 또는 거부| Report["분석 결과 표시 후 종료"]
+    Phase3 -->|승인| Phase4["4단계: 안전 제거"]
 
     Phase4 --> Phase5["5단계: 테스트 검증"]
     Phase5 --> Pass{"테스트 통과?"}
-    Pass -->|예| Phase6["6단계: 보고서"]
     Pass -->|아니오| Rollback["롤백 후 재시도"]
+    Pass -->|예| Phase6["6단계: MX 태그 정리"]
     Rollback --> Phase6
+    Phase6 --> Phase7["7단계: 보고서"]
 ```
+
+3단계 **제거 계획 승인**은 오케스트레이터가 `AskUserQuestion`으로 제거 대상 목록을 사용자에게 제시하고 승인을 받는 휴먼 게이트입니다. 6단계 **MX 태그 정리**는 제거된 코드에 붙어 있던 `@MX` 주석을 함께 정리하여 dangling 주석이 남지 않도록 합니다.
 
 ### 1단계: 정적 분석 스캔
 
-언어별 도구를 사용하여 데드 코드 후보를 탐지합니다:
+프로젝트 언어를 project marker로 자동 감지하고, 각 언어의 표준 데드 코드 분석 도구로 후보를 탐지합니다. **16개 지원 언어를 동등하게 취급**하며 (go, python, typescript, javascript, rust, java, kotlin, csharp, ruby, php, elixir, cpp, scala, r, flutter, swift), 설치되지 않은 도구는 우아하게 건너뜁니다. 인식된 언어 마커가 없는 프로젝트는 조용히 통과됩니다. 아래는 대표 예시일 뿐 특정 언어를 우대하지 않습니다:
 
-| 언어 | 분석 도구 | 검사 대상 |
+| 언어 (예시) | 분석 도구 (예시) | 검사 대상 |
 |------|-----------|-----------|
-| **Go** | `go vet`, `staticcheck`, `deadcode` | 미사용 변수, 함수, 타입 |
-| **Python** | `vulture`, `autoflake` | 데드 코드, 미사용 import |
-| **TypeScript/JavaScript** | `ts-prune`, ESLint `no-unused-vars` | 미사용 export, 변수 |
-| **Rust** | `cargo clippy`, `cargo udeps` | 데드 코드 경고, 미사용 의존성 |
+| Go | `go vet`, `staticcheck`, `deadcode` | 미사용 변수, 함수, 타입 |
+| Python | `vulture`, `autoflake` | 데드 코드, 미사용 import |
+| TypeScript/JavaScript | `ts-prune`, ESLint `no-unused-vars` | 미사용 export, 변수 |
+| Rust | `cargo clippy`, `cargo udeps` | 데드 코드 경고, 미사용 의존성 |
+
+나머지 12개 언어(java, kotlin, csharp, ruby, php, elixir, cpp, scala, r, flutter, swift 등)도 각자의 표준 툴체인으로 동일하게 스캔됩니다.
 
 **스캔 카테고리:**
 

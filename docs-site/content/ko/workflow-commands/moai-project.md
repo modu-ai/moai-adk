@@ -41,14 +41,15 @@ Claude Code는 새로운 대화를 시작할 때 프로젝트에 대해 아무�
 
 ## 생성되는 문서
 
-`/moai project`는 `.moai/project/` 디렉토리 아래에 3개의 문서를 생성합니다:
+`/moai project`는 `.moai/project/` 디렉토리 아래에 3개의 핵심 문서와 아키텍처 코드맵을 생성합니다:
 
 ```
 .moai/
 └── project/
     ├── product.md      # 프로젝트 개요
     ├── structure.md    # 디렉토리 구조 분석
-    └── tech.md         # 기술 스택 정보
+    ├── tech.md         # 기술 스택 정보
+    └── codemaps/       # 아키텍처 코드맵 (Phase 9)
 ```
 
 문서 생성과 함께 프로젝트에 맞는 **하네스 자동 구성**도 이 명령어의 역할입니다 — 분석된 기술 스택을 바탕으로 프로젝트 전용 에이전트 팀 (하네스)을 함께 구성할 수 있습니다. 하네스 생성의 상세는 [/moai harness](./moai-harness)를 참조하세요.
@@ -98,30 +99,32 @@ Claude Code는 새로운 대화를 시작할 때 프로젝트에 대해 아무�
 flowchart TD
     Start["/moai project 실행"] --> Q1{프로젝트 타입은?}
 
-    Q1 -->|신규 프로젝트| New["Phase 1: 정보 수집"]
-    Q1 -->|기존 프로젝트| Exist["Phase 1: 코드베이스 분석"]
+    Q1 -->|신규 프로젝트| New["Phase 2: 심층 인터뷰<br/>(Stage A + B)"]
+    Q1 -->|기존 프로젝트| Exist["Phase 3: 코드베이스 분석"]
 
     New --> NewQ["프로젝트 목적"]
     New --> NewL["주요 언어"]
     New --> NewD["프로젝트 설명"]
 
-    NewQ --> Gen["Phase 3: 문서 생성"]
+    NewQ --> Gen["Phase 6: 문서 생성"]
     NewL --> Gen
     NewD --> Gen
 
     Exist --> Exp["Explore 에이전트<br/>코드베이스 분석"]
-    Exp --> Conf["Phase 2: 사용자 확인"]
+    Exp --> Conf["Phase 5: 사용자 확인"]
 
     Conf -->|승인| Gen
     Conf -->|취소| End["종료"]
 
-    Gen --> LSP["Phase 4: LSP 확인"]
-    LSP --> Complete["Phase 4: 완료"]
+    Gen --> Audit["Phase 7: plan-auditor 독립 감사"]
+    Audit --> CM["Phase 9: 코드맵 생성"]
+    CM --> LSP["Phase 10: LSP 확인"]
+    LSP --> Complete["Phase 14: 완료"]
 ```
 
 ## 상세 워크플로우
 
-### Phase 0: 프로젝트 타입 감지
+### Phase 1: 프로젝트 타입 감지
 
 가장 먼저 프로젝트 타입을 확인합니다.
 
@@ -137,9 +140,9 @@ flowchart TD
 | **신규 프로젝트** | 처음부터 시작하는 프로젝트. 정보를 수집형식으로 진행 |
 | **기존 프로젝트** | 이미 코드가 있는 프로젝트. 코드를 자동으로 분석      |
 
-### Phase 1: 신규 프로젝트 정보 수집
+### Phase 2: 심층 인터뷰 (신규 프로젝트)
 
-신규 프로젝트를 선택한 경우, 다음 정보를 수집합니다:
+신규 프로젝트를 선택한 경우, 2단계 **심층 인터뷰** (Deep Interview)를 진행합니다 — 명확도 점수 기반 Stage A (Vision-Domain / Technology-Constraints / Scope, `project.max_rounds`까지 가변 라운드) + 필수 Stage B 확장 축 라운드. 다음 정보를 수집합니다:
 
 **질문 1 - 프로젝트 목적**:
 
@@ -161,9 +164,9 @@ flowchart TD
 - 주요 기능 또는 목표
 - 타겟 사용자
 
-수집된 정보를 바탕으로 초기 문서를 생성하고 Phase 4로 이동합니다.
+수집된 정보를 바탕으로 초기 문서를 생성하고 Phase 6 문서 생성으로 이동합니다.
 
-### Phase 1: 코드베이스 분석 (기존 프로젝트)
+### Phase 3: 코드베이스 분석 (기존 프로젝트)
 
 기존 프로젝트를 선택한 경우, **Explore 에이전트**에게 분석을 위임합니다.
 
@@ -188,7 +191,11 @@ flowchart TD
 - 의존성 카탈로그
 - 진입점 식별
 
-### Phase 2: 사용자 확인
+### Phase 4: 심층 인터뷰 (기존 프로젝트)
+
+코드베이스 분석 후, 기존 프로젝트에도 2단계 **심층 인터뷰**가 진행됩니다 — 명확도 점수 기반 Stage A (Ownership-Goal / Constraints / Scope-Priority, `project.max_rounds`까지 가변 라운드) + 필수 Stage B 확장 축 라운드. 분석 결과만으로 드러나지 않는 소유권·목표·우선순위를 사용자에게서 끌어냅니다.
+
+### Phase 5: 사용자 확인
 
 분석 결과를 사용자에게 보여주고 승인을 받습니다.
 
@@ -205,14 +212,14 @@ flowchart TD
 - **상세 검토**: 분석 세부사항을 먼저 검토
 - **취소**: 프로젝트 설정 조정
 
-### Phase 3: 문서 생성
+### Phase 6: 문서 생성
 
 **manager-docs 에이전트**에게 문서 생성을 위임합니다.
 
 **전달 내용**:
 
-- Phase 1 분석 결과 (또는 Phase 1 사용자 입력)
-- Phase 2 사용자 확인
+- Phase 3 분석 결과 (또는 Phase 2 인터뷰 입력)
+- Phase 5 사용자 확인
 - 출력 디렉토리: `.moai/project/`
 - 언어: config의 conversation_language
 
@@ -224,7 +231,15 @@ flowchart TD
 | **structure.md** | 디렉토리 트리, 각 디렉토리의 목적, 핵심 파일 위치, 모듈 구성             |
 | **tech.md**      | 기술 스택 개요, 프레임워크 선택 근거, 개발 환경 요구사항, 빌드/배포 설정 |
 
-### Phase 4: 개발 환경 확인
+### Phase 7: plan-auditor 독립 감사
+
+문서 생성 후 **plan-auditor** 서브에이전트가 산출물을 조건부로 독립 감사하고 필요 시 재시도 루프를 돕니다 — 만든 에이전트(manager-docs)가 자신의 결과를 검사하지 않는 독립 감사 원칙을 프로젝트 문서 생성에도 적용합니다.
+
+### Phase 9: 코드맵 생성
+
+Explore + manager-docs가 `.moai/project/codemaps/`에 아키텍처 코드맵을 생성합니다.
+
+### Phase 10: 개발 환경 확인
 
 감지된 기술 스택에 맞는 LSP 서버가 설치되어 있는지 확인합니다.
 
@@ -252,9 +267,9 @@ flowchart TD
 
 - **LSP 없이 계속**: 완료까지 진행
 - **설치 안내 표시**: 감지된 언어의 설정 가이드 표시
-- **지금 자동 설치**: manager-develop 에이전트로 설치 (확인 필요)
+- **지금 자동 설치**: `Agent(general-purpose)` devops 스코프로 설치 (확인 필요)
 
-### Phase 4: 완료
+### Phase 14: 완료
 
 사용자의 언어로 완료 메시지를 표시합니다.
 
@@ -547,21 +562,22 @@ AI가 프로젝트의 기술 스택과 구조를 이미 알고 있으므로 더 
 
 ```mermaid
 flowchart TD
-    Start["/moai project 실행"] --> Phase0["Phase 0: 타입 감지"]
-    Phase0 --> Phase05["Phase 1: 정보 수집<br/>(신규 프로젝트)"]
-    Phase0 --> Phase1["Phase 1: 코드베이스 분석<br/>(기존 프로젝트)"]
+    Start["/moai project 실행"] --> Phase0["Phase 1: 타입 감지"]
+    Phase0 --> Phase05["Phase 2: 심층 인터뷰<br/>(신규 프로젝트)"]
+    Phase0 --> Phase1["Phase 3: 코드베이스 분석<br/>(기존 프로젝트)"]
 
     Phase1 --> Explore["Explore 하위 에이전트<br/>코드 분석 위임"]
-    Explore --> Phase2["Phase 2: 사용자 확인"]
+    Explore --> Phase2["Phase 5: 사용자 확인"]
 
-    Phase05 --> Phase3["Phase 3: 문서 생성"]
+    Phase05 --> Phase3["Phase 6: 문서 생성"]
     Phase2 -->|승인| Phase3
 
     Phase3 --> Docs["manager-docs 하위 에이전트<br/>문서 생성 위임"]
-    Docs --> Phase35["Phase 4: LSP 확인"]
+    Docs --> Audit["Phase 7: plan-auditor 감사"]
+    Audit --> Phase35["Phase 10: LSP 확인"]
 
-    Phase35 --> DevOps["manager-develop 하위 에이전트<br/>LSP 설치 (선택사항)"]
-    DevOps --> Phase4["Phase 4: 완료"]
+    Phase35 --> DevOps["Agent(general-purpose) devops<br/>LSP 설치 (선택사항)"]
+    DevOps --> Phase4["Phase 14: 완료"]
 ```
 
 ## 자주 묻는 질문
@@ -580,7 +596,7 @@ SPEC을 생성할 수는 있지만, AI가 프로젝트의 기술 스택이나 �
 
 ### Q: LSP 서버가 없으면 어떻게 되나요?
 
-LSP 서버가 없어도 문서 생성은 진행됩니다. 다만, 이후 `/moai run` 단계에서 코드 품질 진단이 제한될 수 있습니다. Phase 4에서 LSP 설치 안내를 제공합니다.
+LSP 서버가 없어도 문서 생성은 진행됩니다. 다만, 이후 `/moai run` 단계에서 코드 품질 진단이 제한될 수 있습니다. Phase 10에서 LSP 설치 안내를 제공합니다.
 
 ## 관련 문서
 

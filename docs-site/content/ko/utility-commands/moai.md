@@ -33,18 +33,24 @@ v3부터 `/moai`의 기본 라우팅은 **Analyze-First** — 언어 독립적 �
 1. **의도 분석**: 사용자 요청의 의도를 분류 (입력 언어와 무관)
 2. **컨텍스트 충분성 확인**: 불충분하면 Socratic 인터뷰로 명확화
 3. **실행 계획 구성**: 스킬 / 에이전트 / 동적 워크플로우 체인 선택
-4. **오케스트레이션 모드 선택** (Phase 4): solo-sequential / parallel-subagents / dynamic-workflow
+4. **오케스트레이션 모드 선택** (Phase 4): 6-모드 카탈로그 (trivial / background / agent-team(은퇴) / parallel / sub-agent / workflow) 중 자율 선택
 
 즉 `/moai "로그인 버그 고쳐줘"`처럼 서브커맨드 없이 자연어만 입력해도, 의도 분석을 거쳐 알맞은 워크플로우 (수정이면 fix 계열, 신규 기능이면 plan→run→sync 파이프라인)로 연결됩니다.
+
+### 파이프라인 게이트
+
+기본 파이프라인은 네 개의 명명된 게이트를 순서대로 통과합니다:
+
+1. **Plan-audit 게이트** (plan-auditor): SPEC 계획 산출물을 독립 감사 — FAIL/INCONCLUSIVE 시 중단
+2. **구현 착수 승인** (plan→run 휴먼 게이트): 파이프라인 진입당 정확히 1회, 점수와 무관하게 항상 사용자 승인을 받음
+3. **Phase 4 모드 선택** (6-모드 카탈로그): 구현 착수 승인 이후 자율 선택, progress.md에 기록
+4. **Sync-audit 게이트** (sync-auditor): 동기화 결과를 4차원으로 평가 — FAIL/INCONCLUSIVE 시 체인 중단
 
 ## 사용법
 
 ```bash
 # 기본 사용법
 > /moai "구현하고 싶은 기능 설명"
-
-# 워크트리와 함께
-> /moai "기능 설명" --worktree
 
 # 브랜치와 함께
 > /moai "기능 설명" --branch
@@ -61,7 +67,7 @@ v3부터 `/moai`의 기본 라우팅은 **Analyze-First** — 언어 독립적 �
 | 플래그              | 설명                             | 예시                           |
 | ------------------- | -------------------------------- | ------------------------------ |
 | `--loop`            | 구현 후 자동 반복 수정 활성화    | `/moai "기능" --loop`          |
-| `--max N`           | 루프 반복 상한 지정 (기본값은 설정 기반, `ralph.yaml` `loop.max_iterations` = 10) | `/moai "기능" --loop --max 20` |
+| `--max N`           | 루프 반복 상한 지정 (기본값 100) | `/moai "기능" --loop --max 20` |
 | `--sequential`      | Phase 1 탐색 에이전트를 병렬 대신 순차 실행 | `/moai "기능" --sequential`    |
 | `--branch`          | 자동 feature 브랜치 생성         | `/moai "기능" --branch`        |
 | `--pr`              | 완료 후 자동 PR 생성             | `/moai "기능" --pr`            |
@@ -260,8 +266,12 @@ flowchart TD
 **1단계: 명령어 실행**
 
 ```bash
-> /moai "JWT 기반 사용자 인증 시스템: 회원가입, 로그인, 토큰 갱신" --worktree --loop --pr
+> /moai "JWT 기반 사용자 인증 시스템: 회원가입, 로그인, 토큰 갱신" --loop --pr
 ```
+
+{{< callout type="info" >}}
+`--worktree`는 `/moai plan` 전용 플래그입니다. 기본 파이프라인(`/moai`, `run`, `sync`)에서는 라우터가 거부하므로 위 예시에서 사용하지 않습니다. 워크트리는 `/moai plan --worktree` 단계에서 생성되고 이후 단계가 그 워크트리를 재사용합니다.
+{{< /callout >}}
 
 **2단계: Phase 0 - 병렬 탐색**
 
@@ -338,7 +348,7 @@ flowchart TD
   커버리지: 89%
   PR: #42 생성 (Draft → Ready)
 
-<moai:COMPLETE />
+  → 완료 보고서(Completion Report) 배너로 작업 완료를 명시
 ```
 
 ## 자주 묻는 질문

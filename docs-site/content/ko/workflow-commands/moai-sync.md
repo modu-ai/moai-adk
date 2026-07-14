@@ -134,7 +134,7 @@ flowchart TD
     F -->|Abort| G["종료"]
     F -->|Continue| H["Phase 1 계속"]
 
-    E -->|아니오| H["Phase 1<br/>분석 및 계획"]
+    E -->|아니오| H["Phase 11<br/>분석 및 계획"]
 
     H --> I["사전 조건 확인"]
     I --> J["Git 변경 분석"]
@@ -143,7 +143,7 @@ flowchart TD
 
     L --> M{"사용자 승인"}
     M -->|아니오| N["종료"]
-    M -->|예| O["Phase 2<br/>문서 동기화 실행"]
+    M -->|예| O["Phase 12<br/>문서 동기화 실행"]
 
     O --> P["안전 백업 생성"]
     P --> Q["manager-docs 호출<br/>문서 생성"]
@@ -155,7 +155,7 @@ flowchart TD
     U --> V["sync-auditor 호출<br/>품질 검증"]
     V --> W{"품질 기준?"}
     W -->|FAIL| G
-    W -->|PASS| X["Phase 3<br/>Git 작업"]
+    W -->|PASS| X["Phase 13<br/>Git 작업"]
 
     X --> Y["변경 파일 스테이징"]
     Y --> Z["커밋 생성"]
@@ -208,13 +208,13 @@ flowchart TD
 
 test-runner, linter, type-checker, code-review의 상태를 집계하고 전체 상태 (PASS 또는 WARN)를 결정합니다.
 
-### Phase 1: 분석 및 계획
+### Phase 11: 분석 및 계획
 
 **manager-docs** 하위 에이전트가 동기화 전략을 수립합니다.
 
 **출력:** documents_to_update, specs_requiring_sync, project_improvements_needed, estimated_scope
 
-### Phase 2: 문서 동기화 실행
+### Phase 12: 문서 동기화 실행
 
 **Step 1 - 안전 백업 생성:**
 
@@ -248,11 +248,11 @@ test-runner, linter, type-checker, code-review의 상태를 집계하고 전체 
 - 자격증명 노출 없음
 - 모든 SPEC 적절히 연결됨
 
-**Step 4 - SPEC 상태 업데이트:**
+**Step 4 - SPEC 상태 업데이트 (3-Phase 클로즈):**
 
-완료된 SPEC의 상태를 일괄 업데이트하여 "completed"로 설정하고 버전 변경 및 상태 전환을 기록합니다.
+manager-docs는 SPEC 아티팩트의 프론트매터 상태를 `in-progress → implemented`로 전환합니다. `completed` 상태로의 최종 전환은 별도 커밋이 아니라 이 sync 커밋에 함께 실려 기록됩니다 — 즉 run 단계에서 `in-progress`로 진입한 SPEC이 sync 단계에서 `implemented`를 거쳐 sync 커밋과 함께 `completed`로 마무리됩니다. manager-docs는 spec.md/plan.md/acceptance.md 본문은 수정하지 않고 프론트매터 상태 전환만 담당합니다.
 
-### Phase 3: Git 작업 및 PR
+### Phase 13: Git 작업 및 PR
 
 **manager-git** 하위 에이전트가 Git 작업을 수행합니다:
 
@@ -273,7 +273,7 @@ SPEC tier에 따라 Git 작업 경로가 결정됩니다:
 `--merge` 플래그는 Deprecated되었습니다. Tier L PR을 병합하려면 CI 통과 후 `gh pr merge --squash --delete-branch`를 수동으로 실행하세요.
 {{< /callout >}}
 
-### Phase 4: 완료 및 다음 단계
+### Phase 14: 완료 및 다음 단계
 
 **표준 완료 보고:**
 
@@ -454,16 +454,11 @@ sync-auditor 판정이 FAIL/INCONCLUSIVE이거나 게이트가 차단하면 체�
 
 **플래그 동작:**
 
-| 플래그 | v2.8 이전 | v2.9.0 이후 |
-|--------|----------|------------|
-| (없음) | 머지 안 함 | 워크트리 컨텍스트에서 **자동 머지** |
-| `--merge` | 자동 머지 | **Deprecated** (경고 표시) |
-| `--no-merge` | N/A | 자동 머지 건너뛰기 |
+워크트리 컨텍스트에서는 별도 플래그 없이 자동 머지가 기본 동작입니다. `--merge` 플래그는 **Deprecated**되었으며 (경고 표시), Tier L PR 병합이 필요하면 CI 통과 후 `gh pr merge`를 수동으로 실행하세요. `/moai sync`가 지원하는 플래그는 `--pr` / `--merge` (deprecated) / `--skip-mx`뿐입니다.
 
 **Auto-merge 실행 조건:**
 1. 모든 CI/CD 체크 통과
 2. 머지 충돌 없음
-3. `--no-merge` 플래그 미설정
 
 {{< callout type="warning" >}}
 CI 실패 또는 충돌 시 자동 머지를 수행하지 않으며, 복구 명령어와 함께 오류를 보고합니다.
@@ -528,12 +523,12 @@ Phase 7: 품질 검증
 
 ---
 
-#### Phase 1: 분석 및 계획
+#### Phase 11: 분석 및 계획
 
 Git 변경 사항을 분석하고 동기화 계획을 수립합니다.
 
 ```bash
-Phase 1: 분석 및 계획
+Phase 11: 분석 및 계획
   Git 변경: 12개 파일 수정
   동기화 계획: API 문서 1개, README 업데이트, CHANGELOG 추가
   사용자 승인: 완료
@@ -541,12 +536,12 @@ Phase 1: 분석 및 계획
 
 ---
 
-#### Phase 2: 문서 동기화
+#### Phase 12: 문서 동기화
 
 필요한 문서를 생성하고 기존 문서를 업데이트합니다.
 
 ```bash
-Phase 2: 문서 동기화
+Phase 12: 문서 동기화
   백업 생성: .moai-backups/sync-20260128-143052/
   API 문서: docs/api/auth.md (신규)
   README.md: 사용법 섹션 업데이트
@@ -558,12 +553,12 @@ Phase 2: 문서 동기화
 
 ---
 
-#### Phase 3: Git 작업
+#### Phase 13: Git 작업
 
 커밋을 생성하고 PR을 엽니다.
 
 ```bash
-Phase 3: Git 작업
+Phase 13: Git 작업
   커밋 생성: docs(auth): synchronize documentation for SPEC-AUTH-001
   Push: main 직접 push (Tier M, Hybrid Trunk)
 ```
