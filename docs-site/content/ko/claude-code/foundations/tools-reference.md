@@ -135,8 +135,8 @@ flowchart TD
 
 ## 관련 문서
 
-- [훅 (Hooks)](/claude-code/extensibility/hooks)
-- [.claude 디렉터리](/claude-code/foundations/claude-directory)
+- [훅 (Hooks)](/ko/claude-code/extensibility/hooks)
+- [.claude 디렉터리](/ko/claude-code/foundations/claude-directory)
 
 ## 참고 자료
 

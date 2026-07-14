@@ -28,9 +28,9 @@ flowchart TD
 
 | 문서 | 설명 | 이어지는 MoAI 기둥 |
 |------|------|--------------------|
-| [기초](/claude-code/foundations) | Claude Code의 작동 원리와 기본 사용법 | 세 기둥 공통 토대 |
-| [컨텍스트와 메모리](/claude-code/context-memory) | 토큰·컨텍스트·메모리·캐싱·체크포인트 관리 | 토크노믹스 |
-| [확장](/claude-code/extensibility) | 스킬·훅·MCP·플러그인으로 기능 확장 | 에이전틱 하네스 |
-| [에이전트와 자동화](/claude-code/agentic) | 서브에이전트·팀·워크플로우·자율 실행 | 에이전틱 루프 엔지니어링 |
+| [기초](/ko/claude-code/foundations) | Claude Code의 작동 원리와 기본 사용법 | 세 기둥 공통 토대 |
+| [컨텍스트와 메모리](/ko/claude-code/context-memory) | 토큰·컨텍스트·메모리·캐싱·체크포인트 관리 | 토크노믹스 |
+| [확장](/ko/claude-code/extensibility) | 스킬·훅·MCP·플러그인으로 기능 확장 | 에이전틱 하네스 |
+| [에이전트와 자동화](/ko/claude-code/agentic) | 서브에이전트·팀·워크플로우·자율 실행 | 에이전틱 루프 엔지니어링 |
 
 네 그룹을 차례로 마치면 Claude Code 플랫폼 전반을 이해하게 됩니다. 그다음에는 MoAI-ADK의 핵심 개념 섹션으로 이동해, 이 토대 위에서 SPEC 기반 개발과 토큰 효율 설계가 어떻게 결합되는지 살펴보시기 바랍니다.

@@ -14,7 +14,7 @@ Claude Code의 스킬(skill)은 반복되는 절차나 전문 지식을 `SKILL.m
 {{< /callout >}}
 
 {{< callout type="tip" >}}
-이 문서는 Claude Code 스킬의 개념 개요입니다. MoAI-ADK에서 스킬을 직접 작성하고 빌더 에이전트로 자동 생성하는 실전 절차는 [스킬 가이드](/advanced/skill-guide)와 [빌더 에이전트 가이드](/advanced/builder-agents)에서 자세히 다룹니다.
+이 문서는 Claude Code 스킬의 개념 개요입니다. MoAI-ADK에서 스킬을 직접 작성하고 빌더 에이전트로 자동 생성하는 실전 절차는 [스킬 가이드](/ko/advanced/skill-guide)와 [빌더 에이전트 가이드](/ko/advanced/builder-agents)에서 자세히 다룹니다.
 {{< /callout >}}
 
 ## 스킬이란
@@ -141,8 +141,8 @@ MoAI-ADK는 이 스킬 메커니즘 위에서 동작합니다. `moai-foundation-
 
 ## 관련 문서
 
-- [스킬 가이드](/advanced/skill-guide)
-- [빌더 에이전트 가이드](/advanced/builder-agents)
+- [스킬 가이드](/ko/advanced/skill-guide)
+- [빌더 에이전트 가이드](/ko/advanced/builder-agents)
 
 ## 참고 자료
 

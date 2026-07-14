@@ -160,8 +160,8 @@ Claude Code가 인라인 코드 어시스턴트와 다른 지점은 두 가지�
 
 ## 관련 문서
 
-- [기능 한눈에 보기](/claude-code/foundations/features-overview)
-- [MoAI-ADK란?](/core-concepts/what-is-moai-adk)
+- [기능 한눈에 보기](/ko/claude-code/foundations/features-overview)
+- [MoAI-ADK란?](/ko/core-concepts/what-is-moai-adk)
 
 ## 참고 자료
 

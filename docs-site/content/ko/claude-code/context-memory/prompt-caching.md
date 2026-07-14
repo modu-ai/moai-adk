@@ -153,7 +153,7 @@ export DISABLE_PROMPT_CACHING_OPUS=1
 
 ## 관련 문서
 
-- [프롬프트 캐싱 — 손익분기 분석](/cost-optimization/prompt-caching)
+- [프롬프트 캐싱 — 손익분기 분석](/ko/cost-optimization/prompt-caching)
 
 ## 참고 자료
 

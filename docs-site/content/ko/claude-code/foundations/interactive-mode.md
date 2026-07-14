@@ -43,7 +43,7 @@ Claude Code를 터미널에서 실행하면 만나는 대화형 세션(REPL)의 
 
 ### 슬래시 명령 (/)
 
-입력 칸 맨 앞에 `/`를 치면 사용 가능한 모든 명령 메뉴가 뜹니다. 내장 명령뿐 아니라 번들 스킬, 사용자 작성 스킬, 플러그인과 MCP 서버가 기여한 명령까지 한 메뉴에 모입니다. `/` 뒤에 글자를 이어 입력하면 실시간으로 후보가 좁혀집니다. 자세한 목록은 [슬래시 명령어](/claude-code/foundations/commands) 문서를 참고하세요.
+입력 칸 맨 앞에 `/`를 치면 사용 가능한 모든 명령 메뉴가 뜹니다. 내장 명령뿐 아니라 번들 스킬, 사용자 작성 스킬, 플러그인과 MCP 서버가 기여한 명령까지 한 메뉴에 모입니다. `/` 뒤에 글자를 이어 입력하면 실시간으로 후보가 좁혀집니다. 자세한 목록은 [슬래시 명령어](/ko/claude-code/foundations/commands) 문서를 참고하세요.
 
 ### bash 실행 (!)
 
@@ -95,7 +95,7 @@ Claude Code를 터미널에서 실행하면 만나는 대화형 세션(REPL)의 
 
 ### 되감기 (Esc Esc)
 
-입력 칸이 비어 있을 때 `Esc`를 두 번 누르면 **되감기 메뉴 (rewind menu)**가 열립니다. 이전 시점으로 코드와 대화를 복원하거나 요약할 수 있는 기능으로, 자세한 내용은 [체크포인팅](/claude-code/context-memory/checkpointing) 문서에서 다룹니다.
+입력 칸이 비어 있을 때 `Esc`를 두 번 누르면 **되감기 메뉴 (rewind menu)**가 열립니다. 이전 시점으로 코드와 대화를 복원하거나 요약할 수 있는 기능으로, 자세한 내용은 [체크포인팅](/ko/claude-code/context-memory/checkpointing) 문서에서 다룹니다.
 
 ### 히스토리 검색 (Ctrl+R)
 
@@ -157,9 +157,9 @@ VS Code, Cursor, Windsurf, Zed 등에서 `Shift+Enter` 바인딩이 필요하면
 
 ## 관련 문서
 
-- [슬래시 명령어](/claude-code/foundations/commands)
-- [체크포인팅](/claude-code/context-memory/checkpointing)
-- [빠른 시작](/getting-started/quickstart)
+- [슬래시 명령어](/ko/claude-code/foundations/commands)
+- [체크포인팅](/ko/claude-code/context-memory/checkpointing)
+- [빠른 시작](/ko/getting-started/quickstart)
 
 ## 참고 자료
 

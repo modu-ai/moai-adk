@@ -28,9 +28,9 @@ flowchart TD
 
 | 문서 | 설명 |
 |------|------|
-| [컨텍스트 윈도우](/claude-code/context-memory/context-window) | 토큰·자동 압축·사용량 관리 |
-| [메모리와 자동 메모리](/claude-code/context-memory/memory) | CLAUDE.md 계층과 자동 메모리 |
-| [프롬프트 캐싱](/claude-code/context-memory/prompt-caching) | 캐싱으로 비용·지연 절감 |
-| [체크포인팅](/claude-code/context-memory/checkpointing) | 되감기로 안전하게 실험 |
+| [컨텍스트 윈도우](/ko/claude-code/context-memory/context-window) | 토큰·자동 압축·사용량 관리 |
+| [메모리와 자동 메모리](/ko/claude-code/context-memory/memory) | CLAUDE.md 계층과 자동 메모리 |
+| [프롬프트 캐싱](/ko/claude-code/context-memory/prompt-caching) | 캐싱으로 비용·지연 절감 |
+| [체크포인팅](/ko/claude-code/context-memory/checkpointing) | 되감기로 안전하게 실험 |
 
-이 그룹을 마치면 다음 그룹인 [확장](/claude-code/extensibility)에서 스킬·훅·MCP·플러그인 — 하네스를 짓는 재료 — 로 나아갑니다.
+이 그룹을 마치면 다음 그룹인 [확장](/ko/claude-code/extensibility)에서 스킬·훅·MCP·플러그인 — 하네스를 짓는 재료 — 로 나아갑니다.

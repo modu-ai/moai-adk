@@ -180,7 +180,7 @@ CI 파이프라인, pre-commit 훅, 스크립트에 Claude를 통합합니다.
 
 ### 다중 세션 병렬 실행
 
-여러 SPEC을 동시에 진행하거나, 대량의 파일을 병렬로 변환합니다. 파일 편집이 겹치지 않도록 [워크트리](/claude-code/agentic/worktrees)로 격리하는 것이 안전합니다.
+여러 SPEC을 동시에 진행하거나, 대량의 파일을 병렬로 변환합니다. 파일 편집이 겹치지 않도록 [워크트리](/ko/claude-code/agentic/worktrees)로 격리하는 것이 안전합니다.
 
 ### /goal로 자율 완료
 
@@ -202,10 +202,10 @@ CI 파이프라인, pre-commit 훅, 스크립트에 Claude를 통합합니다.
 
 ## 관련 문서
 
-- [컨텍스트 윈도우](/claude-code/context-memory/context-window)
-- [서브에이전트](/claude-code/agentic/sub-agents)
-- [목표 지향 실행 (/goal)](/claude-code/agentic/goal)
-- [대규모 코드베이스](/claude-code/agentic/large-codebases)
+- [컨텍스트 윈도우](/ko/claude-code/context-memory/context-window)
+- [서브에이전트](/ko/claude-code/agentic/sub-agents)
+- [목표 지향 실행 (/goal)](/ko/claude-code/agentic/goal)
+- [대규모 코드베이스](/ko/claude-code/agentic/large-codebases)
 
 ## 참고 자료
 

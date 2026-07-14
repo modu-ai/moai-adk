@@ -14,7 +14,7 @@ Claude Code의 서브에이전트는 곁가지 작업을 별도의 컨텍스트 
 {{< /callout >}}
 
 {{< callout type="tip" >}}
-이 페이지는 Claude Code 차원의 개념 개요입니다. MoAI-ADK가 11개 에이전트 카탈로그 (10 MoAI-custom + 1 Anthropic 내장 `Explore`)를 어떻게 구성하고 위임하는지, 직접 에이전트를 만드는 실전 방법은 [에이전트 가이드](/advanced/agent-guide)와 [빌더 에이전트 가이드](/advanced/builder-agents)에서 깊이 다룹니다.
+이 페이지는 Claude Code 차원의 개념 개요입니다. MoAI-ADK가 11개 에이전트 카탈로그 (10 MoAI-custom + 1 Anthropic 내장 `Explore`)를 어떻게 구성하고 위임하는지, 직접 에이전트를 만드는 실전 방법은 [에이전트 가이드](/ko/advanced/agent-guide)와 [빌더 에이전트 가이드](/ko/advanced/builder-agents)에서 깊이 다룹니다.
 {{< /callout >}}
 
 ## 서브에이전트란
@@ -158,8 +158,8 @@ model: sonnet
 
 ## 관련 문서
 
-- [에이전트 가이드](/advanced/agent-guide)
-- [빌더 에이전트 가이드](/advanced/builder-agents)
+- [에이전트 가이드](/ko/advanced/agent-guide)
+- [빌더 에이전트 가이드](/ko/advanced/builder-agents)
 
 ## 참고 자료
 

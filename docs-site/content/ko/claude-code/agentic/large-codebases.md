@@ -100,7 +100,7 @@ Claude가 `packages/api/`에서 시작하면 루트와 `packages/api/`의 CLAUDE
 ```
 
 - TypeScript, Python, Go, Rust 등 주요 언어를 지원합니다
-- 해당 언어의 LSP 바이너리가 시스템에 설치되어 있어야 합니다 ([플러그인 문서](/claude-code/extensibility/plugins) 참고)
+- 해당 언어의 LSP 바이너리가 시스템에 설치되어 있어야 합니다 ([플러그인 문서](/ko/claude-code/extensibility/plugins) 참고)
 
 ## 워크트리로 필요한 디렉터리만 체크아웃
 
@@ -256,9 +256,9 @@ DB·API·UI처럼 여러 레이어를 건드리는 변경이면 각 레이어를
 
 ## 관련 문서
 
-- [컨텍스트 윈도우](/claude-code/context-memory/context-window)
-- [워크트리](/claude-code/agentic/worktrees)
-- [모범 사례](/claude-code/agentic/best-practices)
+- [컨텍스트 윈도우](/ko/claude-code/context-memory/context-window)
+- [워크트리](/ko/claude-code/agentic/worktrees)
+- [모범 사례](/ko/claude-code/agentic/best-practices)
 
 ## 참고 자료
 

@@ -28,11 +28,11 @@ flowchart TD
 
 | 문서 | 설명 |
 |------|------|
-| [작동 원리](/claude-code/foundations/how-claude-code-works) | 에이전틱 루프와 핵심 구성 요소 |
-| [기능 한눈에 보기](/claude-code/foundations/features-overview) | 전체 기능 카탈로그와 학습 경로 |
-| [대화형 모드](/claude-code/foundations/interactive-mode) | REPL·단축키·권한 모드 |
-| [슬래시 명령어](/claude-code/foundations/commands) | 내장·커스텀 명령과 /moai 관계 |
-| [도구 레퍼런스](/claude-code/foundations/tools-reference) | 내장 도구와 권한 |
-| [.claude 디렉터리](/claude-code/foundations/claude-directory) | 설정 디렉터리 구조와 스코프 |
+| [작동 원리](/ko/claude-code/foundations/how-claude-code-works) | 에이전틱 루프와 핵심 구성 요소 |
+| [기능 한눈에 보기](/ko/claude-code/foundations/features-overview) | 전체 기능 카탈로그와 학습 경로 |
+| [대화형 모드](/ko/claude-code/foundations/interactive-mode) | REPL·단축키·권한 모드 |
+| [슬래시 명령어](/ko/claude-code/foundations/commands) | 내장·커스텀 명령과 /moai 관계 |
+| [도구 레퍼런스](/ko/claude-code/foundations/tools-reference) | 내장 도구와 권한 |
+| [.claude 디렉터리](/ko/claude-code/foundations/claude-directory) | 설정 디렉터리 구조와 스코프 |
 
-기본기를 갖추었다면, 다음 그룹인 [컨텍스트와 메모리](/claude-code/context-memory)에서 토큰 비용을 다루는 법 — MoAI-ADK 토크노믹스의 출발점 — 으로 나아갑니다.
+기본기를 갖추었다면, 다음 그룹인 [컨텍스트와 메모리](/ko/claude-code/context-memory)에서 토큰 비용을 다루는 법 — MoAI-ADK 토크노믹스의 출발점 — 으로 나아갑니다.

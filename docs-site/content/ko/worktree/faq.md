@@ -149,16 +149,16 @@ flowchart TD
 
 ```bash
 # Terminal 1
-moai worktree go SPEC-AUTH-001
-(SPEC-AUTH-001) $ moai glm
+cd "$(moai worktree go SPEC-AUTH-001)"
+$ moai glm
 
 # Terminal 2
-moai worktree go SPEC-LOG-002
-(SPEC-LOG-002) $ moai glm
+cd "$(moai worktree go SPEC-LOG-002)"
+$ moai glm
 
 # Terminal 3
-moai worktree go SPEC-API-003
-(SPEC-API-003) $ moai glm
+cd "$(moai worktree go SPEC-API-003)"
+$ moai glm
 
 # 모두 동시에 작업 가능
 ```
@@ -295,19 +295,23 @@ moai worktree done SPEC-AUTH-001 --delete-branch
 **A**: 다음 단계로 복구하세요:
 
 ```bash
-# 1. 진단
+# 1. 진단 (손상된 레지스트리 복구)
+moai worktree recover
+
+# 2. 현재 상태 확인
 moai worktree status
-✗ Worktree 디렉토리가 존재하지 않습니다
+# ╭─ Worktree Status ──────────────────────────────╮
+# │ Repository: /path/to/your-project              │
+# │ Total worktrees: 0                             │
+# │                                                │
+# │ No worktrees found.                            │
+# ╰────────────────────────────────────────────────╯
 
-# 2. 기존 Worktree 제거
-moai worktree remove .moai/worktrees/SPEC-AUTH-001 --force
+# 3. 기존 Worktree 제거 (경로 지정)
+moai worktree remove ~/.moai/worktrees/your-project/SPEC-AUTH-001 --force
 
-# 3. Worktree 재생성
+# 4. Worktree 재생성
 moai worktree new SPEC-AUTH-001
-
-# 4. 복구 확인
-moai worktree status
-✓ Worktree 정상
 ```
 
 ---
@@ -318,10 +322,10 @@ moai worktree status
 
 ```bash
 # 1. 디스크 사용량 확인
-$ du -sh .moai/worktrees/*
-2.5G    .moai/worktrees/SPEC-AUTH-001
-1.8G    .moai/worktrees/SPEC-LOG-002
-3.2G    .moai/worktrees/SPEC-API-003
+$ du -sh ~/.moai/worktrees/your-project/*
+2.5G    ~/.moai/worktrees/your-project/SPEC-AUTH-001
+1.8G    ~/.moai/worktrees/your-project/SPEC-LOG-002
+3.2G    ~/.moai/worktrees/your-project/SPEC-API-003
 
 # 2. base에 병합된 Worktree만 정리
 $ moai worktree clean --merged-only
@@ -352,20 +356,18 @@ graph TD
 **A**: Worktree별 LLM 설정을 확인하세요:
 
 ```bash
-# 현재 LLM 확인
-moai config
-현재 LLM: GLM 5
+# 현재 LLM 백엔드 확인 (Worktree별 설정은 .moai/config/sections/llm.yaml에 기록됨)
+cat .moai/config/sections/llm.yaml
+# 또는 프로젝트 상태와 함께 확인
+moai status
 
 # Worktree에서 LLM 변경
-moai worktree go SPEC-AUTH-001
-(SPEC-AUTH-001) $ moai cc
-→ Claude Opus로 변경됨
+cd "$(moai worktree go SPEC-AUTH-001)"
+$ moai cc   # Claude 백엔드로 전환
 
 # 다른 Worktree는 영향 없음
-(SPEC-AUTH-001) $ exit
-moai worktree go SPEC-LOG-002
-(SPEC-LOG-002) $ moai config
-현재 LLM: GLM 5 (변경 없음)
+$ cd "$(moai worktree go SPEC-LOG-002)"
+$ cat .moai/config/sections/llm.yaml   # 이 Worktree의 설정은 그대로 유지됨
 ```
 
 ---
@@ -377,7 +379,7 @@ moai worktree go SPEC-LOG-002
 ```bash
 # Worktree 디렉토리 확인
 pwd
-/path/to/your-project/.moai/worktrees/SPEC-AUTH-001
+/Users/you/.moai/worktrees/your-project/SPEC-AUTH-001
 
 # Git 상태 확인
 git status
@@ -517,21 +519,20 @@ graph TB
 
 ---
 
-### Q: Worktree와 원격 저장소를 동기화하는 방법은?
+### Q: Worktree를 base 브랜치와 동기화하는 방법은?
 
-**A**: 정기적으로 `git pull`을 실행하세요:
+**A**: `moai worktree sync`가 base 브랜치의 변경 사항을 Worktree로 가져옵니다.
+`--strategy` 로 merge (기본) 또는 rebase 를 선택합니다:
 
 ```bash
-# 각 Worktree에서 동기화
-moai worktree go SPEC-AUTH-001
-(SPEC-AUTH-001) $ git pull origin main
+# 현재 디렉토리의 Worktree를 base(main)와 동기화 — merge 전략
+moai worktree sync
 
-# 또는 모든 Worktree 동기화
-for spec in SPEC-AUTH-001 SPEC-LOG-002 SPEC-API-003; do
-    cd "$(moai worktree go $spec)"
-    echo "Syncing $spec..."
-    git pull origin main
-done
+# 특정 Worktree를 rebase 전략으로 동기화
+moai worktree sync SPEC-AUTH-001 --strategy rebase
+
+# 다른 base 브랜치를 기준으로 동기화
+moai worktree sync SPEC-AUTH-001 --base develop
 ```
 
 ---

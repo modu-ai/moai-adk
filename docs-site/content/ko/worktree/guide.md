@@ -73,7 +73,7 @@ moai worktree new SPEC-ID [options]
 
 #### 옵션
 
-- `--path PATH`: Worktree 경로 직접 지정 (기본값: SPEC ID면 `.moai/worktrees/<SPEC-ID>`, 그 외는 `../<branch-name>`)
+- `--path PATH`: Worktree 경로 직접 지정 (기본값: SPEC ID면 `~/.moai/worktrees/<ProjectName>/<SPEC-ID>`, 그 외는 `../<branch-name>`)
 - `--base BRANCH`: 기준 브랜치 (기본값: `origin/main`, 자동 fetch). 로컬 전용 커밋에는 `--base main` 사용
 - `--from-current`: 현재 HEAD를 기준으로 사용 (`git fetch origin main`을 건너뜀, `--base`와 상호 배타)
 - `--tmux`: Worktree 생성 후 tmux 세션 생성
@@ -184,9 +184,9 @@ moai worktree list
 moai worktree list --verbose
 
 # 출력 예시
-SPEC-AUTH-001  feature/SPEC-AUTH-001  /path/to/worktree/SPEC-AUTH-001  [active]
-SPEC-AUTH-002  feature/SPEC-AUTH-002  /path/to/worktree/SPEC-AUTH-002
-SPEC-AUTH-003  feature/SPEC-AUTH-003  /path/to/worktree/SPEC-AUTH-003
+SPEC-AUTH-001  feature/SPEC-AUTH-001  ~/.moai/worktrees/your-project/SPEC-AUTH-001  [active]
+SPEC-AUTH-002  feature/SPEC-AUTH-002  ~/.moai/worktrees/your-project/SPEC-AUTH-002
+SPEC-AUTH-003  feature/SPEC-AUTH-003  ~/.moai/worktrees/your-project/SPEC-AUTH-003
 ```
 
 ---
@@ -264,10 +264,10 @@ moai worktree remove PATH [options]
 
 ```bash
 # 기본 제거
-moai worktree remove .moai/worktrees/SPEC-AUTH-001
+moai worktree remove ~/.moai/worktrees/your-project/SPEC-AUTH-001
 
 # 강제 제거
-moai worktree remove .moai/worktrees/SPEC-AUTH-001 --force
+moai worktree remove ~/.moai/worktrees/your-project/SPEC-AUTH-001 --force
 ```
 
 ---
@@ -295,12 +295,15 @@ moai worktree status
 # 전체 상세 정보
 moai worktree status --all
 
-# 출력 예시
-Worktree: SPEC-AUTH-001
-Branch: feature/SPEC-AUTH-001
-Path: /path/to/worktree/SPEC-AUTH-001
-Status: Clean (2 commits ahead of main)
-LLM: GLM 5
+# 출력 예시 (rounded-border 카드; status는 stale 참조를 자동 prune 후 표시)
+╭─ Worktree Status ────────────────────────────────────────────╮
+│ Repository: /path/to/your-project                            │
+│ Total worktrees: 1                                           │
+│                                                              │
+│ feature/SPEC-AUTH-001                                        │
+│   Path: ~/.moai/worktrees/your-project/SPEC-AUTH-001         │
+│   HEAD: 4f3a2b1c                                             │
+╰──────────────────────────────────────────────────────────────╯
 ```
 
 ---
@@ -334,30 +337,114 @@ moai worktree clean --merged-only --base develop
 
 ### moai worktree config
 
-Worktree 설정을 확인하거나 수정합니다.
+Worktree 설정을 표시합니다. 설정 값은 Git 저장소에서 파생되므로 **읽기 전용**
+입니다 (`config set`은 지원되지 않습니다).
 
 #### 문법
 
 ```bash
-moai worktree config [key] [value]
+moai worktree config [key]
 ```
 
 #### 매개변수
 
-- **key** (선택): 설정 키
-- **value** (선택): 설정 값
+- **key** (선택): 표시할 설정 키. 사용 가능한 키는 `root` (저장소 루트),
+  `all` (전체 설정, 기본값)
 
 #### 사용 예시
 
 ```bash
 # 모든 설정 표시
 moai worktree config
+# Worktree Configuration:
+#   root: /path/to/your-project
 
 # 특정 설정 확인
 moai worktree config root
+# Worktree root: /path/to/your-project
+```
 
-# 설정 변경
-moai worktree config root /new/path/to/worktrees
+---
+
+### moai worktree sync
+
+Worktree를 base 브랜치의 변경 사항과 동기화합니다.
+
+```bash
+# 현재 디렉토리 Worktree를 main과 동기화 (merge 전략, 기본)
+moai worktree sync
+
+# 특정 Worktree를 rebase 전략으로 동기화
+moai worktree sync SPEC-AUTH-001 --strategy rebase
+
+# 다른 base 브랜치 기준
+moai worktree sync SPEC-AUTH-001 --base develop
+```
+
+옵션: `--base` (기준 브랜치, 기본 `main`), `--strategy` (`merge` 또는 `rebase`,
+기본 `merge`).
+
+---
+
+### moai worktree switch
+
+주어진 브랜치에 연결된 Worktree 디렉토리로 전환합니다.
+
+```bash
+moai worktree switch SPEC-AUTH-001
+```
+
+경로만 출력하는 `go`와 달리 `switch`는 브랜치 이름으로 Worktree를 찾아 이동
+안내를 제공합니다.
+
+---
+
+### moai worktree recover
+
+디스크를 스캔하고 `git worktree repair`를 실행해 손상된 Worktree 레지스트리를
+복구합니다.
+
+```bash
+moai worktree recover
+```
+
+---
+
+### moai worktree clean vs recover vs 상태 가드
+
+`clean`은 stale 참조를 정리하고, `recover`는 레지스트리를 복구합니다. 아래 세
+명령은 오케스트레이터가 `Agent(isolation: "worktree")` 호출 전후로 작업 트리
+상태를 스냅샷·검증·복원하는 상태 가드 프리미티브입니다.
+
+#### moai worktree snapshot
+
+HEAD·브랜치·porcelain·`.moai/specs/` 하위 untracked 파일 상태를 캡처해
+`.moai/state/`에 JSON으로 기록합니다.
+
+```bash
+moai worktree snapshot --agent-name my-agent --out .moai/state/snap.json
+```
+
+#### moai worktree verify
+
+현재 작업 트리를 스냅샷과 비교합니다. 종료 코드: `0`=clean, `1`=divergence,
+`2`=suspect(빈 worktreePath), `3`=둘 다.
+
+```bash
+moai worktree verify --snapshot .moai/state/snap.json --agent-name my-agent
+```
+
+#### moai worktree restore
+
+`git restore --source=<snapshot HEAD> --staged --worktree :/`를 실행해 작업
+트리를 스냅샷 HEAD 상태로 복원합니다. Untracked 파일은 git에서 복원되지
+않으므로 경로만 안내하고 수동 재생성이 필요합니다.
+
+```bash
+moai worktree restore --snapshot .moai/state/snap.json
+
+# 실행 없이 명령만 출력
+moai worktree restore --snapshot .moai/state/snap.json --dry-run
 ```
 
 ---
@@ -402,14 +489,13 @@ flowchart TD
 ### 2단계: 구현 (Phase 2)
 
 ```bash
-# Terminal 2에서
-moai worktree go SPEC-AUTH-001
+# Terminal 2에서 (moai worktree go는 경로를 출력 → cd로 이동)
+cd "$(moai worktree go SPEC-AUTH-001)"
 
-# Worktree에 진입하면 프롬프트가 변경됨
-(SPEC-AUTH-001) $ moai glm
-→ GLM 5로 설정되었습니다.
+# Worktree로 이동한 뒤 LLM 백엔드 전환
+$ moai glm
 
-(SPEC-AUTH-001) $ claude
+$ claude
 > /moai run SPEC-AUTH-001
 ```
 
@@ -497,9 +583,9 @@ graph TB
 > /moai plan "로그" --worktree
 
 # Terminal 3, 4, 5: 병렬 구현
-moai worktree go SPEC-001 && moai glm  # Terminal 3
-moai worktree go SPEC-002 && moai glm  # Terminal 4
-moai worktree go SPEC-003 && moai glm  # Terminal 5
+cd "$(moai worktree go SPEC-001)" && moai glm  # Terminal 3
+cd "$(moai worktree go SPEC-002)" && moai glm  # Terminal 4
+cd "$(moai worktree go SPEC-003)" && moai glm  # Terminal 5
 ```
 
 ### Worktree 간 전환
@@ -508,11 +594,11 @@ moai worktree go SPEC-003 && moai glm  # Terminal 5
 # 현재 Worktree 확인
 moai worktree status
 
-# 다른 Worktree로 전환
-moai worktree go SPEC-AUTH-002
+# 다른 Worktree로 전환 (경로 출력 → cd)
+cd "$(moai worktree go SPEC-AUTH-002)"
 
 # 또는 직접 이동
-cd ~/.moai/worktrees/SPEC-AUTH-002
+cd ~/.moai/worktrees/your-project/SPEC-AUTH-002
 ```
 
 ### 충돌 해결
@@ -636,14 +722,18 @@ tmux가 설치되지 않은 경우 graceful degradation: 수동 cd 안내 메시
 
 `/moai plan` 완료 후 Run 시작 전, 실행 모드를 자동 감지하고 사용자에게 선택을 요청합니다.
 
-**tmux 사용 가능 시 (3가지 옵션):**
-- Worktree + \{현재 모드\} (Recommended): 워크트리 + tmux 세션 생성
-- Team Mode: Agent Teams 병렬 실행
-- Sub-agent Mode: 순차 실행
+**tmux 사용 가능 시 (2가지 옵션):**
+- Worktree + \{현재 모드\} (Recommended): 워크트리 + tmux 세션 생성 후 실행
+- Sub-agent Mode: 순차 서브에이전트 실행
 
-**tmux 사용 불가 시 (2가지 옵션):**
-- Sub-agent Mode (Recommended)
-- Team Mode (in-process)
+**tmux 사용 불가 시:**
+- Sub-agent Mode (Recommended): 순차 서브에이전트 실행
+
+{{< callout type="info" >}}
+정적 Agent Teams 오케스트레이션 레이어는 폐기되었습니다. 병렬 협업은 Claude
+Code 네이티브 팀메이트 런타임 (`moai cg`의 GLM tmux 페인, CG 모드)으로
+운용합니다 — 자세한 내용은 CG 모드 문서를 참고하세요.
+{{< /callout >}}
 
 ### Auto-merge 기본 동작
 
@@ -652,8 +742,8 @@ tmux가 설치되지 않은 경우 graceful degradation: 수동 cd 안내 메시
 | 플래그 | 동작 |
 |--------|------|
 | (없음) | 워크트리 컨텍스트에서 자동 머지 |
-| `--no-merge` | 자동 머지 건너뛰기 |
 | `--merge` | Deprecated (경고 표시) |
+| `--skip-mx` | @MX 태그 스캔 단계 건너뛰기 |
 
 ### 포스트-머지 자동 클린업
 

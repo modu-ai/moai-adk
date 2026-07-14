@@ -62,9 +62,9 @@ flowchart TD
     end
 
     subgraph Phase3["Phase 3: Merge & Cleanup"]
-        C1[moai worktree done SPEC-ID] --> C2[main 체크아웃]
-        C2 --> C3[병합]
-        C3 --> C4[정리]
+        C1[git merge 또는 PR로<br/>base 병합] --> C2[moai worktree done SPEC-ID]
+        C2 --> C3[Worktree 제거]
+        C3 --> C4[선택: 브랜치 삭제]
     end
 
     Phase1 --> Phase2
@@ -130,10 +130,10 @@ moai worktree done SPEC-AUTH-001 --delete-branch    # 정리 + 로컬 브랜치 
 | 명령어                   | 설명                       | 사용 예시                      |
 | ------------------------ | -------------------------- | ------------------------------ |
 | `moai worktree new SPEC-ID`    | 새 Worktree 생성           | `moai worktree new SPEC-AUTH-001`    |
-| `moai worktree go SPEC-ID`     | Worktree 진입 (새 셸 열기) | `moai worktree go SPEC-AUTH-001`     |
+| `moai worktree go SPEC-ID`     | Worktree 경로 출력 (`cd`용) | `cd "$(moai worktree go SPEC-AUTH-001)"` |
 | `moai worktree list`           | Worktree 목록 표시         | `moai worktree list`                 |
-| `moai worktree done SPEC-ID`   | 병합 및 정리               | `moai worktree done SPEC-AUTH-001`   |
-| `moai worktree remove SPEC-ID` | Worktree 제거              | `moai worktree remove SPEC-AUTH-001` |
+| `moai worktree done SPEC-ID`   | Worktree 정리 (병합은 별도) | `moai worktree done SPEC-AUTH-001`   |
+| `moai worktree remove [path]`  | Worktree 제거 (경로 지정)  | `moai worktree remove ~/.moai/worktrees/your-project/SPEC-AUTH-001` |
 | `moai worktree status`         | Worktree 상태 확인         | `moai worktree status`               |
 | `moai worktree clean`          | 병합된 Worktree 정리       | `moai worktree clean --merged-only`  |
 | `moai worktree config`         | Worktree 설정 확인         | `moai worktree config root`          |
@@ -245,7 +245,7 @@ flowchart TB
         M[main 브랜치]
     end
 
-    D3 -->|moai worktree done| M
+    D3 -->|git merge/PR 후 done으로 정리| M
     D1 -.->|아직 미완료| M
     D2 -.->|아직 미완료| M
 ```

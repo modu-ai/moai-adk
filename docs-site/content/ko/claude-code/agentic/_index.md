@@ -33,14 +33,14 @@ flowchart TD
 
 | 문서 | 설명 |
 |------|------|
-| [서브에이전트](/claude-code/agentic/sub-agents) | 격리 컨텍스트의 위임 작업자 |
-| [에이전트 팀](/claude-code/agentic/agent-teams) | 3-5명 팀 협업 |
-| [에이전트 뷰](/claude-code/agentic/agent-view) | 실행 관찰 화면 |
-| [다이내믹 워크플로우](/claude-code/agentic/workflows) | 스크립트 기반 대규모 오케스트레이션 |
-| [워크트리](/claude-code/agentic/worktrees) | 작업 트리 분리 |
-| [목표 지향 실행 (/goal)](/claude-code/agentic/goal) | 조건 충족까지 자율 실행 |
-| [예약 작업](/claude-code/agentic/scheduled-tasks) | 주기적 백그라운드 실행 |
-| [대규모 코드베이스](/claude-code/agentic/large-codebases) | 큰 저장소 탐색 전략 |
-| [모범 사례](/claude-code/agentic/best-practices) | Claude Code를 잘 쓰는 법 |
+| [서브에이전트](/ko/claude-code/agentic/sub-agents) | 격리 컨텍스트의 위임 작업자 |
+| [에이전트 팀](/ko/claude-code/agentic/agent-teams) | 3-5명 팀 협업 |
+| [에이전트 뷰](/ko/claude-code/agentic/agent-view) | 실행 관찰 화면 |
+| [다이내믹 워크플로우](/ko/claude-code/agentic/workflows) | 스크립트 기반 대규모 오케스트레이션 |
+| [워크트리](/ko/claude-code/agentic/worktrees) | 작업 트리 분리 |
+| [목표 지향 실행 (/goal)](/ko/claude-code/agentic/goal) | 조건 충족까지 자율 실행 |
+| [예약 작업](/ko/claude-code/agentic/scheduled-tasks) | 주기적 백그라운드 실행 |
+| [대규모 코드베이스](/ko/claude-code/agentic/large-codebases) | 큰 저장소 탐색 전략 |
+| [모범 사례](/ko/claude-code/agentic/best-practices) | Claude Code를 잘 쓰는 법 |
 
-먼저 [서브에이전트](/claude-code/agentic/sub-agents)부터 읽으며 위임의 기본 단위를 익힌 뒤 다음 문서로 이동하시기 바랍니다.
+먼저 [서브에이전트](/ko/claude-code/agentic/sub-agents)부터 읽으며 위임의 기본 단위를 익힌 뒤 다음 문서로 이동하시기 바랍니다.

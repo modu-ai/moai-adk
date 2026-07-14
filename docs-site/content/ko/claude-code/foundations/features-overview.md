@@ -25,22 +25,22 @@ MoAI-ADK는 바로 이 Claude Code 위에서 동작하는 에이전틱 개발 �
 
 | 기능 | 한 줄 설명 | 자세히 보기 |
 | --- | --- | --- |
-| 코드 편집 | 모델이 파일을 직접 읽고 수정하는 핵심 내장 기능입니다. | [기초 그룹](/claude-code/foundations) |
-| 검색 | 코드베이스 안에서 패턴·파일·심볼을 찾는 내장 도구입니다. | [기초 그룹](/claude-code/foundations) |
-| 명령 실행 | 셸 명령을 실행해 빌드·테스트·git 작업을 수행합니다. | [기초 그룹](/claude-code/foundations) |
-| 슬래시 명령 | `/`로 시작하는 명령으로 스킬이나 내장 동작을 즉시 호출합니다. | [기초 그룹](/claude-code/foundations) |
-| 대화형 모드 | 권한 처리 방식이나 작업 스타일을 바꾸는 세션 모드입니다. | [기초 그룹](/claude-code/foundations) |
-| CLAUDE.md / 메모리 | 매 세션 자동으로 로드되는 영속 컨텍스트를 보관합니다. | [컨텍스트와 메모리](/claude-code/context-memory) |
-| 컨텍스트 윈도우 | 한 세션이 담을 수 있는 토큰 한계와 그 관리 전략입니다. | [컨텍스트와 메모리](/claude-code/context-memory) |
-| 스킬 | 재사용 가능한 지식·워크플로를 담은 마크다운 단위입니다. | [확장](/claude-code/extensibility) |
-| MCP | 외부 서비스·도구를 모델에 연결하는 프로토콜입니다. | [확장](/claude-code/extensibility) |
-| hook | 라이프사이클 이벤트에 스크립트·요청·프롬프트를 자동 실행합니다. | [확장](/claude-code/extensibility) |
-| 결과물 저장소 | Claude가 생성한 HTML·마크다운·스니펫을 구조화하고 공유합니다. | [확장](/claude-code/extensibility) |
-| 플러그인 | 스킬·hook·서브에이전트·MCP를 묶어 배포하는 패키징 단위입니다. | [확장](/claude-code/extensibility) |
-| 서브에이전트 | 격리된 컨텍스트에서 독립 실행 후 요약만 반환하는 작업자입니다. | [에이전트와 자동화](/claude-code/agentic) |
-| 에이전트 팀 | 여러 독립 세션이 작업과 메시지를 공유하며 협업합니다. | [에이전트와 자동화](/claude-code/agentic) |
-| 워크트리 | 동일 저장소를 분리된 작업 디렉터리로 병렬 개발합니다. | [에이전트와 자동화](/claude-code/agentic) |
-| 체크포인트 | 작업 도중 상태를 저장해 되돌아갈 수 있게 합니다. | [에이전트와 자동화](/claude-code/agentic) |
+| 코드 편집 | 모델이 파일을 직접 읽고 수정하는 핵심 내장 기능입니다. | [기초 그룹](/ko/claude-code/foundations) |
+| 검색 | 코드베이스 안에서 패턴·파일·심볼을 찾는 내장 도구입니다. | [기초 그룹](/ko/claude-code/foundations) |
+| 명령 실행 | 셸 명령을 실행해 빌드·테스트·git 작업을 수행합니다. | [기초 그룹](/ko/claude-code/foundations) |
+| 슬래시 명령 | `/`로 시작하는 명령으로 스킬이나 내장 동작을 즉시 호출합니다. | [기초 그룹](/ko/claude-code/foundations) |
+| 대화형 모드 | 권한 처리 방식이나 작업 스타일을 바꾸는 세션 모드입니다. | [기초 그룹](/ko/claude-code/foundations) |
+| CLAUDE.md / 메모리 | 매 세션 자동으로 로드되는 영속 컨텍스트를 보관합니다. | [컨텍스트와 메모리](/ko/claude-code/context-memory) |
+| 컨텍스트 윈도우 | 한 세션이 담을 수 있는 토큰 한계와 그 관리 전략입니다. | [컨텍스트와 메모리](/ko/claude-code/context-memory) |
+| 스킬 | 재사용 가능한 지식·워크플로를 담은 마크다운 단위입니다. | [확장](/ko/claude-code/extensibility) |
+| MCP | 외부 서비스·도구를 모델에 연결하는 프로토콜입니다. | [확장](/ko/claude-code/extensibility) |
+| hook | 라이프사이클 이벤트에 스크립트·요청·프롬프트를 자동 실행합니다. | [확장](/ko/claude-code/extensibility) |
+| 결과물 저장소 | Claude가 생성한 HTML·마크다운·스니펫을 구조화하고 공유합니다. | [확장](/ko/claude-code/extensibility) |
+| 플러그인 | 스킬·hook·서브에이전트·MCP를 묶어 배포하는 패키징 단위입니다. | [확장](/ko/claude-code/extensibility) |
+| 서브에이전트 | 격리된 컨텍스트에서 독립 실행 후 요약만 반환하는 작업자입니다. | [에이전트와 자동화](/ko/claude-code/agentic) |
+| 에이전트 팀 | 여러 독립 세션이 작업과 메시지를 공유하며 협업합니다. | [에이전트와 자동화](/ko/claude-code/agentic) |
+| 워크트리 | 동일 저장소를 분리된 작업 디렉터리로 병렬 개발합니다. | [에이전트와 자동화](/ko/claude-code/agentic) |
+| 체크포인트 | 작업 도중 상태를 저장해 되돌아갈 수 있게 합니다. | [에이전트와 자동화](/ko/claude-code/agentic) |
 
 ### 내장 도구 계열
 
@@ -99,20 +99,20 @@ flowchart TD
 
 | 순서 | 그룹 | 무엇을 얻나 |
 | --- | --- | --- |
-| 1 | [기초 그룹](/claude-code/foundations) | 편집·검색·실행 등 매일 쓰는 핵심 동작 |
-| 2 | [컨텍스트와 메모리](/claude-code/context-memory) | CLAUDE.md로 규칙을 고정하고 컨텍스트를 아끼는 법 |
-| 3 | [확장](/claude-code/extensibility) | 스킬·MCP·hook·플러그인으로 능력을 늘리는 법 |
-| 4 | [에이전트와 자동화](/claude-code/agentic) | 서브에이전트·에이전트 팀으로 작업을 병렬화하는 법 |
+| 1 | [기초 그룹](/ko/claude-code/foundations) | 편집·검색·실행 등 매일 쓰는 핵심 동작 |
+| 2 | [컨텍스트와 메모리](/ko/claude-code/context-memory) | CLAUDE.md로 규칙을 고정하고 컨텍스트를 아끼는 법 |
+| 3 | [확장](/ko/claude-code/extensibility) | 스킬·MCP·hook·플러그인으로 능력을 늘리는 법 |
+| 4 | [에이전트와 자동화](/ko/claude-code/agentic) | 서브에이전트·에이전트 팀으로 작업을 병렬화하는 법 |
 
 공식 문서가 권하는 **모범 사례** (best practice)는 처음부터 모든 기능을 설정하지 않는 것입니다. 같은 실수를 두 번 하면 CLAUDE.md에 규칙을 더하고, 같은 프롬프트를 반복하면 스킬로 저장하고, 매번 자동으로 일어나야 하는 동작이 생기면 hook을 작성하는 식으로 필요가 드러날 때마다 하나씩 쌓아 가는 흐름입니다. 이 "필요할 때 하나씩"이라는 원칙은 토큰 관점에서도 옳습니다 — 쓰지 않는 확장은 컨텍스트만 차지하고, 컨텍스트는 곧 비용이기 때문입니다.
 
 ## 관련 문서
 
-- [기초 그룹](/claude-code/foundations)
-- [컨텍스트와 메모리](/claude-code/context-memory)
-- [확장](/claude-code/extensibility)
-- [에이전트와 자동화](/claude-code/agentic)
-- [빠른 시작](/getting-started/quickstart)
+- [기초 그룹](/ko/claude-code/foundations)
+- [컨텍스트와 메모리](/ko/claude-code/context-memory)
+- [확장](/ko/claude-code/extensibility)
+- [에이전트와 자동화](/ko/claude-code/agentic)
+- [빠른 시작](/ko/getting-started/quickstart)
 
 ## 참고 자료
 

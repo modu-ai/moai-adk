@@ -126,8 +126,8 @@ flowchart TD
 
 ## 관련 문서
 
-- [메모리와 자동 메모리](/claude-code/context-memory/memory)
-- [체크포인팅](/claude-code/context-memory/checkpointing)
+- [메모리와 자동 메모리](/ko/claude-code/context-memory/memory)
+- [체크포인팅](/ko/claude-code/context-memory/checkpointing)
 
 ## 참고 자료
 

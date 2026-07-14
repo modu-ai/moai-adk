@@ -108,8 +108,8 @@ MoAI-ADK 관점에서 체크포인팅은 에이전틱 루프를 과감하게 돌
 
 ## 관련 문서
 
-- [컨텍스트 윈도우](/claude-code/context-memory/context-window)
-- [대화형 모드](/claude-code/foundations/interactive-mode)
+- [컨텍스트 윈도우](/ko/claude-code/context-memory/context-window)
+- [대화형 모드](/ko/claude-code/foundations/interactive-mode)
 
 ## 참고 자료
 

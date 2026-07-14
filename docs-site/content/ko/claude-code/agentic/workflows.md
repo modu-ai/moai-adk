@@ -123,8 +123,8 @@ MoAI-ADK는 다이내믹 워크플로우를 SPEC 기반 plan/run/sync 라이프�
 
 ## 관련 문서
 
-- [서브에이전트](/claude-code/agentic/sub-agents)
-- [에이전트 팀](/claude-code/agentic/agent-teams)
+- [서브에이전트](/ko/claude-code/agentic/sub-agents)
+- [에이전트 팀](/ko/claude-code/agentic/agent-teams)
 
 ## 참고 자료
 

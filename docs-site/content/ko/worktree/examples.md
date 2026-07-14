@@ -30,34 +30,24 @@ $ cd /path/to/your-project
 # SPEC 계획 생성
 > /moai plan "JWT 기반 사용자 인증 시스템 구현" --worktree
 
-# 출력
-✓ MoAI-ADK SPEC Manager v2.0
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
+# 진행 요약 (예시)
 SPEC 분석 중...
-  - 기능 요구사항: 8개 발견
-  - 기술 요구사항: 5개 발견
-  - API 엔드포인트: 6개 식별
+  - 요구사항을 EARS 형식으로 정리
 
-SPEC 문서 생성 중...
+SPEC 문서 생성:
   ✓ .moai/specs/SPEC-AUTH-001/spec.md
-  ✓ .moai/specs/SPEC-AUTH-001/requirements.md
-  ✓ .moai/specs/SPEC-AUTH-001/api-design.md
+  ✓ .moai/specs/SPEC-AUTH-001/plan.md
+  ✓ .moai/specs/SPEC-AUTH-001/acceptance.md
 
-Worktree 생성 중...
+Worktree 생성:
   ✓ 브랜치 생성: feature/SPEC-AUTH-001
-  ✓ Worktree 생성: /path/to/your-project/.moai/worktrees/SPEC-AUTH-001
+  ✓ Worktree 생성: ~/.moai/worktrees/your-project/SPEC-AUTH-001
   ✓ 브랜치 전환 완료
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 다음 단계:
-  1. 새 터미널에서 실행: moai worktree go SPEC-AUTH-001
+  1. 새 터미널에서 이동: cd "$(moai worktree go SPEC-AUTH-001)"
   2. LLM 변경: moai glm
-  3. Claude 시작: claude
-  4. 개발 시작: /moai run SPEC-AUTH-001
-
-비용 절감 팁: 구현 단계에서는 'moai glm'로 70% 비용 절감!
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  3. 개발 시작: /moai run SPEC-AUTH-001
 ```
 
 #### 2단계: Worktree 진입 및 구현 (Terminal 2)
@@ -65,54 +55,38 @@ Worktree 생성 중...
 계획이 끝났으니 구현은 저비용 모델로 전환합니다:
 
 ```bash
-# 새 터미널 열기
-$ moai worktree go SPEC-AUTH-001
-
-# 새 터미널이 열리고 Worktree로 이동
-# 프롬프트가 변경됨
-(SPEC-AUTH-001) ~/moai-project/.moai/worktrees/SPEC-AUTH-001
+# 새 터미널에서 Worktree로 이동 (moai worktree go는 경로를 출력)
+$ cd "$(moai worktree go SPEC-AUTH-001)"
+$ pwd
+/Users/you/.moai/worktrees/your-project/SPEC-AUTH-001
 
 # LLM을 저비용 모델로 변경
-(SPEC-AUTH-001) $ moai glm
-✓ LLM 변경: GLM 5 (70% 비용 절감)
+$ moai glm
 
 # Claude Code 시작
-(SPEC-AUTH-001) $ claude
-Claude Code v1.0.0
-Type 'help' for available commands
+$ claude
 
 # DDD 구현 시작
 > /moai run SPEC-AUTH-001
 
-# 출력
-✓ MoAI-ADK DDD Executor v2.0
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
+# 진행 요약 (예시)
 Phase 1: ANALYZE
-  ✓ 요구사항 분석 완료
-  ✓ 기존 코드 분석 완료
-  ✓ 테스트 커버리지: 85% 목표
+  ✓ 요구사항·기존 코드 분석
 
 Phase 2: PRESERVE
-  ✓ 특성화 테스트 12개 생성
-  ✓ 기존 동작 보존 확인
+  ✓ 특성화 테스트 생성, 기존 동작 보존 확인
 
 Phase 3: IMPROVE
   ✓ JWT 인증 미들웨어 구현
   ✓ 리프레시 토큰 로테이션 구현
   ✓ 로그아웃 토큰 무효화 구현
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-구현 완료!
-  - 커밋: 4f3a2b1 (feat: JWT authentication middleware)
-  - 커밋: 7c8d9e0 (feat: refresh token rotation)
-  - 커밋: 2a1b3c4 (feat: token invalidation on logout)
+구현 완료 — feature/SPEC-AUTH-001에 커밋됨
 
 다음 단계:
-  1. 테스트 실행: pytest tests/auth/
+  1. 테스트 실행: 프로젝트 언어의 테스트 명령 (예: go test ./... / npm test / pytest)
   2. 문서화: /moai sync SPEC-AUTH-001
-  3. 완료: moai worktree done SPEC-AUTH-001
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  3. base 병합(git merge/PR) 후 정리: moai worktree done SPEC-AUTH-001
 ```
 
 #### 3단계: 문서화 (같은 Terminal 2)
@@ -121,22 +95,13 @@ Phase 3: IMPROVE
 # 문서화 실행
 > /moai sync SPEC-AUTH-001
 
-# 출력
-✓ MoAI-ADK Documentation Generator v2.0
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# 진행 요약 (예시)
+문서 동기화 중...
+  ✓ 코드맵·문서 갱신
+  ✓ SPEC 상태 전이 및 커밋
 
-문서 생성 중...
-  ✓ API 문서: docs/api/auth.md
-  ✓ 아키텍처 다이어그램: docs/diagrams/auth-flow.mmd
-  ✓ 사용자 가이드: docs/guides/authentication.md
-
-커밋 완료:
-  ✓ b5e6f7a (docs: authentication documentation)
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-문서화 완료!
+문서화 완료 — feature/SPEC-AUTH-001에 커밋됨
 다음 단계: base 병합(git merge/PR) 후 moai worktree done SPEC-AUTH-001
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
 
 #### 4단계: base 병합과 정리 (Terminal 1)
@@ -158,11 +123,9 @@ $ moai worktree done SPEC-AUTH-001 --delete-branch
 
 # 출력
 ✓ Done: worktree for branch feature/SPEC-AUTH-001
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  Path: .moai/worktrees/SPEC-AUTH-001
+  Path: ~/.moai/worktrees/your-project/SPEC-AUTH-001
   Worktree removed.
   Branch feature/SPEC-AUTH-001 deleted.
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
 
 ---
@@ -216,17 +179,17 @@ graph TB
 
 # Worktree 확인
 moai worktree list
-SPEC-AUTH-001  feature/SPEC-AUTH-001  /path/to/SPEC-AUTH-001
-SPEC-LOG-002   feature/SPEC-LOG-002   /path/to/SPEC-LOG-002
-SPEC-API-003   feature/SPEC-API-003   /path/to/SPEC-API-003
+SPEC-AUTH-001  feature/SPEC-AUTH-001  ~/.moai/worktrees/your-project/SPEC-AUTH-001
+SPEC-LOG-002   feature/SPEC-LOG-002   ~/.moai/worktrees/your-project/SPEC-LOG-002
+SPEC-API-003   feature/SPEC-API-003   ~/.moai/worktrees/your-project/SPEC-API-003
 ```
 
 #### Terminal 2: AUTH-001 구현
 
 ```bash
-$ moai worktree go SPEC-AUTH-001
-(SPEC-AUTH-001) $ moai glm
-(SPEC-AUTH-001) $ claude
+$ cd "$(moai worktree go SPEC-AUTH-001)"
+$ moai glm
+$ claude
 > /moai run SPEC-AUTH-001
 # ... 구현 진행 중 ...
 ```
@@ -234,9 +197,9 @@ $ moai worktree go SPEC-AUTH-001
 #### Terminal 3: LOG-002 구현
 
 ```bash
-$ moai worktree go SPEC-LOG-002
-(SPEC-LOG-002) $ moai glm
-(SPEC-LOG-002) $ claude
+$ cd "$(moai worktree go SPEC-LOG-002)"
+$ moai glm
+$ claude
 > /moai run SPEC-LOG-002
 # ... 구현 진행 중 ...
 ```
@@ -244,9 +207,9 @@ $ moai worktree go SPEC-LOG-002
 #### Terminal 4: API-003 구현
 
 ```bash
-$ moai worktree go SPEC-API-003
-(SPEC-API-003) $ moai glm
-(SPEC-API-003) $ claude
+$ cd "$(moai worktree go SPEC-API-003)"
+$ moai glm
+$ claude
 > /moai run SPEC-API-003
 # ... 구현 진행 중 ...
 ```
@@ -254,26 +217,25 @@ $ moai worktree go SPEC-API-003
 #### 병렬 진행 상황 모니터링
 
 ```bash
-# Terminal 1에서 모든 Worktree 상태 확인
+# Terminal 1에서 모든 Worktree 상태 확인 (--all: 전체 커밋 해시 표시)
 $ moai worktree status --all
 
-Worktree: SPEC-AUTH-001
-Branch: feature/SPEC-AUTH-001
-Status: 3 commits ahead of main
-LLM: GLM 5
-Last activity: 5 minutes ago
-
-Worktree: SPEC-LOG-002
-Branch: feature/SPEC-LOG-002
-Status: 2 commits ahead of main
-LLM: GLM 5
-Last activity: 3 minutes ago
-
-Worktree: SPEC-API-003
-Branch: feature/SPEC-API-003
-Status: 4 commits ahead of main
-LLM: GLM 5
-Last activity: 7 minutes ago
+╭─ Worktree Status ────────────────────────────────────────────╮
+│ Repository: /path/to/your-project                            │
+│ Total worktrees: 3                                           │
+│                                                              │
+│ feature/SPEC-AUTH-001                                        │
+│   Path: ~/.moai/worktrees/your-project/SPEC-AUTH-001         │
+│   HEAD: 4f3a2b1c                                             │
+│                                                              │
+│ feature/SPEC-LOG-002                                         │
+│   Path: ~/.moai/worktrees/your-project/SPEC-LOG-002          │
+│   HEAD: 7c8d9e0a                                             │
+│                                                              │
+│ feature/SPEC-API-003                                         │
+│   Path: ~/.moai/worktrees/your-project/SPEC-API-003          │
+│   HEAD: 2a1b3c4d                                             │
+╰──────────────────────────────────────────────────────────────╯
 ```
 
 ---
@@ -316,14 +278,13 @@ cd project
 ✓ SPEC-FE-001 생성
 
 # Worktree에서 개발
-moai worktree go SPEC-FE-001
-(SPEC-FE-001) $ moai glm
-(SPEC-FE-001) $ claude
+cd "$(moai worktree go SPEC-FE-001)"
+$ moai glm
+$ claude
 > /moai run SPEC-FE-001
 
 # 구현 완료 후 브랜치 푸시 + PR 생성 (git/gh)
-(SPEC-FE-001) $ exit
-git push -u origin feature/SPEC-FE-001
+$ git push -u origin feature/SPEC-FE-001
 gh pr create --fill
 # PR 머지 후 Worktree 정리
 moai worktree done SPEC-FE-001 --delete-branch
@@ -341,14 +302,13 @@ cd project
 ✓ SPEC-BE-001 생성
 
 # Worktree에서 개발
-moai worktree go SPEC-BE-001
-(SPEC-BE-001) $ moai glm
-(SPEC-BE-001) $ claude
+cd "$(moai worktree go SPEC-BE-001)"
+$ moai glm
+$ claude
 > /moai run SPEC-BE-001
 
 # 구현 완료 후 브랜치 푸시 + PR 생성 (git/gh)
-(SPEC-BE-001) $ exit
-git push -u origin feature/SPEC-BE-001
+$ git push -u origin feature/SPEC-BE-001
 gh pr create --fill
 # PR 머지 후 Worktree 정리
 moai worktree done SPEC-BE-001 --delete-branch
@@ -431,19 +391,15 @@ moai worktree done SPEC-AUTH-001 --delete-branch
 ### 사례 2: Worktree 손상 복구
 
 ```bash
-$ moai worktree go SPEC-AUTH-001
-✗ Worktree가 손상되었습니다.
+# 진단: 손상된 레지스트리 복구 시도
+$ moai worktree recover
 
-# 진단
+# 상태 확인
 $ moai worktree status
-✗ Worktree 디렉토리가 존재하지 않습니다
 
-# 복구
-$ moai worktree remove .moai/worktrees/SPEC-AUTH-001 --force
-✓ 기존 Worktree 제거
-
+# 복구: 기존 Worktree 제거 (경로 지정) 후 재생성
+$ moai worktree remove ~/.moai/worktrees/your-project/SPEC-AUTH-001 --force
 $ moai worktree new SPEC-AUTH-001
-✓ Worktree 재생성 완료
 ```
 
 ### 사례 3: 병합된 Worktree 정리
@@ -513,11 +469,11 @@ sequenceDiagram
 
 # 2-4일차: 병렬 구현
 # Terminal 1: 사용자 관리
-$ moai worktree go SPEC-USER-001 && moai glm
+$ cd "$(moai worktree go SPEC-USER-001)" && moai glm
 # Terminal 2: 결제 시스템
-$ moai worktree go SPEC-PAY-001 && moai glm
+$ cd "$(moai worktree go SPEC-PAY-001)" && moai glm
 # Terminal 3: 알림 시스템
-$ moai worktree go SPEC-NOTIF-001 && moai glm
+$ cd "$(moai worktree go SPEC-NOTIF-001)" && moai glm
 
 # 5-6일차: 문서화 및 테스트
 # 각 Worktree에서 /moai sync 실행
@@ -578,7 +534,7 @@ echo "1. SPEC 계획 생성..."
 > /moai plan "$2" --worktree
 
 echo "2. Worktree 진입..."
-moai worktree go $SPEC_ID
+cd "$(moai worktree go $SPEC_ID)"
 
 echo "3. LLM 변경..."
 moai glm

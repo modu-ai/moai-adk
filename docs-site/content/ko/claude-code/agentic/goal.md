@@ -134,8 +134,8 @@ claude -p "/goal CHANGELOG.md has an entry for every PR merged this week"
 
 ## 관련 문서
 
-- [다이내믹 워크플로우](/claude-code/agentic/workflows)
-- [/moai loop](/utility-commands/moai-loop)
+- [다이내믹 워크플로우](/ko/claude-code/agentic/workflows)
+- [/moai loop](/ko/utility-commands/moai-loop)
 
 ## 참고 자료
 

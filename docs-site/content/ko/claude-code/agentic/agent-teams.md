@@ -160,7 +160,7 @@ split-pane 모드에는 외부 도구가 필요합니다. tmux는 시스템 패�
 
 ## 품질 게이트 hook
 
-[hook](/claude-code/extensibility/hooks)을 사용하면 팀원이 작업을 마치거나 작업이 생성·완료될 때 규칙을 강제할 수 있습니다.
+[hook](/ko/claude-code/extensibility/hooks)을 사용하면 팀원이 작업을 마치거나 작업이 생성·완료될 때 규칙을 강제할 수 있습니다.
 
 | hook 이벤트 | 발동 시점 | 종료 코드 2의 의미 |
 | --- | --- | --- |
@@ -190,8 +190,8 @@ CG 모드의 설정과 운영 방법은 별도 문서에서 자세히 다루므�
 
 ## 관련 문서
 
-- [다이내믹 워크플로우](/claude-code/agentic/workflows)
-- [CG 모드 (Claude + GLM)](/multi-llm/cg-mode)
+- [다이내믹 워크플로우](/ko/claude-code/agentic/workflows)
+- [CG 모드 (Claude + GLM)](/ko/multi-llm/cg-mode)
 
 ## 참고 자료
 

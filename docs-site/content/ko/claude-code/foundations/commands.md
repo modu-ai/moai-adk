@@ -186,9 +186,9 @@ MoAI-ADK가 제공하는 `/moai`와 그 하위 명령 (`/moai plan`, `/moai run`
 
 ## 관련 문서
 
-- [/moai 명령어](/utility-commands/moai)
-- [워크플로우 명령어](/workflow-commands)
-- [대화형 모드](/claude-code/foundations/interactive-mode)
+- [/moai 명령어](/ko/utility-commands/moai)
+- [워크플로우 명령어](/ko/workflow-commands)
+- [대화형 모드](/ko/claude-code/foundations/interactive-mode)
 
 ## 참고 자료
 

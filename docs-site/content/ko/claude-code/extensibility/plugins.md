@@ -161,9 +161,9 @@ MoAI-ADK 자체는 플러그인이 아니라 `moai init`이 `.claude/` 디렉터
 
 ## 관련 문서
 
-- [스킬](/claude-code/extensibility/skills)
-- [훅 (Hooks)](/claude-code/extensibility/hooks)
-- [MCP 서버](/claude-code/extensibility/mcp)
+- [스킬](/ko/claude-code/extensibility/skills)
+- [훅 (Hooks)](/ko/claude-code/extensibility/hooks)
+- [MCP 서버](/ko/claude-code/extensibility/mcp)
 
 ## 참고 자료
 

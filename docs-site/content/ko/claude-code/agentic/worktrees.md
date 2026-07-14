@@ -12,7 +12,7 @@ description: "Claude Code가 git 워크트리로 병렬 세션을 격리해 충�
 {{< /callout >}}
 
 {{< callout type="tip" >}}
-이 페이지는 Claude Code의 워크트리 개념을 개관하는 다리 역할만 합니다. MoAI-ADK에서 SPEC 단위 병렬 개발에 워크트리를 실제로 적용하는 자세한 방법은 [Git Worktree 개요](/worktree), [Git Worktree 완벽 가이드](/worktree/guide), [Git Worktree 실제 사용 예시](/worktree/examples)를 참고하시기 바랍니다.
+이 페이지는 Claude Code의 워크트리 개념을 개관하는 다리 역할만 합니다. MoAI-ADK에서 SPEC 단위 병렬 개발에 워크트리를 실제로 적용하는 자세한 방법은 [Git Worktree 개요](/ko/worktree), [Git Worktree 완벽 가이드](/ko/worktree/guide), [Git Worktree 실제 사용 예시](/ko/worktree/examples)를 참고하시기 바랍니다.
 {{< /callout >}}
 
 ## 워크트리란
@@ -110,9 +110,9 @@ MoAI-ADK는 이 워크트리 메커니즘을 SPEC 단위 병렬 개발과 다중
 
 ## 관련 문서
 
-- [Git Worktree 개요](/worktree)
-- [Git Worktree 완벽 가이드](/worktree/guide)
-- [Git Worktree 실제 사용 예시](/worktree/examples)
+- [Git Worktree 개요](/ko/worktree)
+- [Git Worktree 완벽 가이드](/ko/worktree/guide)
+- [Git Worktree 실제 사용 예시](/ko/worktree/examples)
 
 ## 참고 자료
 

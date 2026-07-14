@@ -106,9 +106,9 @@ Claude Code는 `settings.local.json`을 처음 만들 때 `.gitignore`에 자동
 
 ## 관련 문서
 
-- [settings.json 가이드](/advanced/settings-json)
-- [CLAUDE.md 가이드](/advanced/claude-md-guide)
-- [Statusline 시스템](/advanced/statusline)
+- [settings.json 가이드](/ko/advanced/settings-json)
+- [CLAUDE.md 가이드](/ko/advanced/claude-md-guide)
+- [Statusline 시스템](/ko/advanced/statusline)
 
 ## 참고 자료
 

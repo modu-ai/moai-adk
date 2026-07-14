@@ -154,8 +154,8 @@ MoAI-ADK 관점에서 예약 작업은 자율 실행 스펙트럼의 한 축입�
 
 ## 관련 문서
 
-- [훅 (Hooks)](/claude-code/extensibility/hooks)
-- [목표 지향 실행 (/goal)](/claude-code/agentic/goal)
+- [훅 (Hooks)](/ko/claude-code/extensibility/hooks)
+- [목표 지향 실행 (/goal)](/ko/claude-code/agentic/goal)
 
 ## 참고 자료
 

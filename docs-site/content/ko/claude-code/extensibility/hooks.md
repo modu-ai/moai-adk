@@ -14,7 +14,7 @@ description: "Claude Code 라이프사이클 이벤트에 반응해 자동으로
 {{< /callout >}}
 
 {{< callout type="tip" >}}
-이 페이지는 개념 소개에 집중합니다. MoAI-ADK가 hook을 실제로 어떻게 등록하고 운영하는지(셸 래퍼 패턴, 이벤트별 동작, 품질 게이트 연동)는 깊이 있는 MoAI-ADK 가이드에서 다룹니다. 손에 잡히는 실전 내용은 [Hooks 가이드](/advanced/hooks-guide)와 [Hooks 이벤트 레퍼런스](/advanced/hooks-reference)를 참고하세요.
+이 페이지는 개념 소개에 집중합니다. MoAI-ADK가 hook을 실제로 어떻게 등록하고 운영하는지(셸 래퍼 패턴, 이벤트별 동작, 품질 게이트 연동)는 깊이 있는 MoAI-ADK 가이드에서 다룹니다. 손에 잡히는 실전 내용은 [Hooks 가이드](/ko/advanced/hooks-guide)와 [Hooks 이벤트 레퍼런스](/ko/advanced/hooks-reference)를 참고하세요.
 {{< /callout >}}
 
 ## 훅이란
@@ -109,8 +109,8 @@ MoAI-ADK는 셸 스크립트 래퍼가 `moai hook <event>` 바이너리를 호�
 
 ## 관련 문서
 
-- [Hooks 가이드](/advanced/hooks-guide)
-- [Hooks 이벤트 레퍼런스](/advanced/hooks-reference)
+- [Hooks 가이드](/ko/advanced/hooks-guide)
+- [Hooks 이벤트 레퍼런스](/ko/advanced/hooks-reference)
 
 ## 참고 자료
 

@@ -179,7 +179,7 @@ MoAI-ADK는 위의 Claude Code 메모리 기반 위에서 동작합니다. 프�
 
 ## 관련 문서
 
-- [CLAUDE.md 가이드](/advanced/claude-md-guide)
+- [CLAUDE.md 가이드](/ko/advanced/claude-md-guide)
 
 ## 참고 자료
 

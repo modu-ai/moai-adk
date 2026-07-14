@@ -28,9 +28,9 @@ flowchart TD
 
 | 문서 | 설명 |
 |------|------|
-| [스킬](/claude-code/extensibility/skills) | 전문 지식 모듈과 점진적 공개 |
-| [훅 (Hooks)](/claude-code/extensibility/hooks) | 이벤트 기반 자동화 |
-| [MCP 서버](/claude-code/extensibility/mcp) | 외부 도구 연결 프로토콜 |
-| [플러그인과 마켓플레이스](/claude-code/extensibility/plugins) | 확장 패키지와 코드 인텔리전스 |
+| [스킬](/ko/claude-code/extensibility/skills) | 전문 지식 모듈과 점진적 공개 |
+| [훅 (Hooks)](/ko/claude-code/extensibility/hooks) | 이벤트 기반 자동화 |
+| [MCP 서버](/ko/claude-code/extensibility/mcp) | 외부 도구 연결 프로토콜 |
+| [플러그인과 마켓플레이스](/ko/claude-code/extensibility/plugins) | 확장 패키지와 코드 인텔리전스 |
 
-네 가지 재료를 익혔다면, 다음 그룹인 [에이전트와 자동화](/claude-code/agentic)에서 이 재료들로 지은 하네스 위에 에이전틱 루프를 돌리는 방법을 살펴보세요.
+네 가지 재료를 익혔다면, 다음 그룹인 [에이전트와 자동화](/ko/claude-code/agentic)에서 이 재료들로 지은 하네스 위에 에이전틱 루프를 돌리는 방법을 살펴보세요.
