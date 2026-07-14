@@ -63,6 +63,7 @@ flowchart TD
 | `--browser BROWSER` | Playwright 브라우저 선택 (기본값 chromium) | `/moai e2e --browser firefox` |
 | `--timeout N` | 테스트 타임아웃 (초, 기본값 30) | `/moai e2e --timeout 60` |
 | `--retry N` | 실패 테스트 재시도 횟수 (기본값 1) — **실패한 스펙만** 재실행 | `/moai e2e --retry 2` |
+| `--autofix` | 자동 수정 위임 활성화 — Phase 3 실패 시 manager-develop에 수정 위임 후 재실행 (최대 3회, 독립 저지는 병렬) | `/moai e2e --autofix` |
 
 ## 플랫폼별 툴체인 매트릭스
 
@@ -124,6 +125,24 @@ flowchart TD
 
 테스트를 실행하고, 여정별 PASS/FAIL 상태·소요 시간·아티팩트 경로를 표로 보고합니다. 실패한 여정은 실패 지점의 로그 발췌와 스크린샷 경로가 함께 제공됩니다.
 
+## 자동 수정 위임 (--autofix)
+
+`--autofix` 플래그를 주면 Phase 3 실행에서 **실패나 개선 여지**가 발견됐을 때, 오케스트레이터가 수정을 `manager-develop` 에이전트에 위임하고 Phase 3를 재실행하는 루프에 진입합니다. 플래그가 없거나 Phase 3가 green이면 이 단계는 건너뜁니다.
+
+```mermaid
+flowchart TD
+    Run["Phase 3 실행"] --> Fail{"실패/개선 저지?"}
+    Fail -->|"아니오"| Green["Phase 5 보고"]
+    Fail -->|"예 (--autofix)"| Approve["진입 승인 1회"]
+    Approve --> Group["저지 그룹화<br/>독립=병렬 / 의존=순차"]
+    Group --> Fix["manager-develop<br/>autofix: localize→repair→validate"]
+    Fix --> Run
+```
+
+- **진입 승인 1회**: 첫 위임 전 오케스트레이터가 1회 승인을 받습니다. 이 승인이 전체 루프를 아우르며 이후 반복에서는 다시 묻지 않습니다. 거절하면 기존 수동 다음 단계 흐름으로 돌아갑니다.
+- **저지 그룹화**: 서로 다른 파일을 건드리는 독립 저지는 병렬 fan-out, 같은 모듈을 건드리는 의존 저지는 순차 처리합니다 (동시 쓰기 충돌 방지).
+- **루프 한계**: 최대 3회 반복 (`ci-autofix-protocol.md`와 동일). green이면 보고, 3회 소진 시 잔여 실패와 아티팩트 경로를 사용자에게 회귀합니다.
+
 ## 토큰 최소화 실행
 
 `/moai e2e`의 핵심 설계 원칙은 **CLI 우선** (CLI-first) 입니다. AI 컨텍스트에 장황한 출력을 쌓는 대신, 가장 싼 경로부터 사용합니다.
@@ -167,6 +186,7 @@ flowchart TD
 |----------|------|----------|
 | **MoAI 오케스트레이터** | 선택과 보고 | 툴체인/여정 선택 질문, 결과 보고 렌더링 |
 | **e2e-tester** | 실행 전담 | 감지 프로브, 여정 매핑, 스크립트 작성, CLI 실행, 기록 |
+| **manager-develop** (--autofix 시) | 수정 위임 | localize→repair→validate (관련 e2e 스펙 로컬 재검증) |
 
 ## 관련 문서
 

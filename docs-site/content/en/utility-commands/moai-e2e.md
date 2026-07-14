@@ -63,6 +63,7 @@ Run without arguments to detect the project type, get the recommended toolchain 
 | `--browser BROWSER` | Browser for Playwright (default chromium) | `/moai e2e --browser firefox` |
 | `--timeout N` | Test timeout in seconds (default 30) | `/moai e2e --timeout 60` |
 | `--retry N` | Retries for failed tests (default 1) — re-runs **only the failed specs** | `/moai e2e --retry 2` |
+| `--autofix` | Enable autonomous fix delegation — delegate fixes to manager-develop on Phase 3 failure and re-run (max 3 iterations; independent findings parallel) | `/moai e2e --autofix` |
 
 ## Platform-Toolchain Matrix
 
@@ -124,6 +125,24 @@ Every journey step pairs with a **verifiable outcome** — assertion-free naviga
 
 Runs the tests and reports per-journey PASS/FAIL status, duration, and artifact paths in a table. Failed journeys come with a bounded log excerpt at the failure point plus screenshot paths.
 
+## Autonomous Fix Delegation (--autofix)
+
+With the `--autofix` flag, when Phase 3 execution surfaces **failures or improvement findings**, the orchestrator delegates fixes to the `manager-develop` agent and re-runs Phase 3 in a loop. The step is skipped when the flag is absent or Phase 3 is green.
+
+```mermaid
+flowchart TD
+    Run["Phase 3 execution"] --> Fail{"Failure/finding?"}
+    Fail -->|"No"| Green["Phase 5 report"]
+    Fail -->|"Yes (--autofix)"| Approve["One-time approval"]
+    Approve --> Group["Group findings<br/>independent=parallel / dependent=sequential"]
+    Group --> Fix["manager-develop<br/>autofix: localize→repair→validate"]
+    Fix --> Run
+```
+
+- **One-time approval**: the orchestrator obtains a single approval before the first delegation; it covers the whole loop and is not re-asked. Declining falls back to the standard manual next-step.
+- **Finding grouping**: independent findings (disjoint files) fan out in parallel; dependent findings (same module) run sequentially to avoid concurrent-write conflicts.
+- **Loop cap**: max 3 iterations (mirrors `ci-autofix-protocol.md`). On green it reports; on exhaustion it escalates remaining failures + artifact paths to the user.
+
 ## Token-Minimized Execution
 
 The core design principle of `/moai e2e` is **CLI-first**. Instead of piling verbose output into the AI context, it uses the cheapest path first.
@@ -167,6 +186,7 @@ flowchart TD
 |----------|------|----------|
 | **MoAI orchestrator** | Selection and reporting | Toolchain/journey selection questions, result-report rendering |
 | **e2e-tester** | Execution owner | Detection probes, journey mapping, script creation, CLI execution, recording |
+| **manager-develop** (with --autofix) | Fix delegation | localize→repair→validate (re-verifies the relevant e2e spec locally) |
 
 ## Related Documents
 

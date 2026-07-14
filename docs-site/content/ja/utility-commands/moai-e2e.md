@@ -63,6 +63,7 @@ flowchart TD
 | `--browser BROWSER` | Playwright のブラウザを選択 (既定値 chromium) | `/moai e2e --browser firefox` |
 | `--timeout N` | テストタイムアウト (秒、既定値 30) | `/moai e2e --timeout 60` |
 | `--retry N` | 失敗テストの再試行回数 (既定値 1) — **失敗したスペックのみ**再実行 | `/moai e2e --retry 2` |
+| `--autofix` | 自動修正委任を有効化 — Phase 3 失敗時に manager-develop へ修正を委任し再実行 (最大3回、独立した阻害は並列) | `/moai e2e --autofix` |
 
 ## プラットフォーム別ツールチェーンマトリクス
 
@@ -124,6 +125,24 @@ flowchart TD
 
 テストを実行し、ジャーニー別の PASS/FAIL ステータス・所要時間・アーティファクトパスを表で報告します。失敗したジャーニーには、失敗地点のログ抜粋とスクリーンショットパスが添えられます。
 
+## 自動修正委任 (--autofix)
+
+`--autofix` フラグを付けると、Phase 3 実行で **失敗や改善余地** が見つかった際、オーケストレータが修正を `manager-develop` エージェントに委任し、Phase 3 を再実行するループに入ります。フラグがない、または Phase 3 が green の場合はこのステップをスキップします。
+
+```mermaid
+flowchart TD
+    Run["Phase 3 実行"] --> Fail{"失敗/改善の阻害?"}
+    Fail -->|"いいえ"| Green["Phase 5 報告"]
+    Fail -->|"はい (--autofix)"| Approve["1回限り承認"]
+    Approve --> Group["阻害をグループ化<br/>独立=並列 / 依存=順次"]
+    Group --> Fix["manager-develop<br/>autofix: localize→repair→validate"]
+    Fix --> Run
+```
+
+- **1回限りの承認**: 最初の委任前にオーケストレータが1回承認を取得します。この承認がループ全体をカバーし、以降の反復では再確認しません。拒否した場合は従来の手動による次ステップに戻ります。
+- **阻害のグループ化**: 異なるファイルに触れる独立した阻害は並列で fan-out、同じモジュールに触れる依存阻害は順次処理します (同時書き込み衝突を回避)。
+- **ループ上限**: 最大3反復 (`ci-autofix-protocol.md` と同一)。green なら報告、3回消費時は残失敗とアーティファクトパスをユーザにエスカレーションします。
+
 ## トークン最小化の実行
 
 `/moai e2e` の中核設計原則は **CLI 優先** (CLI-first) です。AI コンテキストに冗長な出力を積み上げる代わりに、最も安い経路から使います。
@@ -167,6 +186,7 @@ flowchart TD
 |----------|------|----------|
 | **MoAI オーケストレーター** | 選択とレポート | ツールチェーン/ジャーニー選択の質問、結果レポートのレンダリング |
 | **e2e-tester** | 実行専任 | 検出プローブ、ジャーニーマッピング、スクリプト作成、CLI 実行、記録 |
+| **manager-develop** (--autofix 時) | 修正委任 | localize→repair→validate (関連 e2e スペックをローカルで再検証) |
 
 ## 関連ドキュメント
 

@@ -63,6 +63,7 @@ flowchart TD
 | `--browser BROWSER` | 选择 Playwright 浏览器 (默认 chromium) | `/moai e2e --browser firefox` |
 | `--timeout N` | 测试超时 (秒，默认 30) | `/moai e2e --timeout 60` |
 | `--retry N` | 失败测试的重试次数 (默认 1) — 只重跑**失败的用例** | `/moai e2e --retry 2` |
+| `--autofix` | 启用自动修复委托 — Phase 3 失败时委托 manager-develop 修复并重跑 (最多 3 次，独立项并行) | `/moai e2e --autofix` |
 
 ## 平台工具链矩阵
 
@@ -124,6 +125,24 @@ flowchart TD
 
 运行测试，并以表格报告逐旅程的 PASS/FAIL 状态、耗时和产物路径。失败的旅程会附带失败点的日志摘录和截图路径。
 
+## 自动修复委托 (--autofix)
+
+加上 `--autofix` 标志后，当 Phase 3 执行发现 **失败或可改进之处** 时，编排器会将修复委托给 `manager-develop` 代理并重新运行 Phase 3，进入循环。若未加该标志或 Phase 3 已通过，则跳过此步骤。
+
+```mermaid
+flowchart TD
+    Run["Phase 3 执行"] --> Fail{"失败/改进点?"}
+    Fail -->|"否"| Green["Phase 5 报告"]
+    Fail -->|"是 (--autofix)"| Approve["一次性批准"]
+    Approve --> Group["问题分组<br/>独立=并行 / 依赖=顺序"]
+    Group --> Fix["manager-develop<br/>autofix: localize→repair→validate"]
+    Fix --> Run
+```
+
+- **一次性批准**：首次委托前编排器获取一次批准，该批准覆盖整个循环，后续迭代不再询问。拒绝则回到标准的手动下一步流程。
+- **问题分组**：触及不同文件的独立问题并行 fan-out；触及同一模块的依赖问题顺序处理（避免并发写冲突）。
+- **循环上限**：最多 3 次迭代（与 `ci-autofix-protocol.md` 一致）。通过即报告；耗尽则将剩余失败和产物路径上报给用户。
+
 ## Token 最小化执行
 
 `/moai e2e` 的核心设计原则是 **CLI 优先** (CLI-first)。它不会把冗长输出堆进 AI 上下文，而是从最便宜的路径用起。
@@ -167,6 +186,7 @@ flowchart TD
 |----------|------|----------|
 | **MoAI 编排器** | 选择与报告 | 工具链/旅程选择问题、结果报告渲染 |
 | **e2e-tester** | 执行专责 | 检测探测、旅程映射、脚本编写、CLI 执行、记录 |
+| **manager-develop** (使用 --autofix 时) | 修复委托 | localize→repair→validate（本地复验相关 e2e 用例） |
 
 ## 相关文档
 
