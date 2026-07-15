@@ -67,12 +67,12 @@ graph TB
 ```
 src/
 ├── auth/
-│   ├── handler.go      ← 빈 스텁
-│   ├── handler_test.go  ← 빈 테스트
-│   ├── service.go       ← 빈 스텁
-│   └── service_test.go  ← 빈 테스트
+│   ├── handler.go      ← 空桩
+│   ├── handler_test.go  ← 空测试
+│   ├── service.go       ← 空桩
+│   └── service_test.go  ← 空测试
 └── middleware/
-    └── jwt.go           ← 빈 스텁
+    └── jwt.go           ← 空桩
 ```
 
 这种方式防止智能体无序地创建文件，保持项目结构一致。
@@ -82,11 +82,11 @@ src/
 SPEC 的验收标准会自动注册到任务列表中：
 
 ```
-- [ ] JWT 토큰 생성 엔드포인트
-- [ ] 토큰 검증 미들웨어
-- [ ] 리프레시 토큰 로직
-- [ ] 만료된 토큰 처리
-- [ ] 85%+ 테스트 커버리지
+- [ ] JWT 令牌生成端点
+- [ ] 令牌校验中间件
+- [ ] 刷新令牌逻辑
+- [ ] 过期令牌处理
+- [ ] 85%+ 测试覆盖率
 ```
 
 每一项在实现并通过测试后被勾选。所有条目全部勾选，工作才算完成。
@@ -120,10 +120,10 @@ graph TD
 
 ```markdown
 ## Progress
-- [x] Phase 1: 분석 완료
-- [x] Phase 2: 핸들러 구현
-- [ ] Phase 3: 테스트 작성 ← 여기서 재개
-- [ ] Phase 4: 리팩토링
+- [x] Phase 1: 分析完成
+- [x] Phase 2: 处理器实现
+- [ ] Phase 3: 编写测试 ← 从这里恢复
+- [ ] Phase 4: 重构
 ```
 
 用 `/moai run --resume SPEC-XXX` 即可从中断点自动恢复。
@@ -133,7 +133,7 @@ graph TD
 挽具不是固定不变的环境。循环转得越多，观察积累越多，挽具依据这些观察进行学习，自行改进指令。
 
 ```
-루프 실행 → 관찰 축적 → 패턴 학습 → 지침 진화 (승인 게이트)
+运行循环 → 积累观察 → 学习模式 → 演化指令（批准门禁）
 ```
 
 ### 4 层学习阶梯
@@ -154,10 +154,10 @@ graph TD
 - **Constitution 系统** — 不变规则 (FROZEN) 被排除在演化对象之外（参见 [Constitution 系统](/zh/core-concepts/constitution)）
 
 ```bash
-moai harness status      # 학습 상태 확인 (관찰 수, 패턴, 제안)
-moai harness apply       # 제안 적용 (사용자 승인 게이트 통과 필요)
-moai harness rollback    # 직전 적용 롤백
-moai harness disable     # 학습 비활성화
+moai harness status      # 查看学习状态（观察数、模式、提案）
+moai harness apply       # 应用提案（需通过用户批准门禁）
+moai harness rollback    # 回退上一次应用
+moai harness disable     # 停用学习
 ```
 
 ## 传统开发 vs 挽具工程

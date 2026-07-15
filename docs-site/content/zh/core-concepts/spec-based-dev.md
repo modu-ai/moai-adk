@@ -86,11 +86,13 @@ flowchart TD
 
 {{< /callout >}}
 
-## EARS 格式
+## GEARS 需求格式
 
-**EARS** (Easy Approach to Requirements Syntax) 是把需求写清楚的方法。它消除自然语言的歧义，将需求转换为可用测试验证的格式。
+**GEARS** (Generalized Approach to Requirements Syntax) 自 v3.0.0 起是 MoAI-ADK 的**官方需求表记法**。它消除自然语言的歧义，将需求描述为可用测试验证的格式。新建 SPEC 一律使用 GEARS 表记。
 
-EARS 提供 5 种需求模式。
+{{< icon info >}} **旧版兼容 — EARS（到期 2026-11-22）**：GEARS 之前的 **EARS** (Easy Approach to Requirements Syntax) 表记在 6 个月内（**2026-11-22 到期**）保持向后兼容。既有 SPEC 工作流规则的一部分仍可能引用 EARS 表记，但新建 SPEC 使用 GEARS。下面 5 种模式是 EARS 与 GEARS 共享的需求类型，示例以旧版 EARS 表记为准。
+
+### 5 种需求模式
 
 ### 1. Ubiquitous（永远成立）
 
@@ -218,7 +220,7 @@ flowchart TD
 
 **日常比喻：** 就像"有时间的话再做个甜点就好了"，有更好，没有也无妨。
 
-### EARS 一览
+### 5 种模式一览
 
 | 类型 | 格式 | 用途 | 优先级 |
 | ---------------- | ----------------------------- | ------------------ | ---------------- |
@@ -240,7 +242,11 @@ SPEC 文档由 **manager-spec 智能体**自动生成。开发者无需背 EARS 
 | `plan.md` | 实现计划 | 任务分解、技术栈说明、风险分析与缓解策略 |
 | `acceptance.md` | 验收标准 | Given/When/Then 场景、边界情况、性能与质量门禁 |
 
-### spec.md -- EARS 需求
+{{< callout type="info" >}}
+  除上述 3 个文件外，plan 阶段还会生成用于跨会话追踪进度的 **`progress.md`**（记录生命周期各阶段的 audit-ready 信号）。对规模较大的 **Tier L** SPEC，还会额外编写设计·调研产物 **`design.md`** 与 **`research.md`**。
+{{< /callout >}}
+
+### spec.md -- GEARS/EARS 需求
 
 ```yaml
 ---
@@ -336,7 +342,7 @@ SPEC 的创建从一条 `/moai plan` 命令开始。
 flowchart TD
     A["用户请求\n用自然语言描述功能"] --> B["运行 manager-spec 智能体"]
     B --> C["需求分析\n对含糊之处提问"]
-    C --> D["转换为 EARS 格式\n按 5 种类型分类"]
+    C --> D["转换为 GEARS 格式\n按 5 种类型分类"]
     D --> E["编写验收标准\nGiven-When-Then 格式"]
     E --> F["生成 SPEC 3 个文件\nspec.md + plan.md + acceptance.md"]
     F --> G["请求审阅\n向用户确认"]

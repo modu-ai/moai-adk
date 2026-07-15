@@ -41,14 +41,15 @@ Claude Code 在开始新对话时对项目一无所知。
 
 ## 生成的文档
 
-`/moai project` 在 `.moai/project/` 目录下生成 3 份文档:
+`/moai project` 在 `.moai/project/` 目录下生成 3 份核心文档与架构代码地图:
 
 ```
 .moai/
 └── project/
     ├── product.md      # 项目概要
     ├── structure.md    # 目录结构分析
-    └── tech.md         # 技术栈信息
+    ├── tech.md         # 技术栈信息
+    └── codemaps/       # 架构代码地图 (Phase 9)
 ```
 
 除了生成文档,针对项目的 **挽具自动配置** 也是这条命令的职责 — 基于分析出的技术栈,可以一并组建项目专属的智能体团队(挽具)。挽具创建的详情请参阅 [/moai harness](./moai-harness)。
@@ -98,30 +99,32 @@ Claude Code 在开始新对话时对项目一无所知。
 flowchart TD
     Start["执行 /moai project"] --> Q1{项目类型是?}
 
-    Q1 -->|新项目| New["Phase 1: 收集信息"]
-    Q1 -->|既有项目| Exist["Phase 1: 分析代码库"]
+    Q1 -->|新项目| New["Phase 2: 深度访谈<br/>(Stage A + B)"]
+    Q1 -->|既有项目| Exist["Phase 3: 分析代码库"]
 
     New --> NewQ["项目目的"]
     New --> NewL["主要语言"]
     New --> NewD["项目描述"]
 
-    NewQ --> Gen["Phase 3: 生成文档"]
+    NewQ --> Gen["Phase 6: 生成文档"]
     NewL --> Gen
     NewD --> Gen
 
     Exist --> Exp["Explore 智能体<br/>分析代码库"]
-    Exp --> Conf["Phase 2: 用户确认"]
+    Exp --> Conf["Phase 5: 用户确认"]
 
     Conf -->|批准| Gen
     Conf -->|取消| End["结束"]
 
-    Gen --> LSP["Phase 4: 检查 LSP"]
-    LSP --> Complete["Phase 4: 完成"]
+    Gen --> Audit["Phase 7: plan-auditor 独立审计"]
+    Audit --> CM["Phase 9: 生成代码地图"]
+    CM --> LSP["Phase 10: 检查 LSP"]
+    LSP --> Complete["Phase 14: 完成"]
 ```
 
 ## 详细工作流
 
-### Phase 0: 检测项目类型
+### Phase 1: 检测项目类型
 
 首先确认项目类型。
 
@@ -137,9 +140,9 @@ flowchart TD
 | **新项目** | 从零开始的项目。以信息收集的形式进行 |
 | **既有项目** | 已有代码的项目。自动分析代码      |
 
-### Phase 1: 收集新项目信息
+### Phase 2: 深度访谈(新项目)
 
-选择新项目时,收集以下信息:
+选择新项目时,进行两阶段 **深度访谈**(Deep Interview)—— 基于清晰度评分的 Stage A(Vision-Domain / Technology-Constraints / Scope,可变轮次直到 `project.max_rounds`)+ 必需的 Stage B 扩展轴轮次。收集以下信息:
 
 **问题 1 - 项目目的**:
 
@@ -161,9 +164,9 @@ flowchart TD
 - 主要功能或目标
 - 目标用户
 
-基于收集到的信息生成初始文档,然后进入 Phase 4。
+基于收集到的信息生成初始文档,然后进入 Phase 6 文档生成。
 
-### Phase 1: 分析代码库(既有项目)
+### Phase 3: 分析代码库(既有项目)
 
 选择既有项目时,将分析工作委派给 **Explore 智能体**。
 
@@ -188,7 +191,11 @@ flowchart TD
 - 依赖目录
 - 入口点识别
 
-### Phase 2: 用户确认
+### Phase 4: 深度访谈(既有项目)
+
+代码库分析之后,既有项目也会进行两阶段 **深度访谈** —— 基于清晰度评分的 Stage A(Ownership-Goal / Constraints / Scope-Priority,可变轮次直到 `project.max_rounds`)+ 必需的 Stage B 扩展轴轮次。从用户处挖掘仅凭分析结果无法显现的所有权·目标·优先级。
+
+### Phase 5: 用户确认
 
 将分析结果展示给用户并获取批准。
 
@@ -205,14 +212,14 @@ flowchart TD
 - **详细审查**: 先审查分析细节
 - **取消**: 调整项目设置
 
-### Phase 3: 生成文档
+### Phase 6: 生成文档
 
 将文档生成委派给 **manager-docs 智能体**。
 
 **传递内容**:
 
-- Phase 1 分析结果(或 Phase 1 用户输入)
-- Phase 2 用户确认
+- Phase 3 分析结果(或 Phase 2 访谈输入)
+- Phase 5 用户确认
 - 输出目录: `.moai/project/`
 - 语言: config 的 conversation_language
 
@@ -224,7 +231,15 @@ flowchart TD
 | **structure.md** | 目录树、各目录的用途、核心文件位置、模块构成             |
 | **tech.md**      | 技术栈概览、框架选择依据、开发环境要求、构建/部署设置 |
 
-### Phase 4: 检查开发环境
+### Phase 7: plan-auditor 独立审计
+
+文档生成后,**plan-auditor** 子代理有条件地独立审计产物,并在需要时协助重试循环 —— 把"创建者(manager-docs)不检查自己的结果"这一独立审计原则也应用到项目文档生成上。
+
+### Phase 9: 生成代码地图
+
+Explore + manager-docs 在 `.moai/project/codemaps/` 生成架构代码地图。
+
+### Phase 10: 检查开发环境
 
 确认是否安装了与检测到的技术栈匹配的 LSP 服务器。
 
@@ -253,9 +268,9 @@ flowchart TD
 
 - **不使用 LSP 继续**: 进行到完成
 - **显示安装指南**: 显示检测到的语言的配置指南
-- **立即自动安装**: 通过 manager-develop 智能体安装(需要确认)
+- **立即自动安装**: 通过 `Agent(general-purpose)` devops 范围安装(需要确认)
 
-### Phase 4: 完成
+### Phase 14: 完成
 
 以用户的语言显示完成消息。
 
@@ -548,21 +563,22 @@ AI 已经了解项目的技术栈与结构,因此能生成更精准的 SPEC。
 
 ```mermaid
 flowchart TD
-    Start["执行 /moai project"] --> Phase0["Phase 0: 检测类型"]
-    Phase0 --> Phase05["Phase 1: 收集信息<br/>(新项目)"]
-    Phase0 --> Phase1["Phase 1: 分析代码库<br/>(既有项目)"]
+    Start["执行 /moai project"] --> Phase0["Phase 1: 检测类型"]
+    Phase0 --> Phase05["Phase 2: 深度访谈<br/>(新项目)"]
+    Phase0 --> Phase1["Phase 3: 分析代码库<br/>(既有项目)"]
 
     Phase1 --> Explore["Explore 子智能体<br/>委派代码分析"]
-    Explore --> Phase2["Phase 2: 用户确认"]
+    Explore --> Phase2["Phase 5: 用户确认"]
 
-    Phase05 --> Phase3["Phase 3: 生成文档"]
+    Phase05 --> Phase3["Phase 6: 生成文档"]
     Phase2 -->|批准| Phase3
 
     Phase3 --> Docs["manager-docs 子智能体<br/>委派文档生成"]
-    Docs --> Phase35["Phase 4: 检查 LSP"]
+    Docs --> Audit["Phase 7: plan-auditor 审计"]
+    Audit --> Phase35["Phase 10: 检查 LSP"]
 
-    Phase35 --> DevOps["manager-develop 子智能体<br/>安装 LSP(可选)"]
-    DevOps --> Phase4["Phase 4: 完成"]
+    Phase35 --> DevOps["Agent(general-purpose) devops<br/>安装 LSP(可选)"]
+    DevOps --> Phase4["Phase 14: 完成"]
 ```
 
 ## 常见问题
@@ -581,7 +597,7 @@ flowchart TD
 
 ### Q: 没有 LSP 服务器会怎样?
 
-即使没有 LSP 服务器,文档生成也会进行。只是在之后的 `/moai run` 阶段,代码质量诊断可能受限。Phase 4 会提供 LSP 安装指南。
+即使没有 LSP 服务器,文档生成也会进行。只是在之后的 `/moai run` 阶段,代码质量诊断可能受限。Phase 10 会提供 LSP 安装指南。
 
 ## 相关文档
 

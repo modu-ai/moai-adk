@@ -46,43 +46,31 @@ irm https://raw.githubusercontent.com/modu-ai/moai-adk/main/install.ps1 | iex
 
 ### 问题现象
 
-当 Windows 用户名包含韩文、中文等非 ASCII 字符时，可能出现 `EINVAL` 错误。这是 Windows 8.3 短文件名转换过程引发的问题。
+当 Windows 用户名包含韩文、中文等非 ASCII 字符时，某些旧工具或在 8.3 短文件名转换过程中可能出现路径处理问题。若主目录路径混有非 ASCII 字符，特定命令可能失败。
 
 ```
-Error: EINVAL: invalid argument, open 'C:\Users\홍길동\AppData\Local\Temp\...'
+C:\Users\홍길동\...
 ```
 
-### 解决方法 1：设置替代临时目录 (推荐)
+此时用以下方法准备一个纯 ASCII 路径环境最为可靠。
 
-在仅包含 ASCII 字符的路径下创建临时目录：
+### 解决方法 1：启用 8.3 文件名生成
 
-```bash
-# Command Prompt
-set MOAI_TEMP_DIR=C:\temp
-mkdir C:\temp 2>/dev/null
-```
+以管理员权限设置，使 8.3 短文件名（ASCII 替代路径）得以生成。
 
 ```powershell
-# PowerShell
-$env:MOAI_TEMP_DIR="C:\temp"
-New-Item -ItemType Directory -Path "C:\temp" -Force
-```
-
-若要永久设置环境变量，请在系统环境变量中添加 `MOAI_TEMP_DIR`。
-
-### 解决方法 2：禁用 8.3 文件名生成
-
-以管理员权限运行：
-
-```bash
 fsutil 8dot3name set 1
 ```
 
 > **注意**：此设置影响整个系统，部分旧程序可能受到影响。
 
-### 解决方法 3：创建 ASCII 用户账户
+### 解决方法 2：创建 ASCII 用户账户
 
-用英文名创建新的 Windows 用户账户，可从根本上解决路径问题。
+用英文名创建新的 Windows 用户账户，可从根本上解决主目录路径问题。
+
+### 解决方法 3：使用 WSL
+
+最推荐的方法是在 WSL（见下文 [WSL 设置指南](#wsl-设置指南)）环境中工作。WSL 原生文件系统不受非 ASCII 主目录路径问题的影响。
 
 ## WSL 设置指南
 
@@ -135,8 +123,8 @@ moai cg
 
 | 问题 | 原因 | 解决 |
 |------|------|------|
-| `moai: command not found` | PATH 未包含 Go bin 目录 | 在 `.bashrc` 中添加 `export PATH="$HOME/go/bin:$PATH"` |
-| `EINVAL` 错误 | 非 ASCII 用户名 | 参考上文[非 ASCII 用户名路径错误](#非-ascii-用户名路径错误) |
+| `moai: command not found` | PATH 未包含安装目录 | 安装脚本安装到 `~/.local/bin` —— 在 `.bashrc` 中添加 `export PATH="$HOME/.local/bin:$PATH"`（用 `go install` 安装时为 `$HOME/go/bin`） |
+| 韩文路径处理失败 | 韩文用户名 | 参考上文[非 ASCII 用户名路径错误](#非-ascii-用户名路径错误) |
 | 权限被拒绝 | 安装脚本权限 | 执行 `chmod +x install.sh` 后重试 |
 | Git 命令失败 | 未安装 Git for Windows | 安装 [Git for Windows](https://gitforwindows.org/) |
 | 没有 tmux | 无法运行 CG 模式 | `sudo apt install tmux`（在 WSL 中） |

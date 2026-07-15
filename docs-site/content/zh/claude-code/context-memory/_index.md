@@ -33,5 +33,6 @@ flowchart TD
 | [记忆与自动记忆](/claude-code/context-memory/memory) | CLAUDE.md 层级与自动记忆 |
 | [提示缓存](/claude-code/context-memory/prompt-caching) | 用缓存削减成本·延迟 |
 | [检查点](/claude-code/context-memory/checkpointing) | 用回退安全实验 |
+| [会话管理](/claude-code/context-memory/sessions) | 会话续接·清理与交接 |
 
 完成本组后，请进入下一组[扩展](/claude-code/extensibility)，学习技能·钩子·MCP·插件 —— 搭建挽具的原材料。

@@ -72,10 +72,10 @@ MoAI-ADK 的答案有三:
 
 - **11 个** 智能体目录(10 个 MoAI 自定义 + 1 个 Anthropic 内置 `Explore`)
 - **27 个** 技能(template-managed)
-- **36 个** CLI 命令 · **15 种** `/moai` 子命令
+- **约 37 个** CLI 命令 · **14 种** `/moai` 子命令
 - **16 种** 编程语言支持
 - **3 级 harness**(minimal / standard / thorough)—— 依 SPEC 复杂度的自适应质量门禁
-- 基于 **504 个** SPEC 文档开发的代码库
+- 以 **SPEC 驱动的工作流**(plan → run → sync)开发的代码库
 
 ### 氛围编程的问题点
 
@@ -318,12 +318,10 @@ flowchart TD
 | 类别 | 示例 |
 |----------|------|
 | **Foundation** | core, cc, thinking, quality |
-| **Workflow** | spec, project, ddd, tdd, testing, worktree |
-| **Domain** | backend, frontend, database, html-report |
-| **Language** | Go, Python, TypeScript, Rust, Java, Kotlin, Swift, C++... |
-| **Platform** | Vercel, Supabase, Firebase, Auth0, Clerk... |
-| **Reference** | REST/GraphQL patterns, OWASP, git workflow |
-| **Tool** | ast-grep, svg |
+| **Workflow** | spec, project, ddd, tdd, testing, worktree, loop, ci-loop |
+| **Domain** | backend, frontend, database, html-report, humanize |
+| **Reference** | api-patterns, owasp-checklist, git-workflow, react-patterns, testing-pyramid, llm-security, secops, supply-chain |
+| **Harness** | harness-learner, meta-harness |
 
 ## MoAI 工作流
 
@@ -337,7 +335,7 @@ flowchart TD
 
     subgraph Plan["1. Plan 阶段"]
         P1["探索代码库"] --> P2["分析需求"]
-        P2 --> P3["生成 SPEC 文档\nEARS 格式"]
+        P2 --> P3["生成 SPEC 文档\nGEARS 格式"]
     end
 
     Plan --> Run
@@ -399,7 +397,7 @@ flowchart TD
 
 | 子命令 | 别名 | 用途 | 主要标志 |
 |-----------|------|------|-----------|
-| `plan` | `spec` | 生成 SPEC 文档(EARS 格式) | `--worktree`, `--branch`, `--resume SPEC-XXX` |
+| `plan` | `spec` | 生成 SPEC 文档(GEARS 格式) | `--worktree`, `--branch`, `--resume SPEC-XXX` |
 | `run` | `impl` | SPEC 的 DDD/TDD 实现 | `--resume SPEC-XXX` |
 | `sync` | `docs`, `pr` | 文档同步、代码地图、创建 PR | `--merge`, `--skip-mx` |
 
@@ -472,15 +470,12 @@ MoAI 编排器分析作业复杂度来选择执行形态。
 
 ```bash
 # 1. 保存 GLM API 密钥(仅一次)
-moai glm sk-your-glm-api-key
+moai glm setup sk-your-glm-api-key
 
-# 2. 激活 CG 模式
+# 2. 激活 CG 模式(在 tmux 会话内运行 —— Claude Code 自动启动)
 moai cg
 
-# 3. 在同一 pane 启动 Claude Code(重要!)
-claude
-
-# 4. 运行工作流
+# 3. 运行工作流
 /moai "作业说明"
 ```
 

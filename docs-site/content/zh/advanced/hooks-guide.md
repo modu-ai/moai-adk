@@ -31,7 +31,7 @@ flowchart TD
 
 ## Hook 事件类型
 
-本指南涵盖常用的核心事件。（全部 29 个事件请参阅 [Hooks 事件参考](/zh/advanced/hooks-reference)。）
+本指南涵盖常用的核心事件。（Claude Code 全部 30 个事件类型的完整目录请参阅 [Hooks 事件参考](/zh/advanced/hooks-reference)。）
 
 ### 主要事件列表
 
@@ -105,7 +105,7 @@ MoAI-ADK 以 **shell 包装脚本 + Go 二进制** 架构实现钩子。settings
 | `TeammateIdle` | {{< icon check ok >}} | `handle-teammate-idle.sh` | `moai hook teammate-idle` |
 | `TaskCompleted` | {{< icon check ok >}} | `handle-task-completed.sh` | `moai hook task-completed` |
 
-除上述 13 种外，Go 二进制还实现了 `PostToolUseFailure`、`StopFailure`、`PostCompact`、`InstructionsLoaded`、`ConfigChange`、`TaskCreated`、`CwdChanged`、`FileChanged`、`PermissionDenied`、`WorktreeCreate`、`WorktreeRemove`、`Elicitation`、`ElicitationResult`，共计 26 个子命令。（完整列表可通过 `moai hook --help` 查看。）
+除上述 13 种外，Go 二进制还实现了 `PostToolUseFailure`、`StopFailure`、`PostCompact`、`InstructionsLoaded`、`ConfigChange`、`TaskCreated`、`CwdChanged`、`FileChanged`、`PermissionDenied`、`WorktreeCreate`、`WorktreeRemove`、`Elicitation`、`ElicitationResult`，共计 38 个子命令。（完整列表可通过 `moai hook --help` 查看。）
 
 ### 团队协作事件
 
@@ -411,7 +411,7 @@ Python、JavaScript/TypeScript、Go、Rust、Java、Kotlin、C/C++、Ruby、PHP
 - 不安全的函数调用
 - 未使用的 import
 
-**配置：** `.claude/skills/moai-tool-ast-grep/rules/sgconfig.yml` 或项目根目录的 `sgconfig.yml`
+**配置：** `.moai/config/astgrep-rules/`（默认部署规则集为 `go-hardcoding.yml`）
 
 ### PostToolUse：LSP 诊断
 
@@ -440,7 +440,7 @@ ralph:
 
 在 `/clear` 执行前 **将当前上下文保存为文件**。它是在上下文阈值处切断并续接会话的 handoff 流程的安全网。
 
-**保存位置：** `.moai/memory/context-snapshot.json`
+**保存位置：** `.moai/state/session-memo.md`
 
 **保存内容：**
 - 当前活动 SPEC 状态（ID、阶段、进度）
@@ -450,7 +450,7 @@ ralph:
 - Git 状态信息（分支、未提交的变更）
 - 核心决策事项
 
-**归档：** 之前的快照会自动保存到 `.moai/memory/context-archive/`。
+**状态文件：** 活动工作树·会话状态记录在 `.moai/state/`（例如 `worktrees.json`、`active-sessions.json`）。
 
 ### SessionEnd：自动清理
 
@@ -458,7 +458,7 @@ ralph:
 
 **P0 工作（必需）：**
 - 保存会话指标（修改的文件数、提交数、处理过的 SPEC）
-- 保存工作状态快照（`.moai/memory/last-session-state.json`）
+- 保存工作状态快照（`~/.moai/state/last-session-state.json`）
 - 警告未提交的变更
 
 **P1 工作（可选）：**
@@ -628,7 +628,7 @@ Hooks 在 `.claude/settings.json` 文件的 `hooks` 部分进行配置。
 | `matcher` | 工具名匹配模式（正则表达式） | `"Write\|Edit"` |
 | `type` | Hook 类型 | `"command"` |
 | `command` | 要执行的命令 | Shell 脚本路径 |
-| `timeout` | 执行限制时间（毫秒） | `5000`（5 秒） |
+| `timeout` | 执行限制时间（秒） | `5`（5 秒） |
 
 ### 匹配器模式
 
@@ -732,23 +732,9 @@ Hook 脚本通过标准输入（stdin）接收 JSON 数据。
 **注意**：将 Hook 脚本的超时设置得过长会拖慢 Claude Code 的响应。建议将安全守卫（pre-tool）控制在 5 秒内，格式化器/lint（post-tool）控制在 10 秒内。SessionStart 与 PreCompact 为加载上下文允许至多 30 秒。
 {{< /callout >}}
 
-## 用环境变量禁用 Hook
-
-可以用环境变量禁用特定的 Hook。
-
-| Hook | 环境变量 |
-|------|-----------|
-| AST-grep 扫描 | `MOAI_DISABLE_AST_GREP_SCAN=1` |
-| LSP 诊断 | `MOAI_DISABLE_LSP_DIAGNOSTIC=1` |
-| 循环控制器 | `MOAI_DISABLE_LOOP_CONTROLLER=1` |
-
-```bash
-export MOAI_DISABLE_AST_GREP_SCAN=1
-```
-
 ## 相关文档
 
-- [Hooks 事件参考](/zh/advanced/hooks-reference) - 全部 29 个事件的完整参考
+- [Hooks 事件参考](/zh/advanced/hooks-reference) - Claude Code 30 个事件类型的完整参考
 - [settings.json 指南](/zh/advanced/settings-json) - Hook 配置方法
 - [CLAUDE.md 指南](/zh/advanced/claude-md-guide) - 项目指令管理
 - [智能体指南](/zh/advanced/agent-guide) - 智能体与 Hook 的联动

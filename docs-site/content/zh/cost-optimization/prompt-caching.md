@@ -1,187 +1,81 @@
 ---
-title: 提示词缓存 — 盈亏平衡分析与实现指南
+title: 提示缓存 —— 概念与在 Claude Code 中的行为
 weight: 30
 draft: false
 ---
 
-提示词缓存通过在多个请求中复用相同的提示词前缀，以 90% 折扣的成本降低
-推理开销（基础成本的 0.1 倍）。如果说 MoAI-ADK 托克诺米克斯的"上下文
-瘦身"轴是减少常驻加载上下文，那么提示词缓存就是把剩下的上下文便宜地
-复用。本指南说明盈亏平衡规则、缓存机制，以及在 MoAI 项目中何时启用
-缓存。
+提示缓存是一项 API 功能：**当请求的前段（前缀）与上一次请求相同时，不再重新处理该部分，而是复用它**。从缓存读出的令牌按基础输入单价的 **0.1 倍**计费，因此重复出现的上下文（系统提示、项目指令、对话历史）越大，节省效果越明显。如果说 MoAI-ADK 代币经济学的"上下文瘦身"这条轴是减少常驻加载的上下文，那么提示缓存就是把剩下的上下文廉价地复用。
 
-## 盈亏平衡规则
+{{< callout type="info" >}}
+**通俗比喻** —— 模型在每一回合都会从头重读整段对话。缓存就是一枚书签，说一声"前段还是刚才读过的那样"便跳过。前段哪怕改动一个字，书签就失效，要从那一点起重读。
+{{< /callout >}}
 
-**1 小时缓存只在会话中发生 2 个及以上连续 API 请求时才启用。**
+## 核心概念（各 API 通用）
 
-单请求会话（一次性查询、单轮命令）会产生 2 倍的写入溢价且没有缓存复用
-收益，导致每请求成本反而高于不使用缓存的基线。相反，如果 1 小时内有多轮
-交互或重复的 SPEC 分析，缓存会在第二个请求处抵消成本，并在后续请求中
-节省 67% 以上。
+- **前缀匹配**：要命中缓存，直到断点为止的内容（含工具定义·系统提示·消息历史）必须**100% 相同**。哪怕只差一个空格，从那一点之后就全部重算。
+- **价格倍数**（相对基础输入单价）：缓存写入 5 分钟 TTL **1.25 倍** · 1 小时 TTL **2 倍** · 缓存读取 **0.1 倍**。
+- **TTL（存活时长）**：默认 5 分钟，可选 1 小时。在 TTL 内每被复用一次，存活时长就免费延长。
+- **各模型的最小缓存令牌数**：比这更短的前缀不会被缓存（不报错，按普通方式处理）。例如：Fable 5 = 512、Opus 4.8·Sonnet 5 = 1,024、Opus 4.7 = 2,048、Haiku 4.5 = 4,096 令牌。
 
-### 成本比较
+## 如果你是 Claude Code 用户 —— 缓存是自动的
 
-以 Claude Opus 4.5 为基准：
+Claude Code **自动管理**提示缓存。你既不需要、也无法亲手设置 `cache_control`。以官方文档为准，其行为如下：
 
-| 场景 | 无缓存 | 含 1 小时缓存 | 节省 |
-|---------|----------|-----------------|-------|
-| 1 个请求, 10K Token | $0.05 | $0.0625 | -25%（溢价） |
-| 2 个请求, 10K + 10K | $0.10 | $0.0625 + $0.005 = $0.0675 | 节省 32% |
-| 3 个请求, 10K + 10K + 10K | $0.15 | $0.0625 + 2×$0.005 = $0.0725 | 节省 52% |
-| 5 个请求, 10K + 10K + 10K + 10K + 10K | $0.25 | $0.0625 + 4×$0.005 = $0.0825 | 节省 67% |
+- **TTL 自动选择**：在订阅套餐（Pro/Max/Team/Enterprise）下会自动请求 1 小时 TTL（已含在套餐费用中，无额外成本）。经由 API 密钥·云服务商时默认 5 分钟，可用 `ENABLE_PROMPT_CACHING_1H=1` 选择加入 1 小时。
+- **环境变量控制**：`FORCE_PROMPT_CACHING_5M=1`（强制 5 分钟）、`DISABLE_PROMPT_CACHING=1`（全面禁用 —— 除调试外不推荐）、按模型的 `DISABLE_PROMPT_CACHING_OPUS` 等。
+- **请求构成优化**：Claude Code 会把不常变的内容（系统提示 → 项目上下文 → 对话）排在前面，以提高前缀命中率。
 
-盈亏平衡点是 **2 个请求**：第一个请求的 2 倍写入溢价，可通过 1 小时 TTL 窗口内后续请求的 90% 折扣缓存读取收回。
+### 会使缓存失效的行为（该回合变慢且变贵）
 
-## 缓存控制的工作原理
+- 切换模型（`/model`）· 变更 effort（`/effort`）—— 缓存按模型·effort 分开
+- 连接/断开 MCP 服务器（当工具定义已加载进前缀时）
+- 添加/移除工具的整体拒绝（deny）规则
+- `/compact`（对话历史被替换为摘要）· Claude Code 升级后的第一回合
 
-在提示词前缀上启用缓存控制后，缓存生命周期遵循以下模式：
+### 会保持缓存的行为
 
-1. **第一个请求（缓存写入）**：API 响应完成后，前缀被写入缓存。成本：`前缀_Token × 2.0（1 小时缓存）或 1.25（5 分钟缓存）`。
-2. **后续请求（缓存读取）**：前缀相同且在 TTL 内时，从缓存中检索。成本：`前缀_Token × 0.1`。
-3. **自动回溯**：系统会在最近 20 条消息中检查是否有缓存的前缀匹配。若找到则应用读取费率。
+- 编辑仓库文件（只在读取时才加入对话）· 调用技能/命令 · 切换权限模式 · `/rewind`（回到已缓存的前缀）· 会话途中修改 CLAUDE.md（缓存保留，但**改动也不会生效** —— 在下一次 `/clear`·重启时反映）
 
-### 缓存放置最佳实践
+### 查看命中率
 
-将缓存控制断点放置在**每请求数据之前的最后一个稳定块**上：
+- 响应中的 `cache_creation_input_tokens`（写入）/ `cache_read_input_tokens`（读取）比例就是指标 —— 读取越高说明运行得越好。
+- 通过 MoAI statusline 的 cache_hit 段可在会话中实时查看。
+- 如果每回合的写入都持续偏高，说明上面"会使缓存失效的行为"中有某项正在改变前缀。
+
+## 直接调用 API 时（参考）
+
+以下用法示例仅适用于**直接调用 Anthropic API 的开发者**。Claude Code 用户不适用。
 
 ```python
-# 正确: 稳定的系统提示词（可缓存）
+# 直接调用 API：在稳定的系统提示上放置缓存断点
 response = client.messages.create(
     model="claude-opus-4-8",
     max_tokens=1024,
-    system=[
-        {
-            "type": "text",
-            "text": "你是一名代码审查员...",
-            "cache_control": {"type": "ephemeral", "ttl": "1h"}
-        }
-    ],
-    # 下面是可变的每请求数据（不缓存）
+    system=[{
+        "type": "text",
+        "text": "稳定的系统提示...",
+        "cache_control": {"type": "ephemeral", "ttl": "1h"}
+    }],
     messages=[{"role": "user", "content": user_query}]
 )
-
-# 错误: 缓存断点在可变数据上
-# 当前时间: {timestamp}
-cache_control={"type": "ephemeral"}
-# ^ 时间戳每个请求都变化，因此永远不会匹配
 ```
 
-## 配置：session_ttl 与 spec_ttl
+原则只有一条：**把断点放在每次请求都会变的数据（问题、时间戳）之前的最后一个稳定块上**。盈亏平衡点是 2 个请求 —— 第一个请求的写入溢价，会由 TTL 内第二个请求的 0.1 倍读取收回。
 
-MoAI 缓存在 `.moai/config/sections/cache.yaml` 中配置：
+## MoAI cache.yaml 的适用范围
 
-```yaml
-cache:
-  enabled: false  # 要启用缓存请设置为 true
-  session_ttl: "1h"  # 会话级缓存 TTL
-  spec_ttl: "5m"     # SPEC 正文缓存 TTL
-  min_cacheable_tokens: 2048  # 缓存写入最小 Token 数
-```
+`.moai/config/sections/cache.yaml`（`enabled`、`session_ttl`）只适用于 **MoAI 经自有 SDK 包装路径直接调用 Anthropic API 时的 cache_control 注入**。**它与 Claude Code 会话的缓存无关** —— Claude Code 的缓存如上节所述由运行时自动管理，MoAI 无法介入。
 
-### 通过 session_ttl: "off" 选择退出
+> **GLM 后端**：z.ai（GLM）使用基于内容相似度的**隐式缓存**，因此 MoAI 不在 GLM 路径注入 `cache_control`。
 
-要在特定会话中禁用缓存（例如一次性请求占主导时）：
+## 小结
 
-```yaml
-cache:
-  enabled: true
-  session_ttl: "off"  # 在此会话中禁用缓存
-  spec_ttl: "5m"      # 只对 SPEC 正文使用缓存
-```
+- **Claude Code 用户**：无需任何设置。只要在工作之间的自然边界上才切换模型/effort 与执行 `/compact`，命中率就能保持。
+- **直接调用 API 者**：在稳定块上放断点，只有在 2 个以上请求时才用 1 小时 TTL。
+- **监控**：statusline cache_hit 段 + `cache_read/creation` 令牌比例。
 
-当 `session_ttl: "off"` 时：
-- 跳过会话级缓存写入
-- 若配置了 `spec_ttl`，SPEC 正文缓存仍然生效
-- 适用于以单请求为主的中断型工作流
+**来源（官方文档）：**
 
-## 监控缓存性能
-
-使用 `moai doctor` 查看缓存命中率并决定是否启用缓存：
-
-```bash
-moai doctor --cache-metrics
-```
-
-输出示例：
-
-```
-缓存性能（过去 7 天）:
-  缓存命中率: 67%
-  总缓存读取: 450K Token
-  总缓存写入: 150K Token
-  节省: $2.15（相比无缓存节省 68% 成本）
-
-单轮请求比率: 12%  ⚠️ 警告: 12% 的请求是单轮
-                            （这些请求没有缓存收益）。
-```
-
-MoAI statusline 中也会显示缓存命中率 (cache_hit) 段，可在会话中即时确认
-上下文瘦身与缓存配置的效果。
-
-### 指标解读
-
-- **命中率 > 60%**：缓存有效。保持启用。
-- **命中率 30-60%**：中等收益。若会话以多轮为主，考虑启用。
-- **单轮比率 > 30%**：缓存收益有限。确认"2 个及以上请求"的假设是否成立。
-- **最小 Token 阈值警告**：配置 `min_cacheable_tokens` 以避免缓存小提示词（开销 > 节省）。
-
-## 何时发生缓存未命中
-
-缓存命中需要：
-
-- ✓ 到断点为止的提示词前缀完全相同
-- ✓ 在 TTL 窗口内（1 小时或 5 分钟）
-- ✓ 相同的工作区/组织上下文
-- ✓ 断点之前的所有块没有变化（工具、系统、顶层参数）
-
-缓存未命中（常见原因）：
-
-- ✗ 工具定义变化（工具参数不同）
-- ✗ 网络搜索开关打开/关闭
-- ✗ 前缀中添加或移除图片
-- ✗ 扩展思考设置变化
-- ✗ 断点之前的内容不同（包括空格）
-
-## 最小 Token 阈值
-
-缓存写入只在前缀超过各语言模型的最小值时才发出：
-
-- **Claude Opus 4.5, 4.7, 4.8, Haiku 4.5**：最少 2,048 Token
-- **Claude Opus 4.1, Sonnet 模型, 其他 Haiku 版本**：最少 1,024 Token
-
-低于最小值的请求会在不缓存的情况下处理（无错误 —— 自动回退）。
-
-## 预热（高级）
-
-要消除第一次用户交互的缓存未命中延迟：
-
-```python
-# 缓存预热（用户到达之前）
-client.messages.create(
-    model="claude-opus-4-8",
-    max_tokens=0,  # 不计费输出 Token
-    system="很长的系统提示词（5000 Token）...",
-    cache_control={"type": "ephemeral", "ttl": "1h"},
-    messages=[{"role": "user", "content": "warmup"}]
-)
-# 成本: system_tokens × $2.0/MTok（缓存写入）
-
-# 之后: 用户请求命中已预热的缓存
-client.messages.create(
-    model="claude-opus-4-8",
-    max_tokens=1024,
-    system="很长的系统提示词（相同）...",
-    cache_control={"type": "ephemeral", "ttl": "1h"},
-    messages=[{"role": "user", "content": user_input}]
-)
-# 成本: system_tokens × $0.1/MTok（从预热读取缓存）
-```
-
-## 总结
-
-- **启用缓存**：1 小时内有 2 个及以上连续 API 请求的会话
-- **禁用缓存**：一次性查询或中断型工作流
-- **监控**：用 `moai doctor --cache-metrics` 和 statusline cache_hit 段测量实际命中率
-- **优化**：把缓存断点放在稳定内容（系统提示词、指令）上，不要放在可变数据（查询、时间戳）上
-
-更多详情请参考 [Anthropic 提示词缓存文档](https://platform.claude.com/docs/en/docs/build-with-claude/prompt-caching)。
+- [How Claude Code uses prompt caching](https://code.claude.com/docs/en/prompt-caching) —— 自动管理、TTL 自动选择、失效/保持行为、环境变量
+- [Prompt caching (API)](https://platform.claude.com/docs/en/build-with-claude/prompt-caching) —— cache_control、价格倍数、各模型最小令牌数
+- [Manage costs effectively](https://code.claude.com/docs/en/costs) —— Claude Code 的自动成本优化

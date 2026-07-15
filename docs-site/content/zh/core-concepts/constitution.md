@@ -50,12 +50,12 @@ AI 智能体绝对不能修改的规则，只有人类开发者可以更改。
 ### ID 分配规则
 
 ```
-CONST-V3R2-NNN (3자리 이상 zero-padding)
+CONST-V3R2-NNN (至少 3 位 zero-padding)
 
-001-050: 기존 HARD 조항
-051-099: design constitution 미러 엔트리
-100-149: design overflow (자동 확장)
-150+: 신규 추가
+001-050: 既有 HARD 条款
+051-099: design constitution 镜像条目
+100-149: design overflow（自动扩展）
+150+: 新增条目
 ```
 
 ### Canary Gate
@@ -63,7 +63,7 @@ CONST-V3R2-NNN (3자리 이상 zero-padding)
 FROZEN 条款带有 `canary_gate: true`。修改前必须通过 canary 验证。
 
 ```yaml
-# Zone Registry 엔트리 예시
+# Zone Registry 条目示例
 - id: CONST-V3R2-154
   zone: Frozen
   file: internal/harness/scorer.go
@@ -105,16 +105,16 @@ Constitution 系统受 5 层安全架构保护。无论挽具积累了多少学�
 ## 在 CLI 中使用
 
 ```bash
-# 전체 registry 조회
+# 查询完整 registry
 moai constitution list
 
-# Frozen zone 필터
+# 过滤 Frozen zone
 moai constitution list --zone frozen
 
-# 특정 파일 조항만 조회
+# 仅查询特定文件的条款
 moai constitution list --file internal/harness/scorer.go
 
-# JSON 형식 출력
+# 以 JSON 格式输出
 moai constitution list --format json
 ```
 

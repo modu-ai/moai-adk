@@ -27,8 +27,19 @@ moai --help
 
 ```bash
 moai version
-# 输出示例: moai <版本> (commit: <哈希>, built: <构建日期>)
 ```
+
+```text
+╭────────────────────────╮
+│                        │
+│  moai-adk v3.0.0-rc11  │
+│                        │
+│                        │
+╰────────────────────────╯
+ v3.0.0-rc11   none   built unknown
+```
+
+框式横幅下方一行按 `<版本>   <提交哈希>   built <构建时刻>` 顺序显示。若像 `go install` 那样在无 ldflags 下构建,提交显示为 `none`,构建时刻显示为 `unknown`。
 
 ---
 
@@ -50,6 +61,13 @@ moai init [project-name] [OPTIONS]
 | `--all` | 部署 catalog 全部条目(core + optional packs + harness-generated) |
 | `--standard` | 显示 Phase 1 提问(project mode、harness profile、LSP、quality gates、design) |
 | `--advanced` | 显示 Phase 1 + Phase 2 提问(含 `--standard`;Phase 2 仅在满足前置条件时) |
+| `--mode <ddd\|tdd>` | 开发方法论(默认: tdd) |
+| `--language <lang>` | 主编程语言 |
+| `--framework <name>` | 框架名称(默认: 自动检测或 "none") |
+| `--name <name>` | 项目名称(默认: 目录名) |
+| `--root <path>` | 项目根目录(默认: 当前目录) |
+| `--git-mode <manual\|personal\|team>` | Git 工作流模式(默认: manual) |
+| `--git-provider <github\|gitlab>` | Git 提供者 |
 | `--project-mode <personal\|team>` | 项目模式(默认: personal) |
 | `--harness-profile <profile>` | harness 评估器配置文件(default, strict, lenient, frontend) |
 | `--enable-lsp` | 启用 LSP 联动(默认: false) |
@@ -145,11 +163,11 @@ moai doctor [OPTIONS]
 
 | 命令 | 说明 |
 |--------|------|
-| `moai doctor sandbox` | 沙箱环境诊断 |
-| `moai doctor permission` | 权限设置诊断 |
-| `moai doctor hook` | 钩子加载问题诊断 |
-| `moai doctor config dump` | 将当前配置转储为 JSON |
-| `moai doctor config diff` | 对比本地配置与模板默认值 |
+| `moai doctor sandbox` | 诊断沙箱后端可用性 |
+| `moai doctor permission` | 诊断权限解析 |
+| `moai doctor hook` | 显示 27 个钩子事件覆盖率表 |
+| `moai doctor config dump` | 连同 provenance 转储合并后的配置 |
+| `moai doctor config diff <tier-a> <tier-b>` | 对比两个配置层级 |
 
 ### 示例
 
@@ -234,9 +252,9 @@ moai cg -p team       # 用 team 配置文件运行 CG 模式
 moai hook <event>
 ```
 
-### 支持的事件(26 个)
+### 支持的子命令(约 38 个)
 
-所有事件名均为 kebab-case。
+`moai hook` 调度器把标准 Claude Code 钩子事件与 MoAI 专用内部动作合在一起,共提供约 38 个子命令。所有名称均为 kebab-case。下面是有代表性的事件。
 
 | 事件 | 说明 |
 |-------|------|
@@ -267,6 +285,17 @@ moai hook <event>
 | `elicitation` | MCP elicitation 请求 |
 | `elicitation-result` | MCP elicitation 结果 |
 
+还包含 MoAI 专用子命令。
+
+| 子命令 | 说明 |
+|-------|------|
+| `stop-goal` | 回合结束时评估活跃会话的 goal |
+| `pre-push` | 按约定校验提交信息 |
+| `spec-status` | git 提交时自动更新 SPEC status |
+| `harness-classify` | 运行 harness 分类器并记录层级晋升 |
+| `harness-observe` · `harness-observe-stop` · `harness-observe-subagent-stop` · `harness-observe-user-prompt-submit` | 记录 harness 使用日志 |
+| `db-schema-sync` | 在 PostToolUse 钩子中检测 DB schema 变更 |
+
 钩子不由用户直接执行 —— Claude Code 的 `settings.json` 会自动调用。
 
 ---
@@ -283,46 +312,151 @@ moai worktree <COMMAND> [ARGS]...
 
 | 命令 | 说明 |
 |--------|------|
-| `moai worktree new <SPEC_ID>` | 创建新 worktree |
+| `moai worktree new [branch-name]` | 创建新 worktree |
 | `moai worktree list` | 活跃 worktree 列表 |
-| `moai worktree go <SPEC_ID>` | 移动到 worktree 目录 |
-| `moai worktree remove <SPEC_ID>` | 移除 worktree |
-| `moai worktree clean` | 清理过期 worktree |
-| `moai worktree recover` | 从既有目录恢复 |
+| `moai worktree go [branch-name]` | **输出** worktree 路径(供 shell 切换用) |
+| `moai worktree switch [branch-name]` | 切换到 worktree |
+| `moai worktree done [branch-name]` | 完成并清理 worktree |
+| `moai worktree sync [branch-name]` | 与 base 分支同步 worktree |
+| `moai worktree remove [path]` | 移除 worktree |
+| `moai worktree config [key] [value]` | 查询/变更 worktree 配置 |
 | `moai worktree status` | 查询 worktree 状态 |
+| `moai worktree clean` | 清理过期的 worktree 引用 |
+| `moai worktree recover` | 恢复 worktree 注册表 |
+| `moai worktree snapshot` | 捕获工作树状态快照 |
+| `moai worktree restore` | 把工作树恢复到快照 HEAD 状态 |
+| `moai worktree verify` | 对照快照校验工作树状态 |
+
+`moai worktree go` 不切换目录,只输出路径。实际切换要在 shell 中如下包裹使用。
+
+```bash
+cd "$(moai worktree go my-branch)"
+```
 
 ---
 
 ## moai cc / moai cg / moai glm
 
-在启动 Claude Code 时选择后端的启动命令。三条命令都能用 `-p <profile>` 标志指定配置文件,并将 `--` 之后的参数原样传给 Claude Code。
+在启动 Claude Code 时选择后端的启动命令。三条命令都能用 `-p <profile>` 标志指定配置文件。把 `--` 之后的参数原样传给 Claude Code,只有 `moai cc` 与 `moai glm` 支持(`moai cg` 不支持)。
 
 ```bash
 moai cc [-p profile] [-- claude-args...]
-moai cg [-p profile] [-- claude-args...]
 moai glm [-p profile] [-- claude-args...]
+moai cg [-p profile]
 ```
 
 | 命令 | 领导 | Worker | 需要 tmux | 用途 |
 |--------|------|------|-----------|------|
 | `moai cc` | Claude | Claude | 否 | 最高质量(单一后端) |
-| `moai glm` | GLM | GLM | 推荐 | 成本优化(GLM 单独) |
+| `moai glm` | GLM | GLM | 否 | 成本优化(GLM 单独) |
 | `moai cg` | Claude | GLM | 必需 | 质量 + 成本平衡(混合) |
 
-`moai cg` 激活 CG 模式(Claude 领导 + GLM 队友)。必须在 tmux 会话内运行,它会把 GLM 环境变量注入 tmux 会话,而领导窗口使用 Claude API。
+`moai cg` 激活 CG 模式(Claude 领导 + GLM 队友)。必须在 tmux 会话内运行,它会把 GLM 环境变量注入 tmux 会话,而领导窗口使用 Claude API。`moai cg` 在设置后会直接在当前窗口启动 Claude Code,因此不需要另外的 `claude` 启动步骤。
 
 ```bash
 # 1. 保存 GLM API 密钥(首次一次)
-moai glm sk-your-glm-api-key
+moai glm setup sk-your-glm-api-key
 
-# 2. 激活 CG 模式(在 tmux 内运行)
+# 2. 激活 CG 模式(在 tmux 内运行 —— Claude Code 会在当前窗口直接启动)
 moai cg
-
-# 3. 在同一窗口启动 Claude Code
-claude
 ```
 
 详细的 CG 模式指南请参阅[简介 — 用 GLM 节省 token](./introduction#用-glm-节省-token5070)。
+
+### 启动标志
+
+三条启动命令共同支持的标志。
+
+| 标志 | 说明 |
+|--------|------|
+| `-p, --profile <name>` | 使用命名的 Claude 配置文件 |
+| `--permission-mode <mode>` | 权限模式(default, acceptEdits, plan, auto, bypassPermissions, dontAsk) |
+| `-b, --bypass` | `--permission-mode bypassPermissions` 的简写 |
+
+`moai cc` 额外支持以下标志。
+
+| 标志 | 说明 |
+|--------|------|
+| `-c, --continue` | 续接上一个会话 |
+| `-m, --model <model>` | 覆盖模型选择 |
+| `--chrome` / `--no-chrome` | 切换 Chrome MCP |
+
+> `auto` 权限模式在 GLM(第三方提供者)中不可用 —— 仅在 `moai cc` 或 `moai cg` 中支持。
+
+### moai glm 子命令
+
+| 命令 | 说明 |
+|--------|------|
+| `moai glm setup <api-key>` | 保存 GLM API 密钥 |
+| `moai glm status` | 显示当前 GLM 凭据状态 |
+| `moai glm tools` | 管理 Z.AI MCP 服务器工具(启用/禁用) |
+
+---
+
+## moai goal
+
+为当前会话注册·查询·解除基于条件的自主 goal 循环。在条件满足之前,每个回合结束时进行评估。
+
+```bash
+moai goal <COMMAND>
+```
+
+| 命令 | 说明 |
+|--------|------|
+| `moai goal arm <condition>` | 为活跃会话注册·激活 goal |
+| `moai goal status` | 输出活跃会话的 goal 状态 |
+| `moai goal clear` | 解除活跃会话的 goal |
+
+---
+
+## moai handoff
+
+管理用于跨越 `/clear` 边界续接会话的 auto-resume 交接待处理记录。
+
+```bash
+moai handoff <COMMAND>
+```
+
+| 命令 | 说明 |
+|--------|------|
+| `moai handoff save` | 把粘贴即用的 resume 正文保存为待处理记录 |
+| `moai handoff clear` | 移除待处理的交接记录 |
+
+---
+
+## moai session
+
+管理用于缓解多会话竞态的活跃会话协调注册表。
+
+```bash
+moai session <COMMAND>
+```
+
+| 命令 | 说明 |
+|--------|------|
+| `moai session current` | 输出当前编排器会话 UUID |
+| `moai session list` | 活跃会话列表(可用 `--filter-spec` 过滤) |
+| `moai session register <session_id> <spec_id> <phase>` | 向注册表登记会话 |
+| `moai session deregister <session_id>` | 从注册表移除会话(幂等) |
+| `moai session heartbeat <session_id>` | 更新会话 last_heartbeat |
+| `moai session purge` | 移除过期条目(默认: 最后 heartbeat 超过 30 分钟) |
+| `moai session doctor` | 诊断会话注册表为空的原因 |
+
+---
+
+## moai web
+
+启动基于浏览器的配置编辑器 MoAI Web Console。
+
+```bash
+moai web [OPTIONS]
+```
+
+| 标志 | 说明 |
+|--------|------|
+| `--port <N>` | 绑定到 127.0.0.1 的 TCP 端口(默认: 3041) |
+| `--no-open` | 不自动打开浏览器 |
+| `--no-reuse` | 不从过期的 moai 实例回收端口 |
 
 ---
 

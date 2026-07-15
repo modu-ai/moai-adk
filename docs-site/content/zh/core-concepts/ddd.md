@@ -87,12 +87,12 @@ flowchart TD
 ### TDD 实战示例
 
 ```python
-# RED: 실패하는 테스트 먼저 작성
+# RED: 先编写失败的测试
 def test_user_registration():
     """
-    GIVEN: 유효한 사용자 정보가 있고
-    WHEN: 회원가입을 하면
-    THEN: 사용자가 생성되고 환영 이메일이 발송되어야 함
+    GIVEN: 有一份有效的用户信息
+    WHEN: 进行注册
+    THEN: 应创建用户并发送欢迎邮件
     """
     user_service = UserService()
     result = user_service.register(
@@ -104,12 +104,12 @@ def test_user_registration():
     assert result.user.id is not None
     assert email_service.welcome_email_sent("newuser@example.com") is True
 
-# 테스트 실행 (실패 예상 - 구현 안 됨)
+# 运行测试（预期失败——尚未实现）
 # > pytest test_user_service.py - test_user_registration FAILED
 
 # ====================================
 
-# GREEN: 최소한의 코드로 테스트 통과
+# GREEN: 用最少代码通过测试
 class UserService:
     def register(self, email: str, password: str) -> RegistrationResult:
         user = User.create(email, password)
@@ -117,12 +117,12 @@ class UserService:
         email_service.send_welcome(email)
         return RegistrationResult.success(user)
 
-# 테스트 실행 (통과)
+# 运行测试（通过）
 # > pytest test_user_service.py - test_user_registration PASSED
 
 # ====================================
 
-# REFACTOR: 코드 품질 개선 (테스트는 계속 통과)
+# REFACTOR: 改进代码质量（测试持续通过）
 class UserService:
     def __init__(
         self,
@@ -136,14 +136,14 @@ class UserService:
 
     def register(self, email: str, password: str) -> RegistrationResult:
         if not self.password_validator.validate(password):
-            return RegistrationResult.failure("비밀번호가 유효하지 않습니다")
+            return RegistrationResult.failure("密码无效")
 
         user = User.create(email, password)
         self.user_repo.save(user)
         self.email_service.send_welcome(email)
         return RegistrationResult.success(user)
 
-# 테스트 실행 (여전히 통과)
+# 运行测试（仍然通过）
 # > pytest test_user_service.py - test_user_registration PASSED
 ```
 
@@ -177,13 +177,13 @@ class UserService:
 **错误的方法 vs 正确的方法：**
 
 ```
-잘못된 방법: "전체 코드를 한 번에 다 바꿀게요!"
-  --> 기존 기능이 망가질 위험이 높습니다
-  --> 문제가 생기면 어디서 잘못됐는지 찾기 어렵습니다
+错误的方法："我要一次性把全部代码都改掉！"
+  --> 现有功能被改坏的风险很高
+  --> 一旦出问题，很难找出哪里错了
 
-올바른 방법: "테스트로 현재 동작을 기록하고, 조금씩 바꿀게요!"
-  --> 기존 기능이 망가지면 테스트가 바로 알려줍니다
-  --> 문제가 생기면 마지막 변경만 되돌리면 됩니다
+正确的方法："先用测试记录当前行为，再一点一点地改！"
+  --> 现有功能一被改坏，测试立刻就会报警
+  --> 出问题时只需回退最后一次变更即可
 ```
 
 ### ANALYZE-PRESERVE-IMPROVE 循环
@@ -219,18 +219,18 @@ flowchart TD
 **manager-develop 生成的分析报告示例：**
 
 ```markdown
-## 코드 분석 보고서
+## 代码分析报告
 
-- 대상: src/auth/ (인증 모듈)
-- 파일: 8개 Python 파일
-- 코드 줄 수: 1,850줄
-- 테스트 커버리지: 5%
+- 对象: src/auth/（认证模块）
+- 文件: 8 个 Python 文件
+- 代码行数: 1,850 行
+- 测试覆盖率: 5%
 
-## 발견된 문제
-1. 중복된 인증 로직 (3곳에서 동일한 코드 반복)
-2. 하드코딩된 비밀키 (config.py에 직접 작성)
-3. SQL Injection 취약점 (user_repository.py)
-4. 불충분한 테스트 (5%, 목표 85%)
+## 发现的问题
+1. 重复的认证逻辑（3 处重复着相同代码）
+2. 硬编码的密钥（直接写在 config.py 中）
+3. SQL Injection 漏洞（user_repository.py）
+4. 测试不足（5%，目标 85%）
 ```
 
 ### 第 2 步：PRESERVE（保存）
@@ -251,13 +251,13 @@ flowchart TD
 
 ```python
 class TestExistingLoginBehavior:
-    """기존 로그인 함수의 현재 동작을 기록하는 특성화 테스트"""
+    """记录既有登录函数当前行为的特性测试"""
 
     def test_valid_login_returns_token(self):
         """
-        GIVEN: 등록된 사용자가 있고
-        WHEN: 올바른 비밀번호로 로그인하면
-        THEN: 현재 구현이 반환하는 응답을 그대로 기록
+        GIVEN: 有一个已注册的用户
+        WHEN: 用正确的密码登录
+        THEN: 原样记录当前实现返回的响应
         """
         user = create_test_user(
             email="test@example.com",
@@ -266,13 +266,13 @@ class TestExistingLoginBehavior:
 
         result = login_service.login("test@example.com", "password123")
 
-        # 현재 동작을 그대로 기록 (옳고 그름을 판단하지 않음)
+        # 原样记录当前行为（不判断对错）
         assert result["status"] == "success"
         assert result["token"] is not None
-        assert result["expires_in"] == 3600  # 현재 만료 시간
+        assert result["expires_in"] == 3600  # 当前的过期时间
 
     def test_wrong_password_returns_error(self):
-        """잘못된 비밀번호로 로그인 시 현재 동작 기록"""
+        """记录用错误密码登录时的当前行为"""
         create_test_user(email="test@example.com", password="password123")
 
         result = login_service.login("test@example.com", "wrongpassword")
@@ -301,9 +301,9 @@ flowchart TD
 **改进过程：**
 
 ```python
-# BEFORE: 개선 전 코드
+# BEFORE: 改进前的代码
 def login(email, password):
-    # SQL Injection 취약점
+    # SQL Injection 漏洞
     user = db.query("SELECT * FROM users WHERE email = '" + email + "'")
     if user and check_password(user.password, password):
         token = generate_token(user.id)
@@ -312,20 +312,20 @@ def login(email, password):
 
 # ====================================
 
-# AFTER: 개선 후 코드 (3번의 반복을 거쳐 완성)
+# AFTER: 改进后的代码（经过 3 次迭代完成）
 def login(email: str, password: str) -> LoginResult:
-    """사용자 로그인을 처리합니다."""
-    # 반복 1: 파라미터화된 쿼리로 SQL Injection 방지
+    """处理用户登录。"""
+    # 迭代 1: 用参数化查询防止 SQL Injection
     user = user_repository.find_by_email(email)
 
     if not user:
-        return LoginResult.failure("자격증명이 유효하지 않습니다")
+        return LoginResult.failure("凭证无效")
 
-    # 반복 2: 인증 로직 중앙화
+    # 迭代 2: 认证逻辑中心化
     if not auth_service.verify_password(user, password):
-        return LoginResult.failure("자격증명이 유효하지 않습니다")
+        return LoginResult.failure("凭证无效")
 
-    # 반복 3: 토큰 서비스 분리
+    # 迭代 3: 分离令牌服务
     token = token_service.generate(user.id)
     return LoginResult.success(token)
 ```
@@ -395,7 +395,7 @@ flowchart TD
 SPEC 文档准备好后，用以下命令执行 TDD 循环。
 
 ```bash
-# TDD 실행 (development_mode: tdd 일 때)
+# 执行 TDD（当 development_mode: tdd 时）
 > /moai run SPEC-AUTH-001
 ```
 
@@ -415,7 +415,7 @@ flowchart TD
 ### 执行 DDD
 
 ```bash
-# DDD 실행 (development_mode: ddd 일 때)
+# 执行 DDD（当 development_mode: ddd 时）
 > /moai run SPEC-AUTH-001
 ```
 
@@ -440,31 +440,31 @@ flowchart TD
 
 ```yaml
 constitution:
-  development_mode: tdd  # TDD 방법론 사용
+  development_mode: tdd  # 使用 TDD 方法论
 
   tdd_settings:
-    test_first_required: true         # 구현 전 테스트 작성 필수
-    red_green_refactor: true          # RED-GREEN-REFACTOR 사이클 준수
-    min_coverage_per_commit: 80       # 커밋당 최소 커버리지
-    mutation_testing_enabled: false   # 뮤테이션 테스트 (선택)
+    test_first_required: true         # 实现前必须先写测试
+    red_green_refactor: true          # 遵循 RED-GREEN-REFACTOR 循环
+    min_coverage_per_commit: 80       # 每次提交的最低覆盖率
+    mutation_testing_enabled: false   # 变异测试（可选）
 
-  test_coverage_target: 85            # 전체 커버리지 목표
+  test_coverage_target: 85            # 整体覆盖率目标
 ```
 
 ### DDD 设置
 
 ```yaml
 constitution:
-  development_mode: ddd  # DDD 방법론 사용
+  development_mode: ddd  # 使用 DDD 方法论
 
   ddd_settings:
-    require_existing_tests: true      # 리팩토링 전 기존 테스트 필요
-    characterization_tests: true      # 특성화 테스트 자동 생성
-    behavior_snapshots: true          # 스냅샷 테스트 사용
-    max_transformation_size: small    # 변경 크기 제한
-    preserve_before_improve: true     # 보존 후 개선 필수
+    require_existing_tests: true      # 重构前需要既有测试
+    characterization_tests: true      # 自动生成特性测试
+    behavior_snapshots: true          # 使用快照测试
+    max_transformation_size: small    # 限制变更规模
+    preserve_before_improve: true     # 必须先保存再改进
 
-  test_coverage_target: 85            # 전체 커버리지 목표
+  test_coverage_target: 85            # 整体覆盖率目标
 ```
 
 **DDD max_transformation_size 选项：**
@@ -486,38 +486,38 @@ constitution:
 ### 现状
 
 ```
-문제점:
-- SQL Injection 취약점 2곳
-- 하드코딩된 비밀키
-- 중복된 인증 로직 3곳
-- 테스트 커버리지 5%
-- 코드 복잡도 높음
+问题点:
+- SQL Injection 漏洞 2 处
+- 硬编码的密钥
+- 重复的认证逻辑 3 处
+- 测试覆盖率 5%
+- 代码复杂度高
 ```
 
 ### 执行过程
 
 ```bash
-# 1단계: SPEC 생성 (Plan)
-> /moai plan "레거시 인증 시스템 리팩토링. SQL Injection 수정, 비밀키 환경 변수화, 인증 로직 중앙화"
+# 第 1 步: 生成 SPEC (Plan)
+> /moai plan "重构遗留认证系统。修复 SQL Injection、密钥环境变量化、认证逻辑中心化"
 
-# manager-spec이 SPEC-AUTH-REFACTOR-001 생성
+# manager-spec 生成 SPEC-AUTH-REFACTOR-001
 ```
 
 ```bash
-# 2단계: DDD 실행 (Run)
+# 第 2 步: 执行 DDD (Run)
 > /moai run SPEC-AUTH-REFACTOR-001
 
-# manager-develop가 ANALYZE-PRESERVE-IMPROVE 사이클 실행
-# ANALYZE: 코드 분석, 문제점 목록 생성
-# PRESERVE: 특성화 테스트 156개 작성
-# IMPROVE: 3번의 반복으로 점진적 개선
+# manager-develop 执行 ANALYZE-PRESERVE-IMPROVE 循环
+# ANALYZE: 分析代码，生成问题清单
+# PRESERVE: 编写 156 个特性测试
+# IMPROVE: 通过 3 次迭代渐进改进
 ```
 
 ```bash
-# 3단계: 문서 동기화 (Sync)
+# 第 3 步: 文档同步 (Sync)
 > /moai sync SPEC-AUTH-REFACTOR-001
 
-# manager-docs가 API 문서 업데이트, 리팩토링 보고서 생성
+# manager-docs 更新 API 文档、生成重构报告
 ```
 
 ### 结果

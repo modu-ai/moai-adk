@@ -119,7 +119,7 @@ internal/statusline/renderer.go (3-line v3 layout)
   - `🪫`（警告，50-79% scaled）
   - `🪫`（危险，≥80% scaled，附加颜色）
 - **`(⚠️/clear)` handoff 后缀**：
-  - 1M context 模型 (Opus 4.7)：used_percentage ≥50%（基于 raw context_window_size）
+  - 1M context 模型 (Opus 4.8, GLM-5.2)：used_percentage ≥50%（基于 raw context_window_size）
   - 200K context 模型 (Sonnet/Haiku)：used_percentage ≥90%
   - 含义：建议在下一个 turn 开始前 `/clear` + 使用 paste-ready resume message
 - **示例**：`🪫 CW: ███████░░░ 72% (⚠️/clear)`
@@ -284,15 +284,23 @@ Statusline 的刷新周期由 `settings.json` 的 `statusLine.refreshInterval` �
 
 ## Handoff Guide — `(⚠️/clear)` 建议标准
 
-CW bar 的 `(⚠️/clear)` 后缀在上下文使用量超过按模型的阈值时激活。这是提前防范 SSE stall 风险、建议使用 paste-ready resume message 的可视化标记。
+CW bar 的 handoff 后缀在上下文使用量超过按模型的阈值时激活。这是提前防范 SSE stall 风险、建议使用 paste-ready resume message 的可视化标记，并**分两个阶段**动作。
+
+- **soft 阶段** `(⚠️/clear)`：到达 band 的 soft 阈值时
+- **hard 阶段** `(🛑/clear!)`：到达 auto-compact-aware ceiling(`min(cap, auto-compact-threshold + margin)`)时（`internal/statusline/renderer.go`）。由于运行时 auto-compact 常常抢先占用该 ceiling，hard 阶段实际上是很少发火的上位信号。
 
 | 模型类别 | Context Window | 阈值 | 建议时点 |
 |------------|----------------|--------|----------|
-| **1M context** (Opus 4.7) | 1,000,000 tokens | **≥50%** | 使用约 500K 代币时 |
+| **1M context** (Opus 4.8) | 1,000,000 tokens | **≥50%** | 使用约 500K 代币时 |
+| **256K context** (Fable) | 256,000 tokens | **≥90%** | 使用约 230K 代币时 |
 | **200K context** (Sonnet, Haiku) | 200,000 tokens | **≥90%** | 使用约 180K 代币时 |
 | 其他 / 未知 | — | 不显示 | （安全默认） |
 
-> 阈值由 `internal/statusline/renderer.go shouldShowHandoffGuide()` 函数强制。该阈值与 `.claude/rules/moai/workflow/context-window-management.md` HARD 规则一致。
+> 阈值由 `internal/statusline/renderer.go` 的 handoff 阶段判定强制。该阈值与 `.claude/rules/moai/workflow/context-window-management.md` HARD 规则一致。
+
+### GLM 上下文仪表校正 (Issue #653)
+
+GLM-5.2 是真正的 1M 上下文模型，但 Claude Code 与 provider 无关地按 Claude 槽位报告 `context_window_size`，因此在 GLM 会话中 raw telemetry(`effectiveWindow`)可能被错误显示为 ~180K。MoAI 用 `ResolveGLMContextWindow`(`internal/statusline/memory.go`)对此进行校正 —— 从 `MOAI_STATUSLINE_CONTEXT_SIZE` 环境变量（显式覆盖）或 `llm.yaml` 的 `glm.context_windows` 表(glm-5.2 → 1,000,000)解析。在 GLM 会话中，请信任 MoAI statusline 的 CW%，而非 raw `effectiveWindow`。
 
 激活时的用户流程如下。
 

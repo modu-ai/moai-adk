@@ -112,32 +112,28 @@ AskUserQuestion 的回答到达时，PostToolUse Hook 会自动捕获决策。�
 
 #### 存储位置
 
-- **会话中**：`.moai/state/decisions/`（临时 JSON）
-- **会话结束**：`~/.claude/projects/{hash}/memory/decisions.jsonl`（自动记忆）
+preference 记忆把在编排器用户提问渠道中捕获的决策持久化到 `~/.claude/projects/{slug}/memory/user_decisions/`（SPEC-V3R6-ASKUSER-DECISION-MEMORY-001）。
+
+**3-tier 层级：**
+
+- **core**：最高优先级 hot 缓存。命中 core 时不再访问 recall/archival
+- **recall**（`recall.jsonl`）：最近会话事实
+- **archival**（`archival/`）：全量检索对象
 
 ### 4. Decay Policy（衰减策略）
 
-3 个月前的选择并不代表今天的偏好。旧决策的权重会逐渐衰减。
+过去的选择并不原样代表今天的偏好。transient 条目会受 **power-law 衰减 + 28 天 TTL**（REQ-ADM-011、REQ-ADM-012）作用，权重逐渐衰减，TTL 过后被逐出。core-tier 逐出采用从最低权重项开始降级的方式。
 
-#### 衰减函数
+管理命令：
 
+```bash
+moai preference decay-scan   # 后台衰减遍历一次 (每天最多一次, timestamp gate)
+moai preference toggle       # 会话级个性化 on/off (非持久, 每会话重置)
 ```
-weight(t) = initial_weight × exp(-decay_rate × days_ago)
-```
 
-#### 默认值
-- **Initial weight**: 1.0
-- **Decay rate**: 0.1（每 7 天约衰减 50%）
-- **Retention period**: 90 天（此后自动归档）
-
-#### 示例
-
-```
-昨天的选择: weight = 0.95
-7 天前的选择: weight = 0.50
-30 天前的选择: weight = 0.04
-90 天以上: 归档 (不再纳入推荐)
-```
+{{< callout type="info" >}}
+**参考**：精确的衰减指数·半衰期常数等细节参数属于运行时实现细节（仅固定 power-law + 28 天 TTL 契约），本页只在契约层面叙述。
+{{< /callout >}}
 
 ## 决策类别
 
