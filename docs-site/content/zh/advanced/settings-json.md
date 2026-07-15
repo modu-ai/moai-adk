@@ -105,8 +105,8 @@ MoAI-ADK 使用 4 个配置文件位置。
   "fileSuggestion": {},
   "alwaysThinkingEnabled": false,
   "maxThinkingTokens": 0,
-  "statusLine": {},
-  "outputStyle": "",
+  "statusLine": { "type": "command", "command": "bash \"$CLAUDE_PROJECT_DIR/.moai/status_line.sh\"" },
+  "outputStyle": "MoAI-Easy",
   "cleanupPeriodDays": 30,
   "env": {}
 }
@@ -218,7 +218,7 @@ Claude 工作时是否在 spinner 中显示提示。设为 `false` 禁用提示�
 ```json
 {
   "permissions": {
-    "defaultMode": "default",
+    "defaultMode": "acceptEdits",
     "allow": [],
     "ask": [],
     "deny": [],
@@ -230,17 +230,17 @@ Claude 工作时是否在 spinner 中显示提示。设为 `false` 禁用提示�
 
 ### defaultMode
 
-打开 Claude Code 时的默认权限模式。
+打开 Claude Code 时的默认权限模式。有效值为以下 4 种。
 
 | 值 | 说明 |
 |-----|------|
-| `"acceptEdits"` | 自动允许文件编辑 |
-| `"allowEdits"` | 允许文件编辑 |
-| `"rejectEdits"` | 拒绝文件编辑 |
-| `"default"` | 默认行为 |
+| `"default"` | 默认行为 — 每次操作都请求用户确认 |
+| `"acceptEdits"` | 自动允许文件编辑（默认） |
+| `"plan"` | 计划模式 — 只读，不可修改文件 |
+| `"bypassPermissions"` | 自动允许所有权限（危险，可用 `disableBypassPermissionsMode` 拦截） |
 
 {{< callout type="info" >}}
-**备注**：当前 MoAI-ADK 配置文件使用 `"defaultMode": "default"`。这可能是遗留值。
+**默认值**：MoAI-ADK 模板使用 `"defaultMode": "acceptEdits"`。这在开发流程中减少文件编辑提示的同时，危险命令仍会请求确认，取得平衡。
 {{< /callout >}}
 
 ### allow（自动允许）
@@ -268,6 +268,7 @@ Claude 工作时是否在 spinner 中显示提示。设为 `false` 禁用提示�
     "Read",                          // 仅工具名
     "Bash(git add:*)",               // Bash + 命令模式
     "Bash(pytest:*)",                // 通配符
+    "Bash(npm run *)",               // 空格分隔（新格式）
     "WebFetch(domain:example.com)"   // 域名模式
   ]
 }
@@ -566,7 +567,7 @@ Co-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>
           {
             "type": "command",
             "command": "安全守卫脚本路径",
-            "timeout": 5000
+            "timeout": 5
           }
         ]
       }
@@ -578,12 +579,12 @@ Co-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>
           {
             "type": "command",
             "command": "格式化脚本路径",
-            "timeout": 30000
+            "timeout": 10
           },
           {
             "type": "command",
             "command": "lint 脚本路径",
-            "timeout": 60000
+            "timeout": 30
           }
         ]
       }
@@ -696,9 +697,9 @@ Hook 配置的详细内容见 [Hooks 指南](/zh/advanced/hooks-guide)。
 {
   "statusLine": {
     "type": "command",
-    "command": "${SHELL:-/bin/bash} -l -c 'uv run --no-sync moai-adk statusline'",
+    "command": "bash \"$CLAUDE_PROJECT_DIR/.moai/status_line.sh\"",
     "padding": 0,
-    "refreshInterval": 300
+    "refreshInterval": 10
   }
 }
 ```
@@ -706,19 +707,19 @@ Hook 配置的详细内容见 [Hooks 指南](/zh/advanced/hooks-guide)。
 | 字段 | 说明 |
 |------|------|
 | `type` | `"command"`（执行命令） |
-| `command` | 要执行的命令（返回状态信息） |
+| `command` | 要执行的命令（返回状态信息）。MoAI-ADK 使用 `$CLAUDE_PROJECT_DIR/.moai/status_line.sh` 包装脚本 |
 | `padding` | 内边距大小 |
-| `refreshInterval` | 刷新周期（毫秒） |
+| `refreshInterval` | 刷新周期（秒） |
 
 ## 输出风格配置
 
 ```json
 {
-  "outputStyle": "R2-D2"
+  "outputStyle": "MoAI-Easy"
 }
 ```
 
-输出风格决定 Claude Code 的响应形式。可在 `settings.local.json` 中改为个人偏好的风格。
+输出风格决定 Claude Code 的响应形式。MoAI-ADK 模板默认使用 `"MoAI-Easy"`，可在 `settings.local.json` 中改为个人偏好的风格。
 
 ## 环境变量配置
 
@@ -747,7 +748,7 @@ Hook 配置的详细内容见 [Hooks 指南](/zh/advanced/hooks-guide)。
 ```json
 {
   "env": {
-    "ENABLE_TOOL_SEARCH": "auto:5",
+    "ENABLE_TOOL_SEARCH": "1",
     "CLAUDE_AUTOCOMPACT_PCT_OVERRIDE": "50"
   }
 }
@@ -757,7 +758,7 @@ Hook 配置的详细内容见 [Hooks 指南](/zh/advanced/hooks-guide)。
 
 | 变量 | 值 | 说明 |
 |------|-----|------|
-| `ENABLE_TOOL_SEARCH` | `"auto"`, `"auto:N"`, `"true"`, `"false"` | 控制工具搜索 |
+| `ENABLE_TOOL_SEARCH` | `"1"`, `"auto"`, `"auto:N"`, `"true"`, `"false"` | 控制工具搜索（MoAI 默认值：`"1"`） |
 | `CLAUDE_AUTOCOMPACT_PCT_OVERRIDE` | `1`-`100` | 自动压缩触发百分比（默认：约 95%） |
 | `CLAUDE_CODE_ENABLE_TELEMETRY` | `"1"` | 启用 OpenTelemetry 数据收集 |
 | `CLAUDE_CODE_DISABLE_BACKGROUND_TASKS` | `"1"` | 禁用后台任务 |
@@ -766,7 +767,7 @@ Hook 配置的详细内容见 [Hooks 指南](/zh/advanced/hooks-guide)。
 | `HTTPS_PROXY` | URL | HTTPS 代理服务器 |
 
 {{< callout type="info" >}}
-**提示**：`ENABLE_TOOL_SEARCH` 的值 `"auto:5"` 表示上下文使用量达 5% 时启用工具搜索。`"auto"` 默认 10%，`"true"` 始终开启，`"false"` 始终关闭。
+**提示**：MoAI-ADK 模板将 `ENABLE_TOOL_SEARCH` 设为 `"1"` — 启用延迟工具加载（deferred tool preload），会话启动时不加载全部工具模式，而在需要时搜索并加载。`"auto"` 在上下文使用量 10% 时启用，`"auto:N"` 在 N% 时启用，`"false"` 始终关闭。
 {{< /callout >}}
 
 ### 工具搜索详解
@@ -800,7 +801,7 @@ Hook 配置的详细内容见 [Hooks 指南](/zh/advanced/hooks-guide)。
       "Bash(bun add:*)"
     ]
   },
-  "outputStyle": "Mr.Alfred"  // 个人偏好的输出风格
+  "outputStyle": "MoAI-Easy"  // 个人偏好的输出风格
 }
 ```
 
@@ -842,26 +843,26 @@ MoAI-ADK 提供自定义状态栏。
 {
   "statusLine": {
     "type": "command",
-    "command": "${SHELL:-/bin/bash} -l -c 'uv run --no-sync moai-adk statusline'",
+    "command": "bash \"$CLAUDE_PROJECT_DIR/.moai/status_line.sh\"",
     "padding": 0,
-    "refreshInterval": 300
+    "refreshInterval": 10
   }
 }
 ```
 
-### MoAI Statusline v3 功能
+### MoAI Statusline 功能
 
-MoAI-ADK statusline v3 包含以下功能。
+MoAI-ADK statusline 包含以下功能。
 
-- **RGB 渐变颜色**：随系统状态变化的动态颜色渐变
+- **渐变颜色**：随上下文使用率变化的动态颜色渐变
 - **5H/7D 用量监控**：显示 5 小时与 7 天 API 用量条
 - **多行布局**：Compact（3 行）、default、full 显示模式
-- **主题**：
-  - **MoAI Dark**（默认）：带 RGB 渐变的深色主题
-  - **MoAI Light**：面向明亮环境的浅色主题
+- **主题**（`internal/statusline/theme.go` 定义）：
+  - **catppuccin-mocha**（默认）：深色调色板
+  - **catppuccin-latte**：面向明亮环境的浅色调色板
 
 {{< callout type="info" >}}
-**备注**：旧主题（Default、Catppuccin Mocha、Catppuccin Latte）已更名为 MoAI Dark/MoAI Light。
+**备注**：未知的主题名会回退到 `catppuccin-mocha`。颜色值取自 `internal/tui/catppuccin.go`。
 {{< /callout >}}
 
 statusline 的主题与段在 `.moai/config/sections/statusline.yaml` 中配置。
@@ -869,6 +870,8 @@ statusline 的主题与段在 `.moai/config/sections/statusline.yaml` 中配置�
 ### MoAI 自定义 Hooks
 
 MoAI-ADK 提供以下自定义 Hook。
+
+MoAI-ADK 的 Hook 是 **shell 脚本包装 → Go 二进制** 结构。不是 Python/`uv`，而是每个事件由 `.claude/hooks/moai/handle-<event>.sh` 包装脚本把 stdin JSON 传给 `moai hook <event>` 子命令。
 
 ```json
 {
@@ -879,7 +882,8 @@ MoAI-ADK 提供以下自定义 Hook。
         "hooks": [
           {
             "type": "command",
-            "command": "/bin/zsh -l -c 'uv run \"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/session_start__show_project_info.py\"'"
+            "command": "bash \"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-session-start.sh\"",
+            "timeout": 30
           }
         ]
       }
@@ -890,8 +894,8 @@ MoAI-ADK 提供以下自定义 Hook。
         "hooks": [
           {
             "type": "command",
-            "command": "/bin/zsh -l -c 'uv run \"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/pre_compact__save_context.py\"'",
-            "timeout": 5000
+            "command": "bash \"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-compact.sh\"",
+            "timeout": 30
           }
         ]
       }
@@ -902,7 +906,8 @@ MoAI-ADK 提供以下自定义 Hook。
         "hooks": [
           {
             "type": "command",
-            "command": "/bin/zsh -l -c 'uv run \"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/session_end__auto_cleanup.py\" &'"
+            "command": "bash \"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-session-end.sh\"",
+            "timeout": 10
           }
         ]
       }
@@ -913,8 +918,8 @@ MoAI-ADK 提供以下自定义 Hook。
         "hooks": [
           {
             "type": "command",
-            "command": "/bin/zsh -l -c 'uv run \"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/pre_tool__security_guard.py\"'",
-            "timeout": 5000
+            "command": "bash \"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-pre-tool.sh\"",
+            "timeout": 5
           }
         ]
       }
@@ -925,18 +930,8 @@ MoAI-ADK 提供以下自定义 Hook。
         "hooks": [
           {
             "type": "command",
-            "command": "/bin/zsh -l -c 'uv run \"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/post_tool__code_formatter.py\"'",
-            "timeout": 30000
-          },
-          {
-            "type": "command",
-            "command": "/bin/zsh -l -c 'uv run \"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/post_tool__linter.py\"'",
-            "timeout": 60000
-          },
-          {
-            "type": "command",
-            "command": "/bin/zsh -l -c 'uv run \"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/post_tool__ast_grep_scan.py\"'",
-            "timeout": 30000
+            "command": "bash \"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-post-tool.sh\"",
+            "timeout": 10
           }
         ]
       }
@@ -945,15 +940,25 @@ MoAI-ADK 提供以下自定义 Hook。
 }
 ```
 
+每个包装脚本都是读取 stdin JSON 并交给 Go 二进制的轻量 shell 脚本。
+
+```bash
+#!/bin/bash
+# .claude/hooks/moai/handle-session-start.sh
+moai hook session-start
+```
+
+使用 shell 脚本的原因：没有 Python 启动开销（执行更快）、不需要 `uv`/`python` 依赖、跨平台（bash、/bin/sh）。Hook `timeout` 值的单位是 **秒**（不是毫秒）。
+
 ### MoAI 输出风格
 
 ```json
 {
-  "outputStyle": "Mr.Alfred"
+  "outputStyle": "MoAI-Easy"
 }
 ```
 
-该风格提供 Alfred AI 编排器专属的响应形式。
+`MoAI-Easy` 是 MoAI-ADK 的默认输出风格，提供友好、简洁的响应形式。
 
 ## 实战示例：定制配置
 
@@ -1012,8 +1017,8 @@ MoAI-ADK 提供以下自定义 Hook。
         "hooks": [
           {
             "type": "command",
-            "command": "python3 .claude/hooks/my-hooks/custom_check.py",
-            "timeout": 10000
+            "command": "bash .claude/hooks/my-hooks/custom_check.sh",
+            "timeout": 10
           }
         ]
       }
@@ -1033,7 +1038,7 @@ MoAI-ADK 提供以下自定义 Hook。
 }
 ```
 
-## v2.9.0 新增配置文件
+## 相关配置文件
 
 ### Harness 配置 (harness.yaml)
 
@@ -1044,23 +1049,35 @@ MoAI-ADK 提供以下自定义 Hook。
 | 级别 | 说明 | evaluator | 跳过的 Phase |
 |------|------|-----------|---------------|
 | minimal | 快速迭代（简单变更） | 停用 | 0, 0.5, 2.0, 2.5, 2.75, 2.8a, 2.9, 2.10 |
-| standard | 均衡质量（大多数开发） | final-pass | 无 |
-| thorough | 最高质量（关键功能） | per-sprint | 无 |
+| standard | 均衡质量（大多数开发） | 启用 | 无 |
+| thorough | 最高质量（关键功能） | 启用 | 无 |
 
 ```yaml
 # .moai/config/sections/harness.yaml
 harness:
-  default_level: standard
+  default_profile: "default"
+  mode_defaults:
+    solo: auto
+    team: auto
+    cg: thorough
   auto_detection:
-    minimal:
-      - "file_count <= 3 AND single_domain"
-      - "spec_type in [bugfix, docs, config]"
-    thorough:
-      - "security_keywords OR payment_keywords present"
-      - "spec_priority == critical"
+    enabled: true
+    rules:
+      minimal:
+        conditions:
+          - "file_count <= 3 AND single_domain"
+          - "spec_type in [bugfix, docs, config]"
+      thorough:
+        conditions:
+          - "security_keywords OR payment_keywords present"
+          - "spec_priority == critical"
+  effort_mapping:
+    minimal:  "low"
+    standard: "medium"
+    thorough: "high"
   levels:
     thorough:
-      evaluator_profile: "strict"
+      evaluator: true
 ```
 
 ### Constitution 配置 (constitution.yaml)

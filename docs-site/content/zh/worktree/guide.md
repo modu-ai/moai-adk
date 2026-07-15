@@ -67,7 +67,7 @@ moai worktree new SPEC-ID [options]
 
 #### 选项
 
-- `--path PATH`: 直接指定 Worktree 路径 (默认: SPEC ID 时为 `.moai/worktrees/<SPEC-ID>`,其他为 `../<branch-name>`)
+- `--path PATH`: 直接指定 Worktree 路径 (默认: SPEC ID 时为 `~/.moai/worktrees/<ProjectName>/<SPEC-ID>`,其他为 `../<branch-name>`)
 - `--base BRANCH`: 基准分支 (默认: `origin/main`,自动 fetch)。本地专属提交请用 `--base main`
 - `--from-current`: 以当前 HEAD 为基准 (跳过 `git fetch origin main`,与 `--base` 互斥)
 - `--tmux`: 创建 Worktree 后创建 tmux 会话
@@ -176,9 +176,9 @@ moai worktree list
 moai worktree list --verbose
 
 # 输出示例
-SPEC-AUTH-001  feature/SPEC-AUTH-001  /path/to/worktree/SPEC-AUTH-001  [active]
-SPEC-AUTH-002  feature/SPEC-AUTH-002  /path/to/worktree/SPEC-AUTH-002
-SPEC-AUTH-003  feature/SPEC-AUTH-003  /path/to/worktree/SPEC-AUTH-003
+SPEC-AUTH-001  feature/SPEC-AUTH-001  ~/.moai/worktrees/your-project/SPEC-AUTH-001  [active]
+SPEC-AUTH-002  feature/SPEC-AUTH-002  ~/.moai/worktrees/your-project/SPEC-AUTH-002
+SPEC-AUTH-003  feature/SPEC-AUTH-003  ~/.moai/worktrees/your-project/SPEC-AUTH-003
 ```
 
 ---
@@ -254,10 +254,10 @@ moai worktree remove PATH [options]
 
 ```bash
 # 基本移除
-moai worktree remove .moai/worktrees/SPEC-AUTH-001
+moai worktree remove ~/.moai/worktrees/your-project/SPEC-AUTH-001
 
 # 强制移除
-moai worktree remove .moai/worktrees/SPEC-AUTH-001 --force
+moai worktree remove ~/.moai/worktrees/your-project/SPEC-AUTH-001 --force
 ```
 
 ---
@@ -285,12 +285,15 @@ moai worktree status
 # 完整详细信息
 moai worktree status --all
 
-# 输出示例
-Worktree: SPEC-AUTH-001
-Branch: feature/SPEC-AUTH-001
-Path: /path/to/worktree/SPEC-AUTH-001
-Status: Clean (2 commits ahead of main)
-LLM: GLM 5
+# 输出示例 (rounded-border 卡片; status 会自动 prune stale 引用后再显示)
+╭─ Worktree Status ────────────────────────────────────────────╮
+│ Repository: /path/to/your-project                            │
+│ Total worktrees: 1                                           │
+│                                                              │
+│ feature/SPEC-AUTH-001                                        │
+│   Path: ~/.moai/worktrees/your-project/SPEC-AUTH-001         │
+│   HEAD: 4f3a2b1c                                             │
+╰──────────────────────────────────────────────────────────────╯
 ```
 
 ---
@@ -324,30 +327,111 @@ moai worktree clean --merged-only --base develop
 
 ### moai worktree config
 
-确认或修改 Worktree 设置。
+显示 Worktree 设置。设置值派生自 Git 仓库,因此为**只读**(不支持 `config set`)。
 
 #### 语法
 
 ```bash
-moai worktree config [key] [value]
+moai worktree config [key]
 ```
 
 #### 参数
 
-- **key** (可选): 设置键
-- **value** (可选): 设置值
+- **key** (可选): 要显示的设置键。可用键为 `root` (仓库根目录)、
+  `all` (全部设置,默认)
 
 #### 使用示例
 
 ```bash
 # 显示所有设置
 moai worktree config
+# Worktree Configuration:
+#   root: /path/to/your-project
 
 # 确认特定设置
 moai worktree config root
+# Worktree root: /path/to/your-project
+```
 
-# 更改设置
-moai worktree config root /new/path/to/worktrees
+---
+
+### moai worktree sync
+
+将 Worktree 与 base 分支的变更同步。
+
+```bash
+# 将当前目录 Worktree 与 main 同步 (merge 策略,默认)
+moai worktree sync
+
+# 用 rebase 策略同步特定 Worktree
+moai worktree sync SPEC-AUTH-001 --strategy rebase
+
+# 基于其他 base 分支
+moai worktree sync SPEC-AUTH-001 --base develop
+```
+
+选项: `--base` (基准分支,默认 `main`)、`--strategy` (`merge` 或 `rebase`,
+默认 `merge`)。
+
+---
+
+### moai worktree switch
+
+切换到与给定分支关联的 Worktree 目录。
+
+```bash
+moai worktree switch SPEC-AUTH-001
+```
+
+与只输出路径的 `go` 不同,`switch` 会按分支名查找 Worktree 并提供移动引导。
+
+---
+
+### moai worktree recover
+
+扫描磁盘并执行 `git worktree repair` 以修复损坏的 Worktree 注册表。
+
+```bash
+moai worktree recover
+```
+
+---
+
+### moai worktree clean vs recover vs 状态守卫
+
+`clean` 清理 stale 引用,`recover` 修复注册表。下面三个命令是编排器在
+`Agent(isolation: "worktree")` 调用前后对工作树状态进行快照、校验、恢复的
+状态守卫原语。
+
+#### moai worktree snapshot
+
+捕获 HEAD、分支、porcelain、`.moai/specs/` 下 untracked 文件状态,并以 JSON
+写入 `.moai/state/`。
+
+```bash
+moai worktree snapshot --agent-name my-agent --out .moai/state/snap.json
+```
+
+#### moai worktree verify
+
+将当前工作树与快照比较。退出码: `0`=clean、`1`=divergence、
+`2`=suspect(空 worktreePath)、`3`=两者皆有。
+
+```bash
+moai worktree verify --snapshot .moai/state/snap.json --agent-name my-agent
+```
+
+#### moai worktree restore
+
+执行 `git restore --source=<snapshot HEAD> --staged --worktree :/` 将工作树
+恢复到快照 HEAD 状态。Untracked 文件不会被 git 恢复,因此只会给出路径引导,
+需要手动重新生成。
+
+```bash
+moai worktree restore --snapshot .moai/state/snap.json
+
+# 不执行,只输出命令
+moai worktree restore --snapshot .moai/state/snap.json --dry-run
 ```
 
 ---
@@ -392,14 +476,13 @@ flowchart TD
 ### 第 2 步: 实现 (Phase 2)
 
 ```bash
-# 在 Terminal 2
-moai worktree go SPEC-AUTH-001
+# 在 Terminal 2 (moai worktree go 输出路径 → 用 cd 移动)
+cd "$(moai worktree go SPEC-AUTH-001)"
 
-# 进入 Worktree 后提示符发生变化
-(SPEC-AUTH-001) $ moai glm
-→ 已设置为 GLM 5。
+# 移动到 Worktree 后切换 LLM 后端
+$ moai glm
 
-(SPEC-AUTH-001) $ claude
+$ claude
 > /moai run SPEC-AUTH-001
 ```
 
@@ -486,9 +569,9 @@ graph TB
 > /moai plan "日志" --worktree
 
 # Terminal 3、4、5: 并行实现
-moai worktree go SPEC-001 && moai glm  # Terminal 3
-moai worktree go SPEC-002 && moai glm  # Terminal 4
-moai worktree go SPEC-003 && moai glm  # Terminal 5
+cd "$(moai worktree go SPEC-001)" && moai glm  # Terminal 3
+cd "$(moai worktree go SPEC-002)" && moai glm  # Terminal 4
+cd "$(moai worktree go SPEC-003)" && moai glm  # Terminal 5
 ```
 
 ### Worktree 间切换
@@ -497,11 +580,11 @@ moai worktree go SPEC-003 && moai glm  # Terminal 5
 # 确认当前 Worktree
 moai worktree status
 
-# 切换到其他 Worktree
-moai worktree go SPEC-AUTH-002
+# 切换到其他 Worktree (输出路径 → cd)
+cd "$(moai worktree go SPEC-AUTH-002)"
 
 # 或直接移动
-cd ~/.moai/worktrees/SPEC-AUTH-002
+cd ~/.moai/worktrees/your-project/SPEC-AUTH-002
 ```
 
 ### 冲突解决
@@ -625,14 +708,17 @@ tmux attach-session -t moai-my-project-SPEC-AUTH-001
 
 `/moai plan` 完成后、Run 开始前,自动检测执行模式并请求用户选择。
 
-**tmux 可用时 (3 个选项):**
-- Worktree + \{当前模式\} (Recommended): 创建工作树 + tmux 会话
-- Team Mode: Agent Teams 并行执行
-- Sub-agent Mode: 顺序执行
+**tmux 可用时 (2 个选项):**
+- Worktree + \{当前模式\} (Recommended): 创建工作树 + tmux 会话后执行
+- Sub-agent Mode: 顺序执行子智能体
 
-**tmux 不可用时 (2 个选项):**
-- Sub-agent Mode (Recommended)
-- Team Mode (in-process)
+**tmux 不可用时:**
+- Sub-agent Mode (Recommended): 顺序执行子智能体
+
+{{< callout type="info" >}}
+静态 Agent Teams 编排层已废弃。并行协作由 Claude Code 原生团队成员运行时
+(`moai cg` 的 GLM tmux 窗格、CG 模式) 运营 —— 详情请参考 CG 模式文档。
+{{< /callout >}}
 
 ### Auto-merge 默认动作
 
@@ -641,8 +727,8 @@ tmux attach-session -t moai-my-project-SPEC-AUTH-001
 | 标志 | 动作 |
 |--------|------|
 | (无) | 在工作树上下文中自动合并 |
-| `--no-merge` | 跳过自动合并 |
 | `--merge` | Deprecated (显示警告) |
+| `--skip-mx` | 跳过 @MX 标签扫描步骤 |
 
 ### 合并后自动清理
 

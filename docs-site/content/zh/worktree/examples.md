@@ -4,7 +4,9 @@ weight: 30
 draft: false
 ---
 
-通过具体场景来看 Git Worktree 在真实项目中如何运转 —— 从单一 SPEC 开发到并行开发、团队协作与问题排查。每个场景都附带"哪个阶段用哪个模型"的托克诺米克斯判断。
+通过具体场景来看真实项目中如何运用 Git Worktree —— 从单一 SPEC 开发到并行
+开发、团队协作与问题排查。每个场景都附带"哪个阶段用哪个模型"的代币经济学
+判断。
 
 ## 目录
 
@@ -28,34 +30,24 @@ $ cd /path/to/your-project
 # 生成 SPEC 计划
 > /moai plan "实现基于 JWT 的用户认证系统" --worktree
 
-# 输出
-✓ MoAI-ADK SPEC Manager v2.0
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
+# 进度摘要 (示例)
 正在分析 SPEC...
-  - 功能需求: 发现 8 个
-  - 技术需求: 发现 5 个
-  - API 端点: 识别 6 个
+  - 将需求整理为 EARS 格式
 
-正在生成 SPEC 文档...
+生成 SPEC 文档:
   ✓ .moai/specs/SPEC-AUTH-001/spec.md
-  ✓ .moai/specs/SPEC-AUTH-001/requirements.md
-  ✓ .moai/specs/SPEC-AUTH-001/api-design.md
+  ✓ .moai/specs/SPEC-AUTH-001/plan.md
+  ✓ .moai/specs/SPEC-AUTH-001/acceptance.md
 
-正在创建 Worktree...
+创建 Worktree:
   ✓ 创建分支: feature/SPEC-AUTH-001
-  ✓ 创建 Worktree: /path/to/your-project/.moai/worktrees/SPEC-AUTH-001
+  ✓ 创建 Worktree: ~/.moai/worktrees/your-project/SPEC-AUTH-001
   ✓ 分支切换完成
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 下一步:
-  1. 在新终端运行: moai worktree go SPEC-AUTH-001
+  1. 在新终端移动: cd "$(moai worktree go SPEC-AUTH-001)"
   2. 更换 LLM: moai glm
-  3. 启动 Claude: claude
-  4. 开始开发: /moai run SPEC-AUTH-001
-
-省钱提示: 在实现阶段用 'moai glm' 可节省 70% 成本!
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  3. 开始开发: /moai run SPEC-AUTH-001
 ```
 
 #### 第 2 步: 进入 Worktree 并实现 (Terminal 2)
@@ -63,54 +55,38 @@ $ cd /path/to/your-project
 计划已完成,实现阶段切换到低成本模型:
 
 ```bash
-# 打开新终端
-$ moai worktree go SPEC-AUTH-001
-
-# 新终端打开并移动到 Worktree
-# 提示符发生变化
-(SPEC-AUTH-001) ~/moai-project/.moai/worktrees/SPEC-AUTH-001
+# 在新终端移动到 Worktree (moai worktree go 会输出路径)
+$ cd "$(moai worktree go SPEC-AUTH-001)"
+$ pwd
+/Users/you/.moai/worktrees/your-project/SPEC-AUTH-001
 
 # 把 LLM 换成低成本模型
-(SPEC-AUTH-001) $ moai glm
-✓ LLM 已更换: GLM 5 (节省 70% 成本)
+$ moai glm
 
 # 启动 Claude Code
-(SPEC-AUTH-001) $ claude
-Claude Code v1.0.0
-Type 'help' for available commands
+$ claude
 
 # 开始 DDD 实现
 > /moai run SPEC-AUTH-001
 
-# 输出
-✓ MoAI-ADK DDD Executor v2.0
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
+# 进度摘要 (示例)
 Phase 1: ANALYZE
-  ✓ 需求分析完成
-  ✓ 现有代码分析完成
-  ✓ 测试覆盖率: 85% 目标
+  ✓ 分析需求·现有代码
 
 Phase 2: PRESERVE
-  ✓ 生成 12 个特性化测试
-  ✓ 确认现有行为得到保留
+  ✓ 生成特性化测试,确认现有行为得到保留
 
 Phase 3: IMPROVE
   ✓ 实现 JWT 认证中间件
   ✓ 实现刷新令牌轮换
   ✓ 实现登出时令牌失效
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-实现完成!
-  - 提交: 4f3a2b1 (feat: JWT authentication middleware)
-  - 提交: 7c8d9e0 (feat: refresh token rotation)
-  - 提交: 2a1b3c4 (feat: token invalidation on logout)
+实现完成 —— 已提交到 feature/SPEC-AUTH-001
 
 下一步:
-  1. 运行测试: pytest tests/auth/
+  1. 运行测试: 项目语言的测试命令 (例如: go test ./... / npm test / pytest)
   2. 文档化: /moai sync SPEC-AUTH-001
-  3. 完成: moai worktree done SPEC-AUTH-001
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  3. 合并到 base (git merge/PR) 后清理: moai worktree done SPEC-AUTH-001
 ```
 
 #### 第 3 步: 文档化 (同一个 Terminal 2)
@@ -119,27 +95,19 @@ Phase 3: IMPROVE
 # 执行文档化
 > /moai sync SPEC-AUTH-001
 
-# 输出
-✓ MoAI-ADK Documentation Generator v2.0
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# 进度摘要 (示例)
+正在同步文档...
+  ✓ 更新代码地图·文档
+  ✓ SPEC 状态转换并提交
 
-正在生成文档...
-  ✓ API 文档: docs/api/auth.md
-  ✓ 架构图: docs/diagrams/auth-flow.mmd
-  ✓ 用户指南: docs/guides/authentication.md
-
-提交完成:
-  ✓ b5e6f7a (docs: authentication documentation)
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-文档化完成!
-下一步: 合并到 base (git merge/PR) 后,moai worktree done SPEC-AUTH-001
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+文档化完成 —— 已提交到 feature/SPEC-AUTH-001
+下一步: 合并到 base (git merge/PR) 后 moai worktree done SPEC-AUTH-001
 ```
 
 #### 第 4 步: 合并到 base 并清理 (Terminal 1)
 
-`moai worktree done` 不会执行合并、推送。先用 `git merge` 或 PR 处理到 base 分支的合并,然后只清理 Worktree。
+`moai worktree done` 不会执行合并、推送。到 base 分支的合并先用
+`git merge` 或 PR 处理,然后只清理 Worktree。
 
 ```bash
 # 回到项目根目录
@@ -155,11 +123,9 @@ $ moai worktree done SPEC-AUTH-001 --delete-branch
 
 # 输出
 ✓ Done: worktree for branch feature/SPEC-AUTH-001
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  Path: .moai/worktrees/SPEC-AUTH-001
+  Path: ~/.moai/worktrees/your-project/SPEC-AUTH-001
   Worktree removed.
   Branch feature/SPEC-AUTH-001 deleted.
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
 
 ---
@@ -212,17 +178,17 @@ graph TB
 
 # 确认 Worktree
 moai worktree list
-SPEC-AUTH-001  feature/SPEC-AUTH-001  /path/to/SPEC-AUTH-001
-SPEC-LOG-002   feature/SPEC-LOG-002   /path/to/SPEC-LOG-002
-SPEC-API-003   feature/SPEC-API-003   /path/to/SPEC-API-003
+SPEC-AUTH-001  feature/SPEC-AUTH-001  ~/.moai/worktrees/your-project/SPEC-AUTH-001
+SPEC-LOG-002   feature/SPEC-LOG-002   ~/.moai/worktrees/your-project/SPEC-LOG-002
+SPEC-API-003   feature/SPEC-API-003   ~/.moai/worktrees/your-project/SPEC-API-003
 ```
 
 #### Terminal 2: 实现 AUTH-001
 
 ```bash
-$ moai worktree go SPEC-AUTH-001
-(SPEC-AUTH-001) $ moai glm
-(SPEC-AUTH-001) $ claude
+$ cd "$(moai worktree go SPEC-AUTH-001)"
+$ moai glm
+$ claude
 > /moai run SPEC-AUTH-001
 # ... 实现进行中 ...
 ```
@@ -230,9 +196,9 @@ $ moai worktree go SPEC-AUTH-001
 #### Terminal 3: 实现 LOG-002
 
 ```bash
-$ moai worktree go SPEC-LOG-002
-(SPEC-LOG-002) $ moai glm
-(SPEC-LOG-002) $ claude
+$ cd "$(moai worktree go SPEC-LOG-002)"
+$ moai glm
+$ claude
 > /moai run SPEC-LOG-002
 # ... 实现进行中 ...
 ```
@@ -240,9 +206,9 @@ $ moai worktree go SPEC-LOG-002
 #### Terminal 4: 实现 API-003
 
 ```bash
-$ moai worktree go SPEC-API-003
-(SPEC-API-003) $ moai glm
-(SPEC-API-003) $ claude
+$ cd "$(moai worktree go SPEC-API-003)"
+$ moai glm
+$ claude
 > /moai run SPEC-API-003
 # ... 实现进行中 ...
 ```
@@ -250,26 +216,25 @@ $ moai worktree go SPEC-API-003
 #### 监控并行进度
 
 ```bash
-# 在 Terminal 1 确认所有 Worktree 状态
+# 在 Terminal 1 确认所有 Worktree 状态 (--all: 显示完整提交哈希)
 $ moai worktree status --all
 
-Worktree: SPEC-AUTH-001
-Branch: feature/SPEC-AUTH-001
-Status: 3 commits ahead of main
-LLM: GLM 5
-Last activity: 5 minutes ago
-
-Worktree: SPEC-LOG-002
-Branch: feature/SPEC-LOG-002
-Status: 2 commits ahead of main
-LLM: GLM 5
-Last activity: 3 minutes ago
-
-Worktree: SPEC-API-003
-Branch: feature/SPEC-API-003
-Status: 4 commits ahead of main
-LLM: GLM 5
-Last activity: 7 minutes ago
+╭─ Worktree Status ────────────────────────────────────────────╮
+│ Repository: /path/to/your-project                            │
+│ Total worktrees: 3                                           │
+│                                                              │
+│ feature/SPEC-AUTH-001                                        │
+│   Path: ~/.moai/worktrees/your-project/SPEC-AUTH-001         │
+│   HEAD: 4f3a2b1c                                             │
+│                                                              │
+│ feature/SPEC-LOG-002                                         │
+│   Path: ~/.moai/worktrees/your-project/SPEC-LOG-002          │
+│   HEAD: 7c8d9e0a                                             │
+│                                                              │
+│ feature/SPEC-API-003                                         │
+│   Path: ~/.moai/worktrees/your-project/SPEC-API-003          │
+│   HEAD: 2a1b3c4d                                             │
+╰──────────────────────────────────────────────────────────────╯
 ```
 
 ---
@@ -312,14 +277,13 @@ cd project
 ✓ SPEC-FE-001 创建
 
 # 在 Worktree 中开发
-moai worktree go SPEC-FE-001
-(SPEC-FE-001) $ moai glm
-(SPEC-FE-001) $ claude
+cd "$(moai worktree go SPEC-FE-001)"
+$ moai glm
+$ claude
 > /moai run SPEC-FE-001
 
 # 实现完成后推送分支 + 创建 PR (git/gh)
-(SPEC-FE-001) $ exit
-git push -u origin feature/SPEC-FE-001
+$ git push -u origin feature/SPEC-FE-001
 gh pr create --fill
 # PR 合并后清理 Worktree
 moai worktree done SPEC-FE-001 --delete-branch
@@ -337,14 +301,13 @@ cd project
 ✓ SPEC-BE-001 创建
 
 # 在 Worktree 中开发
-moai worktree go SPEC-BE-001
-(SPEC-BE-001) $ moai glm
-(SPEC-BE-001) $ claude
+cd "$(moai worktree go SPEC-BE-001)"
+$ moai glm
+$ claude
 > /moai run SPEC-BE-001
 
 # 实现完成后推送分支 + 创建 PR (git/gh)
-(SPEC-BE-001) $ exit
-git push -u origin feature/SPEC-BE-001
+$ git push -u origin feature/SPEC-BE-001
 gh pr create --fill
 # PR 合并后清理 Worktree
 moai worktree done SPEC-BE-001 --delete-branch
@@ -372,7 +335,8 @@ git pull origin main
 
 ### 案例 1: 解决合并冲突
 
-合并发生在 `git merge` 或 PR 中,因此冲突也在那个阶段产生。Worktree CLI 不参与合并。
+合并发生在 `git merge` 或 PR 中,因此冲突也在那个阶段产生。Worktree CLI
+不参与合并。
 
 ```bash
 $ git checkout main
@@ -426,19 +390,15 @@ moai worktree done SPEC-AUTH-001 --delete-branch
 ### 案例 2: 恢复损坏的 Worktree
 
 ```bash
-$ moai worktree go SPEC-AUTH-001
-✗ Worktree 已损坏。
+# 诊断: 尝试恢复损坏的注册表
+$ moai worktree recover
 
-# 诊断
+# 确认状态
 $ moai worktree status
-✗ Worktree 目录不存在
 
-# 恢复
-$ moai worktree remove .moai/worktrees/SPEC-AUTH-001 --force
-✓ 已移除现有 Worktree
-
+# 恢复: 移除现有 Worktree (指定路径) 后重新创建
+$ moai worktree remove ~/.moai/worktrees/your-project/SPEC-AUTH-001 --force
 $ moai worktree new SPEC-AUTH-001
-✓ Worktree 重新创建完成
 ```
 
 ### 案例 3: 清理已合并的 Worktree
@@ -508,11 +468,11 @@ sequenceDiagram
 
 # 第 2-4 天: 并行实现
 # Terminal 1: 用户管理
-$ moai worktree go SPEC-USER-001 && moai glm
+$ cd "$(moai worktree go SPEC-USER-001)" && moai glm
 # Terminal 2: 支付系统
-$ moai worktree go SPEC-PAY-001 && moai glm
+$ cd "$(moai worktree go SPEC-PAY-001)" && moai glm
 # Terminal 3: 通知系统
-$ moai worktree go SPEC-NOTIF-001 && moai glm
+$ cd "$(moai worktree go SPEC-NOTIF-001)" && moai glm
 
 # 第 5-6 天: 文档化与测试
 # 在各 Worktree 中执行 /moai sync
@@ -573,7 +533,7 @@ echo "1. 生成 SPEC 计划..."
 > /moai plan "$2" --worktree
 
 echo "2. 进入 Worktree..."
-moai worktree go $SPEC_ID
+cd "$(moai worktree go $SPEC_ID)"
 
 echo "3. 更换 LLM..."
 moai glm
@@ -590,3 +550,5 @@ claude
 - [Git Worktree 概述](/zh/worktree/)
 - [完整指南](/zh/worktree/guide)
 - [常见问题](/zh/worktree/faq)
+</content>
+</invoke>

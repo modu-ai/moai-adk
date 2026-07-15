@@ -147,16 +147,16 @@ flowchart TD
 
 ```bash
 # Terminal 1
-moai worktree go SPEC-AUTH-001
-(SPEC-AUTH-001) $ moai glm
+cd "$(moai worktree go SPEC-AUTH-001)"
+$ moai glm
 
 # Terminal 2
-moai worktree go SPEC-LOG-002
-(SPEC-LOG-002) $ moai glm
+cd "$(moai worktree go SPEC-LOG-002)"
+$ moai glm
 
 # Terminal 3
-moai worktree go SPEC-API-003
-(SPEC-API-003) $ moai glm
+cd "$(moai worktree go SPEC-API-003)"
+$ moai glm
 
 # 全部可以同时工作
 ```
@@ -290,19 +290,23 @@ moai worktree done SPEC-AUTH-001 --delete-branch
 **A**: 用以下步骤恢复:
 
 ```bash
-# 1. 诊断
+# 1. 诊断 (恢复损坏的注册表)
+moai worktree recover
+
+# 2. 确认当前状态
 moai worktree status
-✗ Worktree 目录不存在
+# ╭─ Worktree Status ──────────────────────────────╮
+# │ Repository: /path/to/your-project              │
+# │ Total worktrees: 0                             │
+# │                                                │
+# │ No worktrees found.                            │
+# ╰────────────────────────────────────────────────╯
 
-# 2. 移除现有 Worktree
-moai worktree remove .moai/worktrees/SPEC-AUTH-001 --force
+# 3. 移除现有 Worktree (指定路径)
+moai worktree remove ~/.moai/worktrees/your-project/SPEC-AUTH-001 --force
 
-# 3. 重新创建 Worktree
+# 4. 重新创建 Worktree
 moai worktree new SPEC-AUTH-001
-
-# 4. 确认恢复
-moai worktree status
-✓ Worktree 正常
 ```
 
 ---
@@ -313,10 +317,10 @@ moai worktree status
 
 ```bash
 # 1. 确认磁盘使用量
-$ du -sh .moai/worktrees/*
-2.5G    .moai/worktrees/SPEC-AUTH-001
-1.8G    .moai/worktrees/SPEC-LOG-002
-3.2G    .moai/worktrees/SPEC-API-003
+$ du -sh ~/.moai/worktrees/your-project/*
+2.5G    ~/.moai/worktrees/your-project/SPEC-AUTH-001
+1.8G    ~/.moai/worktrees/your-project/SPEC-LOG-002
+3.2G    ~/.moai/worktrees/your-project/SPEC-API-003
 
 # 2. 只清理已合并到 base 的 Worktree
 $ moai worktree clean --merged-only
@@ -347,20 +351,18 @@ graph TD
 **A**: 确认每个 Worktree 的 LLM 设置:
 
 ```bash
-# 确认当前 LLM
-moai config
-当前 LLM: GLM 5
+# 确认当前 LLM 后端 (每个 Worktree 的设置记录在 .moai/config/sections/llm.yaml)
+cat .moai/config/sections/llm.yaml
+# 或与项目状态一起确认
+moai status
 
 # 在 Worktree 中更换 LLM
-moai worktree go SPEC-AUTH-001
-(SPEC-AUTH-001) $ moai cc
-→ 已更换为 Claude Opus
+cd "$(moai worktree go SPEC-AUTH-001)"
+$ moai cc   # 切换到 Claude 后端
 
 # 其他 Worktree 不受影响
-(SPEC-AUTH-001) $ exit
-moai worktree go SPEC-LOG-002
-(SPEC-LOG-002) $ moai config
-当前 LLM: GLM 5 (无变化)
+$ cd "$(moai worktree go SPEC-LOG-002)"
+$ cat .moai/config/sections/llm.yaml   # 这个 Worktree 的设置保持不变
 ```
 
 ---
@@ -372,7 +374,7 @@ moai worktree go SPEC-LOG-002
 ```bash
 # 确认 Worktree 目录
 pwd
-/path/to/your-project/.moai/worktrees/SPEC-AUTH-001
+/Users/you/.moai/worktrees/your-project/SPEC-AUTH-001
 
 # 确认 Git 状态
 git status
@@ -512,21 +514,20 @@ graph TB
 
 ---
 
-### Q: 如何把 Worktree 与远程仓库同步?
+### Q: 如何把 Worktree 与 base 分支同步?
 
-**A**: 定期运行 `git pull`:
+**A**: `moai worktree sync` 会把 base 分支的变更拉取到 Worktree。用
+`--strategy` 选择 merge (默认) 或 rebase:
 
 ```bash
-# 在各 Worktree 中同步
-moai worktree go SPEC-AUTH-001
-(SPEC-AUTH-001) $ git pull origin main
+# 把当前目录的 Worktree 与 base(main) 同步 —— merge 策略
+moai worktree sync
 
-# 或同步所有 Worktree
-for spec in SPEC-AUTH-001 SPEC-LOG-002 SPEC-API-003; do
-    cd "$(moai worktree go $spec)"
-    echo "Syncing $spec..."
-    git pull origin main
-done
+# 用 rebase 策略同步特定 Worktree
+moai worktree sync SPEC-AUTH-001 --strategy rebase
+
+# 基于其他 base 分支同步
+moai worktree sync SPEC-AUTH-001 --base develop
 ```
 
 ---
