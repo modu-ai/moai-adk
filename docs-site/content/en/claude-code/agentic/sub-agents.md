@@ -14,6 +14,10 @@ A Claude Code subagent is a delegated worker that handles side tasks in a separa
 **One-line summary**: A subagent is a delegated worker that handles side jobs like exploration and verification in its own context and returns only a summary, keeping the main conversation clean.
 {{< /callout >}}
 
+{{< callout type="info" title="Understand it with an analogy" >}}
+A subagent is a **colleague with their own desk**. Bulky research, logs, and search results that would clutter your desk (the main conversation's context) go to the colleague, who works through them on their own desk and hands you back **just a one-page summary**. Your desk stays clean, and you stay focused on the main thread.
+{{< /callout >}}
+
 {{< callout type="tip" >}}
 This page is a Claude Code-level conceptual overview. How MoAI-ADK composes and delegates its 11-agent catalog (10 MoAI-custom + 1 Anthropic built-in `Explore`), and the hands-on way to build your own agents, are covered in depth in the [Agent Guide](/advanced/agent-guide) and the [Builder Agents Guide](/advanced/builder-agents).
 {{< /callout >}}

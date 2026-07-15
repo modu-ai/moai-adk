@@ -11,6 +11,10 @@ Instead of reprocessing the entire conversation every turn, Claude Code automati
 **One-line summary**: The unchanging front portion (the prefix) is read straight from the cache each time, so the same work is never processed twice — dramatically reducing cost and response time.
 {{< /callout >}}
 
+{{< callout type="info" title="Understand it with an analogy" >}}
+Prompt caching is like a **bookmark** in a book. Every request re-sends the same front portion (system prompt, project context, prior conversation); when that front portion matches the previous request, the model skips straight to the bookmark instead of re-reading from page one. The longer the front stays unchanged, the bigger the cache win — and once it changes, everything after that point must be re-read.
+{{< /callout >}}
+
 ## Why Prompt Caching Is Needed
 
 The model remembers nothing between requests. So every time Claude Code sends a message, it makes a new API request and retransmits the **entire context** (system prompt, project context, all previous messages and tool results, the new message).

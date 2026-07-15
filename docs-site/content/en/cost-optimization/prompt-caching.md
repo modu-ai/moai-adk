@@ -1,184 +1,131 @@
 ---
-title: Prompt Caching — Break-Even Analysis and Implementation Guide
+title: Prompt Caching — The Concept and How Claude Code Uses It
 weight: 30
 draft: false
 ---
 
-Prompt caching reuses an identical prompt prefix across multiple requests to
-cut inference costs at a 90% discount (0.1x the base cost). If the "context
+Prompt caching is an API feature that **reuses the front portion (the prefix)
+of a request without reprocessing it when that portion is identical to the
+previous request**. Tokens read from the cache are billed at **0.1x** the base
+input rate, so the larger the repeated context (system prompt, project
+instructions, conversation history), the greater the savings. If the "context
 diet" axis of MoAI-ADK Tokenomics is about shrinking the always-loaded
-context, prompt caching is about reusing the remaining context cheaply. This
-guide explains the break-even rule, the cache mechanics, and when to enable
-caching in a MoAI project.
+context, prompt caching is about reusing the remaining context cheaply.
 
-## The break-even rule
+{{< callout type="info" >}}
+**In plain terms** — on every turn the model rereads the whole conversation
+from the start. Caching is the bookmark that says "the front portion is exactly
+as I read it before" and skips ahead. If even a single character of the front
+portion changes, the bookmark is invalidated and rereading resumes from that
+point.
+{{< /callout >}}
 
-**Only enable the 1-hour cache when a session makes 2 or more consecutive API requests.**
+## Core Concepts (Common to the API)
 
-Single-request sessions (one-shot queries, single-turn commands) incur the 2x
-write premium with no cache-read benefit, so the per-request cost ends up
-higher than the uncached baseline. Conversely, with multi-turn interactions or
-repeated SPEC analysis within an hour, caching offsets its cost on the second
-request and saves 67% or more on subsequent ones.
+- **Prefix matching**: a cache hit requires the content up to the breakpoint
+  (including tool definitions, system prompt, and message history) to be
+  **100% identical**. A single differing whitespace character forces
+  everything after that point to be recomputed.
+- **Price multipliers** (relative to the base input rate): cache write with a
+  5-minute TTL **1.25x** · 1-hour TTL **2x** · cache read **0.1x**.
+- **TTL (lifetime)**: 5 minutes by default, 1 hour optional. Every reuse within
+  the TTL extends the lifetime for free.
+- **Per-model minimum cacheable tokens**: a prefix shorter than this is not
+  cached (processed normally, no error). For example, Fable 5 = 512,
+  Opus 4.8 · Sonnet 5 = 1,024, Opus 4.7 = 2,048, Haiku 4.5 = 4,096 tokens.
 
-### Cost comparison
+## Claude Code Users — Caching Is Automatic
 
-Based on Claude Opus 4.8:
+Claude Code **manages prompt caching automatically**. There is no need — and no
+way — to set `cache_control` yourself. Per the official documentation, the
+behavior is as follows:
 
-| Scenario | No caching | With 1-hour cache | Savings |
-|---------|----------|-----------------|-------|
-| 1 request, 10K tokens | $0.05 | $0.0625 | -25% (premium) |
-| 2 requests, 10K + 10K | $0.10 | $0.0625 + $0.005 = $0.0675 | 32% saved |
-| 3 requests, 10K + 10K + 10K | $0.15 | $0.0625 + 2×$0.005 = $0.0725 | 52% saved |
-| 5 requests, 10K + 10K + 10K + 10K + 10K | $0.25 | $0.0625 + 4×$0.005 = $0.0825 | 67% saved |
+- **Automatic TTL selection**: on subscription plans (Pro/Max/Team/Enterprise),
+  Claude Code automatically requests a 1-hour TTL (included in the plan fee, so
+  no extra cost). Via an API key or a cloud provider, the default is 5 minutes,
+  and you can opt into 1 hour with `ENABLE_PROMPT_CACHING_1H=1`.
+- **Environment-variable control**: `FORCE_PROMPT_CACHING_5M=1` (force
+  5 minutes), `DISABLE_PROMPT_CACHING=1` (fully disable — not recommended
+  outside debugging), and per-model variants such as
+  `DISABLE_PROMPT_CACHING_OPUS`.
+- **Request-layout optimization**: Claude Code arranges requests so that
+  rarely-changing content (system prompt → project context → conversation)
+  comes first, raising the prefix hit rate.
 
-The break-even point is **2 requests**: the first request's 2x write premium
-is recovered by the 90%-discounted cache reads of subsequent requests inside
-the 1-hour TTL window.
+### Actions That Invalidate the Cache (one turn slower and costlier)
 
-## How cache control works
+- Switching models (`/model`) · changing effort (`/effort`) — the cache is
+  partitioned per model and per effort
+- Connecting/disconnecting an MCP server (when tool definitions are loaded into
+  the prefix)
+- Adding/removing a full tool-deny rule
+- `/compact` (conversation history is replaced by a summary) · the first turn
+  after a Claude Code upgrade
 
-When cache control is enabled on a prompt prefix, the cache lifecycle follows
-this pattern:
+### Actions That Preserve the Cache
 
-1. **First request (cache write)**: the prefix is written to the cache after the API response completes. Cost: `prefix_tokens × 2.0 (1-hour cache) or 1.25 (5-minute cache)`.
-2. **Subsequent requests (cache read)**: if the prefix is identical and within TTL, it is retrieved from the cache. Cost: `prefix_tokens × 0.1`.
-3. **Automatic backtracking**: the system checks the last 20 messages for a cached prefix match. If found, the read cost applies.
+- Editing repository files (added to the conversation only when read) · invoking
+  a skill/command · switching permission mode · `/rewind` (returns to an
+  already-cached prefix) · editing CLAUDE.md mid-session (the cache is preserved,
+  but **the change is not applied either** — it takes effect on the next
+  `/clear` or restart)
 
-### Cache placement best practice
+### Checking the Hit Rate
 
-Place the cache-control breakpoint at **the last stable block before
-per-request data**:
+- The ratio of `cache_creation_input_tokens` (write) to
+  `cache_read_input_tokens` (read) in the response is the metric — the higher
+  the read share, the better it is working.
+- The cache_hit segment of the MoAI statusline lets you check in real time
+  during a session.
+- If writes stay high every turn, that is a sign that one of the "invalidating
+  actions" above is changing the prefix.
+
+## Calling the API Directly (reference)
+
+The usage example below applies **only to developers calling the Anthropic API
+directly**. It does not apply to Claude Code users.
 
 ```python
-# Correct: stable system prompt (cacheable)
+# Direct API call: place the cache breakpoint on a stable system prompt
 response = client.messages.create(
     model="claude-opus-4-8",
     max_tokens=1024,
-    system=[
-        {
-            "type": "text",
-            "text": "You are a code reviewer...",
-            "cache_control": {"type": "ephemeral", "ttl": "1h"}
-        }
-    ],
-    # Mutable per-request data below (not cached)
+    system=[{
+        "type": "text",
+        "text": "Stable system prompt...",
+        "cache_control": {"type": "ephemeral", "ttl": "1h"}
+    }],
     messages=[{"role": "user", "content": user_query}]
 )
-
-# Wrong: cache breakpoint on mutable data
-# Current time: {timestamp}
-cache_control={"type": "ephemeral"}
-# ^ The timestamp changes every request, so it never matches
 ```
 
-## Configuration: session_ttl
+The principle is a single one: **place the breakpoint on the last stable block
+before the data that changes on every request** (the query, a timestamp). The
+break-even point is 2 requests — the first request's write premium is recovered
+by the 0.1x read of the second request within the TTL.
 
-MoAI caching is configured in `.moai/config/sections/cache.yaml`. The template
-ships with caching **enabled**, and there are two configuration keys, `enabled`
-and `session_ttl`:
+## The Scope of MoAI cache.yaml
 
-```yaml
-cacheStrategy:
-  enabled: true      # template default: enabled (set false to disable)
-  session_ttl: "1h"  # session-level cache TTL — allowed: 1h · 5m · off
-```
+`.moai/config/sections/cache.yaml` (`enabled`, `session_ttl`) applies **only to
+the `cache_control` injection when MoAI calls the Anthropic API directly through
+its own SDK-wrapper path**. **It is unrelated to caching in Claude Code
+sessions** — Claude Code's caching is managed automatically by the runtime as
+described above, and MoAI cannot intervene in it.
 
-> `spec_ttl` and `min_cacheable_tokens` are not keys in the template `cache.yaml` —
-> they are internal Go runtime defaults. Only the two keys above (`enabled`,
-> `session_ttl`) exist in the user config file.
-
-> **GLM backend**: z.ai (GLM) uses content-similarity-based **implicit caching**, so
-> MoAI does not inject the `cache_control` header. The settings above apply only to
-> the Anthropic API backend.
-
-### Opting out via session_ttl: "off"
-
-To disable session-level caching for a given session (e.g., when one-shot requests
-dominate):
-
-```yaml
-cacheStrategy:
-  enabled: true
-  session_ttl: "off"  # disable session-level cache (allowed: 1h · 5m · off)
-```
-
-With `session_ttl: "off"`:
-- Session-level cache writes are skipped
-- Useful for interrupt-driven workflows where single requests are the norm
-
-## Monitoring cache performance
-
-Check the real-time hit rate via the MoAI statusline's cache hit rate
-(cache_hit) segment to decide whether to enable caching. This segment shows the
-ratio of cache reads to writes as the session progresses, so you can see the
-effect of the context diet and your caching configuration right in the session.
-
-### Interpreting the metrics
-
-- **Hit rate > 60%**: the cache is effective. Keep it enabled.
-- **Hit rate 30-60%**: moderate benefit. Consider enabling if your sessions are multi-turn heavy.
-- **Single-turn ratio > 30%**: limited caching benefit. Verify the 2+ request assumption still holds.
-- **Minimum-token threshold**: small prompts can have caching overhead exceed the savings. The MoAI runtime does not cache prompts below its internal default minimum-token threshold (`min_cacheable_tokens`).
-
-## When cache misses happen
-
-A cache hit requires:
-
-- ✓ An identical prompt prefix up to the breakpoint
-- ✓ Within the TTL window (1 hour or 5 minutes)
-- ✓ The same workspace/organization context
-- ✓ No changes to any block before the breakpoint (tools, system, top-level parameters)
-
-Cache misses (common causes):
-
-- ✗ Tool definition change (different tool parameters)
-- ✗ Web search toggled on/off
-- ✗ Image added to or removed from the prefix
-- ✗ Extended thinking settings changed
-- ✗ Content before the breakpoint differs (including whitespace)
-
-## Minimum token thresholds
-
-A cache write is issued only when the prefix exceeds the per-model minimum:
-
-- **Claude Opus 4.7 / 4.8, Haiku 4.5**: 2,048 tokens minimum
-- **Sonnet models and other Haiku versions**: 1,024 tokens minimum
-
-Requests below the minimum are processed without caching (no error —
-automatic fallback).
-
-## Pre-warming (advanced)
-
-To eliminate cache-miss latency on the first user interaction:
-
-```python
-# Pre-warm the cache (before the user arrives)
-client.messages.create(
-    model="claude-opus-4-8",
-    max_tokens=0,  # no output token billing
-    system="Long system prompt (5000 tokens)...",
-    cache_control={"type": "ephemeral", "ttl": "1h"},
-    messages=[{"role": "user", "content": "warmup"}]
-)
-# Cost: system_tokens × $2.0/MTok (cache write)
-
-# Later: the user's request hits the warmed cache
-client.messages.create(
-    model="claude-opus-4-8",
-    max_tokens=1024,
-    system="Long system prompt (identical)...",
-    cache_control={"type": "ephemeral", "ttl": "1h"},
-    messages=[{"role": "user", "content": user_input}]
-)
-# Cost: system_tokens × $0.1/MTok (cache read from the warm-up)
-```
+> **GLM backend**: z.ai (GLM) uses content-similarity-based **implicit
+> caching**, so MoAI does not inject `cache_control` on the GLM path.
 
 ## Summary
 
-- **Enable caching**: sessions with 2+ consecutive API requests within an hour
-- **Disable caching**: one-shot queries or interrupt-driven workflows
-- **Monitor**: measure the real hit rate with the statusline cache_hit segment
-- **Optimize**: place cache breakpoints on stable content (system prompts, instructions), never on mutable data (queries, timestamps)
+- **Claude Code users**: nothing to configure. Keep the hit rate high by doing
+  model/effort switches and `/compact` only at natural boundaries between tasks.
+- **Direct API callers**: breakpoint on a stable block; 1-hour TTL only when
+  there are 2 or more requests.
+- **Monitoring**: the statusline cache_hit segment + the
+  `cache_read/creation` token ratio.
 
-For more details, see the [Anthropic prompt caching documentation](https://platform.claude.com/docs/en/docs/build-with-claude/prompt-caching).
+**Sources (official documentation):**
+
+- [How Claude Code uses prompt caching](https://code.claude.com/docs/en/prompt-caching) — automatic management, automatic TTL selection, invalidating/preserving actions, environment variables
+- [Prompt caching (API)](https://platform.claude.com/docs/en/build-with-claude/prompt-caching) — cache_control, price multipliers, per-model minimum tokens
+- [Manage costs effectively](https://code.claude.com/docs/en/costs) — Claude Code's automatic cost optimization

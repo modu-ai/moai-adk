@@ -33,5 +33,6 @@ We recommend reading in this order: first understand the context window's limits
 | [Memory and Auto-Memory](/claude-code/context-memory/memory) | The CLAUDE.md hierarchy and auto-memory |
 | [Prompt Caching](/claude-code/context-memory/prompt-caching) | Cutting cost and latency with caching |
 | [Checkpointing](/claude-code/context-memory/checkpointing) | Experimenting safely with rewind |
+| [Session Management](/claude-code/context-memory/sessions) | Resume, rename, clear — and MoAI session handoff |
 
 After finishing this group, move on to the next group, [Extensibility](/claude-code/extensibility) — skills, hooks, MCP, and plugins, the materials for building a harness.

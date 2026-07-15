@@ -13,6 +13,10 @@ This page covers the context window — the space holding everything Claude Code
 **One-line summary**: The context window is Claude's **workbench** and the ledger where token costs accrue. Clear space with auto-compaction and `/clear` before the desk fills up, and long tasks flow smoothly to the end in both quality and cost.
 {{< /callout >}}
 
+{{< callout type="info" title="Understand it with an analogy" >}}
+Picture the context window as the **size of your desk**. You spread out the papers you are working on (files, conversation), but the desk is not infinite. When it fills up, **summarizing older papers and filing them in a drawer** is compaction, and clearing the whole desk to start fresh is `/clear`. Even a large desk gets crowded if you pile on clutter, so the key is not a bigger desk but **putting less on it**.
+{{< /callout >}}
+
 ## The Context Window and Tokens
 
 The context window is the total amount of information Claude can "see" at once in a session. It includes not just the prompts you type, but also content that never appears in the terminal.

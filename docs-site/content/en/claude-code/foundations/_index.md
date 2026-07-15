@@ -35,5 +35,6 @@ First get the big picture with How It Works, then scan the feature map to see wh
 | [Slash Commands](/claude-code/foundations/commands) | Built-in and custom commands, and the /moai relationship |
 | [Tools Reference](/claude-code/foundations/tools-reference) | Built-in tools and permissions |
 | [.claude Directory](/claude-code/foundations/claude-directory) | Settings directory structure and scopes |
+| [Permissions and Plan Mode](/claude-code/foundations/permissions) | Allow/ask/deny rules, permission modes, plan mode |
 
 Once you have the fundamentals, move on to the next group, [Context and Memory](/claude-code/context-memory), to learn how to handle token costs — the starting point of MoAI-ADK tokenomics.

@@ -14,6 +14,10 @@ These four are exactly the materials for building an **Agentic Harness**. In har
 **One-line summary**: Once you understand the four extension points — skills, hooks, MCP, and plugins — you can turn Claude Code into a harness unique to your project.
 {{< /callout >}}
 
+{{< callout type="info" title="Understand it with an analogy" >}}
+Keep these four straight with one picture. A **hook** is an **automatic-door sensor** — a defined action fires by itself when an event occurs. A **skill** is a **manual you pull out only when needed** — normally just the cover (a one-line description) is visible, and the body opens when the job arrives. **MCP** is the **standard power socket** for plugging in external tools, and a **plugin** is the **package** that ships all three in one box.
+{{< /callout >}}
+
 ## Learning Flow
 
 ```mermaid
