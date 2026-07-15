@@ -41,23 +41,53 @@ Go로 작성된 단일 바이너리. macOS, Linux, Windows에서 의존성 없�
 
 ---
 
-## 핵심 개념
+## 에이전틱 코딩의 청구서
 
-### 토크노믹스 (Token Economics)
+에이전틱 코딩은 시작은 빠르지만 유지하는 데는 비쌉니다. 신선함이 걷히고 나면 세 가지 비용이 드러납니다:
 
-달러당 품질을 극대화하는 지능적 자원 배분. No-Haiku 3-티어 모델 정책 (max / medium / low), 플랜 인지 티어 프로파일 (API 종량제 vs. 구독 플랜), Claude × GLM 하이브리드 (CG 모드, 구현 집중 작업에서 60-70% 비용 절감), 그리고 예산 초과 전에 안전하게 중단하는 Token Circuit Breaker.
+- **세션이 길어질수록 토큰 지출이 복리로 늘어납니다.** 토큰당 단가는 계속 떨어지지만, 코딩 에이전트의 총 청구액은 오히려 올라갑니다 — 매 턴마다 누적된 컨텍스트를 다시 읽고, 장시간 작업은 그 기본 비용을 수십 턴에 걸쳐 곱합니다. 토큰은 싸지는데, 청구서는 커집니다.
+- **AI가 생성한 코드가 검증 없이 출하됩니다.** 모델은 변경이 올바르다고 주장하지만, 그것을 막아서는 게이트가 없습니다. 테스트, 린트, 커버리지, 보안 검사는 선택적 뒷일이 되고, 그래서 품질은 모든 병합의 속성이 아니라 하나의 주장에 그칩니다.
+- **긴 세션은 컨텍스트 한계에서 죽고 작업을 잃습니다.** 컨텍스트 윈도우가 차면 세션은 작업 도중에 멈춥니다. 핸드오프가 없으면 진행 중이던 작업과 그 뒤의 추론이 사라지고, 다음 세션은 처음부터 다시 시작합니다.
 
-### 에이전틱 루프 엔지니어링 (재귀적 자가 학습)
-
-루프가 관찰을 축적하고, 하네스가 학습하고, 지침이 진화합니다. Routing Observation Ledger가 라우팅 결정을 기록하고, Curator가 이를 개선 제안으로 전환하며, 4-티어 학습 사다리 (관찰 → 휴리스틱 → 규칙 → 자동 업데이트)가 하네스를 업그레이드합니다 — 항상 사용자 승인 게이트 뒤에서.
-
-### 에이전틱 하네스
-
-코드를 직접 작성하는 대신, 에이전트가 잘 일하는 환경을 설계합니다: 11-에이전트 카탈로그, SPEC 기반 3-페이즈 워크플로우 (plan → run → sync), TRUST 5 품질 게이트, 그리고 자연어 요청에서 프로젝트 전용 하네스를 생성하는 Harness v4 Builder.
+MoAI-ADK는 이 셋 모두를 어쩔 수 없는 현실이 아니라 메커니즘으로 풀 수 있는 엔지니어링 문제로 다룹니다.
 
 ---
 
-## 빠른 시작
+## MoAI-ADK는 이렇게 해결합니다
+
+각 고통은 측정 가능한 증거를 갖춘 구체적 메커니즘에 대응됩니다.
+
+| 고통 | 메커니즘 | 증거 |
+|------|-----------|----------|
+| 구현 토큰 비용 | **CG 모드** — Claude 리더가 계획하고 감사하며, GLM 워커가 대량 구현 수행 (`moai cg`) | 구현 집중 작업에서 **60-70% 비용 절감** |
+| 세션 내 폭주하는 지출 | **Token Circuit Breaker + 예산 추적** — 스테이터스라인 비용/CW% 게이지, 예산 초과 전 우아한 중단 | 터진 뒤가 아니라 터지기 전에 멈춤; 비용이 매 턴 보임 |
+| 검증되지 않은 품질 | **SPEC 3-페이즈 라이프사이클 + TRUST 5 게이트 + 독립 감사관** (plan-auditor, sync-auditor) | 모든 병합이 테스트 / 린트 / 커버리지 게이트를 통과; 작성자가 자기 작업을 채점하지 않음 |
+| 컨텍스트 한계에서의 세션 손실 | **세션 핸드오프 자동 재개** — 컨텍스트 윈도우 임계점에서 붙여넣기 즉시 쓸 수 있는 재개 메시지 | `/clear` 후 한 번의 붙여넣기로 진행 상태, 적용된 교훈, 전제 조건 복원 |
+| 작업에 맞지 않는 모델 | **No-Haiku 3-티어 모델 정책** — 페이즈와 SPEC 크기별 선언적 모델 + effort | 중요한 곳엔 Opus급 판단, 안전한 곳에만 저렴한 모델 |
+
+이 숫자들은 이 도구가 강제하는 바로 그 규율로 얻어진 것입니다: v2.14.0에서 v3.0.0-rc12까지 (**80일**), **2,373개 커밋**이 **480개 이상의 SPEC 문서**, **27개**의 템플릿 관리 스킬, **16개** 지원 언어에 걸친 **36개**의 최상위 CLI 커맨드를 만들었습니다 — 모든 변경은 아래의 plan → run → sync 파이프라인을 거쳤습니다.
+
+---
+
+## 순정 Claude Code vs Claude Code + MoAI-ADK
+
+MoAI-ADK는 Claude Code **위에서** 동작하는 하네스입니다 — Claude Code를 대체하지 않습니다. 그것이 더하는 것은 Claude Code가 당신에게 맡겨둔 부분을 감싸는 구조입니다.
+
+| 항목 | 순정 Claude Code | Claude Code + MoAI-ADK |
+|-----------|-------------------|------------------------|
+| 모델 라우팅 | 수동 — 매번 직접 모델 선택 | 페이즈와 SPEC 크기별 선언적 No-Haiku 3-티어 정책 (max / medium / low) |
+| 품질 게이트 | 강제되는 것 없음 | 모든 변경에 TRUST 5 (Tested / Readable / Unified / Secured / Trackable) |
+| 스펙 / 요구사항 | 즉흥적 프롬프트 | GEARS 형식 요구사항 + 인수 기준을 갖춘 SPEC 3-페이즈 라이프사이클 (plan → run → sync) |
+| 비용 제어 | 없음 | 예산 추적 + Token Circuit Breaker + CG 하이브리드 (60-70% 절감) |
+| 세션 연속성 | `/clear` 후 수동 재프롬프트 | 자동 핸드오프 — 진행 상태와 전제 조건을 담아 한 번 붙여넣는 재개 |
+| 학습 | 세션 간 정적 | 자가 진화 하네스 (관찰 → 휴리스틱 → 규칙 → 자동 업데이트), 항상 승인 게이트 뒤에서 |
+| 멀티 에이전트 | 수동, 프롬프트별 | Analyze-First 라우팅과 분리된 계획/감사 역할을 갖춘 11-에이전트 카탈로그 |
+
+---
+
+## 5분 시작
+
+`moai init`이 끝나는 순간, 동작하는 하네스가 갖춰집니다: Claude Code 터미널의 스테이터스라인 비용/컨텍스트 게이지, 워크플로우에 연결된 TRUST 5 품질 게이트, 그리고 채팅 안에서 바로 쓸 수 있는 전체 `/moai` 커맨드 세트.
 
 ### 1. 설치
 
@@ -150,9 +180,13 @@ fsutil 8dot3name set 1
 
 ---
 
-## 재귀적 자가 학습
+## 작동 원리
 
-MoAI-ADK의 핵심 혁신은 에이전트가 자신의 운영으로부터 학습하는 재귀 시스템입니다. 두 동작으로 이루어집니다: 관찰을 축적하는 루프, 그리고 거기서 진화하는 하네스.
+MoAI-ADK는 세 가지 아이디어 위에 서 있습니다: **토크노믹스** (Tokenomics) (페이즈별로 알맞은 모델과 추론 깊이를 써서 달러당 품질을 극대화), **에이전틱 루프 엔지니어링** (Agentic Loop Engineering) (재귀적 자가 학습 — 루프가 관찰을 축적하고 하네스가 거기서 진화), 그리고 **에이전틱 하네스** (Agentic Harness) (코드를 직접 작성하는 대신 에이전트가 일하는 환경을 설계). 이 섹션의 나머지는 그 아이디어들이 어떻게 만들어지는지를 다룹니다.
+
+### 재귀적 자가 학습
+
+에이전트는 두 가지 동작을 통해 자신의 운영으로부터 학습합니다: 관찰을 축적하는 루프, 그리고 거기서 진화하는 하네스.
 
 ```mermaid
 flowchart TD
@@ -218,12 +252,6 @@ moai harness disable     # turn learning off
 컨텍스트 윈도우 임계점 (1M-컨텍스트 모델 50%, 200K 모델 90%)에서 MoAI는 진행 상태, 적용된 교훈, 검증 가능한 전제 조건을 담은 재개 메시지를 발행합니다. 붙여넣기 즉시 쓸 수 있어 `/clear` 후 한 번만 붙여넣으면 다음 세션이 이어집니다.
 
 > → 더 읽기: [자가 진화 하네스](https://adk.mo.ai.kr/ko/advanced/self-evolving) · [결정 메모리](https://adk.mo.ai.kr/ko/advanced/decision-memory)
-
----
-
-## 에이전틱 하네스
-
-코드를 직접 작성하는 대신, 에이전트가 일하는 환경을 만듭니다.
 
 ### 11-에이전트 카탈로그
 
@@ -355,7 +383,7 @@ MoAI-ADK는 사용자의 AskUserQuestion 결정을 포착해 향후 추천을 �
 - **감쇠 정책** — 멱법칙 가중치, `(age+1)^(-0.5)`; 선호를 사용하면 새로고침됨
 - **제어** — `moai preference list | decay-scan | toggle`; 민감한 보안 도메인은 공개와 함께 중립 추천 제공
 
-> → 더 읽기: [Harness v4 Builder](https://adk.mo.ai.kr/ko/advanced/harness-v4-builder) · [카탈로그 시스템](https://adk.mo.ai.kr/ko/advanced/catalog-system)
+→ 더 읽기: [Harness v4 Builder](https://adk.mo.ai.kr/ko/advanced/harness-v4-builder) · [카탈로그 시스템](https://adk.mo.ai.kr/ko/advanced/catalog-system)
 
 ---
 
@@ -475,27 +503,6 @@ go · python · typescript · javascript · rust · java · kotlin · csharp · 
 
 ---
 
-## 문서 가이드
-
-[adk.mo.ai.kr](https://adk.mo.ai.kr) 온라인 문서는 12개 섹션으로 구성되어 있습니다. 각 섹션의 역할과 진입점:
-
-| 섹션 | 설명 |
-|------|------|
-| [시작하기](https://adk.mo.ai.kr/ko/getting-started) | 소개, 설치, Windows 가이드, init 마법사, 퀵스타트, CLI 개요, FAQ |
-| [핵심 개념](https://adk.mo.ai.kr/ko/core-concepts) | MoAI-ADK 정체성, 컨스티튜션, 하네스 엔지니어링, SPEC 기반 개발, DDD, TRUST 5 |
-| [워크플로우 커맨드](https://adk.mo.ai.kr/ko/workflow-commands) | `plan` · `run` · `sync` · `project` · `harness` · `design` — SPEC 파이프라인의 주축 |
-| [유틸리티 커맨드](https://adk.mo.ai.kr/ko/utility-commands) | `fix` · `loop` · `gate` · `review` · `clean` · `codemaps` · `e2e` · `feedback` · `goal` · `moai` |
-| [CLI 레퍼런스](https://adk.mo.ai.kr/ko/cli-reference) | 터미널 `moai` 바이너리의 모든 커맨드 — `status`, `profile`, `doctor`, `update`, `web`, `goal`, `handoff`, `harness`, `init`, `worktree` 등 |
-| [Claude Code 가이드](https://adk.mo.ai.kr/ko/claude-code) | Claude Code 통합 — 기초, 컨텍스트·메모리, 에이전틱, 확장성 (스킬·훅·플러그인) |
-| [Multi-LLM](https://adk.mo.ai.kr/ko/multi-llm) | CG 모드 (Claude 리더 + GLM 워커)와 모델 정책 |
-| [비용 최적화](https://adk.mo.ai.kr/ko/cost-optimization) | 프롬프트 캐싱 전략과 토큰 비용 절감 |
-| [가이드](https://adk.mo.ai.kr/ko/guides) | CI 자율화, multi-LLM CI 등 실전 운영 레시피 |
-| [Git Worktree](https://adk.mo.ai.kr/ko/worktree) | 병렬 SPEC 개발을 위한 worktree 가이드, 예제, FAQ |
-| [Advanced](https://adk.mo.ai.kr/ko/advanced) | 토크노믹스 개요, 토큰 예산, 스테이터스라인, settings.json, 훅, @MX 태그, 스킬 가이드, Harness v4 Builder, 자가 진화, 결정 메모리, 카탈로그 시스템, 보안 노트, CLAUDE.md/에이전트 가이드 등 심화 주제 |
-| [기여하기](https://adk.mo.ai.kr/ko/contributing) | 오픈소스 기여 가이드 |
-
----
-
 ## FAQ
 
 ### Q: 왜 모든 함수에 @MX 태그가 없나요?
@@ -532,6 +539,25 @@ go · python · typescript · javascript · rust · java · kotlin · csharp · 
 ## 라이선스
 
 [Apache License 2.0](./LICENSE) — 자세한 내용은 LICENSE 파일을 참조하세요.
+
+## 문서 가이드
+
+[adk.mo.ai.kr](https://adk.mo.ai.kr) 온라인 문서는 12개 섹션으로 구성되어 있습니다. 각 섹션의 역할과 진입점:
+
+| 섹션 | 설명 |
+|------|------|
+| [시작하기](https://adk.mo.ai.kr/ko/getting-started) | 소개, 설치, Windows 가이드, init 마법사, 퀵스타트, CLI 개요, FAQ |
+| [핵심 개념](https://adk.mo.ai.kr/ko/core-concepts) | MoAI-ADK 정체성, 컨스티튜션, 하네스 엔지니어링, SPEC 기반 개발, DDD, TRUST 5 |
+| [워크플로우 커맨드](https://adk.mo.ai.kr/ko/workflow-commands) | `plan` · `run` · `sync` · `project` · `harness` · `design` — SPEC 파이프라인의 주축 |
+| [유틸리티 커맨드](https://adk.mo.ai.kr/ko/utility-commands) | `fix` · `loop` · `gate` · `review` · `clean` · `codemaps` · `e2e` · `feedback` · `goal` · `moai` |
+| [CLI 레퍼런스](https://adk.mo.ai.kr/ko/cli-reference) | 터미널 `moai` 바이너리의 모든 커맨드 — `status`, `profile`, `doctor`, `update`, `web`, `goal`, `handoff`, `harness`, `init`, `worktree` 등 |
+| [Claude Code 가이드](https://adk.mo.ai.kr/ko/claude-code) | Claude Code 통합 — 기초, 컨텍스트·메모리, 에이전틱, 확장성 (스킬·훅·플러그인) |
+| [Multi-LLM](https://adk.mo.ai.kr/ko/multi-llm) | CG 모드 (Claude 리더 + GLM 워커)와 모델 정책 |
+| [비용 최적화](https://adk.mo.ai.kr/ko/cost-optimization) | 프롬프트 캐싱 전략과 토큰 비용 절감 |
+| [가이드](https://adk.mo.ai.kr/ko/guides) | CI 자율화, multi-LLM CI 등 실전 운영 레시피 |
+| [Git Worktree](https://adk.mo.ai.kr/ko/worktree) | 병렬 SPEC 개발을 위한 worktree 가이드, 예제, FAQ |
+| [Advanced](https://adk.mo.ai.kr/ko/advanced) | 토크노믹스 개요, 토큰 예산, 스테이터스라인, settings.json, 훅, @MX 태그, 스킬 가이드, Harness v4 Builder, 자가 진화, 결정 메모리, 카탈로그 시스템, 보안 노트, CLAUDE.md/에이전트 가이드 등 심화 주제 |
+| [기여하기](https://adk.mo.ai.kr/ko/contributing) | 오픈소스 기여 가이드 |
 
 ## 링크
 

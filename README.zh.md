@@ -41,23 +41,53 @@ MoAI-ADK (Agentic Development Kit) 是一套以 **Tokenomics** (Token 经济学)
 
 ---
 
-## 核心概念
+## Agentic 编程的账单
 
-### Tokenomics (Token 经济学)
+Agentic 编程起步很快，维持却很昂贵。当新鲜感褪去后，三种成本浮现出来：
 
-最大化每美元质量的智能资源分配。No-Haiku 三层模型策略 (max / medium / low)、感知计费方案的层级配置 (API 计量计费 vs. 订阅方案)、Claude × GLM 混合模式 (CG 模式，在实现密集型工作上降低 60-70% 成本)，以及在预算超支前优雅中止的 Token 断路器。
+- **Token 开销随会话增长而累积。** 单 Token 价格持续下降，但编码代理的总账单却依然上升——每多一个回合都要重新读取累积的上下文，长时间运行的工作把这份基础成本乘以数十个回合。Token 更便宜，账单却更高。
+- **AI 生成的代码未经验证就交付。** 模型断言变更是正确的，却没有任何东西为它把关。测试、lint、覆盖率和安全检查沦为可有可无的事后补充，于是质量只是一种主张，而非每次合并都具备的属性。
+- **长会话在上下文上限处夭折并丢失工作。** 当上下文窗口填满时，会话在任务中途停滞。若没有交接，进行中的工作及其背后的推理都会消失，下一个会话只能从头开始。
 
-### 递归自我学习
-
-循环积累观察；Harness 学习；指令进化。Routing Observation Ledger 记录路由决策，Curator 将其转化为改进提案，四层学习阶梯 (观察 → 启发式 → 规则 → 自动更新) 升级 Harness——始终置于用户批准门之后。
-
-### Agentic Harness
-
-与其直接编写代码，不如设计一个让代理良好工作的环境：11 个代理的目录、基于 SPEC 的三阶段工作流 (plan → run → sync)、TRUST 5 质量门，以及能从自然语言请求生成项目专属 Harness 的 Harness v4 Builder。
+MoAI-ADK 把这三者都视为可用机制解决的工程问题，而非无法改变的现实。
 
 ---
 
-## 快速开始
+## MoAI-ADK 如何解决
+
+每个痛点都对应一个具体机制，并配有可衡量的证据。
+
+| 痛点 | 机制 | 证据 |
+|------|-----------|----------|
+| 实现阶段的 Token 成本 | **CG 模式** —— Claude leader 负责规划与审计；GLM worker 承担大量实现工作 (`moai cg`) | 在实现密集型工作上 **降低 60-70% 成本** |
+| 单个会话内的失控开销 | **Token 断路器 + 预算跟踪** —— 状态栏成本/CW% 计量表，在预算超支前优雅中止 | 在爆表之前而非之后停下；成本每回合可见 |
+| 未经验证的质量 | **SPEC 三阶段生命周期 + TRUST 5 质量门 + 独立审计员** (plan-auditor、sync-auditor) | 每次合并都通过测试 / lint / 覆盖率门；作者绝不为自己的工作打分 |
+| 上下文上限处的会话丢失 | **会话交接自动恢复** —— 在上下文窗口阈值处提供可直接粘贴的恢复消息 | `/clear` 之后一次粘贴即可恢复进度、已应用的教训与前置条件 |
+| 任务用错模型 | **No-Haiku 三层模型策略** —— 按阶段与 SPEC 规模声明式配置模型 + effort | 需要之处交给 Opus 级判断，仅在安全之处使用廉价模型 |
+
+这些数字由该工具所强制的同一套纪律赢得：从 v2.14.0 到 v3.0.0-rc12 (**80 天**)，**2,373 次提交** 构建了 **480+ 个 SPEC 文档**、**27** 个模板管理的技能，以及横跨 **16** 种支持语言的 **36** 个顶级 CLI 命令——每一次变更都经由下方的 plan → run → sync 流水线驱动。
+
+---
+
+## 单独使用 Claude Code vs Claude Code + MoAI-ADK
+
+MoAI-ADK 是一套运行在 Claude Code **之上** 的 Harness——它并不取代 Claude Code。它所增加的，是围绕 Claude Code 交给你自行处理的那些部分构建的结构。
+
+| 维度 | 单独使用 Claude Code | Claude Code + MoAI-ADK |
+|-----------|-------------------|------------------------|
+| 模型路由 | 手动——每次都要自己选模型 | 按阶段与 SPEC 规模声明式配置的 No-Haiku 三层策略 (max / medium / low) |
+| 质量门 | 不强制 | 每次变更都通过 TRUST 5 (Tested / Readable / Unified / Secured / Trackable) |
+| Spec / 需求 | 临时性提示 | SPEC 三阶段生命周期 (plan → run → sync)，配 GEARS 格式需求 + 验收标准 |
+| 成本控制 | 无 | 预算跟踪 + Token 断路器 + CG 混合模式 (节省 60-70%) |
+| 会话连续性 | `/clear` 后手动重新提示 | 自动交接——一次粘贴即可恢复进度与前置条件 |
+| 学习 | 跨会话保持静态 | 自我进化的 Harness (观察 → 启发式 → 规则 → 自动更新)，始终置于批准门之后 |
+| 多代理 | 手动、逐提示 | 11 代理目录，配 Analyze-First 路由与分离的规划/审计角色 |
+
+---
+
+## 5 分钟上手
+
+`moai init` 完成的那一刻，你就拥有了一个可用的 Harness：Claude Code 终端里的状态栏成本/上下文计量表、接入工作流的 TRUST 5 质量门，以及在聊天中随时可用的完整 `/moai` 命令集。
 
 ### 1. 安装
 
@@ -150,9 +180,13 @@ fsutil 8dot3name set 1
 
 ---
 
-## 递归自我学习
+## 工作原理
 
-MoAI-ADK 的核心创新是一个代理从自身运行中学习的递归系统。它由两个动作组成：积累观察的循环，与从中进化的 Harness。
+MoAI-ADK 建立在三个理念之上：**Tokenomics** (每个阶段使用恰当的模型与推理深度，从而最大化每美元的质量)、**Agentic Loop Engineering** (递归自我学习——循环积累观察，Harness 从中进化)，以及 **Agentic Harness** (你设计代理工作的环境，而不是直接编写代码)。本节其余部分讲述这些理念是如何构建的。
+
+### 递归自我学习
+
+代理通过两个动作从自身运行中学习：积累观察的循环，以及从中进化的 Harness。
 
 ```mermaid
 flowchart TD
@@ -218,12 +252,6 @@ moai harness disable     # turn learning off
 在上下文窗口阈值处 (1M 上下文模型为 50%，200K 模型为 90%)，MoAI 发出一条可直接粘贴的恢复消息——包含进度状态、已应用的教训和可验证的前置条件——`/clear` 之后只需粘贴一次，下一个会话即可继续。
 
 → 阅读更多：[自我进化的 Harness](https://adk.mo.ai.kr/zh/advanced/self-evolving) · [决策记忆](https://adk.mo.ai.kr/zh/advanced/decision-memory)
-
----
-
-## Agentic Harness
-
-与其直接编写代码，不如构建代理工作的环境。
 
 ### 11 代理目录
 
@@ -476,27 +504,6 @@ go · python · typescript · javascript · rust · java · kotlin · csharp · 
 
 ---
 
-## 文档导航
-
-完整文档位于 [adk.mo.ai.kr](https://adk.mo.ai.kr)，按以下 12 个章节组织 (中文版路径)：
-
-| 章节 | 简介 |
-|------|------|
-| [入门指南](https://adk.mo.ai.kr/zh/getting-started) | 介绍、安装、Windows 指南、初始化向导、快速开始、CLI、FAQ |
-| [核心概念](https://adk.mo.ai.kr/zh/core-concepts) | MoAI-ADK 是什么、宪章、Harness 工程、SPEC 开发、DDD、TRUST 5 |
-| [工作流命令](https://adk.mo.ai.kr/zh/workflow-commands) | plan、run、sync、project、harness、design |
-| [实用命令](https://adk.mo.ai.kr/zh/utility-commands) | fix、loop、gate、review、clean、codemaps、e2e、feedback、goal、moai |
-| [CLI 参考](https://adk.mo.ai.kr/zh/cli-reference) | status、profile、doctor、inventory、update、web 等 36 个顶级命令的逐条参考 |
-| [Claude Code 指南](https://adk.mo.ai.kr/zh/claude-code) | 基础、上下文与记忆、Agentic 模式、可扩展性 |
-| [多 LLM](https://adk.mo.ai.kr/zh/multi-llm) | CG 模式、模型策略 |
-| [成本优化](https://adk.mo.ai.kr/zh/cost-optimization) | 提示缓存 (Prompt Caching) |
-| [指南](https://adk.mo.ai.kr/zh/guides) | CI 自治、多 LLM CI |
-| [Git Worktree](https://adk.mo.ai.kr/zh/worktree) | 指南、示例、FAQ |
-| [进阶](https://adk.mo.ai.kr/zh/advanced) | Tokenomics、Token 预算、状态栏、settings.json、钩子、技能、Harness v4、自我进化、决策记忆、安全笔记、目录系统等 |
-| [贡献](https://adk.mo.ai.kr/zh/contributing) | 参与贡献本项目 |
-
----
-
 ## FAQ
 
 ### Q: 为什么不是每个函数都有 @MX 标签？
@@ -533,6 +540,25 @@ go · python · typescript · javascript · rust · java · kotlin · csharp · 
 ## 许可证
 
 [Apache License 2.0](./LICENSE) —— 详见 LICENSE 文件。
+
+## 文档导航
+
+完整文档位于 [adk.mo.ai.kr](https://adk.mo.ai.kr)，按以下 12 个章节组织 (中文版路径)：
+
+| 章节 | 简介 |
+|------|------|
+| [入门指南](https://adk.mo.ai.kr/zh/getting-started) | 介绍、安装、Windows 指南、初始化向导、快速开始、CLI、FAQ |
+| [核心概念](https://adk.mo.ai.kr/zh/core-concepts) | MoAI-ADK 是什么、宪章、Harness 工程、SPEC 开发、DDD、TRUST 5 |
+| [工作流命令](https://adk.mo.ai.kr/zh/workflow-commands) | plan、run、sync、project、harness、design |
+| [实用命令](https://adk.mo.ai.kr/zh/utility-commands) | fix、loop、gate、review、clean、codemaps、e2e、feedback、goal、moai |
+| [CLI 参考](https://adk.mo.ai.kr/zh/cli-reference) | status、profile、doctor、inventory、update、web 等 36 个顶级命令的逐条参考 |
+| [Claude Code 指南](https://adk.mo.ai.kr/zh/claude-code) | 基础、上下文与记忆、Agentic 模式、可扩展性 |
+| [多 LLM](https://adk.mo.ai.kr/zh/multi-llm) | CG 模式、模型策略 |
+| [成本优化](https://adk.mo.ai.kr/zh/cost-optimization) | 提示缓存 (Prompt Caching) |
+| [指南](https://adk.mo.ai.kr/zh/guides) | CI 自治、多 LLM CI |
+| [Git Worktree](https://adk.mo.ai.kr/zh/worktree) | 指南、示例、FAQ |
+| [进阶](https://adk.mo.ai.kr/zh/advanced) | Tokenomics、Token 预算、状态栏、settings.json、钩子、技能、Harness v4、自我进化、决策记忆、安全笔记、目录系统等 |
+| [贡献](https://adk.mo.ai.kr/zh/contributing) | 参与贡献本项目 |
 
 ## 链接
 

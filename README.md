@@ -41,23 +41,53 @@ A single binary written in Go. Runs instantly on macOS, Linux, and Windows with 
 
 ---
 
-## Core Concepts
+## The Bill of Agentic Coding
 
-### Tokenomics (Token Economics)
+Agentic coding is fast to start and expensive to sustain. Three costs show up once the novelty wears off:
 
-Intelligent resource allocation that maximizes quality per dollar. A No-Haiku 3-tier model policy (max / medium / low), plan-aware tier profiles (API metered vs. subscription plans), a Claude × GLM hybrid (CG mode, 60-70% cost reduction on implementation-heavy work), and a Token Circuit Breaker that aborts gracefully before budget overruns.
+- **Token spend compounds as sessions grow.** Per-token prices keep falling, but a coding agent's total bill rises anyway — every extra turn re-reads the accumulated context, and long-running work multiplies that base cost across dozens of turns. Cheaper tokens, larger invoices.
+- **AI-generated code ships unverified.** The model asserts the change is correct; nothing gates it. Tests, lint, coverage, and security checks are optional afterthoughts, so quality is a claim rather than a property of every merge.
+- **Long sessions die at the context limit and lose work.** When the context window fills, the session stalls mid-task. Without a handoff, the work-in-progress and the reasoning behind it are gone, and the next session starts from scratch.
 
-### Recursive Self-Learning
-
-Loops accumulate observations; the harness learns; the instructions evolve. A Routing Observation Ledger records routing decisions, a Curator turns them into improvement proposals, and a 4-tier learning ladder (observation → heuristic → rule → auto-update) upgrades the harness — always behind a user approval gate.
-
-### The Agentic Harness
-
-Instead of writing code directly, you design the environment where agents work well: an 11-agent catalog, a SPEC-based 3-phase workflow (plan → run → sync), the TRUST 5 quality gate, and a Harness v4 Builder that generates project-specific harnesses from a natural-language request.
+MoAI-ADK treats all three as engineering problems with mechanisms, not as facts of life.
 
 ---
 
-## Quick Start
+## What MoAI-ADK Does About It
+
+Each pain maps to a concrete mechanism with measurable evidence.
+
+| Pain | Mechanism | Evidence |
+|------|-----------|----------|
+| Implementation token cost | **CG mode** — Claude leader plans and audits; GLM workers do bulk implementation (`moai cg`) | **60-70% cost cut** on implementation-heavy work |
+| Runaway spend within a session | **Token Circuit Breaker + budget tracking** — statusline cost/CW% gauge, graceful abort before budget overruns | Halts before blowout instead of after; cost visible every turn |
+| Unverified quality | **SPEC 3-phase lifecycle + TRUST 5 gates + independent auditors** (plan-auditor, sync-auditor) | Every merge passes tests / lint / coverage gates; the author never grades its own work |
+| Session loss at context limit | **Session-handoff auto-resume** — paste-ready resume at the context-window threshold | One paste after `/clear` restores progress, applied lessons, and preconditions |
+| Wrong model for the job | **No-Haiku 3-tier model policy** — declarative model + effort per phase and SPEC size | Opus-class judgment where it matters, cheap models only where safe |
+
+The numbers are earned by the same discipline the tool enforces: from v2.14.0 to v3.0.0-rc12 (**80 days**), **2,373 commits** built **480+ SPEC documents**, **27** template-managed skills, and **36** top-level CLI commands across **16** supported languages — every change driven through the plan → run → sync pipeline below.
+
+---
+
+## Claude Code Alone vs Claude Code + MoAI-ADK
+
+MoAI-ADK is a harness that runs **on top of** Claude Code — it does not replace it. What it adds is structure around the parts Claude Code leaves to you.
+
+| Dimension | Claude Code alone | Claude Code + MoAI-ADK |
+|-----------|-------------------|------------------------|
+| Model routing | Manual — you pick the model each time | Declarative No-Haiku 3-tier policy (max / medium / low) per phase and SPEC size |
+| Quality gate | None enforced | TRUST 5 (Tested / Readable / Unified / Secured / Trackable) on every change |
+| Spec / requirements | Ad-hoc prompts | SPEC 3-phase lifecycle (plan → run → sync) with GEARS-format requirements + acceptance criteria |
+| Cost control | None | Budget tracking + Token Circuit Breaker + CG hybrid (60-70% savings) |
+| Session continuity | Manual re-prompt after `/clear` | Auto handoff — paste-once resume with progress and preconditions |
+| Learning | Static across sessions | Self-evolving harness (observation → heuristic → rule → auto-update), always behind an approval gate |
+| Multi-agent | Manual, per-prompt | 11-agent catalog with Analyze-First routing and separated planning/auditing roles |
+
+---
+
+## 5-Minute Start
+
+The moment `moai init` finishes, you have a working harness: a statusline cost/context gauge in the Claude Code terminal, TRUST 5 quality gates wired into the workflow, and the full `/moai` command set ready inside chat.
 
 ### 1. Installation
 
@@ -150,9 +180,13 @@ A third option is creating a Windows account with an ASCII-only username.
 
 ---
 
-## Recursive Self-Learning
+## How It Works
 
-MoAI-ADK's core innovation is a recursive system in which agents learn from their own operation. It consists of two motions: loops that accumulate observations, and a harness that evolves from them.
+MoAI-ADK rests on three ideas: **Tokenomics** (the right model and reasoning depth per phase, so quality per dollar is maximized), **Agentic Loop Engineering** (recursive self-learning — loops accumulate observations and the harness evolves from them), and the **Agentic Harness** (you design the environment agents work in rather than writing code directly). The rest of this section is how those ideas are built.
+
+### Recursive Self-Learning
+
+Agents learn from their own operation through two motions: loops that accumulate observations, and a harness that evolves from them.
 
 ```mermaid
 flowchart TD
@@ -218,12 +252,6 @@ Language-independent intent analysis is the default `/moai` routing. Requests ar
 At the context-window threshold (50% on 1M-context models, 90% on 200K models), MoAI emits a paste-ready resume message — progress state, applied lessons, and verifiable preconditions included — so the next session continues with a single paste after `/clear`.
 
 → read more: [Self-Evolving Harness](https://adk.mo.ai.kr/en/advanced/self-evolving) · [Decision Memory](https://adk.mo.ai.kr/en/advanced/decision-memory)
-
----
-
-## The Agentic Harness
-
-Instead of writing code directly, you build the environment agents work in.
 
 ### The 11-Agent Catalog
 
