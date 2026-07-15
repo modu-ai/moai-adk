@@ -71,11 +71,11 @@ MoAI-ADK 的答案分为三部分：
 
 ## v3 数字一览
 
-从 v2.14.0 (2026-04-24) 到 v3.0.0-rc11 (2026-07-13) —— **80 天**：
+从 v2.14.0 (2026-04-24) 到 v3.0.0-rc12 (2026-07-13) —— **80 天**：
 
 - 两个标签之间 **2,373 次提交** —— feat 727 · docs 517 · fix 240
-- **9 个候选版本** (rc1 → rc11)
-- 代理目录整合 **22 → 10** (更少的代理，更廉价的委派)
+- **9 个候选版本** (rc1 → rc12)
+- 代理目录整合 **22 → 11** (10 个 MoAI 自定义代理 + 内置 Explore，更少的代理、更廉价的委派)
 - **480+ 份 SPEC 文档** 在 `.moai/specs/` 下驱动 SPEC 优先开发
 - **27** 个模板管理的 `moai-*` 技能 · **36** 个顶级 CLI 命令 · 支持 **16** 种编程语言
 
@@ -469,6 +469,16 @@ flowchart TD
 
 原生 Claude Code teammate 运行时 (`moai cg` tmux pane) 不受此次退役影响。
 
+### Ultracode —— xhigh 强度 + 自动编排
+
+```text
+/effort ultracode
+```
+
+`/effort ultracode` 将 `xhigh` 推理强度与自动动态工作流编排相结合 (Claude Code v2.1.154+)：对会话中的每个实质性任务，自动选择最优的编排原语，大规模扇出以脚本形式运行，其中间结果保存在脚本变量中，而非会话上下文里。适合用于大型并行扫描、审计与迁移 —— 整个代码库扫描或数百个独立任务 —— 这类场景中扇出本身就是主要成本。若只针对单个请求，则在请求前加上 `ultracode` 关键词，而无需切换整个会话。
+
+→ 阅读更多：[动态工作流与 Ultracode](https://adk.mo.ai.kr/zh/advanced/ultracode-workflows)
+
 ### 决策记忆
 
 MoAI-ADK 捕获你的 AskUserQuestion 决策并个性化未来的推荐：
@@ -644,7 +654,7 @@ go · python · typescript · javascript · rust · java · kotlin · csharp · 
 ### Q: 状态栏里的版本指示器是什么意思？
 
 ```
-🗿 v3.0.0-rc10 ⬆️ v3.0.0-rc11
+🗿 v3.0.0-rc11 ⬆️ v3.0.0-rc12
 ```
 
 第一个值是已安装的 MoAI-ADK 版本；箭头表示有可用更新 (运行 `moai update` 即可清除)。它与 Claude Code 自身的版本指示器是分开的。

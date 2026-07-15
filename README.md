@@ -71,11 +71,11 @@ Instead of writing code directly, you design the environment where agents work w
 
 ## v3 by the Numbers
 
-From v2.14.0 (2026-04-24) to v3.0.0-rc11 (2026-07-13) — **80 days**:
+From v2.14.0 (2026-04-24) to v3.0.0-rc12 (2026-07-13) — **80 days**:
 
 - **2,373 commits** between the two tags — feat 727 · docs 517 · fix 240
-- **9 release candidates** (rc1 → rc11)
-- Agent catalog consolidated **22 → 10** (fewer agents, cheaper delegation)
+- **9 release candidates** (rc1 → rc12)
+- Agent catalog consolidated **22 → 11** (10 MoAI-custom + built-in Explore — fewer agents, cheaper delegation)
 - **480+ SPEC documents** driving spec-first development under `.moai/specs/`
 - **27** template-managed `moai-*` skills · **36** top-level CLI commands · **16** programming languages supported
 
@@ -469,6 +469,16 @@ The static Agent Teams layer was retired in v3. Three orchestration primitives r
 
 The native Claude Code teammate runtime (`moai cg` tmux panes) is unaffected by the retirement.
 
+### Ultracode — xhigh Effort + Automatic Orchestration
+
+```text
+/effort ultracode
+```
+
+`/effort ultracode` combines `xhigh` reasoning effort with automatic dynamic-workflow orchestration (Claude Code v2.1.154+): for each substantive task in the session, the optimal orchestration primitive is chosen automatically and large fan-outs run as scripts whose intermediate results stay in script variables rather than the session context. Reach for it on large parallel sweeps, audits, and migrations — whole-codebase scans or hundreds of independent tasks — where the fan-out itself is the dominant cost. For a single request, prefix it with the `ultracode` keyword instead of switching the whole session.
+
+→ read more: [Dynamic Workflows and Ultracode](https://adk.mo.ai.kr/en/advanced/ultracode-workflows)
+
 ### Decision Memory
 
 MoAI-ADK captures your AskUserQuestion decisions and personalizes future recommendations:
@@ -517,9 +527,9 @@ The Python-based MoAI-ADK (~73,000 lines) was completely rewritten in Go.
 
 → details: [Workflow Commands](https://adk.mo.ai.kr/en/workflow-commands) · [Utility Commands](https://adk.mo.ai.kr/en/utility-commands)
 
-### CLI Commands (37 top-level)
+### CLI Commands (36 top-level)
 
-The `moai` binary registers 37 top-level commands across three cobra groups (launch / project / tools). The everyday set:
+The `moai` binary registers 36 top-level commands across three cobra groups (launch / project / tools). The everyday set:
 
 | Command | Description |
 |---------|-------------|
@@ -622,7 +632,7 @@ go · python · typescript · javascript · rust · java · kotlin · csharp · 
 ### Q: What does the version indicator in the statusline mean?
 
 ```
-🗿 v3.0.0-rc10 ⬆️ v3.0.0-rc11
+🗿 v3.0.0-rc11 ⬆️ v3.0.0-rc12
 ```
 
 The first value is the installed MoAI-ADK version; the arrow shows an available update (run `moai update` to clear it). This is separate from Claude Code's own version indicator.

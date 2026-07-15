@@ -71,11 +71,11 @@ MoAI-ADK の答えは 3 つの要素からなります:
 
 ## 数字で見る v3
 
-v2.14.0 (2026-04-24) から v3.0.0-rc11 (2026-07-13) まで — **80 日間**:
+v2.14.0 (2026-04-24) から v3.0.0-rc12 (2026-07-13) まで — **80 日間**:
 
 - 2 つのタグ間で **2,373 コミット** — feat 727 · docs 517 · fix 240
-- **9 つのリリース候補** (rc1 → rc11)
-- エージェントカタログを **22 → 10** に統合 (エージェントを減らし、委譲を安く)
+- **9 つのリリース候補** (rc1 → rc12)
+- エージェントカタログを **22 → 11** に統合 (MoAI カスタム 10 + 組み込み Explore — エージェントを減らし、委譲を安く)
 - `.moai/specs/` 配下で spec ファースト開発を駆動する **480+ の SPEC ドキュメント**
 - **27** のテンプレート管理 `moai-*` スキル · **36** のトップレベル CLI コマンド · **16** のプログラミング言語をサポート
 
@@ -469,6 +469,16 @@ flowchart TD
 
 ネイティブの Claude Code チームメイトランタイム (`moai cg` の tmux ペイン) はこの廃止の影響を受けません。
 
+### Ultracode — xhigh Effort + 自動オーケストレーション
+
+```text
+/effort ultracode
+```
+
+`/effort ultracode` は `xhigh` の推論エフォートと動的ワークフローの自動オーケストレーションを組み合わせます (Claude Code v2.1.154+)。セッション内の実質的なタスクごとに最適なオーケストレーションプリミティブが自動的に選ばれ、大規模なファンアウトはスクリプトとして実行され、その中間結果はセッションコンテキストではなくスクリプト変数に保持されます。コードベース全体のスキャンや数百の独立したタスクなど、ファンアウトそのものが支配的なコストとなる大規模な並列一括処理・監査・マイグレーションで活用してください。単発のリクエストであれば、セッション全体を切り替える代わりに `ultracode` キーワードを先頭に付けてください。
+
+→ 続きを読む: [動的ワークフローと Ultracode](https://adk.mo.ai.kr/ja/advanced/ultracode-workflows)
+
 ### Decision Memory
 
 MoAI-ADK は AskUserQuestion での決定を記録し、将来の推奨をパーソナライズします:
@@ -621,7 +631,7 @@ go · python · typescript · javascript · rust · java · kotlin · csharp · 
 ### Q: ステータスラインのバージョンインジケーターは何を意味しますか?
 
 ```
-🗿 v3.0.0-rc10 ⬆️ v3.0.0-rc11
+🗿 v3.0.0-rc11 ⬆️ v3.0.0-rc12
 ```
 
 最初の値はインストール済みの MoAI-ADK バージョンで、矢印は利用可能な更新を示します (`moai update` の実行で消えます)。これは Claude Code 自身のバージョンインジケーターとは別物です。
@@ -661,7 +671,7 @@ go · python · typescript · javascript · rust · java · kotlin · csharp · 
 
 [Apache License 2.0](./LICENSE) — 詳細は LICENSE ファイルを参照してください。
 
-## ドキュメンテーションガイド + リンク
+## ドキュメンテーションガイド
 
 公式ドキュメントサイト [adk.mo.ai.kr](https://adk.mo.ai.kr) は 12 のセクションで構成されています。各セクションの日本語版は `https://adk.mo.ai.kr/ja/<セクション>` で読めます。
 
@@ -680,7 +690,7 @@ go · python · typescript · javascript · rust · java · kotlin · csharp · 
 | Advanced | トークノミクス詳説・ステータスライン・フック・@MX タグ・ハーネス v4 Builder・自己進化・Decision Memory・カタログシステム他 | [/ja/advanced](https://adk.mo.ai.kr/ja/advanced) |
 | Contributing | コントリビューションガイド | [/ja/contributing](https://adk.mo.ai.kr/ja/contributing) |
 
-### リンク
+## リンク
 
 - [公式ドキュメント](https://adk.mo.ai.kr)
 - [書籍: Claude Code 実践エージェンティックコーディング](https://adk.mo.ai.kr/book)
