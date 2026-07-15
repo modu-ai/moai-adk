@@ -373,7 +373,7 @@ MoAI-ADK는 사용자의 AskUserQuestion 결정을 포착해 향후 추천을 �
 | `goal` / `loop` / `fix` | 선언적 goal 루프 · 반복 수리 · 단일 패스 수리 |
 | `project` / `harness` | 프로젝트 문서 + 하네스 생성 · 하네스 라이프사이클 |
 | `review` / `gate` / `clean` | 코드 리뷰 · 사전 커밋 품질 게이트 · 데드 코드 제거 |
-| `mx` / `codemaps` / `feedback` | @MX 어노테이션 · 아키텍처 문서 · GitHub 이슈 보고 |
+| `codemaps` / `feedback` | 아키텍처 문서 · GitHub 이슈 보고 |
 | `e2e` | 멀티플랫폼 E2E 테스트 (웹/모바일/데스크톱, CLI 우선) |
 | *(자연어)* | 자율 plan → run → sync 파이프라인으로의 Analyze-First 라우팅 |
 
@@ -403,7 +403,7 @@ MoAI-ADK는 사용자의 AskUserQuestion 결정을 포착해 향후 추천을 �
 | `moai inventory` | 세션, worktree, 하네스의 읽기 전용 인벤토리 (`--json` 지원) |
 | `moai version` | 버전, 커밋 해시, 빌드 날짜 |
 
-이 밖에 등록된 커맨드: `mx`, `clean`, `codemaps`, `feedback`, `loop`, `lsp`, `ast-grep`, `agent`, `workflow`, `statusline`, `telemetry`, `constitution`, `state`, `tool-policy`, `migrate`, `profile`, `pr`, `github`, `research`.
+이 밖에 등록된 커맨드: `clean`, `codemaps`, `feedback`, `loop`, `lsp`, `ast-grep`, `agent`, `workflow`, `statusline`, `telemetry`, `constitution`, `state`, `tool-policy`, `migrate`, `profile`, `pr`, `github`, `research`.
 
 > 각 커맨드의 레퍼런스 페이지가 docs-site에 준비되어 있습니다 — 특히 `goal`, `handoff`, `harness`, `init`, `launchers`, `loop`, `pr`, `session`, `spec`, `tool-policy`, `worktree` 등 **신규 11개 CLI 레퍼런스 페이지**가 v3에 추가되었습니다.
 > → 자세히: [CLI 레퍼런스](https://adk.mo.ai.kr/ko/cli-reference)
@@ -457,7 +457,7 @@ func DispatchHook(event string, data []byte) error {
 | `@MX:NOTE` | 컨텍스트 | 매직 상수, 문서 누락, 비즈니스 규칙 |
 | `@MX:TODO` | 미완 작업 | 테스트 누락, 미구현 기능 |
 
-이 시스템은 신호 대 잡음비를 최적화합니다: **AI가 가장 먼저 알아야 하는 코드만 태그를 받습니다.** 대부분의 코드는 어떤 기준에도 해당하지 않아 태그가 없습니다. 이게 정상이고 의도된 동작입니다. 임계값과 파일당 한도는 `.moai/config/sections/mx.yaml`에서 설정하며, `/moai mx --all` (또는 `--dry`, `--priority P1`)로 스캔합니다.
+이 시스템은 신호 대 잡음비를 최적화합니다: **AI가 가장 먼저 알아야 하는 코드만 태그를 받습니다.** 대부분의 코드는 어떤 기준에도 해당하지 않아 태그가 없습니다. 이게 정상이고 의도된 동작입니다. 임계값과 파일당 한도는 `.moai/config/sections/mx.yaml`에서 설정하며, 태그는 plan/run/sync 페이즈 안에서 자동으로 생성·관리됩니다.
 
 > → 자세히: [@MX 태그 시스템](https://adk.mo.ai.kr/ko/advanced/mx-tags)
 
@@ -484,7 +484,7 @@ go · python · typescript · javascript · rust · java · kotlin · csharp · 
 | [시작하기](https://adk.mo.ai.kr/ko/getting-started) | 소개, 설치, Windows 가이드, init 마법사, 퀵스타트, CLI 개요, FAQ |
 | [핵심 개념](https://adk.mo.ai.kr/ko/core-concepts) | MoAI-ADK 정체성, 컨스티튜션, 하네스 엔지니어링, SPEC 기반 개발, DDD, TRUST 5 |
 | [워크플로우 커맨드](https://adk.mo.ai.kr/ko/workflow-commands) | `plan` · `run` · `sync` · `project` · `harness` · `design` — SPEC 파이프라인의 주축 |
-| [유틸리티 커맨드](https://adk.mo.ai.kr/ko/utility-commands) | `fix` · `loop` · `gate` · `mx` · `review` · `clean` · `codemaps` · `e2e` · `feedback` · `goal` · `moai` |
+| [유틸리티 커맨드](https://adk.mo.ai.kr/ko/utility-commands) | `fix` · `loop` · `gate` · `review` · `clean` · `codemaps` · `e2e` · `feedback` · `goal` · `moai` |
 | [CLI 레퍼런스](https://adk.mo.ai.kr/ko/cli-reference) | 터미널 `moai` 바이너리의 모든 커맨드 — `status`, `profile`, `doctor`, `update`, `web`, `goal`, `handoff`, `harness`, `init`, `worktree` 등 |
 | [Claude Code 가이드](https://adk.mo.ai.kr/ko/claude-code) | Claude Code 통합 — 기초, 컨텍스트·메모리, 에이전틱, 확장성 (스킬·훅·플러그인) |
 | [Multi-LLM](https://adk.mo.ai.kr/ko/multi-llm) | CG 모드 (Claude 리더 + GLM 워커)와 모델 정책 |

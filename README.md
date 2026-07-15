@@ -373,7 +373,7 @@ MoAI-ADK captures your AskUserQuestion decisions and personalizes future recomme
 | `goal` / `loop` / `fix` | Declarative goal loop · iterative repair · single-pass repair |
 | `project` / `harness` | Project docs + harness generation · harness lifecycle |
 | `review` / `gate` / `clean` | Code review · pre-commit quality gate · dead-code removal |
-| `mx` / `codemaps` / `feedback` | @MX annotations · architecture docs · GitHub issue reporting |
+| `codemaps` / `feedback` | Architecture docs · GitHub issue reporting |
 | `e2e` | Multi-platform E2E testing (web/mobile/desktop, CLI-first) |
 | *(natural language)* | Analyze-First routing into the autonomous plan → run → sync pipeline |
 
@@ -403,7 +403,7 @@ The `moai` binary registers 36 top-level commands across three cobra groups (lau
 | `moai inventory` | Read-only inventory of sessions, worktrees, and harnesses (`--json` supported) |
 | `moai version` | Version, commit hash, and build date |
 
-Also registered: `mx`, `clean`, `loop`, `lsp`, `ast-grep`, `agent`, `workflow`, `statusline`, `telemetry`, `constitution`, `state`, `tool-policy`, `migrate`, `migration`, `verify`, `profile`, `pr`, `github`, `research`.
+Also registered: `clean`, `loop`, `lsp`, `ast-grep`, `agent`, `workflow`, `statusline`, `telemetry`, `constitution`, `state`, `tool-policy`, `migrate`, `migration`, `verify`, `profile`, `pr`, `github`, `research`.
 
 → details: [CLI Reference](https://adk.mo.ai.kr/en/cli-reference) — 11 recently added reference pages cover `goal`, `handoff`, `harness`, `init`, `launchers`, `loop`, `pr`, `session`, `spec`, `tool-policy`, and `worktree`.
 
@@ -457,7 +457,7 @@ func DispatchHook(event string, data []byte) error {
 | `@MX:TODO` | Incomplete work | Missing tests, unimplemented features |
 | `@MX:DEBT` | Deliberate working simplification | Known limit (`@MX:CEILING`) + revisit trigger (`@MX:UPGRADE`) |
 
-The system optimizes signal-to-noise: **only the code AI must notice first gets a tag.** Most code meets no criterion and carries no tag — that is normal and intended. Thresholds and per-file limits are configured in `.moai/config/sections/mx.yaml`; scan with `/moai mx --all` (or `--dry`, `--priority P1`).
+The system optimizes signal-to-noise: **only the code AI must notice first gets a tag.** Most code meets no criterion and carries no tag — that is normal and intended. Thresholds and per-file limits are configured in `.moai/config/sections/mx.yaml`; tags are created and maintained automatically inside the plan/run/sync phases.
 
 → details: [@MX Tags](https://adk.mo.ai.kr/en/advanced/mx-tags)
 
@@ -521,7 +521,7 @@ The [official documentation](https://adk.mo.ai.kr/en) is organized into 12 secti
 | [Getting Started](https://adk.mo.ai.kr/en/getting-started) | Introduction, installation, Windows guide, init wizard, quickstart, CLI primer, FAQ |
 | [Core Concepts](https://adk.mo.ai.kr/en/core-concepts) | What MoAI-ADK is, the constitution, harness engineering, SPEC-based dev, DDD, TRUST 5 |
 | [Workflow Commands](https://adk.mo.ai.kr/en/workflow-commands) | `plan`, `run`, `sync`, `project`, `harness`, `design` |
-| [Utility Commands](https://adk.mo.ai.kr/en/utility-commands) | `fix`, `loop`, `gate`, `mx`, `review`, `clean`, `codemaps`, `e2e`, `feedback`, `goal`, `moai` |
+| [Utility Commands](https://adk.mo.ai.kr/en/utility-commands) | `fix`, `loop`, `gate`, `review`, `clean`, `codemaps`, `e2e`, `feedback`, `goal`, `moai` |
 | [CLI Reference](https://adk.mo.ai.kr/en/cli-reference) | The `moai` binary's commands — status, profile, doctor, worktree, spec, session, goal, harness, and more |
 | [Claude Code Guide](https://adk.mo.ai.kr/en/claude-code) | Claude Code foundations, context-memory, agentic, extensibility |
 | [Multi-LLM](https://adk.mo.ai.kr/en/multi-llm) | CG mode (Claude × GLM hybrid) and the model-policy reference |

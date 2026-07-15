@@ -373,7 +373,7 @@ MoAI-ADK は AskUserQuestion での決定を記録し、将来の推奨をパー
 | `goal` / `loop` / `fix` | 宣言的ゴールループ · 反復修復 · シングルパス修復 |
 | `project` / `harness` | プロジェクトドキュメント + ハーネス生成 · ハーネスライフサイクル |
 | `review` / `gate` / `clean` | コードレビュー · プレコミット品質ゲート · デッドコード除去 |
-| `mx` / `codemaps` / `feedback` | @MX アノテーション · アーキテクチャドキュメント · GitHub issue 報告 |
+| `codemaps` / `feedback` | アーキテクチャドキュメント · GitHub issue 報告 |
 | `e2e` | マルチプラットフォーム E2E テスト (Web/モバイル/デスクトップ、CLI 優先) |
 | *(自然言語)* | 自律的な plan → run → sync パイプラインへの Analyze-First ルーティング |
 
@@ -403,7 +403,7 @@ MoAI-ADK は AskUserQuestion での決定を記録し、将来の推奨をパー
 | `moai inventory` | セッション・worktree・ハーネスの読み取り専用インベントリ (`--json` 対応) |
 | `moai version` | バージョン、コミットハッシュ、ビルド日時 |
 
-その他の登録コマンド: `mx`、`clean`、`codemaps`、`feedback`、`loop`、`lsp`、`ast-grep`、`agent`、`workflow`、`statusline`、`telemetry`、`constitution`、`state`、`tool-policy`、`migrate`、`profile`、`pr`、`github`、`research`。
+その他の登録コマンド: `clean`、`codemaps`、`feedback`、`loop`、`lsp`、`ast-grep`、`agent`、`workflow`、`statusline`、`telemetry`、`constitution`、`state`、`tool-policy`、`migrate`、`profile`、`pr`、`github`、`research`。
 
 → 詳細: [CLI リファレンス](https://adk.mo.ai.kr/ja/cli-reference)。CLI リファレンスセクションには、`goal`・`handoff`・`harness`・`init`・`launchers`・`loop`・`pr`・`session`・`spec`・`tool-policy`・`worktree` を含む **11 の新しい個別コマンドページ**が追加されました。
 
@@ -456,7 +456,7 @@ func DispatchHook(event string, data []byte) error {
 | `@MX:NOTE` | コンテキスト | マジック定数、ドキュメント欠落、ビジネスルール |
 | `@MX:TODO` | 未完了作業 | テスト欠落、未実装機能 |
 
-このシステムはシグナル対ノイズ比を最適化します: **AI が最初に注目すべきコードだけがタグを持ちます。**ほとんどのコードはどの基準にも該当せずタグを持ちません — それが正常であり意図された状態です。閾値とファイルごとの上限は `.moai/config/sections/mx.yaml` で設定し、スキャンは `/moai mx --all` (または `--dry`、`--priority P1`) で実行します。
+このシステムはシグナル対ノイズ比を最適化します: **AI が最初に注目すべきコードだけがタグを持ちます。**ほとんどのコードはどの基準にも該当せずタグを持ちません — それが正常であり意図された状態です。閾値とファイルごとの上限は `.moai/config/sections/mx.yaml` で設定し、タグは plan/run/sync フェーズ内で自動的に作成・管理されます。
 
 → 詳細: [@MX タグ](https://adk.mo.ai.kr/ja/advanced/mx-tags)
 
@@ -520,7 +520,7 @@ go · python · typescript · javascript · rust · java · kotlin · csharp · 
 | Getting Started | インストール・初期化ウィザード・クイックスタート・CLI・FAQ | [/ja/getting-started](https://adk.mo.ai.kr/ja/getting-started) |
 | Core Concepts | 全体像・憲法・ハーネスエンジニアリング・SPEC ベース開発・DDD・TRUST 5 | [/ja/core-concepts](https://adk.mo.ai.kr/ja/core-concepts) |
 | Workflow Commands | `plan` / `run` / `sync` / `project` / `harness` / `design` | [/ja/workflow-commands](https://adk.mo.ai.kr/ja/workflow-commands) |
-| Utility Commands | `fix` / `loop` / `gate` / `mx` / `review` / `clean` / `codemaps` / `e2e` / `feedback` / `goal` / `moai` | [/ja/utility-commands](https://adk.mo.ai.kr/ja/utility-commands) |
+| Utility Commands | `fix` / `loop` / `gate` / `review` / `clean` / `codemaps` / `e2e` / `feedback` / `goal` / `moai` | [/ja/utility-commands](https://adk.mo.ai.kr/ja/utility-commands) |
 | CLI Reference | 36 のトップレベル CLI コマンドの個別リファレンス | [/ja/cli-reference](https://adk.mo.ai.kr/ja/cli-reference) |
 | Claude Code Guide | 基礎・コンテキストとメモリ・エージェンティック・拡張機能 | [/ja/claude-code](https://adk.mo.ai.kr/ja/claude-code) |
 | Multi-LLM | CG モード・モデルポリシー | [/ja/multi-llm](https://adk.mo.ai.kr/ja/multi-llm) |

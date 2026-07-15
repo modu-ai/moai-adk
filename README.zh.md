@@ -375,7 +375,7 @@ MoAI-ADK 捕获你的 AskUserQuestion 决策并个性化未来的推荐：
 | `goal` / `loop` / `fix` | 声明式目标循环 · 迭代修复 · 单遍修复 |
 | `project` / `harness` | 项目文档 + Harness 生成 · Harness 生命周期 |
 | `review` / `gate` / `clean` | 代码评审 · 提交前质量门 · 死代码清除 |
-| `mx` / `codemaps` / `feedback` | @MX 注解 · 架构文档 · GitHub issue 报告 |
+| `codemaps` / `feedback` | 架构文档 · GitHub issue 报告 |
 | `e2e` | 多平台 E2E 测试 (Web/移动端/桌面端，CLI 优先) |
 | *(自然语言)* | Analyze-First 路由进入自主的 plan → run → sync 流水线 |
 
@@ -407,7 +407,7 @@ MoAI-ADK 捕获你的 AskUserQuestion 决策并个性化未来的推荐：
 | `moai inventory` | 会话、worktree 与 Harness 的只读清单 (支持 `--json`) |
 | `moai version` | 版本、提交哈希与构建日期 |
 
-另有注册：`mx`、`clean`、`codemaps`、`feedback`、`loop`、`lsp`、`ast-grep`、`agent`、`workflow`、`statusline`、`telemetry`、`constitution`、`state`、`tool-policy`、`migrate`、`profile`、`pr`、`github`、`research`。
+另有注册：`clean`、`codemaps`、`feedback`、`loop`、`lsp`、`ast-grep`、`agent`、`workflow`、`statusline`、`telemetry`、`constitution`、`state`、`tool-policy`、`migrate`、`profile`、`pr`、`github`、`research`。
 
 ### 钩子
 
@@ -460,7 +460,7 @@ func DispatchHook(event string, data []byte) error {
 | `@MX:NOTE` | 上下文 | 魔法常量、缺失文档、业务规则 |
 | `@MX:TODO` | 未完成的工作 | 缺失测试、未实现的功能 |
 
-该系统优化信噪比：**只有 AI 必须最先注意到的代码才有标签。** 大多数代码不符合任何标准且不带标签——这是正常且有意为之的。阈值和每文件上限在 `.moai/config/sections/mx.yaml` 中配置；用 `/moai mx --all` 扫描 (或 `--dry`、`--priority P1`)。
+该系统优化信噪比：**只有 AI 必须最先注意到的代码才有标签。** 大多数代码不符合任何标准且不带标签——这是正常且有意为之的。阈值和每文件上限在 `.moai/config/sections/mx.yaml` 中配置；标签在 plan/run/sync 阶段内自动创建与维护。
 
 ### Worktree 隔离
 
@@ -485,7 +485,7 @@ go · python · typescript · javascript · rust · java · kotlin · csharp · 
 | [入门指南](https://adk.mo.ai.kr/zh/getting-started) | 介绍、安装、Windows 指南、初始化向导、快速开始、CLI、FAQ |
 | [核心概念](https://adk.mo.ai.kr/zh/core-concepts) | MoAI-ADK 是什么、宪章、Harness 工程、SPEC 开发、DDD、TRUST 5 |
 | [工作流命令](https://adk.mo.ai.kr/zh/workflow-commands) | plan、run、sync、project、harness、design |
-| [实用命令](https://adk.mo.ai.kr/zh/utility-commands) | fix、loop、gate、mx、review、clean、codemaps、e2e、feedback、goal、moai |
+| [实用命令](https://adk.mo.ai.kr/zh/utility-commands) | fix、loop、gate、review、clean、codemaps、e2e、feedback、goal、moai |
 | [CLI 参考](https://adk.mo.ai.kr/zh/cli-reference) | status、profile、doctor、inventory、update、web 等 36 个顶级命令的逐条参考 |
 | [Claude Code 指南](https://adk.mo.ai.kr/zh/claude-code) | 基础、上下文与记忆、Agentic 模式、可扩展性 |
 | [多 LLM](https://adk.mo.ai.kr/zh/multi-llm) | CG 模式、模型策略 |
