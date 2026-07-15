@@ -889,3 +889,36 @@ See: `.moai/docs/template-internal-isolation-doctrine.md`
 - **A. 자연어 지시**: "아이디어 Linear에 기록해줘: <제목> — <설명>" → 이 프로젝트(moai-adk-go)의 Linear Project에 `Idea` 라벨 + Backlog(Triage) 이슈 생성. 어느 Project인지는 §26.1 매핑으로 자동 인식.
 - **B. 빠른 트리거**: 사용자 메시지가 `아이디어:` 또는 `💡`로 시작하면, 나머지 내용을 이 Project의 Linear 이슈로 **즉시 기록**한다 (Team `모두의AI`, 라벨 `Idea`, 상태 Backlog/Triage). 확인 질문 없이 기록 후 생성된 `MOAI-N` 이슈 URL을 보고. SPEC 승격은 하지 않음(아이디어 저수지 단계 — 착수 결정 시 `/moai plan`으로 승격).
 - 전제: 세션에 Linear MCP가 로드/인증돼 있어야 실제 기록됨(미인증 시 `/mcp`로 Linear 인증 후 재시도).
+
+---
+
+## 27. 에이전트-스킬 아키텍처 필수 조건 (2026-07-15 채택)
+
+[HARD] 신규/수정되는 모든 에이전트·스킬 개발 시 아래 5개 조건을 필수로 준수한다.
+
+### §27.1 에이전트별 스킬 제공 의무
+
+- 모든 에이전트는 **1개 이상의 스킬 세트**를 제공받아야 하며, 스킬은 다음 4요소로 구성된다:
+  1. **기본 워크플로우 스킬** — 에이전트의 핵심 작업 절차 (예: `moai-workflow-*`)
+  2. **노하우 레퍼런스** — 도메인 지식/패턴 참조 (예: `moai-ref-*`)
+  3. **스크립트 수행** — 실행 가능한 스크립트/검증 레시피 (bundled scripts, verify recipes)
+  4. **호출 트리거** — 언제 이 스킬을 로드할지의 트리거 조건 (frontmatter description + Conditional Skill Loading)
+- 연결 메커니즘: `skills:` frontmatter preload(≤2) + orchestrator 주입 `Skill()` 지시 (`.claude/rules/moai/workflow/skill-routing.md`).
+
+### §27.2 스킬 언어
+
+- [HARD] 모든 스킬 본문(SKILL.md + references + scripts 주석)은 **영어로 작성** (CLAUDE.md §9 "Commands, Agents, Skills Instructions: Always English"와 정합).
+
+### §27.3 /moai:sub-commands 슬래시 래핑 유지
+
+- `/moai:<sub>` 형태의 스킬 래핑 커맨드(deprecated command 기능 활용)를 사용자 편의 UX로 **유지·확장**한다 — `/` 입력 시 커맨드 리스트에 힌트 + 빠른 찾기 제공이 목적.
+- 신규 서브커맨드 추가 시 `/moai:<sub>` 래퍼도 함께 생성한다 (template source 동기화 포함, §2 Template-First).
+
+### §27.4 /moai:harness 메타 하네스
+
+- `/moai:harness <자연어 요청>` 은 moai-adk 에이전트+스킬 자산을 활용한 **메타 하네스**로 동작한다: 스킬 체이닝 + 워크플로우 설계 + 에이전트 체이닝/위임 배정을 한 번에 수행 (v4 Builder: ANALYZE / PLAN / GENERATE / ACTIVATE).
+
+### §27.5 분석-우선 실행 계획 (Analyze-First 강화)
+
+- 사용자가 일반 요청을 하든 `/moai '요청'` 을 하든, 실행 전에 반드시: **요구사항 분석 → 계획 수립 → 스킬·에이전트 호출 계획 명시 → 진행**. 근거: CLAUDE.md §2 Request Processing Pipeline (①~⑤).
+- 실행 계획에는 어떤 스킬을 로드하고 어떤 에이전트를 어떤 순서로 spawn할지가 포함되어야 하며, 사용자에게 제시 후 진행한다 (Rule 1 Approach-First + 구현 착수 승인 gate 유지).
