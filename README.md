@@ -41,31 +41,19 @@ A single binary written in Go. Runs instantly on macOS, Linux, and Windows with 
 
 ---
 
-## The Three Pillars
+## Core Concepts
 
-### Pillar 1 — Tokenomics (Token Economics)
+### Tokenomics (Token Economics)
 
 Intelligent resource allocation that maximizes quality per dollar. A No-Haiku 3-tier model policy (max / medium / low), plan-aware tier profiles (API metered vs. subscription plans), a Claude × GLM hybrid (CG mode, 60-70% cost reduction on implementation-heavy work), and a Token Circuit Breaker that aborts gracefully before budget overruns.
 
-### Pillar 2 — Recursive Self-Learning
+### Recursive Self-Learning
 
 Loops accumulate observations; the harness learns; the instructions evolve. A Routing Observation Ledger records routing decisions, a Curator turns them into improvement proposals, and a 4-tier learning ladder (observation → heuristic → rule → auto-update) upgrades the harness — always behind a user approval gate.
 
-### Pillar 3 — The Agentic Harness
+### The Agentic Harness
 
 Instead of writing code directly, you design the environment where agents work well: an 11-agent catalog, a SPEC-based 3-phase workflow (plan → run → sync), the TRUST 5 quality gate, and a Harness v4 Builder that generates project-specific harnesses from a natural-language request.
-
----
-
-## v3 by the Numbers
-
-From v2.14.0 (2026-04-24) to v3.0.0-rc12 (2026-07-13) — **80 days**:
-
-- **2,373 commits** between the two tags — feat 727 · docs 517 · fix 240
-- **9 release candidates** (rc1 → rc12)
-- Agent catalog consolidated **22 → 11** (10 MoAI-custom + built-in Explore — fewer agents, cheaper delegation)
-- **480+ SPEC documents** driving spec-first development under `.moai/specs/`
-- **27** template-managed `moai-*` skills · **36** top-level CLI commands · **16** programming languages supported
 
 ---
 
@@ -159,83 +147,6 @@ A third option is creating a Windows account with an ASCII-only username.
 - **Claude Code** — MoAI-ADK is a harness for Claude Code
 - **Windows users**: [Git for Windows](https://gitforwindows.org/) is **required** (includes Git Bash); legacy Windows PowerShell 5.x and cmd.exe are **not supported**
 - **Recommended**: `gh` CLI (PR automation) · `tmux` (CG mode) · your language's lint/test toolchain (e.g. `golangci-lint`)
-
----
-
-## Tokenomics in Depth
-
-### No-Haiku 3-Tier Model Policy
-
-Models and reasoning depth (effort) are assigned declaratively by work phase and SPEC size (Tier S/M/L). The policy tiers form a closed set — `max`, `medium`, `low` — validated by HARD lint rules in `internal/config/model_routing.go` (closed sets: effort `low/medium/high/xhigh/max`, tier `S/M/L`, phase `plan/run/sync`).
-
-| Policy | Target plan | Character |
-|--------|-------------|-----------|
-| **max** | Max $200/mo | Highest quality — Opus-class models on planning and audit |
-| **medium** | Max $100/mo | Balanced quality and cost |
-| **low** | Plus $20/mo | No Opus access — Sonnet-centered routing |
-
-The "No-Haiku" name marks the v3 shift away from routing quality-critical phases to the cheapest model: cheap models are used where they are safe, never where independent judgment is required.
-
-### Plan-Aware Tier Profiles (plan_type)
-
-The same workflow has different optimal allocations under **API metered billing vs. subscription plans**. Plan-aware profiles apply a separate Tier × Phase model/effort matrix per billing plan, with an effort overlay for GLM backends.
-
-### Claude × GLM Hybrid (CG Mode)
-
-`moai cg` runs a Claude leader with GLM workers: strategy, planning, and audits stay on the Claude API while bulk implementation goes to GLM. On implementation-heavy work this cuts costs by **60-70%**.
-
-MoAI-ADK supports **z.ai GLM** as an alternative backend for Claude Code — no code changes required.
-
-| Item | Details |
-|------|---------|
-| GLM Coding Plan | From **$10/month** ([z.ai](https://z.ai/subscribe?ic=1NDV03BGWU)) |
-| Compatibility | Works with Claude Code as-is |
-| Models | glm-5.2[1m], glm-4.7, glm-4.5-air, and free models |
-
-**Default model mapping:**
-
-| Claude tier | GLM model | Input (per 1M tokens) | Output (per 1M tokens) |
-|-------------|-----------|----------------------|------------------------|
-| Opus / Sonnet / Haiku / Fable | glm-5.2[1m] | $2.00 | $8.00 |
-
-> All four Claude tiers are unified onto `glm-5.2[1m]`, a single 1M-context model. Mixing a 1M-context model with 200K-context models across tier slots would break agent-spawn session sharing — a 1M-context session and a 200K-context session cannot be shared.
-
-> The `[1m]` suffix activates Claude Code's 1M-token context mode. Claude Code parses and strips the suffix before calling the upstream z.ai API. The mapping is implemented via the four `ANTHROPIC_DEFAULT_*_MODEL` environment variables (`OPUS`/`SONNET`/`HAIKU`/`FABLE`, the last officially supported since Claude Code v2.1.202), all set to `glm-5.2`.
-
-**Mode comparison:**
-
-| Command | Leader | Workers | tmux | Cost savings | Best for |
-|---------|--------|---------|------|--------------|----------|
-| `moai cc` | Claude | Claude | No | — | Complex work, maximum quality |
-| `moai glm` | GLM | GLM | Recommended | ~70% | Maximum cost savings |
-| `moai cg` | Claude | GLM | **Required** | **~60%** | Quality + cost balance |
-
-**CG mode in practice:**
-
-```bash
-# 1. Save your GLM API key (once)
-moai glm sk-your-glm-api-key
-
-# 2. Make sure you are inside tmux (skip if already there)
-tmux new -s moai
-
-# 3. Launch CG mode (starts Claude Code automatically)
-moai cg
-```
-
-CG mode isolates the leader from workers via tmux session-level environment variables: the GLM config is injected into the tmux session env (workers inherit it in new panes) and removed from `settings.local.json` (the leader pane stays on the Claude API). The session-end hook clears the tmux env automatically.
-
-### Token Circuit Breaker
-
-`internal/runtime/budget.go` tracks per-agent token usage with a warning-first policy: it warns as usage climbs and performs a **graceful abort** (progress saved + handoff message emitted) at the hard threshold. It never auto-clears your session.
-
-### Context Diet + Prompt Caching
-
-- Always-loaded context budget guard — a slimmed CLAUDE.md plus path-scoped rule files keep the fixed per-turn cost down
-- A **cache-hit-rate** statusline segment makes the diet's effect measurable in real time
-- Verification output rides a file-redirect contract — long logs go to disk; the context carries only exit codes and bounded tails
-
-→ read more: [Tokenomics Overview](https://adk.mo.ai.kr/en/advanced/tokenomics-overview) · [Prompt Caching](https://adk.mo.ai.kr/en/cost-optimization/prompt-caching)
 
 ---
 
@@ -578,12 +489,6 @@ go · python · typescript · javascript · rust · java · kotlin · csharp · 
 
 The first value is the installed MoAI-ADK version; the arrow shows an available update (run `moai update` to clear it). This is separate from Claude Code's own version indicator.
 
-### Q: Claude Code asks "Allow external CLAUDE.md file imports?"
-
-Select **"No, disable external imports."** Your project's `.moai/config/sections/` already contains these files, project-scoped settings take precedence, and disabling external imports is the more secure choice with no loss of functionality.
-
----
-
 ## Contributing
 
 Contributions are welcome! See [CONTRIBUTING.md](CONTRIBUTING.md) for detailed guidelines.
@@ -614,7 +519,7 @@ The [official documentation](https://adk.mo.ai.kr/en) is organized into 12 secti
 | Section | What it covers |
 |---------|----------------|
 | [Getting Started](https://adk.mo.ai.kr/en/getting-started) | Introduction, installation, Windows guide, init wizard, quickstart, CLI primer, FAQ |
-| [Core Concepts](https://adk.mo.ai.kr/en/core-concepts) | What MoAI-ADK is, the constitution, harness engineering, SPEC-based dev, DDD, TRUST 5 (the 3 pillars) |
+| [Core Concepts](https://adk.mo.ai.kr/en/core-concepts) | What MoAI-ADK is, the constitution, harness engineering, SPEC-based dev, DDD, TRUST 5 |
 | [Workflow Commands](https://adk.mo.ai.kr/en/workflow-commands) | `plan`, `run`, `sync`, `project`, `harness`, `design` |
 | [Utility Commands](https://adk.mo.ai.kr/en/utility-commands) | `fix`, `loop`, `gate`, `mx`, `review`, `clean`, `codemaps`, `e2e`, `feedback`, `goal`, `moai` |
 | [CLI Reference](https://adk.mo.ai.kr/en/cli-reference) | The `moai` binary's commands — status, profile, doctor, worktree, spec, session, goal, harness, and more |

@@ -41,31 +41,19 @@ Go로 작성된 단일 바이너리. macOS, Linux, Windows에서 의존성 없�
 
 ---
 
-## 세 가지 기둥
+## 핵심 개념
 
-### 기둥 1 — 토크노믹스 (Token Economics)
+### 토크노믹스 (Token Economics)
 
 달러당 품질을 극대화하는 지능적 자원 배분. No-Haiku 3-티어 모델 정책 (max / medium / low), 플랜 인지 티어 프로파일 (API 종량제 vs. 구독 플랜), Claude × GLM 하이브리드 (CG 모드, 구현 집중 작업에서 60-70% 비용 절감), 그리고 예산 초과 전에 안전하게 중단하는 Token Circuit Breaker.
 
-### 기둥 2 — 에이전틱 루프 엔지니어링 (재귀적 자가 학습)
+### 에이전틱 루프 엔지니어링 (재귀적 자가 학습)
 
 루프가 관찰을 축적하고, 하네스가 학습하고, 지침이 진화합니다. Routing Observation Ledger가 라우팅 결정을 기록하고, Curator가 이를 개선 제안으로 전환하며, 4-티어 학습 사다리 (관찰 → 휴리스틱 → 규칙 → 자동 업데이트)가 하네스를 업그레이드합니다 — 항상 사용자 승인 게이트 뒤에서.
 
-### 기둥 3 — 에이전틱 하네스
+### 에이전틱 하네스
 
 코드를 직접 작성하는 대신, 에이전트가 잘 일하는 환경을 설계합니다: 11-에이전트 카탈로그, SPEC 기반 3-페이즈 워크플로우 (plan → run → sync), TRUST 5 품질 게이트, 그리고 자연어 요청에서 프로젝트 전용 하네스를 생성하는 Harness v4 Builder.
-
----
-
-## 숫자로 보는 v3
-
-v2.14.0 (2026-04-24)에서 v3.0.0-rc12 (2026-07-13)까지 — **80일**:
-
-- 두 태그 사이 **2,373 커밋** — feat 727 · docs 517 · fix 240
-- **9개의 릴리스 후보** (rc1 → rc12)
-- 에이전트 카탈로그 **22 → 11** 통합 (MoAI 커스텀 10개 + 내장 Explore — 더 적은 에이전트, 더 저렴한 위임)
-- `.moai/specs/` 아래에서 스펙 우선 개발을 이끄는 **480+ SPEC 문서**
-- 템플릿 관리 `moai-*` 스킬 **27개** · 최상위 CLI 커맨드 **36개** · 지원 프로그래밍 언어 **16개**
 
 ---
 
@@ -159,83 +147,6 @@ fsutil 8dot3name set 1
 - **Claude Code** — MoAI-ADK는 Claude Code를 위한 하네스입니다
 - **Windows 사용자**: [Git for Windows](https://gitforwindows.org/)가 **필수** (Git Bash 포함); 레거시 Windows PowerShell 5.x와 cmd.exe는 **미지원**
 - **권장**: `gh` CLI (PR 자동화) · `tmux` (CG 모드) · 사용 언어의 린트/테스트 툴체인 (예: `golangci-lint`)
-
----
-
-## 토크노믹스 자세히 보기
-
-### No-Haiku 3-티어 모델 정책
-
-모델과 추론 깊이 (effort)는 작업 페이즈와 SPEC 크기 (Tier S/M/L)에 따라 선언적으로 배정됩니다. 정책 티어는 닫힌 집합 — `max`, `medium`, `low` — 이며 `internal/config/model_routing.go`의 HARD 린트 규칙으로 검증됩니다 (닫힌 집합: effort `low/medium/high/xhigh/max`, tier `S/M/L`, phase `plan/run/sync`).
-
-| 정책 | 대상 플랜 | 성격 |
-|--------|-------------|-----------|
-| **max** | Max $200/월 | 최고 품질 — 계획과 감사에 Opus급 모델 |
-| **medium** | Max $100/월 | 품질과 비용의 균형 |
-| **low** | Plus $20/월 | Opus 접근 불가 — Sonnet 중심 라우팅 |
-
-"No-Haiku"라는 이름은 품질이 중요한 페이즈를 가장 싼 모델로 라우팅하던 관행에서 벗어난 v3의 전환을 표시합니다: 저렴한 모델은 안전한 곳에만 쓰고, 독립적 판단이 필요한 곳에는 절대 쓰지 않습니다.
-
-### 플랜 인지 티어 프로파일 (plan_type)
-
-같은 워크플로우라도 **API 종량제 과금과 구독 플랜**에서는 최적 배분이 다릅니다. 플랜 인지 프로파일은 과금 플랜별로 별도의 Tier × Phase 모델/effort 매트릭스를 적용하며, GLM 백엔드에는 effort 오버레이를 얹습니다.
-
-### Claude × GLM 하이브리드 (CG 모드)
-
-`moai cg`는 Claude 리더와 GLM 워커를 함께 실행합니다: 전략, 계획, 감사는 Claude API에 남고 대량 구현은 GLM으로 갑니다. 구현 집중 작업에서 비용을 **60-70%** 절감합니다.
-
-MoAI-ADK는 Claude Code의 대체 백엔드로 **z.ai GLM**을 지원합니다 — 코드 변경이 필요 없습니다.
-
-| 항목 | 세부 내용 |
-|------|---------|
-| GLM Coding Plan | **월 $10**부터 ([z.ai](https://z.ai/subscribe?ic=1NDV03BGWU)) |
-| 호환성 | Claude Code에서 그대로 동작 |
-| 모델 | glm-5.2[1m], glm-4.7, glm-4.5-air 및 무료 모델 |
-
-**기본 모델 매핑:**
-
-| Claude 티어 | GLM 모델 | 입력 (1M 토큰당) | 출력 (1M 토큰당) |
-|-------------|-----------|----------------------|------------------------|
-| Opus / Sonnet / Haiku / Fable | glm-5.2[1m] | $2.00 | $8.00 |
-
-> 네 개의 Claude 티어 모두 단일 1M-컨텍스트 모델인 `glm-5.2[1m]`로 통일됩니다. 티어 슬롯에 1M-컨텍스트 모델과 200K-컨텍스트 모델을 섞으면 에이전트 스폰 세션 공유가 깨집니다 — 1M-컨텍스트 세션과 200K-컨텍스트 세션은 공유될 수 없습니다.
-
-> `[1m]` 접미사는 Claude Code의 1M-토큰 컨텍스트 모드를 활성화합니다. Claude Code는 업스트림 z.ai API를 호출하기 전에 이 접미사를 파싱해 제거합니다. 매핑은 네 개의 `ANTHROPIC_DEFAULT_*_MODEL` 환경변수 (`OPUS`/`SONNET`/`HAIKU`/`FABLE`, 마지막은 Claude Code v2.1.202부터 공식 지원)를 모두 `glm-5.2`로 설정하는 방식으로 구현됩니다.
-
-**모드 비교:**
-
-| 명령 | 리더 | 워커 | tmux | 비용 절감 | 적합한 경우 |
-|---------|--------|---------|------|--------------|----------|
-| `moai cc` | Claude | Claude | 불필요 | — | 복잡한 작업, 최대 품질 |
-| `moai glm` | GLM | GLM | 권장 | ~70% | 최대 비용 절감 |
-| `moai cg` | Claude | GLM | **필수** | **~60%** | 품질 + 비용 균형 |
-
-**CG 모드 실전:**
-
-```bash
-# 1. Save your GLM API key (once)
-moai glm sk-your-glm-api-key
-
-# 2. Make sure you are inside tmux (skip if already there)
-tmux new -s moai
-
-# 3. Launch CG mode (starts Claude Code automatically)
-moai cg
-```
-
-CG 모드는 tmux 세션 수준 환경변수로 리더와 워커를 격리합니다: GLM 설정은 tmux 세션 env에 주입되고 (워커는 새 pane에서 이를 상속) `settings.local.json`에서는 제거됩니다 (리더 pane은 Claude API 유지). 세션 종료 훅이 tmux env를 자동으로 정리합니다.
-
-### Token Circuit Breaker
-
-`internal/runtime/budget.go`는 경고 우선 정책으로 에이전트별 토큰 사용량을 추적합니다: 사용량이 올라가면 경고하고, 하드 임계점에서 **우아한 중단** (진행 상태 저장 + 핸드오프 메시지 발행)을 수행합니다. 세션을 자동으로 지우는 일은 절대 없습니다.
-
-### 컨텍스트 다이어트 + 프롬프트 캐싱
-
-- 상시 로드 컨텍스트 예산 가드 — 슬림해진 CLAUDE.md와 경로 스코프 규칙 파일이 턴당 고정 비용을 낮게 유지
-- **캐시 적중률** 스테이터스라인 세그먼트가 다이어트의 효과를 실시간으로 측정 가능하게 함
-- 검증 출력은 파일 리다이렉트 계약을 따름 — 긴 로그는 디스크로, 컨텍스트에는 종료 코드와 제한된 tail만
-
-> → 더 읽기: [토크노믹스 개요](https://adk.mo.ai.kr/ko/advanced/tokenomics-overview) · [프롬프트 캐싱](https://adk.mo.ai.kr/ko/cost-optimization/prompt-caching)
 
 ---
 
@@ -571,7 +482,7 @@ go · python · typescript · javascript · rust · java · kotlin · csharp · 
 | 섹션 | 설명 |
 |------|------|
 | [시작하기](https://adk.mo.ai.kr/ko/getting-started) | 소개, 설치, Windows 가이드, init 마법사, 퀵스타트, CLI 개요, FAQ |
-| [핵심 개념](https://adk.mo.ai.kr/ko/core-concepts) | MoAI-ADK 정체성, 컨스티튜션, 하네스 엔지니어링, SPEC 기반 개발, DDD, TRUST 5 — 세 기둥을 포괄 |
+| [핵심 개념](https://adk.mo.ai.kr/ko/core-concepts) | MoAI-ADK 정체성, 컨스티튜션, 하네스 엔지니어링, SPEC 기반 개발, DDD, TRUST 5 |
 | [워크플로우 커맨드](https://adk.mo.ai.kr/ko/workflow-commands) | `plan` · `run` · `sync` · `project` · `harness` · `design` — SPEC 파이프라인의 주축 |
 | [유틸리티 커맨드](https://adk.mo.ai.kr/ko/utility-commands) | `fix` · `loop` · `gate` · `mx` · `review` · `clean` · `codemaps` · `e2e` · `feedback` · `goal` · `moai` |
 | [CLI 레퍼런스](https://adk.mo.ai.kr/ko/cli-reference) | 터미널 `moai` 바이너리의 모든 커맨드 — `status`, `profile`, `doctor`, `update`, `web`, `goal`, `handoff`, `harness`, `init`, `worktree` 등 |
@@ -582,8 +493,6 @@ go · python · typescript · javascript · rust · java · kotlin · csharp · 
 | [Git Worktree](https://adk.mo.ai.kr/ko/worktree) | 병렬 SPEC 개발을 위한 worktree 가이드, 예제, FAQ |
 | [Advanced](https://adk.mo.ai.kr/ko/advanced) | 토크노믹스 개요, 토큰 예산, 스테이터스라인, settings.json, 훅, @MX 태그, 스킬 가이드, Harness v4 Builder, 자가 진화, 결정 메모리, 카탈로그 시스템, 보안 노트, CLAUDE.md/에이전트 가이드 등 심화 주제 |
 | [기여하기](https://adk.mo.ai.kr/ko/contributing) | 오픈소스 기여 가이드 |
-
-> 세 기둥의 심화 자료는 각 기둥 deep-dive 섹션의 "→ 더 읽기" 링크를 참조하세요.
 
 ---
 
@@ -600,12 +509,6 @@ go · python · typescript · javascript · rust · java · kotlin · csharp · 
 ```
 
 첫 번째 값은 설치된 MoAI-ADK 버전이고, 화살표는 사용 가능한 업데이트를 표시합니다 (`moai update`를 실행하면 사라짐). Claude Code 자체 버전 표시와는 별개입니다.
-
-### Q: Claude Code가 "Allow external CLAUDE.md file imports?"를 물어봅니다
-
-**"No, disable external imports."를 선택하세요.** 프로젝트의 `.moai/config/sections/`에 이미 해당 파일들이 있고, 프로젝트 스코프 설정이 우선하며, 외부 임포트 비활성화가 기능 손실 없이 더 안전한 선택입니다.
-
----
 
 ## 기여하기
 

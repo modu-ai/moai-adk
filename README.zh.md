@@ -41,31 +41,19 @@ MoAI-ADK (Agentic Development Kit) 是一套以 **Tokenomics** (Token 经济学)
 
 ---
 
-## 三大支柱
+## 核心概念
 
-### 支柱 1 — Tokenomics (Token 经济学)
+### Tokenomics (Token 经济学)
 
 最大化每美元质量的智能资源分配。No-Haiku 三层模型策略 (max / medium / low)、感知计费方案的层级配置 (API 计量计费 vs. 订阅方案)、Claude × GLM 混合模式 (CG 模式，在实现密集型工作上降低 60-70% 成本)，以及在预算超支前优雅中止的 Token 断路器。
 
-### 支柱 2 — 递归自我学习
+### 递归自我学习
 
 循环积累观察；Harness 学习；指令进化。Routing Observation Ledger 记录路由决策，Curator 将其转化为改进提案，四层学习阶梯 (观察 → 启发式 → 规则 → 自动更新) 升级 Harness——始终置于用户批准门之后。
 
-### 支柱 3 — Agentic Harness
+### Agentic Harness
 
 与其直接编写代码，不如设计一个让代理良好工作的环境：11 个代理的目录、基于 SPEC 的三阶段工作流 (plan → run → sync)、TRUST 5 质量门，以及能从自然语言请求生成项目专属 Harness 的 Harness v4 Builder。
-
----
-
-## v3 数字一览
-
-从 v2.14.0 (2026-04-24) 到 v3.0.0-rc12 (2026-07-13) —— **80 天**：
-
-- 两个标签之间 **2,373 次提交** —— feat 727 · docs 517 · fix 240
-- **9 个候选版本** (rc1 → rc12)
-- 代理目录整合 **22 → 11** (10 个 MoAI 自定义代理 + 内置 Explore，更少的代理、更廉价的委派)
-- **480+ 份 SPEC 文档** 在 `.moai/specs/` 下驱动 SPEC 优先开发
-- **27** 个模板管理的 `moai-*` 技能 · **36** 个顶级 CLI 命令 · 支持 **16** 种编程语言
 
 ---
 
@@ -159,83 +147,6 @@ fsutil 8dot3name set 1
 - **Claude Code** —— MoAI-ADK 是面向 Claude Code 的 Harness
 - **Windows 用户**：**必须** 安装 [Git for Windows](https://gitforwindows.org/) (含 Git Bash)；**不支持** 旧版 Windows PowerShell 5.x 和 cmd.exe
 - **推荐**：`gh` CLI (PR 自动化) · `tmux` (CG 模式) · 你所用语言的 lint/测试工具链 (例如 `golangci-lint`)
-
----
-
-## Tokenomics 深入解读
-
-### No-Haiku 三层模型策略
-
-模型与推理深度 (effort) 按工作阶段和 SPEC 规模 (Tier S/M/L) 声明式分配。策略层级构成一个封闭集合——`max`、`medium`、`low`——由 `internal/config/model_routing.go` 中的 HARD lint 规则校验 (封闭集合：effort `low/medium/high/xhigh/max`、tier `S/M/L`、phase `plan/run/sync`)。
-
-| 策略 | 目标方案 | 特点 |
-|--------|-------------|-----------|
-| **max** | Max $200/月 | 最高质量 —— 规划与审计使用 Opus 级模型 |
-| **medium** | Max $100/月 | 质量与成本均衡 |
-| **low** | Plus $20/月 | 无 Opus 访问 —— 以 Sonnet 为中心的路由 |
-
-"No-Haiku" 这个名字标志着 v3 的转变：不再把质量关键阶段路由到最便宜的模型——廉价模型只用在安全的地方，绝不用在需要独立判断的地方。
-
-### 感知计费方案的层级配置 (plan_type)
-
-同一工作流在 **API 计量计费 vs. 订阅方案** 下的最优分配不同。感知计费方案的配置为每种计费方案应用独立的 Tier × Phase 模型/effort 矩阵，并为 GLM 后端叠加 effort 覆盖层。
-
-### Claude × GLM 混合模式 (CG 模式)
-
-`moai cg` 以 Claude 为 leader、GLM 为 worker 运行：战略、规划与审计留在 Claude API 上，大批量实现交给 GLM。在实现密集型工作上可削减 **60-70%** 的成本。
-
-MoAI-ADK 支持 **z.ai GLM** 作为 Claude Code 的替代后端——无需任何代码修改。
-
-| 项目 | 详情 |
-|------|---------|
-| GLM Coding Plan | **$10/月** 起 ([z.ai](https://z.ai/subscribe?ic=1NDV03BGWU)) |
-| 兼容性 | 与 Claude Code 直接兼容 |
-| 模型 | glm-5.2[1m]、glm-4.7、glm-4.5-air 及免费模型 |
-
-**默认模型映射：**
-
-| Claude 层级 | GLM 模型 | 输入 (每 1M Token) | 输出 (每 1M Token) |
-|-------------|-----------|----------------------|------------------------|
-| Opus / Sonnet / Haiku / Fable | glm-5.2[1m] | $2.00 | $8.00 |
-
-> 四个 Claude 层级全部统一到单一 1M 上下文模型 `glm-5.2[1m]`。若在层级槽位之间混用 1M 上下文模型与 200K 上下文模型，会破坏代理生成的会话共享——1M 上下文会话与 200K 上下文会话无法共享。
-
-> `[1m]` 后缀激活 Claude Code 的 1M Token 上下文模式。Claude Code 会在调用上游 z.ai API 之前解析并剥离该后缀。此映射通过四个 `ANTHROPIC_DEFAULT_*_MODEL` 环境变量实现 (`OPUS`/`SONNET`/`HAIKU`/`FABLE`，最后一个自 Claude Code v2.1.202 起获得官方支持)，全部设为 `glm-5.2`。
-
-**模式对比：**
-
-| 命令 | Leader | Workers | tmux | 成本节省 | 适用场景 |
-|---------|--------|---------|------|--------------|----------|
-| `moai cc` | Claude | Claude | 否 | — | 复杂工作，最高质量 |
-| `moai glm` | GLM | GLM | 推荐 | ~70% | 最大化成本节省 |
-| `moai cg` | Claude | GLM | **必需** | **~60%** | 质量与成本平衡 |
-
-**CG 模式实操：**
-
-```bash
-# 1. Save your GLM API key (once)
-moai glm sk-your-glm-api-key
-
-# 2. Make sure you are inside tmux (skip if already there)
-tmux new -s moai
-
-# 3. Launch CG mode (starts Claude Code automatically)
-moai cg
-```
-
-CG 模式通过 tmux 会话级环境变量将 leader 与 worker 隔离：GLM 配置注入 tmux 会话环境 (worker 在新 pane 中继承)，并从 `settings.local.json` 中移除 (leader pane 保持在 Claude API 上)。会话结束钩子会自动清理 tmux 环境。
-
-### Token 断路器
-
-`internal/runtime/budget.go` 以"警告优先"策略按代理跟踪 Token 用量：用量攀升时发出警告，并在硬阈值处执行 **优雅中止** (保存进度 + 发出交接消息)。它绝不会自动清除你的会话。
-
-### 上下文瘦身 + 提示缓存
-
-- 常驻加载上下文预算守卫——精简的 CLAUDE.md 加上按路径限定的规则文件，压低每回合固定成本
-- **缓存命中率** 状态栏区段让瘦身效果实时可测
-- 验证输出遵循文件重定向契约——长日志写入磁盘；上下文只携带退出码和有界尾部
-
-→ 阅读更多：[Tokenomics 总览](https://adk.mo.ai.kr/zh/advanced/tokenomics-overview) · [提示缓存](https://adk.mo.ai.kr/zh/cost-optimization/prompt-caching)
 
 ---
 
@@ -572,7 +483,7 @@ go · python · typescript · javascript · rust · java · kotlin · csharp · 
 | 章节 | 简介 |
 |------|------|
 | [入门指南](https://adk.mo.ai.kr/zh/getting-started) | 介绍、安装、Windows 指南、初始化向导、快速开始、CLI、FAQ |
-| [核心概念](https://adk.mo.ai.kr/zh/core-concepts) | MoAI-ADK 是什么、宪章、Harness 工程、SPEC 开发、DDD、TRUST 5 (涵盖三大支柱) |
+| [核心概念](https://adk.mo.ai.kr/zh/core-concepts) | MoAI-ADK 是什么、宪章、Harness 工程、SPEC 开发、DDD、TRUST 5 |
 | [工作流命令](https://adk.mo.ai.kr/zh/workflow-commands) | plan、run、sync、project、harness、design |
 | [实用命令](https://adk.mo.ai.kr/zh/utility-commands) | fix、loop、gate、mx、review、clean、codemaps、e2e、feedback、goal、moai |
 | [CLI 参考](https://adk.mo.ai.kr/zh/cli-reference) | status、profile、doctor、inventory、update、web 等 36 个顶级命令的逐条参考 |
@@ -599,12 +510,6 @@ go · python · typescript · javascript · rust · java · kotlin · csharp · 
 ```
 
 第一个值是已安装的 MoAI-ADK 版本；箭头表示有可用更新 (运行 `moai update` 即可清除)。它与 Claude Code 自身的版本指示器是分开的。
-
-### Q: Claude Code 询问 "Allow external CLAUDE.md file imports?"
-
-请选择 **"No, disable external imports."** 你项目的 `.moai/config/sections/` 已经包含这些文件，项目级设置优先生效，而且禁用外部导入是更安全的选择，不会损失任何功能。
-
----
 
 ## 贡献
 

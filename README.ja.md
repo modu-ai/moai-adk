@@ -41,31 +41,19 @@ Go で書かれた単一バイナリ。macOS・Linux・Windows で依存関係�
 
 ---
 
-## 3 つの柱
+## コア概念
 
-### 柱 1 — トークノミクス (Token Economics)
+### トークノミクス (Token Economics)
 
 ドルあたりの品質を最大化するインテリジェントなリソース配分。No-Haiku 3 ティアモデルポリシー (max / medium / low)、プラン対応ティアプロファイル (API 従量課金 vs. サブスクリプションプラン)、Claude × GLM ハイブリッド (CG モード、実装中心の作業で 60-70% のコスト削減)、そして予算超過の前に優雅に中断する Token Circuit Breaker。
 
-### 柱 2 — 再帰的自己学習
+### 再帰的自己学習
 
 ループが観測を蓄積し、ハーネスが学習し、指示が進化します。Routing Observation Ledger がルーティング決定を記録し、Curator がそれを改善提案に変換し、4 ティア学習ラダー (観測 → ヒューリスティック → ルール → 自動更新) がハーネスをアップグレードします — 常にユーザー承認ゲートの背後で。
 
-### 柱 3 — エージェンティックハーネス
+### エージェンティックハーネス
 
 コードを直接書く代わりに、エージェントがうまく働ける環境を設計します: 11 エージェントカタログ、SPEC ベースの 3 フェーズワークフロー (plan → run → sync)、TRUST 5 品質ゲート、そして自然言語のリクエストからプロジェクト固有のハーネスを生成する Harness v4 Builder。
-
----
-
-## 数字で見る v3
-
-v2.14.0 (2026-04-24) から v3.0.0-rc12 (2026-07-13) まで — **80 日間**:
-
-- 2 つのタグ間で **2,373 コミット** — feat 727 · docs 517 · fix 240
-- **9 つのリリース候補** (rc1 → rc12)
-- エージェントカタログを **22 → 11** に統合 (MoAI カスタム 10 + 組み込み Explore — エージェントを減らし、委譲を安く)
-- `.moai/specs/` 配下で spec ファースト開発を駆動する **480+ の SPEC ドキュメント**
-- **27** のテンプレート管理 `moai-*` スキル · **36** のトップレベル CLI コマンド · **16** のプログラミング言語をサポート
 
 ---
 
@@ -159,83 +147,6 @@ fsutil 8dot3name set 1
 - **Claude Code** — MoAI-ADK は Claude Code のためのハーネスです
 - **Windows ユーザー**: [Git for Windows](https://gitforwindows.org/) が**必須** (Git Bash を含む)。レガシーの Windows PowerShell 5.x と cmd.exe は**非サポート**
 - **推奨**: `gh` CLI (PR 自動化) · `tmux` (CG モード) · 使用言語の lint/test ツールチェーン (例: `golangci-lint`)
-
----
-
-## トークノミクス詳説
-
-### No-Haiku 3 ティアモデルポリシー
-
-モデルと推論の深さ (effort) は、作業フェーズと SPEC サイズ (Tier S/M/L) によって宣言的に割り当てられます。ポリシーティアは閉集合 — `max`、`medium`、`low` — を形成し、`internal/config/model_routing.go` の HARD lint ルールで検証されます (閉集合: effort `low/medium/high/xhigh/max`、tier `S/M/L`、phase `plan/run/sync`)。
-
-| ポリシー | 対象プラン | 特徴 |
-|--------|-------------|-----------|
-| **max** | Max $200/月 | 最高品質 — 計画と監査に Opus クラスのモデル |
-| **medium** | Max $100/月 | 品質とコストのバランス |
-| **low** | Plus $20/月 | Opus アクセスなし — Sonnet 中心のルーティング |
-
-「No-Haiku」という名前は、品質を左右するフェーズを最安モデルにルーティングする、という発想からの v3 の転換を示します: 安価なモデルは安全な場所でのみ使われ、独立した判断が必要な場所では決して使われません。
-
-### プラン対応ティアプロファイル (plan_type)
-
-同じワークフローでも、**API 従量課金とサブスクリプションプラン**では最適な配分が異なります。プラン対応プロファイルは、課金プランごとに独立した Tier × Phase のモデル/effort マトリクスを適用し、GLM バックエンドには effort オーバーレイを重ねます。
-
-### Claude × GLM ハイブリッド (CG モード)
-
-`moai cg` は Claude リーダーと GLM ワーカーを走らせます: 戦略・計画・監査は Claude API に留め、大量の実装は GLM に任せます。実装中心の作業ではコストを **60-70%** 削減します。
-
-MoAI-ADK は Claude Code の代替バックエンドとして **z.ai GLM** をサポートします — コード変更は不要です。
-
-| 項目 | 詳細 |
-|------|---------|
-| GLM Coding Plan | **$10/月**から ([z.ai](https://z.ai/subscribe?ic=1NDV03BGWU)) |
-| 互換性 | Claude Code でそのまま動作 |
-| モデル | glm-5.2[1m]、glm-4.7、glm-4.5-air、および無料モデル |
-
-**デフォルトのモデルマッピング:**
-
-| Claude ティア | GLM モデル | 入力 (100 万トークンあたり) | 出力 (100 万トークンあたり) |
-|-------------|-----------|----------------------|------------------------|
-| Opus / Sonnet / Haiku / Fable | glm-5.2[1m] | $2.00 | $8.00 |
-
-> Claude の 4 ティアすべてが、単一の 1M コンテキストモデル `glm-5.2[1m]` に統一されています。1M コンテキストモデルと 200K コンテキストモデルをティアスロット間で混在させると、エージェントスポーンのセッション共有が壊れます — 1M コンテキストセッションと 200K コンテキストセッションは共有できません。
-
-> `[1m]` サフィックスは Claude Code の 1M トークンコンテキストモードを有効化します。Claude Code はサフィックスをパースして除去してから上流の z.ai API を呼び出します。マッピングは 4 つの `ANTHROPIC_DEFAULT_*_MODEL` 環境変数 (`OPUS`/`SONNET`/`HAIKU`/`FABLE`、最後のものは Claude Code v2.1.202 から公式サポート) で実装され、すべて `glm-5.2` に設定されます。
-
-**モード比較:**
-
-| コマンド | リーダー | ワーカー | tmux | コスト削減 | 適した用途 |
-|---------|--------|---------|------|--------------|----------|
-| `moai cc` | Claude | Claude | 不要 | — | 複雑な作業、最高品質 |
-| `moai glm` | GLM | GLM | 推奨 | ~70% | 最大のコスト削減 |
-| `moai cg` | Claude | GLM | **必須** | **~60%** | 品質とコストのバランス |
-
-**CG モードの実践:**
-
-```bash
-# 1. Save your GLM API key (once)
-moai glm sk-your-glm-api-key
-
-# 2. Make sure you are inside tmux (skip if already there)
-tmux new -s moai
-
-# 3. Launch CG mode (starts Claude Code automatically)
-moai cg
-```
-
-CG モードは、tmux セッションレベルの環境変数によってリーダーをワーカーから隔離します: GLM 設定は tmux セッション env に注入され (ワーカーは新しいペインでそれを継承)、`settings.local.json` からは除去されます (リーダーペインは Claude API に留まる)。セッション終了フックが tmux env を自動的にクリアします。
-
-### Token Circuit Breaker
-
-`internal/runtime/budget.go` は警告優先ポリシーでエージェントごとのトークン使用量を追跡します: 使用量が増えるにつれ警告し、ハード閾値で**優雅な中断** (進捗保存 + ハンドオフメッセージ出力) を実行します。セッションを自動的にクリアすることは決してありません。
-
-### コンテキストダイエット + プロンプトキャッシング
-
-- 常時ロードコンテキストの予算ガード — スリム化された CLAUDE.md とパススコープ付きルールファイルが、ターンごとの固定コストを抑える
-- **キャッシュヒット率**のステータスラインセグメントが、ダイエットの効果をリアルタイムで計測可能にする
-- 検証出力はファイルリダイレクト契約に乗る — 長いログはディスクへ、コンテキストには終了コードと境界付き末尾のみ
-
-→ 続きを読む: [トークノミクス概要](https://adk.mo.ai.kr/ja/advanced/tokenomics-overview) · [プロンプトキャッシング](https://adk.mo.ai.kr/ja/cost-optimization/prompt-caching)
 
 ---
 
@@ -577,12 +488,6 @@ go · python · typescript · javascript · rust · java · kotlin · csharp · 
 
 最初の値はインストール済みの MoAI-ADK バージョンで、矢印は利用可能な更新を示します (`moai update` の実行で消えます)。これは Claude Code 自身のバージョンインジケーターとは別物です。
 
-### Q: Claude Code が「Allow external CLAUDE.md file imports?」と尋ねてきます
-
-**「No, disable external imports.」を選択してください。**プロジェクトの `.moai/config/sections/` にはすでにこれらのファイルが含まれており、プロジェクトスコープの設定が優先されます。外部インポートの無効化は機能を損なわず、よりセキュアな選択です。
-
----
-
 ## コントリビューション
 
 コントリビューションを歓迎します! 詳細なガイドラインは [CONTRIBUTING.md](CONTRIBUTING.md) を参照してください。
@@ -613,7 +518,7 @@ go · python · typescript · javascript · rust · java · kotlin · csharp · 
 | セクション | 内容 | パス |
 |----------|------|------|
 | Getting Started | インストール・初期化ウィザード・クイックスタート・CLI・FAQ | [/ja/getting-started](https://adk.mo.ai.kr/ja/getting-started) |
-| Core Concepts | 全体像・憲法・ハーネスエンジニアリング・SPEC ベース開発・DDD・TRUST 5 (3 つの柱をカバー) | [/ja/core-concepts](https://adk.mo.ai.kr/ja/core-concepts) |
+| Core Concepts | 全体像・憲法・ハーネスエンジニアリング・SPEC ベース開発・DDD・TRUST 5 | [/ja/core-concepts](https://adk.mo.ai.kr/ja/core-concepts) |
 | Workflow Commands | `plan` / `run` / `sync` / `project` / `harness` / `design` | [/ja/workflow-commands](https://adk.mo.ai.kr/ja/workflow-commands) |
 | Utility Commands | `fix` / `loop` / `gate` / `mx` / `review` / `clean` / `codemaps` / `e2e` / `feedback` / `goal` / `moai` | [/ja/utility-commands](https://adk.mo.ai.kr/ja/utility-commands) |
 | CLI Reference | 36 のトップレベル CLI コマンドの個別リファレンス | [/ja/cli-reference](https://adk.mo.ai.kr/ja/cli-reference) |
