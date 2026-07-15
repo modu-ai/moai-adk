@@ -6,8 +6,6 @@ draft: false
 
 MoAI-ADK (Agentic Development Kit) 是 Claude Code 的战略编排框架。
 
-{{< mascot talking >}}
-
 > **当前版本:** {{< version >}} — 版本信息来自 `hugo.toml` 中的 `params.version` 单一可信源 (SSOT)。
 
 ![MoAI-ADK](/og.jpg)
