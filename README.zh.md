@@ -41,18 +41,6 @@ MoAI-ADK (Agentic Development Kit) 是一套以 **Tokenomics** (Token 经济学)
 
 ---
 
-## 为什么是 Tokenomics
-
-Token 价格持续下降，但 Agentic 开发消耗 Token 的速度比降价更快。并行运行的代理越来越多，上下文越来越长，推理越来越深——因此你的真实成本 **不由模型的标价决定，而由你如何运营 Token 决定**。
-
-MoAI-ADK 的答案分为三部分：
-
-1. **为每个任务分配合适的模型与推理深度**——深度规划、廉价实现、独立验证。
-2. **给上下文瘦身**——最小化常驻加载的指令，并度量提示缓存命中率。
-3. **让系统守护预算**——按代理跟踪 Token 用量，在触顶前优雅停止，绝不中途崩溃。
-
----
-
 ## 三大支柱
 
 ### 支柱 1 — Tokenomics (Token 经济学)
@@ -171,38 +159,6 @@ fsutil 8dot3name set 1
 - **Claude Code** —— MoAI-ADK 是面向 Claude Code 的 Harness
 - **Windows 用户**：**必须** 安装 [Git for Windows](https://gitforwindows.org/) (含 Git Bash)；**不支持** 旧版 Windows PowerShell 5.x 和 cmd.exe
 - **推荐**：`gh` CLI (PR 自动化) · `tmux` (CG 模式) · 你所用语言的 lint/测试工具链 (例如 `golangci-lint`)
-
----
-
-## 视觉识别 — 吉祥物主题
-
-文档站点([adk.mo.ai.kr](https://adk.mo.ai.kr))与 `moai web` 控制台共享 **吉祥物灰** 主题 —— `#8c8c8c`（neutral gray），源自 모두의AI 角色吉祥物(MascotCoding / MascotTalking / MascotBubble)。吉祥物在主视觉区、404 页面、章节分隔处作为情感锚点出现。
-
----
-
-## 设计谱系 — Harness Engineering
-
-MoAI-ADK 有意继承了 Lilian Weng 在 [**Harness Engineering for Self-Improvement**](https://lilianweng.github.io/posts/2026-07-04-harness/) (2026-07-04) 中提出的 Harness 工程框架，将其设计模式与自我改进循环转化为一个可运行的实现。
-
-> **什么是 Harness？** —— "Harness 是围绕基础模型的系统，它编排执行并决定模型如何思考与规划、如何调用工具与行动、如何感知与管理上下文、如何存储产物、如何评估结果。" —— Lilian Weng (2026-07-04)
-
-Weng 预测，通往递归自我改进 (RSI) 的近期路径不是"模型编辑自己的权重"，而是 **改进训练管线与部署系统——即 Harness**。MoAI-ADK 走的正是这条路：它递归改进的是 Harness (技能与代理指令)，而非模型权重。
-
-### 继承映射 — 从 Weng 的框架到 MoAI-ADK
-
-| Lilian Weng 的 Harness 概念 | MoAI-ADK 实现 |
-|---|---|
-| **Harness** —— 围绕基础模型的执行/运营层 | MoAI-ADK = Claude Code Harness (单一 Go 二进制 + CLAUDE.md 编排器) |
-| **模式 1：工作流自动化** —— plan → execute → observe → improve 目标循环 | `/moai goal` 引擎、`/moai loop` Ralph Engine、Analyze-First 路由 |
-| **模式 2：文件系统持久记忆** —— "把持久状态放进文件" | `.moai/specs/`、`progress.md`、`usage-log.jsonl`、`.moai/state/`、会话交接 |
-| **模式 3：子代理与后台作业** —— 让并行性显式且可检视 | 11 个保留代理、`Agent()` 生成、动态工作流 |
-| **Self-Harness** —— 提案-评估-接受；受限编辑 + 回归门 | `internal/harness/` 四层阶梯 + 五层安全管线 (applier = 受限编辑，回归门 = 验证) |
-| **Meta-Harness** —— "优化 Harness 的 Harness" | `builder-harness` —— 用 Harness 构建 Harness；`/moai project` 自动生成一个 |
-| **"改进改进者"** —— RSI 的近期路径是部署系统的改进 | 递归 Harness 进化 —— 循环积累观察；Harness 升级自己的技能/代理指令 |
-| **"评估器与权限位于循环之外"** —— 防御奖励劫持 | 第 5 层用户批准门 + 实现启动批准 —— 人类监督位于进化循环之外 |
-| **"人类沿栈上移，而非退出循环"** | 编排器是唯一的人类接触点；由 AskUserQuestion 把关的决策与 SPEC 批准门 |
-
-> Weng 的警告被忠实遵守：评估器与权限控制必须留在 Harness 进化循环 **之外**。MoAI-ADK 将 Tier-4 自动更新绑定到用户批准门，使自动进化永远无法在没有人类监督的情况下作为闭环运行。
 
 ---
 
@@ -492,21 +448,6 @@ MoAI-ADK 捕获你的 AskUserQuestion 决策并个性化未来的推荐：
 
 ---
 
-## 为什么选择 Go
-
-基于 Python 的 MoAI-ADK (约 73,000 行) 已用 Go 完全重写。
-
-| 方面 | Python 版 | Go 版 |
-|--------|---------------|------------|
-| 分发 | pip + venv + 依赖 | **单一二进制**，零依赖 |
-| 启动时间 | ~800ms 解释器启动 | **~5ms** 原生执行 |
-| 并发 | asyncio / threading | **原生 goroutine** |
-| 类型安全 | 运行时 (mypy 可选) | **编译期强制** |
-| 跨平台 | 需要 Python 运行时 | **预构建二进制** (macOS、Linux、Windows) |
-| 钩子执行 | Shell 包装器 + Python | **编译后二进制**，JSON 协议 |
-
----
-
 ## 工具参考
 
 ### `/moai` 斜杠子命令
@@ -681,12 +622,6 @@ go · python · typescript · javascript · rust · java · kotlin · csharp · 
 
 - [Discord](https://discord.gg/Z7E7Mdc5aN) —— 实时讨论与技巧
 - [Issues](https://github.com/modu-ai/moai-adk/issues) —— 缺陷报告、功能请求 (也可以在 Claude Code 内使用 `/moai feedback`)
-
----
-
-## Star 历史
-
-[![Star History Chart](https://api.star-history.com/svg?repos=modu-ai/moai-adk&type=date&legend=top-left)](https://www.star-history.com/#modu-ai/moai-adk&type=date&legend=top-left)
 
 ---
 

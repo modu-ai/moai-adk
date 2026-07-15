@@ -41,18 +41,6 @@ A single binary written in Go. Runs instantly on macOS, Linux, and Windows with 
 
 ---
 
-## Why Tokenomics
-
-Token prices keep falling, but agentic development burns tokens faster than prices drop. More agents run in parallel, contexts grow longer, and reasoning gets deeper — so your real cost comes down to **how you operate tokens**, not the model's price tag.
-
-MoAI-ADK's answer comes in three parts:
-
-1. **Assign the right model and reasoning depth to each task** — plan deeply, implement cheaply, verify independently.
-2. **Put context on a diet** — minimize always-loaded instructions and measure prompt-cache hit rates.
-3. **Let the system guard the budget** — track token usage per agent and stop gracefully before the ceiling, never mid-crash.
-
----
-
 ## The Three Pillars
 
 ### Pillar 1 — Tokenomics (Token Economics)
@@ -171,38 +159,6 @@ A third option is creating a Windows account with an ASCII-only username.
 - **Claude Code** — MoAI-ADK is a harness for Claude Code
 - **Windows users**: [Git for Windows](https://gitforwindows.org/) is **required** (includes Git Bash); legacy Windows PowerShell 5.x and cmd.exe are **not supported**
 - **Recommended**: `gh` CLI (PR automation) · `tmux` (CG mode) · your language's lint/test toolchain (e.g. `golangci-lint`)
-
----
-
-## Visual Identity — Mascot Theme
-
-The documentation site ([adk.mo.ai.kr](https://adk.mo.ai.kr)) and the `moai web` console share the **Mascot gray** theme — `#8c8c8c` (neutral gray), derived from the 모두의AI character mascot (MascotCoding / MascotTalking / MascotBubble). The mascot appears as an emotional anchor across the hero, the 404 page, and section dividers.
-
----
-
-## Design Lineage — Harness Engineering
-
-MoAI-ADK deliberately inherits the harness-engineering framework laid out in Lilian Weng's [**Harness Engineering for Self-Improvement**](https://lilianweng.github.io/posts/2026-07-04-harness/) (2026-07-04), translating its design patterns and self-improvement loop into a working implementation.
-
-> **What is a harness?** — "A harness is the system surrounding a base model that orchestrates execution and decides how the model thinks and plans, calls tools and acts, perceives and manages context, stores artifacts, and evaluates results." — Lilian Weng (2026-07-04)
-
-Weng predicted that the near-term path to recursive self-improvement (RSI) is not "the model editing its own weights" but **improving the training pipeline and the deployment system — the harness**. MoAI-ADK takes exactly this path: it recursively improves the harness (skills and agent instructions), not model weights.
-
-### Inheritance Map — Weng's Framework to MoAI-ADK
-
-| Lilian Weng harness concept | MoAI-ADK implementation |
-|---|---|
-| **Harness** — the execution/operations layer around a base model | MoAI-ADK = a Claude Code harness (single Go binary + CLAUDE.md orchestrator) |
-| **Pattern 1: Workflow Automation** — plan → execute → observe → improve goal loops | `/moai goal` engine, `/moai loop` Ralph Engine, Analyze-First routing |
-| **Pattern 2: File-System Persistent Memory** — "durable state in files" | `.moai/specs/`, `progress.md`, `usage-log.jsonl`, `.moai/state/`, session handoff |
-| **Pattern 3: Sub-agents & Backend Jobs** — make parallelism explicit and inspectable | 11 retained agents, `Agent()` spawns, dynamic workflows |
-| **Self-Harness** — propose-evaluate-accept; bounded edits + regression gates | `internal/harness/` 4-tier ladder + 5-layer safety pipeline (applier = bounded edit, regression gate = verification) |
-| **Meta-Harness** — "a harness that optimizes harnesses" | `builder-harness` — the harness builds harnesses; `/moai project` auto-generates one |
-| **"Improve the improver"** — RSI's near-term path is deployment-system improvement | Recursive harness evolution — loops accumulate observations; the harness upgrades its own skill/agent instructions |
-| **"Evaluators and permissions live outside the loop"** — reward-hacking defense | Layer-5 user approval gate + Implementation Kickoff Approval — human oversight sits outside the evolution loop |
-| **"Humans move up the stack, not out of the loop"** | The orchestrator is the single human contact point; AskUserQuestion-gated decisions and SPEC approval gates |
-
-> Weng's warning is honored faithfully: evaluators and permission controls must stay **outside** the harness-evolution loop. MoAI-ADK binds Tier-4 auto-updates to a user approval gate so automated evolution can never run as a closed loop without human oversight.
 
 ---
 
@@ -492,21 +448,6 @@ MoAI-ADK captures your AskUserQuestion decisions and personalizes future recomme
 
 ---
 
-## Why Go
-
-The Python-based MoAI-ADK (~73,000 lines) was completely rewritten in Go.
-
-| Aspect | Python Edition | Go Edition |
-|--------|---------------|------------|
-| Distribution | pip + venv + dependencies | **Single binary**, zero dependencies |
-| Startup time | ~800ms interpreter boot | **~5ms** native execution |
-| Concurrency | asyncio / threading | **Native goroutines** |
-| Type safety | Runtime (mypy optional) | **Compile-time enforced** |
-| Cross-platform | Python runtime required | **Prebuilt binaries** (macOS, Linux, Windows) |
-| Hook execution | Shell wrapper + Python | **Compiled binary**, JSON protocol |
-
----
-
 ## Tool Reference
 
 ### `/moai` Slash Subcommands
@@ -659,12 +600,6 @@ Contributions are welcome! See [CONTRIBUTING.md](CONTRIBUTING.md) for detailed g
 
 - [Discord](https://discord.gg/Z7E7Mdc5aN) — real-time discussion and tips
 - [Issues](https://github.com/modu-ai/moai-adk/issues) — bug reports, feature requests (or `/moai feedback` from inside Claude Code)
-
----
-
-## Star History
-
-[![Star History Chart](https://api.star-history.com/svg?repos=modu-ai/moai-adk&type=date&legend=top-left)](https://www.star-history.com/#modu-ai/moai-adk&type=date&legend=top-left)
 
 ---
 

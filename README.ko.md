@@ -41,18 +41,6 @@ Go로 작성된 단일 바이너리. macOS, Linux, Windows에서 의존성 없�
 
 ---
 
-## 왜 토크노믹스인가
-
-토큰 가격은 계속 떨어지지만, 에이전틱 개발은 가격 하락보다 빠르게 토큰을 소모합니다. 더 많은 에이전트가 병렬로 실행되고, 컨텍스트는 길어지고, 추론은 깊어집니다 — 그래서 실제 비용은 **모델의 가격표가 아니라 토큰을 어떻게 운용하느냐**로 결정됩니다.
-
-MoAI-ADK의 답은 세 가지입니다:
-
-1. **작업마다 알맞은 모델과 추론 깊이를 배정한다** — 계획은 깊게, 구현은 저렴하게, 검증은 독립적으로.
-2. **컨텍스트를 다이어트한다** — 상시 로드 지침을 최소화하고 프롬프트 캐시 적중률을 측정한다.
-3. **예산은 시스템이 지킨다** — 에이전트별 토큰 사용량을 추적하고, 한도 직전에 중간 붕괴 없이 안전하게 멈춘다.
-
----
-
 ## 세 가지 기둥
 
 ### 기둥 1 — 토크노믹스 (Token Economics)
@@ -171,38 +159,6 @@ fsutil 8dot3name set 1
 - **Claude Code** — MoAI-ADK는 Claude Code를 위한 하네스입니다
 - **Windows 사용자**: [Git for Windows](https://gitforwindows.org/)가 **필수** (Git Bash 포함); 레거시 Windows PowerShell 5.x와 cmd.exe는 **미지원**
 - **권장**: `gh` CLI (PR 자동화) · `tmux` (CG 모드) · 사용 언어의 린트/테스트 툴체인 (예: `golangci-lint`)
-
----
-
-## 비주얼 아이덴티티 — 마스코트 테마
-
-문서 사이트([adk.mo.ai.kr](https://adk.mo.ai.kr))와 `moai web` 콘솔은 모두의AI 캐릭터 마스코트(MascotCoding / MascotTalking / MascotBubble)에서 파생한 **마스코트 그레이** 테마(`#8c8c8c`, neutral gray)를 공유합니다. 마스코트는 히어로, 404 페이지, 섹션 디바이더에서 정서적 앵커로 등장합니다.
-
----
-
-## 설계 계보 — 하네스 엔지니어링
-
-MoAI-ADK는 Lilian Weng의 [**Harness Engineering for Self-Improvement**](https://lilianweng.github.io/posts/2026-07-04-harness/) (2026-07-04)에 제시된 하네스 엔지니어링 프레임워크를 의도적으로 승계하며, 그 설계 패턴과 자가 개선 루프를 동작하는 구현으로 옮겼습니다.
-
-> **하네스란?** — "A harness is the system surrounding a base model that orchestrates execution and decides how the model thinks and plans, calls tools and acts, perceives and manages context, stores artifacts, and evaluates results." — Lilian Weng (2026-07-04)
-
-Weng은 재귀적 자가 개선 (RSI)의 단기 경로가 "모델이 자기 가중치를 편집하는 것"이 아니라 **학습 파이프라인과 배포 시스템 — 즉 하네스 — 을 개선하는 것**이라고 예측했습니다. MoAI-ADK는 정확히 이 경로를 택합니다: 모델 가중치가 아니라 하네스 (스킬과 에이전트 지침)를 재귀적으로 개선합니다.
-
-### 승계 지도 — Weng의 프레임워크에서 MoAI-ADK로
-
-| Lilian Weng 하네스 개념 | MoAI-ADK 구현 |
-|---|---|
-| **Harness** — 베이스 모델을 둘러싼 실행/운영 계층 | MoAI-ADK = Claude Code 하네스 (단일 Go 바이너리 + CLAUDE.md 오케스트레이터) |
-| **Pattern 1: Workflow Automation** — plan → execute → observe → improve 목표 루프 | `/moai goal` 엔진, `/moai loop` Ralph Engine, Analyze-First 라우팅 |
-| **Pattern 2: File-System Persistent Memory** — "파일에 저장되는 지속 상태" | `.moai/specs/`, `progress.md`, `usage-log.jsonl`, `.moai/state/`, 세션 핸드오프 |
-| **Pattern 3: Sub-agents & Backend Jobs** — 병렬성을 명시적이고 점검 가능하게 | 11개 유지 에이전트, `Agent()` 스폰, 동적 워크플로우 |
-| **Self-Harness** — propose-evaluate-accept; 제한된 편집 + 회귀 게이트 | `internal/harness/` 4-티어 사다리 + 5-계층 안전 파이프라인 (applier = 제한된 편집, 회귀 게이트 = 검증) |
-| **Meta-Harness** — "하네스를 최적화하는 하네스" | `builder-harness` — 하네스가 하네스를 만든다; `/moai project`가 자동 생성 |
-| **"Improve the improver"** — RSI의 단기 경로는 배포 시스템 개선 | 재귀적 하네스 진화 — 루프가 관찰을 축적하고, 하네스가 자신의 스킬/에이전트 지침을 업그레이드 |
-| **"Evaluators and permissions live outside the loop"** — 보상 해킹 방어 | Layer-5 사용자 승인 게이트 + 구현 착수 승인 — 인간 감독이 진화 루프 바깥에 위치 |
-| **"Humans move up the stack, not out of the loop"** | 오케스트레이터가 단일 인간 접점; AskUserQuestion 게이트 결정과 SPEC 승인 게이트 |
-
-> Weng의 경고를 충실히 따릅니다: 평가자와 권한 통제는 하네스 진화 루프의 **바깥**에 있어야 합니다. MoAI-ADK는 Tier-4 자동 업데이트를 사용자 승인 게이트에 묶어, 자동화된 진화가 인간 감독 없는 폐쇄 루프로 도는 일이 없도록 합니다.
 
 ---
 
@@ -492,21 +448,6 @@ MoAI-ADK는 사용자의 AskUserQuestion 결정을 포착해 향후 추천을 �
 
 ---
 
-## 왜 Go인가
-
-Python 기반 MoAI-ADK (~73,000 라인)를 Go로 완전히 재작성했습니다.
-
-| 측면 | Python 에디션 | Go 에디션 |
-|--------|---------------|------------|
-| 배포 | pip + venv + 의존성 | **단일 바이너리**, 의존성 제로 |
-| 시작 시간 | ~800ms 인터프리터 부팅 | **~5ms** 네이티브 실행 |
-| 동시성 | asyncio / threading | **네이티브 고루틴** |
-| 타입 안전성 | 런타임 (mypy 선택) | **컴파일 타임 강제** |
-| 크로스 플랫폼 | Python 런타임 필요 | **사전 빌드 바이너리** (macOS, Linux, Windows) |
-| 훅 실행 | 셸 래퍼 + Python | **컴파일된 바이너리**, JSON 프로토콜 |
-
----
-
 ## 도구 레퍼런스
 
 ### `/moai` 슬래시 서브커맨드
@@ -682,12 +623,6 @@ go · python · typescript · javascript · rust · java · kotlin · csharp · 
 
 - [Discord](https://discord.gg/Z7E7Mdc5aN) — 실시간 토론과 팁
 - [Issues](https://github.com/modu-ai/moai-adk/issues) — 버그 리포트, 기능 요청 (Claude Code 안에서는 `/moai feedback`)
-
----
-
-## Star History
-
-[![Star History Chart](https://api.star-history.com/svg?repos=modu-ai/moai-adk&type=date&legend=top-left)](https://www.star-history.com/#modu-ai/moai-adk&type=date&legend=top-left)
 
 ---
 

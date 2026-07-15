@@ -41,18 +41,6 @@ Go で書かれた単一バイナリ。macOS・Linux・Windows で依存関係�
 
 ---
 
-## なぜトークノミクスか
-
-トークン価格は下がり続けていますが、エージェンティック開発は価格の下落より速くトークンを消費します。より多くのエージェントが並列で動き、コンテキストは長くなり、推論は深くなる — つまり実際のコストを決めるのは**モデルの価格表ではなく、トークンをどう運用するか**です。
-
-MoAI-ADK の答えは 3 つの要素からなります:
-
-1. **各タスクに適切なモデルと推論の深さを割り当てる** — 計画は深く、実装は安く、検証は独立して。
-2. **コンテキストをダイエットする** — 常時ロードされる指示を最小化し、プロンプトキャッシュのヒット率を計測する。
-3. **システムに予算を守らせる** — エージェントごとのトークン使用量を追跡し、上限に達する前に優雅に停止する。クラッシュの途中で止まることは決してない。
-
----
-
 ## 3 つの柱
 
 ### 柱 1 — トークノミクス (Token Economics)
@@ -171,38 +159,6 @@ fsutil 8dot3name set 1
 - **Claude Code** — MoAI-ADK は Claude Code のためのハーネスです
 - **Windows ユーザー**: [Git for Windows](https://gitforwindows.org/) が**必須** (Git Bash を含む)。レガシーの Windows PowerShell 5.x と cmd.exe は**非サポート**
 - **推奨**: `gh` CLI (PR 自動化) · `tmux` (CG モード) · 使用言語の lint/test ツールチェーン (例: `golangci-lint`)
-
----
-
-## ビジュアルアイデンティティ — マスコットテーマ
-
-ドキュメントサイト([adk.mo.ai.kr](https://adk.mo.ai.kr))と `moai web` コンソールは、모두의AI のキャラクターマスコット(MascotCoding / MascotTalking / MascotBubble)から派生した **マスコットグレー** テーマ(`#8c8c8c`, neutral gray)を共有します。マスコットはヒーロー、404ページ、セクション区切りで感情的な拠り所として登場します。
-
----
-
-## 設計の系譜 — ハーネスエンジニアリング
-
-MoAI-ADK は、Lilian Weng の [**Harness Engineering for Self-Improvement**](https://lilianweng.github.io/posts/2026-07-04-harness/) (2026-07-04) で示されたハーネスエンジニアリングのフレームワークを意図的に継承し、その設計パターンと自己改善ループを動作する実装へと翻訳しています。
-
-> **ハーネスとは何か?** — 「ハーネスとは、ベースモデルを取り巻くシステムであり、実行をオーケストレートし、モデルがどう考え計画するか、どうツールを呼び行動するか、どう知覚しコンテキストを管理するか、どう成果物を保存するか、どう結果を評価するかを決定するものである。」 — Lilian Weng (2026-07-04)
-
-Weng は、再帰的自己改善 (RSI) への短期的な道は「モデルが自身の重みを編集すること」ではなく、**トレーニングパイプラインとデプロイメントシステム — つまりハーネス — を改善すること**だと予測しました。MoAI-ADK はまさにこの道を進みます: モデルの重みではなく、ハーネス (スキルとエージェント指示) を再帰的に改善します。
-
-### 継承マップ — Weng のフレームワークから MoAI-ADK へ
-
-| Lilian Weng のハーネス概念 | MoAI-ADK の実装 |
-|---|---|
-| **Harness** — ベースモデルを取り巻く実行/運用レイヤー | MoAI-ADK = Claude Code ハーネス (単一 Go バイナリ + CLAUDE.md オーケストレーター) |
-| **Pattern 1: Workflow Automation** — plan → execute → observe → improve のゴールループ | `/moai goal` エンジン、`/moai loop` Ralph Engine、Analyze-First ルーティング |
-| **Pattern 2: File-System Persistent Memory** — 「ファイルに永続化された状態」 | `.moai/specs/`、`progress.md`、`usage-log.jsonl`、`.moai/state/`、セッションハンドオフ |
-| **Pattern 3: Sub-agents & Backend Jobs** — 並列性を明示的かつ検査可能にする | 11 の保持エージェント、`Agent()` スポーン、動的ワークフロー |
-| **Self-Harness** — propose-evaluate-accept、境界付き編集 + 回帰ゲート | `internal/harness/` 4 ティアラダー + 5 レイヤー安全パイプライン (applier = 境界付き編集、回帰ゲート = 検証) |
-| **Meta-Harness** — 「ハーネスを最適化するハーネス」 | `builder-harness` — ハーネスがハーネスを構築、`/moai project` が自動生成 |
-| **「Improve the improver」** — RSI の短期的な道はデプロイメントシステムの改善 | 再帰的ハーネス進化 — ループが観測を蓄積し、ハーネスが自身のスキル/エージェント指示をアップグレード |
-| **「評価者と権限はループの外に置く」** — 報酬ハッキング防御 | Layer-5 ユーザー承認ゲート + 実装着手承認 — 人間の監督は進化ループの外に位置する |
-| **「人間はスタックの上位へ移るのであり、ループの外に出るのではない」** | オーケストレーターが人間との唯一の接点、AskUserQuestion によるゲート付き決定と SPEC 承認ゲート |
-
-> Weng の警告は忠実に守られています: 評価者と権限制御はハーネス進化ループの**外**に留まらなければなりません。MoAI-ADK は Tier-4 自動更新をユーザー承認ゲートに紐付けているため、自動化された進化が人間の監督なしの閉ループとして動くことは決してありません。
 
 ---
 
@@ -492,21 +448,6 @@ MoAI-ADK は AskUserQuestion での決定を記録し、将来の推奨をパー
 
 ---
 
-## なぜ Go か
-
-Python ベースの MoAI-ADK (約 73,000 行) は Go で完全に書き直されました。
-
-| 観点 | Python 版 | Go 版 |
-|--------|---------------|------------|
-| 配布 | pip + venv + 依存関係 | **単一バイナリ**、依存関係ゼロ |
-| 起動時間 | 約 800ms のインタープリタ起動 | **約 5ms** のネイティブ実行 |
-| 並行性 | asyncio / threading | **ネイティブゴルーチン** |
-| 型安全性 | ランタイム (mypy 任意) | **コンパイル時に強制** |
-| クロスプラットフォーム | Python ランタイム必須 | **ビルド済みバイナリ** (macOS、Linux、Windows) |
-| フック実行 | シェルラッパー + Python | **コンパイル済みバイナリ**、JSON プロトコル |
-
----
-
 ## ツールリファレンス
 
 ### `/moai` スラッシュサブコマンド
@@ -658,12 +599,6 @@ go · python · typescript · javascript · rust · java · kotlin · csharp · 
 
 - [Discord](https://discord.gg/Z7E7Mdc5aN) — リアルタイムの議論とヒント
 - [Issues](https://github.com/modu-ai/moai-adk/issues) — バグ報告、機能リクエスト (Claude Code 内からは `/moai feedback` でも可)
-
----
-
-## Star History
-
-[![Star History Chart](https://api.star-history.com/svg?repos=modu-ai/moai-adk&type=date&legend=top-left)](https://www.star-history.com/#modu-ai/moai-adk&type=date&legend=top-left)
 
 ---
 
