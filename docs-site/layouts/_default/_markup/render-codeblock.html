@@ -1,13 +1,11 @@
 {{- /* macOS 스타일 코드 카드 render hook — Claude Warm Editorial 디자인 정합.
-       다크 카드 + 트래픽 라이트 + 파일명 + 언어 pill + 복사 버튼 + (멀티라인 시) 줄번호.
+       다크 카드 + 트래픽 라이트 + 파일명 + 언어 pill + 복사 버튼. (줄번호 미표시)
        mermaid는 별도 훅(render-codeblock-mermaid.html)이 처리하므로 여기로 오지 않음. */ -}}
 {{- $lang := strings.ToLower (.Type | default "") -}}
 {{- $code := trim .Inner "\n\r" -}}
 {{- $filename := "" -}}{{- with .Attributes.filename }}{{ $filename = . }}{{ end -}}
 {{- $langLabel := cond (eq $lang "") "text" $lang -}}
-{{- $lineCount := len (split $code "\n") -}}
 {{- $opts := "noClasses=false,tabWidth=2" -}}
-{{- if gt $lineCount 1 -}}{{- $opts = "noClasses=false,tabWidth=2,lineNos=true,lineNumbersInTable=true" -}}{{- end -}}
 <div class="code-card" data-lang="{{ $langLabel }}">
   <div class="code-chrome">
     <div class="traffic"><span class="red"></span><span class="yellow"></span><span class="green"></span></div>

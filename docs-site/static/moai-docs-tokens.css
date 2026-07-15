@@ -52,25 +52,25 @@
    Sampled from the brand logo: terracotta clay on warm cream.
    ============================================================ */
 :root {
-  /* ---- Brand: Mascot green — anchored on #3d7d5f (마스코트 본체색 rgb 61,125,95) ---- */
+  /* ---- Brand: 시그니처 녹색 (event accent) — 마스코트는 흑백 무채색, 테마 액센트는 녹색 rgb(61,125,95) ---- */
   --clay-50:  #eef6f1;
   --clay-100: #d6ebde;
   --clay-200: #aed4be;
   --clay-300: #85bda0;
   --clay-400: #5da681;
-  --clay-500: #3d7d5f;  /* primary — 마스코트 본체색 (was terracotta #D97757) */
+  --clay-500: #3d7d5f;  /* primary — 시그니처 녹색 (마스코트 회색 무채색과 짝) */
   --clay-600: #31684f;
   --clay-700: #265240;
   --clay-800: #1c3d30;
   --clay-900: #132a1f;
 
-  /* ---- Cream (warm neutrals / surfaces) ---- */
-  --cream-50:  #FDFAF5;
-  --cream-100: #FAF4EC;
-  --cream-200: #F8F0E8;  /* page background — sampled from logo */
-  --cream-300: #F1E7D9;
-  --cream-400: #E7D8C5;
-  --cream-500: #D9C5AC;
+  /* ---- Neutral surfaces (무채색 — 마스코트 회색과 짝, was warm cream/clay 계열) ---- */
+  --cream-50:  #f7faf8;
+  --cream-100: #f1f5f3;
+  --cream-200: #ecefee;  /* page background — neutral 무채색 */
+  --cream-300: #e3e7e4;
+  --cream-400: #d2d8d4;
+  --cream-500: #bcc4bf;
 
   /* ---- Ink (warm-black text scale) ---- */
   --ink-900: #211A14;

@@ -43,3 +43,6 @@ card_desc_utility_commands: "設定・セッション・メンテナンスを助
 card_desc_advanced: "エージェント・スキル・フックでワークフローを拡張。"
 card_desc_worktree: "完全に分離された環境で無制限の並列開発。"
 card_desc_db: "スキーマ同期とマイグレーションパターン。"
+pagination_page_prev: "前へ"
+pagination_page_next: "次へ"
+pagination_page_state: "{{ .PageNumber }} / {{ .TotalPages }}"

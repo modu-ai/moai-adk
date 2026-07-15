@@ -2,6 +2,7 @@
 title: Harness v4 Builder 深掘りガイド
 weight: 45
 draft: false
+description: "Harness v4 Builderの4フェーズワークフロー(ANALYZE/PLAN/GENERATE/ACTIVATE)、Manifestスキーマ、Runnerプリミティブの動作ルール。"
 ---
 
 [ビルダーエージェントガイド](/ja/advanced/builder-agents)が Harness v4 Builder の概要だったとすれば、このドキュメントは設計図です — 4-phase ワークフローの各段階の成果物、Manifest スキーマ全体、Runner プリミティブの動作ルールを扱います。

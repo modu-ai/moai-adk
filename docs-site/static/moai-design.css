@@ -464,7 +464,7 @@
   transition: all 150ms var(--easing-default);
 }
 .copy-btn:hover { background: rgba(61, 125, 95,0.18); color: #fff; border-color: rgba(61, 125, 95,0.4); }
-.copy-btn.copied { background: rgba(93,184,114,0.30); color: #ecc3b2; border-color: rgba(93,184,114,0.5); }
+.copy-btn.copied { background: rgba(93,184,114,0.30); color: #85bda0; border-color: rgba(93,184,114,0.5); }
 .copy-btn svg { width: 13px; height: 13px; }
 
 .code-body {
@@ -501,7 +501,7 @@
 .tk-p  { color: #faf9f5; }                       /* path / plain */
 .tk-pr { color: #5a9a7e; }                       /* prompt $ > */
 .tk-flag { color: #d4a017; }
-.tk-ok { color: #ecc3b2; }
+.tk-ok { color: #85bda0; }
 
 /* inline terminal */
 .term-card { margin: 20px 0; }
@@ -588,7 +588,7 @@
   color: var(--fg-3);
   font-weight: 600;
 }
-.toc-list { list-style: none; padding: 0; margin: 0; border-left: 1px solid var(--border-2); }
+.toc-list { list-style: none; padding: 0; margin: 0; border-left: 2px solid var(--clay-200); }
 .toc-list li a {
   display: block;
   padding: 5px 12px;
@@ -623,7 +623,7 @@
   font-size: 12px;
   letter-spacing: 0.16em;
   text-transform: uppercase;
-  color: #ecc3b2;
+  color: #85bda0;
   font-weight: 600;
   margin-bottom: 16px;
 }
@@ -773,14 +773,14 @@
   font-size: 12px;
   letter-spacing: 0.18em;
   text-transform: uppercase;
-  color: #ecc3b2;
+  color: #85bda0;
   font-weight: 600;
   margin-bottom: 14px;
   display: inline-flex; align-items: center; gap: 10px;
 }
 .cw-hero .eyebrow .dot {
   width: 6px; height: 6px; border-radius: 999px;
-  background: #ecc3b2;
+  background: #85bda0;
   box-shadow: 0 0 0 4px rgba(127,220,200,0.18);
   animation: cw-pulse 1.6s ease-in-out infinite;
 }
@@ -793,7 +793,7 @@
   margin: 0 0 18px;
   max-width: 18ch;
 }
-.cw-hero h1 .accent { color: #ecc3b2; }
+.cw-hero h1 .accent { color: #85bda0; }
 .cw-hero .lead-p {
   font-size: 17.5px;
   line-height: 1.65;
@@ -1007,7 +1007,7 @@
 }
 [data-theme="dark"] .cw-stat .num .delta {
   background: rgba(127,220,200,0.14);
-  color: #ecc3b2;
+  color: #85bda0;
 }
 
 /* ── Track (cookbook) cards ── */

@@ -77,21 +77,23 @@ JavaScript で書かれた **自動化スクリプト** で多数のエージェ
 ```mermaid
 flowchart TD
     START[作業特性の把握] --> Q1{いくつの独立<br>エージェントが必要?}
-    
+
     Q1 -->|1〜5 個| Q2{並列実行<br>必須?}
-    Q1 -->|5〜10 個| Q3{非常に<br>複雑?}
+    Q1 -->|5〜10 個| Q3{読み取り専用<br>調査?}
     Q1 -->|10 個+| WORKFLOW["Dynamic Workflow を選択<br>並列スクリプト最適"]
-    
+
     Q2 -->|いいえ| SUBAGENT["Sequential Sub-agent<br>順次委任"]
-    Q2 -->|はい| TEAMS["Agent Teams<br>チームコラボレーション"]
-    
-    Q3 -->|はい| TEAMS
+    Q2 -->|はい| PARALLEL["Parallel Sub-agents<br>単一ターン複数 Agent() ファンアウト"]
+
+    Q3 -->|はい| PARALLEL
     Q3 -->|いいえ| SUBAGENT
-    
+
     SUBAGENT --> DONE["✓ 選択完了"]
-    TEAMS --> DONE
+    PARALLEL --> DONE
     WORKFLOW --> DONE
 ```
+
+> MoAI の静的 Agent Teams オーケストレーション階層は引退したため (上記の警告を参照)、並列実行は **並列サブエージェントファンアウト** (単一ターン複数 `Agent()`、読み取り専用の調査スコープ) が担当します。ネイティブの Claude Code teammate ランタイム (`moai cg` の tmux ペイン) は別途引き続き動作します。
 
 ## Ultracode と Dynamic Workflows
 

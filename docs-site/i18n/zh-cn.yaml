@@ -43,3 +43,6 @@ card_desc_utility_commands: "涵盖配置、会话与维护的辅助命令手册
 card_desc_advanced: "用智能体、技能、钩子扩展你的工作流。"
 card_desc_worktree: "在完全隔离的环境中无限并行开发。"
 card_desc_db: "模式同步与迁移模式。"
+pagination_page_prev: "上一页"
+pagination_page_next: "下一页"
+pagination_page_state: "{{ .PageNumber }} / {{ .TotalPages }}"

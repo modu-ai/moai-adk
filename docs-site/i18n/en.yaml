@@ -43,3 +43,6 @@ card_desc_utility_commands: "Helper commands for setup, sessions, and maintenanc
 card_desc_advanced: "Extend your workflow with agents, skills, and hooks."
 card_desc_worktree: "Unlimited parallel development in fully isolated workspaces."
 card_desc_db: "Schema sync and migration patterns."
+pagination_page_prev: "Previous"
+pagination_page_next: "Next"
+pagination_page_state: "{{ .PageNumber }} / {{ .TotalPages }}"

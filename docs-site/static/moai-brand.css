@@ -7,8 +7,8 @@
 
 /* ── CSS Custom Properties (FROZEN tokens — Notion 가이드라인 명시) ── */
 :root {
-  /* ── Brand Color — 마스코트 테마 (Mascot green, MascotCoding 본체색) ── */
-  --color-primary: #3d7d5f;          /* 마스코트 녹색 rgb(61,125,95) — 시그니처 액센트 */
+  /* ── Brand Color — 시그니처 녹색 (마스코트는 회색 무채색, 테마 액센트는 녹색) ── */
+  --color-primary: #3d7d5f;          /* 시그니처 녹색 rgb(61,125,95) — 마스코트 무채색과 짝 */
   --color-primary-hover: #31684f;
   --color-primary-active: #265240;
   --color-ink: #141413;              /* 본문 텍스트 (#000 대체) */
@@ -325,7 +325,7 @@ a {
 }
 a:hover { color: var(--color-primary-hover); }
 [data-theme="dark"] a { color: #5a9a7e; }
-[data-theme="dark"] a:hover { color: #ecc3b2; }
+[data-theme="dark"] a:hover { color: #85bda0; }
 
 /* ── Inline code ── */
 code {
@@ -798,34 +798,8 @@ a:hover, a:focus-visible { text-decoration: underline; text-underline-offset: 0.
   font-family: var(--font-mono);
   white-space: pre;
 }
-/* 줄번호 테이블 (lineNumbersInTable=true) */
-.gdoc-markdown .code-card .chroma .lntable {
-  display: block;
-  width: 100%;
-  margin: 0;
-  border: 0;
-  border-collapse: collapse;
-  overflow-x: auto;
-  background: transparent !important;
-}
-.gdoc-markdown .code-card .chroma .lntable td { padding: 0; border: 0; vertical-align: top; }
-.gdoc-markdown .code-card .chroma .lntable tr:hover td { background: transparent; }
-.gdoc-markdown .code-card .chroma .lntd { background: transparent; }
-.gdoc-markdown .code-card .chroma .lntd:first-child {
-  width: 1%;
-  white-space: nowrap;
-  user-select: none;
-}
-.gdoc-markdown .code-card .chroma .lntd:first-child pre {
-  padding: 15px 12px 15px 16px !important;
-  background: rgba(0,0,0,0.18);
-  border-right: 1px solid rgba(255,255,255,0.05);
-  color: rgba(255,255,255,0.24);
-  text-align: right;
-}
-.gdoc-markdown .code-card .chroma .lnt,
-.gdoc-markdown .code-card .chroma .ln { color: rgba(255,255,255,0.24); }
-.gdoc-markdown .code-card .chroma .lntd:last-child pre { padding: 15px 18px 15px 16px !important; }
+/* 줄번호(lineNos) 비활성화됨 — line-number 테이블 스타일(.lntable/.lntd/.lnt/.ln)은 더 이상 렌더링되지 않음.
+   코드 카드 본문은 단일 배경 var(--term-bg)로 통일. 라인 하이라이트(.hl)만 보존. */
 .gdoc-markdown .code-card .chroma .hl { background: rgba(61, 125, 95,0.14); display: block; }
 
 /* ── 신택스 토큰 색 — 디자인 .tk-* 팔레트(Claude Warm Editorial) 정합 ──
@@ -872,7 +846,7 @@ a:hover, a:focus-visible { text-decoration: underline; text-underline-offset: 0.
 .gdoc-markdown .code-card .chroma .fm,
 .gdoc-markdown .code-card .chroma .nt { color: #5a9a7e !important; }
 .gdoc-markdown .code-card .chroma .o,
-.gdoc-markdown .code-card .chroma .ow { color: #ecc3b2 !important; }
+.gdoc-markdown .code-card .chroma .ow { color: #85bda0 !important; }
 .gdoc-markdown .code-card .chroma .p,
 .gdoc-markdown .code-card .chroma .nx,
 .gdoc-markdown .code-card .chroma .n,
@@ -1181,7 +1155,7 @@ a:hover, a:focus-visible { text-decoration: underline; text-underline-offset: 0.
 .cw-search-modal__list .parent { font-size: 11px; color: var(--fg-3); margin-top: 2px; font-family: var(--font-mono); }
 .cw-search-modal__list .excerpt { font-size: 12.5px; color: var(--fg-2); margin-top: 4px; line-height: 1.5; }
 .cw-search-modal__list mark { background: rgba(236,195,178,0.25); color: var(--color-primary); padding: 0 1px; border-radius: 2px; }
-[data-theme="dark"] .cw-search-modal__list mark { background: rgba(236,195,178,0.18); color: #ecc3b2; }
+[data-theme="dark"] .cw-search-modal__list mark { background: rgba(236,195,178,0.18); color: #85bda0; }
 .cw-search-input kbd {
   margin-left: auto;
   font-family: var(--font-mono);
@@ -1357,7 +1331,7 @@ main a:hover {
 [data-theme="dark"] .gdoc-page a:hover,
 [data-theme="dark"] .gdoc-content a:hover,
 [data-theme="dark"] .gdoc-markdown a:hover,
-[data-theme="dark"] main a:hover { color: #ecc3b2; text-decoration-color: #ecc3b2; }
+[data-theme="dark"] main a:hover { color: #85bda0; text-decoration-color: #85bda0; }
 
 .gdoc-brand svg,
 .gdoc-brand img { height: 22px; width: auto; }
@@ -1490,7 +1464,7 @@ footer.cw-footer {
   font-size: 12px;
   letter-spacing: 0.18em;
   text-transform: uppercase;
-  color: #ecc3b2;
+  color: #85bda0;
   font-weight: 600;
   margin-bottom: 14px;
   display: inline-flex;
@@ -1499,7 +1473,7 @@ footer.cw-footer {
 }
 .cw-hero .eyebrow .dot {
   width: 6px; height: 6px; border-radius: 999px;
-  background: #ecc3b2;
+  background: #85bda0;
   box-shadow: 0 0 0 4px rgba(236,195,178,0.18);
   animation: cw-pulse 1.6s ease-in-out infinite;
 }
@@ -1513,7 +1487,7 @@ footer.cw-footer {
   max-width: 18ch;
   color: #fff;
 }
-.cw-hero h1 .accent { color: #ecc3b2; }
+.cw-hero h1 .accent { color: #85bda0; }
 .cw-hero .lead-p {
   font-size: 17.5px;
   line-height: 1.65;
@@ -1696,7 +1670,7 @@ footer.cw-footer {
   padding: 2px 7px;
   border-radius: var(--radius-sm);
 }
-[data-theme="dark"] .cw-stat .num .delta { background: rgba(236,195,178,0.14); color: #ecc3b2; }
+[data-theme="dark"] .cw-stat .num .delta { background: rgba(236,195,178,0.14); color: #85bda0; }
 
 /* ── Quick start cards ── */
 .cw-qs {

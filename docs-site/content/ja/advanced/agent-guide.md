@@ -2,6 +2,7 @@
 title: エージェントガイド
 weight: 30
 draft: false
+description: "MoAI-ADK v3.0の11個のコアエージェントカタログ — 役割、フェーズ範囲、計画-監査の分離原則。"
 ---
 
 MoAI-ADK v3.0 の 11 個のコアエージェントカタログを詳しく解説します。

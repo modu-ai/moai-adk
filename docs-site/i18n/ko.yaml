@@ -43,3 +43,6 @@ card_desc_utility_commands: "설정·세션·유지보수를 돕는 보조 커�
 card_desc_advanced: "에이전트·스킬·훅으로 워크플로우를 확장해요."
 card_desc_worktree: "완전히 격리된 환경에서 무제한 병렬 개발."
 card_desc_db: "스키마 동기화와 마이그레이션 패턴."
+pagination_page_prev: "이전"
+pagination_page_next: "다음"
+pagination_page_state: "{{ .PageNumber }} / {{ .TotalPages }}"
