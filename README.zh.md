@@ -176,7 +176,7 @@ fsutil 8dot3name set 1
 
 ## 视觉识别 — 吉祥物主题
 
-文档站点([adk.mo.ai.kr](https://adk.mo.ai.kr))与 `moai web` 控制台共享 **吉祥物绿** 主题 —— `#3d7d5f`，源自 모두의AI 角色吉祥物(MascotCoding / MascotTalking / MascotBubble)。吉祥物在主视觉区、404 页面、章节分隔处作为情感锚点出现。
+文档站点([adk.mo.ai.kr](https://adk.mo.ai.kr))与 `moai web` 控制台共享 **吉祥物灰** 主题 —— `#8c8c8c`（neutral gray），源自 모두의AI 角色吉祥物(MascotCoding / MascotTalking / MascotBubble)。吉祥物在主视觉区、404 页面、章节分隔处作为情感锚点出现。
 
 ---
 
@@ -279,6 +279,8 @@ CG 模式通过 tmux 会话级环境变量将 leader 与 worker 隔离：GLM 配
 - **缓存命中率** 状态栏区段让瘦身效果实时可测
 - 验证输出遵循文件重定向契约——长日志写入磁盘；上下文只携带退出码和有界尾部
 
+→ 阅读更多：[Tokenomics 总览](https://adk.mo.ai.kr/zh/advanced/tokenomics-overview) · [提示缓存](https://adk.mo.ai.kr/zh/cost-optimization/prompt-caching)
+
 ---
 
 ## 递归自我学习
@@ -347,6 +349,8 @@ moai harness disable     # turn learning off
 ### 会话交接自动恢复
 
 在上下文窗口阈值处 (1M 上下文模型为 50%，200K 模型为 90%)，MoAI 发出一条可直接粘贴的恢复消息——包含进度状态、已应用的教训和可验证的前置条件——`/clear` 之后只需粘贴一次，下一个会话即可继续。
+
+→ 阅读更多：[自我进化的 Harness](https://adk.mo.ai.kr/zh/advanced/self-evolving) · [决策记忆](https://adk.mo.ai.kr/zh/advanced/decision-memory)
 
 ---
 
@@ -474,6 +478,8 @@ MoAI-ADK 捕获你的 AskUserQuestion 决策并个性化未来的推荐：
 - **衰减策略** —— 幂律权重 `(age+1)^(-0.5)`；使用某偏好会刷新它
 - **控制** —— `moai preference list | decay-scan | toggle`；敏感的安全领域给出附带披露的中立推荐
 
+→ 阅读更多：[Harness v4 Builder](https://adk.mo.ai.kr/zh/advanced/harness-v4-builder) · [Catalog 系统](https://adk.mo.ai.kr/zh/advanced/catalog-system)
+
 ---
 
 ## 为什么选择 Go
@@ -497,6 +503,8 @@ MoAI-ADK 捕获你的 AskUserQuestion 决策并个性化未来的推荐：
 
 > **重要区分**：`moai` (终端 CLI) ≠ `/moai` (Claude Code 斜杠命令)。前者是在 shell 中运行的 Go 二进制 (`moai init`、`moai doctor`)；后者是在 Claude Code 聊天中运行的 AI 工作流路由器 (`/moai plan`、`/moai run`)。它们是不同的工具。
 
+→ 详情：[工作流命令](https://adk.mo.ai.kr/zh/workflow-commands) · [实用命令](https://adk.mo.ai.kr/zh/utility-commands)
+
 16 个入口——15 个具名子命令加上自然语言默认入口：
 
 | 子命令 | 角色 |
@@ -511,7 +519,11 @@ MoAI-ADK 捕获你的 AskUserQuestion 决策并个性化未来的推荐：
 
 ### CLI 命令 (36 个顶级命令)
 
-`moai` 二进制注册了 36 个顶级命令。日常常用集合：
+`moai` 二进制注册了 36 个顶级命令。其中 `goal`、`handoff`、`harness`、`init`、`launchers`、`loop`、`pr`、`session`、`spec`、`tool-policy`、`worktree` 等 **11 个命令在文档站点拥有独立的 CLI 参考页面**。
+
+→ 详情：[CLI 参考](https://adk.mo.ai.kr/zh/cli-reference)
+
+日常常用集合：
 
 | 命令 | 描述 |
 |---------|-------------|
@@ -537,6 +549,8 @@ MoAI-ADK 捕获你的 AskUserQuestion 决策并个性化未来的推荐：
 
 ### 钩子
 
+→ 详情：[钩子指南](https://adk.mo.ai.kr/zh/advanced/hooks-guide) · [钩子参考](https://adk.mo.ai.kr/zh/advanced/hooks-reference)
+
 所有钩子事件都遵循 Claude Code hooks 协议，通过 JSON stdin/stdout 通信：
 
 - **27 种事件类型** —— SessionStart、PreToolUse、PostToolUse、SessionEnd、Stop、SubagentStop、PreCompact、PostCompact、TeammateIdle、TaskCompleted 等
@@ -545,11 +559,15 @@ MoAI-ADK 捕获你的 AskUserQuestion 决策并个性化未来的推荐：
 
 ### 状态栏
 
+→ 详情：[状态栏](https://adk.mo.ai.kr/zh/advanced/statusline)
+
 MoAI 在 Claude Code 终端底部渲染丰富的状态栏：模型层级/effort、MoAI 版本 (含更新标记)、Git 分支与变更状态、上下文窗口用量 (CW%)、缓存命中率，以及会话成本/Token。
 
 CW% 带有两阶段 `/clear` 标记——在模型特定阈值处的软警告 (Opus 4.8、GLM-5.2[1m] 等 1M 上下文模型为 50%；200K 模型为 90%)，以及在绝对上限处的硬标记。Claude Code 会把 GLM-5.2 误报为 200K 模型 (上游 Issue #653)；MoAI 在 `internal/statusline/memory.go` 中将其修正为 1M，因此请信任 MoAI 状态栏的 CW%。
 
 ### 输出风格
+
+→ 详情：[进阶主题](https://adk.mo.ai.kr/zh/advanced)
 
 | 风格 | 特点 | 受众 |
 |-------|-----------|----------|
@@ -560,6 +578,8 @@ CW% 带有两阶段 `/clear` 标记——在模型特定阈值处的软警告 (O
 通过 `/config` 切换 (存储在优先级最高的 `settings.local.json` 中)。输出风格在会话开始时只读取一次——更改在 `/clear` 或新会话后生效。
 
 ### @MX 标签系统
+
+→ 详情：[@MX 标签](https://adk.mo.ai.kr/zh/advanced/mx-tags)
 
 @MX 标签是内联代码注解，在 AI 代理之间传递上下文、不变量契约与危险区域。
 
@@ -582,11 +602,36 @@ func DispatchHook(event string, data []byte) error {
 
 ### Worktree 隔离
 
+→ 详情：[Git Worktree](https://adk.mo.ai.kr/zh/worktree)
+
 `/moai plan --worktree` 为每个 SPEC 提供隔离的 git worktree 以进行并行开发；`moai worktree` 管理其生命周期 (`new --tmux` 会在 worktree 内自动创建 tmux 会话)。
 
 ### 支持的 16 种语言
 
+→ 详情：[CLI 参考](https://adk.mo.ai.kr/zh/cli-reference)
+
 go · python · typescript · javascript · rust · java · kotlin · csharp · ruby · php · elixir · cpp · scala · r · flutter · swift —— 通过项目标记检测，每种语言运行各自的标准 lint/格式化/测试工具链。未安装的工具会被优雅跳过。
+
+---
+
+## 文档导航
+
+完整文档位于 [adk.mo.ai.kr](https://adk.mo.ai.kr)，按以下 12 个章节组织 (中文版路径)：
+
+| 章节 | 简介 |
+|------|------|
+| [入门指南](https://adk.mo.ai.kr/zh/getting-started) | 介绍、安装、Windows 指南、初始化向导、快速开始、CLI、FAQ |
+| [核心概念](https://adk.mo.ai.kr/zh/core-concepts) | MoAI-ADK 是什么、宪章、Harness 工程、SPEC 开发、DDD、TRUST 5 (涵盖三大支柱) |
+| [工作流命令](https://adk.mo.ai.kr/zh/workflow-commands) | plan、run、sync、project、harness、design |
+| [实用命令](https://adk.mo.ai.kr/zh/utility-commands) | fix、loop、gate、mx、review、clean、codemaps、e2e、feedback、goal、moai |
+| [CLI 参考](https://adk.mo.ai.kr/zh/cli-reference) | status、profile、doctor、inventory、update、web 等 36 个顶级命令的逐条参考 |
+| [Claude Code 指南](https://adk.mo.ai.kr/zh/claude-code) | 基础、上下文与记忆、Agentic 模式、可扩展性 |
+| [多 LLM](https://adk.mo.ai.kr/zh/multi-llm) | CG 模式、模型策略 |
+| [成本优化](https://adk.mo.ai.kr/zh/cost-optimization) | 提示缓存 (Prompt Caching) |
+| [指南](https://adk.mo.ai.kr/zh/guides) | CI 自治、多 LLM CI |
+| [Git Worktree](https://adk.mo.ai.kr/zh/worktree) | 指南、示例、FAQ |
+| [进阶](https://adk.mo.ai.kr/zh/advanced) | Tokenomics、Token 预算、状态栏、settings.json、钩子、技能、Harness v4、自我进化、决策记忆、安全笔记、目录系统等 |
+| [贡献](https://adk.mo.ai.kr/zh/contributing) | 参与贡献本项目 |
 
 ---
 

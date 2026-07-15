@@ -176,7 +176,7 @@ fsutil 8dot3name set 1
 
 ## ビジュアルアイデンティティ — マスコットテーマ
 
-ドキュメントサイト([adk.mo.ai.kr](https://adk.mo.ai.kr))と `moai web` コンソールは、모두의AI のキャラクターマスコット(MascotCoding / MascotTalking / MascotBubble)から派生した **マスコットグリーン** テーマ(`#3d7d5f`)を共有します。マスコットはヒーロー、404ページ、セクション区切りで感情的なアンカーとして登場します。
+ドキュメントサイト([adk.mo.ai.kr](https://adk.mo.ai.kr))と `moai web` コンソールは、모두의AI のキャラクターマスコット(MascotCoding / MascotTalking / MascotBubble)から派生した **マスコットグレー** テーマ(`#8c8c8c`, neutral gray)を共有します。マスコットはヒーロー、404ページ、セクション区切りで感情的な拠り所として登場します。
 
 ---
 
@@ -218,7 +218,7 @@ Weng は、再帰的自己改善 (RSI) への短期的な道は「モデルが�
 | **medium** | Max $100/月 | 品質とコストのバランス |
 | **low** | Plus $20/月 | Opus アクセスなし — Sonnet 中心のルーティング |
 
-「No-Haiku」という名前は、品質クリティカルなフェーズを最安モデルにルーティングすることから離れた v3 の転換を示します: 安価なモデルは安全な場所でのみ使われ、独立した判断が必要な場所では決して使われません。
+「No-Haiku」という名前は、品質を左右するフェーズを最安モデルにルーティングする、という発想からの v3 の転換を示します: 安価なモデルは安全な場所でのみ使われ、独立した判断が必要な場所では決して使われません。
 
 ### プラン対応ティアプロファイル (plan_type)
 
@@ -278,6 +278,8 @@ CG モードは、tmux セッションレベルの環境変数によってリー
 - 常時ロードコンテキストの予算ガード — スリム化された CLAUDE.md とパススコープ付きルールファイルが、ターンごとの固定コストを抑える
 - **キャッシュヒット率**のステータスラインセグメントが、ダイエットの効果をリアルタイムで計測可能にする
 - 検証出力はファイルリダイレクト契約に乗る — 長いログはディスクへ、コンテキストには終了コードと境界付き末尾のみ
+
+→ 続きを読む: [トークノミクス概要](https://adk.mo.ai.kr/ja/advanced/tokenomics-overview) · [プロンプトキャッシング](https://adk.mo.ai.kr/ja/cost-optimization/prompt-caching)
 
 ---
 
@@ -347,6 +349,8 @@ moai harness disable     # turn learning off
 ### セッションハンドオフ自動再開
 
 コンテキストウィンドウの閾値 (1M コンテキストモデルで 50%、200K モデルで 90%) に達すると、MoAI はペースト可能な再開メッセージ — 進捗状態、適用済みレッスン、検証可能な前提条件を含む — を出力します。`/clear` 後にペースト 1 回で次のセッションが継続できます。
+
+→ 続きを読む: [自己進化するハーネス](https://adk.mo.ai.kr/ja/advanced/self-evolving) · [Decision Memory](https://adk.mo.ai.kr/ja/advanced/decision-memory)
 
 ---
 
@@ -474,6 +478,8 @@ MoAI-ADK は AskUserQuestion での決定を記録し、将来の推奨をパー
 - **減衰ポリシー** — べき乗則の重み `(age+1)^(-0.5)`。好みを使うとリフレッシュされる
 - **コントロール** — `moai preference list | decay-scan | toggle`。セキュリティ関連のセンシティブなドメインでは開示付きの中立的な推奨
 
+→ 続きを読む: [Harness v4 Builder](https://adk.mo.ai.kr/ja/advanced/harness-v4-builder) · [カタログシステム](https://adk.mo.ai.kr/ja/advanced/catalog-system)
+
 ---
 
 ## なぜ Go か
@@ -509,6 +515,8 @@ Python ベースの MoAI-ADK (約 73,000 行) は Go で完全に書き直され
 | `e2e` | マルチプラットフォーム E2E テスト (Web/モバイル/デスクトップ、CLI 優先) |
 | *(自然言語)* | 自律的な plan → run → sync パイプラインへの Analyze-First ルーティング |
 
+→ 詳細: [ワークフローコマンド](https://adk.mo.ai.kr/ja/workflow-commands) · [ユーティリティコマンド](https://adk.mo.ai.kr/ja/utility-commands)
+
 ### CLI コマンド (トップレベル 36)
 
 `moai` バイナリは 36 のトップレベルコマンドを登録します。日常的に使うセット:
@@ -535,6 +543,8 @@ Python ベースの MoAI-ADK (約 73,000 行) は Go で完全に書き直され
 
 その他の登録コマンド: `mx`、`clean`、`codemaps`、`feedback`、`loop`、`lsp`、`ast-grep`、`agent`、`workflow`、`statusline`、`telemetry`、`constitution`、`state`、`tool-policy`、`migrate`、`profile`、`pr`、`github`、`research`。
 
+→ 詳細: [CLI リファレンス](https://adk.mo.ai.kr/ja/cli-reference)。CLI リファレンスセクションには、`goal`・`handoff`・`harness`・`init`・`launchers`・`loop`・`pr`・`session`・`spec`・`tool-policy`・`worktree` を含む **11 の新しい個別コマンドページ**が追加されました。
+
 ### フック
 
 すべてのフックイベントは、JSON stdin/stdout 通信による Claude Code フックプロトコルに従います:
@@ -543,11 +553,15 @@ Python ベースの MoAI-ADK (約 73,000 行) は Go で完全に書き直され
 - **4 つのフックタイプ** — command (シェルスクリプト)、prompt (LLM 評価)、agent (サブエージェント検証)、http (webhook エンドポイント)
 - タスクメトリクスは `.moai/logs/task-metrics.jsonl` に記録され、セッション分析とコスト追跡に使われます
 
+→ 詳細: [フックガイド](https://adk.mo.ai.kr/ja/advanced/hooks-guide) · [フックリファレンス](https://adk.mo.ai.kr/ja/advanced/hooks-reference)
+
 ### ステータスライン
 
 MoAI は Claude Code ターミナルの下部にリッチなステータスラインを表示します: モデルティア/effort、MoAI バージョン (更新マーカー付き)、Git ブランチと変更状態、コンテキストウィンドウ使用率 (CW%)、キャッシュヒット率、セッションコスト/トークン。
 
 CW% には 2 段階の `/clear` マーカーがあります — モデル固有の閾値 (Opus 4.8 や GLM-5.2[1m] のような 1M コンテキストモデルで 50%、200K モデルで 90%) でのソフト警告と、絶対上限でのハードマーカー。Claude Code は GLM-5.2 を 200K モデルと誤報告します (上流 Issue #653)。MoAI は `internal/statusline/memory.go` で 1M に補正しているため、MoAI ステータスラインの CW% を信頼してください。
+
+→ 詳細: [ステータスライン](https://adk.mo.ai.kr/ja/advanced/statusline)
 
 ### 出力スタイル
 
@@ -558,6 +572,8 @@ CW% には 2 段階の `/clear` マーカーがあります — モデル固有�
 | **MoAI-Learn** (learn) | ソクラテス式チューター | 学習者 |
 
 切り替えは `/config` から (最優先スコープの `settings.local.json` に保存)。出力スタイルはセッション開始時に 1 回だけ読み込まれます — 変更は `/clear` または新しいセッションから反映されます。
+
+→ 詳細: [Advanced](https://adk.mo.ai.kr/ja/advanced) · [Claude Code Guide](https://adk.mo.ai.kr/ja/claude-code/foundations)
 
 ### @MX タグシステム
 
@@ -580,13 +596,19 @@ func DispatchHook(event string, data []byte) error {
 
 このシステムはシグナル対ノイズ比を最適化します: **AI が最初に注目すべきコードだけがタグを持ちます。**ほとんどのコードはどの基準にも該当せずタグを持ちません — それが正常であり意図された状態です。閾値とファイルごとの上限は `.moai/config/sections/mx.yaml` で設定し、スキャンは `/moai mx --all` (または `--dry`、`--priority P1`) で実行します。
 
+→ 詳細: [@MX タグ](https://adk.mo.ai.kr/ja/advanced/mx-tags)
+
 ### Worktree 分離
 
 `/moai plan --worktree` は各 SPEC に並列開発のための分離された git worktree を与えます。`moai worktree` がライフサイクルを管理します (`new --tmux` は worktree 内に tmux セッションを自動作成)。
 
+→ 詳細: [Git Worktree](https://adk.mo.ai.kr/ja/worktree)
+
 ### サポート 16 言語
 
 go · python · typescript · javascript · rust · java · kotlin · csharp · ruby · php · elixir · cpp · scala · r · flutter · swift — プロジェクトマーカーで検出され、それぞれ標準の lint/format/test ツールチェーンが実行されます。未インストールのツールは静かにスキップされます。
+
+→ 詳細: [CLI リファレンス](https://adk.mo.ai.kr/ja/cli-reference) · [Advanced](https://adk.mo.ai.kr/ja/advanced)
 
 ---
 
@@ -639,7 +661,26 @@ go · python · typescript · javascript · rust · java · kotlin · csharp · 
 
 [Apache License 2.0](./LICENSE) — 詳細は LICENSE ファイルを参照してください。
 
-## リンク
+## ドキュメンテーションガイド + リンク
+
+公式ドキュメントサイト [adk.mo.ai.kr](https://adk.mo.ai.kr) は 12 のセクションで構成されています。各セクションの日本語版は `https://adk.mo.ai.kr/ja/<セクション>` で読めます。
+
+| セクション | 内容 | パス |
+|----------|------|------|
+| Getting Started | インストール・初期化ウィザード・クイックスタート・CLI・FAQ | [/ja/getting-started](https://adk.mo.ai.kr/ja/getting-started) |
+| Core Concepts | 全体像・憲法・ハーネスエンジニアリング・SPEC ベース開発・DDD・TRUST 5 (3 つの柱をカバー) | [/ja/core-concepts](https://adk.mo.ai.kr/ja/core-concepts) |
+| Workflow Commands | `plan` / `run` / `sync` / `project` / `harness` / `design` | [/ja/workflow-commands](https://adk.mo.ai.kr/ja/workflow-commands) |
+| Utility Commands | `fix` / `loop` / `gate` / `mx` / `review` / `clean` / `codemaps` / `e2e` / `feedback` / `goal` / `moai` | [/ja/utility-commands](https://adk.mo.ai.kr/ja/utility-commands) |
+| CLI Reference | 36 のトップレベル CLI コマンドの個別リファレンス | [/ja/cli-reference](https://adk.mo.ai.kr/ja/cli-reference) |
+| Claude Code Guide | 基礎・コンテキストとメモリ・エージェンティック・拡張機能 | [/ja/claude-code](https://adk.mo.ai.kr/ja/claude-code) |
+| Multi-LLM | CG モード・モデルポリシー | [/ja/multi-llm](https://adk.mo.ai.kr/ja/multi-llm) |
+| Cost Optimization | プロンプトキャッシング | [/ja/cost-optimization](https://adk.mo.ai.kr/ja/cost-optimization) |
+| Guides | CI 自律化・マルチ LLM CI | [/ja/guides](https://adk.mo.ai.kr/ja/guides) |
+| Git Worktree | ガイド・例・FAQ | [/ja/worktree](https://adk.mo.ai.kr/ja/worktree) |
+| Advanced | トークノミクス詳説・ステータスライン・フック・@MX タグ・ハーネス v4 Builder・自己進化・Decision Memory・カタログシステム他 | [/ja/advanced](https://adk.mo.ai.kr/ja/advanced) |
+| Contributing | コントリビューションガイド | [/ja/contributing](https://adk.mo.ai.kr/ja/contributing) |
+
+### リンク
 
 - [公式ドキュメント](https://adk.mo.ai.kr)
 - [書籍: Claude Code 実践エージェンティックコーディング](https://adk.mo.ai.kr/book)

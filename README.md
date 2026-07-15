@@ -43,7 +43,7 @@ A single binary written in Go. Runs instantly on macOS, Linux, and Windows with 
 
 ## Why Tokenomics
 
-Token prices keep falling, but agentic development burns tokens faster than prices drop. More agents run in parallel, contexts grow longer, and reasoning gets deeper — so your real cost is decided **not by the model's price tag but by how you operate tokens**.
+Token prices keep falling, but agentic development burns tokens faster than prices drop. More agents run in parallel, contexts grow longer, and reasoning gets deeper — so your real cost comes down to **how you operate tokens**, not the model's price tag.
 
 MoAI-ADK's answer comes in three parts:
 
@@ -176,7 +176,7 @@ A third option is creating a Windows account with an ASCII-only username.
 
 ## Visual Identity — Mascot Theme
 
-The documentation site ([adk.mo.ai.kr](https://adk.mo.ai.kr)) and the `moai web` console share the **Mascot green** theme — `#3d7d5f`, derived from the 모두의AI character mascot (MascotCoding / MascotTalking / MascotBubble). The mascot appears as an emotional anchor across the hero, the 404 page, and section dividers.
+The documentation site ([adk.mo.ai.kr](https://adk.mo.ai.kr)) and the `moai web` console share the **Mascot gray** theme — `#8c8c8c` (neutral gray), derived from the 모두의AI character mascot (MascotCoding / MascotTalking / MascotBubble). The mascot appears as an emotional anchor across the hero, the 404 page, and section dividers.
 
 ---
 
@@ -279,6 +279,8 @@ CG mode isolates the leader from workers via tmux session-level environment vari
 - A **cache-hit-rate** statusline segment makes the diet's effect measurable in real time
 - Verification output rides a file-redirect contract — long logs go to disk; the context carries only exit codes and bounded tails
 
+→ read more: [Tokenomics Overview](https://adk.mo.ai.kr/en/advanced/tokenomics-overview) · [Prompt Caching](https://adk.mo.ai.kr/en/cost-optimization/prompt-caching)
+
 ---
 
 ## Recursive Self-Learning
@@ -347,6 +349,8 @@ Language-independent intent analysis is the default `/moai` routing. Requests ar
 ### Session Handoff Auto-Resume
 
 At the context-window threshold (50% on 1M-context models, 90% on 200K models), MoAI emits a paste-ready resume message — progress state, applied lessons, and verifiable preconditions included — so the next session continues with a single paste after `/clear`.
+
+→ read more: [Self-Evolving Harness](https://adk.mo.ai.kr/en/advanced/self-evolving) · [Decision Memory](https://adk.mo.ai.kr/en/advanced/decision-memory)
 
 ---
 
@@ -474,6 +478,8 @@ MoAI-ADK captures your AskUserQuestion decisions and personalizes future recomme
 - **Decay policy** — power-law weights, `(age+1)^(-0.5)`; using a preference refreshes it
 - **Controls** — `moai preference list | decay-scan | toggle`; sensitive security domains get neutral recommendations with disclosure
 
+→ read more: [Harness v4 Builder](https://adk.mo.ai.kr/en/advanced/harness-v4-builder) · [Catalog System](https://adk.mo.ai.kr/en/advanced/catalog-system)
+
 ---
 
 ## Why Go
@@ -509,6 +515,8 @@ The Python-based MoAI-ADK (~73,000 lines) was completely rewritten in Go.
 | `e2e` | Multi-platform E2E testing (web/mobile/desktop, CLI-first) |
 | *(natural language)* | Analyze-First routing into the autonomous plan → run → sync pipeline |
 
+→ details: [Workflow Commands](https://adk.mo.ai.kr/en/workflow-commands) · [Utility Commands](https://adk.mo.ai.kr/en/utility-commands)
+
 ### CLI Commands (37 top-level)
 
 The `moai` binary registers 37 top-level commands across three cobra groups (launch / project / tools). The everyday set:
@@ -535,6 +543,8 @@ The `moai` binary registers 37 top-level commands across three cobra groups (lau
 
 Also registered: `mx`, `clean`, `loop`, `lsp`, `ast-grep`, `agent`, `workflow`, `statusline`, `telemetry`, `constitution`, `state`, `tool-policy`, `migrate`, `migration`, `verify`, `profile`, `pr`, `github`, `research`.
 
+→ details: [CLI Reference](https://adk.mo.ai.kr/en/cli-reference) — 11 recently added reference pages cover `goal`, `handoff`, `harness`, `init`, `launchers`, `loop`, `pr`, `session`, `spec`, `tool-policy`, and `worktree`.
+
 ### Hooks
 
 All hook events follow the Claude Code hooks protocol with JSON stdin/stdout communication. The `moai hook <event>` dispatcher (one kebab-case subcommand per event) is invoked by shell wrappers (`handle-*.sh`) that Claude Code calls directly:
@@ -543,11 +553,15 @@ All hook events follow the Claude Code hooks protocol with JSON stdin/stdout com
 - **4 hook types** — command (shell scripts), prompt (LLM evaluation), agent (subagent verification), http (webhook endpoints)
 - Task metrics are captured to `.moai/logs/task-metrics.jsonl` for session analytics and cost tracking
 
+→ details: [Hooks Guide](https://adk.mo.ai.kr/en/advanced/hooks-guide) · [Hooks Reference](https://adk.mo.ai.kr/en/advanced/hooks-reference)
+
 ### Statusline
 
 MoAI renders a rich statusline at the bottom of the Claude Code terminal via the `moai statusline` command (10-second `refreshInterval`): model tier/effort, MoAI version (with update marker), Git branch and change state, context-window usage (CW%), cache hit rate, and session cost/tokens.
 
 CW% carries a two-stage `/clear` marker — a soft warning at the model-specific threshold (50% on 1M-context models such as Opus 4.8 and GLM-5.2[1m]; 90% on 200K models) and a hard marker at the absolute ceiling. Claude Code misreports GLM-5.2 as a 200K model (upstream Issue #653); MoAI corrects it to 1M in `internal/statusline/memory.go`, so trust the MoAI statusline CW%.
+
+→ details: [Statusline](https://adk.mo.ai.kr/en/advanced/statusline)
 
 ### Output Styles
 
@@ -558,6 +572,8 @@ CW% carries a two-stage `/clear` marker — a soft warning at the model-specific
 | **MoAI-Learn** (learn) | Socratic tutor | Learners |
 
 Switch via `/config` (stored in `settings.local.json`, the highest-priority scope). Output style is read once at session start — changes take effect after `/clear` or a new session.
+
+→ details: [Claude Code Guide — Foundations](https://adk.mo.ai.kr/en/claude-code/foundations)
 
 ### @MX Tag System
 
@@ -581,13 +597,19 @@ func DispatchHook(event string, data []byte) error {
 
 The system optimizes signal-to-noise: **only the code AI must notice first gets a tag.** Most code meets no criterion and carries no tag — that is normal and intended. Thresholds and per-file limits are configured in `.moai/config/sections/mx.yaml`; scan with `/moai mx --all` (or `--dry`, `--priority P1`).
 
+→ details: [@MX Tags](https://adk.mo.ai.kr/en/advanced/mx-tags)
+
 ### Worktree Isolation
 
 `/moai plan --worktree` gives each SPEC an isolated git worktree for parallel development; `moai worktree` manages the lifecycle (`new --tmux` auto-creates a tmux session inside the worktree).
 
+→ details: [Git Worktree Guide](https://adk.mo.ai.kr/en/worktree)
+
 ### 16 Supported Languages
 
 go · python · typescript · javascript · rust · java · kotlin · csharp · ruby · php · elixir · cpp · scala · r · flutter · swift — detected via project markers, each running its own standard lint/format/test toolchain. Tools not installed are skipped gracefully.
+
+→ details: [CLI Reference](https://adk.mo.ai.kr/en/cli-reference)
 
 ---
 
@@ -639,6 +661,25 @@ Contributions are welcome! See [CONTRIBUTING.md](CONTRIBUTING.md) for detailed g
 ## License
 
 [Apache License 2.0](./LICENSE) — see the LICENSE file for details.
+
+## Documentation Guide
+
+The [official documentation](https://adk.mo.ai.kr/en) is organized into 12 sections — each linked below with a one-line description.
+
+| Section | What it covers |
+|---------|----------------|
+| [Getting Started](https://adk.mo.ai.kr/en/getting-started) | Introduction, installation, Windows guide, init wizard, quickstart, CLI primer, FAQ |
+| [Core Concepts](https://adk.mo.ai.kr/en/core-concepts) | What MoAI-ADK is, the constitution, harness engineering, SPEC-based dev, DDD, TRUST 5 (the 3 pillars) |
+| [Workflow Commands](https://adk.mo.ai.kr/en/workflow-commands) | `plan`, `run`, `sync`, `project`, `harness`, `design` |
+| [Utility Commands](https://adk.mo.ai.kr/en/utility-commands) | `fix`, `loop`, `gate`, `mx`, `review`, `clean`, `codemaps`, `e2e`, `feedback`, `goal`, `moai` |
+| [CLI Reference](https://adk.mo.ai.kr/en/cli-reference) | The `moai` binary's commands — status, profile, doctor, worktree, spec, session, goal, harness, and more |
+| [Claude Code Guide](https://adk.mo.ai.kr/en/claude-code) | Claude Code foundations, context-memory, agentic, extensibility |
+| [Multi-LLM](https://adk.mo.ai.kr/en/multi-llm) | CG mode (Claude × GLM hybrid) and the model-policy reference |
+| [Cost Optimization](https://adk.mo.ai.kr/en/cost-optimization) | Prompt caching for lower token cost |
+| [Guides](https://adk.mo.ai.kr/en/guides) | CI autonomy and multi-LLM CI recipes |
+| [Git Worktree](https://adk.mo.ai.kr/en/worktree) | Worktree guide, examples, and FAQ |
+| [Advanced](https://adk.mo.ai.kr/en/advanced) | Tokenomics, token budget, statusline, settings.json, hooks, @MX tags, skills, harness v4 builder, self-evolving, decision memory, security, CLAUDE.md guide, agent guide, and more |
+| [Contributing](https://adk.mo.ai.kr/en/contributing) | How to contribute to MoAI-ADK |
 
 ## Links
 

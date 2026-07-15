@@ -279,6 +279,8 @@ CG 모드는 tmux 세션 수준 환경변수로 리더와 워커를 격리합니
 - **캐시 적중률** 스테이터스라인 세그먼트가 다이어트의 효과를 실시간으로 측정 가능하게 함
 - 검증 출력은 파일 리다이렉트 계약을 따름 — 긴 로그는 디스크로, 컨텍스트에는 종료 코드와 제한된 tail만
 
+> → 더 읽기: [토크노믹스 개요](https://adk.mo.ai.kr/ko/advanced/tokenomics-overview) · [프롬프트 캐싱](https://adk.mo.ai.kr/ko/cost-optimization/prompt-caching)
+
 ---
 
 ## 재귀적 자가 학습
@@ -347,6 +349,8 @@ moai harness disable     # turn learning off
 ### 세션 핸드오프 자동 재개
 
 컨텍스트 윈도우 임계점 (1M-컨텍스트 모델 50%, 200K 모델 90%)에서 MoAI는 진행 상태, 적용된 교훈, 검증 가능한 전제 조건을 담은 재개 메시지를 발행합니다. 붙여넣기 즉시 쓸 수 있어 `/clear` 후 한 번만 붙여넣으면 다음 세션이 이어집니다.
+
+> → 더 읽기: [자가 진화 하네스](https://adk.mo.ai.kr/ko/advanced/self-evolving) · [결정 메모리](https://adk.mo.ai.kr/ko/advanced/decision-memory)
 
 ---
 
@@ -474,6 +478,8 @@ MoAI-ADK는 사용자의 AskUserQuestion 결정을 포착해 향후 추천을 �
 - **감쇠 정책** — 멱법칙 가중치, `(age+1)^(-0.5)`; 선호를 사용하면 새로고침됨
 - **제어** — `moai preference list | decay-scan | toggle`; 민감한 보안 도메인은 공개와 함께 중립 추천 제공
 
+> → 더 읽기: [Harness v4 Builder](https://adk.mo.ai.kr/ko/advanced/harness-v4-builder) · [카탈로그 시스템](https://adk.mo.ai.kr/ko/advanced/catalog-system)
+
 ---
 
 ## 왜 Go인가
@@ -509,6 +515,8 @@ Python 기반 MoAI-ADK (~73,000 라인)를 Go로 완전히 재작성했습니다
 | `e2e` | 멀티플랫폼 E2E 테스트 (웹/모바일/데스크톱, CLI 우선) |
 | *(자연어)* | 자율 plan → run → sync 파이프라인으로의 Analyze-First 라우팅 |
 
+> → 자세히: [워크플로우 커맨드](https://adk.mo.ai.kr/ko/workflow-commands) · [유틸리티 커맨드](https://adk.mo.ai.kr/ko/utility-commands)
+
 ### CLI 커맨드 (최상위 36개)
 
 `moai` 바이너리는 최상위 커맨드 36개를 등록합니다. 일상적으로 쓰는 것들:
@@ -535,6 +543,9 @@ Python 기반 MoAI-ADK (~73,000 라인)를 Go로 완전히 재작성했습니다
 
 이 밖에 등록된 커맨드: `mx`, `clean`, `codemaps`, `feedback`, `loop`, `lsp`, `ast-grep`, `agent`, `workflow`, `statusline`, `telemetry`, `constitution`, `state`, `tool-policy`, `migrate`, `profile`, `pr`, `github`, `research`.
 
+> 각 커맨드의 레퍼런스 페이지가 docs-site에 준비되어 있습니다 — 특히 `goal`, `handoff`, `harness`, `init`, `launchers`, `loop`, `pr`, `session`, `spec`, `tool-policy`, `worktree` 등 **신규 11개 CLI 레퍼런스 페이지**가 v3에 추가되었습니다.
+> → 자세히: [CLI 레퍼런스](https://adk.mo.ai.kr/ko/cli-reference)
+
 ### 훅
 
 모든 훅 이벤트는 JSON stdin/stdout 통신의 Claude Code 훅 프로토콜을 따릅니다:
@@ -543,11 +554,15 @@ Python 기반 MoAI-ADK (~73,000 라인)를 Go로 완전히 재작성했습니다
 - **4개 훅 타입** — command (셸 스크립트), prompt (LLM 평가), agent (서브에이전트 검증), http (웹훅 엔드포인트)
 - 태스크 지표는 세션 분석과 비용 추적을 위해 `.moai/logs/task-metrics.jsonl`에 기록
 
+> → 자세히: [훅 가이드](https://adk.mo.ai.kr/ko/advanced/hooks-guide) · [훅 레퍼런스](https://adk.mo.ai.kr/ko/advanced/hooks-reference)
+
 ### 스테이터스라인
 
 MoAI는 Claude Code 터미널 하단에 풍부한 스테이터스라인을 렌더링합니다: 모델 티어/effort, MoAI 버전 (업데이트 마커 포함), Git 브랜치와 변경 상태, 컨텍스트 윈도우 사용률 (CW%), 캐시 적중률, 세션 비용/토큰.
 
 CW%에는 2단계 `/clear` 마커가 붙습니다 — 모델별 임계점 (Opus 4.8, GLM-5.2[1m] 같은 1M-컨텍스트 모델은 50%; 200K 모델은 90%)의 소프트 경고와 절대 한도의 하드 마커. Claude Code는 GLM-5.2를 200K 모델로 잘못 보고합니다 (업스트림 Issue #653); MoAI가 `internal/statusline/memory.go`에서 1M으로 보정하므로 MoAI 스테이터스라인의 CW%를 신뢰하세요.
+
+> → 자세히: [스테이터스라인](https://adk.mo.ai.kr/ko/advanced/statusline)
 
 ### 출력 스타일
 
@@ -558,6 +573,8 @@ CW%에는 2단계 `/clear` 마커가 붙습니다 — 모델별 임계점 (Opus 
 | **MoAI-Learn** (learn) | 소크라테스식 튜터 | 학습자 |
 
 `/config`로 전환합니다 (최고 우선순위 스코프인 `settings.local.json`에 저장). 출력 스타일은 세션 시작 시 1회만 읽히므로, 변경은 `/clear`나 새 세션부터 반영됩니다.
+
+> → 자세히: [Advanced 가이드](https://adk.mo.ai.kr/ko/advanced)
 
 ### @MX 태그 시스템
 
@@ -580,13 +597,42 @@ func DispatchHook(event string, data []byte) error {
 
 이 시스템은 신호 대 잡음비를 최적화합니다: **AI가 가장 먼저 알아야 하는 코드만 태그를 받습니다.** 대부분의 코드는 어떤 기준에도 해당하지 않아 태그가 없습니다. 이게 정상이고 의도된 동작입니다. 임계값과 파일당 한도는 `.moai/config/sections/mx.yaml`에서 설정하며, `/moai mx --all` (또는 `--dry`, `--priority P1`)로 스캔합니다.
 
+> → 자세히: [@MX 태그 시스템](https://adk.mo.ai.kr/ko/advanced/mx-tags)
+
 ### Worktree 격리
 
 `/moai plan --worktree`는 각 SPEC에 병렬 개발용 격리 git worktree를 부여하고, `moai worktree`가 라이프사이클을 관리합니다 (`new --tmux`는 worktree 안에 tmux 세션을 자동 생성).
 
+> → 자세히: [Git Worktree 가이드](https://adk.mo.ai.kr/ko/worktree)
+
 ### 16개 지원 언어
 
 go · python · typescript · javascript · rust · java · kotlin · csharp · ruby · php · elixir · cpp · scala · r · flutter · swift — 프로젝트 마커로 감지되며, 각 언어는 자체 표준 린트/포맷/테스트 툴체인을 실행합니다. 설치되지 않은 도구는 조용히 건너뜁니다.
+
+> → 자세히: [CLI 레퍼런스 — init](https://adk.mo.ai.kr/ko/cli-reference/init)
+
+---
+
+## 문서 가이드
+
+[adk.mo.ai.kr](https://adk.mo.ai.kr) 온라인 문서는 12개 섹션으로 구성되어 있습니다. 각 섹션의 역할과 진입점:
+
+| 섹션 | 설명 |
+|------|------|
+| [시작하기](https://adk.mo.ai.kr/ko/getting-started) | 소개, 설치, Windows 가이드, init 마법사, 퀵스타트, CLI 개요, FAQ |
+| [핵심 개념](https://adk.mo.ai.kr/ko/core-concepts) | MoAI-ADK 정체성, 컨스티튜션, 하네스 엔지니어링, SPEC 기반 개발, DDD, TRUST 5 — 세 기둥을 포괄 |
+| [워크플로우 커맨드](https://adk.mo.ai.kr/ko/workflow-commands) | `plan` · `run` · `sync` · `project` · `harness` · `design` — SPEC 파이프라인의 주축 |
+| [유틸리티 커맨드](https://adk.mo.ai.kr/ko/utility-commands) | `fix` · `loop` · `gate` · `mx` · `review` · `clean` · `codemaps` · `e2e` · `feedback` · `goal` · `moai` |
+| [CLI 레퍼런스](https://adk.mo.ai.kr/ko/cli-reference) | 터미널 `moai` 바이너리의 모든 커맨드 — `status`, `profile`, `doctor`, `update`, `web`, `goal`, `handoff`, `harness`, `init`, `worktree` 등 |
+| [Claude Code 가이드](https://adk.mo.ai.kr/ko/claude-code) | Claude Code 통합 — 기초, 컨텍스트·메모리, 에이전틱, 확장성 (스킬·훅·플러그인) |
+| [Multi-LLM](https://adk.mo.ai.kr/ko/multi-llm) | CG 모드 (Claude 리더 + GLM 워커)와 모델 정책 |
+| [비용 최적화](https://adk.mo.ai.kr/ko/cost-optimization) | 프롬프트 캐싱 전략과 토큰 비용 절감 |
+| [가이드](https://adk.mo.ai.kr/ko/guides) | CI 자율화, multi-LLM CI 등 실전 운영 레시피 |
+| [Git Worktree](https://adk.mo.ai.kr/ko/worktree) | 병렬 SPEC 개발을 위한 worktree 가이드, 예제, FAQ |
+| [Advanced](https://adk.mo.ai.kr/ko/advanced) | 토크노믹스 개요, 토큰 예산, 스테이터스라인, settings.json, 훅, @MX 태그, 스킬 가이드, Harness v4 Builder, 자가 진화, 결정 메모리, 카탈로그 시스템, 보안 노트, CLAUDE.md/에이전트 가이드 등 심화 주제 |
+| [기여하기](https://adk.mo.ai.kr/ko/contributing) | 오픈소스 기여 가이드 |
+
+> 세 기둥의 심화 자료는 각 기둥 deep-dive 섹션의 "→ 더 읽기" 링크를 참조하세요.
 
 ---
 
