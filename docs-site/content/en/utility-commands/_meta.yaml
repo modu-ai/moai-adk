@@ -15,6 +15,10 @@ moai:
   title: "/moai clean"
 "moai-codemaps":
   title: "/moai codemaps"
+"moai-gate":
+  title: "/moai gate"
+"moai-mx":
+  title: "/moai mx"
 "moai-feedback":
   title: "/moai feedback"
 "moai-e2e":

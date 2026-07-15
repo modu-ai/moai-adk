@@ -13,3 +13,7 @@ web:
   title: "moai web コンソール"
 doctor:
   title: "moai doctor 診断"
+init:
+  title: "moai init 初期化"
+launchers:
+  title: "moai cc / cg / glm ランチャー"

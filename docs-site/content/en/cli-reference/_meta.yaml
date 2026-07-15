@@ -13,3 +13,29 @@ web:
   title: "moai web Console"
 doctor:
   title: "moai doctor Diagnostics"
+init:
+  title: "moai init Initialization"
+spec:
+  title: "moai spec Document Management"
+harness:
+  title: "moai harness Harness"
+loop:
+  title: "moai loop Feedback Loop"
+goal:
+  title: "moai goal Goal Loop"
+pr:
+  title: "moai pr PR Watch"
+handoff:
+  title: "moai handoff Handoff Records"
+session:
+  title: "moai session Session Registry"
+launchers:
+  title: "moai cc / cg / glm Launchers"
+worktree:
+  title: "moai worktree Worktrees"
+"tool-policy":
+  title: "moai tool-policy Tool Policy"
+constitution:
+  title: "moai constitution Constitution"
+github:
+  title: "moai github GitHub Integration"

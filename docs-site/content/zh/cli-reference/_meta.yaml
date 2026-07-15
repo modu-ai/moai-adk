@@ -13,3 +13,29 @@ web:
   title: "moai web 控制台"
 doctor:
   title: "moai doctor 诊断"
+init:
+  title: "moai init 初始化"
+spec:
+  title: "moai spec 文档管理"
+harness:
+  title: "moai harness 工具架"
+loop:
+  title: "moai loop 反馈循环"
+goal:
+  title: "moai goal 目标循环"
+pr:
+  title: "moai pr PR 监视"
+handoff:
+  title: "moai handoff 交接记录"
+session:
+  title: "moai session 会话注册表"
+launchers:
+  title: "moai cc / cg / glm 启动器"
+worktree:
+  title: "moai worktree 工作树"
+"tool-policy":
+  title: "moai tool-policy 工具策略"
+constitution:
+  title: "moai constitution 宪法"
+github:
+  title: "moai github GitHub 集成"

@@ -282,6 +282,84 @@ main:
           ja: moai doctor 診断
           zh: moai doctor 诊断
         ref: /cli-reference/doctor
+      - name:
+          ko: moai init 초기화
+          en: moai init Initialization
+          ja: moai init 初期化
+          zh: moai init 初始化
+        ref: /cli-reference/init
+      - name:
+          ko: moai spec 문서 관리
+          en: moai spec Document Management
+          ja: moai spec ドキュメント管理
+          zh: moai spec 文档管理
+        ref: /cli-reference/spec
+      - name:
+          ko: moai harness 하네스
+          en: moai harness Harness
+          ja: moai harness ハーネス
+          zh: moai harness 工具架
+        ref: /cli-reference/harness
+      - name:
+          ko: moai loop 피드백 루프
+          en: moai loop Feedback Loop
+          ja: moai loop フィードバックループ
+          zh: moai loop 反馈循环
+        ref: /cli-reference/loop
+      - name:
+          ko: moai goal 목표 루프
+          en: moai goal Goal Loop
+          ja: moai goal ゴールループ
+          zh: moai goal 目标循环
+        ref: /cli-reference/goal
+      - name:
+          ko: moai pr PR 감시
+          en: moai pr PR Watch
+          ja: moai pr PR監視
+          zh: moai pr PR 监视
+        ref: /cli-reference/pr
+      - name:
+          ko: moai handoff 핸드오프 레코드
+          en: moai handoff Handoff Records
+          ja: moai handoff ハンドオフレコード
+          zh: moai handoff 交接记录
+        ref: /cli-reference/handoff
+      - name:
+          ko: moai session 세션 레지스트리
+          en: moai session Session Registry
+          ja: moai session セッションレジストリ
+          zh: moai session 会话注册表
+        ref: /cli-reference/session
+      - name:
+          ko: moai cc / cg / glm 런처
+          en: moai cc / cg / glm Launchers
+          ja: moai cc / cg / glm ランチャー
+          zh: moai cc / cg / glm 启动器
+        ref: /cli-reference/launchers
+      - name:
+          ko: moai worktree 워크트리
+          en: moai worktree Worktrees
+          ja: moai worktree ワークツリー
+          zh: moai worktree 工作树
+        ref: /cli-reference/worktree
+      - name:
+          ko: moai tool-policy 도구 정책
+          en: moai tool-policy Tool Policy
+          ja: moai tool-policy ツールポリシー
+          zh: moai tool-policy 工具策略
+        ref: /cli-reference/tool-policy
+      - name:
+          ko: moai constitution 헌법
+          en: moai constitution Constitution
+          ja: moai constitution 憲法
+          zh: moai constitution 宪法
+        ref: /cli-reference/constitution
+      - name:
+          ko: moai github GitHub 연동
+          en: moai github GitHub Integration
+          ja: moai github GitHub連携
+          zh: moai github GitHub 集成
+        ref: /cli-reference/github
 
   - name:
       ko: Claude Code 가이드
