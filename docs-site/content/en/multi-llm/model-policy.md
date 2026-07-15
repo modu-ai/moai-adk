@@ -13,16 +13,18 @@ documentation and Git. It maximizes quality within your Claude Code
 subscription plan while preventing rate-limit errors.
 
 The MoAI-ADK v3.0 agent catalog contains **11** agents (10 MoAI-custom + the
-Anthropic built-in `Explore`); the assignment table below covers the 7 core
-agents the model policy assigns directly.
+Anthropic built-in `Explore`). Under the **No-Haiku policy**, every worker agent
+is **pinned to Sonnet 5** regardless of tier, and the policy tier controls only
+two axes — (a) where to place Opus, and (b) how far to lower Sonnet's reasoning
+depth (effort).
 
 ## The 3-level policy overview
 
-| Policy (performance_tier) | CLI flag | Plan | Opus | Sonnet | Best for |
-|------------------------|-----------|------|------|--------|-----------|
-| **max** | `--model-policy max` | Max $200/month | 5 | 2 | Highest quality, maximum throughput |
-| **medium** (default) | `--model-policy medium` | Max $100/month | 2 | 5 | Balance of quality and cost |
-| **low** | `--model-policy low` | Plus $20/month | 0 | 7 | Low budget, no Opus |
+| Policy (performance_tier) | CLI flag | Plan | Opus placement | Workers | Best for |
+|------------------------|-----------|------|-----------|------|-----------|
+| **max** | `--model-policy max` | Max $200/month | 5 sites | Sonnet-pinned | Highest quality, maximum throughput |
+| **medium** (default) | `--model-policy medium` | Max $100/month | 2 sites (on-demand) | Sonnet-pinned | Balance of quality and cost |
+| **low** | `--model-policy low` | Plus $20/month | None (0) | Sonnet-pinned | Low budget, no Opus |
 
 > **Name axis**: The `performance_tier` field in `llm.yaml` and the CLI flag
 > `--model-policy` both use the same three values `max`/`medium`/`low` and map
@@ -33,26 +35,32 @@ agents the model policy assigns directly.
 > plan kind (api / subscription). User name and the like are kept separately in
 > `user.yaml`.
 
-> **Why does this matter?** The Plus $20 plan has no Opus access. Setting the `low` policy makes every agent use only Sonnet, preventing rate-limit errors. Higher plans assign Opus to the core agents (planning, auditing) and Sonnet to day-to-day work.
+> **Why does this matter?** The Plus $20 plan has no Opus access. Setting the `low` policy makes every agent use only Sonnet, preventing rate-limit errors. Higher plans assign Opus only to the core sites (plan authoring, auditing, advisory) and use Sonnet for the rest.
 
 ## Per-agent model assignment table
 
-### Manager Agents (4)
+Every worker agent is pinned to Sonnet 5, and Opus is placed only at the specific
+sites below. (The orchestrator main session also runs on Opus at `max`, but since
+it is not a spawned agent, it is not included in the table.)
+
+### Manager Agents (5)
 
 | Agent | max | medium | low |
 |---------|-----|--------|-----|
-| manager-spec | opus | opus | sonnet |
-| manager-develop | opus | sonnet | sonnet |
+| manager-spec (plan) | opus | opus (Tier L only) | sonnet |
+| manager-develop | sonnet | sonnet | sonnet |
 | manager-docs | sonnet | sonnet | sonnet |
 | manager-git | sonnet | sonnet | sonnet |
+| manager-design | sonnet | sonnet | sonnet |
 
-### Evaluator & Builder Agents (3)
+### Evaluator · Advisor · Builder Agents (4)
 
 | Agent | max | medium | low |
 |---------|-----|--------|-----|
-| plan-auditor | opus | opus | sonnet |
+| plan-auditor | opus | sonnet | sonnet |
 | sync-auditor | opus | sonnet | sonnet |
-| builder-harness | opus | sonnet | sonnet |
+| super-advisor | opus | opus | sonnet |
+| builder-harness | sonnet | sonnet | sonnet |
 
 > The Anthropic built-in `Explore` is a read-only exploration agent that
 > operates without a dedicated assignment. The Agent Teams static layer
@@ -60,16 +68,16 @@ agents the model policy assigns directly.
 > sub-agent parallel execution and dynamic workflows. The `moai cg` teammate
 > runtime (tmux panes) is preserved.
 
-> **Haiku removal (v3.0)**: The former Haiku slots were replaced with
-> `sonnet`/`effort:low`. This applies to the lightweight work of `manager-git`
-> and `manager-docs` — the model is Sonnet, but reasoning depth is lowered to
-> cut cost.
+> **Haiku removal (v3.0)**: The former Haiku slots (documentation, MX tagging, Git
+> procedures) were replaced with `sonnet`/`effort:low`. The model is Sonnet, but
+> reasoning depth is lowered to cut cost — the model class was not lowered.
 
 ## Assignment principles
 
-- **Always Opus**: plan auditing (plan-auditor), SPEC authoring (manager-spec) — needs high reasoning ability
-- **Always Sonnet/effort:low**: Git (manager-git) — light and fast work
-- **Varies by plan**: implementation (manager-develop, cycle_type=tdd/ddd) — the higher the plan, the more Opus
+- **All workers pinned to Sonnet**: manager-develop, manager-docs, manager-git, manager-design, builder-harness — the tier controls only where Opus is placed and how far Sonnet's effort is adjusted
+- **Opus placement at max (5 sites)**: orchestrator, super-advisor, manager-spec (plan), plan-auditor, sync-auditor — where high reasoning ability is needed
+- **medium minimizes Opus (2 sites, on-demand)**: Opus only for super-advisor and Tier L planning (manager-spec); Sonnet for the rest
+- **low has 0 Opus**: everything, including advisory (super-advisor), is Sonnet, adjusted only by effort tiering
 
 To ensure the agent that authored a plan never audits it, plan-auditor and
 sync-auditor keep independent assignments — the table is designed along both

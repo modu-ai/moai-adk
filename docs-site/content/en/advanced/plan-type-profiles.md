@@ -72,11 +72,15 @@ This mechanism was implemented in SPEC-MODEL-TIER-PLANTYPE-001 (run-phase comple
 
 {{< icon warning warn >}} **Honesty caveat (REQ-DA-060)**: The GLM backend effort overlay's wire effectiveness is a verification item requiring live GLM session outbound observation.
 
-The GLM backend (`moai glm` / `moai cg` GLM panels) collapses Claude's 5-level effort (max / xhigh / high / medium / low) into GLM's 3-level reasoning_effort (high / max). Implementation:
+The GLM backend (`moai glm` / `moai cg` GLM panels) collapses Claude's 5-level effort (max / xhigh / high / medium / low) into the 3-state that z.ai can actually reach (SSOT: `llm.yaml`). Implementation:
 
 - `IsGLMBackend` detection identifies GLM sessions
-- 5-level → 3-level collapse mapping (max/xhigh → max, high → high, medium/low → GLM unsupported)
-- coding-max override for coding tasks
+- 5-level → 3-state collapse mapping:
+  - `low` → **thinking-off** (thinking disabled)
+  - `medium` / `high` → **reasoning-high** (thinking enabled, reasoning_effort=high)
+  - `xhigh` / `max` → **reasoning-max** (thinking enabled, reasoning_effort=max)
+  - (unrecognized value → reasoning-max, an under-reasoning-prevention totality clause)
+- coding-max override: only `manager-develop` forces reasoning-max regardless of the collapse result (`builder-harness` has been removed from the override set and follows the standard collapse `high → reasoning-high`)
 
 **Implemented + wired, wire validity pending live verification** — whether z.ai's Anthropic-compat shim actually consumes the `ANTHROPIC_REASONING_EFFORT` environment variable value is a run-phase verification item requiring live GLM session outbound observation. This page does not state "works guaranteed"; it states "implemented + wired, wire validity pending live verification."
 

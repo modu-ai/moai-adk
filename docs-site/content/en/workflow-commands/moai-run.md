@@ -54,10 +54,20 @@ Pass the SPEC ID created in the Plan phase as an argument:
 | ------------------- | ------------------------------- | ---------------------------------- |
 | `--resume SPEC-XXX` | Resume interrupted implementation | `/moai run --resume SPEC-AUTH-001` |
 | `--solo`            | Force sub-agent mode            | `/moai run SPEC-AUTH-001 --solo`   |
+| `--mode <value>`    | Specify the dispatch axis       | `/moai run SPEC-AUTH-001 --mode loop` |
 
 **Resume feature:**
 
 On re-run, work continues from the last successful stage checkpoint.
+
+**The `--mode` dispatch axis:**
+
+`--mode` is a separate axis that selects a `/moai run` workflow variant (distinct from Phase 4's 6-mode execution catalog):
+
+- `autopilot` (default): scale-based selection in Phase 4, then run the implementation
+- `loop`: delegate to the Ralph engine's diagnostic loop (see `loop.md`)
+- `team`: retired — raises `MODE_TEAM_UNAVAILABLE` and falls back to `autopilot` (Agent Teams static layer retired)
+- `pipeline`: rejected — returns the `MODE_PIPELINE_ONLY_UTILITY` error (pipeline mode is for utility subcommands only)
 
 ## The DDD Cycle
 
@@ -294,12 +304,9 @@ The **sync-auditor** subagent performs TRUST 5 verification:
 
 **Output:** trust_5_validation results, coverage_percentage, overall_status (PASS/WARNING/CRITICAL), issues_found
 
-### Phase 16/2.8b: Active Evaluation and Static Verification
+### Phase 19: sync-auditor Independent Audit
 
-Quality evaluation runs in two stages:
-
-- **Phase 16**: sync-auditor active evaluation (Functionality/Security/Craft/Consistency)
-- **Phase 17**: sync-auditor TRUST 5 static verification
+At the thorough level, the sync-auditor subagent performs a 4-dimension (Functionality/Security/Craft/Consistency) active evaluation and TRUST 5 static verification. An independent auditor — not the agent that built it — judges quality.
 
 {{< callout type="warning" >}}
 Security FAIL = overall FAIL. After up to 3 fix-evaluate cycles, the result is reported to the user.
@@ -313,7 +320,7 @@ When the DDD/TDD cycle completes, actual changes are compared against the plan:
 - 20% < drift ≤ 30%: warning
 - drift > 30%: triggers the Phase 14 replanning gate
 
-### Phase 3: Git Operations (conditional)
+### Phase 19: Git Operations (conditional)
 
 The **manager-git** subagent performs Git automation:
 
@@ -323,7 +330,7 @@ The **manager-git** subagent performs Git automation:
 - If git_strategy.automation.auto_branch is true, a feature branch is created
 - If auto_branch is false, commits go directly to the current branch
 
-### Phase 4: Completion and Guidance
+### Phase 20: Completion and Guidance
 
 The user is presented with the following options:
 
@@ -471,24 +478,24 @@ Phase 13: Quality verification
 
 ---
 
-#### Phase 3: Git Operations
+#### Phase 19: Git Operations
 
 Creates commits with Conventional Commits.
 
 ```bash
-Phase 3: Git operations
+Phase 19: Git operations
 - Branch: feature/SPEC-AUTH-001
 - 7 commits created (Conventional Commits)
 ```
 
 ---
 
-#### Phase 4: Completion
+#### Phase 20: Completion
 
 Once implementation is complete, you are guided to the next step.
 
 ```bash
-Phase 4: Completion
+Phase 20: Completion
 - Implementation complete
 - Next step: /moai sync
 ```

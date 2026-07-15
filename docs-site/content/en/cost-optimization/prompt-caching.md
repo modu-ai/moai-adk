@@ -72,33 +72,39 @@ cache_control={"type": "ephemeral"}
 # ^ The timestamp changes every request, so it never matches
 ```
 
-## Configuration: session_ttl and spec_ttl
+## Configuration: session_ttl
 
-MoAI caching is configured in `.moai/config/sections/cache.yaml`:
+MoAI caching is configured in `.moai/config/sections/cache.yaml`. The template
+ships with caching **enabled**, and there are two configuration keys, `enabled`
+and `session_ttl`:
 
 ```yaml
 cacheStrategy:
-  enabled: false  # set to true to enable caching
+  enabled: true      # template default: enabled (set false to disable)
   session_ttl: "1h"  # session-level cache TTL — allowed: 1h · 5m · off
-  spec_ttl: "5m"     # SPEC body cache TTL
-  min_cacheable_tokens: 2048  # minimum tokens for a cache write
 ```
+
+> `spec_ttl` and `min_cacheable_tokens` are not keys in the template `cache.yaml` —
+> they are internal Go runtime defaults. Only the two keys above (`enabled`,
+> `session_ttl`) exist in the user config file.
+
+> **GLM backend**: z.ai (GLM) uses content-similarity-based **implicit caching**, so
+> MoAI does not inject the `cache_control` header. The settings above apply only to
+> the Anthropic API backend.
 
 ### Opting out via session_ttl: "off"
 
-To disable caching for a given session (e.g., when one-shot requests
+To disable session-level caching for a given session (e.g., when one-shot requests
 dominate):
 
 ```yaml
 cacheStrategy:
   enabled: true
-  session_ttl: "off"  # disable the cache for this session (allowed: 1h · 5m · off)
-  spec_ttl: "5m"      # only the SPEC body cache is used
+  session_ttl: "off"  # disable session-level cache (allowed: 1h · 5m · off)
 ```
 
 With `session_ttl: "off"`:
 - Session-level cache writes are skipped
-- SPEC body caching still applies if `spec_ttl` is configured
 - Useful for interrupt-driven workflows where single requests are the norm
 
 ## Monitoring cache performance
@@ -113,7 +119,7 @@ effect of the context diet and your caching configuration right in the session.
 - **Hit rate > 60%**: the cache is effective. Keep it enabled.
 - **Hit rate 30-60%**: moderate benefit. Consider enabling if your sessions are multi-turn heavy.
 - **Single-turn ratio > 30%**: limited caching benefit. Verify the 2+ request assumption still holds.
-- **Minimum-token threshold warnings**: configure `min_cacheable_tokens` to avoid caching small prompts (overhead > savings).
+- **Minimum-token threshold**: small prompts can have caching overhead exceed the savings. The MoAI runtime does not cache prompts below its internal default minimum-token threshold (`min_cacheable_tokens`).
 
 ## When cache misses happen
 

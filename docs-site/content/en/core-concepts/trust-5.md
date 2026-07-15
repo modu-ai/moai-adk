@@ -336,7 +336,13 @@ flowchart TD
 1. When code changes, LSP runs diagnostics
 2. If any item falls short of the TRUST 5 criteria, the Ralph Engine attempts an automatic fix
 3. After the fix, LSP diagnostics run again to check for a pass
-4. Repeats until it passes (up to 3 retries)
+4. Repeats until it passes (up to 3 retries per operation)
+
+> Here "3 times" is the **per-operation retry ceiling** (`workflow.yaml`'s
+> `loop_prevention.max_retries_per_operation`). This is a concept separate from the
+> **loop iteration ceiling** — the diagnostic-driven fix loop's ceiling is
+> `workflow.yaml`'s `loop_prevention.max_iterations` (default 100), and the `/moai fix` loop
+> preset's ceiling is `agentic_loop.max_iterations` (default 10), each managed separately.
 
 **Related commands:**
 
@@ -383,6 +389,11 @@ constitution:
     cache_ttl_seconds: 5 # LSP diagnostics cache duration
     timeout_seconds: 3 # LSP diagnostics timeout
 ```
+
+> **Config file location distinction**: the LSP **quality-gate thresholds** shown above
+> (`max_errors`, `max_warnings`, etc.) live under `lsp_quality_gates` in `quality.yaml`.
+> The LSP **client runtime settings** (the LSP enable switch, per-language server config),
+> on the other hand, are managed in a separate file, `.moai/config/sections/lsp.yaml`.
 
 ### Configuration Customization Tips
 

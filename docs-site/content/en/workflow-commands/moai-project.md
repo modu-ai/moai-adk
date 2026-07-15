@@ -41,14 +41,15 @@ Run it without any arguments or options and it automatically analyzes the curren
 
 ## Generated Documents
 
-`/moai project` generates 3 documents under the `.moai/project/` directory:
+`/moai project` generates 3 core documents plus an architecture codemap under the `.moai/project/` directory:
 
 ```
 .moai/
 └── project/
     ├── product.md      # Project overview
     ├── structure.md    # Directory structure analysis
-    └── tech.md         # Tech stack information
+    ├── tech.md         # Tech stack information
+    └── codemaps/       # Architecture codemaps (Phase 9)
 ```
 
 Along with document generation, **automatic harness composition** tailored to the project is also part of this command's role — based on the analyzed tech stack, a project-specific agent team (harness) can be composed as well. See [/moai harness](./moai-harness) for the details of harness creation.
@@ -98,30 +99,32 @@ Organizes the technology information used in the project:
 flowchart TD
     Start["/moai project run"] --> Q1{Project type?}
 
-    Q1 -->|New project| New["Phase 1: information gathering"]
-    Q1 -->|Existing project| Exist["Phase 1: codebase analysis"]
+    Q1 -->|New project| New["Phase 2: deep interview<br/>(Stage A + B)"]
+    Q1 -->|Existing project| Exist["Phase 3: codebase analysis"]
 
     New --> NewQ["Project purpose"]
     New --> NewL["Primary language"]
     New --> NewD["Project description"]
 
-    NewQ --> Gen["Phase 3: document generation"]
+    NewQ --> Gen["Phase 6: document generation"]
     NewL --> Gen
     NewD --> Gen
 
     Exist --> Exp["Explore agent<br/>codebase analysis"]
-    Exp --> Conf["Phase 2: user confirmation"]
+    Exp --> Conf["Phase 5: user confirmation"]
 
     Conf -->|Approve| Gen
     Conf -->|Cancel| End["Exit"]
 
-    Gen --> LSP["Phase 4: LSP check"]
-    LSP --> Complete["Phase 4: done"]
+    Gen --> Audit["Phase 7: plan-auditor independent audit"]
+    Audit --> CM["Phase 9: codemap generation"]
+    CM --> LSP["Phase 10: LSP check"]
+    LSP --> Complete["Phase 14: done"]
 ```
 
 ## Detailed Workflow
 
-### Phase 0: Project Type Detection
+### Phase 1: Project Type Detection
 
 The project type is checked first.
 
@@ -137,9 +140,9 @@ The project type is checked first.
 | **New project**     | A project starting from scratch. Proceeds by gathering information |
 | **Existing project** | A project that already has code. The code is analyzed automatically |
 
-### Phase 1: New-Project Information Gathering
+### Phase 2: Deep Interview (new project)
 
-If you chose a new project, the following information is collected:
+If you chose a new project, a two-stage **Deep Interview** is conducted — a clarity-score-based Stage A (Vision-Domain / Technology-Constraints / Scope, variable rounds up to `project.max_rounds`) plus a mandatory Stage B expansion-axis round. The following information is collected:
 
 **Question 1 - Project purpose**:
 
@@ -161,9 +164,9 @@ If you chose a new project, the following information is collected:
 - Main features or goals
 - Target users
 
-Initial documents are generated from the collected information, then the flow moves to Phase 4.
+Initial documents are generated from the collected information, then the flow moves to Phase 6 document generation.
 
-### Phase 1: Codebase Analysis (existing project)
+### Phase 3: Codebase Analysis (existing project)
 
 If you chose an existing project, the analysis is delegated to the **Explore agent**.
 
@@ -188,7 +191,11 @@ If you chose an existing project, the analysis is delegated to the **Explore age
 - Dependency catalog
 - Entry-point identification
 
-### Phase 2: User Confirmation
+### Phase 4: Deep Interview (existing project)
+
+After codebase analysis, a two-stage **Deep Interview** is also conducted for existing projects — a clarity-score-based Stage A (Ownership-Goal / Constraints / Scope-Priority, variable rounds up to `project.max_rounds`) plus a mandatory Stage B expansion-axis round. It draws out the ownership, goals, and priorities that the analysis results alone do not reveal.
+
+### Phase 5: User Confirmation
 
 The analysis results are shown to the user for approval.
 
@@ -205,14 +212,14 @@ The analysis results are shown to the user for approval.
 - **Detailed review**: review the analysis details first
 - **Cancel**: adjust the project setup
 
-### Phase 3: Document Generation
+### Phase 6: Document Generation
 
 Document generation is delegated to the **manager-docs agent**.
 
 **Handed-off contents**:
 
-- Phase 1 analysis results (or Phase 1 user input)
-- Phase 2 user confirmation
+- Phase 3 analysis results (or Phase 2 interview input)
+- Phase 5 user confirmation
 - Output directory: `.moai/project/`
 - Language: the config's conversation_language
 
@@ -224,7 +231,15 @@ Document generation is delegated to the **manager-docs agent**.
 | **structure.md** | Directory tree, purpose of each directory, key file locations, module composition |
 | **tech.md**      | Tech stack overview, framework rationale, dev environment requirements, build/deploy settings |
 
-### Phase 4: Development Environment Check
+### Phase 7: plan-auditor Independent Audit
+
+After document generation, the **plan-auditor** subagent conditionally audits the artifacts independently and drives a retry loop when needed — applying the independent-audit principle (the agent that built it does not inspect its own results) to project document generation as well.
+
+### Phase 9: Codemap Generation
+
+Explore + manager-docs generate architecture codemaps in `.moai/project/codemaps/`.
+
+### Phase 10: Development Environment Check
 
 Checks whether an LSP server matching the detected tech stack is installed.
 
@@ -253,9 +268,9 @@ Checks whether an LSP server matching the detected tech stack is installed.
 
 - **Continue without LSP**: proceed to completion
 - **Show installation guide**: display the setup guide for the detected language
-- **Auto-install now**: install via the manager-develop agent (confirmation required)
+- **Auto-install now**: install via an `Agent(general-purpose)` devops scope (confirmation required)
 
-### Phase 4: Completion
+### Phase 14: Completion
 
 Displays a completion message in the user's language.
 
@@ -548,21 +563,22 @@ Since the AI already knows the project's tech stack and structure, it can genera
 
 ```mermaid
 flowchart TD
-    Start["/moai project run"] --> Phase0["Phase 0: type detection"]
-    Phase0 --> Phase05["Phase 1: information gathering<br/>(new project)"]
-    Phase0 --> Phase1["Phase 1: codebase analysis<br/>(existing project)"]
+    Start["/moai project run"] --> Phase0["Phase 1: type detection"]
+    Phase0 --> Phase05["Phase 2: deep interview<br/>(new project)"]
+    Phase0 --> Phase1["Phase 3: codebase analysis<br/>(existing project)"]
 
     Phase1 --> Explore["Explore subagent<br/>code analysis delegation"]
-    Explore --> Phase2["Phase 2: user confirmation"]
+    Explore --> Phase2["Phase 5: user confirmation"]
 
-    Phase05 --> Phase3["Phase 3: document generation"]
+    Phase05 --> Phase3["Phase 6: document generation"]
     Phase2 -->|Approve| Phase3
 
     Phase3 --> Docs["manager-docs subagent<br/>document generation delegation"]
-    Docs --> Phase35["Phase 4: LSP check"]
+    Docs --> Audit["Phase 7: plan-auditor audit"]
+    Audit --> Phase35["Phase 10: LSP check"]
 
-    Phase35 --> DevOps["manager-develop subagent<br/>LSP installation (optional)"]
-    DevOps --> Phase4["Phase 4: done"]
+    Phase35 --> DevOps["Agent(general-purpose) devops<br/>LSP installation (optional)"]
+    DevOps --> Phase4["Phase 14: done"]
 ```
 
 ## Frequently Asked Questions
@@ -581,7 +597,7 @@ Yes, monorepo structures are supported. Run it from the root directory and it an
 
 ### Q: What happens if there is no LSP server?
 
-Document generation proceeds even without an LSP server. However, code-quality diagnostics may be limited in the later `/moai run` phase. Phase 4 provides LSP installation guidance.
+Document generation proceeds even without an LSP server. However, code-quality diagnostics may be limited in the later `/moai run` phase. Phase 10 provides LSP installation guidance.
 
 ## Related Documents
 

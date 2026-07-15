@@ -31,7 +31,7 @@ flowchart TD
 
 ## Hook Event Types
 
-This guide covers the frequently used core events. (For all 29 events, see the [Hooks Event Reference](/en/advanced/hooks-reference).)
+This guide covers the frequently used core events. (For the full catalog of Claude Code's 30 event types, see the [Hooks Event Reference](/en/advanced/hooks-reference).)
 
 ### Key Event List
 
@@ -105,7 +105,7 @@ MoAI-ADK implements hooks with a **shell wrapper script + Go binary** architectu
 | `TeammateIdle` | {{< icon check ok >}} | `handle-teammate-idle.sh` | `moai hook teammate-idle` |
 | `TaskCompleted` | {{< icon check ok >}} | `handle-task-completed.sh` | `moai hook task-completed` |
 
-Beyond those 13, the Go binary also implements `PostToolUseFailure`, `StopFailure`, `PostCompact`, `InstructionsLoaded`, `ConfigChange`, `TaskCreated`, `CwdChanged`, `FileChanged`, `PermissionDenied`, `WorktreeCreate`, `WorktreeRemove`, `Elicitation`, and `ElicitationResult` — 26 subcommands in total. (See the full list with `moai hook --help`.)
+Beyond those 13, the Go binary also implements `PostToolUseFailure`, `StopFailure`, `PostCompact`, `InstructionsLoaded`, `ConfigChange`, `TaskCreated`, `CwdChanged`, `FileChanged`, `PermissionDenied`, `WorktreeCreate`, `WorktreeRemove`, `Elicitation`, and `ElicitationResult` — 38 subcommands in total. (See the full list with `moai hook --help`.)
 
 ### Teammate Collaboration Events
 
@@ -411,7 +411,7 @@ Python, JavaScript/TypeScript, Go, Rust, Java, Kotlin, C/C++, Ruby, PHP
 - Unsafe function calls
 - Unused imports
 
-**Config:** `.claude/skills/moai-tool-ast-grep/rules/sgconfig.yml` or `sgconfig.yml` in the project root
+**Config:** `.moai/config/astgrep-rules/` (the default shipped ruleset is `go-hardcoding.yml`)
 
 ### PostToolUse: LSP Diagnostics
 
@@ -440,7 +440,7 @@ ralph:
 
 **Saves the current context to a file** before `/clear` runs. It is the safety net of the handoff flow that cuts a session at the context threshold and continues.
 
-**Save location:** `.moai/memory/context-snapshot.json`
+**Save location:** `.moai/state/session-memo.md`
 
 **Saved content:**
 - Current active SPEC state (ID, phase, progress)
@@ -450,7 +450,7 @@ ralph:
 - Git state info (branch, uncommitted changes)
 - Key decisions
 
-**Archive:** Previous snapshots are automatically stored in `.moai/memory/context-archive/`.
+**State files:** Active worktree and session state are recorded in `.moai/state/` (e.g. `worktrees.json`, `active-sessions.json`).
 
 ### SessionEnd: Automatic Cleanup
 
@@ -458,7 +458,7 @@ Performs the following work at session end.
 
 **P0 work (mandatory):**
 - Save session metrics (files modified, commits, SPECs worked on)
-- Save a work-state snapshot (`.moai/memory/last-session-state.json`)
+- Save a work-state snapshot (`~/.moai/state/last-session-state.json`)
 - Warn about uncommitted changes
 
 **P1 work (optional):**
@@ -628,7 +628,7 @@ Hooks are configured in the `hooks` section of the `.claude/settings.json` file.
 | `matcher` | Tool-name matching pattern (regex) | `"Write\|Edit"` |
 | `type` | Hook type | `"command"` |
 | `command` | Command to run | Shell script path |
-| `timeout` | Execution time limit (milliseconds) | `5000` (5s) |
+| `timeout` | Execution time limit (seconds) | `5` (5s) |
 
 ### Matcher Patterns
 
@@ -732,23 +732,9 @@ Hook scripts receive JSON data on standard input (stdin).
 **Note**: Setting a hook script's timeout too long slows down Claude Code's responses. We recommend keeping the security guard (pre-tool) within 5 seconds and the formatter/linter (post-tool) within 10 seconds. SessionStart and PreCompact are allowed up to 30 seconds for context loading.
 {{< /callout >}}
 
-## Disabling Hooks with Environment Variables
-
-You can disable specific Hooks with environment variables.
-
-| Hook | Environment variable |
-|------|-----------|
-| AST-grep scan | `MOAI_DISABLE_AST_GREP_SCAN=1` |
-| LSP diagnostics | `MOAI_DISABLE_LSP_DIAGNOSTIC=1` |
-| Loop controller | `MOAI_DISABLE_LOOP_CONTROLLER=1` |
-
-```bash
-export MOAI_DISABLE_AST_GREP_SCAN=1
-```
-
 ## Related Documents
 
-- [Hooks Event Reference](/en/advanced/hooks-reference) - Full reference for all 29 events
+- [Hooks Event Reference](/en/advanced/hooks-reference) - Full reference for Claude Code's 30 event types
 - [settings.json Guide](/en/advanced/settings-json) - How to configure hooks
 - [CLAUDE.md Guide](/en/advanced/claude-md-guide) - Managing project instructions
 - [Agent Guide](/en/advanced/agent-guide) - Integrating agents with hooks

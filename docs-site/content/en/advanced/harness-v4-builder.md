@@ -51,29 +51,28 @@ Designs the team composition based on the ANALYZE results. Every decision that a
 
 | Item | How decided | Example |
 |------|---------|------|
-| **Team size** | Project complexity × required expertise | 3-5 members |
-| **Role profiles** | Anthropic role_profiles (researcher/architect/implementer/tester/designer/reviewer) | architect, implementer, tester |
-| **Worktree isolation** | Likelihood of parallel-teammate conflicts | L1_optional (optional isolation) |
-| **Model selection** | Reasoning complexity per role | architect: inherit, tester: haiku |
-| **Skill preload** | Skills needed for role expertise | moai-foundation-core, moai-domain-backend |
+| **Number of specialists** | Project complexity × required expertise (HARD cap 3-7) | 3 specialists |
+| **Execution primitive** | Execution shape per specialist | sub-agent, adversarial-fan-out |
+| **Isolation** | Likelihood of parallel-specialist conflicts | none \| worktree |
+| **Model & effort assignment** | Reasoning complexity per specialist (purpose-based) | content-author: opus/high, translator: sonnet/medium |
+| **Companion skills** | Skills needed for specialist expertise | hns-oss-docs-i18n-rules |
 
-Per-role model selection is the heart of tokenomics — design goes to a model capable of deep reasoning, while repetitive test writing is assigned to a cheaper model.
+Per-specialist model and effort selection is the heart of tokenomics — authoring that needs deep reasoning goes to a higher-tier model with high effort, while repetitive derivation work is assigned to a cheaper model with medium effort. The user approval gate happens at the PLAN→GENERATE boundary via `AskUserQuestion`.
 
 #### Plan Confirmation
 
 The plan is confirmed with the user before generation. No files are ever created without an approval gate.
 
 ```
-계획된 팀 구성:
-- 팀명: Backend Development Team
-- 팀원 3명:
-  ① architect (model: inherit)
-  ② implementer (model: inherit)
-  ③ tester (model: haiku)
-- Worktree 격리: L1_optional
-- Manifest: .moai/harness/manifest.json
+Planned harness composition:
+- Name: backend-team
+- 3 specialists:
+  ① architect (primitive: sub-agent, model: opus, effort: high)
+  ② implementer (primitive: sub-agent, model: inherit, effort: high)
+  ③ tester (primitive: sub-agent, model: sonnet, effort: medium)
+- entry command: /harness:backend-team
 
-이 구성으로 진행할까요?
+Proceed with this composition?
 ```
 
 ### Phase 3: GENERATE
@@ -96,13 +95,13 @@ Each file is defined with a YAML prompt.
 ```yaml
 ---
 name: architect
-description: API 아키텍처 설계 전문가
+description: API architecture design specialist
 tools: Read, Write, Edit, Grep, Glob, Bash
 model: inherit
 ---
 
-당신은 이 프로젝트의 API 아키텍처 전문가입니다.
-[역할별 상세 지침]
+You are this project's API architecture specialist.
+[Detailed per-role instructions]
 ```
 
 **2. Manifest file**
@@ -119,13 +118,13 @@ Right after generation, you can directly verify file existence and definition co
 
 ```bash
 ls .claude/agents/harness/
-# architect.md, implementer.md, tester.md 확인
+# Verify architect.md, implementer.md, tester.md
 
 ls .moai/harness/
-# manifest.json 확인
+# Verify manifest.json
 
 grep -c "\"name\": \"architect\"" .moai/harness/manifest.json
-# phase 정의가 정확한지 확인
+# Verify the phase definitions are correct
 ```
 
 ### Phase 4: ACTIVATE
@@ -136,18 +135,18 @@ Registers the generated harness and makes it immediately usable.
 
 1. **Agent validation**: syntax check on each agent file
 2. **Manifest validation**: JSON schema and field validation
-3. **Command registration**: the `/harness:backend-team` command is activated
+3. **Command registration**: the `/harness:backend-team` entry command is activated
 4. **Runner initialization**: the manifest-based Runner is prepared to start
-5. **Worktree creation** (optional): L1 isolation activation conditions configured
+5. **Worktree creation** (optional): specialist isolation activation conditions configured
 
 #### Activation Check
 
 ```bash
-/harness list
-# backend-team 표시
+moai harness list
+# Shows backend-team (name + domain + entry command)
 
-/harness:backend-team status
-# 팀원 3명, 모델, 상태 확인
+moai harness doctor
+# Reference-integrity smoke gate (validates specialist, skill, and workflow references)
 ```
 
 ## Manifest Schema
@@ -156,104 +155,51 @@ Registers the generated harness and makes it immediately usable.
 
 | Field | Type | Required | Description |
 |------|------|------|------|
-| `spec_id` | string | Yes | `HARNESS-{DOMAIN}-{NUM}` format |
-| `name` | string | Yes | Team display name |
-| `version` | string | Yes | Semantic versioning `X.Y.Z` |
-| `created_at` | string | Yes | ISO 8601 timestamp |
-| `worktree_isolation` | enum | Yes | `L1_optional` \| `none` |
-| `phases` | array | Yes | Array of Phase objects |
+| `name` | string | Yes | Harness name (used in the entry command) |
+| `domain` | string | Yes | Harness domain description |
+| `patterns` | array | Yes | Execution patterns (`Pipeline`, `Fan-out/Fan-in`, `Producer-Reviewer`, etc.) |
+| `specialists` | array | Yes | Array of Specialist objects (3-7 HARD cap) |
+| `sprint_contract` | object | Yes | Quality dimensions, thresholds, and must_pass gates |
+| `companion_skills` | array | — | List of harness-specific companion skills |
+| `entry_command` | string | Yes | `/harness:<name>` entry command |
+| `runner_workflow` | string | Yes | Runner workflow script file |
+| `schedule` | object | — | (Optional) recurring-execution schedule — `mode: discovery-only`, etc. |
 
-### Phase Object
-
-```json
-{
-  "name": "run",
-  "description": "구현 단계",
-  "teammates": [...]
-}
-```
-
-| Field | Type | Description |
-|------|------|------|
-| `name` | string | `plan` \| `run` \| `sync` |
-| `description` | string | Description of the phase goal |
-| `teammates` | array | Array of Teammate objects |
-
-### Teammate Object
+### Specialist Object
 
 ```json
 {
-  "name": "api-developer",
-  "role": "REST API 엔드포인트 개발",
-  "model": "inherit",
-  "mode": "acceptEdits",
-  "skills": ["moai-foundation-core"],
-  "isolation": "worktree_optional"
+  "role": "content-author",
+  "description": "canonical-locale source authoring",
+  "agent_file": ".claude/agents/harness/hns-oss-docs-content-author-specialist.md",
+  "primitive": "sub-agent",
+  "isolation": "none",
+  "effort": "high",
+  "model": "opus"
 }
 ```
 
-| Field | Default | Description |
-|------|--------|------|
-| `name` | required | Teammate ID (hyphens, no spaces) |
-| `role` | required | Role description (free text) |
-| `model` | `inherit` | `inherit`, `haiku`, `sonnet`, `opus` |
-| `mode` | `acceptEdits` | Permission mode (`acceptEdits`, `default`, `bypassPermissions`) |
-| `skills` | `[]` | Preloaded skill array (e.g. `["moai-foundation-core"]`) |
-| `isolation` | none | `worktree_optional` (conditional worktree isolation) |
+| Field | Description |
+|------|------|
+| `role` | Specialist role (hyphenated/English) |
+| `description` | Role description (free text) |
+| `agent_file` | Specialist agent file path (`.claude/agents/harness/`) |
+| `primitive` | Execution primitive (`sub-agent`, `adversarial-fan-out`, etc.) |
+| `isolation` | Isolation level (`none`, `worktree`) |
+| `effort` | Reasoning intensity (`low`, `medium`, `high`, `xhigh`) — purpose-based |
+| `model` | Model tier (`opus`, `sonnet`, `haiku`, `inherit`) — purpose-based |
 
-### Full Example
+### Sprint Contract
 
 ```json
 {
-  "spec_id": "HARNESS-BACKEND-001",
-  "name": "Backend Development Team",
-  "version": "1.0.0",
-  "created_at": "2026-07-01T10:00:00Z",
-  "worktree_isolation": "L1_optional",
-  
-  "phases": [
-    {
-      "name": "plan",
-      "description": "아키텍처 설계 및 SPEC 작성",
-      "teammates": [
-        {
-          "name": "architect",
-          "role": "API 아키텍처 전문가",
-          "model": "inherit",
-          "mode": "acceptEdits",
-          "skills": ["moai-foundation-core"]
-        }
-      ]
-    },
-    {
-      "name": "run",
-      "description": "실제 구현",
-      "teammates": [
-        {
-          "name": "db-engineer",
-          "role": "DB 설계 및 마이그레이션",
-          "model": "inherit",
-          "mode": "acceptEdits",
-          "isolation": "worktree_optional"
-        },
-        {
-          "name": "api-developer",
-          "role": "REST API 엔드포인트 구현",
-          "model": "inherit",
-          "mode": "acceptEdits",
-          "isolation": "worktree_optional"
-        },
-        {
-          "name": "test-engineer",
-          "role": "단위 테스트 및 통합 테스트",
-          "model": "haiku",
-          "mode": "acceptEdits"
-        }
-      ]
-    }
-  ]
+  "dimensions": ["locale-parity", "build-clean", "style-compliance", "content-fidelity"],
+  "thresholds": { "locale-parity": 1.0, "build-clean": 1.0, "style-compliance": 0.95 },
+  "must_pass": ["locale-parity", "build-clean"]
 }
 ```
+
+`dimensions` are the scoring dimensions, `thresholds` are the per-dimension pass thresholds, and `must_pass` defines the gates that must pass.
 
 ## Runner Primitive
 
@@ -265,17 +211,17 @@ The manifest-based Runner executes the generated team.
 Team Spawn
   ↓
 [Phase 1: plan]
-  → Teammate(architect) 생성 및 위임
-  → 결과 수집
+  → Create and delegate to Teammate(architect)
+  → Collect results
   ↓
 [Phase 2: run]
-  → Teammate(db-engineer) 병렬 생성
-  → Teammate(api-developer) 병렬 생성
-  → Teammate(test-engineer) 순차 생성
-  → 결과 수집 및 통합
+  → Create Teammate(db-engineer) in parallel
+  → Create Teammate(api-developer) in parallel
+  → Create Teammate(test-engineer) sequentially
+  → Collect and consolidate results
   ↓
 [Phase 3: sync]
-  → 기본 manager-docs 실행
+  → Run the default manager-docs
   ↓
 Team Teardown
 ```
@@ -286,26 +232,27 @@ The Runner's behavior is controlled by manifest fields.
 
 | Setting | Meaning |
 |------|------|
-| `worktree_isolation: "L1_optional"` | Automatic isolation applied on conflict detection |
-| `worktree_isolation: "none"` | Isolation disabled |
+| `isolation: "worktree"` | Apply worktree isolation to the specialist |
+| `isolation: "none"` | Isolation disabled |
 | `model: "inherit"` | Inherit the parent session's model |
-| `model: "haiku"` | Force the Haiku model (cost-optimal) |
-| `skills: ["..."]` | Preloaded skills |
+| `model: "sonnet"` | Low-cost tier for derivation/repetitive work |
+| `effort: "high"` \| `"medium"` | Per-specialist reasoning intensity (purpose-based) |
+| `companion_skills: ["..."]` | Harness-specific companion skills |
 
 ## Worktree Isolation Rules
 
 ### L1_optional Behavior
 
 ```
-Runner 생성 시:
-├── 팀원 1: 메인 프로젝트 루트
-├── 팀원 2: 메인 프로젝트 루트
-└── 충돌 감지 시
-    ├── 팀원 2 → L1 워크트리로 전환
-    └── 팀원 1은 메인 유지 (또는 팀원 1도 전환)
+On Runner creation:
+├── Teammate 1: main project root
+├── Teammate 2: main project root
+└── On conflict detection
+    ├── Teammate 2 → switches to an L1 worktree
+    └── Teammate 1 stays on main (or Teammate 1 switches too)
 
-결과:
-└── 파일 충돌 회피 ✓
+Result:
+└── File conflict avoided ✓
 ```
 
 ### Isolation Conditions
@@ -319,9 +266,9 @@ Isolation activates when any of the following is true.
 ### When Choosing No Isolation (none)
 
 ```
-모든 팀원이 메인 프로젝트에서 작업
-장점: 최소 메모리, 빠른 병렬
-단점: 충돌 가능성
+All teammates work in the main project
+Pros: minimal memory, fast parallelism
+Cons: possibility of conflicts
 ```
 
 ## Related Documents
@@ -331,5 +278,5 @@ Isolation activates when any of the following is true.
 - [SPEC-Based Development](/en/workflow-commands/moai-plan) - Harness and SPEC integration
 
 {{< callout type="info" >}}
-**Tip**: After creation, the manifest can be edited anytime with `/harness:team-name edit`. Adding teammates, changing skills, and adjusting the isolation policy are all possible.
+**Tip**: After creation, the manifest can be edited anytime — check the edit path with `moai harness edit <name>`. Adding specialists, changing skills, and adjusting the isolation policy are all possible.
 {{< /callout >}}

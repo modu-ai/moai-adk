@@ -64,9 +64,9 @@ flowchart TD
     end
 
     subgraph Phase3["Phase 3: Merge & Cleanup"]
-        C1[moai worktree done SPEC-ID] --> C2[Checkout main]
-        C2 --> C3[Merge]
-        C3 --> C4[Cleanup]
+        C1[merge into base via<br/>git merge or PR] --> C2[moai worktree done SPEC-ID]
+        C2 --> C3[Remove worktree]
+        C3 --> C4[Optional: delete branch]
     end
 
     Phase1 --> Phase2
@@ -132,10 +132,10 @@ moai worktree done SPEC-AUTH-001 --delete-branch    # cleanup + delete local bra
 | Command                  | Description                | Example                        |
 | ------------------------ | -------------------------- | ------------------------------ |
 | `moai worktree new SPEC-ID`    | Create a new Worktree      | `moai worktree new SPEC-AUTH-001`    |
-| `moai worktree go SPEC-ID`     | Enter a Worktree (opens a new shell) | `moai worktree go SPEC-AUTH-001`     |
+| `moai worktree go SPEC-ID`     | Print the Worktree path (for `cd`) | `cd "$(moai worktree go SPEC-AUTH-001)"` |
 | `moai worktree list`           | List Worktrees             | `moai worktree list`                 |
-| `moai worktree done SPEC-ID`   | Merge and clean up         | `moai worktree done SPEC-AUTH-001`   |
-| `moai worktree remove SPEC-ID` | Remove a Worktree          | `moai worktree remove SPEC-AUTH-001` |
+| `moai worktree done SPEC-ID`   | Clean up the Worktree (merge is separate) | `moai worktree done SPEC-AUTH-001`   |
+| `moai worktree remove [path]`  | Remove a Worktree (path-specified) | `moai worktree remove ~/.moai/worktrees/your-project/SPEC-AUTH-001` |
 | `moai worktree status`         | Check Worktree status      | `moai worktree status`               |
 | `moai worktree clean`          | Clean up merged Worktrees  | `moai worktree clean --merged-only`  |
 | `moai worktree config`         | Inspect Worktree config    | `moai worktree config root`          |
@@ -247,7 +247,7 @@ flowchart TB
         M[main branch]
     end
 
-    D3 -->|moai worktree done| M
+    D3 -->|clean up with done after git merge/PR| M
     D1 -.->|Not yet complete| M
     D2 -.->|Not yet complete| M
 ```

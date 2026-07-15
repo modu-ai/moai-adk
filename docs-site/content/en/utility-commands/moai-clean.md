@@ -71,42 +71,45 @@ This option is useful when you want to review the analysis results before remova
 
 ## Execution Flow
 
-`/moai clean` runs in 6 steps.
+`/moai clean` runs in 7 steps.
 
 ```mermaid
 flowchart TD
     Start["/moai clean run"] --> Phase1["Step 1: static analysis scan"]
 
-    Phase1 --> Phase2["Step 2: usage-graph analysis"]
-
-    Phase2 --> Phase3["Step 3: classification"]
-    Phase3 --> Classify{"Classification result"}
+    Phase1 --> Phase2["Step 2: usage-graph analysis and classification"]
+    Phase2 --> Classify{"Classification result"}
     Classify --> Dead["Certain dead code"]
     Classify --> TestOnly["Test-only"]
     Classify --> Likely["Likely dead code"]
     Classify --> False["False positive (actually in use)"]
 
-    Dead --> Approval{"--dry?"}
-    Approval -->|Yes| Report["Show analysis results and exit"]
-    Approval -->|No| Phase4["Step 4: safe removal"]
+    Dead --> Phase3{"Step 3: removal-plan approval<br/>(AskUserQuestion / --dry?)"}
+    Phase3 -->|--dry or reject| Report["Show analysis results and exit"]
+    Phase3 -->|Approve| Phase4["Step 4: safe removal"]
 
     Phase4 --> Phase5["Step 5: test verification"]
     Phase5 --> Pass{"Tests pass?"}
-    Pass -->|Yes| Phase6["Step 6: report"]
     Pass -->|No| Rollback["Roll back and retry"]
+    Pass -->|Yes| Phase6["Step 6: MX tag cleanup"]
     Rollback --> Phase6
+    Phase6 --> Phase7["Step 7: report"]
 ```
+
+Step 3 **removal-plan approval** is a human gate where the orchestrator presents the removal-target list to the user via `AskUserQuestion` and obtains approval. Step 6 **MX tag cleanup** also cleans up the `@MX` comments attached to the removed code, so no dangling comments remain.
 
 ### Step 1: Static Analysis Scan
 
-Detects dead-code candidates using per-language tools:
+Auto-detects the project language by project marker and detects candidates with each language's standard dead-code analysis tools. It **treats the 16 supported languages equally** (go, python, typescript, javascript, rust, java, kotlin, csharp, ruby, php, elixir, cpp, scala, r, flutter, swift), gracefully skips tools that are not installed, and silently passes projects with no recognized language marker. The following are representative examples only and do not favor any particular language:
 
-| Language | Analysis tools | Checks |
+| Language (example) | Analysis tools (example) | Checks |
 |------|-----------|-----------|
-| **Go** | `go vet`, `staticcheck`, `deadcode` | Unused variables, functions, types |
-| **Python** | `vulture`, `autoflake` | Dead code, unused imports |
-| **TypeScript/JavaScript** | `ts-prune`, ESLint `no-unused-vars` | Unused exports, variables |
-| **Rust** | `cargo clippy`, `cargo udeps` | Dead-code warnings, unused dependencies |
+| Go | `go vet`, `staticcheck`, `deadcode` | Unused variables, functions, types |
+| Python | `vulture`, `autoflake` | Dead code, unused imports |
+| TypeScript/JavaScript | `ts-prune`, ESLint `no-unused-vars` | Unused exports, variables |
+| Rust | `cargo clippy`, `cargo udeps` | Dead-code warnings, unused dependencies |
+
+The remaining 12 languages (java, kotlin, csharp, ruby, php, elixir, cpp, scala, r, flutter, swift, etc.) are scanned equally with their own standard toolchains.
 
 **Scan categories:**
 

@@ -53,7 +53,7 @@ Run it without arguments and it automatically finds and fixes every problem in t
 | ----------------------------------------- | ------------------------------------ | ----------------------------- |
 | `--max N` (or `--max-iterations`)         | Limit the maximum iterations (default 10) | `/moai loop --max 20`   |
 | `--lens {clean\|simplify\|coverage}`      | Add scan lenses (comma-separated, opt-in) | `/moai loop --lens clean,coverage` |
-| `--auto` (or `--auto-fix`)                | Enable auto-fix (default Level 1)    | `/moai loop --auto`           |
+| `--auto-fix`                              | Enable auto-fix (default Level 1)    | `/moai loop --auto-fix`       |
 | `--sequential` (or `--seq`)               | Sequential diagnostics instead of parallel | `/moai loop --sequential` |
 | `--errors` (or `--errors-only`)           | Fix errors only, skip warnings       | `/moai loop --errors`         |
 | `--coverage` (or `--include-coverage`)    | Include coverage (default 85%)       | `/moai loop --coverage`       |
@@ -251,20 +251,25 @@ flowchart TD
     Todo --> Loop["Loop start"]
 
     Loop --> Fix["Delegate fixes to<br/>manager-develop"]
-    Fix --> Verify["sync-auditor<br/>verification"]
-
-    Verify --> Complete{"Completion conditions?"}
-    Complete -->|No| Loop
-    Complete -->|Yes| Done["Done"]
+    Fix --> Predicate{"Mechanical completion predicate<br/>(queue drained + diagnostics clean)?"}
+    Predicate -->|No| Loop
+    Predicate -->|Yes| FinalPass["Step 1.5<br/>independent final pass"]
+    FinalPass --> Done["Done"]
 ```
+
+**Completion decision — mechanical predicate + independent final pass:**
+
+The loop's successful termination is decided by a **mechanical completion predicate** — the orchestrator directly checks whether the issue queue is empty and the diagnostics (LSP/AST-grep/tests/coverage) are clean. No separate audit agent (sync-auditor) decides completion.
+
+Once the predicate is satisfied, the **Step 1.5 Independent Final Pass** runs on the success-termination path — it runs `/moai gate --fresh` in a fresh context or spawns a read-only verification Agent to independently confirm the final state, so the loop does not inspect itself.
 
 **Agent roles:**
 
 | Agent                   | Role       | Main work            |
 | ----------------------- | ---------- | -------------------- |
-| **MoAI orchestrator**   | Loop coordination | Coordinates diagnostics, reports to the user |
+| **MoAI orchestrator**   | Loop coordination + completion-predicate decision | Coordinates diagnostics, checks the mechanical completion predicate, reports to the user |
 | **manager-develop**     | Loop management and fix execution | TODO generation, actual code fixes (cycle_type=autofix) |
-| **sync-auditor**        | Quality verification | Checks the completion conditions |
+| **`/moai gate --fresh` or read-only verification Agent** | Step 1.5 independent final pass | Confirms the final state in an independent context before successful termination |
 
 ## Worked Example
 

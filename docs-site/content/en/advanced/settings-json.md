@@ -567,7 +567,7 @@ Registers scripts that respond to Claude Code events.
           {
             "type": "command",
             "command": "security guard script path",
-            "timeout": 5000
+            "timeout": 5
           }
         ]
       }
@@ -579,12 +579,12 @@ Registers scripts that respond to Claude Code events.
           {
             "type": "command",
             "command": "formatter script path",
-            "timeout": 30000
+            "timeout": 10
           },
           {
             "type": "command",
             "command": "linter script path",
-            "timeout": 60000
+            "timeout": 30
           }
         ]
       }
@@ -697,9 +697,9 @@ Configures the status line shown at the bottom of Claude Code.
 {
   "statusLine": {
     "type": "command",
-    "command": "${SHELL:-/bin/bash} -l -c 'uv run --no-sync moai-adk statusline'",
+    "command": "bash \"$CLAUDE_PROJECT_DIR/.moai/status_line.sh\"",
     "padding": 0,
-    "refreshInterval": 300
+    "refreshInterval": 10
   }
 }
 ```
@@ -707,9 +707,9 @@ Configures the status line shown at the bottom of Claude Code.
 | Field | Description |
 |------|------|
 | `type` | `"command"` (runs a command) |
-| `command` | The command to run (returns status info) |
+| `command` | The command to run (returns status info). MoAI-ADK uses the `$CLAUDE_PROJECT_DIR/.moai/status_line.sh` wrapper |
 | `padding` | Padding size |
-| `refreshInterval` | Refresh interval (milliseconds) |
+| `refreshInterval` | Refresh interval (seconds) |
 
 ## Output Style Setting
 
@@ -844,26 +844,26 @@ MoAI-ADK provides a custom status line.
 {
   "statusLine": {
     "type": "command",
-    "command": "${SHELL:-/bin/bash} -l -c 'uv run --no-sync moai-adk statusline'",
+    "command": "bash \"$CLAUDE_PROJECT_DIR/.moai/status_line.sh\"",
     "padding": 0,
-    "refreshInterval": 300
+    "refreshInterval": 10
   }
 }
 ```
 
-### MoAI Statusline v3 Features
+### MoAI Statusline Features
 
-MoAI-ADK statusline v3 includes the following.
+MoAI-ADK statusline includes the following.
 
-- **RGB gradient colors**: dynamic color gradients based on system state
+- **Gradient colors**: dynamic color gradients based on context usage
 - **5H/7D usage monitoring**: 5-hour and 7-day API usage bars
 - **Multi-line layout**: Compact (3-line), default, and full display modes
-- **Themes**:
-  - **MoAI Dark** (default): a dark theme with RGB gradients
-  - **MoAI Light**: a light theme for bright environments
+- **Themes** (defined in `internal/statusline/theme.go`):
+  - **catppuccin-mocha** (default): a dark palette
+  - **catppuccin-latte**: a light palette for bright environments
 
 {{< callout type="info" >}}
-**Note**: the previous themes (Default, Catppuccin Mocha, Catppuccin Latte) were renamed to MoAI Dark/MoAI Light.
+**Note**: an unknown theme name falls back to `catppuccin-mocha`. The color values come from `internal/tui/catppuccin.go`.
 {{< /callout >}}
 
 The statusline theme and segments are configured in `.moai/config/sections/statusline.yaml`.
@@ -871,6 +871,8 @@ The statusline theme and segments are configured in `.moai/config/sections/statu
 ### MoAI Custom Hooks
 
 MoAI-ADK provides the following custom hooks.
+
+MoAI-ADK's hooks follow a **shell-script wrapper → Go binary** structure. Rather than Python/`uv`, for each event a `.claude/hooks/moai/handle-<event>.sh` wrapper forwards the stdin JSON to the `moai hook <event>` subcommand.
 
 ```json
 {
@@ -881,7 +883,8 @@ MoAI-ADK provides the following custom hooks.
         "hooks": [
           {
             "type": "command",
-            "command": "/bin/zsh -l -c 'uv run \"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/session_start__show_project_info.py\"'"
+            "command": "bash \"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-session-start.sh\"",
+            "timeout": 30
           }
         ]
       }
@@ -892,8 +895,8 @@ MoAI-ADK provides the following custom hooks.
         "hooks": [
           {
             "type": "command",
-            "command": "/bin/zsh -l -c 'uv run \"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/pre_compact__save_context.py\"'",
-            "timeout": 5000
+            "command": "bash \"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-compact.sh\"",
+            "timeout": 30
           }
         ]
       }
@@ -904,7 +907,8 @@ MoAI-ADK provides the following custom hooks.
         "hooks": [
           {
             "type": "command",
-            "command": "/bin/zsh -l -c 'uv run \"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/session_end__auto_cleanup.py\" &'"
+            "command": "bash \"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-session-end.sh\"",
+            "timeout": 10
           }
         ]
       }
@@ -915,8 +919,8 @@ MoAI-ADK provides the following custom hooks.
         "hooks": [
           {
             "type": "command",
-            "command": "/bin/zsh -l -c 'uv run \"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/pre_tool__security_guard.py\"'",
-            "timeout": 5000
+            "command": "bash \"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-pre-tool.sh\"",
+            "timeout": 5
           }
         ]
       }
@@ -927,18 +931,8 @@ MoAI-ADK provides the following custom hooks.
         "hooks": [
           {
             "type": "command",
-            "command": "/bin/zsh -l -c 'uv run \"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/post_tool__code_formatter.py\"'",
-            "timeout": 30000
-          },
-          {
-            "type": "command",
-            "command": "/bin/zsh -l -c 'uv run \"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/post_tool__linter.py\"'",
-            "timeout": 60000
-          },
-          {
-            "type": "command",
-            "command": "/bin/zsh -l -c 'uv run \"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/post_tool__ast_grep_scan.py\"'",
-            "timeout": 30000
+            "command": "bash \"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-post-tool.sh\"",
+            "timeout": 10
           }
         ]
       }
@@ -946,6 +940,16 @@ MoAI-ADK provides the following custom hooks.
   }
 }
 ```
+
+Each wrapper is a thin shell script that reads the stdin JSON and passes it to the Go binary.
+
+```bash
+#!/bin/bash
+# .claude/hooks/moai/handle-session-start.sh
+moai hook session-start
+```
+
+Why shell scripts: there is no Python startup overhead (fast execution), no `uv`/`python` dependency is required, and they are cross-platform (bash, /bin/sh). The unit of a hook `timeout` value is **seconds** (not milliseconds).
 
 ### MoAI Output Style
 
@@ -1014,8 +1018,8 @@ Register a personal hook.
         "hooks": [
           {
             "type": "command",
-            "command": "python3 .claude/hooks/my-hooks/custom_check.py",
-            "timeout": 10000
+            "command": "bash .claude/hooks/my-hooks/custom_check.sh",
+            "timeout": 10
           }
         ]
       }
@@ -1035,7 +1039,7 @@ Register a personal hook.
 }
 ```
 
-## New Configuration Files in v2.9.0
+## Related Configuration Files
 
 ### Harness Configuration (harness.yaml)
 
@@ -1046,23 +1050,35 @@ Defines the quality-pipeline depth levels and auto-detection thresholds. The con
 | Level | Description | evaluator | Skipped phases |
 |------|------|-----------|---------------|
 | minimal | Fast iteration (simple changes) | Disabled | 0, 0.5, 2.0, 2.5, 2.75, 2.8a, 2.9, 2.10 |
-| standard | Balanced quality (most development) | final-pass | None |
-| thorough | Maximum quality (critical features) | per-sprint | None |
+| standard | Balanced quality (most development) | Enabled | None |
+| thorough | Maximum quality (critical features) | Enabled | None |
 
 ```yaml
 # .moai/config/sections/harness.yaml
 harness:
-  default_level: standard
+  default_profile: "default"
+  mode_defaults:
+    solo: auto
+    team: auto
+    cg: thorough
   auto_detection:
-    minimal:
-      - "file_count <= 3 AND single_domain"
-      - "spec_type in [bugfix, docs, config]"
-    thorough:
-      - "security_keywords OR payment_keywords present"
-      - "spec_priority == critical"
+    enabled: true
+    rules:
+      minimal:
+        conditions:
+          - "file_count <= 3 AND single_domain"
+          - "spec_type in [bugfix, docs, config]"
+      thorough:
+        conditions:
+          - "security_keywords OR payment_keywords present"
+          - "spec_priority == critical"
+  effort_mapping:
+    minimal:  "low"
+    standard: "medium"
+    thorough: "high"
   levels:
     thorough:
-      evaluator_profile: "strict"
+      evaluator: true
 ```
 
 ### Constitution Configuration (constitution.yaml)

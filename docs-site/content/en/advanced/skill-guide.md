@@ -55,7 +55,7 @@ flowchart TD
 
 The MoAI-ADK template includes a total of **27 `moai-*` skills**, classified into 5 functional categories (Foundation 4 + Workflow 8 + Domain 5 + Reference 8 + Meta/Harness 2 = 27). In addition, there is 1 separate `moai` umbrella skill that routes requests to specialized skills. In user projects, you can additionally author custom `harness-*` skills. Programming-language support is provided by rules under `rules/moai/languages/` and is not a separate skill.
 
-This number is also a result of dieting — the skill catalog was refined from 48 → 38 → 27 over the v3 period.
+This number is also a result of dieting — the skill catalog was refined from 48 → 38 → 27 over the v3 period. The current prefix for custom harness skills is `hns-*` (the legacy `harness-*` is also recognized).
 
 ### Foundation (Core Philosophy) - 4
 
@@ -106,10 +106,10 @@ This number is also a result of dieting — the skill catalog was refined from 4
 
 | Skill name              | Description                                        |
 | ---------------------- | ------------------------------------------- |
-| `moai-meta-harness`    | Dynamic generation of project-specific agent teams         |
+| `moai-meta-harness`    | **DEPRECATED** — the legacy 7-Phase meta-harness. Redirects to the v4 Builder (`/moai:harness <natural-language request>`) |
 | `moai-harness-learner` | The harness learning subsystem, auto-update proposals |
 
-> The 27 `moai-*` skills ship with the MoAI-ADK template by default, and each skill loads independently to save tokens. Users can additionally author per-project custom `harness-*` skills.
+> The 27 `moai-*` skills ship with the MoAI-ADK template by default, and each skill loads independently to save tokens. Users can additionally author per-project custom `hns-*` harness skills (the legacy `harness-*` prefix is also recognized).
 
 ## The Progressive Disclosure System
 
@@ -175,20 +175,25 @@ flowchart TD
 ### Trigger Configuration Example
 
 ```yaml
-# Define triggers in the skill frontmatter
-triggers:
-  keywords: ["api", "database", "authentication"] # keyword matching
-  agents: ["manager-spec", "manager-develop"] # when an agent is invoked
-  phases: ["plan", "run"] # workflow phase
-  languages: ["python", "typescript"] # programming language
+# The actual SKILL.md frontmatter (auto-discovery is driven by the description/when_to_use prose)
+name: moai-domain-backend
+description: >
+  Backend development specialist ... Use when designing APIs,
+  implementing server logic, authentication, or authorization.
+when_to_use: >
+  Use for backend work: API design (REST, GraphQL, gRPC) ...
+allowed-tools: Read, Write, Edit, Bash(go:*), Grep, Glob   # CSV string (not a YAML array)
+user-invocable: false
+metadata:
+  version: "1.0.0"
+  category: "domain"
 ```
 
-**Trigger priority:**
+**Auto-load mechanism:**
 
-1. **Keywords**: load immediately when a keyword is detected in the user message
-2. **Agents**: auto-load when a specific agent is invoked
-3. **Phases**: load according to the Plan/Run/Sync phase
-4. **Languages**: load according to the programming language of the file being worked on
+- Claude Code reads the `description` / `when_to_use` prose and discovers a skill by matching it against the domain of the user request (there is no separate `triggers:` block).
+- `allowed-tools` is written as a **CSV string** (not space-separated, not a YAML array).
+- The orchestrator routes domain skills by injecting an `At start, invoke Skill("<name>")` instruction on agent spawn (`skill-routing.md`).
 
 ## Using Skills
 

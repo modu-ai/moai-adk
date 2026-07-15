@@ -464,7 +464,8 @@ The development methodology is configured in the `.moai/config/sections/quality.
 
 ```yaml
 constitution:
-  development_mode: tdd  # Use the TDD methodology
+  development_mode: tdd            # Use the TDD methodology (overrides and pins the SPEC's automatic harness-level selection)
+  session_effort_default: "xhigh" # Opus 4.7+ default session reasoning depth (when there is no per-agent override)
 
   tdd_settings:
     test_first_required: true         # Tests required before implementation
@@ -474,6 +475,10 @@ constitution:
 
   test_coverage_target: 85            # Overall coverage target
 ```
+
+> Explicitly pinning `development_mode` overrides the complexity estimator's automatic
+> harness-level selection (minimal/standard/thorough) and forces the specified methodology
+> (TDD/DDD).
 
 ### DDD Configuration
 

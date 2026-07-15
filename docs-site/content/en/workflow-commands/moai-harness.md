@@ -4,7 +4,7 @@ weight: 55
 draft: false
 ---
 
-Creates project-specific dynamic specialist teams (harnesses) and manages the harness learning lifecycle.
+Creates a project-specific specialist set (harness) and manages the harness learning lifecycle.
 
 {{< callout type="info" >}}
 **Slash command**: Type `/moai:harness <natural-language request>` in Claude Code to run this command directly.
@@ -12,20 +12,20 @@ Creates project-specific dynamic specialist teams (harnesses) and manages the ha
 
 ## Overview
 
-`/moai:harness` runs MoAI-ADK's **Harness v4 Builder** to auto-generate a dynamic specialist team tailored to the project's requirements.
+`/moai:harness` runs MoAI-ADK's **Harness v4 Builder** to auto-generate a specialist set tailored to the project's requirements. The Builder is driven directly by the orchestrator (not the Agent Teams static layer), and the generated harness has its manifest-based Runner dispatch specialists via the sub-agent or dynamic-workflow primitive.
 
 It is the command that lets you feel v3's third pillar, the **agentic harness**, directly — a recursive structure where a harness builds a harness. When there is a project-specific area the general-purpose agent catalog cannot cover (e.g., a particular DB migration procedure, an in-house API convention), you can scaffold a specialist team for that area with a single sentence of natural language. The generated harness connects to the **recursive self-learning** subsystem — as usage observations accumulate, the harness produces improvement proposals on its own, and guidance evolves through a user-approval gate.
 
 ### What Is the Harness v4 Builder?
 
-The Harness v4 Builder composes a team through a Socratic-interview-based 4-phase workflow (ANALYZE → PLAN → GENERATE → ACTIVATE).
+The Harness v4 Builder composes a specialist set through a Socratic-interview-based 4-phase workflow (ANALYZE → PLAN → GENERATE → ACTIVATE). The orchestrator drives the 4 phases directly; it is not a dynamic-workflow script.
 
 | Phase | Description |
 |------|------|
 | ANALYZE | Analyze the project structure, languages used, and existing agent inventory |
-| PLAN | Decide the needed team size (3-5), each teammate's role, and whether to use worktree isolation |
-| GENERATE | Create the `.claude/agents/harness/` agent files and `.moai/harness/manifest.json` |
-| ACTIVATE | Register the team and activate the `/harness:<name>` command |
+| PLAN | Decide the needed number of specialists (3-5), each specialist's role, and whether to use worktree isolation |
+| GENERATE | Create the `.claude/agents/harness/hns-<name>*-specialist.md` specialist files, `.claude/commands/harness/<name>/manifest.json` (SSOT), and the `.claude/workflows/hns-<name>-run.js` Runner |
+| ACTIVATE | Register the manifest and activate the `/harness:<name>` command (smoke gate) |
 
 ## Single `harness` subcommand routing
 
@@ -69,13 +69,14 @@ I need teams that handle DB migrations, REST API endpoints, and unit tests respe
 The Builder runs the 4 phases automatically:
 
 1. **ANALYZE**: detect the Go, PostgreSQL, REST API tech stack
-2. **PLAN**: decide on a 3-person team of DB Engineer, API Developer, Test Engineer
+2. **PLAN**: decide on 3 specialist roles — DB Engineer, API Developer, Test Engineer
 3. **GENERATE**:
-   - `.claude/agents/harness/db-engineer.md`
-   - `.claude/agents/harness/api-developer.md`
-   - `.claude/agents/harness/test-engineer.md`
-   - creates `.moai/harness/manifest.json`
-4. **ACTIVATE**: register the `/harness:backend-team` command
+   - `.claude/agents/harness/hns-backend-team-db-specialist.md`
+   - `.claude/agents/harness/hns-backend-team-api-specialist.md`
+   - `.claude/agents/harness/hns-backend-team-test-specialist.md`
+   - `.claude/commands/harness/backend-team/manifest.json` (SSOT)
+   - `.claude/workflows/hns-backend-team-run.js` (Runner)
+4. **ACTIVATE**: register the `/harness:backend-team` command (smoke gate)
 
 ### Step 3: Use the generated team
 
@@ -188,7 +189,7 @@ Auto-evolution is always applied only under the **user-approval gate**. You can 
 
 ## Manifest Structure
 
-Harness v4 defines the team configuration with **manifest.json**.
+Harness v4 defines the specialist-set configuration with **manifest.json** (`.claude/commands/harness/<name>/manifest.json`, SSOT). The Runner reads this manifest and dispatches each phase's specialists via the orchestrator-direct sub-agent or dynamic-workflow primitive — not by registering with the Agent Teams static layer.
 
 ### manifest.json Example
 
@@ -278,30 +279,30 @@ Claude Code automatically creates an L1 worktree when it detects a conflict betw
 
 All teammates work at the project root (minimal memory usage).
 
-## The Team Delegation Workflow
+## The Specialist Dispatch Workflow
 
-Once a harness is activated, MoAI uses that team automatically.
+Once a harness is activated, the manifest-based Runner uses that specialist set automatically.
 
-### Team Delegation During SPEC Execution
+### Specialist Dispatch During SPEC Execution
 
 ```bash
 > /moai run SPEC-BACKEND-001
 ```
 
-**MoAI's automatic decisions:**
+**Orchestrator-direct decisions:**
 1. Estimate SPEC complexity (file count, lines of code)
 2. Select the appropriate harness
-3. Delegate to teammates sequentially/in parallel in the manifest phase order
+3. Dispatch specialists in the manifest phase order via the sub-agent or dynamic-workflow primitive
 
-### Phase-Based Delegation Example
+### Phase-Based Dispatch Example
 
 ```
 PLAN Phase:
-  → the architect teammate handles the architecture design
+  → the architect specialist handles the architecture design
 
 RUN Phase:
-  → db-engineer, api-developer delegated in parallel
-  → test-engineer delegated sequentially (tests)
+  → db-specialist, api-specialist dispatched as sequential sub-agents
+  → test-specialist dispatched as a sub-agent (tests)
 
 SYNC Phase:
   → documentation generation and PR writing (default manager-docs)

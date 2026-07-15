@@ -59,7 +59,8 @@ Type the following in the Claude Code chat:
 | ------------- | ----------------------------- | ------------------------------ |
 | `--worktree`  | Auto-create a worktree (highest priority)   | `/moai plan "feature" --worktree` |
 | `--branch`    | Create a traditional branch            | `/moai plan "feature" --branch`   |
-| `--no-issue`  | Skip automatic GitHub issue creation    | `/moai plan "feature" --no-issue` |
+| `--resume`    | Resume planning from an existing SPEC   | `/moai plan --resume SPEC-AUTH-001` |
+| `--issue`     | Create a GitHub issue (opt-in)          | `/moai plan "feature" --issue`    |
 
 ### Flag priority
 
@@ -69,7 +70,7 @@ When branch-strategy flags are specified, they apply in the following order:
 2. **--branch** (second): create a traditional feature branch
 3. **No flag** (default): create only the SPEC; the user chooses the branch strategy at the BODP gate
 
-`--no-issue` is an option independent of the branch strategy that skips the GitHub issue creation step (Phase 12).
+`--issue` is an opt-in option independent of the branch strategy. **By default, GitHub issue creation is skipped** (the late-branch opt-in policy); to create an issue, you must explicitly specify the `--issue` flag.
 
 ### The --worktree flag
 
@@ -253,7 +254,7 @@ The **plan-auditor** sub-agent independently audits the SPEC artifacts authored 
 
 ### Phase 12: GitHub issue creation (conditional)
 
-Without the `--no-issue` flag, it creates a GitHub issue and links a bidirectional reference to the SPEC. From v3.0.0, issue creation is skipped by default and can be explicitly enabled with the `--issue` flag.
+By default, this step is **skipped** (the late-branch opt-in policy). Only when the `--issue` flag is explicitly specified does it create a GitHub issue and link a bidirectional reference to the SPEC.
 
 ### Phase 13: Git environment setup (conditional)
 

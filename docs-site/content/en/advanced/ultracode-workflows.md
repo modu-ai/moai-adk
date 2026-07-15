@@ -117,13 +117,13 @@ Enables **automatic workflow generation** for all substantive work in the curren
 If you want to trigger a workflow for a single request rather than the whole session, use the keyword.
 
 ```bash
-> 우리 codebase의 모든 TODO 주석을 찾아서 분류해줘.
-> (ultracode keyword를 포함하지 않으면 일반 sub-agent 실행)
+> Find and classify all TODO comments in our codebase.
+> (Without the ultracode keyword, runs as a regular sub-agent)
 
 VS
 
-> ultracode: 우리 codebase의 모든 TODO 주석을 찾아서 분류해줘.
-> (워크플로우 자동 생성)
+> ultracode: Find and classify all TODO comments in our codebase.
+> (Automatically generates a workflow)
 ```
 
 ## Dynamic Workflow Structure
@@ -131,7 +131,7 @@ VS
 ### Basic Script Template
 
 ```javascript
-// 워크플로우 스크립트: 코드베이스 전체 TODO 분류
+// Workflow script: classify TODOs across the entire codebase
 const packages = [
   "internal/auth",
   "internal/api",
@@ -142,20 +142,20 @@ const packages = [
 const results = [];
 
 for (const pkg of packages) {
-  // 각 패키지마다 독립 에이전트 생성
+  // Create an independent agent for each package
   const result = await agent({
     agentType: "Explore",
     model: "haiku",
     effort: "low",
     prompt: `
-      ${pkg} 패키지에서 모든 TODO 주석을 찾고 분류하세요.
-      형식: [파일] [라인] [카테고리] [내용]
+      Find and classify all TODO comments in the ${pkg} package.
+      Format: [file] [line] [category] [content]
     `
   });
   results.push({ pkg, todos: result });
 }
 
-// 최종 종합
+// Final consolidation
 const summary = {
   total_packages: packages.length,
   package_summaries: results,
@@ -181,8 +181,8 @@ return summary;
 Workflow agents **cannot interact with the user directly**.
 
 ```
-✗ 워크플로우 에이전트가 사용자 질문 발생 → 불가능
-✓ MoAI 오케스트레이터가 사전에 모든 선택지 수집 → 워크플로우 실행
+✗ A workflow agent raising a question to the user → not possible
+✓ The MoAI orchestrator collects all choices up front → then runs the workflow
 ```
 
 **Resolution**:
@@ -197,8 +197,8 @@ Workflow execution requires user approval just like any run phase. A massive fan
 ```
 /moai run --workflow SPEC-XXX
 
-→ MoAI: "이 SPEC을 워크플로우로 실행합니다. 진행할까요?"
-→ AskUserQuestion 승인 필수
+→ MoAI: "Running this SPEC as a workflow. Proceed?"
+→ AskUserQuestion approval required
 ```
 
 ### Cost Awareness
@@ -232,7 +232,7 @@ Can be disabled at the organization or user level.
 
 ```bash
 /config
-# Dynamic workflows toggle 끄기
+# Turn off the dynamic workflows toggle
 
 OR
 

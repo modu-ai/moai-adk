@@ -134,7 +134,7 @@ flowchart TD
     F -->|Abort| G["Exit"]
     F -->|Continue| H["Continue to Phase 1"]
 
-    E -->|No| H["Phase 1<br/>analysis and planning"]
+    E -->|No| H["Phase 11<br/>analysis and planning"]
 
     H --> I["Check preconditions"]
     I --> J["Analyze Git changes"]
@@ -143,7 +143,7 @@ flowchart TD
 
     L --> M{"User approval"}
     M -->|No| N["Exit"]
-    M -->|Yes| O["Phase 2<br/>run doc synchronization"]
+    M -->|Yes| O["Phase 12<br/>run doc synchronization"]
 
     O --> P["Create safety backup"]
     P --> Q["Invoke manager-docs<br/>generate docs"]
@@ -155,7 +155,7 @@ flowchart TD
     U --> V["Invoke sync-auditor<br/>quality verification"]
     V --> W{"Quality criteria?"}
     W -->|FAIL| G
-    W -->|PASS| X["Phase 3<br/>Git operations"]
+    W -->|PASS| X["Phase 13<br/>Git operations"]
 
     X --> Y["Invoke manager-git<br/>stage changed files"]
     Y --> Z["Create commit"]
@@ -213,13 +213,13 @@ The **sync-auditor** subagent performs TRUST 5 quality verification and produces
 
 Aggregates the status of test-runner, linter, type-checker, and code-review, and determines the overall status (PASS or WARN).
 
-### Phase 1: Analysis and Planning
+### Phase 11: Analysis and Planning
 
 The **manager-docs** subagent builds the synchronization strategy.
 
 **Output:** documents_to_update, specs_requiring_sync, project_improvements_needed, estimated_scope
 
-### Phase 2: Doc Synchronization Execution
+### Phase 12: Doc Synchronization Execution
 
 **Step 1 - Create safety backup:**
 
@@ -253,11 +253,11 @@ The **sync-auditor** subagent verifies sync quality against the TRUST 5 criteria
 - No credentials exposed
 - All SPECs properly linked
 
-**Step 4 - SPEC status update:**
+**Step 4 - SPEC status update (3-Phase close):**
 
-Batch-updates the status of completed SPECs to "completed" and records version changes and status transitions.
+manager-docs transitions the frontmatter status of the SPEC artifacts from `in-progress → implemented`. The final transition to `completed` is not a separate commit — it is recorded together with this sync commit. That is, a SPEC that entered `in-progress` in the run phase passes through `implemented` in the sync phase and is finalized as `completed` together with the sync commit. manager-docs handles only the frontmatter status transition and does not modify the body of spec.md/plan.md/acceptance.md.
 
-### Phase 3: Git Operations and PR
+### Phase 13: Git Operations and PR
 
 The **manager-git** subagent performs the Git operations:
 
@@ -281,7 +281,7 @@ The **manager-git** subagent performs the Git operations:
 - If passing and mergeable: run gh pr merge --squash --delete-branch
 - Check out develop, pull, delete the local branch
 
-### Phase 4: Completion and Next Steps
+### Phase 14: Completion and Next Steps
 
 **Standard completion report:**
 
@@ -461,16 +461,11 @@ When run in a worktree environment, auto-merge is the default behavior.
 
 **Flag behavior:**
 
-| Flag | Before v2.8 | v2.9.0 and later |
-|--------|----------|------------|
-| (none) | No merge | **Auto-merge** in worktree context |
-| `--merge` | Auto-merge | **Deprecated** (warning shown) |
-| `--no-merge` | N/A | Skip auto-merge |
+In a worktree context, auto-merge is the default behavior with no extra flag. The `--merge` flag is **Deprecated** (warning shown); to merge a Tier L PR, run `gh pr merge` manually after CI passes. The only flags `/moai sync` supports are `--pr` / `--merge` (deprecated) / `--skip-mx`.
 
 **Auto-merge execution conditions:**
 1. All CI/CD checks pass
 2. No merge conflicts
-3. The `--no-merge` flag is not set
 
 {{< callout type="warning" >}}
 On CI failure or conflict, auto-merge is not performed, and the error is reported along with recovery commands.
@@ -535,12 +530,12 @@ Phase 7: Quality verification
 
 ---
 
-#### Phase 1: Analysis and Planning
+#### Phase 11: Analysis and Planning
 
 Analyzes Git changes and builds the sync plan.
 
 ```bash
-Phase 1: Analysis and planning
+Phase 11: Analysis and planning
   Git changes: 12 files modified
   Sync plan: 1 API doc, README update, CHANGELOG addition
   User approval: complete
@@ -548,12 +543,12 @@ Phase 1: Analysis and planning
 
 ---
 
-#### Phase 2: Doc Synchronization
+#### Phase 12: Doc Synchronization
 
 Generates the needed docs and updates existing ones.
 
 ```bash
-Phase 2: Doc synchronization
+Phase 12: Doc synchronization
   Backup created: .moai-backups/sync-20260128-143052/
   API docs: docs/api/auth.md (new)
   README.md: usage section updated
@@ -565,12 +560,12 @@ Phase 2: Doc synchronization
 
 ---
 
-#### Phase 3: Git Operations
+#### Phase 13: Git Operations
 
 Creates the commit and opens the PR.
 
 ```bash
-Phase 3: Git operations
+Phase 13: Git operations
   Commit created: docs(auth): synchronize documentation for SPEC-AUTH-001
   PR status: Draft → Ready (Team mode)
 ```

@@ -94,15 +94,19 @@ The single line below starts the implementation exactly as decided yesterday.
 
 {{< /callout >}}
 
-## The EARS Format
+## The GEARS Requirements Format
 
-**EARS** (Easy Approach to Requirements Syntax) is a method for writing requirements
-clearly. It removes the ambiguity of natural language and converts requirements into a form
-that tests can verify.
+**GEARS** (Generalized Approach to Requirements Syntax) is MoAI-ADK's **official
+requirements notation** as of v3.0.0. It removes the ambiguity of natural language and
+describes requirements in a form that tests can verify. All new SPECs use the GEARS notation.
 
-EARS provides five types of requirement patterns.
+{{< icon info >}} **Legacy compatibility — EARS (expires 2026-11-22)**: the pre-GEARS **EARS**
+(Easy Approach to Requirements Syntax) notation retains backward compatibility for 6 months
+(**expires 2026-11-22**). Some existing SPEC workflow rules may still reference the EARS
+notation, but new SPECs use GEARS. The 5 patterns below are the requirement types shared by
+EARS and GEARS, and the examples follow the legacy EARS notation.
 
-{{< icon info >}} **GEARS note (v3.0.0+)**: GEARS (Generalized Approach to Requirements Syntax) was introduced as the new official requirements notation. EARS retains backward compatibility for 6 months, and the existing SPEC workflow rules still use the EARS notation. New SPECs are recommended to use the GEARS notation.
+### The 5 Requirement Patterns
 
 ### 1. Ubiquitous (Always True)
 
@@ -235,7 +239,7 @@ Features whose implementation is recommended but not required.
 **Everyday analogy:** Like "it would be nice to make dessert too, time permitting". Nice
 to have, fine without.
 
-### EARS at a Glance
+### The 5 Patterns at a Glance
 
 | Type             | Form                          | Use               | Priority         |
 | ---------------- | ----------------------------- | ------------------ | ---------------- |
@@ -258,7 +262,14 @@ Running `/moai plan` generates **3 files** at once inside a single SPEC director
 | `plan.md` | Implementation plan | Work breakdown, tech-stack specification, risk analysis and mitigation strategies |
 | `acceptance.md` | Acceptance criteria | Given/When/Then scenarios, edge cases, performance and quality gates |
 
-### spec.md -- EARS Requirements
+{{< callout type="info" >}}
+  In addition to the 3 files above, the plan phase also generates **`progress.md`**,
+  which tracks cross-session progress (recording audit-ready signals per lifecycle stage).
+  For large **Tier L** SPECs, the design/research artifacts **`design.md`** and
+  **`research.md`** are written as well.
+{{< /callout >}}
+
+### spec.md -- GEARS/EARS Requirements
 
 ```yaml
 ---
@@ -354,7 +365,7 @@ SPEC creation starts with a single `/moai plan` command.
 flowchart TD
     A["User request\nDescribe the feature in natural language"] --> B["manager-spec agent runs"]
     B --> C["Requirements analysis\nQuestions on ambiguous parts"]
-    C --> D["EARS-format conversion\nClassified into the 5 types"]
+    C --> D["GEARS-format conversion\nClassified into the 5 types"]
     D --> E["Acceptance criteria written\nGiven-When-Then format"]
     E --> F["3 SPEC files generated\nspec.md + plan.md + acceptance.md"]
     F --> G["Review requested\nConfirmation from the user"]

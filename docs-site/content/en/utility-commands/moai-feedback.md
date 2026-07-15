@@ -36,13 +36,9 @@ Use this command when you find a bug while using MoAI-ADK, need a new feature, o
 
 Running the command guides you through choosing the feedback type and entering the content.
 
-## Supported Flags
+## Input Method (no flags)
 
-| Flag | Description | Example |
-|-------|------|------|
-| `--type {bug,feature,question}` | Specify the feedback type directly | `/moai feedback --type bug` |
-| `--title "<title>"` | Specify the title directly | `/moai feedback --title "Error report"` |
-| `--dry-run` | Preview the content without creating an issue | `/moai feedback --dry-run` |
+`/moai feedback` takes no flags. The feedback type is determined automatically from the free-form content you enter, and the title and description are collected in a single `AskUserQuestion` round from the orchestrator. Just describe the problem or proposal in natural language.
 
 ## How It Works
 
@@ -102,7 +98,7 @@ Reports an error or unexpected behavior encountered while using MoAI-ADK.
 
 ```bash
 > /moai feedback
-# Type selected: bug report
+# Type (auto-detected): bug report
 # Title: characterization tests not generated when running /moai run
 # Description: I ran /moai run for SPEC-AUTH-001, but the PRESERVE stage
 #        did not generate characterization tests and it moved straight
@@ -116,23 +112,23 @@ Proposes a new feature you would like added to MoAI-ADK.
 
 ```bash
 > /moai feedback
-# Type selected: feature request
+# Type (auto-detected): feature request
 # Title: add an option to /moai loop to target specific files only
 # Description: it would be great if /moai loop could target a specific
 #        directory or file instead of the whole project.
 # Example: /moai loop --path src/auth/
 ```
 
-### Improvement Proposal
+### Question
 
-Proposes an improvement idea for an existing feature.
+Asks a question about how to use MoAI-ADK or how it behaves.
 
 ```bash
 > /moai feedback
-# Type selected: improvement proposal
-# Title: show a before/after diff in /moai fix results
-# Description: if /moai fix showed its automatic fixes as a diff,
-#        it would be easy to see at a glance what changed.
+# Type (auto-detected): question
+# Title: what is the difference between /moai fix and /moai loop?
+# Description: both commands seem to fix errors, but I am curious
+#        about when to use which one.
 ```
 
 ## Agent Delegation Chain

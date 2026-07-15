@@ -72,8 +72,8 @@ Role of each block:
 
 - **Block 1** — `ultrathink.` opener sets effort:xhigh, declares the entering phase and SPEC-ID
 - **Block 2** — `applied lessons:` references memory files learned from prior sessions (max 4)
-- **Block 3** — `Preconditions:` verifiable preconditions the next session must check before starting (max 4, each ≤200 chars)
-- **Block 4** — individual precondition items
+- **Block 3** — separator + the `Preconditions:` header
+- **Block 4** — numbered verifiable precondition items (max 4, each ≤200 chars)
 - **Block 5** — `Run:` single primary action (typically `/moai <subcommand>`)
 - **Block 6** — `After merge:` next action or SPEC ID
 

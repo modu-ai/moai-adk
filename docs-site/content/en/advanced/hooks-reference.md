@@ -166,7 +166,12 @@ This lets you keep environment variables across sessions and automatically recon
 | `TaskCompleted` | `handle-task-completed.sh` | SPEC document existence check |
 | `WorktreeCreate` | (none — not registered by MoAI by default) | Uses Claude Code's default worktree behavior (for `isolation: worktree` agents). If registered, the active-creator contract (directory creation + path stdout echo) is mandatory. |
 | `WorktreeRemove` | (none — not registered by MoAI by default) | Uses Claude Code's default worktree cleanup behavior. If registered, the observer-only contract (no output required) applies. |
-| `UserPromptSubmit` | `handle-user-prompt.sh` | Automatic quality-gate execution |
+| `UserPromptSubmit` | `handle-user-prompt-submit.sh` | Prompt preprocessing (forwards user input) |
+| `Stop` | `handle-stop-goal.sh` | goal engine — evaluates the `/goal`/`/moai goal` autonomous-continuation condition |
+| `Stop` | `sync-phase-quality-gate.sh` | sync-phase quality gate (lint + test + coverage delta) |
+| `PostToolUse` | `status-transition-ownership.sh` | SPEC frontmatter status-transition audit logging (advisory) |
+| `TaskCompleted` | `team-ac-verify.sh` | team-mode per-AC PASS evidence-file verification (dormant by default) |
+| `Stop` / `SubagentStop` / `UserPromptSubmit` | `handle-harness-observe-*.sh` | self-evolving harness observation (Loop 0) |
 
 ## Next Steps
 

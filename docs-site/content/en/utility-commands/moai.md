@@ -33,18 +33,24 @@ Routing proceeds in this order:
 1. **Intent analysis**: classify the intent of the user's request (regardless of input language)
 2. **Context-sufficiency check**: if insufficient, clarify through a Socratic interview
 3. **Execution-plan composition**: choose the skill / agent / dynamic-workflow chain
-4. **Orchestration mode selection** (Phase 4): solo-sequential / parallel-subagents / dynamic-workflow
+4. **Orchestration mode selection** (Phase 4): autonomous selection from the 6-mode catalog (trivial / background / agent-team (retired) / parallel / sub-agent / workflow)
 
 That is, even typing plain natural language without a subcommand, like `/moai "fix the login bug"`, is routed through intent analysis to the right workflow (the fix family for a fix, or the plan→run→sync pipeline for a new feature).
+
+### Pipeline gates
+
+The default pipeline passes four named gates in order:
+
+1. **Plan-audit gate** (plan-auditor): independently audits the SPEC plan artifacts — aborts on FAIL/INCONCLUSIVE
+2. **Implementation Kickoff Approval** (plan→run human gate): exactly once per pipeline entry, always obtaining user approval regardless of score
+3. **Phase 4 mode selection** (6-mode catalog): autonomous selection after Implementation Kickoff Approval, recorded in progress.md
+4. **Sync-audit gate** (sync-auditor): evaluates the synchronization result across 4 dimensions — aborts the chain on FAIL/INCONCLUSIVE
 
 ## Usage
 
 ```bash
 # Basic usage
 > /moai "description of the feature you want"
-
-# With a worktree
-> /moai "feature description" --worktree
 
 # With a branch
 > /moai "feature description" --branch
@@ -61,7 +67,7 @@ That is, even typing plain natural language without a subcommand, like `/moai "f
 | Flag                | Description                              | Example                        |
 | ------------------- | ---------------------------------------- | ------------------------------ |
 | `--loop`            | Enable automatic iterative fixing after implementation | `/moai "feature" --loop`  |
-| `--max N`           | Set the loop iteration ceiling (default is config-based, `ralph.yaml` `loop.max_iterations` = 10) | `/moai "feature" --loop --max 20` |
+| `--max N`           | Set the loop iteration ceiling (default 100) | `/moai "feature" --loop --max 20` |
 | `--sequential`      | Run the Phase 1 exploration agents sequentially instead of in parallel | `/moai "feature" --sequential` |
 | `--branch`          | Auto-create a feature branch             | `/moai "feature" --branch`     |
 | `--pr`              | Auto-create a PR after completion        | `/moai "feature" --pr`         |
@@ -256,8 +262,12 @@ A core tokenomics device. Based on the llm.yaml setting, Claude and GLM are rout
 **Step 1: Run the command**
 
 ```bash
-> /moai "JWT-based user authentication system: signup, login, token refresh" --worktree --loop --pr
+> /moai "JWT-based user authentication system: signup, login, token refresh" --loop --pr
 ```
+
+{{< callout type="info" >}}
+`--worktree` is a `/moai plan`-only flag. The default pipeline (`/moai`, `run`, `sync`) has the router reject it, so it is not used in the example above. The worktree is created in the `/moai plan --worktree` step, and subsequent steps reuse that worktree.
+{{< /callout >}}
 
 **Step 2: Phase 0 - parallel exploration**
 
@@ -334,7 +344,7 @@ A core tokenomics device. Based on the llm.yaml setting, Claude and GLM are rout
   Coverage: 89%
   PR: #42 created (Draft → Ready)
 
-<moai:COMPLETE />
+  → the Completion Report banner signals that the work is done
 ```
 
 ## Frequently Asked Questions

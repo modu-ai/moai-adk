@@ -58,6 +58,11 @@ CONST-V3R2-NNN (zero-padded to 3+ digits)
 150+: new additions
 ```
 
+> **The ID prefix spans eras**: `CONST-V3R2-NNN` is just an example; the ID prefix reflects
+> the era in which the clause was introduced (`CONST-V3R2-NNN`, `CONST-V3R5-NNN`,
+> `CONST-V3R6-NNN`, etc.). It is not fixed to V3R2 — clauses added in later eras use that
+> era's prefix.
+
 ### Canary Gate
 
 FROZEN clauses carry `canary_gate: true`. Canary verification is mandatory before any change.
@@ -97,9 +102,12 @@ Limits the speed of evolution:
 
 | Parameter | Default | Description |
 |-----------|--------|------|
-| `max_evolution_rate_per_week` | 3 | Maximum evolutions per week |
-| `cooldown_hours` | 24 | Minimum wait between evolutions |
-| `max_active_learnings` | 50 | Maximum number of active learning items |
+| `learning.rate_limit.max_per_week` | 3 | Maximum updates within a 7-day sliding window |
+| `learning.rate_limit.cooldown_hours` | 24 | Minimum wait between updates (hours) |
+
+> The two keys above are defined under `learning.rate_limit` in `harness.yaml`. (Do not confuse
+> them with the separate Lessons Protocol concept "50 active lessons per project" — that 50 is
+> a lesson-memory item cap, not an evolution rate limit.)
 
 ### Layer 5: Human Oversight
 

@@ -62,11 +62,11 @@ The biggest problem with **vibe coding** (Vibe Coding) is **context loss**:
 
 **TDD** (Test-Driven Development) is "a method of writing tests first, then developing."
 
-Comparing it to writing exam questions:
+Comparing it to building a new house (if DDD is home remodeling, TDD is building a new house):
 
-- **You write the grading criteria (tests) first** — with no feature yet, they naturally fail
-- **You write the minimum code that passes the criteria** — just as much as needed
-- **You polish it into better code** — improving while keeping the tests passing
+- **You write the blueprints and inspection criteria (tests) first** — with no house yet, inspection naturally fails
+- **You build the minimum structure that passes the inspection criteria** — just as much as needed
+- **You refine the finishing while keeping inspection passing** — improving while keeping the tests passing
 
 MoAI-ADK automates this process with the **RED-GREEN-REFACTOR** cycle:
 
@@ -148,7 +148,7 @@ MoAI-ADK fully rewrote the Python Edition in Go to maximize performance and effi
 
 - **11** agent catalog (10 MoAI-custom + 1 Anthropic built-in `Explore`)
 - **27** skills (template-managed)
-- **36** CLI commands · **15** `/moai` subcommands
+- **~37** terminal CLI commands · **14** `/moai` slash subcommands
 - **16** programming languages supported
 - A codebase developed on the basis of **504** SPEC documents
 

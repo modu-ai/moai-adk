@@ -98,11 +98,11 @@ This command does the following:
 flowchart TB
     A["Requirements input"] --> B["EARS-format analysis"]
     B --> C["SPEC document generation"]
-    C --> D["SPEC-001 saved"]
+    C --> D["SPEC-AUTH-001 saved"]
     D --> E["Requirements verification"]
 ```
 
-The generated SPEC document is saved at `.moai/specs/SPEC-001/spec.md`.
+The generated SPEC document is saved at `.moai/specs/SPEC-AUTH-001/spec.md` (SPEC IDs follow the `SPEC-<domain>-<number>` format).
 
 {{< callout type="warning" >}}
 After creating the SPEC, clear the context with the `/clear` command. The decisions are already recorded in the SPEC file, so there is no reason to keep the conversation history — this is token-saving 101.
@@ -114,14 +114,14 @@ Implementation proceeds based on the SPEC document.
 
 ```bash
 > /clear
-> /moai run SPEC-001
+> /moai run SPEC-AUTH-001
 ```
 
 MoAI-ADK automatically selects the optimal development methodology based on the project state.
 
 ```mermaid
 flowchart TD
-    A["/moai run SPEC-001"] --> B{"Project analysis"}
+    A["/moai run SPEC-AUTH-001"] --> B{"Project analysis"}
     B -->|"New project or<br/>test coverage 10%+"| C["TDD<br/>RED → GREEN → REFACTOR"]
     B -->|"Existing project<br/>coverage under 10%"| D["DDD<br/>ANALYZE → PRESERVE → IMPROVE"]
     C --> E["TRUST 5 quality gates"]
@@ -137,10 +137,10 @@ flowchart TD
 {{< callout type="info" >}}
 **What is TDD?**
 
-TDD is "writing the exam first, then studying":
-- **Write the tests (the grading criteria) first** — with no feature yet, they naturally fail
-- **Write the minimum code that passes the tests** — exactly as much as needed
-- **Improve the code while keeping the tests green** — polish it into better code
+TDD is like "building a new house" (if DDD is home remodeling, TDD is building a new house):
+- **Write the blueprints and inspection criteria (tests) first** — with no house yet, inspection naturally fails
+- **Build the minimum structure (code) that passes the inspection criteria** — exactly as much as needed
+- **Refine the finishing (code) while keeping inspection passing** — improve it into better code
 
 **Key point:** Tests come before code!
 {{< /callout >}}
@@ -220,7 +220,7 @@ Once development is complete, quality verification and documentation are generat
 
 ```bash
 > /clear
-> /moai sync SPEC-001
+> /moai sync SPEC-AUTH-001
 ```
 
 This command does the following:
@@ -261,11 +261,11 @@ sequenceDiagram
 
     Dev->>Plan: Enter feature requirements
     Plan->>Plan: Analyze in EARS format
-    Plan-->>Dev: SPEC-001 document
+    Plan-->>Dev: SPEC-AUTH-001 document
 
     Note over Dev: Run /clear
 
-    Dev->>Run: Run SPEC-001
+    Dev->>Run: Run SPEC-AUTH-001
     Run->>Run: Execute TDD/DDD cycle
     Run->>Run: Generate tests (85%+)
     Run-->>Dev: Implementation complete
@@ -321,11 +321,11 @@ flowchart TB
 > /clear
 
 # 3. Implement
-> /moai run SPEC-001
+> /moai run SPEC-AUTH-001
 > /clear
 
 # 4. Document and open a PR
-> /moai sync SPEC-001
+> /moai sync SPEC-AUTH-001
 ```
 
 ### Example 2: A Complex Feature (Natural-Language Automation)
@@ -369,7 +369,7 @@ my-first-project/
 │   │   ├── structure.md             # Directory structure
 │   │   └── tech.md                  # Tech stack
 │   ├── specs/
-│   │   └── SPEC-001/
+│   │   └── SPEC-AUTH-001/
 │   │       └── spec.md              # Requirements specification
 │   └── memory/
 │       └── checkpoints/             # Session checkpoints
@@ -391,22 +391,21 @@ moai doctor
 
 This command checks:
 
-- LSP diagnostics (errors, warnings)
-- Test coverage
-- Linter status
-- Security verification
+- Claude Code configuration
+- Dependency verification (whether tools like git, go are installed)
+- Environment diagnostics
+
+Run detailed diagnostics with subcommands — `moai doctor config` (config), `moai doctor hook` (hook coverage), `moai doctor permission` (permissions), `moai doctor sandbox` (sandbox).
 
 ```mermaid
 graph TD
-    A["moai doctor"] --> B["LSP diagnostics"]
-    A --> C["Test coverage"]
-    A --> D["Linter status"]
-    A --> E["Security verification"]
+    A["moai doctor"] --> B["Claude Code config"]
+    A --> C["Dependency verification"]
+    A --> D["Environment diagnostics"]
 
     B --> F["Consolidated report"]
     C --> F
     D --> F
-    E --> F
 ```
 
 ## Useful Tips
@@ -418,9 +417,9 @@ Run `/clear` after each phase to empty the context. The decisions live on as fil
 ```bash
 > /moai plan "Implement a complex feature"
 > /clear  # Reset the session
-> /moai run SPEC-001
+> /moai run SPEC-AUTH-001
 > /clear
-> /moai sync SPEC-001
+> /moai sync SPEC-AUTH-001
 ```
 
 ### Bug Fixing and Automation

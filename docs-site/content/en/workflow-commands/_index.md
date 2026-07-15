@@ -41,6 +41,36 @@ If you are new, start with `/moai project`. Project documentation must exist for
 `/moai harness` is an auxiliary command for managing the harness learning subsystem — it monitors CLAUDE.md changes and proposes tier-based automatic updates.
 {{< /callout >}}
 
+## All subcommands (15)
+
+The `/moai` orchestrator routes 15 subcommands. This (workflow) section covers the SPEC 3-Phase lifecycle commands, and the [utility commands](/utility-commands/) section covers automation, fix-loop, code-management, and feedback commands.
+
+**Workflow commands (this section):**
+
+| Subcommand | Purpose |
+|-----------|------|
+| [`/moai plan`](./moai-plan) | SPEC document creation |
+| [`/moai run`](./moai-run) | DDD/TDD implementation |
+| [`/moai sync`](./moai-sync) | Doc synchronization and PR |
+| [`/moai project`](./moai-project) | Project documentation generation |
+| [`/moai design`](./moai-design) | Design-phase collaboration (manager-design D1-D5) |
+| [`/moai harness`](./moai-harness) | Harness creation and learning lifecycle |
+
+**Utility commands ([utility section](/utility-commands/)):**
+
+| Subcommand | Purpose |
+|-----------|------|
+| [`/moai fix`](/utility-commands/moai-fix) | One-shot auto-fix |
+| [`/moai loop`](/utility-commands/moai-loop) | Iterative fix loop |
+| [`/moai mx`](/utility-commands/moai-mx) | @MX code annotations |
+| [`/moai feedback`](/utility-commands/moai-feedback) | GitHub issue feedback |
+| [`/moai review`](/utility-commands/moai-review) | Multi-lens code review (security · @MX) |
+| [`/moai clean`](/utility-commands/moai-clean) | Dead-code removal |
+| [`/moai codemaps`](/utility-commands/moai-codemaps) | Architecture codemap generation |
+| [`/moai gate`](/utility-commands/moai-gate) | Pre-commit quality gate |
+| [`/moai e2e`](/utility-commands/moai-e2e) | Multi-platform E2E testing |
+| [`/moai goal`](/utility-commands/moai-goal) | Condition-declared autonomous loop |
+
 ## Quick Start
 
 ```bash

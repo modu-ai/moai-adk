@@ -48,7 +48,7 @@ The condition can be up to 4,000 characters, and you can include a turn/time bou
 
 {{< icon arrow-right >}} `/moai goal` is MoAI's programmatic reimplementation. Since native `/goal` is HUMAN-ONLY, this is the only path for the orchestrator to register and arm an autonomous continuation loop within the pipeline.
 
-It provides four verbs:
+It provides three verbs:
 
 ```bash
 moai goal arm "<completion-condition>"  # register + arm the condition

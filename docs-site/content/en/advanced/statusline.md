@@ -119,7 +119,7 @@ The cache hit rate is the effect meter of the context diet — trim the always-l
   - `🪫` (warning, 50-79% scaled)
   - `🪫` (danger, ≥80% scaled, with color)
 - **The `(⚠️/clear)` handoff suffix**:
-  - 1M-context models (Opus 4.7): used_percentage ≥50% (based on raw context_window_size)
+  - 1M-context models (Opus 4.8, GLM-5.2): used_percentage ≥50% (based on raw context_window_size)
   - 200K-context models (Sonnet/Haiku): used_percentage ≥90%
   - Meaning: recommend `/clear` before the next turn + use the paste-ready resume message
 - **Example**: `🪫 CW: ███████░░░ 72% (⚠️/clear)`
@@ -284,15 +284,23 @@ The statusline's refresh interval is set via `statusLine.refreshInterval` in `se
 
 ## Handoff Guide — the `(⚠️/clear)` Recommendation Criteria
 
-The `(⚠️/clear)` suffix on the CW bar activates when context usage crosses the model-specific threshold. It is a visual marker that preempts SSE-stall risk and encourages use of the paste-ready resume message.
+The handoff suffix on the CW bar activates when context usage crosses the model-specific threshold. It is a visual marker that preempts SSE-stall risk and encourages use of the paste-ready resume message, and it operates in **two stages**.
+
+- **soft stage** `(⚠️/clear)`: on reaching the band's soft threshold
+- **hard stage** `(🛑/clear!)`: on reaching the auto-compact-aware ceiling (`min(cap, auto-compact-threshold + margin)`) (`internal/statusline/renderer.go`). Because the runtime's auto-compact often pre-empts this ceiling, the hard stage is a rarely-fired upper signal in practice.
 
 | Model class | Context Window | Threshold | Recommended at |
 |------------|----------------|--------|----------|
-| **1M context** (Opus 4.7) | 1,000,000 tokens | **≥50%** | ~500K tokens used |
+| **1M context** (Opus 4.8) | 1,000,000 tokens | **≥50%** | ~500K tokens used |
+| **256K context** (Fable) | 256,000 tokens | **≥90%** | ~230K tokens used |
 | **200K context** (Sonnet, Haiku) | 200,000 tokens | **≥90%** | ~180K tokens used |
 | Other / unknown | — | Not shown | (safe default) |
 
-> The thresholds are enforced in the `internal/statusline/renderer.go shouldShowHandoffGuide()` function. They match the HARD rule in `.claude/rules/moai/workflow/context-window-management.md`.
+> The thresholds are enforced in the handoff-stage decision in `internal/statusline/renderer.go`. They match the HARD rule in `.claude/rules/moai/workflow/context-window-management.md`.
+
+### GLM Context Gauge Correction (Issue #653)
+
+GLM-5.2 is a genuine 1M-context model, but Claude Code reports `context_window_size` based on the Claude slot regardless of provider, so raw telemetry (`effectiveWindow`) can be misreported as ~180K in a GLM session. MoAI corrects this with `ResolveGLMContextWindow` (`internal/statusline/memory.go`) — resolving it from the `MOAI_STATUSLINE_CONTEXT_SIZE` environment variable (explicit override) or the `glm.context_windows` table in `llm.yaml` (glm-5.2 → 1,000,000). In a GLM session, trust the MoAI statusline's CW%, not the raw `effectiveWindow`.
 
 The user flow when activated is as follows.
 

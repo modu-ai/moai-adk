@@ -1,16 +1,17 @@
 ---
 title: Guides
-description: MoAI-ADK operational guide collection — autonomous CI/CD, multi-LLM CI
+description: MoAI-ADK operational guide collection — autonomous CI/CD, GitHub integration
 weight: 85
 draft: false
 ---
 
-A collection of guides for operating MoAI-ADK. Both documents extend the core
-ideas of v3.0 — loops guard quality (agentic loop engineering) and model
-assignment guards cost (Tokenomics) — into the CI environment.
+A collection of guides for operating MoAI-ADK. The autonomous CI/CD guide extends
+the idea of loops guarding quality (agentic loop engineering) into the CI
+environment, and the GitHub integration guide covers a lightweight workflow that
+parses issues with the `moai github` subcommand and links them to SPECs.
 
 
 ## Guide list
 
 - [Autonomous CI/CD](./ci-autonomy) — 8-Tier quality automation, from the pre-push hook to the auto-fix loop
-- [Multi-LLM CI](./multi-llm-ci) — automated code reviews with multiple AI models in GitHub Actions
+- [GitHub Integration](./multi-llm-ci) — parse issues with the `moai github` subcommand and link them to SPEC documents

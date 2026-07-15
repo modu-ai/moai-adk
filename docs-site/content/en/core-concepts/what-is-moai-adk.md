@@ -72,9 +72,9 @@ The Python-based MoAI-ADK (~73,000 lines) was completely rewritten in Go.
 
 - **11** agents in the catalog (10 MoAI custom + 1 Anthropic built-in `Explore`)
 - **27** skills (template-managed)
-- **36** CLI commands · **15** `/moai` subcommands
+- **~37** CLI commands · **14** `/moai` subcommands
 - **16** programming languages supported
-- A codebase developed on top of **504** SPEC documents
+- A codebase developed with a **SPEC-based workflow** (plan → run → sync)
 
 ### The Problems with Vibe Coding
 
@@ -317,12 +317,10 @@ Managed token-efficiently through a 3-level Progressive Disclosure system. Only 
 | Category | Examples |
 |----------|------|
 | **Foundation** | core, cc, thinking, quality |
-| **Workflow** | spec, project, ddd, tdd, testing, worktree |
-| **Domain** | backend, frontend, database, html-report |
-| **Language** | Go, Python, TypeScript, Rust, Java, Kotlin, Swift, C++... |
-| **Platform** | Vercel, Supabase, Firebase, Auth0, Clerk... |
-| **Reference** | REST/GraphQL patterns, OWASP, git workflow |
-| **Tool** | ast-grep, svg |
+| **Workflow** | spec, project, ddd, tdd, testing, worktree, loop, ci-loop |
+| **Domain** | backend, frontend, database, html-report, humanize |
+| **Reference** | api-patterns, owasp-checklist, git-workflow, react-patterns, testing-pyramid, llm-security, secops, supply-chain |
+| **Harness** | harness-learner, meta-harness |
 
 ## The MoAI Workflow
 
@@ -336,7 +334,7 @@ flowchart TD
 
     subgraph Plan["1. Plan phase"]
         P1["Codebase exploration"] --> P2["Requirements analysis"]
-        P2 --> P3["SPEC document creation\nEARS format"]
+        P2 --> P3["SPEC document creation\nGEARS format"]
     end
 
     Plan --> Run
@@ -398,7 +396,7 @@ All subcommands run inside Claude Code as `/moai <subcommand>`.
 
 | Subcommand | Aliases | Purpose | Key flags |
 |-----------|------|------|-----------|
-| `plan` | `spec` | SPEC document creation (EARS format) | `--worktree`, `--branch`, `--resume SPEC-XXX` |
+| `plan` | `spec` | SPEC document creation (GEARS format) | `--worktree`, `--branch`, `--resume SPEC-XXX` |
 | `run` | `impl` | DDD/TDD implementation of a SPEC | `--resume SPEC-XXX` |
 | `sync` | `docs`, `pr` | Documentation sync, codemaps, PR creation | `--merge`, `--skip-mx` |
 
@@ -471,15 +469,12 @@ The practical tool of the Tokenomics pillar. A hybrid mode where the Leader uses
 
 ```bash
 # 1. Save the GLM API key (once)
-moai glm sk-your-glm-api-key
+moai glm setup sk-your-glm-api-key
 
-# 2. Activate CG mode
+# 2. Activate CG mode (run inside a tmux session — Claude Code starts automatically)
 moai cg
 
-# 3. Start Claude Code in the same pane (important!)
-claude
-
-# 4. Run the workflow
+# 3. Run the workflow
 /moai "task description"
 ```
 

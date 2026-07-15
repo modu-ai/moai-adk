@@ -21,17 +21,25 @@ alone — no code changes.
 |------|------|
 | **GLM Coding Plan** | From **$10**/month ([sign-up link](https://z.ai/subscribe?ic=1NDV03BGWU)) |
 | **Compatibility** | Compatible with Claude Code — no code changes |
-| **Models** | glm-5.2[1m], GLM-4.7, GLM-4.5-Air, free models |
+| **Models** | glm-5.2, GLM-4.7, GLM-4.5-Air, free models |
 
 ## Default model mapping
 
-| Claude tier | GLM model | Input (per 1M tokens) | Output (per 1M tokens) |
-|-------------|----------|-----------------|-----------------|
-| Opus / Sonnet / Haiku / Fable | glm-5.2[1m] | $2.00 | $8.00 |
+MoAI-ADK assigns a different GLM model per Claude tier. It is implemented via the
+4 Claude Code `ANTHROPIC_DEFAULT_*_MODEL` environment variables:
 
-> All 4 Claude tiers (Opus, Sonnet, Haiku, Fable) are unified onto the single `glm-5.2[1m]` model (1M context). The reason GLM models are not mapped per tier — such as opus→glm-5.2, sonnet→glm-4.7, haiku→glm-4.5-air — is that a 1M-context model and a 200K-context model cannot be mixed in the same session: when agents are spawned, a model with a 1M context window and a 200K model cannot share the session.
+| Claude tier | Environment variable | GLM model | Context |
+|-------------|----------|----------|----------|
+| Opus | `ANTHROPIC_DEFAULT_OPUS_MODEL` | glm-5.2 | 1M |
+| Sonnet | `ANTHROPIC_DEFAULT_SONNET_MODEL` | glm-4.7 | 202K |
+| Haiku | `ANTHROPIC_DEFAULT_HAIKU_MODEL` | glm-4.5-air | 128K |
+| Fable | `ANTHROPIC_DEFAULT_FABLE_MODEL` | glm-5.2 | 1M |
 
-> This mapping is implemented via the 4 Claude Code `ANTHROPIC_DEFAULT_*_MODEL` environment variables (`ANTHROPIC_DEFAULT_OPUS_MODEL`, `ANTHROPIC_DEFAULT_SONNET_MODEL`, `ANTHROPIC_DEFAULT_HAIKU_MODEL`, `ANTHROPIC_DEFAULT_FABLE_MODEL`), all set to `glm-5.2`. The Fable environment variable is officially supported since Claude Code v2.1.202.
+> The Opus slot (main session + inheriting agents) and the Fable slot use the 1M-context `glm-5.2`,
+> the Sonnet slot uses the 202K `glm-4.7`, and the Haiku slot uses the 128K `glm-4.5-air`.
+> This per-tier differentiated mapping is configured via `glm.models` (high/medium/low/fable) in
+> `llm.yaml`, each injected through the environment variables above. The Fable environment variable
+> is officially supported since Claude Code v2.1.202.
 
 > Free models are also available: GLM-4.7-Flash, GLM-4.5-Flash. See [z.ai Pricing](https://docs.z.ai/guides/overview/pricing) for full pricing.
 
@@ -71,7 +79,7 @@ implementation-heavy work, this saves roughly 60-70% of the cost.
 
 ```bash
 # 1. Save your GLM API key (once)
-moai glm sk-your-glm-api-key
+moai glm setup sk-your-glm-api-key
 
 # 2. Pick a mode
 moai cc            # Claude only

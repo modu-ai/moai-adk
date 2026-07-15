@@ -118,33 +118,28 @@ When an AskUserQuestion response arrives, the PostToolUse hook automatically cap
 
 #### Storage Locations
 
-- **During the session**: `.moai/state/decisions/` (temporary JSON)
-- **On session end**: `~/.claude/projects/{hash}/memory/decisions.jsonl` (auto-memory)
+Preference memory persists the decisions captured on the orchestrator's user-question channel to `~/.claude/projects/{slug}/memory/user_decisions/` (SPEC-V3R6-ASKUSER-DECISION-MEMORY-001).
+
+**3-tier hierarchy:**
+
+- **core**: highest-priority hot cache. On a core hit, recall/archival are not accessed
+- **recall** (`recall.jsonl`): recent-session facts
+- **archival** (`archival/`): the full-search target
 
 ### 4. Decay Policy
 
-A choice from 3 months ago does not represent today's preference. The weight of old decisions gradually decreases.
+Past choices do not represent today's preference verbatim. Transient entries are subject to **power-law decay + a 28-day TTL** (REQ-ADM-011, REQ-ADM-012), so their weight gradually decreases and they are evicted once the TTL elapses. Core-tier eviction demotes the lowest-weight items first.
 
-#### Decay Function
+Management commands:
 
+```bash
+moai preference decay-scan   # one background decay pass (at most once per day, timestamp-gated)
+moai preference toggle       # per-session personalization on/off (non-persistent, reset each session)
 ```
-weight(t) = initial_weight × exp(-decay_rate × days_ago)
-```
 
-#### Defaults
-
-- **Initial weight**: 1.0
-- **Decay rate**: 0.1 (about 50% decay every 7 days)
-- **Retention period**: 90 days (auto-archived afterward)
-
-#### Example
-
-```
-Yesterday's choice: weight = 0.95
-7 days ago: weight = 0.50
-30 days ago: weight = 0.04
-90+ days: archived (excluded from recommendations)
-```
+{{< callout type="info" >}}
+**Note**: the exact decay exponent, half-life constant, and other detailed parameters are runtime implementation details (only the power-law + 28-day TTL contract is fixed); this page describes them only at the contract level.
+{{< /callout >}}
 
 ## Decision Categories
 

@@ -79,16 +79,32 @@ Configured in `.moai/config/sections/harness.yaml`.
 
 ```yaml
 harness:
-  level: auto              # auto | minimal | standard | thorough
+  default_profile: "default"        # default for SPECs without an evaluator_profile
   evaluator:
-    memory_scope: per_iteration   # FROZEN — 변경 불가
-    profiles:
-      default: .moai/config/evaluator-profiles/default.md
-      strict: .moai/config/evaluator-profiles/strict.md
-    aggregation: min              # min | mean
-    must_pass_dimensions:
-      - Functionality
-      - Security
+    memory_scope: per_iteration     # FROZEN — do not change
+  mode_defaults:
+    solo: auto                      # sub-agent mode: auto-detect
+    team: auto                      # team mode: auto-detect
+    cg: thorough                    # CG mode: always thorough
+  auto_detection:
+    enabled: true
+    rules:
+      minimal:
+        conditions:
+          - "file_count <= 3 AND single_domain"
+      thorough:
+        conditions:
+          - "security_keywords OR payment_keywords present"
+  escalation:
+    enabled: true
+    max_escalations: 2
+  effort_mapping:
+    minimal:  "low"
+    standard: "medium"
+    thorough: "high"
+  levels:
+    thorough:
+      evaluator: true
 ```
 
 ## Related Documents

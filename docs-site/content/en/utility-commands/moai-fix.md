@@ -279,9 +279,10 @@ flowchart TD
 
 | Agent | Role | Main work |
 |----------|------|----------|
-| **MoAI orchestrator** | Parallel-scan coordination | Issue collection, level classification, user approval |
-| **manager-develop** | Fix execution | Level 1-2 auto-fixes, Level 3-4 fixes after approval |
-| **sync-auditor** | Quality verification | Confirms fix results |
+| **MoAI orchestrator** | Parallel-scan coordination + direct Level 1 fixes | Issue collection, level classification, running the Level 1 formatter directly (no agent spawn), user approval |
+| **manager-develop** | Fix execution | Level 2 auto-fixes, Level 3-4 fixes after approval |
+
+Level 1 formatter cleanup (gofmt/prettier/ruff format, etc.) is performed directly by the orchestrator without an agent spawn. Fix-result verification is also done by the orchestrator re-running the scanners (LSP/AST-grep/linter) rather than by a separate audit agent.
 
 ## Worked Example
 

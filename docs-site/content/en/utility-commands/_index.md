@@ -27,6 +27,8 @@ This section is where v3's second pillar, **agentic loop engineering**, actually
 | `/moai mx` | @MX code annotations | Codebase scan → @MX tag insertion | When you want to plant AI-context code anchors and danger markers |
 | `/moai clean` | Dead-code removal | Static analysis → usage graph → safe removal | When you want to clean up unused code |
 | `/moai codemaps` | Architecture doc generation | Codebase scan → auto-generated structure docs | When you want to produce project architecture docs |
+| `/moai review` | Multi-lens code review | Security · performance · quality · UX verdict + @MX compliance check | When you want a multi-lens review of a PR/changeset |
+| `/moai e2e` | E2E testing | web/mobile/desktop auto-detection + CLI-first runs | When you want to create and run user-journey E2E tests |
 | `/moai feedback` | Submit feedback | Auto-creates a GitHub issue | When sending a bug report or improvement proposal to MoAI-ADK |
 
 ## Command Relationship Map
@@ -44,12 +46,18 @@ flowchart TD
     C --> I["/moai codemaps<br/>architecture doc generation"]
     C --> K["/moai gate<br/>pre-commit quality gate"]
     C --> L["/moai mx<br/>@MX code annotations"]
+    C --> M["/moai review<br/>multi-lens code review"]
+    C --> N["/moai e2e<br/>E2E testing"]
     D --> J["/moai feedback<br/>submit feedback"]
 
     E -->|used internally| F
     F -->|run just once| G
     H -->|regenerate after cleanup| I
 ```
+
+{{< callout type="info" >}}
+For the SPEC 3-Phase lifecycle commands (`/moai plan`, `run`, `sync`, `project`, `design`, `harness`), see the [workflow commands](/workflow-commands/) section. The full list of 15 subcommands the `/moai` orchestrator routes is also there.
+{{< /callout >}}
 
 {{< callout type="info" >}}
 **Not sure which command to use?**

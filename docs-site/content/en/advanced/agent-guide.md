@@ -39,46 +39,50 @@ MoAI-ADK uses **11 core agents** (10 MoAI custom + 1 Anthropic built-in).
 
 ### Manager Agents (5)
 
-| Agent | Role | Phase | Key skills |
-|----------|------|------|----------|
-| `manager-spec` | SPEC document creation, GEARS-format requirements | Plan | `moai-workflow-spec` |
-| `manager-develop` | DDD/TDD/autofix cycle implementation (cycle_type in quality.yaml) | Run | `moai-workflow-ddd`, `moai-workflow-tdd` |
-| `manager-docs` | Documentation generation, CHANGELOG, README sync | Sync | `moai-workflow-project` |
-| `manager-git` | PR creation, Git branching, merge strategy | PR (Tier L) | `moai-foundation-core` |
-| `manager-design` | Claude Design bidirectional collaboration (D1-D5 pipeline) | Design | `moai-foundation-core` |
+| Agent | Role | Phase | Model / effort | Key skills |
+|----------|------|------|---------------|----------|
+| `manager-spec` | SPEC document creation, GEARS-format requirements | Plan | inherit / xhigh {{< icon flash danger >}} | `moai-workflow-spec` |
+| `manager-develop` | DDD/TDD/autofix cycle implementation (cycle_type in quality.yaml) | Run | inherit / xhigh {{< icon flash danger >}} | `moai-workflow-ddd`, `moai-workflow-tdd` |
+| `manager-docs` | Documentation generation, CHANGELOG, README sync | Sync | sonnet / medium {{< icon flash primary >}} | `moai-workflow-project` |
+| `manager-git` | PR creation, Git branching, merge strategy | PR (Tier L) | sonnet / low {{< icon flash muted >}} | `moai-foundation-core` |
+| `manager-design` | Claude Design bidirectional collaboration (D1-D5 pipeline) | Design | inherit / xhigh {{< icon flash danger >}} | `moai-foundation-core` |
 
 ### Evaluator Agents (2)
 
-| Agent | Role | Evaluates | Key skills |
-|----------|------|---------|----------|
-| `plan-auditor` | Independent plan-phase audit, GEARS compliance, bias prevention | SPEC completeness | `moai-foundation-core`, `moai-foundation-thinking` |
-| `sync-auditor` | Sync-phase quality scoring (4 dimensions: Functionality, Security, Craft, Consistency) | Implementation quality | `moai-foundation-quality`, `moai-foundation-core` |
+| Agent | Role | Evaluates | Model / effort | Key skills |
+|----------|------|---------|---------------|----------|
+| `plan-auditor` | Independent plan-phase audit, GEARS compliance, bias prevention | SPEC completeness | inherit / xhigh {{< icon flash danger >}} | `moai-foundation-core`, `moai-foundation-thinking` |
+| `sync-auditor` | Sync-phase quality scoring (4 dimensions: Functionality, Security, Craft, Consistency) | Implementation quality | inherit / xhigh {{< icon flash danger >}} | `moai-foundation-quality`, `moai-foundation-core` |
 
 The key point is that planning and auditing are separated — the one who built it does not inspect their own work.
 
 ### Builder Agent (1)
 
-| Agent | Role | Produces |
-|----------|------|--------|
-| `builder-harness` | Creates project-specific dynamic agent teams (based on a Socratic interview) | `.claude/agents/harness/`, `.moai/harness/manifest.json` |
+| Agent | Role | Model / effort | Produces |
+|----------|------|---------------|--------|
+| `builder-harness` | Creates project-specific dynamic specialist teams (based on a Socratic interview) | inherit / high {{< icon flash warn >}} | `.claude/agents/harness/`, `.moai/harness/manifest.json` |
 
 ### Advisor Agent (1)
 
-| Agent | Role | Characteristics |
-|----------|------|------|
-| `super-advisor` | High-reasoning consultation — deadlocks, design decision points, second opinions (E1-E4 escalation) | Non-binding prescriptions — the orchestrator makes the final call |
+| Agent | Role | Model / effort | Characteristics |
+|----------|------|---------------|------|
+| `super-advisor` | High-reasoning consultation — deadlocks, design decision points, second opinions (E1-E4 escalation) | inherit / xhigh {{< icon flash danger >}} | Non-binding prescriptions — the orchestrator makes the final call |
 
 ### Specialist Agent (1)
 
-| Agent | Role | Characteristics |
-|----------|------|------|
-| `e2e-tester` | E2E test execution across web/mobile/desktop (journey scripting, CLI-first suite runs, artifact management) | Execution owner of the `/moai e2e` workflow — selection questions stay with the orchestrator |
+| Agent | Role | Model / effort | Characteristics |
+|----------|------|---------------|------|
+| `e2e-tester` | E2E test execution across web/mobile/desktop (journey scripting, CLI-first suite runs, artifact management) | inherit / high {{< icon flash warn >}} | Execution owner of the `/moai e2e` workflow — selection questions stay with the orchestrator |
 
 ### Built-in Agent (1, Anthropic)
 
-| Agent | Role | Characteristics |
-|----------|------|------|
-| `Explore` | Read-only code exploration and analysis | Haiku model, read-only tools |
+| Agent | Role | Model / effort | Characteristics |
+|----------|------|---------------|------|
+| `Explore` | Read-only code exploration and analysis | inherit (model not pinned) | Read-only tools |
+
+{{< callout type="info" >}}
+**4-tier token-cost tiers** ({{< icon flash danger >}} xhigh · {{< icon flash warn >}} high · {{< icon flash primary >}} medium · {{< icon flash muted >}} low): `model: inherit` inherits the parent session model, and effort determines the reasoning-token budget. Intelligence-sensitive work (planning, auditing, implementation) is assigned xhigh, repetitive/documentation work medium, and PR creation low — each matched to its purpose.
+{{< /callout >}}
 
 ## Manager-Develop Domain Context Injection
 
@@ -130,7 +134,7 @@ The 10 MoAI custom agents are defined as markdown files in the `.claude/agents/m
 ├── builder-harness.md
 ├── super-advisor.md
 ├── e2e-tester.md
-└── (Explore: Anthropic 내장, 파일 없음)
+└── (Explore: Anthropic built-in, no file)
 ```
 
 ### Agent Definition Format
@@ -139,23 +143,23 @@ The 10 MoAI custom agents are defined as markdown files in the `.claude/agents/m
 ---
 name: my-specialist
 description: >
-  이 프로젝트의 전문가. 특정 도메인 전문성 설명.
+  A specialist for this project. Describe the specific domain expertise.
 tools: Read, Write, Edit, Grep, Glob, Bash
 model: inherit
 ---
 
-당신은 이 프로젝트의 [도메인] 전문가입니다.
+You are this project's [domain] specialist.
 
-## 역할
+## Role
 
-- 책임 1
-- 책임 2
-- 책임 3
+- Responsibility 1
+- Responsibility 2
+- Responsibility 3
 
-## 사용 스킬
+## Skills Used
 
 - moai-domain-[domain]
-- 언어별 스킬
+- Language-specific skills
 ```
 
 ## Inter-Agent Collaboration Patterns
@@ -165,19 +169,19 @@ model: inherit
 The most fundamental collaboration flow. An independent audit is inserted between each phase.
 
 ```bash
-# 1. manager-spec이 SPEC 생성
-/moai plan "기능 설명"
+# 1. manager-spec creates the SPEC
+/moai plan "feature description"
 
-# 2. plan-auditor가 SPEC 품질 검증
-# (자동 실행)
+# 2. plan-auditor validates SPEC quality
+# (runs automatically)
 
-# 3. manager-develop이 DDD/TDD 구현
+# 3. manager-develop implements with DDD/TDD
 /moai run SPEC-XXX
 
-# 4. sync-auditor가 4차원 품질 점수
-# (자동 실행)
+# 4. sync-auditor scores quality across 4 dimensions
+# (runs automatically)
 
-# 5. manager-docs가 문서 동기화
+# 5. manager-docs synchronizes documentation
 /moai sync SPEC-XXX
 ```
 
@@ -189,7 +193,7 @@ Claude Code's official Sub-agent system is the foundation of the MoAI-ADK agent 
 
 | Characteristic | Description |
 |------|------|
-| **Independent context** | Each sub-agent runs in its own 200K-token context window |
+| **Independent context** | Each sub-agent runs in its own model-dependent context window (model-dependent — 1M-class models also exist) |
 | **Custom prompt** | Role and behavior defined via a specialized system prompt |
 | **Specific tool access** | Only the necessary tools are selectively provided |
 | **Independent permissions** | Individual permission modes can be configured |
@@ -201,7 +205,7 @@ Claude Code's official Sub-agent system is the foundation of the MoAI-ADK agent 
 | Nested sub-agent limits | Nested sub-agent spawning is governed by whether the `Agent` tool is allowed — MoAI agents do not nest |
 | AskUserQuestion restriction | Sub-agents cannot interact with the user directly (they return blocker reports instead) |
 | No skill inheritance | Skills from the parent conversation are not inherited |
-| Independent context | Each agent has its own independent 200K-token context |
+| Independent context | Each agent has its own model-dependent independent context window (model-dependent) |
 
 ## Agent Teams Static Layer — Retired in v3.0
 

@@ -30,22 +30,22 @@ They are two completely different things. This is the most common confusion, so 
 The MoAI statusline shows version information together with an update notification:
 
 ```
-🗿 v2.2.2 ⬆️ v2.2.5
+🗿 v3.0.0-rc11 ⬆️ v3.0.0-rc12
 ```
 
-- **`v2.2.2`**: The currently installed version
-- **`⬆️ v2.2.5`**: A newer version available for update
+- **`v3.0.0-rc11`**: The currently installed version
+- **`⬆️ v3.0.0-rc12`**: A newer version available for update
 
 When you are on the latest version, only the version number is shown:
 
 ```
-🗿 v2.2.5
+🗿 v3.0.0-rc12
 ```
 
 **How to update**: Run `moai update` and the update notification disappears.
 
 {{< callout type="info" >}}
-**Note**: This is different from Claude Code's built-in version display (`🔅 v2.1.38`). The MoAI display tracks the MoAI-ADK version, while Claude Code displays its own version separately.
+**Note**: This is different from Claude Code's built-in version display (`🔅 v2.1.172`). The MoAI display tracks the MoAI-ADK version, while Claude Code displays its own version separately.
 {{< /callout >}}
 
 ---
