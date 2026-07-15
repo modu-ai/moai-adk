@@ -211,7 +211,7 @@ Windows Terminal 및 iTerm2와 같은 지원되는 터미널에서 진행률을 
 
 ## 권한 설정
 
-Claude Code가 실행할 수 있는 명령어의 권한을 관리합니다. 권한 설계의 목표는 두 가지입니다 — 안전한 명령은 확인 없이 흐르게 해서 에이전틱 루프를 끊지 않는 것, 위험한 명령은 어떤 경우에도 통과하지 못하게 하는 것.
+Claude Code가 실행할 수 있는 명령어의 권한을 관리합니다. 권한 설계의 목표는 분명합니다. 안전한 명령은 확인 없이 흘려 에이전틱 루프를 끊지 않고, 위험한 명령은 어떤 경우에도 통과시키지 않는 것.
 
 ### 권한 구조
 
@@ -362,11 +362,11 @@ Claude가 접근할 수 있는 추가 작업 디렉토리입니다.
 }
 ```
 
-`--safe-mode` CLI 플래그는 settings가 아닌 런칭 시점에 동일한 런타임 효과를 적용합니다 — 잠긴 환경이나 어떤 동작이 번들 skill에서 기원했는지 디버깅할 때 유용합니다. MoAI-ADK는 `disableBundledSkills`를 생성하거나 `--safe-mode`를 자동으로 전달하지 않습니다. 둘 다 사용 가능한 옵션으로 이곳에 문서화됩니다.
+`--safe-mode` CLI 플래그는 settings가 아닌 런칭 시점에 동일한 런타임 효과를 적용해, 잠긴 환경이나 어떤 동작이 번들 skill에서 기원했는지 디버깅할 때 유용합니다. MoAI-ADK는 `disableBundledSkills`를 생성하거나 `--safe-mode`를 자동으로 전달하지 않습니다. 둘 다 사용 가능한 옵션입니다.
 
 ## 권한 규칙 구문 (Permission Rule Syntax)
 
-권한 규칙은 `Tool` 또는 `Tool(specifier)` 형식을 따릅니다. 매개변수 범위 와일드카드 형식인 `Tool(param:value)`도 지원됩니다 — 예: `WebFetch(domain:example.com)`은 해당 도메인에 대한 WebFetch만 허용, `Bash(cmd:git status)`는 `git status` 명령에 매칭, 값 내부의 `*` 와일드카드로 매칭 범위를 넓힐 수 있습니다 (`WebFetch(domain:*.example.com)`, `Bash(cmd:git *)`). 이 매개변수 범위 형식은 일반 `Tool(specifier)` 형식보다 더 세밀한 제어를 제공합니다. MoAI-ADK는 현재 자체 설정 생성기에서 매개변수 범위 규칙을 생성하지 않습니다. 이 구문은 매개변수 수준의 권한 제어가 필요한 프로젝트를 위한 사용 가능한 옵션으로 문서화됩니다.
+권한 규칙은 `Tool` 또는 `Tool(specifier)` 형식을 따릅니다. 매개변수 범위 와일드카드 형식인 `Tool(param:value)`도 지원됩니다. 예를 들어 `WebFetch(domain:example.com)`은 해당 도메인에 대한 WebFetch만 허용하고, `Bash(cmd:git status)`는 `git status` 명령에 매칭되며, 값 내부의 `*` 와일드카드로 매칭 범위를 넓힐 수 있습니다 (`WebFetch(domain:*.example.com)`, `Bash(cmd:git *)`). 이 매개변수 범위 형식은 일반 `Tool(specifier)` 형식보다 더 세밀한 제어를 제공합니다. MoAI-ADK의 설정 생성기는 현재 이 형식을 만들지 않지만, 매개변수 수준의 권한 제어가 필요한 프로젝트에서 쓸 수 있는 옵션입니다.
 
 ### 규칙 평가 순서
 
@@ -659,7 +659,7 @@ Hook 설정의 자세한 내용은 [Hooks 가이드](/ko/advanced/hooks-guide)�
 
 ## 확장 사고 설정 (Extended Thinking Settings)
 
-확장 사고(Extended Thinking) 관련 설정입니다. 추론 토큰도 토큰입니다 — 항상 켜두면 편하지만, 예산과 함께 조율하는 것이 토크노믹스 관점의 정석입니다.
+확장 사고(Extended Thinking) 관련 설정입니다. 추론 토큰도 토큰이라 항상 켜두면 편하지만, 예산과 함께 조율하는 쪽이 토크노믹스에 맞습니다.
 
 ```json
 {

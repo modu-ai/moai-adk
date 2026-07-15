@@ -4,7 +4,7 @@ weight: 42
 draft: false
 ---
 
-에이전트 100개를 순차 위임하면 컨텍스트가 먼저 무너집니다. 동적 워크플로우는 계획을 Claude의 컨텍스트가 아닌 **스크립트 변수**에 두는 방식으로 이 문제를 풉니다 — 중간 결과는 스크립트에 머물고, 최종 결과만 세션으로 돌아옵니다. 대규모 팬아웃을 가능하게 하면서 컨텍스트 비용은 억제하는, 토크노믹스와 루프 엔지니어링이 만나는 지점입니다.
+에이전트 100개를 순차 위임하면 컨텍스트가 먼저 무너집니다. 동적 워크플로우는 계획을 Claude의 컨텍스트가 아닌 **스크립트 변수**에 두는 방식으로 이 문제를 풉니다. 중간 결과는 스크립트에 머물고, 최종 결과만 세션으로 돌아옵니다. 대규모 팬아웃을 가능하게 하면서 컨텍스트 비용은 억제하는, 토크노믹스와 루프 엔지니어링이 만나는 지점입니다.
 
 {{< callout type="info" >}}
 **한 줄 요약**: 동적 워크플로우는 JavaScript로 작성된 자동화 스크립트로, 수십~수백 개의 에이전트를 병렬 조율합니다. Ultracode는 `/effort ultracode` 또는 `ultracode` 키워드로 트리거됩니다.
@@ -77,21 +77,23 @@ JavaScript로 작성된 **자동화 스크립트**로 다수의 에이전트를 
 ```mermaid
 flowchart TD
     START[작업 특성 파악] --> Q1{몇 개의 독립적<br>에이전트 필요?}
-    
+
     Q1 -->|1~5개| Q2{병렬 실행<br>필수?}
-    Q1 -->|5~10개| Q3{매우<br>복잡?}
+    Q1 -->|5~10개| Q3{읽기 전용<br>조사?}
     Q1 -->|10개+| WORKFLOW["Dynamic Workflow 선택<br>병렬 스크립트 최적"]
-    
+
     Q2 -->|아니오| SUBAGENT["Sequential Sub-agent<br>순차 위임"]
-    Q2 -->|예| TEAMS["Agent Teams<br>팀 협업"]
-    
-    Q3 -->|예| TEAMS
+    Q2 -->|예| PARALLEL["Parallel Sub-agents<br>단일 턴 다중 Agent() 팬아웃"]
+
+    Q3 -->|예| PARALLEL
     Q3 -->|아니오| SUBAGENT
-    
+
     SUBAGENT --> DONE["✓ 선택 완료"]
-    TEAMS --> DONE
+    PARALLEL --> DONE
     WORKFLOW --> DONE
 ```
+
+> MoAI의 정적 Agent Teams 오케스트레이션 계층은 은퇴했으므로 (위 경고 참조), 병렬 실행은 **병렬 서브에이전트 팬아웃** (단일 턴 다중 `Agent()`, 읽기 전용 조사 스코프)이 담당합니다. 네이티브 Claude Code teammate 런타임 (`moai cg` 의 tmux pane)은 별도로 계속 동작합니다.
 
 ## Ultracode와 Dynamic Workflows
 
@@ -246,5 +248,5 @@ export CLAUDE_CODE_DISABLE_WORKFLOWS=1
 - [SPEC 기반 개발](/ko/workflow-commands/moai-plan) - 통합 워크플로우
 
 {{< callout type="info" >}}
-**팁**: 규모가 작다면 Sequential Sub-agents로 충분합니다. 동적 워크플로우는 "수십~수백 개의 독립적 작업을 병렬 조율해야 할 때"만 사용하세요 — 팬아웃 자체가 비용이라는 점을 잊지 마세요.
+**팁**: 규모가 작다면 Sequential Sub-agents로 충분합니다. 동적 워크플로우는 "수십~수백 개의 독립적 작업을 병렬 조율해야 할 때"만 사용하세요. 팬아웃 자체가 비용이라는 점을 잊지 마세요.
 {{< /callout >}}

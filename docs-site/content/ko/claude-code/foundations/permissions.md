@@ -52,7 +52,7 @@ Claude가 파일을 수정하거나 명령을 실행하는 등 부수 효과가 
 `bypassPermissions` 는 모든 확인을 생략하므로, 신뢰할 수 있는 격리 환경에서만 쓰세요. 검증되지 않은 코드나 프롬프트가 위험한 명령을 무확인으로 실행하게 만들 수 있습니다.
 {{< /callout >}}
 
-서브에이전트도 `permissionMode` 필드로 자신의 기본 권한 태도를 선언할 수 있습니다 (자세한 값은 [서브에이전트](/ko/claude-code/agentic/sub-agents) 참고).
+서브에이전트도 `permissionMode` 필드로 자신의 기본 권한 태도를 선언할 수 있습니다(자세한 값은 [서브에이전트](/ko/claude-code/agentic/sub-agents) 참고).
 
 ## Plan 모드
 

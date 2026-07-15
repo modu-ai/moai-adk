@@ -2,9 +2,10 @@
 title: 스킬 가이드
 weight: 20
 draft: false
+description: "MoAI-ADK 스킬 시스템 — 점진적 공개(progressive disclosure)로 필요한 지식만 필요한 순간에 로드하는 지식 계층."
 ---
 
-MoAI-ADK의 스킬 시스템을 상세히 안내합니다. 스킬은 에이전틱 하네스의 지식 계층이자, "필요한 지식만 필요한 순간에 로드한다"는 점에서 토크노믹스가 가장 구체적으로 구현된 곳이기도 합니다.
+MoAI-ADK의 스킬 시스템을 상세히 안내합니다. 스킬은 에이전틱 하네스의 지식 계층이면서, "필요한 지식만 필요한 순간에 로드한다"는 점에서 토크노믹스가 가장 구체적으로 구현되는 곳이기도 합니다.
 
 {{< callout type="info" >}}
 
@@ -210,7 +211,7 @@ Claude Code 대화에서 직접 스킬을 호출할 수 있습니다.
 
 ### 자동 로드
 
-대부분의 경우 스킬은 트리거 메커니즘에 의해 **자동으로 로드**됩니다. 사용자가 직접 호출할 필요 없이, 대화 컨텍스트를 분석하여 적절한 스킬이 활성화됩니다.
+대부분의 경우 스킬은 트리거 메커니즘에 따라 **자동으로 로드**됩니다. 사용자가 직접 호출할 필요 없이 대화 컨텍스트를 분석해 맞는 스킬을 활성화합니다.
 
 ## 스킬 디렉토리 구조
 
@@ -353,7 +354,7 @@ Claude Code는 프로젝트 루트뿐만 아니라 중첩된 하위 디렉터리
 
 ### `disableBundledSkills` 토글
 
-`disableBundledSkills` (settings.json 불리언, 또는 환경변수 형태)는 Claude Code 번들 skills 및 워크플로우 — 예: `/deep-research`, 내장 슬래시 명령 skills — 를 discovery에서 숨기고 enterprise + personal + project + plugin skills만 보이게 합니다. 선별된 번들 없는 skill 표면을 제공할 때 사용하세요. MoAI-ADK는 이 토글을 자체 생성기에서 생성하지 않습니다. 사용 가능한 옵션으로 이곳에 문서화됩니다. 동반되는 `--safe-mode` 런칭 플래그는 [Settings JSON 가이드](/ko/advanced/settings-json#disablebundledskills)에 문서화되어 있습니다.
+`disableBundledSkills` (settings.json 불리언, 또는 환경변수 형태)는 Claude Code 번들 skills 및 워크플로우(예: `/deep-research`, 내장 슬래시 명령 skills)를 discovery에서 숨기고 enterprise + personal + project + plugin skills만 보이게 합니다. 선별된 번들 없는 skill 표면을 제공할 때 사용하세요. MoAI-ADK는 이 토글을 자체 생성기에서 만들지 않지만, 사용 가능한 옵션으로 이곳에 문서화해 둡니다. 동반되는 `--safe-mode` 런칭 플래그는 [Settings JSON 가이드](/ko/advanced/settings-json#disablebundledskills)에 문서화되어 있습니다.
 
 ## 관련 문서
 

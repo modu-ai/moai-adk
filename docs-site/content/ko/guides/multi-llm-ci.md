@@ -78,7 +78,7 @@ moai github link-spec 123 SPEC-ISSUE-123 --dry-run
 ### `gh` 명령을 찾을 수 없을 때
 
 `moai github` 서브커맨드는 로컬 `gh` CLI에 의존합니다. `gh --version`으로
-설치를 확인하고, `gh auth login`으로 인증을 마치세요.
+설치를 확인하고 `gh auth login`으로 인증을 마치세요.
 
 ### 이슈를 가져오지 못할 때
 

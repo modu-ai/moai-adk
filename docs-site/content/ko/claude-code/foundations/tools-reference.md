@@ -11,12 +11,12 @@ description: "Claude Code 내장 도구의 용도, 읽기/쓰기 구분, setting
 Claude Code가 코드베이스를 이해하고 수정할 때 사용하는 내장 도구들과, 각 도구에 권한이 어떻게 연결되는지를 정리합니다.
 
 {{< callout type="info" >}}
-**한 줄 요약**: 도구 이름은 권한 규칙, 서브에이전트 도구 목록, hook 매처에서 그대로 쓰이는 식별자이므로, 도구의 읽기/쓰기 성격과 권한 동작을 알면 Claude Code의 안전 경계를 직접 설계할 수 있습니다.
+**한 줄 요약**: 도구 이름은 권한 규칙, 서브에이전트 도구 목록, hook 매처에서 그대로 쓰이는 식별자이므로 도구의 읽기/쓰기 성격과 권한 동작을 알면 Claude Code의 안전 경계를 직접 설계할 수 있습니다.
 {{< /callout >}}
 
 ## 내장 도구와 권한의 관계
 
-Claude Code는 코드를 읽고 수정하기 위한 **내장 도구** (built-in tools) 묶음을 기본으로 갖고 있습니다. 여기서 핵심은 도구 이름 자체가 곧 식별자라는 점입니다. `Read`, `Bash`, `Edit` 같은 정확한 문자열이 다음 세 곳에서 동일하게 쓰입니다.
+Claude Code는 코드를 읽고 수정하기 위한 **내장 도구**(built-in tools) 묶음을 기본으로 제공합니다. 여기서 핵심은 도구 이름 자체가 곧 식별자라는 점입니다. `Read`, `Bash`, `Edit` 같은 정확한 문자열이 다음 세 곳에서 동일하게 쓰입니다.
 
 - 권한 규칙 (`permissions.allow` / `permissions.deny` in `settings.json`)
 - 서브에이전트 정의의 `tools` / `disallowedTools` 항목
@@ -55,7 +55,7 @@ Claude Code는 코드를 읽고 수정하기 위한 **내장 도구** (built-in 
 
 ## 권한 설정: allow / deny / ask
 
-도구 권한은 `settings.json`의 `permissions` 항목과 `/permissions` 인터페이스, CLI 플래그 (`--allowedTools`, `--disallowedTools`) 에서 동일한 규칙 형식으로 다룹니다. 규칙 형식은 `ToolName(specifier)` 입니다.
+도구 권한은 `settings.json`의 `permissions` 항목과 `/permissions` 인터페이스, CLI 플래그(`--allowedTools`, `--disallowedTools`)에서 동일한 규칙 형식으로 다룹니다. 규칙 형식은 `ToolName(specifier)` 입니다.
 
 ```json
 {
@@ -73,7 +73,7 @@ Claude Code는 코드를 읽고 수정하기 위한 **내장 도구** (built-in 
 }
 ```
 
-지정자 (specifier) 는 도구 종류에 따라 다르며, 여러 도구가 형식을 공유합니다.
+지정자(specifier)는 도구 종류에 따라 다르며, 여러 도구가 형식을 공유합니다.
 
 | 규칙 형식 | 적용 도구 | 설명 |
 | :--- | :--- | :--- |
@@ -132,7 +132,7 @@ flowchart TD
 
 ## MoAI-ADK와 도구 경계
 
-도구 이름이 곧 권한 규칙·서브에이전트 도구 목록·hook 매처의 식별자라는 사실은 하네스 설계의 출발점입니다. MoAI-ADK는 이 메커니즘으로 안전 경계를 그립니다 — 읽기 전용 탐색 에이전트에는 `Read`/`Grep`/`Glob`만 허용하고, 쓰기 가능한 구현 에이전트는 동시에 둘 이상 돌리지 않으며, 파괴적 Bash 패턴은 deny 규칙으로 차단합니다. 또한 "전용 도구 우선" 원칙 (Bash `grep` 대신 `Grep`, `cat` 대신 `Read`)은 안전만이 아니라 토큰 문제이기도 합니다. 전용 도구의 구조화된 출력 (정렬·잘림·줄 번호)이 셸 명령의 원시 출력보다 컨텍스트를 훨씬 적게 차지하기 때문입니다.
+도구 이름이 곧 권한 규칙·서브에이전트 도구 목록·hook 매처의 식별자라는 사실은 하네스 설계의 출발점입니다. MoAI-ADK는 이 메커니즘으로 안전 경계를 그립니다. 읽기 전용 탐색 에이전트에는 `Read`/`Grep`/`Glob`만 허용하고, 쓰기 가능한 구현 에이전트는 동시에 둘 이상 돌리지 않으며, 파괴적 Bash 패턴은 deny 규칙으로 차단합니다. 또한 "전용 도구 우선" 원칙(Bash `grep` 대신 `Grep`, `cat` 대신 `Read`)은 안전만이 아니라 토큰 문제이기도 합니다. 전용 도구의 구조화된 출력(정렬·잘림·줄 번호)이 셸 명령의 원시 출력보다 컨텍스트를 훨씬 적게 차지하기 때문입니다.
 
 ## 관련 문서
 

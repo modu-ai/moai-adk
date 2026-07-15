@@ -100,7 +100,7 @@ flowchart TD
 
 ### 1단계: 정적 분석 스캔
 
-프로젝트 언어를 project marker로 자동 감지하고, 각 언어의 표준 데드 코드 분석 도구로 후보를 탐지합니다. **16개 지원 언어를 동등하게 취급**하며 (go, python, typescript, javascript, rust, java, kotlin, csharp, ruby, php, elixir, cpp, scala, r, flutter, swift), 설치되지 않은 도구는 우아하게 건너뜁니다. 인식된 언어 마커가 없는 프로젝트는 조용히 통과됩니다. 아래는 대표 예시일 뿐 특정 언어를 우대하지 않습니다:
+프로젝트 언어를 project marker로 자동 감지하고, 각 언어의 표준 데드 코드 분석 도구로 후보를 탐지합니다. **16개 지원 언어를 동등하게 취급**하며 (go, python, typescript, javascript, rust, java, kotlin, csharp, ruby, php, elixir, cpp, scala, r, flutter, swift), 설치되지 않은 도구는 알아서 건너뜁니다. 인식된 언어 마커가 없는 프로젝트는 조용히 통과됩니다. 아래는 대표 예시일 뿐 특정 언어를 우대하지 않습니다:
 
 | 언어 (예시) | 분석 도구 (예시) | 검사 대상 |
 |------|-----------|-----------|

@@ -12,7 +12,7 @@ draft: false
 
 ## 시스템 개요
 
-의사결정 메모리(Decision Memory)는 MoAI-ADK의 **장기 학습 계층**입니다. AskUserQuestion 라운드에서 사용자의 선택을 관찰하고, 향후 동일한 의사결정 지점에서 통계적 다수 선택을 기반으로 적응형 권장을 제공합니다.
+의사결정 메모리(Decision Memory)는 MoAI-ADK의 **장기 학습 계층**입니다. AskUserQuestion 라운드에서 사용자의 선택을 관찰하고 향후 동일한 의사결정 지점에서 통계적 다수 선택을 기반으로 적응형 권장을 제공합니다.
 
 중요한 건 방향입니다. 시스템이 밀고 싶은 기본값을 `(권장)`으로 포장하는 게 아니라, **사용자가 실제로 반복 선택해 온 것**이 권장이 됩니다.
 
@@ -122,7 +122,7 @@ preference 메모리는 오케스트레이터의 사용자 질문 채널에서 �
 
 ### 4. Decay Policy (감쇠 정책)
 
-과거의 선택이 오늘의 선호를 그대로 대변하지는 않습니다. transient 엔트리는 **power-law 감쇠 + 28일 TTL**(REQ-ADM-011, REQ-ADM-012)을 적용받아 가중치가 점진적으로 감소하고, TTL 경과 시 축출됩니다. core-tier 축출은 최저 가중치 항목부터 강등되는 방식입니다.
+과거의 선택이 오늘의 선호를 그대로 대변하지는 않습니다. transient 엔트리는 **power-law 감쇠 + 28일 TTL**(REQ-ADM-011, REQ-ADM-012)을 적용받아 가중치가 점진적으로 감소하고 TTL 경과 시 축출됩니다. core-tier 축출은 최저 가중치 항목부터 강등되는 방식입니다.
 
 관리 명령어:
 
@@ -148,7 +148,7 @@ moai preference toggle       # 세션 단위 개인화 on/off (비영구, 세션
 | **Model Selection** | Model choice per task |
 | **Effort Level** | Effort 레벨 (low/medium/high/xhigh) |
 
-Model Selection과 Effort Level이 여기에 포함된다는 점에 주목할 만합니다 — 의사결정 메모리가 학습한 선호가 결국 모델·추론 깊이 배정으로 이어지므로, 이 시스템은 토크노믹스의 개인화 계층이기도 합니다.
+Model Selection과 Effort Level도 여기에 포함됩니다 — 의사결정 메모리가 학습한 선호가 결국 모델·추론 깊이 배정으로 이어지므로 이 시스템은 토크노믹스의 개인화 계층이기도 합니다.
 
 ## 통계적 다수 학습의 예시
 

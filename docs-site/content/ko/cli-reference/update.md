@@ -44,7 +44,7 @@ moai update --check
 
 ### 체크섬 의무 검증 (Mandatory Checksum Verification) {#checksum-verification}
 
-`moai update` 의 binary 다운로드는 **checksum 검증을 우회할 수 없습니다**. release 의 `checksums.txt` 다운로드가 실패하거나 파싱이 실패하면 업데이트 흐름을 **abort** 합니다 — binary 다운로드를 시도하지 않습니다.
+`moai update` 의 바이너리 다운로드는 **checksum 검증을 우회할 수 없습니다**. 릴리스의 `checksums.txt` 다운로드가 실패하거나 파싱에 실패하면 업데이트 흐름을 **중단(abort)** 합니다 — 바이너리 다운로드를 시도하지 않습니다.
 
 #### Retry 정책
 
@@ -73,7 +73,7 @@ error: checksum unavailable: persistent retry failure after 3 attempts
    ```
 2. **Proxy / firewall 확인** — GitHub release asset 도메인 (`github.com`, `objects.githubusercontent.com`) 허용 여부
 3. **일시적 GitHub CDN 장애 가능성** — 잠시 후 재시도
-4. **수동 binary 설치** (영구 차단 시):
+4. **수동 바이너리 설치** (영구 차단 시):
    ```bash
    curl -fsSL https://raw.githubusercontent.com/modu-ai/moai-adk/main/install.sh | bash
    ```

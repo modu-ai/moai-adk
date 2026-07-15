@@ -35,4 +35,4 @@ flowchart TD
 | [체크포인팅](/ko/claude-code/context-memory/checkpointing) | 되감기로 안전하게 실험 |
 | [세션 관리](/ko/claude-code/context-memory/sessions) | 세션 이어가기·정리와 핸드오프 |
 
-이 그룹을 마치면 다음 그룹인 [확장](/ko/claude-code/extensibility)에서 스킬·훅·MCP·플러그인 — 하네스를 짓는 재료 — 로 나아갑니다.
+이 그룹을 마치면 다음 그룹인 [확장](/ko/claude-code/extensibility)에서 하네스를 짓는 재료(스킬·훅·MCP·플러그인)로 나아갑니다.

@@ -7,7 +7,7 @@ draft: false
 MoAI-ADK의 자율 CI/CD 시스템은 풀리퀘스트 품질을 자동으로 관리합니다.
 로컬 세션에서 `/moai loop`가 하던 "진단 → 수정 → 검증" 루프를 CI까지
 연장한 것으로, 개발자가 수동으로 품질을 검증하지 않아도 CI가 스스로
-품질을 보장합니다 — 에이전틱 루프 엔지니어링을 저장소 수준에 적용한
+품질을 보장합니다. 에이전틱 루프 엔지니어링을 저장소 수준에 적용한
 사례입니다.
 
 ## 개요
@@ -66,7 +66,7 @@ sh scripts/ci-watch/run.sh <PR_NUMBER> [BRANCH]
 
 **CI 루프 스킬 (`moai-workflow-ci-loop`)**
 
-감시 스크립트가 필수 실패를 핸드오프하면, `moai-workflow-ci-loop` 스킬이
+감시 스크립트가 필수 실패를 핸드오프하면 `moai-workflow-ci-loop` 스킬이
 실패를 분류하고 안전한 자동 패치를 최대 3회까지 시도합니다. 의미 수준의
 실패(자동 수정이 위험한 경우)는 사용자에게 에스컬레이션합니다.
 
@@ -94,7 +94,7 @@ sh scripts/ci-watch/run.sh <PR_NUMBER> [BRANCH]
 ### 감사 추적
 
 모든 BODP 결정은 `.moai/branches/decisions/<branch-name>.md`에 기록됩니다.
-결정을 추측이 아닌 기록으로 남기는 것 — 증거 기반 완료 판정이라는 MoAI
+결정을 추측이 아닌 기록으로 남깁니다. 증거 기반 완료 판정이라는 MoAI
 원칙이 브랜치 결정에도 적용됩니다.
 
 ## i18n Validator (T6)

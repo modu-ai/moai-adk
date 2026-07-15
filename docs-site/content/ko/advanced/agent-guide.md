@@ -2,23 +2,24 @@
 title: 에이전트 가이드
 weight: 30
 draft: false
+description: "MoAI-ADK v3.0의 11개 핵심 에이전트 카탈로그 — 역할, 단계 범위, 계획-감사 분리 원칙."
 ---
 
 MoAI-ADK v3.0의 11개 핵심 에이전트 카탈로그를 상세히 안내합니다.
 
 {{< callout type="info" >}}
-**한 줄 요약**: 에이전트는 각 분야의 **전문가 팀**입니다. MoAI가 팀 리더로서 적절한 전문가에게 작업을 배분합니다 — 그리고 계획을 만든 에이전트와 그것을 감사하는 에이전트는 반드시 분리됩니다.
+**한 줄 요약**: 에이전트는 각 분야의 **전문가 팀**입니다. MoAI가 팀 리더로서 적절한 전문가에게 작업을 배분합니다. 이때 계획을 만든 에이전트와 이를 감사하는 에이전트는 반드시 분리됩니다.
 {{< /callout >}}
 
 ## 에이전트란?
 
 에이전트는 특정 분야에 전문화된 **AI 작업 수행자**입니다.
 
-Claude Code의 **Sub-agent (하위 에이전트)** 시스템을 기반으로 하며, 각 에이전트는 독립적인 컨텍스트 창, 사용자 정의 시스템 프롬프트, 특정 도구 액세스, 독립적인 권한을 가집니다.
+Claude Code의 **Sub-agent (하위 에이전트)** 시스템을 기반으로 작동하며 각 에이전트는 독립적인 컨텍스트 창, 사용자 정의 시스템 프롬프트, 특정 도구 액세스, 독립적인 권한을 갖춥니다.
 
 회사 조직에 비유하면 MoAI는 CEO, Manager 에이전트는 부서장, Evaluator 에이전트는 품질 감시관, Builder 에이전트는 신규 팀 생성 담당자, Advisor 에이전트는 외부 자문역입니다.
 
-에이전트 수는 v3 기간 동안 22 → 17 → 8 → 10 → **11**로 정련되었습니다. 에이전트가 많다고 좋은 게 아닙니다 — 위임 한 번마다 컨텍스트 비용이 들기 때문에, 카탈로그를 줄이는 것 자체가 토크노믹스의 일부입니다.
+에이전트 수는 v3 기간 동안 22 → 17 → 8 → 10 → **11**로 정련되었습니다. 에이전트가 많다고 좋은 게 아닙니다 — 위임 한 번마다 컨텍스트 비용이 들기 때문에 카탈로그를 줄이는 것 자체가 토크노믹스의 일부입니다.
 
 ## MoAI 오케스트레이터
 
@@ -54,7 +55,7 @@ MoAI-ADK는 **11개 핵심 에이전트** (10개 MoAI 사용자 정의 + 1개 An
 | `plan-auditor` | Plan 단계 독립 감사, GEARS 준수, 편향 방지 | SPEC 완성도 | inherit / xhigh {{< icon flash danger >}} | `moai-foundation-core`, `moai-foundation-thinking` |
 | `sync-auditor` | Sync 단계 품질 점수 (4차원: Functionality, Security, Craft, Consistency) | 구현 품질 | inherit / xhigh {{< icon flash danger >}} | `moai-foundation-quality`, `moai-foundation-core` |
 
-계획과 감사가 분리되어 있다는 점이 핵심입니다 — 만든 사람이 자기 작업을 검사하지 않습니다.
+계획과 감사가 분리돼 있다는 게 핵심입니다 — 만든 사람이 자기 작업을 검사하지 않습니다.
 
 ### Builder 에이전트 (1개)
 
@@ -86,7 +87,7 @@ MoAI-ADK는 **11개 핵심 에이전트** (10개 MoAI 사용자 정의 + 1개 An
 
 ## Manager-Develop 도메인 컨텍스트 주입
 
-도메인마다 에이전트를 하나씩 두는 대신, `manager-develop` 하나가 도메인별 컨텍스트를 주입받아 호출됩니다.
+도메인마다 에이전트를 하나씩 두는 대신 `manager-develop` 하나가 도메인별 컨텍스트를 주입받아 호출됩니다.
 
 - **백엔드 작업**: `manager-develop` + 백엔드 도메인 컨텍스트 + `moai-domain-backend` 스킬
 - **프론트엔드 작업**: `manager-develop` + 프론트엔드 도메인 컨텍스트 + `moai-domain-frontend` 스킬

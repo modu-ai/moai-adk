@@ -91,9 +91,9 @@ go test ./... > /tmp/moai-verify/1-go-test.log 2>&1; echo "exit=$?"; tail -50 /t
 
 ## 검증 증거 영속화 의무
 
-파일-리다이렉트 계약이 `/tmp`에 기록한 증거는 OS에 의해 주기적으로 삭제됩니다(macOS 재부팅, Linux tmpfs 리마운트, systemd-tmpfiles). 인용된 경로가 더 이상 파일로 존재하지 않으면 감사 시점에 증거에 도달할 수 없습니다.
+파일-리다이렉트 계약이 `/tmp`에 기록한 증거는 OS가 주기적으로 삭제합니다(macOS 재부팅, Linux tmpfs 리마운트, systemd-tmpfiles). 인용한 경로가 더 이상 파일로 존재하지 않으면 감사 시점에 증거를 찾을 수 없습니다.
 
-영속화 의무는 이 문제를 해결합니다. 검증 증거는 `.moai/state/verify/<session>/` 하위에 영속화되어야 합니다. 이 디렉터리는 `context-usage.json` 및 `active-sessions.json`과 같은 gitignored 런타임 상태 영역입니다.
+영속화 의무가 이 문제를 해결합니다. 검증 증거는 `.moai/state/verify/<session>/` 하위에 남겨야 합니다. 이 디렉터리는 `context-usage.json` 및 `active-sessions.json`과 같은 gitignored 런타임 상태 영역입니다.
 
 정확한 영속화 메커니즘(직접 기록 또는 `/tmp` 기록 후 복사)은 구현 세부 사항입니다. 계약은 의무를 명시합니다. 증거는 `/tmp` 삭제 후에도 감사 시점에 도달 가능한 인용 가능한 경로에 남아 있어야 합니다.
 

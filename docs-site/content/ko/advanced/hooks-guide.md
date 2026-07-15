@@ -14,7 +14,7 @@ Claude Code의 Hooks 시스템과 MoAI-ADK의 기본 Hook 스크립트를 상세
 
 Hooks는 Claude Code의 특정 이벤트에 반응하여 **자동으로 실행되는 스크립트**입니다.
 
-의사의 반사 신경 검사에 비유하면, 무릎을 두드리면 (이벤트 발생) 다리가 자동으로 올라가는 것 (스크립트 실행)처럼, Claude Code가 파일을 수정하면 (PostToolUse 이벤트) 포맷터가 자동으로 실행됩니다 (코드 정리).
+의사의 반사 신경 검사에 비유하면, 무릎을 두드리면 다리가 자동으로 올라가듯, Claude Code가 파일을 수정하면(PostToolUse 이벤트) 포맷터가 자동으로 실행되어 코드를 정리합니다.
 
 ```mermaid
 flowchart TD

@@ -21,7 +21,7 @@ draft: false
 
 `/moai fix`가 **한 번만** 수정하는 것과 달리, `/moai loop`는 **완료 조건을 만족할 때까지** 계속 반복합니다.
 
-이 루프가 v3의 두 번째 기둥, **에이전틱 루프 엔지니어링**의 대표 사례입니다. 사람이 매 오류마다 개입하는 대신 루프가 스스로 진단하고 수정하며, 루프가 남긴 관찰은 하네스 학습 (재귀적 자가 학습)의 원료로 축적됩니다. 엔진 구현은 `internal/ralph/engine.go` — 매 반복의 `Decide()`가 continue / converge / request_review / abort 중 하나를 우선순위 순으로 판정합니다.
+이 루프가 v3의 두 번째 기둥, **에이전틱 루프 엔지니어링**의 대표 사례입니다. 사람이 오류마다 일일이 개입하는 대신 루프가 스스로 진단하고 수정하며, 루프가 남긴 관찰은 하네스 학습(재귀적 자가 학습)의 원료로 쌓입니다. 엔진 구현은 `internal/ralph/engine.go`에 있다. 매 반복의 `Decide()`가 continue / converge / request_review / abort 중 하나를 우선순위 순으로 판정합니다.
 
 ## /moai goal과의 관계
 
@@ -54,7 +54,7 @@ draft: false
 | `--max N` (또는 `--max-iterations`)      | 최대 반복 횟수 제한 (기본값 10)  | `/moai loop --max 20`         |
 | `--lens {clean\|simplify\|coverage}`     | 스캔 렌즈 추가 (쉼표 구분, opt-in) | `/moai loop --lens clean,coverage` |
 | `--auto-fix`                             | 자동 수정 활성화 (기본 Level 1)  | `/moai loop --auto-fix`       |
-| `--sequential` (또는 `--seq`)            | 순차 진단 instead of 병렬        | `/moai loop --sequential`     |
+| `--sequential` (또는 `--seq`)            | 병렬 대신 순차 진단              | `/moai loop --sequential`     |
 | `--errors` (또는 `--errors-only`)        | 오류만 수정, 경고 건너뜀         | `/moai loop --errors`         |
 | `--coverage` (또는 `--include-coverage`) | 커버리지 포함 (기본값 85%)       | `/moai loop --coverage`       |
 | `--memory-check`                         | 메모리 압력 감지 활성화          | `/moai loop --memory-check`   |
@@ -157,7 +157,7 @@ TODO 목록의 항목을 **하나씩 순차적으로** 수정합니다. 병렬�
 
 ## 루프 방지 메커니즘
 
-무한 루프를 방지하기 위해 두 가지 안전장치가 있습니다. 루프를 무한정 돌게 두는 것은 토큰 낭비이기도 하기 때문에, 안전장치는 안정성과 토크노믹스 양쪽을 지킵니다.
+무한 루프를 막기 위해 두 가지 안전장치가 있습니다. 루프를 무한정 돌리는 건 토큰 낭비이기도 하므로, 안전장치는 안정성과 토크노믹스 양쪽을 함께 지킵니다.
 
 ```mermaid
 flowchart TD
@@ -259,9 +259,9 @@ flowchart TD
 
 **완료 판정 — 기계적 술어 + 독립 최종 검증:**
 
-루프의 성공 종료는 **기계적 완료 술어**로 판정합니다 — 이슈 큐가 비었고 진단(LSP/AST-grep/테스트/커버리지)이 clean한지를 오케스트레이터가 직접 확인합니다. 별도의 감사 에이전트(sync-auditor)가 완료를 판정하지 않습니다.
+루프의 성공 종료는 **기계적 완료 술어**로 판정합니다. 이슈 큐가 비었고 진단(LSP/AST-grep/테스트/커버리지)이 clean한지를 오케스트레이터가 직접 확인합니다. 별도의 감사 에이전트(sync-auditor)가 완료를 판정하지 않습니다.
 
-술어가 충족되면 **Step 1.5 독립 최종 검증(Independent Final Pass)**이 성공 종료 경로로 실행됩니다 — `/moai gate --fresh`를 새 컨텍스트로 돌리거나 read-only 검증 Agent를 spawn하여, 루프가 자신을 검사하지 않도록 독립적으로 최종 상태를 확인합니다.
+술어가 충족되면 **Step 1.5 독립 최종 검증(Independent Final Pass)**이 성공 종료 경로로 실행됩니다. `/moai gate --fresh`를 새 컨텍스트로 돌리거나 read-only 검증 Agent를 spawn하여, 루프가 자신을 검사하지 않도록 독립적으로 최종 상태를 확인합니다.
 
 **에이전트 역할:**
 

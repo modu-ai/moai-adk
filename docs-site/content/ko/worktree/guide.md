@@ -119,9 +119,9 @@ sequenceDiagram
 
 ### moai worktree go
 
-Worktree 경로를 출력합니다. 셸 내비게이션에 사용하도록 경로 문자열만
-표준 출력으로 내보내며, 셸 세션을 직접 시작하지는 않습니다. 셸의 `cd`와
-조합해서 사용합니다.
+Worktree 경로를 출력합니다. 셸에서 이동할 때 쓰도록 경로 문자열만 표준
+출력으로 내보내고, 셸 세션 자체는 띄우지 않습니다. 셸의 `cd`와 함께
+사용합니다.
 
 #### 문법
 
@@ -697,7 +697,7 @@ git diff main
 
 ### moai worktree new --tmux 플래그
 
-tmux 세션을 자동 생성하여 워크트리 환경에서 격리된 개발이 가능합니다.
+tmux 세션을 자동으로 만들어 워크트리 안에서 격리된 채로 개발할 수 있게 합니다.
 
 ```bash
 moai worktree new SPEC-AUTH-001 --tmux

@@ -14,7 +14,7 @@ draft: false
 
 Harness v4 Builder는 `/moai:harness <자연어 요청>`을 통해 **프로젝트 고유의 전문가 팀을 동적으로 생성**합니다.
 
-범용 에이전트 카탈로그 (11개)가 모든 프로젝트에 공통이라면, Builder가 만드는 하네스는 여러분의 프로젝트에만 존재하는 맞춤 팀입니다.
+범용 에이전트 카탈로그 (11개)가 모든 프로젝트에 공통이라면 Builder가 만드는 하네스는 여러분의 프로젝트에만 존재하는 맞춤 팀입니다.
 
 ### 이전 버전과의 차이
 
@@ -65,7 +65,7 @@ Harness v4 Builder는 `/moai:harness <자연어 요청>`을 통해 **프로젝�
 
 ## Manifest 기반 Runner
 
-Harness v4는 **Manifest 기반 Runner**를 사용하여 생성된 specialist 팀을 운영합니다. 어떤 도메인에 어떤 specialist가, 어떤 실행 원시(primitive)·격리·effort·모델로 투입되는지가 manifest 한 파일에 선언됩니다 — 모델 배정을 선언으로 관리하는 토크노믹스 원칙이 여기에도 적용됩니다. specialist 수는 **3~7개**를 HARD 상한으로 둡니다.
+Harness v4는 **Manifest 기반 Runner**를 사용하여 생성된 specialist 팀을 운영합니다. 어떤 도메인에 어떤 specialist가, 어떤 실행 원시(primitive)·격리·effort·모델로 투입되는지를 manifest 한 파일에 선언합니다 — 모델 배정을 선언으로 관리하는 토크노믹스 원칙이 여기에도 적용됩니다. specialist 수는 **3~7개**를 HARD 상한으로 둡니다.
 
 ### manifest.json 구조
 

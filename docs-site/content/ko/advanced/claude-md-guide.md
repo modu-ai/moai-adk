@@ -4,7 +4,7 @@ weight: 80
 draft: false
 ---
 
-Claude Code의 핵심 지침 파일 체계를 상세히 안내합니다. `CLAUDE.md`는 매 세션 항상 로드되는 파일이므로, 이 파일의 한 줄 한 줄이 곧 상시 컨텍스트 비용입니다 — 지침 체계 설계는 하네스 설계인 동시에 토크노믹스이기도 합니다.
+Claude Code의 핵심 지침 파일 체계를 상세히 안내합니다. `CLAUDE.md`는 매 세션 항상 로드되는 파일이므로 이 파일의 한 줄 한 줄이 곧 상시 컨텍스트 비용입니다 — 지침 체계 설계는 하네스 설계인 동시에 토크노믹스이기도 합니다.
 
 {{< callout type="info" >}}
 **한 줄 요약**: `CLAUDE.md`는 프로젝트의 **헌법**입니다. Claude Code가 프로젝트를 어떻게 이해하고, 어떤 규칙을 따르며, 어떤 에이전트를 호출할지 모두 이 파일에서 결정됩니다.
@@ -361,5 +361,5 @@ flowchart TD
 - [Hooks 가이드](/ko/advanced/hooks-guide) - 이벤트 자동화
 
 {{< callout type="info" >}}
-**팁**: `CLAUDE.md`를 직접 수정하는 것보다 `CLAUDE.local.md`에 개인 규칙을 추가하는 것을 권장합니다. MoAI-ADK 업데이트 시에도 개인 규칙이 안전하게 보존됩니다.
+**팁**: `CLAUDE.md`를 직접 수정하기보다 `CLAUDE.local.md`에 개인 규칙을 추가하는 걸 권장합니다. MoAI-ADK 업데이트 시에도 개인 규칙이 안전하게 보존됩니다.
 {{< /callout >}}

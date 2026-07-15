@@ -1,12 +1,12 @@
 ---
 title: 보안 노트
-description: "MoAI-ADK 보안 강화 변경 사항 (v2.20.0-rc1 도입, 현재 버전 유효) — CWE-732/214/345 매핑, 사용자 자체 점검 절차"
+description: "MoAI-ADK 보안 강화 변경 사항 (v2.20.0-rc1 도입, v3.0 계열 현행 유효) — CWE-732/214/345 매핑, 사용자 자체 점검 절차"
 weight: 72
 draft: false
 tags: ["security", "cwe", "audit"]
 ---
 
-에이전틱 하네스는 에이전트에게 실행 권한을 넘기는 시스템입니다. 권한을 넘기는 시스템일수록 자격증명과 업데이트 경로의 보안이 하네스 신뢰의 바닥을 이룹니다. 본 페이지는 MoAI-ADK v2.20.0-rc1 시점에 도입된 **사용자 가시 보안 변경 사항**을 정리합니다. 이 보안 강화는 도입 이후 현재 버전까지 계속 유효합니다. 각 항목은 CWE 매핑, 변경된 동작, 자체 점검 명령을 포함합니다.
+에이전틱 하네스는 에이전트에게 실행 권한을 넘기는 시스템입니다. 권한을 넘기는 시스템일수록 자격증명과 업데이트 경로의 보안이 하네스 신뢰의 바닥을 이룹니다. 본 페이지는 MoAI-ADK v2.20.0-rc1 시점에 도입된 **사용자 가시 보안 변경 사항**을 정리합니다. 이 보안 강화는 도입 이후 v3.0 계열 현행까지 계속 유효합니다. 각 항목은 CWE 매핑, 변경된 동작, 자체 점검 명령을 포함합니다.
 
 ## Why — 왜 이 페이지가 존재하는가
 
@@ -154,7 +154,7 @@ stat -f '%A' ~/.moai/.env.glm    # macOS: 600
 
 ### Defense-in-depth
 
-`version.Checksum` 필드가 empty string 인 상태로 `downloadAndVerify` 에 도달하면 binary 다운로드를 진행하지 않고 `ErrChecksumUnavailable` 를 반환합니다. 이중 보호 (checker 단계 + updater 단계) 로 묵음 우회를 차단합니다.
+`version.Checksum` 필드가 empty string 인 상태로 `downloadAndVerify` 에 도달하면 binary 다운로드를 진행하지 않고 `ErrChecksumUnavailable` 를 반환합니다. 이중 보호 (checker 단계 + updater 단계) 로 소리 없는 우회를 차단합니다.
 
 ### 위협 모델
 
@@ -228,7 +228,7 @@ stat -c '%a' ~/.moai/.env.glm 2>/dev/null \
 # 기대값: 600 (해당 파일이 존재하는 경우)
 ```
 
-위 5 항목이 모두 기대값을 충족하면 보안 강화가 정상 작동하고 있습니다 (v2.20.0-rc1에서 도입되어 현재 버전까지 유효).
+위 5개 항목이 모두 기대값을 충족하면 보안 강화가 정상 작동하고 있습니다 (v2.20.0-rc1에서 도입되어 v3.0 계열 현행까지 유효).
 
 ## References
 

@@ -125,7 +125,7 @@ cp ./bin/moai ~/.local/bin/
 {{< callout type="error" >}}
 **MoAI-ADK 1.x (Python 버전) 사용자는 반드시 먼저 기존 버전을 제거하세요.**
 
-1.x와 2.x는 동일한 `moai` 명령어를 사용하므로, 기존 버전이 남아있으면 충돌이 발생합니다.
+1.x와 2.x는 동일한 `moai` 명령어를 사용하므로 기존 버전이 남아있으면 충돌이 발생합니다.
 {{< /callout >}}
 
 ### 1단계: 기존 1.x 제거
@@ -173,7 +173,7 @@ Go 에디션 (v2.0+) 은 단일 바이너리로, Python 런타임이나 가상�
 
 ## WSL 지원
 
-Windows 사용자를 위해 WSL (Windows Subsystem for Linux) 환경에서의 설치 및 사용 방법을 안내합니다.
+Windows 사용자를 위해 WSL(Windows Subsystem for Linux) 환경에서 설치하고 사용하는 방법을 안내합니다.
 
 ### WSL 설치
 

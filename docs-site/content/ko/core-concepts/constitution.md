@@ -10,7 +10,7 @@ MoAI-ADK의 불변 규칙 (FROZEN) 과 진화 가능한 규칙 (Evolvable) 을 �
 
 [하네스 엔지니어링](/ko/core-concepts/harness-engineering)에서 보았듯, MoAI-ADK의 하네스는 루프가 축적한 관찰로 스스로 지침을 진화시킵니다. 그렇다면 무엇이 그 진화를 통제할까요? 답이 **Constitution (헌법)** 시스템입니다.
 
-Constitution은 AI 에이전트가 임의로 변경할 수 없는 불변 제약 (FROZEN Zone) 과 학습을 통해 개선할 수 있는 진화 가능 제약 (Evolvable Zone) 을 구분합니다. 평가 기준과 안전 규칙을 진화 루프의 **밖**에 두는 것 — 이것이 자가 진화 하네스가 폭주하지 않는 이유이자, 하네스 엔지니어링의 핵심 안전 메커니즘입니다.
+Constitution은 AI 에이전트가 임의로 변경할 수 없는 불변 제약 (FROZEN Zone) 과 학습을 통해 개선할 수 있는 진화 가능 제약 (Evolvable Zone) 을 구분합니다. 평가 기준과 안전 규칙을 진화 루프의 **밖**에 둡니다. 그래야 자가 진화 하네스가 폭주하지 않으며, 이것이 하네스 엔지니어링의 핵심 안전 장치입니다.
 
 ## FROZEN vs Evolvable
 
@@ -58,8 +58,8 @@ CONST-V3R2-NNN (3자리 이상 zero-padding)
 150+: 신규 추가
 ```
 
-> **ID 접두사는 시대(era)에 걸쳐 있습니다**: `CONST-V3R2-NNN`은 예시일 뿐이며,
-> ID 접두사는 조항이 도입된 시대를 반영합니다 (`CONST-V3R2-NNN`,
+> **ID 접두사는 시대(era)에 따라 다릅니다**: `CONST-V3R2-NNN`은 예시일 뿐이며,
+> 접두사는 조항이 도입된 시대를 반영합니다 (`CONST-V3R2-NNN`,
 > `CONST-V3R5-NNN`, `CONST-V3R6-NNN` 등). V3R2로 고정된 것이 아니라, 이후
 > 시대에 추가된 조항은 해당 시대 접두사를 사용합니다.
 
