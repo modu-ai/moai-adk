@@ -31,7 +31,7 @@ flowchart TD
 
 ## Hook 이벤트 유형
 
-이 가이드에서는 자주 쓰는 핵심 이벤트를 다룹니다. (전체 29개 이벤트는 [Hooks 이벤트 레퍼런스](/ko/advanced/hooks-reference)를 참조하세요.)
+이 가이드에서는 자주 쓰는 핵심 이벤트를 다룹니다. (Claude Code의 30개 이벤트 타입 전체 카탈로그는 [Hooks 이벤트 레퍼런스](/ko/advanced/hooks-reference)를 참조하세요.)
 
 ### 주요 이벤트 목록
 
@@ -105,7 +105,7 @@ MoAI-ADK는 **셸 래퍼 스크립트 + Go 바이너리** 아키텍처로 훅을
 | `TeammateIdle` | {{< icon check ok >}} | `handle-teammate-idle.sh` | `moai hook teammate-idle` |
 | `TaskCompleted` | {{< icon check ok >}} | `handle-task-completed.sh` | `moai hook task-completed` |
 
-Go 바이너리는 위 13종 외에도 `PostToolUseFailure`, `StopFailure`, `PostCompact`, `InstructionsLoaded`, `ConfigChange`, `TaskCreated`, `CwdChanged`, `FileChanged`, `PermissionDenied`, `WorktreeCreate`, `WorktreeRemove`, `Elicitation`, `ElicitationResult` 등 총 26개 서브커맨드를 구현합니다. (전체 목록은 `moai hook --help`로 확인할 수 있습니다.)
+Go 바이너리는 위 13종 외에도 `PostToolUseFailure`, `StopFailure`, `PostCompact`, `InstructionsLoaded`, `ConfigChange`, `TaskCreated`, `CwdChanged`, `FileChanged`, `PermissionDenied`, `WorktreeCreate`, `WorktreeRemove`, `Elicitation`, `ElicitationResult` 등 총 38개 서브커맨드를 구현합니다. (전체 목록은 `moai hook --help`로 확인할 수 있습니다.)
 
 ### 팀원 협업 이벤트
 
@@ -411,7 +411,7 @@ Python, JavaScript/TypeScript, Go, Rust, Java, Kotlin, C/C++, Ruby, PHP
 - 안전하지 않은 함수 호출
 - 미사용 임포트
 
-**설정:** `.claude/skills/moai-tool-ast-grep/rules/sgconfig.yml` 또는 프로젝트 루트의 `sgconfig.yml`
+**설정:** `.moai/config/astgrep-rules/`(기본 배포 룰셋은 `go-hardcoding.yml`)
 
 ### PostToolUse: LSP 진단
 
@@ -440,7 +440,7 @@ ralph:
 
 `/clear` 실행 전에 **현재 컨텍스트를 파일로 저장**합니다. 컨텍스트 임계에서 세션을 끊고 이어가는 핸드오프 흐름의 안전망입니다.
 
-**저장 위치:** `.moai/memory/context-snapshot.json`
+**저장 위치:** `.moai/state/session-memo.md`
 
 **저장 내용:**
 - 현재 활성 SPEC 상태 (ID, 단계, 진행률)
@@ -450,7 +450,7 @@ ralph:
 - Git 상태 정보 (브랜치, 커밋되지 않은 변경)
 - 핵심 결정 사항
 
-**아카이브:** 이전 스냅샷은 `.moai/memory/context-archive/`에 자동 보관됩니다.
+**상태 파일:** 활성 워크트리·세션 상태는 `.moai/state/`(예: `worktrees.json`, `active-sessions.json`)에 기록됩니다.
 
 ### SessionEnd: 자동 정리
 
@@ -458,7 +458,7 @@ ralph:
 
 **P0 작업 (필수):**
 - 세션 메트릭 저장 (수정 파일 수, 커밋 수, 작업한 SPEC)
-- 작업 상태 스냅샷 저장 (`.moai/memory/last-session-state.json`)
+- 작업 상태 스냅샷 저장 (`~/.moai/state/last-session-state.json`)
 - 커밋되지 않은 변경 경고
 
 **P1 작업 (선택):**
@@ -628,7 +628,7 @@ Hooks는 `.claude/settings.json` 파일의 `hooks` 섹션에서 설정합니다.
 | `matcher` | 도구 이름 매칭 패턴 (정규식) | `"Write\|Edit"` |
 | `type` | Hook 유형 | `"command"` |
 | `command` | 실행할 명령어 | Shell 스크립트 경로 |
-| `timeout` | 실행 제한 시간 (밀리초) | `5000` (5초) |
+| `timeout` | 실행 제한 시간 (초) | `5` (5초) |
 
 ### 매처 패턴
 
@@ -732,23 +732,9 @@ Hook 스크립트는 표준 입력 (stdin)으로 JSON 데이터를 받습니다.
 **주의**: Hook 스크립트의 타임아웃을 너무 길게 설정하면 Claude Code의 응답이 느려집니다. 보안 가드(pre-tool)는 5초, 포맷터·린트(post-tool)는 10초 이내를 권장합니다. SessionStart와 PreCompact는 컨텍스트 로딩을 위해 30초까지 허용됩니다.
 {{< /callout >}}
 
-## 환경 변수로 Hook 비활성화
-
-특정 Hook을 환경 변수로 비활성화할 수 있습니다.
-
-| Hook | 환경 변수 |
-|------|-----------|
-| AST-grep 스캔 | `MOAI_DISABLE_AST_GREP_SCAN=1` |
-| LSP 진단 | `MOAI_DISABLE_LSP_DIAGNOSTIC=1` |
-| 루프 제어기 | `MOAI_DISABLE_LOOP_CONTROLLER=1` |
-
-```bash
-export MOAI_DISABLE_AST_GREP_SCAN=1
-```
-
 ## 관련 문서
 
-- [Hooks 이벤트 레퍼런스](/ko/advanced/hooks-reference) - 29개 이벤트 전체 레퍼런스
+- [Hooks 이벤트 레퍼런스](/ko/advanced/hooks-reference) - Claude Code 30개 이벤트 타입 전체 레퍼런스
 - [settings.json 가이드](/ko/advanced/settings-json) - Hook 설정 방법
 - [CLAUDE.md 가이드](/ko/advanced/claude-md-guide) - 프로젝트 지침 관리
 - [에이전트 가이드](/ko/advanced/agent-guide) - 에이전트와 Hook 연동

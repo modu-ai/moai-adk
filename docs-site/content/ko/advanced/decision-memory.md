@@ -112,32 +112,28 @@ AskUserQuestion 응답이 도착하면 PostToolUse 훅이 자동으로 의사결
 
 #### 저장 위치
 
-- **세션 중**: `.moai/state/decisions/` (임시 JSON)
-- **세션 종료**: `~/.claude/projects/{hash}/memory/decisions.jsonl` (자동 메모리)
+preference 메모리는 오케스트레이터의 사용자 질문 채널에서 캡처된 결정을 `~/.claude/projects/{slug}/memory/user_decisions/`에 영속화합니다(SPEC-V3R6-ASKUSER-DECISION-MEMORY-001).
+
+**3-tier 계층:**
+
+- **core**: 최고 우선순위 hot 캐시. core hit 시 recall/archival에 접근하지 않음
+- **recall** (`recall.jsonl`): 최근 세션 사실
+- **archival** (`archival/`): 전체 검색 대상
 
 ### 4. Decay Policy (감쇠 정책)
 
-3개월 전의 선택이 오늘의 선호를 대변하지는 않습니다. 오래된 의사결정의 가중치는 점진적으로 감소합니다.
+과거의 선택이 오늘의 선호를 그대로 대변하지는 않습니다. transient 엔트리는 **power-law 감쇠 + 28일 TTL**(REQ-ADM-011, REQ-ADM-012)을 적용받아 가중치가 점진적으로 감소하고, TTL 경과 시 축출됩니다. core-tier 축출은 최저 가중치 항목부터 강등되는 방식입니다.
 
-#### 감쇠 함수
+관리 명령어:
 
+```bash
+moai preference decay-scan   # 백그라운드 감쇠 패스 1회 (하루 최대 1회, timestamp gate)
+moai preference toggle       # 세션 단위 개인화 on/off (비영구, 세션마다 리셋)
 ```
-weight(t) = initial_weight × exp(-decay_rate × days_ago)
-```
 
-#### 기본값
-- **Initial weight**: 1.0
-- **Decay rate**: 0.1 (7일마다 약 50% 감쇠)
-- **Retention period**: 90일 (이후 자동 아카이빙)
-
-#### 예시
-
-```
-어제 선택: weight = 0.95
-7일 전 선택: weight = 0.50
-30일 전 선택: weight = 0.04
-90일 이상: 아카이브 (권장 반영 제외)
-```
+{{< callout type="info" >}}
+**참고**: 정확한 감쇠 지수·반감기 상수 등 세부 파라미터는 런타임 구현 세부사항이며(power-law + 28일 TTL 계약만 고정), 이 페이지에서는 계약 수준으로만 서술합니다.
+{{< /callout >}}
 
 ## 의사결정 카테고리
 

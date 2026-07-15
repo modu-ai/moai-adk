@@ -166,7 +166,12 @@ echo "MOAI_PROJECT_DIR=$(pwd)" >> "$CLAUDE_ENV_FILE"
 | `TaskCompleted` | `handle-task-completed.sh` | SPEC 문서 존재 확인 |
 | `WorktreeCreate` | (없음 — MoAI 기본 비등록) | Claude Code 기본 worktree 동작 사용 (`isolation: worktree` agent용). 등록 시 active creator 컨트랙트 (디렉터리 생성 + path stdout echo) 의무. |
 | `WorktreeRemove` | (없음 — MoAI 기본 비등록) | Claude Code 기본 worktree 정리 동작 사용. 등록 시 observer-only 컨트랙트 (출력 불필요). |
-| `UserPromptSubmit` | `handle-user-prompt.sh` | 품질 게이트 자동 실행 |
+| `UserPromptSubmit` | `handle-user-prompt-submit.sh` | 프롬프트 전처리 (사용자 입력 전달) |
+| `Stop` | `handle-stop-goal.sh` | goal 엔진 — `/goal`/`/moai goal` 자율 지속 조건 평가 |
+| `Stop` | `sync-phase-quality-gate.sh` | sync-phase 품질 게이트 (lint + test + coverage delta) |
+| `PostToolUse` | `status-transition-ownership.sh` | SPEC frontmatter status 전환 감사 로깅 (advisory) |
+| `TaskCompleted` | `team-ac-verify.sh` | team 모드 per-AC PASS 증거 파일 검증 (기본 휴면) |
+| `Stop` / `SubagentStop` / `UserPromptSubmit` | `handle-harness-observe-*.sh` | self-evolving 하네스 관찰 (Loop 0) |
 
 ## 다음 단계
 

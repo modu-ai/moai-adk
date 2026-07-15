@@ -79,16 +79,32 @@ LLM 평가자는 방치하면 관대해지는 경향이 있습니다. 이를 구
 
 ```yaml
 harness:
-  level: auto              # auto | minimal | standard | thorough
+  default_profile: "default"        # evaluator_profile 미지정 SPEC의 기본값
   evaluator:
-    memory_scope: per_iteration   # FROZEN — 변경 불가
-    profiles:
-      default: .moai/config/evaluator-profiles/default.md
-      strict: .moai/config/evaluator-profiles/strict.md
-    aggregation: min              # min | mean
-    must_pass_dimensions:
-      - Functionality
-      - Security
+    memory_scope: per_iteration     # FROZEN — 변경 불가
+  mode_defaults:
+    solo: auto                      # sub-agent 모드: 자동 감지
+    team: auto                      # team 모드: 자동 감지
+    cg: thorough                    # CG 모드: 항상 thorough
+  auto_detection:
+    enabled: true
+    rules:
+      minimal:
+        conditions:
+          - "file_count <= 3 AND single_domain"
+      thorough:
+        conditions:
+          - "security_keywords OR payment_keywords present"
+  escalation:
+    enabled: true
+    max_escalations: 2
+  effort_mapping:
+    minimal:  "low"
+    standard: "medium"
+    thorough: "high"
+  levels:
+    thorough:
+      evaluator: true
 ```
 
 ## 관련 문서

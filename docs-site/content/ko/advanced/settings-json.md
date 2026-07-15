@@ -105,7 +105,7 @@ MoAI-ADK는 4개의 설정 파일 위치를 사용합니다.
   "fileSuggestion": {},
   "alwaysThinkingEnabled": false,
   "maxThinkingTokens": 0,
-  "statusLine": { "type": "command", "command": "moai statusline" },
+  "statusLine": { "type": "command", "command": "bash \"$CLAUDE_PROJECT_DIR/.moai/status_line.sh\"" },
   "outputStyle": "MoAI-Easy",
   "cleanupPeriodDays": 30,
   "env": {}
@@ -567,7 +567,7 @@ Claude Code 이벤트에 반응하는 스크립트를 등록합니다.
           {
             "type": "command",
             "command": "보안 가드 스크립트 경로",
-            "timeout": 5000
+            "timeout": 5
           }
         ]
       }
@@ -579,12 +579,12 @@ Claude Code 이벤트에 반응하는 스크립트를 등록합니다.
           {
             "type": "command",
             "command": "포맷터 스크립트 경로",
-            "timeout": 30000
+            "timeout": 10
           },
           {
             "type": "command",
             "command": "린터 스크립트 경로",
-            "timeout": 60000
+            "timeout": 30
           }
         ]
       }
@@ -697,7 +697,7 @@ Claude Code 하단에 표시되는 상태 표시줄을 설정합니다.
 {
   "statusLine": {
     "type": "command",
-    "command": "moai statusline",
+    "command": "bash \"$CLAUDE_PROJECT_DIR/.moai/status_line.sh\"",
     "padding": 0,
     "refreshInterval": 10
   }
@@ -707,9 +707,9 @@ Claude Code 하단에 표시되는 상태 표시줄을 설정합니다.
 | 필드 | 설명 |
 |------|------|
 | `type` | `"command"` (명령어 실행) |
-| `command` | 실행할 명령어 (상태 정보 반환) |
+| `command` | 실행할 명령어 (상태 정보 반환). MoAI-ADK는 `$CLAUDE_PROJECT_DIR/.moai/status_line.sh` 래퍼를 사용합니다 |
 | `padding` | 패딩 크기 |
-| `refreshInterval` | 갱신 주기 (밀리초) |
+| `refreshInterval` | 갱신 주기 (초) |
 
 ## 출력 스타일 설정
 
@@ -843,26 +843,26 @@ MoAI-ADK는 사용자 정의 상태 표시줄을 제공합니다.
 {
   "statusLine": {
     "type": "command",
-    "command": "moai statusline",
+    "command": "bash \"$CLAUDE_PROJECT_DIR/.moai/status_line.sh\"",
     "padding": 0,
     "refreshInterval": 10
   }
 }
 ```
 
-### MoAI Statusline v3 기능
+### MoAI Statusline 기능
 
-MoAI-ADK statusline v3에는 다음이 포함됩니다.
+MoAI-ADK statusline에는 다음이 포함됩니다.
 
-- **RGB 그라디언트 색상**: 시스템 상태에 따른 동적 색상 그라디언트
+- **그라디언트 색상**: 컨텍스트 사용률에 따른 동적 색상 그라디언트
 - **5H/7D 사용량 모니터링**: 5시간 및 7일 API 사용량 바 표시
 - **다중 라인 레이아웃**: Compact (3줄), default, full 디스플레이 모드
-- **테마**:
-  - **MoAI Dark** (기본값): RGB 그라디언트가 있는 다크 테마
-  - **MoAI Light**: 밝은 환경을 위한 라이트 테마
+- **테마** (`internal/statusline/theme.go` 정의):
+  - **catppuccin-mocha** (기본값): 다크 팔레트
+  - **catppuccin-latte**: 밝은 환경을 위한 라이트 팔레트
 
 {{< callout type="info" >}}
-**참고**: 이전 테마(Default, Catppuccin Mocha, Catppuccin Latte)는 MoAI Dark/MoAI Light로 이름이 변경되었습니다.
+**참고**: 알 수 없는 테마 이름은 `catppuccin-mocha`로 폴백됩니다. 색상 값은 `internal/tui/catppuccin.go`에서 가져옵니다.
 {{< /callout >}}
 
 statusline 테마와 세그먼트는 `.moai/config/sections/statusline.yaml`에서 설정합니다.
@@ -870,6 +870,8 @@ statusline 테마와 세그먼트는 `.moai/config/sections/statusline.yaml`에�
 ### MoAI 사용자 정의 Hooks
 
 MoAI-ADK는 다음 사용자 정의 Hook을 제공합니다.
+
+MoAI-ADK의 Hook은 **셸 스크립트 래퍼 → Go 바이너리** 구조입니다. Python/`uv`가 아니라, 각 이벤트마다 `.claude/hooks/moai/handle-<event>.sh` 래퍼가 stdin JSON을 `moai hook <event>` 서브커맨드로 전달합니다.
 
 ```json
 {
@@ -880,7 +882,8 @@ MoAI-ADK는 다음 사용자 정의 Hook을 제공합니다.
         "hooks": [
           {
             "type": "command",
-            "command": "/bin/zsh -l -c 'uv run \"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/session_start__show_project_info.py\"'"
+            "command": "bash \"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-session-start.sh\"",
+            "timeout": 30
           }
         ]
       }
@@ -891,8 +894,8 @@ MoAI-ADK는 다음 사용자 정의 Hook을 제공합니다.
         "hooks": [
           {
             "type": "command",
-            "command": "/bin/zsh -l -c 'uv run \"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/pre_compact__save_context.py\"'",
-            "timeout": 5000
+            "command": "bash \"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-compact.sh\"",
+            "timeout": 30
           }
         ]
       }
@@ -903,7 +906,8 @@ MoAI-ADK는 다음 사용자 정의 Hook을 제공합니다.
         "hooks": [
           {
             "type": "command",
-            "command": "/bin/zsh -l -c 'uv run \"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/session_end__auto_cleanup.py\" &'"
+            "command": "bash \"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-session-end.sh\"",
+            "timeout": 10
           }
         ]
       }
@@ -914,8 +918,8 @@ MoAI-ADK는 다음 사용자 정의 Hook을 제공합니다.
         "hooks": [
           {
             "type": "command",
-            "command": "/bin/zsh -l -c 'uv run \"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/pre_tool__security_guard.py\"'",
-            "timeout": 5000
+            "command": "bash \"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-pre-tool.sh\"",
+            "timeout": 5
           }
         ]
       }
@@ -926,18 +930,8 @@ MoAI-ADK는 다음 사용자 정의 Hook을 제공합니다.
         "hooks": [
           {
             "type": "command",
-            "command": "/bin/zsh -l -c 'uv run \"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/post_tool__code_formatter.py\"'",
-            "timeout": 30000
-          },
-          {
-            "type": "command",
-            "command": "/bin/zsh -l -c 'uv run \"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/post_tool__linter.py\"'",
-            "timeout": 60000
-          },
-          {
-            "type": "command",
-            "command": "/bin/zsh -l -c 'uv run \"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/post_tool__ast_grep_scan.py\"'",
-            "timeout": 30000
+            "command": "bash \"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-post-tool.sh\"",
+            "timeout": 10
           }
         ]
       }
@@ -945,6 +939,16 @@ MoAI-ADK는 다음 사용자 정의 Hook을 제공합니다.
   }
 }
 ```
+
+각 래퍼는 stdin JSON을 읽어 Go 바이너리에 넘기는 얇은 셸 스크립트입니다.
+
+```bash
+#!/bin/bash
+# .claude/hooks/moai/handle-session-start.sh
+moai hook session-start
+```
+
+셸 스크립트를 쓰는 이유: Python 시작 오버헤드가 없고(빠른 실행), `uv`/`python` 의존성이 필요 없으며, 크로스 플랫폼(bash, /bin/sh)입니다. Hook `timeout` 값의 단위는 **초**입니다(밀리초 아님).
 
 ### MoAI 출력 스타일
 
@@ -1013,8 +1017,8 @@ MoAI-ADK는 다음 사용자 정의 Hook을 제공합니다.
         "hooks": [
           {
             "type": "command",
-            "command": "python3 .claude/hooks/my-hooks/custom_check.py",
-            "timeout": 10000
+            "command": "bash .claude/hooks/my-hooks/custom_check.sh",
+            "timeout": 10
           }
         ]
       }
@@ -1034,7 +1038,7 @@ MoAI-ADK는 다음 사용자 정의 Hook을 제공합니다.
 }
 ```
 
-## v2.9.0 신규 설정 파일
+## 관련 설정 파일
 
 ### Harness 설정 (harness.yaml)
 
@@ -1045,23 +1049,35 @@ MoAI-ADK는 다음 사용자 정의 Hook을 제공합니다.
 | 레벨 | 설명 | evaluator | 건너뛰는 Phase |
 |------|------|-----------|---------------|
 | minimal | 빠른 반복 (간단한 변경) | 비활성 | 0, 0.5, 2.0, 2.5, 2.75, 2.8a, 2.9, 2.10 |
-| standard | 균형 잡힌 품질 (대부분 개발) | final-pass | 없음 |
-| thorough | 최대 품질 (중요한 기능) | per-sprint | 없음 |
+| standard | 균형 잡힌 품질 (대부분 개발) | 활성 | 없음 |
+| thorough | 최대 품질 (중요한 기능) | 활성 | 없음 |
 
 ```yaml
 # .moai/config/sections/harness.yaml
 harness:
-  default_level: standard
+  default_profile: "default"
+  mode_defaults:
+    solo: auto
+    team: auto
+    cg: thorough
   auto_detection:
-    minimal:
-      - "file_count <= 3 AND single_domain"
-      - "spec_type in [bugfix, docs, config]"
-    thorough:
-      - "security_keywords OR payment_keywords present"
-      - "spec_priority == critical"
+    enabled: true
+    rules:
+      minimal:
+        conditions:
+          - "file_count <= 3 AND single_domain"
+          - "spec_type in [bugfix, docs, config]"
+      thorough:
+        conditions:
+          - "security_keywords OR payment_keywords present"
+          - "spec_priority == critical"
+  effort_mapping:
+    minimal:  "low"
+    standard: "medium"
+    thorough: "high"
   levels:
     thorough:
-      evaluator_profile: "strict"
+      evaluator: true
 ```
 
 ### Constitution 설정 (constitution.yaml)

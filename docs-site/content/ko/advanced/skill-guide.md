@@ -55,7 +55,7 @@ flowchart TD
 
 MoAI-ADK 템플릿에는 총 **27개 `moai-*` 스킬**이 5개 기능 카테고리로 분류되어 있습니다 (Foundation 4 + Workflow 8 + Domain 5 + Reference 8 + Meta/Harness 2 = 27). 여기에 요청을 전문 스킬로 라우팅하는 `moai` umbrella 스킬 1개가 별도로 존재합니다. 사용자 프로젝트에서는 추가로 `harness-*` 사용자 정의 스킬을 작성할 수 있습니다. 프로그래밍 언어 지원은 `rules/moai/languages/` 아래의 규칙으로 제공되며 별도 스킬이 아닙니다.
 
-이 숫자도 다이어트의 결과입니다 — 스킬 카탈로그는 v3 기간 동안 48 → 38 → 27개로 정련되었습니다.
+이 숫자도 다이어트의 결과입니다 — 스킬 카탈로그는 v3 기간 동안 48 → 38 → 27개로 정련되었습니다. 사용자 정의 하네스 스킬의 현재 접두사는 `hns-*`입니다(레거시 `harness-*`도 인식됨).
 
 ### Foundation (핵심 철학) - 4개
 
@@ -106,10 +106,10 @@ MoAI-ADK 템플릿에는 총 **27개 `moai-*` 스킬**이 5개 기능 카테고�
 
 | 스킬 이름              | 설명                                        |
 | ---------------------- | ------------------------------------------- |
-| `moai-meta-harness`    | 프로젝트 특화 에이전트 팀 동적 생성         |
+| `moai-meta-harness`    | **DEPRECATED** — 레거시 7-Phase 메타 하네스. v4 Builder(`/moai:harness <자연어 요청>`)로 리다이렉트 |
 | `moai-harness-learner` | Harness 학습 서브시스템, 자동 업데이트 제안 |
 
-> 27개 `moai-*` 스킬은 MoAI-ADK 템플릿에 기본으로 포함되며, 각 스킬은 독립적으로 로드되어 토큰을 절약합니다. 사용자는 추가적으로 프로젝트별 `harness-*` 사용자 정의 스킬을 작성할 수 있습니다.
+> 27개 `moai-*` 스킬은 MoAI-ADK 템플릿에 기본으로 포함되며, 각 스킬은 독립적으로 로드되어 토큰을 절약합니다. 사용자는 추가적으로 프로젝트별 `hns-*` 사용자 정의 하네스 스킬을 작성할 수 있습니다(레거시 `harness-*` 접두사도 인식됨).
 
 ## 점진적 공개 시스템
 
@@ -175,20 +175,25 @@ flowchart TD
 ### 트리거 설정 예시
 
 ```yaml
-# 스킬 프론트매터에서 트리거 정의
-triggers:
-  keywords: ["api", "database", "authentication"] # 키워드 매칭
-  agents: ["manager-spec", "manager-develop"] # 에이전트 호출 시
-  phases: ["plan", "run"] # 워크플로우 단계
-  languages: ["python", "typescript"] # 프로그래밍 언어
+# 실제 SKILL.md 프론트매터 (자동 발견은 description/when_to_use 프로즈로 구동됨)
+name: moai-domain-backend
+description: >
+  Backend development specialist ... Use when designing APIs,
+  implementing server logic, authentication, or authorization.
+when_to_use: >
+  Use for backend work: API design (REST, GraphQL, gRPC) ...
+allowed-tools: Read, Write, Edit, Bash(go:*), Grep, Glob   # CSV 문자열 (YAML 배열 아님)
+user-invocable: false
+metadata:
+  version: "1.0.0"
+  category: "domain"
 ```
 
-**트리거 우선순위:**
+**자동 로드 메커니즘:**
 
-1. **키워드** (keywords): 사용자 메시지에서 키워드를 감지하면 즉시 로드
-2. **에이전트** (agents): 특정 에이전트가 호출될 때 자동 로드
-3. **단계** (phases): Plan/Run/Sync 단계에 따라 로드
-4. **언어** (languages): 작업 중인 파일의 프로그래밍 언어에 따라 로드
+- Claude Code는 `description` / `when_to_use` 프로즈를 읽어 사용자 요청의 도메인과 매칭해 스킬을 발견합니다(별도의 `triggers:` 블록은 없음).
+- `allowed-tools`는 **CSV 문자열**로 작성합니다(공백 구분 아님, YAML 배열 아님).
+- 오케스트레이터는 에이전트 spawn 시 `At start, invoke Skill("<name>")` 지시를 주입해 도메인 스킬을 라우팅합니다(`skill-routing.md`).
 
 ## 스킬 사용법
 

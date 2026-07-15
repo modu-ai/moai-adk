@@ -48,7 +48,7 @@ flowchart TD
 
 {{< icon arrow-right >}} `/moai goal`은 MoAI가 소유한 프로그래밍 방식 reimplementation입니다. 네이티브 `/goal`이 HUMAN-ONLY이므로, 오케스트레이터가 파이프라인 내에서 자율 연속 루프를 등록하고 무장(arm)할 수 있는 유일한 경로입니다.
 
-네 개의 동사를 제공합니다:
+세 개의 동사를 제공합니다:
 
 ```bash
 moai goal arm "<completion-condition>"  # 조건 등록 + 무장
@@ -74,7 +74,7 @@ moai goal clear                         # 조건 제거 (루프 종료)
 - **명시된 검증 방법** — Claude가 어떻게 증명해야 하는지 ("`go test ./... exits 0`")
 - **중요한 제약** — 경로에서 변경되지 말아야 할 것 ("수정된 테스트 파일 외에는 변경 금지")
 
-터한도를 포함하여 루프를 바운드하세요 ("`or stop after 20 turns`"). `/clear`를 실행하면 활성 goal도 제거됩니다. `--resume` / `--continue`로 세션을 재개하면 goal이 복원됩니다.
+턴 한도를 포함하여 루프를 바운드하세요 ("`or stop after 20 turns`"). `/clear`를 실행하면 활성 goal도 제거됩니다. `--resume` / `--continue`로 세션을 재개하면 goal이 복원됩니다.
 
 ## 구현 vs 로드맵
 

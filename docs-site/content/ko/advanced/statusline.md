@@ -123,7 +123,7 @@ internal/statusline/renderer.go (3-line v3 layout)
   - `🪫` (경고, 50-79% scaled)
   - `🪫` (위험, ≥80% scaled, 색상 추가)
 - **`(⚠️/clear)` handoff suffix**:
-  - 1M context 모델 (Opus 4.7): used_percentage ≥50% (raw context_window_size 기준)
+  - 1M context 모델 (Opus 4.8, GLM-5.2): used_percentage ≥50% (raw context_window_size 기준)
   - 200K context 모델 (Sonnet/Haiku): used_percentage ≥90%
   - 의미: 다음 turn 시작 전에 `/clear` 권고 + paste-ready resume message 활용
 - **예시**: `🪫 CW: ███████░░░ 72% (⚠️/clear)`
@@ -288,15 +288,23 @@ Statusline의 새로고침 주기는 `settings.json`의 `statusLine.refreshInter
 
 ## Handoff Guide — `(⚠️/clear)` 권고 기준
 
-CW bar의 `(⚠️/clear)` suffix는 컨텍스트 사용량이 모델별 임계값을 넘으면 활성화됩니다. 이는 SSE stall 위험을 사전에 방지하고 paste-ready resume message 활용을 권장하는 시각적 마커입니다.
+CW bar의 handoff suffix는 컨텍스트 사용량이 모델별 임계값을 넘으면 활성화됩니다. 이는 SSE stall 위험을 사전에 방지하고 paste-ready resume message 활용을 권장하는 시각적 마커이며, **2단계**로 동작합니다.
+
+- **soft 단계** `(⚠️/clear)`: 밴드의 soft 임계값 도달 시
+- **hard 단계** `(🛑/clear!)`: auto-compact-aware ceiling(`min(cap, auto-compact-threshold + margin)`) 도달 시 (`internal/statusline/renderer.go`). 런타임 auto-compact가 종종 이 ceiling을 선점하므로 hard 단계는 실제로는 드물게 발화되는 상위 신호입니다.
 
 | 모델 클래스 | Context Window | 임계값 | 권고 시점 |
 |------------|----------------|--------|----------|
-| **1M context** (Opus 4.7) | 1,000,000 tokens | **≥50%** | ~500K 토큰 사용 |
+| **1M context** (Opus 4.8) | 1,000,000 tokens | **≥50%** | ~500K 토큰 사용 |
+| **256K context** (Fable) | 256,000 tokens | **≥90%** | ~230K 토큰 사용 |
 | **200K context** (Sonnet, Haiku) | 200,000 tokens | **≥90%** | ~180K 토큰 사용 |
 | 기타 / 알 수 없음 | — | 표시 안 함 | (안전 default) |
 
-> 임계값은 `internal/statusline/renderer.go shouldShowHandoffGuide()` 함수에서 강제됩니다. 이 임계값은 `.claude/rules/moai/workflow/context-window-management.md` HARD rule과 일치합니다.
+> 임계값은 `internal/statusline/renderer.go`의 handoff 단계 판정에서 강제됩니다. 이 임계값은 `.claude/rules/moai/workflow/context-window-management.md` HARD rule과 일치합니다.
+
+### GLM 컨텍스트 게이지 보정 (Issue #653)
+
+GLM-5.2는 실제 1M 컨텍스트 모델이지만, Claude Code는 provider와 무관하게 Claude 슬롯 기준으로 `context_window_size`를 보고하므로 GLM 세션에서 raw telemetry(`effectiveWindow`)가 ~180K로 잘못 표시될 수 있습니다. MoAI는 이를 `ResolveGLMContextWindow`(`internal/statusline/memory.go`)로 보정합니다 — `MOAI_STATUSLINE_CONTEXT_SIZE` 환경변수(명시적 오버라이드) 또는 `llm.yaml`의 `glm.context_windows` 테이블(glm-5.2 → 1,000,000)에서 해석합니다. GLM 세션에서는 raw `effectiveWindow`가 아니라 MoAI statusline의 CW%를 신뢰하세요.
 
 활성화 시 사용자 흐름은 다음과 같습니다.
 

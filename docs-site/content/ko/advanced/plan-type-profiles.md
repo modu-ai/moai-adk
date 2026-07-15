@@ -72,11 +72,15 @@ API에서는 달러가 유일한 제약입니다. rev2 수정: 단가는 Sonnet�
 
 {{< icon warning warn >}} **정직성 고지 (REQ-DA-060)**: GLM 백엔드 effort 오버레이의 wire 유효성은 라이브 GLM 세션 아웃바운드 관측이 필요한 실증 과제입니다.
 
-GLM 백엔드(`moai glm` / `moai cg` GLM 패널)에서는 Claude의 5단 effort(max / xhigh / high / medium / low)를 GLM의 3단 reasoning_effort(high / max)로 collapse하여 적용합니다. 구현 내용:
+GLM 백엔드(`moai glm` / `moai cg` GLM 패널)에서는 Claude의 5단 effort(max / xhigh / high / medium / low)를 z.ai가 실제로 도달 가능한 3-state로 collapse하여 적용합니다(SSOT: `llm.yaml`). 구현 내용:
 
 - `IsGLMBackend` 감지로 GLM 세션 식별
-- 5단 → 3단 collapse 매핑 (max/xhigh → max, high → high, medium/low → GLM 미지원)
-- coding 작업 시 max override
+- 5단 → 3-state collapse 매핑:
+  - `low` → **thinking-off** (thinking 비활성)
+  - `medium` / `high` → **reasoning-high** (thinking 활성, reasoning_effort=high)
+  - `xhigh` / `max` → **reasoning-max** (thinking 활성, reasoning_effort=max)
+  - (인식 불가 값 → reasoning-max, 과소 추론 방지 totality 절)
+- coding-max override: `manager-develop`만 collapse 결과와 무관하게 reasoning-max 강제 (`builder-harness`는 override 대상에서 제거되어 표준 collapse `high → reasoning-high`를 따름)
 
 **구현 + 배선 완료, wire 유효성 실증 예정** — z.ai가 Anthropic-compat shim으로 `ANTHROPIC_REASONING_EFFORT` 환경변수 값을 실제로 소비하는지는 라이브 GLM 세션 아웃바운드 관측이 필요한 run-phase 실증 과제입니다. 이 페이지에 "동작 보장"으로 서술하지 않으며, "구현 + 배선 완료, wire 유효성 실증 예정"으로 기재합니다.
 

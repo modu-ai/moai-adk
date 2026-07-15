@@ -65,73 +65,82 @@ Harness v4 Builder는 `/moai:harness <자연어 요청>`을 통해 **프로젝�
 
 ## Manifest 기반 Runner
 
-Harness v4는 **Manifest 기반 Runner**를 사용하여 생성된 팀을 운영합니다. 어떤 phase에 어떤 팀원이, 어떤 모델과 권한 모드로 투입되는지가 manifest 한 파일에 선언됩니다 — 모델 배정을 선언으로 관리하는 토크노믹스 원칙이 여기에도 적용됩니다.
+Harness v4는 **Manifest 기반 Runner**를 사용하여 생성된 specialist 팀을 운영합니다. 어떤 도메인에 어떤 specialist가, 어떤 실행 원시(primitive)·격리·effort·모델로 투입되는지가 manifest 한 파일에 선언됩니다 — 모델 배정을 선언으로 관리하는 토크노믹스 원칙이 여기에도 적용됩니다. specialist 수는 **3~7개**를 HARD 상한으로 둡니다.
 
 ### manifest.json 구조
 
 ```json
 {
-  "spec_id": "HARNESS-PROJECT-001",
-  "name": "My Project Custom Team",
-  "version": "1.0.0",
-  "created_at": "2026-07-01T10:00:00Z",
-  "phases": [
+  "name": "oss-docs",
+  "domain": "OSS 프로젝트 공개 문서 — README 4-locale + Hugo docs-site",
+  "patterns": ["Pipeline", "Fan-out/Fan-in", "Producer-Reviewer"],
+  "specialists": [
     {
-      "name": "plan",
-      "teammates": [
-        {
-          "name": "researcher",
-          "model": "haiku",
-          "mode": "plan",
-          "skills": ["moai-foundation-core"]
-        }
-      ]
+      "role": "content-author",
+      "description": "canonical-locale 원문 저작 (docs-site ko, README en)",
+      "agent_file": ".claude/agents/harness/hns-oss-docs-content-author-specialist.md",
+      "primitive": "sub-agent",
+      "isolation": "none",
+      "effort": "high",
+      "model": "opus"
     },
     {
-      "name": "run",
-      "teammates": [
-        {
-          "name": "implementer",
-          "model": "inherit",
-          "mode": "acceptEdits",
-          "isolation": "worktree_optional"
-        }
-      ]
+      "role": "locale-translator",
+      "description": "동일 PR 내 3개 파생 locale 도출 (병렬 fan-out)",
+      "agent_file": ".claude/agents/harness/hns-oss-docs-locale-translator-specialist.md",
+      "primitive": "adversarial-fan-out",
+      "isolation": "none",
+      "effort": "medium",
+      "model": "sonnet"
     }
   ],
-  "worktree_isolation": "L1_optional"
+  "sprint_contract": {
+    "dimensions": ["locale-parity", "build-clean", "style-compliance", "content-fidelity"],
+    "thresholds": { "locale-parity": 1.0, "build-clean": 1.0 },
+    "must_pass": ["locale-parity", "build-clean"]
+  },
+  "companion_skills": ["hns-oss-docs-i18n-rules", "hns-oss-docs-verify"],
+  "entry_command": "/harness:oss-docs",
+  "runner_workflow": "hns-oss-docs-run.js"
 }
 ```
 
+- `primitive`: 실행 원시 (`sub-agent`, `adversarial-fan-out` 등)
+- `isolation` / `effort` / `model`: specialist별 격리 수준, 추론 강도, 모델 티어를 목적에 맞게 배정
+- `sprint_contract`: Sprint Contract — 품질 차원과 must_pass 게이트
+- `schedule` (선택): 반복 실행이 필요한 하네스는 `mode: discovery-only` 스케줄 객체를 둘 수 있음
+
 ### Runner 동작
 
-1. **Phase 진입**: manifest의 phase 시퀀스를 따라 진행
-2. **Teammate Spawn**: 각 phase의 teammates를 동적으로 생성
-3. **Isolation 적용**: 조건부 worktree 격리 적용
-4. **Result Aggregation**: 각 teammate의 결과를 통합
+1. **Specialist 위임**: manifest의 specialist 시퀀스를 patterns에 따라 진행
+2. **Fan-out Spawn**: 병렬 원시(adversarial-fan-out 등)는 동시 spawn
+3. **Isolation 적용**: specialist별 격리 설정 적용
+4. **Result Aggregation**: 각 specialist의 결과를 Sprint Contract로 검증·통합
 
 ## Harness Lifecycle Commands
 
-Harness v4 Builder로 생성된 하네스는 `/harness:<name>` 명령어로 관리됩니다.
+Harness v4 Builder로 생성된 하네스는 `moai harness` CLI로 관리합니다.
 
 ### 사용 가능한 명령어
 
 ```bash
-# 생성된 하네스 목록 조회
-/harness list
+# 생성된 v4 하네스 목록 조회 (이름 + 도메인 + entry 명령어)
+moai harness list
 
-# 특정 하네스 상태 확인
-/harness:my-project-team status
+# 하네스 manifest·specialist 편집 경로 확인
+moai harness edit <name>
 
-# 하네스 설정 편집
-/harness:my-project-team edit
+# 하네스 원자적 삭제 (command + workflow + specialists + skills + manifest)
+moai harness remove <name>
 
-# 하네스 삭제
-/harness:my-project-team remove
+# 참조 무결성 스모크 게이트
+moai harness doctor
 
 # Harness v4 Builder로 새 하네스 생성
 /moai:harness <자연어 요청>
 ```
+
+학습 서브시스템 관리 동사도 `moai harness`에 있습니다: `moai harness status`(관찰/티어/진화 요약), `moai harness apply`(대기 중 제안 적용), `moai harness rollback <date>`(적용된 진화 되돌리기), `moai harness disable`(학습 비활성화).
 
 ## 자연어 요청으로 하네스 생성
 

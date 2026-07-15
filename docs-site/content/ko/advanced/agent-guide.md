@@ -39,46 +39,50 @@ MoAI-ADK는 **11개 핵심 에이전트** (10개 MoAI 사용자 정의 + 1개 An
 
 ### Manager 에이전트 (5개)
 
-| 에이전트 | 역할 | 단계 | 주요 스킬 |
-|----------|------|------|----------|
-| `manager-spec` | SPEC 문서 생성, GEARS 형식 요구사항 | Plan | `moai-workflow-spec` |
-| `manager-develop` | DDD/TDD/autofix 순환 구현 (quality.yaml의 cycle_type) | Run | `moai-workflow-ddd`, `moai-workflow-tdd` |
-| `manager-docs` | 문서 생성, CHANGELOG, README 동기화 | Sync | `moai-workflow-project` |
-| `manager-git` | PR 생성, Git 브랜칭, 머지 전략 | PR (Tier L) | `moai-foundation-core` |
-| `manager-design` | Claude Design 양방향 협업 (D1-D5 파이프라인) | Design | `moai-foundation-core` |
+| 에이전트 | 역할 | 단계 | 모델 / effort | 주요 스킬 |
+|----------|------|------|---------------|----------|
+| `manager-spec` | SPEC 문서 생성, GEARS 형식 요구사항 | Plan | inherit / xhigh {{< icon flash danger >}} | `moai-workflow-spec` |
+| `manager-develop` | DDD/TDD/autofix 순환 구현 (quality.yaml의 cycle_type) | Run | inherit / xhigh {{< icon flash danger >}} | `moai-workflow-ddd`, `moai-workflow-tdd` |
+| `manager-docs` | 문서 생성, CHANGELOG, README 동기화 | Sync | sonnet / medium {{< icon flash primary >}} | `moai-workflow-project` |
+| `manager-git` | PR 생성, Git 브랜칭, 머지 전략 | PR (Tier L) | sonnet / low {{< icon flash muted >}} | `moai-foundation-core` |
+| `manager-design` | Claude Design 양방향 협업 (D1-D5 파이프라인) | Design | inherit / xhigh {{< icon flash danger >}} | `moai-foundation-core` |
 
 ### Evaluator 에이전트 (2개)
 
-| 에이전트 | 역할 | 평가 대상 | 주요 스킬 |
-|----------|------|---------|----------|
-| `plan-auditor` | Plan 단계 독립 감사, GEARS 준수, 편향 방지 | SPEC 완성도 | `moai-foundation-core`, `moai-foundation-thinking` |
-| `sync-auditor` | Sync 단계 품질 점수 (4차원: Functionality, Security, Craft, Consistency) | 구현 품질 | `moai-foundation-quality`, `moai-foundation-core` |
+| 에이전트 | 역할 | 평가 대상 | 모델 / effort | 주요 스킬 |
+|----------|------|---------|---------------|----------|
+| `plan-auditor` | Plan 단계 독립 감사, GEARS 준수, 편향 방지 | SPEC 완성도 | inherit / xhigh {{< icon flash danger >}} | `moai-foundation-core`, `moai-foundation-thinking` |
+| `sync-auditor` | Sync 단계 품질 점수 (4차원: Functionality, Security, Craft, Consistency) | 구현 품질 | inherit / xhigh {{< icon flash danger >}} | `moai-foundation-quality`, `moai-foundation-core` |
 
 계획과 감사가 분리되어 있다는 점이 핵심입니다 — 만든 사람이 자기 작업을 검사하지 않습니다.
 
 ### Builder 에이전트 (1개)
 
-| 에이전트 | 역할 | 생성물 |
-|----------|------|--------|
-| `builder-harness` | 프로젝트 고유의 동적 에이전트 팀 생성 (Socratic 인터뷰 기반) | `.claude/agents/harness/`, `.moai/harness/manifest.json` |
+| 에이전트 | 역할 | 모델 / effort | 생성물 |
+|----------|------|---------------|--------|
+| `builder-harness` | 프로젝트 고유의 동적 specialist 팀 생성 (Socratic 인터뷰 기반) | inherit / high {{< icon flash warn >}} | `.claude/agents/harness/`, `.moai/harness/manifest.json` |
 
 ### Advisor 에이전트 (1개)
 
-| 에이전트 | 역할 | 특징 |
-|----------|------|------|
-| `super-advisor` | 고추론 자문 — 교착 상태, 설계 결정점, 세컨드 오피니언 (E1-E4 에스컬레이션) | 비구속 처방 — 최종 결정은 오케스트레이터 |
+| 에이전트 | 역할 | 모델 / effort | 특징 |
+|----------|------|---------------|------|
+| `super-advisor` | 고추론 자문 — 교착 상태, 설계 결정점, 세컨드 오피니언 (E1-E4 에스컬레이션) | inherit / xhigh {{< icon flash danger >}} | 비구속 처방 — 최종 결정은 오케스트레이터 |
 
 ### Specialist 에이전트 (1개)
 
-| 에이전트 | 역할 | 특징 |
-|----------|------|------|
-| `e2e-tester` | 웹/모바일/데스크탑 E2E 테스트 실행 (여정 스크립팅, CLI 우선 스위트 실행, 아티팩트 관리) | `/moai e2e` 워크플로우의 실행 주체 — 선택 질문은 오케스트레이터 담당 |
+| 에이전트 | 역할 | 모델 / effort | 특징 |
+|----------|------|---------------|------|
+| `e2e-tester` | 웹/모바일/데스크탑 E2E 테스트 실행 (여정 스크립팅, CLI 우선 스위트 실행, 아티팩트 관리) | inherit / high {{< icon flash warn >}} | `/moai e2e` 워크플로우의 실행 주체 — 선택 질문은 오케스트레이터 담당 |
 
 ### 내장 에이전트 (1개, Anthropic)
 
-| 에이전트 | 역할 | 특징 |
-|----------|------|------|
-| `Explore` | 읽기 전용 코드 탐색 및 분석 | Haiku 모델, Read-only 도구 |
+| 에이전트 | 역할 | 모델 / effort | 특징 |
+|----------|------|---------------|------|
+| `Explore` | 읽기 전용 코드 탐색 및 분석 | inherit (모델 미고정) | Read-only 도구 |
+
+{{< callout type="info" >}}
+**4단계 토큰 비용 티어** ({{< icon flash danger >}} xhigh · {{< icon flash warn >}} high · {{< icon flash primary >}} medium · {{< icon flash muted >}} low): `model: inherit`은 부모 세션 모델을 상속하며, effort가 추론 토큰 예산을 결정합니다. 지능 민감 작업(계획·감사·구현)은 xhigh, 반복·문서 작업은 medium, PR 생성은 low로 목적에 맞게 배정됩니다.
+{{< /callout >}}
 
 ## Manager-Develop 도메인 컨텍스트 주입
 
@@ -189,7 +193,7 @@ Claude Code의 공식 Sub-agent 시스템은 MoAI-ADK 에이전트 구조의 기
 
 | 특징 | 설명 |
 |------|------|
-| **독립 컨텍스트** | 각 sub-agent는 자체 200K 토큰 컨텍스트 창에서 실행 |
+| **독립 컨텍스트** | 각 sub-agent는 모델에 따른 자체 컨텍스트 창에서 실행 (모델 의존 — 1M급 모델도 존재) |
 | **사용자 정의 프롬프트** | 전문 시스템 프롬프트로 역할과 행동 정의 |
 | **특정 도구 액세스** | 필요한 도구만 선택적으로 제공 |
 | **독립 권한** | 개별 권한 모드 설정 가능 |
@@ -201,7 +205,7 @@ Claude Code의 공식 Sub-agent 시스템은 MoAI-ADK 에이전트 구조의 기
 | 서브 에이전트 생성 제한 | 하위 에이전트의 중첩 생성은 `Agent` 도구 허용 여부로 통제 — MoAI 에이전트는 중첩하지 않음 |
 | AskUserQuestion 제한 | 하위 에이전트는 사용자와 직접 상호작용할 수 없음 (blocker 보고서로 반환) |
 | 스킬 비상속 | 부모 대화의 스킬을 상속하지 않음 |
-| 독립 컨텍스트 | 각 에이전트는 독립적인 200K 토큰 컨텍스트를 가짐 |
+| 독립 컨텍스트 | 각 에이전트는 모델에 따른 독립적인 컨텍스트 창을 가짐 (모델 의존) |
 
 ## Agent Teams 정적 계층 — v3.0에서 은퇴
 
