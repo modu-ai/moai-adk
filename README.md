@@ -49,13 +49,13 @@ Agentic coding is fast to start and expensive to sustain. Three costs show up on
 - **AI-generated code ships unverified.** The model asserts the change is correct; nothing gates it. Tests, lint, coverage, and security checks are optional afterthoughts, so quality is a claim rather than a property of every merge.
 - **Long sessions die at the context limit and lose work.** When the context window fills, the session stalls mid-task. Without a handoff, the work-in-progress and the reasoning behind it are gone, and the next session starts from scratch.
 
-MoAI-ADK treats all three as engineering problems with mechanisms, not as facts of life.
+These three costs share one root cause: the model is a per-token stochastic worker with no memory of your budget, your quality bar, or where the last session ended. Properties like a cost ceiling, a passing test suite, or continuity across `/clear` cannot be prompted into existence one turn at a time — a turn that forgets them is one bad sample away, every turn. They have to be enforced by the system *around* the model, which holds them steady no matter how any single turn goes. That system is a harness — and building it is where harness engineering, and Anthropic's own agent guidance, are converging. MoAI-ADK treats all three as engineering problems with mechanisms, not as facts of life.
 
 ---
 
 ## What MoAI-ADK Does About It
 
-Each pain maps to a concrete mechanism with measurable evidence.
+If the problems are structural, the fixes have to be structural too. Each row below is a mechanism that runs *outside* the model's per-turn discretion — declarative config, hooks, and gates — so it holds even when the model errs. Each pain maps to a concrete mechanism with measurable evidence.
 
 | Pain | Mechanism | Evidence |
 |------|-----------|----------|
@@ -82,6 +82,8 @@ MoAI-ADK is a harness that runs **on top of** Claude Code — it does not replac
 | Session continuity | Manual re-prompt after `/clear` | Auto handoff — paste-once resume with progress and preconditions |
 | Learning | Static across sessions | Self-evolving harness (observation → heuristic → rule → auto-update), always behind an approval gate |
 | Multi-agent | Manual, per-prompt | 11-agent catalog with Analyze-First routing and separated planning/auditing roles |
+
+The dividing line is discretion versus guarantee: in the left column each behavior depends on the model choosing well on this particular turn; in the right column the same behaviors are properties of the pipeline, enforced whether or not any single turn gets it right.
 
 ---
 
