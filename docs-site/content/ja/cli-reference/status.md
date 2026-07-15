@@ -1,6 +1,6 @@
 ---
 title: プロジェクト状態
-weight: 65
+weight: 20
 draft: false
 ---
 

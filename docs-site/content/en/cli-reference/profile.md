@@ -1,6 +1,6 @@
 ---
 title: Profile Management
-weight: 80
+weight: 40
 draft: false
 ---
 

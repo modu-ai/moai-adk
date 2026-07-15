@@ -93,5 +93,5 @@ moai update --slim           # 以 slim 模式更新
 
 - [安装](/zh/getting-started/installation) — 安装指南
 - [初始设置](/zh/getting-started/init-wizard) — init 向导
-- [更新](/zh/getting-started/update) — 更新指南
+- [更新](/zh/cli-reference/update) — 更新指南
 - [技能指南](/zh/advanced/skill-guide) — 技能编写指南

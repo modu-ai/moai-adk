@@ -1,0 +1,15 @@
+index:
+  title: "CLIリファレンス"
+  display: "hidden"
+inventory:
+  title: "moai inventory コマンド"
+status:
+  title: "プロジェクト状態"
+update:
+  title: "アップデート"
+profile:
+  title: "プロファイル管理"
+web:
+  title: "moai web コンソール"
+doctor:
+  title: "moai doctor 診断"

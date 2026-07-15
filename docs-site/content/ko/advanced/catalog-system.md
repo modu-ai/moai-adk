@@ -117,5 +117,5 @@ moai update                  # 초기화 모드에 따라 자동 결정
 
 - [설치](/ko/getting-started/installation) — 설치 가이드
 - [초기 설정](/ko/getting-started/init-wizard) — init 마법사
-- [업데이트](/ko/getting-started/update) — 업데이트 가이드
+- [업데이트](/ko/cli-reference/update) — 업데이트 가이드
 - [스킬 가이드](/ko/advanced/skill-guide) — 스킬 작성 가이드

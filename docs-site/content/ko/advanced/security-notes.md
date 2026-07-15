@@ -198,7 +198,7 @@ moai update
 curl -fsSL https://raw.githubusercontent.com/modu-ai/moai-adk/main/install.sh | bash
 ```
 
-자세한 내용: [업데이트](/ko/getting-started/update/)
+자세한 내용: [업데이트](/ko/cli-reference/update/)
 
 ## 자체 점검 체크리스트 (Self-Audit Checklist)
 
@@ -258,5 +258,5 @@ stat -c '%a' ~/.moai/.env.glm 2>/dev/null \
 ### 관련 페이지
 
 - [settings.json 가이드](/ko/advanced/settings-json/) — `settings.local.json` 권한 섹션
-- [업데이트](/ko/getting-started/update/) — checksum 검증 섹션
+- [업데이트](/ko/cli-reference/update/) — checksum 검증 섹션
 - [CG 모드](/ko/multi-llm/cg-mode/) — tmux 환경 변수 주입 보안 모델

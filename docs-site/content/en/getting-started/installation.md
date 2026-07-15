@@ -403,7 +403,7 @@ moai update --yes
 **Auto-preserved items**: User settings, custom agents, custom commands, custom skills, custom hooks, SPEC documents, and reports are preserved automatically on update. Template files you modified are backed up and then 3-way merged.
 {{< /callout >}}
 
-For details, see the [Update guide](https://adk.mo.ai.kr/getting-started/update).
+For details, see the [Update guide](https://adk.mo.ai.kr/cli-reference/update).
 
 ## Uninstalling
 

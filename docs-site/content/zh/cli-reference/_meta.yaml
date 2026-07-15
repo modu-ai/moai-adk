@@ -1,0 +1,15 @@
+index:
+  title: "CLI 参考"
+  display: "hidden"
+inventory:
+  title: "moai inventory 命令"
+status:
+  title: "项目状态"
+update:
+  title: "更新"
+profile:
+  title: "配置文件管理"
+web:
+  title: "moai web 控制台"
+doctor:
+  title: "moai doctor 诊断"

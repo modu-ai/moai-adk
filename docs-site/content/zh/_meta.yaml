@@ -4,18 +4,21 @@
 "core-concepts":
   title: "核心概念"
   weight: 20
-"claude-code":
-  title: "Claude Code 指南"
-  weight: 25
 "workflow-commands":
   title: "工作流命令"
   weight: 30
 "utility-commands":
   title: "实用命令"
   weight: 40
+"cli-reference":
+  title: "CLI 参考"
+  weight: 45
+"claude-code":
+  title: "Claude Code 指南"
+  weight: 55
 "cost-optimization":
   title: "成本优化"
-  weight: 50
+  weight: 70
 guides:
   title: "指南"
   weight: 85

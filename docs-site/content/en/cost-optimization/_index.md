@@ -1,6 +1,6 @@
 ---
 title: Cost Optimization
-weight: 50
+weight: 70
 draft: false
 ---
 

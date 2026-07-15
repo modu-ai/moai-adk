@@ -117,5 +117,5 @@ moai update                  # 初期化モードに応じて自動決定
 
 - [インストール](/ja/getting-started/installation) — インストールガイド
 - [初期設定](/ja/getting-started/init-wizard) — init ウィザード
-- [アップデート](/ja/getting-started/update) — アップデートガイド
+- [アップデート](/ja/cli-reference/update) — アップデートガイド
 - [スキルガイド](/ja/advanced/skill-guide) — スキル作成ガイド

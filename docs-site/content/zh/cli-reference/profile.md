@@ -1,6 +1,6 @@
 ---
 title: 配置文件管理
-weight: 80
+weight: 40
 draft: false
 ---
 

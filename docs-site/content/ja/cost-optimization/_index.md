@@ -1,6 +1,6 @@
 ---
 title: コスト最適化
-weight: 50
+weight: 70
 draft: false
 ---
 

@@ -89,7 +89,7 @@ flowchart TB
 {{< /callout >}}
 
 ```bash
-> /moai plan "사용자 인증 기능 구현"
+> /moai plan "实现用户认证功能"
 ```
 
 该命令执行以下操作：
@@ -284,7 +284,7 @@ sequenceDiagram
 要一次性自动执行所有步骤，用自然语言发出请求即可：
 
 ```bash
-> /moai "사용자 인증 기능 구현"
+> /moai "实现用户认证功能"
 ```
 
 请求会经过 **Analyze-First** 路由 — 无论用哪种语言发出请求，都先分析意图，上下文不足时通过提问补全，然后自动执行 Plan → Run → Sync 流水线。
@@ -313,33 +313,33 @@ flowchart TB
 ### 示例 1：简单的 API 端点
 
 ```bash
-# 1. 프로젝트 문서 생성 (최초 1회)
+# 1. 生成项目文档（首次一次）
 > /moai project
 
-# 2. SPEC 생성
-> /moai plan "사용자 목록 조회 API 엔드포인트 구현"
+# 2. 生成 SPEC
+> /moai plan "实现用户列表查询 API 端点"
 > /clear
 
-# 3. 구현
+# 3. 实现
 > /moai run SPEC-001
 > /clear
 
-# 4. 문서화 및 PR
+# 4. 文档化与 PR
 > /moai sync SPEC-001
 ```
 
 ### 示例 2：复杂功能（自然语言自动化）
 
 ```bash
-# 프로젝트 문서가 이미 있다면 자연어로 한 번에 실행
-> /moai "JWT 인증 미들웨어 구현"
+# 若项目文档已存在，可用自然语言一次性执行
+> /moai "实现 JWT 认证中间件"
 ```
 
 ### 示例 3：并行开发（使用 Worktree）
 
 ```bash
-# 독립된 환경에서 병렬 개발
-> /moai plan "결제 시스템 구현" --worktree
+# 在独立环境中并行开发
+> /moai plan "实现支付系统" --worktree
 ```
 
 ## 理解文件结构
@@ -348,37 +348,37 @@ MoAI-ADK 项目的标准结构：
 
 ```
 my-first-project/
-├── CLAUDE.md                        # Claude Code 프로젝트 지침서
-├── CLAUDE.local.md                  # 프로젝트 로컬 설정 (개인용)
-├── .mcp.json                        # MCP 서버 설정
+├── CLAUDE.md                        # Claude Code 项目指南
+├── CLAUDE.local.md                  # 项目本地设置（个人用）
+├── .mcp.json                        # MCP 服务器设置
 ├── .claude/
-│   ├── agents/                      # Claude Code 에이전트 정의
-│   ├── commands/                    # 슬래시 명령어 정의
-│   ├── hooks/                       # 훅 스크립트
-│   ├── skills/                      # 재사용 가능한 스킬
-│   └── rules/                       # 프로젝트 규칙
+│   ├── agents/                      # Claude Code 智能体定义
+│   ├── commands/                    # 斜杠命令定义
+│   ├── hooks/                       # 钩子脚本
+│   ├── skills/                      # 可复用技能
+│   └── rules/                       # 项目规则
 ├── .moai/
 │   ├── config/
 │   │   └── sections/
-│   │       ├── user.yaml            # 사용자 정보
-│   │       ├── language.yaml        # 언어 설정
-│   │       ├── quality.yaml         # 품질 게이트 설정
-│   │       └── git-strategy.yaml    # Git 전략 설정
+│   │       ├── user.yaml            # 用户信息
+│   │       ├── language.yaml        # 语言设置
+│   │       ├── quality.yaml         # 质量门禁设置
+│   │       └── git-strategy.yaml    # Git 策略设置
 │   ├── project/
-│   │   ├── product.md               # 프로젝트 개요
-│   │   ├── structure.md             # 디렉토리 구조
-│   │   └── tech.md                  # 기술 스택
+│   │   ├── product.md               # 项目概述
+│   │   ├── structure.md             # 目录结构
+│   │   └── tech.md                  # 技术栈
 │   ├── specs/
 │   │   └── SPEC-001/
-│   │       └── spec.md              # 요구사항 명세서
+│   │       └── spec.md              # 需求规格说明书
 │   └── memory/
-│       └── checkpoints/             # 세션 체크포인트
+│       └── checkpoints/             # 会话检查点
 ├── src/
-│   └── [프로젝트 소스 코드]
+│   └── [项目源代码]
 ├── tests/
-│   └── [테스트 파일]
+│   └── [测试文件]
 └── docs/
-    └── [생성된 문서]
+    └── [生成的文档]
 ```
 
 ## 质量检查
@@ -416,8 +416,8 @@ graph TD
 每个步骤结束后执行 `/clear` 清空上下文。决策事项已以文件形式留在 SPEC 与 `progress.md` 中，即使没有对话记录也能继续下一步：
 
 ```bash
-> /moai plan "복잡한 기능 구현"
-> /clear  # 세션 초기화
+> /moai plan "实现复杂功能"
+> /clear  # 重置会话
 > /moai run SPEC-001
 > /clear
 > /moai sync SPEC-001
@@ -426,14 +426,14 @@ graph TD
 ### Bug 修复与自动化
 
 ```bash
-# 자동 수정 (단일 패스)
-> /moai fix "테스트에서 발생하는 TypeError 수정"
+# 自动修复（单次通过）
+> /moai fix "修复测试中出现的 TypeError"
 
-# 반복 수정 (완료될 때까지)
-> /moai loop "모든 린터 경고 수정"
+# 反复修复（直到完成）
+> /moai loop "修复所有 linter 警告"
 
-# 완료 조건 선언형 루프
-> /moai goal "go test ./... exits 0; 모든 린트 경고 해소"
+# 完成条件声明式循环
+> /moai goal "go test ./... exits 0; 解决所有 lint 警告"
 ```
 
 ---

@@ -403,7 +403,7 @@ moai update --yes
 **자동 보존 항목**: 사용자 설정, 커스텀 에이전트, 커스텀 명령어, 커스텀 스킬, 커스텀 훅, SPEC 문서, 보고서는 업데이트 시 자동으로 보존됩니다. 사용자가 수정한 템플릿 파일은 백업 후 3-way 병합됩니다.
 {{< /callout >}}
 
-자세한 내용은 [업데이트 가이드](https://adk.mo.ai.kr/getting-started/update)를 참조하세요.
+자세한 내용은 [업데이트 가이드](https://adk.mo.ai.kr/cli-reference/update)를 참조하세요.
 
 ## 제거
 

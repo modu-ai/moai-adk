@@ -117,5 +117,5 @@ moai update                  # decided automatically by the initialization mode
 
 - [Installation](/en/getting-started/installation) — installation guide
 - [Initial Setup](/en/getting-started/init-wizard) — the init wizard
-- [Update](/en/getting-started/update) — update guide
+- [Update](/en/cli-reference/update) — update guide
 - [Skill Guide](/en/advanced/skill-guide) — skill authoring guide

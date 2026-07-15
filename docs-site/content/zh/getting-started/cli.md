@@ -1,10 +1,12 @@
 ---
-title: CLI 参考
+title: CLI 概览
 weight: 90
 draft: false
 ---
 
-在此查阅在终端执行的 `moai`(Go 二进制)的所有命令与标志。它与在 Claude Code 对话窗输入的 `/moai`(斜杠子命令)是完全不同的工具 —— 本页只讲终端 CLI。
+概览在终端执行的 `moai`(Go 二进制)的所有命令与标志。它与在 Claude Code 对话窗输入的 `/moai`(斜杠子命令)是完全不同的工具 —— 本页只讲终端 CLI。
+
+> 各命令的详细参考(标志、子命令、示例)请见 [CLI 参考](/cli-reference) 部分。
 
 
 ## 命令树

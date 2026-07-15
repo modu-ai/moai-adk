@@ -1,0 +1,15 @@
+index:
+  title: "CLI 레퍼런스"
+  display: "hidden"
+inventory:
+  title: "moai inventory 커맨드"
+status:
+  title: "프로젝트 상태"
+update:
+  title: "업데이트"
+profile:
+  title: "프로필 관리"
+web:
+  title: "moai web 웹 콘솔"
+doctor:
+  title: "moai doctor 진단"

@@ -1,0 +1,15 @@
+index:
+  title: "CLI Reference"
+  display: "hidden"
+inventory:
+  title: "moai inventory Command"
+status:
+  title: "Project Status"
+update:
+  title: "Update"
+profile:
+  title: "Profile Management"
+web:
+  title: "moai web Console"
+doctor:
+  title: "moai doctor Diagnostics"

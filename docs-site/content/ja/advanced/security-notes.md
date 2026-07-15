@@ -198,7 +198,7 @@ moai update
 curl -fsSL https://raw.githubusercontent.com/modu-ai/moai-adk/main/install.sh | bash
 ```
 
-詳しい内容: [アップデート](/ja/getting-started/update/)
+詳しい内容: [アップデート](/ja/cli-reference/update/)
 
 ## 自己点検チェックリスト (Self-Audit Checklist)
 
@@ -258,5 +258,5 @@ stat -c '%a' ~/.moai/.env.glm 2>/dev/null \
 ### 関連ページ
 
 - [settings.json ガイド](/ja/advanced/settings-json/) — `settings.local.json` 権限セクション
-- [アップデート](/ja/getting-started/update/) — checksum 検証セクション
+- [アップデート](/ja/cli-reference/update/) — checksum 検証セクション
 - [CG モード](/ja/multi-llm/cg-mode/) — tmux 環境変数注入のセキュリティモデル

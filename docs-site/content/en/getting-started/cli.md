@@ -1,10 +1,12 @@
 ---
-title: CLI Reference
+title: CLI Overview
 weight: 90
 draft: false
 ---
 
-A reference for every command and flag of `moai` (the Go binary) that you run in the terminal. It is a completely different tool from `/moai` (the slash subcommand) that you type in the Claude Code chat — this page covers only the terminal CLI.
+A high-level overview of every command and flag of `moai` (the Go binary) that you run in the terminal. It is a completely different tool from `/moai` (the slash subcommand) that you type in the Claude Code chat — this page covers only the terminal CLI.
+
+> For the detailed per-command reference (flags, subcommands, examples), see the [CLI Reference](/cli-reference) section.
 
 
 ## Command tree

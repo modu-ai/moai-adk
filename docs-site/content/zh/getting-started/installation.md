@@ -394,7 +394,7 @@ moai update --yes
 **自动保留项目**:用户设置、自定义智能体、自定义命令、自定义技能、自定义钩子、SPEC 文档、报告在更新时会自动保留。用户修改过的模板文件会备份后 3-way 合并。
 {{< /callout >}}
 
-详情请参阅[更新指南](https://adk.mo.ai.kr/getting-started/update)。
+详情请参阅[更新指南](https://adk.mo.ai.kr/cli-reference/update)。
 
 ## 卸载
 

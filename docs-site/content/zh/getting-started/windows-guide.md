@@ -26,10 +26,10 @@ draft: false
 WSL 在 Windows 上提供 Linux 环境，可完整支持 MoAI-ADK 的全部功能。
 
 ```bash
-# WSL 설치 (관리자 PowerShell에서 실행)
+# 安装 WSL（在管理员 PowerShell 中运行）
 wsl --install
 
-# WSL 내에서 MoAI-ADK 설치
+# 在 WSL 内安装 MoAI-ADK
 curl -fsSL https://raw.githubusercontent.com/modu-ai/moai-adk/main/install.sh \
   | bash
 ```
@@ -89,11 +89,11 @@ fsutil 8dot3name set 1
 ### 安装 WSL
 
 ```powershell
-# 관리자 PowerShell에서 실행
+# 在管理员 PowerShell 中运行
 wsl --install
 
-# 기본 배포판: Ubuntu (권장)
-# 재시작 후 사용자명 및 비밀번호 설정
+# 默认发行版：Ubuntu（推荐）
+# 重启后设置用户名和密码
 ```
 
 ### 访问项目文件
@@ -101,10 +101,10 @@ wsl --install
 在 WSL 中访问 Windows 文件：
 
 ```bash
-# Windows 파일시스템 접근
-cd /mnt/c/Users/사용자명/projects/
+# 访问 Windows 文件系统
+cd /mnt/c/Users/用户名/projects/
 
-# WSL 네이티브 파일시스템 사용 (더 빠름)
+# 使用 WSL 原生文件系统（更快）
 cd ~/projects/
 ```
 
@@ -124,10 +124,10 @@ cd ~/projects/
 # Ubuntu/Debian
 sudo apt install tmux
 
-# tmux 세션 시작
+# 启动 tmux 会话
 tmux new -s moai
 
-# CG 모드 실행
+# 运行 CG 模式
 moai cg
 ```
 

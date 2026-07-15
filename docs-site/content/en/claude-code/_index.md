@@ -1,6 +1,6 @@
 ---
 title: Claude Code Guide
-weight: 25
+weight: 55
 draft: false
 description: "A 4-group learning path for understanding Claude Code from scratch — the platform on which MoAI-ADK's three pillars (Tokenomics, Agentic Loop Engineering, Agentic Harness) stand."
 ---

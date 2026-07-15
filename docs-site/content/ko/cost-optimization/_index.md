@@ -1,6 +1,6 @@
 ---
 title: 비용 최적화
-weight: 50
+weight: 70
 draft: false
 ---
 

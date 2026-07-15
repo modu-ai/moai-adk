@@ -1,6 +1,6 @@
 ---
 title: プロファイル管理
-weight: 80
+weight: 40
 draft: false
 ---
 

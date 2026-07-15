@@ -1,6 +1,6 @@
 ---
 title: moai inventory コマンド
-weight: 25
+weight: 10
 draft: false
 ---
 

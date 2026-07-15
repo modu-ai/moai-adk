@@ -1,6 +1,6 @@
 ---
 title: 업데이트
-weight: 70
+weight: 30
 draft: false
 ---
 

@@ -18,6 +18,46 @@
   ],
   "redirects": [
     {
+      "source": "/:locale(ko|en|ja|zh)/getting-started/inventory",
+      "destination": "/:locale/cli-reference/inventory",
+      "permanent": true
+    },
+    {
+      "source": "/getting-started/inventory",
+      "destination": "/ko/cli-reference/inventory",
+      "permanent": true
+    },
+    {
+      "source": "/:locale(ko|en|ja|zh)/getting-started/status",
+      "destination": "/:locale/cli-reference/status",
+      "permanent": true
+    },
+    {
+      "source": "/getting-started/status",
+      "destination": "/ko/cli-reference/status",
+      "permanent": true
+    },
+    {
+      "source": "/:locale(ko|en|ja|zh)/getting-started/update",
+      "destination": "/:locale/cli-reference/update",
+      "permanent": true
+    },
+    {
+      "source": "/getting-started/update",
+      "destination": "/ko/cli-reference/update",
+      "permanent": true
+    },
+    {
+      "source": "/:locale(ko|en|ja|zh)/getting-started/profile",
+      "destination": "/:locale/cli-reference/profile",
+      "permanent": true
+    },
+    {
+      "source": "/getting-started/profile",
+      "destination": "/ko/cli-reference/profile",
+      "permanent": true
+    },
+    {
       "source": "/:locale(ko|en|ja|zh)/moai-rank/:path*",
       "destination": "/:locale",
       "permanent": true

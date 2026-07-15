@@ -1,6 +1,6 @@
 ---
 title: Claude Code 指南
-weight: 25
+weight: 55
 draft: false
 description: "从零理解 MoAI-ADK 三大支柱（代币经济学·智能体循环工程·智能体挽具）所依托的平台 Claude Code 的四组学习路径。"
 ---

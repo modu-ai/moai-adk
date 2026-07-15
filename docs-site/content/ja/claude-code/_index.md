@@ -1,6 +1,6 @@
 ---
 title: Claude Code ガイド
-weight: 25
+weight: 55
 draft: false
 description: "MoAI-ADK の三本柱 (トークノミクス・エージェンティックループエンジニアリング・エージェンティックハーネス) が立脚するプラットフォーム、Claude Code を基礎から理解する 4 グループの学習パス。"
 ---

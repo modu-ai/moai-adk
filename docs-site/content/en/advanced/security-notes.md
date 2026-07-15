@@ -198,7 +198,7 @@ For persistent blockage, manual binary installation is recommended.
 curl -fsSL https://raw.githubusercontent.com/modu-ai/moai-adk/main/install.sh | bash
 ```
 
-Details: [Updating](/en/getting-started/update/)
+Details: [Updating](/en/cli-reference/update/)
 
 ## Self-Audit Checklist
 
@@ -258,5 +258,5 @@ If all 5 items meet the expected values, the v2.20.0-rc1 security hardening is f
 ### Related Pages
 
 - [settings.json Guide](/en/advanced/settings-json/) — the `settings.local.json` permissions section
-- [Updating](/en/getting-started/update/) — the checksum verification section
+- [Updating](/en/cli-reference/update/) — the checksum verification section
 - [CG Mode](/en/multi-llm/cg-mode/) — the tmux environment-variable injection security model

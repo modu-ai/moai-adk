@@ -1,6 +1,6 @@
 ---
 title: 프로필 관리
-weight: 80
+weight: 40
 draft: false
 ---
 
