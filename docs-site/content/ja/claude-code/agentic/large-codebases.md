@@ -35,7 +35,7 @@ description: "数百万行の単一ツリーや複数パッケージのモノレ
 解決策は階層化です。ルートにはリポジトリ全域のルールだけを置き、各サブディレクトリにその領域のルールを置きます。
 
 ```markdown
-# ./CLAUDE.md (루트, 모든 세션에서 로드)
+# ./CLAUDE.md (ルート、すべてのセッションでロード)
 This is a monorepo with three packages:
 - packages/api: Node.js REST API with Express, TypeScript, PostgreSQL
 - packages/web: React frontend with Vite, TypeScript, TailwindCSS
@@ -45,7 +45,7 @@ Run commands from the package directory.
 ```
 
 ```markdown
-# ./packages/api/CLAUDE.md (이 디렉터리 작업할 때만 로드)
+# ./packages/api/CLAUDE.md (このディレクトリの作業時のみロード)
 This package is the REST API server.
 
 - Run tests: `npm test` (uses Vitest)
@@ -100,7 +100,7 @@ Claude が `packages/api/` で起動すると、ルートと `packages/api/` の
 ```
 
 - TypeScript、Python、Go、Rust など主要言語をサポートします
-- 該当言語の LSP バイナリがシステムにインストールされている必要があります ([プラグインのドキュメント](/claude-code/extensibility/plugins) を参照)
+- 該当言語の LSP バイナリがシステムにインストールされている必要があります ([プラグインのドキュメント](/ja/claude-code/extensibility/plugins) を参照)
 
 ## ワークツリーで必要なディレクトリだけチェックアウト
 
@@ -166,7 +166,7 @@ mkdir -p packages/api/.claude/skills/api-testing
 # packages/api/.claude/skills/api-testing/SKILL.md
 ---
 name: api-testing
-description: API 패키지의 테스트 패턴
+description: API パッケージのテストパターン
 ---
 
 ## Test structure
@@ -242,8 +242,8 @@ Tests are in `src/__tests__/` mirroring `src/`.
 大きな変更をする前に、影響範囲をまず把握しましょう。検索範囲を狭める習慣が、読むべきファイル数を減らします。
 
 ```bash
-grep -r "FunctionName" packages/api/  # api만 검색
-grep -r "FunctionName" packages/      # 모든 패키지
+grep -r "FunctionName" packages/api/  # api のみ検索
+grep -r "FunctionName" packages/      # すべてのパッケージ
 ```
 
 ### レイヤーごとの分析
@@ -256,9 +256,9 @@ DB・API・UI のように複数レイヤーに触れる変更なら、各レイ
 
 ## 関連ドキュメント
 
-- [コンテキストウィンドウ](/claude-code/context-memory/context-window)
-- [ワークツリー](/claude-code/agentic/worktrees)
-- [ベストプラクティス](/claude-code/agentic/best-practices)
+- [コンテキストウィンドウ](/ja/claude-code/context-memory/context-window)
+- [ワークツリー](/ja/claude-code/agentic/worktrees)
+- [ベストプラクティス](/ja/claude-code/agentic/best-practices)
 
 ## 参考資料
 

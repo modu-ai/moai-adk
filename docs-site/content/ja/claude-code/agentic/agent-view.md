@@ -106,13 +106,13 @@ flowchart TD
 新しいバックグラウンドセッションは 3 つの経路で始められます。
 
 ```bash
-# 1) 에이전트 뷰를 열고 하단 입력창에 프롬프트를 입력한 뒤 Enter
+# 1) エージェントビューを開き、下部の入力欄にプロンプトを入力して Enter
 claude agents
 
-# 2) 셸에서 곧장 백그라운드로 시작
+# 2) シェルからそのままバックグラウンドで開始
 claude --bg "investigate the flaky SettingsChangeDetector test"
 
-# 3) 특정 서브에이전트를 메인 에이전트로 지정
+# 3) 特定のサブエージェントをメインエージェントに指定
 claude --agent code-reviewer --bg "address review comments on PR 1234"
 ```
 
@@ -151,11 +151,11 @@ claude --agent code-reviewer --bg "address review comments on PR 1234"
 エージェントビューを開かずに、短い ID で直接扱うこともできます。
 
 ```bash
-claude agents --json        # 라이브 세션을 JSON 배열로 출력
-claude attach <id>          # 이 터미널에서 세션에 연결
-claude logs <id>            # 세션의 최근 출력 표시
-claude stop <id>            # 세션 중지
-claude respawn <id>         # 대화를 유지한 채 세션 재시작
+claude agents --json        # ライブセッションを JSON 配列で出力
+claude attach <id>          # このターミナルでセッションに接続
+claude logs <id>            # セッションの最近の出力を表示
+claude stop <id>            # セッションを停止
+claude respawn <id>         # 会話を維持したままセッションを再起動
 ```
 
 ### 無効化の方法
@@ -174,8 +174,8 @@ claude respawn <id>         # 대화를 유지한 채 세션 재시작
 
 ## 関連ドキュメント
 
-- [サブエージェント](/claude-code/agentic/sub-agents)
-- [エージェントチーム](/claude-code/agentic/agent-teams)
+- [サブエージェント](/ja/claude-code/agentic/sub-agents)
+- [エージェントチーム](/ja/claude-code/agentic/agent-teams)
 
 ## 参考資料
 

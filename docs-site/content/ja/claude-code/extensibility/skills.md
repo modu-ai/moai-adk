@@ -14,7 +14,7 @@ Claude Code のスキル (skill) は、繰り返される手順や専門知識�
 {{< /callout >}}
 
 {{< callout type="tip" >}}
-このドキュメントは Claude Code スキルの概念概要です。MoAI-ADK でスキルを直接作成し、ビルダーエージェントで自動生成する実践手順は、[スキルガイド](/advanced/skill-guide) と [ビルダーエージェントガイド](/advanced/builder-agents) で詳しく扱います。
+このドキュメントは Claude Code スキルの概念概要です。MoAI-ADK でスキルを直接作成し、ビルダーエージェントで自動生成する実践手順は、[スキルガイド](/ja/advanced/skill-guide) と [ビルダーエージェントガイド](/ja/advanced/builder-agents) で詳しく扱います。
 {{< /callout >}}
 
 ## スキルとは
@@ -38,11 +38,11 @@ CLAUDE.md の内容は常にコンテキストに常駐しますが、スキル�
 
 ```text
 my-skill/
-├── SKILL.md       # 필수: 지침 + 프론트매터
-├── reference.md   # 선택: 상세 참조 (필요할 때 로드)
-├── examples.md    # 선택: 예시 출력
+├── SKILL.md       # 必須: 指示 + フロントマター
+├── reference.md   # 任意: 詳細な参照 (必要なときにロード)
+├── examples.md    # 任意: 出力例
 └── scripts/
-    └── helper.py  # 선택: Claude가 실행하는 스크립트
+    └── helper.py  # 任意: Claude が実行するスクリプト
 ```
 
 フロントマターの大半は任意項目ですが、Claude がいつこのスキルを使うべきかを判断する `description` は事実上必須です。
@@ -50,14 +50,14 @@ my-skill/
 ```yaml
 ---
 name: api-conventions
-description: 이 코드베이스의 API 설계 패턴. 엔드포인트를 작성하거나 리뷰할 때 사용.
+description: このコードベースの API 設計パターン。エンドポイントを作成またはレビューするときに使用。
 allowed-tools: Read Grep
 ---
 
-API 엔드포인트를 작성할 때:
-- RESTful 명명 규칙을 따른다
-- 일관된 오류 형식을 반환한다
-- 요청 검증을 포함한다
+API エンドポイントを作成するとき:
+- RESTful な命名規則に従う
+- 一貫したエラー形式を返す
+- リクエスト検証を含める
 ```
 
 主なフロントマターフィールドは次のとおりです。
@@ -119,16 +119,16 @@ Claude はユーザーのリクエストがスキルの `description` (および
 
 ```yaml
 ---
-description: 커밋되지 않은 변경을 요약하고 위험 요소를 표시한다. 무엇이 바뀌었는지 물을 때 사용.
+description: コミットされていない変更を要約し、リスク要素を表示する。何が変わったかを尋ねるときに使用。
 ---
 
-## 현재 변경 사항
+## 現在の変更内容
 
 !`git diff HEAD`
 
-## 지침
+## 指示
 
-위 변경을 두세 개의 불릿으로 요약한 뒤, 누락된 오류 처리나 하드코딩 같은 위험을 나열한다.
+上記の変更を 2〜3 個の箇条書きで要約したうえで、欠落したエラー処理やハードコーディングなどのリスクを列挙する。
 ```
 
 このスキルは、ユーザーが「何を変えたっけ?」と尋ねると自動的に、または `/summarize-changes` で直接呼び出されます。
@@ -141,8 +141,8 @@ MoAI-ADK はこのスキルメカニズムの上で動作します。`moai-found
 
 ## 関連ドキュメント
 
-- [スキルガイド](/advanced/skill-guide)
-- [ビルダーエージェントガイド](/advanced/builder-agents)
+- [スキルガイド](/ja/advanced/skill-guide)
+- [ビルダーエージェントガイド](/ja/advanced/builder-agents)
 
 ## 参考資料
 

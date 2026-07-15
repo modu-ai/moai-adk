@@ -72,7 +72,7 @@ flowchart TD
 `/deep-research` のようなバンドルワークフローを実行するか、プロンプトのどこかに `workflow` という単語を入れると、Claude がその作業用のスクリプトを書きます。気に入った実行結果は `/workflows` 画面で `s` キーを押して `/<名前>` コマンドとして保存し、再利用できます。
 
 ```text
-# 한 작업을 워크플로우로 실행
+# 1 つの作業をワークフローで実行
 Run a workflow to audit every API endpoint under src/routes/ for missing auth checks
 ```
 
@@ -123,8 +123,8 @@ MoAI-ADK は、ダイナミックワークフローを SPEC ベースの plan/ru
 
 ## 関連ドキュメント
 
-- [サブエージェント](/claude-code/agentic/sub-agents)
-- [エージェントチーム](/claude-code/agentic/agent-teams)
+- [サブエージェント](/ja/claude-code/agentic/sub-agents)
+- [エージェントチーム](/ja/claude-code/agentic/agent-teams)
 
 ## 参考資料
 

@@ -66,16 +66,16 @@ Claude Code プラグインは、散らばっていた拡張機能を 1 つの�
 `/plugin marketplace add` でさまざまな出どころを登録できます。
 
 ```bash
-# GitHub 저장소 (owner/repo 형식)
+# GitHub リポジトリ (owner/repo 形式)
 /plugin marketplace add anthropics/claude-plugins-official
 
-# 다른 Git 호스트 (.git 접미사 필수)
+# 別の Git ホスト (.git 接尾辞が必須)
 /plugin marketplace add https://gitlab.com/company/plugins.git
 
-# 특정 브랜치·태그 고정
+# 特定のブランチ・タグに固定
 /plugin marketplace add https://gitlab.com/company/plugins.git#v1.0.0
 
-# 로컬 경로 / 원격 marketplace.json
+# ローカルパス / リモートの marketplace.json
 /plugin marketplace add ./my-marketplace
 /plugin marketplace add https://example.com/marketplace.json
 ```
@@ -83,10 +83,10 @@ Claude Code プラグインは、散らばっていた拡張機能を 1 つの�
 公式の Anthropic マーケットプレイス (`claude-plugins-official`) は Claude Code の起動時に自動で利用可能です。コミュニティのマーケットプレイスは手動で追加します。
 
 ```bash
-# 공식 마켓플레이스에서 설치
+# 公式マーケットプレイスからインストール
 /plugin install hello@claude-plugins-official
 
-# 커뮤니티 마켓플레이스 추가 후 설치
+# コミュニティマーケットプレイスを追加してからインストール
 /plugin marketplace add anthropics/claude-plugins-community
 /plugin install <plugin-name>@claude-plugins-community
 ```
@@ -106,11 +106,11 @@ Claude Code プラグインは、散らばっていた拡張機能を 1 つの�
 インストール・有効化・無効化・削除は CLI でも可能です。
 
 ```bash
-/plugin install plugin-name@marketplace-name   # 설치 (기본 user 범위)
-/plugin disable plugin-name@marketplace-name    # 비활성 (제거 안 함)
-/plugin enable  plugin-name@marketplace-name    # 재활성
-/plugin uninstall plugin-name@marketplace-name  # 완전 제거
-/reload-plugins                                 # 재시작 없이 변경 반영
+/plugin install plugin-name@marketplace-name   # インストール (デフォルトは user 範囲)
+/plugin disable plugin-name@marketplace-name    # 無効化 (削除はしない)
+/plugin enable  plugin-name@marketplace-name    # 再有効化
+/plugin uninstall plugin-name@marketplace-name  # 完全に削除
+/reload-plugins                                 # 再起動なしで変更を反映
 ```
 
 チーム単位では、`.claude/settings.json` の `extraKnownMarketplaces` キーにマーケットプレイスを宣言しておけば、協業者がリポジトリのフォルダを信頼した際に Claude Code がそのマーケットプレイスとプラグインのインストールを案内します。
@@ -161,9 +161,9 @@ MoAI-ADK 自体はプラグインではなく、`moai init` が `.claude/` デ�
 
 ## 関連ドキュメント
 
-- [スキル](/claude-code/extensibility/skills)
-- [フック (Hooks)](/claude-code/extensibility/hooks)
-- [MCP サーバー](/claude-code/extensibility/mcp)
+- [スキル](/ja/claude-code/extensibility/skills)
+- [フック (Hooks)](/ja/claude-code/extensibility/hooks)
+- [MCP サーバー](/ja/claude-code/extensibility/mcp)
 
 ## 参考資料
 

@@ -49,9 +49,9 @@ flowchart TD
 
 1. **探索** (plan mode): ファイルを読み、質問します。変更は禁止。
    ```text
-   plan mode에서:
-   /src/auth를 읽고 세션·로그인 흐름 이해하기.
-   환경변수로 시크릿을 어떻게 관리하는지도 살펴보기.
+   plan mode で:
+   /src/auth を読んでセッション・ログインの流れを理解する。
+   環境変数でシークレットをどう管理しているかも確認する。
    ```
 2. **計画**: 詳細な実装計画を作成します。`Ctrl+G` でエディタから直接修正できます。
 3. **実装**: plan mode を解除してコーディングします。テストを回しながら計画と合っているかを検証します。
@@ -129,12 +129,12 @@ claude mcp add --transport http <server-name>
 ```markdown
 ---
 name: api-conventions
-description: 우리 서비스의 REST API 설계 규칙
+description: 私たちのサービスの REST API 設計規則
 ---
 
-- URL 경로: kebab-case
-- JSON 프로퍼티: camelCase
-- 버전: URL 경로에 포함 (/v1/, /v2/)
+- URL パス: kebab-case
+- JSON プロパティ: camelCase
+- バージョン: URL パスに含める (/v1/, /v2/)
 ```
 
 必要なときだけロードされるため、毎セッションのコンテキストを汚染しません。
@@ -173,19 +173,19 @@ description: 우리 서비스의 REST API 설계 규칙
 ### 非対話モード
 
 ```bash
-claude -p "프롬프트" --output-format json
+claude -p "プロンプト" --output-format json
 ```
 
 CI パイプライン、pre-commit フック、スクリプトに Claude を統合します。
 
 ### 複数セッションの並列実行
 
-複数の SPEC を同時に進めたり、大量のファイルを並行変換したりします。ファイル編集が重ならないよう、[ワークツリー](/claude-code/agentic/worktrees) で分離するのが安全です。
+複数の SPEC を同時に進めたり、大量のファイルを並行変換したりします。ファイル編集が重ならないよう、[ワークツリー](/ja/claude-code/agentic/worktrees) で分離するのが安全です。
 
 ### /goal で自律完了
 
 ```text
-/goal "테스트가 모두 통과하고 coverage가 85% 이상일 때"
+/goal "テストがすべて通過し、coverage が 85% 以上のとき"
 ```
 
 完了条件を宣言すれば Claude が自動的に繰り返し、目標達成時に止まります。ここまで来ると、「毎ターン指示する」から「ループを設計する」へ役割が移ったことになります — MoAI-ADK の `/moai goal` と `/moai loop` は、このループをプロジェクトの品質ツール・SPEC ライフサイクルと結合した拡張です。
@@ -202,10 +202,10 @@ CI パイプライン、pre-commit フック、スクリプトに Claude を統�
 
 ## 関連ドキュメント
 
-- [コンテキストウィンドウ](/claude-code/context-memory/context-window)
-- [サブエージェント](/claude-code/agentic/sub-agents)
-- [ゴール指向実行 (/goal)](/claude-code/agentic/goal)
-- [大規模コードベース](/claude-code/agentic/large-codebases)
+- [コンテキストウィンドウ](/ja/claude-code/context-memory/context-window)
+- [サブエージェント](/ja/claude-code/agentic/sub-agents)
+- [ゴール指向実行 (/goal)](/ja/claude-code/agentic/goal)
+- [大規模コードベース](/ja/claude-code/agentic/large-codebases)
 
 ## 参考資料
 

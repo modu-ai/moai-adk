@@ -154,8 +154,8 @@ MoAI-ADK の観点では、スケジュールタスクは自律実行スペク�
 
 ## 関連ドキュメント
 
-- [フック (Hooks)](/claude-code/extensibility/hooks)
-- [ゴール指向実行 (/goal)](/claude-code/agentic/goal)
+- [フック (Hooks)](/ja/claude-code/extensibility/hooks)
+- [ゴール指向実行 (/goal)](/ja/claude-code/agentic/goal)
 
 ## 参考資料
 

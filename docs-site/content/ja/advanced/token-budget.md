@@ -87,7 +87,7 @@ After merge: <次のアクションまたはSPEC>
 go test ./... > /tmp/moai-verify/1-go-test.log 2>&1; echo "exit=$?"; tail -50 /tmp/moai-verify/1-go-test.log
 ```
 
-この契約は「ディスクにverbatim証拠を残し、コンテキストにはexit code + bounded tailのみ運搬」します。証拠を捨てるのではなく、インライン出力 + バーナー再引用の二重消費(double-burn)を削除します。
+この契約は「ディスクにverbatim証拠を残し、コンテキストにはexit code + bounded tailのみ運搬」します。証拠を捨てるのではなく、インライン出力 + バナー再引用の二重消費(double-burn)を削除します。
 
 ## 検証証拠永続化の義務
 
@@ -95,7 +95,7 @@ go test ./... > /tmp/moai-verify/1-go-test.log 2>&1; echo "exit=$?"; tail -50 /t
 
 永続化の義務はこの問題を解決します。検証証拠は`.moai/state/verify/<session>/`配下に永続化されなければなりません。このディレクトリは`context-usage.json`や`active-sessions.json`と同じgitignoredランタイム状態領域です。
 
-正確な永続化メカニズム(直接書き込みまたは`/tmp`書き込み後コピー)は実装の詳細です。契約は義務を述べます: 証拠は`/tmp`クリア後も監査時に到達可能な引用可能なパスに残なければなりません。
+正確な永続化メカニズム(直接書き込みまたは`/tmp`書き込み後コピー)は実装の詳細です。契約は義務を述べます: 証拠は`/tmp`クリア後も監査時に到達可能な引用可能なパスに残らなければなりません。
 
 ## 次のステップ
 

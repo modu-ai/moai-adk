@@ -106,9 +106,9 @@ Claude Code は `settings.local.json` を初めて作成するとき、`.gitigno
 
 ## 関連ドキュメント
 
-- [settings.json ガイド](/advanced/settings-json)
-- [CLAUDE.md ガイド](/advanced/claude-md-guide)
-- [Statusline システム](/advanced/statusline)
+- [settings.json ガイド](/ja/advanced/settings-json)
+- [CLAUDE.md ガイド](/ja/advanced/claude-md-guide)
+- [Statusline システム](/ja/advanced/statusline)
 
 ## 参考資料
 

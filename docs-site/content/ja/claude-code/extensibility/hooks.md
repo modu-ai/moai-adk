@@ -14,7 +14,7 @@ description: "Claude Code のライフサイクルイベントに反応して自
 {{< /callout >}}
 
 {{< callout type="tip" >}}
-このページは概念紹介に集中します。MoAI-ADK が hook を実際にどう登録・運用するか (シェルラッパーのパターン、イベントごとの動作、品質ゲート連携) は、掘り下げた MoAI-ADK ガイドで扱います。手を動かす実践的な内容は [Hooks ガイド](/advanced/hooks-guide) と [Hooks イベントリファレンス](/advanced/hooks-reference) を参照してください。
+このページは概念紹介に集中します。MoAI-ADK が hook を実際にどう登録・運用するか (シェルラッパーのパターン、イベントごとの動作、品質ゲート連携) は、掘り下げた MoAI-ADK ガイドで扱います。手を動かす実践的な内容は [Hooks ガイド](/ja/advanced/hooks-guide) と [Hooks イベントリファレンス](/ja/advanced/hooks-reference) を参照してください。
 {{< /callout >}}
 
 ## フックとは
@@ -109,8 +109,8 @@ MoAI-ADK は、シェルスクリプトラッパーが `moai hook <event>` バ�
 
 ## 関連ドキュメント
 
-- [Hooks ガイド](/advanced/hooks-guide)
-- [Hooks イベントリファレンス](/advanced/hooks-reference)
+- [Hooks ガイド](/ja/advanced/hooks-guide)
+- [Hooks イベントリファレンス](/ja/advanced/hooks-reference)
 
 ## 参考資料
 

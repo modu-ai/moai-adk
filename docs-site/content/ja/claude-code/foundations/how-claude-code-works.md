@@ -161,8 +161,8 @@ Claude Code がインラインのコードアシスタントと異なる点は 2
 
 ## 関連ドキュメント
 
-- [機能ひとめぐり](/claude-code/foundations/features-overview)
-- [MoAI-ADK とは?](/core-concepts/what-is-moai-adk)
+- [機能ひとめぐり](/ja/claude-code/foundations/features-overview)
+- [MoAI-ADK とは?](/ja/core-concepts/what-is-moai-adk)
 
 ## 参考資料
 

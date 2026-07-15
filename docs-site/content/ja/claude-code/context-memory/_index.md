@@ -29,9 +29,10 @@ flowchart TD
 
 | ドキュメント | 説明 |
 |------|------|
-| [コンテキストウィンドウ](/claude-code/context-memory/context-window) | トークン・自動圧縮・使用量の管理 |
-| [メモリと自動メモリ](/claude-code/context-memory/memory) | CLAUDE.md の階層と自動メモリ |
-| [プロンプトキャッシュ](/claude-code/context-memory/prompt-caching) | キャッシュでコスト・遅延を削減 |
-| [チェックポインティング](/claude-code/context-memory/checkpointing) | 巻き戻しで安全に実験 |
+| [コンテキストウィンドウ](/ja/claude-code/context-memory/context-window) | トークン・自動圧縮・使用量の管理 |
+| [メモリと自動メモリ](/ja/claude-code/context-memory/memory) | CLAUDE.md の階層と自動メモリ |
+| [プロンプトキャッシュ](/ja/claude-code/context-memory/prompt-caching) | キャッシュでコスト・遅延を削減 |
+| [チェックポインティング](/ja/claude-code/context-memory/checkpointing) | 巻き戻しで安全に実験 |
+| [セッション管理](/ja/claude-code/context-memory/sessions) | セッションの再開・整理とハンドオフ |
 
-このグループを終えたら、次のグループ [拡張](/claude-code/extensibility) で、スキル・フック・MCP・プラグイン — ハーネスを組み立てる素材 — へ進みます。
+このグループを終えたら、次のグループ [拡張](/ja/claude-code/extensibility) で、スキル・フック・MCP・プラグイン — ハーネスを組み立てる素材 — へ進みます。

@@ -32,7 +32,7 @@ description: "Claude Code のチェックポインティングと巻き戻しで
 
 ```text
 /rewind
-# 또는 입력창이 비어 있을 때
+# または入力欄が空のとき
 Esc  Esc
 ```
 
@@ -108,8 +108,8 @@ MoAI-ADK の観点では、チェックポインティングはエージェン�
 
 ## 関連ドキュメント
 
-- [コンテキストウィンドウ](/claude-code/context-memory/context-window)
-- [対話モード](/claude-code/foundations/interactive-mode)
+- [コンテキストウィンドウ](/ja/claude-code/context-memory/context-window)
+- [対話モード](/ja/claude-code/foundations/interactive-mode)
 
 ## 参考資料
 

@@ -29,11 +29,12 @@ flowchart TD
 
 | ドキュメント | 説明 |
 |------|------|
-| [動作原理](/claude-code/foundations/how-claude-code-works) | エージェンティックループと主要コンポーネント |
-| [機能ひとめぐり](/claude-code/foundations/features-overview) | 機能カタログ全体と学習パス |
-| [対話モード](/claude-code/foundations/interactive-mode) | REPL・ショートカット・権限モード |
-| [スラッシュコマンド](/claude-code/foundations/commands) | 組み込み・カスタムコマンドと /moai の関係 |
-| [ツールリファレンス](/claude-code/foundations/tools-reference) | 組み込みツールと権限 |
-| [.claude ディレクトリ](/claude-code/foundations/claude-directory) | 設定ディレクトリの構造とスコープ |
+| [動作原理](/ja/claude-code/foundations/how-claude-code-works) | エージェンティックループと主要コンポーネント |
+| [機能ひとめぐり](/ja/claude-code/foundations/features-overview) | 機能カタログ全体と学習パス |
+| [対話モード](/ja/claude-code/foundations/interactive-mode) | REPL・ショートカット・権限モード |
+| [権限と Plan モード](/ja/claude-code/foundations/permissions) | 権限ルール・モードと計画承認 |
+| [スラッシュコマンド](/ja/claude-code/foundations/commands) | 組み込み・カスタムコマンドと /moai の関係 |
+| [ツールリファレンス](/ja/claude-code/foundations/tools-reference) | 組み込みツールと権限 |
+| [.claude ディレクトリ](/ja/claude-code/foundations/claude-directory) | 設定ディレクトリの構造とスコープ |
 
-基本を身につけたら、次のグループ [コンテキストとメモリ](/claude-code/context-memory) で、トークンコストの扱い方 — MoAI-ADK トークノミクスの出発点 — へ進みます。
+基本を身につけたら、次のグループ [コンテキストとメモリ](/ja/claude-code/context-memory) で、トークンコストの扱い方 — MoAI-ADK トークノミクスの出発点 — へ進みます。

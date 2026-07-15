@@ -43,7 +43,7 @@ Claude Code をターミナルで実行すると出会う対話型セッショ�
 
 ### スラッシュコマンド (/)
 
-入力欄の先頭で `/` を打つと、使用可能なすべてのコマンドメニューが表示されます。組み込みコマンドだけでなく、バンドルスキル、ユーザー作成スキル、プラグインや MCP サーバーが提供するコマンドまでが 1 つのメニューに集まります。`/` の後に文字を続けて入力すると、候補がリアルタイムで絞り込まれます。詳しい一覧は [スラッシュコマンド](/claude-code/foundations/commands) を参照してください。
+入力欄の先頭で `/` を打つと、使用可能なすべてのコマンドメニューが表示されます。組み込みコマンドだけでなく、バンドルスキル、ユーザー作成スキル、プラグインや MCP サーバーが提供するコマンドまでが 1 つのメニューに集まります。`/` の後に文字を続けて入力すると、候補がリアルタイムで絞り込まれます。詳しい一覧は [スラッシュコマンド](/ja/claude-code/foundations/commands) を参照してください。
 
 ### bash 実行 (!)
 
@@ -95,7 +95,7 @@ Claude Code をターミナルで実行すると出会う対話型セッショ�
 
 ### 巻き戻し (Esc Esc)
 
-入力欄が空のときに `Esc` を 2 回押すと **巻き戻しメニュー** (rewind menu) が開きます。以前の時点へコードと会話を復元したり要約したりできる機能で、詳細は [チェックポインティング](/claude-code/context-memory/checkpointing) で扱います。
+入力欄が空のときに `Esc` を 2 回押すと **巻き戻しメニュー** (rewind menu) が開きます。以前の時点へコードと会話を復元したり要約したりできる機能で、詳細は [チェックポインティング](/ja/claude-code/context-memory/checkpointing) で扱います。
 
 ### 履歴検索 (Ctrl+R)
 
@@ -157,9 +157,9 @@ VS Code、Cursor、Windsurf、Zed などで `Shift+Enter` バインディング�
 
 ## 関連ドキュメント
 
-- [スラッシュコマンド](/claude-code/foundations/commands)
-- [チェックポインティング](/claude-code/context-memory/checkpointing)
-- [クイックスタート](/getting-started/quickstart)
+- [スラッシュコマンド](/ja/claude-code/foundations/commands)
+- [チェックポインティング](/ja/claude-code/context-memory/checkpointing)
+- [クイックスタート](/ja/getting-started/quickstart)
 
 ## 参考資料
 

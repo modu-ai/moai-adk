@@ -161,7 +161,7 @@ split-pane モードには外部ツールが必要です。tmux はシステム�
 
 ## 品質ゲート hook
 
-[hook](/claude-code/extensibility/hooks) を使うと、チームメイトが作業を終えたり作業が生成・完了したりするときにルールを強制できます。
+[hook](/ja/claude-code/extensibility/hooks) を使うと、チームメイトが作業を終えたり作業が生成・完了したりするときにルールを強制できます。
 
 | hook イベント | 発動タイミング | 終了コード 2 の意味 |
 | --- | --- | --- |
@@ -191,8 +191,8 @@ CG モードの設定と運用方法は別のドキュメントで詳しく扱�
 
 ## 関連ドキュメント
 
-- [ダイナミックワークフロー](/claude-code/agentic/workflows)
-- [CG モード (Claude + GLM)](/multi-llm/cg-mode)
+- [ダイナミックワークフロー](/ja/claude-code/agentic/workflows)
+- [CG モード (Claude + GLM)](/ja/multi-llm/cg-mode)
 
 ## 参考資料
 

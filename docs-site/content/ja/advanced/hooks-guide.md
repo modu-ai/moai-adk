@@ -31,7 +31,7 @@ flowchart TD
 
 ## Hook イベントタイプ
 
-このガイドではよく使う核心イベントを扱います。(全 29 個のイベントは [Hooks イベントリファレンス](/ja/advanced/hooks-reference) を参照してください。)
+このガイドではよく使う核心イベントを扱います。(Claude Code の 30 個のイベントタイプの全カタログは [Hooks イベントリファレンス](/ja/advanced/hooks-reference) を参照してください。)
 
 ### 主要イベント一覧
 
@@ -105,7 +105,7 @@ MoAI-ADK は **シェルラッパースクリプト + Go バイナリ** アー�
 | `TeammateIdle` | {{< icon check ok >}} | `handle-teammate-idle.sh` | `moai hook teammate-idle` |
 | `TaskCompleted` | {{< icon check ok >}} | `handle-task-completed.sh` | `moai hook task-completed` |
 
-Go バイナリは上記 13 種以外にも `PostToolUseFailure`, `StopFailure`, `PostCompact`, `InstructionsLoaded`, `ConfigChange`, `TaskCreated`, `CwdChanged`, `FileChanged`, `PermissionDenied`, `WorktreeCreate`, `WorktreeRemove`, `Elicitation`, `ElicitationResult` など合計 26 個のサブコマンドを実装します。(全一覧は `moai hook --help` で確認できます。)
+Go バイナリは上記 13 種以外にも `PostToolUseFailure`, `StopFailure`, `PostCompact`, `InstructionsLoaded`, `ConfigChange`, `TaskCreated`, `CwdChanged`, `FileChanged`, `PermissionDenied`, `WorktreeCreate`, `WorktreeRemove`, `Elicitation`, `ElicitationResult` など合計 38 個のサブコマンドを実装します。(全一覧は `moai hook --help` で確認できます。)
 
 ### チームメイト協業イベント
 
@@ -411,7 +411,7 @@ Python, JavaScript/TypeScript, Go, Rust, Java, Kotlin, C/C++, Ruby, PHP
 - 安全でない関数呼び出し
 - 未使用の import
 
-**設定:** `.claude/skills/moai-tool-ast-grep/rules/sgconfig.yml` またはプロジェクトルートの `sgconfig.yml`
+**設定:** `.moai/config/astgrep-rules/` (デフォルトの配布ルールセットは `go-hardcoding.yml`)
 
 ### PostToolUse: LSP 診断
 
@@ -440,7 +440,7 @@ ralph:
 
 `/clear` 実行前に **現在のコンテキストをファイルに保存** します。コンテキスト閾値でセッションを切って続ける handoff フローの安全網です。
 
-**保存場所:** `.moai/memory/context-snapshot.json`
+**保存場所:** `.moai/state/session-memo.md`
 
 **保存内容:**
 - 現在のアクティブ SPEC 状態 (ID、ステップ、進行率)
@@ -450,7 +450,7 @@ ralph:
 - Git 状態情報 (ブランチ、コミットされていない変更)
 - 核心的な決定事項
 
-**アーカイブ:** 以前のスナップショットは `.moai/memory/context-archive/` に自動保管されます。
+**状態ファイル:** アクティブなワークツリー・セッション状態は `.moai/state/` (例: `worktrees.json`, `active-sessions.json`) に記録されます。
 
 ### SessionEnd: 自動整理
 
@@ -458,7 +458,7 @@ ralph:
 
 **P0 作業 (必須):**
 - セッションメトリクスの保存 (修正ファイル数、コミット数、作業した SPEC)
-- 作業状態スナップショットの保存 (`.moai/memory/last-session-state.json`)
+- 作業状態スナップショットの保存 (`~/.moai/state/last-session-state.json`)
 - コミットされていない変更の警告
 
 **P1 作業 (オプション):**
@@ -628,7 +628,7 @@ Hooks は `.claude/settings.json` ファイルの `hooks` セクションで設�
 | `matcher` | ツール名のマッチングパターン (正規表現) | `"Write\|Edit"` |
 | `type` | Hook タイプ | `"command"` |
 | `command` | 実行するコマンド | Shell スクリプトのパス |
-| `timeout` | 実行制限時間 (ミリ秒) | `5000` (5 秒) |
+| `timeout` | 実行制限時間 (秒) | `5` (5 秒) |
 
 ### マッチャーパターン
 
@@ -732,23 +732,9 @@ Hook スクリプトは標準入力 (stdin) で JSON データを受け取りま
 **注意**: Hook スクリプトのタイムアウトを長く設定しすぎると Claude Code の応答が遅くなります。セキュリティガード (pre-tool) は 5 秒、フォーマッター・リント (post-tool) は 10 秒以内を推奨します。SessionStart と PreCompact はコンテキストロードのために 30 秒まで許容されます。
 {{< /callout >}}
 
-## 環境変数で Hook を無効化
-
-特定の Hook を環境変数で無効化できます。
-
-| Hook | 環境変数 |
-|------|-----------|
-| AST-grep スキャン | `MOAI_DISABLE_AST_GREP_SCAN=1` |
-| LSP 診断 | `MOAI_DISABLE_LSP_DIAGNOSTIC=1` |
-| ループ制御器 | `MOAI_DISABLE_LOOP_CONTROLLER=1` |
-
-```bash
-export MOAI_DISABLE_AST_GREP_SCAN=1
-```
-
 ## 関連ドキュメント
 
-- [Hooks イベントリファレンス](/ja/advanced/hooks-reference) - 29 個のイベント全リファレンス
+- [Hooks イベントリファレンス](/ja/advanced/hooks-reference) - Claude Code 30 個のイベントタイプの全リファレンス
 - [settings.json ガイド](/ja/advanced/settings-json) - Hook 設定方法
 - [CLAUDE.md ガイド](/ja/advanced/claude-md-guide) - プロジェクト指針の管理
 - [エージェントガイド](/ja/advanced/agent-guide) - エージェントと Hook の連携

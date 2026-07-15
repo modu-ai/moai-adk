@@ -14,6 +14,10 @@ description: "Claude Code の機能を広げる 4 つの拡張ポイント (ス�
 **ひとことで言うと**: スキル・フック・MCP・プラグインという 4 つの拡張ポイントを理解すれば、Claude Code をプロジェクト固有のハーネスに仕立てられます。
 {{< /callout >}}
 
+{{< callout type="info" title="たとえで理解する" >}}
+4 つの拡張ポイントは、こう描いておくと混乱しません。**フック**は人が近づくと自動で開く **自動ドアのセンサー** — 特定のイベントが起きると決められた動作が自動で反応します。**スキル**は必要なときだけ取り出して読む **マニュアル** — 普段は表紙 (説明 1 行) だけが見え、その仕事が来たら本文を開きます。**MCP** は外部ツールを差し込む **標準コンセント**、**プラグイン**はこの 3 つを 1 つの箱に収めて配布する **パッケージ**です。
+{{< /callout >}}
+
 ## 学習の流れ
 
 ```mermaid
@@ -29,9 +33,9 @@ flowchart TD
 
 | ドキュメント | 説明 |
 |------|------|
-| [スキル](/claude-code/extensibility/skills) | 専門知識モジュールと段階的開示 |
-| [フック (Hooks)](/claude-code/extensibility/hooks) | イベント駆動の自動化 |
-| [MCP サーバー](/claude-code/extensibility/mcp) | 外部ツール接続プロトコル |
-| [プラグインとマーケットプレイス](/claude-code/extensibility/plugins) | 拡張パッケージとコードインテリジェンス |
+| [スキル](/ja/claude-code/extensibility/skills) | 専門知識モジュールと段階的開示 |
+| [フック (Hooks)](/ja/claude-code/extensibility/hooks) | イベント駆動の自動化 |
+| [MCP サーバー](/ja/claude-code/extensibility/mcp) | 外部ツール接続プロトコル |
+| [プラグインとマーケットプレイス](/ja/claude-code/extensibility/plugins) | 拡張パッケージとコードインテリジェンス |
 
-4 つの素材を身につけたら、次のグループ [エージェントと自動化](/claude-code/agentic) で、これらの素材で組んだハーネスの上にエージェンティックループを回す方法を確認してください。
+4 つの素材を身につけたら、次のグループ [エージェントと自動化](/ja/claude-code/agentic) で、これらの素材で組んだハーネスの上にエージェンティックループを回す方法を確認してください。

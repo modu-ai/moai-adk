@@ -60,7 +60,7 @@ flowchart TD
 
 {{< icon warning warn >}} **REQ-DA-061正直性区別**: このページの内容のうち設計段階と実装された動作を明確に区別する必要があります。
 
-**設計段** (`.moai/reports/agent-architecture-redesign-v2-20260709.html`) — v2アーキテクチャ設計意図。3層モデルポリシーの原則とDeepSWE根拠を提示します。
+**設計段階** (`.moai/reports/agent-architecture-redesign-v2-20260709.html`) — v2アーキテクチャ設計意図。3層モデルポリシーの原則とDeepSWE根拠を提示します。
 
 **実装された動作** (SPEC-MODEL-TIER-PLANTYPE-001, CLOSED) — `ApplyTierProfile` 60セルプロファイルが実際のルーティングを実行します。エージェントfrontmatterのmodelとeffortを両方置換(replace-both)してティアプロファイルを適用します。詳細な60セルマトリクスは[plan_type ティアプロファイル](/ja/advanced/plan-type-profiles/)ページを参照してください。
 

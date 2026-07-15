@@ -27,8 +27,19 @@ moai --help
 
 ```bash
 moai version
-# 出力例: moai <バージョン> (commit: <ハッシュ>, built: <ビルド日付>)
 ```
+
+```text
+╭────────────────────────╮
+│                        │
+│  moai-adk v3.0.0-rc11  │
+│                        │
+│                        │
+╰────────────────────────╯
+ v3.0.0-rc11   none   built unknown
+```
+
+ボックスバナーの下の行は `<バージョン>   <コミットハッシュ>   built <ビルド時刻>` の順で表示されます。`go install` など ldflags なしでビルドした場合、コミットは `none`、ビルド時刻は `unknown` と表示されます。
 
 ---
 
@@ -50,6 +61,13 @@ moai init [project-name] [OPTIONS]
 | `--all` | カタログの全項目を配布 (core + optional packs + harness-generated) |
 | `--standard` | Phase 1 質問を表示 (project mode, harness profile, LSP, quality gates, design) |
 | `--advanced` | Phase 1 + Phase 2 質問を表示 (`--standard` を含む; Phase 2 は前提条件を満たす場合のみ) |
+| `--mode <ddd\|tdd>` | 開発方法論 (デフォルト値: tdd) |
+| `--language <lang>` | 主要プログラミング言語 |
+| `--framework <name>` | フレームワーク名 (デフォルト値: 自動検出または "none") |
+| `--name <name>` | プロジェクト名 (デフォルト値: ディレクトリ名) |
+| `--root <path>` | プロジェクトルートディレクトリ (デフォルト値: 現在のディレクトリ) |
+| `--git-mode <manual\|personal\|team>` | Git ワークフローモード (デフォルト値: manual) |
+| `--git-provider <github\|gitlab>` | Git プロバイダー |
 | `--project-mode <personal\|team>` | プロジェクトモード (デフォルト値: personal) |
 | `--harness-profile <profile>` | ハーネス評価者プロファイル (default, strict, lenient, frontend) |
 | `--enable-lsp` | LSP 連携の有効化 (デフォルト値: false) |
@@ -145,11 +163,11 @@ moai doctor [OPTIONS]
 
 | コマンド | 説明 |
 |--------|------|
-| `moai doctor sandbox` | サンドボックス環境の診断 |
-| `moai doctor permission` | 権限設定の診断 |
-| `moai doctor hook` | フックロードの問題診断 |
-| `moai doctor config dump` | 現在の設定を JSON でダンプ |
-| `moai doctor config diff` | ローカル設定とテンプレートのデフォルト値を比較 |
+| `moai doctor sandbox` | サンドボックスバックエンドの可用性診断 |
+| `moai doctor permission` | 権限解決の診断 |
+| `moai doctor hook` | 27 個のフックイベントカバレッジ表を表示 |
+| `moai doctor config dump` | マージ済み設定を provenance とともにダンプ |
+| `moai doctor config diff <tier-a> <tier-b>` | 2 つの設定ティアを比較 |
 
 ### 例
 
@@ -234,9 +252,9 @@ Claude Code のフックイベントを処理するディスパッチャーで�
 moai hook <event>
 ```
 
-### 対応イベント (26 個)
+### 対応サブコマンド (約 38 個)
 
-すべてのイベント名は kebab-case です。
+`moai hook` ディスパッチャーは、標準の Claude Code フックイベントと MoAI 専用の内部アクションを合わせて約 38 個のサブコマンドを提供します。すべての名前は kebab-case です。以下は代表的なイベントです。
 
 | イベント | 説明 |
 |-------|------|
@@ -267,6 +285,17 @@ moai hook <event>
 | `elicitation` | MCP elicitation リクエスト |
 | `elicitation-result` | MCP elicitation 結果 |
 
+MoAI 専用のサブコマンドも含まれます。
+
+| サブコマンド | 説明 |
+|-------|------|
+| `stop-goal` | ターン終了時にアクティブセッションの goal を評価 |
+| `pre-push` | コミットメッセージを規約に沿って検証 |
+| `spec-status` | git コミット時に SPEC status を自動更新 |
+| `harness-classify` | ハーネス分類器の実行とティア昇格の記録 |
+| `harness-observe` · `harness-observe-stop` · `harness-observe-subagent-stop` · `harness-observe-user-prompt-submit` | ハーネス使用ログの記録 |
+| `db-schema-sync` | PostToolUse フックで DB スキーマ変更を検出 |
+
 フックはユーザーが直接実行しません — Claude Code の `settings.json` が自動的に呼び出します。
 
 ---
@@ -283,46 +312,151 @@ moai worktree <COMMAND> [ARGS]...
 
 | コマンド | 説明 |
 |--------|------|
-| `moai worktree new <SPEC_ID>` | 新しい worktree の生成 |
+| `moai worktree new [branch-name]` | 新しい worktree の生成 |
 | `moai worktree list` | アクティブな worktree 一覧 |
-| `moai worktree go <SPEC_ID>` | worktree ディレクトリへ移動 |
-| `moai worktree remove <SPEC_ID>` | worktree の削除 |
-| `moai worktree clean` | 古い worktree の整理 |
-| `moai worktree recover` | 既存ディレクトリからの復旧 |
+| `moai worktree go [branch-name]` | worktree パスを**出力** (シェル移動用) |
+| `moai worktree switch [branch-name]` | worktree へ切替 |
+| `moai worktree done [branch-name]` | worktree の完了と整理 |
+| `moai worktree sync [branch-name]` | base ブランチと worktree を同期 |
+| `moai worktree remove [path]` | worktree の削除 |
+| `moai worktree config [key] [value]` | worktree 設定の照会/変更 |
 | `moai worktree status` | worktree の状態照会 |
+| `moai worktree clean` | 古い worktree 参照の整理 |
+| `moai worktree recover` | worktree レジストリの復旧 |
+| `moai worktree snapshot` | 作業ツリー状態のスナップショットを取得 |
+| `moai worktree restore` | スナップショット HEAD 状態へ作業ツリーを復元 |
+| `moai worktree verify` | 作業ツリー状態をスナップショットと照合検証 |
+
+`moai worktree go` はディレクトリを変えずにパスだけ出力します。実際の移動はシェルで次のように包んで使います。
+
+```bash
+cd "$(moai worktree go my-branch)"
+```
 
 ---
 
 ## moai cc / moai cg / moai glm
 
-Claude Code を開始しながらバックエンドを選択するランチコマンドです。3 つのコマンドすべて `-p <profile>` フラグでプロファイルを指定でき、`--` 以降の引数を Claude Code にそのまま渡します。
+Claude Code を開始しながらバックエンドを選択するランチコマンドです。3 つのコマンドすべて `-p <profile>` フラグでプロファイルを指定できます。`--` 以降の引数を Claude Code にそのまま渡すのは `moai cc` と `moai glm` のみ対応します (`moai cg` は非対応)。
 
 ```bash
 moai cc [-p profile] [-- claude-args...]
-moai cg [-p profile] [-- claude-args...]
 moai glm [-p profile] [-- claude-args...]
+moai cg [-p profile]
 ```
 
 | コマンド | リーダー | ワーカー | tmux 必須 | 用途 |
 |--------|------|------|-----------|------|
 | `moai cc` | Claude | Claude | いいえ | 最高品質 (単一バックエンド) |
-| `moai glm` | GLM | GLM | 推奨 | コスト最適化 (GLM 単独) |
+| `moai glm` | GLM | GLM | いいえ | コスト最適化 (GLM 単独) |
 | `moai cg` | Claude | GLM | 必須 | 品質 + コストのバランス (ハイブリッド) |
 
-`moai cg` は CG モード (Claude リーダー + GLM チームメイト) を有効化します。tmux セッション内で実行する必要があり、GLM 環境変数を tmux セッションに注入してリーダー画面は Claude API を使います。
+`moai cg` は CG モード (Claude リーダー + GLM チームメイト) を有効化します。tmux セッション内で実行する必要があり、GLM 環境変数を tmux セッションに注入してリーダー画面は Claude API を使います。`moai cg` は設定後、現在の画面ですぐに Claude Code を実行するので、別途 `claude` を実行するステップは不要です。
 
 ```bash
 # 1. GLM API キーの保存 (最初の 1 回)
-moai glm sk-your-glm-api-key
+moai glm setup sk-your-glm-api-key
 
-# 2. CG モードの有効化 (tmux 内で実行)
+# 2. CG モードの有効化 (tmux 内で実行 — Claude Code が現在の画面ですぐに開始される)
 moai cg
-
-# 3. 同じ画面で Claude Code を開始
-claude
 ```
 
 詳しい CG モードの案内は [紹介 — GLM でトークン節約](./introduction#glm-でトークン節約-5070) を参照してください。
+
+### ランチフラグ
+
+3 つのランチコマンドが共通で対応するフラグです。
+
+| フラグ | 説明 |
+|--------|------|
+| `-p, --profile <name>` | 名前付き Claude プロファイルを使用 |
+| `--permission-mode <mode>` | 権限モード (default, acceptEdits, plan, auto, bypassPermissions, dontAsk) |
+| `-b, --bypass` | `--permission-mode bypassPermissions` の短縮形 |
+
+`moai cc` はさらに次のフラグに対応します。
+
+| フラグ | 説明 |
+|--------|------|
+| `-c, --continue` | 以前のセッションを継続 |
+| `-m, --model <model>` | モデル選択の上書き |
+| `--chrome` / `--no-chrome` | Chrome MCP のトグル |
+
+> `auto` 権限モードは GLM (サードパーティプロバイダー) では使えません — `moai cc` または `moai cg` でのみ対応します。
+
+### moai glm 下位コマンド
+
+| コマンド | 説明 |
+|--------|------|
+| `moai glm setup <api-key>` | GLM API キーの保存 |
+| `moai glm status` | 現在の GLM 資格情報状態を表示 |
+| `moai glm tools` | Z.AI MCP サーバーのツール管理 (有効/無効) |
+
+---
+
+## moai goal
+
+現在のセッションに条件ベースの自律 goal ループを登録・照会・解除します。条件が満たされるまで毎ターン終了時に評価されます。
+
+```bash
+moai goal <COMMAND>
+```
+
+| コマンド | 説明 |
+|--------|------|
+| `moai goal arm <condition>` | アクティブセッションに goal を登録・有効化 |
+| `moai goal status` | アクティブセッションの goal 状態を出力 |
+| `moai goal clear` | アクティブセッションの goal を解除 |
+
+---
+
+## moai handoff
+
+`/clear` 境界を越えてセッションを継続するための auto-resume ハンドオフ待機レコードを管理します。
+
+```bash
+moai handoff <COMMAND>
+```
+
+| コマンド | 説明 |
+|--------|------|
+| `moai handoff save` | 貼り付け用 resume 本文を待機レコードとして保存 |
+| `moai handoff clear` | 待機ハンドオフレコードを削除 |
+
+---
+
+## moai session
+
+マルチセッションレース緩和のためのアクティブセッション調整レジストリを管理します。
+
+```bash
+moai session <COMMAND>
+```
+
+| コマンド | 説明 |
+|--------|------|
+| `moai session current` | 現在のオーケストレーターセッション UUID を出力 |
+| `moai session list` | アクティブセッション一覧 (`--filter-spec` でフィルタリング可) |
+| `moai session register <session_id> <spec_id> <phase>` | レジストリにセッションを登録 |
+| `moai session deregister <session_id>` | レジストリからセッションを削除 (idempotent) |
+| `moai session heartbeat <session_id>` | セッションの last_heartbeat を更新 |
+| `moai session purge` | 古い項目を削除 (デフォルト: 最後の heartbeat から 30 分超過) |
+| `moai session doctor` | セッションレジストリが空である原因を診断 |
+
+---
+
+## moai web
+
+ブラウザベースの設定エディタ MoAI Web Console を起動します。
+
+```bash
+moai web [OPTIONS]
+```
+
+| フラグ | 説明 |
+|--------|------|
+| `--port <N>` | 127.0.0.1 にバインドする TCP ポート (デフォルト: 3041) |
+| `--no-open` | ブラウザを自動で開かない |
+| `--no-reuse` | 古い moai インスタンスからポートを回収しない |
 
 ---
 
@@ -364,6 +498,3 @@ moai update -c
 - [クイックスタート](./quickstart)
 - [インストール](./installation)
 - [アップデート](./update)
-- [初期設定](./init-wizard)
-- [プロファイル管理](./profile)
-- [プロジェクト状態](./status)

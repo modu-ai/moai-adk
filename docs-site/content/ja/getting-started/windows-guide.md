@@ -49,7 +49,7 @@ irm https://raw.githubusercontent.com/modu-ai/moai-adk/main/install.ps1 | iex
 Windows のユーザー名に日本語、韓国語、中国語などの非 ASCII 文字が含まれる場合、`EINVAL` エラーが発生することがあります。これは Windows の 8.3 短縮ファイル名変換の過程で発生する問題です。
 
 ```
-Error: EINVAL: invalid argument, open 'C:\Users\홍길동\AppData\Local\Temp\...'
+Error: EINVAL: invalid argument, open 'C:\Users\山田太郎\AppData\Local\Temp\...'
 ```
 
 ### 解決方法 1: 代替一時ディレクトリの設定 (推奨)

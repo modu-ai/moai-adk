@@ -187,9 +187,9 @@ MoAI-ADK が提供する `/moai` とそのサブコマンド (`/moai plan`、`/m
 
 ## 関連ドキュメント
 
-- [/moai コマンド](/utility-commands/moai)
-- [ワークフローコマンド](/workflow-commands)
-- [対話モード](/claude-code/foundations/interactive-mode)
+- [/moai コマンド](/ja/utility-commands/moai)
+- [ワークフローコマンド](/ja/workflow-commands)
+- [対話モード](/ja/claude-code/foundations/interactive-mode)
 
 ## 参考資料
 

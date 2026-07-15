@@ -31,6 +31,15 @@ moai web --no-open       # ブラウザを開かずに起動
 moai web --no-reuse      # ポート使用中なら回収せず失敗
 ```
 
+## 編集対象
+
+Web コンソールは次を編集します。
+
+- **プロファイル設定** — モデル・言語・表示設定などプロファイルごとの設定
+- **プロジェクト設定** — `.moai/config/sections/` の user / language / statusline セクション
+
+保存時にはターミナルウィザードと同じバリデーションを通るため、どちらの経路を使っても結果が一貫します。
+
 ---
 
 関連: [プロファイル管理](/cli-reference/profile) · [CLI 概要](/getting-started/cli)

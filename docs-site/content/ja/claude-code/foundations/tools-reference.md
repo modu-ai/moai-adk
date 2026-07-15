@@ -136,8 +136,8 @@ flowchart TD
 
 ## 関連ドキュメント
 
-- [フック (Hooks)](/claude-code/extensibility/hooks)
-- [.claude ディレクトリ](/claude-code/foundations/claude-directory)
+- [フック (Hooks)](/ja/claude-code/extensibility/hooks)
+- [.claude ディレクトリ](/ja/claude-code/foundations/claude-directory)
 
 ## 参考資料
 

@@ -12,7 +12,7 @@ description: "Claude Code が git ワークツリーで並列セッションを�
 {{< /callout >}}
 
 {{< callout type="tip" >}}
-このページは Claude Code のワークツリー概念を概観する橋渡し役に徹します。MoAI-ADK で SPEC 単位の並行開発にワークツリーを実際に適用する詳しい方法は、[Git Worktree 概要](/worktree)、[Git Worktree 完全ガイド](/worktree/guide)、[Git Worktree 実践例](/worktree/examples) を参照してください。
+このページは Claude Code のワークツリー概念を概観する橋渡し役に徹します。MoAI-ADK で SPEC 単位の並行開発にワークツリーを実際に適用する詳しい方法は、[Git Worktree 概要](/ja/worktree)、[Git Worktree 完全ガイド](/ja/worktree/guide)、[Git Worktree 実践例](/ja/worktree/examples) を参照してください。
 {{< /callout >}}
 
 ## ワークツリーとは
@@ -58,14 +58,14 @@ Claude Code はワークツリーの作成と片付けを直接扱います。�
 `--worktree` (または `-w`) フラグを与えると、分離されたワークツリーを作り、その中で Claude を開始します。デフォルトではリポジトリルートの `.claude/worktrees/<名前>/` 配下に作成され、`worktree-<名前>` 形式の新しいブランチが作られます。
 
 ```bash
-# 이름을 지정해 워크트리 생성
+# 名前を指定してワークツリーを作成
 claude --worktree feature-auth
 
-# 다른 터미널에서 두 번째 격리 세션
+# 別のターミナルで 2 つ目の分離セッション
 claude --worktree bugfix-123
 
-# 기준 브랜치를 origin/HEAD 대신 로컬 HEAD에서 분기
-# (설정에서 worktree.baseRef: "head" 필요)
+# 基準ブランチを origin/HEAD ではなくローカル HEAD から分岐
+# (設定で worktree.baseRef: "head" が必要)
 claude --worktree experimental
 ```
 
@@ -110,9 +110,9 @@ MoAI-ADK はこのワークツリーメカニズムを、SPEC 単位の並行開
 
 ## 関連ドキュメント
 
-- [Git Worktree 概要](/worktree)
-- [Git Worktree 完全ガイド](/worktree/guide)
-- [Git Worktree 実践例](/worktree/examples)
+- [Git Worktree 概要](/ja/worktree)
+- [Git Worktree 完全ガイド](/ja/worktree/guide)
+- [Git Worktree 実践例](/ja/worktree/examples)
 
 ## 参考資料
 

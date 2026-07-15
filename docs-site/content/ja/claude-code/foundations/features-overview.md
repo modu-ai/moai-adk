@@ -26,22 +26,22 @@ MoAI-ADK は、まさにこの Claude Code の上で動作するエージェン�
 
 | 機能 | 一行説明 | 詳しく見る |
 | --- | --- | --- |
-| コード編集 | モデルがファイルを直接読み書きする中核の組み込み機能です。 | [基礎グループ](/claude-code/foundations) |
-| 検索 | コードベース内でパターン・ファイル・シンボルを探す組み込みツールです。 | [基礎グループ](/claude-code/foundations) |
-| コマンド実行 | シェルコマンドを実行してビルド・テスト・git 作業を行います。 | [基礎グループ](/claude-code/foundations) |
-| スラッシュコマンド | `/` で始まるコマンドでスキルや組み込み動作を即座に呼び出します。 | [基礎グループ](/claude-code/foundations) |
-| 対話モード | 権限の扱い方や作業スタイルを切り替えるセッションモードです。 | [基礎グループ](/claude-code/foundations) |
-| CLAUDE.md / メモリ | 毎セッション自動でロードされる永続コンテキストを保管します。 | [コンテキストとメモリ](/claude-code/context-memory) |
-| コンテキストウィンドウ | 1 セッションが収容できるトークンの上限とその管理戦略です。 | [コンテキストとメモリ](/claude-code/context-memory) |
-| スキル | 再利用可能な知識・ワークフローを収めたマークダウン単位です。 | [拡張](/claude-code/extensibility) |
-| MCP | 外部サービス・ツールをモデルに接続するプロトコルです。 | [拡張](/claude-code/extensibility) |
-| hook | ライフサイクルイベントにスクリプト・リクエスト・プロンプトを自動実行します。 | [拡張](/claude-code/extensibility) |
-| 成果物ストレージ | Claude が生成した HTML・マークダウン・スニペットを構造化して共有します。 | [拡張](/claude-code/extensibility) |
-| プラグイン | スキル・hook・サブエージェント・MCP を束ねて配布するパッケージング単位です。 | [拡張](/claude-code/extensibility) |
-| サブエージェント | 分離コンテキストで独立実行し要約だけを返すワーカーです。 | [エージェントと自動化](/claude-code/agentic) |
-| エージェントチーム | 複数の独立セッションがタスクとメッセージを共有して協働します。 | [エージェントと自動化](/claude-code/agentic) |
-| ワークツリー | 同じリポジトリを分離した作業ディレクトリで並行開発します。 | [エージェントと自動化](/claude-code/agentic) |
-| チェックポイント | 作業途中の状態を保存して後から戻れるようにします。 | [エージェントと自動化](/claude-code/agentic) |
+| コード編集 | モデルがファイルを直接読み書きする中核の組み込み機能です。 | [基礎グループ](/ja/claude-code/foundations) |
+| 検索 | コードベース内でパターン・ファイル・シンボルを探す組み込みツールです。 | [基礎グループ](/ja/claude-code/foundations) |
+| コマンド実行 | シェルコマンドを実行してビルド・テスト・git 作業を行います。 | [基礎グループ](/ja/claude-code/foundations) |
+| スラッシュコマンド | `/` で始まるコマンドでスキルや組み込み動作を即座に呼び出します。 | [基礎グループ](/ja/claude-code/foundations) |
+| 対話モード | 権限の扱い方や作業スタイルを切り替えるセッションモードです。 | [基礎グループ](/ja/claude-code/foundations) |
+| CLAUDE.md / メモリ | 毎セッション自動でロードされる永続コンテキストを保管します。 | [コンテキストとメモリ](/ja/claude-code/context-memory) |
+| コンテキストウィンドウ | 1 セッションが収容できるトークンの上限とその管理戦略です。 | [コンテキストとメモリ](/ja/claude-code/context-memory) |
+| スキル | 再利用可能な知識・ワークフローを収めたマークダウン単位です。 | [拡張](/ja/claude-code/extensibility) |
+| MCP | 外部サービス・ツールをモデルに接続するプロトコルです。 | [拡張](/ja/claude-code/extensibility) |
+| hook | ライフサイクルイベントにスクリプト・リクエスト・プロンプトを自動実行します。 | [拡張](/ja/claude-code/extensibility) |
+| 成果物ストレージ | Claude が生成した HTML・マークダウン・スニペットを構造化して共有します。 | [拡張](/ja/claude-code/extensibility) |
+| プラグイン | スキル・hook・サブエージェント・MCP を束ねて配布するパッケージング単位です。 | [拡張](/ja/claude-code/extensibility) |
+| サブエージェント | 分離コンテキストで独立実行し要約だけを返すワーカーです。 | [エージェントと自動化](/ja/claude-code/agentic) |
+| エージェントチーム | 複数の独立セッションがタスクとメッセージを共有して協働します。 | [エージェントと自動化](/ja/claude-code/agentic) |
+| ワークツリー | 同じリポジトリを分離した作業ディレクトリで並行開発します。 | [エージェントと自動化](/ja/claude-code/agentic) |
+| チェックポイント | 作業途中の状態を保存して後から戻れるようにします。 | [エージェントと自動化](/ja/claude-code/agentic) |
 
 ### 組み込みツール系
 
@@ -100,20 +100,20 @@ flowchart TD
 
 | 順序 | グループ | 何が得られるか |
 | --- | --- | --- |
-| 1 | [基礎グループ](/claude-code/foundations) | 編集・検索・実行など毎日使う中核動作 |
-| 2 | [コンテキストとメモリ](/claude-code/context-memory) | CLAUDE.md でルールを固定しコンテキストを節約する方法 |
-| 3 | [拡張](/claude-code/extensibility) | スキル・MCP・hook・プラグインで能力を広げる方法 |
-| 4 | [エージェントと自動化](/claude-code/agentic) | サブエージェント・エージェントチームで作業を並列化する方法 |
+| 1 | [基礎グループ](/ja/claude-code/foundations) | 編集・検索・実行など毎日使う中核動作 |
+| 2 | [コンテキストとメモリ](/ja/claude-code/context-memory) | CLAUDE.md でルールを固定しコンテキストを節約する方法 |
+| 3 | [拡張](/ja/claude-code/extensibility) | スキル・MCP・hook・プラグインで能力を広げる方法 |
+| 4 | [エージェントと自動化](/ja/claude-code/agentic) | サブエージェント・エージェントチームで作業を並列化する方法 |
 
 公式ドキュメントが勧める **ベストプラクティス** (best practice) は、最初からすべての機能を設定しないことです。同じミスを 2 回したら CLAUDE.md にルールを足し、同じプロンプトを繰り返すならスキルとして保存し、毎回自動で起きるべき動作が生まれたら hook を書く — というように、必要が見えるたびに 1 つずつ積み上げていく流れです。この「必要なときに 1 つずつ」という原則は、トークンの観点でも正しい判断です — 使わない拡張はコンテキストを占めるだけで、コンテキストはすなわちコストだからです。
 
 ## 関連ドキュメント
 
-- [基礎グループ](/claude-code/foundations)
-- [コンテキストとメモリ](/claude-code/context-memory)
-- [拡張](/claude-code/extensibility)
-- [エージェントと自動化](/claude-code/agentic)
-- [クイックスタート](/getting-started/quickstart)
+- [基礎グループ](/ja/claude-code/foundations)
+- [コンテキストとメモリ](/ja/claude-code/context-memory)
+- [拡張](/ja/claude-code/extensibility)
+- [エージェントと自動化](/ja/claude-code/agentic)
+- [クイックスタート](/ja/getting-started/quickstart)
 
 ## 参考資料
 

@@ -116,10 +116,10 @@ CLAUDE.md は毎セッションのコンテキストウィンドウにロード�
 
 ```text
 ~/.claude/projects/<project>/memory/
-├── MEMORY.md          # 간결한 인덱스, 매 세션 로드
-├── debugging.md       # 디버깅 패턴 상세 노트
-├── api-conventions.md # API 설계 결정
-└── ...                # Claude가 만드는 그 밖의 주제 파일
+├── MEMORY.md          # 簡潔なインデックス、毎セッションロード
+├── debugging.md       # デバッグパターンの詳細ノート
+├── api-conventions.md # API 設計の決定
+└── ...                # Claude が作るその他のトピックファイル
 ```
 
 `<project>` のパスは git リポジトリから導出されるため、**同じリポジトリのすべてのワークツリーとサブディレクトリが 1 つのメモリディレクトリを共有** します (git リポジトリ外ではプロジェクトルートを使用)。自動メモリは **マシンローカル** (machine-local) であり、他のマシンやクラウド環境とは共有されません。
@@ -179,7 +179,7 @@ MoAI-ADK は上記の Claude Code メモリ基盤の上で動作します。プ�
 
 ## 関連ドキュメント
 
-- [CLAUDE.md ガイド](/advanced/claude-md-guide)
+- [CLAUDE.md ガイド](/ja/advanced/claude-md-guide)
 
 ## 参考資料
 

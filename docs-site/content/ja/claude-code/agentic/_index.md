@@ -34,14 +34,14 @@ flowchart TD
 
 | ドキュメント | 説明 |
 |------|------|
-| [サブエージェント](/claude-code/agentic/sub-agents) | 分離コンテキストの委譲ワーカー |
-| [エージェントチーム](/claude-code/agentic/agent-teams) | 3-5 名のチーム協働 |
-| [エージェントビュー](/claude-code/agentic/agent-view) | 実行を観察する画面 |
-| [ダイナミックワークフロー](/claude-code/agentic/workflows) | スクリプトベースの大規模オーケストレーション |
-| [ワークツリー](/claude-code/agentic/worktrees) | 作業ツリーの分離 |
-| [ゴール指向実行 (/goal)](/claude-code/agentic/goal) | 条件充足まで自律実行 |
-| [スケジュールタスク](/claude-code/agentic/scheduled-tasks) | 定期的なバックグラウンド実行 |
-| [大規模コードベース](/claude-code/agentic/large-codebases) | 大きなリポジトリの探索戦略 |
-| [ベストプラクティス](/claude-code/agentic/best-practices) | Claude Code を上手に使う方法 |
+| [サブエージェント](/ja/claude-code/agentic/sub-agents) | 分離コンテキストの委譲ワーカー |
+| [エージェントチーム](/ja/claude-code/agentic/agent-teams) | 3-5 名のチーム協働 |
+| [エージェントビュー](/ja/claude-code/agentic/agent-view) | 実行を観察する画面 |
+| [ダイナミックワークフロー](/ja/claude-code/agentic/workflows) | スクリプトベースの大規模オーケストレーション |
+| [ワークツリー](/ja/claude-code/agentic/worktrees) | 作業ツリーの分離 |
+| [ゴール指向実行 (/goal)](/ja/claude-code/agentic/goal) | 条件充足まで自律実行 |
+| [スケジュールタスク](/ja/claude-code/agentic/scheduled-tasks) | 定期的なバックグラウンド実行 |
+| [大規模コードベース](/ja/claude-code/agentic/large-codebases) | 大きなリポジトリの探索戦略 |
+| [ベストプラクティス](/ja/claude-code/agentic/best-practices) | Claude Code を上手に使う方法 |
 
-まず [サブエージェント](/claude-code/agentic/sub-agents) から読み、委譲の基本単位を理解してから次のドキュメントへ進んでください。
+まず [サブエージェント](/ja/claude-code/agentic/sub-agents) から読み、委譲の基本単位を理解してから次のドキュメントへ進んでください。
