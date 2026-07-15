@@ -35,74 +35,13 @@
 
 > **"바이브코딩의 목적은 빠른 생산성이 아니라 코드 품질이다."**
 
-MoAI-ADK(Agentic Development Kit)는 이 원칙 하나로 움직인다. 북극성은 토크노믹스(Token Economics) — 같은 품질을 더 적은 토큰으로 내고, 같은 토큰이면 품질을 더 끌어올린다. 어떤 모델을 쓸지, 얼마나 깊이 추론할지, 컨텍스트를 어떻게 소비할지는 그때그때 운에 맡기지 않고 시스템이 정한다. Go로 짠 단일 바이너리라 macOS·Linux·Windows 어디서든 별도 의존성 없이 바로 돌아간다.
+MoAI-ADK(Agentic Development Kit)는 이 원칙 하나로 움직인다. 북극성은 토크노믹스(Token Economics) — 같은 품질을 더 적은 토큰으로, 같은 토큰이면 더 높은 품질로. Go로 짠 단일 바이너리라 macOS·Linux·Windows에서 별도 의존성 없이 바로 돈다.
 
 ---
 
-## 에이전틱 코딩의 세 가지 비용
+## 60초 만에 시작
 
-에이전틱 코딩은 시작은 빠르다. 문제는 유지다. 실제로 겪는 비용은 세 가지다.
-
-- **세션이 길어질수록 토큰 지출이 복리로 붙는다.** 토큰 단가는 해마다 떨어지는데 코딩 에이전트의 총 청구액은 오히려 오른다. 매 턴 쌓인 컨텍스트를 통째로 다시 읽는 구조라, 작업이 길어질수록 이 기본 비용이 수십 턴에 걸쳐 곱해진다. 토큰은 싸지는데 청구서는 두꺼워지는 역설이다.
-- **AI가 만든 코드가 검증 없이 나간다.** 모델은 "이 변경이 맞다"고 말하지만 그 말을 붙잡아 세우는 게이트가 없다. 테스트도 린트도 커버리지도 보안 검사도 "나중에 하면 되는 일"로 밀린다. 품질은 모든 병합에 붙는 속성이 아니라 한 번의 주장으로 남는다.
-- **긴 세션은 컨텍스트 한계에서 끊기고 하던 일을 잃는다.** 어제 잘 돌던 세션이 오늘은 작업 한복판에서 멈춘다. 컨텍스트 윈도우가 찬 것이다. 넘겨줄 방법이 없으면 진행하던 작업도 그때까지의 추론도 함께 사라지고, 다음 세션은 백지에서 다시 시작한다.
-
-세 비용의 뿌리는 하나다. 모델은 토큰 단위로 움직이는 확률적 작업자다. 예산도 품질 기준도 지난 세션이 어디서 끊겼는지도 기억하지 못한다. 비용 상한, 통과하는 테스트 스위트, `/clear`를 건너뛰는 연속성 — 이런 속성은 매 턴 프롬프트로 다시 심을 수 있는 게 아니다. 한 번이라도 잊은 턴은 언제든 나쁜 샘플 하나 차이로 무너질 수 있다. 그래서 이런 속성은 모델을 바깥에서 감싸는 시스템이 강제해야 한다. 어느 턴이 어떻게 흘러가든 시스템은 속성을 흔들림 없이 붙든다. 그 시스템이 하네스다. 하네스를 짜는 일이 하네스 엔지니어링이고, Anthropic의 에이전트 가이드가 만나는 지점도 여기다. MoAI-ADK는 이 세 비용을 "어쩔 수 없는 현실"이 아니라 메커니즘으로 풀 수 있는 엔지니어링 문제로 본다.
-
----
-
-## 비용별 대응 메커니즘
-
-문제가 구조적이면 해법도 구조여야 한다. 아래 메커니즘은 모두 모델의 턴 단위 재량 바깥에서 작동한다 — 선언적 설정, 훅, 게이트. 모델이 틀린 턴을 내놓아도 그대로 버틴다. 고통마다 측정 가능한 증거를 낀 구체적 메커니즘이 붙는다.
-
-| 고통 | 메커니즘 | 증거 |
-|------|-----------|----------|
-| 구현 토큰 비용 | **CG 모드** — Claude 리더가 계획하고 감사하며, GLM 워커가 대량 구현 수행 (`moai cg`) | 구현 집중 작업에서 **60-70% 비용 절감** |
-| 세션 내 폭주하는 지출 | **Token Circuit Breaker + 예산 추적** — 스테이터스라인 비용/CW% 게이지, 예산 초과 전 안전한 중단 | 터진 뒤가 아니라 터지기 전에 멈춤; 비용이 매 턴 보임 |
-| 검증되지 않은 품질 | **SPEC 3-페이즈 라이프사이클 + TRUST 5 게이트 + 독립 감사관** (plan-auditor, sync-auditor) | 모든 병합이 테스트 / 린트 / 커버리지 게이트를 통과; 작성자가 자기 작업을 채점하지 않음 |
-| 컨텍스트 한계에서의 세션 손실 | **세션 핸드오프 자동 재개** — 컨텍스트 윈도우 임계점에서 붙여넣기 즉시 쓸 수 있는 재개 메시지 | `/clear` 후 한 번의 붙여넣기로 진행 상태, 적용된 교훈, 전제 조건 복원 |
-| 작업에 맞지 않는 모델 | **No-Haiku 3-티어 모델 정책** — 페이즈와 SPEC 크기별 선언적 모델 + effort | 중요한 곳엔 Opus급 판단, 안전한 곳에만 저렴한 모델 |
-
-이 숫자들 자체가 도구가 강제하는 규율의 산물이다. v2.14.0에서 v3.0.0-rc12까지 **80일** 동안 **2,373개 커밋**이 쌓였고, 그 결과가 **480개 이상의 SPEC 문서**, **27개** 템플릿 관리 스킬, 그리고 **16개** 지원 언어를 아우르는 **36개**의 최상위 CLI 커맨드다. 이 변경 전부가 예외 없이 아래 plan → run → sync 파이프라인을 통과했다.
-
----
-
-## 순정 Claude Code와의 차이
-
-MoAI-ADK는 Claude Code **위에** 얹히는 하네스다. Claude Code를 대체하지 않고, Claude Code가 당신 손에 맡겨둔 부분을 구조로 감싼다.
-
-| 항목 | 순정 Claude Code | Claude Code + MoAI-ADK |
-|-----------|-------------------|------------------------|
-| 모델 라우팅 | 수동 — 매번 직접 모델 선택 | 페이즈와 SPEC 크기별 선언적 No-Haiku 3-티어 정책 (max / medium / low) |
-| 품질 게이트 | 강제되는 것 없음 | 모든 변경에 TRUST 5 (Tested / Readable / Unified / Secured / Trackable) |
-| 스펙 / 요구사항 | 즉흥적 프롬프트 | GEARS 형식 요구사항 + 인수 기준을 갖춘 SPEC 3-페이즈 라이프사이클 (plan → run → sync) |
-| 비용 제어 | 없음 | 예산 추적 + Token Circuit Breaker + CG 하이브리드 (60-70% 절감) |
-| 세션 연속성 | `/clear` 후 수동 재프롬프트 | 자동 핸드오프 — 진행 상태와 전제 조건을 담아 한 번 붙여넣는 재개 |
-| 학습 | 세션 간 정적 | 자가 진화 하네스 (관찰 → 휴리스틱 → 규칙 → 자동 업데이트), 항상 승인 게이트 뒤에서 |
-| 멀티 에이전트 | 수동, 프롬프트별 | Analyze-First 라우팅과 분리된 계획/감사 역할을 갖춘 11-에이전트 카탈로그 |
-
-두 열을 가르는 건 재량이냐 보장이냐다. 왼쪽에서는 매 동작이 "이번 턴에 모델이 제대로 골랐는가"에 달려 있다. 오른쪽에서는 같은 동작이 파이프라인의 속성이라, 어느 턴이 맞히든 빗나가든 상관없이 강제된다.
-
----
-
-## 설치와 시작
-
-`moai init`이 끝나는 순간 하네스가 바로 돈다. Claude Code 터미널 스테이터스라인에 비용/컨텍스트 게이지가 뜨고, TRUST 5 품질 게이트가 워크플로우에 물리며, `/moai` 커맨드 전체를 채팅에서 바로 쓸 수 있다.
-
-### 요구사항
-
-| 플랫폼 | 지원 환경 | 비고 |
-|----------|----------------------|-------|
-| macOS | Terminal, iTerm2 | 완전 지원 |
-| Linux | Bash, Zsh | 완전 지원 |
-| Windows | **WSL (권장)**, PowerShell 7.x+ | 네이티브 cmd.exe는 미지원 |
-
-**사전 요구사항**
-
-- 모든 플랫폼에 **Git** 설치 필수
-- **Claude Code** — MoAI-ADK는 Claude Code를 위한 하네스다
-- **Windows 사용자**: [Git for Windows](https://gitforwindows.org/)가 **필수** (Git Bash 포함); 레거시 Windows PowerShell 5.x와 cmd.exe는 **미지원**
-- **권장**: `gh` CLI (PR 자동화) · `tmux` (CG 모드) · 사용 언어의 린트/테스트 툴체인 (예: `golangci-lint`)
+`moai init`이 끝나는 순간 하네스가 바로 돈다. Claude Code 스테이터스라인에 비용/컨텍스트 게이지가 뜨고, TRUST 5 품질 게이트가 워크플로우에 물리며, `/moai` 커맨드 전체를 채팅에서 쓸 수 있다.
 
 ### 설치
 
@@ -139,7 +78,7 @@ moai init my-project
 
 대화형 마법사가 언어와 프레임워크, 방법론을 자동으로 감지하고, 모델 정책을 고른 뒤 Claude Code 통합 파일까지 만든다.
 
-### Claude Code에서 시작
+### 첫 워크플로우
 
 ```bash
 claude        # launch Claude Code inside the project
@@ -151,7 +90,7 @@ claude        # launch Claude Code inside the project
 /moai sync SPEC-AUTH-001        # sync docs + create PR
 ```
 
-자연어로 던져도 된다. `/moai "fix the login bug"`처럼 쓰면 의도 분석 (Analyze-First 라우팅)이 요청을 읽고 알맞은 워크플로우로 넘긴다. 어떤 대화 언어로 적어도 통한다.
+자연어로 던져도 된다. `/moai "fix the login bug"`처럼 쓰면 의도 분석(Analyze-First 라우팅)이 요청을 읽고 알맞은 워크플로우로 넘긴다. 어떤 대화 언어로 적어도 통한다.
 
 ```mermaid
 flowchart TD
@@ -161,7 +100,22 @@ flowchart TD
     D -->|"PR created"| E["Done"]
 ```
 
-### Windows 참고: 비ASCII 사용자명 경로
+### 요구사항
+
+| 플랫폼 | 지원 환경 | 비고 |
+|----------|----------------------|-------|
+| macOS | Terminal, iTerm2 | 완전 지원 |
+| Linux | Bash, Zsh | 완전 지원 |
+| Windows | **WSL (권장)**, PowerShell 7.x+ | 네이티브 cmd.exe는 미지원 |
+
+**사전 요구사항**
+
+- 모든 플랫폼에 **Git** 설치 필수
+- **Claude Code** — MoAI-ADK는 Claude Code를 위한 하네스다
+- **Windows 사용자**: [Git for Windows](https://gitforwindows.org/)가 **필수** (Git Bash 포함); 레거시 Windows PowerShell 5.x와 cmd.exe는 **미지원**
+- **권장**: `gh` CLI (PR 자동화) · `tmux` (CG 모드) · 사용 언어의 린트/테스트 툴체인 (예: `golangci-lint`)
+
+### Windows 비ASCII 사용자명 경로
 
 Windows 사용자명에 비ASCII 문자 (한국어, 중국어 등)가 섞여 있으면 8.3 짧은 파일명 변환 때문에 `EINVAL` 오류가 날 수 있다. 우회 방법은 다음과 같다.
 
@@ -178,16 +132,60 @@ fsutil 8dot3name set 1
 
 ---
 
-## 개발 워크플로우
+## v2.x에서 v3.x로
 
-### Analyze-First 라우팅
+v2.14.0(2026-04-24)에서 v3.0.0-rc12(2026-07-14)로 오면서 무게 중심이 "기능을 더 넣는다"에서 "토큰과 품질을 시스템이 관리한다"로 옮겨졌다. 아래 표의 우측 항목은 모두 이 구간에서 새로 들어온 것이다.
 
-`/moai`의 기본 라우팅은 언어에 얽매이지 않는 의도 분석이다. 요청을 영어 키워드로 맞춰 보는 게 아니라 의미로 분류하기 때문에, 어떤 대화 언어로 써도 통한다.
+| 축 | v2.x | v3.x |
+|-----|-------|-------|
+| 모델 정책 | 페이즈·크기 무관 수동 선택 | **No-Haiku 3-티어 모델 정책** (max / medium / low) + 요금제 인지 plan_type 프로파일 |
+| 비용 제어 | 사후 확인 | **Token Circuit Breaker** — 예산 초과 전 우아한 중단 + 핸드오프 생성 |
+| 학습 · 루프 | 세션 간 정적 | **자가 진화 하네스** (Routing Ledger + Curator) · **결정 메모리** · **`/moai goal` 조건 선언형 루프** |
+| 에이전트 구성 | 다수 에이전트, 역할 혼재 | **11-에이전트 카탈로그** — 계획/감사 역할 분리, 더 적은 에이전트로 더 싼 위임 |
+| 멀티 LLM | 단일 백엔드 | **CG 모드** (Claude 리더 + GLM 워커) — 구현 작업 60-70% 절감 |
+| 터미널 UX | 초기 CLI | **TUX v3** — Charm 기반 마법사·변경 미리보기·라이브 진행 표시 |
 
-1. 의도 분석 (언어 독립적 분류)
-2. 컨텍스트 충분성 검사 (컨텍스트가 부족하면 소크라테스식 인터뷰 실행)
-3. 실행 계획 구성 (스킬 / 에이전트 / 동적 워크플로우 체인)
-4. 오케스트레이션 모드 선택 (solo-sequential / parallel-subagents / dynamic-workflow)
+이미 v2.x를 쓰고 있다면 `moai update`로 넘어오면 된다 — 위 항목이 그대로 켜진다. 새로 시작한다면 위 표가 "왜 이걸 써야 하는가"의 답이다: 비용과 품질을 매 턴 프롬프트가 아니라 시스템이 붙든다.
+
+---
+
+## 왜 MoAI-ADK인가 (30초 요약)
+
+에이전틱 코딩의 실제 비용은 세 가지다.
+
+- **토큰 지출이 복리로 붙는다** — 매 턴 컨텍스트를 통째로 다시 읽는 구조라 세션이 길어질수록 기본 비용이 곱해진다. 토큰 단가는 내려가는데 청구서는 두꺼워진다.
+- **AI 코드가 검증 없이 나간다** — 모델은 "맞다"고 말하지만 그 주장을 붙잡는 게이트가 없으면 테스트·린트·커버리지·보안 검사가 뒤로 밀린다.
+- **긴 세션은 컨텍스트 한계에서 끊긴다** — 넘겨줄 방법이 없으면 진행하던 작업도 추론도 함께 사라진다.
+
+세 비용의 뿌리는 하나다 — 모델은 예산도 품질 기준도 세션 연속성도 기억하지 못하는 확률적 작업자다. 그래서 이런 속성은 모델을 바깥에서 감싸는 시스템, 곧 하네스가 강제한다.
+
+| 고통 | 메커니즘 | 증거 |
+|------|-----------|----------|
+| 구현 토큰 비용 | **CG 모드** — Claude 리더가 계획하고 감사하며, GLM 워커가 대량 구현 수행 (`moai cg`) | 구현 집중 작업에서 **60-70% 비용 절감** |
+| 세션 내 폭주하는 지출 | **Token Circuit Breaker + 예산 추적** — 스테이터스라인 비용/CW% 게이지, 예산 초과 전 안전한 중단 | 터진 뒤가 아니라 터지기 전에 멈춤; 비용이 매 턴 보임 |
+| 검증되지 않은 품질 | **SPEC 3-페이즈 라이프사이클 + TRUST 5 게이트 + 독립 감사관** (plan-auditor, sync-auditor) | 모든 병합이 테스트 / 린트 / 커버리지 게이트를 통과; 작성자가 자기 작업을 채점하지 않음 |
+| 컨텍스트 한계에서의 세션 손실 | **세션 핸드오프 자동 재개** — 컨텍스트 윈도우 임계점에서 붙여넣기 즉시 쓸 수 있는 재개 메시지 | `/clear` 후 한 번의 붙여넣기로 진행 상태, 적용된 교훈, 전제 조건 복원 |
+| 작업에 맞지 않는 모델 | **No-Haiku 3-티어 모델 정책** — 페이즈와 SPEC 크기별 선언적 모델 + effort | 중요한 곳엔 Opus급 판단, 안전한 곳에만 저렴한 모델 |
+
+이 숫자들 자체가 도구가 강제하는 규율의 산물이다. v2.14.0에서 v3.0.0-rc12까지 **80일** 동안 **2,373개 커밋**이 쌓였고, 그 결과가 **480개 이상의 SPEC 문서**, **27개** 템플릿 관리 스킬, **16개** 지원 언어를 아우르는 **36개**의 최상위 CLI 커맨드다. 이 변경 전부가 아래 plan → run → sync 파이프라인을 통과했다.
+
+MoAI-ADK는 Claude Code **위에** 얹히는 하네스다. Claude Code를 대체하지 않고, Claude Code가 손에 맡겨둔 부분을 구조로 감싼다.
+
+| 항목 | 순정 Claude Code | Claude Code + MoAI-ADK |
+|-----------|-------------------|------------------------|
+| 모델 라우팅 | 수동 — 매번 직접 모델 선택 | 페이즈와 SPEC 크기별 선언적 No-Haiku 3-티어 정책 (max / medium / low) |
+| 품질 게이트 | 강제되는 것 없음 | 모든 변경에 TRUST 5 (Tested / Readable / Unified / Secured / Trackable) |
+| 스펙 / 요구사항 | 즉흥적 프롬프트 | GEARS 형식 요구사항 + 인수 기준을 갖춘 SPEC 3-페이즈 라이프사이클 (plan → run → sync) |
+| 비용 제어 | 없음 | 예산 추적 + Token Circuit Breaker + CG 하이브리드 (60-70% 절감) |
+| 세션 연속성 | `/clear` 후 수동 재프롬프트 | 자동 핸드오프 — 진행 상태와 전제 조건을 담아 한 번 붙여넣는 재개 |
+| 학습 | 세션 간 정적 | 자가 진화 하네스 (관찰 → 휴리스틱 → 규칙 → 자동 업데이트), 항상 승인 게이트 뒤에서 |
+| 멀티 에이전트 | 수동, 프롬프트별 | Analyze-First 라우팅과 분리된 계획/감사 역할을 갖춘 11-에이전트 카탈로그 |
+
+두 열을 가르는 건 재량이냐 보장이냐다. 왼쪽은 매 동작이 "이번 턴에 모델이 제대로 골랐는가"에 달려 있고, 오른쪽은 같은 동작이 파이프라인의 속성이라 어느 턴이 맞히든 빗나가든 강제된다.
+
+---
+
+## /moai 워크플로우 커맨드
 
 ### SPEC 3-페이즈 라이프사이클
 
@@ -219,6 +217,33 @@ flowchart TB
     Plan --> Run
     Run --> Sync
 ```
+
+### /moai 슬래시 서브커맨드
+
+> **헷갈리기 쉬운 구분**: `moai` (터미널 CLI)와 `/moai` (Claude Code 슬래시 커맨드)는 다른 도구다. 앞의 것은 셸에서 돌리는 Go 바이너리 (`moai init`, `moai doctor`)이고, 뒤의 것은 Claude Code 채팅에서 부르는 AI 워크플로우 라우터 (`/moai plan`, `/moai run`)다.
+
+16개 항목 — 이름 있는 서브커맨드 15개 + 자연어 기본 경로:
+
+| 서브커맨드 | 역할 |
+|------------|------|
+| `plan` / `run` / `sync` | SPEC 3-페이즈 파이프라인 |
+| `goal` / `loop` / `fix` | 선언적 goal 루프 · 반복 수리 · 단일 패스 수리 |
+| `project` / `harness` | 프로젝트 문서 + 하네스 생성 · 하네스 라이프사이클 |
+| `review` / `gate` / `clean` | 코드 리뷰 · 사전 커밋 품질 게이트 · 데드 코드 제거 |
+| `codemaps` / `feedback` | 아키텍처 문서 · GitHub 이슈 보고 |
+| `e2e` | 멀티플랫폼 E2E 테스트 (웹/모바일/데스크톱, CLI 우선) |
+| *(자연어)* | 자율 plan → run → sync 파이프라인으로의 Analyze-First 라우팅 |
+
+> → 자세히: [워크플로우 커맨드](https://adk.mo.ai.kr/ko/workflow-commands) · [유틸리티 커맨드](https://adk.mo.ai.kr/ko/utility-commands)
+
+### Analyze-First 라우팅
+
+`/moai`의 기본 라우팅은 언어에 얽매이지 않는 의도 분석이다. 요청을 영어 키워드로 맞춰 보는 게 아니라 의미로 분류하기 때문에, 어떤 대화 언어로 써도 통한다.
+
+1. 의도 분석 (언어 독립적 분류)
+2. 컨텍스트 충분성 검사 (컨텍스트가 부족하면 소크라테스식 인터뷰 실행)
+3. 실행 계획 구성 (스킬 / 에이전트 / 동적 워크플로우 체인)
+4. 오케스트레이션 모드 선택 (solo-sequential / parallel-subagents / dynamic-workflow)
 
 ### 개발 방법론 — TDD와 DDD
 
@@ -252,35 +277,35 @@ flowchart TD
 
 ---
 
-## 비용 제어
+## 비용 최적화 실전
 
-### CG 모드
+### CG 모드 (moai cg)
 
-구현 작업에는 세 가지 세션 모드가 있다 — `moai cc`(Claude 전용), `moai glm`(GLM 전용), `moai cg`(하이브리드, Claude 리더 + GLM 워커). CG 모드는 Claude가 계획하고 감사하는 동안 GLM 워커가 대량 구현을 맡는 구조다. CG 모드는 구현 작업 비용을 60-70% 절감한다.
+구현 작업에는 세 가지 세션 모드가 있다 — `moai cc`(Claude 전용), `moai glm`(GLM 전용), `moai cg`(하이브리드, Claude 리더 + GLM 워커). CG 모드는 Claude가 계획하고 감사하는 동안 GLM 워커가 대량 구현을 맡는 구조로, 구현 작업 비용을 60-70% 절감한다.
 
-### Token Circuit Breaker와 예산 추적
+> → 자세히: [CG 모드](https://adk.mo.ai.kr/ko/multi-llm/cg-mode)
 
-스테이터스라인이 비용과 CW%(컨텍스트 윈도우 사용률) 게이지를 매 턴 보여주고, 예산을 넘기기 전에 안전하게 중단한다. 터진 뒤가 아니라 터지기 전에 멈추는 구조다.
+### No-Haiku 3-티어 모델 정책
 
-### 스테이터스라인
+작업 페이즈와 SPEC 크기(Tier S/M/L)에 따라 모델과 추론 노력(effort)을 선언적으로 배정한다. 정책은 세 가지 — **max / medium / low** — 이고, 계획·감사처럼 판단이 중요한 곳엔 Opus급을, 안전한 곳엔 저렴한 모델을 붙인다. 요금제 인지 plan_type 프로파일이 API 종량제와 구독 요금제에 서로 다른 Tier×Phase 매트릭스를 적용하고, GLM 백엔드에는 effort 오버레이를 얹는다.
 
-MoAI는 Claude Code 터미널 맨 아래에 정보가 꽉 찬 스테이터스라인을 그린다. 모델 티어/effort, MoAI 버전 (업데이트가 있으면 마커까지), Git 브랜치와 변경 상태, 컨텍스트 윈도우 사용률 (CW%), 캐시 적중률, 세션 비용/토큰이 한 줄에 담긴다.
+> → 자세히: [모델 정책](https://adk.mo.ai.kr/ko/multi-llm/model-policy) · [No-Haiku 3-티어](https://adk.mo.ai.kr/ko/advanced/no-haiku-3tier) · [plan_type 프로파일](https://adk.mo.ai.kr/ko/advanced/plan-type-profiles)
 
-CW% 옆에는 2단계 `/clear` 마커가 뜬다. 모델별 임계점 (Opus 4.8, GLM-5.2[1m] 같은 1M-컨텍스트 모델은 50%, 200K 모델은 90%)에서 소프트 경고가 먼저 뜨고, 절대 한도에 닿으면 하드 마커가 붙는다. 참고로 Claude Code는 GLM-5.2를 200K 모델로 잘못 보고한다 (업스트림 Issue #653). MoAI가 `internal/statusline/memory.go`에서 1M으로 바로잡으므로, CW%는 MoAI 스테이터스라인 쪽을 믿으면 된다.
+### Token Circuit Breaker · 예산 · 스테이터스라인
 
-> → 자세히: [스테이터스라인](https://adk.mo.ai.kr/ko/advanced/statusline)
+스테이터스라인은 Claude Code 터미널 맨 아래에 정보가 꽉 찬 한 줄을 그린다 — 모델 티어/effort, MoAI 버전(업데이트 마커 포함), Git 브랜치와 변경 상태, 컨텍스트 윈도우 사용률(CW%), 캐시 적중률, 세션 비용/토큰. Token Circuit Breaker는 이 게이지를 근거로 예산을 넘기기 전에 안전하게 중단한다. 터진 뒤가 아니라 터지기 전에 멈추는 구조다.
 
-### 세션 핸드오프 자동 재개
+CW% 옆에는 2단계 `/clear` 마커가 뜬다. 모델별 임계점(Opus 4.8, GLM-5.2[1m] 같은 1M-컨텍스트 모델은 50%, 200K 모델은 90%)에서 소프트 경고가 먼저 뜨고, 절대 한도에 닿으면 하드 마커가 붙는다. 참고로 Claude Code는 GLM-5.2를 200K 모델로 잘못 보고한다(업스트림 Issue #653). MoAI가 `internal/statusline/memory.go`에서 1M으로 바로잡으므로, CW%는 MoAI 스테이터스라인 쪽을 믿으면 된다.
 
-컨텍스트 윈도우가 임계점 (1M-컨텍스트 모델 50%, 200K 모델 90%)에 닿으면, MoAI가 재개 메시지를 하나 뽑아 낸다. 여기엔 진행 상태와 그동안 적용한 교훈, 검증 가능한 전제 조건이 담긴다. `/clear` 뒤에 이 메시지를 한 번 붙여넣기만 하면 다음 세션이 끊긴 자리에서 그대로 이어진다.
+> → 자세히: [스테이터스라인](https://adk.mo.ai.kr/ko/advanced/statusline) · [토큰 예산](https://adk.mo.ai.kr/ko/advanced/token-budget) · [프롬프트 캐싱](https://adk.mo.ai.kr/ko/cost-optimization/prompt-caching)
 
 ---
 
-## 자동화 루프와 학습
+## 자동화 · 학습
 
-### /moai goal — 선언적 에이전틱 루프
+### /moai goal · /moai loop · /moai fix
 
-완료 조건 하나만 선언해 두면, 그 조건이 충족되거나 턴 한도 (기본 30)에 닿을 때까지 세션이 알아서 일한다. 구현은 `internal/goal/`에 있고, goal 상태는 세션별로 `.moai/state/goal/<session-id>.json`에 담긴다. 판정은 2-티어 Stop-hook 평가기가 맡는다. Tier 1은 기계적 검사 — 종료 코드, grep 카운트, 파일 존재, 턴 한도. Tier 2는 체크포인트를 짚어 가며 오케스트레이터가 스스로 평가한다.
+`/moai goal`은 완료 조건 하나만 선언해 두면 그 조건이 충족되거나 턴 한도(기본 30)에 닿을 때까지 세션이 알아서 일하게 한다. 구현은 `internal/goal/`에 있고, goal 상태는 세션별로 `.moai/state/goal/<session-id>.json`에 담긴다. 판정은 2-티어 Stop-hook 평가기가 맡는다 — Tier 1은 기계적 검사(종료 코드, grep 카운트, 파일 존재, 턴 한도), Tier 2는 체크포인트를 짚어 가며 오케스트레이터가 스스로 평가한다.
 
 ```text
 /moai goal "go test ./... exits 0 and every AC is recorded as PASS"
@@ -288,9 +313,7 @@ CW% 옆에는 2단계 `/clear` 마커가 뜬다. 모델별 임계점 (Opus 4.8, 
 /moai goal clear
 ```
 
-### /moai loop vs /moai fix — 진단 기반 자가 수리
-
-`/moai loop`는 Ralph Engine (`internal/ralph/engine.go`) 위에 얹은 goal 엔진 프리셋이다. LSP 진단과 AST-grep, 린터를 한꺼번에 병렬로 돌려 스캔하고, 나온 문제를 Level 1 (자동 수정 가능)부터 Level 4 (사람 손이 필요)까지 나눈 뒤, 큐가 빌 때까지 돈다. 같은 오류가 계속 뜨면 전략을 바꾸는 수렴 감지가 붙어 있고, 무한히 도는 걸 막는 하드 반복 한도가 안전핀 역할을 한다.
+`/moai loop`는 Ralph Engine(`internal/ralph/engine.go`) 위에 얹은 goal 엔진 프리셋이다. LSP 진단과 AST-grep, 린터를 한꺼번에 병렬로 돌려 스캔하고, 나온 문제를 Level 1(자동 수정 가능)부터 Level 4(사람 손이 필요)까지 나눈 뒤 큐가 빌 때까지 돈다. 같은 오류가 계속 뜨면 전략을 바꾸는 수렴 감지가 붙어 있고, 무한히 도는 걸 막는 하드 반복 한도가 안전핀 역할을 한다.
 
 | 명령 | 목표 | 실행 | 사용 시점 |
 |---------|------|-----------|-------------|
@@ -314,10 +337,6 @@ flowchart TD
     H --> C
 ```
 
-```
-loop runs → observations accumulate (Routing Ledger) → patterns learned (Curator) → instructions evolve (approval gate)
-```
-
 - **Routing Observation Ledger** (`internal/harness/routing/`) — 라우팅 결정과 게이트 증거를 프라이버시 보존 다이제스트로 기록한다
 - **4-티어 학습 사다리** (`internal/harness/learner.go`) — 관찰 (≥1) → 휴리스틱 (≥3) → 규칙 (≥5) → 자동 업데이트 (≥10, 사용자 승인 필수); 신뢰도 하한 0.70
 - **5-계층 안전 파이프라인** — observer (`internal/harness/observer.go`) → learner → applier (`internal/harness/applier.go`, 스냅샷 우선 제한 편집) → config/marker 업데이터 → 사용자 승인 게이트; 모든 적용은 `moai harness rollback`으로 되돌릴 수 있다
@@ -330,11 +349,15 @@ moai harness rollback    # revert the last application
 moai harness disable     # turn learning off
 ```
 
+Harness v4 Builder(`/moai harness "..."`)로 이 프로젝트에만 맞춘 에이전트·스킬·커맨드를 자연어로 만들 수도 있다 — 에이전트 · 확장 레퍼런스에서 다룬다.
+
 > → 자세히: [자가 진화 하네스](https://adk.mo.ai.kr/ko/advanced/self-evolving)
 
-### 결정 메모리
+### 세션 핸드오프 자동 재개 · 결정 메모리
 
-MoAI-ADK는 사용자가 AskUserQuestion에서 내린 결정을 기억해 두었다가, 다음 추천을 그 사람에게 맞춘다.
+컨텍스트 윈도우가 임계점(1M-컨텍스트 모델 50%, 200K 모델 90%)에 닿으면 MoAI가 재개 메시지를 하나 뽑아 낸다. 여기엔 진행 상태와 그동안 적용한 교훈, 검증 가능한 전제 조건이 담긴다. `/clear` 뒤에 이 메시지를 한 번 붙여넣기만 하면 다음 세션이 끊긴 자리에서 그대로 이어진다.
+
+결정 메모리는 사용자가 AskUserQuestion에서 내린 결정을 기억해 두었다가 다음 추천을 그 사람에게 맞춘다.
 
 - **3-티어 메모리** — Core (핫 선호) / Recall (최근 세션) / Archival (28일 TTL, 소프트 삭제)
 - **적응적 배치** — 질문은 불확실성이 가장 높은 곳 (p ≈ 0.5)에서 나온다; 추천은 시스템 기본값이 아니라 관찰된 통계적 다수를 따른다
@@ -343,29 +366,40 @@ MoAI-ADK는 사용자가 AskUserQuestion에서 내린 결정을 기억해 두었
 
 > → 자세히: [결정 메모리](https://adk.mo.ai.kr/ko/advanced/decision-memory) · [카탈로그 시스템](https://adk.mo.ai.kr/ko/advanced/catalog-system)
 
-### Harness v4 Builder
+---
 
-```text
-/moai harness "build me a harness for CLI template development"
-```
+## CLI 레퍼런스
 
-자연어로 던진 요청이 도메인·목표·제약 추출을 거치고 승인 게이트를 통과하면, 이 프로젝트에만 맞춘 에이전트와 스킬, 커맨드가 만들어진다. `/moai project`를 돌리면 프로젝트 문서 (product.md, structure.md, tech.md, codemaps/)를 뽑으면서 하네스까지 같이 짠다.
+`moai` 바이너리에 등록된 최상위 커맨드는 36개다. 그중 자주 손이 가는 것부터 본다.
 
-> → 자세히: [Harness v4 Builder](https://adk.mo.ai.kr/ko/advanced/harness-v4-builder)
+| 커맨드 | 설명 |
+|---------|-------------|
+| `moai init` | 대화형 프로젝트 설정 (언어/프레임워크/방법론 자동 감지) |
+| `moai doctor` | 시스템 상태 진단과 환경 검증 |
+| `moai status` | 프로젝트 상태 요약 (Git 브랜치, 품질 지표) |
+| `moai update` | 최신 버전으로 업데이트 (자동 롤백 지원) |
+| `moai update -c` | init 마법사 재실행으로 설정 편집 (템플릿 동기화 없음) |
+| `moai cc` / `moai glm` / `moai cg` | Claude 전용 / GLM 전용 / 하이브리드 Claude 리더 + GLM 워커 세션 |
+| `moai worktree <new\|list\|switch\|sync\|remove\|clean\|go>` | 병렬 SPEC 개발을 위한 Git worktree 관리 |
+| `moai session <list\|register\|current>` | 멀티 세션 조율 |
+| `moai spec <audit\|archive\|lint\|list\|new>` | SPEC 라이프사이클 도구 |
+| `moai goal <arm\|status\|clear>` | Goal 엔진 CLI |
+| `moai harness <status\|apply\|rollback\|disable>` | 하네스 학습 라이프사이클 |
+| `moai handoff <save\|list>` | 세션 핸드오프 기록 |
+| `moai preference <list\|decay-scan\|toggle>` | 결정 메모리 관리 |
+| `moai hook <event>` | Claude Code 훅 디스패처 |
+| `moai web` | Web Console — 6탭 설정 콘솔 (identity, language, launch, git_strategy, llm, agentfm) + 서브 에이전트 4색 티어 배지 (en/ko/ja/zh) |
+| `moai inventory` | 세션, worktree, 하네스의 읽기 전용 인벤토리 (`--json` 지원) |
+| `moai version` | 버전, 커밋 해시, 빌드 날짜 |
 
-### Ultracode — xhigh 노력 + 자동 오케스트레이션
+나머지 등록 커맨드는 다음과 같다: `clean`, `codemaps`, `feedback`, `loop`, `lsp`, `ast-grep`, `agent`, `workflow`, `statusline`, `telemetry`, `constitution`, `state`, `tool-policy`, `migrate`, `profile`, `pr`, `github`, `research`.
 
-```text
-/effort ultracode
-```
-
-`/effort ultracode`는 `xhigh` 추론 노력에 자동 동적 워크플로우 오케스트레이션을 얹는다 (Claude Code v2.1.154+). 세션 안에서 무게 있는 작업이 나올 때마다 알맞은 오케스트레이션 프리미티브가 자동으로 골라지고, 큰 팬아웃은 중간 결과를 세션 컨텍스트가 아니라 스크립트 변수에 담아 돈다. 전체 코드베이스를 훑거나 독립 작업 수백 개를 처리하는 식으로, 팬아웃 자체가 비용의 대부분을 차지하는 대규모 병렬 스윕·감사·마이그레이션에 어울린다. 요청 하나만 이렇게 돌리고 싶다면 세션 전체를 갈아엎지 말고 `ultracode` 키워드를 앞에 붙인다.
-
-> → 자세히: [동적 워크플로우와 Ultracode](https://adk.mo.ai.kr/ko/advanced/ultracode-workflows)
+> 커맨드마다 레퍼런스 페이지가 docs-site에 마련돼 있다. 특히 v3에서 `goal`, `handoff`, `harness`, `init`, `launchers`, `loop`, `pr`, `session`, `spec`, `tool-policy`, `worktree` 등 **CLI 레퍼런스 페이지 11개**가 새로 들어왔다.
+> → 자세히: [CLI 레퍼런스](https://adk.mo.ai.kr/ko/cli-reference)
 
 ---
 
-## 에이전트 구성
+## 에이전트 · 확장 레퍼런스
 
 ### 11-에이전트 카탈로그
 
@@ -407,80 +441,19 @@ flowchart TD
 | 병렬 팬아웃 | 한 턴에 여러 읽기 전용 `Agent()` 호출 | 리서치, 리뷰, 감사 |
 | 동적 워크플로우 | 스크립트가 수십 개 에이전트를 오케스트레이션; 결과는 스크립트 변수에 유지 | 코드베이스 스윕, 대규모 마이그레이션 |
 
-네이티브 Claude Code 팀메이트 런타임 (`moai cg` tmux pane)은 이 은퇴와 상관없이 그대로 돌아간다.
+네이티브 Claude Code 팀메이트 런타임(`moai cg` tmux pane)은 이 은퇴와 상관없이 그대로 돌아간다. 대규모 병렬 스윕·감사·마이그레이션을 한 요청으로 돌리려면 `/effort ultracode`(xhigh 노력 + 자동 동적 워크플로우 오케스트레이션, Claude Code v2.1.154+)를 쓰거나, 요청 앞에 `ultracode` 키워드만 붙인다.
 
----
+> → 자세히: [동적 워크플로우와 Ultracode](https://adk.mo.ai.kr/ko/advanced/ultracode-workflows)
 
-## 레퍼런스
+### Harness v4 Builder
 
-### `/moai` 슬래시 서브커맨드
+```text
+/moai harness "build me a harness for CLI template development"
+```
 
-> **헷갈리기 쉬운 구분**: `moai` (터미널 CLI)와 `/moai` (Claude Code 슬래시 커맨드)는 다른 도구다. 앞의 것은 셸에서 돌리는 Go 바이너리 (`moai init`, `moai doctor`)이고, 뒤의 것은 Claude Code 채팅에서 부르는 AI 워크플로우 라우터 (`/moai plan`, `/moai run`)다.
+자연어로 던진 요청이 도메인·목표·제약 추출을 거치고 승인 게이트를 통과하면, 이 프로젝트에만 맞춘 에이전트와 스킬, 커맨드가 만들어진다. `/moai project`를 돌리면 프로젝트 문서(product.md, structure.md, tech.md, codemaps/)를 뽑으면서 하네스까지 같이 짠다.
 
-16개 항목 — 이름 있는 서브커맨드 15개 + 자연어 기본 경로:
-
-| 서브커맨드 | 역할 |
-|------------|------|
-| `plan` / `run` / `sync` | SPEC 3-페이즈 파이프라인 |
-| `goal` / `loop` / `fix` | 선언적 goal 루프 · 반복 수리 · 단일 패스 수리 |
-| `project` / `harness` | 프로젝트 문서 + 하네스 생성 · 하네스 라이프사이클 |
-| `review` / `gate` / `clean` | 코드 리뷰 · 사전 커밋 품질 게이트 · 데드 코드 제거 |
-| `codemaps` / `feedback` | 아키텍처 문서 · GitHub 이슈 보고 |
-| `e2e` | 멀티플랫폼 E2E 테스트 (웹/모바일/데스크톱, CLI 우선) |
-| *(자연어)* | 자율 plan → run → sync 파이프라인으로의 Analyze-First 라우팅 |
-
-> → 자세히: [워크플로우 커맨드](https://adk.mo.ai.kr/ko/workflow-commands) · [유틸리티 커맨드](https://adk.mo.ai.kr/ko/utility-commands)
-
-### CLI 커맨드 (최상위 36개)
-
-`moai` 바이너리에 등록된 최상위 커맨드는 36개다. 그중 자주 손이 가는 것부터 본다.
-
-| 커맨드 | 설명 |
-|---------|-------------|
-| `moai init` | 대화형 프로젝트 설정 (언어/프레임워크/방법론 자동 감지) |
-| `moai doctor` | 시스템 상태 진단과 환경 검증 |
-| `moai status` | 프로젝트 상태 요약 (Git 브랜치, 품질 지표) |
-| `moai update` | 최신 버전으로 업데이트 (자동 롤백 지원) |
-| `moai update -c` | init 마법사 재실행으로 설정 편집 (템플릿 동기화 없음) |
-| `moai cc` / `moai glm` / `moai cg` | Claude 전용 / GLM 전용 / 하이브리드 Claude 리더 + GLM 워커 세션 |
-| `moai worktree <new\|list\|switch\|sync\|remove\|clean\|go>` | 병렬 SPEC 개발을 위한 Git worktree 관리 |
-| `moai session <list\|register\|current>` | 멀티 세션 조율 |
-| `moai spec <audit\|archive\|lint\|list\|new>` | SPEC 라이프사이클 도구 |
-| `moai goal <arm\|status\|clear>` | Goal 엔진 CLI |
-| `moai harness <status\|apply\|rollback\|disable>` | 하네스 학습 라이프사이클 |
-| `moai handoff <save\|list>` | 세션 핸드오프 기록 |
-| `moai preference <list\|decay-scan\|toggle>` | 결정 메모리 관리 |
-| `moai hook <event>` | Claude Code 훅 디스패처 |
-| `moai web` | Web Console — 6탭 설정 콘솔 (identity, language, launch, git_strategy, llm, agentfm) + 서브 에이전트 4색 티어 배지 (en/ko/ja/zh) |
-| `moai inventory` | 세션, worktree, 하네스의 읽기 전용 인벤토리 (`--json` 지원) |
-| `moai version` | 버전, 커밋 해시, 빌드 날짜 |
-
-나머지 등록 커맨드는 다음과 같다: `clean`, `codemaps`, `feedback`, `loop`, `lsp`, `ast-grep`, `agent`, `workflow`, `statusline`, `telemetry`, `constitution`, `state`, `tool-policy`, `migrate`, `profile`, `pr`, `github`, `research`.
-
-> 커맨드마다 레퍼런스 페이지가 docs-site에 마련돼 있다. 특히 v3에서 `goal`, `handoff`, `harness`, `init`, `launchers`, `loop`, `pr`, `session`, `spec`, `tool-policy`, `worktree` 등 **CLI 레퍼런스 페이지 11개**가 새로 들어왔다.
-> → 자세히: [CLI 레퍼런스](https://adk.mo.ai.kr/ko/cli-reference)
-
-### 훅
-
-모든 훅 이벤트는 JSON stdin/stdout으로 주고받는 Claude Code 훅 프로토콜을 따른다.
-
-- **27개 이벤트 타입** — SessionStart, PreToolUse, PostToolUse, SessionEnd, Stop, SubagentStop, PreCompact, PostCompact, TeammateIdle, TaskCompleted 등
-- **4개 훅 타입** — command (셸 스크립트), prompt (LLM 평가), agent (서브에이전트 검증), http (웹훅 엔드포인트)
-- 태스크 지표는 세션 분석과 비용 추적을 위해 `.moai/logs/task-metrics.jsonl`에 기록된다
-
-> → 자세히: [훅 가이드](https://adk.mo.ai.kr/ko/advanced/hooks-guide) · [훅 레퍼런스](https://adk.mo.ai.kr/ko/advanced/hooks-reference)
-
-### 출력 스타일
-
-| 스타일 | 성격 | 대상 |
-|-------|-----------|----------|
-| **MoAI** (expert) | 밀도 높고 간결 | 숙련 개발자 |
-| **MoAI-Easy** (basic) | 친절하고 설명적 — 제품 기본값 | 신규 사용자 |
-| **MoAI-Learn** (learn) | 소크라테스식 튜터 | 학습자 |
-
-전환은 `/config`로 한다 (선택값은 우선순위가 가장 높은 `settings.local.json`에 저장된다). 출력 스타일은 세션이 시작할 때 딱 한 번만 읽히기 때문에, 바꿔도 `/clear`를 하거나 새 세션을 열어야 반영된다.
-
-> → 자세히: [Advanced 가이드](https://adk.mo.ai.kr/ko/advanced)
+> → 자세히: [Harness v4 Builder](https://adk.mo.ai.kr/ko/advanced/harness-v4-builder)
 
 ### @MX 태그 시스템
 
@@ -504,6 +477,28 @@ func DispatchHook(event string, data []byte) error {
 이 시스템의 핵심은 신호 대 잡음비다. **AI가 제일 먼저 알아야 할 코드에만 태그가 붙는다.** 대부분의 코드는 어느 기준에도 걸리지 않아 태그가 없는데, 이건 결함이 아니라 원래 그러라고 만든 동작이다. 임계값과 파일당 한도는 `.moai/config/sections/mx.yaml`에서 조정하고, 태그 자체는 plan/run/sync 페이즈 안에서 자동으로 만들어지고 관리된다.
 
 > → 자세히: [@MX 태그 시스템](https://adk.mo.ai.kr/ko/advanced/mx-tags)
+
+### 훅
+
+모든 훅 이벤트는 JSON stdin/stdout으로 주고받는 Claude Code 훅 프로토콜을 따른다.
+
+- **27개 이벤트 타입** — SessionStart, PreToolUse, PostToolUse, SessionEnd, Stop, SubagentStop, PreCompact, PostCompact, TeammateIdle, TaskCompleted 등
+- **4개 훅 타입** — command (셸 스크립트), prompt (LLM 평가), agent (서브에이전트 검증), http (웹훅 엔드포인트)
+- 태스크 지표는 세션 분석과 비용 추적을 위해 `.moai/logs/task-metrics.jsonl`에 기록된다
+
+> → 자세히: [훅 가이드](https://adk.mo.ai.kr/ko/advanced/hooks-guide) · [훅 레퍼런스](https://adk.mo.ai.kr/ko/advanced/hooks-reference)
+
+### 출력 스타일
+
+| 스타일 | 성격 | 대상 |
+|-------|-----------|----------|
+| **MoAI** (expert) | 밀도 높고 간결 | 숙련 개발자 |
+| **MoAI-Easy** (basic) | 친절하고 설명적 — 제품 기본값 | 신규 사용자 |
+| **MoAI-Learn** (learn) | 소크라테스식 튜터 | 학습자 |
+
+전환은 `/config`로 한다 (선택값은 우선순위가 가장 높은 `settings.local.json`에 저장된다). 출력 스타일은 세션이 시작할 때 딱 한 번만 읽히기 때문에, 바꿔도 `/clear`를 하거나 새 세션을 열어야 반영된다.
+
+> → 자세히: [Advanced 가이드](https://adk.mo.ai.kr/ko/advanced)
 
 ### Worktree 격리
 
