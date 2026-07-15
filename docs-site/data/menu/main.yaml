@@ -206,6 +206,12 @@ main:
           zh: /moai sync
         ref: /workflow-commands/moai-sync
       - name:
+          ko: /moai design
+          en: /moai design
+          ja: /moai design
+          zh: /moai design
+        ref: /workflow-commands/moai-design
+      - name:
           ko: /moai harness
           en: /moai harness
           ja: /moai harness
@@ -239,6 +245,12 @@ main:
           ja: /moai loop
           zh: /moai loop
         ref: /utility-commands/moai-loop
+      - name:
+          ko: /moai review
+          en: /moai review
+          ja: /moai review
+          zh: /moai review
+        ref: /utility-commands/moai-review
       - name:
           ko: /moai fix
           en: /moai fix

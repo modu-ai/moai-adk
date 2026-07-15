@@ -9,5 +9,7 @@ index:
   title: "/moai run"
 "moai-sync":
   title: "/moai sync"
+"moai-design":
+  title: "/moai design"
 "moai-harness":
   title: "/moai harness"

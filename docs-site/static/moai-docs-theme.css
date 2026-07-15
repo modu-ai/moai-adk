@@ -583,6 +583,10 @@ body {
 .gdoc-markdown .code-card .chroma .line,
 .gdoc-markdown .code-card .chroma .cl {
   background: transparent !important;
+  border: 0 !important;
+  outline: 0 !important;
+  box-shadow: none !important;
+  border-radius: 0 !important;
 }
 /* 코드 카드 가로 스크롤바 다크 */
 .gdoc-markdown .code-card ::-webkit-scrollbar { height: 10px; width: 10px; background: #15120E; }

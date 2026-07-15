@@ -7,6 +7,8 @@ moai:
   title: "/moai goal"
 "moai-loop":
   title: "/moai loop"
+"moai-review":
+  title: "/moai review"
 "moai-fix":
   title: "/moai fix"
 "moai-clean":
