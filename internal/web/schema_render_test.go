@@ -76,6 +76,8 @@ func TestWebRendersSchemaFieldSet(t *testing.T) {
 		settings.SectionMx:            true,
 		settings.SectionHandoff:       true,
 		settings.SectionCache:         true,
+		// git_strategy section removed from the web console (config stays in yaml).
+		settings.SectionGitStrategy: true,
 	}
 	m3RemovedFields := map[string]bool{}
 	for _, f := range settings.AllFields() {

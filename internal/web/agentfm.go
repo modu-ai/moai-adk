@@ -6,8 +6,9 @@ package web
 // dual-write 없음)가 담당하고, 여기는 파싱/검증/뷰 시딩만 한다.
 //
 // 검증은 v4manifest closed sets를 직접 재사용한다 (REQ-WC11-024/029 —
-// model ∈ {inherit, haiku, sonnet, opus}, effort ∈ {low, medium, high,
-// xhigh, max} ∪ {absent}; 옵션 목록 재선언 금지).
+// model ∈ {inherit, haiku, sonnet, opus} ∪ {fable}, effort ∈ {low, medium,
+// high, xhigh, max} ∪ {absent}; 옵션 목록 재선언 금지). fable은 v4manifest에
+// 아직 상수가 없어 웹 레이어 로컬 상수(modelFable)로 추가된 Mythos급 모델 옵션이다.
 //
 // M5-a B6: 편집 대상 디렉터리를 다중(moai/ + harness/)으로 확장했다 — 8
 // retained agents는 .claude/agents/moai/ 에, harness specialists는
@@ -30,23 +31,20 @@ import (
 // agentFMAbsent는 effort "(absent)" 상태의 폼 와이어 값이다 (EC-7 — 키 삭제).
 const agentFMAbsent = "__absent__"
 
+// modelFable은 상위 Mythos급 모델 옵션의 폼 와이어 값이다. v4manifest에 아직
+// 대응 상수가 없어 웹 레이어에서 로컬 상수로 정의한다 (agentfm.Patch는 model을
+// 닫힌 집합으로 검증하지 않으므로 이 값으로 frontmatter 영속화가 가능하다).
+const modelFable = "fable"
+
 // agentFMModelValues / agentFMEffortValues는 v4manifest closed sets에서 파생한
-// 폼 옵션 값이다 (재선언 금지 — exported 상수 재사용).
+// 폼 옵션 값이다 (재선언 금지 — exported 상수 재사용). fable은 v4manifest 상수가
+// 없어 modelFable 로컬 상수를 tail에 덧붙인다.
 func agentFMModelValues() []string {
-	return []string{v4manifest.ModelInherit, v4manifest.ModelHaiku, v4manifest.ModelSonnet, v4manifest.ModelOpus}
+	return []string{v4manifest.ModelInherit, v4manifest.ModelHaiku, v4manifest.ModelSonnet, v4manifest.ModelOpus, modelFable}
 }
 
 func agentFMEffortValues() []string {
 	return []string{v4manifest.EffortLow, v4manifest.EffortMedium, v4manifest.EffortHigh, v4manifest.EffortXhigh, v4manifest.EffortMax}
-}
-
-// agentFMPlanTypeOptions returns the plan-type selector options in a stable
-// order (api first, subscription second). Migrated from the retired standalone
-// Model Policy page (SPEC-MODEL-TIER-PLANTYPE-001 §B.4) into the top of this
-// panel — plan_type / performance_tier were the only two write affordances the
-// (otherwise read-only) model-routing surface ever carried.
-func agentFMPlanTypeOptions() []string {
-	return []string{config.PlanTypeAPI, config.PlanTypeSubscription}
 }
 
 // agentFMPerfTierOptions returns the closed-set performance-tier selector
@@ -57,35 +55,34 @@ func agentFMPerfTierOptions() []string {
 	return template.ValidPerformanceTiers()
 }
 
-// parsePlanTypeTierForm parses the plan_type / performance_tier selectors now
-// hosted at the top of the agentfm panel. An empty submission preserves the
-// current value (mirrors the agentfm empty=preserve convention); a non-empty
-// out-of-set value is rejected as a per-field error joining the existing
-// atomic-reject mechanism (no partial persistence).
-func parsePlanTypeTierForm(r *http.Request) (planType, perfTier string, errs map[string]string) {
+// parsePerfTierForm parses the performance_tier selector hosted at the top of
+// the agentfm panel. An empty submission preserves the current value (mirrors
+// the agentfm empty=preserve convention); a non-empty out-of-set value is
+// rejected as a per-field error joining the existing atomic-reject mechanism
+// (no partial persistence). The plan_type selector was removed from the web UI
+// (llm.plan_type is still read from config for the effective-tier display and
+// for the tier-profile re-application below, but is no longer editable here).
+func parsePerfTierForm(r *http.Request) (perfTier string, errs map[string]string) {
 	errs = map[string]string{}
-	planType = strings.TrimSpace(r.PostFormValue("plan_type"))
-	if planType != "" && !config.IsValidPlanType(planType) {
-		errs["plan_type"] = "invalid option"
-	}
 	perfTier = strings.TrimSpace(r.PostFormValue("performance_tier"))
 	if perfTier != "" && !template.IsValidPerformanceTier(perfTier) {
 		errs["performance_tier"] = "invalid option"
 	}
-	return planType, perfTier, errs
+	return perfTier, errs
 }
 
-// applyPlanTypeTierEdits persists the plan_type / performance_tier selectors
-// (each only when non-empty AND changed from the persisted value) and
-// re-applies the {model, effort} tier profile to the shipped agent .md
-// frontmatter — mirroring the internal/cli/update.go:417-420 reference path
-// (formerly wired at the retired standalone Model Policy page's two POST
-// routes). The tier profile is re-applied ONLY when something actually
-// changed, so an unrelated settings save never clobbers a manually-pinned
-// agentfm override; callers MUST run this BEFORE applyAgentFMEdits so an
-// explicit per-agent override submitted in the same request still wins.
-func applyPlanTypeTierEdits(projectRoot, planType, perfTier string) error {
-	if planType == "" && perfTier == "" {
+// applyPerfTierEdits persists the performance_tier selector (only when non-empty
+// AND changed from the persisted value) and re-applies the {model, effort} tier
+// profile to the shipped agent .md frontmatter — mirroring the
+// internal/cli/update.go:417-420 reference path. The tier profile is re-applied
+// ONLY when the tier actually changed, so an unrelated settings save never
+// clobbers a manually-pinned agentfm override; callers MUST run this BEFORE
+// applyAgentFMEdits so an explicit per-agent override submitted in the same
+// request still wins. The persisted llm.plan_type (read via
+// template.ResolveProjectPlanType) still selects which tier-profile column is
+// applied; it is simply no longer editable from the web UI.
+func applyPerfTierEdits(projectRoot, perfTier string) error {
+	if perfTier == "" {
 		return nil
 	}
 	mgr := config.NewConfigManager()
@@ -93,29 +90,17 @@ func applyPlanTypeTierEdits(projectRoot, planType, perfTier string) error {
 	if err != nil {
 		return fmt.Errorf("agentfm: load llm config: %w", err)
 	}
-
-	changed := false
-	if planType != "" && planType != cfg.LLM.PlanType {
-		if err := template.ApplyPlanType(projectRoot, planType); err != nil {
-			return fmt.Errorf("agentfm: apply plan_type: %w", err)
-		}
-		changed = true
+	if perfTier == cfg.LLM.PerformanceTier {
+		return nil // no change
 	}
-	if perfTier != "" && perfTier != cfg.LLM.PerformanceTier {
-		if err := template.ApplyPerformanceTier(projectRoot, perfTier); err != nil {
-			return fmt.Errorf("agentfm: apply performance_tier: %w", err)
-		}
-		changed = true
-	}
-	if !changed {
-		return nil
+	if err := template.ApplyPerformanceTier(projectRoot, perfTier); err != nil {
+		return fmt.Errorf("agentfm: apply performance_tier: %w", err)
 	}
 
 	// Re-apply the {model, effort} tier profile to the shipped agent definition
-	// files (mirrors internal/cli/update.go:417-420 / the former
-	// applyTierProfileToAgents at the retired standalone Model Policy page's
-	// routes). A non-initialized project (no manifest, no agents directory)
-	// degrades to a graceful no-op inside ApplyTierProfile.
+	// files (mirrors internal/cli/update.go:417-420). A non-initialized project
+	// (no manifest, no agents directory) degrades to a graceful no-op inside
+	// ApplyTierProfile. plan_type is resolved from config (not the form).
 	mfMgr := manifest.NewManager()
 	_, _ = mfMgr.Load(projectRoot)
 	resolvedPlan := template.ResolveProjectPlanType(projectRoot)

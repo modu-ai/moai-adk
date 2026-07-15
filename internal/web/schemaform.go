@@ -35,7 +35,6 @@ func consoleTabs() []consoleTab {
 		{ID: "identity", LabelKey: "sec.identity.title", Baseline: "Identity"},
 		{ID: "language", LabelKey: "sec.language.title", Baseline: "Language"},
 		{ID: "launch", LabelKey: "sec.launch.title", Baseline: "Launch"},
-		{ID: "git_strategy", LabelKey: "sec.git_strategy.title", Baseline: "Git Strategy"},
 		{ID: "llm", LabelKey: "sec.llm.title", Baseline: "LLM"},
 		{ID: "agentfm", LabelKey: "sec.agentfm.title", Baseline: "Sub-agent Frontmatter"},
 		{ID: "report", LabelKey: "sec.report.title", Baseline: "Report"},
@@ -57,7 +56,6 @@ type schemaSectionMeta struct {
 // 반환한다 (settings.SchemaSectionIDs와 동순).
 func schemaSectionMetas() []schemaSectionMeta {
 	return []schemaSectionMeta{
-		{settings.SectionGitStrategy, "folder-git", "Git Strategy", "Git workflow mode and per-mode pre-push hook action (skip/warn/enforce)."},
 		{settings.SectionLLM, "rocket", "LLM", "GLM backend model tier mappings (high/medium/low/fable)."},
 		{settings.SectionReport, "panel-bottom", "Report", "Output format for the HTML report skill (report.format: html+md or md)."},
 	}

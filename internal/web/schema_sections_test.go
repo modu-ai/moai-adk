@@ -99,11 +99,11 @@ func TestSchemaSectionsRenderSmoke(t *testing.T) {
 	}
 	body := rec.Body.String()
 
-	// SPEC-WEBCONF-SIMPLIFY-001 M3: only the 2 surviving schema-rendered sections
-	// (git_strategy, llm) render form controls. The 10 removed sections' fields are
-	// schema-preserved but web-not-rendered (tabs removed — REQ-WC-003).
+	// Only llm remains as a schema-rendered section rendering form controls. The
+	// git_strategy section was removed from the web console (tab + panel), leaving
+	// llm as the sole surviving generic schema section; its config keys stay in
+	// git-strategy.yaml (defaults used) but are no longer web-editable.
 	for _, name := range []string{
-		"git_strategy.mode",
 		"llm.glm.models.high",
 	} {
 		if !strings.Contains(body, `name="`+name+`"`) {
@@ -111,11 +111,13 @@ func TestSchemaSectionsRenderSmoke(t *testing.T) {
 		}
 	}
 
-	// 제외군 + M3-removed 섹션 폼 컨트롤 0 (AC-WC11-018 렌더 half + M3 reclassified).
+	// 제외군 + removed 섹션 폼 컨트롤 0 (AC-WC11-018 렌더 half + reclassified).
 	for _, prefix := range []string{
 		"state.", "system.", "sunset.", "tool-policy.", "lsp.", "mx.", "constitution.", "context.", "interview.",
 		// SPEC-WEBCONF-SIMPLIFY-001 M3: 8 former seam sections removed from UI.
 		"workflow.", "harness.", "ralph.", "feedback.", "observability.", "security.", "handoff.", "cacheStrategy.",
+		// git_strategy section removed from the web console (config stays in yaml).
+		"git_strategy.",
 	} {
 		if strings.Contains(body, `name="`+prefix) {
 			t.Errorf("excluded/removed section control rendered: name=%q...", prefix)

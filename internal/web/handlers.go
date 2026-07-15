@@ -8,6 +8,9 @@ import (
 	"sort"
 	"strconv"
 
+	"path/filepath"
+
+
 	"github.com/modu-ai/moai-adk/internal/profile"
 	"github.com/modu-ai/moai-adk/internal/settings"
 	"github.com/modu-ai/moai-adk/internal/settings/agentfm"
@@ -21,6 +24,10 @@ type pageView struct {
 	SelectedProfile   string
 	Profiles          []profile.ProfileEntry
 	ShowProfileSwitch bool
+
+	// Context badge fields (AC-WC-XXX: current context badges in appbar)
+	ProjectName string // Basename of cfg.ProjectRoot for display (e.g., "moai-adk-go")
+	ProjectPath string // Full cfg.ProjectRoot for tooltip (e.g., "/Users/test/moai-adk-go")
 
 	// Option lists for the form selects. SPEC-WEB-CONSOLE-010: all option lists
 	// derive from the shared settings schema (no hand-mirrored re-declarations).
@@ -118,6 +125,8 @@ func (a *app) newPageView(prefs profile.ProfilePreferences, selected string) pag
 		RawBlocks:         map[string]string{},
 		BindAddr:          a.resolveBindAddr(),
 		FieldErrors:       map[string]string{},
+		ProjectName:       filepath.Base(a.cfg.ProjectRoot),
+		ProjectPath:       a.cfg.ProjectRoot,
 	}
 }
 
@@ -327,10 +336,11 @@ func (a *app) handleSave(w http.ResponseWriter, r *http.Request) {
 	agents, _ := a.listAllAgentFMs(a.cfg.ProjectRoot)
 	agentEdits, agentErrs := parseAgentFMForm(r, agents)
 
-	// goal-to-test (non-SPEC): parse the plan_type / performance_tier selectors
-	// now hosted at the top of the agentfm panel (migrated from the retired
-	// standalone Model Policy page).
-	planType, perfTier, planTierErrs := parsePlanTypeTierForm(r)
+	// goal-to-test (non-SPEC): parse the performance_tier selector hosted at the
+	// top of the agentfm panel. The plan_type selector was removed from the web
+	// UI (llm.plan_type stays read-only, consumed for the effective-tier display
+	// and the tier-profile re-application, but no longer editable here).
+	perfTier, perfTierErrs := parsePerfTierForm(r)
 
 	// REQ-WC-008 / REQ-WC3-001/002 / REQ-WC7-007: run ALL validators and merge
 	// their FieldErrors. Any failure → atomic reject (EC-2): leave ALL persisted
@@ -348,7 +358,7 @@ func (a *app) handleSave(w http.ResponseWriter, r *http.Request) {
 	for k, v := range agentErrs {
 		fieldErrs[k] = v
 	}
-	for k, v := range planTierErrs {
+	for k, v := range perfTierErrs {
 		fieldErrs[k] = v
 	}
 	if len(fieldErrs) > 0 {
@@ -403,13 +413,13 @@ func (a *app) handleSave(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// goal-to-test (non-SPEC): persist plan_type / performance_tier (each only
-	// when changed) and re-apply the tier profile to the shipped agent files.
-	// Runs BEFORE patchAgentFM so an explicit per-agent override submitted in
-	// the same request still wins over the re-applied tier-profile baseline.
-	if err := applyPlanTypeTierEdits(a.cfg.ProjectRoot, planType, perfTier); err != nil {
+	// goal-to-test (non-SPEC): persist performance_tier (only when changed) and
+	// re-apply the tier profile to the shipped agent files. Runs BEFORE
+	// patchAgentFM so an explicit per-agent override submitted in the same
+	// request still wins over the re-applied tier-profile baseline.
+	if err := applyPerfTierEdits(a.cfg.ProjectRoot, perfTier); err != nil {
 		a.renderErrorPage(w, prefs, selected, devMode, convention,
-			"profile preferences saved, but plan_type/performance_tier apply failed: "+err.Error())
+			"profile preferences saved, but performance_tier apply failed: "+err.Error())
 		return
 	}
 

@@ -1,10 +1,11 @@
 package web
 
-// Tests for the plan_type / performance_tier selectors migrated into the TOP
-// of the Sub-agent Frontmatter (agentfm) panel from the retired standalone
-// Model Policy page (goal-to-test, non-SPEC). The standalone page + its two
-// dedicated POST routes are gone; the two write affordances now live inside
-// the single /save form, alongside the per-agent frontmatter edits.
+// Tests for the performance_tier selector hosted at the TOP of the Sub-agent
+// Frontmatter (agentfm) panel (goal-to-test, non-SPEC). The plan_type selector
+// was removed from the web UI (llm.plan_type stays read-only in yaml, consumed
+// for the effective-tier display + tier-profile re-application, but no longer
+// web-editable); the performance_tier write affordance lives inside the single
+// /save form, alongside the per-agent frontmatter edits.
 
 import (
 	"net/http"
@@ -82,38 +83,29 @@ func baseSaveForm() url.Values {
 	return url.Values{"__profile": {"default"}}
 }
 
-// TestAgentFMPolicy_PlanTypePersistsAndReapplies (b): a valid plan_type change
-// submitted through /save persists llm.plan_type and re-applies the tier
-// profile to the shipped agent frontmatter.
-func TestAgentFMPolicy_PlanTypePersistsAndReapplies(t *testing.T) {
+// TestAgentFMPolicy_PlanTypeSelectorRemoved verifies the plan_type selector was
+// removed from the web UI: submitting a plan_type value through /save is ignored
+// (no write path), so llm.yaml's plan_type stays byte-identical.
+func TestAgentFMPolicy_PlanTypeSelectorRemoved(t *testing.T) {
 	root := t.TempDir()
 	writeLLMYAML(t, root, "api", "low")
-	seedAgentFMFile(t, root, "moai", "manager-spec", "haiku", "low")
-
-	want, ok := template.GetTierProfileEntry("subscription", "manager-spec", "low")
-	if !ok {
-		t.Fatal("manager-spec has no subscription/low profile entry — fixture is wrong")
-	}
-	if want.Model == "haiku" && want.Effort == "low" {
-		t.Fatal("subscription/low/manager-spec profile == fixture pair (haiku/low); pick a distinguishing fixture")
-	}
+	before := readLLMYAML(t, root)
 
 	a := newPolicyTestApp(root)
 	form := baseSaveForm()
-	form.Set("plan_type", "subscription")
+	form.Set("plan_type", "subscription") // forged — no longer a rendered field
 	rec := servePost(t, a.routes(), "/save", form)
 	if rec.Code != http.StatusOK {
-		t.Fatalf("POST /save (plan_type change) = %d, want 200; body: %s", rec.Code, rec.Body.String())
+		t.Fatalf("POST /save (forged plan_type) = %d, want 200; body: %s", rec.Code, rec.Body.String())
+	}
+	if after := readLLMYAML(t, root); string(after) != string(before) {
+		t.Errorf("llm.yaml mutated by a forged plan_type submission (write path must be gone):\nbefore:\n%s\nafter:\n%s", before, after)
 	}
 
-	if got := string(readLLMYAML(t, root)); !strings.Contains(got, "plan_type: subscription") {
-		t.Errorf("llm.yaml did not persist plan_type: subscription; got:\n%s", got)
-	}
-	if gotModel := agentFrontmatterValue(t, root, "manager-spec", "model"); gotModel != want.Model {
-		t.Errorf("agent model after plan_type switch = %q, want %q (tier profile not re-applied)", gotModel, want.Model)
-	}
-	if gotEffort := agentFrontmatterValue(t, root, "manager-spec", "effort"); gotEffort != want.Effort {
-		t.Errorf("agent effort after plan_type switch = %q, want %q (tier profile not re-applied)", gotEffort, want.Effort)
+	// The plan_type selector must not render in the agentfm panel.
+	body := renderAgentFMBody(t, root)
+	if strings.Contains(body, `name="plan_type"`) {
+		t.Error("agentfm panel still renders the removed plan_type selector")
 	}
 }
 
@@ -149,10 +141,9 @@ func TestAgentFMPolicy_PerfTierPersistsAndReapplies(t *testing.T) {
 	}
 }
 
-// TestAgentFMPolicy_InvalidValuesRejected (d): an out-of-set plan_type or
-// performance_tier (including the legacy wizard "high" — NOT the canonical
-// {max, medium, low}) is rejected 4xx and mutates neither llm.yaml nor the
-// agent frontmatter.
+// TestAgentFMPolicy_InvalidValuesRejected (d): an out-of-set performance_tier
+// (including the legacy wizard "high" — NOT the canonical {max, medium, low})
+// is rejected 4xx and mutates neither llm.yaml nor the agent frontmatter.
 func TestAgentFMPolicy_InvalidValuesRejected(t *testing.T) {
 	root := t.TempDir()
 	writeLLMYAML(t, root, "subscription", "low")
@@ -166,7 +157,6 @@ func TestAgentFMPolicy_InvalidValuesRejected(t *testing.T) {
 		field string
 		value string
 	}{
-		{"plan_type out-of-set", "plan_type", "enterprise"},
 		{"performance_tier out-of-set (legacy wizard vocabulary)", "performance_tier", "high"},
 	}
 	for _, tc := range cases {
@@ -214,54 +204,42 @@ func TestAgentFMPolicy_EmptySubmissionPreservesCurrent(t *testing.T) {
 	}
 }
 
-// TestAgentFMPolicy_SelectorsRenderAtTopOfPanel verifies the plan_type /
-// performance_tier selectors render inside the agentfm section, BEFORE the
-// sub-tabs, and pre-select the active values.
+// TestAgentFMPolicy_SelectorsRenderAtTopOfPanel verifies the performance_tier
+// selector renders inside the agentfm section, BEFORE the sub-tabs, and
+// pre-selects the active value. (The plan_type selector was removed.)
 func TestAgentFMPolicy_SelectorsRenderAtTopOfPanel(t *testing.T) {
 	root := t.TempDir()
 	writeLLMYAML(t, root, "api", "max")
 	body := renderAgentFMBody(t, root)
 
-	if !strings.Contains(body, `name="plan_type"`) {
-		t.Error("agentfm panel missing the plan_type selector")
+	if strings.Contains(body, `name="plan_type"`) {
+		t.Error("agentfm panel still renders the removed plan_type selector")
 	}
 	if !strings.Contains(body, `name="performance_tier"`) {
 		t.Error("agentfm panel missing the performance_tier selector")
-	}
-	if !strings.Contains(body, `value="api" selected`) {
-		t.Error("plan_type selector did not pre-select the active plan (api)")
 	}
 	if !strings.Contains(body, `value="max" selected`) {
 		t.Error("performance_tier selector did not pre-select the active tier (max)")
 	}
 
 	secIdx := strings.Index(body, `data-i18n="sec.agentfm.title"`)
-	planIdx := strings.Index(body, `name="plan_type"`)
+	tierIdx := strings.Index(body, `name="performance_tier"`)
 	subtabIdx := strings.Index(body, `data-agentfm-tab="subagents"`)
-	if secIdx < 0 || planIdx < 0 || subtabIdx < 0 {
+	if secIdx < 0 || tierIdx < 0 || subtabIdx < 0 {
 		t.Fatal("could not locate agentfm section markers")
 	}
-	if secIdx >= planIdx || planIdx >= subtabIdx {
-		t.Error("plan_type selector is not positioned at the TOP of the agentfm panel (before the sub-tabs)")
+	if secIdx >= tierIdx || tierIdx >= subtabIdx {
+		t.Error("performance_tier selector is not positioned at the TOP of the agentfm panel (before the sub-tabs)")
 	}
 }
 
-// TestAgentFMPolicy_EmptyValueHints verifies an absent llm.yaml renders the
-// plan_type "(default: subscription)" hint and pre-selects the effective
-// default. plan_type has no config-layer default (config.NewConfigManager's
-// Defaults() only seeds performance_tier=medium — see
-// internal/config/defaults.go), so an absent llm.yaml genuinely leaves
-// plan_type empty; performance_tier is covered separately below because an
-// absent file already resolves to the non-empty "medium" default upstream.
+// TestAgentFMPolicy_EmptyValueHints verifies an absent llm.yaml pre-selects the
+// performance_tier "medium" default (config.NewConfigManager's Defaults() seeds
+// performance_tier=medium — see internal/config/defaults.go). The plan_type
+// selector was removed, so no plan_type hint/pre-select is asserted.
 func TestAgentFMPolicy_EmptyValueHints(t *testing.T) {
-	root := t.TempDir() // no llm.yaml at all → plan_type empty
+	root := t.TempDir() // no llm.yaml at all
 	body := renderAgentFMBody(t, root)
-	if !strings.Contains(body, "agentfm.plantype.default") {
-		t.Error("empty plan_type did not render the default hint (agentfm.plantype.default)")
-	}
-	if !strings.Contains(body, `value="subscription" selected`) {
-		t.Error("absent plan_type did not pre-select the effective default (subscription)")
-	}
 	if !strings.Contains(body, `value="medium" selected`) {
 		t.Error("absent performance_tier did not pre-select the medium default")
 	}
@@ -283,11 +261,10 @@ func TestAgentFMPolicy_ExplicitEmptyTierHint(t *testing.T) {
 	}
 }
 
-// TestAgentFMPolicy_I18nKeysInAllLocales verifies the new plan_type /
-// performance_tier i18n keys exist in all 4 locales.
+// TestAgentFMPolicy_I18nKeysInAllLocales verifies the performance_tier i18n keys
+// exist in all 4 locales. (The plan_type keys were removed with the selector.)
 func TestAgentFMPolicy_I18nKeysInAllLocales(t *testing.T) {
 	for _, key := range []string{
-		"agentfm.plantype.title", "agentfm.plantype.desc", "agentfm.plantype.default",
 		"agentfm.tier.title", "agentfm.tier.desc", "agentfm.tier.default",
 	} {
 		if !i18nKeyInAllLocales(t, key) {

@@ -12,7 +12,7 @@ import (
 // and in order. report.format was relocated here off the launch tab.
 func TestConsoleTabsIncludesReport(t *testing.T) {
 	tabs := consoleTabs()
-	wantOrder := []string{"identity", "language", "launch", "git_strategy", "llm", "agentfm", "report"}
+	wantOrder := []string{"identity", "language", "launch", "llm", "agentfm", "report"}
 	if len(tabs) != len(wantOrder) {
 		t.Fatalf("consoleTabs() returned %d tabs, want %d", len(tabs), len(wantOrder))
 	}

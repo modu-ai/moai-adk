@@ -12,23 +12,23 @@ import (
 // surfaces (REQ-WC-016 git_strategy; llm GLM tier mapping) + quality_extras
 // enable/disable toggle on the launch tab (REQ-WC-004 / AC-WC-004).
 
-// TestM4DescriptionElementRenders verifies the REQ-WC-015 description mechanism:
-// a FieldDef with a non-empty Description renders a .field-description element
-// carrying the fieldDesc.<sectionID>.<fieldID> i18n key (design.md §H.1/§H.3).
-// git_strategy.mode has Description="fieldDesc.git_strategy.mode" set in M4.
-func TestM4DescriptionElementRenders(t *testing.T) {
+// TestGitStrategySectionRemoved verifies the git_strategy section was removed
+// from the web console: no git_strategy tab, no git_strategy panel, and no
+// git_strategy form control renders. The git_strategy config keys remain in the
+// settings schema (and git-strategy.yaml) but are no longer web-editable.
+func TestGitStrategySectionRemoved(t *testing.T) {
 	body := renderConsolePage(t)
 
-	// The .field-description element renders for git_strategy.mode (Description set).
-	if !strings.Contains(body, `class="field-description"`) {
-		t.Error(`rendered page missing .field-description element (FieldDef.Description mechanism — REQ-WC-015)`)
-	}
-	if !strings.Contains(body, `data-i18n="fieldDesc.git_strategy.mode"`) {
-		t.Error(`rendered page missing fieldDesc.git_strategy.mode i18n key on the description element`)
-	}
-	// Per-option title attribute (data-i18n-title) on git_strategy.mode options.
-	if !strings.Contains(body, `data-i18n-title="fieldDesc.git_strategy.mode.option.manual"`) {
-		t.Error(`rendered page missing per-option data-i18n-title for git_strategy.mode.manual (REQ-WC-015 per-option)`)
+	for _, marker := range []string{
+		`data-tab="git_strategy"`,
+		`data-panel="git_strategy"`,
+		`name="git_strategy.mode"`,
+		`data-i18n="sec.git_strategy.title"`,
+		`data-i18n="fieldDesc.git_strategy.mode"`,
+	} {
+		if strings.Contains(body, marker) {
+			t.Errorf("rendered page still contains removed git_strategy marker %q", marker)
+		}
 	}
 }
 

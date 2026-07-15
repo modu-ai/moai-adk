@@ -439,23 +439,6 @@ templ fieldsetAgentFrontmatter(view pageView) {
 		</div>
 		<div class="section__body">
 			<div class="grid">
-				<div class={ "field", templ.KV("has-error", hasFieldError(view.FieldErrors, "plan_type")) }>
-					<span class="field__label"><span class="field__title" data-i18n="agentfm.plantype.title">Plan type</span><code class="field__key">llm.plan_type</code></span>
-					<span class="field__desc" data-i18n="agentfm.plantype.desc">Billing-context tier profile (api = API-metered, subscription = weekly quota). Switching re-applies the matching model/effort tier matrix to the shipped agents.</span>
-					<span class="select-wrap">
-						<select class="select" id="plan_type" name="plan_type">
-							for _, opt := range agentFMPlanTypeOptions() {
-								<option value={ opt } selected?={ opt == view.ActivePlanType }>{ opt }</option>
-							}
-						</select>
-					</span>
-					if view.PlanTypeIsEmpty {
-						<span class="field__hint" data-i18n="agentfm.plantype.default">(default: subscription)</span>
-					}
-					if msg := fieldErrorMsg(view.FieldErrors, "plan_type"); msg != "" {
-						<span class="field-error">@icon("alert-circle")<span>{ msg }</span></span>
-					}
-				</div>
 				<div class={ "field", templ.KV("has-error", hasFieldError(view.FieldErrors, "performance_tier")) }>
 					<span class="field__label"><span class="field__title" data-i18n="agentfm.tier.title">Performance tier</span><code class="field__key">llm.performance_tier</code></span>
 					<span class="field__desc" data-i18n="agentfm.tier.desc">Model/effort tier column applied to the shipped agents (max / medium / low). Switching re-applies the matching tier profile to every shipped agent definition file.</span>

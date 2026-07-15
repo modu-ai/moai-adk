@@ -73,18 +73,24 @@ func i18nKeyInAllLocales(t *testing.T, key string) bool {
 // them through the bridge.
 func TestI18nKeySetParity(t *testing.T) {
 	// Statusline fields stay in the schema (TUI path) but their web i18n keys are
-	// removed (M3 redesign) — skip them in the web dictionary parity check.
-	statuslineFields := map[string]bool{}
+	// removed (M3 redesign) — skip them in the web dictionary parity check. The
+	// git_strategy section was removed from the web console (tab + panel + its
+	// i18n keys); its fields stay in the schema (config in git-strategy.yaml) but
+	// carry no web i18n keys, so they are skipped here too.
+	webRemovedFields := map[string]bool{}
 	for _, f := range settings.SectionFields(settings.SectionStatusline) {
-		statuslineFields[f.Name] = true
+		webRemovedFields[f.Name] = true
+	}
+	for _, f := range settings.SectionFields(settings.SectionGitStrategy) {
+		webRemovedFields[f.Name] = true
 	}
 
 	for _, f := range settings.AllFields() {
 		// M5-b D3: PersistSeam / PersistTypedSection 필드도 이제 field__title /
 		// field__desc data-i18n 을 방출한다 (과거 key-chip 전용에서 승격). 따라서
 		// 이 필드들의 .title / .desc 도 사전에 존재해야 한다.
-		if statuslineFields[f.Name] {
-			continue // statusline: schema-preserved, web-i18n-removed (M3 redesign)
+		if webRemovedFields[f.Name] {
+			continue // statusline / git_strategy: schema-preserved, web-i18n-removed
 		}
 		if strings.HasPrefix(f.I18nKey, "seg.") {
 			// Segment keys: the seg.<segment> label must exist in all 4 locales.

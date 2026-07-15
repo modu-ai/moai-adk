@@ -165,6 +165,15 @@ templ appbar(view pageView) {
 		</span>
 		<span class="appbar__divider"></span>
 		<span class="loopback"><span class="loopback__dot"></span>{ view.BindAddr }</span>
+		<span class="appbar__badge" title={ view.ProjectPath }>
+			📁{ view.ProjectName }
+		</span>
+		<span class="appbar__badge">
+			👤{ view.SelectedProfile }
+		</span>
+		<div class="appbar__context">
+			<span class="appbar__context-text">lang: ko · model: claude-opus-4-8 · effort: high · dev: ddd</span>
+		</div>
 		<span class="appbar__spacer"></span>
 		<span class="select-wrap langpick-wrap">
 			<select class="select langpick" id="uiLangSelect" aria-label="Interface language" title="Interface language">
@@ -180,10 +189,10 @@ templ appbar(view pageView) {
 		</button>
 		<button class="iconbtn" id="serverShutdown" type="button"
 			aria-label="Shut down server" title="Shut down server">
-			@icon("power")
-		</button>
-	</header>
-}
+				@icon("power")
+			</button>
+		</header>
+	}
 
 // profileSwitch ports the {{if .ShowProfileSwitch}} block (page.html.tmpl ~81-93).
 templ profileSwitch(view pageView) {

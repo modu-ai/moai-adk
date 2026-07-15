@@ -39,13 +39,8 @@ var spec014NewI18nKeys = []string{
 	"ro.note.governance", "ro.note.dead_config", "raw.note.informational",
 	// M4 — mx raw-only section header.
 	"sec.mx.title", "sec.mx.desc",
-	// M3 — merge_method options + per-profile title/desc.
-	"f.git_strategy.merge_method.opt.merge",
-	"f.git_strategy.merge_method.opt.rebase",
-	"f.git_strategy.merge_method.opt.squash",
-	"f.git_strategy.manual.merge_method.title", "f.git_strategy.manual.merge_method.desc",
-	"f.git_strategy.personal.merge_method.title", "f.git_strategy.personal.merge_method.desc",
-	"f.git_strategy.team.merge_method.title", "f.git_strategy.team.merge_method.desc",
+	// The former M3 git_strategy.merge_method keys were dropped when the
+	// git_strategy section was removed from the web console.
 }
 
 // TestSPEC014I18nKeysFourLocale verifies REQ-WC14-060: every new user-facing
