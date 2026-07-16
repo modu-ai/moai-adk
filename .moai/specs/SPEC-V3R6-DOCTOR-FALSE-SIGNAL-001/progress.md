@@ -60,7 +60,7 @@ red_reproduction_confirmed: true   # AC-DFS-001/004/005 failed pre-fix, pass pos
 
 ```yaml
 sync_complete_at: 2026-07-16
-sync_commit_sha: <pending — backfilled after commit; see backfill commit>
+sync_commit_sha: f9b14a4d715a86662856edf565c6c475e0aaff8e
 sync_status: complete
 changelog_entry_position: "[Unreleased] > ### Fixed (new section, inserted before ### Changed)"
 frontmatter_status_transitions:
