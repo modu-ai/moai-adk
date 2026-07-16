@@ -15,11 +15,14 @@
 {{- $tokensHash := hash.FNV32a (readFile "static/moai-docs-tokens.css") -}}
 {{- $themeHash := hash.FNV32a (readFile "static/moai-docs-theme.css") -}}
 {{- $themeJsHash := hash.FNV32a (readFile "static/moai-docs-theme.js") -}}
+{{- $layoutHash := hash.FNV32a (readFile "static/moai-docs-layout.css") -}}
 <link rel="stylesheet" href="{{ "moai-brand.css" | relURL }}?h={{ $brandHash }}" />
 <link rel="stylesheet" href="{{ "moai-design.css" | relURL }}?h={{ $designHash }}" />
 {{- /* Claude Design handoff tokens + theme — MUST load after moai-brand.css (FROZEN) */ -}}
 <link rel="stylesheet" href="{{ "moai-docs-tokens.css" | relURL }}?h={{ $tokensHash }}" />
 <link rel="stylesheet" href="{{ "moai-docs-theme.css" | relURL }}?h={{ $themeHash }}" />
+{{- /* round3 docs layout geometry (M3a, SPEC-DESIGN-DOCSV2-001) — loads after design+tokens+theme */ -}}
+<link rel="stylesheet" href="{{ "moai-docs-layout.css" | relURL }}?h={{ $layoutHash }}" />
 <script defer src="{{ "moai-docs-theme.js" | relURL }}?h={{ $themeJsHash }}"></script>
 <link rel="icon" type="image/png" sizes="64x64" href="{{ "favicon.png" | relURL }}" />
 <link rel="icon" type="image/png" sizes="32x32" href="{{ "favicon-32.png" | relURL }}" />

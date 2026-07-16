@@ -144,6 +144,32 @@
   --container-lg: 1024px;
   --container-xl: 1280px;
   --container-2xl: 1440px;
+
+  /* ── round3 layout token aliases (flat names → v2 tokens) — bridge for moai-docs-layout.css (M3a, SPEC-DESIGN-DOCSV2-001) ── */
+  --bg: var(--color-bg);
+  --surface: var(--color-surface);
+  --ink: var(--color-ink);
+  --primary: var(--color-primary);
+  --primary-700: var(--color-primary-active);
+  --muted: var(--neutral-200);
+  --muted-fg: var(--fg-2);
+  --muted-fg-2: var(--fg-3);
+  --border: var(--border-1);
+  --border-strong: var(--border-strong);
+  --success: var(--color-success);
+  --warning: var(--color-warning);
+  --danger: var(--color-danger);
+  --info: var(--color-info);
+  --gradient: var(--gradient-signature);
+  --gradient-soft: var(--gradient-signature-soft);
+  --shadow-sm: var(--shadow-sm);
+  --shadow-md: var(--shadow-md);
+  --shadow-lg: var(--shadow-lg);
+  --shadow-sig: var(--shadow-signature);
+  /* NOTE: --font-latin is NOT redeclared here — M1 already defines it (Pretendard
+     stack, line ~57). The round3 layout classes ported in M3a do not reference it,
+     and overriding an existing M1 token with a conflicting Inter stack would be a
+     latent regression vector. 0 consumers as of M3a (grep var(--font-latin) = 0). */
 }
 
 /* 다크 모드 완전 제거 (2026-05-13) — 테마 토글 UI 전체 비표시 */
