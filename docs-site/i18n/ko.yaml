@@ -35,6 +35,10 @@ notfound_title: "페이지를 찾을 수 없어요"
 notfound_text: "주소가 바뀌었거나 삭제된 문서일 수 있어요. 괜찮아요 — 문서 홈에서 다시 시작해 볼까요?"
 notfound_home: "문서 홈으로"
 notfound_search: "검색하기"
+
+# 빈 섹션 empty-state (doc-empty partial)
+empty_title: "아직 준비 중인 섹션이에요"
+empty_text: "이 섹션의 하위 가이드가 곧 추가됩니다. 그동안 다른 문서를 둘러보세요."
 card_desc_getting_started: "30초 설치부터 첫 SPEC까지, 가장 쉬운 길로 안내해요."
 card_desc_core_concepts: "SPEC·DDD·TRUST 5 — MoAI-ADK를 떠받치는 기본 원리."
 card_desc_workflow_commands: "/moai plan·run·sync — 3단계 개발 워크플로우 커맨드."

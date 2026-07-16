@@ -268,6 +268,41 @@ All non-colliding classes ported BARE (zero regression — AC-BLD-001 confirms n
 
 **Parallel-session safety:** specific-path `git add docs-site/layouts/partials/foot.html .moai/specs/SPEC-DESIGN-DOCSV2-001/progress.md` only (B8/B10) — disjoint from the active parallel session's `.claude/settings.json` + `internal/template/templates/.claude/settings.json.tmpl` scope (left unstaged, dirty from another work line).
 
+### M5 — Mascot Expansion (6 poses, emotional surfaces)
+
+**Scope:** 6 canonical MoAI-Mascot PNGs installed + wired via a NEW `partials/mascot.html` + extended `shortcodes/mascot.html` + NEW `partials/doc-empty.html` empty-state. Placements: home hero (Explaining), 404 (Thinking, replacing the M3c-2 `mascot-bubble.png` placeholder), empty-section (Searching, via doc-empty wired into list.html). 4-locale empty-state copy added to all 4 i18n files (AP-2 compliant — no interim hardcoded-Korean defect). Mascot base CSS + wiggle motion (prefers-reduced-motion-safe) added to `moai-docs-layout.css`.
+
+**AC Matrix (AC-MAS-001/002/003 + AC-BLD-001 + AC-I18N-001 re-verify — M5 scope):**
+
+| AC | Status | Verification Command | Result |
+|---|---|---|---|
+| AC-MAS-001 | PASS | `ls docs-site/static/mascots/MoAI-Mascot-*.png \| wc -l` | `6` (Thinking, Pointing, Searching, Teaching, Explaining, Coffee — copied from `.moai/state/ai-design-system/project/assets/characters/`); rendered `ls public/mascots/MoAI-Mascot-*.png` = 6 |
+| AC-MAS-002 | PASS | `grep -o 'class="mascot ' public/{ko/index,ko/404,ko/contributing/index}.html \| wc -l` per surface | home=1 (Explaining), 404=1 (Thinking), empty-section `contributing`=1 (Searching) — exactly 1 `img.mascot` per surface (3 emotional surfaces ≥ required 3). en/ja/zh home all render Explaining (locale-invariant pose map) |
+| AC-MAS-003 | PASS | `grep -rEn '<(table\|form)[^>]*>.*mascot' layouts/` + render-vehicle grep | 0 mascots inside table/form/checkout (docs-site has none); all mascots rendered via `partials/mascot.html` or `shortcodes/mascot.html` (no stray inline `img.mascot`) |
+| AC-I18N-001 | PASS | `grep -o 'doc-empty-title>[^<]*' public/{ko,en,ja,zh}/contributing/index.html` | 4 distinct locale strings (ko 아직 준비 중… / en This section is coming soon / ja このセクションは準備中です / zh 该分区正在完善中) — structural DOM identical, only translated strings differ |
+| AC-BLD-001 | PASS | `cd docs-site && hugo --minify --gc` | exit 0, 0 WARN/ERROR; KO 153p / EN 150p / JA 139p / ZH 150p (unchanged — doc-empty replaces the empty grid on `contributing`/other 0-page sections, no page-count delta); 1935ms |
+
+**Files touched (13):**
+- `docs-site/static/mascots/MoAI-Mascot-{Thinking,Pointing,Searching,Teaching,Explaining,Coffee}.png` — 6 NEW canonical pose assets.
+- `docs-site/layouts/partials/mascot.html` — NEW. Layout-level placement partial. Accepts a dict `(dict "pose" ... "size" ... "class" ...)` OR a bare string pose. Validates pose against the 6-set, maps lowercase pose → Capitalized filename via `title`, emits `<img class="mascot mascot-<pose> [extra]" src="…/MoAI-Mascot-<Pose>.png" alt="" loading="lazy" />`.
+- `docs-site/layouts/shortcodes/mascot.html` — EXTENDED. Now branches: the 6 v2 poses emit the `mascot` contract (canonical PNG); the 3 legacy variants (coding/talking/bubble) preserve the pre-existing `cw-mascot` contract byte-for-byte (backward compat — the shortcode is currently unused in content, verified via `grep -rn '{{< mascot' content/` = 0, but the legacy branch is retained for safety).
+- `docs-site/layouts/partials/doc-empty.html` — NEW. Empty-section state: Searching mascot + `i18n "empty_title"`/`empty_text` + home CTA (reuses `notfound_home`). Wired into list.html.
+- `docs-site/layouts/_default/list.html` — added `{{ if eq (len .Pages) 0 }}{{ partial "doc-empty.html" . }}{{ else }}…grid…{{ end }}`. The `contributing` section (0 child pages, `_index.md`-only) is the live empty-state instance.
+- `docs-site/layouts/index.html` — home hero mascot swapped from raw `<img class="md-hero-mascot" src="mascot-coding.png">` to `{{ partial "mascot.html" (dict "pose" "explaining" "size" "150" "class" "md-hero-mascot") }}` (Explaining = welcome intent per design.md §F.1). The featured-section decorative `mascot-talking.png` img is UNCHANGED (no `mascot` class → not an `img.mascot`, out of M5 scope).
+- `docs-site/layouts/404.html` — mascot swapped to `{{ partial "mascot.html" (dict "pose" "thinking" ...) }}` (Thinking = empathetic 404), M5 placeholder comment resolved.
+- `docs-site/i18n/{ko,en,ja,zh-cn}.yaml` — added `empty_title` + `empty_text` (ko canonical → en/ja/zh derivation per hns-oss-docs-i18n-rules §1). Added in M5 (not deferred to M7) to avoid an interim 4-locale defect — the new copy I introduce is i18n-routed from the start (AP-2).
+- `docs-site/static/moai-docs-layout.css` — appended `.mascot` base (inline-block, height:auto, bounce-easing transition + hover `mascot-wiggle` keyframe), `.doc-empty*` empty-state layout, and a `prefers-reduced-motion: reduce` guard (motion → 1ms per design.md §F.3).
+
+**Deferred (documented, NOT AC-blocking):**
+- **render-codeblock.html Coffee mascot** (plan.md §M5 lists it for copy-success): DEFERRED. It is an ephemeral copy-success state; placing a Coffee mascot on every code card would add `img.mascot` elements to detail pages, risking the AC-MAS-002 "exactly one img.mascot per surface" counts and the M7 4-locale parity assertions. AC-MAS-002 requires only home + 404 + empty-section (all satisfied). Coffee-on-copy-success is a post-close polish candidate. The Coffee PNG is installed and available.
+- **Home hero Pointing alt** (design.md §F.1 A/B alt): not wired — a single Explaining hero is the shipped default; Pointing remains available for a future A/B.
+
+**No-emoji / light-only discipline:** all new markup uses inline SVG (home CTA arrow in doc-empty), mascot `<img>` (per icon convention, not emoji), and mascot `alt=""` (decorative). No body emoji. No dark-mode branch introduced. `class="mascot"` (exact token) does NOT collide with the header brand `cw-brand-mascot` (distinct token — verified via grep).
+
+**Self-referential SHA note:** M5 source + this evidence land in the SAME commit (B9). Per spec-frontmatter-schema §D3, the M5 header omits an inline SHA (M2/M3/M4 style). git log is the authoritative record.
+
+**Parallel-session safety:** specific-path `git add` of the 13 docs-site files + progress.md only (B8/B10) — disjoint from the parallel session's `.claude/settings.json` + `internal/template/templates/.claude/settings.json.tmpl` (left unstaged, dirty from another work line).
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _(pending run-phase)_

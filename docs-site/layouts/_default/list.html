@@ -18,6 +18,10 @@
       </div>
     </section>
 
+    {{- /* 하위 페이지가 없는 섹션은 Searching 마스코트 empty-state 렌더 (M5) */ -}}
+    {{- if eq (len .Pages) 0 -}}
+    {{ partial "doc-empty.html" . }}
+    {{- else -}}
     <section class="docs-grid-section">
       <div class="docs-grid">
         {{- range $i, $page := .Pages }}
@@ -40,6 +44,7 @@
         {{- end }}
       </div>
     </section>
+    {{- end }}
 
     {{- /* 섹션 _index 본문 (작성된 경우) — 그리드 하단에 렌더 */ -}}
     {{ .Content }}

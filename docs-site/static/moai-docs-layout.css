@@ -539,3 +539,52 @@
   margin: 0 auto;
   padding: 0 40px;
 }
+
+/* ───── Mascot (v2 6-pose) — SPEC-DESIGN-DOCSV2-001 M5 ───── */
+/* base contract shared by partials/mascot.html + shortcodes/mascot.html.
+   width is set inline via the img width attr; height:auto keeps aspect. */
+.mascot {
+  display: inline-block;
+  height: auto;
+  max-width: 100%;
+  transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.mascot:hover { animation: mascot-wiggle 0.6s cubic-bezier(0.34, 1.56, 0.64, 1); }
+@keyframes mascot-wiggle {
+  0%,100% { transform: rotate(0deg); }
+  25%     { transform: rotate(-4deg); }
+  75%     { transform: rotate(4deg); }
+}
+
+/* ───── Empty section state (doc-empty partial) ───── */
+.doc-empty {
+  padding: 64px 24px;
+  text-align: center;
+}
+.doc-empty-inner {
+  max-width: 480px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+}
+.doc-empty-mascot { width: 140px; }
+.doc-empty-title {
+  font-size: 22px;
+  font-weight: 800;
+  letter-spacing: var(--tracking-heading, -0.05em);
+  color: var(--ink);
+  margin: 0;
+}
+.doc-empty-text {
+  font-size: 15px;
+  line-height: 1.7;
+  color: var(--muted-fg, var(--fg-2));
+  margin: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mascot { transition-duration: 1ms; }
+  .mascot:hover { animation-duration: 1ms; }
+}

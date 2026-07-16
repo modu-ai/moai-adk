@@ -2,7 +2,7 @@
 {{- /* 404 — round3 docs-detail hero geometry (SPEC-DESIGN-DOCSV2-001 M3c-2).
        그라데이션 .doc-hero 풀-블리드에 404 메시지 + 마스코트 + 홈 CTA.
        standalone 페이지 (baseof 미사용). 기존 i18n 키 + .md-btn 버튼 클래스 유지.
-       마스코트는 M5에서 MoAI-Mascot-Thinking.png 포즈로 교체 예정 (placeholder). */ -}}
+       마스코트: v2 Thinking 포즈 (M5, partials/mascot.html 경유). */ -}}
 <html lang="{{ .Site.Language.Lang }}" class="color-toggle-light" color-theme="light">
   <head>
     {{ partial "head/meta" . }}
@@ -21,10 +21,8 @@
 
       <main class="doc-hero" style="min-height:70vh;display:flex;align-items:center;">
         <div class="doc-hero-inner" style="text-align:center;margin:0 auto;padding:64px 24px;">
-          {{- /* M5: swap to canonical MoAI-Mascot-Thinking.png pose. */ -}}
-          <img class="md-404-mascot" loading="lazy" decoding="async"
-               src="{{ "mascots/mascot-bubble.png" | relURL }}"
-               width="120" alt="MoAI 마스코트 캐릭터" />
+          {{- /* 404 마스코트 — v2 Thinking 포즈 (M5, "고민" 공감 인텐트) */ -}}
+          {{ partial "mascot.html" (dict "pose" "thinking" "size" "120" "class" "md-404-mascot") }}
           <div class="big" aria-hidden="true"
                style="font-family:var(--font-mono);font-size:clamp(72px,14vw,144px);font-weight:900;letter-spacing:0.04em;line-height:1;margin:16px 0;">404</div>
           <h1 class="doc-h1" style="margin:0 auto 12px;">{{ i18n "notfound_title" }}</h1>

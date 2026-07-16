@@ -35,6 +35,10 @@ notfound_title: "Page not found"
 notfound_text: "The address may have changed or the page was removed. No worries — let's start again from the docs home."
 notfound_home: "Back to docs home"
 notfound_search: "Search"
+
+# Empty section state (doc-empty partial)
+empty_title: "This section is coming soon"
+empty_text: "Sub-guides for this section are on the way. Browse the other docs in the meantime."
 card_desc_getting_started: "From a 30-second install to your first SPEC — the easiest path in."
 card_desc_core_concepts: "SPEC, DDD, TRUST 5 — the principles that hold MoAI-ADK together."
 card_desc_workflow_commands: "/moai plan·run·sync — the 3-phase development workflow commands."
