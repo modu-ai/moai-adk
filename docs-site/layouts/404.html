@@ -1,6 +1,8 @@
 <!DOCTYPE html>
-{{- /* 404 — Claude Design handoff: big mono clay "404" with pop text-shadow,
-       message, 2 CTA buttons (home / search). Overrides theme 404. */ -}}
+{{- /* 404 — round3 docs-detail hero geometry (SPEC-DESIGN-DOCSV2-001 M3c-2).
+       그라데이션 .doc-hero 풀-블리드에 404 메시지 + 마스코트 + 홈 CTA.
+       standalone 페이지 (baseof 미사용). 기존 i18n 키 + .md-btn 버튼 클래스 유지.
+       마스코트는 M5에서 MoAI-Mascot-Thinking.png 포즈로 교체 예정 (placeholder). */ -}}
 <html lang="{{ .Site.Language.Lang }}" class="color-toggle-light" color-theme="light">
   <head>
     {{ partial "head/meta" . }}
@@ -17,19 +19,23 @@
     <div class="wrapper">
       {{ partial "site-header" (dict "Root" . "MenuEnabled" false) }}
 
-      <main class="md-404">
-        <img class="md-404-mascot" loading="lazy" decoding="async"
-             src="{{ "mascots/mascot-bubble.png" | relURL }}"
-             width="120" alt="MoAI 마스코트 캐릭터" />
-        <div class="big">404</div>
-        <h2>{{ i18n "notfound_title" }}</h2>
-        <p>{{ i18n "notfound_text" }}</p>
-        <div class="md-hero-cta">
-          <a class="md-btn md-btn-primary" href="{{ .Site.Home.RelPermalink }}">
-            {{ i18n "notfound_home" }}
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" width="18" height="18"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
-          </a>
-          <button type="button" class="md-btn md-btn-ghost" data-search-trigger>{{ i18n "notfound_search" }}</button>
+      <main class="doc-hero" style="min-height:70vh;display:flex;align-items:center;">
+        <div class="doc-hero-inner" style="text-align:center;margin:0 auto;padding:64px 24px;">
+          {{- /* M5: swap to canonical MoAI-Mascot-Thinking.png pose. */ -}}
+          <img class="md-404-mascot" loading="lazy" decoding="async"
+               src="{{ "mascots/mascot-bubble.png" | relURL }}"
+               width="120" alt="MoAI 마스코트 캐릭터" />
+          <div class="big" aria-hidden="true"
+               style="font-family:var(--font-mono);font-size:clamp(72px,14vw,144px);font-weight:900;letter-spacing:0.04em;line-height:1;margin:16px 0;">404</div>
+          <h1 class="doc-h1" style="margin:0 auto 12px;">{{ i18n "notfound_title" }}</h1>
+          <p class="doc-deck" style="margin:0 auto 32px;">{{ i18n "notfound_text" }}</p>
+          <div class="md-hero-cta" style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap;">
+            <a class="md-btn md-btn-primary" href="{{ .Site.Home.RelPermalink }}">
+              {{ i18n "notfound_home" }}
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" width="18" height="18"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+            </a>
+            <button type="button" class="md-btn md-btn-ghost" data-search-trigger>{{ i18n "notfound_search" }}</button>
+          </div>
         </div>
       </main>
 
