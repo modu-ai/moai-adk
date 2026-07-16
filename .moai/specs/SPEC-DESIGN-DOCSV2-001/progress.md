@@ -374,7 +374,7 @@ All non-colliding classes ported BARE (zero regression — AC-BLD-001 confirms n
 
 ```yaml
 run_complete_at: 2026-07-16
-run_commit_sha: pending-backfill-M7   # M7 commit cannot reference its own SHA; orchestrator backfills post-push
+run_commit_sha: d1a55cd7e
 run_status: run-complete
 milestones_this_session: [M4, M5, M6, M7]     # M1-M3c-2 landed in prior commits (4170b6e8b and earlier)
 ac_pass_count: 30
