@@ -241,6 +241,33 @@ All non-colliding classes ported BARE (zero regression — AC-BLD-001 confirms n
 
 **Parallel-session safety:** specific-path `git add docs-site/layouts/_default/single.html docs-site/layouts/partials/doc-rail.html docs-site/layouts/404.html docs-site/static/js/doc-detail.js .moai/specs/SPEC-DESIGN-DOCSV2-001/progress.md` only (B8/B10) — the 5 staged files are all under `docs-site/` + the SPEC progress artifact, disjoint from the active parallel session's `.claude/settings.json` + `internal/template/templates/.claude/settings.json.tmpl` scope (and from the PRESERVE-list `internal/cli/*` + `.moai/config/sections/llm.yaml` + `README.ko.md`). Tree carries the parallel session's 2 uncommitted files at branch-switch time; `git checkout main` carried them cleanly (disjoint paths), no stash needed. `release/v3.0.0` restored post-push; parallel session's uncommitted changes preserved verbatim.
 
+### M4 — Mermaid v2 Palette (foot.html themeVariables)
+
+**Scope:** MERMAID PALETTE ONLY — `docs-site/layouts/partials/foot.html` `lightTheme` themeVariables object rewritten to v2 palette. Stayed on mermaid@10 (clarification resolved: default = v10 + themeVariables-only, no v11 bump). No other file touched. The mermaid theme is global (4-locale invariant — the init object is locale-agnostic).
+
+**AC Matrix (AC-MER-001/002 — M4 scope + AC-BLD-001 re-verify):**
+
+| AC | Status | Verification Command | Result |
+|---|---|---|---|
+| AC-MER-001 | PASS | `grep -n 'primaryColor.*#eef4f0' foot.html` + `grep -n 'lineColor.*#9fa0a0' foot.html` | L14 `primaryColor: '#eef4f0'`; L20 `lineColor: '#9fa0a0'` — both v2 tokens present (1 hit each) |
+| AC-MER-002 | PASS | `grep -nc '#d6ebde\|#faf9f5\|#efe9de\|#141413' foot.html` | `0` (was 4 warm literals across ~28 keys pre-M4: `#d6ebde` primaryColor/mainBkg/noteBkg/actorBkg/activationBkg, `#141413` all text keys, `#efe9de` secondaryColor; comment reworded to avoid reintroducing forbidden literals). mermaid@10 CDN URL unchanged (v10 stays per resolved clarification) |
+| AC-BLD-001 | PASS | `cd docs-site && hugo --minify --gc` | exit 0, 0 WARN/ERROR; KO 153p / EN 150p / JA 139p / ZH 150p; 1938ms (hugo v0.160.1+extended+withdeploy darwin/arm64) |
+
+**Value mapping (v2 palette applied to all ~28 themeVariables keys):**
+- Primary/accent bg: `primaryColor`/`mainBkg`/`actorBkg`/`activationBkgColor` = `#eef4f0` (v2 mint-tinted surface, was warm `#d6ebde`).
+- Text: all `*TextColor`/`nodeTextColor`/`textColor`/`titleColor`/`labelTextColor`/`loopTextColor`/`sequenceNumberColor` = `#060606` (v2 ink, was `#141413`).
+- Lines de-emphasized to GRAY: `lineColor`/`signalColor` = `#9fa0a0` (was green `#3d7d5f` — v2 line de-emphasis intent per plan.md §M4).
+- Primary/actor BORDERS stay green: `primaryBorderColor`/`actorBorder` = `#3d7d5f` (brand accent preserved per plan.md explicit list).
+- Neutral surfaces/borders: `noteBkgColor`/`secondaryColor` = `#e6e6e6`; `noteBorderColor`/`activationBorderColor` = `#b5b5b5`; `clusterBorder`/`labelBoxBorderColor` = `#d1d1d1`; `clusterBkg`/`tertiaryColor`/`labelBoxBkgColor` = `#f4f4f4`; `edgeLabelBackground` = `#ffffff` (was warm `#f4f4f4`).
+
+**Deviation from plan.md §M4 (documented):** plan.md §M4 enumerates 12 explicit keys; the live `lightTheme` object carries ~28 keys. The 16 keys NOT in plan.md's explicit list were mapped coherently to the same v2 palette (text→`#060606`, line-family→`#9fa0a0` gray, note/cluster borders→neutral, primary/actor accents→green/`#eef4f0`) rather than left warm — leaving them warm would fail the AC-MER-002 warm-literal purge and the M7 token-parity sweep. The 12 plan.md-explicit values are applied verbatim.
+
+**No-emoji / light-only discipline:** foot.html carries no emoji; the mermaid init uses the single `lightTheme` object with no dark branch (dark branch already removed 2026-05-13, preserved). REQ-LIT compliance unchanged.
+
+**Self-referential SHA note:** M4 source + this evidence land in the SAME commit (B9 one-commit constraint). Per spec-frontmatter-schema §D3 SHA-placeholder-backfill-exemption, the M4 header omits an inline SHA — matching M2/M3a/M3b/M3c style. git log is the authoritative SHA record.
+
+**Parallel-session safety:** specific-path `git add docs-site/layouts/partials/foot.html .moai/specs/SPEC-DESIGN-DOCSV2-001/progress.md` only (B8/B10) — disjoint from the active parallel session's `.claude/settings.json` + `internal/template/templates/.claude/settings.json.tmpl` scope (left unstaged, dirty from another work line).
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _(pending run-phase)_
