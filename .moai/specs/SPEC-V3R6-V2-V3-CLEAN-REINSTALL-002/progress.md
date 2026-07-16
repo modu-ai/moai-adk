@@ -1,6 +1,6 @@
 # SPEC-V3R6-V2-V3-CLEAN-REINSTALL-002 — Progress
 
-**Status**: draft (plan-phase → run-phase)
+**Status**: in-progress (run-phase M1 pushed 73e7798ba)
 
 ## §E.1 Plan-phase Audit-Ready Signal
 
@@ -15,7 +15,32 @@
 
 ## §E.2 Run-phase Evidence
 
-_<pending run-phase>_
+### M1 — v3-version negative-override (REQ-CRR-001) — commit 73e7798ba (pushed)
+
+**Scope**: 3 files touched (pathspec-only; unrelated `.moai/specs/SPEC-DESIGN-DOCSV2-001/progress.md` and `llm.yaml`/`README.ko.md` excluded).
+
+| File | Change |
+|------|--------|
+| `internal/cli/v2_detection.go` | REQ-CRR-001 implementation: `probeVersionSignal` signature `(bool, string)` → `(bool, bool, string)`; `V2Fingerprint.V3VersionConfirmed` field added; `IsV2` aggregation changed from pure disjunction to `!V3VersionConfirmed && (S1 \|\| S2 \|\| S3)` |
+| `internal/cli/v2_detection_test.go` | AC-CRR-002 reproduction test `TestDetectV2Fingerprint_V3Override_AC_CRR_002`; 2 aggregation cases updated to `wantIsV2: false` for v3+residue scenarios |
+| `internal/cli/update_clean_install_test.go` | `makeScenarioB` fixture: `v3.0.0-rc2` → `v2.16.1` (partial-v2 project, not v3+residue — per AC-CRR-007 + Edge-2 design intent) |
+
+**AC PASS/FAIL matrix (M1-relevant ACs)**:
+
+| AC | Status | Verification Command | Actual Output |
+|----|--------|---------------------|---------------|
+| AC-CRR-001 | PASS | `go test -run TestDetectV2Fingerprint_V3Override ./internal/cli/` | `--- PASS: TestDetectV2Fingerprint_V3Override_AC_CRR_002` — V3VersionConfirmed=true, IsV2=false |
+| AC-CRR-002 | PASS | `go test -run TestDetectV2Fingerprint_V3Override ./internal/cli/` | reproduction test: v3.0.0 + .agency/ + deprecated path → IsV2=false (loop-termination contract) |
+| AC-CRR-007 | PASS | `go test -run TestRunCleanReinstall_ScenarioB ./internal/cli/` | `--- PASS: TestRunCleanReinstall_ScenarioB` — v2.* project + .agency/ → IsV2=true (clean-reinstall runs); v3+residue → IsV2=false (NOT activated) |
+
+**Full-suite verification**:
+- `go test ./internal/cli/... -count=1` → exit 0 (21.1s; all ScenarioA/B/C + v2_detection tests pass)
+- `GOOS=windows GOARCH=amd64 go build ./...` → exit 0
+- `go vet ./internal/cli/...` → exit 0
+- `golangci-lint run ./internal/cli/...` → exit 0 (no NEW issues; 6 pre-existing errcheck in `merge_test.go` untouched)
+- Coverage: detectV2Fingerprint 95.0%, probeVersionSignal 80.0% (new v3.* branch covered by 5 test cases; pre-existing gaps in error/parse branches unchanged), probeDeprecatedPathSignal 100.0%
+
+**Pending**: M2-M5 ACs not yet addressed (remaining milestones: M2 update.go integration, M3-M5 clean-reinstall path wiring).
 
 ## §E.3 Run-phase Audit-Ready Signal
 
