@@ -2,7 +2,7 @@
 id: SPEC-V3R6-ZONE-REGISTRY-PACKAGING-001
 title: "Package the zone-registry doctrine into the embedded template tree"
 version: "0.1.1"
-status: in-progress
+status: completed
 created: 2026-07-16
 updated: 2026-07-17
 author: manager-spec

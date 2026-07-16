@@ -108,7 +108,28 @@ SPEC, NOT a defect in this deliverable and NOT resolved by weakening any guard.
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase — owned by manager-docs>_
+```yaml
+sync_complete_at: 2026-07-17
+sync_commit_sha: pending-backfill-see-followup-commit
+sync_status: complete
+changelog_entry_position: "[Unreleased] › Fixed (new subsection)"
+frontmatter_status_transitions:
+  spec_md: "in-progress → completed (merged in-progress → implemented → completed on sync commit)"
+  progress_md: "in-progress → completed"
+b12_self_test_a: "grep -c 'SPEC-V3R6-ZONE-REGISTRY-PACKAGING' CHANGELOG.md == 1 after emission (PASS — single entry, no duplicate)"
+b12_self_test_b: "acceptance.md SSOT = 7 AC groups (AC-ZRP-001..007); CHANGELOG references 6 PASS + 1 PASS-WITH-DEBT = 7 (PASS — match)"
+b12_self_test_c: "file paths in CHANGELOG verified via ls (.claude/rules/moai/core/zone-registry.md, internal/template/templates/.claude/rules/moai/core/zone-registry.md present) (PASS)"
+canary_compliance_check:
+  spec_lint_delta: "not independently re-run in sync-phase (Tier S doctrine-markdown packaging fix; no code touched)"
+  touched_pkg_tests: "unchanged from §E.3 (go test ./internal/template/... exit 0)"
+```
+
+Sync-phase scope (Tier S minimal): CHANGELOG `[Unreleased] › Fixed` entry + spec.md
+frontmatter `status: in-progress → completed` (`updated:` refreshed to 2026-07-17) +
+this §E.4 block. No README/docs-site work (internal packaging fix, not user-facing
+feature). `sync_commit_sha` is backfilled in a tiny follow-up commit per the
+SHA-placeholder self-reference exemption (spec-frontmatter-schema.md § Status
+Transition Ownership Matrix), matching the run-phase e738aca9f precedent.
 
 ## §F Phase 4 Mode Selection
 
