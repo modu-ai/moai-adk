@@ -11,7 +11,6 @@ import (
 
 // TestDoctorPermission_SubcmdExists verifies that permissionCmd is non-nil.
 func TestDoctorPermission_SubcmdExists(t *testing.T) {
-	t.Parallel()
 	if permissionCmd == nil {
 		t.Fatal("permissionCmd should not be nil")
 	}
@@ -20,7 +19,6 @@ func TestDoctorPermission_SubcmdExists(t *testing.T) {
 // TestDoctorPermission_AllTiersFlag verifies the presence of the --all-tiers flag and its default output.
 // Relates to AC-05.
 func TestDoctorPermission_AllTiersFlag(t *testing.T) {
-	t.Parallel()
 
 	// The --all-tiers flag must be defined.
 	if permissionCmd.Flags().Lookup("all-tiers") == nil {
@@ -31,7 +29,6 @@ func TestDoctorPermission_AllTiersFlag(t *testing.T) {
 // TestDoctorPermission_TraceJSONFormat verifies that the --trace flag produces JSON-format output.
 // Relates to AC-05.
 func TestDoctorPermission_TraceJSONFormat(t *testing.T) {
-	t.Parallel()
 
 	buf := &bytes.Buffer{}
 	permissionCmd.SetOut(buf)
@@ -64,7 +61,6 @@ func TestDoctorPermission_TraceJSONFormat(t *testing.T) {
 // TestDoctorPermission_DryRun verifies that the --dry-run flag exists.
 // Relates to AC-05.
 func TestDoctorPermission_DryRun(t *testing.T) {
-	t.Parallel()
 
 	if permissionCmd.Flags().Lookup("dry-run") == nil {
 		t.Error("permissionCmd should have --dry-run flag")
@@ -74,7 +70,6 @@ func TestDoctorPermission_DryRun(t *testing.T) {
 // TestDoctorPermission_NoMatchTrace verifies that output is produced for a non-matching tool.
 // AC-05: 8 tiers inspected with matched: true|false per tier.
 func TestDoctorPermission_NoMatchTrace(t *testing.T) {
-	t.Parallel()
 
 	buf := &bytes.Buffer{}
 	permissionCmd.SetOut(buf)
@@ -100,7 +95,6 @@ func TestDoctorPermission_NoMatchTrace(t *testing.T) {
 // TestDoctorPermission_ModeFlag verifies that the --mode flag is defined.
 // Relates to AC-05 — plan.md T-RT002-28 adds the --mode flag.
 func TestDoctorPermission_ModeFlag(t *testing.T) {
-	t.Parallel()
 
 	// The --mode flag must be defined on permissionCmd.
 	if permissionCmd.Flags().Lookup("mode") == nil {
@@ -111,7 +105,6 @@ func TestDoctorPermission_ModeFlag(t *testing.T) {
 // TestDoctorPermission_ForkFlag verifies that the --fork flag is defined.
 // Relates to AC-05 — plan.md T-RT002-28 adds the --fork flag.
 func TestDoctorPermission_ForkFlag(t *testing.T) {
-	t.Parallel()
 
 	// The --fork flag must be defined on permissionCmd.
 	if permissionCmd.Flags().Lookup("fork") == nil {
@@ -122,7 +115,6 @@ func TestDoctorPermission_ForkFlag(t *testing.T) {
 // TestDoctorPermission_FormatFlag verifies that the --format flag is defined.
 // Relates to AC-05 — plan.md T-RT002-28 adds the --format flag.
 func TestDoctorPermission_FormatFlag(t *testing.T) {
-	t.Parallel()
 
 	// The --format flag must be defined on permissionCmd.
 	if permissionCmd.Flags().Lookup("format") == nil {
