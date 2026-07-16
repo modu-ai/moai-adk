@@ -404,7 +404,7 @@ status_transition: none                        # status stayed in-progress (M1 s
 
 ```yaml
 sync_complete_at: 2026-07-16
-sync_commit_sha: pending-backfill-DESIGN-DOCSV2-001  # backfilled in a follow-up commit per spec-frontmatter-schema §D3 exemption (self-referential-hash hazard)
+sync_commit_sha: 4981f160cd6f49613c69e8c089554324f92206f6  # backfilled in a follow-up commit per spec-frontmatter-schema §D3 exemption (self-referential-hash hazard)
 sync_status: complete
 changelog_entry_emitted: true  # CHANGELOG.md [Unreleased] entry added (SPEC-DESIGN-DOCSV2-001)
 frontmatter_status_transitions:
