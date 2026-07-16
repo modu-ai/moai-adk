@@ -303,6 +303,37 @@ All non-colliding classes ported BARE (zero regression — AC-BLD-001 confirms n
 
 **Parallel-session safety:** specific-path `git add` of the 13 docs-site files + progress.md only (B8/B10) — disjoint from the parallel session's `.claude/settings.json` + `internal/template/templates/.claude/settings.json.tmpl` (left unstaged, dirty from another work line).
 
+### M6 — Component Adoption (v2 recipes: button / card / shadow)
+
+**Scope:** LIVE component overrides migrated to v2 recipes — buttons (`.md-btn` family), surface cards (`.md-doc-card`, round3 `.doc-card`/`.docs-card`), and the shadow system. The load-bearing fix: `moai-docs-tokens.css` (cascade winner — loads AFTER brand.css) carried warm brown-tinted `rgba(58,38,24)` shadows that overrode the v2 brand.css shadows on every `var(--shadow-*)` consumer; repointing them to v2 `rgba(6,6,6)` fixes card/button elevation site-wide in one edit.
+
+**Plan.md §M6 file-assignment deviation (documented):** plan.md §M6 anticipated editing `moai-brand.css` (cw-*/gdoc-*) + `moai-design.css` (.md-btn/.md-doc-card/.code-card). The M1 implementation instead kept the `.md-*` LIVE component classes in `moai-docs-theme.css` (M1 rewrote it to a v2 alias+component layer rather than folding md-* into design.css). M6 therefore edits the REAL definition sites (`moai-docs-theme.css` for md-btn/md-doc-card, `moai-docs-tokens.css` for shadows, `moai-docs-layout.css` for the round3 cards, `moai-brand.css` for the new `--border-card` token) — DDD behavior-faithful (touch the live definitions, not the plan-phase placeholder file names).
+
+**AC Matrix (AC-CMP-001/002/003/004 + AC-BLD-001 re-verify — M6 scope):**
+
+| AC | Status | Verification Command | Result |
+|---|---|---|---|
+| AC-CMP-001 | PASS | token-resolution trace on `.md-btn-primary` + `.md-doc-card` | **Button** `.md-btn` `border-radius: var(--radius-full)`→`9999px`, `font-weight: 700`; `.md-btn-primary` `background: var(--accent)`→`var(--color-primary)`→`#3d7d5f`=`rgb(61,125,95)` solid, `color` white. **Card** `.md-doc-card` (+ round3 `.doc-card`/`.docs-card`) `border-radius: var(--radius-lg)`→`16px`, `border: 1px solid var(--border-card)`→`#d1d1d1`=`rgb(209,209,209)`, `box-shadow: var(--shadow-sm)`→`0 2px 4px rgba(6,6,6,0.06)`. All three AC exact values (9999px / rgb(61,125,95) / fw≥700 · 16px / rgb(209,209,209) / rgba(6,6,6)) met |
+| AC-CMP-002 | PASS | `grep 'shadow-sm:\|shadow-md:\|shadow-lg:' moai-docs-tokens.css` + warm-purge | v2 shadow tokens present & consumed: `--shadow-sm 0 2px 4px rgba(6,6,6,0.06)` / `--shadow-md …0.08` / `--shadow-lg …0.10` (tokens.css cascade winner, repointed from warm `rgba(58,38,24)`). Motion tokens present & consumed: `.md-btn transition: all var(--dur-fast) var(--ease-pop)`, `.md-doc-card var(--dur-base) var(--ease-out)`, mascot bounce easing (M5). `grep 'rgba(58, 38, 24' static/*.css` = 0 |
+| AC-CMP-003 | PASS | `grep -rn 'border-left:.*var(--color-primary)\|border-left:.*#3d7d5f' static/*.css` | 1 match — `.gdoc-hint.info/.note/.important { border-left: 3px solid var(--color-primary) }` — an ADMONITION/callout (design.md §C explicitly allows callout border-left), NOT a `-card`-class selector. No card has the rounded-border + left-color-accent AI-slop pattern. The plan.md §M6 forbidden sweep (`border-left:.*#3d7d5f` near `border-radius`) returns 0 card matches |
+| AC-CMP-004 | PASS | `grep -lP '[emoji-ranges]' <modified CSS>` + full-bleed scan | 0 body emoji in any modified CSS (grep exit 1); 0 full-bleed `background: url(…) cover/100%` introduced by M6. All M6 edits are token/geometry only |
+| AC-BLD-001 | PASS | `cd docs-site && hugo --minify --gc` | exit 0, 0 WARN/ERROR; KO 153p / EN 150p / JA 139p / ZH 150p (unchanged); 1902ms |
+
+**Files touched (5):**
+- `docs-site/static/moai-docs-tokens.css` — `--shadow-xs/sm/md/lg` warm `rgba(58,38,24,…)` → v2 `rgba(6,6,6,…)` (matching brand.css SSOT). This is the cascade winner (loads after brand.css) so this single repoint fixes elevation on every `var(--shadow-*)` consumer. `--shadow-pop*` (neo-brutalist offset) left intact (still used by non-migrated surfaces).
+- `docs-site/static/moai-brand.css` — added `--border-card: #d1d1d1` alias (v2 surface-card hairline per design.md §C; achromatic, not an AC-TOK-forbidden literal).
+- `docs-site/static/moai-docs-theme.css` — `.md-btn` neo-brutalist → v2 CTA pill: `radius-md`(8px)→`radius-full`(9999px), border `2px`→`1px`, padding `12px 22px`→`13px 24px`, added `letter-spacing:-0.025em`. `.md-btn-primary`: removed `box-shadow: shadow-pop` (offset) + `border-color: border-strong`, hover removed `translate(1px,1px)`+offset-shadow → `translateY(-1px)` + `shadow-signature`, active removed brutalist `translate(3px,3px)`. `.md-btn-ghost` border `border-clay`→`border-strong`. `.gdoc-markdown a.md-btn` border-bottom-pop → `1px solid transparent` (pill artifact removal). `.md-doc-card` → v2 surface: `radius-xl`(24px)→`radius-lg`(16px), `1.5px border-subtle`→`1px border-card`, `shadow-xs`→`shadow-sm`, hover `translateY(-3px)`→`(-2px)`; `a.md-doc-card` border-bottom aligned to `1px border-card`.
+- `docs-site/static/moai-docs-layout.css` — round3 `.doc-card` + `.docs-card` (live home grid/surface cards): border `var(--border)`(#e6e6e6)→`var(--border-card)`(#d1d1d1), added resting `box-shadow: var(--shadow-sm)`. Makes the actual rendered home cards satisfy the AC-CMP-001 surface recipe.
+- `.moai/specs/SPEC-DESIGN-DOCSV2-001/progress.md` — this M6 evidence.
+
+**AC-TOK-006 (gradient+shadow simultaneity) not regressed:** all migrated buttons/cards use SOLID backgrounds — `.md-btn-primary` `background: var(--accent)` (solid #3d7d5f), `.doc-card`/`.docs-card` `background: var(--surface)` (solid). `--gradient`/`--gradient-signature` resolve to solid `#3d7d5f` (M1), so even the round3 `.btn-primary { background: var(--gradient) }` is not a real gradient. No selector block pairs a real gradient background with a box-shadow.
+
+**Left intact (already v2-clean, no forbidden pattern — DDD scope discipline):** `.callout` (moai-design.css — token-driven tint bg + 1px border, radius 12px, no border-left card-slop); `.cw-card` (moai-design.css — v2-token-driven via M1 repoint); round3 `.chip` (radius 999px, fw 700 — already v2 §C); `.code-card` (macOS chrome — component-local dark per CLAUDE.local.md §17.1, intentionally preserved). Editing these would be drive-by refactoring outside the AC surface.
+
+**Self-referential SHA note:** M6 source + evidence in the SAME commit (B9); per spec-frontmatter-schema §D3 the header omits an inline SHA (M2-M5 style). git log is authoritative.
+
+**Parallel-session safety:** specific-path `git add` of the 4 CSS files + progress.md only (B8/B10) — disjoint from the parallel session's `.claude/settings.json` + `internal/template/templates/.claude/settings.json.tmpl` (left unstaged).
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _(pending run-phase)_

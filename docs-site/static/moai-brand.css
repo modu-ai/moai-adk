@@ -156,6 +156,7 @@
   --muted-fg-2: var(--fg-3);
   --border: var(--border-1);
   --border-strong: var(--border-strong);
+  --border-card: #d1d1d1;   /* v2 surface-card hairline (design.md §C) — SPEC-DESIGN-DOCSV2-001 M6 */
   --success: var(--color-success);
   --warning: var(--color-warning);
   --danger: var(--color-danger);

@@ -197,11 +197,13 @@
   --border-w-bold: 2px;
   --border-w-pixel: 3px;   /* chunky 8-bit outline */
 
-  /* ---- Soft warm shadows (elevation) ---- */
-  --shadow-xs: 0 1px 2px rgba(58, 38, 24, 0.06);
-  --shadow-sm: 0 2px 6px rgba(58, 38, 24, 0.08);
-  --shadow-md: 0 6px 18px rgba(58, 38, 24, 0.10);
-  --shadow-lg: 0 16px 40px rgba(58, 38, 24, 0.14);
+  /* ---- v2 achromatic shadows (elevation) — SPEC-DESIGN-DOCSV2-001 M6.
+         warm brown-tinted 잔재 제거 → v2 ink rgba(6,6,6) 정합 (brand.css SSOT와 일치).
+         이 파일이 brand.css 뒤에 로드되므로 여기 값이 최종 승자 → v2 값으로 통일. ---- */
+  --shadow-xs: 0 1px 2px rgba(6, 6, 6, 0.04);
+  --shadow-sm: 0 2px 4px rgba(6, 6, 6, 0.06);
+  --shadow-md: 0 4px 12px rgba(6, 6, 6, 0.08);
+  --shadow-lg: 0 8px 24px rgba(6, 6, 6, 0.10);
 
   /* ---- Pop / pixel offset (hard-edged, the logo's signature look) ---- */
   --shadow-pop:    3px 3px 0 var(--ink-900);
