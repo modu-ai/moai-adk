@@ -41,7 +41,7 @@ cycle_type: tdd (RED-GREEN-REFACTOR). Milestones: M2 (loop-break, commit 94eb1b5
 
 ```yaml
 run_complete_at: 2026-07-17
-run_commit_sha: pending-backfill-M1   # M2=94eb1b58a (loop-break); M1=<this commit> config-preservation
+run_commit_sha: 59f52dc8e   # M2=94eb1b58a (loop-break); M1=59f52dc8e config-preservation
 run_status: audit-ready
 ac_pass_count: 8        # AC-RIL-001..007 + 010
 ac_fail_count: 0
