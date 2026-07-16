@@ -1127,7 +1127,7 @@ a:hover, a:focus-visible { text-decoration: underline; text-underline-offset: 0.
   display: flex; flex-direction: column;
   overflow: hidden;
 }
-[data-theme="dark"] .cw-search-modal__panel { background: #252320; }
+[data-theme="dark"] .cw-search-modal__panel { background: var(--neutral-800); }  /* v2 achromatic (M7): warm dark literal 제거 (dark dead-code, 라이트 전용) */
 .cw-search-modal__head {
   display: flex; align-items: center; gap: 12px;
   padding: 14px 18px;

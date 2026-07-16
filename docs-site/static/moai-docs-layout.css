@@ -590,3 +590,13 @@
   .mascot { transition-duration: 1ms; }
   .mascot:hover { animation-duration: 1ms; }
 }
+
+/* ───── prose-kr — 한국어 본문 가독성 보강 레이어 (SPEC-DESIGN-DOCSV2-001 M7) ─────
+   single.html 본문 래퍼가 `.gdoc-markdown prose-kr` 로 항상 붙인다. gdoc-markdown 이
+   기본 타이포그래피(폰트/수직리듬/코드블록 = render-codeblock.html .code-card)를 소유;
+   prose-kr 은 그 위에 한국어 어절 단위 줄바꿈만 얇게 덧입힌다(헤딩/코드/리듬 재정의 없음
+   → 충돌·리그레션 방지). word-break: keep-all 은 CJK(ja/zh) 폭 오버플로를 피하려
+   한국어에만 스코프(<html lang="ko">). round3 styles.css §.prose-kr 의 핵심만 이식. */
+.prose-kr { overflow-wrap: break-word; }
+:lang(ko) .prose-kr,
+html[lang="ko"] .prose-kr { word-break: keep-all; }

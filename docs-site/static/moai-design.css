@@ -505,7 +505,7 @@
 
 /* inline terminal */
 .term-card { margin: 20px 0; }
-.term-card .code-chrome { background: linear-gradient(180deg, #252320 0%, var(--neutral-900) 100%); }
+.term-card .code-chrome { background: linear-gradient(180deg, var(--neutral-700) 0%, var(--neutral-900) 100%); }  /* v2 achromatic code-chrome (M7): warm dark literal 제거 */
 .code-spacer { width: 46px; flex-shrink: 0; }
 
 /* Geekdoc 기본 pre 스타일을 reset — 흰 배경/border 충돌 방지 */

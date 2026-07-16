@@ -334,9 +334,71 @@ All non-colliding classes ported BARE (zero regression — AC-BLD-001 confirms n
 
 **Parallel-session safety:** specific-path `git add` of the 4 CSS files + progress.md only (B8/B10) — disjoint from the parallel session's `.claude/settings.json` + `internal/template/templates/.claude/settings.json.tmpl` (left unstaged).
 
+### M7 — 4-Locale Parity Sweep + Build Gate
+
+**Scope:** doc-rail.html hardcoded Korean promoted to 10 i18n keys (`rail_*`) across all 4 locales; `.prose-kr` Korean-readability class defined (thin, locale-safe); remaining warm `#252320` literals swept to achromatic v2 neutrals; the full M7 build/parity gate executed. This is the closing run-phase milestone.
+
+**AC Matrix (AC-I18N-001/002 + AC-LIT-001 + AC-BLD-001 + M7 gate + regression re-verify):**
+
+| AC | Status | Verification Command | Result |
+|---|---|---|---|
+| AC-I18N-001 | PASS | per-locale render of doc-rail `rail-h` + doc-empty across ko/en/ja/zh | doc-rail renders 4 distinct locale strings (ko 이 가이드 활용 / en Use this guide / ja このガイドを活用 / zh 使用本指南); structural DOM identical, only translated strings differ. Page counts held KO153/EN150/JA139/ZH150 every milestone (ja<ko leaf-page delta is PRE-EXISTING content translation gap from the M3 baseline, NOT introduced by M4-M7; section-dir count equal = 12 per locale) |
+| AC-I18N-002 | PASS | `grep -rEn 'docs\.moai-ai\.dev\|adk\.moai\.com\|adk\.moai\.kr' layouts/ static/ i18n/` | 0 matches (adk.mo.ai.kr is the sole valid docs domain) |
+| AC-LIT-001 | PASS | `grep -c MutationObserver baseof.html` + `color-theme="light"` | MutationObserver present (1) + `color-theme="light"` forced; no dark-mode render. Dark dead-code blocks preserved inert (design.md §H.2) |
+| AC-BLD-001 | PASS | `cd docs-site && hugo --minify --gc` | exit 0, 0 WARN/ERROR; KO 153 / EN 150 / JA 139 / ZH 150; 1893ms |
+| Token parity (AC-TOK-001/003/004/005) | PASS | `grep -rn '#faf9f5\|#ecefee\|#211A14\|linear-gradient(135deg, #3d7d5f' static/ layouts/` (comment-excl) + `#000000` | 0 forbidden literals; 0 `#000000`; `#252320` warm literal 0 (both occurrences swept) |
+| Mermaid TD-only | PASS | `grep -rEn 'graph (LR\|RL\|BT)\|flowchart (LR\|RL\|BT)' content/` | 0 (all diagrams TD/TB) |
+| Body-emoji (M4-M7 layouts) | PASS | `grep -lP '[emoji-ranges]' <9 M4-M7 layout files>` | 0 (grep exit 1) |
+
+**Files touched (7):**
+- `docs-site/i18n/{ko,en,ja,zh-cn}.yaml` — added 10 `rail_*` keys each (`rail_actions_title/like/bookmark/share/print/related_title/read_min/cta_title/cta_body/cta_link`). ko canonical → en/ja/zh derivation. `rail_read_min` is a `{{ . }}`-param key (takes `.ReadingTime`).
+- `docs-site/layouts/partials/doc-rail.html` — every exposed string (card titles, button labels + aria-labels, related-guide read-time, CTA title/body/link) promoted from hardcoded Korean to `{{ i18n "rail_*" }}`. Resolves the M3c-2 deferred i18n debt (AP-2 compliance). Inline SVGs + no-backend JS (share/print) unchanged.
+- `docs-site/static/moai-docs-layout.css` — defined `.prose-kr` (referenced-but-undefined since M3c-2): a THIN Korean-readability layer — `overflow-wrap: break-word` universal + `word-break: keep-all` scoped to `<html lang="ko">` only (avoids CJK ja/zh width overflow). Deliberately does NOT re-style headings/code/rhythm — `gdoc-markdown` + `render-codeblock.html` (`.code-card`) own those (conflict/regression avoidance). Ports the load-bearing part of round3 `styles.css §.prose-kr`.
+- `docs-site/static/moai-design.css` — `.term-card .code-chrome` gradient warm `#252320` midpoint → `var(--neutral-700)` (achromatic). Gradient direction 180deg neutral (NOT the forbidden 135deg signature gradient).
+- `docs-site/static/moai-brand.css` — `[data-theme="dark"] .cw-search-modal__panel` warm `#252320` → `var(--neutral-800)` (achromatic; dark dead-code, light-only).
+- `.moai/specs/SPEC-DESIGN-DOCSV2-001/progress.md` — this M7 evidence + §E.3 signal.
+
+**Full run-phase (M1-M7) AC roll-up — 30/30 PASS:**
+- **M1-M3** (prior commits, re-verified at final HEAD, no regression): AC-TOK-001..007, AC-TYP-001..004, AC-LAY-001/002/003/004/005, AC-LIT-001, AC-BLD-002. Regression spot-check: ⌘K search + `cw-lang-switch` + `data-gh-stars` present; home slots (docs-hero/filters/featured/grid) + detail slots (doc-layout/read-progress/rail-card/next-cta) render; MaruBuri 0; two-token mono present.
+- **M4** (this session): AC-MER-001, AC-MER-002.
+- **M5**: AC-MAS-001, AC-MAS-002, AC-MAS-003.
+- **M6**: AC-CMP-001, AC-CMP-002, AC-CMP-003, AC-CMP-004.
+- **M7**: AC-I18N-001, AC-I18N-002 (+ closes AC-BLD-001 warning-free gate + token-parity gate).
+- Count reconciliation: acceptance.md §A actual matrix = 25 MUST + 5 SHOULD = 30 (the §A headline "20 MUST / 10 SHOULD" is a plan-phase doc inconsistency — actual severity column tally is 25/5; NOT modified per body-content ownership boundary, flagged for sync-phase). All 5 SHOULD (TYP-002, TYP-004, LAY-004, MER-002, CMP-002) PASS.
+
+**Self-referential SHA note:** M7 source + evidence + §E.3 in the SAME commit (B9); per spec-frontmatter-schema §D3 the header omits an inline SHA (M2-M6 style). git log is authoritative; orchestrator's final report carries the post-push SHA.
+
+**Parallel-session safety:** specific-path `git add` of the 6 docs-site files + progress.md only (B8/B10) — disjoint from the parallel session's `.claude/settings.json` + `internal/template/templates/.claude/settings.json.tmpl` (left unstaged throughout M4-M7).
+
 ## §E.3 Run-phase Audit-Ready Signal
 
-_(pending run-phase)_
+```yaml
+run_complete_at: 2026-07-16
+run_commit_sha: pending-backfill-M7   # M7 commit cannot reference its own SHA; orchestrator backfills post-push
+run_status: run-complete
+milestones_this_session: [M4, M5, M6, M7]     # M1-M3c-2 landed in prior commits (4170b6e8b and earlier)
+ac_pass_count: 30
+ac_fail_count: 0
+ac_total: 30                                  # 25 MUST + 5 SHOULD (acceptance.md §A actual severity tally)
+should_ac_deferred_count: 0                   # all 5 SHOULD PASS (TYP-002/004, LAY-004, MER-002, CMP-002)
+preserve_list_post_run_count: 0               # menu.html/main.yaml/content/search.json/icon.html untouched (infra preserved)
+cross_platform_build: n/a                     # docs/design SPEC — no Go code (cycle_type=ddd, Hugo static site)
+hugo_build: { exit: 0, warnings: 0, errors: 0, pages: "KO153/EN150/JA139/ZH150" }
+new_warnings_or_lints_introduced: 0
+token_parity_forbidden_literals: 0            # #faf9f5/#ecefee/#211A14/#000000/linear-gradient(135deg,#3d7d5f) + #252320
+maruburi_residual: 0
+mermaid_v2_palette_tokens: 2                  # primaryColor #eef4f0 + lineColor #9fa0a0
+mascot_emotional_surfaces: 3                  # home(Explaining) + 404(Thinking) + empty-section(Searching)
+url_blacklist_hits: 0
+mermaid_non_td_directions: 0
+body_emoji_in_modified_layouts: 0
+four_locale_page_counts: { ko: 153, en: 150, ja: 139, zh: 150 }   # held identical every milestone; ja<ko delta pre-existing content gap
+l44_pre_commit_fetch: not-applicable          # orchestrator owns push + pre-push fetch (manager-develop does NOT push per spawn instruction)
+l44_post_push_fetch: not-applicable           # orchestrator pushes after verification
+m1_to_mN_commit_strategy: "per-milestone commits (M4=72117bbcc, M5=73de67aac, M6=ca0f9a920, M7=this commit); NOT pushed — orchestrator pushes after verification"
+run_phase_files_this_session: 24              # foot.html, 6 mascot png, mascot/doc-empty/doc-rail partials, mascot shortcode, list/index/404/single layouts, 4 i18n yaml, 4 css (brand/design/theme/tokens/layout), progress.md
+status_transition: none                        # status stayed in-progress (M1 set draft->in-progress); in-progress->implemented->completed owned by manager-docs (sync-phase)
+```
 
 ## §E.4 Sync-phase Audit-Ready Signal
 

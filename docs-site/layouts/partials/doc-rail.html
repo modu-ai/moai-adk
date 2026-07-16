@@ -1,28 +1,28 @@
-{{- /* doc-rail.html — round3 문서 상세 우측 rail (SPEC-DESIGN-DOCSV2-001 M3c-2).
+{{- /* doc-rail.html — round3 문서 상세 우측 rail (SPEC-DESIGN-DOCSV2-001 M3c-2 · M7 i18n).
        3개 rail-card: (1) 이 가이드 활용(정적 액션 버튼) (2) 관련 가이드(같은 섹션)
        (3) CTA(그라데이션, docs home 링크). no backend; 인쇄만 window.print().
-       새 문자열은 한국어 plain text — M7 i18n pass에서 키로 승격 예정. */ -}}
+       M7: 모든 노출 문자열을 i18n 키(rail_*)로 승격 — 4-locale 파리티 (AP-2). */ -}}
 
 {{- /* (1) 이 가이드 활용 — 좋아요/북마크/공유/인쇄 정적 버튼 (인라인 SVG, no backend). */ -}}
 <div class="rail-card">
-  <div class="rail-h">이 가이드 활용</div>
+  <div class="rail-h">{{ i18n "rail_actions_title" }}</div>
   <div class="rail-actions">
-    <button type="button" class="rail-action" data-rail-action="like" aria-label="좋아요">
+    <button type="button" class="rail-action" data-rail-action="like" aria-label="{{ i18n "rail_like" }}">
       <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" width="16" height="16"><path d="M19 14c1.5-1.5 3-3.5 3-6 0-2.8-2.2-5-5-5-1.7 0-3.2.8-4 2-.8-1.2-2.3-2-4-2-2.8 0-5 2.2-5 5 0 2.5 1.5 4.5 3 6l6 6 6-6Z"/></svg>
-      좋아요
+      {{ i18n "rail_like" }}
     </button>
-    <button type="button" class="rail-action" data-rail-action="bookmark" aria-label="북마크">
+    <button type="button" class="rail-action" data-rail-action="bookmark" aria-label="{{ i18n "rail_bookmark" }}">
       <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" width="16" height="16"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16Z"/></svg>
-      북마크
+      {{ i18n "rail_bookmark" }}
     </button>
-    <button type="button" class="rail-action" data-rail-action="share" aria-label="공유"
+    <button type="button" class="rail-action" data-rail-action="share" aria-label="{{ i18n "rail_share" }}"
             onclick="if(navigator.share){navigator.share({title:document.title,url:location.href}).catch(function(){})}else if(navigator.clipboard){navigator.clipboard.writeText(location.href)}">
       <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" width="16" height="16"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="m8.6 13.5 6.8 4M15.4 6.5l-6.8 4"/></svg>
-      공유
+      {{ i18n "rail_share" }}
     </button>
-    <button type="button" class="rail-action" aria-label="인쇄" onclick="window.print()">
+    <button type="button" class="rail-action" aria-label="{{ i18n "rail_print" }}" onclick="window.print()">
       <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" width="16" height="16"><path d="M6 9V2h12v7"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8" rx="1"/></svg>
-      인쇄
+      {{ i18n "rail_print" }}
     </button>
   </div>
 </div>
@@ -36,11 +36,11 @@
 {{- end -}}
 {{- if gt (len $others) 0 }}
 <div class="rail-card">
-  <div class="rail-h">관련 가이드</div>
+  <div class="rail-h">{{ i18n "rail_related_title" }}</div>
   {{- range first 3 $others }}
   <a class="rail-related" href="{{ .RelPermalink }}">
     <h5>{{ .Title }}</h5>
-    <div class="m">{{ .ReadingTime }}분 분량</div>
+    <div class="m">{{ i18n "rail_read_min" .ReadingTime }}</div>
   </a>
   {{- end }}
 </div>
@@ -49,9 +49,9 @@
 {{- /* (3) CTA — 그라데이션 변형 (inline style로 기존 --gradient 토큰 사용, CSS 클래스 미정의). */ -}}
 <a class="rail-card" href="{{ .Site.Home.RelPermalink }}"
    style="background:var(--gradient);color:#fff;border:none;">
-  <div class="rail-h" style="color:rgba(255,255,255,0.85);">시작하기</div>
+  <div class="rail-h" style="color:rgba(255,255,255,0.85);">{{ i18n "rail_cta_title" }}</div>
   <p style="font-size:13px;line-height:1.5;margin:0 0 12px;opacity:0.92;">
-    모든 문서를 둘러보고 다음 가이드를 찾아보세요.
+    {{ i18n "rail_cta_body" }}
   </p>
-  <span style="font-size:13px;font-weight:700;">문서 홈 →</span>
+  <span style="font-size:13px;font-weight:700;">{{ i18n "rail_cta_link" }}</span>
 </a>
