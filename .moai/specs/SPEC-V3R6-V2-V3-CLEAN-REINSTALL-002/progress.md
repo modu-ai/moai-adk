@@ -1,6 +1,6 @@
 # SPEC-V3R6-V2-V3-CLEAN-REINSTALL-002 — Progress
 
-**Status**: in-progress (run-phase M1-M5 complete; M4 bb886ecfa + M5 72f408178 NOT pushed — orchestrator owns landing of worktree branch crr-002-m4m5)
+**Status**: completed (sync-phase closed; M4 bb886ecfa + M5 72f408178 NOT pushed — orchestrator owns landing of worktree branch crr-002-m4m5)
 
 ## §E.1 Plan-phase Audit-Ready Signal
 
@@ -117,7 +117,18 @@ The AC-CRR-006 test was likewise confirmed RED at pre-fix (`AC-CRR-006(b): phant
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+- sync_complete_at: 2026-07-16
+- sync_commit_sha: pending-backfill-sync (backfilled in a follow-up commit on this branch — self-referential-SHA workaround, D3 exemption)
+- sync_status: complete (single sync commit carries the merged `implemented → completed` transition; no separate Mx-phase chore commit)
+- b12_self_test_a: `grep -c 'SPEC-V3R6-V2-V3-CLEAN-REINSTALL-002' CHANGELOG.md` → 0 (pre-emission; confirmed no prior entry before this sync commit)
+- b12_self_test_b: acceptance.md SSOT AC row count (`grep -cE '^\| AC-CRR-[0-9]+ \|'` matched against `§D.1 Severity Classification` table) = 10 (9 S1 + 1 S2); CHANGELOG entry references all 10 AC-CRR-NNN tokens across the 4 numbered sub-changes + closing PRESERVE-non-weakening clause
+- b12_self_test_c: file paths cited in CHANGELOG entry (`internal/cli/v2_detection.go`, `internal/cli/update.go`, `internal/cli/update_clean_install.go`, `internal/cli/update_preserve_inventory.go`) verified present via `ls` before commit
+- changelog_entry_position: `## [Unreleased]` → `### Fixed` (new subsection; first entry in Unreleased)
+- frontmatter_status_transitions.spec_md: draft → completed (updated: 2026-07-16, unchanged date — created==updated==today)
+- frontmatter_status_transitions.plan_md: not modified (out of sync-phase scope; body/frontmatter untouched)
+- frontmatter_status_transitions.acceptance_md: not modified (out of sync-phase scope; body/frontmatter untouched)
+- canary_compliance_check.push: NOT performed — orchestrator owns landing of worktree branch `crr-002-m4m5`
+- canary_compliance_check.git_add_scope: specific-path only (CHANGELOG.md, spec.md, progress.md) — no `git add -A`
 
 ## §F Phase 4 Mode Selection
 

@@ -2,7 +2,7 @@
 id: SPEC-V3R6-V2-V3-CLEAN-REINSTALL-002
 title: "Repair v2→v3 clean-reinstall regression (#1084 silent data loss loop, #1086 arbitrary-directory pollution)"
 version: "0.1.0"
-status: draft
+status: completed
 created: 2026-07-16
 updated: 2026-07-16
 author: manager-spec
