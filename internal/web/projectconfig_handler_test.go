@@ -4,7 +4,6 @@ import (
 	"errors"
 	"net/http"
 	"net/url"
-	"regexp"
 	"sort"
 	"strings"
 	"testing"
@@ -45,102 +44,14 @@ func TestProjectOptionListsMatchCanonical(t *testing.T) {
 	}
 }
 
-// serveGetApp serves GET / against the given app and returns the recorder body.
-func serveGetApp(t *testing.T, a *app) (status int, body string) {
-	t.Helper()
-	rec := serveGet(t, a.routes(), "/")
-	return rec.Code, rec.Body.String()
-}
-
-// --- AC-WC3-003: Project fieldset + <select> widgets ---
-
-// TestProjectFieldsetRendersSelects covers AC-WC3-003: development_mode and
-// git_convention render as <select> dropdowns (no type="text"), inside a
-// <fieldset> with legend "Project", with the canonical option sets + empty default.
-func TestProjectFieldsetRendersSelects(t *testing.T) {
-	t.Parallel()
-	a := newTestApp(t)
-	status, body := serveGetApp(t, a)
-	if status != http.StatusOK {
-		t.Fatalf("GET / status = %d, want 200", status)
-	}
-
-	// A "Project" section legend must exist (SPEC-WEB-CONSOLE-004 restyle: the
-	// bare <legend>Project</legend> became a .section__legend with an icon span;
-	// the Project label text + a <fieldset class="section"> are preserved).
-	if !strings.Contains(body, ">Project</span>") {
-		t.Error("rendered page missing the Project section legend")
-	}
-	if !strings.Contains(body, `<fieldset class="section">`) {
-		t.Error("rendered page missing the <fieldset class=\"section\"> wrapper")
-	}
-
-	// Both fields render as <select name="..."> — never <input type="text" name="...">.
-	for _, name := range []string{"development_mode", "git_convention"} {
-		selectRe := regexp.MustCompile(`(?s)<select[^>]*\bname="` + name + `"`)
-		if !selectRe.MatchString(body) {
-			t.Errorf("field %q is not rendered as a <select>", name)
-		}
-		textRe := regexp.MustCompile(`<input[^>]*type="text"[^>]*name="` + name + `"`)
-		if textRe.MatchString(body) {
-			t.Errorf("field %q rendered as <input type=\"text\"> — must be a <select>", name)
-		}
-	}
-
-	// Canonical options present (value attributes). The `custom` engine is removed
-	// (REQ-WC9-003), so git_convention exposes only the 4-value enum.
-	wantOpts := []string{
-		`value="ddd"`, `value="tdd"`, // development_mode
-		`value="auto"`, `value="conventional-commits"`, `value="angular"`, `value="karma"`, // git_convention (4-value)
-	}
-	for _, opt := range wantOpts {
-		if !strings.Contains(body, opt) {
-			t.Errorf("rendered page missing canonical option %s", opt)
-		}
-	}
-	// `custom` must NOT be offered as a git_convention option (engine removed).
-	// NOTE: the statusline preset select legitimately offers value="custom"
-	// (HARD-2, out of scope), so a file-wide Contains would false-match. Scope the
-	// assertion to the git_convention <select> region only.
-	gcSelectRe := regexp.MustCompile(`(?s)<select[^>]*id="git_convention".*?</select>`)
-	if gcSel := gcSelectRe.FindString(body); gcSel == "" {
-		t.Error("git_convention <select> not found in rendered page")
-	} else if strings.Contains(gcSel, `value="custom"`) {
-		t.Error("git_convention select must not offer the removed custom option")
-	}
-	// SPEC-WEB-CONSOLE-010 AC-WC10-014: both development_mode and git_convention now
-	// single-source their empty-option label from the settings schema, which is
-	// "(project default)" for both — resolving the documented git_convention
-	// "(unchanged)" vs schema drift. Both selects render the canonical label.
-	if !strings.Contains(body, `(project default)`) {
-		t.Error("development_mode / git_convention select missing the canonical (project default) empty option")
-	}
-}
-
-// --- AC-WC3-004: pre-select current project-config values ---
-
-// TestProjectSelectsPreselectCurrentValues covers AC-WC3-004: GET / marks the
-// current persisted development_mode + git_convention values as selected (read
-// from the config manager via the read seam, not the profile store).
-func TestProjectSelectsPreselectCurrentValues(t *testing.T) {
-	t.Parallel()
-	a := newTestApp(t)
-	// Inject a read seam returning specific current values.
-	a.readProjectConfig = func(string) (string, string, error) {
-		return "ddd", "karma", nil
-	}
-	_, body := serveGetApp(t, a)
-
-	// development_mode=ddd must be marked selected; git_convention=karma selected.
-	devSel := regexp.MustCompile(`(?s)<option value="ddd"[^>]*selected`)
-	if !devSel.MatchString(body) {
-		t.Error("development_mode ddd option not marked selected")
-	}
-	convSel := regexp.MustCompile(`(?s)<option value="karma"[^>]*selected`)
-	if !convSel.MatchString(body) {
-		t.Error("git_convention karma option not marked selected")
-	}
-}
+// SPEC-DESIGN-MOAIWEBV2-001 M1: TestProjectFieldsetRendersSelects and
+// TestProjectSelectsPreselectCurrentValues (AC-WC3-003/004 render tests) were removed
+// with the orphan `project` render surface (fieldsetProject). development_mode /
+// git_convention no longer render as web-console <select> widgets — they stay editable
+// via yaml config / CLI. The server-side read/write/validate seams remain PRESERVED
+// (REQ-MWV2-031) and are still covered by the handler round-trip tests below
+// (TestSaveRejectsBogus*, TestSaveValidProjectConfigPersists, TestSaveEC2AtomicReject).
+// The now-unused serveGetApp helper + the regexp import were removed with those tests.
 
 // TestProjectReadSeamFailureRendersInlineError covers AC-WC3-004 (read failure):
 // a read-seam error surfaces a readable inline error, never a blank page or panic.
@@ -188,9 +99,8 @@ func TestSaveRejectsBogusDevelopmentMode(t *testing.T) {
 	if rec.Code != http.StatusBadRequest {
 		t.Errorf("bogus development_mode status = %d, want 400", rec.Code)
 	}
-	if !strings.Contains(rec.Body.String(), "development_mode") {
-		t.Error("response missing development_mode field error")
-	}
+	// SPEC-DESIGN-MOAIWEBV2-001 M1: field-error echo retired with the project render
+	// surface; the server 400 + atomic no-write (below) are the preserved contract.
 	if wrote {
 		t.Error("write seam was invoked despite validation failure — must be atomic reject")
 	}
@@ -208,9 +118,8 @@ func TestSaveRejectsBogusConvention(t *testing.T) {
 	if rec.Code != http.StatusBadRequest {
 		t.Errorf("bogus git_convention status = %d, want 400", rec.Code)
 	}
-	if !strings.Contains(rec.Body.String(), "git_convention") {
-		t.Error("response missing git_convention field error")
-	}
+	// SPEC-DESIGN-MOAIWEBV2-001 M1: field-error echo retired with the project render
+	// surface; the server 400 + atomic no-write (below) are the preserved contract.
 	if wrote {
 		t.Error("write seam invoked despite validation failure")
 	}
@@ -273,10 +182,9 @@ func TestSaveEC2AtomicReject(t *testing.T) {
 	if rec.Code != http.StatusBadRequest {
 		t.Errorf("EC-2 status = %d, want 400", rec.Code)
 	}
-	body := rec.Body.String()
-	if !strings.Contains(body, "development_mode") {
-		t.Error("EC-2 response missing development_mode field error")
-	}
+	// SPEC-DESIGN-MOAIWEBV2-001 M1: the development_mode field-error echo retired with
+	// the project render surface; the server 400 + atomic no-write (below) are the
+	// preserved contract (REQ-MWV2-031).
 	if wrote {
 		t.Error("EC-2 must be an atomic reject — no value persisted when any field is invalid")
 	}

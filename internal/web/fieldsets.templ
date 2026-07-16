@@ -148,56 +148,15 @@ templ permissionOption(opt settings.OptionDef, current string) {
 	}
 }
 
-// fieldsetProject ports the Project fieldset and extends it with the curated
-// nested config fields (REQ-WC9-010). The two optSelect scalars (development_mode /
-// git_convention) keep their shape; the git_convention nested fields model the live
-// levers only — confidence_threshold, the auto-detect toggle, sample_size, and the
-// enforce_on_push gate. The custom.pattern widget is removed (the custom engine is
-// gone). The three auto-detection sub-fields carry a client de-emphasis hint when
-// the selected convention is not "auto" (REQ-WC9-012; no server cross-field logic).
-// The section count label derives from the schema length (B11 derived count).
-templ fieldsetProject(view pageView) {
-	<fieldset class="section">
-		<div class="section__head">
-			<div class="section__head-row">
-				<legend class="section__legend"><span class="section__ico">@icon("folder-git")</span><span data-i18n="sec.project.title">Project</span></legend>
-				@sectionCount(len(settings.SectionFields(settings.SectionQuality)) + len(settings.SectionFields(settings.SectionGitConvention)))
-			</div>
-			<p class="section__desc" data-i18n="sec.project.desc">Project-level development and git conventions.</p>
-		</div>
-		<div class="section__body">
-			<div class="grid" data-convention={ view.CurConvention }>
-				@optSelect(optSelectArgs{Name: "development_mode", Title: "Development mode", Key: "development_mode", Desc: "Default workflow — domain-driven (DDD) or test-driven (TDD).", Value: view.CurDevelopmentMode, Empty: settings.EmptyLabelFor("development_mode"), EmptyKey: settings.EmptyLabelKeyFor("development_mode"), Options: view.DevelopmentModes, Errors: view.FieldErrors})
-				@optSelect(optSelectArgs{Name: "git_convention", Title: "Git convention", Key: "git_convention", Desc: "Commit message convention enforced in this project.", Value: view.CurConvention, Empty: settings.EmptyLabelFor("git_convention"), EmptyKey: settings.EmptyLabelKeyFor("git_convention"), Options: view.Conventions, Errors: view.FieldErrors})
-				@numberField(numberFieldArgs{Name: "quality.test_coverage_target", Title: "Test coverage target", Key: "quality.test_coverage_target", Desc: "Minimum overall test coverage percentage (0-100).", Value: view.CurTestCoverageTarget, Min: "0", Max: "100", Step: "1", Errors: view.FieldErrors})
-				@toggle(toggleArgs{Name: "quality.enforce_quality", Title: "Enforce quality gate", Key: "quality.enforce_quality", Desc: "Block on TRUST 5 quality-gate failures.", Checked: view.CurEnforceQuality, Errors: view.FieldErrors})
-				@numberField(numberFieldArgs{Name: "quality.tdd_settings.min_coverage_per_commit", Title: "Min coverage per commit", Key: "quality.tdd_settings.min_coverage_per_commit", Desc: "Minimum coverage required per commit in TDD mode (0-100).", Value: view.CurMinCoveragePerCommit, Min: "0", Max: "100", Step: "1", Errors: view.FieldErrors})
-				@detectionField(view.CurConvention, numberField(numberFieldArgs{Name: "git_convention.auto_detection.confidence_threshold", Title: "Detection confidence threshold", Key: "git_convention.auto_detection.confidence_threshold", Desc: "Confidence required to auto-detect a convention (0.0-1.0).", Value: view.CurConfidenceThreshold, Min: "0", Max: "1", Step: "0.01", Errors: view.FieldErrors}))
-				@detectionField(view.CurConvention, numberField(numberFieldArgs{Name: "git_convention.auto_detection.sample_size", Title: "Detection sample size", Key: "git_convention.auto_detection.sample_size", Desc: "Number of recent commits analyzed during auto-detection.", Value: view.CurSampleSize, Min: "0", Step: "1", Errors: view.FieldErrors}))
-				@detectionField(view.CurConvention, toggle(toggleArgs{Name: "git_convention.auto_detection.enabled", Title: "Auto-detect convention", Key: "git_convention.auto_detection.enabled", Desc: "Auto-detect the commit convention from history.", Checked: view.CurAutoDetectionEnabled, Errors: view.FieldErrors}))
-				@toggle(toggleArgs{Name: "git_convention.validation.enforce_on_push", Title: "Enforce on push", Key: "git_convention.validation.enforce_on_push", Desc: "Reject a push when a commit message violates the convention.", Checked: view.CurEnforceOnPush, Errors: view.FieldErrors})
-			</div>
-		</div>
-	</fieldset>
-}
-
-// detectionField wraps an auto-detection sub-field widget in a div that carries a
-// de-emphasis class when the selected convention is not "auto" (REQ-WC9-012). This
-// is a CLIENT hint only — the server applies no cross-field logic and the wrapped
-// widget stays fully submittable. When convention is "auto" (or unset → preserve)
-// the sub-field renders active; otherwise it renders greyed via the
-// detection-subfield--inactive modifier.
-templ detectionField(convention string, widget templ.Component) {
-	if convention == "auto" || convention == "" {
-		<div class="detection-subfield">
-			@widget
-		</div>
-	} else {
-		<div class="detection-subfield detection-subfield--inactive" aria-disabled="true">
-			@widget
-		</div>
-	}
-}
+// SPEC-DESIGN-MOAIWEBV2-001 M1: fieldsetProject and its detectionField helper
+// were removed (REQ-MWV2-020/021). The `project` tabpanel was unreachable (no
+// navigable data-tab), so its render surface is deleted. The server-side parse
+// seam (parseProjectNestedForm in projectconfig.go, wired in handlers.go) and the
+// pageView.Cur* fields it consumes are PRESERVED (REQ-MWV2-031 zero server-contract
+// change) — development_mode / git_convention / quality.* stay editable via yaml
+// config files / CLI. Those view-model fields are now inert (seeded but not
+// rendered); they are deliberately NOT pruned because handlers.go + its tests still
+// reference them (deletion would cascade into the preserved server contract).
 
 // ─── SPEC-WEB-CONSOLE-011 M2b: 10섹션 확장의 제네릭 스키마 fieldset ───────────
 //

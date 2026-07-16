@@ -253,9 +253,9 @@ func TestProjectNestedAtomicReject(t *testing.T) {
 	if rec.Code != http.StatusBadRequest {
 		t.Fatalf("atomic reject status = %d, want 400; body: %s", rec.Code, rec.Body.String())
 	}
-	if !strings.Contains(rec.Body.String(), "quality.tdd_settings.min_coverage_per_commit") {
-		t.Error("response missing the per-field error for min_coverage_per_commit")
-	}
+	// SPEC-DESIGN-MOAIWEBV2-001 M1: the project render surface was retired, so the
+	// per-field error is no longer echoed into the (now-absent) widget. The server
+	// contract — 400 status + atomic no-write below — is preserved (REQ-MWV2-031).
 	cfg := loadRawCfg(t, root)
 	// NEITHER value persisted — original 70 must survive (atomic reject).
 	if cfg.Quality.TestCoverageTarget != 70 {
@@ -278,13 +278,8 @@ func TestProjectNestedOutOfRangeReject(t *testing.T) {
 	if rec.Code != http.StatusBadRequest {
 		t.Fatalf("out-of-range status = %d, want 400; body: %s", rec.Code, rec.Body.String())
 	}
-	body := rec.Body.String()
-	if !strings.Contains(body, "quality.test_coverage_target") {
-		t.Error("response missing the per-field error for test_coverage_target")
-	}
-	if !strings.Contains(body, "must be between 0 and 100") {
-		t.Error("response missing the reused range message")
-	}
+	// SPEC-DESIGN-MOAIWEBV2-001 M1: field-error echo retired with the project render
+	// surface; the server 400 + atomic no-write below remain the preserved contract.
 	cfg := loadRawCfg(t, root)
 	if cfg.Quality.TestCoverageTarget != 70 {
 		t.Errorf("out-of-range write leaked test_coverage_target = %d, want 70 (no write)", cfg.Quality.TestCoverageTarget)
@@ -306,10 +301,8 @@ func TestProjectNestedCustomConventionRejected(t *testing.T) {
 	if rec.Code != http.StatusBadRequest {
 		t.Fatalf("custom-rejected status = %d, want 400; body: %s", rec.Code, rec.Body.String())
 	}
-	body := rec.Body.String()
-	if !strings.Contains(body, "unrecognized git convention") {
-		t.Error("response missing the enum-reject message for convention=custom")
-	}
+	// SPEC-DESIGN-MOAIWEBV2-001 M1: the enum-reject message echo retired with the
+	// project render surface; the server 400 + atomic no-write below are preserved.
 	cfg := loadRawCfg(t, root)
 	// convention scalar must NOT be persisted (atomic reject leaves angular).
 	if cfg.GitConvention.Convention != "angular" {

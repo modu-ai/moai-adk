@@ -126,9 +126,11 @@ templ page(view pageView) {
 					<div class="tabpanel" data-panel="launch">
 						@fieldsetLaunch(view)
 					</div>
-					<div class="tabpanel" data-panel="project">
-						@fieldsetProject(view)
-					</div>
+					// SPEC-DESIGN-MOAIWEBV2-001 M1: the orphan `project` tabpanel was
+					// removed (REQ-MWV2-020/021) — it had no navigable data-tab and was
+					// unreachable. development_mode / git_convention / quality.* remain
+					// editable via yaml config files / CLI (the server-side parse seam is
+					// preserved; only the unreachable render surface is dropped).
 					// SPEC-WEB-CONSOLE-011 M2b: 10섹션 확장 — 스키마 주도 제네릭 fieldset.
 					for _, meta := range schemaSectionMetas() {
 						<div class="tabpanel" data-panel={ string(meta.ID) }>

@@ -299,7 +299,9 @@ func TestNameAttributesPreserved(t *testing.T) {
 		"doc_lang", "permission_mode", "model_policy", "model", "effort_level",
 		// statusline_preset / statusline_theme removed
 		// (SPEC-V3R6-STATUSLINE-PRESET-RETIRE-001) — no statusline panel.
-		"development_mode", "git_convention", "__profile",
+		// development_mode / git_convention removed with the orphan `project`
+		// panel (SPEC-DESIGN-MOAIWEBV2-001 M1) — editable via yaml config / CLI.
+		"__profile",
 	}
 	for _, name := range wantNames {
 		if !strings.Contains(body, `name="`+name+`"`) {

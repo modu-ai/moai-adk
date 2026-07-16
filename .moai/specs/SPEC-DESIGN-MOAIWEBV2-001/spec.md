@@ -2,7 +2,7 @@
 id: SPEC-DESIGN-MOAIWEBV2-001
 title: "moai web console v2 design-system alignment"
 version: "0.1.0"
-status: draft
+status: in-progress
 created: 2026-07-16
 updated: 2026-07-16
 author: manager-spec

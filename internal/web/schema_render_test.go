@@ -78,6 +78,12 @@ func TestWebRendersSchemaFieldSet(t *testing.T) {
 		settings.SectionCache:         true,
 		// git_strategy section removed from the web console (config stays in yaml).
 		settings.SectionGitStrategy: true,
+		// SPEC-DESIGN-MOAIWEBV2-001 M1: the orphan `project` panel (fieldsetProject)
+		// was removed. It rendered the quality + git_convention sections
+		// (development_mode / git_convention + nested); those fields are
+		// schema-preserved but web-not-rendered (editable via yaml config / CLI).
+		settings.SectionQuality:       true,
+		settings.SectionGitConvention: true,
 	}
 	m3RemovedFields := map[string]bool{}
 	for _, f := range settings.AllFields() {

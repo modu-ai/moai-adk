@@ -18,11 +18,33 @@
 
 ## §E.2 Run-phase Evidence
 
-_<pending run-phase — owned by manager-develop>_
+Development mode: DDD (cycle_type=ddd) — brownfield restyle of a tested package; the
+existing rendered-HTML boundary tests are the preservation net. Milestones M1-M4
+dependency-ordered (removal → mascots → tokens → build/verify).
+
+### Milestone log
+
+- **M1 — Orphan `project` panel removal (COMPLETE).** Removed `fieldsetProject` +
+  `detectionField` from `fieldsets.templ`; removed the `data-panel="project"` block
+  from `root.templ`. Server-side parse/validate/persist seam (`parseProjectNestedForm`
+  in `projectconfig.go`, wired in `handlers.go`) + the `pageView.Cur*` fields are
+  PRESERVED (REQ-MWV2-031) — `development_mode` / `git_convention` / `quality.*` stay
+  editable via yaml config / CLI, now inert in the view-model (not deletable-safe: the
+  server contract + its tests still reference them). Blast radius: the reject-echo +
+  DOM-field-presence render assertions across `schemaform_test.go`,
+  `projectnested_parse_test.go`, `projectnested_test.go`, `projectnested_error_test.go`,
+  `projectconfig_handler_test.go`, `m5b_verify_test.go`, `restyle_test.go`,
+  `i18n_test.go`, `schema_render_test.go` were updated to the retirement (server 400 +
+  atomic no-write assertions preserved; pure-render project tests removed).
+  `go test ./internal/web/...` green.
+
+### §E.2 Run-phase AC matrix (finalized at M4)
+
+_<AC PASS/FAIL matrix populated at M4 verification>_
 
 ## §E.3 Run-phase Audit-Ready Signal
 
-_<pending run-phase — owned by manager-develop>_
+_<pending — finalized at M4 verification>_
 
 ## §E.4 Sync-phase Audit-Ready Signal
 

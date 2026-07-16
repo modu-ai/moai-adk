@@ -47,10 +47,12 @@ func TestM5bD1_AtomicSave_AllPanelsInDOM(t *testing.T) {
 	}
 
 	// 6. All canonical form fields present (atomic Save — they submit from
-	// non-active panels too).
+	// non-active panels too). SPEC-DESIGN-MOAIWEBV2-001 M1: development_mode /
+	// git_convention were removed with the orphan `project` panel (editable via
+	// yaml config / CLI); the remaining panels' fields still submit atomically.
 	for _, name := range []string{
 		"user_name", "conversation_lang", "permission_mode", "model",
-		"effort_level", "development_mode", "git_convention",
+		"effort_level",
 	} {
 		if !strings.Contains(body, `name="`+name+`"`) {
 			t.Errorf("form field name=%q missing from DOM (atomic Save contract broken)", name)
