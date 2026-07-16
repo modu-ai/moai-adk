@@ -2,9 +2,9 @@
 id: SPEC-DESIGN-MOAIWEBV2-001
 title: "moai web console v2 design-system alignment"
 version: "0.1.0"
-status: in-progress
+status: completed
 created: 2026-07-16
-updated: 2026-07-16
+updated: 2026-07-17
 author: manager-spec
 priority: P2
 phase: "v3.0.0"

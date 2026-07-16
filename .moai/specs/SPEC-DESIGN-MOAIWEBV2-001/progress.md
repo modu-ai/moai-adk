@@ -104,7 +104,16 @@ full_suite_cascade: internal/web 100% green; ONE pre-existing baseline failure O
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase — owned by manager-docs>_
+```yaml
+sync_complete_at: 2026-07-17
+sync_commit_sha: pending-backfill-DESIGN-MOAIWEBV2-001   # backfilled in immediate follow-up commit per D3 self-referential-hash exemption
+sync_status: complete
+changelog_entry_position: "[Unreleased] > Added, immediately before SPEC-CLI-TUX-V3-005"
+frontmatter_status_transitions:
+  spec_md: "in-progress -> completed (updated: 2026-07-17)"
+  plan_md: "no frontmatter block (body-only artifact per this SPEC's convention)"
+  acceptance_md: "no frontmatter block (body-only artifact per this SPEC's convention)"
+```
 
 - plan_complete_at: 2026-07-16T14:04:42Z
 - plan_status: audit-ready
