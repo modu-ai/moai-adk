@@ -34,6 +34,8 @@ import (
 	"path/filepath"
 	"runtime"
 
+	"github.com/modu-ai/moai-adk/internal/cli/update/backup"
+	updatemerge "github.com/modu-ai/moai-adk/internal/cli/update/merge"
 	"github.com/modu-ai/moai-adk/internal/defs"
 	"github.com/modu-ai/moai-adk/internal/manifest"
 	"github.com/modu-ai/moai-adk/internal/template"
@@ -240,6 +242,33 @@ func runCleanReinstall(ctx context.Context, projectRoot string, opts CleanReinst
 	_, _ = fmt.Fprintf(out, "[clean-reinstall] Removed %d deprecated paths\n", len(deprecated))
 
 	// ---------------------------------------------------------------
+	// Step 4.5 — Capture user config for merge-preservation
+	// (SPEC-UPDATE-REINSTALL-LOOP-001 R3, REQ-RIL-007/008/009/010)
+	// ---------------------------------------------------------------
+	// The Step 5 force-deploy (forceUpdate=true) overwrites .claude/settings.json
+	// and every .moai/config/sections/*.yaml with template defaults, bypassing the
+	// normal `moai update` path's 3-way merge and silently dropping user
+	// customizations (effortLevel/permissions/model, operator name, conversation
+	// language, brand tokens — issue #1084). Capture the user's config NOW (after
+	// Step 4 removed deprecated sections, before Step 5 clobbers the rest) so
+	// Step 5.5 can restore it with the SAME merge machinery the normal path uses.
+	// The clean-reinstall must not be a lower-protection bypass of the normal path.
+	configBackupPath, cfgBackupErr := backup.BackupMoaiConfig(projectRoot)
+	if cfgBackupErr != nil {
+		return result, fmt.Errorf("step 4.5: backup .moai/config for merge-preservation: %w", cfgBackupErr)
+	}
+	// Mergeable root files handled by the normal path's 3-way engine (identical
+	// set to update.go collectMergeableFiles). settings.json base is unavailable
+	// in the embedded FS (it ships as settings.json.tmpl), so MergeUserFiles
+	// preserves the user's file wholesale — matching the normal path exactly.
+	var mergeableBackups []updatemerge.FileBackup
+	for _, mf := range []string{".claude/settings.json", ".moai/status_line.sh"} {
+		if data, readErr := os.ReadFile(filepath.Join(projectRoot, filepath.FromSlash(mf))); readErr == nil {
+			mergeableBackups = append(mergeableBackups, updatemerge.FileBackup{Path: mf, Data: data})
+		}
+	}
+
+	// ---------------------------------------------------------------
 	// Step 5 — Reinstall embedded templates
 	// ---------------------------------------------------------------
 	deployer := opts.Deployer
@@ -286,6 +315,34 @@ func runCleanReinstall(ctx context.Context, projectRoot string, opts CleanReinst
 		return result, fmt.Errorf("step 5: reinstall templates: %w", deployErr)
 	}
 	_, _ = fmt.Fprintln(out, "[clean-reinstall] Embedded templates reinstalled")
+
+	// ---------------------------------------------------------------
+	// Step 5.5 — Restore user config via the normal-path 3-way merge
+	// (SPEC-UPDATE-REINSTALL-LOOP-001 R3, REQ-RIL-007/008/009/010)
+	// ---------------------------------------------------------------
+	// Mirrors the "Restore Settings" step of the normal `moai update` path
+	// (update.go): backup.RestoreMoaiConfig 3-way merges .moai/config/sections/*.yaml
+	// (user values win over template defaults; template additions merge in), and
+	// updatemerge.MergeUserFiles restores .claude/settings.json / status_line.sh.
+	// Using the SAME functions makes the clean path's config protection equivalent
+	// to the normal path's (AC-RIL-007), not a lower-protection bypass. The
+	// preserved config files are OUTSIDE the PRESERVE inventory (inv.Files), so the
+	// Step 7 byte-identical integrity check does not flag their merged content.
+	if configBackupPath != "" {
+		// nil recorder: the noise-suppression merge-history ledger stays in the
+		// normal update flow; the clean-reinstall path does not need it.
+		if restoreErr := backup.RestoreMoaiConfig(projectRoot, configBackupPath, nil); restoreErr != nil {
+			return result, fmt.Errorf("step 5.5: restore .moai/config sections: %w", restoreErr)
+		}
+	}
+	if len(mergeableBackups) > 0 {
+		// MergeUserFiles preserves the user's version on any merge failure, so a
+		// warning (not a hard error) matches the normal path's tolerance.
+		if mergeErr := updatemerge.MergeUserFiles(projectRoot, mergeableBackups, out); mergeErr != nil {
+			_, _ = fmt.Fprintf(out, "[clean-reinstall] settings merge warning: %v\n", mergeErr)
+		}
+	}
+	_, _ = fmt.Fprintln(out, "[clean-reinstall] user config (settings.json + sections/*.yaml) merge-preserved")
 
 	// ---------------------------------------------------------------
 	// Step 6 — MERGE-back PRESERVE inventory
