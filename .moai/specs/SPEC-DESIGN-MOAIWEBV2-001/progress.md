@@ -106,7 +106,7 @@ full_suite_cascade: internal/web 100% green; ONE pre-existing baseline failure O
 
 ```yaml
 sync_complete_at: 2026-07-17
-sync_commit_sha: pending-backfill-DESIGN-MOAIWEBV2-001   # backfilled in immediate follow-up commit per D3 self-referential-hash exemption
+sync_commit_sha: de4e724b3ccb2e2d0536de0fbbeadbd0a8e49f71
 sync_status: complete
 changelog_entry_position: "[Unreleased] > Added, immediately before SPEC-CLI-TUX-V3-005"
 frontmatter_status_transitions:
