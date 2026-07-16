@@ -6,7 +6,6 @@ import (
 	"net"
 	"strings"
 	"sync"
-	"syscall"
 	"testing"
 	"time"
 )
@@ -101,42 +100,8 @@ func TestServer_GracefulShutdownOnSignal(t *testing.T) {
 	}
 }
 
-// TestServer_GracefulShutdownOnSIGTERM verifies that delivering a real SIGTERM to
-// the process triggers the same clean shutdown path. The signal is caught by
-// signal.NotifyContext inside ListenAndServe.
-func TestServer_GracefulShutdownOnSIGTERM(t *testing.T) {
-	srv, err := NewServer(newTestConfig(t))
-	if err != nil {
-		t.Fatalf("NewServer: %v", err)
-	}
-
-	var wg sync.WaitGroup
-	var serveErr error
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		serveErr = srv.ListenAndServe(context.Background())
-	}()
-
-	waitForAddr(t, srv)
-
-	// Deliver SIGTERM to our own process; signal.NotifyContext cancels.
-	if err := syscall.Kill(syscall.Getpid(), syscall.SIGTERM); err != nil {
-		t.Skipf("cannot deliver SIGTERM on this platform: %v", err)
-	}
-
-	done := make(chan struct{})
-	go func() { wg.Wait(); close(done) }()
-
-	select {
-	case <-done:
-		if serveErr != nil {
-			t.Errorf("ListenAndServe returned %v on SIGTERM, want nil", serveErr)
-		}
-	case <-time.After(shutdownDrain + 2*time.Second):
-		t.Fatal("ListenAndServe did not return after SIGTERM")
-	}
-}
+// TestServer_GracefulShutdownOnSIGTERM lives in server_sigterm_unix_test.go
+// (!windows build tag) — syscall.Kill does not compile on Windows.
 
 // TestServer_PortConflictReturnsError verifies EC-1 / REQ-WC-002: binding a port
 // already in use returns a clear error (not a panic).
