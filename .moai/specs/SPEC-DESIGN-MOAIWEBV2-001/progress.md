@@ -85,7 +85,7 @@ dependency-ordered (removal → mascots → tokens → build/verify).
 
 ```yaml
 run_complete_at: 2026-07-16
-run_commit_sha: a57c38420   # M4 final run commit (backfilled in the immediate follow-up per the self-referential-SHA workaround)
+run_commit_sha: ab5cdf90e   # M4 final run commit (re-pointed after rebase onto origin/main rewrote pre-rebase SHA a57c38420)
 m1_to_mN_commit_strategy: per-milestone (M1 10648b133 / M2 5be1056c3 / M3 b0814ff54 / M4 a57c38420)
 run_status: complete
 ac_pass_count: 14
