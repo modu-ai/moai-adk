@@ -30,3 +30,10 @@ _<pending sync-phase — owned by manager-docs>_
 
 - plan_complete_at: 2026-07-16T14:04:42Z
 - plan_status: audit-ready
+
+## §F Phase 4 Mode Selection
+
+- Inputs: tier=M, scope ~6-12 files (single package internal/web), domains=1 (Go/Templ/CSS/assets), coding-heavy, concurrency benefit LOW
+- Mode evaluation: trivial ✗ (multi-file semantic) / background ✗ (write work) / agent-team ✗ (RETIRED) / parallel ✗ (coding-heavy, single domain) / workflow ✗ (<30 files, non-mechanical) / sub-agent ✓
+- Decision: sub-agent
+- Justification: coding-heavy single-package work fits the sequential Mode 5 default per Anthropic's coding-task parallelism caveat; milestones M1-M4 are dependency-ordered (removal → assets → tokens → build), so parallel fan-out offers no benefit.
