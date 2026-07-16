@@ -16,6 +16,11 @@
 </p>
 
 <p align="center">
+  <a href="https://book.mo.ai.kr" target="_blank"><strong>공식 도서 『클로드 코드로 시작하는 실전 에이전틱 코딩』</strong></a><br>
+  MoAI-ADK 제작자가 직접 쓴 하네스 엔지니어링 실전 가이드 — <a href="https://book.mo.ai.kr" target="_blank">book.mo.ai.kr</a>
+</p>
+
+<p align="center">
   <a href="https://github.com/modu-ai/moai-adk/actions/workflows/ci.yml"><img src="https://github.com/modu-ai/moai-adk/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
   <a href="https://github.com/modu-ai/moai-adk/actions/workflows/codeql.yml"><img src="https://github.com/modu-ai/moai-adk/actions/workflows/codeql.yml/badge.svg" alt="CodeQL"></a>
   <a href="https://codecov.io/gh/modu-ai/moai-adk"><img src="https://codecov.io/gh/modu-ai/moai-adk/branch/main/graph/badge.svg" alt="Codecov"></a>
@@ -41,7 +46,7 @@
 
 MoAI-ADK(Agentic Development Kit)는 Claude Code **위에** 얹히는 하네스다. 하네스는 모델을 바깥에서 감싸는 시스템이다. 모델은 토큰 단위로 움직이는 확률적 작업자라 예산도 품질 기준도 지난 세션이 어디서 끊겼는지도 기억하지 못한다. 비용 상한, 통과하는 테스트 스위트, `/clear`를 건너뛰는 연속성 — 이런 속성은 매 턴 프롬프트로 다시 심을 수 있는 게 아니라 시스템이 바깥에서 강제해야 한다. 그 시스템이 하네스다.
 
-북극성은 토크노믹스(Token Economics)다 — 같은 품질을 더 적은 토큰으로, 같은 토큰이면 더 높은 품질로. 어떤 모델을 쓸지, 얼마나 깊이 추론할지, 컨텍스트를 어떻게 소비할지는 그때그때 운에 맡기지 않고 시스템이 정한다.
+모든 설계는 토크노믹스(Token Economics)를 향한다 — 같은 품질을 더 적은 토큰으로, 같은 토큰이면 더 높은 품질로. 어떤 모델을 쓸지, 얼마나 깊이 추론할지, 컨텍스트를 어떻게 소비할지는 그때그때 운에 맡기지 않고 시스템이 정한다.
 
 Claude Code를 대체하지 않는다. Claude Code가 사용자에게 맡겨둔 부분 — 모델 라우팅, 품질 게이트, 비용 제어, 세션 연속성 — 을 구조로 감쌀 뿐이다. Go로 짠 단일 바이너리라 macOS·Linux·Windows에서 별도 의존성 없이 바로 돈다.
 
@@ -49,9 +54,42 @@ Claude Code를 대체하지 않는다. Claude Code가 사용자에게 맡겨둔 
 
 ## 2.0에서 3.0으로
 
-### 무엇이 달라졌나 (한눈에)
+v3를 써야 하는 이유는 기능이 늘어서가 아니다. 비용과 학습이라는 두 축을 시스템이 떠안았기 때문이다. v2가 개별 레버(캐시, GLM)를 손에 쥐여준 도구였다면, v3는 그 레버들을 닫힌 루프로 묶어 시스템 속성으로 만든다.
 
-v2.14.0에서 v3.0.0으로 오면서 무게 중심이 "기능을 더 넣는다"에서 "토큰과 품질을 시스템이 관리한다"로 옮겨졌다. 아래 표의 우측 항목은 모두 이 구간에서 새로 들어온 것이다.
+### 문제 — 토큰 단가는 내렸는데 비용은 올랐다
+
+토큰 단가는 계속 내려가는데, 정작 에이전틱 워크로드의 실제 지출은 오른다. 에이전트는 한 과제를 풀려고 수십에서 수백 스텝을 돌고, 그만큼 토큰을 태운다. 종량제에서는 이게 곧 청구서이고, 구독제에서는 전 모델이 공유하는 주간 쿼터를 갉아먹는다. 그래서 "어떤 모델을 얼마나 깊이 굴릴 것인가"라는 토큰 규율이 경쟁축이 된다. 단가 인하는 이 문제를 풀어주지 않는다.
+
+### 증거 — 같은 생태계 안에서도 비용은 두 배 넘게 갈린다
+
+같은 Claude 계열, 같은 최고 effort(max)로 돌려도 과제 하나를 푸는 비용은 크게 벌어진다. DeepSWE 리더보드(113 tasks) 실측을 정리한 내부 보고서의 숫자다.
+
+| 모델 [max] | Pass@1 | 과제당 비용 | $/해결과제 | 토큰/해결과제 | 스텝 |
+|---|---|---|---|---|---|
+| claude-opus-4.8 | 59% | $13.22 | **$22.4** | 229k | 120 |
+| claude-fable-5 | 70% | $21.63 | $30.9 | 170k | 88 |
+| claude-sonnet-5 | 54% | $26.40 | $48.9 | 396k | 268 |
+
+핵심은 sonnet-5 max가 opus-4.8 max보다 **비싸면서(과제당 $26.40 vs $13.22) 점수는 낮다(54% vs 59%)**는 것이다. 원인은 268스텝·214k 출력토큰 — 최고 effort에서 재시도 루프가 폭주한다. "약한 모델을 세게 굴리면 싸다"는 통념은 성립하지 않는다. 오히려 스텝을 세 배 돌며 쿼터를 더 태운다. 곧, 비용은 모델 단가가 아니라 **작업에 맞는 모델·추론 깊이 배정**이 결정한다.
+
+### v3의 답 — 비용을 시스템 속성으로
+
+v3는 이 배정을 그때그때 운에 맡기지 않고 4계층 토크노믹스 스택으로 닫는다.
+
+1. **계측** — SPEC 단위 토큰 회계. 스테이터스라인이 비용·CW%·캐시 적중률을 매 턴 노출하고, 검증 실측을 `.moai/state/verify/`에 남긴다.
+2. **라우팅** — Tier(S/M/L)×Phase 매트릭스로 모델과 effort를 선언적으로 배정하고, 종량제·구독제를 구분하는 plan_type 프로파일을 얹는다. 위 실측이 그대로 정책이 된다 — 추론엔 상위 모델, 실행엔 high 상한, 기계 작업엔 최저가.
+3. **검증경제** — verify-diet. 검증 로그 원문은 디스크로 리다이렉트하고 컨텍스트에는 종료 코드와 꼬리 요약만 남긴다.
+4. **예산방어** — Token Circuit Breaker가 예산 초과 전에 우아하게 멈추고 핸드오프를 만든다.
+
+v2도 캐시와 GLM이라는 레버는 있었다. v3는 그 레버들을 계측 → 라우팅 → 다이어트 → 방어로 묶어, 비용을 한 번 짜면 끝나는 설정이 아니라 매 턴 유지되는 시스템 속성으로 만든다.
+
+### 두 번째 축 — 쓸수록 나아진다
+
+v2의 하네스는 세션이 끝나면 그 자리에 멈춰 있었다. v3는 루프(`/moai goal`·`/moai loop`)가 관찰을 쌓고, 그 관찰이 스킬과 에이전트 지침을 다듬는다. 4-티어 학습 사다리(관찰 ≥1 → 휴리스틱 ≥3 → 규칙 ≥5 → 자동 업데이트 ≥10, 사용자 승인 필수·신뢰도 하한 0.70)는 `internal/harness/learner.go`에 구현돼 돌아가고, 모든 적용은 `moai harness rollback`으로 되돌릴 수 있다. 관찰을 규칙으로 승격하는 Curator 파이프라인은 아직 다듬는 중이지만, 학습 사다리 엔진 자체는 라이브다. 자세한 동작은 아래 [재귀적 자가 학습](#재귀적-자가-학습--하네스가-진화) 절에서 다룬다.
+
+### 그래서 무엇이 바뀌었나 (증거)
+
+아래 표의 우측 항목은 모두 v2.14.0 → v3.0.0 구간에서 새로 들어온 것이다.
 
 | 축 | v2.x | v3.x |
 |-----|-------|-------|
@@ -433,7 +471,7 @@ func DispatchHook(event string, data []byte) error {
 
 훅은 JSON stdin/stdout으로 주고받는 Claude Code 훅 프로토콜을 따른다.
 
-- **27개 이벤트 타입** — SessionStart, PreToolUse, PostToolUse, SessionEnd, Stop, SubagentStop, PreCompact, PostCompact, TeammateIdle, TaskCompleted 등
+- **26개 이벤트 타입** — SessionStart, PreToolUse, PostToolUse, SessionEnd, Stop, SubagentStop, PreCompact, PostCompact, TeammateIdle, TaskCompleted 등
 - **4개 훅 타입** — command (셸 스크립트), prompt (LLM 평가), agent (서브에이전트 검증), http (웹훅 엔드포인트)
 - 태스크 지표는 세션 분석과 비용 추적을 위해 `.moai/logs/task-metrics.jsonl`에 기록된다
 
