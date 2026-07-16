@@ -39,7 +39,7 @@ Files changed: `internal/cli/doctor_harness.go`, `internal/cli/doctor_skills.go`
 
 ```yaml
 run_complete_at: 2026-07-16
-run_commit_sha: <backfill after commit>
+run_commit_sha: d6405b3953b325fef7e5722e2abf26d5e6e6ede6
 run_status: complete
 ac_pass_count: 8
 ac_fail_count: 0
