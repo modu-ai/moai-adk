@@ -66,7 +66,8 @@ func TestConsoleCSSEmbedded(t *testing.T) {
 	// Brand tokens present (AC-WC4-001).
 	for _, want := range []string{
 		"--color-primary: #3d7d5f",
-		"--color-bg: #f3f3f3",
+		// SPEC-DESIGN-MOAIWEBV2-001 M3: bg de-tinted to the v2 achromatic canon.
+		"--color-bg: #f4f4f4",
 		"--gradient-signature:",
 		`[data-theme="dark"]`,
 	} {
