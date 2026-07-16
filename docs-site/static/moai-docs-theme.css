@@ -11,28 +11,30 @@
    1. Brand-variable remap (re-tints every existing component)
    ============================================================ */
 :root {
-  --color-primary: var(--accent);              /* 시그니처 녹색 #3d7d5f — var(--accent)=clay-500 */
-  --color-primary-hover: var(--accent-hover);
-  --color-primary-active: var(--accent-press);
-  --color-ink: var(--ink-900);
-  --color-bg: var(--bg-page);                  /* #faf9f5 → cream-200 #F8F0E8 */
-  --color-surface: var(--surface-card);
-
-  --neutral-50:  var(--cream-100);
-  --neutral-100: var(--cream-100);
-  --neutral-200: var(--cream-400);
-  --neutral-300: var(--cream-500);
-  --neutral-400: var(--ink-400);
-  --neutral-500: var(--ink-500);
-  --neutral-600: var(--ink-800);
-  --neutral-700: var(--ink-800);
-
-  --fg-1: var(--ink-900);
-  --fg-2: var(--ink-700);
-  --fg-3: var(--ink-500);
-
-  --border-1: var(--cream-500);
-  --border-2: var(--cream-400);
+  /* v2 alias layer — moai-brand.css is the SSOT (v2 raw tokens). These semantic
+     aliases re-tint every cw-*/gdoc-* component. Brand-owned tokens (--color-*,
+     --neutral-*, --fg-*, --border-1/2/strong, --gradient-*, --shadow-*) are NOT
+     redefined here — brand.css stands (cycle-safe: one-directional aliasing). */
+  --bg-page: var(--color-bg);
+  --bg-elevated: var(--color-surface);
+  --surface-card: var(--color-surface);
+  --surface-sunken: var(--neutral-100);
+  --surface-inset: var(--neutral-100);
+  --text-on-dark: var(--fg-on-primary);
+  --text-strong: var(--color-ink);
+  --text-body: var(--fg-2);
+  --text-muted: var(--fg-3);
+  --text-subtle: var(--fg-3);
+  --text-on-clay: var(--fg-on-primary);
+  --text-link: var(--color-primary);
+  --accent: var(--color-primary);
+  --accent-hover: var(--color-primary-hover);
+  --accent-press: var(--color-primary-active);
+  --accent-soft: var(--gradient-signature-soft);
+  --border-subtle: var(--border-2);
+  --border-default: var(--border-1);
+  --border-clay: var(--color-primary);
+  --focus-ring: var(--color-primary);
 }
 
 /* ============================================================
@@ -54,16 +56,16 @@ body {
 /* 본문 클레이 링크 가독성: clay-600(밝음) → clay-700 어둡게 (버튼/카드 제외) */
 .gdoc-markdown a:not(.md-btn):not(.md-doc-card):not(.md-eyebrow),
 .gdoc-page .md-home-content a:not(.md-btn):not(.md-doc-card) {
-  color: #265240 !important;
+  color: var(--color-primary-active) !important;
 }
 .gdoc-markdown a:not(.md-btn):not(.md-doc-card):not(.md-eyebrow):hover,
 .gdoc-page .md-home-content a:not(.md-btn):not(.md-doc-card):hover {
-  color: #1c3d30 !important;
+  color: var(--neutral-900) !important;
 }
 /* H2 섹션 번호 배지: clay-500 wash(연함) → clay-700 진하게 + 배경 강화 */
 .gdoc-markdown h2::before {
-  color: #265240 !important;
-  background: rgba(38, 82, 64, 0.14) !important;
+  color: var(--color-primary-active) !important;
+  background: color-mix(in srgb, var(--color-primary-active) 14%, transparent) !important;
 }
 
 .cw-side::-webkit-scrollbar { width: 8px; }

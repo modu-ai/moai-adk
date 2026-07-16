@@ -1,56 +1,56 @@
 /* MoAI Design System — Hugo/Geekdoc Override
- * Source: 모두의AI Design System Ver 1.0 (Notion FROZEN, 2026-04-25)
- *         /tmp/moai-design/colors_and_type.css 토큰 전체 정합
- * Single source of truth: this file
+ * Source: v2 token SSOT (neutral canvas + green accent) — SPEC-DESIGN-DOCSV2-001
+ *         Ver 1.0 Notion baseline superseded by v2 unfreeze (per SPEC §G, 2026-07-16)
+ * Single source of truth: this file (v2 raw tokens)
  * (assets/css/moai-brand.scss는 빌드 파이프라인에서 사용되지 않는 참고용 사본)
  */
 
-/* ── CSS Custom Properties (FROZEN tokens — Notion 가이드라인 명시) ── */
+/* ── CSS Custom Properties (v2 SSOT tokens — SPEC-DESIGN-DOCSV2-001 §G unfreeze) ── */
 :root {
-  /* ── Brand Color — 시그니처 녹색 (마스코트는 회색 무채색, 테마 액센트는 녹색) ── */
-  --color-primary: #3d7d5f;          /* 시그니처 녹색 rgb(61,125,95) — 마스코트 무채색과 짝 */
-  --color-primary-hover: #31684f;
+  /* ── Brand Color — 시그니처 녹색 (v2 SSOT: neutral canvas + green accent) ── */
+  --color-primary: #3d7d5f;          /* 시그니처 녹색 rgb(61,125,95) */
+  --color-primary-hover: #316750;
   --color-primary-active: #265240;
-  --color-ink: #141413;              /* 본문 텍스트 (#000 대체) */
-  --color-bg: #faf9f5;               /* 크림 캔버스 (#fff 대체 금지) */
+  --color-ink: #060606;              /* 본문 텍스트 (#000 대체) */
+  --color-bg: #f4f4f4;               /* v2 neutral canvas (#fff 대체 금지) */
   --color-surface: #ffffff;          /* 카드/모달 */
 
-  /* ── Warm Neutral Scale ── */
-  --neutral-50:  #f5f0e8;            /* surface-soft */
-  --neutral-100: #efe9de;            /* surface-card */
-  --neutral-200: #e6dfd8;            /* hairline */
-  --neutral-300: #d3cabd;
-  --neutral-400: #8e8b82;            /* muted-soft */
-  --neutral-500: #6c6a64;            /* muted */
-  --neutral-600: #3d3d3a;            /* body */
-  --neutral-700: #252523;            /* body-strong */
-  --neutral-800: #252320;            /* surface-dark-elevated */
-  --neutral-900: #181715;            /* surface-dark */
-  --neutral-950: #141413;            /* ink */
+  /* ── Neutral Scale (v2 — pure neutral, warm cream 제거) ── */
+  --neutral-50:  #f7f7f7;            /* surface-soft */
+  --neutral-100: #f0f0f0;            /* surface-card */
+  --neutral-200: #e4e4e4;            /* hairline */
+  --neutral-300: #d4d4d4;
+  --neutral-400: #a3a3a3;            /* muted-soft */
+  --neutral-500: #737373;            /* muted */
+  --neutral-600: #525252;            /* body */
+  --neutral-700: #262626;            /* body-strong */
+  --neutral-800: #171717;            /* surface-dark-elevated */
+  --neutral-900: #141414;            /* surface-dark */
+  --neutral-950: #060606;            /* ink */
 
-  /* ── Semantic ── */
+  /* ── Semantic (status) ── */
   --color-success: #5db872;
   --color-warning: #d4a017;
   --color-danger:  #c64545;
   --color-info:    #5db8a6;          /* accent-teal */
   --color-accent-amber: #e8a55a;
 
-  /* ── Foreground roles ── */
+  /* ── Foreground roles (v2 neutral) ── */
   --fg-1: var(--color-ink);
-  --fg-2: #3d3d3a;
-  --fg-3: #6c6a64;
+  --fg-2: #3d3d3d;
+  --fg-3: #6c6c6c;
   --fg-on-primary: #ffffff;
 
-  /* ── Border (warm hairline) ── */
-  --border-1: #e6dfd8;
-  --border-2: #ebe6df;
-  --border-strong: #d3cabd;
+  /* ── Border (v2 neutral hairline) ── */
+  --border-1: #e6e6e6;
+  --border-2: #ebebeb;
+  --border-strong: #d3d3d3;
   --border-focus-ring: rgba(61, 125, 95, 0.18);
 
-  /* ── Signature gradient (코어 자산) — 마스코트 녹색→딥 잉크 ── */
-  --gradient-signature: linear-gradient(135deg, #3d7d5f 0%, #181715 100%);
-  --gradient-signature-soft: linear-gradient(135deg, rgba(61, 125, 95,0.08) 0%, rgba(20,18,16,0.04) 100%);
-  --gradient-signature-dark: linear-gradient(135deg, #5a9a7e 0%, #3d7d5f 100%);
+  /* ── Signature gradient (v2 — solid green, 135deg 제거 per SPEC-DESIGN-DOCSV2-001 §G unfreeze) ── */
+  --gradient-signature: #3d7d5f;
+  --gradient-signature-soft: rgba(61, 125, 95, 0.08);
+  --gradient-signature-dark: #316750;
 
   /* ── Type families — Pretendard + Goorm Sans Code ── */
   --font-sans: "Pretendard Variable", "Pretendard", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans KR", sans-serif;
@@ -116,12 +116,12 @@
   --radius-pill: 32px;
   --radius-full: 9999px;
 
-  /* ── Shadow (outer only — inner shadow 미사용) ── */
-  --shadow-xs: 0 1px 2px rgba(20, 18, 16, 0.04);
-  --shadow-sm: 0 2px 4px rgba(20, 18, 16, 0.06);
-  --shadow-md: 0 4px 12px rgba(20, 18, 16, 0.08);
-  --shadow-lg: 0 8px 24px rgba(20, 18, 16, 0.10);
-  --shadow-xl: 0 16px 48px rgba(20, 18, 16, 0.12);
+  /* ── Shadow (v2 — rgba(6,6,6,X), outer only) ── */
+  --shadow-xs: 0 1px 2px rgba(6, 6, 6, 0.04);
+  --shadow-sm: 0 2px 4px rgba(6, 6, 6, 0.06);
+  --shadow-md: 0 4px 12px rgba(6, 6, 6, 0.08);
+  --shadow-lg: 0 8px 24px rgba(6, 6, 6, 0.10);
+  --shadow-xl: 0 16px 48px rgba(6, 6, 6, 0.12);
   --shadow-signature: 0 8px 32px rgba(61, 125, 95, 0.20);  /* hover only */
 
   /* ── Motion ── */
@@ -165,18 +165,18 @@
    안전망: OS 다크 모드에서도 Geekdoc 기본 다크 변수를 라이트로 강제 override */
 @media (prefers-color-scheme: dark) {
   :root {
-    --body-background: #faf9f5 !important;
-    --body-font-color: #141413 !important;
+    --body-background: var(--color-bg) !important;
+    --body-font-color: var(--color-ink) !important;
     --accent-color: rgba(61, 125, 95,0.08) !important;
     --accent-color-lite: rgba(61, 125, 95,0.04) !important;
     --link-color: #3d7d5f !important;
     --link-color-visited: #3d7d5f !important;
     --code-background: #ffffff !important;
-    --code-font-color: #141413 !important;
+    --code-font-color: var(--color-ink) !important;
     --header-background: #ffffff !important;
-    --header-font-color: #141413 !important;
+    --header-font-color: var(--color-ink) !important;
   }
-  html, body { background: #faf9f5 !important; color: #141413 !important; }
+  html, body { background: var(--color-bg) !important; color: var(--color-ink) !important; }
 }
 
 /* ── Dark mode 일괄 보강 — Geekdoc 기본 옅은 글자 강제 override ── */
@@ -361,14 +361,14 @@ code {
 /* ── Code blocks ── */
 pre {
   border-radius: var(--radius-lg);
-  background: #181715;
+  background: var(--neutral-900);
   box-shadow: var(--shadow-md);
   border: 1px solid rgba(255,255,255,0.06);
   font-family: var(--font-mono);
 }
 pre code {
   background: transparent;
-  color: #faf9f5;
+  color: var(--color-bg);
   border: none;
   padding: 0;
 }
@@ -675,7 +675,7 @@ a:hover, a:focus-visible { text-decoration: underline; text-underline-offset: 0.
   letter-spacing: -0.02em;
 }
 .gdoc-tabs__label:hover,
-.gdoc-tabs label:hover { background: rgba(20,18,16,0.04); color: var(--fg-1); }
+.gdoc-tabs label:hover { background: rgba(6,6,6,0.04); color: var(--fg-1); }
 .gdoc-tabs input[type="radio"] { display: none; }
 .gdoc-tabs input[type="radio"]:checked + label,
 .gdoc-tabs__label--active,
@@ -760,7 +760,7 @@ a:hover, a:focus-visible { text-decoration: underline; text-underline-offset: 0.
   position: relative;
   margin: 22px 0;
   border-radius: 12px;
-  background: #181715;
+  background: var(--neutral-900);
   box-shadow: var(--shadow-md);
   border: 1px solid rgba(255,255,255,0.06);
   overflow: hidden;
@@ -783,7 +783,7 @@ a:hover, a:focus-visible { text-decoration: underline; text-underline-offset: 0.
   border-radius: 0;
   box-shadow: none;
   background: transparent;
-  color: #faf9f5;
+  color: var(--color-bg);
   font-family: var(--font-mono);
   font-size: 13px;
   line-height: 1.7;
@@ -804,7 +804,7 @@ a:hover, a:focus-visible { text-decoration: underline; text-underline-offset: 0.
 
 /* ── 신택스 토큰 색 — 디자인 .tk-* 팔레트(Claude Warm Editorial) 정합 ──
    .code-card 내부 Chroma 클래스에만 스코프. 다크 카드 위 가독성 + 코랄 키워드. */
-.gdoc-markdown .code-card .chroma { color: #faf9f5; }
+.gdoc-markdown .code-card .chroma { color: var(--color-bg); }
 .gdoc-markdown .code-card .chroma .c,
 .gdoc-markdown .code-card .chroma .ch,
 .gdoc-markdown .code-card .chroma .cm,
@@ -853,10 +853,10 @@ a:hover, a:focus-visible { text-decoration: underline; text-underline-offset: 0.
 .gdoc-markdown .code-card .chroma .na,
 .gdoc-markdown .code-card .chroma .nl,
 .gdoc-markdown .code-card .chroma .nv,
-.gdoc-markdown .code-card .chroma .nd { color: #faf9f5 !important; }
+.gdoc-markdown .code-card .chroma .nd { color: var(--color-bg) !important; }
 .gdoc-markdown .code-card .chroma .gd { color: #c64545 !important; }
 .gdoc-markdown .code-card .chroma .gi { color: #5db872 !important; }
-.gdoc-markdown .code-card .chroma .err { color: #faf9f5 !important; background: transparent !important; }
+.gdoc-markdown .code-card .chroma .err { color: var(--color-bg) !important; background: transparent !important; }
 
 /* ── inline code — 페이지 배경과 명확히 구분되도록 더 진한 배경 + 청록 글자 ── */
 .gdoc-markdown :not(pre) > code,
@@ -910,7 +910,7 @@ a:hover, a:focus-visible { text-decoration: underline; text-underline-offset: 0.
   letter-spacing: -0.02em;
   transition: background-color 120ms;
 }
-.cw-side-head:hover { background: rgba(20,18,16,0.04); }
+.cw-side-head:hover { background: rgba(6,6,6,0.04); }
 [data-theme="dark"] .cw-side-head:hover { background: rgba(255,255,255,0.04); }
 
 .cw-side-title { display: inline-flex; align-items: center; gap: 10px; }
@@ -948,12 +948,12 @@ a:hover, a:focus-visible { text-decoration: underline; text-underline-offset: 0.
 /* visited 보라색 차단 — 디자인 톤 회색으로 통일 */
 .cw-side-link, .cw-side-link:link, .cw-side-link:visited { color: var(--fg-2); }
 .cw-side-link.active, .cw-side-link.active:visited { color: var(--color-primary); }
-.cw-side-link:hover { background: rgba(20,18,16,0.04); color: var(--fg-1); }
+.cw-side-link:hover { background: rgba(6,6,6,0.04); color: var(--fg-1); }
 .cw-side-link.active {
   background: var(--color-surface);
   color: var(--color-primary);
   font-weight: 700;
-  box-shadow: 0 1px 3px rgba(20,18,16,0.06), 0 0 0 1px rgba(61, 125, 95,0.08);
+  box-shadow: 0 1px 3px rgba(6,6,6,0.06), 0 0 0 1px rgba(61, 125, 95,0.08);
 }
 [data-theme="dark"] .cw-side-link:hover { background: rgba(255,255,255,0.04); color: var(--fg-1); }
 [data-theme="dark"] .cw-side-link.active { background: rgba(61, 125, 95,0.18); color: #5a9a7e; }
@@ -1082,7 +1082,7 @@ a:hover, a:focus-visible { text-decoration: underline; text-underline-offset: 0.
 }
 .cw-search-modal__backdrop {
   position: absolute; inset: 0;
-  background: rgba(20,18,16,0.55);
+  background: rgba(6,6,6,0.55);
   backdrop-filter: blur(4px);
   -webkit-backdrop-filter: blur(4px);
 }
@@ -2102,7 +2102,7 @@ footer.cw-footer {
 /* Mermaid 다크 모드 매핑은 라이트 단일화로 제거 (2026-05-13) */
 
 /* ── Mermaid 컨테이너 — 다크 pre 배경 해제 → 라이트 카드 (Claude Warm Editorial) ──
-   일반 `pre` 규칙(#181715 다크 배경)이 mermaid pre에도 적용돼 다크 텍스트가 묻히는
+   일반 `pre` 규칙(var(--neutral-900) 다크 배경)이 mermaid pre에도 적용돼 다크 텍스트가 묻히는
    문제 차단. 크림/화이트 카드 위 잉크 텍스트 + 코랄 보더로 통일. */
 pre.mermaid,
 pre.gdoc-mermaid,

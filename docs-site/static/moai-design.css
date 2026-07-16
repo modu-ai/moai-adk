@@ -398,7 +398,7 @@
 .code-card {
   margin: 20px 0;
   border-radius: 12px;
-  background: #181715;
+  background: var(--neutral-900);
   box-shadow: var(--shadow-md);
   overflow: hidden;
   border: 1px solid rgba(255,255,255,0.06);
@@ -473,7 +473,7 @@
   font-family: var(--font-mono);
   font-size: 13.5px;
   line-height: 1.7;
-  color: #faf9f5;
+  color: var(--color-bg);
   overflow-x: auto;
 }
 .code-lines {
@@ -498,14 +498,14 @@
 .tk-k  { color: #5a9a7e; }                       /* keyword */
 .tk-s  { color: #c4dca4; }                       /* string */
 .tk-n  { color: #f0c987; }                       /* number / cmd */
-.tk-p  { color: #faf9f5; }                       /* path / plain */
+.tk-p  { color: var(--color-bg); }                       /* path / plain */
 .tk-pr { color: #5a9a7e; }                       /* prompt $ > */
 .tk-flag { color: #d4a017; }
 .tk-ok { color: #85bda0; }
 
 /* inline terminal */
 .term-card { margin: 20px 0; }
-.term-card .code-chrome { background: linear-gradient(180deg, #252320 0%, #181715 100%); }
+.term-card .code-chrome { background: linear-gradient(180deg, #252320 0%, var(--neutral-900) 100%); }
 .code-spacer { width: 46px; flex-shrink: 0; }
 
 /* Geekdoc 기본 pre 스타일을 reset — 흰 배경/border 충돌 방지 */
@@ -515,7 +515,7 @@
   border: 0 !important;
   border-radius: 0 !important;
   box-shadow: none !important;
-  color: #faf9f5 !important;
+  color: var(--color-bg) !important;
   margin: 0 !important;
   padding: 16px 18px !important;
   font-family: var(--font-mono) !important;
