@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"errors"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -103,6 +104,9 @@ func TestExitCodeContract_Constitution(t *testing.T) {
 // error-severity findings exits 1 under text, json, AND sarif formats alike
 // (HasErrors evaluated independently of the output-format branch).
 func TestAstgrepExitCode(t *testing.T) {
+	if _, err := exec.LookPath("sg"); err != nil {
+		t.Skip("sg (ast-grep) not installed; skipping exit-code contract test")
+	}
 	for _, format := range []string{"text", "json", "sarif"} {
 		t.Run(format, func(t *testing.T) {
 			tmpDir := t.TempDir()
