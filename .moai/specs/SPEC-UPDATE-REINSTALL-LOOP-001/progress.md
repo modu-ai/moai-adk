@@ -48,7 +48,7 @@ ac_fail_count: 0
 ac_deferred_count: 2    # AC-RIL-008/009 SPLIT → SPEC-UPDATE-PREFLIGHT-SAFETY-001
 preserve_list_post_run_count: 0        # no PRESERVE-scope files modified outside SPEC envelope
 l44_pre_commit_fetch: "0 0 (synced with origin/main)"
-l44_post_push_fetch: pending-backfill
+l44_post_push_fetch: "0 0 (HEAD==origin/main a56f880e5 after push)"
 new_warnings_or_lints_introduced: 0    # golangci-lint ./internal/defs/... ./internal/cli/ → 0 issues (baseline 6 errcheck in internal/cli/update/merge untouched)
 cross_platform_build:
   linux_darwin_native: pass
