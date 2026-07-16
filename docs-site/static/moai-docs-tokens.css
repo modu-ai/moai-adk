@@ -10,42 +10,10 @@
  *    via head/custom.html CDN stylesheets; --font-sans/--font-mono stacks below
  *    reference the CDN-registered family names ("Pretendard Variable",
  *    "Goorm Sans Code").
- *  - MaruBuri @font-face set (200/300/400/600/700) ported verbatim.
+ *  - Legacy KR serif title @font-face set RETIRED (SPEC-DESIGN-DOCSV2-001 M2)
+ *    — v2 정통 정합: Pretendard is the sole Korean title + body face. The 5
+ *    Naver woff2 @font-face blocks and the Naver CDN preconnect are removed.
  */
-
-/* ============================================================
-   fonts.css — MaruBuri (마루부리) warm Korean serif, titles only
-   ============================================================ */
-@font-face {
-  font-family: "MaruBuri";
-  src: url("https://hangeul.pstatic.net/hangeul_static/webfont/MaruBuri/MaruBuri-ExtraLight.woff2") format("woff2");
-  font-weight: 200;
-  font-display: swap;
-}
-@font-face {
-  font-family: "MaruBuri";
-  src: url("https://hangeul.pstatic.net/hangeul_static/webfont/MaruBuri/MaruBuri-Light.woff2") format("woff2");
-  font-weight: 300;
-  font-display: swap;
-}
-@font-face {
-  font-family: "MaruBuri";
-  src: url("https://hangeul.pstatic.net/hangeul_static/webfont/MaruBuri/MaruBuri-Regular.woff2") format("woff2");
-  font-weight: 400;
-  font-display: swap;
-}
-@font-face {
-  font-family: "MaruBuri";
-  src: url("https://hangeul.pstatic.net/hangeul_static/webfont/MaruBuri/MaruBuri-SemiBold.woff2") format("woff2");
-  font-weight: 600;
-  font-display: swap;
-}
-@font-face {
-  font-family: "MaruBuri";
-  src: url("https://hangeul.pstatic.net/hangeul_static/webfont/MaruBuri/MaruBuri-Bold.woff2") format("woff2");
-  font-weight: 700;
-  font-display: swap;
-}
 
 /* ============================================================
    colors.css — Clay / Cream / Ink scales + semantic aliases
@@ -129,14 +97,17 @@
 }
 
 /* ============================================================
-   typography.css — MaruBuri titles / Pretendard body / Goorm code
+   typography.css — Pretendard titles/body + Goorm code (M2: legacy KR serif retired)
    ============================================================ */
 :root {
   /* ---- Families (stacks adapted to CDN-registered names) ---- */
   --font-sans: "Pretendard Variable", "Pretendard", "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
   --font-body: var(--font-sans);
-  --font-title: "MaruBuri", "Nanum Myeongjo", serif;
-  --font-display: var(--font-title);
+  /* v2 has no separate title face — Pretendard is the sole Korean title + body
+     face (SPEC-DESIGN-DOCSV2-001 M2). --font-title kept as an alias for
+     callers that still reference it; repointed off the retired KR serif. */
+  --font-title: var(--font-sans);
+  --font-display: var(--font-sans);
   /* Legacy accent aliases — pixel face retired; resolve to Pretendard */
   --font-pixel: var(--font-body);
   --font-pixel-sm: var(--font-body);
@@ -156,7 +127,7 @@
   --text-5xl: 4rem;      /* 64 */
   --text-6xl: 5.5rem;    /* 88 */
 
-  /* ---- Weights (MaruBuri ships 200-700; 800/900 synthesize) ---- */
+  /* ---- Weights (Pretendard Variable ships 100-900 via CDN) ---- */
   --fw-regular: 400;
   --fw-medium:  500;
   --fw-semibold:600;

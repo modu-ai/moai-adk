@@ -271,7 +271,7 @@ body {
 }
 
 /* ============================================================
-   6. Article — breadcrumb, MaruBuri titles, prose, tables
+   6. Article — breadcrumb, Pretendard titles, prose, tables
    ============================================================ */
 /* breadcrumb: mono, clay current */
 .gdoc-page__header .breadcrumb {
@@ -282,7 +282,7 @@ body {
 .gdoc-page__header .breadcrumb a { color: var(--text-muted); }
 .gdoc-page__header .breadcrumb li:last-child span { color: var(--accent); }
 
-/* page title: MaruBuri serif clamp */
+/* page title: Pretendard (M2 — was legacy KR serif; v2 repoint) */
 .gdoc-markdown h1 {
   font-family: var(--font-title);
   font-size: clamp(30px, 4vw, 44px);
@@ -299,7 +299,7 @@ body {
   max-width: 62ch;
 }
 
-/* prose headings: MaruBuri, h2 border-bottom */
+/* prose headings: Pretendard, h2 border-bottom (M2 — was legacy KR serif) */
 .gdoc-markdown h2 {
   font-family: var(--font-title);
   font-size: 27px;

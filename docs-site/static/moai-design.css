@@ -425,7 +425,7 @@
 .code-title {
   flex: 1;
   text-align: center;
-  font-family: var(--font-mono);
+  font-family: var(--font-code);
   font-size: 12px;
   color: rgba(255,255,255,0.5);
   letter-spacing: 0.02em;
@@ -470,7 +470,7 @@
 .code-body {
   display: grid;
   grid-template-columns: auto 1fr;
-  font-family: var(--font-mono);
+  font-family: var(--font-code);
   font-size: 13.5px;
   line-height: 1.7;
   color: var(--color-bg);
@@ -518,7 +518,7 @@
   color: var(--color-bg) !important;
   margin: 0 !important;
   padding: 16px 18px !important;
-  font-family: var(--font-mono) !important;
+  font-family: var(--font-code) !important;
   font-size: 13.5px !important;
   line-height: 1.7 !important;
   white-space: pre;

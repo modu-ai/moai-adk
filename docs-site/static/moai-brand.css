@@ -52,10 +52,14 @@
   --gradient-signature-soft: rgba(61, 125, 95, 0.08);
   --gradient-signature-dark: #316750;
 
-  /* ── Type families — Pretendard + Goorm Sans Code ── */
+  /* ── Type families — Pretendard (sole KR title+body) + JetBrains Mono (UI mono) + Goorm Sans Code (code bodies) ── */
   --font-sans: "Pretendard Variable", "Pretendard", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans KR", sans-serif;
   --font-latin: "Pretendard Variable", "Pretendard", system-ui, sans-serif;
-  --font-mono: "Goorm Sans Code", ui-monospace, "SF Mono", Menlo, monospace;
+  /* M2 two-token mono split (SPEC-DESIGN-DOCSV2-001): --font-mono = JetBrains
+     for UI chips/labels/eyebrows/version pills; --font-code = Goorm Sans Code
+     for code bodies (Korean code comments stay readable). */
+  --font-mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace;
+  --font-code: "Goorm Sans Code", ui-monospace, "SF Mono", Menlo, monospace;
 
   /* ── Weights ── */
   --fw-regular: 400;
