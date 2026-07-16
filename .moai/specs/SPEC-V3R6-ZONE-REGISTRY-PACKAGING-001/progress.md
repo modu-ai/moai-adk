@@ -110,7 +110,7 @@ SPEC, NOT a defect in this deliverable and NOT resolved by weakening any guard.
 
 ```yaml
 sync_complete_at: 2026-07-17
-sync_commit_sha: pending-backfill-see-followup-commit
+sync_commit_sha: a2ee354127e36e8bd9d154c7d0eccc5bc5187392
 sync_status: complete
 changelog_entry_position: "[Unreleased] › Fixed (new subsection)"
 frontmatter_status_transitions:
