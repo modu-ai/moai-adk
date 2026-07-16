@@ -73,7 +73,7 @@ Neutralization diff summary (4 forbidden tokens, mirror only):
 
 ```yaml
 run_complete_at: 2026-07-17
-run_commit_sha: <RUN_COMMIT_SHA_PLACEHOLDER>   # backfilled post-commit
+run_commit_sha: 07c5fe706e4aee9d807175a6c1c8f54cd522bdd9
 run_status: complete
 ac_pass_count: 6                # AC-ZRP-001/002/003/004/006/007 full PASS
 ac_fail_count: 0
