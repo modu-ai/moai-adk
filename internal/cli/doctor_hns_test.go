@@ -29,9 +29,11 @@ func TestClassifySkill_HNS(t *testing.T) {
 	}{
 		{"hns-acme-verify", "INFO"},
 		{"hns-moaiadk-patterns", "INFO"},
-		// Template-managed builder namespace stays in moai- territory
-		// (WARN = unknown moai- skill, pre-existing allowlist behavior).
-		{"moai-harness-learner", "WARN"},
+		// SPEC-V3R6-DOCTOR-FALSE-SIGNAL-001 (#1088): moai-harness-learner ships
+		// in the embedded templates, so the manifest-derived allowlist now knows
+		// it — it classifies PASS, not WARN. (The prior WARN assertion pinned the
+		// exact static-slice drift this SPEC repairs; see AC-DFS-005 anti-drift.)
+		{"moai-harness-learner", "PASS"},
 	}
 
 	for _, tt := range tests {
