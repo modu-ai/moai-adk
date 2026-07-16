@@ -104,8 +104,10 @@ func TestExitCodeContract_Constitution(t *testing.T) {
 // error-severity findings exits 1 under text, json, AND sarif formats alike
 // (HasErrors evaluated independently of the output-format branch).
 func TestAstgrepExitCode(t *testing.T) {
-	if _, err := exec.LookPath("sg"); err != nil {
-		t.Skip("sg (ast-grep) not installed; skipping exit-code contract test")
+	// LookPath alone is insufficient: Linux ships shadow-utils /usr/bin/sg
+	// (setgroups), which shadows ast-grep's sg on CI runners. Verify identity.
+	if out, err := exec.Command("sg", "--version").CombinedOutput(); err != nil || !strings.Contains(string(out), "ast-grep") {
+		t.Skip("sg is not ast-grep (or not installed); skipping exit-code contract test")
 	}
 	for _, format := range []string{"text", "json", "sarif"} {
 		t.Run(format, func(t *testing.T) {
