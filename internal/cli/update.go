@@ -206,6 +206,49 @@ func runUpdate(cmd *cobra.Command, _ []string) error {
 		return nil
 	}
 
+	// SPEC-V3R6-V2-V3-CLEAN-REINSTALL-002 REQ-CRR-005 / AC-CRR-005: refuse to
+	// operate in a non-project cwd (#1086). The positive marker is
+	// `.moai/config/sections/system.yaml`; when it is absent this directory is
+	// not a moai project and `moai update` MUST NOT write anything into it.
+	//
+	// Gating only the clean-reinstall branch is insufficient — that is why
+	// #1086 survived M2. Option α reads a missing system.yaml as a POSITIVE
+	// Signal 1, so the fingerprint returns IsV2=true in any empty directory;
+	// even when the `&& isMoAIProject(cwd)` conjunct below correctly refuses
+	// clean-reinstall, control falls through to the v3 file-level sync, which
+	// deploys the full embedded template tree just the same. The refusal must
+	// therefore precede BOTH paths.
+	//
+	// Placement is before acquireUpdateLock (and thus before
+	// detectV2Fingerprint, per plan.md §F M2) because the lock itself is a
+	// writer: it MkdirAll's `.moai/` to host `.moai/.update.lock`, and its
+	// release removes only the lock file — leaving an empty `.moai/` behind in
+	// the cwd. Gating after the lock still violates AC-CRR-005(a).
+	//
+	// The `!binaryOnly` conjunct keeps `moai update --binary` project-
+	// independent: it upgrades the moai binary itself and performs no template
+	// sync, so it has no project-marker precondition. `--check` returns earlier
+	// still and is likewise unaffected.
+	//
+	// The error names the missing marker relative to the cwd and directs the
+	// user to `moai init`. It deliberately does NOT echo the absolute cwd
+	// (acceptance.md §D.7 Secured: the structured error must not leak absolute
+	// paths or environment details).
+	if !binaryOnly {
+		cwd, err := os.Getwd()
+		if err != nil {
+			return fmt.Errorf("get working directory for project-marker check: %w", err)
+		}
+		if !isMoAIProject(cwd) {
+			marker := filepath.ToSlash(filepath.Join(
+				defs.MoAIDir, "config", "sections", "system.yaml"))
+			return fmt.Errorf(
+				"not a moai project: %s not found in the current directory\n\n"+
+					"Run `moai init` to initialize a project here, or change to an "+
+					"existing project directory and retry", marker)
+		}
+	}
+
 	// SPEC-CLIFIX-CRITICAL-001 REQ-CRIT-001-005: acquire update lock before any
 	// destructive step so a concurrent moai update fails fast with a diagnostic
 	// instead of interleaving destructive deploy/clean/restore operations.

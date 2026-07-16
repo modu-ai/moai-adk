@@ -18,6 +18,7 @@
 package cli
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"io"
@@ -408,11 +409,12 @@ func TestRunCleanReinstall_PopulatesPATHContext(t *testing.T) {
 // carries a lingering `.agency/` legacy directory
 // WHEN `moai update` is invoked via updateCmd.RunE
 // THEN (per AC-CRR-007):
-//   (a) runMigrateAgency fires INDEPENDENTLY of the v2 fingerprint verdict —
-//       proved by `.agency.archived/` existing (Phase 1 backup side-effect
-//       created only by the real migrateAgencyRunner.Run());
-//   (c) full clean-reinstall is NOT activated — proved by absence of any
-//       `.moai/backups/v2-to-v3-*-{stamp}/` directory.
+//
+//	(a) runMigrateAgency fires INDEPENDENTLY of the v2 fingerprint verdict —
+//	    proved by `.agency.archived/` existing (Phase 1 backup side-effect
+//	    created only by the real migrateAgencyRunner.Run());
+//	(c) full clean-reinstall is NOT activated — proved by absence of any
+//	    `.moai/backups/v2-to-v3-*-{stamp}/` directory.
 //
 // PRE-M3 (RED): the migration lives only inside runCleanReinstall Step 3.5,
 // gated on fp.V2DetectedViaAgencyDir. With IsV2=false the gate never opens,
@@ -515,5 +517,288 @@ func TestResolveV2BackupDir_CollisionHandling(t *testing.T) {
 	}
 	if out2 != candidate+"-1" {
 		t.Errorf("second call: got %q, want %q", out2, candidate+"-1")
+	}
+}
+
+// TestRunCleanReinstall_RemovalCountLogGating_AC_CRR_006 verifies REQ-CRR-006:
+// the REMOVE-phase log reports the ACTUAL filesystem removal count, and the
+// `Removed N deprecated paths` line is suppressed entirely when nothing was
+// removed (the #1084 phantom log).
+//
+// Pre-fix, the line was emitted unconditionally with len(plannedList) — so a
+// run that removed nothing still announced a removal, contradicting `git diff`.
+func TestRunCleanReinstall_RemovalCountLogGating_AC_CRR_006(t *testing.T) {
+	const removedLine = "Removed"
+	const noneLine = "No deprecated paths found to remove"
+
+	t.Run("zero deprecated paths → no Removed line, informational line instead", func(t *testing.T) {
+		// A v2 project carrying NO deprecated residue at all: Signal 1 is
+		// positive (moai.version v2.16.1) so IsV2=true and the orchestrator
+		// reaches Step 4 — but the REMOVE phase legitimately removes nothing.
+		//
+		// This fixture is built inline rather than reusing makeScenarioB
+		// because `.agency` is ITSELF a DeprecatedPaths entry (defs/dirs.go),
+		// so any .agency/-bearing fixture has a non-zero removal count. This
+		// is exactly the zero-removal case that produced the #1084 phantom log.
+		root := t.TempDir()
+		writeTestFile(t, root, ".moai/config/sections/system.yaml",
+			"moai:\n    version: v2.16.1\n")
+		writeTestFile(t, root, ".moai/specs/SPEC-USER-006/spec.md", "user spec\n")
+		var buf bytes.Buffer
+
+		result, err := runCleanReinstall(context.Background(), root, CleanReinstallOptions{
+			Out:              &buf,
+			Deployer:         &stubDeployer{},
+			RunMigrateAgency: (&stubMigrateRunner{}).Run,
+		})
+		if err != nil {
+			t.Fatalf("runCleanReinstall: %v", err)
+		}
+		if !result.Detected.IsV2 {
+			t.Fatalf("fixture precondition broken: IsV2=false, so Step 4 never ran")
+		}
+		if len(result.RemovedPaths) != 0 {
+			t.Fatalf("fixture precondition broken: expected 0 deprecated paths on disk, got %v",
+				result.RemovedPaths)
+		}
+
+		got := buf.String()
+		// AC-CRR-006(b): no `Removed N deprecated paths` when nothing removed.
+		if stringContains(got, removedLine) {
+			t.Errorf("AC-CRR-006(b): phantom log emitted with zero actual removals; "+
+				"found %q in output:\n%s", removedLine, got)
+		}
+		// AC-CRR-006(c): the informational line takes its place.
+		if !stringContains(got, noneLine) {
+			t.Errorf("AC-CRR-006(c): missing %q in output:\n%s", noneLine, got)
+		}
+	})
+
+	t.Run("real removals → Removed line reports the actual count", func(t *testing.T) {
+		// ScenarioA seeds exactly two DeprecatedPaths members on disk:
+		// `.agency` (defs/dirs.go:119) and
+		// `.claude/agents/moai/manager-strategy.md` (defs/dirs.go:157).
+		root := makeScenarioA(t)
+		var buf bytes.Buffer
+
+		result, err := runCleanReinstall(context.Background(), root, CleanReinstallOptions{
+			Out:              &buf,
+			Deployer:         &stubDeployer{},
+			RunMigrateAgency: (&stubMigrateRunner{}).Run,
+		})
+		if err != nil {
+			t.Fatalf("runCleanReinstall: %v", err)
+		}
+		if len(result.RemovedPaths) != 2 {
+			t.Fatalf("fixture precondition broken: expected exactly 2 deprecated paths, got %v",
+				result.RemovedPaths)
+		}
+
+		got := buf.String()
+		// AC-CRR-006(d): the count reported is the actual one.
+		if !stringContains(got, "Removed 2 deprecated paths") {
+			t.Errorf("AC-CRR-006(d): expected %q in output:\n%s",
+				"Removed 2 deprecated paths", got)
+		}
+		if stringContains(got, noneLine) {
+			t.Errorf("AC-CRR-006: informational no-op line emitted despite a real "+
+				"removal; output:\n%s", got)
+		}
+
+		// AC-CRR-006(a): the count is a filesystem diff — the path is really gone.
+		if _, statErr := os.Stat(filepath.Join(root,
+			".claude", "agents", "moai", "manager-strategy.md")); statErr == nil {
+			t.Error("AC-CRR-006(a): deprecated path still exists after REMOVE; " +
+				"the reported count would not reflect the filesystem")
+		}
+	})
+}
+
+// ---------------------------------------------------------------------------
+// M4 — Reproduction tests (CLAUDE.md §7 Rule 4 Reproduction-First / HARD-4)
+//
+// Both tests below are authored to compile AND fail on the PRE-FIX codebase
+// (commit 2bc543636, before M1/M2/M3). They deliberately reference only
+// surfaces that predate the fix — detectV2Fingerprint().IsV2 and the
+// runUpdate cobra entry point — and NOT the post-fix helpers
+// (isMoAIProject, V2Fingerprint.V3VersionConfirmed). That constraint is what
+// makes the fail-pre-fix step mechanically demonstrable: the tests can be
+// dropped onto a pre-fix worktree verbatim and observed RED.
+// ---------------------------------------------------------------------------
+
+// TestReproduction_FingerprintNonConvergence_Issue1084 reproduces the #1084
+// infinite `moai update` loop (REQ-CRR-008; verifies AC-CRR-002(a)).
+//
+// Root Cause A (plan.md §A.1): the pre-fix heuristic OR'd its three signals
+// with no v3-version negative-override, so a genuine v3 project carrying
+// stale legacy residue (.agency/ + a deprecated path) classified as v2 on
+// EVERY run. Clean-reinstall does not remove `.agency/` and does not rewrite
+// the residue away, so the next run saw the same positive signals — the
+// fingerprint never converged and the loop never terminated.
+//
+// The load-bearing assertion is convergence: on a v3 project the verdict MUST
+// be IsV2=false, which is what routes runUpdate to file-level sync instead of
+// re-entering clean-reinstall (AC-CRR-002(a)).
+//
+// Pre-fix: IsV2=true (Signal 2 + Signal 3 drive the disjunction) → FAIL.
+// Post-fix: IsV2=false (REQ-CRR-001 v3-version negative-override) → PASS.
+func TestReproduction_FingerprintNonConvergence_Issue1084(t *testing.T) {
+	// Fixture per AC-CRR-002: a v3 project whose system.yaml carries a
+	// populated v3.* version, PLUS the exact legacy residue that drove the
+	// loop — a lingering .agency/ dir (Signal 2) and a DeprecatedPaths
+	// member on disk (Signal 3).
+	root := t.TempDir()
+	writeTestFile(t, root, ".moai/config/sections/system.yaml",
+		"moai:\n    version: v3.0.0-rc2\n")
+	makeTestDir(t, root, ".agency")
+	writeTestFile(t, root, ".agency/index.md", "legacy agency residue\n")
+	writeTestFile(t, root, ".claude/agents/moai/manager-strategy.md", "retired agent\n")
+	// User-modified config per AC-CRR-002(d) — the asset the loop endangered.
+	writeTestFile(t, root, ".moai/config/sections/language.yaml",
+		"language:\n    conversation_language: ko\n")
+
+	// Invoke the fingerprint twice on the SAME fixture with no mutation in
+	// between (acceptance.md §D.5: "verify fingerprint convergence on the
+	// SAME fixture ... no test-fixture drift"). A converged predicate is
+	// stable and negative on both reads.
+	for run := 1; run <= 2; run++ {
+		fp, err := detectV2Fingerprint(root)
+		if err != nil {
+			t.Fatalf("run %d: detectV2Fingerprint: unexpected error: %v", run, err)
+		}
+
+		// Precondition sanity: the legacy residue really is present, so this
+		// test is exercising the override — not passing because the fixture
+		// silently lost its Signal 2/3 sources.
+		if !fp.V2DetectedViaAgencyDir {
+			t.Fatalf("run %d: fixture precondition broken: Signal 2 (.agency/) not detected", run)
+		}
+		if !fp.V2DetectedViaDeprecatedPath {
+			t.Fatalf("run %d: fixture precondition broken: Signal 3 (DeprecatedPaths) not detected", run)
+		}
+
+		// AC-CRR-002(a): the v3 project must NOT route into clean-reinstall.
+		// This is the assertion that FAILS on the pre-fix implementation.
+		if fp.IsV2 {
+			t.Errorf("run %d: #1084 regression: IsV2 = true on a v3 project "+
+				"(moai.version v3.0.0-rc2) carrying .agency/ + deprecated-path residue; "+
+				"want false. A positive verdict here re-enters clean-reinstall on every "+
+				"run — the fingerprint never converges (infinite loop). signals: "+
+				"version=%v agency=%v deprecated=%v details=%v",
+				run, fp.V2DetectedViaVersion, fp.V2DetectedViaAgencyDir,
+				fp.V2DetectedViaDeprecatedPath, fp.SignalDetails)
+		}
+	}
+
+	// AC-CRR-002(d): the user's `ko` value survives — the fingerprint probe is
+	// read-only and never touches user config.
+	got, err := os.ReadFile(filepath.Join(root, ".moai", "config", "sections", "language.yaml"))
+	if err != nil {
+		t.Fatalf("read language.yaml: %v", err)
+	}
+	if want := "language:\n    conversation_language: ko\n"; string(got) != want {
+		t.Errorf("AC-CRR-002(d): language.yaml drifted: got %q, want %q", string(got), want)
+	}
+}
+
+// TestReproduction_NonProjectDirectoryPollution_Issue1086 reproduces the #1086
+// arbitrary-directory pollution (REQ-CRR-009; verifies AC-CRR-005(a)(b)).
+//
+// Root Cause C (plan.md §A.1): Option α treats a missing system.yaml as a
+// POSITIVE Signal 1, which is correct for pre-system.yaml v2 projects but also
+// fires in any directory that has no `.moai/` at all. Pre-fix, `moai update`
+// in e.g. /tmp/some-random-dir produced IsV2=true → runCleanReinstall → the
+// full embedded template tree written into the cwd.
+//
+// The assertion is the filesystem side-effect, not the return value: a
+// non-project cwd must be left untouched (AC-CRR-005(a)(b)). runUpdate is
+// driven through the cobra RunE handler — the same call shape used by
+// TestRunUpdate_V3ProjectWithAgencyDir_MigratesIndependently.
+//
+// Pre-fix: `.moai/` and `.claude/` materialize in the cwd → FAIL.
+// Post-fix: the isMoAIProject gate refuses entry, cwd stays clean → PASS.
+func TestReproduction_NonProjectDirectoryPollution_Issue1086(t *testing.T) {
+	// Fixture per AC-CRR-005: a cwd with NO .moai/ whatsoever. The .agency/
+	// dir stands in for the incidental legacy residue an arbitrary directory
+	// may carry (acceptance.md §D.6 Edge-3) and makes Signal 2 positive too,
+	// so IsV2 is unambiguously true pre-fix.
+	root := t.TempDir()
+	makeTestDir(t, root, ".agency")
+	writeTestFile(t, root, "README.md", "just some random directory\n")
+
+	origDir, err := os.Getwd()
+	if err != nil {
+		t.Fatalf("getwd: %v", err)
+	}
+	defer func() { _ = os.Chdir(origDir) }()
+	if err := os.Chdir(root); err != nil {
+		t.Fatalf("chdir fixture: %v", err)
+	}
+
+	// Stub the network update probe (mirrors coverage_test.go:420 pattern).
+	origDeps := deps
+	defer func() { deps = origDeps }()
+	deps = &Dependencies{UpdateChecker: &mockUpdateChecker{}}
+
+	updateCmd.SetOut(io.Discard)
+	updateCmd.SetErr(io.Discard)
+	updateCmd.SetContext(context.Background())
+	if err := updateCmd.Flags().Set("check", "false"); err != nil {
+		t.Fatalf("set check flag: %v", err)
+	}
+	if err := updateCmd.Flags().Set("yes", "true"); err != nil {
+		t.Fatalf("set yes flag: %v", err)
+	}
+
+	runErr := updateCmd.RunE(updateCmd, []string{})
+	t.Logf("runUpdate returned: %v", runErr)
+
+	// AC-CRR-005(d): the command exits non-zero. A nil error here is the
+	// pre-fix behavior — the command "succeeded" precisely by polluting the cwd.
+	if runErr == nil {
+		t.Errorf("AC-CRR-005(d): runUpdate returned nil in a non-project cwd; " +
+			"want a non-nil error so the command exits non-zero")
+	} else {
+		// AC-CRR-005(c): the error is structured — it names the missing marker
+		// file and directs the user to `moai init`.
+		msg := runErr.Error()
+		for _, want := range []string{
+			"not a moai project",
+			".moai/config/sections/system.yaml",
+			"moai init",
+		} {
+			if !stringContains(msg, want) {
+				t.Errorf("AC-CRR-005(c): error message missing %q; got: %s", want, msg)
+			}
+		}
+		// §D.7 Secured: the structured error must not leak the absolute cwd.
+		if stringContains(msg, root) {
+			t.Errorf("§D.7 Secured: error leaks the absolute cwd %q; got: %s", root, msg)
+		}
+	}
+
+	// AC-CRR-005(a): no .moai/ or .claude/ created in the cwd.
+	for _, dir := range []string{".moai", ".claude"} {
+		if _, err := os.Stat(filepath.Join(root, dir)); err == nil {
+			t.Errorf("AC-CRR-005(a): #1086 regression: %s/ was created in a "+
+				"non-project cwd; `moai update` must refuse to install anything "+
+				"when the .moai/config/sections/system.yaml marker is absent", dir)
+		}
+	}
+
+	// AC-CRR-005(b): no template files written anywhere under the cwd. The
+	// fixture seeds exactly two entries (.agency/ and README.md); anything
+	// beyond that is template spill.
+	entries, err := os.ReadDir(root)
+	if err != nil {
+		t.Fatalf("readdir fixture root: %v", err)
+	}
+	allowed := map[string]bool{".agency": true, "README.md": true}
+	for _, e := range entries {
+		if !allowed[e.Name()] {
+			t.Errorf("AC-CRR-005(b): #1086 regression: unexpected entry %q "+
+				"materialized in a non-project cwd; want only the seeded "+
+				".agency/ and README.md", e.Name())
+		}
 	}
 }
