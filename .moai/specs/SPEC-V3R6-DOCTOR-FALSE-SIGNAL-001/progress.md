@@ -58,4 +58,14 @@ red_reproduction_confirmed: true   # AC-DFS-001/004/005 failed pre-fix, pass pos
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase — owned by manager-docs>_
+```yaml
+sync_complete_at: 2026-07-16
+sync_commit_sha: <pending — backfilled after commit; see backfill commit>
+sync_status: complete
+changelog_entry_position: "[Unreleased] > ### Fixed (new section, inserted before ### Changed)"
+frontmatter_status_transitions:
+  spec_md: "in-progress -> completed (updated: 2026-07-16, this sync commit)"
+b12_self_test_a: "grep -c 'SPEC-V3R6-DOCTOR-FALSE-SIGNAL-001' CHANGELOG.md (pre-emission) = 0 -> emission proceeded"
+b12_self_test_b: "acceptance.md AC-DFS row count = 9 (grep -c '^| AC-DFS-[0-9]+ |'); matches progress.md §E.2 9-row table"
+b12_self_test_c: "file paths verified via ls: internal/cli/doctor_harness.go, doctor_skills.go, doctor.go, internal/template/skills_manifest.go, skills_manifest_test.go all exist"
+```

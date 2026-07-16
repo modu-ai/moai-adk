@@ -2,7 +2,7 @@
 id: SPEC-V3R6-DOCTOR-FALSE-SIGNAL-001
 title: "Repair moai doctor false-signal cluster (#1087 harness telemetry-presence FAIL, #1088 stale skills allowlist warning)"
 version: "0.1.0"
-status: in-progress
+status: completed
 created: 2026-07-16
 updated: 2026-07-16
 author: manager-spec
