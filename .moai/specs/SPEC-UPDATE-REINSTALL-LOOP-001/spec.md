@@ -2,7 +2,7 @@
 id: SPEC-UPDATE-REINSTALL-LOOP-001
 title: "Break the moai update clean-reinstall loop + restore config preservation"
 version: "0.1.1"
-status: in-progress
+status: completed
 created: 2026-07-17
 updated: 2026-07-17
 author: manager-spec

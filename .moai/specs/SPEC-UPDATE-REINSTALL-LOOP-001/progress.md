@@ -60,4 +60,14 @@ coverage_note: "internal/cli package 74.4% (large pre-existing baseline, not reg
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase — manager-docs>_
+```yaml
+sync_complete_at: 2026-07-17
+sync_commit_sha: pending-backfill-sync   # backfilled in a follow-up commit per D3 SHA-placeholder exemption
+sync_status: audit-ready
+changelog_entry_position: "[Unreleased] > ### Fixed (SPEC-UPDATE-REINSTALL-LOOP-001 entry, inserted before SPEC-V3R6-DOCTOR-FALSE-SIGNAL-001)"
+frontmatter_status_transitions:
+  spec_md: "in-progress -> implemented -> completed (merged 3-phase close, this commit)"
+  updated_field_refreshed: 2026-07-17
+issue_closed: 1084
+follow_up_spec: SPEC-UPDATE-PREFLIGHT-SAFETY-001
+```
