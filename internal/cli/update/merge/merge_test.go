@@ -257,7 +257,7 @@ func TestMergeUserFiles_NewFileNoBase(t *testing.T) {
 
 	// Create parent directory for the file
 	destPath := filepath.Join(tmpDir, ".claude", "settings.local.json")
-	os.MkdirAll(filepath.Dir(destPath), 0755)
+	_ = os.MkdirAll(filepath.Dir(destPath), 0755)
 	// Create a file with content that differs from template
 	userContent := `{"custom": "user value", "other": "data"}`
 	// Create template with different content
@@ -300,7 +300,7 @@ func TestMergeUserFiles_NoChangeNeeded(t *testing.T) {
 	// Setup manifest
 	mgr := manifest.NewManager()
 	manifestPath := filepath.Join(tmpDir, ".moai", "manifest.json")
-	os.MkdirAll(filepath.Dir(manifestPath), 0755)
+	_ = os.MkdirAll(filepath.Dir(manifestPath), 0755)
 	if err := os.WriteFile(manifestPath, []byte(`{"version":"1","files":{}}`), defs.FilePerm); err != nil {
 		t.Fatalf("failed to create manifest: %v", err)
 	}
@@ -310,7 +310,7 @@ func TestMergeUserFiles_NoChangeNeeded(t *testing.T) {
 
 	// Create file with identical content
 	destPath := filepath.Join(tmpDir, ".moai", "config", "test.yaml")
-	os.MkdirAll(filepath.Dir(destPath), 0755)
+	_ = os.MkdirAll(filepath.Dir(destPath), 0755)
 	content := "key: value\n"
 	if err := os.WriteFile(destPath, []byte(content), defs.FilePerm); err != nil {
 		t.Fatalf("failed to create file: %v", err)
@@ -344,7 +344,7 @@ func TestMergeUserFiles_MergeConflictPreservesUser(t *testing.T) {
 	// Setup manifest
 	mgr := manifest.NewManager()
 	manifestPath := filepath.Join(tmpDir, ".moai", "manifest.json")
-	os.MkdirAll(filepath.Dir(manifestPath), 0755)
+	_ = os.MkdirAll(filepath.Dir(manifestPath), 0755)
 	if err := os.WriteFile(manifestPath, []byte(`{"version":"1","files":{}}`), defs.FilePerm); err != nil {
 		t.Fatalf("failed to create manifest: %v", err)
 	}
@@ -354,7 +354,7 @@ func TestMergeUserFiles_MergeConflictPreservesUser(t *testing.T) {
 
 	// Create a file that will be overwritten by template
 	destPath := filepath.Join(tmpDir, ".moai", "config", "test.yaml")
-	os.MkdirAll(filepath.Dir(destPath), 0755)
+	_ = os.MkdirAll(filepath.Dir(destPath), 0755)
 	templateContent := "# Default Config\nkey: default\n"
 	userContent := "# User Config\nkey: user_value\nextra: setting\n"
 	if err := os.WriteFile(destPath, []byte(templateContent), defs.FilePerm); err != nil {
@@ -393,7 +393,7 @@ func TestMergeUserFiles_ManifestLoadError(t *testing.T) {
 	tmpDir := t.TempDir()
 	// Create a corrupted manifest
 	manifestPath := filepath.Join(tmpDir, ".moai", "manifest.json")
-	os.MkdirAll(filepath.Dir(manifestPath), 0755)
+	_ = os.MkdirAll(filepath.Dir(manifestPath), 0755)
 	if err := os.WriteFile(manifestPath, []byte(`{invalid json}`), defs.FilePerm); err != nil {
 		t.Fatalf("failed to create corrupted manifest: %v", err)
 	}
@@ -635,7 +635,7 @@ func TestWriteFileErrorDuringMerge(t *testing.T) {
 	// Setup manifest
 	mgr := manifest.NewManager()
 	manifestPath := filepath.Join(tmpDir, ".moai", "manifest.json")
-	os.MkdirAll(filepath.Dir(manifestPath), 0755)
+	_ = os.MkdirAll(filepath.Dir(manifestPath), 0755)
 	if err := os.WriteFile(manifestPath, []byte(`{"version":"1","files":{}}`), defs.FilePerm); err != nil {
 		t.Fatalf("failed to create manifest: %v", err)
 	}
@@ -645,7 +645,7 @@ func TestWriteFileErrorDuringMerge(t *testing.T) {
 
 	// Create directory as file (will cause write to fail)
 	destPath := filepath.Join(tmpDir, ".moai", "config", "test.yaml")
-	os.MkdirAll(destPath, 0755)
+	_ = os.MkdirAll(destPath, 0755)
 
 	backups := []FileBackup{
 		{Path: ".moai/config/test.yaml", Data: []byte("content")},
@@ -687,7 +687,7 @@ func TestMergeUserFiles_EmptyBackups(t *testing.T) {
 	// Setup manifest
 	mgr := manifest.NewManager()
 	manifestPath := filepath.Join(tmpDir, ".moai", "manifest.json")
-	os.MkdirAll(filepath.Dir(manifestPath), 0755)
+	_ = os.MkdirAll(filepath.Dir(manifestPath), 0755)
 	if err := os.WriteFile(manifestPath, []byte(`{"version":"1","files":{}}`), defs.FilePerm); err != nil {
 		t.Fatalf("failed to create manifest: %v", err)
 	}
@@ -709,7 +709,7 @@ func TestMergeUserFiles_MultipleFiles(t *testing.T) {
 	// Setup manifest
 	mgr := manifest.NewManager()
 	manifestPath := filepath.Join(tmpDir, ".moai", "manifest.json")
-	os.MkdirAll(filepath.Dir(manifestPath), 0755)
+	_ = os.MkdirAll(filepath.Dir(manifestPath), 0755)
 	if err := os.WriteFile(manifestPath, []byte(`{"version":"1","files":{}}`), defs.FilePerm); err != nil {
 		t.Fatalf("failed to create manifest: %v", err)
 	}
@@ -795,7 +795,7 @@ func TestMergeUserFiles_WriteErrorDuringRestore(t *testing.T) {
 	// Setup manifest
 	mgr := manifest.NewManager()
 	manifestPath := filepath.Join(tmpDir, ".moai", "manifest.json")
-	os.MkdirAll(filepath.Dir(manifestPath), 0755)
+	_ = os.MkdirAll(filepath.Dir(manifestPath), 0755)
 	if err := os.WriteFile(manifestPath, []byte(`{"version":"1","files":{}}`), defs.FilePerm); err != nil {
 		t.Fatalf("failed to create manifest: %v", err)
 	}
@@ -805,9 +805,9 @@ func TestMergeUserFiles_WriteErrorDuringRestore(t *testing.T) {
 
 	// Create a directory at the target path (will cause write to fail)
 	targetDir := filepath.Join(tmpDir, ".moai", "config")
-	os.MkdirAll(targetDir, 0755)
+	_ = os.MkdirAll(targetDir, 0755)
 	destPath := filepath.Join(targetDir, "test.yaml")
-	os.MkdirAll(destPath, 0755) // Create as directory instead of file
+	_ = os.MkdirAll(destPath, 0755) // Create as directory instead of file
 
 	backups := []FileBackup{
 		{Path: ".moai/config/test.yaml", Data: []byte("content")},
@@ -828,7 +828,7 @@ func TestMergeUserFiles_WithLeadingDot(t *testing.T) {
 	// Setup manifest
 	mgr := manifest.NewManager()
 	manifestPath := filepath.Join(tmpDir, ".moai", "manifest.json")
-	os.MkdirAll(filepath.Dir(manifestPath), 0755)
+	_ = os.MkdirAll(filepath.Dir(manifestPath), 0755)
 	if err := os.WriteFile(manifestPath, []byte(`{"version":"1","files":{}}`), defs.FilePerm); err != nil {
 		t.Fatalf("failed to create manifest: %v", err)
 	}
@@ -838,7 +838,7 @@ func TestMergeUserFiles_WithLeadingDot(t *testing.T) {
 
 	// Create a file with leading dot
 	destPath := filepath.Join(tmpDir, ".gitignore")
-	os.WriteFile(destPath, []byte("template"), defs.FilePerm)
+	_ = os.WriteFile(destPath, []byte("template"), defs.FilePerm)
 
 	backups := []FileBackup{
 		{Path: ".gitignore", Data: []byte("backup")},
@@ -865,9 +865,9 @@ func TestAnalyzeMergeChanges_WithMultipleTemplates(t *testing.T) {
 	}
 
 	// Create some files to simulate existing project
-	os.MkdirAll(filepath.Join(tmpDir, ".moai", "config"), 0755)
-	os.WriteFile(filepath.Join(tmpDir, "CLAUDE.md"), []byte("# Docs\n"), defs.FilePerm)
-	os.WriteFile(filepath.Join(tmpDir, ".moai", "config", "test.yaml"), []byte("key: value\n"), defs.FilePerm)
+	_ = os.MkdirAll(filepath.Join(tmpDir, ".moai", "config"), 0755)
+	_ = os.WriteFile(filepath.Join(tmpDir, "CLAUDE.md"), []byte("# Docs\n"), defs.FilePerm)
+	_ = os.WriteFile(filepath.Join(tmpDir, ".moai", "config", "test.yaml"), []byte("key: value\n"), defs.FilePerm)
 
 	result := AnalyzeMergeChanges(deployer, tmpDir)
 
