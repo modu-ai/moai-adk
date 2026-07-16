@@ -23,7 +23,7 @@ related_specs: [SPEC-V3R6-V2-V3-CLEAN-REINSTALL-002, SPEC-DOCTOR-PROMOTION-001, 
 
 `moai doctor` renders per-check PASS / WARN / FAIL signals to reassure users their project is healthy. Two OPEN regressions (v3.0.0-rc12, darwin/arm64) share one root theme: **the doctor conflates the mere on-disk PRESENCE of a runtime-generated artifact, or a hand-maintained STALE reference list, with a genuine "configured / known" state.** A merely-present telemetry file and a drifted hardcoded allowlist both produce false FAIL / warning signals on projects that are actually fine. This SPEC repairs both false-signal loci; it does NOT redesign the doctor architecture, add new checks, or change any check's PASS-path semantics for genuinely-healthy or genuinely-broken projects.
 
-This SPEC is SPEC-2 of the v3.0.0-rc Stabilization Epic; the Epic entry SPEC (`SPEC-V3R6-V2-V3-CLEAN-REINSTALL-002`) has landed independently. The two doctor defects are NOT gated on CLEAN-REINSTALL-002's implementation — they are independent diagnostic-layer false signals — but any fix that reaches the update or skills-sync code path MUST preserve that SPEC's user-asset preservation contract (see §A.4 and REQ-DFS-008).
+This SPEC is SPEC-2 of the v3.0.0-rc Stabilization Epic; the Epic entry SPEC (`SPEC-V3R6-V2-V3-CLEAN-REINSTALL-002`) is in progress independently. The two doctor defects are NOT gated on CLEAN-REINSTALL-002's implementation — they are independent diagnostic-layer false signals — but any fix that reaches the update or skills-sync code path MUST preserve that SPEC's user-asset preservation contract (see §A.4 and REQ-DFS-008).
 
 ### §A.2 Defect A — GitHub issue #1087 (OPEN, High): Harness 5-Layer FAILs on telemetry-only `.moai/harness/`
 
@@ -58,6 +58,8 @@ moai-workflow-ci-loop
 ```
 
 The remediation hint (`run 'moai update' to sync`) is misleading: the skills WERE just synced by `moai update`; the drift is in the doctor's own hardcoded list, which `moai update` cannot touch. The allowlist must be DERIVED from the authoritative embedded template manifest so a template-fresh project reports zero unknown skills by construction.
+
+`SPEC-V3R3-HARNESS-001`, which introduced this `staticCoreAllowlist` mechanism, is superseded — this SPEC completes the dismantling of that SPEC's static-22 `moai-*` allowlist by replacing it with manifest derivation, while the doctor's skills-allowlist check itself (`classifySkill` / `checkSkillsAllowlist`) remains live and is not re-owned by any successor SPEC.
 
 ### §A.4 Preservation Constraint (CLEAN-REINSTALL-002)
 
