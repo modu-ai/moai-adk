@@ -118,7 +118,7 @@ The AC-CRR-006 test was likewise confirmed RED at pre-fix (`AC-CRR-006(b): phant
 ## §E.4 Sync-phase Audit-Ready Signal
 
 - sync_complete_at: 2026-07-16
-- sync_commit_sha: pending-backfill-sync (backfilled in a follow-up commit on this branch — self-referential-SHA workaround, D3 exemption)
+- sync_commit_sha: 610337d26 (backfilled — self-referential-SHA workaround, D3 exemption)
 - sync_status: complete (single sync commit carries the merged `implemented → completed` transition; no separate Mx-phase chore commit)
 - b12_self_test_a: `grep -c 'SPEC-V3R6-V2-V3-CLEAN-REINSTALL-002' CHANGELOG.md` → 0 (pre-emission; confirmed no prior entry before this sync commit)
 - b12_self_test_b: acceptance.md SSOT AC row count (`grep -cE '^\| AC-CRR-[0-9]+ \|'` matched against `§D.1 Severity Classification` table) = 10 (9 S1 + 1 S2); CHANGELOG entry references all 10 AC-CRR-NNN tokens across the 4 numbered sub-changes + closing PRESERVE-non-weakening clause
