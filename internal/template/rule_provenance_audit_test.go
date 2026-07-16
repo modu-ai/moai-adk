@@ -99,6 +99,17 @@ var ruleProvenanceClasses = []ruleProvenanceClass{
 	},
 }
 
+// governanceTokenFileAllowlist exempts specific rule files from the
+// governance-token class ONLY. zone-registry.md IS the constitution zone
+// registry — its 115 CONST-V3R* entries (119 token occurrences) are its
+// legitimate content, not a leak. File-level (not per-token) because
+// enumerating 119 CONST tokens would be brittle; parallel to the C2
+// allowListSet in template_neutrality_audit_test.go. Single-path: the guard
+// still fires on governance tokens in EVERY OTHER rules file.
+var governanceTokenFileAllowlist = map[string]bool{
+	".claude/rules/moai/core/zone-registry.md": true,
+}
+
 // TestRuleProvenanceAudit scans template .claude/rules/ files for the three
 // provenance classes and reports any non-allowlisted match as a violation.
 //
@@ -156,9 +167,17 @@ func TestRuleProvenanceAudit(t *testing.T) {
 					if class.name == "REQ-AC-token" && strings.Contains(trimmed, "-XXX-") {
 						continue
 					}
-					// (d) Pedagogical allowlist gate for governance tokens.
-					if class.name == "governance-token" && isPedagogicallyAllowed(relForAllowlist, trimmed) {
-						continue
+					// (d) Governance-token gates: file-level exemption first
+					// (single-path, zone-registry.md only — its CONST-V3R*
+					// entries are legitimate registry content), then the
+					// per-(path,token) pedagogical allowlist.
+					if class.name == "governance-token" {
+						if governanceTokenFileAllowlist[relForAllowlist] {
+							continue
+						}
+						if isPedagogicallyAllowed(relForAllowlist, trimmed) {
+							continue
+						}
 					}
 					if _, ok := seen[trimmed]; ok {
 						continue
