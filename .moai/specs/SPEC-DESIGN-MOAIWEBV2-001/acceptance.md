@@ -69,15 +69,27 @@ grep -E -- '--gradient-signature:\s*#3d7d5f' internal/web/assets/console.css
 
 ### AC-MWV2-005 — token superset/subset handling (adopt v2-only + preserve console-only)
 ```bash
-# (a) v2-only tokens that did not exist in the earlier console generation are now
-#     present (spot-check the canon-only additions the token-mapping table introduced):
+# D7 note: the realignment is value-only + name-stable (design.md §B.1) — the console
+# and the v2 canon share the SAME token NAME set, so clause-1 ("adopt v2-only tokens")
+# is VACUOUSLY satisfied: no v2 token NAME is orphaned/missing from console.css. The
+# substantive (a) check is therefore that the previously-existing tokens now carry
+# their v2 VALUES (the value delta the token-mapping table introduced), NOT that a
+# brand-new token name appears. --color-primary-hover / --color-primary-active existed
+# in the earlier console generation with non-canon values; they now hold the v2 values:
 grep -E -- '--color-primary-hover:\s*#316750' internal/web/assets/console.css && \
 grep -E -- '--color-primary-active:\s*#265240' internal/web/assets/console.css
+# (a2) "no v2 token name orphaned" — every v2 :root token name resolves in console.css
+#      (name-stable invariant; spot-check the accent/border/fg families):
+for tok in color-ink color-bg color-success border-1 border-focus-ring \
+           gradient-signature neutral-400 neutral-950 fg-2 fg-3; do
+  grep -Eq -- "--$tok:" internal/web/assets/console.css || echo "ORPHAN v2 token name: --$tok"
+done
 # (b) console-only tokens with no v2 equivalent are preserved (the offline-safe
 #     font fallbacks are console-only and MUST survive the realignment):
 grep -E -- '--font-latin:\s*system-ui' internal/web/assets/console.css && \
 grep -E -- '--font-mono:\s*ui-monospace' internal/web/assets/console.css
-# Expected: all four grep — v2-only tokens adopted AND console-only tokens retained
+# Expected: (a) both value greps match; (a2) no ORPHAN line; (b) both console-only
+# font fallbacks retained — v2 values adopted AND console-only tokens preserved.
 ```
 
 ### AC-MWV2-010 — 6-pose library (lowercase-kebab)

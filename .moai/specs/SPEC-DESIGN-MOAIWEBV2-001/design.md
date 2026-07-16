@@ -8,9 +8,9 @@
 
 The `project` panel is unreachable (research.md §C) but holds real, tested config. "Clean up" = remove the dead DOM, OR restore reachability by re-adding the lost tab?
 
-### §A.2 Decision (default, pending clarification)
+### §A.2 Decision (confirmed 2026-07-16)
 
-**Default: Option A — REMOVE the orphan** (matches the mission's "absence grep for removed panel route" acceptance signal), CONTINGENT on the user accepting that `development_mode` / `git_convention` / `quality.*` lose their web-console editing surface (they remain editable via config files / CLI).
+**Confirmed: Option A — REMOVE the orphan** (via AskUserQuestion 2026-07-16; matches the mission's "absence grep for removed panel route" acceptance signal). The user accepted that `development_mode` / `git_convention` / `quality.*` lose their web-console editing surface (they remain editable via config files / CLI).
 
 Removal scope:
 1. Delete `templ fieldsetProject(view)` from `fieldsets.templ` (and its `detectionField` helper IF unused elsewhere — grep first).
@@ -20,7 +20,7 @@ Removal scope:
 5. Prune `pageView` fields consumed ONLY by `fieldsetProject` (`CurDevelopmentMode`, `CurConvention`, `Cur*` detection/quality fields) — ONLY after grep confirms no other consumer; else leave inert.
 6. `sec.project.*` i18n keys: leave inert (acceptable) or prune as housekeeping (optional).
 
-**Fallback: Option B — RESTORE** — add `{ID: "project", LabelKey: "sec.project.title", Baseline: "Project"}` to `consoleTabs()` (`schemaform.go`), add a `data-tab="project"` render assertion. Zero field loss, lowest risk. Chosen if the user rejects the editability loss.
+**Option B — RESTORE (historical note, NOT chosen)** — would have added `{ID: "project", LabelKey: "sec.project.title", Baseline: "Project"}` to `consoleTabs()` (`schemaform.go`) + a `data-tab="project"` render assertion (zero field loss). Demoted to a historical note: the user confirmed REMOVE (Option A) on 2026-07-16, accepting the editability-loss consequence.
 
 ### §A.3 Rationale
 
@@ -48,9 +48,9 @@ The core conceptual shift: v2 neutrals/ink/shadows are **pure achromatic (hue 0%
 
 ## §C. Signature Accent (solid vs gradient)
 
-### §C.1 Decision (default, pending clarification)
+### §C.1 Decision (confirmed 2026-07-16)
 
-**Default: adopt the v2 solid `--gradient-signature: #3d7d5f`** — the v2 canon uses the point-green as a SOLID sole accent, not a gradient. This de-tints the accent (removes the teal `#09110f` gradient stop).
+**Confirmed: adopt the v2 solid `--gradient-signature: #3d7d5f`** (via AskUserQuestion 2026-07-16) — the v2 canon uses the point-green as a SOLID sole accent, not a gradient. This de-tints the accent (removes the teal `#09110f` gradient stop). The linear-gradient form is dropped consistently, including the inert `[data-theme="dark"]` override (solid dark point-green `#5a9a7e`).
 
 **Migration hazard**: any component doing `background: linear-gradient(var(--gradient-signature))` (double-wrapping) would break when the token becomes a color. M3 scans components consuming `--gradient-signature` and adjusts (a component wanting `background: var(--gradient-signature)` works with either form; a `linear-gradient(var(--gradient-signature))` needs the wrapper removed).
 
