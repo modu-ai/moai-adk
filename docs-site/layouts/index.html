@@ -1,20 +1,31 @@
 {{ define "main" }}
-  {{- /* 홈 랜딩 — Claude Design handoff (모두의클로드 DS):
-         hero 카드(3px ink border + pop shadow) + 실측 stat row + doc-card grid.
-         카드 제목/문서 수는 실제 섹션 페이지에서 동적 도출(4-locale 자동),
-         설명은 i18n 키. 기존 content/<locale>/_index.md 본문은 그 아래에 그대로 렌더. */ -}}
+  {{- /* 홈 랜딩 — round3 docs-index 레이아웃 (SPEC-DESIGN-DOCSV2-001 M3c-1).
+         docs-hero + docs-filters(정적 섹션 링크) + docs-featured + docs-grid.
+         i18n 키·마스코트·실측 stat 수치·curated $cards 슬라이스 모두 기존에서 보존.
+         기존 content/<locale>/_index.md 본문은 하단에 그대로 렌더. */ -}}
+  {{- $cards := slice
+    (dict "slug" "getting-started"      "icon" "rocket"   "desc" "card_desc_getting_started")
+    (dict "slug" "core-concepts"        "icon" "book"     "desc" "card_desc_core_concepts")
+    (dict "slug" "workflow-commands"    "icon" "terminal" "desc" "card_desc_workflow_commands")
+    (dict "slug" "quality-commands"     "icon" "layers"   "desc" "card_desc_quality_commands")
+    (dict "slug" "utility-commands"     "icon" "wrench"   "desc" "card_desc_utility_commands")
+    (dict "slug" "advanced"             "icon" "cpu"      "desc" "card_desc_advanced")
+    (dict "slug" "worktree"             "icon" "git"      "desc" "card_desc_worktree")
+    (dict "slug" "db"                   "icon" "db"       "desc" "card_desc_db")
+  -}}
   <article
     class="gdoc-markdown gdoc-markdown__align--{{ default "left" (.Page.Params.geekdocAlign | lower) }}"
     id="main-content" tabindex="-1"
   >
-    <div class="md-home">
-      <div class="md-hero anim-rise">
+    {{- /* 1. HERO — eyebrow / h1 / sub / CTAs / 실측 stats */ -}}
+    <section class="docs-hero">
+      <div class="docs-hero-inner">
         <img class="md-hero-mascot" loading="lazy" decoding="async"
              src="{{ "mascots/mascot-coding.png" | relURL }}"
              width="150" alt="MoAI 마스코트 캐릭터" />
-        <span class="md-eyebrow">{{ i18n "hero_eyebrow" }}</span>
-        <h1>{{ i18n "hero_title" | safeHTML }}</h1>
-        <p class="md-hero-lead">{{ i18n "hero_lead" }}</p>
+        <span class="docs-eyebrow">{{ i18n "hero_eyebrow" }}</span>
+        <h1 class="docs-h1">{{ i18n "hero_title" | safeHTML }}</h1>
+        <p class="docs-sub">{{ i18n "hero_lead" }}</p>
         <div class="md-hero-cta">
           <a class="md-btn md-btn-primary" href="{{ "/getting-started/" | relLangURL }}">
             {{ i18n "hero_cta_start" }}
@@ -24,36 +35,67 @@
         </div>
         {{- /* 실측 stat row — placeholder 수치 금지: 11 retained agents / 16 supported
                languages / 85%+ coverage target / Go single binary */ -}}
-        <div class="md-stat-row">
-          <div class="md-stat"><div class="v">11</div><div class="l">{{ i18n "stat_agents" }}</div></div>
-          <div class="md-stat"><div class="v">16</div><div class="l">{{ i18n "stat_langs" }}</div></div>
-          <div class="md-stat"><div class="v">85%+</div><div class="l">{{ i18n "stat_coverage" }}</div></div>
-          <div class="md-stat"><div class="v">Go</div><div class="l">{{ i18n "stat_binary" }}</div></div>
+        <div class="docs-stats">
+          <div><div class="docs-stat-num">11</div><div class="docs-stat-lbl">{{ i18n "stat_agents" }}</div></div>
+          <div><div class="docs-stat-num">16</div><div class="docs-stat-lbl">{{ i18n "stat_langs" }}</div></div>
+          <div><div class="docs-stat-num">85%+</div><div class="docs-stat-lbl">{{ i18n "stat_coverage" }}</div></div>
+          <div><div class="docs-stat-num">Go</div><div class="docs-stat-lbl">{{ i18n "stat_binary" }}</div></div>
         </div>
       </div>
+    </section>
 
-      <div class="md-divider-mascot" aria-hidden="true">
-        <img loading="lazy" decoding="async" src="{{ "mascots/mascot-talking.png" | relURL }}" width="72" alt="" />
+    {{- /* 2. FILTERS — 정적 섹션 필러 바 (sticky). 각 필러는 섹션 페이지로 링크,
+           count 배지 = 섹션 페이지 수. 클라이언트 사이드 JS 없음 (faithful static). */ -}}
+    <div class="docs-filters">
+      <div class="docs-filters-inner">
+        <div class="docs-pill-row">
+          {{- range $card := $cards }}
+            {{- with site.GetPage (printf "/%s" $card.slug) }}
+          <a class="docs-pill" href="{{ .RelPermalink }}">{{ .Title }}<span class="count">{{ len .RegularPagesRecursive }}</span></a>
+            {{- end }}
+          {{- end }}
+        </div>
       </div>
-      <div class="md-section-head">
-        <h2>{{ i18n "browse_title" }}</h2>
-        <span class="pill">{{ i18n "browse_pill" }}</span>
+    </div>
+
+    {{- /* 3. FEATURED — getting-started 섹션을 "시작점" CTA로 피처링.
+           전용 featured:true 프론트매터가 없으므로 getting-started 페이지를 사용. */ -}}
+    {{- with site.GetPage "/getting-started" }}
+    <section class="docs-featured">
+      <div class="featured-card">
+        <div>
+          <span class="featured-eye"><span class="dot"></span>{{ i18n "browse_pill" }}</span>
+          <h2>{{ .Title }}</h2>
+          <p>{{ .Description | default .Summary }}</p>
+          <div class="featured-meta">
+            <span>{{ i18n "docs_count" (len .RegularPagesRecursive) }}</span>
+          </div>
+          <a class="featured-cta" href="{{ .RelPermalink }}">
+            {{ i18n "hero_cta_start" }}
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+          </a>
+        </div>
+        <div class="featured-illu" aria-hidden="true">
+          <img loading="lazy" decoding="async" src="{{ "mascots/mascot-talking.png" | relURL }}" width="120" alt="" />
+        </div>
       </div>
-      <div class="md-card-grid">
-        {{- $cards := slice
-          (dict "slug" "getting-started" "icon" "rocket" "desc" "card_desc_getting_started")
-          (dict "slug" "core-concepts" "icon" "book" "desc" "card_desc_core_concepts")
-          (dict "slug" "workflow-commands" "icon" "terminal" "desc" "card_desc_workflow_commands")
-          (dict "slug" "quality-commands" "icon" "layers" "desc" "card_desc_quality_commands")
-          (dict "slug" "utility-commands" "icon" "wrench" "desc" "card_desc_utility_commands")
-          (dict "slug" "advanced" "icon" "cpu" "desc" "card_desc_advanced")
-          (dict "slug" "worktree" "icon" "git" "desc" "card_desc_worktree")
-          (dict "slug" "db" "icon" "db" "desc" "card_desc_db")
-        -}}
-        {{- range $card := $cards }}
+    </section>
+    {{- end }}
+
+    {{- /* 4. GRID — curated $cards를 round3 doc-card로 렌더.
+           thumb-N 변형은 카드 위치(1..8)에 고정 할당, 인라인 SVG 아이콘은 기존 매핑 보존. */ -}}
+    <section class="docs-grid-section">
+      <div class="grid-section-head">
+        <h3>{{ i18n "browse_title" }}</h3>
+        <span class="count">{{ len $cards }}</span>
+      </div>
+      <div class="docs-grid">
+        {{- range $i, $card := $cards }}
           {{- with site.GetPage (printf "/%s" $card.slug) }}
-          <a class="md-doc-card hover-lift" href="{{ .RelPermalink }}">
-            <div class="dc-ico">
+        <a class="doc-card" href="{{ .RelPermalink }}">
+          <div class="doc-thumb thumb-{{ add $i 1 }}">
+            <span class="doc-thumb-cat">{{ .Title }}</span>
+            <div class="doc-thumb-icon">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                 {{- if eq $card.icon "rocket" -}}<path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09z"/><path d="M12 15l-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 0 1-4 2z"/><path d="M9 12H4s.55-3.03 2-4c1.62-1.08 5 0 5 0"/>
                 {{- else if eq $card.icon "book" -}}<path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
@@ -66,18 +108,24 @@
                 {{- end -}}
               </svg>
             </div>
-            <h3>{{ .Title }}</h3>
-            <p>{{ i18n $card.desc }}</p>
-            <div class="dc-cnt">{{ i18n "docs_count" (len .RegularPagesRecursive) }}</div>
-          </a>
+            <span class="doc-thumb-num">{{ printf "%02d" (add $i 1) }}</span>
+          </div>
+          <div class="doc-body">
+            <h4>{{ .Title }}</h4>
+            <p class="doc-excerpt">{{ i18n $card.desc }}</p>
+            <div class="doc-meta">
+              <span class="views">{{ i18n "docs_count" (len .RegularPagesRecursive) }}</span>
+            </div>
+          </div>
+        </a>
           {{- end }}
         {{- end }}
       </div>
+    </section>
 
-      {{- /* 기존 홈 콘텐츠 (content/<locale>/_index.md) — 파이프라인 소유, 그대로 렌더 */ -}}
-      <div class="md-home-content">
-        {{ partial "utils/content" . }}
-      </div>
+    {{- /* 기존 홈 콘텐츠 (content/<locale>/_index.md) — 파이프라인 소유, 그대로 렌더 */ -}}
+    <div class="md-home-content">
+      {{ partial "utils/content" . }}
     </div>
   </article>
 {{ end }}

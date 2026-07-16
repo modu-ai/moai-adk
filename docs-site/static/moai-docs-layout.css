@@ -239,3 +239,303 @@
   .doc-hero { padding: 40px 20px 48px; }
   .compare { grid-template-columns: 1fr; }
 }
+
+/* ============================================================================
+ * Frame (M3b — round3 NavBar / Footer / MobileNav / Buttons / Cards / Chips /
+ *        Eyebrow / Page wrapper)
+ * ----------------------------------------------------------------------------
+ * Ported verbatim from .moai/state/ai-design-system/project/round3/styles.css
+ * lines 98-352. Flat token refs (--bg, --primary, --gradient, --muted, --ink,
+ * --border, --surface, --muted-fg, --border-strong, --warning, --gradient-soft,
+ * --shadow-sig, --font-mono, --tracking-heading, --tracking-body) resolve via
+ * the M3a alias block in moai-brand.css :root (lines 149-168). Hardcoded px/radii
+ * preserved byte-for-byte from round3.
+ *
+ * moai-docs-layout.css loads LAST (head/custom.html), so same-specificity rules
+ * here win over moai-brand/design/theme. Existing !important rules in
+ * moai-docs-theme.css (.gdoc-header/.cw-footer green-tint backgrounds) still
+ * override non-!important round3 backgrounds — that is a known cascade reality
+ * (green-tint stays as the design-system primary tint); the round3 STRUCTURE
+ * (sticky/height/flex/grid) applies cleanly. M3c may reconcile the !important
+ * layer if a full cream-canvas pass is required.
+ *
+ * Collision-driven renames (M3a convention — namespace on collision, port rest
+ * byte-for-byte; see collision-rename table in progress.md §E.2 M3b):
+ *   .nav       → .docs-nav        (bare .nav @ moai-design.css:17 — dead CSS, but
+ *                                  namespaced per spec example + base primitive)
+ *   .footer    → .docs-footer     (no bare collision, but namespaced per spec
+ *                                  example — conservative on prominent primitive)
+ *   .btn       → .docs-btn        (bare .btn @ moai-design.css:647 + brand:1552)
+ *   .card      → .docs-card       (no bare collision; spec example — conservative)
+ *   .main      → .docs-main       (bare .main @ moai-design.css:228 — dead CSS)
+ *   .container → .docs-container  (LIVE collision: geekdoc main.css .container is
+ *                                  used by baseof <main class="container ...">;
+ *                                  MUST namespace to avoid clobbering 82rem)
+ *
+ * PORTED BARE (byte-for-byte, includes dead-collision overrides — zero regression
+ * because moai-design.css .nav/.nav-inner/.nav-search/.main are unreferenced in
+ * any docs-site markup; verified via grep over layouts/ content/ data/):
+ *   .nav-inner, .nav-logo, .nav-logo-mark, .nav-menu, .nav-link, .nav-link.active,
+ *   .nav-utility, .nav-search, .nav-search-key, .nav-icon-btn, .nav-login,
+ *   .footer-inner, .footer-grid, .footer-brand-tag, .footer-col, .footer-bottom,
+ *   .mobile-nav, .mobile-nav-inner, .mobile-nav-item,
+ *   .btn-primary, .btn-secondary, .btn-ghost, .btn-lg,
+ *   .chip, .chip-soft, .chip-solid, .chip-line, .chip-amber,
+ *   .eyebrow, .eyebrow-on-grad, .page
+ * ========================================================================== */
+
+/* ───── NavBar ───── */
+.docs-nav {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  height: 64px;
+  background: color-mix(in srgb, var(--bg) 85%, transparent);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--border);
+}
+.nav-inner {
+  max-width: 1280px;
+  height: 100%;
+  margin: 0 auto;
+  padding: 0 40px;
+  display: flex;
+  align-items: center;
+  gap: 32px;
+}
+.nav-logo {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 800;
+  font-size: 20px;
+  letter-spacing: var(--tracking-heading);
+}
+.nav-logo-mark {
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  background: var(--gradient);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-family: var(--font-mono);
+  font-weight: 800;
+  font-size: 13px;
+}
+.nav-menu {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: 16px;
+}
+.nav-link {
+  padding: 8px 14px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: var(--tracking-body);
+  color: var(--muted-fg);
+  transition: all 150ms;
+}
+.nav-link:hover { background: var(--muted); color: var(--ink); }
+.nav-link.active { color: var(--ink); }
+.nav-utility {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.nav-search {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-size: 13px;
+  color: var(--muted-fg);
+  background: var(--surface);
+  min-width: 180px;
+}
+.nav-search-key {
+  margin-left: auto;
+  padding: 1px 6px;
+  background: var(--muted);
+  border-radius: 4px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+}
+.nav-icon-btn {
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--muted-fg);
+  transition: all 150ms;
+}
+.nav-icon-btn:hover { background: var(--muted); color: var(--ink); }
+.nav-login {
+  padding: 8px 16px;
+  background: var(--ink);
+  color: var(--bg);
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+/* ───── Footer ───── */
+.docs-footer {
+  margin-top: 80px;
+  background: var(--surface);
+  border-top: 1px solid var(--border);
+}
+.footer-inner {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 56px 40px 32px;
+}
+.footer-grid {
+  display: grid;
+  grid-template-columns: 1.5fr 1fr 1fr 1fr;
+  gap: 48px;
+  margin-bottom: 40px;
+}
+.footer-brand-tag {
+  margin-top: 16px;
+  font-size: 14px;
+  color: var(--muted-fg);
+  max-width: 320px;
+  letter-spacing: var(--tracking-body);
+}
+.footer-col h4 {
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted-fg);
+  margin-bottom: 16px;
+  font-family: var(--font-mono);
+}
+.footer-col ul { list-style: none; display: flex; flex-direction: column; gap: 10px; }
+.footer-col a { font-size: 14px; color: var(--ink); }
+.footer-col a:hover { color: var(--primary); }
+.footer-bottom {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-top: 24px;
+  border-top: 1px solid var(--border);
+  font-size: 12px;
+  color: var(--muted-fg);
+  font-family: var(--font-mono);
+}
+
+/* ───── Mobile Bottom Nav ───── */
+.mobile-nav {
+  display: none;
+  position: sticky;
+  bottom: 0;
+  background: var(--surface);
+  border-top: 1px solid var(--border);
+  padding: 6px 0 max(6px, env(safe-area-inset-bottom));
+  z-index: 40;
+}
+.mobile-nav-inner {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+}
+.mobile-nav-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  padding: 8px 0;
+  font-size: 10px;
+  color: var(--muted-fg);
+  font-weight: 600;
+}
+.mobile-nav-item.active { color: var(--primary); }
+
+/* ───── Buttons ───── */
+.docs-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 12px 20px;
+  border-radius: 999px;
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: var(--tracking-body);
+  transition: all 150ms;
+  white-space: nowrap;
+}
+.btn-primary {
+  background: var(--gradient);
+  color: #fff;
+}
+.btn-primary:hover { transform: translateY(-1px); box-shadow: var(--shadow-sig); }
+.btn-secondary {
+  background: var(--surface);
+  border: 1px solid var(--border-strong);
+  color: var(--ink);
+}
+.btn-secondary:hover { border-color: var(--ink); }
+.btn-ghost { color: var(--ink); }
+.btn-ghost:hover { background: var(--muted); }
+.btn-lg { padding: 16px 28px; font-size: 16px; }
+
+/* ───── Cards ───── */
+.docs-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  overflow: hidden;
+}
+
+/* ───── Chips ───── */
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: var(--tracking-body);
+}
+.chip-soft { background: var(--gradient-soft); color: var(--primary); }
+.chip-solid { background: var(--gradient); color: #fff; }
+.chip-line { border: 1px solid var(--border-strong); color: var(--ink); }
+.chip-amber { background: rgba(196,123,42,0.12); color: var(--warning); }
+
+/* ───── Eyebrow ───── */
+.eyebrow {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--primary);
+}
+.eyebrow-on-grad { color: rgba(255,255,255,0.9); }
+
+/* ───── Page wrapper ───── */
+.page {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+.docs-main {
+  flex: 1;
+}
+.docs-container {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 0 40px;
+}
