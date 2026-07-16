@@ -62,7 +62,7 @@ coverage_note: "internal/cli package 74.4% (large pre-existing baseline, not reg
 
 ```yaml
 sync_complete_at: 2026-07-17
-sync_commit_sha: pending-backfill-sync   # backfilled in a follow-up commit per D3 SHA-placeholder exemption
+sync_commit_sha: 8525bece32ffe9b8d00b2f2689a39d67c35239f2
 sync_status: audit-ready
 changelog_entry_position: "[Unreleased] > ### Fixed (SPEC-UPDATE-REINSTALL-LOOP-001 entry, inserted before SPEC-V3R6-DOCTOR-FALSE-SIGNAL-001)"
 frontmatter_status_transitions:
