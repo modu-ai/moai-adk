@@ -24,6 +24,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 
 	"github.com/modu-ai/moai-adk/internal/manifest"
@@ -799,6 +800,168 @@ func TestReproduction_NonProjectDirectoryPollution_Issue1086(t *testing.T) {
 			t.Errorf("AC-CRR-005(b): #1086 regression: unexpected entry %q "+
 				"materialized in a non-project cwd; want only the seeded "+
 				".agency/ and README.md", e.Name())
+		}
+	}
+}
+
+// ---------------------------------------------------------------------------
+// M5 — Idempotency + cross-platform parity
+// ---------------------------------------------------------------------------
+
+// TestRunUpdate_ThreeRunIdempotency_V3Project verifies REQ-CRR-011 / AC-CRR-009:
+// three consecutive `moai update` invocations on a v3 project with a
+// user-modified language.yaml converge — the user value survives byte-identical
+// and runs 2/3 neither create a v2-to-v3 backup dir nor emit a REMOVE-phase log.
+//
+// This is the multi-run generalization of the #1084 loop: pre-fix, each run
+// re-classified the v3 project as v2 (Signal 2/3 residue) and re-entered
+// clean-reinstall, so a backup dir and REMOVE log appeared on every run. The
+// M1 v3-version negative-override converges the fingerprint; this test pins the
+// convergence across three runs (AC-CRR-009(a)(b)(c)).
+func TestRunUpdate_ThreeRunIdempotency_V3Project(t *testing.T) {
+	// Fixture per AC-CRR-009: a v3 project (system.yaml v3.0.0-rc2) with a
+	// user-modified language.yaml. The .agency/ + deprecated residue is the
+	// #1084 loop trigger that must NOT re-fire clean-reinstall on a v3 project.
+	root := t.TempDir()
+	writeTestFile(t, root, ".moai/config/sections/system.yaml",
+		"moai:\n    version: v3.0.0-rc2\n")
+	const userLang = "language:\n    conversation_language: ko\n"
+	writeTestFile(t, root, ".moai/config/sections/language.yaml", userLang)
+	// Legacy residue that drove the pre-fix loop (Signals 2 + 3).
+	makeTestDir(t, root, ".agency")
+	writeTestFile(t, root, ".agency/index.md", "legacy residue\n")
+	writeTestFile(t, root, ".moai/specs/SPEC-USER-009/spec.md", "user spec\n")
+
+	origDir, err := os.Getwd()
+	if err != nil {
+		t.Fatalf("getwd: %v", err)
+	}
+	defer func() { _ = os.Chdir(origDir) }()
+	if err := os.Chdir(root); err != nil {
+		t.Fatalf("chdir fixture: %v", err)
+	}
+
+	origDeps := deps
+	defer func() { deps = origDeps }()
+	deps = &Dependencies{UpdateChecker: &mockUpdateChecker{}}
+
+	langPath := filepath.Join(root, ".moai", "config", "sections", "language.yaml")
+
+	// The idempotency invariant (AC-CRR-009(a)+(d)): run 1 MAY legitimately
+	// normalize the minimal fixture via file-level sync (the SHA-256 hash-diff
+	// classifies language.yaml as user-modified and preserves conversation_language:
+	// ko while merging in the other template keys — parent REQ-VVCR-007). What
+	// MUST hold is (i) the user's ko value survives EVERY run, and (ii) the file
+	// converges — it is byte-stable from run 1 onward (runs 2/3 identical to run
+	// 1, no further drift). firstRunContent captures the post-run-1 reference.
+	var firstRunContent string
+
+	for run := 1; run <= 3; run++ {
+		var buf bytes.Buffer
+		updateCmd.SetOut(&buf)
+		updateCmd.SetErr(&buf)
+		updateCmd.SetContext(context.Background())
+		if err := updateCmd.Flags().Set("check", "false"); err != nil {
+			t.Fatalf("run %d: set check flag: %v", run, err)
+		}
+		if err := updateCmd.Flags().Set("yes", "true"); err != nil {
+			t.Fatalf("run %d: set yes flag: %v", run, err)
+		}
+
+		if runErr := updateCmd.RunE(updateCmd, []string{}); runErr != nil {
+			// Template sync on this minimal fixture may emit warnings; the
+			// load-bearing invariants are the filesystem assertions below.
+			t.Logf("run %d: runUpdate returned (non-fatal): %v", run, runErr)
+		}
+
+		out := buf.String()
+
+		got, readErr := os.ReadFile(langPath)
+		if readErr != nil {
+			t.Fatalf("run %d: read language.yaml: %v", run, readErr)
+		}
+
+		// AC-CRR-009(a): the user's conversation_language: ko value survives on
+		// every run — it is never overwritten, removed, relocated, or dropped.
+		if !stringContains(string(got), "conversation_language: ko") {
+			t.Errorf("run %d: AC-CRR-009(a): conversation_language: ko lost from "+
+				"language.yaml; got %q", run, string(got))
+		}
+
+		// AC-CRR-009(a)+(d): convergence — run 1 may normalize, but the file is
+		// byte-stable from run 1 onward (runs 2/3 identical to run 1). Any
+		// per-run drift here is a non-idempotent sync (the multi-run #1084 shape).
+		if run == 1 {
+			firstRunContent = string(got)
+		} else if string(got) != firstRunContent {
+			t.Errorf("run %d: AC-CRR-009(a): language.yaml is not idempotent — "+
+				"drifted from the post-run-1 state.\nrun 1: %q\nrun %d: %q",
+				run, firstRunContent, run, string(got))
+		}
+
+		// AC-CRR-009(b)(c): on runs 2 and 3 the v3 project must NOT re-enter
+		// clean-reinstall — no v2-to-v3 backup dir, no REMOVE-phase log.
+		if run >= 2 {
+			backupMatches, _ := filepath.Glob(
+				filepath.Join(root, ".moai", "backups", "v2-to-v3-*"))
+			if len(backupMatches) != 0 {
+				t.Errorf("run %d: AC-CRR-009(b): v2-to-v3 backup dir(s) present %v; "+
+					"clean-reinstall must NOT re-activate on a v3 project", run, backupMatches)
+			}
+			if stringContains(out, "[clean-reinstall] Removed") ||
+				stringContains(out, "[clean-reinstall] No deprecated paths found to remove") {
+				t.Errorf("run %d: AC-CRR-009(c): a REMOVE-phase log was emitted; "+
+					"the v3 project must route to file-level sync, not clean-reinstall.\n%s",
+					run, out)
+			}
+		}
+	}
+}
+
+// TestFingerprintPredicate_CrossPlatformParity verifies AC-CRR-010 (S2 / SHOULD-1):
+// the fingerprint predicate and the positive-marker precondition resolve
+// identically regardless of OS path-separator conventions.
+//
+// The three OS matrices (macOS/Linux/Windows) are exercised by the CI runner
+// matrix; this in-process test pins the OS-agnostic property the CI matrix
+// relies on — that the predicate builds its marker path via filepath.Join
+// (separator-agnostic) and that the verdict is deterministic. A regression that
+// reintroduced a hardcoded "/" separator would break the marker resolution on
+// Windows while leaving this assertion green only on POSIX, so the test also
+// asserts the marker resolves under the current GOOS.
+func TestFingerprintPredicate_CrossPlatformParity(t *testing.T) {
+	// AC-CRR-010(c): a genuine v3 project marker is detected on the current OS.
+	v3Root := t.TempDir()
+	writeTestFile(t, v3Root, ".moai/config/sections/system.yaml",
+		"moai:\n    version: v3.0.0\n")
+	if !isMoAIProject(v3Root) {
+		t.Errorf("AC-CRR-010(c): isMoAIProject=false for a v3 project on %s; "+
+			"the marker path must resolve via filepath.Join on every OS", runtime.GOOS)
+	}
+
+	// AC-CRR-010(b): a non-project cwd is rejected identically on every OS.
+	nonProject := t.TempDir()
+	makeTestDir(t, nonProject, ".agency")
+	if isMoAIProject(nonProject) {
+		t.Errorf("AC-CRR-010(b): isMoAIProject=true for a non-project cwd on %s; want false",
+			runtime.GOOS)
+	}
+
+	// AC-CRR-010(a): the fingerprint verdict is deterministic and stable across
+	// repeated evaluations on the same fixture (the property the OS matrices
+	// each assert). A v3 project with residue converges to IsV2=false.
+	v3WithResidue := t.TempDir()
+	writeTestFile(t, v3WithResidue, ".moai/config/sections/system.yaml",
+		"moai:\n    version: v3.0.0-rc2\n")
+	makeTestDir(t, v3WithResidue, ".agency")
+	for i := 0; i < 3; i++ {
+		fp, err := detectV2Fingerprint(v3WithResidue)
+		if err != nil {
+			t.Fatalf("iteration %d: detectV2Fingerprint: %v", i, err)
+		}
+		if fp.IsV2 {
+			t.Errorf("iteration %d: AC-CRR-010(a): IsV2=true on a v3 project; "+
+				"verdict must be a stable false on %s", i, runtime.GOOS)
 		}
 	}
 }
