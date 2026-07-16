@@ -273,10 +273,15 @@ func runUpdate(cmd *cobra.Command, _ []string) error {
 		if err != nil {
 			return fmt.Errorf("get working directory for v2 detection: %w", err)
 		}
+		// REQ-CRR-005 / AC-CRR-004: clean-reinstall requires BOTH a v2
+		// fingerprint AND a genuine moai-project cwd (positive marker
+		// `.moai/config/sections/system.yaml`). A non-project cwd MUST NOT
+		// trigger clean-reinstall even if legacy residue drives IsV2=true
+		// (#1086 regression repair, M2).
 		fingerprint, fpErr := detectV2Fingerprint(cwd)
 		if fpErr != nil {
 			_, _ = fmt.Fprintln(out, tui.CheckLine("warn", "v2 detection", "failed", fpErr.Error(), &th))
-		} else if fingerprint.IsV2 {
+		} else if fingerprint.IsV2 && isMoAIProject(cwd) {
 			_, _ = fmt.Fprintln(out, tui.CheckLine("info", "v2 detected",
 				"running clean reinstall",
 				fmt.Sprintf("signals: version=%v agency=%v deprecated=%v",

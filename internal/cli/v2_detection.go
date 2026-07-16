@@ -244,3 +244,33 @@ func probeDeprecatedPathSignal(projectRoot string) (bool, string) {
 	}
 	return false, ""
 }
+
+// isMoAIProject reports whether projectRoot carries a positive moai-project
+// marker. REQ-CRR-005 / AC-CRR-004: the clean-reinstall path requires a genuine
+// project context; an arbitrary non-project directory MUST NOT trigger
+// clean-reinstall (#1086).
+//
+// Positive marker (AC-CRR-004(a)): presence of `.moai/config/sections/system.yaml`
+// as a regular file. A bare `.moai/` directory is intentionally insufficient —
+// the system.yaml file is the canonical v3 project marker whose absence in a
+// non-project cwd is the #1086 regression root cause. When this returns false,
+// the clean-reinstall gate in runUpdate (update.go) refuses entry regardless of
+// any legacy residue (.agency/, deprecated paths) that detectV2Fingerprint may
+// have flagged.
+//
+// Edge-5 (symlink): os.Stat (not Lstat) follows symlinks, so a system.yaml
+// symlink-to-regular-file also satisfies the marker. A symlink loop yields a
+// Stat error → treated as marker absent. A directory named system.yaml is
+// rejected by the !IsDir() check.
+//
+// Edge-6 (Windows): filepath.Join handles path separators, so the predicate
+// resolves identically on macOS/Linux/Windows.
+func isMoAIProject(projectRoot string) bool {
+	marker := filepath.Join(projectRoot,
+		defs.MoAIDir, "config", "sections", "system.yaml")
+	info, err := os.Stat(marker)
+	if err != nil {
+		return false
+	}
+	return !info.IsDir()
+}
