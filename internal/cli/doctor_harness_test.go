@@ -205,6 +205,31 @@ func TestRunHarnessCheck_TelemetryDirsOnlyReportsOK(t *testing.T) {
 	}
 }
 
+// TestRunHarnessCheck_TelemetryPlusDotfileReportsOK is the sync-audit F1
+// regression guard: an UNANTICIPATED dotfile in .moai/harness/ (concretely
+// macOS Finder's .DS_Store on darwin/arm64, where #1087 was reported) must NOT
+// defeat the telemetry-exclusion predicate. A directory holding only
+// usage-log.jsonl + .DS_Store is still "no harness configured" — otherwise the
+// L1-L6 battery runs and #1087 reincarnates as a false FAIL.
+func TestRunHarnessCheck_TelemetryPlusDotfileReportsOK(t *testing.T) {
+	root := t.TempDir()
+	writeDFSTelemetry(t, root)
+	writeFile(t, filepath.Join(root, ".moai", "harness", ".DS_Store"), "\x00\x00")
+
+	check := runHarnessCheck(root)
+
+	if check.Status != uikit.CheckOK {
+		t.Errorf("telemetry + dotfile must be OK (no harness configured), got %v: msg=%s detail=%s",
+			check.Status, check.Message, check.Detail)
+	}
+	if !strings.Contains(check.Message, "no harness configured") {
+		t.Errorf("message should indicate no harness configured, got %q", check.Message)
+	}
+	if strings.Contains(check.Detail, "L5 missing") {
+		t.Errorf("telemetry + dotfile must NOT run the L5 battery: detail=%q", check.Detail)
+	}
+}
+
 // TestRunHarnessCheck_FullBaselineWithTelemetryRunsBattery is AC-DFS-002
 // (preserve): a genuinely-configured harness (all 7 baseline files) with a
 // usage-log.jsonl ALSO present must still run the full L1-L6 battery — the

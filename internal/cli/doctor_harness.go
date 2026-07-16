@@ -222,21 +222,30 @@ var harnessRuntimeArtifacts = map[string]bool{
 }
 
 // @MX:NOTE: [AUTO] "configured" == "the directory holds at least one entry that
-// is NOT a runtime telemetry artifact", NOT "the directory exists". This is the
-// surgical predicate (plan §C / plan-audit D2): a stray non-telemetry file OR a
-// baseline file both count as configured, so a marker-configured-but-incomplete
-// harness still reaches the L1-L6 battery (no new false-negative). Only a
-// purely runtime-generated directory is treated as "not configured".
+// is neither a runtime telemetry artifact NOR a dotfile", NOT "the directory
+// exists". This is the surgical predicate (plan §C / plan-audit D2 / sync-audit
+// F1): a stray non-telemetry file OR a baseline file counts as configured, so a
+// marker-configured-but-incomplete harness still reaches the L1-L6 battery (no
+// new false-negative); but dotfiles (`.DS_Store`, editor swap files) and the
+// known runtime telemetry are BOTH excluded, so a never-configured project
+// whose .moai/harness/ holds only telemetry + OS cruft stays "not configured"
+// (F1: #1087 must not reincarnate on darwin/arm64 where Finder writes
+// .DS_Store). Only genuine, non-cruft content is treated as "configured".
 //
 // harnessConfigured reports whether .moai/harness/ holds any genuine (non-
-// runtime-telemetry) content. An unreadable directory is treated as not
-// configured (the caller has already handled the not-exist case).
+// runtime-telemetry, non-dotfile) content. An unreadable directory is treated
+// as not configured (the caller has already handled the not-exist case).
 func harnessConfigured(harnessDir string) bool {
 	entries, err := os.ReadDir(harnessDir)
 	if err != nil {
 		return false
 	}
 	for _, e := range entries {
+		// Skip dotfiles (.DS_Store, editor swap dotfiles, etc.) — OS/tool cruft
+		// is never a configuration act (sync-audit F1).
+		if strings.HasPrefix(e.Name(), ".") {
+			continue
+		}
 		if !harnessRuntimeArtifacts[e.Name()] {
 			return true
 		}
