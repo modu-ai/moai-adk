@@ -321,6 +321,29 @@ func runUpdate(cmd *cobra.Command, _ []string) error {
 			}))
 			return nil
 		}
+
+		// SPEC-V3R6-V2-V3-CLEAN-REINSTALL-002 REQ-CRR-007 / AC-CRR-007:
+		// Fire .agency/ migration INDEPENDENTLY of the v2 fingerprint verdict.
+		// A v3 project (IsV2=false per REQ-CRR-001's v3-version negative-
+		// override) that still carries a lingering .agency/ directory needs the
+		// migration to run, but the Step 3.5 migration inside runCleanReinstall
+		// is gated on fp.V2DetectedViaAgencyDir && IsV2 — which never opens for
+		// a v3 project. This pre-step closes that gap.
+		//
+		// Placement rationale: this is reachable ONLY when the clean-reinstall
+		// early-return above did NOT fire (detection succeeded, IsV2=false, or
+		// IsV2=true but non-moai-project cwd). The gate below narrows to the
+		// AC-CRR-007 contract: v3 project (IsV2=false) + genuine moai project
+		// + .agency/ present. Genuine-v2 projects (IsV2=true) are handled by
+		// the clean-reinstall path above and never reach here, so there is no
+		// double-fire (the adapter need not swallow ErrMigrateArchiveExists).
+		if fpErr == nil && !fingerprint.IsV2 && isMoAIProject(cwd) {
+			if _, agencyStatErr := os.Stat(filepath.Join(cwd, ".agency")); agencyStatErr == nil {
+				if migrateErr := runAgencyMigrationAdapter(cwd, getBoolFlag(cmd, "dry-run"), out); migrateErr != nil {
+					return fmt.Errorf("pre-step agency migration: %w", migrateErr)
+				}
+			}
+		}
 	}
 
 	syncSkipped, err := runTemplateSyncWithProgress(cmd)

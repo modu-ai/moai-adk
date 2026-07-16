@@ -400,6 +400,94 @@ func TestRunCleanReinstall_PopulatesPATHContext(t *testing.T) {
 	}
 }
 
+// TestRunUpdate_V3ProjectWithAgencyDir_MigratesIndependently is the M3
+// reproduction test for AC-CRR-007 (SPEC-V3R6-V2-V3-CLEAN-REINSTALL-002):
+//
+// GIVEN a v3 project (system.yaml moai.version = v3.0.0-rc2, so REQ-CRR-001's
+// v3-version negative-override forces detectV2Fingerprint.IsV2=false) that
+// carries a lingering `.agency/` legacy directory
+// WHEN `moai update` is invoked via updateCmd.RunE
+// THEN (per AC-CRR-007):
+//   (a) runMigrateAgency fires INDEPENDENTLY of the v2 fingerprint verdict —
+//       proved by `.agency.archived/` existing (Phase 1 backup side-effect
+//       created only by the real migrateAgencyRunner.Run());
+//   (c) full clean-reinstall is NOT activated — proved by absence of any
+//       `.moai/backups/v2-to-v3-*-{stamp}/` directory.
+//
+// PRE-M3 (RED): the migration lives only inside runCleanReinstall Step 3.5,
+// gated on fp.V2DetectedViaAgencyDir. With IsV2=false the gate never opens,
+// so `.agency.archived/` is never created → assertion (a) FAILS.
+//
+// POST-M3 (GREEN): runUpdate carries an independent pre-step that probes
+// `.agency/` directly (gated by isMoAIProject) and fires
+// runAgencyMigrationAdapter BEFORE detectV2Fingerprint, so `.agency.archived/`
+// is created regardless of the v2 fingerprint verdict.
+func TestRunUpdate_V3ProjectWithAgencyDir_MigratesIndependently(t *testing.T) {
+	// Fixture: v3 project with lingering .agency/. The PRESERVE seed is
+	// included so isMoAIProject sees a real moai project (system.yaml is the
+	// positive marker; the SPEC file makes the tree look non-empty).
+	root := t.TempDir()
+	writeTestFile(t, root, ".moai/config/sections/system.yaml",
+		"moai:\n    version: v3.0.0-rc2\n")
+	makeTestDir(t, root, ".agency")
+	writeTestFile(t, root, ".agency/index.md", "legacy agency content\n")
+	// PRESERVE seed (mirrors ScenarioA/B/C pattern).
+	writeTestFile(t, root, ".moai/specs/SPEC-USER-007/spec.md", "user spec\n")
+
+	// runUpdate reads cwd via os.Getwd() — chdir into the fixture root.
+	origDir, err := os.Getwd()
+	if err != nil {
+		t.Fatalf("getwd: %v", err)
+	}
+	defer func() { _ = os.Chdir(origDir) }()
+	if err := os.Chdir(root); err != nil {
+		t.Fatalf("chdir fixture: %v", err)
+	}
+
+	// Mirror the TestRunUpdate_DefaultIsTemplateSync call pattern
+	// (coverage_test.go:420): stub deps.UpdateChecker so the pre-line-281
+	// setup does not attempt a network update probe.
+	origDeps := deps
+	defer func() { deps = origDeps }()
+	deps = &Dependencies{UpdateChecker: &mockUpdateChecker{}}
+
+	updateCmd.SetOut(io.Discard)
+	updateCmd.SetErr(io.Discard)
+	updateCmd.SetContext(context.Background())
+	if err := updateCmd.Flags().Set("check", "false"); err != nil {
+		t.Fatalf("set check flag: %v", err)
+	}
+	if err := updateCmd.Flags().Set("yes", "true"); err != nil {
+		t.Fatalf("set yes flag: %v", err)
+	}
+
+	// Invoke runUpdate via the cobra RunE handler. We do NOT hard-fail on
+	// a non-nil err: the load-bearing signal is the filesystem side-effect
+	// (.agency.archived/ existing), not end-to-end runUpdate success. The
+	// downstream template sync may emit warnings on this minimal fixture
+	// without affecting the AC-CRR-007 invariant.
+	if runErr := updateCmd.RunE(updateCmd, []string{}); runErr != nil {
+		t.Logf("runUpdate returned err (non-fatal for AC-CRR-007 check): %v", runErr)
+	}
+
+	// AC-CRR-007(a): migration fired independently of v2 fingerprint.
+	// Prove it by the Phase 1 backup side-effect — `.agency.archived/` is
+	// created only by the real migrateAgencyRunner.Run() (Phase 1 copyDir).
+	archiveDir := filepath.Join(root, ".agency.archived")
+	if _, err := os.Stat(archiveDir); err != nil {
+		t.Errorf("AC-CRR-007(a): .agency.archived/ missing after runUpdate (%v); "+
+			"independent .agency migration did not fire for this v3-with-agency fixture", err)
+	}
+
+	// AC-CRR-007(c): clean-reinstall NOT activated. Prove it by absence of
+	// any v2-to-v3 backup directory (runCleanReinstall Step 2 creates these).
+	backupMatches, _ := filepath.Glob(filepath.Join(root, ".moai", "backups", "v2-to-v3-*"))
+	if len(backupMatches) != 0 {
+		t.Errorf("AC-CRR-007(c): v2-to-v3 backup dirs exist at %v; "+
+			"clean-reinstall should NOT activate for a v3 project", backupMatches)
+	}
+}
+
 // TestResolveV2BackupDir_CollisionHandling verifies that same-second
 // directory collisions are resolved via numeric suffix.
 func TestResolveV2BackupDir_CollisionHandling(t *testing.T) {
