@@ -153,6 +153,42 @@ All non-colliding classes ported BARE (zero regression — AC-BLD-001 confirms n
 
 **Parallel-session safety:** specific-path `git add` only (B8/B10) — 5 files staged are disjoint from the active parallel session's `internal/cli/` + `README.*.md` + `.moai/config/sections/llm.yaml` scope. system.yaml/CHANGELOG/version.go (pre-existing parallel-session mods) explicitly excluded from the pathspec.
 
+### M3c-1 — page templates (index.html + list.html → round3 docs-index)
+
+**Scope:** HOME template (`docs-site/layouts/index.html`) rewritten + SECTION-LISTING template (`docs-site/layouts/_default/list.html`) created. Both consume the round3 docs-index layout shipped in M3a (`docs-site/static/moai-docs-layout.css`). single.html / doc-rail / 404 are OUT OF SCOPE (M3c-2). baseof.html / site-header.html / site-footer.html untouched (M3b done).
+
+**Deliverable D1 — `docs-site/layouts/index.html` (rewritten, 131 lines):**
+- DOM order matches round3 docs-index: `docs-hero` → `docs-filters` (sticky pill bar) → `docs-featured` → `docs-grid-section`.
+- `docs-hero`: mascot `<img>` (`mascot-coding.png`) PRESERVED; eyebrow/h1/sub reuse `hero_eyebrow` / `hero_title` / `hero_lead`; 2 CTAs reuse `hero_cta_start` / `hero_cta_browse` with `md-btn` classes + inline SVG arrow; 4 stat pairs PRESERVED verbatim — 11/`stat_agents`, 16/`stat_langs`, `85%+`/`stat_coverage`, `Go`/`stat_binary`.
+- `docs-filters`: sticky pill bar, static `<a class="docs-pill">` links per `$cards` entry via `site.GetPage`, count badge = `.RegularPagesRecursive` count. NO client-side JS (faithful static).
+- `docs-featured`: single featured card resolving `site.GetPage "/getting-started"` (no `featured: true` frontmatter exists anywhere; getting-started is the "start here" CTA). Uses `browse_pill` (featured-eye), `.Title`, `.Description`, `docs_count` (featured-meta), `hero_cta_start` (featured-cta), `mascot-talking.png` (featured-illu).
+- `docs-grid-section`: `.grid-section-head` (`browse_title` + `len $cards`) + `.docs-grid` ranging the 8 curated `$cards` → `.doc-card` per item with `.thumb-{{ add $i 1 }}` cyclic variant, preserved inline-SVG icon mapping (rocket/book/terminal/layers/wrench/cpu/git/db), `.doc-thumb-cat`, `.doc-thumb-num` (`printf "%02d"`), `.doc-body` (h4, `.doc-excerpt` = `i18n $card.desc`, `.doc-meta .views` = `docs_count`).
+- Bottom `.md-home-content` preserves `partial "utils/content" .` so pipeline-owned `content/<locale>/_index.md` body still renders.
+- `{{ define "main" }}` block contract PRESERVED (baseof L49 `{{ template "main" . }}`).
+- Curated `$cards` slice (8 entries) PRESERVED byte-for-byte.
+
+**Deliverable D2 — `docs-site/layouts/_default/list.html` (NEWLY CREATED, 47 lines):**
+- Did NOT exist before (Hugo fell back to its internal template). Now a round3 variant exists.
+- `docs-hero`: `browse_pill` (eyebrow), `.Title` (h1), `.Description` (sub, conditional), `docs-stats` with `len .Pages` + `docs_count` label.
+- `docs-grid-section`: `.docs-grid` ranges `.Pages` → `.doc-card` per page with `.thumb-{{ add (mod $i 8) 1 }}` (8-cycle), `.doc-thumb-cat` = `$.Title`, generic document SVG, `.doc-thumb-num` (`printf "%02d"`), `.doc-body` (h4 = `$page.Title`, `.doc-excerpt` = `$page.Description | default ($page.Summary | truncate 120)`, `.doc-meta .read-time` = `$page.ReadingTime`+"m").
+- NO featured card (sections have no `featured: true` frontmatter).
+- Bottom `{{ .Content }}` renders section `_index` body when authored.
+- `{{ define "main" }}` block contract PRESERVED.
+
+**i18n discipline (PRESERVE constraint):** every `{{ i18n "..." }}` call in both templates reuses EXISTING keys (`hero_eyebrow`, `hero_title`, `hero_lead`, `hero_cta_start`, `hero_cta_browse`, `stat_agents`, `stat_langs`, `stat_coverage`, `stat_binary`, `browse_title`, `browse_pill`, `docs_count`, + the 8 `card_desc_*` keys). NO new i18n keys invented. `docs-site/i18n/{en,ja,ko,zh-cn}.yaml` untouched.
+
+**Stats discipline:** the 4 home-hero stat values (11 retained agents / 16 supported languages / 85%+ coverage target / Go single binary) are preserved verbatim from the prior index.html — no placeholder numbers, no drift.
+
+**No-emoji discipline (CLAUDE.local.md §17.1):** both templates use inline SVG (`<svg viewBox="0 0 24 24">`) for icons, NOT emoji. Verified clean via `grep -nP '[\x{1F000}-\x{1FAFF}\x{2600}-\x{27BF}\x{2B00}-\x{2BFF}]'` on both files (exit 1 = no matches). Typography marks (`→`) and the mascot `<img>` are preserved per the icon convention (not emoji).
+
+**Round3 CSS class coverage (M3a-owned `moai-docs-layout.css`):** both templates reference only classes that ship in `moai-docs-layout.css` L34-136 — `.docs-hero`, `.docs-hero-inner`, `.docs-eyebrow`, `.docs-h1`, `.docs-sub`, `.docs-stats`, `.docs-stat-num`, `.docs-stat-lbl`, `.docs-filters`, `.docs-filters-inner`, `.docs-pill-row`, `.docs-pill` + `.count`, `.docs-featured`, `.featured-card`, `.featured-eye`, `.featured-meta`, `.featured-cta`, `.featured-illu`, `.docs-grid-section`, `.grid-section-head`, `.docs-grid`, `.doc-card`, `.doc-thumb` + `.thumb-1..8`, `.doc-thumb-cat`, `.doc-thumb-icon`, `.doc-thumb-num`, `.doc-body`, `.doc-excerpt`, `.doc-meta`. Legacy `md-btn` / `md-hero-cta` / `md-home-content` classes from `moai-docs-theme.css` are reused (that file survived M3a).
+
+**Build verification (AC-BLD-001):** `hugo --gc --minify` (extended v0.160.1+extended+withdeploy) from `docs-site/` → exit 0, 0 WARN / 0 ERROR. Page counts: KO 153 / EN 150 / JA 139 / ZH 150 — identical to the M3b baseline (NO drop, NO new pages, NO missing pages). Build time 2983ms.
+
+**Self-referential SHA note:** M3c-1 source + this evidence land in the SAME commit (B9 one-commit constraint). Per the spec-frontmatter-schema §D3 SHA-placeholder-backfill-exemption principle, the M3c-1 milestone header omits the inline SHA — matching M2/M3a/M3b style. git log is the authoritative SHA record; the orchestrator's final report carries the post-push SHA.
+
+**Parallel-session safety:** specific-path `git add docs-site/layouts/index.html docs-site/layouts/_default/list.html .moai/specs/SPEC-DESIGN-DOCSV2-001/progress.md` only (B8/B10) — the 3 staged files are disjoint from the active parallel session's `internal/cli/` + `README.ko.md` + `.moai/config/sections/llm.yaml` scope. Tree was clean at branch-switch time (no stash needed); `release/v3.0.0` restored post-push.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _(pending run-phase)_
