@@ -45,13 +45,19 @@ type DeprecatedPathEntry struct {
 // un-deprecated (live v3 config, shipped by the template AND read by
 // loadDesignSection / loadMigrationPatterns), reducing Category B 31→29 and
 // the total to 41 entries.
+// Further reduced by SPEC-UPDATE-REINSTALL-LOOP-001 (issue #1084): the stale
+// `.claude/rules/moai/design` entry was removed because it collided with the
+// v3 template (infinite clean-reinstall loop), reducing Category B 29→28 and
+// the total 41→40 entries.
 //
 // @MX:ANCHOR: SSOT for v.2.x → v3 cleanup targets.
-// @MX:REASON: External-user cleanup correctness depends on the 41-entry total
-// + 9/29/3 category split; the count is governed by
-// SPEC-DEPRECATEDPATHS-RECONCILE-001 (origin SPEC-V3R6-V2-V3-CLEAN-REINSTALL-001
-// §A.4 is the historical 43-entry derivation). Modifications MUST update both
-// this slice and internal/defs/dirs_test.go atomically.
+// @MX:REASON: External-user cleanup correctness depends on the 40-entry total
+// + 9/28/3 category split; the count is governed by
+// SPEC-DEPRECATEDPATHS-RECONCILE-001 + SPEC-UPDATE-REINSTALL-LOOP-001 (origin
+// SPEC-V3R6-V2-V3-CLEAN-REINSTALL-001 §A.4 is the historical 43-entry
+// derivation). Modifications MUST update both this slice and
+// internal/defs/dirs_test.go atomically. The DeprecatedPaths↔template
+// intersection MUST remain empty (TestDeprecatedPaths_NoTemplateCollision).
 var DeprecatedPaths = []DeprecatedPathEntry{
 	// ====================================================================
 	// Category A — Pre-existing entries (9; SPEC-AGENCY-ABSORB-001)
@@ -111,7 +117,9 @@ var DeprecatedPaths = []DeprecatedPathEntry{
 		RemovalSchedule: "v3.0.0",
 	},
 	// ====================================================================
-	// Category B — v.2.x-era NEW entries (31; SPEC-V3R6-V2-V3-CLEAN-REINSTALL-001)
+	// Category B — v.2.x-era NEW entries (28; SPEC-V3R6-V2-V3-CLEAN-REINSTALL-001)
+	// Originally 31; reconciled 31→29 (SPEC-DEPRECATEDPATHS-RECONCILE-001) then
+	// 29→28 (SPEC-UPDATE-REINSTALL-LOOP-001 removed the design-rule collision).
 	// All paths use v.2.x FLAT layout verified by `git ls-tree -r 1bd083725^`.
 	// ====================================================================
 	// v2 directories
@@ -280,13 +288,17 @@ var DeprecatedPaths = []DeprecatedPathEntry{
 		DeprecatedBy:    "SPEC-V3R6-V2-V3-CLEAN-REINSTALL-001",
 		RemovalSchedule: "v3.0.0",
 	},
-	// design rule directory
-	{
-		Path:            ".claude/rules/moai/design",
-		DeprecatedSince: "SPEC-V3R6-V2-V3-CLEAN-REINSTALL-001",
-		DeprecatedBy:    "SPEC-V3R6-V2-V3-CLEAN-REINSTALL-001",
-		RemovalSchedule: "v3.0.0",
-	},
+	// NOTE: `.claude/rules/moai/design` was REMOVED from this slice by
+	// SPEC-UPDATE-REINSTALL-LOOP-001 (issue #1084). It was a stale v2-cleanup
+	// entry that collided with the v3 template — the embedded template ships
+	// `.claude/rules/moai/design/constitution.md`, so listing it here made the
+	// "deprecated path present" v2-detection signal fire perpetually, driving an
+	// infinite clean-reinstall loop (remove-then-redeploy, zero net change). The
+	// template legitimately ships that directory now; the DeprecatedPaths entry
+	// was the stale artifact, so it is removed rather than the template file.
+	// This reverses the one entry added by SPEC-V3R6-V2-V3-CLEAN-REINSTALL-001;
+	// the DeprecatedPaths↔template intersection is now empty and guarded by
+	// TestDeprecatedPaths_NoTemplateCollision (internal/cli).
 	// brand + db directories
 	{
 		Path:            ".moai/project/brand",
