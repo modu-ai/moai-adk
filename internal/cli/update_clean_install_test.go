@@ -100,13 +100,23 @@ func makeScenarioA(t *testing.T) string {
 	return root
 }
 
-// makeScenarioB constructs a partial v2 project — only .agency/ legacy
-// directory present (Signal 2 only). system.yaml is v3-clean.
+// makeScenarioB constructs a partial v2 project — a v2-era version with a
+// lingering .agency/ legacy directory (Signals 1 + 2). The version is v2.*
+// (not v3.*) so REQ-CRR-001's v3-version negative-override does NOT fire —
+// this is the genuine partial-v2 migration case per acceptance.md §D.6 Edge-2
+// ("a v2-project case (system.yaml carries v2.* version)").
+//
+// Prior to SPEC-V3R6-V2-V3-CLEAN-REINSTALL-002 this fixture used v3.0.0-rc2,
+// which — under the old pure-disjunction aggregation — drove IsV2=true via
+// Signal 2 alone. REQ-CRR-001 corrected that: a v3.* version with .agency/
+// residue is now IsV2=false (AC-CRR-007: clean-reinstall NOT activated for a
+// v3 project). To keep this scenario testing the partial-v2 → clean-reinstall
+// path, the version was changed to v2.* — the realistic v2-project setup.
 func makeScenarioB(t *testing.T) string {
 	t.Helper()
 	root := t.TempDir()
 	writeTestFile(t, root, ".moai/config/sections/system.yaml",
-		"moai:\n    version: v3.0.0-rc2\n")
+		"moai:\n    version: v2.16.1\n")
 	makeTestDir(t, root, ".agency")
 	writeTestFile(t, root, ".agency/index.md", "legacy agency content\n")
 
@@ -209,10 +219,10 @@ func TestRunCleanReinstall_ScenarioA(t *testing.T) {
 	}
 }
 
-// TestRunCleanReinstall_ScenarioB verifies partial v2 path (only .agency/):
-//   - Signal 2 fires (agency dir)
-//   - Other signals do not fire (or fire only via deprecated paths if they
-//     happen to exist; in this scenario they do not)
+// TestRunCleanReinstall_ScenarioB verifies partial v2 path (v2.* version +
+// .agency/ residue, no deprecated paths):
+//   - Signals 1 (v2.* version) + 2 (agency dir) fire
+//   - REQ-CRR-001 v3-version negative-override does NOT fire (version is v2.*)
 //   - runMigrateAgency is auto-invoked
 //   - Deployer is invoked
 func TestRunCleanReinstall_ScenarioB(t *testing.T) {

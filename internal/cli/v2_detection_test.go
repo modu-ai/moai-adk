@@ -251,16 +251,20 @@ func TestDetectV2Fingerprint_IsV2_Aggregation(t *testing.T) {
 			wantIsV2:   true,
 		},
 		{
-			name:       "Signal 2 alone (.agency/) → IsV2 true",
+			// REQ-CRR-001 (SPEC-V3R6-V2-V3-CLEAN-REINSTALL-002): a populated
+			// v3.* version short-circuits Signal 2 (.agency/ residue).
+			name:       "v3.* + .agency/ residue → IsV2 false (REQ-CRR-001 v3-version negative-override)",
 			systemYAML: "moai:\n    version: v3.0.0-rc2\n",
 			makeAgency: true,
-			wantIsV2:   true,
+			wantIsV2:   false,
 		},
 		{
-			name:       "Signal 3 alone (deprecated path) → IsV2 true",
+			// REQ-CRR-001: a populated v3.* version short-circuits Signal 3
+			// (DeprecatedPaths residue).
+			name:       "v3.* + deprecated path residue → IsV2 false (REQ-CRR-001 v3-version negative-override)",
 			systemYAML: "moai:\n    version: v3.0.0-rc2\n",
 			seedPath:   ".claude/agents/moai/manager-strategy.md",
-			wantIsV2:   true,
+			wantIsV2:   false,
 		},
 		{
 			name:        "Signal 1 (file missing) alone → IsV2 true",
@@ -297,6 +301,69 @@ func TestDetectV2Fingerprint_IsV2_Aggregation(t *testing.T) {
 				t.Errorf("IsV2 = %v, want %v (fp = %+v)", fp.IsV2, tt.wantIsV2, fp)
 			}
 		})
+	}
+}
+
+// TestDetectV2Fingerprint_V3Override_AC_CRR_002 is the AC-CRR-002 reproduction
+// test (SPEC-V3R6-V2-V3-CLEAN-REINSTALL-002) at the fingerprint level.
+//
+// A genuine v3 project (populated v3.* system.yaml) carrying stale legacy
+// residue (a lingering .agency/ dir AND a DeprecatedPath seed) MUST resolve
+// IsV2 = false. This is the loop-termination contract: when IsV2 is false,
+// runUpdate does NOT enter the clean-reinstall path, so a second `moai update`
+// converges instead of looping (#1084).
+//
+// REQ-CRR-001: a confirmed v3.* version short-circuits Signal 2 / Signal 3.
+//
+// Pre-fix expectation: FAIL — the current aggregation is a pure disjunction,
+// so Signal 2 (.agency/) OR Signal 3 (deprecated path) drives IsV2 to true
+// despite the populated v3 version.
+func TestDetectV2Fingerprint_V3Override_AC_CRR_002(t *testing.T) {
+	root := t.TempDir()
+
+	// Populated v3.* version — the negative-override trigger.
+	writeTestFile(t, root, ".moai/config/sections/system.yaml",
+		"moai:\n    version: v3.0.0\n")
+
+	// Stale legacy residue that would otherwise trip Signal 2 / Signal 3.
+	makeTestDir(t, root, ".agency")
+	writeTestFile(t, root, ".claude/agents/moai/manager-strategy.md", "stub\n")
+
+	fp, err := detectV2Fingerprint(root)
+	if err != nil {
+		t.Fatalf("detectV2Fingerprint: unexpected error: %v", err)
+	}
+
+	if fp.IsV2 {
+		t.Errorf("AC-CRR-002: IsV2 = true; want false "+
+			"(REQ-CRR-001 v3-version negative-override must short-circuit "+
+			"Signal 2/3 legacy residue)\nfp = %+v", fp)
+	}
+
+	// Verify the override MECHANISM, not just the outcome: V3VersionConfirmed
+	// must be true (the override fired), and the per-signal flags must still
+	// reflect that legacy residue WAS detected (Signal 2 + Signal 3 positive)
+	// — proving the override short-circuited rather than the residue being
+	// absent.
+	if !fp.V3VersionConfirmed {
+		t.Errorf("AC-CRR-001(a)/AC-CRR-002: V3VersionConfirmed = false; want true "+
+			"(populated v3.* version must set the override flag)\nfp = %+v", fp)
+	}
+	if !fp.V2DetectedViaAgencyDir {
+		t.Errorf("AC-CRR-002: V2DetectedViaAgencyDir = false; want true "+
+			"(.agency/ residue WAS present — override must short-circuit, not hide)")
+	}
+	if !fp.V2DetectedViaDeprecatedPath {
+		t.Errorf("AC-CRR-002: V2DetectedViaDeprecatedPath = false; want true "+
+			"(deprecated path residue WAS present — override must short-circuit, not hide)")
+	}
+	// AC-CRR-001(b): the version_signal detail MUST name the v3-version
+	// negative-override so callers (telemetry / --dry-run) report WHY IsV2
+	// was forced false.
+	versionDetail := fp.SignalDetails["version_signal"]
+	if !containsLowerSubstring(versionDetail, "v3-version negative-override") {
+		t.Errorf("AC-CRR-001(b): SignalDetails[\"version_signal\"] = %q; "+
+			"want substring \"v3-version negative-override\"", versionDetail)
 	}
 }
 
