@@ -108,6 +108,51 @@ Renames: `.toc` → `.docs-toc` (+ variants `.docs-toc-h/-list/-list li/a/a:hove
 
 **Parallel-session safety:** specific-path `git add` only (B8/B10) — the 4 files staged are disjoint from the parallel session's `internal/cli/` + `README.*.md` scope.
 
+### M3b — Frame Rewrite (round3 nav/footer shell, infra preserved)
+
+**Scope:** FRAME ONLY — `baseof.html` shell + `site-header.html` visual chrome + `site-footer.html` + frame CSS port. No `index.html`/`single.html`/`list.html`/doc partials (M3c scope). No prose-kr / code-mac (M3c/M3d). The frame CSS makes the round3 classes LIVE (M3a shipped them inert); the 3 template rewrites wire the round3 `.docs-nav`/`.docs-main`/`.docs-footer` geometry onto the existing geekdoc hooks.
+
+**AC Matrix (M3b scope — frame ACs + AC-BLD-001 re-verify):**
+
+| AC | Status | Verification Command | Result |
+|---|---|---|---|
+| AC-FRM-001 (frame CSS ported) | PASS | `grep -cE 'docs-nav\|docs-footer\|docs-btn\|docs-card\|nav-inner\|footer-grid' docs-site/static/moai-docs-layout.css` | `15` (6 namespace-renamed families all present: docs-nav=2, docs-footer=2, docs-btn=2, docs-card=2, nav-inner=3, footer-grid=2). Bare-ported families verified present: nav-logo=3, nav-menu=2, nav-link=4, nav-utility=2, nav-search=4, nav-search-key=2, footer-inner=2, footer-col=5, footer-bottom=2, btn-primary/secondary/ghost=3 each, chip=6, eyebrow=3, page=2, docs-main=2, docs-container=2 |
+| AC-FRM-002 (baseof infra preserved) | PASS | `grep -nE 'color-theme="light"\|gdoc-nav\|gdoc-page\|template "main"\|partial "site-header"\|partial "site-footer"\|MutationObserver' docs-site/layouts/_default/baseof.html` | L5 `color-theme="light"`; L34 `class="wrapper page ..."`; L37 `{{ partial "site-header" (dict "Root" . "MenuEnabled" $navEnabled) }}`; L42 `<aside class="gdoc-nav">`; L48 `<div class="gdoc-page">`; L49 `{{ template "main" . }}`; L129 `{{ partial "site-footer" . }}`; L181 `new MutationObserver(...)` |
+| AC-FRM-003 (header infra preserved) | PASS | `grep -nE 'data-search-trigger\|data-search-modal\|data-search-input\|data-search-results\|data-search-close\|cw-lang-switch\|data-gh-stars\|hugo\.Sites\|search\.json\|localStorage\|cw-ver-pill' docs-site/layouts/partials/site-header.html` | L16 `data-search-trigger`; L22 `cw-ver-pill`; L24 `cw-lang-switch`; L25 `hugo.Sites`; L38/41 `cw-gh-stars`/`data-gh-stars`; L48 `data-search-modal`; L53 `data-search-input`; L56 `data-search-results`; L49/54 `data-search-close`; L65-77 GitHub stars fetch JS (KEY=`cw-gh-stars`, TTL=24h, localStorage cache); L84-111 search modal JS (`/search.json` fetch + fuzzy scoring: title.includes +100, startsWith +50, content min(cm*5, 40)) |
+| AC-FRM-004 (footer attributions preserved) | PASS | `grep -nE 'Copyleft\|모두의AI\|MIT License\|anthropic\.com\|modu-ai' docs-site/layouts/partials/site-footer.html` | L5 `🄏 Copyleft MoAI - 모두의AI`; L9 GitHub link; L10 `MIT License`; L15 `Anthropic`; L16 `modu-ai` |
+| AC-BLD-001 (hugo build) | PASS | `cd docs-site && hugo --minify --gc` | exit 0, 0 WARN/ERROR; KO 153p / EN 150p / JA 139p / ZH 150p; 2470ms (hugo v0.160.1+extended+withdeploy darwin/arm64) |
+
+**Files touched (4 + this progress.md):**
+- `docs-site/static/moai-docs-layout.css` — appended Frame section: round3 `.nav`/`.page`/`.footer`/`.btn`/`.card`/`.chip`/`.eyebrow` families ported from round3 prototypes, with 6 collision-driven namespace renames; all non-colliding classes bare-ported. This is the SECOND section of moai-docs-layout.css (M3a ported layout-geometry; M3b ports the frame chrome that M3a deliberately excluded).
+- `docs-site/layouts/_default/baseof.html` — shell geometry: `.wrapper` gains `page` class (L34); `<main class="container flex flex-even">` gains `docs-main` (L40). geekdoc hooks PRESERVED verbatim: `gdoc-nav` aside + `{{ partial "menu" . }}` (L42-43, AP-7), `gdoc-page` div (L48, AP-7), `{{ template "main" . }}` (L49), `site-header`/`site-footer` partials (L37/L129). REQ-LIT-001 light-only: `color-theme="light"` (L5) + MutationObserver force-restore (L181-188). Right-rail `.cw-toc` + prev/next `.cw-pg-nav` + code-card copy JS all PRESERVED.
+- `docs-site/layouts/partials/site-header.html` — round3 `.docs-nav`/`.nav-inner`/`.nav-logo`/`.nav-utility` visual chrome wraps the existing brand mark + search/lang/github cluster. ⌘K search modal markup + fuzzy-search JS, `cw-lang-switch` (4-locale KO/EN/JA/CN over `hugo.Sites`), GitHub Star fetch with 24h localStorage cache, version pill — ALL PRESERVED verbatim (L47-164 unchanged).
+- `docs-site/layouts/partials/site-footer.html` — rewritten to round3 `.docs-footer`/`.footer-inner`/`.footer-grid`/`.footer-col`/`.footer-bottom` structure. 🄏 copyleft "MoAI - 모두의AI", GitHub + MIT License links, Anthropic + modu-ai attribution — ALL PRESERVED.
+- `.moai/specs/SPEC-DESIGN-DOCSV2-001/progress.md` — this M3b evidence sub-section.
+
+**Collision renames (6 applied per task collision-guard instruction):**
+
+| round3 class | collision target | Renamed to |
+|---|---|---|
+| `.nav` | geekdoc `.gdoc-nav` + live moai-design.css descendants | `.docs-nav` |
+| `.footer` | geekdoc `.gdoc-footer` + `.cw-footer` | `.docs-footer` |
+| `.btn` | moai-design.css `.copy-btn` / `.cw-*` btn descendants | `.docs-btn` |
+| `.card` | moai-design.css `.cw-card` / `.code-card` | `.docs-card` |
+| `.main` | geekdoc `<main>` base element | `.docs-main` |
+| `.container` | geekdoc 82rem `.container` (LIVE — would clobber max-width) | `.docs-container` |
+
+All non-colliding classes ported BARE (zero regression — AC-BLD-001 confirms no layout shift): `.nav-inner`, `.nav-logo`, `.nav-menu`, `.nav-link`, `.nav-utility`, `.nav-search`, `.nav-search-key`, `.nav-icon-btn`, `.nav-login`, `.footer-inner`, `.footer-grid`, `.footer-brand-tag`, `.footer-col`, `.footer-bottom`, `.mobile-nav*`, `.btn-primary`, `.btn-secondary`, `.btn-ghost`, `.btn-lg`, `.chip*`, `.eyebrow*`, `.page`.
+
+**Infrastructure preserved (logic intact — D2/D3/D4 + REQ-LIT-001 confirmed by grep + build):**
+- **⌘K search** (`data-search-trigger` → modal; fuzzy search over `/search.json`; ESC + backdrop close): PRESERVED verbatim in site-header.html L47-164.
+- **Language switch** (`cw-lang-switch` over `hugo.Sites`, 4-locale KO/EN/JA/CN, `AllTranslations` href resolution, active/aria-current marking): PRESERVED.
+- **GitHub stars** (`data-gh-stars` fetch + 24h localStorage cache, KEY=`cw-gh-stars`, TTL=24h): PRESERVED.
+- **Light-only theme enforcement** (REQ-LIT-001): `color-theme="light"` attribute (baseof L5) + MutationObserver (baseof L181-188) force-restores light on any external mutation; `data-theme` stripped; geekdoc toggle button handler neutralized. PRESERVED.
+- **`!important` cascade (deferred to M3c)**: moai-docs-theme.css `.gdoc-header`/`.cw-footer` carry `!important` green-gradient backgrounds that override round3 non-`!important` backgrounds. round3 STRUCTURE (sticky/height/flex/grid) applies cleanly; green-tint bg stays coherent with the design-system primary. Cannot edit moai-docs-theme.css in M3b scope; noted for M3c reconciliation.
+
+**Self-referential SHA note:** M3b source + this evidence land in the SAME commit (B9 one-commit constraint). Per spec-frontmatter-schema §D3 SHA-placeholder-backfill-exemption principle (a commit cannot reference its own SHA), the M3b milestone header omits the inline SHA — matching the M2/M3a header style (M1 is the only milestone that carries an inline SHA, backfilled in a later commit). git log is the authoritative SHA record; the orchestrator's final report carries the post-push SHA.
+
+**Parallel-session safety:** specific-path `git add` only (B8/B10) — 5 files staged are disjoint from the active parallel session's `internal/cli/` + `README.*.md` + `.moai/config/sections/llm.yaml` scope. system.yaml/CHANGELOG/version.go (pre-existing parallel-session mods) explicitly excluded from the pathspec.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _(pending run-phase)_

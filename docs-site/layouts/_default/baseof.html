@@ -31,13 +31,13 @@
 
 
     <div
-      class="wrapper {{ if default false .Site.Params.geekdocDarkModeDim }}dark-mode-dim{{ end }}"
+      class="wrapper page {{ if default false .Site.Params.geekdocDarkModeDim }}dark-mode-dim{{ end }}"
     >
       {{ $navEnabled := default true .Page.Params.geekdocNav }}
       {{ partial "site-header" (dict "Root" . "MenuEnabled" $navEnabled) }}
 
 
-      <main class="container flex flex-even">
+      <main class="container flex flex-even docs-main">
         {{ if $navEnabled }}
           <aside class="gdoc-nav">
             {{ partial "menu" . }}
