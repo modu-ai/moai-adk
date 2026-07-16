@@ -43,11 +43,14 @@ func TestProjectNestedGitConventionRoundTrip(t *testing.T) {
 	}
 }
 
-// TestProjectNestedRejectEchoesSubmittedValues covers the rejected-POST echo-back
-// path (applyNestedForm): when one field is invalid, the re-rendered form keeps ALL
-// submitted nested values visible (numbers, sample_size, the toggle states)
-// alongside the per-field error. Exercises every applyNestedForm *Set branch.
-func TestProjectNestedRejectEchoesSubmittedValues(t *testing.T) {
+// TestProjectNestedRejectStillRejects covers the rejected-POST server contract after
+// the project render surface was retired (SPEC-DESIGN-MOAIWEBV2-001 M1): a POST with
+// an invalid nested field is still validated and rejected atomically (400, no disk
+// write). The value-echo re-render assertions were removed with the project widgets —
+// those fields no longer render (development_mode / git_convention / quality.* are now
+// editable via yaml config / CLI), but the preserved parse+validate seam
+// (parseProjectNestedForm, REQ-MWV2-031) still rejects invalid submissions.
+func TestProjectNestedRejectStillRejects(t *testing.T) {
 	t.Parallel()
 	root := seedNestedProject(t)
 	a := realApp(t, root)
@@ -67,21 +70,13 @@ func TestProjectNestedRejectEchoesSubmittedValues(t *testing.T) {
 	if rec.Code != http.StatusBadRequest {
 		t.Fatalf("reject status = %d, want 400; body: %s", rec.Code, rec.Body.String())
 	}
-	body := rec.Body.String()
-	// The valid submitted values must be echoed back into the widgets.
-	for _, want := range []string{
-		`value="95"`,   // coverage echoed
-		`value="0.33"`, // confidence echoed
-		`value="175"`,  // sample_size echoed
-		`value="200"`,  // the invalid value is also echoed (so the user sees what they typed)
-	} {
-		if !strings.Contains(body, want) {
-			t.Errorf("rejected re-render missing echoed value %q", want)
-		}
+	// Atomic reject — no value persisted (originals survive).
+	cfg := loadRawCfg(t, root)
+	if cfg.Quality.TestCoverageTarget != 70 {
+		t.Errorf("atomic reject leaked test_coverage_target = %d, want 70", cfg.Quality.TestCoverageTarget)
 	}
-	// The per-field error is present.
-	if !strings.Contains(body, "quality.tdd_settings.min_coverage_per_commit") {
-		t.Error("rejected re-render missing the min_coverage_per_commit field error")
+	if cfg.Quality.TDDSettings.MinCoveragePerCommit != 60 {
+		t.Errorf("atomic reject leaked min_coverage_per_commit = %d, want 60", cfg.Quality.TDDSettings.MinCoveragePerCommit)
 	}
 }
 

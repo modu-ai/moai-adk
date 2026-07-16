@@ -91,9 +91,10 @@
 
 .docs-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
 .doc-card {
-  background: var(--surface); border: 1px solid var(--border);
+  background: var(--surface); border: 1px solid var(--border-card);
   border-radius: 16px; overflow: hidden;
   display: flex; flex-direction: column;
+  box-shadow: var(--shadow-sm);   /* v2 surface card 정지 elevation (M6) */
   transition: all 200ms;
 }
 .doc-card:hover { transform: translateY(-3px); border-color: var(--primary); box-shadow: var(--shadow-lg); }
@@ -493,8 +494,9 @@
 /* ───── Cards ───── */
 .docs-card {
   background: var(--surface);
-  border: 1px solid var(--border);
+  border: 1px solid var(--border-card);
   border-radius: 16px;
+  box-shadow: var(--shadow-sm);   /* v2 surface card 정지 elevation (M6) */
   overflow: hidden;
 }
 
@@ -539,3 +541,62 @@
   margin: 0 auto;
   padding: 0 40px;
 }
+
+/* ───── Mascot (v2 6-pose) — SPEC-DESIGN-DOCSV2-001 M5 ───── */
+/* base contract shared by partials/mascot.html + shortcodes/mascot.html.
+   width is set inline via the img width attr; height:auto keeps aspect. */
+.mascot {
+  display: inline-block;
+  height: auto;
+  max-width: 100%;
+  transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.mascot:hover { animation: mascot-wiggle 0.6s cubic-bezier(0.34, 1.56, 0.64, 1); }
+@keyframes mascot-wiggle {
+  0%,100% { transform: rotate(0deg); }
+  25%     { transform: rotate(-4deg); }
+  75%     { transform: rotate(4deg); }
+}
+
+/* ───── Empty section state (doc-empty partial) ───── */
+.doc-empty {
+  padding: 64px 24px;
+  text-align: center;
+}
+.doc-empty-inner {
+  max-width: 480px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+}
+.doc-empty-mascot { width: 140px; }
+.doc-empty-title {
+  font-size: 22px;
+  font-weight: 800;
+  letter-spacing: var(--tracking-heading, -0.05em);
+  color: var(--ink);
+  margin: 0;
+}
+.doc-empty-text {
+  font-size: 15px;
+  line-height: 1.7;
+  color: var(--muted-fg, var(--fg-2));
+  margin: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mascot { transition-duration: 1ms; }
+  .mascot:hover { animation-duration: 1ms; }
+}
+
+/* ───── prose-kr — 한국어 본문 가독성 보강 레이어 (SPEC-DESIGN-DOCSV2-001 M7) ─────
+   single.html 본문 래퍼가 `.gdoc-markdown prose-kr` 로 항상 붙인다. gdoc-markdown 이
+   기본 타이포그래피(폰트/수직리듬/코드블록 = render-codeblock.html .code-card)를 소유;
+   prose-kr 은 그 위에 한국어 어절 단위 줄바꿈만 얇게 덧입힌다(헤딩/코드/리듬 재정의 없음
+   → 충돌·리그레션 방지). word-break: keep-all 은 CJK(ja/zh) 폭 오버플로를 피하려
+   한국어에만 스코프(<html lang="ko">). round3 styles.css §.prose-kr 의 핵심만 이식. */
+.prose-kr { overflow-wrap: break-word; }
+:lang(ko) .prose-kr,
+html[lang="ko"] .prose-kr { word-break: keep-all; }

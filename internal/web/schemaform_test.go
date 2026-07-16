@@ -74,13 +74,19 @@ func TestConsoleRendersReportTab(t *testing.T) {
 		t.Error("rendered console missing report.format select input")
 	}
 	// De-duplication boundary: report.format must NOT render inside the launch panel.
+	// SPEC-DESIGN-MOAIWEBV2-001 M1: the orphan `project` panel was removed, so the
+	// panel rendered immediately after `launch` is now `llm` (first schemaSectionMeta).
 	launchStart := strings.Index(html, `data-panel="launch"`)
-	projectStart := strings.Index(html, `data-panel="project"`)
-	if launchStart < 0 || projectStart < 0 || projectStart <= launchStart {
-		t.Fatal("could not locate launch/project panel boundaries in rendered HTML")
+	nextStart := strings.Index(html, `data-panel="llm"`)
+	if launchStart < 0 || nextStart < 0 || nextStart <= launchStart {
+		t.Fatal("could not locate launch/llm panel boundaries in rendered HTML")
 	}
-	launchPanel := html[launchStart:projectStart]
+	launchPanel := html[launchStart:nextStart]
 	if strings.Contains(launchPanel, `report.format`) {
 		t.Error("launch panel still renders report.format (de-duplication failed)")
+	}
+	// SPEC-DESIGN-MOAIWEBV2-001 M1: no orphan `project` panel remains in the render.
+	if strings.Contains(html, `data-panel="project"`) {
+		t.Error(`orphan project panel still rendered (data-panel="project" should be removed)`)
 	}
 }

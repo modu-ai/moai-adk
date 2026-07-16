@@ -35,6 +35,22 @@ notfound_title: "Page not found"
 notfound_text: "The address may have changed or the page was removed. No worries — let's start again from the docs home."
 notfound_home: "Back to docs home"
 notfound_search: "Search"
+
+# Empty section state (doc-empty partial)
+empty_title: "This section is coming soon"
+empty_text: "Sub-guides for this section are on the way. Browse the other docs in the meantime."
+
+# Doc-detail right rail (doc-rail partial)
+rail_actions_title: "Use this guide"
+rail_like: "Like"
+rail_bookmark: "Bookmark"
+rail_share: "Share"
+rail_print: "Print"
+rail_related_title: "Related guides"
+rail_read_min: "{{ . }} min read"
+rail_cta_title: "Get started"
+rail_cta_body: "Browse all the docs and find your next guide."
+rail_cta_link: "Docs home →"
 card_desc_getting_started: "From a 30-second install to your first SPEC — the easiest path in."
 card_desc_core_concepts: "SPEC, DDD, TRUST 5 — the principles that hold MoAI-ADK together."
 card_desc_workflow_commands: "/moai plan·run·sync — the 3-phase development workflow commands."

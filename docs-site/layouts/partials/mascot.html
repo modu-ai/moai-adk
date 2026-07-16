@@ -1,0 +1,25 @@
+{{- /* 마스코트 배치 partial — v2 6-포즈 (SPEC-DESIGN-DOCSV2-001 M5).
+       레이아웃 레벨 배치용(홈 히어로 / 404 / 빈 섹션). shortcodes/mascot.html 과
+       동일한 <img class="mascot mascot-<pose>"> 계약을 공유한다.
+       파일명은 Capitalized(MoAI-Mascot-<Pose>.png), pose 파라미터는 lowercase.
+       사용: {{ partial "mascot.html" (dict "pose" "explaining" "size" "150" "class" "md-hero-mascot") }}
+             {{ partial "mascot.html" "thinking" }}
+       pose(필수): thinking | pointing | searching | teaching | explaining | coffee
+       size(옵션): 너비 px, 기본 150. class(옵션): 추가 클래스. */ -}}
+{{- $pose := "" -}}
+{{- $size := "150" -}}
+{{- $extra := "" -}}
+{{- if reflect.IsMap . -}}
+  {{- $pose = .pose -}}
+  {{- $size = .size | default "150" -}}
+  {{- $extra = .class | default "" -}}
+{{- else -}}
+  {{- $pose = . -}}
+{{- end -}}
+{{- $valid := slice "thinking" "pointing" "searching" "teaching" "explaining" "coffee" -}}
+{{- if not (in $valid $pose) -}}{{ errorf "mascot partial: unknown pose %q (use thinking|pointing|searching|teaching|explaining|coffee)" $pose }}{{- end -}}
+{{- $file := printf "mascots/MoAI-Mascot-%s.png" (title $pose) -}}
+<img class="mascot mascot-{{ $pose }}{{ with $extra }} {{ . }}{{ end }}"
+     loading="lazy" decoding="async"
+     src="{{ $file | relURL }}"
+     width="{{ $size }}" height="auto" alt="" />

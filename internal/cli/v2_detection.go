@@ -28,10 +28,11 @@
 //     directory at project root. v.2.x exclusive artifact.
 //
 //   - Signal 3 (V2DetectedViaDeprecatedPath): existence of ANY path
-//     enumerated in defs.DeprecatedPaths (41 entries: Category A 9 +
-//     Category B 29 + Category C 3; reconciled by
+//     enumerated in defs.DeprecatedPaths (40 entries: Category A 9 +
+//     Category B 28 + Category C 3; reconciled by
 //     SPEC-DEPRECATEDPATHS-RECONCILE-001 which un-deprecated design.yaml +
-//     db.yaml as live v3 config).
+//     db.yaml as live v3 config, then SPEC-UPDATE-REINSTALL-LOOP-001 which
+//     removed the `.claude/rules/moai/design` template-collision entry, #1084).
 //
 // The SignalDetails map carries per-signal diagnostic strings used by
 // telemetry and `--dry-run` output (REQ-VVCR-028 / REQ-VVCR-029).

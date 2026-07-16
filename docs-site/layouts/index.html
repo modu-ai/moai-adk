@@ -20,9 +20,8 @@
     {{- /* 1. HERO — eyebrow / h1 / sub / CTAs / 실측 stats */ -}}
     <section class="docs-hero">
       <div class="docs-hero-inner">
-        <img class="md-hero-mascot" loading="lazy" decoding="async"
-             src="{{ "mascots/mascot-coding.png" | relURL }}"
-             width="150" alt="MoAI 마스코트 캐릭터" />
+        {{- /* 홈 히어로 마스코트 — v2 Explaining 포즈 (M5, welcome 인텐트) */ -}}
+        {{ partial "mascot.html" (dict "pose" "explaining" "size" "150" "class" "md-hero-mascot") }}
         <span class="docs-eyebrow">{{ i18n "hero_eyebrow" }}</span>
         <h1 class="docs-h1">{{ i18n "hero_title" | safeHTML }}</h1>
         <p class="docs-sub">{{ i18n "hero_lead" }}</p>

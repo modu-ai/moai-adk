@@ -332,7 +332,7 @@ func boardAppbar(view boardView) templ.Component {
 			templ_7745c5c3_Var13 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 34, "<header class=\"appbar\"><span class=\"brand\" aria-label=\"MoAI-ADK\"><span class=\"brand__badge\"><img class=\"brand__mascot\" src=\"/static/mascots/mascot-coding.png\" alt=\"MoAI-ADK\" width=\"28\" height=\"28\"></span> <span class=\"brand__name\">MoAI-ADK</span></span> <span class=\"appbar__divider\"></span> <span class=\"loopback\"><span class=\"loopback__dot\"></span>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 34, "<header class=\"appbar\"><span class=\"brand\" aria-label=\"MoAI-ADK\"><span class=\"brand__badge\"><img class=\"brand__mascot\" src=\"/static/mascots/mascot-thinking.png\" alt=\"MoAI-ADK\" width=\"28\" height=\"28\"></span> <span class=\"brand__name\">MoAI-ADK</span></span> <span class=\"appbar__divider\"></span> <span class=\"loopback\"><span class=\"loopback__dot\"></span>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

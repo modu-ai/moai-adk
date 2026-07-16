@@ -1,4 +1,9 @@
 /* MoAI Design System — Hugo/Geekdoc Override
+ * FROZEN (re-stamped at sync-phase close, SPEC-DESIGN-DOCSV2-001, 2026-07-16):
+ *   the v2 token vocabulary below (neutral canvas #f4f4f4 + solid green accent
+ *   #3d7d5f) is now the frozen baseline. Do not reintroduce the superseded
+ *   warm-cream Ver 1.0 tokens (--color-bg #faf9f5, 135deg gradient, warm
+ *   neutral ramp) without a new unfreeze authorization (see spec.md §G).
  * Source: v2 token SSOT (neutral canvas + green accent) — SPEC-DESIGN-DOCSV2-001
  *         Ver 1.0 Notion baseline superseded by v2 unfreeze (per SPEC §G, 2026-07-16)
  * Single source of truth: this file (v2 raw tokens)
@@ -156,6 +161,7 @@
   --muted-fg-2: var(--fg-3);
   --border: var(--border-1);
   --border-strong: var(--border-strong);
+  --border-card: #d1d1d1;   /* v2 surface-card hairline (design.md §C) — SPEC-DESIGN-DOCSV2-001 M6 */
   --success: var(--color-success);
   --warning: var(--color-warning);
   --danger: var(--color-danger);
@@ -1126,7 +1132,7 @@ a:hover, a:focus-visible { text-decoration: underline; text-underline-offset: 0.
   display: flex; flex-direction: column;
   overflow: hidden;
 }
-[data-theme="dark"] .cw-search-modal__panel { background: #252320; }
+[data-theme="dark"] .cw-search-modal__panel { background: var(--neutral-800); }  /* v2 achromatic (M7): warm dark literal 제거 (dark dead-code, 라이트 전용) */
 .cw-search-modal__head {
   display: flex; align-items: center; gap: 12px;
   padding: 14px 18px;

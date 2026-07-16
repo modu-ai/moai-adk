@@ -39,7 +39,7 @@ const foucHeadScript = `<script>
     })();
   </script>`
 
-// The header brand badge is the mascot image (mascot-coding.png) served from /static/mascots/.
+// The header brand badge is the mascot image (mascot-thinking.png) served from /static/mascots/.
 
 // saveAction builds the form action target, appending ?profile=<selected> when a
 // profile is selected (mirrors `/save{{if .SelectedProfile}}?profile=...{{end}}`).
@@ -126,9 +126,11 @@ templ page(view pageView) {
 					<div class="tabpanel" data-panel="launch">
 						@fieldsetLaunch(view)
 					</div>
-					<div class="tabpanel" data-panel="project">
-						@fieldsetProject(view)
-					</div>
+					// SPEC-DESIGN-MOAIWEBV2-001 M1: the orphan `project` tabpanel was
+					// removed (REQ-MWV2-020/021) — it had no navigable data-tab and was
+					// unreachable. development_mode / git_convention / quality.* remain
+					// editable via yaml config files / CLI (the server-side parse seam is
+					// preserved; only the unreachable render surface is dropped).
 					// SPEC-WEB-CONSOLE-011 M2b: 10섹션 확장 — 스키마 주도 제네릭 fieldset.
 					for _, meta := range schemaSectionMetas() {
 						<div class="tabpanel" data-panel={ string(meta.ID) }>
@@ -159,7 +161,7 @@ templ appbar(view pageView) {
 	<header class="appbar">
 		<span class="brand" aria-label="MoAI-ADK">
 			<span class="brand__badge">
-				<img class="brand__mascot" src="/static/mascots/mascot-coding.png" alt="MoAI-ADK" width="28" height="28"/>
+				<img class="brand__mascot" src="/static/mascots/mascot-thinking.png" alt="MoAI-ADK" width="28" height="28"/>
 			</span>
 			<span class="brand__name">MoAI-ADK</span>
 		</span>

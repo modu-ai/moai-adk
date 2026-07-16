@@ -35,6 +35,22 @@ notfound_title: "페이지를 찾을 수 없어요"
 notfound_text: "주소가 바뀌었거나 삭제된 문서일 수 있어요. 괜찮아요 — 문서 홈에서 다시 시작해 볼까요?"
 notfound_home: "문서 홈으로"
 notfound_search: "검색하기"
+
+# 빈 섹션 empty-state (doc-empty partial)
+empty_title: "아직 준비 중인 섹션이에요"
+empty_text: "이 섹션의 하위 가이드가 곧 추가됩니다. 그동안 다른 문서를 둘러보세요."
+
+# 문서 상세 우측 rail (doc-rail partial)
+rail_actions_title: "이 가이드 활용"
+rail_like: "좋아요"
+rail_bookmark: "북마크"
+rail_share: "공유"
+rail_print: "인쇄"
+rail_related_title: "관련 가이드"
+rail_read_min: "{{ . }}분 분량"
+rail_cta_title: "시작하기"
+rail_cta_body: "모든 문서를 둘러보고 다음 가이드를 찾아보세요."
+rail_cta_link: "문서 홈 →"
 card_desc_getting_started: "30초 설치부터 첫 SPEC까지, 가장 쉬운 길로 안내해요."
 card_desc_core_concepts: "SPEC·DDD·TRUST 5 — MoAI-ADK를 떠받치는 기본 원리."
 card_desc_workflow_commands: "/moai plan·run·sync — 3단계 개발 워크플로우 커맨드."

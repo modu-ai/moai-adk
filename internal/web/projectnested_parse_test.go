@@ -128,62 +128,8 @@ func TestParseProjectNestedForm(t *testing.T) {
 	})
 }
 
-// TestProjectFieldsetRendersNestedWidgets covers the Project fieldset extension
-// (REQ-WC7-004/010 + REQ-WC9-010): the fieldset renders the curated nested widgets —
-// numberFields (coverage targets, confidence, sample_size), toggles (enforce_quality
-// / auto-detect / enforce_on_push with hidden companions) — populated from the
-// view-model current values. The custom.pattern widget is removed (REQ-WC9-010).
-func TestProjectFieldsetRendersNestedWidgets(t *testing.T) {
-	t.Parallel()
-	view := pageView{
-		FieldErrors:             map[string]string{},
-		DevelopmentModes:        developmentModeOptionDefs(),
-		Conventions:             conventionOptionDefs(),
-		CurConvention:           "auto",
-		CurTestCoverageTarget:   "85",
-		CurEnforceQuality:       true,
-		CurMinCoveragePerCommit: "80",
-		CurConfidenceThreshold:  "0.75",
-		CurAutoDetectionEnabled: false,
-		CurSampleSize:           "150",
-		CurEnforceOnPush:        true,
-	}
-	body := renderTempl(t, fieldsetProject(view))
-
-	for _, want := range []string{
-		// numberFields with persisted values + hints.
-		`name="quality.test_coverage_target"`,
-		`value="85"`,
-		`name="quality.tdd_settings.min_coverage_per_commit"`,
-		`value="80"`,
-		`name="git_convention.auto_detection.confidence_threshold"`,
-		`step="0.01"`,
-		// new sample_size number field.
-		`name="git_convention.auto_detection.sample_size"`,
-		`value="150"`,
-		// toggles with hidden companions.
-		`name="quality.enforce_quality__present"`,
-		`name="quality.enforce_quality"`,
-		`name="git_convention.auto_detection.enabled__present"`,
-		`name="git_convention.auto_detection.enabled"`,
-		// new enforce_on_push toggle.
-		`name="git_convention.validation.enforce_on_push__present"`,
-		`name="git_convention.validation.enforce_on_push"`,
-		// updated section count — SPEC-WEB-CONSOLE-011 M2b: 파생 카운트 라벨
-		// (schema 길이 렌더 + count.fields 단위 접미 i18n 키, B11).
-		`data-i18n="count.fields"`,
-	} {
-		if !strings.Contains(body, want) {
-			t.Errorf("fieldsetProject render missing %q\n--- rendered ---\n%s", want, body)
-		}
-	}
-	// enforce_quality is checked (CurEnforceQuality true), auto_detection.enabled unchecked.
-	// Verify the enforce checkbox carries `checked` (its companion + checkbox both render).
-	if !strings.Contains(body, `id="quality.enforce_quality" name="quality.enforce_quality" value="1" checked`) {
-		t.Errorf("enforce_quality toggle should render checked when CurEnforceQuality=true:\n%s", body)
-	}
-	// auto_detection.enabled is unchecked → its checkbox must NOT carry `checked`.
-	if strings.Contains(body, `id="git_convention.auto_detection.enabled" name="git_convention.auto_detection.enabled" value="1" checked`) {
-		t.Errorf("auto_detection.enabled toggle must NOT render checked when CurAutoDetectionEnabled=false:\n%s", body)
-	}
-}
+// SPEC-DESIGN-MOAIWEBV2-001 M1: TestProjectFieldsetRendersNestedWidgets was removed
+// along with the orphan `project` render surface (fieldsetProject). The server-side
+// parse path remains covered by TestParseProjectNestedForm above (parseProjectNestedForm
+// is PRESERVED per REQ-MWV2-031 — development_mode / git_convention / quality.* stay
+// editable via yaml config / CLI, only the unreachable render surface was dropped).

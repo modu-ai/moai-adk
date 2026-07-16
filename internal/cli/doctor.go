@@ -712,10 +712,16 @@ func checkSkillsAllowlist(projectRoot string, verbose bool) DiagnosticCheck {
 		}
 	}
 	if warnCount > 0 {
+		// @MX:NOTE: [AUTO] REQ-DFS-007 — the hint must stay actionable for a
+		// GENUINE stale/third-party moai-* skill. The known set is now derived
+		// from the embedded manifest (doctor_skills.go), so a reported unknown is
+		// a real drift the running binary did NOT install; directing the user to
+		// 'moai update' (which only reinstalls the manifest's own skills) would be
+		// misleading — the fix is to remove the stale directory.
 		check.Status = uikit.CheckWarn
-		check.Message = fmt.Sprintf("%d unknown moai- skill(s) detected (run 'moai update' to sync)", warnCount)
+		check.Message = fmt.Sprintf("%d unknown moai- skill(s) not in the embedded template manifest (stale or third-party)", warnCount)
 		if verbose {
-			check.Detail = "Unknown skills may be outdated or removed. Verify with 'moai update'."
+			check.Detail = "These moai- skill directories are not part of this binary's embedded templates. Remove a stale directory, or (for a third-party skill) rename it out of the moai- namespace."
 		}
 		return check
 	}

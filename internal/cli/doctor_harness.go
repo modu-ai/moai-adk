@@ -27,6 +27,19 @@ func runHarnessCheck(projectRoot string) DiagnosticCheck {
 		return check
 	}
 
+	// @MX:ANCHOR: [AUTO] telemetry-exclusion invariant — the harness-configured
+	// gate (closes #1087, REQ-DFS-002/004). fan_in=1 (doctor check registry) but
+	// it is the false-signal locus that flips a never-configured project FAIL.
+	// @MX:REASON: [AUTO] the learning subsystem CREATES .moai/harness/ on its
+	// first tool_failure observation; a bare os.Stat existence test treated that
+	// runtime byproduct as a configuration act. "Configured" MUST mean a genuine
+	// harness artifact is present, not merely that the directory exists.
+	if !harnessConfigured(harnessDir) {
+		check.Status = uikit.CheckOK
+		check.Message = ".moai/harness/ contains only runtime telemetry (no harness configured)"
+		return check
+	}
+
 	var statuses []string
 	var failures []string
 
@@ -193,6 +206,51 @@ func checkLayer4ImportLines(workflowsDir string) (string, string) {
 		return "FAIL", strings.Join(missing, "; ")
 	}
 	return "PASS", "ok"
+}
+
+// harnessRuntimeArtifacts is the set of .moai/harness/ entries the learning
+// subsystem generates at RUNTIME (not as a configuration act). Their presence
+// alone MUST NOT be read as "a harness is configured".
+//
+//   - usage-log.jsonl        — observe-hook event log (harnessDefaultLogPath)
+//   - learning-history       — snapshots / archive / tier-promotions
+//   - proposals              — Tier-4 auto-update proposal payloads
+var harnessRuntimeArtifacts = map[string]bool{
+	"usage-log.jsonl":  true,
+	"learning-history": true,
+	"proposals":        true,
+}
+
+// @MX:NOTE: [AUTO] "configured" == "the directory holds at least one entry that
+// is neither a runtime telemetry artifact NOR a dotfile", NOT "the directory
+// exists". This is the surgical predicate (plan §C / plan-audit D2 / sync-audit
+// F1): a stray non-telemetry file OR a baseline file counts as configured, so a
+// marker-configured-but-incomplete harness still reaches the L1-L6 battery (no
+// new false-negative); but dotfiles (`.DS_Store`, editor swap files) and the
+// known runtime telemetry are BOTH excluded, so a never-configured project
+// whose .moai/harness/ holds only telemetry + OS cruft stays "not configured"
+// (F1: #1087 must not reincarnate on darwin/arm64 where Finder writes
+// .DS_Store). Only genuine, non-cruft content is treated as "configured".
+//
+// harnessConfigured reports whether .moai/harness/ holds any genuine (non-
+// runtime-telemetry, non-dotfile) content. An unreadable directory is treated
+// as not configured (the caller has already handled the not-exist case).
+func harnessConfigured(harnessDir string) bool {
+	entries, err := os.ReadDir(harnessDir)
+	if err != nil {
+		return false
+	}
+	for _, e := range entries {
+		// Skip dotfiles (.DS_Store, editor swap dotfiles, etc.) — OS/tool cruft
+		// is never a configuration act (sync-audit F1).
+		if strings.HasPrefix(e.Name(), ".") {
+			continue
+		}
+		if !harnessRuntimeArtifacts[e.Name()] {
+			return true
+		}
+	}
+	return false
 }
 
 // checkLayer5Files verifies the 7 baseline files exist in .moai/harness/.

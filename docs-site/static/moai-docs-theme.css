@@ -658,6 +658,8 @@ footer.cw-footer {
 }
 .md-hero-cta { display: flex; flex-wrap: wrap; gap: 12px; }
 
+/* v2 CTA pill (SPEC-DESIGN-DOCSV2-001 M6): neo-brutalist pop → radius-full 필,
+   solid primary bg, 정지 시 shadow 없음, hover 시 shadow-signature + 미세 lift. */
 .md-btn {
   display: inline-flex;
   align-items: center;
@@ -665,10 +667,11 @@ footer.cw-footer {
   font-family: var(--font-sans);
   font-weight: 700;
   font-size: 15px;
-  padding: 12px 22px;
-  border-radius: var(--radius-md);
+  padding: 13px 24px;
+  border-radius: var(--radius-full);
   cursor: pointer;
-  border: 2px solid transparent;
+  border: 1px solid transparent;
+  letter-spacing: -0.025em;
   transition: all var(--dur-fast) var(--ease-pop);
   text-decoration: none;
 }
@@ -676,23 +679,22 @@ footer.cw-footer {
 .md-btn-primary {
   background: var(--accent);
   color: var(--text-on-clay) !important;
-  border-color: var(--border-strong);
-  box-shadow: var(--shadow-pop);
+  border-color: transparent;
 }
 .md-btn-primary:hover {
   background: var(--accent-hover);
   text-decoration: none;
-  transform: translate(1px, 1px);
-  box-shadow: 2px 2px 0 var(--border-strong);
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-signature);
 }
 .md-btn-primary:active {
-  transform: translate(3px, 3px);
-  box-shadow: 0 0 0 var(--border-strong);
+  transform: translateY(0);
+  box-shadow: none;
 }
 .md-btn-ghost {
   background: var(--surface-card);
   color: var(--text-strong) !important;
-  border-color: var(--border-clay);   /* cream-500은 흰 카드에서 거의 안 보임 → 클레이 톤으로 테두리 가시화 */
+  border-color: var(--border-strong);
 }
 .md-btn-ghost:hover { border-color: var(--accent); color: var(--accent) !important; text-decoration: none; }
 
@@ -700,19 +702,14 @@ footer.cw-footer {
    액션 링크(버튼/카드)의 하단 테두리만 투명하게 덮고 밑줄을 강제 → specificity 높여 복구 */
 .gdoc-markdown a.md-btn {
   text-decoration: none;
-  border-bottom-width: 2px;
-  border-bottom-style: solid;
-  border-bottom-color: var(--border-clay);
+  border-bottom: 1px solid transparent;   /* v2 pill: geekdoc underline 무력화, 하단 테두리 시각 아티팩트 제거 (M6) */
 }
-.gdoc-markdown a.md-btn-primary { border-bottom-color: var(--border-strong); }
 .gdoc-markdown a.md-btn-ghost:hover { border-bottom-color: var(--accent); }
 .gdoc-markdown a.md-doc-card {
   text-decoration: none;
-  border-bottom-width: 1.5px;
-  border-bottom-style: solid;
-  border-bottom-color: var(--border-subtle);
+  border-bottom: 1px solid var(--border-card);   /* v2 uniform 1px 카드 테두리 유지 (M6) */
 }
-.gdoc-markdown a.md-doc-card:hover { border-bottom-color: var(--border-clay); }
+.gdoc-markdown a.md-doc-card:hover { border-bottom-color: var(--border-card); }
 
 .md-stat-row {
   display: grid;
@@ -752,20 +749,22 @@ footer.cw-footer {
   gap: 16px;
   margin-top: var(--space-7);
 }
+/* v2 surface card (SPEC-DESIGN-DOCSV2-001 M6, design.md §C): radius 16px,
+   border 1px #d1d1d1, shadow-sm 정지 / shadow-md hover, translateY(-2px) hover. */
 .md-doc-card {
   display: block;
-  padding: 22px;
+  padding: 24px;
   background: var(--surface-card);
-  border: 1.5px solid var(--border-subtle);
-  border-radius: var(--radius-xl);
+  border: 1px solid var(--border-card);
+  border-radius: var(--radius-lg);
   transition: all var(--dur-base) var(--ease-out);
-  box-shadow: var(--shadow-xs);
+  box-shadow: var(--shadow-sm);
   text-decoration: none;
 }
 .md-doc-card:hover {
-  transform: translateY(-3px);
+  transform: translateY(-2px);
   box-shadow: var(--shadow-md);
-  border-color: var(--border-clay);
+  border-color: var(--border-card);
   text-decoration: none;
 }
 .md-doc-card .dc-ico {

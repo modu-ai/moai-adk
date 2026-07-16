@@ -74,6 +74,13 @@ var sanitizedPairPaths = []string{
 	// generic prose, PUBLIC book1 + arXiv citations kept). Newly deployed so the
 	// 5 shipped template files that cross-reference it no longer dangle.
 	".claude/rules/moai/workflow/runtime-recovery-doctrine.md",
+	// zone-registry.md: the constitution zone registry consumed by the CLI
+	// (moai constitution / doctor / spec lint). Local copy retains internal
+	// provenance (2 internal SPEC-IDs + 2 internal ISO dates); the template
+	// mirror is held sanitized per §25 (those 4 tokens generalized/removed to
+	// generic prose) while ALL 115 CONST-* zone entries are preserved verbatim.
+	// Newly deployed so deployed projects no longer break on a missing registry.
+	".claude/rules/moai/core/zone-registry.md",
 }
 
 // tokenNormalizer pairs a regex matching an intentionally-divergent internal
