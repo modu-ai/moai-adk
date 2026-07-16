@@ -7,6 +7,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [v3.0.0] - 2026-07-16
+
+### Summary
+
+v3.0.0 is the first stable (GA) release of the MoAI-ADK v3 line, closing the arc that began after **v2.14.0** (2026-04-24) and stabilized through the `rc1`–`rc12` pre-releases. The headline of v3 is a **tokenomics-first agentic workflow**: MoAI now reasons about token cost as an explicit budget rather than an afterthought. The major stacks that landed and matured across the window:
+
+- **Tokenomics stack** — per-agent/per-phase token accounting, Tier×Phase model routing, `plan_type` profiles that map a SPEC's scope to a model/effort tier, and a **Token Circuit Breaker** (a Stop-hook token-budget guard that halts a runaway autonomous loop before it burns the budget).
+- **Self-evolving harness + goal engine** — the `/moai goal` autonomous-continuation loop (a fresh model evaluates a completion condition each turn-end) and the `/moai loop` diagnostic sweep, together with the recursive harness-learning ladder that proposes delegation-map improvements from observed routing.
+- **Consolidated 11-agent catalog** — 10 MoAI-custom managers/auditors/builders plus the Anthropic built-in `Explore`; references to archived agent names are rejected at spawn, replaced by per-spawn `Agent(general-purpose)` with a domain whitelist.
+- **CG Mode** — a Claude-leader + GLM-teammate tmux topology for cost-optimized, implementation-heavy work.
+- **TUX v3 CLI modernization** — `moai init` / `moai update` redesign on bubbletea/huh v2, a change-preview TUI, and the `internal/cli/printer.Printer` stdout=data / stderr=status migration.
+- **Documentation + i18n rebuild** — the `adk.mo.ai.kr` docs-site "Claude Warm Editorial" redesign, 4-locale (en/ko/ja/zh) content, and a value-centered README restructure across all four locales.
+- **Security hardening** — the `security.yaml` surface, the Bash risk-amplifier doctrine (destructive-primitive confirmation, compound-command soft cap), and the verification-claim integrity invariant (no unobserved verification-or-defect claim).
+
+Per-pre-release detail for each theme lives in the `v3.0.0-rc1`…`v3.0.0-rc12` entries below and in the referenced SPEC files.
+
+### Breaking Changes
+
+- **Major version bump** — `v2.x` → `v3.0.0` (SemVer major). Existing projects should run `moai update` to reconcile templates before upgrading the binary.
+- **Agent catalog consolidated to 11 retained agents** — references to archived agent names (e.g. `manager-strategy`, `expert-backend`, `researcher`) are now **rejected at spawn**; the retained-agent replacement pattern (per-spawn `Agent(general-purpose)` with a domain whitelist, or one of the 11 retained agents) is documented in `archived-agent-rejection.md`.
+- **Agent Teams static-orchestration layer retired** — a forced `--team` / `--mode team` emits `MODE_TEAM_UNAVAILABLE` and falls back to sub-agent mode. The native Claude Code teammate runtime (`moai cg` GLM panes, `worktree --team`) is unaffected.
+- **Context7 MCP dependency retired** — `mcp__context7__*` removed from every `allowed-tools` and the settings ask-list; library-documentation lookups now use the WebSearch/WebFetch fallback strategy.
+- **`/moai e2e` replaced** — the web-only E2E subcommand was retired and revived as a multi-platform (web / mobile / desktop / desktop-native) subsystem driven by the new `e2e-tester` agent.
+
 ### Added
 
 - **[SPEC-CLI-TUX-V3-005](.moai/specs/SPEC-CLI-TUX-V3-005/spec.md)** — AC-TUX3-020 Printer migration: `fmt.Print*` ratchet succession in non-test `internal/cli` sources (Tier M, 5/5 AC PASS — 4 MUST + AC-TUX3-023 SHOULD). The 24 migratable call sites move to the `internal/cli/printer.Printer` interface — `state.go` 11 (M2), `migration.go` 8 (M3), `worktree/tmux_integration.go` 5 (M4) — dropping the global ratchet from the SPEC-003 baseline **38 → 14** (AC-TUX3-020 PASS). Mapping: JSON output + human-format display → `p.Data` (stdout, byte-identical to the prior sequential `fmt.Print*`); status/success messages → `p.Info`/`p.Success` (re-routed stdout→stderr per the stdout=machine-data / stderr=human-status convention); the multi-line human-format blocks (`printPhaseStateHuman`, migration status display) compose into a single `p.Data(strings.Join(lines, "\n"))` string so scripted consumers are unaffected (DECISION 2026-07-14). 3 gap-sites EXCLUDED per the M1 architecture gate: `uikit/banner.go` 12 (TUI lipgloss render — Printer interface not extended), `branch_protection.go` 1 (ttyConfirmer dead code, `nolint:unused`), `worktree/new.go` 1 (commented-out godoc example). Behavior preservation pinned by 3 new characterization-test files (`state_m2_test.go`, `migration_m3_test.go`, `tmux_integration_m4_test.go`) with golden-master stdout/stderr assertions; `internal/cli` coverage 74.1% (AC-TUX3-023 SHOULD-PASS). Run-phase Route A main-direct (no PR); single sync commit carries the `in-progress → completed` 3-phase close. 🗿 MoAI
@@ -16,6 +40,60 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - **[SPEC-CLI-TUX-V3-003](.moai/specs/SPEC-CLI-TUX-V3-003/spec.md)** — amendment re-close (2nd close). The SPEC was amended (commit `313482ca4`, completed → in-progress) to complete AC-TUX3-018 coverage. **AC-TUX3-018 NOW DONE**: `internal/cli/update/deploy` 97.5% (commit `6fb84a280`) + `internal/cli/update/backup` 88.6% (commit `8d7106c59`); report 92.9% · plan 95.0% · merge 90.3% unchanged (all ≥85% target). **D1 resolved**: acceptance.md §D.5 reconciled (commit `36eeb3280`) — 19 AC PASS + AC-TUX3-020 split (debt). **AC-TUX3-020 (Printer migration) EXCLUDED** — split to a separate SPEC (not yet authored; debt_register carries it); `fmt.Print*` ratchet baseline 38 unchanged (no regression). 19/20 AC clean. Single sync commit carries the `in-progress → implemented → completed` amendment re-close transition (spec.md frontmatter `status` + `updated` ONLY; SPEC body, plan.md, acceptance.md body NOT modified). 🗿 MoAI
+
+### Fixed
+
+- Per-pre-release fixes (e.g. the profile-display bug fix) are recorded in the `v3.0.0-rc1`…`v3.0.0-rc12` entries below.
+
+### Installation & Update
+
+- **New install** — `go install github.com/modu-ai/moai-adk/cmd/moai@v3.0.0`, or download a prebuilt binary from the GitHub release assets (asset names carry no `v` prefix per the update checker contract).
+- **Existing projects** — run `moai update` to sync the v3.0.0 templates (user-owned files under `.claude/`, `.moai/project/`, `.moai/specs/` are preserved), then `moai update --binary` to upgrade the CLI.
+- **Verify** — `moai version` reports `v3.0.0`.
+
+---
+
+## [v3.0.0] - 2026-07-16 (한국어)
+
+### 요약
+
+v3.0.0은 MoAI-ADK v3 라인의 첫 정식(GA) 릴리스로, **v2.14.0**(2026-04-24) 이후 시작되어 `rc1`–`rc12` 사전 릴리스를 거쳐 안정화된 개발 구간을 마무리한다. v3의 핵심은 **토크노믹스 우선 에이전트 워크플로우** — MoAI가 토큰 비용을 부차적 요소가 아니라 명시적 예산으로 다룬다는 점이다. 구간 전반에 걸쳐 안착·성숙한 주요 스택은 다음과 같다.
+
+- **토크노믹스 스택** — 에이전트/페이즈별 토큰 회계, Tier×Phase 모델 라우팅, SPEC 범위를 모델·effort 티어에 매핑하는 `plan_type` 프로파일, 그리고 자율 루프가 예산을 소진하기 전에 중단시키는 Stop-훅 토큰 예산 가드 **Token Circuit Breaker**.
+- **자기진화 하네스 + goal 엔진** — 매 턴 종료 시 별도 모델이 완료 조건을 평가하는 `/moai goal` 자율 지속 루프와 `/moai loop` 진단 스윕, 그리고 관찰된 라우팅으로부터 위임 맵 개선안을 제안하는 재귀적 하네스 학습 사다리.
+- **11-에이전트 카탈로그 통합** — MoAI 커스텀 매니저/감사/빌더 10종 + Anthropic 내장 `Explore`; 아카이브된 에이전트 이름 참조는 spawn 시 거부되고, 도메인 화이트리스트를 가진 per-spawn `Agent(general-purpose)`로 대체된다.
+- **CG 모드** — 구현 위주 작업의 비용 최적화를 위한 Claude 리더 + GLM 팀메이트 tmux 토폴로지.
+- **TUX v3 CLI 현대화** — bubbletea/huh v2 기반 `moai init` / `moai update` 재설계, 변경 미리보기 TUI, `internal/cli/printer.Printer`의 stdout=데이터 / stderr=상태 마이그레이션.
+- **문서 + i18n 재구축** — `adk.mo.ai.kr` docs-site "Claude Warm Editorial" 재설계, 4개 로케일(en/ko/ja/zh) 콘텐츠, 4개 로케일 전반의 가치 중심 README 재구성.
+- **보안 강화** — `security.yaml` 표면, Bash 위험 증폭기 독트린(파괴적 프리미티브 확인·복합 명령 소프트 캡), 검증-주장 무결성 불변식(관찰되지 않은 검증-또는-결함 주장 금지).
+
+각 테마의 사전 릴리스별 세부 내용은 아래 `v3.0.0-rc1`…`v3.0.0-rc12` 항목과 참조된 SPEC 파일에 있다.
+
+### 주요 변경 사항
+
+- **메이저 버전 승격** — `v2.x` → `v3.0.0` (SemVer major). 기존 프로젝트는 바이너리 업그레이드 전에 `moai update`로 템플릿을 정합화해야 한다.
+- **에이전트 카탈로그 11종으로 통합** — 아카이브된 에이전트 이름 참조는 이제 spawn 시 **거부**된다. 대체 패턴(도메인 화이트리스트를 가진 per-spawn `Agent(general-purpose)` 또는 11종 유지 에이전트 중 하나)은 `archived-agent-rejection.md`에 문서화되어 있다.
+- **Agent Teams 정적 오케스트레이션 계층 폐기** — 강제 `--team` / `--mode team`은 `MODE_TEAM_UNAVAILABLE`을 내고 sub-agent 모드로 폴백한다. 네이티브 Claude Code 팀메이트 런타임(`moai cg` GLM 페인, `worktree --team`)은 영향받지 않는다.
+- **Context7 MCP 의존성 폐기** — 모든 `allowed-tools`와 settings ask 목록에서 `mcp__context7__*` 제거; 라이브러리 문서 조회는 WebSearch/WebFetch 폴백 전략을 사용한다.
+- **`/moai e2e` 교체** — 웹 전용 E2E 서브커맨드를 폐기하고, 새 `e2e-tester` 에이전트가 구동하는 멀티플랫폼(web / mobile / desktop / desktop-native) 서브시스템으로 부활시켰다.
+
+### 추가됨
+
+- **[SPEC-CLI-TUX-V3-005]** — 비테스트 `internal/cli` 소스의 `fmt.Print*` → `internal/cli/printer.Printer` 인터페이스 마이그레이션(24개 호출부, ratchet 38 → 14). 상세는 위 영어 항목 참조.
+
+### 변경됨
+
+- **[SPEC-CLI-TUX-V3-003]** — `moai update`의 5개 서브패키지 분해 + 변경 미리보기 TUI, 이후 AC-TUX3-018 커버리지 완결을 위한 수정 재클로즈. 상세는 위 영어 항목 참조.
+
+### 수정됨
+
+- 프로파일 표시 버그 수정 등 구간별 수정 내역은 아래 `v3.0.0-rc1`…`v3.0.0-rc12` 항목 참조.
+
+### 설치 및 업데이트
+
+- **신규 설치** — `go install github.com/modu-ai/moai-adk/cmd/moai@v3.0.0`, 또는 GitHub 릴리스 자산에서 사전 빌드 바이너리 다운로드(자산 이름은 업데이트 체커 규약에 따라 `v` 접두어 없음).
+- **기존 프로젝트** — `moai update`로 v3.0.0 템플릿 동기화(`.claude/`, `.moai/project/`, `.moai/specs/` 하위 사용자 소유 파일은 보존), 이후 `moai update --binary`로 CLI 업그레이드.
+- **검증** — `moai version`이 `v3.0.0`을 보고.
 
 ## [v3.0.0-rc12] - 2026-07-14
 
