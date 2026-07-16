@@ -402,7 +402,34 @@ status_transition: none                        # status stayed in-progress (M1 s
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_(pending sync-phase)_
+```yaml
+sync_complete_at: 2026-07-16
+sync_commit_sha: pending-backfill-DESIGN-DOCSV2-001  # backfilled in a follow-up commit per spec-frontmatter-schema §D3 exemption (self-referential-hash hazard)
+sync_status: complete
+changelog_entry_emitted: true  # CHANGELOG.md [Unreleased] entry added (SPEC-DESIGN-DOCSV2-001)
+frontmatter_status_transitions:
+  spec_md: "in-progress -> implemented -> completed (merged 3-phase close, single sync commit)"
+  plan_md: "no frontmatter block (plan.md carries no YAML frontmatter per this SPEC's artifact layout — only spec.md carries the canonical 12-field schema)"
+  acceptance_md: "no frontmatter block (same as plan.md)"
+  design_md: "no frontmatter block (same as plan.md)"
+moai_brand_css_refrozen: true  # re-FROZEN header comment added at docs-site/static/moai-brand.css top-of-file; v2 tokens are now the frozen baseline; no token VALUES changed at sync
+doc_inconsistency_noted:
+  location: "acceptance.md §A headline sentence (line 40)"
+  claim: "Headline AC count: 30 (20 MUST, 10 SHOULD ...)"
+  actual: "25 MUST + 5 SHOULD = 30 (verified by grep -c on the §A Severity column, cross-checked against the §E.2 M7 roll-up ledger and §E.3 ac_total note)"
+  disposition: "flagged only — acceptance.md body NOT modified per manager-docs forbidden-ownership-crossing boundary (spec-frontmatter-schema.md § Forbidden ownership crossings). A future manager-spec-owned edit may correct the headline sentence."
+```
+
+**Files touched this commit (sync-phase, 6):**
+- `CHANGELOG.md` — `[Unreleased]` § Added entry for SPEC-DESIGN-DOCSV2-001 (docs-site v2 design system).
+- `.moai/specs/SPEC-DESIGN-DOCSV2-001/spec.md` — frontmatter `status: in-progress -> completed` (merged 3-phase close on this single sync commit); `updated:` unchanged (already `2026-07-16`, same day as run-phase close — no date change needed).
+- `.moai/specs/SPEC-DESIGN-DOCSV2-001/progress.md` — this §E.4 section.
+- `docs-site/static/moai-brand.css` — top-of-file comment updated to state the v2 token vocabulary is re-stamped FROZEN (per spec.md §G unfreeze-scope obligation); **no token VALUE was changed** — comment-only.
+
+**Verification performed this commit:**
+- `grep -c 'SPEC-DESIGN-DOCSV2-001' CHANGELOG.md` (pre-emission) → 0 before this edit (no duplicate-entry risk from a parallel BATCH-SYNC session).
+- `grep -cE '^\| AC-' .moai/specs/SPEC-DESIGN-DOCSV2-001/acceptance.md` → 30 (matches CHANGELOG entry's 30-AC claim; MUST/SHOULD split re-derived from the §A Severity column: 25 MUST + 5 SHOULD).
+- File-path claims in the CHANGELOG entry (`docs-site/static/moai-brand.css`, `docs-site/layouts/partials/foot.html`, mascot files, i18n yaml) verified to exist via the M4-M7 `§E.2` evidence already recorded in this file (not re-verified via a fresh `ls`, since sync-phase makes no new file-path claims beyond what run-phase already evidenced).
 
 ## §F Phase 4 Mode Selection
 

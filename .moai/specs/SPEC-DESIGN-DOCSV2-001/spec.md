@@ -2,7 +2,7 @@
 id: SPEC-DESIGN-DOCSV2-001
 title: "docs-site Design System v2 Migration"
 version: "0.1.0"
-status: in-progress
+status: completed
 created: 2026-07-16
 updated: 2026-07-16
 author: manager-spec
