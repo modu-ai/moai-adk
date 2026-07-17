@@ -3,8 +3,8 @@ name: moai
 description: >
   MoAI unified orchestrator for autonomous development. Routes natural
   language or subcommands (plan, run, sync, project, fix, loop, mx,
-  feedback, review, clean, codemaps, gate, e2e, harness) to specialized
-  agents.
+  feedback, review, clean, codemaps, gate, e2e, harness, workflow) to
+  specialized agents.
 allowed-tools: Agent, AskUserQuestion, Skill, TaskCreate, TaskUpdate, TaskList, TaskGet, Bash, Read, Write, Edit, Glob, Grep
 argument-hint: "[subcommand] [args] | \"natural language task\""
 ---
@@ -76,6 +76,7 @@ The `--team` / `--solo` flags are forced overrides onto the catalog; the flag-fr
 - **e2e** (aliases: e2e-test, end-to-end): Multi-platform end-to-end testing (web/mobile/desktop) with project-type auto-detection and CLI-first toolchain selection
 - **harness** (aliases: hrn, learn): harness lifecycle management — learning-lifecycle verbs (status / apply / rollback &lt;date&gt; / disable) + v4-lifecycle verbs (list / edit / remove / doctor), all dispatching through the unified `moai harness` Go-binary Cobra subcommand tree; the slash command is the documented user-facing entry point
 - **goal**: Condition-declared universal agentic loop — arm a completion condition (`/moai goal "<condition>"`), check status, clear, or resume; evaluated each turn-end by the `stop-goal` Stop hook
+- **workflow** (aliases: wf): MoAI-Workflow — save a recurring task as a `.moai/workflows/<name>.md` file and register it on the native scheduler (Cron tools / `/loop`); list / edit / remove existing workflows. Scheduled runs are cadence-bounded (read-only, never commit/push/enter run-phase)
 
 ### Priority 2: SPEC-ID Detection
 
@@ -201,6 +202,14 @@ Purpose: Scan codebase and generate architecture documentation.
 Agents: Explore, manager-docs
 Flags: --force, --area AREA
 For detailed orchestration: Read ${CLAUDE_SKILL_DIR}/workflows/codemaps.md
+
+### workflow - MoAI-Workflow Save + Scheduled Execution
+
+Purpose: Save a user-defined recurring task as a `.moai/workflows/<name>.md` file (Markdown body + YAML frontmatter: name/description/schedule{expression + mechanism: cron|loop}/safety) and register it on the Claude Code native scheduler; list / edit / remove existing workflows.
+Agents: orchestrator-direct (AskUserQuestion-guided capture + Cron-tool registration + filesystem lifecycle)
+Verbs: (creation intent or natural-language capture) → guided create | list | edit &lt;name&gt; | remove &lt;name&gt;
+Safety: scheduled runs are cadence-bounded per `cadence-bridge.md` (never commit/push/enter run-phase; `safety: write` governs interactive invocation only). A natural-language "save this as a recurring/nightly workflow" request routes to the same guided-capture path.
+For detailed orchestration: Read ${CLAUDE_SKILL_DIR}/workflows/workflow.md
 
 ### (default) - MoAI Autonomous Workflow
 
