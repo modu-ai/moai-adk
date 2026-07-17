@@ -104,3 +104,10 @@ route: "A (Hybrid Trunk main-direct, no PR)"
 - Evaluation: trivial=not selected (multi-file feature) / background=not selected (write work) / agent-team=RETIRED / parallel=not selected (coding-heavy, <3 domains) / workflow=not selected (<30 files, non-mechanical) / sub-agent=SELECTED
 - Decision: sub-agent
 - Justification: Coding/authoring-heavy Tier M work with sequential milestone dependencies; per Anthropic's coding-task parallelism caveat, Mode 5 sequential sub-agent is the default and correct envelope. Implementation Kickoff Approval passed 2026-07-17 (AskUserQuestion, run-phase 진입 selected); all preferences collected (engine/format/safety + D1/D2 decisions).
+
+## §G Feature Removal Record (2026-07-17)
+
+- decision: REMOVED same-day by user decision after post-close cold review ("과연 필요한가" 재평가)
+- rationale: with the cadence-bridge read-only invariant + loop record-only design honored, the feature reduced to a file-convention wrapper over CronCreate — duplicating the harness-v4 manifest `schedule`, cadence-bridge recipes, native /loop, and custom skills (5 pre-existing surfaces). Conflicts with the subcommand-surface-reduction direction (SUBCOMMAND-RETIRE-001).
+- action: feat commits 6ea2fcfbf / 577f12f4e / e59702241 reverted; CHANGELOG [Unreleased] Added entry deleted (never released); SPEC artifacts retained as historical record.
+- follow-up: if the need re-emerges, prefer integrating into harness-v4 `schedule` rather than reviving a standalone subcommand.

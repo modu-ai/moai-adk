@@ -1,7 +1,0 @@
----
-description: {{if eq .ConversationLanguage "ko"}}반복 작업을 .moai/workflows/ 파일로 저장하고 네이티브 스케줄러에 등록{{else if eq .ConversationLanguage "ja"}}繰り返しタスクを.moai/workflows/ファイルに保存しネイティブスケジューラに登録{{else if eq .ConversationLanguage "zh"}}将重复任务保存为.moai/workflows/文件并注册到原生调度器{{else}}Save a recurring task as a .moai/workflows/ file and register it on the native scheduler{{end}}
-argument-hint: "[list | edit <name> | remove <name> | \"describe a recurring task\"]"
-allowed-tools: Skill
----
-
-Use Skill("moai") with arguments: workflow $ARGUMENTS
