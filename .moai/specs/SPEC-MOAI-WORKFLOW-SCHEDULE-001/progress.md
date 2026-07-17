@@ -63,7 +63,7 @@ Must-pass ACs (AC-MWS-011, 013, 019): all PASS.
 
 ```yaml
 run_complete_at: 2026-07-17
-run_commit_sha: pending-backfill-run-final
+run_commit_sha: 96d498ac6f99f0f3500cfe0f4d4518f1ef9d7a10
 run_status: audit-ready
 ac_pass_count: 21
 ac_fail_count: 0
