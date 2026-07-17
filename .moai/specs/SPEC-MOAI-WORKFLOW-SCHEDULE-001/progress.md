@@ -84,7 +84,7 @@ pre_existing_unrelated_failure: internal/cli TestRunHarnessObserveStop_AutoClass
 
 ```yaml
 sync_complete_at: 2026-07-17
-sync_commit_sha: pending-backfill-sync   # this commit cannot self-reference its own SHA; backfilled in a follow-up commit
+sync_commit_sha: 469d5023c
 sync_status: audit-ready
 changelog_entry_position: "[Unreleased] > ### Added (SPEC-MOAI-WORKFLOW-SCHEDULE-001 entry, inserted before ### Fixed)"
 frontmatter_status_transitions:
