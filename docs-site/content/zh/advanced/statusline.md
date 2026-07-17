@@ -86,8 +86,8 @@ internal/statusline/renderer.go (3-line v3 layout)
 - **格式**：`🗿 v<current>`，或可更新时 `🗿 v<current> -> 🗿 v<latest>`
 - **数据来源**：`.moai/config/sections/system.yaml` `moai.version` + 后台 update checker 结果
 - **示例**：
-  - `🗿 v2.20.0-rc1`（最新）
-  - `🗿 v2.18.0 -> 🗿 v2.20.0-rc1`（建议更新）
+  - `🗿 v3.0.0`（最新）
+  - `🗿 v2.18.0 -> 🗿 v3.0.0`（建议更新）
 - **段键**：`moai_version`
 
 ### 会话时长

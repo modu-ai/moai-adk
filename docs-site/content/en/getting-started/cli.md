@@ -32,11 +32,11 @@ moai version
 ```text
 ╭────────────────────────╮
 │                        │
-│  moai-adk v3.0.0-rc11  │
+│    moai-adk v3.0.0     │
 │                        │
 │                        │
 ╰────────────────────────╯
- v3.0.0-rc11   none   built unknown
+ v3.0.0   none   built unknown
 ```
 
 The line below the box banner shows `<version>   <commit hash>   built <build time>` in order. When built without ldflags (e.g. via `go install`), the commit shows `none` and the build time shows `unknown`.
