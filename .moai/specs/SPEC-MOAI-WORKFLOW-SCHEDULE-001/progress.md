@@ -22,3 +22,10 @@ _<pending run-phase>_
 ## §E.4 Sync-phase Audit-Ready Signal
 
 _<pending sync-phase>_
+
+## §F Phase 4 Mode Selection
+
+- Inputs: tier=M, scope≈10-15 files (skill workflow md + template scaffold + docs), domains=2 (workflow skills, template), language mix=markdown-heavy + minimal Go test guard, concurrency benefit=LOW (coding/authoring-heavy)
+- Evaluation: trivial=not selected (multi-file feature) / background=not selected (write work) / agent-team=RETIRED / parallel=not selected (coding-heavy, <3 domains) / workflow=not selected (<30 files, non-mechanical) / sub-agent=SELECTED
+- Decision: sub-agent
+- Justification: Coding/authoring-heavy Tier M work with sequential milestone dependencies; per Anthropic's coding-task parallelism caveat, Mode 5 sequential sub-agent is the default and correct envelope. Implementation Kickoff Approval passed 2026-07-17 (AskUserQuestion, run-phase 진입 selected); all preferences collected (engine/format/safety + D1/D2 decisions).
