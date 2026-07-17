@@ -82,7 +82,21 @@ pre_existing_unrelated_failure: internal/cli TestRunHarnessObserveStop_AutoClass
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+```yaml
+sync_complete_at: 2026-07-17
+sync_commit_sha: pending-backfill-sync   # this commit cannot self-reference its own SHA; backfilled in a follow-up commit
+sync_status: audit-ready
+changelog_entry_position: "[Unreleased] > ### Added (SPEC-MOAI-WORKFLOW-SCHEDULE-001 entry, inserted before ### Fixed)"
+frontmatter_status_transitions:
+  spec_md: "in-progress -> implemented -> completed (merged 3-phase close, this commit)"
+  updated_field_refreshed: 2026-07-17
+b12_self_test_a: "grep -c 'SPEC-MOAI-WORKFLOW-SCHEDULE-001' CHANGELOG.md (pre-emission) == 0 -> emission proceeded"
+b12_self_test_b: "acceptance.md SSOT AC count 21 matches CHANGELOG entry claim (21/21 AC PASS)"
+b12_self_test_c: "ls verified: .claude/skills/moai/workflows/workflow.md, .claude/commands/moai/workflow.md, internal/template/templates/.claude/commands/moai/workflow.md.tmpl, internal/template/templates/.moai/workflows/{README.md,example.md}, internal/template/moai_workflows_scaffold_test.go — all present"
+canary_compliance_check:
+  spec_body_untouched: true   # spec.md/plan.md/acceptance.md body content NOT modified; only frontmatter status+updated
+route: "A (Hybrid Trunk main-direct, no PR)"
+```
 
 ## §F Phase 4 Mode Selection
 
