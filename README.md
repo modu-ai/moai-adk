@@ -509,6 +509,41 @@ There are three output styles. Switch with `/config` (the choice is saved to `se
 
 ---
 
+## Reading the Statusline
+
+Right after `moai init`, the Claude Code statusline appears as three lines. From the top: session info · usage gauges · repo state.
+
+```
+🤖 Opus │ 🧠 xhigh·t │ ♻️ 87% │ 🔅 v2.1.212 │ 🗿 v3.0.0 │ ⏳ 2h 34m │ 💬 MoAI
+🪫 CW: ████████░░ 88% (⚠️/clear) │ 🔋 5H: ████░░░░░░ 45% (4h 30m) │ 🪫 7D: ████████░░ 82% (Jan 21)
+📁 moai-adk-go │ 🔀 modu-ai/moai-adk | 🅱️ feat/statusline ↑2 +3 │ 💾 +1 M2 ?0 │ 📋 [run SPEC-AUTH-001-run] │ 💌 PR #1042 (⌥approved)
+```
+
+| Element | Meaning |
+|------|------|
+| 🤖 model | The currently active model (e.g. Opus) |
+| 🧠 effort | Reasoning effort level — a `·t` suffix when extended thinking is on |
+| ♻️ cache hit rate | Prompt-cache hit rate `cache_read / (read + creation)` |
+| 🔅 Claude version | Claude Code version |
+| 🗿 MoAI version | MoAI-ADK version — shows `-> 🗿 v<new>` when an update is available |
+| ⏳ session time | Elapsed time of the current session |
+| 💬 output style | Active output style (MoAI / MoAI-Easy / MoAI-Learn) |
+| CW: context | Context-window usage + two-stage `/clear` marker (⚠️ soft, 🛑 hard) |
+| 5H: 5-hour usage | 5-hour plan usage + time left until reset |
+| 7D: 7-day usage | 7-day plan usage + reset date |
+| 🔋 / 🪫 battery | Battery icon in front of the gauge — flips to 🪫 above 70% |
+| 📁 directory | Project directory name |
+| 🔀 repo | GitHub repo identity `owner/name` (17th segment, outside the config schema) |
+| 🅱️ branch | Current branch + `↑`ahead `↓`behind + `+`dirty count |
+| `[WT]` worktree | Prefix in front of the branch when on an active worktree |
+| 💾 git status | staged / modified / untracked counts (`+S M_M ?U`) |
+| 📋 task | Active SPEC workflow `[command SPEC-ID-stage]` |
+| 💌 PR | Active GitHub PR number + review state (`⌥state`) |
+
+Segments are turned on and off directly via the 16 formal keys — there are no named presets (full/compact/minimal). Each segment silently hides when it has no data to show. Full configuration, data sources, and hide conditions are covered in the [statusline guide](https://adk.mo.ai.kr/en/advanced/statusline).
+
+---
+
 ## FAQ
 
 ### Q: Why doesn't every function have an @MX tag?

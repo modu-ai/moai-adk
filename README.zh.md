@@ -509,6 +509,41 @@ func DispatchHook(event string, data []byte) error {
 
 ---
 
+## 如何读懂状态栏
+
+`moai init` 之后，Claude Code 状态栏会以三行显示。从上到下依次是会话信息 · 用量仪表 · 仓库状态。
+
+```
+🤖 Opus │ 🧠 xhigh·t │ ♻️ 87% │ 🔅 v2.1.212 │ 🗿 v3.0.0 │ ⏳ 2h 34m │ 💬 MoAI
+🪫 CW: ████████░░ 88% (⚠️/clear) │ 🔋 5H: ████░░░░░░ 45% (4h 30m) │ 🪫 7D: ████████░░ 82% (Jan 21)
+📁 moai-adk-go │ 🔀 modu-ai/moai-adk | 🅱️ feat/statusline ↑2 +3 │ 💾 +1 M2 ?0 │ 📋 [run SPEC-AUTH-001-run] │ 💌 PR #1042 (⌥approved)
+```
+
+| 元素 | 含义 |
+|------|------|
+| 🤖 模型 | 当前活动模型（例：Opus） |
+| 🧠 effort | 推理 effort 级别 — 开启扩展思考时加 `·t` 后缀 |
+| ♻️ 缓存命中率 | 提示词缓存命中率 `cache_read / (read + creation)` |
+| 🔅 Claude 版本 | Claude Code 版本 |
+| 🗿 MoAI 版本 | MoAI-ADK 版本 — 有更新时显示 `-> 🗿 v新版` |
+| ⏳ 会话时长 | 当前会话已用时长 |
+| 💬 输出样式 | 活动输出样式（MoAI / MoAI-Easy / MoAI-Learn） |
+| CW: 上下文 | 上下文窗口使用率 + 两阶段 `/clear` 标记（⚠️ 软、🛑 硬） |
+| 5H: 5 小时用量 | 5 小时套餐使用率 + 距重置的剩余时间 |
+| 7D: 7 天用量 | 7 天套餐使用率 + 重置日期 |
+| 🔋 / 🪫 电量 | 仪表前的电量图标 — 超过 70% 变为 🪫 |
+| 📁 目录 | 项目目录名 |
+| 🔀 仓库 | GitHub 仓库 identity `owner/name`（配置模式之外的第 17 个段） |
+| 🅱️ 分支 | 当前分支 + `↑`ahead `↓`behind + `+`脏计数 |
+| `[WT]` worktree | 处于活动 worktree 时分支前的前缀 |
+| 💾 git 状态 | staged / modified / untracked 计数（`+S M_M ?U`） |
+| 📋 任务 | 活动 SPEC 工作流 `[命令 SPEC-ID-阶段]` |
+| 💌 PR | 活动 GitHub PR 编号 + 评审状态（`⌥state`） |
+
+各段通过 16 个正式键直接开关 — 没有命名预设（full/compact/minimal）。每个段在没有可显示数据时会静默隐藏。详细的配置 · 数据来源 · 隐藏条件见 [状态栏指南](https://adk.mo.ai.kr/zh/advanced/statusline)。
+
+---
+
 ## FAQ
 
 ### Q: 为什么不是每个函数都有 @MX 标签？
