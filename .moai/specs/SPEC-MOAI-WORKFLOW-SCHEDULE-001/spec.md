@@ -2,7 +2,7 @@
 id: SPEC-MOAI-WORKFLOW-SCHEDULE-001
 title: "MoAI-Workflow: User-Defined Workflow Save + Scheduled Execution"
 version: "0.1.0"
-status: draft
+status: in-progress
 created: 2026-07-17
 updated: 2026-07-17
 author: manager-spec
