@@ -32,11 +32,11 @@ moai version
 ```text
 ╭────────────────────────╮
 │                        │
-│  moai-adk v3.0.0-rc11  │
+│    moai-adk v3.0.0     │
 │                        │
 │                        │
 ╰────────────────────────╯
- v3.0.0-rc11   none   built unknown
+ v3.0.0   none   built unknown
 ```
 
 ボックスバナーの下の行は `<バージョン>   <コミットハッシュ>   built <ビルド時刻>` の順で表示されます。`go install` など ldflags なしでビルドした場合、コミットは `none`、ビルド時刻は `unknown` と表示されます。
