@@ -91,8 +91,8 @@ internal/statusline/renderer.go (3-line v3 layout)
 - **フォーマット**: `🗿 v<current>` またはアップデート可能時 `🗿 v<current> -> 🗿 v<latest>`
 - **データソース**: `.moai/config/sections/system.yaml` `moai.version` + バックグラウンド update checker の結果
 - **例**:
-  - `🗿 v2.20.0-rc1` (最新)
-  - `🗿 v2.18.0 -> 🗿 v2.20.0-rc1` (アップデート勧告)
+  - `🗿 v3.0.0` (最新)
+  - `🗿 v2.18.0 -> 🗿 v3.0.0` (アップデート勧告)
 - **セグメントキー**: `moai_version`
 
 ### セッション時間
@@ -196,7 +196,7 @@ internal/statusline/renderer.go (3-line v3 layout)
 - **データソース**: `~/.moai/state/last-session-state.json` の `active_task` フィールド (該当ファイルの作成時点でのみ露出)
 - **例**: `📋 [run SPEC-AUTH-001-run]`
 - **非表示条件**: アクティブ task 不在 (`active_task` nil または command 空文字列) → segment 非表示
-- **セグメントキー**: `task` (v2.20.0-rc1 から default-on — 未設定キーはアクティブと解釈)
+- **セグメントキー**: `task` (v3.0.0 から default-on — 未設定キーはアクティブと解釈)
 
 ### PR (アクティブ GitHub Pull Request)
 
@@ -219,7 +219,7 @@ internal/statusline/renderer.go (3-line v3 layout)
   - `pr` フィールド不在 (PR なし、または v2.1.145 以下)
   - `pr.number == 0`
   - `SegmentPR` config が明示的に false
-- **セグメントキー**: `pr` (default on per v2.20.0-rc1)
+- **セグメントキー**: `pr` (default on per v3.0.0)
 
 ## 設定
 
@@ -249,8 +249,8 @@ statusline:
     directory: true
     git_branch: true       # combined repo+branch
     git_status: true
-    task: true             # default-on per v2.20.0-rc1
-    pr: true               # default on per v2.20.0-rc1
+    task: true             # default-on per v3.0.0
+    pr: true               # default on per v3.0.0
     worktree: false
 ```
 
@@ -285,8 +285,8 @@ Statusline の更新間隔は `settings.json` の `statusLine.refreshInterval` �
 | `directory` | L3 | ✓ | `workspace.project_dir` |
 | `git_branch` (combined) | L3 | ✓ | `workspace.repo.*` + local git |
 | `git_status` | L3 | ✓ | local git |
-| `task` | L3 | ✓ (v2.20.0-rc1+) | セッション状態の `active_task` |
-| `pr` | L3 | ✓ (v2.20.0-rc1+) | `pr.*` (Claude Code v2.1.145+) |
+| `task` | L3 | ✓ (v3.0.0+) | セッション状態の `active_task` |
+| `pr` | L3 | ✓ (v3.0.0+) | `pr.*` (Claude Code v2.1.145+) |
 | `worktree` | L3 | ✗ opt-in | `workspace.git_worktree` |
 
 > 上の 16 個が正式な設定スキーマキーです。`repo` (`🔀 owner/name`) は `git_branch` セグメント内でレンダーされる 17 番目のセグメントで、設定スキーマ外のため個別トグルがありません。
@@ -372,9 +372,9 @@ Claude Code が statusline スクリプトに渡す stdin JSON の全フィー�
 
 ## バージョン履歴
 
-- **v2.20.0-rc1 layout v3** (2026-05-22): 3-line layout の再設計 — repo+branch 統合 segment、directory を L3 head へ、`🪫 CW:` 絵文字を前へ、`(⚠️/clear)` handoff suffix、`💾` git status の統一、`💌 PR #N (⌥state)` 形式
-- **v2.20.0-rc1 STATUSLINE-STDINFIELDS-001** (2026-05-21): `workspace.repo` + `exceeds_200k_tokens` + `pr` stdin フィールドマッピングを追加、1M context handoff threshold 75% → 50%
-- **v2.20.0-rc1 STATUSLINE-V2145-001** (2026-05-20): PR segment を追加 (v2.1.145+ stdin)、4-locale docs の同期
+- **v3.0.0 layout v3** (2026-05-22): 3-line layout の再設計 — repo+branch 統合 segment、directory を L3 head へ、`🪫 CW:` 絵文字を前へ、`(⚠️/clear)` handoff suffix、`💾` git status の統一、`💌 PR #N (⌥state)` 形式
+- **v3.0.0 STATUSLINE-STDINFIELDS-001** (2026-05-21): `workspace.repo` + `exceeds_200k_tokens` + `pr` stdin フィールドマッピングを追加、1M context handoff threshold 75% → 50%
+- **v3.0.0 STATUSLINE-V2145-001** (2026-05-20): PR segment を追加 (v2.1.145+ stdin)、4-locale docs の同期
 - **v2.1.139** (Claude Code): `effort.level` + `thinking.enabled` stdin JSON を追加
 - **v2.1.145** (Claude Code): `workspace.repo` + `pr` stdin JSON を追加
 

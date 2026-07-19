@@ -91,8 +91,8 @@ internal/statusline/renderer.go (3-line v3 layout)
 - **포맷**: `🗿 v<current>` 또는 업데이트 가능 시 `🗿 v<current> -> 🗿 v<latest>`
 - **데이터 소스**: `.moai/config/sections/system.yaml` `moai.version` + 백그라운드 update checker 결과
 - **예시**:
-  - `🗿 v2.20.0-rc1` (최신)
-  - `🗿 v2.18.0 -> 🗿 v2.20.0-rc1` (업데이트 권고)
+  - `🗿 v3.0.0` (최신)
+  - `🗿 v2.18.0 -> 🗿 v3.0.0` (업데이트 권고)
 - **세그먼트 키**: `moai_version`
 
 ### 세션 시간
@@ -196,7 +196,7 @@ internal/statusline/renderer.go (3-line v3 layout)
 - **데이터 소스**: `~/.moai/state/last-session-state.json` `active_task` 필드 (해당 파일 작성 시점에만 노출)
 - **예시**: `📋 [run SPEC-AUTH-001-run]`
 - **숨김 조건**: 활성 task 부재 (`active_task` nil 또는 command 빈 문자열) → segment 숨김
-- **세그먼트 키**: `task` (v2.20.0-rc1부터 default-on — 미설정 키는 활성으로 해석)
+- **세그먼트 키**: `task` (v3.0.0부터 default-on — 미설정 키는 활성으로 해석)
 
 ### PR (활성 GitHub Pull Request)
 
@@ -219,7 +219,7 @@ internal/statusline/renderer.go (3-line v3 layout)
   - `pr` 필드 부재 (PR 없음 또는 v2.1.145 이하)
   - `pr.number == 0`
   - `SegmentPR` config 명시적 false
-- **세그먼트 키**: `pr` (default on per v2.20.0-rc1)
+- **세그먼트 키**: `pr` (default on per v3.0.0)
 
 ## 설정
 
@@ -249,8 +249,8 @@ statusline:
     directory: true
     git_branch: true       # combined repo+branch
     git_status: true
-    task: true             # default-on per v2.20.0-rc1
-    pr: true               # default on per v2.20.0-rc1
+    task: true             # default-on per v3.0.0
+    pr: true               # default on per v3.0.0
     worktree: false
 ```
 
@@ -285,8 +285,8 @@ Statusline의 새로고침 주기는 `settings.json`의 `statusLine.refreshInter
 | `directory` | L3 | ✓ | `workspace.project_dir` |
 | `git_branch` (combined) | L3 | ✓ | `workspace.repo.*` + local git |
 | `git_status` | L3 | ✓ | local git |
-| `task` | L3 | ✓ (v2.20.0-rc1+) | 세션 상태의 `active_task` |
-| `pr` | L3 | ✓ (v2.20.0-rc1+) | `pr.*` (Claude Code v2.1.145+) |
+| `task` | L3 | ✓ (v3.0.0+) | 세션 상태의 `active_task` |
+| `pr` | L3 | ✓ (v3.0.0+) | `pr.*` (Claude Code v2.1.145+) |
 | `worktree` | L3 | ✗ opt-in | `workspace.git_worktree` |
 
 > 위 16개가 정식 설정 스키마 키입니다. `repo`(`🔀 owner/name`)는 `git_branch` 세그먼트 안에서 렌더되는 17번째 세그먼트로, 설정 스키마 밖이라 개별 토글이 없습니다.
@@ -372,9 +372,9 @@ Claude Code가 statusline 스크립트로 전달하는 stdin JSON 전체 필드 
 
 ## 버전 히스토리
 
-- **v2.20.0-rc1 layout v3** (2026-05-22): 3-line layout 재설계 — repo+branch 통합 segment, directory L3 head, `🪫 CW:` emoji 앞으로, `(⚠️/clear)` handoff suffix, `💾` git status 통일, `💌 PR #N (⌥state)` 형식
-- **v2.20.0-rc1 STATUSLINE-STDINFIELDS-001** (2026-05-21): `workspace.repo` + `exceeds_200k_tokens` + `pr` stdin 필드 매핑 추가, 1M context handoff threshold 75% → 50%
-- **v2.20.0-rc1 STATUSLINE-V2145-001** (2026-05-20): PR segment 추가 (v2.1.145+ stdin), 4-locale docs 동기화
+- **v3.0.0 layout v3** (2026-05-22): 3-line layout 재설계 — repo+branch 통합 segment, directory L3 head, `🪫 CW:` emoji 앞으로, `(⚠️/clear)` handoff suffix, `💾` git status 통일, `💌 PR #N (⌥state)` 형식
+- **v3.0.0 STATUSLINE-STDINFIELDS-001** (2026-05-21): `workspace.repo` + `exceeds_200k_tokens` + `pr` stdin 필드 매핑 추가, 1M context handoff threshold 75% → 50%
+- **v3.0.0 STATUSLINE-V2145-001** (2026-05-20): PR segment 추가 (v2.1.145+ stdin), 4-locale docs 동기화
 - **v2.1.139** (Claude Code): `effort.level` + `thinking.enabled` stdin JSON 추가
 - **v2.1.145** (Claude Code): `workspace.repo` + `pr` stdin JSON 추가
 

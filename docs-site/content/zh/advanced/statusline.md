@@ -91,8 +91,8 @@ internal/statusline/renderer.go (3-line v3 layout)
 - **格式**：`🗿 v<current>`，或可更新时 `🗿 v<current> -> 🗿 v<latest>`
 - **数据来源**：`.moai/config/sections/system.yaml` `moai.version` + 后台 update checker 结果
 - **示例**：
-  - `🗿 v2.20.0-rc1`（最新）
-  - `🗿 v2.18.0 -> 🗿 v2.20.0-rc1`（建议更新）
+  - `🗿 v3.0.0`（最新）
+  - `🗿 v2.18.0 -> 🗿 v3.0.0`（建议更新）
 - **段键**：`moai_version`
 
 ### 会话时长
@@ -196,7 +196,7 @@ internal/statusline/renderer.go (3-line v3 layout)
 - **数据来源**：`~/.moai/state/last-session-state.json` 的 `active_task` 字段（仅在该文件被写入时显示）
 - **示例**：`📋 [run SPEC-AUTH-001-run]`
 - **隐藏条件**：无活动 task（`active_task` 为 nil 或 command 为空字符串）→ 隐藏该段
-- **段键**：`task`（v2.20.0-rc1 起默认开启 — 未设置的键视为激活）
+- **段键**：`task`（v3.0.0 起默认开启 — 未设置的键视为激活）
 
 ### PR（活动 GitHub Pull Request）
 
@@ -219,7 +219,7 @@ internal/statusline/renderer.go (3-line v3 layout)
   - 无 `pr` 字段（无 PR 或 v2.1.145 以下）
   - `pr.number == 0`
   - `SegmentPR` 配置显式为 false
-- **段键**：`pr`（v2.20.0-rc1 起默认开启）
+- **段键**：`pr`（v3.0.0 起默认开启）
 
 ## 配置
 
@@ -249,8 +249,8 @@ statusline:
     directory: true
     git_branch: true       # combined repo+branch
     git_status: true
-    task: true             # default-on per v2.20.0-rc1
-    pr: true               # default on per v2.20.0-rc1
+    task: true             # default-on per v3.0.0
+    pr: true               # default on per v3.0.0
     worktree: false
 ```
 
@@ -285,8 +285,8 @@ Statusline 的刷新周期由 `settings.json` 的 `statusLine.refreshInterval` �
 | `directory` | L3 | ✓ | `workspace.project_dir` |
 | `git_branch` (combined) | L3 | ✓ | `workspace.repo.*` + local git |
 | `git_status` | L3 | ✓ | local git |
-| `task` | L3 | ✓ (v2.20.0-rc1+) | 会话状态的 `active_task` |
-| `pr` | L3 | ✓ (v2.20.0-rc1+) | `pr.*` (Claude Code v2.1.145+) |
+| `task` | L3 | ✓ (v3.0.0+) | 会话状态的 `active_task` |
+| `pr` | L3 | ✓ (v3.0.0+) | `pr.*` (Claude Code v2.1.145+) |
 | `worktree` | L3 | ✗ opt-in | `workspace.git_worktree` |
 
 > 以上 16 个是正式的配置模式键。`repo`（`🔀 owner/name`）是在 `git_branch` 段内渲染的第 17 个段，因位于配置模式之外，无法单独开关。
@@ -372,9 +372,9 @@ Claude Code 传给 statusline 脚本的 stdin JSON 完整字段列表见 [官方
 
 ## 版本历史
 
-- **v2.20.0-rc1 layout v3**（2026-05-22）：3-line 布局重设计 — repo+branch 合并段、directory 移到 L3 首位、`🪫 CW:` emoji 前置、`(⚠️/clear)` handoff 后缀、`💾` git status 统一、`💌 PR #N (⌥state)` 格式
-- **v2.20.0-rc1 STATUSLINE-STDINFIELDS-001**（2026-05-21）：新增 `workspace.repo` + `exceeds_200k_tokens` + `pr` stdin 字段映射，1M context handoff 阈值 75% → 50%
-- **v2.20.0-rc1 STATUSLINE-V2145-001**（2026-05-20）：新增 PR 段（v2.1.145+ stdin），4 语言文档同步
+- **v3.0.0 layout v3**（2026-05-22）：3-line 布局重设计 — repo+branch 合并段、directory 移到 L3 首位、`🪫 CW:` emoji 前置、`(⚠️/clear)` handoff 后缀、`💾` git status 统一、`💌 PR #N (⌥state)` 格式
+- **v3.0.0 STATUSLINE-STDINFIELDS-001**（2026-05-21）：新增 `workspace.repo` + `exceeds_200k_tokens` + `pr` stdin 字段映射，1M context handoff 阈值 75% → 50%
+- **v3.0.0 STATUSLINE-V2145-001**（2026-05-20）：新增 PR 段（v2.1.145+ stdin），4 语言文档同步
 - **v2.1.139**（Claude Code）：stdin JSON 新增 `effort.level` + `thinking.enabled`
 - **v2.1.145**（Claude Code）：stdin JSON 新增 `workspace.repo` + `pr`
 

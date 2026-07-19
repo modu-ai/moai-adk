@@ -811,7 +811,7 @@ Claude Code 하단에 표시되는 상태 표시줄을 설정합니다.
 
 ### settings.local.json 권한 강화 (0o600) {#settings-local-json-permission}
 
-v2.20.0-rc1 부터 `settings.local.json` 은 생성·갱신 시 **`0o600`** (소유자 전용 read/write) 권한이 강제됩니다. 이전 `0o644` 는 다중 사용자 워크스테이션에서 `ANTHROPIC_AUTH_TOKEN` 등 민감 자격증명이 다른 로컬 사용자에게 노출되는 위험이 있었습니다 (CWE-732 / CWE-552).
+v3.0.0 부터 `settings.local.json` 은 생성·갱신 시 **`0o600`** (소유자 전용 read/write) 권한이 강제됩니다. 이전 `0o644` 는 다중 사용자 워크스테이션에서 `ANTHROPIC_AUTH_TOKEN` 등 민감 자격증명이 다른 로컬 사용자에게 노출되는 위험이 있었습니다 (CWE-732 / CWE-552).
 
 **자체 점검**:
 

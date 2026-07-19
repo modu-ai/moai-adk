@@ -107,7 +107,7 @@ draft: false
 | (无) | 基于复杂度自动选择 |
 
 {{< callout type="warning" >}}
-**v3.0.0-rc11 变更**: Agent Teams 静态编排层已 **退役**。即使强制 `--team`,也会伴随 `MODE_TEAM_UNAVAILABLE` 回退到子智能体模式。并行执行由并行子智能体扇出与两种动态工作流(plan-phase 研究并行扇出、sync-phase 4 维质量评估)承担,原生 teammate 运行时(`moai cg` 的 tmux pane)保持不变。
+**v3.0.0 变更**: Agent Teams 静态编排层已 **退役**。即使强制 `--team`,也会伴随 `MODE_TEAM_UNAVAILABLE` 回退到子智能体模式。并行执行由并行子智能体扇出与两种动态工作流(plan-phase 研究并行扇出、sync-phase 4 维质量评估)承担,原生 teammate 运行时(`moai cg` 的 tmux pane)保持不变。
 {{< /callout >}}
 
 并行执行中每个智能体使用独立的上下文窗口,令牌用量会增加。对于简单的单域工作,`--solo`(顺序)更经济 — 这就是基于规模的自动选择成为默认值的原因。

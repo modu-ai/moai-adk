@@ -91,8 +91,8 @@ The cache hit rate is the effect meter of the context diet — trim the always-l
 - **Format**: `🗿 v<current>` or, when an update is available, `🗿 v<current> -> 🗿 v<latest>`
 - **Data source**: `.moai/config/sections/system.yaml` `moai.version` + the background update checker result
 - **Examples**:
-  - `🗿 v2.20.0-rc1` (up to date)
-  - `🗿 v2.18.0 -> 🗿 v2.20.0-rc1` (update advised)
+  - `🗿 v3.0.0` (up to date)
+  - `🗿 v2.18.0 -> 🗿 v3.0.0` (update advised)
 - **Segment key**: `moai_version`
 
 ### Session Time
@@ -196,7 +196,7 @@ For subscription-plan users, the 5H/7D bars are effectively budget gauges — yo
 - **Data source**: the `active_task` field of `~/.moai/state/last-session-state.json` (shown only when that file is written)
 - **Example**: `📋 [run SPEC-AUTH-001-run]`
 - **Hidden when**: no active task (`active_task` nil or an empty command) → segment hidden
-- **Segment key**: `task` (default-on from v2.20.0-rc1 — an unset key is read as active)
+- **Segment key**: `task` (default-on from v3.0.0 — an unset key is read as active)
 
 ### PR (active GitHub Pull Request)
 
@@ -219,7 +219,7 @@ For subscription-plan users, the 5H/7D bars are effectively budget gauges — yo
   - the `pr` field is absent (no PR, or v2.1.145 and below)
   - `pr.number == 0`
   - `SegmentPR` config explicitly false
-- **Segment key**: `pr` (default on per v2.20.0-rc1)
+- **Segment key**: `pr` (default on per v3.0.0)
 
 ## Configuration
 
@@ -249,8 +249,8 @@ statusline:
     directory: true
     git_branch: true       # combined repo+branch
     git_status: true
-    task: true             # default-on per v2.20.0-rc1
-    pr: true               # default on per v2.20.0-rc1
+    task: true             # default-on per v3.0.0
+    pr: true               # default on per v3.0.0
     worktree: false
 ```
 
@@ -285,8 +285,8 @@ The statusline's refresh interval is set via `statusLine.refreshInterval` in `se
 | `directory` | L3 | ✓ | `workspace.project_dir` |
 | `git_branch` (combined) | L3 | ✓ | `workspace.repo.*` + local git |
 | `git_status` | L3 | ✓ | local git |
-| `task` | L3 | ✓ (v2.20.0-rc1+) | `active_task` in session state |
-| `pr` | L3 | ✓ (v2.20.0-rc1+) | `pr.*` (Claude Code v2.1.145+) |
+| `task` | L3 | ✓ (v3.0.0+) | `active_task` in session state |
+| `pr` | L3 | ✓ (v3.0.0+) | `pr.*` (Claude Code v2.1.145+) |
 | `worktree` | L3 | ✗ opt-in | `workspace.git_worktree` |
 
 > The 16 above are the formal config-schema keys. `repo` (`🔀 owner/name`) is a 17th segment rendered inside the `git_branch` segment; being outside the config schema, it has no individual toggle.
@@ -372,9 +372,9 @@ For the full list of stdin JSON fields Claude Code passes to the statusline scri
 
 ## Version History
 
-- **v2.20.0-rc1 layout v3** (2026-05-22): 3-line layout redesign — combined repo+branch segment, directory at the L3 head, `🪫 CW:` emoji moved forward, `(⚠️/clear)` handoff suffix, unified `💾` git status, `💌 PR #N (⌥state)` format
-- **v2.20.0-rc1 STATUSLINE-STDINFIELDS-001** (2026-05-21): added `workspace.repo` + `exceeds_200k_tokens` + `pr` stdin field mappings, 1M-context handoff threshold 75% → 50%
-- **v2.20.0-rc1 STATUSLINE-V2145-001** (2026-05-20): PR segment added (v2.1.145+ stdin), 4-locale docs sync
+- **v3.0.0 layout v3** (2026-05-22): 3-line layout redesign — combined repo+branch segment, directory at the L3 head, `🪫 CW:` emoji moved forward, `(⚠️/clear)` handoff suffix, unified `💾` git status, `💌 PR #N (⌥state)` format
+- **v3.0.0 STATUSLINE-STDINFIELDS-001** (2026-05-21): added `workspace.repo` + `exceeds_200k_tokens` + `pr` stdin field mappings, 1M-context handoff threshold 75% → 50%
+- **v3.0.0 STATUSLINE-V2145-001** (2026-05-20): PR segment added (v2.1.145+ stdin), 4-locale docs sync
 - **v2.1.139** (Claude Code): `effort.level` + `thinking.enabled` added to stdin JSON
 - **v2.1.145** (Claude Code): `workspace.repo` + `pr` added to stdin JSON
 

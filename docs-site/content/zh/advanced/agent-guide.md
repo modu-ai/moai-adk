@@ -205,7 +205,7 @@ Claude Code 官方的 Sub-agent 系统是 MoAI-ADK 智能体结构的基石。
 
 ## Agent Teams 静态层 — 在 v3.0 退役
 
-先前版本中的 Agent Teams 静态编排层（`workflow.team.*` 配置、`--team` 强制标志）在 v3.0.0-rc11 中 **退役**。
+先前版本中的 Agent Teams 静态编排层（`workflow.team.*` 配置、`--team` 强制标志）在 v3.0.0 中 **退役**。
 
 - 强制 `--team` 时会提示 `MODE_TEAM_UNAVAILABLE` 并自动回退到 sub-agent 模式。
 - 需要并行性的调研、审查任务用并行 sub-agent 扇出处理；顺序编码任务用 sub-agent 链处理。
