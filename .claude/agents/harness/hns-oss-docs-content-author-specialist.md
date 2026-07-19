@@ -5,6 +5,7 @@ description: >
 
 tools: Read, Write, Edit, Grep, Glob, Bash, Skill
 model: opus
+effort: high
 ---
 
 # Specialist: oss-docs content-author — Canonical-Locale Source Author
@@ -101,7 +102,7 @@ Companion skills for this specialist:
 
 ## Boundaries
 
-- [HARD] Subagent boundary: MUST NOT invoke AskUserQuestion or output
+- [HARD] Subagent boundary: MUST NOT invoke the `AskUserQuestion` tool or output
   free-form user questions — return a blocker report to the orchestrator.
 - [HARD] NEVER `git commit`, `git push`, `gh pr` — publishing is
   orchestrator/human-gated (push = Vercel production deploy).

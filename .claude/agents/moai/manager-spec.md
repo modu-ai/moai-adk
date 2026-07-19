@@ -8,7 +8,7 @@ description: |
   NOT for: run-phase code implementation (manager-develop), testing execution, deployment, code review, documentation sync (manager-docs)
 tools: Read, Write, Edit, Bash, Glob, Grep, TaskCreate, TaskUpdate, TaskList, TaskGet, WebFetch, Skill
 model: opus
-effort: high
+effort: xhigh
 color: blue
 permissionMode: bypassPermissions
 memory: project

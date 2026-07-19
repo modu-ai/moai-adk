@@ -6,7 +6,7 @@ description: |
   NOT for: post-implementation code audit (sync-auditor), code implementation, code review, documentation writing, git operations, running tests
 tools: Read, Grep, Glob, Bash, Write, Edit, TaskCreate, TaskUpdate, TaskList, TaskGet, Skill
 model: opus
-effort: high
+effort: xhigh
 color: red
 permissionMode: default
 memory: project
