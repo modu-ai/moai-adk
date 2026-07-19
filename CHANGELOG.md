@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [v3.0.0] - 2026-07-18
+## [3.0.0] - 2026-07-18
 
 ### Summary
 
@@ -68,7 +68,7 @@ Per-pre-release detail for each theme lives in the `v3.0.0-rc1`…`v3.0.0-rc12` 
 
 ---
 
-## [v3.0.0] - 2026-07-18 (한국어)
+## [3.0.0] - 2026-07-18 (한국어)
 
 ### 요약
 
