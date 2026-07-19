@@ -812,7 +812,7 @@ Settings in `settings.local.json` are **merged** into those in `settings.json`. 
 
 ### settings.local.json Permission Hardening (0o600) {#settings-local-json-permission}
 
-From v2.20.0-rc1, `settings.local.json` is enforced to **`0o600`** (owner-only read/write) permission on creation and update. The previous `0o644` risked exposing sensitive credentials such as `ANTHROPIC_AUTH_TOKEN` to other local users on multi-user workstations (CWE-732 / CWE-552).
+From v3.0.0, `settings.local.json` is enforced to **`0o600`** (owner-only read/write) permission on creation and update. The previous `0o644` risked exposing sensitive credentials such as `ANTHROPIC_AUTH_TOKEN` to other local users on multi-user workstations (CWE-732 / CWE-552).
 
 **Self-audit**:
 

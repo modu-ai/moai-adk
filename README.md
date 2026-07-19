@@ -47,6 +47,31 @@ It does not replace Claude Code. It only wraps, in structure, the parts Claude C
 
 ---
 
+## Why MoAI-ADK
+
+Claude Code alone will produce code. The question is whether that code comes out at the same quality every time, at a predictable cost. The case for adopting the harness compresses into three arguments.
+
+### Argument 1 — Quality comes from structure, not prompts
+
+Discipline seeded through prompts evaporates the moment context gets compacted. Standards like "tests first", "85% coverage", "separate the author from the reviewer" cannot be restated every turn — and even when they are, the model cannot prove to itself that it followed them. MoAI-ADK enforces these standards as a pipeline: every change passes the SPEC 3-phase lifecycle (plan → run → sync), the TRUST 5 gate (including 85%+ coverage) demands passing evidence, and the agent that wrote the plan is separated from the agent that audits it, so no one grades their own work. Completion is judged by test output and acceptance criteria — not by "it looks done".
+
+### Argument 2 — Cost is decided by assignment, not model price
+
+As the measurements in [From 2.0 to 3.0](#from-20-to-30) below show, cost per solved task diverges by more than 2× even within the same Claude family — running a weaker model at maximum effort is actually more expensive and scores lower. No human can tune this assignment by hand for every task. MoAI-ADK assigns model and reasoning depth declaratively through a Tier×Phase matrix, diets the context by redirecting verification logs to disk, and defends the budget with the Token Circuit Breaker. Cost control becomes a system property, not a personal habit.
+
+### Argument 3 — Sessions break; work continues
+
+The context window is finite and `/clear` is inevitable. In bare Claude Code, progress, lessons, and preconditions evaporate at every such boundary. MoAI-ADK auto-generates a handoff at session boundaries so the next session continues from a single paste, and observations accumulated by the loops climb the learning ladder into harness guidance. The unit of work becomes the project, not the session.
+
+### Two anticipated objections
+
+- **"Can't good prompting do this?"** — A prompt is a request; a harness is enforcement. The only rules that survive context compaction, session boundaries, and model switches are the rules that exist as files and gates.
+- **"Isn't the adoption overhead high?"** — It is one dependency-free Go binary. From the moment `moai init` finishes, the statusline, quality gates, and `/moai` commands are live. It wraps your existing Claude Code workflow rather than replacing it, so nothing you do today changes.
+
+In one line — **Claude Code writes the code; MoAI-ADK makes that code trustworthy and its cost predictable.**
+
+---
+
 ## From 2.0 to 3.0
 
 The reason to move to v3 is not a longer feature list. It is that the system now carries two axes — cost and learning — that used to be yours to hold. Where v2 handed you individual levers (cache, GLM), v3 wires those levers into a closed loop and makes them properties of the system.
@@ -112,7 +137,7 @@ Grouping the commits piled up since v2.14.0 by theme yields eight strands. The c
 
 ### v3 by the Numbers
 
-Over the **80 days** from v2.14.0 (2026-04-24) to v3.0.0-rc11 (2026-07-13), **2,373 commits** piled up (**feat 816** · fix 252 · docs 581). The result:
+Over the **80 days** from v2.14.0 (2026-04-24) to v3.0.0 (2026-07-16), **2,373 commits** piled up (**feat 816** · fix 252 · docs 581). The result:
 
 - **500** SPEC-document-driven development (`.moai/specs/`)
 - **moai-\* 27** template-managed skills · **36** top-level CLI commands · **16** `/moai` subcommands (+ the natural-language default)
@@ -484,6 +509,41 @@ There are three output styles. Switch with `/config` (the choice is saved to `se
 
 ---
 
+## Reading the Statusline
+
+Right after `moai init`, the Claude Code statusline appears as three lines. From the top: session info · usage gauges · repo state.
+
+```
+🤖 Opus │ 🧠 xhigh·t │ ♻️ 87% │ 🔅 v2.1.212 │ 🗿 v3.0.0 │ ⏳ 2h 34m │ 💬 MoAI
+🪫 CW: ████████░░ 88% (⚠️/clear) │ 🔋 5H: ████░░░░░░ 45% (4h 30m) │ 🪫 7D: ████████░░ 82% (Jan 21)
+📁 moai-adk-go │ 🔀 modu-ai/moai-adk | 🅱️ feat/statusline ↑2 +3 │ 💾 +1 M2 ?0 │ 📋 [run SPEC-AUTH-001-run] │ 💌 PR #1042 (⌥approved)
+```
+
+| Element | Meaning |
+|------|------|
+| 🤖 model | The currently active model (e.g. Opus) |
+| 🧠 effort | Reasoning effort level — a `·t` suffix when extended thinking is on |
+| ♻️ cache hit rate | Prompt-cache hit rate `cache_read / (read + creation)` |
+| 🔅 Claude version | Claude Code version |
+| 🗿 MoAI version | MoAI-ADK version — shows `-> 🗿 v<new>` when an update is available |
+| ⏳ session time | Elapsed time of the current session |
+| 💬 output style | Active output style (MoAI / MoAI-Easy / MoAI-Learn) |
+| CW: context | Context-window usage + two-stage `/clear` marker (⚠️ soft, 🛑 hard) |
+| 5H: 5-hour usage | 5-hour plan usage + time left until reset |
+| 7D: 7-day usage | 7-day plan usage + reset date |
+| 🔋 / 🪫 battery | Battery icon in front of the gauge — flips to 🪫 above 70% |
+| 📁 directory | Project directory name |
+| 🔀 repo | GitHub repo identity `owner/name` (17th segment, outside the config schema) |
+| 🅱️ branch | Current branch + `↑`ahead `↓`behind + `+`dirty count |
+| `[WT]` worktree | Prefix in front of the branch when on an active worktree |
+| 💾 git status | staged / modified / untracked counts (`+S M_M ?U`) |
+| 📋 task | Active SPEC workflow `[command SPEC-ID-stage]` |
+| 💌 PR | Active GitHub PR number + review state (`⌥state`) |
+
+Segments are turned on and off directly via the 16 formal keys — there are no named presets (full/compact/minimal). Each segment silently hides when it has no data to show. Full configuration, data sources, and hide conditions are covered in the [statusline guide](https://adk.mo.ai.kr/en/advanced/statusline).
+
+---
+
 ## FAQ
 
 ### Q: Why doesn't every function have an @MX tag?
@@ -493,7 +553,7 @@ There are three output styles. Switch with `/config` (the choice is saved to `se
 ### Q: What does the version indicator in the statusline mean?
 
 ```
-🗿 v3.0.0-rc11 ⬆️ v3.0.0-rc12
+🗿 v3.0.0 ⬆️ v3.0.1
 ```
 
 The first value is the currently installed MoAI-ADK version; the arrow indicates an available update (running `moai update` clears it). It is separate from Claude Code's own version indicator.

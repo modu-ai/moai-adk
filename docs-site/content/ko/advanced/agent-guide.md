@@ -210,7 +210,7 @@ Claude Code의 공식 Sub-agent 시스템은 MoAI-ADK 에이전트 구조의 기
 
 ## Agent Teams 정적 계층 — v3.0에서 은퇴
 
-이전 버전에 있던 Agent Teams 정적 오케스트레이션 계층 (`workflow.team.*` 설정, `--team` 강제 플래그)은 v3.0.0-rc11에서 **은퇴**했습니다.
+이전 버전에 있던 Agent Teams 정적 오케스트레이션 계층 (`workflow.team.*` 설정, `--team` 강제 플래그)은 v3.0.0에서 **은퇴**했습니다.
 
 - `--team`을 강제하면 `MODE_TEAM_UNAVAILABLE`을 알리고 sub-agent 모드로 자동 폴백합니다.
 - 병렬성이 필요한 조사·리뷰 작업은 병렬 sub-agent 팬아웃으로, 순차 코딩 작업은 sub-agent 체인으로 처리합니다.

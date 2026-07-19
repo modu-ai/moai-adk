@@ -31,11 +31,11 @@ MoAI 的默认模式 — 每个回合依次委派一个智能体。
 - 以编码为主的 run-phase 任务
 - 智能体之间依赖较多时
 
-### 2. Agent Teams（团队协作）
+### 2. Agent Teams（团队协作）— v3.0 已退役
 
-多名成员通过 **共享 TaskList** 协作的模式。
+早期版本中，这是多名成员通过 **共享 TaskList** 协作的模式。
 
-| 特性 | 说明 |
+| 特性（旧规格，仅供参考） | 说明 |
 |------|------|
 | **计划位置** | 共享 TaskList（团队间协调） |
 | **中间结果** | TaskList + 各成员的上下文 |
@@ -43,13 +43,8 @@ MoAI 的默认模式 — 每个回合依次委派一个智能体。
 | **规模** | 小型团队（3~5 名） |
 | **上下文成本** | 每名成员独立上下文 |
 
-**使用时机**：
-- 多名成员并行工作
-- 跨层依赖（后端 ↔ 前端）
-- 需要成员间协作与评审
-
 {{< callout type="warning" >}}
-在 v3.0 中，MoAI 的 Agent Teams **静态编排层已退役**。强制 `--team` 时会回退到 sub-agent 模式。原生 Claude Code teammate 运行时（`moai cg` 的 GLM pane 等）继续正常工作。
+在 v3.0 中，MoAI 的 Agent Teams **静态编排层已退役**。强制 `--team` 时会回退到 sub-agent 模式。多名成员并行工作、跨层依赖（后端 ↔ 前端）等场景改由并行子智能体扇出处理。原生 Claude Code teammate 运行时（`moai cg` 的 GLM pane 等）继续正常工作。
 {{< /callout >}}
 
 ### 3. Dynamic Workflows（动态工作流）
@@ -79,19 +74,21 @@ flowchart TD
     START[把握任务特性] --> Q1{需要几个独立<br>智能体?}
     
     Q1 -->|1~5 个| Q2{必须<br>并行执行?}
-    Q1 -->|5~10 个| Q3{非常<br>复杂?}
+    Q1 -->|5~10 个| Q3{只读<br>调查?}
     Q1 -->|10 个以上| WORKFLOW["选择 Dynamic Workflow<br>并行脚本最优"]
     
     Q2 -->|否| SUBAGENT["Sequential Sub-agent<br>顺序委派"]
-    Q2 -->|是| TEAMS["Agent Teams<br>团队协作"]
+    Q2 -->|是| PARALLEL["Parallel Sub-agents<br>单回合多个 Agent() 扇出"]
     
-    Q3 -->|是| TEAMS
+    Q3 -->|是| PARALLEL
     Q3 -->|否| SUBAGENT
     
     SUBAGENT --> DONE["✓ 选择完成"]
-    TEAMS --> DONE
+    PARALLEL --> DONE
     WORKFLOW --> DONE
 ```
+
+> MoAI 的静态 Agent Teams 编排层已退役（见上方警告），并行执行改由 **并行子智能体扇出**（单回合多个 `Agent()`、只读调查范围）承担。原生 Claude Code teammate 运行时（`moai cg` 的 tmux pane）继续独立运行。
 
 ## Ultracode 与 Dynamic Workflows
 

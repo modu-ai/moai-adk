@@ -1,16 +1,16 @@
 ---
 title: Security Notes
-description: "MoAI-ADK v2.20.0-rc1 security hardening — CWE-732/214/345 mappings and self-audit procedures"
+description: "MoAI-ADK v3.0.0 security hardening — CWE-732/214/345 mappings and self-audit procedures"
 weight: 72
 draft: false
 tags: ["security", "cwe", "audit"]
 ---
 
-An agentic harness is a system that hands execution authority to agents. The more authority a system delegates, the more the security of its credentials and update paths forms the floor of harness trust. This page summarizes the **user-visible security changes** introduced as of MoAI-ADK v2.20.0-rc1. Each item includes its CWE mapping, the changed behavior, and self-audit commands.
+An agentic harness is a system that hands execution authority to agents. The more authority a system delegates, the more the security of its credentials and update paths forms the floor of harness trust. This page summarizes the **user-visible security changes** introduced as of MoAI-ADK v3.0.0. Each item includes its CWE mapping, the changed behavior, and self-audit commands.
 
 ## Why — Why This Page Exists
 
-`SPEC-V3R5-SECURITY-CRIT-001` (PR #1032, merge commit `03a2552a2`) corrected **3 P0 release-blocker security defects** found in code review between v2.14.0 and v2.20.0-rc1. This page codifies that correction, and the procedures for users to verify the new protections in their own environments, as official 4-locale guidance.
+`SPEC-V3R5-SECURITY-CRIT-001` (PR #1032, merge commit `03a2552a2`) corrected **3 P0 release-blocker security defects** found in code review between v2.14.0 and v3.0.0. This page codifies that correction, and the procedures for users to verify the new protections in their own environments, as official 4-locale guidance.
 
 All three defects relate to the GLM integration + auto-update paths.
 
@@ -228,13 +228,13 @@ stat -c '%a' ~/.moai/.env.glm 2>/dev/null \
 # Expected: 600 (when the file exists)
 ```
 
-If all 5 items meet the expected values, the v2.20.0-rc1 security hardening is functioning correctly.
+If all 5 items meet the expected values, the v3.0.0 security hardening is functioning correctly.
 
 ## References
 
 ### CHANGELOG
 
-[CHANGELOG `[Unreleased]` v2.20.0-rc1 Security section](https://github.com/modu-ai/moai-adk/blob/main/CHANGELOG.md)
+[CHANGELOG v3.0.0 Security section](https://github.com/modu-ai/moai-adk/blob/main/CHANGELOG.md)
 
 ### SPEC
 

@@ -206,7 +206,7 @@ Claude Code の公式 Sub-agent システムは MoAI-ADK エージェント構�
 
 ## Agent Teams 静的階層 — v3.0 で引退
 
-以前のバージョンにあった Agent Teams 静的オーケストレーション階層 (`workflow.team.*` 設定、`--team` 強制フラグ) は v3.0.0-rc11 で **引退** しました。
+以前のバージョンにあった Agent Teams 静的オーケストレーション階層 (`workflow.team.*` 設定、`--team` 強制フラグ) は v3.0.0 で **引退** しました。
 
 - `--team` を強制すると `MODE_TEAM_UNAVAILABLE` を通知し、sub-agent モードへ自動フォールバックします。
 - 並列性が必要な調査・レビュー作業は並列 sub-agent ファンアウトで、順次のコーディング作業は sub-agent チェーンで処理します。

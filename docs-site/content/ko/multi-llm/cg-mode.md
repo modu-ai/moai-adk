@@ -100,7 +100,7 @@ moai cg
 
 ## tmux 환경 변수 주입 보안 모델 {#tmux-env-security}
 
-v2.20.0-rc1 부터 `moai cg` 가 GLM token (`ANTHROPIC_AUTH_TOKEN`) 을 tmux 세션 환경 변수에 주입할 때, **argv 채널** (`tmux set-environment <KEY> <VALUE>`) 대신 **source-file 채널** (`tmux source-file <tmp>`) 을 사용합니다. token 은 더 이상 `ps auxe`, `/proc/<pid>/cmdline`, auditd 로그, sysmon 추적, 크래시 덤프에 평문으로 노출되지 않습니다 (CWE-214).
+v3.0.0 부터 `moai cg` 가 GLM token (`ANTHROPIC_AUTH_TOKEN`) 을 tmux 세션 환경 변수에 주입할 때, **argv 채널** (`tmux set-environment <KEY> <VALUE>`) 대신 **source-file 채널** (`tmux source-file <tmp>`) 을 사용합니다. token 은 더 이상 `ps auxe`, `/proc/<pid>/cmdline`, auditd 로그, sysmon 추적, 크래시 덤프에 평문으로 노출되지 않습니다 (CWE-214).
 
 ### 주입 흐름
 

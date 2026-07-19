@@ -1,16 +1,16 @@
 ---
 title: 安全说明
-description: "MoAI-ADK v2.20.0-rc1 安全加固变更 — CWE-732/214/345 映射、用户自检流程"
+description: "MoAI-ADK v3.0.0 安全加固变更 — CWE-732/214/345 映射、用户自检流程"
 weight: 72
 draft: false
 tags: ["security", "cwe", "audit"]
 ---
 
-智能体 Harness 是把执行权限交给智能体的系统。越是移交权限的系统，凭据与更新路径的安全就越构成 Harness 信任的底座。本页整理 MoAI-ADK v2.20.0-rc1 时点引入的 **用户可见安全变更**。每一项都包含 CWE 映射、变更后的行为以及自检命令。
+智能体 Harness 是把执行权限交给智能体的系统。越是移交权限的系统，凭据与更新路径的安全就越构成 Harness 信任的底座。本页整理 MoAI-ADK v3.0.0 时点引入的 **用户可见安全变更**。每一项都包含 CWE 映射、变更后的行为以及自检命令。
 
 ## Why — 本页为何存在
 
-`SPEC-V3R5-SECURITY-CRIT-001`（PR #1032，merge commit `03a2552a2`）修正了 v2.14.0 → v2.20.0-rc1 之间代码评审中发现的 **3 个 P0 release blocker 安全缺陷**。本页把该修正事实以及用户可以在自己环境中确认新保护是否生效的流程，成文为 4 语言官方指南。
+`SPEC-V3R5-SECURITY-CRIT-001`（PR #1032，merge commit `03a2552a2`）修正了 v2.14.0 → v3.0.0 之间代码评审中发现的 **3 个 P0 release blocker 安全缺陷**。本页把该修正事实以及用户可以在自己环境中确认新保护是否生效的流程，成文为 4 语言官方指南。
 
 三个缺陷都与 GLM 集成 + 自动更新路径相关。
 
@@ -228,13 +228,13 @@ stat -c '%a' ~/.moai/.env.glm 2>/dev/null \
 # 期望值: 600 (若该文件存在)
 ```
 
-以上 5 项均满足期望值，即表示 v2.20.0-rc1 安全加固正常生效。
+以上 5 项均满足期望值，即表示 v3.0.0 安全加固正常生效。
 
 ## References
 
 ### CHANGELOG
 
-[CHANGELOG `[Unreleased]` v2.20.0-rc1 Security 章节](https://github.com/modu-ai/moai-adk/blob/main/CHANGELOG.md)
+[CHANGELOG v3.0.0 Security 章节](https://github.com/modu-ai/moai-adk/blob/main/CHANGELOG.md)
 
 ### SPEC
 

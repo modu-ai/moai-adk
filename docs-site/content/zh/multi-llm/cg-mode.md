@@ -100,7 +100,7 @@ moai cg
 
 ## tmux 环境变量注入安全模型 {#tmux-env-security}
 
-自 v2.20.0-rc1 起，`moai cg` 将 GLM token (`ANTHROPIC_AUTH_TOKEN`) 注入 tmux 会话环境变量时，使用 **source-file 通道** (`tmux source-file <tmp>`) 而非 **argv 通道** (`tmux set-environment <KEY> <VALUE>`)。token 不再以明文暴露在 `ps auxe`、`/proc/<pid>/cmdline`、auditd 日志、sysmon 跟踪、崩溃转储中 (CWE-214)。
+自 v3.0.0 起，`moai cg` 将 GLM token (`ANTHROPIC_AUTH_TOKEN`) 注入 tmux 会话环境变量时，使用 **source-file 通道** (`tmux source-file <tmp>`) 而非 **argv 通道** (`tmux set-environment <KEY> <VALUE>`)。token 不再以明文暴露在 `ps auxe`、`/proc/<pid>/cmdline`、auditd 日志、sysmon 跟踪、崩溃转储中 (CWE-214)。
 
 ### 注入流程
 

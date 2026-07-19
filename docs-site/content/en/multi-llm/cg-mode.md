@@ -103,7 +103,7 @@ GLM teammates in new tmux panes.
 
 ## tmux environment variable injection security model {#tmux-env-security}
 
-Since v2.20.0-rc1, when `moai cg` injects the GLM token
+Since v3.0.0, when `moai cg` injects the GLM token
 (`ANTHROPIC_AUTH_TOKEN`) into the tmux session environment, it uses the
 **source-file channel** (`tmux source-file <tmp>`) instead of the **argv
 channel** (`tmux set-environment <KEY> <VALUE>`). The token is no longer

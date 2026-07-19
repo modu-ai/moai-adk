@@ -32,11 +32,11 @@ moai version
 ```text
 ╭────────────────────────╮
 │                        │
-│  moai-adk v3.0.0-rc11  │
+│    moai-adk v3.0.0     │
 │                        │
 │                        │
 ╰────────────────────────╯
- v3.0.0-rc11   none   built unknown
+ v3.0.0   none   built unknown
 ```
 
 框式横幅下方一行按 `<版本>   <提交哈希>   built <构建时刻>` 顺序显示。若像 `go install` 那样在无 ldflags 下构建,提交显示为 `none`,构建时刻显示为 `unknown`。

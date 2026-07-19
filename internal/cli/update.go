@@ -206,6 +206,49 @@ func runUpdate(cmd *cobra.Command, _ []string) error {
 		return nil
 	}
 
+	// SPEC-V3R6-V2-V3-CLEAN-REINSTALL-002 REQ-CRR-005 / AC-CRR-005: refuse to
+	// operate in a non-project cwd (#1086). The positive marker is
+	// `.moai/config/sections/system.yaml`; when it is absent this directory is
+	// not a moai project and `moai update` MUST NOT write anything into it.
+	//
+	// Gating only the clean-reinstall branch is insufficient — that is why
+	// #1086 survived M2. Option α reads a missing system.yaml as a POSITIVE
+	// Signal 1, so the fingerprint returns IsV2=true in any empty directory;
+	// even when the `&& isMoAIProject(cwd)` conjunct below correctly refuses
+	// clean-reinstall, control falls through to the v3 file-level sync, which
+	// deploys the full embedded template tree just the same. The refusal must
+	// therefore precede BOTH paths.
+	//
+	// Placement is before acquireUpdateLock (and thus before
+	// detectV2Fingerprint, per plan.md §F M2) because the lock itself is a
+	// writer: it MkdirAll's `.moai/` to host `.moai/.update.lock`, and its
+	// release removes only the lock file — leaving an empty `.moai/` behind in
+	// the cwd. Gating after the lock still violates AC-CRR-005(a).
+	//
+	// The `!binaryOnly` conjunct keeps `moai update --binary` project-
+	// independent: it upgrades the moai binary itself and performs no template
+	// sync, so it has no project-marker precondition. `--check` returns earlier
+	// still and is likewise unaffected.
+	//
+	// The error names the missing marker relative to the cwd and directs the
+	// user to `moai init`. It deliberately does NOT echo the absolute cwd
+	// (acceptance.md §D.7 Secured: the structured error must not leak absolute
+	// paths or environment details).
+	if !binaryOnly {
+		cwd, err := os.Getwd()
+		if err != nil {
+			return fmt.Errorf("get working directory for project-marker check: %w", err)
+		}
+		if !isMoAIProject(cwd) {
+			marker := filepath.ToSlash(filepath.Join(
+				defs.MoAIDir, "config", "sections", "system.yaml"))
+			return fmt.Errorf(
+				"not a moai project: %s not found in the current directory\n\n"+
+					"Run `moai init` to initialize a project here, or change to an "+
+					"existing project directory and retry", marker)
+		}
+	}
+
 	// SPEC-CLIFIX-CRITICAL-001 REQ-CRIT-001-005: acquire update lock before any
 	// destructive step so a concurrent moai update fails fast with a diagnostic
 	// instead of interleaving destructive deploy/clean/restore operations.
@@ -320,6 +363,29 @@ func runUpdate(cmd *cobra.Command, _ []string) error {
 				Theme: &th,
 			}))
 			return nil
+		}
+
+		// SPEC-V3R6-V2-V3-CLEAN-REINSTALL-002 REQ-CRR-007 / AC-CRR-007:
+		// Fire .agency/ migration INDEPENDENTLY of the v2 fingerprint verdict.
+		// A v3 project (IsV2=false per REQ-CRR-001's v3-version negative-
+		// override) that still carries a lingering .agency/ directory needs the
+		// migration to run, but the Step 3.5 migration inside runCleanReinstall
+		// is gated on fp.V2DetectedViaAgencyDir && IsV2 — which never opens for
+		// a v3 project. This pre-step closes that gap.
+		//
+		// Placement rationale: this is reachable ONLY when the clean-reinstall
+		// early-return above did NOT fire (detection succeeded, IsV2=false, or
+		// IsV2=true but non-moai-project cwd). The gate below narrows to the
+		// AC-CRR-007 contract: v3 project (IsV2=false) + genuine moai project
+		// + .agency/ present. Genuine-v2 projects (IsV2=true) are handled by
+		// the clean-reinstall path above and never reach here, so there is no
+		// double-fire (the adapter need not swallow ErrMigrateArchiveExists).
+		if fpErr == nil && !fingerprint.IsV2 && isMoAIProject(cwd) {
+			if _, agencyStatErr := os.Stat(filepath.Join(cwd, ".agency")); agencyStatErr == nil {
+				if migrateErr := runAgencyMigrationAdapter(cwd, getBoolFlag(cmd, "dry-run"), out); migrateErr != nil {
+					return fmt.Errorf("pre-step agency migration: %w", migrateErr)
+				}
+			}
 		}
 	}
 

@@ -115,7 +115,7 @@ v3부터 `/moai`의 기본 라우팅은 **Analyze-First** — 언어 독립적 �
 | (없음) | 복잡도 기반 자동 선택 |
 
 {{< callout type="warning" >}}
-**v3.0.0-rc11 변경**: Agent Teams 정적 오케스트레이션 계층은 **은퇴**했습니다. `--team`을 강제해도 `MODE_TEAM_UNAVAILABLE`과 함께 하위 에이전트 모드로 폴백합니다. 병렬 실행은 병렬 하위 에이전트 팬아웃과 동적 워크플로우 2종 (plan-phase 연구 병렬 팬아웃, sync-phase 4차원 품질 평가)이 담당하며, 네이티브 teammate 런타임 (`moai cg`의 tmux pane)은 그대로 유지됩니다.
+**v3.0.0 변경**: Agent Teams 정적 오케스트레이션 계층은 **은퇴**했습니다. `--team`을 강제해도 `MODE_TEAM_UNAVAILABLE`과 함께 하위 에이전트 모드로 폴백합니다. 병렬 실행은 병렬 하위 에이전트 팬아웃과 동적 워크플로우 2종 (plan-phase 연구 병렬 팬아웃, sync-phase 4차원 품질 평가)이 담당하며, 네이티브 teammate 런타임 (`moai cg`의 tmux pane)은 그대로 유지됩니다.
 {{< /callout >}}
 
 병렬 실행은 에이전트마다 독립 컨텍스트 윈도우를 쓰므로 토큰 사용량이 늘어납니다. 단순한 단일 도메인 작업에는 `--solo` (순차)가 더 경제적입니다 — 규모 기반 자동 선택이 기본값인 이유입니다.
