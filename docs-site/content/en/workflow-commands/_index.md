@@ -4,6 +4,10 @@ weight: 30
 draft: false
 ---
 
+{{< callout type="info" >}}{{< icon flash primary >}} <strong>Belongs to</strong>: 🛡️ Agentic Harness
+{{< /callout >}}
+<!-- @value: agentic-harness -->
+
 A set of commands that run the SPEC-based 3-Phase lifecycle (plan → run → sync).
 
 

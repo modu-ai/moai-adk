@@ -5,6 +5,10 @@ draft: false
 description: "从零理解 MoAI-ADK 三大支柱（代币经济学·智能体循环工程·智能体挽具）所依托的平台 Claude Code 的四组学习路径。"
 ---
 
+{{< callout type="info" >}}{{< icon flash primary >}} <strong>所属价值</strong>: 🛡️ 代理型线束 · 🧠 递归式自学习
+{{< /callout >}}
+<!-- @value: agentic-harness, self-learning -->
+
 本节是从零开始理解 Anthropic 终端 CLI —— Claude Code 的学习路径。它面向刚接触 Claude Code 的开发者，以及希望准确掌握 MoAI-ADK 运行基础的读者。
 
 Claude Code 是在终端中运行的编码智能体，它能读取和修改代码、执行命令，并通过与开发者对话完成工作。MoAI-ADK 是运行在 Claude Code 之上的编排层，其三大核心价值 —— **代币经济学** (Token Economics)、**智能体循环工程**（递归式自我学习）、**智能体挽具** (Agentic Harness) —— 全部建立在本节所讲的 Claude Code 基础机制之上。不了解上下文窗口和提示缓存就无法设计代币经济学，不了解子智能体和 `/goal` 就无法理解智能体循环，不了解技能、钩子和 MCP 就无法搭建挽具。

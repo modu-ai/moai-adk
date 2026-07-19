@@ -4,6 +4,10 @@ weight: 70
 draft: false
 ---
 
+{{< callout type="info" >}}{{< icon flash primary >}} <strong>소속 가치</strong>: 🪙 토크노믹스
+{{< /callout >}}
+<!-- @value: tokenomics -->
+
 MoAI-ADK 토크노믹스는 두 축으로 추론 비용을 절감합니다. **컨텍스트 다이어트**가
 항시 로드되는 컨텍스트 자체를 줄이는 축이라면, **프롬프트 캐싱**은 남은
 컨텍스트를 90% 할인된 비용으로 재사용하는 축입니다. 이 섹션은 캐싱을 언제

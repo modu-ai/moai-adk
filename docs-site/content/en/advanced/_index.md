@@ -4,6 +4,10 @@ weight: 100
 draft: false
 ---
 
+{{< callout type="info" >}}{{< icon flash primary >}} <strong>Belongs to</strong>: 🪙 Tokenomics · 🧠 Recursive Self-Learning · 🛡️ Agentic Harness
+{{< /callout >}}
+<!-- @value: tokenomics, self-learning, agentic-harness -->
+
 This section is for developers who want to take MoAI-ADK apart and see how it works inside. Once you are comfortable with the basic workflow (plan → run → sync), this is where you can see how the harness is actually assembled.
 
 

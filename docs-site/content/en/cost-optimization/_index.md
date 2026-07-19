@@ -4,6 +4,10 @@ weight: 70
 draft: false
 ---
 
+{{< callout type="info" >}}{{< icon flash primary >}} <strong>Belongs to</strong>: 🪙 Tokenomics
+{{< /callout >}}
+<!-- @value: tokenomics -->
+
 MoAI-ADK tokenomics reduces inference cost along two axes. If **context dieting**
 is the axis that shrinks the always-loaded context itself, then **prompt caching**
 is the axis that reuses the remaining context at a 90%-discounted cost. This

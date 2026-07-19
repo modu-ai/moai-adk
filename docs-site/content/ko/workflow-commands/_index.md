@@ -4,7 +4,11 @@ weight: 30
 draft: false
 ---
 
-SPEC 기반 3-Phase 라이프사이클 (plan → run → sync)을 실행하는 명령어 모음입니다.
+{{< callout type="info" >}}{{< icon flash primary >}} <strong>소속 가치</strong>: 🛡️ 에이전틱 하네스
+{{< /callout >}}
+<!-- @value: agentic-harness -->
+
+SPEC 기반 3-Phase 라이프사이클 (plan → run → sync)을 실행하는 명령어 모음입니다。
 
 
 ## 에이전틱 하네스의 중심 — 3-Phase 라이프사이클

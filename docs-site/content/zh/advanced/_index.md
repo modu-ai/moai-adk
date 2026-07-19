@@ -4,6 +4,10 @@ weight: 100
 draft: false
 ---
 
+{{< callout type="info" >}}{{< icon flash primary >}} <strong>所属价值</strong>: 🪙 代币经济学 · 🧠 递归式自学习 · 🛡️ 代理型线束
+{{< /callout >}}
+<!-- @value: tokenomics, self-learning, agentic-harness -->
+
 本节面向想深入拆解 MoAI-ADK 内部结构的开发者。如果你已经熟悉了基本工作流（plan → run → sync），可以在这里看到 Harness 实际是如何组装起来的。
 
 

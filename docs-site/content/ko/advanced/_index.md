@@ -4,7 +4,11 @@ weight: 100
 draft: false
 ---
 
-MoAI-ADK의 내부 구조를 뜯어보고 싶은 개발자를 위한 섹션입니다. 기본 워크플로우(plan → run → sync)에 익숙해졌다면 여기서 하네스가 실제로 어떻게 조립되어 있는지 확인할 수 있습니다.
+{{< callout type="info" >}}{{< icon flash primary >}} <strong>소속 가치</strong>: 🪙 토크노믹스 · 🧠 재귀적 자가 학습 · 🛡️ 에이전틱 하네스
+{{< /callout >}}
+<!-- @value: tokenomics, self-learning, agentic-harness -->
+
+MoAI-ADK의 내부 구조를 뜯어보고 싶은 개발자를 위한 섹션입니다。 기본 워크플로우(plan → run → sync)에 익숙해졌다면 여기서 하네스가 실제로 어떻게 조립되어 있는지 확인할 수 있습니다.
 
 
 {{< callout type="info" >}}

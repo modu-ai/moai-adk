@@ -583,6 +583,12 @@ main:
           zh: MX TAG 系统
         ref: /advanced/mx-tags
       - name:
+          ko: config 섹션 레퍼런스
+          en: Configuration Sections Reference
+          ja: 設定セクションリファレンス
+          zh: 配置章节参考
+        ref: /advanced/config-sections
+      - name:
           ko: settings.json 가이드
           en: settings.json Guide
           ja: settings.json ガイド

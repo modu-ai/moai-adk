@@ -4,6 +4,10 @@ weight: 40
 draft: false
 ---
 
+{{< callout type="info" >}}{{< icon flash primary >}} <strong>Belongs to</strong>: 🧠 Recursive Self-Learning · 🛡️ Agentic Harness
+{{< /callout >}}
+<!-- @value: self-learning, agentic-harness -->
+
 A collection of commands for autonomous automation, iterative fix loops, code management, and feedback.
 
 

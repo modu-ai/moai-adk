@@ -4,6 +4,10 @@ weight: 90
 draft: false
 ---
 
+{{< callout type="info" >}}{{< icon flash primary >}} <strong>소속 가치</strong>: 🛡️ 에이전틱 하네스
+{{< /callout >}}
+<!-- @value: agentic-harness -->
+
 Git Worktree는 MoAI-ADK 병렬 개발의 기반입니다. SPEC마다 완전히 독립된 작업
 공간을 만들어, 서로 다른 Git 상태와 서로 다른 LLM 설정을 동시에 굴릴 수 있게
 합니다.

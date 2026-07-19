@@ -4,6 +4,10 @@ weight: 20
 draft: false
 ---
 
+{{< callout type="info" >}}{{< icon flash primary >}} <strong>Belongs to</strong>: 🛡️ Agentic Harness
+{{< /callout >}}
+<!-- @value: agentic-harness -->
+
 This section introduces the core concepts you need to understand MoAI-ADK v3.0. The value of v3.0 comes down to three pillars — **Tokenomics** (Token Economics), **Agentic Loop Engineering**, and the **Agentic Harness**. The documents in this section unpack, one by one, how those three pillars work in a real development flow.
 
 

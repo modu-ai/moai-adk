@@ -4,6 +4,10 @@ weight: 40
 draft: false
 ---
 
+{{< callout type="info" >}}{{< icon flash primary >}} <strong>소속 가치</strong>: 🧠 재귀적 자가 학습 · 🛡️ 에이전틱 하네스
+{{< /callout >}}
+<!-- @value: self-learning, agentic-harness -->
+
 자율 자동화와 반복 수정 루프, 코드 관리, 피드백 명령어 모음입니다.
 
 
