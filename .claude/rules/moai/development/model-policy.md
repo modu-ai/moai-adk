@@ -116,6 +116,21 @@ Model policy is set via `moai init --model-policy <tier>`. The 3-tier system (`m
 
 The per-agent model+effort values for each cell are in the §2-B agent×tier matrix (design.md §D.3). Former haiku slots (docs sync, mx tagging, git procedures) are replaced by `sonnet / low` — cost reduction via effort tiering, not model-class substitution.
 
+## Per-Agent Profile Resolver (model injection source)
+
+The per-agent model+effort **profile** (config `llm.profile` ∈ {max, medium, low}) is the runtime-arg **model** injection source the orchestrator reads at spawn time. Query it with the read-only accessor:
+
+```bash
+moai model profile          # human table
+moai model profile --json   # machine-readable
+```
+
+The resolver maps the active profile + optional `llm.agent_overrides` to each retained agent's `{model, effort}` via the agent-GROUP matrix (`spec_auditors` / `develop` / `advisor` / `design_harness_e2e` / `docs` / `git`); `Explore` and any ungrouped agent resolve to `inherit`. Precedence: `agent_overrides[agent]` → active profile group cell → Go-default group cell → `inherit`.
+
+The resolved **model** is the value the orchestrator injects as a per-spawn `Agent(model: <alias>)` runtime arg — `[1m]`-safe and distinct from the frontmatter `model:` field (see § Inherit-by-Default Convention), so a profile change never re-introduces the concrete-frontmatter-`model:` spawn-failure risk. Agent `.md` frontmatter stays at `model: inherit`; no init / update / web save mutates it.
+
+The resolved **effort** is *documented intent* for a NAMED subagent: the Agent/Task tool accepts a per-spawn `model` arg but NOT a per-spawn `effort` arg for a named subagent, so the effort is consumed only through (a) the agent-frontmatter effort default (session-scoped), (b) the GLM effort overlay (`CollapseClaudeEffortToGLM` + the `manager-develop` coding-max override), and (c) Workflow-script / `Agent(general-purpose)` prompt-level effort steering. Where the profile effort diverges from the frontmatter doc-canonical effort, the frontmatter effort remains the effective named-subagent spawn effort; the divergence is intentional, not a config or lint error.
+
 ## CG Mode
 
 CG Mode (Claude + GLM) uses environment variable overrides, not model field changes:

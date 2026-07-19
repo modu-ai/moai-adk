@@ -12,7 +12,7 @@ description: |
   (manager-spec), unit/integration test authoring within a TDD cycle (manager-develop),
   documentation (manager-docs), git operations (manager-git).
 tools: Read, Write, Edit, Bash, Grep, Glob, TaskCreate, TaskUpdate, TaskList, TaskGet, Skill
-model: opus
+model: inherit
 effort: high
 color: cyan
 permissionMode: default

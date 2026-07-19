@@ -43,6 +43,17 @@ M1 build: `go build ./...` exit 0; `GOOS=windows GOARCH=amd64 go build ./...` ex
 
 New files: internal/config/profile.go, internal/config/profile_test.go, internal/template/profile_matrix.go, internal/template/profile_matrix_test.go. Edited: types.go (+Profile/Profiles/AgentOverrides), validation.go (+validateProfile/validateAgentOverrides), template+local llm.yaml, init_test.go (plan_type test inverted per AC-MPM-011).
 
+### M2 — Runtime resolver + frontmatter reconciliation
+
+| AC | Status | Verification | Actual Output |
+|----|--------|--------------|---------------|
+| AC-MPM-016 (resolver max, model-as-arg) | PASS | `go test ./internal/cli -run TestResolveModelProfileReport_MaxClaude` | ok (Matrix A max, Explore→inherit, 11 agents) |
+| AC-MPM-019 (GLM overlay) | PASS | `go test ./internal/cli -run TestResolveModelProfileReport_GLMOverlay` | ok (fable→glm-5.2; manager-develop coding-max→reasoning-max; git→thinking-off) |
+| AC-MPM-023 (frontmatter inherit) | PASS | 10 local `.claude/agents/moai/*.md` frontmatter == template source (model: inherit + doc-canonical effort) | parity check OK all 10 |
+| AC-MPM-025 (resolver reads profile, not frontmatter) | PASS (partial — resolver side) | `go run ./cmd/moai model profile` reads llm.profile matrix | verified smoke (web save-path retirement is M3) |
+
+M2 deliverables: `moai model profile [--json]` read-only resolver (`internal/cli/model.go`); model-policy.md + template mirror gain a "Per-Agent Profile Resolver" section (model = per-spawn runtime arg; effort = documented intent); 8 local agent files restored `model: opus → inherit` (+ manager-develop/manager-design `effort: high → xhigh`) to match template lint-canonical source. REQ-MPM-039 honesty: GLM wire-note "implemented + wired, live wire-effectiveness pending". Full `go test ./...` = 0 failures. catalog.yaml unchanged (rules/local-agents not hashed).
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<pending run-phase>_
