@@ -555,5 +555,5 @@ The [adk.mo.ai.kr](https://adk.mo.ai.kr/en) online docs are split into 12 sectio
 - [Official Documentation](https://adk.mo.ai.kr)
 - [Book: Practical Agentic Coding with Claude Code](https://adk.mo.ai.kr/book)
 - [CHANGELOG](./CHANGELOG.md)
-- [Claude Code](https://docs.anthropic.com/en/docs/claude-code)
+- [Claude Code](https://code.claude.com/docs/en)
 - [Discord Community](https://discord.gg/Z7E7Mdc5aN)

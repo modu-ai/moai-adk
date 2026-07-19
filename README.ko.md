@@ -560,5 +560,5 @@ func DispatchHook(event string, data []byte) error {
 - [공식 문서](https://adk.mo.ai.kr)
 - [도서: Claude Code 실전 에이전틱 코딩](https://adk.mo.ai.kr/book)
 - [CHANGELOG](./CHANGELOG.md)
-- [Claude Code](https://docs.anthropic.com/en/docs/claude-code)
+- [Claude Code](https://code.claude.com/docs/en)
 - [Discord 커뮤니티](https://discord.gg/Z7E7Mdc5aN)
