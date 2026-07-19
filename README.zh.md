@@ -37,6 +37,8 @@
 
 ---
 
+<img src="./docs/images/readme/zh/hero.png" alt="MoAI-ADK" width="100%">
+
 ## 什么是 MoAI-ADK
 
 MoAI-ADK（Agentic Development Kit）是一套叠加在 Claude Code **之上** 的 Harness。Harness 是从外部包裹模型的系统。模型是按 Token 计费的随机工作者，它既不记得预算，也不记得质量标准，更不记得上一个会话在哪里中断。成本上限、通过的测试套件、跨越 `/clear` 的连续性——这些属性无法靠每回合重新提示来植入，必须由外部的系统来强制。那个系统就是 Harness。
@@ -48,6 +50,8 @@ MoAI-ADK（Agentic Development Kit）是一套叠加在 Claude Code **之上** �
 ---
 
 ## 为什么选择 MoAI-ADK
+
+<img src="./docs/images/readme/zh/why.png" alt="" width="100%">
 
 仅靠 Claude Code 也能写出代码。问题在于，这些代码能否每次都以相同的质量、可预测的成本产出。采用这套 Harness 的理由可以压缩为三条论据。
 
@@ -73,6 +77,8 @@ MoAI-ADK（Agentic Development Kit）是一套叠加在 Claude Code **之上** �
 ---
 
 ## 从 2.0 到 3.0
+
+<img src="./docs/images/readme/zh/v2-to-v3.png" alt="" width="100%">
 
 要用 v3 的理由不是功能变多了，而是系统接管了成本与学习这两个轴。如果说 v2 是把一个个操纵杆（缓存、GLM）递到你手上的工具，那么 v3 则把这些操纵杆绑进一个闭环，让它们成为系统属性。
 
@@ -149,6 +155,8 @@ v2 的 Harness 会话一结束就停在原地。v3 则让循环（`/moai goal`�
 
 ## MoAI 3.0 的核心价值与能力
 
+<img src="./docs/images/readme/zh/core-values.png" alt="" width="100%">
+
 驱动 MoAI 3.0 的价值有三。每项价值之下，都附上了实现它的能力。命令与表格在 [参考](#参考) 中详述。
 
 ### Tokenomics —— 让系统管理成本
@@ -220,6 +228,8 @@ moai harness disable     # turn learning off
 ---
 
 ## 快速开始
+
+<img src="./docs/images/readme/zh/quickstart.png" alt="" width="100%">
 
 `moai init` 结束的那一刻，Harness 就即刻运行。Claude Code 状态栏上会出现成本/上下文计量表，TRUST 5 质量门接入工作流，`/moai` 全套命令都可在聊天中使用。
 

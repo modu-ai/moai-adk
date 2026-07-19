@@ -37,6 +37,8 @@
 
 ---
 
+<img src="./docs/images/readme/en/hero.png" alt="MoAI-ADK" width="100%">
+
 ## What Is MoAI-ADK
 
 MoAI-ADK (Agentic Development Kit) is a harness that sits **on top of** Claude Code. A harness is a system that wraps the model from the outside. The model is a stochastic worker moving token by token — it remembers neither its budget, nor its quality bar, nor where the last session broke off. A cost ceiling, a passing test suite, continuity that survives `/clear` — properties like these cannot be re-seeded by a prompt every turn; the system has to enforce them from the outside. That system is the harness.
@@ -48,6 +50,8 @@ It does not replace Claude Code. It only wraps, in structure, the parts Claude C
 ---
 
 ## Why MoAI-ADK
+
+<img src="./docs/images/readme/en/why.png" alt="" width="100%">
 
 Claude Code alone will produce code. The question is whether that code comes out at the same quality every time, at a predictable cost. The case for adopting the harness compresses into three arguments.
 
@@ -73,6 +77,8 @@ In one line — **Claude Code writes the code; MoAI-ADK makes that code trustwor
 ---
 
 ## From 2.0 to 3.0
+
+<img src="./docs/images/readme/en/v2-to-v3.png" alt="" width="100%">
 
 The reason to move to v3 is not a longer feature list. It is that the system now carries two axes — cost and learning — that used to be yours to hold. Where v2 handed you individual levers (cache, GLM), v3 wires those levers into a closed loop and makes them properties of the system.
 
@@ -149,6 +155,8 @@ Every one of these changes passed through the plan → run → sync pipeline wit
 
 ## MoAI 3.0's Core Values and Capabilities
 
+<img src="./docs/images/readme/en/core-values.png" alt="" width="100%">
+
 Three values drive MoAI 3.0. Under each value are the capabilities that make it real. The commands and tables are covered in detail under [Reference](#reference).
 
 ### Tokenomics — the System Manages Cost
@@ -220,6 +228,8 @@ Instead of writing code directly, you design an environment where agents work we
 ---
 
 ## Quick Start
+
+<img src="./docs/images/readme/en/quickstart.png" alt="" width="100%">
 
 The moment `moai init` finishes, the harness runs. A cost/context gauge appears on the Claude Code statusline, TRUST 5 quality gates wire into the workflow, and the full `/moai` command set is available in chat.
 

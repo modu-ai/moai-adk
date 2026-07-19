@@ -42,6 +42,8 @@
 
 ---
 
+<img src="./docs/images/readme/ko/hero.png" alt="MoAI-ADK" width="100%">
+
 ## MoAI-ADK란
 
 MoAI-ADK(Agentic Development Kit)는 Claude Code **위에** 얹히는 하네스다. 하네스는 모델을 바깥에서 감싸는 시스템이다. 모델은 토큰 단위로 움직이는 확률적 작업자라 예산도 품질 기준도 지난 세션이 어디서 끊겼는지도 기억하지 못한다. 비용 상한, 통과하는 테스트 스위트, `/clear`를 건너뛰는 연속성 — 이런 속성은 매 턴 프롬프트로 다시 심을 수 있는 게 아니라 시스템이 바깥에서 강제해야 한다. 그 시스템이 하네스다.
@@ -53,6 +55,8 @@ Claude Code를 대체하지 않는다. Claude Code가 사용자에게 맡겨둔 
 ---
 
 ## 왜 MoAI-ADK인가
+
+<img src="./docs/images/readme/ko/why.png" alt="" width="100%">
 
 Claude Code만으로도 코드는 나온다. 문제는 그 코드가 매번 같은 품질로, 예측 가능한 비용으로 나오느냐다. 도입 판단에 필요한 논거를 셋으로 압축한다.
 
@@ -79,6 +83,8 @@ Claude Code만으로도 코드는 나온다. 문제는 그 코드가 매번 같�
 
 ## 2.0에서 3.0으로
 
+<img src="./docs/images/readme/ko/v2-to-v3.png" alt="" width="100%">
+
 v3를 써야 하는 이유는 기능이 늘어서가 아니다. 비용과 학습이라는 두 축을 시스템이 떠안았기 때문이다. v2가 개별 레버(캐시, GLM)를 손에 쥐여준 도구였다면, v3는 그 레버들을 닫힌 루프로 묶어 시스템 속성으로 만든다.
 
 ### 문제 — 토큰 단가는 내렸는데 비용은 올랐다
@@ -95,7 +101,7 @@ v3를 써야 하는 이유는 기능이 늘어서가 아니다. 비용과 학습
 | claude-fable-5 | 70% | $21.63 | $30.9 | 170k | 88 |
 | claude-sonnet-5 | 54% | $26.40 | $48.9 | 396k | 268 |
 
-핵심은 sonnet-5 max가 opus-4.8 max보다 **비싸면서(과제당 $26.40 vs $13.22) 점수는 낮다(54% vs 59%)**는 것이다. 원인은 268스텝·214k 출력토큰 — 최고 effort에서 재시도 루프가 폭주한다. "약한 모델을 세게 굴리면 싸다"는 통념은 성립하지 않는다. 오히려 스텝을 세 배 돌며 쿼터를 더 태운다. 곧, 비용은 모델 단가가 아니라 **작업에 맞는 모델·추론 깊이 배정**이 결정한다.
+핵심은 sonnet-5 max가 opus-4.8 max보다 **비싸면서(과제당 $26.40 vs $13.22) 점수는 낮다(54% vs 59%)**는 것이다. 원인은 268스텝·214k 출력토큰 — 최고 effort에서 재시도 루프가 폭주한다. "약한 모델을 세게 굴리면 싸다"는 통념은 성립하지 않는다. 오히려 스텝을 세 배 돌며 쿼터를 더 태운다. 즉, 비용은 모델 단가가 아니라 **작업에 맞는 모델·추론 깊이 배정**이 결정한다.
 
 ### v3의 답 — 비용을 시스템 속성으로
 
@@ -153,6 +159,8 @@ v2.14.0(2026-04-24)에서 v3.0.0(2026-07-16)까지 **80일** 동안 **2,373개 �
 ---
 
 ## MoAI 3.0의 핵심 가치와 역량
+
+<img src="./docs/images/readme/ko/core-values.png" alt="" width="100%">
 
 MoAI 3.0을 움직이는 가치는 셋이다. 가치마다 그것을 이루는 역량을 아래에 붙였다. 명령과 표는 [레퍼런스](#레퍼런스)에서 자세히 다룬다.
 
@@ -225,6 +233,8 @@ moai harness disable     # turn learning off
 ---
 
 ## 빠른 시작
+
+<img src="./docs/images/readme/ko/quickstart.png" alt="" width="100%">
 
 `moai init`이 끝나는 순간 하네스가 바로 돈다. Claude Code 스테이터스라인에 비용/컨텍스트 게이지가 뜨고, TRUST 5 품질 게이트가 워크플로우에 물리며, `/moai` 커맨드 전체를 채팅에서 쓸 수 있다.
 
@@ -319,7 +329,7 @@ fsutil 8dot3name set 1
 
 ## 레퍼런스
 
-각 가치에 딸린 역량을 명령 표·파이프라인·에이전트·어노테이션까지 한데 모았다. 개별 항목의 심화 문서는 각 표 아래 링크를 따라간다.
+각 가치에 딸린 역량을 명령 표·파이프라인·에이전트·어노테이션까지 한데 모았다. 개별 항목의 심화 문서로는 각 표 아래 링크를 따라가면 된다.
 
 ### /moai 슬래시 서브커맨드
 
@@ -335,7 +345,7 @@ fsutil 8dot3name set 1
 | `review` / `gate` / `clean` | 코드 리뷰 · 사전 커밋 품질 게이트 · 데드 코드 제거 |
 | `mx` / `codemaps` / `feedback` | @MX 어노테이션 · 아키텍처 문서 · GitHub 이슈 보고 |
 | `e2e` | 멀티플랫폼 E2E 테스트 (웹/모바일/데스크톱, CLI 우선) |
-| *(자연어)* | 자율 plan → run → sync 파이프라인으로의 Analyze-First 라우팅 |
+| *(자연어)* | 자율 plan → run → sync 파이프라인으로 넘기는 Analyze-First 라우팅 |
 
 > → 자세히: [워크플로우 커맨드](https://adk.mo.ai.kr/ko/workflow-commands) · [유틸리티 커맨드](https://adk.mo.ai.kr/ko/utility-commands)
 
@@ -426,7 +436,7 @@ flowchart TD
 | **S**ecured | 보안됨 | OWASP 준수, 입력 검증, 보안 경고 0 |
 | **T**rackable | 추적 가능 | Conventional commits, 이슈 참조, 구조화된 로깅 |
 
-`/moai loop`은 Ralph Engine(`internal/ralph/engine.go`) 위에 얹은 goal 엔진 프리셋으로, LSP 진단·AST-grep·린터를 병렬로 스캔해 나온 문제를 Level 1(자동 수정 가능)부터 Level 4(사람 손이 필요)까지 나눈 뒤 큐가 빌 때까지 돈다.
+`/moai loop`은 Ralph Engine(`internal/ralph/engine.go`) 위에 얹은 goal 엔진 프리셋이다. LSP 진단·AST-grep·린터를 병렬로 스캔해, 나온 문제를 Level 1(자동 수정 가능)부터 Level 4(사람 손이 필요)까지 나눈 뒤 큐가 빌 때까지 돈다.
 
 | 명령 | 목표 | 실행 | 사용 시점 |
 |---------|------|-----------|-------------|
