@@ -62,6 +62,10 @@ func Validate(cfg *Config, loadedSections map[string]bool) error {
 	// Check the llm.plan_type closed-set enum (REQ-MTP-003).
 	errs = append(errs, validatePlanType(cfg)...)
 
+	// Check the llm.profile closed-set enum + agent_overrides (REQ-MPM-007/008).
+	errs = append(errs, validateProfile(cfg)...)
+	errs = append(errs, validateAgentOverrides(cfg)...)
+
 	if len(errs) > 0 {
 		return &ValidationErrors{Errors: errs}
 	}

@@ -438,9 +438,13 @@ func TestValidateInitFlags_InvalidPlanType(t *testing.T) {
 	resetInitFlagsForPlanType(t)
 }
 
-// TestInitCmd_PlanTypePersistence (REQ-MTP-016, AC-MTP-016) — init with
-// --plan-type api persists plan_type: api into the deployed llm.yaml.
-func TestInitCmd_PlanTypePersistence(t *testing.T) {
+// TestInitCmd_PlanTypeRetired (SPEC-MODEL-PROFILE-MATRIX-001 REQ-MPM-017/032,
+// AC-MPM-011) — plan_type is retired. Even when the legacy --plan-type flag is
+// passed, init MUST NOT write a plan_type key into the deployed llm.yaml (the
+// template no longer carries the key and the write path is being retired).
+// Supersedes the former TestInitCmd_PlanTypePersistence (REQ-MTP-016), whose
+// "init writes plan_type: api" assertion this SPEC deliberately inverts.
+func TestInitCmd_PlanTypeRetired(t *testing.T) {
 	root := t.TempDir()
 
 	buf := new(bytes.Buffer)
@@ -480,7 +484,7 @@ func TestInitCmd_PlanTypePersistence(t *testing.T) {
 	if err != nil {
 		t.Fatalf("read deployed llm.yaml: %v", err)
 	}
-	if !strings.Contains(string(content), "plan_type: api") {
-		t.Errorf("deployed llm.yaml should contain 'plan_type: api', got:\n%s", content)
+	if strings.Contains(string(content), "plan_type") {
+		t.Errorf("deployed llm.yaml must NOT contain a plan_type key (retired), got:\n%s", content)
 	}
 }

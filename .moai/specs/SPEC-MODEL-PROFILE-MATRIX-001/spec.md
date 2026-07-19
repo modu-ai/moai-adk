@@ -2,7 +2,7 @@
 id: SPEC-MODEL-PROFILE-MATRIX-001
 title: "Per-Agent Model+Effort Profile Matrix (replace plan_type axis)"
 version: "0.1.1"
-status: draft
+status: in-progress
 created: 2026-07-20
 updated: 2026-07-20
 author: manager-spec

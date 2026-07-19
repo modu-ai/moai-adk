@@ -15,9 +15,33 @@
 
 Investigation findings (no agentlint LR-12; statusline not a reader; plan_type UI-selector removed but web save-path still mutates; ApplyTierProfile 4 call sites; template source `model: inherit` vs mutated local `model: opus`; `moai model profile` accessor does not exist yet) are recorded in research.md and plan.md §B and shape scope.
 
+## §F Phase 4 Mode Selection
+
+- Inputs: tier=L, scope ~20-25 files (Go config/template/cli/web + template llm.yaml + rules docs), domains=2 (Go source + template/docs), language mix Go-dominant, concurrency benefit LOW (coding-heavy).
+- Mode evaluation: trivial NO (semantic change) / background NO (write work) / agent-team RETIRED / parallel NO (coding-heavy, 2 domains) / workflow NO (not mechanical-uniform) / sub-agent YES.
+- Decision: sub-agent (Mode 5, sequential manager-develop, cycle_type=tdd)
+- Justification: coding-heavy multi-milestone implementation per Anthropic coding-task parallelism caveat; Plan Audit Gate skipped per 4-condition contract (PASS 0.93 ≥ 0.90, plan artifacts unchanged since c703a203c, verdict < 24h, verdict PASS). Implementation Kickoff Approval: user-pasted resume with explicit `실행: /moai run` directive.
+
 ## §E.2 Run-phase Evidence
 
-_<pending run-phase>_
+Run-phase cycle_type=tdd, Mode 5 sequential. Milestones M1–M5, per-M Conventional Commits pushed to main (Hybrid Trunk).
+
+### M1 — Config schema + Matrix A data model
+
+| AC | Status | Verification | Actual Output |
+|----|--------|--------------|---------------|
+| AC-MPM-001 (EffectiveProfile) | PASS | `go test ./internal/config -run TestEffectiveProfile` | ok (profile→alias→medium default) |
+| AC-MPM-004/007 (agent_overrides validate) | PASS | `go test ./internal/config -run TestValidateAgentOverrides` | ok (non-catalog / out-of-enum model / effort each error) |
+| AC-MPM-005 (Matrix A max fidelity) | PASS | `go test ./internal/template -run TestResolveAgentModelEffort_MatrixAFidelity` | ok (all 10 grouped agents = max column) |
+| AC-MPM-006 (override precedence) | PASS | `go test ./internal/template -run TestResolveAgentModelEffort_OverridePrecedence` | ok |
+| AC-MPM-007 (inherit) | PASS | `TestResolveAgentModelEffort_Inherit` | ok (Explore + user agent → inherit, hasGroup=false) |
+| AC-MPM-008 (template+local profiles schema) | PASS | template + local llm.yaml carry profile+profiles+agent_overrides, no plan_type/claude_models | verified by Read |
+| AC-MPM-011 (init no plan_type) | PASS | `go test ./internal/cli -run TestInitCmd_PlanTypeRetired` | ok (deployed llm.yaml has no plan_type) |
+| AC-MPM-024 (no haiku) | PASS | `TestDefaultProfileMatrix_NoHaiku` | ok |
+
+M1 build: `go build ./...` exit 0; `GOOS=windows GOARCH=amd64 go build ./...` exit 0. Full `go test ./...` = 0 failures. golangci-lint baseline 0 issues (pre-M1).
+
+New files: internal/config/profile.go, internal/config/profile_test.go, internal/template/profile_matrix.go, internal/template/profile_matrix_test.go. Edited: types.go (+Profile/Profiles/AgentOverrides), validation.go (+validateProfile/validateAgentOverrides), template+local llm.yaml, init_test.go (plan_type test inverted per AC-MPM-011).
 
 ## §E.3 Run-phase Audit-Ready Signal
 
