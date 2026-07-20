@@ -61,36 +61,38 @@ delegation:
 
 Related: [Agent Guide](/en/advanced/agent-guide), [Skill Guide](/en/advanced/skill-guide).
 
-## llm.yaml — backend·model tier
+## llm.yaml — backend·profile matrix
 
-Defines performance tiers, billing plans, and Claude/GLM model mappings.
+Defines the profile, the profile matrix, per-agent overrides, and GLM model mappings.
 
 ```yaml
 llm:
-  performance_tier: "medium"   # high | medium | low
-  plan_type: "subscription"    # api | subscription
-  claude_models:
-    high: "opus"
-    medium: "sonnet"
-    low: "sonnet"
+  profile: "medium"            # max | medium | low (active matrix column)
+  performance_tier: "medium"   # legacy alias (read when profile absent, high→max)
+  profiles:                    # profile column → 6 groups → {model, effort}
+    max: { ... }               # detailed table: Profile Matrix page
+    medium: { ... }
+    low: { ... }
+  agent_overrides: {}          # per-agent {model, effort} override (optional)
   glm:
     base_url: "https://api.z.ai/api/anthropic"
     models:
       high: "glm-5.2"          # 1M context — Opus slot
       medium: "glm-4.7"        # 202K context — Sonnet slot
-      low: "glm-4.5-air"       # 128K context — Haiku slot
+      low: "glm-4.5-air"       # 128K context — lightweight slot
       fable: "glm-5.2"
 ```
 
 | Key | Description |
 |-----|-------------|
-| `performance_tier` | Controls model selection for all subagents·team agents (high=complex reasoning, medium=balanced, low=fast/low-cost) |
-| `plan_type` | Billing plan type. `api`=cost-optimized per task, `subscription`=weekly quota optimized (empty interpreted as subscription) |
-| `claude_models` | Tier-to-model mapping for Claude. Harness levels map to effort (thorough→xhigh, standard→high, minimal→medium) |
+| `profile` | Active profile matrix column (`max`/`medium`/`low`). An empty value is interpreted as `medium`. The model+effort source for every subagent spawn |
+| `performance_tier` | Legacy alias field. Read only when `profile` is absent, normalized `high`→`max` |
+| `profiles` | The group → `{model, effort}` matrix per profile column. The Go default (`template.DefaultProfileMatrix`) is the authoritative fallback for missing cells |
+| `agent_overrides` | Per-canonical-agent-name `{model, effort}` override. Takes precedence over the active profile's group cell (catalog+enum validated) |
 | `glm.base_url` | Z.AI Anthropic-compatible proxy endpoint |
-| `glm.models` | Tier-to-model mapping for GLM. GLM collapses Claude's 5-step effort into 3 reasoning states (thinking-off / reasoning-high / reasoning-max) |
+| `glm.models` | Per-slot GLM model mapping. GLM collapses Claude's 5-step effort into 3 reasoning states (thinking-off / reasoning-high / reasoning-max) |
 
-Related: [plan_type Tier Profiles](/en/advanced/plan-type-profiles), [3-Tier Agent Architecture](/en/advanced/no-haiku-3tier).
+Related: [Profile Matrix](/en/advanced/profile-matrix), [3-Tier Agent Architecture](/en/advanced/no-haiku-3tier).
 
 ## statusline.yaml — status line
 

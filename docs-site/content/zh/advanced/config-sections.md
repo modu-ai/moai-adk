@@ -61,36 +61,38 @@ delegation:
 
 相关: [代理指南](/zh/advanced/agent-guide), [技能指南](/zh/advanced/skill-guide).
 
-## llm.yaml — 后端·模型层级
+## llm.yaml — 后端·配置矩阵
 
-定义性能层级、计费计划和Claude/GLM模型映射。
+定义配置文件、配置矩阵、每个代理的 override 以及 GLM 模型映射。
 
 ```yaml
 llm:
-  performance_tier: "medium"   # high | medium | low
-  plan_type: "subscription"    # api | subscription
-  claude_models:
-    high: "opus"
-    medium: "sonnet"
-    low: "sonnet"
+  profile: "medium"            # max | medium | low (活动矩阵列)
+  performance_tier: "medium"   # legacy 别名 (profile 缺失时读取, high→max)
+  profiles:                    # 配置文件列 → 6 个分组 → {model, effort}
+    max: { ... }               # 详表: 配置矩阵页面
+    medium: { ... }
+    low: { ... }
+  agent_overrides: {}          # 每个代理的 {model, effort} override (可选)
   glm:
     base_url: "https://api.z.ai/api/anthropic"
     models:
       high: "glm-5.2"          # 1M context — Opus 插槽
       medium: "glm-4.7"        # 202K context — Sonnet 插槽
-      low: "glm-4.5-air"       # 128K context — Haiku 插槽
+      low: "glm-4.5-air"       # 128K context — 轻量插槽
       fable: "glm-5.2"
 ```
 
 | 键 | 说明 |
 |----|------|
-| `performance_tier` | 控制所有子代理·团队代理的模型选择 (high=复杂推理, medium=平衡, low=快速/低成本) |
-| `plan_type` | 计费计划类型。`api`=按任务成本优化，`subscription`=每周配额优化 (空值解释为subscription) |
-| `claude_models` | 层级到Claude模型的映射。Harness级别映射到effort (thorough→xhigh, standard→high, minimal→medium) |
+| `profile` | 活动配置矩阵列 (`max`/`medium`/`low`)。为空时解释为 `medium`。所有子代理 spawn 的 model+effort 来源 |
+| `performance_tier` | legacy 别名字段。仅当 `profile` 缺失时读取，并将 `high`→`max` 归一化 |
+| `profiles` | 每个配置文件列的分组 → `{model, effort}` 矩阵。Go 默认值(`template.DefaultProfileMatrix`)是缺失格的权威 fallback |
+| `agent_overrides` | 每个规范代理名称的 `{model, effort}` override。优先于活动配置文件的分组格 (目录+enum 校验) |
 | `glm.base_url` | Z.AI Anthropic兼容代理端点 |
-| `glm.models` | 层级到GLM模型的映射。GLM将Claude的5步effort折叠为3个推理状态 (thinking-off / reasoning-high / reasoning-max) |
+| `glm.models` | 每个插槽的 GLM 模型映射。GLM将Claude的5步effort折叠为3个推理状态 (thinking-off / reasoning-high / reasoning-max) |
 
-相关: [plan_type层级配置](/zh/advanced/plan-type-profiles), [3层代理架构](/zh/advanced/no-haiku-3tier).
+相关: [配置矩阵](/zh/advanced/profile-matrix), [3层代理架构](/zh/advanced/no-haiku-3tier).
 
 ## statusline.yaml — 状态栏
 

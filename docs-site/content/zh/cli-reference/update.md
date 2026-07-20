@@ -130,7 +130,7 @@ graph TD
 | `--no-hooks` | 跳过 Git 钩子安装 |
 | `--verbose` | 显示所有警告(诊断模式) |
 | `--shell-env` | 为 Claude Code 配置 shell 环境变量 |
-| `--plan-type <api\|subscription>` | 覆盖计费套餐类型 |
+| `--profile <max\|medium\|low>` | 覆盖模型+effort 配置文件(保存到 `llm.yaml` 的 `profile`) |
 
 ### 工作方式
 

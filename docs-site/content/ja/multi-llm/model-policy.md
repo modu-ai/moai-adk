@@ -27,9 +27,9 @@ MoAI-ADK v3.0 のエージェントカタログは **11 個** (MoAI カスタム
 > 同じく `max`/`medium`/`low` の 3 値を使い、1:1 でマッピングされます (別途変換
 > なし)。デフォルト値は `medium` です。`--high` フラグは `--model-policy max` の、もう
 > 使われない別名です (1 サイクル後方互換、`--low` も同様)。
-> `performance_tier` はサブエージェントのモデル割り当てのみを制御し、料金プランの種類 (api /
-> subscription) を決定する `plan_type` フィールドとは別の軸です。ユーザー名などは
-> `user.yaml` に別途保管されます。
+> `performance_tier` は `profile`(プロファイルマトリクス列)の legacy エイリアスフィールドで、
+> `profile` がない場合のみ読み込まれ `high`→`max` に正規化されます。両フィールドは同じ
+> `max`/`medium`/`low` 軸です。ユーザー名などは `user.yaml` に別途保管されます。
 
 > **なぜ重要ですか?** Plus $20 プランは Opus にアクセスできません。`low` ポリシーを設定すると、すべてのエージェントが Sonnet のみを使ってレート制限エラーを防ぎます。上位プランはコアエージェント (計画、監査) に Opus を割り当て、日常作業には Sonnet を使います。
 
@@ -81,10 +81,11 @@ v3.0 ではエージェント単位の割り当ての上に **作業ステップ
 - **tier** (SPEC サイズ): S / M / L
 - **phase** (作業ステップ): plan / run / sync / mx
 
-同じワークフローでも API 従量課金と サブスクリプション料金プランは最適な配分が異なるため、
-料金プランの種類 (`plan_type` — `api` または `subscription`) プロファイルが料金プラン別の
-マトリックスを分離適用します。`plan_type` は `performance_tier` と独立した軸で、
-値がなければ `subscription` として解釈されます。
+エージェント別の model+effort 割り当ては単一のプロファイルマトリクスが担当します。アクティブ
+プロファイル(`profile` — `max`/`medium`/`low`)がマトリクスの 1 列を選択し、
+`profile` がなければ legacy `performance_tier` がエイリアスとして読み込まれ、それもなければ
+`medium` として解釈されます。詳細なエージェント別マッピングは
+[プロファイルマトリクス](/ja/advanced/profile-matrix/) ページを参照してください。
 
 ## 設定方法
 

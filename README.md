@@ -80,7 +80,7 @@ MoAI-ADK systematizes this assignment instead of leaving it to chance.
 
 **No-Haiku 3-Tier Policy**. Exclude Haiku from the routing model set, distributing work across a 3-tier structure (Sonnet / Opus / Fable). Assign Sonnet low effort to mechanical tasks to minimize step count, and deploy upper-tier models where reasoning matters.
 
-**plan_type Profiles**. API usage and subscription have different optimal allocations. API has one constraint (dollars); subscription has another (weekly token quota + Opus hour deduction). A 60-cell profile matrix (10 agents × 3 tiers × 2 plan_type) applies different model/effort per pricing model.
+**Profile Matrix**. A single per-agent profile matrix maps each retained agent to a `{model, effort}` pair. One profile axis — `max` / `medium` (default) / `low`, selected via `llm.profile` (`moai init --profile`, `moai update --profile`) — picks the active column; `moai model profile` resolves each agent's cell. The 10 grouped agents draw model+effort from the matrix (no Haiku anywhere), while `Explore` and user-defined agents inherit the session model.
 
 **CG Mode (Claude + GLM)**. `moai cg` is a hybrid mode combining Claude leader and GLM workers. Strategy, planning, and audits run on Claude; bulk implementation runs on GLM. **60-70% cost savings** on implementation-heavy workloads.
 

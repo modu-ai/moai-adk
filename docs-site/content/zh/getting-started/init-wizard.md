@@ -136,19 +136,7 @@ Git 设置保存到 `.moai/config/sections/git-strategy.yaml` 文件。
 | **medium**(默认) | 质量与成本的平衡 |
 | **low** | 经济 —— 以 Sonnet 为中心分配 |
 
-该设置保存到 `.moai/config/sections/llm.yaml` 的 `performance_tier` 字段。
-
-### 第 9 步:计费套餐类型(plan_type)
-
-选择依计费方式而定的模型分配配置文件。
-
-```bash
-? 选择计费套餐类型:
-▸ subscription (推荐) - 订阅套餐(周配额优化)
-  api - 基于 API 用量计费(按任务成本优化)
-```
-
-该设置保存到 `.moai/config/sections/llm.yaml` 的 `plan_type` 字段。即使性能层级相同,也会因计费套餐类型不同而使模型分配不同。
+该设置保存到 `.moai/config/sections/llm.yaml` 的 `performance_tier` 字段，并作为 `profile` 字段(配置矩阵列)的 legacy 别名读取。用 `--profile max|medium|low` 标志直接指定则保存到 `profile` 字段。每个配置文件的代理 model+effort 映射请参阅[配置矩阵](/zh/advanced/profile-matrix/)页面。
 
 ## Standard 模式(Phase 1 提问)
 
@@ -206,8 +194,7 @@ Git 设置保存到 `.moai/config/sections/git-strategy.yaml` 文件。
 moai init my-project \
   --non-interactive \
   --project-mode personal \
-  --model-policy medium \
-  --plan-type subscription \
+  --profile medium \
   --harness-profile default \
   --enable-lsp=false \
   --enforce-quality

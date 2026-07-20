@@ -61,36 +61,38 @@ delegation:
 
 関連: [エージェントガイド](/ja/advanced/agent-guide), [スキルガイド](/ja/advanced/skill-guide).
 
-## llm.yaml — バックエンド・モデルティア
+## llm.yaml — バックエンド・プロファイルマトリクス
 
-パフォーマンスティア、請求プラン、Claude/GLMモデルマッピングを定義します。
+プロファイル、プロファイルマトリクス、エージェント別 override、GLM モデルマッピングを定義します。
 
 ```yaml
 llm:
-  performance_tier: "medium"   # high | medium | low
-  plan_type: "subscription"    # api | subscription
-  claude_models:
-    high: "opus"
-    medium: "sonnet"
-    low: "sonnet"
+  profile: "medium"            # max | medium | low (アクティブマトリクス列)
+  performance_tier: "medium"   # legacy エイリアス (profile 不在時に読み込み、high→max)
+  profiles:                    # プロファイル列 → 6 グループ → {model, effort}
+    max: { ... }               # 詳細表: プロファイルマトリクスページ
+    medium: { ... }
+    low: { ... }
+  agent_overrides: {}          # エージェント別 {model, effort} override (任意)
   glm:
     base_url: "https://api.z.ai/api/anthropic"
     models:
       high: "glm-5.2"          # 1M context — Opusスロット
       medium: "glm-4.7"        # 202K context — Sonnetスロット
-      low: "glm-4.5-air"       # 128K context — Haikuスロット
+      low: "glm-4.5-air"       # 128K context — 軽量スロット
       fable: "glm-5.2"
 ```
 
 | キー | 説明 |
 |------|------|
-| `performance_tier` | 全サブエージェント・チームエージェントのモデル選択を制御 (high=複雑推論, medium=バランス, low=高速/低コスト) |
-| `plan_type` | 請求プラン種別。`api`=タスク別コスト最適化, `subscription`=週次クォータ最適化 (空ならsubscriptionとして解釈) |
-| `claude_models` | ティア別Claudeモデルマッピング。ハーネスレベルがeffortに接続 (thorough→xhigh, standard→high, minimal→medium) |
+| `profile` | アクティブなプロファイルマトリクス列 (`max`/`medium`/`low`)。空なら `medium` として解釈。全サブエージェント spawn の model+effort のソース |
+| `performance_tier` | legacy エイリアスフィールド。`profile` がない場合のみ読み込まれ `high`→`max` に正規化 |
+| `profiles` | プロファイル列別グループ → `{model, effort}` マトリクス。Go デフォルト値 (`template.DefaultProfileMatrix`) が欠落セルの権威ある fallback |
+| `agent_overrides` | 正規エージェント名別 `{model, effort}` override。アクティブプロファイルのグループセルより優先 (カタログ+enum 検証) |
 | `glm.base_url` | Z.AI Anthropic互換プロキシエンドポイント |
-| `glm.models` | ティア別GLMモデルマッピング。GLMはClaudeの5段階effortを3個reasoning状態 (thinking-off / reasoning-high / reasoning-max) にcollapse |
+| `glm.models` | スロット別GLMモデルマッピング。GLMはClaudeの5段階effortを3個reasoning状態 (thinking-off / reasoning-high / reasoning-max) にcollapse |
 
-関連: [plan_typeティアプロファイル](/ja/advanced/plan-type-profiles), [3-ティアエージェントアーキテクチャ](/ja/advanced/no-haiku-3tier).
+関連: [プロファイルマトリクス](/ja/advanced/profile-matrix), [3-ティアエージェントアーキテクチャ](/ja/advanced/no-haiku-3tier).
 
 ## statusline.yaml — ステータスライン
 

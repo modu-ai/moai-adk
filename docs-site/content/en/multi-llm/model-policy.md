@@ -30,10 +30,10 @@ depth (effort).
 > `--model-policy` both use the same three values `max`/`medium`/`low` and map
 > 1:1 (no separate translation). The default is `medium`. The `--high` flag is
 > a deprecated alias for `--model-policy max` (one-cycle backward compatibility;
-> so is `--low`). `performance_tier` controls only subagent model assignment,
-> and is a separate axis from the `plan_type` field that decides the pricing
-> plan kind (api / subscription). User name and the like are kept separately in
-> `user.yaml`.
+> so is `--low`). `performance_tier` is a legacy alias field for `profile` (the
+> profile matrix column), read only when `profile` is absent and normalized
+> `high`→`max`. The two fields are the same `max`/`medium`/`low` axis. User name
+> and the like are kept separately in `user.yaml`.
 
 > **Why does this matter?** The Plus $20 plan has no Opus access. Setting the `low` policy makes every agent use only Sonnet, preventing rate-limit errors. Higher plans assign Opus only to the core sites (plan authoring, auditing, advisory) and use Sonnet for the rest.
 
@@ -94,11 +94,11 @@ Tier×Phase → {model, effort} matrix:
 - **tier** (SPEC size): S / M / L
 - **phase** (work phase): plan / run / sync / mx
 
-Because the optimal allocation differs between pay-as-you-go API usage and
-subscription plans even for the same workflow, the pricing-plan-kind
-(`plan_type` — `api` or `subscription`) profile applies a separate matrix per
-plan. `plan_type` is an axis independent from `performance_tier`; when absent,
-it is interpreted as `subscription`.
+Per-agent model+effort assignment is handled by a single profile matrix. The
+active profile (`profile` — `max`/`medium`/`low`) selects one column of the
+matrix; when `profile` is absent the legacy `performance_tier` is read as an
+alias, and failing that it is interpreted as `medium`. For the detailed
+per-agent mapping, see the [Profile Matrix](/en/advanced/profile-matrix/) page.
 
 ## Configuration
 

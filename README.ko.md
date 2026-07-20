@@ -78,7 +78,7 @@ MoAI-ADK는 이 배정을 그때그때 운에 맡기지 않고 시스템으로 �
 
 **No-Haiku 3-티어 정책**. Haiku를 라우팅 모델 세트에서 배제하고, 3-티어 구조(Sonnet / Opus / Fable)로 작업을 분산한다. 기계 작업에는 Sonnet low effort를 배정하여 스텝 수를 최소화하고, 추론이 필요한 곳에는 상위 모델을 배정한다.
 
-**plan_type 프로파일**. API 종량제와 구독 요금제는 최적 배분이 다르다. API에서는 달러가 유일한 제약이고, 구독에서는 주간 토큰 쿼터가 제약이다. 60-셀 프로필 매트릭스(10 에이전트 × 3 티어 × 2 plan_type)이 요금제별로 다른 모델/effort를 적용한다.
+**프로파일 매트릭스 (Profile Matrix)**. 에이전트별 단일 프로파일 매트릭스가 각 리테인 에이전트를 `{model, effort}` 쌍에 대응시킨다. 하나의 프로파일 축 — `max` / `medium`(기본값) / `low`, `llm.profile`로 선택(`moai init --profile`, `moai update --profile`) — 이 활성 열을 고르고, `moai model profile`이 각 에이전트의 셀을 해석한다. 10개 그룹 에이전트는 매트릭스에서 모델+effort를 가져오며(어디에도 Haiku 없음), `Explore`와 사용자 정의 에이전트는 세션 모델을 상속한다.
 
 **CG 모드 (Claude + GLM)**. `moai cg`는 Claude 리더와 GLM 워커를 결합한 하이브리드 모드다. 전략, 계획, 감사는 Claude가 담당하고, 대량 구현 작업은 GLM이 담당한다. 구현 중심 작업에서 **60-70% 비용 절감** 효과가 있다.
 

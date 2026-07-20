@@ -62,9 +62,9 @@ flowchart TD
 
 **设计阶段** (`.moai/reports/agent-architecture-redesign-v2-20260709.html`) — v2 架构设计意图。提出三层模型策略原则和 DeepSWE 依据。
 
-**实现行为** (SPEC-MODEL-TIER-PLANTYPE-001, CLOSED) — `ApplyTierProfile` 60 格配置文件执行实际路由。它替换代理 frontmatter 中的 model 和 effort(replace-both)以应用层级配置。详细 60 格矩阵见[plan_type 层级配置](/zh/advanced/plan-type-profiles/)页面。
+**实现行为** — 单一配置矩阵执行实际路由。活动配置文件(`max`/`medium`/`low`)选择矩阵的一列，解析器确定每个代理的 `{model, effort}` 并在 spawn 时将 model 作为运行时参数注入。详细矩阵见[配置矩阵](/zh/advanced/profile-matrix/)页面。
 
-读者必须能够区分设计意图(本页的 DeepSWE 依据)和实现行为(60 格 ApplyTierProfile)。
+读者必须能够区分设计意图(本页的 DeepSWE 依据)和实现行为(单一配置矩阵)。
 
 ## 与线束自我进化的连接
 
@@ -72,5 +72,5 @@ flowchart TD
 
 ## 下一步
 
-- [plan_type 层级配置](/zh/advanced/plan-type-profiles/) — 60 格配置矩阵 (10 代理 × 3 层级 × 2 plan_type)
+- [配置矩阵](/zh/advanced/profile-matrix/) — 单一 3 列 per-agent 配置矩阵 (10 代理 × 3 配置文件)
 - [代币经济学概述](/zh/advanced/tokenomics-overview/) — 四层代币经济学结构的 Layer B 路由

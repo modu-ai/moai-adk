@@ -136,19 +136,7 @@ Git 설정은 `.moai/config/sections/git-strategy.yaml` 파일에 저장됩니�
 | **medium** (기본값) | 품질과 비용의 균형 |
 | **low** | 경제적 — Sonnet 중심 배분 |
 
-이 설정은 `.moai/config/sections/llm.yaml` 의 `performance_tier` 필드에 저장됩니다.
-
-### 9단계: 요금제 유형 (plan_type)
-
-과금 방식에 따른 모델 배정 프로필을 선택합니다.
-
-```bash
-? 요금제 유형 선택:
-▸ subscription (권장) - 구독 요금제 (주간 할당량 최적화)
-  api - API 사용량 기반 과금 (태스크별 비용 최적화)
-```
-
-이 설정은 `.moai/config/sections/llm.yaml` 의 `plan_type` 필드에 저장됩니다. 같은 성능 티어라도 요금제 유형에 따라 모델 배정이 달라집니다.
+이 설정은 `.moai/config/sections/llm.yaml` 의 `performance_tier` 필드에 저장되며, `profile` 필드(프로필 매트릭스 열)의 legacy 별칭으로 읽힙니다. `--profile max|medium|low` 플래그로 직접 지정하면 `profile` 필드에 저장됩니다. 프로필별 에이전트 model+effort 매핑은 [프로필 매트릭스](/ko/advanced/profile-matrix/) 페이지를 참조하세요.
 
 ## Standard 모드 (Phase 1 질문)
 
@@ -206,8 +194,7 @@ MoAI 디자인 파이프라인과 Claude Design 연동을 활성화할지 선택
 moai init my-project \
   --non-interactive \
   --project-mode personal \
-  --model-policy medium \
-  --plan-type subscription \
+  --profile medium \
   --harness-profile default \
   --enable-lsp=false \
   --enforce-quality

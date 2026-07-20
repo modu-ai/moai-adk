@@ -7,8 +7,8 @@ index:
   title: "토큰 예산 관리와 우아한 중단"
 "no-haiku-3tier":
   title: "3-티어 에이전트 아키텍처 (No-Haiku)"
-"plan-type-profiles":
-  title: "plan_type 티어 프로필"
+"profile-matrix":
+  title: "프로필 매트릭스"
 "self-evolving":
   title: "하네스 자가 진화"
 "autonomous-loops":

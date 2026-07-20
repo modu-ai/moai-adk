@@ -589,7 +589,7 @@ moai update                   # 각 설정 단계에 대한 대화형 프롬프�
 ```
 
 {{< callout type="info" >}}
-기본 정책은 `medium`입니다. GLM 설정은 `settings.local.json`에 격리됩니다 (Git에 커밋되지 않음). 설정 키는 `llm.yaml`의 `performance_tier: max | medium | low` 입니다 (`--high`/`--low`는 각각 `--model-policy max`/`low`의 deprecated 별칭). 구독/API 요금제 축은 별도의 `plan_type: api | subscription`으로 분리됩니다.
+기본 정책은 `medium`입니다. GLM 설정은 `settings.local.json`에 격리됩니다 (Git에 커밋되지 않음). 설정 키는 `llm.yaml`의 `profile: max | medium | low`(프로필 매트릭스 열)이며, legacy `performance_tier` 필드가 `profile` 부재 시 별칭으로 읽힙니다 (`--high`/`--low`는 각각 `--model-policy max`/`low`의 deprecated 별칭). `--profile max|medium|low` 플래그로 직접 지정할 수 있습니다.
 {{< /callout >}}
 
 ## Task 메트릭 로깅

@@ -489,7 +489,7 @@ moai init my-project --model-policy max
 moai update -c
 ```
 
-요금제 유형(`plan_type`: api 또는 subscription) 은 별도로 설정하여, 같은 티어라도 과금 방식에 따라 모델 배정이 달라집니다. 자세한 모델-티어 매핑은 [모델 정책](/ko/multi-llm/model-policy) 페이지를 참조하세요.
+프로필(`profile`: max/medium/low)은 프로필 매트릭스의 활성 열을 선택하여 각 에이전트의 model+effort를 결정합니다. 자세한 에이전트별 매핑은 [프로필 매트릭스](/ko/advanced/profile-matrix/) 페이지를 참조하세요.
 
 ---
 

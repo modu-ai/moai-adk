@@ -80,7 +80,7 @@ MoAI-ADK 将这种分配系统化，不再听天由命。
 
 **No-Haiku 3 层模型策略**。将 Haiku 从路由模型集中排除，工作分散到 3 层结构（Sonnet / Opus / Fable）。机械任务分配 Sonnet low effort 最小化步数，推理关键处分配上层模型。
 
-**plan_type 配置文件**。API 按量计费和订阅的最优分配不同。API 的唯一约束是美元，订阅的约束是周 Token 配额 + Opus 小时扣除。60 单元配置矩阵（10 个 agent × 3 层 × 2 plan_type）针对不同计费模式应用不同的 model/effort。
+**配置矩阵**。单一的 per-agent 配置矩阵将每个保留 agent 映射到一个 `{model, effort}` 对。单一配置文件轴 —— `max` / `medium`（默认）/ `low`，通过 `llm.profile`（`moai init --profile`、`moai update --profile`）选择 —— 选取活动列；`moai model profile` 解析每个 agent 的格。10 个分组 agent 从矩阵获取 model+effort（任何位置都没有 Haiku），而 `Explore` 和用户自定义 agent 继承会话模型。
 
 **CG 模式（Claude + GLM）**。`moai cg` 是结合 Claude 领导和 GLM Worker 的混合模式。战略、规划、审计在 Claude 上运行；大批量实现在 GLM 上运行。实现密集型工作负载节省 **60-70% 成本**。
 

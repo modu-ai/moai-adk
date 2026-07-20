@@ -7,8 +7,8 @@ index:
   title: "Token Budget Management and Graceful Stop"
 "no-haiku-3tier":
   title: "3-Tier Agent Architecture (No-Haiku)"
-"plan-type-profiles":
-  title: "plan_type Tier Profiles"
+"profile-matrix":
+  title: "Profile Matrix"
 "self-evolving":
   title: "Harness Self-Evolution"
 "autonomous-loops":

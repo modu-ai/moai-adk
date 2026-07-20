@@ -62,9 +62,9 @@ flowchart TD
 
 **設計段階** (`.moai/reports/agent-architecture-redesign-v2-20260709.html`) — v2アーキテクチャ設計意図。3層モデルポリシーの原則とDeepSWE根拠を提示します。
 
-**実装された動作** (SPEC-MODEL-TIER-PLANTYPE-001, CLOSED) — `ApplyTierProfile` 60セルプロファイルが実際のルーティングを実行します。エージェントfrontmatterのmodelとeffortを両方置換(replace-both)してティアプロファイルを適用します。詳細な60セルマトリクスは[plan_type ティアプロファイル](/ja/advanced/plan-type-profiles/)ページを参照してください。
+**実装された動作** — 単一のプロファイルマトリクスが実際のルーティングを実行します。アクティブプロファイル(`max`/`medium`/`low`)がマトリクスの 1 列を選択し、リゾルバが各エージェントの `{model, effort}` を決定して spawn 時点で model をランタイム引数として注入します。詳細なマトリクスは[プロファイルマトリクス](/ja/advanced/profile-matrix/)ページを参照してください。
 
-読者は設計意図(このページのDeepSWE根拠)と実装された動作(60セルApplyTierProfile)を区別できなければなりません。
+読者は設計意図(このページのDeepSWE根拠)と実装された動作(単一のプロファイルマトリクス)を区別できなければなりません。
 
 ## ハーネス自己進化との接続
 
@@ -72,5 +72,5 @@ flowchart TD
 
 ## 次のステップ
 
-- [plan_type ティアプロファイル](/ja/advanced/plan-type-profiles/) — 60セルプロファイルマトリクス (10エージェント × 3ティア × 2 plan_type)
+- [プロファイルマトリクス](/ja/advanced/profile-matrix/) — 単一の 3 列 per-agent プロファイルマトリクス (10 エージェント × 3 プロファイル)
 - [トークノミクス概論](/ja/advanced/tokenomics-overview/) — 4層トークノミクス構造のLayer Bルーティング

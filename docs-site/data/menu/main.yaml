@@ -511,11 +511,11 @@ main:
           zh: 三层代理架构 (No-Haiku)
         ref: /advanced/no-haiku-3tier
       - name:
-          ko: plan_type 티어 프로필
-          en: plan_type Tier Profiles
-          ja: plan_type ティアプロファイル
-          zh: plan_type 层级配置
-        ref: /advanced/plan-type-profiles
+          ko: 프로필 매트릭스
+          en: Profile Matrix
+          ja: プロファイルマトリクス
+          zh: 配置矩阵
+        ref: /advanced/profile-matrix
       - name:
           ko: 하네스 자가 진화
           en: Harness Self-Evolution
