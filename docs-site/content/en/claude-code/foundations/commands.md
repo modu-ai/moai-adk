@@ -43,7 +43,7 @@ Slash commands come in three kinds. Frequently used commands are summarized belo
 | `/memory` | List/toggle `CLAUDE.md` + auto-memory loads | v2.1.59+ |
 | `/compact` | Summarize the conversation so far to free context while keeping the same dialogue | Base |
 | `/clear` (aliases: `/reset`, `/new`) | Clear the context and start a new conversation | Base |
-| `/agents` | Subagent management UI | v2.1.139+ |
+| `/agents` | Manage subagent configuration (v2.1.198 removed the creation wizard — ask Claude or edit `.claude/agents/` directly; official docs still document the tabbed UI as of 2026-07) | v2.1.139+ |
 | `/mcp` | Manage MCP server connections and OAuth authentication | v2.1.186+ |
 | `/plugin` | Manage plugins | Base |
 | `/effort [low\|medium\|high\|xhigh\|max\|ultracode\|auto]` | Set the model's reasoning intensity or orchestration | Base |
@@ -60,10 +60,11 @@ Slash commands come in three kinds. Frequently used commands are summarized belo
 
 | Command | Purpose |
 | :--- | :--- |
-| `/loop` (alias: `/proactive`) | Run a repeating loop (Ralph/interval based) |
-| `/batch` | Batch execution |
-| `/simplify` | Code simplification (v2.1.154+) |
-| `/code-review` | Code review |
+| `/loop` (alias: `/proactive`) | Run an iterative fix loop (Ralph/interval-based) |
+| `/batch` | Run batch operations |
+| `/simplify` | Simplify code (v2.1.154+) |
+| `/code-review` | Review code |
+| `/dataviz` | Generate data visualizations from your data (v2.1.198+) |
 
 ### Workflow Commands `[Workflow]`
 

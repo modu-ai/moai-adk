@@ -43,7 +43,7 @@ description: "Claude Code 的斜杠命令 —— 整理内置命令、用 Markdo
 | `/memory` | `CLAUDE.md` + 自动记忆加载列表/开关 | v2.1.59+ |
 | `/compact` | 保持同一对话，把此前内容摘要以腾出上下文 | 基础 |
 | `/clear`（别名：`/reset`、`/new`） | 清空上下文并开始新对话 | 基础 |
-| `/agents` | 子智能体管理 UI | v2.1.139+ |
+| `/agents` | 子智能体管理 UI（v2.1.198 移除了创建向导 — 让 Claude 代劳或直接编辑 `.claude/agents/`；官方文档中截至 2026-07 标签式 UI 仍存在） | v2.1.139+ |
 | `/mcp` | MCP 服务器连接及 OAuth 认证管理 | v2.1.186+ |
 | `/plugin` | 插件管理 | 基础 |
 | `/effort [low\|medium\|high\|xhigh\|max\|ultracode\|auto]` | 设置模型推理强度或编排 | 基础 |
@@ -63,7 +63,8 @@ description: "Claude Code 的斜杠命令 —— 整理内置命令、用 Markdo
 | `/loop`（别名：`/proactive`） | 运行重复循环（基于 Ralph/interval） |
 | `/batch` | 批量执行 |
 | `/simplify` | 代码简化 (v2.1.154+) |
-| `/code-review` | 代码评审 |
+| `/code-review` | 代码审查 |
+| `/dataviz` | 从数据生成可视化图表 (v2.1.198+) |
 
 ### 工作流命令 `[Workflow]`
 

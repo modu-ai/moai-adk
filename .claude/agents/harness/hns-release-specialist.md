@@ -35,8 +35,17 @@ to surface a user-decision prompt (patch/minor/major).
 
 ## Release Configuration (Enhanced GitHub Flow)
 
+- [HARD] **PR-mandatory regime (repo-local, modu-ai/moai-adk main)**: main is fully
+  protected — `enforce_admins: true` (NOBODY, including admin, can push directly to
+  main), 0-approval self-merge allowed once the 4 required CI checks pass
+  (Test (ubuntu-latest) / Lint / Build (linux/amd64) / CodeQL), strict up-to-date +
+  conversation resolution required. **ALL changes** — including daily Tier S/M
+  commits — land via PR. The former Hybrid Trunk main-direct push regime is RETIRED
+  (see `.moai/docs/git-local-workflow-doctrine.md` §23.2). Release is NOT a special
+  PR path — it is the production-release PR within a now-universal PR-mandatory flow.
 - Release branch `release/vX.Y.Z` (from main, PR-merged); Hotfix `hotfix/vX.Y.Z-*`.
-- Target `main` (production only). Tag `vX.Y.Z` (SemVer, GoReleaser trigger).
+- Target `main` (production only). Tag `vX.Y.Z` (SemVer, GoReleaser trigger). Tags
+  are NOT branch-protected — the `scripts/release.sh` tag-push flow is unaffected.
 - [HARD] Merge strategy **merge commit** (`gh pr merge --merge --delete-branch`) — squash forbidden (preserve individual SPEC commits, project git workflow doctrine §18.3).
 - [HARD] Tag push via `./scripts/release.sh vX.Y.Z` or `make release V=vX.Y.Z` — manual `git tag + push` forbidden.
 - [HARD] PR 3-axis labels: `type:*` + `priority:*` + `area:*`.
@@ -98,8 +107,9 @@ Abort). On Release approval, proceed to Phase 6.
 ### Phase 6 — Release Branch PR and Tag (manager-git delegation)
 
 [HARD] ALL git operations delegated to manager-git. [HARD] Branch protection with
-`enforce_admins` enabled; direct push to main blocked. Delegate to manager-git
-(`isolation: "worktree"`):
+`enforce_admins: true`; direct push to main is blocked for EVERYONE (admin included).
+The release PR self-merges (0 required approvals) once the 4 required CI checks pass —
+no reviewer wait. Delegate to manager-git (`isolation: "worktree"`):
 1. `git push -u origin release/vX.Y.Z`.
 2. `gh pr create --head release/vX.Y.Z --base main --title "release: vX.Y.Z" --body "..."`.
 3. `gh pr checks --watch`.
