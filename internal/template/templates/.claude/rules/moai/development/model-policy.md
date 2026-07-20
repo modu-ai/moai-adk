@@ -17,7 +17,7 @@ Agent definition `model` field accepts only these values:
 
 Current model generation mapping:
 - opus = Opus 4.8 (default effort: high across all surfaces incl. Claude Code; set xhigh explicitly for coding/agentic work)
-- sonnet = Sonnet 5 (current generation; single 1M-token context window — no 200K variant)
+- sonnet = Sonnet 5 on the Anthropic API (current generation; native 1M window, no `[1m]` suffix, no usage credits — CC 2.1.197). Behind an LLM gateway or with `CLAUDE_CODE_DISABLE_1M_CONTEXT=1`, `sonnet` budgets 200K. See § Sonnet 5 Native-1M Re-scope (CC 2.1.198).
 - fable = Fable (current generation; added to the model enum per CC v2.1.196 model-priority update)
 - haiku = Haiku (current generation; retired from MoAI agent routing per the No-Haiku policy — value remains valid for documentation/example YAML)
 
@@ -36,7 +36,7 @@ Invalid values (NEVER use):
 Rationale (Claude Code session inheritance bug):
 - When the parent session uses an `[1m]` context variant (e.g., `claude-opus-4-8[1m]`, `claude-sonnet-5[1m]`) and a spawned subagent declares an explicit `model: sonnet` or `model: opus` in its frontmatter, the parent's 1M context entitlement does NOT propagate to the subagent.
 - Result: subagent spawn fails with `API Error: Usage credits required for 1M context · run /usage-credits to turn them on, or /model to switch to standard context`.
-- Sonnet 1M specifically requires extra usage credits on every plan (including Max), so the entitlement mismatch is unrecoverable mid-spawn.
+- Sonnet **4.6** 1M specifically requires extra usage credits on every plan (including Max), so the entitlement mismatch is unrecoverable mid-spawn. (Re-scoped CC 2.1.198: on the Anthropic API `sonnet` now resolves to **Sonnet 5** with a native 1M window that needs NO usage credits and exposes no `[1m]` suffix, so this credit-mismatch failure binds Sonnet 4.6 1M and gateway-selected Sonnet paths — NOT Sonnet 5 on the Anthropic API. See § Sonnet 5 Native-1M Re-scope below.)
 
 Upstream tracking (Anthropic claude-code repository):
 - [Issue #45847](https://github.com/anthropics/claude-code/issues/45847): skill with `model: sonnet` frontmatter fails from Opus 4.6/4.7 [1m] parent
@@ -78,6 +78,15 @@ Evidence fetched via the GitHub issue API + the canonical CC CHANGELOG:
 **Why STILL-ACTIVE mechanism ≠ practical impact (Sonnet 5 / Opus 4.8 era):** the #36670 mechanism strips the `[1m]` suffix on teammate spawn, which historically forced a fallback to a 200K variant. Sonnet 5 and Opus 4.8 have **no 200K variant** — their context window is 1M as both default and maximum (per platform.claude.com Sonnet 5 model docs; Opus 4.8 serves the full 1M window by default). The stripped-suffix teammate therefore still resolves to 1M; there is no smaller variant to degrade into. The mechanism is unfixed upstream, but on the current default lineup it has nothing to break. The `model: inherit` convention is retained as defense-in-depth and for legacy-200K-variant models (Haiku 4.5 still ships 200K).
 
 A follow-up SPEC (conditional) MAY re-enable per-agent pinning only when #36670 is closed-with-fixed AND a CHANGELOG confirms Team `[1m]` inheritance for explicit `model:` teammates — though for Sonnet 5 / Opus 4.8 the practical case for that re-enablement has dissolved.
+
+### Sonnet 5 Native-1M Re-scope (CC 2.1.198)
+
+Re-verified against the CC 2.1.197 Sonnet 5 release + `code.claude.com/docs/en/model-config`. **Verdict: the sonnet-side premise of the `[1m]` doctrine changed; the doctrine is re-scoped, NOT deleted.**
+
+- On the Anthropic API, `sonnet` resolves to **Sonnet 5** with a **native 1M context window — there is no 200K variant, no `[1m]` suffix to select, and no usage credits required on any plan** (sessions auto-compact ~967K). A frontmatter `model: sonnet` pin therefore no longer trips the sonnet-side `[1m]` credit-mismatch on the Anthropic API — the credit entitlement it used to require does not exist for Sonnet 5.
+- The `[1m]` doctrine still binds two surviving paths: (1) the **opus`[1m]`** path (Opus variants still expose `[1m]` selection), and (2) the **gateway / older-model** path — behind an LLM gateway (`ANTHROPIC_BASE_URL` non-Anthropic) or with `CLAUDE_CODE_DISABLE_1M_CONTEXT=1`, `sonnet` budgets 200K and `sonnet[1m]` selects the 1M window for Sonnet 5.
+- **`model: inherit` remains the MoAI default regardless.** Sonnet 5's native 1M removes the sonnet-side spawn-time hazard on the Anthropic API, but per-agent `model:` pins stay deprecated (§ Inherit-by-Default Convention) — the opus`[1m]` + Team-mode paths still make `inherit` the safe choice.
+- **Gap (NOT re-verified this run)**: issue #36670 (Team teammates don't inherit `[1m]` from leader) was **NOT re-checked** against CC 2.1.198 — its state is unknown; do NOT claim it closed. The Team-mode `[1m]` non-inheritance premise in § Baseline-Refill Breaker is unchanged pending a fresh issue-state observation.
 
 ## Default-Model Cost Lever (Default = sonnet, no allowlist enforcement)
 
