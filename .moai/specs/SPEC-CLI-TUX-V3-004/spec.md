@@ -2,7 +2,7 @@
 id: SPEC-CLI-TUX-V3-004
 title: "doctor/status/spec Surface Polish + Regression Matrix (CLI TUX v3 — M4)"
 version: "0.1.1"
-status: in-progress
+status: completed
 created: 2026-07-13
 updated: 2026-07-20
 author: manager-spec

@@ -138,4 +138,14 @@ m1_to_mN_commit_strategy: "per-milestone commit + push direct-to-main (Route A H
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+sync_complete_at: 2026-07-20
+sync_commit_sha: "pending-backfill-2026-07-20"
+sync_status: PASS-WITH-DEBT
+changelog_entry_position: "[Unreleased] > Added (first entry)"
+debt_carried_forward: "AC-TUX4-010 PASS-WITH-DEBT — internal/cli/branch_protection.go:44 (interactive y/N fmt.Printf) deferred to SPEC-V3R6-CI-BASELINE-DRIFT-001 §D.1; not modified by this SPEC"
+frontmatter_status_transitions:
+  spec_md: "in-progress → completed (single sync commit, per Status Transition Ownership Matrix)"
+b12_self_test:
+  a_pre_emission_grep: "grep -c 'SPEC-CLI-TUX-V3-004' CHANGELOG.md → 0 (pre-emission, confirmed before append)"
+  b_ac_count_match: "acceptance.md §D AC rows = 14 (grep -cE '^\\| AC-TUX4-[0-9]+' acceptance.md); CHANGELOG entry states 14/14 AC PASS — 13 clean + 1 PASS-WITH-DEBT"
+  c_file_path_verification: "ls internal/cli/{glamour_style.go,doctor_render.go,help_order.go,uikit/banner.go,status.go,spec_view.go} → all exist (verified pre-draft)"
