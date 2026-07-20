@@ -51,6 +51,7 @@ jobs:
           filters: |
             docs_only:
               - '**.md'
+              - '.github/**'
               - '.moai/specs/**'
               - '.moai/docs/**'
               - '.moai/reports/**'
