@@ -137,4 +137,13 @@ glm_wire_claim: "implemented + wired, live wire-effectiveness pending (REQ-MPM-0
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+```yaml
+sync_complete_at: 2026-07-20
+sync_commit_sha: "pending-backfill-sync"   # backfilled in a follow-up commit per the D3 SHA-placeholder exemption (spec-frontmatter-schema.md)
+sync_status: PASS-WITH-DEBT                # mirrors run_status; 23/25 AC PASS, 2 PASS-WITH-DEBT (AC-MPM-013/014 web UI wiring), 0 FAIL
+ac_summary: "23 PASS / 2 PASS-WITH-DEBT / 0 FAIL of 25 AC-MPM (all 7 must-pass AC PASS)"
+changelog_entry_position: "CHANGELOG.md [Unreleased] > Added, first entry (SPEC-MODEL-PROFILE-MATRIX-001)"
+frontmatter_status_transitions:
+  spec_md: "in-progress -> completed (this sync commit)"
+doc_impact_followup: "README (4 locales) + docs-site (11 pages x 4 locales) + CLI-reference --plan-type->--profile edits deferred per REQ-MPM-036; NOT authored in this sync commit — see progress.md §E.2 Documentation-Impact List"
+```
