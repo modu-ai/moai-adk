@@ -2,7 +2,7 @@
 id: SPEC-DESIGN-MOAIWEBV2-002
 document: progress
 version: "0.1.0"
-status: draft
+status: in-progress
 created: 2026-07-21
 updated: 2026-07-21
 ---

@@ -214,6 +214,10 @@
   --radius-xl: 24px;
   --radius-pill: 32px;
   --radius-full: 9999px;
+  /* SPEC-DESIGN-MOAIWEBV2-002 M1: docs-site v2 card chrome radius (12px card
+     scale — moai-design.css hint/code cards). Applied to surface cards
+     (.section/.banner/.profilemgr) for tone parity with the docs-site. */
+  --radius-card: 12px;
 
   /* ── Shadow (무채색 base — v2 canon rgba(6,6,6,…)) ── */
   --shadow-xs: 0 1px 2px rgba(6, 6, 6, 0.04);
@@ -383,20 +387,33 @@ html[lang="zh"] body { font-family: "Pretendard", "Noto Sans CJK SC", system-ui,
 /* ============================================================
    Page shell + header
    ============================================================ */
-.page { max-width: 880px; margin: 0 auto; padding: var(--space-10) var(--space-6) 60px; }
+.page { max-width: 880px; margin: 0 auto; padding: var(--space-8) var(--space-6) 60px; }
 @media (max-width: 768px){ .page { padding: var(--space-8) var(--space-5) 60px; } }
 @media (max-width: 420px){ .page { padding: var(--space-6) var(--space-4) 60px; } }
 
-.pagehead { margin-bottom: var(--space-8); }
+/* SPEC-DESIGN-MOAIWEBV2-002 M1 — compact hero band (docs-site v2 direction:
+   .doc-hero--compact + .doc-hero-mascot, moai-docs-layout.css). Text left,
+   design-system mascot right; h1 drops from the fixed 36px display size to the
+   docs-site clamp scale; vertical rhythm tightened to the compact band. */
+.pagehead {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: var(--space-8); margin-bottom: var(--space-6);
+}
+.pagehead__text { min-width: 0; }
 .pagehead h1 {
-  margin: 0 0 var(--space-2);
-  font-size: var(--text-4xl); line-height: 1.1;
+  margin: 0 0 10px;
+  font-size: clamp(26px, 3vw, 36px); line-height: 1.1;
   font-weight: var(--fw-black); letter-spacing: var(--tracking-display);
   color: var(--fg-1);
 }
 .pagehead h1 .accent { color: var(--color-primary); }
 .pagehead__sub { margin: 0; color: var(--fg-2); font-size: var(--text-base); letter-spacing: var(--tracking-body); }
 .pagehead__sub .mono { color: var(--fg-3); font-size: 0.92em; }
+.pagehead__mascot {
+  flex: 0 0 auto; width: 110px; height: 110px; object-fit: contain;
+  filter: drop-shadow(0 4px 12px rgba(6, 6, 6, 0.18));
+}
+@media (max-width: 1023px){ .pagehead__mascot { width: 80px; height: 80px; } }
 
 /* ============================================================
    Profile switcher
@@ -420,7 +437,7 @@ html[lang="zh"] body { font-family: "Pretendard", "Noto Sans CJK SC", system-ui,
 .banner {
   display: flex; align-items: flex-start; gap: var(--space-3);
   padding: var(--space-4) var(--space-5);
-  border-radius: var(--radius-lg); border: 1px solid;
+  border-radius: var(--radius-card); border: 1px solid;
   margin-bottom: var(--space-6); box-shadow: var(--shadow-xs);
 }
 .banner__icon { flex: none; width: 22px; height: 22px; margin-top: 1px; }
@@ -460,12 +477,13 @@ html[lang="zh"] body { font-family: "Pretendard", "Noto Sans CJK SC", system-ui,
 .tabpanel:not(.is-active) { display: none; }
 .section {
   margin: 0; padding: 0; border: 1px solid var(--border-1);
-  border-radius: var(--radius-lg); background: var(--color-surface);
+  border-radius: var(--radius-card); background: var(--color-surface);
   box-shadow: var(--shadow-sm);
   overflow: clip;
 }
 .section__head {
-  padding: var(--space-5) var(--space-6);
+  /* M1 card density: docs-site v2 card padding scale (18px 20px). */
+  padding: 18px 20px;
   border-bottom: 1px solid var(--border-1);
 }
 .section__head-row { display: flex; align-items: center; gap: var(--space-3); }
@@ -485,7 +503,7 @@ html[lang="zh"] body { font-family: "Pretendard", "Noto Sans CJK SC", system-ui,
 [data-theme="dark"] .section__ico { color: var(--color-primary-hover); }
 .section__ico svg { width: 18px; height: 18px; }
 .section__count { margin-left: auto; font-family: var(--font-mono); font-size: 11px; letter-spacing: 0; color: var(--fg-3); }
-.section__body { padding: var(--space-6); }
+.section__body { padding: var(--space-5); }
 
 /* ============================================================
    Field grid + field chrome
@@ -701,7 +719,7 @@ html[lang="zh"] body { font-family: "Pretendard", "Noto Sans CJK SC", system-ui,
 /* ── Profile CRUD manager (SPEC-WEB-CONSOLE-011 M4) ── */
 .profilemgr {
   margin: 0 0 20px; padding: 18px 20px; border: 1px solid var(--border-1, #e5e2dc);
-  border-radius: var(--radius-lg, 12px); background: var(--bg-1, #fff);
+  border-radius: var(--radius-card, 12px); background: var(--bg-1, #fff);
 }
 .profilemgr__head { margin-bottom: 12px; }
 .profilemgr__title { font-size: var(--text-md, 16px); font-weight: var(--fw-semibold, 600); margin: 0; }

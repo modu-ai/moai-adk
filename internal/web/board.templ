@@ -23,9 +23,15 @@ templ boardPage(view boardView) {
 		<body>
 			@boardAppbar(view)
 			<main class="page">
+				// SPEC-DESIGN-MOAIWEBV2-002 M1: compact hero band — text left, mascot
+				// right (docs-site v2 .doc-hero--compact direction). Decorative image
+				// (alt="") — the adjacent h1 carries the page identity.
 				<div class="pagehead">
-					<h1>SPEC <span class="accent" data-i18n="board.title">Board</span></h1>
-					<p class="pagehead__sub" data-i18n="board.subtitle">Read-only SPEC lifecycle dashboard (loopback only — local machine)</p>
+					<div class="pagehead__text">
+						<h1>SPEC <span class="accent" data-i18n="board.title">Board</span></h1>
+						<p class="pagehead__sub" data-i18n="board.subtitle">Read-only SPEC lifecycle dashboard (loopback only — local machine)</p>
+					</div>
+					<img class="pagehead__mascot" src="/static/mascots/mascot-searching.png" alt="" width="110" height="110"/>
 				</div>
 				if view.Banner != "" {
 					@boardBanner(view)

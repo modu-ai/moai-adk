@@ -72,9 +72,15 @@ templ page(view pageView) {
 		<body>
 			@appbar(view)
 			<main class="page">
+				// SPEC-DESIGN-MOAIWEBV2-002 M1: compact hero band — text left, mascot
+				// right (docs-site v2 .doc-hero--compact direction). Decorative image
+				// (alt="") — the adjacent h1 carries the page identity.
 				<div class="pagehead">
-					<h1>MoAI <span class="accent">Web Console</span></h1>
-					<p class="pagehead__sub" data-i18n="app.subtitle">Edit profile preferences &amp; project settings (loopback only — local machine)</p>
+					<div class="pagehead__text">
+						<h1>MoAI <span class="accent">Web Console</span></h1>
+						<p class="pagehead__sub" data-i18n="app.subtitle">Edit profile preferences &amp; project settings (loopback only — local machine)</p>
+					</div>
+					<img class="pagehead__mascot" src="/static/mascots/mascot-explaining.png" alt="" width="110" height="110"/>
 				</div>
 				if view.ShowProfileSwitch {
 					@profileSwitch(view)

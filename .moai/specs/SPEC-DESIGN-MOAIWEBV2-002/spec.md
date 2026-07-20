@@ -2,7 +2,7 @@
 id: SPEC-DESIGN-MOAIWEBV2-002
 title: "moai web console → docs-site v2 alignment: dark-theme retirement, status tokens, Goorm Sans Code self-host, tone"
 version: "0.1.1"
-status: draft
+status: in-progress
 created: 2026-07-21
 updated: 2026-07-21
 author: manager-spec
