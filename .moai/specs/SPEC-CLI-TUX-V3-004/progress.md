@@ -74,6 +74,15 @@ plan_complete_at: 2026-07-13
   - `renderRootHelpTUI` (help.go:101) is confirmed shadowed in production: `runFang` installs fang's own helpFunc (`fang.go:130-140` writes via `colorprofile.NewWriter(c.OutOrStdout())`), so the custom 4-group surface renders only for in-process cobra `Execute()` test paths. Reviving it would trade a maintained, token-styled fang surface for a hand-rolled one + 4-group→3-group reconciliation — no UX gain, higher risk.
   - Option (c) fang-customize: fang v2.0.1's public options are Version/Manpage/ColorScheme/ErrorHandler (+ completion) — **no help-layout/group-ordering API exists**; plan-B not required because ordering is controllable at the cobra layer: fang's help iterates `c.Commands()` verbatim (`help.go:420`), and cobra's alphabetical sort is gated by `cobra.EnableCommandSorting`. Reorder point = cobra command registration order with sorting disabled.
   - Adopted-surface header literals for AC-TUX4-008(2): `LAUNCH COMMANDS:`, `PROJECT COMMANDS:`, `TOOLS:`. Non-adopted paths (revive / customize) header checks: **N/A** (-002 M2a spike pattern mirror).
+- **M4d-1 commit**: `77893579e` (pushed to main).
+
+### M4d-2 — help group frequency reorder (REQ-TUX4-007, AC-TUX4-008)
+
+- **Mechanism**: `internal/cli/help_order.go` `reorderRootHelpCommands` — `cobra.EnableCommandSorting = false` + position-preserving within-group stable re-sort by the `helpGroupFrequency` leading order, then Remove/Add re-registration. Invoked from `Execute()` before `runFang` (root.go). Group IDs + membership byte-unchanged (pinned by `TestHelpGroupOrder_MembershipUnchanged`); ungrouped `COMMANDS` section keeps alphabetical order.
+- **Frequency order (rationale in source)**: launch `cc, glm, cg`; project `init, status, doctor, update, migrate, pr`; tools leading `hook, spec, session, mx, loop, handoff, model, constitution, state` (unlisted tools members follow alphabetically).
+- **TDD**: RED `internal/cli/help_order_test.go` (`TestHelpGroupOrder_{FrequencyWithinGroups,MembershipUnchanged,Idempotent}`, `TestHelpGolden_FangGroupHeaders`) → GREEN reorder implementation. The help "golden" is assertion-based (headers + relative order), NOT a byte snapshot — per acceptance.md §C edge (command additions must not break it).
+- **End-to-end**: `TestHelpGolden_FangGroupHeaders` runs the ADOPTED fang surface in-process (runFang + `--help`, NO_COLOR) asserting the 3 header literals + zero ANSI + frequency order spot-checks; live `NO_COLOR=1 go run ./cmd/moai --help` re-verified: LAUNCH renders `cc, glm, cg`, PROJECT renders `init, status, doctor, update, migrate, pr`.
+- **Verification**: full `internal/cli` + `uikit` suites green in the isolated worktree (`ok 17.932s` / `ok 0.248s`).
 
 ## §E.3 Run-phase Audit-Ready Signal
 

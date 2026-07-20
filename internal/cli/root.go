@@ -66,6 +66,9 @@ func Execute() error {
 	} else {
 		InitDependencies()
 	}
+	// SPEC-CLI-TUX-V3-004 M4d (REQ-TUX4-007, keep-fang verdict): order each
+	// help group's rows by usage frequency before fang renders Commands().
+	reorderRootHelpCommands(rootCmd)
 	return executeRoot(context.Background(), rootCmd)
 }
 
