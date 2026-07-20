@@ -43,7 +43,7 @@ Invariants: no new `ErrorCategory`; ordered matcher untouched (aggregation widen
 
 ```yaml
 run_complete_at: 2026-07-21
-run_commit_sha: pending-backfill-hfc001
+run_commit_sha: 99309448a
 run_status: audit-ready
 ac_pass_count: 8
 ac_fail_count: 0
