@@ -631,3 +631,34 @@ main.docs-main { max-width: 1720px; }
   .doc-layout { grid-template-columns: 200px minmax(0, 1fr); gap: 36px; }
   .doc-layout .rail { display: none; }
 }
+
+/* ============================================================================
+ * Redesign (2026-07-21) — doc-hero 컴팩트 밴드 + 마스코트, 2-단 본문
+ * (구 3-컬럼: 좌 TOC | 본문 | rail → 2단: 본문 | 우측 TOC. rail 카드 삭제) */
+.doc-hero--compact { padding: 28px 40px 32px; }
+.doc-hero--compact .doc-hero-inner {
+  display: flex; align-items: center; justify-content: space-between; gap: 32px;
+}
+.doc-hero--compact .doc-hero-text { min-width: 0; }
+.doc-hero--compact .crumb { margin-bottom: 10px; }
+.doc-hero--compact .doc-cat { margin-bottom: 10px; }
+.doc-hero--compact .doc-h1 { font-size: clamp(26px, 3vw, 36px); margin-bottom: 10px; }
+.doc-hero--compact .doc-meta-strip { margin-left: 0; opacity: 0.85; color: #fff; }
+.doc-hero-mascot {
+  flex: 0 0 auto; width: 110px; height: 110px; object-fit: contain;
+  filter: drop-shadow(0 4px 12px rgba(0,0,0,0.18));
+}
+@media (max-width: 1023px) {
+  .doc-hero--compact { padding: 20px 20px 24px; }
+  .doc-hero-mascot { width: 80px; height: 80px; }
+}
+/* 2-단: 본문 | TOC(260px). 이전 핫픽스의 3-컬럼/2-컬럼 트랙 정의를 덮는다. */
+.doc-layout.doc-layout--2col,
+main.docs-main .doc-layout--2col { grid-template-columns: minmax(0, 1fr) 260px; }
+@media (max-width: 1500px) {
+  .doc-layout.doc-layout--2col { grid-template-columns: minmax(0, 1fr) 240px; gap: 36px; }
+}
+@media (max-width: 1023px) {
+  .doc-layout.doc-layout--2col { grid-template-columns: 1fr; }
+  .doc-layout--2col .docs-toc { display: none; }
+}
