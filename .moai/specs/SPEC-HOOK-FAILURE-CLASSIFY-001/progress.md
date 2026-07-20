@@ -64,7 +64,7 @@ Coverage (classification path, ≥85% target): `Handle` 100%, `classificationTex
 
 ```yaml
 sync_complete_at: 2026-07-21
-sync_commit_sha: pending-backfill-hfc001
+sync_commit_sha: 2325000a7
 sync_status: audit-ready
 ```
 
