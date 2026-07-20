@@ -12,7 +12,7 @@ package web
 
 templ boardPage(view boardView) {
 	<!DOCTYPE html>
-	<html lang="en" data-theme="light">
+	<html lang="en">
 		<head>
 			<meta charset="utf-8"/>
 			<meta name="viewport" content="width=device-width, initial-scale=1"/>
@@ -23,9 +23,15 @@ templ boardPage(view boardView) {
 		<body>
 			@boardAppbar(view)
 			<main class="page">
+				// SPEC-DESIGN-MOAIWEBV2-002 M1: compact hero band — text left, mascot
+				// right (docs-site v2 .doc-hero--compact direction). Decorative image
+				// (alt="") — the adjacent h1 carries the page identity.
 				<div class="pagehead">
-					<h1>SPEC <span class="accent" data-i18n="board.title">Board</span></h1>
-					<p class="pagehead__sub" data-i18n="board.subtitle">Read-only SPEC lifecycle dashboard (loopback only — local machine)</p>
+					<div class="pagehead__text">
+						<h1>SPEC <span class="accent" data-i18n="board.title">Board</span></h1>
+						<p class="pagehead__sub" data-i18n="board.subtitle">Read-only SPEC lifecycle dashboard (loopback only — local machine)</p>
+					</div>
+					<img class="pagehead__mascot" src="/static/mascots/mascot-searching.png" alt="" width="110" height="110"/>
 				</div>
 				if view.Banner != "" {
 					@boardBanner(view)
@@ -96,9 +102,10 @@ templ boardPage(view boardView) {
 }
 
 // boardAppbar ports the settings-page appbar chrome (brand + loopback indicator +
-// langpick + theme toggle), plus a link back to the settings page. It omits the
-// shutdown button and the settings form's controls — the board is read-only. The
-// langpick and theme toggle are wired by the same app.js initConsole path.
+// langpick), plus a link back to the settings page. It omits the shutdown button
+// and the settings form's controls — the board is read-only. The langpick is
+// wired by the same app.js initConsole path. (The former theme toggle is retired
+// — SPEC-DESIGN-MOAIWEBV2-002 REQ-MWA-002, light-only console.)
 templ boardAppbar(view boardView) {
 	<header class="appbar">
 		<span class="brand" aria-label="MoAI-ADK">
@@ -119,10 +126,6 @@ templ boardAppbar(view boardView) {
 				<option value="zh">中文</option>
 			</select>
 		</span>
-		<button class="iconbtn" id="themeToggle" type="button" aria-label="Toggle light / dark theme" title="Toggle theme">
-			@icon("sun")
-			@icon("moon")
-		</button>
 	</header>
 }
 

@@ -9,27 +9,26 @@ package web
 
 // foucHeadScript is the FOUC-prevention <head> snippet (page.html.tmpl ~8-28),
 // emitted as a complete <script>...</script> element via templ.Raw. It applies
-// the persisted theme + interface language before first paint. It is a fixed
+// the persisted interface language before first paint. It is a fixed
 // compile-time constant — no user data flows into it — so emitting it via
 // templ.Raw carries no injection surface (REQ-WC6-017).
+//
+// SPEC-DESIGN-MOAIWEBV2-002 (REQ-MWA-003): the former theme branch
+// (persisted theme read -> <html> attribute set) is retired with the dark
+// theme — the console is light-only. ONLY the language branch below survives,
+// verbatim (REQ-WC5-005 CJK font-activation lineage, AC-MWA-003b).
 //
 // The whole <script> element (tags + body) is rendered via templ.Raw at the head
 // level rather than placing @templ.Raw INSIDE a <script> element, because Templ
 // treats the contents of a <script> element as literal (un-evaluated) script text
 // — a nested @templ.Raw there would render the directive literally.
 const foucHeadScript = `<script>
-    // FOUC-prevention: apply the persisted theme + interface language before
-    // first paint (REQ-WC4-006 / REQ-WC5-005). Client-side only — no server
-    // round-trip, no theme/language persistence field. Setting <html lang>
-    // early activates the CJK @font-face stack for ja/zh before paint so the
-    // first render already uses the brand webfont (no system-ui flash).
+    // FOUC-prevention: apply the persisted interface language before first
+    // paint (REQ-WC5-005). Client-side only — no server round-trip, no
+    // language persistence field. Setting <html lang> early activates the CJK
+    // @font-face stack for ja/zh before paint so the first render already
+    // uses the brand webfont (no system-ui flash).
     (function () {
-      try {
-        var t = localStorage.getItem("moai-console-theme");
-        if (t === "dark" || t === "light") {
-          document.documentElement.setAttribute("data-theme", t);
-        }
-      } catch (e) { /* localStorage unavailable — keep the default light theme */ }
       try {
         var l = localStorage.getItem("moai-console-lang");
         if (l === "en" || l === "ko" || l === "ja" || l === "zh") {
@@ -61,7 +60,7 @@ func bannerClass(kind string) string {
 
 templ page(view pageView) {
 	<!DOCTYPE html>
-	<html lang="en" data-theme="light">
+	<html lang="en">
 		<head>
 			<meta charset="utf-8"/>
 			<meta name="viewport" content="width=device-width, initial-scale=1"/>
@@ -72,9 +71,15 @@ templ page(view pageView) {
 		<body>
 			@appbar(view)
 			<main class="page">
+				// SPEC-DESIGN-MOAIWEBV2-002 M1: compact hero band — text left, mascot
+				// right (docs-site v2 .doc-hero--compact direction). Decorative image
+				// (alt="") — the adjacent h1 carries the page identity.
 				<div class="pagehead">
-					<h1>MoAI <span class="accent">Web Console</span></h1>
-					<p class="pagehead__sub" data-i18n="app.subtitle">Edit profile preferences &amp; project settings (loopback only — local machine)</p>
+					<div class="pagehead__text">
+						<h1>MoAI <span class="accent">Web Console</span></h1>
+						<p class="pagehead__sub" data-i18n="app.subtitle">Edit profile preferences &amp; project settings (loopback only — local machine)</p>
+					</div>
+					<img class="pagehead__mascot" src="/static/mascots/mascot-explaining.png" alt="" width="110" height="110"/>
 				</div>
 				if view.ShowProfileSwitch {
 					@profileSwitch(view)
@@ -156,7 +161,8 @@ templ page(view pageView) {
 
 // appbar ports the brand strip (page.html.tmpl ~33-70): brand badge SVG +
 // 모두의AI + loopback{ view.BindAddr } + langpick(uiLangSelect, NO name=, OUTSIDE
-// form) + themeToggle.
+// form). (The former theme toggle is retired — SPEC-DESIGN-MOAIWEBV2-002
+// REQ-MWA-002, light-only console.)
 templ appbar(view pageView) {
 	<header class="appbar">
 		<span class="brand" aria-label="MoAI-ADK">
@@ -185,10 +191,6 @@ templ appbar(view pageView) {
 				<option value="zh">中文</option>
 			</select>
 		</span>
-		<button class="iconbtn" id="themeToggle" type="button" aria-label="Toggle light / dark theme" title="Toggle theme">
-			@icon("sun")
-			@icon("moon")
-		</button>
 		<button class="iconbtn" id="serverShutdown" type="button"
 			aria-label="Shut down server" title="Shut down server">
 				@icon("power")
