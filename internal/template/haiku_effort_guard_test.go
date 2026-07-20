@@ -13,6 +13,11 @@ import (
 // names, so it generalizes to any future haiku-tier agent (REQ-HEI-002).
 var haikuModelFrontmatterRegex = regexp.MustCompile(`(?m)^model:\s*haiku\b`)
 
+// haikuEffortLineRegex matches an effort: field line in YAML frontmatter (local
+// to this guard test; the former shared effortLineRegex was retired with the
+// ApplyTierProfile frontmatter-mutation pass).
+var haikuEffortLineRegex = regexp.MustCompile(`(?m)^effort:\s*\S+`)
+
 // findProjectRootForHaikuGuard walks up from the test's working directory
 // (the package dir internal/template) until it finds go.mod, returning the
 // repository root. This lets the guard scan both agent trees by absolute path
@@ -98,8 +103,7 @@ func TestHaikuAgentsHaveNoEffort(t *testing.T) {
 			if !haikuModelFrontmatterRegex.MatchString(fm) {
 				continue // not a haiku agent — invariant does not apply
 			}
-			// effortLineRegex ((?m)^effort:\s*\S+) is defined in model_policy.go.
-			if effortLineRegex.Match([]byte(fm)) {
+			if haikuEffortLineRegex.Match([]byte(fm)) {
 				t.Errorf("HAIKU_EFFORT_INERT: agent %q declares model: haiku AND an effort: field; "+
 					"Haiku does not support effort levels (effort is silently inert). Remove the effort: line.", path)
 			}

@@ -5,6 +5,10 @@ weight: 10
 draft: false
 ---
 
+{{< callout type="info" >}}{{< icon flash primary >}} <strong>所属价值</strong>: 🪙 代币经济学 · 🧠 递归式自学习 · 🛡️ 代理型线束
+{{< /callout >}}
+<!-- @value: tokenomics, self-learning, agentic-harness -->
+
 这是为初次接触 MoAI-ADK 的用户准备的入门路径。按 **介绍 → 安装 → 快速开始** 的顺序阅读，30 分钟内即可运行第一个 MoAI-ADK 项目。安装只需下载一个单体二进制文件，运行第一个 SPEC 也不需要额外的运行时或依赖。
 
 

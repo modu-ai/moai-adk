@@ -4,6 +4,12 @@ weight: 60
 draft: false
 ---
 
+{{< callout type="info" >}}{{< icon flash primary >}} <strong>Belongs to</strong>: 🪙 Tokenomics
+{{< /callout >}}
+<!-- @value: tokenomics -->
+
+![CG Mode structure](/images/sections/multi-llm-en.png)
+
 Beyond the Claude API, MoAI-ADK supports **z.ai GLM** as an alternative AI
 backend. This is not a convenience feature — it is the axis that realizes
 **Tokenomics** (Token Economics), the core value of v3.0. To get the same

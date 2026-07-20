@@ -83,9 +83,53 @@ func (h *postToolUseFailureHandler) Handle(ctx context.Context, input *HookInput
 	}, nil
 }
 
+// classificationText aggregates every available error-text source into a
+// single haystack for the ordered category matchers (REQ-HFC-001/002).
+// Real Claude Code PostToolUseFailure payloads nest the failure text under
+// tool_response.error / tool_response.stderr with an empty top-level error
+// field (issue #1089); the union widens the haystack without changing the
+// ordered first-match semantics. tool_response normalization reuses
+// decodeToolResponse (evidence_writer.go), which degrades gracefully on
+// malformed / bare-string / absent payloads (REQ-HFC-006 fail-open).
+func classificationText(input *HookInput) string {
+	var b strings.Builder
+	b.WriteString(input.Error)
+	if len(input.ToolResponse) > 0 {
+		if text, _ := decodeToolResponse(input.ToolResponse); text != "" {
+			b.WriteByte('\n')
+			b.WriteString(text)
+		}
+	}
+	return b.String()
+}
+
+// maxErrorExcerptLen bounds the raw-error excerpt appended to the
+// UnknownFailure message (REQ-HFC-005).
+const maxErrorExcerptLen = 200
+
+// rawErrorExcerpt returns a bounded excerpt of the observed raw error text.
+// Precedence (REQ-HFC-002): the top-level error field wins for the
+// human-facing excerpt; nested tool_response text is the fallback.
+// Returns "" when no raw text is observable.
+func rawErrorExcerpt(input *HookInput) string {
+	text := strings.TrimSpace(input.Error)
+	if text == "" && len(input.ToolResponse) > 0 {
+		decoded, _ := decodeToolResponse(input.ToolResponse)
+		text = strings.TrimSpace(decoded)
+	}
+	if text == "" {
+		return ""
+	}
+	runes := []rune(text)
+	if len(runes) > maxErrorExcerptLen {
+		return string(runes[:maxErrorExcerptLen]) + "..."
+	}
+	return text
+}
+
 // classifyError determines the error category based on error signature.
 func (h *postToolUseFailureHandler) classifyError(input *HookInput) ErrorCategory {
-	errorText := strings.ToLower(input.Error)
+	errorText := strings.ToLower(classificationText(input))
 
 	// Check for timeout (exit code 124 or "timeout" in error message)
 	if strings.Contains(errorText, "timeout") || strings.Contains(errorText, "context deadline exceeded") {
@@ -122,7 +166,7 @@ func (h *postToolUseFailureHandler) classifyError(input *HookInput) ErrorCategor
 }
 
 // formatMessage generates an actionable message for the error category.
-func (h *postToolUseFailureHandler) formatMessage(category ErrorCategory, _ *HookInput) string {
+func (h *postToolUseFailureHandler) formatMessage(category ErrorCategory, input *HookInput) string {
 	switch category {
 	case TimeoutError:
 		return "TimeoutError: Tool execution exceeded time limit. Consider optimizing the operation or increasing timeout settings."
@@ -143,6 +187,13 @@ func (h *postToolUseFailureHandler) formatMessage(category ErrorCategory, _ *Hoo
 		return "ExitError: Tool exited with non-zero status. Check tool logs for details."
 
 	default:
+		// REQ-HFC-005: never emit a content-free UnknownFailure when raw error
+		// text is observable — append a bounded excerpt so the model receives
+		// an actionable signal. The fixed string remains only for payloads
+		// with no observable text at all.
+		if excerpt := rawErrorExcerpt(input); excerpt != "" {
+			return "UnknownFailure: Tool execution failed: " + excerpt
+		}
 		return "UnknownFailure: Tool execution failed. Review error logs for details."
 	}
 }

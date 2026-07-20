@@ -4,6 +4,12 @@ weight: 60
 draft: false
 ---
 
+{{< callout type="info" >}}{{< icon flash primary >}} <strong>所属バリュー</strong>: 🪙 トークノミクス
+{{< /callout >}}
+<!-- @value: tokenomics -->
+
+![CGモード構造](/images/sections/multi-llm-ja.png)
+
 MoAI-ADK は Claude API に加えて **z.ai GLM** を代替 AI バックエンドとしてサポートします。これは
 便利機能ではなく、v3.0 の中核的な価値である **トークノミクス** (Token Economics) を
 実現する軸です — 同じ品質のコードをより少ないコストで得るには、タスクごとに

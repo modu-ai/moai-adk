@@ -378,96 +378,91 @@ func TestAdvancedImpliesStandard(t *testing.T) {
 	}
 }
 
-// resetInitFlagsForPlanType clears the flags a plan-type test cares about so a
+// resetInitFlagsForProfile clears the flags a profile test cares about so a
 // prior test's leftover value on the shared global initCmd cannot bleed in.
-func resetInitFlagsForPlanType(t *testing.T) {
+func resetInitFlagsForProfile(t *testing.T) {
 	t.Helper()
-	for _, f := range []string{"mode", "git-mode", "plan-type", "model-policy"} {
+	for _, f := range []string{"mode", "git-mode", "profile", "model-policy"} {
 		if initCmd.Flags().Lookup(f) != nil {
 			_ = initCmd.Flags().Set(f, "")
 		}
 	}
 }
 
-// TestInitCmd_HasPlanTypeFlag (REQ-MTP-014, AC-MTP-014a) — the --plan-type flag
-// is registered on the init command (so `moai init --help` lists it).
-func TestInitCmd_HasPlanTypeFlag(t *testing.T) {
-	if initCmd.Flags().Lookup("plan-type") == nil {
-		t.Error("init command should have a --plan-type flag")
+// TestInitCmd_PlanTypeFlagRetired (SPEC-MODEL-PROFILE-MATRIX-001 REQ-MPM-017,
+// AC-MPM-011) — the retired --plan-type flag is no longer registered on the
+// init command, and the new --profile flag is.
+func TestInitCmd_PlanTypeFlagRetired(t *testing.T) {
+	if initCmd.Flags().Lookup("plan-type") != nil {
+		t.Error("init command must NOT expose the retired --plan-type flag")
+	}
+	if initCmd.Flags().Lookup("profile") == nil {
+		t.Error("init command should have a --profile flag")
 	}
 }
 
-// TestValidateInitFlags_ValidPlanType (REQ-MTP-014) — api and subscription pass.
-func TestValidateInitFlags_ValidPlanType(t *testing.T) {
-	for _, pt := range []string{"api", "subscription"} {
-		t.Run(pt, func(t *testing.T) {
-			resetInitFlagsForPlanType(t)
-			if err := initCmd.Flags().Set("plan-type", pt); err != nil {
+// TestValidateInitFlags_ValidProfile (REQ-MPM-015) — max/medium/low pass.
+func TestValidateInitFlags_ValidProfile(t *testing.T) {
+	for _, p := range []string{"max", "medium", "low"} {
+		t.Run(p, func(t *testing.T) {
+			resetInitFlagsForProfile(t)
+			if err := initCmd.Flags().Set("profile", p); err != nil {
 				t.Fatal(err)
 			}
 			if err := validateInitFlags(initCmd, []string{}); err != nil {
-				t.Errorf("validateInitFlags with plan-type=%q should not error, got: %v", pt, err)
+				t.Errorf("validateInitFlags with profile=%q should not error, got: %v", p, err)
 			}
 		})
 	}
-	resetInitFlagsForPlanType(t)
+	resetInitFlagsForProfile(t)
 }
 
-// TestValidateInitFlags_InvalidPlanType (REQ-MTP-014, AC-MTP-014b) — an
-// out-of-set value errors, and the message names api and subscription.
-func TestValidateInitFlags_InvalidPlanType(t *testing.T) {
-	for _, pt := range []string{"bogus", "enterprise", "API"} {
-		t.Run(pt, func(t *testing.T) {
-			resetInitFlagsForPlanType(t)
-			if err := initCmd.Flags().Set("plan-type", pt); err != nil {
+// TestValidateInitFlags_InvalidProfile (REQ-MPM-015) — an out-of-set value
+// errors, and the message names the closed set {max, medium, low}.
+func TestValidateInitFlags_InvalidProfile(t *testing.T) {
+	for _, p := range []string{"bogus", "high", "subscription"} {
+		t.Run(p, func(t *testing.T) {
+			resetInitFlagsForProfile(t)
+			if err := initCmd.Flags().Set("profile", p); err != nil {
 				t.Fatal(err)
 			}
 			err := validateInitFlags(initCmd, []string{})
 			if err == nil {
-				t.Fatalf("validateInitFlags with plan-type=%q should error, got nil", pt)
+				t.Fatalf("validateInitFlags with profile=%q should error, got nil", p)
 			}
 			msg := err.Error()
-			if !strings.Contains(msg, "invalid --plan-type") {
-				t.Errorf("error should mention 'invalid --plan-type', got: %v", err)
+			if !strings.Contains(msg, "invalid --profile") {
+				t.Errorf("error should mention 'invalid --profile', got: %v", err)
 			}
-			if !strings.Contains(msg, "api") || !strings.Contains(msg, "subscription") {
-				t.Errorf("error should name both api and subscription, got: %v", err)
+			if !strings.Contains(msg, "max, medium, low") {
+				t.Errorf("error should name the closed set, got: %v", err)
 			}
 		})
 	}
-	resetInitFlagsForPlanType(t)
+	resetInitFlagsForProfile(t)
 }
 
-// TestInitCmd_PlanTypePersistence (REQ-MTP-016, AC-MTP-016) — init with
-// --plan-type api persists plan_type: api into the deployed llm.yaml.
-func TestInitCmd_PlanTypePersistence(t *testing.T) {
+// TestInitCmd_ProfilePersistence (SPEC-MODEL-PROFILE-MATRIX-001 REQ-MPM-016,
+// AC-MPM-010) — `moai init --profile max` persists profile: max to the deployed
+// llm.yaml and writes no plan_type key (REQ-MPM-017/032, AC-MPM-011).
+func TestInitCmd_ProfilePersistence(t *testing.T) {
 	root := t.TempDir()
 
 	buf := new(bytes.Buffer)
 	initCmd.SetOut(buf)
 	initCmd.SetErr(buf)
 
-	resetInitFlagsForPlanType(t)
-	if err := initCmd.Flags().Set("root", root); err != nil {
-		t.Fatalf("set root flag: %v", err)
-	}
-	if err := initCmd.Flags().Set("non-interactive", "true"); err != nil {
-		t.Fatalf("set non-interactive flag: %v", err)
-	}
-	if err := initCmd.Flags().Set("name", "plan-type-test"); err != nil {
-		t.Fatalf("set name flag: %v", err)
-	}
-	if err := initCmd.Flags().Set("language", "Go"); err != nil {
-		t.Fatalf("set language flag: %v", err)
-	}
-	if err := initCmd.Flags().Set("mode", "tdd"); err != nil {
-		t.Fatalf("set mode flag: %v", err)
-	}
-	if err := initCmd.Flags().Set("plan-type", "api"); err != nil {
-		t.Fatalf("set plan-type flag: %v", err)
+	resetInitFlagsForProfile(t)
+	for k, v := range map[string]string{
+		"root": root, "non-interactive": "true", "name": "profile-test",
+		"language": "Go", "mode": "tdd", "profile": "max",
+	} {
+		if err := initCmd.Flags().Set(k, v); err != nil {
+			t.Fatalf("set %s flag: %v", k, err)
+		}
 	}
 	t.Cleanup(func() {
-		_ = initCmd.Flags().Set("plan-type", "")
+		_ = initCmd.Flags().Set("profile", "")
 		_ = initCmd.Flags().Set("root", "")
 	})
 
@@ -480,7 +475,10 @@ func TestInitCmd_PlanTypePersistence(t *testing.T) {
 	if err != nil {
 		t.Fatalf("read deployed llm.yaml: %v", err)
 	}
-	if !strings.Contains(string(content), "plan_type: api") {
-		t.Errorf("deployed llm.yaml should contain 'plan_type: api', got:\n%s", content)
+	if !strings.Contains(string(content), "profile: max") {
+		t.Errorf("deployed llm.yaml should contain 'profile: max', got:\n%s", content)
+	}
+	if strings.Contains(string(content), "plan_type") {
+		t.Errorf("deployed llm.yaml must NOT contain a plan_type key (retired), got:\n%s", content)
 	}
 }

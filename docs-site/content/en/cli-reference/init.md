@@ -60,8 +60,8 @@ Accepts at most 1 argument.
 | `--git-mode <manual\|personal\|team>` | Git workflow mode (default: manual) |
 | `--git-provider <github\|gitlab>` | Git provider |
 | `--github-username <name>` | GitHub username (required for personal/team mode) |
-| `--model-policy <max\|medium\|low>` | Performance tier — stored in `performance_tier` of `llm.yaml` |
-| `--plan-type <api\|subscription>` | Billing plan type — stored in `plan_type` of `llm.yaml` |
+| `--profile <max\|medium\|low>` | Model+effort profile — stored in `profile` of `llm.yaml` (selects the profile matrix column) |
+| `--model-policy <max\|medium\|low>` | Legacy performance tier — stored in `performance_tier` of `llm.yaml` (read as an alias when `profile` is absent) |
 
 ## Examples
 

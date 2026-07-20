@@ -511,11 +511,11 @@ main:
           zh: 三层代理架构 (No-Haiku)
         ref: /advanced/no-haiku-3tier
       - name:
-          ko: plan_type 티어 프로필
-          en: plan_type Tier Profiles
-          ja: plan_type ティアプロファイル
-          zh: plan_type 层级配置
-        ref: /advanced/plan-type-profiles
+          ko: 프로필 매트릭스
+          en: Profile Matrix
+          ja: プロファイルマトリクス
+          zh: 配置矩阵
+        ref: /advanced/profile-matrix
       - name:
           ko: 하네스 자가 진화
           en: Harness Self-Evolution
@@ -582,6 +582,12 @@ main:
           ja: MX TAG システム
           zh: MX TAG 系统
         ref: /advanced/mx-tags
+      - name:
+          ko: config 섹션 레퍼런스
+          en: Configuration Sections Reference
+          ja: 設定セクションリファレンス
+          zh: 配置章节参考
+        ref: /advanced/config-sections
       - name:
           ko: settings.json 가이드
           en: settings.json Guide

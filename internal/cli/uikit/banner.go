@@ -7,18 +7,10 @@ import (
 	"strings"
 
 	"github.com/charmbracelet/lipgloss"
+
+	"github.com/modu-ai/moai-adk/internal/cli/printer"
 	"github.com/modu-ai/moai-adk/internal/tui"
 )
-
-// MoAI ASCII art banner
-const moaiBanner = `
-███╗   ███╗          █████╗ ██╗       █████╗ ██████╗ ██╗  ██╗
-████╗ ████║ ██████╗ ██╔══██╗██║      ██╔══██╗██╔══██╗██║ ██╔╝
-██╔████╔██║██║   ██║███████║██║█████╗███████║██║  ██║█████╔╝
-██║╚██╔╝██║██║   ██║██╔══██║██║╚════╝██╔══██║██║  ██║██╔═██╗
-██║ ╚═╝ ██║╚██████╔╝██║  ██║██║      ██║  ██║██████╔╝██║  ██╗
-╚═╝     ╚═╝ ╚═════╝ ╚═╝  ╚═╝╚═╝      ╚═╝  ╚═╝╚═════╝ ╚═╝  ╚═╝
-`
 
 // ResolveTheme returns a Theme appropriate for the current terminal.
 //
@@ -77,42 +69,55 @@ func GoosArch() string {
 	return goos + "/" + goarch
 }
 
-// @MX:NOTE: [AUTO] CLI banner output — called from root/init/update/version entry points
-// PrintBanner displays the MoAI ASCII art banner with version information.
-func PrintBanner(version string) {
+// bannerString composes the compact 1-2 line MoAI identity
+// (SPEC-CLI-TUX-V3-004 REQ-TUX4-006): a glyph-marked identity line with the
+// brand tagline, plus a pill metadata row (version / go / claude). The large
+// ASCII-art logo is retired. Colours come from tui tokens; the identity glyph
+// (◆) is in the plan §D whitelist.
+func bannerString(version string) string {
 	th := ResolveTheme()
-	bannerStyle := lipgloss.NewStyle().Foreground(lipgloss.Color(th.Accent))
+	identStyle := lipgloss.NewStyle().Foreground(lipgloss.Color(th.Accent)).Bold(true)
 	// Secondary text uses the theme Body colour (readable, subordinate to the
 	// coral accent) rather than the ANSI Faint attribute, which renders at
 	// reduced intensity and is illegible on many dark terminal backgrounds.
 	dimStyle := lipgloss.NewStyle().Foreground(lipgloss.Color(th.Body))
 
-	fmt.Println(bannerStyle.Render(moaiBanner))
-	fmt.Println(dimStyle.Render("  Modu-AI's Agentic Development Kit w/ SuperAgent MoAI"))
-	fmt.Println()
-	fmt.Println(dimStyle.Render(fmt.Sprintf("  Version: %s", version)))
-	fmt.Println()
+	ident := identStyle.Render("◆ MoAI-ADK") + " " +
+		dimStyle.Render("Modu-AI's Agentic Development Kit w/ SuperAgent MoAI")
 
 	p1 := tui.Pill(tui.PillOpts{Kind: tui.PillPrimary, Solid: true, Label: fmt.Sprintf("v%s", version), Theme: &th})
 	p2 := tui.Pill(tui.PillOpts{Kind: tui.PillOk, Solid: false, Label: fmt.Sprintf("go %s", GoVersion()), Theme: &th})
 	p3 := tui.Pill(tui.PillOpts{Kind: tui.PillInfo, Solid: false, Label: ClaudeVersion(), Theme: &th})
 	pillRow := lipgloss.JoinHorizontal(lipgloss.Top, p1, " ", p2, " ", p3)
-	fmt.Println("  " + pillRow)
-	fmt.Println()
+
+	return ident + "\n  " + pillRow
 }
 
-// PrintWelcomeMessage displays a friendly welcome message for new users.
-func PrintWelcomeMessage() {
+// @MX:NOTE: [AUTO] CLI banner output — called from root/init/update/version entry points
+// PrintBanner displays the compact MoAI identity banner with pill metadata
+// (version / go / claude). Output routes through the Printer gateway
+// (REQ-TUX4-006 direct-print absorption): the banner is the data payload of
+// the banner surface, so it rides Printer.Data onto stdout.
+func PrintBanner(version string) {
+	_ = printer.New().Data(bannerString(version))
+}
+
+// welcomeString composes the project-initialization welcome message.
+func welcomeString() string {
 	th := ResolveTheme()
 	titleStyle := lipgloss.NewStyle().
 		Foreground(lipgloss.Color(th.Accent)).
 		Bold(true)
-	// Body colour instead of the ANSI Faint attribute — see PrintBanner.
+	// Body colour instead of the ANSI Faint attribute — see bannerString.
 	dimStyle := lipgloss.NewStyle().Foreground(lipgloss.Color(th.Body))
 
-	fmt.Println(titleStyle.Render("Welcome to MoAI-ADK Project Initialization!"))
-	fmt.Println()
-	fmt.Println(dimStyle.Render("This wizard will guide you through setting up your MoAI-ADK project."))
-	fmt.Println(dimStyle.Render("You can press Ctrl+C at any time to cancel."))
-	fmt.Println()
+	return titleStyle.Render("Welcome to MoAI-ADK Project Initialization!") + "\n\n" +
+		dimStyle.Render("This wizard will guide you through setting up your MoAI-ADK project.") + "\n" +
+		dimStyle.Render("You can press Ctrl+C at any time to cancel.")
+}
+
+// PrintWelcomeMessage displays a friendly welcome message for new users.
+// Routed through the Printer gateway (REQ-TUX4-006).
+func PrintWelcomeMessage() {
+	_ = printer.New().Data(welcomeString())
 }

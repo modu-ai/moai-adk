@@ -28,9 +28,9 @@ MoAI-ADK v3.0의 에이전트 카탈로그는 **11개** (MoAI 커스텀 10개 + 
 > 동일하게 `max`/`medium`/`low` 세 값을 사용하며 1:1로 매핑됩니다 (별도 변환
 > 없음). 기본값은 `medium`입니다. `--high` 플래그는 `--model-policy max`의 더
 > 이상 사용하지 않는 별칭입니다 (한 사이클 하위 호환, `--low`도 마찬가지).
-> `performance_tier`는 서브에이전트 모델 배정만 제어하며, 요금제 종류(api /
-> subscription)를 결정하는 `plan_type` 필드와는 별개 축입니다. 사용자 이름 등은
-> `user.yaml`에 따로 보관됩니다.
+> `performance_tier`는 `profile`(프로필 매트릭스 열)의 legacy 별칭 필드로,
+> `profile`이 없을 때만 읽히며 `high`→`max`로 정규화됩니다. 두 필드는 같은
+> `max`/`medium`/`low` 축입니다. 사용자 이름 등은 `user.yaml`에 따로 보관됩니다.
 
 > **왜 중요한가요?** Plus $20 플랜은 Opus에 접근할 수 없습니다. `low` 정책을 설정하면 모든 에이전트가 Sonnet만 사용하여 요율 제한 에러를 방지합니다. 상위 플랜은 핵심 지점(계획 작성, 감사, 자문)에만 Opus를 배정하고 나머지는 Sonnet을 사용합니다.
 
@@ -89,10 +89,11 @@ v3.0에서는 에이전트 단위 배정 위에 **작업 단계(phase)와 SPEC �
 - **tier** (SPEC 크기): S / M / L
 - **phase** (작업 단계): plan / run / sync / mx
 
-같은 워크플로우라도 API 종량제와 구독 요금제는 최적 배분이 다르기 때문에,
-요금제 종류(`plan_type` — `api` 또는 `subscription`) 프로파일이 요금제별
-매트릭스를 분리 적용합니다. `plan_type`은 `performance_tier`와 독립된 축으로,
-값이 없으면 `subscription`으로 해석됩니다.
+에이전트별 model+effort 배정은 단일 프로필 매트릭스가 담당합니다. 활성
+프로필(`profile` — `max`/`medium`/`low`)이 매트릭스의 한 열을 선택하며,
+`profile`이 없으면 legacy `performance_tier`가 별칭으로 읽히고, 그마저 없으면
+`medium`으로 해석됩니다. 상세한 에이전트별 매핑은
+[프로필 매트릭스](/ko/advanced/profile-matrix/) 페이지를 참조하세요.
 
 ## 설정 방법
 

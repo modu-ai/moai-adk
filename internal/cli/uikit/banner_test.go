@@ -85,11 +85,12 @@ func TestPrintBanner_OutputFormat(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	// Verify output contains expected strings
+	// Verify output contains expected strings.
+	// SPEC-CLI-TUX-V3-004 M4d: the "Version:" label line is retired with the
+	// large ASCII logo — the version now rides the pill row (v1.2.3).
 	expectedStrings := []string{
 		"MoAI",        // Banner should contain MoAI
-		"Version",     // Version label
-		"1.2.3",       // Actual version
+		"v1.2.3",      // Version pill
 		"Agentic",     // Description text
 		"Development", // Description text
 		"Kit",         // Description text

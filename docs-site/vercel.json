@@ -38,6 +38,16 @@
       "permanent": true
     },
     {
+      "source": "/:locale(ko|en|ja|zh)/advanced/plan-type-profiles",
+      "destination": "/:locale/advanced/profile-matrix",
+      "permanent": true
+    },
+    {
+      "source": "/advanced/plan-type-profiles",
+      "destination": "/ko/advanced/profile-matrix",
+      "permanent": true
+    },
+    {
       "source": "/:locale(ko|en|ja|zh)/getting-started/update",
       "destination": "/:locale/cli-reference/update",
       "permanent": true

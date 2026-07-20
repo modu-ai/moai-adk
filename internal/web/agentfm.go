@@ -21,9 +21,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/harness/v4manifest"
-	"github.com/modu-ai/moai-adk/internal/manifest"
 	"github.com/modu-ai/moai-adk/internal/settings/agentfm"
 	"github.com/modu-ai/moai-adk/internal/template"
 )
@@ -55,13 +53,12 @@ func agentFMPerfTierOptions() []string {
 	return template.ValidPerformanceTiers()
 }
 
-// parsePerfTierForm parses the performance_tier selector hosted at the top of
-// the agentfm panel. An empty submission preserves the current value (mirrors
-// the agentfm empty=preserve convention); a non-empty out-of-set value is
-// rejected as a per-field error joining the existing atomic-reject mechanism
-// (no partial persistence). The plan_type selector was removed from the web UI
-// (llm.plan_type is still read from config for the effective-tier display and
-// for the tier-profile re-application below, but is no longer editable here).
+// parsePerfTierForm parses the profile selector (hosted as the performance_tier
+// wire field) at the top of the agentfm panel. An empty submission preserves the
+// current value (mirrors the agentfm empty=preserve convention); a non-empty
+// out-of-set value is rejected as a per-field error joining the existing
+// atomic-reject mechanism (no partial persistence). The selector value is one of
+// {max, medium, low} — the active per-agent model+effort profile column.
 func parsePerfTierForm(r *http.Request) (perfTier string, errs map[string]string) {
 	errs = map[string]string{}
 	perfTier = strings.TrimSpace(r.PostFormValue("performance_tier"))
@@ -71,42 +68,29 @@ func parsePerfTierForm(r *http.Request) (perfTier string, errs map[string]string
 	return perfTier, errs
 }
 
-// applyPerfTierEdits persists the performance_tier selector (only when non-empty
-// AND changed from the persisted value) and re-applies the {model, effort} tier
-// profile to the shipped agent .md frontmatter — mirroring the
-// internal/cli/update.go:417-420 reference path. The tier profile is re-applied
-// ONLY when the tier actually changed, so an unrelated settings save never
-// clobbers a manually-pinned agentfm override; callers MUST run this BEFORE
-// applyAgentFMEdits so an explicit per-agent override submitted in the same
-// request still wins. The persisted llm.plan_type (read via
-// template.ResolveProjectPlanType) still selects which tier-profile column is
-// applied; it is simply no longer editable from the web UI.
+// applyPerfTierEdits persists the selected profile (max/medium/low) to
+// llm.profile — and the legacy llm.performance_tier alias — when non-empty.
+//
+// SPEC-MODEL-PROFILE-MATRIX-001 REQ-MPM-040: this path NO LONGER mutates agent
+// `.md` frontmatter. The former tier-profile re-application (which rewrote each
+// shipped agent's model:/effort: and re-introduced the [1m]-hazard concrete-model
+// pin) is retired — the web save now persists to llm.yaml only, leaving agent
+// frontmatter at `model: inherit`. The runtime resolver (`moai model profile`)
+// reads the profile matrix, not a mutated frontmatter pin.
 func applyPerfTierEdits(projectRoot, perfTier string) error {
 	if perfTier == "" {
 		return nil
 	}
-	mgr := config.NewConfigManager()
-	cfg, err := mgr.LoadRaw(projectRoot)
-	if err != nil {
-		return fmt.Errorf("agentfm: load llm config: %w", err)
+	if !template.IsValidPerformanceTier(perfTier) {
+		return nil // defensive — parse already rejected out-of-set values
 	}
-	if perfTier == cfg.LLM.PerformanceTier {
-		return nil // no change
-	}
+	// Persist the legacy alias (kept as the Tier x Phase perfTier source) and the
+	// new profile key. Both are no-op regex replaces when the value is unchanged.
 	if err := template.ApplyPerformanceTier(projectRoot, perfTier); err != nil {
 		return fmt.Errorf("agentfm: apply performance_tier: %w", err)
 	}
-
-	// Re-apply the {model, effort} tier profile to the shipped agent definition
-	// files (mirrors internal/cli/update.go:417-420). A non-initialized project
-	// (no manifest, no agents directory) degrades to a graceful no-op inside
-	// ApplyTierProfile. plan_type is resolved from config (not the form).
-	mfMgr := manifest.NewManager()
-	_, _ = mfMgr.Load(projectRoot)
-	resolvedPlan := template.ResolveProjectPlanType(projectRoot)
-	resolvedTier := template.ResolveProjectPerformanceTier(projectRoot)
-	if err := template.ApplyTierProfile(projectRoot, resolvedPlan, resolvedTier, mfMgr); err != nil {
-		return fmt.Errorf("agentfm: re-apply tier profile: %w", err)
+	if err := template.ApplyProfile(projectRoot, perfTier); err != nil {
+		return fmt.Errorf("agentfm: apply profile: %w", err)
 	}
 	return nil
 }

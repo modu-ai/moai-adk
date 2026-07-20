@@ -56,12 +56,12 @@ var updateCmd = &cobra.Command{
 }
 
 // validateUpdateFlags validates update flag values before execution.
-// SPEC-MODEL-TIER-PLANTYPE-001 M3 (REQ-MTP-018): an out-of-set --plan-type value
-// exits non-zero with a usage error naming the closed set {api, subscription}.
+// SPEC-MODEL-PROFILE-MATRIX-001 (REQ-MPM-015/017): an out-of-set --profile value
+// exits non-zero with a usage error naming the closed set {max, medium, low}.
 func validateUpdateFlags(cmd *cobra.Command, _ []string) error {
-	planType := getStringFlag(cmd, "plan-type")
-	if planType != "" && !config.IsValidPlanType(planType) {
-		return fmt.Errorf("invalid --plan-type value %q: must be one of: api, subscription", planType)
+	profileFlag := getStringFlag(cmd, "profile")
+	if profileFlag != "" && !config.IsValidProfile(profileFlag) {
+		return fmt.Errorf("invalid --profile value %q: must be one of: max, medium, low", profileFlag)
 	}
 	return nil
 }
@@ -80,10 +80,10 @@ func init() {
 	updateCmd.Flags().Bool("no-hooks", false, "Skip git hook installation (REQ-CIAUT-002)")
 	updateCmd.Flags().Bool("verbose", false, "Show all warnings including acknowledged reserved-name and 3-way merge fallback notices (diagnostic mode; SPEC-V3R6-UPDATE-NOISE-001 REQ-UN-005/010)")
 
-	// SPEC-MODEL-TIER-PLANTYPE-001 M3 (REQ-MTP-018): plan_type override. When
-	// provided, persists the new value to llm.yaml and re-applies the tier profile;
-	// when absent, update reads the persisted llm.plan_type (absent → subscription).
-	updateCmd.Flags().String("plan-type", "", "Override the billing plan type: api or subscription (persists to llm.yaml plan_type and re-applies the tier profile)")
+	// SPEC-MODEL-PROFILE-MATRIX-001 (REQ-MPM-015/017): --profile override. When
+	// provided, persists the value to llm.profile (no agent frontmatter mutation).
+	// The retired --plan-type flag is no longer exposed.
+	updateCmd.Flags().String("profile", "", "Override the model+effort profile: max, medium, or low (persists to llm.yaml profile)")
 }
 
 // @MX:ANCHOR: [AUTO] runUpdate orchestrates binary update and template synchronization
@@ -400,11 +400,10 @@ func runUpdate(cmd *cobra.Command, _ []string) error {
 	// Pre-fix UX leaked a "Skipping sync" line immediately followed by
 	// "Legacy skill archive failed" because the archive ran unconditionally.
 	if syncSkipped {
-		// SPEC-MODEL-TIER-PLANTYPE-001 M3 (REQ-MTP-018): an explicit --plan-type
-		// override must still persist + re-apply the tier profile even when the
-		// template sync short-circuits (the agent files already exist on disk).
-		if pt := getStringFlag(cmd, "plan-type"); pt != "" {
-			if err := applyUpdateTierProfile(".", pt); err != nil {
+		// SPEC-MODEL-PROFILE-MATRIX-001 (REQ-MPM-016): an explicit --profile override
+		// must still persist to llm.profile even when the template sync short-circuits.
+		if p := getStringFlag(cmd, "profile"); p != "" {
+			if err := applyUpdateProfile(".", p); err != nil {
 				return err
 			}
 		}
@@ -443,11 +442,10 @@ func runUpdate(cmd *cobra.Command, _ []string) error {
 		}
 	}
 
-	// SPEC-MODEL-TIER-PLANTYPE-001 M3 (REQ-MTP-018): when --plan-type is given,
-	// persist the override and re-apply the plan_type × tier profile to the
-	// freshly-synced agent files.
-	if pt := getStringFlag(cmd, "plan-type"); pt != "" {
-		if err := applyUpdateTierProfile(".", pt); err != nil {
+	// SPEC-MODEL-PROFILE-MATRIX-001 (REQ-MPM-016): when --profile is given,
+	// persist the override to llm.profile (no agent frontmatter mutation).
+	if p := getStringFlag(cmd, "profile"); p != "" {
+		if err := applyUpdateProfile(".", p); err != nil {
 			return err
 		}
 	}
@@ -455,36 +453,26 @@ func runUpdate(cmd *cobra.Command, _ []string) error {
 	return nil
 }
 
-// applyUpdateTierProfile re-applies the plan_type × tier profile during
-// `moai update` (SPEC-MODEL-TIER-PLANTYPE-001 M3, REQ-MTP-018). When planTypeFlag
-// is non-empty it PERSISTS the override to llm.yaml first (D3); otherwise the
-// effective plan type is read from the persisted llm.plan_type (absent →
-// subscription). The tier is read from the persisted performance_tier (absent →
-// medium). Agent frontmatter is then patched via ApplyTierProfile.
-//
-// Returns a graceful nil when the manifest cannot be loaded (a non-initialized
-// directory), mirroring the applyWizardConfig guard. An out-of-set planTypeFlag
-// returns an error naming the closed set (defensive — the CLI flag is validated
-// by validateUpdateFlags before this is reached).
-func applyUpdateTierProfile(projectRoot, planTypeFlag string) error {
-	if planTypeFlag != "" {
-		if !config.IsValidPlanType(planTypeFlag) {
-			return fmt.Errorf("invalid --plan-type value %q: must be one of: api, subscription", planTypeFlag)
-		}
-		if err := template.ApplyPlanType(projectRoot, planTypeFlag); err != nil {
-			return fmt.Errorf("persist plan_type: %w", err)
-		}
+// applyUpdateProfile persists a --profile override to llm.profile during
+// `moai update` (SPEC-MODEL-PROFILE-MATRIX-001 REQ-MPM-016/024). The former
+// plan_type × tier agent-frontmatter re-mutation (ApplyTierProfile) is RETIRED —
+// this path writes to llm.yaml only, leaving agent frontmatter at model: inherit.
+// An out-of-set profileFlag returns an error naming the closed set (defensive —
+// the CLI flag is validated by validateUpdateFlags before this is reached).
+func applyUpdateProfile(projectRoot, profileFlag string) error {
+	if profileFlag == "" {
+		return nil
 	}
-
-	mgr := manifest.NewManager()
-	if _, err := mgr.Load(projectRoot); err != nil {
-		return nil // non-initialized project — nothing to re-apply
+	if !config.IsValidProfile(profileFlag) {
+		return fmt.Errorf("invalid --profile value %q: must be one of: max, medium, low", profileFlag)
 	}
-
-	planType := template.ResolveProjectPlanType(projectRoot)
-	tier := template.ResolveProjectPerformanceTier(projectRoot)
-	if err := template.ApplyTierProfile(projectRoot, planType, tier, mgr); err != nil {
-		return fmt.Errorf("apply tier profile: %w", err)
+	if err := template.ApplyProfile(projectRoot, profileFlag); err != nil {
+		return fmt.Errorf("persist profile: %w", err)
+	}
+	// Keep the legacy performance_tier alias in sync so the separate Tier x Phase
+	// axis reads a consistent tier.
+	if err := template.ApplyPerformanceTier(projectRoot, profileFlag); err != nil {
+		return fmt.Errorf("persist performance_tier: %w", err)
 	}
 	return nil
 }
@@ -1432,21 +1420,15 @@ func applyWizardConfig(projectRoot string, result *wizard.WizardResult) error {
 		}
 	}
 
-	// Apply the plan_type × tier profile to agent definition files (project-level,
-	// not profile-level). A single pass patches both model: and effort: frontmatter
-	// atomically (replace-both precedence). The effective plan type is read from the
-	// persisted llm.yaml (absent → subscription); the tier is resolved from
-	// result.ModelPolicy (legacy {high, medium, low} → {max, medium, low}).
+	// SPEC-MODEL-PROFILE-MATRIX-001 (REQ-MPM-016/024): the former plan_type × tier
+	// agent-frontmatter mutation is RETIRED — persist the resolved model policy to
+	// llm.profile (normalized {high,medium,low} → {max,medium,low}) instead of
+	// mutating agent frontmatter, which stays at model: inherit.
 	if result.ModelPolicy != "" {
 		policy := template.ModelPolicy(result.ModelPolicy)
 		if template.IsValidModelPolicy(string(policy)) {
-			mgr := manifest.NewManager()
-			if _, err := mgr.Load(projectRoot); err == nil {
-				planType := template.ResolveProjectPlanType(projectRoot)
-				tier := template.NormalizeToTier(result.ModelPolicy)
-				if err := template.ApplyTierProfile(projectRoot, planType, tier, mgr); err != nil {
-					return fmt.Errorf("apply tier profile: %w", err)
-				}
+			if err := template.ApplyProfile(projectRoot, template.NormalizeToTier(result.ModelPolicy)); err != nil {
+				return fmt.Errorf("apply profile: %w", err)
 			}
 			// Persist model_policy to system.yaml so it survives future updates
 			systemPath := filepath.Join(sectionsDir, defs.SystemYAML)

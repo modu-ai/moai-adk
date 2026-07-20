@@ -4,6 +4,10 @@ weight: 90
 draft: false
 ---
 
+{{< callout type="info" >}}{{< icon flash primary >}} <strong>所属价值</strong>: 🛡️ 代理型线束
+{{< /callout >}}
+<!-- @value: agentic-harness -->
+
 Git Worktree 是 MoAI-ADK 并行开发的基石。它为每个 SPEC 创建完全独立的工作
 空间，让不同的 Git 状态和不同的 LLM 配置可以同时运转。
 

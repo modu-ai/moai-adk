@@ -8,8 +8,8 @@ description: |
   NOT for: component code implementation (manager-develop), SPEC body
   authoring (manager-spec).
 tools: Read, Write, Edit, Grep, Glob, Bash, DesignSync, TaskCreate, TaskUpdate, TaskList, TaskGet, Skill
-model: opus
-effort: high
+model: inherit
+effort: xhigh
 color: pink
 permissionMode: acceptEdits
 memory: project

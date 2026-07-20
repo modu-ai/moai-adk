@@ -16,7 +16,6 @@ import (
 	"testing"
 
 	"github.com/modu-ai/moai-adk/internal/profile"
-	"github.com/modu-ai/moai-adk/internal/template"
 )
 
 // writeLLMYAML writes root/.moai/config/sections/llm.yaml with the given
@@ -109,35 +108,37 @@ func TestAgentFMPolicy_PlanTypeSelectorRemoved(t *testing.T) {
 	}
 }
 
-// TestAgentFMPolicy_PerfTierPersistsAndReapplies (c): a valid performance_tier
-// change submitted through /save persists llm.performance_tier and re-applies
-// the tier profile to the shipped agent frontmatter.
-func TestAgentFMPolicy_PerfTierPersistsAndReapplies(t *testing.T) {
+// TestAgentFMPolicy_ProfilePersistsWithoutFrontmatterMutation
+// (SPEC-MODEL-PROFILE-MATRIX-001 REQ-MPM-040, AC-MPM-025): a valid profile
+// selector change submitted through /save persists llm.profile (+ the legacy
+// performance_tier alias) to llm.yaml, and MUST NOT mutate the shipped agent
+// frontmatter — the former tier-profile re-application is retired.
+func TestAgentFMPolicy_ProfilePersistsWithoutFrontmatterMutation(t *testing.T) {
 	root := t.TempDir()
 	writeLLMYAML(t, root, "subscription", "low")
-	seedAgentFMFile(t, root, "moai", "manager-spec", "haiku", "low")
-
-	want, ok := template.GetTierProfileEntry("subscription", "manager-spec", "max")
-	if !ok {
-		t.Fatal("manager-spec has no subscription/max profile entry — fixture is wrong")
-	}
+	seedAgentFMFile(t, root, "moai", "manager-spec", "inherit", "xhigh")
 
 	a := newPolicyTestApp(root)
 	form := baseSaveForm()
 	form.Set("performance_tier", "max")
 	rec := servePost(t, a.routes(), "/save", form)
 	if rec.Code != http.StatusOK {
-		t.Fatalf("POST /save (performance_tier change) = %d, want 200; body: %s", rec.Code, rec.Body.String())
+		t.Fatalf("POST /save (profile change) = %d, want 200; body: %s", rec.Code, rec.Body.String())
 	}
 
-	if got := string(readLLMYAML(t, root)); !strings.Contains(got, "performance_tier: max") {
-		t.Errorf("llm.yaml did not persist performance_tier: max; got:\n%s", got)
+	got := string(readLLMYAML(t, root))
+	if !strings.Contains(got, "profile: max") {
+		t.Errorf("llm.yaml did not persist profile: max; got:\n%s", got)
 	}
-	if gotModel := agentFrontmatterValue(t, root, "manager-spec", "model"); gotModel != want.Model {
-		t.Errorf("agent model after tier switch = %q, want %q (tier profile not re-applied)", gotModel, want.Model)
+	if !strings.Contains(got, "performance_tier: max") {
+		t.Errorf("llm.yaml did not persist the performance_tier: max alias; got:\n%s", got)
 	}
-	if gotEffort := agentFrontmatterValue(t, root, "manager-spec", "effort"); gotEffort != want.Effort {
-		t.Errorf("agent effort after tier switch = %q, want %q (tier profile not re-applied)", gotEffort, want.Effort)
+	// Frontmatter MUST be untouched (REQ-MPM-040 — no ApplyTierProfile re-apply).
+	if gotModel := agentFrontmatterValue(t, root, "manager-spec", "model"); gotModel != "inherit" {
+		t.Errorf("agent model was mutated to %q — the web save must not touch frontmatter (REQ-MPM-040)", gotModel)
+	}
+	if gotEffort := agentFrontmatterValue(t, root, "manager-spec", "effort"); gotEffort != "xhigh" {
+		t.Errorf("agent effort was mutated to %q — the web save must not touch frontmatter (REQ-MPM-040)", gotEffort)
 	}
 }
 

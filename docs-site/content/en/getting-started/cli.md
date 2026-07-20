@@ -73,8 +73,8 @@ moai init [project-name] [OPTIONS]
 | `--enable-lsp` | Enable LSP integration (default: false) |
 | `--enforce-quality` | Enforce quality gates (default: true) |
 | `--enable-design` | Enable the design workflow (default: true) |
-| `--model-policy <max\|medium\|low>` | Performance tier — stored in `llm.yaml` `performance_tier` |
-| `--plan-type <api\|subscription>` | Pricing plan type — stored in `llm.yaml` `plan_type` |
+| `--profile <max\|medium\|low>` | Model+effort profile — stored in `llm.yaml` `profile` (selects the profile matrix column) |
+| `--model-policy <max\|medium\|low>` | Legacy performance tier — stored in `llm.yaml` `performance_tier` (alias when `profile` is absent) |
 | `--high` | **Deprecated** alias for `--model-policy max` |
 
 ### Examples
@@ -120,7 +120,7 @@ moai update [OPTIONS]
 | `--no-hooks` | Skip Git hook installation |
 | `--verbose` | Show all warnings (diagnostic mode) |
 | `--shell-env` | Configure shell environment variables for Claude Code |
-| `--plan-type <api\|subscription>` | Override the pricing plan type (re-applies `llm.yaml` `plan_type` and the tier profile) |
+| `--profile <max\|medium\|low>` | Override the model+effort profile (stored in `llm.yaml` `profile`) |
 
 ### Examples
 
@@ -489,7 +489,7 @@ moai init my-project --model-policy max
 moai update -c
 ```
 
-The pricing plan type (`plan_type`: api or subscription) is set separately, so even at the same tier, model assignment differs by billing method. For the detailed model-tier mapping, see the [Model Policy](/en/multi-llm/model-policy) page.
+The profile (`profile`: max/medium/low) selects the active column of the profile matrix, determining each agent's model+effort. For the detailed per-agent mapping, see the [Profile Matrix](/en/advanced/profile-matrix/) page.
 
 ---
 

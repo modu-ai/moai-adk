@@ -180,8 +180,15 @@ fi
 TMP_NOTES="$(mktemp)"
 trap 'rm -f "$TMP_NOTES"' EXIT
 
+# NOTE: literal prefix match via index() — NOT a regex match. CHANGELOG_HEADER
+# contains "[" / "]" which are regex metacharacters (character class); a regex
+# match (`$0 ~ "^"target`) treats "[3.0.0]" as the class [3.0.0] and never
+# matches "## [3.0.0] - date", so extraction silently yielded nothing. The
+# trailing space in target disambiguates "3.0.0" from "3.0.0-rc1". The `started`
+# guard stops after the first section so a duplicate header (e.g. a localized
+# "## [3.0.0]" section) does not re-open extraction.
 awk -v target="$CHANGELOG_HEADER " '
-    $0 ~ "^"target {flag=1; print; next}
+    !started && index($0, target) == 1 {flag=1; started=1; print; next}
     /^## \[/ && flag {flag=0}
     flag
 ' CHANGELOG.md > "$TMP_NOTES"

@@ -130,7 +130,7 @@ graph TD
 | `--no-hooks` | Skip Git hook installation |
 | `--verbose` | Show all warnings (diagnostic mode) |
 | `--shell-env` | Configure shell environment variables for Claude Code |
-| `--plan-type <api\|subscription>` | Override the pricing plan type |
+| `--profile <max\|medium\|low>` | Override the model+effort profile (stored in `profile` of `llm.yaml`) |
 
 ### How it behaves
 

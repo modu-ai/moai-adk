@@ -4,6 +4,10 @@ weight: 90
 draft: false
 ---
 
+{{< callout type="info" >}}{{< icon flash primary >}} <strong>Belongs to</strong>: 🛡️ Agentic Harness
+{{< /callout >}}
+<!-- @value: agentic-harness -->
+
 Git Worktree is the foundation of MoAI-ADK parallel development. It gives every
 SPEC a fully independent workspace, so you can run different Git states and
 different LLM configurations at the same time.

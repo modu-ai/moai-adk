@@ -24,7 +24,7 @@ v3.0 product differentiation consists of three pillars. Tokenomics is the first,
 
 {{< icon rotate >}} **Autonomous Continuation Loops** — when to stop, when to continue. Covered in the [Autonomous Continuation Loops](/en/advanced/autonomous-loops/) page.
 
-{{< icon database >}} **Agentic Harness** — which agent, at which tier, how it evolves. Covered in the [3-Tier Architecture](/en/advanced/no-haiku-3tier/), [plan_type Tier Profiles](/en/advanced/plan-type-profiles/), and [Harness Self-Evolution](/en/advanced/self-evolving/) pages.
+{{< icon database >}} **Agentic Harness** — which agent, at which profile, how it evolves. Covered in the [3-Tier Architecture](/en/advanced/no-haiku-3tier/), [Profile Matrix](/en/advanced/profile-matrix/), and [Harness Self-Evolution](/en/advanced/self-evolving/) pages.
 
 ## The 4-Layer Tokenomics Structure
 
@@ -48,7 +48,7 @@ flowchart TD
 
 ### Layer B — Routing
 
-{{< icon package >}} Models and reasoning depth (effort) are declaratively assigned based on the work phase (plan / run / sync) and SPEC size (Tier S / M / L). High-reasoning models are assigned to planning phases that need deep inference, and lighter models to implementation phases with heavy mechanical repetition, maximizing quality per cost. For the detailed 60-cell profile matrix, see the [plan_type Tier Profiles](/en/advanced/plan-type-profiles/) page.
+{{< icon package >}} Models and reasoning depth (effort) are declaratively assigned to each retained agent. The active profile (`max`/`medium`/`low`) selects one column of the profile matrix, assigning high-reasoning models where deep inference is needed and lighter models to mechanical work, maximizing quality per cost. For the detailed profile matrix, see the [Profile Matrix](/en/advanced/profile-matrix/) page.
 
 ### Layer C — Verify-diet
 
@@ -60,10 +60,10 @@ flowchart TD
 
 ## Model Tier Routing
 
-What concretizes Layer B's routing is the model tier policy. MoAI-ADK v3.0 excludes Haiku from the routing model set and distributes work across a 3-tier structure (Sonnet / Opus / Fable). The rationale for this design and the ApplyTierProfile implementation are covered in the next two pages.
+What concretizes Layer B's routing is the model profile policy. MoAI-ADK v3.0 excludes Haiku from the routing model set and distributes work across a 3-tier structure (Sonnet / Opus / Fable). The rationale for this design and the profile matrix implementation are covered in the next two pages.
 
 - [3-Tier Agent Architecture](/en/advanced/no-haiku-3tier/) — why Haiku is excluded, DeepSWE leaderboard rationale
-- [plan_type Tier Profiles](/en/advanced/plan-type-profiles/) — the 60-cell profile matrix per api vs subscription plan
+- [Profile Matrix](/en/advanced/profile-matrix/) — the single 3-column per-agent profile matrix
 
 ## CG Mode (Cost Optimization)
 
@@ -75,12 +75,12 @@ GLM-5.2 is a 1M-context single model priced at $2 input / $8 output (per 1M toke
 
 The implementation status of the content on this page is clearly distinguished.
 
-{{< icon check ok >}} **Implemented (shipped)** — all 4 layers (A/B/C/D), 3-tier model policy (ApplyTierProfile), CG mode, verify-diet file-redirect contract, graceful-abort mechanism.
+{{< icon check ok >}} **Implemented (shipped)** — all 4 layers (A/B/C/D), 3-tier model policy (profile matrix resolver), CG mode, verify-diet file-redirect contract, graceful-abort mechanism.
 
-{{< icon clock >}} **Design-stage (roadmap)** — the GLM backend effort overlay's wire effectiveness is a verification item requiring live GLM session outbound observation. The plan_type Tier Profiles page states this distinction explicitly.
+{{< icon clock >}} **Design-stage (roadmap)** — the GLM backend effort overlay's wire effectiveness is a verification item requiring live GLM session outbound observation. The Profile Matrix page states this distinction explicitly.
 
 ## Next Steps
 
 - [Token Budget Management and Graceful Stop](/en/advanced/token-budget/) — Layer D deep-dive (per-model thresholds, paste-ready resume structure)
 - [3-Tier Agent Architecture](/en/advanced/no-haiku-3tier/) — harness architecture foundation
-- [plan_type Tier Profiles](/en/advanced/plan-type-profiles/) — the 60-cell profile matrix
+- [Profile Matrix](/en/advanced/profile-matrix/) — the single 3-column per-agent profile matrix

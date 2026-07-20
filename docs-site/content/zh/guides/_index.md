@@ -5,6 +5,10 @@ weight: 85
 draft: false
 ---
 
+{{< callout type="info" >}}{{< icon flash primary >}} <strong>所属价值</strong>: 🪙 代币经济学 · 🧠 递归式自学习
+{{< /callout >}}
+<!-- @value: tokenomics, self-learning -->
+
 这里汇集了有助于 MoAI-ADK 运营的指南文档。两篇文档都是把 v3.0 的核心
 理念 —— 回路守护质量（代理式回路工程）、模型分配守护成本（托克诺米克斯）
 —— 扩展到 CI 环境的内容。

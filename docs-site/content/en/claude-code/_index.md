@@ -5,6 +5,12 @@ draft: false
 description: "A 4-group learning path for understanding Claude Code from scratch — the platform on which MoAI-ADK's three pillars (Tokenomics, Agentic Loop Engineering, Agentic Harness) stand."
 ---
 
+{{< callout type="info" >}}{{< icon flash primary >}} <strong>Belongs to</strong>: 🛡️ Agentic Harness · 🧠 Recursive Self-Learning
+{{< /callout >}}
+<!-- @value: agentic-harness, self-learning -->
+
+![Claude Code extensions](/images/sections/claude-code-en.png)
+
 This section is a learning path for understanding Claude Code, Anthropic's terminal CLI, from scratch. It is a guide for developers who are new to Claude Code, and for anyone who wants a precise grasp of the foundation MoAI-ADK operates on.
 
 

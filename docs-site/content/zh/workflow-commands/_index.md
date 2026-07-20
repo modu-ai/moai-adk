@@ -4,6 +4,12 @@ weight: 30
 draft: false
 ---
 
+{{< callout type="info" >}}{{< icon flash primary >}} <strong>所属价值</strong>: 🛡️ 代理型线束
+{{< /callout >}}
+<!-- @value: agentic-harness -->
+
+![SPEC 三阶段流水线](/images/sections/workflow-commands-zh.png)
+
 执行基于 SPEC 的 3-Phase 生命周期(plan → run → sync)的命令集合。
 
 
