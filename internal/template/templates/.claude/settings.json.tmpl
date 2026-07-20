@@ -388,7 +388,7 @@
 {{- if eq .Platform "windows"}}
     "command": "bash \"$CLAUDE_PROJECT_DIR/.moai/status_line.sh\"",
 {{- else}}
-    "command": "$CLAUDE_PROJECT_DIR/.moai/status_line.sh",
+    "command": "\"$CLAUDE_PROJECT_DIR/.moai/status_line.sh\"",
 {{- end}}
     "refreshInterval": 10
   },
