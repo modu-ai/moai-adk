@@ -47,6 +47,21 @@ plan_complete_at: 2026-07-13
   - `internal/cli/testdata/status-dark.golden`: REGENERATED — same rationale; dark theme invisible off-TTY.
   - `internal/cli/testdata/status-nocolor.golden`: REGENERATED — same rationale; NO_COLOR forces the same plain passthrough. All three goldens are now byte-identical (md5 `76c6e564…`) — expected: theme env vars cannot change non-TTY bytes under REQ-TUX4-005, and `TestStatusGolden_NoColorByteIdentical` pins this invariant.
 - **Verification**: full `internal/cli` + `internal/cli/uikit` suites green in the isolated worktree (`ok 18.896s` / `ok 0.415s`); live `NO_COLOR=1 go run ./cmd/moai status | grep -c $'\x1b'` = 0 (AC-TUX4-006 second half).
+- **M4b commit**: `1317b9567` (pushed to main).
+
+### M4c — doctor live progress + result table (REQ-TUX4-001~003, AC-TUX4-001~003, AC-TUX4-014)
+
+- **Progress reporter seam (AC-TUX4-014)**: `checkObserver` type + `runGroupedChecksObserved(verbose, filter, obs)` in doctor.go; `runGroupedChecks` delegates with nil observer (legacy callers unchanged). The observer wraps each check thunk exactly once and returns the result unchanged — verdict functions (`checkGit`, `checkGoRuntime`, …) are byte-identical, pinned by `TestDoctorLiveProgress_SeamPreservesVerdicts` (observer-vs-baseline verdict equality).
+- **Live progress (REQ-TUX4-001)**: `runDoctor` builds `printer.New(WithWriters(stdout, stderr))` and emits one `Step` per check on stderr — TTY: in-place erase-line updates; non-TTY/NO_COLOR: printer ModePlain line-per-event, zero ANSI. Fail status → `StepHandle.Fail`.
+- **Result table (REQ-TUX4-002)**: new `internal/cli/doctor_render.go` — per-section pass/fail table + per-section counts (`N ok, N warn, N fail`) + overall Pass/Warn/Fail pills inside the System Diagnostics box. Rich path: bubbles v2 table (`charm.land/bubbles/v2/table`) styled from tui tokens (AC-TUX4-002 grep target: `doctor_render.go:17`); plain path: aligned plain-text columns (STATUS/CHECK/MESSAGE). Discovery: the bubbles v2 table viewport defaults to width 0 and renders no rows — `WithWidth` is load-bearing (commented in source).
+- **Render separation**: the render block moved out of doctor.go into doctor_render.go so the doctor.go diff is limited to the seam + printer wiring + render delegation (AC-TUX4-014 proof surface for `git diff -- internal/cli/doctor.go`).
+- **TDD**: RED `internal/cli/doctor_render_test.go` (`TestDoctorLiveProgress_SeamPreservesVerdicts`, `TestDoctorStep_ProgressOnStderr`, `TestDoctorTable_PlainAlignedColumns`, `TestDoctorSectionResult_Counts`, `TestDoctorTable_RichUsesBubblesTable`) → GREEN seam + renderer. RED interim state observed: rich-table test failed on the width-0 viewport before the `WithWidth` fix.
+- **Golden test renames (AC-TUX4-003 run-pattern alignment)**: `TestDoctor_Current_Light`→`TestDoctorGolden_Light`, `TestDoctor_Current_Dark`→`TestDoctorGolden_Dark`, `TestDoctor_NoColor`→`TestDoctorGolden_NoColor` (now also asserting zero ANSI on BOTH channels per REQ-TUX4-003). `captureDoctorCmd` split into (stdout, stderr) so goldens pin the stdout result surface while stderr progress is asserted separately.
+- **Golden changes (per-file rationale)**:
+  - `internal/cli/testdata/doctor-light.golden`: REGENERATED — CheckLine rows → per-section aligned table + section counts (REQ-TUX4-002 render swap); data set (check names/messages/statuses) unchanged.
+  - `internal/cli/testdata/doctor-dark.golden`: REGENERATED — same rationale (light/dark identical off-TTY).
+  - `internal/cli/testdata/doctor-nocolor.golden`: REGENERATED — same rationale + zero-ANSI assertion added in the test body.
+- **Verification**: contract tests + full `internal/cli`/`uikit` suites green in the isolated worktree (`ok 17.509s` / `ok 0.784s`); live `NO_COLOR=1 go run ./cmd/moai doctor | grep -c $'\x1b'` = 0; bubbles-v2 reachability grep = `doctor_render.go:17` (≥1).
 
 ## §E.3 Run-phase Audit-Ready Signal
 
