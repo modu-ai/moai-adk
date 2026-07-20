@@ -16,30 +16,24 @@ func TestIsGLMBackend(t *testing.T) {
 		name     string
 		mode     string
 		teamMode string
-		planType string // must have NO effect on the result
 		want     bool
 	}{
 		// TRUE cases — a GLM backend signal is present.
-		{"team_mode=glm (primary moai glm signal)", "", config.TeamModeGLM, "", true},
-		{"team_mode=cg (moai cg signal)", "", config.TeamModeCG, "", true},
-		{"mode=glm (defensive dormant-field OR)", config.LLMModeGLM, "", "", true},
-		{"mode=glm AND team_mode=cg", config.LLMModeGLM, config.TeamModeCG, "", true},
+		{"team_mode=glm (primary moai glm signal)", "", config.TeamModeGLM, true},
+		{"team_mode=cg (moai cg signal)", "", config.TeamModeCG, true},
+		{"mode=glm (defensive dormant-field OR)", config.LLMModeGLM, "", true},
+		{"mode=glm AND team_mode=cg", config.LLMModeGLM, config.TeamModeCG, true},
 		// FALSE cases — no GLM signal (legacy non-GLM team_mode values + empty).
-		{"team_mode=claude (legacy non-GLM)", "", config.TeamModeClaude, "", false},
-		{"team_mode=hybrid (legacy non-GLM)", "", config.TeamModeHybrid, "", false},
-		{"no signal (both empty)", "", "", "", false},
-		// plan_type has NO effect on the predicate result.
-		{"team_mode=glm with plan_type=api → still TRUE", "", config.TeamModeGLM, config.PlanTypeAPI, true},
-		{"team_mode=glm with plan_type=subscription → still TRUE", "", config.TeamModeGLM, config.PlanTypeSubscription, true},
-		{"no signal with plan_type=api → still FALSE", "", "", config.PlanTypeAPI, false},
-		{"no signal with plan_type=subscription → still FALSE", "", "", config.PlanTypeSubscription, false},
+		{"team_mode=claude (legacy non-GLM)", "", config.TeamModeClaude, false},
+		{"team_mode=hybrid (legacy non-GLM)", "", config.TeamModeHybrid, false},
+		{"no signal (both empty)", "", "", false},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			cfg := config.LLMConfig{Mode: tt.mode, TeamMode: tt.teamMode, PlanType: tt.planType}
+			cfg := config.LLMConfig{Mode: tt.mode, TeamMode: tt.teamMode}
 			if got := IsGLMBackend(cfg); got != tt.want {
-				t.Errorf("IsGLMBackend(mode=%q, team_mode=%q, plan_type=%q) = %v, want %v",
-					tt.mode, tt.teamMode, tt.planType, got, tt.want)
+				t.Errorf("IsGLMBackend(mode=%q, team_mode=%q) = %v, want %v",
+					tt.mode, tt.teamMode, got, tt.want)
 			}
 		})
 	}
@@ -146,57 +140,6 @@ func TestGLMCodingMaxOverrideAgents_ExactlyOne(t *testing.T) {
 	// reasoning-high under a high Claude effort (standard collapse), NOT reasoning-max.
 	if got := ResolveGLMReasoning("builder-harness", EffortLevelHigh); got.Name != GLMStateReasoningHigh {
 		t.Errorf("ResolveGLMReasoning(builder-harness, high).Name = %q, want %q (P1: no longer overridden)", got.Name, GLMStateReasoningHigh)
-	}
-}
-
-// TestApplyGLMEffortOverlay_EffortOnlyAndNoOp covers REQ-MTP-029 (AC-MTP-031):
-// (a) under a GLM backend the overlay changes ONLY the effort representation —
-// the model value is byte-identical; (b) under a non-GLM backend the overlay is
-// an identity no-op.
-func TestApplyGLMEffortOverlay_EffortOnlyAndNoOp(t *testing.T) {
-	tests := []struct {
-		name       string
-		entry      TierProfileEntry
-		agent      string
-		glmBackend bool
-		wantModel  string
-		wantEffort string
-	}{
-		{
-			name:       "GLM backend, non-override agent: model unchanged, effort → reasoning-high",
-			entry:      TierProfileEntry{Model: "opus", Effort: EffortLevelHigh},
-			agent:      "manager-spec",
-			glmBackend: true,
-			wantModel:  "opus", // byte-identical — the overlay never rewrites model
-			wantEffort: GLMStateReasoningHigh,
-		},
-		{
-			name:       "GLM backend, override agent: model unchanged, effort → reasoning-max",
-			entry:      TierProfileEntry{Model: "sonnet", Effort: EffortLevelHigh},
-			agent:      "manager-develop",
-			glmBackend: true,
-			wantModel:  "sonnet",
-			wantEffort: GLMStateReasoningMax,
-		},
-		{
-			name:       "non-GLM backend: identity no-op",
-			entry:      TierProfileEntry{Model: "opus", Effort: EffortLevelHigh},
-			agent:      "manager-spec",
-			glmBackend: false,
-			wantModel:  "opus",
-			wantEffort: EffortLevelHigh, // unchanged Claude effort
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			got := ApplyGLMEffortOverlay(tt.entry, tt.agent, tt.glmBackend)
-			if got.Model != tt.wantModel {
-				t.Errorf("ApplyGLMEffortOverlay model = %q, want %q (overlay must never rewrite model)", got.Model, tt.wantModel)
-			}
-			if got.Effort != tt.wantEffort {
-				t.Errorf("ApplyGLMEffortOverlay effort = %q, want %q", got.Effort, tt.wantEffort)
-			}
-		})
 	}
 }
 

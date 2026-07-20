@@ -70,6 +70,16 @@ M3 deliverables: init `--profile <max\|medium\|low>` flag + `template.ApplyProfi
 
 **Web debt (honest gap per verification-claim-integrity §3.4)**: the SPEC-WEB-CONSOLE-011 agentfm surface (per-agent frontmatter model/effort editing) is a large pre-existing subsystem. AC-MPM-013 (matrix-render) and AC-MPM-014 (agent_overrides editing UI) require a templ redesign of that surface beyond safe run-phase scope; the config-layer agent_overrides support (M1) + the `moai model profile` matrix render (M2) are in place, so the debt is UI-wiring only. Neither AC is in the §D.1 must-pass set. Full `go test ./...` = 0 failures.
 
+### M4 — Retire plan_type + ApplyTierProfile
+
+| AC | Status | Verification | Actual Output |
+|----|--------|--------------|---------------|
+| AC-MPM-018 (no plan_type model/effort resolution) | PASS | `grep -rn "tierProfiles\|ApplyTierProfile\|EffectivePlanType\|GetTierProfileEntry" internal/ --include=*.go \| grep -v _test.go \| grep -v //` | CLEAN (0 production refs) |
+| AC-MPM-022 (delegation/GLM env/model_routing_profiles unmodified; no frontmatter effort re-authored) | PASS | delegation.yaml, GLM env code paths, workflow.yaml model_routing_profiles untouched; agent frontmatter restored to template doc-canonical (M2), not re-authored | verified |
+| AC-MPM-024 (existing guards green) | PASS | `go test ./...` = 0 failures; HaikuResidualRule + config guards green | verified |
+
+M4 deletions: `internal/config/plan_type.go` (PlanType* constants, IsValidPlanType, ValidPlanTypes, EffectivePlanType, validatePlanType); LLMConfig.PlanType field; template `tierProfiles` (66-cell), `TierProfileEntry`, `tierProfileRow`, `tierColumnIndex`, `GetTierProfileEntry`, `tierProfileAgentOrder`, `TierProfileAgents`, `ApplyTierProfile` (+ modelLineRegex/effortLineRegex/insertEffortInFrontmatter/frontmatterOpenPrefix), `ApplyPlanType`, `ResolveProjectPlanType`, `ApplyGLMEffortOverlay`. All 4 ApplyTierProfile call sites retired (initializer.go, update.go ×2, web/agentfm.go — last was M3). update.go `--plan-type` flag → `--profile`; `applyUpdateTierProfile` → `applyUpdateProfile` (llm.profile persistence, no frontmatter mutation). wizard PlanType field removed. Retired test files deleted: config/plan_type_test.go, cli/update_plantype_test.go. model_policy_test.go rewritten (kept model-alias/deployer/MapModelPolicy/NormalizeToTier/perf-tier tests; dropped tier-profile/plan-type tests). KEPT (design §F): MapModelPolicyToTier/Effort, NormalizeToTier, ResolveProjectPerformanceTier (perf_tier alias axis). Cross-platform build exit 0; lint 0 issues.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<pending run-phase>_

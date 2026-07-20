@@ -244,18 +244,18 @@ func TestGitConditionalFilteredByMode(t *testing.T) {
 	}
 }
 
-// TestSaveAnswerPlanType (REQ-MTP-017) verifies saveAnswer routes the plan_type
-// answer into WizardResult.PlanType.
-func TestSaveAnswerPlanType(t *testing.T) {
+// TestSaveAnswerModelPolicy verifies saveAnswer routes the model_policy answer
+// (the profile selection) into WizardResult.ModelPolicy.
+func TestSaveAnswerModelPolicy(t *testing.T) {
 	result := &WizardResult{}
 	locale := ""
 
-	saveAnswer("plan_type", "api", result, &locale)
-	if result.PlanType != "api" {
-		t.Errorf("expected PlanType 'api', got %q", result.PlanType)
+	saveAnswer("model_policy", "high", result, &locale)
+	if result.ModelPolicy != "high" {
+		t.Errorf("expected ModelPolicy 'high', got %q", result.ModelPolicy)
 	}
-	saveAnswer("plan_type", "subscription", result, &locale)
-	if result.PlanType != "subscription" {
-		t.Errorf("expected PlanType 'subscription', got %q", result.PlanType)
+	saveAnswer("model_policy", "low", result, &locale)
+	if result.ModelPolicy != "low" {
+		t.Errorf("expected ModelPolicy 'low', got %q", result.ModelPolicy)
 	}
 }

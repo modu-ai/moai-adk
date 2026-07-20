@@ -329,8 +329,6 @@ func saveAnswer(id, value string, result *WizardResult, locale *string) {
 		result.ProjectName = value
 	case "model_policy":
 		result.ModelPolicy = value
-	case "plan_type":
-		result.PlanType = value
 	case "development_mode":
 		result.DevelopmentMode = value
 	case "report_format":

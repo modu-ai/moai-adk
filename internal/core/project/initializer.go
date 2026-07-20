@@ -42,7 +42,6 @@ type InitOptions struct {
 	Force             bool     // If true, allow reinitializing an existing project.
 	SkipShellConfig   bool     // If true, skip shell environment configuration.
 	ModelPolicy       string   // Token consumption tier: "high", "medium", "low".
-	PlanType          string   // DEPRECATED (SPEC-MODEL-PROFILE-MATRIX-001): billing plan type, retired. No longer flag-wired; retained until the ApplyTierProfile removal milestone.
 	Profile           string   // Per-agent model+effort profile: "max", "medium", "low" (empty → template default medium). Persists to llm.profile.
 	ReportFormat      string   // Report output format: "html+md" or "md" (empty → html+md default).
 
@@ -179,24 +178,12 @@ func (i *projectInitializer) Init(ctx context.Context, opts InitOptions) (*InitR
 		}
 	}
 
-	// Step 3b: Apply the plan_type × tier profile to agent files (post-deployment
-	// patching). A single pass patches both model: and effort: frontmatter
-	// atomically with replace-both precedence (the tier profile is the SSOT for
-	// shipped-agent model/effort). The plan type prefers the explicit opts.PlanType
-	// (SPEC-MODEL-TIER-PLANTYPE-001 M3 — the --plan-type flag / wizard answer, which
-	// is not yet persisted at this point on a first init); it falls back to the
-	// deployed llm.yaml (absent → subscription). The tier is resolved from
-	// opts.ModelPolicy (default medium when unset).
-	{
-		planType := opts.PlanType
-		if planType == "" {
-			planType = template.ResolveProjectPlanType(opts.ProjectRoot)
-		}
-		tier := template.NormalizeToTier(opts.ModelPolicy)
-		if err := template.ApplyTierProfile(opts.ProjectRoot, planType, tier, i.manifestMgr); err != nil {
-			i.logger.Warn("failed to apply tier profile", "error", err)
-		}
-	}
+	// Step 3b (SPEC-MODEL-PROFILE-MATRIX-001): the former plan_type × tier
+	// frontmatter-mutation pass (ApplyTierProfile) is RETIRED (REQ-MPM-024). Agent
+	// `.md` frontmatter stays at model: inherit + its doc-canonical effort; the
+	// per-agent model is injected at spawn as a runtime arg from the profile matrix
+	// (see `moai model profile`), never a frontmatter pin. The resolved profile is
+	// persisted to llm.profile at init.go (REQ-MPM-016).
 
 	// Step 3c: Persist the resolved report format to report.yaml. This runs on
 	// BOTH the deployer path (overriding the template default html+md with the
