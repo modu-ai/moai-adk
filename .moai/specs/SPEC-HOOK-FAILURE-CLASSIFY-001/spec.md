@@ -2,7 +2,7 @@
 id: SPEC-HOOK-FAILURE-CLASSIFY-001
 title: "PostToolUseFailure nested-error classification and session_id trace resolution"
 version: "0.1.0"
-status: in-progress
+status: completed
 created: 2026-07-17
 updated: 2026-07-21
 author: manager-spec
