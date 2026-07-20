@@ -45,7 +45,7 @@ jobs:
       docs_only: ${{ steps.f.outputs.docs_only }}
     steps:
       - uses: actions/checkout@v7
-      - uses: dorny/paths-filter@fbd0ab8f3e69293af611ebaee6363fc25e6d187d # v4.0.1
+      - uses: dorny/paths-filter@7b450fff21473bca461d4b92ce414b9d0420d706 # v4.0.2
         id: f
         with:
           filters: |
@@ -94,7 +94,7 @@ jobs:
           fetch-depth: 0  # SPEC-V3R4-CI-INFRA-FIX-001 D-3 (C-Scope-1): drift walker test 가 full git history 필요
 
       - name: Setup Go
-        uses: actions/setup-go@v6
+        uses: actions/setup-go@v7
         with:
           go-version-file: go.mod
           cache: true
@@ -188,7 +188,7 @@ jobs:
           fetch-depth: 0  # SPEC-V3R4-CI-INFRA-FIX-001 D-3 (C-Scope-1): drift walker test 가 full git history 필요
 
       - name: Setup Go
-        uses: actions/setup-go@v6
+        uses: actions/setup-go@v7
         with:
           go-version-file: go.mod
           cache: true
@@ -215,7 +215,7 @@ jobs:
           fetch-depth: 0  # SPEC-V3R4-CI-INFRA-FIX-001 D-3 (C-Scope-1): drift walker test 가 full git history 필요
 
       - name: Setup Go
-        uses: actions/setup-go@v6
+        uses: actions/setup-go@v7
         with:
           go-version-file: go.mod
           cache: true
@@ -270,7 +270,7 @@ jobs:
           fetch-depth: 0  # SPEC-V3R4-CI-INFRA-FIX-001 D-3 (C-Scope-1): drift walker test 가 full git history 필요
 
       - name: Setup Go
-        uses: actions/setup-go@v6
+        uses: actions/setup-go@v7
         with:
           go-version-file: go.mod
           cache: true
@@ -313,7 +313,7 @@ jobs:
           fetch-depth: 0  # SPEC-V3R4-CI-INFRA-FIX-001 D-3 (C-Scope-1): drift walker test 가 full git history 필요
 
       - name: Setup Go
-        uses: actions/setup-go@v6
+        uses: actions/setup-go@v7
         with:
           go-version-file: go.mod
           cache: true
