@@ -69,6 +69,6 @@ Sync executed orchestrator-direct (subagent session-limit fallback, established 
 - CHANGELOG Unreleased/Added entry authored; frontmatter `in-progress → implemented → completed` rides this sync commit (3-phase close).
 - Supersession bookkeeping (DoD #3): SPEC-WEB-CONSOLE-004 REQ-WC4-006 / AC-WC4-006 (dark mode via `[data-theme]` + persisted toggle) partially superseded by SPEC-DESIGN-MOAIWEBV2-002 (light-only retirement). The 004 artifact is left unedited (grandfather-protected); this note is the canonical record.
 - Coverage debt (sync-audit F3): `internal/web` 59.4% < 85% TRUST target — baseline-attributed to origin/main (59.5%), pre-existing package debt, not a regression of this SPEC.
-- sync_commit_sha: _<backfilled post-commit>_
+- sync_commit_sha: 1df0eeeab
 
 _<pending sync-phase — populated by manager-docs>_
