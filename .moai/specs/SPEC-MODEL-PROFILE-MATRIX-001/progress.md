@@ -115,7 +115,7 @@ Doc edits are explicitly deferred to sync-phase per REQ-MPM-036; run-phase produ
 
 ```yaml
 run_complete_at: 2026-07-20
-run_commit_sha: pending-backfill-M5   # backfilled after the M5 commit lands
+run_commit_sha: 76972b7a9             # M5 final run commit (this SHA backfilled per D3 placeholder exemption)
 run_status: PASS-WITH-DEBT            # all must-pass AC PASS; AC-MPM-013/014 web UI = PASS-WITH-DEBT (config+CLI support in place, web override-editing UI deferred)
 ac_pass_count: 23                     # of 25 AC-MPM gating criteria PASS
 ac_pass_with_debt_count: 2            # AC-MPM-013 (web matrix-render), AC-MPM-014 (web agent_overrides editing UI)
