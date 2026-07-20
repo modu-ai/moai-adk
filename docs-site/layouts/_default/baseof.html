@@ -112,10 +112,10 @@
           {{- end -}}
         </div>
 
-        {{- /* 우측 TOC rail (디자인 240px) — 모든 페이지에서 실제 헤딩 기반 동적 생성
-               (home 포함). 과거 home 하드코딩 앵커(#quickstart 등)는 현재 홈 헤딩과
-               불일치하여 죽은 링크였으므로 제거하고 .TableOfContents로 통일. */ -}}
-        {{- if .TableOfContents -}}
+        {{- /* 우측 TOC rail (디자인 240px) — 실제 헤딩 기반 동적 생성 (home/list 전용).
+               문서 상세(single, .Kind "page")는 round3 3-컬럼이 자체 .docs-toc 좌측
+               레일을 렌더하므로 여기서 제외 — 이중 TOC + 본문 폭 압축 방지. */ -}}
+        {{- if and .TableOfContents (ne .Kind "page") -}}
         {{- $hasHeadings := gt (len (findRE "<h[23]" .Content)) 0 -}}
         {{- if $hasHeadings -}}
         <aside class="cw-toc" aria-label="{{ i18n "toc_label" }}">

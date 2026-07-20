@@ -2,7 +2,7 @@
 id: SPEC-HOOK-FAILURE-CLASSIFY-001
 title: "Progress — PostToolUseFailure nested-error classification"
 version: "0.1.0"
-status: in-progress
+status: completed
 created: 2026-07-17
 updated: 2026-07-21
 author: manager-spec
@@ -62,4 +62,10 @@ Coverage (classification path, ≥85% target): `Handle` 100%, `classificationTex
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase — owned by manager-docs>_
+```yaml
+sync_complete_at: 2026-07-21
+sync_commit_sha: 2325000a7
+sync_status: audit-ready
+```
+
+CHANGELOG.md `[Unreleased]` § Fixed section updated with a #1089 entry (dedup pre-check: `grep -c 'SPEC-HOOK-FAILURE-CLASSIFY-001' CHANGELOG.md` was 0 before this commit). Frontmatter `status: in-progress → completed` transition rides this single sync commit per the 3-phase close (plan → run → sync); `updated:` refreshed to 2026-07-21. No spec.md/plan.md/acceptance.md body content modified. README/docs-site: out of scope (internal hook bugfix, no user-facing docs surface change beyond CHANGELOG).
