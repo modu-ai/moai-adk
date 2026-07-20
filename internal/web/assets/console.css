@@ -104,6 +104,21 @@
   src: url("/static/fonts/NotoSansCJKjp-Bold.subset.woff2") format("woff2");
 }
 
+/* ── Goorm Sans Code (self-hosted woff2 subset — code/mono family) ──
+   SPEC-DESIGN-MOAIWEBV2-002 M3 (REQ-MWA-008/009/010). The docs-site loads
+   Goorm Sans Code from the goorm CDN; the console self-hosts a Latin +
+   used-symbols pyftsubset artifact instead (offline invariant — zero external
+   fetch). Upstream v1.0.1 ships a single 400 weight; heavier mono contexts
+   fall back to synthetic bolding or the OS stack. License: SIL OFL
+   (OFL-GoormSansCode.txt alongside the subset; verified per REQ-MWA-011). */
+@font-face {
+  font-family: "Goorm Sans Code";
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+  src: url("/static/fonts/GoormSansCode-Regular.subset.woff2") format("woff2");
+}
+
 :root {
   /* ── Point Color (v2 canon — 마스코트 포인트 그린, 유일한 강조 컬러) ── */
   --color-primary: #3d7d5f;          /* 마스코트 그린 — CTA, 타이틀, 아이콘 */
@@ -167,10 +182,12 @@
 
   /* ── Type families ──
      Inter / JetBrains Mono 의 Google Fonts @import 는 제거됐다(REQ-WC4-001).
-     --font-latin 은 system-ui, --font-mono 는 OS 모노 폴백으로 대체한다. */
+     --font-latin 은 system-ui 폴백. --font-mono 는 self-host Goorm Sans Code
+     subset 이 선두이고 기존 OS 모노 폴백 스택이 그 뒤를 잇는다(REQ-MWA-009 —
+     subset 에 없는 글리프는 OS 모노로 fall-through). */
   --font-sans: "Pretendard", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   --font-latin: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-  --font-mono: ui-monospace, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+  --font-mono: "Goorm Sans Code", ui-monospace, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
 
   /* ── Weights ── */
   --fw-regular: 400;

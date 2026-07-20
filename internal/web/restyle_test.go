@@ -543,6 +543,63 @@ func TestStatusTokensDocsSiteParity(t *testing.T) {
 	}
 }
 
+// --- SPEC-DESIGN-MOAIWEBV2-002 M3: Goorm Sans Code self-host subset ---
+
+// TestGoormSansCodeSelfHosted verifies AC-MWA-008/009/010 (regression lock):
+// the Goorm Sans Code woff2 subset + its OFL license file are embedded under
+// assets/fonts/, console.css registers the @font-face with a relative
+// /static/fonts/ src and leads --font-mono with "Goorm Sans Code", and the
+// subset is served offline from /static/fonts/ (REQ-MWA-008/009/010).
+// License provenance: goorm-sans.goorm.io states Goorm Sans / Goorm Sans Code
+// follow the SIL Open Font License (verified before the artifact was committed,
+// REQ-MWA-011).
+func TestGoormSansCodeSelfHosted(t *testing.T) {
+	// (1) Embedded artifact + license file.
+	entries, err := fs.ReadDir(staticFS(), "fonts")
+	if err != nil {
+		t.Fatalf("read embedded fonts dir: %v", err)
+	}
+	var woff2Count int
+	for _, e := range entries {
+		if strings.HasPrefix(e.Name(), "GoormSansCode") && strings.HasSuffix(e.Name(), ".woff2") {
+			woff2Count++
+		}
+	}
+	if woff2Count == 0 {
+		t.Error("no GoormSansCode*.woff2 subset embedded under assets/fonts/")
+	}
+	license := readEmbeddedAsset(t, "fonts/OFL-GoormSansCode.txt")
+	if !strings.Contains(license, "SIL OPEN FONT LICENSE") {
+		t.Error("OFL-GoormSansCode.txt missing the SIL OPEN FONT LICENSE text")
+	}
+
+	// (2) @font-face registration: relative /static/fonts/ src, no external URL.
+	css := readEmbeddedAsset(t, "console.css")
+	if !strings.Contains(css, `font-family: "Goorm Sans Code"`) {
+		t.Error("console.css missing the Goorm Sans Code @font-face registration")
+	}
+	if !strings.Contains(css, `url("/static/fonts/GoormSansCode-`) {
+		t.Error("Goorm Sans Code @font-face src is not the relative /static/fonts/ subset path")
+	}
+
+	// (3) --font-mono leads with Goorm Sans Code; the OS fallback stack follows.
+	if !regexp.MustCompile(`--font-mono:\s*"Goorm Sans Code",\s*ui-monospace`).MatchString(css) {
+		t.Error(`--font-mono does not lead with "Goorm Sans Code" followed by the OS fallback stack`)
+	}
+
+	// (4) Served offline from the embed (200, non-empty).
+	a := newTestApp(t)
+	req := httptest.NewRequest(http.MethodGet, "/static/fonts/GoormSansCode-Regular.subset.woff2", nil)
+	rec := httptest.NewRecorder()
+	a.routes().ServeHTTP(rec, req)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("GET GoormSansCode subset status = %d, want 200", rec.Code)
+	}
+	if rec.Body.Len() == 0 {
+		t.Error("GoormSansCode subset served body is empty")
+	}
+}
+
 // renderErroredBody POSTs an invalid submission and returns the re-rendered body
 // (which carries a per-field error).
 func renderErroredBody(t *testing.T) string {
