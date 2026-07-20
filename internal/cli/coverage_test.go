@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"errors"
-	"fmt"
 	"io"
 	"os"
 	"path/filepath"
@@ -13,6 +12,7 @@ import (
 
 	"log/slog"
 
+	"github.com/modu-ai/moai-adk/internal/cli/uikit"
 	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/hook"
 	"github.com/modu-ai/moai-adk/internal/update"
@@ -54,14 +54,25 @@ func TestRunHookEvent_Success(t *testing.T) {
 	t.Error("pre-tool subcommand not found")
 }
 
+// TestRunHookEvent_ReadInputError asserts the fail-open contract for malformed stdin
+// (SPEC-INTERNAL-TEST-001 REQ-TEST-002 / F1). runHookEvent MUST return nil and emit the
+// event's safe default HookOutput rather than failing the hook pipeline on a ReadInput error.
+// The previous test asserted the stale fail-closed contract (err != nil) and then
+// unconditionally called err.Error(), causing a nil-pointer dereference SIGSEGV that crashed
+// the entire internal/cli test binary and made coverage measurement impossible.
 func TestRunHookEvent_ReadInputError(t *testing.T) {
 	origDeps := deps
 	defer func() { deps = origDeps }()
 
+	var capturedOutput *hook.HookOutput
 	deps = &Dependencies{
 		HookProtocol: &mockHookProtocol{
 			readInputFunc: func(_ io.Reader) (*hook.HookInput, error) {
 				return nil, errors.New("invalid JSON")
+			},
+			writeOutputFunc: func(_ io.Writer, output *hook.HookOutput) error {
+				capturedOutput = output
+				return nil
 			},
 		},
 		HookRegistry: &mockHookRegistry{},
@@ -71,11 +82,12 @@ func TestRunHookEvent_ReadInputError(t *testing.T) {
 		if cmd.Name() == "post-tool" {
 			cmd.SetContext(context.Background())
 			err := cmd.RunE(cmd, []string{})
-			if err == nil {
-				t.Error("should error on ReadInput failure")
+			if err != nil {
+				t.Fatalf("runHookEvent must fail-open (nil error) on ReadInput failure, got: %v", err)
 			}
-			if !strings.Contains(err.Error(), "read hook input") {
-				t.Errorf("error should mention read hook input, got %v", err)
+			// The safe default HookOutput must be emitted (fail-open contract, hook.go:174-187).
+			if capturedOutput == nil {
+				t.Error("default HookOutput must be emitted on ReadInput failure (fail-open contract)")
 			}
 			return
 		}
@@ -775,10 +787,10 @@ func TestRunGLM_NilConfig(t *testing.T) {
 
 func TestCheckGit_Verbose(t *testing.T) {
 	check := checkGit(true)
-	if check.Status == CheckOK && check.Detail == "" {
+	if check.Status == uikit.CheckOK && check.Detail == "" {
 		t.Error("verbose git check should include detail")
 	}
-	if check.Status == CheckOK && !strings.Contains(check.Detail, "path:") {
+	if check.Status == uikit.CheckOK && !strings.Contains(check.Detail, "path:") {
 		t.Errorf("verbose git detail should contain path, got %q", check.Detail)
 	}
 }
@@ -803,7 +815,7 @@ func TestCheckMoAIConfig_Verbose(t *testing.T) {
 	}()
 
 	check := checkMoAIConfig(true)
-	if check.Status != CheckOK {
+	if check.Status != uikit.CheckOK {
 		t.Errorf("status = %q, want ok", check.Status)
 	}
 	if check.Detail == "" {
@@ -835,7 +847,7 @@ func TestCheckMoAIConfig_MissingSections(t *testing.T) {
 	}()
 
 	check := checkMoAIConfig(false)
-	if check.Status != CheckWarn {
+	if check.Status != uikit.CheckWarn {
 		t.Errorf("status = %q, want warn for missing sections", check.Status)
 	}
 	if !strings.Contains(check.Message, "sections") {
@@ -863,7 +875,7 @@ func TestCheckClaudeConfig_Present(t *testing.T) {
 	}()
 
 	check := checkClaudeConfig(false)
-	if check.Status != CheckOK {
+	if check.Status != uikit.CheckOK {
 		t.Errorf("status = %q, want ok for present .claude/", check.Status)
 	}
 	if !strings.Contains(check.Message, "found") {
@@ -891,7 +903,7 @@ func TestCheckClaudeConfig_Verbose(t *testing.T) {
 	}()
 
 	check := checkClaudeConfig(true)
-	if check.Status != CheckOK {
+	if check.Status != uikit.CheckOK {
 		t.Errorf("status = %q, want ok", check.Status)
 	}
 	if check.Detail == "" {
@@ -948,9 +960,9 @@ func TestRunDoctor_FixFlag(t *testing.T) {
 	// Output may or may not contain "Suggested fixes" depending on whether any check fails.
 	// The fix code path is still exercised either way.
 	output := buf.String()
-	// After the tui migration, the summary uses the Pill format with the Korean "passed" label (previously "N passed").
-	if !strings.Contains(output, "통과") {
-		t.Errorf("output should contain summary with '통과', got %q", output)
+	// After the tui migration, the summary uses the Pill format with the "Pass" label (previously "N passed").
+	if !strings.Contains(output, "Pass") {
+		t.Errorf("output should contain summary with 'Pass', got %q", output)
 	}
 }
 
@@ -1126,37 +1138,6 @@ func setupMinimalConfig(t *testing.T, dir string) {
 	if err := os.WriteFile(
 		filepath.Join(sectionsDir, "quality.yaml"),
 		[]byte("constitution:\n  development_mode: ddd\n"),
-		0o644,
-	); err != nil {
-		t.Fatal(err)
-	}
-}
-
-// setupMinimalConfigWithMode creates a minimal .moai config with a specific mode.
-// Currently unused but kept for future test expansions.
-func setupMinimalConfigWithMode(t *testing.T, dir string, mode string) { //nolint:unused
-	t.Helper()
-	sectionsDir := filepath.Join(dir, ".moai", "config", "sections")
-	if err := os.MkdirAll(sectionsDir, 0o755); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.WriteFile(
-		filepath.Join(sectionsDir, "user.yaml"),
-		[]byte("user:\n  name: test\n"),
-		0o644,
-	); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.WriteFile(
-		filepath.Join(sectionsDir, "language.yaml"),
-		[]byte("language:\n  conversation_language: en\n"),
-		0o644,
-	); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.WriteFile(
-		filepath.Join(sectionsDir, "quality.yaml"),
-		fmt.Appendf(nil, "constitution:\n  development_mode: %s\n", mode),
 		0o644,
 	); err != nil {
 		t.Fatal(err)

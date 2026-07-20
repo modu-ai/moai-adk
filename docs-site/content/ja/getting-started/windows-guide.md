@@ -1,58 +1,60 @@
 ---
-title: Windows ガイド
+title: Windows 利用ガイド
 weight: 40
 draft: false
 ---
+
+Windows で MoAI-ADK を使う際に知っておくべき環境要件と、よくある落とし穴をまとめました。いちばん快適なのは **WSL** です — ネイティブ Windows 環境で遭遇するパス・権限の問題のほとんどは、WSL では発生しません。
 
 ## サポート環境
 
 | 環境 | サポート状況 | 備考 |
 |------|----------|------|
-| **WSL (推奨)** | ✅ 完全サポート | 最良の体験 |
-| **PowerShell 7.x+** | ✅ サポート | 代替環境 |
-| PowerShell 5.x (レガシー) | ❌ 未サポート | Windows PowerShell |
-| cmd.exe | ❌ 未サポート | コマンドプロンプト |
+| **WSL (推奨)** | {{< icon check ok >}} 完全サポート | 最適な体験 |
+| **PowerShell 7.x+** | {{< icon check ok >}} サポート | 代替環境 |
+| PowerShell 5.x (レガシー) | {{< icon x danger >}} 非サポート | Windows PowerShell |
+| cmd.exe | {{< icon x danger >}} 非サポート | コマンドプロンプト |
 
 **必須要件:**
-- [Git for Windows](https://gitforwindows.org/) のインストールが必須
-- WSLまたはPowerShell 7.x以上
+- [Git for Windows](https://gitforwindows.org/) のインストール必須
+- WSL または PowerShell 7.x 以上
 
 ## インストール方法
 
 ### WSL (推奨)
 
-WSLはWindows上でLinux環境を提供し、MoAI-ADKのすべての機能を完全にサポートします。
+WSL は Windows 上で Linux 環境を提供し、MoAI-ADK のすべての機能を完全にサポートします。
 
 ```bash
-# WSLのインストール(管理者権限のPowerShellで実行)
+# WSL のインストール (管理者 PowerShell で実行)
 wsl --install
 
-# WSL内でMoAI-ADKをインストール
+# WSL 内で MoAI-ADK をインストール
 curl -fsSL https://raw.githubusercontent.com/modu-ai/moai-adk/main/install.sh \
   | bash
 ```
 
 ### PowerShell 7.x+
 
-> **参考**: 最良の体験のためにWSLの使用を推奨します。
+> **参考**: 最適な体験のために WSL の利用を推奨します。
 
 ```powershell
 irm https://raw.githubusercontent.com/modu-ai/moai-adk/main/install.ps1 | iex
 ```
 
-## 非ASCIIユーザー名パスエラー
+## 非 ASCII ユーザー名のパスエラー
 
-### 症状
+### 問題の症状
 
-Windowsのユーザー名に日本語、中国語などの非ASCII文字が含まれている場合、`EINVAL`エラーが発生することがあります。これはWindowsの8.3短縮ファイル名変換の過程で発生する問題です。
+Windows のユーザー名に日本語、韓国語、中国語などの非 ASCII 文字が含まれる場合、`EINVAL` エラーが発生することがあります。これは Windows の 8.3 短縮ファイル名変換の過程で発生する問題です。
 
 ```
-Error: EINVAL: invalid argument, open 'C:\Users\田中太郎\AppData\Local\Temp\...'
+Error: EINVAL: invalid argument, open 'C:\Users\山田太郎\AppData\Local\Temp\...'
 ```
 
-### 解決方法1: 代替一時ディレクトリの設定 (推奨)
+### 解決方法 1: 代替一時ディレクトリの設定 (推奨)
 
-ASCII文字のみを含むパスに一時ディレクトリを作成します:
+ASCII 文字のみを含むパスに一時ディレクトリを作成します:
 
 ```bash
 # Command Prompt
@@ -66,9 +68,9 @@ $env:MOAI_TEMP_DIR="C:\temp"
 New-Item -ItemType Directory -Path "C:\temp" -Force
 ```
 
-環境変数を恒久的に設定するには、システム環境変数に`MOAI_TEMP_DIR`を追加してください。
+環境変数を恒久的に設定するには、システム環境変数に `MOAI_TEMP_DIR` を追加してください。
 
-### 解決方法2: 8.3ファイル名生成の無効化
+### 解決方法 2: 8.3 ファイル名生成の無効化
 
 管理者権限で実行:
 
@@ -76,56 +78,56 @@ New-Item -ItemType Directory -Path "C:\temp" -Force
 fsutil 8dot3name set 1
 ```
 
-> **注意**: この設定はシステム全体に影響します。一部のレガシープログラムが影響を受ける可能性があります。
+> **注意**: この設定はシステム全体に影響します。一部のレガシープログラムに影響が及ぶ可能性があります。
 
-### 解決方法3: ASCIIユーザーアカウントの作成
+### 解決方法 3: ASCII ユーザーアカウントの作成
 
-英語名で新しいWindowsユーザーアカウントを作成すると、パスの問題を根本的に解決できます。
+英語名で新しい Windows ユーザーアカウントを作成すれば、パス問題を根本的に解決できます。
 
-## WSLセットアップガイド
+## WSL セットアップガイド
 
-### WSLのインストール
+### WSL のインストール
 
 ```powershell
-# 管理者権限のPowerShellで実行
+# 管理者 PowerShell で実行
 wsl --install
 
-# デフォルトディストリビューション: Ubuntu (推奨)
-# 再起動後にユーザー名とパスワードを設定
+# 既定ディストリビューション: Ubuntu (推奨)
+# 再起動後、ユーザー名とパスワードを設定
 ```
 
 ### プロジェクトファイルへのアクセス
 
-WSLからWindowsファイルへアクセス:
+WSL から Windows のファイルにアクセス:
 
 ```bash
-# Windowsファイルシステムへのアクセス
+# Windows ファイルシステムへのアクセス
 cd /mnt/c/Users/ユーザー名/projects/
 
-# WSLネイティブファイルシステムを使用 (より高速)
+# WSL ネイティブファイルシステムを使用 (より高速)
 cd ~/projects/
 ```
 
-> **パフォーマンスのヒント**: WSLネイティブファイルシステム(`~/`配下)で作業すると、クロスファイルシステムのオーバーヘッドなしに最適なパフォーマンスが得られます。
+> **パフォーマンスのヒント**: WSL ネイティブファイルシステム(`~/` 配下)で作業すると、クロスファイルシステムのオーバーヘッドなしに最適なパフォーマンスが得られます。
 
-### VS Code連携
+### VS Code 連携
 
-1. VS Codeに[WSL拡張機能](https://marketplace.visualstudio.com/items?itemName=ms-vscode-remote.remote-wsl)をインストール
-2. WSLターミナルで`code .`を実行
-3. VS Codeが自動的にWSLモードで開く
+1. VS Code に [WSL 拡張機能](https://marketplace.visualstudio.com/items?itemName=ms-vscode-remote.remote-wsl) をインストール
+2. WSL ターミナルで `code .` を実行
+3. VS Code が自動的に WSL モードで開く
 
-## CGモードでのtmux使用
+## CG モードでの tmux 利用
 
-[CGモード](/ja/multi-llm/cg-mode)を使用するにはtmuxが必要です。WSLでインストール:
+[CG モード](/ja/multi-llm/cg-mode)を使うには tmux が必要です。WSL でのインストール:
 
 ```bash
 # Ubuntu/Debian
 sudo apt install tmux
 
-# tmuxセッションを開始
+# tmux セッションの開始
 tmux new -s moai
 
-# CGモードを実行
+# CG モードの実行
 moai cg
 ```
 
@@ -133,14 +135,14 @@ moai cg
 
 | 問題 | 原因 | 解決 |
 |------|------|------|
-| `moai: command not found` | PATHにGo binディレクトリが含まれていない | `export PATH="$HOME/go/bin:$PATH"`を`.bashrc`に追加 |
-| `EINVAL`エラー | 非ASCIIユーザー名 | 上記の[非ASCIIユーザー名パスエラー](#非asciiユーザー名パスエラー)を参照 |
-| 権限拒否 | インストールスクリプトの権限 | `chmod +x install.sh`後に再実行 |
-| Gitコマンド失敗 | Git for Windows未インストール | [Git for Windows](https://gitforwindows.org/)をインストール |
-| tmuxがない | CGモードを実行できない | `sudo apt install tmux` (WSL内で) |
+| `moai: command not found` | PATH に Go bin ディレクトリが未登録 | `export PATH="$HOME/go/bin:$PATH"` を `.bashrc` に追加 |
+| `EINVAL` エラー | 非 ASCII ユーザー名 | 上記の [非 ASCII ユーザー名のパスエラー](#非-ascii-ユーザー名のパスエラー) を参照 |
+| 権限拒否 | インストールスクリプトの権限 | `chmod +x install.sh` の後に再実行 |
+| Git コマンドの失敗 | Git for Windows 未インストール | [Git for Windows](https://gitforwindows.org/) をインストール |
+| tmux がない | CG モードを実行できない | `sudo apt install tmux` (WSL で) |
 
 ## 次のステップ
 
-- [インストール](/ja/getting-started/installation) — インストールの詳細ガイド
+- [インストール](/ja/getting-started/installation) — インストール詳細ガイド
 - [初期設定](/ja/getting-started/init-wizard) — プロジェクトの初期化
-- [CGモード](/ja/multi-llm/cg-mode) — Claude + GLMハイブリッドモード
+- [CG モード](/ja/multi-llm/cg-mode) — Claude + GLM ハイブリッドモード

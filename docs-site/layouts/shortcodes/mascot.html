@@ -1,0 +1,27 @@
+{{- /* 마스코트 캐릭터 shortcode — v2 6-포즈 + 레거시 variant 하위호환 (M5).
+       v2 포즈: {{< mascot explaining >}} / {{< mascot thinking 140 "inline" >}}
+         → canonical MoAI-Mascot-<Pose>.png, class="mascot mascot-<pose>"
+         (partials/mascot.html 과 동일 계약)
+       레거시 variant(하위호환): {{< mascot coding >}} / {{< mascot bubble 120 >}}
+         → mascots/mascot-<variant>.png, class="cw-mascot cw-mascot--<variant>"
+       arg0 variant/pose(기본 coding), arg1 size(px, 기본 160), arg2 추가 클래스. */ -}}
+{{- $variant := .Get 0 | default "coding" -}}
+{{- $size := .Get 1 | default "160" -}}
+{{- $extra := .Get 2 | default "" -}}
+{{- $poses := slice "thinking" "pointing" "searching" "teaching" "explaining" "coffee" -}}
+{{- $legacy := slice "coding" "talking" "bubble" -}}
+{{- if in $poses $variant -}}
+{{- $file := printf "mascots/MoAI-Mascot-%s.png" (title $variant) -}}
+<img class="mascot mascot-{{ $variant }}{{ with $extra }} {{ . }}{{ end }}"
+     loading="lazy" decoding="async"
+     src="{{ $file | relURL }}"
+     width="{{ $size }}" height="auto" alt="" />
+{{- else if in $legacy $variant -}}
+<img class="cw-mascot cw-mascot--{{ $variant }}{{ with $extra }} cw-mascot--{{ . }}{{ end }}"
+     loading="lazy" decoding="async"
+     src="{{ printf "mascots/mascot-%s.png" $variant | relURL }}"
+     width="{{ $size }}" height="auto"
+     alt="MoAI 마스코트 캐릭터" />
+{{- else -}}
+{{ errorf "mascot shortcode: unknown variant %q (poses: thinking|pointing|searching|teaching|explaining|coffee | legacy: coding|talking|bubble)" $variant }}
+{{- end -}}

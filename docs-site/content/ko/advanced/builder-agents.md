@@ -4,15 +4,17 @@ weight: 40
 draft: false
 ---
 
-MoAI-ADK 확장을 위한 Harness v4 Builder를 상세히 안내합니다.
+에이전틱 하네스의 마지막 조각은 재귀입니다 — 하네스가 하네스를 만듭니다. Harness v4 Builder는 자연어 요청 한 문장으로 프로젝트 고유의 전문가 팀을 생성하는 그 재귀 구조의 입구입니다.
 
 {{< callout type="info" >}}
-  **한 줄 요약**: Harness v4 Builder는 자연어 요청으로 프로젝트 고유의 전문가 팀을 동적으로 생성합니다. 4단계 워크플로우(ANALYZE → PLAN → GENERATE → ACTIVATE)와 manifest 기반 Runner로 구성됩니다.
+**한 줄 요약**: Harness v4 Builder는 자연어 요청으로 프로젝트 고유의 전문가 팀을 동적으로 생성합니다. 4단계 워크플로우 (ANALYZE → PLAN → GENERATE → ACTIVATE)와 manifest 기반 Runner로 구성됩니다.
 {{< /callout >}}
 
 ## Harness v4 Builder란?
 
 Harness v4 Builder는 `/moai:harness <자연어 요청>`을 통해 **프로젝트 고유의 전문가 팀을 동적으로 생성**합니다.
+
+범용 에이전트 카탈로그 (11개)가 모든 프로젝트에 공통이라면 Builder가 만드는 하네스는 여러분의 프로젝트에만 존재하는 맞춤 팀입니다.
 
 ### 이전 버전과의 차이
 
@@ -63,73 +65,82 @@ Harness v4 Builder는 `/moai:harness <자연어 요청>`을 통해 **프로젝�
 
 ## Manifest 기반 Runner
 
-Harness v4는 **Manifest 기반 Runner**를 사용하여 생성된 팀을 운영합니다.
+Harness v4는 **Manifest 기반 Runner**를 사용하여 생성된 specialist 팀을 운영합니다. 어떤 도메인에 어떤 specialist가, 어떤 실행 원시(primitive)·격리·effort·모델로 투입되는지를 manifest 한 파일에 선언합니다 — 모델 배정을 선언으로 관리하는 토크노믹스 원칙이 여기에도 적용됩니다. specialist 수는 **3~7개**를 HARD 상한으로 둡니다.
 
 ### manifest.json 구조
 
 ```json
 {
-  "spec_id": "HARNESS-PROJECT-001",
-  "name": "My Project Custom Team",
-  "version": "1.0.0",
-  "created_at": "2026-07-01T10:00:00Z",
-  "phases": [
+  "name": "oss-docs",
+  "domain": "OSS 프로젝트 공개 문서 — README 4-locale + Hugo docs-site",
+  "patterns": ["Pipeline", "Fan-out/Fan-in", "Producer-Reviewer"],
+  "specialists": [
     {
-      "name": "plan",
-      "teammates": [
-        {
-          "name": "researcher",
-          "model": "haiku",
-          "mode": "plan",
-          "skills": ["moai-foundation-core"]
-        }
-      ]
+      "role": "content-author",
+      "description": "canonical-locale 원문 저작 (docs-site ko, README en)",
+      "agent_file": ".claude/agents/harness/hns-oss-docs-content-author-specialist.md",
+      "primitive": "sub-agent",
+      "isolation": "none",
+      "effort": "high",
+      "model": "opus"
     },
     {
-      "name": "run",
-      "teammates": [
-        {
-          "name": "implementer",
-          "model": "inherit",
-          "mode": "acceptEdits",
-          "isolation": "worktree_optional"
-        }
-      ]
+      "role": "locale-translator",
+      "description": "동일 PR 내 3개 파생 locale 도출 (병렬 fan-out)",
+      "agent_file": ".claude/agents/harness/hns-oss-docs-locale-translator-specialist.md",
+      "primitive": "adversarial-fan-out",
+      "isolation": "none",
+      "effort": "medium",
+      "model": "sonnet"
     }
   ],
-  "worktree_isolation": "L1_optional"
+  "sprint_contract": {
+    "dimensions": ["locale-parity", "build-clean", "style-compliance", "content-fidelity"],
+    "thresholds": { "locale-parity": 1.0, "build-clean": 1.0 },
+    "must_pass": ["locale-parity", "build-clean"]
+  },
+  "companion_skills": ["hns-oss-docs-i18n-rules", "hns-oss-docs-verify"],
+  "entry_command": "/harness:oss-docs",
+  "runner_workflow": "hns-oss-docs-run.js"
 }
 ```
 
+- `primitive`: 실행 원시 (`sub-agent`, `adversarial-fan-out` 등)
+- `isolation` / `effort` / `model`: specialist별 격리 수준, 추론 강도, 모델 티어를 목적에 맞게 배정
+- `sprint_contract`: Sprint Contract — 품질 차원과 must_pass 게이트
+- `schedule` (선택): 반복 실행이 필요한 하네스는 `mode: discovery-only` 스케줄 객체를 둘 수 있음
+
 ### Runner 동작
 
-1. **Phase 진입**: manifest의 phase 시퀀스를 따라 진행
-2. **Teammate Spawn**: 각 phase의 teammates를 동적으로 생성
-3. **Isolation 적용**: 조건부 worktree 격리 적용
-4. **Result Aggregation**: 각 teammate의 결과를 통합
+1. **Specialist 위임**: manifest의 specialist 시퀀스를 patterns에 따라 진행
+2. **Fan-out Spawn**: 병렬 원시(adversarial-fan-out 등)는 동시 spawn
+3. **Isolation 적용**: specialist별 격리 설정 적용
+4. **Result Aggregation**: 각 specialist의 결과를 Sprint Contract로 검증·통합
 
 ## Harness Lifecycle Commands
 
-Harness v4 Builder로 생성된 하네스는 `/harness:<name>` 명령어로 관리됩니다.
+Harness v4 Builder로 생성된 하네스는 `moai harness` CLI로 관리합니다.
 
 ### 사용 가능한 명령어
 
 ```bash
-# 생성된 하네스 목록 조회
-/harness list
+# 생성된 v4 하네스 목록 조회 (이름 + 도메인 + entry 명령어)
+moai harness list
 
-# 특정 하네스 상태 확인
-/harness:my-project-team status
+# 하네스 manifest·specialist 편집 경로 확인
+moai harness edit <name>
 
-# 하네스 설정 편집
-/harness:my-project-team edit
+# 하네스 원자적 삭제 (command + workflow + specialists + skills + manifest)
+moai harness remove <name>
 
-# 하네스 삭제
-/harness:my-project-team remove
+# 참조 무결성 스모크 게이트
+moai harness doctor
 
 # Harness v4 Builder로 새 하네스 생성
 /moai:harness <자연어 요청>
 ```
+
+학습 서브시스템 관리 동사도 `moai harness`에 있습니다: `moai harness status`(관찰/티어/진화 요약), `moai harness apply`(대기 중 제안 적용), `moai harness rollback <date>`(적용된 진화 되돌리기), `moai harness disable`(학습 비활성화).
 
 ## 자연어 요청으로 하네스 생성
 
@@ -142,7 +153,7 @@ Harness v4 Builder로 생성된 하네스는 `/harness:<name>` 명령어로 관�
 
 ### Builder의 동작 흐름
 
-1. ANALYZE: 프로젝트 구조(Go, PostgreSQL, REST API)를 분석
+1. ANALYZE: 프로젝트 구조 (Go, PostgreSQL, REST API)를 분석
 2. PLAN: 3명 팀 (API Designer, DB Specialist, Test Engineer) 결정
 3. GENERATE: 각 에이전트 정의와 manifest.json 생성
 4. ACTIVATE: 팀 활성화 및 `/harness:backend-team` 커맨드 등록
@@ -167,14 +178,14 @@ Claude Code 런타임이 에이전트당 L1 워크트리를 생성합니다.
 
 ### 비활성화
 
-manifest의 `"worktree_isolation": "none"`으로 설정하면 L1 격리 생략.
+manifest의 `"worktree_isolation": "none"`으로 설정하면 L1 격리를 생략합니다.
 
 ## 관련 문서
 
-- [Harness v4 Builder 심화 가이드](/advanced/harness-v4-builder) - Builder 4-phase 상세 및 manifest 스키마
-- [에이전트 가이드](/advanced/agent-guide) - 8개 핵심 에이전트 카탈로그
-- [동적 워크플로우](/advanced/ultracode-workflows) - `/effort ultracode` 병렬 실행
+- [Harness v4 Builder 심화 가이드](/ko/advanced/harness-v4-builder) - Builder 4-phase 상세 및 manifest 스키마
+- [에이전트 가이드](/ko/advanced/agent-guide) - 11개 핵심 에이전트 카탈로그
+- [동적 워크플로우](/ko/advanced/ultracode-workflows) - `/effort ultracode` 병렬 실행
 
 {{< callout type="info" >}}
-**팁**: Harness v4 Builder는 프로젝트마다 **커스텀 팀을 한 번만 생성**하면, 이후 모든 작업에서 자동으로 해당 팀이 위임됩니다. 처음 생성 후엔 `/harness:team-name`으로 언제든 재활용할 수 있습니다.
+**팁**: Harness v4 Builder로 프로젝트마다 **커스텀 팀을 한 번만 생성**하면, 이후 모든 작업에서 자동으로 해당 팀이 위임됩니다. 처음 생성 후엔 `/harness:team-name`으로 언제든 재활용할 수 있습니다.
 {{< /callout >}}

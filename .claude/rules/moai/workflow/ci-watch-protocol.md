@@ -1,8 +1,6 @@
 ---
 description: CI watch loop protocol — HARD invocation contract for moai-workflow-ci-loop skill (watch phase). Auto-loaded on /moai sync and moai pr watch invocations.
-paths:
-  - ".claude/skills/moai-workflow-ci-loop/SKILL.md"
-  - "scripts/ci-watch/run.sh"
+paths: ".claude/skills/moai-workflow-ci-loop/SKILL.md,scripts/ci-watch/run.sh"
 ---
 
 # CI Watch Protocol Rule
@@ -12,6 +10,7 @@ paths:
 
 ---
 
+<!-- anchor: #watch-loop-entry -->
 ## Auto-Invocation Contract
 
 [ZONE:Frozen] [HARD] The orchestrator MUST invoke the CI watch loop after `/moai sync` Phase 4
@@ -28,12 +27,13 @@ MOAI_CIWATCH_GH=gh sh scripts/ci-watch/run.sh <PR_NUMBER> <BRANCH>
 
 **Prerequisites** (all must be satisfied before invocation):
 1. `gh` CLI is authenticated (`gh auth status` exits 0)
-2. `.github/required-checks.yml` exists (Wave 1 SSoT)
+2. `.github/required-checks.yml` exists (required-checks SSoT layer)
 3. PR number is a positive integer (not zero, not empty)
 4. No active watch for a different PR (heartbeat < 90s)
 
 ---
 
+<!-- anchor: #poll-interval -->
 ## Polling Cadence
 
 [ZONE:Frozen] [HARD] Poll interval MUST be 30 seconds minimum. GitHub Actions API rate limits
@@ -44,6 +44,7 @@ apply; polling faster than 30s risks 429 responses.
 
 ---
 
+<!-- anchor: #timeout -->
 ## 30-Minute Hard Timeout
 
 [ZONE:Frozen] [HARD] The watch loop MUST exit with code 3 after 30 minutes wall-clock time
@@ -57,6 +58,7 @@ return control. Do NOT auto-restart the watch loop after timeout.
 
 ---
 
+<!-- anchor: #required-checks-ssot -->
 ## Required vs Auxiliary Discrimination
 
 [ZONE:Frozen] [HARD] Required checks are defined ONLY in `.github/required-checks.yml`
@@ -70,17 +72,19 @@ a remediation message. Run `moai github init` to restore the SSoT.
 
 ---
 
+<!-- anchor: #failed-checks-reporting -->
 ## Exit Code Handling
 
 | Exit | Meaning | Orchestrator MUST |
 |------|---------|-------------------|
 | 0 | All required checks passed | Present ready-to-merge AskUserQuestion |
 | 1 | Fatal error | Surface error + remediation to user |
-| 2 | Required check(s) failed | Parse JSON handoff → Wave 3 `Agent(general-purpose)` diagnostic scope (ci-autofix loop entry) |
+| 2 | Required check(s) failed | Parse JSON handoff → autofix layer `Agent(general-purpose)` diagnostic scope (ci-autofix loop entry) |
 | 3 | 30-min timeout | Emit blocker → return control to user |
 
 ---
 
+<!-- anchor: #emit-ready-to-merge-report -->
 ## AskUserQuestion Boundary
 
 [ZONE:Frozen] [HARD] The CLI (`moai pr watch`, `EmitReadyToMergeReport`) MUST NOT call
@@ -126,10 +130,10 @@ a new invocation may take over without explicit abort.
 
 ---
 
-## Wave 1 SSoT Contract Preservation
+## Required-Checks SSoT Contract Preservation
 
-[ZONE:Frozen] [HARD] Wave 2 watch loop MUST NOT modify `.github/required-checks.yml` (Wave 1 SSoT).
-The SSoT is read-only for Wave 2. Modifications require `moai github init` re-run.
+[ZONE:Frozen] [HARD] The watch loop layer MUST NOT modify `.github/required-checks.yml` (the required-checks SSoT layer).
+The SSoT is read-only for the watch layer. Modifications require `moai github init` re-run.
 
 ---
 
@@ -139,9 +143,7 @@ The SSoT is read-only for Wave 2. Modifications require `moai github init` re-ru
 (typically 5+ minutes), it MUST use `gh pr checks --watch` invoked via
 `run_in_background: true`. Idle polling loops (e.g., `sleep N && gh pr checks`)
 are prohibited because they block the orchestrator's main session and waste
-both wall-time and tokens. This rule was added by SPEC-V3R5-WORKFLOW-OPT-001
-Layer C in response to the W3 HARNESS-AUTONOMY-001 meta-analysis which found
-15 min of serial CI wait during a single run-phase.
+both wall-time and tokens. Motivation: reduces serial CI wait during long-running PRs.
 
 ### Canonical Pattern
 

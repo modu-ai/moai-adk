@@ -15,6 +15,11 @@ import (
 	"testing"
 	"time"
 
+	"github.com/modu-ai/moai-adk/internal/cli/uikit"
+	"github.com/modu-ai/moai-adk/internal/cli/update/backup"
+	"github.com/modu-ai/moai-adk/internal/cli/update/deploy"
+	updatemerge "github.com/modu-ai/moai-adk/internal/cli/update/merge"
+	"github.com/modu-ai/moai-adk/internal/cli/update/plan"
 	"github.com/modu-ai/moai-adk/internal/cli/wizard"
 	"github.com/modu-ai/moai-adk/internal/cli/worktree"
 	"github.com/modu-ai/moai-adk/internal/config"
@@ -111,18 +116,21 @@ func TestUpdateSettingsLocalEnv(t *testing.T) {
 				t.Fatalf("unexpected error: %v", err)
 			}
 
-			// Verify the written file
+			// Verify the written file as map[string]any (SPEC-CLIFIX-CRITICAL-001
+			// REQ-CRIT-001-001: assertions must not depend on the closed struct that
+			// masked the top-level wipe).
 			data, err := os.ReadFile(settingsPath)
 			if err != nil {
 				t.Fatal(err)
 			}
 
-			var result settingsLocalEnv
+			var result map[string]any
 			if err := json.Unmarshal(data, &result); err != nil {
 				t.Fatalf("result is not valid JSON: %v", err)
 			}
-			if result.Env[tt.wantKey] != tt.wantValue {
-				t.Errorf("env[%q] = %q, want %q", tt.wantKey, result.Env[tt.wantKey], tt.wantValue)
+			env, _ := result["env"].(map[string]any)
+			if got, _ := env[tt.wantKey].(string); got != tt.wantValue {
+				t.Errorf("env[%q] = %q, want %q", tt.wantKey, got, tt.wantValue)
 			}
 		})
 	}
@@ -132,7 +140,9 @@ func TestUpdateSettingsLocalEnv_PreservesExistingKeys(t *testing.T) {
 	tmpDir := t.TempDir()
 	settingsPath := filepath.Join(tmpDir, "settings.local.json")
 
-	existing := `{"env":{"KEEP_THIS":"yes","ALSO_KEEP":"yes"}}`
+	// Fixture now carries a top-level outputStyle so the test cannot pass when
+	// updateSettingsLocalEnv marshals a closed struct that models only Env.
+	existing := `{"outputStyle":"MoAI-Learn","env":{"KEEP_THIS":"yes","ALSO_KEEP":"yes"}}`
 	if err := os.WriteFile(settingsPath, []byte(existing), 0o644); err != nil {
 		t.Fatal(err)
 	}
@@ -147,19 +157,68 @@ func TestUpdateSettingsLocalEnv_PreservesExistingKeys(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	var result settingsLocalEnv
+	var result map[string]any
 	if err := json.Unmarshal(data, &result); err != nil {
 		t.Fatal(err)
 	}
 
-	if result.Env["KEEP_THIS"] != "yes" {
-		t.Error("existing key KEEP_THIS should be preserved")
+	// SPEC-CLIFIX-CRITICAL-001 REQ-CRIT-001-001: top-level keys must survive.
+	if got, _ := result["outputStyle"].(string); got != "MoAI-Learn" {
+		t.Errorf("top-level outputStyle wiped: got %q, want %q", got, "MoAI-Learn")
 	}
-	if result.Env["ALSO_KEEP"] != "yes" {
-		t.Error("existing key ALSO_KEEP should be preserved")
+
+	env, _ := result["env"].(map[string]any)
+	if got, _ := env["KEEP_THIS"].(string); got != "yes" {
+		t.Errorf("existing env key KEEP_THIS should be preserved, got %q", got)
 	}
-	if result.Env["NEW"] != "new_val" {
-		t.Error("new key should be added")
+	if got, _ := env["ALSO_KEEP"].(string); got != "yes" {
+		t.Errorf("existing env key ALSO_KEEP should be preserved, got %q", got)
+	}
+	if got, _ := env["NEW"].(string); got != "new_val" {
+		t.Errorf("new env key NEW should be added, got %q", got)
+	}
+}
+
+// TestUpdateSettingsLocalEnv_PreservesTopLevelOutputStyle is the RED test for
+// SPEC-CLIFIX-CRITICAL-001 REQ-CRIT-001-001: updateSettingsLocalEnv MUST round-trip
+// the file as map[string]any so unknown top-level keys (outputStyle, model, ...)
+// survive the write. Under the buggy closed-struct marshal this FAILS because
+// marshaling settingsLocalEnv emits only the env key.
+func TestUpdateSettingsLocalEnv_PreservesTopLevelOutputStyle(t *testing.T) {
+	tmpDir := t.TempDir()
+	settingsPath := filepath.Join(tmpDir, "settings.local.json")
+
+	existing := `{"outputStyle":"MoAI-Learn","model":"claude-opus-4-8","env":{"KEEP":"yes"}}`
+	if err := os.WriteFile(settingsPath, []byte(existing), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := updateSettingsLocalEnv(settingsPath, "NEW_VAR", "v"); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	data, err := os.ReadFile(settingsPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	var result map[string]any
+	if err := json.Unmarshal(data, &result); err != nil {
+		t.Fatalf("rewritten file is not valid JSON: %v", err)
+	}
+
+	if got, _ := result["outputStyle"].(string); got != "MoAI-Learn" {
+		t.Errorf("outputStyle wiped: got %q, want %q (SPEC-CLIFIX-CRITICAL-001 REQ-CRIT-001-001)", got, "MoAI-Learn")
+	}
+	if got, _ := result["model"].(string); got != "claude-opus-4-8" {
+		t.Errorf("model wiped: got %q, want %q", got, "claude-opus-4-8")
+	}
+	env, _ := result["env"].(map[string]any)
+	if got, _ := env["KEEP"].(string); got != "yes" {
+		t.Errorf("env.KEEP should be preserved, got %q", got)
+	}
+	if got, _ := env["NEW_VAR"].(string); got != "v" {
+		t.Errorf("env.NEW_VAR should be set, got %q", got)
 	}
 }
 
@@ -687,9 +746,9 @@ func TestExportDiagnostics_Success(t *testing.T) {
 	exportPath := filepath.Join(tmpDir, "diagnostics.json")
 
 	checks := []DiagnosticCheck{
-		{Name: "Go Runtime", Status: CheckOK, Message: "go1.21"},
-		{Name: "Git", Status: CheckOK, Message: "git version 2.40"},
-		{Name: "Config", Status: CheckWarn, Message: "missing config"},
+		{Name: "Go Runtime", Status: uikit.CheckOK, Message: "go1.21"},
+		{Name: "Git", Status: uikit.CheckOK, Message: "git version 2.40"},
+		{Name: "Config", Status: uikit.CheckWarn, Message: "missing config"},
 	}
 
 	err := exportDiagnostics(exportPath, checks)
@@ -831,6 +890,7 @@ func TestInjectGLMEnvForTeam_NewFile(t *testing.T) {
 			High   string
 			Medium string
 			Low    string
+			Fable  string
 		}{High: "model-high", Medium: "model-med", Low: "model-low"},
 	}
 
@@ -968,7 +1028,7 @@ func TestResolveConventionName_EnvVar(t *testing.T) {
 // TestIsEnforceOnPushEnabled_* removed - exists in hook_pre_push_test.go
 
 // =============================================================================
-// backupMoaiConfig — update.go:977 (previously 66.7%)
+// backup.BackupMoaiConfig — update.go:977 (previously 66.7%)
 // =============================================================================
 
 // TestBackupMoaiConfig_NoConfigDir removed - exists in update_test.go
@@ -989,9 +1049,9 @@ func TestBackupMoaiConfig_WithConfigFiles(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	backupDir, err := backupMoaiConfig(tmpDir)
+	backupDir, err := backup.BackupMoaiConfig(tmpDir)
 	if err != nil {
-		t.Fatalf("backupMoaiConfig error: %v", err)
+		t.Fatalf("backup.BackupMoaiConfig error: %v", err)
 	}
 	if backupDir == "" {
 		t.Fatal("backup dir should not be empty")
@@ -1037,7 +1097,7 @@ func TestCleanMoaiManagedPaths_WithExistingPaths(t *testing.T) {
 	}
 
 	var buf bytes.Buffer
-	err := cleanMoaiManagedPaths(tmpDir, &buf)
+	err := deploy.CleanMoaiManagedPaths(tmpDir, &buf)
 	if err != nil {
 		t.Fatalf("cleanMoaiManagedPaths error: %v", err)
 	}
@@ -1078,7 +1138,7 @@ func TestRestoreMoaiConfig_WithSectionsBackup(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	err := restoreMoaiConfig(tmpDir, backupDir)
+	err := backup.RestoreMoaiConfig(tmpDir, backupDir, nil)
 	if err != nil {
 		t.Fatalf("restoreMoaiConfig error: %v", err)
 	}
@@ -1110,7 +1170,7 @@ func TestRestoreMoaiConfig_LegacyBackup(t *testing.T) {
 	}
 
 	// Should fallback to legacy restore
-	err := restoreMoaiConfig(tmpDir, backupDir)
+	err := backup.RestoreMoaiConfig(tmpDir, backupDir, nil)
 	if err != nil {
 		t.Fatalf("restoreMoaiConfig legacy error: %v", err)
 	}
@@ -1222,6 +1282,7 @@ func TestInjectTmuxSessionEnv_TestEnvironment(t *testing.T) {
 			High   string
 			Medium string
 			Low    string
+			Fable  string
 		}{High: "h", Medium: "m", Low: "l"},
 	}
 
@@ -1280,7 +1341,7 @@ func TestEscapeDotenvValue(t *testing.T) {
 // TestReadStdinWithTimeout_ReturnsSomething removed - exists in misc_coverage_test.go
 
 // =============================================================================
-// statusIcon — doctor.go:262
+// uikit.StatusIcon — doctor.go:262
 // =============================================================================
 
 // TestStatusIcon removed - exists in doctor_test.go
@@ -1335,12 +1396,12 @@ func TestRunHookEvent_NilDeps(t *testing.T) {
 // TestRenderSimpleFallback removed - exists in statusline_test.go
 
 // =============================================================================
-// cleanup_old_backups — update.go:1258 (increase coverage)
+// backup.CleanupOldBackups — update.go:1258 (increase coverage)
 // =============================================================================
 
 func TestCleanupOldBackups_NoBackupDir(t *testing.T) {
 	tmpDir := t.TempDir()
-	deleted := cleanup_old_backups(tmpDir, 5)
+	deleted := backup.CleanupOldBackups(tmpDir, 5)
 	if deleted != 0 {
 		t.Errorf("should delete 0 when no backup dir, got %d", deleted)
 	}
@@ -1367,7 +1428,7 @@ func TestCleanupOldBackups_ExceedsKeepCount(t *testing.T) {
 	}
 
 	// Keep only 2
-	deleted := cleanup_old_backups(tmpDir, 2)
+	deleted := backup.CleanupOldBackups(tmpDir, 2)
 	if deleted != 3 {
 		t.Errorf("should delete 3, got %d", deleted)
 	}
@@ -1868,7 +1929,7 @@ func TestGetGLMEnvPath_Valid(t *testing.T) {
 	}
 }
 
-// classifyFileRisk and determineStrategy — ensure full coverage
+// plan.ClassifyFileRisk and plan.DetermineStrategy — ensure full coverage
 func TestClassifyFileRisk_AllCases(t *testing.T) {
 	tests := []struct {
 		name     string
@@ -1884,21 +1945,21 @@ func TestClassifyFileRisk_AllCases(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := classifyFileRisk(tt.filename, tt.exists)
+			got := plan.ClassifyFileRisk(tt.filename, tt.exists)
 			if got != tt.want {
-				t.Errorf("classifyFileRisk(%q, %v) = %q, want %q", tt.filename, tt.exists, got, tt.want)
+				t.Errorf("plan.ClassifyFileRisk(%q, %v) = %q, want %q", tt.filename, tt.exists, got, tt.want)
 			}
 		})
 	}
 }
 
-// saveTemplateDefaults — test writes actual template defaults
+// backup.SaveTemplateDefaults — test writes actual template defaults
 func TestSaveTemplateDefaults_Success(t *testing.T) {
 	tmpDir := t.TempDir()
 
-	err := saveTemplateDefaults(tmpDir)
+	err := backup.SaveTemplateDefaults(tmpDir)
 	if err != nil {
-		t.Fatalf("saveTemplateDefaults error: %v", err)
+		t.Fatalf("backup.SaveTemplateDefaults error: %v", err)
 	}
 
 	// Verify sections directory was created
@@ -1944,7 +2005,7 @@ func TestCheckGit_VerboseWithGit(t *testing.T) {
 		t.Error("message should not be empty")
 	}
 	// Verbose should include detail
-	if check.Status == CheckOK && check.Detail == "" {
+	if check.Status == uikit.CheckOK && check.Detail == "" {
 		t.Error("verbose mode with git installed should include path detail")
 	}
 }
@@ -2242,7 +2303,7 @@ func TestRunCG_NoAPIKey(t *testing.T) {
 	}
 }
 
-// backupMoaiConfig — test backup with sections directory
+// backup.BackupMoaiConfig — test backup with sections directory
 func TestBackupMoaiConfig_WithSections(t *testing.T) {
 	tmpDir := t.TempDir()
 	sectionsDir := filepath.Join(tmpDir, ".moai", "config", "sections")
@@ -2256,9 +2317,9 @@ func TestBackupMoaiConfig_WithSections(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	backupPath, err := backupMoaiConfig(tmpDir)
+	backupPath, err := backup.BackupMoaiConfig(tmpDir)
 	if err != nil {
-		t.Fatalf("backupMoaiConfig error: %v", err)
+		t.Fatalf("backup.BackupMoaiConfig error: %v", err)
 	}
 	if backupPath == "" {
 		t.Fatal("expected non-empty backup path")
@@ -2311,7 +2372,7 @@ func TestCleanMoaiManagedPaths_WithFiles(t *testing.T) {
 	}
 
 	var buf bytes.Buffer
-	err := cleanMoaiManagedPaths(tmpDir, &buf)
+	err := deploy.CleanMoaiManagedPaths(tmpDir, &buf)
 	if err != nil {
 		t.Fatalf("cleanMoaiManagedPaths error: %v", err)
 	}
@@ -2333,7 +2394,7 @@ func TestCleanMoaiManagedPaths_EmptyProject2(t *testing.T) {
 	// No .claude or .moai directories exist
 
 	var buf bytes.Buffer
-	err := cleanMoaiManagedPaths(tmpDir, &buf)
+	err := deploy.CleanMoaiManagedPaths(tmpDir, &buf)
 	if err != nil {
 		t.Fatalf("cleanMoaiManagedPaths error: %v", err)
 	}
@@ -2527,7 +2588,7 @@ func TestRestoreMoaiConfig_2WayMerge(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	err := restoreMoaiConfig(tmpDir, backupDir)
+	err := backup.RestoreMoaiConfig(tmpDir, backupDir, nil)
 	if err != nil {
 		t.Fatalf("restoreMoaiConfig error: %v", err)
 	}
@@ -2563,7 +2624,7 @@ func TestRestoreMoaiConfig_LegacyFallback(t *testing.T) {
 	}
 
 	// Should fall through to legacy path
-	err := restoreMoaiConfig(tmpDir, backupDir)
+	err := backup.RestoreMoaiConfig(tmpDir, backupDir, nil)
 	if err != nil {
 		t.Fatalf("restoreMoaiConfig legacy error: %v", err)
 	}
@@ -2604,7 +2665,7 @@ func TestRestoreMoaiConfig_3WayMerge(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	err := restoreMoaiConfig(tmpDir, backupDir)
+	err := backup.RestoreMoaiConfig(tmpDir, backupDir, nil)
 	if err != nil {
 		t.Fatalf("restoreMoaiConfig 3-way error: %v", err)
 	}
@@ -2651,7 +2712,7 @@ func TestRunPrePush_WithValidCommits(t *testing.T) {
 
 // TestRunPrePush_EnforcementDisabled already exists earlier in this file
 
-// getProjectConfigVersion — test various scenarios
+// plan.GetProjectConfigVersion — test various scenarios
 // TestGetProjectConfigVersion_MissingFile already exists in update_fileops_test.go
 
 func TestGetProjectConfigVersion_WithVersion(t *testing.T) {
@@ -2666,7 +2727,7 @@ func TestGetProjectConfigVersion_WithVersion(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	ver, err := getProjectConfigVersion(tmpDir)
+	ver, err := plan.GetProjectConfigVersion(tmpDir)
 	if err != nil {
 		t.Fatalf("error: %v", err)
 	}
@@ -2687,7 +2748,7 @@ func TestGetProjectConfigVersion_EmptyVersion(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	ver, err := getProjectConfigVersion(tmpDir)
+	ver, err := plan.GetProjectConfigVersion(tmpDir)
 	if err != nil {
 		t.Fatalf("error: %v", err)
 	}
@@ -2741,7 +2802,7 @@ func TestRunTemplateSyncWithProgress_VersionMatch(t *testing.T) {
 	}
 
 	output := buf.String()
-	if !strings.Contains(output, "up-to-date") {
+	if !strings.Contains(output, "Up to date") {
 		t.Errorf("expected up-to-date message, got: %s", output)
 	}
 }
@@ -2974,7 +3035,7 @@ func TestCheckGit_Default(t *testing.T) {
 		t.Error("message should not be empty")
 	}
 	// Git is available on this machine, so status should be OK
-	if check.Status != CheckOK {
+	if check.Status != uikit.CheckOK {
 		t.Logf("checkGit non-verbose status: %s, message: %s", check.Status, check.Message)
 	}
 }
@@ -2991,7 +3052,7 @@ func TestCheckClaudeConfig_NoClaude2(t *testing.T) {
 
 	check := checkClaudeConfig(false)
 	// No .claude directory, should warn
-	if check.Status == CheckOK {
+	if check.Status == uikit.CheckOK {
 		t.Log("checkClaudeConfig returned OK even without .claude dir")
 	}
 }
@@ -3015,7 +3076,7 @@ func TestCheckClaudeConfig_WithConfigVerbose(t *testing.T) {
 	t.Cleanup(func() { _ = os.Chdir(oldWd) })
 
 	check := checkClaudeConfig(true)
-	if check.Status != CheckOK {
+	if check.Status != uikit.CheckOK {
 		t.Logf("checkClaudeConfig verbose status: %s, message: %s", check.Status, check.Message)
 	}
 }
@@ -3032,7 +3093,7 @@ func TestCheckMoAIConfig_NoConfig2(t *testing.T) {
 
 	check := checkMoAIConfig(false)
 	// No .moai directory
-	if check.Status == CheckOK {
+	if check.Status == uikit.CheckOK {
 		t.Log("checkMoAIConfig returned OK without .moai dir")
 	}
 }
@@ -3214,10 +3275,10 @@ func TestDetectGoBinPathForUpdate_EmptyHome(t *testing.T) {
 	t.Logf("detectGoBinPathForUpdate with empty home: %q", path)
 }
 
-// cleanup_old_backups — test cleanup
+// backup.CleanupOldBackups — test cleanup
 func TestCleanupOldBackups_NoBackups(t *testing.T) {
 	tmpDir := t.TempDir()
-	deleted := cleanup_old_backups(tmpDir, 3)
+	deleted := backup.CleanupOldBackups(tmpDir, 3)
 	if deleted != 0 {
 		t.Errorf("expected 0 deleted, got %d", deleted)
 	}
@@ -3235,7 +3296,7 @@ func TestCleanupOldBackups_WithExcess(t *testing.T) {
 		}
 	}
 
-	deleted := cleanup_old_backups(tmpDir, 3)
+	deleted := backup.CleanupOldBackups(tmpDir, 3)
 	if deleted != 2 {
 		t.Errorf("expected 2 deleted, got %d", deleted)
 	}
@@ -3247,13 +3308,13 @@ func TestCleanupOldBackups_WithExcess(t *testing.T) {
 	}
 }
 
-// saveTemplateDefaults — verify template defaults are saved
+// backup.SaveTemplateDefaults — verify template defaults are saved
 func TestSaveTemplateDefaults_VerifyContent(t *testing.T) {
 	tmpDir := t.TempDir()
 
-	err := saveTemplateDefaults(tmpDir)
+	err := backup.SaveTemplateDefaults(tmpDir)
 	if err != nil {
-		t.Fatalf("saveTemplateDefaults error: %v", err)
+		t.Fatalf("backup.SaveTemplateDefaults error: %v", err)
 	}
 
 	// Should have sections/ with yaml files
@@ -3332,7 +3393,7 @@ func TestRunTemplateSyncWithReporter_VersionMatch(t *testing.T) {
 	}
 
 	currentVersion := version.GetVersion()
-	// getProjectConfigVersion reads from moai.template_version, not system.template_version
+	// plan.GetProjectConfigVersion reads from moai.template_version, not system.template_version
 	systemYAML := fmt.Sprintf("moai:\n  template_version: %s\n", currentVersion)
 	if err := os.WriteFile(filepath.Join(sectionsDir, "system.yaml"), []byte(systemYAML), 0o644); err != nil {
 		t.Fatal(err)
@@ -3359,7 +3420,7 @@ func TestRunTemplateSyncWithReporter_VersionMatch(t *testing.T) {
 	}
 
 	output := buf.String()
-	if !strings.Contains(output, "up-to-date") {
+	if !strings.Contains(output, "Up to date") {
 		t.Errorf("expected up-to-date message, got: %s", output)
 	}
 }
@@ -3412,7 +3473,7 @@ func TestRunTemplateSyncWithReporter_FullDeploy(t *testing.T) {
 	}
 
 	output := buf.String()
-	if !strings.Contains(output, "Template sync complete") {
+	if !strings.Contains(output, "Updated") {
 		t.Errorf("expected sync complete message, got: %s", output)
 	}
 }
@@ -3506,7 +3567,7 @@ func TestCleanMoaiManagedPaths_WithExistingFiles(t *testing.T) {
 	}
 
 	var buf bytes.Buffer
-	err := cleanMoaiManagedPaths(tmpDir, &buf)
+	err := deploy.CleanMoaiManagedPaths(tmpDir, &buf)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -4136,7 +4197,7 @@ func TestRestoreMoaiConfigLegacy_WithMerge(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	err := restoreMoaiConfigLegacy(tmpDir, backupDir, configDir)
+	err := backup.RestoreMoaiConfigLegacy(tmpDir, backupDir, configDir)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -4171,7 +4232,7 @@ func TestRestoreMoaiConfigLegacy_NewFile(t *testing.T) {
 	configDir := filepath.Join(tmpDir, "config")
 	// Don't create config/sections - let the function create it
 
-	err := restoreMoaiConfigLegacy(tmpDir, backupDir, configDir)
+	err := backup.RestoreMoaiConfigLegacy(tmpDir, backupDir, configDir)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -4186,12 +4247,12 @@ func TestRestoreMoaiConfigLegacy_NewFile(t *testing.T) {
 	}
 }
 
-// --- saveTemplateDefaults: exercises embedded template saving ---
+// --- backup.SaveTemplateDefaults: exercises embedded template saving ---
 
 func TestSaveTemplateDefaults_CreatesFiles(t *testing.T) {
 	tmpDir := t.TempDir()
 
-	err := saveTemplateDefaults(tmpDir)
+	err := backup.SaveTemplateDefaults(tmpDir)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -4272,7 +4333,7 @@ func TestRunTemplateSyncWithProgress_VersionMismatch(t *testing.T) {
 	}
 
 	output := buf.String()
-	if !strings.Contains(output, "Template sync complete") {
+	if !strings.Contains(output, "Updated") {
 		t.Errorf("expected sync complete, got: %s", output)
 	}
 }
@@ -4316,7 +4377,7 @@ func TestGetGLMEnvPath_WithHOME(t *testing.T) {
 	}
 }
 
-// --- backupMoaiConfig: with sections including subdirectories ---
+// --- backup.BackupMoaiConfig: with sections including subdirectories ---
 
 func TestBackupMoaiConfig_WithSubdirs(t *testing.T) {
 	tmpDir := t.TempDir()
@@ -4335,7 +4396,7 @@ func TestBackupMoaiConfig_WithSubdirs(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	backupPath, err := backupMoaiConfig(tmpDir)
+	backupPath, err := backup.BackupMoaiConfig(tmpDir)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -4847,7 +4908,7 @@ func TestCheckGit_WithoutVerbose(t *testing.T) {
 		t.Errorf("expected check name Git, got: %s", result.Name)
 	}
 	// On most dev machines, git is available
-	if result.Status == CheckOK && result.Detail != "" {
+	if result.Status == uikit.CheckOK && result.Detail != "" {
 		t.Error("expected no detail when not verbose")
 	}
 }
@@ -4859,7 +4920,7 @@ func TestCheckGit_WithVerboseShowsPath(t *testing.T) {
 	if result.Name != "Git" {
 		t.Errorf("expected check name Git, got: %s", result.Name)
 	}
-	if result.Status == CheckOK && !strings.Contains(result.Detail, "path:") {
+	if result.Status == uikit.CheckOK && !strings.Contains(result.Detail, "path:") {
 		t.Errorf("expected verbose detail to contain path, got: %s", result.Detail)
 	}
 }
@@ -4871,8 +4932,8 @@ func TestExportDiagnostics_VerifyJSON(t *testing.T) {
 	exportPath := filepath.Join(tmpDir, "diag.json")
 
 	checks := []DiagnosticCheck{
-		{Name: "Test Check", Status: CheckOK, Message: "all good", Detail: "details"},
-		{Name: "Warn Check", Status: CheckWarn, Message: "warning"},
+		{Name: "Test Check", Status: uikit.CheckOK, Message: "all good", Detail: "details"},
+		{Name: "Warn Check", Status: uikit.CheckWarn, Message: "warning"},
 	}
 
 	err := exportDiagnostics(exportPath, checks)
@@ -4973,7 +5034,7 @@ func TestAnalyzeMergeChanges_Output(t *testing.T) {
 	deployer := template.NewDeployerWithForceUpdate(embedded, true)
 
 	tmpDir := t.TempDir()
-	analysis := analyzeMergeChanges(deployer, tmpDir)
+	analysis := updatemerge.AnalyzeMergeChanges(deployer, tmpDir)
 
 	// Should have some files from templates
 	if len(analysis.Files) == 0 {
@@ -5361,7 +5422,7 @@ func TestRestoreMoaiConfig_3WayMergeFallbackTo2Way(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	err := restoreMoaiConfig(tmpDir, backupDir)
+	err := backup.RestoreMoaiConfig(tmpDir, backupDir, nil)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -5398,7 +5459,7 @@ func TestRestoreMoaiConfig_CustomSectionNotInTemplate(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	err := restoreMoaiConfig(tmpDir, backupDir)
+	err := backup.RestoreMoaiConfig(tmpDir, backupDir, nil)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -5432,7 +5493,7 @@ func TestRestoreMoaiConfig_SkipsNonYAML(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	err := restoreMoaiConfig(tmpDir, backupDir)
+	err := backup.RestoreMoaiConfig(tmpDir, backupDir, nil)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -5443,7 +5504,7 @@ func TestRestoreMoaiConfig_SkipsNonYAML(t *testing.T) {
 	}
 }
 
-// --- backupMoaiConfig: error paths ---
+// --- backup.BackupMoaiConfig: error paths ---
 
 func TestBackupMoaiConfig_StatError(t *testing.T) {
 	tmpDir := t.TempDir()
@@ -5457,7 +5518,7 @@ func TestBackupMoaiConfig_StatError(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	_, err := backupMoaiConfig(tmpDir)
+	_, err := backup.BackupMoaiConfig(tmpDir)
 	if err == nil {
 		t.Fatal("expected error for non-directory config path")
 	}
@@ -5505,7 +5566,7 @@ func TestCleanMoaiManagedPaths_WithGlobMatches(t *testing.T) {
 	}
 
 	var buf bytes.Buffer
-	err := cleanMoaiManagedPaths(tmpDir, &buf)
+	err := deploy.CleanMoaiManagedPaths(tmpDir, &buf)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -5526,7 +5587,7 @@ func TestCleanMoaiManagedPaths_NonExistentPaths(t *testing.T) {
 
 	// Don't create any paths - they should all be "not found"
 	var buf bytes.Buffer
-	err := cleanMoaiManagedPaths(tmpDir, &buf)
+	err := deploy.CleanMoaiManagedPaths(tmpDir, &buf)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -5659,7 +5720,7 @@ func TestMergeYAML3Way_UserModified(t *testing.T) {
 	oldData := []byte("language:\n  conversation_language: ko\n")
 	baseData := []byte("language:\n  conversation_language: en\n")
 
-	merged, err := mergeYAML3Way(newData, oldData, baseData)
+	merged, err := backup.MergeYAML3Way(newData, oldData, baseData)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -5676,7 +5737,7 @@ func TestMergeYAML3Way_SystemFieldAlwaysNew(t *testing.T) {
 	oldData := []byte("moai:\n  template_version: 1.0.0\n  setting: old\n")
 	baseData := []byte("moai:\n  template_version: 1.0.0\n  setting: original\n")
 
-	merged, err := mergeYAML3Way(newData, oldData, baseData)
+	merged, err := backup.MergeYAML3Way(newData, oldData, baseData)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -5689,13 +5750,13 @@ func TestMergeYAML3Way_SystemFieldAlwaysNew(t *testing.T) {
 }
 
 func TestMergeYAML3Way_InvalidYAML(t *testing.T) {
-	_, err := mergeYAML3Way([]byte("invalid[yaml"), []byte("ok: true"), []byte("ok: true"))
+	_, err := backup.MergeYAML3Way([]byte("invalid[yaml"), []byte("ok: true"), []byte("ok: true"))
 	if err == nil {
 		t.Error("expected error for invalid YAML")
 	}
 }
 
-// --- cleanup_old_backups: edge cases ---
+// --- backup.CleanupOldBackups: edge cases ---
 
 func TestCleanupOldBackups_NonDirBackupPath(t *testing.T) {
 	tmpDir := t.TempDir()
@@ -5709,7 +5770,7 @@ func TestCleanupOldBackups_NonDirBackupPath(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	result := cleanup_old_backups(tmpDir, 3)
+	result := backup.CleanupOldBackups(tmpDir, 3)
 	if result != 0 {
 		t.Errorf("expected 0 deleted, got %d", result)
 	}
@@ -5732,7 +5793,7 @@ func TestCleanupOldBackups_InvalidPatterns(t *testing.T) {
 		}
 	}
 
-	result := cleanup_old_backups(tmpDir, 1)
+	result := backup.CleanupOldBackups(tmpDir, 1)
 	if result != 0 {
 		t.Errorf("expected 0 deleted (no valid patterns), got %d", result)
 	}
@@ -5936,7 +5997,7 @@ func TestDetectGoBinPathForUpdate_WithHome(t *testing.T) {
 	}
 }
 
-// --- classifyFileRisk: all branches ---
+// --- plan.ClassifyFileRisk: all branches ---
 
 func TestClassifyFileRisk_HighRisk(t *testing.T) {
 	tests := []struct {
@@ -5950,29 +6011,29 @@ func TestClassifyFileRisk_HighRisk(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.filename, func(t *testing.T) {
-			got := classifyFileRisk(tt.filename, tt.exists)
+			got := plan.ClassifyFileRisk(tt.filename, tt.exists)
 			if got != tt.want {
-				t.Errorf("classifyFileRisk(%q, %v) = %q, want %q", tt.filename, tt.exists, got, tt.want)
+				t.Errorf("plan.ClassifyFileRisk(%q, %v) = %q, want %q", tt.filename, tt.exists, got, tt.want)
 			}
 		})
 	}
 }
 
 func TestClassifyFileRisk_LowRisk(t *testing.T) {
-	got := classifyFileRisk("new-file.md", false)
+	got := plan.ClassifyFileRisk("new-file.md", false)
 	if got != "low" {
 		t.Errorf("expected 'low' for new file, got %q", got)
 	}
 }
 
 func TestClassifyFileRisk_MediumRisk(t *testing.T) {
-	got := classifyFileRisk("existing.yaml", true)
+	got := plan.ClassifyFileRisk("existing.yaml", true)
 	if got != "medium" {
 		t.Errorf("expected 'medium' for existing file, got %q", got)
 	}
 }
 
-// --- determineStrategy: all branches ---
+// --- plan.DetermineStrategy: all branches ---
 
 func TestDetermineStrategy_AllTypes(t *testing.T) {
 	tests := []struct {
@@ -5988,7 +6049,7 @@ func TestDetermineStrategy_AllTypes(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.filename, func(t *testing.T) {
-			got := determineStrategy(tt.filename)
+			got := plan.DetermineStrategy(tt.filename)
 			// Compare string representation
 			gotStr := fmt.Sprintf("%v", got)
 			if !strings.Contains(gotStr, "") {
@@ -6029,7 +6090,7 @@ func TestRestoreMoaiConfigLegacy_SkipsTemplateDefaults(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	err := restoreMoaiConfigLegacy(tmpDir, backupDir, configDir)
+	err := backup.RestoreMoaiConfigLegacy(tmpDir, backupDir, configDir)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -6282,7 +6343,7 @@ func TestRunUpdate_TemplatesOnlySkipsBinary(t *testing.T) {
 	_ = runUpdate(cmd, nil)
 }
 
-// --- backupMoaiConfig ---
+// --- backup.BackupMoaiConfig ---
 
 func TestBackupMoaiConfig_WithSections_Phase6(t *testing.T) {
 	tmpDir := t.TempDir()
@@ -6306,9 +6367,9 @@ func TestBackupMoaiConfig_WithSections_Phase6(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	backupDir, err := backupMoaiConfig(tmpDir)
+	backupDir, err := backup.BackupMoaiConfig(tmpDir)
 	if err != nil {
-		t.Fatalf("backupMoaiConfig error: %v", err)
+		t.Fatalf("backup.BackupMoaiConfig error: %v", err)
 	}
 
 	if backupDir == "" {
@@ -6343,7 +6404,7 @@ func TestBackupMoaiConfig_NotADirectory(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	_, err := backupMoaiConfig(tmpDir)
+	_, err := backup.BackupMoaiConfig(tmpDir)
 	if err == nil {
 		t.Error("expected error when config is not a directory")
 	}
@@ -6355,7 +6416,7 @@ func TestBackupMoaiConfig_NotADirectory(t *testing.T) {
 func TestBackupMoaiConfig_NoConfigDir_Phase6(t *testing.T) {
 	tmpDir := t.TempDir()
 
-	dir, err := backupMoaiConfig(tmpDir)
+	dir, err := backup.BackupMoaiConfig(tmpDir)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -6402,7 +6463,7 @@ func TestCleanMoaiManagedPaths_WithGlobAndDirs(t *testing.T) {
 	}
 
 	var buf bytes.Buffer
-	err := cleanMoaiManagedPaths(tmpDir, &buf)
+	err := deploy.CleanMoaiManagedPaths(tmpDir, &buf)
 	if err != nil {
 		t.Fatalf("cleanMoaiManagedPaths error: %v", err)
 	}
@@ -6425,7 +6486,7 @@ func TestCleanMoaiManagedPaths_AllPathsMissing(t *testing.T) {
 	tmpDir := t.TempDir()
 
 	var buf bytes.Buffer
-	err := cleanMoaiManagedPaths(tmpDir, &buf)
+	err := deploy.CleanMoaiManagedPaths(tmpDir, &buf)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -6436,14 +6497,14 @@ func TestCleanMoaiManagedPaths_AllPathsMissing(t *testing.T) {
 	}
 }
 
-// --- saveTemplateDefaults ---
+// --- backup.SaveTemplateDefaults ---
 
 func TestSaveTemplateDefaults(t *testing.T) {
 	tmpDir := t.TempDir()
 
-	err := saveTemplateDefaults(tmpDir)
+	err := backup.SaveTemplateDefaults(tmpDir)
 	if err != nil {
-		t.Fatalf("saveTemplateDefaults error: %v", err)
+		t.Fatalf("backup.SaveTemplateDefaults error: %v", err)
 	}
 
 	// Verify sections directory was created
@@ -6490,7 +6551,7 @@ func TestRestoreMoaiConfigLegacy_TargetNotExist(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	err := restoreMoaiConfigLegacy(tmpDir, backupDir, configDir)
+	err := backup.RestoreMoaiConfigLegacy(tmpDir, backupDir, configDir)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -6531,7 +6592,7 @@ func TestRestoreMoaiConfigLegacy_SkipsMetadataAndTemplateDefaults(t *testing.T) 
 		t.Fatal(err)
 	}
 
-	err := restoreMoaiConfigLegacy(tmpDir, backupDir, configDir)
+	err := backup.RestoreMoaiConfigLegacy(tmpDir, backupDir, configDir)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -6567,7 +6628,7 @@ func TestRestoreMoaiConfigLegacy_MergeWithExistingTarget(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	err := restoreMoaiConfigLegacy(tmpDir, backupDir, configDir)
+	err := backup.RestoreMoaiConfigLegacy(tmpDir, backupDir, configDir)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -6820,11 +6881,11 @@ func TestRemoveGLMEnv_NonexistentPath(t *testing.T) {
 	}
 }
 
-// --- cleanup_old_backups ---
+// --- backup.CleanupOldBackups ---
 
 func TestCleanupOldBackups_PrunesOldBackups(t *testing.T) {
 	tmpDir := t.TempDir()
-	// cleanup_old_backups uses defs.BackupsDir = ".moai-backups"
+	// backup.CleanupOldBackups uses defs.BackupsDir = ".moai-backups"
 	backupBaseDir := filepath.Join(tmpDir, ".moai-backups")
 
 	// Create 5 backup directories with different timestamps.
@@ -6849,7 +6910,7 @@ func TestCleanupOldBackups_PrunesOldBackups(t *testing.T) {
 	}
 
 	// Keep only 2 backups
-	deleted := cleanup_old_backups(tmpDir, 2)
+	deleted := backup.CleanupOldBackups(tmpDir, 2)
 
 	if deleted != 3 {
 		t.Errorf("expected 3 deleted, got %d", deleted)
@@ -6865,7 +6926,7 @@ func TestCleanupOldBackups_PrunesOldBackups(t *testing.T) {
 func TestCleanupOldBackups_MissingDir(t *testing.T) {
 	tmpDir := t.TempDir()
 
-	deleted := cleanup_old_backups(tmpDir, 5)
+	deleted := backup.CleanupOldBackups(tmpDir, 5)
 	if deleted != 0 {
 		t.Errorf("expected 0 deleted when no backup dir, got %d", deleted)
 	}
@@ -7038,6 +7099,7 @@ func TestInjectGLMEnvForTeam_Phase6(t *testing.T) {
 			High   string
 			Medium string
 			Low    string
+			Fable  string
 		}{
 			High:   "glm-5.1",
 			Medium: "glm-4.7",
@@ -7079,6 +7141,7 @@ func TestInjectGLMEnvForTeam_MergesWithExisting(t *testing.T) {
 			High   string
 			Medium string
 			Low    string
+			Fable  string
 		}{
 			High:   "glm-5.1",
 			Medium: "glm-4.7",

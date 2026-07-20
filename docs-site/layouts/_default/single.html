@@ -1,0 +1,89 @@
+{{- /* doc-toc-walk — .Fragments.Headings 트리를 재귀 순회해 Level-2(h2)마다
+       <li><a href="#ID">Title</a></li> 를 내뱉는 헬퍼 템플릿. .Fragments.Headings는
+       최상위 루트(headings)만 반환하므로(hugo 0.160) 자식 .Headings까지 내려가야
+       모든 h2를 flat하게 수집할 수 있다. 컨텍스트: Headings 슬라이스. */ -}}
+{{ define "doc-toc-walk" }}
+  {{- range . -}}
+    {{- if eq .Level 2 -}}<li><a href="#{{ .ID }}">{{ .Title }}</a></li>{{- end -}}
+    {{- with .Headings -}}{{- template "doc-toc-walk" . -}}{{- end -}}
+  {{- end -}}
+{{ end }}
+
+{{ define "main" }}
+  {{- /* 문서 상세 — round3 docs-detail 3-column layout (SPEC-DESIGN-DOCSV2-001 M3c-2).
+         (1) .read-progress(고정 상단 바, JS가 #rp width 구동)
+         (2) .doc-hero(그라데이션 풀-블리드 — crumb / doc-cat / h1 / deck / byline)
+         (3) .doc-layout(grid 220px 1fr 280px — TOC | 본문 | rail)
+         baseof가 gdoc-nav/cw-toc/cw-pg-nav 프레임을 제공하므로 본 블록은 round3 본문만 담당.
+         클래스명은 M3a CSS SSOT에 정렬: .docs-toc / .docs-toc-list / .docs-toc-h
+         (§C/§D 초안 .toc-list는 .toc→.docs-toc 리네임(라인 23)으로 .docs-toc-list가 정명). */ -}}
+  <article id="main-content" tabindex="-1">
+
+    {{- /* (1) 읽기 진행률 바 — position:fixed; top:64px; height:3px (#rp width = JS). */ -}}
+    <div class="read-progress"><div id="rp"></div></div>
+
+    {{- /* (2) 문서 히어로 — 컴팩트 밴드 + 마스코트. crumb/카테고리/제목/분량 1열 + 우측 마스코트.
+           마스코트는 페이지 경로 해시로 6종 중 하나를 결정적으로 선택(같은 페이지=같은 마스코트). */ -}}
+    {{- $mascots := slice "MoAI-Mascot-Pointing" "MoAI-Mascot-Explaining" "MoAI-Mascot-Searching" "MoAI-Mascot-Thinking" "MoAI-Mascot-Teaching" "MoAI-Mascot-Coffee" -}}
+    {{- $mi := mod (len .RelPermalink) (len $mascots) -}}
+    <section class="doc-hero doc-hero--compact">
+      <div class="doc-hero-inner">
+        <div class="doc-hero-text">
+          <nav class="crumb" aria-label="breadcrumb">
+            <a href="{{ .Site.Home.RelPermalink }}">{{ .Site.Title }}</a>
+            {{- if not (eq .CurrentSection.RelPermalink .Site.Home.RelPermalink) }}
+            <span class="sep">›</span>
+            <a href="{{ .CurrentSection.RelPermalink }}">{{ .CurrentSection.Title }}</a>
+            {{- end }}
+            <span class="sep">›</span>
+            <span>{{ .Title }}</span>
+          </nav>
+          <span class="doc-cat">{{ .Params.category | default .CurrentSection.Title }}</span>
+          <h1 class="doc-h1">{{ .Title }}</h1>
+          <div class="doc-meta-strip">
+            {{- if not .Date.IsZero }}<span>{{ .Date.Format "2006.01.02" }}</span>{{ end }}
+            <span>{{ .ReadingTime }}분 분량</span>
+          </div>
+        </div>
+        <img class="doc-hero-mascot" src="{{ (printf "mascots/%s.png" (index $mascots $mi)) | relURL }}" alt="" aria-hidden="true">
+      </div>
+    </section>
+
+    {{- /* (3) 2-단 본문 레이아웃 — 본문 | 우측 TOC (grid minmax(0,1fr) 260px).
+           구 3-컬럼(좌 TOC | 본문 | rail)에서 TOC를 rail 위치로 이동, rail 카드 삭제. */ -}}
+    <div class="doc-layout doc-layout--2col">
+
+      {{- /* 본문 — .Content를 gdoc-markdown(마크다운 타이포) + prose-kr(향후 M3c 타이포)로 감싼다.
+             .next-cta는 gdoc-markdown 바깥 형제로 두어 prose 여백이 CTA에 묻지 않게 한다. */ -}}
+      <article class="doc-body">
+        <div class="gdoc-markdown prose-kr">
+          {{ .Content }}
+        </div>
+        {{- with .NextInSection }}
+        <a class="next-cta" href="{{ .RelPermalink }}">
+          <div>
+            <div class="next-cta-eye">다음 가이드</div>
+            <h3>{{ .Title }}</h3>
+          </div>
+          <span class="next-cta-arrow" aria-hidden="true">→</span>
+        </a>
+        {{- end }}
+      </article>
+
+      {{- /* 우측 TOC — 본문에 h2가 있을 때만 렌더. doc-toc-walk가 h2 flat 수집. */ -}}
+      {{- if gt (len (findRE "<h2" .Content)) 0 }}
+      <aside class="docs-toc" aria-label="{{ i18n "toc_label" }}">
+        <div class="docs-toc-h">{{ i18n "toc_label" }}</div>
+        <ul class="docs-toc-list">
+          {{- template "doc-toc-walk" .Fragments.Headings -}}
+        </ul>
+      </aside>
+      {{- end }}
+
+    </div>
+  </article>
+
+  {{- /* doc-detail JS — read-progress(#rp) + TOC scroll-spy(.docs-toc-list).
+         defer로 DOM 파싱 후 실행. §D 통합. */ -}}
+  <script src="{{ "js/doc-detail.js" | relURL }}" defer></script>
+{{ end }}

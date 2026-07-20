@@ -2,171 +2,171 @@
 title: スキルガイド
 weight: 20
 draft: false
+description: "MoAI-ADKスキルシステム — プログレッシブ・ディスクロージャー(progressive disclosure)で必要な知識だけを必要な瞬間にロードする知識レイヤー。"
 ---
 
-MoAI-ADKのスキルシステムを詳しく解説します。
+MoAI-ADK のスキルシステムを詳しく案内します。スキルはエージェンティックハーネスの知識層であり、「必要な知識だけを必要な瞬間にロードする」という点でトークノミクスが最も具体的に実装された場所でもあります。
 
 {{< callout type="info" >}}
 
-**スキルとは？**
+**スキルとは?**
 
-1999年の映画**マトリックス**のヘリコ操縦シーンを覚えていますか？ネオがトリニティに
-ヘリコの操縦ができるか尋ねると、本部に電話してヘリコモデルを知り使い方マニュアルを
-送信するように頼むシーンがあります。
+1999 年の映画 **マトリックス** のヘリコプター操縦シーンを覚えていますか? ネオがトリニティにヘリコプターを操縦できるか尋ねると、トリニティは本部に電話してヘリコプターのモデルを伝え、取扱説明書を送ってもらいます。
 
 <p align="center">
   <iframe
     width="720"
     height="360"
     src="https://www.youtube.com/embed/9Luu4itC-Zs"
-    title="マトリックス ヘリコ操縦シーン"
+    title="マトリックスのヘリコプター操縦シーン"
     frameBorder="0"
     allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
     allowFullScreen
   ></iframe>
 </p>
 
-**Claude Codeのスキル** **(こそがその**使い方マニュアル**です。必要な瞬間に
-必要な知識だけをロードしてAIが即座に専門家のように振る舞えるようにします。
+**Claude Code のスキル** がまさにその **取扱説明書** です。必要な瞬間に必要な知識だけをロードして、AI が即座に専門家のように振る舞えるようにします。
 
 {{< /callout >}}
 
-## スキルとは？
+## スキルとは?
 
-スキルはClaude Codeに特定分野の専門知識を提供する**知識モジュール**です。
+スキルは Claude Code に特定分野の専門知識を提供する **知識モジュール** です。
 
-学校に例えると、Claude Codeが生徒でスキルが教科書です。数学の授業では数学の教科書を、科学の授業では科学の教科書を開くように、Claude CodeもPythonコードを書く時はPythonスキルを、React UIを作成時はFrontendスキルをロードします。
+学校にたとえると、Claude Code が生徒でスキルは教科書です。数学の時間には数学の教科書を、理科の時間には理科の教科書を開くように、Claude Code も Python コードを書くときは Python スキルを、React UI を作るときは Frontend スキルをロードします。
 
 ```mermaid
 flowchart TD
     USER[ユーザーリクエスト] --> DETECT[キーワード検出]
     DETECT --> TRIGGER{トリガーマッチング}
-    TRIGGER -->|Python関連| PY["moai-domain-backend<br/>バックエンド専門知識"]
-    TRIGGER -->|React関連| FE["moai-domain-frontend<br/>フロントエンド専門知識"]
-    TRIGGER -->|セキュリティ関連| SEC["moai-foundation-core<br/>TRUST 5セキュリティ原則"]
-    TRIGGER -->|DB関連| DB["moai-domain-database<br/>データベース専門知識"]
+    TRIGGER -->|Python 関連| PY["moai-domain-backend<br>バックエンド専門知識"]
+    TRIGGER -->|React 関連| FE["moai-domain-frontend<br>フロントエンド専門知識"]
+    TRIGGER -->|セキュリティ関連| SEC["moai-foundation-core<br>TRUST 5 セキュリティ原則"]
+    TRIGGER -->|DB 関連| DB["moai-domain-database<br>データベース専門知識"]
 
-    PY --> AGENT[エージェントに知識注入]
+    PY --> AGENT[エージェントに知識を注入]
     FE --> AGENT
     SEC --> AGENT
     DB --> AGENT
 ```
 
-**スキルなしの場合**: Claude Codeは一般的な知識でのみ応答します。**スキルがある場合**: MoAI-ADKのルール、パターン、ベストプラクティスを適用して応答します。
+**スキルがない場合**: Claude Code は一般的な知識のみで応答します。**スキルがある場合**: MoAI-ADK のルール、パターン、ベストプラクティスを適用して応答します。
 
 ## スキルカテゴリ
 
-MoAI-ADK テンプレートには計**27個の `moai-*` スキル**が 5 個の機能カテゴリに分類されています（Foundation 4 + Workflow 8 + Domain 5 + Reference 8 + Meta/Harness 2 = 27）。ここに要求を専門スキルにルーティングする `moai` umbrella スキル 1 個が別途存在します。ユーザープロジェクトでは追加的にプロジェクト別 `harness-*` ユーザー定義スキルを作成できます。プログラミング言語サポートは `rules/moai/languages/` 配下のルールで提供され、個別スキルではありません。
+MoAI-ADK テンプレートには合計 **27 個の `moai-*` スキル** が 5 つの機能カテゴリに分類されています (Foundation 4 + Workflow 8 + Domain 5 + Reference 8 + Meta/Harness 2 = 27)。ここにリクエストを専門スキルにルーティングする `moai` umbrella スキル 1 個が別途存在します。ユーザープロジェクトでは追加で `harness-*` ユーザー定義スキルを作成できます。プログラミング言語対応は `rules/moai/languages/` 配下のルールで提供され、別途スキルではありません。
 
-### Foundation (中核哲学) - 4個
+この数字もダイエットの結果です — スキルカタログは v3 期間中に 48 → 38 → 27 個へと精練されました。
 
-| スキル名 | 説明 |
-|-------------|------|
-| `moai-foundation-core` | SPEC ベース TDD/DDD、TRUST 5フレームワーク、実行ルール |
-| `moai-foundation-cc` | Claude Code拡張パターン (Skills、Agents、Hooks) |
-| `moai-foundation-thinking` | 構造化思考、アイデア創出、第一原理分析 |
-| `moai-foundation-quality` | コード品質自動検証、TRUST 5バリデーション |
+### Foundation (核心哲学) - 4 個
 
-### Workflow (自動化ワークフロー) - 8個
+| スキル名                  | 説明                                                |
+| -------------------------- | --------------------------------------------------- |
+| `moai-foundation-core`     | SPEC ベースの TDD/DDD、TRUST 5 フレームワーク、実行ルール    |
+| `moai-foundation-cc`       | Claude Code 拡張パターン (Skills, Agents, Hooks)       |
+| `moai-foundation-thinking` | 構造化された思考、アイデエーション、第 1 原理分析             |
+| `moai-foundation-quality`  | コード品質の自動検証、TRUST 5 バリデーション             |
 
-| スキル名 | 説明 |
-|---------|------|
-| `moai-workflow-spec` | SPECドキュメント作成、GEARS形式、要件分析 |
-| `moai-workflow-project` | プロジェクト初期化、ドキュメント作成、言語設定 |
-| `moai-workflow-ddd` | ANALYZE-PRESERVE-IMPROVEサイクル |
-| `moai-workflow-tdd` | RED-GREEN-REFACTOR テスト駆動開発 |
-| `moai-workflow-testing` | テスト作成、デバッグ、コードレビュー統合 |
-| `moai-workflow-worktree` | Git worktreeベース並列開発 |
-| `moai-workflow-loop` | Ralph Engine自律ループ、LSP連携 |
-| `moai-workflow-ci-loop` | CI監視・自動修正ループワークフロー |
+### Workflow (自動化ワークフロー) - 8 個
 
-### Domain (ドメイン専門性) - 5個
+| スキル名                | 説明                                          |
+| ------------------------ | --------------------------------------------- |
+| `moai-workflow-spec`     | SPEC ドキュメント生成、GEARS 形式、要件分析     |
+| `moai-workflow-project`  | プロジェクト初期化、ドキュメント生成、言語設定         |
+| `moai-workflow-ddd`      | ANALYZE-PRESERVE-IMPROVE サイクル               |
+| `moai-workflow-tdd`      | RED-GREEN-REFACTOR テスト駆動開発           |
+| `moai-workflow-testing`  | テスト生成、デバッグ、コードレビュー統合           |
+| `moai-workflow-worktree` | Git worktree ベースの並列開発                   |
+| `moai-workflow-loop`     | Ralph Engine 自律ループ、LSP 連携              |
+| `moai-workflow-ci-loop`  | CI 監視および自動修正ループワークフロー          |
 
-| スキル名 | 説明 |
-|----------|------|
-| `moai-domain-backend` | API設計、マイクロサービス、データベース統合 |
-| `moai-domain-frontend` | React 19、Next.js 16、Vue 3.5、コンポーネントアーキテクチャ |
-| `moai-domain-database` | PostgreSQL、MongoDB、Redis、高度データパターン |
-| `moai-domain-html-report` | Markdown → 単一 HTML レポートレンダラー（6 つのモード、外部依存性なし） |
-| `moai-domain-humanize` | AI テキストヒューマナイゼーション、ポスト編集（KO/EN/JA/ZH） |
+### Domain (ドメイン専門性) - 5 個
 
-### Reference (ベストプラクティス) - 8個
+| スキル名                   | 説明                                             |
+| --------------------------- | ------------------------------------------------ |
+| `moai-domain-backend`       | API 設計、マイクロサービス、データベース統合      |
+| `moai-domain-frontend`      | React 19, Next.js 16, Vue 3.5, コンポーネントアーキテクチャ |
+| `moai-domain-database`      | PostgreSQL, MongoDB, Redis, 高度なデータパターン     |
+| `moai-domain-html-report`   | Markdown → 単一 HTML レポートレンダラー (6 個のモード、外部依存性なし) |
+| `moai-domain-humanize`      | AI テキストのヒューマナイズ、後編集 (KO/EN/JA/ZH)    |
 
-| スキル名 | 説明 |
-|----------|------|
-| `moai-ref-api-patterns` | REST/GraphQL API 設計パターン、エラー処理 |
-| `moai-ref-git-workflow` | Git ワークフロー、ブランチ戦略、Conventional Commits |
-| `moai-ref-owasp-checklist` | OWASP Top 10 セキュリティパターン、入力バリデーション |
-| `moai-ref-react-patterns` | React/Next.js コンポーネントパターン、状態管理 |
-| `moai-ref-testing-pyramid` | テストピラミッド戦略、カバレッジ目標 |
-| `moai-ref-llm-security` | AI/LLM 防御セキュリティ（プロンプトインジェクション、OWASP LLM Top 10） |
-| `moai-ref-secops` | DevSecOps/コンテナ/API 運用防御セキュリティ |
-| `moai-ref-supply-chain` | ソフトウェア供給鎖防御セキュリティ（SBOM、SLSA、Sigstore） |
+### Reference (ベストプラクティス) - 8 個
 
-### Meta/Harness (システム拡張) - 2個
+| スキル名                  | 説明                                              |
+| -------------------------- | ------------------------------------------------- |
+| `moai-ref-api-patterns`    | REST/GraphQL API 設計パターン、エラー処理             |
+| `moai-ref-git-workflow`    | Git ワークフロー、ブランチ戦略、Conventional Commits |
+| `moai-ref-owasp-checklist` | OWASP Top 10 セキュリティパターン、入力検証                 |
+| `moai-ref-react-patterns`  | React/Next.js コンポーネントパターン、状態管理            |
+| `moai-ref-testing-pyramid` | テストピラミッド戦略、カバレッジ目標               |
+| `moai-ref-llm-security`    | AI/LLM 防御セキュリティ (プロンプトインジェクション、OWASP LLM Top 10) |
+| `moai-ref-secops`          | DevSecOps/コンテナ/API 運用防御セキュリティ             |
+| `moai-ref-supply-chain`    | ソフトウェアサプライチェーン防御セキュリティ (SBOM, SLSA, Sigstore) |
 
-| スキル名 | 説明 |
-|----------|------|
-| `moai-meta-harness` | プロジェクト特化エージェントチーム動的生成 |
-| `moai-harness-learner` | Harness学習サブシステム、自動更新提案 |
+### Meta/Harness (システム拡張) - 2 個
 
-> 27 個の `moai-*` スキルは MoAI-ADK テンプレートにデフォルトで含まれており、各スキルは独立的にロードされてトークンを節約します。ユーザーは追加的にプロジェクト別 `harness-*` ユーザー定義スキルを作成できます。
+| スキル名              | 説明                                        |
+| ---------------------- | ------------------------------------------- |
+| `moai-meta-harness`    | プロジェクト特化のエージェントチームの動的生成         |
+| `moai-harness-learner` | Harness 学習サブシステム、自動アップデート提案 |
 
-## 段階的開示システム
+> 27 個の `moai-*` スキルは MoAI-ADK テンプレートにデフォルトで含まれ、各スキルは独立してロードされてトークンを節約します。ユーザーは追加でプロジェクト別の `harness-*` ユーザー定義スキルを作成できます。
 
-MoAI-ADKのスキルは**3段階段階的開示** (Progressive Disclosure) システムを使用します。すべてのスキルを一度にロードするとトークンが浪費されるため、必要な分だけ段階的にロードします。
+## 段階的公開システム
+
+MoAI-ADK のスキルは **3 段階の段階的公開** (Progressive Disclosure) システムを使います。すべてのスキルを一度にロードするとトークンが浪費されるので、必要な分だけ段階的にロードします。コンテキストダイエットのスキル層の実装だと見ればよいでしょう。
 
 ```mermaid
 flowchart TD
-    subgraph L1["レベル1: メタデータ (~100トークン)"]
+    subgraph L1["Level 1: メタデータ (~100 トークン)"]
         M1["名前、説明、トリガーキーワード"]
-        M2["常にロード済み"]
+        M2["常にロードされる"]
     end
 
-    subgraph L2["レベル2: 本文 (~5,000トークン)"]
-        B1["全スキルドキュメント"]
+    subgraph L2["Level 2: 本文 (~5,000 トークン)"]
+        B1["スキルドキュメント全体"]
         B2["コード例、パターン"]
     end
 
-    subgraph L3["レベル3: バンドル (無制限)"]
-        R1["modules/ディレクトリ"]
-        R2["reference.md、examples.md"]
+    subgraph L3["Level 3: バンドル (無制限)"]
+        R1["modules/ ディレクトリ"]
+        R2["reference.md, examples.md"]
     end
 
     L1 -->|"トリガーマッチ時"| L2
-    L2 -->|"深層情報必要時"| L3
+    L2 -->|"深層情報が必要な時"| L3
 
 ```
 
 ### 各レベルの役割
 
-| レベル | トークン | ロード時期 | 内容 |
-|-------|--------|-----------|------|
-| レベル1 | ~100 | 常時 | スキル名、説明、トリガーキーワード |
-| レベル2 | ~5,000 | トリガーマッチ時 | 全ドキュメント、コード例、パターン |
-| レベル3 | 無制 | オンデマンド | modules/、reference.md、examples.md |
+| レベル    | トークン   | ロードタイミング      | 内容                                |
+| ------- | ------ | -------------- | ----------------------------------- |
+| Level 1 | ~100   | 常に           | スキル名、説明、トリガーキーワード      |
+| Level 2 | ~5,000 | トリガーマッチ時 | ドキュメント全体、コード例、パターン          |
+| Level 3 | 無制限 | オンデマンド       | modules/, reference.md, examples.md |
 
 ### トークン節約効果
 
-- **従来方式**: 27スキル全ロード = 約135,000トークン (不可能)
-- **段階的開示**: メタデータのみロード = 約5,200トークン (97%節約)
-- **必要時ロード**: タスクに必要な2〜3スキルのみ = 約15,000トークン追加
+- **従来方式**: 27 個のスキルを全ロード = 約 135,000 トークン (不可能)
+- **段階的公開**: メタデータのみロード = 約 5,200 トークン (97% 節約)
+- **必要時にロード**: 作業に必要な 2~3 個のスキルのみ = 約 15,000 トークン追加
 
 ## スキルトリガーメカニズム
 
-スキルは**4つのトリガー条件**で自動ロードされます。
+スキルは **4 つのトリガー条件** で自動ロードされます。
 
 ```mermaid
 flowchart TD
     REQ[ユーザーリクエスト分析] --> KW{キーワード検出}
     REQ --> AG{エージェント呼び出し}
-    REQ --> PH{ワークフロー段階}
+    REQ --> PH{ワークフローステップ}
     REQ --> LN{言語検出}
 
     KW -->|"api, database"| SKILL1[moai-domain-backend]
     AG -->|"manager-develop"| SKILL1
-    PH -->|"run段階"| SKILL2[moai-workflow-ddd]
-    LN -->|"Pythonファイル"| SKILL3[moai-domain-backend]
+    PH -->|"run ステップ"| SKILL2[moai-workflow-ddd]
+    LN -->|"Python ファイル"| SKILL3[moai-domain-backend]
 
     SKILL1 --> LOAD[スキルロード完了]
     SKILL2 --> LOAD
@@ -176,29 +176,29 @@ flowchart TD
 ### トリガー設定例
 
 ```yaml
-# スキルフロントマターでトリガー定義
+# スキルフロントマターでトリガーを定義
 triggers:
   keywords: ["api", "database", "authentication"] # キーワードマッチング
   agents: ["manager-spec", "manager-develop"] # エージェント呼び出し時
-  phases: ["plan", "run"] # ワークフロー段階
+  phases: ["plan", "run"] # ワークフローステップ
   languages: ["python", "typescript"] # プログラミング言語
 ```
 
-**トリガー優先順位:**
+**トリガーの優先順位:**
 
-1. **キーワード** (keywords): ユーザーメッセージでキーワードを検出すると即座にロード
-2. **エージェント** (agents): 特定エージェントが呼び出されると自動ロード
-3. **段階** (phases): Plan/Run/Sync段階に従ってロード
-4. **言語** (languages): 作業中ファイルのプログラミング言語に従ってロード
+1. **キーワード** (keywords): ユーザーメッセージからキーワードを検出すると即座にロード
+2. **エージェント** (agents): 特定のエージェントが呼び出されたとき自動ロード
+3. **ステップ** (phases): Plan/Run/Sync ステップに応じてロード
+4. **言語** (languages): 作業中のファイルのプログラミング言語に応じてロード
 
-## スキル使用法
+## スキルの使い方
 
-### 明示的呼び出し
+### 明示的な呼び出し
 
-Claude Code会話で直接スキルを呼び出せます。
+Claude Code の対話で直接スキルを呼び出せます。
 
 ```bash
-# Claude Codeでスキル呼び出し
+# Claude Code でスキル呼び出し
 > Skill("moai-domain-backend")
 > Skill("moai-domain-frontend")
 > Skill("moai-ref-api-patterns")
@@ -206,144 +206,159 @@ Claude Code会話で直接スキルを呼び出せます。
 
 ### 自動ロード
 
-大部分の場合、スキルはトリガーメカニズムによって**自動的にロード**されます。ユーザーが直接呼び出す必要なく、会話コンテキストを分析して適切なスキルが有効化されます。
+ほとんどの場合、スキルはトリガーメカニズムによって **自動的にロード** されます。ユーザーが直接呼び出す必要なく、対話コンテキストを分析して適切なスキルが有効化されます。
 
 ## スキルディレクトリ構造
 
-スキルファイルは`.claude/skills/`ディレクトリに配置されます。
+スキルファイルは `.claude/skills/` ディレクトリに配置されます。
 
 ```
 .claude/skills/
-├── moai-foundation-core/       # Foundationカテゴリ
-│   ├── skill.md                # メインスキルドキュメント (500行以下)
+├── moai-foundation-core/       # Foundation カテゴリ (template-managed)
+│   ├── SKILL.md                # メインスキルドキュメント (500 行以下)
 │   ├── modules/                # 深層ドキュメント (無制限)
 │   │   ├── trust-5-framework.md
 │   │   ├── spec-first-ddd.md
 │   │   └── delegation-patterns.md
-│   ├── examples.md             # 実戦例
+│   ├── examples.md             # 実践例
 │   └── reference.md            # 外部参照リンク
 │
-├── moai-domain-backend/        # Domainカテゴリ
-│   ├── skill.md
+├── moai-domain-backend/        # Domain カテゴリ (template-managed)
+│   ├── SKILL.md
 │   └── modules/
 │       ├── api-patterns.md
 │       └── microservices.md
 │
-└── my-skills/                  # ユーザーカスタムスキル (更新除外)
-    └── my-custom-skill/
-        └── skill.md
+├── hns-my-harness/             # ユーザーハーネススキル (user-owned, hns-* 接頭辞)
+│   └── SKILL.md
+│
+└── my-custom-skill/            # ユーザーカスタムスキル (user-owned)
+    └── SKILL.md
 ```
 
+### スキルネームスペース
+
+スキル接頭辞は **配布主体** を区別し、`moai update` の動作が異なります。
+
+| 接頭辞 | 所有権 | `moai update` 動作 |
+|--------|--------|-------------------|
+| `moai-*` / `moai-harness-*` | template-managed | 上書き (sync) |
+| `hns-*` | user-owned (ハーネス) | 保存 (修正・削除禁止) |
+| (接頭辞なし) / その他 | user-owned (個人) | 保存 |
+
+`hns-*` 接頭辞はユーザーが生成したハーネススキルを意味し、`moai update` が決して上書きしたり削除したりしません。テンプレートに `hns-*` スキルをミラーリングしてはいけません (CI ガードが検出)。
+
 {{< callout type="warning" >}}
-  **注意**: `moai-*`接頭のスキルはMoAI-ADK更新時に上書きされます。個人スキルは必ず`.claude/skills/my-skills/`ディレクトリに作成してください。
+  **注意**: `moai-*` 接頭辞が付いたスキルは MoAI-ADK アップデート時に上書きされます。
+  個人スキルとハーネススキルは `hns-*` 接頭辞または接頭辞のないディレクトリに作成してください。
 {{< /callout >}}
 
 ### スキルファイル構造
 
-各スキルの`skill.md`は以下の構造に従います。
+各スキルの `SKILL.md` は次の構造に従います。
 
 ```markdown
 ---
 name: moai-domain-backend
 description: >
-  バックエンド開発専門家。API設計、マイクロサービス、データベース統合パターン提供。
-  API、ウェブアプリ、データパイプライン開発時に使用。
+  バックエンド開発専門家。API 設計、マイクロサービス、データベース統合パターンを提供。
+  API、Web アプリ、データパイプライン開発時に使用。
 version: 3.0.0
 category: domain
 status: active
 triggers:
   keywords: ["api", "database", "microservices", "authentication"]
-allowed-tools: ["Read", "Grep", "Glob", "Bash", "Context7 MCP"]
+allowed-tools: ["Read", "Grep", "Glob", "Bash"]
 ---
 
 # バックエンド開発専門家
 
 ## Quick Reference
 
-(簡易リファレンス - 30秒)
+(クイックリファレンス - 30 秒)
 
 ## Implementation Guide
 
-(実装ガイド - 5分)
+(実装ガイド - 5 分)
 
 ## Advanced Patterns
 
-(高度パターン - 10分+)
+(高度なパターン - 10 分+)
 
 ## Works Well With
 
 (関連スキル/エージェント)
 ```
 
-## 実戦例
+## 実践例
 
-### Pythonプロジェクトでスキル自動ロード
+### Python プロジェクトでのスキル自動ロード
 
-ユーザーがPython FastAPIプロジェクトで作業するシナリオです。
+ユーザーが Python FastAPI プロジェクトで作業するシナリオです。
 
 ```bash
-# 1. ユーザーがAPI開発をリクエスト
-> FastAPIでユーザー認証APIを作成して
+# 1. ユーザーが API 開発をリクエスト
+> FastAPI でユーザー認証 API を作って
 
-# 2. MoAI-ADKが自動検知するキーワード
-# "FastAPI" → moai-domain-backendトリガー (Pythonパターンは rules/moai/languages/ 経由で提供)
-# "認証"    → moai-domain-backendトリガー
-# "API"     → moai-domain-backendトリガー
+# 2. MoAI-ADK が自動的に検出するキーワード
+# "FastAPI" → moai-domain-backend トリガー (Python パターンは rules/moai/languages/ を通じて提供)
+# "認証"    → moai-domain-backend トリガー
+# "API"     → moai-domain-backend トリガー
 
 # 3. 自動ロードされるスキル
-# - moai-domain-backend (Level 2): API設計パターン、認証戦略
-# - moai-foundation-core (Level 1): TRUST 5品質基準
+# - moai-domain-backend (Level 2): API 設計パターン、認証戦略
+# - moai-foundation-core (Level 1): TRUST 5 品質基準
 
-# 4. エージェントがスキル知識を活用して実装
-# - FastAPIルーターパターン適用
-# - JWT認証ベストプラクティス適用
-# - pytestテスト自動生成
-# - TRUST 5品質基準満たす
+# 4. エージェントがスキルの知識を活用して実装
+# - FastAPI ルーターパターンを適用
+# - JWT 認証のベストプラクティスを適用
+# - pytest テストを自動生成
+# - TRUST 5 品質基準を満たす
 ```
 
-### スキル間連携
+### スキル間の協業
 
-1つのタスクで複数のスキルが連携するプロセスです。
+1 つの作業で複数のスキルが協力するプロセスです。
 
 ```mermaid
 flowchart TD
-    REQ["ユーザー: Supabase + Next.jsで<br/>フルスタックアプリ作成"] --> ANALYZE[リクエスト分析]
+    REQ["ユーザー: Supabase + Next.js で<br>フルスタックアプリを作って"] --> ANALYZE[リクエスト分析]
 
-    ANALYZE --> S1["moai-domain-frontend<br/>React/Next.jsパターン"]
-    ANALYZE --> S2["moai-domain-backend<br/>API設計パターン"]
-    ANALYZE --> S3["moai-domain-database<br/>データベース統合"]
-    ANALYZE --> S4["moai-foundation-core<br/>TRUST 5品質"]
+    ANALYZE --> S1["moai-domain-frontend<br>React/Next.js パターン"]
+    ANALYZE --> S2["moai-domain-backend<br>API 設計パターン"]
+    ANALYZE --> S3["moai-domain-database<br>データベース統合"]
+    ANALYZE --> S4["moai-foundation-core<br>TRUST 5 品質"]
 
     S1 --> IMPL[統合実装]
     S2 --> IMPL
     S3 --> IMPL
     S4 --> IMPL
 
-    IMPL --> RESULT["タイプセーフな<br/>フルスタックアプリ"]
+    IMPL --> RESULT["型安全な<br>フルスタックアプリ"]
 ```
 
-## スキルスコープとディスカバリー (Skill Scope and Discovery)
+## スキルのスコープとディスカバリー (Skill Scope and Discovery)
 
-### ネストされた `.claude/skills` のロード
+### ネストした `.claude/skills` のロード
 
-Claude Code はプロジェクトルートだけでなく、ネストされたサブディレクトリ (parent-walk) にも `.claude/skills/` を発見します。そのためモノレポでは、各パッケージ独自の `.claude/skills/` ディレクトリにパッケージローカルのスキルを配置できます。独自の `.claude/skills/` を含むネストされたディレクトリ内で作業する場合、そのネストされたディレクトリのスキルは、そのサブツリーでの作業中、ルートレベルのスキルと併せてロードされます。
+Claude Code はプロジェクトルートだけでなくネストした下位ディレクトリ (parent-walk) でも `.claude/skills/` を発見します。したがってモノレポは各パッケージ自身の `.claude/skills/` ディレクトリにパッケージローカルなスキルを配置できます。自身の `.claude/skills/` を含むネストしたディレクトリ内部で作業するとき、そのネストしたディレクトリのスキルはその下位ツリーで作業する間、ルートレベルのスキルとともにロードされます。
 
 ### 名前衝突時の closest-wins
 
-ネストチェーンに沿って複数の `.claude/skills/` ディレクトリに同じスキル名が現れる場合、**closest-directory-wins** (最も近いディレクトリ優先) ルールが衝突を解決します: 現在の作業ディレクトリに最も近い `.claude/skills/` が、ツリーの上位にあるものをシャドウします。これは、ネストされた `.claude/` ディレクトリ配下でエージェント、ワークフロー、output-styles に既に適用されている優先順位と同じです — 最も内側の `.claude/` が勝ちます。ルートスキルを意図的にオーバーライドするパッケージローカルスキルは、同じ名前を保持する必要があります。名前を変更すると、オーバーライドではなく 2 番目のスキルが作成されます。
+ネストチェーンに沿って 2 つ以上の `.claude/skills/` ディレクトリに同じスキル名が現れると、**closest-directory-wins** (最も近いディレクトリ優先) ルールが衝突を解決します: 現在の作業ディレクトリに最も近い `.claude/skills/` がより上のツリーのものを隠します (shadow)。これはネストした `.claude/` ディレクトリ配下でエージェント、ワークフロー、output-styles にすでに適用される先行ルールと同じです — 最も内側の `.claude/` が勝ちます。ルートスキルを意図的に再定義するパッケージローカルなスキルは同じ名前を維持する必要があります。名前を変えると再定義ではなく 2 番目のスキルが生成されます。
 
 ### `disableBundledSkills` トグル
 
-`disableBundledSkills` (settings.json ブール値、または環境変数形式) は Claude Code バンドル skills およびワークフロー — 例: `/deep-research`、組み込みスラッシュコマンド skills — を discovery から隠し、enterprise + personal + project + plugin skills のみを表示します。キュレーションされたバンドルフリーの skill サーフェスを提供する際に使用してください。MoAI-ADK はこのトグルを独自のジェネレータから送出しません。利用可能なオプションとしてここに文書化されます。同伴する `--safe-mode` 起動フラグは [Settings JSON ガイド](/ja/advanced/settings-json#disablebundledskills) に文書化されています。
+`disableBundledSkills` (settings.json のブール値、または環境変数の形) は Claude Code のバンドル skills およびワークフロー — 例: `/deep-research`、内蔵スラッシュコマンド skills — を discovery から隠し、enterprise + personal + project + plugin skills のみを見せます。選別されたバンドルなしの skill 表面を提供するときに使ってください。MoAI-ADK はこのトグルを自身の生成器で生成しません。利用可能なオプションとしてここに文書化されます。付随する `--safe-mode` ランチフラグは [Settings JSON ガイド](/ja/advanced/settings-json#disablebundledskills) に文書化されています。
 
 ## 関連ドキュメント
 
-- [エージェントガイド](/advanced/agent-guide) - スキルを活用するエージェント体系
-- [ビルダーエージェントガイド](/advanced/builder-agents) - カスタムスキル作成方法
-- [CLAUDE.mdガイド](/advanced/claude-md-guide) - スキル設定とルール体系
+- [エージェントガイド](/ja/advanced/agent-guide) - スキルを活用するエージェント体系
+- [ビルダーエージェントガイド](/ja/advanced/builder-agents) - カスタムスキルの生成方法
+- [CLAUDE.md ガイド](/ja/advanced/claude-md-guide) - スキル設定とルール体系
 
 {{< callout type="info" >}}
-  **ヒント**: スキルを活用するコツは**適切なキーワード使用**です。「Pythonで
-  REST API作成して」とリクエストすると`moai-domain-backend`スキルが自動的に有効化され
-  (Pythonパターンは`rules/moai/languages/`経由で提供)、最適のコードを生成します。
+  **ヒント**: スキルをうまく活用する核心は **適切なキーワードの使用** です。「Python で
+  REST API を作って」とリクエストすると `moai-domain-backend` スキルが自動的に有効化され
+  (Python パターンは `rules/moai/languages/` を通じて提供)、最適なコードを生成します。
 {{< /callout >}}

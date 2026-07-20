@@ -41,8 +41,8 @@ func FieldNames() []string {
 	return names
 }
 
-// StatuslineSegmentKeys는 정규 15개 세그먼트 키를 렌더 순서대로 반환한다.
-// 웹 statusline 섹션 재추가(REQ-WC10-009)와 TUI MultiSelect 가 동일한 15개
+// StatuslineSegmentKeys는 정규 16개 세그먼트 키를 렌더 순서대로 반환한다.
+// 웹 statusline 섹션 재추가(REQ-WC10-009)와 TUI MultiSelect 가 동일한 16개
 // 세그먼트를 단일 원천에서 파생하도록 한다.
 func StatuslineSegmentKeys() []string {
 	return statuslineSegmentKeys()
@@ -83,7 +83,18 @@ func ConventionOptionValues() []string {
 	return fieldOptionValues("git_convention")
 }
 
+// FieldOptionDefs는 주어진 필드의 OptionDef 슬라이스(Value + I18nKey)를 반환한다
+// (필드 부재 시 nil). M5-b D4 — 웹 렌더가 option 의 data-i18n 키를 방출하기 위해
+// Value 만이 아니라 I18nKey 도 전달한다. 제출 값(value 속성)은 변하지 않는다.
+func FieldOptionDefs(name string) []OptionDef {
+	if f, ok := Field(name); ok {
+		return f.Options
+	}
+	return nil
+}
+
 // fieldOptionValues는 주어진 필드의 옵션 값 슬라이스를 반환한다(필드 부재 시 nil).
+// 검증 경로(validate.go 의 inList)가 사용한다 — 렌더는 FieldOptionDefs 를 쓴다.
 func fieldOptionValues(name string) []string {
 	if f, ok := Field(name); ok {
 		return f.SelectOptions()
@@ -97,6 +108,16 @@ func fieldOptionValues(name string) []string {
 func EmptyLabelFor(name string) string {
 	if f, ok := Field(name); ok {
 		return f.EmptyLabel
+	}
+	return ""
+}
+
+// EmptyLabelKeyFor는 주어진 필드명의 빈 옵션 라벨 i18n 키를 반환한다 (M5-b D4 —
+// 웹 렌더가 빈 option 의 data-i18n 키를 방출). 필드 부재 또는 키가 없는 필드는
+// 빈 문자열.
+func EmptyLabelKeyFor(name string) string {
+	if f, ok := Field(name); ok {
+		return f.EmptyLabelKey
 	}
 	return ""
 }

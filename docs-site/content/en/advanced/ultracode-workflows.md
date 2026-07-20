@@ -4,82 +4,86 @@ weight: 42
 draft: false
 ---
 
-Guide to Claude Code's dynamic workflow primitives and MoAI-ADK's Ultracode integration.
+Delegate 100 agents sequentially and your context collapses first. Dynamic workflows solve this by keeping the plan in **script variables** rather than in Claude's context — intermediate results stay in the script, and only the final result returns to the session. It is where tokenomics meets loop engineering: enabling massive fan-out while containing context cost.
 
 {{< callout type="info" >}}
-**One-line summary**: Dynamic Workflows are automation scripts written in JavaScript that coordinate dozens to hundreds of agents in parallel. Ultracode is triggered via `/effort ultracode` or the `ultracode` keyword.
+**One-line summary**: Dynamic workflows are automation scripts written in JavaScript that orchestrate dozens to hundreds of agents in parallel. Ultracode is triggered by `/effort ultracode` or the `ultracode` keyword.
 {{< /callout >}}
 
-## Three Orchestration Primitives
+## The 3 Orchestration Primitives
 
-MoAI-ADK provides **three different orchestration primitives**, each optimized for different use cases.
+MoAI-ADK provides **3 orchestration primitives**, and the selection criterion is "who holds the plan."
 
 ### 1. Sequential Sub-agents
 
-MoAI's default mode — delegates one agent per turn sequentially.
+MoAI's default mode — delegating one agent per turn, in sequence.
 
 | Characteristic | Description |
-|---|---|
-| **Plan location** | Claude's context (turn-by-turn decision) |
+|------|------|
+| **Plan location** | Claude's context (turn-by-turn judgment) |
 | **Intermediate results** | Accumulate in Claude's context window |
 | **Parallelism** | Sequential execution (1 agent per turn) |
-| **Scale** | Typically 3~5 agents |
-| **Context cost** | Each agent result consumes context |
+| **Scale** | Typically 3-5 agents |
+| **Context cost** | Every agent result consumes context |
 
 **When to use**:
-- Simple 1~5 agent tasks
-- Coding-focused run-phase work
-- High inter-agent dependencies
+- Simple 1-5 agent tasks
+- Coding-centric run-phase work
+- When agents have many inter-dependencies
 
 ### 2. Agent Teams
 
-Multiple teammates collaborate via **shared TaskList** in advanced mode.
+A mode where multiple teammates collaborate via a **shared TaskList**.
 
 | Characteristic | Description |
-|---|---|
-| **Plan location** | Shared TaskList (team coordination) |
-| **Intermediate results** | TaskList + per-teammate context |
-| **Parallelism** | 3~5 simultaneous (Anthropic recommendation) |
-| **Scale** | Small team (3~5 members) |
+|------|------|
+| **Plan location** | Shared TaskList (cross-team coordination) |
+| **Intermediate results** | TaskList + each teammate's context |
+| **Parallelism** | 3-5 concurrent (Anthropic recommendation) |
+| **Scale** | Small teams (3-5 members) |
 | **Context cost** | Independent context per teammate |
 
 **When to use**:
 - Multiple teammates working in parallel
 - Cross-layer dependencies (backend ↔ frontend)
-- Teammate handoff and review needed
+- Collaboration and review between teammates needed
+
+{{< callout type="warning" >}}
+In v3.0, MoAI's Agent Teams **static orchestration layer was retired**. Forcing `--team` falls back to sub-agent mode. The native Claude Code teammate runtime (e.g. the GLM panes of `moai cg`) continues to operate.
+{{< /callout >}}
 
 ### 3. Dynamic Workflows
 
-**Automation scripts** written in JavaScript coordinate many agents.
+**Automation scripts** written in JavaScript orchestrate many agents.
 
 | Characteristic | Description |
-|---|---|
+|------|------|
 | **Plan location** | Script code (declarative plan) |
 | **Intermediate results** | Script variables (no context accumulation) |
 | **Parallelism** | Up to 16 concurrent (up to 1000 total) |
 | **Scale** | Very large (dozens to hundreds of agents) |
-| **Context cost** | Final results only |
+| **Context cost** | Only the final result consumes context |
 
 **When to use**:
 - Large-scale parallel work (dozens to hundreds of agents)
-- Codebase-wide scans
-- Large-scale migrations
+- Whole-codebase scans
+- Large migrations
 - Cross-source verification
 
 ## Selection Decision Tree
 
-Flowchart for choosing which primitive to use.
+A flowchart for deciding which primitive to choose.
 
 ```mermaid
 flowchart TD
-    START[Understand task characteristics] --> Q1{How many independent<br>agents needed?}
+    START[Assess task characteristics] --> Q1{How many independent<br>agents needed?}
     
-    Q1 -->|1~5| Q2{Parallel execution<br>required?}
-    Q1 -->|5~10| Q3{Very<br>complex?}
-    Q1 -->|10+| WORKFLOW["Choose Dynamic Workflow<br>Parallel script optimized"]
+    Q1 -->|1-5| Q2{Parallel execution<br>required?}
+    Q1 -->|5-10| Q3{Very<br>complex?}
+    Q1 -->|10+| WORKFLOW["Choose Dynamic Workflow<br>Optimal for parallel scripts"]
     
-    Q2 -->|No| SUBAGENT["Choose Sequential Sub-agent<br>Sequential delegation"]
-    Q2 -->|Yes| TEAMS["Choose Agent Teams<br>Team collaboration"]
+    Q2 -->|No| SUBAGENT["Sequential Sub-agent<br>Sequential delegation"]
+    Q2 -->|Yes| TEAMS["Agent Teams<br>Team collaboration"]
     
     Q3 -->|Yes| TEAMS
     Q3 -->|No| SUBAGENT
@@ -97,29 +101,29 @@ flowchart TD
 /effort ultracode
 ```
 
-Enables **automatic workflow generation** for all substantive tasks in the current session.
+Enables **automatic workflow generation** for all substantive work in the current session.
 
 **Effects**:
-- Reasoning effort: Set to `xhigh`
-- Auto-workflow generation enabled
-- Each task selects optimal orchestration primitive
+- Reasoning effort: set to `xhigh`
+- Automatic workflow generation enabled
+- The optimal orchestration primitive is chosen per task
 
 **When to use**:
-- Very complex multi-phase tasks
-- Large projects requiring auto-orchestration
+- Very complex multi-phase work
+- Large projects that need automatic orchestration
 
-### ultracode Keyword
+### The ultracode Keyword
 
-Triggers workflows in a single request.
+If you want to trigger a workflow for a single request rather than the whole session, use the keyword.
 
 ```bash
-> Find and categorize all TODO comments in our codebase.
-> (Without ultracode keyword triggers regular sub-agent)
+> Find and classify all TODO comments in our codebase.
+> (Without the ultracode keyword, runs as a regular sub-agent)
 
 VS
 
-> ultracode: Find and categorize all TODO comments in our codebase.
-> (Auto-generates workflow)
+> ultracode: Find and classify all TODO comments in our codebase.
+> (Automatically generates a workflow)
 ```
 
 ## Dynamic Workflow Structure
@@ -127,7 +131,7 @@ VS
 ### Basic Script Template
 
 ```javascript
-// Workflow script: categorize all TODO comments across codebase
+// Workflow script: classify TODOs across the entire codebase
 const packages = [
   "internal/auth",
   "internal/api",
@@ -138,20 +142,20 @@ const packages = [
 const results = [];
 
 for (const pkg of packages) {
-  // Create independent agent per package
+  // Create an independent agent for each package
   const result = await agent({
     agentType: "Explore",
     model: "haiku",
     effort: "low",
     prompt: `
-      Find all TODO comments in ${pkg} package and categorize them.
-      Format: [file] [line] [category] [text]
+      Find and classify all TODO comments in the ${pkg} package.
+      Format: [file] [line] [category] [content]
     `
   });
   results.push({ pkg, todos: result });
 }
 
-// Final synthesis
+// Final consolidation
 const summary = {
   total_packages: packages.length,
   package_summaries: results,
@@ -164,83 +168,83 @@ return summary;
 ### Characteristics
 
 | Item | Description |
-|---|---|
-| **Agent creation** | Dynamic creation via loop (`await agent({...})`) |
+|------|------|
+| **Agent creation** | Dynamically created in a loop (`await agent({...})`) |
 | **Intermediate results** | Stored in script variables (no context accumulation) |
-| **Parallel execution** | Independent tasks auto-parallelize (max 16 concurrent) |
-| **Final return** | Integrated results only returned to session |
+| **Parallel execution** | Independent tasks auto-parallelized (up to 16 concurrent) |
+| **Final return** | Only the consolidated result returns to the current session |
 
 ## MoAI Integration Considerations
 
-### AskUserQuestion Constraint
+### The AskUserQuestion Constraint
 
-Workflow agents **cannot interact directly with users**.
+Workflow agents **cannot interact with the user directly**.
 
 ```
-❌ Workflow agent prompts user → Not possible
-✓ MoAI orchestrator collects choices beforehand → Execute workflow
+✗ A workflow agent raising a question to the user → not possible
+✓ The MoAI orchestrator collects all choices up front → then runs the workflow
 ```
 
-**Resolution approach**:
-1. MoAI orchestrator calls `AskUserQuestion`
-2. Collect user responses
-3. Include responses in workflow inputs before execution
+**Resolution**:
+1. The MoAI orchestrator calls `AskUserQuestion`
+2. Collects the user's responses
+3. Runs the workflow with the responses included in its input
 
 ### Implementation Kickoff Approval
 
-Workflow execution also requires user approval like regular run-phase.
+Workflow execution requires user approval just like any run phase. A massive fan-out does not make the human gate disappear.
 
 ```
 /moai run --workflow SPEC-XXX
 
-→ MoAI: "Execute this SPEC as a workflow. Proceed?"
+→ MoAI: "Running this SPEC as a workflow. Proceed?"
 → AskUserQuestion approval required
 ```
 
 ### Cost Awareness
 
-Dynamic workflows can incur **high token consumption**.
+Dynamic workflows save context, but **total token consumption can be large**. The fan-out scale is the cost.
 
-| Task | Agent Count | Expected Cost |
-|---|---|---|
+| Task | Agent count | Expected cost |
+|------|-----------|---------|
 | Small package scan | 5 | Low |
-| Medium codebase | 20 | Medium |
+| Mid-size codebase | 20 | Medium |
 | Full repo scan | 100+ | High |
 
-**Cost management**:
-- Model: Use `haiku` (read-only extraction)
-- Agent count: Limit scope (`packages.slice(0, 20)`)
-- Parallelism: Adjust max 16 manually if needed
+**Cost controls**:
+- Model: use `haiku` (read-only extraction)
+- Agent count: limit scope (`packages.slice(0, 20)`)
+- Parallelism: manually tune down from the max of 16
 
 ## Workflow Activation and Configuration
 
-### Activation Requirements
+### Activation Conditions
 
-Dynamic workflows run only when:
+Dynamic workflows run only under the following conditions.
 
 1. Claude Code v2.1.154+
-2. Paid plan (Pro or Team)
-3. `/config` has `"disableWorkflows": false`
+2. A paid plan (Pro or Team)
+3. `"disableWorkflows": false` in `/config`
 
 ### Disabling
 
-Disable at organization or user level:
+Can be disabled at the organization or user level.
 
 ```bash
 /config
-# Turn off Dynamic workflows toggle
+# Turn off the dynamic workflows toggle
 
 OR
 
 export CLAUDE_CODE_DISABLE_WORKFLOWS=1
 ```
 
-## Related Documentation
+## Related Documents
 
-- [Harness v4 Builder](/advanced/builder-agents) - Dynamic team creation
-- [Agent Guide](/advanced/agent-guide) - Agent system overview
-- [SPEC-Based Development](/workflow-commands/moai-plan) - Integrated workflow
+- [Builder Agents and Harness v4](/en/advanced/builder-agents) - dynamic team creation
+- [Agent Guide](/en/advanced/agent-guide) - agent system overview
+- [SPEC-Based Development](/en/workflow-commands/moai-plan) - integrated workflow
 
 {{< callout type="info" >}}
-**Tip**: For small scale, Sequential Sub-agents is sufficient. Use dynamic workflows only when you need "parallel coordination of dozens to hundreds of independent tasks".
+**Tip**: For small workloads, Sequential Sub-agents suffice. Use dynamic workflows only when you need to "orchestrate dozens to hundreds of independent tasks in parallel" — and remember that the fan-out itself is the cost.
 {{< /callout >}}

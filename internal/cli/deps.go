@@ -79,8 +79,12 @@ var deps *Dependencies
 // @MX:REASON: [AUTO] fan_in=5, called from root.go, deps_test.go, integration_test.go, hook_e2e_test.go, deps.go
 // InitDependencies creates and wires all domain dependencies.
 // It should be called once during application startup.
-// Dependencies that require a project root (Config, Git) are
-// initialized lazily on first use or when the project root is available.
+// Config is loaded eagerly from the current working directory so that
+// config-dependent hook handlers (handoff-inject, preTool, subagentStart,
+// userPromptSubmit, etc.) resolve project settings (e.g. handoff.mode)
+// instead of falling back to compiled defaults. Without this Load,
+// ConfigManager.Get() returns nil and every handler that reads config
+// silently falls back (handoff-inject → mode=manual → no-op auto-resume).
 func InitDependencies() {
 	// Replace the default logger with discard to prevent slog output from hook handlers leaking to stderr.
 	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
@@ -132,6 +136,16 @@ func InitDependencies() {
 		Logger:         logger,
 	}
 
+	// Eagerly load the project config (see InitDependencies godoc). Fail-open:
+	// a load error logs a warning and leaves Get() returning nil, so handlers
+	// fall back to defaults and glm.go's nil-safe path stays compatible.
+	if _, err := deps.Config.Load(cwd); err != nil {
+		logger.Warn("config load failed; config-dependent handlers fall back to defaults",
+			"cwd", cwd,
+			"error", err,
+		)
+	}
+
 	// Hook registry requires a ConfigProvider; use ConfigManager
 	reg := hook.NewRegistry(deps.Config)
 	deps.HookRegistry = reg
@@ -175,6 +189,11 @@ func InitDependencies() {
 
 	// Register auto-update handler for SessionStart
 	deps.HookRegistry.Register(hook.NewAutoUpdateHandler(buildAutoUpdateFunc()))
+
+	// Register auto-resume handoff-inject handler as the 3rd SessionStart handler
+	// (SPEC-HANDOFF-AUTORESUME-001 M3). The registry accumulate-all merge keeps its
+	// additionalContext alongside the sessionStartHandler / autoUpdateHandler output.
+	deps.HookRegistry.Register(hook.NewHandoffInjectHandler(deps.Config))
 
 	deps.HookRegistry.Register(hook.NewStopHandler())
 	// Build security policy: defaults + extra patterns from security.yaml (REQ-SEC-003).

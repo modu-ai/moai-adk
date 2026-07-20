@@ -4,7 +4,7 @@ weight: 50
 draft: false
 ---
 
-MoAI-ADK의 인터랙티브 설정 마법사를 통해 첫 설정을 완료하세요. 9단계를 통해 시스템을 개발 환경에 맞게 구성합니다.
+MoAI-ADK의 인터랙티브 설정 마법사로 첫 설정을 완료하세요. 언어, Git 자동화 범위, 모델 정책, 하네스 프로필을 개발 환경에 맞게 구성합니다. 여기서 정한 값은 전부 `.moai/config/sections/` 아래 YAML 파일로 저장되므로, 나중에 언제든 파일을 직접 고치거나 마법사를 다시 실행해 바꿀 수 있습니다.
 
 ## 설정 마법사 시작
 
@@ -18,7 +18,7 @@ moai init my-project
 
 이 명령은 `my-project` 폴더를 생성하고 MoAI-ADK를 초기화합니다.
 
-### 현재 폴더에 설치
+### 기존 폴더에 설치
 
 기존 프로젝트에 MoAI-ADK를 설치하려면 해당 폴더로 이동 후 실행하세요:
 
@@ -31,27 +31,48 @@ moai init
 `moai init`은 현재 폴더에 바로 설치합니다. 신규 프로젝트는 `moai init <프로젝트명>`으로 생성하세요.
 {{< /callout >}}
 
-## 9단계 설정 과정
+## 마법사 모드
+
+초기화 마법사는 질문의 깊이에 따라 세 모드로 동작합니다.
+
+| 모드 | 플래그 | 질문 범위 |
+|------|--------|----------|
+| **Quick** (기본값) | (없음) | 핵심 설정만 — 언어, 이름, Git, 모델 정책 |
+| **Standard** | `--standard` | Quick + Phase 1 질문 (project mode, harness profile, LSP, quality, design) |
+| **Advanced** | `--advanced` | Standard + Phase 2 질문 (선행 조건 충족 시만) |
+
+```bash
+# 기본 마법사 (Quick)
+moai init my-project
+
+# Phase 1 질문 포함
+moai init my-project --standard
+
+# Phase 1 + Phase 2 질문 포함
+moai init my-project --advanced
+```
+
+## Quick 모드 (기본)
+
+플래그 없이 실행하면 핵심 설정만 묻습니다. 대부분의 사용자에게 충분합니다.
 
 ### 1단계: 대화 언어 선택
 
-Claude가 응답할 언어를 선택하세요.
+Claude가 응답할 언어를 선택합니다.
 
 ```bash
 ? 대화 언어를 선택하세요:
-▸ English - English
-  Korean (한국어) - Korean
-  Japanese (日本語) - Japanese
-  Chinese (中文) - Chinese
+▸ English
+  Korean (한국어)
+  Japanese (日本語)
+  Chinese (中文)
 ```
 
-{{< callout type="info" >}}
-언어 선택은 나중에 `.moai/config/sections/language.yaml` 파일에서 변경할 수 있습니다.
-{{< /callout >}}
+이 설정은 `.moai/config/sections/language.yaml` 에 저장됩니다.
 
 ### 2단계: 이름 입력
 
-설정 파일에 사용됩니다. Enter를 눌러 건너뛸 수 있습니다.
+설정 파일에 사용될 사용자 이름입니다. Enter를 눌러 건너뛸 수 있습니다.
 
 ```bash
 ? 이름 입력: [이름]
@@ -68,12 +89,12 @@ Claude가 수행할 수 있는 Git 작업 범위를 설정합니다.
   Team - AI가 브랜치 생성, 커밋, PR 생성 가능
 ```
 
-**Manual**: AI가 Git 작업을 수행하지 않습니다. 모든 커밋과 푸시는 사용자가 직접 실행합니다.
-**Personal**: AI가 브랜치를 생성하고 커밋할 수 있습니다. 개인 프로젝트에 적합합니다.
-**Team**: AI가 브랜치 생성, 커밋, PR 생성까지 수행합니다. 팀 협업 워크플로우에 최적화되어 있습니다.
+- **Manual**: AI가 Git 작업을 수행하지 않습니다. 모든 커밋과 푸시는 사용자가 직접 실행합니다.
+- **Personal**: AI가 브랜치를 생성하고 커밋할 수 있습니다. 개인 프로젝트에 적합합니다.
+- **Team**: AI가 브랜치 생성, 커밋, PR 생성까지 수행합니다. 팀 협업 워크플로우에 최적화되어 있습니다.
 
 {{< callout type="info" >}}
-Git 설정은 `.moai/config/sections/git-strategy.yaml` 파일에 저장됩니다. `moai update -c` 명령으로 언제든지 재설정할 수 있습니다.
+Git 설정은 `.moai/config/sections/git-strategy.yaml` 파일에 저장됩니다.
 {{< /callout >}}
 
 ### 4단계: Git 프로바이더 선택
@@ -86,79 +107,98 @@ Git 설정은 `.moai/config/sections/git-strategy.yaml` 파일에 저장됩니�
   GitLab - GitLab.com 또는 자체 호스팅 GitLab
 ```
 
-### 5단계: Git 커밋 메시지 언어 선택
+### 5단계: 커밋 메시지 언어
 
-커밋 메시지 작성에 사용할 언어를 선택합니다.
+커밋 메시지 작성에 사용할 언어를 선택합니다. 코드 주석 언어와 다르게 설정할 수 있습니다.
 
-```bash
-? Git 커밋 메시지 언어 선택:
-▸ Korean (한국어) - 한국어로 커밋
-  English - 영어로 커밋
-  Japanese (日本語) - 일본어로 커밋
-  Chinese (中文) - 중국어로 커밋
-```
+### 6단계: 코드 주석 언어
 
-{{< callout type="info" >}}
-커밋 메시지 언어는 코드 주석 언어와 다르게 설정할 수 있습니다.
-{{< /callout >}}
+코드 주석에 사용할 언어를 선택합니다. 대부분의 프로젝트에서는 영어를 권장합니다.
 
-### 6단계: 코드 주석 언어 선택
-
-코드 주석에 사용할 언어를 선택합니다.
-
-```bash
-? 코드 주석 언어 선택:
-▸ Korean (한국어) - 한국어로 주석
-  English - 영어로 주석
-  Japanese (日本語) - 일본어로 주석
-  Chinese (中文) - 중국어로 주석
-```
-
-{{< callout type="info" >}}
-대부분의 프로젝트에서는 코드 주석 언어로 영어를 사용하는 것이 좋습니다.
-{{< /callout >}}
-
-### 7단계: 문서 언어 선택
+### 7단계: 문서 언어
 
 문서 파일에 사용할 언어를 선택합니다.
 
-```bash
-? 문서 언어 선택:
-▸ Korean (한국어) - 한국어로 문서
-  English - 영어로 문서
-  Japanese (日本語) - 일본어로 문서
-  Chinese (中文) - 중국어로 문서
-```
+### 8단계: 성능 티어 (모델 정책)
 
-### 8단계: Agent Teams 실행 모드 선택
-
-MoAI가 Agent Teams (병렬) 또는 sub-agents (순차)를 사용하도록 설정합니다.
+에이전트에 할당할 AI 모델 티어를 선택합니다 — 토크노믹스의 핵심 설정입니다.
 
 ```bash
-? Agent Teams 실행 모드 선택:
-▸ Auto (권장) - 작업 복잡도 기반 지능형 선택
-  Sub-agent (클래식) - 기존 단일 에이전트 모드
-  Team (실험적) - 병렬 Agent Teams (실험적 기능 필요)
+? 성능 티어 선택:
+▸ medium (권장) - 품질과 비용의 균형
+  max - 최고 품질, 계획·감사에 Opus 배정
+  low - 경제적, Sonnet 중심 배분
 ```
 
-**Auto**: 작업 복잡도에 따라 자동으로 최적의 모드를 선택합니다. 대부분의 경우 권장됩니다.
-**Sub-agent**: 단일 에이전트가 순차적으로 작업을 처리합니다. 의존성이 높은 작업에 적합합니다.
-**Team**: 여러 전문 에이전트가 병렬로 협업합니다. `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1` 환경 변수가 필요합니다.
+| 티어 | 특징 |
+|------|------|
+| **max** | 최고 품질 — 계획·감사에 Opus 배정, 최대 추론 깊이 |
+| **medium** (기본값) | 품질과 비용의 균형 |
+| **low** | 경제적 — Sonnet 중심 배분 |
 
-### 9단계: 팀원 표시 모드 선택
+이 설정은 `.moai/config/sections/llm.yaml` 의 `performance_tier` 필드에 저장되며, `profile` 필드(프로필 매트릭스 열)의 legacy 별칭으로 읽힙니다. `--profile max|medium|low` 플래그로 직접 지정하면 `profile` 필드에 저장됩니다. 프로필별 에이전트 model+effort 매핑은 [프로필 매트릭스](/ko/advanced/profile-matrix/) 페이지를 참조하세요.
 
-Agent 팀원 표시 방법을 설정합니다. 분할 화면은 tmux가 필요합니다.
+## Standard 모드 (Phase 1 질문)
+
+`--standard` 플래그를 주면 Quick 모드의 모든 질문에 추가로 Phase 1 질문이 표시됩니다.
+
+### project mode
+
+프로젝트 협업 모드를 선택합니다.
 
 ```bash
-? 팀원 표시 모드 선택:
-▸ Auto (권장) - tmux 사용 가능 시 tmux, 없으면 in-process (기본값)
-  In-Process - 같은 터미널에서 실행 (어디서나 동작)
-  Tmux - tmux 분할 화면 (tmux/iTerm2 필요)
+? Select project mode:
+▸ Personal (Recommended) - Solo developer
+  Team - Multi-developer setup
 ```
 
-**Auto**: tmux 설치 여부를 자동으로 감지하여 최적의 표시 모드를 선택합니다.
-**In-Process**: 팀원 작업이 같은 터미널 창에서 실행됩니다. tmux 없이도 동작합니다.
-**Tmux**: tmux 분할 화면으로 팀원 작업을 시각적으로 확인할 수 있습니다.
+### harness evaluator profile
+
+품질 평가자의 기본 프로필을 선택합니다.
+
+```bash
+? Select default harness evaluator profile:
+▸ default
+  strict
+  lenient
+  frontend
+```
+
+### LSP integration
+
+run 단계에서 언어 서버 진단을 활성화할지 선택합니다. 기본값은 비활성화 (opt-in) 입니다.
+
+### quality gates
+
+TRUST 5 품질 게이트 강제 여부와 커버리지 예외 허용 여부를 선택합니다.
+
+- **Enforce quality gates** (기본값: Yes) — 품질 게이트 실패 시 구현 진행 차단
+- **Allow coverage exemptions** (기본값: No) — 특정 파일/패키지를 커버리지 대상에서 제외
+
+### design workflow
+
+MoAI 디자인 파이프라인과 Claude Design 연동을 활성화할지 선택합니다.
+
+- **Enable design workflow** (기본값: Yes)
+- **Enable Claude Design integration** (기본값: Yes, design 활성화 시만 표시)
+
+## Advanced 모드 (Phase 2 질문)
+
+`--advanced` 플래그는 `--standard` 를 포함하며, 추가로 Phase 2 질문을 표시합니다. Phase 2 질문은 run 단계 완료 등 선행 조건이 충족된 경우에만 표시되고, 조건이 없으면 자동으로 건너뛰며 안내 메시지가 출력됩니다.
+
+## 비대화형 모드 (CI/CD)
+
+플래그로 모든 값을 지정하면 마법사 없이 초기화할 수 있습니다:
+
+```bash
+moai init my-project \
+  --non-interactive \
+  --project-mode personal \
+  --profile medium \
+  --harness-profile default \
+  --enable-lsp=false \
+  --enforce-quality
+```
 
 ## 설정 완료
 
@@ -166,40 +206,18 @@ Agent 팀원 표시 방법을 설정합니다. 분할 화면은 tmux가 필요�
 
 ```mermaid
 graph TD
-    A[.moai/] --> B[config/]
-    A --> C[specs/]
-    A --> D[memory/]
-    B --> E[sections/]
-    E --> F[user.yaml]
-    E --> G[language.yaml]
-    E --> H[quality.yaml]
-    E --> I[git-strategy.yaml]
-```
-
-생성된 설정 파일을 확인해보세요:
-
-```bash
-cat .moai/config/sections/user.yaml
-```
-
-## 설정 구조
-
-```mermaid
-graph TB
-    A[.moai/config/sections/] --> B[user.yaml<br>사용자 정보]
-    A --> C[language.yaml<br>언어 설정]
-    A --> D[quality.yaml<br>품질 설정]
-    A --> E[git-strategy.yaml<br>Git 설정]
-
-    B --> B1[name]
-    C --> C1[conversation_language<br>commit_language, code_comments<br>documentation_language]
-    D --> D1[development_mode<br>enforce_quality<br>test_coverage_target]
-    E --> E1[strategy: manual/personal/team<br>auto_commit, auto_push<br>pr_workflow]
+    A[".moai/"] --> B["config/"]
+    A --> C["specs/"]
+    A --> D["memory/"]
+    B --> E["sections/"]
+    E --> F["user.yaml"]
+    E --> G["language.yaml"]
+    E --> H["quality.yaml"]
+    E --> I["llm.yaml"]
+    E --> J["git-strategy.yaml"]
 ```
 
 ## 설정 수정
-
-설정은 언제든지 수정할 수 있습니다:
 
 ### 수동 수정
 
@@ -210,31 +228,24 @@ vim .moai/config/sections/user.yaml
 # 언어 설정
 vim .moai/config/sections/language.yaml
 
+# 모델 정책 (성능 티어)
+vim .moai/config/sections/llm.yaml
+
 # 품질 설정
 vim .moai/config/sections/quality.yaml
-
-# Git 설정
-vim .moai/config/sections/git-strategy.yaml
 ```
 
 ### 재설정
 
-설정 마법사를 다시 실행하여 모든 설정을 재구성할 수 있습니다:
+설정 마법사를 다시 실행하여 구성을 변경할 수 있습니다:
 
 ```bash
 # 설정 마법사 다시 실행 (권장)
 moai update -c
-
-# 또는 전체 초기화
-moai init --reset
 ```
 
 {{< callout type="info" >}}
 `moai update -c` 명령은 기존 설정을 유지하면서 변경하고 싶은 항목만 선택적으로 재설정할 수 있습니다.
-{{< /callout >}}
-
-{{< callout type="warning" >}}
-`moai init --reset` 옵션은 기존 설정을 모두 덮어씁니다. 중요한 설정은 백업해두세요.
 {{< /callout >}}
 
 ## 설정 검증
@@ -245,30 +256,7 @@ moai init --reset
 moai doctor
 ```
 
-출력 예시:
-
-```bash
-moai doctor
-Running system diagnostics...
-
-┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━┓
-┃ Check                                    ┃ Status ┃
-┡━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━┩
-│ Python >= 3.11                           │   ✓    │
-│ Git installed                            │   ✓    │
-│ Project structure (.moai/)               │   ✓    │
-│ Config file (.moai/config/config.yaml)   │   ✓    │
-└──────────────────────────────────────────┴────────┘
-
-✓ All checks passed
-```
-
-이 명령은 다음을 검증합니다:
-
-- Python >= 3.11 설치 여부
-- Git 설치 여부
-- 프로젝트 구조 (`.moai/` 폴더)
-- 설정 파일 (`.moai/config/config.yaml`)
+이 명령은 Git 설치 여부, 프로젝트 구조 (`.moai/` 폴더), 설정 파일, 언어별 개발 도구를 검증합니다. `--verbose` 로 상세를 확인할 수 있습니다.
 
 ## 다음 단계
 
@@ -277,11 +265,3 @@ Running system diagnostics...
 ```bash
 moai --help
 ```
-
-모든 명령어와 옵션을 확인할 수 있습니다.
-
----
-
-## 다음 단계
-
-[빠른 시작](./quickstart)에서 첫 프로젝트를 생성하는 방법을 알아보세요.

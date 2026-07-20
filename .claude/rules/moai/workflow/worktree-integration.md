@@ -41,9 +41,9 @@ This glossary is the canonical definition surface for the L1 / L2 / L3 worktree-
 
 | Layer | Name | What it is | Path / Trigger | Lifetime | Owner |
 |-------|------|-----------|----------------|----------|-------|
-| **L1** | Claude-native ephemeral worktree | Session-scoped isolation materialized by the Claude Code runtime for a subagent spawned with `Agent(isolation: "worktree")` (or `claude --worktree`). The runtime decides whether to materialize it. | `.claude/worktrees/<auto-name>/` | Ephemeral — auto-cleaned on session end | Claude Code runtime (autonomous; MoAI orchestrator does not mandate it per 2026-05-17 policy) |
+| **L1** | Claude-native ephemeral worktree | Session-scoped isolation materialized by the Claude Code runtime for a subagent spawned with `Agent(isolation: "worktree")` (or `claude --worktree`). The runtime decides whether to materialize it. | `.claude/worktrees/<auto-name>/` | Ephemeral — auto-cleaned on session end | Claude Code runtime (autonomous; MoAI orchestrator does not mandate it per the opt-in policy) |
 | **L2** | MoAI persistent SPEC worktree | A persistent, SPEC-scoped working directory created by `moai worktree new SPEC-XXX`. Used for multi-session SPEC development (run + sync phases reuse the same L2 worktree). | `~/.moai/worktrees/<project>/<SPEC>/` | Persistent — disposed only via `moai worktree done SPEC-XXX` after both run + sync PRs merge | MoAI (user-managed via `moai worktree` CLI) |
-| **L3** | Worktree launch action (opt-in) | The user opt-in launch step that creates an L2 worktree, e.g. `/moai plan --worktree`. L3 is the *action*; L2 is the *artifact* it produces. Per the 2026-05-17 policy, L3 is opt-in; the default flow runs all phases on a `feat/SPEC-XXX` branch in the main checkout. | `/moai plan --worktree` (or `moai worktree new --worktree`) | n/a (an action, not a directory) | User (explicit opt-in) |
+| **L3** | Worktree launch action (opt-in) | The user opt-in launch step that creates an L2 worktree, e.g. `/moai plan --worktree`. L3 is the *action*; L2 is the *artifact* it produces. Per the opt-in policy, L3 is opt-in; the default flow runs all phases on a `feat/SPEC-XXX` branch in the main checkout. | `/moai plan --worktree` (or `moai worktree new --worktree`) | n/a (an action, not a directory) | User (explicit opt-in) |
 
 Relationships:
 - An **L3** launch action (`--worktree`) creates an **L2** persistent SPEC worktree.
@@ -111,11 +111,9 @@ background: true   # Returns immediately; results delivered on next turn
 
 Use with `isolation: worktree` for optimal parallel execution in team mode.
 
-[ZONE:Frozen] [HARD] Background agents auto-deny Write/Edit operations. Only use `background: true` for:
+Background-execution policy for write-capable agents is owned by `.claude/rules/moai/core/agent-common-protocol.md` § Background Agent Execution. As of Claude Code v2.1.198 subagents run in the background by default, and a background write surfaces a permission prompt in the main session naming the asking subagent; MoAI aligns with that runtime default rather than forcing foreground. The retained safeguard is concurrency, not backgrounding: MoAI does not run two write-capable agents concurrently. Use `background: true` for:
 - Read-only research and analysis agents
 - Agents whose write paths are pre-approved in settings.json `permissions.allow`
-
-For write-heavy agents without pre-approval, use `background: false` (foreground, sequential).
 
 Kill background agent: Press `Ctrl+X Ctrl+K` in Claude Code interface (v2.1.83+).
 
@@ -334,7 +332,7 @@ The `moai worktree new <SPEC-ID> --team` flag launches a Claude or GLM session i
 
 ### HARD Rules
 
-[ZONE:Frozen] [HARD] CLI launch decisions MUST NOT invoke `AskUserQuestion`. All four launch patterns (P1 tmux+CG → moai glm, P2 tmux+CC → moai cc, P3 no-tmux → syscall.Exec, P4 no-flag → handoff) are selected deterministically from observable state (tmux session presence, `teammateMode`, GLM env vars). This satisfies the Branch Origin Decision Protocol per CONST-V3R5-030 (see `.claude/rules/moai/development/branch-origin-protocol.md` § HARD Rules).
+[ZONE:Frozen] [HARD] CLI launch decisions MUST NOT invoke `AskUserQuestion`. All four launch patterns (P1 tmux+CG → moai glm, P2 tmux+CC → moai cc, P3 no-tmux → syscall.Exec, P4 no-flag → handoff) are selected deterministically from observable state (tmux session presence, `teammateMode`, GLM env vars). This satisfies the Branch Origin Decision Protocol (see `.claude/rules/moai/development/branch-origin-protocol.md` § HARD Rules).
 
 Static guard: `internal/cli/worktree/new_test.go` `TestNew_NoAskUserQuestion` scans all team-launch sources for `AskUserQuestion` / `mcp__askuser` references.
 
@@ -351,7 +349,7 @@ The 7-field schema (`spec_id`, `worktree_path`, `branch`, `pane_id`, `mode`, `cr
 - `.claude/skills/moai-workflow-worktree/SKILL.md` § `--team` Flag (P1-P4 matrix + examples)
 - `internal/cli/worktree/team_launch.go`, `team_launch_posix.go`, `team_launch_windows.go`, `swarm_registry.go`, `handoff_guidance.go`
 - The canonical worktree team-launch contract requirements
-- CONST-V3R5-030 — Branch Origin Decision Protocol (BODP)
+- Branch Origin Decision Protocol (BODP)
 
 ## Minimum Version Requirements
 
@@ -369,7 +367,7 @@ The 7-field schema (`spec_id`, `worktree_path`, `branch`, `pane_id`, `mode`, `cr
 | `CLAUDE_ENV_FILE` on Windows | **2.1.111** | Prior versions: no-op on Windows; fixed to inject env as on macOS/Linux |
 | `disableBypassPermissionsMode` policy | **2.1.111** | Prevents agents from requesting `bypassPermissions` when `true` |
 
-**Recommended**: Claude Code **2.1.111 or later** for Opus 4.7 support, MCP doctor warnings, and Windows CLAUDE_ENV_FILE parity. Minimum baseline: **2.1.97** for worktree isolation.
+**Recommended**: Claude Code **2.1.186 or later** for current background-agent permission-prompt semantics, Opus 4.7+ / 4.8 support, MCP doctor warnings, and Windows CLAUDE_ENV_FILE parity. Minimum baseline: **2.1.97** for worktree isolation.
 
 ## Troubleshooting
 
@@ -388,16 +386,14 @@ The 7-field schema (`spec_id`, `worktree_path`, `branch`, `pane_id`, `mode`, `cr
 | Step | Phase   | Worktree?                | Location                              | Lifecycle event              |
 |------|---------|--------------------------|---------------------------------------|------------------------------|
 | 1    | Plan    | **NO** (main checkout)   | n/a — `plan/SPEC-XXX` branch on main  | plan PR merged               |
-| 2    | Run     | **YES** (MoAI worktree)  | `~/.moai/worktrees/{project}/{SPEC}/` | run PR merged                |
-| 3    | Sync    | **YES** — same as Step 2 | same path as Step 2 (do NOT recreate) | sync PR merged               |
+| 2    | Run     | **opt-in (L3 `--worktree` / Route B)** | `~/.moai/worktrees/{project}/{SPEC}/` | run PR merged                |
+| 3    | Sync    | **opt-in (L3 `--worktree` / Route B)** — same as Step 2 | same path as Step 2 (do NOT recreate) | sync PR merged               |
 | 4    | Cleanup | n/a                      | host checkout                         | `moai worktree done SPEC-XXX` |
+
+(clause updated for v2.1.186 semantics) Worktree usage is user opt-in per the opt-in policy; the default flow runs all phases on a `feat/SPEC-XXX` branch in the main checkout.
 
 [ZONE:Frozen] [HARD] Disposal contract: `moai worktree done SPEC-XXX` MUST run only after BOTH run PR AND sync PR are merged. Premature disposal between Step 2 merge and Step 3 merge breaks Sync.
 
-## Team Protocol
-
-> Canonical: the shared Agent Teams teammate protocol (team discovery, communication, task management, error recovery, shutdown handling, idle states, context isolation) lives in `.claude/rules/moai/workflow/team-protocol.md`. This file cross-references it for worktree-isolation context only; it does not restate the teammate protocol mechanics.
-
 ---
 
-Version: 4.0.0 (Team Protocol merged from team-protocol.md)
+Version: 4.1.0 (Team Protocol section removed — Agent Teams static layer retired)

@@ -18,7 +18,9 @@
 // PRESERVE inventory composition per REQ-VVCR-005:
 //   - .moai/specs/                                      (SPEC documents)
 //   - .moai/project/{product,structure,tech}.md         (project docs)
-//   - .claude/skills/harness-*                          (user harness skills — canonical + legacy my-harness-*)
+//   - .claude/skills/hns-*                              (user harness skills — canonical hns- generation)
+//   - .claude/skills/harness-*                          (user harness skills — legacy + my-harness- gen-3)
+//   - .claude/workflows/hns-*.js / harness-*.js         (user Runner Workflows — both generations)
 //   - .claude/agents/harness/                           (user harness agents)
 //   - .claude/agents/local/                             (maintainer agents)
 //   - .claude/commands/  (root files + non-moai subdirs) (user commands)
@@ -221,10 +223,7 @@ func detectUserModifiedConfigs(projectRoot string, configPaths []string, baselin
 }
 
 // sha256Hex returns the SHA-256 hex digest of input.
-//
-// Distinct from hashBytes (design_folder.go:191) which returns the raw
-// SHA-256 bytes; this helper returns the hex-encoded string used by
-// SPEC-V3R6-V2-V3-CLEAN-REINSTALL-001 hash diff (REQ-VVCR-007).
+// Used by SPEC-V3R6-V2-V3-CLEAN-REINSTALL-001 hash diff (REQ-VVCR-007).
 func sha256Hex(b []byte) string {
 	sum := sha256.Sum256(b)
 	return hex.EncodeToString(sum[:])

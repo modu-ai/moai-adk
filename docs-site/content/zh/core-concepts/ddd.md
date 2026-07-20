@@ -1,26 +1,24 @@
 ---
 title: 开发方法论 (DDD/TDD)
-weight: 40
+weight: 50
 draft: false
 ---
 
-详细介绍 MoAI-ADK 的开发方法论。根据项目状态选择使用 TDD 或 DDD。
+本文详细介绍 MoAI-ADK 的开发方法论。它是 Run 阶段智能体实现代码时遵循的纪律，根据项目状态选用 TDD 或 DDD。方法论明确了，智能体就不会迷路 — 测试本身就是完成条件，循环自行收敛，不在无谓的重试上浪费 token。
 
 {{< callout type="info" >}}
-  **一句话总结:** 新项目使用 **TDD** (RED-GREEN-REFACTOR)，几乎没有测试的
-  现有项目使用 **DDD** (ANALYZE-PRESERVE-IMPROVE)。
-  也可以在 `quality.yaml` 中手动选择。
+  **一句话总结：** 新项目使用 **TDD**（RED-GREEN-REFACTOR），几乎没有测试的现有项目使用 **DDD**（ANALYZE-PRESERVE-IMPROVE）。也可以在 `quality.yaml` 中手动选择。
 {{< /callout >}}
 
-## 方法论概述
+## 方法论概览
 
-MoAI-ADK 根据项目状态自动选择最优的开发方法论。
+MoAI-ADK 会根据项目状态自动选择最优开发方法论。
 
 ```mermaid
 flowchart TD
-    A["项目分析"] --> B{"是否为新项目?"}
+    A["项目分析"] --> B{"新项目？"}
     B -->|"是"| C["TDD\nRED-GREEN-REFACTOR"]
-    B -->|"否"| D{"测试覆盖率?"}
+    B -->|"否"| D{"测试覆盖率？"}
     D -->|"10% 以上"| C
     D -->|"低于 10%"| E["DDD\nANALYZE-PRESERVE-IMPROVE"]
 
@@ -28,65 +26,61 @@ flowchart TD
     style E fill:#2196F3,color:#fff
 ```
 
-| 项目类型                             | 方法论  | 周期                      | 说明                                     |
-| ------------------------------------ | ------- | ------------------------- | ---------------------------------------- |
-| **新项目**                           | **TDD** | RED-GREEN-REFACTOR        | 先编写测试再实现代码                     |
-| **现有项目** (覆盖率 >= 10%)          | **TDD** | RED-GREEN-REFACTOR        | 基于部分测试扩展 TDD                     |
-| **现有项目** (覆盖率 < 10%)           | **DDD** | ANALYZE-PRESERVE-IMPROVE  | 通过特征化测试实现安全的渐进式改进       |
+| 项目类型 | 方法论 | 循环 | 说明 |
+| ---------------------------------- | ------- | ------------------------- | ---------------------------------------- |
+| **新项目** | **TDD** | RED-GREEN-REFACTOR | 先写测试再实现 |
+| **现有项目**（覆盖率 ≥ 10%） | **TDD** | RED-GREEN-REFACTOR | 基于部分测试扩展 TDD |
+| **现有项目**（覆盖率 < 10%） | **DDD** | ANALYZE-PRESERVE-IMPROVE | 用特性测试安全地渐进改进 |
 
 {{< callout type="info" >}}
-  **方法论可以手动选择:** 在 `.moai/config/sections/quality.yaml` 中将
-  `development_mode` 设置为 `tdd` 或 `ddd`，即可覆盖自动选择，
-  使用您想要的方法论。
+  **方法论可以手动选择：** 在 `.moai/config/sections/quality.yaml` 中把 `development_mode` 设为 `tdd` 或 `ddd`，即可忽略自动选择，使用想要的方法论。
 {{< /callout >}}
 
-## 什么是 TDD?
+## 什么是 TDD？
 
-**TDD** (Test-Driven Development) 是一种 **先编写测试，然后实现通过该测试的
-最少代码** 的开发方法论。作为 MoAI-ADK 的默认方法论，
-适用于大多数项目。
+**TDD** (Test-Driven Development) 是**先写测试，再实现通过该测试的最少代码**的开发方法论。它是 MoAI-ADK 的默认方法论，大多数项目都在使用。
 
-### RED-GREEN-REFACTOR 周期
+### RED-GREEN-REFACTOR 循环
 
-TDD 以重复三个阶段的周期进行。
+TDD 以重复三个阶段的循环推进。
 
 ```mermaid
 flowchart TD
     A["RED\n编写失败的测试"] --> B["GREEN\n用最少代码通过测试"]
     B --> C["REFACTOR\n改进代码质量\n测试持续通过"]
-    C --> D{"所有需求\n已实现?"}
+    C --> D{"全部需求\n实现完成？"}
     D -->|"否"| A
     D -->|"是"| E["确认测试覆盖率 85%+"]
 ```
 
-### 第 1 步: RED (编写失败的测试)
+### 第 1 步：RED（编写失败的测试）
 
-首先为要实现的功能 **编写测试**。由于代码尚未编写，测试必定会失败。
+**先写**要实现功能的测试。代码还不存在，测试必然失败。
 
-**核心原则:**
+**核心原则：**
 
-- 每次只编写一个测试
-- 用 Given-When-Then 清晰描述要实现的行为
-- 确认测试失败 (如果不失败则说明测试没有意义)
+- 一次只写一个测试
+- 用 Given-When-Then 明确描述要实现的行为
+- 确认测试失败（不失败的测试没有意义）
 
-### 第 2 步: GREEN (用最少代码通过测试)
+### 第 2 步：GREEN（用最少代码通过测试）
 
-编写能够通过测试的 **最简单代码**。
+编写通过测试的**最简单代码**。
 
-**核心原则:**
+**核心原则：**
 
-- 不要提前优化或抽象
-- 专注于正确性，优雅可以稍后考虑
-- 测试通过即停止
+- 不提前优化或抽象
+- 专注正确性，优雅留到之后
+- 测试通过就停手
 
-### 第 3 步: REFACTOR (改进代码质量)
+### 第 3 步：REFACTOR（改进代码质量）
 
 在保持测试通过的状态下整理代码。
 
-**核心原则:**
+**核心原则：**
 
 - 消除重复代码
-- 改善变量名和函数名
+- 改进变量名、函数名
 - 应用 SOLID 原则
 - 测试必须持续通过
 
@@ -96,7 +90,7 @@ flowchart TD
 # RED: 先编写失败的测试
 def test_user_registration():
     """
-    GIVEN: 存在有效的用户信息
+    GIVEN: 有一份有效的用户信息
     WHEN: 进行注册
     THEN: 应创建用户并发送欢迎邮件
     """
@@ -110,7 +104,7 @@ def test_user_registration():
     assert result.user.id is not None
     assert email_service.welcome_email_sent("newuser@example.com") is True
 
-# 运行测试 (预期失败 - 尚未实现)
+# 运行测试（预期失败——尚未实现）
 # > pytest test_user_service.py - test_user_registration FAILED
 
 # ====================================
@@ -123,12 +117,12 @@ class UserService:
         email_service.send_welcome(email)
         return RegistrationResult.success(user)
 
-# 运行测试 (通过)
+# 运行测试（通过）
 # > pytest test_user_service.py - test_user_registration PASSED
 
 # ====================================
 
-# REFACTOR: 改进代码质量 (测试持续通过)
+# REFACTOR: 改进代码质量（测试持续通过）
 class UserService:
     def __init__(
         self,
@@ -149,127 +143,120 @@ class UserService:
         self.email_service.send_welcome(email)
         return RegistrationResult.success(user)
 
-# 运行测试 (仍然通过)
+# 运行测试（仍然通过）
 # > pytest test_user_service.py - test_user_registration PASSED
 ```
 
 ### 在现有项目中使用 TDD (Brownfield Enhancement)
 
-在有现有代码的项目中使用 TDD 时，会增加 **Pre-RED 阶段**:
+在已有代码的项目中使用 TDD 时，会增加 **Pre-RED 阶段**：
 
 1. **(Pre-RED)** 阅读目标区域的现有代码，理解当前行为
-2. **RED:** 基于对现有代码的理解编写失败的测试
-3. **GREEN:** 用最少代码通过测试
-4. **REFACTOR:** 在保持测试通过的同时改进代码
+2. **RED：** 基于对现有代码的理解编写失败的测试
+3. **GREEN：** 用最少代码让测试通过
+4. **REFACTOR：** 保持测试通过的同时改进代码
 
 {{< callout type="info" >}}
-  即使有现有代码，只要测试覆盖率在 10% 以上就可以使用 TDD。
-  在 Pre-RED 阶段了解现有行为后再编写测试，因此可以在安全保留现有功能的同时
-  添加新功能。
+  即使已有代码，只要测试覆盖率在 10% 以上就可以使用 TDD。因为在 Pre-RED 阶段先把握现有行为再写测试，所以可以在安全保存既有功能的同时添加新功能。
 {{< /callout >}}
 
-## 什么是 DDD?
+## 什么是 DDD？
 
-**DDD** (Domain-Driven Development) 是一种 **安全的代码改进方法**。它在尊重现有
-代码的同时采取渐进式改进的方式。适用于几乎没有测试 (低于 10%) 的现有项目。
+**DDD** (Domain-Driven Development) 是**安全改进代码的方法**，一种尊重现有代码、渐进式改进的方式。用于几乎没有测试（低于 10%）的现有项目。
 
-### 房屋翻新类比
+### 房屋改造比喻
 
-为初次接触 DDD 的读者，用 **房屋翻新** 来做类比。想象一下翻新一栋 10 年的
-老房子。
+为初次接触 DDD 的读者，用**房屋改造**来打比方。想象你要改造一栋住了 10 年的房子。
 
-| 房屋翻新阶段        | DDD 阶段              | 做什么                             | 为什么重要                                                  |
+| 房屋改造阶段 | DDD 阶段 | 做的事 | 为什么重要 |
 | --------------------- | --------------------- | ---------------------------------- | ----------------------------------------------------------- |
-| 检查房屋              | **ANALYZE** (分析)    | 检查墙壁裂缝、管道状况             | 不知道哪里有问题就无法修复                                  |
-| 拍摄现状照片          | **PRESERVE** (保留)   | 拍摄所有房间的照片作为记录          | 以后疑惑"这里原来有墙吗?"时可以查看确认                     |
-| 逐个房间翻新          | **IMPROVE** (改进)    | 每次只施工一个房间，每次都验证       | 一次性全部拆除就无法知道问题出在哪里                        |
+| 检查房子 | **ANALYZE**（分析） | 确认墙上的裂缝、管道状况 | 不知道哪里有问题就无从修起 |
+| 给现状拍照 | **PRESERVE**（保存） | 给所有房间拍照存档 | 之后疑惑"原来这里有堵墙吗？"时可以核对 |
+| 一间一间改造 | **IMPROVE**（改进） | 一次只施工一个房间，每次都验收 | 一下子全拆了，就不知道问题出在哪 |
 
-**错误方法 vs 正确方法:**
+**错误的方法 vs 正确的方法：**
 
 ```
-错误方法: "把全部代码一次性改掉!"
-  --> 破坏现有功能的风险很高
-  --> 出问题时很难找到错在哪里
+错误的方法："我要一次性把全部代码都改掉！"
+  --> 现有功能被改坏的风险很高
+  --> 一旦出问题，很难找出哪里错了
 
-正确方法: "用测试记录当前行为，然后一点点改!"
-  --> 现有功能一旦被破坏，测试会立即发出通知
-  --> 出问题时只需回退最后一次修改即可
+正确的方法："先用测试记录当前行为，再一点一点地改！"
+  --> 现有功能一被改坏，测试立刻就会报警
+  --> 出问题时只需回退最后一次变更即可
 ```
 
-### ANALYZE-PRESERVE-IMPROVE 周期
+### ANALYZE-PRESERVE-IMPROVE 循环
 
-MoAI-ADK 的 DDD 以重复三个阶段的周期进行。
+MoAI-ADK 的 DDD 以重复三个阶段的循环推进。
 
 ```mermaid
 flowchart TD
-    A["ANALYZE\n分析代码结构\n识别问题"] --> B["PRESERVE\n编写特征化测试\n记录当前行为"]
+    A["ANALYZE\n分析代码结构\n把握问题点"] --> B["PRESERVE\n编写特性测试\n记录当前行为"]
     B --> C["IMPROVE\n渐进式代码改进\n确认测试通过"]
-    C --> D{"所有测试\n通过了吗?"}
-    D -->|"通过"| E["提交并\n继续下一项改进"]
-    D -->|"失败"| F["回退最后的修改"]
+    C --> D{"全部测试\n通过了吗？"}
+    D -->|"通过"| E["提交并\n进行下一项改进"]
+    D -->|"失败"| F["回退\n最后一次变更"]
     F --> C
-    E --> G{"所有需求\n已实现?"}
-    G -->|"尚未完成"| A
-    G -->|"已完成"| H["实现完成"]
+    E --> G{"全部需求\n实现完成？"}
+    G -->|"还有剩余"| A
+    G -->|"完成"| H["实现完成"]
 ```
 
-### 第 1 步: ANALYZE (分析)
+### 第 1 步：ANALYZE（分析）
 
-彻底分析现有代码的结构。就像医生检查患者一样。
+彻底分析现有代码的结构，就像医生给病人诊察。
 
-**分析项目:**
+**分析项目：**
 
-| 分析对象   | 确认内容                           | 类比               |
+| 分析对象 | 确认内容 | 比喻 |
 | ---------- | ---------------------------------- | ------------------ |
-| 文件结构   | 有哪些文件，它们如何关联           | 查看房屋平面图     |
-| 依赖关系   | 哪个模块依赖于哪个模块             | 检查管道和电气线路 |
-| 测试现状   | 现有测试有多少                     | 查看现有保险       |
-| 问题点     | 重复代码、安全漏洞、性能瓶颈       | 检查墙壁裂缝和漏水 |
+| 文件结构 | 有哪些文件、如何关联 | 核对房屋图纸 |
+| 依赖 | 哪个模块依赖哪个模块 | 检查管道与电气布线 |
+| 测试现状 | 现有测试有多少 | 核对已有保险 |
+| 问题点 | 重复代码、安全漏洞、性能瓶颈 | 检查裂缝的墙、漏水 |
 
-**manager-develop 生成的分析报告示例:**
+**manager-develop 生成的分析报告示例：**
 
 ```markdown
 ## 代码分析报告
 
-- 目标: src/auth/ (认证模块)
+- 对象: src/auth/（认证模块）
 - 文件: 8 个 Python 文件
 - 代码行数: 1,850 行
 - 测试覆盖率: 5%
 
 ## 发现的问题
-1. 重复的认证逻辑 (3 处存在相同代码)
-2. 硬编码的密钥 (直接写在 config.py 中)
-3. SQL 注入漏洞 (user_repository.py)
-4. 测试不足 (5%，目标 85%)
+1. 重复的认证逻辑（3 处重复着相同代码）
+2. 硬编码的密钥（直接写在 config.py 中）
+3. SQL Injection 漏洞（user_repository.py）
+4. 测试不足（5%，目标 85%）
 ```
 
-### 第 2 步: PRESERVE (保留)
+### 第 2 步：PRESERVE（保存）
 
-构建用于保留现有行为的 **安全网**。这一阶段的核心是编写 **特征化测试**
-(Characterization Tests)。
+为保存现有行为构建**安全网**。这一阶段的核心是编写**特性测试** (Characterization Tests)。
 
 {{< callout type="info" >}}
-  **什么是特征化测试?**
+  **特性测试是什么？**
 
-  就像房屋翻新前 **拍照记录现状** 一样。
+  就像房屋改造前**给现状拍照存档**。
 
-  普通测试检查"这个功能是否正确运行?"而特征化测试则记录"这个功能当前是
-  如何运行的?"
+  一般的测试确认"这是否正确地工作？"。而特性测试记录的是"这现在是如何工作的？"。
 
-  也就是说，不判断对错，而是 **记录"它原本就是这样运行的"这一事实**。之后修改
-  代码时如果测试失败，就能立即知道现有行为发生了变化。
+  也就是说，不是判断对错，而是**记录"原本就是这样工作的"这一事实**。之后修改代码时测试若失败，就能立即知道既有行为被改变了。
 {{< /callout >}}
 
-**特征化测试示例:**
+**特性测试示例：**
 
 ```python
 class TestExistingLoginBehavior:
-    """记录现有登录函数当前行为的特征化测试"""
+    """记录既有登录函数当前行为的特性测试"""
 
     def test_valid_login_returns_token(self):
         """
-        GIVEN: 存在已注册的用户
-        WHEN: 使用正确密码登录
+        GIVEN: 有一个已注册的用户
+        WHEN: 用正确的密码登录
         THEN: 原样记录当前实现返回的响应
         """
         user = create_test_user(
@@ -279,13 +266,13 @@ class TestExistingLoginBehavior:
 
         result = login_service.login("test@example.com", "password123")
 
-        # 原样记录当前行为 (不判断对错)
+        # 原样记录当前行为（不判断对错）
         assert result["status"] == "success"
         assert result["token"] is not None
-        assert result["expires_in"] == 3600  # 当前过期时间
+        assert result["expires_in"] == 3600  # 当前的过期时间
 
     def test_wrong_password_returns_error(self):
-        """记录使用错误密码登录时的当前行为"""
+        """记录用错误密码登录时的当前行为"""
         create_test_user(email="test@example.com", password="password123")
 
         result = login_service.login("test@example.com", "wrongpassword")
@@ -294,30 +281,29 @@ class TestExistingLoginBehavior:
         assert result["code"] == 401
 ```
 
-**测试编写策略:**
+**测试编写策略：**
 
 ```mermaid
 flowchart TD
     A["分析现有代码"] --> B["列出主要行为清单"]
-    B --> C["为每个行为\n编写特征化测试"]
+    B --> C["为每个行为编写\n特性测试"]
     C --> D["运行全部测试"]
-    D --> E{"所有测试\n通过?"}
+    D --> E{"全部测试\n通过？"}
     E -->|"通过"| F["安全网构建完成\n可以开始重构"]
-    E -->|"失败"| G["修正测试\n调整为匹配当前行为"]
+    E -->|"失败"| G["修改测试\n调整为符合当前行为"]
     G --> D
 ```
 
-### 第 3 步: IMPROVE (改进)
+### 第 3 步：IMPROVE（改进）
 
-特征化测试构建完成后，就可以安全地改进代码了。核心原则是 **分成小步骤逐步
-修改**。
+特性测试构建完成后，就可以安全地改进代码了。核心原则是**拆成小步骤地变更**。
 
-**改进过程:**
+**改进过程：**
 
 ```python
-# 改进前: 原始代码
+# BEFORE: 改进前的代码
 def login(email, password):
-    # SQL 注入漏洞
+    # SQL Injection 漏洞
     user = db.query("SELECT * FROM users WHERE email = '" + email + "'")
     if user and check_password(user.password, password):
         token = generate_token(user.id)
@@ -326,16 +312,16 @@ def login(email, password):
 
 # ====================================
 
-# 改进后: 经过 3 次迭代完成的代码
+# AFTER: 改进后的代码（经过 3 次迭代完成）
 def login(email: str, password: str) -> LoginResult:
     """处理用户登录。"""
-    # 迭代 1: 使用参数化查询防止 SQL 注入
+    # 迭代 1: 用参数化查询防止 SQL Injection
     user = user_repository.find_by_email(email)
 
     if not user:
         return LoginResult.failure("凭证无效")
 
-    # 迭代 2: 集中认证逻辑
+    # 迭代 2: 认证逻辑中心化
     if not auth_service.verify_password(user, password):
         return LoginResult.failure("凭证无效")
 
@@ -344,169 +330,166 @@ def login(email: str, password: str) -> LoginResult:
     return LoginResult.success(token)
 ```
 
-**渐进式改进步骤:**
+**渐进式改进步骤：**
 
 ```mermaid
 flowchart TD
-    S1["迭代 1: 小幅修改\n修复 SQL 注入"] --> T1["运行测试\n156 个全部通过"]
-    T1 --> C1["提交: 保存安全状态"]
-    C1 --> S2["迭代 2: 小幅修改\n集中认证逻辑"]
+    S1["迭代 1：小变更\n修复 SQL Injection"] --> T1["运行测试\n156 个全部通过"]
+    T1 --> C1["提交：保存安全状态"]
+    C1 --> S2["迭代 2：小变更\n认证逻辑中心化"]
     S2 --> T2["运行测试\n156 个全部通过"]
-    T2 --> C2["提交: 保存安全状态"]
-    C2 --> S3["迭代 3: 小幅修改\n分离令牌服务"]
+    T2 --> C2["提交：保存安全状态"]
+    C2 --> S3["迭代 3：小变更\n分离令牌服务"]
     S3 --> T3["运行测试\n156 个全部通过"]
-    T3 --> C3["提交: 改进完成"]
+    T3 --> C3["提交：改进完成"]
 ```
 
 {{< callout type="warning" >}}
-  **核心原则:** 每次修改后必须运行测试。如果测试失败，只需回退最后一次修改
-  即可。这就是"小步骤"的力量。一次修改太多内容的话，就很难找到问题出在哪里。
+  **核心原则：** 每次变更后必须运行测试。测试失败时只需回退最后一次变更。这就是"小步骤"的力量。一次改动太多，就很难找出问题出在哪。
 {{< /callout >}}
 
-## 方法论比较
+## 方法论对比
 
-| 方面              | TDD                         | DDD                          |
+| 视角 | TDD | DDD |
 | ----------------- | --------------------------- | ---------------------------- |
-| **测试时机**      | 代码编写之前 (RED)          | 分析之后 (PRESERVE)          |
-| **覆盖率策略**    | 每次提交严格要求            | 渐进式改进                   |
-| **最佳场景**      | 新项目，10%+ 覆盖率         | 覆盖率低于 10% 的遗留代码    |
-| **风险级别**      | 中等 (需要纪律)             | 低 (保留行为)                |
-| **覆盖率豁免**    | 不允许                      | 允许                         |
-| **Run Phase 周期** | RED-GREEN-REFACTOR          | ANALYZE-PRESERVE-IMPROVE     |
+| **测试时机** | 编写代码前 (RED) | 分析后 (PRESERVE) |
+| **覆盖率取向** | 每次提交严格标准 | 渐进式改进 |
+| **最佳场景** | 新项目、10%+ 覆盖率 | 覆盖率低于 10% 的遗留代码 |
+| **风险水平** | 中（需要纪律） | 低（保存行为） |
+| **覆盖率例外** | 不允许 | 允许 |
+| **Run Phase 循环** | RED-GREEN-REFACTOR | ANALYZE-PRESERVE-IMPROVE |
 
 {{< callout type="warning" >}}
-  **方法论选择指南:**
+  **方法论选择指南：**
 
-  - **新项目** (绿地): TDD (默认)
-  - **现有项目** (覆盖率 50% 以上): TDD
-  - **现有项目** (覆盖率 10-49%): TDD (利用 Pre-RED 阶段)
-  - **现有项目** (覆盖率低于 10%): DDD (渐进式特征化测试)
+  - **新项目**（绿地）：TDD（默认值）
+  - **现有项目**（覆盖率 50% 以上）：TDD
+  - **现有项目**（覆盖率 10-49%）：TDD（利用 Pre-RED 阶段）
+  - **现有项目**（覆盖率低于 10%）：DDD（渐进式特性测试）
 {{< /callout >}}
 
-## 什么是特征化测试?
+## 什么是特性测试？
 
-特征化测试是 DDD 的核心工具。让我们更详细地了解一下。
+特性测试是 DDD 的核心工具。让我们更详细地了解一下。
 
-### 与普通测试的区别
+### 与一般测试的区别
 
-| 区别          | 普通测试                        | 特征化测试                     |
+| 类别 | 一般测试 | 特性测试 |
 | ------------- | ------------------------------- | ------------------------------ |
-| **目的**      | "这个功能是否正确运行?"         | "这个功能当前是如何运行的?"    |
-| **编写时机**  | 编写新代码之前/之后             | 重构现有代码之前               |
-| **基准**      | 需求 (设计文档)                 | 当前实际行为                   |
-| **类比**      | 检查是否按设计图施工            | 用照片记录房屋的当前状态       |
+| **目的** | "这是否正确地工作？" | "这现在是如何工作的？" |
+| **编写时机** | 编写新代码前/后 | 重构现有代码前 |
+| **标准** | 需求（设计书） | 当前的实际行为 |
+| **比喻** | 确认是否按图纸建造 | 用照片记录房屋现状 |
 
 ### 编写原则
 
-1. **只记录不判断**: 即使当前代码有 Bug，也原样记录该行为
-2. **包含边界情况**: 不仅记录正常情况，还要记录所有异常情况
-3. **可重复性**: 无论运行多少次测试都应产生相同结果
-4. **快速执行**: 特征化测试必须快速运行，以便在每次修改后立即验证
+1. **只记录不评判**：即使当前代码有 bug，也照原样记录其行为
+2. **包含边界情况**：不仅记录正常情况，也记录全部异常情况
+3. **可重现**：测试运行多少次都应得到同样的结果
+4. **要快**：特性测试必须跑得快，才能在每次变更后立即验证
 
 ## 执行方法
 
-### TDD 执行
+### 执行 TDD
 
-SPEC 文档准备好后，使用以下命令执行 TDD 周期。
+SPEC 文档准备好后，用以下命令执行 TDD 循环。
 
 ```bash
-# TDD 执行 (development_mode: tdd 时)
+# 执行 TDD（当 development_mode: tdd 时）
 > /moai run SPEC-AUTH-001
 ```
 
-执行该命令后，**manager-develop 代理** 会自动执行 RED-GREEN-REFACTOR 周期:
+执行该命令后，**manager-develop 智能体**会自动执行 RED-GREEN-REFACTOR 循环：
 
 ```mermaid
 flowchart TD
-    A["读取 SPEC 文档\nSPEC-AUTH-001"] --> B["RED\n按需求编写失败的测试"]
+    A["阅读 SPEC 文档\nSPEC-AUTH-001"] --> B["RED\n为每条需求编写失败测试"]
     B --> C["GREEN\n用最少代码通过测试"]
-    C --> D["REFACTOR\n改进代码质量\n保持测试通过"]
-    D --> E{"还有下一个\n需求吗?"}
+    C --> D["REFACTOR\n改进代码质量\n保持测试"]
+    D --> E{"还有下一条\n需求吗？"}
     E -->|"有"| B
-    E -->|"没有"| F["最终验证\n确认覆盖率 85%+\n通过 TRUST 5 质量门"]
+    E -->|"没有"| F["最终验证\n确认覆盖率 85%+\n通过 TRUST 5 门禁"]
     F --> G["实现完成\n可进入 Sync 阶段"]
 ```
 
-### DDD 执行
+### 执行 DDD
 
 ```bash
-# DDD 执行 (development_mode: ddd 时)
+# 执行 DDD（当 development_mode: ddd 时）
 > /moai run SPEC-AUTH-001
 ```
 
-执行该命令后，**manager-develop 代理** 会自动执行 ANALYZE-PRESERVE-IMPROVE 周期:
+执行该命令后，**manager-develop 智能体**会自动执行 ANALYZE-PRESERVE-IMPROVE 循环：
 
 ```mermaid
 flowchart TD
-    A["读取 SPEC 文档\nSPEC-AUTH-001"] --> B["ANALYZE\n分析代码结构\n识别依赖关系"]
-    B --> C["PRESERVE\n编写特征化测试\n建立基线"]
-    C --> D["IMPROVE\n迭代 1: 集中认证逻辑\n确认测试通过"]
-    D --> E["IMPROVE\n迭代 2: 密钥环境变量化\n确认测试通过"]
-    E --> F["IMPROVE\n迭代 3: 修复 SQL 注入\n确认测试通过"]
-    F --> G["最终验证\n确认覆盖率 85%+\n通过 TRUST 5 质量门"]
+    A["阅读 SPEC 文档\nSPEC-AUTH-001"] --> B["ANALYZE\n分析代码结构\n把握依赖"]
+    B --> C["PRESERVE\n编写特性测试\n确立基线"]
+    C --> D["IMPROVE\n迭代 1：认证逻辑中心化\n确认测试通过"]
+    D --> E["IMPROVE\n迭代 2：密钥环境变量化\n确认测试通过"]
+    E --> F["IMPROVE\n迭代 3：修复 SQL Injection\n确认测试通过"]
+    F --> G["最终验证\n确认覆盖率 85%+\n通过 TRUST 5 门禁"]
     G --> H["实现完成\n可进入 Sync 阶段"]
 ```
 
-## 方法论配置
+## 方法论设置
 
-在 `.moai/config/sections/quality.yaml` 文件中配置开发方法论。
+在 `.moai/config/sections/quality.yaml` 文件中设置开发方法论。
 
-### TDD 配置 (默认)
+### TDD 设置（默认值）
 
 ```yaml
 constitution:
   development_mode: tdd  # 使用 TDD 方法论
 
   tdd_settings:
-    test_first_required: true         # 实现前必须先编写测试
-    red_green_refactor: true          # 遵循 RED-GREEN-REFACTOR 周期
+    test_first_required: true         # 实现前必须先写测试
+    red_green_refactor: true          # 遵循 RED-GREEN-REFACTOR 循环
     min_coverage_per_commit: 80       # 每次提交的最低覆盖率
-    mutation_testing_enabled: false   # 变异测试 (可选)
+    mutation_testing_enabled: false   # 变异测试（可选）
 
   test_coverage_target: 85            # 整体覆盖率目标
 ```
 
-### DDD 配置
+### DDD 设置
 
 ```yaml
 constitution:
   development_mode: ddd  # 使用 DDD 方法论
 
   ddd_settings:
-    require_existing_tests: true      # 重构前需要现有测试
-    characterization_tests: true      # 自动生成特征化测试
+    require_existing_tests: true      # 重构前需要既有测试
+    characterization_tests: true      # 自动生成特性测试
     behavior_snapshots: true          # 使用快照测试
-    max_transformation_size: small    # 限制修改规模
-    preserve_before_improve: true     # 必须先保留再改进
+    max_transformation_size: small    # 限制变更规模
+    preserve_before_improve: true     # 必须先保存再改进
 
   test_coverage_target: 85            # 整体覆盖率目标
 ```
 
-**DDD max_transformation_size 选项:**
+**DDD max_transformation_size 选项：**
 
-| 值       | 修改范围                 | 建议场景                         |
+| 值 | 变更范围 | 推荐场景 |
 | -------- | ------------------------ | -------------------------------- |
-| `small`  | 1-2 个文件，简单重构     | 一般代码改进 (推荐)              |
-| `medium` | 3-5 个文件，中等复杂度   | 模块结构变更                     |
-| `large`  | 10 个以上文件            | 架构变更 (需谨慎)                |
+| `small` | 1-2 个文件，简单重构 | 一般的代码改进（推荐） |
+| `medium` | 3-5 个文件，中等复杂度 | 模块结构变更 |
+| `large` | 10 个以上文件 | 架构变更（需谨慎） |
 
 {{< callout type="warning" >}}
-  将 `max_transformation_size` 设置为 `large` 会一次性修改大量文件，
-  出问题时难以定位原因。建议尽量保持 `small`。
+  将 `max_transformation_size` 设为 `large` 会一次变更很多文件，出问题时难以定位原因。建议尽量保持 `small`。
 {{< /callout >}}
 
-## 实战示例: 遗留代码重构
+## 实战示例：重构遗留代码
 
-这是一个重构 3 年前编写的认证模块的场景。测试覆盖率仅为 5%，非常低，
-因此使用 DDD 方法论。
+这是一个重构 3 年前编写的认证模块的场景。测试覆盖率只有 5%，非常低，因此使用 DDD 方法论。
 
-### 情况
+### 现状
 
 ```
-问题:
-- 2 处 SQL 注入漏洞
+问题点:
+- SQL Injection 漏洞 2 处
 - 硬编码的密钥
-- 3 处重复的认证逻辑
+- 重复的认证逻辑 3 处
 - 测试覆盖率 5%
 - 代码复杂度高
 ```
@@ -514,47 +497,44 @@ constitution:
 ### 执行过程
 
 ```bash
-# 第 1 步: 创建 SPEC (Plan)
-> /moai plan "重构遗留认证系统。修复 SQL 注入、密钥环境变量化、集中认证逻辑"
+# 第 1 步: 生成 SPEC (Plan)
+> /moai plan "重构遗留认证系统。修复 SQL Injection、密钥环境变量化、认证逻辑中心化"
 
-# manager-spec 创建 SPEC-AUTH-REFACTOR-001
+# manager-spec 生成 SPEC-AUTH-REFACTOR-001
 ```
 
 ```bash
 # 第 2 步: 执行 DDD (Run)
 > /moai run SPEC-AUTH-REFACTOR-001
 
-# manager-develop 执行 ANALYZE-PRESERVE-IMPROVE 周期
-# ANALYZE: 分析代码，生成问题列表
-# PRESERVE: 编写 156 个特征化测试
-# IMPROVE: 通过 3 次迭代渐进式改进
+# manager-develop 执行 ANALYZE-PRESERVE-IMPROVE 循环
+# ANALYZE: 分析代码，生成问题清单
+# PRESERVE: 编写 156 个特性测试
+# IMPROVE: 通过 3 次迭代渐进改进
 ```
 
 ```bash
 # 第 3 步: 文档同步 (Sync)
 > /moai sync SPEC-AUTH-REFACTOR-001
 
-# manager-docs 更新 API 文档，生成重构报告
+# manager-docs 更新 API 文档、生成重构报告
 ```
 
 ### 结果
 
-| 指标               | 之前   | 之后     | 变化           |
+| 指标 | Before | After | 变化 |
 | ------------------ | ------ | -------- | -------------- |
-| 测试覆盖率         | 5%     | 87%      | +82%           |
-| SQL 注入漏洞       | 2 处   | 0 处     | 已全部消除     |
-| 硬编码的密钥       | 有     | 无       | 已环境变量化   |
-| 重复代码           | 3 处   | 0 处     | 已集中化       |
-| 代码复杂度         | 高     | 降低 35% | 结构改进       |
+| 测试覆盖率 | 5% | 87% | +82% |
+| SQL Injection 漏洞 | 2 处 | 0 处 | 清除完成 |
+| 硬编码密钥 | 有 | 无 | 环境变量化 |
+| 重复代码 | 3 处 | 0 处 | 中心化完成 |
+| 代码复杂度 | 高 | 降低 35% | 结构改进 |
 
 {{< callout type="info" >}}
-  **关键要点:** 在整个重构过程中，没有任何一个现有行为被改变。
-  156 个特征化测试在每次迭代中全部通过，因此在不影响现有用户的前提下
-  大幅提升了代码质量。
+  **核心要点：** 重构过程中，既有行为没有发生任何一处改变。156 个特性测试在每次迭代中全部通过，因此在不影响现有用户的前提下大幅提升了代码质量。
 {{< /callout >}}
 
 ## 相关文档
 
-- [基于 SPEC 的开发](/core-concepts/spec-based-dev) -- 在执行开发方法论之前
-  需要 SPEC 文档
-- [TRUST 5 质量](/core-concepts/trust-5) -- 实现完成后确认质量验证标准
+- [基于 SPEC 的开发](/zh/core-concepts/spec-based-dev) -- 执行开发方法论之前需要 SPEC 文档
+- [TRUST 5 质量](/zh/core-concepts/trust-5) -- 确认实现完成后的质量验证标准

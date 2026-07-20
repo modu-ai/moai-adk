@@ -1,8 +1,6 @@
 package web
 
 import (
-	"errors"
-
 	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/profile"
 	"github.com/modu-ai/moai-adk/internal/settings"
@@ -10,9 +8,12 @@ import (
 	"github.com/modu-ai/moai-adk/pkg/models"
 )
 
-// errDictKey is returned by the template "dict" helper when a non-string key is
-// supplied. Defined here so assets.go stays focused on embedding.
-var errDictKey = errors.New("web: dict key must be a string")
+// NOTE: the error sentinel of the retired html/template "dict" FuncMap helper
+// (and its assets.go keep-alive blank reference) was removed by
+// SPEC-WEB-CONSOLE-012 M4 (REQ-WC12-030). The historical REQ-WC6-004
+// "validate.go BYTE-UNCHANGED" constraint was a closed SPEC's point-in-time
+// assertion; the run-phase Where-gate confirmed no standing byte-content
+// guard exists on this file.
 
 // Canonical value lists — SINGLE-SOURCED from the settings schema.
 //
@@ -23,28 +24,56 @@ var errDictKey = errors.New("web: dict key must be a string")
 // 손수 재선언했던 드리프트 원천이 제3 중립 패키지(internal/settings)로 단일화되었다.
 // 두 표면(웹/TUI)이 모두 internal/settings 를 import 하므로 더 이상 손수 동기화가 필요 없다.
 // permission mode 검증은 profile.IsValidPermissionMode 를 그대로 재사용한다(REQ-WC-008).
+//
+// M5-b D4: optionListDef* 함수들은 []settings.OptionDef(Value + I18nKey) 를
+// 반환한다 — 웹 렌더가 option data-i18n 키를 방출한다. 검증 경로는 기존
+// langOptionList()/modelOptionList() 등 ([]string 반환) 을 그대로 사용한다.
 
 // langOptionList returns the four supported conversation/commit/comment/doc
 // languages from the schema (REQ-WC10-004). No standalone re-declaration.
+// 검증 경로 ([]string).
 func langOptionList() []string { return settings.LanguageOptionValues() }
 
 // modelOptionList returns the canonical model option set from the schema
 // (REQ-WC10-004). The empty string ("project default") is allowed by validatePrefs'
-// empty-allowed guard and is not listed here.
+// empty-allowed guard and is not listed here. 검증 경로 ([]string).
 func modelOptionList() []string { return settings.ModelOptionValues() }
 
 // effortOptionList returns the canonical effort level option set from the schema
 // (REQ-WC10-004). The empty string ("runtime default") is allowed by the
-// empty-allowed guard and is not listed here.
+// empty-allowed guard and is not listed here. 검증 경로 ([]string).
 func effortOptionList() []string { return settings.EffortOptionValues() }
 
 // developmentModeOptionList returns the canonical development_mode option list from
-// the schema (REQ-WC10-004).
+// the schema (REQ-WC10-004). 검증 경로 ([]string).
 func developmentModeOptionList() []string { return settings.DevelopmentModeOptionValues() }
 
 // conventionOptionList returns the canonical git_convention option list from the
-// schema (REQ-WC10-004).
+// schema (REQ-WC10-004). 검증 경로 ([]string).
 func conventionOptionList() []string { return settings.ConventionOptionValues() }
+
+// ── M5-b D4: OptionDef 반환 렌더 경로 ──
+
+// langOptionDefs returns the OptionDef slice (Value + I18nKey) for language fields.
+func langOptionDefs() []settings.OptionDef { return settings.FieldOptionDefs("conversation_lang") }
+
+// modelOptionDefs returns the OptionDef slice for the model select.
+func modelOptionDefs() []settings.OptionDef { return settings.FieldOptionDefs("model") }
+
+// effortOptionDefs returns the OptionDef slice for the effort_level select.
+func effortOptionDefs() []settings.OptionDef { return settings.FieldOptionDefs("effort_level") }
+
+// modelPolicyOptionDefs returns the OptionDef slice for the model_policy select.
+func modelPolicyOptionDefs() []settings.OptionDef { return settings.FieldOptionDefs("model_policy") }
+
+// permissionModeOptionDefs returns the OptionDef slice for permission_mode.
+func permissionModeOptionDefs() []settings.OptionDef { return settings.FieldOptionDefs("permission_mode") }
+
+// developmentModeOptionDefs returns the OptionDef slice for development_mode.
+func developmentModeOptionDefs() []settings.OptionDef { return settings.FieldOptionDefs("development_mode") }
+
+// conventionOptionDefs returns the OptionDef slice for git_convention.
+func conventionOptionDefs() []settings.OptionDef { return settings.FieldOptionDefs("git_convention") }
 
 // inList reports whether v is a member of list.
 func inList(list []string, v string) bool {
@@ -99,18 +128,11 @@ func validatePrefs(p profile.ProfilePreferences) map[string]string {
 		errs["model_policy"] = "unrecognized model policy: " + p.ModelPolicy
 	}
 
-	// Statusline theme: SPEC-WEB-CONSOLE-010 re-added the Statusline section. Empty
-	// allowed (theme-only-unset save), otherwise must be a canonical theme value
-	// from the shared schema. The retired `preset` field is NOT validated
-	// (REQ-WC10-010 — no preset control exists). Segment values are booleans bound
-	// in bindForm and carry no enum to validate.
-	if p.StatuslineTheme != "" {
-		if f, ok := settings.Field("statusline_theme"); ok {
-			if !inList(f.SelectOptions(), p.StatuslineTheme) {
-				errs["statusline_theme"] = "unrecognized statusline theme: " + p.StatuslineTheme
-			}
-		}
-	}
+	// NOTE: the Statusline section was removed from the web console (M3 of the
+	// surgical redesign). The statusline_theme validation branch is gone — the web
+	// handler no longer binds statusline form values, so there is nothing to
+	// validate. The statusline schema fields + statusline.yaml remain consumed by
+	// the TUI / profile_setup CLI path.
 
 	return errs
 }

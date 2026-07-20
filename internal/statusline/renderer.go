@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/charmbracelet/lipgloss"
+	"github.com/modu-ai/moai-adk/internal/config"
 )
 
 // Renderer formats StatusData into a multiline statusline string.
@@ -135,66 +136,6 @@ func (r *Renderer) renderDefaultV3(data *StatusData) string {
 	return strings.Join(lines, "\n")
 }
 
-// renderFullV3 renders the full mode 5-line layout.
-//
-// L1: 🤖 Model │ 🔅 v2.1.50 │ 🗿 v2.8.0 │ ⏳ 2h 34m │ 💬 MoAI
-// L2: CW: 🪫 ████████████████████████████████████░░░░ 88%
-// L3: 5H: 🔋 ██████████████████░░░░░░░░░░░░░░░░░░░░░░ 45%
-// L4: 7D: 🪫 ████████████████████████████████░░░░░░░░ 82%
-// L5: 📁 moai-adk-go │ 🅱️ feat/auth ↑2↓1 │ 📊 +3 M2 ?1
-// nolint:unused // SPEC-V3R6-CI-BASELINE-DRIFT-001 §D.1 deferred (v3 statusline selector)
-func (r *Renderer) renderFullV3(data *StatusData) string {
-	var lines []string
-
-	// L1: model, Claude version, MoAI version, session time, output style (no prefix)
-	l1 := r.renderInfoLine(data, false)
-	if l1 != "" {
-		lines = append(lines, l1)
-	}
-
-	// L2: CW bar (40 blocks, standalone line)
-	cwPct := r.contextPercent(data)
-	if cwPct >= 0 {
-		lines = append(lines, renderUsageBar("CW:", cwPct, 40, r.noColor))
-	}
-
-	// L3: 5H bar (40 blocks, standalone line) with reset time - defaults to 0% when no data
-	// Prefer RateLimits (from Claude Code v2.1.80+ statusline JSON) over Usage (MoAI API call)
-	pct5H := 0
-	var reset5H string
-	if data.RateLimits != nil && data.RateLimits.FiveHour != nil {
-		pct5H = int(data.RateLimits.FiveHour.UsedPercentage)
-		reset5H = formatResetTimeRelative(data.RateLimits.FiveHour.ResetsAt)
-	} else if data.Usage != nil && data.Usage.Usage5H != nil {
-		pct5H = int(data.Usage.Usage5H.Percentage)
-		reset5H = formatResetTimeRelative(data.Usage.Usage5H.ResetsAt)
-	}
-	lines = append(lines, renderUsageBarWithReset("5H:", pct5H, 40, r.noColor, reset5H))
-
-	// L4: 7D bar (40 blocks, standalone line) with reset date - defaults to 0% when no data
-	pct7D := 0
-	var reset7D string
-	if data.RateLimits != nil && data.RateLimits.SevenDay != nil {
-		pct7D = int(data.RateLimits.SevenDay.UsedPercentage)
-		reset7D = formatResetTimeAbsolute(data.RateLimits.SevenDay.ResetsAt)
-	} else if data.Usage != nil && data.Usage.Usage7D != nil {
-		pct7D = int(data.Usage.Usage7D.Percentage)
-		reset7D = formatResetTimeAbsolute(data.Usage.Usage7D.ResetsAt)
-	}
-	lines = append(lines, renderUsageBarWithReset("7D:", pct7D, 40, r.noColor, reset7D))
-
-	// L5: directory, branch, git status
-	l5 := r.renderDirGitLine(data)
-	if l5 != "" {
-		lines = append(lines, l5)
-	}
-
-	if len(lines) == 0 {
-		return ""
-	}
-	return strings.Join(lines, "\n")
-}
-
 // ─────────────────────────────────────────────────────────────────────────────
 // Common line renderers
 // ─────────────────────────────────────────────────────────────────────────────
@@ -308,7 +249,7 @@ func renderCacheHit(data *StatusData) string {
 	if !ok {
 		return ""
 	}
-	return fmt.Sprintf("💾 %d%%", pct)
+	return fmt.Sprintf("♻️ %d%%", pct)
 }
 
 // renderBarsInline renders CW/5H/7D bars inline on a single line (default mode L2).
@@ -316,12 +257,19 @@ func renderCacheHit(data *StatusData) string {
 func (r *Renderer) renderBarsInline(data *StatusData, width int) string {
 	var segs []string
 
-	// CW bar with handoff_guide ⚠️ /clear suffix integration (layout v3 CH2).
-	// shouldShowHandoffGuide gates the suffix per 1M ≥50% / 200K ≥90% threshold.
+	// CW bar with two-stage handoff_guide /clear suffix (layout v3 CH2 +
+	// SPEC-HANDOFF-THRESHOLD-001 M4). handoffGuideStage classifies raw context
+	// usage into none / soft / hard: soft keeps the M1 "(⚠️/clear)" marker, hard
+	// escalates to the distinct stage-2 "(🛑/clear!)" marker at the auto-compact-
+	// aware ceiling. The suffix is a pure function of usage — the handoff mode /
+	// guide config never gates it (M1 no-regression invariant, REQ-THRESHOLD-006).
 	if r.isSegmentEnabled(SegmentContext) && data.Memory.Available && data.Memory.TokenBudget > 0 {
 		pct := usagePercent(data.Memory.TokensUsed, data.Memory.TokenBudget)
 		bar := renderUsageBar("CW:", pct, width, r.noColor)
-		if shouldShowHandoffGuide(data) {
+		switch handoffGuideStage(data) {
+		case handoffStageHard:
+			bar += " (🛑/clear!)"
+		case handoffStageSoft:
 			bar += " (⚠️/clear)"
 		}
 		segs = append(segs, bar)
@@ -552,40 +500,95 @@ func (r *Renderer) renderRepoBranchSegment(data *StatusData) string {
 	return fmt.Sprintf("🔀 %s/%s | %s", repo.Owner, repo.Name, inner)
 }
 
-// shouldShowHandoffGuide returns true when accumulated context usage crosses
-// the model-class threshold and the orchestrator should hint the user toward
-// a /clear handoff (REQ-SSE-005). Threshold table:
+// handoffStage classifies accumulated context usage into the two-stage handoff
+// gate (SPEC-HANDOFF-THRESHOLD-001 M4). none < soft < hard by raw usage.
+type handoffStage int
+
+const (
+	handoffStageNone handoffStage = iota // below the soft threshold — no suffix
+	handoffStageSoft                     // soft threshold reached — "(⚠️/clear)" hint
+	handoffStageHard                     // hard (auto-compact-aware) ceiling reached — "(🛑/clear!)"
+)
+
+// handoffGuideStage classifies raw context usage into none / soft / hard.
+// It supersedes the former bare-bool decision while preserving the M1 band
+// logic verbatim for the soft threshold (SPEC-HANDOFF-CTXGUIDE-001):
 //
-//   - 1M context (ContextWindowSize == 1,000,000): >=50% raw usage
-//   - 200K context (ContextWindowSize == 200,000):  >=90% raw usage
-//   - other / 0 window size: hidden (safety default — no marker without raw signal)
+//   - large window   (ContextWindowSize >= HandoffLargeWindowCutoff): soft at HandoffSoftLargePct%
+//   - standard/medium (0 < ContextWindowSize < HandoffLargeWindowCutoff): soft at HandoffSoftStandardPct%
+//   - unknown window  (ContextWindowSize <= 0): none (safety default)
+//
+// The hard stage escalates at hardCeilingPct — an auto-compact-aware ceiling
+// (§ hardCeilingPct). hard is evaluated before soft so the stronger marker wins.
 //
 // Uses raw Memory.ContextWindowSize (Claude Code stdin context_window_size)
 // instead of Memory.TokenBudget — TokenBudget is auto-compact-threshold-scaled
-// (e.g., 1M × 85% = 850K) which would never match the raw 1M/200K switch cases.
-// Boundary defect fix: handoff_guide was permanently hidden because production
-// TokenBudget never equals raw class boundaries (only unit tests bypassed this
-// by injecting raw values directly into MemoryData).
+// (e.g., 1M × 85% = 850K) which would never match the raw class boundaries.
 //
-// @MX:NOTE: [AUTO] 1M=50%/200K=90% thresholds — aligned with context-window-management.md HARD rule.
-func shouldShowHandoffGuide(data *StatusData) bool {
+// @MX:NOTE: [AUTO] two-stage band: soft at band threshold, hard at min(cap, autoCompact+margin) — aligned with context-window-management.md HARD rule.
+func handoffGuideStage(data *StatusData) handoffStage {
 	if data == nil {
-		return false
+		return handoffStageNone
 	}
 	cwSize := data.Memory.ContextWindowSize
 	if cwSize <= 0 {
-		return false
+		return handoffStageNone
 	}
-	used := data.Memory.TokensUsed
-	rawPct := float64(used) * 100.0 / float64(cwSize)
-	switch cwSize {
-	case 1_000_000:
-		return rawPct >= 50.0
-	case 200_000:
-		return rawPct >= 90.0
+	rawPct := float64(data.Memory.TokensUsed) * 100.0 / float64(cwSize)
+	soft := softThresholdPct(cwSize)
+	hard := hardCeilingPct(cwSize)
+	switch {
+	case rawPct >= hard:
+		return handoffStageHard
+	case rawPct >= soft:
+		return handoffStageSoft
 	default:
-		return false
+		return handoffStageNone
 	}
+}
+
+// softThresholdPct returns the raw-usage soft-stage threshold (%) for the given
+// context window size, using the config band constants (no inline literals, §14).
+// M1 band logic (≥ cutoff → large, else standard/medium) is preserved verbatim.
+func softThresholdPct(cwSize int) float64 {
+	if cwSize >= config.HandoffLargeWindowCutoff {
+		return config.HandoffSoftLargePct
+	}
+	return config.HandoffSoftStandardPct
+}
+
+// hardCeilingPct returns the auto-compact-aware hard (stage-2) ceiling (%):
+//
+//	min(HandoffHardCeilingCapPct, getAutoCompactThreshold() + HandoffHardCeilingMarginPct)
+//
+// clamped up to the band's soft threshold when a degenerate auto-compact
+// override would place the computed ceiling below soft (so stage-2 never
+// inverts below stage-1; instead it collapses onto the soft threshold and only
+// the hard marker shows for that band). getAutoCompactThreshold lives in the
+// same package (memory.go) so no wiring is needed.
+//
+// Reachability note: because auto-compact fires near getAutoCompactThreshold()%
+// of the raw window, the hard ceiling is frequently pre-empted and stage-2
+// rarely fires in practice — an intentional, documented tradeoff of the
+// auto-compact-aware formula (see context-window-management.md § Detection
+// Heuristics).
+func hardCeilingPct(cwSize int) float64 {
+	ceil := getAutoCompactThreshold() + config.HandoffHardCeilingMarginPct
+	if ceil > config.HandoffHardCeilingCapPct {
+		ceil = config.HandoffHardCeilingCapPct
+	}
+	soft := softThresholdPct(cwSize)
+	if float64(ceil) < soft {
+		return soft
+	}
+	return float64(ceil)
+}
+
+// shouldShowHandoffGuide is the M1 backward-compatible wrapper: true when the
+// stage is anything other than none. Kept so existing callers/tests compile and
+// the M1 threshold behavior is byte-preserved (REQ-THRESHOLD-001).
+func shouldShowHandoffGuide(data *StatusData) bool {
+	return handoffGuideStage(data) != handoffStageNone
 }
 
 // prReviewStateColor maps a Claude Code v2.1.145 review_state value to a
@@ -716,16 +719,6 @@ func parseResetTime(resetTime interface{}) time.Time {
 	default:
 		return time.Time{}
 	}
-}
-
-// contextPercent returns the context window usage percentage (0~100).
-// Returns -1 if unavailable or total budget is 0.
-// nolint:unused // SPEC-V3R6-CI-BASELINE-DRIFT-001 §D.1 deferred (v3 statusline selector)
-func (r *Renderer) contextPercent(data *StatusData) int {
-	if !data.Memory.Available || data.Memory.TokenBudget <= 0 {
-		return -1
-	}
-	return usagePercent(data.Memory.TokensUsed, data.Memory.TokenBudget)
 }
 
 // renderGitBranch renders the git branch string with optional ahead/behind suffix.

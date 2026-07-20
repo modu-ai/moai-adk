@@ -1798,3 +1798,62 @@ func TestBuild_PRSegment_AbsenceHandling(t *testing.T) {
 		})
 	}
 }
+
+// TestBuild_WritesContextUsageWithSessionID — AC-THRESHOLD-011.
+// builder.Build writes <projDir>/.moai/state/context-usage.json after
+// collectAll, capturing the stdin session_id and the collected Memory
+// (context_window_size / tokens_used) in the same scope — proving the write is
+// placed where both signals are available (not in collectAll, which drops
+// session_id). A direct *defaultBuilder with nil providers keeps the test
+// hermetic (no git/usage network calls).
+func TestBuild_WritesContextUsageWithSessionID(t *testing.T) {
+	proj := t.TempDir()
+
+	// Isolate from ambient GLM env. Dev machines running `moai glm` export
+	// ANTHROPIC_DEFAULT_*_MODEL=glm-5.2, which resolveContextWindowOverride
+	// picks up and would override the synthetic 256K window below with 1M.
+	t.Setenv("MOAI_STATUSLINE_CONTEXT_SIZE", "")
+	t.Setenv("ANTHROPIC_DEFAULT_OPUS_MODEL", "")
+	t.Setenv("ANTHROPIC_DEFAULT_SONNET_MODEL", "")
+	t.Setenv("ANTHROPIC_DEFAULT_HAIKU_MODEL", "")
+
+	in := StdinData{
+		SessionID: "sess-build-011",
+		Workspace: &WorkspaceInfo{CurrentDir: proj},
+		ContextWindow: &ContextWindowInfo{
+			ContextWindowSize: 256000,
+			UsedPercentage:    new(90.0), // → tokensUsed = 256000 * 90% = 230400
+		},
+	}
+	raw, err := json.Marshal(in)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	b := &defaultBuilder{
+		renderer: NewRenderer("default", true, nil),
+		mode:     ModeDefault,
+	}
+	if _, err := b.Build(context.Background(), bytes.NewReader(raw)); err != nil {
+		t.Fatalf("Build() error: %v", err)
+	}
+
+	path := filepath.Join(proj, ".moai", "state", "context-usage.json")
+	data, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatalf("context-usage.json not written by Build: %v", err)
+	}
+	var rec contextUsageRecord
+	if err := json.Unmarshal(data, &rec); err != nil {
+		t.Fatalf("unparseable record: %v", err)
+	}
+	if rec.SessionID != "sess-build-011" {
+		t.Errorf("session_id = %q, want sess-build-011 (stdin session_id captured)", rec.SessionID)
+	}
+	if rec.ContextWindowSize != 256000 {
+		t.Errorf("context_window_size = %d, want 256000 (from Memory)", rec.ContextWindowSize)
+	}
+	if rec.TokensUsed != 230400 {
+		t.Errorf("tokens_used = %d, want 230400 (from Memory)", rec.TokensUsed)
+	}
+}

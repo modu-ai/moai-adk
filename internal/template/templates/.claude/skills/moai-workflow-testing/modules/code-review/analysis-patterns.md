@@ -3,117 +3,70 @@
 > Sub-module: TRUST 5 analysis pattern implementations
 > Parent: [Automated Code Review](../automated-code-review.md)
 
+The patterns below operate on a parsed syntax tree (AST) plus source text. Use the host language's parser (e.g. Go go/ast, Python ast, TypeScript compiler API, Rust syn, Java JavaParser); the checks themselves generalize across trees.
+
 ## TRUST 5 Analysis Methods
 
 ### Security Pattern Analysis
 
-```python
-async def _analyze_security_patterns(
-    self, file_path: str, content: str
-) -> List[CodeIssue]:
-    """Analyze security patterns using Context7."""
+```text
+analyze_security_patterns(file_path, content):
     issues = []
-    security_patterns = self.analysis_patterns.get('security', {})
-    lines = content.split('\n')
-
-    for category, patterns in security_patterns.items():
-        if isinstance(patterns, list):
-            for pattern in patterns:
-                try:
-                    regex = re.compile(pattern, re.IGNORECASE)
-                    for line_num, line in enumerate(lines, 1):
-                        if regex.search(line):
-                            issue = CodeIssue(
-                                id=f"security_{category}_{line_num}_{len(issues)}",
-                                category=TrustCategory.SAFETY,
-                                severity=Severity.HIGH,
-                                issue_type=IssueType.SECURITY_VULNERABILITY,
-                                title=f"Security Issue: {category.replace('_', ' ').title()}",
-                                description=f"Potential {category} vulnerability detected",
-                                file_path=file_path,
-                                line_number=line_num,
-                                column_number=1,
-                                code_snippet=line.strip(),
-                                suggested_fix=self._get_security_fix_suggestion(category, line),
-                                confidence=0.7,
-                                rule_violated=f"SECURITY_{category.upper()}",
-                                external_reference=self._get_security_reference(category)
-                            )
-                            issues.append(issue)
-                except re.error as e:
-                    print(f"Invalid security pattern {pattern}: {e}")
-
+    security_patterns = analysis_patterns['security']     # category -> list of regexes
+    for (category, patterns) in security_patterns:
+        for pattern in patterns:
+            regex = compile(pattern, case_insensitive)
+            for (line_num, line) in enumerate(lines(content), from=1):
+                if regex.search(line):
+                    issues.append(CodeIssue(
+                        id="security_" + category + "_" + line_num,
+                        category=TrustCategory.SAFETY, severity=HIGH,
+                        issue_type=SECURITY_VULNERABILITY,
+                        title="Security Issue: " + humanize(category),
+                        description="Potential " + category + " vulnerability detected",
+                        file_path=file_path, line_number=line_num, column_number=1,
+                        code_snippet=trim(line),
+                        suggested_fix=security_fix_suggestion(category, line),
+                        confidence=0.7,
+                        rule_violated="SECURITY_" + uppercase(category),
+                        external_reference=security_reference(category)))
     return issues
 ```
 
 ### Performance Pattern Analysis
 
-```python
-async def _analyze_performance_patterns(
-    self, file_path: str, content: str
-) -> List[CodeIssue]:
-    """Analyze performance patterns using Context7."""
+```text
+analyze_performance_patterns(file_path, content):
     issues = []
-    performance_patterns = self.analysis_patterns.get('performance', {})
-    lines = content.split('\n')
-
-    for category, patterns in performance_patterns.items():
-        if isinstance(patterns, list):
-            for pattern in patterns:
-                try:
-                    regex = re.compile(pattern)
-                    for line_num, line in enumerate(lines, 1):
-                        if regex.search(line):
-                            issue = CodeIssue(
-                                id=f"perf_{category}_{line_num}_{len(issues)}",
-                                category=TrustCategory.TIMELINESS,
-                                severity=Severity.MEDIUM,
-                                issue_type=IssueType.PERFORMANCE_ISSUE,
-                                title=f"Performance Issue: {category.replace('_', ' ').title()}",
-                                description=f"Performance anti-pattern detected: {category}",
-                                file_path=file_path,
-                                line_number=line_num,
-                                column_number=1,
-                                code_snippet=line.strip(),
-                                suggested_fix=self._get_performance_fix_suggestion(category, line),
-                                confidence=0.6,
-                                rule_violated=f"PERF_{category.upper()}"
-                            )
-                            issues.append(issue)
-                except re.error as e:
-                    print(f"Invalid performance pattern {pattern}: {e}")
-
+    performance_patterns = analysis_patterns['performance']
+    for (category, patterns) in performance_patterns:
+        for pattern in patterns:
+            regex = compile(pattern)
+            for (line_num, line) in enumerate(lines(content), from=1):
+                if regex.search(line):
+                    issues.append(CodeIssue(
+                        id="perf_" + category + "_" + line_num,
+                        category=TrustCategory.TIMELINESS, severity=MEDIUM,
+                        issue_type=PERFORMANCE_ISSUE,
+                        title="Performance Issue: " + humanize(category),
+                        description="Performance anti-pattern detected: " + category,
+                        file_path=file_path, line_number=line_num, column_number=1,
+                        code_snippet=trim(line),
+                        suggested_fix=performance_fix_suggestion(category, line),
+                        confidence=0.6,
+                        rule_violated="PERF_" + uppercase(category)))
     return issues
 ```
 
 ### Quality Pattern Analysis
 
-```python
-async def _analyze_quality_patterns(
-    self, file_path: str, tree: ast.AST
-) -> List[CodeIssue]:
-    """Analyze code quality patterns."""
+```text
+analyze_quality_patterns(file_path, tree):
     issues = []
-    quality_patterns = self.analysis_patterns.get('quality', {})
-
-    # Analyze function length
-    if 'long_functions' in quality_patterns:
-        max_lines = quality_patterns['long_functions'].get('max_lines', 50)
-        function_issues = self._analyze_function_length(file_path, tree, max_lines)
-        issues.extend(function_issues)
-
-    # Analyze complexity
-    if 'complex_conditionals' in quality_patterns:
-        max_complexity = quality_patterns['complex_conditionals'].get('max_complexity', 10)
-        complexity_issues = self._analyze_complexity(file_path, tree, max_complexity)
-        issues.extend(complexity_issues)
-
-    # Analyze nesting depth
-    if 'deep_nesting' in quality_patterns:
-        max_depth = quality_patterns['deep_nesting'].get('max_depth', 4)
-        nesting_issues = self._analyze_nesting_depth(file_path, tree, max_depth)
-        issues.extend(nesting_issues)
-
+    q = analysis_patterns['quality']
+    if 'long_functions'      in q: issues.extend(analyze_function_length(file_path, tree, q.long_functions.max_lines      default 50))
+    if 'complex_conditionals'in q: issues.extend(analyze_complexity      (file_path, tree, q.complex_conditionals.max_complexity default 10))
+    if 'deep_nesting'        in q: issues.extend(analyze_nesting_depth   (file_path, tree, q.deep_nesting.max_depth          default 4))
     return issues
 ```
 
@@ -121,145 +74,90 @@ async def _analyze_quality_patterns(
 
 ### Unreachable Code Detection
 
-```python
-def _check_unreachable_code(
-    self, file_path: str, func_node: ast.AST
-) -> List[CodeIssue]:
-    """Check for unreachable code after return statements."""
+```text
+check_unreachable_code(file_path, func_node):
     issues = []
-
-    class UnreachableCodeVisitor(ast.NodeVisitor):
-        def __init__(self):
-            self.found_return = False
-            self.issues = []
-
-        def visit_Return(self, node):
-            self.found_return = True
-            self.generic_visit(node)
-
-        def generic_visit(self, node):
-            if self.found_return and hasattr(node, 'lineno'):
-                if isinstance(node, (ast.Expr, ast.Assign, ast.AugAssign)):
-                    issue = CodeIssue(
-                        id=f"unreachable_{node.lineno}",
-                        category=TrustCategory.TRUTHFULNESS,
-                        severity=Severity.LOW,
-                        issue_type=IssueType.CODE_SMELL,
-                        title="Unreachable Code",
-                        description="Code after return statement is never executed",
-                        file_path=file_path,
-                        line_number=node.lineno,
-                        column_number=1,
-                        code_snippet=f"# Unreachable code at line {node.lineno}",
-                        suggested_fix="Remove unreachable code or move before return",
-                        confidence=0.7,
-                        rule_violated="UNREACHABLE_CODE"
-                    )
-                    self.issues.append(issue)
-            super().generic_visit(node)
-
-    visitor = UnreachableCodeVisitor()
-    visitor.visit(func_node)
-    return visitor.issues
+    # Walk the function body; once a terminator (return/throw/break/continue)
+    # is seen, any subsequent statement is unreachable.
+    found_terminator = false
+    for node in walk(func_node.body, in_source_order):
+        if node is a terminator: found_terminator = true
+        if found_terminator and node is an executable statement:
+            issues.append(CodeIssue(
+                id="unreachable_" + node.line,
+                category=TrustCategory.TRUTHFULNESS, severity=LOW,
+                issue_type=CODE_SMELL, title="Unreachable Code",
+                description="Code after a terminator statement is never executed",
+                file_path=file_path, line_number=node.line, column_number=1,
+                code_snippet="# Unreachable code at line " + node.line,
+                suggested_fix="Remove unreachable code or move it before the terminator",
+                confidence=0.7, rule_violated="UNREACHABLE_CODE"))
+    return issues
 ```
 
 ### Comparison Issue Detection
 
-```python
-def _check_comparison_issues(
-    self, file_path: str, compare_node: ast.Compare
-) -> List[CodeIssue]:
-    """Check for comparison logic issues."""
+```text
+check_comparison_issues(file_path, compare_node):
     issues = []
-
     for op in compare_node.ops:
-        if isinstance(op, (ast.Eq, ast.NotEq)):
+        if op is equality or inequality:
             for comparator in compare_node.comparators:
-                if isinstance(comparator, ast.Constant) and comparator.value is None:
-                    issue = CodeIssue(
-                        id=f"none_comparison_{compare_node.lineno}",
-                        category=TrustCategory.TRUTHFULNESS,
-                        severity=Severity.LOW,
-                        issue_type=IssueType.CODE_SMELL,
-                        title="None Comparison",
-                        description="Use 'is' or 'is not' for None comparison",
-                        file_path=file_path,
-                        line_number=compare_node.lineno,
-                        column_number=1,
-                        code_snippet="# Use 'is None' instead of '== None'",
-                        suggested_fix="Replace '== None' with 'is None'",
-                        confidence=0.8,
-                        rule_violated="NONE_COMPARISON",
-                        auto_fixable=True
-                    )
-                    issues.append(issue)
-
+                if comparator is a null/none literal:
+                    # Most languages have an identity-check idiom for null/none;
+                    # prefer it over equality (Python: is None, JS: === null,
+                    # Go: explicit nil check, etc.)
+                    issues.append(CodeIssue(
+                        id="null_comparison_" + compare_node.line,
+                        category=TrustCategory.TRUTHFULNESS, severity=LOW,
+                        issue_type=CODE_SMELL, title="Null Comparison Anti-Pattern",
+                        description="Use the language's identity-check idiom for null/none",
+                        file_path=file_path, line_number=compare_node.line,
+                        code_snippet="# Use identity check, not equality, for null/none",
+                        suggested_fix="Replace equality-with-null with the identity-check idiom",
+                        confidence=0.8, rule_violated="NULL_COMPARISON", auto_fixable=true))
     return issues
 ```
 
 ## Usability Analysis
 
-### Docstring Presence Check
+### Doc Comment Presence Check
 
-```python
-def _analyze_usability(
-    self, file_path: str, content: str, tree: ast.AST
-) -> List[CodeIssue]:
-    """Analyze code for usability and maintainability."""
+```text
+analyze_usability(file_path, content, tree):
     issues = []
-
-    for node in ast.walk(tree):
-        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
-            if not ast.get_docstring(node):
-                issue = CodeIssue(
-                    id=f"no_docstring_{node.lineno}",
-                    category=TrustCategory.USABILITY,
-                    severity=Severity.LOW,
-                    issue_type=IssueType.DOCUMENTATION_ISSUE,
-                    title="Missing Docstring",
-                    description=f"Function '{node.name}' is missing a docstring",
-                    file_path=file_path,
-                    line_number=node.lineno,
-                    column_number=1,
-                    code_snippet=f"def {node.name}(...):",
-                    suggested_fix=f"Add docstring explaining purpose and parameters",
-                    confidence=0.7,
-                    rule_violated="MISSING_DOCSTRING"
-                )
-                issues.append(issue)
-
+    for node in walk(tree, matching=FunctionDecl):
+        if not has_doc_comment(node):     # docstring / godoc / JSDoc / rustdoc / javadoc
+            issues.append(CodeIssue(
+                id="no_doc_" + node.line,
+                category=TrustCategory.USABILITY, severity=LOW,
+                issue_type=DOCUMENTATION_ISSUE, title="Missing Documentation",
+                description="Function '" + node.name + "' has no doc comment",
+                file_path=file_path, line_number=node.line, column_number=1,
+                code_snippet=signature(node),
+                suggested_fix="Add a doc comment explaining purpose and parameters",
+                confidence=0.7, rule_violated="MISSING_DOC"))
     return issues
 ```
 
 ## Safety Analysis
 
-### Bare Except Detection
+### Bare / Catch-All Handler Detection
 
-```python
-def _analyze_safety(self, file_path: str, tree: ast.AST) -> List[CodeIssue]:
-    """Analyze code for safety and error handling."""
+```text
+analyze_safety(file_path, tree):
     issues = []
-
-    for node in ast.walk(tree):
-        if isinstance(node, ast.ExceptHandler):
-            if node.type is None:
-                issue = CodeIssue(
-                    id=f"bare_except_{node.lineno}",
-                    category=TrustCategory.SAFETY,
-                    severity=Severity.MEDIUM,
-                    issue_type=IssueType.CODE_SMELL,
-                    title="Bare Except Clause",
-                    description="Bare except clause can hide unexpected errors",
-                    file_path=file_path,
-                    line_number=node.lineno,
-                    column_number=1,
-                    code_snippet="except:",
-                    suggested_fix="Specify exception types or use 'except Exception:'",
-                    confidence=0.8,
-                    rule_violated="BARE_EXCEPT"
-                )
-                issues.append(issue)
-
+    for node in walk(tree, matching=CatchClause):
+        if catches_all_untyped(node):    # bare catch / catch-all without a typed error
+            issues.append(CodeIssue(
+                id="bare_catch_" + node.line,
+                category=TrustCategory.SAFETY, severity=MEDIUM,
+                issue_type=CODE_SMELL, title="Bare / Catch-All Handler",
+                description="A catch-all handler can hide unexpected errors",
+                file_path=file_path, line_number=node.line, column_number=1,
+                code_snippet="catch (untyped)",
+                suggested_fix="Catch specific error types, or catch the base error type with logging",
+                confidence=0.8, rule_violated="BARE_CATCH"))
     return issues
 ```
 
@@ -267,67 +165,52 @@ def _analyze_safety(self, file_path: str, tree: ast.AST) -> List[CodeIssue]:
 
 ### Cyclomatic Complexity
 
-```python
-def _calculate_cyclomatic_complexity(self, node: ast.AST) -> int:
-    """Calculate cyclomatic complexity for an AST node."""
-    complexity = 1  # Base complexity
-
-    for child in ast.walk(node):
-        if isinstance(child, (ast.If, ast.While, ast.For, ast.AsyncFor,
-                              ast.ExceptHandler, ast.With, ast.AsyncWith)):
+```text
+calculate_cyclomatic_complexity(node):
+    complexity = 1   # base
+    for child in walk(node):
+        if child is a decision point (if, while, for, catch, with/using, case):
             complexity += 1
-        elif isinstance(child, ast.BoolOp):
-            complexity += len(child.values) - 1
-
+        if child is a boolean operator (and/or) with N operands:
+            complexity += (N - 1)
     return complexity
 ```
 
 ### Nesting Depth
 
-```python
-def _calculate_nesting_depth(self, node: ast.AST, current_depth: int = 0) -> int:
-    """Calculate maximum nesting depth for an AST node."""
+```text
+calculate_nesting_depth(node, current_depth = 0):
     max_depth = current_depth
-
-    for child in ast.walk(node):
-        if isinstance(child, (ast.If, ast.While, ast.For, ast.AsyncFor,
-                              ast.With, ast.AsyncWith, ast.Try)):
-            if hasattr(child, 'lineno') and hasattr(node, 'lineno'):
-                if child.lineno > node.lineno:
-                    child_depth = self._calculate_nesting_depth(child, current_depth + 1)
-                    max_depth = max(max_depth, child_depth)
-
+    for child in nested_blocks_of(node):     # if/while/for/with/try bodies, etc.
+        max_depth = max(max_depth, calculate_nesting_depth(child, current_depth + 1))
     return max_depth
 ```
 
 ## Fix Suggestion Helpers
 
-```python
-def _get_security_fix_suggestion(self, category: str, line: str) -> str:
-    """Get security fix suggestion."""
+```text
+security_fix_suggestion(category, line):
     suggestions = {
-        'sql_injection': "Use parameterized queries or ORM",
-        'command_injection': "Use subprocess.run with argument lists",
-        'path_traversal': "Validate and sanitize file paths"
+        sql_injection:    "Use parameterized queries or an ORM",
+        command_injection:"Pass arguments as a list, not a shell string",
+        path_traversal:   "Validate and sanitize file paths; constrain to allowed roots"
     }
-    return suggestions.get(category, "Review and fix security vulnerability")
+    return suggestions[category] default "Review and fix the security vulnerability"
 
-def _get_performance_fix_suggestion(self, category: str, line: str) -> str:
-    """Get performance fix suggestion."""
+performance_fix_suggestion(category, line):
     suggestions = {
-        'inefficient_loops': "Use list comprehensions or generators",
-        'memory_leaks': "Review memory usage and ensure cleanup"
+        inefficient_loops: "Replace nested loops with a vectorized / map-filter idiom",
+        memory_leaks:      "Review allocations and ensure cleanup (defer/using/RAII)"
     }
-    return suggestions.get(category, "Optimize for better performance")
+    return suggestions[category] default "Optimize for better performance"
 
-def _get_security_reference(self, category: str) -> str:
-    """Get external security reference."""
+security_reference(category):
     references = {
-        'sql_injection': "OWASP SQL Injection Prevention",
-        'command_injection': "OWASP Command Injection Prevention",
-        'path_traversal': "OWASP Path Traversal Prevention"
+        sql_injection:     "OWASP SQL Injection Prevention",
+        command_injection: "OWASP Command Injection Prevention",
+        path_traversal:    "OWASP Path Traversal Prevention"
     }
-    return references.get(category, "OWASP Top 10 Security Risks")
+    return references[category] default "OWASP Top 10 Security Risks"
 ```
 
 ## Related Sub-modules

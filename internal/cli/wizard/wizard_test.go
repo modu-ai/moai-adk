@@ -90,9 +90,10 @@ func TestDefaultQuestions(t *testing.T) {
 		t.Errorf("expected project_name default 'test-project', got %q", q.Default)
 	}
 
-	// Verify development_mode question IS in wizard
-	if QuestionByID(questions, "development_mode") == nil {
-		t.Error("development_mode question should be in wizard")
+	// Verify report_format question IS in wizard (development_mode was removed as
+	// an interactive question and now defaults to tdd silently).
+	if QuestionByID(questions, "report_format") == nil {
+		t.Error("report_format question should be in wizard")
 	}
 }
 
@@ -201,6 +202,7 @@ func TestSaveAnswer_AllFields(t *testing.T) {
 	}{
 		{"project_name", "myproject", func() bool { return result.ProjectName == "myproject" }, "ProjectName=myproject"},
 		{"development_mode", "ddd", func() bool { return result.DevelopmentMode == "ddd" }, "DevelopmentMode=ddd"},
+		{"report_format", "md", func() bool { return result.ReportFormat == "md" }, "ReportFormat=md"},
 		{"git_mode", "personal", func() bool { return result.GitMode == "personal" }, "GitMode=personal"},
 		{"git_provider", "gitlab", func() bool { return result.GitProvider == "gitlab" }, "GitProvider=gitlab"},
 		{"github_username", "ghuser", func() bool { return result.GitHubUsername == "ghuser" }, "GitHubUsername=ghuser"},
@@ -431,15 +433,20 @@ func TestWizardResultGitLabFields(t *testing.T) {
 	}
 }
 
-func TestDevelopmentModeInWizard(t *testing.T) {
+func TestReportFormatInWizard(t *testing.T) {
 	questions := DefaultQuestions("/tmp/test")
 
-	q := QuestionByID(questions, "development_mode")
+	q := QuestionByID(questions, "report_format")
 	if q == nil {
-		t.Fatal("development_mode question should be in wizard")
+		t.Fatal("report_format question should be in wizard")
 	}
-	if q.Default != "tdd" {
-		t.Errorf("development_mode default should be 'tdd', got %q", q.Default)
+	if q.Default != "html+md" {
+		t.Errorf("report_format default should be 'html+md', got %q", q.Default)
+	}
+
+	// development_mode is no longer an interactive question.
+	if QuestionByID(questions, "development_mode") != nil {
+		t.Error("development_mode should no longer be an interactive question")
 	}
 }
 
@@ -508,71 +515,115 @@ func TestNewMoAIWizardTheme_ReturnsNonNil(t *testing.T) {
 
 // TestCharacterize_WizardTheme_SelectedPrefix verifies that the focused
 // SelectedPrefix renders with the ◆ diamond marker.
-// This MUST NOT regress after M5 IMPROVE.
+// (huh v2 migration: theme fields are inspected via moaiWizardStyles — the
+// resolved style set behind the huh.Theme interface; both background axes.)
 func TestCharacterize_WizardTheme_SelectedPrefix(t *testing.T) {
-	theme := newMoAIWizardTheme()
-	rendered := theme.Focused.SelectedPrefix.Value()
-	if rendered != "◆ " {
-		t.Errorf("SelectedPrefix: expected %q, got %q", "◆ ", rendered)
+	for _, isDark := range []bool{false, true} {
+		styles := moaiWizardStyles(isDark)
+		rendered := styles.Focused.SelectedPrefix.Value()
+		if rendered != "◆ " {
+			t.Errorf("isDark=%v SelectedPrefix: expected %q, got %q", isDark, "◆ ", rendered)
+		}
 	}
 }
 
 // TestCharacterize_WizardTheme_UnselectedPrefix verifies that the focused
 // UnselectedPrefix renders with the ◇ diamond marker.
-// This MUST NOT regress after M5 IMPROVE.
 func TestCharacterize_WizardTheme_UnselectedPrefix(t *testing.T) {
-	theme := newMoAIWizardTheme()
-	rendered := theme.Focused.UnselectedPrefix.Value()
-	if rendered != "◇ " {
-		t.Errorf("UnselectedPrefix: expected %q, got %q", "◇ ", rendered)
+	for _, isDark := range []bool{false, true} {
+		styles := moaiWizardStyles(isDark)
+		rendered := styles.Focused.UnselectedPrefix.Value()
+		if rendered != "◇ " {
+			t.Errorf("isDark=%v UnselectedPrefix: expected %q, got %q", isDark, "◇ ", rendered)
+		}
 	}
 }
 
 // TestCharacterize_WizardTheme_SelectSelectorPrefix verifies that the
 // SelectSelector prompt is set to "▸ ".
-// This MUST NOT regress after M5 IMPROVE.
 func TestCharacterize_WizardTheme_SelectSelectorPrefix(t *testing.T) {
-	theme := newMoAIWizardTheme()
-	rendered := theme.Focused.SelectSelector.Value()
-	if rendered != "▸ " {
-		t.Errorf("SelectSelector: expected %q, got %q", "▸ ", rendered)
+	for _, isDark := range []bool{false, true} {
+		styles := moaiWizardStyles(isDark)
+		rendered := styles.Focused.SelectSelector.Value()
+		if rendered != "▸ " {
+			t.Errorf("isDark=%v SelectSelector: expected %q, got %q", isDark, "▸ ", rendered)
+		}
 	}
 }
 
 // TestCharacterize_WizardTheme_BlurredInheritsFromFocused verifies the blurred
 // state is derived from focused (structural invariant that must not regress).
 func TestCharacterize_WizardTheme_BlurredInheritsFromFocused(t *testing.T) {
-	theme := newMoAIWizardTheme()
+	styles := moaiWizardStyles(false)
 	// Blurred selected/unselected prefixes should match focused
-	if theme.Blurred.SelectedPrefix.Value() != theme.Focused.SelectedPrefix.Value() {
+	if styles.Blurred.SelectedPrefix.Value() != styles.Focused.SelectedPrefix.Value() {
 		t.Errorf("Blurred.SelectedPrefix %q != Focused.SelectedPrefix %q",
-			theme.Blurred.SelectedPrefix.Value(), theme.Focused.SelectedPrefix.Value())
+			styles.Blurred.SelectedPrefix.Value(), styles.Focused.SelectedPrefix.Value())
 	}
-	if theme.Blurred.UnselectedPrefix.Value() != theme.Focused.UnselectedPrefix.Value() {
+	if styles.Blurred.UnselectedPrefix.Value() != styles.Focused.UnselectedPrefix.Value() {
 		t.Errorf("Blurred.UnselectedPrefix %q != Focused.UnselectedPrefix %q",
-			theme.Blurred.UnselectedPrefix.Value(), theme.Focused.UnselectedPrefix.Value())
+			styles.Blurred.UnselectedPrefix.Value(), styles.Focused.UnselectedPrefix.Value())
 	}
 }
 
-// TestCharacterize_WizardTotalSteps verifies the canonical step count constant (AC-CLI-TUI-007).
-func TestCharacterize_WizardTotalSteps(t *testing.T) {
-	if wizardTotalSteps != 6 {
-		t.Errorf("wizardTotalSteps: expected 6, got %d", wizardTotalSteps)
+// TestStepperTotal_DynamicDenominator supersedes the former
+// TestCharacterize_WizardTotalSteps (wizardTotalSteps == 6 constant assertion).
+// Supersession pre-authorized by SPEC-CLI-TUX-V3-002 plan.md §B #11:
+// REQ-TUX2-008 removed the hardcoded constant; the stepper denominator is now
+// derived from the single dynamic source (TotalVisibleQuestions) and varies
+// with the visible-question set (AC-TUX2-007).
+func TestStepperTotal_DynamicDenominator(t *testing.T) {
+	questions := DefaultQuestions("/tmp/steppertotal")
+
+	cases := []struct {
+		name   string
+		result *WizardResult
+		want   int
+	}{
+		// Quick mode, git manual: 4 unconditional questions
+		// (project_name, model_policy, report_format, git_mode).
+		{"manual", &WizardResult{GitMode: "manual"}, 4},
+		// personal+github reveals git_provider + github_username + github_token.
+		{"personal-github", &WizardResult{GitMode: "personal", GitProvider: "github"}, 7},
+		// personal+gitlab reveals git_provider + gitlab_instance_url +
+		// gitlab_username + gitlab_token.
+		{"personal-gitlab", &WizardResult{GitMode: "personal", GitProvider: "gitlab"}, 8},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			got := stepperDenominator(questions, tc.result)
+			if got != tc.want {
+				t.Errorf("stepperDenominator(%s): expected %d, got %d", tc.name, tc.want, got)
+			}
+		})
+	}
+
+	// Standard mode expands the denominator further (Phase 1 questions).
+	all := append(DefaultQuestions("/tmp/steppertotal"), Phase1Questions("/tmp/steppertotal")...)
+	std := &WizardResult{GitMode: "manual", StandardMode: true, DesignEnabled: true}
+	if got := stepperDenominator(all, std); got != 11 {
+		t.Errorf("standard-mode denominator: expected 11 (4 + 7 Phase 1), got %d", got)
+	}
+	// Single dynamic source invariant: stepperDenominator == TotalVisibleQuestions.
+	if stepperDenominator(all, std) != TotalVisibleQuestions(all, std) {
+		t.Error("stepperDenominator must delegate to TotalVisibleQuestions (single dynamic source)")
 	}
 }
 
-// TestCharacterize_WizardColors_PrimaryIsDeepTeal verifies that after M5 IMPROVE,
-// the primary wizard color resolves to the deep teal accent from internal/tui.
-// This replaces the old terra cotta (#DA7756 / #C45A3C) brand color.
-func TestCharacterize_WizardColors_PrimaryIsDeepTeal(t *testing.T) {
+// TestCharacterize_WizardColors_PrimaryIsCoral verifies that the primary wizard
+// color resolves to the Claude coral accent from internal/tui. The palette was
+// migrated from deep teal to Claude coral (#cc785c canonical mid-point) per the
+// 2026-07 brand alignment; the old terra cotta (#DA7756 / #C45A3C) brand color
+// remains forbidden (see TestCharacterize_WizardColors_NoTerracottaOrPurple).
+func TestCharacterize_WizardColors_PrimaryIsCoral(t *testing.T) {
 	c := wizardColors()
-	// Light deep teal accent
-	if c.Primary.Light != "#144a46" {
-		t.Errorf("Primary.Light: expected #144a46 (deep teal), got %q", c.Primary.Light)
+	// Light coral accent (slightly deeper for contrast on ivory)
+	if c.Primary.Light != "#bf6547" {
+		t.Errorf("Primary.Light: expected #bf6547 (Claude coral), got %q", c.Primary.Light)
 	}
-	// Dark deep teal accent
-	if c.Primary.Dark != "#3eb3a4" {
-		t.Errorf("Primary.Dark: expected #3eb3a4 (deep teal), got %q", c.Primary.Dark)
+	// Dark coral accent (brighter for legibility on ink)
+	if c.Primary.Dark != "#d97757" {
+		t.Errorf("Primary.Dark: expected #d97757 (Claude coral), got %q", c.Primary.Dark)
 	}
 }
 
@@ -610,14 +661,26 @@ func TestCharacterize_WizardColors_NoTerracottaOrPurple(t *testing.T) {
 // TestCharacterize_WizardTheme_UsesDeepTealForTitle verifies that the theme
 // title foreground is set from the tui primary token (deep teal), not terra cotta.
 func TestCharacterize_WizardTheme_UsesDeepTealForTitle(t *testing.T) {
-	theme := newMoAIWizardTheme()
+	styles := moaiWizardStyles(false)
 	// The theme title should be bold (structural invariant).
-	if !theme.Focused.Title.GetBold() {
+	if !styles.Focused.Title.GetBold() {
 		t.Error("Focused.Title should be bold")
 	}
 	// Verify focused title is not zero (color was applied).
-	if theme.Focused.Title.GetForeground() == nil {
+	if styles.Focused.Title.GetForeground() == nil {
 		t.Error("Focused.Title foreground should not be nil")
+	}
+}
+
+// TestCharacterize_WizardTokens_PrimaryIsCoral verifies the huh v2 token path
+// (wizardTokens) resolves the same Claude coral accents as the legacy
+// wizardColors AdaptiveColor path — parity across the v2 migration.
+func TestCharacterize_WizardTokens_PrimaryIsCoral(t *testing.T) {
+	if got := wizardTokens(false).Primary; got != "#bf6547" {
+		t.Errorf("light Primary: expected #bf6547 (Claude coral), got %q", got)
+	}
+	if got := wizardTokens(true).Primary; got != "#d97757" {
+		t.Errorf("dark Primary: expected #d97757 (Claude coral), got %q", got)
 	}
 }
 

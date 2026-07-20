@@ -47,12 +47,19 @@ mkdir -p "$LOG_DIR" 2>/dev/null || true
 
 START_TS="$(date +%s)"
 
-if make -C "$REPO_ROOT" -s ci-local >/dev/null; then
-    OUTCOME="pass"
-    EXIT_CODE=0
+if [ -f "$REPO_ROOT/Makefile" ]; then
+    if make -C "$REPO_ROOT" -s ci-local >/dev/null; then
+        OUTCOME="pass"
+        EXIT_CODE=0
+    else
+        EXIT_CODE=$?
+        OUTCOME="fail"
+    fi
 else
-    EXIT_CODE=$?
-    OUTCOME="fail"
+    # No Makefile — skip ci-local (end-user project without a CI mirror).
+    OUTCOME="skip (no Makefile)"
+    EXIT_CODE=0
+    printf '[pre-push] No Makefile found — skipping ci-local\n' >&2
 fi
 
 END_TS="$(date +%s)"
@@ -171,8 +178,19 @@ func installPrePushHookOptional(projectRoot string, skip bool, out io.Writer) {
 }
 
 // fileHasMoaiMarker reads the first 3 lines of the given file and returns true
-// if any of them contain the MoAI-ADK marker string.
+// if any of them contain the pre-push MoAI-ADK marker string.
+//
+// It is a thin wrapper over fileHasMarker preserving the pre-push installer's
+// behaviour byte-for-byte; callers checking a different marker use fileHasMarker.
 func fileHasMoaiMarker(path string) (bool, error) {
+	return fileHasMarker(path, moaiPrePushMarker)
+}
+
+// fileHasMarker reads the first 3 lines of the given file and returns true if
+// any of them contain the supplied marker string. Shared by the pre-push and
+// pre-commit installers so each hook keeps its own marker while reusing the
+// first-3-lines detection logic.
+func fileHasMarker(path, marker string) (bool, error) {
 	f, err := os.Open(path)
 	if err != nil {
 		return false, err
@@ -182,7 +200,7 @@ func fileHasMoaiMarker(path string) (bool, error) {
 	scanner := bufio.NewScanner(f)
 	lineCount := 0
 	for scanner.Scan() && lineCount < 3 {
-		if strings.Contains(scanner.Text(), moaiPrePushMarker) {
+		if strings.Contains(scanner.Text(), marker) {
 			return true, nil
 		}
 		lineCount++

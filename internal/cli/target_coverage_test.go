@@ -24,6 +24,10 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/modu-ai/moai-adk/internal/cli/uikit"
+	"github.com/modu-ai/moai-adk/internal/cli/update/backup"
+	"github.com/modu-ai/moai-adk/internal/cli/update/deploy"
+	"github.com/modu-ai/moai-adk/internal/cli/update/plan"
 	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/pkg/version"
 	"github.com/spf13/cobra"
@@ -129,7 +133,11 @@ func TestRemoveGLMEnv_GLMOnlyVarsResultsInNilEnv(t *testing.T) {
 }
 
 // =============================================================================
-// saveLLMSection — nonexistent directory causes CreateTemp failure
+// saveLLMSection — nonexistent/unwritable directory causes failure
+// M3 consolidation: saveLLMSection now routes through writeFileAtomic which
+// calls os.MkdirAll first; the failure point shifted from CreateTemp to MkdirAll
+// for nonexistent paths, so the error message text changed. The behavior contract
+// (function fails for an unwritable path) is preserved.
 // =============================================================================
 
 func TestSaveLLMSection_NonexistentDirFails(t *testing.T) {
@@ -138,9 +146,6 @@ func TestSaveLLMSection_NonexistentDirFails(t *testing.T) {
 	err := saveLLMSection("/nonexistent/path/that/does/not/exist", config.LLMConfig{})
 	if err == nil {
 		t.Fatal("saveLLMSection should error when sectionsDir does not exist")
-	}
-	if !strings.Contains(err.Error(), "create temp file") {
-		t.Errorf("error should mention 'create temp file', got: %v", err)
 	}
 }
 
@@ -214,7 +219,7 @@ func TestRunTemplateSyncWithProgress_VersionMatchSkips(t *testing.T) {
 	tmpDir := t.TempDir()
 
 	// Write system.yaml with the SAME version as the current binary so
-	// getProjectConfigVersion returns a matching version and the function
+	// plan.GetProjectConfigVersion returns a matching version and the function
 	// prints "up-to-date" and returns nil without deploying templates.
 	currentVersion := version.GetVersion()
 	sectionsDir := filepath.Join(tmpDir, ".moai", "config", "sections")
@@ -252,7 +257,7 @@ func TestRunTemplateSyncWithProgress_VersionMatchSkips(t *testing.T) {
 	}
 
 	output := buf.String()
-	if !strings.Contains(output, "up-to-date") {
+	if !strings.Contains(output, "Up to date") {
 		t.Errorf("output should contain 'up-to-date', got: %q", output)
 	}
 }
@@ -408,7 +413,7 @@ func TestCheckGit_VerbosePath(t *testing.T) {
 	if check.Message == "" {
 		t.Error("checkGit verbose message should not be empty")
 	}
-	if check.Status == CheckOK && check.Detail == "" {
+	if check.Status == uikit.CheckOK && check.Detail == "" {
 		t.Error("checkGit verbose with OK status should include path detail")
 	}
 }
@@ -587,7 +592,7 @@ func TestRunPrePush_EnforcementDisabled_ReturnsNilImmediately(t *testing.T) {
 }
 
 // =============================================================================
-// backupMoaiConfig — success path: config dir exists
+// backup.BackupMoaiConfig — success path: config dir exists
 // (update.go:977 — at 66.7%)
 // =============================================================================
 
@@ -605,12 +610,12 @@ func TestBackupMoaiConfig_ConfigDirExists(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	backupDir, err := backupMoaiConfig(tmpDir)
+	backupDir, err := backup.BackupMoaiConfig(tmpDir)
 	if err != nil {
-		t.Fatalf("backupMoaiConfig error: %v", err)
+		t.Fatalf("backup.BackupMoaiConfig error: %v", err)
 	}
 	if backupDir == "" {
-		t.Error("backupMoaiConfig should return non-empty backup dir when config exists")
+		t.Error("backup.BackupMoaiConfig should return non-empty backup dir when config exists")
 	}
 	if _, statErr := os.Stat(backupDir); statErr != nil {
 		t.Errorf("backup directory should exist, got stat error: %v", statErr)
@@ -623,9 +628,9 @@ func TestBackupMoaiConfig_ConfigDirNotExist(t *testing.T) {
 	tmpDir := t.TempDir()
 	// No .moai/config dir
 
-	backupDir, err := backupMoaiConfig(tmpDir)
+	backupDir, err := backup.BackupMoaiConfig(tmpDir)
 	if err != nil {
-		t.Fatalf("backupMoaiConfig should not error when config dir missing, got: %v", err)
+		t.Fatalf("backup.BackupMoaiConfig should not error when config dir missing, got: %v", err)
 	}
 	if backupDir != "" {
 		t.Errorf("backupDir should be empty when config dir doesn't exist, got %q", backupDir)
@@ -645,9 +650,9 @@ func TestBackupMoaiConfig_PathIsFile(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	_, err := backupMoaiConfig(tmpDir)
+	_, err := backup.BackupMoaiConfig(tmpDir)
 	if err == nil {
-		t.Error("backupMoaiConfig should error when config path is a file, not a directory")
+		t.Error("backup.BackupMoaiConfig should error when config path is a file, not a directory")
 	}
 	if !strings.Contains(err.Error(), "not a directory") {
 		t.Errorf("error should mention 'not a directory', got: %v", err)
@@ -665,7 +670,7 @@ func TestCleanMoaiManagedPaths_AllTargetsAbsent(t *testing.T) {
 	tmpDir := t.TempDir()
 	var buf bytes.Buffer
 
-	err := cleanMoaiManagedPaths(tmpDir, &buf)
+	err := deploy.CleanMoaiManagedPaths(tmpDir, &buf)
 	if err != nil {
 		t.Fatalf("cleanMoaiManagedPaths error: %v", err)
 	}
@@ -685,14 +690,14 @@ func TestCleanMoaiManagedPaths_WithExistingTarget(t *testing.T) {
 	}
 
 	var buf bytes.Buffer
-	err := cleanMoaiManagedPaths(tmpDir, &buf)
+	err := deploy.CleanMoaiManagedPaths(tmpDir, &buf)
 	if err != nil {
 		t.Fatalf("cleanMoaiManagedPaths error: %v", err)
 	}
 }
 
 // =============================================================================
-// saveTemplateDefaults — success path
+// backup.SaveTemplateDefaults — success path
 // (update.go:1099 — at 71.4%)
 // =============================================================================
 
@@ -705,15 +710,15 @@ func TestSaveTemplateDefaults_CreatesSubdirs(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	err := saveTemplateDefaults(destDir)
+	err := backup.SaveTemplateDefaults(destDir)
 	if err != nil {
-		t.Fatalf("saveTemplateDefaults error: %v", err)
+		t.Fatalf("backup.SaveTemplateDefaults error: %v", err)
 	}
 
 	// Verify sections subdirectory was created
 	sectionsDir := filepath.Join(destDir, "sections")
 	if _, statErr := os.Stat(sectionsDir); statErr != nil {
-		t.Errorf("sections directory should exist after saveTemplateDefaults: %v", statErr)
+		t.Errorf("sections directory should exist after backup.SaveTemplateDefaults: %v", statErr)
 	}
 }
 
@@ -743,7 +748,7 @@ func TestRestoreMoaiConfigLegacy_WithFiles(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	err := restoreMoaiConfigLegacy(tmpDir, backupDir, configDir)
+	err := backup.RestoreMoaiConfigLegacy(tmpDir, backupDir, configDir)
 	if err != nil {
 		t.Fatalf("restoreMoaiConfigLegacy error: %v", err)
 	}
@@ -778,7 +783,7 @@ func TestRestoreMoaiConfigLegacy_MergesExistingFile(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	err := restoreMoaiConfigLegacy(tmpDir, backupDir, configDir)
+	err := backup.RestoreMoaiConfigLegacy(tmpDir, backupDir, configDir)
 	if err != nil {
 		t.Fatalf("restoreMoaiConfigLegacy error: %v", err)
 	}
@@ -811,7 +816,7 @@ func TestRestoreMoaiConfigLegacy_SkipsMetadataFile(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	err := restoreMoaiConfigLegacy(tmpDir, backupDir, configDir)
+	err := backup.RestoreMoaiConfigLegacy(tmpDir, backupDir, configDir)
 	if err != nil {
 		t.Fatalf("restoreMoaiConfigLegacy error: %v", err)
 	}
@@ -834,7 +839,7 @@ func TestExportDiagnostics_WritesJSON(t *testing.T) {
 	outputPath := filepath.Join(tmpDir, "diagnostics.json")
 
 	checks := []DiagnosticCheck{
-		{Name: "Test", Status: CheckOK, Message: "ok"},
+		{Name: "Test", Status: uikit.CheckOK, Message: "ok"},
 	}
 
 	err := exportDiagnostics(outputPath, checks)
@@ -977,10 +982,10 @@ func TestCheckMoAIConfig_VerboseOKPath(t *testing.T) {
 	t.Cleanup(func() { _ = os.Chdir(oldWd) })
 
 	check := checkMoAIConfig(true)
-	if check.Status != CheckOK {
+	if check.Status != uikit.CheckOK {
 		t.Logf("checkMoAIConfig status=%v (may depend on cwd state)", check.Status)
 	}
-	if check.Status == CheckOK && check.Detail == "" {
+	if check.Status == uikit.CheckOK && check.Detail == "" {
 		t.Error("verbose checkMoAIConfig with OK status should have non-empty Detail")
 	}
 }
@@ -1006,18 +1011,18 @@ func TestCheckClaudeConfig_VerboseOKPath(t *testing.T) {
 	t.Cleanup(func() { _ = os.Chdir(oldWd) })
 
 	check := checkClaudeConfig(true)
-	if check.Status != CheckOK {
+	if check.Status != uikit.CheckOK {
 		t.Logf("checkClaudeConfig status=%v (may depend on cwd state)", check.Status)
 	}
-	if check.Status == CheckOK && check.Detail == "" {
+	if check.Status == uikit.CheckOK && check.Detail == "" {
 		t.Error("verbose checkClaudeConfig with OK status should have non-empty Detail")
 	}
 }
 
 // =============================================================================
 // runDoctor — fix=true with failCount > 0 (doctor.go:95)
-// Run in a dir without .moai — MoAI Config check returns CheckWarn (not Fail)
-// Trigger CheckFail by running in a minimal tmpDir
+// Run in a dir without .moai — MoAI Config check returns uikit.CheckWarn (not Fail)
+// Trigger uikit.CheckFail by running in a minimal tmpDir
 // =============================================================================
 
 func TestRunDoctor_FixWithFailures(t *testing.T) {
@@ -1164,7 +1169,7 @@ func TestRunPrePush_EnforcementEnabled_EmptyStdin(t *testing.T) {
 }
 
 // =============================================================================
-// getProjectConfigVersion — success path with valid system.yaml
+// plan.GetProjectConfigVersion — success path with valid system.yaml
 // (update.go:931 — at 88.2%)
 // =============================================================================
 
@@ -1182,12 +1187,12 @@ func TestGetProjectConfigVersion_WithValidSystemYAML(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	ver, err := getProjectConfigVersion(tmpDir)
+	ver, err := plan.GetProjectConfigVersion(tmpDir)
 	if err != nil {
-		t.Fatalf("getProjectConfigVersion error: %v", err)
+		t.Fatalf("plan.GetProjectConfigVersion error: %v", err)
 	}
 	if ver == "" {
-		t.Error("getProjectConfigVersion should return non-empty version")
+		t.Error("plan.GetProjectConfigVersion should return non-empty version")
 	}
 }
 

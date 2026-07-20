@@ -102,6 +102,7 @@ func Phase2Questions(gate AdvancedGate) []Question {
 		// B6 — git-strategy.*.branch_creation.auto_enabled (P2 stub)
 		{
 			ID:          "git_branch_creation_auto",
+			Group:       "Advanced",
 			Type:        QuestionTypeConfirm,
 			Title:       "Enable automatic branch creation? (Phase 2 — stub)",
 			Description: "Requires SPEC-V3R5-GIT-STRATEGY-SCHEMA-001 run-phase completion.",
@@ -114,6 +115,7 @@ func Phase2Questions(gate AdvancedGate) []Question {
 		// B7 — git-strategy.*.commit_style.scope_required (P2 stub)
 		{
 			ID:          "git_commit_scope_required",
+			Group:       "Advanced",
 			Type:        QuestionTypeConfirm,
 			Title:       "Require commit scope in conventional commits? (Phase 2 — stub)",
 			Description: "Requires SPEC-V3R5-GIT-STRATEGY-SCHEMA-001 run-phase completion.",
@@ -126,6 +128,7 @@ func Phase2Questions(gate AdvancedGate) []Question {
 		// B4 — workflow.team.enabled (P4 stub)
 		{
 			ID:          "workflow_team_enabled",
+			Group:       "Advanced",
 			Type:        QuestionTypeConfirm,
 			Title:       "Enable Agent Teams workflow? (Phase 2 — stub)",
 			Description: "Requires SPEC-V3R5-WORKFLOW-SCHEMA-EXTEND-001 run-phase completion.",
@@ -138,6 +141,7 @@ func Phase2Questions(gate AdvancedGate) []Question {
 		// B4 — workflow.team.default_model (P4 stub)
 		{
 			ID:          "workflow_team_default_model",
+			Group:       "Advanced",
 			Type:        QuestionTypeSelect,
 			Title:       "Default Agent Teams model (Phase 2 — stub)",
 			Description: "Requires SPEC-V3R5-WORKFLOW-SCHEMA-EXTEND-001 run-phase completion.",

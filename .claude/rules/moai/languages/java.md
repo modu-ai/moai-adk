@@ -4,17 +4,13 @@ paths: "**/*.java,**/pom.xml,**/build.gradle,**/build.gradle.kts"
 
 # Java Development Guide
 
-
----
-
-
-Java 21 LTS Expert - Enterprise development with Spring Boot 3.3, Virtual Threads, and modern Java features.
+Java 25 LTS Expert - Enterprise development with Spring Boot 3.5, Virtual Threads, and modern Java features.
 
 
 Core Capabilities:
 
-- Java 21 LTS: Virtual threads, pattern matching, record patterns, sealed classes
-- Spring Boot 3.3: REST controllers, services, repositories, WebFlux reactive
+- Java 25 LTS: Virtual threads, pattern matching, record patterns, sealed classes, Structured Concurrency (JEP 505, final)
+- Spring Boot 3.5: REST controllers, services, repositories, WebFlux reactive
 - Spring Security 6: JWT authentication, OAuth2, role-based access control
 - JPA/Hibernate 7: Entity mapping, relationships, queries, transactions
 - JUnit 5: Unit testing, mocking, TestContainers integration
@@ -23,15 +19,15 @@ Core Capabilities:
 ---
 
 
-### Java 21 LTS Features
+### Java 25 LTS Features
 
 Virtual Threads with Project Loom:
 
 Use try-with-resources on Executors.newVirtualThreadPerTaskExecutor. Call IntStream.range from 0 to 10000 and forEach to submit tasks that sleep for one second and return the iteration value.
 
-Structured Concurrency Preview Pattern:
+Structured Concurrency Pattern (final in Java 25, JEP 505):
 
-Use try-with-resources on new StructuredTaskScope.ShutdownOnFailure. Fork tasks for fetching user and orders by calling scope.fork with lambda expressions. Call scope.join then throwIfFailed. Return new composite object with results from both task suppliers.
+Use try-with-resources on new StructuredTaskScope.ShutdownOnFailure. Fork tasks for fetching user and orders by calling scope.fork with lambda expressions. Call scope.join then throwIfFailed. Return new composite object with results from both task suppliers. (Structured Concurrency graduated from preview to final in Java 25; no --enable-preview flag needed.)
 
 Pattern Matching for Switch:
 
@@ -41,7 +37,7 @@ Record Patterns and Sealed Classes:
 
 Define Point record with int x and int y. Define Rectangle record with Point topLeft and Point bottomRight. Create area method that uses switch with Rectangle pattern destructuring both Point components into variables, returning absolute value of width times height. Define sealed Shape interface permitting Circle and Rectangle. Implement Circle record with area method using PI times radius squared.
 
-### Spring Boot 3.3
+### Spring Boot 3.5
 
 REST Controller Pattern:
 
@@ -83,11 +79,11 @@ Create AsyncUserService with Service and RequiredArgsConstructor annotations. Cr
 
 Maven 3.9 Pattern:
 
-Define project with parent for spring-boot-starter-parent version 3.3.0. Set java.version property to 21. Add dependencies for spring-boot-starter-web and spring-boot-starter-data-jpa.
+Define project with parent for spring-boot-starter-parent version 3.5.0. Set java.version property to 25. Add dependencies for spring-boot-starter-web and spring-boot-starter-data-jpa.
 
 Gradle 8.5 Kotlin DSL Pattern:
 
-Apply plugins for org.springframework.boot, io.spring.dependency-management, and java. Set toolchain languageVersion to 21. Add implementation dependencies for web and data-jpa starters, testImplementation for test starter.
+Apply plugins for org.springframework.boot, io.spring.dependency-management, and java. Set toolchain languageVersion to 25. Add implementation dependencies for web and data-jpa starters, testImplementation for test starter.
 
 ### Testing with JUnit 5
 
@@ -101,18 +97,17 @@ Create test class with Testcontainers and SpringBootTest annotations. Define sta
 
 ---
 
-## Context7 Integration
+## Documentation References
 
-Library mappings for latest documentation:
+Library references for latest documentation:
 
-- spring-projects/spring-boot for Spring Boot 3.3 documentation
+- spring-projects/spring-boot for Spring Boot 3.5 documentation
 - spring-projects/spring-framework for Spring Framework core
 - spring-projects/spring-security for Spring Security 6
 - hibernate/hibernate-orm for Hibernate 7 ORM patterns
 - junit-team/junit5 for JUnit 5 testing framework
 
----
-
+## Related Resources
 
 - `.claude/rules/moai/languages/kotlin.md` for Kotlin interoperability and Spring Kotlin extensions
 - moai-domain-backend for REST API, GraphQL, and microservices architecture
@@ -125,9 +120,9 @@ Library mappings for latest documentation:
 
 Common Issues:
 
-- Version mismatch: Run java -version and check JAVA_HOME points to Java 21
+- Version mismatch: Run java -version and check JAVA_HOME points to Java 25
 - Compilation errors: Run mvn clean compile -X or gradle build --info
-- Virtual thread issues: Ensure Java 21+ with --enable-preview if needed
+- Virtual thread issues: Ensure Java 21+ (virtual threads are stable in Java 25, no --enable-preview flag needed)
 - JPA lazy loading: Use Transactional annotation or JOIN FETCH queries
 
 Performance Tips:
@@ -135,15 +130,6 @@ Performance Tips:
 - Enable Virtual Threads by setting spring.threads.virtual.enabled to true
 - Use GraalVM Native Image for faster startup
 - Configure connection pooling with HikariCP
-
----
-
-## Advanced Documentation
-
-For comprehensive reference materials:
-
-- reference.md for Java 21 features, Context7 mappings, and performance
-- examples.md for production-ready Spring Boot examples
 
 ---
 

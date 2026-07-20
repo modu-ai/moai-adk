@@ -92,7 +92,7 @@ The following table is the canonical migration reference. Each row documents the
 
 ### §C.1 Why per-spawn prompt injection
 
-Anthropic's recommended pattern for domain expertise is per-spawn parameter injection rather than a static agent file. The 6 `expert-*` archives (#7-#12) all share the same root cause: 0 invocations across the recent 4-SPEC cohort, indicating that the "define when keep spawning the same kind of worker with the same instructions" criterion failed. Domain knowledge is therefore better surfaced in the active conversation context (the orchestrator composes the spawn prompt with domain-specific instructions tailored to the current task) than trapped inside individual agent definition files that are loaded only when explicitly invoked.
+Anthropic's recommended pattern for domain expertise is per-spawn parameter injection rather than a static agent file. The 6 `expert-*` archives (#7-#12) all share the same root cause: 0 invocations across the recent 4-SPEC Epic, indicating that the "define when keep spawning the same kind of worker with the same instructions" criterion failed. Domain knowledge is therefore better surfaced in the active conversation context (the orchestrator composes the spawn prompt with domain-specific instructions tailored to the current task) than trapped inside individual agent definition files that are loaded only when explicitly invoked.
 
 ### §C.2 Why hook-based enforcement
 
@@ -155,10 +155,10 @@ The following patterns violate the archived-agent rejection contract:
 
 ## §F — Cross-References
 
-- The agent catalog consolidation policy's retain-vs-archive matrix — design-time SSOT for the 8-retain / 12-archive decision with per-agent rationale and Anthropic citations
+- The agent catalog consolidation policy's retain-vs-archive matrix — design-time SSOT for the 8-retain (at decision time; now 10 per CLAUDE.md §4) / 12-archive decision with per-agent rationale and Anthropic citations
 - The agent catalog consolidation policy's design-level migration table (this rule's §C is the canonical runtime SSOT)
 - The offline migration backup location's README — archive backup directory with per-agent README entries
-- `.claude/rules/moai/workflow/orchestration-mode-selection.md` — sibling rule documenting the 5-mode autonomous selection at Phase 0.95 (independent of archived-agent rejection)
+- `.claude/rules/moai/workflow/orchestration-mode-selection.md` — sibling rule documenting the 5-mode autonomous selection at Phase 4 (independent of archived-agent rejection)
 - `.claude/rules/moai/core/agent-common-protocol.md` § User Interaction Boundary — orchestrator-subagent boundary (subagents return blocker reports; orchestrator runs `AskUserQuestion`)
 - `.claude/rules/moai/core/askuser-protocol.md` § ToolSearch Preload Procedure — deferred tool preload contract
 - `.claude/rules/moai/development/agent-patterns.md` § Per-Spawn Domain Specialization — canonical per-spawn-prompt pattern documentation

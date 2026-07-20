@@ -6,8 +6,6 @@ import (
 
 // HookResponse represents the canonical Claude Code HookJSONOutput schema.
 // This is the typed equivalent of the JSON output that hooks can return.
-// The dual-protocol parser (ParseHookOutput) attempts to unmarshal stdout
-// into this struct before falling back to exit-code synthesis.
 type HookResponse struct {
 	// AdditionalContext provides extra context for the current operation.
 	// Used by: PreToolUse, PostToolUse, UserPromptSubmit

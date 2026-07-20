@@ -1,104 +1,111 @@
 ---
-title: MCP 服务器
+title: MCP 集成
 weight: 30
 draft: false
-description: "在概念层面介绍 Claude Code 如何通过 MCP 以标准协议连接外部工具、数据与 API。"
+description: "以概念为主，整理用 MCP（Model Context Protocol）把外部工具与数据连接到 Claude Code 的概念、服务器注册与作用域、延迟加载（Tool Search），以及 MoAI-ADK 的 MCP 运用方针。"
 ---
 
-Claude Code 通过 MCP 以标准化的方式连接问题跟踪器、数据库、监控仪表盘等外部系统，从而直接读取和操作它们。
+# MCP 集成
+
+MCP（Model Context Protocol）是一套把外部工具与数据源接入 Claude 使用的标准连接器。本页在概览层面整理它的概念与注册方法。
 
 {{< callout type="info" >}}
-**一句话总结**: MCP 取代了从其他工具复制粘贴数据的做法，让 Claude Code 直接操作外部系统，是"连接 AI 与工具的标准插座"。
-{{< /callout >}}
-
-{{< callout type="tip" >}}
-本页是概念概述。实际的服务器注册、认证以及在 MoAI-ADK 工作流中的应用方法，将在 [MCP 服务器实战指南](/advanced/mcp-servers) 中以实操为中心详细讲解。
+**一句话总结**：MCP 是给 AI 的 **USB 接口**。把数据库、问题跟踪器、浏览器这类各不相同的外部工具用同一套标准规格连接到 Claude，就不必为每个工具单独编写集成代码，可以用同样的方式接入。
 {{< /callout >}}
 
 ## 什么是 MCP
 
-MCP (Model Context Protocol) 是连接 AI 与外部工具的**开源标准协议**。无论模型厂商或工具类型如何，都以相同的规约进行连接，因此一次创建的 MCP 服务器可以在多个 AI 客户端中复用。
+MCP 是一套标准化 AI 应用连接外部系统方式的开放协议。就像用一根 USB-C 取代各设备各不相同的线缆连接多种外设一样，MCP 把互不相同的外部工具用**同一套规格**连接到 Claude。
 
-MCP 服务器赋予 Claude Code 访问工具、数据与 API 的权限。连接之后，Claude 会直接处理以下这类工作。
+已连接的 MCP 服务器可以向 Claude 提供三类东西。
 
-| 场景 | 没有 MCP | 连接 MCP 之后 |
-| --- | --- | --- |
-| 基于问题的功能实现 | 复制粘贴问题内容 | 从问题跟踪器直接读取并创建 PR |
-| 监控分析 | 附上仪表盘截图 | 从 Sentry 等直接查询错误 |
-| 数据库查询 | 手动传递查询结果 | 直接查询 PostgreSQL 的结构与数据 |
+| 提供物 | 说明 |
+|--------|------|
+| 工具（Tools） | Claude 可调用的动作（例如：执行查询、创建问题） |
+| 资源（Resources） | Claude 可读取的数据（例如：文件、记录） |
+| 提示（Prompts） | 可复用的提示模板 |
 
-> 获取外部内容的服务器存在提示注入风险，因此在连接之前务必确认该服务器是否可信。
+有了这套标准，每接一个新工具就不必再重写一遍集成逻辑。{{< icon package >}} 一旦遵循标准，所有支持该标准的工具都从同一扇门进入。
 
-## 服务器类型 (传输方式)
+## 服务器注册
 
-MCP 服务器按照与 Claude Code 通信的**传输方式**进行划分。一般来说，云服务使用 HTTP，本地工具使用 stdio。
+MCP 服务器有两种注册方法。
 
-| 传输方式 | 位置 | 适用场景 | 备注 |
-| --- | --- | --- | --- |
-| HTTP | 远程 | 云端 SaaS 集成 | 推荐，支持 OAuth 2.0 |
-| stdio | 本地进程 | 系统访问·自定义脚本 | 无自动重连 |
-| SSE | 远程 | 旧版远程连接 | 已弃用，由 HTTP 替代 |
-| WebSocket | 远程 | 服务器主动推送事件的场景 | 不支持 OAuth·`--transport` |
+- **CLI**：用 `claude mcp add <名称> <执行命令>` 添加服务器。
+- **配置文件**：在项目根目录的 `.mcp.json` 中直接编写服务器定义。
+
+```json
+{
+  "mcpServers": {
+    "example": {
+      "command": "npx",
+      "args": ["-y", "@example/mcp-server"]
+    }
+  }
+}
+```
+
+注册好的服务器状态可在会话中用 `/mcp` 命令查看并认证。
+
+### 作用域
+
+同一个服务器，注册到哪里不同，适用范围也不同。
+
+| 作用域 | 适用范围 |
+|--------|-----------|
+| `user` | 我的所有项目 |
+| `project` | 当前项目（与团队共享，纳入版本管理） |
+| `local` | 当前项目中我的本地会话（不共享） |
+
+通常把要与团队共享的服务器放在 `project` 作用域，把需要个人凭据的服务器放在 `local` 作用域。
+
+### 传输类型
+
+MCP 服务器按与 Claude 通信的方式（transport）分类。
+
+| 类型 | 动作概要 |
+|------|-----------|
+| stdio | 启动本地进程并通过标准输入输出通信 |
+| HTTP | 通过网络连接到远程端点 |
+
+本地工具多用 stdio，远程 SaaS 工具多用 HTTP。
+
+## 延迟加载与 Tool Search
+
+连接多个 MCP 服务器，工具定义就会相应增多。若把工具定义全部常驻加载到上下文，在发出第一条提示之前[上下文窗口](/zh/claude-code/context-memory/context-window)就会被占满。
+
+因此 Claude Code **默认延迟加载**（deferred load）工具定义。工具的完整 schema 只在实际需要该工具时才加载，平时上下文里只放一小段元数据。要真正调用这类延迟工具，需要先有一步把 schema 加载进活动上下文的前置动作。
+
+MoAI-ADK 把这一机制提升为 HARD 纪律。在调用延迟工具（例如 `AskUserQuestion`）之前，必须先用 `ToolSearch` 加载 schema；跳过这一前置步骤，工具调用就会因校验错误被拒绝。详细规则定义在 `.claude/rules/moai/core/askuser-protocol.md` 的 ToolSearch Preload 流程中。
 
 ```mermaid
 flowchart TD
-    CC[Claude Code]
-    CC -->|HTTP / SSE| Remote[远程 MCP 服务器<br>SaaS·API]
-    CC -->|stdio| Local[本地 MCP 服务器<br>进程·脚本]
-    Remote --> Ext1[问题跟踪器·监控]
-    Local --> Ext2[本地数据库·文件系统]
+    A[需要用到某工具] --> B{schema 是否<br/>已在上下文中?}
+    B -->|否| C[用 ToolSearch<br/>前置加载 schema]
+    B -->|是| D[调用工具]
+    C --> D
 ```
 
-### 安装概览
+## 与缓存的相互作用
 
-添加服务器通过 `claude mcp add` 系列命令完成。所有选项都放在服务器名称**之前**，对于 stdio 则使用 `--` 来分隔执行命令。
+连接或断开 MCP 服务器，会改变放在上下文前部（前缀）的工具定义集合。前缀一旦变化，[提示缓存](/zh/claude-code/context-memory/prompt-caching)的复用就从该处开始失效，因此把服务器配置在会话早期定好，对缓存效率更有利。
 
-```bash
-# 添加远程 HTTP 服务器
-claude mcp add --transport http notion https://mcp.notion.com/mcp
+## MoAI-ADK 的 MCP 运用
 
-# 添加本地 stdio 服务器 (-- 之后为执行命令)
-claude mcp add --transport stdio --env API_KEY=YOUR_KEY airtable \
-  -- npx -y airtable-mcp-server
+MoAI-ADK **默认不预置** MCP 服务器。需要外部资料时，改用内置 `WebSearch` / `WebFetch` 查阅官方文档与最佳实践的回退策略（`.claude/rules/moai/core/agent-common-protocol.md` § MCP Fallback Strategy）。这样设计是为了让架构·分析质量不依赖 MCP 的可用性。
 
-# 查看注册情况 / 在会话中查看状态
-claude mcp list
-```
-
-通过 `--scope` 标志指定配置的保存范围。共有三个层级：`local` (默认，仅自己·当前项目)、`project` (通过 `.mcp.json` 与团队共享)、`user` (所有项目)。若同名配置出现在多处，则按 local > project > user 的顺序优先。
-
-## 服务器对外暴露的内容：工具·资源·提示
-
-MCP 服务器向 Claude Code 提供三类功能。
-
-| 暴露对象 | 作用 | 在 Claude Code 中的使用方式 |
-| --- | --- | --- |
-| 工具 (tools) | Claude 调用的动作·函数 | 工作过程中自动调用 |
-| 资源 (resources) | 可引用的数据·文档 | `@服务器:protocol://路径` 提及 |
-| 提示 (prompts) | 预先定义的命令 | `/mcp__服务器名__提示名` |
-
-例如，资源可以像文件一样通过 `@` 提及来引入。
-
-```text
-分析 @github:issue://123 并提出修复方案
-```
-
-在会话中执行 `/mcp` 命令，即可查看已连接的服务器列表、各服务器的工具数量以及 OAuth 认证状态。需要认证的远程服务器，可在 `/mcp` 中通过浏览器 OAuth 流程登录。
-
-> 工具检索 (Tool Search) 默认启用，因此 MCP 工具定义在需要之前不会载入上下文窗口。即使连接大量服务器，对上下文的负担也很小。
-
-## 在 MoAI-ADK 中的应用
-
-MoAI-ADK 将 `mcp__context7` 这类文档查询 MCP 集成到工作流中使用。服务器注册步骤、认证模式、作用域选择，以及 MoAI 智能体如何调用 MCP 工具等实战内容，整理在另一份进阶指南中。当你通过本页掌握了概念后，建议将那份指南作为下一步进行参考。
+一个例外是后端路由。在 `moai glm` 或 `moai cg` 的 GLM 面板中运行时，网页搜索与网页抓取会路由到 z.ai MCP 工具而非内置工具（`.claude/rules/moai/core/glm-web-tooling.md`）。无论在哪个后端，搜索·抓取能力本身都保留，只是路径不同。
 
 ## 相关文档
 
-- [MCP 服务器实战指南](/advanced/mcp-servers)
+- [技能](/zh/claude-code/extensibility/skills)
+- [钩子（Hooks）](/zh/claude-code/extensibility/hooks)
+- [上下文窗口](/zh/claude-code/context-memory/context-window)
 
 ## 参考资料
 
-- [Connect Claude Code to tools via MCP](https://code.claude.com/docs/en/mcp)
+- [Claude Code Docs — MCP](https://code.claude.com/docs/en/mcp)
 
 {{< callout type="tip" >}}
-建议起步时仅以 `local` 作用域添加 1~2 个可信服务器以确认其工作情况，待验证出与团队共享的价值后，再迁移到 `--scope project` 并将 `.mcp.json` 纳入版本管理。
+新的 MCP 服务器请在会话开始时一并定好。会话途中接入或移除服务器会改变工具定义前缀，从该处开始提示缓存失效，之后每一轮都要重新处理前缀。
 {{< /callout >}}

@@ -63,6 +63,13 @@ const (
 
 	// EnvUpdateURL overrides the GitHub releases API URL.
 	EnvUpdateURL = "MOAI_UPDATE_URL"
+
+	// EnvNoProfileFallback disables the last-used-profile fallback for bare
+	// `moai cc`/`glm`/`cg` invocations. When set to "1", a bare launch with no
+	// -p flag uses the default profile even when the default is empty and a
+	// named profile was previously launched. Users who want strict default
+	// semantics set this to opt out of the fallback.
+	EnvNoProfileFallback = "MOAI_NO_PROFILE_FALLBACK"
 )
 
 // MoAI test-only environment variables.
@@ -117,4 +124,13 @@ const (
 
 	// EnvAnthropicDefaultOpusModel overrides the default Opus model ID.
 	EnvAnthropicDefaultOpusModel = "ANTHROPIC_DEFAULT_OPUS_MODEL"
+
+	// EnvAnthropicReasoningEffort carries the GLM effort-overlay's session-global
+	// reasoning-control value (SPEC-MODEL-TIER-PLANTYPE-001 M5, REQ-MTP-030
+	// Branch-B explicit write). It mirrors the ANTHROPIC_DEFAULT_* injection
+	// namespace at the GLM launch path. UNVERIFIED delivery: whether z.ai consumes
+	// this env var through the Anthropic-compat shim (Branch A passthrough) or
+	// requires the reasoning_effort field in the request body (making this env
+	// inert) is a run-phase empirical determination (AC-MTP-032b).
+	EnvAnthropicReasoningEffort = "ANTHROPIC_REASONING_EFFORT"
 )

@@ -9,6 +9,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/modu-ai/moai-adk/internal/cli/uikit"
+	"github.com/modu-ai/moai-adk/internal/cli/update/deploy"
 	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/defs"
 	"github.com/modu-ai/moai-adk/internal/hook"
@@ -249,7 +251,7 @@ func TestCleanLegacyHooks_AllHooksRemovedDeletesHooksKey(t *testing.T) {
 func TestCleanMoaiManagedPaths_EmptyProject(t *testing.T) {
 	root := t.TempDir()
 	var buf bytes.Buffer
-	err := cleanMoaiManagedPaths(root, &buf)
+	err := deploy.CleanMoaiManagedPaths(root, &buf)
 	if err != nil {
 		t.Fatalf("cleanMoaiManagedPaths on empty project should not error: %v", err)
 	}
@@ -279,7 +281,7 @@ func TestCleanMoaiManagedPaths_GlobTargets(t *testing.T) {
 	}
 
 	var buf bytes.Buffer
-	err := cleanMoaiManagedPaths(root, &buf)
+	err := deploy.CleanMoaiManagedPaths(root, &buf)
 	if err != nil {
 		t.Fatalf("cleanMoaiManagedPaths error: %v", err)
 	}
@@ -311,7 +313,7 @@ func TestCleanMoaiManagedPaths_ConfigDirRemoved(t *testing.T) {
 	}
 
 	var buf bytes.Buffer
-	err := cleanMoaiManagedPaths(root, &buf)
+	err := deploy.CleanMoaiManagedPaths(root, &buf)
 	if err != nil {
 		t.Fatalf("cleanMoaiManagedPaths error: %v", err)
 	}
@@ -335,7 +337,7 @@ func TestCleanMoaiManagedPaths_OutputStylesRemoved(t *testing.T) {
 	}
 
 	var buf bytes.Buffer
-	err := cleanMoaiManagedPaths(root, &buf)
+	err := deploy.CleanMoaiManagedPaths(root, &buf)
 	if err != nil {
 		t.Fatalf("cleanMoaiManagedPaths error: %v", err)
 	}
@@ -637,7 +639,7 @@ func TestExportDiagnostics_SingleCheckWithDetail(t *testing.T) {
 	exportPath := filepath.Join(tmpDir, "diag.json")
 
 	checks := []DiagnosticCheck{
-		{Name: "TestCheck", Status: CheckWarn, Message: "warning", Detail: "detailed info"},
+		{Name: "TestCheck", Status: uikit.CheckWarn, Message: "warning", Detail: "detailed info"},
 	}
 
 	if err := exportDiagnostics(exportPath, checks); err != nil {
@@ -662,7 +664,7 @@ func TestExportDiagnostics_SingleCheckWithDetail(t *testing.T) {
 func TestCheckGit_VerboseMode(t *testing.T) {
 	check := checkGit(true)
 	// In CI/test environments, git is typically available
-	if check.Status == CheckOK {
+	if check.Status == uikit.CheckOK {
 		if check.Detail == "" {
 			t.Error("verbose mode with git available should populate Detail")
 		}
@@ -671,7 +673,7 @@ func TestCheckGit_VerboseMode(t *testing.T) {
 		}
 	}
 	// If git not found, that's also a valid test path
-	if check.Status == CheckFail {
+	if check.Status == uikit.CheckFail {
 		if check.Detail == "" {
 			t.Error("failed checkGit should have install hint in Detail")
 		}
@@ -816,8 +818,8 @@ func TestRunAgentHook_AllActionSuffixes(t *testing.T) {
 		{"test-validation", hook.EventPreToolUse},
 		{"test-verification", hook.EventPostToolUse},
 		{"test-completion", hook.EventSubagentStop},
-		{"ddd-pre-transformation", hook.EventPreToolUse},
-		{"ddd-post-transformation", hook.EventPostToolUse},
+		{"cycle-pre-transformation", hook.EventPreToolUse},
+		{"cycle-post-transformation", hook.EventPostToolUse},
 		{"backend-pre-implementation", hook.EventPreToolUse},
 		{"backend-post-implementation", hook.EventPostToolUse},
 	}

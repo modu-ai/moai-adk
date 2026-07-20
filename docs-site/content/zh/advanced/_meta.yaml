@@ -1,6 +1,18 @@
 index:
   title: "高级"
   display: "hidden"
+"tokenomics-overview":
+  title: "代币经济学概述"
+"token-budget":
+  title: "代币预算管理与优雅停止"
+"no-haiku-3tier":
+  title: "三层代理架构 (No-Haiku)"
+"profile-matrix":
+  title: "配置矩阵"
+"self-evolving":
+  title: "线束自我进化"
+"autonomous-loops":
+  title: "自主连续循环"
 "skill-guide":
   title: "技能指南"
 "agent-guide":
@@ -17,9 +29,17 @@ index:
   title: "状态栏系统与 PR 段"
 "claude-md-guide":
   title: "CLAUDE.md 指南"
-"mcp-servers":
-  title: "MCP 服务器"
-"pencil-guide":
-  title: "Pencil 指南"
-"stitch-guide":
-  title: "Google Stitch 指南"
+"catalog-system":
+  title: "目录系统"
+"decision-memory":
+  title: "决策记忆系统"
+"harness-profiles":
+  title: "Harness 配置与评估系统"
+"harness-v4-builder":
+  title: "Harness v4 Builder 深掘指南"
+"hooks-reference":
+  title: "Hooks事件参考"
+"ultracode-workflows":
+  title: "动态工作流和 Ultracode"
+"mx-tags":
+  title: "MX TAG 系统"

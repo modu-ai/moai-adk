@@ -1,7 +1,6 @@
 ---
 description: CI auto-fix loop protocol — HARD invocation contract for moai-workflow-ci-loop skill (auto-fix phase). Auto-loaded when the ci-loop skill is active.
-paths:
-  - ".claude/skills/moai-workflow-ci-loop/SKILL.md"
+paths: ".claude/skills/moai-workflow-ci-loop/SKILL.md"
 ---
 
 # CI Auto-Fix Protocol Rule
@@ -11,6 +10,7 @@ paths:
 
 ---
 
+<!-- anchor: #ci-auto-fix-loop-entry-condition -->
 ## Entry Condition
 
 [ZONE:Frozen] [HARD] The CI auto-fix loop MUST be entered ONLY when `scripts/ci-watch/run.sh`
@@ -29,6 +29,7 @@ ci-watch exit 2 → JSON handoff → ci-autofix loop entry
 
 ---
 
+<!-- anchor: #iteration-limit -->
 ## Iteration Cap
 
 [ZONE:Frozen] [HARD] The auto-fix loop MUST attempt at most **3 iterations**. The iteration
@@ -51,6 +52,7 @@ taking any further action.
 
 ---
 
+<!-- anchor: #commit-strategy -->
 ## Patch Commit Rule — No Force-Push
 
 [ZONE:Frozen] [HARD] Every auto-fix patch MUST be applied as a **new commit** on the PR branch.
@@ -76,6 +78,7 @@ the watch loop for the same PR.
 
 ---
 
+<!-- anchor: #user-interaction-channel -->
 ## AskUserQuestion Boundary
 
 [ZONE:Frozen] [HARD] AskUserQuestion is the **exclusive user interaction channel** for the
@@ -94,6 +97,7 @@ Interaction surfaces:
 
 ---
 
+<!-- anchor: #semantic-failure-handling -->
 ## Semantic Failure — No Auto-Patch
 
 [ZONE:Frozen] [HARD] Semantic failures (data race, deadlock, panic, test assertion failure) MUST
@@ -108,6 +112,7 @@ The diagnosis is produced by a per-spawn `Agent(general-purpose)` with a diagnos
 
 ---
 
+<!-- anchor: #protected-files -->
 ## Secrets and Credentials Protection
 
 [ZONE:Frozen] [HARD] The auto-fix loop MUST NOT modify `.env`, `.env.*`, credentials files,
@@ -123,11 +128,12 @@ reject the patch and escalate to the user.
 
 ---
 
+<!-- anchor: #audit-log -->
 ## Audit Log Requirement
 
 [ZONE:Frozen] [HARD] Every auto-fix iteration MUST be logged to:
 ```
-.moai/reports/ci-autofix/<PR-NNN>-<YYYY-MM-DD>.md
+.moai/logs/ci-autofix/<PR-NNN>-<YYYY-MM-DD>.md
 ```
 
 Each log entry MUST include:
@@ -138,7 +144,7 @@ Each log entry MUST include:
 - escalation reason (if escalated)
 
 The log file is append-only. The first iteration creates the file with a header.
-The log file is a local artifact (gitignored via `.moai/reports/` pattern).
+The log file is a local artifact (gitignored via `.moai/logs/` pattern).
 
 ---
 
@@ -154,14 +160,14 @@ The state file `.moai/state/ci-autofix-<PR>.json` tracks loop state:
 
 ---
 
-## Wave 2 Contract Preservation
+## Watch-Layer Contract Preservation
 
-[ZONE:Frozen] [HARD] The auto-fix loop MUST NOT modify `scripts/ci-watch/run.sh` or any Wave 2
-artifacts. Wave 3 is a read-only consumer of Wave 2 outputs.
+[ZONE:Frozen] [HARD] The auto-fix loop MUST NOT modify `scripts/ci-watch/run.sh` or any watch-layer
+artifacts. The autofix layer is a read-only consumer of watch-layer outputs.
 
 The handoff schema fields `name`, `runId`, `logUrl` in `failedChecks[]` are
 stable contract fields. Rename or removal requires simultaneous update of both
-Wave 2 and Wave 3 code.
+watch-layer and autofix-layer code.
 
 Cross-reference: `internal/template/templates/.claude/rules/moai/workflow/ci-watch-protocol.md`
 §"T3 Handoff Format" for the authoritative schema definition.

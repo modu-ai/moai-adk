@@ -46,17 +46,18 @@ import (
 // `moai spec close <SPEC-ID> [flags]`.
 //
 // Flags:
-//   --backfill-only         Transition only missing fields (sync_commit_sha,
-//                           mx_commit_sha, status). When the SPEC is already
-//                           fully completed, this becomes a no-op (exit 0).
-//   --dry-run               Preview the transition diff without staging.
-//   --force                 Bypass precondition checks (emergency recovery).
-//   --base-dir <path>       Project root (defaults to current working directory).
-//                           Used by tests; production users typically rely on
-//                           the implicit cwd.
-//   --json                  Emit the CloseResult as JSON on stdout (in addition
-//                           to the human-readable summary; useful for downstream
-//                           hooks and orchestrator log lines per AC-LSG-020).
+//
+//	--backfill-only         Transition only missing fields (sync_commit_sha,
+//	                        mx_commit_sha, status). When the SPEC is already
+//	                        fully completed, this becomes a no-op (exit 0).
+//	--dry-run               Preview the transition diff without staging.
+//	--force                 Bypass precondition checks (emergency recovery).
+//	--base-dir <path>       Project root (defaults to current working directory).
+//	                        Used by tests; production users typically rely on
+//	                        the implicit cwd.
+//	--json                  Emit the CloseResult as JSON on stdout (in addition
+//	                        to the human-readable summary; useful for downstream
+//	                        hooks and orchestrator log lines per AC-LSG-020).
 func newSpecCloseCmd() *cobra.Command {
 	var (
 		backfillOnly bool
@@ -81,7 +82,7 @@ following transitions in a single atomic commit (M3 deliverable):
   4. progress.md §E.5 mx_commit_sha backfilled (if missing)
   5. spec.md §A Lifecycle Sync row updated
 
-Per-SPEC file lock (`+"`.moai/state/spec-close-<SPEC-ID>.lock`"+`) guards against
+Per-SPEC file lock (` + "`.moai/state/spec-close-<SPEC-ID>.lock`" + `) guards against
 concurrent close attempts on the same SPEC. Lock held for the duration of the
 call only.
 

@@ -64,7 +64,7 @@ Scenario: Identify and fix security vulnerabilities in web application
 from moai_core_quality import ProactiveSecurityScanner
 
 security_scanner = ProactiveSecurityScanner(
- context7_integration=True,
+ docs_integration=True,
  owasp_compliance=True
 )
 
@@ -141,7 +141,7 @@ Scenario: Identify performance bottlenecks and optimization opportunities
 from moai_core_quality import PerformanceAnalyzer
 
 performance_analyzer = PerformanceAnalyzer(
- context7_integration=True,
+ docs_integration=True,
  benchmark_comparison=True
 )
 
@@ -220,7 +220,7 @@ from moai_core_quality import MultiLanguageQualityAnalyzer
 
 multi_lang_analyzer = MultiLanguageQualityAnalyzer(
  languages=["python", "typescript", "go"],
- context7_integration=True
+ docs_integration=True
 )
 
 # Analyze each language with specific rules
@@ -594,7 +594,7 @@ Scenario: Analyze and manage technical debt across codebase
 from moai_core_quality import TechnicalDebtAnalyzer
 
 debt_analyzer = TechnicalDebtAnalyzer(
- context7_integration=True,
+ docs_integration=True,
  debt_categories=[
  "code_complexity",
  "code_duplication",
@@ -723,7 +723,7 @@ quality_monitor = RealTimeQualityMonitor(
  codebase_path="src/",
  check_interval=300, # 5 minutes
  alert_config=alert_config,
- context7_integration=True
+ docs_integration=True
 )
 
 print(" Starting real-time quality monitoring...")
@@ -888,7 +888,7 @@ from moai_core_quality import RefactoringSuggester
 
 refactoring_engine = RefactoringSuggester(
  auto_apply_safe_refactors=True,
- context7_integration=True,
+ docs_integration=True,
  backup_before_changes=True
 )
 

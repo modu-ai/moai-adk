@@ -5,7 +5,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"strings"
 
+	"github.com/modu-ai/moai-adk/internal/cli/printer"
 	"github.com/modu-ai/moai-adk/internal/migration"
 	"github.com/spf13/cobra"
 )
@@ -50,12 +52,13 @@ Migrations also run automatically via the session-start hook; this command lets 
 			return fmt.Errorf("마이그레이션 실행 실패: %w", err)
 		}
 
+		p := printer.New(printer.WithWriters(cmd.OutOrStdout(), cmd.ErrOrStderr()))
 		if len(applied) == 0 {
-			fmt.Println("실행할 pending 마이그레이션이 없습니다.")
+			p.Info("실행할 pending 마이그레이션이 없습니다.")
 			return nil
 		}
 
-		fmt.Printf("성공: %d개 마이그레이션 적용됨 (버전: %v)\n", len(applied), applied)
+		p.Success("성공: %d개 마이그레이션 적용됨 (버전: %v)", len(applied), applied)
 		return nil
 	},
 }
@@ -73,6 +76,7 @@ Output fields:
 - Details of the most recently applied migration`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		jsonFlag, _ := cmd.Flags().GetBool("json")
+		p := printer.New(printer.WithWriters(cmd.OutOrStdout(), cmd.ErrOrStderr()))
 
 		cwd, err := os.Getwd()
 		if err != nil {
@@ -96,20 +100,23 @@ Output fields:
 			if err != nil {
 				return fmt.Errorf("JSON 마샬링 실패: %w", err)
 			}
-			fmt.Println(string(data))
+			_ = p.Data(string(data))
 			return nil
 		}
 
-		// Human-readable output
-		fmt.Printf("현재 버전: %d\n", current)
+		// Human-readable output — composed into a single multi-line string so
+		// p.Data writes the block to stdout byte-identical to the prior
+		// sequential stdout writes (DECISION 2026-07-14).
+		lines := []string{fmt.Sprintf("현재 버전: %d", current)}
 		if len(pending) > 0 {
-			fmt.Printf("Pending 마이그레이션 (%d개): %v\n", len(pending), pending)
+			lines = append(lines, fmt.Sprintf("Pending 마이그레이션 (%d개): %v", len(pending), pending))
 		} else {
-			fmt.Println("Pending 마이그레이션 없음 (최신 상태)")
+			lines = append(lines, "Pending 마이그레이션 없음 (최신 상태)")
 		}
 		if lastApplied != nil {
-			fmt.Printf("최근 적용: %s (버전 %d)\n", lastApplied.Name, lastApplied.Version)
+			lines = append(lines, fmt.Sprintf("최근 적용: %s (버전 %d)", lastApplied.Name, lastApplied.Version))
 		}
+		_ = p.Data(strings.Join(lines, "\n"))
 
 		return nil
 	},
@@ -146,7 +153,8 @@ Example:
 			return fmt.Errorf("롤백 실패: %w", err)
 		}
 
-		fmt.Printf("성공: 버전 %d로 롤백됨\n", targetVersion)
+		p := printer.New(printer.WithWriters(cmd.OutOrStdout(), cmd.ErrOrStderr()))
+		p.Success("성공: 버전 %d로 롤백됨", targetVersion)
 		return nil
 	},
 }

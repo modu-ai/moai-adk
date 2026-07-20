@@ -13,17 +13,15 @@ when_to_use: >
 
 license: Apache-2.0
 compatibility: Designed for Claude Code
-allowed-tools: Read, Write, Edit, Bash(psql:*), Bash(mysql:*), Bash(sqlite3:*), Bash(mongosh:*), Bash(redis-cli:*), Bash(npm:*), Bash(npx:*), Bash(prisma:*), Bash(neonctl:*), Bash(firebase:*), Bash(supabase:*), Grep, Glob, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
+allowed-tools: Read, Write, Edit, Bash(psql:*), Bash(mysql:*), Bash(sqlite3:*), Bash(mongosh:*), Bash(redis-cli:*), Bash(npm:*), Bash(npx:*), Bash(prisma:*), Bash(neonctl:*), Bash(firebase:*), Bash(supabase:*), Grep, Glob
 user-invocable: false
 metadata:
   version: "2.0.0"
   category: "domain"
   status: "active"
   updated: "2026-04-25"
-  modularized: "true"
   tags: "database, postgresql, mongodb, redis, oracle, data-patterns, performance, neon, supabase, firestore, cloud-database, serverless"
   author: "MoAI-ADK Team"
-  context7-libraries: "/neondatabase/neon, /supabase/supabase, /firebase/firebase-docs"
   related-skills: "moai-platform-database-cloud"
 
 # MoAI Extension: Progressive Disclosure
@@ -200,10 +198,6 @@ Performance Features:
 
 ## Resources
 
-For working code examples, see [examples.md](examples.md).
-
-For detailed implementation patterns and database-specific optimizations, see the modules directory.
-
 Status: Production Ready
 Last Updated: 2026-01-11
 Maintained by: MoAI-ADK Database Team
@@ -302,8 +296,6 @@ match /users/{userId} {
 ```
 
 Offline persistence: Enable via `enableIndexedDbPersistence(db)` (web) or SDK default (mobile).
-
-Full platform reference: [modules/cloud-database.md](modules/cloud-database.md)
 
 ## Refactor Notes
 

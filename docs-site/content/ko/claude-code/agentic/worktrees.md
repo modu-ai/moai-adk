@@ -12,7 +12,7 @@ description: "Claude Code가 git 워크트리로 병렬 세션을 격리해 충�
 {{< /callout >}}
 
 {{< callout type="tip" >}}
-이 페이지는 Claude Code의 워크트리 개념을 개관하는 다리 역할만 합니다. MoAI-ADK에서 SPEC 단위 병렬 개발에 워크트리를 실제로 적용하는 자세한 방법은 [Git Worktree 개요](/worktree), [Git Worktree 완벽 가이드](/worktree/guide), [Git Worktree 실제 사용 예시](/worktree/examples)를 참고하시기 바랍니다.
+이 페이지는 Claude Code의 워크트리 개념을 개관하는 다리 역할만 합니다. MoAI-ADK에서 SPEC 단위 병렬 개발에 워크트리를 실제로 적용하는 자세한 방법은 [Git Worktree 개요](/ko/worktree), [Git Worktree 완벽 가이드](/ko/worktree/guide), [Git Worktree 실제 사용 예시](/ko/worktree/examples)를 참고하시기 바랍니다.
 {{< /callout >}}
 
 ## 워크트리란
@@ -106,13 +106,13 @@ claude --worktree experimental
 
 ## MoAI-ADK에서의 깊은 활용
 
-MoAI-ADK는 이 워크트리 메커니즘을 SPEC 단위 병렬 개발과 다중 세션 격리에 폭넓게 활용합니다. 어떤 상황에서 워크트리를 켜야 하는지, 세션 핸드오프와 어떻게 맞물리는지 같은 실전 내용은 아래 MoAI-ADK 전용 가이드에 정리되어 있으므로, 이 페이지에서는 개념 소개에 그치고 깊은 내용은 링크로 안내합니다.
+MoAI-ADK는 이 워크트리 메커니즘을 SPEC 단위 병렬 개발과 다중 세션 격리에 폭넓게 활용합니다 (`/moai plan --worktree`, `moai worktree` CLI). 에이전틱 루프를 여러 개 동시에 돌리려면 각 루프의 파일 편집이 서로를 오염시키지 않아야 하는데, 워크트리가 바로 그 격리를 제공합니다. 루프 병렬화의 물리적 전제 조건인 셈입니다. 어떤 상황에서 워크트리를 켜야 하는지, 세션 핸드오프와 어떻게 맞물리는지 같은 실전 내용은 아래 MoAI-ADK 전용 가이드에 정리되어 있으므로, 이 페이지에서는 개념 소개에 그치고 깊은 내용은 링크로 안내합니다.
 
 ## 관련 문서
 
-- [Git Worktree 개요](/worktree)
-- [Git Worktree 완벽 가이드](/worktree/guide)
-- [Git Worktree 실제 사용 예시](/worktree/examples)
+- [Git Worktree 개요](/ko/worktree)
+- [Git Worktree 완벽 가이드](/ko/worktree/guide)
+- [Git Worktree 실제 사용 예시](/ko/worktree/examples)
 
 ## 참고 자료
 

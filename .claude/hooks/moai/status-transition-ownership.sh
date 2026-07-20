@@ -3,6 +3,19 @@
 # Purpose: Verify Write/Edit invoker matches Status Transition Ownership Matrix
 # Trigger: PostToolUse event when tool ∈ {Write, Edit, MultiEdit} on SPEC artifact files
 # Cross-reference: .claude/rules/moai/development/spec-frontmatter-schema.md (Status Transition Ownership Matrix)
+#
+# Audit-log consumer contract (SPEC-OBSERVE-HYGIENE-001 M1): each line appended
+# to .moai/logs/status-transition-audit.log has the shape:
+#   <ISO-8601-UTC> [status-transition-ownership] <Tool> <FilePath> status=<Status>
+# where <Tool> ∈ {Write, Edit, MultiEdit}, <FilePath> is the absolute SPEC
+# artifact path, and <Status> is the frontmatter status captured at write time
+# (or the sentinel "<file absent — Write creating new>" for a brand-new file).
+# `moai spec audit` parses this log (internal/spec/audit_transition.go) and
+# surfaces an INFO finding for any status value that is non-empty, not the
+# sentinel, and not in the canonical 8-value Status enum. The parser tolerates
+# historical format drift (leading whitespace, truncated mid-edit values, unknown
+# line shapes) — unknown lines are skipped + counted, never fatal. Changing the
+# log line shape above requires updating the parser in lockstep.
 
 set -e
 

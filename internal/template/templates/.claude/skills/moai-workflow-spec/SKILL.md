@@ -12,7 +12,7 @@ when_to_use: >
 
 license: Apache-2.0
 compatibility: Designed for Claude Code
-allowed-tools: Read, Write, Edit, Bash(git:*), Bash(ls:*), Bash(wc:*), Bash(mkdir:*), Grep, Glob, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
+allowed-tools: Read, Write, Edit, Bash(git:*), Bash(ls:*), Bash(wc:*), Bash(mkdir:*), Grep, Glob
 user-invocable: false
 metadata:
   version: "1.2.0"
@@ -41,7 +41,7 @@ Lint behavior canonicalized per the GEARS migration policy.
 Core Capabilities:
 
 - GEARS-Format Specifications (current): Five requirement patterns with the unified compound clause `[Where ...][While ...][When ...] The <subject> shall <behavior>` and a generalized `<subject>` (any noun, not only "the system")
-- EARS Legacy Reference: All EARS patterns preserved for 6 months from v3.0.0 release to keep the 88 pre-v3 SPECs readable
+- EARS Legacy Reference: All EARS patterns preserved per the lint engine's backward-compatibility policy to keep pre-v3 SPECs (those authored before GEARS became canonical) readable
 - Requirement Clarification: Four-step systematic process with assumption analysis
 - SPEC Document Templates: Standardized 3-file structure (spec.md / plan.md / acceptance.md)
 - Plan-Run-Sync Integration: Seamless workflow connection
@@ -70,7 +70,7 @@ Generalized subject substitution: GEARS replaces the hardcoded "the system" subj
 - "The agent shall return a blocker report instead of prompting the user." (Ubiquitous, `<subject>` = agent)
 - "**When** a SPEC author opens the file, the component shall display the deprecation banner." (Event-driven, `<subject>` = component)
 
-The 88 existing SPECs keep "The system" as the default subject for readability; existing readers do not need to relearn the canonical phrase.
+Pre-v3 SPECs (those authored before GEARS became canonical) keep "The system" as the default subject for readability; existing readers do not need to relearn the canonical phrase.
 
 EARS Five Patterns (legacy — 6-month backward-compatibility window):
 
@@ -95,10 +95,10 @@ When to Use:
 Quick Commands:
 
 ```bash
-/moai:1-plan "user authentication system"                   # Create new SPEC
-/moai:1-plan "login" "signup" --worktree                    # Parallel SPECs
-/moai:1-plan "payment processing" --branch                  # New branch
-/moai:1-plan SPEC-001 "add OAuth support"                   # Update existing
+/moai plan "user authentication system"                   # Create new SPEC
+/moai plan "login" "signup" --worktree                    # Parallel SPECs
+/moai plan "payment processing" --branch                  # New branch
+/moai plan SPEC-001 "add OAuth support"                   # Update existing
 ```
 
 ---
@@ -151,7 +151,7 @@ This example chains all three GEARS modifiers (`Where`, `While`, `When`) and use
 
 ### EARS Format (legacy — 6-month backward-compatibility window)
 
-Five patterns cover all requirement types. Each pattern has a specific use case and test strategy. The 88 existing SPECs continue to use EARS notation and are valid for 6 months from the v3.0.0 release per the lint engine's backward-compatibility policy.
+Five patterns cover all requirement types. Each pattern has a specific use case and test strategy. Pre-v3 SPECs (those authored before GEARS became canonical) continue to use EARS notation and remain valid per the lint engine's backward-compatibility policy.
 
 See [EARS deep dive with examples per pattern](references/ears-deep-dive.md) for use cases, examples, and test strategies for Ubiquitous, Event-Driven, State-Driven, Unwanted, and Optional requirements.
 
@@ -168,13 +168,35 @@ See [EARS deep dive with examples per pattern](references/ears-deep-dive.md) for
 
 See [requirement clarification detailed workflow](references/requirement-clarification.md) for assumption documentation templates and Five Whys application.
 
+### [NEEDS CLARIFICATION] Marker Convention
+
+**[NEEDS CLARIFICATION: <topic>]** markers identify unresolved questions in plan.md and research.md that MUST be settled before Implementation Kickoff Approval (plan→run HUMAN GATE).
+
+**Placement**: ONLY in plan.md and research.md (NEVER in spec.md or acceptance.md).
+
+**Format**: 
+- `[NEEDS CLARIFICATION: <specific topic>]` — inline marker for open questions
+- Each marker MUST be addressable via orchestrator AskUserQuestion before run-phase entry
+- plan-auditor detects unclarified markers and flags as "clarification gate" finding
+
+**3-Layer Distinction**:
+- `[NEEDS CLARIFICATION: <topic>]` — plan/research artifact blocker (user Q required)
+- `TODO` — code-level implementation debt (no user Q needed)
+- `@MX:TODO` — code-level annotation for untested/incomplete code
+
+**Processing**:
+- plan-auditor scans for `[NEEDS CLARIFICATION]` markers during audit
+- If any remain, plan-auditor recommends resolution before Implementation Kickoff Approval
+- Orchestrator runs AskUserQuestion rounds to resolve each marked topic
+- Implementation Kickoff Approval (mandatory human gate) proceeds only after all clarifications are resolved
+
 ### Plan-Run-Sync Workflow Integration
 
-PLAN (/moai:1-plan): manager-spec analyzes input → EARS requirements → clarification → SPEC creation in `.moai/specs/` → optional `--branch` or `--worktree`.
+PLAN (/moai plan): manager-spec analyzes input → EARS requirements → clarification → SPEC creation in `.moai/specs/` → optional `--branch` or `--worktree`.
 
-RUN (/moai:2-run): manager-develop loads SPEC → ANALYZE-PRESERVE-IMPROVE (DDD) or RED-GREEN-REFACTOR (TDD) per `quality.yaml` `constitution.development_mode` → moai-workflow-testing reference → per-spawn Agent(general-purpose) domain delegation → quality-gate validation (Stop hook / /moai gate).
+RUN (/moai run): manager-develop loads SPEC → ANALYZE-PRESERVE-IMPROVE (DDD) or RED-GREEN-REFACTOR (TDD) per `quality.yaml` `constitution.development_mode` → moai-workflow-testing reference → per-spawn Agent(general-purpose) domain delegation → quality-gate validation (Stop hook / /moai gate).
 
-SYNC (/moai:3-sync): manager-docs synchronizes documentation → API docs from SPEC → README and architecture updates → CHANGELOG → version control commit.
+SYNC (/moai sync): manager-docs synchronizes documentation → API docs from SPEC → README and architecture updates → CHANGELOG → version control commit.
 
 ### Parallel Development with Git Worktree
 
@@ -202,7 +224,7 @@ State files: `.moai/state/last-session-state.json`. Generated docs: `.moai/docs/
 
 Canonical 12 required fields (enforced by the SPEC frontmatter lint rule): id, title, version, status, created, updated, author, priority, phase, module, lifecycle, tags.
 
-Status enum (8 values): draft → planned → in-progress → implemented → completed | superseded | archived | rejected.
+Status enum (8 values): draft → in-progress → implemented → completed | superseded | archived | rejected. (`planned` is retained in the enum as legacy-optional — NOT in the active flow; no agent authors a `draft → planned` transition. See `.claude/rules/moai/development/spec-frontmatter-schema.md` § Status Enum.)
 
 Optional fields: issue_number, depends_on, lint.skip, bc_id, tier (S/M/L LEAN tier).
 
@@ -280,7 +302,7 @@ These routing rules decide what is out of scope for a SPEC document (and where i
 - manager-develop: DDD/TDD implementation based on SPEC requirements
 - /moai gate skill (or sync-phase-quality-gate.sh Stop hook): TRUST 5 quality validation and gate enforcement (former manager-quality role)
 
-For migration scenarios and validation scripts: [reference/migration-guide.md](reference/migration-guide.md).
+For migration scenarios and validation scripts: [references/migration-guide.md](references/migration-guide.md).
 
 ---
 

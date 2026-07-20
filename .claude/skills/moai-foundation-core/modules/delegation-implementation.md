@@ -24,11 +24,10 @@ class ContextManager:
         """Prepare optimized context for specific agent."""
 
         context_requirements = {
-            "code-backend": ["spec_id", "api_design", "database_schema"],
-            "code-frontend": ["spec_id", "api_endpoints", "ui_requirements"],
-            "security-expert": ["spec_id", "threat_model", "security_requirements"],
-            "core-quality": ["spec_id", "code_summary", "test_strategy"],
-            "workflow-docs": ["spec_id", "api_spec", "code_summary"]
+            "manager-develop": ["spec_id", "cycle_type", "api_design", "database_schema", "code_summary"],
+            "manager-docs": ["spec_id", "api_spec", "code_summary"],
+            "sync-auditor": ["spec_id", "code_summary", "test_strategy"],
+            "general-purpose": ["spec_id", "domain", "threat_model"]
         }
 
         required_fields = context_requirements.get(agent_type, [])
@@ -75,12 +74,12 @@ full_data = {
     "database_schema": {...}
 }
 
-backend_context = context_manager.prepare_context(full_data, "code-backend")
-# Result: Only spec_id, api_design, database_schema (~25K tokens)
+backend_context = context_manager.prepare_context(full_data, "manager-develop")
+# Result: Only spec_id, cycle_type, api_design, database_schema (~25K tokens)
 
 result = await Agent(
-    subagent_type="code-backend",
-    prompt="Implement backend",
+    subagent_type="manager-develop",
+    prompt="Implement backend (cycle_type=ddd, backend domain)",
     context=backend_context
 )
 ```
@@ -95,7 +94,7 @@ async def implement_feature_sequential(feature_description: str):
 
     # Phase 1: SPEC Generation
     spec_result = await Agent(
-        subagent_type="workflow-spec",
+        subagent_type="manager-spec",
         prompt=f"Generate SPEC for: {feature_description}",
         context={
             "feature": feature_description,
@@ -105,10 +104,10 @@ async def implement_feature_sequential(feature_description: str):
 
     execute_clear()
 
-    # Phase 2: API Design
+    # Phase 2: API Design — run-phase implementation
     api_result = await Agent(
-        subagent_type="api-designer",
-        prompt="Design REST API for feature",
+        subagent_type="manager-develop",
+        prompt="Design REST API for feature (cycle_type=ddd, backend/API domain)",
         context={
             "spec_id": spec_result.spec_id,
             "requirements": spec_result.requirements,
@@ -116,10 +115,10 @@ async def implement_feature_sequential(feature_description: str):
         }
     )
 
-    # Phase 3: Backend Implementation
+    # Phase 3: Backend Implementation — run-phase
     backend_result = await Agent(
-        subagent_type="code-backend",
-        prompt="Implement backend with DDD",
+        subagent_type="manager-develop",
+        prompt="Implement backend with DDD (cycle_type=ddd, backend domain)",
         context={
             "spec_id": spec_result.spec_id,
             "api_design": api_result.openapi_spec,
@@ -127,10 +126,10 @@ async def implement_feature_sequential(feature_description: str):
         }
     )
 
-    # Phase 4: Frontend Implementation
+    # Phase 4: Frontend Implementation — per-spawn domain delegation
     frontend_result = await Agent(
-        subagent_type="code-frontend",
-        prompt="Implement UI components",
+        subagent_type="general-purpose",
+        prompt="Implement UI components (frontend domain)",
         context={
             "spec_id": spec_result.spec_id,
             "api_endpoints": api_result.endpoints,
@@ -138,10 +137,10 @@ async def implement_feature_sequential(feature_description: str):
         }
     )
 
-    # Phase 5: Integration Testing
+    # Phase 5: Integration Testing — run-phase (TDD)
     integration_result = await Agent(
-        subagent_type="core-quality",
-        prompt="Run integration tests",
+        subagent_type="manager-develop",
+        prompt="Run integration tests (cycle_type=tdd)",
         context={
             "spec_id": spec_result.spec_id,
             "backend_endpoints": backend_result.endpoints,
@@ -149,9 +148,9 @@ async def implement_feature_sequential(feature_description: str):
         }
     )
 
-    # Phase 6: Documentation
+    # Phase 6: Documentation — sync-phase
     docs_result = await Agent(
-        subagent_type="workflow-docs",
+        subagent_type="manager-docs",
         prompt="Generate comprehensive documentation",
         context={
             "spec_id": spec_result.spec_id,
@@ -180,19 +179,19 @@ async def implement_feature_sequential(feature_description: str):
 def sequential_with_token_management():
     """Sequential flow with strategic /clear execution."""
 
-    # Phase 1: Heavy context (SPEC generation)
-    spec = Agent(subagent_type="workflow-spec", ...)  # ~30K tokens
+    # Phase 1: Heavy context (SPEC generation) — plan-phase
+    spec = Agent(subagent_type="manager-spec", ...)  # ~30K tokens
     execute_clear()  # Save 45-50K tokens
 
-    # Phase 2: Fresh context (implementation)
+    # Phase 2: Fresh context (implementation) — run-phase
     impl = Agent(
-        subagent_type="workflow-ddd",
+        subagent_type="manager-develop",
         context={"spec_id": spec.id}  # Minimal context
     )  # ~80K tokens
 
-    # Phase 3: Final phase
+    # Phase 3: Final phase — sync-phase
     docs = Agent(
-        subagent_type="workflow-docs",
+        subagent_type="manager-docs",
         context={"spec_id": spec.id, "summary": impl.summary}
     )  # ~25K tokens
 
@@ -208,8 +207,8 @@ async def advanced_conditional_routing(request: dict):
     """Multi-criteria conditional routing."""
 
     analysis = await Agent(
-        subagent_type="plan",
-        prompt="Analyze request complexity",
+        subagent_type="general-purpose",
+        prompt="Analyze request complexity (diagnostics)",
         context=request
     )
 
@@ -231,19 +230,19 @@ async def advanced_conditional_routing(request: dict):
 async def sequential_secure_workflow(analysis):
     """High-complexity security workflow."""
     security_review = await Agent(
-        subagent_type="security-expert",
-        prompt="Security architecture review"
+        subagent_type="general-purpose",
+        prompt="Security architecture review (security domain)"
     )
 
     implementation = await Agent(
-        subagent_type="code-backend",
-        prompt="Implement with security controls",
+        subagent_type="manager-develop",
+        prompt="Implement with security controls (cycle_type=ddd, backend domain)",
         context={"security_requirements": security_review}
     )
 
     penetration_test = await Agent(
-        subagent_type="security-expert",
-        prompt="Penetration testing",
+        subagent_type="general-purpose",
+        prompt="Penetration testing (security domain)",
         context={"implementation": implementation}
     )
 

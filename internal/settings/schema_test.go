@@ -45,13 +45,16 @@ var expected34FieldNames = []string{
 	"git_convention.validation.enforce_on_push",
 }
 
-// TestSchemaFieldNameSet은 스키마가 정확히 34개 필드를 6개 섹션에 걸쳐 열거하고,
-// 필드명 집합이 기대 집합과 정확히 일치함을 검증한다(AC-WC10-010).
+// TestSchemaFieldNameSet은 기존 6개 섹션의 정규 34개 필드가 스키마에 그대로
+// 보존됨을 검증한다(AC-WC10-010 하위호환). SPEC-WEB-CONSOLE-011 M2b가 10섹션
+// 확장 필드를 추가했으므로 총계는 하드코딩하지 않고(B11 파생 카운트 원칙)
+// "기존 34-필드는 전부 잔존 + 중복 없음"만 고정한다. 확장 필드의 구조 불변식은
+// TestSchemaSectionsRegistered(schema_sections_test.go)가 담당한다.
 func TestSchemaFieldNameSet(t *testing.T) {
 	got := FieldNames()
 
-	if len(got) != 34 {
-		t.Fatalf("FieldNames() count = %d, want 34", len(got))
+	if len(got) < len(expected34FieldNames) {
+		t.Fatalf("FieldNames() count = %d, want >= %d (legacy 34-field floor)", len(got), len(expected34FieldNames))
 	}
 
 	gotSet := make(map[string]bool, len(got))
@@ -62,55 +65,40 @@ func TestSchemaFieldNameSet(t *testing.T) {
 		gotSet[n] = true
 	}
 
-	wantSet := make(map[string]bool, len(expected34FieldNames))
 	for _, n := range expected34FieldNames {
-		wantSet[n] = true
-	}
-
-	for n := range gotSet {
-		if !wantSet[n] {
-			t.Errorf("schema has unexpected field %q (not in expected 34-field set)", n)
-		}
-	}
-	for n := range wantSet {
 		if !gotSet[n] {
-			t.Errorf("schema missing expected field %q", n)
+			t.Errorf("schema missing legacy field %q", n)
 		}
 	}
 }
 
-// TestSchemaSixSections는 6개 정규 섹션이 모두 존재하고, 각 섹션의 필드 수가
-// 기대값과 일치함을 검증한다(AC-WC10-003 섹션 구성).
+// TestSchemaSixSections는 기존 6개 정규 섹션의 필드 구성이 보존됨을 검증한다
+// (AC-WC10-003 하위호환). SPEC-WEB-CONSOLE-011 M2b 확장으로 AllSections는 확장
+// 섹션을 추가로 포함하며, 확장 섹션 커버리지는 TestSchemaSectionsRegistered가
+// 담당한다. 총계 하드코딩은 B11에 따라 두지 않는다.
 func TestSchemaSixSections(t *testing.T) {
 	wantCounts := map[SectionID]int{
 		SectionIdentity:      1,
 		SectionLanguage:      4,
 		SectionLaunch:        4,
-		SectionStatusline:    16,
+		SectionStatusline:    17,
 		SectionQuality:       4,
 		SectionGitConvention: 5,
 	}
 
 	sections := AllSections()
-	if len(sections) != 6 {
-		t.Fatalf("AllSections() count = %d, want 6", len(sections))
-	}
-
-	total := 0
+	seen := map[SectionID]bool{}
 	for _, s := range sections {
-		got := len(SectionFields(s))
-		want, ok := wantCounts[s]
-		if !ok {
-			t.Errorf("unexpected section %q", s)
+		seen[s] = true
+	}
+	for s, want := range wantCounts {
+		if !seen[s] {
+			t.Errorf("legacy section %q missing from AllSections()", s)
 			continue
 		}
-		if got != want {
-			t.Errorf("section %q field count = %d, want %d", s, got, want)
+		if got := len(SectionFields(s)); got != want {
+			t.Errorf("legacy section %q field count = %d, want %d", s, got, want)
 		}
-		total += got
-	}
-	if total != 34 {
-		t.Errorf("sum of section field counts = %d, want 34", total)
 	}
 }
 
@@ -135,9 +123,13 @@ func TestSchemaPerFieldInvariants(t *testing.T) {
 			if f.Persist.Field == "" {
 				t.Errorf("field %q (profile-store) has empty Persist.Field", f.Name)
 			}
-		case PersistProjectConfig:
+		case PersistProjectConfig, PersistTypedSection:
 			if f.Persist.Section == "" || f.Persist.Key == "" {
-				t.Errorf("field %q (project-config) has empty Persist.Section/Key", f.Name)
+				t.Errorf("field %q (%s) has empty Persist.Section/Key", f.Name, f.Persist.Kind)
+			}
+		case PersistSeam:
+			if f.Persist.Section == "" || len(f.Persist.Path) == 0 {
+				t.Errorf("field %q (seam) has empty Persist.Section/Path", f.Name)
 			}
 		default:
 			t.Errorf("field %q has unknown Persist.Kind %q", f.Name, f.Persist.Kind)

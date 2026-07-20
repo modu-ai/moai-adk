@@ -9,9 +9,7 @@ installation:
   title: "セットアップウィザード"
 quickstart:
   title: "クイックスタート"
-update:
-  title: "アップデート"
 cli:
-  title: "CLI リファレンス"
+  title: "CLI 概要"
 faq:
   title: "よくある質問"

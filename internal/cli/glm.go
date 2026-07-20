@@ -3,21 +3,22 @@ package cli
 // @MX:NOTE: [AUTO] GLM command launches Claude Code with GLM backend via Z.AI proxy
 // @MX:NOTE: [AUTO] Requires 'moai glm setup <key>' to save API key to ~/.moai/.env.glm
 // @MX:NOTE: [AUTO] Main session uses GLM: 128K/200K/1M context windows per model tier (high=glm-5.2)
-// @MX:NOTE: [AUTO] M6-S2 DDD: renderSuccessCard used in enableTeamMode (L285, L325); WARNING block on stderr is plain fmt by design (non-TTY safe)
+// @MX:NOTE: [AUTO] M6-S2 DDD: uikit.RenderSuccessCard used in enableTeamMode (L285, L325); WARNING block on stderr is plain fmt by design (non-TTY safe)
 
 import (
 	"bufio"
 	"context"
-	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
 
+	"github.com/modu-ai/moai-adk/internal/cli/uikit"
 	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/defs"
 	"github.com/modu-ai/moai-adk/internal/statusline"
+	"github.com/modu-ai/moai-adk/internal/template"
 	"github.com/modu-ai/moai-adk/internal/tmux"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
@@ -195,6 +196,7 @@ func setGLMEnv(glmConfig *GLMConfigFromYAML, apiKey string) {
 	_ = os.Setenv("ANTHROPIC_DEFAULT_OPUS_MODEL", glmConfig.Models.High)     //nolint:errcheck
 	_ = os.Setenv("ANTHROPIC_DEFAULT_SONNET_MODEL", glmConfig.Models.Medium) //nolint:errcheck
 	_ = os.Setenv("ANTHROPIC_DEFAULT_HAIKU_MODEL", glmConfig.Models.Low)     //nolint:errcheck
+	_ = os.Setenv("ANTHROPIC_DEFAULT_FABLE_MODEL", glmConfig.Models.Fable)   //nolint:errcheck
 	// 1M context activation: when the High slot model resolves to the 1M context
 	// tier, scale the auto-compact window to the full 1M context.
 	if window, ok := glmAutoCompactWindow(glmConfig.Models.High); ok {
@@ -205,6 +207,59 @@ func setGLMEnv(glmConfig *GLMConfigFromYAML, apiKey string) {
 	_ = os.Setenv("API_TIMEOUT_MS", "3000000")                   //nolint:errcheck
 	// Z.AI MCP server (zai-mcp-server) reads this env for authentication.
 	_ = os.Setenv("Z_AI_API_KEY", apiKey) //nolint:errcheck
+	// GLM effort overlay (SPEC-MODEL-TIER-PLANTYPE-001 M5, REQ-MTP-030): inject the
+	// session-global GLM reasoning-control derived from the effort overlay.
+	for k, v := range glmReasoningEnvVars() {
+		_ = os.Setenv(k, v) //nolint:errcheck
+	}
+}
+
+// glmReasoningEnvVars returns the Branch-B explicit reasoning-control env
+// injection for a GLM backend (SPEC-MODEL-TIER-PLANTYPE-001 M5, REQ-MTP-030).
+// It is the SHARED overlay wire point invoked by BOTH setGLMEnv (process env) and
+// injectGLMEnvForTeam (settings.local.json env) — AC-MTP-032a reachability. It
+// derives the session-global GLM reasoning state from the effort overlay
+// (template.SessionGLMReasoningState) and maps it to the ANTHROPIC_REASONING_EFFORT
+// env var (thinking-enabled states) or the thinking toggle (thinking-off state).
+//
+// UNVERIFIED delivery (AC-MTP-032b run-phase empirical gate): whether z.ai
+// consumes ANTHROPIC_REASONING_EFFORT through the Anthropic-compat shim (Branch A
+// passthrough) or requires the reasoning_effort field in the request body (making
+// this env inert) is a run-phase empirical determination that needs a live z.ai
+// session. This is the safe-default Branch-B explicit write; it does NOT assert
+// the value actually reaches z.ai as reasoning-control.
+func glmReasoningEnvVars() map[string]string {
+	state := template.SessionGLMReasoningState()
+	out := make(map[string]string, 1)
+	if state.ThinkingEnabled {
+		out[config.EnvAnthropicReasoningEffort] = state.ReasoningEffort
+	}
+	return out
+}
+
+// glmReasoningEnvVarsForEffort returns the MAIN-SESSION reasoning-control env
+// injection derived from the web-set effort preference. It is the prefs-driven
+// counterpart to glmReasoningEnvVars() (which derives the hardcoded coding-max
+// session default, used for sub-agents and the empty-effort fallback). When
+// effort is non-empty it collapses the Claude effort onto z.ai's reasoning
+// control via SessionGLMReasoningStateForEffort; when empty it falls back to the
+// session default (glmReasoningEnvVars). Thinking-off states emit no
+// ANTHROPIC_REASONING_EFFORT entry (reasoning_effort is moot when thinking is
+// off). KEEP glmReasoningEnvVars() intact — injectGLMEnvForTeam calls it for the
+// sub-agent / settings.local.json parity wire point; this helper is ADDITIVE and
+// is consumed only by the main-session launch path.
+//
+// UNVERIFIED delivery (AC-MTP-032b run-phase empirical gate): whether z.ai
+// consumes ANTHROPIC_REASONING_EFFORT through the Anthropic-compat shim is a
+// run-phase empirical determination that needs a live z.ai session. This writes
+// the CORRECT env per the shim contract; z.ai honoring it is residual risk.
+func glmReasoningEnvVarsForEffort(effort string) map[string]string {
+	state := template.SessionGLMReasoningStateForEffort(effort)
+	out := make(map[string]string, 1)
+	if state.ThinkingEnabled {
+		out[config.EnvAnthropicReasoningEffort] = state.ReasoningEffort
+	}
+	return out
 }
 
 // runGLMSetup saves a GLM API key.
@@ -277,8 +332,12 @@ func enableTeamMode(cmd *cobra.Command, isHybrid bool) error {
 	inTmux := tmux.NewDetector().InTmuxSession()
 
 	// CG mode requires tmux for pane-level environment isolation.
+	// Claude Code supports iTerm2 split panes natively (v2.1.186+), but moai cg
+	// injects GLM credentials into teammate panes via tmux session-level env
+	// (set-environment); iTerm2 has no session-level env, so Leader=Claude /
+	// Teammates=GLM isolation requires tmux.
 	if isHybrid && !inTmux && os.Getenv(config.EnvTestMode) != "1" {
-		return fmt.Errorf("CG mode requires a tmux session: tmux is required for Claude + GLM hybrid mode because: Leader (this pane) uses Claude API, Teammates (new panes) inherit GLM env to use Z.AI API. Start a tmux session first: tmux new -s moai; moai cg. Or use 'moai glm' for all-GLM mode (no tmux required)")
+		return fmt.Errorf("CG mode requires a tmux session: Claude Code supports iTerm2 split panes natively (v2.1.186+), but moai cg injects GLM credentials into teammate panes via tmux session-level env (set-environment); iTerm2 has no session-level env, so Leader=Claude / Teammates=GLM isolation requires tmux. Leader (this pane) uses Claude API; teammates (new panes) inherit GLM env to use Z.AI API. Start a tmux session first: tmux new -s moai; moai cg. Or use 'moai glm' for all-GLM mode (no tmux required)")
 	}
 
 	// Inject GLM environment variables into tmux session (if available)
@@ -304,7 +363,7 @@ func enableTeamMode(cmd *cobra.Command, isHybrid bool) error {
 			return fmt.Errorf("ensure settings.local.json: %w", err)
 		}
 
-		_, _ = fmt.Fprintln(out, renderSuccessCard(
+		_, _ = fmt.Fprintln(out, uikit.RenderSuccessCard(
 			"CG mode enabled (Claude + GLM)",
 			"",
 			"Architecture: Lead (Claude) + Teammates (GLM)",
@@ -344,7 +403,7 @@ func enableTeamMode(cmd *cobra.Command, isHybrid bool) error {
 				"    4. /moai --team \"task\""
 		}
 
-		_, _ = fmt.Fprintln(out, renderSuccessCard(
+		_, _ = fmt.Fprintln(out, uikit.RenderSuccessCard(
 			"GLM Team mode enabled",
 			"",
 			"Architecture: All agents use GLM models",
@@ -402,6 +461,7 @@ func buildTmuxInjectVars(glmConfig *GLMConfigFromYAML, apiKey string) map[string
 		"ANTHROPIC_DEFAULT_OPUS_MODEL":   glmConfig.Models.High,
 		"ANTHROPIC_DEFAULT_SONNET_MODEL": glmConfig.Models.Medium,
 		"ANTHROPIC_DEFAULT_HAIKU_MODEL":  glmConfig.Models.Low,
+		"ANTHROPIC_DEFAULT_FABLE_MODEL":  glmConfig.Models.Fable,
 		// Z.AI proxy compatibility: strip Anthropic beta headers
 		"CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS": "1",
 		"API_TIMEOUT_MS":                         "3000000",
@@ -481,6 +541,11 @@ func buildTmuxClearVars() []string {
 		"ANTHROPIC_DEFAULT_OPUS_MODEL",
 		"ANTHROPIC_DEFAULT_SONNET_MODEL",
 		"ANTHROPIC_DEFAULT_HAIKU_MODEL",
+		"ANTHROPIC_DEFAULT_FABLE_MODEL",
+		// GLM effort overlay (SPEC-MODEL-TIER-PLANTYPE-001 M5, REQ-MTP-030 Branch-B
+		// inject↔clear parity, REQ-CGH-009): clear the reasoning-control env when
+		// leaving GLM mode so it does not leak into a subsequent `moai cc` session.
+		config.EnvAnthropicReasoningEffort,
 		"CLAUDE_CONFIG_DIR",
 		// Z.AI proxy compatibility flags
 		"CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS",
@@ -518,44 +583,24 @@ func persistTeamMode(projectRoot, mode string) error {
 // CG mode requires tmux, so we force tmux display to prevent inline fallback
 // which would cause teammates to lose GLM env var inheritance (see #468).
 func ensureSettingsLocalJSON(settingsPath string) error {
-	var settings SettingsLocal
+	// SPEC-CLIFIX-CRITICAL-001 REQ-CRIT-001-001: round-trip as map[string]any so
+	// unknown top-level keys (hooks, outputStyle, model, ...) survive the write.
+	// SPEC-CLIFIX-CONCURRENCY-001 REQ-CONC-001-001: route through the locked+atomic
+	// mutateSettingsLocal seam so concurrent sessions cannot lose updates.
+	return mutateSettingsLocal(settingsPath, func(m map[string]any) {
+		env := settingsEnvMap(m)
 
-	// Read existing settings if file exists (skip empty files)
-	if data, err := os.ReadFile(settingsPath); err == nil && len(data) > 0 {
-		if err := json.Unmarshal(data, &settings); err != nil {
-			return fmt.Errorf("parse settings.local.json: %w", err)
+		// Force tmux display mode: CG mode requires tmux for pane-level env isolation.
+		// "auto" can fall back to inline mode, causing teammates to lose GLM env vars (#468).
+		// Single source of truth: teammateMode native settings key in settings.local.json.
+		m["teammateMode"] = "tmux"
+		// Clean up legacy env var if present (superseded by native key).
+		delete(env, "CLAUDE_CODE_TEAMMATE_DISPLAY")
+
+		if len(env) == 0 {
+			delete(m, "env")
 		}
-	}
-
-	if settings.Env == nil {
-		settings.Env = make(map[string]string)
-	}
-
-	// Force tmux display mode: CG mode requires tmux for pane-level env isolation.
-	// "auto" can fall back to inline mode, causing teammates to lose GLM env vars (#468).
-	// Single source of truth: teammateMode native settings key in settings.local.json.
-	settings.TeammateMode = "tmux"
-	// Clean up legacy env var if present (superseded by native key).
-	delete(settings.Env, "CLAUDE_CODE_TEAMMATE_DISPLAY")
-
-	if len(settings.Env) == 0 {
-		settings.Env = nil
-	}
-
-	if err := os.MkdirAll(filepath.Dir(settingsPath), 0o755); err != nil {
-		return fmt.Errorf("create directory: %w", err)
-	}
-
-	data, err := json.MarshalIndent(settings, "", "  ")
-	if err != nil {
-		return fmt.Errorf("marshal settings: %w", err)
-	}
-
-	if err := os.WriteFile(settingsPath, data, 0o600); err != nil {
-		return fmt.Errorf("write settings.local.json: %w", err)
-	}
-
-	return nil
+	})
 }
 
 // loadLLMSectionOnly loads only the LLM section from llm.yaml.
@@ -595,71 +640,61 @@ func disableTeamMode(projectRoot string) error {
 // MOAI_BACKUP_AUTH_TOKEN before being overwritten. removeGLMEnv restores it.
 // Note: Claude OAuth tokens live in ~/.claude/, not here, so OAuth is unaffected.
 func injectGLMEnvForTeam(settingsPath string, glmConfig *GLMConfigFromYAML, apiKey string) error {
-	var settings SettingsLocal
+	// SPEC-CLIFIX-CRITICAL-001 REQ-CRIT-001-001: round-trip as map[string]any so
+	// unknown top-level keys survive the write.
+	// SPEC-CLIFIX-CONCURRENCY-001 REQ-CONC-001-001: route through the locked+atomic
+	// mutateSettingsLocal seam so concurrent sessions cannot lose updates.
+	return mutateSettingsLocal(settingsPath, func(m map[string]any) {
+		env := settingsEnvMap(m)
 
-	// Read existing settings if file exists (skip empty files)
-	if data, err := os.ReadFile(settingsPath); err == nil && len(data) > 0 {
-		if err := json.Unmarshal(data, &settings); err != nil {
-			return fmt.Errorf("parse settings.local.json: %w", err)
+		// Back up any existing ANTHROPIC_AUTH_TOKEN that is not the GLM key itself.
+		// This preserves a Claude OAuth token so that removeGLMEnv can restore it.
+		if existing, ok := env["ANTHROPIC_AUTH_TOKEN"].(string); ok && existing != "" && existing != apiKey {
+			env["MOAI_BACKUP_AUTH_TOKEN"] = existing
 		}
-	}
 
-	if settings.Env == nil {
-		settings.Env = make(map[string]string)
-	}
+		// Inject GLM environment variables for teammates
+		env["ANTHROPIC_AUTH_TOKEN"] = apiKey
+		env["ANTHROPIC_BASE_URL"] = glmConfig.BaseURL
+		env["ANTHROPIC_DEFAULT_OPUS_MODEL"] = glmConfig.Models.High
+		env["ANTHROPIC_DEFAULT_SONNET_MODEL"] = glmConfig.Models.Medium
+		env["ANTHROPIC_DEFAULT_HAIKU_MODEL"] = glmConfig.Models.Low
+		env["ANTHROPIC_DEFAULT_FABLE_MODEL"] = glmConfig.Models.Fable
+		// Z.AI proxy compatibility: strip Anthropic beta headers
+		env["CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS"] = "1"
+		env["API_TIMEOUT_MS"] = "3000000"
+		// GLM effort overlay (SPEC-MODEL-TIER-PLANTYPE-001 M5, REQ-MTP-030): inject
+		// the session-global GLM reasoning-control derived from the effort overlay
+		// (same shared wire point as setGLMEnv — AC-MTP-032a).
+		for k, v := range glmReasoningEnvVars() {
+			env[k] = v
+		}
+		// Issue #742: pre-compute statusline context size from the High slot
+		// (Opus equivalent) so SessionStart hook propagates it via tmux env.
+		if size := statusline.ResolveGLMContextWindow(glmConfig.Models.High); size > 0 {
+			env[config.EnvStatuslineContextSize] = strconv.Itoa(size)
+		} else {
+			// Clean up stale value from a prior session that resolved a known model.
+			delete(env, config.EnvStatuslineContextSize)
+		}
+		// 1M context activation: scale auto-compact window when the High slot model
+		// resolves to the 1M context tier; otherwise clean up any stale value.
+		if window, ok := glmAutoCompactWindow(glmConfig.Models.High); ok {
+			env[config.EnvClaudeCodeAutoCompactWindow] = window
+		} else {
+			delete(env, config.EnvClaudeCodeAutoCompactWindow)
+		}
 
-	// Back up any existing ANTHROPIC_AUTH_TOKEN that is not the GLM key itself.
-	// This preserves a Claude OAuth token so that removeGLMEnv can restore it.
-	if existing := settings.Env["ANTHROPIC_AUTH_TOKEN"]; existing != "" && existing != apiKey {
-		settings.Env["MOAI_BACKUP_AUTH_TOKEN"] = existing
-	}
-
-	// Inject GLM environment variables for teammates
-	settings.Env["ANTHROPIC_AUTH_TOKEN"] = apiKey
-	settings.Env["ANTHROPIC_BASE_URL"] = glmConfig.BaseURL
-	settings.Env["ANTHROPIC_DEFAULT_OPUS_MODEL"] = glmConfig.Models.High
-	settings.Env["ANTHROPIC_DEFAULT_SONNET_MODEL"] = glmConfig.Models.Medium
-	settings.Env["ANTHROPIC_DEFAULT_HAIKU_MODEL"] = glmConfig.Models.Low
-	// Z.AI proxy compatibility: strip Anthropic beta headers
-	settings.Env["CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS"] = "1"
-	settings.Env["API_TIMEOUT_MS"] = "3000000"
-	// Issue #742: pre-compute statusline context size from the High slot
-	// (Opus equivalent) so SessionStart hook propagates it via tmux env.
-	if size := statusline.ResolveGLMContextWindow(glmConfig.Models.High); size > 0 {
-		settings.Env[config.EnvStatuslineContextSize] = strconv.Itoa(size)
-	} else {
-		// Clean up stale value from a prior session that resolved a known model.
-		delete(settings.Env, config.EnvStatuslineContextSize)
-	}
-	// 1M context activation: scale auto-compact window when the High slot model
-	// resolves to the 1M context tier; otherwise clean up any stale value.
-	if window, ok := glmAutoCompactWindow(glmConfig.Models.High); ok {
-		settings.Env[config.EnvClaudeCodeAutoCompactWindow] = window
-	} else {
-		delete(settings.Env, config.EnvClaudeCodeAutoCompactWindow)
-	}
-
-	// Force tmux display mode: GLM team mode uses tmux for env var inheritance.
-	// "auto" can fall back to inline mode, causing teammates to lose GLM env vars (#468).
-	// Single source of truth: teammateMode native settings key in settings.local.json.
-	settings.TeammateMode = "tmux"
-	// Clean up legacy env var if present (superseded by native key).
-	delete(settings.Env, "CLAUDE_CODE_TEAMMATE_DISPLAY")
-
-	if err := os.MkdirAll(filepath.Dir(settingsPath), 0o755); err != nil {
-		return fmt.Errorf("create directory: %w", err)
-	}
-
-	data, err := json.MarshalIndent(settings, "", "  ")
-	if err != nil {
-		return fmt.Errorf("marshal settings: %w", err)
-	}
-
-	if err := os.WriteFile(settingsPath, data, 0o600); err != nil {
-		return fmt.Errorf("write settings.local.json: %w", err)
-	}
-
-	return nil
+		// Force tmux display mode: GLM team mode uses tmux for env var inheritance.
+		// "auto" can fall back to inline mode, causing teammates to lose GLM env vars (#468).
+		// Single source of truth: teammateMode native settings key in settings.local.json.
+		m["teammateMode"] = "tmux"
+		// Clean up legacy env var if present (superseded by native key).
+		delete(env, "CLAUDE_CODE_TEAMMATE_DISPLAY")
+		if len(env) == 0 {
+			delete(m, "env")
+		}
+	})
 }
 
 // saveLLMSection saves only the LLM section to llm.yaml.
@@ -680,6 +715,9 @@ func saveLLMSection(sectionsDir string, llm config.LLMConfig) error {
 	}
 	if llm.GLM.Models.Low == "" {
 		llm.GLM.Models.Low = defaults.GLM.Models.Low
+	}
+	if llm.GLM.Models.Fable == "" {
+		llm.GLM.Models.Fable = defaults.GLM.Models.Fable
 	}
 	// Also populate legacy model name fields for consistency
 	if llm.GLM.Models.Opus == "" {
@@ -706,23 +744,7 @@ func saveLLMSection(sectionsDir string, llm config.LLMConfig) error {
 	}
 
 	path := filepath.Join(sectionsDir, "llm.yaml")
-
-	tmp, err := os.CreateTemp(sectionsDir, ".llm-config-*.tmp")
-	if err != nil {
-		return fmt.Errorf("create temp file: %w", err)
-	}
-	tmpName := tmp.Name()
-	defer func() { _ = os.Remove(tmpName) }()
-
-	if _, err := tmp.Write(data); err != nil {
-		_ = tmp.Close()
-		return fmt.Errorf("write temp file: %w", err)
-	}
-	if err := tmp.Close(); err != nil {
-		return fmt.Errorf("close temp file: %w", err)
-	}
-
-	return os.Rename(tmpName, path)
+	return writeFileAtomic(path, data, 0o600)
 }
 
 // GLMConfigFromYAML represents the GLM settings from llm.yaml.
@@ -732,12 +754,13 @@ type GLMConfigFromYAML struct {
 		High   string
 		Medium string
 		Low    string
+		Fable  string
 	}
 	EnvVar string
 }
 
-// resolveGLMModels resolves the effective high, medium, and low model names.
-func resolveGLMModels(models config.GLMModels) (high, medium, low string) {
+// resolveGLMModels resolves the effective high, medium, low, and fable model names.
+func resolveGLMModels(models config.GLMModels) (high, medium, low, fable string) {
 	defaults := config.NewDefaultLLMConfig()
 
 	high = models.High
@@ -764,7 +787,12 @@ func resolveGLMModels(models config.GLMModels) (high, medium, low string) {
 		low = defaults.GLM.Models.Low
 	}
 
-	return high, medium, low
+	fable = models.Fable
+	if fable == "" {
+		fable = defaults.GLM.Models.Fable
+	}
+
+	return high, medium, low, fable
 }
 
 // loadGLMConfig reads GLM configuration from llm.yaml.
@@ -806,17 +834,19 @@ func loadGLMConfig(root string) (*GLMConfigFromYAML, error) {
 		envVar = defaults.GLMEnvVar
 	}
 
-	high, medium, low := resolveGLMModels(llm.GLM.Models)
+	high, medium, low, fable := resolveGLMModels(llm.GLM.Models)
 	return &GLMConfigFromYAML{
 		BaseURL: baseURL,
 		Models: struct {
 			High   string
 			Medium string
 			Low    string
+			Fable  string
 		}{
 			High:   high,
 			Medium: medium,
 			Low:    low,
+			Fable:  fable,
 		},
 		EnvVar: envVar,
 	}, nil
@@ -921,6 +951,7 @@ func buildGLMEnvVars(glmConfig *GLMConfigFromYAML, apiKey string) map[string]str
 		"ANTHROPIC_DEFAULT_OPUS_MODEL":   glmConfig.Models.High,
 		"ANTHROPIC_DEFAULT_SONNET_MODEL": glmConfig.Models.Medium,
 		"ANTHROPIC_DEFAULT_HAIKU_MODEL":  glmConfig.Models.Low,
+		"ANTHROPIC_DEFAULT_FABLE_MODEL":  glmConfig.Models.Fable,
 		// Z.AI proxy compatibility
 		"CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS": "1",
 		"API_TIMEOUT_MS":                         "3000000",
@@ -945,56 +976,40 @@ func injectGLMEnv(settingsPath string, glmConfig *GLMConfigFromYAML) error {
 		return fmt.Errorf("GLM API key not found. Run 'moai glm setup <api-key>' to save your key, or set %s environment variable", glmConfig.EnvVar)
 	}
 
-	var settings SettingsLocal
+	// SPEC-CLIFIX-CRITICAL-001 REQ-CRIT-001-001: round-trip as map[string]any so
+	// unknown top-level keys survive the write.
+	// SPEC-CLIFIX-CONCURRENCY-001 REQ-CONC-001-001: route through the locked+atomic
+	// mutateSettingsLocal seam so concurrent sessions cannot lose updates.
+	return mutateSettingsLocal(settingsPath, func(m map[string]any) {
+		env := settingsEnvMap(m)
 
-	// Read existing settings if file exists (skip empty files)
-	if data, err := os.ReadFile(settingsPath); err == nil && len(data) > 0 {
-		if err := json.Unmarshal(data, &settings); err != nil {
-			return fmt.Errorf("parse settings.local.json: %w", err)
+		// Back up any existing ANTHROPIC_AUTH_TOKEN that is not the GLM key itself.
+		// This preserves a Claude OAuth token so that removeGLMEnv can restore it.
+		if existing, ok := env["ANTHROPIC_AUTH_TOKEN"].(string); ok && existing != "" && existing != apiKey {
+			env["MOAI_BACKUP_AUTH_TOKEN"] = existing
 		}
-	}
 
-	if settings.Env == nil {
-		settings.Env = make(map[string]string)
-	}
-
-	// Back up any existing ANTHROPIC_AUTH_TOKEN that is not the GLM key itself.
-	// This preserves a Claude OAuth token so that removeGLMEnv can restore it.
-	if existing := settings.Env["ANTHROPIC_AUTH_TOKEN"]; existing != "" && existing != apiKey {
-		settings.Env["MOAI_BACKUP_AUTH_TOKEN"] = existing
-	}
-
-	// Inject GLM environment variables with actual API key value
-	settings.Env["ANTHROPIC_AUTH_TOKEN"] = apiKey
-	settings.Env["ANTHROPIC_BASE_URL"] = glmConfig.BaseURL
-	settings.Env["ANTHROPIC_DEFAULT_OPUS_MODEL"] = glmConfig.Models.High
-	settings.Env["ANTHROPIC_DEFAULT_SONNET_MODEL"] = glmConfig.Models.Medium
-	settings.Env["ANTHROPIC_DEFAULT_HAIKU_MODEL"] = glmConfig.Models.Low
-	// Z.AI proxy compatibility: strip Anthropic beta headers
-	settings.Env["CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS"] = "1"
-	settings.Env["API_TIMEOUT_MS"] = "3000000"
-	// 1M context activation: scale auto-compact window when the High slot model
-	// resolves to the 1M context tier; otherwise clean up any stale value.
-	if window, ok := glmAutoCompactWindow(glmConfig.Models.High); ok {
-		settings.Env[config.EnvClaudeCodeAutoCompactWindow] = window
-	} else {
-		delete(settings.Env, config.EnvClaudeCodeAutoCompactWindow)
-	}
-
-	if err := os.MkdirAll(filepath.Dir(settingsPath), 0o755); err != nil {
-		return fmt.Errorf("create directory: %w", err)
-	}
-
-	data, err := json.MarshalIndent(settings, "", "  ")
-	if err != nil {
-		return fmt.Errorf("marshal settings: %w", err)
-	}
-
-	if err := os.WriteFile(settingsPath, data, 0o600); err != nil {
-		return fmt.Errorf("write settings.local.json: %w", err)
-	}
-
-	return nil
+		// Inject GLM environment variables with actual API key value
+		env["ANTHROPIC_AUTH_TOKEN"] = apiKey
+		env["ANTHROPIC_BASE_URL"] = glmConfig.BaseURL
+		env["ANTHROPIC_DEFAULT_OPUS_MODEL"] = glmConfig.Models.High
+		env["ANTHROPIC_DEFAULT_SONNET_MODEL"] = glmConfig.Models.Medium
+		env["ANTHROPIC_DEFAULT_HAIKU_MODEL"] = glmConfig.Models.Low
+		env["ANTHROPIC_DEFAULT_FABLE_MODEL"] = glmConfig.Models.Fable
+		// Z.AI proxy compatibility: strip Anthropic beta headers
+		env["CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS"] = "1"
+		env["API_TIMEOUT_MS"] = "3000000"
+		// 1M context activation: scale auto-compact window when the High slot model
+		// resolves to the 1M context tier; otherwise clean up any stale value.
+		if window, ok := glmAutoCompactWindow(glmConfig.Models.High); ok {
+			env[config.EnvClaudeCodeAutoCompactWindow] = window
+		} else {
+			delete(env, config.EnvClaudeCodeAutoCompactWindow)
+		}
+		if len(env) == 0 {
+			delete(m, "env")
+		}
+	})
 }
 
 // isTestEnvironment detects if we're running in a test environment.

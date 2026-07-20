@@ -29,9 +29,3 @@ func (c *Config) WorkflowRunTokens() int {
 func (c *Config) WorkflowSyncTokens() int {
 	return c.Workflow.TokenBudget.Sync
 }
-
-// WorkflowTeamAutoSelection returns the team auto-selection thresholds from
-// Workflow.Team.AutoSelection.
-func (c *Config) WorkflowTeamAutoSelection() TeamAutoSelectionConfig {
-	return c.Workflow.Team.AutoSelection
-}

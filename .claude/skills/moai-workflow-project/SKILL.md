@@ -13,7 +13,7 @@ when_to_use: >
 
 license: Apache-2.0
 compatibility: Designed for Claude Code
-allowed-tools: Read, Write, Edit, Bash(git:*), Bash(npm:*), Bash(npx:*), Bash(uv:*), Bash(pip:*), Bash(ls:*), Bash(mkdir:*), Grep, Glob, WebFetch, WebSearch, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
+allowed-tools: Read, Write, Edit, Bash(git:*), Bash(npm:*), Bash(npx:*), Bash(uv:*), Bash(pip:*), Bash(ls:*), Bash(mkdir:*), Grep, Glob, WebFetch, WebSearch
 user-invocable: false
 metadata:
   version: "3.0.0"
@@ -233,7 +233,7 @@ JIT docs (just in time docs) — on-demand documentation discovery and loading b
 
 ### Primary Tools
 
-- Context7 MCP (`mcp__context7__resolve-library-id`, `mcp__context7__get-library-docs`): Official library docs
+- WebSearch/WebFetch (``, ``): Official library docs
 - WebFetch / WebSearch: Latest online documentation
 - Read, Grep, Glob: Local project documentation
 
@@ -247,7 +247,7 @@ JIT docs (just in time docs) — on-demand documentation discovery and loading b
 ### Loading Priority
 
 1. Local project docs (`.moai/`, README, SPEC documents)
-2. Context7 MCP (official, version-matched library docs)
+2. WebSearch/WebFetch (official, version-matched library docs)
 3. WebSearch + WebFetch (latest online resources)
 
 Token budget: 5000 tokens per JIT load. Summarize if source exceeds budget.

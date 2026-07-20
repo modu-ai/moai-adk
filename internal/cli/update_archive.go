@@ -13,6 +13,7 @@
 package cli
 
 import (
+	"crypto/sha256"
 	"fmt"
 	"io"
 	"os"
@@ -21,6 +22,7 @@ import (
 	"time"
 
 	"github.com/modu-ai/moai-adk/internal/tui"
+	"github.com/modu-ai/moai-adk/internal/cli/update/backup"
 )
 
 // archiveVersion is the version tag used for the archive directory.
@@ -163,7 +165,7 @@ func checkArchiveDrift(srcDir, dstDir string) error {
 }
 
 // computeDirHashes returns SHA-256 hashes for every file in dir as a
-// path → hash map. Reuses hashFile (declared in design_folder.go).
+// path → hash map.
 func computeDirHashes(dir string) (map[string]string, error) {
 	hashes := make(map[string]string)
 	err := filepath.WalkDir(dir, func(path string, d os.DirEntry, err error) error {
@@ -177,7 +179,6 @@ func computeDirHashes(dir string) (map[string]string, error) {
 		if err != nil {
 			return err
 		}
-		// hashFile is declared in design_folder.go and returns []byte
 		rawHash, err := hashFile(path)
 		if err != nil {
 			return err
@@ -188,8 +189,27 @@ func computeDirHashes(dir string) (map[string]string, error) {
 	return hashes, err
 }
 
+// hashFile computes the SHA-256 hash of the file at path and returns the raw
+// 32-byte digest. Used by computeDirHashes for archive drift detection.
+func hashFile(path string) ([]byte, error) {
+	f, err := os.Open(path)
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = f.Close() }()
+	h := sha256.New()
+	if _, err := io.Copy(h, f); err != nil {
+		return nil, err
+	}
+	return h.Sum(nil), nil
+}
+
 // copyDirAll recursively copies every entry in srcDir into dstDir,
 // preserving each file's Unix permission bits.
+//
+// Symlinks are skipped (REQ-SEC-003 / SPEC-INTERNAL-SECURITY-001): a symlinked
+// entry inside an archived skill must not have its dereferenced target copied,
+// so the archive never records out-of-tree content.
 func copyDirAll(srcDir, dstDir string) error {
 	return filepath.WalkDir(srcDir, func(path string, d os.DirEntry, err error) error {
 		if err != nil {
@@ -209,6 +229,12 @@ func copyDirAll(srcDir, dstDir string) error {
 				return err
 			}
 			return os.MkdirAll(dstPath, info.Mode().Perm())
+		}
+
+		// REQ-SEC-003: skip symlinks so the archive copy does not dereference a
+		// link and record its target content (CWE-61 symlink-following write).
+		if backup.IsSymlinkEntry(path) {
+			return nil
 		}
 
 		return copyFile(path, dstPath)
@@ -328,7 +354,20 @@ func dryRunArchiveLegacySkills(projectRoot string, out io.Writer) error {
 
 // copyFile copies a single file from src to dst, preserving the source's
 // permission bits.
+//
+// REQ-SEC-003 defense-in-depth (SPEC-INTERNAL-SECURITY-001): if src is a
+// symlink, copyFile refuses rather than dereferencing the link and recording
+// the target's content (which could be an out-of-tree secret). The primary
+// guard lives in collectUserOwnedFiles / copyDirAll (callers skip symlinks);
+// this check ensures defense-in-depth if a symlink reaches copyFile directly.
 func copyFile(src, dst string) error {
+	// Defense-in-depth: refuse to dereference a symlink source. os.Stat (below)
+	// and os.Open both follow symlinks; an Lstat check here keeps the contract
+	// explicit even though upstream callers already skip symlinks.
+	if backup.IsSymlinkEntry(src) {
+		return fmt.Errorf("copy %s → %s: refusing to dereference symlink source", src, dst)
+	}
+
 	srcInfo, err := os.Stat(src)
 	if err != nil {
 		return fmt.Errorf("stat %s: %w", src, err)

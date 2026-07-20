@@ -2,7 +2,9 @@
 package tui
 
 import (
-	"github.com/charmbracelet/lipgloss"
+	"image/color"
+
+	"charm.land/lipgloss/v2"
 )
 
 // BorderKind selects the lipgloss border style used by Box and ThickBox.
@@ -57,8 +59,10 @@ func borderStyle(k BorderKind) lipgloss.Border {
 	}
 }
 
-// borderColor returns the border foreground colour for the given theme and accent flag.
-func borderColor(th Theme, accent bool) lipgloss.Color {
+// borderColor returns the border foreground colour for the given theme and
+// accent flag. The return type is the stdlib color.Color: lipgloss v2's
+// Color() is a constructor function returning color.Color, not a named type.
+func borderColor(th Theme, accent bool) color.Color {
 	if accent {
 		return lipgloss.Color(th.Accent)
 	}
@@ -113,8 +117,11 @@ func renderBox(opts BoxOpts, thick bool) string {
 
 	if opts.Width > 0 {
 		// Width includes border (1 cell each side) and padding (2 cells each side).
-		// lipgloss.Style.Width sets the inner content width.
-		innerW := max(opts.Width-2-4, 1) // 2 border cols + 4 padding cols, min 1
+		// lipgloss v2 Style.Width sets the TOTAL block width INCLUDING the border
+		// columns (v1 excluded them). Preserve the v1-rendered geometry by
+		// computing the v1-era inner width first (min 1, characterization
+		// anchor), then adding back the 2 border columns for the v2 semantics.
+		innerW := max(opts.Width-2-4, 1) + 2 // v1 inner width + 2 border cols
 		style = style.Width(innerW)
 	}
 
@@ -123,5 +130,5 @@ func renderBox(opts BoxOpts, thick bool) string {
 		content = opts.Title + "\n" + content
 	}
 
-	return style.Render(content)
+	return downsample(style.Render(content))
 }

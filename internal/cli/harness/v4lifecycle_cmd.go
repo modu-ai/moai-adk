@@ -18,6 +18,8 @@ import (
 	"os"
 
 	"github.com/spf13/cobra"
+
+	"github.com/modu-ai/moai-adk/internal/harness/v4manifest"
 )
 
 // resolveProjectRootV4 returns the --project-root flag value or the current
@@ -87,6 +89,12 @@ Use --json for machine-readable output.`,
 				entry := e.EntryCommand
 				if entry == "" {
 					entry = "/harness:" + e.Name
+				}
+				// Surface the DECLARED schedule only when present — a
+				// schedule-less harness's row stays byte-identical to the
+				// pre-schedule baseline.
+				if e.Schedule != nil {
+					entry += fmt.Sprintf("  schedule: %s via %s", e.Schedule.Interval, e.Schedule.Mechanism)
 				}
 				_, _ = fmt.Fprintf(w, "%-16s %-40s %s\n", e.Name, domain, entry)
 			}
@@ -176,10 +184,26 @@ refuses to proceed and names the missing artifact. No partial state is left.`,
 			if err != nil {
 				return err
 			}
+			// Pre-read the declared schedule BEFORE removal: RemoveHarness
+			// deletes the manifest, so the unregister notice must be computed
+			// from pre-deletion state.
+			schedule := readDeclaredSchedule(root, args[0])
 			if err := RemoveHarness(root, args[0]); err != nil {
 				return err
 			}
-			_, _ = fmt.Fprintf(cmd.OutOrStdout(), "harness %q removed (command + workflow + specialists + skills + manifest).\n", args[0])
+			w := cmd.OutOrStdout()
+			_, _ = fmt.Fprintf(w, "harness %q removed (command + workflow + specialists + skills + manifest).\n", args[0])
+			// Unregister notice: the CLI only reports the declared mechanism;
+			// unregistration itself is an orchestrator-side action (the CLI
+			// never invokes Cron tools or arms/cancels loops).
+			if schedule != nil {
+				switch schedule.Mechanism {
+				case v4manifest.MechanismCron:
+					_, _ = fmt.Fprintf(w, "note: this harness declared a cron schedule (%s) — unregister it via CronDelete in the orchestrator session.\n", schedule.Interval)
+				case v4manifest.MechanismLoop:
+					_, _ = fmt.Fprintf(w, "note: this harness declared a /loop schedule (%s) — unregister by cancelling any armed loop in the active session (loop arming is session-scoped).\n", schedule.Interval)
+				}
+			}
 			return nil
 		},
 	}

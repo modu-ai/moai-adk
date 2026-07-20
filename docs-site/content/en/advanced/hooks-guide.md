@@ -4,134 +4,171 @@ weight: 50
 draft: false
 ---
 
-Detailed guide to Claude Code's Hooks system and MoAI-ADK's default Hook scripts.
+A detailed guide to Claude Code's Hooks system and MoAI-ADK's default Hook scripts. In an agentic harness a prompt is "guidance to follow," but a hook is "code that always runs" — hooks are the layer that builds quality gates and security defenses on determinism rather than probability.
 
 {{< callout type="info" >}}
-**One-line summary**: Hooks are Claude Code's **automatic reflex nerves**. Automatically format files when saved, block dangerous commands.
+**One-line summary**: Hooks are Claude Code's **automatic reflexes**. Save a file and it is formatted automatically; a dangerous command is blocked automatically.
 {{< /callout >}}
 
-## What are Hooks?
+## What Are Hooks?
 
-Hooks are **scripts that execute automatically** in response to specific events in Claude Code.
+Hooks are **scripts that run automatically** in response to specific Claude Code events.
 
-To use the analogy of a doctor's reflex test: when a knee is tapped (event occurs), the leg automatically rises (script executes), just as when Claude Code modifies a file (PostToolUse event), the formatter automatically runs (code cleanup).
+By analogy with a doctor's reflex test, just as tapping the knee (event fires) makes the leg swing up automatically (script runs), when Claude Code modifies a file (PostToolUse event) the formatter runs automatically (code cleanup).
 
 ```mermaid
 flowchart TD
-    EVENT["Claude Code Event Occurs"] --> MATCH{Matcher Check}
+    EVENT["Claude Code event fires"] --> MATCH{Matcher check}
 
-    MATCH -->|Matched| HOOK["Hook Script Executes"]
-    MATCH -->|Not Matched| SKIP["Pass Through"]
+    MATCH -->|Matched| HOOK["Run hook script"]
+    MATCH -->|Not matched| SKIP["Pass through"]
 
-    HOOK --> RESULT{Execution Result}
-    RESULT -->|Success| CONTINUE["Continue Work"]
-    RESULT -->|Blocked| BLOCK["Stop Work"]
-    RESULT -->|Warning| WARN["Warning Then Continue"]
+    HOOK --> RESULT{Execution result}
+    RESULT -->|Success| CONTINUE["Continue work"]
+    RESULT -->|Blocked| BLOCK["Abort work"]
+    RESULT -->|Warning| WARN["Warn then continue"]
 ```
 
 ## Hook Event Types
 
-Claude Code supports **10 event types**.
+This guide covers the frequently used core events. (For the full catalog of Claude Code's 30 event types, see the [Hooks Event Reference](/en/advanced/hooks-reference).)
 
-### Complete Event List
+### Key Event List
 
-| Event | Execution Timing | Main Purpose |
-|--------|------------------|--------------|
-| `Setup` | Start with `--init`, `--init-only`, `--maintenance` flags | Initial setup, environment checks |
-| `SessionStart` | When session starts | Project info display, environment initialization |
-| `SessionEnd` | When session ends | Cleanup, context storage |
-| `PostSession` | After a session ends (self-hosted runner, CC 2.1.169+) | Post-session cleanup/telemetry; fires once the session is fully torn down, later than `SessionEnd`. MoAI-ADK does not wire this hook today — documented as an available option for self-hosted deployments. |
-| `PreCompact` | Before context compact (`/clear` etc) | Backup important context |
-| `PreToolUse` | Before tool use | Security validation, block dangerous commands |
-| **`PermissionRequest`** | When permission dialog shown | Auto allow/deny decisions |
+| Event | When it runs | Main use |
+|--------|-----------|----------|
+| `Setup` | Started with `--init`, `--init-only`, `--maintenance` flags | Initial setup, environment checks |
+| `SessionStart` | When a session starts | Show project info, initialize environment |
+| `SessionEnd` | When a session ends | Cleanup, save context |
+| `PostSession` | After session end (self-hosted runner, CC 2.1.169+) | Post-session cleanup/telemetry; fires after the session is fully released, later than `SessionEnd`. MoAI-ADK does not currently wire this hook — it is documented as an available option for self-hosted deployments. |
+| `PreCompact` | Before context compaction (`/clear` etc.) | Back up important context |
+| `PreToolUse` | Before tool use | Security validation, blocking dangerous commands |
+| **`PermissionRequest`** | When the permission dialog is shown | Auto allow/deny decision |
 | `PostToolUse` | After tool use | Code formatting, lint checks, LSP diagnostics |
-| **`UserPromptSubmit`** | When user submits prompt | Prompt preprocessing, validation |
-| **`Notification`** | When Claude Code sends notification | Customize desktop notifications |
-| `Stop` | After response completes | Loop control, completion condition check |
-| **`SubagentStop`** | After subagent work completes | Process subtask results |
+| **`UserPromptSubmit`** | When the user submits a prompt | Prompt preprocessing, validation |
+| **`Notification`** | When Claude Code sends a notification | Customize desktop notifications |
+| `Stop` | After a response completes | Loop control, completion-condition checks |
+| **`SubagentStop`** | After a subagent finishes work | Handle subagent results |
 
 ### Event Details
 
 #### 1. Setup
-Executed when Claude Code starts with `--init`, `--init-only`, or `--maintenance` flags. Used for initial setup and environment checks.
+Runs when Claude Code starts with the `--init`, `--init-only`, or `--maintenance` flags. Used for initial setup work and environment checks.
 
 #### 2. SessionStart
-Executed when a session starts or resumes an existing session. Used for displaying project status and environment initialization.
+Runs when a session starts or an existing session is resumed. Used to show project state and initialize the environment.
 
 #### 3. SessionEnd
-Executed when Claude Code session ends. Used for cleanup, context storage, and metrics collection.
+Runs when a Claude Code session ends. Used for cleanup, saving context, and collecting metrics.
 
 #### 4. PreCompact
-Executed before Claude Code performs context compacting (like `/clear` command). Used to backup important context.
+Runs before Claude Code performs context compaction (such as the `/clear` command). Used to back up important context.
 
 #### 5. PreToolUse
-Executed **before** a tool is called. Can block or modify tool calls. Used for security validation and blocking dangerous commands.
+Runs **before** a tool is invoked. Can block or modify the tool call. Used for security validation and blocking dangerous commands.
 
 #### 6. PermissionRequest
-Executed when a permission dialog is displayed to the user. Can automatically allow or deny.
+Runs when the permission dialog is shown to the user. Can automatically allow or deny.
 
 #### 7. PostToolUse
-Executed **after** a tool call completes. Used for code formatting, lint checks, and LSP diagnostics collection.
+Runs **after** a tool call completes. Used for code formatting, lint checks, and LSP diagnostics collection.
 
 #### 8. UserPromptSubmit
-Executed when the user submits a prompt, **before** Claude processes it. Used for prompt preprocessing and validation.
+Runs when the user submits a prompt, **before** Claude processes it. Used for prompt preprocessing and validation.
 
 #### 9. Notification
-Executed when Claude Code sends a notification. Can be customized for desktop notifications, sound alerts, etc.
+Runs when Claude Code sends a notification. Can be customized with desktop notifications, sound alerts, and so on.
 
 #### 10. Stop
-Executed when Claude Code completes a response. Used for loop control and completion condition verification.
+Runs when Claude Code finishes a response. Used for loop control and completion-condition checks — `/moai loop` and the goal engine operate on top of this event.
 
 #### 11. SubagentStop
-Executed when a subagent's work is complete. Used to process subtask results.
+Runs when a subagent finishes its work. Used to handle subagent results.
 
 ### Events Implemented in MoAI-ADK
 
-MoAI-ADK has implemented the following events:
+MoAI-ADK implements hooks with a **shell wrapper script + Go binary** architecture. The `command` in settings.json points to the `.claude/hooks/moai/handle-<event>.sh` shell wrapper, and that wrapper forwards the stdin JSON to the `moai hook <event>` Go subcommand, which runs the actual logic. There is no Python or `uv run` dependency — it works with just shell scripts and a single Go binary.
 
-| Event | Status | Hook File |
-|--------|--------|------------|
-| `SessionStart` | ✅ | `session_start__show_project_info.py` |
-| `PreToolUse` | ✅ | `pre_tool__security_guard.py` |
-| `PostToolUse` | ✅ | `post_tool__code_formatter.py`, `post_tool__linter.py`, `post_tool__ast_grep_scan.py`, `post_tool__lsp_diagnostic.py` |
-| `PreCompact` | ✅ | `pre_compact__save_context.py` |
-| `SessionEnd` | ✅ | `session_end__auto_cleanup.py` |
-| `Stop` | ✅ | `stop__loop_controller.py` |
-| `Setup` | ⚪ | See official examples |
-| `PermissionRequest` | ⚪ | See official examples |
-| `UserPromptSubmit` | ⚪ | See official examples |
-| `Notification` | ⚪ | See official examples |
-| `SubagentStop` | ⚪ | See official examples |
+| Event | Status | Shell wrapper | Go subcommand |
+|--------|------|---------|---------------|
+| `SessionStart` | {{< icon check ok >}} | `handle-session-start.sh` | `moai hook session-start` |
+| `PreToolUse` | {{< icon check ok >}} | `handle-pre-tool.sh` | `moai hook pre-tool` |
+| `PostToolUse` | {{< icon check ok >}} | `handle-post-tool.sh` | `moai hook post-tool` |
+| `PreCompact` | {{< icon check ok >}} | `handle-compact.sh` | `moai hook compact` |
+| `SessionEnd` | {{< icon check ok >}} | `handle-session-end.sh` | `moai hook session-end` |
+| `Stop` | {{< icon check ok >}} | `handle-stop.sh` | `moai hook stop` |
+| `SubagentStart` | {{< icon check ok >}} | `handle-subagent-start.sh` | `moai hook subagent-start` |
+| `SubagentStop` | {{< icon check ok >}} | `handle-subagent-stop.sh` | `moai hook subagent-stop` |
+| `PermissionRequest` | {{< icon check ok >}} | `handle-permission-request.sh` | `moai hook permission-request` |
+| `UserPromptSubmit` | {{< icon check ok >}} | `handle-user-prompt-submit.sh` | `moai hook user-prompt-submit` |
+| `Notification` | {{< icon check ok >}} | `handle-notification.sh` | `moai hook notification` |
+| `TeammateIdle` | {{< icon check ok >}} | `handle-teammate-idle.sh` | `moai hook teammate-idle` |
+| `TaskCompleted` | {{< icon check ok >}} | `handle-task-completed.sh` | `moai hook task-completed` |
+
+Beyond those 13, the Go binary also implements `PostToolUseFailure`, `StopFailure`, `PostCompact`, `InstructionsLoaded`, `ConfigChange`, `TaskCreated`, `CwdChanged`, `FileChanged`, `PermissionDenied`, `WorktreeCreate`, `WorktreeRemove`, `Elicitation`, and `ElicitationResult` — 38 subcommands in total. (See the full list with `moai hook --help`.)
+
+### Teammate Collaboration Events
+
+MoAI's static Agent Teams orchestration layer is RETIRED, but Claude Code's native teammate runtime (tmux-pane based) is still supported, and the `TeammateIdle` and `TaskCompleted` hook events work.
+
+#### TeammateIdle Event
+Runs when a teammate finishes work and enters the idle state.
+
+- `continue: false` (exit code 2) → idle rejected, teammate does more work
+- `continue: true` (default) → idle approved
+
+#### TaskCompleted Event
+Runs when a teammate completes a task.
+
+- Exit code 2 → completion rejected (needs revision)
+- Exit code 0 (default) → completion approved
+
+#### Team Shutdown Sequence [HARD]
+
+When shutting down a team, you **must** follow this order.
+
+1. **Send shutdown_request**: send `SendMessage(shutdown_request)` to each teammate
+2. **Wait for the response**: receive `shutdown_response approve:true` from each teammate
+3. **[HARD] tmux pane cleanup**: explicitly terminate the tmux panes
+   - Read `~/.claude/teams/{team-name}/config.json`
+   - Extract each member's `tmuxPaneId` (e.g., "%184")
+   - Run `tmux kill-pane -t {paneId}` (from the highest index down)
+
+Team-directory cleanup is performed automatically at session end. No explicit teardown call is needed (the explicit team-teardown tool was removed in Claude Code v2.1.178 — every session has one implicit team and cleanup is automatic).
+
+{{< callout type="warning" >}}
+**Why is tmux pane cleanup mandatory?** `shutdown_response` marks a teammate logically complete but does not terminate the tmux pane process. Team-directory cleanup happens automatically at session end, but it does not terminate the tmux pane process. Without explicit pane termination, the pane stays alive indefinitely and the Leader hangs in the "Drain" state.
+{{< /callout >}}
 
 ### Event Execution Order
 
-The order in which hooks execute during a typical file modification operation:
+The order in which hooks run during a typical file-modification operation.
 
 ```mermaid
 flowchart TD
-    A["Claude Code attempts<br>file modification"] --> B["PreToolUse<br>Security validation"]
+    A["Claude Code attempts<br>to modify a file"] --> B["PreToolUse<br>handle-pre-tool.sh"]
 
-    B -->|Allow| C["Write/Edit<br>Execute file modification"]
-    B -->|Block| BLOCK["Stop work<br>Protect dangerous files"]
+    B -->|Allow| C["Write/Edit<br>perform file modification"]
+    B -->|Block| BLOCK["Abort work<br>protect dangerous files"]
 
-    C --> D["PostToolUse<br>Code formatter"]
-    D --> E["PostToolUse<br>Linter check"]
-    E --> F["PostToolUse<br>AST-grep scan"]
-    F --> G["PostToolUse<br>LSP diagnostics"]
+    C --> D["PostToolUse<br>handle-post-tool.sh"]
+    D --> D1["Inside the Go binary<br>formatter + linter + AST-grep + LSP"]
 
-    G --> H{Result}
+    D1 --> H{Result}
     H -->|Clean| I["Work complete"]
-    H -->|Issues found| J["Send feedback to<br>Claude Code"]
+    H -->|Issue found| J["Send feedback<br>to Claude Code"]
     J --> K["Attempt auto-fix"]
 ```
 
+This pipeline handles half the feedback of the agentic loop — the agent writes, the hook inspects, and if there is a problem it becomes the fix input for the next turn.
+
 ## Claude Code Official Examples
 
-These examples are standard patterns provided in Claude Code's official documentation.
+These examples are the standard patterns provided in the official Claude Code documentation.
 
 ### Bash Command Logging Hook
 
-Logs all Bash commands to a log file.
+Records every Bash command to a log file.
 
 ```json
 {
@@ -153,7 +190,7 @@ Logs all Bash commands to a log file.
 
 ### TypeScript Formatting Hook
 
-Automatically runs Prettier after editing TypeScript files.
+Automatically runs Prettier after editing a TypeScript file.
 
 ```json
 {
@@ -186,7 +223,7 @@ Automatically detects and adds language tags to Markdown files.
         "hooks": [
           {
             "type": "command",
-            "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/markdown_formatter.py"
+            "command": "\"$CLAUDE_PROJECT_DIR/.claude/hooks/markdown_formatter.sh\""
           }
         ]
       }
@@ -195,93 +232,36 @@ Automatically detects and adds language tags to Markdown files.
 }
 ```
 
-`.claude/hooks/markdown_formatter.py` file:
+The `.claude/hooks/markdown_formatter.sh` file:
 
-```python
-#!/usr/bin/env python3
-"""
-Markdown formatter for Claude Code output.
-Fixes missing language tags and spacing issues while preserving code content.
-"""
-import json
-import sys
-import re
-import os
+```bash
+#!/bin/bash
+# Markdown formatter: fix missing code-fence language tags, clean up excessive blank lines
 
-def detect_language(code):
-    """Best-effort language detection from code content."""
-    s = code.strip()
+input_data=$(cat)
+file_path=$(echo "$input_data" | jq -r '.tool_input.file_path // ""')
 
-    # JSON detection
-    if re.search(r'^\\s*[{\\[]', s):
-        try:
-            json.loads(s)
-            return 'json'
-        except:
-            pass
+# Pass through if not a Markdown file
+case "$file_path" in
+  *.md|*.mdx) ;;
+  *) exit 0 ;;
+esac
 
-    # Python detection
-    if re.search(r'^\\s*def\\s+\\w+\\s*\\(', s, re.M) or \
-       re.search(r'^\\s*(import|from)\\s+\\w+', s, re.M):
-        return 'python'
+[ -f "$file_path" ] || exit 0
 
-    # JavaScript detection
-    if re.search(r'\\b(function\\s+\\w+\\s*\\(|const\\s+\\w+\\s*=)', s) or \
-       re.search(r'=>|console\\.(log|error)', s):
-        return 'javascript'
+# Clean up excessive blank lines (3+ lines → 2 lines)
+content=$(cat "$file_path")
+formatted=$(echo "$content" | awk 'BEGIN{blank=0} /^$/{blank++; if(blank<=2) print; next} {blank=0; print}')
 
-    # Bash detection
-    if re.search(r'^#!.*\\b(bash|sh)\\b', s, re.M) or \
-       re.search(r'\\b(if|then|fi|for|in|do|done)\\b', s):
-        return 'bash'
-
-    return 'text'
-
-def format_markdown(content):
-    """Format markdown content with language detection."""
-    # Fix unlabeled code fences
-    def add_lang_to_fence(match):
-        indent, info, body, closing = match.groups()
-        if not info.strip():
-            lang = detect_language(body)
-            return f"{indent}```{lang}\\n{body}{closing}\\n"
-        return match.group(0)
-
-    fence_pattern = r'(?ms)^([ \\t]{0,3})```([^\\n]*)\\n(.*?)(\\n\\1```)\\s*$'
-    content = re.sub(fence_pattern, add_lang_to_fence, content)
-
-    # Fix excessive blank lines
-    content = re.sub(r'\\n{3,}', '\\n\\n', content)
-
-    return content.rstrip() + '\\n'
-
-# Main execution
-try:
-    input_data = json.load(sys.stdin)
-    file_path = input_data.get('tool_input', {}).get('file_path', '')
-
-    if not file_path.endswith(('.md', '.mdx')):
-        sys.exit(0)  # Not a markdown file
-
-    if os.path.exists(file_path):
-        with open(file_path, 'r', encoding='utf-8') as f:
-            content = f.read()
-
-        formatted = format_markdown(content)
-
-        if formatted != content:
-            with open(file_path, 'w', encoding='utf-8') as f:
-                f.write(formatted)
-            print(f"✓ Fixed markdown formatting in {file_path}")
-
-except Exception as e:
-    print(f"Error formatting markdown: {e}", file=sys.stderr)
-    sys.exit(1)
+if [ "$formatted" != "$content" ]; then
+  echo "$formatted" > "$file_path"
+  echo "Markdown formatting fixed: $file_path" >&2
+fi
 ```
 
 ### Desktop Notification Hook
 
-Displays a desktop notification when Claude is waiting for input.
+Shows a desktop notification when Claude is waiting for input.
 
 ```json
 {
@@ -314,7 +294,7 @@ Blocks modification of sensitive files.
         "hooks": [
           {
             "type": "command",
-            "command": "python3 -c \"import json, sys; data=json.load(sys.stdin); path=data.get('tool_input',{}).get('file_path',''); sys.exit(2 if any(p in path for p in ['.env', 'package-lock.json', '.git/']) else 0)\""
+            "command": "f=$(jq -r '.tool_input.file_path // \"\"'); case \"$f\" in *.env|*package-lock.json|*.git/*) exit 2;; esac"
           }
         ]
       }
@@ -325,63 +305,60 @@ Blocks modification of sensitive files.
 
 ## MoAI Default Hooks
 
-MoAI-ADK provides **11 default Hook scripts**.
+MoAI-ADK provides Hooks with a **shell wrapper + Go binary** architecture. Each `handle-<event>.sh` wrapper forwards the stdin JSON to the `moai hook <event>` subcommand, and the actual logic — formatting, linting, security scanning, LSP diagnostics — all runs inside the Go binary. No Python runtime or `uv` dependency is required.
 
 ### Hook List
 
-| Hook File | Event | Matcher | Role | Timeout |
-|-----------|-------|---------|------|---------|
-| `session_start__show_project_info.py` | SessionStart | All | Project status display, update check | 5 sec |
-| `pre_tool__security_guard.py` | PreToolUse | `Write\|Edit\|Bash` | Block dangerous file modifications/commands | 5 sec |
-| `post_tool__code_formatter.py` | PostToolUse | `Write\|Edit` | Auto code formatting | 30 sec |
-| `post_tool__linter.py` | PostToolUse | `Write\|Edit` | Auto lint check | 60 sec |
-| `post_tool__ast_grep_scan.py` | PostToolUse | `Write\|Edit` | AST-based security scan | 30 sec |
-| `post_tool__lsp_diagnostic.py` | PostToolUse | `Write\|Edit` | LSP diagnostics collection | default |
-| `pre_compact__save_context.py` | PreCompact | All | Save context before `/clear` | 3 sec |
-| `session_end__auto_cleanup.py` | SessionEnd | All | Session end cleanup | 5 sec |
+| Shell wrapper | Go subcommand | Event | Matcher | Role | Timeout |
+|---------|---------------|--------|------|------|----------|
+| `handle-session-start.sh` | `session-start` | SessionStart | all | Show project state, check for updates | 30s |
+| `handle-pre-tool.sh` | `pre-tool` | PreToolUse | `Write\|Edit\|Bash` | Block dangerous file modifications/commands | 5s |
+| `handle-post-tool.sh` | `post-tool` | PostToolUse | `Write\|Edit` | Code formatting, lint, AST-grep scan, LSP diagnostics | 10s |
+| `handle-compact.sh` | `compact` | PreCompact | all | Save context before `/clear` | 30s |
+| `handle-session-end.sh` | `session-end` | SessionEnd | all | Cleanup at session end | 10s |
+| `handle-stop.sh` | `stop` | Stop | all | Loop control and completion check | default |
+| `handle-subagent-stop.sh` | `subagent-stop` | SubagentStop | all | Handle subagent work results | default |
+| `handle-permission-request.sh` | `permission-request` | PermissionRequest | all | Auto allow/deny permission decision | 5s |
 
-| `stop__loop_controller.py` | Stop | All | Ralph loop control and completion check | default |
-| `quality_gate_with_lsp.py` | Manual | All | LSP-based quality gate validation | default |
+### SessionStart: Show Project Info
 
-### SessionStart: Display Project Info
+Shows the project's current state when a session starts.
 
-When a session starts, shows the current state of the project.
-
-**Displayed Information:**
-- MoAI-ADK version and update status
+**Displayed info:**
+- MoAI-ADK version and whether an update is available
 - Current project name and tech stack
 - Git branch, changes, last commit
-- Git strategy (Github-Flow mode, Auto Branch settings)
-- Language settings (conversation language)
-- Previous session context (SPEC status, task list)
+- Git strategy (Github-Flow mode, Auto Branch setting)
+- Language setting (conversation language)
+- Previous session context (SPEC state, task list)
 - Personalized welcome message or setup guide
 
 ### PreToolUse: Security Guard
 
 **Protects dangerous operations** before file modification/command execution.
 
-**Protected Files:**
+**Protected files:**
 
-| Category | Protected Files | Reason |
-|----------|----------------|--------|
+| Category | Protected files | Reason |
+|----------|-----------|------|
 | Secret storage | `secrets/`, `*.secrets.*`, `*.credentials.*` | Protect sensitive information |
-| SSH keys | `~/.ssh/*`, `id_rsa*`, `id_ed25519*` | Protect server access keys |
+| SSH keys | `~/.ssh/*`, `id_rsa*`, `id_ed25519*` | Protect server-access keys |
 | Certificates | `*.pem`, `*.key`, `*.crt` | Protect certificate files |
 | Cloud credentials | `~/.aws/*`, `~/.gcloud/*`, `~/.azure/*`, `~/.kube/*` | Protect cloud accounts |
-| Git internal | `.git/*` | Git repository integrity |
+| Git internals | `.git/*` | Git repository integrity |
 | Token files | `*.token`, `.tokens/*`, `auth.json` | Protect auth tokens |
 
-**Note:** `.env` files are NOT protected. Allows developers to edit environment variables.
+**Note:** `.env` files are not protected, so developers can edit environment variables.
 
-**Blocking Behavior:**
+**Blocking behavior:**
 - Detects Write/Edit attempts on protected files
-- Returns `"permissionDecision": "deny"` response in JSON format
-- Claude Code stops modifying that file
+- Returns a `"permissionDecision": "deny"` response in JSON form
+- Claude Code aborts modification of that file
 
-**Dangerous Bash Command Blocking:**
+**Blocking dangerous Bash commands:**
 - Database deletion: `supabase db reset`, `neon database delete`
 - Dangerous file deletion: `rm -rf /`, `rm -rf .git`
-- Docker complete removal: `docker system prune -a`
+- Full Docker cleanup: `docker system prune -a`
 - Force push: `git push --force origin main`
 - Terraform destroy: `terraform destroy`
 
@@ -389,10 +366,10 @@ When a session starts, shows the current state of the project.
 
 **Automatically cleans up code** after file modification.
 
-**Supported Languages and Formatters:**
+**Supported languages and formatters:**
 
-| Language | Formatter (priority) | Config File |
-|----------|---------------------|-------------|
+| Language | Formatter (priority) | Config file |
+|------|------------------|----------|
 | Python | `ruff format`, `black` | `pyproject.toml` |
 | TypeScript/JavaScript | `biome`, `prettier`, `eslint_d` | `.prettierrc`, `biome.json` |
 | Go | `gofmt`, `goimports` | default |
@@ -404,7 +381,7 @@ When a session starts, shows the current state of the project.
 | Swift | `swiftformat` | `.swiftformat` |
 | C# | `prettier` | `.prettierrc` |
 
-**Exclusions:**
+**Excluded targets:**
 - `.json`, `.lock`, `.min.js`, `.svg`, etc.
 - `node_modules`, `.git`, `dist`, `build` directories
 
@@ -412,10 +389,10 @@ When a session starts, shows the current state of the project.
 
 **Automatically checks code quality** after file modification.
 
-**Supported Languages and Linters:**
+**Supported languages and linters:**
 
-| Language | Linter (priority) | Check Items |
-|----------|-------------------|-------------|
+| Language | Linter (priority) | Checks |
+|------|----------------|----------|
 | Python | `ruff check`, `flake8` | PEP 8, type hints, complexity |
 | TypeScript/JavaScript | `eslint`, `biome lint`, `eslint_d` | Coding standards, potential bugs |
 | Go | `golangci-lint` | Code quality, performance |
@@ -425,30 +402,30 @@ When a session starts, shows the current state of the project.
 
 **Scans for structural security vulnerabilities** after file modification.
 
-**Supported Languages:**
+**Supported languages:**
 Python, JavaScript/TypeScript, Go, Rust, Java, Kotlin, C/C++, Ruby, PHP
 
-**Sample Scan Patterns:**
-- SQL Injection vulnerabilities (string-concatenated queries)
+**Scan pattern examples:**
+- SQL Injection vulnerabilities (string-concatenation queries)
 - Hardcoded secret keys (API keys, tokens)
 - Unsafe function calls
 - Unused imports
 
-**Configuration:** `.claude/skills/moai-tool-ast-grep/rules/sgconfig.yml` or `sgconfig.yml` at project root
+**Config:** `.moai/config/astgrep-rules/` (the default shipped ruleset is `go-hardcoding.yml`)
 
 ### PostToolUse: LSP Diagnostics
 
 **Collects LSP (Language Server Protocol) diagnostics** after file modification.
 
-**Supported Languages:**
+**Supported languages:**
 Python, TypeScript/JavaScript, Go, Rust, Java, Kotlin, Ruby, PHP, C/C++
 
-**Fallback Diagnostics:**
-When LSP is unavailable, uses command-line tools:
+**Fallback diagnostics:**
+When LSP is unavailable, command-line tools are used:
 - Python: `ruff check --output-format=json`
 - TypeScript: `tsc --noEmit`
 
-**Configuration:** `.moai/config/sections/ralph.yaml`
+**Config:** `.moai/config/sections/ralph.yaml`
 
 ```yaml
 ralph:
@@ -461,49 +438,49 @@ ralph:
 
 ### PreCompact: Save Context
 
-**Saves current context to file** before `/clear` execution.
+**Saves the current context to a file** before `/clear` runs. It is the safety net of the handoff flow that cuts a session at the context threshold and continues.
 
-**Save Location:** `.moai/memory/context-snapshot.json`
+**Save location:** `.moai/state/session-memo.md`
 
-**Saved Content:**
-- Current active SPEC status (ID, phase, progress)
+**Saved content:**
+- Current active SPEC state (ID, phase, progress)
 - In-progress task list (TodoWrite)
 - Completed task list
 - Modified file list
-- Git status information (branch, uncommitted changes)
+- Git state info (branch, uncommitted changes)
 - Key decisions
 
-**Archive:** Previous snapshots are automatically archived to `.moai/memory/context-archive/`.
+**State files:** Active worktree and session state are recorded in `.moai/state/` (e.g. `worktrees.json`, `active-sessions.json`).
 
-### SessionEnd: Auto Cleanup
+### SessionEnd: Automatic Cleanup
 
-Performs the following tasks when session ends:
+Performs the following work at session end.
 
-**P0 Tasks (Required):**
-- Save session metrics (files modified, commits made, SPECs worked on)
-- Save work status snapshot (`.moai/memory/last-session-state.json`)
-- Warning for uncommitted changes
+**P0 work (mandatory):**
+- Save session metrics (files modified, commits, SPECs worked on)
+- Save a work-state snapshot (`~/.moai/state/last-session-state.json`)
+- Warn about uncommitted changes
 
-**P1 Tasks (Optional):**
-- Cleanup temporary files (older than 7 days)
-- Cleanup cache files
-- Scan for root directory documentation violations
-- Generate session summary
+**P1 work (optional):**
+- Clean up temporary files (older than 7 days)
+- Clean up cache files
+- Scan for root-directory document-management violations
+- Generate a session summary
 
 ### Stop: Loop Controller
 
-Controls Ralph Engine feedback loop.
+Controls the Ralph Engine feedback loop. `/moai loop` can "repeat until everything is fixed" because this hook mechanically judges the completion condition at the end of every turn.
 
-**Completion Condition Check:**
-- LSP error count (0 errors goal)
+**Completion-condition check:**
+- LSP error count (target of 0 errors)
 - LSP warning count
-- Test pass status
+- Whether tests pass
 - Coverage target (default 85%)
-- Completion-sentence detection (natural-language loop-exit signal)
+- Completion-sentence detection (natural-language loop-end signal)
 
-**State File:** `.moai/cache/.moai_loop_state.json`
+**State file:** `.moai/cache/.moai_loop_state.json`
 
-**Configuration:** `.moai/config/sections/ralph.yaml`
+**Config:** `.moai/config/sections/ralph.yaml`
 
 ```yaml
 ralph:
@@ -520,15 +497,15 @@ ralph:
 
 ### Quality Gate with LSP
 
-Validates quality gates using LSP diagnostics.
+Validates the quality gate using LSP diagnostics.
 
-**Quality Criteria:**
-- Maximum error count: 0 (default)
-- Maximum warning count: 10 (default)
+**Quality criteria:**
+- Max errors: 0 (default)
+- Max warnings: 10 (default)
 - Type errors: 0 allowed
 - Lint errors: 0 allowed
 
-**Configuration:** `.moai/config/sections/quality.yaml`
+**Config:** `.moai/config/sections/quality.yaml`
 
 ```yaml
 constitution:
@@ -538,7 +515,7 @@ constitution:
     enabled: true
 ```
 
-**Result Example:**
+**Result example:**
 ```json
 {
   "lsp_errors": 0,
@@ -550,51 +527,19 @@ constitution:
 }
 ```
 
-## lib/ Shared Library
+## Go Binary Architecture
 
-MoAI Hooks provides modules in the `lib/` directory for shared functionality.
+The shared logic of MoAI Hooks is compiled **inside the `moai` Go binary**, not in a Python `lib/` directory. The shell wrappers (`handle-<event>.sh`) are only a thin forwarding layer, and the following capabilities are all implemented inside the Go binary:
 
-```
-.claude/hooks/moai/lib/
-├── __init__.py
-├── atomic_write.py           # Atomic write operations
-├── checkpoint.py             # Checkpoint management
-├── common.py                 # Common utilities
-├── config.py                 # Configuration management
-├── config_manager.py         # Configuration manager (advanced)
-├── config_validator.py       # Configuration validation
-├── context_manager.py        # Context management (snapshots, archives)
-├── enhanced_output_style_detector.py  # Output style detection
-├── file_utils.py             # File utilities
-├── git_collector.py          # Git data collection
-├── git_operations_manager.py # Git operations manager (optimized)
-├── language_detector.py      # Language detection
-├── language_validator.py     # Language validation
-├── main.py                   # Main entry point
-├── memory_collector.py       # Memory collection
-├── metrics_tracker.py        # Metrics tracking
-├── models.py                 # Data models
-├── path_utils.py             # Path utilities
-├── project.py                # Project-related
-├── renderer.py               # Renderer
-├── timeout.py                # Timeout handling
-├── tool_registry.py          # Tool registry (formatters, linters)
-├── unified_timeout_manager.py # Unified timeout manager
-├── update_checker.py         # Update check
-├── version_reader.py         # Version reading
-├── alfred_detector.py        # Alfred detection
-└── shared/utils/
-    └── announcement_translator.py  # Announcement translation
-```
+- **16-language formatter/linter registry**: auto-detects the project language and runs the matching toolchain (Go: gofmt/golangci-lint, Python: ruff/black, Rust: cargo fmt/clippy, etc.)
+- **Git data collection**: caches branch, change, and commit info to optimize repeated queries
+- **Unified timeout management**: per-hook-event timeouts and graceful degradation
+- **Context snapshot**: context archiving before `/clear`, memory-payload generation
+- **LSP diagnostics collection**: aggregates Language Server Protocol diagnostic results
 
-**Key Modules:**
+The benefit of this architecture: no Python runtime (`uv`, virtual environment) installation is needed, and as long as the single binary (`moai`) is on PATH, all hooks work. If the binary is missing, the wrapper exits safely (exit 0) so it does not block the Claude Code flow.
 
-- **tool_registry.py**: Auto-detection of formatters/linters for 16 programming languages
-- **git_operations_manager.py**: Optimized Git operations with connection pooling and caching
-- **unified_timeout_manager.py**: Unified timeout management with graceful degradation
-- **context_manager.py**: Context snapshots, archives, and Memory MCP payload generation
-
-## Hook Configuration in settings.json
+## Configuring Hooks in settings.json
 
 Hooks are configured in the `hooks` section of the `.claude/settings.json` file.
 
@@ -607,19 +552,20 @@ Hooks are configured in the `hooks` section of the `.claude/settings.json` file.
         "hooks": [
           {
             "type": "command",
-            "command": "${SHELL:-/bin/bash} -l -c 'uv run \"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/session_start__show_project_info.py\"'"
+            "command": "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-session-start.sh\"",
+            "timeout": 30
           }
         ]
       }
     ],
     "PreToolUse": [
       {
-        "matcher": "Write|Edit",
+        "matcher": "Write|Edit|Bash",
         "hooks": [
           {
             "type": "command",
-            "command": "${SHELL:-/bin/bash} -l -c 'uv run \"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/pre_tool__security_guard.py\"'",
-            "timeout": 5000
+            "command": "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-pre-tool.sh\"",
+            "timeout": 5
           }
         ]
       }
@@ -630,22 +576,8 @@ Hooks are configured in the `hooks` section of the `.claude/settings.json` file.
         "hooks": [
           {
             "type": "command",
-            "command": "${SHELL:-/bin/bash} -l -c 'uv run \"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/post_tool__code_formatter.py\"'",
-            "timeout": 30000
-          },
-          {
-            "type": "command",
-            "command": "${SHELL:-/bin/bash} -l -c 'uv run \"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/post_tool__linter.py\"'",
-            "timeout": 60000
-          },
-          {
-            "type": "command",
-            "command": "${SHELL:-/bin/bash} -l -c 'uv run \"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/post_tool__ast_grep_scan.py\"'",
-            "timeout": 30000
-          },
-          {
-            "type": "command",
-            "command": "${SHELL:-/bin/bash} -l -c 'uv run \"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/post_tool__lsp_diagnostic.py\"'"
+            "command": "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-post-tool.sh\"",
+            "timeout": 10
           }
         ]
       }
@@ -656,8 +588,8 @@ Hooks are configured in the `hooks` section of the `.claude/settings.json` file.
         "hooks": [
           {
             "type": "command",
-            "command": "${SHELL:-/bin/bash} -l -c 'uv run \"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/pre_compact__save_context.py\"'",
-            "timeout": 5000
+            "command": "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-compact.sh\"",
+            "timeout": 30
           }
         ]
       }
@@ -668,8 +600,8 @@ Hooks are configured in the `hooks` section of the `.claude/settings.json` file.
         "hooks": [
           {
             "type": "command",
-            "command": "${SHELL:-/bin/bash} -l -c 'uv run \"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/session_end__auto_cleanup.py\"'",
-            "timeout": 5000
+            "command": "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-session-end.sh\"",
+            "timeout": 10
           }
         ]
       }
@@ -680,7 +612,7 @@ Hooks are configured in the `hooks` section of the `.claude/settings.json` file.
         "hooks": [
           {
             "type": "command",
-            "command": "${SHELL:-/bin/bash} -l -c 'uv run \"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/stop__loop_controller.py\"'"
+            "command": "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-stop.sh\""
           }
         ]
       }
@@ -692,93 +624,69 @@ Hooks are configured in the `hooks` section of the `.claude/settings.json` file.
 ### Configuration Structure
 
 | Field | Description | Example |
-|------|-------------|---------|
-| `matcher` | Tool name matching pattern (regex) | `"Write\|Edit"` |
+|------|------|------|
+| `matcher` | Tool-name matching pattern (regex) | `"Write\|Edit"` |
 | `type` | Hook type | `"command"` |
-| `command` | Command to execute | Shell script path |
-| `timeout` | Execution time limit (milliseconds) | `5000` (5 seconds) |
+| `command` | Command to run | Shell script path |
+| `timeout` | Execution time limit (seconds) | `5` (5s) |
 
 ### Matcher Patterns
 
 | Pattern | Description |
-|---------|-------------|
+|------|------|
 | `""` (empty string) | Matches all tools |
-| `"Write"` | Matches only Write tool |
-| `"Write\|Edit"` | Matches Write or Edit tools |
-| `"Bash"` | Matches only Bash tool |
+| `"Write"` | Matches only the Write tool |
+| `"Write\|Edit"` | Matches the Write or Edit tool |
+| `"Bash"` | Matches only the Bash tool |
 
-## Writing Custom Hooks
+## How to Write a Custom Hook
 
 ### Basic Template
 
-Custom Hook scripts can be written in Python.
+Custom Hook scripts can be written as shell scripts (bash). Claude Code passes JSON data on stdin and expects a JSON response on stdout. Using `jq` makes JSON parsing simple.
 
-```python
-#!/usr/bin/env python3
-"""Custom PostToolUse Hook: Perform specific checks after file modification"""
+```bash
+#!/bin/bash
+# Custom PostToolUse Hook: run a specific check after file modification
 
-import json
-import sys
+# Read the hook input data from stdin
+input_data=$(cat)
+file_path=$(echo "$input_data" | jq -r '.tool_input.file_path // ""')
 
-def main():
-    # Read Hook input data from stdin
-    input_data = json.loads(sys.stdin.read())
+# Check logic
+if [[ "$file_path" == *.env ]]; then
+  # On dangerous-file detection, pass feedback to Claude Code
+  jq -n --arg msg "A .env file was modified. Verify no sensitive information is exposed." \
+    '{hookSpecificOutput: {hookEventName: "PostToolUse", additionalContext: $msg}}'
+  exit 0
+fi
 
-    tool_name = input_data.get("tool_name", "")
-    tool_input = input_data.get("tool_input", {})
-    file_path = tool_input.get("file_path", "")
-
-    # Check logic
-    if file_path.endswith(".py"):
-        # Custom check for Python files
-        result = check_python_file(file_path)
-
-        if result["has_issues"]:
-            # Send feedback to Claude Code
-            output = {
-                "hookSpecificOutput": {
-                  "hookEventName": "PostToolUse",
-                  "additionalContext": result["message"]
-                }
-            }
-            print(json.dumps(output))
-            return
-
-    # Suppress output if no issues
-    output = {"suppressOutput": True}
-    print(json.dumps(output))
-
-def check_python_file(file_path: str) -> dict:
-    """Custom Python file check"""
-    # Implement check logic
-    return {"has_issues": False, "message": ""}
-
-if __name__ == "__main__":
-    main()
+# Suppress output if there is no problem
+echo '{"suppressOutput": true}'
 ```
 
 ### Hook Response Format
 
 | Field | Value | Behavior |
-|------|-------|----------|
-| `suppressOutput` | `true` | Display nothing |
+|------|-----|------|
+| `suppressOutput` | `true` | Show nothing |
 | `hookSpecificOutput` | object | Provide additional context |
-| `permissionDecision` | `"allow"` | Allow work (PreToolUse) |
-| `permissionDecision` | `"deny"` | Block work (PreToolUse) |
+| `permissionDecision` | `"allow"` | Allow the operation (PreToolUse) |
+| `permissionDecision` | `"deny"` | Block the operation (PreToolUse) |
 | `permissionDecision` | `"ask"` | Request user confirmation (PreToolUse) |
 
 ### Hook Input Data
 
-Hook scripts receive JSON data via standard input (stdin).
+Hook scripts receive JSON data on standard input (stdin).
 
 ```json
 {
   "tool_name": "Write",
   "tool_input": {
     "file_path": "/path/to/file.py",
-    "content": "File content..."
+    "content": "file content..."
   },
-  "tool_output": "File output result (PostToolUse only)"
+  "tool_output": "file output result (PostToolUse only)"
 }
 ```
 
@@ -786,56 +694,51 @@ Hook scripts receive JSON data via standard input (stdin).
 
 ```
 .claude/hooks/moai/
-├── __init__.py                        # Package initialization
-├── session_start__show_project_info.py # Session start
-├── pre_tool__security_guard.py         # Security guard
-├── post_tool__code_formatter.py        # Code formatter
-├── post_tool__linter.py                # Linter
-├── post_tool__ast_grep_scan.py         # AST-grep scan
-├── post_tool__lsp_diagnostic.py        # LSP diagnostics
-├── pre_compact__save_context.py        # Context save
-├── session_end__auto_cleanup.py        # Auto cleanup
-
-├── stop__loop_controller.py            # Loop controller
-├── quality_gate_with_lsp.py            # Quality gate
-└── lib/                                # Shared library
-    ├── atomic_write.py                 # Atomic write
-    ├── checkpoint.py                   # Checkpoint
-    ├── common.py                       # Common utilities
-    ├── config.py                       # Config
-    ├── config_manager.py               # Config manager
-    ├── config_validator.py             # Config validation
-    ├── context_manager.py              # Context management
-    ├── git_operations_manager.py       # Git operations manager
-    ├── tool_registry.py                # Tool registry
-    ├── unified_timeout_manager.py      # Timeout manager
-    └── ...                             # Other modules
+├── handle-session-start.sh          # SessionStart → moai hook session-start
+├── handle-pre-tool.sh               # PreToolUse → moai hook pre-tool
+├── handle-post-tool.sh              # PostToolUse → moai hook post-tool
+├── handle-compact.sh                # PreCompact → moai hook compact
+├── handle-post-compact.sh           # PostCompact → moai hook post-compact
+├── handle-session-end.sh            # SessionEnd → moai hook session-end
+├── handle-stop.sh                   # Stop → moai hook stop
+├── handle-stop-goal.sh              # Stop (goal engine) → moai hook stop-goal
+├── handle-stop-failure.sh           # StopFailure → moai hook stop-failure
+├── handle-subagent-start.sh         # SubagentStart → moai hook subagent-start
+├── handle-subagent-stop.sh          # SubagentStop → moai hook subagent-stop
+├── handle-notification.sh           # Notification → moai hook notification
+├── handle-user-prompt-submit.sh     # UserPromptSubmit → moai hook user-prompt-submit
+├── handle-permission-request.sh     # PermissionRequest → moai hook permission-request
+├── handle-permission-denied.sh      # PermissionDenied → moai hook permission-denied
+├── handle-teammate-idle.sh          # TeammateIdle → moai hook teammate-idle
+├── handle-task-completed.sh         # TaskCompleted → moai hook task-completed
+├── handle-task-created.sh           # TaskCreated → moai hook task-created
+├── handle-config-change.sh          # ConfigChange → moai hook config-change
+├── handle-cwd-changed.sh            # CwdChanged → moai hook cwd-changed
+├── handle-file-changed.sh           # FileChanged → moai hook file-changed
+├── handle-instructions-loaded.sh    # InstructionsLoaded → moai hook instructions-loaded
+├── handle-worktree-create.sh        # WorktreeCreate → moai hook worktree-create
+├── handle-worktree-remove.sh        # WorktreeRemove → moai hook worktree-remove
+├── handle-elicitation.sh            # Elicitation → moai hook elicitation
+├── handle-elicitation-result.sh     # ElicitationResult → moai hook elicitation-result
+├── handle-post-tool-failure.sh      # PostToolUseFailure → moai hook post-tool-failure
+├── handle-agent-hook.sh             # Generic Agent-hook wrapper
+├── status-transition-ownership.sh    # SPEC status-transition audit (PostToolUse)
+├── handle-harness-observe-stop.sh   # Harness observation (Stop)
+├── handle-harness-observe-subagent-stop.sh  # Harness observation (SubagentStop)
+└── handle-harness-observe-user-prompt-submit.sh  # Harness observation (UserPromptSubmit)
 ```
 
 {{< callout type="warning" >}}
-**Caution**: Setting hook timeouts too long will slow down Claude Code responses. Recommended: formatter 30 sec, linter 60 sec, security guard 5 sec or less.
+**Note**: Setting a hook script's timeout too long slows down Claude Code's responses. We recommend keeping the security guard (pre-tool) within 5 seconds and the formatter/linter (post-tool) within 10 seconds. SessionStart and PreCompact are allowed up to 30 seconds for context loading.
 {{< /callout >}}
 
-## Disabling Hooks with Environment Variables
+## Related Documents
 
-Specific hooks can be disabled with environment variables:
-
-| Hook | Environment Variable |
-|------|---------------------|
-| AST-grep scan | `MOAI_DISABLE_AST_GREP_SCAN=1` |
-| LSP diagnostics | `MOAI_DISABLE_LSP_DIAGNOSTIC=1` |
-| Loop controller | `MOAI_DISABLE_LOOP_CONTROLLER=1` |
-
-```bash
-export MOAI_DISABLE_AST_GREP_SCAN=1
-```
-
-## Related Documentation
-
-- [settings.json Guide](/advanced/settings-json) - Hook configuration methods
-- [CLAUDE.md Guide](/advanced/claude-md-guide) - Project guideline management
-- [Agent Guide](/advanced/agent-guide) - Agent and Hook integration
+- [Hooks Event Reference](/en/advanced/hooks-reference) - Full reference for Claude Code's 30 event types
+- [settings.json Guide](/en/advanced/settings-json) - How to configure hooks
+- [CLAUDE.md Guide](/en/advanced/claude-md-guide) - Managing project instructions
+- [Agent Guide](/en/advanced/agent-guide) - Integrating agents with hooks
 
 {{< callout type="info" >}}
-**Tip**: Hooks are the core of MoAI-ADK quality assurance. Automating code formatting and lint checks allows developers to focus on logic. Add custom hooks to build automation tailored to your project.
+**Tip**: Hooks are the core of MoAI-ADK's quality assurance. By automating code formatting and lint checks, they let developers focus on logic alone. Add custom hooks to build automation tailored to your project.
 {{< /callout >}}

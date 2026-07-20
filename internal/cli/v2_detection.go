@@ -6,6 +6,15 @@
 // signal ⇒ IsV2 true. This drives the clean-reinstall code path in
 // `runUpdate` (see update.go integration in M5).
 //
+// REQ-CRR-001 (SPEC-V3R6-V2-V3-CLEAN-REINSTALL-002) adds a v3-version
+// negative-override: when probeVersionSignal confirms a populated v3.*
+// version, the final IsV2 aggregation short-circuits to false regardless of
+// Signal 2 (.agency/) or Signal 3 (DeprecatedPaths) being positive. This
+// prevents an infinite `moai update` loop on a genuine v3 project carrying
+// stale legacy residue (#1084). Option α broader detection (empty/missing
+// system.yaml → positive Signal 1) is preserved — the override fires ONLY on
+// a confirmed populated v3.* string.
+//
 // Signal sources:
 //
 //   - Signal 1 (V2DetectedViaVersion): `.moai/config/sections/system.yaml`
@@ -19,10 +28,11 @@
 //     directory at project root. v.2.x exclusive artifact.
 //
 //   - Signal 3 (V2DetectedViaDeprecatedPath): existence of ANY path
-//     enumerated in defs.DeprecatedPaths (41 entries: Category A 9 +
-//     Category B 29 + Category C 3; reconciled by
+//     enumerated in defs.DeprecatedPaths (40 entries: Category A 9 +
+//     Category B 28 + Category C 3; reconciled by
 //     SPEC-DEPRECATEDPATHS-RECONCILE-001 which un-deprecated design.yaml +
-//     db.yaml as live v3 config).
+//     db.yaml as live v3 config, then SPEC-UPDATE-REINSTALL-LOOP-001 which
+//     removed the `.claude/rules/moai/design` template-collision entry, #1084).
 //
 // The SignalDetails map carries per-signal diagnostic strings used by
 // telemetry and `--dry-run` output (REQ-VVCR-028 / REQ-VVCR-029).
@@ -47,13 +57,21 @@ import (
 // @MX:REASON: Field set mirrors AC-VVCR-001 verification expectations;
 // modifications MUST update both this struct and the acceptance.md AC entry.
 type V2Fingerprint struct {
-	// IsV2 is true when ANY of the 3 signals is positive (disjunction).
+	// IsV2 is true when ANY of the 3 signals is positive (disjunction),
+	// UNLESS V3VersionConfirmed is true (REQ-CRR-001 v3-version
+	// negative-override short-circuits the disjunction to false).
 	IsV2 bool
 
 	// Per-signal positive flags (used by telemetry).
 	V2DetectedViaVersion        bool
 	V2DetectedViaAgencyDir      bool
 	V2DetectedViaDeprecatedPath bool
+
+	// V3VersionConfirmed is true when system.yaml carries a populated
+	// moai.version starting with "v3.". When true, IsV2 is forced to false
+	// regardless of Signal 2/3 state (REQ-CRR-001 v3-version
+	// negative-override — prevents the infinite `moai update` loop #1084).
+	V3VersionConfirmed bool
 
 	// SignalDetails carries per-signal diagnostic strings. Keys:
 	//   "version_signal"             — what triggered Signal 1
@@ -90,8 +108,9 @@ func detectV2Fingerprint(projectRoot string) (V2Fingerprint, error) {
 	// ---------------------------------------------------------------
 	// Signal 1: system.yaml moai.version reading
 	// ---------------------------------------------------------------
-	versionPositive, versionDetail := probeVersionSignal(projectRoot)
+	versionPositive, v3Confirmed, versionDetail := probeVersionSignal(projectRoot)
 	fp.V2DetectedViaVersion = versionPositive
+	fp.V3VersionConfirmed = v3Confirmed
 	if versionDetail != "" {
 		fp.SignalDetails["version_signal"] = versionDetail
 	}
@@ -114,10 +133,16 @@ func detectV2Fingerprint(projectRoot string) (V2Fingerprint, error) {
 		fp.SignalDetails["deprecated_signal_first_hit"] = deprecatedDetail
 	}
 
-	// Aggregation: any one positive ⇒ IsV2 true.
-	fp.IsV2 = fp.V2DetectedViaVersion ||
+	// Aggregation: any one positive ⇒ IsV2 true, UNLESS a populated v3.*
+	// version is confirmed (REQ-CRR-001 v3-version negative-override). A
+	// genuine v3 project carrying stale legacy residue (.agency/ dir or
+	// deprecated paths) MUST NOT be classified as v2 — doing so causes an
+	// infinite `moai update` loop (#1084). The override short-circuits
+	// Signal 2/3 while leaving Option α (empty/missing system.yaml →
+	// positive Signal 1) intact.
+	fp.IsV2 = !fp.V3VersionConfirmed && (fp.V2DetectedViaVersion ||
 		fp.V2DetectedViaAgencyDir ||
-		fp.V2DetectedViaDeprecatedPath
+		fp.V2DetectedViaDeprecatedPath)
 
 	return fp, nil
 }
@@ -131,45 +156,58 @@ type systemYAMLMoaiBlock struct {
 	} `yaml:"moai"`
 }
 
-// probeVersionSignal returns (positive, detail).
+// probeVersionSignal returns (positive, v3Confirmed, detail).
 //
 // Per AC-VVCR-001 Option α:
-//   - file missing       → positive, detail "system.yaml missing"
-//   - empty version      → positive, detail "moai.version empty"
-//   - v2.* prefix         → positive, detail "moai.version starts with v2."
-//   - other (e.g. v3.*)  → negative, detail empty
+//   - file missing       → positive, v3Confirmed=false, detail "system.yaml missing"
+//   - empty version      → positive, v3Confirmed=false, detail "moai.version empty"
+//   - v2.* prefix        → positive, v3Confirmed=false, detail "moai.version starts with v2."
+//   - v3.* prefix        → negative, v3Confirmed=true,  detail names the override (REQ-CRR-001)
+//   - other              → negative, v3Confirmed=false, detail empty
+//
+// The empty/missing branches (Option α broader detection) are preserved
+// unchanged — the v3 negative-override fires ONLY on a confirmed populated
+// v3.* string, NOT on drift/absence.
 //
 // Parse errors are treated as positive Signal 1 with a descriptive detail —
 // a malformed system.yaml in a project running `moai update` is more likely
 // to be a partial v2 migration than a deliberately corrupted v3 file.
-func probeVersionSignal(projectRoot string) (bool, string) {
+func probeVersionSignal(projectRoot string) (bool, bool, string) {
 	sysYAMLPath := filepath.Join(projectRoot,
 		".moai", "config", "sections", "system.yaml")
 
 	data, err := os.ReadFile(sysYAMLPath)
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
-			return true, "system.yaml missing"
+			return true, false, "system.yaml missing"
 		}
 		// Other read errors (permission denied, etc.) — treat as positive
 		// to err on the side of clean-reinstall over silent skip.
-		return true, fmt.Sprintf("system.yaml read error: %v", err)
+		return true, false, fmt.Sprintf("system.yaml read error: %v", err)
 	}
 
 	var block systemYAMLMoaiBlock
 	if err := yaml.Unmarshal(data, &block); err != nil {
-		return true, fmt.Sprintf("system.yaml parse error: %v", err)
+		return true, false, fmt.Sprintf("system.yaml parse error: %v", err)
 	}
 
 	v := strings.TrimSpace(block.Moai.Version)
 	switch {
 	case v == "":
-		return true, "moai.version empty"
+		return true, false, "moai.version empty"
 	case strings.HasPrefix(v, "v2."):
-		return true, fmt.Sprintf("moai.version starts with v2. (%s)", v)
+		return true, false, fmt.Sprintf("moai.version starts with v2. (%s)", v)
+	case strings.HasPrefix(v, "v3."):
+		// REQ-CRR-001 v3-version negative-override: a populated v3.*
+		// version confirms a genuine v3 project. The detail names the
+		// override so callers (telemetry / --dry-run / the reason string
+		// surfaced by runUpdate) can report WHY IsV2 was forced false
+		// despite legacy residue (AC-CRR-001(b)).
+		return false, true, fmt.Sprintf(
+			"v3-version negative-override (REQ-CRR-001): moai.version starts with v3. (%s) — Signal 2/3 short-circuited", v)
 	default:
-		// v3.* or any other non-v2 value → negative.
-		return false, ""
+		// Any other non-v2 non-v3 value → negative, no override.
+		return false, false, ""
 	}
 }
 
@@ -206,4 +244,34 @@ func probeDeprecatedPathSignal(projectRoot string) (bool, string) {
 		}
 	}
 	return false, ""
+}
+
+// isMoAIProject reports whether projectRoot carries a positive moai-project
+// marker. REQ-CRR-005 / AC-CRR-004: the clean-reinstall path requires a genuine
+// project context; an arbitrary non-project directory MUST NOT trigger
+// clean-reinstall (#1086).
+//
+// Positive marker (AC-CRR-004(a)): presence of `.moai/config/sections/system.yaml`
+// as a regular file. A bare `.moai/` directory is intentionally insufficient —
+// the system.yaml file is the canonical v3 project marker whose absence in a
+// non-project cwd is the #1086 regression root cause. When this returns false,
+// the clean-reinstall gate in runUpdate (update.go) refuses entry regardless of
+// any legacy residue (.agency/, deprecated paths) that detectV2Fingerprint may
+// have flagged.
+//
+// Edge-5 (symlink): os.Stat (not Lstat) follows symlinks, so a system.yaml
+// symlink-to-regular-file also satisfies the marker. A symlink loop yields a
+// Stat error → treated as marker absent. A directory named system.yaml is
+// rejected by the !IsDir() check.
+//
+// Edge-6 (Windows): filepath.Join handles path separators, so the predicate
+// resolves identically on macOS/Linux/Windows.
+func isMoAIProject(projectRoot string) bool {
+	marker := filepath.Join(projectRoot,
+		defs.MoAIDir, "config", "sections", "system.yaml")
+	info, err := os.Stat(marker)
+	if err != nil {
+		return false
+	}
+	return !info.IsDir()
 }

@@ -4,44 +4,44 @@ weight: 80
 draft: false
 ---
 
-Detailed guide to Claude Code's core instruction file system.
+A detailed guide to Claude Code's core instruction file system. `CLAUDE.md` is loaded in every session, so every single line of this file is a standing context cost — designing the instruction system is harness design and tokenomics at the same time.
 
 {{< callout type="info" >}}
-**One-line summary**: `CLAUDE.md` is your project's **constitution**. It determines how Claude Code understands your project, what rules it follows, and which agents it calls.
+**One-line summary**: `CLAUDE.md` is the project's **constitution**. How Claude Code understands the project, which rules it follows, and which agents it invokes are all decided in this file.
 {{< /callout >}}
 
-## What is CLAUDE.md?
+## What Is CLAUDE.md?
 
-`CLAUDE.md` is the **first instruction file** Claude Code reads when starting a session. This file defines your project's rules, agent structure, workflows, quality standards, and more.
+`CLAUDE.md` is **the first instruction file Claude Code reads** when it starts a session. The project's rules, agent structure, workflow, and quality criteria are defined in this file.
 
-Just as a person reads an employee handbook when joining a new company, Claude Code reads `CLAUDE.md` when starting a session to understand the project context.
+Just as a person joining a new company reads the employee handbook, Claude Code reads `CLAUDE.md` at session start to grasp the project's context.
 
 ## File Structure
 
-MoAI-ADK uses 2 instruction files and a rules directory.
+MoAI-ADK uses two instruction files plus a rules directory.
 
 ```mermaid
 flowchart TD
-    subgraph MAIN["CLAUDE.md (Project Level)"]
-        M1["Core Identity"]
-        M2["Request Processing Pipeline"]
-        M3["Command Reference"]
-        M4["Agent Catalog"]
-        M5["SPEC Workflow"]
-        M6["Quality Gates"]
+    subgraph MAIN["CLAUDE.md (project level)"]
+        M1["Core identity"]
+        M2["Request processing pipeline"]
+        M3["Command reference"]
+        M4["Agent catalog"]
+        M5["SPEC workflow"]
+        M6["Quality gates"]
     end
 
-    subgraph LOCAL["CLAUDE.local.md (Personal Level)"]
-        L1["Personal Rules"]
-        L2["MDX Guidelines"]
-        L3["Project Notes"]
+    subgraph LOCAL["CLAUDE.local.md (personal level)"]
+        L1["Personal rules"]
+        L2["MDX guidelines"]
+        L3["Project notes"]
     end
 
-    subgraph RULES[".claude/rules/ (Conditional Rules)"]
-        R1["core/ Core Principles"]
-        R2["development/ Development Standards"]
-        R3["workflow/ Workflows"]
-        R4["languages/ Language-specific Rules"]
+    subgraph RULES[".claude/rules/ (conditional rules)"]
+        R1["core/ core principles"]
+        R2["development/ development standards"]
+        R3["workflow/ workflows"]
+        R4["languages/ per-language rules"]
     end
 
     MAIN --> LOCAL
@@ -49,103 +49,111 @@ flowchart TD
 
 ```
 
-| File/Directory | Purpose | Git Tracked | Update Behavior |
-|---------------|---------|--------------|-----------------|
+| File/directory | Purpose | Git-tracked | On update |
+|---------------|------|----------|-------------|
 | `CLAUDE.md` | MoAI-ADK core instructions | Yes | Overwritten |
 | `CLAUDE.local.md` | Personal custom instructions | No | Preserved |
 | `.claude/rules/moai/` | Conditional detailed rules | Yes | Overwritten |
 | `.claude/rules/local/` | Personal custom rules | No | Preserved |
 
-## MoAI CLAUDE.md Main Sections
+## Key Sections of the MoAI CLAUDE.md
 
 ### 1. Core Identity
 
-Defines the role of the MoAI orchestrator and HARD rules.
+Defines the role of the MoAI orchestrator and the HARD rules.
 
 ```markdown
 ## 1. Core Identity
 
-MoAI is the Strategic Orchestrator for Claude Code.
+MoAI is the strategic orchestrator for Claude Code.
 
-### HARD Rules (Required)
-- [HARD] Language-aware responses: Respond in user's conversation_language
-- [HARD] Parallel execution: Execute independent tool calls in parallel
-- [HARD] No XML tags: Don't display XML in user-facing responses
-- [HARD] Markdown output: Use Markdown for all communications
+### HARD Rules (required)
+- [HARD] Language-aware responses: respond in the user's conversation_language
+- [HARD] Parallel execution: run independent tool calls in parallel
+- [HARD] No XML tags: no XML in user-facing responses
+- [HARD] Markdown output: use Markdown for all communication
 ```
 
-### 2. Request Processing Pipeline
+### 2. Request Processing Pipeline (Analyze-First)
 
-4-stage pipeline for analyzing and routing user requests.
+Every request goes through a single ordered pipeline, regardless of input language. The core of v3.0 is that **intent analysis always comes first** — routing is by language-independent semantic classification, not English keyword matching.
 
 | Stage | Description |
-|-------|-------------|
-| 1. Analyze | Evaluate request complexity, detect technical keywords |
-| 2. Route | Select appropriate path based on command type |
-| 3. Execute | Delegate to agents to perform tasks |
-| 4. Report | Integrate results and report to user |
+|------|------|
+| 1. Intent analysis | Classify the request's intent language-independently (Analyze-First) |
+| 2. Context-sufficiency check | If insufficient, confirm via a Socratic interview before execution |
+| 3. Execution-plan composition | Skill/agent/workflow chain + orchestration mode selection |
+| 4. Approval gates | Includes Implementation Kickoff Approval (the plan→run human gate) |
+| 5. Execute → verify → iterate | Verify against acceptance criteria; when a goal is set, the goal evaluator judges termination |
 
 ### 3. Command Reference
 
-Defines 3 command types in MoAI-ADK.
+`/moai` is the single entry point for all MoAI development workflows.
 
 | Type | Commands | Purpose |
-|------|-----------|---------|
-| Type A (Workflow) | `/moai project`, `/moai plan`, `/moai run`, `/moai sync` | Major development workflows |
-| Type B (Utility) | `/moai`, `/moai fix`, `/moai loop` | Quick fixes, automation |
-| Type C (Feedback) | `/moai feedback` | Improvement reports |
+|------|--------|------|
+| SPEC pipeline | `/moai plan`, `/moai run`, `/moai sync` | The 3-phase development workflow |
+| Loop/fix | `/moai goal`, `/moai loop`, `/moai fix` | Condition-declared loop, iterative fixing, one-shot fixing |
+| Project/harness | `/moai project`, `/moai harness` | Project docs + harness creation/management |
+| Quality/utility | `/moai review`, `/moai gate`, `/moai clean`, `/moai mx`, `/moai codemaps`, `/moai feedback` | Review, gate, cleanup, annotations, docs, reporting |
+| (Natural language) | `/moai "request"` | Analyze-First routing → autonomous pipeline |
 
 ### 4. Agent Catalog
 
-MoAI-ADK is structured around **8 retained agents** (7 MoAI-custom + 1 Anthropic built-in). The 12 archived agents were consolidated per SPEC-V3R6-AGENT-TEAM-REBUILD-001.
+MoAI-ADK consists of **11 retained agents** (10 MoAI-custom + 1 Anthropic built-in). Through architecture simplification, 12 archived agents such as manager-strategy, manager-quality, manager-brain, and manager-project were replaced by per-spawn `Agent(general-purpose)` delegation for specific domains.
 
-| Classification | Agents | Count |
-|--------|--------|-------|
-| Manager | manager-spec, manager-develop, manager-docs, manager-git | 4 |
-| Evaluator | plan-auditor, sync-auditor | 2 |
-| Builder | builder-harness | 1 |
-| Built-in | Explore (Anthropic) | 1 |
+| Category | Agents | Role |
+|------|----------|------|
+| Manager (5) | manager-spec, manager-develop, manager-docs, manager-git, manager-design | Specialists per core lifecycle phase |
+| Evaluator (2) | plan-auditor, sync-auditor | Independent quality assessment at plan/completion stages |
+| Builder (1) | builder-harness | Dynamic per-project harness generation |
+| Advisor (1) | super-advisor | High-reasoning consultation (E1-E4 escalation) |
+| Specialist (1) | e2e-tester | E2E test execution across web/mobile/desktop (`/moai e2e`) |
+| Built-in (1) | Explore (Anthropic) | Read-only codebase exploration |
 
 ### 5. SPEC Workflow
 
-Defines 3-stage SPEC-based development workflow.
+Defines the 3-phase SPEC-based development workflow.
 
 ```bash
-# Plan: Create SPEC document (30K tokens)
+# Plan: create SPEC document (30K tokens)
 > /moai plan "feature description"
 
 # Run: DDD implementation (180K tokens)
 > /moai run SPEC-XXX
 
-# Sync: Documentation sync (40K tokens)
+# Sync: documentation sync (40K tokens)
 > /moai sync SPEC-XXX
+
+# E2E: run web/mobile/desktop E2E tests
+> /moai e2e
 ```
 
 ### 6. Quality Gates
 
-Defines TRUST 5 framework and LSP quality gates.
+Defines the TRUST 5 framework and the LSP quality gates.
 
-| Quality Standard | Requirements |
-|-----------------|--------------|
+| Quality criterion | Requirement |
+|-----------|----------|
 | Tested | 85%+ coverage, 0 LSP type errors |
-| Readable | Clear names, 0 LSP lint errors |
+| Readable | Clear naming, 0 LSP lint errors |
 | Unified | Consistent style, ≤10 LSP warnings |
 | Secured | OWASP compliance, 0 LSP security warnings |
-| Trackable | Clear commits, LSP state tracking |
+| Trackable | Clear commits, LSP state tracked |
 
 ### 7. User Interaction Architecture
 
-Subagents cannot directly interact with users.
+Sub-agents cannot converse with the user directly. The user touchpoint is fixed to MoAI alone.
 
 ```mermaid
 flowchart TD
     USER["User"] --> MOAI["MoAI"]
-    MOAI -->|"1. Collect Info"| USER
-    MOAI -->|"2. Delegate Task"| AGENT["Subagent"]
-    AGENT -->|"3. Return Result"| MOAI
-    MOAI -->|"4. Report Result"| USER
+    MOAI -->|"1. Gather information"| USER
+    MOAI -->|"2. Delegate work"| AGENT["Sub-agent"]
+    AGENT -->|"3. Return results"| MOAI
+    MOAI -->|"4. Report results"| USER
 
-    AGENT -.-x|"Cannot Talk Directly"| USER
+    AGENT -.-x|"No direct conversation"| USER
 
 ```
 
@@ -155,62 +163,61 @@ References language settings, user settings, and project rules.
 
 ```yaml
 language:
-  conversation_language: ko           # User response language
-  agent_prompt_language: en           # Agent internal language
+  conversation_language: ko           # user response language
+  agent_prompt_language: en           # agent internal language
   git_commit_messages: en             # Git commit messages
-  code_comments: en                   # Code comments
-  documentation: en                   # Documentation files
+  code_comments: en                   # code comments
+  documentation: en                   # documentation files
 ```
 
 ## Using CLAUDE.local.md
 
-`CLAUDE.local.md` is for writing personal rules and notes. It's preserved regardless of MoAI-ADK updates.
+`CLAUDE.local.md` is the file for your personal rules and notes. It is preserved regardless of MoAI-ADK updates.
 
-### Writing Example
+### Example
 
 ```markdown
-# Project Local Settings
+# Project local settings
 
-## Documentation Writing Guidelines
+## Documentation guidelines
 
-### Prevent MDX Rendering Errors
-- Always add space between emphasis and parentheses
+### Prevent MDX rendering errors
+- Always put a space between emphasis markers and parentheses
 
-### Mermaid Diagram Direction
-- All diagrams in vertical orientation (flowchart TD)
+### Mermaid diagram direction
+- All diagrams vertical (flowchart TD)
 
-## Personal Notes
-- Backup required before DB migration
+## Personal notes
+- Always back up before DB migration
 - API endpoint naming: use kebab-case
 ```
 
 ### Usage Tips
 
-| Purpose | Example Content |
-|---------|-----------------|
-| Coding rules | "Variable names in camelCase, file names in kebab-case" |
-| Project notes | "Auth: JWT, expires 24h, refresh 7d" |
-| Prohibitions | "Don't leave console.log in production code" |
-| Preferred patterns | "Use only function components for React" |
+| Purpose | Example content |
+|------|-----------|
+| Coding rules | "Variables camelCase, filenames kebab-case" |
+| Project notes | "Auth is JWT, 24h expiry, 7-day refresh" |
+| Prohibitions | "Never leave console.log in production code" |
+| Preferred patterns | "React components: functional only" |
 | MDX rules | "Space required between emphasis and parentheses" |
 
-## .claude/rules/ System
+## The .claude/rules/ System
 
-The `.claude/rules/` directory stores **conditionally loaded detailed rules**.
+The `.claude/rules/` directory stores **conditionally loaded detailed rules**. There is exactly one reason not to put every rule in CLAUDE.md and to split them into conditional files instead — so that unused rules do not occupy context.
 
 ### Directory Structure
 
 ```
 .claude/rules/moai/
-├── core/                          # Core principles
+├── core/                          # core principles
 │   └── moai-constitution.md       # TRUST 5, core rules
-├── development/                   # Development standards
-│   ├── skill-authoring.md         # Skill writing guide
-│   └── coding-standards.md        # Coding standards
-├── workflow/                      # Workflows
-│   ├── workflow-modes.md          # Plan/Run/Sync definitions
-│   └── spec-workflow.md           # SPEC workflow
-└── languages/                     # Language-specific rules (16)
+├── development/                   # development standards
+│   ├── skill-authoring.md         # skill authoring guide
+│   └── coding-standards.md        # coding standards
+├── workflow/                      # workflows
+│   └── spec-workflow.md           # SPEC workflow (Plan/Run/Sync definitions)
+└── languages/                     # per-language rules (16)
     ├── python.md
     ├── typescript.md
     ├── javascript.md
@@ -219,7 +226,7 @@ The `.claude/rules/` directory stores **conditionally loaded detailed rules**.
 
 ### Conditional Loading (paths frontmatter)
 
-Rule files are loaded **only when working on specific files** via `paths` frontmatter.
+A rule file is **loaded only when working on specific files**, via the `paths` frontmatter.
 
 ```yaml
 ---
@@ -229,130 +236,130 @@ paths:
 ---
 
 # Python coding rules
-- Use ruff formatter
-- Type hints required
-- Docstrings in Google style
+- use the ruff formatter
+- type hints required
+- Google-style docstrings
 ```
 
-This rule is only loaded when modifying Python files, **saving tokens**.
+This rule loads only when Python files are being modified, **saving tokens**.
 
-### Rule File Types
+### Kinds of Rule Files
 
-| Directory | File | Load Condition |
-|----------|------|---------------|
+| Directory | File | Load condition |
+|----------|------|-----------|
 | `core/` | `moai-constitution.md` | Always loaded |
 | `development/` | `skill-authoring.md` | During skill-related work |
 | `development/` | `coding-standards.md` | During code work |
-| `workflow/` | `workflow-modes.md` | During workflow commands |
-| `workflow/` | `spec-workflow.md` | During SPEC-related work |
-| `languages/` | `python.md` etc. | When modifying that language's files |
+| `workflow/` | `spec-workflow.md` | On workflow commands / SPEC-related work |
+| `languages/` | `python.md`, etc. | When editing files of that language |
 
-## Size Limits
+## Size Limit
 
-`CLAUDE.md` should be kept at **40,000 characters or less**.
+`CLAUDE.md` must stay **under 40,000 characters**. MoAI-ADK itself kept putting CLAUDE.md on a diet throughout the v3 period — the shorter the always-loaded instructions, the cheaper every session becomes.
 
-### Response to Size Exceeded
+### What to Do When the Limit Is Exceeded
 
 ```mermaid
 flowchart TD
-    CHECK{"CLAUDE.md<br>exceeds 40,000 chars?"}
+    CHECK{"CLAUDE.md<br>over 40,000 chars?"}
 
-    CHECK -->|Yes| MOVE["Move detailed content<br>to .claude/rules/"]
+    CHECK -->|Yes| MOVE["Move details to<br>.claude/rules/"]
     CHECK -->|No| OK["Keep as is"]
 
-    MOVE --> REF["Keep only references<br>in CLAUDE.md"]
+    MOVE --> REF["Leave only references<br>in CLAUDE.md"]
     REF --> SLIM["Keep only core rules<br>in CLAUDE.md"]
-
 ```
 
-**Response Strategy:**
+**Response strategies:**
 
-1. **Move detailed content**: Separate long explanations into `.claude/rules/` files
-2. **Use references**: Reference from `CLAUDE.md` using `@filepath`
-3. **Keep only essentials**: Maintain only identity, HARD rules, agent catalog
-4. **Convert to skills**: Convert long pattern explanations to skills
+1. **Move details out**: split long explanations into `.claude/rules/` files
+2. **Use references**: reference from `CLAUDE.md` via `@file-path`
+3. **Keep only the core**: retain only identity, HARD rules, and the agent catalog
+4. **Convert to skills**: turn long pattern explanations into skills
 
-## Practical Example: CLAUDE.local.md Custom Rules
+## Practical Examples: CLAUDE.local.md Custom Rules
 
 ### Frontend Project
 
 ```markdown
-# Project Local Settings
+# Project local settings
 
-## React Rules
-- Components must be written as function components
-- Props interfaces defined at top of component file
+## React rules
+- Components must be written as functional components
+- Define the Props interface at the top of the component file
 - Use Zustand for state management
-- Use only Tailwind CSS for CSS
+- Use Tailwind CSS only for CSS
 
-## Naming Rules
+## Naming rules
 - Components: PascalCase (UserProfile.tsx)
 - Utilities: camelCase (formatDate.ts)
 - Constants: UPPER_SNAKE_CASE (MAX_RETRY_COUNT)
 - API endpoints: kebab-case (/api/user-profiles)
 
 ## Prohibitions
-- No `any` type usage
+- No use of the any type
 - No console.log in production code
-- No default exports (only named exports)
+- No default export (named exports only)
 ```
 
 ### Backend Project
 
 ```markdown
-# Project Local Settings
+# Project local settings
 
-## Python Rules
+## Python rules
 - Use FastAPI
 - Prefer async functions (async/await)
 - Use Pydantic v2 models
 - SQLAlchemy 2.0 style
 
-## Database Rules
-- Backup required before migration
-- Add indexes after query pattern analysis
-- Use soft delete pattern (is_deleted flag)
+## Database rules
+- Always back up before migration
+- Add indexes after analyzing query patterns
+- Use the soft-delete pattern (is_deleted flag)
 
-## API Rules
+## API rules
 - RESTful endpoint naming
 - Unified response format: {"data": ..., "message": ...}
 - Standardized error codes
 ```
 
-## Relationship Between CLAUDE.md, Rules, Skills, and Agents
+## The Relationship Between CLAUDE.md, Rules, and Skills
+
+The instruction system is divided into 4 layers; loading conditions narrow as you descend.
 
 ```mermaid
 flowchart TD
-    subgraph HIERARCHY["Instruction System Hierarchy"]
+    subgraph HIERARCHY["Instruction system layers"]
         CLAUDE["CLAUDE.md<br>Top-level instructions (always loaded)"]
-        RULES[".claude/rules/<br>Conditional rules (paths match)"]
-        SKILLS[".claude/skills/<br>Expert knowledge (trigger match)"]
-        AGENTS[".claude/agents/<br>Agent definitions (on delegate)"]
+        RULES[".claude/rules/<br>Conditional rules (on paths match)"]
+        SKILLS[".claude/skills/<br>Expertise (on trigger match)"]
+        AGENTS[".claude/agents/<br>Agent definitions (on delegation)"]
     end
 
     CLAUDE --> RULES
     RULES --> SKILLS
     SKILLS --> AGENTS
 
-    CLAUDE -.->|"Reference"| RULES
-    AGENTS -.->|"Use Skills"| SKILLS
+    CLAUDE -.->|"references"| RULES
+    AGENTS -.->|"use skills"| SKILLS
 
 ```
 
-| Layer | File | Load Time | Role |
-|-------|------|-----------|-----|
+| Layer | Files | Loaded when | Role |
+|------|------|-----------|------|
 | 1. CLAUDE.md | `CLAUDE.md` | Always | Project identity, core rules |
-| 2. Rules | `.claude/rules/*.md` | File pattern match | Conditional detailed rules |
-| 3. Skills | `.claude/skills/*/SKILL.md` | Trigger match | Expert knowledge, patterns |
-| 4. Agents | `.claude/agents/*.md` | On delegation | Expert role definitions |
+| 2. Rules | `.claude/rules/*.md` | On file-pattern match | Conditional detailed rules |
+| 3. Skills | `.claude/skills/*/skill.md` | On trigger match | Expertise, patterns |
+| 4. Agents | `.claude/agents/*.md` | On delegation | Specialist role definitions |
 
-## Related Documentation
+## Related Documents
 
-- [Skill Guide](/advanced/skill-guide) - Detailed skill system
-- [Agent Guide](/advanced/agent-guide) - Detailed agent system
-- [settings.json Guide](/advanced/settings-json) - Settings file management
-- [Hooks Guide](/advanced/hooks-guide) - Event automation
+- [Skill Guide](/en/advanced/skill-guide) - skill system details
+- [Agent Guide](/en/advanced/agent-guide) - agent system details
+- [settings.json Guide](/en/advanced/settings-json) - configuration file management
+- [Hooks Guide](/en/advanced/hooks-guide) - event automation
 
 {{< callout type="info" >}}
-**Tip**: Instead of directly modifying `CLAUDE.md`, it's recommended to add personal rules in `CLAUDE.local.md`. Personal rules are safely preserved during MoAI-ADK updates.
+**Tip**: Rather than editing `CLAUDE.md` directly, we recommend adding your personal rules to `CLAUDE.local.md`. Your personal rules are safely preserved across MoAI-ADK updates.
 {{< /callout >}}

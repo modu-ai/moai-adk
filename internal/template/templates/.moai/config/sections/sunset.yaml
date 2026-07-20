@@ -3,6 +3,9 @@
 # Sunset conditions define when quality gates can be relaxed.
 # Gate names are language-agnostic; the runtime maps them to project-specific tools.
 
+# DORMANT: this config is typed and loaded, but no runtime hot path enforces these
+# conditions yet. The Go loader emits a once-per-session DORMANT notice. Preserved for
+# forward compatibility; behavioral enforcement awaits an activation SPEC.
 sunset:
   enabled: true
   conditions:

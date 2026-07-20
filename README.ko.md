@@ -5,14 +5,19 @@
 <h1 align="center">MoAI-ADK</h1>
 
 <p align="center">
-  <strong>Claude Code를 위한 Agentic Development Kit</strong>
+  <strong>토크노믹스를 위해 설계된 에이전틱 개발 키트</strong>
 </p>
 
 <p align="center">
   <a href="./README.md">English</a> ·
-  <a href="./README.ko.md">한국어</a> ·
+  한국어 ·
   <a href="./README.ja.md">日本語</a> ·
   <a href="./README.zh.md">中文</a>
+</p>
+
+<p align="center">
+  <a href="https://book.mo.ai.kr" target="_blank"><strong>공식 도서 『클로드 코드로 시작하는 실전 에이전틱 코딩』</strong></a><br>
+  MoAI-ADK 제작자가 직접 쓴 하네스 엔지니어링 실전 가이드 — <a href="https://book.mo.ai.kr" target="_blank">book.mo.ai.kr</a>
 </p>
 
 <p align="center">
@@ -21,126 +26,115 @@
   <a href="https://codecov.io/gh/modu-ai/moai-adk"><img src="https://codecov.io/gh/modu-ai/moai-adk/branch/main/graph/badge.svg" alt="Codecov"></a>
   <br>
   <a href="https://go.dev/"><img src="https://img.shields.io/badge/Go-1.26+-00ADD8?style=flat&logo=go&logoColor=white" alt="Go"></a>
-  <a href="https://github.com/modu-ai/moai-adk/releases"><img src="https://img.shields.io/github/v/release/modu-ai/moai-adk?sort=semver" alt="Release"></a>
+  <a href="https://github.com/modu-ai/moai-adk/releases"><img src="https://img.shields.io/badge/Release-v3.0.0-blue.svg" alt="Release"></a>
   <a href="./LICENSE"><img src="https://img.shields.io/badge/License-Apache--2.0-blue.svg" alt="License: Apache-2.0"></a>
 </p>
 
 <p align="center">
-  <a href="https://adk.mo.ai.kr"><strong>Official Documentation</strong></a>
+  <a href="https://adk.mo.ai.kr"><strong>공식 문서</strong></a> ·
+  <a href="https://adk.mo.ai.kr/book">도서: Claude Code 실전 에이전틱 코딩</a> ·
+  <a href="https://discord.gg/Z7E7Mdc5aN">Discord</a>
 </p>
 
 ---
 
-> 📚 **[공식 문서](https://adk.mo.ai.kr)** | 📖 **[책: 클로드 코드로 시작하는 실전 에이전틱 코딩](https://adk.mo.ai.kr/book)** | **[Discord 커뮤니티](https://discord.gg/Z7E7Mdc5aN)**
+> **"토크노믹스는 토큰 소비를 경제적으로 사용을 목표로 하는 하네스이다."**
 
 ---
 
-> **"바이브 코딩의 목적은 빠른 생산성이 아니라 코드 품질이다."**
+## MoAI-ADK는 토크노믹스 하네스다
 
-MoAI-ADK는 Claude Code를 위한 **고성능 AI 개발 환경**입니다. 8개 retained 에이전트와 27개 `moai-*` 스킬이 협력하여 품질 있는 코드를 만듭니다. 신규 프로젝트와 기능 개발에는 TDD(기본값)를, 테스트 커버리지가 낮은 기존 프로젝트에는 DDD를 자동 적용하며, Sub-Agent와 Agent Teams 이중 실행 모드를 지원합니다.
+MoAI-ADK(Agentic Development Kit)는 Claude Code가 코드를 생산하게 하고, 그 코드가 예측 가능한 비용으로 믿을 수 있게 만든다. 하네스는 모델을 바깥에서 감싸는 시스템이다. 모델은 토큰 단위로 움직이는 확률적 작업자라 예산도 품질 기준도 지난 세션이 어디서 끊겼는지도 기억하지 못한다. 비용 상한, 통과하는 테스트 스위트, `/clear`를 건너뛰는 연속성 — 이런 속성은 매 턴 프롬프트로 다시 심을 수 있는 게 아니라 시스템이 바깥에서 강제해야 한다.
 
-Go로 작성된 단일 바이너리 — 의존성 없이 모든 플랫폼에서 즉시 실행됩니다.
-
----
-
-## v3.0.0-rc5 (V3R6)의 새로운 기능
-
-MoAI-ADK v3.0.0-rc5 (V3R6 세대)는 8-retained-agent 카탈로그, `glm-5.2[1m]` 모델, 3-phase 라이프사이클(plan→run→sync), CG 모드 기본값, 동적 워크플로우, `/effort ultracode`, 세션 핸드오프 `/goal` 결합을 제공합니다.
-
-### 주요 마일스톤
-
-| 버전 | 주요 기능 |
-|------|---------|
-| **v2.17.0** | 메타-하니스 스킬 (revfactory/harness Apache 2.0), 정적 스킬 16개 제거, namespace 분리 (moai-* / harness-*) |
-| **v3.0.0-rc1** | 8 retained 에이전트 카탈로그 통합 (12 phantom/domain-expert 에이전트 아카이브), Anthropic 2026 정합 |
-| **v3.0.0-rc2** | 3-phase 라이프사이클(Mx 페이즈 retired), harness namespace V2, runtime recovery doctrine, orchestrator interrupt ledger, `glm-5.2[1m]`, 동적 워크플로우 + `/effort ultracode` |
-| **v3.0.0-rc5** | 세션 핸드오프 `/goal` 결합, AskUserQuestion 결정 메모리, native invocation-model doctrine, OWASP 보안 원칙 보강, retry idempotency 게이트, simplicity ladder 7-rung |
-
-### 주요 변경사항
-
-**8 retained 에이전트 카탈로그 (V3R6)**
-
-에이전트 카탈로그가 17개에서 8개 retained 에이전트(7 MoAI-custom + 1 Anthropic built-in `Explore`)로 통합되었습니다: manager-spec, manager-develop, manager-docs, manager-git, plan-auditor, sync-auditor, builder-harness, Explore. 12개 phantom/domain-expert 에이전트는 아카이브되었습니다 (`SPEC-V3R6-AGENT-TEAM-REBUILD-001`).
-
-**3-phase 라이프사이클 (plan → run → sync)**
-
-MoAI 라이프사이큜 정확히 3개 페이즈로 구성됩니다 — plan, run, sync. 과거의 4번째 "Mx-phase"는 `SPEC-V3R6-LIFECYCLE-REDESIGN-001`에서 retired되었으며, MX Tag 검증은 별도 페이즈가 아닌 sync의 교차 관심사로 통합되었습니다.
-
-**GLM `glm-5.2[1m]` + CG 모드**
-
-z.ai 최신 `glm-5.2[1m]` 모델(1M 컨텍스트)을 지원합니다. CG 모드(`moai cg`)는 Claude 리더 + GLM 팀원 토글로 구현 중심 작업에서 60-70% 비용 절감을 제공합니다.
-
-**동적 워크플로우 + `/effort ultracode`**
-
-Claude Code v2.1.154+ 동적 워크플로우 프리미티브와 `/effort ultracode` 세션 모드가 통합되었습니다 (`SPEC-V3R6-WORKFLOW-EFFORT-MAP-001`). 대규모 병렬 팬아웃 작업에 사용합니다.
-
-**Harness namespace V2**
-
-`moai-*` / `moai-harness-*` / `moai-meta-harness` = template-managed, `harness-*` = user-owned (`SPEC-V3R6-HARNESS-NAMESPACE-V2-001`). `moai update`가 user-owned harness 자산을 절대 삭제·수정하지 않습니다.
+모든 설계는 토크노믹스를 향한다. 어떤 모델을 쓸지, 얼마나 깊이 추론할지, 컨텍스트를 어떻게 소비할지는 그때그때 운에 맡기지 않고 시스템이 정한다. Claude Code를 대체하지 않는다. Claude Code가 사용자에게 맡겨둔 부분 — 모델 라우팅, 품질 게이트, 비용 제어, 세션 연속성 — 을 구조로 감쌀 뿐이다. Go로 짠 단일 바이너리라 macOS·Linux·Windows에서 별도 의존성 없이 바로 돈다.
 
 ---
 
-## 왜 MoAI-ADK인가?
+## 왜 토크노믹스인가
 
-Python 기반 MoAI-ADK(~73,000줄)를 Go로 완전히 재작성했습니다.
+토큰 단가가 계속 내려가는데, 정작 에이전틱 워크플로우의 실제 지출은 오른다. 에이전트는 한 과제를 풀려고 수십에서 수백 스텝을 돌고, 그만큼 토큰을 태운다. 종량제에서는 이게 곧 청구서이고, 구독제에서는 전 모델이 공유하는 주간 쿼터를 갉아먹는다.
 
-| 항목 | Python Edition | Go Edition |
-|------|---------------|------------|
-| 배포 | pip + venv + 의존성 | **단일 바이너리**, 의존성 없음 |
-| 시작 시간 | ~800ms 인터프리터 부팅 | **~5ms** 네이티브 실행 |
-| 동시성 | asyncio / threading | **네이티브 goroutines** |
-| 타입 안전성 | 런타임 (mypy 선택) | **컴파일 타임 강제** |
-| 크로스 플랫폼 | Python 런타임 필요 | **프리빌트 바이너리** (macOS, Linux, Windows) |
-| 훅 실행 | Shell 래퍼 + Python | **컴파일된 바이너리**, JSON 프로토콜 |
+### 비용은 모델 단가가 아니라 배정이 결정한다
 
-### 핵심 수치
+DeepSWE 리더보드(113 tasks) 실측이 이 문제를 보여준다. 같은 Claude 계열, 같은 최고 effort(max)로 돌려도 과제 하나를 푸는 비용은 크게 벌어진다.
 
-- **100K+줄** Go 코드, **100+개** 패키지
-- **85-100%** 테스트 커버리지
-- **8개** retained 에이전트 + **27개** `moai-*` 스킬 (template-managed; 2개 `harness-moaiadk-*` user-owned 제외)
-- **16개** 프로그래밍 언어 지원
-- **27개** Claude Code 훅 이벤트
+| 모델 [max] | Pass@1 | 과제당 비용 | $/해결과제 | 토큰/해결과제 | 스텝 |
+|---|---|---|---|---|---|
+| claude-opus-4.8 | 59% | $13.22 | **$22.4** | 229k | 120 |
+| claude-fable-5 | 70% | $21.63 | $30.9 | 170k | 88 |
+| claude-sonnet-5 | 54% | $26.40 | **$48.9** | 396k | 268 |
+
+Sonnet 5 max는 Opus 4.8 max보다 **비싸면서(과제당 $26.40 vs $13.22) 점수는 낮다(54% vs 59%)**. 원인은 268스텝 — 최고 effort에서 재시도 루프가 폭주한다. "약한 모델을 세게 굴리면 싸다"는 통념은 성립하지 않는다. 오히려 스텝을 세 배 돌며 쿼터를 더 태운다. 즉, 비용은 모델 단가가 아니라 **작업에 맞는 모델·추론 깊이 배정**이 결정한다.
+
+MoAI-ADK는 이 배정을 그때그때 운에 맡기지 않고 시스템으로 만든다.
 
 ---
 
-## 하네스 엔지니어링 아키텍처
+## 3축으로 경제화
 
-MoAI-ADK는 **하네스 엔지니어링(Harness Engineering)** 패러다임을 구현합니다 — 코드를 직접 작성하는 대신 AI 에이전트를 위한 환경을 설계합니다.
+### 라우팅 — 작업마다 맞는 모델과 추론 깊이 배정
 
-| 구성 요소 | 설명 | 명령어 |
-|-----------|------|--------|
-| **자가 검증 루프** | 에이전트가 코드 작성 → 테스트 → 실패 → 수정 → 통과 사이클을 자율적으로 반복 | `/moai loop` |
-| **컨텍스트 맵** | 코드베이스 아키텍처 맵과 문서를 에이전트가 항상 참조 가능 | `/moai codemaps` |
-| **세션 지속성** | `progress.md`가 완료된 단계를 추적; 중단된 실행이 자동으로 재시작 | `/moai run SPEC-XXX` |
-| **실패 체크리스트** | 모든 인수 조건이 실행 시작 시 대기(pending) 작업으로 등록; 구현되면 완료로 표시 | `/moai run SPEC-XXX` |
-| **언어 중립** | 16개 언어 지원: 언어 자동 감지, 적합한 LSP/린터/테스트/커버리지 도구 자동 선택 | 전체 워크플로우 |
-| **가비지 컬렉션** | 죽은 코드, AI Slop, 미사용 임포트 주기적 스캔 및 제거 | `/moai clean` |
-| **스캐폴딩 우선** | 구현 전 빈 파일 스텁 생성으로 엔트로피 방지 | `/moai run SPEC-XXX` |
+**Tier×Phase 매트릭스**. 작업 단계(phase: plan / run / sync)와 SPEC 크기(Tier S / M / L)에 따라 모델과 추론 깊이(effort)를 선언적으로 배정한다. 깊은 추론이 필요한 계획 단계에는 고추론 모델을, 기계적 반복이 많은 구현 단계에는 가벼운 모델을 배정하여 비용 대비 품질을 극대화한다.
 
-> "인간은 방향을 잡고, 에이전트는 실행합니다." — 엔지니어의 역할이 코드 작성에서 하네스 설계(SPEC, 품질 게이트, 피드백 루프)로 전환됩니다.
+**No-Haiku 3-티어 정책**. Haiku를 라우팅 모델 세트에서 배제하고, 3-티어 구조(Sonnet / Opus / Fable)로 작업을 분산한다. 기계 작업에는 Sonnet low effort를 배정하여 스텝 수를 최소화하고, 추론이 필요한 곳에는 상위 모델을 배정한다.
+
+**프로파일 매트릭스 (Profile Matrix)**. 에이전트별 단일 프로파일 매트릭스가 각 리테인 에이전트를 `{model, effort}` 쌍에 대응시킨다. 하나의 프로파일 축 — `max` / `medium`(기본값) / `low`, `llm.profile`로 선택(`moai init --profile`, `moai update --profile`) — 이 활성 열을 고르고, `moai model profile`이 각 에이전트의 셀을 해석한다. 10개 그룹 에이전트는 매트릭스에서 모델+effort를 가져오며(어디에도 Haiku 없음), `Explore`와 사용자 정의 에이전트는 세션 모델을 상속한다.
+
+**CG 모드 (Claude + GLM)**. `moai cg`는 Claude 리더와 GLM 워커를 결합한 하이브리드 모드다. 전략, 계획, 감사는 Claude가 담당하고, 대량 구현 작업은 GLM이 담당한다. 구현 중심 작업에서 **60-70% 비용 절감** 효과가 있다.
+
+### 검증경제 — 컨텍스트를 다이어트하고 증거는 디스크에
+
+**verify-diet**. 검증 명령의 장문 출력을 디스크 파일로 리다이렉트하고, 컨텍스트에는 exit code와 bounded tail(최대 50줄)만 남긴다. 이 파일-리다이렉트 계약은 검증 증거의 무결성을 유지하면서 컨텍스트 소비를 줄인다. 증거는 `.moai/state/verify/<session>/` 하위에 영속화된다.
+
+**프롬프트 캐시**. 요청의 앞부분이 직전 요청과 동일할 때, 그 부분을 다시 처리하지 않고 재사용한다. 캐시에서 읽은 토큰은 기본 입력 단가의 0.1배로 청구된다. 항시 로드되는 지침을 최소화하면 이 적중률이 바로 올라간다. 스테이터스라인의 캐시 히트율 세그먼트(`♻️`)로 실시간 확인이 가능하다.
+
+**컨텍스트 다이어트**. `/clear` 전략을 적용한다. SPEC phase가 끝나면 `/clear`하고, 진행 상태를 `progress.md`에 저장한 뒤 붙여넣기 가능한 resume 메시지를 발행한다. 컨텍스트 윈도우 임계(1M 모델 50% / 200K 모델 90%)에서 자동으로 권고가 뜬다.
+
+### 예산방어 — 초과 전에 중단하고 다음 세션으로 이어
+
+**Token Circuit Breaker**. 에이전트별 토큰 사용량이 hard-limit(기본 90%)에 도달하면 중단을 수행한다. 진행 상태를 `progress.md`에 저장하고, 붙여넣기 가능한 핸드오프 메시지(paste-ready resume)를 발행하며, 자동 `/clear`는 절대 하지 않는다. 시스템은 사용자가 `/clear`를 실행하도록 권고만 하며, 사용자가 판단하여 실행한다.
+
+**스테이터스라인**. 컨텍스트 사용률(CW%), 프롬프트 캐시 적중률, rate limit 소진율을 터미널 하단에 항상 띄워 두면 토큰 운용 상태를 한눈에 읽을 수 있다. CW% 옆 `(⚠️/clear)` 마커는 모델별 임계에서 뜬다.
 
 ---
 
-## 시스템 요구사항
+## 인프라가 토크노믹스를 지속시킨다
 
-| 플랫폼 | 지원 환경 | 비고 |
-|--------|----------|------|
-| macOS | Terminal, iTerm2 | 완전 지원 |
-| Linux | Bash, Zsh | 완전 지원 |
-| Windows | **WSL (권장)**, PowerShell 7.x+ | 네이티브 cmd.exe 미지원 |
+### 품질 구조 — 재작업·디버깅 반복(토큰 낭비 최악 case)을 방지
 
-**필수 조건:**
-- **Git**이 모든 플랫폼에서 설치되어 있어야 합니다
-- **Windows 사용자**: [Git for Windows](https://gitforwindows.org/) **필수 설치** (Git Bash 포함)
-  - **WSL** (Windows Subsystem for Linux) 사용을 권장합니다
-  - PowerShell 7.x 이상도 지원됩니다
-  - 레거시 Windows PowerShell 5.x 및 cmd.exe는 **지원하지 않습니다**
+**SPEC 3-페이즈 라이프사이클**. plan → run → sync. Tier S/M/L 크기 분류가 검증 깊이와 PR 라우팅을 정하고, GEARS 형식 요구사항 + 인수 기준으로 완료를 증거로 판정한다.
+
+**TRUST 5 품질 게이트**. Tested(85%+ 커버리지) · Readable · Unified · Secured · Trackable, 모든 변경에 적용한다. 검증을 에이전트가 아닌 게이트가 판정한다.
+
+**11-에이전트 카탈로그**. MoAI 커스텀 10개 + 내장 Explore. 계획과 감사를 설계 단계부터 분리해, 작성한 쪽이 자기 작업에 점수를 매기지 않는다.
+
+### 학습 루프 — 루프가 돌수록 토큰 효율 개선
+
+**`/moai goal`·`/moai loop`**. 완료 조건 하나만 선언하면 충족되거나 턴 한도(기본 30)에 닿을 때까지 세션이 알아서 일한다. `/moai loop`은 LSP 진단·AST-grep·린터를 병렬로 스캔해, 나온 문제를 큐가 빌 때까지 돈다.
+
+**Routing Ledger**. 라우팅 결정과 게이트 증거를 프라이버시 보존 다이제스트로 기록한다. 관찰이 규칙으로 승격된다.
+
+**4-티어 학습 사다리**. 관찰 (≥1) → 휴리스틱 (≥3) → 규칙 (≥5) → 자동 업데이트 (≥10, 사용자 승인 필수); 신뢰도 하한 0.70. 모든 적용은 `moai harness rollback`으로 되돌릴 수 있다.
+
+**결정 메모리**. 질문은 불확실성이 가장 높은 곳(p ≈ 0.5)에서 나오고, 추천은 시스템 기본값이 아니라 관찰된 통계적 다수를 따른다.
+
+### 확장 지점 — 동일 패턴을 프로젝트 맞춤으로 복제해 재사용 효율
+
+**Harness v4 Builder**. 자연어 요청 → 도메인·목표·제약 추출 → 승인 게이트 → 프로젝트 전용 에이전트·스킬·커맨드 생성.
+
+**@MX 태그**. AI 에이전트끼리 컨텍스트·불변 계약·위험 구역을 주고받는 인라인 코드 어노테이션이다.
+
+**worktree 격리**. `/moai plan --worktree`로 SPEC마다 병렬 개발용 격리 worktree를 붙인다.
+
+---
+
+![토크노믹스 하네스](./assets/images/readme/tokenomics-harness-ko.png)
 
 ---
 
 ## 빠른 시작
 
-### 1. 설치
+### 설치
 
 #### macOS / Linux / WSL
 
@@ -150,13 +144,9 @@ curl -fsSL https://raw.githubusercontent.com/modu-ai/moai-adk/main/install.sh | 
 
 #### Windows (PowerShell 7.x+)
 
-> **권장**: 최상의 경험을 위해 WSL에서 위의 Linux 설치 명령어를 사용하세요.
-
 ```powershell
 irm https://raw.githubusercontent.com/modu-ai/moai-adk/main/install.ps1 | iex
 ```
-
-> [Git for Windows](https://gitforwindows.org/)가 먼저 설치되어 있어야 합니다.
 
 #### 소스에서 빌드 (Go 1.26+)
 
@@ -165,970 +155,220 @@ git clone https://github.com/modu-ai/moai-adk.git
 cd moai-adk && make build
 ```
 
-> 프리빌트 바이너리는 [Releases](https://github.com/modu-ai/moai-adk/releases) 페이지에서 다운로드할 수 있습니다.
-
-### 2. Windows 특정 이슈
-
-#### 한글 사용명 경로 에러
-
-Windows 사용자 이름에 비ASCII 문자(한글, 중국어 등)가 포함된 경우,
-Windows 8.3 짧은 파일 이름 변환으로 인해 `EINVAL` 에러가 발생할 수 있습니다.
-
-**해결책 1:** 대체 임시 디렉터리 설정:
-
-```bash
-# 명령 프롬프트
-set MOAI_TEMP_DIR=C:\temp
-mkdir C:\temp 2>nul
-
-# PowerShell
-$env:MOAI_TEMP_DIR="C:\temp"
-New-Item -ItemType Directory -Path "C:\temp" -Force
-```
-
-**해결책 2:** 8.3 파일 이름 생성 비활성화 (관리자 권한 필요):
-
-```bash
-fsutil 8dot3name set 1
-```
-
-**해결책 3:** ASCII만 포함하는 새 Windows 사용자 계정 생성.
-
-### 3. 프로젝트 초기화
+### 프로젝트 초기화
 
 ```bash
 moai init my-project
 ```
 
-대화형 마법사가 언어, 프레임워크, 방법론을 자동 감지하고 Claude Code 통합 파일을 생성합니다.
+대화형 마법사가 언어와 프레임워크, 방법론을 자동으로 감지하고, 모델 정책을 고른 뒤 Claude Code 통합 파일까지 만든다.
 
-### 4. Claude Code에서 개발 시작
+### 첫 워크플로우
 
 ```bash
-# Claude Code 실행 후
-/moai project                            # 프로젝트 문서 생성 (product.md, structure.md, tech.md)
-/moai plan "사용자 인증 기능 추가"        # SPEC 문서 생성
-/moai run SPEC-AUTH-001                   # DDD/TDD 구현
-/moai sync SPEC-AUTH-001                  # 문서 동기화 & PR 생성
-/moai github issues                      # GitHub 이슈 자동화 (Agent Teams)
-/moai github pr 123                       # PR 다각도 검토 (multi-perspective)
+claude        # launch Claude Code inside the project
 ```
 
-```mermaid
-graph LR
-    A["🔍 /moai project"] --> B["📋 /moai plan"]
-    B -->|"SPEC 문서"| C["🔨 /moai run"]
-    C -->|"구현 완료"| D["📄 /moai sync"]
-    D -->|"PR 생성"| E["✅ Done"]
+```text
+/moai plan "Add JWT login"      # author a SPEC
+/moai run SPEC-AUTH-001         # TDD/DDD implementation
+/moai sync SPEC-AUTH-001        # sync docs + create PR
 ```
+
+자연어로 던져도 된다. `/moai "fix the login bug"`처럼 쓰면 의도 분석(Analyze-First 라우팅)이 요청을 읽고 알맞은 워크플로우로 넘긴다.
+
+### 요구사항
+
+| 플랫폼 | 지원 환경 | 비고 |
+|----------|----------------------|-------|
+| macOS | Terminal, iTerm2 | 완전 지원 |
+| Linux | Bash, Zsh | 완전 지원 |
+| Windows | **WSL (권장)**, PowerShell 7.x+ | 네이티브 cmd.exe는 미지원 |
+
+**사전 요구사항**
+
+- 모든 플랫폼에 **Git** 설치 필수
+- **Claude Code** — MoAI-ADK는 Claude Code를 위한 하네스다
+- **권장**: `gh` CLI (PR 자동화) · `tmux` (CG 모드) · 사용 언어의 린트/테스트 툴체인 (예: `golangci-lint`)
 
 ---
 
-## MoAI 개발 방법론
+## 레퍼런스
 
-MoAI-ADK는 프로젝트 상태에 따라 최적의 개발 방법론을 자동 선택합니다.
+### /moai 슬래시 서브커맨드 (16개)
+
+| 서브커맨드 | 역할 |
+|------------|------|
+| `plan` / `run` / `sync` | SPEC 3-페이즈 파이프라인 |
+| `project` / `harness` / `design` | 프로젝트 문서+하네스 생성 · 하네스 라이프사이클 · Design-phase 협업 |
+| `goal` / `loop` / `fix` | 선언적 goal 루프 · 반복 수리 · 단일 패스 수리 |
+| `review` / `gate` / `clean` | 코드 리뷰 · 사전 커밋 품질 게이트 · 데드 코드 제거 |
+| `mx` / `codemaps` / `feedback` | @MX 어노테이션 · 아키텍처 문서 · GitHub 이슈 보고 |
+| `e2e` | 멀티플랫폼 E2E 테스트 (웹/모바일/데스크톱, CLI 우선) |
+| *(자연어)* | 자율 plan → run → sync 파이프라인으로 넘기는 Analyze-First 라우팅 |
+
+> → 자세히: [워크플로우 커맨드](https://adk.mo.ai.kr/ko/workflow-commands) · [유틸리티 커맨드](https://adk.mo.ai.kr/ko/utility-commands)
+
+### CLI 커맨드 (자주 쓰는 12개)
+
+| 커맨드 | 설명 |
+|---------|-------------|
+| `moai init` | 대화형 프로젝트 설정 (언어/프레임워크/방법론 자동 감지) |
+| `moai doctor` | 시스템 상태 진단과 환경 검증 |
+| `moai status` | 프로젝트 상태 요약 (Git 브랜치, 품질 지표) |
+| `moai update` | 최신 버전으로 업데이트 (자동 롤백 지원) |
+| `moai cc` / `moai glm` / `moai cg` | Claude 전용 / GLM 전용 / 하이브리드 Claude 리더 + GLM 워커 세션 |
+| `moai worktree <new|list|switch|sync|remove|clean|go>` | 병렬 SPEC 개발을 위한 Git worktree 관리 |
+| `moai session <list|register|current>` | 멀티 세션 조율 |
+| `moai spec <audit|archive|lint|list|new>` | SPEC 라이프사이클 도구 |
+| `moai goal <arm|status|clear>` | Goal 엔진 CLI |
+| `moai harness <status|apply|rollback|disable>` | 하네스 학습 라이프사이클 |
+| `moai handoff <save|list>` | 세션 핸드오프 기록 |
+| `moai preference <list|decay-scan|toggle>` | 결정 메모리 관리 |
+| `moai web` | Web Console — 6탭 설정 콘솔 |
+
+> 전체 36개 커맨드: [CLI 레퍼런스](https://adk.mo.ai.kr/ko/cli-reference)
+
+### 11-에이전트 카탈로그
+
+| 분류 | 에이전트 | 역할 |
+|----------|-------|------|
+| **Manager** | manager-spec | Plan-phase SPEC 작성 |
+| | manager-develop | Run-phase TDD/DDD/autofix 구현 |
+| | manager-docs | Sync-phase 문서화 |
+| | manager-git | PR 생성 및 라우팅 |
+| | manager-design | Design-phase 협업 (Claude Design) |
+| **Evaluator** | plan-auditor | 독립 계획 감사 (편향 방지) |
+| | sync-auditor | 4-차원 품질 채점 (Functionality 40 · Security 25 · Craft 20 · Consistency 15) |
+| **Builder** | builder-harness | 프로젝트 전용 에이전트, 스킬, 커맨드, 훅 스캐폴딩 |
+| **Advisor** | super-advisor | 온디맨드 고추론 자문 (E1-E4 에스컬레이션) |
+| **Specialist** | e2e-tester | 웹/모바일/데스크톱 E2E 테스트 실행 (CLI 우선) |
+| **Built-in** | Explore | 읽기 전용 코드베이스 탐색 |
+
+### TRUST 5 품질 게이트
+
+| 기준 | 의미 | 검증 |
+|-----------|---------|------------|
+| **T**ested | 테스트됨 | 85%+ 커버리지, 특성화 테스트, 단위 테스트 통과 |
+| **R**eadable | 읽기 쉬움 | 명확한 네이밍, 일관된 스타일, 린트 오류 0 |
+| **U**nified | 통일됨 | 일관된 포매팅, import 순서, 프로젝트 구조 준수 |
+| **S**ecured | 보안됨 | OWASP 준수, 입력 검증, 보안 경고 0 |
+| **T**rackable | 추적 가능 | Conventional commits, 이슈 참조, 구조화된 로깅 |
+
+### 방법론 선택 (TDD vs DDD)
 
 ```mermaid
 flowchart TD
-    A["🔍 프로젝트 분석"] --> B{"신규 프로젝트 또는<br/>10%+ 테스트 커버리지?"}
-    B -->|"Yes"| C["TDD (기본값)"]
-    B -->|"No"| D{"기존 프로젝트<br/>< 10% 커버리지?"}
-    D -->|"Yes"| E["DDD"]
+    A["Project analysis"] --> B{"New project or<br/>10%+ test coverage?"}
+    B -->|"Yes"| C["TDD (default)"]
+    B -->|"No"| D["DDD"]
     C --> F["RED → GREEN → REFACTOR"]
-    E --> G["ANALYZE → PRESERVE → IMPROVE"]
-
-    style C fill:#4CAF50,color:#fff
-    style E fill:#2196F3,color:#fff
+    D --> G["ANALYZE → PRESERVE → IMPROVE"]
 ```
 
-### TDD 방법론 (기본값)
+| 방법론 | 사이클 | 대상 |
+|-------------|-------|-----|
+| **TDD** (기본) | RED → GREEN → REFACTOR | 신규 프로젝트와 기능 작업 |
+| **DDD** | ANALYZE → PRESERVE → IMPROVE | 커버리지 10% 미만의 기존 코드 |
 
-신규 프로젝트와 기능 개발에 권장되는 기본 방법론입니다. 테스트를 먼저 작성합니다.
+---
 
-| 단계 | 설명 |
+## 스테이터스라인 읽는 법
+
+```
+🤖 Opus │ 🧠 xhigh·t │ ♻️ 87% │ 🔅 v2.1.212 │ 🗿 v3.0.0 │ ⏳ 2h 34m │ 💬 MoAI
+🪫 CW: ████████░░ 88% (⚠️/clear) │ 🔋 5H: ████░░░░░░ 45% (4h 30m) │ 🪫 7D: ████████░░ 82% (Jan 21)
+📁 moai-adk-go │ 🔀 modu-ai/moai-adk | 🅱️ feat/statusline ↑2 +3 │ 💾 +1 M2 ?0 │ 📋 [run SPEC-AUTH-001-run] │ 💌 PR #1042 (⌥approved)
+```
+
+| 요소 | 의미 |
 |------|------|
-| **RED** | 기대 동작을 정의하는 실패 테스트 작성 |
-| **GREEN** | 테스트를 통과하는 최소 코드 작성 |
-| **REFACTOR** | 테스트를 유지하면서 코드 품질 개선. REFACTOR 완료 후 `/simplify`가 자동 실행됩니다. |
+| 🤖 모델 | 현재 활성 모델 |
+| 🧠 effort | 추론 노력 레벨 — 확장 사고가 켜지면 `·t` 접미 |
+| ♻️ 캐시 적중률 | 프롬프트 캐시 적중률 |
+| CW: 컨텍스트 | 컨텍스트 윈도우 사용률 + 2단계 `/clear` 마커 (⚠️ 소프트, 🛑 하드) |
+| 5H / 7D | 요금제 사용률 + 리셋 시간 |
+| 📁 디렉터리 | 프로젝트 디렉터리 이름 |
+| 🔀 리포 | GitHub 리포 identity `owner/name` |
+| 🅱️ 브랜치 | 현재 브랜치 + `↑`ahead `↓`behind + `+`더티 카운트 |
+| 💾 git 상태 | staged / modified / untracked 카운트 |
+| 📋 태스크 | 활성 SPEC 워크플로우 `[커맨드 SPEC-ID-단계]` |
+| 💌 PR | 활성 GitHub PR 번호 + 리뷰 상태 (`⌥state`) |
 
-브라운필드 프로젝트(기존 코드베이스)에서는 **RED 전 분석 단계**가 추가됩니다: 테스트 작성 전에 기존 코드를 읽어 현재 동작을 파악합니다.
-
-### DDD 방법론 (테스트 커버리지 < 10% 기존 프로젝트)
-
-테스트 커버리지가 최소인 기존 프로젝트에서 안전하게 리팩토링하기 위한 방법론입니다.
-
-```
-ANALYZE   → 기존 코드와 의존성 분석, 도메인 경계 식별
-PRESERVE  → 특성 테스트 작성, 현재 동작 스냅샷 캡처
-IMPROVE   → 테스트로 보호된 상태에서 점진적 개선. IMPROVE 완료 후 /simplify가 자동 실행됩니다.
-```
-
-> 방법론은 `moai init` 시 자동 선택되며 (`--mode <ddd|tdd>`, 기본값: tdd), `.moai/config/sections/quality.yaml`의 `development_mode`에서 변경할 수 있습니다.
->
-> **참고**: MoAI-ADK v2.5.0+는 이진 방법론 선택(TDD 또는 DDD만)을 사용합니다. 명확성과 일관성을 위해 hybrid 모드는 제거되었습니다.
-
-### 자동 품질 & 스케일아웃 레이어
-
-MoAI-ADK v2.6.0+는 MoAI가 **자율적으로** 호출하는 두 가지 Claude Code 네이티브 스킬을 통합합니다 — 플래그나 수동 명령이 필요 없습니다.
-
-| 스킬 | 역할 | 트리거 |
-|------|------|--------|
-| `/simplify` | 품질 강화 | TDD REFACTOR 및 DDD IMPROVE 단계 완료 후 **항상** 실행 |
-| `/batch` | 스케일아웃 실행 | 작업 복잡도가 임계값을 초과할 때 자동 트리거 |
-
-**`/simplify` — 자동 품질 패스**
-
-병렬 에이전트로 변경된 코드를 재사용 기회, 품질 문제, 효율성, CLAUDE.md 준수 여부 측면에서 검토하고 자동으로 수정합니다. 구성 없이 매 구현 주기 후 MoAI가 직접 호출합니다.
-
-**`/batch` — 병렬 스케일아웃**
-
-대규모 병렬 작업을 위해 격리된 git worktree에서 수십 개의 에이전트를 실행합니다. 각 에이전트는 테스트를 실행하고 결과를 보고하며, MoAI가 이를 합칩니다. 워크플로우별 자동 트리거 조건:
-
-| 워크플로우 | 트리거 조건 |
-|-----------|------------|
-| `run` | 작업 수 ≥ 5, 또는 예상 파일 변경 수 ≥ 10, 또는 독립 작업 수 ≥ 3 |
-| `mx` | 소스 파일 수 ≥ 50 |
-| `clean` | 확인된 데드 코드 항목 ≥ 20 |
+> 자세히: [스테이터스라인 가이드](https://adk.mo.ai.kr/ko/advanced/statusline)
 
 ---
 
-## AI 에이전트 오케스트레이션
+## FAQ
 
-MoAI는 **전략적 오케스트레이터**입니다. 직접 코드를 작성하지 않고, 8개 retained 에이전트에게 작업을 위임합니다.
+### Q: 왜 모든 함수에 @MX 태그가 없나요?
 
-```mermaid
-graph LR
-    U["👤 사용자 요청"] --> M["🗿 MoAI Orchestrator"]
+정상이다. 태그는 팬인이 높거나 복잡하거나 위험한 코드만 골라 표시한다. 코드 대부분은 어떤 태그 기준에도 안 걸리고, 태그가 없는 파일은 결함이 아니다.
 
-    M --> MS["📋 manager-spec"]
-    M --> MD["🔨 manager-develop"]
-    M --> MDoc["📄 manager-docs"]
-    M --> MG["🌿 manager-git"]
-    M --> PA["🔍 plan-auditor"]
-    M --> SA["⚖️ sync-auditor"]
-    M --> BH["🔧 builder-harness"]
-    M --> EX["👁️ Explore (built-in)"]
+### Q: 스테이터스라인의 버전 표시는 무슨 뜻인가요?
 
-    style M fill:#FF6B35,color:#fff
-    style MS fill:#4CAF50,color:#fff
-    style MD fill:#2196F3,color:#fff
-    style MDoc fill:#2196F3,color:#fff
-    style MG fill:#2196F3,color:#fff
-    style PA fill:#FF5722,color:#fff
-    style SA fill:#FF5722,color:#fff
-    style BH fill:#9C27B0,color:#fff
-    style EX fill:#607D8B,color:#fff
+```
+🗿 v3.0.0 ⬆️ v3.0.1
 ```
 
-### 에이전트 카테고리
+앞의 값은 지금 설치된 MoAI-ADK 버전이고, 화살표는 받을 수 있는 업데이트가 있다는 표시다.
 
-| 카테고리 | 수량 | 에이전트 | 역할 |
-|----------|------|---------|------|
-| **Manager** | 4 | manager-spec, manager-develop, manager-docs, manager-git | 계획 단계 산출물 작성, 실행 단계 구현, 동기화 문서, PR 라우팅 |
-| **Evaluator** | 2 | plan-auditor, sync-auditor | 독립적 계획 감사, 동기화 4차원 품질 평가 |
-| **Builder** | 1 | builder-harness | 동적 프로젝트 전용 harness 전문가 생성 |
-| **Anthropic 내장** | 1 | Explore | 읽기 전용 코드베이스 탐색 (직접 호출, MoAI 파일 없음) |
+### Q: GLM 없이 Claude만으로 쓸 수 있나요?
 
-**총 8개 retained 에이전트** (7개 MoAI 커스텀 + 1개 Anthropic 내장 `Explore`)
+쓸 수 있다. `moai cc`가 Claude 전용 세션이다. CG 모드(`moai cg`, Claude 리더 + GLM 워커)와 GLM 전용(`moai glm`)은 비용 절감을 위한 선택지일 뿐, 하네스·SPEC 워크플로우·품질 게이트는 세 모드 모두에서 동일하게 돈다.
 
-12개 레거시 에이전트 이름(예: `manager-strategy`, `manager-quality`, `manager-project`, 6개 `expert-*` 에이전트)은 **archived** 상태이며 spawn 대상이 아닙니다. paste-ready resume 또는 `Agent()` 호출이 archived 이름을 참조하면 오케스트레이터는 spawn을 거부하고 `.claude/rules/moai/workflow/archived-agent-rejection.md`의 마이그레이션 테이블을 참조합니다.
+### Q: 기존 프로젝트에도 적용되나요?
 
-참고: 동적 팀 팀원(researcher, analyst, architect, implementer, tester, designer, reviewer)은 role profile을 통해 런타임에 생성되며 정적 에이전트 정의로 관리되지 않습니다.
-
-### `/moai` 슬래시 명령 (13개)
-
-MoAI는 `.claude/commands/moai/`에 **13개 `/moai` 슬래시 명령**을 노출하며, 토큰 효율을 위한 3단계 프로그레시브 디스클로저 시스템으로 관리됩니다 (스킬 메타데이터는 항상 목록에 표시, 본문은 호출 시 로드, 번들 참조는 필요시 로드).
-
-| 그룹 | 명령 |
-|------|------|
-| **워크플로우** | `plan`, `run`, `sync`, `project` |
-| **유틸리티** | `fix`, `loop`, `clean`, `mx`, `codemaps` |
-| **품질** | `review`, `gate` |
-| **자율** | `harness` |
-| **피드백** | `feedback` |
-
-전체 명령 세트 (총 13개): `clean` · `codemaps` · `feedback` · `fix` · `gate` · `harness` · `loop` · `mx` · `plan` · `project` · `review` · `run` · `sync`.
+적용된다. `moai init`이 프로젝트 상태를 감지해 방법론을 정한다 — 커버리지 10% 미만의 기존 코드에는 DDD(특성화 테스트로 동작을 고정한 뒤 점진 개선), 신규/충분히 테스트된 코드에는 TDD가 붙는다.
 
 ---
 
-## 모델 정책 (토큰 최적화)
+## 커뮤니티와 문서
 
-MoAI-ADK는 Claude Code 구독 요금제에 맞춰 8개 retained 에이전트에 최적의 AI 모델을 할당합니다. 요금제의 사용량 제한 내에서 품질을 극대화합니다.
+### 기여하기
 
-| 정책 | 요금제 | 🟣 Opus | 🔵 Sonnet | 🟡 Haiku | 용도 |
-|------|--------|------|--------|-------|------|
-| **High** | Max $200/월 | 16 | 5 | 3 | 최고 품질, 최대 처리량 |
-| **Medium** | Max $100/월 | 3 | 17 | 4 | 품질과 비용의 균형 |
-| **Low** | Plus $20/월 | 0 | 13 | 11 | 경제적, Opus 미포함 |
+기여는 언제든 환영한다. 자세한 절차는 [CONTRIBUTING.md](CONTRIBUTING.md)에 정리해 두었다.
 
-> **왜 중요한가요?** Plus $20 요금제는 Opus를 포함하지 않습니다. `Low`로 설정하면 모든 에이전트가 Sonnet과 Haiku만 사용하여 사용량 제한 오류를 방지합니다. 상위 요금제에서는 핵심 에이전트(보안, 전략, 아키텍처)에 Opus를, 일반 작업에 Sonnet/Haiku를 배분합니다.
-
-### 티어별 에이전트 모델 배정
-
-아래에는 8개 retained 에이전트만 표시됩니다. 12개 레거시 에이전트 이름은 archived 상태입니다 — `manager-strategy`, `manager-quality`, `manager-project`, 6개 `expert-*` 에이전트 등의 마이그레이션 테이블은 `.claude/rules/moai/workflow/archived-agent-rejection.md`를 참조하세요.
-
-#### Manager Agents
-
-| 에이전트 | High | Medium | Low |
-|---------|------|--------|-----|
-| manager-spec | 🟣 opus | 🟣 opus | 🔵 sonnet |
-| manager-develop | 🟣 opus | 🔵 sonnet | 🔵 sonnet |
-| manager-docs | 🔵 sonnet | 🟡 haiku | 🟡 haiku |
-| manager-git | 🟡 haiku | 🟡 haiku | 🟡 haiku |
-
-#### Evaluator Agents
-
-| 에이전트 | High | Medium | Low |
-|---------|------|--------|-----|
-| plan-auditor | 🟣 opus | 🟣 opus | 🔵 sonnet |
-| sync-auditor | 🟣 opus | 🔵 sonnet | 🔵 sonnet |
-
-#### Builder Agents
-
-| 에이전트 | High | Medium | Low |
-|---------|------|--------|-----|
-| builder-harness | 🟣 opus | 🔵 sonnet | 🟡 haiku |
-
-#### Anthropic 내장
-
-| 에이전트 | High | Medium | Low |
-|---------|------|--------|-----|
-| Explore (Anthropic 내장) | (세션 모델 상속 — MoAI 모델 정책 할당 없음) | | |
-
-#### Team Role Profiles (동적, 정적 에이전트 아님)
-
-팀 role profile(researcher, analyst, architect, implementer, tester, designer, reviewer)은 런타임에 `Agent(subagent_type: "general-purpose")`로 동적 생성되며, `workflow.yaml`의 모델 + isolation override를 따릅니다. 정적 에이전트 정의가 아니므로 고정된 tier-mapping 행이 없습니다.
-
-### 설정 방법
-
-```bash
-# 프로젝트 초기화 시
-moai init my-project          # 대화형 마법사에서 모델 정책 선택
-
-# 기존 프로젝트 재설정
-moai update -c                # init 마법사 재실행 (템플릿 동기화 없음)
-```
-
-> **`moai update` vs `moai update -c`**: bare `moai update`는 3-way 머지로 템플릿을 동기화합니다;
-> `moai update -c`(`--config`)는 init 마법사를 재실행하여 프로젝트 설정을 편집하며
-> 템플릿을 동기화하지 않습니다.
-
-`moai update -c` 실행 시 다음 항목을 묻습니다:
-- **모델 정책 재설정?** (y/n) - 모델 정책 설정 마법사 재실행
-- **GLM 설정 업데이트?** (y/n) - settings.local.json에 GLM 환경 변수 구성
-
-> 기본 정책은 `High`입니다. GLM 설정은 `settings.local.json`에 격리됩니다 (Git에 커밋되지 않음).
-
----
-
-## 의사결정 메모리 (Decision Memory)
-
-MoAI-ADK는 이제 AskUserQuestion 결정을 캡처하고, 미래 추천에 개인화에 활용합니다. 이 시스템은 사용자 선택을 학습하면서 자동 데이터 감쇠와 세션 범위 컨트롤을 통해 프라이버시를 유지합니다.
-
-### 5가지 컴포넌트
-
-1. **3계층 메모리 계층** (`internal/cli/preference/`)
-   - **Core**: 핫 선호도 (≤4KB) 즉시 액세스
-   - **Recall**: 최근 세션 데이터 + 가중치 기반 감쇠
-   - **Archival**: 장기 보관, 28일 후 soft-delete
-
-2. **적응형 추천 배치** (`.claude/rules/moai/core/askuser-protocol.md`)
-   - 불확실성이 가장 높을 때 질문 (Fisher 정보 p≈0.5)
-   - 추천은 통계적 다수 기반, 시스템 기본값 아님
-   - 전문가 사용자는 약한 (info-centric) 가이던스 수신
-   - Cold-start 선호는 "기본 설정 기반, 개인화에 N건 관찰 필요" 공개
-
-3. **PostToolUse 캡처 훅** (`internal/hook/user_decision_capture.go`)
-   - Advisory/fail-open 설계 — AskUserQuestion 실행 절대 차단하지 않음
-   - 관측 confidence + 세션 레벨 source citation 캡처
-   - Schema 허용 파싱 — 다양한 payload 포맷 지원
-   - Recovery-Signal Carve-Out: recovery 턴에서 advisory (REQ-ADM-010 준거, doctrine-honest)
-
-4. **감쇠 정책** (`moai preference decay-scan`)
-   - Power-law weight 함수: `(age+1)^(-0.5)` — α=0.5 고정 (Standard tier)
-   - Transient 선호 28일 TTL (stable 선호는 보존)
-   - Touch reset-on-reuse: 선호 사용 시 weight 1.0으로 갱신
-   - 일일 스캔 주기 + 24h 게이트 (멱등, cross-process 안전)
-
-5. **회복 제어**
-   - 세션 범위 토글 (`moai preference toggle` — 프로젝트별 비활성화)
-   - 민감 도메인 게이트 — 보안/취약점 주제는 추천 강도 저하
-   - 숙련도 추정 — cold-start(<5 세션) / general(5-19) / expert(20+)
-   - 신선도 공개 — "N일 기반 데이터" 투명성
-   - 정정 루프 — 관측 사실이 inference를 덮어쓰며 archival audit-trail 보존
-
-### 사용법
-
-```bash
-# 캡처된 선호 조회
-moai preference list [--domain=<D>] [--key=<K>]
-
-# 감쇠 스캔 트리거 (cron/automation으로 일일 실행)
-moai preference decay-scan [--memory-dir=<path>] [--now=<timestamp>] [--force]
-
-# 개인화 토글 (세션 범위)
-moai preference toggle [--disable] [--project-root=<path>]
-```
-
-### 프라이버시 및 안전
-
-- **네임스페이스 분리**: 사용자 결정은 `memory/user_decisions/`에 저장, 엔지니어링 레슨과 분리
-- **Advisory 캡처**: 훅이 AskUserQuestion을 절대 차단하지 않음, 모든 오류 fail-open
-- **자동 감쇠**: Transient 엔트리는 28일 후 soft-delete, stable 엔트리(명시적 표시)는 보존
-- **세션 컨트롤**: 토글은 프로젝트별, 세션 간 비영속 (새 세션에서 자동 재활성화)
-- **민감 도메인**: 보안 관련 주제는 중립 추천 + 공개 로그
-
-전체 요구사항, 아키텍처, 수용 기준은 [SPEC-V3R6-ASKUSER-DECISION-MEMORY-001](.moai/specs/SPEC-V3R6-ASKUSER-DECISION-MEMORY-001/spec.md)를 참조하세요.
-
----
-
-## 이중 실행 모드
-
-MoAI-ADK는 Claude Code가 지원하는 **Sub-Agent**와 **Agent Teams** 두 가지 실행 모드를 모두 제공합니다.
-
-```mermaid
-graph TD
-    A["🗿 MoAI Orchestrator"] --> B{"실행 모드 선택"}
-    B -->|"--solo"| C["Sub-Agent 모드"]
-    B -->|"--team"| D["Agent Teams 모드"]
-    B -->|"기본 (자동)"| E["자동 선택"]
-
-    C --> F["순차적 전문가 위임<br/>Task() → Expert Agent"]
-    D --> G["병렬 팀 협업<br/>Agent(name=…) → SendMessage"]
-    E -->|"복잡도 높음"| D
-    E -->|"복잡도 낮음"| C
-
-    style C fill:#2196F3,color:#fff
-    style D fill:#FF9800,color:#fff
-    style E fill:#4CAF50,color:#fff
-```
-
-### Agent Teams 모드 (기본값)
-
-MoAI-ADK는 프로젝트 복잡도를 자동으로 분석하여 최적의 실행 모드를 선택합니다:
-
-| 조건 | 선택 모드 | 이유 |
-|------|-----------|------|
-| 도메인 3개 이상 | Agent Teams | 멀티 도메인 조율 |
-| 영향 파일 10개 이상 | Agent Teams | 대규모 변경 |
-| 복잡도 점수 7 이상 | Agent Teams | 높은 복잡도 |
-| 그 외 | Sub-Agent | 단순하고 예측 가능한 워크플로우 |
-
-**Agent Teams 모드**는 병렬 팀 기반 개발을 사용합니다:
-
-- 여러 에이전트가 동시에 작업하고 공유 작업 목록으로 협업
-- `Agent(name=…)`(암묵적 팀), `SendMessage`, `TaskList`를 통한 실시간 조율
-- 대규모 기능 개발, 멀티 도메인 작업에 적합
-
-```bash
-/moai plan "대규모 기능"          # 자동: researcher + analyst + architect 병렬
-/moai run SPEC-XXX                # 자동: backend-dev + frontend-dev + tester 병렬
-/moai run SPEC-XXX --team         # Agent Teams 모드 강제
-```
-
-**Agent Teams용 품질 훅:**
-- **TeammateIdle 훅**: 팀원이 대기 상태로 전환되기 전 LSP 품질 게이트 검증 (에러, 타입 에러, 린트 에러)
-- **TaskCompleted 훅**: 작업이 SPEC-XXX 패턴을 참조할 때 SPEC 문서 존재 확인
-- 모든 검증은 graceful degradation 사용 - 경고는 로그되지만 작업은 계속됨
-
-### Sub-Agent 모드 (`--solo`)
-
-기존 Claude Code의 `Task()` API를 활용한 순차적 에이전트 위임 방식입니다.
-
-- 하나의 전문 에이전트에게 작업을 위임하고 결과를 받음
-- 단계별로 Manager → Expert → Quality 순서로 진행
-- 단순하고 예측 가능한 워크플로우에 적합
-
-```bash
-/moai run SPEC-AUTH-001 --solo    # Sub-Agent 모드 강제
-```
-
----
-
-## MoAI 워크플로우
-
-### Plan → Run → Sync 파이프라인
-
-MoAI의 핵심 워크플로우는 3단계로 구성됩니다:
-
-```mermaid
-graph TB
-    subgraph Plan ["📋 Plan Phase"]
-        P1["코드베이스 탐색"] --> P2["요구사항 분석"]
-        P2 --> P3["SPEC 문서 생성 (EARS 형식)"]
-    end
-
-    subgraph Run ["🔨 Run Phase"]
-        R1["SPEC 분석 & 실행 계획"] --> R2["DDD/TDD 구현"]
-        R2 --> R3["TRUST 5 품질 검증"]
-    end
-
-    subgraph Sync ["📄 Sync Phase"]
-        S1["문서 생성"] --> S2["README/CHANGELOG 업데이트"]
-        S2 --> S3["Pull Request 생성"]
-    end
-
-    Plan --> Run
-    Run --> Sync
-
-    style Plan fill:#E3F2FD,stroke:#1565C0
-    style Run fill:#E8F5E9,stroke:#2E7D32
-    style Sync fill:#FFF3E0,stroke:#E65100
-```
-
-#### 실행 모드 선택 게이트
-
-Plan 단계에서 Run 단계로 전환 시, MoAI가 현재 실행 환경(cc/glm/cg)을 자동으로 감지하고, 구현 시작 전에 사용자가 모드를 확인하거나 변경할 수 있는 선택 UI를 표시합니다.
-
-```mermaid
-graph LR
-    A["Plan 완료"] --> B["환경 감지"]
-    B --> C{"모드 선택 UI"}
-    C -->|"CC"| D["Claude 전용 실행"]
-    C -->|"GLM"| E["GLM 전용 실행"]
-    C -->|"CG"| F["Claude 리더 + GLM 워커"]
-```
-
-이 게이트는 환경 상태와 관계없이 올바른 실행 모드를 사용하도록 보장하여, 구현 중 모드 불일치를 방지합니다.
-
-### /moai 서브커맨드
-
-모든 서브커맨드는 Claude Code 내에서 `/moai <서브커맨드>`로 실행합니다.
-
-#### 핵심 워크플로우
-
-| 서브커맨드 | 별칭 | 목적 | 주요 플래그 |
-|-----------|------|------|------------|
-| `plan` | `spec` | SPEC 문서 생성 (EARS 형식) | `--worktree`, `--branch`, `--resume SPEC-XXX`, `--team`, `--tmux` |
-| `run` | `impl` | SPEC의 DDD/TDD 구현 | `--resume SPEC-XXX`, `--team` |
-| `sync` | `docs`, `pr` | 문서 동기화, 코드맵 업데이트, PR 생성 | `--merge`, `--skip-mx` |
-
-#### 품질 & 테스팅
-
-| 서브커맨드 | 별칭 | 목적 | 주요 플래그 |
-|-----------|------|------|------------|
-| `fix` | — | LSP 에러, 린트, 타입 에러 자동 수정 (단일 패스) | `--dry`, `--seq`, `--level N`, `--resume`, `--team` |
-| `loop` | — | 완료까지 반복 자동 수정 (최대 100회) | `--max N`, `--auto-fix`, `--seq` |
-| `review` | `code-review` | 보안 및 @MX 태그 준수 코드 리뷰 | `--staged`, `--branch`, `--security` |
-| `clean` | `refactor-clean` | 데드 코드 식별 및 안전한 제거 | `--dry`, `--safe-only`, `--file PATH` |
-
-#### 문서 & 코드베이스
-
-| 서브커맨드 | 별칭 | 목적 | 주요 플래그 |
-|-----------|------|------|------------|
-| `project` | `init` | 프로젝트 문서 생성 (product.md, structure.md, tech.md, .moai/project/codemaps/) | — |
-| `mx` | — | 코드베이스 스캔 및 @MX 코드 레벨 주석 추가 | `--all`, `--dry`, `--priority P1-P4`, `--force`, `--team` |
-| `codemaps` | `update-codemaps` | `.moai/project/codemaps/`에 아키텍처 문서 생성 | `--force`, `--area AREA` |
-| `feedback` | `fb`, `bug`, `issue` | 사용자 피드백 수집 및 GitHub 이슈 생성 | — |
-
-#### 기본 워크플로우
-
-| 서브커맨드 | 목적 | 주요 플래그 |
-|-----------|------|------------|
-| *(없음)* | 완전 자율 plan → run → sync 파이프라인. 복잡도 점수 >= 5일 때 SPEC 자동 생성. | `--loop`, `--max N`, `--branch`, `--pr`, `--resume SPEC-XXX`, `--team`, `--solo` |
-
-### 실행 모드 플래그
-
-워크플로우 실행 시 에이전트 디스패치 방식을 제어합니다:
-
-| 플래그 | 모드 | 설명 |
-|--------|------|------|
-| `--team` | Agent Teams | 병렬 팀 기반 실행. 여러 에이전트가 동시 작업. |
-| `--solo` | Sub-Agent | 페이즈별 순차 단일 에이전트 위임. |
-| *(기본)* | 자동 | 복잡도 기반 자동 선택 (도메인 >= 3, 파일 >= 10, 점수 >= 7). |
-
-**`--team`은 세 가지 실행 환경을 지원합니다:**
-
-| 환경 | 명령어 | 리더 | 워커 | 용도 |
-|------|--------|------|------|------|
-| Claude 전용 | `moai cc` | Claude | Claude | 최고 품질 |
-| GLM 전용 | `moai glm` | GLM | GLM | 최대 비용 절감 |
-| CG (Claude+GLM) | `moai cg` | Claude | GLM | 품질 + 비용 균형 |
-
-> **v2.7.1 신규**: CG 모드가 **기본** 팀 모드로 변경되었습니다. `--team` 사용 시, `moai cc` 또는 `moai glm`으로 명시적으로 변경하지 않는 한 CG 모드로 실행됩니다.
-
-> **참고**: `moai cg`는 tmux pane 레벨 환경 격리를 사용하여 Claude 리더와 GLM 워커를 분리합니다. `moai glm` 모드에서 전환 시, `moai cg`가 GLM 설정을 자동으로 리셋합니다 — 중간에 `moai cc`를 실행할 필요 없습니다.
-
-### 자율 개발 루프 (Ralph Engine)
-
-LSP 진단과 AST-grep을 결합한 자율 에러 수정 엔진입니다:
-
-```bash
-/moai fix       # 단일 패스: 스캔 → 분류 → 수정 → 검증
-/moai loop      # 반복 수정: 완료 마커 감지까지 반복 (최대 100회)
-```
-
-**Ralph Engine 동작:**
-1. **병렬 스캔**: LSP 진단 + AST-grep + 린터를 동시 실행
-2. **자동 분류**: 에러를 Level 1(자동 수정) ~ Level 4(사용자 개입)로 분류
-3. **수렴 감지**: 동일 에러 반복 시 대체 전략 적용
-4. **완료 조건**: 0 에러, 0 타입 에러, 85%+ 커버리지
-
-### 권장 워크플로우 체인
-
-**신규 기능 개발:**
-```
-/moai plan → /moai run SPEC-XXX → /moai review → /moai sync SPEC-XXX
-```
-
-**버그 수정:**
-```
-/moai fix (또는 /moai loop) → /moai review → /moai sync
-```
-
-**리팩토링:**
-```
-/moai plan → /moai clean → /moai run SPEC-XXX → /moai review → /moai codemaps
-```
-
-**문서 업데이트:**
-```
-/moai codemaps → /moai sync
-```
-
----
-
-## TRUST 5 품질 프레임워크
-
-모든 코드 변경은 5가지 품질 기준으로 검증됩니다:
-
-| 기준 | 설명 | 검증 항목 |
-|------|------|-----------|
-| **T**ested | 테스트됨 | 85%+ 커버리지, 특성 테스트, 유닛 테스트 통과 |
-| **R**eadable | 읽기 쉬움 | 명확한 명명 규칙, 일관된 코드 스타일, 린트 오류 0 |
-| **U**nified | 통일됨 | 일관된 포맷팅, 임포트 순서, 프로젝트 구조 준수 |
-| **S**ecured | 안전함 | OWASP 준수, 입력 검증, 보안 경고 0 |
-| **T**rackable | 추적 가능 | 컨벤셔널 커밋, 이슈 참조, 구조화된 로그 |
-
----
-
-## Task 메트릭 로깅
-
-MoAI-ADK는 개발 세션 중 Task 도구 메트릭을 자동으로 캡처합니다:
-
-- **위치**: `.moai/logs/task-metrics.jsonl`
-- **캡처 메트릭**: 토큰 사용량, 도구 호출, 소요 시간, 에이전트 타입
-- **목적**: 세션 분석, 성능 최적화, 비용 추적
-
-Task 도구 완료 시 PostToolUse 훅이 메트릭을 로깅합니다. 이 데이터를 사용하여 에이전트 효율성을 분석하고 토큰 소비를 최적화하세요.
-
-### Hook Protocol (v2.10.1)
-
-모든 훅 이벤트는 Claude Code 훅 프로토콜을 따르며 JSON stdin/stdout 통신을 사용합니다:
-
-- **27개 이벤트 타입**: SessionStart, PreToolUse, PostToolUse, SessionEnd, Stop, SubagentStop, PreCompact, PostCompact, PostToolUseFailure, Notification, SubagentStart, UserPromptSubmit, PermissionRequest, PermissionDenied, TeammateIdle, TaskCompleted, TaskCreated, WorktreeCreate, WorktreeRemove, InstructionsLoaded, StopFailure, ConfigChange, CwdChanged, FileChanged, Elicitation, ElicitationResult, Setup
-- **4가지 훅 타입**: command (shell script), prompt (LLM 평가), agent (subagent 검증), http (webhook 엔드포인트)
-- **스마트 동작**: PermissionDenied 읽기 전용 도구 자동 재시도, StopFailure 에러 타입 응답, PostCompact 세션 메모 복구, SubagentStart 컨텍스트 주입
-- **매처**: 이벤트별 필터링 (도구 이름, 세션 소스, 에러 타입, 설정 소스)
-- **CLAUDE_ENV_FILE**: CwdChanged/FileChanged 훅을 통한 환경변수 지속성
-
----
-
-## CLI 명령어
-
-| 명령어 | 설명 |
-|--------|------|
-| `moai init` | 대화형 프로젝트 설정 (언어/프레임워크/방법론 자동 감지) |
-| `moai doctor` | 시스템 상태 진단 및 환경 검증 |
-| `moai status` | Git 브랜치, 품질 메트릭 등 프로젝트 상태 요약 |
-| `moai update` | 최신 버전으로 업데이트 (자동 롤백 지원) |
-| `moai update -c` | init 마법사 재실행으로 프로젝트 설정 편집 (템플릿 동기화 없음) |
-| `moai update --check` | 설치 없이 업데이트 확인 |
-| `moai update --project` | 프로젝트 템플릿만 동기화 |
-| `moai worktree new <name>` | 새 Git worktree 생성 (병렬 브랜치 개발). `--tmux` 추가 시 worktree에서 tmux 세션 자동 생성 |
-| `moai worktree list` | 활성 worktree 목록 |
-| `moai worktree switch <name>` | worktree 전환 |
-| `moai worktree sync` | 업스트림과 동기화 |
-| `moai worktree remove <name>` | worktree 제거 |
-| `moai worktree clean` | 오래된 worktree 정리 |
-| `moai worktree go <name>` | 현재 셸에서 worktree 디렉터리로 이동 |
-| `moai hook <event>` | Claude Code 훅 디스패처 |
-| `moai glm` | GLM 5 API로 Claude Code 시작 (비용 효율적 대안) |
-| `moai cc` | GLM 설정 없이 Claude Code 시작 (Claude 전용 모드) |
-| `moai cg` | CG 모드 실행 — Claude 리더 + GLM 팀원 (Claude Code 자동 시작, tmux 필수) |
-| `moai version` | 버전, 커밋 해시, 빌드 날짜 정보 |
-
----
-
-## Claude x GLM 멀티 LLM
-
-MoAI-ADK는 **z.ai GLM**을 Claude Code의 대안 AI 백엔드로 지원하며, 멀티 LLM 개발 워크플로우를 구현합니다.
-
-| 항목 | 내용 |
-|------|------|
-| GLM Coding Plan | **$10/월**부터 ([z.ai](https://z.ai/subscribe?ic=1NDV03BGWU)) |
-| 호환성 | Claude Code와 코드 수정 없이 바로 사용 가능 |
-| 모델 | glm-5.2[1m], glm-4.7, glm-4.5-air 및 무료 모델 |
-
-**기본 모델 매핑:**
-
-| Claude 티어 | GLM 모델 | 입력 (1M 토큰당) | 출력 (1M 토큰당) |
-|-------------|----------|------------------|------------------|
-| Opus | glm-5.2[1m] | $2.00 | $8.00 |
-| Sonnet | glm-4.7 | $0.60 | $2.20 |
-| Haiku | glm-4.5-air | $0.20 | $1.10 |
-
-> `glm-5.2[1m]`의 `[1m]` suffix는 Claude Code의 1M 토큰 컨텍스트 모드를 활성화합니다. Claude Code가 suffix를 파싱하여 strip한 후 upstream z.ai API를 호출하므로 z.ai는 이 suffix를 보지 않습니다.
-
-> 무료 모델도 제공: GLM-4.7-Flash, GLM-4.5-Flash. 전체 가격은 [z.ai Pricing](https://docs.z.ai/guides/overview/pricing) 참조.
-
-**[GLM Coding Plan 가입하기](https://z.ai/subscribe?ic=1NDV03BGWU)**
-
-### CG 모드 (Claude + GLM 하이브리드)
-
-CG 모드는 Leader는 **Claude API**, Workers는 **GLM API**를 사용하는 하이브리드 모드입니다. tmux session-level 환경변수를 활용한 pane 격리로 구현됩니다.
-
-#### 작동 원리
-
-```
-moai cg 실행
-    │
-    ├── 1. tmux session env에 GLM 설정 주입
-    │      (ANTHROPIC_AUTH_TOKEN, BASE_URL, MODEL_* 변수)
-    │
-    ├── 2. settings.local.json에서 GLM env 제거
-    │      → Leader pane은 Claude API 사용
-    │
-    ├── 3. CLAUDE_CODE_TEAMMATE_DISPLAY=tmux 설정
-    │      → Workers는 새 pane에서 GLM env 상속
-    │
-    └── 4. Claude Code 실행 (현재 프로세스 교체)
-
-┌─────────────────────────────────────────────────────────────┐
-│  LEADER (현재 tmux pane, Claude API)                        │
-│  - /moai --team 실행 시 워크플로우 조율                       │
-│  - plan, quality, sync 단계 수행                             │
-│  - GLM env 없음 → Claude API 사용                            │
-└──────────────────────┬──────────────────────────────────────┘
-                       │ Agent Teams (새 tmux panes)
-                       ▼
-┌─────────────────────────────────────────────────────────────┐
-│  TEAMMATES (새 tmux panes, GLM API)                         │
-│  - tmux session env 상속 → GLM API 사용                      │
-│  - run 단계의 구현 작업 수행                                  │
-│  - SendMessage으로 리더와 통신                               │
-└─────────────────────────────────────────────────────────────┘
-```
-
-#### 사용 방법
-
-```bash
-# 1. GLM API 키 저장 (최초 1회)
-moai glm sk-your-glm-api-key
-
-# 2. tmux 세션 확인 (이미 tmux 사용 중이면 생략)
-# 새 tmux 세션이 필요한 경우:
-tmux new -s moai
-
-# VS Code 터미널 설정에서 "기본 실행 터미널"을 tmux로 설정하면
-# 자동으로 tmux 환경에서 시작되어 이 단계를 생략할 수 있습니다.
-
-# 3. CG 모드 실행 (Claude Code 자동 시작)
-moai cg
-
-# 4. Team 작업 실행
-/moai --team "작업 설명"
-```
-
-#### 주의사항
-
-| 항목 | 설명 |
-|------|------|
-| **tmux 환경** | 이미 tmux를 사용 중인 터미널에서는 새 세션 생성 불필요. VS Code 터미널 기본값을 tmux로 설정하면 편리. |
-| **자동 실행** | `moai cg`가 현재 pane에서 Claude Code를 자동으로 실행합니다. `claude`를 별도로 실행할 필요 없음. |
-| **세션 종료 시** | session_end hook이 tmux session env를 자동 제거 → 다음 세션에서 Claude로 복귀 |
-| **Agent Teams 통신** | SendMessage 도구로 Leader↔Workers 통신 가능 |
-
-#### 모드 비교
-
-| 명령어 | Leader | Workers | tmux 필요 | 비용 절감 | 사용 시나리오 |
-|--------|--------|---------|-----------|-----------|---------------|
-| `moai cc` | Claude | Claude | 아니오 | - | 복잡한 작업, 최고 품질 |
-| `moai glm` | GLM | GLM | 권장 | ~70% | 비용 최적화 |
-| `moai cg` | Claude | GLM | **필수** | **~60%** | 품질 + 비용 균형 |
-
-#### Display 모드
-
-Agent Teams는 두 가지 display 모드를 지원합니다:
-
-| 모드 | 설명 | 통신 | Leader/Worker 분리 |
-|------|------|------|-------------------|
-| `in-process` | 기본 모드, 모든 터미널 | ✅ SendMessage | ❌ 동일 env |
-| `tmux` | split-pane 표시 | ✅ SendMessage | ✅ session env 분리 |
-
-**CG 모드는 `tmux` display 모드에서만 Leader/Worker API 분리가 가능합니다.**
-
----
-
-## @MX 태그 시스템
-
-MoAI-ADK는 **@MX 코드 레벨 주석 시스템**을 사용하여 AI 에이전트 간 컨텍스트, 불변 계약, 위험 영역을 전달합니다.
-
-### @MX 태그란 무엇인가요?
-
-@MX 태그는 코드에 직접 추가하는 주석으로, AI 에이전트가 코드베이스를 더 빠르고 정확하게 이해할 수 있게 돕습니다.
-
-```go
-// @MX:ANCHOR: [AUTO] 훅 레지스트리 디스패치 - 5개 이상의 호출자
-// @MX:REASON: [AUTO] 모든 훅 이벤트의 중앙 진입점이므로 변경 시 영향 범위 큼
-func DispatchHook(event string, data []byte) error {
-    // ...
-}
-
-// @MX:WARN: [AUTO] Goroutine이 context.Context 없이 실행됨
-// @MX:REASON: [AUTO] 컨텍스트 취소가 불가능하여 리소스 누수 위험
-func processAsync() {
-    go func() {
-        // ...
-    }()
-}
-```
-
-### 태그 유형
-
-| 태그 타입 | 용도 | 설명 |
-|----------|------|------|
-| `@MX:ANCHOR` | 중요 계약 | fan_in >= 3인 함수, 변경 시 영향 범위 큼 |
-| `@MX:WARN` | 위험 영역 | Goroutine, 복잡도 >= 15, 전역 상태 변이 |
-| `@MX:NOTE` | 컨텍스트 | 마법 상수, 누락된 godoc, 비즈니스 규칙 |
-| `@MX:TODO` | 미완성 작업 | 누락된 테스트, 구현되지 않은 기능 |
-
-### 왜 모든 코드에 @MX 태그가 없나요?
-
-@MX 태그 시스템은 **"모든 코드에 태그를 추가하는 것"이 목적이 아닙니다.** 핵심은 **"AI가 가장 먼저 주목해야 할 위험/중요 코드만 표시"**하는 것입니다.
-
-| 우선순위 | 조건 | 태그 타입 |
-|----------|------|----------|
-| **P1 (Critical)** | fan_in >= 3 | `@MX:ANCHOR` |
-| **P2 (Danger)** | goroutine, complexity >= 15 | `@MX:WARN` |
-| **P3 (Context)** | magic constant, no godoc | `@MX:NOTE` |
-| **P4 (Missing)** | no test file | `@MX:TODO` |
-
-**대부분의 코드는 아무 조건도 만족하지 못해 태그가 없습니다.** 이것이 **정상**입니다.
-
-### 예시: 태그 유무 결정
-
-```go
-// ❌ 태그 없음 (fan_in = 1, 복잡도 낮음)
-func calculateTotal(items []Item) int {
-    total := 0
-    for _, item := range items {
-        total += item.Price
-    }
-    return total
-}
-
-// ✅ @MX:ANCHOR 추가 (fan_in = 5)
-// @MX:ANCHOR: [AUTO] 설정 관리자 로드 - 5개 이상의 호출자
-// @MX:REASON: [AUTO] 모든 CLI 명령어의 설정 진입점
-func LoadConfig() (*Config, error) {
-    // ...
-}
-```
-
-### 설정 (`.moai/config/sections/mx.yaml`)
-
-```yaml
-thresholds:
-  fan_in_anchor: 3        # 3개 미만 호출자 = ANCHOR 없음
-  complexity_warn: 15     # 복잡도 15 미만 = WARN 없음
-  branch_warn: 8          # 분기 8개 미만 = WARN 없음
-
-limits:
-  anchor_per_file: 3      # 파일당 최대 3개 ANCHOR
-  warn_per_file: 5        # 파일당 최대 5개 WARN
-
-exclude:
-  - "**/*_generated.go"   # 생성된 파일 제외
-  - "**/vendor/**"        # 외부 라이브러리 제외
-  - "**/mock_*.go"        # 목 파일 제외
-```
-
-### MX 태그 스캔 실행
-
-```bash
-# 전체 코드베이스 스캔 (Go 프로젝트)
-/moai mx --all
-
-# 미리보기만 (파일 수정 없음)
-/moai mx --dry
-
-# 우선순위별 스캔 (P1만)
-/moai mx --priority P1
-
-# 특정 언어만 스캔
-/moai mx --all --lang go,python
-```
-
-### 다른 프로젝트에서도 MX 태그가 적은 이유
-
-| 상황 | 이유 |
-|------|------|
-| **신규 프로젝트** | fan_in이 0인 함수들이 대부분 → 태그 없음 (정상) |
-| **작은 프로젝트** | 함수 개수 적음 = 호출 관계 단순 = 태그 적음 |
-| **높은 품질 코드** | 복잡도 낮음, goroutine 없음 → WARN 없음 |
-| **높은 임계값 설정** | `fan_in_anchor: 5`로 설정되면 태그 더 적음 |
-
-### 핵심 원칙
-
-MX 태그 시스템은 **"신호 대 잡음비(Signal-to-Noise Ratio)"**를 최적화하는 것을 목표로 합니다:
-
-- ✅ **정말 중요한 코드만 표시** → AI가 핵심을 빠르게 파악
-- ❌ **모든 코드에 태그 추가** → 노이즈 증가, 오히려 중요 태그 찾기 어려움
-
----
-
-
----
-
-> **데이터베이스 스키마 도구**: 데이터베이스 스키마 동기화는 전용 슬래시 명령이 아니라 CLI 훅 `moai hook db-schema-sync`(CLI 레퍼런스 참조)로 처리됩니다.
-
-
-## 자주 묻는 질문 (FAQ)
-
-### Q: 왜 모든 Go 코드에 @MX 태그가 없나요?
-
-**A: 이것이 정상입니다.** @MX 태그는 "필요한 코드에만" 추가됩니다. 대부분의 코드는 충분히 단순하고 안전해서 태그가 필요 없습니다.
-
-| 질문 | 답변 |
-|------|------|
-| 태그가 없는 건 문제인가? | **아닙니다.** 대부분의 코드는 태그가 필요 없습니다. |
-| 언제 태그가 추가되나? | **높은 fan_in**, **복잡한 로직**, **위험 패턴**이 있을 때만 |
-| 모든 프로젝트가 비슷한가? | **네.** 모든 프로젝트에서 대부분의 코드는 태그가 없습니다. |
-
-자세한 내용은 위의 **"@MX 태그 시스템"** 섹션을 참조하세요.
-
----
-
-### Q: statusline의 버전 표시는 무엇을 의미하나요?
-
-MoAI statusline은 버전 정보와 업데이트 알림을 함께 표시합니다:
-
-```
-🗿 v2.2.2 ⬆️ v2.2.5
-```
-
-- **`v2.2.2`**: 현재 설치된 버전
-- **`⬆️ v2.2.5`**: 업데이트 가능한 새 버전
-
-최신 버전을 사용 중일 때는 버전 번호만 표시됩니다:
-```
-🗿 v2.2.5
-```
-
-**업데이트 방법**: `moai update` 실행 시 업데이트 알림이 사라집니다.
-
-**참고**: Claude Code의 빌트인 버전 표시(`🔅 v2.1.38`)와는 다릅니다. MoAI 표시는 MoAI-ADK 버전을 추적하며, Claude Code는 자체 버전을 별도로 표시합니다.
-
----
-
-### Q: statusline 세그먼트를 어떻게 커스터마이징하나요?
-
-Statusline v3는 **멀티라인 레이아웃**과 실시간 API 사용량 모니터링을 제공합니다:
-
-**Full 모드** (5줄 — 40-block 개별 바):
-```
-🤖 Opus 4.6 │ 🔅 v2.1.74 │ 🗿 v2.7.12 │ ⏳ 5h 32m │ 💬 MoAI
-CW: 🔋 █████████████████████░░░░░░░░░░░░░░░░░░░ 52%
-5H: 🔋 █░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░ 4%
-7D: 🔋 ██████████████████████░░░░░░░░░░░░░░░░░░░ 56%
-📁 moai-adk-go │ 🅱️ main │ 📭 +0 M38 ?2
-```
-
-**기본(Default) 모드** (3줄 — 10-block 인라인 바):
-```
-🤖 Opus 4.6 │ 🔅 v2.1.74 │ 🗿 v2.7.12 │ ⏳ 16m │ 💬 MoAI
-CW: 🔋 ██░░░░░░░░ 25% │ 5H: 🔋 █░░░░░░░░░ 12% │ 7D: 🔋 ░░░░░░░░░░ 3%
-📁 moai-adk-go │ 🅱️ fix/my-feature │ 📭 +0 M38 ?2
-```
-
-2가지 디스플레이 모드를 지원합니다:
-
-- **Full** (5줄): 모든 세그먼트 + 40-block 사용량 바 개별 라인 표시 (model, context, usage bars, git, version, output style, directory)
-- **Default** (3줄): 핵심 세그먼트 + 10-block 인라인 사용량 바 (model, context, usage bars, git status, branch, version)
-
-`.moai/config/sections/statusline.yaml`을 직접 편집하세요:
-
-```yaml
-statusline:
-  segments:
-    model: true
-    context: true
-    usage_5h: true    # 5시간 API 사용량 바
-    usage_7d: true    # 7일 API 사용량 바
-    output_style: true
-    directory: true
-    git_status: true
-    claude_version: true
-    moai_version: true
-    git_branch: true
-```
-
-> **참고**: `preset` 단축 키(`full`/`compact`/`minimal`)가 폐기되었습니다 — 위 세그먼트 맵에서 직접 설정하세요. 기존 설정의 `preset:` 키는 로더가 조용히 무시합니다. 세그먼트 선택 UI는 v2.7.8부터 `moai init`/`moai update` 마법사에서 이미 제거되었습니다.
-
----
-
-### Q: "Allow external CLAUDE.md file imports?" 경고가 나타납니다
-
-프로젝트를 열 때 Claude Code가 외부 파일 import에 대한 보안 프롬프트를 표시할 수 있습니다:
-
-```
-External imports:
-  /Users/<user>/.moai/config/sections/quality.yaml
-  /Users/<user>/.moai/config/sections/user.yaml
-  /Users/<user>/.moai/config/sections/language.yaml
-```
-
-**권장 조치**: **"No, disable external imports"** 선택 ✅
-
-**이유:**
-- 프로젝트의 `.moai/config/sections/`에 이미 이 파일들이 존재합니다
-- 프로젝트별 설정이 전역 설정보다 우선 적용됩니다
-- 필수 설정은 이미 CLAUDE.md 텍스트에 포함되어 있습니다
-- 외부 import를 비활성화하는 것이 더 안전하며 기능에 영향을 주지 않습니다
-
-**파일 설명:**
-- `quality.yaml`: TRUST 5 프레임워크 및 개발 방법론 설정
-- `language.yaml`: 언어 설정 (대화, 코멘트, 커밋)
-- `user.yaml`: 사용자 이름 (선택 사항, Co-Authored-By 표시용)
-
----
-
-## 기여
-
-기여를 환영합니다! 자세한 가이드는 [CONTRIBUTING.ko.md](CONTRIBUTING.ko.md)를 참조하세요.
-
-### 빠른 시작
-
-1. 저장소를 포크하세요
+1. 리포지토리 포크
 2. 기능 브랜치 생성: `git checkout -b feature/my-feature`
-3. 테스트 작성 (새 코드는 TDD, 기존 코드는 특성 테스트)
-4. 모든 테스트 통과 확인: `make test`
-5. 린팅 통과 확인: `make lint`
-6. 코드 포맷팅: `make fmt`
-7. 컨벤셔널 커밋 메시지로 커밋
-8. 풀 리퀘스트 오픈
+3. 테스트 작성 (신규 코드는 TDD, 기존 코드는 특성화 테스트)
+4. 테스트, 린트, 포맷 통과 확인: `make test` · `make lint` · `make fmt`
+5. Conventional commit 메시지로 커밋하고 풀 리퀘스트 열기
 
-**코드 품질 요구사항**: 85%+ 커버리지 · 0 린트 오류 · 0 타입 오류 · 컨벤셔널 커밋
+**코드 품질 요구사항**: 85%+ 커버리지 · 린트 오류 0 · 타입 오류 0 · Conventional commits
 
 ### 커뮤니티
 
-- [Issues](https://github.com/modu-ai/moai-adk/issues) — 버그 리포트, 기능 요청
+- [Discord](https://discord.gg/Z7E7Mdc5aN) — 실시간 토론과 팁
+- [Issues](https://github.com/modu-ai/moai-adk/issues) — 버그 리포트, 기능 요청 (Claude Code 안에서는 `/moai feedback`)
 
----
+### 라이선스
 
-## Star History
+[Apache License 2.0](./LICENSE) — 자세한 내용은 LICENSE 파일을 참조한다.
 
-[![Star History Chart](https://api.star-history.com/svg?repos=modu-ai/moai-adk&type=date&legend=top-left)](https://www.star-history.com/#modu-ai/moai-adk&type=date&legend=top-left)
+### 문서 가이드
 
----
+[adk.mo.ai.kr](https://adk.mo.ai.kr) 온라인 문서는 12개 섹션으로 나뉘어 있다.
 
-## 라이선스
+| 섹션 | 설명 |
+|------|------|
+| [시작하기](https://adk.mo.ai.kr/ko/getting-started) | 소개, 설치, Windows 가이드, init 마법사, 퀵스타트, CLI 개요, FAQ |
+| [핵심 개념](https://adk.mo.ai.kr/ko/core-concepts) | MoAI-ADK 정체성, 컨스티튜션, 하네스 엔지니어링, SPEC 기반 개발, DDD, TRUST 5 |
+| [워크플로우 커맨드](https://adk.mo.ai.kr/ko/workflow-commands) | `plan` · `run` · `sync` — SPEC 파이프라인의 주축 |
+| [유틸리티 커맨드](https://adk.mo.ai.kr/ko/utility-commands) | `fix` · `loop` · `gate` · `review` · `clean` · `codemaps` · `e2e` · `feedback` · `goal` |
+| [CLI 레퍼런스](https://adk.mo.ai.kr/ko/cli-reference) | 터미널 `moai` 바이너리의 모든 커맨드 |
+| [Claude Code 가이드](https://adk.mo.ai.kr/ko/claude-code) | Claude Code 통합 — 기초, 컨텍스트·메모리, 에이전틱, 확장성 |
+| [Multi-LLM](https://adk.mo.ai.kr/ko/multi-llm) | CG 모드와 모델 정책 |
+| [비용 최적화](https://adk.mo.ai.kr/ko/cost-optimization) | 프롬프트 캐싱 전략과 토큰 비용 절감 |
+| [가이드](https://adk.mo.ai.kr/ko/guides) | CI 자율화, multi-LLM CI 등 실전 운영 레시피 |
+| [Git Worktree](https://adk.mo.ai.kr/ko/worktree) | 병렬 SPEC 개발을 위한 worktree 가이드 |
+| [Advanced](https://adk.mo.ai.kr/ko/advanced) | 토크노믹스 개요, 토큰 예산, 스테이터스라인, settings.json, 훅, @MX 태그, 스킬 가이드, Harness v4 Builder, 자가 진화, 결정 메모리 |
+| [기여하기](https://adk.mo.ai.kr/ko/contributing) | 오픈소스 기여 가이드 |
 
-[Apache License 2.0](./LICENSE) — 자세한 내용은 LICENSE 파일을 참조하세요.
-
-## 관련 링크
+### 링크
 
 - [공식 문서](https://adk.mo.ai.kr)
+- [도서: Claude Code 실전 에이전틱 코딩](https://adk.mo.ai.kr/book)
+- [CHANGELOG](./CHANGELOG.md)
 - [Claude Code](https://docs.anthropic.com/en/docs/claude-code)
-- [Discord 커뮤니티](https://discord.gg/Z7E7Mdc5aN) — 실시간 소통, 팁 공유
+- [Discord 커뮤니티](https://discord.gg/Z7E7Mdc5aN)

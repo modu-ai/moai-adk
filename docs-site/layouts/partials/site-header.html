@@ -1,20 +1,26 @@
-<header class="gdoc-header" role="banner">
-  <div class="cw-header-inner">
-    <a class="gdoc-brand cw-brand" href="/">
-      <span class="cw-brand-name">{{ site.Title }}</span>
-      <span class="cw-brand-ver">{{ site.Params.version }}</span>
+<header class="gdoc-header docs-nav" role="banner">
+  <div class="nav-inner cw-header-inner">
+    {{- /* 브랜드: 로고 이미지 + MoAI-ADK + docs pill (round3 nav-logo) */ -}}
+    <a class="gdoc-brand cw-brand nav-logo" href="{{ "/" | relLangURL }}">
+      {{- /* 브랜드 로고 — 모아이 석상 이모지 🗿 (브랜드 마크) */ -}}
+      <img class="cw-brand-logo cw-brand-mascot" loading="lazy" decoding="async"
+           src="{{ "mascots/mascot-coding.png" | relURL }}"
+           width="30" alt="MoAI-ADK 마스코트" />
+      <span class="cw-brand-name">MoAI-ADK</span>
+      <span class="cw-brand-tag">docs</span>
     </a>
-    <div class="cw-nav-search">
-      <button type="button" class="cw-search-input" data-search-trigger aria-label="{{ i18n "search_aria" }}">
+    {{- /* round3 nav-utility cluster — search trigger + version + lang + github */ -}}
+    {{- $page := .Root -}}
+    {{- $labels := dict "ko" "KO" "en" "EN" "ja" "JA" "zh" "CN" -}}
+    <div class="nav-utility cw-nav-actions">
+      <button type="button" class="nav-search" data-search-trigger aria-label="{{ i18n "search_aria" }}">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3" stroke-linecap="round"/></svg>
         <span>{{ i18n "search_label" }}</span>
-        <kbd>⌘K</kbd>
+        <kbd class="nav-search-key">⌘K</kbd>
       </button>
-    </div>
-    <div class="cw-nav-actions">
+      {{- /* 버전 pill — hugo.toml params.version SSOT */ -}}
+      <a class="cw-ver-pill" href="https://github.com/modu-ai/moai-adk-go/releases" target="_blank" rel="noopener noreferrer" title="{{ site.Params.version }}">{{ site.Params.version }}</a>
       {{- /* 언어 선택 — KO/EN/JA/CN 4-locale. 현재 페이지의 번역본으로 링크, 없으면 해당 언어 홈으로 fallback */ -}}
-      {{- $page := .Root -}}
-      {{- $labels := dict "ko" "KO" "en" "EN" "ja" "JA" "zh" "CN" -}}
       <div class="cw-lang-switch" role="tablist" aria-label="{{ i18n "lang_aria" }}">
         {{- range hugo.Sites -}}
           {{- $l := .Language -}}
@@ -29,12 +35,6 @@
           <a class="cw-lang-btn{{ if $isActive }} active{{ end }}" href="{{ $href }}" hreflang="{{ $l.Lang }}"{{ if $isActive }} aria-current="page"{{ end }}>{{ $label }}</a>
         {{- end -}}
       </div>
-      {{- if default true .Site.Params.geekdocDarkModeToggle }}
-      <span id="gdoc-color-theme" class="cw-theme-toggle" tabindex="0" role="button" aria-pressed="false" aria-label="{{ i18n "darkmode_aria" }}">
-        <svg class="gdoc-icon gdoc_brightness_dark" width="18" height="18"><use xlink:href="#gdoc_brightness_dark"></use></svg>
-        <svg class="gdoc-icon gdoc_brightness_light" width="18" height="18"><use xlink:href="#gdoc_brightness_light"></use></svg>
-      </span>
-      {{- end }}
       <a class="cw-gh-stars" href="https://github.com/modu-ai/moai-adk" target="_blank" rel="noopener noreferrer" aria-label="{{ i18n "github_aria" }}">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 .3a12 12 0 0 0-3.8 23.4c.6.1.8-.3.8-.6v-2c-3.3.7-4-1.6-4-1.6-.5-1.4-1.3-1.7-1.3-1.7-1-.7.1-.7.1-.7 1.2.1 1.8 1.2 1.8 1.2 1.1 1.8 2.8 1.3 3.5 1 .1-.8.4-1.3.8-1.6-2.7-.3-5.5-1.3-5.5-5.9 0-1.3.5-2.4 1.2-3.2-.1-.3-.5-1.5.1-3.2 0 0 1-.3 3.3 1.2a11.5 11.5 0 0 1 6 0c2.3-1.5 3.3-1.2 3.3-1.2.7 1.7.3 2.9.1 3.2.8.8 1.2 1.9 1.2 3.2 0 4.6-2.8 5.6-5.5 5.9.4.4.8 1.1.8 2.2v3.3c0 .3.2.7.8.6A12 12 0 0 0 12 .3"/></svg>
         <span>Star</span>

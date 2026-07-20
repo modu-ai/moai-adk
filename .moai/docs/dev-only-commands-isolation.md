@@ -25,12 +25,12 @@
 |---------------|---------|------|----------|
 | release-update | `.claude/commands/harness/release-update.md` | Entry slash command — `/harness:release-update` thin wrapper | 사용자 프로젝트에는 CC 추적 권한 미보장 |
 | release-update | `.claude/commands/harness/release-update/manifest.json` | release-update 하네스 SSOT manifest (1 specialist) | 메인테이너 전용 하네스 설정, 사용자 프로젝트 무관 |
-| release-update | `.claude/workflows/harness-release-update-run.js` | Runner (비-상호작용 CC-release-notes research fan-out 전용) | 메인테이너 전용 dynamic-workflow 스크립트 |
-| release-update | `.claude/agents/harness/harness-release-update-specialist.md` | Specialist body — CC upstream tracker multi-phase workflow | 메인테이너 전용 하네스 specialist, 사용자 프로젝트 무관 |
+| release-update | `.claude/workflows/hns-release-update-run.js` | Runner (비-상호작용 CC-release-notes research fan-out 전용) | 메인테이너 전용 dynamic-workflow 스크립트 |
+| release-update | `.claude/agents/harness/hns-release-update-specialist.md` | Specialist body — CC upstream tracker multi-phase workflow | 메인테이너 전용 하네스 specialist, 사용자 프로젝트 무관 |
 | github | `.claude/commands/harness/github.md` | Entry slash command — `/harness:github` thin wrapper (Runner/manifest 없음) | 사용자 프로젝트에는 `gh` 메인테이너 워크플로우 미보장 |
-| github | `.claude/agents/harness/harness-github-specialist.md` | Specialist body — GitHub issue/PR workflow | 메인테이너 전용 하네스 specialist, 사용자 프로젝트 무관 |
+| github | `.claude/agents/harness/hns-github-specialist.md` | Specialist body — GitHub issue/PR workflow | 메인테이너 전용 하네스 specialist, 사용자 프로젝트 무관 |
 | release | `.claude/commands/harness/release.md` | Entry slash command — `/harness:release` thin wrapper (Runner/manifest 없음) | 사용자 프로젝트에는 production release 권한 미보장 |
-| release | `.claude/agents/harness/harness-release-specialist.md` | Specialist body — production release (Enhanced GitHub Flow) | dev maintainer 전용, project-local git workflow doctrine |
+| release | `.claude/agents/harness/hns-release-specialist.md` | Specialist body — production release (Enhanced GitHub Flow) | dev maintainer 전용, project-local git workflow doctrine |
 | (shared) | `.moai/state/last-cc-version.json` | 마지막 분석 버전 + history (release-update 상태) | 사용자 프로젝트별 상태 추적 불요 |
 | (shared) | `.moai/research/cc-update-*.md` | 분석 보고서 + update plan (release-update 산출물) | dev 산출물, 사용자 사용 안 함 |
 
@@ -39,13 +39,13 @@
 ### [HARD] 검증 체크리스트 (dev-only 도구 변경 시 매번)
 
 - [ ] `find internal/template/templates -path "*commands/harness*"` 결과 비어있음
-- [ ] `find internal/template/templates \( -name "harness-release-update*" -o -name "harness-github*" -o -name "harness-release*" \)` 결과 비어있음
+- [ ] `find internal/template/templates \( -name "harness-release-update*" -o -name "harness-github*" -o -name "harness-release*" -o -name "hns-release-update*" -o -name "hns-github*" -o -name "hns-release*" \)` 결과 비어있음 (dual name set — legacy + hns- rename 양쪽)
 - [ ] `find internal/template/templates -path "*agents/harness*"` 결과 비어있음 (harness namespace 는 user-owned — 사용자 프로젝트에 template 으로 배포 금지)
 - [ ] `find internal/template/templates -name "last-cc-version.json"` 결과 비어있음
 - [ ] `find internal/template/templates -name "cc-update-*.md"` 결과 비어있음
 - [ ] `find internal/template/templates -name "97-*" -o -name "98-*" -o -name "99-*"` 결과 비어있음 (구 번호 커맨드 잔재 없음 — 폐지됨)
 - [ ] `find internal/template/templates -path "*/agents/local/*"` 결과 비어있음 (구 local namespace 제거됨)
-- [ ] `go test ./internal/template/... -run TestSplitHarnessNamespaceNoLeak` PASS (embedded-tree-absence 단언; `internal/template/split_namespace_test.go` — `commands/harness/` + `harness-{release-update,github,release}*` + `workflows/harness-{release-update,github,release}-*` 부재 검출, sentinel `SPLIT_HARNESS_NAMESPACE_LEAK`)
+- [ ] `go test ./internal/template/... -run TestSplitHarnessNamespaceNoLeak` PASS (embedded-tree-absence 단언; `internal/template/split_namespace_test.go` — `commands/harness/` + dual name set `{harness,hns}-{release-update,github,release}*` agent/workflow 부재 검출, sentinel `SPLIT_HARNESS_NAMESPACE_LEAK`)
 - [ ] `moai init test-project` 후 위 모두 사용자 프로젝트에 복사되지 않음 확인
 
 > **CI guard (자동)**: dev-only 격리 보호의 1차 메커니즘은 더 이상 doc-level 수동 grep 체크리스트가 아니라 `internal/template/split_namespace_test.go` (`TestSplitHarnessNamespaceNoLeak`) 의 embedded-tree-absence 단언이다. `make build` 가 누출된 split-harness 경로를 `internal/template/templates/` 하위에서 임베드하면 `go test ./internal/template/...` 가 FAIL 한다. `embedded_namespace_test.go` (`TestTemplateAgentsStructure`) 의 `{moai}`-only allowlist 가 이미 `.claude/agents/harness/` 부재를 보호하므로, 신규 단언은 commands/workflows 차원 + 3개 split-harness 이름 차원 (`harness-release-update` / `harness-github` / `harness-release`) 을 보완한다.
@@ -54,19 +54,19 @@
 
 ### 워크플로우 본문 자체에도 dev-only 배너 필수
 
-- `.claude/agents/harness/harness-release-update-specialist.md` 최상단에 `> **[DEV-ONLY]**` 경고 banner 유지
-- `.claude/agents/harness/harness-github-specialist.md` 최상단에 `> **[DEV-ONLY]**` 경고 banner 유지
-- `.claude/agents/harness/harness-release-specialist.md` 최상단에 `> **[DEV-ONLY]**` 경고 banner 유지
+- `.claude/agents/harness/hns-release-update-specialist.md` 최상단에 `> **[DEV-ONLY]**` 경고 banner 유지
+- `.claude/agents/harness/hns-github-specialist.md` 최상단에 `> **[DEV-ONLY]**` 경고 banner 유지
+- `.claude/agents/harness/hns-release-specialist.md` 최상단에 `> **[DEV-ONLY]**` 경고 banner 유지
 - `.claude/commands/harness/{release-update,github,release}.md` frontmatter `description` + body 에 `"(dev-only)" / "NOT distributed to user projects"` 문구 유지
-- `.claude/workflows/harness-release-update-run.js` 상단 주석에 `[DEV-ONLY]` 명시 유지
+- `.claude/workflows/hns-release-update-run.js` 상단 주석에 `[DEV-ONLY]` 명시 유지
 
 ### 위반 시 영향
 
 사용자가 `moai init my-project` 실행 시:
 
 - `commands/harness/{release-update,github,release}.md` 배포 → 3개 split harness 슬래시 커맨드가 사용자 UI에 노출. 사용자에게 CC 추적 / `gh` / release 권한 부재 → 실행 시 오류 + 혼란
-- `harness-{release-update,github,release}-specialist.md` 배포 → 사용자 repo에 무관한 dev-only 워크플로우(CC tracker / PR/issue / production release) 가 specialist 로 등록되어 의도치 않은 호출 가능 → 혼란 + production release 위험
-- `harness-release-update-run.js` 배포 → 사용자 `.claude/workflows/` 에 메인테이너 전용 Runner 가 섞임
+- `hns-{release-update,github,release}-specialist.md` 배포 → 사용자 repo에 무관한 dev-only 워크플로우(CC tracker / PR/issue / production release) 가 specialist 로 등록되어 의도치 않은 호출 가능 → 혼란 + production release 위험
+- `hns-release-update-run.js` 배포 → 사용자 `.claude/workflows/` 에 메인테이너 전용 Runner 가 섞임
 - `last-cc-version.json` 배포 → 사용자 프로젝트가 moai-adk 자체의 CC 추적 상태를 들고다님 (의미 없음)
 - `cc-update-*.md` 배포 → 사용자 `.moai/research/`에 메인테이너 보고서 섞임
 
@@ -75,14 +75,14 @@
 - §2 File Synchronization "Local-Only Files (Never in Templates)" 등록 — 본 §21은 그 카테고리의 명시적 expansion (3개 split harness 항목 포함)
 - §15 템플릿 언어 중립성 의 16-language equivalence 원칙과 별개의 dev-only 격리 룰
 - §17 docs-site 4-locale sync 규칙은 패키지 배포의 일부 (dev-only 아님) — 헷갈리지 말 것
-- §24 Harness Namespace 분리 정책 — `harness-*` / `.claude/agents/harness/` / `.claude/commands/harness/` / `.claude/workflows/harness-*.js` 는 user-owned (`moai update` 보존); 3개 split harness 가 이 user-owned namespace 에 위치
+- §24 Harness Namespace 분리 정책 — `hns-*`(canonical) / `harness-*`·`my-harness-*`(legacy) / `.claude/agents/harness/` / `.claude/commands/harness/` / `.claude/workflows/hns-*.js`·`harness-*.js` 는 user-owned (`moai update` 보존, tri-generation recognition); 3개 split harness 가 이 user-owned namespace 에 위치
 
 ### 신규 dev-only capability 추가 시
 
 향후 비슷한 메인테이너 전용 capability 를 추가할 때는:
 
 1. 신규 harness 생성 (thin command + specialist; 비-상호작용 fan-out 이 있으면 Runner + per-harness manifest 추가, 없으면 thin command → specialist 직접) + 본 "배포 금지 파일 목록" 표에 행 추가
-2. §2 Local-Only Files 목록에 등록 (이미 `commands/harness/{release-update,github,release}*` / `workflows/harness-release-update-run.js` 패턴은 등록되어 있음 — 패턴 외 추가 파일만 명시 추가)
+2. §2 Local-Only Files 목록에 등록 (이미 `commands/harness/{release-update,github,release}*` / `workflows/hns-release-update-run.js` 패턴은 등록되어 있음 — 패턴 외 추가 파일만 명시 추가)
 3. specialist body 최상단 `[DEV-ONLY]` banner 추가
 4. entry command frontmatter `description`에 `"(dev-only). NOT distributed to user projects."` 문구 유지
 5. `TestSplitHarnessNamespaceNoLeak` (또는 신규 하네스용 embedded-tree-absence 단언) 가 신규 artifact 이름/경로를 커버하는지 확인

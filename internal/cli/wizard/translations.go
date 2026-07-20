@@ -35,6 +35,14 @@ var translations = map[string]map[string]QuestionTranslation{
 				{Label: "DDD", Desc: "도메인 주도 개발: ANALYZE-PRESERVE-IMPROVE"},
 			},
 		},
+		"report_format": {
+			Title:       "리포트 형식 선택",
+			Description: "리포트를 HTML+마크다운으로 생성할지, 마크다운만 생성할지 설정합니다.",
+			Options: []OptionTranslation{
+				{Label: "HTML + 마크다운 (권장)", Desc: "브라우저에서 볼 수 있는 HTML 리포트와 마크다운을 모두 생성"},
+				{Label: "마크다운만", Desc: "마크다운 리포트만 생성 (가볍고 diff 친화적)"},
+			},
+		},
 		"git_mode": {
 			Title:       "Git 자동화 모드 선택",
 			Description: "Claude가 수행할 수 있는 Git 작업 범위를 설정합니다.",
@@ -86,6 +94,14 @@ var translations = map[string]map[string]QuestionTranslation{
 				{Label: "DDD", Desc: "ドメイン駆動開発: ANALYZE-PRESERVE-IMPROVE"},
 			},
 		},
+		"report_format": {
+			Title:       "レポート形式を選択",
+			Description: "レポートをHTML+Markdownで生成するか、Markdownのみで生成するかを設定します。",
+			Options: []OptionTranslation{
+				{Label: "HTML + Markdown (推奨)", Desc: "ブラウザで表示可能なHTMLレポートとMarkdownの両方を生成"},
+				{Label: "Markdownのみ", Desc: "Markdownレポートのみ生成（軽量でdiffに優しい）"},
+			},
+		},
 		"git_mode": {
 			Title:       "Git自動化モードを選択",
 			Description: "Claudeが実行できるGit操作の範囲を設定します。",
@@ -135,6 +151,14 @@ var translations = map[string]map[string]QuestionTranslation{
 			Options: []OptionTranslation{
 				{Label: "TDD (推荐)", Desc: "测试驱动开发: RED-GREEN-REFACTOR"},
 				{Label: "DDD", Desc: "领域驱动开发: ANALYZE-PRESERVE-IMPROVE"},
+			},
+		},
+		"report_format": {
+			Title:       "选择报告格式",
+			Description: "控制报告生成为HTML+Markdown还是仅Markdown。",
+			Options: []OptionTranslation{
+				{Label: "HTML + Markdown (推荐)", Desc: "生成可在浏览器查看的HTML报告和Markdown"},
+				{Label: "仅Markdown", Desc: "仅生成Markdown报告（更轻量，利于diff）"},
 			},
 		},
 		"git_mode": {

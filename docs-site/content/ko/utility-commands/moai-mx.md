@@ -1,13 +1,13 @@
 ---
 title: /moai mx
-weight: 70
+weight: 75
 draft: false
 ---
 
-코드베이스를 스캔하고 @MX 코드 수준 어노테이션을 추가하는 명령어입니다. AI 에이전트가 **코드 컨텍스트를 빠르게 이해할 수 있도록** 주석을 자동으로 삽입합니다.
+코드베이스를 스캔하여 **@MX 코드 주석**을 추가하는 명령어입니다. @MX 태그는 AI 에이전트가 코드의 맥락·의도·위험을 빠르게 파악하도록 돕는 코드 레벨 어노테이션입니다.
 
 {{< callout type="info" >}}
-**한 줄 요약**: `/moai mx`는 "코드 네비게이션 표지판"을 자동으로 설치합니다. 위험한 코드, 중요한 함수, 누락된 테스트 등을 **@MX 태그로 마킹**하여 AI 에이전트가 코드를 더 잘 이해하게 합니다.
+**한 줄 요약**: `/moai mx`는 "AI를 위한 코드 이정표 설치기" 입니다. 높은 fan-in 함수, 위험 구역, 미완성 지점 등을 자동으로 찾아 `@MX:ANCHOR`·`@MX:WARN`·`@MX:NOTE`·`@MX:TODO` 태그를 코드에 심습니다.
 {{< /callout >}}
 
 {{< callout type="info" >}}
@@ -16,174 +16,99 @@ draft: false
 
 ## 개요
 
-@MX 태그는 코드에 부착하는 메타데이터 어노테이션입니다. AI 에이전트가 코드를 읽을 때 중요한 함수, 위험한 패턴, 미완성 작업을 즉시 파악할 수 있게 합니다. `/moai mx`는 3단계 스캔으로 코드베이스를 분석하고 적절한 태그를 자동으로 삽입합니다.
+에이전트가 코드를 이해하는 데 드는 비용은 곧 컨텍스트 (토큰) 입니다. @MX 태그는 "이 함수는 8곳에서 호출되니 시그니처를 함부로 바꾸지 말 것" 같은 맥락을 코드 옆에 직접 박아 두어, 에이전트가 매번 전체 코드베이스를 재분석하지 않아도 되게 합니다. 하네스 엔지니어링 관점에서 이는 **코드에 심는 앵커**입니다. 반복 탐색 비용을 1회 어노테이션으로 대체하는 토크노믹스 장치입니다.
 
-### @MX 태그 유형
+주로 다음 상황에서 사용합니다:
 
-| 태그 | 용도 | 사용 시점 |
-|------|------|----------|
-| `@MX:ANCHOR` | 불변 계약 | fan_in >= 3 (3곳 이상에서 호출) |
-| `@MX:WARN` | 위험 구역 | 복잡도 >= 15, goroutine/async 패턴 |
-| `@MX:NOTE` | 컨텍스트 전달 | 매직 상수, 비즈니스 규칙 설명 |
-| `@MX:TODO` | 미완성 작업 | 테스트 누락, SPEC 미구현 |
+- @MX 태그가 없는 레거시 코드베이스
+- 대규모 리팩토링 전 위험 구역 표시
+- 큰 코드 변경 후 어노테이션 업데이트
+- `/moai sync` 중 MX 검증 (자동 실행)
+
+## 태그 유형과 우선순위
+
+| 우선순위 | 조건 | 태그 유형 |
+|----------|------|-----------|
+| P1 | fan_in >= 3 호출자 | `@MX:ANCHOR` (불변 계약, 높은 fan_in) |
+| P2 | goroutine/async, 복잡도 >= 15 | `@MX:WARN` (위험 구역, `@MX:REASON` 필수) |
+| P3 | 매직 상수, 누락된 docstring | `@MX:NOTE` (맥락·의도) |
+| P4 | 누락된 테스트 | `@MX:TODO` (미완성) |
+| P5 | 의도적 작동 단순화 (`@MX:CEILING` + `@MX:UPGRADE` 서브라인 동반) | `@MX:DEBT` |
 
 ## 사용법
 
 ```bash
-# 전체 코드베이스 스캔
+# 전체 코드베이스 스캔 (16개 언어)
 > /moai mx --all
 
-# 미리보기 (수정 없이 확인만)
+# 수정 없이 미리보기
 > /moai mx --dry
 
-# P1 우선순위만 (높은 fan_in 함수)
+# P1 (높은 fan_in 함수) 만
 > /moai mx --priority P1
 
-# 기존 태그 강제 덮어쓰기
-> /moai mx --all --force
-
-# 특정 언어만 스캔
+# Go·Python만 스캔
 > /moai mx --all --lang go,python
-
-# fan_in 임계값 낮추기
-> /moai mx --all --threshold 2
 ```
 
 ## 지원 플래그
 
 | 플래그 | 설명 | 예시 |
 |-------|------|------|
-| `--all` | 전체 코드베이스 스캔 (모든 언어, 모든 P1+P2 파일) | `/moai mx --all` |
-| `--dry` | 미리보기만 - 파일 수정 없이 태그 표시 | `/moai mx --dry` |
-| `--priority P1-P4` | 우선순위 레벨 필터 (기본: 전체) | `/moai mx --priority P1` |
-| `--force` | 기존 @MX 태그 덮어쓰기 | `/moai mx --force` |
-| `--exclude PATTERN` | 추가 제외 패턴 (쉼표 구분) | `/moai mx --exclude "vendor/**"` |
-| `--lang LANGS` | 특정 언어만 스캔 (기본: 자동 감지) | `/moai mx --lang go,ts` |
-| `--threshold N` | fan_in 임계값 재정의 (기본: 3) | `/moai mx --threshold 2` |
-| `--no-discovery` | Phase 0 코드베이스 발견 건너뜀 | `/moai mx --no-discovery` |
-| `--team` | 언어별 병렬 스캔 (에이전트 팀 모드) | `/moai mx --team` |
-
-## 우선순위 레벨
-
-| 우선순위 | 조건 | 태그 유형 |
-|---------|------|----------|
-| **P1** | fan_in >= 3 (3곳 이상에서 호출) | `@MX:ANCHOR` |
-| **P2** | goroutine/async, 복잡도 >= 15 | `@MX:WARN` |
-| **P3** | 매직 상수, docstring 누락 | `@MX:NOTE` |
-| **P4** | 테스트 누락 | `@MX:TODO` |
+| `--all` | 전체 코드베이스 스캔 (모든 언어, P1+P2 파일 전체) | `/moai mx --all` |
+| `--dry` | 미리보기 — 파일 수정 없이 추가될 태그만 표시 | `/moai mx --dry` |
+| `--priority P1-P4` | 우선순위 레벨로 필터 (기본값: 전체) | `/moai mx --priority P1` |
+| `--force` | 기존 @MX 태그 덮어쓰기 | `/moai mx --all --force` |
+| `--exclude pattern` | 추가 제외 패턴 (쉼표 구분) | `/moai mx --exclude "vendor/,*.gen.go"` |
+| `--lang go,py,ts` | 지정 언어만 스캔 (기본값: 자동 감지) | `/moai mx --lang go,python` |
+| `--threshold N` | fan_in 임계값 재정의 (기본값: 3) | `/moai mx --all --threshold 2` |
+| `--no-discovery` | 1단계 코드베이스 탐색 건너뛰기 | `/moai mx --no-discovery` |
 
 ## 실행 과정
 
-`/moai mx`는 3단계 패스 (Pass) 로 실행됩니다.
+`/moai mx`는 탐색 1단계 + 3-Pass 스캔으로 실행됩니다.
 
 ```mermaid
 flowchart TD
-    Start["/moai mx 실행"] --> Phase0["Phase 0: 코드베이스 발견"]
-
-    Phase0 --> LangDetect["언어 감지<br/>(16개 언어 지원)"]
-    LangDetect --> Context["프로젝트 컨텍스트 로드<br/>(tech.md, structure.md)"]
-    Context --> Scope["스캔 범위 계산"]
-
-    Scope --> Pass1["Pass 1: 전체 파일 스캔"]
-    Pass1 --> FanIn["Fan-in 분석"]
-    Pass1 --> Complexity["복잡도 감지"]
-    Pass1 --> Pattern["패턴 감지"]
-    FanIn --> Queue["우선순위 큐 생성<br/>(P1-P4)"]
-    Complexity --> Queue
-    Pattern --> Queue
-
-    Queue --> Pass2["Pass 2: 선택적 심층 읽기<br/>(P1 + P2 파일)"]
-    Pass2 --> Generate["태그 설명 생성"]
-
-    Generate --> Pass3{"--dry?"}
-    Pass3 -->|예| Preview["태그 미리보기 표시"]
-    Pass3 -->|아니오| Insert["Pass 3: 배치 편집<br/>(파일당 1회 Edit)"]
-    Insert --> Report["보고서 생성"]
+    Start["/moai mx 실행"] --> Phase1["1단계: 코드베이스 탐색<br/>언어 감지 + 프로젝트 컨텍스트 로드"]
+    Phase1 --> Pass1["Pass 1: 전체 파일 스캔<br/>fan-in·복잡도·패턴 분석 → 우선순위 큐"]
+    Pass1 --> Pass2["Pass 2: 선택적 심층 읽기<br/>P1·P2 파일 정독 → 태그 설명 생성"]
+    Pass2 --> Pass3["Pass 3: 배치 편집<br/>파일당 Edit 1회로 태그 삽입"]
+    Pass3 --> Report["보고서<br/>추가/업데이트/건너뜀 집계"]
 ```
 
-### Phase 0: 코드베이스 발견
+### 1단계: 코드베이스 탐색
 
-16개 언어를 지원하는 자동 감지:
-
-| 언어 | 감지 파일 | 주석 접두사 |
-|------|-----------|------------|
-| Go | go.mod, go.sum | `//` |
-| Python | pyproject.toml, requirements.txt | `#` |
-| TypeScript | tsconfig.json | `//` |
-| JavaScript | package.json | `//` |
-| Rust | Cargo.toml | `//` |
-| Java | pom.xml, build.gradle | `//` |
-| Kotlin | build.gradle.kts | `//` |
-| Ruby | Gemfile | `#` |
-| Elixir | mix.exs | `#` |
-| C++ | CMakeLists.txt | `//` |
-| Swift | Package.swift | `//` |
-| 외 5개 | 각 언어별 설정 파일 | 언어별 |
+프로젝트 언어를 감지하고 (16개 언어, 마커 파일 우선순위) 언어별 주석 접두사 (`//`, `#` 등) 를 결정합니다. `.moai/project/tech.md`·`structure.md`·`product.md`·`README.md`를 읽어 태그 설명에 쓸 프로젝트 맥락을 로드하고, 스캔 범위와 토큰 예산을 계산합니다. `--no-discovery`를 주면 이 단계를 건너뜁니다.
 
 ### Pass 1: 전체 파일 스캔
 
-모든 소스 파일을 스캔하여 우선순위 큐를 생성합니다:
-
-- **Fan-in 분석**: 함수/메서드 참조 횟수 카운트
-- **복잡도 감지**: 줄 수, 분기 수, 중첩 깊이
-- **패턴 감지**: 언어별 위험 패턴 (goroutine, async, threading, unsafe)
+모든 소스 파일을 언어별 패턴으로 Glob하여 fan-in 분석 (함수·메서드 참조 카운트), 복잡도 감지 (줄 수·분기·중첩 깊이), 패턴 감지 (goroutine·async·threading·unsafe) 를 수행하고, 점수순으로 정렬된 우선순위 큐 (P1-P4) 를 만듭니다.
 
 ### Pass 2: 선택적 심층 읽기
 
-P1 및 P2 파일을 심층 분석하여 정확한 태그 설명을 생성합니다. 프로젝트 컨텍스트 (tech.md, structure.md, product.md)를 활용합니다.
+P1·P2 파일만 정독하여 함수 시그니처와 호출 패턴을 분석하고, 프로젝트 맥락 (tech.md·structure.md·product.md) 을 반영한 정확한 태그 설명을 언어별 주석 문법으로 생성합니다.
 
 ### Pass 3: 배치 편집
 
-파일당 1회 Edit 호출로 태그를 삽입합니다. 기존 @MX 태그는 보존됩니다 (`--force` 제외).
+파일당 Edit 1회로 해당 파일의 모든 태그를 한 번에 삽입합니다. 기존 @MX 태그는 `--force`가 없으면 보존됩니다. 삽입 대상이 5개 미만이면 오케스트레이터가 직접 편집하고 (스폰 없음), 5개 이상이면 배치 편집 에이전트에 위임합니다.
 
-## 배치 체크포인트
+## /moai sync·run과의 통합
 
-대규모 스캔 (50+ 파일)은 배치 처리를 사용합니다:
-
-- **배치 크기**: 50개 파일 per 반복
-- **자동 커밋**: 각 배치 완료 후 중간 결과 커밋
-- **진행 상황 저장**: `.moai/cache/mx-scan-progress.json`
-- **재개 가능**: 중단된 스캔을 이어서 진행
-
-{{< callout type="info" >}}
-Rate limit 감지 시 현재 배치를 저장하고 graceful 하게 중단합니다. `/moai mx`를 다시 실행하면 중단된 지점부터 재개됩니다.
-{{< /callout >}}
+- **`/moai sync`**: sync 단계에서 MX 검증이 자동 실행됩니다 — 마지막 sync 이후 변경된 파일을 스캔하여 누락된 @MX 태그를 확인하고, `--skip-mx` 플래그가 없으면 태그를 추가한 뒤 sync 보고서에 태그 변경을 포함합니다.
+- **`/moai run`**: DDD ANALYZE 단계에서 코드베이스에 @MX 태그가 하나도 없으면 3-Pass가 자동 트리거됩니다. 기존 태그는 검증·업데이트되고 새 코드에는 새 태그가 추가됩니다.
 
 ## 에이전트 위임 체인
 
-```mermaid
-flowchart TD
-    User["사용자 요청"] --> MoAI["MoAI 오케스트레이터"]
-    MoAI --> Explore["Explore subagent<br/>코드베이스 발견"]
-    Explore --> Backend["manager-develop<br/>태그 삽입"]
-    Backend --> Report["MoAI<br/>보고서 생성"]
-```
-
-## 다른 워크플로우와의 통합
-
-| 워크플로우 | MX 통합 방식 |
-|-----------|-------------|
-| `/moai sync` | 동기화 중 MX 검증 자동 실행 (SPEC-MX-002) |
-| `/moai edit` | 파일 편집 시 @MX 태그 자동 검증 (v2.7.8+) |
-| `/moai run` | DDD ANALYZE 단계에서 자동 트리거 |
-| `/moai review` | MX 태그 준수 검사 포함 |
-
-## 자주 묻는 질문
-
-### Q: @MX 태그가 코드 실행에 영향을 주나요?
-
-아니요, @MX 태그는 주석으로만 존재합니다. 코드 실행이나 성능에 전혀 영향을 주지 않습니다.
-
-### Q: 기존 태그가 있으면 어떻게 되나요?
-
-기본적으로 기존 태그를 보존합니다. `--force` 플래그를 사용하면 덮어씁니다.
-
-### Q: 자동 생성된 파일도 태그하나요?
-
-아닙니다. `.moai/config/sections/mx.yaml`의 제외 패턴에 따라 생성된 파일, vendor, mock 파일은 자동으로 건너뜁니다.
+| 단계 | 실행 주체 | 주요 작업 |
+|------|-----------|-----------|
+| 1단계 (탐색) | Explore 서브에이전트 | 언어 감지, 프로젝트 컨텍스트 로드 |
+| Pass 1 (스캔) | Explore 또는 `Agent(general-purpose)` (백엔드 스코프) | 전체 파일 스캔, 우선순위 큐 생성 |
+| Pass 2 (심층 읽기) | `Agent(general-purpose)` (백엔드 스코프) | P1·P2 정독, 태그 설명 생성 |
+| Pass 3 (편집) | `Agent(general-purpose)` (백엔드 스코프); 5개 미만은 오케스트레이터 직접 | 배치 편집, 태그 삽입 |
 
 ## 관련 문서
 
+- [/moai sync - 문서 동기화](/workflow-commands/moai-sync)
+- [/moai run - DDD/TDD 구현](/workflow-commands/moai-run)
 - [/moai clean - 데드 코드 제거](/utility-commands/moai-clean)
-- [/moai review - 코드 리뷰](/quality-commands/moai-review)
-- [/moai - 완전 자율 자동화](/utility-commands/moai)

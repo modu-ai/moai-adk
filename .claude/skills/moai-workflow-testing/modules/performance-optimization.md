@@ -3,18 +3,18 @@
 > Module: Real-time performance profiling, bottleneck detection, and optimization strategies
 > Complexity: Advanced
 > Time: 30+ minutes
-> Dependencies: Python 3.8+, cProfile, memory_profiler, psutil, Context7 MCP, asyncio
+> Dependencies: the host language's CPU/memory profiler, optional WebSearch/WebFetch
 
 ## Overview
 
-Performance optimization module providing comprehensive profiling, bottleneck detection, and AI-powered optimization suggestions for Python applications.
+Performance optimization module providing comprehensive profiling, bottleneck detection, and AI-powered optimization suggestions, expressed language-neutrally.
 
 ### Core Capabilities
 
 - **Real-time Monitoring**: Continuous performance tracking with alerting
 - **Multi-dimensional Profiling**: CPU, memory, and line-level profiling
 - **Intelligent Detection**: Automatic bottleneck identification with severity scoring
-- **AI-Powered Suggestions**: Context7-based optimization recommendations
+- **AI-Powered Suggestions**: Documentation-based optimization recommendations
 - **Comprehensive Planning**: Structured optimization plans with risk assessment
 
 ## Module Structure
@@ -32,7 +32,7 @@ Key Features:
 - Rolling snapshot buffer with configurable size
 
 Usage:
-```python
+```text
 monitor = RealTimeMonitor(sampling_interval=0.5)
 monitor.start_monitoring()
 monitor.add_callback(custom_metrics)
@@ -47,16 +47,16 @@ metrics = monitor.get_average_metrics(5)
 CPU, memory, and line profiling infrastructure with statistical analysis.
 
 Key Features:
-- cProfile integration for CPU profiling
-- tracemalloc and memory_profiler for memory tracking
-- line_profiler for function-level timing
+- CPU profiling (e.g. Go pprof, Python cProfile, Rust flamegraph)
+- Memory profiling (e.g. Go runtime MemProfile, Python tracemalloc, Rust heaptrack)
+- Line/function-level timing
 - Comprehensive profile analysis and parsing
 - Function-level performance statistics
 
 Usage:
-```python
-profiler = PerformanceProfiler(context7_client=context7)
-profiler.start_profiling(['cpu', 'memory', 'line'])
+```text
+profiler = PerformanceProfiler(docs_client=docs)
+profiler.start_profiling(["cpu", "memory", "line"])
 # ... code to profile ...
 results = profiler.stop_profiling()
 ```
@@ -74,13 +74,13 @@ Key Features:
 - Context-aware optimization suggestions
 
 Usage:
-```python
+```text
 detector = BottleneckDetector(profiler)
-bottlenecks = await detector.detect_bottlenecks(profile_results)
+bottlenecks = detector.detect_bottlenecks(profile_results)
 for bottleneck in bottlenecks[:5]:
-    print(f"{bottleneck.function_name}: {bottleneck.severity}")
-    print(f"  Impact: {bottleneck.impact_score:.2f}")
-    print(f"  Fixes: {bottleneck.suggested_fixes}")
+    print(bottleneck.function_name + ": " + bottleneck.severity)
+    print("  Impact: " + bottleneck.impact_score)
+    print("  Fixes: " + bottleneck.suggested_fixes)
 ```
 
 ### 4. Optimization Planning
@@ -97,45 +97,44 @@ Key Features:
 - Validation strategy generation
 
 Usage:
-```python
+```text
 planner = OptimizationPlanner(detector)
-plan = await planner.create_optimization_plan(bottlenecks)
-print(f"Estimated improvement: {plan.estimated_total_improvement}")
-print(f"Complexity: {plan.implementation_complexity}")
-print(f"Risk: {plan.risk_level}")
+plan = planner.create_optimization_plan(bottlenecks)
+print("Estimated improvement: " + plan.estimated_total_improvement)
+print("Complexity: " + plan.implementation_complexity)
+print("Risk: " + plan.risk_level)
 ```
 
 ### 5. AI-Powered Optimization
 [ai-optimization.md](./performance-optimization/ai-optimization.md)
 
-Intelligent optimization suggestions using Context7 documentation integration.
+Intelligent optimization suggestions using Documentation documentation integration.
 
 Key Features:
-- Context7 integration for latest performance patterns
+- Documentation integration for latest performance patterns
 - Algorithm complexity analysis and recommendations
 - Data structure optimization suggestions
 - Concurrency improvement strategies
 - Hybrid AI and rule-based approach
 
 Usage:
-```python
-optimizer = IntelligentOptimizer(context7_client=context7)
-suggestions = await optimizer.get_ai_optimization_suggestions(
+```text
+optimizer = IntelligentOptimizer(docs_client=docs)
+suggestions = optimizer.get_ai_optimization_suggestions(
     bottlenecks,
-    codebase_context={'project_type': 'web_api'}
-)
+    codebase_context={ project_type: "web_api" })
 ```
 
 ## Quick Start Example
 
 Complete performance optimization workflow:
 
-```python
+```text
 # Initialize profiler
-profiler = PerformanceProfiler(context7_client=context7)
+profiler = PerformanceProfiler(docs_client=docs)
 
 # Start profiling
-profiler.start_profiling(['cpu', 'memory', 'line'])
+profiler.start_profiling(["cpu", "memory", "line"])
 
 # Run code to profile
 result = expensive_function(1000)
@@ -145,23 +144,22 @@ profile_results = profiler.stop_profiling()
 
 # Detect bottlenecks
 detector = BottleneckDetector(profiler)
-bottlenecks = await detector.detect_bottlenecks(profile_results)
+bottlenecks = detector.detect_bottlenecks(profile_results)
 
 # Create optimization plan
 planner = OptimizationPlanner(detector)
-plan = await planner.create_optimization_plan(bottlenecks)
+plan = planner.create_optimization_plan(bottlenecks)
 
 # Get AI suggestions
-optimizer = IntelligentOptimizer(context7_client)
-ai_suggestions = await optimizer.get_ai_optimization_suggestions(
+optimizer = IntelligentOptimizer(docs_client)
+ai_suggestions = optimizer.get_ai_optimization_suggestions(
     bottlenecks,
-    codebase_context={'project_type': 'web_api'}
-)
+    codebase_context={ project_type: "web_api" })
 
 # Report results
-print(f"Found {len(bottlenecks)} bottlenecks")
-print(f"Estimated improvement: {plan.estimated_total_improvement}")
-print(f"Risk level: {plan.risk_level}")
+print("Found " + len(bottlenecks) + " bottlenecks")
+print("Estimated improvement: " + plan.estimated_total_improvement)
+print("Risk level: " + plan.risk_level)
 ```
 
 ## Performance Metrics Types
@@ -195,26 +193,26 @@ print(f"Risk level: {plan.risk_level}")
 
 ### Caching Strategies
 - LRU cache implementation
-- Memoization decorators
+- Memoization decorators / idioms
 - Query result caching
 - Object pooling
 
 ### Concurrency Improvements
-- Multiprocessing for CPU-bound tasks
-- Threading for I/O-bound operations
-- Asyncio for concurrent I/O
+- Parallelism for CPU-bound tasks
+- Threads/goroutines for I/O-bound operations
+- Async I/O for concurrent network/disk
 - Thread/process pool execution
 
 ### Memory Optimizations
-- Generator usage for large datasets
+- Streaming/generators for large datasets
 - Lazy loading patterns
 - Memory-efficient data structures
 - Object lifecycle management
 
 ### Data Structure Changes
-- Set/dict for O(1) lookups
-- Deque for queue operations
-- Numpy arrays for numerical data
+- Set/map for O(1) lookups
+- Double-ended queue for queue operations
+- Contiguous/typed arrays for numerical data
 - Trie structures for prefix searches
 
 ## Best Practices
@@ -246,30 +244,28 @@ print(f"Risk level: {plan.risk_level}")
 4. **Gradual Rollout**: Use feature flags and gradual deployment
 5. **Monitoring**: Set up performance monitoring and alerting
 
-## Integration with Context7
+## Integration with Documentation
 
-The AI-powered optimization module integrates with Context7 to provide:
+The AI-powered optimization module integrates with Documentation to provide:
 
 - Latest performance optimization patterns from official documentation
 - Algorithm complexity analysis and best practices
 - Framework-specific optimization techniques
-- Real-time documentation updates for 2025+ patterns
+- Real-time documentation updates
 
-Context7 Queries:
-```python
-# Performance optimization patterns
-await context7.get_library_docs(
-    context7_library_id="/performance/python-profiling",
-    topic="advanced performance optimization patterns 2025",
-    tokens=5000
-)
+Documentation Queries:
+```text
+# Performance optimization patterns (use the host language's profiler library id)
+docs.get_library_docs(
+    "<host-language-profiler>",   # e.g. /performance/go-pprof, /performance/python-profiling
+    topic="advanced performance optimization patterns",
+    tokens=5000)
 
 # Algorithm optimization
-await context7.get_library_docs(
-    context7_library_id="/algorithms/python",
+docs.get_library_docs(
+    "<algorithms>",               # language-agnostic algorithm references
     topic="algorithm optimization big-O complexity reduction",
-    tokens=3000
-)
+    tokens=3000)
 ```
 
 ## Common Use Cases
@@ -291,17 +287,17 @@ Analyze algorithmic complexity and implement more efficient data structures and 
 
 ## Dependencies
 
-Required:
-- Python 3.8+
-- cProfile (standard library)
-- psutil (system monitoring)
-- memory_profiler (memory tracking)
-- line_profiler (line-level profiling)
-- tracemalloc (standard library)
+A CPU/memory profiler for your language. Examples (see
+[../references/multi-language-support.md](../references/multi-language-support.md)
+for the full per-language inventory):
+
+- Python: cProfile, memory_profiler, psutil, line_profiler, tracemalloc
+- Go: pprof (built into the runtime)
+- Rust: flamegraph, cargo-flamechart
+- Node.js / browser JS / TS: Chrome DevTools, clinic.js
 
 Optional:
-- Context7 MCP (AI-powered suggestions)
-- asyncio (async profiling support)
+- WebSearch/WebFetch (AI-powered suggestions)
 
 ## Module Versions
 

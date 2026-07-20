@@ -15,7 +15,11 @@ import (
 	"github.com/mattn/go-isatty"
 	"github.com/spf13/cobra"
 
+	"github.com/modu-ai/moai-adk/internal/cli/printer"
+	"github.com/modu-ai/moai-adk/internal/cli/uikit"
+	"github.com/modu-ai/moai-adk/internal/cli/update/deploy"
 	"github.com/modu-ai/moai-adk/internal/cli/wizard"
+	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/core/project"
 	"github.com/modu-ai/moai-adk/internal/foundation"
 	"github.com/modu-ai/moai-adk/internal/manifest"
@@ -86,6 +90,19 @@ func init() {
 	initCmd.Flags().Bool("enable-lsp", false, "Enable LSP integration (default: false)")
 	initCmd.Flags().Bool("enforce-quality", true, "Enforce quality gates (default: true)")
 	initCmd.Flags().Bool("enable-design", true, "Enable design workflow (default: true)")
+
+	// SPEC-AGENT-ARCH-V2-001 M3c (REQ-AA2-010): No-Haiku 3-tier performance
+	// tier flag. New canonical name --model-policy max|medium|low; legacy
+	// --high/--medium/--low accepted as deprecated aliases (one-cycle, plan.md D4).
+	initCmd.Flags().String("model-policy", "", "Performance tier: max, medium, or low (persists to llm.yaml performance_tier)")
+	initCmd.Flags().Bool("high", false, "Deprecated alias for --model-policy max (one-cycle backward compat)")
+	initCmd.Flags().Bool("medium-alias", false, "Deprecated alias for --model-policy medium (one-cycle backward compat)")
+	initCmd.Flags().Bool("low", false, "Deprecated alias for --model-policy low (one-cycle backward compat)")
+
+	// SPEC-MODEL-PROFILE-MATRIX-001 (REQ-MPM-015): per-agent model+effort profile
+	// selection. Persists to llm.profile; closed-set validated {max, medium, low}.
+	// Takes precedence over the wizard answer. Supersedes the retired --plan-type.
+	initCmd.Flags().String("profile", "", "Model+effort profile: max, medium, or low (persists to llm.yaml profile)")
 }
 
 // getStringFlag retrieves a string flag value from the command.
@@ -151,7 +168,45 @@ func validateInitFlags(cmd *cobra.Command, _ []string) error {
 		}
 	}
 
+	// SPEC-AGENT-ARCH-V2-001 M3c (REQ-AA2-010): validate --model-policy enum.
+	// Invalid value exits non-zero with a stderr usage error naming the 3-enum.
+	modelPolicy := getStringFlag(cmd, "model-policy")
+	if modelPolicy != "" {
+		validTiers := []string{"max", "medium", "low"}
+		if !slices.Contains(validTiers, modelPolicy) {
+			return fmt.Errorf("invalid --model-policy value %q: must be one of: max, medium, low", modelPolicy)
+		}
+	}
+
+	// SPEC-MODEL-PROFILE-MATRIX-001 (REQ-MPM-015): validate --profile enum.
+	// Invalid value exits non-zero with a usage error naming the closed set.
+	profileFlag := getStringFlag(cmd, "profile")
+	if profileFlag != "" && !config.IsValidProfile(profileFlag) {
+		return fmt.Errorf("invalid --profile value %q: must be one of: max, medium, low", profileFlag)
+	}
+
 	return nil
+}
+
+// resolveModelPolicy resolves the effective performance tier from the
+// --model-policy flag and its legacy aliases (--high/--medium-alias/--low).
+// The new canonical flag takes precedence; legacy aliases map high→max,
+// medium→medium, low→low (plan.md D4, one-cycle backward compat). Returns
+// "" when no model-policy flag was set.
+func resolveModelPolicy(cmd *cobra.Command) string {
+	if mp := getStringFlag(cmd, "model-policy"); mp != "" {
+		return mp
+	}
+	if getBoolFlag(cmd, "high") {
+		return "max"
+	}
+	if getBoolFlag(cmd, "medium-alias") {
+		return "medium"
+	}
+	if getBoolFlag(cmd, "low") {
+		return "low"
+	}
+	return ""
 }
 
 // @MX:NOTE: [AUTO] CATALOG-002 REQ-012/013/EC3 — single decision point for slim/full opt-out. Narrow env matching: only "1" exact or case-insensitive "true".
@@ -174,27 +229,24 @@ func shouldDistributeAll(cmd *cobra.Command) bool {
 // @MX:ANCHOR: [AUTO] runInit is the main entry point for project initialization
 // @MX:REASON: [AUTO] fan_in=3, called from init.go init(), coverage_test.go, init_coverage_test.go
 // runInit executes the project initialization workflow.
-// It first checks for a binary update so the latest templates are used.
+//
+// The binary self-update check is DEFERRED: it starts only after the wizard
+// has completed (and after the first phase output in non-interactive mode),
+// is check-only (no install, no re-exec), and surfaces as a non-blocking
+// stderr notice with the `moai update` hint at exit
+// (SPEC-CLI-TUX-V3-002 REQ-TUX2-001..004; see init_update_notice.go).
 func runInit(cmd *cobra.Command, args []string) error {
-	// Binary update step (non-fatal)
-	if !shouldSkipBinaryUpdate(cmd) {
-		updated, err := runBinaryUpdateStep(cmd)
-		if err != nil {
-			_, _ = fmt.Fprintf(cmd.OutOrStdout(), "Warning: binary update check failed: %v\n", err)
-		}
-		if updated {
-			if err := reexecNewBinary(); err != nil {
-				_, _ = fmt.Fprintf(cmd.OutOrStdout(), "Warning: failed to re-exec new binary: %v\n", err)
-			}
-			// reexecNewBinary replaces the process on success; only
-			// reach here if it failed.
-		}
-	}
+	// Unified output gateway: warnings and progress go to stderr, data to
+	// stdout (SPEC-CLI-TUX-V3-001 REQ-CTX-012/016). The warning collector
+	// wraps the printer so every Warn is re-emitted exactly once as a
+	// consolidated stderr summary panel when init terminates — success or
+	// failure (REQ-TUX2-013).
+	p := newWarnCollector(printer.New(printer.WithWriters(cmd.OutOrStdout(), cmd.ErrOrStderr())))
+	defer p.emitSummary(cmd.ErrOrStderr())
 
 	// Git availability check (non-fatal warning)
 	if _, err := exec.LookPath("git"); err != nil {
-		_, _ = fmt.Fprintf(cmd.OutOrStdout(),
-			"Warning: git is not installed. Some features (plan/run/sync workflows, branch management) will be limited.\n  %s\n",
+		p.Warn("git is not installed. Some features (plan/run/sync workflows, branch management) will be limited.\n  %s",
 			GitInstallHint())
 	}
 
@@ -258,6 +310,10 @@ func runInit(cmd *cobra.Command, args []string) error {
 		GitLabInstanceURL: getStringFlag(cmd, "gitlab-instance-url"),
 		NonInteractive:    nonInteractive,
 		Force:             getBoolFlag(cmd, "force"),
+		// SPEC-MODEL-PROFILE-MATRIX-001 (REQ-MPM-015/016): --profile flag value
+		// (validated in validateInitFlags). The wizard fills opts.Profile only when
+		// the flag is absent, so the flag takes precedence over the wizard answer.
+		Profile: getStringFlag(cmd, "profile"),
 		// Phase 1 mode flags
 		StandardMode: standardMode,
 		// Phase 1 non-interactive overrides — defaults match wizard defaults (REQ-IWE-008)
@@ -284,14 +340,14 @@ func runInit(cmd *cobra.Command, args []string) error {
 			Value(&wantSetup)
 		if err := confirm.Run(); err == nil && wantSetup {
 			if err := runProfileSetup(cmd, nil); err != nil {
-				_, _ = fmt.Fprintf(cmd.OutOrStdout(), "Warning: profile setup failed: %v\n", err)
+				p.Warn("profile setup failed: %v", err)
 			}
 		}
 	}
 
 	prefs, err := profile.ReadPreferences(profileName)
 	if err != nil {
-		_, _ = fmt.Fprintf(cmd.OutOrStdout(), "Warning: failed to read profile preferences: %v\n", err)
+		p.Warn("failed to read profile preferences: %v", err)
 	} else {
 		if prefs.UserName != "" {
 			opts.UserName = prefs.UserName
@@ -312,20 +368,15 @@ func runInit(cmd *cobra.Command, args []string) error {
 		// Profile-level model policy is no longer applied here.
 	}
 
-	if !nonInteractive && isatty.IsTerminal(os.Stdin.Fd()) {
+	if !nonInteractive && isInteractiveStdin() {
 		// Print banner and welcome message
-		PrintBanner(version.GetVersion())
-		PrintWelcomeMessage()
+		uikit.PrintBanner(version.GetVersion())
+		uikit.PrintWelcomeMessage()
 
 		// Use RunWithDefaultsModes when --standard or --advanced is set; otherwise
 		// fall back to RunWithDefaults for Quick mode backward-compat (REQ-IWE-006).
-		var result *wizard.WizardResult
-		var wizErr error
-		if standardMode {
-			result, wizErr = wizard.RunWithDefaultsModes(rootFlag, "", standardMode, advancedMode)
-		} else {
-			result, wizErr = wizard.RunWithDefaults(rootFlag, "")
-		}
+		// runWizardFn is the injectable wizard seam (REQ-TUX2-001 order contract).
+		result, wizErr := runWizardFn(rootFlag, "", standardMode, advancedMode)
 		if wizErr != nil {
 			if errors.Is(wizErr, wizard.ErrCancelled) {
 				_, _ = fmt.Fprintln(cmd.OutOrStderr(), "Initialization cancelled.")
@@ -356,6 +407,15 @@ func runInit(cmd *cobra.Command, args []string) error {
 		if result.ModelPolicy != "" {
 			opts.ModelPolicy = result.ModelPolicy
 		}
+		// SPEC-MODEL-PROFILE-MATRIX-001 (REQ-MPM-014/016): the model-routing wizard
+		// answer IS the profile selection; it flows through opts.ModelPolicy and is
+		// normalized to {max, medium, low} at profile persistence (the --profile flag
+		// takes precedence over it).
+		// Report format is wizard-only (no CLI flag); empty resolves to the
+		// html+md default at persistence time (initializer.writeReportConfig).
+		if opts.ReportFormat == "" && result.ReportFormat != "" {
+			opts.ReportFormat = result.ReportFormat
+		}
 		// Apply Phase 1 wizard results (only when StandardMode was active)
 		if result.StandardMode {
 			if result.ProjectMode != "" {
@@ -375,6 +435,16 @@ func runInit(cmd *cobra.Command, args []string) error {
 	// Default git provider to "github" for backward compatibility
 	if opts.GitProvider == "" {
 		opts.GitProvider = "github"
+	}
+
+	// development_mode is no longer an interactive wizard question; TDD is the
+	// silent default. The --mode flag still overrides (opts.DevelopmentMode was
+	// set from the flag above). Setting a concrete value here — rather than
+	// leaving it empty — makes phase.go take the explicitly-set validated branch
+	// and skip methodology auto-detection (which would otherwise fall back to
+	// ddd on an empty value).
+	if opts.DevelopmentMode == "" {
+		opts.DevelopmentMode = "tdd"
 	}
 
 	// Build dependencies
@@ -419,58 +489,111 @@ func runInit(cmd *cobra.Command, args []string) error {
 		ctx = context.Background()
 	}
 
-	// Use simple console output for progress reporting
-	consoleReporter := project.NewConsoleReporter()
-	executor.SetReporter(consoleReporter)
+	// Use printer-backed console output for progress reporting
+	// (REQ-CTX-015: ProgressReporter events route through the Printer to
+	// stderr; the former project.ConsoleReporter wrote to stdout). The
+	// spinner-backed reporter renders template deployment as an animated
+	// live line on a TTY and degrades to plain lines otherwise
+	// (REQ-TUX2-010/011).
+	executor.SetReporter(newSpinnerReporter(p))
 
-	_, _ = fmt.Fprintln(cmd.OutOrStdout(), "Initializing MoAI project...") //nolint:errcheck
+	p.Info("Initializing MoAI project...")
+
+	// Deferred binary self-update check (REQ-TUX2-001/004): starts strictly
+	// after wizard completion and after the first phase output; never blocks
+	// phase execution; flushed as a stderr notice at exit. A wizard cancel
+	// returns before this point, so the cancel path has zero network side
+	// effects (acceptance.md §C).
+	flushUpdateNotice := startDeferredUpdateNotice(cmd)
 
 	result, err := executor.Execute(ctx, opts)
 	if err != nil {
+		// REQ-TUX2-015: re-running init on an initialized project without
+		// --force is usually a template-refresh intent — redirect to
+		// `moai update` alongside the existing --force guidance.
+		if !getBoolFlag(cmd, "force") && strings.Contains(err.Error(), "already initialized") {
+			return fmt.Errorf("initialization failed: %w\n  Hint: this directory already contains a MoAI project — did you mean 'moai update' (refresh templates in place)? Re-run with --force only to reinitialize from scratch", err)
+		}
 		return fmt.Errorf("initialization failed: %w", err)
 	}
 
-	// Display success message
-	details := []string{
-		renderKeyValueLines([]kvPair{
-			{"Directories", fmt.Sprintf("%d created", len(result.CreatedDirs))},
-			{"Files", fmt.Sprintf("%d created", len(result.CreatedFiles))},
-		}),
-	}
+	// Route executor result warnings into the collector (they surface once,
+	// in the exit summary panel — REQ-TUX2-013) and display the completion
+	// card with the next-action sequence (REQ-TUX2-016). Human-facing status
+	// belongs on stderr (internal/cli/CLAUDE.md Output streams; REQ-CTX-012).
 	for _, w := range result.Warnings {
-		details = append(details, cliWarn.Render("Warning: "+w))
+		p.Collect(w)
 	}
-	_, _ = fmt.Fprintln(cmd.OutOrStdout())
-	_, _ = fmt.Fprintln(cmd.OutOrStdout(), renderSuccessCard("MoAI project initialized", details...))
+	cardName := opts.ProjectName
+	if cardName == "" {
+		cardName = filepath.Base(opts.ProjectRoot)
+	}
+	_, _ = fmt.Fprintln(cmd.ErrOrStderr())
+	_, _ = fmt.Fprintln(cmd.ErrOrStderr(),
+		buildInitSuccessCard(cardName, len(result.CreatedDirs), len(result.CreatedFiles), p.Count()))
 
 	// Sync profile preferences to project config (after template deployment)
 	if err := profile.SyncToProjectConfig(opts.ProjectRoot, prefs); err != nil {
-		_, _ = fmt.Fprintf(cmd.OutOrStdout(), "  Warning: Failed to sync profile to project config: %v\n", err)
+		p.Warn("Failed to sync profile to project config: %v", err)
+	}
+
+	// SPEC-AGENT-ARCH-V2-001 M3c (REQ-AA2-010): persist the resolved
+	// performance tier to llm.yaml. CLI --model-policy takes precedence over
+	// the wizard's ModelPolicy; both resolve to one of {max, medium, low}.
+	perfTier := resolveModelPolicy(cmd)
+	if perfTier == "" && opts.ModelPolicy != "" {
+		perfTier = opts.ModelPolicy
+	}
+	if perfTier != "" && template.IsValidPerformanceTier(perfTier) {
+		if err := template.ApplyPerformanceTier(opts.ProjectRoot, perfTier); err != nil {
+			p.Warn("Failed to apply performance tier: %v", err)
+		}
+	}
+
+	// SPEC-MODEL-PROFILE-MATRIX-001 (REQ-MPM-016): persist the resolved per-agent
+	// profile to llm.profile. Precedence: the --profile flag (opts.Profile, already
+	// validated to {max, medium, low}), else the resolved model-policy tier
+	// (perfTier / opts.ModelPolicy). NormalizeToTier is total (high→max, ""→medium),
+	// so the wizard's legacy {high, medium, low} answer maps correctly.
+	{
+		profile := opts.Profile
+		if profile == "" {
+			profile = perfTier
+		}
+		if profile == "" {
+			profile = opts.ModelPolicy
+		}
+		if resolved := template.NormalizeToTier(profile); resolved != "" {
+			if err := template.ApplyProfile(opts.ProjectRoot, resolved); err != nil {
+				p.Warn("Failed to apply profile: %v", err)
+			}
+		}
 	}
 
 	// Scaffold .moai/evolution/ directory structure (R2: Directory Scaffolding).
 	// This is also handled by template deployment, but scaffoldEvolutionDir ensures
 	// all required subdirectories and placeholder files are present even when the
 	// template fs doesn't track empty directories.
-	if err := scaffoldEvolutionDir(opts.ProjectRoot); err != nil {
-		_, _ = fmt.Fprintf(cmd.OutOrStdout(), "  Warning: Failed to scaffold evolution directory: %v\n", err)
-	}
-
-	// Scaffold .moai/design/ directory structure (REQ-001, REQ-002, REQ-003, REQ-010).
-	// Deploy README.md, research.md, system.md, spec.md templates and create
-	// wireframes/ and screenshots/ subdirectories. Skips deployment if design dir
-	// already contains regular files to prevent overwriting user assets.
-	if _, err := scaffoldDesignDir(opts.ProjectRoot, cmd.OutOrStderr()); err != nil {
-		_, _ = fmt.Fprintf(cmd.OutOrStdout(), "  Warning: Failed to scaffold design directory: %v\n", err)
+	if err := deploy.ScaffoldEvolutionDir(opts.ProjectRoot); err != nil {
+		p.Warn("Failed to scaffold evolution directory: %v", err)
 	}
 
 	// Ensure global settings.json has required env variables
 	if err := ensureGlobalSettingsEnv(); err != nil {
-		_, _ = fmt.Fprintf(cmd.OutOrStdout(), "  Warning: Failed to update global settings env: %v\n", err)
+		p.Warn("Failed to update global settings env: %v", err)
 	}
 
 	// Install pre-push hook (REQ-CIAUT-002). Non-fatal; --no-hooks opts out.
-	installPrePushHookOptional(opts.ProjectRoot, getBoolFlag(cmd, "no-hooks"), cmd.OutOrStdout())
+	// Status/warning lines are human-facing -> stderr (REQ-CTX-016).
+	installPrePushHookOptional(opts.ProjectRoot, getBoolFlag(cmd, "no-hooks"), cmd.ErrOrStderr())
+
+	// Install pre-commit hook (REQ-PC-001). Fast-subset commit tier; --no-hooks opts out.
+	installPreCommitHookOptional(opts.ProjectRoot, getBoolFlag(cmd, "no-hooks"), cmd.ErrOrStderr())
+
+	// Deferred self-update notice (REQ-TUX2-002): non-blocking stderr notice
+	// with the `moai update` hint; a failed or in-flight check never affects
+	// the init result.
+	flushUpdateNotice(p)
 
 	return nil
 }

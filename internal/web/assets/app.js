@@ -203,6 +203,17 @@
         nodes[i].textContent = str;
       }
     }
+    // SPEC-WEBCONF-SIMPLIFY-001 M4 (REQ-WC-015): resolve data-i18n-title into the
+    // native title attribute — used by per-option <option> descriptions (design.md
+    // §H.3, zero custom interaction JS — native hover tooltip) + field descriptions.
+    var titled = document.querySelectorAll("[data-i18n-title]");
+    for (var j = 0; j < titled.length; j++) {
+      var tkey = titled[j].getAttribute("data-i18n-title");
+      var tstr = dict[tkey];
+      if (typeof tstr === "string" && tstr.length > 0) {
+        titled[j].setAttribute("title", tstr);
+      }
+    }
   }
 
   function persistLang(locale) {
@@ -250,6 +261,72 @@
     });
   }
 
+  // ── M5-b D1 — Tab navigation (CSS show/hide) ──
+
+  // wireTabs 배선: 탭 버튼 클릭 시 .is-active 클래스를 토글한다. 패널은 DOM
+  // 에서 제거되지 않고 CSS display:none 만 토글된다 — 비활성 패널의 폼 필드도
+  // 그대로 제출된다 (atomic Save contract). 첫 탭이 기본 활성 탭이다(서버가
+  // is-active 클래스를 렌더 시 부여한다).
+  function wireTabs() {
+    var tabBtns = document.querySelectorAll(".tabs .tab[data-tab]");
+    if (tabBtns.length === 0) {
+      return;
+    }
+    for (var i = 0; i < tabBtns.length; i++) {
+      tabBtns[i].addEventListener("click", function () {
+        var tabId = this.getAttribute("data-tab");
+        // 모든 탭/패널에서 is-active 제거.
+        var allBtns = document.querySelectorAll(".tabs .tab[data-tab]");
+        var allPanels = document.querySelectorAll(".tabpanel[data-panel]");
+        for (var j = 0; j < allBtns.length; j++) {
+          allBtns[j].classList.remove("is-active");
+          allBtns[j].setAttribute("aria-selected", "false");
+        }
+        for (var k = 0; k < allPanels.length; k++) {
+          allPanels[k].classList.remove("is-active");
+        }
+        // 클릭한 탭과 대응 패널에 is-active 추가.
+        this.classList.add("is-active");
+        this.setAttribute("aria-selected", "true");
+        var panel = document.querySelector('.tabpanel[data-panel="' + tabId + '"]');
+        if (panel) {
+          panel.classList.add("is-active");
+        }
+      });
+    }
+  }
+
+  // wireAgentFMSubtabs 배선: agentfm 섹션 내의 sub-tab(subagents/harness) 클릭
+  // 시 .is-active 토글. 상위 wireTabs 와 별도 스코프(data-agentfm-* 속성 사용)로
+  // 동작하며, 두 그룹 중 한 그룹만 표시한다. 두 패널 모두 DOM 에 상주하므로
+  // 비활성 패널의 폼 필드도 제출된다 (atomic Save contract).
+  function wireAgentFMSubtabs() {
+    var btns = document.querySelectorAll("[data-agentfm-tab]");
+    if (btns.length === 0) {
+      return;
+    }
+    for (var i = 0; i < btns.length; i++) {
+      btns[i].addEventListener("click", function () {
+        var tabId = this.getAttribute("data-agentfm-tab");
+        var allBtns = document.querySelectorAll("[data-agentfm-tab]");
+        var allPanels = document.querySelectorAll("[data-agentfm-panel]");
+        for (var j = 0; j < allBtns.length; j++) {
+          allBtns[j].classList.remove("is-active");
+          allBtns[j].setAttribute("aria-selected", "false");
+        }
+        for (var k = 0; k < allPanels.length; k++) {
+          allPanels[k].classList.remove("is-active");
+        }
+        this.classList.add("is-active");
+        this.setAttribute("aria-selected", "true");
+        var panel = document.querySelector('[data-agentfm-panel="' + tabId + '"]');
+        if (panel) {
+          panel.classList.add("is-active");
+        }
+      });
+    }
+  }
+
   // initConsole 는 모든 콘솔 초기화를 한 곳에서 수행한다 — DOMContentLoaded(첫
   // 로드 / htmx 비활성 전체 새로고침) 와 htmx:afterSettle(boost body swap 직후)
   // 양쪽에서 호출된다. boost swap 은 body 전체를 교체하므로 새 요소는 리스너가
@@ -270,10 +347,72 @@
     // 요소에 persisted 언어(예: 한국어)를 재적용한다.
     wireLangpick();
     wireShutdownButton();
+    // M5-b D1: 탭 nav 배선. CSS show/hide 만으로 동작 — 패널은 DOM 에 상주한다
+    // (atomic Save contract: 비활성 패널의 필드도 제출됨).
+    wireTabs();
+    // SPEC-WEBCONF-SIMPLIFY-001 polish: agentfm sub-tabs 배선.
+    wireAgentFMSubtabs();
   }
 
   document.addEventListener("DOMContentLoaded", initConsole);
   // htmx boost 가 body 를 swap 한 직후 document 에서 발생한다. afterSettle 없으면
   // swap 이후 DOMContentLoaded 가 재발생하지 않아 초기화가 누락된다.
   document.addEventListener("htmx:afterSettle", initConsole);
+
+  // SPEC-WEB-CONSOLE-011 M5 — SPEC 보드의 remediation 명령 복사 버튼.
+  // document 레벨 위임 리스너를 IIFE 최상위에서 "한 번만" 등록한다(initConsole
+  // 내부가 아님 — htmx afterSettle 재호출 시 중복 등록을 피하기 위함). data-copy 를
+  // 가진 버튼 클릭 시 그 값을 클립보드에 복사한다. 서버로의 요청·명령 실행은 전혀
+  // 없다 — 순수 클라이언트 텍스트 복사다(REQ-WC11-043/044). 보드가 아닌 페이지에는
+  // data-copy 요소가 없으므로 이 리스너는 no-op 이다.
+  function copyToClipboard(text, btn) {
+    function flash() {
+      if (!btn) {
+        return;
+      }
+      var label = btn.querySelector("[data-i18n]") || btn;
+      var prev = label.textContent;
+      label.textContent = "✓";
+      setTimeout(function () {
+        label.textContent = prev;
+      }, 1200);
+    }
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(flash, function () {
+        legacyCopy(text);
+        flash();
+      });
+    } else {
+      legacyCopy(text);
+      flash();
+    }
+  }
+  function legacyCopy(text) {
+    // navigator.clipboard 불가(비-보안 컨텍스트 등) 시 textarea + execCommand 폴백.
+    try {
+      var ta = document.createElement("textarea");
+      ta.value = text;
+      ta.setAttribute("readonly", "");
+      ta.style.position = "absolute";
+      ta.style.left = "-9999px";
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand("copy");
+      document.body.removeChild(ta);
+    } catch (e) {
+      /* 복사 불가 — 사용자는 <code> 텍스트를 직접 선택해 복사할 수 있다 */
+    }
+  }
+  document.addEventListener("click", function (e) {
+    var btn = e.target && e.target.closest ? e.target.closest("[data-copy]") : null;
+    if (!btn) {
+      return;
+    }
+    var text = btn.getAttribute("data-copy");
+    if (!text) {
+      return;
+    }
+    e.preventDefault();
+    copyToClipboard(text, btn);
+  });
 })();

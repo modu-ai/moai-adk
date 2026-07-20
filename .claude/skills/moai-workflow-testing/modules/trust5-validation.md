@@ -4,7 +4,7 @@
 > Parent: [Automated Code Review](./automated-code-review.md)
 > Complexity: Advanced
 > Time: 20+ minutes
-> Dependencies: Python 3.8+, ast, Context7 MCP
+> Dependencies: source parser, WebSearch/WebFetch
 
 ## Quick Reference
 
@@ -47,36 +47,31 @@ Timeliness (10% weight):
 
 ### Core Implementation
 
-```python
-from enum import Enum
-from dataclasses import dataclass
-from typing import Dict, List, Any
+The category enum and issue record are language-neutral. The analysis passes below operate on a parsed syntax tree (AST) — use the host language's parser (e.g. Go `go/ast`, Python `ast`, TypeScript compiler API, Rust `syn`, Java JavaParser); the checks themselves generalize across trees.
 
-class TrustCategory(Enum):
-    """TRUST 5 framework categories."""
-    TRUTHFULNESS = "truthfulness"
-    RELEVANCE = "relevance"
-    USABILITY = "usability"
-    SAFETY = "safety"
-    TIMELINESS = "timeliness"
+```text
+enum TrustCategory:
+    TRUTHFULNESS
+    RELEVANCE
+    USABILITY
+    SAFETY
+    TIMELINESS
 
-@dataclass
-class CodeIssue:
-    """Individual code issue found during review."""
-    id: str
-    category: TrustCategory
-    severity: str  # critical, high, medium, low, info
-    issue_type: str
-    title: str
-    description: str
-    file_path: str
-    line_number: int
-    column_number: int
-    code_snippet: str
-    suggested_fix: str
-    confidence: float  # 0.0 to 1.0
-    rule_violated: str = None
-    external_reference: str = None
+record CodeIssue:
+    id:                text
+    category:          TrustCategory
+    severity:          text   # critical, high, medium, low, info
+    issue_type:        text
+    title:             text
+    description:       text
+    file_path:         text
+    line_number:       int
+    column_number:     int
+    code_snippet:      text
+    suggested_fix:     text
+    confidence:        float  # 0.0 to 1.0
+    rule_violated:     text?  # default none
+    external_reference:text?  # default none
 ```
 
 ---
@@ -87,32 +82,24 @@ class CodeIssue:
 
 Truthfulness validation focuses on code correctness and logic accuracy:
 
-```python
-def _analyze_truthfulness(self, file_path: str, tree: ast.AST) -> List[CodeIssue]:
-    """Analyze code for correctness and logic issues."""
+```text
+analyze_truthfulness(file_path, tree):
     issues = []
-
-    # Check for unreachable code
-    for node in ast.walk(tree):
-        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
-            unreachable_issues = self._check_unreachable_code(file_path, node)
-            issues.extend(unreachable_issues)
-
-    # Check for logic issues
-    logic_issues = self._check_logic_issues(file_path, tree)
-    issues.extend(logic_issues)
-
+    # Walk every function/method declaration in the syntax tree
+    for node in walk(tree, matching=FunctionDecl):
+        issues.extend(check_unreachable_code(file_path, node))
+    issues.extend(check_logic_issues(file_path, tree))
     return issues
 ```
 
 Unreachable Code Detection:
 - Identifies code after return statements
-- Detects code after raise statements
+- Detects code after throw/raise statements
 - Finds code after break/continue in loops
 - Reports dead code with confidence scores
 
 Logic Issue Detection:
-- Checks for None comparison patterns (use 'is None' instead of '== None')
+- Checks for null/none comparison anti-patterns (prefer the language's identity-check idiom over equality with a null sentinel)
 - Identifies constant conditions in if statements
 - Detects tautological comparisons
 - Finds contradictory conditions
@@ -121,32 +108,22 @@ Logic Issue Detection:
 
 Relevance analysis validates requirements fulfillment and purpose alignment:
 
-```python
-def _analyze_relevance(self, file_path: str, content: str) -> List[CodeIssue]:
-    """Analyze code for relevance and requirements fulfillment."""
+```text
+analyze_relevance(file_path, content):
     issues = []
-
-    # Check for TODO/FIXME comments
-    lines = content.split('\n')
-    for line_num, line in enumerate(lines, 1):
-        if 'TODO:' in line or 'FIXME:' in line:
-            issue = CodeIssue(
-                id=f"todo_{line_num}",
-                category=TrustCategory.RELEVANCE,
-                severity="low",
+    for (line_num, line) in enumerate(lines(content), from=1):
+        if "TODO:" in line or "FIXME:" in line:
+            issues.append(CodeIssue(
+                id="todo_" + line_num,
+                category=TrustCategory.RELEVANCE, severity="low",
                 issue_type="documentation_issue",
                 title="Unresolved TODO",
-                description=f"TODO/FIXME comment found: {line.strip()}",
-                file_path=file_path,
-                line_number=line_num,
-                column_number=line.find('TODO') if 'TODO' in line else line.find('FIXME'),
-                code_snippet=line.strip(),
-                suggested_fix="Adddess the TODO/FIXME item or remove the comment",
-                confidence=0.6,
-                rule_violated="UNRESOLVED_TODO"
-            )
-            issues.append(issue)
-
+                description="TODO/FIXME comment found: " + trim(line),
+                file_path=file_path, line_number=line_num,
+                column_number=index_of(line, "TODO", "FIXME"),
+                code_snippet=trim(line),
+                suggested_fix="Address the TODO/FIXME item or remove the comment",
+                confidence=0.6, rule_violated="UNRESOLVED_TODO"))
     return issues
 ```
 
@@ -160,32 +137,22 @@ Relevance Checks:
 
 Usability assessment focuses on maintainability and code quality:
 
-```python
-def _analyze_usability(self, file_path: str, content: str, tree: ast.AST) -> List[CodeIssue]:
-    """Analyze code for usability and maintainability."""
+```text
+analyze_usability(file_path, content, tree):
     issues = []
-
-    # Check for docstring presence
-    for node in ast.walk(tree):
-        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
-            if not ast.get_docstring(node):
-                issue = CodeIssue(
-                    id=f"no_docstring_{node.lineno}",
-                    category=TrustCategory.USABILITY,
-                    severity="low",
-                    issue_type="documentation_issue",
-                    title="Missing Docstring",
-                    description=f"Function '{node.name}' is missing a docstring",
-                    file_path=file_path,
-                    line_number=node.lineno,
-                    column_number=1,
-                    code_snippet=f"def {node.name}(...):",
-                    suggested_fix=f"Add a docstring to '{node.name}' explaining its purpose, parameters, and return value",
-                    confidence=0.7,
-                    rule_violated="MISSING_DOCSTRING"
-                )
-                issues.append(issue)
-
+    for node in walk(tree, matching=FunctionDecl):
+        if not has_doc_comment(node):       # docstring / godoc / JSDoc / rustdoc
+            issues.append(CodeIssue(
+                id="no_doc_" + node.line,
+                category=TrustCategory.USABILITY, severity="low",
+                issue_type="documentation_issue",
+                title="Missing Documentation",
+                description="Function '" + node.name + "' has no doc comment",
+                file_path=file_path, line_number=node.line, column_number=1,
+                code_snippet=signature(node),
+                suggested_fix="Add a doc comment to '" + node.name +
+                              "' explaining its purpose, parameters, and return value",
+                confidence=0.7, rule_violated="MISSING_DOC"))
     return issues
 ```
 
@@ -200,86 +167,61 @@ Usability Metrics:
 
 Safety validation detects security vulnerabilities and error handling issues:
 
-```python
-def _analyze_safety(self, file_path: str, tree: ast.AST) -> List[CodeIssue]:
-    """Analyze code for safety and error handling."""
+```text
+analyze_safety(file_path, tree):
     issues = []
-
-    # Check for bare except clauses
-    for node in ast.walk(tree):
-        if isinstance(node, ast.ExceptHandler):
-            if node.type is None:
-                issue = CodeIssue(
-                    id=f"bare_except_{node.lineno}",
-                    category=TrustCategory.SAFETY,
-                    severity="medium",
-                    issue_type="code_smell",
-                    title="Bare Except Clause",
-                    description="Bare except clause can hide unexpected errors",
-                    file_path=file_path,
-                    line_number=node.lineno,
-                    column_number=1,
-                    code_snippet="except:",
-                    suggested_fix="Specify exception types or use 'except Exception:' with logging",
-                    confidence=0.8,
-                    rule_violated="BARE_EXCEPT"
-                )
-                issues.append(issue)
-
+    for node in walk(tree, matching=CatchClause):
+        if catches_all_untyped(node):    # bare catch / catch-all without a typed error
+            issues.append(CodeIssue(
+                id="bare_catch_" + node.line,
+                category=TrustCategory.SAFETY, severity="medium",
+                issue_type="code_smell",
+                title="Bare / Catch-All Handler",
+                description="A catch-all handler can swallow unexpected errors",
+                file_path=file_path, line_number=node.line, column_number=1,
+                code_snippet="catch (untyped)",
+                suggested_fix="Catch specific error types, or catch the base error type with logging",
+                confidence=0.8, rule_violated="BARE_CATCH"))
     return issues
 ```
 
 Safety Checks:
-- Bare except clause detection
+- Bare / catch-all handler detection
 - Exception handling validation
 - Resource leak detection (file handles, database connections)
 - Input validation review
-- Context manager usage validation
+- Resource-cleanup idiom validation (defer / using / try-with-resources / RAII)
 
 ### Timeliness Analysis
 
 Timeliness assessment identifies performance and modernization opportunities:
 
-```python
-def _analyze_timeliness(self, file_path: str, content: str) -> List[CodeIssue]:
-    """Analyze code for timeliness and performance."""
+```text
+analyze_timeliness(file_path, content):
     issues = []
-
-    # Check for deprecated imports
-    deprecated_imports = {
-        'StringIO': 'io.StringIO',
-        'cStringIO': 'io.StringIO'
-    }
-
-    lines = content.split('\n')
-    for line_num, line in enumerate(lines, 1):
-        for old_import, new_import in deprecated_imports.items():
-            if f"import {old_import}" in line or f"from {old_import}" in line:
-                issue = CodeIssue(
-                    id=f"deprecated_import_{line_num}",
-                    category=TrustCategory.TIMELINESS,
-                    severity="low",
-                    issue_type="import_issue",
-                    title="Deprecated Import",
-                    description=f"Using deprecated import '{old_import}', should use '{new_import}'",
-                    file_path=file_path,
-                    line_number=line_num,
-                    column_number=line.find(old_import),
-                    code_snippet=line.strip(),
-                    suggested_fix=f"Replace '{old_import}' with '{new_import}'",
-                    confidence=0.9,
-                    rule_violated="DEPRECATED_IMPORT",
-                    auto_fixable=True
-                )
-                issues.append(issue)
-
+    # Map deprecated APIs/symbols to their modern replacements for the host language
+    deprecated = { "oldSymbol": "modernSymbol", ... }    # populated per language/runtime
+    for (line_num, line) in enumerate(lines(content), from=1):
+        for (old, modern) in deprecated:
+            if references(line, old):
+                issues.append(CodeIssue(
+                    id="deprecated_" + line_num,
+                    category=TrustCategory.TIMELINESS, severity="low",
+                    issue_type="deprecated_api",
+                    title="Deprecated API",
+                    description="Using deprecated '" + old + "', should use '" + modern + "'",
+                    file_path=file_path, line_number=line_num,
+                    column_number=index_of(line, old),
+                    code_snippet=trim(line),
+                    suggested_fix="Replace '" + old + "' with '" + modern + "'",
+                    confidence=0.9, rule_violated="DEPRECATED_API", auto_fixable=true))
     return issues
 ```
 
 Timeliness Indicators:
-- Deprecated import detection
+- Deprecated API/import detection
 - Performance anti-pattern identification
-- Modern Python features adoption
+- Modern language-feature adoption
 - Standards compliance checking
 - Technology currency validation
 
@@ -289,53 +231,26 @@ Timeliness Indicators:
 
 ### Category Score Algorithm
 
-```python
-def _calculate_trust_scores(self, issues: List[CodeIssue], metrics: Dict[str, Any]) -> Dict[str, Any]:
-    """Calculate TRUST 5 scores."""
+```text
+calculate_trust_scores(issues, metrics):
     category_scores = {}
     category_weights = {
-        TrustCategory.TRUTHFULNESS: 0.25,
-        TrustCategory.RELEVANCE: 0.20,
-        TrustCategory.USABILITY: 0.25,
-        TrustCategory.SAFETY: 0.20,
-        TrustCategory.TIMELINESS: 0.10
+        TRUTHFULNESS: 0.25, RELEVANCE: 0.20, USABILITY: 0.25,
+        SAFETY: 0.20, TIMELINESS: 0.10
     }
+    issues_by_category = group issues by category
 
-    # Group issues by category
-    issues_by_category = {category: [] for category in TrustCategory}
-    for issue in issues:
-        issues_by_category[issue.category].append(issue)
-
-    # Calculate scores for each category
     for category in TrustCategory:
-        category_issues = issues_by_category[category]
-
-        # Calculate penalty based on severity and number of issues
         penalty = 0.0
-        for issue in category_issues:
+        for issue in issues_by_category[category]:
             severity_penalty = {
-                'critical': 0.5,
-                'high': 0.3,
-                'medium': 0.1,
-                'low': 0.05,
-                'info': 0.01
+                critical: 0.5, high: 0.3, medium: 0.1, low: 0.05, info: 0.01
             }
-            penalty += severity_penalty.get(issue.severity, 0.1) * issue.confidence
+            penalty += severity_penalty[issue.severity] default 0.1) * issue.confidence
+        category_scores[category] = max(0.0, 1.0 - min(penalty, 1.0))
 
-        # Apply penalties (max penalty of 1.0)
-        score = max(0.0, 1.0 - min(penalty, 1.0))
-        category_scores[category] = score
-
-    # Calculate overall score
-    overall_score = sum(
-        category_scores[cat] * category_weights[cat]
-        for cat in TrustCategory
-    )
-
-    return {
-        'overall': overall_score,
-        'categories': category_scores
-    }
+    overall = sum(category_scores[c] * category_weights[c] for c in TrustCategory)
+    return { overall, categories: category_scores }
 ```
 
 ### Score Interpretation
@@ -354,13 +269,13 @@ def _calculate_trust_scores(self, issues: List[CodeIssue], metrics: Dict[str, An
 
 Adjust category weights to match project priorities:
 
-```python
+```text
 reviewer.category_weights = {
-    TrustCategory.TRUTHFULNESS: 0.30,  # Increase emphasis on correctness
-    TrustCategory.RELEVANCE: 0.15,
-    TrustCategory.USABILITY: 0.20,
-    TrustCategory.SAFETY: 0.30,        # Increase emphasis on security
-    TrustCategory.TIMELINESS: 0.05
+    TRUTHFULNESS: 0.30,   # increase emphasis on correctness
+    RELEVANCE:    0.15,
+    USABILITY:    0.20,
+    SAFETY:       0.30,   # increase emphasis on security
+    TIMELINESS:   0.05
 }
 ```
 
@@ -368,13 +283,13 @@ reviewer.category_weights = {
 
 Modify penalty values for severity levels:
 
-```python
+```text
 reviewer.severity_penalties = {
-    'critical': 0.7,  # Stricter penalties
-    'high': 0.4,
-    'medium': 0.15,
-    'low': 0.05,
-    'info': 0.0
+    critical: 0.7,   # stricter penalties
+    high:     0.4,
+    medium:   0.15,
+    low:      0.05,
+    info:     0.0
 }
 ```
 
@@ -382,22 +297,17 @@ reviewer.severity_penalties = {
 
 Add custom validation rules:
 
-```python
+```text
 class CustomTruthfulnessAnalyzer:
-    """Custom truthfulness validation rules."""
-
-    def analyze_custom_patterns(self, file_path: str, tree: ast.AST) -> List[CodeIssue]:
-        """Add project-specific truthfulness checks."""
+    analyze_custom_patterns(file_path, tree):
         issues = []
-
         # Add custom logic validation
         # Add project-specific correctness checks
         # Add domain-specific validation rules
-
         return issues
 
 # Integrate custom analyzer
-reviewer.custom_analyzers[TrustCategory.TRUTHFULNESS] = CustomTruthfulnessAnalyzer()
+reviewer.custom_analyzers[TRUTHFULNESS] = CustomTruthfulnessAnalyzer()
 ```
 
 ---

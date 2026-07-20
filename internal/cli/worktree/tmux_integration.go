@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/modu-ai/moai-adk/internal/cli/printer"
 	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/tmux"
 )
@@ -34,6 +35,16 @@ type TmuxSessionConfig struct {
 	// GLMEnvVars holds the environment variables to inject in GLM/CG mode.
 	// Must be empty in CC mode.
 	GLMEnvVars map[string]string
+}
+
+// tmuxSessionPrinterFactory constructs the Printer that emits the tmux
+// session-creation status block. The default writes to os.Stdout / os.Stderr
+// (matching the prior direct-stdout print target; p.Info now routes these
+// status lines to stderr per SPEC-CLI-TUX-V3-005 M4). Tests override it to
+// capture output into buffers. Follows the package's established
+// injectable-function convention (tmuxSessionFactory, isTmuxAvailableFunc).
+var tmuxSessionPrinterFactory = func() printer.Printer {
+	return printer.New()
 }
 
 // CreateTmuxSession creates a tmux session for the worktree.
@@ -96,12 +107,16 @@ func CreateTmuxSession(ctx context.Context, cfg *TmuxSessionConfig, tmuxMgr tmux
 		}
 	}
 
-	// Print log output
-	fmt.Printf("Tmux session created: %s\n", result.SessionName)
-	fmt.Printf("Panes created: %d\n", result.PaneCount)
-	fmt.Printf("Attached: %v\n", result.Attached)
-	fmt.Printf("Worktree path: %s\n", cfg.WorktreePath)
-	fmt.Printf("To attach: tmux attach-session -t %s\n", sessionName)
+	// R5: emit session-creation status via the Printer.
+	// SPEC-CLI-TUX-V3-005 M4: migrated from direct stdout prints to p.Info
+	// (stderr). These are status lines with no scripted consumer, so the
+	// stdout->stderr channel change is safe (Reversibility LOW).
+	p := tmuxSessionPrinterFactory()
+	p.Info("Tmux session created: %s", result.SessionName)
+	p.Info("Panes created: %d", result.PaneCount)
+	p.Info("Attached: %v", result.Attached)
+	p.Info("Worktree path: %s", cfg.WorktreePath)
+	p.Info("To attach: tmux attach-session -t %s", sessionName)
 
 	return nil
 }

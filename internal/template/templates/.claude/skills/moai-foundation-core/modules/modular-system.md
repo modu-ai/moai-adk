@@ -20,7 +20,8 @@ Standard Structure:
  pattern-b.md
  pattern-c.md
  examples.md # Working code samples (optional)
- reference.md # External links/API docs (optional)
+ reference.md # External links/API docs (optional, single root file)
+ references/ # Multi-file reference directory (optional, large skills)
  scripts/ # Utility scripts (optional)
  helper.sh
  templates/ # Templates (optional)
@@ -31,7 +32,9 @@ File Principles:
 1. SKILL.md ≤500 lines (hard limit)
 2. modules/ = Topic-focused, self-contained
 3. examples.md = Copy-paste ready
-4. reference.md = External resources
+4. reference.md = External resources (single root file)
+5. references/ = Multi-file reference directory (large skills)
+6. INDEX.md = Optional module index inside modules/
 
 Cross-Reference Syntax:
 ```markdown
@@ -642,17 +645,16 @@ for result in results:
 ## Works Well With
 
 Skills:
-- moai-foundation-progressive-disclosure - Content structuring
-- moai-cc-skill-factory - Skill creation with modular structure
-- moai-foundation-token-optimization - File loading efficiency
+- [moai-foundation-core](../SKILL.md) - Parent skill (see [progressive-disclosure.md](progressive-disclosure.md) and [token-optimization.md](token-optimization.md))
+- [moai-foundation-cc](../../moai-foundation-cc/SKILL.md) - Skill authoring with modular structure (Claude Code authoring kit)
 
 Agents:
-- skill-factory - Create skills with standard file structure
-- docs-manager - Generate documentation following modular pattern
+- builder-harness - Create skills / harness specialists with standard file structure
+- manager-docs - Generate documentation following modular pattern
 
 Commands:
-- /moai:1-plan - SPEC generation with modular docs
-- /moai:3-sync - Documentation sync to modular structure
+- /moai plan - SPEC generation with modular docs
+- /moai sync - Documentation sync to modular structure
 
 Memory:
 - .claude/skills/ - Standard skill location

@@ -96,3 +96,36 @@ func buildResumeMessage(format, specID, roundLabel, approach, progressPath, next
 	msg = strings.ReplaceAll(msg, "{next_step}", nextStep)
 	return msg
 }
+
+// buildHandoffMessage generates a paste-ready resume message conforming to
+// session-handoff.md § Canonical Format (6-block structure + cut-line markers).
+//
+// The STRUCTURE is the fixed canonical format (AC-TBS-002); the field values are
+// placeholder scaffolding the orchestrator/user fills in after paste. The ko
+// canonical locale is used, matching the project documentation: ko setting and
+// the existing ResumeMessageFormat locale.
+//
+// When specID is empty, a generic "<SPEC-ID>" placeholder is used (EC-5 graceful
+// degradation) so the handoff is still generated with the full 6-block structure.
+// @MX:SPEC: SPEC-TOKEN-BUDGET-STOP-001
+func buildHandoffMessage(specID, agentName string) string {
+	sid := specID
+	if sid == "" {
+		sid = "<SPEC-ID>"
+	}
+	return fmt.Sprintf(`✂──── 여기부터 복사 ────✂
+
+ultrathink. %s run 진입.
+applied lessons: <이전 세션에서 적용된 lesson memory files>
+
+전제 검증:
+1) git log --oneline -1 → <최신 commit SHA> 확인
+2) ls .moai/specs/%s/ → SPEC artifacts 존재 확인
+
+실행: /moai run %s
+
+머지 후: <next SPEC or /moai sync %s>
+
+✂──── 여기까지 복사 ────✂
+`, sid, sid, sid, sid)
+}

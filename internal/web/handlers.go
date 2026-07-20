@@ -5,22 +5,16 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"sort"
 	"strconv"
+
+	"path/filepath"
+
 
 	"github.com/modu-ai/moai-adk/internal/profile"
 	"github.com/modu-ai/moai-adk/internal/settings"
-	"github.com/modu-ai/moai-adk/internal/template"
+	"github.com/modu-ai/moai-adk/internal/settings/agentfm"
 )
-
-// statuslineThemeOptionList returns the canonical statusline theme option values
-// from the shared settings schema (SPEC-WEB-CONSOLE-010 — re-added Statusline
-// section). No preset option is included (REQ-WC10-010).
-func statuslineThemeOptionList() []string {
-	if f, ok := settings.Field("statusline_theme"); ok {
-		return f.SelectOptions()
-	}
-	return nil
-}
 
 // pageView is the typed view-model for the Console page. It is the input to the
 // Templ root component page(view) (SPEC-WEB-CONSOLE-006 — migrated from the
@@ -31,25 +25,30 @@ type pageView struct {
 	Profiles          []profile.ProfileEntry
 	ShowProfileSwitch bool
 
-	// Option lists for the form selects. SPEC-WEB-CONSOLE-010 re-added the
-	// Statusline section (theme + 15 segments, NO preset): StatuslineThemes is the
-	// theme option list and StatuslineSegs is the 15 canonical segment keys, both
-	// schema-sourced. The retired `preset` selector is NOT reintroduced (REQ-WC10-010).
-	LangOptions     []string
-	ModelOptions    []string
-	EffortLevels    []string
-	ModelPolicies   []string
-	PermissionModes []string
-	StatuslineThemes []string
-	StatuslineSegs   []string // 15 canonical segment keys (schema-sourced)
+	// Context badge fields (AC-WC-XXX: current context badges in appbar)
+	ProjectName string // Basename of cfg.ProjectRoot for display (e.g., "moai-adk-go")
+	ProjectPath string // Full cfg.ProjectRoot for tooltip (e.g., "/Users/test/moai-adk-go")
+
+	// Option lists for the form selects. SPEC-WEB-CONSOLE-010: all option lists
+	// derive from the shared settings schema (no hand-mirrored re-declarations).
+	// M5-b D4: OptionDef(Value + I18nKey) — 웹 렌더가 option data-i18n 키를
+	// 방출한다. 제출 값(value 속성)은不变.
+	// The Statusline section was removed from the web console (M3 redesign) — its
+	// theme/segment option lists are no longer surfaced here; the statusline schema
+	// + statusline.yaml remain consumed by the TUI / profile_setup CLI path.
+	LangOptions     []settings.OptionDef
+	ModelOptions    []settings.OptionDef
+	EffortLevels    []settings.OptionDef
+	ModelPolicies   []settings.OptionDef
+	PermissionModes []settings.OptionDef
 
 	// Project-config selects (SPEC-WEB-CONSOLE-003). Option lists + the current
 	// persisted/submitted values for the two flat project-config enum fields.
 	// Current values come from the read seam (quality.yaml / git-convention.yaml)
 	// on GET, or are echoed back from the submitted form on a rejected POST —
 	// NOT from the profile store, which has no slot for them.
-	DevelopmentModes   []string
-	Conventions        []string
+	DevelopmentModes   []settings.OptionDef
+	Conventions        []settings.OptionDef
 	CurDevelopmentMode string
 	CurConvention      string
 
@@ -64,6 +63,22 @@ type pageView struct {
 	CurAutoDetectionEnabled bool
 	CurSampleSize           string
 	CurEnforceOnPush        bool
+
+	// M2b 10섹션 확장 (SPEC-WEB-CONSOLE-011): 확장 필드 + read-only 표시 키의
+	// 디스크 현재값(FieldDef.Name → 문자열)과 REQ-WC11-062 raw view 블록 텍스트.
+	SchemaValues map[string]string
+	RawBlocks    map[string]string
+
+	// M3 agent-settings (REQ-WC11-020/025): sub-agent frontmatter 현재 상태
+	// (7 agents — model/effort, effort 부재는 유효 상태 EC-7).
+	AgentFMs []agentfm.AgentInfo
+
+	// PerfTier is the profile selector (hosted as the performance_tier wire
+	// field) at the TOP of the agentfm panel — one of {max, medium, low}. The
+	// plan_type display was removed (SPEC-MODEL-PROFILE-MATRIX-001 REQ-MPM-019).
+	// PerfTierIsEmpty drives the "(default: ...)" empty-value hint.
+	PerfTier        string
+	PerfTierIsEmpty bool
 
 	// Banner is an optional status/error message; BannerKind is "ok" or "error".
 	Banner     string
@@ -81,26 +96,33 @@ type pageView struct {
 
 // newPageView assembles a view-model with the canonical option lists populated.
 // SPEC-WEB-CONSOLE-010: all option lists derive from the shared settings schema
-// (no hand-mirrored re-declarations). The statusline fields (theme + 15 segment
-// keys) are also schema-sourced for the re-added Statusline section (REQ-WC10-009).
+// (no hand-mirrored re-declarations).
 func (a *app) newPageView(prefs profile.ProfilePreferences, selected string) pageView {
 	profiles := a.listProfiles()
+	// M5-b D2: current 프로필을 인덱스 0으로 stable-sort 한다. listProfiles 코어는
+	// 그대로 두고 newPageView 에서만 정렬 — 기존 호출자(TUI / CLI)에 영향 0.
+	// stable-sort 이므로 current 가 아닌 프로필 간의 기존 순서를 보존한다.
+	sort.SliceStable(profiles, func(i, j int) bool {
+		return profiles[i].Current && !profiles[j].Current
+	})
 	return pageView{
 		Prefs:             prefs,
 		SelectedProfile:   selected,
 		Profiles:          profiles,
 		ShowProfileSwitch: len(profiles) > 1, // REQ-WC-011: omit UI when only default
-		LangOptions:       langOptionList(),
-		ModelOptions:      modelOptionList(),
-		EffortLevels:      effortOptionList(),
-		ModelPolicies:     template.ValidModelPolicies(),
-		PermissionModes:   profile.ValidPermissionModes,
-		DevelopmentModes:  developmentModeOptionList(),
-		Conventions:       conventionOptionList(),
-		StatuslineThemes:  statuslineThemeOptionList(),
-		StatuslineSegs:    settings.StatuslineSegmentKeys(),
+		LangOptions:       langOptionDefs(),
+		ModelOptions:      modelOptionDefs(),
+		EffortLevels:      effortOptionDefs(),
+		ModelPolicies:     modelPolicyOptionDefs(),
+		PermissionModes:   permissionModeOptionDefs(),
+		DevelopmentModes:  developmentModeOptionDefs(),
+		Conventions:       conventionOptionDefs(),
+		SchemaValues:      map[string]string{},
+		RawBlocks:         map[string]string{},
 		BindAddr:          a.resolveBindAddr(),
 		FieldErrors:       map[string]string{},
+		ProjectName:       filepath.Base(a.cfg.ProjectRoot),
+		ProjectPath:       a.cfg.ProjectRoot,
 	}
 }
 
@@ -145,39 +167,62 @@ func (a *app) handleIndex(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	selected := a.selectedProfile(r)
+	// REQ-SEC-001 (SPEC-INTERNAL-SECURITY-001): validate the profile name on the
+	// READ path, mirroring handleSave's write-path guard (REQ-WC11-031). Without
+	// this, GET /?profile=../../etc is an unauthenticated arbitrary-path read
+	// primitive (the target file need only be named preferences.yaml) because
+	// hostCheckMiddleware does not gate GET. Reject 4xx before readPreferences.
+	if !profile.IsValidProfileName(selected) {
+		a.renderError(w, http.StatusBadRequest,
+			"invalid profile name "+selected+": must not contain path separators or start with '.'")
+		return
+	}
+	view, errMsg := a.buildIndexView(selected)
+	if errMsg != "" {
+		// Read failure: readable inline error, never blank, never panic.
+		a.renderError(w, http.StatusInternalServerError, errMsg)
+		return
+	}
+	a.render(w, http.StatusOK, view)
+}
+
+// buildIndexView assembles the full GET / view-model for the selected profile,
+// running every read seam (preferences + project config + nested + 10-section
+// schema). On a read failure it returns a non-empty errMsg carrying the readable
+// inline-error message (the caller renders it as a 500). SPEC-WEB-CONSOLE-011 M4
+// extracts this from handleIndex so the profile CRUD handlers can re-render the
+// full page with the updated profile list (mirroring the /save full-page path).
+func (a *app) buildIndexView(selected string) (view pageView, errMsg string) {
 	prefs, err := a.readPreferences(selected)
 	if err != nil {
-		// Read failure: readable inline error, never blank, never panic.
-		a.renderError(w, http.StatusInternalServerError,
-			"could not read preferences for profile "+selected+": "+err.Error())
-		return
+		return pageView{}, "could not read preferences for profile " + selected + ": " + err.Error()
 	}
 
 	// REQ-WC3-004: read the current project-config values (development_mode /
 	// git_convention) from quality.yaml / git-convention.yaml via the read seam.
-	// A read failure surfaces a readable inline error (never blank, never panic).
 	devMode, convention, err := a.readProjectConfig(a.cfg.ProjectRoot)
 	if err != nil {
-		a.renderError(w, http.StatusInternalServerError,
-			"could not read project config: "+err.Error())
-		return
+		return pageView{}, "could not read project config: " + err.Error()
 	}
 
 	// REQ-WC7-010: read the current curated nested values (quality + git_convention)
-	// from the nested read seam for GET echo-back. A read failure surfaces a readable
-	// inline error (never blank, never panic) — same discipline as the scalar seam.
+	// from the nested read seam for GET echo-back.
 	nested, err := a.readProjectNestedConfig(a.cfg.ProjectRoot)
 	if err != nil {
-		a.renderError(w, http.StatusInternalServerError,
-			"could not read project nested config: "+err.Error())
-		return
+		return pageView{}, "could not read project nested config: " + err.Error()
 	}
 
-	view := a.newPageView(prefs, selected)
+	view = a.newPageView(prefs, selected)
 	view.CurDevelopmentMode = devMode
 	view.CurConvention = convention
 	applyNestedCurrent(&view, nested)
-	a.render(w, http.StatusOK, view)
+
+	// SPEC-WEB-CONSOLE-011 M2b: 10섹션 확장 필드 + read-only 표시 + raw view
+	// 블록의 현재값 시딩.
+	if err := a.applySchemaCurrent(&view); err != nil {
+		return pageView{}, "could not read section config: " + err.Error()
+	}
+	return view, ""
 }
 
 // applyNestedCurrent copies the persisted nested current values onto the view-model
@@ -253,6 +298,19 @@ func (a *app) handleSave(w http.ResponseWriter, r *http.Request) {
 		selected = p
 	}
 
+	// SPEC-WEB-CONSOLE-011 REQ-WC11-031/034: validate the target profile name at
+	// the web boundary BEFORE any write. An untrusted `?profile=` / `__profile`
+	// value (e.g. `../../x`) must be rejected 4xx and must not reach
+	// WritePreferences (whose os.MkdirAll would otherwise create a directory
+	// outside the profile store). The profile-package WritePreferences carries the
+	// same guard (defense in depth), but rejecting here keeps the response a clean
+	// 400 rather than a 500 persistence error.
+	if !profile.IsValidProfileName(selected) {
+		a.renderError(w, http.StatusBadRequest,
+			"invalid profile name "+selected+": must not contain path separators or start with '.'")
+		return
+	}
+
 	prefs := bindForm(r)
 
 	// REQ-WC3-005: bind the two project-config fields (NOT into ProfilePreferences —
@@ -264,7 +322,23 @@ func (a *app) handleSave(w http.ResponseWriter, r *http.Request) {
 	// *Set flags + bool companion). Distinct from the two scalars above.
 	nestedForm := parseProjectNestedForm(r)
 
-	// REQ-WC-008 / REQ-WC3-001/002 / REQ-WC7-007: run ALL THREE validators and merge
+	// SPEC-WEB-CONSOLE-011 M2b: parse the 10-section schema fields generically
+	// (FieldDef가 SSOT — read-only/제외군 키는 스키마에 없어 자동 무시, EC-8).
+	schemaEdits, schemaErrs := parseSchemaForm(r)
+
+	// SPEC-WEB-CONSOLE-011 M3: parse the sub-agent frontmatter edits against the
+	// CURRENT live frontmatter state (no-change 제출은 편집으로 승격되지 않는다 —
+	// 불필요한 frontmatter 재직렬화 방지). 목록 실패는 편집 불가로 저하한다.
+	agents, _ := a.listAllAgentFMs(a.cfg.ProjectRoot)
+	agentEdits, agentErrs := parseAgentFMForm(r, agents)
+
+	// goal-to-test (non-SPEC): parse the performance_tier selector hosted at the
+	// top of the agentfm panel. The plan_type selector was removed from the web
+	// UI (llm.plan_type stays read-only, consumed for the effective-tier display
+	// and the tier-profile re-application, but no longer editable here).
+	perfTier, perfTierErrs := parsePerfTierForm(r)
+
+	// REQ-WC-008 / REQ-WC3-001/002 / REQ-WC7-007: run ALL validators and merge
 	// their FieldErrors. Any failure → atomic reject (EC-2): leave ALL persisted
 	// state unchanged and re-render with per-field errors.
 	fieldErrs := validatePrefs(prefs)
@@ -274,8 +348,18 @@ func (a *app) handleSave(w http.ResponseWriter, r *http.Request) {
 	for k, v := range validateProjectNestedConfig(convention, nestedForm) {
 		fieldErrs[k] = v
 	}
+	for k, v := range schemaErrs {
+		fieldErrs[k] = v
+	}
+	for k, v := range agentErrs {
+		fieldErrs[k] = v
+	}
+	for k, v := range perfTierErrs {
+		fieldErrs[k] = v
+	}
 	if len(fieldErrs) > 0 {
 		view := a.rejectedProjectView(prefs, selected, devMode, convention, nestedForm)
+		overlaySchemaEdits(&view, schemaEdits)
 		view.FieldErrors = fieldErrs
 		view.Banner = "Validation failed — no changes were saved."
 		view.BannerKind = "error"
@@ -315,6 +399,35 @@ func (a *app) handleSave(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// SPEC-WEB-CONSOLE-011 M2b: persist the 10-section schema fields — seam
+	// 8섹션은 yamlpatch(주석/미모델링 키 보존, REQ-WC11-017), git-strategy/llm/
+	// quality 확장 키는 typed 경로(REQ-WC11-010/012). 마지막에 실행되므로 앞선
+	// typed 쓰기 결과를 재로드해 수렴한다.
+	if err := a.applySchemaEdits(a.cfg.ProjectRoot, schemaEdits); err != nil {
+		a.renderErrorPage(w, prefs, selected, devMode, convention,
+			"profile preferences saved, but section config write failed: "+err.Error())
+		return
+	}
+
+	// goal-to-test (non-SPEC): persist performance_tier (only when changed) and
+	// re-apply the tier profile to the shipped agent files. Runs BEFORE
+	// patchAgentFM so an explicit per-agent override submitted in the same
+	// request still wins over the re-applied tier-profile baseline.
+	if err := applyPerfTierEdits(a.cfg.ProjectRoot, perfTier); err != nil {
+		a.renderErrorPage(w, prefs, selected, devMode, convention,
+			"profile preferences saved, but performance_tier apply failed: "+err.Error())
+		return
+	}
+
+	// SPEC-WEB-CONSOLE-011 M3: persist sub-agent frontmatter edits through the
+	// frontmatter-only patch layer (body byte-무접촉, live 파일 전용 —
+	// REQ-WC11-025/027).
+	if err := a.patchAgentFM(a.cfg.ProjectRoot, agentEdits); err != nil {
+		a.renderErrorPage(w, prefs, selected, devMode, convention,
+			"settings saved, but agent frontmatter write failed: "+err.Error())
+		return
+	}
+
 	view := a.successProjectView(prefs, selected, devMode, convention)
 	view.Banner = "Settings saved."
 	view.BannerKind = "ok"
@@ -348,10 +461,13 @@ func (a *app) rejectedProjectView(prefs profile.ProfilePreferences, selected, de
 // projectView builds a page view-model with the two project-config current
 // values echoed back (used on POST so a rejected save keeps the submitted
 // project-config selections visible, mirroring the profile fields).
+// M2b: 확장 섹션 현재값은 best-effort로 시딩한다 (POST 재렌더 경로 — 읽기
+// 실패는 빈 맵으로 저하하고 배너가 성패를 전달한다).
 func (a *app) projectView(prefs profile.ProfilePreferences, selected, devMode, convention string) pageView {
 	view := a.newPageView(prefs, selected)
 	view.CurDevelopmentMode = devMode
 	view.CurConvention = convention
+	a.applySchemaCurrentBestEffort(&view)
 	return view
 }
 
@@ -366,14 +482,13 @@ func (a *app) renderErrorPage(w http.ResponseWriter, prefs profile.ProfilePrefer
 }
 
 // bindForm maps submitted form values onto a ProfilePreferences.
-// SPEC-WEB-CONSOLE-010 re-added the Statusline section: the theme value and the 15
-// segment toggles are bound here. A segment toggle is a checkbox named seg_<key>
-// with a hidden companion seg_<key>__present (the same disambiguation pattern as the
-// nested-config bool toggles). When ANY segment companion is present, the full
-// 15-key StatuslineSegments map is populated (unchecked → false) so the segment map
-// round-trips without dropping keys; when NO segment companion is present, the map is
-// left nil so syncStatusline preserves the on-disk segments (theme-only / no-change
-// save). The retired `preset` field is NOT bound (REQ-WC10-010).
+//
+// The Statusline section was removed from the web console (M3 redesign): the
+// statusline_theme value and the 16 segment toggles are no longer bound here.
+// The ProfilePreferences struct still carries the statusline fields (consumed by
+// the TUI / profile_setup CLI path + statusline.yaml sync), but the web handler
+// leaves them zero — a profile save from the web console no longer touches
+// statusline config, so syncStatusline preserves the on-disk values.
 func bindForm(r *http.Request) profile.ProfilePreferences {
 	prefs := profile.ProfilePreferences{
 		UserName:         r.PostFormValue("user_name"),
@@ -385,24 +500,6 @@ func bindForm(r *http.Request) profile.ProfilePreferences {
 		Model:            r.PostFormValue("model"),
 		EffortLevel:      r.PostFormValue("effort_level"),
 		PermissionMode:   r.PostFormValue("permission_mode"),
-		StatuslineTheme:  r.PostFormValue("statusline_theme"),
-	}
-
-	// Statusline segments: detect submission via any seg_<key>__present companion.
-	segs := settings.StatuslineSegmentKeys()
-	submitted := false
-	for _, key := range segs {
-		if r.PostFormValue("seg_"+key+"__present") != "" {
-			submitted = true
-			break
-		}
-	}
-	if submitted {
-		segMap := make(map[string]bool, len(segs))
-		for _, key := range segs {
-			segMap[key] = r.PostFormValue("seg_"+key) != ""
-		}
-		prefs.StatuslineSegments = segMap
 	}
 
 	return prefs

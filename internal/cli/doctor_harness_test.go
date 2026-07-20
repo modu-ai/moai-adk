@@ -6,6 +6,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/modu-ai/moai-adk/internal/cli/uikit"
 )
 
 func writeFile(t *testing.T, path, body string) {
@@ -72,7 +74,7 @@ triggers:
 func TestRunHarnessCheck_AllPass(t *testing.T) {
 	root := fullySetupHarnessLayout(t)
 	check := runHarnessCheck(root)
-	if check.Status != CheckOK {
+	if check.Status != uikit.CheckOK {
 		t.Errorf("status = %v, want OK; msg=%s; detail=%s", check.Status, check.Message, check.Detail)
 	}
 	for _, layer := range []string{"L1:PASS", "L2:PASS", "L3:PASS", "L4:PASS", "L5:PASS"} {
@@ -85,7 +87,7 @@ func TestRunHarnessCheck_AllPass(t *testing.T) {
 func TestRunHarnessCheck_NoHarnessDir(t *testing.T) {
 	root := t.TempDir()
 	check := runHarnessCheck(root)
-	if check.Status != CheckOK {
+	if check.Status != uikit.CheckOK {
 		t.Errorf("expected OK when harness not configured, got %v", check.Status)
 	}
 }
@@ -95,7 +97,7 @@ func TestRunHarnessCheck_L5Missing(t *testing.T) {
 	// Remove a required L5 file
 	_ = os.Remove(filepath.Join(root, ".moai", "harness", "main.md"))
 	check := runHarnessCheck(root)
-	if check.Status != CheckFail {
+	if check.Status != uikit.CheckFail {
 		t.Errorf("expected FAIL, got %v", check.Status)
 	}
 	if !strings.Contains(check.Message, "L5:FAIL") {
@@ -110,7 +112,7 @@ func TestRunHarnessCheck_L3MarkerUnpaired(t *testing.T) {
 	doubled := string(claudeMd) + "\n<!-- moai:harness-start id=\"X\" -->\n<!-- moai:harness-end -->\n"
 	writeFile(t, filepath.Join(root, "CLAUDE.md"), doubled)
 	check := runHarnessCheck(root)
-	if check.Status != CheckFail {
+	if check.Status != uikit.CheckFail {
 		t.Errorf("expected FAIL for duplicate marker")
 	}
 }
@@ -120,7 +122,7 @@ func TestRunHarnessCheck_L4MissingImport(t *testing.T) {
 	// Overwrite plan.md without import line
 	writeFile(t, filepath.Join(root, ".claude", "skills", "moai", "workflows", "plan.md"), "# plan no import\n")
 	check := runHarnessCheck(root)
-	if check.Status != CheckFail {
+	if check.Status != uikit.CheckFail {
 		t.Errorf("expected FAIL when L4 import missing")
 	}
 }
@@ -139,7 +141,7 @@ triggers:
 ---
 `)
 	check := runHarnessCheck(root)
-	if check.Status != CheckWarn {
+	if check.Status != uikit.CheckWarn {
 		t.Errorf("expected WARN with prefix conflict, got %v: %s", check.Status, check.Message)
 	}
 	if !strings.Contains(check.Detail, "harness-foundation-core") {
@@ -152,6 +154,153 @@ func TestCheckLayer1Triggers_NoSkillsDir(t *testing.T) {
 	status, _ := checkLayer1Triggers(dir)
 	if status != "PASS" {
 		t.Errorf("expected PASS when skills dir missing, got %s", status)
+	}
+}
+
+// --- SPEC-V3R6-DOCTOR-FALSE-SIGNAL-001 Defect A (#1087): telemetry-presence
+// must NOT be mistaken for a configured harness. ---
+
+// writeDFSTelemetry writes a runtime learning-telemetry line to
+// .moai/harness/usage-log.jsonl (the artifact whose mere presence triggered the
+// #1087 false FAIL). Reuses the shared writeUsageLog helper.
+func writeDFSTelemetry(t *testing.T, root string) {
+	t.Helper()
+	writeUsageLog(t, root, []string{`{"event":"tool_failure","tool":"Bash","ts":"2026-07-16T00:00:00Z"}`})
+}
+
+// TestRunHarnessCheck_TelemetryOnlyReportsOK is AC-DFS-001 (RED before fix): a
+// project that has NEVER configured a harness but whose learning hook recorded a
+// tool_failure observation into .moai/harness/usage-log.jsonl must still report
+// CheckOK "no harness configured" — NOT a red FAIL with L5 missing.
+func TestRunHarnessCheck_TelemetryOnlyReportsOK(t *testing.T) {
+	root := t.TempDir()
+	writeDFSTelemetry(t, root) // creates .moai/harness/ with ONLY telemetry
+
+	check := runHarnessCheck(root)
+
+	if check.Status != uikit.CheckOK {
+		t.Errorf("telemetry-only harness dir must be OK (no harness configured), got %v: msg=%s detail=%s",
+			check.Status, check.Message, check.Detail)
+	}
+	if !strings.Contains(check.Message, "no harness configured") {
+		t.Errorf("message should indicate no harness configured, got %q", check.Message)
+	}
+	if strings.Contains(check.Message, "L5") || strings.Contains(check.Detail, "L5 missing") {
+		t.Errorf("telemetry-only dir must NOT run the L5 battery: msg=%q detail=%q", check.Message, check.Detail)
+	}
+}
+
+// TestRunHarnessCheck_TelemetryDirsOnlyReportsOK verifies the learning
+// subsystem's other runtime artifacts (learning-history/, proposals/) alongside
+// usage-log.jsonl still count as "not configured" (REQ-DFS-002).
+func TestRunHarnessCheck_TelemetryDirsOnlyReportsOK(t *testing.T) {
+	root := t.TempDir()
+	writeDFSTelemetry(t, root)
+	writeFile(t, filepath.Join(root, ".moai", "harness", "learning-history", "archive", "old.jsonl"), "{}\n")
+	writeFile(t, filepath.Join(root, ".moai", "harness", "proposals", "p1.md"), "# proposal\n")
+
+	check := runHarnessCheck(root)
+	if check.Status != uikit.CheckOK {
+		t.Errorf("runtime-telemetry-only harness dir must be OK, got %v: %s", check.Status, check.Detail)
+	}
+}
+
+// TestRunHarnessCheck_TelemetryPlusDotfileReportsOK is the sync-audit F1
+// regression guard: an UNANTICIPATED dotfile in .moai/harness/ (concretely
+// macOS Finder's .DS_Store on darwin/arm64, where #1087 was reported) must NOT
+// defeat the telemetry-exclusion predicate. A directory holding only
+// usage-log.jsonl + .DS_Store is still "no harness configured" — otherwise the
+// L1-L6 battery runs and #1087 reincarnates as a false FAIL.
+func TestRunHarnessCheck_TelemetryPlusDotfileReportsOK(t *testing.T) {
+	root := t.TempDir()
+	writeDFSTelemetry(t, root)
+	writeFile(t, filepath.Join(root, ".moai", "harness", ".DS_Store"), "\x00\x00")
+
+	check := runHarnessCheck(root)
+
+	if check.Status != uikit.CheckOK {
+		t.Errorf("telemetry + dotfile must be OK (no harness configured), got %v: msg=%s detail=%s",
+			check.Status, check.Message, check.Detail)
+	}
+	if !strings.Contains(check.Message, "no harness configured") {
+		t.Errorf("message should indicate no harness configured, got %q", check.Message)
+	}
+	if strings.Contains(check.Detail, "L5 missing") {
+		t.Errorf("telemetry + dotfile must NOT run the L5 battery: detail=%q", check.Detail)
+	}
+}
+
+// TestRunHarnessCheck_FullBaselineWithTelemetryRunsBattery is AC-DFS-002
+// (preserve): a genuinely-configured harness (all 7 baseline files) with a
+// usage-log.jsonl ALSO present must still run the full L1-L6 battery — the
+// telemetry-exclusion fix must not suppress a real harness.
+func TestRunHarnessCheck_FullBaselineWithTelemetryRunsBattery(t *testing.T) {
+	root := fullySetupHarnessLayout(t)
+	writeDFSTelemetry(t, root) // telemetry present alongside a genuine harness
+
+	check := runHarnessCheck(root)
+
+	// Battery ran → message carries the per-layer L1: … L6: status string, and
+	// it is NOT short-circuited to "no harness configured".
+	if strings.Contains(check.Message, "no harness configured") {
+		t.Errorf("genuine harness + telemetry must NOT short-circuit to 'not configured': %q", check.Message)
+	}
+	for _, layer := range []string{"L1:", "L5:", "L6:"} {
+		if !strings.Contains(check.Message, layer) {
+			t.Errorf("battery did not run — missing %s in %q", layer, check.Message)
+		}
+	}
+	if check.Status != uikit.CheckOK {
+		t.Errorf("full baseline + telemetry should be OK, got %v: %s", check.Status, check.Detail)
+	}
+}
+
+// TestRunHarnessCheck_PartialBaselineWithTelemetryStillFails is AC-DFS-003
+// (guard): a partially-configured harness (some but not all 7 baseline files)
+// with telemetry present is a genuinely misconfigured harness — it MUST reach
+// CheckFail with an L5 missing detail, NOT be masked as "not configured".
+func TestRunHarnessCheck_PartialBaselineWithTelemetryStillFails(t *testing.T) {
+	root := t.TempDir()
+	// Only main.md (a baseline file) present → configured, but L5 incomplete.
+	writeFile(t, filepath.Join(root, ".moai", "harness", "main.md"), "# main\n")
+	writeDFSTelemetry(t, root)
+
+	check := runHarnessCheck(root)
+
+	if check.Status != uikit.CheckFail {
+		t.Errorf("partial baseline must still FAIL (not masked), got %v: %s", check.Status, check.Detail)
+	}
+	if !strings.Contains(check.Message, "L5:FAIL") {
+		t.Errorf("L5 should FAIL for missing baseline files: %s", check.Message)
+	}
+}
+
+// TestRunHarnessCheck_NonTelemetryContentStillEvaluated is the D2 plan-audit
+// guard: a .moai/harness/ directory containing a NON-baseline, NON-telemetry
+// artifact (e.g. a stray custom file) alongside full L2-L4 markers but zero L5
+// baseline files must be treated as "configured" (its content is not telemetry)
+// and still reach CheckFail — proving the telemetry-exclusion predicate does not
+// introduce a NEW false-negative by masking a marker-configured harness.
+func TestRunHarnessCheck_NonTelemetryContentStillEvaluated(t *testing.T) {
+	root := fullySetupHarnessLayout(t)
+	// Remove all L5 baseline files, leaving the dir with a stray non-telemetry
+	// file → dir is non-empty of real content but L5 is incomplete.
+	harnessDir := filepath.Join(root, ".moai", "harness")
+	for _, f := range []string{"main.md", "plan-extension.md", "run-extension.md",
+		"sync-extension.md", "chaining-rules.yaml", "interview-results.md", "README.md"} {
+		_ = os.Remove(filepath.Join(harnessDir, f))
+	}
+	writeFile(t, filepath.Join(harnessDir, "custom-note.md"), "# stray custom harness content\n")
+	writeDFSTelemetry(t, root)
+
+	check := runHarnessCheck(root)
+
+	if check.Status == uikit.CheckOK {
+		t.Errorf("marker-configured harness with non-telemetry content must NOT be masked as OK: %s / %s",
+			check.Message, check.Detail)
+	}
+	if !strings.Contains(check.Message, "L5:FAIL") {
+		t.Errorf("expected L5:FAIL for incomplete baseline: %s", check.Message)
 	}
 }
 
@@ -188,7 +337,7 @@ func TestRunHarnessCheck_GoodAgentPasses(t *testing.T) {
 	writeHarnessAgent(t, root, "ios-architect",
 		"name: ios-architect\ndescription: iOS 도메인 아키텍처 설계 시 활성\nskills:\n  - harness-ios-patterns")
 	check := runHarnessCheck(root)
-	if check.Status == CheckFail {
+	if check.Status == uikit.CheckFail {
 		t.Errorf("good agent should not FAIL: msg=%s detail=%s", check.Message, check.Detail)
 	}
 }
@@ -201,7 +350,7 @@ func TestRunHarnessCheck_EmptyAgentDescription(t *testing.T) {
 	writeHarnessAgent(t, root, "ios-architect",
 		"name: ios-architect\ndescription:\nskills:\n  - harness-ios-patterns")
 	check := runHarnessCheck(root)
-	if check.Status != CheckFail {
+	if check.Status != uikit.CheckFail {
 		t.Errorf("expected FAIL for empty description, got %v (%s)", check.Status, check.Detail)
 	}
 	if !strings.Contains(check.Detail, "description") {
@@ -219,7 +368,7 @@ func TestRunHarnessCheck_MissingSkillsKey(t *testing.T) {
 	writeHarnessAgent(t, root, "ios-engineer",
 		"name: ios-engineer\ndescription: iOS 구현 시 활성")
 	check := runHarnessCheck(root)
-	if check.Status != CheckFail {
+	if check.Status != uikit.CheckFail {
 		t.Errorf("expected FAIL for missing skills: key, got %v (%s)", check.Status, check.Detail)
 	}
 	if !strings.Contains(check.Detail, "skills") {
@@ -240,7 +389,7 @@ func TestRunHarnessCheck_DanglingSkillReference(t *testing.T) {
 	writeHarnessAgent(t, root, "ios-architect",
 		"name: ios-architect\ndescription: iOS 설계 시 활성\nskills:\n  - harness-nonexistent")
 	check := runHarnessCheck(root)
-	if check.Status != CheckFail {
+	if check.Status != uikit.CheckFail {
 		t.Errorf("expected FAIL for dangling skill ref, got %v (%s)", check.Status, check.Detail)
 	}
 	if !strings.Contains(check.Detail, "harness-nonexistent") {
@@ -257,7 +406,7 @@ func TestRunHarnessCheck_TemplateSkillNotDangling(t *testing.T) {
 	writeHarnessAgent(t, root, "ios-architect",
 		"name: ios-architect\ndescription: iOS 설계 시 활성\nskills:\n  - moai-domain-frontend")
 	check := runHarnessCheck(root)
-	if check.Status == CheckFail {
+	if check.Status == uikit.CheckFail {
 		t.Errorf("moai-* skill reference must NOT be treated as dangling (EC-4): %s", check.Detail)
 	}
 }
@@ -268,7 +417,7 @@ func TestRunHarnessCheck_TemplateSkillNotDangling(t *testing.T) {
 func TestRunHarnessCheck_NoGeneratedAgents(t *testing.T) {
 	root := fullySetupHarnessLayout(t)
 	check := runHarnessCheck(root)
-	if check.Status == CheckFail {
+	if check.Status == uikit.CheckFail {
 		t.Errorf("no generated agents → agent-frontmatter checks must not FAIL: %s", check.Detail)
 	}
 }

@@ -11,6 +11,7 @@
 //	C5 CLAUDE.local.md maintainer-only local file reference  — binary FAIL
 //	C6 PR #N specific pull-request number reference          — binary FAIL
 //	C8 GOOS=<os> Go cross-compile env var (false positive)   — PRESERVE
+//	C9 natural-language canonical-form privilege marker      — binary FAIL
 //
 // [SCOPE — disjoint from internal_content_leak_test.go]
 // The date class (C3) and commit-hash class (C7) are DEFERRED to the sibling
@@ -153,7 +154,6 @@ var neutralityClasses = []neutralityClass{
 			".claude/rules/moai/workflow/spec-workflow.md",
 			".claude/rules/moai/workflow/worktree-state-guard.md",
 			".claude/rules/moai/workflow/verification-batch-pattern.md",
-			".claude/skills/moai/team/run.md",
 		),
 	},
 	{
@@ -166,6 +166,23 @@ var neutralityClasses = []neutralityClass{
 		name:      "C6-pr-number-ref",
 		severity:  neutralityBinary,
 		pattern:   regexp.MustCompile(`PR #[0-9]+`),
+		allowList: allowListSet(), // empty — binary FAIL on any hit
+	},
+	{
+		// C9-natural-language-canonical-form (SPEC-TEMPLATE-I18N-CANONICAL-001
+		// REQ-I18N-009): detects a natural-language canonical-form privilege
+		// marker — a markdown table column header that elevates one natural
+		// language over others via a "(canonical)" parenthetical (e.g.
+		// "| Korean (canonical) |"). The detector scopes to table-header cells
+		// (the `| <word> (canonical)` shape) so legitimate prose use of the
+		// word "canonical" (e.g. a section heading "V0 verification commands
+		// (canonical)") is NOT flagged. Post-sweep the template tree carries 0
+		// such privilege markers; any future reintroduction is a regression.
+		// Localized content inside localization-table data cells is legitimate
+		// and is NOT this class's concern (it does not flag Korean data cells).
+		name:      "C9-natural-language-canonical-form",
+		severity:  neutralityBinary,
+		pattern:   regexp.MustCompile(`\| *[A-Za-z]+ \(canonical\)`),
 		allowList: allowListSet(), // empty — binary FAIL on any hit
 	},
 }
@@ -223,10 +240,7 @@ func scanC2BareNarrative(root string) (map[string]struct{}, error) {
 			start := loc[0]
 			// Pass 2a: drop ID-embedded hits (SPEC-V3R, CONST-V3R, REQ-V3R, ...).
 			// Inspect a small left window for an ID-prefix form ending at start.
-			windowStart := start - 16
-			if windowStart < 0 {
-				windowStart = 0
-			}
+			windowStart := max(start-16, 0)
 			window := text[windowStart : loc[1]]
 			if c2IDEmbeddedRe.MatchString(window) {
 				continue
@@ -324,7 +338,6 @@ func TestTemplateNeutralityAudit(t *testing.T) {
 	root := findNeutralityRoot(t)
 
 	for _, class := range neutralityClasses {
-		class := class
 		t.Run(class.name, func(t *testing.T) {
 			t.Parallel()
 
@@ -380,7 +393,9 @@ func TestTemplateNeutralityAudit(t *testing.T) {
 // TestTemplateNeutralityAuditC8Preserve verifies the C8 GOOS=<os> false-positive
 // PRESERVE contract (REQ-TNA-008 / AC-TNA-011): the Go cross-compile env var
 // MUST be preserved in the template tree AND MUST NOT be emitted as a
-// neutrality violation. Exactly 3 files carry the GOOS= substring.
+// neutrality violation. Exactly 2 files carry the GOOS= substring
+// (the 3rd, scripts/ci-mirror/cross-compile.sh, was dropped from templates
+// in 17dcbea4a — this count tracks the live template tree).
 func TestTemplateNeutralityAuditC8Preserve(t *testing.T) {
 	t.Parallel()
 
@@ -410,12 +425,12 @@ func TestTemplateNeutralityAuditC8Preserve(t *testing.T) {
 		t.Fatalf("C8 scan error: %v", err)
 	}
 
-	if len(preserved) != 3 {
+	if len(preserved) != 2 {
 		var files []string
 		for f := range preserved {
 			files = append(files, f)
 		}
-		t.Errorf("C8 GOOS= PRESERVE expected 3 files, got %d: %s",
+		t.Errorf("C8 GOOS= PRESERVE expected 2 files, got %d: %s",
 			len(preserved), strings.Join(files, ", "))
 	}
 }

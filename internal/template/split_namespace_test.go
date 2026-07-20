@@ -41,11 +41,17 @@ import (
 
 // splitHarnessAgentPrefixes is the canonical set of dev-only split-harness
 // artifact-name prefixes that MUST NOT appear under .claude/agents/ or
-// .claude/workflows/ in the embedded template tree.
+// .claude/workflows/ in the embedded template tree. Both the legacy
+// harness-{release-update,github,release} names AND the renamed
+// hns-{release-update,github,release} forms are guarded (dual name set per the
+// hns- artifact-prefix rename with recognition-based backward compatibility).
 var splitHarnessAgentPrefixes = []string{
 	"harness-release-update",
 	"harness-github",
 	"harness-release",
+	"hns-release-update",
+	"hns-github",
+	"hns-release",
 }
 
 // TestSplitHarnessNamespaceNoLeak asserts that the embedded template tree

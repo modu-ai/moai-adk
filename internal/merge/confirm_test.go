@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	tea "github.com/charmbracelet/bubbletea"
+	tea "charm.land/bubbletea/v2"
 )
 
 func TestConfirmModel_Init(t *testing.T) {
@@ -31,7 +31,7 @@ func TestConfirmModel_Update_AcceptWithY(t *testing.T) {
 	}
 
 	// Simulate pressing 'y'
-	updatedModel, cmd := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'y'}})
+	updatedModel, cmd := m.Update(tea.KeyPressMsg(tea.Key{Code: 'y', Text: "y"}))
 
 	result := updatedModel.(confirmModel)
 
@@ -58,7 +58,7 @@ func TestConfirmModel_Update_CancelWithN(t *testing.T) {
 	}
 
 	// Simulate pressing 'n'
-	updatedModel, cmd := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'n'}})
+	updatedModel, cmd := m.Update(tea.KeyPressMsg(tea.Key{Code: 'n', Text: "n"}))
 
 	result := updatedModel.(confirmModel)
 
@@ -85,7 +85,7 @@ func TestConfirmModel_Update_CancelWithCtrlC(t *testing.T) {
 	}
 
 	// Simulate pressing Ctrl+C
-	updatedModel, cmd := m.Update(tea.KeyMsg{Type: tea.KeyCtrlC})
+	updatedModel, cmd := m.Update(tea.KeyPressMsg(tea.Key{Code: 'c', Mod: tea.ModCtrl}))
 
 	result := updatedModel.(confirmModel)
 
@@ -112,12 +112,12 @@ func TestConfirmModel_View_IncludesTitle(t *testing.T) {
 
 	view := m.View()
 
-	if view == "" {
+	if view.Content == "" {
 		t.Error("View should not be empty")
 	}
 
 	// layout v3 (Cargo): header verb "Analyzing" replaces the box title.
-	if !strings.Contains(view, "Analyzing") {
+	if !strings.Contains(view.Content, "Analyzing") {
 		t.Error("View should contain the 'Analyzing' header verb")
 	}
 }
@@ -132,8 +132,8 @@ func TestConfirmModel_View_EmptyWhenDone(t *testing.T) {
 
 	view := m.View()
 
-	if view != "" {
-		t.Errorf("View should be empty when done, got: %s", view)
+	if view.Content != "" {
+		t.Errorf("View should be empty when done, got: %s", view.Content)
 	}
 }
 
@@ -147,7 +147,7 @@ func TestConfirmModel_View_IncludesSummary(t *testing.T) {
 
 	view := m.View()
 
-	if !strings.Contains(view, "Test summary message") {
+	if !strings.Contains(view.Content, "Test summary message") {
 		t.Error("View should contain summary")
 	}
 }
@@ -165,7 +165,7 @@ func TestConfirmModel_View_ShowsConflictWarning(t *testing.T) {
 
 	view := m.View()
 
-	if !strings.Contains(view, "Warning") {
+	if !strings.Contains(view.Content, "Warning") {
 		t.Error("View should contain conflict warning")
 	}
 }

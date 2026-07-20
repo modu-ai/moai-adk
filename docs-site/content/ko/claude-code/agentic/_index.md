@@ -2,15 +2,16 @@
 title: 에이전트와 자동화
 weight: 40
 draft: false
-description: "서브에이전트·에이전트 팀·다이내믹 워크플로우 같은 오케스트레이션 원시와 워크트리·목표 지향 실행·예약 작업·대규모 코드베이스·모범 사례를 다룹니다."
+description: "서브에이전트·에이전트 팀·다이내믹 워크플로우 같은 오케스트레이션 원시와 워크트리·목표 지향 실행·예약 작업·대규모 코드베이스·모범 사례 — 에이전틱 루프 엔지니어링의 플랫폼 토대를 다룹니다."
 ---
 
 이 그룹은 Claude Code의 에이전트 오케스트레이션과 자율 실행을 다룹니다. 단일 대화를 넘어 여러 작업자를 위임하고, 팀으로 협업하고, 스크립트로 대규모 작업을 펼치는 방법을 배우려는 개발자를 위한 내용입니다.
 
-서브에이전트·에이전트 팀·다이내믹 워크플로우라는 세 가지 오케스트레이션 원시를 중심으로, 워크트리 분리·목표 지향 실행·예약 작업·대규모 코드베이스 탐색·모범 사례까지 차례로 이어집니다.
+
+서브에이전트·에이전트 팀·다이내믹 워크플로우라는 세 가지 오케스트레이션 원시를 중심으로, 워크트리 분리·목표 지향 실행·예약 작업·대규모 코드베이스 탐색·모범 사례까지 차례로 이어집니다. MoAI-ADK가 말하는 **에이전틱 루프 엔지니어링**(사람이 매 턴 개입하는 대신 루프 자체를 설계하고, 루프가 남긴 관찰로 하네스를 학습시키는 것)은 정확히 이 그룹의 메커니즘들(`/goal`의 조건 평가 루프, 서브에이전트 위임, 워크플로우 팬아웃) 위에 세워져 있습니다.
 
 {{< callout type="info" >}}
-**한 줄 요약**: 어떤 작업을 누가 (서브에이전트·팀·워크플로우) 실행할지 고른 뒤, 워크트리와 목표·예약·규모 전략으로 자율 실행을 안정적으로 운영하는 법을 익힙니다.
+**한 줄 요약**: 어떤 작업을 누가 실행할지(서브에이전트·팀·워크플로우) 고른 뒤, 워크트리와 목표·예약·규모 전략으로 자율 실행 루프를 안정적으로 운영하는 법을 익힙니다.
 {{< /callout >}}
 
 ## 학습 흐름
@@ -33,14 +34,14 @@ flowchart TD
 
 | 문서 | 설명 |
 |------|------|
-| [서브에이전트](/claude-code/agentic/sub-agents) | 격리 컨텍스트의 위임 작업자 |
-| [에이전트 팀](/claude-code/agentic/agent-teams) | 3-5명 팀 협업 |
-| [에이전트 뷰](/claude-code/agentic/agent-view) | 실행 관찰 화면 |
-| [다이내믹 워크플로우](/claude-code/agentic/workflows) | 스크립트 기반 대규모 오케스트레이션 |
-| [워크트리](/claude-code/agentic/worktrees) | 작업 트리 분리 |
-| [목표 지향 실행 (/goal)](/claude-code/agentic/goal) | 조건 충족까지 자율 실행 |
-| [예약 작업](/claude-code/agentic/scheduled-tasks) | 주기적 백그라운드 실행 |
-| [대규모 코드베이스](/claude-code/agentic/large-codebases) | 큰 저장소 탐색 전략 |
-| [모범 사례](/claude-code/agentic/best-practices) | Claude Code를 잘 쓰는 법 |
+| [서브에이전트](/ko/claude-code/agentic/sub-agents) | 격리 컨텍스트의 위임 작업자 |
+| [에이전트 팀](/ko/claude-code/agentic/agent-teams) | 3-5명 팀 협업 |
+| [에이전트 뷰](/ko/claude-code/agentic/agent-view) | 실행 관찰 화면 |
+| [다이내믹 워크플로우](/ko/claude-code/agentic/workflows) | 스크립트 기반 대규모 오케스트레이션 |
+| [워크트리](/ko/claude-code/agentic/worktrees) | 작업 트리 분리 |
+| [목표 지향 실행 (/goal)](/ko/claude-code/agentic/goal) | 조건 충족까지 자율 실행 |
+| [예약 작업](/ko/claude-code/agentic/scheduled-tasks) | 주기적 백그라운드 실행 |
+| [대규모 코드베이스](/ko/claude-code/agentic/large-codebases) | 큰 저장소 탐색 전략 |
+| [모범 사례](/ko/claude-code/agentic/best-practices) | Claude Code를 잘 쓰는 법 |
 
-먼저 [서브에이전트](/claude-code/agentic/sub-agents)부터 읽으며 위임의 기본 단위를 익힌 뒤 다음 문서로 이동하시기 바랍니다.
+먼저 [서브에이전트](/ko/claude-code/agentic/sub-agents)부터 읽으며 위임의 기본 단위를 익힌 뒤 다음 문서로 이동하시기 바랍니다.

@@ -251,16 +251,20 @@ func TestDetectV2Fingerprint_IsV2_Aggregation(t *testing.T) {
 			wantIsV2:   true,
 		},
 		{
-			name:       "Signal 2 alone (.agency/) → IsV2 true",
+			// REQ-CRR-001 (SPEC-V3R6-V2-V3-CLEAN-REINSTALL-002): a populated
+			// v3.* version short-circuits Signal 2 (.agency/ residue).
+			name:       "v3.* + .agency/ residue → IsV2 false (REQ-CRR-001 v3-version negative-override)",
 			systemYAML: "moai:\n    version: v3.0.0-rc2\n",
 			makeAgency: true,
-			wantIsV2:   true,
+			wantIsV2:   false,
 		},
 		{
-			name:       "Signal 3 alone (deprecated path) → IsV2 true",
+			// REQ-CRR-001: a populated v3.* version short-circuits Signal 3
+			// (DeprecatedPaths residue).
+			name:       "v3.* + deprecated path residue → IsV2 false (REQ-CRR-001 v3-version negative-override)",
 			systemYAML: "moai:\n    version: v3.0.0-rc2\n",
 			seedPath:   ".claude/agents/moai/manager-strategy.md",
-			wantIsV2:   true,
+			wantIsV2:   false,
 		},
 		{
 			name:        "Signal 1 (file missing) alone → IsV2 true",
@@ -300,6 +304,69 @@ func TestDetectV2Fingerprint_IsV2_Aggregation(t *testing.T) {
 	}
 }
 
+// TestDetectV2Fingerprint_V3Override_AC_CRR_002 is the AC-CRR-002 reproduction
+// test (SPEC-V3R6-V2-V3-CLEAN-REINSTALL-002) at the fingerprint level.
+//
+// A genuine v3 project (populated v3.* system.yaml) carrying stale legacy
+// residue (a lingering .agency/ dir AND a DeprecatedPath seed) MUST resolve
+// IsV2 = false. This is the loop-termination contract: when IsV2 is false,
+// runUpdate does NOT enter the clean-reinstall path, so a second `moai update`
+// converges instead of looping (#1084).
+//
+// REQ-CRR-001: a confirmed v3.* version short-circuits Signal 2 / Signal 3.
+//
+// Pre-fix expectation: FAIL — the current aggregation is a pure disjunction,
+// so Signal 2 (.agency/) OR Signal 3 (deprecated path) drives IsV2 to true
+// despite the populated v3 version.
+func TestDetectV2Fingerprint_V3Override_AC_CRR_002(t *testing.T) {
+	root := t.TempDir()
+
+	// Populated v3.* version — the negative-override trigger.
+	writeTestFile(t, root, ".moai/config/sections/system.yaml",
+		"moai:\n    version: v3.0.0\n")
+
+	// Stale legacy residue that would otherwise trip Signal 2 / Signal 3.
+	makeTestDir(t, root, ".agency")
+	writeTestFile(t, root, ".claude/agents/moai/manager-strategy.md", "stub\n")
+
+	fp, err := detectV2Fingerprint(root)
+	if err != nil {
+		t.Fatalf("detectV2Fingerprint: unexpected error: %v", err)
+	}
+
+	if fp.IsV2 {
+		t.Errorf("AC-CRR-002: IsV2 = true; want false "+
+			"(REQ-CRR-001 v3-version negative-override must short-circuit "+
+			"Signal 2/3 legacy residue)\nfp = %+v", fp)
+	}
+
+	// Verify the override MECHANISM, not just the outcome: V3VersionConfirmed
+	// must be true (the override fired), and the per-signal flags must still
+	// reflect that legacy residue WAS detected (Signal 2 + Signal 3 positive)
+	// — proving the override short-circuited rather than the residue being
+	// absent.
+	if !fp.V3VersionConfirmed {
+		t.Errorf("AC-CRR-001(a)/AC-CRR-002: V3VersionConfirmed = false; want true "+
+			"(populated v3.* version must set the override flag)\nfp = %+v", fp)
+	}
+	if !fp.V2DetectedViaAgencyDir {
+		t.Errorf("AC-CRR-002: V2DetectedViaAgencyDir = false; want true " +
+			"(.agency/ residue WAS present — override must short-circuit, not hide)")
+	}
+	if !fp.V2DetectedViaDeprecatedPath {
+		t.Errorf("AC-CRR-002: V2DetectedViaDeprecatedPath = false; want true " +
+			"(deprecated path residue WAS present — override must short-circuit, not hide)")
+	}
+	// AC-CRR-001(b): the version_signal detail MUST name the v3-version
+	// negative-override so callers (telemetry / --dry-run) report WHY IsV2
+	// was forced false.
+	versionDetail := fp.SignalDetails["version_signal"]
+	if !containsLowerSubstring(versionDetail, "v3-version negative-override") {
+		t.Errorf("AC-CRR-001(b): SignalDetails[\"version_signal\"] = %q; "+
+			"want substring \"v3-version negative-override\"", versionDetail)
+	}
+}
+
 // TestDetectV2Fingerprint_EmptyProject covers the edge case of a completely
 // empty project root: no system.yaml, no .agency/, no deprecated paths.
 // Per Option α, missing system.yaml triggers Signal 1 alone → IsV2 true.
@@ -333,6 +400,143 @@ func TestDetectV2Fingerprint_NonexistentRoot(t *testing.T) {
 	_, err := detectV2Fingerprint(root)
 	if err == nil {
 		t.Errorf("expected error for nonexistent project root; got nil")
+	}
+}
+
+// TestIsMoAIProject_AC_CRR_005 is the AC-CRR-005 reproduction test
+// (SPEC-V3R6-V2-V3-CLEAN-REINSTALL-002) at the project-marker level.
+//
+// A non-project cwd (no `.moai/config/sections/system.yaml`) carrying stale
+// legacy residue (.agency/ directory) MUST be rejected by isMoAIProject so
+// that the clean-reinstall gate in runUpdate refuses entry (#1086).
+//
+// REQ-CRR-005 / AC-CRR-004(a): the positive project marker is the
+// `.moai/config/sections/system.yaml` regular file. A bare `.moai/` dir or
+// an arbitrary cwd with legacy residue MUST NOT satisfy the precondition.
+//
+// Pre-fix expectation: FAIL — isMoAIProject does not exist yet (compile fail).
+func TestIsMoAIProject_AC_CRR_005(t *testing.T) {
+	tests := []struct {
+		name        string
+		setup       func(t *testing.T, root string)
+		wantProject bool
+	}{
+		{
+			name: "non-project cwd with .agency/ residue → not a moai project (AC-CRR-005 / #1086)",
+			setup: func(t *testing.T, root string) {
+				// Stale legacy artifact that would trip Signal 2.
+				makeTestDir(t, root, ".agency")
+				// NO .moai/ directory at all — this is the #1086 scenario:
+				// `moai update` invoked in an arbitrary cwd.
+			},
+			wantProject: false,
+		},
+		{
+			name: "completely empty cwd → not a moai project",
+			setup: func(t *testing.T, root string) {
+				// No markers whatsoever.
+			},
+			wantProject: false,
+		},
+		{
+			name: "bare .moai/ dir without system.yaml → not a moai project",
+			setup: func(t *testing.T, root string) {
+				makeTestDir(t, root, ".moai")
+			},
+			wantProject: false,
+		},
+		{
+			name: "genuine v3 project with system.yaml → is a moai project",
+			setup: func(t *testing.T, root string) {
+				writeTestFile(t, root, ".moai/config/sections/system.yaml",
+					"moai:\n    version: v3.0.0\n")
+			},
+			wantProject: true,
+		},
+		{
+			name: "v2 project with system.yaml → is a moai project (marker is structural, not version-gated)",
+			setup: func(t *testing.T, root string) {
+				writeTestFile(t, root, ".moai/config/sections/system.yaml",
+					"moai:\n    version: v2.16.1\n")
+			},
+			wantProject: true,
+		},
+		{
+			// Edge-7: system.yaml exists but is empty/corrupt. The positive-
+			// marker precondition is satisfied (file exists as regular file);
+			// Signal 1 version read handles the empty-string classification
+			// separately. The marker check MUST NOT parse the file contents.
+			name: "system.yaml exists but empty → is a moai project (marker is existence, not content)",
+			setup: func(t *testing.T, root string) {
+				writeTestFile(t, root, ".moai/config/sections/system.yaml", "")
+			},
+			wantProject: true,
+		},
+		{
+			// A directory named system.yaml is NOT the marker (must be a
+			// regular file per AC-CRR-004(a)).
+			name: "system.yaml is a directory (not regular file) → not a moai project",
+			setup: func(t *testing.T, root string) {
+				makeTestDir(t, root, ".moai/config/sections/system.yaml")
+			},
+			wantProject: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			root := t.TempDir()
+			if tt.setup != nil {
+				tt.setup(t, root)
+			}
+
+			got := isMoAIProject(root)
+			if got != tt.wantProject {
+				t.Errorf("isMoAIProject = %v; want %v", got, tt.wantProject)
+			}
+		})
+	}
+}
+
+// TestIsMoAIProject_GatePreventsCleanReinstall_AC_CRR_005 verifies the
+// architectural outcome of AC-CRR-005(e): when the cwd is not a moai project,
+// the clean-reinstall path MUST NOT be entered, even though detectV2Fingerprint
+// would return IsV2=true on the legacy residue alone.
+//
+// This encodes the gate contract in update.go line 279:
+//
+//	`} else if fingerprint.IsV2 && isMoAIProject(cwd) {`
+//
+// Clean-reinstall fires ONLY when BOTH fingerprint.IsV2 AND isMoAIProject(cwd)
+// hold. The #1086 regression was precisely that the second conjunct was absent.
+func TestIsMoAIProject_GatePreventsCleanReinstall_AC_CRR_005(t *testing.T) {
+	root := t.TempDir()
+	// Non-project cwd: NO .moai/ at all, but .agency/ residue present.
+	// This is the #1086 fixture: `moai update` in an arbitrary directory.
+	makeTestDir(t, root, ".agency")
+
+	fp, err := detectV2Fingerprint(root)
+	if err != nil {
+		t.Fatalf("detectV2Fingerprint: unexpected error: %v", err)
+	}
+
+	// The fingerprint SHOULD report IsV2=true: Signal 1 positive (system.yaml
+	// missing → Option α), Signal 2 positive (.agency/ present), no v3
+	// negative-override (system.yaml absent ⇒ V3VersionConfirmed=false). This
+	// is the #1086 hazard — legacy residue drives IsV2 true in a non-project
+	// cwd, and WITHOUT the marker gate this would fire clean-reinstall.
+	if !fp.IsV2 {
+		t.Fatalf("precondition: expected IsV2=true on non-project cwd with "+
+			".agency/ residue; got false (fp=%+v)", fp)
+	}
+
+	// The gate: isMoAIProject MUST be false, preventing clean-reinstall entry
+	// despite IsV2=true. The conjunct `&& isMoAIProject(cwd)` in update.go is
+	// the M2 repair for #1086.
+	if isMoAIProject(root) {
+		t.Errorf("AC-CRR-005(e): isMoAIProject = true on non-project cwd; " +
+			"want false (clean-reinstall gate must refuse entry when the " +
+			"positive marker is absent, even if IsV2=true on legacy residue)")
 	}
 }
 

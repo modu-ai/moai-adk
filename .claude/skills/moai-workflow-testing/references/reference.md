@@ -21,16 +21,16 @@ DevelopmentWorkflow:
 
 AIDebugger:
 - Purpose: AI-powered intelligent debugging
-- Initialization: `AIDebugger(context7_client)`
+- Initialization: `AIDebugger(docs_client)`
 - Key Methods:
-  - `debug_with_context7_patterns(exception, context, project_path)` - Debug with AI assistance
+  - `debug_with_docs_patterns(exception, context, project_path)` - Debug with AI assistance
   - `classify_error(exception)` - Classify error type
   - `suggest_solutions(analysis)` - Generate fix suggestions
   - `apply_fix(solution)` - Apply recommended fix
 
 AIRefactorer:
 - Purpose: Intelligent code refactoring
-- Initialization: `AIRefactorer(context7_client)`
+- Initialization: `AIRefactorer(docs_client)`
 - Key Methods:
   - `refactor_with_intelligence(project_path)` - Analyze and suggest refactoring
   - `analyze_technical_debt(project_path)` - Calculate debt score
@@ -39,7 +39,7 @@ AIRefactorer:
 
 PerformanceProfiler:
 - Purpose: Real-time performance analysis
-- Initialization: `PerformanceProfiler(context7_client)`
+- Initialization: `PerformanceProfiler(docs_client)`
 - Key Methods:
   - `start_profiling(profile_types)` - Begin profiling session
   - `stop_profiling()` - End profiling and get results
@@ -48,7 +48,7 @@ PerformanceProfiler:
 
 TDDManager:
 - Purpose: Test-driven development cycle management
-- Initialization: `TDDManager(project_path, context7_client)`
+- Initialization: `TDDManager(project_path, docs_client)`
 - Key Methods:
   - `run_full_tdd_cycle(specification, target_function)` - Complete RED-GREEN-REFACTOR
   - `generate_test(spec)` - Generate test from specification
@@ -57,7 +57,7 @@ TDDManager:
 
 AutomatedCodeReviewer:
 - Purpose: AI-powered code review with TRUST 5
-- Initialization: `AutomatedCodeReviewer(context7_client)`
+- Initialization: `AutomatedCodeReviewer(docs_client)`
 - Key Methods:
   - `review_codebase(project_path)` - Full codebase review
   - `calculate_trust_score(review_data)` - Calculate TRUST 5 score
@@ -80,8 +80,8 @@ class WorkflowConfig:
     enable_tdd: bool = True
     enable_code_review: bool = True
 
-    # Context7 integration
-    context7_client: Optional[Context7Client] = None
+    # Documentation integration
+    docs_client: Optional[DocumentationClient] = None
 
     # Quality thresholds
     min_trust_score: float = 0.85
@@ -189,16 +189,16 @@ async def ci_pipeline(commit_hash: str, project_path: str):
     return {"status": "passed", "commit": commit_hash}
 ```
 
-### Pattern 2: TDD Workflow with Context7
+### Pattern 2: TDD Workflow with Documentation
 
 ```python
-# Enhanced TDD with Context7 best practices
+# Enhanced TDD with Documentation best practices
 from moai_workflow_testing import TDDManager, TestSpecification, TestType
 
-async def implement_feature_tdd(feature_spec: dict, context7_client):
-    """Implement feature using TDD with Context7 patterns."""
+async def implement_feature_tdd(feature_spec: dict, docs_client):
+    """Implement feature using TDD with Documentation patterns."""
 
-    ddd = DDDManager("/project/src", context7_client=context7_client)
+    ddd = DDDManager("/project/src", docs_client=docs_client)
 
     # Create test specification from feature
     test_spec = TestSpecification(
@@ -217,7 +217,7 @@ async def implement_feature_tdd(feature_spec: dict, context7_client):
     implementation = await ddd.generate_implementation(test_spec)
     assert await ddd.run_tests() == True  # Should pass
 
-    # REFACTOR: Optimize with Context7 patterns
+    # REFACTOR: Optimize with Documentation patterns
     refactored = await ddd.refactor_with_patterns(implementation)
     assert await ddd.run_tests() == True  # Still passes
 
@@ -238,13 +238,13 @@ async def implement_feature_tdd(feature_spec: dict, context7_client):
 # Intelligent debugging with automatic fix application
 from moai_workflow_testing import AIDebugger
 
-async def debug_production_error(exception, context, context7_client):
+async def debug_production_error(exception, context, docs_client):
     """Debug production error with AI assistance."""
 
-    debugger = AIDebugger(context7_client=context7_client)
+    debugger = AIDebugger(docs_client=docs_client)
 
-    # Analyze error with Context7 patterns
-    analysis = await debugger.debug_with_context7_patterns(
+    # Analyze error with Documentation patterns
+    analysis = await debugger.debug_with_docs_patterns(
         exception=exception,
         context=context,
         project_path="/project/src"
@@ -271,10 +271,10 @@ async def debug_production_error(exception, context, context7_client):
 # Comprehensive performance optimization
 from moai_workflow_testing import PerformanceProfiler
 
-async def optimize_critical_path(function_name: str, context7_client):
+async def optimize_critical_path(function_name: str, docs_client):
     """Profile and optimize critical code path."""
 
-    profiler = PerformanceProfiler(context7_client=context7_client)
+    profiler = PerformanceProfiler(docs_client=docs_client)
 
     # Multi-dimensional profiling
     profiler.start_profiling(['cpu', 'memory', 'line', 'io'])
@@ -309,9 +309,9 @@ async def optimize_critical_path(function_name: str, context7_client):
 
 ### Common Issues
 
-Issue: Context7 connection timeout:
+Issue: Documentation connection timeout:
 - Cause: MCP server not responding or network issues
-- Solution: Check Context7 server status and restart if needed
+- Solution: Check Documentation server status and restart if needed
 - Prevention: Implement retry logic with exponential backoff
 
 Issue: Test coverage below threshold:
@@ -391,7 +391,7 @@ print(f"Reviewer: {report.reviewer_status}")
 - AI Debugging: `modules/ai-debugging.md`
 - Smart Refactoring: `modules/smart-refactoring.md`
 - Performance Optimization: `modules/performance-optimization.md`
-- DDD with Context7: `modules/ddd-context7.md`
+- DDD: `modules/ddd/core-classes.md`
 - Automated Code Review: `modules/automated-code-review.md`
 
 ### Best Practices
@@ -429,7 +429,7 @@ Code Review:
 | Version | Date       | Changes                                           |
 |---------|------------|---------------------------------------------------|
 | 1.0.0   | 2025-11-30 | Initial unified workflow release                  |
-| 0.9.0   | 2025-11-25 | Added Context7 integration                        |
+| 0.9.0   | 2025-11-25 | Added Documentation integration                        |
 | 0.8.0   | 2025-11-20 | Added performance optimization module             |
 | 0.7.0   | 2025-11-15 | Added automated code review                       |
 

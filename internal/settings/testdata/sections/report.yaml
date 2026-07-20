@@ -1,0 +1,4 @@
+report:
+    # Output format for the HTML report skill (moai-domain-html-report).
+    # format: html+md emits both HTML and Markdown; md emits Markdown only.
+    format: html+md

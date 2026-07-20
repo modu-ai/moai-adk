@@ -79,9 +79,17 @@ func IsValidPermissionMode(mode string) bool {
 }
 
 // GetPreferencesPath returns the path to preferences.yaml for a profile.
+//
+// REQ-SEC-001 (SPEC-INTERNAL-SECURITY-001): central traversal guard. A name
+// containing path separators, traversal sequences, or that is absolute is
+// clamped to the base preferences.yaml here — it NEVER resolves to a path
+// outside the profile base directory. This centralizes the guard so every
+// caller (web read path, CLI, internal) is protected even if a higher layer
+// forgets to validate. WritePreferences additionally returns an error for
+// invalid names (defense in depth at the write boundary).
 func GetPreferencesPath(profileName string) string {
 	baseDir := GetBaseDir()
-	if profileName == "" || profileName == "default" {
+	if profileName == "" || profileName == "default" || !isValidProfileName(profileName) {
 		return filepath.Join(baseDir, preferencesFile)
 	}
 	return filepath.Join(baseDir, profileName, preferencesFile)
@@ -149,7 +157,16 @@ func migrateOldFile(dir, oldName, newName string) {
 
 // WritePreferences saves the preferences for a profile.
 // Creates the profile directory if it does not exist.
+//
+// SPEC-WEB-CONSOLE-011 REQ-WC11-034: reject path-traversal profile names BEFORE
+// the os.MkdirAll below, so an untrusted caller (e.g. the web console
+// `__profile` form value) cannot create a directory outside the profile store.
+// The two special names "" / "default" pass isValidProfileName (they resolve to
+// the base preferences.yaml, never a traversing subdirectory).
 func WritePreferences(profileName string, prefs ProfilePreferences) error {
+	if !isValidProfileName(profileName) {
+		return fmt.Errorf("invalid profile name %q: must not contain path separators or start with '.'", profileName)
+	}
 	path := GetPreferencesPath(profileName)
 	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
 		return fmt.Errorf("create directory: %w", err)

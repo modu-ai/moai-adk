@@ -11,6 +11,10 @@ import (
 	"testing"
 	"time"
 
+	"github.com/modu-ai/moai-adk/internal/cli/update/backup"
+	"github.com/modu-ai/moai-adk/internal/cli/update/deploy"
+	updatemerge "github.com/modu-ai/moai-adk/internal/cli/update/merge"
+	"github.com/modu-ai/moai-adk/internal/cli/update/plan"
 	"github.com/modu-ai/moai-adk/internal/template"
 	"github.com/modu-ai/moai-adk/internal/update"
 	"github.com/modu-ai/moai-adk/pkg/version"
@@ -155,13 +159,13 @@ func TestGetProjectConfigVersion_FileSizeExceeds(t *testing.T) {
 
 	// Create file larger than 10MB
 	configPath := filepath.Join(configDir, "system.yaml")
-	largeContent := make([]byte, maxConfigSize+1)
+	largeContent := make([]byte, plan.MaxConfigSize+1)
 	if err := os.WriteFile(configPath, largeContent, 0644); err != nil {
 		t.Fatal(err)
 	}
 
 	// Should return error for oversized file
-	_, err := getProjectConfigVersion(tmpDir)
+	_, err := plan.GetProjectConfigVersion(tmpDir)
 	if err == nil {
 		t.Fatal("expected error for file exceeding size limit, got nil")
 	}
@@ -183,7 +187,7 @@ func TestGetProjectConfigVersion_ExactlyAtLimit(t *testing.T) {
 	// Create file exactly at 10MB limit with valid YAML
 	configPath := filepath.Join(configDir, "system.yaml")
 	validYAML := "moai:\n  template_version: \"1.0.0\"\n"
-	padding := make([]byte, maxConfigSize-len(validYAML))
+	padding := make([]byte, plan.MaxConfigSize-len(validYAML))
 	for i := range padding {
 		padding[i] = '#' // YAML comment padding
 	}
@@ -193,7 +197,7 @@ func TestGetProjectConfigVersion_ExactlyAtLimit(t *testing.T) {
 	}
 
 	// Should succeed with file at exact limit
-	version, err := getProjectConfigVersion(tmpDir)
+	version, err := plan.GetProjectConfigVersion(tmpDir)
 	if err != nil {
 		t.Fatalf("expected no error for file at size limit, got: %v", err)
 	}
@@ -219,7 +223,7 @@ func TestGetProjectConfigVersion_NormalSize(t *testing.T) {
 	}
 
 	// Should succeed with normal file
-	version, err := getProjectConfigVersion(tmpDir)
+	version, err := plan.GetProjectConfigVersion(tmpDir)
 	if err != nil {
 		t.Fatalf("expected no error for normal-sized file, got: %v", err)
 	}
@@ -234,7 +238,7 @@ func TestGetProjectConfigVersion_NonExistent(t *testing.T) {
 	tmpDir := t.TempDir()
 
 	// Should return "0.0.0" for non-existent file
-	version, err := getProjectConfigVersion(tmpDir)
+	version, err := plan.GetProjectConfigVersion(tmpDir)
 	if err != nil {
 		t.Fatalf("expected no error for non-existent file, got: %v", err)
 	}
@@ -264,7 +268,7 @@ func TestGetProjectConfigVersion_ValidParsing(t *testing.T) {
 	}
 
 	// Should correctly parse template_version
-	version, err := getProjectConfigVersion(tmpDir)
+	version, err := plan.GetProjectConfigVersion(tmpDir)
 	if err != nil {
 		t.Fatalf("expected no error for valid config, got: %v", err)
 	}
@@ -467,7 +471,7 @@ func TestGetProjectConfigVersion_EmptyTemplateVersion(t *testing.T) {
 	}
 
 	// Should return "0.0.0" for missing template_version
-	version, err := getProjectConfigVersion(tmpDir)
+	version, err := plan.GetProjectConfigVersion(tmpDir)
 	if err != nil {
 		t.Fatalf("expected no error for missing template_version, got: %v", err)
 	}
@@ -493,7 +497,7 @@ func TestGetProjectConfigVersion_InvalidYAML(t *testing.T) {
 	}
 
 	// Should return error for invalid YAML
-	_, err := getProjectConfigVersion(tmpDir)
+	_, err := plan.GetProjectConfigVersion(tmpDir)
 	if err == nil {
 		t.Fatal("expected error for invalid YAML, got nil")
 	}
@@ -547,9 +551,9 @@ func TestClassifyFileRisk(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := classifyFileRisk(tt.filename, tt.exists)
+			got := plan.ClassifyFileRisk(tt.filename, tt.exists)
 			if got != tt.want {
-				t.Errorf("classifyFileRisk(%q, %v) = %v, want %v", tt.filename, tt.exists, got, tt.want)
+				t.Errorf("plan.ClassifyFileRisk(%q, %v) = %v, want %v", tt.filename, tt.exists, got, tt.want)
 			}
 		})
 	}
@@ -595,9 +599,9 @@ func TestDetermineStrategy(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := determineStrategy(tt.filename)
+			got := plan.DetermineStrategy(tt.filename)
 			if string(got) != tt.want {
-				t.Errorf("determineStrategy(%q) = %v, want %v", tt.filename, got, tt.want)
+				t.Errorf("plan.DetermineStrategy(%q) = %v, want %v", tt.filename, got, tt.want)
 			}
 		})
 	}
@@ -623,9 +627,9 @@ func TestDetermineChangeType(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := determineChangeType(tt.exists)
+			got := plan.DetermineChangeType(tt.exists)
 			if got != tt.want {
-				t.Errorf("determineChangeType(%v) = %v, want %v", tt.exists, got, tt.want)
+				t.Errorf("plan.DetermineChangeType(%v) = %v, want %v", tt.exists, got, tt.want)
 			}
 		})
 	}
@@ -726,9 +730,9 @@ func TestIsMoaiManaged(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := isMoaiManaged(tt.path)
+			got := plan.IsMoaiManaged(tt.path)
 			if got != tt.want {
-				t.Errorf("isMoaiManaged(%q) = %v, want %v", tt.path, got, tt.want)
+				t.Errorf("plan.IsMoaiManaged(%q) = %v, want %v", tt.path, got, tt.want)
 			}
 		})
 	}
@@ -764,9 +768,9 @@ func TestIsMoaiManaged_OutputStyles(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := isMoaiManaged(tt.path)
+			got := plan.IsMoaiManaged(tt.path)
 			if got != tt.want {
-				t.Errorf("isMoaiManaged(%q) = %v, want %v", tt.path, got, tt.want)
+				t.Errorf("plan.IsMoaiManaged(%q) = %v, want %v", tt.path, got, tt.want)
 			}
 		})
 	}
@@ -797,9 +801,9 @@ func TestIsMoaiManaged_MoaiConfig(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := isMoaiManaged(tt.path)
+			got := plan.IsMoaiManaged(tt.path)
 			if got != tt.want {
-				t.Errorf("isMoaiManaged(%q) = %v, want %v", tt.path, got, tt.want)
+				t.Errorf("plan.IsMoaiManaged(%q) = %v, want %v", tt.path, got, tt.want)
 			}
 		})
 	}
@@ -843,9 +847,9 @@ func TestIsMoaiManaged_HarnessNotManaged(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := isMoaiManaged(tt.path)
+			got := plan.IsMoaiManaged(tt.path)
 			if got != tt.want {
-				t.Errorf("isMoaiManaged(%q) = %v, want %v", tt.path, got, tt.want)
+				t.Errorf("plan.IsMoaiManaged(%q) = %v, want %v", tt.path, got, tt.want)
 			}
 		})
 	}
@@ -985,18 +989,18 @@ func TestIsUserOwnedNamespace(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := isUserOwnedNamespace(tt.rel)
+			got := plan.IsUserOwnedNamespace(tt.rel)
 			if got != tt.want {
-				t.Errorf("isUserOwnedNamespace(%q) = %v, want %v", tt.rel, got, tt.want)
+				t.Errorf("plan.IsUserOwnedNamespace(%q) = %v, want %v", tt.rel, got, tt.want)
 			}
 		})
 	}
 }
 
 // TestIsUserOwnedNamespace_AdditivityWithIsUserAreaPath verifies NFR-UNP-005:
-// isUserOwnedNamespace returns true for every path previously matched by isUserAreaPath.
+// plan.IsUserOwnedNamespace returns true for every path previously matched by plan.IsUserAreaPath.
 func TestIsUserOwnedNamespace_AdditivityWithIsUserAreaPath(t *testing.T) {
-	// Paths that isUserAreaPath protects:
+	// Paths that plan.IsUserAreaPath protects:
 	previouslyCovered := []string{
 		".claude/skills/harness-test/SKILL.md",
 		".claude/skills/harness-foo/file.md",
@@ -1007,12 +1011,12 @@ func TestIsUserOwnedNamespace_AdditivityWithIsUserAreaPath(t *testing.T) {
 	for _, path := range previouslyCovered {
 		t.Run(path, func(t *testing.T) {
 			// Existing function must still return true (NFR-UNP-005 additivity)
-			if !isUserAreaPath(path) {
-				t.Errorf("isUserAreaPath(%q) regression: expected true", path)
+			if !plan.IsUserAreaPath(path) {
+				t.Errorf("plan.IsUserAreaPath(%q) regression: expected true", path)
 			}
 			// New function must return true for the same paths (strict superset)
-			if !isUserOwnedNamespace(path) {
-				t.Errorf("isUserOwnedNamespace(%q) additivity violation: expected true, got false", path)
+			if !plan.IsUserOwnedNamespace(path) {
+				t.Errorf("plan.IsUserOwnedNamespace(%q) additivity violation: expected true, got false", path)
 			}
 		})
 	}
@@ -1045,9 +1049,9 @@ func TestBackupMoaiConfig_CreateBackup(t *testing.T) {
 	}
 
 	// Create backup
-	backupDir, err := backupMoaiConfig(tmpDir)
+	backupDir, err := backup.BackupMoaiConfig(tmpDir)
 	if err != nil {
-		t.Fatalf("backupMoaiConfig failed: %v", err)
+		t.Fatalf("backup.BackupMoaiConfig failed: %v", err)
 	}
 
 	// Verify backup directory path format
@@ -1115,7 +1119,7 @@ func TestBackupMoaiConfig_CreateBackup(t *testing.T) {
 		t.Fatalf("read metadata file: %v", err)
 	}
 
-	var metadata BackupMetadata
+	var metadata backup.BackupMetadata
 	if err := json.Unmarshal(metadataData, &metadata); err != nil {
 		t.Fatalf("unmarshal metadata: %v", err)
 	}
@@ -1155,9 +1159,9 @@ func TestBackupMoaiConfig_NoConfigDir(t *testing.T) {
 	tmpDir := t.TempDir()
 
 	// Should return empty string without error
-	backupDir, err := backupMoaiConfig(tmpDir)
+	backupDir, err := backup.BackupMoaiConfig(tmpDir)
 	if err != nil {
-		t.Fatalf("backupMoaiConfig should not error when no config exists, got: %v", err)
+		t.Fatalf("backup.BackupMoaiConfig should not error when no config exists, got: %v", err)
 	}
 	if backupDir != "" {
 		t.Errorf("backupDir should be empty when no config exists, got: %s", backupDir)
@@ -1210,7 +1214,7 @@ func TestCleanupOldBackups(t *testing.T) {
 	}
 
 	// Test cleanup with keep_count=5
-	deletedCount := cleanup_old_backups(tmpDir, 5)
+	deletedCount := backup.CleanupOldBackups(tmpDir, 5)
 	if deletedCount != 5 {
 		t.Errorf("should delete 5 old backups, got: %d", deletedCount)
 	}
@@ -1237,13 +1241,13 @@ func TestCleanupOldBackups(t *testing.T) {
 	}
 
 	// Test cleanup with keep_count=10 (no deletion)
-	deletedCount = cleanup_old_backups(tmpDir, 10)
+	deletedCount = backup.CleanupOldBackups(tmpDir, 10)
 	if deletedCount != 0 {
 		t.Errorf("should not delete any backups with keep_count=10, got: %d", deletedCount)
 	}
 
 	// Test cleanup with keep_count=0 (delete all)
-	deletedCount = cleanup_old_backups(tmpDir, 0)
+	deletedCount = backup.CleanupOldBackups(tmpDir, 0)
 	if deletedCount != 5 {
 		t.Errorf("should delete all 5 backups with keep_count=0, got: %d", deletedCount)
 	}
@@ -1290,7 +1294,7 @@ func TestCleanupOldBackups_InvalidBackupPattern(t *testing.T) {
 	}
 
 	// Should return 0 for invalid backup names
-	deletedCount := cleanup_old_backups(tmpDir, 5)
+	deletedCount := backup.CleanupOldBackups(tmpDir, 5)
 	if deletedCount != 0 {
 		t.Errorf("should not delete any invalid backups, got: %d", deletedCount)
 	}
@@ -1301,7 +1305,7 @@ func TestCleanupOldBackups_NoBackupsDir(t *testing.T) {
 	tmpDir := t.TempDir()
 
 	// Should return 0 without error
-	deletedCount := cleanup_old_backups(tmpDir, 5)
+	deletedCount := backup.CleanupOldBackups(tmpDir, 5)
 	if deletedCount != 0 {
 		t.Errorf("should return 0 when no backups exist, got: %d", deletedCount)
 	}
@@ -1328,9 +1332,9 @@ func TestRestoreMoaiConfig_MergeBehavior(t *testing.T) {
 	}
 
 	// Create backup
-	backupDir, err := backupMoaiConfig(tmpDir)
+	backupDir, err := backup.BackupMoaiConfig(tmpDir)
 	if err != nil {
-		t.Fatalf("backupMoaiConfig failed: %v", err)
+		t.Fatalf("backup.BackupMoaiConfig failed: %v", err)
 	}
 
 	// Verify backup contains sections/system.yaml
@@ -1346,7 +1350,7 @@ func TestRestoreMoaiConfig_MergeBehavior(t *testing.T) {
 	}
 
 	// Restore from backup
-	if err := restoreMoaiConfig(tmpDir, backupDir); err != nil {
+	if err := backup.RestoreMoaiConfig(tmpDir, backupDir, nil); err != nil {
 		t.Fatalf("restoreMoaiConfig failed: %v", err)
 	}
 
@@ -1393,9 +1397,9 @@ func TestRestoreMoaiConfig_MissingDirectory(t *testing.T) {
 	}
 
 	// Create backup
-	backupDir, err := backupMoaiConfig(tmpDir)
+	backupDir, err := backup.BackupMoaiConfig(tmpDir)
 	if err != nil {
-		t.Fatalf("backupMoaiConfig failed: %v", err)
+		t.Fatalf("backup.BackupMoaiConfig failed: %v", err)
 	}
 
 	// Delete the questions directory (simulating template without this directory)
@@ -1404,7 +1408,7 @@ func TestRestoreMoaiConfig_MissingDirectory(t *testing.T) {
 	}
 
 	// Restore from backup - should create directory and restore file
-	if err := restoreMoaiConfig(tmpDir, backupDir); err != nil {
+	if err := backup.RestoreMoaiConfig(tmpDir, backupDir, nil); err != nil {
 		t.Fatalf("restoreMoaiConfig failed: %v", err)
 	}
 
@@ -1426,8 +1430,8 @@ func TestRestoreMoaiConfig_MissingDirectory(t *testing.T) {
 }
 
 func TestBackupMetadata_Structure(t *testing.T) {
-	// Test BackupMetadata struct marshaling
-	metadata := BackupMetadata{
+	// Test backup.BackupMetadata struct marshaling
+	metadata := backup.BackupMetadata{
 		Timestamp:     "20250205_143022",
 		Description:   "config_backup",
 		BackedUpItems: []string{".moai/config/config.yaml", ".moai/config/settings.yaml"},
@@ -1440,13 +1444,13 @@ func TestBackupMetadata_Structure(t *testing.T) {
 	// Test marshaling
 	data, err := json.MarshalIndent(metadata, "", "  ")
 	if err != nil {
-		t.Fatalf("marshal BackupMetadata failed: %v", err)
+		t.Fatalf("marshal backup.BackupMetadata failed: %v", err)
 	}
 
 	// Test unmarshaling
-	var decoded BackupMetadata
+	var decoded backup.BackupMetadata
 	if err := json.Unmarshal(data, &decoded); err != nil {
-		t.Fatalf("unmarshal BackupMetadata failed: %v", err)
+		t.Fatalf("unmarshal backup.BackupMetadata failed: %v", err)
 	}
 
 	// Verify all fields match
@@ -2583,7 +2587,7 @@ func TestCleanMoaiManagedPaths(t *testing.T) {
 			tt.setup(t, root)
 
 			var buf bytes.Buffer
-			err := cleanMoaiManagedPaths(root, &buf)
+			err := deploy.CleanMoaiManagedPaths(root, &buf)
 
 			if tt.wantErr {
 				if err == nil {
@@ -2706,7 +2710,7 @@ func TestMigrateLegacyMemoryDir(t *testing.T) {
 			tt.setup(t, root)
 
 			var buf bytes.Buffer
-			err := migrateLegacyMemoryDir(root, &buf)
+			err := deploy.MigrateLegacyMemoryDir(root, &buf)
 			if err != nil {
 				t.Fatalf("unexpected error: %v", err)
 			}
@@ -2733,7 +2737,7 @@ func TestMergeGitignoreFile_PreservesUserPatterns(t *testing.T) {
 	// User's backup had template patterns PLUS custom patterns
 	userBackup := []byte("# Go\n*.exe\n*.test\n*.out\nvendor/\n\n# IDE\n.idea/\n.vscode/\n\n# My custom patterns\nmy-secret.txt\nbuild-output/\n.env.local\n")
 
-	if err := mergeGitignoreFile(gitignorePath, userBackup); err != nil {
+	if err := updatemerge.MergeGitignoreFile(gitignorePath, userBackup); err != nil {
 		t.Fatalf("mergeGitignoreFile failed: %v", err)
 	}
 
@@ -2780,7 +2784,7 @@ func TestMergeGitignoreFile_NoUserAdditions(t *testing.T) {
 
 	userBackup := []byte("*.exe\n*.test\nvendor/\n")
 
-	if err := mergeGitignoreFile(gitignorePath, userBackup); err != nil {
+	if err := updatemerge.MergeGitignoreFile(gitignorePath, userBackup); err != nil {
 		t.Fatalf("mergeGitignoreFile failed: %v", err)
 	}
 
@@ -2811,7 +2815,7 @@ func TestMergeGitignoreFile_EmptyBackup(t *testing.T) {
 	}
 
 	// Empty user backup — nothing to merge
-	if err := mergeGitignoreFile(gitignorePath, []byte("")); err != nil {
+	if err := updatemerge.MergeGitignoreFile(gitignorePath, []byte("")); err != nil {
 		t.Fatalf("mergeGitignoreFile failed: %v", err)
 	}
 
@@ -2851,9 +2855,9 @@ func TestRestoreMoaiConfig_CustomSectionPreserved(t *testing.T) {
 	}
 
 	// Create backup (includes both standard and custom)
-	backupDir, err := backupMoaiConfig(tmpDir)
+	backupDir, err := backup.BackupMoaiConfig(tmpDir)
 	if err != nil {
-		t.Fatalf("backupMoaiConfig failed: %v", err)
+		t.Fatalf("backup.BackupMoaiConfig failed: %v", err)
 	}
 
 	// Simulate template sync: remove custom section (template doesn't have it)
@@ -2866,7 +2870,7 @@ func TestRestoreMoaiConfig_CustomSectionPreserved(t *testing.T) {
 	}
 
 	// Restore from backup
-	if err := restoreMoaiConfig(tmpDir, backupDir); err != nil {
+	if err := backup.RestoreMoaiConfig(tmpDir, backupDir, nil); err != nil {
 		t.Fatalf("restoreMoaiConfig failed: %v", err)
 	}
 

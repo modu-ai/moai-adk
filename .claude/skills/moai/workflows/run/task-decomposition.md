@@ -1,20 +1,22 @@
 ---
-description: "Run Phase 2~4 — DDD/TDD implementation cycles, quality validation, git operations, and completion guidance"
+description: "Run Phase 11~4 — DDD/TDD implementation cycles, quality validation, git operations, and completion guidance"
 user-invocable: false
 metadata:
   parent: moai-workflow-run
-  phase: "Phase 2-4: Implementation, Quality Validation, and Completion"
+  phase: "Phase 11-4: Implementation, Quality Validation, and Completion"
 ---
 
-# Phase 2: Implementation (Mode-Dependent)
+# Phase 11: Implementation (Mode-Dependent)
 
 **[HARD] Worktree Prompt Construction**: When spawning implementation agents (manager-develop) with `isolation: "worktree"`, the orchestrator MUST construct prompts using project-root-relative paths only. Do NOT embed the current working directory path in the agent prompt. See context-loading.md "Worktree Path Rules [HARD]" section.
 
-## Phase 2A: DDD Implementation (for ddd mode)
+## Phase 11: DDD Implementation (for ddd mode)
 
 Agent: manager-develop subagent
 
-Input: Approved execution plan from Phase 1 plus task decomposition from Phase 1.5. Include `.moai/project/structure.md` and `.moai/project/tech.md` as onboarding context in the agent prompt so the implementation agent understands the project's architecture conventions before writing code.
+Skill injection: per skill-routing.md §1, the manager-develop spawn prompt MUST carry the cycle_type skill (`moai-workflow-ddd` here; `moai-workflow-tdd` in tdd mode) plus 0-3 domain `moai-ref-*` skills matched to the mission domain (backend → moai-ref-api-patterns, frontend → moai-ref-react-patterns, database → moai-domain-database, per `.moai/config/sections/delegation.yaml` domain_skills), each as an `At start, invoke Skill("<name>") for <reason>` line.
+
+Input: Approved execution plan from Phase 5 plus task decomposition from Phase 6. Include `.moai/project/structure.md` and `.moai/project/tech.md` as onboarding context in the agent prompt so the implementation agent understands the project's architecture conventions before writing code.
 
 Requirements:
 
@@ -52,13 +54,13 @@ After each DDD IMPROVE cycle completion, compare planned vs actual:
 5. Alert thresholds:
    - drift <= 20%: Informational only
    - 20% < drift <= 30%: Warning in progress.md
-   - drift > 30% (cumulative): Trigger Phase 2.7 re-planning gate
+   - drift > 30% (cumulative): Trigger Phase 14 re-planning gate
 
-## Phase 2B: TDD Implementation (for tdd mode)
+## Phase 12: TDD Implementation (for tdd mode)
 
 Agent: manager-develop subagent
 
-Input: Approved execution plan from Phase 1 plus task decomposition from Phase 1.5. Include `.moai/project/structure.md` and `.moai/project/tech.md` as onboarding context in the agent prompt so the implementation agent understands the project's architecture conventions before writing code.
+Input: Approved execution plan from Phase 5 plus task decomposition from Phase 6. Include `.moai/project/structure.md` and `.moai/project/tech.md` as onboarding context in the agent prompt so the implementation agent understands the project's architecture conventions before writing code.
 
 Requirements:
 
@@ -95,13 +97,13 @@ After each TDD REFACTOR cycle completion, compare planned vs actual:
 5. Alert thresholds:
    - drift <= 20%: Informational only
    - 20% < drift <= 30%: Warning in progress.md
-   - drift > 30% (cumulative): Trigger Phase 2.7 re-planning gate
+   - drift > 30% (cumulative): Trigger Phase 14 re-planning gate
 
-## Phase 2.5: Quality Validation
+## Phase 13: Quality Validation
 
 Agent: sync-auditor subagent (independent quality scoring per `.claude/rules/moai/workflow/archived-agent-rejection.md` §C row 2; OR orchestrator verification batch — lint + test + coverage)
 
-Input: Both Phase 1 planning context and Phase 2 implementation results.
+Input: Both Phase 5 planning context and Phase 11 implementation results.
 
 TRUST 5 validation checks:
 
@@ -145,30 +147,29 @@ If coverage is below target (quality.yaml test_coverage_target):
 - Route coverage-gap handling through `go test -cover` + `/moai gate` (the documented coverage replacement path)
 - Re-run quality validation after coverage improvement
 
-If status is PASS or WARNING: Continue to Phase 2.8.
+If status is PASS or WARNING: Continue to Phase 16.
 
-## Phase 2.7: Re-planning Gate Check
+## Phase 14: Re-planning Gate Check
 
 Purpose: Detect stagnation and trigger re-assessment if implementation is stuck. See .claude/rules/moai/workflow/spec-workflow.md for trigger conditions, communication path, and detection method.
 
 Check `.moai/specs/SPEC-{ID}/progress.md` for stagnation signals. If triggered, return structured stagnation report to MoAI for user escalation.
 
-## Phase 2.75: Pre-Review Quality Gate
+## Phase 15: Pre-Review Quality Gate
 
 Purpose: Run lightweight quality gate checks before the full review phase. This connects the gate workflow (workflows/gate.md) into the run pipeline.
 
 Execution: Always runs. Equivalent to `/moai gate --fix` on modified files.
 
-Steps:
-1. Run language-specific lint on modified files
-2. Run formatter check on modified files
-3. Run type-checker on modified files
-4. Auto-fix any fixable issues (--fix behavior)
-5. If unfixable errors remain: Report and block (must fix before review)
+Snapshot consumption: before the batch, query the shared diagnostic snapshot with `moai verify check --key-current`. Where a fresh snapshot (key equality AND within the TTL) covers a check category this phase would run, consume the recorded result instead of re-executing it — the gate_report cites the snapshot path, key, original command, and recorded exit code as that category's evidence (per `.claude/rules/moai/core/verification-claim-integrity.md` §2 — the snapshot is the observed evidence; the freshness rule keeps the attribution valid). A stale snapshot is never cited: on key mismatch or TTL expiry, execute the check as below.
 
-Output: gate_report with pass/fail per check category. If all pass, continue to Phase 2.8a.
+Steps: Run language-specific lint, formatter check, and type-checker as a single-turn multi-Bash parallel batch (per `.claude/rules/moai/core/agent-common-protocol.md` § Parallel Execution) — one Bash tool call per check within the same assistant turn, each redirecting verbatim output to `/tmp/moai-verify/` and surfacing only exit code + bounded-tail summary in context (the file-redirect contract). Auto-fix any fixable issues (`--fix` behavior) after the batch completes. If unfixable errors remain: Report and block (must fix before review).
 
-## Phase 2.8a: Active Quality Evaluation (sync-auditor)
+Snapshot recording: record this phase's own fresh executions back into the snapshot via `moai verify record` (exact command string, exit code, parsed counts) so downstream consumers — sync Phase 0 (`gate-sync-1`), the stop-goal evaluator — can reuse them while the tree is unchanged and the TTL holds. Recording is fail-open (unwritable state dir → note and continue).
+
+Output: gate_report with pass/fail per check category (reused categories marked with their snapshot citation). If all pass, continue to Phase 16.
+
+## Phase 16: Active Quality Evaluation (sync-auditor)
 
 **Condition**: Execute when harness level = standard or thorough (evaluator enabled).
 **Skip**: When harness level = minimal.
@@ -176,7 +177,7 @@ Output: gate_report with pass/fail per check category. If all pass, continue to 
 Steps:
 1. Invoke sync-auditor with:
    - SPEC acceptance criteria (from spec-compact.md or spec.md)
-   - Sprint contract (from contract.md, if thorough harness)
+   - Milestone contract (from contract.md, if thorough harness)
    - Implementation changeset (modified/created files)
 2. sync-auditor evaluates all 4 dimensions:
    - Functionality (40%): Run tests, verify each acceptance criterion
@@ -184,14 +185,13 @@ Steps:
    - Craft (20%): Coverage >= 85%, error handling review
    - Consistency (15%): Pattern adherence check
 3. Verdict handling:
-   - PASS: Proceed to Phase 2.8b
+   - PASS: Proceed to Phase 17
    - FAIL: Return specific findings to implementation agent for targeted fix
    - Maximum 3 fix-evaluate cycles
    - After 3 FAIL cycles: Present findings to user via AskUserQuestion
 
 Mode-specific deployment:
 - Sub-agent mode: Agent(subagent_type="sync-auditor")
-- Team mode: SendMessage to reviewer teammate
 - CG mode: Leader performs evaluation inline
 
 Output: evaluation_report with per-dimension PASS/FAIL/UNVERIFIED verdicts and findings list.
@@ -208,7 +208,7 @@ Output: evaluation_report with per-dimension PASS/FAIL/UNVERIFIED verdicts and f
 - [ ] User has reviewed post-implementation issues list
 <!-- moai:evolvable-end -->
 
-## Phase 2.8b: TRUST 5 Static Verification (sync-auditor) [MANDATORY]
+## Phase 17: TRUST 5 Static Verification (sync-auditor) [MANDATORY]
 
 Purpose: Multi-dimensional review iteration for high-quality output. This phase is ALWAYS executed to ensure consistent code quality.
 
@@ -228,20 +228,20 @@ Iteration behavior:
 - Each review dimension generates findings with severity (critical, warning, suggestion)
 - Critical findings trigger a fix cycle: delegate to appropriate expert agent, then re-review
 - Maximum 3 review iterations to prevent infinite loops
-- If all dimensions pass with no critical findings: Continue to Phase 2.9
+- If all dimensions pass with no critical findings: Continue to Phase 18
 
 Output: review_findings per dimension, iterations_completed count, final review status.
 
-## Phase 2.9: MX Tag Update [HARD]
+## Phase 18: MX Tag Update [HARD]
 
 Purpose: Update @MX code annotations for modified files. See .claude/rules/moai/workflow/mx-tag-protocol.md for tag rules.
 
-[HARD] This phase is MANDATORY. MoAI MUST scan all files modified during Phase 2 and verify @MX tag coverage before proceeding to Phase 3. If implementation agents did not add required tags during their work, MoAI adds them here.
+[HARD] This phase is MANDATORY. MoAI MUST scan all files modified during Phase 11 and verify @MX tag coverage before proceeding to Phase 3. If implementation agents did not add required tags during their work, MoAI adds them here.
 
 **Validation criteria (blocking):**
 - P1: Every new exported function with fan_in >= 3 MUST have `@MX:ANCHOR`
 - P2: Every new goroutine/async pattern MUST have `@MX:WARN`
-- P1/P2 violations block Phase 3 until resolved
+- P1/P2 violations block Phase 19 until resolved
 
 **TDD Mode:**
 - Remove `@MX:TODO` tags for tests that now pass
@@ -264,37 +264,51 @@ The run phase enforces LSP-based quality gates as configured in quality.yaml:
 - Zero lint errors required (lsp_quality_gates.run.max_lint_errors: 0)
 - No regression from baseline allowed (lsp_quality_gates.run.allow_regression: false)
 
-## Phase 3: Git Operations (Conditional)
-
-Agent: manager-git subagent
+## Phase 19: Git Operations (Conditional)
 
 Input: Full context from Phases 1, 2, and 2.5.
 
 Execution conditions:
 - quality_status is PASS or WARNING
-- If config git_strategy.automation.auto_branch is true: Create feature branch feature/SPEC-{ID}
-- If auto_branch is false: Commit directly to current branch
 
-Tasks for manager-git:
-- Create feature branch (if auto_branch enabled)
+Route selection (per `.claude/rules/moai/workflow/spec-workflow.md` § SPEC Phase Discipline — Frozen HARD Route A/B): **Route A** (Hybrid Trunk main-direct) applies to Tier S/M SPECs with no explicit `--pr` flag; **Route B** (PR route) applies to Tier L SPECs OR any SPEC with an explicit `--pr` flag.
+
+**Route A — Tier S/M, no `--pr` (default):**
+
+Agent: manager-develop subagent (the same agent that performed Phase 11 — no separate agent spawn for git operations)
+
+Tasks:
+- Stage all relevant implementation and test files
+- Commit directly to `main` with conventional commit messages (no feature branch, no PR)
+- If SPEC metadata contains `issue_number` (non-zero): Include `Fixes #{issue_number}` in commit message footer
+- Push the commit(s) to `main`
+- Verify each commit was created and pushed successfully
+
+**Route B — Tier L OR explicit `--pr`:**
+
+Agent: manager-git subagent
+
+Tasks:
+- Create feature branch `feat/SPEC-{ID}`
 - Stage all relevant implementation and test files
 - Create commits with conventional commit messages
 - If SPEC metadata contains `issue_number` (non-zero): Include `Fixes #{issue_number}` in commit message footer
+- Open a PR per the configured `merge_method` (default `squash`)
 - Verify each commit was created successfully
 
-Commit message format when issue_number exists:
+Commit message format when issue_number exists (both routes):
 ```
 feat(scope): description
 
 SPEC: SPEC-{ID}
 Fixes #{issue_number}
 
-Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>
+Co-Authored-By: Claude <noreply@anthropic.com>
 ```
 
-Output: branch_name, commits array (sha and message), files_staged count, status, issue_number (from SPEC metadata).
+Output: branch_name (Route B only; n/a on Route A), commits array (sha and message), files_staged count, status, issue_number (from SPEC metadata).
 
-## Phase 4: Completion and Guidance
+## Phase 20: Completion and Guidance
 
 Tool: AskUserQuestion (at orchestrator level)
 

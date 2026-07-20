@@ -157,3 +157,32 @@ func TestCacheConfig_Validate(t *testing.T) {
 		})
 	}
 }
+
+// TestValidSessionTTLs verifies the exported ordered accessor consumed by the
+// moai web console cache section (SPEC-WEB-CONSOLE-013 REQ-WC13-013). It returns
+// exactly {1h, 5m, off} in order, every returned value passes Validate, and the
+// returned slice is a defensive copy (mutating it does not corrupt the SSOT).
+func TestValidSessionTTLs(t *testing.T) {
+	got := ValidSessionTTLs()
+	want := []string{"1h", "5m", "off"}
+	if len(got) != len(want) {
+		t.Fatalf("ValidSessionTTLs() len = %d, want %d", len(got), len(want))
+	}
+	for i, v := range want {
+		if got[i] != v {
+			t.Errorf("ValidSessionTTLs()[%d] = %q, want %q (ordered closed set)", i, got[i], v)
+		}
+	}
+	// Every returned value is accepted by the validator (map ≡ slice symmetry).
+	for _, v := range got {
+		cfg := CacheConfig{Enabled: true, SessionTTL: v, SpecTTL: "5m", MinCacheableTokens: 2048}
+		if err := cfg.Validate(); err != nil {
+			t.Errorf("session_ttl %q returned by ValidSessionTTLs is rejected by Validate: %v", v, err)
+		}
+	}
+	// Defensive copy: mutating the returned slice must not affect a later call.
+	got[0] = "MUTATED"
+	if again := ValidSessionTTLs(); again[0] != "1h" {
+		t.Errorf("ValidSessionTTLs() returned a shared slice — mutation leaked (got[0]=%q)", again[0])
+	}
+}

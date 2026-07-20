@@ -209,20 +209,40 @@ func hasAnyProgressMarker(content string) bool {
 		hasProgressMarker(content, "§E.5")
 }
 
+// progressFieldYAMLPattern captures any `key: value` line at line start (YAML-style).
+// Group 1 = field name (no colon/whitespace), group 2 = value. The caller compares
+// group 1 to the requested field name — this avoids per-call regexp.MustCompile
+// (REQ-PERF-004-A). The character class [^:\s] ensures the key stops before the colon.
+//
+// @MX:ANCHOR: [AUTO] progressFieldYAMLPattern — package-level compiled regex for extractProgressField
+// @MX:REASON: REQ-PERF-004-A — eliminates per-call regexp.MustCompile in the moai spec audit hot path (441 SPECs × 2-3 calls)
+var progressFieldYAMLPattern = regexp.MustCompile(`(?m)^\s*([^:\s]+)\s*:\s*(.+?)\s*$`)
+
+// progressFieldListPattern captures markdown-list-style `- \`key\`: value` lines.
+// Group 1 = field name (no colon/whitespace/backtick), group 2 = value. Backtick
+// quoting is optional (`?`). The caller compares group 1 to the requested field.
+var progressFieldListPattern = regexp.MustCompile("(?m)^\\s*[-*]\\s*`?([^:\\s`]+)`?\\s*:\\s*(.+?)\\s*$")
+
 // extractProgressField extracts the value of a `field: value` pair from
 // progress.md body. Returns the trimmed value or empty string.
 // Recognizes both YAML-style (sync_commit_sha: abc123) and markdown-style
 // (- `sync_commit_sha`: abc123) patterns.
+//
+// REQ-PERF-004-A: uses package-level pre-compiled regexes instead of per-call
+// regexp.MustCompile. The generic patterns capture the field name as group 1;
+// the caller compares it to the requested field, preserving exact behavior.
 func extractProgressField(content, field string) string {
-	// Pattern 1: YAML-style at line start
-	pattern := regexp.MustCompile(`(?m)^\s*` + regexp.QuoteMeta(field) + `\s*:\s*(.+?)\s*$`)
-	if m := pattern.FindStringSubmatch(content); len(m) > 1 {
-		return cleanFieldValue(m[1])
+	// Pattern 1: YAML-style at line start — iterate all key:value lines, return first matching field
+	for _, m := range progressFieldYAMLPattern.FindAllStringSubmatch(content, -1) {
+		if len(m) > 2 && m[1] == field {
+			return cleanFieldValue(m[2])
+		}
 	}
-	// Pattern 2: markdown list with backticks
-	pattern2 := regexp.MustCompile("(?m)^\\s*[-*]\\s*`?" + regexp.QuoteMeta(field) + "`?\\s*:\\s*(.+?)\\s*$")
-	if m := pattern2.FindStringSubmatch(content); len(m) > 1 {
-		return cleanFieldValue(m[1])
+	// Pattern 2: markdown list with optional backticks — same approach
+	for _, m := range progressFieldListPattern.FindAllStringSubmatch(content, -1) {
+		if len(m) > 2 && m[1] == field {
+			return cleanFieldValue(m[2])
+		}
 	}
 	return ""
 }

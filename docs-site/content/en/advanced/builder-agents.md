@@ -4,177 +4,188 @@ weight: 40
 draft: false
 ---
 
-Detailed guide to Harness v4 Builder for extending MoAI-ADK with dynamic project-specific teams.
+The last piece of the agentic harness is recursion — the harness builds the harness. The Harness v4 Builder is the entrance to that recursive structure, generating a project-specific specialist team from a single natural-language request.
 
 {{< callout type="info" >}}
-**One-line summary**: Harness v4 Builder dynamically generates project-specific expert teams from natural language requests. It uses a 4-phase workflow (ANALYZE → PLAN → GENERATE → ACTIVATE) and a manifest-based Runner.
+**One-line summary**: The Harness v4 Builder dynamically generates a project-specific specialist team from a natural-language request. It consists of a 4-phase workflow (ANALYZE → PLAN → GENERATE → ACTIVATE) and a manifest-based Runner.
 {{< /callout >}}
 
-## What is Harness v4 Builder?
+## What Is the Harness v4 Builder?
 
-Harness v4 Builder uses `/moai harness <natural-language request>` to **dynamically generate project-specific expert teams**.
+The Harness v4 Builder **dynamically generates a project-specific specialist team** via `/moai:harness <natural-language request>`.
+
+While the general-purpose agent catalog (11 agents) is common to all projects, the harness the Builder creates is a custom team that exists only in your project.
 
 ### Differences from Previous Versions
 
-| Aspect | Previous (v3/Static) | Current (v4 Builder) |
-|--------|-----|-----------|
-| Generation method | 3 builder agents (builder-skill, builder-agent, builder-plugin) | Single Harness v4 Builder (dynamic) |
+| Aspect | Before (v3/static model) | Now (v4 Builder) |
+|------|-----|-----------|
+| Creation method | 3 builder agents (builder-skill, builder-agent, builder-plugin) | Single Harness v4 Builder (dynamic generation) |
 | Workflow | User-defined structure | 4-phase ANALYZE → PLAN → GENERATE → ACTIVATE |
-| Execution method | Each builder independent | Manifest-based Runner (optional worktree isolation) |
-| Scalability | Limited | Auto-detects project context |
+| Execution model | Each independent | Manifest-based Runner (optional worktree isolation) |
+| Extensibility | Limited | Automatic project-context detection |
 
-## Harness v4 Builder 4-Phase Workflow
+## The Harness v4 Builder 4-Phase Workflow
 
-### 1. ANALYZE (Analysis Phase)
+### 1. ANALYZE
 
-Analyzes the current project to identify required expertise.
+Analyzes the current project and identifies the expertise needed.
 
-- Analyzes source code structure
-- Detects languages and frameworks used
-- Surveys existing agents/skills inventory
-- Estimates project scope
+- Source code structure analysis
+- Language and framework detection
+- Inventory of existing agents/skills
+- Project-scale estimation
 
-### 2. PLAN (Planning Phase)
+### 2. PLAN
 
-Defines the team composition and roles needed.
+Defines the composition and roles of the required specialist team.
 
-- Determines team size (3-5 members)
-- Defines each team member's role profile
-- Determines worktree isolation needs
-- Designs manifest schema
+- Team size decision (3-5 teammates)
+- Role profile definition for each teammate
+- Worktree-isolation necessity judgment
+- Manifest schema design
 
-### 3. GENERATE (Generation Phase)
+### 3. GENERATE
 
-Creates actual agent definitions and configuration.
+Generates the actual agent definitions and configuration.
 
-- Generates agent files under `.claude/agents/harness/`
-- Generates `.moai/harness/manifest.json` (Runner configuration)
-- Writes role-specific system prompts
-- Defines preload skill list
+- Agent files created under `.claude/agents/harness/`
+- `.moai/harness/manifest.json` created (Runner configuration)
+- Per-role system prompts authored
+- Skill preload lists defined
 
-### 4. ACTIVATE (Activation Phase)
+### 4. ACTIVATE
 
-Activates the generated team for immediate use.
+Activates the generated harness for immediate use.
 
-- Registers agents and validates them
-- Initializes manifest Runner
-- Creates optional worktrees and isolation settings
-- Activates automatic team delegation rules
+- Agent registration and validation
+- Manifest Runner initialization
+- Optional worktree creation and isolation setup
+- Teammate auto-delegation rules activated
 
-## Manifest-Based Runner
+## The Manifest-Based Runner
 
-Harness v4 uses a **Manifest-based Runner** to operate the generated team.
+Harness v4 uses a **manifest-based Runner** to operate the generated specialist team. Which specialist is deployed in which domain, with which execution primitive, isolation, effort, and model, is declared in a single manifest file — the tokenomics principle of managing model assignment declaratively applies here too. The number of specialists is held to a HARD cap of **3-7**.
 
 ### manifest.json Structure
 
 ```json
 {
-  "spec_id": "HARNESS-PROJECT-001",
-  "name": "My Project Custom Team",
-  "version": "1.0.0",
-  "created_at": "2026-07-01T10:00:00Z",
-  "phases": [
+  "name": "oss-docs",
+  "domain": "OSS project public docs — README 4-locale + Hugo docs-site",
+  "patterns": ["Pipeline", "Fan-out/Fan-in", "Producer-Reviewer"],
+  "specialists": [
     {
-      "name": "plan",
-      "teammates": [
-        {
-          "name": "researcher",
-          "model": "haiku",
-          "mode": "plan",
-          "skills": ["moai-foundation-core"]
-        }
-      ]
+      "role": "content-author",
+      "description": "canonical-locale source authoring (docs-site ko, README en)",
+      "agent_file": ".claude/agents/harness/hns-oss-docs-content-author-specialist.md",
+      "primitive": "sub-agent",
+      "isolation": "none",
+      "effort": "high",
+      "model": "opus"
     },
     {
-      "name": "run",
-      "teammates": [
-        {
-          "name": "implementer",
-          "model": "inherit",
-          "mode": "acceptEdits",
-          "isolation": "worktree_optional"
-        }
-      ]
+      "role": "locale-translator",
+      "description": "derive the 3 derived locales within the same PR (parallel fan-out)",
+      "agent_file": ".claude/agents/harness/hns-oss-docs-locale-translator-specialist.md",
+      "primitive": "adversarial-fan-out",
+      "isolation": "none",
+      "effort": "medium",
+      "model": "sonnet"
     }
   ],
-  "worktree_isolation": "L1_optional"
+  "sprint_contract": {
+    "dimensions": ["locale-parity", "build-clean", "style-compliance", "content-fidelity"],
+    "thresholds": { "locale-parity": 1.0, "build-clean": 1.0 },
+    "must_pass": ["locale-parity", "build-clean"]
+  },
+  "companion_skills": ["hns-oss-docs-i18n-rules", "hns-oss-docs-verify"],
+  "entry_command": "/harness:oss-docs",
+  "runner_workflow": "hns-oss-docs-run.js"
 }
 ```
 
+- `primitive`: execution primitive (`sub-agent`, `adversarial-fan-out`, etc.)
+- `isolation` / `effort` / `model`: assign each specialist's isolation level, reasoning intensity, and model tier to fit its purpose
+- `sprint_contract`: the Sprint Contract — quality dimensions and must_pass gates
+- `schedule` (optional): a harness needing recurring execution can carry a `mode: discovery-only` schedule object
+
 ### Runner Behavior
 
-1. **Phase entry**: Follows manifest phase sequence
-2. **Teammate spawn**: Dynamically creates teammates for each phase
-3. **Isolation application**: Applies conditional worktree isolation
-4. **Result aggregation**: Integrates each teammate's results
+1. **Specialist delegation**: proceeds through the manifest's specialist sequence according to the patterns
+2. **Fan-out spawn**: parallel primitives (adversarial-fan-out, etc.) spawn concurrently
+3. **Isolation applied**: applies each specialist's isolation setting
+4. **Result aggregation**: verifies and consolidates each specialist's results against the Sprint Contract
 
 ## Harness Lifecycle Commands
 
-Generated harnesses are managed with `/harness:<name>` commands.
+A harness generated by the Harness v4 Builder is managed with the `moai harness` CLI.
 
 ### Available Commands
 
 ```bash
-# List all generated harnesses
-/harness list
+# List generated v4 harnesses (name + domain + entry command)
+moai harness list
 
-# Check specific harness status
-/harness:my-project-team status
+# Check a harness's manifest/specialist edit path
+moai harness edit <name>
 
-# Edit harness configuration
-/harness:my-project-team edit
+# Atomically remove a harness (command + workflow + specialists + skills + manifest)
+moai harness remove <name>
 
-# Delete a harness
-/harness:my-project-team remove
+# Reference-integrity smoke gate
+moai harness doctor
 
-# Create new harness with Harness v4 Builder
-/moai harness <natural-language request>
+# Create a new harness with the Harness v4 Builder
+/moai:harness <natural-language request>
 ```
 
-## Creating Harnesses with Natural Language
+The learning-subsystem management verbs also live under `moai harness`: `moai harness status` (observation/tier/evolution summary), `moai harness apply` (apply pending proposals), `moai harness rollback <date>` (revert an applied evolution), and `moai harness disable` (disable learning).
+
+## Creating a Harness from a Natural-Language Request
 
 ### Basic Usage
 
 ```bash
-> Create an expert team for our backend project.
-> We need specialists for API design, DB schema, and testing.
+> Build a specialist team that fits our backend project.
+> I need a team responsible for API design, DB schema, and testing.
 ```
 
-### Builder's Workflow
+### The Builder's Flow
 
-1. ANALYZE: Analyzes project structure (Go, PostgreSQL, REST API)
-2. PLAN: Decides on 3-person team (API Designer, DB Specialist, Test Engineer)
-3. GENERATE: Creates agent definitions and manifest.json
-4. ACTIVATE: Registers team and enables `/harness:backend-team` command
+1. ANALYZE: analyzes the project structure (Go, PostgreSQL, REST API)
+2. PLAN: decides on a 3-person team (API Designer, DB Specialist, Test Engineer)
+3. GENERATE: creates each agent definition and manifest.json
+4. ACTIVATE: activates the team and registers the `/harness:backend-team` command
 
-### Generated Output Location
+### Where Generated Artifacts Live
 
 - Agent definitions: `.claude/agents/harness/api-designer.md`, `db-specialist.md`, ...
 - Manifest: `.moai/harness/manifest.json`
-- Optional worktrees: `~/.moai/worktrees/<project>/` (user opt-in)
+- Optional worktrees: `~/.moai/worktrees/<project>/` (on user opt-in)
 
 ## Worktree Isolation (Optional)
 
-Harness v4 supports optional worktree isolation.
+Harness v4 supports conditional worktree isolation.
 
 ### L1 Isolation (Optional)
 
-Claude Code runtime creates L1 worktrees for each agent.
+The Claude Code runtime creates an L1 worktree per agent.
 
-- **When to use**: When parallel team members edit the same files
-- **Isolation scope**: Each team member's file writes occur in independent worktree
-- **Cost**: Additional memory + reduced parallelism benefit
+- **When used**: when parallel teammates edit the same files
+- **Isolation scope**: each teammate's file writes occur in an independent worktree
+- **Cost**: extra memory + offsets some of the parallelism benefit
 
-### Disable Isolation
+### Disabling
 
-Set `"worktree_isolation": "none"` in manifest to skip L1 isolation.
+Setting `"worktree_isolation": "none"` in the manifest skips L1 isolation.
 
-## Related Documentation
+## Related Documents
 
-- [Advanced Harness v4 Guide](/advanced/builder-agents) - 4-phase details and manifest schema
-- [Agent Guide](/advanced/agent-guide) - 8 core agents catalog
-- [Dynamic Workflows](/advanced/ultracode-workflows) - `/effort ultracode` parallel execution
+- [Harness v4 Builder Advanced Guide](/en/advanced/harness-v4-builder) - Builder 4-phase details and the manifest schema
+- [Agent Guide](/en/advanced/agent-guide) - the 11-agent core catalog
+- [Dynamic Workflows](/en/advanced/ultracode-workflows) - `/effort ultracode` parallel execution
 
 {{< callout type="info" >}}
-**Tip**: Once you generate a custom harness, it's automatically reused in all subsequent work. You can access it anytime with `/harness:team-name`.
+**Tip**: Generate a **custom team just once** per project with the Harness v4 Builder, and it will be delegated automatically for all subsequent work. After the initial creation you can reuse it anytime via `/harness:team-name`.
 {{< /callout >}}

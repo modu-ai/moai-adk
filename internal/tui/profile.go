@@ -1,7 +1,9 @@
 package tui
 
 import (
+	"bytes"
 	"os"
+	"sync"
 
 	"github.com/charmbracelet/colorprofile"
 )
@@ -76,4 +78,51 @@ func (DetectedProfileEnv) ColorProfile() colorprofile.Profile {
 // Most CLI commands should call this instead of ResolveOS for correct degradation.
 func ProfileOS() Theme {
 	return Profile(DetectedProfileEnv{})
+}
+
+// outputProfile lazily detects the colour profile of the process stdout.
+//
+// Lip Gloss v2 removed the v1 global default renderer: v2 Style.Render always
+// emits full-fidelity (24-bit) ANSI and delegates downsampling/stripping to a
+// colorprofile-aware writer. To preserve the v1 observable behaviour — styles
+// were automatically degraded (or fully stripped on non-TTY output such as
+// pipes, CI logs, and `go test`) by the default renderer bound to os.Stdout —
+// this package detects the profile once from os.Stdout + environment and
+// re-encodes every rendered string through it (see downsample).
+//
+// colorprofile.Detect respects NO_COLOR, CLICOLOR, and CLICOLOR_FORCE, and
+// performs no terminal query (isatty + env inspection only), matching the v1
+// renderer's detection cost.
+var (
+	outputProfileOnce sync.Once
+	outputProfileVal  colorprofile.Profile
+)
+
+func outputProfile() colorprofile.Profile {
+	outputProfileOnce.Do(func() {
+		outputProfileVal = colorprofile.Detect(os.Stdout, os.Environ())
+	})
+	return outputProfileVal
+}
+
+// downsample re-encodes a styled string for the detected terminal colour
+// profile, reproducing the lipgloss v1 default-renderer degradation semantics
+// under lipgloss v2:
+//
+//   - TrueColor: passthrough (no re-encoding)
+//   - ANSI256 / ANSI / ASCII: colours downsampled to the supported palette
+//   - NoTTY (pipes, CI, go test): all ANSI sequences stripped, plain text
+//
+// The helper is unexported and string-in/string-out, so no lipgloss (or
+// colorprofile) type leaks across the package's public string-token boundary
+// (design decision D-1: the public contract is plain string tokens).
+func downsample(s string) string {
+	p := outputProfile()
+	if p == colorprofile.TrueColor {
+		return s
+	}
+	var buf bytes.Buffer
+	w := colorprofile.Writer{Forward: &buf, Profile: p}
+	_, _ = w.WriteString(s)
+	return buf.String()
 }

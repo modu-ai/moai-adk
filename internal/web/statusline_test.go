@@ -11,84 +11,22 @@ import (
 	"github.com/modu-ai/moai-adk/internal/settings"
 )
 
-// TestStatuslineThemeOptionList covers the schema-sourced theme option helper plus
-// its absent-field fallback branch (defensive nil path).
-func TestStatuslineThemeOptionList(t *testing.T) {
-	opts := statuslineThemeOptionList()
-	if len(opts) != 2 {
-		t.Fatalf("statuslineThemeOptionList = %v, want 2 themes", opts)
-	}
-	if f, ok := settings.Field("statusline_theme"); !ok || len(f.SelectOptions()) != 2 {
-		t.Error("schema statusline_theme must carry exactly 2 theme options")
-	}
-}
+// M3 of the surgical web-console redesign removed the Statusline section's web
+// rendering: the fieldset, theme picker, segment toggles, bindForm segment block,
+// and statusline_theme validation are all gone. The statusline schema fields
+// (settings.SectionStatusline) + accessors (StatuslineSegmentKeys) + schema_bridge
+// + statusline.yaml are PRESERVED — they remain consumed by the TUI /
+// profile_setup CLI path. The settings-package tests cover the schema half; this
+// file guards the web half: statusline is absent from render, bind, and validate.
 
-// TestBindFormStatuslineSegmentsSubmitted covers the bindForm statusline-segment
-// submission branch (companion present → full 15-key map populated, unchecked → false).
-func TestBindFormStatuslineSegmentsSubmitted(t *testing.T) {
-	form := url.Values{}
-	form.Set("statusline_theme", "catppuccin-latte")
-	// Submit segments: companion present for all 15; check only a few.
-	checkedSet := map[string]bool{"model": true, "git_branch": true, "pr": true}
-	for _, seg := range settings.StatuslineSegmentKeys() {
-		form.Set("seg_"+seg+"__present", "1")
-		if checkedSet[seg] {
-			form.Set("seg_"+seg, "1")
-		}
-	}
-
-	req := httptest.NewRequest(http.MethodPost, "/save", strings.NewReader(form.Encode()))
-	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	if err := req.ParseForm(); err != nil {
-		t.Fatalf("ParseForm: %v", err)
-	}
-
-	prefs := bindForm(req)
-	if prefs.StatuslineTheme != "catppuccin-latte" {
-		t.Errorf("StatuslineTheme = %q, want catppuccin-latte", prefs.StatuslineTheme)
-	}
-	if prefs.StatuslineSegments == nil {
-		t.Fatal("StatuslineSegments must be populated when segment companions are present")
-	}
-	if len(prefs.StatuslineSegments) != 15 {
-		t.Errorf("StatuslineSegments has %d keys, want 15 (full map)", len(prefs.StatuslineSegments))
-	}
-	for _, seg := range settings.StatuslineSegmentKeys() {
-		got, present := prefs.StatuslineSegments[seg]
-		if !present {
-			t.Errorf("segment %q missing from map", seg)
-		}
-		if got != checkedSet[seg] {
-			t.Errorf("segment %q = %v, want %v", seg, got, checkedSet[seg])
-		}
-	}
-}
-
-// TestBindFormStatuslineSegmentsNotSubmitted covers the bindForm branch where NO
-// segment companion is present → StatuslineSegments stays nil (preserve on-disk).
-func TestBindFormStatuslineSegmentsNotSubmitted(t *testing.T) {
-	form := url.Values{}
-	form.Set("user_name", "Goos")
-	// No seg_*__present companions.
-
-	req := httptest.NewRequest(http.MethodPost, "/save", strings.NewReader(form.Encode()))
-	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	if err := req.ParseForm(); err != nil {
-		t.Fatalf("ParseForm: %v", err)
-	}
-
-	prefs := bindForm(req)
-	if prefs.StatuslineSegments != nil {
-		t.Errorf("StatuslineSegments = %v, want nil (no segment companion → preserve)", prefs.StatuslineSegments)
-	}
-}
-
-// TestStatuslineRendersCheckedSegments covers the segmentToggle checked branch:
-// a profile with some segments enabled renders those checkboxes as `checked`.
-func TestStatuslineRendersCheckedSegments(t *testing.T) {
+// TestStatuslineSectionAbsentFromConsole asserts the rendered GET / page carries
+// NO statusline fieldset: no sec.statusline chrome, no statusline_theme select,
+// no seg_<key> checkbox toggles, and no seg_<key>__present companions.
+func TestStatuslineSectionAbsentFromConsole(t *testing.T) {
 	a := newTestApp(t)
-	// Override readPreferences so the GET page renders with some segments enabled.
 	a.readPreferences = func(name string) (profile.ProfilePreferences, error) {
+		// Prefs still carry statusline fields (consumed by the TUI path); the web
+		// console must NOT render them even when populated.
 		return profile.ProfilePreferences{
 			StatuslineTheme: "catppuccin-latte",
 			StatuslineSegments: map[string]bool{
@@ -106,64 +44,64 @@ func TestStatuslineRendersCheckedSegments(t *testing.T) {
 	}
 	body := rec.Body.String()
 
-	// The "model" segment checkbox must render checked.
-	if !strings.Contains(body, `id="seg_model" name="seg_model" value="1" checked`) {
-		t.Error("seg_model checkbox must render checked when enabled in prefs")
+	// No statusline section chrome / title / theme select.
+	for _, want := range []string{
+		`data-i18n="sec.statusline.title"`,
+		`data-i18n="sec.statusline.desc"`,
+		`data-i18n="f.statusline_theme.title"`,
+		`id="statusline_theme"`,
+		`name="statusline_theme"`,
+	} {
+		if strings.Contains(body, want) {
+			t.Errorf("rendered page must NOT contain statusline marker %q (section removed)", want)
+		}
 	}
-	// A non-enabled segment renders without checked.
-	if strings.Contains(body, `id="seg_task" name="seg_task" value="1" checked`) {
-		t.Error("seg_task checkbox must NOT be checked when disabled in prefs")
-	}
-	// The selected theme is preselected.
-	if !strings.Contains(body, `<option value="catppuccin-latte" selected>`) {
-		t.Error("statusline_theme select must preselect the persisted theme")
+	// No segment toggle controls or __present companions for any canonical key.
+	for _, seg := range settings.StatuslineSegmentKeys() {
+		if strings.Contains(body, `name="seg_`+seg+`"`) {
+			t.Errorf("rendered page must NOT contain segment toggle seg_%s (section removed)", seg)
+		}
+		if strings.Contains(body, `name="seg_`+seg+`__present"`) {
+			t.Errorf("rendered page must NOT contain __present companion for seg_%s (section removed)", seg)
+		}
 	}
 }
 
-// TestStatuslineThemeErrorRendersInline covers the fieldsetStatusline has-error
-// render branch: a POST with a bogus theme is rejected and the page re-renders with
-// the statusline_theme field in its error state (aria-invalid + error message).
-func TestStatuslineThemeErrorRendersInline(t *testing.T) {
-	a := newTestApp(t)
-	a.writePreferences = func(string, profile.ProfilePreferences) error { return nil }
-	h := a.routes()
-
+// TestBindFormIgnoresStatusline asserts bindForm no longer binds statusline_theme
+// or any segment toggle: even when a client posts them, the bound prefs carry no
+// statusline values (the web handler leaves them zero so syncStatusline preserves
+// on-disk statusline config).
+func TestBindFormIgnoresStatusline(t *testing.T) {
 	form := url.Values{}
-	form.Set("statusline_theme", "neon-disco") // bogus → validation rejects
+	form.Set("statusline_theme", "catppuccin-latte")
+	for _, seg := range settings.StatuslineSegmentKeys() {
+		form.Set("seg_"+seg+"__present", "1")
+		form.Set("seg_"+seg, "1")
+	}
+
 	req := httptest.NewRequest(http.MethodPost, "/save", strings.NewReader(form.Encode()))
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	req.Host = "127.0.0.1:8080" // loopback Host — the console is loopback-gated
-	rec := httptest.NewRecorder()
-	h.ServeHTTP(rec, req)
+	if err := req.ParseForm(); err != nil {
+		t.Fatalf("ParseForm: %v", err)
+	}
 
-	if rec.Code != http.StatusBadRequest {
-		t.Fatalf("POST bogus theme status = %d, want 400", rec.Code)
+	prefs := bindForm(req)
+	if prefs.StatuslineTheme != "" {
+		t.Errorf("StatuslineTheme = %q, want empty (web handler no longer binds it)", prefs.StatuslineTheme)
 	}
-	body := rec.Body.String()
-	// The statusline_theme select must render in its error state.
-	if !strings.Contains(body, `id="statusline_theme"`) {
-		t.Error("rejected page missing statusline_theme control")
-	}
-	if !strings.Contains(body, "unrecognized statusline theme") {
-		t.Error("rejected page missing the statusline_theme error message")
+	if prefs.StatuslineSegments != nil {
+		t.Errorf("StatuslineSegments = %v, want nil (web handler no longer binds segments)", prefs.StatuslineSegments)
 	}
 }
 
-// TestStatuslineThemeValidationRejectsBogus covers the new statusline_theme
-// validation branch in validatePrefs.
-func TestStatuslineThemeValidationRejectsBogus(t *testing.T) {
+// TestValidatePrefsNoStatuslineTheme asserts validatePrefs has no statusline_theme
+// branch: a bogus theme is NOT rejected (the validation was removed alongside the
+// section). The settings schema remains the authority for canonical themes — the
+// web layer simply does not surface the field.
+func TestValidatePrefsNoStatuslineTheme(t *testing.T) {
+	// A bogus theme must NOT produce a statusline_theme error (branch removed).
 	errs := validatePrefs(profile.ProfilePreferences{StatuslineTheme: "neon-disco"})
-	if errs["statusline_theme"] == "" {
-		t.Error("validatePrefs must reject a non-canonical statusline theme")
-	}
-	// A canonical theme passes.
-	errs = validatePrefs(profile.ProfilePreferences{StatuslineTheme: "catppuccin-mocha"})
-	if errs["statusline_theme"] != "" {
-		t.Errorf("validatePrefs rejected a canonical theme: %v", errs["statusline_theme"])
-	}
-	// Empty theme is allowed (theme-only-unset save).
-	errs = validatePrefs(profile.ProfilePreferences{})
-	if errs["statusline_theme"] != "" {
-		t.Errorf("validatePrefs must allow empty statusline theme: %v", errs["statusline_theme"])
+	if _, ok := errs["statusline_theme"]; ok {
+		t.Errorf("validatePrefs must NOT reject statusline_theme (web validation removed): %v", errs["statusline_theme"])
 	}
 }

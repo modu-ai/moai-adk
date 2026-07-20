@@ -2,7 +2,6 @@ package hook
 
 import (
 	"encoding/json"
-	"strings"
 	"testing"
 )
 
@@ -118,61 +117,6 @@ func TestHookResponseMarshalUnmarshal(t *testing.T) {
 	}
 }
 
-func TestPermissionDecisionValues(t *testing.T) {
-	tests := []struct {
-		name  string
-		value PermissionDecision
-		valid bool
-	}{
-		{"allow", PermissionDecisionAllow, true},
-		{"ask", PermissionDecisionAsk, true},
-		{"deny", PermissionDecisionDeny, true},
-		{"defer", PermissionDecisionDefer, true},
-		{"empty", "", true}, // Empty means "no opinion"
-		{"invalid", "invalid", false},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			resp := &HookResponse{PermissionDecision: tt.value}
-			err := ValidateHookResponse(resp)
-			if tt.valid && err != nil {
-				t.Errorf("ValidateHookResponse() unexpectedly returned error: %v", err)
-			}
-			if !tt.valid && err == nil {
-				t.Errorf("ValidateHookResponse() should have returned error for invalid decision")
-			}
-		})
-	}
-}
-
-func TestHookResponseContinue(t *testing.T) {
-	tests := []struct {
-		name     string
-		cont     *bool
-		expected *bool // nil = field absent (no opinion); pointer = explicit value
-	}{
-		{"nil continue", nil, nil}, // nil means no opinion → field stays absent
-		{"continue true", boolPtr(true), boolPtr(true)},
-		{"continue false", boolPtr(false), boolPtr(false)},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			resp := &HookResponse{Continue: tt.cont}
-			output := ToHookOutput(resp)
-
-			got := output.Continue
-			if (got == nil) != (tt.expected == nil) {
-				t.Fatalf("ToHookOutput().Continue = %v, want %v", got, tt.expected)
-			}
-			if got != nil && *got != *tt.expected {
-				t.Errorf("ToHookOutput().Continue = %v, want %v", *got, *tt.expected)
-			}
-		})
-	}
-}
-
 func TestRetryHint(t *testing.T) {
 	hint := &RetryHint{
 		Attempts: 3,
@@ -195,34 +139,4 @@ func TestRetryHint(t *testing.T) {
 	if got.Backoff != hint.Backoff {
 		t.Errorf("Backoff = %v, want %v", got.Backoff, hint.Backoff)
 	}
-}
-
-func TestHookResponseAdditionalContextTruncation(t *testing.T) {
-	const maxSize = 64 * 1024 // 64 KiB
-
-	// Create a context larger than 64 KiB
-	largeContext := strings.Repeat("x", maxSize+1000)
-
-	resp := &HookResponse{
-		AdditionalContext: largeContext,
-	}
-
-	err := ValidateHookResponse(resp)
-	if err != nil {
-		t.Fatalf("ValidateHookResponse() error = %v", err)
-	}
-
-	// Check that context was truncated
-	if len(resp.AdditionalContext) != maxSize {
-		t.Errorf("AdditionalContext length = %d, want %d", len(resp.AdditionalContext), maxSize)
-	}
-
-	// Check that SystemMessage was updated
-	if resp.SystemMessage == "" {
-		t.Error("SystemMessage should contain truncation notice")
-	}
-}
-
-func boolPtr(b bool) *bool {
-	return &b
 }

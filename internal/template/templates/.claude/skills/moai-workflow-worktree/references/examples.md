@@ -15,7 +15,7 @@ Scenario: Creating a new SPEC with automatic worktree setup
 
 ```bash
 # Plan Phase - Create SPEC with worktree
-/moai:1-plan "User Authentication System" --worktree
+/moai plan "User Authentication System" --worktree
 
 # Output:
 # SPEC created: SPEC-AUTH-001
@@ -24,15 +24,15 @@ Scenario: Creating a new SPEC with automatic worktree setup
 # Next steps:
 # 1. Switch to worktree: moai-worktree switch SPEC-AUTH-001
 # 2. Or use shell eval: eval $(moai-worktree go SPEC-AUTH-001)
-# 3. Start development: /moai:2-run SPEC-AUTH-001
+# 3. Start development: /moai run SPEC-AUTH-001
 
 # Development Phase - Implement in isolated environment
 eval $(moai-worktree go SPEC-AUTH-001)
-/moai:2-run SPEC-AUTH-001
+/moai run SPEC-AUTH-001
 
 # Sync Phase - Synchronize and integrate
 moai-worktree sync SPEC-AUTH-001
-/moai:3-sync SPEC-AUTH-001
+/moai sync SPEC-AUTH-001
 
 # Cleanup Phase - Remove completed worktree
 moai-worktree remove SPEC-AUTH-001
@@ -73,8 +73,8 @@ moai-worktree clean --merged-only
 Scenario: Using worktree-aware DDD implementation
 
 ```bash
-# /moai:2-run automatically detects worktree environment
-/moai:2-run SPEC-AUTH-001
+# /moai run automatically detects worktree environment
+/moai run SPEC-AUTH-001
 
 # Command behavior in worktree:
 # - Detects worktree: SPEC-AUTH-001
@@ -181,7 +181,7 @@ echo " Starting SPEC development workflow for $SPEC_ID"
 
 # Phase 1: Plan (with worktree)
 echo " Phase 1: Creating SPEC and worktree..."
-/moai:1-plan "$SPEC_DESCRIPTION" --worktree --spec-id "$SPEC_ID"
+/moai plan "$SPEC_DESCRIPTION" --worktree --spec-id "$SPEC_ID"
 
 # Check if worktree was created successfully
 if moai-worktree list --format json | jq -r ".worktrees[\"$SPEC_ID\"]" > /dev/null; then
@@ -194,7 +194,7 @@ if moai-worktree list --format json | jq -r ".worktrees[\"$SPEC_ID\"]" > /dev/nu
  # Development loop
  while true; do
  echo " Running DDD implementation..."
- /moai:2-run "$SPEC_ID"
+ /moai run "$SPEC_ID"
 
  echo " Continue development? (y/n)"
  read -r response
@@ -207,7 +207,7 @@ if moai-worktree list --format json | jq -r ".worktrees[\"$SPEC_ID\"]" > /dev/nu
  echo " Phase 3: Synchronizing worktree..."
  moai-worktree sync "$SPEC_ID"
  cd - # Return to main repository
- /moai:3-sync "$SPEC_ID"
+ /moai sync "$SPEC_ID"
 
  # Phase 4: Cleanup (optional)
  echo " Phase 4: Clean up options"
@@ -220,7 +220,7 @@ if moai-worktree list --format json | jq -r ".worktrees[\"$SPEC_ID\"]" > /dev/nu
 
 else
  echo " Worktree creation failed. Falling back to branch development."
- /moai:1-plan "$SPEC_DESCRIPTION" --branch --spec-id "$SPEC_ID"
+ /moai plan "$SPEC_DESCRIPTION" --branch --spec-id "$SPEC_ID"
 fi
 
 echo " SPEC development workflow completed for $SPEC_ID"

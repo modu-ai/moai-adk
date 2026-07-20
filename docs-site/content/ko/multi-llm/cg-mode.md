@@ -6,7 +6,10 @@ draft: false
 
 ## CG 모드란?
 
-CG(Claude + GLM) 모드는 리더가 **Claude API**를 사용하고 워커가 **GLM API**를 사용하는 하이브리드 모드입니다. tmux 세션 수준의 환경 변수 격리를 통해 구현됩니다.
+CG(Claude + GLM) 모드는 리더가 **Claude API**를, 워커가 **GLM API**를 사용하는
+하이브리드 모드입니다. tmux 세션 수준의 환경 변수 격리로 구현되며, "계획은
+Claude가 깊게, 구현은 GLM이 싸게"라는 토크노믹스 배분을 한 세션 안에서
+실행합니다. 구현 중심 작업 기준 약 60-70% 비용이 절감됩니다.
 
 ## 아키텍처
 
@@ -19,7 +22,7 @@ moai cg 실행
     ├── 2. settings.local.json에서 GLM 환경변수 제거
     │      → 리더 pane은 Claude API 사용
     │
-    ├── 3. CLAUDE_CODE_TEAMMATE_DISPLAY=tmux 설정
+    ├── 3. settings.local.json에 teammateMode: "tmux" 설정
     │      → 워커들은 새 pane에서 GLM 환경변수 상속
     │
     └── 4. Claude Code 실행 (현재 프로세스 대체)
@@ -28,11 +31,11 @@ moai cg 실행
 ```
 ┌─────────────────────────────────────────────────────────────┐
 │  리더 (현재 tmux pane, Claude API)                           │
-│  - /moai --team 실행 시 워크플로우 오케스트레이션             │
+│  - 워크플로우 오케스트레이션                                  │
 │  - plan, quality, sync 단계 처리                             │
 │  - GLM 환경변수 없음 → Claude API 사용                       │
 └──────────────────────┬──────────────────────────────────────┘
-                       │ Agent Teams (새 tmux pane)
+                       │ 팀원 spawn (새 tmux pane)
                        ▼
 ┌─────────────────────────────────────────────────────────────┐
 │  팀원 (새 tmux pane, GLM API)                                │
@@ -71,11 +74,19 @@ moai cg
 
 `moai cg`는 현재 pane에서 자동으로 Claude Code를 실행합니다. 별도로 `claude`를 실행할 필요가 없습니다.
 
-### 4단계: 팀 워크플로우 실행
+### 4단계: 워크플로우 실행
 
 ```bash
-/moai --team "사용자 인증 기능 구현"
+/moai "사용자 인증 기능 구현"
 ```
+
+이후는 평소와 같습니다. 오케스트레이터(리더, Claude)가 계획·품질·동기화를
+맡고, 구현 물량이 큰 작업은 새 tmux pane의 GLM 팀원에게 위임됩니다.
+
+> **참고**: 과거의 `--team` 플래그(Agent Teams 정적 오케스트레이션 계층)는
+> v3.0에서 은퇴했습니다. 강제로 지정해도 sub-agent 모드로 폴백됩니다. CG
+> 모드의 리더/워커 분리는 Claude Code 내장 teammate 런타임(tmux pane)으로
+> 동작하며, 이 런타임은 그대로 유지됩니다.
 
 ## 중요 사항
 
@@ -89,7 +100,7 @@ moai cg
 
 ## tmux 환경 변수 주입 보안 모델 {#tmux-env-security}
 
-v2.20.0-rc1 부터 `moai cg` 가 GLM token (`ANTHROPIC_AUTH_TOKEN`) 을 tmux 세션 환경 변수에 주입할 때, **argv 채널** (`tmux set-environment <KEY> <VALUE>`) 대신 **source-file 채널** (`tmux source-file <tmp>`) 을 사용합니다. token 은 더 이상 `ps auxe`, `/proc/<pid>/cmdline`, auditd 로그, sysmon 추적, 크래시 덤프에 평문으로 노출되지 않습니다 (CWE-214).
+v3.0.0 부터 `moai cg` 가 GLM token (`ANTHROPIC_AUTH_TOKEN`) 을 tmux 세션 환경 변수에 주입할 때, **argv 채널** (`tmux set-environment <KEY> <VALUE>`) 대신 **source-file 채널** (`tmux source-file <tmp>`) 을 사용합니다. token 은 더 이상 `ps auxe`, `/proc/<pid>/cmdline`, auditd 로그, sysmon 추적, 크래시 덤프에 평문으로 노출되지 않습니다 (CWE-214).
 
 ### 주입 흐름
 
@@ -125,14 +136,23 @@ ps auxe | grep -i 'tmux set-environment.*ANTHROPIC_AUTH_TOKEN'
 
 자세한 위협 모델, 실패 시 동작 (`ErrTmuxSensitiveInjectFailed` sentinel), 추가 점검 절차는 [보안 노트 — CWE-214](/ko/advanced/security-notes/#cwe-214) 를 참조하세요.
 
-## 디스플레이 모드
+## 디스플레이 모드 (teammateMode)
 
-Agent Teams는 두 가지 디스플레이 모드를 지원합니다:
+`teammateMode`는 Claude Code 내장 디스플레이 설정으로, `settings.local.json`에
+저장됩니다. MoAI의 team-mode(과거 `--team` 플래그, v3.0 은퇴)와는 다른
+개념입니다 — teammate 런타임 자체는 Claude Code가 제공하며, `teammateMode`는
+그 표시 방식만 제어합니다.
 
-| 모드 | 설명 | 통신 | 리더/워커 분리 |
-|------|------|------|--------------|
-| `in-process` | 기본 모드, 모든 터미널 | ✅ SendMessage | ❌ 같은 환경 |
-| `tmux` | 분할 화면 표시 | ✅ SendMessage | ✅ 세션 환경변수 격리 |
+| 값 | 설명 | 리더/워커 분리 | CG 모드 |
+|------|------|--------------|---------|
+| `in-process` | 기본값, 같은 터미널 인라인 | 불가 | 미사용 |
+| `auto` | 환경 자동 감지 | 미지원 | 미사용 |
+| `tmux` | tmux 분할 화면 | 세션 환경변수 격리 | {{< icon check ok >}} 사용 |
+| `iterm2` | iTerm2 분할 화면 | 미지원 | 미사용 |
+
+`moai cg`와 `moai glm`은 `settings.local.json`의 `teammateMode`를 `"tmux"`로
+설정하고, `moai cc`는 빈 값으로 해제합니다. 과거의 `CLAUDE_CODE_TEAMMATE_DISPLAY`
+환경변수는 `teammateMode` 설정이 우선합니다.
 
 > **CG 모드는 `tmux` 디스플레이 모드에서만 리더/워커 API 분리가 가능합니다.**
 
@@ -168,5 +188,5 @@ Agent Teams는 두 가지 디스플레이 모드를 지원합니다:
 ## 다음 단계
 
 - [모델 정책](/ko/multi-llm/model-policy) — 에이전트별 모델 배정
-- [이중 실행 모드](/ko/getting-started/faq) — Sub-Agent vs Agent Teams
+- [자주 묻는 질문](/ko/getting-started/faq) — 실행 모드 관련 FAQ
 - [CLI 레퍼런스](/ko/getting-started/cli) — moai cc, moai glm, moai cg 상세

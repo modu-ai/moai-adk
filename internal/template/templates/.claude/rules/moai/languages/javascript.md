@@ -8,14 +8,14 @@ paths: "**/*.js,**/*.mjs,**/*.cjs,**/package.json"
 ---
 
 
-JavaScript ES2024+ Development Specialist - Modern JavaScript with Node.js 22 LTS, multiple runtimes, and contemporary tooling.
+JavaScript ES2024+ Development Specialist - Modern JavaScript with Node.js 24 LTS, multiple runtimes, and contemporary tooling.
 
 
 Core Stack:
 
 - ES2024+: Set methods, Promise.withResolvers, immutable arrays, import attributes
-- Node.js 22 LTS: Native TypeScript, built-in WebSocket, stable watch mode
-- Runtimes: Node.js 20 and 22 LTS, Deno 2.x, Bun 1.x
+- Node.js 24 LTS: Native TypeScript, built-in WebSocket, stable watch mode
+- Runtimes: Node.js 22 and 24 LTS, Deno 2.x, Bun 1.x
 - Testing: Vitest, Jest, Node.js test runner
 - Linting: ESLint 9 flat config, Biome
 - Bundlers: Vite, esbuild, Rollup
@@ -56,7 +56,7 @@ RegExp.escape:
 
 Create userInput string with special characters like parentheses. Call RegExp.escape with userInput to get escaped pattern string. Create new RegExp with the safe pattern.
 
-### Node.js 22 LTS Features
+### Node.js 24 LTS Features
 
 Built-in WebSocket Client:
 
@@ -110,14 +110,11 @@ Create biome.json with schema URL. Enable organizeImports. Set linter enabled wi
 
 ## Advanced Patterns
 
-For comprehensive documentation including advanced async patterns, module system details, performance optimization, and production deployment configurations, see:
+For comprehensive coverage including advanced async patterns, module system details, performance optimization, and production deployment configurations, apply the framework sections above together with the Documentation References; this guide is self-contained.
 
-- reference.md for complete API reference, Context7 library mappings, and package manager comparison
-- examples.md for production-ready code examples, full-stack patterns, and testing templates
+## Documentation References
 
-### Context7 Integration
-
-For Node.js documentation, use context7 get library docs with nodejs/node and topics like esm modules async. For Express, use expressjs/express with middleware routing. For Fastify, use fastify/fastify with plugins hooks. For Hono, use honojs/hono with middleware validators. For Vitest, use vitest-dev/vitest with mocking coverage.
+For Node.js documentation, WebSearch the official Node.js docs (nodejs.org) and fetch topics like ESM modules and async. For Express, use the expressjs.com docs with middleware routing. For Fastify, use fastify.dev docs with plugins hooks. For Hono, use the hono.dev docs with middleware validators. For Vitest, use the vitest.dev docs with mocking coverage.
 
 ---
 
@@ -130,7 +127,7 @@ For Node.js documentation, use context7 get library docs with nodejs/node and to
 
 ---
 
-## Quick Troubleshooting
+## Troubleshooting
 
 Module System Issues:
 
@@ -138,7 +135,7 @@ Check package.json for type field. ESM uses type module with import and export. 
 
 Node.js Version Check:
 
-Run node with version flag for 20.x or 22.x LTS. Run npm with version flag for 10.x or later.
+Run node with version flag for 22.x or 24.x LTS. Run npm with version flag for 10.x or later.
 
 Common Fixes:
 

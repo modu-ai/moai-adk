@@ -7,19 +7,24 @@ description: "Claude Code 서브에이전트의 개념과 격리된 컨텍스트
 
 # 서브에이전트
 
+
 Claude Code의 서브에이전트는 곁가지 작업을 별도의 컨텍스트 윈도우에서 처리하고 결과 요약만 메인 대화로 돌려주는 위임 작업자입니다.
 
 {{< callout type="info" >}}
 **한 줄 요약**: 서브에이전트는 탐색·검증 같은 곁가지 일을 자기만의 컨텍스트에서 처리하고 요약만 돌려주어, 메인 대화를 깨끗하게 유지하는 위임 일꾼입니다.
 {{< /callout >}}
 
+{{< callout type="info" title="비유로 이해하기" >}}
+서브에이전트는 **자기 책상을 따로 쓰는 동료**입니다. 내 책상(메인 대화의 컨텍스트)을 어지럽히는 대량의 조사·로그·검색 결과는 동료에게 맡기면, 그는 자기 책상 위에서 그 일을 처리하고 나에게는 **결과 요약 한 장만** 건네줍니다. 덕분에 내 책상은 깨끗하게 유지되고, 나는 핵심 흐름에만 집중할 수 있습니다.
+{{< /callout >}}
+
 {{< callout type="tip" >}}
-이 페이지는 Claude Code 차원의 개념 개요입니다. MoAI-ADK가 8개 에이전트 카탈로그를 어떻게 구성하고 위임하는지, 직접 에이전트를 만드는 실전 방법은 [에이전트 가이드](/advanced/agent-guide)와 [빌더 에이전트 가이드](/advanced/builder-agents)에서 깊이 다룹니다.
+이 페이지는 Claude Code 차원의 개념 개요입니다. MoAI-ADK가 11개 에이전트 카탈로그 (10 MoAI-custom + 1 Anthropic 내장 `Explore`)를 어떻게 구성하고 위임하는지, 직접 에이전트를 만드는 실전 방법은 [에이전트 가이드](/ko/advanced/agent-guide)와 [빌더 에이전트 가이드](/ko/advanced/builder-agents)에서 깊이 다룹니다.
 {{< /callout >}}
 
 ## 서브에이전트란
 
-서브에이전트는 특정 종류의 작업을 전담하는 특화된 AI 작업자입니다. 메인 대화가 검색 결과, 로그, 파일 내용으로 넘쳐날 만한 곁가지 작업이 생기면, 그 일을 서브에이전트가 **자기만의 컨텍스트 윈도우** (own context window)에서 처리하고 결과 요약만 돌려줍니다.
+서브에이전트는 특정 종류의 작업을 전담하는 특화된 AI 작업자입니다. 메인 대화가 검색 결과, 로그, 파일 내용으로 넘쳐날 만한 곁가지 작업이 생기면, 그 일을 서브에이전트가 **자기만의 컨텍스트 윈도우**(own context window)에서 처리하고 결과 요약만 돌려줍니다.
 
 각 서브에이전트는 다음을 독립적으로 가집니다.
 
@@ -36,15 +41,15 @@ Claude Code에는 다음과 같은 내장 서브에이전트가 포함되어 있
 
 | 에이전트 | 특징 |
 |---------|------|
-| **Explore** | 읽기 전용 코드베이스 탐색 (CC 2.1.198부터 메인 세션 모델을 상속, opus 상한 — 이전에는 Haiku 고정); thoroughness 옵션으로 quick/medium/very-thorough 선택 가능 |
+| **Explore** | 읽기 전용 코드베이스 탐색; v2.1.198부터 메인 세션 모델을 상속 (Claude API에서는 Opus까지만, 이전 버전은 Haiku 고정). thoroughness 옵션으로 quick/medium/very-thorough 선택 가능 |
 | **Plan** | 플랜 모드 리서치 (읽기 전용) |
 | **general-purpose** | 모든 도구 접근 가능, 탐색과 수정 모두 가능 |
 
 Explore와 Plan은 메인 세션의 CLAUDE.md와 git status를 스킵하며, 더 빠르고 가볍게 동작합니다.
 
-## 핵심 제약: 서브에이전트는 서브에이전트를 spawn 할 수 없음
+## 핵심 제약: 서브에이전트는 서브에이전트를 spawn할 수 없음
 
-가장 중요한 구조적 제약입니다. **서브에이전트는 다른 서브에이전트를 spawn 할 수 없습니다** (subagents cannot spawn other subagents). 즉 위임은 메인 대화에서 한 단계만 내려가며, 무한 중첩이 발생하지 않습니다.
+가장 중요한 구조적 제약입니다. **서브에이전트는 다른 서브에이전트를 spawn할 수 없습니다**(subagents cannot spawn other subagents). 즉 위임은 메인 대화에서 한 단계만 내려가며, 무한 중첩이 발생하지 않습니다.
 
 ### v2.1.172 이후: 제한적 중첩 (깊이 5 한계)
 
@@ -68,14 +73,16 @@ flowchart TD
 
 내장 `Plan` 서브에이전트가 별도로 존재하는 이유도 여기에 있습니다. 플랜 모드에서 컨텍스트가 필요할 때 이 제약을 우회하지 않으면서 리서치를 수행하기 위함입니다.
 
-## 백그라운드 권한 프롬프트 (v2.1.186)
+## 백그라운드 실행 (v2.1.186 / v2.1.198)
 
-서브에이전트를 백그라운드로 실행할 때 (`background: true`), 권한이 필요한 도구를 만나면 (예: Bash, WebFetch):
+서브에이전트는 백그라운드에서 실행할 수 있으며, v2.1.198부터는 **백그라운드가 기본값**입니다. Claude가 결과를 즉시 필요로 할 때만 포어그라운드에서 실행하고, 그 외에는 백그라운드에서 돌립니다.
 
-- **v2.1.186 이전**: 자동 거부 (권한 프롬프트 없음)
-- **v2.1.186 이후**: **메인 세션에 프롬프트가 표시**됨 (Esc로 해당 호출만 거부 가능)
+백그라운드 서브에이전트가 권한이 필요한 도구를 만나면(예: Bash, WebFetch):
 
-따라서 긴 백그라운드 작업을 시작하기 전에 필요한 도구를 `settings.json`의 허용 목록에 미리 추가하는 것이 좋습니다.
+- **v2.1.186 이전**: 자동 거부(권한 프롬프트 없음)
+- **v2.1.186 이후**: **메인 세션에 프롬프트가 표시**됨(Esc로 해당 호출만 거부 가능; v2.1.186부터 프롬프트에 스폰한 서브에이전트 이름 표시)
+
+긴 백그라운드 작업을 시작하기 전에 필요한 도구를 `settings.json`의 허용 목록에 미리 추가하면 프롬프트 빈도를 줄일 수 있습니다.
 
 ## 언제 쓰나
 
@@ -92,7 +99,7 @@ flowchart TD
 
 ## 정의 방법 개요
 
-서브에이전트는 YAML 프론트매터를 가진 마크다운 파일로 정의합니다. `/agents` 명령으로 대화형 생성할 수도 있고, 파일을 직접 작성할 수도 있습니다. (CC 2.1.198에서 `/agents` 생성 마법사가 제거되었습니다 — Claude에게 요청하거나 `.claude/agents/`를 직접 편집하세요. 공식 문서에는 2026-07 기준 `/agents` 인터페이스가 아직 남아 있으니 실제 2.1.198 세션에서 확인하세요.)
+서브에이전트는 YAML 프론트매터를 가진 마크다운 파일로 정의합니다. Claude에게 생성을 요청하거나 파일을 직접 작성할 수 있습니다. v2.1.198부터 `/agents` 명령은 더 이상 대화형 생성 위저드를 열지 않고, Claude에게 요청하거나 `.claude/agents/` 디렉터리를 직접 편집하라는 안내만 출력합니다 (파일 형식과 저장 위치는 변경 없음).
 
 ```markdown
 ---
@@ -116,15 +123,15 @@ model: sonnet
 | 필드 | 기능 |
 |------|------|
 | `tools` | 허용할 도구 (쉼표 구분 목록) |
-| `disallowedTools` | 차단할 도구 (許可리스트 대신 사용 가능) |
+| `disallowedTools` | 차단할 도구 (허용 목록 대신 사용 가능) |
 | `model` | 모델 선택: `sonnet`, `opus`, `haiku`, `fable`, 또는 특정 모델 ID; 기본값 `inherit` (메인 세션 모델) |
-| `permissionMode` | 도구 권한 기본값 (default, plan, acceptEdits, bypass) |
+| `permissionMode` | 도구 권한 기본값 (`default`, `acceptEdits`, `plan`, `bypassPermissions`, `auto`, `dontAsk`); 플러그인 서브에이전트는 무시됨 |
 | `maxTurns` | 최대 턴 수 제한 |
 | `skills` | 로드할 기본 스킬들 |
 | `mcpServers` | 연결할 MCP 서버 |
 | `hooks` | 호출할 Hook 이벤트 |
 | `memory` | 메모리 범위 (user, project, local) |
-| `background` | `true`면 백그라운드 실행 |
+| `background` | `true`면 항상 백그라운드 실행 (결과를 즉시 필요로 해도); 미지정 시 Claude가 선택하며 v2.1.198부터 기본 백그라운드 |
 | `effort` | 추론 강도 (low, medium, high, xhigh, max) |
 | `isolation: worktree` | 격리된 저장소 사본에서 작업 |
 | `color` | 에이전트 뷰에 표시할 색상 |
@@ -140,7 +147,7 @@ model: sonnet
 
 ### AskUserQuestion 사용 불가
 
-`AskUserQuestion` 같은 사용자 상호작용 도구는 서브에이전트에서 사용할 수 없습니다 (asymmetric boundary). 이것이 MoAI-ADK에서 서브에이전트가 사용자에게 직접 질문하지 못하고 오케스트레이터에게 blocker report를 돌려주는 이유입니다.
+`AskUserQuestion` 같은 사용자 상호작용 도구는 서브에이전트에서 사용할 수 없습니다(asymmetric boundary). 이것이 MoAI-ADK에서 서브에이전트가 사용자에게 직접 질문하지 못하고 오케스트레이터에게 blocker report를 돌려주는 이유입니다.
 
 ## `/fork` — 세션 포크
 
@@ -152,12 +159,12 @@ model: sonnet
 
 ## 깊이는 MoAI 에이전트 가이드로
 
-여기까지가 Claude Code 차원의 서브에이전트 개념입니다. MoAI-ADK가 이 메커니즘 위에서 어떤 에이전트 카탈로그를 운영하고, Plan-Run-Sync 워크플로우의 각 단계를 어떻게 위임하며, 프로젝트별 도메인 전문가 에이전트를 어떻게 생성하는지는 아래 심화 가이드에서 다룹니다.
+여기까지가 Claude Code 차원의 서브에이전트 개념입니다. MoAI-ADK는 이 메커니즘 위에 **11개 에이전트 카탈로그**를 운영합니다. Manager 계열(manager-spec / manager-develop / manager-docs / manager-git / manager-design)이 plan→run→sync 라이프사이클을, Evaluator 계열(plan-auditor / sync-auditor)이 독립 감사를, builder-harness가 하네스 스캐폴드 생성을, super-advisor가 고추론 자문을, e2e-tester가 웹/모바일/데스크탑 E2E 테스트 실행을, 그리고 Anthropic 내장 `Explore`가 읽기 전용 탐색을 담당합니다. 계획과 감사가 분리되어 있다는 점, 즉 만든 에이전트가 스스로 검사하지 않는다는 것이 이 카탈로그의 핵심 설계입니다. 각 에이전트에 작업 성격에 맞는 모델과 추론 깊이(effort)를 선언적으로 배정하는 것이 토크노믹스의 "계획은 깊게, 구현은 싸게, 검증은 독립적으로" 원칙입니다. 자세한 내용은 아래 심화 가이드에서 다룹니다.
 
 ## 관련 문서
 
-- [에이전트 가이드](/advanced/agent-guide)
-- [빌더 에이전트 가이드](/advanced/builder-agents)
+- [에이전트 가이드](/ko/advanced/agent-guide)
+- [빌더 에이전트 가이드](/ko/advanced/builder-agents)
 
 ## 참고 자료
 

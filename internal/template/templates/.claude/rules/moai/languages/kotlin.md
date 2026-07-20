@@ -8,7 +8,7 @@ paths: "**/*.kt,**/*.kts,**/build.gradle.kts"
 ---
 
 
-Kotlin 2.2+ (current 2.4) Expert - K2 compiler, coroutines, Ktor, Compose Multiplatform with Context7 integration.
+Kotlin 2.2+ Expert - K2 compiler, coroutines, Ktor, Compose Multiplatform.
 
 
 Core Capabilities:
@@ -69,9 +69,9 @@ Use plugins block with kotlin("jvm") and kotlin("plugin.serialization") with ver
 
 ---
 
-## Context7 Integration
+## Documentation References
 
-Library mappings for latest documentation:
+Library references for latest documentation (consult the upstream repos / official docs sites):
 
 - `/ktorio/ktor` - Ktor 3.x server/client documentation
 - `/jetbrains/exposed` - Exposed SQL framework
@@ -80,7 +80,7 @@ Library mappings for latest documentation:
 - `/jetbrains/compose-multiplatform` - Compose Multiplatform
 - `/arrow-kt/arrow` - Arrow functional programming
 
-Usage: Call mcp__context7__get_library_docs with context7CompatibleLibraryID, topic string for specific areas, and tokens parameter for response size.
+Usage: Use WebSearch to find the official documentation site for a library, then WebFetch the relevant page to pull the up-to-date reference.
 
 ---
 
@@ -112,7 +112,7 @@ Consider Alternatives When:
 
 ## Troubleshooting
 
-K2 Compiler: Add kotlin.experimental.tryK2=true to gradle.properties. Clear .gradle directory for full rebuild.
+K2 Compiler: K2 is the default compiler in Kotlin 2.x — no opt-in flag is required (the legacy kotlin.experimental.tryK2 flag is obsolete). If the build still resolves to the old compiler, verify the Kotlin Gradle plugin version aligns with the Kotlin language version (2.2+). Clear the .gradle directory for a full rebuild.
 
 Coroutines: Avoid runBlocking in suspend contexts. Use Dispatchers.IO for blocking operations.
 
@@ -121,16 +121,3 @@ Ktor: Ensure ContentNegotiation is installed. Check JWT verifier configuration. 
 Exposed: Ensure all DB operations run within transaction context. Be aware of lazy entity loading outside transactions.
 
 ---
-
-## Coverage Areas
-
-This guide is self-contained. Use the sections above as the primary reference for:
-
-- Kotlin 2.2+ language features, Ktor 3.x server development, and Exposed SQL framework patterns
-- Spring Boot with Kotlin application structure
-- Compose Multiplatform UI patterns
-- Testing with MockK and Gradle build configuration
-- Production-ready Ktor, Compose, and Android patterns
-
----
-

@@ -12,7 +12,10 @@ func wizardColors() wizardColorSet {
 	lt := tui.LightTheme()
 	dt := tui.DarkTheme()
 	return wizardColorSet{
-		// Primary: deep teal accent (replaces terra cotta #DA7756 / #C45A3C)
+		// Primary: Claude coral accent (migrated from deep teal 2026-07; the
+		// canonical coral mid-point and all accent hex live in internal/tui/theme.go.
+		// Old terra cotta #DA7756 / #C45A3C remains forbidden — see wizard_test.go
+		// TestCharacterize_WizardColors_NoTerracottaOrPurple.)
 		Primary: lipgloss.AdaptiveColor{Light: lt.Accent, Dark: dt.Accent},
 		// Secondary: info color (replaces purple #7C3AED / #5B21B6)
 		Secondary: lipgloss.AdaptiveColor{Light: lt.Info, Dark: dt.Info},

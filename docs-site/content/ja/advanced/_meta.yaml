@@ -1,6 +1,18 @@
 index:
   title: "詳細"
   display: "hidden"
+"tokenomics-overview":
+  title: "トークノミクス概論"
+"token-budget":
+  title: "トークン予算管理と graceful stop"
+"no-haiku-3tier":
+  title: "3層エージェントアーキテクチャ (No-Haiku)"
+"profile-matrix":
+  title: "プロファイルマトリクス"
+"self-evolving":
+  title: "ハーネス自己進化"
+"autonomous-loops":
+  title: "自律連続ループ"
 "skill-guide":
   title: "スキルガイド"
 "agent-guide":
@@ -17,9 +29,17 @@ index:
   title: "ステータスラインシステムとPRセグメント"
 "claude-md-guide":
   title: "CLAUDE.md ガイド"
-"mcp-servers":
-  title: "MCPサーバー"
-"pencil-guide":
-  title: "Pencil ガイド"
-"stitch-guide":
-  title: "Google Stitch ガイド"
+"catalog-system":
+  title: "カタログシステム"
+"decision-memory":
+  title: "意思決定メモリシステム"
+"harness-profiles":
+  title: "ハーネスプロファイルと評価システム"
+"harness-v4-builder":
+  title: "Harness v4 Builder 深掘りガイド"
+"hooks-reference":
+  title: "Hooksイベントリファレンス"
+"ultracode-workflows":
+  title: "動的ワークフローと Ultracode"
+"mx-tags":
+  title: "MX TAG システム"

@@ -13,6 +13,7 @@ package cli
 // @MX:REASON: All 22 GWT scenarios exercise these two functions; signature changes affect the entire test surface
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -24,6 +25,8 @@ import (
 	"time"
 
 	"github.com/spf13/cobra"
+
+	"github.com/modu-ai/moai-adk/internal/lockfile"
 )
 
 // ─── Constants ─────────────────────────────────────────────────────────────
@@ -120,6 +123,24 @@ var userHomeDirFn = userHomeDir
 // detectNodeFn is the node-version detection function variable (for test override)
 // Return values: (major version int, version string e.g. "v22.5.0", error)
 var detectNodeFn = detectNodeVersion
+
+// claudeJSONGuardPreLockHook is a test injection point invoked between the
+// prep-phase read and the in-lock compare-and-publish inside mutateClaudeJSON-
+// Atomic. Production code leaves it nil (no-op). Tests set it to simulate a
+// concurrent non-cooperating writer (e.g., a live Claude Code process that does
+// not respect the .lock file) so the compare-and-retry path is exercised
+// deterministically rather than relying on goroutine scheduling.
+var claudeJSONGuardPreLockHook func(configPath string)
+
+// claudeJSONGuardMaxRetries bounds the number of times mutateClaudeJSONAtomic
+// re-applies the mutation when a concurrent writer keeps changing the file
+// between the prep read and the in-lock compare. After this ceiling the guard
+// writes best-effort with a stderr warning (fail-open — never block a session
+// start indefinitely). SPEC-CLIFIX-CONCURRENCY-001 REQ-CONC-001-003.
+const claudeJSONGuardMaxRetries = 3
+
+// claudeJSONGuardRetryDelay is the backoff between compare-and-retry attempts.
+const claudeJSONGuardRetryDelay = 15 * time.Millisecond
 
 // ─── Cobra command definitions ─────────────────────────────────────────────
 
@@ -432,39 +453,193 @@ func readClaudeJSON(configPath string) (map[string]any, error) {
 	return root, nil
 }
 
-// writeClaudeJSONAtomic performs an atomic JSON write to configPath (REQ-GMC-005, R7)
-// Atomic write: temp file → os.Rename (POSIX atomicity guarantee)
-func writeClaudeJSONAtomic(configPath string, root map[string]any) error {
-	jsonBytes, err := json.MarshalIndent(root, "", "  ")
+// writeClaudeJSONBytes writes pre-marshaled bytes to configPath atomically via the
+// consolidated writeFileAtomic helper (SPEC-CLIFIX-CONCURRENCY-001 M3). It is the
+// bytes-level publication step used by the guarded RMW (mutateClaudeJSONAtomic),
+// so the guard can write pre-marshaled bytes inside the lock without re-running
+// the marshal under the lock. The 0600 perm preserves the credential-bearing
+// file-mode contract for ~/.claude.json.
+//
+// @MX:NOTE: [AUTO] M3 consolidation — writeClaudeJSONAtomic deleted (sole caller inlined the marshal); this bytes-level seam delegates to writeFileAtomic so mutateClaudeJSONAtomic keeps the marshal OUTSIDE the lock (acceptance.md §C large-file constraint).
+// @MX:SPEC: SPEC-CLIFIX-CONCURRENCY-001 REQ-CONC-001-004
+func writeClaudeJSONBytes(configPath string, data []byte) error {
+	return writeFileAtomic(configPath, data, 0o600)
+}
+
+// readClaudeJSONRaw reads configPath and returns the raw bytes alongside the
+// parsed root map. The guard (mutateClaudeJSONAtomic) uses the raw bytes for the
+// in-lock content compare (detecting concurrent writers) while the parsed root
+// feeds the prep-phase apply. Returns (nil, empty-map, nil) when the file does
+// not exist, matching readClaudeJSON semantics.
+func readClaudeJSONRaw(configPath string) ([]byte, map[string]any, error) {
+	data, err := os.ReadFile(configPath)
+	if os.IsNotExist(err) {
+		return nil, map[string]any{}, nil
+	}
+	if err != nil {
+		return nil, nil, fmt.Errorf("설정 파일 읽기 실패: %w", err)
+	}
+	if len(data) == 0 {
+		return data, map[string]any{}, nil
+	}
+	root, err := parseClaudeJSON(data)
+	if err != nil {
+		return nil, nil, err
+	}
+	return data, root, nil
+}
+
+// parseClaudeJSON parses JSON bytes into a root map. Returns a non-nil empty map
+// for a JSON null body so downstream callers can safely range/assign.
+func parseClaudeJSON(data []byte) (map[string]any, error) {
+	var root map[string]any
+	if err := json.Unmarshal(data, &root); err != nil {
+		return nil, fmt.Errorf("JSON 파싱 실패: %w", err)
+	}
+	if root == nil {
+		root = map[string]any{}
+	}
+	return root, nil
+}
+
+// mutateClaudeJSONAtomic performs a locked, atomic read-modify-write of the
+// ~/.claude.json file at configPath (SPEC-CLIFIX-CONCURRENCY-001 REQ-CONC-001-003).
+// It guards against concurrent writers (a live Claude Code process or another
+// moai invocation) by combining two layers:
+//
+//  1. An advisory flock on a sibling .lock file — serializes cooperating
+//     (moai-vs-moai) writers. Reuses the same internal/lockfile Lock/Unlock
+//     family as mutateSettingsLocal (no second lock convention).
+//  2. A content compare-and-retry inside the lock — detects non-cooperating
+//     writers (e.g., Claude Code, which does not respect the .lock file) and
+//     re-applies the mutation to the fresh state so their changes are not lost.
+//
+// The expensive marshal work is performed OUTSIDE the lock (prep phase); inside
+// the lock the guard only re-reads, compares, conditionally re-applies, and
+// publishes via temp+rename. This bounds the critical section so a large
+// ~/.claude.json (many MCP registrations) does not block a live Claude Code
+// process for a human-noticeable duration.
+//
+// The guard fails OPEN: when flock is unavailable (network filesystems) it
+// proceeds with compare-and-retry alone and emits a stderr warning; it never
+// blocks a session start indefinitely.
+//
+// apply receives the freshly-read root map, mutates it in-place, and returns
+// changed=true when a write is needed (changed=false signals an idempotent
+// skip — no write, no backup). A non-nil error aborts the RMW. apply MUST be
+// safe to call multiple times (prep phase + each retry) — it only reads root
+// and sets keys, never touches external state.
+//
+// @MX:ANCHOR: [AUTO] Guarded RMW seam for ~/.claude.json — mirrors mutateSettingsLocal (settings.go:62)
+// @MX:REASON: fan_in = 2 (runEnableMCPServerForTool, enableMCPServerIdempotentForTool); the only locked-RMW entry point for ~/.claude.json
+func mutateClaudeJSONAtomic(configPath string, apply func(root map[string]any) (changed bool, err error)) error {
+	if err := os.MkdirAll(filepath.Dir(configPath), 0o755); err != nil {
+		return fmt.Errorf("디렉토리 생성 실패: %w", err)
+	}
+
+	// ── PREP PHASE (outside lock): read, apply, marshal ──────────────────
+	prepData, prepRoot, err := readClaudeJSONRaw(configPath)
+	if err != nil {
+		return err
+	}
+	prepChanged, err := apply(prepRoot)
+	if err != nil {
+		return err
+	}
+	if !prepChanged {
+		return nil // idempotent skip — no write needed
+	}
+	prepOut, err := json.MarshalIndent(prepRoot, "", "  ")
 	if err != nil {
 		return fmt.Errorf("JSON 직렬화 실패: %w", err)
 	}
 
-	dir := filepath.Dir(configPath)
-	if err := os.MkdirAll(dir, 0o755); err != nil {
-		return fmt.Errorf("디렉토리 생성 실패: %w", err)
+	// Test injection: simulate a concurrent external writer between the prep
+	// read and lock acquisition. Production code leaves the hook nil.
+	if claudeJSONGuardPreLockHook != nil {
+		claudeJSONGuardPreLockHook(configPath)
 	}
 
-	tmp, err := os.CreateTemp(dir, ".claude-json-*.tmp")
+	// ── GUARDED PUBLISH (inside lock) ────────────────────────────────────
+	return withClaudeJSONLock(configPath, func(locked bool) error {
+		if !locked {
+			_, _ = fmt.Fprintf(os.Stderr,
+				"Warning: could not lock %s; proceeding without cross-process guard (best-effort)\n", configPath)
+		}
+
+		// Compare the on-disk state against the prep-phase read. If a concurrent
+		// writer changed the file, re-apply the mutation on the fresh state so
+		// their change is not lost (bounded retry). On the common uncontended
+		// path the bytes match immediately and we skip straight to publish.
+		publishOut := prepOut
+		compareData := prepData
+		for attempt := 0; ; attempt++ {
+			data, rerr := os.ReadFile(configPath)
+			if rerr != nil && !os.IsNotExist(rerr) {
+				return fmt.Errorf("설정 파일 읽기 실패: %w", rerr)
+			}
+			if bytes.Equal(data, compareData) {
+				break // no concurrent change — prep marshal is valid
+			}
+			if attempt >= claudeJSONGuardMaxRetries {
+				_, _ = fmt.Fprintf(os.Stderr,
+					"Warning: %s changed concurrently after %d retries; writing best-effort (a concurrent edit may be overwritten)\n",
+					configPath, attempt)
+				break
+			}
+			// Concurrent writer changed the file — re-apply on the fresh state.
+			freshRoot, ferr := parseClaudeJSON(data)
+			if ferr != nil {
+				return ferr
+			}
+			freshChanged, ferr := apply(freshRoot)
+			if ferr != nil {
+				return ferr
+			}
+			if !freshChanged {
+				return nil // concurrent writer already achieved the desired state
+			}
+			mo, merr := json.MarshalIndent(freshRoot, "", "  ")
+			if merr != nil {
+				return fmt.Errorf("JSON 직렬화 실패: %w", merr)
+			}
+			publishOut = mo
+			compareData = data // fresh state becomes the compare baseline
+			time.Sleep(claudeJSONGuardRetryDelay)
+		}
+
+		// Backup the current on-disk state, then publish atomically.
+		if err := backupClaudeJSON(configPath); err != nil {
+			return fmt.Errorf("백업 생성 실패: %w", err)
+		}
+		return writeClaudeJSONBytes(configPath, publishOut)
+	})
+}
+
+// withClaudeJSONLock acquires an advisory flock on a sibling .lock file and
+// invokes fn. When flock is unavailable (network filesystems, or cross-process
+// on Windows where only process-local mutexes exist) it invokes fn without the
+// lock (fail-open) — fn receives locked=false so it can emit a warning. The
+// guard NEVER blocks a session start indefinitely: a crashed lock-holder
+// releases the flock automatically (POSIX flock is tied to process lifetime),
+// and unsupported-FS / open errors fall through to the no-lock path immediately.
+func withClaudeJSONLock(configPath string, fn func(locked bool) error) error {
+	lockPath := configPath + ".lock"
+	lockF, err := os.OpenFile(lockPath, os.O_CREATE|os.O_RDWR, 0o600)
 	if err != nil {
-		return fmt.Errorf("임시 파일 생성 실패: %w", err)
+		_, _ = fmt.Fprintf(os.Stderr,
+			"Warning: could not open lock file %s (%v); proceeding without cross-process guard\n", lockPath, err)
+		return fn(false)
 	}
-	tmpName := tmp.Name()
-	defer func() { _ = os.Remove(tmpName) }() // Clean up the temp file on failure
+	defer func() { _ = lockF.Close() }()
 
-	if _, err := tmp.Write(jsonBytes); err != nil {
-		_ = tmp.Close()
-		return fmt.Errorf("임시 파일 쓰기 실패: %w", err)
+	if err := lockfile.Lock(lockF); err != nil {
+		_, _ = fmt.Fprintf(os.Stderr,
+			"Warning: could not lock %s (%v); proceeding without cross-process guard\n", configPath, err)
+		return fn(false)
 	}
-	if err := tmp.Close(); err != nil {
-		return fmt.Errorf("임시 파일 닫기 실패: %w", err)
-	}
-
-	// Atomic rename
-	if err := os.Rename(tmpName, configPath); err != nil {
-		return fmt.Errorf("파일 교체 실패: %w", err)
-	}
-	return nil
+	defer func() { _ = lockfile.Unlock(lockF) }()
+	return fn(true)
 }
 
 // backupClaudeJSON backs up the current contents of configPath (REQ-GMC-005)
@@ -500,6 +675,12 @@ func runEnableMCPServer(configPath string, token string) error {
 // runEnableMCPServerForTool는 도구명에 맞는 서버 집합을 configPath 에 등록한다 (--force 경로, REQ-GWR-C1~C4).
 // vision npx 엔트리에 한해 토큰 불일치를 검사한다 (HTTP 엔트리는 토큰을 직접 보유하지 않음).
 // 변경 전 백업 (REQ-GMC-005), 다른 mcpServers 엔트리 무변경 (REQ-GMC-010).
+//
+// SPEC-CLIFIX-CONCURRENCY-001 REQ-CONC-001-003: the RMW is guarded by
+// mutateClaudeJSONAtomic (flock + compare-retry) so concurrent writes from a
+// live Claude Code process are not lost. The apply closure is re-callable:
+// the token-mismatch check and mcpServers mutation are re-evaluated against
+// the fresh in-lock state on each retry.
 func runEnableMCPServerForTool(configPath, toolName, token string) error {
 	if token == "" {
 		return fmt.Errorf(
@@ -508,43 +689,35 @@ func runEnableMCPServerForTool(configPath, toolName, token string) error {
 		)
 	}
 
-	root, err := readClaudeJSON(configPath)
-	if err != nil {
-		return err
-	}
-
-	mcpServers := getMCPServers(root)
 	entries := buildZAIMCPEntries(toolName, token)
 
-	// vision npx 엔트리에 한해 기존 토큰 불일치 검사 (REQ-GMC-006)
-	if _, want := entries[zaiMCPServerKey]; want {
-		if existing, ok := mcpServers[zaiMCPServerKey].(map[string]any); ok {
-			existingToken := extractTokenFromEntry(existing)
-			if existingToken != token {
-				return fmt.Errorf(
-					"기존 zai-mcp-server 엔트리에 다른 토큰이 설정되어 있습니다\n"+
-						"  현재 토큰: %s...%s\n"+
-						"  새 토큰:   %s...%s\n\n"+
-						"강제 덮어쓰기: moai glm tools enable --force",
-					maskPartial(existingToken), maskPartial(existingToken)[len(maskPartial(existingToken))-4:],
-					maskPartial(token), maskPartial(token)[len(maskPartial(token))-4:],
-				)
+	return mutateClaudeJSONAtomic(configPath, func(root map[string]any) (bool, error) {
+		mcpServers := getMCPServers(root)
+
+		// vision npx 엔트리에 한해 기존 토큰 불일치 검사 (REQ-GMC-006)
+		if _, want := entries[zaiMCPServerKey]; want {
+			if existing, ok := mcpServers[zaiMCPServerKey].(map[string]any); ok {
+				existingToken := extractTokenFromEntry(existing)
+				if existingToken != token {
+					return false, fmt.Errorf(
+						"기존 zai-mcp-server 엔트리에 다른 토큰이 설정되어 있습니다\n"+
+							"  현재 토큰: %s...%s\n"+
+							"  새 토큰:   %s...%s\n\n"+
+							"강제 덮어쓰기: moai glm tools enable --force",
+						maskPartial(existingToken), maskPartial(existingToken)[len(maskPartial(existingToken))-4:],
+						maskPartial(token), maskPartial(token)[len(maskPartial(token))-4:],
+					)
+				}
 			}
 		}
-	}
 
-	// Create backup (REQ-GMC-005)
-	if err := backupClaudeJSON(configPath); err != nil {
-		return fmt.Errorf("백업 생성 실패: %w", err)
-	}
-
-	// 요청한 서버 집합 등록 (REQ-GWR-C, REQ-GMC-010 — 다른 엔트리 무변경)
-	for key, entry := range entries {
-		mcpServers[key] = entry
-	}
-	root["mcpServers"] = mcpServers
-
-	return writeClaudeJSONAtomic(configPath, root)
+		// 요청한 서버 집합 등록 (REQ-GWR-C, REQ-GMC-010 — 다른 엔트리 무변경)
+		for key, entry := range entries {
+			mcpServers[key] = entry
+		}
+		root["mcpServers"] = mcpServers
+		return true, nil // changed → backup + publish handled by the guard
+	})
 }
 
 // enableMCPServerIdempotent는 vision 엔트리에 대한 idempotent enable 이다 (legacy 시그니처 보존).
@@ -559,6 +732,11 @@ func enableMCPServerIdempotent(configPath string, token string) (bool, error) {
 //   - skipped=false: 하나라도 신규/변경이 필요해 등록을 수행함
 //
 // vision npx 엔트리에 한해 토큰 불일치 시 에러를 반환한다 (REQ-GMC-006 (b)).
+//
+// SPEC-CLIFIX-CONCURRENCY-001 REQ-CONC-001-003: the RMW is guarded by
+// mutateClaudeJSONAtomic (flock + compare-retry). The skipped flag reflects the
+// LAST apply invocation (prep or the final retry) so it stays correct even when
+// a concurrent writer achieves the desired state mid-guard.
 func enableMCPServerIdempotentForTool(configPath, toolName, token string) (bool, error) {
 	if token == "" {
 		return false, fmt.Errorf(
@@ -567,52 +745,50 @@ func enableMCPServerIdempotentForTool(configPath, toolName, token string) (bool,
 		)
 	}
 
-	root, err := readClaudeJSON(configPath)
-	if err != nil {
-		return false, err
-	}
-
-	mcpServers := getMCPServers(root)
 	entries := buildZAIMCPEntries(toolName, token)
+	var skipped bool
 
-	// vision npx 엔트리 토큰 검사 — 불일치 시 에러 (REQ-GMC-006 (b))
-	if _, want := entries[zaiMCPServerKey]; want {
-		if existing, ok := mcpServers[zaiMCPServerKey].(map[string]any); ok {
-			if extractTokenFromEntry(existing) != token {
-				return false, fmt.Errorf(
-					"기존 zai-mcp-server 엔트리에 다른 토큰이 설정되어 있습니다\n" +
-						"강제 덮어쓰기: moai glm tools enable --force",
-				)
+	err := mutateClaudeJSONAtomic(configPath, func(root map[string]any) (bool, error) {
+		mcpServers := getMCPServers(root)
+
+		// vision npx 엔트리 토큰 검사 — 불일치 시 에러 (REQ-GMC-006 (b))
+		if _, want := entries[zaiMCPServerKey]; want {
+			if existing, ok := mcpServers[zaiMCPServerKey].(map[string]any); ok {
+				if extractTokenFromEntry(existing) != token {
+					return false, fmt.Errorf(
+						"기존 zai-mcp-server 엔트리에 다른 토큰이 설정되어 있습니다\n" +
+							"강제 덮어쓰기: moai glm tools enable --force",
+					)
+				}
 			}
 		}
-	}
 
-	// 요청한 서버 중 신규/변경이 필요한 것이 하나라도 있는지 판정
-	needsWrite := false
-	for key, entry := range entries {
-		existing, ok := mcpServers[key].(map[string]any)
-		if !ok || !mcpEntryEqual(existing, entry) {
-			needsWrite = true
-			break
+		// 요청한 서버 중 신규/변경이 필요한 것이 하나라도 있는지 판정
+		needsWrite := false
+		for key, entry := range entries {
+			existing, ok := mcpServers[key].(map[string]any)
+			if !ok || !mcpEntryEqual(existing, entry) {
+				needsWrite = true
+				break
+			}
 		}
-	}
 
-	if !needsWrite {
-		// 모든 서버가 이미 동일하게 등록됨 → idempotent skip (백업 없음)
-		return true, nil
-	}
+		if !needsWrite {
+			// 모든 서버가 이미 동일하게 등록됨 → idempotent skip (백업 없음)
+			skipped = true
+			return false, nil
+		}
 
-	// New/changed registration → back up then write
-	if err := backupClaudeJSON(configPath); err != nil {
-		return false, fmt.Errorf("백업 생성 실패: %w", err)
-	}
+		// 요청한 서버 집합 등록
+		for key, entry := range entries {
+			mcpServers[key] = entry
+		}
+		root["mcpServers"] = mcpServers
+		skipped = false
+		return true, nil // changed → backup + publish handled by the guard
+	})
 
-	for key, entry := range entries {
-		mcpServers[key] = entry
-	}
-	root["mcpServers"] = mcpServers
-
-	return false, writeClaudeJSONAtomic(configPath, root)
+	return skipped, err
 }
 
 // autoEnableMCPServer attempts to enable Z.AI MCP server during GLM launch.
@@ -696,7 +872,11 @@ func disableMCPServerForTool(configPath, toolName string) (bool, error) {
 	}
 	root["mcpServers"] = mcpServers
 
-	return true, writeClaudeJSONAtomic(configPath, root)
+	jsonBytes, err := json.MarshalIndent(root, "", "  ")
+	if err != nil {
+		return true, fmt.Errorf("JSON 직렬화 실패: %w", err)
+	}
+	return true, writeClaudeJSONBytes(configPath, jsonBytes)
 }
 
 // mcpEntryEqual는 두 MCP 엔트리가 의미상 동일한지 판정한다 (idempotency 검사용).

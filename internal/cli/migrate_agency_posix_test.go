@@ -15,9 +15,11 @@ func TestMigrateAgency_POSIXPermission(t *testing.T) {
 	dir := t.TempDir()
 	setupAgencyFixture(t, dir)
 
-	// Set a non-default permission on the source file
-	brandVoiceSrc := filepath.Join(dir, ".agency", "context", "brand-voice.md")
-	if err := os.Chmod(brandVoiceSrc, 0o640); err != nil {
+	// Set a non-default permission on a source file that is still migrated by copyFile.
+	// (Phase 2 brand migration was removed; learnings → observations exercises the
+	// same permission-preserving copyFile path.)
+	learnSrc := filepath.Join(dir, ".agency", "learnings", "LEARN-001.md")
+	if err := os.Chmod(learnSrc, 0o640); err != nil {
 		t.Fatalf("Chmod source: %v", err)
 	}
 
@@ -37,7 +39,7 @@ func TestMigrateAgency_POSIXPermission(t *testing.T) {
 		t.Fatalf("Run() returned error: %v", err)
 	}
 
-	dst := filepath.Join(dir, ".moai", "project", "brand", "brand-voice.md")
+	dst := filepath.Join(dir, ".moai", "research", "observations", "LEARN-001.md")
 	info, err := os.Stat(dst)
 	if err != nil {
 		t.Fatalf("Stat dst: %v", err)

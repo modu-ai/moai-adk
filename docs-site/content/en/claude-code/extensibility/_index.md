@@ -2,33 +2,40 @@
 title: Extensibility — Skills, Hooks, MCP, Plugins
 weight: 30
 draft: false
-description: "A concept-focused overview of the four extension points that broaden Claude Code's capabilities: Skills, Hooks, MCP, and Plugins."
+description: "The four extension points that widen Claude Code's capabilities (skills, hooks, MCP, plugins) — a concept-first tour of the materials for building an agentic harness."
 ---
 
-This group covers four ways to extend Claude Code's behavior beyond its built-in capabilities. It explains, with a focus on concepts, how to modularize specialized knowledge with Skills, attach automation to events with Hooks, connect external tools with MCP, and ship all of these as a single package with Plugins. This group is for engineers who want to tame Claude Code to fit their own workflow.
+This group covers the four ways to extend Claude Code's behavior beyond its built-in capabilities. It explains, concept-first, the flow of modularizing expertise with skills, attaching automation to events with hooks, connecting external tools with MCP, and shipping all of it as one package with plugins.
+
+
+These four are exactly the materials for building an **Agentic Harness**. In harness engineering — designing an environment where the agent works well instead of writing the code yourself — skills carry the agent's knowledge, hooks carry deterministic discipline, MCP carries the connection to the outside world, and plugins carry the deployment unit for the combination. What MoAI-ADK deploys with a single `moai init`, and what `/moai project` generates project-specifically, are ultimately combinations of these materials.
 
 {{< callout type="info" >}}
-**TL;DR**: Once you understand the four extension points — Skills, Hooks, MCP, and Plugins — you can turn Claude Code into a tool tailored to your own project.
+**One-line summary**: Once you understand the four extension points — skills, hooks, MCP, and plugins — you can turn Claude Code into a harness unique to your project.
 {{< /callout >}}
 
-## Learning Path
+{{< callout type="info" title="Understand it with an analogy" >}}
+Keep these four straight with one picture. A **hook** is an **automatic-door sensor** — a defined action fires by itself when an event occurs. A **skill** is a **manual you pull out only when needed** — normally just the cover (a one-line description) is visible, and the body opens when the job arrives. **MCP** is the **standard power socket** for plugging in external tools, and a **plugin** is the **package** that ships all three in one box.
+{{< /callout >}}
+
+## Learning Flow
 
 ```mermaid
 flowchart TD
-    A[Skills<br/>Specialized knowledge modules] --> B[Hooks<br/>Event-driven automation]
+    A[Skills<br/>Expertise modules] --> B[Hooks<br/>Event-driven automation]
     B --> C[MCP Servers<br/>External tool connections]
-    C --> D[Plugins and Marketplaces<br/>Shipping extension packages]
+    C --> D[Plugins and Marketplaces<br/>Extension package distribution]
 ```
 
-We recommend reading in this order: start with Skills, the lightest extension point; then Hooks for automation; then MCP, which links you to the outside world; and finally Plugins, which bundle these together for distribution. Skills, Hooks, and MCP connect deeply into the MoAI-ADK advanced docs, so you can dig further once you've grasped the concepts.
+We recommend reading in this order: start with skills, the lightest extension point, then hooks for automation, MCP for connecting to the outside world, and finally plugins, which bundle them for distribution. Skills, hooks, and MCP link deeply into the MoAI-ADK advanced documents, so grasp the concepts first and dig deeper afterwards.
 
 ## Contents
 
 | Document | Description |
 |------|------|
-| [Skills](/claude-code/extensibility/skills) | Specialized knowledge modules and progressive disclosure |
+| [Skills](/claude-code/extensibility/skills) | Expertise modules and progressive disclosure |
 | [Hooks](/claude-code/extensibility/hooks) | Event-driven automation |
-| [MCP Servers](/claude-code/extensibility/mcp) | The external-tool connection protocol |
+| [MCP Servers](/claude-code/extensibility/mcp) | The external tool connection protocol |
 | [Plugins and Marketplaces](/claude-code/extensibility/plugins) | Extension packages and code intelligence |
 
-Once you've mastered the four extension points, head to the next group to see how to integrate them into your real development workflow.
+Once you know the four materials, head to the next group, [Agents and Automation](/claude-code/agentic), to see how to run agentic loops on top of the harness built from them.

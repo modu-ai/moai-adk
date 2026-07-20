@@ -466,8 +466,43 @@ func deepMergeMap(base, current, updated map[string]any, prefix string) (map[str
 	return result, conflicts
 }
 
+// managedSectionHeadings is the explicit allow-list of curator-managed
+// section headings whose content the merge treats as opaque preserved units
+// (SPEC-HARNESS-EVOLVE-002 design.md §D.1 H-2 option (a) — explicit
+// registration). A section whose heading appears in this list is preserved
+// verbatim from the local (current) side when the local side carries populated
+// content and the upstream template carries only the empty marker
+// (REQ-HEV2-019); conflicting populated content on both sides surfaces a merge
+// conflict rather than being auto-resolved (REQ-HEV2-020). Adding a new
+// managed-block type requires a new entry here — the explicit allow-list
+// forces conscious review (the conservatism design.md §D.1 chose over the
+// auto-recognition alternative).
+//
+// @MX:NOTE: [AUTO] managed-section allow-list consulted by mergeSectionBased on the preservation path
+// @MX:REASON: REQ-HEV2-019/020 — curator-managed LEARNED blocks are user-owned data, not template prose; merge must not clobber them
+var managedSectionHeadings = []string{
+	"## MOAI:LEARNED-WORKFLOW",
+	"## MOAI:LEARNED-WORKFLOW-LOCAL",
+}
+
+// isManagedSection reports whether the given Markdown heading line (including
+// its leading "## " prefix, as produced by parseSections) names a
+// curator-managed section in managedSectionHeadings. mergeSectionBased
+// consults this on the preservation path to apply the opaque-preservation
+// policy to managed blocks.
+func isManagedSection(heading string) bool {
+	for _, h := range managedSectionHeadings {
+		if h == heading {
+			return true
+		}
+	}
+	return false
+}
+
 // mergeSectionBased performs section-based merge for CLAUDE.md files.
 // Sections are delimited by Markdown headings (## or ###).
+//
+// @MX:NOTE: [AUTO] managed sections (managedSectionHeadings) are preserved verbatim from the local side when upstream is unchanged; conflicting populated content surfaces a conflict
 func mergeSectionBased(base, current, updated []byte) (*MergeResult, error) {
 	baseSections := parseSections(string(base))
 	currentSections := parseSections(string(current))
@@ -500,6 +535,46 @@ func mergeSectionBased(base, current, updated []byte) (*MergeResult, error) {
 			baseContent := baseSec.content
 			curContent := curSec.content
 			updContent := sec.content
+
+			// Managed sections (REQ-HEV2-019/020) — the curator-managed
+			// blocks whose content is user-owned data, not template prose.
+			// These are treated as opaque preserved units per design.md
+			// §D.1 H-2 option (a): the local (current) content is
+			// authoritative. When the upstream template carries the same
+			// content as the base (template did not touch the block), the
+			// local populated block is preserved verbatim — the canonical
+			// moai-update scenario where the template ships an empty marker
+			// and the user's local copy carries a populated block
+			// (AC-HEV2-025 / AC-HEV2-026, no clobber). When both sides carry
+			// differing content inside the marker boundaries, a conflict is
+			// surfaced rather than auto-resolved (AC-HEV2-027, REQ-HEV2-020).
+			if isManagedSection(sec.heading) {
+				switch {
+				case curContent == updContent:
+					// Both sides converged on the same content — no conflict.
+					resultParts = append(resultParts, sec.heading+"\n"+curContent)
+				case updContent == baseContent:
+					// Template did not touch the block — preserve local
+					// verbatim (no clobber; AC-HEV2-025 / AC-HEV2-026).
+					resultParts = append(resultParts, sec.heading+"\n"+curContent)
+				case curContent == baseContent:
+					// Local did not touch the block — take the template version.
+					resultParts = append(resultParts, sec.heading+"\n"+updContent)
+				default:
+					// Both sides carry differing content inside the marker
+					// boundaries — surface a conflict (REQ-HEV2-020,
+					// AC-HEV2-027). Do NOT auto-resolve.
+					conflicts = append(conflicts, Conflict{
+						StartLine: 0,
+						EndLine:   0,
+						Base:      baseContent,
+						Current:   curContent,
+						Updated:   updContent,
+					})
+					resultParts = append(resultParts, sec.heading+"\n"+curContent)
+				}
+				continue
+			}
 
 			baseChanged := curContent != baseContent
 			updChanged := updContent != baseContent

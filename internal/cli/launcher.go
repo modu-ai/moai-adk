@@ -54,6 +54,17 @@ func unifiedLaunchDefault(profileName, modeOverride string, extraArgs []string) 
 	// 1. Determine effective LLM mode (command decides mode, not profile)
 	mode := resolveMode(modeOverride)
 
+	// 2. Resolve last-used-profile fallback for bare launches (no -p flag).
+	// When profileName is empty and the default profile is unconfigured, fall
+	// back to the most recently -p-launched named profile recorded in
+	// launch.yaml. Explicit -p always wins; MOAI_NO_PROFILE_FALLBACK=1 opts out.
+	originalProfile := profileName
+	resolved := profile.ResolveLaunchProfile(profileName)
+	if resolved != profileName && resolved != "" {
+		fmt.Fprintf(os.Stderr, "Using last-used profile '%s' (default profile has no preferences). Use -p default to override.\n", resolved)
+		profileName = resolved
+	}
+
 	// 3. Find project root
 	root, err := findProjectRootFn()
 	if err != nil {
@@ -76,7 +87,19 @@ func unifiedLaunchDefault(profileName, modeOverride string, extraArgs []string) 
 		}
 	}
 
-	// 5. Launch claude
+	// 5. Record the last-used profile. Only NAMED profiles the user explicitly
+	// passed via -p are recorded — this uses originalProfile (what the user
+	// typed), not the resolved value. Best-effort: a write failure is logged
+	// to stderr but never blocks the launch. This runs AFTER mode-specific env
+	// setup succeeds and BEFORE launchClaude (which on POSIX does syscall.Exec
+	// and replaces the process, so no code runs after it).
+	if originalProfile != "" && originalProfile != "default" {
+		if err := profile.RecordLastUsedProfile(originalProfile); err != nil {
+			_, _ = fmt.Fprintf(os.Stderr, "Warning: failed to record last-used profile: %v\n", err)
+		}
+	}
+
+	// 6. Launch claude
 	return launchClaude(profileName, extraArgs)
 }
 
@@ -173,7 +196,10 @@ func applyCGMode(root, profileName string) error {
 
 	if !inTmux && os.Getenv(config.EnvTestMode) != "1" {
 		return fmt.Errorf("CG mode requires a tmux session.\n\n" +
-			"tmux is required because:\n" +
+			"Claude Code itself supports iTerm2 split panes natively (v2.1.186+),\n" +
+			"but moai cg injects GLM credentials into teammate panes via tmux\n" +
+			"session-level env (set-environment). iTerm2 has no session-level env,\n" +
+			"so Leader=Claude / Teammates=GLM isolation requires tmux.\n\n" +
 			"  - This pane (lead): uses Claude API\n" +
 			"  - New panes (teammates): inherit GLM env for Z.AI API\n\n" +
 			"Start a tmux session first:\n" +
@@ -235,65 +261,64 @@ func applyCGMode(root, profileName string) error {
 // --- Mode Helpers (moved from cc.go) ---
 
 // removeGLMEnv removes GLM environment variables from settings.local.json.
+//
+// SPEC-CLIFIX-CRITICAL-001 REQ-CRIT-001-001: round-trips as map[string]any so
+// unknown top-level keys survive the write.
 func removeGLMEnv(settingsPath string) error {
-	data, err := os.ReadFile(settingsPath)
+	// Non-locked pre-check: if the file is absent or empty, there are no GLM env
+	// keys to clean. Preserves the original no-op-on-empty behavior.
+	preRead, err := readSettingsMap(settingsPath)
 	if err != nil {
-		if os.IsNotExist(err) {
-			return nil
-		}
-		return fmt.Errorf("read settings.local.json: %w", err)
+		return err
 	}
-
-	if len(data) == 0 {
+	if len(preRead) == 0 {
 		return nil
 	}
 
-	var settings SettingsLocal
-	if err := json.Unmarshal(data, &settings); err != nil {
-		return fmt.Errorf("parse settings.local.json: %w", err)
-	}
-
-	// Clear teammateMode override so settings.json default ("auto") applies.
-	// CG/GLM modes set this to "tmux"; CC mode should restore the default.
-	settings.TeammateMode = ""
-
-	if settings.Env != nil {
-		// Restore backed-up OAuth token before removing GLM vars
-		if backup, ok := settings.Env["MOAI_BACKUP_AUTH_TOKEN"]; ok && backup != "" {
-			settings.Env["ANTHROPIC_AUTH_TOKEN"] = backup
-			delete(settings.Env, "MOAI_BACKUP_AUTH_TOKEN")
-		} else {
-			delete(settings.Env, "ANTHROPIC_AUTH_TOKEN")
+	// SPEC-CLIFIX-CONCURRENCY-001 REQ-CONC-001-001: route through the locked+atomic
+	// mutateSettingsLocal seam so concurrent sessions cannot lose updates.
+	return mutateSettingsLocal(settingsPath, func(m map[string]any) {
+		if len(m) == 0 {
+			return
 		}
-		delete(settings.Env, "ANTHROPIC_BASE_URL")
-		delete(settings.Env, "ANTHROPIC_DEFAULT_HAIKU_MODEL")
-		delete(settings.Env, "ANTHROPIC_DEFAULT_SONNET_MODEL")
-		delete(settings.Env, "ANTHROPIC_DEFAULT_OPUS_MODEL")
-		// Remove Z.AI proxy compatibility flags (set by moai glm/cg)
-		delete(settings.Env, "CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS")
-		delete(settings.Env, "API_TIMEOUT_MS")
-		delete(settings.Env, "CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC")
-		// Remove teammate display env var override (CG/GLM set this)
-		delete(settings.Env, "CLAUDE_CODE_TEAMMATE_DISPLAY")
-		// Issue #742: drop GLM context-size hint when leaving GLM mode so the
-		// statusline reverts to the Claude slot's nominal size.
-		delete(settings.Env, "MOAI_STATUSLINE_CONTEXT_SIZE")
 
-		if len(settings.Env) == 0 {
-			settings.Env = nil
+		// Clear teammateMode override so settings.json default ("auto") applies.
+		// CG/GLM modes set this to "tmux"; CC mode should restore the default.
+		// delete (rather than m["teammateMode"] = "") so the key is omitted entirely,
+		// matching the original struct's omitempty behavior for "".
+		delete(m, "teammateMode")
+
+		if env, ok := m["env"].(map[string]any); ok {
+			// Restore backed-up OAuth token before removing GLM vars
+			if backup, bok := env["MOAI_BACKUP_AUTH_TOKEN"].(string); bok && backup != "" {
+				env["ANTHROPIC_AUTH_TOKEN"] = backup
+				delete(env, "MOAI_BACKUP_AUTH_TOKEN")
+			} else {
+				delete(env, "ANTHROPIC_AUTH_TOKEN")
+			}
+			delete(env, "ANTHROPIC_BASE_URL")
+			delete(env, "ANTHROPIC_DEFAULT_HAIKU_MODEL")
+			delete(env, "ANTHROPIC_DEFAULT_SONNET_MODEL")
+			delete(env, "ANTHROPIC_DEFAULT_OPUS_MODEL")
+			delete(env, "ANTHROPIC_DEFAULT_FABLE_MODEL")
+			// Remove Z.AI proxy compatibility flags (set by moai glm/cg)
+			delete(env, "CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS")
+			delete(env, "API_TIMEOUT_MS")
+			delete(env, "CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC")
+			// Remove teammate display env var override (CG/GLM set this)
+			delete(env, "CLAUDE_CODE_TEAMMATE_DISPLAY")
+			// Issue #742: drop GLM context-size hint when leaving GLM mode so the
+			// statusline reverts to the Claude slot's nominal size.
+			delete(env, "MOAI_STATUSLINE_CONTEXT_SIZE")
+			// SPEC-CLIFIX-CONCURRENCY-001 REQ-CONC-001-002: drop the 1M auto-compact
+			// window so it does not persist into subsequent moai cc sessions.
+			delete(env, config.EnvClaudeCodeAutoCompactWindow)
+
+			if len(env) == 0 {
+				delete(m, "env")
+			}
 		}
-	}
-
-	data, err = json.MarshalIndent(settings, "", "  ")
-	if err != nil {
-		return fmt.Errorf("marshal settings: %w", err)
-	}
-
-	if err := os.WriteFile(settingsPath, data, 0o600); err != nil {
-		return fmt.Errorf("write settings.local.json: %w", err)
-	}
-
-	return nil
+	})
 }
 
 // resetTeamModeForCC disables team_mode when switching to CC.
@@ -523,8 +548,15 @@ func launchClaudeDefault(profileName string, extraArgs []string) error {
 		}
 	}
 
-	// 6. Expand model string (e.g. "claude-opus-4-6[1m]" -> "claude-opus-4-6")
-	model = expandModelString(model)
+	// 6. Resolve model string. Under a GLM backend the --model flag MUST carry a
+	// slot alias (opus/sonnet/...) so it routes through the ANTHROPIC_DEFAULT_*_MODEL
+	// slot env that setGLMEnv configured; under a Claude backend short aliases
+	// expand to canonical ids as before (byte-identical to expandModelString).
+	glmBackend := false
+	if root, err := findProjectRoot(); err == nil {
+		glmBackend = resolveGLMBackendForLaunch(root)
+	}
+	model = resolveMainSessionModel(model, glmBackend)
 
 	// 7. Build args
 	buildArgs := func(withContinue bool) []string {
@@ -567,7 +599,17 @@ func launchClaudeDefault(profileName string, extraArgs []string) error {
 	// (syscall.Exec); no defer() functions run after that point. On Windows it
 	// spawns a child and exits with the child's code (syscall.Exec is POSIX-only
 	// — REQ-CGH-001). Ensure all cleanup and setup is complete before calling.
-	launchEnv := buildEnvForLaunch(prefs.EffortLevel, os.Environ())
+	effectiveEffort := resolveLaunchEffort(prefs.EffortLevel, prefs.ModelPolicy)
+	var launchEnv []string
+	if glmBackend {
+		// GLM backend: z.ai honors reasoning_effort, NOT Claude's 5-step effort.
+		// Derive ANTHROPIC_REASONING_EFFORT from the effective effort and strip the
+		// inert CLAUDE_CODE_EFFORT_LEVEL so a web-set effort reaches z.ai.
+		launchEnv = buildEnvForGLMLaunch(effectiveEffort, os.Environ())
+	} else {
+		// Claude backend: honors the 5-step effort vocabulary (CLAUDE_CODE_EFFORT_LEVEL).
+		launchEnv = buildEnvForLaunch(effectiveEffort, os.Environ())
+	}
 	return execOrSpawnClaude(claudeBin, buildArgs(false), launchEnv)
 }
 
@@ -658,51 +700,36 @@ func readSettingsLocalForLaunch() map[string]string {
 // a silent no-op. See profile_setup.go runProfileSetup normalization block
 // (REQ-CCI-006 / REQ-CCI-007 — the normalization is intentional, and it is
 // disclosed to the user via the wizard confirmation, not silently applied).
+// syncPermissionModeToSettingsLocal persists the profile permission mode
+// preference to .claude/settings.local.json so that permissions.defaultMode
+// survives across sessions regardless of how Claude Code is launched.
+//
+// SPEC-CLIFIX-CRITICAL-001 REQ-CRIT-001-001: round-trips as map[string]any so
+// unknown top-level keys survive the write.
 func syncPermissionModeToSettingsLocal(settingsPath string, permissionMode string) error {
-	var settings SettingsLocal
-
-	data, err := os.ReadFile(settingsPath)
-	if err != nil && !os.IsNotExist(err) {
-		return fmt.Errorf("read settings.local.json: %w", err)
-	}
-	if err == nil && len(data) > 0 {
-		if err := json.Unmarshal(data, &settings); err != nil {
-			return fmt.Errorf("parse settings.local.json: %w", err)
-		}
-	}
-
-	// Only write an override when the mode differs from the project default.
-	// The project settings.json default is "acceptEdits", so we skip writing
-	// for empty string and "acceptEdits" to avoid unnecessary overrides.
-	if permissionMode != "" && permissionMode != "acceptEdits" {
-		if settings.Permissions == nil {
-			settings.Permissions = make(map[string]any)
-		}
-		settings.Permissions["defaultMode"] = permissionMode
-	} else {
-		// Remove the override so settings.json default applies
-		if settings.Permissions != nil {
-			delete(settings.Permissions, "defaultMode")
-			if len(settings.Permissions) == 0 {
-				settings.Permissions = nil
+	// SPEC-CLIFIX-CONCURRENCY-001 REQ-CONC-001-001: route through the locked+atomic
+	// mutateSettingsLocal seam so concurrent sessions cannot lose updates.
+	return mutateSettingsLocal(settingsPath, func(m map[string]any) {
+		// Only write an override when the mode differs from the project default.
+		// The project settings.json default is "acceptEdits", so we skip writing
+		// for empty string and "acceptEdits" to avoid unnecessary overrides.
+		if permissionMode != "" && permissionMode != "acceptEdits" {
+			perms, _ := m["permissions"].(map[string]any)
+			if perms == nil {
+				perms = make(map[string]any)
+			}
+			perms["defaultMode"] = permissionMode
+			m["permissions"] = perms
+		} else {
+			// Remove the override so settings.json default applies
+			if perms, ok := m["permissions"].(map[string]any); ok {
+				delete(perms, "defaultMode")
+				if len(perms) == 0 {
+					delete(m, "permissions")
+				}
 			}
 		}
-	}
-
-	out, err := json.MarshalIndent(settings, "", "  ")
-	if err != nil {
-		return fmt.Errorf("marshal settings: %w", err)
-	}
-
-	if err := os.MkdirAll(filepath.Dir(settingsPath), 0o755); err != nil {
-		return fmt.Errorf("create directory: %w", err)
-	}
-
-	if err := os.WriteFile(settingsPath, out, 0o600); err != nil {
-		return fmt.Errorf("write settings.local.json: %w", err)
-	}
-
-	return nil
+	})
 }
 
 // expandModelString normalizes moai-specific model strings into valid Claude
@@ -743,12 +770,12 @@ func splitModelSuffix(model string) (base, suffix string) {
 // in base is replaced to avoid duplicates. When effortLevel is empty, base is
 // returned unchanged.
 //
-// @MX:NOTE: [AUTO] Effort injection point — separate from model routing (ModelPolicy⊥Effort).
+// @MX:NOTE: [AUTO] Effort injection point (Claude backend) — model ROUTING (ModelPolicy→model) is orthogonal to effort; effort SOURCING now falls back to a model_policy-derived effort (resolveLaunchEffort→MapModelPolicyToEffort) when prefs.EffortLevel is empty. The routing⊥effort invariant still holds.
 func buildEnvForLaunch(effortLevel string, base []string) []string {
 	if effortLevel == "" {
 		return base
 	}
-	const key = "CLAUDE_CODE_EFFORT_LEVEL"
+	key := config.EnvClaudeCodeEffortLevel
 	entry := key + "=" + effortLevel
 	result := make([]string, 0, len(base)+1)
 	replaced := false
@@ -764,6 +791,91 @@ func buildEnvForLaunch(effortLevel string, base []string) []string {
 		result = append(result, entry)
 	}
 	return result
+}
+
+// resolveLaunchEffort resolves the CLAUDE_CODE_EFFORT_LEVEL value for the launch
+// from the two profile levers: explicit prefs.EffortLevel always wins; otherwise
+// the model_policy-derived effort (template.MapModelPolicyToEffort) is used as a
+// fallback; both empty → "" (no override, byte-identical to today's launch).
+// model-ROUTING (prefs.Model → DO_CLAUDE_MODEL) remains orthogonal to effort
+// sourcing — only effort SOURCING reads model_policy here.
+func resolveLaunchEffort(effortLevel, modelPolicy string) string {
+	if effortLevel != "" {
+		return effortLevel
+	}
+	if modelPolicy != "" {
+		if e := template.MapModelPolicyToEffort(template.ModelPolicy(modelPolicy)); e != "" {
+			return e
+		}
+	}
+	return ""
+}
+
+// buildEnvForGLMLaunch returns an environment slice for a GLM-backed main
+// session. It strips any inherited CLAUDE_CODE_EFFORT_LEVEL (z.ai does NOT
+// implement Claude's 5-level effort — that var is inert under the z.ai proxy)
+// and injects ANTHROPIC_REASONING_EFFORT derived from the web-set effort via
+// the GLM effort overlay, so a web-set effort reaches z.ai through the channel
+// it honors. Any pre-existing ANTHROPIC_REASONING_EFFORT (setGLMEnv writes the
+// hardcoded coding-max default) is replaced so the prefs-derived value wins.
+// When the effort collapse disables thinking, no reasoning-effort entry is
+// emitted (reasoning_effort is moot when thinking is off).
+func buildEnvForGLMLaunch(effort string, base []string) []string {
+	result := make([]string, 0, len(base)+1)
+	for _, e := range base {
+		if strings.HasPrefix(e, config.EnvClaudeCodeEffortLevel+"=") {
+			continue // inert under z.ai — strip
+		}
+		if strings.HasPrefix(e, config.EnvAnthropicReasoningEffort+"=") {
+			continue // re-derived from effort below
+		}
+		result = append(result, e)
+	}
+	for k, v := range glmReasoningEnvVarsForEffort(effort) {
+		result = append(result, k+"="+v)
+	}
+	return result
+}
+
+// resolveMainSessionModel resolves the --model flag value for the main session,
+// GLM-aware. Under a Claude backend (glmBackend==false) it is byte-identical to
+// expandModelString (short alias → canonical id). Under a GLM backend
+// (glmBackend==true) it REVERSE-maps any canonical id back to its slot alias
+// (opus/sonnet/haiku/fable) via template.ModelAliasFromCanonicalID, so the
+// --model flag routes through the ANTHROPIC_DEFAULT_*_MODEL slot env that
+// setGLMEnv configured — z.ai's Anthropic-compat shim binds those env vars only
+// to slot aliases, and a literal canonical claude-* id is sent straight to the
+// z.ai proxy base URL, bypassing the slot→GLM-model mapping and silently
+// defeating the web-set model preference. Already-alias values pass through
+// unchanged; the [1m] suffix is preserved; unknown values pass through.
+func resolveMainSessionModel(prefsModel string, glmBackend bool) string {
+	if !glmBackend {
+		return expandModelString(prefsModel)
+	}
+	if prefsModel == "" {
+		return ""
+	}
+	base, suffix := splitModelSuffix(prefsModel)
+	alias := template.ModelAliasFromCanonicalID(base)
+	if suffix == "" {
+		return alias
+	}
+	return alias + suffix
+}
+
+// resolveGLMBackendForLaunch reports whether the main-session launch is under a
+// GLM backend, by reading the persisted team_mode from llm.yaml
+// (template.IsGLMBackend). applyGLMMode / applyCGMode persist team_mode BEFORE
+// launchClaude runs, so the llm.yaml signal is authoritative at this point. On
+// any read error it resolves false (safe default — the Claude-backend launch
+// path), matching the pre-existing behavior for a non-GLM checkout.
+func resolveGLMBackendForLaunch(root string) bool {
+	sectionsDir := filepath.Join(filepath.Clean(root), defs.MoAIDir, defs.SectionsSubdir)
+	llm, err := loadLLMSectionOnly(sectionsDir)
+	if err != nil {
+		return false
+	}
+	return template.IsGLMBackend(llm)
 }
 
 // syncBypassToSettingsLocal is a backward-compatible wrapper for

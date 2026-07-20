@@ -10,14 +10,19 @@ import (
 // DefaultQuestions returns the standard set of questions for project initialization.
 // The questions follow this order:
 // 1. Project name (required)
-// 2. Development mode
-// 3. Git mode
-// 4. Git provider (conditional)
-// 5. GitLab instance URL (conditional)
-// 6. GitHub username (conditional)
-// 7. GitHub token (conditional)
-// 8. GitLab username (conditional)
-// 9. GitLab token (conditional)
+// 2. Model policy
+// 3. Report format
+// 4. Git mode
+// 5. Git provider (conditional)
+// 6. GitLab instance URL (conditional)
+// 7. GitHub username (conditional)
+// 8. GitHub token (conditional)
+// 9. GitLab username (conditional)
+// 10. GitLab token (conditional)
+//
+// plan_type and development_mode are NO LONGER interactive questions — they
+// default silently (plan_type → subscription at persistence; development_mode →
+// tdd in init.go) and remain overridable via the --plan-type / --mode flags.
 func DefaultQuestions(projectRoot string) []Question {
 	// Use current directory name as default project name
 	defaultProjectName := filepath.Base(projectRoot)
@@ -29,6 +34,7 @@ func DefaultQuestions(projectRoot string) []Question {
 		// 1. Project Name
 		{
 			ID:          "project_name",
+			Group:       "Project",
 			Type:        QuestionTypeInput,
 			Title:       "Enter project name",
 			Description: "The name of your project.",
@@ -38,6 +44,7 @@ func DefaultQuestions(projectRoot string) []Question {
 		// 2. Model Policy
 		{
 			ID:          "model_policy",
+			Group:       "Project",
 			Type:        QuestionTypeSelect,
 			Title:       "Select model policy",
 			Description: "Controls which Claude model tier is assigned to each agent. Match to your Claude plan.",
@@ -49,22 +56,27 @@ func DefaultQuestions(projectRoot string) []Question {
 			Default:  "high",
 			Required: true,
 		},
-		// 3. Development Mode
+		// 3. Report Format — html+md vs md.
+		// The value set mirrors internal/settings reportFormatValues (the closed
+		// set {"html+md", "md"} consumed by the moai-domain-html-report skill via
+		// report.format). Keep these two Values in sync with that SSOT.
 		{
-			ID:          "development_mode",
+			ID:          "report_format",
+			Group:       "Project",
 			Type:        QuestionTypeSelect,
-			Title:       "Select development methodology",
-			Description: "Controls the development workflow cycle used during implementation.",
+			Title:       "Select report format",
+			Description: "Controls whether reports are generated as HTML+Markdown or Markdown only.",
 			Options: []Option{
-				{Label: "TDD (Recommended)", Value: "tdd", Desc: "Test-Driven Development: RED-GREEN-REFACTOR"},
-				{Label: "DDD", Value: "ddd", Desc: "Domain-Driven Development: ANALYZE-PRESERVE-IMPROVE"},
+				{Label: "HTML + Markdown (Recommended)", Value: "html+md", Desc: "Generate both an HTML report (browser-viewable) and Markdown"},
+				{Label: "Markdown only", Value: "md", Desc: "Generate Markdown reports only (lighter, diff-friendly)"},
 			},
-			Default:  "tdd",
+			Default:  "html+md",
 			Required: true,
 		},
-		// 3. Git Mode
+		// 4. Git Mode
 		{
 			ID:          "git_mode",
+			Group:       "Git",
 			Type:        QuestionTypeSelect,
 			Title:       "Select Git automation mode",
 			Description: "Controls how much Git automation Claude can perform.",
@@ -79,6 +91,7 @@ func DefaultQuestions(projectRoot string) []Question {
 		// 4. Git Provider (conditional - only for personal/team modes)
 		{
 			ID:          "git_provider",
+			Group:       "Git",
 			Type:        QuestionTypeSelect,
 			Title:       "Select your Git provider",
 			Description: "Choose the Git hosting platform for your project.",
@@ -95,6 +108,7 @@ func DefaultQuestions(projectRoot string) []Question {
 		// 5. GitLab Instance URL (conditional - only for gitlab provider)
 		{
 			ID:          "gitlab_instance_url",
+			Group:       "Git",
 			Type:        QuestionTypeInput,
 			Title:       "Enter GitLab instance URL",
 			Description: "For GitLab.com use https://gitlab.com. For self-hosted, enter your instance URL.",
@@ -107,6 +121,7 @@ func DefaultQuestions(projectRoot string) []Question {
 		// 6. GitHub Username (conditional - only for github provider)
 		{
 			ID:          "github_username",
+			Group:       "Git",
 			Type:        QuestionTypeInput,
 			Title:       "Enter your GitHub username",
 			Description: "Required for Git automation features.",
@@ -119,6 +134,7 @@ func DefaultQuestions(projectRoot string) []Question {
 		// 7. GitHub Token (conditional - only for github provider)
 		{
 			ID:          "github_token",
+			Group:       "Git",
 			Type:        QuestionTypeInput,
 			Title:       "Enter GitHub personal access token (optional)",
 			Description: "Required for PR creation and pushing. Leave empty to skip or use gh CLI.",
@@ -131,6 +147,7 @@ func DefaultQuestions(projectRoot string) []Question {
 		// 8. GitLab Username (conditional - only for gitlab provider)
 		{
 			ID:          "gitlab_username",
+			Group:       "Git",
 			Type:        QuestionTypeInput,
 			Title:       "Enter your GitLab username",
 			Description: "Required for Git automation features with GitLab.",
@@ -143,6 +160,7 @@ func DefaultQuestions(projectRoot string) []Question {
 		// 9. GitLab Token (conditional - only for gitlab provider)
 		{
 			ID:          "gitlab_token",
+			Group:       "Git",
 			Type:        QuestionTypeInput,
 			Title:       "Enter GitLab personal access token (optional)",
 			Description: "Required for MR creation and pushing. Leave empty to skip or use glab CLI.",
@@ -257,6 +275,7 @@ func Phase1Questions(projectRoot string) []Question {
 		// B1 — project.mode
 		{
 			ID:          "project_mode",
+			Group:       "Options",
 			Type:        QuestionTypeSelect,
 			Title:       "Select project mode",
 			Description: "Controls collaboration settings. 'personal' is the recommended default for solo developers.",
@@ -271,6 +290,7 @@ func Phase1Questions(projectRoot string) []Question {
 		// B2 — harness.default_profile (dynamic enumeration)
 		{
 			ID:          "harness_profile",
+			Group:       "Options",
 			Type:        QuestionTypeSelect,
 			Title:       "Select default harness evaluator profile",
 			Description: "Controls quality scoring depth. Profiles are loaded from .moai/config/evaluator-profiles/.",
@@ -282,6 +302,7 @@ func Phase1Questions(projectRoot string) []Question {
 		// B3 — lsp.enabled
 		{
 			ID:          "lsp_enabled",
+			Group:       "Options",
 			Type:        QuestionTypeConfirm,
 			Title:       "Enable LSP integration? (default: No)",
 			Description: "LSP provides language-server diagnostics during the run phase. Default is off (opt-in).",
@@ -292,6 +313,7 @@ func Phase1Questions(projectRoot string) []Question {
 		// B5 — quality.enforce_quality
 		{
 			ID:          "enforce_quality",
+			Group:       "Options",
 			Type:        QuestionTypeConfirm,
 			Title:       "Enforce quality gates? (default: Yes)",
 			Description: "When enabled, TRUST 5 quality gates block implementation progress on failure.",
@@ -302,6 +324,7 @@ func Phase1Questions(projectRoot string) []Question {
 		// B5 — quality.coverage_exemptions.enabled
 		{
 			ID:          "coverage_exemptions_enabled",
+			Group:       "Options",
 			Type:        QuestionTypeConfirm,
 			Title:       "Allow coverage exemptions? (default: No)",
 			Description: "Permits specific files or packages to be excluded from the coverage target.",
@@ -312,6 +335,7 @@ func Phase1Questions(projectRoot string) []Question {
 		// B8 — design.enabled
 		{
 			ID:          "design_enabled",
+			Group:       "Options",
 			Type:        QuestionTypeConfirm,
 			Title:       "Enable design workflow? (default: Yes)",
 			Description: "Enables the MoAI design pipeline (GAN loop, brand context, Claude Design integration).",
@@ -322,6 +346,7 @@ func Phase1Questions(projectRoot string) []Question {
 		// B8 — design.claude_design.enabled (conditional on design_enabled=true)
 		{
 			ID:          "claude_design_enabled",
+			Group:       "Options",
 			Type:        QuestionTypeConfirm,
 			Title:       "Enable Claude Design integration? (default: Yes)",
 			Description: "Enables the Claude Design handoff workflow within the design pipeline.",

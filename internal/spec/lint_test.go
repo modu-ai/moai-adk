@@ -463,6 +463,88 @@ func TestLinter_AC16_HierarchicalACCoverage(t *testing.T) {
 	}
 }
 
+// TestLinter_AC17_SpecsDirForeignEntry verifies that non-SPEC entries under the
+// auto-discovered BaseDir (.moai/specs) are surfaced as SpecsDirForeignEntry
+// warnings, while underscore-prefixed entries (_archive) and valid SPEC-*/
+// directories are NOT flagged.
+// AC-SPC-003-17: loose file + non-SPEC dir → SpecsDirForeignEntry (warning); _archive exempt.
+func TestLinter_AC17_SpecsDirForeignEntry(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	// One valid SPEC directory
+	specDir := filepath.Join(tmpDir, "SPEC-FOO-001")
+	if err := os.MkdirAll(specDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+	content, err := os.ReadFile(specPath("valid"))
+	if err != nil {
+		t.Fatalf("failed to read valid spec: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(specDir, "spec.md"), content, 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	// Foreign: a loose markdown file
+	if err := os.WriteFile(filepath.Join(tmpDir, "ROADMAP.md"), []byte("# Roadmap\n"), 0644); err != nil {
+		t.Fatal(err)
+	}
+	// Foreign: a non-SPEC directory
+	if err := os.MkdirAll(filepath.Join(tmpDir, "NOTES"), 0755); err != nil {
+		t.Fatal(err)
+	}
+	// Whitelisted: underscore-prefixed archive dir
+	if err := os.MkdirAll(filepath.Join(tmpDir, "_archive"), 0755); err != nil {
+		t.Fatal(err)
+	}
+
+	linter := spec.NewLinter(spec.LinterOptions{
+		RegistryPath: testRegistryPath(),
+		BaseDir:      tmpDir,
+	})
+
+	// Auto-discovery path (no explicit paths) triggers the root-integrity check.
+	report, err := linter.Lint(nil)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	foreign := findingsForCode(report.Findings, "SpecsDirForeignEntry")
+	if len(foreign) != 2 {
+		t.Fatalf("expected exactly 2 SpecsDirForeignEntry findings (ROADMAP.md + NOTES), got %d: %v",
+			len(foreign), foreign)
+	}
+
+	// Each must be warning severity.
+	for _, f := range foreign {
+		if f.Severity != spec.SeverityWarning {
+			t.Errorf("expected SpecsDirForeignEntry severity warning, got %s (finding: %v)", f.Severity, f)
+		}
+	}
+
+	// Verify ROADMAP.md and NOTES are each named exactly once; _archive and SPEC-FOO-001 must not appear.
+	var hasRoadmap, hasNotes bool
+	for _, f := range foreign {
+		if strings.Contains(f.Message, `"ROADMAP.md"`) {
+			hasRoadmap = true
+		}
+		if strings.Contains(f.Message, `"NOTES"`) {
+			hasNotes = true
+		}
+		if strings.Contains(f.Message, "_archive") {
+			t.Errorf("_archive must be whitelisted, but got finding: %v", f)
+		}
+		if strings.Contains(f.Message, "SPEC-FOO-001") {
+			t.Errorf("SPEC-FOO-001 must not be flagged, but got finding: %v", f)
+		}
+	}
+	if !hasRoadmap {
+		t.Errorf("expected a SpecsDirForeignEntry naming ROADMAP.md, got: %v", foreign)
+	}
+	if !hasNotes {
+		t.Errorf("expected a SpecsDirForeignEntry naming NOTES, got: %v", foreign)
+	}
+}
+
 // --- helper functions ---
 
 // filterBySeverity returns only the findings of the given severity.

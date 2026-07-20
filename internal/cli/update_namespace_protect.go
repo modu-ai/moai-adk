@@ -10,7 +10,7 @@
 //     substituted for colons (Windows-safe filenames) per REQ-UNP-010.
 //
 // Three distinct backup roots coexist after this SPEC:
-//   - .moai-backups/                                  (config backups; backupMoaiConfig)
+//   - .moai-backups/                                  (config backups; backup.BackupMoaiConfig)
 //   - .moai/archive/skills/v2.16-drift-<compact>/     (archive-drift; update_archive.go)
 //   - .moai/backups/update-<hyphenated-ISO>/          (this file)
 //
@@ -24,6 +24,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/modu-ai/moai-adk/internal/cli/update/plan"
+	"github.com/modu-ai/moai-adk/internal/cli/update/backup"
 	"github.com/modu-ai/moai-adk/internal/defs"
 )
 
@@ -35,9 +37,9 @@ import (
 // then .moai/harness. The deterministic order makes backup directory contents
 // predictable for verification.
 var userOwnedScanRoots = []string{
-	filepath.Join(defs.ClaudeDir, "skills"),  // .claude/skills/ (filter via isUserOwnedNamespace)
-	filepath.Join(defs.ClaudeDir, "agents"),  // .claude/agents/ (filter via isUserOwnedNamespace)
-	filepath.Join(defs.MoAIDir, "harness"),   // .moai/harness/ (all contents user-owned per REQ-UNP-003)
+	filepath.Join(defs.ClaudeDir, "skills"), // .claude/skills/ (filter via isUserOwnedNamespace)
+	filepath.Join(defs.ClaudeDir, "agents"), // .claude/agents/ (filter via isUserOwnedNamespace)
+	filepath.Join(defs.MoAIDir, "harness"),  // .moai/harness/ (all contents user-owned per REQ-UNP-003)
 }
 
 // deployOp represents a planned destructive operation against a single path.
@@ -56,7 +58,7 @@ type deployOp struct {
 // separator preserve ISO-8601 readability.
 //
 // Distinct from defs.BackupTimestampFormat ("20060102_150405") used by
-// backupMoaiConfig, and from update_archive.go driftStamp format
+// backup.BackupMoaiConfig, and from update_archive.go driftStamp format
 // ("20060102T150405Z"). Three formats, three concerns.
 func newNamespaceBackupStamp() string {
 	return time.Now().UTC().Format("2006-01-02T15-04-05Z")
@@ -91,13 +93,14 @@ func resolveNamespaceBackupDir(projectRoot, stamp string) (string, error) {
 	return candidate, nil
 }
 
-// collectUserOwnedFiles walks userOwnedScanRoots and returns the
-// project-root-relative paths of every file matched by isUserOwnedNamespace.
+// collectUserOwnedFilesWith walks userOwnedScanRoots and returns the
+// project-root-relative paths of every file matched by classify.
 //
-// Symlinks are returned as-is (their targets are not dereferenced); the
-// downstream copy step copies symlink targets as files per existing copyFile
-// semantics. This matches EC-UNP-004 expectation.
-func collectUserOwnedFiles(projectRoot string) ([]string, error) {
+// Symlinks are ALWAYS skipped (REQ-SEC-003): a symlink inside a user-owned
+// namespace must not have its dereferenced target content recorded into the
+// backup. The guard reuses backup.IsSymlinkEntry (update.go) — the same Lstat-based
+// pattern proven in SPEC-SEC-HARDEN-003 — so no new pattern is invented.
+func collectUserOwnedFilesWith(projectRoot string, classify func(string) bool) ([]string, error) {
 	var results []string
 
 	for _, root := range userOwnedScanRoots {
@@ -116,13 +119,18 @@ func collectUserOwnedFiles(projectRoot string) ([]string, error) {
 			if d.IsDir() {
 				return nil
 			}
+			// REQ-SEC-003 / AC-SEC-003b: skip symlinks so copyFile never
+			// records the link's dereferenced target content into the backup.
+			if backup.IsSymlinkEntry(path) {
+				return nil
+			}
 			rel, relErr := filepath.Rel(projectRoot, path)
 			if relErr != nil {
 				return relErr
 			}
-			// Normalize separators for isUserOwnedNamespace match.
+			// Normalize separators for classifier match.
 			relNorm := strings.ReplaceAll(rel, "\\", "/")
-			if isUserOwnedNamespace(relNorm) {
+			if classify(relNorm) {
 				results = append(results, relNorm)
 			}
 			return nil
@@ -133,6 +141,31 @@ func collectUserOwnedFiles(projectRoot string) ([]string, error) {
 	}
 
 	return results, nil
+}
+
+// collectUserOwnedFiles walks userOwnedScanRoots and returns the
+// project-root-relative paths of every file matched by the STRICT
+// isUserOwnedNamespace classifier. Symlinks are skipped (REQ-SEC-003).
+//
+// Used by buildPreserveInventory (update_preserve_inventory.go) which needs the
+// strict authoritative classification — clean-reinstall preserve semantics must
+// NOT be broadened by the conservative backup expansion (REQ-SEC-005 is a
+// backup-only concern).
+func collectUserOwnedFiles(projectRoot string) ([]string, error) {
+	return collectUserOwnedFilesWith(projectRoot, plan.IsUserOwnedNamespace)
+}
+
+// collectUserOwnedFilesConservative walks userOwnedScanRoots and returns the
+// project-root-relative paths of every file matched by the CONSERVATIVE
+// isUserOwnedNamespaceConservative classifier. Symlinks are skipped
+// (REQ-SEC-003).
+//
+// Used by backupUserOwnedNamespace (REQ-SEC-005 conservative backup
+// expansion): reserved-prefix names that are ambiguous (could be user-authored,
+// e.g. moai-my-notes / expert-mydomain.md) are included in the backup pass so
+// they are never overwritten/deleted without a backup.
+func collectUserOwnedFilesConservative(projectRoot string) ([]string, error) {
+	return collectUserOwnedFilesWith(projectRoot, isUserOwnedNamespaceConservative)
 }
 
 // backupUserOwnedNamespace creates a backup of all user-owned namespace files
@@ -156,8 +189,12 @@ func collectUserOwnedFiles(projectRoot string) ([]string, error) {
 // Stderr emission: this function returns the backup directory path; the
 // caller (cmdUpdate Backup step) is responsible for emitting the user-facing
 // success/skip message via tui.ProgressLine.
+//
+// REQ-SEC-005: uses the CONSERVATIVE collector so reserved-prefix names that
+// are ambiguous (could be user-authored) are also backed up rather than risk
+// overwrite-without-backup.
 func backupUserOwnedNamespace(projectRoot string) (string, error) {
-	files, err := collectUserOwnedFiles(projectRoot)
+	files, err := collectUserOwnedFilesConservative(projectRoot)
 	if err != nil {
 		return "", fmt.Errorf("collect user-owned files: %w", err)
 	}
@@ -221,12 +258,12 @@ func backupUserOwnedNamespace(projectRoot string) (string, error) {
 // localization (per language.yaml error_messages: en).
 //
 // @MX:ANCHOR: [AUTO] assertNoUserOwnedNamespaceTouch is the namespace violation gate before destructive ops
-// @MX:REASON: [AUTO] REQ-UNP-006 sentinel — must run before any deploy/delete/merge to user-owned path
-func assertNoUserOwnedNamespaceTouch(plan []deployOp) error {
-	for _, op := range plan {
+// @MX:REASON: [AUTO] REQ-UNP-006 sentinel — must run before any deploy/delete/merge to user-owned path; wired as a real pre-modification abort gate via verifyNamespaceBackupCoverage (SPEC-INTERNAL-SECURITY-001 REQ-SEC-006)
+func assertNoUserOwnedNamespaceTouch(deployPlan []deployOp) error {
+	for _, op := range deployPlan {
 		// Normalize separators for cross-platform match
 		relNorm := strings.ReplaceAll(op.rel, "\\", "/")
-		if isUserOwnedNamespace(relNorm) {
+		if plan.IsUserOwnedNamespace(relNorm) {
 			return fmt.Errorf("UPDATE_USER_NAMESPACE_VIOLATION: %s would touch user-owned path: %s",
 				op.action, op.rel)
 		}
@@ -234,3 +271,99 @@ func assertNoUserOwnedNamespaceTouch(plan []deployOp) error {
 	return nil
 }
 
+// verifyNamespaceBackupCoverage is the wired pre-modification abort gate for
+// SPEC-INTERNAL-SECURITY-001 REQ-SEC-006 (AC-SEC-006a). It runs AFTER the
+// namespace backup completes and BEFORE any destructive deploy step, confirming
+// that every user-owned namespace file on disk was captured in the backup.
+//
+// It collects the conservative user-owned set, builds a deploy plan of those
+// NOT present in backupDir, and delegates to assertNoUserOwnedNamespaceTouch
+// — which emits the grep-able UPDATE_USER_NAMESPACE_VIOLATION sentinel on the
+// first user-owned file that would be overwritten without a backup.
+//
+// Behavior preservation (NFR-SEC-003):
+//   - No user-owned content → collected set empty → empty plan → nil (pass).
+//   - All user-owned content backed up → every file present in backupDir →
+//     empty plan → nil (pass). Normal updates still succeed.
+//   - A user-owned file on disk missing from backupDir → non-empty plan →
+//     UPDATE_USER_NAMESPACE_VIOLATION (abort before destructive ops).
+//
+// @MX:NOTE: [AUTO] SPEC-INTERNAL-SECURITY-001 REQ-SEC-006 — wires the previously-dead
+// assertNoUserOwnedNamespaceTouch as a real backup-coverage gate on the moai update deploy path.
+func verifyNamespaceBackupCoverage(projectRoot, backupDir string) error {
+	collected, err := collectUserOwnedFilesConservative(projectRoot)
+	if err != nil {
+		return fmt.Errorf("verify namespace backup coverage: %w", err)
+	}
+
+	var unprotected []deployOp
+	for _, rel := range collected {
+		backedUp := false
+		if backupDir != "" {
+			if _, statErr := os.Stat(filepath.Join(backupDir, rel)); statErr == nil {
+				backedUp = true
+			}
+		}
+		if !backedUp {
+			unprotected = append(unprotected, deployOp{rel: rel, action: "overwrite"})
+		}
+	}
+
+	return assertNoUserOwnedNamespaceTouch(unprotected)
+}
+
+// isUserOwnedNamespaceConservative is a superset of isUserOwnedNamespace used
+// by the backup pass (collectUserOwnedFilesConservative) for
+// SPEC-INTERNAL-SECURITY-001 REQ-SEC-005 conservative backup expansion.
+//
+// Reserved-prefix names whose provenance is ambiguous (could be MoAI-managed OR
+// user-authored) are treated as user-owned so they are included in the backup
+// pass — back up rather than risk overwrite-without-backup (R4 low-risk path).
+// The accepted tradeoff is increased backup size: real MoAI-managed assets with
+// reserved prefixes (e.g. moai-foundation-cc) are also backed up.
+//
+// Unambiguous MoAI system directories (.claude/agents/{core,expert,meta}) and
+// non-namespace config paths remain excluded.
+//
+// @MX:NOTE: [AUTO] SPEC-INTERNAL-SECURITY-001 REQ-SEC-005 — conservative backup superset of isUserOwnedNamespace.
+func isUserOwnedNamespaceConservative(rel string) bool {
+	// Strict superset: anything the authoritative check classifies as user-owned.
+	if plan.IsUserOwnedNamespace(rel) {
+		return true
+	}
+
+	norm := strings.ReplaceAll(rel, "\\", "/")
+
+	// REQ-SEC-005: .claude/skills/ with reserved prefix moai/moai- is ambiguous
+	// (user could have authored moai-my-notes). Back it up conservatively.
+	if strings.HasPrefix(norm, ".claude/skills/") {
+		rest := strings.TrimPrefix(norm, ".claude/skills/")
+		seg := strings.SplitN(rest, "/", 2)[0]
+		if seg == "moai" || strings.HasPrefix(seg, "moai-") {
+			return true
+		}
+	}
+
+	// REQ-SEC-005: .claude/agents/ top-level files with reserved prefixes are
+	// ambiguous. System agent directories (core/expert/meta) stay excluded —
+	// they are unambiguously MoAI-managed, not user-authored.
+	if strings.HasPrefix(norm, ".claude/agents/") {
+		rest := strings.TrimPrefix(norm, ".claude/agents/")
+		seg := strings.SplitN(rest, "/", 2)[0]
+		switch seg {
+		case "core", "expert", "meta":
+			return false // unambiguously MoAI system agents
+		}
+		base := seg
+		if dot := strings.LastIndex(base, "."); dot > 0 {
+			base = base[:dot]
+		}
+		if strings.HasPrefix(base, "moai-") || strings.HasPrefix(base, "moai") ||
+			strings.HasPrefix(base, "manager-") || strings.HasPrefix(base, "expert-") ||
+			strings.HasPrefix(base, "builder-") || strings.HasPrefix(base, "evaluator-") {
+			return true
+		}
+	}
+
+	return false
+}

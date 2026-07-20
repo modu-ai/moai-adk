@@ -20,7 +20,7 @@ The following reference documents from `revfactory/harness` (imported 2026-04-26
 1. `agent-design-patterns.md` → `.claude/rules/moai/development/agent-patterns.md`
 2. `qa-agent-guide.md` → `.claude/rules/moai/quality/boundary-verification.md`
 3. `skill-testing-guide.md` → `.claude/rules/moai/development/skill-ab-testing.md`
-4. `team-examples.md` → `.claude/rules/moai/workflow/team-pattern-cookbook.md`
+4. `team-examples.md` → (retired — the derived team-pattern cookbook rule was removed in the Agent Teams static-layer retirement; no longer distributed)
 5. `orchestrator-template.md` → `.claude/rules/moai/development/orchestrator-templates.md`
 6. `skill-writing-guide.md` → `.claude/rules/moai/development/skill-writing-craft.md`
 
@@ -93,3 +93,9 @@ The im-not-ai skill is shared publicly under the MIT License. MoAI-ADK has porte
 **Import Date (im-not-ai)**: 2026-06-15
 **MoAI-ADK License**: MIT
 **Combined Compatibility**: Apache 2.0 imports distributed under MIT with both Apache and MIT attributions preserved.
+
+---
+
+## Anthropic 2026 Alignment
+
+Anthropic Claude Code documentation — fair-use academic attribution. The agent catalog was realigned to Anthropic 2026 best practices (8 retained agents at consolidation time; now 10 per CLAUDE.md §4). Realignment details: the agent-catalog realignment SPEC.

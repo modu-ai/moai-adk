@@ -4,7 +4,7 @@
 > Parent: [TRUST 5 Framework](./trust5-framework.md)
 > Complexity: Advanced
 > Time: 15+ minutes
-> Dependencies: Python 3.8+, ast, Context7 MCP
+> Dependencies: source parser (AST), WebSearch/WebFetch
 
 ## Overview
 
@@ -14,70 +14,38 @@ Safety (20% weight) validates security and error handling through security vulne
 
 ### Comprehensive Security Scan
 
-```python
-async def perform_advanced_security_analysis(
-    self, file_path: str, content: str, tree: ast.AST
-) -> List[CodeIssue]:
-    """Perform advanced security analysis."""
-
+```text
+perform_advanced_security_analysis(file_path, content, tree):
     issues = []
+    # Load latest security patterns from Documentation
+    security_patterns = load_category_patterns()
+    safety_patterns   = security_patterns.safety default {}
 
-    # Load latest security patterns from Context7
-    security_patterns = await self.load_category_patterns()
-    safety_patterns = security_patterns.get('safety', {})
-
-    # Check for race conditions
-    race_conditions = self._detect_race_conditions(tree)
-    issues.extend(race_conditions)
-
-    # Check for resource leaks
-    resource_leaks = self._detect_resource_leaks(tree)
-    issues.extend(resource_leaks)
-
-    # Check for improper error handling
-    error_handling = self._analyze_error_handling(tree)
-    issues.extend(error_handling)
-
-    # Check for input validation issues
-    validation_issues = await self._check_input_validation(
-        file_path, content, safety_patterns
-    )
-    issues.extend(validation_issues)
-
+    issues.extend(detect_race_conditions(tree))
+    issues.extend(detect_resource_leaks(tree))
+    issues.extend(analyze_error_handling(tree))
+    issues.extend(check_input_validation(file_path, content, safety_patterns))
     return issues
 ```
 
 ### Resource Leak Detection
 
-```python
-def _detect_resource_leaks(self, tree: ast.AST) -> List[CodeIssue]:
-    """Detect potential resource leaks."""
+Detect resources (files, connections, handles) acquired without a cleanup idiom. The exact idiom is language-specific (Python `with`, Go `defer`, JS/TS `using`, Java/JS try-with-resources, Rust drop/RAII); flag acquisitions that are not covered by one.
 
+```text
+detect_resource_leaks(tree):
     issues = []
-
-    # Check for file handles without context managers
-    for node in ast.walk(tree):
-        if isinstance(node, ast.Call):
-            if isinstance(node.func, ast.Name) and node.func.id == 'open':
-                # Check if wrapped in with statement
-                if not self._is_in_with_statement(node):
-                    issue = CodeIssue(
-                        id=f"resource_leak_{node.lineno}",
-                        category=TrustCategory.SAFETY,
-                        severity="medium",
-                        issue_type="code_smell",
-                        title="Potential Resource Leak",
-                        description="File opened without context manager",
-                        file_path=file_path,
-                        line_number=node.lineno,
-                        column_number=node.col_offset,
-                        code_snippet="# File handle may not be properly closed",
-                        suggested_fix="Use 'with open(...)' to ensure proper resource cleanup",
-                        confidence=0.7,
-                        rule_violated="RESOURCE_LEAK"
-                    )
-                    issues.append(issue)
-
+    for node in walk(tree, matching=ResourceAcquisition):   # open(), connect(), acquire()
+        if not is_within_cleanup_block(node):               # not inside with/defer/using/try-finally
+            issues.append(CodeIssue(
+                id="resource_leak_" + node.line,
+                category=TrustCategory.SAFETY, severity="medium",
+                issue_type="code_smell", title="Potential Resource Leak",
+                description="Resource acquired without a cleanup idiom (defer / with / using / RAII)",
+                file_path=file_path, line_number=node.line, column_number=node.column,
+                code_snippet="# resource may not be released on all paths",
+                suggested_fix="Wrap the acquisition in the language's cleanup idiom",
+                confidence=0.7, rule_violated="RESOURCE_LEAK"))
     return issues
 ```
 
@@ -93,53 +61,40 @@ def _detect_resource_leaks(self, tree: ast.AST) -> List[CodeIssue]:
 6. **Weak Cryptography**: Insecure algorithms or key sizes
 7. **Hardcoded Secrets**: Passwords, API keys in source
 
-### Context7 Integration
+### Documentation Integration
 
-```python
+```text
 # Load safety patterns
-safety = await self.context7.get_library_docs(
-    context7_library_id="/security/owasp",
-    topic="security vulnerability detection 2025",
-    tokens=5000
-)
+safety = docs.get_library_docs(
+    "<security/owasp>",
+    topic="security vulnerability detection",
+    tokens=5000)
 ```
 
 ## Error Handling Analysis
 
-```python
-def _analyze_error_handling(self, tree: ast.AST) -> List[CodeIssue]:
-    """Analyze error handling patterns."""
-
+```text
+analyze_error_handling(tree):
     issues = []
-
-    # Check for bare except clauses
-    for node in ast.walk(tree):
-        if isinstance(node, ast.ExceptHandler):
-            if node.type is None:
-                issue = CodeIssue(
-                    id=f"bare_except_{node.lineno}",
-                    category=TrustCategory.SAFETY,
-                    severity="medium",
-                    issue_type="code_smell",
-                    title="Bare Except Clause",
-                    description="Catches all exceptions, including system exits",
-                    file_path=file_path,
-                    line_number=node.lineno,
-                    suggested_fix="Specify exception types to catch",
-                    confidence=0.8,
-                    rule_violated="BARE_EXCEPT"
-                )
-                issues.append(issue)
-
+    for node in walk(tree, matching=CatchClause):
+        if catches_all_untyped(node):    # bare catch / catch-all without a typed error
+            issues.append(CodeIssue(
+                id="bare_catch_" + node.line,
+                category=TrustCategory.SAFETY, severity="medium",
+                issue_type="code_smell", title="Bare / Catch-All Handler",
+                description="Catches all errors, including system-exit and unrelated failures",
+                file_path=file_path, line_number=node.line,
+                suggested_fix="Catch specific error types, or catch the base error type with logging",
+                confidence=0.8, rule_violated="BARE_CATCH"))
     return issues
 ```
 
 ## Best Practices
 
 1. Security First: Apply security-by-default principles
-2. Context Managers: Always use context managers for resources
+2. Cleanup Idioms: Always use the language's cleanup idiom (defer / with / using / RAII) for resources
 3. Input Validation: Validate all external input
-4. Error Propagation: Let exceptions propagate to appropriate handlers
+4. Error Propagation: Let errors propagate to appropriate handlers
 5. Regular Updates: Keep security patterns current
 
 ---

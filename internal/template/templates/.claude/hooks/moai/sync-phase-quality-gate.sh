@@ -10,13 +10,20 @@
 # tools are skipped gracefully; projects with no recognized language marker pass
 # the gate silently.
 #
-# Behavior: advisory (non-blocking) by DEFAULT. A failing check emits only
-# {"systemMessage": ...} — a warning that does NOT block the turn. The blocking
-# path ({"decision":"block"} on stdout + exit 0) is dormant and enabled only when
-# MOAI_SYNC_GATE_BLOCKING=1 is explicitly set. This split matters because, per
-# Claude Code Stop-hook semantics, stdout JSON is honored only on exit 0 (on
+# Behavior: BLOCKING by DEFAULT for the vet/build deterministic checks
+# (SPEC-OBSERVE-HYGIENE-001 REQ-OBH-004, D3=Promote). A failing vet/build emits
+# {"decision":"block", ...} on stdout + exit 0 — which blocks the turn.
+# MOAI_SYNC_GATE_BLOCKING is the opt-OUT: set it to 0/off/false/advisory to
+# downgrade a failing check to a non-blocking {"systemMessage": ...} warning.
+# (The legacy opt-in semantics MOAI_SYNC_GATE_BLOCKING=1 are accepted but now
+# redundant — blocking is the default.) tests/coverage are NOT run by this gate
+# (advisory regardless — heavy checks belong in CI). This split matters because,
+# per Claude Code Stop-hook semantics, stdout JSON is honored only on exit 0 (on
 # exit 2 stdout is discarded and only stderr is surfaced) — the "decision" field
 # is the blocking channel, so an advisory run must never emit that field.
+# The runtime-recovery §4 carve-out (recovery turns SHOULD defer) is preserved:
+# this script does not parse stopReason, so the carve-out remains documentation-
+# only at this layer (per runtime-recovery-doctrine.md §4).
 #
 # Once-per-commit: a given sync commit is gated at most ONCE. The gated HEAD SHA is
 # recorded in .moai/state/sync-quality-gate.last and the hook short-circuits on any
@@ -24,11 +31,12 @@
 #
 # Manual smoke test:
 #   echo '{}' | bash .claude/hooks/moai/sync-phase-quality-gate.sh
-# Expected: empty stdout (silent pass) on skip/allow; on an advisory warning a Stop
-# JSON {"systemMessage":...}; on a blocking failure (MOAI_SYNC_GATE_BLOCKING=1) a
-# Stop JSON {"decision":"block","reason":...,"systemMessage":...}. The per-check
-# detail is written to .moai/logs/sync-quality-gate.log, not stdout (Stop JSON-schema
-# rejects unknown fields and non-{approve,block} decision values).
+# Expected: empty stdout (silent pass) on skip/allow; on a blocking vet/build
+# failure (DEFAULT) a Stop JSON {"decision":"block","reason":...,"systemMessage":...};
+# set MOAI_SYNC_GATE_BLOCKING=0 to downgrade to an advisory {"systemMessage":...}
+# warning. The per-check detail is written to .moai/logs/sync-quality-gate.log, not
+# stdout (Stop JSON-schema rejects unknown fields and non-{approve,block} decision
+# values).
 #
 # Unit-test the detector directly (bypasses the sync-phase git gate):
 #   source .claude/hooks/moai/sync-phase-quality-gate.sh && detect_language "$dir"
@@ -42,14 +50,35 @@ set -e
 # passing the sync-phase-commit git gate below.
 detect_language() {
     root="${1:-.}"
+    # Marker priority follows the language matrix order (16 supported languages)
     if [ -f "$root/go.mod" ]; then
         echo "go"
-    elif [ -f "$root/package.json" ]; then
-        echo "node"
     elif [ -f "$root/pyproject.toml" ] || [ -f "$root/requirements.txt" ]; then
         echo "python"
+    elif [ -f "$root/package.json" ]; then
+        echo "node"
     elif [ -f "$root/Cargo.toml" ]; then
         echo "rust"
+    elif [ -f "$root/pom.xml" ] || [ -f "$root/build.gradle" ] || [ -f "$root/build.gradle.kts" ]; then
+        echo "java"
+    elif [ -f "$root/Gemfile" ]; then
+        echo "ruby"
+    elif [ -f "$root/composer.json" ]; then
+        echo "php"
+    elif [ -f "$root/mix.exs" ]; then
+        echo "elixir"
+    elif [ -f "$root/CMakeLists.txt" ] || [ -f "$root/Makefile" ]; then
+        echo "cpp"
+    elif [ -f "$root/build.sbt" ] || [ -f "$root/pom.xml" ]; then
+        echo "scala"
+    elif [ -f "$root/DESCRIPTION" ] || [ -f "$root/renv.lock" ]; then
+        echo "r"
+    elif [ -f "$root/pubspec.yaml" ]; then
+        echo "flutter"
+    elif [ -f "$root/Package.swift" ]; then
+        echo "swift"
+    elif [ -d "$root/.vs" ] || find "$root" -maxdepth 1 -name '*.csproj' -print -quit 2>/dev/null | grep -q .; then
+        echo "csharp"
     else
         echo ""
     fi
@@ -60,11 +89,22 @@ detect_language() {
 # delta means a docs/markdown-only sync and the gate skips.
 code_delta_pattern() {
     case "$1" in
-        go)     echo '\.go$' ;;
-        node)   echo '\.(js|ts|jsx|tsx|mjs|cjs)$' ;;
-        python) echo '\.py$' ;;
-        rust)   echo '\.rs$' ;;
-        *)      echo '' ;;
+        go)       echo '\.go$' ;;
+        python)   echo '\.py$' ;;
+        node)     echo '\.(js|ts|jsx|tsx|mjs|cjs)$' ;;
+        rust)     echo '\.rs$' ;;
+        java)     echo '\.java$' ;;
+        kotlin)   echo '\.kt|\.kts$' ;;
+        csharp)   echo '\.cs$' ;;
+        ruby)     echo '\.rb$' ;;
+        php)      echo '\.php$' ;;
+        elixir)   echo '\.ex$|\.exs$' ;;
+        cpp)      echo '\.(cpp|cc|cxx|h|hpp|hxx)$' ;;
+        scala)    echo '\.scala$' ;;
+        r)        echo '\.r$|\.R$' ;;
+        flutter)  echo '\.dart$' ;;
+        swift)    echo '\.swift$' ;;
+        *)        echo '' ;;
     esac
 }
 
@@ -185,17 +225,62 @@ case "$GATE_LANG" in
         run_step go c1 go vet ./...
         run_step go c2 go build ./...
         ;;
-    node)
-        C1_LABEL="eslint"
-        run_step eslint c1 eslint .
-        ;;
     python)
         C1_LABEL="ruff"
         run_step ruff c1 ruff check .
         ;;
+    node)
+        C1_LABEL="eslint"
+        run_step eslint c1 eslint .
+        ;;
     rust)
         C1_LABEL="cargo check"
         run_step cargo c1 cargo check
+        ;;
+    java)
+        C1_LABEL="javac compile check"
+        # Simple compile check: find .java files and attempt compilation
+        run_step javac c1 sh -c 'find . -name "*.java" -exec javac -cp "$(find . -name "*.jar" -printf "{}:")" {} + 2>&1 | head -20' || true
+        ;;
+    kotlin)
+        C1_LABEL="kotlinc"
+        run_step kotlinc c1 sh -c 'find . -name "*.kt" -exec kotlinc -cp "$(find . -name "*.jar" -printf "{}:")" {} + 2>&1 | head -20' || true
+        ;;
+    csharp)
+        C1_LABEL="dotnet build"
+        run_step dotnet c1 dotnet build --no-restore 2>&1 | head -30 || true
+        ;;
+    ruby)
+        C1_LABEL="ruby syntax"
+        run_step ruby c1 sh -c 'find . -name "*.rb" -exec ruby -c {} \; 2>&1' || true
+        ;;
+    php)
+        C1_LABEL="php syntax"
+        run_step php c1 sh -c 'find . -name "*.php" -exec php -l {} \; 2>&1' || true
+        ;;
+    elixir)
+        C1_LABEL="mix compile"
+        run_step mix c1 mix compile --no-start 2>&1 | head -20 || true
+        ;;
+    cpp)
+        C1_LABEL="g++ syntax check"
+        run_step g++ c1 sh -c 'find . -name "*.cpp" -o -name "*.cc" -exec g++ -fsyntax-only -std=c++17 {} \; 2>&1' || true
+        ;;
+    scala)
+        C1_LABEL="scalac"
+        run_step scalac c1 sh -c 'find . -name "*.scala" -exec scalac -cp "$(find . -name "*.jar" -printf "{}:")" {} + 2>&1 | head -20' || true
+        ;;
+    r)
+        C1_LABEL="R syntax"
+        run_step R c1 sh -c 'find . -name "*.R" -o -name "*.r" | head -5 | while read f; do Rscript -e "parse(\"$f\")" 2>&1; done' || true
+        ;;
+    flutter)
+        C1_LABEL="dart analyze"
+        run_step dart c1 dart analyze 2>&1 | head -30 || true
+        ;;
+    swift)
+        C1_LABEL="swift build"
+        run_step swift c1 swift build 2>&1 | head -30 || true
         ;;
 esac
 
@@ -204,10 +289,21 @@ esac
 # drive the block decision. Language-specific manifest set.
 DEPS_MANIFESTS=""
 case "$GATE_LANG" in
-    go)     DEPS_MANIFESTS="go.mod go.sum" ;;
-    node)   DEPS_MANIFESTS="package.json package-lock.json yarn.lock pnpm-lock.yaml" ;;
-    python) DEPS_MANIFESTS="pyproject.toml requirements.txt poetry.lock" ;;
-    rust)   DEPS_MANIFESTS="Cargo.toml Cargo.lock" ;;
+    go)       DEPS_MANIFESTS="go.mod go.sum" ;;
+    python)   DEPS_MANIFESTS="pyproject.toml requirements.txt poetry.lock" ;;
+    node)     DEPS_MANIFESTS="package.json package-lock.json yarn.lock pnpm-lock.yaml" ;;
+    rust)     DEPS_MANIFESTS="Cargo.toml Cargo.lock" ;;
+    java)     DEPS_MANIFESTS="pom.xml build.gradle build.gradle.kts gradle.properties" ;;
+    kotlin)   DEPS_MANIFESTS="pom.xml build.gradle.kts gradle.properties" ;;
+    csharp)   DEPS_MANIFESTS="*.csproj packages.lock.json" ;;
+    ruby)     DEPS_MANIFESTS="Gemfile Gemfile.lock" ;;
+    php)      DEPS_MANIFESTS="composer.json composer.lock" ;;
+    elixir)   DEPS_MANIFESTS="mix.exs mix.lock" ;;
+    cpp)      DEPS_MANIFESTS="CMakeLists.txt Makefile" ;;
+    scala)    DEPS_MANIFESTS="build.sbt pom.xml build.scala" ;;
+    r)        DEPS_MANIFESTS="DESCRIPTION renv.lock .Rprofile" ;;
+    flutter)  DEPS_MANIFESTS="pubspec.yaml pubspec.lock" ;;
+    swift)    DEPS_MANIFESTS="Package.swift Package.resolved" ;;
 esac
 # Reuse the initial-commit-safe DIFF_RANGE computed above (HEAD~1..HEAD would
 # fail on an initial commit; DIFF_RANGE already falls back to the empty tree).
@@ -232,23 +328,34 @@ elif [ "$C2_EXIT" -ne 0 ]; then
 fi
 
 # Resolve the mode once (set -e safe) for both stdout and the audit log.
-if [ "${MOAI_SYNC_GATE_BLOCKING:-0}" = "1" ]; then MODE="blocking"; else MODE="advisory"; fi
+# D3=Promote (SPEC-OBSERVE-HYGIENE-001 REQ-OBH-004): vet/build block by DEFAULT.
+# MOAI_SYNC_GATE_BLOCKING is the opt-OUT — set to 0/off/false/advisory/no to
+# downgrade a failing vet/build to a non-blocking warning. Default (unset) and
+# the legacy =1 value both select blocking. tests/coverage are NOT run here.
+case "${MOAI_SYNC_GATE_BLOCKING:-1}" in
+    0|off|false|advisory|no) MODE="advisory" ;;
+    *) MODE="blocking" ;;
+esac
 
 # Emit a Stop-schema-compliant response.
 #
-# Advisory (default): a failing check emits ONLY {"systemMessage": ...} — a
-# non-blocking warning. The "decision":"block" stdout field is the blocking
-# channel (honored on exit 0), so the advisory path MUST NOT emit it.
+# Blocking (DEFAULT): a failing vet/build emits {"hookSpecificOutput":
+# {"hookEventName":"Stop","decision":"block","reason":"..."},"systemMessage":"..."}
+# on stdout — this blocks the turn. The decision/reason ride inside a
+# hookSpecificOutput object carrying hookEventName:"Stop" per the official Stop
+# hook contract (a bare top-level "decision" field is non-compliant for Stop).
+# The hook still exits 0: per Claude Code hook semantics, stdout JSON is honored
+# only on exit 0 (on exit 2 stdout is discarded and only stderr is surfaced).
 #
-# Blocking (opt-in, MOAI_SYNC_GATE_BLOCKING=1): a failing check emits
-# {"decision":"block", ...} on stdout — this blocks the turn. The hook still
-# exits 0: per Claude Code hook semantics, stdout JSON is honored only on
-# exit 0 (on exit 2 stdout is discarded and only stderr is surfaced).
+# Advisory (opt-out, MOAI_SYNC_GATE_BLOCKING=0/off/false/advisory): a failing
+# check emits ONLY {"systemMessage": ...} — a non-blocking warning. The
+# nested "decision":"block" stdout field is the blocking channel (honored on
+# exit 0), so the advisory path MUST NOT emit it.
 #
 # On allow, stdout is intentionally empty (silent pass); the audit log records detail.
 if [ "$DECISION" = "block" ]; then
     if [ "$MODE" = "blocking" ]; then
-        printf '{"decision":"block","reason":"%s","systemMessage":"sync-phase quality gate BLOCKED: %s (%s=%s %s=%s deps_modified=%s). Detail: .moai/logs/sync-quality-gate.log"}\n' \
+        printf '{"hookSpecificOutput":{"hookEventName":"Stop","decision":"block","reason":"%s"},"systemMessage":"sync-phase quality gate BLOCKED: %s (%s=%s %s=%s deps_modified=%s). Detail: .moai/logs/sync-quality-gate.log"}\n' \
             "$BLOCKED_REASON" "$BLOCKED_REASON" "$C1_LABEL" "$C1_EXIT" "$C2_LABEL" "$C2_EXIT" "$DEPS_MODIFIED"
     else
         printf '{"systemMessage":"sync-phase quality gate WARNING (advisory, not blocking): %s (%s=%s %s=%s deps_modified=%s). Heavy lint/tests run in CI. Detail: .moai/logs/sync-quality-gate.log"}\n' \

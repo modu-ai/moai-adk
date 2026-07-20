@@ -1,0 +1,308 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>moai-adk 배포 형식 비교 — 바이너리 vs 플러그인 vs 글로벌 심링크 하이브리드</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" crossorigin>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;700&family=Noto+Serif+KR:wght@400;700&family=JetBrains+Mono:wght@400;500&display=swap">
+  <style>
+    :root {
+      --ivory:  #FAF9F5; --paper: #FFFFFF; --slate: #141413;
+      --clay:   #D97757; --clay-d:#B85C3E; --oat:   #E3DACC; --olive: #788C5D;
+      --g100: #F0EEE6; --g300: #D1CFC5; --g500: #87867F; --g700: #3D3D3A;
+      --sans:  "Noto Sans KR", system-ui, -apple-system, sans-serif;
+      --serif: "Noto Serif KR", ui-serif, Georgia, serif;
+      --mono:  "JetBrains Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+      --max-width: 1100px; --content-max: 720px;
+      --radius-panel: 12px; --radius-row: 8px; --border: 1.5px solid var(--g300);
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: var(--ivory); color: var(--g700); font-family: var(--sans);
+      font-size: 15px; line-height: 1.65; -webkit-font-smoothing: antialiased;
+      padding: 56px 24px 120px;
+    }
+    .page { max-width: var(--max-width); margin: 0 auto; display: grid; grid-template-columns: 200px minmax(0,1fr); gap: 48px; }
+    @media (max-width: 920px) { .page { grid-template-columns: 1fr; } nav { display: none; } }
+    nav { position: sticky; top: 32px; align-self: start; font-size: 13px; }
+    nav .nav-label { font-family: var(--mono); font-size: 10px; letter-spacing: .1em; text-transform: uppercase; color: var(--g500); margin-bottom: 12px; }
+    nav a { display: block; padding: 5px 0 5px 12px; border-left: 2px solid var(--g300); color: var(--g700); text-decoration: none; }
+    nav a:hover { color: var(--slate); border-color: var(--clay); }
+    nav a.l2 { padding-left: 24px; font-size: 12.5px; color: var(--g500); }
+    header { margin-bottom: 12px; }
+    .eyebrow { font-family: var(--mono); font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--g500); margin-bottom: 10px; }
+    h1 { font-family: var(--serif); font-weight: 700; font-size: 30px; color: var(--slate); letter-spacing: -.01em; margin-bottom: 14px; line-height: 1.25; }
+    .tldr { border: var(--border); border-left: 3px solid var(--clay); border-radius: 10px; background: var(--paper); padding: 16px 18px; margin-bottom: 8px; font-size: 14.5px; }
+    .tldr b { color: var(--slate); }
+    h2 { font-family: var(--serif); font-weight: 700; font-size: 22px; color: var(--slate); margin: 40px 0 14px; scroll-margin-top: 24px; }
+    h3 { font-family: var(--serif); font-weight: 700; font-size: 16px; color: var(--slate); margin: 20px 0 8px; }
+    p { margin-bottom: 12px; max-width: var(--content-max); }
+    code { font-family: var(--mono); font-size: 13px; }
+    ul { margin: 0 0 12px 20px; max-width: var(--content-max); }
+    li { margin-bottom: 5px; }
+    table { border-collapse: collapse; width: 100%; margin: 14px 0 18px; font-size: 13.5px; background: var(--paper); border: var(--border); border-radius: 10px; overflow: hidden; }
+    th, td { padding: 9px 12px; text-align: left; border-bottom: 1px solid var(--g300); vertical-align: top; }
+    th { background: var(--g100); font-family: var(--mono); font-size: 11.5px; letter-spacing: .04em; text-transform: uppercase; color: var(--g500); }
+    tr:last-child td { border-bottom: none; }
+    .ok { color: var(--olive); font-weight: 700; }
+    .bad { color: var(--clay-d); font-weight: 700; }
+    .mid { color: var(--g500); font-weight: 700; }
+    details.step { border: var(--border); border-radius: 10px; background: var(--paper); margin: 14px 0; overflow: hidden; }
+    details.step > summary { list-style: none; cursor: pointer; padding: 14px 16px; font-family: var(--serif); font-size: 16px; color: var(--slate); display: flex; align-items: baseline; gap: 10px; }
+    details.step > summary::-webkit-details-marker { display: none; }
+    details.step > summary::before { content: "▸"; color: var(--clay); font-family: var(--sans); font-size: 12px; }
+    details.step[open] > summary::before { content: "▾"; }
+    details.step > summary .step-num { font-family: var(--mono); font-size: 12px; background: var(--oat); color: var(--slate); padding: 2px 8px; border-radius: 6px; flex-shrink: 0; }
+    details.step .step-body { padding: 0 16px 16px; }
+    details.step .step-body p { font-size: 14px; margin-bottom: 10px; }
+    .tabs { border: var(--border); border-radius: 10px; background: var(--paper); margin: 16px 0 8px; overflow: hidden; }
+    .tabbar { display: flex; border-bottom: 1px solid var(--g300); background: var(--g100); }
+    .tabbar button { appearance: none; border: none; background: none; font-family: var(--mono); font-size: 12px; color: var(--g500); padding: 10px 16px; cursor: pointer; border-right: 1px solid var(--g300); }
+    .tabbar button.active { background: var(--paper); color: var(--slate); border-bottom: 2px solid var(--clay); margin-bottom: -1px; }
+    .tab-pane { display: none; margin: 0; padding: 16px 18px; font-family: var(--mono); font-size: 12.5px; line-height: 1.65; color: var(--slate); overflow-x: auto; }
+    .tab-pane.active { display: block; }
+    .hl { color: var(--clay); }
+    .cm { color: var(--g500); }
+    .callout { display: flex; gap: 12px; border: var(--border); border-color: var(--oat); background: rgba(227,218,204,.35); border-radius: 10px; padding: 14px 16px; margin: 18px 0; font-size: 14px; }
+    .callout .ico { color: var(--clay); font-weight: 600; flex-shrink: 0; }
+    details.faq-item { border-bottom: 1px solid var(--g300); padding: 4px 0; }
+    details.faq-item > summary { list-style: none; cursor: pointer; font-family: var(--serif); font-size: 16px; color: var(--slate); padding: 12px 4px; display: flex; align-items: center; gap: 10px; }
+    details.faq-item > summary::-webkit-details-marker { display: none; }
+    details.faq-item > summary::before { content: "+"; color: var(--clay); font-size: 18px; font-weight: 400; width: 20px; text-align: center; flex-shrink: 0; }
+    details.faq-item[open] > summary::before { content: "−"; }
+    details.faq-item .faq-body { padding: 0 4px 16px 30px; font-size: 14px; color: var(--g700); max-width: var(--content-max); }
+    details.faq-item .faq-body p { margin-bottom: 8px; }
+    footer { margin-top: 64px; padding-top: 20px; border-top: 1px solid var(--g300); font-family: var(--mono); font-size: 12px; color: var(--g500); }
+    footer a { color: var(--g500); }
+    @media print {
+      .page { grid-template-columns: 1fr; } nav { display: none; }
+      body { background: white; color: black; padding: 0; font-size: 12pt; }
+      details.step { page-break-inside: avoid; } details[open] { display: block; }
+      h1, h2, h3 { page-break-after: avoid; }
+      * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    }
+  </style>
+</head>
+<body>
+<div class="page">
+
+  <nav>
+    <div class="nav-label">On this page</div>
+    <a href="#tldr">TL;DR</a>
+    <a href="#structure">기능 층 분해</a>
+    <a href="#walkthrough">3가지 배포 형식 분석</a>
+    <a href="#matrix" class="l2">종합 비교 매트릭스</a>
+    <a href="#config">디렉터리 구조 비교</a>
+    <a href="#precedence">공식 우선순위 근거</a>
+    <a href="#recommendation">권고안</a>
+    <a href="#faq">FAQ</a>
+  </nav>
+
+  <main>
+
+    <header>
+      <div class="eyebrow">moai-adk-go · Distribution Format Analysis · 2026-07-15</div>
+      <h1>moai-adk 배포 형식 비교<br>바이너리 vs 플러그인 vs 글로벌 심링크 하이브리드</h1>
+      <div class="tldr" id="tldr">
+        <b>TL;DR</b> &mdash; 플러그인도, <code>~/.claude</code> 전면 글로벌화도 바이너리를 대체하지 못한다. 전면 글로벌화는 <b>skills 우선순위 역전</b>(personal &gt; project)과 <b>전 프로젝트 스코프 오염</b>이라는 구조적 결함이 있어 비권장. 최선안은 <b><code>~/.moai</code> 글로벌 저장소 + 프로젝트별 심링크 옵트인</b> — 공식 문서가 명시적으로 지원하는 패턴이며, 중복 제거·프로젝트 최소화·버전 고정·팀 부트스트랩을 모두 만족한다.
+      </div>
+    </header>
+
+    <h2 id="structure">기능 층 분해 — 무엇이 어디로 옮겨질 수 있는가</h2>
+    <p>비교의 전제: moai-adk의 기능은 두 층으로 나뉘며, 어떤 배포 형식도 <b>바이너리 층은 대체 불가</b>하다. 따라서 실제 선택지는 "자산 층(skills/agents/rules)을 어디에 두고 어떻게 갱신하느냐"이다.</p>
+    <table>
+      <tr><th>기능 층</th><th>현재 구현</th><th>플러그인 이전</th><th>글로벌(~/.claude) 이전</th></tr>
+      <tr><td>skills / agents / commands / rules / output-style</td><td><code>moai init</code>이 <code>.claude/</code>에 복사</td><td><span class="ok">가능</span></td><td><span class="ok">가능</span> (공식 지원)</td></tr>
+      <tr><td>hooks 등록</td><td>settings.json 렌더 + 쉘 래퍼</td><td><span class="mid">부분</span> — 훅이 부르는 바이너리는 별도 필요</td><td><span class="mid">부분</span> — user settings.json 병합</td></tr>
+      <tr><td><code>moai</code> CLI (session/handoff/spec audit/statusline/worktree/glm/cg)</td><td>Go 바이너리</td><td><span class="bad">불가</span></td><td><span class="bad">불가</span> (바이너리는 그대로)</td></tr>
+      <tr><td>settings.json 병합 · GLM 환경 주입 · statusline</td><td>바이너리 런타임 관리</td><td><span class="bad">불가</span></td><td><span class="bad">불가</span></td></tr>
+      <tr><td><code>.moai/</code> config · state · specs 스캐폴딩</td><td><code>moai init</code></td><td><span class="bad">불가</span></td><td><span class="mid">부분</span> — config는 프로젝트 상태라 남아야 함</td></tr>
+    </table>
+
+    <h2 id="walkthrough">3가지 배포 형식 분석</h2>
+    <p>각 안을 사용자 관점(설치 마찰 · 업데이트 UX · 커스터마이징 · 팀 공유 · 버전 관리)에서 평가한다.</p>
+
+    <details class="step" open>
+      <summary><span class="step-num">A</span> 현행 — 바이너리 + <code>moai init</code> 템플릿 복사</summary>
+      <div class="step-body">
+        <p><b>강점</b>: 단일 도구 하나로 전부 해결(<code>brew install</code> → <code>moai init</code>). 템플릿·바이너리·hook이 같은 버전으로 원자적 배포되어 버전 스큐가 구조적으로 불가능. <code>.claude/</code> 파일이 프로젝트에 실재하므로 사용자가 열어 보고 수정 가능 — user-owned harness(<code>hns-*</code>) 커스터마이징 철학이 이 위에 성립. 팀원은 clone만으로 동일 harness 획득.</p>
+        <p><b>약점</b>: <code>moai update</code>의 overwrite-vs-preserve 매트릭스가 상시 위험 표면(실제 dev-custom 대량 회귀 사고 이력). 프로젝트마다 수백 개 파일이 복사되어 git 노이즈와 중복 저장 발생. 마켓플레이스 발견성 없음.</p>
+      </div>
+    </details>
+
+    <details class="step" open>
+      <summary><span class="step-num">B</span> 플러그인 하이브리드 — 바이너리 + Claude Code 플러그인</summary>
+      <div class="step-body">
+        <p><b>강점</b>: 플러그인 갱신 한 번으로 모든 프로젝트의 skills/agents 동기화. 프로젝트 디렉터리가 깨끗해짐. 마켓플레이스 발견성 + <code>/plugin install</code> 설치 마찰 감소.</p>
+        <p><b>약점</b>: 2-스텝 설치(바이너리 + 플러그인)로 하프-인스톨 상태가 신규 지원 부담. 플러그인 vN + 바이너리 vM 조합의 <b>버전 스큐가 신규 결함 클래스</b>로 등장(현재는 존재하지 않는 문제). 플러그인 skills는 <code>plugin:skill</code> 네임스페이스의 read-only 성격이라 user-owned 수정 모델과 충돌. rules와 <code>.moai/</code> config는 여전히 프로젝트 배포가 필요해 <b>배포 채널 2개를 병행 유지</b>하게 됨.</p>
+      </div>
+    </details>
+
+    <details class="step" open>
+      <summary><span class="step-num">C</span> 전면 글로벌 — <code>~/.claude</code> user 스코프 이동</summary>
+      <div class="step-body">
+        <p><b>공식 지원 확인</b>: skills(<code>~/.claude/skills/</code>) · agents(<code>~/.claude/agents/</code>) · rules(<code>~/.claude/rules/</code>) · CLAUDE.md(<code>~/.claude/CLAUDE.md</code>) 모두 user 스코프가 공식 지원된다. 그러나 두 가지 구조적 결함이 있다.</p>
+        <p><b>결함 1 — skills 우선순위 역전</b>: 이름 충돌 시 skills는 <b>personal이 project를 이긴다</b>(enterprise &gt; personal &gt; project). moai skills를 글로벌로 옮기면 특정 프로젝트에서 같은 이름으로 로컬 오버라이드가 <b>불가능</b>해진다. agents는 반대로 project가 이기므로(managed &gt; CLI &gt; project &gt; user &gt; plugin) 자산별 동작이 비대칭.</p>
+        <p><b>결함 2 — 전 프로젝트 스코프 오염</b>: <code>~/.claude</code> 자산은 머신의 <b>모든 프로젝트</b>에 로드된다. moai를 쓰지 않는 프로젝트에서도 moai skills 메타데이터(개당 ~100토큰 × 수십 개), <code>paths:</code> 없는 always-loaded rules(수만 토큰), agents 카탈로그가 매 세션 주입된다. per-project 옵트아웃은 <code>claudeMdExcludes</code>를 비-moai 프로젝트마다 설정해야 하므로 "프로젝트 최소화" 목표가 역전된다.</p>
+        <p><b>결함 3 — 팀 공유 소멸</b>: <code>~/.claude</code>는 머신 로컬. 현재는 git clone만으로 팀 전체가 동일 harness를 받지만, 글로벌 모델에선 팀원마다 별도 셋업이 필요하다.</p>
+      </div>
+    </details>
+
+    <details class="step" open>
+      <summary><span class="step-num">D</span> 권고 — <code>~/.moai</code> 글로벌 저장 + 프로젝트 심링크 옵트인</summary>
+      <div class="step-body">
+        <p>실체는 <code>~/.moai/assets/&lt;version&gt;/</code>에 머신당 1벌만 저장하고, 각 프로젝트의 <code>.claude/skills/</code>·<code>.claude/rules/</code>에는 심링크만 둔다. 공식 문서가 skills·rules 양쪽에서 심링크를 명시적으로 지원한다(rules 문서는 <code>ln -s ~/shared-claude-rules .claude/rules/shared</code> 패턴을 직접 예시).</p>
+        <ul>
+          <li><b>중복 제거</b>: <code>moai update</code>는 <code>~/.moai/assets</code>만 갱신 — user-owned 파일 overwrite 사고 클래스가 구조적으로 소멸.</li>
+          <li><b>스코프 오염 없음</b>: 심링크가 있는 프로젝트에만 로드. 비-moai 프로젝트 무영향.</li>
+          <li><b>커스터마이징 보존</b>: 자산이 project 스코프에 남으므로 skills 우선순위 역전 회피. user-owned <code>hns-*</code>는 실파일로 공존.</li>
+          <li><b>버전 고정</b>: 심링크를 버전 디렉터리(<code>~/.moai/assets/v3.1/</code>)로 걸면 프로젝트별 핀 가능.</li>
+          <li><b>스큐 없음</b>: 자산과 바이너리가 같은 <code>moai update</code> 채널 — 플러그인안의 스큐 문제 원천 차단.</li>
+        </ul>
+        <p><b>약점</b>: (1) Windows 심링크는 관리자 권한/개발자 모드 필요 → 복사 폴백 필요. (2) 심링크를 git에 커밋하면 <code>~/.moai</code> 없는 팀원에게 깨진 링크 → <code>.gitignore</code> + "clone 후 <code>moai init</code> 1회" 부트스트랩으로 해결. (3) 기존 프로젝트의 복사본→심링크 마이그레이션 비용.</p>
+      </div>
+    </details>
+
+    <h3 id="matrix">종합 비교 매트릭스</h3>
+    <table>
+      <tr><th>평가 축</th><th>A 현행</th><th>B 플러그인</th><th>C 전면 글로벌</th><th>D 심링크 하이브리드</th></tr>
+      <tr><td>설치 마찰</td><td><span class="ok">낮음</span> (1도구)</td><td><span class="bad">2-스텝</span></td><td><span class="mid">중간</span></td><td><span class="ok">낮음</span> (1도구)</td></tr>
+      <tr><td>업데이트 UX</td><td><span class="bad">프로젝트마다</span></td><td><span class="ok">일괄</span></td><td><span class="ok">일괄</span></td><td><span class="ok">일괄</span></td></tr>
+      <tr><td>버전 스큐 위험</td><td><span class="ok">없음</span></td><td><span class="bad">신규 발생</span></td><td><span class="mid">일괄 전파(핀 불가)</span></td><td><span class="ok">없음</span> (버전 디렉터리 핀)</td></tr>
+      <tr><td>프로젝트 커스터마이징</td><td><span class="ok">완전</span></td><td><span class="bad">read-only</span></td><td><span class="bad">skills 역전으로 불가</span></td><td><span class="ok">완전</span></td></tr>
+      <tr><td>비-moai 프로젝트 영향</td><td><span class="ok">없음</span></td><td><span class="mid">플러그인 enable 범위</span></td><td><span class="bad">전 프로젝트 오염</span></td><td><span class="ok">없음</span></td></tr>
+      <tr><td>팀 공유</td><td><span class="ok">clone만으로</span></td><td><span class="mid">플러그인 설치 필요</span></td><td><span class="bad">머신별 셋업</span></td><td><span class="mid">clone + init 1회</span></td></tr>
+      <tr><td>프로젝트 git 노이즈</td><td><span class="bad">수백 파일</span></td><td><span class="ok">최소</span></td><td><span class="ok">최소</span></td><td><span class="ok">심링크만</span></td></tr>
+      <tr><td>발견성(마켓플레이스)</td><td><span class="bad">없음</span></td><td><span class="ok">있음</span></td><td><span class="bad">없음</span></td><td><span class="bad">없음</span> (게이트웨이 플러그인으로 보완 가능)</td></tr>
+      <tr><td>Windows 호환</td><td><span class="ok">동일</span></td><td><span class="ok">동일</span></td><td><span class="ok">동일</span></td><td><span class="mid">복사 폴백 필요</span></td></tr>
+    </table>
+
+    <h2 id="config">디렉터리 구조 비교</h2>
+    <p>각 안에서 사용자 프로젝트와 머신에 실제로 놓이는 파일 구조.</p>
+    <div class="tabs" data-tabs="config-tabs">
+      <div class="tabbar">
+        <button data-pane="tab-current" class="active">A 현행</button>
+        <button data-pane="tab-plugin">B 플러그인</button>
+        <button data-pane="tab-global">C 전면 글로벌</button>
+        <button data-pane="tab-symlink">D 심링크 하이브리드</button>
+      </div>
+      <pre class="tab-pane active" id="tab-current"><span class="cm"># 프로젝트마다 전체 복사 — 중복 저장</span>
+project/
+├── .claude/
+│   ├── skills/moai-*/          <span class="cm"># 복사본 (프로젝트 N개 = N벌)</span>
+│   ├── agents/moai/*.md        <span class="cm"># 복사본</span>
+│   ├── rules/moai/**/*.md      <span class="cm"># 복사본</span>
+│   └── settings.json           <span class="cm"># 렌더됨</span>
+├── .moai/config/ · specs/ · state/
+└── CLAUDE.md
+
+<span class="hl">~/go/bin/moai</span>                   <span class="cm"># 바이너리 (머신당 1개)</span></pre>
+      <pre class="tab-pane" id="tab-plugin"><span class="cm"># 플러그인 + 바이너리 2채널 — 스큐 위험</span>
+~/.claude/plugins/moai-adk@marketplace/
+├── skills/ · agents/ · hooks/  <span class="cm"># read-only, plugin:skill 네임스페이스</span>
+
+project/
+├── .claude/rules/moai/         <span class="cm"># rules는 여전히 프로젝트 복사 필요</span>
+├── .moai/config/ · specs/      <span class="cm"># 스캐폴딩도 여전히 moai init</span>
+└── CLAUDE.md
+
+<span class="hl">~/go/bin/moai</span>                   <span class="cm"># 바이너리 — 플러그인과 버전 별도 관리(!)</span></pre>
+      <pre class="tab-pane" id="tab-global"><span class="cm"># 머신 전체 적용 — 전 프로젝트 오염</span>
+~/.claude/
+├── skills/moai-*/              <span class="cm"># 모든 프로젝트에 로드 + project 오버라이드 불가</span>
+├── agents/moai/*.md            <span class="cm"># 모든 프로젝트에 로드</span>
+├── rules/moai/**/*.md          <span class="cm"># 모든 프로젝트에 매 세션 주입(!)</span>
+└── CLAUDE.md
+
+project/
+├── .moai/config/ · specs/      <span class="cm"># 프로젝트 상태는 남음</span>
+└── CLAUDE.md                   <span class="cm"># 최소화 달성 — 단, 비용은 머신 전역 오염</span></pre>
+      <pre class="tab-pane" id="tab-symlink"><span class="cm"># 실체 1벌 + 프로젝트별 옵트인 — 권고안</span>
+~/.moai/assets/v3.1/
+├── skills/ · agents/ · rules/  <span class="cm"># 실체 (moai update가 여기만 갱신)</span>
+
+project/
+├── .claude/
+│   ├── skills/moai → <span class="hl">~/.moai/assets/v3.1/skills</span>   <span class="cm"># 심링크</span>
+│   ├── rules/moai  → <span class="hl">~/.moai/assets/v3.1/rules</span>    <span class="cm"># 심링크 (공식 지원)</span>
+│   ├── agents/moai → <span class="hl">~/.moai/assets/v3.1/agents</span>   <span class="cm"># project 스코프 유지</span>
+│   └── skills/hns-*/           <span class="cm"># user-owned는 실파일로 공존</span>
+├── .moai/config/ · specs/
+└── CLAUDE.md
+
+<span class="cm"># .gitignore에 심링크 등록 → 팀원은 clone 후 moai init 1회</span></pre>
+    </div>
+
+    <div class="callout">
+      <span class="ico">★</span>
+      <div><b>핵심 판단 기준</b> — 배포 형식의 우열은 "파일이 어디 있느냐"가 아니라 <b>① 이름 충돌 시 누가 이기는가(오버라이드 가능성) ② 자산이 어느 스코프에 로드되는가(오염 반경) ③ 바이너리와 자산이 같은 채널로 갱신되는가(스큐)</b> 세 가지로 갈린다. D안만이 셋 모두를 통과한다.</div>
+    </div>
+
+    <h2 id="precedence">공식 우선순위 근거 (code.claude.com 문서 검증)</h2>
+    <table>
+      <tr><th>자산</th><th>글로벌 위치</th><th>이름 충돌 시 우선순위 (공식)</th><th>심링크</th></tr>
+      <tr><td>Skills</td><td><code>~/.claude/skills/</code></td><td><b>enterprise &gt; personal &gt; project</b> — 글로벌이 프로젝트를 덮어씀</td><td><span class="ok">지원</span></td></tr>
+      <tr><td>Agents</td><td><code>~/.claude/agents/</code></td><td>managed &gt; CLI flag &gt; <b>project &gt; user</b> &gt; plugin — 프로젝트가 이김</td><td>—</td></tr>
+      <tr><td>Rules</td><td><code>~/.claude/rules/</code></td><td>user 먼저 로드, <b>project가 나중(우선)</b></td><td><span class="ok">지원</span> (문서가 직접 예시)</td></tr>
+      <tr><td>CLAUDE.md</td><td><code>~/.claude/CLAUDE.md</code></td><td>user → project 순 concat — 뒤에 오는 project가 실질 우선</td><td>—</td></tr>
+      <tr><td>Hooks</td><td><code>~/.claude/settings.json</code></td><td>settings 병합 규칙 (user &lt; project &lt; local)</td><td>—</td></tr>
+    </table>
+    <p>skills만 우선순위 방향이 반대라는 점이 C안(전면 글로벌)을 기각시키는 결정적 근거다. 글로벌 skill과 같은 이름의 프로젝트 skill은 <b>영구히 가려진다</b>.</p>
+
+    <h2 id="recommendation">권고안</h2>
+    <ul>
+      <li><b>채택</b>: D안 — <code>~/.moai/assets/&lt;version&gt;</code> 글로벌 저장소 + 프로젝트 심링크 옵트인. 마이그레이션 비용은 <code>moai init/update</code> 배포 로직 변경 + Windows 복사 폴백 + 기존 프로젝트 복사본→심링크 전환.</li>
+      <li><b>보완</b>: 발견성이 필요하면 skills 몇 개 + 설치 안내만 담은 <b>게이트웨이 플러그인</b>을 마켓플레이스에 별도 등록 (스큐 위험 최소화하며 B안의 유일한 장점만 취함).</li>
+      <li><b>기각</b>: C안(전면 <code>~/.claude</code> 글로벌) — skills 우선순위 역전 + 전 프로젝트 오염 + 팀 공유 소멸. 설정으로 우회 불가한 구조적 결함.</li>
+      <li><b>기각</b>: B안(전면 플러그인화) — 배포 채널 2개 병행 + 버전 스큐 신규 결함 클래스 + user-owned 커스터마이징 모델 충돌.</li>
+    </ul>
+
+    <h2 id="faq">FAQ</h2>
+    <details class="faq-item">
+      <summary>플러그인이 바이너리까지 배포할 수는 없나?</summary>
+      <div class="faq-body"><p>불가. Claude Code 플러그인은 skills/agents/commands/hooks/MCP 서버 정의를 배포하는 메커니즘이며 실행 파일 설치·PATH 등록·프로젝트 파일 스캐폴딩 기능이 없다. <code>moai</code> CLI(session/handoff/statusline/worktree/glm)와 <code>.moai/</code> 상태 시스템은 어떤 안에서도 바이너리로 남는다.</p></div>
+    </details>
+    <details class="faq-item">
+      <summary>rules를 글로벌에 두고 paths: 스코핑으로 오염을 막을 수는 없나?</summary>
+      <div class="faq-body"><p>불충분. <code>paths:</code>는 파일 글롭 패턴이라 "이 프로젝트가 moai 프로젝트인가"라는 조건을 표현할 수 없다. moai의 핵심 rules(askuser-protocol, session-handoff 등)는 의도적으로 always-loaded라 <code>paths:</code>를 붙이면 기능이 깨지고, 안 붙이면 전 프로젝트에 주입된다.</p></div>
+    </details>
+    <details class="faq-item">
+      <summary>심링크 대신 rules 문서의 심링크 공유 패턴을 skills에도 그대로 써도 되나?</summary>
+      <div class="faq-body"><p>된다. skills 문서는 "enterprise·personal·project 위치의 <code>&lt;skill-name&gt;</code> 엔트리가 디스크 다른 곳을 가리키는 심링크일 수 있다"고 명시하며, 같은 타깃이 여러 경로에서 도달 가능해도 1회만 로드한다. 라이브 변경 감지도 심링크 대상에 적용된다.</p></div>
+    </details>
+    <details class="faq-item">
+      <summary>D안에서 팀원이 ~/.moai 없이 clone하면?</summary>
+      <div class="faq-body"><p>심링크를 <code>.gitignore</code>에 두면 clone 직후엔 harness가 비어 있고, <code>moai init</code> 1회가 바이너리 설치 확인 + <code>~/.moai/assets</code> 채우기 + 심링크 생성을 수행한다. 현행의 "clone만으로 완결" 대비 1스텝 추가가 D안의 팀 공유 비용이다.</p></div>
+    </details>
+    <details class="faq-item">
+      <summary>글로벌 일괄 업데이트가 오히려 위험하지 않나?</summary>
+      <div class="faq-body"><p>버전 디렉터리(<code>~/.moai/assets/v3.1/</code>)로 해소된다. <code>moai update</code>는 새 버전 디렉터리를 만들고 현재 프로젝트의 심링크만 전환한다. 다른 프로젝트는 기존 버전에 핀된 채 남으므로 blast radius가 프로젝트 단위로 제한된다 — C안(디렉터리 1개 공유)에는 없는 속성.</p></div>
+    </details>
+
+    <footer>
+      Sources: <a href="https://code.claude.com/docs/en/skills">code.claude.com/docs/en/skills</a> · <a href="https://code.claude.com/docs/en/sub-agents">code.claude.com/docs/en/sub-agents</a> · <a href="https://code.claude.com/docs/en/memory">code.claude.com/docs/en/memory</a> &nbsp;&mdash;&nbsp; Generated: 2026-07-15 · moai-adk-go
+    </footer>
+
+  </main>
+
+</div>
+
+<script>
+document.querySelectorAll("[data-tabs]").forEach(function(box) {
+  var btns = box.querySelectorAll("button");
+  var panes = box.querySelectorAll(".tab-pane");
+  btns.forEach(function(btn) {
+    btn.addEventListener("click", function() {
+      btns.forEach(function(b) { b.classList.remove("active"); });
+      panes.forEach(function(p) { p.classList.remove("active"); });
+      btn.classList.add("active");
+      var target = document.getElementById(btn.dataset.pane);
+      if (target) target.classList.add("active");
+    });
+  });
+});
+</script>
+</body>
+</html>

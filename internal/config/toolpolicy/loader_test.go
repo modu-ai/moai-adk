@@ -154,7 +154,7 @@ func TestSettingsSpecifier(t *testing.T) {
 		{"Read", "*", "Read"},
 		{"Bash", "git push:*", "Bash(git push:*)"},
 		{"Bash", "rm -rf /:*", "Bash(rm -rf /:*)"},
-		{"mcp__context7__resolve-library-id", "", "mcp__context7__resolve-library-id"},
+		{"mcp__example__tool", "", "mcp__example__tool"},
 	}
 	for _, tt := range tests {
 		tt := tt

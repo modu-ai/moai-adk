@@ -377,3 +377,108 @@ func TestAdvancedImpliesStandard(t *testing.T) {
 		t.Error("--advanced should imply --standard (standardMode should be true)")
 	}
 }
+
+// resetInitFlagsForProfile clears the flags a profile test cares about so a
+// prior test's leftover value on the shared global initCmd cannot bleed in.
+func resetInitFlagsForProfile(t *testing.T) {
+	t.Helper()
+	for _, f := range []string{"mode", "git-mode", "profile", "model-policy"} {
+		if initCmd.Flags().Lookup(f) != nil {
+			_ = initCmd.Flags().Set(f, "")
+		}
+	}
+}
+
+// TestInitCmd_PlanTypeFlagRetired (SPEC-MODEL-PROFILE-MATRIX-001 REQ-MPM-017,
+// AC-MPM-011) — the retired --plan-type flag is no longer registered on the
+// init command, and the new --profile flag is.
+func TestInitCmd_PlanTypeFlagRetired(t *testing.T) {
+	if initCmd.Flags().Lookup("plan-type") != nil {
+		t.Error("init command must NOT expose the retired --plan-type flag")
+	}
+	if initCmd.Flags().Lookup("profile") == nil {
+		t.Error("init command should have a --profile flag")
+	}
+}
+
+// TestValidateInitFlags_ValidProfile (REQ-MPM-015) — max/medium/low pass.
+func TestValidateInitFlags_ValidProfile(t *testing.T) {
+	for _, p := range []string{"max", "medium", "low"} {
+		t.Run(p, func(t *testing.T) {
+			resetInitFlagsForProfile(t)
+			if err := initCmd.Flags().Set("profile", p); err != nil {
+				t.Fatal(err)
+			}
+			if err := validateInitFlags(initCmd, []string{}); err != nil {
+				t.Errorf("validateInitFlags with profile=%q should not error, got: %v", p, err)
+			}
+		})
+	}
+	resetInitFlagsForProfile(t)
+}
+
+// TestValidateInitFlags_InvalidProfile (REQ-MPM-015) — an out-of-set value
+// errors, and the message names the closed set {max, medium, low}.
+func TestValidateInitFlags_InvalidProfile(t *testing.T) {
+	for _, p := range []string{"bogus", "high", "subscription"} {
+		t.Run(p, func(t *testing.T) {
+			resetInitFlagsForProfile(t)
+			if err := initCmd.Flags().Set("profile", p); err != nil {
+				t.Fatal(err)
+			}
+			err := validateInitFlags(initCmd, []string{})
+			if err == nil {
+				t.Fatalf("validateInitFlags with profile=%q should error, got nil", p)
+			}
+			msg := err.Error()
+			if !strings.Contains(msg, "invalid --profile") {
+				t.Errorf("error should mention 'invalid --profile', got: %v", err)
+			}
+			if !strings.Contains(msg, "max, medium, low") {
+				t.Errorf("error should name the closed set, got: %v", err)
+			}
+		})
+	}
+	resetInitFlagsForProfile(t)
+}
+
+// TestInitCmd_ProfilePersistence (SPEC-MODEL-PROFILE-MATRIX-001 REQ-MPM-016,
+// AC-MPM-010) — `moai init --profile max` persists profile: max to the deployed
+// llm.yaml and writes no plan_type key (REQ-MPM-017/032, AC-MPM-011).
+func TestInitCmd_ProfilePersistence(t *testing.T) {
+	root := t.TempDir()
+
+	buf := new(bytes.Buffer)
+	initCmd.SetOut(buf)
+	initCmd.SetErr(buf)
+
+	resetInitFlagsForProfile(t)
+	for k, v := range map[string]string{
+		"root": root, "non-interactive": "true", "name": "profile-test",
+		"language": "Go", "mode": "tdd", "profile": "max",
+	} {
+		if err := initCmd.Flags().Set(k, v); err != nil {
+			t.Fatalf("set %s flag: %v", k, err)
+		}
+	}
+	t.Cleanup(func() {
+		_ = initCmd.Flags().Set("profile", "")
+		_ = initCmd.Flags().Set("root", "")
+	})
+
+	if err := initCmd.RunE(initCmd, []string{}); err != nil {
+		t.Fatalf("init command RunE error = %v", err)
+	}
+
+	llmPath := filepath.Join(root, ".moai", "config", "sections", "llm.yaml")
+	content, err := os.ReadFile(llmPath)
+	if err != nil {
+		t.Fatalf("read deployed llm.yaml: %v", err)
+	}
+	if !strings.Contains(string(content), "profile: max") {
+		t.Errorf("deployed llm.yaml should contain 'profile: max', got:\n%s", content)
+	}
+	if strings.Contains(string(content), "plan_type") {
+		t.Errorf("deployed llm.yaml must NOT contain a plan_type key (retired), got:\n%s", content)
+	}
+}

@@ -2,17 +2,16 @@
 title: 스킬 가이드
 weight: 20
 draft: false
+description: "MoAI-ADK 스킬 시스템 — 점진적 공개(progressive disclosure)로 필요한 지식만 필요한 순간에 로드하는 지식 계층."
 ---
 
-MoAI-ADK의 스킬 시스템을 상세히 안내합니다.
+MoAI-ADK의 스킬 시스템을 상세히 안내합니다. 스킬은 에이전틱 하네스의 지식 계층이면서, "필요한 지식만 필요한 순간에 로드한다"는 점에서 토크노믹스가 가장 구체적으로 구현되는 곳이기도 합니다.
 
 {{< callout type="info" >}}
 
 **스킬이란?**
 
-1999년 영화 **메트릭스**의 헬기 조종 장면을 기억하시나요? 네오가 트리티니에게
-헬기 조종을 할 줄 아느냐고 묻자, 본부에 전화해 헬기 모델을 알리고 사용 설명서를
-전송해달라고 하는 씬이 있습니다.
+1999년 영화 **매트릭스**의 헬기 조종 장면을 기억하시나요? 네오가 트리니티에게 헬기를 조종할 줄 아느냐고 묻자, 트리니티는 본부에 전화해 헬기 모델을 알리고 사용 설명서를 전송해달라고 합니다.
 
 <p align="center">
   <iframe
@@ -26,8 +25,7 @@ MoAI-ADK의 스킬 시스템을 상세히 안내합니다.
   ></iframe>
 </p>
 
-**Claude Code의 스킬** **(이 바로 그 **사용 설명서**입니다. 필요한 순간에
-필요한 지식만 로드하여 AI가 즉시 전문가처럼 행동할 수 있게 합니다.
+**Claude Code의 스킬**이 바로 그 **사용 설명서**입니다. 필요한 순간에 필요한 지식만 로드하여 AI가 즉시 전문가처럼 행동할 수 있게 합니다.
 
 {{< /callout >}}
 
@@ -35,9 +33,7 @@ MoAI-ADK의 스킬 시스템을 상세히 안내합니다.
 
 스킬은 Claude Code에게 특정 분야의 전문 지식을 제공하는 **지식 모듈**입니다.
 
-학교에 비유하면, Claude Code가 학생이고 스킬은 교과서입니다. 수학 시간에는 수학
-교과서를, 과학 시간에는 과학 교과서를 펴는 것처럼, Claude Code도 Python 코드를
-작성할 때는 Python 스킬을, React UI를 만들 때는 Frontend 스킬을 로드합니다.
+학교에 비유하면, Claude Code가 학생이고 스킬은 교과서입니다. 수학 시간에는 수학 교과서를, 과학 시간에는 과학 교과서를 펴는 것처럼, Claude Code도 Python 코드를 작성할 때는 Python 스킬을, React UI를 만들 때는 Frontend 스킬을 로드합니다.
 
 ```mermaid
 flowchart TD
@@ -54,12 +50,13 @@ flowchart TD
     DB --> AGENT
 ```
 
-**스킬이 없는 경우**: Claude Code는 일반적인 지식으로만 응답합니다. **스킬이
-있는 경우**: MoAI-ADK의 규칙, 패턴, 모범 사례를 적용하여 응답합니다.
+**스킬이 없는 경우**: Claude Code는 일반적인 지식으로만 응답합니다. **스킬이 있는 경우**: MoAI-ADK의 규칙, 패턴, 모범 사례를 적용하여 응답합니다.
 
 ## 스킬 카테고리
 
 MoAI-ADK 템플릿에는 총 **27개 `moai-*` 스킬**이 5개 기능 카테고리로 분류되어 있습니다 (Foundation 4 + Workflow 8 + Domain 5 + Reference 8 + Meta/Harness 2 = 27). 여기에 요청을 전문 스킬로 라우팅하는 `moai` umbrella 스킬 1개가 별도로 존재합니다. 사용자 프로젝트에서는 추가로 `harness-*` 사용자 정의 스킬을 작성할 수 있습니다. 프로그래밍 언어 지원은 `rules/moai/languages/` 아래의 규칙으로 제공되며 별도 스킬이 아닙니다.
+
+이 숫자도 다이어트의 결과입니다 — 스킬 카탈로그는 v3 기간 동안 48 → 38 → 27개로 정련되었습니다. 사용자 정의 하네스 스킬의 현재 접두사는 `hns-*`입니다(레거시 `harness-*`도 인식됨).
 
 ### Foundation (핵심 철학) - 4개
 
@@ -110,16 +107,14 @@ MoAI-ADK 템플릿에는 총 **27개 `moai-*` 스킬**이 5개 기능 카테고�
 
 | 스킬 이름              | 설명                                        |
 | ---------------------- | ------------------------------------------- |
-| `moai-meta-harness`    | 프로젝트 특화 에이전트 팀 동적 생성         |
+| `moai-meta-harness`    | **DEPRECATED** — 레거시 7-Phase 메타 하네스. v4 Builder(`/moai:harness <자연어 요청>`)로 리다이렉트 |
 | `moai-harness-learner` | Harness 학습 서브시스템, 자동 업데이트 제안 |
 
-> 27개 `moai-*` 스킬은 MoAI-ADK 템플릿에 기본으로 포함되며, 각 스킬은 독립적으로 로드되어 토큰을 절약합니다. 사용자는 추가적으로 프로젝트별 `harness-*` 사용자 정의 스킬을 작성할 수 있습니다.
+> 27개 `moai-*` 스킬은 MoAI-ADK 템플릿에 기본으로 포함되며, 각 스킬은 독립적으로 로드되어 토큰을 절약합니다. 사용자는 추가적으로 프로젝트별 `hns-*` 사용자 정의 하네스 스킬을 작성할 수 있습니다(레거시 `harness-*` 접두사도 인식됨).
 
 ## 점진적 공개 시스템
 
-MoAI-ADK의 스킬은 **3단계 점진적 공개** (Progressive Disclosure) 시스템을
-사용합니다. 모든 스킬을 한 번에 로드하면 토큰이 낭비되므로, 필요한 만큼만
-단계적으로 로드합니다.
+MoAI-ADK의 스킬은 **3단계 점진적 공개** (Progressive Disclosure) 시스템을 사용합니다. 모든 스킬을 한 번에 로드하면 토큰이 낭비되므로, 필요한 만큼만 단계적으로 로드합니다. 컨텍스트 다이어트의 스킬 계층 구현이라고 보면 됩니다.
 
 ```mermaid
 flowchart TD
@@ -181,20 +176,25 @@ flowchart TD
 ### 트리거 설정 예시
 
 ```yaml
-# 스킬 프론트매터에서 트리거 정의
-triggers:
-  keywords: ["api", "database", "authentication"] # 키워드 매칭
-  agents: ["manager-spec", "manager-develop"] # 에이전트 호출 시
-  phases: ["plan", "run"] # 워크플로우 단계
-  languages: ["python", "typescript"] # 프로그래밍 언어
+# 실제 SKILL.md 프론트매터 (자동 발견은 description/when_to_use 프로즈로 구동됨)
+name: moai-domain-backend
+description: >
+  Backend development specialist ... Use when designing APIs,
+  implementing server logic, authentication, or authorization.
+when_to_use: >
+  Use for backend work: API design (REST, GraphQL, gRPC) ...
+allowed-tools: Read, Write, Edit, Bash(go:*), Grep, Glob   # CSV 문자열 (YAML 배열 아님)
+user-invocable: false
+metadata:
+  version: "1.0.0"
+  category: "domain"
 ```
 
-**트리거 우선순위:**
+**자동 로드 메커니즘:**
 
-1. **키워드** (keywords): 사용자 메시지에서 키워드를 감지하면 즉시 로드
-2. **에이전트** (agents): 특정 에이전트가 호출될 때 자동 로드
-3. **단계** (phases): Plan/Run/Sync 단계에 따라 로드
-4. **언어** (languages): 작업 중인 파일의 프로그래밍 언어에 따라 로드
+- Claude Code는 `description` / `when_to_use` 프로즈를 읽어 사용자 요청의 도메인과 매칭해 스킬을 발견합니다(별도의 `triggers:` 블록은 없음).
+- `allowed-tools`는 **CSV 문자열**로 작성합니다(공백 구분 아님, YAML 배열 아님).
+- 오케스트레이터는 에이전트 spawn 시 `At start, invoke Skill("<name>")` 지시를 주입해 도메인 스킬을 라우팅합니다(`skill-routing.md`).
 
 ## 스킬 사용법
 
@@ -211,8 +211,7 @@ Claude Code 대화에서 직접 스킬을 호출할 수 있습니다.
 
 ### 자동 로드
 
-대부분의 경우 스킬은 트리거 메커니즘에 의해 **자동으로 로드**됩니다. 사용자가
-직접 호출할 필요 없이, 대화 컨텍스트를 분석하여 적절한 스킬이 활성화됩니다.
+대부분의 경우 스킬은 트리거 메커니즘에 따라 **자동으로 로드**됩니다. 사용자가 직접 호출할 필요 없이 대화 컨텍스트를 분석해 맞는 스킬을 활성화합니다.
 
 ## 스킬 디렉토리 구조
 
@@ -220,8 +219,8 @@ Claude Code 대화에서 직접 스킬을 호출할 수 있습니다.
 
 ```
 .claude/skills/
-├── moai-foundation-core/       # Foundation 카테고리
-│   ├── skill.md                # 메인 스킬 문서 (500줄 이하)
+├── moai-foundation-core/       # Foundation 카테고리 (template-managed)
+│   ├── SKILL.md                # 메인 스킬 문서 (500줄 이하)
 │   ├── modules/                # 심층 문서 (무제한)
 │   │   ├── trust-5-framework.md
 │   │   ├── spec-first-ddd.md
@@ -229,25 +228,39 @@ Claude Code 대화에서 직접 스킬을 호출할 수 있습니다.
 │   ├── examples.md             # 실전 예시
 │   └── reference.md            # 외부 참조 링크
 │
-├── moai-domain-backend/        # Domain 카테고리
-│   ├── skill.md
+├── moai-domain-backend/        # Domain 카테고리 (template-managed)
+│   ├── SKILL.md
 │   └── modules/
 │       ├── api-patterns.md
 │       └── microservices.md
 │
-└── my-skills/                  # 사용자 커스텀 스킬 (업데이트 제외)
-    └── my-custom-skill/
-        └── skill.md
+├── hns-my-harness/             # 사용자 하네스 스킬 (user-owned, hns-* 접두사)
+│   └── SKILL.md
+│
+└── my-custom-skill/            # 사용자 커스텀 스킬 (user-owned)
+    └── SKILL.md
 ```
+
+### 스킬 네임스페이스
+
+스킬 접두사는 **배포 주체**를 구분하며, `moai update` 동작이 다릅니다.
+
+| 접두사 | 소유권 | `moai update` 동작 |
+|--------|--------|-------------------|
+| `moai-*` / `moai-harness-*` | template-managed | 덮어쓰기 (sync) |
+| `hns-*` | user-owned (하네스) | 보존 (수정·삭제 금지) |
+| (접두사 없음) / 기타 | user-owned (개인) | 보존 |
+
+`hns-*` 접두사는 사용자가 생성한 하네스 스킬을 의미하며, `moai update`가 절대 덮어쓰거나 삭제하지 않습니다. 템플릿에 `hns-*` 스킬을 미러링하면 안 됩니다 (CI 가드가 감지).
 
 {{< callout type="warning" >}}
   **주의**: `moai-*` 접두사가 붙은 스킬은 MoAI-ADK 업데이트 시 덮어쓰기됩니다.
-  개인 스킬은 반드시 `.claude/skills/my-skills/` 디렉토리에 생성하세요.
+  개인 스킬과 하네스 스킬은 `hns-*` 접두사 또는 접두사 없는 디렉토리에 생성하세요.
 {{< /callout >}}
 
 ### 스킬 파일 구조
 
-각 스킬의 `skill.md`는 다음 구조를 따릅니다.
+각 스킬의 `SKILL.md`는 다음 구조를 따릅니다.
 
 ```markdown
 ---
@@ -260,7 +273,7 @@ category: domain
 status: active
 triggers:
   keywords: ["api", "database", "microservices", "authentication"]
-allowed-tools: ["Read", "Grep", "Glob", "Bash", "Context7 MCP"]
+allowed-tools: ["Read", "Grep", "Glob", "Bash"]
 ---
 
 # 백엔드 개발 전문가
@@ -341,13 +354,13 @@ Claude Code는 프로젝트 루트뿐만 아니라 중첩된 하위 디렉터리
 
 ### `disableBundledSkills` 토글
 
-`disableBundledSkills` (settings.json 불리언, 또는 환경변수 형태)는 Claude Code 번들 skills 및 워크플로우 — 예: `/deep-research`, 내장 슬래시 명령 skills — 를 discovery에서 숨기고 enterprise + personal + project + plugin skills만 보이게 합니다. 선별된 번들 없는 skill 표면을 제공할 때 사용하세요. MoAI-ADK는 이 토글을 자체 생성기에서 생성하지 않습니다. 사용 가능한 옵션으로 이곳에 문서화됩니다. 동반되는 `--safe-mode` 런칭 플래그는 [Settings JSON 가이드](/ko/advanced/settings-json#disablebundledskills)에 문서화되어 있습니다.
+`disableBundledSkills` (settings.json 불리언, 또는 환경변수 형태)는 Claude Code 번들 skills 및 워크플로우(예: `/deep-research`, 내장 슬래시 명령 skills)를 discovery에서 숨기고 enterprise + personal + project + plugin skills만 보이게 합니다. 선별된 번들 없는 skill 표면을 제공할 때 사용하세요. MoAI-ADK는 이 토글을 자체 생성기에서 만들지 않지만, 사용 가능한 옵션으로 이곳에 문서화해 둡니다. 동반되는 `--safe-mode` 런칭 플래그는 [Settings JSON 가이드](/ko/advanced/settings-json#disablebundledskills)에 문서화되어 있습니다.
 
 ## 관련 문서
 
-- [에이전트 가이드](/advanced/agent-guide) - 스킬을 활용하는 에이전트 체계
-- [빌더 에이전트 가이드](/advanced/builder-agents) - 커스텀 스킬 생성 방법
-- [CLAUDE.md 가이드](/advanced/claude-md-guide) - 스킬 설정과 규칙 체계
+- [에이전트 가이드](/ko/advanced/agent-guide) - 스킬을 활용하는 에이전트 체계
+- [빌더 에이전트 가이드](/ko/advanced/builder-agents) - 커스텀 스킬 생성 방법
+- [CLAUDE.md 가이드](/ko/advanced/claude-md-guide) - 스킬 설정과 규칙 체계
 
 {{< callout type="info" >}}
   **팁**: 스킬을 잘 활용하는 핵심은 **적절한 키워드 사용**입니다. "Python으로

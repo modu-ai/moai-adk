@@ -1,737 +1,499 @@
 ---
-title: CLI リファレンス
+title: CLI 概要
 weight: 90
 draft: false
 ---
 
-MoAI-ADK コマンドラインインターフェースのすべてのコマンドとオプションを参照します。
+ターミナルで実行する `moai` (Go バイナリ) のすべてのコマンドとフラグを俯瞰します。Claude Code の対話画面で入力する `/moai` (スラッシュサブコマンド) とは完全に別のツールです — このページはターミナル CLI のみを扱います。
 
-## コマンド一覧
+> コマンドごとの詳細リファレンス (フラグ・サブコマンド・例) は [CLIリファレンス](/cli-reference) セクションを参照してください。
+
+
+## コマンドツリー
 
 ```bash
 moai --help
 ```
 
-**出力例:**
+`moai` CLI は 3 つのグループに分かれます。
 
-```
-MoAI-ADK - Agentic Development Kit for Claude Code
+| グループ | コマンド | 説明 |
+|------|--------|------|
+| **Launch** | `moai cc` · `moai cg` · `moai glm` | Claude Code セッションの開始 (バックエンド選択) |
+| **Project** | `moai init` · `moai update` · `moai doctor` · `moai status` | プロジェクトの初期化、アップデート、診断、状態照会 |
+| **Tools** | `moai profile` · `moai inventory` · `moai hook` · `moai worktree` · `moai spec` · `moai harness` · ... | 設定、インベントリ、フック、ワークツリーなどのツール |
 
-Usage:
-  moai [command]
+`moai version` で現在インストールされているバージョンを確認します。
 
-Available Commands:
-  init        Interactive project setup (auto-detects language/framework/methodology)
-  doctor      System health diagnosis and environment verification
-  status      Project status summary including Git branch, quality metrics, etc.
-  update      Update to the latest version (with automatic rollback support)
-  worktree    Manage Git worktrees for parallel SPEC development
-  hook        Claude Code hook dispatcher
-  profile     Manage Claude Code configuration profiles
-  glm         Switch to GLM backend (cost-effective) or update API key
-  claude      Switch to Claude backend (Anthropic API)
-  version     Display version, commit hash, and build date
-
-Flags:
-  -h, --help      help for moai
-  -v, --version   version for moai
+```bash
+moai version
 ```
 
-| コマンド | 説明 |
-|---------|-------------|
-| `moai init` | プロジェクトを初期化 (言語/フレームワーク/メソドロジー自動検出) |
-| `moai doctor` | システム診断および環境検証 |
-| `moai status` | プロジェクトステータス概要 (Git ブランチ、品質メトリクスなど) |
-| `moai inventory` | 読み取り専用統合インベントリ (アクティブセッション、worktree、ハーネス) (`--json` で構造化出力) |
-| `moai update` | 最新バージョンに更新 (自動ロールバックサポート) |
-| `moai worktree` | Git worktree を管理 (並列 SPEC 開発) |
-| `moai hook` | Claude Code フックディスパッチャー |
-| `moai profile` | プロファイルを管理 (list, setup, current, delete) |
-| `moai glm` | GLM バックエンドに切り替え (`--team`: GLM Worker モード) |
-| `moai claude`, `moai cc` | Claude バックエンドに切り替え |
-| `moai cg` | CG モードを有効化 — Claude リーダー + GLM チームメイト (tmux 必須) |
-| `moai version` | バージョン、コミットハッシュ、ビルド日付を表示 |
+```text
+╭────────────────────────╮
+│                        │
+│    moai-adk v3.0.0     │
+│                        │
+│                        │
+╰────────────────────────╯
+ v3.0.0   none   built unknown
+```
+
+ボックスバナーの下の行は `<バージョン>   <コミットハッシュ>   built <ビルド時刻>` の順で表示されます。`go install` など ldflags なしでビルドした場合、コミットは `none`、ビルド時刻は `unknown` と表示されます。
 
 ---
 
 ## moai init
 
-プロジェクトを初期化します。
+プロジェクトを初期化します。対話型ウィザードが言語、Git 自動化、モデルポリシー、ハーネスプロファイルなどを設定します。
 
 ```bash
-moai init [PATH] [OPTIONS]
+moai init [project-name] [OPTIONS]
 ```
 
-### オプション
+### フラグ
 
-| オプション | 説明 |
-|--------|-------------|
-| `-y, --non-interactive` | 非対話モード (デフォルトを使用) |
-| `--mode [personal\|team]` | プロジェクトモード |
-| `--locale [ko\|en\|ja\|zh]` | 優先言語 (デフォルト: en) |
-| `--language TEXT` | プログラミング言語 (指定すると自動検出) |
-| `--force` | 確認なしで強制再初期化 |
+| フラグ | 説明 |
+|--------|------|
+| `--non-interactive` | 対話型ウィザードをスキップ (フラグとデフォルト値を使用) |
+| `--force` | 既存プロジェクトの強制再初期化 (現在の `.moai/` をバックアップ) |
+| `--no-hooks` | Git フックのインストールをスキップ |
+| `--all` | カタログの全項目を配布 (core + optional packs + harness-generated) |
+| `--standard` | Phase 1 質問を表示 (project mode, harness profile, LSP, quality gates, design) |
+| `--advanced` | Phase 1 + Phase 2 質問を表示 (`--standard` を含む; Phase 2 は前提条件を満たす場合のみ) |
+| `--mode <ddd\|tdd>` | 開発方法論 (デフォルト値: tdd) |
+| `--language <lang>` | 主要プログラミング言語 |
+| `--framework <name>` | フレームワーク名 (デフォルト値: 自動検出または "none") |
+| `--name <name>` | プロジェクト名 (デフォルト値: ディレクトリ名) |
+| `--root <path>` | プロジェクトルートディレクトリ (デフォルト値: 現在のディレクトリ) |
+| `--git-mode <manual\|personal\|team>` | Git ワークフローモード (デフォルト値: manual) |
+| `--git-provider <github\|gitlab>` | Git プロバイダー |
+| `--project-mode <personal\|team>` | プロジェクトモード (デフォルト値: personal) |
+| `--harness-profile <profile>` | ハーネス評価者プロファイル (default, strict, lenient, frontend) |
+| `--enable-lsp` | LSP 連携の有効化 (デフォルト値: false) |
+| `--enforce-quality` | 品質ゲートの強制 (デフォルト値: true) |
+| `--enable-design` | デザインワークフローの有効化 (デフォルト値: true) |
+| `--profile <max\|medium\|low>` | モデル+effort プロファイル — `llm.yaml` `profile` に保存 (プロファイルマトリクス列の選択) |
+| `--model-policy <max\|medium\|low>` | legacy パフォーマンスティア — `llm.yaml` `performance_tier` に保存 (`profile` 不在時にエイリアス) |
+| `--high` | **削除予定** `--model-policy max` の別名 |
 
 ### 例
 
 ```bash
-# 新しいプロジェクトを初期化
+# 新規プロジェクトの初期化 (対話型ウィザード)
 moai init my-project
 
-# 韓国語、チームモード
-moai init my-project --locale ko --mode team
+# 既存フォルダへのインストール
+cd my-existing-project
+moai init
 
-# Python プロジェクト
-moai init --language python
+# 非対話型 (CI/CD)
+moai init --non-interactive --project-mode personal --model-policy medium
+
+# Phase 1 質問まで表示
+moai init my-project --standard
 ```
+
+詳しいウィザードステップは [初期設定](./init-wizard) ページを参照してください。
 
 ---
 
 ## moai update
 
-MoAI-ADK を最新バージョンに更新します。
+MoAI-ADK を最新バージョンにアップデートします。フラグなしで実行するとバイナリとテンプレートを一緒に更新し、ユーザーのカスタム資産は自動保存されます。
 
 ```bash
 moai update [OPTIONS]
 ```
 
-### オプション
+### フラグ
 
-| オプション | 説明 |
-|--------|-------------|
-| `--path PATH` | プロジェクトパス (デフォルト: 現在のディレクトリ) |
-| `--force` | バックアップなしで強制更新 |
-| `--check` | バージョンのみ確認 (更新なし) |
-| `--project` | プロジェクトテンプレートのみ同期 |
-| `--templates-only` | テンプレートのみ同期 (パッケージアップグレードをスキップ) |
-| `--yes` | 自動確認 (CI/CD モード) |
-| `-c, --config` | プロジェクト設定を編集 (初期セットアップウィザードと同じ) |
-| `--merge` | 自動マージ (ユーザー変更を保持) |
-| `--manual` | 手動マージ (ガイドを作成) |
+| フラグ | 説明 |
+|--------|------|
+| `--check` | 新バージョンがあるかのみ確認 (アップデートしない) |
+| `-c, --config` | 設定ウィザードの再実行 (テンプレート同期はしない) |
+| `--force` | 強制アップデート (バージョン一致をスキップ、バックアップ+マージを強制、アーカイブドリフトを上書き) |
+| `--yes` | すべての確認を自動承認 (CI/CD モード) |
+| `--templates-only` | バイナリアップデートをスキップしテンプレートのみ同期 |
+| `--binary` | テンプレート同期をスキップしバイナリのみアップデート |
+| `--dry-run` | ファイルシステム変更なしで計画された作業のみ表示 |
+| `--no-hooks` | Git フックのインストールをスキップ |
+| `--verbose` | すべての警告を表示 (診断モード) |
+| `--shell-env` | Claude Code 用のシェル環境変数を構成 |
+| `--profile <max\|medium\|low>` | モデル+effort プロファイルの上書き (`llm.yaml` `profile` に保存) |
 
 ### 例
 
 ```bash
-# 更新を確認
+# 基本アップデート (バイナリ + テンプレート)
+moai update
+
+# 新バージョンがあるか確認のみ
 moai update --check
 
-# 強制更新
-moai update --force
+# 設定ウィザードの再実行
+moai update -c
 
-# 自動マージ
-moai update --merge
+# テンプレートのみ同期
+moai update --templates-only
 ```
 
-{{< callout type="warning" >}}
-**重要:** `--force` オプションはバックアップを作成しません。ユーザー変更が失われる可能性があります。
-{{< /callout >}}
+詳しいアップデート手順は [アップデート](./update) ページを参照してください。
 
 ---
 
 ## moai doctor
 
-システム診断を実行します。
+システム診断を実行します。Git、プロジェクト構造、設定ファイル、言語別の開発ツールを検査します。
 
 ```bash
 moai doctor [OPTIONS]
 ```
 
-### オプション
+### フラグ
 
-| オプション | 説明 |
-|--------|-------------|
-| `-v, --verbose` | 詳細なツールバージョンと言語検出を表示 |
-| `--fix` | 欠落しているツールの修正を提案 |
-| `--export PATH` | JSON ファイルにエクスポート |
-| `--check TEXT` | 特定のツールのみ確認 |
-| `--check-commands` | スラッシュコマンドの読み込み問題を診断 |
-| `--shell` | シェルと PATH 設定を診断 (WSL/Linux) |
+| フラグ | 説明 |
+|--------|------|
+| `-v, --verbose` | 詳細なツールバージョンおよび言語検出結果を表示 |
+| `--fix` | 欠落ツールの修正提案 |
+| `--export <path>` | 診断結果を JSON ファイルにエクスポート |
+| `--check <tool>` | 特定のツールのみ確認 (例: git, go, config) |
+
+### 下位コマンド
+
+| コマンド | 説明 |
+|--------|------|
+| `moai doctor sandbox` | サンドボックスバックエンドの可用性診断 |
+| `moai doctor permission` | 権限解決の診断 |
+| `moai doctor hook` | 27 個のフックイベントカバレッジ表を表示 |
+| `moai doctor config dump` | マージ済み設定を provenance とともにダンプ |
+| `moai doctor config diff <tier-a> <tier-b>` | 2 つの設定ティアを比較 |
 
 ### 例
 
 ```bash
-# 完全な診断
+# 全体診断
 moai doctor
 
-# 詳細な診断
+# 詳細診断
 moai doctor --verbose
 
-# 修正を提案
-moai doctor --fix
+# 診断結果のエクスポート
+moai doctor --export diagnostics.json
 ```
-
----
-
-## moai profile
-
-プロファイルを管理します。プロファイルは独立した Claude Code 構成環境を提供します。
-
-### プロファイル サブコマンド
-
-| コマンド | 説明 |
-|--------|------|
-| `moai profile list` | 使用可能なすべてのプロファイルを一覧表示 |
-| `moai profile setup` | インタラクティブウィザードで新しいプロファイルを作成 |
-| `moai profile current` | 現在アクティブなプロファイルの情報を表示 |
-| `moai profile delete <name>` | 指定されたプロファイルを削除 |
-
-### moai profile list
-
-```bash
-moai profile list
-```
-
-使用可能なすべてのプロファイルと現在アクティブなプロファイルを表示します。
-
-### moai profile setup
-
-```bash
-moai profile setup
-```
-
-インタラクティブウィザードが新しいプロファイルを作成します:
-
-1. **プロファイル名**: 一意の識別子 (例: `work`、`personal`)
-2. **ユーザー名**: Claude Code がユーザーを指す名前
-3. **言語設定**:
-   - 対話言語 (conversation_language)
-   - Git コミット言語 (git_commit_lang)
-   - コードコメント言語 (code_comment_lang)
-   - ドキュメント言語 (doc_lang)
-4. **モデル設定**:
-   - モデルポリシー (model_policy): high, medium, low
-   - デフォルトモデル (model): inherit, opus, sonnet, haiku, 1M コンテキストモデル
-5. **実行設定**:
-   - 権限モード (permission_mode): default, acceptEdits
-6. **表示設定**:
-   - ステータスバーモード (statusline_mode): off, basic, full
-   - ステータスバーテーマ (statusline_theme): auto, light, dark, monokai, nord, dracula
-   - チームメイト表示 (teammate_display): auto, in-process, tmux
-
-### moai profile current
-
-```bash
-moai profile current
-```
-
-現在アクティブなプロファイルの情報を表示します。
-
-### moai profile delete
-
-```bash
-moai profile delete <name>
-```
-
-指定されたプロファイルと対応するディレクトリを削除します。
-
-### プロファイル実行
-
-プロファイルを使用して MoAI コマンドを実行するには、`-p` フラグを使用します:
-
-```bash
-# Claude モードで特定のプロファイルを使用
-moai cc -p work
-
-# GLM モードで特定のプロファイルを使用
-moai glm -p personal
-
-# CG モードで特定のプロファイルを使用
-moai cg -p team-project
-```
-
-プロファイルの Claude Code 設定がそのセッションに適用されます。
-
-### Profile vs MoAI Worktree
-
-| 機能 | プロファイル | Worktree |
-|------|----------|---------|
-| **目的** | Claude Code 構成の分離 | プロジェクトファイルの分離 |
-| **パス** | `~/.moai/claude-profiles/<name>/` | `~/.moai/worktrees/<project>/<spec>/` |
-| **用途** | 異なる環境設定の管理 | SPEC 開発用ワークスペース |
-
----
-
-## moai glm
-
-GLM バックエンドに切り替えるか、API キーを更新します。
-
-```bash
-moai glm [OPTIONS] [API_KEY]
-```
-
-### オプション
-
-| オプション | 説明 |
-|--------|-------------|
-| `--team` | GLM Worker モードを開始 (Opus リーダー + GLM-5 チームメンバー) |
-| `--help` | ヘルプを表示 |
-
-### 使用方法
-
-```bash
-# GLM バックエンドに切り替え
-moai glm
-
-# API キーを更新
-moai glm <api-key>
-
-# GLM Worker モードを開始 (コスト効率の良いチーム開発)
-moai glm --team
-
-# z.ai から API キーを取得
-# https://z.ai/subscribe?ic=1NDV03BGWU
-```
-
-### プロファイルベースログイン (v2.7.0+)
-
-`moai glm`、`moai cc`、`moai cg` は永続プロファイルをサポートするログインコマンドになりました。プロファイルは `~/.moai/claude-profiles/` に保存されます。
-
-- 初回実行時にインタラクティブなプロファイル設定ウィザードを提供
-- プロファイルはセッション間で永続化
-- `moai glm` から `moai cg` への切り替え時に GLM 設定を自動リセット
-
-### GLM Worker モード
-
-`--team` オプションを使用すると、コスト効率の良い GLM Worker モードが開始されます:
-
-- **構成**: Opus モデルのリーダーエージェント + GLM-5 モデルのチームメンバーエージェント
-- **利点**: Claude と比べて 70% のコスト削減、同等のパフォーマンス
-- **用途**: 大規模なチームベース開発時のトークンコスト最適化
-
----
-
-## moai claude
-
-Claude バックエンド (Anthropic API) に切り替えます。
-
-```bash
-$ moai claude [OPTIONS]
-# または省略形
-$ moai cc [OPTIONS]
-```
-
-### オプション
-
-| オプション | 説明 |
-|-----------|------|
-| `-p, --profile TEXT` | 使用するプロフィール名 |
-
-### 使用方法
-
-```bash
-# Claude バックエンド切り替え
-moai cc
-
-# プロフィール指定実行
-moai cc -p work
-```
-
----
-
-## moai cg
-
-CG モード (Claude + GLM ハイブリッド) を有効にします。リーダーは Claude API を、チームメイトは GLM API を使用し、tmux セッションレベルの環境変数分離で実装されています。
-
-```bash
-moai cg [OPTIONS]
-```
-
-### オプション
-
-| オプション | 説明 |
-|-----------|------|
-| `-p, --profile TEXT` | 使用するプロフィール名 |
-
-{{< callout type="warning" >}}
-**v2.7.1 の変更**: CG モードが**デフォルト**のチームモードになりました。`--team` 使用時、設定変更なしで CG モードで実行されます。
-{{< /callout >}}
-
-### 動作原理
-
-1. GLM 設定を tmux セッション環境に注入
-2. settings から GLM 環境を削除 — リーダーペインは Claude API を使用
-3. `CLAUDE_CODE_TEAMMATE_DISPLAY=tmux` を設定 — チームメイトは新しいペインで GLM 環境を継承
-
-### 使用方法
-
-```bash
-# 1. GLM API キーを保存 (初回のみ)
-moai glm sk-your-glm-api-key
-
-# 2. CG モードを有効化 (tmux 内で実行)
-moai cg
-
-# 3. 同じペインで Claude Code を開始
-claude
-
-# 4. チームワークフローを実行
-/moai --team "タスクの説明"
-```
-
-### 注意事項
-
-| 項目 | 説明 |
-|------|------|
-| **tmux 必須** | tmux セッション内で実行する必要があります。VS Code ターミナルのデフォルトを tmux に設定すると便利です。 |
-| **リーダー開始位置** | `moai cg` を実行した**同じペイン**で Claude Code を開始する必要があります。 |
-| **セッション終了** | session_end フックが自動的に tmux セッション環境をクリアします。 |
-
-### モード比較
-
-| コマンド | リーダー | ワーカー | tmux 必須 | コスト削減 | 用途 |
-|----------|----------|----------|-----------|------------|------|
-| `moai cc` | Claude | Claude | 不要 | - | 最高品質 |
-| `moai glm` | GLM | GLM | 推奨 | ~70% | コスト最適化 |
-| `moai cg` | Claude | GLM | **必須** | **~60%** | 品質 + コストバランス |
-
-### ディスプレイモード
-
-| モード | 説明 | 通信 | リーダー/ワーカー分離 |
-|--------|------|------|------------------------|
-| `in-process` | デフォルトモード | SendMessage | 同じ環境 |
-| `tmux` | 分割ペイン表示 | SendMessage | セッション環境分離 |
-
-{{< callout type="info" >}}
-**注意:** CG モードは `tmux` ディスプレイモードでのみリーダー/ワーカー API 分離をサポートします。
-{{< /callout >}}
 
 ---
 
 ## moai status
 
-プロジェクトステータスを確認します。
+プロジェクトの状態を一目で照会します。初期化の有無、SPEC 個数、設定ファイル数を表示します。
 
 ```bash
 moai status
 ```
 
-**出力例:**
-
-```
-╭────── Project Status ──────╮
-│   Mode          personal   │
-│   Locale        unknown    │
-│   SPECs         1          │
-│   Branch        main       │
-│   Git Status    Modified   │
-╰────────────────────────────╯
-```
-
-**出力情報:**
-- **Mode**: 作業モード (personal、team、manual)
-- **Locale**: 言語設定
-- **SPECs**: アクティブな SPEC の数
-- **Branch**: 現在のブランチ
-- **Git Status**: Git ステータス (Clean、Modified)
+フラグを持たない読み取り専用コマンドです。詳しい出力内容は [プロジェクト状態](./status) ページを参照してください。
 
 ---
 
 ## moai inventory
 
-アクティブなセッション、worktree、ハーネスを統合管理する読み取り専用インベントリを照会します。
+アクティブセッション、ワークツリー、ハーネスを統合照会する読み取り専用コマンドです。
 
 ```bash
 moai inventory [OPTIONS]
 ```
 
-### オプション
+### フラグ
 
-| オプション | 説明 |
-|--------|-------------|
-| `--json` | 構造化 JSON 形式で出力 |
+| フラグ | 説明 |
+|--------|------|
+| `--json` | 構造化された JSON 出力 |
+| `--project-root <path>` | プロジェクトルートパス (デフォルト値: 現在のディレクトリ) |
 
-### 使用方法
-
-```bash
-# 基本的なインベントリを表示
-moai inventory
-
-# JSON 形式で照会 (プログラミング使用)
-moai inventory --json
-```
-
-**出力情報:**
-- **アクティブセッション**: 現在実行中の Claude Code セッション
-- **Worktree**: 並列開発用のアクティブな Git worktree リスト
-- **ハーネス**: 登録された開発ハーネスリスト
-
-詳細については、[インベントリ管理](./inventory) ページを参照してください。
+詳しい JSON スキーマと活用例は [moai inventory](./inventory) ページを参照してください。
 
 ---
 
-## moai worktree
+## moai profile
 
-並列 SPEC 開発のための Git worktree を管理します。
+Claude Code の設定プロファイルを管理します。プロファイルごとに独立したモデル、言語、表示設定を維持できます。
 
 ```bash
-moai worktree [OPTIONS] COMMAND [ARGS]...
+moai profile [COMMAND]
 ```
 
-### サブコマンド
+### 下位コマンド
 
 | コマンド | 説明 |
-|---------|-------------|
-| `moai worktree new` | 新しい worktree を作成 |
-| `moai worktree list` | アクティブな worktree を一覧表示 |
-| `moai worktree switch` | worktree に切り替え |
-| `moai worktree go` | worktree ディレクトリに移動 |
-| `moai worktree sync` | アップストリームと同期 |
-| `moai worktree remove` | worktree を削除 |
-| `moai worktree clean` | 古い worktree をクリーンアップ |
-| `moai worktree recover` | 既存のディレクトリから復元 |
+|--------|------|
+| `moai profile list` | 利用可能なすべてのプロファイルを表示 |
+| `moai profile setup` | 対話型設定ウィザードの実行 |
+| `moai profile current` | 現在アクティブなプロファイルを表示 |
+| `moai profile delete <name>` | 指定されたプロファイルの削除 |
 
-### moai worktree new
-
-新しい worktree を作成します。
+プロファイルの実行は `-p` フラグで指定します:
 
 ```bash
-moai worktree new [OPTIONS] SPEC_ID
+moai cc -p work       # work プロファイルで Claude 実行
+moai glm -p cost-save # cost-save プロファイルで GLM 実行
+moai cg -p team       # team プロファイルで CG モード実行
 ```
 
-#### オプション
-
-| オプション | 説明 |
-|--------|-------------|
-| `-b, --branch TEXT` | ユーザーブランチ名 |
-| `--base TEXT` | ベースブランチ (デフォルト: main) |
-| `--repo PATH` | リポジトリパス |
-| `--worktree-root PATH` | worktree ルートパス |
-| `-f, --force` | 存在していても強制作成 |
-| `--glm` | GLM LLM 設定を使用 |
-| `--llm-config PATH` | ユーザー LLM 設定ファイルパス |
-
-#### 例
-
-```bash
-# SPEC-001 の worktree を作成
-moai worktree new SPEC-001
-
-# ユーザーブランチを指定
-moai worktree new SPEC-001 --branch feature-auth
-
-# ベースブランチを変更
-moai worktree new SPEC-001 --base develop
-```
-
-### moai worktree list
-
-アクティブな worktree を一覧表示します。
-
-```bash
-moai worktree list [OPTIONS]
-```
-
-#### オプション
-
-| オプション | 説明 |
-|--------|-------------|
-| `--format [table\|json]` | 出力形式 |
-| `--repo PATH` | リポジトリパス |
-| `--worktree-root PATH` | worktree ルートパス |
-
-### moai worktree remove
-
-worktree を削除します。
-
-```bash
-moai worktree remove [OPTIONS] SPEC_ID
-```
-
-#### オプション
-
-| オプション | 説明 |
-|--------|-------------|
-| `-f, --force` | コミットされていない変更を強制削除 |
-| `--repo PATH` | リポジトリパス |
-| `--worktree-root PATH` | worktree ルートパス |
-
-### worktree ワークフロー
-
-```mermaid
-flowchart TD
-    A[moai worktree new] --> B[Worktree を作成]
-    B --> C[開発]
-    C --> D[moai worktree done]
-    D --> E[メインブランチにマージ]
-    E --> F[moai worktree clean]
-    F --> G[Worktree を削除]
-```
+詳しい内容は [プロファイル管理](./profile) ページを参照してください。
 
 ---
 
 ## moai hook
 
-MoAI-ADK イベント用の Claude Code フックディスパッチャー。
+Claude Code のフックイベントを処理するディスパッチャーです。`settings.json` のフック設定から `moai hook <event>` の形で呼び出されます。
 
 ```bash
 moai hook <event>
 ```
 
-### サポートされるイベント (16)
+### 対応サブコマンド (約 38 個)
+
+`moai hook` ディスパッチャーは、標準の Claude Code フックイベントと MoAI 専用の内部アクションを合わせて約 38 個のサブコマンドを提供します。すべての名前は kebab-case です。以下は代表的なイベントです。
 
 | イベント | 説明 |
-|-------|-------------|
-| `PreToolUse` | ツール実行前 |
-| `PostToolUse` | ツール実行後 |
-| `Notification` | システム通知 |
-| `Stop` | セッション終了 |
-| `SubagentStop` | サブエージェント終了 |
-| `UserPromptSubmit` | ユーザープロンプト送信 |
-| `PreCompact` | コンテキスト圧縮前 |
-| `PostCompact` | コンテキスト圧縮後 |
-| `PermissionRequest` | 権限リクエスト |
-| `PostToolFailure` | ツール実行失敗後 |
-| `SubagentStart` | サブエージェント開始 |
-| `TeammateIdle` | チームメイトアイドル状態 |
-| `TaskCompleted` | タスク完了 |
-| `WorktreeCreate` | ワークツリー作成 |
-| `WorktreeRemove` | ワークツリー削除 |
-| `model` | モデル選択 |
+|-------|------|
+| `session-start` | セッション開始 |
+| `session-end` | セッション終了 |
+| `pre-tool` | ツール実行前 (PreToolUse) |
+| `post-tool` | ツール実行後 (PostToolUse) |
+| `post-tool-failure` | ツール実行失敗後 |
+| `stop` | セッション停止 |
+| `stop-failure` | 停止失敗 |
+| `compact` | コンテキスト圧縮前 (PreCompact) |
+| `post-compact` | コンテキスト圧縮後 |
+| `notification` | システム通知 |
+| `subagent-start` | サブエージェント開始 |
+| `subagent-stop` | サブエージェント終了 |
+| `user-prompt-submit` | ユーザープロンプト送信 |
+| `permission-request` | 権限リクエスト |
+| `permission-denied` | 権限拒否 |
+| `teammate-idle` | チームメイトのアイドル状態 |
+| `task-completed` | タスク完了 |
+| `task-created` | タスク生成 |
+| `worktree-create` | ワークツリー生成 |
+| `worktree-remove` | ワークツリー削除 |
+| `instructions-loaded` | インストラクションロード完了 |
+| `config-change` | 設定変更 |
+| `cwd-changed` | 作業ディレクトリ変更 |
+| `file-changed` | ファイル変更 |
+| `elicitation` | MCP elicitation リクエスト |
+| `elicitation-result` | MCP elicitation 結果 |
 
-### 例
+MoAI 専用のサブコマンドも含まれます。
+
+| サブコマンド | 説明 |
+|-------|------|
+| `stop-goal` | ターン終了時にアクティブセッションの goal を評価 |
+| `pre-push` | コミットメッセージを規約に沿って検証 |
+| `spec-status` | git コミット時に SPEC status を自動更新 |
+| `harness-classify` | ハーネス分類器の実行とティア昇格の記録 |
+| `harness-observe` · `harness-observe-stop` · `harness-observe-subagent-stop` · `harness-observe-user-prompt-submit` | ハーネス使用ログの記録 |
+| `db-schema-sync` | PostToolUse フックで DB スキーマ変更を検出 |
+
+フックはユーザーが直接実行しません — Claude Code の `settings.json` が自動的に呼び出します。
+
+---
+
+## moai worktree
+
+Git worktree を管理して並列 SPEC 開発を行います。
 
 ```bash
-# PreToolUse フックを実行
-moai hook PreToolUse
+moai worktree <COMMAND> [ARGS]...
+```
 
-# PostToolUse フックを実行
-moai hook PostToolUse
+### 下位コマンド
 
-# ユーザープロンプト送信フック
-moai hook UserPromptSubmit
+| コマンド | 説明 |
+|--------|------|
+| `moai worktree new [branch-name]` | 新しい worktree の生成 |
+| `moai worktree list` | アクティブな worktree 一覧 |
+| `moai worktree go [branch-name]` | worktree パスを**出力** (シェル移動用) |
+| `moai worktree switch [branch-name]` | worktree へ切替 |
+| `moai worktree done [branch-name]` | worktree の完了と整理 |
+| `moai worktree sync [branch-name]` | base ブランチと worktree を同期 |
+| `moai worktree remove [path]` | worktree の削除 |
+| `moai worktree config [key] [value]` | worktree 設定の照会/変更 |
+| `moai worktree status` | worktree の状態照会 |
+| `moai worktree clean` | 古い worktree 参照の整理 |
+| `moai worktree recover` | worktree レジストリの復旧 |
+| `moai worktree snapshot` | 作業ツリー状態のスナップショットを取得 |
+| `moai worktree restore` | スナップショット HEAD 状態へ作業ツリーを復元 |
+| `moai worktree verify` | 作業ツリー状態をスナップショットと照合検証 |
+
+`moai worktree go` はディレクトリを変えずにパスだけ出力します。実際の移動はシェルで次のように包んで使います。
+
+```bash
+cd "$(moai worktree go my-branch)"
 ```
 
 ---
 
-## Statusline v3
+## moai cc / moai cg / moai glm
 
-MoAI Statusline v3 は Claude Code ステータスバーにリアルタイム API 使用量を表示します。
+Claude Code を開始しながらバックエンドを選択するランチコマンドです。3 つのコマンドすべて `-p <profile>` フラグでプロファイルを指定できます。`--` 以降の引数を Claude Code にそのまま渡すのは `moai cc` と `moai glm` のみ対応します (`moai cg` は非対応)。
 
-### v3 の新機能
+```bash
+moai cc [-p profile] [-- claude-args...]
+moai glm [-p profile] [-- claude-args...]
+moai cg [-p profile]
+```
 
-| 機能 | 説明 |
+| コマンド | リーダー | ワーカー | tmux 必須 | 用途 |
+|--------|------|------|-----------|------|
+| `moai cc` | Claude | Claude | いいえ | 最高品質 (単一バックエンド) |
+| `moai glm` | GLM | GLM | いいえ | コスト最適化 (GLM 単独) |
+| `moai cg` | Claude | GLM | 必須 | 品質 + コストのバランス (ハイブリッド) |
+
+`moai cg` は CG モード (Claude リーダー + GLM チームメイト) を有効化します。tmux セッション内で実行する必要があり、GLM 環境変数を tmux セッションに注入してリーダー画面は Claude API を使います。`moai cg` は設定後、現在の画面ですぐに Claude Code を実行するので、別途 `claude` を実行するステップは不要です。
+
+```bash
+# 1. GLM API キーの保存 (最初の 1 回)
+moai glm setup sk-your-glm-api-key
+
+# 2. CG モードの有効化 (tmux 内で実行 — Claude Code が現在の画面ですぐに開始される)
+moai cg
+```
+
+詳しい CG モードの案内は [紹介 — GLM でトークン節約](./introduction#glm-でトークン節約-5070) を参照してください。
+
+### ランチフラグ
+
+3 つのランチコマンドが共通で対応するフラグです。
+
+| フラグ | 説明 |
+|--------|------|
+| `-p, --profile <name>` | 名前付き Claude プロファイルを使用 |
+| `--permission-mode <mode>` | 権限モード (default, acceptEdits, plan, auto, bypassPermissions, dontAsk) |
+| `-b, --bypass` | `--permission-mode bypassPermissions` の短縮形 |
+
+`moai cc` はさらに次のフラグに対応します。
+
+| フラグ | 説明 |
+|--------|------|
+| `-c, --continue` | 以前のセッションを継続 |
+| `-m, --model <model>` | モデル選択の上書き |
+| `--chrome` / `--no-chrome` | Chrome MCP のトグル |
+
+> `auto` 権限モードは GLM (サードパーティプロバイダー) では使えません — `moai cc` または `moai cg` でのみ対応します。
+
+### moai glm 下位コマンド
+
+| コマンド | 説明 |
+|--------|------|
+| `moai glm setup <api-key>` | GLM API キーの保存 |
+| `moai glm status` | 現在の GLM 資格情報状態を表示 |
+| `moai glm tools` | Z.AI MCP サーバーのツール管理 (有効/無効) |
+
+---
+
+## moai goal
+
+現在のセッションに条件ベースの自律 goal ループを登録・照会・解除します。条件が満たされるまで毎ターン終了時に評価されます。
+
+```bash
+moai goal <COMMAND>
+```
+
+| コマンド | 説明 |
+|--------|------|
+| `moai goal arm <condition>` | アクティブセッションに goal を登録・有効化 |
+| `moai goal status` | アクティブセッションの goal 状態を出力 |
+| `moai goal clear` | アクティブセッションの goal を解除 |
+
+---
+
+## moai handoff
+
+`/clear` 境界を越えてセッションを継続するための auto-resume ハンドオフ待機レコードを管理します。
+
+```bash
+moai handoff <COMMAND>
+```
+
+| コマンド | 説明 |
+|--------|------|
+| `moai handoff save` | 貼り付け用 resume 本文を待機レコードとして保存 |
+| `moai handoff clear` | 待機ハンドオフレコードを削除 |
+
+---
+
+## moai session
+
+マルチセッションレース緩和のためのアクティブセッション調整レジストリを管理します。
+
+```bash
+moai session <COMMAND>
+```
+
+| コマンド | 説明 |
+|--------|------|
+| `moai session current` | 現在のオーケストレーターセッション UUID を出力 |
+| `moai session list` | アクティブセッション一覧 (`--filter-spec` でフィルタリング可) |
+| `moai session register <session_id> <spec_id> <phase>` | レジストリにセッションを登録 |
+| `moai session deregister <session_id>` | レジストリからセッションを削除 (idempotent) |
+| `moai session heartbeat <session_id>` | セッションの last_heartbeat を更新 |
+| `moai session purge` | 古い項目を削除 (デフォルト: 最後の heartbeat から 30 分超過) |
+| `moai session doctor` | セッションレジストリが空である原因を診断 |
+
+---
+
+## moai web
+
+ブラウザベースの設定エディタ MoAI Web Console を起動します。
+
+```bash
+moai web [OPTIONS]
+```
+
+| フラグ | 説明 |
+|--------|------|
+| `--port <N>` | 127.0.0.1 にバインドする TCP ポート (デフォルト: 3041) |
+| `--no-open` | ブラウザを自動で開かない |
+| `--no-reuse` | 古い moai インスタンスからポートを回収しない |
+
+---
+
+## moai version
+
+バージョン、コミットハッシュ、ビルド日付を表示します。
+
+```bash
+moai version
+moai --version    # 同じ
+```
+
+---
+
+## モデルポリシー (パフォーマンスティア)
+
+MoAI-ADK はエージェントに最適な AI モデルを割り当てるパフォーマンスティアシステムを提供します — トークノミクスの出発点です。`llm.yaml` の `performance_tier` フィールドで設定し、`--model-policy` フラグまたは初期化ウィザードで選択します。
+
+| ティア | 特徴 |
 |------|------|
-| **RGB グラデーション色** | 使用量比率に応じたスムーズな色変化 |
-| **5H/7D API 使用量** | 5 時間/7 日の累積使用量を表示 |
-| **rate_limits フィールドパース** | Claude API レスポンスの正確な制限情報 |
-
-### 色グラデーション
-
-使用量比率に応じて色がスムーズに変わります:
-
-- **0-30%**: 緑 → 黄色 (安全)
-- **31-70%**: 黄色 → オレンジ (注意)
-- **71-100%**: オレンジ → 赤 (限界近い)
-
-### API 使用量表示
-
-```
-5H: 45K/200K (22%) | 7D: 180K/500K (36%)
-```
-
-- **5H**: 最近 5 時間の使用量
-- **7D**: 最近 7 日の使用量
-- **比率**: 現在の割り当て対比で使用中の比率
-
-### 設定方法
-
-プロファイル設定ウィザード (`moai profile setup`) で次のオプションを選択します:
-
-1. **statusline_mode**: `off`, `basic`, `full`
-2. **statusline_theme**: `auto`, `light`, `dark`, `monokai`, `nord`, `dracula`
-
-### 使用方法
+| **max** | 最高品質 — 計画・監査に Opus 割り当て、最大の推論深度 |
+| **medium** (デフォルト値) | 品質とコストのバランス |
+| **low** | 経済的 — Sonnet 中心の配分 |
 
 ```bash
-# プロファイル作成時に Statusline を設定
-moai profile setup
-# → statusline_mode: full を選択
-# → statusline_theme: auto を選択
+# 初期化時に設定
+moai init my-project --model-policy max
 
-# プロファイルと共に実行
-moai cc -p my-profile
-```
-
----
-
-## タスクメトリクスロギング
-
-MoAI-ADK は開発セッション中に Task ツールメトリクスを自動的にキャプチャします。
-
-### ログファイル
-
-- **場所**: `.moai/logs/task-metrics.jsonl`
-- **形式**: JSONL (JSON Lines)
-
-### キャプチャメトリクス
-
-| メトリクス | 説明 |
-|--------|-------------|
-| トークン使用量 | 入力/出力トークン数 |
-| ツール呼び出し | 使用されたツールのリストと呼び出し回数 |
-| 所要時間 | タスク実行時間 |
-| エージェントタイプ | 実行されたエージェントの種類 |
-
-### 活用方法
-
-- セッション分析とパフォーマンス最適化
-- エージェント効率の分析
-- トークン消費の追跡とコスト管理
-
-Task ツール完了時に PostToolUse フックがメトリクスを自動的にロギングします。
-
----
-
-## モデルポリシー設定
-
-MoAI-ADK は Claude Code サブスクリプションプランに基づいてエージェントに最適な AI モデルを割り当てます。
-
-### ポリシーティア
-
-| ポリシー | プラン | 🟣 Opus | 🔵 Sonnet | 🟡 Haiku |
-|----------|--------|---------|-----------|----------|
-| **High** | Max $200/月 | 16 | 5 | 3 |
-| **Medium** | Max $100/月 | 3 | 17 | 4 |
-| **Low** | Plus $20/月 | 0 | 13 | 11 |
-
-### 設定方法
-
-```bash
-# プロジェクト初期化時 (対話型ウィザード)
-moai init my-project
-
-# 既存プロジェクトの再設定
+# 既存プロジェクトで再設定
 moai update -c
-
-# 手動設定 (.moai/config/sections/user.yaml)
-# model_policy: high | medium | low
 ```
 
-> **注意**: デフォルトポリシーは `High` です。`moai update` 実行後、`moai update -c` で設定を構成してください。
-
-### 1M コンテキストモデル
-
-プロフィール設定時に**デフォルトモデル**を選択する場合、1M コンテキストモデルを選択できます:
-
-- `claude-opus-4-6 1M context`
-- `claude-sonnet-4-6 1M context`
-
-これらのモデルは、大規模コードベースの分析や長いドキュメント作業に最適です。
+プロファイル (`profile`: max/medium/low) はプロファイルマトリクスのアクティブ列を選択し、各エージェントの model+effort を決定します。詳しいエージェント別マッピングは [プロファイルマトリクス](/ja/advanced/profile-matrix/) ページを参照してください。
 
 ---
 
-## 環境変数
-
-| 変数 | 説明 |
-|----------|-------------|
-| `MOAI_API_KEY` | API キー (Claude/GLM) |
-| `MOAI_MODE` | 実行モード (development/production) |
-| `MOAI_LOCALE` | 言語設定 (ko/en/ja/zh) |
-| `MOAI_WORKTREE_ROOT` | worktree ルートパス |
-
----
-
-## 関連項目
+## 参考
 
 - [クイックスタート](./quickstart)
 - [インストール](./installation)

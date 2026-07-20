@@ -18,6 +18,56 @@
   ],
   "redirects": [
     {
+      "source": "/:locale(ko|en|ja|zh)/getting-started/inventory",
+      "destination": "/:locale/cli-reference/inventory",
+      "permanent": true
+    },
+    {
+      "source": "/getting-started/inventory",
+      "destination": "/ko/cli-reference/inventory",
+      "permanent": true
+    },
+    {
+      "source": "/:locale(ko|en|ja|zh)/getting-started/status",
+      "destination": "/:locale/cli-reference/status",
+      "permanent": true
+    },
+    {
+      "source": "/getting-started/status",
+      "destination": "/ko/cli-reference/status",
+      "permanent": true
+    },
+    {
+      "source": "/:locale(ko|en|ja|zh)/advanced/plan-type-profiles",
+      "destination": "/:locale/advanced/profile-matrix",
+      "permanent": true
+    },
+    {
+      "source": "/advanced/plan-type-profiles",
+      "destination": "/ko/advanced/profile-matrix",
+      "permanent": true
+    },
+    {
+      "source": "/:locale(ko|en|ja|zh)/getting-started/update",
+      "destination": "/:locale/cli-reference/update",
+      "permanent": true
+    },
+    {
+      "source": "/getting-started/update",
+      "destination": "/ko/cli-reference/update",
+      "permanent": true
+    },
+    {
+      "source": "/:locale(ko|en|ja|zh)/getting-started/profile",
+      "destination": "/:locale/cli-reference/profile",
+      "permanent": true
+    },
+    {
+      "source": "/getting-started/profile",
+      "destination": "/ko/cli-reference/profile",
+      "permanent": true
+    },
+    {
       "source": "/:locale(ko|en|ja|zh)/moai-rank/:path*",
       "destination": "/:locale",
       "permanent": true
@@ -50,6 +100,56 @@
     {
       "source": "/book/:path*",
       "destination": "https://book.mo.ai.kr/:path*",
+      "permanent": true
+    },
+    {
+      "source": "/:locale(ko|en|ja|zh)/quality-commands/moai-codemaps",
+      "destination": "/:locale/utility-commands/moai-codemaps",
+      "permanent": true
+    },
+    {
+      "source": "/quality-commands/moai-codemaps",
+      "destination": "/ko/utility-commands/moai-codemaps",
+      "permanent": true
+    },
+    {
+      "source": "/:locale(ko|en|ja|zh)/quality-commands/moai-gate",
+      "destination": "/:locale/utility-commands",
+      "permanent": true
+    },
+    {
+      "source": "/quality-commands/moai-gate",
+      "destination": "/ko/utility-commands",
+      "permanent": true
+    },
+    {
+      "source": "/:locale(ko|en|ja|zh)/quality-commands/moai-review",
+      "destination": "/:locale/utility-commands",
+      "permanent": true
+    },
+    {
+      "source": "/quality-commands/moai-review",
+      "destination": "/ko/utility-commands",
+      "permanent": true
+    },
+    {
+      "source": "/:locale(ko|en|ja|zh)/utility-commands/moai-mx",
+      "destination": "/:locale/utility-commands",
+      "permanent": true
+    },
+    {
+      "source": "/utility-commands/moai-mx",
+      "destination": "/ko/utility-commands",
+      "permanent": true
+    },
+    {
+      "source": "/:locale(ko|en|ja|zh)/quality-commands",
+      "destination": "/:locale/utility-commands",
+      "permanent": true
+    },
+    {
+      "source": "/quality-commands",
+      "destination": "/ko/utility-commands",
       "permanent": true
     }
   ],

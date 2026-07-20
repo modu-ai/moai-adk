@@ -1,0 +1,41 @@
+index:
+  title: "CLI 레퍼런스"
+  display: "hidden"
+inventory:
+  title: "moai inventory 커맨드"
+status:
+  title: "프로젝트 상태"
+update:
+  title: "업데이트"
+profile:
+  title: "프로필 관리"
+web:
+  title: "moai web 웹 콘솔"
+doctor:
+  title: "moai doctor 진단"
+init:
+  title: "moai init 초기화"
+spec:
+  title: "moai spec 문서 관리"
+harness:
+  title: "moai harness 하네스"
+loop:
+  title: "moai loop 피드백 루프"
+goal:
+  title: "moai goal 목표 루프"
+pr:
+  title: "moai pr PR 감시"
+handoff:
+  title: "moai handoff 핸드오프 레코드"
+session:
+  title: "moai session 세션 레지스트리"
+launchers:
+  title: "moai cc / cg / glm 런처"
+worktree:
+  title: "moai worktree 워크트리"
+"tool-policy":
+  title: "moai tool-policy 도구 정책"
+constitution:
+  title: "moai constitution 헌법"
+github:
+  title: "moai github GitHub 연동"

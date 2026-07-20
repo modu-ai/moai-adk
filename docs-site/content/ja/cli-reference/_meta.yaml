@@ -1,0 +1,41 @@
+index:
+  title: "CLIリファレンス"
+  display: "hidden"
+inventory:
+  title: "moai inventory コマンド"
+status:
+  title: "プロジェクト状態"
+update:
+  title: "アップデート"
+profile:
+  title: "プロファイル管理"
+web:
+  title: "moai web コンソール"
+doctor:
+  title: "moai doctor 診断"
+init:
+  title: "moai init 初期化"
+spec:
+  title: "moai spec ドキュメント管理"
+harness:
+  title: "moai harness ハーネス"
+loop:
+  title: "moai loop フィードバックループ"
+goal:
+  title: "moai goal ゴールループ"
+pr:
+  title: "moai pr PR 監視"
+handoff:
+  title: "moai handoff ハンドオフレコード"
+session:
+  title: "moai session セッションレジストリ"
+launchers:
+  title: "moai cc / cg / glm ランチャー"
+worktree:
+  title: "moai worktree ワークツリー"
+"tool-policy":
+  title: "moai tool-policy ツールポリシー"
+constitution:
+  title: "moai constitution 憲法"
+github:
+  title: "moai github GitHub 連携"

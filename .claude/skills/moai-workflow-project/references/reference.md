@@ -99,13 +99,13 @@ Supported Languages with Token Impact:
 ### Pattern 1: SPEC-Driven Documentation Workflow
 
 ```python
-# Integration with /moai:1-plan and /moai:3-sync
+# Integration with /moai plan and /moai sync
 from moai_workflow_project import MoaiMenuProject
 
 # Initialize project system
 project = MoaiMenuProject("/path/to/project")
 
-# After /moai:1-plan generates SPEC
+# After /moai plan generates SPEC
 spec_data = load_spec("SPEC-001")
 
 # Generate documentation from SPEC

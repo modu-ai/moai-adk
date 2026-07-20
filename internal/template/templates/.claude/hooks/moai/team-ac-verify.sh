@@ -7,15 +7,17 @@
 # team.enabled: true. This avoids overhead in solo-mode sessions.
 #
 # Delivery channel: a completion rejection is signaled via stdout JSON
-# {"decision":"block","reason":...,"ledger_note":...} + exit 0. Per Claude Code
-# hook semantics, stdout JSON is honored only on exit 0 — on exit 2 stdout is
-# discarded and only stderr is surfaced — so the block decision MUST ride the
-# exit-0 stdout channel. Informational (non-blocking) output never carries a
-# "decision" key ("block" is the only honored decision value here).
+# {"continue":false,"stopReason":"AC verification failed: ...","ledger_note":"..."}
+# + exit 0. Per Claude Code hook semantics, stdout JSON is honored only on exit
+# 0 — on exit 2 stdout is discarded and only stderr is surfaced — so the reject
+# decision MUST ride the exit-0 stdout channel. The "decision" field is NOT
+# used here because it is documented only for PostToolUse/Stop/SubagentStop/
+# UserPromptSubmit/ConfigChange/PreCompact/PostToolBatch — NOT TaskCompleted.
+# The official TaskCompleted reject contract is {"continue":false,"stopReason":...}.
 #
-# Reject path (--reject stub): emits the block decision above with a
-# ledger_note field; the orchestrator injects the ledger_note as the
-# ledger-closing artifact for the rejected task (see agent-common-protocol.md
+# Reject path (--reject stub): emits the continue:false + stopReason form above
+# with a ledger_note sidecar field; the orchestrator injects the ledger_note as
+# the ledger-closing artifact for the rejected task (see agent-common-protocol.md
 # § Ledger Closure). The trigger is a MINIMAL STUB (--reject test flag) — full
 # AC-verification logic (parsing acceptance.md, running evidence commands,
 # blocking on AC failure) is deferred to a follow-up.
@@ -26,7 +28,7 @@
 #
 # Reject-path smoke test:
 #   bash .claude/hooks/moai/team-ac-verify.sh --reject
-# Expected: exit 0 + JSON with "decision":"block" and a "ledger_note" field.
+# Expected: exit 0 + JSON with "continue":false, "stopReason", and a "ledger_note" field.
 
 set -e
 
@@ -42,7 +44,7 @@ fi
 # Reject-path stub: minimal trigger via explicit --reject test flag (static
 # JSON — no interpolation, safe without jq).
 if [ "$1" = "--reject" ]; then
-    printf '{"decision":"block","reason":"task completion rejected via --reject stub: AC verification not yet implemented","ledger_note":"task rejected via --reject stub: AC verification not yet implemented (full AC verification deferred to a follow-up)"}\n'
+    printf '{"continue":false,"stopReason":"AC verification failed: task completion rejected via --reject stub (full AC verification deferred to a follow-up)","ledger_note":"task rejected via --reject stub: AC verification not yet implemented (full AC verification deferred to a follow-up)"}\n'
     exit 0
 fi
 

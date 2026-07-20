@@ -4,13 +4,13 @@ weight: 35
 draft: false
 ---
 
-MoAI-ADK의 불변 규칙(FROZEN)과 진화 가능한 규칙(Evolvable)을 관리하는 헌법적 제약 시스템입니다.
+MoAI-ADK의 불변 규칙 (FROZEN) 과 진화 가능한 규칙 (Evolvable) 을 관리하는 헌법적 제약 시스템입니다.
 
 ## 개요
 
-MoAI-ADK는 **Constitution(헌법)** 시스템을 통해 AI 에이전트가 임의로 변경할 수 없는
-불변 제약(FROZEN Zone)과 학습을 통해 개선할 수 있는 진화 가능 제약(Evolvable Zone)을
-구분합니다. 이는 하네스 엔지니어링의 핵심 안전 메커니즘입니다.
+[하네스 엔지니어링](/ko/core-concepts/harness-engineering)에서 보았듯, MoAI-ADK의 하네스는 루프가 축적한 관찰로 스스로 지침을 진화시킵니다. 그렇다면 무엇이 그 진화를 통제할까요? 답이 **Constitution (헌법)** 시스템입니다.
+
+Constitution은 AI 에이전트가 임의로 변경할 수 없는 불변 제약 (FROZEN Zone) 과 학습을 통해 개선할 수 있는 진화 가능 제약 (Evolvable Zone) 을 구분합니다. 평가 기준과 안전 규칙을 진화 루프의 **밖**에 둡니다. 그래야 자가 진화 하네스가 폭주하지 않으며, 이것이 하네스 엔지니어링의 핵심 안전 장치입니다.
 
 ## FROZEN vs Evolvable
 
@@ -58,6 +58,11 @@ CONST-V3R2-NNN (3자리 이상 zero-padding)
 150+: 신규 추가
 ```
 
+> **ID 접두사는 시대(era)에 따라 다릅니다**: `CONST-V3R2-NNN`은 예시일 뿐이며,
+> 접두사는 조항이 도입된 시대를 반영합니다 (`CONST-V3R2-NNN`,
+> `CONST-V3R5-NNN`, `CONST-V3R6-NNN` 등). V3R2로 고정된 것이 아니라, 이후
+> 시대에 추가된 조항은 해당 시대 접두사를 사용합니다.
+
 ### Canary Gate
 
 FROZEN 조항은 `canary_gate: true`를 가집니다. 변경 전 canary 검증이 필수입니다.
@@ -74,7 +79,7 @@ FROZEN 조항은 `canary_gate: true`를 가집니다. 변경 전 canary 검증�
 
 ## 안전 아키텍처 (5계층)
 
-Constitution 시스템은 5계층 안전 아키텍처로 보호됩니다:
+Constitution 시스템은 5계층 안전 아키텍처로 보호됩니다. 하네스가 아무리 학습을 쌓아도, 변경은 아래 다섯 관문을 차례로 통과해야 합니다:
 
 ### Layer 1: Frozen Guard
 
@@ -97,9 +102,12 @@ Constitution 시스템은 5계층 안전 아키텍처로 보호됩니다:
 
 | 파라미터 | 기본값 | 설명 |
 |-----------|--------|------|
-| `max_evolution_rate_per_week` | 3 | 주간 최대 진화 횟수 |
-| `cooldown_hours` | 24 | 진화 간 최소 대기 시간 |
-| `max_active_learnings` | 50 | 활성 학습 항목 최대 수 |
+| `learning.rate_limit.max_per_week` | 3 | 7일 슬라이딩 윈도우 내 최대 업데이트 횟수 |
+| `learning.rate_limit.cooldown_hours` | 24 | 업데이트 간 최소 대기 시간 (시간) |
+
+> 위 두 키는 `harness.yaml`의 `learning.rate_limit` 아래에 정의됩니다. (별도
+> 개념인 Lessons Protocol의 "프로젝트당 활성 lesson 50개 상한"과 혼동하지
+> 마세요 — 그 50은 진화 속도 제한이 아니라 lesson 메모리 항목 수 상한입니다.)
 
 ### Layer 5: Human Oversight
 

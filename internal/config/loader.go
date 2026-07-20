@@ -79,6 +79,12 @@ func (l *Loader) Load(configDir string) (*Config, error) {
 	// Load feedback section (SPEC-INVOCATION-MODEL-001: /moai feedback target repo)
 	l.loadFeedbackSection(sectionsDir, cfg)
 
+	// Load handoff section (SPEC-HANDOFF-AUTORESUME-001: auto-resume config)
+	l.loadHandoffSection(sectionsDir, cfg)
+
+	// Load archive section (SPEC-SESSIONSTART-PERF-001: SPEC auto-archive grace window)
+	l.loadArchiveSection(sectionsDir, cfg)
+
 	// Load constitution section (REQ-MIG003-001/002)
 	l.loadConstitutionSection(sectionsDir, cfg)
 
@@ -291,6 +297,25 @@ func (l *Loader) loadFeedbackSection(dir string, cfg *Config) {
 	if loaded {
 		cfg.Feedback = wrapper.Feedback
 		l.loadedSections["feedback"] = true
+	}
+}
+
+// loadHandoffSection loads the handoff configuration section from handoff.yaml.
+// The wrapper is seeded with the populated default (cfg.Handoff) so that a
+// handoff.yaml specifying a subset of keys (e.g. mode only) retains the
+// construction-time default for the omitted key (guide) rather than collapsing
+// it to its zero-value (partial-override contract, Edge-WSE-003; parallel to
+// loadFeedbackSection / loadWorkflowSection). SPEC-HANDOFF-AUTORESUME-001 REQ-003.
+func (l *Loader) loadHandoffSection(dir string, cfg *Config) {
+	wrapper := &handoffFileWrapper{Handoff: cfg.Handoff}
+	loaded, err := loadYAMLFile(dir, "handoff.yaml", wrapper)
+	if err != nil {
+		slog.Warn("failed to load handoff config, using defaults", "error", err)
+		return
+	}
+	if loaded {
+		cfg.Handoff = wrapper.Handoff
+		l.loadedSections["handoff"] = true
 	}
 }
 

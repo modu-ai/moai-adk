@@ -11,6 +11,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/modu-ai/moai-adk/internal/cli/uikit"
 	"github.com/spf13/cobra"
 )
 
@@ -52,21 +53,21 @@ func runResearchStatus(w io.Writer, projectDir string) error {
 	}
 
 	// Print basic dashboard
-	pairs := []kvPair{
-		{"Directory", filepath.Join(".moai", "research")},
+	pairs := []uikit.KVPair{
+		{Key: "Directory", Value: filepath.Join(".moai", "research")},
 	}
 
 	// Count experiment result directories
 	experimentsDir := filepath.Join(researchDir, "experiments")
 	expCount := countDirs(experimentsDir)
-	pairs = append(pairs, kvPair{"Experiments", fmt.Sprintf("%d found", expCount)})
+	pairs = append(pairs, uikit.KVPair{Key: "Experiments", Value: fmt.Sprintf("%d found", expCount)})
 
 	// Count eval suites
 	evalsDir := filepath.Join(researchDir, "evals")
 	evalCount := countEvalFiles(evalsDir)
-	pairs = append(pairs, kvPair{"Eval Suites", fmt.Sprintf("%d registered", evalCount)})
+	pairs = append(pairs, uikit.KVPair{Key: "Eval Suites", Value: fmt.Sprintf("%d registered", evalCount)})
 
-	_, _ = fmt.Fprintln(w, renderCard("Research Status", renderKeyValueLines(pairs)))
+	_, _ = fmt.Fprintln(w, uikit.RenderCard("Research Status", uikit.RenderKeyValueLines(pairs)))
 	return nil
 }
 

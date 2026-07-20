@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MoAI-ADK 자가 진화 하네스 시스템 전면 재설계 (v5)</title>
+<link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable.min.css">
+<style>
+:root{
+  --ivory:#FAF9F5;--paper:#FFFFFF;--slate:#141413;--clay:#D97757;--clay-d:#B85C3E;
+  --oat:#E3DACC;--olive:#788C5D;
+  --g100:#F0EEE6;--g300:#D1CFC5;--g500:#87867F;--g700:#3D3D3A;
+  --sans:"Pretendard Variable","Pretendard",system-ui,-apple-system,sans-serif;
+  --mono:ui-monospace,"SF Mono","JetBrains Mono",monospace;
+  --max-width:900px;--radius-panel:12px;--radius-row:8px;--border:1.5px solid var(--g300);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--ivory);color:var(--slate);font-family:var(--sans);line-height:1.65;font-size:15.5px;-webkit-font-smoothing:antialiased}
+.wrap{max-width:var(--max-width);margin:0 auto;padding:48px 28px 80px}
+header.rpt{border-bottom:3px solid var(--slate);padding-bottom:24px;margin-bottom:32px}
+.kicker{font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--clay);font-weight:700;margin-bottom:10px}
+h1{font-size:30px;line-height:1.3;font-weight:800;letter-spacing:-.01em}
+.meta{margin-top:12px;color:var(--g500);font-size:13px;display:flex;gap:18px;flex-wrap:wrap}
+.meta b{color:var(--g700);font-weight:600}
+h2{font-size:21px;font-weight:800;margin:52px 0 16px;padding-top:8px;letter-spacing:-.01em}
+h2 .no{color:var(--clay);margin-right:8px;font-family:var(--mono);font-size:17px}
+h3{font-size:16px;font-weight:700;margin:26px 0 10px;color:var(--g700)}
+p{margin:10px 0}
+.tldr{background:var(--slate);color:var(--ivory);border-radius:var(--radius-panel);padding:22px 26px;margin:28px 0}
+.tldr .lbl{color:var(--clay);font-weight:800;font-size:12px;letter-spacing:.12em;margin-bottom:8px}
+.tldr p{color:#DEDCD3;font-size:14.5px}
+.tldr b{color:#fff}
+.kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin:24px 0}
+.kpi{background:var(--paper);border:var(--border);border-radius:var(--radius-panel);padding:16px 18px}
+.kpi .v{font-size:26px;font-weight:800;color:var(--clay);font-family:var(--mono);letter-spacing:-.02em}
+.kpi .k{font-size:12px;color:var(--g500);margin-top:4px;line-height:1.4}
+table{width:100%;border-collapse:collapse;margin:14px 0;background:var(--paper);border:var(--border);border-radius:var(--radius-panel);overflow:hidden;font-size:13.5px}
+th{background:var(--g100);text-align:left;padding:10px 14px;font-weight:700;font-size:12.5px;color:var(--g700);border-bottom:var(--border)}
+td{padding:10px 14px;border-bottom:1px solid var(--g100);vertical-align:top}
+tr:last-child td{border-bottom:none}
+code{font-family:var(--mono);font-size:12.5px;background:var(--g100);padding:1.5px 6px;border-radius:5px;color:var(--g700)}
+.panel{background:var(--paper);border:var(--border);border-radius:var(--radius-panel);padding:20px 24px;margin:16px 0}
+.callout{border-left:4px solid var(--clay);background:var(--paper);border-radius:0 var(--radius-row) var(--radius-row) 0;padding:14px 18px;margin:16px 0;font-size:14px}
+.callout.olive{border-left-color:var(--olive)}
+.callout .ct{font-weight:800;font-size:12px;letter-spacing:.1em;color:var(--clay);margin-bottom:4px}
+.callout.olive .ct{color:var(--olive)}
+.tag{display:inline-block;font-size:11px;font-weight:700;padding:2px 9px;border-radius:99px;letter-spacing:.04em;vertical-align:1px}
+.tag.frozen{background:#E8E6DE;color:var(--g700)}
+.tag.evolv{background:#F3E3D3;color:var(--clay-d)}
+.tag.learn{background:#E4EAD9;color:#4E6437}
+.tag.new{background:var(--clay);color:#fff}
+.svgbox{background:var(--paper);border:var(--border);border-radius:var(--radius-panel);padding:18px;margin:18px 0;overflow-x:auto}
+.svgbox .cap{font-size:12px;color:var(--g500);margin-top:10px;text-align:center}
+.mst{list-style:none;margin:18px 0;position:relative;padding-left:34px}
+.mst:before{content:"";position:absolute;left:11px;top:6px;bottom:6px;width:2px;background:var(--g300)}
+.mst li{position:relative;margin-bottom:22px;background:var(--paper);border:var(--border);border-radius:var(--radius-panel);padding:16px 20px}
+.mst li:before{content:"";position:absolute;left:-29px;top:20px;width:12px;height:12px;border-radius:50%;background:var(--clay);border:3px solid var(--ivory);box-shadow:0 0 0 2px var(--clay)}
+.mst .mh{font-weight:800;font-size:14.5px;margin-bottom:4px}
+.mst .mh code{font-size:12px}
+.mst .md{font-size:13.5px;color:var(--g700)}
+.mst .mt{font-size:11.5px;color:var(--g500);margin-top:6px}
+.risks{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:16px 0}
+.risk{background:var(--paper);border:var(--border);border-radius:var(--radius-panel);padding:14px 18px;font-size:13.5px}
+.risk .rh{font-weight:700;margin-bottom:4px}
+.risk .sev{font-size:11px;font-weight:800;letter-spacing:.06em}
+.sev.high{color:#B0483A}.sev.mid{color:var(--clay-d)}.sev.low{color:var(--olive)}
+ul.plain{margin:10px 0 10px 22px}
+ul.plain li{margin:6px 0}
+footer{margin-top:64px;padding-top:18px;border-top:var(--border);color:var(--g500);font-size:12px}
+@media(max-width:720px){.kpis{grid-template-columns:1fr 1fr}.risks{grid-template-columns:1fr}}
+@media print{body{background:#fff}.wrap{padding:0}}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="rpt">
+<div class="kicker">MoAI-ADK · Architecture Redesign Report</div>
+<h1>자가 진화 하네스 시스템 전면 재설계 (v5)<br>— /moai 중심 3-Loop Self-Evolving Harness</h1>
+<div class="meta">
+<span><b>작성일</b> 2026-07-12</span>
+<span><b>근거</b> Lilian Weng, "Harness Engineering for Self-Improvement" (2026-07-04)</span>
+<span><b>대상</b> moai-adk-go · /moai 워크플로우 전체 + /moai harness</span>
+<span><b>Tier</b> L (Epic, 5 SPEC)</span>
+</div>
+</header>
+
+<div class="tldr">
+<div class="lbl">TL;DR</div>
+<p>Weng의 논지 — <b>자가 개선의 현실적 경로는 모델 가중치가 아니라 하네스 엔지니어링</b> — 를 moai-adk에 적용한다. moai-adk는 이미 4-tier 학습 사다리, 5-layer 안전 파이프라인, usage-log 관찰자, v4 Builder 등 하네스 자산의 <b>약 70%를 보유</b>하고 있으나, 학습 루프가 <b>스킬 frontmatter 2개 필드에서 끝난다</b>. 재설계의 핵심은 Curator의 편집 가능 표면(editable surfaces)을 3계층으로 확장하는 것: <b>① 메모리(임시, 세션) → ② CLAUDE.local.md(영구, 사용자별) → ③ CLAUDE.md 관리 블록(정적 기본 워크플로우)</b>. /moai 라우터가 매 호출을 관찰하고(Loop 0), 세션 경계에서 반추하고(Loop 1), tier 승격으로 영구 기록·기본 워크플로우를 갱신한다(Loop 2). 모든 쓰기는 인간 승인 게이트 + 스냅샷/롤백 + 회귀 게이트 뒤에 둔다.</p>
+</div>
+
+<div class="kpis">
+<div class="kpi"><div class="v">~70%</div><div class="k">기존 자산 재사용률<br>(observer·tier·safety·applier)</div></div>
+<div class="kpi"><div class="v">3</div><div class="k">신규 편집 표면<br>(memory → local.md → CLAUDE.md)</div></div>
+<div class="kpi"><div class="v">3-Loop</div><div class="k">관찰 → 반추 → 승격<br>(ACE Generator/Reflector/Curator)</div></div>
+<div class="kpi"><div class="v">5</div><div class="k">업그레이드 SPEC<br>(EVOLVE-001 ~ 005)</div></div>
+</div>
+
+<!-- ==================== 1 ==================== -->
+<h2><span class="no">1</span>Weng 하네스 논지 → moai-adk 매핑</h2>
+<p>Weng은 하네스를 <b>"베이스 모델을 둘러싸고 실행을 오케스트레이션하는 시스템 — 어떻게 사고·계획하고, 도구를 호출하고, 컨텍스트를 인지·관리하고, 산출물을 저장하고, 결과를 평가하는지를 결정하는 층"</b>으로 정의한다. 핵심 주장: 재귀적 자가 개선(RSI)의 근시일 경로는 가중치 수정이 아니라 <b>하네스 엔지니어링</b>이며, 최적화 대상은 <code>프롬프트 → 구조화 컨텍스트 → 워크플로우 → 하네스 코드 → 옵티마이저 코드</code> 순으로 진화한다.</p>
+
+<table>
+<tr><th style="width:34%">Weng 개념</th><th style="width:33%">moai-adk 현재 대응물</th><th>재설계 반영</th></tr>
+<tr><td><b>ACE</b> — 컨텍스트를 "진화하는 플레이북"으로. Generator(궤적 생산) → Reflector(통찰 증류) → Curator(컨텍스트 갱신). Curator는 전체 재작성이 아닌 <code>(identifier, description)</code> 불릿 단위 갱신</td><td>Generator = <code>observer.go</code>(PostToolUse usage-log). Reflector = <code>learner.go AggregatePatterns</code>. Curator = <code>applier.go</code> — 단, 표면이 스킬 frontmatter 2필드로 제한</td><td>Curator 표면을 3계층으로 확장. CLAUDE.md는 전체 재작성이 아닌 <b>관리 블록 내 불릿 단위</b> 갱신 (컨텍스트 붕괴 방지)</td></tr>
+<tr><td><b>Self-Harness</b> — ① 약점 채굴(검증자 기반 실패 군집화) ② 경계 내 제안(editable surfaces 한정) ③ held-out 검증(회귀 시 기각)</td><td>① lessons-inbox.jsonl + usage-log ② L1 Frozen Guard 경로 차단 ③ <code>regression_gate.go</code> 존재하나 L2 Canary/L3 Contradiction은 no-op</td><td>L2/L3 활성화 + 라우팅 결과(성공/실패) 레저를 약점 채굴 입력으로 추가</td></tr>
+<tr><td><b>파일시스템 = 영속 메모리</b> — 상태는 컨텍스트 윈도우가 아닌 내구 파일에</td><td>.moai/harness/, .moai/state/, auto-memory, progress.md</td><td>routing-ledger.jsonl 신설 — /moai 라우팅 결정·결과를 내구 파일로</td></tr>
+<tr><td><b>보상 해킹 방지</b> — 평가자는 진화 루프 <b>밖</b>에, held-out 테스트 + 감사</td><td>plan-auditor / sync-auditor는 Frozen 경로(<code>.claude/agents/moai/**</code>)</td><td>불변 유지 — 평가자·rules·moai-* 자산은 영구 Frozen. 학습 루프가 자기 평가 기준을 수정하는 경로 원천 차단</td></tr>
+<tr><td><b>STOP 교훈</b> — "재귀 구조만으로는 부족, 베이스 모델이 충분히 유능해야"</td><td>Opus/Fable 세션 vs GLM teammate 세션 혼용</td><td>Tier 3+ 승격 제안 생성은 Opus/Fable 세션 한정 (GLM 세션은 관찰만)</td></tr>
+<tr><td><b>인간의 역할</b> — "스택 위로 이동하되 루프에서 제거되지 않는다"</td><td>L5 Human Oversight (AskUserQuestion 게이트)</td><td>불변 유지 — CLAUDE.md/local.md 쓰기는 예외 없이 인간 승인</td></tr>
+</table>
+
+<div class="callout">
+<div class="ct">핵심 통찰</div>
+사용자의 요구 — "사용할수록 메모리에 임시 저장, CLAUDE.local.md에 영구 기록, CLAUDE.md 기본 워크플로우 정적 갱신" — 는 Weng의 ACE 3-역할 구조와 정확히 일치한다. moai-adk에 없는 것은 학습 <i>메커니즘</i>이 아니라 <b>Curator가 쓸 수 있는 표면의 계층</b>이다.
+</div>
+
+<!-- ==================== 2 ==================== -->
+<h2><span class="no">2</span>현재 상태 진단 — 자산과 갭</h2>
+
+<h3>보유 자산 (재사용)</h3>
+<table>
+<tr><th style="width:30%">자산</th><th>내용</th></tr>
+<tr><td><code>internal/harness/</code> 66파일</td><td>observer(PostToolUse 관찰) · learner(패턴 집계, tier 분류) · applier(Tier-4 적용 파이프라인, 35KB) · scorer/rubric(평가자 프로파일) · regression_gate · lineage · throttle</td></tr>
+<tr><td>4-tier 학습 사다리</td><td>observation → heuristic → rule → auto_update (임계값 <code>[1,3,5,10]</code>, harness.yaml)</td></tr>
+<tr><td>5-layer 안전 파이프라인</td><td>L1 Frozen Guard(경로 차단) → L2 Canary(no-op) → L3 Contradiction(no-op) → L4 Rate Limiter(주 3회, 24h 쿨다운) → L5 Human Oversight(AskUserQuestion)</td></tr>
+<tr><td>스냅샷/롤백</td><td><code>.moai/harness/learning-history/snapshots/</code> byte-identical 스냅샷, pre-rollback 보존</td></tr>
+<tr><td><code>layer3.go InjectMarker</code></td><td><b>유일한</b> CLAUDE.md 기계적 쓰기 경로 (하네스 마커 블록 주입) — M2의 확장 기반</td></tr>
+<tr><td><code>mergeSectionBased</code></td><td>moai update 시 CLAUDE.md 섹션 기반 3-way 병합 (사용자 섹션 보존) — 관리 블록과 정합</td></tr>
+<tr><td><code>token_budget_guard.go</code></td><td>CLAUDE.md + output-style + MEMORY.md 상시 로드 예산(~40K자) 측정 — 관리 블록 예산 상한의 집행 지점</td></tr>
+<tr><td>v4 Builder + 학습 서브시스템</td><td>NL → Discovery → 4-phase Builder(ANALYZE/PLAN/GENERATE/ACTIVATE) → 7-artifact 계약 → doctor 게이트. harness-spec.yaml 브리지(Epic 3 SPEC 완료)</td></tr>
+<tr><td>Lessons Protocol + auto-memory</td><td>lessons-inbox.jsonl → 교훈 드레인, 도메인 매칭 top-5 주입 — Loop 1의 기존 절반</td></tr>
+</table>
+
+<h3>갭 (재설계 대상)</h3>
+<table>
+<tr><th style="width:5%">#</th><th style="width:35%">갭</th><th>영향</th></tr>
+<tr><td>G1</td><td><b>/moai 라우팅 결정이 관찰되지 않음</b></td><td>어떤 자연어 요청이 어느 서브커맨드/모드로 분기됐고 성공했는지 기록이 없음 → 라우팅을 학습할 원료 부재</td></tr>
+<tr><td>G2</td><td><b>Curator 표면이 스킬 frontmatter 2필드로 제한</b></td><td>description/triggers만 자동 갱신 가능. 워크플로우 자체(기본 파이프라인, 모드 선택 편향)는 진화 불가</td></tr>
+<tr><td>G3</td><td><b>CLAUDE.md / CLAUDE.local.md 진화 경로 부재</b></td><td>InjectMarker는 마커 블록 한정. 기본 워크플로우의 정적 갱신, 사용자별 영구 학습 기록 모두 수동</td></tr>
+<tr><td>G4</td><td>L2 Canary / L3 Contradiction no-op</td><td>Weng의 held-out 검증·모순 탐지 부재 → 표면 확장 시 안전 부채가 치명적으로 커짐</td></tr>
+<tr><td>G5</td><td>harness-spec.yaml Go 파서 부재</td><td>prose-context로만 소비 — 라우팅 학습이 프로젝트 하네스 명세를 기계적으로 참조할 수 없음</td></tr>
+<tr><td>G6</td><td>학습이 하네스 생성물(harness-*)에 닫혀 있음</td><td>/moai 본체 워크플로우는 학습 루프 바깥 — 사용자가 가장 많이 쓰는 표면이 진화하지 않음</td></tr>
+</table>
+
+<!-- ==================== 3 ==================== -->
+<h2><span class="no">3</span>목표 아키텍처 — 3-Loop Self-Evolving Harness</h2>
+<p>ACE의 Generator/Reflector/Curator를 moai-adk의 실행 주기에 맞춰 3개 루프로 구체화한다. 각 루프는 시간 스케일이 다르다: <b>Loop 0은 매 턴</b>, <b>Loop 1은 세션 경계</b>, <b>Loop 2는 tier 승격 시점</b>.</p>
+
+<div class="svgbox">
+<svg viewBox="0 0 840 460" width="100%" style="min-width:720px" font-family="Pretendard Variable,Pretendard,sans-serif">
+<defs>
+<marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#87867F"/></marker>
+<marker id="arc" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#D97757"/></marker>
+</defs>
+<!-- user request -->
+<rect x="20" y="30" width="150" height="52" rx="10" fill="#141413"/>
+<text x="95" y="52" text-anchor="middle" fill="#FAF9F5" font-size="13" font-weight="700">사용자 요청</text>
+<text x="95" y="70" text-anchor="middle" fill="#D1CFC5" font-size="10">자연어 / 서브커맨드</text>
+<!-- router -->
+<rect x="230" y="20" width="190" height="72" rx="10" fill="#fff" stroke="#D97757" stroke-width="2"/>
+<text x="325" y="45" text-anchor="middle" font-size="13" font-weight="700" fill="#141413">/moai 라우터</text>
+<text x="325" y="63" text-anchor="middle" font-size="10" fill="#87867F">Phase −1: Harness Recall</text>
+<text x="325" y="78" text-anchor="middle" font-size="10" fill="#87867F">학습된 편향으로 분기 보정</text>
+<!-- exec -->
+<rect x="480" y="20" width="180" height="72" rx="10" fill="#fff" stroke="#D1CFC5" stroke-width="1.5"/>
+<text x="570" y="45" text-anchor="middle" font-size="13" font-weight="700" fill="#141413">실행 파이프라인</text>
+<text x="570" y="63" text-anchor="middle" font-size="10" fill="#87867F">plan → run → sync</text>
+<text x="570" y="78" text-anchor="middle" font-size="10" fill="#87867F">fix / loop / harness / …</text>
+<!-- outcome -->
+<rect x="700" y="20" width="120" height="72" rx="10" fill="#fff" stroke="#D1CFC5" stroke-width="1.5"/>
+<text x="760" y="50" text-anchor="middle" font-size="12" font-weight="700" fill="#141413">Phase Ω</text>
+<text x="760" y="67" text-anchor="middle" font-size="10" fill="#87867F">결과 기록</text>
+<line x1="170" y1="56" x2="228" y2="56" stroke="#87867F" stroke-width="1.5" marker-end="url(#ar)"/>
+<line x1="420" y1="56" x2="478" y2="56" stroke="#87867F" stroke-width="1.5" marker-end="url(#ar)"/>
+<line x1="660" y1="56" x2="698" y2="56" stroke="#87867F" stroke-width="1.5" marker-end="url(#ar)"/>
+<!-- Loop 0 -->
+<rect x="230" y="150" width="590" height="70" rx="10" fill="#F0EEE6" stroke="#D1CFC5" stroke-width="1.5"/>
+<text x="250" y="175" font-size="12.5" font-weight="800" fill="#3D3D3A">LOOP 0 · 관찰 (Generator) — 매 턴</text>
+<text x="250" y="196" font-size="11" fill="#3D3D3A">observer.go(PostToolUse) + <tspan font-weight="700">routing-ledger.jsonl [신규]</tspan> : 요청 → 분기 → 모드 → 결과(성공/실패/재질문)</text>
+<line x1="760" y1="92" x2="760" y2="148" stroke="#87867F" stroke-width="1.5" marker-end="url(#ar)"/>
+<!-- Loop 1 -->
+<rect x="230" y="250" width="590" height="70" rx="10" fill="#F3E3D3" stroke="#D97757" stroke-width="1.5"/>
+<text x="250" y="275" font-size="12.5" font-weight="800" fill="#B85C3E">LOOP 1 · 반추 (Reflector) — 세션 경계</text>
+<text x="250" y="296" font-size="11" fill="#3D3D3A">learner.go 패턴 집계 + lessons-inbox 드레인 → <tspan font-weight="700">auto-memory (임시 저장)</tspan> · tier 카운트 증가</text>
+<line x1="525" y1="220" x2="525" y2="248" stroke="#87867F" stroke-width="1.5" marker-end="url(#ar)"/>
+<!-- Loop 2 -->
+<rect x="230" y="350" width="590" height="90" rx="10" fill="#E4EAD9" stroke="#788C5D" stroke-width="1.5"/>
+<text x="250" y="375" font-size="12.5" font-weight="800" fill="#4E6437">LOOP 2 · 승격 (Curator) — tier 임계 도달 시 · 인간 승인 게이트</text>
+<text x="250" y="396" font-size="11" fill="#3D3D3A">Tier 3 (rule) → <tspan font-weight="700">CLAUDE.local.md 영구 기록</tspan> (append-only Learned 섹션)</text>
+<text x="250" y="414" font-size="11" fill="#3D3D3A">Tier 4 (auto_update) → <tspan font-weight="700">CLAUDE.md 관리 블록</tspan> (기본 워크플로우 정적 갱신) + 스킬 frontmatter [기존]</text>
+<line x1="525" y1="320" x2="525" y2="348" stroke="#87867F" stroke-width="1.5" marker-end="url(#ar)"/>
+<!-- feedback arrow back to router -->
+<path d="M 228 395 C 90 395 60 260 60 140 C 60 115 70 100 95 96" stroke="#D97757" stroke-width="2" fill="none" marker-end="url(#arc)" stroke-dasharray="6 4"/>
+<text x="52" y="250" font-size="11" font-weight="700" fill="#B85C3E" transform="rotate(-90 52 250)">다음 세션의 Phase −1로 주입</text>
+</svg>
+<div class="cap">그림 1 — 3-Loop 자가 진화 구조. Loop 2의 산출물(CLAUDE.md 관리 블록 + CLAUDE.local.md)이 다음 세션 라우터의 Phase −1 입력이 되어 루프가 닫힌다.</div>
+</div>
+
+<h3>Loop 0 — 관찰 (Generator, 매 턴)</h3>
+<ul class="plain">
+<li><b>routing-ledger.jsonl</b> <span class="tag new">신규</span> : <code>.moai/state/routing-ledger.jsonl</code>. 매 /moai 호출마다 <code>{ts, session_id, request_digest, matched_subcommand, mode_selected(Phase 0.95), tier, clarify_rounds, outcome(success|fail|abort|reroute), duration_class}</code> 1행 append. 기존 observer.go(PostToolUse) 패턴 재사용 — Stop/SubagentStop 훅에서 결과 확정.</li>
+<li>기존 usage-log.jsonl(하네스 생성물 관찰)과 분리 유지 — 관찰 대상이 다름(생성된 harness-* vs /moai 본체 라우팅).</li>
+</ul>
+
+<h3>Loop 1 — 반추 (Reflector, 세션 경계)</h3>
+<ul class="plain">
+<li>세션 핸드오프/종료 시 learner.go가 routing-ledger를 집계: 패턴 키 = <code>request_class + subcommand + mode + outcome</code>. 반복 패턴은 tier 카운트 증가.</li>
+<li>집계 결과를 <b>auto-memory에 임시 저장</b> (사용자 요구의 "메모리 임시 저장") — 기존 Lessons Protocol의 메모리 taxonomy(<code>feedback|project</code>) 재사용. 세션 간 유지되지만 아직 지시문 표면에는 미반영.</li>
+<li>실패 패턴(재질문 과다, 잘못된 분기, abort)은 lessons-inbox 스텁으로도 적재 — Weng의 약점 채굴(Weakness Mining) 입력.</li>
+</ul>
+
+<h3>Loop 2 — 승격 (Curator, tier 임계 도달)</h3>
+<ul class="plain">
+<li><b>Tier 3 (rule) → CLAUDE.local.md 영구 기록</b>: <code>## Learned Workflow Rules (auto-curated)</code> append-only 섹션에 <code>(identifier, rule, evidence-count, date)</code> 불릿 추가. 기존 doctrine 섹션(§1~§26)과 충돌하지 않는 전용 관리 영역. AskUserQuestion 승인 필수.</li>
+<li><b>Tier 4 (auto_update) → CLAUDE.md 관리 블록</b>: <code>&lt;!-- MOAI:LEARNED-WORKFLOW:BEGIN --&gt; … END --&gt;</code> 마커 블록 내부만 갱신 — 기본 워크플로우 편향(예: "이 프로젝트에서 'refactor' 요청은 ddd 모드 우선", "docs 변경은 minimal 하네스 레벨") 을 불릿 단위로 기록. <code>layer3.go InjectMarker</code>를 일반화한 typed section writer가 담당. <code>mergeSectionBased</code>가 moai update 시 이 블록을 보존.</li>
+<li>모든 승격: 스냅샷 → L2 Canary(shadow 적용 + doctor + 회귀 게이트) → L3 Contradiction(Frozen rules와 모순 grep) → L4 Rate Limit → L5 인간 승인 → 적용 → lineage 기록. 롤백은 기존 overlay 방식.</li>
+</ul>
+
+<!-- ==================== 4 ==================== -->
+<h2><span class="no">4</span>편집 가능 표면 계층 (Editable Surfaces)</h2>
+<p>Weng의 Self-Harness가 강조하는 "경계 내 제안(bounded proposal)"을 3-Zone 표면 계약으로 명문화한다. 기존 <code>[ZONE:Frozen]</code>/<code>[ZONE:Evolvable]</code> 체계에 <span class="tag learn">ZONE:Learned</span>를 추가한다.</p>
+
+<table>
+<tr><th style="width:16%">Zone</th><th style="width:38%">표면</th><th style="width:22%">쓰기 주체</th><th>안전 장치</th></tr>
+<tr><td><span class="tag frozen">Frozen</span></td><td><code>.claude/rules/moai/**</code> · <code>.claude/agents/moai/**</code> · <code>moai-*</code> 스킬 · 평가자(plan/sync-auditor) · 템플릿</td><td>없음 (사람 + SPEC만)</td><td>L1 Frozen Guard — 학습 루프의 제안 자체를 경로 차단. <b>평가자가 Frozen인 것이 보상 해킹 방지의 핵심</b></td></tr>
+<tr><td><span class="tag evolv">Evolvable</span></td><td><code>harness-*</code> 스킬 frontmatter · <code>.claude/agents/harness/</code> [기존 Tier-4 표면]</td><td>Curator (Tier 4)</td><td>기존 5-layer 파이프라인 그대로</td></tr>
+<tr><td><span class="tag learn">Learned</span> <span class="tag new">신규</span></td><td>auto-memory 항목 (Tier 1-2) · CLAUDE.local.md Learned 섹션 (Tier 3) · CLAUDE.md <code>MOAI:LEARNED-WORKFLOW</code> 관리 블록 (Tier 4)</td><td>Curator (tier별 차등)</td><td>append-only(local.md) / 블록 한정(CLAUDE.md) + 토큰 예산 상한(블록 ≤3K자, token_budget_guard 집행) + 불릿 수 상한(≤20) + 만료(evidence 90일 미갱신 시 pruning 제안)</td></tr>
+</table>
+
+<div class="callout">
+<div class="ct">티어 ↔ 표면 매핑 (사용자 요구와의 대응)</div>
+<b>Tier 1-2</b> (observation/heuristic) → 메모리 임시 저장 = "사용하면 할수록 메모리에 임시 저장" · <b>Tier 3</b> (rule) → CLAUDE.local.md = "영구 기록" · <b>Tier 4</b> (auto_update) → CLAUDE.md 관리 블록 = "기본 워크플로우를 업데이트하도록 정적으로 사용". 티어가 오를수록 증거 요구량(1→3→5→10회)과 게이트 강도가 함께 오른다.
+</div>
+
+<div class="callout olive">
+<div class="ct">컨텍스트 붕괴 방지 (ACE 원칙)</div>
+CLAUDE.md 관리 블록은 <b>전체 재작성 금지, 불릿 단위 추가/수정/삭제만</b> 허용한다. ACE가 경고하는 "반복 재작성 중 컨텍스트 붕괴·간결성 편향(brevity bias)"을 구조적으로 차단하고, diff가 항상 사람이 리뷰 가능한 크기로 유지된다.
+</div>
+
+<!-- ==================== 5 ==================== -->
+<h2><span class="no">5</span>/moai 워크플로우 전면 재설계</h2>
+<p>기존 파이프라인(Phase 0 탐색 → plan → plan-audit → 구현 착수 승인 → Phase 0.95 모드 선택 → run → sync → sync-audit)은 유지하되, 양 끝에 학습 페이즈를 추가하고 중간 결정 지점들이 학습 데이터를 소비하도록 배선한다.</p>
+
+<div class="svgbox">
+<svg viewBox="0 0 840 150" width="100%" style="min-width:720px" font-family="Pretendard Variable,Pretendard,sans-serif">
+<defs><marker id="ar2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#87867F"/></marker></defs>
+<rect x="10" y="40" width="110" height="56" rx="9" fill="#D97757"/>
+<text x="65" y="63" text-anchor="middle" fill="#fff" font-size="11.5" font-weight="800">Phase −1</text>
+<text x="65" y="80" text-anchor="middle" fill="#fff" font-size="10">Harness Recall</text>
+<rect x="150" y="40" width="100" height="56" rx="9" fill="#fff" stroke="#D1CFC5" stroke-width="1.5"/>
+<text x="200" y="63" text-anchor="middle" font-size="11.5" font-weight="700" fill="#141413">라우팅</text>
+<text x="200" y="80" text-anchor="middle" font-size="10" fill="#87867F">서브커맨드 분기</text>
+<rect x="280" y="40" width="100" height="56" rx="9" fill="#fff" stroke="#D1CFC5" stroke-width="1.5"/>
+<text x="330" y="63" text-anchor="middle" font-size="11.5" font-weight="700" fill="#141413">plan + audit</text>
+<text x="330" y="80" text-anchor="middle" font-size="10" fill="#87867F">착수 승인 게이트</text>
+<rect x="410" y="40" width="110" height="56" rx="9" fill="#fff" stroke="#D1CFC5" stroke-width="1.5"/>
+<text x="465" y="63" text-anchor="middle" font-size="11.5" font-weight="700" fill="#141413">Phase 0.95</text>
+<text x="465" y="80" text-anchor="middle" font-size="10" fill="#87867F">모드 선택 (학습 편향)</text>
+<rect x="550" y="40" width="100" height="56" rx="9" fill="#fff" stroke="#D1CFC5" stroke-width="1.5"/>
+<text x="600" y="63" text-anchor="middle" font-size="11.5" font-weight="700" fill="#141413">run → sync</text>
+<text x="600" y="80" text-anchor="middle" font-size="10" fill="#87867F">+ sync-audit</text>
+<rect x="680" y="40" width="110" height="56" rx="9" fill="#141413"/>
+<text x="735" y="63" text-anchor="middle" fill="#FAF9F5" font-size="11.5" font-weight="800">Phase Ω</text>
+<text x="735" y="80" text-anchor="middle" fill="#D1CFC5" font-size="10">Harness Feedback</text>
+<line x1="120" y1="68" x2="148" y2="68" stroke="#87867F" stroke-width="1.5" marker-end="url(#ar2)"/>
+<line x1="250" y1="68" x2="278" y2="68" stroke="#87867F" stroke-width="1.5" marker-end="url(#ar2)"/>
+<line x1="380" y1="68" x2="408" y2="68" stroke="#87867F" stroke-width="1.5" marker-end="url(#ar2)"/>
+<line x1="520" y1="68" x2="548" y2="68" stroke="#87867F" stroke-width="1.5" marker-end="url(#ar2)"/>
+<line x1="650" y1="68" x2="678" y2="68" stroke="#87867F" stroke-width="1.5" marker-end="url(#ar2)"/>
+<path d="M 735 98 C 735 130 65 130 65 98" stroke="#D97757" stroke-width="1.8" fill="none" stroke-dasharray="6 4" marker-end="url(#ar2)"/>
+<text x="400" y="140" text-anchor="middle" font-size="10.5" fill="#B85C3E" font-weight="700">ledger → 반추 → 승격 → 다음 세션 Recall</text>
+</svg>
+<div class="cap">그림 2 — 재설계된 /moai 파이프라인. 기존 페이즈는 불변, Phase −1(소비)과 Phase Ω(생산)가 학습 루프를 접속한다.</div>
+</div>
+
+<table>
+<tr><th style="width:20%">페이즈</th><th style="width:12%">상태</th><th>내용</th></tr>
+<tr><td><b>Phase −1 · Harness Recall</b></td><td><span class="tag new">신규</span></td><td>라우팅 전에 ① CLAUDE.md 관리 블록(자동 로드됨) ② CLAUDE.local.md Learned 섹션 ③ 도메인 매칭 top-5 lessons(기존)를 종합해 <b>분기·모드·하네스 레벨의 사전 편향</b>을 형성. 예: "이 프로젝트에서 'API 추가'류 요청은 과거 7회 중 7회 tdd + standard 레벨" → 재질문 없이 권장 라우팅 제시</td></tr>
+<tr><td>라우팅 (기존 SKILL.md 표)</td><td>유지</td><td>분기 결정 + <b>결정 사유를 ledger에 기록</b> (Loop 0)</td></tr>
+<tr><td>plan → 착수 승인 → Phase 0.95</td><td>유지</td><td>구현 착수 승인(HUMAN GATE) 불변. Phase 0.95 모드 선택기가 learned 편향을 <b>참고 신호</b>로 소비 (결정권은 기존 임계값 규칙 유지 — 학습이 게이트를 우회하지 않음)</td></tr>
+<tr><td>run → sync → sync-audit</td><td>유지</td><td>불변. audit 결과(PASS/FAIL/점수)가 outcome 필드의 근거</td></tr>
+<tr><td><b>Phase Ω · Harness Feedback</b></td><td><span class="tag new">신규</span></td><td>턴/파이프라인 종료 시 ledger 행 확정(outcome 기입). 세션 핸드오프 시 Loop 1 반추 실행. Stop 훅(기존 sync-phase-quality-gate.sh 계열)에 outcome-capture 추가</td></tr>
+</table>
+
+<h3>/moai harness 콘솔 확장</h3>
+<p>harness 서브커맨드는 진화 루프의 <b>관리 콘솔</b>로 승격된다. 기존 Branch A(학습 verb) / A.1(v4 라이프사이클) / B(NL Builder) 3분기는 유지하고 Branch A에 verb를 추가한다.</p>
+<table>
+<tr><th style="width:30%">Verb</th><th style="width:12%">상태</th><th>동작</th></tr>
+<tr><td><code>status</code></td><td>확장</td><td>기존 제안 목록 + <b>tier 파이프라인 뷰</b>(패턴별 현재 tier·증거 수·다음 임계까지 남은 횟수) + Learned 표면 현황(블록 크기/예산)</td></tr>
+<tr><td><code>apply / rollback / disable</code></td><td>유지</td><td>기존 계약 그대로 — 대상 표면만 3계층으로 확장</td></tr>
+<tr><td><code>evolve</code></td><td><span class="tag new">신규</span></td><td>Loop 1+2를 수동 트리거: ledger 집계 → 승격 후보 생성 → AskUserQuestion 일괄 리뷰. 세션 경계를 기다리지 않고 즉시 반추</td></tr>
+<tr><td><code>promote / demote &lt;pattern&gt;</code></td><td><span class="tag new">신규</span></td><td>특정 패턴의 tier 수동 승격/강등 (사용자가 학습을 직접 조타)</td></tr>
+<tr><td><code>freeze / unfreeze &lt;surface&gt;</code></td><td><span class="tag new">신규</span></td><td>Learned 표면 단위 잠금 (예: CLAUDE.md 블록만 동결하고 local.md는 허용)</td></tr>
+<tr><td><code>doctor</code></td><td>확장</td><td>기존 참조 무결성 + <b>Learned 표면 무결성</b>(마커 블록 손상, 예산 초과, 만료 불릿, lineage 단절) 검사</td></tr>
+</table>
+
+<!-- ==================== 6 ==================== -->
+<h2><span class="no">6</span>안전 설계 — Weng의 7대 도전 과제 대응</h2>
+<table>
+<tr><th style="width:28%">도전 과제 (Weng)</th><th>v5 대응</th></tr>
+<tr><td>① 약하고 모호한 평가자</td><td>outcome을 기계 신호로 한정: audit PASS/FAIL·게이트 exit code·재질문 횟수·abort 여부. "느낌상 성공"은 ledger에 기록 불가 (verification-claim-integrity §1.1과 정합)</td></tr>
+<tr><td>② 컨텍스트·메모리 수명주기</td><td>tier별 표면 분리 + 만료 정책(90일 미갱신 pruning 제안) + 블록 예산 상한(≤3K자, token_budget_guard 집행) + 기존 retention.go 재사용</td></tr>
+<tr><td>③ 부정적 결과의 소실</td><td>실패 패턴도 동등하게 ledger 적재 — "X 요청을 Y로 분기하면 실패" 형태의 negative rule 승격 허용</td></tr>
+<tr><td>④ 다양성 붕괴</td><td>learned 편향은 <b>참고 신호</b>일 뿐 결정 규칙이 아님 — Phase 0.95 임계값·착수 승인 게이트는 학습과 독립. 편향 강도 상한(권장 라벨 1개까지, 옵션 제거 금지)</td></tr>
+<tr><td>⑤ 보상 해킹</td><td>평가자(plan/sync-auditor)·rules·게이트 전부 <span class="tag frozen">Frozen</span> — 학습 루프가 자기 성적표를 고칠 수 없음. L3 Contradiction이 Frozen 규칙과 모순되는 승격을 기각</td></tr>
+<tr><td>⑥ 장기적 건전성</td><td>lineage.go로 모든 승격의 계보 추적, 회귀 게이트 + 스냅샷 롤백. doctor가 Learned 표면 부패를 상시 검진</td></tr>
+<tr><td>⑦ 인간의 역할</td><td>"스택 위로": 사용자는 불릿 하나하나가 아니라 <b>승격 순간</b>만 승인 (L5 AskUserQuestion). promote/demote/freeze로 조타권 유지. CLAUDE.md/local.md 쓰기의 자동 무승인 경로는 존재하지 않음</td></tr>
+</table>
+
+<div class="callout">
+<div class="ct">경계 조건 3가지 (HARD)</div>
+① <b>GLM 세션은 관찰만</b> — Tier 3+ 승격 제안 생성은 Opus/Fable 세션 한정 (STOP 교훈: 베이스 모델 역량 미달 시 자가 개선이 성능을 되레 악화). ② <b>템플릿 중립성</b> — routing-ledger·Learned 블록·local.md 섹션은 프로젝트 로컬 산출물이며 <code>internal/template/templates/</code>에는 <i>빈 관리 블록 마커와 메커니즘만</i> 배포 (학습 데이터 누출 금지, §25 준수). ③ <b>병렬 세션 레이스</b> — ledger는 append-only jsonl(행 단위 원자성), CLAUDE.md/local.md 쓰기는 승격 시점 단발 + 기존 Pre-Spawn Sync Check 적용.
+</div>
+
+<!-- ==================== 7 ==================== -->
+<h2><span class="no">7</span>업그레이드 계획 — Epic: HARNESS-EVOLVE (Tier L, 5 SPEC)</h2>
+<p>기존 Project-Harness Pipeline Epic(BRIDGE → MCP-PROVISION → VERIFY-PROMOTE, 완료)의 직계 후속. 각 SPEC은 독립 close 가능하며 앞 SPEC이 뒤 SPEC의 데이터를 생산하는 순차 의존이다.</p>
+
+<ul class="mst">
+<li>
+<div class="mh">M1 · <code>SPEC-HARNESS-EVOLVE-001</code> — Routing Observation Ledger <span class="tag evolv">Tier M</span></div>
+<div class="md">Loop 0 구축. <code>routing-ledger.jsonl</code> 스키마 + Go writer/reader(<code>internal/harness/routing/</code>) + Stop 훅 outcome-capture + <code>moai.md</code>/서브커맨드 워크플로우에 기록 의무 배선. usage-log와 분리.</div>
+<div class="mt">산출: ledger 스키마 v1 · observer 확장 · 훅 1개 · 워크플로우 skill 배선 | 검증: 라우팅 10회 → ledger 10행, outcome 100% 기입</div>
+</li>
+<li>
+<div class="mh">M2 · <code>SPEC-HARNESS-EVOLVE-002</code> — Curator Editable Surfaces <span class="tag evolv">Tier L</span></div>
+<div class="md">Loop 2의 쓰기 계층. <code>layer3.go InjectMarker</code>를 일반화한 <b>typed managed-block writer</b>(CLAUDE.md <code>MOAI:LEARNED-WORKFLOW</code> 블록, 불릿 단위 CRUD, 예산 집행) + CLAUDE.local.md append-only Learned 섹션 writer + <code>mergeSectionBased</code> 보존 계약 + 스냅샷/롤백/lineage 확장.</div>
+<div class="mt">산출: section writer 패키지 · frozen-guard 표면 등록 · 롤백 e2e | 검증: 블록 외부 byte-diff 0 · moai update 후 블록 보존 · 롤백 byte-identical</div>
+</li>
+<li>
+<div class="mh">M3 · <code>SPEC-HARNESS-EVOLVE-003</code> — Tier-Surface 매핑 + 검증 게이트 활성화 <span class="tag evolv">Tier M</span></div>
+<div class="md">tier↔표면 매핑을 harness.yaml 스키마로 명문화(Tier1-2→memory, 3→local.md, 4→CLAUDE.md블록+frontmatter). <b>L2 Canary 활성화</b>(shadow 적용→doctor→회귀 게이트) + <b>L3 Contradiction 활성화</b>(Frozen rules 모순 검사). GLM 세션 관찰-전용 가드.</div>
+<div class="mt">산출: harness.yaml v2 스키마 · L2/L3 구현 · 승격 파이프라인 통합 | 검증: 모순 승격 주입 시 기각 · 회귀 주입 시 기각 · held-out 시나리오 통과</div>
+</li>
+<li>
+<div class="mh">M4 · <code>SPEC-HARNESS-EVOLVE-004</code> — /moai harness 진화 콘솔 <span class="tag evolv">Tier M</span></div>
+<div class="md"><code>evolve / promote / demote / freeze / unfreeze</code> verb + status tier-파이프라인 뷰 + doctor Learned-표면 검진. SKILL.md Branch A 확장 + Go CLI verb 추가.</div>
+<div class="mt">산출: CLI verb 5종 · 워크플로우 body 갱신 · doctor 확장 | 검증: evolve→제안→승인→적용→rollback 왕복 e2e</div>
+</li>
+<li>
+<div class="mh">M5 · <code>SPEC-HARNESS-EVOLVE-005</code> — Recall 배선 + typed 파서 + 템플릿 배포 <span class="tag evolv">Tier M</span></div>
+<div class="md">Phase −1 Harness Recall을 <code>moai.md</code>/서브커맨드에 배선(관리 블록+local.md+lessons 종합 소비), <code>harness-spec.yaml</code> typed Go 파서(기존 갭 G5 해소), 빈 관리 블록 마커+메커니즘의 템플릿 배포(§25 중립성 준수 — 학습 데이터 제외).</div>
+<div class="mt">산출: Recall 규칙+워크플로우 배선 · yaml 파서 · 템플릿 갱신+CI 가드 | 검증: 편향 주입→권장 라우팅 반영 · 템플릿 중립성 테스트 PASS</div>
+</li>
+</ul>
+
+<h3>위험 그리드</h3>
+<div class="risks">
+<div class="risk"><div class="sev high">HIGH</div><div class="rh">CLAUDE.md 오염 / 토큰 예산 초과</div>관리 블록이 커지면 매 세션 상시 로드 비용 증가 + 지시 충돌. 대응: 블록 ≤3K자 + 불릿 ≤20 + token_budget_guard 집행 + 만료 pruning + L3 모순 검사.</div>
+<div class="risk"><div class="sev high">HIGH</div><div class="rh">잘못된 규칙의 자기 강화</div>오분류된 성공이 편향을 굳힘(Weng의 over-optimism). 대응: outcome은 기계 신호 한정 + negative rule 대칭 기록 + demote/freeze 조타 + 편향은 참고 신호로만.</div>
+<div class="risk"><div class="sev mid">MID</div><div class="rh">병렬 세션 ledger/블록 레이스</div>기존 다중 세션 레이스 교훈 다수. 대응: append-only jsonl + 승격 단발 쓰기 + Pre-Spawn Sync Check + 세션 귀속(session_id) 필드.</div>
+<div class="risk"><div class="sev mid">MID</div><div class="rh">템플릿으로의 학습 데이터 누출</div>배포 사용자에게 이 리포의 학습 내용이 새면 §25 위반. 대응: 템플릿엔 빈 마커+메커니즘만, internal_content_leak_test 확장.</div>
+<div class="risk"><div class="sev low">LOW</div><div class="rh">과도한 승인 피로</div>승격 제안이 잦으면 L5 게이트가 소음화. 대응: L4 rate limit(주 3회) 유지 + evolve 일괄 리뷰 UX + tier 임계 상향 옵션.</div>
+<div class="risk"><div class="sev low">LOW</div><div class="rh">GLM 세션 데이터 편향</div>관찰은 GLM도 수행하므로 낮은 품질 궤적 혼입 가능. 대응: ledger에 모델 클래스 필드, 반추 시 가중 차등.</div>
+</div>
+
+<h3>성공 지표</h3>
+<table>
+<tr><th style="width:40%">지표</th><th style="width:20%">기준선</th><th>목표</th></tr>
+<tr><td>라우팅 재질문(clarify_rounds) 평균</td><td>M1 배선 후 실측</td><td>Learned 편향 활성 후 30% 감소</td></tr>
+<tr><td>승격 제안 수용률 (L5 승인/전체)</td><td>—</td><td>≥60% (낮으면 반추 품질 문제 신호)</td></tr>
+<tr><td>Learned 승격발(發) 회귀</td><td>0</td><td>0 유지 (L2 Canary + 회귀 게이트)</td></tr>
+<tr><td>CLAUDE.md 관리 블록 예산</td><td>0자</td><td>≤3,000자 상시 준수</td></tr>
+<tr><td>롤백 성공률 (byte-identical 복원)</td><td>100% (기존)</td><td>100% 유지 — 3계층 표면 전체</td></tr>
+</table>
+
+<footer>
+MoAI-ADK · harness-self-evolving-redesign · 2026-07-12 · 근거: Lilian Weng "Harness Engineering for Self-Improvement"(lilianweng.github.io, 2026-07-04) + 코드베이스 8-표면 조사 (SKILL.md 라우터 · v4 Builder · harness.yaml · internal/harness 66파일 · namespace doctrine · Epic 3-SPEC · CLAUDE.md 쓰기 경로 · Go CLI) · 본 보고서는 설계 제안이며 SPEC 착수 전 구현 착수 승인 게이트를 따른다.
+</footer>
+
+</div>
+</body>
+</html>

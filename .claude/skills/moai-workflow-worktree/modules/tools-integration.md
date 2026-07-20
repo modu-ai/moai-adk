@@ -43,7 +43,7 @@ Worktree-Specific Settings:
 - Test runner configurations
 
 Task Generation Per Worktree:
-- Run Tests: Execute /moai:2-run for the SPEC
+- Run Tests: Execute /moai run for the SPEC
 - Sync Worktree: Run moai-worktree sync command
 - Switch to Worktree: Change active directory
 
@@ -81,7 +81,7 @@ Navigation Aliases:
 
 Quick Functions:
 - mwnew: Create and switch to new worktree in one command
-- mwdev: Switch to worktree and start development with /moai:2-run
+- mwdev: Switch to worktree and start development with /moai run
 - mwpush: Sync worktree and push to remote branch
 
 ---

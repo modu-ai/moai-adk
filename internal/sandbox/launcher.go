@@ -46,7 +46,9 @@ func isReadOnlyRole(role string) bool {
 //
 // @MX:ANCHOR: [AUTO] Launcher is the primary entry point for all sandbox execution
 // @MX:REASON: Fan_in >= 3: doctor_sandbox.go, agent_lint.go, future agent_dispatch.go,
-//             all sandbox tests — any interface change breaks all callers
+//
+//	all sandbox tests — any interface change breaks all callers
+//
 // @MX:SPEC: SPEC-V3R2-RT-003 REQ-002/012/015/050
 type Launcher struct {
 	// backends maps sandbox type to its implementation.
@@ -76,12 +78,6 @@ func (l *Launcher) SetBackend(s Sandbox, b SandboxBackend) {
 		l.backends = make(map[Sandbox]SandboxBackend)
 	}
 	l.backends[s] = b
-}
-
-// SetSandboxRequired controls whether sandbox: none is rejected
-// for implementer roles without justification.
-func (l *Launcher) SetSandboxRequired(required bool) {
-	l.sandboxRequired = required
 }
 
 // ResolveBackend returns the sandbox that would actually be used for the given

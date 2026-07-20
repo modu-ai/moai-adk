@@ -6,9 +6,18 @@ import (
 	"testing"
 )
 
+// userOwnedSkillPrefixes is the set of user-owned skill-name prefixes that
+// MUST NOT appear in the embedded template FS: the canonical hns- generation
+// plus the legacy harness- generation (dual-pattern per the hns- artifact
+// prefix rename). NOTE: my-harness- is a substring superset of neither and is
+// covered by the harness- check only when literally present; it is listed
+// explicitly for completeness.
+var userOwnedSkillPrefixes = []string{"hns-", "harness-", "my-harness-"}
+
 // TestNamespaceLeakHarnessSkills enforces the user-owned namespace boundary
-// for skills. The harness-* prefix is reserved for user-generated artifacts
-// emitted by moai-meta-harness skill during /moai project Phase 5+.
+// for skills. The hns-* prefix (canonical) and the harness-* / my-harness-*
+// prefixes (legacy generations) are reserved for user-generated artifacts
+// emitted by the v4 harness Builder.
 // These artifacts MUST NOT appear in the embedded template FS — leak indicates
 // either a misclassification or accidental commit of user-area files.
 //
@@ -16,8 +25,8 @@ import (
 // Policy: CLAUDE.local.md §24.1 + .claude/rules/moai/development/skill-authoring.md § Skills Namespace Policy
 // Origin: chore commit 4f1135684 (2026-05-23) — first enforcement after moai-adk-go
 // domain specialists were leaked into template. Originally matched the legacy code-side prefix
-// (the legacy code-side prefix); renamed to harness-* per the namespace catch-up
-// (harness-* is the canonical doctrine-declared user-owned prefix).
+// (the legacy code-side prefix); renamed to harness-* per the namespace catch-up,
+// then extended with the hns-* canonical prefix (dual-pattern rejection).
 func TestNamespaceLeakHarnessSkills(t *testing.T) {
 	t.Parallel()
 
@@ -38,8 +47,11 @@ func TestNamespaceLeakHarnessSkills(t *testing.T) {
 		if len(parts) != 3 { // only top-level directories
 			return nil
 		}
-		if strings.HasPrefix(parts[2], "harness-") {
-			leaked = append(leaked, path)
+		for _, prefix := range userOwnedSkillPrefixes {
+			if strings.HasPrefix(parts[2], prefix) {
+				leaked = append(leaked, path)
+				break
+			}
 		}
 		return nil
 	})
@@ -48,7 +60,7 @@ func TestNamespaceLeakHarnessSkills(t *testing.T) {
 	}
 
 	if len(leaked) > 0 {
-		t.Errorf("NAMESPACE_LEAK_HARNESS_SKILL: harness-* skills MUST NOT be embedded in template (user-owned namespace).\nLeaked entries: %v\nRemediation: remove from internal/template/templates/.claude/skills/ and from catalog.yaml.\nPolicy SSOT: CLAUDE.local.md §24.1, .claude/rules/moai/development/skill-authoring.md § Skills Namespace Policy.", leaked)
+		t.Errorf("NAMESPACE_LEAK_HARNESS_SKILL: hns-* / harness-* / my-harness-* skills MUST NOT be embedded in template (user-owned namespace).\nLeaked entries: %v\nRemediation: remove from internal/template/templates/.claude/skills/ and from catalog.yaml.\nPolicy SSOT: CLAUDE.local.md §24.1, .claude/rules/moai/development/skill-authoring.md § Skills Namespace Policy.", leaked)
 	}
 }
 

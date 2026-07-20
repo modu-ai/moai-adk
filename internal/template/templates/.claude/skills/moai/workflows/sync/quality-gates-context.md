@@ -1,9 +1,9 @@
 ---
-description: "Sync Phase 0 — Purpose/Scope/Input/Mode/Flags/Context Loading and Phase 0 Pre-Sync Quality Gate through Phase 0.1 Deployment Readiness Check. Contains HUMAN GATE 1 (Pre-Sync Quality)."
+description: "Sync Phase 1 — Purpose/Scope/Input/Mode/Flags/Context Loading and Phase 1 Pre-Sync Quality Gate through Phase 3 Deployment Readiness Check. Contains HUMAN GATE 1 (Pre-Sync Quality)."
 user-invocable: false
 metadata:
   parent: moai-workflow-sync
-  phase: "Phase 0: Pre-Sync Context and Deployment Readiness"
+  phase: "Phase 1: Pre-Sync Context and Deployment Readiness"
 ---
 
 <!-- TRACE PROBE: workflow-split baseline trace mechanism -->
@@ -119,7 +119,9 @@ Pre-execution commands: git status, git diff, git branch, git log, find .moai/sp
 
 ## Phase Sequence
 
-### Phase 0: Pre-Sync Quality Gate
+> **Phase-number namespace note**: The Phase N / Phase N.M labels below (Phase 1, Phase 2, Phase 3, Phase 7, Phase 8, Phase 9, Phase 10, Phase 1, Phase 2, Phase 3, Phase 4) are local to the `/moai sync` workflow only. They are a distinct numbering namespace from `harness.yaml` `levels.<level>.skip_phases`, which governs which `/moai run` phases (task-decomposition.md / phase-execution.md numbering) are skipped at a given harness level. A sync-phase number and a run-phase `skip_phases` entry sharing the same numeral (e.g. both using `0.5`) do NOT refer to the same phase.
+
+### Phase 1: Pre-Sync Quality Gate
 
 <!-- moai:evolvable-start id="gate-sync-1" -->
 ### HUMAN GATE: Pre-Sync Quality
@@ -137,20 +139,19 @@ Purpose: Run the gate workflow (workflows/gate.md) as a fast pre-check before th
 
 #### Step 0.0.1: Gate Execution
 
+- Snapshot consumption: query the shared diagnostic snapshot first (`moai verify check --key-current`). Where a fresh snapshot covers the full-test-suite check (recorded by the run-phase pre-review gate or a prior gate on the unchanged tree, within the TTL), consume it instead of re-running the full suite — the gate_report cites the snapshot path, key, original command, and recorded exit code as its full-suite evidence (per `.claude/rules/moai/core/verification-claim-integrity.md` §2). A stale snapshot is never cited as evidence: on key mismatch or TTL expiry, run the full suite as below and record the fresh result via `moai verify record`.
 - Execute gate workflow equivalent: lint + format + type-check + test in parallel
 - Auto-fix any fixable issues (lint auto-fix, format auto-fix)
 - If unfixable errors remain: Present summary and offer options via AskUserQuestion
-  - Fix errors (Recommended): Delegate to manager-develop subagent for targeted fixes
-  - Skip gate: Proceed to Phase 0.1 (errors will be caught later but at higher cost)
+  - Fix errors (Recommended): Delegate to manager-develop subagent for targeted fixes (inject the cycle_type skill `moai-workflow-ddd`|`moai-workflow-tdd` + 0-3 domain `moai-ref-*` per skill-routing.md §1)
+  - Skip gate: Proceed to Phase 3 (errors will be caught later but at higher cost)
   - Abort: Exit sync workflow
 
 Output: gate_report with pass/fail per check category.
 
-### Phase 0.08: DB Schema Doc Check (Conditional)
+### Phase 2: DB Schema Doc Check (Conditional)
 
 Purpose: Refresh `.moai/project/db/` derived documents (schema.md, erd.mmd, migrations.md) when the sync scope includes migration file changes. Replaces the per-event PostToolUse hook with a batch refresh at milestone boundary — eliminates the ~30-60ms/edit overhead the hook used to incur.
-
-Source SPEC: SPEC-DB-SYNC-RELOC-001.
 
 #### Step 0.08.1: Activation Gate
 
@@ -160,7 +161,7 @@ Evaluate all conditions in order; skip the phase if any fails:
 2. `db.enabled: true` in that file
 3. `db.auto_sync: true` in that file
 
-If any condition is not met, skip Phase 0.08 silently and proceed to Phase 0.1.
+If any condition is not met, skip Phase 2 silently and proceed to Phase 3.
 
 #### Step 0.08.2: Migration File Diff Detection
 
@@ -170,7 +171,7 @@ Compute the list of migration files changed since the base branch:
 - Filter by the glob patterns in `db.migration_patterns` (typically Prisma schema, Alembic versions, Rails migrations, raw SQL, Supabase, custom)
 - Further exclude paths matching `db.excluded_patterns` (defaults: `.moai/project/db/**`, `.moai/cache/**`, `.moai/logs/**`) to prevent recursion
 
-If the filtered list is empty, skip to Phase 0.1 with log line: "Phase 0.08: no migration files changed, skipping DB doc refresh".
+If the filtered list is empty, skip to Phase 3 with log line: "Phase 2: no migration files changed, skipping DB doc refresh".
 
 #### Step 0.08.3: Refresh Invocation
 
@@ -185,7 +186,7 @@ moai hook db-schema-sync
 - Output: updated `.moai/project/db/schema.md`, `erd.mmd`, `migrations.md`; refresh report
 - Changes are staged for the sync commit — no separate commit is created
 
-On refresh failure (parser error, template conflict): log the error, include in sync report under "DB doc refresh warnings", and continue to Phase 0.1. Non-blocking by contract.
+On refresh failure (parser error, template conflict): log the error, include in sync report under "DB doc refresh warnings", and continue to Phase 3. Non-blocking by contract.
 
 The `/moai db` slash command was retired (Bundle A, 2026-05-16) — sync workflow is now the sole entry point for db doc refresh. Internal `moai hook db-schema-sync` Go subcommand remains for hook event handlers and direct invocation by sync workflow.
 
@@ -198,7 +199,7 @@ When migration files changed but `db.auto_sync: false`:
 
 Output: phase_result with one of `skipped | refreshed | advised | failed` and the migration file count.
 
-### Phase 0.1: Deployment Readiness Check
+### Phase 3: Deployment Readiness Check
 
 Purpose: Verify the implementation is deployment-ready before quality verification and documentation sync. Catches deployment-blocking issues early.
 
@@ -207,7 +208,7 @@ Purpose: Verify the implementation is deployment-ready before quality verificati
 - Run full test suite for detected project language
 - Verify all tests pass (zero failures required)
 - If tests fail: Present failure summary and offer options via AskUserQuestion
-  - Fix and retry (Recommended): Delegate to manager-develop subagent
+  - Fix and retry (Recommended): Delegate to manager-develop subagent (inject the cycle_type skill `moai-workflow-ddd`|`moai-workflow-tdd` + 0-3 domain `moai-ref-*` per skill-routing.md §1)
   - Continue anyway: Proceed with warning
   - Abort: Exit sync workflow
 

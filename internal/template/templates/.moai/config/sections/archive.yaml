@@ -1,0 +1,20 @@
+archive:
+    # SPEC auto-archive behavior for `moai spec archive`.
+    #
+    # Archiving relocates finished SPEC directories out of .moai/specs/ and into
+    # .moai/archive/specs/<year>/. They stay git-tracked and grep-discoverable —
+    # the move bounds the working set that lifecycle scans (drift detection,
+    # status audits) have to walk, so those scans stay fast as SPECs accumulate.
+    #
+    # A SPEC is archive-eligible only when BOTH hold:
+    #   1. its status is terminal (completed / superseded / archived / rejected), AND
+    #   2. its last activity is older than grace_days.
+    #
+    # Age alone never archives an active SPEC, and a protected legacy SPEC is
+    # never archived unless it independently satisfies both conditions.
+    #
+    # grace_days: how long a terminal SPEC stays in .moai/specs/ after its last
+    #             activity before it becomes archive-eligible. Raise it to keep
+    #             recently-closed work close at hand; lower it to bound the active
+    #             set more aggressively. Override per-run with --grace-days N.
+    grace_days: 90

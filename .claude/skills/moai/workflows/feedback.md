@@ -45,27 +45,20 @@ No drafted feedback is discarded on a `gh` failure; the local draft is the recov
 
 ## Phase 1: Feedback Collection
 
-### Step 1: Determine Feedback Type
+### Step 1: Single Collection Round (type + title + description)
 
 [HARD] Resolve feedback type from $ARGUMENTS if provided (issue, suggestion, question).
 
-If $ARGUMENTS is empty, use AskUserQuestion:
+[HARD] Collect the feedback fields — type, title, and description — in ONE AskUserQuestion round carrying one question per field (multi-question, ≤4 questions per call), replacing the former per-field sequential rounds. Each field keeps its own question, options, and description quality unchanged; only the number of blocking round-trips changes:
 
-Question: What type of feedback would you like to submit?
+- **Type** (asked only when $ARGUMENTS did not resolve it) — Question: What type of feedback would you like to submit?
+  - Bug Report (Recommended): Technical issues or errors encountered
+  - Feature Request: Suggestions for improvements or new features
+  - Question: Clarifications or help needed
+- **Title** — feedback title, free text (the round's automatic "Other" option accepts free-form input).
+- **Description** — detailed description, free text (via the same "Other" mechanism).
 
-Options:
-
-- Bug Report: Technical issues or errors encountered
-- Feature Request: Suggestions for improvements or new features
-- Question: Clarifications or help needed
-
-### Step 2: Collect Details
-
-[HARD] Solicit feedback title from user via AskUserQuestion (free text input).
-
-[HARD] Solicit detailed description from user via AskUserQuestion (free text input).
-
-[SOFT] Solicit priority level from user:
+[SOFT] Priority level rides the same round as an additional question (the round stays within the 4-question ceiling):
 
 - Low: Minor issue, workaround available
 - Medium: Moderate impact, no urgent workaround needed
@@ -162,7 +155,7 @@ Display in user's conversation_language:
 
 Use AskUserQuestion after successful submission:
 
-- Continue Development: Return to current development workflow
+- Continue Development (Recommended): Return to current development workflow
 - Submit Additional Feedback: Report another issue or suggestion
 - View Issue: Open created GitHub issue in browser
 

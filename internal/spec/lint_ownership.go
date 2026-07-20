@@ -204,9 +204,10 @@ func lookupOwnershipTransitionFromGit(specPath, specID string) (*ownershipTransi
 		return nil, nil
 	}
 
-	// git 환경 확인 — fail-safe (테스트 tmpdir / 비-git 환경)
-	if _, err := exec.Command("git", "rev-parse", "--git-dir").Output(); err != nil {
-		return nil, fmt.Errorf("git unreachable: %w", err)
+	// git 환경 확인 — fail-safe (테스트 tmpdir / 비-git 환경).
+	// REQ-PERF-001-A: uses per-run cache to avoid redundant git rev-parse spawns.
+	if !cachedGitDirAvailable() {
+		return nil, fmt.Errorf("git unreachable: git rev-parse --git-dir failed")
 	}
 
 	// git log --follow <path> -p — lookback window 내 status 변화 감지 (gitLogWindowSize 재사용)

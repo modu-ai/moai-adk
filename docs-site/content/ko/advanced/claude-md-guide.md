@@ -4,7 +4,7 @@ weight: 80
 draft: false
 ---
 
-Claude Code의 핵심 지침 파일 체계를 상세히 안내합니다.
+Claude Code의 핵심 지침 파일 체계를 상세히 안내합니다. `CLAUDE.md`는 매 세션 항상 로드되는 파일이므로 이 파일의 한 줄 한 줄이 곧 상시 컨텍스트 비용입니다 — 지침 체계 설계는 하네스 설계인 동시에 토크노믹스이기도 합니다.
 
 {{< callout type="info" >}}
 **한 줄 요약**: `CLAUDE.md`는 프로젝트의 **헌법**입니다. Claude Code가 프로젝트를 어떻게 이해하고, 어떤 규칙을 따르며, 어떤 에이전트를 호출할지 모두 이 파일에서 결정됩니다.
@@ -74,36 +74,41 @@ MoAI는 Claude Code의 전략적 오케스트레이터입니다.
 - [HARD] Markdown 출력: 모든 커뮤니케이션에 Markdown 사용
 ```
 
-### 2. 요청 처리 파이프라인
+### 2. 요청 처리 파이프라인 (Analyze-First)
 
-사용자 요청을 분석하고 라우팅하는 4단계 파이프라인입니다.
+모든 요청은 입력 언어와 무관하게 하나의 순서화된 파이프라인을 거칩니다. v3.0의 핵심은 **의도 분석이 항상 먼저**라는 점입니다 — 영어 키워드 매칭이 아니라 언어 독립적 의미 분류로 라우팅합니다.
 
 | 단계 | 설명 |
 |------|------|
-| 1. 분석 | 요청의 복잡성 평가, 기술 키워드 감지 |
-| 2. 라우팅 | 명령 유형에 따라 적절한 경로 선택 |
-| 3. 실행 | 에이전트에게 위임하여 작업 수행 |
-| 4. 보고 | 결과 통합 및 사용자에게 보고 |
+| 1. 의도 분석 | 요청의 의도를 언어 독립적으로 분류 (Analyze-First) |
+| 2. 컨텍스트 충분성 점검 | 부족하면 실행 전 Socratic 인터뷰로 확인 |
+| 3. 실행 계획 구성 | 스킬/에이전트/워크플로우 체인 + 오케스트레이션 모드 선택 |
+| 4. 승인 게이트 | 구현 착수 승인 (plan→run 휴먼 게이트) 포함 |
+| 5. 실행 → 검증 → 반복 | 수용 기준 대비 검증, goal이 설정되면 goal 평가자가 종료 판정 |
 
 ### 3. 명령어 참조
 
-MoAI-ADK의 3가지 명령어 유형을 정의합니다.
+`/moai`가 모든 MoAI 개발 워크플로우의 단일 진입점입니다.
 
 | 유형 | 명령어 | 용도 |
 |------|--------|------|
-| Type A (워크플로우) | `/moai project`, `/moai plan`, `/moai run`, `/moai sync` | 주요 개발 워크플로우 |
-| Type B (유틸리티) | `/moai`, `/moai fix`, `/moai loop` | 빠른 수정, 자동화 |
-| Type C (피드백) | `/moai feedback` | 개선 사항 보고 |
+| SPEC 파이프라인 | `/moai plan`, `/moai run`, `/moai sync` | 3-phase 개발 워크플로우 |
+| 루프/수정 | `/moai goal`, `/moai loop`, `/moai fix` | 조건 선언 루프, 반복 수정, 단발 수정 |
+| 프로젝트/하네스 | `/moai project`, `/moai harness` | 프로젝트 문서 + 하네스 생성/관리 |
+| 품질/유틸리티 | `/moai review`, `/moai gate`, `/moai clean`, `/moai mx`, `/moai codemaps`, `/moai feedback` | 리뷰, 게이트, 정리, 주석, 문서, 제보 |
+| (자연어) | `/moai "요청"` | Analyze-First 라우팅 → 자율 파이프라인 |
 
 ### 4. 에이전트 카탈로그
 
-MoAI-ADK는 **8개 보존 에이전트** (7개 MoAI-custom + 1개 Anthropic built-in)로 구성됩니다. 아키텍처 단순화로 manager-strategy, manager-quality, manager-brain, manager-project 등 12개 archived 에이전트는 특정 도메인에 대한 per-spawn `Agent(general-purpose)` delegation으로 대체되었습니다.
+MoAI-ADK는 **11개 보존 에이전트** (10개 MoAI-custom + 1개 Anthropic built-in)로 구성됩니다. 아키텍처 단순화로 manager-strategy, manager-quality, manager-brain, manager-project 등 12개 archived 에이전트는 특정 도메인에 대한 per-spawn `Agent(general-purpose)` delegation으로 대체되었습니다.
 
 | 분류 | 에이전트 | 역할 |
 |------|----------|------|
-| Manager (4) | manager-spec, manager-develop, manager-docs, manager-git | 핵심 라이프사이클 단계별 전문가 |
+| Manager (5) | manager-spec, manager-develop, manager-docs, manager-git, manager-design | 핵심 라이프사이클 단계별 전문가 |
 | Evaluator (2) | plan-auditor, sync-auditor | 계획/완료 단계 독립적 품질 평가 |
 | Builder (1) | builder-harness | 동적 프로젝트별 하네스 생성 |
+| Advisor (1) | super-advisor | 고추론 자문 (E1-E4 에스컬레이션) |
+| Specialist (1) | e2e-tester | 웹/모바일/데스크탑 E2E 테스트 실행 (`/moai e2e`) |
 | Built-in (1) | Explore (Anthropic) | 읽기 전용 코드베이스 탐색 |
 
 ### 5. SPEC 워크플로우
@@ -119,6 +124,9 @@ MoAI-ADK는 **8개 보존 에이전트** (7개 MoAI-custom + 1개 Anthropic buil
 
 # Sync: 문서 동기화 (40K 토큰)
 > /moai sync SPEC-XXX
+
+# E2E: 웹/모바일/데스크탑 E2E 테스트 실행
+> /moai e2e
 ```
 
 ### 6. 품질 게이트
@@ -135,7 +143,7 @@ TRUST 5 프레임워크와 LSP 품질 게이트를 정의합니다.
 
 ### 7. 사용자 상호작용 아키텍처
 
-하위 에이전트는 사용자와 직접 대화할 수 없습니다.
+하위 에이전트는 사용자와 직접 대화할 수 없습니다. 사용자 접점은 MoAI 하나로 고정됩니다.
 
 ```mermaid
 flowchart TD
@@ -196,7 +204,7 @@ language:
 
 ## .claude/rules/ 시스템
 
-`.claude/rules/` 디렉토리에는 **조건부로 로드되는 세부 규칙**이 저장됩니다.
+`.claude/rules/` 디렉토리에는 **조건부로 로드되는 세부 규칙**이 저장됩니다. 모든 규칙을 CLAUDE.md에 넣지 않고 조건부 파일로 분리하는 이유는 단 하나 — 안 쓰는 규칙이 컨텍스트를 차지하지 않게 하기 위해서입니다.
 
 ### 디렉토리 구조
 
@@ -208,8 +216,7 @@ language:
 │   ├── skill-authoring.md         # 스킬 작성 가이드
 │   └── coding-standards.md        # 코딩 표준
 ├── workflow/                      # 워크플로우
-│   ├── workflow-modes.md          # Plan/Run/Sync 정의
-│   └── spec-workflow.md           # SPEC 워크플로우
+│   └── spec-workflow.md           # SPEC 워크플로우 (Plan/Run/Sync 정의)
 └── languages/                     # 언어별 규칙 (16개)
     ├── python.md
     ├── typescript.md
@@ -243,13 +250,12 @@ paths:
 | `core/` | `moai-constitution.md` | 항상 로드 |
 | `development/` | `skill-authoring.md` | 스킬 관련 작업 시 |
 | `development/` | `coding-standards.md` | 코드 작업 시 |
-| `workflow/` | `workflow-modes.md` | 워크플로우 명령 시 |
-| `workflow/` | `spec-workflow.md` | SPEC 관련 작업 시 |
+| `workflow/` | `spec-workflow.md` | 워크플로우 명령·SPEC 관련 작업 시 |
 | `languages/` | `python.md` 등 | 해당 언어 파일 수정 시 |
 
 ## 크기 제한
 
-`CLAUDE.md`는 **40,000자 이하**를 유지해야 합니다.
+`CLAUDE.md`는 **40,000자 이하**를 유지해야 합니다. MoAI-ADK 자체도 v3 기간 동안 CLAUDE.md를 계속 다이어트해 왔습니다 — 항시 로드 지침은 짧을수록 모든 세션이 싸집니다.
 
 ### 크기 초과 시 대응 방법
 
@@ -320,6 +326,8 @@ flowchart TD
 
 ## CLAUDE.md, rules, skills의 관계
 
+지침 체계는 4계층으로 나뉘며, 아래 계층으로 갈수록 로드 조건이 좁아집니다.
+
 ```mermaid
 flowchart TD
     subgraph HIERARCHY["지침 체계 계층"]
@@ -347,11 +355,11 @@ flowchart TD
 
 ## 관련 문서
 
-- [스킬 가이드](/advanced/skill-guide) - 스킬 시스템 상세
-- [에이전트 가이드](/advanced/agent-guide) - 에이전트 시스템 상세
-- [settings.json 가이드](/advanced/settings-json) - 설정 파일 관리
-- [Hooks 가이드](/advanced/hooks-guide) - 이벤트 자동화
+- [스킬 가이드](/ko/advanced/skill-guide) - 스킬 시스템 상세
+- [에이전트 가이드](/ko/advanced/agent-guide) - 에이전트 시스템 상세
+- [settings.json 가이드](/ko/advanced/settings-json) - 설정 파일 관리
+- [Hooks 가이드](/ko/advanced/hooks-guide) - 이벤트 자동화
 
 {{< callout type="info" >}}
-**팁**: `CLAUDE.md`를 직접 수정하는 것보다 `CLAUDE.local.md`에 개인 규칙을 추가하는 것을 권장합니다. MoAI-ADK 업데이트 시에도 개인 규칙이 안전하게 보존됩니다.
+**팁**: `CLAUDE.md`를 직접 수정하기보다 `CLAUDE.local.md`에 개인 규칙을 추가하는 걸 권장합니다. MoAI-ADK 업데이트 시에도 개인 규칙이 안전하게 보존됩니다.
 {{< /callout >}}

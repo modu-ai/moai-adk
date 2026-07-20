@@ -4,8 +4,10 @@ weight: 50
 draft: false
 ---
 
-MoAI-ADK의 개발 방법론을 상세히 안내합니다. 프로젝트 상태에 따라 TDD 또는 DDD를
-선택하여 사용합니다.
+MoAI-ADK의 개발 방법론을 상세히 안내합니다. Run 단계에서 에이전트가 코드를 구현할 때
+따르는 규율로, 프로젝트 상태에 따라 TDD 또는 DDD를 선택하여 사용합니다. 방법론이
+명확하면 에이전트가 헤매지 않습니다 — 테스트가 곧 완료 조건이 되어 루프가 스스로
+수렴하고, 불필요한 재시도에 토큰을 낭비하지 않습니다.
 
 {{< callout type="info" >}}
   **한 줄 요약:** 신규 프로젝트는 **TDD** (RED-GREEN-REFACTOR), 테스트가 거의 없는
@@ -218,7 +220,7 @@ flowchart TD
 
 ### 1단계: ANALYZE (분석)
 
-기존 코드의 구조를 철저히 분석합니다. 의사가 환자를 진찰하는 것과 같습니다.
+기존 코드의 구조를 철저히 분석합니다. 의사가 환자를 진찰하듯이요.
 
 **분석 항목:**
 
@@ -405,7 +407,7 @@ flowchart TD
 
 1. **판단하지 않고 기록만**: 현재 코드에 버그가 있더라도, 그 동작을 그대로
    기록합니다
-2. **에지 케이스 포함**: 정상 케이스뿐 아니라 예외 케이스도 모두 기록합니다
+2. **엣지 케이스 포함**: 정상 케이스뿐 아니라 예외 케이스도 모두 기록합니다
 3. **재현 가능하게**: 테스트를 몇 번이든 실행해도 같은 결과가 나와야 합니다
 4. **빠르게**: 특성화 테스트는 빠르게 실행되어야 매 변경 후 바로 검증할 수
    있습니다
@@ -464,7 +466,8 @@ flowchart TD
 
 ```yaml
 constitution:
-  development_mode: tdd  # TDD 방법론 사용
+  development_mode: tdd            # TDD 방법론 사용 (해당 SPEC의 하네스 레벨 자동 선택을 무시하고 고정)
+  session_effort_default: "xhigh" # Opus 4.7+ 세션 기본 추론 깊이 (에이전트별 override가 없을 때)
 
   tdd_settings:
     test_first_required: true         # 구현 전 테스트 작성 필수
@@ -474,6 +477,10 @@ constitution:
 
   test_coverage_target: 85            # 전체 커버리지 목표
 ```
+
+> `development_mode`를 명시적으로 고정하면 복잡도 추정기의 하네스 레벨
+> 자동 선택(minimal/standard/thorough)에 우선하여 지정한 방법론(TDD/DDD)이
+> 강제됩니다.
 
 ### DDD 설정
 

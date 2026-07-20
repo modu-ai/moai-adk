@@ -9,8 +9,10 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
+	"github.com/modu-ai/moai-adk/internal/cli/printer"
 	"github.com/modu-ai/moai-adk/internal/session"
 	"github.com/spf13/cobra"
 )
@@ -42,7 +44,10 @@ func newStateDumpCmd() *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			phase := args[0]
 			specID := args[1]
-			return runStateDump(phase, specID, format, resume)
+			// SPEC-CLI-TUX-V3-005 M2: route output through the Printer gateway
+			// (REQ-CTX-012) — Data writes to stdout, Info writes to stderr.
+			p := printer.New(printer.WithWriters(cmd.OutOrStdout(), cmd.ErrOrStderr()))
+			return runStateDump(p, phase, specID, format, resume)
 		},
 	}
 
@@ -60,14 +65,15 @@ func newStateShowBlockerCmd() *cobra.Command {
 		Long:  "Display the most recent unresolved blocker report",
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return runShowBlocker()
+			p := printer.New(printer.WithWriters(cmd.OutOrStdout(), cmd.ErrOrStderr()))
+			return runShowBlocker(p)
 		},
 	}
 }
 
 // runStateDump implements the state dump command.
 // SPEC-V3R2-RT-004 AC-07, REQ-030, REQ-032: phase+specID based dump + format selection.
-func runStateDump(phaseArg, specID, format string, resume bool) error {
+func runStateDump(p printer.Printer, phaseArg, specID, format string, resume bool) error {
 	// Locate state directory
 	stateDir, err := findStateDir()
 	if err != nil {
@@ -96,7 +102,9 @@ func runStateDump(phaseArg, specID, format string, resume bool) error {
 	}
 
 	if state == nil {
-		fmt.Printf("No checkpoint found for phase %s, SPEC %s\n", phaseArg, specID)
+		// Status routes to stderr via Printer.Info (SPEC-CLI-TUX-V3-005 M2
+		// channel re-routing; was stdout under the legacy direct-write call).
+		p.Info("No checkpoint found for phase %s, SPEC %s", phaseArg, specID)
 		return nil
 	}
 
@@ -107,31 +115,41 @@ func runStateDump(phaseArg, specID, format string, resume bool) error {
 		if err != nil {
 			return fmt.Errorf("marshal state: %w", err)
 		}
-		fmt.Println(string(data))
+		// Data writes to stdout; byte-identical to the former direct stdout
+		// write of the marshalled bytes in ModePlain (both do Fprintln(w, s)).
+		_ = p.Data(string(data))
 	default: // "human" or any other
-		printPhaseStateHuman(state)
+		printPhaseStateHuman(p, state)
 	}
 
 	return nil
 }
 
 // printPhaseStateHuman prints a PhaseState in a human-readable format.
-func printPhaseStateHuman(state *session.PhaseState) {
-	fmt.Printf("Phase:     %s\n", state.Phase)
-	fmt.Printf("SPEC ID:   %s\n", state.SPECID)
-	fmt.Printf("Updated:   %s\n", state.UpdatedAt.Format(time.RFC3339))
-	fmt.Printf("Provenance: source=%s origin=%s\n", state.Provenance.Source, state.Provenance.Origin)
+func printPhaseStateHuman(p printer.Printer, state *session.PhaseState) {
+	// SPEC-CLI-TUX-V3-005 M2: the six former direct-write calls are composed into
+	// one multi-line string emitted through a single Printer.Data call so that
+	// stdout stays byte-identical for scripted consumers of "moai state show".
+	// Data adds the terminating newline, so lines are joined WITHOUT one.
+	var lines []string
+	lines = append(lines,
+		fmt.Sprintf("Phase:     %s", state.Phase),
+		fmt.Sprintf("SPEC ID:   %s", state.SPECID),
+		fmt.Sprintf("Updated:   %s", state.UpdatedAt.Format(time.RFC3339)),
+		fmt.Sprintf("Provenance: source=%s origin=%s", state.Provenance.Source, state.Provenance.Origin),
+	)
 	if state.BlockerRpt != nil {
-		fmt.Printf("Blocker:   kind=%s resolved=%v\n", state.BlockerRpt.Kind, state.BlockerRpt.Resolved)
+		lines = append(lines, fmt.Sprintf("Blocker:   kind=%s resolved=%v", state.BlockerRpt.Kind, state.BlockerRpt.Resolved))
 	}
 	if state.Checkpoint != nil {
 		data, _ := json.MarshalIndent(state.Checkpoint, "  ", "  ")
-		fmt.Printf("Checkpoint:\n  %s\n", string(data))
+		lines = append(lines, fmt.Sprintf("Checkpoint:\n  %s", string(data)))
 	}
+	_ = p.Data(strings.Join(lines, "\n"))
 }
 
 // runShowBlocker implements the show-blocker command.
-func runShowBlocker() error {
+func runShowBlocker(p printer.Printer) error {
 	// Determine state directory
 	stateDir, err := findStateDir()
 	if err != nil {
@@ -146,7 +164,8 @@ func runShowBlocker() error {
 	}
 
 	if len(matches) == 0 {
-		fmt.Println("No blockers found")
+		// Status routes to stderr via Printer.Info (M2 channel re-routing).
+		p.Info("No blockers found")
 		return nil
 	}
 
@@ -172,7 +191,8 @@ func runShowBlocker() error {
 	}
 
 	if latestBlocker == nil {
-		fmt.Println("No outstanding blockers found")
+		// Status routes to stderr via Printer.Info (M2 channel re-routing).
+		p.Info("No outstanding blockers found")
 		return nil
 	}
 
@@ -182,7 +202,8 @@ func runShowBlocker() error {
 		return fmt.Errorf("marshal blocker: %w", err)
 	}
 
-	fmt.Println(string(data))
+	// Data writes to stdout; byte-identical to the former direct stdout write in ModePlain.
+	_ = p.Data(string(data))
 	return nil
 }
 

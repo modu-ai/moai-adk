@@ -16,8 +16,13 @@ type WizardResult struct {
 	// Development methodology
 	DevelopmentMode string // Development mode: ddd, tdd
 
-	// Model policy (project-level)
+	// Model policy (project-level) — the model+effort profile selection
+	// {high, medium, low} normalized to {max, medium, low} at persistence.
 	ModelPolicy string // Token tier: high, medium, low
+
+	// Report format — html+md or md. Persisted to report.yaml at init.
+	// Empty resolves to the html+md default at persistence time.
+	ReportFormat string // Report output format: html+md, md
 
 	// Git settings
 	GitMode           string // Git automation mode: manual, personal, team
@@ -64,6 +69,11 @@ type Question struct {
 	Default     string                   // Default value
 	Required    bool                     // Whether the field is required
 	Condition   func(*WizardResult) bool // Condition for showing this question
+	// Group is an optional partition label for the unified multi-group form
+	// (SPEC-CLI-TUX-V3-002 REQ-TUX2-006): consecutive unconditional questions
+	// sharing the same Group label render on one form page. Empty is valid
+	// (label-less partition).
+	Group string
 }
 
 // Option represents a selectable option.

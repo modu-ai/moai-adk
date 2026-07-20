@@ -49,10 +49,10 @@ def process_user_data():
 
 REQUIRED Pattern:
 ```python
-# CORRECT - Agent delegation
+# CORRECT - Agent delegation (illustrative pseudocode; real invocation is natural-language)
 result = await Agent(
- subagent_type="code-backend",
- prompt="Process user data from data.txt",
+ subagent_type="general-purpose",
+ prompt="Process user data from data.txt (backend domain)",
  context={"file_path": "data.txt"}
 )
 ```
@@ -71,10 +71,10 @@ Allowed Tools (4 categories):
 
 | Tool | Purpose | Example |
 |------|---------|---------|
-| `Agent()` | Agent delegation | `Agent("code-backend", "Implement API")` |
+| `Agent()` | Agent delegation | `Agent("general-purpose", "Implement the API (backend domain)")` |
 | `AskUserQuestion()` | User interaction | `AskUserQuestion(questions=[...])` |
 | `Skill()` | Knowledge invocation | `Skill("moai-foundation-core")` |
-| `MCP Servers` | External integrations | Context7, Playwright, Pencil |
+| `MCP Servers` | External integrations | Playwright, Pencil |
 
 Forbidden Tools (Why?):
 
@@ -146,10 +146,10 @@ Data Protection Rules:
 
 | Level | Name | Access | Use Case |
 |-------|------|--------|----------|
-| 1 | Read-only | File exploration, code analysis | `Explore`, `Plan` |
-| 2 | Validated Write | File creation with validation | `workflow-ddd`, `workflow-docs` |
-| 3 | System | Limited system operations | `infra-devops`, `core-git` |
-| 4 | Security | Security analysis and enforcement | `security-expert`, `core-quality` |
+| 1 | Read-only | File exploration, code analysis | `Explore`, `plan-auditor` |
+| 2 | Validated Write | File creation with validation | `manager-develop`, `manager-docs` |
+| 3 | System | Limited system operations | `manager-git`, per-spawn `general-purpose` (devops) |
+| 4 | Security | Security analysis and enforcement | `sync-auditor`, per-spawn `general-purpose` (security) |
 
 Agent Permissions:
 - Read Agents: File system exploration, code analysis
@@ -161,7 +161,6 @@ MCP Server Permissions:
 
 | MCP Server | Permissions |
 |------------|-------------|
-| Context7 | Library documentation access, API reference resolution, version checking |
 | Playwright | Browser automation, screenshot capture, UI simulation, E2E testing |
 | Pencil | Design system access, .pen file editing, design-to-code, style guides, variables |
 
@@ -204,7 +203,7 @@ Configuration (default):
 ```
 
 MoAI's Behavior (prompt_always=true):
-1. When running `/moai:1-plan`, user prompted: "Create branch?"
+1. When running `/moai plan`, user prompted: "Create branch?"
  - Auto create → Creates feature/SPEC-001
  - Use current branch → Continues on current branch
 2. All DDD commits saved locally only (automatic)
@@ -247,11 +246,11 @@ Configuration (default - prompt each time):
 ```
 
 MoAI's Behavior (prompt_always=true):
-1. When running `/moai:1-plan`, user prompted: "Create branch?"
+1. When running `/moai plan`, user prompted: "Create branch?"
  - Auto create → Creates feature/SPEC-002 + auto push
  - Use current branch → Commits directly on current branch
-2. Running `/moai:2-run`: DDD commits + auto push
-3. Running `/moai:3-sync`: Doc commits + suggest PR creation (user choice)
+2. Running `/moai run`: DDD commits + auto push
+3. Running `/moai sync`: Doc commits + suggest PR creation (user choice)
 
 Configuration (auto after approval):
 ```json
@@ -267,7 +266,7 @@ Configuration (auto after approval):
 ```
 
 MoAI's Behavior (prompt_always=false, auto_enabled=false):
-1. When running `/moai:1-plan`, user prompted once: "Enable automatic branch creation?"
+1. When running `/moai plan`, user prompted once: "Enable automatic branch creation?"
  - Yes → Auto updates config.json with `auto_enabled=true` → Creates feature/SPEC
  - No → Works on current branch, no config change
 2. From next SPEC: If `auto_enabled=true`, feature branches created automatically without prompts
@@ -310,11 +309,11 @@ Configuration (default - prompt each time):
 ```
 
 MoAI's Behavior (prompt_always=true):
-1. When running `/moai:1-plan`, user prompted: "Create branch?"
+1. When running `/moai plan`, user prompted: "Create branch?"
  - Auto create → Creates feature/SPEC-003 + auto create Draft PR
  - Use current branch → Proceeds on current branch (not recommended)
-2. Running `/moai:2-run`: DDD commits + auto push (to feature branch)
-3. Running `/moai:3-sync`: Doc commits + prepare PR
+2. Running `/moai run`: DDD commits + auto push (to feature branch)
+3. Running `/moai sync`: Doc commits + prepare PR
 4. Team code review required (minimum 1 reviewer)
 5. After approval: Merge (Squash or Merge)
 
@@ -332,7 +331,7 @@ Configuration (auto after approval):
 ```
 
 MoAI's Behavior (prompt_always=false, auto_enabled=false):
-1. When running `/moai:1-plan`, user prompted once: "Enable automatic branch creation and Draft PR creation?"
+1. When running `/moai plan`, user prompted once: "Enable automatic branch creation and Draft PR creation?"
  - Yes → Auto updates config.json with `auto_enabled=true` → Creates feature/SPEC + Draft PR
  - No → Works on current branch, no config change
 2. From next SPEC: If `auto_enabled=true`, feature branches + Draft PRs created automatically without prompts
@@ -363,7 +362,7 @@ Use Case: Team projects, code review required, quality management needed
 ### `/clear` Execution Rule
 
 Mandatory `/clear` After SPEC Generation:
-Execute `/clear` after `/moai:1-plan` completion in ALL modes.
+Execute `/clear` after `/moai plan` completion in ALL modes.
 
 Why?:
 - Saves 45-50K tokens (SPEC generation context)
@@ -371,7 +370,7 @@ Why?:
 - Prevents token overflow
 
 When to Execute `/clear`:
-1. Immediately after `/moai:1-plan` (mandatory)
+1. Immediately after `/moai plan` (mandatory)
 2. When context > 150K tokens
 3. After 50+ conversation messages
 
@@ -398,7 +397,7 @@ Unified:
 - Consistent documentation format
 
 Secured:
-- Security validation through security-expert
+- Security validation through per-spawn general-purpose (security domain)
 - OWASP compliance checking
 - Input sanitization and validation
 - Secure coding practices
@@ -451,7 +450,7 @@ Required Log Entries:
 ```python
 {
  "timestamp": "2025-11-25T07:30:00Z",
- "agent": "security-expert",
+ "agent": "general-purpose",
  "action": "code_review",
  "files_accessed": ["src/auth.py", "tests/test_auth.py"],
  "token_usage": 5230,
@@ -666,18 +665,17 @@ Emergency Procedures:
 ## Works Well With
 
 Skills:
-- [moai-foundation-core](../SKILL.md) - Parent skill
-- [moai-foundation-context](../../moai-foundation-context/SKILL.md) - Token budget and session state
+- [moai-foundation-core](../SKILL.md) - Parent skill (includes token budget management — see [token-optimization.md](token-optimization.md))
 
 Other Modules:
 - [trust-5-framework.md](trust-5-framework.md) - Quality gates detail
 - [token-optimization.md](token-optimization.md) - Token management strategies
-- [agents-reference.md](agents-reference.md) - Agent permission levels
+- [agents-reference.md](agents-reference.md) - Flat retained-agent catalog (10 agents)
 
-Agents:
-- [security-expert](agents-reference.md#tier-3-domain-experts) - Security validation
-- [core-quality](agents-reference.md#tier-2-orchestration--quality) - TRUST 5 enforcement
-- [core-git](agents-reference.md#tier-2-orchestration--quality) - Git workflow management
+Agents (see [agents-reference.md](agents-reference.md) for the flat retained catalog):
+- `sync-auditor` - TRUST 5 enforcement (4-dimension scoring)
+- `manager-git` - Git workflow management
+- per-spawn `general-purpose` (security domain) - Security validation
 
 ---
 

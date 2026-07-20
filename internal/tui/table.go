@@ -4,7 +4,7 @@ package tui
 import (
 	"strings"
 
-	"github.com/charmbracelet/lipgloss"
+	"charm.land/lipgloss/v2"
 	tuiinternal "github.com/modu-ai/moai-adk/internal/tui/internal"
 )
 
@@ -44,7 +44,7 @@ func KV(key, value string, opts KVOpts) string {
 		renderedKey = tuiinternal.FillRight(key, opts.KeyWidth)
 	}
 
-	return keyStyle.Render(renderedKey) + "  " + valStyle.Render(value)
+	return downsample(keyStyle.Render(renderedKey) + "  " + valStyle.Render(value))
 }
 
 // CheckLine renders a single doctor-row formatted line.
@@ -93,7 +93,7 @@ func CheckLine(status, label, value, hint string, th *Theme) string {
 	}
 
 	_ = tuiinternal.StringWidth // ensure package is used for CJK-width awareness
-	return b.String()
+	return downsample(b.String())
 }
 
 // SectionOpts configures a Section render call.
@@ -135,5 +135,5 @@ func Section(title string, opts SectionOpts) string {
 	// source files by AC-CLI-TUI-011; lipgloss.Border() is used for box
 	// borders in box.go. For the section divider we use plain dashes.
 	rule := ruleStyle.Render(" " + strings.Repeat("-", ruleWidth-1))
-	return titleStyle.Render(title) + rule
+	return downsample(titleStyle.Render(title) + rule)
 }

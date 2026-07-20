@@ -144,6 +144,19 @@ func (b *defaultBuilder) Build(ctx context.Context, r io.Reader) (string, error)
 	// Collect data from all sources
 	data := b.collectAll(ctx, input)
 
+	// Persist the context-usage snapshot for Detection (SPEC-HANDOFF-THRESHOLD-001
+	// M4 D3). Placed here — after collectAll, before Render — because both the
+	// session id (input.SessionID) and Memory (data.Memory) are in scope only at
+	// this point (REQ-THRESHOLD-011; StatusData carries no session_id, so the
+	// write cannot live inside collectAll). Unconditional w.r.t. HandoffConfig
+	// (REQ-THRESHOLD-007) and best-effort — it never disrupts the render
+	// (REQ-THRESHOLD-009).
+	var sessionID string
+	if input != nil {
+		sessionID = input.SessionID
+	}
+	writeContextUsage(resolveProjectDir(input), sessionID, os.Getpid(), data.Memory, handoffGuideStage(data))
+
 	// Renderer directly supports v3 modes, pass mode as-is (Phase 4, REQ-V3-LAYOUT-001~003)
 	result := b.renderer.Render(data, mode)
 

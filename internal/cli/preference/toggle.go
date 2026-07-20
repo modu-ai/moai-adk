@@ -156,6 +156,102 @@ func CleanupStaleSentinel(projectRoot string) error {
 	return fmt.Errorf("preference: CleanupStaleSentinel remove: %w", err)
 }
 
+// ---- M4 toggle TOCTOU hardening (REQ-CONC-001-005 / AC-005) ----
+//
+// The prior runToggle did a read-then-flip (IsPersonalizationDisabled →
+// Enable/Disable) with no serialization. Two concurrent toggles could both
+// read "active" and both disable → net disabled instead of the correct "back
+// to active" (lost flip). TogglePersonalization closes the TOCTOU by
+// serializing the read-then-flip behind an O_EXCL sidecar lock.
+//
+// Lock primitive choice (SPEC option (a) "stdlib flock-equivalent directly in
+// preference"): an O_EXCL sidecar lock file (os.OpenFile with O_CREATE|O_EXCL)
+// is portable stdlib — no syscall.Flock (which would need //go:build build
+// tags), no import of internal/cli's lockFile/unlockFile (which would create a
+// cli→preference←cli import cycle), and no new build-tagged files. O_EXCL
+// creation is atomic at the kernel level on local filesystems (the
+// .moai/state/ case). A stale-lock timeout (toggleLockStaleTimeout) recovers
+// if a holder crashes mid-flip: the next toggle removes a lock older than the
+// timeout and retries.
+
+const (
+	// toggleLockStaleTimeout is the age beyond which an O_EXCL lock file is
+	// considered abandoned (holder crashed). A real toggle completes in
+	// milliseconds, so 10s is a very conservative cutoff.
+	toggleLockStaleTimeout = 10 * time.Second
+	// toggleLockBackoff is the retry interval when another toggle holds the
+	// lock. Toggles are rare (human CLI), so 5ms is a light spin.
+	toggleLockBackoff = 5 * time.Millisecond
+	// toggleLockMaxAttempts bounds total wait (~2s at 5ms backoff) so a stuck
+	// lock surfaces a diagnostic rather than hanging the CLI forever.
+	toggleLockMaxAttempts = 400
+)
+
+// acquireToggleLock obtains an exclusive O_EXCL sidecar lock for the toggle
+// read-then-flip critical section. Returns a release func the caller MUST
+// defer. Stale locks (older than toggleLockStaleTimeout) are removed
+// best-effort so a crashed holder does not permanently block toggles.
+func acquireToggleLock(projectRoot string) (release func(), err error) {
+	if err := os.MkdirAll(filepath.Join(projectRoot, sentinelStateSubdir), 0o755); err != nil {
+		return nil, fmt.Errorf("preference: toggle lock mkdir: %w", err)
+	}
+	lockPath := sentinelPath(projectRoot) + ".toggle-lock"
+	for attempt := 0; attempt < toggleLockMaxAttempts; attempt++ {
+		// Stale-lock cleanup: if the lock is older than the timeout, a prior
+		// holder crashed. Remove it best-effort; the O_EXCL below sorts out
+		// any concurrent remover race (only one O_EXCL creator wins).
+		if fi, statErr := os.Stat(lockPath); statErr == nil {
+			if time.Since(fi.ModTime()) > toggleLockStaleTimeout {
+				_ = os.Remove(lockPath)
+			}
+		}
+		f, oErr := os.OpenFile(lockPath, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o644)
+		if oErr == nil {
+			_ = f.Close()
+			return func() { _ = os.Remove(lockPath) }, nil
+		}
+		if !errors.Is(oErr, os.ErrExist) {
+			return nil, fmt.Errorf("preference: acquire toggle lock: %w", oErr)
+		}
+		time.Sleep(toggleLockBackoff)
+	}
+	return nil, fmt.Errorf("preference: toggle lock busy after %d attempts (remove %s if stale)", toggleLockMaxAttempts, lockPath)
+}
+
+// TogglePersonalization atomically flips the session-personalization sentinel
+// state under an exclusive O_EXCL lock so concurrent toggles compose correctly
+// (REQ-CONC-001-005 / AC-005). Returns the NEW disabled state (true = sentinel
+// present = personalization disabled for the session).
+//
+// The lock serializes the read-then-flip: each toggle observes the effect of
+// the previous one, so N concurrent toggles from a known start state produce
+// the correct parity (even N → original state, odd N → flipped).
+//
+// @MX:NOTE: [AUTO] TogglePersonalization — locked read-then-flip (TOCTOU hardening)
+// @MX:SPEC: SPEC-CLIFIX-CONCURRENCY-001 REQ-CONC-001-005, AC-CONC-001-005
+func TogglePersonalization(projectRoot string, now time.Time) (bool, error) {
+	if projectRoot == "" {
+		return false, fmt.Errorf("preference: TogglePersonalization requires non-empty projectRoot")
+	}
+	release, err := acquireToggleLock(projectRoot)
+	if err != nil {
+		return false, err
+	}
+	defer release()
+
+	wasDisabled := IsPersonalizationDisabled(projectRoot)
+	if wasDisabled {
+		if err := EnablePersonalization(projectRoot); err != nil {
+			return false, err
+		}
+		return false, nil // now enabled
+	}
+	if err := DisablePersonalization(projectRoot, now); err != nil {
+		return false, err
+	}
+	return true, nil // now disabled
+}
+
 // ---- CLI subcommand (newToggleCmd) ----
 
 // toggleFlags holds the flags for the toggle subcommand. Value type so tests
@@ -199,7 +295,8 @@ failures emit a stderr warning but do NOT block workflows.`,
 }
 
 // runToggle is the command body, extracted for testability. It resolves the
-// project root, reads the current sentinel state, flips it, and emits a
+// project root, flips the sentinel state via the locked TogglePersonalization
+// seam (REQ-CONC-001-005 — concurrent toggles compose correctly), and emits a
 // machine-readable summary (JSON with --json, plain text otherwise).
 func runToggle(stdout, stderr io.Writer, flags *toggleFlags) error {
 	root, err := resolveToggleProjectRoot(flags.projectRoot)
@@ -208,20 +305,11 @@ func runToggle(stdout, stderr io.Writer, flags *toggleFlags) error {
 	}
 	now := time.Now().UTC()
 
-	// Flip the state. If currently disabled → enable; if currently active → disable.
-	wasDisabled := IsPersonalizationDisabled(root)
-	if wasDisabled {
-		if err := EnablePersonalization(root); err != nil {
-			_, _ = fmt.Fprintf(stderr, "warn: could not enable personalization: %v\n", err)
-			return err
-		}
-	} else {
-		if err := DisablePersonalization(root, now); err != nil {
-			_, _ = fmt.Fprintf(stderr, "warn: could not disable personalization: %v\n", err)
-			return err
-		}
+	nowDisabled, err := TogglePersonalization(root, now)
+	if err != nil {
+		_, _ = fmt.Fprintf(stderr, "warn: could not toggle personalization: %v\n", err)
+		return err
 	}
-	nowDisabled := !wasDisabled // flipped
 
 	if flags.json {
 		out := map[string]any{

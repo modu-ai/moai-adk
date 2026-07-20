@@ -132,7 +132,7 @@ Purpose: Principle of least privilege
 Examples:
 ```yaml
 # CORRECT: Minimal specific tools
-allowed-tools: Read, mcp__context7__resolve-library-id
+allowed-tools: Read, WebFetch
 
 # CORRECT: Multiple tools for analysis
 allowed-tools: Read, Grep, Glob, WebFetch
@@ -196,7 +196,7 @@ Example:
 ```markdown
 ## Quick Reference (30 seconds)
 
-Context7 MCP server integration for real-time library documentation access. Resolve library names to Context7 IDs and fetch latest API documentation with progressive token disclosure for optimal performance.
+MCP server integration for real-time library documentation access (when a user provisions their own MCP server via Claude Code's native `.mcp.json`). Declare the MCP tools in `allowed-tools` so the skill can invoke them; Claude Code exposes the server's tool schemas at runtime.
 ```
 
 ### Section 2: Implementation Guide
@@ -593,24 +593,14 @@ Parallel Usage:
 
 ### MCP Integration Patterns
 
-Context7 Integration:
+Single MCP server (example: a user-provisioned docs server):
 ```yaml
-allowed-tools: mcp__context7__resolve-library-id, mcp__context7__get-library-docs
+allowed-tools: mcp__example-docs__lookup, mcp__example-docs__fetch
 ```
 
-```python
-# Two-step pattern
-library_id = await mcp__context7__resolve-library_id("library-name")
-docs = await mcp__context7__get-library_docs(
- context7CompatibleLibraryID=library_id,
- topic="specific-topic",
- tokens=3000
-)
-```
-
-Multi-MCP Integration:
+Multi-MCP integration (combine multiple user-provisioned servers):
 ```yaml
-allowed-tools: mcp__context7__*, mcp__playwright__*
+allowed-tools: mcp__example-docs__*, mcp__playwright__*
 ```
 
 ---

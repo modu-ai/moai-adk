@@ -20,15 +20,44 @@ import (
 // SectionID는 6개 정규 섹션을 식별한다.
 type SectionID string
 
-// 6개 정규 섹션. USED-필드 합집합(34개 필드)을 덮는다.
+// 정규 섹션. 기존 6개(34-필드 커버리지) + SPEC-WEB-CONSOLE-011 M2b 확장 10섹션
+// 계약의 신규 섹션들 (REQ-WC11-016 — quality/git-convention은 기존 섹션에 흡수).
 const (
 	SectionIdentity      SectionID = "identity"       // user_name (1)
 	SectionLanguage      SectionID = "language"       // conversation/git_commit/code_comment/doc (4)
 	SectionLaunch        SectionID = "launch"         // model/model_policy/effort_level/permission_mode (4)
-	SectionStatusline    SectionID = "statusline"     // theme + 15 segments (16)
-	SectionQuality       SectionID = "quality"        // development_mode + 3 nested (4)
+	SectionStatusline    SectionID = "statusline"     // theme + 16 segments (17)
+	SectionQuality       SectionID = "quality"        // development_mode + nested (M2b에서 확장)
 	SectionGitConvention SectionID = "git_convention" // convention + 4 nested (5)
+
+	// SPEC-WEB-CONSOLE-011 M2b 신규 섹션 (REQ-WC11-010/012/016/017/019).
+	SectionQualityExtras SectionID = "quality_extras" // quality.yaml 잔여 typed 키 (REQ-WC11-011)
+	SectionGitStrategy   SectionID = "git_strategy"   // typed dirty-flag Save 경로
+	SectionLLM           SectionID = "llm"            // typed 경로 (mode/team_mode는 read-only)
+	SectionWorkflow      SectionID = "workflow"       // seam 전용
+	SectionHarness       SectionID = "harness"        // seam 전용 (learning 최상위 키 포함)
+	SectionRalph         SectionID = "ralph"          // seam 전용
+	SectionFeedback      SectionID = "feedback"       // seam 전용
+	SectionObservability SectionID = "observability"  // seam 전용
+	SectionSecurity      SectionID = "security"       // seam 전용 (스칼라만; 리스트는 raw view)
+
+	// SPEC-WEB-CONSOLE-013 M2: v2.14.0 이후 신설 config 도메인 2종 (seam 전용).
+	SectionHandoff SectionID = "handoff" // seam 전용 (mode select / guide bool)
+	SectionCache   SectionID = "cache"   // seam 전용 (cacheStrategy.enabled/session_ttl)
+
+	// report 섹션 — moai-domain-html-report skill 출력 포맷 (seam 전용, launch tab).
+	SectionReport SectionID = "report" // seam 전용 (report.format select)
+
+	// SPEC-WEB-CONSOLE-014 M4: mx는 편집 필드 0개의 raw-only 렌더 그룹이다 (mx는
+	// RouteExcluded — 쓰기 경로 없음). SchemaSectionIDs()에는 포함되지 않으며(편집
+	// 필드 ≥1 불변식 위반 방지), 웹의 schemaSectionMetas()가 raw-only 섹션으로
+	// 렌더한다. RawBlockRef.Section 그룹핑 태그로만 사용된다.
+	SectionMx SectionID = "mx"
 )
+
+// NOTE: agent-settings 섹션(workflow.yaml team.role_profiles 렌더 표면)은 Agent
+// Teams 정적 레이어와 함께 제거되었다 (SPEC-AGENT-TEAM-RETIRE-001). sub-agent
+// frontmatter 편집(agentfm)은 별도 표면(agentfm.go)으로 유지된다.
 
 // AllSections는 정규 섹션을 렌더 순서대로 반환한다.
 func AllSections() []SectionID {
@@ -39,6 +68,18 @@ func AllSections() []SectionID {
 		SectionStatusline,
 		SectionQuality,
 		SectionGitConvention,
+		SectionQualityExtras,
+		SectionGitStrategy,
+		SectionLLM,
+		SectionWorkflow,
+		SectionHarness,
+		SectionRalph,
+		SectionFeedback,
+		SectionObservability,
+		SectionSecurity,
+		SectionHandoff,
+		SectionCache,
+		SectionReport,
 	}
 }
 
@@ -48,6 +89,7 @@ type FieldType string
 const (
 	TypeSelect      FieldType = "select"       // 단일 선택 (huh.Select / <select>)
 	TypeMultiSelect FieldType = "multi-select" // 다중 선택 (huh.MultiSelect / 세그먼트 체크박스 묶음)
+	TypeRadio       FieldType = "radio"        // 단일 선택 라디오 버튼 (<input type=radio>)
 	TypeText        FieldType = "text"         // 자유 텍스트 (huh.Input / <input type=text>)
 	TypeInt         FieldType = "int"          // 정수 (<input type=number>)
 	TypeFloat       FieldType = "float"        // 실수 (<input type=number step=0.01>)
@@ -64,6 +106,14 @@ const (
 	// PersistProjectConfig: config 매니저를 통해 quality.yaml /
 	// git-convention.yaml 의 <section>.<key> 경로에 저장된다.
 	PersistProjectConfig PersistKind = "project-config"
+	// PersistTypedSection: 완전 typed 섹션(git_strategy / llm / quality 확장 키)을
+	// config 매니저 LoadRaw → per-field apply → SetSection → Save 경로로 저장한다
+	// (SPEC-WEB-CONSOLE-011 REQ-WC11-010/012 — sectionapply.go의 typed applier).
+	PersistTypedSection PersistKind = "typed-section"
+	// PersistSeam: typed Save() 경로가 없는 8개 섹션을 yamlpatch seam
+	// (WriteSectionViaSeam)으로만 저장한다 (REQ-WC11-017). Section은 섹션 파일
+	// base name, Path는 문서 루트부터의 키 경로다.
+	PersistSeam PersistKind = "seam"
 )
 
 // PersistTarget은 필드 값의 영속화 대상을 선언한다. ProfileStore 필드의 경우
@@ -74,8 +124,9 @@ const (
 type PersistTarget struct {
 	Kind      PersistKind
 	Field     string              // ProfileStore: 논리 필드명
-	Section   string              // ProjectConfig: yaml 섹션명
-	Key       string              // ProjectConfig: dot-path 키(예: "tdd_settings.min_coverage_per_commit")
+	Section   string              // ProjectConfig/TypedSection: yaml 섹션명; Seam: 섹션 파일 base name
+	Key       string              // ProjectConfig/TypedSection: dot-path 키(예: "tdd_settings.min_coverage_per_commit")
+	Path      []string            // Seam: 문서 루트부터의 yamlpatch 키 경로 (REQ-WC11-017)
 	Normalize func(string) string // 저장 직전 값 정규화 (nil이면 그대로 저장)
 }
 
@@ -97,14 +148,16 @@ type FieldDef struct {
 	EmptyLabelKey string            // 빈 옵션 라벨의 i18n 키
 	Validate      func(string) bool // 검증 술어 (nil이면 항상 유효)
 	I18nKey       string            // 두 스토어가 해석하는 공유 i18n 키 prefix (예: "f.model")
+	Description   string            // REQ-WC-015 field-level description i18n key (fieldDesc.<sectionID>.<fieldID> convention, design.md §H.1); empty = no description rendered
 	Persist       PersistTarget     // 값 영속화 대상
 }
 
-// statuslineSegmentKeys는 정규 15개 세그먼트 키를 렌더 순서대로 반환한다.
-// internal/statusline.Segment* 상수에서 파생되며(단일 원천) SegmentRepo(16번째)는
-// 의도적으로 제외된다(15-키 스키마 밖, sync.go:154).
+// statuslineSegmentKeys는 정규 16개 세그먼트 키를 렌더 순서대로 반환한다.
+// internal/statusline.Segment* 상수에서 파생되며(단일 원천) SegmentRepo(17번째)는
+// 의도적으로 제외된다(16-키 스키마 밖, sync.go).
 func statuslineSegmentKeys() []string {
 	return []string{
+		statusline.SegmentCacheHit,
 		statusline.SegmentClaudeVersion,
 		statusline.SegmentContext,
 		statusline.SegmentDirectory,
@@ -322,7 +375,7 @@ func allFields() []FieldDef {
 		},
 	)
 
-	// ── Section 4: Statusline (16: theme + 15 segments) ──────────────────
+	// ── Section 4: Statusline (17: theme + 16 segments) ──────────────────
 	themeOpts := statuslineThemeOptions()
 	fields = append(fields, FieldDef{
 		Name:          "statusline_theme",
@@ -425,6 +478,9 @@ func allFields() []FieldDef {
 			Persist: PersistTarget{Kind: PersistProjectConfig, Section: "git_convention", Key: "validation.enforce_on_push"},
 		},
 	)
+
+	// SPEC-WEB-CONSOLE-011 M2b: 10섹션 확장 필드 (schema_sections.go).
+	fields = append(fields, sectionExtraFields()...)
 
 	return fields
 }

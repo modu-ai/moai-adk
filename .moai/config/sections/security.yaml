@@ -7,7 +7,6 @@ security:
         - rm\s+-rf\s+/[^.]
         - mkfs\.
         - dd\s+if=.*of=/dev/
-
     # T-RT002-18: SPEC-V3R2-RT-002 permission subsystem 신규 키.
     # REQ-V3R2-RT-002-022, REQ-V3R2-RT-002-006, REQ-V3R2-RT-002-030.
     permission:
@@ -17,13 +16,11 @@ security:
         pre_allowlist: []
         # session_rules: SrcSession tier 로 적재되는 세션 범위 규칙.
         session_rules: []
-
     # SPEC-V3R2-RT-003: Sandbox Execution Layer configuration.
     sandbox:
         required: false
         network_allowlist: []
         env_scrub_extra: []
         docker_image: "alpine:latest"
-
     extra_deny_patterns: []
     extra_sensitive_content_patterns: []

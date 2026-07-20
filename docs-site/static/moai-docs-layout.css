@@ -1,0 +1,664 @@
+/* ============================================================================
+ * moai-docs-layout.css — round3 docs layout geometry (M3a, SPEC-DESIGN-DOCSV2-001)
+ * ----------------------------------------------------------------------------
+ * Ported from the round3 prototype inline <style> blocks:
+ *   - 05-docs-index.html  → docs-index (hero, sticky filters, featured, grid, cards)
+ *   - 06-docs-detail.html → docs-detail (read-progress, hero, 3-col layout, TOC, rail,
+ *                           pattern, compare, next-cta, news-inline)
+ *
+ * Token bridge: these classes use FLAT token names (--bg, --primary, --gradient,
+ * --muted, --border, --shadow-lg, --danger, --success, --font-mono, --tracking-*).
+ * The flat aliases are defined in moai-brand.css :root (M3a alias block) and map
+ * 1:1 onto the v2 tokens (--color-*, --gradient-signature, --shadow-*, …).
+ *
+ * Scope: LAYOUT GEOMETRY ONLY.
+ *   - Frame (nav/footer/btn/card/chip) lives in moai-design.css  → deferred to M3b.
+ *   - prose-kr typography                                      → M3c.
+ *   - code-mac                                                 → M3d.
+ * The global `body { background: var(--bg); }` rule from the round3 prototypes is
+ * intentionally EXCLUDED so this stylesheet remains INERT (no site-wide visual
+ * change) until M3b/M3c layouts reference these classes.
+ *
+ * Collision-driven renames (see collision-check evidence in progress.md §E.2):
+ *   .toc       → .docs-toc       (bare .toc already defined in moai-design.css)
+ *   .pill      → .docs-pill      (descendant .nav-brand/.md-section-head .pill bleed)
+ *   .featured  → .docs-featured  (.cw-card.featured compound bleed)
+ *   … plus their tightly-coupled variants (.docs-toc-h, .docs-toc-list,
+ *   .docs-pill-row). All other selectors are byte-for-byte from round3
+ *   (same names, same hardcoded px, same @media rules — round3 has no
+ *   --space-*/--radius-* tokens).
+ * ========================================================================== */
+
+/* ════════════════════════ docs-index (05) ════════════════════════ */
+
+.docs-hero { padding: 64px 40px 40px; }
+.docs-hero-inner { max-width: 1280px; margin: 0 auto; }
+.docs-eyebrow { font-family: var(--font-mono); font-size: 12px; color: var(--primary); letter-spacing: 0.14em; text-transform: uppercase; margin-bottom: 14px; }
+.docs-h1 { font-size: clamp(36px, 4.5vw, 56px); font-weight: 900; letter-spacing: var(--tracking-display); line-height: 1.05; max-width: 880px; margin-bottom: 16px; }
+.docs-sub { font-size: 18px; color: var(--muted-fg); max-width: 640px; line-height: 1.6; margin-bottom: 28px; }
+.docs-stats { display: flex; gap: 32px; flex-wrap: wrap; padding-top: 20px; border-top: 1px solid var(--border); margin-top: 24px; }
+.docs-stat-num { font-family: var(--font-mono); font-size: 28px; font-weight: 800; letter-spacing: var(--tracking-display); }
+.docs-stat-lbl { font-size: 11px; color: var(--muted-fg); font-family: var(--font-mono); letter-spacing: 0.1em; text-transform: uppercase; margin-top: 2px; }
+
+/* Sticky filters */
+.docs-filters {
+  position: sticky; top: 64px; z-index: 30;
+  background: color-mix(in srgb, var(--bg) 92%, transparent);
+  backdrop-filter: blur(8px);
+  border-bottom: 1px solid var(--border);
+  padding: 16px 40px;
+}
+.docs-filters-inner { max-width: 1280px; margin: 0 auto; display: flex; align-items: center; gap: 12px; }
+.docs-pill-row { display: flex; gap: 8px; flex-wrap: wrap; flex: 1; overflow-x: auto; }
+.docs-pill { padding: 8px 14px; border: 1px solid var(--border); border-radius: 999px; font-size: 13px; font-weight: 700; color: var(--ink); background: var(--surface); white-space: nowrap; transition: all 150ms; }
+.docs-pill:hover { border-color: var(--ink); }
+.docs-pill.active { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+.docs-pill .count { font-family: var(--font-mono); font-size: 11px; opacity: 0.6; margin-left: 6px; }
+.docs-pill.active .count { opacity: 0.7; }
+.filter-divider { width: 1px; height: 24px; background: var(--border); }
+.sort-select { padding: 8px 14px; border: 1px solid var(--border); border-radius: 999px; background: var(--surface); font-size: 13px; font-weight: 700; }
+
+/* Featured */
+.docs-featured { max-width: 1280px; margin: 32px auto; padding: 0 40px; }
+.featured-card {
+  background: var(--gradient); color: #fff;
+  border-radius: 24px; padding: 48px 56px;
+  display: grid; grid-template-columns: 1.5fr 1fr;
+  gap: 40px; align-items: center;
+  position: relative; overflow: hidden;
+}
+.featured-card::after {
+  content: "";
+  position: absolute; top: -40%; right: -10%;
+  width: 60%; height: 180%;
+  background: transparent;
+  pointer-events: none;
+}
+.featured-eye { font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.14em; opacity: 0.85; margin-bottom: 16px; display: inline-flex; align-items: center; gap: 8px; }
+.featured-eye .dot { width: 6px; height: 6px; border-radius: 999px; background: #fff; animation: pulse 2s infinite; }
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
+.featured-card h2 { font-size: 36px; font-weight: 900; letter-spacing: var(--tracking-display); line-height: 1.15; margin-bottom: 16px; }
+.featured-card p { font-size: 16px; opacity: 0.92; line-height: 1.6; margin-bottom: 24px; max-width: 480px; }
+.featured-meta { display: flex; gap: 16px; font-size: 12px; opacity: 0.8; font-family: var(--font-mono); margin-bottom: 24px; }
+.featured-cta { display: inline-flex; align-items: center; gap: 8px; padding: 14px 24px; background: #fff; color: var(--primary); border-radius: 999px; font-weight: 800; font-size: 15px; }
+.featured-illu { aspect-ratio: 1; border-radius: 16px; background: rgba(255,255,255,0.08); display: flex; align-items: center; justify-content: center; padding: 40px; backdrop-filter: blur(8px); position: relative; z-index: 2; }
+
+/* Grid */
+.docs-grid-section { max-width: 1280px; margin: 0 auto; padding: 16px 40px 80px; }
+.grid-section-head { display: flex; align-items: baseline; justify-content: space-between; margin: 32px 0 20px; }
+.grid-section-head h3 { font-size: 22px; font-weight: 800; letter-spacing: var(--tracking-heading); }
+.grid-section-head .count { font-family: var(--font-mono); font-size: 12px; color: var(--muted-fg); }
+
+.docs-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
+.doc-card {
+  background: var(--surface); border: 1px solid var(--border-card);
+  border-radius: 16px; overflow: hidden;
+  display: flex; flex-direction: column;
+  box-shadow: var(--shadow-sm);   /* v2 surface card 정지 elevation (M6) */
+  transition: all 200ms;
+}
+.doc-card:hover { transform: translateY(-3px); border-color: var(--primary); box-shadow: var(--shadow-lg); }
+.doc-thumb { aspect-ratio: 4/5; position: relative; overflow: hidden; padding: 24px; display: flex; flex-direction: column; justify-content: space-between; }
+.doc-thumb-cat { font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.14em; padding: 4px 10px; border-radius: 999px; background: rgba(0,0,0,0.06); color: var(--ink); align-self: flex-start; }
+.doc-thumb-num { position: absolute; bottom: 16px; right: 20px; font-family: var(--font-mono); font-size: 64px; font-weight: 900; opacity: 0.2; line-height: 1; letter-spacing: var(--tracking-display); }
+.doc-thumb-icon { width: 56px; height: 56px; border-radius: 12px; background: rgba(255,255,255,0.6); display: flex; align-items: center; justify-content: center; backdrop-filter: blur(6px); }
+.doc-body { padding: 18px 22px 22px; flex: 1; display: flex; flex-direction: column; }
+.doc-tags { display: flex; gap: 6px; margin-bottom: 8px; flex-wrap: wrap; }
+.doc-tag { font-size: 10px; font-family: var(--font-mono); padding: 2px 8px; background: var(--muted); border-radius: 4px; color: var(--muted-fg); letter-spacing: 0.04em; }
+.doc-card h4 { font-size: 16px; font-weight: 800; line-height: 1.35; margin-bottom: 8px; min-height: 42px; }
+.doc-excerpt { font-size: 13px; color: var(--muted-fg); line-height: 1.55; flex: 1; margin-bottom: 14px; }
+.doc-meta { display: flex; align-items: center; gap: 12px; font-size: 11px; color: var(--muted-fg); font-family: var(--font-mono); padding-top: 12px; border-top: 1px solid var(--border); }
+.doc-meta .read-time { display: flex; align-items: center; gap: 4px; }
+.doc-meta .views { margin-left: auto; }
+
+/* Themed thumb backgrounds */
+.thumb-1 { background: #3d7d5f; color: #fff; }
+.thumb-1 .doc-thumb-cat { background: rgba(255,255,255,0.18); color: #fff; }
+.thumb-2 { background: #f5e6d3; }
+.thumb-3 { background: #d4ddd9; }
+.thumb-4 { background: #2a8a8c; color: #fff; }
+.thumb-4 .doc-thumb-cat { background: rgba(255,255,255,0.18); color: #fff; }
+.thumb-5 { background: #ffe8d6; }
+.thumb-6 { background: #e9eef0; }
+.thumb-7 { background: #1a1f1d; color: #fff; }
+.thumb-7 .doc-thumb-cat { background: rgba(255,255,255,0.18); color: #fff; }
+.thumb-8 { background: #fdf3e7; }
+
+@media (max-width: 1023px) {
+  .docs-grid { grid-template-columns: 1fr 1fr; }
+  .featured-card { grid-template-columns: 1fr; padding: 32px; }
+  .featured-illu { aspect-ratio: 16/9; }
+  .docs-hero { padding: 40px 20px 24px; }
+  .docs-filters { padding: 12px 20px; top: 64px; }
+  .docs-featured, .docs-grid-section { padding-left: 20px; padding-right: 20px; }
+}
+@media (max-width: 640px) {
+  .docs-grid { grid-template-columns: 1fr; }
+  .docs-stats { gap: 16px; }
+}
+
+/* ════════════════════════ docs-detail (06) ════════════════════════ */
+
+/* Reading progress bar */
+.read-progress { position: fixed; top: 64px; left: 0; right: 0; height: 3px; background: var(--muted); z-index: 49; }
+.read-progress > div { height: 100%; width: 0%; background: var(--gradient); transition: width 80ms; }
+
+/* Hero strip */
+.doc-hero {
+  background: var(--gradient); color: #fff;
+  padding: 56px 40px 64px;
+  border-bottom: 1px solid var(--border);
+}
+.doc-hero-inner { max-width: 1280px; margin: 0 auto; }
+.crumb { font-family: var(--font-mono); font-size: 11px; opacity: 0.85; letter-spacing: 0.1em; margin-bottom: 16px; }
+.crumb a { opacity: 0.85; }
+.crumb .sep { margin: 0 8px; opacity: 0.5; }
+.doc-cat { display: inline-block; padding: 4px 12px; background: rgba(255,255,255,0.16); border-radius: 999px; font-size: 11px; font-weight: 700; letter-spacing: 0.1em; font-family: var(--font-mono); margin-bottom: 16px; }
+.doc-h1 { font-size: clamp(32px, 4vw, 48px); font-weight: 900; letter-spacing: var(--tracking-display); line-height: 1.1; max-width: 900px; margin-bottom: 16px; }
+.doc-deck { font-size: 18px; line-height: 1.5; opacity: 0.92; max-width: 720px; margin-bottom: 28px; }
+.doc-byline { display: flex; align-items: center; gap: 24px; flex-wrap: wrap; padding-top: 20px; border-top: 1px solid rgba(255,255,255,0.2); font-size: 13px; }
+.doc-author { display: flex; align-items: center; gap: 10px; }
+.doc-author-avatar { width: 36px; height: 36px; border-radius: 999px; background: rgba(255,255,255,0.18); display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 14px; }
+.doc-author strong { font-weight: 700; }
+.doc-author-sub { font-size: 11px; opacity: 0.75; font-family: var(--font-mono); }
+.doc-meta-strip { display: flex; gap: 16px; font-family: var(--font-mono); font-size: 12px; opacity: 0.85; margin-left: auto; }
+
+/* 3-column layout */
+.doc-layout {
+  max-width: 1280px; margin: 0 auto;
+  padding: 48px 40px 80px;
+  display: grid; grid-template-columns: 220px 1fr 280px; gap: 48px;
+}
+
+/* TOC sticky (renamed .toc → .docs-toc — bare .toc exists in moai-design.css) */
+.docs-toc { position: sticky; top: 96px; align-self: start; max-height: calc(100vh - 120px); overflow-y: auto; }
+.docs-toc-h { font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted-fg); margin-bottom: 16px; padding-bottom: 12px; border-bottom: 1px solid var(--border); }
+.docs-toc-list { list-style: none; }
+.docs-toc-list li { margin-bottom: 4px; }
+.docs-toc-list a { display: block; padding: 8px 12px; border-left: 2px solid transparent; font-size: 13px; color: var(--muted-fg); line-height: 1.5; transition: all 150ms; }
+.docs-toc-list a:hover { color: var(--ink); background: var(--muted); border-radius: 0 8px 8px 0; }
+.docs-toc-list a.active { color: var(--primary); border-left-color: var(--primary); font-weight: 700; }
+.docs-toc-list .sub { padding-left: 24px; font-size: 12px; opacity: 0.85; }
+
+/* Body — 720px */
+.doc-body { max-width: 720px; }
+
+/* Right rail */
+.rail { position: sticky; top: 96px; align-self: start; display: flex; flex-direction: column; gap: 16px; }
+.rail-card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 20px; }
+.rail-h { font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted-fg); margin-bottom: 12px; }
+.rail-related { display: block; padding: 10px 0; border-bottom: 1px solid var(--border); }
+.rail-related:last-child { border-bottom: none; }
+.rail-related h5 { font-size: 13px; font-weight: 700; line-height: 1.4; margin-bottom: 4px; }
+.rail-related .m { font-family: var(--font-mono); font-size: 11px; color: var(--muted-fg); }
+.rail-actions { display: flex; flex-direction: column; gap: 8px; }
+.rail-action { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border: 1px solid var(--border); border-radius: 8px; font-size: 13px; font-weight: 600; transition: all 150ms; }
+.rail-action:hover { border-color: var(--ink); background: var(--muted); }
+.rail-action .ic { font-size: 16px; }
+
+/* Inline code-mac sizing tweak inside prose */
+.doc-body .code-mac { margin: 20px 0; }
+
+/* Pattern card */
+.pattern { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 20px 24px; margin: 24px 0; display: grid; grid-template-columns: 32px 1fr; gap: 16px; }
+.pattern-num { width: 32px; height: 32px; border-radius: 999px; background: var(--gradient); color: #fff; display: flex; align-items: center; justify-content: center; font-family: var(--font-mono); font-weight: 800; font-size: 13px; }
+.pattern h4 { font-size: 16px; font-weight: 800; margin-bottom: 6px; }
+.pattern p { font-size: 14px; color: var(--muted-fg); line-height: 1.6; margin: 0; }
+
+/* Comparison box */
+.compare { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: 24px 0; }
+.compare-cell { padding: 16px 20px; border-radius: 10px; }
+.compare-cell.bad { background: rgba(196,74,58,0.06); border: 1px solid rgba(196,74,58,0.2); }
+.compare-cell.good { background: rgba(28,124,112,0.08); border: 1px solid rgba(28,124,112,0.25); }
+.compare-h { font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.1em; margin-bottom: 8px; font-weight: 700; }
+.compare-cell.bad .compare-h { color: var(--danger); }
+.compare-cell.good .compare-h { color: var(--success); }
+.compare-text { font-size: 14px; line-height: 1.6; }
+
+/* Next CTA */
+.next-cta { background: var(--gradient); color: #fff; border-radius: 16px; padding: 32px; margin: 64px 0 32px; display: flex; align-items: center; gap: 24px; max-width: 720px; }
+.next-cta-eye { font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.12em; opacity: 0.85; margin-bottom: 8px; }
+.next-cta h3 { font-size: 20px; font-weight: 800; margin-bottom: 6px; line-height: 1.3; }
+.next-cta p { font-size: 13px; opacity: 0.85; font-family: var(--font-mono); }
+.next-cta-arrow { font-size: 32px; opacity: 0.6; }
+
+/* Newsletter inline */
+.news-inline { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 28px; margin: 40px 0; max-width: 720px; }
+.news-inline h4 { font-size: 18px; font-weight: 800; margin-bottom: 6px; letter-spacing: var(--tracking-heading); }
+.news-inline p { font-size: 13px; color: var(--muted-fg); margin-bottom: 16px; }
+.news-form { display: flex; gap: 8px; }
+.news-form input { flex: 1; padding: 12px 14px; border: 1px solid var(--border); border-radius: 999px; background: var(--bg); font-size: 14px; }
+.news-form button { padding: 12px 20px; }
+
+@media (max-width: 1199px) {
+  .doc-layout { grid-template-columns: 200px 1fr; }
+  .rail { display: none; }
+}
+@media (max-width: 1023px) {
+  .doc-layout { grid-template-columns: 1fr; padding: 32px 20px 60px; gap: 24px; }
+  .docs-toc { display: none; }
+  .doc-hero { padding: 40px 20px 48px; }
+  .compare { grid-template-columns: 1fr; }
+}
+
+/* ============================================================================
+ * Frame (M3b — round3 NavBar / Footer / MobileNav / Buttons / Cards / Chips /
+ *        Eyebrow / Page wrapper)
+ * ----------------------------------------------------------------------------
+ * Ported verbatim from .moai/state/ai-design-system/project/round3/styles.css
+ * lines 98-352. Flat token refs (--bg, --primary, --gradient, --muted, --ink,
+ * --border, --surface, --muted-fg, --border-strong, --warning, --gradient-soft,
+ * --shadow-sig, --font-mono, --tracking-heading, --tracking-body) resolve via
+ * the M3a alias block in moai-brand.css :root (lines 149-168). Hardcoded px/radii
+ * preserved byte-for-byte from round3.
+ *
+ * moai-docs-layout.css loads LAST (head/custom.html), so same-specificity rules
+ * here win over moai-brand/design/theme. Existing !important rules in
+ * moai-docs-theme.css (.gdoc-header/.cw-footer green-tint backgrounds) still
+ * override non-!important round3 backgrounds — that is a known cascade reality
+ * (green-tint stays as the design-system primary tint); the round3 STRUCTURE
+ * (sticky/height/flex/grid) applies cleanly. M3c may reconcile the !important
+ * layer if a full cream-canvas pass is required.
+ *
+ * Collision-driven renames (M3a convention — namespace on collision, port rest
+ * byte-for-byte; see collision-rename table in progress.md §E.2 M3b):
+ *   .nav       → .docs-nav        (bare .nav @ moai-design.css:17 — dead CSS, but
+ *                                  namespaced per spec example + base primitive)
+ *   .footer    → .docs-footer     (no bare collision, but namespaced per spec
+ *                                  example — conservative on prominent primitive)
+ *   .btn       → .docs-btn        (bare .btn @ moai-design.css:647 + brand:1552)
+ *   .card      → .docs-card       (no bare collision; spec example — conservative)
+ *   .main      → .docs-main       (bare .main @ moai-design.css:228 — dead CSS)
+ *   .container → .docs-container  (LIVE collision: geekdoc main.css .container is
+ *                                  used by baseof <main class="container ...">;
+ *                                  MUST namespace to avoid clobbering 82rem)
+ *
+ * PORTED BARE (byte-for-byte, includes dead-collision overrides — zero regression
+ * because moai-design.css .nav/.nav-inner/.nav-search/.main are unreferenced in
+ * any docs-site markup; verified via grep over layouts/ content/ data/):
+ *   .nav-inner, .nav-logo, .nav-logo-mark, .nav-menu, .nav-link, .nav-link.active,
+ *   .nav-utility, .nav-search, .nav-search-key, .nav-icon-btn, .nav-login,
+ *   .footer-inner, .footer-grid, .footer-brand-tag, .footer-col, .footer-bottom,
+ *   .mobile-nav, .mobile-nav-inner, .mobile-nav-item,
+ *   .btn-primary, .btn-secondary, .btn-ghost, .btn-lg,
+ *   .chip, .chip-soft, .chip-solid, .chip-line, .chip-amber,
+ *   .eyebrow, .eyebrow-on-grad, .page
+ * ========================================================================== */
+
+/* ───── NavBar ───── */
+.docs-nav {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  height: 64px;
+  background: color-mix(in srgb, var(--bg) 85%, transparent);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--border);
+}
+.nav-inner {
+  max-width: 1280px;
+  height: 100%;
+  margin: 0 auto;
+  padding: 0 40px;
+  display: flex;
+  align-items: center;
+  gap: 32px;
+}
+.nav-logo {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 800;
+  font-size: 20px;
+  letter-spacing: var(--tracking-heading);
+}
+.nav-logo-mark {
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  background: var(--gradient);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-family: var(--font-mono);
+  font-weight: 800;
+  font-size: 13px;
+}
+.nav-menu {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: 16px;
+}
+.nav-link {
+  padding: 8px 14px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: var(--tracking-body);
+  color: var(--muted-fg);
+  transition: all 150ms;
+}
+.nav-link:hover { background: var(--muted); color: var(--ink); }
+.nav-link.active { color: var(--ink); }
+.nav-utility {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.nav-search {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-size: 13px;
+  color: var(--muted-fg);
+  background: var(--surface);
+  min-width: 180px;
+}
+.nav-search-key {
+  margin-left: auto;
+  padding: 1px 6px;
+  background: var(--muted);
+  border-radius: 4px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+}
+.nav-icon-btn {
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--muted-fg);
+  transition: all 150ms;
+}
+.nav-icon-btn:hover { background: var(--muted); color: var(--ink); }
+.nav-login {
+  padding: 8px 16px;
+  background: var(--ink);
+  color: var(--bg);
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+/* ───── Footer ───── */
+.docs-footer {
+  margin-top: 80px;
+  background: var(--surface);
+  border-top: 1px solid var(--border);
+}
+.footer-inner {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 56px 40px 32px;
+}
+.footer-grid {
+  display: grid;
+  grid-template-columns: 1.5fr 1fr 1fr 1fr;
+  gap: 48px;
+  margin-bottom: 40px;
+}
+.footer-brand-tag {
+  margin-top: 16px;
+  font-size: 14px;
+  color: var(--muted-fg);
+  max-width: 320px;
+  letter-spacing: var(--tracking-body);
+}
+.footer-col h4 {
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted-fg);
+  margin-bottom: 16px;
+  font-family: var(--font-mono);
+}
+.footer-col ul { list-style: none; display: flex; flex-direction: column; gap: 10px; }
+.footer-col a { font-size: 14px; color: var(--ink); }
+.footer-col a:hover { color: var(--primary); }
+.footer-bottom {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-top: 24px;
+  border-top: 1px solid var(--border);
+  font-size: 12px;
+  color: var(--muted-fg);
+  font-family: var(--font-mono);
+}
+
+/* ───── Mobile Bottom Nav ───── */
+.mobile-nav {
+  display: none;
+  position: sticky;
+  bottom: 0;
+  background: var(--surface);
+  border-top: 1px solid var(--border);
+  padding: 6px 0 max(6px, env(safe-area-inset-bottom));
+  z-index: 40;
+}
+.mobile-nav-inner {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+}
+.mobile-nav-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  padding: 8px 0;
+  font-size: 10px;
+  color: var(--muted-fg);
+  font-weight: 600;
+}
+.mobile-nav-item.active { color: var(--primary); }
+
+/* ───── Buttons ───── */
+.docs-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 12px 20px;
+  border-radius: 999px;
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: var(--tracking-body);
+  transition: all 150ms;
+  white-space: nowrap;
+}
+.btn-primary {
+  background: var(--gradient);
+  color: #fff;
+}
+.btn-primary:hover { transform: translateY(-1px); box-shadow: var(--shadow-sig); }
+.btn-secondary {
+  background: var(--surface);
+  border: 1px solid var(--border-strong);
+  color: var(--ink);
+}
+.btn-secondary:hover { border-color: var(--ink); }
+.btn-ghost { color: var(--ink); }
+.btn-ghost:hover { background: var(--muted); }
+.btn-lg { padding: 16px 28px; font-size: 16px; }
+
+/* ───── Cards ───── */
+.docs-card {
+  background: var(--surface);
+  border: 1px solid var(--border-card);
+  border-radius: 16px;
+  box-shadow: var(--shadow-sm);   /* v2 surface card 정지 elevation (M6) */
+  overflow: hidden;
+}
+
+/* ───── Chips ───── */
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: var(--tracking-body);
+}
+.chip-soft { background: var(--gradient-soft); color: var(--primary); }
+.chip-solid { background: var(--gradient); color: #fff; }
+.chip-line { border: 1px solid var(--border-strong); color: var(--ink); }
+.chip-amber { background: rgba(196,123,42,0.12); color: var(--warning); }
+
+/* ───── Eyebrow ───── */
+.eyebrow {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--primary);
+}
+.eyebrow-on-grad { color: rgba(255,255,255,0.9); }
+
+/* ───── Page wrapper ───── */
+.page {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+.docs-main {
+  flex: 1;
+}
+.docs-container {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 0 40px;
+}
+
+/* ───── Mascot (v2 6-pose) — SPEC-DESIGN-DOCSV2-001 M5 ───── */
+/* base contract shared by partials/mascot.html + shortcodes/mascot.html.
+   width is set inline via the img width attr; height:auto keeps aspect. */
+.mascot {
+  display: inline-block;
+  height: auto;
+  max-width: 100%;
+  transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.mascot:hover { animation: mascot-wiggle 0.6s cubic-bezier(0.34, 1.56, 0.64, 1); }
+@keyframes mascot-wiggle {
+  0%,100% { transform: rotate(0deg); }
+  25%     { transform: rotate(-4deg); }
+  75%     { transform: rotate(4deg); }
+}
+
+/* ───── Empty section state (doc-empty partial) ───── */
+.doc-empty {
+  padding: 64px 24px;
+  text-align: center;
+}
+.doc-empty-inner {
+  max-width: 480px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+}
+.doc-empty-mascot { width: 140px; }
+.doc-empty-title {
+  font-size: 22px;
+  font-weight: 800;
+  letter-spacing: var(--tracking-heading, -0.05em);
+  color: var(--ink);
+  margin: 0;
+}
+.doc-empty-text {
+  font-size: 15px;
+  line-height: 1.7;
+  color: var(--muted-fg, var(--fg-2));
+  margin: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mascot { transition-duration: 1ms; }
+  .mascot:hover { animation-duration: 1ms; }
+}
+
+/* ───── prose-kr — 한국어 본문 가독성 보강 레이어 (SPEC-DESIGN-DOCSV2-001 M7) ─────
+   single.html 본문 래퍼가 `.gdoc-markdown prose-kr` 로 항상 붙인다. gdoc-markdown 이
+   기본 타이포그래피(폰트/수직리듬/코드블록 = render-codeblock.html .code-card)를 소유;
+   prose-kr 은 그 위에 한국어 어절 단위 줄바꿈만 얇게 덧입힌다(헤딩/코드/리듬 재정의 없음
+   → 충돌·리그레션 방지). word-break: keep-all 은 CJK(ja/zh) 폭 오버플로를 피하려
+   한국어에만 스코프(<html lang="ko">). round3 styles.css §.prose-kr 의 핵심만 이식. */
+.prose-kr { overflow-wrap: break-word; }
+:lang(ko) .prose-kr,
+html[lang="ko"] .prose-kr { word-break: keep-all; }
+
+/* ============================================================================
+ * Hotfix (2026-07-21) — single 문서 상세 레이아웃 붕괴 3건
+ * (1) .doc-hero 텍스트가 theme heading/link 색에 오버라이드되어 초록 배경 위
+ *     검정 h1 + 비가시 초록 링크로 렌더 → hero 내부는 흰색 강제.
+ * (2) geekdoc flex 프레임 안에서 .gdoc-page가 좁게 잡혀 1280px 그리드가
+ *     656px로 압축 → cw-toc 제거(baseof)와 함께 페이지 컨테이너를 flex:1로.
+ * ==========================================================================*/
+.doc-hero h1.doc-h1,
+.doc-hero .crumb,
+.doc-hero .crumb a,
+.doc-hero .crumb span,
+.doc-hero .doc-cat,
+.doc-hero .doc-deck,
+.doc-hero .doc-byline,
+.doc-hero .doc-author strong { color: #fff !important; }
+main.docs-main > .gdoc-page { flex: 1 1 auto; min-width: 0; max-width: none; }
+/* (3) grid 1fr 트랙 min-width:auto 수축 불가 → 컨테이너보다 넓어져 rail이
+ *     뷰포트 밖으로 overflow. minmax(0,1fr) + 자식 min-width:0으로 교정. */
+.doc-layout { grid-template-columns: 220px minmax(0, 1fr) 280px; }
+.doc-layout > * { min-width: 0; }
+@media (max-width: 1199px) {
+  .doc-layout { grid-template-columns: 200px minmax(0, 1fr); }
+}
+/* (4) geekdoc .container 1312px 제한이 3-컬럼(고정 596px)과 충돌해 본문이
+ *     ~244px로 압축 → 문서 상세가 있는 main 프레임 폭을 확장. */
+main.docs-main { max-width: 1720px; }
+@media (max-width: 1500px) {
+  .doc-layout { grid-template-columns: 200px minmax(0, 1fr); gap: 36px; }
+  .doc-layout .rail { display: none; }
+}
+
+/* ============================================================================
+ * Redesign (2026-07-21) — doc-hero 컴팩트 밴드 + 마스코트, 2-단 본문
+ * (구 3-컬럼: 좌 TOC | 본문 | rail → 2단: 본문 | 우측 TOC. rail 카드 삭제) */
+.doc-hero--compact { padding: 28px 40px 32px; }
+.doc-hero--compact .doc-hero-inner {
+  display: flex; align-items: center; justify-content: space-between; gap: 32px;
+}
+.doc-hero--compact .doc-hero-text { min-width: 0; }
+.doc-hero--compact .crumb { margin-bottom: 10px; }
+.doc-hero--compact .doc-cat { margin-bottom: 10px; }
+.doc-hero--compact .doc-h1 { font-size: clamp(26px, 3vw, 36px); margin-bottom: 10px; }
+.doc-hero--compact .doc-meta-strip { margin-left: 0; opacity: 0.85; color: #fff; }
+.doc-hero-mascot {
+  flex: 0 0 auto; width: 110px; height: 110px; object-fit: contain;
+  filter: drop-shadow(0 4px 12px rgba(0,0,0,0.18));
+}
+@media (max-width: 1023px) {
+  .doc-hero--compact { padding: 20px 20px 24px; }
+  .doc-hero-mascot { width: 80px; height: 80px; }
+}
+/* 2-단: 본문 | TOC(260px). 이전 핫픽스의 3-컬럼/2-컬럼 트랙 정의를 덮는다. */
+.doc-layout.doc-layout--2col,
+main.docs-main .doc-layout--2col { grid-template-columns: minmax(0, 1fr) 260px; }
+@media (max-width: 1500px) {
+  .doc-layout.doc-layout--2col { grid-template-columns: minmax(0, 1fr) 240px; gap: 36px; }
+}
+@media (max-width: 1023px) {
+  .doc-layout.doc-layout--2col { grid-template-columns: 1fr; }
+  .doc-layout--2col .docs-toc { display: none; }
+}

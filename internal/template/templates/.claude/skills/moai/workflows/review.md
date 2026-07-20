@@ -2,7 +2,6 @@
 description: >
   Multi-perspective code review with security, performance, quality, and UX analysis.
   Supports staged changes, branch comparison, and security-focused review.
-  Team mode available for parallel multi-perspective review.
   Use when performing code review, security audit, or quality assessment.
 user-invocable: false
 metadata:
@@ -31,6 +30,12 @@ Purpose: Multi-perspective code review analyzing security, performance, quality,
 
 Flow: Identify Changes -> Analyze Perspectives -> Consolidate -> Report
 
+## Relationship to /moai loop (read-only lens, layered under loop)
+
+`/moai review` is a **read-only, report-only lens**: it produces findings and modifies nothing. Its behavior is unchanged by the loop-sweep redefinition. The relationship to `/moai loop` is layered, not competing — `/moai review` is **layered under loop** as a queue supplier: `/moai loop`'s scan stage may INVOKE the review lenses (the security lens and the `@MX` lens) so their findings are **consumed by** the loop as fixable queue items. Standalone `/moai review` still only REPORTS those findings; the loop is what enqueues and fixes them.
+
+Non-overlap: run a `/moai review` to SEE findings without changing anything; run a `/moai loop` to FIX the finite set of issues the scan (including review lenses) found. The loop-side view of this layering is documented in `.claude/skills/moai/workflows/loop.md` (§ Scan Stage / § Relationship to /moai review and /moai fix).
+
 ## Supported Flags
 
 - --staged: Review only staged (git add) changes
@@ -39,7 +44,6 @@ Flow: Identify Changes -> Analyze Perspectives -> Consolidate -> Report
 - --file PATH: Review specific file(s) only
 - --design: Extract design patterns from UI code and create/update `.moai/design/system.md`
 - --critique: Post-build craft review focusing on subtle layering, surface elevation, token architecture, and typography hierarchy
-- --team: Use parallel multi-perspective review team (see ${CLAUDE_SKILL_DIR}/team/review.md)
 - --lean: Over-engineering-ONLY lean audit mode. Short-circuits the comprehensive 4-perspective analysis (Security / Performance / Quality / UX) and runs ONLY the over-engineering scan with the 5-tag finding format + net-reduction summary. Read-only and advisory: applies no fixes, modifies no files, renders no PASS/FAIL verdict. See the "--lean Mode" section below.
 - --repo: Repo-wide scope. With --lean, sweeps the WHOLE tree instead of the diff-scope default. Ignored without --lean.
 
@@ -61,11 +65,9 @@ Collect:
 
 If --lean flag: SHORT-CIRCUIT this phase entirely. Skip the comprehensive 4-perspective analysis (Perspectives 1-4 below) and jump directly to the "--lean Mode — Over-Engineering-Only Lean Audit" section. The narrowness IS the feature: correctness, security, and performance findings stay in the default (non-`--lean`) comprehensive review.
 
-[HARD] Delegate review to the sync-auditor subagent with all perspectives (independent skeptical quality scoring per `.claude/rules/moai/workflow/archived-agent-rejection.md` §C row 2).
+[HARD] The 4 perspectives execute as a Mode-4 parallel read-only fan-out: up to 4 concurrent read-only judges — one per perspective (Security / Performance / Quality / UX) — spawned in a single turn, within the 3-5 concurrent `Agent()` ceiling (`orchestration-mode-selection.md` §C.2). The sync-auditor subagent remains the binding synthesis and verdict owner (independent skeptical quality scoring per `.claude/rules/moai/workflow/archived-agent-rejection.md` §C row 2): the parallel judges' findings feed the sync-auditor synthesis, which renders the consolidated assessment. The fan-out changes execution shape only — never verdict ownership. (The `--team` parallel-review mode remains retired with the Agent Teams static layer; this is Mode 4 subagent fan-out, not a team.)
 
-If --team flag: Route to ${CLAUDE_SKILL_DIR}/team/review.md for parallel multi-perspective review with 4 dedicated reviewers.
-
-If no --team flag (default single-agent mode): Delegate to the sync-auditor subagent with instructions to review from all 4 perspectives sequentially.
+Per-perspective skill injection (skill-routing.md §1): each read-only judge is a `Agent(general-purpose)` spawned with the perspective's skill injected — Security → `At start, invoke Skill("moai-ref-owasp-checklist")`; Quality → `Skill("moai-foundation-quality")`; UX → `Skill("moai-ref-react-patterns")` (per `.moai/config/sections/delegation.yaml`).
 
 At the finding stage, report every issue you find, including ones you are uncertain about or consider low-severity, each with a confidence level and an estimated severity. Do not filter for importance or confidence while finding — the verdict stage (must-pass thresholds + harmonic scoring) does the filtering downstream. The goal at this stage is coverage: surfacing a finding that later gets filtered out is preferable to silently dropping a real bug.
 
@@ -85,16 +87,24 @@ Enumerate project manifest files and run a vulnerability scan for each detected 
 Auto-detect language from project markers; run the dependency vulnerability scan via a per-spawn `Agent(general-purpose)` security reviewer (security whitelist + OWASP instructions per `.claude/rules/moai/workflow/archived-agent-rejection.md` §C row 9) with the detected manifest.
 Full OWASP checklist: load the retained `moai-ref-owasp-checklist` skill (OWASP Top 10 + dependency-scan + secrets patterns), which supplements the inline dependency and secrets scans above.
 
-#### Secrets Scan (Full Git History)
+#### Secrets Scan (Incremental with Checkpoint)
 
-Scan the full git history — not just the working tree — for credential leaks:
+Scan git history for credential leaks incrementally. A last-scanned-SHA checkpoint is recorded under `.moai/state/` (`.moai/state/secrets-scan-checkpoint.txt` — the HEAD SHA of the last completed scan).
+
+Where a checkpoint SHA exists, scan only the new commit range plus the working tree, then update the checkpoint to the current HEAD:
+
+```bash
+git log -p <last-sha>..HEAD -G '(-----BEGIN [A-Z]+ PRIVATE KEY-----|AKIA[0-9A-Z]{16}|ghp_[A-Za-z0-9]{36})'
+```
+
+Where no checkpoint exists (first run) OR an explicit full-scan flag is passed, run the full-history scan covering all commits reachable via `--all`, then record the checkpoint:
 
 ```bash
 git log -p --all -G '(-----BEGIN [A-Z]+ PRIVATE KEY-----|AKIA[0-9A-Z]{16}|ghp_[A-Za-z0-9]{36})'
 ```
 
 Cross-reference findings against `.gitignore` to distinguish historical leaks from working-tree exposure.
-This scan is separate from working-tree-only scanners and must cover all commits reachable via `--all`.
+This scan is separate from working-tree-only scanners. The incremental range plus checkpoint update produces the same coverage over time as the former every-review full scan — no finding class is dropped; only redundant re-scanning of already-covered history is removed.
 
 #### Data Isolation Check
 
@@ -103,7 +113,7 @@ Verify the following boundaries are intact:
 - **PII separation**: PII is never written to logs, metrics, or telemetry endpoints.
 - **Shared-state leakage**: No mutable globals that carry request-scoped data across concurrent requests.
 
-For all three subsections above, the canonical security procedure is `Skill("moai")` `security` workflow.
+For all three subsections above, the canonical security procedure is this workflow's `--security` phase (Perspective 1: Security Review) plus the sync-phase dependency-manifest quality gate (`workflows/sync/quality-gates-quality.md`), with the OWASP baseline supplied by `Skill("moai-ref-owasp-checklist")`.
 
 If --security flag: This perspective receives primary focus with deeper analysis.
 
@@ -135,7 +145,7 @@ If --security flag: This perspective receives primary focus with deeper analysis
 
 ### Native /code-review compose (Axis A)
 
-Where native `/code-review` is auto-invocable, the orchestrator MAY invoke it via `Skill("code-review")` as one Phase 2 finding source, covering the correctness-bug + reuse/simplification/efficiency portion; its findings feed the sync-auditor synthesis. The Security review (Perspective 1), `@MX` tag-compliance (Phase 3), UX review (Perspective 4), and design review (Phase 4.5) composition is preserved — native `/code-review` augments, never replaces, the MoAI-specific perspectives.
+Where native `/code-review` is auto-invocable, the orchestrator MAY invoke it via `Skill("code-review")` as one Phase 2 finding source, covering the correctness-bug + reuse/simplification/efficiency portion; its findings feed the sync-auditor synthesis. The Security review (Perspective 1), `@MX` tag-compliance (Phase 3), UX review (Perspective 4), and design review (Phase 5) composition is preserved — native `/code-review` augments, never replaces, the MoAI-specific perspectives.
 
 Conditional-PROGRAMMATIC caveat: before relying on `Skill("code-review")`, verify auto-invocability at runtime — a bundled skill with `disable-model-invocation: true`, a session with `disableBundledSkills`, or a denied `Skill` tool all remove auto-invocability.
 
@@ -185,7 +195,7 @@ Produce a consolidated review report organized by severity:
 - TRUST 5 Score: N/5
 ```
 
-## Phase 5: Next Steps
+## Phase 6: Next Steps
 
 Present options via AskUserQuestion:
 
@@ -258,7 +268,7 @@ Close the audit with exactly one of these forms:
 
 ### Read-only, advisory, no verdict
 
-The --lean mode is read-only and advisory. It applies NO fixes, modifies NO files, and renders NO PASS/FAIL verdict — it is distinct from `/moai clean` (which removes code) and from the sync-auditor gate (which scores a verdict). It produces only a "what can be cut" list plus the net-reduction estimate. Remediation routes through the existing Phase 5 Next Steps (run `/moai fix`, create fix tasks, export the report, or dismiss) — the same as the rest of this skill.
+The --lean mode is read-only and advisory. It applies NO fixes, modifies NO files, and renders NO PASS/FAIL verdict — it is distinct from `/moai clean` (which removes code) and from the sync-auditor gate (which scores a verdict). It produces only a "what can be cut" list plus the net-reduction estimate. Remediation routes through the existing Phase 6 Next Steps (run `/moai fix`, create fix tasks, export the report, or dismiss) — the same as the rest of this skill.
 
 ### Doctrine cross-references (reuse, do not duplicate)
 
@@ -272,28 +282,13 @@ The --lean mode is read-only and advisory. It applies NO fixes, modifies NO file
 - Warnings grouped by file as aggregate tasks
 - Suggestions listed in report but not tracked as tasks
 
-## Team Mode
-
-When --team flag is provided, review delegates to the team-based multi-perspective review workflow.
-
-Team composition: 4 review agents (security, performance, quality, UX) analyzing in parallel.
-
-For detailed team orchestration steps, see ${CLAUDE_SKILL_DIR}/team/review.md.
-
-Fallback: If team mode is unavailable, standard single-agent sequential review continues.
-
-Team Prerequisites:
-- workflow.team.enabled: true in .moai/config/sections/workflow.yaml
-- CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1 in environment
-- If prerequisites not met: Falls back to single-agent review
-
-## Phase 4.5: Design Review (Conditional)
+## Phase 5: Design Review (Conditional)
 
 When to run: --design or --critique flag is present, OR changed files include UI components (tsx, jsx, vue, svelte, css, scss)
 
 ### --design: Extract Design Patterns
 
-Agent: per-spawn `Agent(general-purpose)` frontend specialist (with moai-design-craft skill; frontend whitelist per `.claude/rules/moai/workflow/archived-agent-rejection.md` §C row 8)
+Agent: per-spawn `Agent(general-purpose)` frontend specialist (frontend whitelist per `.claude/rules/moai/workflow/archived-agent-rejection.md` §C row 8) — inject `At start, invoke Skill("moai-ref-react-patterns")` and `Skill("moai-domain-frontend")` (per `.moai/config/sections/delegation.yaml` domain_skills.frontend; skill-routing.md §1)
 
 Tasks:
 1. Scan UI files for repeated patterns: spacing values, radius values, color tokens, button/card patterns, depth strategy (borders vs shadows)
@@ -306,7 +301,7 @@ Output: Design pattern report with deviation list (file:line references)
 
 ### --critique: Post-Build Craft Review
 
-Agent: per-spawn `Agent(general-purpose)` frontend specialist (with moai-design-craft skill)
+Agent: per-spawn `Agent(general-purpose)` frontend specialist (frontend whitelist per `.claude/rules/moai/workflow/archived-agent-rejection.md` §C row 8) — inject `At start, invoke Skill("moai-ref-react-patterns")` and `Skill("moai-domain-frontend")` (per `.moai/config/sections/delegation.yaml` domain_skills.frontend; skill-routing.md §1)
 
 Tasks:
 1. Read `.moai/design/system.md` for design direction context
@@ -324,18 +319,18 @@ Output: Craft critique report with severity-ranked findings and rebuild suggesti
 ## Agent Chain Summary
 
 - Phase 1: MoAI orchestrator (change identification via git)
-- Phase 2-3: sync-auditor subagent (multi-perspective analysis) OR a per-spawn `Agent(general-purpose)` security reviewer (if --security)
+- Phase 2-3: sync-auditor subagent (multi-perspective analysis; the Security perspective receives deeper focus when --security is set) — the dependency vulnerability sub-scan additionally delegates to a per-spawn `Agent(general-purpose)` security reviewer
 - Phase 4-5: MoAI orchestrator (consolidation and user interaction)
-- Phase 4.5 (conditional): per-spawn `Agent(general-purpose)` frontend specialist (if --design or --critique)
+- Phase 5 (conditional): per-spawn `Agent(general-purpose)` frontend specialist (if --design or --critique)
 
 ## Execution Summary
 
-1. Parse arguments (extract flags: --staged, --branch, --security, --file, --design, --critique, --team)
-2. If --team: Route to ${CLAUDE_SKILL_DIR}/team/review.md workflow
+1. Parse arguments (extract flags: --staged, --branch, --security, --file, --design, --critique)
+2. (The `--team` review fan-out is retired — always delegate to the sync-auditor subagent)
 3. Identify code changes (git diff based on flags)
 4. Delegate multi-perspective review to the sync-auditor subagent
 5. Check @MX tag compliance for changed files
-6. If --design or --critique: Run design review phase 4.5 (per-spawn `Agent(general-purpose)` frontend specialist with moai-design-craft)
+6. If --design or --critique: Run design review phase 4.5 (per-spawn `Agent(general-purpose)` frontend specialist per the frontend whitelist)
 7. Consolidate findings by severity
 8. Present report with next step options
 

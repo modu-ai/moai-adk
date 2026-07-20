@@ -4,441 +4,498 @@ weight: 30
 draft: false
 ---
 
-Creates clear SPEC documents in EARS format, turning your conversations with AI into permanent requirement documents.
+Turns your conversation with the AI into a permanent requirements document. A natural-language request becomes a structured SPEC document, and that document becomes the baseline for every later phase.
 
 {{< callout type="info" >}}
-**Slash Command**: Type `/moai:plan` in Claude Code to run this command directly. Type `/moai` alone to see the full list of available subcommands.
+**Slash command**: Type `/moai:plan` in Claude Code to run this command directly. Type just `/moai` to see the full list of available subcommands.
 {{< /callout >}}
 
 ## Overview
 
-`/moai plan` is the **Phase 1 (Plan)** command of the MoAI-ADK workflow. It converts natural language feature requests into structured **SPEC** documents in **EARS** (Easy Approach to Requirements Syntax) format. Internally, the **manager-spec** agent analyzes requirements and generates unambiguous specifications.
+`/moai plan` is the **Phase 1 (Plan)** command of the MoAI-ADK workflow. It converts a natural-language feature request into a structured SPEC document in **GEARS** (Generalized Expression for AI-Ready Specs) format. Internally, the **manager-spec** agent analyzes the requirements and produces an unambiguous specification.
+
+From v3.0.0, GEARS is the canonical notation, and the legacy **EARS** (Easy Approach to Requirements Syntax) is retained for 6 months of backward compatibility. For the differences between the two notations and migration, see the [GEARS notation section](#gears-notation).
+
+The plan phase is where the deepest reasoning is allocated in the v3 Tokenomics design — the clearer the requirements here, the less rework and token waste in the implementation phase that follows. That is why MoAI-ADK follows the "plan deeply, implement cheaply" allocation principle, and the generated SPEC is independently audited by the **plan-auditor**. The agent that authored it does not inspect its own work.
 
 {{< callout type="info" >}}
 
 **Why do you need a SPEC?**
 
-The biggest problem with **Vibe Coding** is **context loss**.
+The biggest problem with **vibe coding** (Vibe Coding) is **context loss**.
 
-When your session with AI ends, **all previous discussions disappear**. When you exceed the token limit, **old conversations get cut off**. When you resume work the next day, **you don't remember yesterday's decisions**.
+When a session drops mid-conversation with the AI, **all prior discussion disappears**. When the token limit is exceeded, **the oldest conversation is truncated first**. When you resume work the next day, **it does not remember yesterday's decisions**.
 
-**SPEC documents solve this problem.**
+**The SPEC document solves this problem.**
 
-They **save requirements to files** for permanent preservation. They structure them **unambiguously** in EARS format. Even if the session is interrupted, you can **continue working** just by reading the SPEC.
+It **saves requirements as a file** for permanent preservation. From v3.0.0, it structures them **without ambiguity** in the official **GEARS** notation (the legacy EARS notation is retained for 6 months of backward compatibility). Even if the session drops, you can **continue the work** just by reading the SPEC.
 
 {{< /callout >}}
 
 ## Usage
 
-Enter the following in the Claude Code conversation:
+Type the following in the Claude Code chat:
 
 ```bash
-> /moai plan "Description of the feature you want to implement"
+> /moai plan "description of the feature you want to build"
 ```
 
-**Usage Examples:**
+**Usage examples:**
 
 ```bash
-# Simple feature
-> /moai plan "User login feature"
+# A simple feature
+> /moai plan "user login feature"
 
-# Detailed feature description
-> /moai plan "JWT-based user authentication: login, signup, token refresh API"
+# A detailed feature description
+> /moai plan "JWT-based user authentication: login, signup, token renewal API"
 
-# Refactoring request
-> /moai plan "Refactor legacy authentication system to JWT-based"
+# A refactoring request
+> /moai plan "refactor the legacy auth system to be JWT-based"
 ```
 
-## Supported Flags
+## Supported flags
 
-| Flag                | Description                        | Example                                |
-| ------------------- | ---------------------------------- | -------------------------------------- |
-| `--worktree`        | Auto-create worktree (highest)     | `/moai plan "feature" --worktree`      |
-| `--branch`          | Create traditional branch          | `/moai plan "feature" --branch`        |
-| `--resume SPEC-XXX` | Resume interrupted SPEC work       | `/moai plan --resume SPEC-AUTH-001`    |
-| `--team`            | Force Agent Teams mode             | `/moai plan "feature" --team`          |
-| `--solo`            | Force sub-agent mode               | `/moai plan "feature" --solo`          |
-| `--seq`             | Sequential diagnosis instead of parallel | `/moai plan "feature" --seq`    |
-| `--ultrathink`      | Enable Adaptive Thinking (xhigh effort) | `/moai plan "feature" --ultrathink`    |
+| Flag        | Description                          | Example                           |
+| ------------- | ----------------------------- | ------------------------------ |
+| `--worktree`  | Auto-create a worktree (highest priority)   | `/moai plan "feature" --worktree` |
+| `--branch`    | Create a traditional branch            | `/moai plan "feature" --branch`   |
+| `--resume`    | Resume planning from an existing SPEC   | `/moai plan --resume SPEC-AUTH-001` |
+| `--issue`     | Create a GitHub issue (opt-in)          | `/moai plan "feature" --issue`    |
 
-### Flag Priority
+### Flag priority
 
-When multiple flags are specified, they are applied in the following order:
+When branch-strategy flags are specified, they apply in the following order:
 
-1. **--worktree** (highest): Creates an independent Git worktree
-2. **--branch** (alternative): Creates a traditional feature branch
-3. **No flags** (default): Create SPEC only, create branch based on user selection
+1. **--worktree** (highest priority): create an isolated Git worktree
+2. **--branch** (second): create a traditional feature branch
+3. **No flag** (default): create only the SPEC; the user chooses the branch strategy at the BODP gate
 
-### --worktree Flag
+`--issue` is an opt-in option independent of the branch strategy. **By default, GitHub issue creation is skipped** (the late-branch opt-in policy); to create an issue, you must explicitly specify the `--issue` flag.
 
-Creates an **independent Git worktree** along with the SPEC to prepare for parallel development:
+### The --worktree flag
+
+Creates an **isolated Git worktree** at the same time as the SPEC, preparing a parallel development environment:
 
 ```bash
-> /moai plan "Implement payment system" --worktree
+> /moai plan "implement the payment system" --worktree
 ```
 
-When using this option:
+When you use this option:
 
-1. Creates a SPEC document
-2. Commits the SPEC (required for worktree creation)
-3. Creates a worktree on the `feature/SPEC-{ID}` branch
-4. Allows independent development without affecting main code
+1. It generates the SPEC document
+2. It commits the SPEC (a prerequisite for creating a worktree)
+3. It creates a worktree with the `feature/SPEC-{ID}` branch
+4. You can develop independently without affecting the main code
 
 {{< callout type="info" >}}
-  The `--worktree` option is useful when **developing multiple features simultaneously**. Each SPEC works in an independent worktree, so they don't conflict with each other.
+  The `--worktree` option is useful when **developing multiple features simultaneously**. Since each SPEC is worked on in an isolated worktree, they do not conflict with each other.
 {{< /callout >}}
 
-## EARS Format Requirements
+## Requirements notation (EARS / GEARS)
 
-SPEC documents define requirements using **EARS** (Easy Approach to Requirements Syntax) format. There are 5 patterns, and the manager-spec agent automatically converts natural language to the appropriate pattern.
+The SPEC document defines requirements in the **EARS** (Easy Approach to Requirements Syntax) format. There are 5 patterns, and the manager-spec agent automatically converts natural language into the appropriate pattern.
 
-| Pattern         | Format                          | Purpose              | Example                                                |
-| --------------- | ------------------------------- | -------------------- | ------------------------------------------------------ |
-| **Ubiquitous**  | "The system SHALL ~"            | Always-applied rules | "The system SHALL log all API requests"                |
-| **Event-driven**| "WHEN ~, THEN the system SHALL ~"| Event response       | "WHEN logging in, THEN the system SHALL issue a JWT"   |
-| **State-driven**| "WHILE ~, the system SHALL ~"   | State-based behavior | "WHILE logged in, the system SHALL maintain session"   |
-| **Unwanted**    | "The system SHALL NOT ~"        | Prohibitions         | "The system SHALL NOT store passwords in plain text"   |
-| **Optional**    | "WHERE PRACTICAL, the system SHALL ~" | Optional features  | "WHERE PRACTICAL, the system SHALL support 2FA"        |
+From v3.0.0, **GEARS** (Generalized Expression for AI-Ready Specs) is the official notation — it keeps EARS's 5 core patterns while refining the semantic boundaries so that AI coding agents can interpret them more clearly. Legacy EARS is retained for 6 months of backward compatibility, and new SPECs are recommended to follow the GEARS patterns. For the differences between the two notations and migration, see the [GEARS notation section](#gears-notation).
+
+| Pattern             | Format                          | Purpose               | Example                                             |
+| ---------------- | ----------------------------- | ------------------ | ------------------------------------------------ |
+| **Ubiquitous**   | "The system shall ~"         | Always-applied rules | "The system shall log all API requests"         |
+| **Event-driven** | "WHEN ~, THEN the system shall ~" | Event reactions        | "WHEN a user logs in, THEN the system shall issue a JWT"      |
+| **State-driven** | "WHILE ~, the system shall ~"  | State-based behavior     | "WHILE logged in, the system shall keep the session" |
+| **Unwanted**     | "The system shall not ~"      | Prohibitions          | "The system shall not store passwords in plaintext"      |
+| **Optional**     | "Where possible, the system shall ~"         | Optional features        | "Where possible, the system shall support two-factor authentication"         |
 
 {{< callout type="info" >}}
-  You don't need to memorize EARS format. The manager-spec agent **automatically converts** natural language. Just describe the feature you want naturally.
+  You do not need to memorize the EARS format. The manager-spec agent **converts natural language automatically**. You just describe the feature you want naturally.
 {{< /callout >}}
 
-## Execution Process
+## Execution flow
 
-The process that `/moai plan` performs internally:
+Here is what `/moai plan` does internally:
 
 ```mermaid
 flowchart TD
-    A["User Request<br/>/moai plan 'feature description'"] --> B{Is clear?}
-    B -->|No| C["Explore Subagent<br/>Project Analysis"]
-    B -->|Yes| D["Call manager-spec Agent"]
+    A["User request<br/>/moai plan 'feature description'"] --> B{Clear?}
+    B -->|No| C["Explore sub-agent<br/>project analysis"]
+    B -->|Yes| D["Invoke the manager-spec agent"]
     C --> D
-    D --> E["Requirements Analysis<br/>Feature scope, complexity assessment"]
+    D --> E["Requirements analysis<br/>feature scope, complexity assessment"]
     E --> F{"Clarification needed?"}
-    F -->|Yes| G["Ask User<br/>Confirm details"]
+    F -->|Yes| G["Ask the user<br/>confirm details"]
     G --> E
-    F -->|No| H["Convert to EARS Format<br/>Apply 5 patterns"]
-    H --> I["Define Acceptance Criteria<br/>Given-When-Then"]
-    I --> J["Create SPEC Document<br/>spec.md, plan.md, acceptance.md"]
-    J --> K{"User Approval"}
-    K -->|Approved| L["Git Environment Setup"]
-    K -->|Revision Requested| E
+    F -->|No| H["EARS format conversion<br/>apply the 5 patterns"]
+    H --> I["Define acceptance criteria<br/>Given-When-Then"]
+    I --> J["Generate SPEC documents<br/>spec.md, plan.md, acceptance.md"]
+    J --> K{"User approval"}
+    K -->|Approve| L["Git environment setup"]
+    K -->|Request changes| E
     K -->|Cancel| M["Exit"]
-    L --> N{"Check Flags"}
-    N -->|--worktree| O["Create Worktree"]
-    N -->|--branch| P["Create Branch"]
-    N -->|No flags| Q["User Selection"]
-    O --> R["Complete"]
+    L --> N{"Check flags"}
+    N -->|--worktree| O["Create worktree"]
+    N -->|--branch| P["Create branch"]
+    N -->|No flag| Q["User choice"]
+    O --> R["Done"]
     P --> R
     Q --> R
 ```
 
-**Key Points:**
+**Key points:**
 
-- If the request is unclear, the **Explore subagent** analyzes the project
-- If requirements are unclear, the manager-spec agent **asks the user additional questions**
-- Automatically generates **Given-When-Then format acceptance criteria** for all requirements
-- Generated SPEC documents are finalized after receiving **user approval**
+- If the request is unclear, the **Explore sub-agent** analyzes the project
+- If the requirements are unclear, the manager-spec agent **asks the user follow-up questions**
+- It auto-generates **Given-When-Then acceptance criteria** for every requirement
+- The generated SPEC document is finalized **after the user approves it**
 
-## SPEC Creation Phases
+## SPEC creation phases
 
-### Phase 1A: Project Analysis (Optional)
+`/moai plan` follows a structured workflow of 15 phases and 2 decision points. Phases 1-3 are context discovery, Phases 4-7 are the deep interview, and from Phase 8 the actual SPEC assembly begins.
 
-Executed when the request is ambiguous or project situation needs to be understood:
+### Phases 1-3: context discovery
 
-| Execution Condition         | Skip Condition             |
-| --------------------------- | -------------------------- |
-| Unclear request             | Clear SPEC title           |
-| Need to find existing files/patterns | Resume scenario        |
-| Project status uncertain    | Existing SPEC context exists |
+| Phase | Name | Description |
+|-------|------|------|
+| Phase 1 | Brain proposal detection | Brain IDEA scan and SPEC candidate identification |
+| Phase 2 | Project exploration (optional) | `Explore` sub-agent codebase analysis |
+| Phase 3 | Clarity assessment | 1-10 score-based clarity assessment and skip conditions |
 
-### Phase 1B: SPEC Planning
+Phases 1-3 run when the request is ambiguous or the project situation needs to be understood. A clear request can skip them at Phase 3.
 
-The **manager-spec** agent performs the following tasks:
+### Phases 4-7: deep interview
 
-- Project document analysis (product.md, structure.md, tech.md)
-- Propose 1-3 SPEC candidates and naming
+Run when the clarity score is 4-10:
+
+| Phase | Name | Description |
+|-------|------|------|
+| Phase 4 | Deep interview loop | 1-5 rounds of topic-centered interview |
+| Phase 5 | UltraThink auto-activation | Extended reasoning activated when complexity ≥ 7 |
+| Phase 6 | Deep research | `Explore` sub-agent research.md artifact |
+| Phase 7 | Design direction | Intent-first design direction when UI/UX keywords are detected |
+
+### Phase 8: SPEC planning
+
+The **manager-spec** agent performs the following:
+
+- Analyze project documents (product.md, structure.md, tech.md)
+- Propose and name 1-3 SPEC candidates
 - Check for duplicate SPECs (.moai/specs/)
-- Design EARS structure
-- Identify implementation plan and technical constraints
-- Verify library versions (stable only, exclude beta/alpha)
+- Design the GEARS structure (the EARS legacy format is also allowed)
+- Identify the implementation plan and technical constraints
+- Check library versions (stable only, excluding beta/alpha)
 
-### Phase 1.5: Pre-validation Gate
+### Decision Point 1: user approval gate (HUMAN GATE)
+
+After Phase 8 completes, the user must explicitly approve before proceeding to the next step. There are 4 choices:
+
+| Choice | Meaning |
+|------|------|
+| **Proceed** | Proceed with the current SPEC |
+| **Annotate** | Rewrite reflecting feedback (1-6 round iterations) |
+| **Draft** | Preserve the SPEC in draft state and wait |
+| **Cancel** | Abort SPEC creation |
+
+### Phase 9: pre-verification gate
 
 Prevents common errors before SPEC creation:
 
-**Step 1 - Document Type Classification:**
+**Step 1 - document type classification:**
 
 - Detect SPEC, Report, Documentation keywords
-- Route reports to .moai/reports/
-- Route documentation to .moai/docs/
+- Reports are routed to .moai/reports/
+- Documentation is routed to .moai/docs/
 
-**Step 2 - SPEC ID Validation (All checks must pass):**
+**Step 2 - SPEC ID validation (all checks must pass):**
 
-- **ID Format**: `SPEC-domain-number` pattern (e.g., `SPEC-AUTH-001`)
-- **Domain Name**: Approved domain list (AUTH, API, UI, DB, REFACTOR, FIX, UPDATE, PERF, TEST, DOCS, INFRA, DEVOPS, SECURITY, etc.)
-- **ID Uniqueness**: Check for duplicates in .moai/specs/
-- **Directory Structure**: Must create directory, flat files prohibited
+- **ID format**: the `SPEC-domain-number` pattern (e.g., `SPEC-AUTH-001`)
+- **Domain name**: the approved domain list (AUTH, API, UI, DB, REFACTOR, FIX, UPDATE,
+  PERF, TEST, DOCS, INFRA, DEVOPS, SECURITY, etc.)
+- **ID uniqueness**: check for duplicates in .moai/specs/
+- **Directory structure**: a directory must be created; flat files are forbidden
 
-**Compound Domain Rule:** Maximum 2 domains recommended (e.g., UPDATE-REFACTOR-001), maximum 3 allowed.
+**Composite domain rule:** up to 2 domains recommended (e.g., UPDATE-REFACTOR-001), up to 3 allowed
 
-### Phase 2: SPEC Document Creation
+### Phase 10: SPEC document creation
 
 Three files are created simultaneously:
 
 **spec.md:**
 
-- YAML frontmatter (7 required fields: id, version, status, created, updated, author, priority)
-- HISTORY section (immediately after frontmatter)
-- Complete EARS structure (5 requirement types)
-- Content written in conversation_language
+- YAML front matter (**12 required fields**: id, title, version, status, created, updated,
+  author, priority, phase, module, lifecycle, tags)
+- HISTORY section (right after the front matter)
+- The complete GEARS/EARS structure (5 requirement types)
+- Content written in the conversation_language
 
 **plan.md:**
 
-- Implementation plan with task decomposition
-- Technology stack specification and dependencies
+- Work-breakdown implementation plan
+- Tech-stack specification and dependencies
 - Risk analysis and mitigation strategies
 
 **acceptance.md:**
 
-- Minimum 2 Given/When/Then scenarios
-- Edge case test scenarios
-- Performance and quality gate criteria
+- At least 2 Given/When/Then scenarios
+- Edge-case test scenarios
+- Performance and quality-gate criteria
 
-**Quality Constraints:**
+**Quality constraints:**
 
-- Requirement modules: Maximum 5 per SPEC
-- Acceptance criteria: Minimum 2 Given/When/Then scenarios
-- Technical terms and function names remain in English
+- Requirement modules: up to 5 per SPEC
+- Acceptance criteria: at least 2 Given/When/Then scenarios
+- Technical terms and function names stay in English
 
-### Phase 3: Git Environment Setup (Conditional)
+### Phase 11: plan-auditor independent audit
 
-**Execution Condition:** Phase 2 complete AND one of the following:
+The **plan-auditor** sub-agent independently audits the SPEC artifacts authored by manager-spec. It follows the **independent-audit principle** that the agent which created the artifacts does not inspect its own results.
 
-- --worktree flag provided
-- --branch flag provided or user selected branch creation
-- Branch creation allowed in settings (git_strategy config)
+- Up to 3 iterations (Retry Loop Contract)
+- On score regression in a round, a STOP signal + scope-reduction proposal
+- 3 verdicts: PASS / PASS-with-debt / FAIL
+- Audit reports are saved in `.moai/reports/plan-audit/`
 
-**Skip Point:** develop_direct workflow, no flags and selected "use current branch"
+### Phase 12: GitHub issue creation (conditional)
+
+By default, this step is **skipped** (the late-branch opt-in policy). Only when the `--issue` flag is explicitly specified does it create a GitHub issue and link a bidirectional reference to the SPEC.
+
+### Phase 13: Git environment setup (conditional)
+
+The branch strategy is decided via the **BODP (Branch Origin Decision Protocol) gate**:
+
+- **--worktree** (highest priority): create an isolated Git worktree
+- **--branch** (second): create a traditional feature branch
+- **Keep the current branch**: continue on the current checkout without a flag
+
+### Phase 14: MX tag planning
+
+Identifies the targets for the `@MX` code annotations to be added in the implementation phase:
+
+- `@MX:ANCHOR` — invariant contracts (high fan_in functions)
+- `@MX:WARN` — danger zones (goroutines, complexity ≥ 15)
+- `@MX:NOTE` — context/intent records
+
+### Phase 15: SPEC quality gate
+
+Verifies coverage between the GEARS/EARS requirements and the acceptance criteria (AC), and performs a security-scope check.
+
+### Decision Point 2/3/3.5: execution mode selection
+
+After SPEC creation completes, you choose the next step. For details, see the [Decision Point 3.5 section](#decision-point-35-execution-mode-selection-gate).
 
 ## Output
 
-SPEC documents are saved in the `.moai/specs/` directory:
+The SPEC document is stored in the `.moai/specs/` directory:
 
 ```
 .moai/
 └── specs/
     └── SPEC-AUTH-001/
         ├── spec.md          # EARS requirements
-        ├── plan.md          # Implementation plan
-        └── acceptance.md     # Acceptance criteria
+        ├── plan.md          # implementation plan
+        └── acceptance.md     # acceptance criteria
 ```
 
-**Basic structure of SPEC document:**
+**Basic structure of the SPEC document:**
 
 ```yaml
 ---
 id: SPEC-AUTH-001
 version: 1.0.0
-status: ACTIVE
+status: draft
 created: 2026-01-28
 updated: 2026-01-28
-author: Development Team
+author: dev team
 priority: HIGH
 ---
 ```
 
-## SPEC Status Management
+## SPEC status management
 
-SPEC documents have the following status lifecycle:
+The SPEC document has the following status lifecycle:
 
 ```mermaid
 flowchart TD
-    A["DRAFT<br/>Drafting"] --> B["ACTIVE<br/>Approved"]
-    B --> C["IN_PROGRESS<br/>Implementing"]
-    C --> D["COMPLETED<br/>Completed"]
-    B --> E["REJECTED<br/>Rejected"]
+    A["draft<br/>drafting"] --> B["in-progress<br/>implementing"]
+    B --> C["implemented<br/>implementation done"]
+    C --> D["completed<br/>sync done"]
+    A --> E["rejected<br/>rejected"]
 ```
 
-| Status       | Description                  | Can run `/moai run` |
-| ------------ | ---------------------------- | ------------------- |
-| `DRAFT`      | Still being drafted          | No                  |
-| `ACTIVE`     | Approved, waiting for impl   | **Yes**             |
-| `IN_PROGRESS`| Currently being implemented  | Yes (resume)        |
-| `COMPLETED`  | Implementation and verification complete | No  |
-| `REJECTED`   | Rejected, needs rewriting    | No                  |
+| Status           | Description                 | `/moai run` can run |
+| -------------- | -------------------- | --------------------- |
+| `draft`        | SPEC drafted, awaiting approval | Yes (after approval)      |
+| `in-progress`  | Currently implementing         | Yes (continue)           |
+| `implemented`  | Implementation done, awaiting sync | No                |
+| `completed`    | Sync done, fully complete | No                |
+| `rejected`     | Rejected, needs rewrite  | No                |
 
-## Practical Examples
+## Brownfield classification — Delta Markers
 
-### Example: Creating JWT Authentication SPEC
+Classifies SPEC requirements in an existing-codebase (brownfield) project.
 
-**Step 1: Execute Command**
+| Marker | Meaning | Description |
+|------|------|------|
+| `[EXISTING]` | Keep existing | Reference only, no change |
+| `[MODIFY]` | Modify | Change existing code |
+| `[NEW]` | New | Create new |
+| `[REMOVE]` | Remove | Remove existing code |
+
+## Token-saving device — spec-compact.md
+
+In the Plan phase, a summary of the SPEC document (`spec-compact.md`) is auto-generated. In the Run phase, the summary is loaded instead of the full spec.md to **save ~30% of tokens** — a representative example of a Tokenomics device built into the SPEC lifecycle.
+
+## Scope-creep prevention — Exclusions and What/Why constraints
+
+**Mandatory Exclusions ("What NOT to Build")**: every SPEC document requires an **Out of Scope / Exclusions** section. It prevents scope creep in advance.
+
+**What/Why constraint**: SPEC requirements describe only **What** and **Why**. **How** is decided in the implementation phase and is not over-specified in the SPEC.
+
+## Decision Point 3.5: execution mode selection gate
+
+After Plan completes and before Run begins, it auto-detects the execution environment and proposes the optimal mode to the user.
+
+**Detected items:**
+1. tmux availability (the `$TMUX` environment variable)
+2. Current LLM mode (`team_mode` in `llm.yaml`: cc/glm/cg)
+
+**When tmux is available:**
+- Worktree + current mode (recommended)
+- Sub-agent Mode (sequential)
+
+**When tmux is unavailable:**
+- Sub-agent Mode (recommended)
+
+{{< callout type="info" >}}
+The Agent Teams static-orchestration layer (Module 3) was retired. The `--team` flag and the Team Mode option are no longer provided, and forcing them falls back to Sub-agent Mode via `MODE_TEAM_UNAVAILABLE`. CG mode (Claude+GLM) is entered with the `moai cg` command.
+{{< /callout >}}
+
+## A practical example
+
+### Example: creating a JWT authentication SPEC
+
+**Step 1: run the command**
 
 ```bash
-> /moai plan "JWT-based user authentication system: signup, login, token refresh"
+> /moai plan "JWT-based user authentication system: signup, login, token renewal"
 ```
 
-**Step 2: manager-spec Asks Questions** (if needed)
+**Step 2: manager-spec asks** (if needed)
 
 The manager-spec agent may ask questions to confirm details:
 
 - "What is the minimum password length?"
-- "What should the token expiration time be?"
-- "Does it include social login?"
+- "What token expiry time should be set?"
+- "Should social login be included?"
 
-**Step 3: SPEC Document Creation Result**
+**Step 3: SPEC document creation result**
 
 A SPEC document with the following structure is created:
 
 ```yaml
 ---
 id: SPEC-AUTH-001
-title: JWT-based user authentication system
+title: JWT-Based User Authentication System
 priority: HIGH
-status: ACTIVE
+status: draft
 ---
 ```
 
 ```markdown
-# Requirements (EARS Format)
+# Requirements (GEARS/EARS format)
 
 ## Ubiquitous
 
-- The system SHALL hash all passwords with bcrypt for storage
-- The system SHALL log all authentication requests
+- The system shall hash and store all passwords with bcrypt
+- The system shall log all authentication requests
 
 ## Event-driven
 
-- WHEN logging in with valid credentials, THEN the system SHALL issue a JWT access token (1 hour) and refresh token (7 days)
+- WHEN a user logs in with valid credentials, THEN the system shall issue a JWT access token (1 hour) and a refresh
+  token (7 days)
 
 ## Unwanted
 
-- The system SHALL NOT store passwords in plain text
-- The system SHALL NOT allow API access with expired tokens
+- The system shall not store passwords in plaintext
+- The system shall not allow API access with an expired token
 ```
 
-**Step 4: Git Environment Setup After User Approval**
+**Step 4: Git environment setup after user approval**
 
 ```bash
-# When using --worktree flag
+# When using the --worktree flag
 > /moai plan "JWT authentication" --worktree
 
 # Result:
-# 1. Create SPEC document (.moai/specs/SPEC-AUTH-001/)
-# 2. Commit SPEC (feat(spec): Add SPEC-AUTH-001)
-# 3. Create worktree (.git/worktrees/SPEC-AUTH-001)
-# 4. Display worktree path
+# 1. SPEC document created (.moai/specs/SPEC-AUTH-001/)
+# 2. SPEC committed (feat(spec): Add SPEC-AUTH-001)
+# 3. Worktree created (.git/worktrees/SPEC-AUTH-001)
+# 4. Worktree path displayed
 ```
 
-**Step 5: Execute `/clear` Then Move to Implementation Phase**
+**Step 5: run `/clear`, then move to the implementation phase**
 
 ```bash
-# Clear tokens
+# Clean up tokens
 > /clear
 
 # Start implementation
 > /moai run SPEC-AUTH-001
 ```
 
-## Frequently Asked Questions
+## Frequently asked questions
 
-### Q: Can I manually edit SPEC documents?
+### Q: Can I edit the SPEC document manually?
 
-Yes, you can directly edit the `.moai/specs/SPEC-XXX/spec.md` file. If you add requirements or modify acceptance criteria and then run `/moai run`, the changes will be reflected.
+Yes, you can edit the `.moai/specs/SPEC-XXX/spec.md` file directly. After adding requirements or modifying acceptance criteria, run `/moai run` and the changes are reflected.
 
-### Q: Can I write code directly without a SPEC?
+### Q: Can't I just write code directly without a SPEC?
 
-You can write code directly in Claude Code, but working without a SPEC means you lose context whenever the session ends. **For complex features, creating a SPEC first is more efficient.**
+You can write code directly in Claude Code, but working without a SPEC means you lose context every time a session drops. **The more complex the feature, the more efficient it is to create a SPEC first.**
 
-### Q: What rules are used to generate SPEC IDs?
+### Q: What rule generates the SPEC ID?
 
-It follows the format `SPEC-domain-number` (e.g., `SPEC-AUTH-001`)
+It is the `SPEC-domain-number` format (e.g., `SPEC-AUTH-001`)
 
-- `SPEC-AUTH-001`: First authentication-related SPEC
-- `SPEC-PAYMENT-002`: Second payment-related SPEC
+- `SPEC-AUTH-001`: the first auth-related SPEC
+- `SPEC-PAYMENT-002`: the second payment-related SPEC
 
-The domain is automatically determined by manager-spec based on the feature area.
+The domain is decided automatically by manager-spec based on the feature's area.
 
-### Q: What's the difference between `/moai plan` and `/moai`?
+### Q: What is the difference between `/moai plan` and `/moai`?
 
-`/moai plan` is only responsible for **SPEC document creation**. `/moai` automatically performs the **entire workflow** from SPEC creation to implementation and documentation.
+`/moai plan` handles **SPEC document creation only**. `/moai` performs the **entire workflow** automatically, from SPEC creation to implementation to documentation.
 
-### Q: What's the difference between --worktree and --branch?
+### Q: What is the difference between --worktree and --branch?
 
-**--worktree** creates an independent working directory for a completely isolated environment. **--branch** creates a new branch in the current repository. If developing multiple features simultaneously, --worktree is recommended.
-
-## v2.9.0 New Features
-
-### Delta Markers (Brownfield Classification)
-
-Classifies SPEC requirements in existing codebases (brownfield) projects.
-
-| Marker      | Meaning       | Description                    |
-| ----------- | ------------- | ------------------------------ |
-| `[EXISTING]`| Maintain existing | No changes, reference only    |
-| `[MODIFY]`  | Modify        | Change existing code           |
-| `[NEW]`     | Create new    | Create new from scratch        |
-| `[REMOVE]`  | Delete        | Remove existing code           |
-
-### spec-compact.md Generation
-
-The Plan phase automatically generates a summary version (`spec-compact.md`) of the SPEC document. The Run phase saves ~30% tokens by loading the compact version.
-
-### Exclusions Requirement ("What NOT to Build")
-
-All SPEC documents now require an **Out of Scope / Exclusions** section. This prevents scope creep by explicitly documenting what is NOT included.
-
-### What/Why Constraints
-
-SPEC requirements specify only **What** (what needs to be done) and **Why** (the reason). **How** (how to implement) is determined during implementation and is not over-specified in the SPEC.
-
-### Decision Point 3.5: Execution Mode Selection Gate
-
-After Plan completion and before Run starts, the system automatically detects the execution environment and recommends the optimal mode to the user.
-
-**Detection Items:**
-1. tmux availability (`$TMUX` environment variable)
-2. Current LLM mode (`llm.yaml`'s `team_mode`: cc/glm/cg)
-
-**When tmux is available:**
-- Worktree + {current mode} (Recommended)
-- Team Mode (in-process)
-- Sub-agent Mode (sequential)
-
-**When tmux is not available:**
-- Sub-agent Mode (Recommended)
-- Team Mode (in-process)
+**--worktree** creates an isolated working directory, providing a fully isolated environment. **--branch** creates a new branch in the current repository. To develop multiple features simultaneously, --worktree is recommended.
 
 ## GEARS notation (v3.0.0+) {#gears-notation}
 
-Starting with MoAI-ADK v3.0.0, **GEARS** (Generalized Expression for AI-Ready Specs) is introduced as the recommended SPEC authoring notation. The legacy EARS notation remains backward-compatible for **6 months**, during which authors can migrate progressively. New SPECs are encouraged to follow GEARS patterns from the outset.
+From MoAI-ADK v3.0.0, **GEARS** (Generalized Expression for AI-Ready Specs) is introduced as the recommended notation for writing SPECs. The legacy EARS notation is retained for **6 months** of backward compatibility, during which you can gradually migrate to GEARS. New SPECs are recommended to follow the GEARS patterns from the start.
 
-GEARS preserves the five core patterns of EARS while sharpening their semantic boundaries so AI coding agents can interpret them less ambiguously. The two material changes are the **deprecation of the IF/THEN pattern** (normalized to WHEN) and the **redefinition of WHERE** (now denoting a static precondition, configuration, or feature flag).
+GEARS keeps EARS's 5 core patterns while refining the semantic boundaries so that AI coding agents can interpret them more clearly. The core changes are the **deprecation of the IF/THEN pattern** (normalized to WHEN) and the **redefinition of WHERE** (static preconditions/configuration/feature flags).
 
 Reference: Σ\*/SubLang, **"GEARS: The Spec Syntax That Makes AI Coding Actually Work"**, DEV Community 2026-01-23. <https://dev.to/sublang/gears-the-spec-syntax-that-makes-ai-coding-actually-work-4f3f>
 
-### Five-pattern comparison table
+### 5-pattern comparison table
 
-| Notation | EARS (legacy) | GEARS (canonical) | Lint behavior |
+| Notation pattern | EARS (legacy) | GEARS (canonical) | Lint behavior |
 |---|---|---|---|
-| Ubiquitous | `The system shall <action>` | Same | UNCHANGED |
-| Event-driven (WHEN) | `WHEN <event>, the system shall <action>` | Same | UNCHANGED |
-| State-driven (WHILE) | `WHILE <state>, the system shall <action>` | Same (stateful precondition) | UNCHANGED |
-| Precondition (WHERE) | `WHERE <feature-exists>, the system shall <action>` | `WHERE <precondition>, the system shall <action>` (reframed: static precondition, configuration, feature flags) | UNCHANGED at lint layer |
-| Negative trigger | `IF <condition>, THEN the system shall <action>` | **DEPRECATED** — use `WHEN <event-detected>, the system shall <action>` | **NEW: `LegacyEARSKeyword` warning** |
+| Ubiquitous | `The system shall <action>` | Same | No change |
+| Event-driven (WHEN) | `WHEN <event>, the system shall <action>` | Same | No change |
+| State-driven (WHILE) | `WHILE <state>, the system shall <action>` | Same (stateful precondition) | No change |
+| Precondition (WHERE) | `WHERE <feature-exists>, the system shall <action>` | `WHERE <precondition>, the system shall <action>` (redefined: static precondition, configuration, feature flag) | No change at the lint layer |
+| Negative trigger | `IF <condition>, THEN the system shall <action>` | **DEPRECATED** — use `WHEN <event-detected>, the system shall <action>` instead | **New: `LegacyEARSKeyword` warning** |
 
 ### Backward-compatibility window (6 months)
 
-The migration window runs for **6 months** from the v3.0.0 release, or until the sweep SPEC `SPEC-V3R6-GEARS-SWEEP-001` (provisional) completes — whichever comes first. Behavior during the window:
+The migration window is valid from the v3.0.0 release for **6 months**, or until the `SPEC-V3R6-GEARS-SWEEP-001` (provisional) batch-correction SPEC completes, whichever comes first. The behavior during the window is as follows.
 
-- **Non-strict mode (default)**: only `LegacyEARSKeyword` warnings are emitted; lint does not fail.
-- **`--strict` mode (opt-in)**: warnings are escalated to errors and block CI.
-- **88 existing SPECs**: untouched by this SPEC (REQ-GM-007); bulk migration is the responsibility of the follow-up sweep SPEC.
+- **Non-strict mode (default)**: only a `LegacyEARSKeyword` code warning is emitted, no lint failure
+- **`--strict` mode (opt-in)**: the warning is promoted to an error and blocks CI
+- **The existing 88 SPECs**: not directly modified within this SPEC's scope (REQ-GM-007). Batch correction is the responsibility of the follow-up SWEEP SPEC
 
-### LegacyEARSKeyword finding
+### LegacyEARSKeyword diagnostic
 
-The helper `isLegacyEARSPattern()` in `internal/spec/lint.go` detects the EARS legacy IF/THEN pattern and emits the following message:
+When the `isLegacyEARSPattern()` helper in `internal/spec/lint.go` detects an EARS legacy IF/THEN pattern, it emits a message like the following.
 
 ```
 REQ <REQ-ID>: GEARS migration: replace IF/THEN with WHEN/event normalization; see https://adk.mo.ai.kr/en/workflow-commands/moai-plan/#gears-notation
@@ -448,13 +505,13 @@ REQ <REQ-ID>: GEARS migration: replace IF/THEN with WHEN/event normalization; se
 - **Severity**: warning (non-strict) / error (`--strict`)
 - **Source**: `internal/spec/lint.go`
 
-### For tool authors
+### Guidance for tool authors
 
-When matching SPEC text in downstream tooling (validators, code generators, IDE plugins), migrate as follows:
+When matching SPEC text in downstream tools (validators, code generators, IDE plugins, etc.), migrate as follows.
 
-- Switch `IF .* THEN` matchers to `WHEN .* shall` matchers going forward.
-- Honor the 6-month deprecation window; recognize both patterns until the window closes.
-- Consume the `LegacyEARSKeyword` finding code as an upgrade signal.
+- Switch `IF .* THEN` matching to future `WHEN .* shall` matching
+- Be aware of the 6-month deprecation window, and implement recognition of both patterns until the window closes
+- Use the `LegacyEARSKeyword` finding code as an upgrade signal
 
 ### Migration example
 
@@ -470,45 +527,45 @@ IF input is null, THEN the system shall return an error.
 WHEN input is null is detected, the system shall return an error.
 ```
 
-The normalization expresses the trigger as an *event*, not a *condition*, which reduces intent-interpretation ambiguity for AI agents and clarifies the input/validation moment when test cases are written.
+This normalization reduces the ambiguity of an AI agent's intent interpretation by stating the trigger as an "event" rather than a "condition," and makes the input/validation point clearer when writing test cases.
 
 ## Adaptive Recommendation Placement
 
-Starting with MoAI-ADK v0.1.0, **AskUserQuestion recommendations** now adapt to your decision patterns. The system captures your choices and personalizes future question options based on statistical majority, not system defaults.
+From MoAI-ADK v0.1.0, **AskUserQuestion recommendations** are personalized to your decision patterns. The system captures your choices and personalizes future question options based on the observed statistical majority, not the system default. Because the loop accumulates observations and the system learns from them, this is a case of v3's **recursive self-learning** principle applied to the question/recommendation domain.
 
-### How It Works
+### How it works
 
-When MoAI asks you a question via `AskUserQuestion`, the following 5 principles guide recommendation placement:
+When MoAI asks via `AskUserQuestion`, 5 principles guide recommendation placement:
 
-1. **Fisher Information Timing** — Questions are asked when uncertainty is highest (Fisher information I=p(1−p) is maximum at p≈0.5, the decision boundary). When p≈0 or p≈1 (near-certain), the system processes automatically and skips the question.
+1. **Fisher information timing** — a question fires when uncertainty is highest (p≈0.5, the decision boundary where Fisher information I=p(1−p) is maximal). When p≈0 or p≈1 (nearly certain), the system auto-resolves and omits the question.
 
-2. **Question Ordering by Information Value** — When multiple questions are needed, they are ordered by estimated information gain (highest first) so you make the most important decisions early.
+2. **Question ordering — descending information gain** — when multiple questions are needed, they are ordered by estimated information gain so that the most important decisions come first.
 
-3. **Statistical Majority Baseline** — The recommended option (marked `(Recommended)`) reflects observed majority choices from your decision history, **not** system policy defaults. When insufficient data exists (cold start), recommendations disclose: *"based on static default, N observations needed for personalization"*.
+3. **Statistical-majority rational default** — the recommended option (the `(Recommended)` label) reflects the observed majority selection in the decision history, and is **not a system-policy default**. When data is insufficient (cold-start), it discloses *"based on the static default, N observations needed for personalization"*.
 
-4. **Precondition Disclosure** — Each recommended option includes its success precondition in the format: *"Recommended when <precondition>"* so you can evaluate trade-offs immediately.
+4. **Precondition disclosure** — each recommended option states its holding preconditions in the *"Recommended when <precondition>"* form so you can evaluate trade-offs immediately.
 
-5. **Adaptive Strength by Proficiency** — Recommendation intensity adjusts based on your session count:
-   - **Expert** (20+ sessions): Weak strength — inferred preference is disclosed without `(Recommended)` override (info-centric, respects autonomy)
-   - **General** (5-19 sessions): Strong strength — recommended option carries `(Recommended)` + transparent reasoning
-   - **Cold-start** (<5 sessions): Neutral strength — no override, system default applies
+5. **Proficiency-based adaptive strength** — recommendation strength adjusts by session count:
+   - **Expert** (20+ sessions): weak strength — only disclose the inferred preference without a `(Recommended)` override (info-centric, autonomy-respecting)
+   - **General user** (5-19 sessions): strong strength — `(Recommended)` + transparent rationale
+   - **Cold-start** (<5 sessions): neutral strength — no override, apply the system default
 
-### Privacy & Safety
+### Privacy and safety
 
-- **Session-scoped toggle**: `moai preference toggle` disables personalization per-project (not persistent across sessions)
-- **Sensitive-domain gate**: Security-related topics (vulnerability, pen-test, breach) receive neutral recommendations with disclosure logging
-- **Automatic decay**: Transient preferences soft-delete after 28 days; stable preferences (explicitly marked) are preserved
-- **Advisory capture**: The PostToolUse capture hook never blocks AskUserQuestion execution (fail-open design)
-- **Recovery-Signal Carve-Out**: On recovery turns (compact recovery, prompt_too_long, etc.), advisory hooks defer to recovery (doctrine-honest — recovery-signal carve-out policy)
+- **Session-scope toggle**: disable per-project personalization with `moai preference toggle` (non-persistent across sessions)
+- **Sensitive-domain gate**: security-related topics (vulnerabilities, penetration tests, leaks) get a neutral recommendation + disclosure log
+- **Automatic decay**: transient preferences soft-delete after 28 days; stable preferences (explicitly marked) are preserved
+- **Advisory capture**: the PostToolUse capture hook never blocks AskUserQuestion execution (fail-open design)
+- **Recovery-Signal Carve-Out**: on recovery turns (compact recovery, prompt_too_long, etc.), the advisory hook yields to the recovery (per the recovery-signal carve-out, doctrine-honest)
 
-### Technical Implementation
+### Technical implementation
 
 {{< callout type="info" >}}
-**Under the Hood:** The 5 principles are codified in `.claude/rules/moai/core/askuser-protocol.md` § Recommendation Placement Principles and rendered in `moai.md`. The capture hook lives in `internal/hook/user_decision_capture.go` with schema-tolerant parsing and domain classification. Decay policy follows a power-law function `(age+1)^(-0.5)` with α=0.5 fixed for Standard tier. See the project's SPEC documentation for complete architecture and acceptance criteria.
+**Internals**: the 5 principles are specified in `.claude/rules/moai/core/askuser-protocol.md` § Recommendation Placement Principles, and rendered in `moai.md`. The capture hook is implemented in `internal/hook/user_decision_capture.go` and supports schema-tolerant parsing and domain classification. The decay policy follows the power-law function `(age+1)^(-0.5)` with α=0.5 fixed (Standard tier). For the full architecture and acceptance criteria, see the project's SPEC documents.
 {{< /callout >}}
 
-## Related Documents
+## Related documents
 
-- [SPEC-Based Development](/core-concepts/spec-based-dev) - Detailed explanation of EARS format
-- [/moai run](./moai-run) - Next step: DDD implementation
-- [/moai sync](./moai-sync) - Final step: Documentation synchronization
+- [SPEC-Based Development](/en/core-concepts/spec-based-dev) - detailed EARS format explanation
+- [/moai run](./moai-run) - next step: DDD implementation
+- [/moai sync](./moai-sync) - final step: documentation sync

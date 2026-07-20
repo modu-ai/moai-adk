@@ -4,45 +4,86 @@ weight: 30
 draft: false
 ---
 
-通过 MoAI-ADK 的工作流命令完成系统化的开发周期。
+{{< callout type="info" >}}{{< icon flash primary >}} <strong>所属价值</strong>: 🛡️ 代理型线束
+{{< /callout >}}
+<!-- @value: agentic-harness -->
 
-## 开发周期概览
+![SPEC 三阶段流水线](/images/sections/workflow-commands-zh.png)
 
-MoAI-ADK 通过**工作流命令**支持从项目初始化到部署准备的全部过程。每个命令由专业化的 AI Agent 管理，按顺序执行即可稳定地创建高质量软件。
+执行基于 SPEC 的 3-Phase 生命周期(plan → run → sync)的命令集合。
+
+
+## 智能体挽具的核心 — 3-Phase 生命周期
+
+MoAI-ADK v3 的核心价值之一是 **智能体挽具** (Agentic Harness)。它的含义是:与其直接编写代码,不如设计一个让智能体高效工作的环境 — SPEC 文档、质量门禁、反馈回路。工作流命令执行这一挽具的中枢 — **plan → run → sync** 流水线。
+
+每个阶段由专门的智能体负责,并且 **计划与审计相分离**,确保创建者不自行检查自己的产出。plan 阶段的产出由 plan-auditor 独立审计,sync 阶段的成果由 sync-auditor 从 4 个维度(Functionality·Security·Craft·Consistency)进行评估。在进入 run 阶段之前,**实现启动批准**(人工门禁)始终交还给用户决定。
 
 ```mermaid
 flowchart TD
-    A["/moai project<br/>项目文档生成"] --> B["/moai plan<br/>SPEC 文档创建"]
-    B --> D["/moai run<br/>DDD/TDD 实现"]
-    D --> E["/moai sync<br/>文档同步和 PR"]
+    A["/moai project<br>生成项目文档"] --> B["/moai plan<br>生成 SPEC 文档"]
+    B --> D["/moai run<br>DDD/TDD 实现"]
+    D --> E["/moai sync<br>文档同步与 PR"]
     E -.-> B
     D -.-> B
-    F["/moai harness<br/>Harness 学习系统"] -.-> D
+    F["/moai harness<br>挽具学习系统"] -.-> D
 ```
 
 ## 命令摘要
 
-| 命令 | 阶段 | 负责 Agent | Token 预算 | 目的 |
-|---------|-------|-------------------|--------------|---------|
+| 命令 | 阶段 | 负责智能体 | 令牌预算 | 目的 |
+|--------|------|---------------|-----------|------|
 | [`/moai project`](./moai-project) | Phase 0 | manager-docs | - | 自动生成项目文档 |
-| [`/moai plan`](./moai-plan) | Phase 1 | manager-spec | 30K | SPEC 文档创建 |
-| [`/moai run`](./moai-run) | Phase 2 | manager-develop | 180K | DDD/TDD 方式实现 |
-| [`/moai sync`](./moai-sync) | Phase 3 | manager-docs | 40K | 文档同步和 PR 创建 |
-| [`/moai harness`](./moai-harness) | 辅助 | builder-harness | - | Harness 学习生命周期管理 |
+| [`/moai plan`](./moai-plan) | Phase 1 | manager-spec | 30K | 生成 SPEC 文档 |
+| [`/moai run`](./moai-run) | Phase 2 | manager-develop | 180K | 以 DDD/TDD 方式实现 |
+| [`/moai sync`](./moai-sync) | Phase 3 | manager-docs | 40K | 文档同步与创建 PR |
+| [`/moai harness`](./moai-harness) | 辅助 | builder-harness | - | 挽具创建与学习生命周期管理 |
+
+各阶段令牌预算不同,这也是 v3 **令牌经济学** (Token Economics) 设计的一部分。计划阶段需要深度推理但产出较小(30K),实现阶段代码量大、需要充足预算(180K),文档同步介于两者之间(40K)。在阶段之间用 `/clear` 清空上下文的惯例也出于同一原因 — 不把上一阶段的对话带入下一阶段,每个阶段才能完整地使用自己的预算。
 
 {{< callout type="info" >}}
-如果是首次使用，请从 `/moai project` 开始。需要项目文档，AI 才能在后续阶段准确理解并处理项目。
+如果您是首次使用,请从 `/moai project` 开始。只有项目文档就绪,AI 才能在后续阶段准确理解并处理项目。
 
-`/moai harness` 是用于管理 Harness 学习子系统的辅助命令 — 它监控 CLAUDE.md 更改并提议基于层级 (tier) 的自动更新。
+`/moai harness` 是用于管理挽具学习子系统的辅助命令 — 它监控 CLAUDE.md 的变更,并提出基于层级的自动更新建议。
 {{< /callout >}}
+
+## 全部子命令(15 个)
+
+`/moai` 编排器路由 15 个子命令。本节(工作流)讲解 SPEC 3-Phase 生命周期命令,[实用命令](/utility-commands/)一节讲解自动化·修复循环·代码管理·反馈命令。
+
+**工作流命令(本节)：**
+
+| 子命令 | 目的 |
+|-----------|------|
+| [`/moai plan`](./moai-plan) | 生成 SPEC 文档 |
+| [`/moai run`](./moai-run) | DDD/TDD 实现 |
+| [`/moai sync`](./moai-sync) | 文档同步与 PR |
+| [`/moai project`](./moai-project) | 生成项目文档 |
+| [`/moai design`](./moai-design) | 设计阶段协作(manager-design D1-D5) |
+| [`/moai harness`](./moai-harness) | 挽具生成与学习生命周期 |
+
+**实用命令（[实用命令一节](/utility-commands/)）：**
+
+| 子命令 | 目的 |
+|-----------|------|
+| [`/moai fix`](/utility-commands/moai-fix) | 一次性自动修复 |
+| [`/moai loop`](/utility-commands/moai-loop) | 反复修复循环 |
+| [`/moai mx`](/utility-commands/moai-mx) | @MX 代码注释 |
+| [`/moai feedback`](/utility-commands/moai-feedback) | GitHub 问题反馈 |
+| [`/moai review`](/utility-commands/moai-review) | 多视角代码审查(安全·@MX) |
+| [`/moai clean`](/utility-commands/moai-clean) | 死代码移除 |
+| [`/moai codemaps`](/utility-commands/moai-codemaps) | 生成架构代码地图 |
+| [`/moai gate`](/utility-commands/moai-gate) | 提交前质量门禁 |
+| [`/moai e2e`](/utility-commands/moai-e2e) | 多平台 E2E 测试 |
+| [`/moai goal`](/utility-commands/moai-goal) | 条件声明式自主循环 |
 
 ## 快速开始
 
 ```bash
-# Phase 0: 项目文档生成（仅首次）
+# Phase 0: 生成项目文档(仅首次)
 > /moai project
 
-# Phase 1: SPEC 创建
+# Phase 1: 生成 SPEC
 > /moai plan "实现用户认证功能"
 > /clear
 
@@ -50,18 +91,20 @@ flowchart TD
 > /moai run SPEC-AUTH-001
 > /clear
 
-# Phase 3: 文档同步和 PR
+# Phase 3: 文档同步与 PR
 > /moai sync SPEC-AUTH-001
 
-# 辅助: Harness 学习管理（可选）
+# 辅助: 挽具学习管理(可选)
 > /moai harness status
 > /moai harness apply
 ```
 
+也可以直接用自然语言发出请求。像 `/moai "帮我修复登录 bug"` 这样不带子命令输入时,**Analyze-First 路由** 会分析意图并自动连接到合适的工作流。
+
 ## 相关文档
 
-- [基于 SPEC 的开发](/core-concepts/spec-based-dev) - SPEC 和 EARS 格式详细说明
-- [DDD 方法论](/core-concepts/ddd) - ANALYZE-PRESERVE-IMPROVE 周期详细说明
-- [TRUST 5 质量系统](/core-concepts/trust-5) - 质量门详细说明
-- [Harness 工程](/core-concepts/harness-engineering) - Harness 学习子系统的概述
-- [快速开始](/getting-started/quickstart) - 从头到尾的教程
+- [基于 SPEC 的开发](/core-concepts/spec-based-dev) - SPEC 与 EARS/GEARS 格式详解
+- [DDD 方法论](/core-concepts/ddd) - ANALYZE-PRESERVE-IMPROVE 循环详解
+- [TRUST 5 质量系统](/core-concepts/trust-5) - 质量门禁详解
+- [挽具工程](/core-concepts/harness-engineering) - 挽具学习子系统概览
+- [快速开始](/getting-started/quickstart) - 从零开始的入门教程

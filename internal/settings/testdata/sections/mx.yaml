@@ -1,0 +1,14 @@
+# mx.yaml fixture (SPEC-WEB-CONSOLE-014 M4 — raw view read test).
+# danger_categories (map-of-lists) + test_paths (list) are read-only raw view
+# blocks; mx is RouteExcluded (no editable field, no write path).
+mx:
+    danger_categories:
+        concurrency:
+            - goroutine leak
+            - race condition
+        security:
+            - hardcoded credential
+            - sql injection
+    test_paths:
+        - '*_test.go'
+        - testdata/**

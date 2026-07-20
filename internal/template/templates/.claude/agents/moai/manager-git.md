@@ -3,26 +3,16 @@ name: manager-git
 description: |
   Git workflow specialist. Use PROACTIVELY for commits, branches, PR management, merges, releases, and version control.
   Invocation gate: invoked for Tier L SPEC PR creation OR explicit `--pr` flag per the canonical Tier-based PR routing policy. Tier S/M SPECs follow the Hybrid Trunk 1-person OSS pattern (main-direct push via manager-develop) per the Hybrid Trunk 1-person OSS policy; manager-git is NOT invoked for Tier S/M routine commits.
-  MUST INVOKE when ANY of these keywords appear in user request:
-  EN: git, commit, push, branch, PR, merge, release, rebase, tag, conventional commit
-  KO: git, 커밋, 푸시, 브랜치, PR, 머지, 릴리즈, 리베이스, 태그
-  JA: git, コミット, プッシュ, ブランチ, PR, マージ, リリース, タグ
-  ZH: git, 提交, 推送, 分支, PR, 合并, 发布, 标签
+  Match user intent language-independently — do not require literal keyword matches.
   NOT for: Tier S/M default Hybrid Trunk main-direct (no PR step — handled by manager-develop), code implementation, testing, architecture design, documentation content, security audits
 tools: Read, Write, Edit, Grep, Glob, Bash, TaskCreate, TaskUpdate, TaskList, TaskGet, Skill
-model: haiku
+model: sonnet
+effort: low
+color: orange
 permissionMode: bypassPermissions
 memory: project
 skills:
   - moai-foundation-core
-  - moai-foundation-thinking
-  - moai-foundation-quality
-  - moai-workflow-ddd
-  - moai-workflow-tdd
-  - moai-workflow-testing
-  - moai-workflow-project
-  - moai-workflow-spec
-  - moai-workflow-worktree
 ---
 
 # Git Manager Agent
@@ -205,6 +195,16 @@ Execute only with `--auto-merge` flag AND all approvals obtained:
 
 **Input** (from sync-auditor or the orchestrator verification batch): Quality result, TRUST 5 status, commit approval, SPEC ID, language, git strategy.
 **Output**: Commit SHAs, branch info, push status, PR URL, operation summary.
+
+## Conditional Skill Loading
+
+Static `skills:` preload is kept to a minimum (token diet — progressive disclosure covers the rest); load the following skills on demand with the `Skill` tool:
+
+- When branch/PR strategy questions arise (merge method, branch naming, PR templates, conventional commits edge cases), invoke Skill("moai-ref-git-workflow") to load it on demand.
+- When SPEC context is needed for commit scoping or Tier-based PR routing, invoke Skill("moai-workflow-spec") to load it on demand.
+- When verifying quality gate status before a commit or PR, invoke Skill("moai-foundation-quality") to load it on demand.
+- When weighing non-trivial workflow trade-offs (release strategy, history implications), invoke Skill("moai-foundation-thinking") to load it on demand.
+- When project documentation context is needed for PR descriptions, invoke Skill("moai-workflow-project") to load it on demand.
 
 ## Model/effort escalation
 

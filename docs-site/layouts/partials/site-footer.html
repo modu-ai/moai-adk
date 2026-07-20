@@ -1,17 +1,25 @@
-<footer class="gdoc-footer cw-footer" role="contentinfo" aria-label="{{ i18n "footer_aria" }}">
-  <div class="cw-footer-inner">
-    <div>
-      <span class="cw-footer-meta">
-        {{ site.Title }} ·
-        <a href="https://github.com/modu-ai/moai-adk" target="_blank" rel="noopener">GitHub</a> ·
-        <a href="https://github.com/modu-ai/moai-adk/blob/main/LICENSE" target="_blank" rel="noopener">MIT License</a>
-      </span>
+<footer class="gdoc-footer cw-footer docs-footer" role="contentinfo" aria-label="{{ i18n "footer_aria" }}">
+  <div class="footer-inner">
+    <div class="footer-grid">
+      <div class="footer-col">
+        <span class="cw-footer-copy">🄏 Copyleft MoAI - 모두의AI</span>
+      </div>
+      <div class="footer-col">
+        <ul>
+          <li><a href="https://github.com/modu-ai/moai-adk" target="_blank" rel="noopener">GitHub</a></li>
+          <li><a href="https://github.com/modu-ai/moai-adk/blob/main/LICENSE" target="_blank" rel="noopener">MIT License</a></li>
+        </ul>
+      </div>
+      <div class="footer-col">
+        <ul>
+          <li>{{ i18n "copyright_label" }} <a href="https://www.anthropic.com" target="_blank" rel="noopener">Anthropic</a></li>
+          <li><a href="https://github.com/modu-ai" target="_blank" rel="noopener">modu-ai</a></li>
+        </ul>
+      </div>
     </div>
-    <div>
-      <span class="cw-footer-meta">
-        {{ i18n "copyright_label" }} <a href="https://www.anthropic.com" target="_blank" rel="noopener">Anthropic</a>,
-        <a href="https://github.com/modu-ai" target="_blank" rel="noopener">modu-ai</a>
-      </span>
+    <div class="footer-bottom">
+      <span>{{ site.Title }}</span>
+      <span>{{ i18n "copyright_label" }} · MIT</span>
     </div>
   </div>
 </footer>

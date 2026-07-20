@@ -139,6 +139,7 @@ func TestShutdown_RouteStopsServer(t *testing.T) {
 		client := &http.Client{Timeout: 3 * time.Second}
 		req, _ := http.NewRequest(http.MethodPost, "http://"+addr+"/__shutdown__", strings.NewReader(""))
 		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+		req.Header.Set("Sec-Fetch-Site", "same-origin") // pass CSRF gate so handler is reached
 		req.Host = "127.0.0.1"
 		resp, perr := client.Do(req)
 		if perr == nil {
@@ -169,6 +170,7 @@ func servePostShutdown(t *testing.T, h http.Handler) *httptest.ResponseRecorder 
 	t.Helper()
 	req := httptest.NewRequest(http.MethodPost, "/__shutdown__", strings.NewReader(""))
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req.Header.Set("Sec-Fetch-Site", "same-origin") // simulate real browser form POST (REQ-SEC-002)
 	req.Host = "127.0.0.1:8080"
 	rec := httptest.NewRecorder()
 	h.ServeHTTP(rec, req)

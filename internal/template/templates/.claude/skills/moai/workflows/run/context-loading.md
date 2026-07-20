@@ -28,7 +28,7 @@ For methodology details (DDD ANALYZE-PRESERVE-IMPROVE and TDD RED-GREEN-REFACTOR
 
 - $ARGUMENTS: SPEC-ID to implement (e.g., SPEC-AUTH-001)
 - Resume: Re-running /moai run SPEC-XXX resumes from last successful phase checkpoint
-- --team: Enable team-based implementation (see ${CLAUDE_SKILL_DIR}/team/run.md for parallel implementation team)
+- --team: RETIRED — emits `MODE_TEAM_UNAVAILABLE` and falls back to autopilot (Agent Teams static layer retired)
 
 ## Mode Dispatch (Multi-Mode Router)
 
@@ -36,11 +36,13 @@ For methodology details (DDD ANALYZE-PRESERVE-IMPROVE and TDD RED-GREEN-REFACTOR
 
 `/moai run` participates in the `--mode` axis with 4 valid values: `autopilot`, `loop`, `team`, `pipeline`. Each value selects a distinct execution style.
 
+> **Axis note**: the `--mode` flag set here is the DISPATCH axis — WHICH `/moai run` workflow variant runs. It is distinct from the Phase 4 execution-mode catalog (HOW the orchestrator spawns) in `.claude/rules/moai/workflow/orchestration-mode-selection.md` §A; the value-by-value correspondence is documented in that rule's §G.1 crosswalk (correspondence, not merge). The resolver pseudocode and sentinels below are unchanged.
+
 ### Mode Values
 
-- **`autopilot` (default for harness `minimal` / `standard`)**: Single-lead orchestration via Phase 0.95 Scale-Based Mode Selection (Fix / Focused / Standard / Full Pipeline) → Phase 2A/2B per `quality.yaml development_mode`. Behaves as today's default `/moai run` invocation.
-- **`loop`**: Delegate to `Skill("moai-workflow-loop")` with the SPEC-ID and remaining args. Bypasses Phase 2A/2B and enters the Ralph engine per-iteration cycle (see `loop.md` Steps 1-9). `/moai loop SPEC-XXX` is an alias resolving to `/moai run --mode loop SPEC-XXX` with identical behavior.
-- **`team` (default for harness `thorough` AND prerequisites met)**: Routes to existing Team Mode Routing (Phase 0.95 row 5 + the Team Mode Routing section). Requires `workflow.team.enabled: true` AND `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1` env var.
+- **`autopilot` (default for harness `minimal` / `standard`)**: Single-lead orchestration via Phase 4 Scale-Based Mode Selection (Fix / Focused / Standard / Full Pipeline) → Phase 11/2B per `quality.yaml development_mode`. Behaves as today's default `/moai run` invocation.
+- **`loop`**: Delegate to `Skill("moai-workflow-loop")` with the SPEC-ID and remaining args. Bypasses Phase 11/2B and enters the Ralph engine per-iteration cycle (see `loop.md` Steps 1-9). `/moai loop SPEC-XXX` is an alias resolving to `/moai run --mode loop SPEC-XXX` with identical behavior.
+- **`team` (RETIRED)**: The `--mode team` dispatch value is retired (Agent Teams static layer — Mode 3 `agent-team` retired). A forced `--mode team` emits `MODE_TEAM_UNAVAILABLE` and the orchestrator falls back to `autopilot`.
 - **`pipeline`**: REJECTED on `/moai run`. Pipeline mode is reserved for utility subcommands (`fix`, `coverage`, `mx`, `codemaps`, `clean`). Passing `--mode pipeline` here triggers `MODE_PIPELINE_ONLY_UTILITY` (the same error key the utility subcommands share).
 
 ### Mode Resolver
@@ -60,32 +62,31 @@ if mode not in {autopilot, loop, team, pipeline}:
     emit MODE_UNKNOWN listing 4 valid values; abort
 if mode == pipeline:
     emit MODE_PIPELINE_ONLY_UTILITY pointing to {fix, coverage, mx, codemaps, clean}; abort
-if mode == team and not (workflow.team.enabled and CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS):
+if mode == team:                                   # RETIRED — Agent Teams static layer
     if cli_mode_flag == team:                      # explicit request
         emit MODE_TEAM_UNAVAILABLE suggesting --mode autopilot; abort
-    else:                                          # harness auto-selected team
-        log [mode-auto-downgrade] info; mode = autopilot  # silent downgrade per the relevant requirement
+    else:                                          # config/harness selected team
+        log [mode-auto-downgrade] info; mode = autopilot  # silent downgrade
 dispatch(mode)
 ```
 
 ### Harness-Based Default Selection
 
-| Harness level | Team prerequisites | Default mode |
-|---------------|--------------------|--------------|
-| `minimal` | (any) | `autopilot` |
-| `standard` | (any) | `autopilot` |
-| `thorough` | satisfied | `team` |
-| `thorough` | not satisfied | `autopilot` (downgraded with `[mode-auto-downgrade]` info log) |
+| Harness level | Default mode |
+|---------------|--------------|
+| `minimal` | `autopilot` |
+| `standard` | `autopilot` |
+| `thorough` | `autopilot` (the former `team` default is retired — Agent Teams static layer) |
 
 ### Sentinel Error Keys
 
 This skill emits the following sentinel error keys when mode dispatch fails. A CI audit verifies each literal sentinel remains present in this skill body.
 
 - **`MODE_UNKNOWN`**: Emitted when `--mode <value>` is supplied but `<value>` is not in the 4-value valid set `{autopilot, loop, team, pipeline}`. The error message MUST enumerate the 4 valid values to guide the user.
-- **`MODE_TEAM_UNAVAILABLE`**: Emitted when an EXPLICIT `--mode team` request cannot be honored because either `workflow.team.enabled: false` in workflow.yaml OR the `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS` env var is unset. The error message MUST suggest `--mode autopilot` as the supported fallback. Note: when `team` is auto-selected by harness (not explicit CLI), the system silently downgrades to `autopilot` with an info log instead of raising this error.
+- **`MODE_TEAM_UNAVAILABLE`**: Emitted when an EXPLICIT `--mode team` request is made — the `team` dispatch value is RETIRED (Agent Teams static layer), so it can never be honored. The error message MUST suggest `--mode autopilot` as the supported fallback. Note: when `team` is auto-selected by config/harness (not explicit CLI), the system silently downgrades to `autopilot` with an info log instead of raising this error.
 - **`MODE_PIPELINE_ONLY_UTILITY`**: Preserved from the utility-subcommand baseline. Emitted when `--mode pipeline` is passed to this multi-agent subcommand. The error message MUST point the user to the utility subcommand set `{fix, coverage, mx, codemaps, clean}`.
 
-See [Subcommand Classification matrix](../../rules/moai/workflow/spec-workflow.md#subcommand-classification) for the cross-skill mode dispatch contract.
+See [Subcommand Classification matrix](../../../../rules/moai/workflow/spec-workflow.md#subcommand-classification-pipeline-vs-multi-agent) for the cross-skill mode dispatch contract.
 
 ## UltraThink Auto-Activation
 
@@ -100,7 +101,7 @@ When the run phase begins, evaluate whether to activate deep analysis mode for t
 **UltraThink (primary deep reasoning trigger)**:
 - `ultrathink`: Extended reasoning within the current agent (Adaptive Thinking on Opus 4.7+) — deeper strategy analysis, more thorough trade-off evaluation
 
-When activated: Apply to Phase 1 (Strategy) for deeper architectural analysis. Log: "UltraThink mode activated for strategy phase: [reason]"
+When activated: Apply to Phase 5 (Strategy) for deeper architectural analysis. Log: "UltraThink mode activated for strategy phase: [reason]"
 
 ## Harness Level Routing
 
@@ -109,17 +110,17 @@ At Run phase entry, determine the pipeline depth:
 1. Receive harness level from orchestrator (moai.md Complexity Estimator) or default to standard
 2. Apply level-specific phase configuration:
    - **minimal**: Skip phases [0, 0.6, 2.0, 2.5, 2.75, 2.8a, 2.9, 2.10]. Direct implementation only.
-     Note: Phase 0.5 (Plan Audit Gate) is NEVER skipped, not even in minimal harness.
-   - **standard**: Execute all phases. sync-auditor in final-pass mode (Phase 2.8a only).
-   - **thorough**: Execute all phases. sync-auditor in per-sprint mode (Phase 2.0 + 2.8a). Sprint contract enabled.
+     Note: Phase 1 (Plan Audit Gate) is NEVER skipped, not even in minimal harness.
+   - **standard**: Execute all phases. sync-auditor in final-pass mode (Phase 16 only).
+   - **thorough**: Execute all phases. sync-auditor in per-milestone mode (Phase 10 + 2.8a). Milestone contract enabled.
 3. Load SPEC context (token-efficient):
    - If `.moai/specs/SPEC-{ID}/spec-compact.md` exists: Load spec-compact.md (~30% token savings)
    - Otherwise: Load full spec.md (backward compatible)
 4. Log harness level to progress.md for traceability
 
 Escalation: If a quality gate fails during execution, escalate harness level:
-- minimal → standard (on Phase 2.5 fail)
-- standard → thorough (on Phase 2.8a CRITICAL)
+- minimal → standard (on Phase 13 fail)
+- standard → thorough (on Phase 16 CRITICAL)
 - Maximum 2 escalations per SPEC run
 
 ## Context Loading
@@ -132,7 +133,7 @@ Before execution, load these essential files:
 - .moai/config/sections/git-strategy.yaml (auto_branch, branch creation policy)
 - .moai/config/sections/language.yaml (git_commit_messages setting)
 - .moai/specs/SPEC-{ID}/ directory (spec-compact.md preferred, or spec.md, plan.md, acceptance.md)
-- .moai/specs/SPEC-{ID}/progress.md (session resume context: if exists, load to identify completed phases and skip them; if absent, will be created at Phase 1 start)
+- .moai/specs/SPEC-{ID}/progress.md (session resume context: if exists, load to identify completed phases and skip them; if absent, will be created at Phase 5 start)
 - .moai/specs/SPEC-{ID}/tasks.md (task decomposition with planned files, if exists)
 - .moai/project/structure.md (architecture context for implementation decisions)
 - .moai/project/tech.md (technology stack context)
@@ -155,7 +156,7 @@ Before spawning implementation agents, load relevant lessons from auto-memory:
 
 ### Resume Check
 
-Before Phase 1, check if `.moai/specs/SPEC-{ID}/progress.md` exists:
+Before Phase 5, check if `.moai/specs/SPEC-{ID}/progress.md` exists:
 - If it exists: Load content, identify last completed phase checkpoint, skip all completed phases, resume from the next pending phase. Log: "Resuming SPEC-{ID} from Phase {N}"
 - If it does not exist: Create the file now with initial entry:
   ```
@@ -169,7 +170,7 @@ Before Phase 1, check if `.moai/specs/SPEC-{ID}/progress.md` exists:
 
 ## Worktree Path Rules [HARD] (All Modes)
 
-When delegating to ANY agent with `isolation: "worktree"` (sub-agent mode or team mode):
+When delegating to ANY agent with `isolation: "worktree"` (any execution mode):
 
 - [HARD] Reference all write-target files by project-root-relative paths (e.g., `src/auth/handler.go`)
 - [HARD] Do NOT include absolute paths (e.g., `$HOME/project/src/auth/handler.go`) in agent prompts

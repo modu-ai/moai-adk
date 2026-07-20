@@ -46,7 +46,6 @@ Common metadata keys:
 - modularized: Whether content is split into modules ("true" or "false")
 - tags: Comma-separated tag list as single string
 - author: Skill author name
-- context7-libraries: Comma-separated library identifiers for Context7 MCP
 - related-skills: Comma-separated related skill names
 - aliases: Comma-separated alternative names
 
@@ -77,7 +76,7 @@ description: >
   Use YAML folded scalar (>) for multi-line descriptions.
 license: Apache-2.0
 compatibility: Designed for Claude Code
-allowed-tools: Read, Grep, Glob, Bash, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
+allowed-tools: Read, Grep, Glob, Bash
 user-invocable: false
 effort: low
 shell: bash
@@ -135,8 +134,25 @@ Level 2 (Body):
 
 Level 3 (Bundled):
 - Tokens: Variable
-- Content: reference.md, modules/, examples/
+- Content: reference.md (single root file), references/ (multi-file directory), reference/ (single directory, Claude Code Pattern 2), modules/, examples/, INDEX.md (module index)
 - Loading: On-demand by Claude
+
+### Skill Directory Layout
+
+MoAI skills follow the Agent Skills standard with MoAI-specific extensions. The bundled directory layout (Level 3) accepts any of the following optional supporting locations, chosen by skill size and content shape:
+
+| Path | Form | Status | Use |
+|------|------|--------|-----|
+| `reference.md` | root file | official SSOT | single external-links / API-docs file (simple skills) |
+| `references/` | multi-file directory | MoAI official extension | multiple reference files grouped together (large skills, e.g. a `claude-code-*-official.md` series) |
+| `reference/` | single directory | Claude Code Pattern 2 (Anthropic `skills.md` bigquery example) | domain-specific reference organization |
+| `modules/` | multi-file directory | MoAI official (`modular-system.md`) | topic-focused deep-dive content, self-contained |
+| `examples.md` | root file | official | copy-paste-ready working examples |
+| `scripts/` | directory | official | executable utility scripts |
+| `templates/` | directory | official | reusable file templates |
+| `INDEX.md` | root file (inside `modules/`) | MoAI convention | optional human-readable index of the modules in a `modules/` directory |
+
+A skill MAY use `reference.md`, `references/`, and `reference/` independently or together based on its content volume. `modular-system.md` (inside the `moai-foundation-core` skill) is the canonical deep-dive on this layout.
 
 ### Skill Listing Budget and Compaction (Claude Code runtime)
 
@@ -148,7 +164,7 @@ MoAI's 3-level disclosure sits on top of two runtime budgets the Claude Code hos
 ## Tool Permissions by Category
 
 Foundation Skills:
-- Allowed: Read, Grep, Glob, Context7 MCP
+- Allowed: Read, Grep, Glob, WebFetch
 - Never: Bash, Agent
 
 Workflow Skills:
@@ -161,11 +177,13 @@ Domain Skills:
 - Never: AskUserQuestion, Agent
 
 Language Skills:
-- Allowed: Read, Grep, Glob, Bash, Context7 MCP
+- Allowed: Read, Grep, Glob, Bash, WebFetch
 - Conditional: Write, Edit (implementation tasks only)
 - Never: AskUserQuestion, Agent
 
 ## Trigger Configuration
+
+[HARD] The `triggers:` block is OPTIONAL metadata, NOT a machine matcher. Claude Code does not literally match these keywords to route a skill — skill invocation is model-side **semantic matching** of the `description` / `when_to_use` fields. The `keywords` / `agents` / `phases` entries document intent for human readers and tooling; they are not a literal-match gate. Prefer a precise `description` over exhaustive `triggers` keywords.
 
 ```yaml
 triggers:
@@ -320,37 +338,37 @@ per-language guidance, and `.claude/rules/moai/development/coding-standards.md`
 
 ## Skills Namespace Policy
 
-[ZONE:Evolvable] [HARD] Skill namespace는 "범용 배포" vs "사용자 생성" 으로 분리되며, prefix가 namespace를 결정한다.
+[ZONE:Evolvable] [HARD] The skill namespace is split into "general distribution" vs "user-generated", and the prefix determines the namespace.
 
-| Prefix | 범위 | Source of Truth | `moai update` 동작 |
-|--------|------|-----------------|---------------------|
-| `moai-foundation-*` / `moai-workflow-*` / `moai-domain-*` / `moai-ref-*` / `moai-meta-*` | 핵심 framework + workflow + 도메인 + reference | template | **삭제 후 신규 설치** (overwrite) |
-| `moai-harness-*` | **하네스 builder/lifecycle** (현재 `moai-meta-harness` + `moai-harness-learner`만 해당) | template | **삭제 후 신규 설치** (overwrite) |
-| **`harness-*`** | **사용자 생성** — `moai-meta-harness`가 `/moai project` Phase 5+ 인터뷰 후 generate | user project | **절대 삭제/modify 금지 + 백업 보존** (Go enforcement `harness-*` 인식 + `my-harness-*` legacy dual-recognition) |
+| Prefix | Scope | Source of Truth | `moai update` behavior |
+|--------|-------|-----------------|------------------------|
+| `moai-foundation-*` / `moai-workflow-*` / `moai-domain-*` / `moai-ref-*` / `moai-meta-*` | core framework + workflow + domain + reference | template | **delete then reinstall** (overwrite) |
+| `moai-harness-*` | **harness builder/lifecycle** (currently only `moai-harness-learner`; `moai-meta-harness` is a deprecated legacy-redirect) | template | **delete then reinstall** (overwrite) |
+| **`hns-*`** | **user-generated** — created by the v4 harness Builder (`builder-harness` agent via `/moai harness`) | user project | **NEVER delete/modify + preserve backup** (Go enforcement recognizes canonical `hns-*` plus the legacy `harness-*` and `my-harness-*` generations — tri-generation recognition) |
 
-### Deprecated Skill Slots (migrated to `.claude/agents/local/`)
+### Deprecated Skill Slots (split into three independent harnesses)
 
-The following dev-only skill slots were retired and their workflows migrated into hand-authored local agents under `.claude/agents/local/` (see agent-authoring.md § Agent Directory Convention). Thin command wrappers `.claude/commands/97-release-update.md` and `.claude/commands/98-github.md` now delegate to the new local agents instead of skill invocations.
+The following dev-only skill slots were retired and their workflows live as three INDEPENDENT dev-maintainer harnesses under the user-owned harness namespace (`.claude/agents/harness/hns-{release-update,github,release}-specialist.md` + `.claude/commands/harness/{release-update,github,release}.md`; only release-update carries a Runner + `.claude/commands/harness/release-update/manifest.json`; see agent-authoring.md § Agent Directory Convention). Each thin command routes directly to its matching specialist. These three workflows were first consolidated into a single unified entry by the harness-consolidation effort, then split into three independent harnesses by the harness-split effort (which reverses the unified-entry decision). The earlier intermediate migration into `.claude/agents/local/*-specialist.md` (with `/97-release-update`, `/98-github` thin wrappers) and the standalone `/99-release` command were all removed during the consolidation step.
 
-| Retired Skill | Migration Target | Entry Point |
+| Retired Skill / Command | Current Target | Entry Point |
 |---------------|------------------|-------------|
-| `.claude/skills/moai/workflows/release-update.md` (97 series) | `.claude/agents/local/release-update-specialist.md` | `/97-release-update` thin command |
-| `.claude/skills/moai/workflows/github.md` (98 series) | `.claude/agents/local/github-specialist.md` | `/98-github` thin command |
+| `.claude/skills/moai/workflows/release-update.md` (97 series) | `.claude/agents/harness/hns-release-update-specialist.md` | `/harness:release-update` |
+| `.claude/skills/moai/workflows/github.md` (98 series) | `.claude/agents/harness/hns-github-specialist.md` | `/harness:github` |
+| `.claude/skills/moai/workflows/release.md` (99 series) | `.claude/agents/harness/hns-release-specialist.md` | `/harness:release` |
 
-The migration preserves the Thin Command Pattern (`coding-standards.md` § Thin Command Pattern) while shifting routing from `Skill("moai/workflows/<name>")` to `Use the <name>-specialist subagent` delegation. The underlying workflow bodies are retained verbatim with structural fidelity; the namespace shift is purely architectural to align maintainer-only assets under the local namespace contract.
+Each split harness preserves the structural fidelity of its workflow body. Routing shifted from `Skill("moai/workflows/<name>")` / `Use the <name>-specialist subagent` to `/harness:<name>` direct dispatch. The harness artifacts live in the user-owned namespace (`moai update` preserves them); they are dev-only and never distributed to user projects.
 
 ### Rules
 
-- [HARD] `moai-*` namespace (모든 prefix 포함)는 template-distributed. 사용자가 직접 수정 시 다음 `moai update`로 overwrite — 사용자 customization은 손실됨.
-- [HARD] `harness-*` namespace는 user-owned. `moai update`가 본 namespace의 skill을 **삭제, modify, sync 금지**. 백업 의무.
-- [HARD] `moai-meta-harness`가 emit하는 사용자 프로젝트별 domain skill은 **`harness-*` prefix만** 허용. `moai-harness-*` 또는 다른 `moai-*` prefix로 emit하면 contract 위반.
-- [HARD] `moai-harness-*` namespace를 사용자 프로젝트별 artifact로 오인 금지 — 본 namespace는 framework builder 전용이며 현재 `moai-harness-learner`, `moai-meta-harness`만 해당한다.
-- [HARD] `harness-*` (user-owned) vs `moai-harness-*` (template builder) substring 구분: prefix 매칭은 정확한 startsWith 비교를 사용하고, `*harness-*` substring 패턴은 false positive 위험이 있으므로 금지.
-- [HARD] CI guard: `internal/template/templates/.claude/skills/harness-*` 누출 시 lint 실패해야 한다 (`TestNamespaceLeakHarnessSkills` sentinel이 `harness-` 패턴 감지).
+- [HARD] The `moai-*` namespace (all prefixes) is template-distributed. If the user modifies it directly, the next `moai update` overwrites it — user customizations are lost.
+- [HARD] The `hns-*` namespace is user-owned, as are the legacy `harness-*` and `my-harness-*` generations. `moai update` MUST NOT delete, modify, or sync skills in these namespaces. Backup is mandatory.
+- [HARD] Per-project domain skills emitted by the v4 harness Builder (`builder-harness` agent via `/moai harness`) MUST use the **`hns-*` prefix only**. Emitting under `moai-harness-*` or any other `moai-*` prefix violates the contract. (The legacy `moai-meta-harness` skill is deprecated and only redirects to the v4 Builder.)
+- [HARD] Do NOT mistake the `moai-harness-*` namespace for per-project artifacts — this namespace is framework-builder-only and currently comprises `moai-harness-learner` (with the deprecated legacy-redirect `moai-meta-harness`).
+- [HARD] Distinguish `hns-*` / legacy `harness-*` (user-owned) vs `moai-harness-*` (template builder) as substrings: prefix matching MUST use an exact startsWith comparison; the `*harness-*` substring pattern is prohibited due to false-positive risk.
+- [HARD] CI guard: a leak of `internal/template/templates/.claude/skills/hns-*` or `internal/template/templates/.claude/skills/harness-*` MUST fail lint (the namespace-leak sentinel detects both the `hns-` and `harness-` patterns).
 
 ### Cross-References
 
 - `.claude/rules/moai/development/skill-authoring.md` § Skills Namespace Policy (this section — canonical skill namespace SSOT)
 - `.claude/skills/moai-meta-harness/SKILL.md` § Namespace Separation (canonical generator contract)
-- `.claude/rules/moai/development/agent-authoring.md` § Agent Directory Convention (agent counterpart — includes `.claude/agents/local/` for the migrated 97/98 specialists)
-- `.moai/docs/dev-only-commands-isolation.md` (maintainer-local — dev-only 97/98/99 isolation policy)
+- `.claude/rules/moai/development/agent-authoring.md` § Agent Directory Convention (agent counterpart — includes `.claude/agents/local/` for the migrated maintainer specialists)

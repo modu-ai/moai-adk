@@ -4,21 +4,22 @@ weight: 30
 draft: false
 ---
 
-MoAI-ADK 2.x 在您的系统上的安装方法指南。
+介绍在系统中安装 MoAI-ADK 的方法。安装物是用 Go 构建的单一二进制 —— 无需 Python、虚拟环境或包管理器。
+
 
 ## 许可证
 
-MoAI-ADK {{< version >}} 及以上版本采用 **Apache-2.0 许可证** 发布。
+MoAI-ADK {{< version >}} 及以上在 **Apache-2.0 许可证** 下分发。
 
-商业使用、修改和分发都是自由的，无需公开源代码。详细信息请参阅 [Apache License 2.0](https://www.apache.org/licenses/LICENSE-2.0)。
+可自由用于商业、修改、分发,且无公开源代码的义务。详情请参阅 [Apache License 2.0](https://www.apache.org/licenses/LICENSE-2.0)。
 
 {{< callout type="info" >}}
-**说明**：MoAI-ADK 1.x (Python 版) 采用 GPL-3.0 许可证。从 v2.0.0 开始，使用 Go 重写并改为 Apache-2.0 许可证。
+**参考**:MoAI-ADK 1.x(Python 版本)采用 GPL-3.0 许可证。从 v2.0.0 起用 Go 语言重写并改为 Apache-2.0。
 {{< /callout >}}
 
-## 前提条件
+## 前置要求
 
-安装前请确认以下事项:
+安装前请确认以下项目:
 
 ### 1. Claude Code
 
@@ -28,39 +29,39 @@ MoAI-ADK 是运行在 Claude Code 之上的扩展框架。必须先安装 Claude
 claude --version
 ```
 
-如果尚未安装,请参阅 [Claude Code 官方文档](https://docs.anthropic.com/en/docs/claude-code)。
+若尚未安装,请参阅 [Claude Code 官方文档](https://docs.anthropic.com/en/docs/claude-code)。
 
-### 2. Git (必需)
+### 2. Git(必需)
 
-MoAI-ADK 使用基于 Git 的工作流。系统必须安装 Git。
+MoAI-ADK 使用基于 Git 的工作流。系统中必须安装 Git。
 
 ```bash
 git --version
 ```
 
 {{< callout type="warning" >}}
-**Windows 用户**: 必须使用 **Git Bash** 或 **WSL** 环境。不支持命令提示符 (cmd.exe)。
+**Windows 用户**:请务必在 **Git Bash** 或 **WSL** 环境中使用。不支持 Command Prompt(cmd.exe)。
 
-如果未安装 Git:
-- **Windows**: 从 [git-scm.com](https://git-scm.com) 安装 Git for Windows,Git Bash 会一并安装。
-- **macOS**: `xcode-select --install` 或 [git-scm.com](https://git-scm.com)
-- **Linux**: `sudo apt install git` (Ubuntu/Debian) 或 `sudo dnf install git` (Fedora)
+若未安装 Git:
+- **Windows**:在 [git-scm.com](https://git-scm.com) 安装 Git for Windows。会一并安装 Git Bash。
+- **macOS**:`xcode-select --install` 或 [git-scm.com](https://git-scm.com)
+- **Linux**:`sudo apt install git`(Ubuntu/Debian)或 `sudo dnf install git`(Fedora)
 {{< /callout >}}
 
 ### 系统要求
 
 | 项目 | 要求 |
-|------|------|
-| **操作系统** | macOS、Linux、Windows (Git Bash / WSL) |
-| **架构** | amd64、arm64 |
-| **内存** | 最低 4GB RAM |
-| **磁盘** | 最低 100MB 可用空间 |
+|------|---------|
+| **操作系统** | macOS, Linux, Windows(Git Bash / WSL) |
+| **架构** | amd64, arm64 |
+| **内存** | 至少 4GB RAM |
+| **磁盘** | 至少 100MB 可用空间 |
 
 ## 安装方法
 
-### 方法 1: 快速安装 (推荐)
+### 方法 1:快速安装(推荐)
 
-一条命令即可自动安装最新版本。
+用一条命令自动安装最新版本。
 
 **macOS / Linux / WSL / Git Bash:**
 
@@ -68,17 +69,17 @@ git --version
 curl -fsSL https://raw.githubusercontent.com/modu-ai/moai-adk/main/install.sh | bash
 ```
 
-**Windows (PowerShell):**
+**Windows(PowerShell):**
 
 ```powershell
 irm https://raw.githubusercontent.com/modu-ai/moai-adk/main/install.ps1 | iex
 ```
 
 {{< callout type="info" >}}
-安装脚本会自动检测平台,从 GitHub 下载预构建二进制文件,验证 SHA256 校验和,并配置 PATH。无需 Python 或其他运行时。
+安装脚本会自动检测平台、从 GitHub 下载预构建的二进制、验证 SHA256 校验和并配置 PATH。不需要 Python 或额外的运行时。
 {{< /callout >}}
 
-安装后验证:
+安装完成后请确认:
 
 ```bash
 moai version
@@ -87,16 +88,16 @@ moai version
 #### 安装选项
 
 ```bash
-# 安装特定版本
-curl -fsSL https://raw.githubusercontent.com/modu-ai/moai-adk/main/install.sh | bash -s -- --version v3.0.0-rc6
+# 安装特定版本(指定所需的 release 标签)
+curl -fsSL https://raw.githubusercontent.com/modu-ai/moai-adk/main/install.sh | bash -s -- --version <release-tag>
 
 # 安装到自定义目录
 curl -fsSL https://raw.githubusercontent.com/modu-ai/moai-adk/main/install.sh | bash -s -- --install-dir /usr/local/bin
 ```
 
-### 方法 2: 从源码构建
+### 方法 2:从源码构建
 
-如果您有 Go 开发环境,可以从源码构建。
+有 Go 开发环境时可直接从源码构建。
 
 ```bash
 git clone https://github.com/modu-ai/moai-adk.git
@@ -104,7 +105,7 @@ cd moai-adk
 make build
 ```
 
-构建的二进制文件位于 `./bin/moai`。将其复制到 PATH 中的目录:
+构建的二进制生成在 `./bin/moai`。请复制到 PATH 指定的位置:
 
 ```bash
 cp ./bin/moai ~/.local/bin/
@@ -112,68 +113,77 @@ cp ./bin/moai ~/.local/bin/
 
 ### 安装位置
 
-安装脚本按以下顺序确定安装目录:
+安装脚本按以下顺序决定安装目录:
 
 | 平台 | 优先级 |
-|------|--------|
+|--------|---------|
 | **macOS / Linux** | `$GOBIN` → `$GOPATH/bin` → `~/.local/bin` |
 | **Windows** | `%LOCALAPPDATA%\Programs\moai` |
 
-## 从 1.x 迁移
+## 1.x 用户迁移
 
 {{< callout type="error" >}}
-**MoAI-ADK 1.x (Python 版) 用户必须先卸载旧版本。**
+**MoAI-ADK 1.x(Python 版本)用户必须先卸载既有版本。**
 
-1.x 和 2.x 使用相同的 `moai` 命令,保留旧版本会导致冲突。
+1.x 与 2.x 使用相同的 `moai` 命令,若残留旧版本会发生冲突。
 {{< /callout >}}
 
-### 步骤 1: 删除现有的 1.x
+### 第 1 步:卸载既有 1.x
 
 ```bash
-# 如果通过 uv 安装
+# 用 uv 安装的情况
 uv tool uninstall moai-adk
 
-# 如果通过 pip 安装
+# 用 pip 安装的情况
 pip uninstall moai-adk
 ```
 
-### 步骤 2: 备份现有配置 (可选)
+### 第 2 步:备份既有配置(可选)
 
 ```bash
-# 如果您想备份现有设置
+# 若想备份既有配置
 cp -r ~/.moai ~/.moai-v1-backup
 ```
 
-### 步骤 3: 安装 2.x
+### 第 3 步:安装 2.x
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/modu-ai/moai-adk/main/install.sh | bash
 ```
 
-### 步骤 4: 验证安装
+### 第 4 步:确认安装
 
 ```bash
 moai version
-# 输出示例: moai v2.x.x (commit: abc1234, built: 2026-01-15)
+```
+
+```text
+╭────────────────────────╮
+│                        │
+│    moai-adk v3.0.0     │
+│                        │
+│                        │
+╰────────────────────────╯
+ v3.0.0   none   built unknown
 ```
 
 {{< callout type="info" >}}
-2.x 是单一 Go 二进制文件,无需 Python 运行时或虚拟环境。启动时间从约 800ms 大幅改善至约 5ms。
+Go 版(v2.0+)是单一二进制,不需要 Python 运行时或虚拟环境。启动时间从约 800ms 大幅提升到 5ms。
 {{< /callout >}}
 
 ## WSL 支持
 
-Windows 用户在 WSL (Windows Subsystem for Linux) 环境中安装和使用 MoAI-ADK 的指南。
+为 Windows 用户介绍在 WSL(Windows Subsystem for Linux)环境下的安装与使用方法。
 
-### 安装 WSL
+### WSL 安装
 
-如果尚未安装 WSL,请在 PowerShell (管理员权限) 中运行以下命令:
+若未安装 WSL,请在 PowerShell(管理员权限)中运行以下命令:
 
 ```powershell
 wsl --install
 ```
 
-安装后重启 Windows,Ubuntu 将自动安装。
+安装后重启 Windows,会自动安装 Ubuntu。
 
 ### 在 WSL 中安装 MoAI-ADK
 
@@ -185,7 +195,7 @@ curl -fsSL https://raw.githubusercontent.com/modu-ai/moai-adk/main/install.sh | 
 
 ### 路径处理
 
-需要区分 Windows 路径和 WSL 路径:
+在 WSL 中需要区分 Windows 路径与 WSL 路径:
 
 | Windows 路径 | WSL 路径 |
 |-------------|----------|
@@ -193,16 +203,16 @@ curl -fsSL https://raw.githubusercontent.com/modu-ai/moai-adk/main/install.sh | 
 | `D:\Projects\myapp` | `/mnt/d/Projects/myapp` |
 
 {{< callout type="info" >}}
-**建议**: 在 WSL 的 Linux 文件系统 (`~/projects/`) 中创建项目可获得 2-5 倍的 I/O 性能提升。访问 Windows 文件系统 (`/mnt/c/`) 可能导致性能下降。
+**推荐**:把项目创建在 WSL 的 Linux 文件系统(`~/projects/`)中,I/O 性能会提升 2-5 倍。访问 Windows 文件系统(`/mnt/c/`)可能导致性能下降。
 {{< /callout >}}
 
 ### WSL 最佳实践
 
-1. **使用 Linux 文件系统**: 在 `~/projects/` 目录中创建项目
-2. **配置 Git 凭据**: 在 WSL 中独立于 Windows 配置 Git 凭据
-3. **推荐终端**: 使用 Windows Terminal 管理多个 WSL 发行版
+1. **使用 Linux 文件系统**:项目创建在 `~/projects/` 目录
+2. **配置 Git 凭据**:在 WSL 中单独于 Windows 配置 Git 凭据
+3. **推荐终端**:使用 Windows Terminal 管理多个 WSL 发行版
 
-### WSL 故障排除
+### WSL 问题排查
 
 #### PATH 未加载
 
@@ -215,13 +225,13 @@ export PATH="$HOME/.local/bin:$PATH"
 #### 钩子/MCP 服务器执行权限问题
 
 ```bash
-# 授予执行权限
+# 赋予执行权限
 chmod +x ~/.claude/hooks/moai/*.sh
 ```
 
-#### Windows 路径访问缓慢
+#### Windows 路径访问速度下降
 
-将项目移动到 Linux 文件系统:
+请将项目移动到 Linux 文件系统:
 
 ```bash
 # 从 Windows 移动到 WSL
@@ -231,78 +241,78 @@ cd ~/projects/project
 
 ## pip 与 uv 工具冲突
 
-MoAI-ADK 1.x (Python 版) 用户面临的常见问题。
+这是 MoAI-ADK 1.x(Python 版本)用户可能遇到的常见问题。
 
-### 问题描述
+### 问题说明
 
-pip 和 uv 将包安装到不同位置。混合使用这两个工具可能导致 `moai` 命令执行意外版本。
+pip 与 uv 把包安装到不同的位置。混用两个工具时,`moai` 命令可能运行意料之外的版本。
 
 ### 症状
 
-- 运行 `moai version` 显示 1.x 版本
-- 出现 `command not found: moai` 错误
-- `which moai` 显示的路径与预期不同
+- 运行 `moai version` 时显示 1.x 版本
+- 发生 `command not found: moai` 错误
+- 在与 `which moai` 不同的路径运行
 
-### 根本原因
+### 原因
 
 1. pip 安装到系统 Python 路径
 2. uv tool 安装到 `~/.local/bin` 或 `~/.cargo/bin`
-3. PATH 顺序决定运行哪个版本
+3. 依 PATH 顺序运行不同版本
 
-### 解决方案
+### 解决方法
 
-#### 完全重新安装
+#### 完全卸载后重新安装
 
 ```bash
-# 1. 删除所有现有版本
+# 1. 卸载所有既有版本
 uv tool uninstall moai-adk 2>/dev/null || true
 pip uninstall moai-adk -y 2>/dev/null || true
 
-# 2. 检查并删除残留二进制文件
+# 2. 确认并删除残留的二进制
 which moai && rm $(which moai) 2>/dev/null || true
 ls ~/.local/bin/moai && rm ~/.local/bin/moai 2>/dev/null || true
 
 # 3. 安装 2.x
 curl -fsSL https://raw.githubusercontent.com/modu-ai/moai-adk/main/install.sh | bash
 
-# 4. 验证
+# 4. 确认
 moai version
 ```
 
-#### 更新 Shell 配置
+#### 更新 shell 配置
 
 ```bash
 # 添加到 ~/.bashrc 或 ~/.zshrc
 export PATH="$HOME/.local/bin:$PATH"
 
-# 应用设置
+# 应用配置
 source ~/.bashrc  # 或 source ~/.zshrc
 ```
 
-### 预防措施
+### 预防方法
 
-1. MoAI-ADK 2.x 是独立于 Python 的 Go 二进制文件
-2. 安装 2.x 前请先卸载 1.x (Python 版)
-3. 不要同时使用 pip 和 uv tool
+1. MoAI-ADK 2.x 是与 Python 无关的 Go 二进制
+2. 卸载 1.x(Python 版本)后再安装 2.x
+3. 不要同时使用 pip 与 uv tool
 
-## 故障排除
+## 安装问题排查
 
-### 问题: 命令未找到
+### 问题:找不到命令
 
 ```bash
 command not found: moai
 ```
 
-**解决方案:**
+**解决方法:**
 
 1. 重启终端
-2. 检查 PATH:
+2. 确认 PATH 设置:
 
 ```bash
 echo $PATH
 ```
 
-3. 验证二进制文件位置:
+3. 确认二进制安装位置:
 
 ```bash
 which moai || ls ~/.local/bin/moai
@@ -316,38 +326,38 @@ echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.bashrc
 source ~/.bashrc
 ```
 
-### 问题: 权限被拒绝
+### 问题:权限拒绝
 
 ```bash
 Permission denied
 ```
 
-**解决方案:**
+**解决方法:**
 
 ```bash
 chmod +x ~/.local/bin/moai
 ```
 
-### 问题: 1.x 和 2.x 冲突
+### 问题:1.x 与 2.x 冲突
 
-如果运行的是旧版本的 `moai`:
+当运行的是旧版本 `moai` 命令时:
 
 ```bash
-# 检查正在运行哪个 moai
+# 确认运行的是哪个 moai
 which moai
 
-# 如果 1.x 仍然存在则删除
+# 若残留 1.x 则卸载
 uv tool uninstall moai-adk
 # 或
 pip uninstall moai-adk
 
-# 重启终端后验证 2.x
+# 重启终端后确认 2.x
 moai version
 ```
 
 ## 安装后的下一步
 
-安装完成后,初始化您的项目:
+安装完成后请初始化项目:
 
 ### 创建新项目
 
@@ -355,7 +365,7 @@ moai version
 moai init my-project
 ```
 
-### 应用到现有项目
+### 应用到既有项目
 
 ```bash
 cd my-existing-project
@@ -373,53 +383,42 @@ moai update
 ### 更新选项
 
 ```bash
-# 仅检查版本 (不更新)
+# 仅确认版本(不更新)
 moai update --check
 
-# 仅同步模板 (跳过包升级)
+# 仅同步模板(跳过二进制更新)
 moai update --templates-only
 
-# 配置编辑模式 (重新运行初始化向导)
-moai update --config
+# 配置编辑模式(重新运行初始化向导)
 moai update -c
 
-# 强制更新 (不备份)
+# 强制更新(用户变更备份后覆盖)
 moai update --force
 
-# 自动批准模式 (自动批准所有确认)
+# 自动批准模式(CI/CD)
 moai update --yes
 ```
 
-### 合并策略
-
-```bash
-# 强制自动合并 (默认)
-moai update --merge
-
-# 强制手动合并
-moai update --manual
-```
-
 {{< callout type="info" >}}
-**自动保留项目**: 用户设置、自定义代理、自定义命令、自定义技能、自定义钩子、SPEC 文档和报告在更新时会自动保留。
+**自动保留项目**:用户设置、自定义智能体、自定义命令、自定义技能、自定义钩子、SPEC 文档、报告在更新时会自动保留。用户修改过的模板文件会备份后 3-way 合并。
 {{< /callout >}}
 
-详情请参阅[更新指南](https://adk.mo.ai.kr/getting-started/update)。
+详情请参阅[更新指南](https://adk.mo.ai.kr/cli-reference/update)。
 
 ## 卸载
 
-要完全删除 MoAI-ADK:
+要完全卸载 MoAI-ADK,请删除二进制与配置目录:
 
 ```bash
-# 删除二进制文件
-rm $(which moai)
+# 删除二进制(用 which moai 的结果删除)
+rm "$(which moai)"
 
-# 删除配置目录 (可选)
-rm -rf ~/.moai
+# 删除配置目录(可选)
+rm -rf "$HOME/.moai"
 ```
 
 ---
 
 ## 下一步
 
-在[初始设置向导](./init-wizard)中了解如何配置 MoAI-ADK。
+在[初始设置向导](./init-wizard)中了解 MoAI-ADK 的配置方法。

@@ -25,7 +25,7 @@ security:
   # Permission subsystem keys.
   permission:
     # When strict_mode=true, agent spawn in bypassPermissions mode is rejected.
-    strict_mode: false
+    strict_mode: true
     # SrcBuiltin pre-allowlist patterns (defaults — actual patterns defined in stack.go PreAllowlist()).
     pre_allowlist: []
     # session_rules: session-scoped rules loaded at the SrcSession tier.

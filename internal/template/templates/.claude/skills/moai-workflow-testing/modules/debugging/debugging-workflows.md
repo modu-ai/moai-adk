@@ -8,88 +8,46 @@
 
 ### AIDebugger Class Structure
 
-Complete AIDebugger implementation with Context7 integration, pattern matching, and solution generation. For data class definitions (ErrorType, ErrorAnalysis, Solution, DebugAnalysis), see [ai-debugging.md](../ai-debugging.md).
+Complete AIDebugger implementation with Documentation integration, pattern matching, and solution generation. For data class definitions (ErrorType, ErrorAnalysis, Solution, DebugAnalysis), see [ai-debugging.md](../ai-debugging.md). The error categories below are generic; map each language's exception types onto them (e.g. ImportError/ModuleNotFoundError, AttributeError, TypeError, ValueError).
 
-```python
+```text
 class AIDebugger:
-    """AI-powered debugging with Context7 integration."""
+    docs
+    error_patterns = load_error_patterns()   # generic-category -> {patterns, solutions, topics}
+    error_history = {}
+    pattern_cache = {}
 
-    def __init__(self, context7_client=None):
-        self.context7 = context7_client
-        self.error_patterns = self._load_error_patterns()
-        self.error_history = {}
-        self.pattern_cache = {}
-
-    def _load_error_patterns(self) -> Dict[str, Any]:
-        """Load comprehensive error patterns database."""
+    load_error_patterns():
         return {
-            'ImportError': {
-                'patterns': [
-                    r"No module named '(.+)'",
-                    r"cannot import name '(.+)' from '(.+)'",
-                    r"circular import"
-                ],
-                'solutions': [
-                    'Install missing package',
-                    'Check import path',
-                    'Resolve circular dependencies'
-                ],
-                'context7_topics': [
-                    'python import system best practices',
-                    'module resolution troubleshooting',
-                    'dependency management'
-                ]
-            },
-            'AttributeError': {
-                'patterns': [
-                    r"'(.+)' object has no attribute '(.+)'",
-                    r"module '(.+)' has no attribute '(.+)'"
-                ],
-                'solutions': [
-                    'Check object type and available attributes',
-                    'Verify module import',
-                    'Add missing attribute or method'
-                ],
-                'context7_topics': [
-                    'python attribute access patterns',
-                    'object-oriented debugging',
-                    'introspection techniques'
-                ]
-            },
-            'TypeError': {
-                'patterns': [
-                    r" unsupported operand type\(s\) for",
-                    r" takes \d+ positional arguments but \d+ were given",
-                    r" must be str, not .+"
-                ],
-                'solutions': [
-                    'Check data types before operations',
-                    'Verify function signatures',
-                    'Add type validation'
-                ],
-                'context7_topics': [
-                    'python type system debugging',
-                    'function signature validation',
-                    'type checking best practices'
-                ]
-            },
-            'ValueError': {
-                'patterns': [
-                    r"invalid literal for int\(\) with base 10",
-                    r"cannot convert",
-                    r"empty set"
-                ],
-                'solutions': [
-                    'Validate input data format',
-                    'Add error handling for conversions',
-                    'Check value ranges'
-                ],
-                'context7_topics': [
-                    'input validation patterns',
-                    'data conversion error handling',
-                    'value range checking'
-                ]
-            }
+          IMPORT: {
+            patterns:  ["cannot resolve module", "no module named", "circular import"],
+            solutions: ["Install the missing dependency",
+                        "Check the import path / module specifier",
+                        "Resolve circular dependencies"],
+            docs_topics: ["module resolution", "dependency management"]
+          },
+          MEMBER_ACCESS: {
+            patterns:  ["has no member", "no such attribute", "is not a function"],
+            solutions: ["Check the object type and available members",
+                        "Verify the module import / member name",
+                        "Add the missing member or method"],
+            docs_topics: ["attribute access patterns", "introspection techniques"]
+          },
+          TYPE: {
+            patterns:  ["unsupported operand types", "wrong number of arguments",
+                        "cannot be converted to", "expected .* got"],
+            solutions: ["Check data types before operations",
+                        "Verify the function signature",
+                        "Add type validation / conversion"],
+            docs_topics: ["type system debugging", "type checking best practices"]
+          },
+          VALUE: {
+            patterns:  ["invalid value", "cannot convert", "out of range", "empty"],
+            solutions: ["Validate input data format",
+                        "Add error handling for conversions",
+                        "Check value ranges"],
+            docs_topics: ["input validation patterns", "data conversion error handling"]
+          }
         }
 ```
 
@@ -97,187 +55,120 @@ class AIDebugger:
 
 Complete debug workflow implementation with error classification, pattern matching, solution generation, and prevention strategies:
 
-```python
-    async def debug_with_context7_patterns(
-        self, error: Exception, context: Dict, codebase_path: str
-    ) -> DebugAnalysis:
-        """Debug using AI pattern recognition and Context7 best practices."""
+```text
+    debug_with_docs_patterns(error, context, codebase_path):
+        # Classify the error
+        error_analysis = classify_error_with_ai(error, context)
 
-        # Classify error with high accuracy
-        error_analysis = await self._classify_error_with_ai(error, context)
-
-        # Get Context7 patterns if available
-        context7_patterns = {}
-        if self.context7:
-            context7_patterns = await self._get_context7_patterns(error_analysis)
+        # Fetch Documentation patterns if available
+        docs_patterns = {}
+        if docs available:
+            docs_patterns = get_docs_patterns(error_analysis)
 
         # Match against known patterns
-        pattern_matches = self._match_error_patterns(error, error_analysis)
+        pattern_matches = match_error_patterns(error, error_analysis)
 
         # Generate comprehensive solutions
-        solutions = await self._generate_solutions(
-            error_analysis, context7_patterns, pattern_matches, context
-        )
+        solutions = generate_solutions(error_analysis, docs_patterns, pattern_matches, context)
 
         # Suggest prevention strategies
-        prevention = self._suggest_prevention_strategies(error_analysis, context)
+        prevention = suggest_prevention_strategies(error_analysis, context)
 
-        # Estimate fix time based on complexity
-        fix_time = self._estimate_fix_time(error_analysis, solutions)
+        # Estimate fix time
+        fix_time = estimate_fix_time(error_analysis, solutions)
 
         return DebugAnalysis(
             error_type=error_analysis.type,
             confidence=error_analysis.confidence,
-            context7_patterns=context7_patterns,
+            docs_patterns=docs_patterns,
             solutions=solutions,
             prevention_strategies=prevention,
-            related_errors=self._find_related_errors(error_analysis),
-            estimated_fix_time=fix_time
-        )
+            related_errors=find_related_errors(error_analysis),
+            estimated_fix_time=fix_time)
 ```
 
 ### Error Classification System
 
-AI-enhanced error classification with context awareness using type mapping, message patterns, and contextual analysis:
+AI-enhanced error classification with context awareness using type mapping, message patterns, and contextual analysis. The type-mapping table is populated with the host language's exception names at runtime.
 
-```python
-    async def _classify_error_with_ai(
-        self, error: Exception, context: Dict
-    ) -> ErrorAnalysis:
-        """Classify error using AI-enhanced pattern recognition."""
+```text
+    classify_error_with_ai(error, context):
+        error_type_name = classify(error)
+        error_message   = text(error)
+        error_traceback = format_stack_trace(error)
 
-        error_type_name = type(error).__name__
-        error_message = str(error)
-        error_traceback = traceback.format_exc()
+        classification = classify_by_type_and_message(error_type_name, error_message, context)
 
-        # Enhanced classification with context awareness
-        classification = self._classify_by_type_and_message(
-            error_type_name, error_message, context
-        )
+        # Frequency tracking
+        key = error_type_name + ":" + first 50 chars of error_message
+        frequency = error_history[key] + 1
+        error_history[key] = frequency
 
-        # Analyze frequency and severity
-        error_key = f"{error_type_name}:{error_message[:50]}"
-        frequency = self.error_history.get(error_key, 0) + 1
-        self.error_history[error_key] = frequency
-
-        severity = self._assess_severity(error, context, frequency)
-
-        # Generate likely causes and suggested fixes
-        likely_causes = self._analyze_likely_causes(error_type_name, error_message, context)
-        suggested_fixes = self._generate_quick_fixes(classification, error_message, context)
+        severity       = assess_severity(error, context, frequency)
+        likely_causes  = analyze_likely_causes(error_type_name, error_message, context)
+        suggested_fixes= generate_quick_fixes(classification, error_message, context)
 
         return ErrorAnalysis(
             type=classification,
-            confidence=self._calculate_confidence(classification, error_message),
-            message=error_message,
-            traceback=error_traceback,
-            context=context,
-            frequency=frequency,
-            severity=severity,
-            likely_causes=likely_causes,
-            suggested_fixes=suggested_fixes
-        )
+            confidence=calculate_confidence(classification, error_message),
+            message=error_message, traceback=error_traceback,
+            context=context, frequency=frequency, severity=severity,
+            likely_causes=likely_causes, suggested_fixes=suggested_fixes)
 
-    def _classify_by_type_and_message(
-        self, error_type: str, message: str, context: Dict
-    ) -> ErrorType:
-        """Enhanced error classification using multiple heuristics."""
+    classify_by_type_and_message(error_type, message, context):
+        # Direct mapping from the host language's exception names to generic categories
+        type_mapping = <populated per language>   # e.g. ImportError -> IMPORT, KeyError -> KEY
+        if error_type in type_mapping: return type_mapping[error_type]
 
-        # Direct type mapping
-        type_mapping = {
-            'ImportError': ErrorType.IMPORT,
-            'ModuleNotFoundError': ErrorType.IMPORT,
-            'AttributeError': ErrorType.ATTRIBUTE_ERROR,
-            'KeyError': ErrorType.KEY_ERROR,
-            'TypeError': ErrorType.TYPE_ERROR,
-            'ValueError': ErrorType.VALUE_ERROR,
-            'SyntaxError': ErrorType.SYNTAX,
-            'IndentationError': ErrorType.SYNTAX,
-        }
-
-        if error_type in type_mapping:
-            return type_mapping[error_type]
-
-        # Message-based classification
-        message_lower = message.lower()
-
-        network_keywords = ['connection', 'timeout', 'network', 'http', 'socket']
-        database_keywords = ['database', 'sql', 'query', 'connection', 'cursor']
-        memory_keywords = ['memory', 'out of memory', 'allocation', 'heap']
-        concurrency_keywords = ['thread', 'lock', 'race condition', 'concurrent']
-
-        if any(keyword in message_lower for keyword in network_keywords):
-            return ErrorType.NETWORK
-        if any(keyword in message_lower for keyword in database_keywords):
-            return ErrorType.DATABASE
-        if any(keyword in message_lower for keyword in memory_keywords):
-            return ErrorType.MEMORY
-        if any(keyword in message_lower for keyword in concurrency_keywords):
-            return ErrorType.CONCURRENCY
+        # Message-keyword classification
+        msg = lowercase(message)
+        if any of ["connection","timeout","network","http","socket"] in msg: return NETWORK
+        if any of ["database","sql","query","cursor"]            in msg: return DATABASE
+        if any of ["memory","out of memory","allocation","heap"] in msg: return MEMORY
+        if any of ["thread","lock","race condition","concurrent"]in msg: return CONCURRENCY
 
         # Context-based classification
-        if context.get('operation_type') == 'database':
-            return ErrorType.DATABASE
-        elif context.get('operation_type') == 'network':
-            return ErrorType.NETWORK
-
-        return ErrorType.UNKNOWN
+        if context.operation_type == "database": return DATABASE
+        if context.operation_type == "network":  return NETWORK
+        return UNKNOWN
 ```
 
-### Context7 Integration
+### Documentation Integration
 
 Automatic documentation retrieval for latest debugging patterns and best practices with intelligent caching:
 
-```python
-    async def _get_context7_patterns(
-        self, error_analysis: ErrorAnalysis
-    ) -> Dict[str, Any]:
-        """Get latest debugging patterns from Context7."""
+```text
+    get_docs_patterns(error_analysis):
+        cache_key = error_analysis.type + "_" + first 30 chars of message
+        if cache_key in pattern_cache: return pattern_cache[cache_key]
 
-        cache_key = f"{error_analysis.type.value}_{error_analysis.message[:30]}"
-        if cache_key in self.pattern_cache:
-            return self.pattern_cache[cache_key]
-
-        # Determine appropriate Context7 libraries based on error type
-        context7_queries = self._build_context7_queries(error_analysis)
-
+        queries = build_docs_queries(error_analysis)
         patterns = {}
-        if self.context7:
-            for library_id, topic in context7_queries:
+        if docs available:
+            for (library_id, topic) in queries:
                 try:
-                    result = await self.context7.get_library_docs(
-                        context7_library_id=library_id,
-                        topic=topic,
-                        tokens=4000
-                    )
-                    patterns[library_id] = result
-                except Exception as e:
-                    print(f"Context7 query failed for {library_id}: {e}")
-
-        # Cache results
-        self.pattern_cache[cache_key] = patterns
+                    patterns[library_id] = docs.get_library_docs(
+                        library_id, topic, tokens=4000)
+                except e:
+                    log("Documentation query failed for " + library_id + ": " + e)
+        pattern_cache[cache_key] = patterns
         return patterns
 
-    def _build_context7_queries(self, error_analysis: ErrorAnalysis) -> List[tuple]:
-        """Build Context7 queries based on error analysis."""
-
+    build_docs_queries(error_analysis):
         queries = []
-
-        # Base debugging library
-        queries.append(("/microsoft/debugpy",
-                        f"AI debugging patterns {error_analysis.type.value} error analysis 2025"))
-
-        # Language-specific libraries
-        if error_analysis.context.get('language') == 'python':
-            queries.append(("/python/cpython",
-                            f"{error_analysis.type.value} debugging best practices"))
-
-        # Framework-specific queries
-        framework = error_analysis.context.get('framework')
+        # Base debugging library / docs
+        queries.append(("<debugging-library>",
+                        "AI debugging patterns " + error_analysis.type + " error analysis"))
+        # Language-specific library when the language is known
+        lang = error_analysis.context.language
+        if lang:
+            queries.append(("<" + lang + " stdlib/runtime>",
+                            error_analysis.type + " debugging best practices"))
+        # Framework-specific query when a framework is named
+        framework = error_analysis.context.framework
         if framework:
-            queries.append((f"/{framework}/{framework}",
-                            f"{framework} {error_analysis.type.value} troubleshooting"))
-
+            queries.append(("<" + framework + ">",
+                            framework + " " + error_analysis.type + " troubleshooting"))
         return queries
 ```
 
@@ -287,140 +178,94 @@ Automatic documentation retrieval for latest debugging patterns and best practic
 
 Self-improving debugger that learns from successful fixes with pattern recognition and success rate tracking:
 
-```python
+```text
 class LearningDebugger(AIDebugger):
-    """Debugger that learns from fixed errors."""
+    learned_patterns  = {}
+    successful_fixes  = {}
 
-    def __init__(self, context7_client=None):
-        super().__init__(context7_client)
-        self.learned_patterns = {}
-        self.successful_fixes = {}
-
-    def record_successful_fix(
-        self, error_signature: str, applied_solution: str
-    ):
-        """Record successful fix for future reference."""
-        if error_signature not in self.successful_fixes:
-            self.successful_fixes[error_signature] = []
-
-        self.successful_fixes[error_signature].append({
-            'solution': applied_solution,
-            'timestamp': datetime.now().isoformat(),
-            'success_rate': 1.0
+    record_successful_fix(error_signature, applied_solution):
+        successful_fixes.setdefault(error_signature, []).append({
+            solution:     applied_solution,
+            timestamp:    now_iso(),
+            success_rate: 1.0
         })
 
-    def get_learned_solutions(self, error_signature: str) -> List[Solution]:
-        """Get solutions learned from previous fixes."""
-        if error_signature in self.successful_fixes:
-            learned = self.successful_fixes[error_signature]
-            solutions = []
-            for fix in learned:
-                if fix['success_rate'] > 0.7:
-                    solution = Solution(
-                        type='learned_pattern',
-                        description=f"Previously successful fix: {fix['solution']}",
-                        code_example=fix['solution'],
-                        confidence=fix['success_rate'],
-                        impact='high',
-                        dependencies=[]
-                    )
-                    solutions.append(solution)
-            return solutions
-        return []
+    get_learned_solutions(error_signature):
+        learned = successful_fixes.get(error_signature, [])
+        solutions = []
+        for fix in learned:
+            if fix.success_rate > 0.7:
+                solutions.append(Solution(
+                    type='learned_pattern',
+                    description="Previously successful fix: " + fix.solution,
+                    code_example=fix.solution,
+                    confidence=fix.success_rate, impact='high'))
+        return solutions
 ```
 
 ### Enhanced Context Collection
 
-Comprehensive debug context extraction with stack frame analysis for improved error classification:
+Comprehensive debug context extraction with stack frame analysis for improved error classification. Use the host language's reflection/introspection API to walk the stack.
 
-```python
-def collect_debug_context(
-    error: Exception,
-    frame_depth: int = 5
-) -> Dict[str, Any]:
-    """Collect comprehensive debug context."""
-    import inspect
-    import sys
-    from datetime import datetime
-
-    frame = inspect.currentframe()
+```text
+collect_debug_context(error, frame_depth = 5):
     context = {
-        'error_type': type(error).__name__,
-        'error_message': str(error),
-        'timestamp': datetime.now().isoformat(),
-        'python_version': sys.version,
-        'stack_trace': []
+        error_type:    classify(error),
+        error_message: text(error),
+        timestamp:     now_iso(),
+        runtime:       runtime_version(),     # language runtime + version
+        stack_trace:   []
     }
-
-    for _ in range(frame_depth):
-        if frame:
-            frame_info = {
-                'filename': frame.f_code.co_filename,
-                'function': frame.f_code.co_name,
-                'lineno': frame.f_lineno,
-                'locals': list(frame.f_locals.keys())
-            }
-            context['stack_trace'].append(frame_info)
-            frame = frame.f_back
-
+    frame = current_stack_frame()
+    for _ in 0..frame_depth:
+        if frame is none: break
+        context.stack_trace.append({
+            filename: frame.file,
+            function: frame.function,
+            lineno:   frame.line,
+            locals:   keys(frame.local_variables)
+        })
+        frame = frame.caller
     return context
 ```
 
 ### Usage Examples
 
-Complete usage examples for common debugging scenarios:
+Complete usage examples for common debugging scenarios. The try/catch idiom varies by language; the analysis call shape is identical.
 
-```python
+```text
 # Basic usage
-debugger = AIDebugger(context7_client=context7)
-
+debugger = AIDebugger(docs_client=docs)
 try:
     result = some_risky_operation()
-except Exception as e:
-    analysis = await debugger.debug_with_context7_patterns(
+catch e:
+    analysis = debugger.debug_with_docs_patterns(
         e,
-        {'file': __file__, 'function': 'some_risky_operation', 'language': 'python'},
-        '/project/src'
-    )
-
-    print(f"Error type: {analysis.error_type}")
-    print(f"Confidence: {analysis.confidence}")
-    print(f"Solutions found: {len(analysis.solutions)}")
-
-    for i, solution in enumerate(analysis.solutions, 1):
-        print(f"\nSolution {i}:")
-        print(f" Description: {solution.description}")
-        print(f" Confidence: {solution.confidence}")
-        print(f" Impact: {solution.impact}")
-        if solution.code_example:
-            print(f" Example:\n{solution.code_example}")
+        { file: current_file, function: "some_risky_operation", language: <lang> },
+        "/project/src")
+    print("Error type: " + analysis.error_type)
+    print("Confidence: " + analysis.confidence)
+    print("Solutions found: " + len(analysis.solutions))
+    for (i, solution) in enumerate(analysis.solutions, from=1):
+        print("  Solution " + i + ": " + solution.description + " (conf " + solution.confidence + ")")
 
 # Advanced usage with custom context
 try:
     data = process_user_input(user_data)
-except Exception as e:
-    analysis = await debugger.debug_with_context7_patterns(
+catch e:
+    analysis = debugger.debug_with_docs_patterns(
         e,
-        {
-            'file': __file__,
-            'function': 'process_user_input',
-            'language': 'python',
-            'framework': 'django',
-            'operation_type': 'data_processing',
-            'user_facing': True,
-            'production': False
-        },
-        '/project/src'
-    )
-
+        { file: current_file, function: "process_user_input", language: <lang>,
+          framework: <framework>, operation_type: "data_processing",
+          user_facing: true, production: false },
+        "/project/src")
     print("Prevention strategies:")
-    for strategy in analysis.prevention_strategies:
-        print(f" - {strategy}")
+    for strategy in analysis.prevention_strategies: print(" - " + strategy)
 
 # Check debug statistics
-stats = debugger.get_debug_statistics()
-print(f"Debugged {stats['total_errors_analyzed']} errors")
-print(f"Most common: {stats['most_common_errors'][:3]}")
+stats = debugger.debug_statistics()
+print("Debugged " + stats.total_errors_analyzed + " errors")
+print("Most common: " + first 3 of stats.most_common_errors)
 ```
 
 ## Best Practices

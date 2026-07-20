@@ -3,21 +3,22 @@ package tui
 import (
 	"os"
 
-	"github.com/charmbracelet/lipgloss"
+	"charm.land/lipgloss/v2"
 )
 
 // Env is the interface used by Resolve to inspect the execution environment.
 // A small interface allows unit tests to inject fixed values without mutating
 // process-level environment variables (t.Setenv has race issues in parallel tests).
 //
-// # API Verification (M7)
+// # API Verification (Charm v2 migration)
 //
-// lipgloss v1.1.0 still exports [lipgloss.HasDarkBackground] (confirmed via
-// go/pkg/mod/github.com/charmbracelet/lipgloss@v1.1.0/renderer.go). The function
-// queries the default renderer's background-color detection.  We expose it
+// lipgloss v2 exports [lipgloss.HasDarkBackground] with explicit terminal
+// handles: HasDarkBackground(in, out term.File) bool. It queries the terminal
+// background (OSC 11) and returns true (dark) when it encounters an error —
+// the same safe-dark default as the v1 renderer-based detection. We expose it
 // through this interface so callers can override it in tests via DetectDark().
 //
-// colorprofile.Detect() (github.com/charmbracelet/colorprofile v0.4.1) is used
+// colorprofile.Detect() (github.com/charmbracelet/colorprofile) is used
 // in profile.go for colour-depth detection; it is NOT used here because
 // HasDarkBackground is the correct primitive for light/dark selection.
 //
@@ -94,9 +95,13 @@ func (OSEnv) MoaiTheme() string {
 	return envLookup("MOAI_THEME")
 }
 
-// DetectDark delegates to [lipgloss.HasDarkBackground].
+// DetectDark delegates to [lipgloss.HasDarkBackground] with the process
+// stdin/stdout handles (lipgloss v2 explicit-handle API). The observable
+// resolution order is unchanged: this is only consulted by Resolve when the
+// env-var chain (NO_COLOR > MOAI_THEME) does not decide the theme, and it
+// returns true (dark, the safe default) when detection fails (non-TTY, error).
 func (OSEnv) DetectDark() bool {
-	return lipgloss.HasDarkBackground()
+	return lipgloss.HasDarkBackground(os.Stdin, os.Stdout)
 }
 
 // ResolveOS is a convenience wrapper that calls Resolve with the production

@@ -4,85 +4,90 @@ weight: 50
 draft: false
 ---
 
-同步已完成实现的代码的文档，并通过 Git 自动化准备部署。
+同步已完成实现的代码文档,并通过 Git 自动化准备部署。这是 3-Phase 生命周期的最后一步。
 
 {{< callout type="info" >}}
-**斜杠命令**: 在 Claude Code 中输入 `/moai:sync` 可以直接运行此命令。仅输入 `/moai` 即可查看所有可用子命令列表。
+**斜杠命令**: 在 Claude Code 中输入 `/moai:sync` 即可直接执行此命令。仅输入 `/moai` 会显示所有可用子命令列表。
 {{< /callout >}}
 
 ## 概述
 
-`/moai sync` 是 MoAI-ADK 工作流的 **Phase 3 (Sync)** 命令。它分析在 Phase 2 中实现的代码以自动生成文档，并创建 Git 提交和 PR (Pull Request) 以完成部署准备。内部由 **manager-docs** agent 管理整个过程。
+`/moai sync` 是 MoAI-ADK 工作流的 **Phase 3 (Sync)** 命令。它分析 Phase 2 中完成实现的代码,自动生成文档,并创建 Git 提交与 PR (Pull Request),完成部署准备。内部由 **manager-docs** 智能体管理整个过程。
+
+同步产出由 **sync-auditor** 独立评估 — 生成文档的智能体与检查的智能体相互分离,阶段的收尾依据的是经过验证的证据,而不是"已同步"的口头主张。
 
 {{< callout type="info" >}}
+**为什么需要文档同步?**
 
-**为什么需要文档同步？**
+写完代码后再单独撰写文档既繁琐,又容易造成代码与文档不一致。
+`/moai sync` 解决了这个问题:
 
-编写代码后单独编写文档很繁琐，代码和文档容易不一致。`/moai sync` 解决了这个问题:
+- **分析代码** 并 **自动生成** API 文档
+- **自动更新** README 与 CHANGELOG
+- **自动创建** Git 提交与 PR
 
-- **分析代码**以**自动生成** API 文档
-- **自动更新** README 和 CHANGELOG
-- **自动创建** Git 提交和 PR
-
-由于代码更改和文档始终同步，"文档过时"的问题消失了。
+代码变更与文档始终保持同步,"文档过时了"的问题就此消失。
 
 {{< /callout >}}
 
-## 用法
+## 使用方法
 
 在 Run 阶段完成后执行:
 
 ```bash
-# Run 阶段完成后运行 /clear (推荐)
+# Run 阶段完成后执行 /clear(推荐)
 > /clear
 
-# 文档同步和 PR 创建
+# 文档同步与创建 PR
 > /moai sync
 ```
 
 ## 支持的模式
 
-| 模式          | 描述                        | 使用时机                  |
+| 模式          | 说明                        | 使用时机                  |
 | ------------- | --------------------------- | -------------------------- |
-| `auto` (默认) | 仅智能同步更改的文件   | 日常开发                  |
-| `force`       | 重新生成所有文档            | 错误恢复、大规模重构 |
+| `auto` (默认) | 仅智能同步变更文件   | 日常开发                  |
+| `force`       | 重新生成全部文档            | 错误恢复、大规模重构 |
 | `status`      | 只读状态检查         | 快速健康检查             |
-| `project`     | 更新整个项目文档 | 里程碑完成、定期同步 |
+| `project`     | 更新项目整体文档 | 里程碑完成、周期性同步 |
 
-### 按模式使用
+默认 `auto` 模式只挑选变更文件进行同步,这也是令牌经济学设计 — 如果没有理由每次重建全部文档,就不消耗那部分令牌。
+
+### 各模式用法
 
 ```bash
-# 默认模式 (仅更改的文件)
+# 默认模式(仅变更文件)
 > /moai sync
 
-# 完整重新生成
+# 全量重新生成
 > /moai sync --mode force
 
-# 仅状态检查
+# 仅确认状态
 > /moai sync --mode status
 
-# 更新整个项目
+# 项目整体更新
 > /moai sync --mode project
 ```
 
 ## 支持的标志
 
-| 标志    | 描述                 | 示例                 |
+| 标志    | 说明                 | 示例                 |
 | --------- | -------------------- | -------------------- |
 | `--pr`   | 跳过 changelog 提示并自动打开 PR | `/moai sync --pr` |
+| `--merge` | 完成后自动合并 PR | `/moai sync --merge` |
+| `--skip-mx` | 跳过 MX 标签检查 | `/moai sync --skip-mx` |
+| `--team`  | 强制智能体团队模式 | `/moai sync --team`   |
+| `--solo`  | 强制子智能体模式 | `/moai sync --solo`   |
+
 ### --pr 标志
 
-跳过 changelog 提示并自动打开 PR:
+跳过 changelog 提示,自动打开 PR:
 
 ```bash
 > /moai sync --pr
 ```
 
-**使用场景**: 当您想在不手动输入 changelog 信息的情况下快速创建 PR 时。changelog 可以在 PR 审查期间稍后添加。
-
-| `--merge` | 完成后自动合并 PR | `/moai sync --merge` |
-| `--team`  | 强制代理团队模式 | `/moai sync --team`   |
-| `--solo`  | 强制子代理模式   | `/moai sync --solo`   |
+**使用场景**: 不想手动输入 changelog 信息、希望快速创建 PR 时。changelog 可以在 PR 审查期间稍后补充。
 
 ### --merge 标志
 
@@ -94,52 +99,53 @@ Sync 完成后自动合并 PR 并清理分支:
 
 **工作流程:**
 
-1. 检查 CI/CD 状态 (gh pr checks)
-2. 检查合并冲突 (gh pr view --json mergeable)
+1. 确认 CI/CD 状态 (gh pr checks)
+2. 确认合并冲突 (gh pr view --json mergeable)
 3. 通过且可合并时: 自动合并 (gh pr merge --squash --delete-branch)
-4. 签出到 develop 分支，pull，删除本地分支
+4. 检出到 develop 分支,pull,删除本地分支
 
 {{< callout type="info" >}}
-  `--merge` 选项仅在 **CI/CD 通过时**自动合并 PR。确保安全自动化。
+  `--merge` 选项 **仅在 CI/CD 通过时** 自动合并 PR。保障安全的
+  自动化。
 {{< /callout >}}
 
-**Token 效率策略:**
+**令牌效率化策略:**
 
-- 仅从 SPEC 文档加载元数据和摘要
-- 缓存并重用先前阶段的更改文件列表
-- 使用文档模板减少生成时间
+- 只加载 SPEC 文档的元数据与摘要
+- 缓存并复用上一阶段的变更文件列表
+- 使用文档模板缩短生成时间
 
 ## 执行过程
 
-`/moai sync` 内部执行的整个过程:
+`/moai sync` 在内部执行的完整过程如下:
 
 ```mermaid
 flowchart TD
-    A["执行命令<br/>/moai sync"] --> B["Phase 0.5<br/>质量验证"]
+    A["执行命令<br/>/moai sync"] --> B["Phase 7<br/>质量验证"]
 
     B --> C["检测项目语言"]
-    C --> D["运行并行诊断"]
+    C --> D["执行并行诊断"]
 
     subgraph D["并行诊断"]
         D1["运行测试"]
-        D2["运行 Linter"]
+        D2["运行 linter"]
         D3["类型检查"]
     end
 
     D --> E{"测试失败?"}
     E -->|是| F["询问用户<br/>是否继续"]
-    F -->|中止| G["退出"]
-    F -->|继续| H["继续 Phase 1"]
+    F -->|Abort| G["结束"]
+    F -->|Continue| H["继续 Phase 1"]
 
-    E -->|否| H["Phase 1<br/>分析和规划"]
+    E -->|否| H["Phase 1<br/>分析与规划"]
 
-    H --> I["检查前提条件"]
-    I --> J["分析 Git 更改"]
+    H --> I["检查前置条件"]
+    I --> J["分析 Git 变更"]
     J --> K["验证项目状态"]
-    K --> L["调用 manager-docs<br/>创建同步计划"]
+    K --> L["调用 manager-docs<br/>制定同步计划"]
 
     L --> M{"用户批准"}
-    M -->|否| N["退出"]
+    M -->|否| N["结束"]
     M -->|是| O["Phase 2<br/>执行文档同步"]
 
     O --> P["创建安全备份"]
@@ -150,40 +156,40 @@ flowchart TD
     T --> U["更新 SPEC 状态"]
 
     U --> V["调用 sync-auditor<br/>质量验证"]
-    V --> W{"质量门?"}
+    V --> W{"质量标准?"}
     W -->|FAIL| G
     W -->|PASS| X["Phase 3<br/>Git 操作"]
 
-    X --> Y["调用 manager-git<br/>暂存更改的文件"]
+    X --> Y["调用 manager-git<br/>暂存变更文件"]
     Y --> Z["创建提交"]
     Z --> AA{"--merge 标志?"}
-    AA -->|是| AB["检查 PR 状态"]
+    AA -->|是| AB["确认 PR 状态"]
     AB --> AC["自动合并"]
     AB --> AD["跳过合并"]
     AC --> AE["完成"]
     AD --> AE
-    AA -->|否| AF{"团队模式?"}
-    AF -->|是| AG["转换为 PR Ready"]
+    AA -->|否| AF{"Team 模式?"}
+    AF -->|是| AG["转换 PR 为 Ready"]
     AF -->|否| AE
     AG --> AE
 ```
 
-## 分阶段详情
+## 各阶段详解
 
-### Phase 0.5: 质量验证 (并行诊断)
+### Phase 7: 质量验证(并行诊断)
 
 在文档同步前验证项目质量。
 
 **Step 1 - 检测项目语言:**
 
-| 语言                | 指示文件                                  |
+| 语言                | 标志文件                                  |
 | ------------------- | ------------------------------------------ |
 | Python              | pyproject.toml, setup.py, requirements.txt |
 | TypeScript          | tsconfig.json, package.json (typescript)   |
-| JavaScript          | package.json (无 tsconfig)                 |
+| JavaScript          | package.json (no tsconfig)                 |
 | Go                  | go.mod, go.sum                             |
 | Rust                | Cargo.toml, Cargo.lock                     |
-| 支持其他 11 种语言 |
+| 另支持其他 11 种语言 |
 
 **Step 2 - 并行诊断:**
 
@@ -191,28 +197,28 @@ flowchart TD
 
 | 诊断工具   | 目的             | 超时 |
 | ----------- | ---------------- | -------- |
-| 测试运行 | 检测测试失败 | 180 秒    |
-| Linter        | 检查代码样式 | 120 秒    |
+| 运行测试 | 检测测试失败 | 180 秒    |
+| Linter        | 检查代码风格 | 120 秒    |
 | 类型检查   | 检查类型错误   | 120 秒    |
 
 **Step 3 - 处理测试失败:**
 
-当测试失败时，向用户展示选项:
+测试失败时向用户提示选项:
 
-- **Continue**: 无论失败都继续
-- **Abort**: 停止并退出
+- **Continue**: 无视失败继续
+- **Abort**: 中断并结束
 
 **Step 4 - 代码审查:**
 
-**sync-auditor** subagent 执行 TRUST 5 质量验证并生成综合报告。
+**sync-auditor** 子智能体执行 TRUST 5 质量验证并生成综合报告。
 
 **Step 5 - 生成质量报告:**
 
-汇总 test-runner、linter、type-checker、code-review 的状态并确定整体状态 (PASS 或 WARN)。
+汇总 test-runner、linter、type-checker、code-review 的状态,并判定整体状态 (PASS 或 WARN)。
 
-### Phase 1: 分析和规划
+### Phase 1: 分析与规划
 
-**manager-docs** subagent 创建同步策略。
+**manager-docs** 子智能体制定同步策略。
 
 **输出:** documents_to_update、specs_requiring_sync、project_improvements_needed、estimated_scope
 
@@ -222,126 +228,126 @@ flowchart TD
 
 在修改前创建备份:
 
-- 创建时间戳
+- 生成时间戳
 - 备份目录: `.moai-backups/sync-{timestamp}/`
-- 复制重要文件: README.md、docs/、.moai/specs/
+- 复制重要文件: README.md, docs/, .moai/specs/
 - 验证备份完整性
 
 **Step 2 - 文档同步:**
 
-**manager-docs** subagent 执行以下任务:
+**manager-docs** 子智能体执行以下工作:
 
-- 在 Living Documents 中反映更改的代码
-- 自动生成和更新 API 文档
+- 将变更的代码反映到 Living Documents
+- 自动生成与更新 API 文档
 - 必要时更新 README
 - 同步架构文档
-- 修复项目问题和恢复损坏的引用
-- 确保 SPEC 文档与实现匹配
-- 检测更改的领域并创建特定领域的更新
+- 修复项目问题并恢复损坏的引用
+- 确认 SPEC 文档与实现一致
+- 检测变更的域并生成按域更新
 - 生成同步报告: `.moai/reports/sync-report-{timestamp}.md`
 
 **Step 3 - 同步后质量验证:**
 
-**sync-auditor** subagent 根据 TRUST 5 标准验证同步质量:
+**sync-auditor** 子智能体以 TRUST 5 标准验证同步质量:
 
-- 所有项目链接完成
-- 文档格式良好
-- 所有文档一致
-- 无凭据泄露
-- 所有 SPEC 适当链接
+- 所有项目链接完整
+- 文档格式规范
+- 所有文档保持一致
+- 无凭证泄露
+- 所有 SPEC 得到恰当关联
 
 **Step 4 - 更新 SPEC 状态:**
 
-批量更新完成的 SPEC 状态为 "completed"，记录版本更改和状态转换。
+批量更新已完成 SPEC 的状态,设为 "completed",并记录版本变更与状态转换。
 
-### Phase 3: Git 操作和 PR
+### Phase 3: Git 操作与 PR
 
-**manager-git** subagent 执行 Git 操作:
+**manager-git** 子智能体执行 Git 操作:
 
 **Step 1 - 创建提交:**
 
-- 暂存所有更改的文档、报告、README、docs/ 文件
-- 创建单个提交，列出同步的文档、项目修复、SPEC 更新
-- 使用 git log 验证提交
+- 暂存所有变更的文档、报告、README、docs/ 文件
+- 创建单个提交,列出同步的文档、项目修复、SPEC 更新
+- 用 git log 验证提交
 
-**Step 2 - 转换为 PR Ready (仅团队模式):**
+**Step 2 - 转换 PR 为 Ready(仅 Team 模式):**
 
-- 检查 git_strategy.mode 中的设置
-- 如果是团队模式: 从 Draft PR 转换为 Ready (gh pr ready)
-- 如果配置则分配审查者和标签
-- 如果是个人模式: 跳过
+- 在 git_strategy.mode 中确认设置
+- Team 模式时: 从 Draft PR 转换为 Ready (gh pr ready)
+- 如有配置,指定审查者并分配标签
+- Personal 模式时: 跳过
 
-**Step 3 - 自动合并 (仅 --merge 标志):**
+**Step 3 - 自动合并(使用 --merge 标志时):**
 
-- 使用 gh pr checks 检查 CI/CD 状态
-- 使用 gh pr view --json mergeable 检查合并冲突
-- 通过且可合并时: 运行 gh pr merge --squash --delete-branch
-- 签出到 develop，pull，删除本地分支
+- 用 gh pr checks 确认 CI/CD 状态
+- 用 gh pr view --json mergeable 确认合并冲突
+- 通过且可合并时: 执行 gh pr merge --squash --delete-branch
+- 检出 develop,pull,删除本地分支
 
-### Phase 4: 完成和后续步骤
+### Phase 4: 完成与下一步
 
 **标准完成报告:**
 
-汇总并显示以下内容:
+汇总显示以下内容:
 
-- mode、scope、更新/创建的文件数
-- 项目改进
+- mode、scope、更新/生成的文件数
+- 项目改进事项
 - 更新的文档
 - 生成的报告
 - 备份位置
 
-**Worktree 模式后续步骤 (从 git 上下文自动检测):**
+**Worktree 模式下一步(从 git 上下文自动检测):**
 
-| 选项                 | 描述                         |
+| 选项                 | 说明                         |
 | -------------------- | ---------------------------- |
-| 返回主目录 | 退出 worktree 并转到主       |
-| 在 Worktree 中继续    | 在当前 worktree 中继续工作  |
-| 切换到其他 Worktree | 选择另一个 worktree           |
-| 删除此 Worktree     | 清理 worktree                |
+| 返回主目录 | 离开 worktree 回到主目录 |
+| 在 worktree 中继续    | 在当前 worktree 继续工作  |
+| 切换到其他 worktree | 选择其他 worktree           |
+| 移除此 worktree     | 清理 worktree                |
 
-**分支模式后续步骤 (从 git 上下文自动检测):**
+**分支模式下一步(从 git 上下文自动检测):**
 
-| 选项                  | 描述                      |
+| 选项                  | 说明                      |
 | --------------------- | ------------------------- |
-| 提交并推送更改 | 将更改上传到远程    |
-| 返回主分支    | 转到 develop 或 main     |
+| 提交并推送变更 | 将变更上传到远端    |
+| 返回主分支    | 到 develop 或 main     |
 | 创建 PR               | 创建 Pull Request         |
-| 在分支上继续       | 在当前分支上继续工作 |
+| 在分支上继续       | 在当前分支继续工作 |
 
-**标准后续步骤:**
+**标准下一步:**
 
-| 选项           | 描述                     |
+| 选项           | 说明                     |
 | -------------- | ------------------------ |
-| 创建下一个 SPEC | 运行 `/moai plan`        |
-| 开始新会话   | 运行 `/clear`            |
-| 查看 PR        | 团队模式: gh pr view    |
-| 继续开发      | 个人模式: 继续工作 |
+| 创建下一个 SPEC | 执行 `/moai plan`        |
+| 开始新会话   | 执行 `/clear`            |
+| 审查 PR        | Team 模式: gh pr view    |
+| 继续开发      | Personal 模式: 继续工作 |
 
 ## 生成的文档
 
-`/moai sync` 自动生成或更新的文档:
+`/moai sync` 自动生成或更新的文档如下:
 
 ### API 文档
 
-从实现的代码分析 API 端点、函数签名和类结构以创建文档。
+从已实现的代码中分析 API 端点、函数签名、类结构,生成文档。
 
 | 文档类型    | 内容                         | 生成条件               |
 | ------------ | ---------------------------- | ----------------------- |
-| API 参考 | 端点、请求/响应架构 | 当包含 REST API 时  |
-| 函数文档    | 参数、返回值、异常       | 当包含公共函数时 |
-| 类文档  | 属性、方法、继承关系      | 当包含类时    |
+| API 参考 | 端点、请求/响应 schema | 包含 REST API 时  |
+| 函数文档    | 参数、返回值、异常       | 包含公开函数时 |
+| 类文档  | 属性、方法、继承关系      | 包含类时    |
 
-### README 更新
+### 更新 README
 
 按如下方式更新项目的 README.md:
 
-- **使用方法部分**: 新增功能的使用示例
+- **用法部分**: 新增功能的使用示例
 - **API 部分**: 添加新端点列表
-- **依赖项部分**: 反映新添加的库
+- **依赖部分**: 反映新添加的库
 
-### CHANGELOG 编写
+### 撰写 CHANGELOG
 
-以 [Keep a Changelog](https://keepachangelog.com) 格式记录更改历史:
+以 [Keep a Changelog](https://keepachangelog.com) 格式记录变更历史:
 
 ```markdown
 ## [Unreleased]
@@ -356,9 +362,9 @@ flowchart TD
 
 ## Git 自动化
 
-`/moai sync` 在文档生成后自动执行 Git 操作。
+`/moai sync` 在生成文档后自动执行 Git 操作。
 
-### 提交消息格式
+### 提交信息格式
 
 MoAI-ADK 遵循 [Conventional Commits](https://www.conventionalcommits.org/) 格式:
 
@@ -372,47 +378,45 @@ MoAI-ADK 遵循 [Conventional Commits](https://www.conventionalcommits.org/) 格
 
 ## PR 创建后的 CI 监控
 
-`/moai sync` 创建 PR 后，MoAI-ADK 立即执行两阶段的自动监控流程。Wave 1
-通过轮询 CI 结果判断哪个 required check 失败，Wave 2 在出现失败时进入
-自动修复循环。
+`/moai sync` 创建 PR 之后,MoAI-ADK 会执行两个阶段的自动监控。Wave 1 轮询 CI 结果,判断哪个 required check 失败;Wave 2 在发生失败时进入自动 fix 循环。PR 创建后也无需人工盯着 CI 界面,而是由回路观察结果并做出响应 — 这是智能体回路工程延伸到 CI 领域的结构。
 
-### Wave 1 — CI 结果轮询
+### Wave 1 — 轮询 CI 结果
 
-- 以 **30 秒间隔**调用 `gh pr checks` (尊重 GitHub API rate limit)
-- 30 分钟硬性超时 — 若 required check 未在该时间内完成，
-  watch loop 以 exit code 3 退出
-- required check 定义 SSoT: `.github/required-checks.yml`
-- auxiliary check 失败不会阻止 merge (仅作为 warning)
+- 以 30 秒间隔调用 `gh pr checks`(尊重 GitHub API rate limit)
+- 30 分钟硬性超时 — 若 required check 在该时间内未完成,
+  watch loop 以 exit code 3 结束
+- required check 定义的 SSoT: `.github/required-checks.yml`
+- auxiliary check 即使失败也不是 merge blocker(仅警告)
 
-### Wave 2 — 自动修复循环 (最多 3 次)
+### Wave 2 — 自动 fix 循环(最多 3 次)
 
-required check 失败时，MoAI-ADK 进入自动修复循环。
+required check 失败时,MoAI-ADK 进入自动 fix 循环。
 
-- 每次 iteration 以**新 commit** 应用修复 (禁止 force-push / amend)
-- 每次 PR push 最多 3 iterations (非 per-session)
-- iteration ≥ 4 时通过 blocking AskUserQuestion 升级到用户
+- 每次 iteration 都以 **新 commit** 应用 fix(禁止 force-push / amend)
+- 每次 PR push 最多 3 次 iterations(不是 per-session)
+- iteration ≥ 4 时,通过 blocking AskUserQuestion 升级至用户
 
-### 自动处理 vs 需人工决定
+### 自动处理 vs 需要人工决策
 
-| 故障类型                   | 自动处理?  | 备注                                            |
-| -------------------------- | ---------- | ----------------------------------------------- |
-| lint error                 | 自动       | `golangci-lint` autofix 可处理的项目            |
-| format drift               | 自动       | `gofmt` / `prettier` 等                         |
-| test syntax error          | 自动       | import 缺失 / 编译错误                          |
-| **data race**              | **人工**   | semantic failure — 是否为预期并发？             |
-| **deadlock**               | **人工**   | semantic failure                                |
-| **panic**                  | **人工**   | semantic failure                                |
-| **test assertion failure** | **人工**   | 由人工判断 spec 还是代码正确                    |
+| 缺陷类型                  | 自动处理?    | 备注                                         |
+| -------------------------- | ------------- | -------------------------------------------- |
+| lint error                 | 自动          | `golangci-lint` 可 autofix 的项目          |
+| format drift               | 自动          | `gofmt` / `prettier` 等                      |
+| test syntax error          | 自动          | import 缺失 / 编译错误                    |
+| **data race**              | **人工决策** | semantic failure — 判断是否为有意的并发   |
+| **deadlock**               | **人工决策** | semantic failure                             |
+| **panic**                  | **人工决策** | semantic failure                             |
+| **test assertion failure** | **人工决策** | spec 与代码哪个正确需人工判断    |
 
-### auto-fix 绝不修改的文件
+### auto-fix 绝不触碰的文件
 
 {{< callout type="warning" >}}
-auto-fix 循环**绝不修改**以下文件:
+auto-fix 循环 **绝不修改** 以下文件:
 
-- `.env`, `.env.*` (环境变量 / 密钥)
+- `.env`, `.env.*`(环境变量 / 机密)
 - credentials 文件
-- `scripts/ci-watch/run.sh` (Wave 2 infrastructure)
-- `.github/required-checks.yml` (Wave 1 SSoT)
+- `scripts/ci-watch/run.sh`(Wave 2 infrastructure)
+- `.github/required-checks.yml`(Wave 1 SSoT)
 {{< /callout >}}
 
 ### 相关文档
@@ -420,50 +424,111 @@ auto-fix 循环**绝不修改**以下文件:
 - 轮询 doctrine SSoT: `.claude/rules/moai/workflow/ci-watch-protocol.md`
 - auto-fix doctrine SSoT: `.claude/rules/moai/workflow/ci-autofix-protocol.md`
 
-## 质量门
+## 质量门禁
 
-Sync 阶段的质量标准比 Run 阶段更注重文档:
+Sync 阶段的质量标准比 Run 阶段更侧重文档:
 
-| 项目     | 标准          | 描述                        |
+| 项目     | 标准          | 说明                        |
 | -------- | ------------- | --------------------------- |
-| LSP 错误 | **0**       | 代码必须没有错误         |
-| 警告     | **最多 10 个** | 文档生成时允许一些警告 |
-| LSP 状态 | **Clean**     | 整体清洁状态      |
+| LSP 错误 | **0 个**       | 代码必须没有错误 |
+| 警告     | **最多 10 个** | 文档生成时允许部分警告 |
+| LSP 状态 | **Clean**     | 整体处于干净状态      |
 
 {{< callout type="warning" >}}
-  如果质量门失败，文档生成和 PR 创建将被**阻止**。首先回到 `/moai run` 修复代码问题，或使用 `/moai fix` 快速修复错误。
+  未通过质量门禁时,文档生成与 PR 创建会被 **中断**。请先
+  回到 `/moai run` 修复代码问题,或用 `/moai fix` 快速修复
+  错误。
 {{< /callout >}}
 
-## 实际示例
+## Sync 阶段 Human Gates
 
-### 示例: 文档同步和 PR 创建
+Sync 过程中存在两个 HUMAN GATE。这些门禁不是自动通过对象,判定为 FAIL 或 INCONCLUSIVE 时链条会中断。
 
-**步骤 1: 确认 Run 阶段完成**
+| 门禁 | 名称 | 时机 | 作用 |
+| ------ | ---- | ---- | ---- |
+| `gate-sync-1` | Pre-Sync Quality | 进入 Phase 3 前 | 确认工作树 clean 且所有测试通过 |
+| `gate-sync-2` | Documentation Scope | 批准文档生成范围 | 由用户审阅 divergence report 并批准文档重生成范围 |
+
+`gate-sync-1` 验证代码质量是否满足进入 sync 的条件 —— 若有测试失败或脏的工作树,则不进入文档生成。`gate-sync-2` 是由用户确认要重新生成哪些文档的批准步骤 —— 防止自动生成造成意料之外的文档变更。
+
+{{< callout type="warning" >}}
+sync-auditor 判定为 FAIL/INCONCLUSIVE 或门禁阻断时链条会中断。不会在未通过门禁的情况下自动完成。
+{{< /callout >}}
+
+## Worktree 上下文 Auto-Merge
+
+在 worktree 环境中执行时,auto-merge 是默认行为。
+
+**Worktree 上下文检测:**
+- 当前 git 目录路径是否包含 `/.moai/worktrees/`
+- 或 `.moai/worktrees/registry.json` 中存在当前 SPEC-ID 的活跃条目
+
+**标志行为:**
+
+| 标志 | v2.8 之前 | v2.9.0 之后 |
+|--------|----------|------------|
+| (无) | 不合并 | 在 worktree 上下文中 **自动合并** |
+| `--merge` | 自动合并 | **Deprecated**(显示警告) |
+| `--no-merge` | N/A | 跳过自动合并 |
+
+**Auto-merge 执行条件:**
+1. 所有 CI/CD 检查通过
+2. 无合并冲突
+3. 未设置 `--no-merge` 标志
+
+{{< callout type="warning" >}}
+CI 失败或冲突时不执行自动合并,并连同恢复命令一起报告错误。
+{{< /callout >}}
+
+### 合并后的自动清理
+
+PR 合并成功后执行自动整理。
+
+**条件:** Auto-merge 成功 AND `workflow.worktree.auto_cleanup == true`
+
+**清理项目:**
+1. 移除 worktree 目录
+2. 删除 feature 分支 (`--delete-branch`)
+3. 更新 worktree registry
+
+{{< callout type="info" >}}
+清理失败不影响合并结果。失败时: 用 `moai worktree done SPEC-{ID}` 手动清理。
+{{< /callout >}}
+
+## `/cd` 缓存保留式恢复 (CC 2.1.169+)
+
+跨目录边界恢复多阶段工作流时(例如在 run 与 sync 之间进入 L2 worktree),Claude Code 2.1.169+ 提供 `/cd <path>` — 一条在 **保留提示缓存的同时** 切换会话工作目录的命令,累积的推理上下文在 cwd 变更时得以保留而非重建。这是相对于打开新终端的缓存保留替代方案: `/cd` 保持上下文,新终端则 cold-start。在保留 run-phase 上下文的同时进入 L2 worktree 执行 sync-phase 时,`/cd <worktree-path>` 是摩擦最小的路径。缓存命中率即令牌成本,保留提示缓存的习惯从令牌经济学角度同样有效。切换如何反映在 `cwd` 字段中,请参阅 [Statusline 指南](/zh/advanced/statusline)。
+
+## 实战示例
+
+### 示例: 文档同步与创建 PR
+
+**第 1 步: 确认 Run 阶段完成**
 
 ```bash
-# 检查 Run 阶段是否完成
-# manager-develop 应该输出了 "DONE" 或 "COMPLETE" 标记
+# 确认 Run 阶段是否已完成
+# manager-develop 应已输出 "DONE" 或 "COMPLETE" 标记
 ```
 
-**步骤 2: 清除 Tokens 然后运行 Sync**
+**第 2 步: 清理令牌后执行 Sync**
 
 ```bash
 > /clear
 > /moai sync
 ```
 
-**步骤 3: manager-docs 自动执行的任务**
+**第 3 步: manager-docs 自动执行的工作**
 
-manager-docs agent 为文档同步执行的 4 个阶段。
+manager-docs 智能体为文档同步执行的 4 个 Phase。
 
 ---
 
-#### Phase 0.5: 质量验证
+#### Phase 7: 质量验证
 
-在文档生成前验证项目状态。
+在生成文档前验证项目状态。
 
 ```bash
-Phase 0.5: 质量验证
+Phase 7: 质量验证
   项目语言: Python
   测试: 36/36 通过
   Linter: 0 错误
@@ -474,14 +539,14 @@ Phase 0.5: 质量验证
 
 ---
 
-#### Phase 1: 分析和规划
+#### Phase 1: 分析与规划
 
-分析 Git 更改并创建同步计划。
+分析 Git 变更并制定同步计划。
 
 ```bash
-Phase 1: 分析和规划
-  Git 更改: 12 个文件修改
-  同步计划: 1 个 API 文档、README 更新、添加 CHANGELOG
+Phase 1: 分析与规划
+  Git 变更: 修改 12 个文件
+  同步计划: API 文档 1 份、README 更新、CHANGELOG 追加
   用户批准: 完成
 ```
 
@@ -489,17 +554,17 @@ Phase 1: 分析和规划
 
 #### Phase 2: 文档同步
 
-生成必要的文档并更新现有文档。
+生成所需文档并更新既有文档。
 
 ```bash
 Phase 2: 文档同步
   创建备份: .moai-backups/sync-20260128-143052/
-  API 文档: docs/api/auth.md (新增)
-  README.md: 更新使用方法部分
+  API 文档: docs/api/auth.md(新增)
+  README.md: 更新用法部分
   CHANGELOG.md: 添加 v1.1.0 条目
   SPEC-AUTH-001 状态: ACTIVE → COMPLETED
 
-  质量验证: 所有项目通过
+  质量验证: 全部项目通过
 ```
 
 ---
@@ -511,56 +576,52 @@ Phase 2: 文档同步
 ```bash
 Phase 3: Git 操作
   创建提交: docs(auth): synchronize documentation for SPEC-AUTH-001
-  PR 状态: Draft → Ready (团队模式)
+  PR 状态: Draft → Ready (Team 模式)
 ```
 
-**步骤 4: 查看创建的 PR**
+**第 4 步: 确认生成的 PR**
 
 ```bash
-# 在终端中查看 PR
+# 在终端确认 PR
 $ gh pr view 42
 ```
 
-创建的 PR 自动包含 SPEC 需求、更改文件列表和测试结果。
+生成的 PR 自动包含 SPEC 需求、变更文件列表、测试结果。
 
 ## 常见问题
 
-### Q: 如果不想自动创建 PR 怎么办？
+### Q: 不想自动创建 PR 怎么办?
 
-在 `git-strategy.yaml` 中设置 `auto_pr: false` 以仅自动执行到提交。您可以在首选时间手动创建 PR。
+在 `git-strategy.yaml` 中设置 `auto_pr: false`,则只自动执行到提交为止。PR 可以在想要的时间点手动创建。
 
-### Q: 可以更改 CHANGELOG 格式吗？
+### Q: 可以更改 CHANGELOG 格式吗?
 
-目前默认使用 [Keep a Changelog](https://keepachangelog.com) 格式。未来计划支持自定义格式。
+目前默认使用 [Keep a Changelog](https://keepachangelog.com) 格式。自定义格式计划在未来支持。
 
-### Q: 如果只想生成文档而不进行 Git 操作怎么办？
+### Q: 只想生成文档而不执行 Git 操作?
 
-在 `git-strategy.yaml` 中设置 `auto_commit: false` 以仅执行文档生成。您可以手动执行 Git 操作。
+在 `git-strategy.yaml` 中设置 `auto_commit: false`,则只执行文档生成。Git 操作可以手动进行。
 
-### Q: 质量门失败时怎么办？
+### Q: 质量门禁失败时怎么办?
 
 有两种方法:
 
 ```bash
-# 方法 1: 使用 /moai fix 快速修复
+# 方法 1: 用 /moai fix 快速修复
 > /moai fix "修复 lint 错误"
 
-# 方法 2: 使用 /moai run 重新实现
+# 方法 2: 用 /moai run 重新实现
 > /moai run SPEC-AUTH-001
 ```
 
-修复后再次运行 `/moai sync`。
+修复后再次执行 `/moai sync`。
 
-### Q: `/moai sync` 和 `/moai` 有什么区别？
+### Q: `/moai sync` 和 `/moai` 有什么区别?
 
-`/moai sync` 仅负责**记录已完成实现的代码**。`/moai` 自动执行**整个工作流**，从 SPEC 创建到实现和文档。
-
-## `/cd` 缓存保留恢复 (CC 2.1.169+)
-
-跨目录边界恢复多阶段工作流时（例如在 run 和 sync 之间进入 L2 worktree），Claude Code 2.1.169+ 提供了 `/cd <path>` — 一个在 **保留提示缓存的同时** 切换会话工作目录的命令，使累积的推理上下文在 cwd 更改时得以保留而非重建。这是相对于打开新终端的缓存保留替代方案：`/cd` 保留上下文，新终端冷启动。在希望保留 run 阶段上下文并进入 L2 worktree 进行 sync 阶段时，`/cd <worktree-path>` 是更低摩擦的路径。切换如何反映在 `cwd` 字段请参阅 [Statusline 指南](/zh/advanced/statusline)。
+`/moai sync` **仅负责已完成实现代码的文档化**。`/moai` 则从 SPEC 生成到实现、文档化,自动执行 **完整工作流**。
 
 ## 相关文档
 
-- [/moai run](/workflow-commands/moai-run) - 上一阶段: DDD 实现
-- [TRUST 5 质量系统](/core-concepts/trust-5) - 详细的质量门说明
+- [/moai run](/workflow-commands/moai-run) - 上一步: DDD 实现
+- [TRUST 5 质量系统](/core-concepts/trust-5) - 质量门禁详解
 - [快速开始](/getting-started/quickstart) - 完整工作流教程

@@ -4,7 +4,7 @@ weight: 50
 draft: false
 ---
 
-구현 완료된 코드의 문서를 동기화하고, Git 자동화를 통해 배포를 준비합니다.
+구현 완료된 코드의 문서를 동기화하고, Git 자동화를 통해 배포를 준비합니다. 3-Phase 라이프사이클의 마지막 단계입니다.
 
 {{< callout type="info" >}}
 **슬래시 커맨드**: Claude Code에서 `/moai:sync`를 입력하면 이 명령어를 바로 실행할 수 있습니다. `/moai`만 입력하면 사용 가능한 모든 서브커맨드 목록이 표시됩니다.
@@ -12,10 +12,9 @@ draft: false
 
 ## 개요
 
-`/moai sync`는 MoAI-ADK 워크플로우의 **Phase 3 (Sync)** 명령어입니다. Phase
-2에서 구현이 완료된 코드를 분석하여 문서를 자동 생성하고, Git 커밋 및 PR (Pull
-Request) 을 만들어 배포 준비를 완료합니다. 내부적으로 **manager-docs**
-에이전트가 전체 과정을 관리합니다.
+`/moai sync`는 MoAI-ADK 워크플로우의 **Phase 3 (Sync)** 명령어입니다. Phase 2에서 구현이 완료된 코드를 분석하여 문서를 자동 생성하고, Git 커밋 및 PR (Pull Request)을 만들어 배포 준비를 완료합니다. 내부적으로 **manager-docs** 에이전트가 전체 과정을 관리합니다.
+
+동기화 결과물은 **sync-auditor**가 독립적으로 평가합니다. 문서를 만든 에이전트와 검사하는 에이전트가 분리되어 있어, "동기화했다"는 주장이 아니라 검증된 증거로 단계가 마무리됩니다.
 
 {{< callout type="info" >}}
 **왜 문서 동기화가 필요한가요?**
@@ -52,6 +51,8 @@ Run 단계가 완료된 후 실행합니다:
 | `status`      | 읽기 전용 상태 확인         | 빠른 건강 체크             |
 | `project`     | 프로젝트 전체 문서 업데이트 | 마일스톤 완료, 주기 동기화 |
 
+기본 `auto` 모드가 변경 파일만 골라 동기화하는 것도 토크노믹스 설계입니다. 매번 전체 문서를 다시 만들 이유가 없다면 그만큼의 토큰을 쓰지 않습니다.
+
 ### 모드별 사용법
 
 ```bash
@@ -72,10 +73,15 @@ Run 단계가 완료된 후 실행합니다:
 
 | 플래그    | 설명                 | 예시                 |
 | --------- | -------------------- | -------------------- |
-| `--pr`   | changelog 프롬프트 건너뛰고 PR 자동 열기 | `/moai sync --pr` |
-| `--merge` | 완료 후 PR 자동 병합 | `/moai sync --merge` |
-| `--team`  | 에이전트 팀 모드 강제 | `/moai sync --team`   |
-| `--solo`  | 하위 에이전트 모드 강제 | `/moai sync --solo`   |
+| `--pr`   | changelog 프롬프트 건너뛰고 PR 자동 열기 (Tier L 또는 리뷰 필요 시) | `/moai sync --pr` |
+| `--skip-mx` | MX 태그 검사 건너뛰기 | `/moai sync --skip-mx` |
+
+{{< callout type="warning" >}}
+`--merge` 및 `--team` / `--solo` 플래그는 **Deprecated** 또는 **제거**되었습니다.
+
+- `--merge`: Hybrid Trunk 1-person OSS 운영에서 Tier S/M은 main 직접 push가 기본 동작이므로 PR 자동 병합이 더 이상 필요하지 않습니다. Tier L에서 PR을 생성한 후 병합이 필요하면 `gh pr merge`를 수동으로 실행하세요.
+- `--team` / `--solo`: Agent Teams 정적 오케스트레이션 계층이 RETIRED되었습니다. `--team`은 `MODE_TEAM_UNAVAILABLE` 폴백을 발생시키며, 서브에이전트 모드가 유일한 모드이므로 `--solo`도 의미가 없습니다.
+{{< /callout >}}
 
 ### --pr 플래그
 
@@ -87,25 +93,18 @@ changelog 프롬프트를 건너뛰고 자동으로 PR을 엽니다:
 
 **사용 사례**: changelog 정보를 수동으로 입력하지 않고 빠르게 PR을 만들고 싶을 때. changelog는 PR 리뷰 중에 나중에 추가할 수 있습니다.
 
-### --merge 플래그
+### Tier-based PR 라우팅
 
-Sync 완료 후 자동으로 PR을 병합하고 브랜치를 정리합니다:
+PR 생성 여부는 SPEC tier에 따라 자동 결정됩니다 (Hybrid Trunk 1-person OSS 기본 동작):
 
-```bash
-> /moai sync --merge
-```
+| Tier | PR 생성 | 실행 주체 |
+| ---- | ------- | --------- |
+| **Tier S** (≤ 300 LOC, < 5 files) | main 직접 push (PR 없음) | manager-develop 또는 orchestrator |
+| **Tier M** (300-1000 LOC, 5-15 files) | main 직접 push (PR 없음) | manager-develop 또는 orchestrator |
+| **Tier L** (> 1000 LOC 또는 constitutional) | `feat/SPEC-XXX` 브랜치에서 PR via manager-git | manager-git |
+| **명시적 `--pr`** (모든 tier) | `feat/SPEC-XXX` 브랜치에서 PR via manager-git | manager-git |
 
-**작업 흐름:**
-
-1. CI/CD 상태 확인 (gh pr checks)
-2. 머지 충돌 확인 (gh pr view --json mergeable)
-3. 통과 및 병합 가능 시: 자동 병합 (gh pr merge --squash --delete-branch)
-4. develop 브랜치로 체크아웃, pull, 로컬 브랜치 삭제
-
-{{< callout type="info" >}}
-  `--merge` 옵션은 **CI/CD가 통과한 경우에만** PR을 자동 병합합니다. 안전한
-  자동화를 보장합니다.
-{{< /callout >}}
+Tier S/M은 CI 4 status checks + pre-push hook이 안전을 보장하므로 main에 직접 push합니다. Tier L은 광범위한 scope로 인해 PR review window와 풀 CI 매트릭스 검증이 필요합니다.
 
 **토큰 효율화 전략:**
 
@@ -119,7 +118,7 @@ Sync 완료 후 자동으로 PR을 병합하고 브랜치를 정리합니다:
 
 ```mermaid
 flowchart TD
-    A["명령어 실행<br/>/moai sync"] --> B["Phase 0.5<br/>품질 검증"]
+    A["명령어 실행<br/>/moai sync"] --> B["Phase 7<br/>품질 검증"]
 
     B --> C["프로젝트 언어 감지"]
     C --> D["병렬 진단 실행"]
@@ -135,7 +134,7 @@ flowchart TD
     F -->|Abort| G["종료"]
     F -->|Continue| H["Phase 1 계속"]
 
-    E -->|아니오| H["Phase 1<br/>분석 및 계획"]
+    E -->|아니오| H["Phase 11<br/>분석 및 계획"]
 
     H --> I["사전 조건 확인"]
     I --> J["Git 변경 분석"]
@@ -144,7 +143,7 @@ flowchart TD
 
     L --> M{"사용자 승인"}
     M -->|아니오| N["종료"]
-    M -->|예| O["Phase 2<br/>문서 동기화 실행"]
+    M -->|예| O["Phase 12<br/>문서 동기화 실행"]
 
     O --> P["안전 백업 생성"]
     P --> Q["manager-docs 호출<br/>문서 생성"]
@@ -156,25 +155,20 @@ flowchart TD
     U --> V["sync-auditor 호출<br/>품질 검증"]
     V --> W{"품질 기준?"}
     W -->|FAIL| G
-    W -->|PASS| X["Phase 3<br/>Git 작업"]
+    W -->|PASS| X["Phase 13<br/>Git 작업"]
 
-    X --> Y["manager-git 호출<br/>변경 파일 스테이징"]
+    X --> Y["변경 파일 스테이징"]
     Y --> Z["커밋 생성"]
-    Z --> AA{"--merge 플래그?"}
-    AA -->|예| AB["PR 상태 확인"]
-    AB --> AC["자동 병합"]
-    AB --> AD["병합 건너뜀"]
-    AC --> AE["완료"]
-    AD --> AE
-    AA -->|아니오| AF{"Team 모드?"}
-    AF -->|예| AG["PR Ready 전환"]
-    AF -->|아니오| AE
-    AG --> AE
+    Z --> AA{"Tier L 또는 --pr?"}
+    AA -->|예| AB["manager-git 호출<br/>PR 생성 (feat/SPEC-XXX)"]
+    AB --> AC["완료"]
+    AA -->|아니오| AD["main 직접 push<br/>(Tier S/M, Hybrid Trunk)"]
+    AD --> AC
 ```
 
 ## 단계별 상세
 
-### Phase 0.5: 품질 검증 (병렬 진단)
+### Phase 7: 품질 검증 (병렬 진단)
 
 문서 동기화 전 프로젝트 품질을 검증합니다.
 
@@ -208,22 +202,19 @@ flowchart TD
 
 **Step 4 - 코드 리뷰:**
 
-**sync-auditor** 하위 에이전트가 TRUST 5 품질 검증을 수행하고 종합 보고를
-생성합니다.
+**sync-auditor** 하위 에이전트가 TRUST 5 품질 검증을 수행하고 종합 보고를 생성합니다.
 
 **Step 5 - 품질 보고서 생성:**
 
-test-runner, linter, type-checker, code-review의 상태를 집계하고 전체 상태 (PASS
-또는 WARN)를 결정합니다.
+test-runner, linter, type-checker, code-review의 상태를 집계하고 전체 상태 (PASS 또는 WARN)를 결정합니다.
 
-### Phase 1: 분석 및 계획
+### Phase 11: 분석 및 계획
 
 **manager-docs** 하위 에이전트가 동기화 전략을 수립합니다.
 
-**출력:** documents_to_update, specs_requiring_sync,
-project_improvements_needed, estimated_scope
+**출력:** documents_to_update, specs_requiring_sync, project_improvements_needed, estimated_scope
 
-### Phase 2: 문서 동기화 실행
+### Phase 12: 문서 동기화 실행
 
 **Step 1 - 안전 백업 생성:**
 
@@ -257,12 +248,11 @@ project_improvements_needed, estimated_scope
 - 자격증명 노출 없음
 - 모든 SPEC 적절히 연결됨
 
-**Step 4 - SPEC 상태 업데이트:**
+**Step 4 - SPEC 상태 업데이트 (3-Phase 클로즈):**
 
-완료된 SPEC의 상태를 일괄 업데이트하여 "completed"로 설정하고 버전 변경 및 상태
-전환을 기록합니다.
+manager-docs는 SPEC 아티팩트의 프론트매터 상태를 `in-progress → implemented`로 전환합니다. `completed` 상태로의 최종 전환은 별도 커밋이 아니라 이 sync 커밋에 함께 실려 기록됩니다 — 즉 run 단계에서 `in-progress`로 진입한 SPEC이 sync 단계에서 `implemented`를 거쳐 sync 커밋과 함께 `completed`로 마무리됩니다. manager-docs는 spec.md/plan.md/acceptance.md 본문은 수정하지 않고 프론트매터 상태 전환만 담당합니다.
 
-### Phase 3: Git 작업 및 PR
+### Phase 13: Git 작업 및 PR
 
 **manager-git** 하위 에이전트가 Git 작업을 수행합니다:
 
@@ -272,21 +262,18 @@ project_improvements_needed, estimated_scope
 - 동기화된 문서, 프로젝트 수리, SPEC 업데이트를 나열하는 단일 커밋 생성
 - git log로 커밋 검증
 
-**Step 2 - PR Ready 전환 (Team 모드만):**
+**Step 2 - Tier-based PR 라우팅:**
 
-- git_strategy.mode에서 설정 확인
-- Team 모드이면: Draft PR에서 Ready로 전환 (gh pr ready)
-- 설정된 경우 리뷰어 지정 및 라벨 할당
-- Personal 모드이면: 건너뜀
+SPEC tier에 따라 Git 작업 경로가 결정됩니다:
 
-**Step 3 - 자동 병합 (--merge 플래그 시):**
+- **Tier S/M** (기본): main 브랜치에 직접 push. CI 4 status checks + pre-push hook이 안전을 보장합니다.
+- **Tier L 또는 `--pr` 플래그**: `feat/SPEC-XXX` 브랜치에서 manager-git이 PR을 생성합니다 (`gh pr create`). PR 생성 후 리뷰어 지정 및 라벨 할당이 수행됩니다.
 
-- gh pr checks로 CI/CD 상태 확인
-- gh pr view --json mergeable로 머지 충돌 확인
-- 통과하고 병합 가능하면: gh pr merge --squash --delete-branch 실행
-- develop 체크아웃, pull, 로컬 브랜치 삭제
+{{< callout type="info" >}}
+`--merge` 플래그는 Deprecated되었습니다. Tier L PR을 병합하려면 CI 통과 후 `gh pr merge --squash --delete-branch`를 수동으로 실행하세요.
+{{< /callout >}}
 
-### Phase 4: 완료 및 다음 단계
+### Phase 14: 완료 및 다음 단계
 
 **표준 완료 보고:**
 
@@ -322,8 +309,8 @@ project_improvements_needed, estimated_scope
 | -------------- | ------------------------ |
 | 다음 SPEC 생성 | `/moai plan` 실행        |
 | 새 세션 시작   | `/clear` 실행            |
-| PR 검토        | Team 모드: gh pr view    |
-| 개발 계속      | Personal 모드: 계속 작업 |
+| PR 검토        | Tier L: `gh pr view`     |
+| 개발 계속      | Tier S/M: 계속 작업      |
 
 ## 생성되는 문서
 
@@ -331,8 +318,7 @@ project_improvements_needed, estimated_scope
 
 ### API 문서
 
-구현된 코드에서 API 엔드포인트, 함수 시그니처, 클래스 구조를 분석하여 문서를
-생성합니다.
+구현된 코드에서 API 엔드포인트, 함수 시그니처, 클래스 구조를 분석하여 문서를 생성합니다.
 
 | 문서 유형    | 내용                         | 생성 조건               |
 | ------------ | ---------------------------- | ----------------------- |
@@ -369,8 +355,7 @@ project_improvements_needed, estimated_scope
 
 ### 커밋 메시지 형식
 
-MoAI-ADK는 [Conventional Commits](https://www.conventionalcommits.org/) 형식을
-따릅니다:
+MoAI-ADK는 [Conventional Commits](https://www.conventionalcommits.org/) 형식을 따릅니다:
 
 | 접두사     | 용도      | 예시                                        |
 | ---------- | --------- | ------------------------------------------- |
@@ -382,9 +367,7 @@ MoAI-ADK는 [Conventional Commits](https://www.conventionalcommits.org/) 형식�
 
 ## PR 머지 후 CI 모니터링
 
-`/moai sync` 가 PR 을 생성한 직후, MoAI-ADK 는 두 단계의 자동 모니터링을
-실행합니다. Wave 1 은 CI 결과를 폴링하여 어느 required check 가 실패했는지
-판단하고, Wave 2 는 실패가 발생한 경우 자동 fix 루프에 진입합니다.
+`/moai sync` 가 PR 을 생성한 직후, MoAI-ADK 는 두 단계의 자동 모니터링을 실행합니다. Wave 1 은 CI 결과를 폴링하여 어느 required check 가 실패했는지 판단하고, Wave 2 는 실패가 발생한 경우 자동 fix 루프에 진입합니다. PR 생성 후에도 사람이 CI 화면을 지켜보는 대신 루프가 결과를 관찰하고 대응합니다. 에이전틱 루프 엔지니어링이 CI 영역까지 이어진 구조입니다.
 
 ### Wave 1 — CI 결과 폴링
 
@@ -446,6 +429,60 @@ Sync 단계의 품질 기준은 Run 단계보다 문서 중심입니다:
   수정하세요.
 {{< /callout >}}
 
+## Sync 단계 Human Gates
+
+Sync 과정에는 두 개의 HUMAN GATE가 존재합니다. 이 게이트는 자동 통과 대상이 아니며, FAIL 또는 INCONCLUSIVE 판정 시 체인이 중단됩니다.
+
+| 게이트 | 이름 | 시점 | 역할 |
+| ------ | ---- | ---- | ---- |
+| `gate-sync-1` | Pre-Sync Quality | Phase 3 진입 전 | 작업 트리가 clean하고 모든 테스트가 통과하는지 확인 |
+| `gate-sync-2` | Documentation Scope | 문서 생성 범위 승인 | divergence report를 사용자가 검토하고 문서 재생성 범위 승인 |
+
+`gate-sync-1`은 코드 품질이 sync 진입 조건을 만족하는지 검증합니다 — 테스트 실패나 더러운 작업 트리가 있으면 문서 생성으로 진행하지 않습니다. `gate-sync-2`는 어떤 문서를 다시 생성할지 사용자가 확인하는 승인 단계입니다 — 자동 생성이 의도치 않은 문서 변경을 만드는 것을 방지합니다.
+
+{{< callout type="warning" >}}
+sync-auditor 판정이 FAIL/INCONCLUSIVE이거나 게이트가 차단하면 체인이 중단됩니다. 게이트 통과 없이 자동 완료되지 않습니다.
+{{< /callout >}}
+
+## 워크트리 컨텍스트 Auto-Merge
+
+워크트리 환경에서 실행 시 auto-merge가 기본 동작입니다.
+
+**워크트리 컨텍스트 감지:**
+- 현재 git 디렉토리 경로에 `/.moai/worktrees/` 포함 여부
+- 또는 `.moai/worktrees/registry.json`에 현재 SPEC-ID의 활성 항목 존재
+
+**플래그 동작:**
+
+워크트리 컨텍스트에서는 별도 플래그 없이 자동 머지가 기본 동작입니다. `--merge` 플래그는 **Deprecated**되었으며 (경고 표시), Tier L PR 병합이 필요하면 CI 통과 후 `gh pr merge`를 수동으로 실행하세요. `/moai sync`가 지원하는 플래그는 `--pr` / `--merge` (deprecated) / `--skip-mx`뿐입니다.
+
+**Auto-merge 실행 조건:**
+1. 모든 CI/CD 체크 통과
+2. 머지 충돌 없음
+
+{{< callout type="warning" >}}
+CI 실패 또는 충돌 시 자동 머지를 수행하지 않으며, 복구 명령어와 함께 오류를 보고합니다.
+{{< /callout >}}
+
+### 포스트-머지 자동 클린업
+
+PR 머지 성공 후 자동 정리를 수행합니다.
+
+**조건:** Auto-merge 성공 AND `workflow.worktree.auto_cleanup == true`
+
+**정리 항목:**
+1. 워크트리 디렉토리 제거
+2. 피처 브랜치 삭제 (`--delete-branch`)
+3. 워크트리 레지스트리 업데이트
+
+{{< callout type="info" >}}
+클린업 실패는 머지 결과에 영향을 주지 않습니다. 실패 시: `moai worktree done SPEC-{ID}`로 수동 정리하세요.
+{{< /callout >}}
+
+## `/cd` 캐시 보존 재개 (CC 2.1.169+)
+
+디렉터리 경계를 가로질러 다단계 워크플로우를 재개할 때 (예: run과 sync 사이에 L2 worktree 진입), Claude Code 2.1.169+는 `/cd <path>`를 제공합니다 — 세션의 작업 디렉터리를 **프롬프트 캐시를 보존하면서** 전환하는 명령으로, 누적된 추론 컨텍스트가 cwd 변경 시 재구축되는 대신 유지됩니다. 이는 새 터미널을 여는 것에 대한 캐시 보존 대안입니다: `/cd`는 컨텍스트를 유지하고, 새 터미널은 cold-start합니다. run-phase 컨텍스트를 유지하며 L2 worktree로 sync-phase에 진입할 때, `/cd <worktree-path>`가 마찰이 적은 경로입니다. 캐시 적중률이 곧 토큰 비용인 만큼, 프롬프트 캐시를 보존하는 습관은 토크노믹스 관점에서도 유효합니다. 전환이 `cwd` 필드에 반영되는 방식은 [Statusline 가이드](/ko/advanced/statusline)를 참조하세요.
+
 ## 실전 예시
 
 ### 예시: 문서 동기화 및 PR 생성
@@ -470,12 +507,12 @@ manager-docs 에이전트가 문서 동기화를 위해 수행하는 4개의 Pha
 
 ---
 
-#### Phase 0.5: 품질 검증
+#### Phase 7: 품질 검증
 
 문서 생성 전 프로젝트 상태를 검증합니다.
 
 ```bash
-Phase 0.5: 품질 검증
+Phase 7: 품질 검증
   프로젝트 언어: Python
   테스트: 36/36 통과
   린터: 0 오류
@@ -486,12 +523,12 @@ Phase 0.5: 품질 검증
 
 ---
 
-#### Phase 1: 분석 및 계획
+#### Phase 11: 분석 및 계획
 
 Git 변경 사항을 분석하고 동기화 계획을 수립합니다.
 
 ```bash
-Phase 1: 분석 및 계획
+Phase 11: 분석 및 계획
   Git 변경: 12개 파일 수정
   동기화 계획: API 문서 1개, README 업데이트, CHANGELOG 추가
   사용자 승인: 완료
@@ -499,12 +536,12 @@ Phase 1: 분석 및 계획
 
 ---
 
-#### Phase 2: 문서 동기화
+#### Phase 12: 문서 동기화
 
 필요한 문서를 생성하고 기존 문서를 업데이트합니다.
 
 ```bash
-Phase 2: 문서 동기화
+Phase 12: 문서 동기화
   백업 생성: .moai-backups/sync-20260128-143052/
   API 문서: docs/api/auth.md (신규)
   README.md: 사용법 섹션 업데이트
@@ -516,14 +553,14 @@ Phase 2: 문서 동기화
 
 ---
 
-#### Phase 3: Git 작업
+#### Phase 13: Git 작업
 
 커밋을 생성하고 PR을 엽니다.
 
 ```bash
-Phase 3: Git 작업
+Phase 13: Git 작업
   커밋 생성: docs(auth): synchronize documentation for SPEC-AUTH-001
-  PR 상태: Draft → Ready (Team 모드)
+  Push: main 직접 push (Tier M, Hybrid Trunk)
 ```
 
 **4단계: 생성된 PR 확인**
@@ -539,18 +576,15 @@ $ gh pr view 42
 
 ### Q: PR을 자동으로 만들고 싶지 않으면?
 
-`git-strategy.yaml`에서 `auto_pr: false`로 설정하면 커밋까지만 자동으로
-수행합니다. PR은 원하는 시점에 직접 만들 수 있습니다.
+Tier S/M SPEC은 Hybrid Trunk 운영에서 기본적으로 main에 직접 push하므로 PR이 생성되지 않습니다. Tier L에서도 PR 대신 커밋만 남겨두려면, sync 완료 후 수동으로 `git push` 시점을 조절할 수 있습니다.
 
 ### Q: CHANGELOG 형식을 바꿀 수 있나요?
 
-현재는 [Keep a Changelog](https://keepachangelog.com) 형식을 기본으로
-사용합니다. 커스텀 형식은 향후 지원 예정입니다.
+현재는 [Keep a Changelog](https://keepachangelog.com) 형식을 기본으로 사용합니다. 커스텀 형식은 향후 지원 예정입니다.
 
 ### Q: 문서만 생성하고 Git 작업은 하지 않으려면?
 
-`git-strategy.yaml`에서 `auto_commit: false`로 설정하면 문서 생성만 수행합니다.
-Git 작업은 수동으로 진행할 수 있습니다.
+`git-strategy.yaml`에서 `auto_commit: false`로 설정하면 문서 생성만 수행합니다. Git 작업은 수동으로 진행할 수 있습니다.
 
 ### Q: 품질 게이트 실패 시 어떻게 하나요?
 
@@ -568,54 +602,7 @@ Git 작업은 수동으로 진행할 수 있습니다.
 
 ### Q: `/moai sync`와 `/moai`의 차이는 무엇인가요?
 
-`/moai sync`는 **구현 완료된 코드의 문서화만** 담당합니다. `/moai`는 SPEC
-생성부터 구현, 문서화까지 **전체 워크플로우**를 자동으로 수행합니다.
-
-## v2.9.0 신규 기능
-
-### 워크트리 컨텍스트 Auto-Merge
-
-워크트리 환경에서 실행 시 auto-merge가 기본 동작으로 변경됩니다.
-
-**워크트리 컨텍스트 감지:**
-- 현재 git 디렉토리 경로에 `/.moai/worktrees/` 포함 여부
-- 또는 `.moai/worktrees/registry.json`에 현재 SPEC-ID의 활성 항목 존재
-
-**플래그 동작 변경:**
-
-| 플래그 | v2.8 이전 | v2.9.0 이후 |
-|--------|----------|------------|
-| (없음) | 머지 안 함 | 워크트리 컨텍스트에서 **자동 머지** |
-| `--merge` | 자동 머지 | **Deprecated** (경고 표시) |
-| `--no-merge` | N/A | 자동 머지 건너뛰기 |
-
-**Auto-merge 실행 조건:**
-1. 모든 CI/CD 체크 통과
-2. 머지 충돌 없음
-3. `--no-merge` 플래그 미설정
-
-{{< callout type="warning" >}}
-CI 실패 또는 충돌 시 자동 머지를 수행하지 않으며, 복구 명령어와 함께 오류를 보고합니다.
-{{< /callout >}}
-
-### 포스트-머지 자동 클린업
-
-PR 머지 성공 후 자동 정리를 수행합니다.
-
-**조건:** Auto-merge 성공 AND `workflow.worktree.auto_cleanup == true`
-
-**정리 항목:**
-1. 워크트리 디렉토리 제거
-2. 피처 브랜치 삭제 (`--delete-branch`)
-3. 워크트리 레지스트리 업데이트
-
-{{< callout type="info" >}}
-클린업 실패는 머지 결과에 영향을 주지 않습니다. 실패 시: `moai worktree done SPEC-{ID}`로 수동 정리하세요.
-{{< /callout >}}
-
-## `/cd` 캐시 보존 재개 (CC 2.1.169+)
-
-디렉터리 경계를 가로질러 다단계 워크플로우를 재개할 때 (예: run과 sync 사이에 L2 worktree 진입), Claude Code 2.1.169+는 `/cd <path>`를 제공합니다 — 세션의 작업 디렉터리를 **프롬프트 캐시를 보존하면서** 전환하는 명령으로, 누적된 추론 컨텍스트가 cwd 변경 시 재구축되는 대신 유지됩니다. 이는 새 터미널을 여는 것에 대한 캐시 보존 대안입니다: `/cd`는 컨텍스트를 유지하고, 새 터미널은 cold-start합니다. run-phase 컨텍스트를 유지하며 L2 worktree로 sync-phase에 진입할 때, `/cd <worktree-path>`가 마찰이 적은 경로입니다. 전환이 `cwd` 필드에 반영되는 방식은 [Statusline 가이드](/ko/advanced/statusline)를 참조하세요.
+`/moai sync`는 **구현 완료된 코드의 문서화만** 담당합니다. `/moai`는 SPEC 생성부터 구현, 문서화까지 **전체 워크플로우**를 자동으로 수행합니다.
 
 ## 관련 문서
 

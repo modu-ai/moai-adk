@@ -11,18 +11,19 @@
 //
 // Scope boundary — the original REQ-WC-012 clause ("profile preferences plus
 // user.yaml / language.yaml / statusline.yaml ONLY") is formally SUPERSEDED by
-// SPEC-WEB-CONSOLE-011 REQ-WC11-001. The Console now touches profile preferences
-// plus the editable sections routed by settings.RouteForSection (the SSOT):
-// the legacy typed coverage (user, language, quality, git-convention, statusline)
-// and the 10 user-facing sections — git-strategy, llm, workflow, harness, ralph,
-// research, feedback, observability, security, db. The 8 sections without a typed
-// Save path (workflow, harness, ralph, research, feedback, observability,
-// security, db) persist EXCLUSIVELY through the comment-preserving yamlpatch seam
-// (REQ-WC11-017); workflow.yaml is never written via a typed re-marshal
-// (REQ-WC11-005). The machine/state sections (state, system, project, cache,
-// sunset), the large policy files (tool-policy, lsp, mx), and any section not
-// named editable (constitution, context, design, interview, …) remain OUTSIDE
-// the web write scope (REQ-WC11-018).
+// SPEC-WEB-CONSOLE-011 REQ-WC11-001 and narrowed by SPEC-WEB-CONSOLE-012
+// (REQ-WC12-040). The Console now touches profile preferences plus the editable
+// sections routed by settings.RouteForSection (the SSOT): the legacy typed
+// coverage (user, language, quality, git-convention, statusline), the two typed
+// sections git-strategy and llm, and the six seam sections — workflow, harness,
+// ralph, feedback, observability, security — which persist EXCLUSIVELY through
+// the comment-preserving yamlpatch seam (REQ-WC11-017); workflow.yaml is never
+// written via a typed re-marshal (REQ-WC11-005). The excluded set stays outside
+// the web write scope (REQ-WC11-018): the machine/state sections (state, system,
+// project, cache, sunset), the large policy files (tool-policy, lsp, mx), the
+// delisted sections db (settings SSOT) and research (ghost seam path removed by
+// SPEC-WEB-CONSOLE-012 REQ-WC12-010), and any section not named editable
+// (constitution, context, design, interview, …).
 package web
 
 import (

@@ -4,128 +4,29 @@ workflow:
     # Precedence: CLI --mode flag > this field > harness auto.
     # @MX:WARN - Default mode field is utility-skill-only consumer. @MX:REASON - Field is read by run skill dispatcher; changing semantics without updating dispatcher breaks behavior contract.
     default_mode: ""
+    # agentic_loop: pipeline-level completion-loop iteration ceiling, loaded by
+    # internal/config AgenticLoopConfig (types.go) with default from
+    # DefaultAgenticLoopMaxIterations (defaults.go); also prose-read by the
+    # orchestrator for the moai.md Agentic Completion Loop termination clause.
+    # DISTINCT from loop_prevention.max_iterations (per-operation diagnostic
+    # fix-loop bound) — separate blocks, separate semantics.
+    agentic_loop:
+        max_iterations: 10
     auto_clear:
         after_plan: true
         after_run: false
         enabled: true
         token_threshold: 150000
-    execution_mode: team
+    execution_mode: auto
+    # Iteration-ceiling precedence: CLI --max flag > ralph.yaml loop.max_iterations
+    # > workflow.yaml loop_prevention.max_iterations (this block — the lowest-
+    # precedence documented ceiling surface for the diagnostic fix-loop). The
+    # memory-safe 50-iteration checkpoint (loop workflow Step 2) is an orthogonal
+    # memory-pressure safeguard, not a fourth ceiling.
     loop_prevention:
         failure_pattern_detection: true
         max_iterations: 100
         max_retries_per_operation: 3
-    team:
-        auto_selection:
-            min_complexity_score: 7
-            min_domains_for_team: 3
-            min_files_for_team: 10
-        default_model: sonnet
-        delegate_mode: true
-        enabled: true
-        max_teammates: 10
-        # role_profile_keys: enumeration of allowed role types for the 5+1+1
-        # Agent Teams composition documented in
-        # .claude/rules/moai/workflow/team-pattern-cookbook.md (6th pattern,
-        # the Implementation Team 5+1+1 variant). The full role_profiles map
-        # below contains all 7 profile definitions; this list restricts which
-        # keys participate in the 5+1+1 spawn pattern (implementer × 5 +
-        # tester × 1 + reviewer × 1).
-        # Requires: CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1 in settings.json env.
-        role_profile_keys:
-            - implementer
-            - tester
-            - reviewer
-        # effort: declarative metadata consumed by orchestrator/workflow-script authors; no Go code reads this field.
-        role_profiles:
-            researcher:
-                mode: plan
-                effort: low
-                model: haiku
-                isolation: none
-                description: "Read-only codebase exploration and analysis"
-            analyst:
-                mode: plan
-                effort: medium
-                model: sonnet
-                isolation: none
-                description: "Requirements analysis and validation"
-            architect:
-                mode: plan
-                effort: xhigh
-                model: sonnet
-                isolation: none
-                description: "Solution design and architecture decisions"
-            implementer:
-                mode: acceptEdits
-                effort: xhigh
-                model: sonnet
-                isolation: worktree
-                description: "Code implementation (backend, frontend, full-stack)"
-            tester:
-                mode: acceptEdits
-                effort: medium
-                model: sonnet
-                isolation: worktree
-                description: "Test creation and coverage validation"
-            designer:
-                mode: acceptEdits
-                effort: medium
-                model: sonnet
-                isolation: worktree
-                description: "UI/UX design with MCP design tools"
-            reviewer:
-                mode: plan
-                effort: high
-                model: haiku
-                isolation: none
-                description: "Code review and quality validation"
-        patterns:
-            design_implementation:
-                description: Cross-layer feature implementation with UI/UX design
-                model: inherit
-                roles:
-                    - designer
-                    - backend-dev
-                    - frontend-dev
-                    - tester
-            full_stack:
-                description: Full-stack implementation with quality gate
-                model: inherit
-                roles:
-                    - api-layer
-                    - ui-layer
-                    - data-layer
-                    - quality
-            implementation:
-                description: Cross-layer feature implementation
-                model: inherit
-                roles:
-                    - backend-dev
-                    - frontend-dev
-                    - tester
-            investigation:
-                description: Competing hypothesis debugging
-                model: haiku
-                roles:
-                    - hypothesis-1
-                    - hypothesis-2
-                    - hypothesis-3
-            plan_research:
-                description: Parallel SPEC research and design
-                model: inherit
-                roles:
-                    - researcher
-                    - analyst
-                    - architect
-            review:
-                description: Multi-perspective code review
-                model: inherit
-                roles:
-                    - security-reviewer
-                    - perf-reviewer
-                    - quality-reviewer
-                    - ux-reviewer
-        require_plan_approval: true
     # Worktree automation settings (per the canonical worktree contract)
     # auto_create: false (aligned with worktree-autonomous user policy).
     # L1 worktree is Claude Code runtime autonomous — MoAI orchestrator does not auto-create it.
@@ -146,3 +47,85 @@ workflow:
         plan: 30000
         run: 180000
         sync: 40000
+    # workflow_agents: dynamic-workflow purpose taxonomy -> {model, effort}
+    # DEFAULTS. This block is the SSOT for workflow agent() model/effort
+    # defaults; per-script literals in .claude/workflows/*.js override it.
+    # Values are validated against the closed sets: model in
+    # {inherit, sonnet, opus}, effort in {low, medium, high, xhigh, max}.
+    workflow_agents:
+        read-only-extract: { model: sonnet, effort: low }
+        mechanical-transform: { model: sonnet, effort: medium }
+        synthesize: { model: sonnet, effort: high }
+        research: { model: sonnet, effort: high }
+        verify-judge: { model: sonnet, effort: xhigh }
+        implement: { model: sonnet, effort: xhigh }
+        design-architecture: { model: opus, effort: xhigh }
+    # model_routing: LEGACY flat block (Tier x Phase -> {model, effort}).
+    # DEPRECATED — retained as a `medium` profile alias for one backward-compat
+    # cycle (plan.md §D D6, SPEC-AGENT-ARCH-V2-001 M3b). Values mirror the
+    # `medium` profile below. New code reads `model_routing_profiles` via
+    # RouteModelFor(specTier, phase, perfTier); this flat key is NOT read by
+    # the 3-arg accessor. Existing external readers continue to work.
+    # Key format: <TIER>-<phase> where Tier in {S, M, L} and Phase in
+    # {plan, run, sync, mx}. Closed sets: model in
+    # {inherit, sonnet, opus, glm, fable}, effort in {low, medium, high, xhigh, max}.
+    model_routing:
+        S-plan: { model: sonnet, effort: medium }
+        S-run: { model: sonnet, effort: high }
+        S-sync: { model: sonnet, effort: low }
+        S-mx: { model: sonnet, effort: low }
+        M-plan: { model: sonnet, effort: medium }
+        M-run: { model: sonnet, effort: xhigh }
+        M-sync: { model: sonnet, effort: medium }
+        M-mx: { model: sonnet, effort: low }
+        L-plan: { model: opus, effort: high }
+        L-run: { model: sonnet, effort: xhigh }
+        L-sync: { model: sonnet, effort: high }
+        L-mx: { model: sonnet, effort: medium }
+    # model_routing_profiles: No-Haiku 3-tier policy (SPEC-AGENT-ARCH-V2-001
+    # M3, design.md §D.5) — perfTier -> (Tier x Phase) -> {model, effort}.
+    # 3 perfTiers (max/medium/low) × 12 cells (S/M/L × plan/run/sync/mx) = 36
+    # entries. The orchestrator consults RouteModelFor(specTier, phase,
+    # perfTier) at spawn time. `medium` is the default performance tier
+    # (populated by `moai init --model-policy`). Closed sets: model in
+    # {inherit, sonnet, opus, glm, fable}, effort in {low, medium, high, xhigh, max}.
+    model_routing_profiles:
+        max:
+            S-plan: { model: opus, effort: high }
+            S-run: { model: sonnet, effort: xhigh }
+            S-sync: { model: sonnet, effort: medium }
+            S-mx: { model: sonnet, effort: low }
+            M-plan: { model: opus, effort: xhigh }
+            M-run: { model: sonnet, effort: xhigh }
+            M-sync: { model: sonnet, effort: medium }
+            M-mx: { model: sonnet, effort: low }
+            L-plan: { model: opus, effort: xhigh }
+            L-run: { model: sonnet, effort: xhigh }
+            L-sync: { model: sonnet, effort: high }
+            L-mx: { model: sonnet, effort: medium }
+        medium:
+            S-plan: { model: sonnet, effort: medium }
+            S-run: { model: sonnet, effort: high }
+            S-sync: { model: sonnet, effort: low }
+            S-mx: { model: sonnet, effort: low }
+            M-plan: { model: sonnet, effort: medium }
+            M-run: { model: sonnet, effort: xhigh }
+            M-sync: { model: sonnet, effort: medium }
+            M-mx: { model: sonnet, effort: low }
+            L-plan: { model: opus, effort: high }
+            L-run: { model: sonnet, effort: xhigh }
+            L-sync: { model: sonnet, effort: high }
+            L-mx: { model: sonnet, effort: medium }
+        low:
+            S-plan: { model: sonnet, effort: medium }
+            S-run: { model: sonnet, effort: high }
+            S-sync: { model: sonnet, effort: low }
+            S-mx: { model: sonnet, effort: low }
+            M-plan: { model: sonnet, effort: medium }
+            M-run: { model: sonnet, effort: high }
+            M-sync: { model: sonnet, effort: low }
+            M-mx: { model: sonnet, effort: low }
+            L-plan: { model: sonnet, effort: xhigh }
+            L-run: { model: sonnet, effort: xhigh }
+            L-sync: { model: sonnet, effort: medium }
+            L-mx: { model: sonnet, effort: low }

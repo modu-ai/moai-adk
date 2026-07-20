@@ -149,3 +149,35 @@ func stringSlicesEqual(a, b []string) bool {
 	}
 	return true
 }
+
+// DetectFrozenRuleContradictions checks whether a Curator proposal targets a
+// registered Frozen-rule surface (REQ-HEV3-015/016/017, SPEC-HARNESS-EVOLVE-003 M3).
+//
+// The consult is a typed registry lookup (FrozenRuleRegistry) — NOT a file parse
+// (design.md §F.2). When the proposal.TargetPath matches a registered Frozen-rule
+// prefix, the returned ContradictionReport cites the rule's stable Name in the
+// item Description (REQ-HEV3-017 audit-trail discipline).
+//
+// This function is the REAL L3 evaluator body that replaces the pipeline.go:70-73
+// no-op (REQ-HEV3-015). It is a SIBLING to DetectOverlappingTriggers /
+// DetectChainRuleContradictions (which serve the harness-applier path); this
+// function serves the Curator write path.
+//
+// @MX:ANCHOR: [AUTO] DetectFrozenRuleContradictions is the Curator-path L3 consult.
+// @MX:REASON: [AUTO] fan_in >= 3: frozen_contradiction_test.go, pipeline.go (M3), integration (M6)
+func DetectFrozenRuleContradictions(proposal harness.Proposal) harness.ContradictionReport {
+	rule := FindFrozenRule(proposal.TargetPath)
+	if rule == nil {
+		return harness.ContradictionReport{}
+	}
+	return harness.ContradictionReport{
+		Items: []harness.ContradictionItem{
+			{
+				Type:              harness.ContradictionFrozenRule,
+				Description:       fmt.Sprintf("Frozen-rule violation: proposal targets %q matching registered Frozen-rule %q (category: %s)", proposal.TargetPath, rule.Name, rule.Category),
+				ConflictingPaths:  []string{proposal.TargetPath},
+				ConflictingValues: []string{rule.Name},
+			},
+		},
+	}
+}

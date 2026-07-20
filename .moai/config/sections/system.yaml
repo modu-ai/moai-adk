@@ -12,7 +12,7 @@ hook:
   # NOTE: This key is INDEPENDENT of `observability.enabled` in observability.yaml
   # (REQ-OBS-005 trace-logging master toggle). See SPEC §A.3 cohabitation contract.
   opt_in:
-    enabled: false
+    enabled: true
 
 document_management:
     block_root_pollution: true
@@ -43,9 +43,9 @@ github:
     enable_trust_5: true
     spec_git_workflow: feature_branch
 moai:
-    template_version: v3.0.0-rc6
+    template_version: v3.0.0
     update_check_frequency: daily
-    version: v3.0.0-rc6
+    version: v3.0.0
     version_check:
         cache_ttl_hours: 24
         enabled: true

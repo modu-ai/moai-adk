@@ -3,16 +3,12 @@ title: 하네스 프로필과 평가 시스템
 weight: 75
 draft: false
 ---
-# 하네스 프로필과 평가 시스템
 
-
-3계층 하네스 레벨과 4차원 평가 프로필을 통한 적응형 품질 검증 시스템입니다.
+모든 변경에 같은 깊이의 검증을 적용하면 토큰이 낭비되고, 검증을 얕게 통일하면 품질이 떨어집니다. MoAI-ADK의 답은 **적응형 검증** — SPEC의 복잡도에 맞춰 검증 깊이를 자동으로 조절하고, 평가는 만든 쪽이 아닌 독립 평가자에게 맡깁니다.
 
 ## 개요
 
-MoAI-ADK의 하네스(Harness)는 **3계층 적응형 품질 검증 시스템**입니다. SPEC의 복잡도에
-따라 자동으로 검증 깊이를 조절합니다. sync-auditor 에이전트가 4차원 스코어링으로
-독립적이고 회의적인 품질 평가를 수행합니다.
+MoAI-ADK의 하네스(Harness)는 **3계층 적응형 품질 검증 시스템**입니다. SPEC의 복잡도에 따라 자동으로 검증 깊이를 조절하며 sync-auditor 에이전트가 4차원 스코어링으로 독립적이고 회의적인 품질 평가를 수행합니다. "된 것 같다"가 아니라 점수와 근거로 완료를 판정하는 구조입니다.
 
 ## 3계층 하네스 레벨
 
@@ -22,12 +18,11 @@ MoAI-ADK의 하네스(Harness)는 **3계층 적응형 품질 검증 시스템**�
 | **standard** | 기본 품질 검증 | 대부분의 작업 | 선택적 |
 | **thorough** | 전체 검증 + TRUST 5 | 복잡한 SPEC, 대규모 변경 | 필수 |
 
-하네스 레벨은 SPEC scope를 기반으로 **복잡도 추정기**(Complexity Estimator)가 자동으로
-결정합니다.
+하네스 레벨은 SPEC scope를 기반으로 **복잡도 추정기** (Complexity Estimator)가 자동으로 결정합니다. 오타 수정에 thorough 검증을 돌리지 않는 것 — 그 자체가 토크노믹스입니다.
 
 ## 4차원 스코어링
 
-sync-auditor는 4개 차원으로 점수를 매깁니다:
+sync-auditor는 4개 차원으로 점수를 매깁니다.
 
 | 차원 | 설명 | 기본 Must-Pass |
 |------|------|---------------|
@@ -42,7 +37,7 @@ sync-auditor는 4개 차원으로 점수를 매깁니다:
 
 ### 루브릭 앵커
 
-모든 평가 기준은 4단계 루브릭 앵커를 가집니다:
+점수가 평가자의 기분에 따라 흔들리지 않도록 모든 평가 기준은 4단계 루브릭 앵커를 가집니다.
 
 | 점수 | 수준 | 의미 |
 |------|------|------|
@@ -53,7 +48,7 @@ sync-auditor는 4개 차원으로 점수를 매깁니다:
 
 ## 평가 프로필
 
-`.moai/config/evaluator-profiles/`에 4개 프로필이 제공됩니다:
+`.moai/config/evaluator-profiles/`에 4개 프로필이 제공됩니다. 작업 성격에 따라 평가 기준의 엄격도를 바꿀 수 있습니다.
 
 | 프로필 | 설명 | 적합한 경우 |
 |--------|------|------------|
@@ -64,7 +59,7 @@ sync-auditor는 4개 차원으로 점수를 매깁니다:
 
 ## 평가자 편향 방지 (5가지 메커니즘)
 
-평가자의 관대함을 방지하기 위해 5가지 메커니즘이 작동합니다:
+LLM 평가자는 방치하면 관대해지는 경향이 있습니다. 이를 구조적으로 억제하기 위해 5가지 메커니즘이 함께 작동합니다.
 
 | # | 메커니즘 | 설명 |
 |---|---------|------|
@@ -76,26 +71,40 @@ sync-auditor는 4개 차원으로 점수를 매깁니다:
 
 ## Evaluator Memory Scope
 
-평가자의 판단 기억은 **반복별로 일시적**입니다. GAN Loop의 각 반복에서 sync-auditor는
-새 컨텍스트로 재시작되며, 이전 반복의 판단 근거는 새 프롬프트에 포함되지 않습니다.
-Sprint Contract 상태만이 반복 간에 유지됩니다.
+평가자의 판단 기억은 **반복별로 일시적**입니다. GAN Loop의 각 반복에서 sync-auditor는 새 컨텍스트로 재시작되며 이전 반복의 판단 근거는 새 프롬프트에 포함되지 않습니다. Sprint Contract 상태만이 반복 간에 유지됩니다. 평가자가 자기 이전 판단에 앵커링되어 점수를 관성적으로 매기는 것을 막기 위한 설계입니다.
 
 ## 설정
 
-`.moai/config/sections/harness.yaml`에서 설정합니다:
+`.moai/config/sections/harness.yaml`에서 설정합니다.
 
 ```yaml
 harness:
-  level: auto              # auto | minimal | standard | thorough
+  default_profile: "default"        # evaluator_profile 미지정 SPEC의 기본값
   evaluator:
-    memory_scope: per_iteration   # FROZEN — 변경 불가
-    profiles:
-      default: .moai/config/evaluator-profiles/default.md
-      strict: .moai/config/evaluator-profiles/strict.md
-    aggregation: min              # min | mean
-    must_pass_dimensions:
-      - Functionality
-      - Security
+    memory_scope: per_iteration     # FROZEN — 변경 불가
+  mode_defaults:
+    solo: auto                      # sub-agent 모드: 자동 감지
+    team: auto                      # team 모드: 자동 감지
+    cg: thorough                    # CG 모드: 항상 thorough
+  auto_detection:
+    enabled: true
+    rules:
+      minimal:
+        conditions:
+          - "file_count <= 3 AND single_domain"
+      thorough:
+        conditions:
+          - "security_keywords OR payment_keywords present"
+  escalation:
+    enabled: true
+    max_escalations: 2
+  effort_mapping:
+    minimal:  "low"
+    standard: "medium"
+    thorough: "high"
+  levels:
+    thorough:
+      evaluator: true
 ```
 
 ## 관련 문서

@@ -8,14 +8,17 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/modu-ai/moai-adk/internal/cli/update/backup"
+	"github.com/modu-ai/moai-adk/internal/cli/update/deploy"
+	"github.com/modu-ai/moai-adk/internal/cli/update/plan"
 	"github.com/modu-ai/moai-adk/internal/defs"
 )
 
-// --- backupMoaiConfig additional edge case tests ---
+// --- backup.BackupMoaiConfig additional edge case tests ---
 
 func TestBackupMoaiConfig_ConfigPathIsFile(t *testing.T) {
 	// When .moai/config is a regular file instead of a directory,
-	// backupMoaiConfig should return an error.
+	// backup.BackupMoaiConfig should return an error.
 	tmpDir := t.TempDir()
 	moaiDir := filepath.Join(tmpDir, defs.MoAIDir)
 	if err := os.MkdirAll(moaiDir, 0o755); err != nil {
@@ -28,7 +31,7 @@ func TestBackupMoaiConfig_ConfigPathIsFile(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	_, err := backupMoaiConfig(tmpDir)
+	_, err := backup.BackupMoaiConfig(tmpDir)
 	if err == nil {
 		t.Fatal("expected error when config path is a file, got nil")
 	}
@@ -47,9 +50,9 @@ func TestBackupMoaiConfig_MetadataContainsAllFields(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	backupDir, err := backupMoaiConfig(tmpDir)
+	backupDir, err := backup.BackupMoaiConfig(tmpDir)
 	if err != nil {
-		t.Fatalf("backupMoaiConfig failed: %v", err)
+		t.Fatalf("backup.BackupMoaiConfig failed: %v", err)
 	}
 	if backupDir == "" {
 		t.Fatal("expected non-empty backup dir")
@@ -62,7 +65,7 @@ func TestBackupMoaiConfig_MetadataContainsAllFields(t *testing.T) {
 		t.Fatalf("read metadata: %v", err)
 	}
 
-	var meta BackupMetadata
+	var meta backup.BackupMetadata
 	if err := json.Unmarshal(data, &meta); err != nil {
 		t.Fatalf("unmarshal metadata: %v", err)
 	}
@@ -101,9 +104,9 @@ func TestBackupMoaiConfig_NestedSubdirectories(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	backupDir, err := backupMoaiConfig(tmpDir)
+	backupDir, err := backup.BackupMoaiConfig(tmpDir)
 	if err != nil {
-		t.Fatalf("backupMoaiConfig failed: %v", err)
+		t.Fatalf("backup.BackupMoaiConfig failed: %v", err)
 	}
 
 	// Verify the deeply nested file was backed up
@@ -121,15 +124,15 @@ func TestBackupMoaiConfig_NestedSubdirectories(t *testing.T) {
 	}
 }
 
-// --- saveTemplateDefaults tests ---
+// --- backup.SaveTemplateDefaults tests ---
 
 func TestSaveTemplateDefaults_CreatesDirectory(t *testing.T) {
 	tmpDir := t.TempDir()
 	destDir := filepath.Join(tmpDir, "template-defaults")
 
-	err := saveTemplateDefaults(destDir)
+	err := backup.SaveTemplateDefaults(destDir)
 	if err != nil {
-		t.Fatalf("saveTemplateDefaults failed: %v", err)
+		t.Fatalf("backup.SaveTemplateDefaults failed: %v", err)
 	}
 
 	// The function should have created the sections/ subdirectory
@@ -147,9 +150,9 @@ func TestSaveTemplateDefaults_WritesYAMLFiles(t *testing.T) {
 	tmpDir := t.TempDir()
 	destDir := filepath.Join(tmpDir, "template-defaults")
 
-	err := saveTemplateDefaults(destDir)
+	err := backup.SaveTemplateDefaults(destDir)
 	if err != nil {
-		t.Fatalf("saveTemplateDefaults failed: %v", err)
+		t.Fatalf("backup.SaveTemplateDefaults failed: %v", err)
 	}
 
 	// Check that at least some known section files were written.
@@ -161,7 +164,7 @@ func TestSaveTemplateDefaults_WritesYAMLFiles(t *testing.T) {
 	}
 
 	if len(entries) == 0 {
-		t.Fatal("saveTemplateDefaults should write at least one section file")
+		t.Fatal("backup.SaveTemplateDefaults should write at least one section file")
 	}
 
 	// Check that files are non-empty
@@ -184,9 +187,9 @@ func TestSaveTemplateDefaults_StripsTmplExtension(t *testing.T) {
 	tmpDir := t.TempDir()
 	destDir := filepath.Join(tmpDir, "template-defaults")
 
-	err := saveTemplateDefaults(destDir)
+	err := backup.SaveTemplateDefaults(destDir)
 	if err != nil {
-		t.Fatalf("saveTemplateDefaults failed: %v", err)
+		t.Fatalf("backup.SaveTemplateDefaults failed: %v", err)
 	}
 
 	// No files should have .tmpl extension in the output
@@ -216,10 +219,10 @@ func TestSaveTemplateDefaults_OverwritesExisting(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	// Call saveTemplateDefaults - should not fail even if directory already exists
-	err := saveTemplateDefaults(destDir)
+	// Call backup.SaveTemplateDefaults - should not fail even if directory already exists
+	err := backup.SaveTemplateDefaults(destDir)
 	if err != nil {
-		t.Fatalf("saveTemplateDefaults failed on existing directory: %v", err)
+		t.Fatalf("backup.SaveTemplateDefaults failed on existing directory: %v", err)
 	}
 }
 
@@ -247,7 +250,7 @@ func TestRestoreMoaiConfigLegacy_RestoresFiles(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	err := restoreMoaiConfigLegacy(tmpDir, backupDir, configDir)
+	err := backup.RestoreMoaiConfigLegacy(tmpDir, backupDir, configDir)
 	if err != nil {
 		t.Fatalf("restoreMoaiConfigLegacy failed: %v", err)
 	}
@@ -291,7 +294,7 @@ func TestRestoreMoaiConfigLegacy_SkipsMetadata(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	err := restoreMoaiConfigLegacy(tmpDir, backupDir, configDir)
+	err := backup.RestoreMoaiConfigLegacy(tmpDir, backupDir, configDir)
 	if err != nil {
 		t.Fatalf("restoreMoaiConfigLegacy failed: %v", err)
 	}
@@ -334,7 +337,7 @@ func TestRestoreMoaiConfigLegacy_MergesWithExistingTarget(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	err := restoreMoaiConfigLegacy(tmpDir, backupDir, configDir)
+	err := backup.RestoreMoaiConfigLegacy(tmpDir, backupDir, configDir)
 	if err != nil {
 		t.Fatalf("restoreMoaiConfigLegacy failed: %v", err)
 	}
@@ -366,7 +369,7 @@ func TestRestoreMoaiConfigLegacy_EmptyBackup(t *testing.T) {
 	}
 
 	// Should complete without error
-	err := restoreMoaiConfigLegacy(tmpDir, backupDir, configDir)
+	err := backup.RestoreMoaiConfigLegacy(tmpDir, backupDir, configDir)
 	if err != nil {
 		t.Fatalf("restoreMoaiConfigLegacy should succeed with empty backup, got: %v", err)
 	}
@@ -405,7 +408,7 @@ func TestRestoreMoaiConfigLegacy_SkipsSymlinkEntry(t *testing.T) {
 		t.Skipf("symlink unsupported on this platform: %v", err)
 	}
 
-	if err := restoreMoaiConfigLegacy(tmpDir, backupDir, configDir); err != nil {
+	if err := backup.RestoreMoaiConfigLegacy(tmpDir, backupDir, configDir); err != nil {
 		t.Fatalf("restoreMoaiConfigLegacy failed: %v", err)
 	}
 
@@ -452,7 +455,7 @@ func TestRestoreMoaiConfigLegacy_RejectsTraversalTarget(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if err := restoreMoaiConfigLegacy(tmpDir, backupDir, configDir); err != nil {
+	if err := backup.RestoreMoaiConfigLegacy(tmpDir, backupDir, configDir); err != nil {
 		t.Fatalf("restoreMoaiConfigLegacy failed: %v", err)
 	}
 
@@ -498,7 +501,7 @@ func TestRestoreMoaiConfig_SkipsSymlinkEntry(t *testing.T) {
 		t.Skipf("symlink unsupported on this platform: %v", err)
 	}
 
-	if err := restoreMoaiConfig(tmpDir, backupDir); err != nil {
+	if err := backup.RestoreMoaiConfig(tmpDir, backupDir, nil); err != nil {
 		t.Fatalf("restoreMoaiConfig failed: %v", err)
 	}
 
@@ -528,7 +531,7 @@ func TestRestoreMoaiConfigLegacy_AllowsRegularInConfigFile(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if err := restoreMoaiConfigLegacy(tmpDir, backupDir, configDir); err != nil {
+	if err := backup.RestoreMoaiConfigLegacy(tmpDir, backupDir, configDir); err != nil {
 		t.Fatalf("restoreMoaiConfigLegacy failed: %v", err)
 	}
 
@@ -549,17 +552,17 @@ func TestRestoreMoaiConfigLegacy_AllowsRegularInConfigFile(t *testing.T) {
 // 있고, 백업이 linkdir/evil.yaml relPath를 산출하면, 복원 쓰기가 symlinked parent를
 // 따라 configDir를 탈출(outside/evil.yaml)하면 안 된다. 모던 walk + 레거시 walk 둘 다 커버.
 //
-// RED(fix 전): leaf evil.yaml은 아직 없어 leaf isSymlinkEntry=false, filepath.Rel은
+// RED(fix 전): leaf evil.yaml은 아직 없어 leaf backup.IsSymlinkEntry=false, filepath.Rel은
 //
 //	lexically-contained 판정 → os.MkdirAll + os.WriteFile가 symlinked parent를 따라
 //	outside/evil.yaml에 쓴다(CWE-22 탈출).
 //
-// GREEN(fix 후): restoreTargetContained가 parent chain을 EvalSymlinks로 해소해
+// GREEN(fix 후): backup.RestoreTargetContained가 parent chain을 EvalSymlinks로 해소해
 //
 //	resolved parent의 configDir 봉쇄를 재검사 → false 반환 → outside 파일 미생성.
 func TestRestoreMoaiConfig_RejectsSymlinkedParentDir(t *testing.T) {
 	// 모던 walk(sections/ 하위)와 레거시 walk(backup root)를 둘 다 검증해
-	// 공유 헬퍼(restoreTargetContained) 1곳 수정이 양 walk를 동시 봉쇄함을 확인한다(AC-SEC4-002).
+	// 공유 헬퍼(backup.RestoreTargetContained) 1곳 수정이 양 walk를 동시 봉쇄함을 확인한다(AC-SEC4-002).
 	t.Run("modern_walk", func(t *testing.T) {
 		tmpDir := t.TempDir()
 
@@ -588,7 +591,7 @@ func TestRestoreMoaiConfig_RejectsSymlinkedParentDir(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		if err := restoreMoaiConfig(tmpDir, backupDir); err != nil {
+		if err := backup.RestoreMoaiConfig(tmpDir, backupDir, nil); err != nil {
 			t.Fatalf("restoreMoaiConfig failed: %v", err)
 		}
 
@@ -626,7 +629,7 @@ func TestRestoreMoaiConfig_RejectsSymlinkedParentDir(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		if err := restoreMoaiConfigLegacy(tmpDir, backupDir, configDir); err != nil {
+		if err := backup.RestoreMoaiConfigLegacy(tmpDir, backupDir, configDir); err != nil {
 			t.Fatalf("restoreMoaiConfigLegacy failed: %v", err)
 		}
 
@@ -643,7 +646,7 @@ func TestRestoreMoaiConfig_RejectsSymlinkedParentDir(t *testing.T) {
 // 결함(fix 전): configDir/sections/linkdir → outside가 사전 존재하고, 백업이
 //
 //	sections/linkdir/sub/evil.yaml relPath를 산출하면(sub는 아직 미존재),
-//	parentChainContained가 filepath.Dir(target)=.../linkdir/sub를 EvalSymlinks하다
+//	backup.ParentChainContained가 filepath.Dir(target)=.../linkdir/sub를 EvalSymlinks하다
 //	os.IsNotExist를 만나 blanket-allow(return true)한다. 그러나 한 단계 얕은
 //	component linkdir 자체가 outside를 가리키는 symlink이므로, 이어지는
 //	os.MkdirAll(filepath.Dir(target))가 linkdir를 통과해 outside/sub를 만들고
@@ -682,7 +685,7 @@ func TestRestoreMoaiConfig_RejectsDeepNonexistentUnderSymlinkedParent(t *testing
 			t.Fatal(err)
 		}
 
-		if err := restoreMoaiConfig(tmpDir, backupDir); err != nil {
+		if err := backup.RestoreMoaiConfig(tmpDir, backupDir, nil); err != nil {
 			t.Fatalf("restoreMoaiConfig failed: %v", err)
 		}
 
@@ -720,7 +723,7 @@ func TestRestoreMoaiConfig_RejectsDeepNonexistentUnderSymlinkedParent(t *testing
 			t.Fatal(err)
 		}
 
-		if err := restoreMoaiConfigLegacy(tmpDir, backupDir, configDir); err != nil {
+		if err := backup.RestoreMoaiConfigLegacy(tmpDir, backupDir, configDir); err != nil {
 			t.Fatalf("restoreMoaiConfigLegacy failed: %v", err)
 		}
 
@@ -732,7 +735,7 @@ func TestRestoreMoaiConfig_RejectsDeepNonexistentUnderSymlinkedParent(t *testing
 }
 
 // TestRestoreTargetContained_ParentChainBranches — AC-SEC4-001 / watch-item 3.
-// restoreTargetContained의 parent-chain 봉쇄 분기를 직접 검증한다:
+// backup.RestoreTargetContained의 parent-chain 봉쇄 분기를 직접 검증한다:
 //
 //	(a) parent가 symlink로 configDir 밖을 가리키면 → reject (false)
 //	(b) parent가 아직 존재하지 않으면(첫 복원, 아직 symlink 없음) → allow (true)
@@ -753,7 +756,7 @@ func TestRestoreTargetContained_ParentChainBranches(t *testing.T) {
 			t.Skipf("symlink unsupported on this platform: %v", err)
 		}
 		target := filepath.Join(configDir, "linkdir", "evil.yaml")
-		if restoreTargetContained(configDir, target) {
+		if backup.RestoreTargetContained(configDir, target) {
 			t.Errorf("watch-item 3 (a): symlinked parent escaping configDir must be rejected (false)")
 		}
 	})
@@ -766,7 +769,7 @@ func TestRestoreTargetContained_ParentChainBranches(t *testing.T) {
 		}
 		// parent(sections/newsub)가 아직 존재하지 않는 정상 첫-복원 경로.
 		target := filepath.Join(configDir, "sections", "newsub", "fresh.yaml")
-		if !restoreTargetContained(configDir, target) {
+		if !backup.RestoreTargetContained(configDir, target) {
 			t.Errorf("watch-item 3 (b): not-yet-existing in-config parent must be allowed (true)")
 		}
 	})
@@ -779,7 +782,7 @@ func TestRestoreTargetContained_ParentChainBranches(t *testing.T) {
 			t.Fatal(err)
 		}
 		target := filepath.Join(realParent, "user.yaml")
-		if !restoreTargetContained(configDir, target) {
+		if !backup.RestoreTargetContained(configDir, target) {
 			t.Errorf("watch-item 3: real in-config parent must be allowed (true)")
 		}
 	})
@@ -801,7 +804,7 @@ func TestRestoreTargetContained_ParentChainBranches(t *testing.T) {
 		}
 		// linkdir는 존재하지만 sub는 미존재 → filepath.Dir(target)=.../linkdir/sub는 not-exist.
 		target := filepath.Join(configDir, "sections", "linkdir", "sub", "evil.yaml")
-		if restoreTargetContained(configDir, target) {
+		if backup.RestoreTargetContained(configDir, target) {
 			t.Errorf("watch-item 3 (c): deep-nonexistent target under symlinked existing ancestor must be rejected (false)")
 		}
 	})
@@ -818,7 +821,7 @@ func TestRestoreTargetContained_ParentChainBranches(t *testing.T) {
 		}
 		// sections는 존재, 그 아래 newsub/deep는 미존재.
 		target := filepath.Join(realAncestor, "newsub", "deep", "fresh.yaml")
-		if !restoreTargetContained(configDir, target) {
+		if !backup.RestoreTargetContained(configDir, target) {
 			t.Errorf("watch-item 3 (d): deep-nonexistent target under real in-config ancestor must be allowed (true)")
 		}
 	})
@@ -845,7 +848,7 @@ func TestRestoreMoaiConfig_FallsBackToLegacyWhenNoSections(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	err := restoreMoaiConfig(tmpDir, backupDir)
+	err := backup.RestoreMoaiConfig(tmpDir, backupDir, nil)
 	if err != nil {
 		t.Fatalf("restoreMoaiConfig should fall back to legacy, got: %v", err)
 	}
@@ -899,7 +902,7 @@ func TestRestoreMoaiConfig_3WayMergeWithTemplateDefaults(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	err := restoreMoaiConfig(tmpDir, backupDir)
+	err := backup.RestoreMoaiConfig(tmpDir, backupDir, nil)
 	if err != nil {
 		t.Fatalf("restoreMoaiConfig failed: %v", err)
 	}
@@ -947,7 +950,7 @@ func TestRestoreMoaiConfig_SkipsNonYAMLFiles(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	err := restoreMoaiConfig(tmpDir, backupDir)
+	err := backup.RestoreMoaiConfig(tmpDir, backupDir, nil)
 	if err != nil {
 		t.Fatalf("restoreMoaiConfig failed: %v", err)
 	}
@@ -990,7 +993,7 @@ func TestCleanMoaiManagedPaths_OnlyUserFilesPreserved(t *testing.T) {
 	}
 
 	var buf bytes.Buffer
-	err := cleanMoaiManagedPaths(root, &buf)
+	err := deploy.CleanMoaiManagedPaths(root, &buf)
 	if err != nil {
 		t.Fatalf("cleanMoaiManagedPaths failed: %v", err)
 	}
@@ -1070,14 +1073,14 @@ func TestRunTemplateSyncWithProgress_VersionUpToDate(t *testing.T) {
 	}
 
 	// We cannot easily test the full function since it depends on cobra command
-	// and many subsystems. Instead, verify the sub-component getProjectConfigVersion
+	// and many subsystems. Instead, verify the sub-component plan.GetProjectConfigVersion
 	// works correctly.
-	ver, err := getProjectConfigVersion(tmpDir)
+	ver, err := plan.GetProjectConfigVersion(tmpDir)
 	if err != nil {
-		t.Fatalf("getProjectConfigVersion failed: %v", err)
+		t.Fatalf("plan.GetProjectConfigVersion failed: %v", err)
 	}
 	if ver != currentVersion {
-		t.Errorf("getProjectConfigVersion = %q, want %q", ver, currentVersion)
+		t.Errorf("plan.GetProjectConfigVersion = %q, want %q", ver, currentVersion)
 	}
 }
 
@@ -1085,12 +1088,12 @@ func TestGetProjectConfigVersion_MissingFile(t *testing.T) {
 	tmpDir := t.TempDir()
 
 	// No system.yaml exists, should return "0.0.0" to force update
-	ver, err := getProjectConfigVersion(tmpDir)
+	ver, err := plan.GetProjectConfigVersion(tmpDir)
 	if err != nil {
-		t.Fatalf("getProjectConfigVersion should not error for missing file, got: %v", err)
+		t.Fatalf("plan.GetProjectConfigVersion should not error for missing file, got: %v", err)
 	}
 	if ver != "0.0.0" {
-		t.Errorf("getProjectConfigVersion = %q, want %q for missing config", ver, "0.0.0")
+		t.Errorf("plan.GetProjectConfigVersion = %q, want %q for missing config", ver, "0.0.0")
 	}
 }
 
@@ -1106,11 +1109,11 @@ func TestGetProjectConfigVersion_ValidFile(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	ver, err := getProjectConfigVersion(tmpDir)
+	ver, err := plan.GetProjectConfigVersion(tmpDir)
 	if err != nil {
-		t.Fatalf("getProjectConfigVersion failed: %v", err)
+		t.Fatalf("plan.GetProjectConfigVersion failed: %v", err)
 	}
 	if ver != "2.5.0" {
-		t.Errorf("getProjectConfigVersion = %q, want %q", ver, "2.5.0")
+		t.Errorf("plan.GetProjectConfigVersion = %q, want %q", ver, "2.5.0")
 	}
 }

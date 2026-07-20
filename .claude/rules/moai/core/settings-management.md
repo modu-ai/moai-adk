@@ -30,72 +30,13 @@ The genuine Claude Code `/config` slash command (distinct from MoAI's `.moai`-pr
 
 ### MCP Configuration
 
-`.mcp.json` - MCP server definitions:
-
-- mcpServers: Server command and arguments
-- Environment variables for servers
-
-Standard MCP servers in MoAI-ADK:
-
-- context7: Library documentation lookup
-- pencil: .pen file design editing. Used by a per-spawn `Agent(general-purpose)` frontend specialist (sub-agent mode) and the designer role_profile (team mode).
-- claude-in-chrome: Browser automation
-- z.ai MCP servers (optional, GLM backend): three separate servers registered via `moai glm tools enable [vision|websearch|webreader|all]` — `zai-mcp-server` (npx stdio, GLM-4.6V vision tools), `web_search_prime` (HTTP, `webSearchPrime`), `web_reader` (HTTP, `webReader`). Under `moai glm` / `moai cg` GLM panes these replace the built-in `WebSearch` / `WebFetch` / `Read`-on-image per `.claude/rules/moai/core/glm-web-tooling.md`.
+MoAI-ADK no longer ships or provisions MCP servers via `.mcp.json`. Users may still configure Claude Code's native MCP support directly — see the official Claude Code MCP documentation. The GLM-backend z.ai web-tooling servers (`zai-mcp-server`, `web_search_prime`, `web_reader`) remain available via `moai glm tools enable` under a GLM session; see `.claude/rules/moai/core/glm-web-tooling.md` for the HARD routing table.
 
 > Sequential Thinking MCP was retired in an earlier deep-reasoning consolidation. Use the `ultrathink` keyword (Adaptive Thinking on Opus 4.7+ / 4.8) for deep reasoning.
 
-**`alwaysLoad` field (Claude Code v2.1.119+)**
+**`alwaysLoad` field (Claude Code v2.1.119+)** — Claude Code supports an `"alwaysLoad": true` field on MCP server entries in a user-authored `.mcp.json`; when set, the server's tool schema loads at session start instead of via the deferred-load default. This is a Claude Code platform feature documented for reference; MoAI-ADK does not emit it from its own templates.
 
-Claude Code v2.1.119 added the `"alwaysLoad": true` field to MCP server entries in `.mcp.json`.
-When this field is set to `true`, the server's tool schema is loaded immediately at session start (instead of the deferred-load default).
-
-MoAI-ADK default configuration:
-- `context7`: `"alwaysLoad": true` — loaded eagerly because documentation lookups occur frequently every session
-
-```json
-{
-  "mcpServers": {
-    "context7": {
-      "$comment": "Up-to-date documentation and code examples via Context7",
-      "alwaysLoad": true,
-      "command": "/bin/bash",
-      "args": ["-l", "-c", "exec npx -y @upstash/context7-mcp@latest"]
-    }
-  }
-}
-```
-
-
-MCP tools are deferred by default and must be loaded before use. Exception: servers with `alwaysLoad: true` are loaded at session start automatically.
-
-1. Use ToolSearch to find and load the tool
-2. Then call the loaded tool directly
-
-Example flow:
-- ToolSearch("context7 docs") loads mcp__context7__* tools
-- mcp__context7__resolve-library-id is then available
-- With `alwaysLoad: true`, this step is unnecessary for context7
-
-MCP rules:
-- Always use ToolSearch before calling MCP tools (unless server has alwaysLoad: true)
-- Prefer MCP tools over manual alternatives
-- Authenticated URLs require specialized MCP tools
-
-Example `.mcp.json` configuration:
-
-```json
-{
-  "mcpServers": {
-    "context7": {
-      "alwaysLoad": true,
-      "command": "npx",
-      "args": ["-y", "@context7/mcp"]
-    }
-  }
-}
-```
-
-**MCP `alwaysLoad` field** (introduced v2.1.119; the v2.1.121 change below is the separate `updatedToolOutput` extension, NOT a second introduction): Setting `alwaysLoad: true` on a server entry forces its tool schemas to load at session start, bypassing tool-search auto-mode deferral. MoAI-ADK sets this for `context7` to ensure Context7 documentation lookup is available immediately without ToolSearch preload.
+MCP tools (when a user configures their own `.mcp.json`) are deferred by default and must be loaded before use. Use ToolSearch to find and load the tool, then call it directly. Authenticated URLs may require specialized MCP tools.
 
 **Claude Code v2.1.119-121 Hook Changes**:
 
@@ -112,13 +53,11 @@ Example `.mcp.json` configuration:
 | `agent` | v2.1.157+ | User/Project/Local (not Managed) | The top-level `agent` key (example `"code-reviewer"`) runs the main thread as a named subagent and sets the default agent for sessions dispatched from `claude agents`, applying that subagent's system prompt, tool restrictions, and model. MoAI invokes its retained agent catalog via explicit delegation, not a session-wide default agent (orchestrator-is-main-thread model). |
 | `requiredMinimumVersion` | v2.1.163+ | Managed | Hard version-gate — Claude Code refuses to start when its version is below the floor. An org/admin decision, parallel to the `disableWorkflows` stance. Distinct from the older advisory `minimumVersion`. |
 | `requiredMaximumVersion` | v2.1.163+ | Managed | Hard version-ceiling — refuses to start above the cap. Likewise an org/admin decision. |
+| `effortLevel` | v2.1.110+ | User/Project/Local | Intentionally NOT shipped in `settings.json.tmpl`. Per-session effort is controlled by the `ultrathink` keyword or the `CLAUDE_CODE_EFFORT_LEVEL` environment variable; pinning a fixed high effort level project-wide would force elevated token cost on every user session. |
 
 Reference: https://code.claude.com/docs/en/settings.
 
-**Context7 Usage** - For up-to-date library documentation:
-
-1. resolve-library-id: Find library identifier
-2. get-library-docs: Retrieve documentation
+**`model` — shipped deliberately (contrast with the unset settings above)**: unlike the settings in the table above, `settings.json.tmpl` DOES pin `"model": "sonnet"`. This is intentional: it gives user projects a cost-predictable default model rather than inheriting whatever model the user's Claude Code client happens to default to. Users remain free to override the default via `/model` or their own project/user settings — the template pin is a starting point, not a lock-in.
 
 **Adaptive Thinking Usage** - For complex analysis requiring deeper reasoning:
 
@@ -142,7 +81,7 @@ Use the `ultrathink` keyword in user prompts to activate Adaptive Thinking (Opus
 Configuration sections are loaded via two mechanisms:
 
 **1. `Loader.Load()` chain** (`internal/config/loader.go:31-74`):
-Loads the following 10 sections in fixed order. All return defaults on absent file.
+Loads the following 15 sections in fixed order. All return defaults on absent file.
 
 | YAML file | loadedSections key | Go field |
 |---|---|---|
@@ -150,9 +89,11 @@ Loads the following 10 sections in fixed order. All return defaults on absent fi
 | language.yaml | `language` | `cfg.Language` |
 | quality.yaml | `quality` | `cfg.Quality` |
 | git-convention.yaml | `git_convention` | `cfg.GitConvention` |
+| git-strategy.yaml | `git_strategy` | `cfg.GitStrategy` |
 | llm.yaml | `llm` | `cfg.LLM` |
 | ralph.yaml | `ralph` | `cfg.Ralph` |
 | state.yaml | `state` | `cfg.State` |
+| workflow.yaml | `workflow` | `cfg.Workflow` |
 | statusline.yaml | `statusline` | `cfg.Statusline` |
 | research.yaml | `research` | `cfg.Research` |
 | constitution.yaml | `constitution` | `cfg.Constitution` |
@@ -271,50 +212,24 @@ Language preferences in language.yaml:
 - agent_prompt_language: Internal communication
 - code_comments: Code comment language
 
-## Agent Teams Settings
+## Agent Teams Settings — RETIRED
 
-Agent Teams require both an environment variable and workflow configuration.
+The MoAI Agent Teams static-orchestration layer is RETIRED. The former Teams-API
+experimental env-var gate, the `workflow.team` config block, and the team
+auto-selection thresholds were removed with it. A forced `--mode team` emits
+`MODE_TEAM_UNAVAILABLE` and falls back to sub-agent mode. The Phase 4
+auto-select thresholds (≥ 3 domains / ≥ 10 files / score ≥ 7) now live as
+prose-only SSOT in
+`.claude/rules/moai/workflow/orchestration-mode-selection.md` §B.1.
 
-### Environment Variable
-
-Enable in `.claude/settings.json`:
-
-```json
-{
-  "env": {
-    "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1"
-  }
-}
-```
-
-This env var must be set for Claude Code to expose the Teams API.
-
-### Workflow Configuration
-
-Team behavior is controlled by the `workflow.team` section in `.moai/config/sections/workflow.yaml`:
-
-| Setting | Type | Default | Description |
-|---------|------|---------|-------------|
-| team.enabled | boolean | true | Master switch for team mode |
-| team.max_teammates | integer | 10 | Maximum teammates per team (2-10 recommended) |
-| team.default_model | string | inherit | Default model for teammates (inherit/haiku/sonnet/opus) |
-| team.require_plan_approval | boolean | true | Require plan approval before implementing |
-| team.delegate_mode | boolean | true | Team lead coordination-only mode (no direct implementation) |
-
-### Auto-Selection Thresholds
-
-When `workflow.execution_mode` is `auto`, these thresholds determine when team mode activates:
-
-| Setting | Default | Description |
-|---------|---------|-------------|
-| team.auto_selection.min_domains_for_team | 3 | Minimum distinct domains to trigger team mode |
-| team.auto_selection.min_files_for_team | 10 | Minimum affected files to trigger team mode |
-| team.auto_selection.min_complexity_score | 7 | Minimum complexity score (1-10) to trigger team mode |
+The native Claude Code teammate runtime (`moai cg` GLM teammate panes,
+`worktree --team` launch) is unaffected — see
+`.claude/rules/moai/core/glm-web-tooling.md` § CG Mode.
 
 ## Output Style Configuration
 
 Output styles are Markdown files in `.claude/output-styles/moai/` that control how MoAI formats responses.
-Two styles ship with MoAI-ADK: **MoAI** (`moai.md`) and **Einstein** (`einstein.md`).
+Three styles ship with MoAI-ADK: **MoAI** (`moai.md`), **MoAI-Easy** (`moai-easy.md`), and **MoAI-Learn** (`moai-learn.md`).
 
 ### Precedence
 
@@ -322,9 +237,12 @@ When `outputStyle` is set in multiple places, the first match wins:
 
 | Priority | Source | Key | Example |
 |----------|--------|-----|---------|
-| 1 (highest) | `.claude/settings.json` (project) | `outputStyle` | `"outputStyle": "Einstein"` |
-| 2 | `~/.claude/settings.json` (user) | `outputStyle` | `"outputStyle": "MoAI"` |
-| 3 (lowest) | Hardcoded default | — | `"MoAI"` |
+| 1 (highest) | `.claude/settings.local.json` (local, gitignored) | `outputStyle` | `"outputStyle": "MoAI-Learn"` |
+| 2 | `.claude/settings.json` (project) | `outputStyle` | `"outputStyle": "MoAI-Easy"` |
+| 3 | `~/.claude/settings.json` (user) | `outputStyle` | `"outputStyle": "MoAI"` |
+| 4 (lowest) | Hardcoded default | — | `"MoAI"` |
+
+The **local** scope (`.claude/settings.local.json`) is the highest-priority resolver source and is where the Claude Code `/config` → Output style menu writes a user's selection (official docs: code.claude.com/docs/en/output-styles — "Your selection is saved to `.claude/settings.local.json`"). This is why the project template (scope 2) pinning `outputStyle: MoAI-Easy` as the PRODUCT DEFAULT never traps a user: any `/config` choice lands in scope 1, which outranks the project pin. The setting is read once at session start — a change takes effect after `/clear` or a new session.
 
 **Example 1 — project overrides user:**
 
@@ -333,21 +251,21 @@ When `outputStyle` is set in multiple places, the first match wins:
 { "outputStyle": "MoAI" }
 
 // .claude/settings.json (project)
-{ "outputStyle": "Einstein" }
+{ "outputStyle": "MoAI-Learn" }
 ```
 
-Result: **Einstein** loads (project wins over user, REQ-WF006-006).
+Result: **MoAI-Learn** loads (project wins over user, REQ-WF006-006).
 
 **Example 2 — user setting applies when project is absent:**
 
 ```json
 // ~/.claude/settings.json
-{ "outputStyle": "Einstein" }
+{ "outputStyle": "MoAI-Learn" }
 
 // .claude/settings.json (project) — outputStyle key not present
 ```
 
-Result: **Einstein** loads (user setting applies, REQ-WF006-015).
+Result: **MoAI-Learn** loads (user setting applies, REQ-WF006-015).
 
 **Example 3 — third-party style at project level:**
 

@@ -1,5 +1,5 @@
 ---
-paths: "**/native-invocation-model.md"
+paths: "**/.claude/commands/**,**/.claude/skills/moai/**,**/native-invocation-model.md"
 ---
 
 # Native Invocation-Model Alignment
@@ -70,7 +70,7 @@ A MoAI `/moai` subcommand's existence is justified by **AUTOMATION** — integra
 
 ### Axis B worked illustration (HUMAN-ONLY automation)
 
-The genuinely HUMAN-ONLY native commands are `/goal`, `/clear`, and `/compact` (built-in, no `Skill`-tool bridge). If a MoAI subcommand needed one of these capabilities *inside* an automated pipeline step, Axis B would justify a MoAI reimplementation, because no tool call can trigger a non-exposed built-in — a human would otherwise have to type it. MoAI does not currently reimplement any of the three; the Axis B principle is stated here for completeness so a future subcommand facing a genuinely HUMAN-ONLY native counterpart has a recorded justification path.
+The genuinely HUMAN-ONLY native commands are `/goal`, `/clear`, and `/compact` (built-in, no `Skill`-tool bridge). If a MoAI subcommand needed one of these capabilities *inside* an automated pipeline step, Axis B would justify a MoAI reimplementation, because no tool call can trigger a non-exposed built-in — a human would otherwise have to type it. `/moai goal` now reimplements the HUMAN-ONLY `/goal` capability programmatically (a per-session condition-declared agentic loop evaluated by the `stop-goal` Stop hook) — it is the worked example that proves the Axis B justification path. `/clear` and `/compact` remain unreimplemented; the Axis B principle covers them should a future subcommand face the same HUMAN-ONLY gap.
 
 ## Conditional-PROGRAMMATIC Caveat (verify before relying on Axis A)
 

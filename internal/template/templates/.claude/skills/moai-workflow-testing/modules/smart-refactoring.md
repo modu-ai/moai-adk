@@ -3,7 +3,7 @@
 > Module: AI-powered code refactoring with technical debt analysis and safe transformation
 > Complexity: Advanced
 > Time: 25+ minutes
-> Dependencies: Python 3.8+, Rope, AST, Context7 MCP, asyncio, dataclasses
+> Dependencies: source parser (AST), the project's refactoring tool, WebSearch/WebFetch (optional)
 
 ## Overview
 
@@ -23,7 +23,7 @@ AI-Powered Refactoring:
 - Safe transformation planning with risk assessment
 - Execution order optimization (low-risk first, then high-impact)
 - Rollback strategy generation
-- Integration with Rope for safe code transformations
+- Integration with the host language's refactoring tool for safe code transformations
 
 Intelligent Analysis:
 - Project-specific convention detection
@@ -35,20 +35,20 @@ Intelligent Analysis:
 ### Key Components
 
 TechnicalDebtAnalyzer:
-- Analyzes Python codebases for technical debt patterns
-- Calculates complexity metrics using AST analysis
+- Analyzes a codebase for technical debt patterns
+- Calculates complexity metrics via AST analysis
 - Detects code duplication using similarity algorithms
 - Generates prioritized debt items with suggested fixes
 
 AIRefactorer:
 - Integrates technical debt analysis with refactoring opportunities
 - Creates safe execution plans with risk assessment
-- Leverages Context7 MCP for latest refactoring patterns
-- Uses Rope library for safe code transformations
+- Leverages WebSearch/WebFetch for latest refactoring patterns
+- Uses the host language's refactoring tooling for safe code transformations
 
 RefactorPlan:
 - Comprehensive refactoring roadmap with execution strategy
-- Time estimation and risk assessment
+- Effort estimate and risk assessment
 - Prerequisites and rollback strategies
 - Technical debt impact tracking
 
@@ -56,41 +56,28 @@ RefactorPlan:
 
 ## Quick Reference
 
-### Installation
+### Setup
 
-```bash
-# Install required dependencies
-pip install rope ast-visitor
-
-# For Context7 integration (optional but recommended)
-pip install context7-client
-```
+Use the host language's own refactoring tooling — no extra packages are required for the workflow itself. Examples per language: Python Rope / pyrefly; Go `gopls` refactor; TS/JS language-server rename/extract; Rust rust-analyzer; IntelliJ family. WebSearch/WebFetch integration is optional.
 
 ### Basic Usage
 
-```python
-import asyncio
-from smart_refactoring import AIRefactorer
+```text
+# Initialize the refactoring system (Documentation client is optional)
+refactorer = AIRefactorer(docs_client=none)
 
-async def main():
-    # Initialize refactoring system
-    refactorer = AIRefactorer(context7_client=None)
-    
-    # Analyze and create refactoring plan
-    refactor_plan = await refactorer.refactor_with_intelligence(
-        codebase_path="/project/src",
-        refactor_options={
-            'max_risk_level': 'medium',
-            'include_tests': True,
-            'focus_on': ['complexity', 'duplication']
-        }
-    )
-    
-    print(f"Found {len(refactor_plan.opportunities)} opportunities")
-    print(f"Estimated time: {refactor_plan.estimated_time}")
-    print(f"Risk assessment: {refactor_plan.risk_assessment}")
+# Analyze and create a refactoring plan
+plan = refactorer.refactor_with_intelligence(
+    codebase_path="/project/src",
+    refactor_options={
+        max_risk_level: "medium",
+        include_tests:  true,
+        focus_on:       ["complexity", "duplication"]
+    })
 
-asyncio.run(main())
+print("Found " + len(plan.opportunities) + " opportunities")
+print("Estimated effort: " + plan.estimated_effort)
+print("Risk assessment: " + plan.risk_assessment)
 ```
 
 ### Technical Debt Categories
@@ -149,68 +136,56 @@ Move Module:
 ### Workflow Overview
 
 Step 1 - Analyze Technical Debt:
-```python
-from smart_refactoring import TechnicalDebtAnalyzer
-
+```text
 analyzer = TechnicalDebtAnalyzer()
-debt_items = await analyzer.analyze("/project/src")
+debt_items = analyzer.analyze("/project/src")
 
-for item in debt_items[:5]:  # Top 5 priority items
-    print(f"[{item.severity.upper()}] {item.description}")
-    print(f"  File: {item.file_path}:{item.line_number}")
-    print(f"  Impact: {item.impact}")
-    print(f"  Estimated effort: {item.estimated_effort}")
-    print(f"  Suggested: {item.suggested_fix}")
+for item in debt_items[:5]:   # top 5 priority items
+    print("[" + uppercase(item.severity) + "] " + item.description)
+    print("  File: " + item.file_path + ":" + item.line_number)
+    print("  Impact: " + item.impact + "  Effort: " + item.estimated_effort)
+    print("  Suggested: " + item.suggested_fix)
 ```
 
 Step 2 - Identify Refactoring Opportunities:
-```python
+```text
 # AIRefactorer automatically analyzes opportunities
-opportunities = refactor_plan.opportunities
-
-for opp in opportunities[:3]:
-    print(f"\n{opp.type.value}")
-    print(f"  Description: {opp.description}")
-    print(f"  Confidence: {opp.confidence:.0%}")
-    print(f"  Risk: {opp.risk_level}")
-    print(f"  Complexity reduction: {opp.complexity_reduction:.0%}")
+for opp in refactor_plan.opportunities[:3]:
+    print(opp.type)
+    print("  Description: " + opp.description)
+    print("  Confidence: " + pct(opp.confidence))
+    print("  Risk: " + opp.risk_level)
+    print("  Complexity reduction: " + pct(opp.complexity_reduction))
 ```
 
 Step 3 - Execute Safe Refactoring:
-```python
-# Execute refactoring plan in optimal order
-for i, opp_index in enumerate(refactor_plan.execution_order):
+```text
+# Execute the refactoring plan in optimal order
+for (i, opp_index) in enumerate(refactor_plan.execution_order, from=1):
     opportunity = refactor_plan.opportunities[opp_index]
-    
-    print(f"\nStep {i+1}: {opportunity.description}")
-    print(f"Type: {opportunity.type.value}")
-    print(f"Risk: {opportunity.risk_level}")
-    
-    # Create git commit before each operation
-    # git commit -m "Before refactoring: {opportunity.description}"
-    
-    # Execute refactoring using Rope
-    # (Implementation depends on refactoring type)
-    
+    print("Step " + i + ": " + opportunity.description)
+    print("  Type: " + opportunity.type + "  Risk: " + opportunity.risk_level)
+
+    # Create a git commit before each operation
+    # git commit -m "Before refactoring: {description}"
+    # Execute the refactoring via the host language's refactoring tool
     # Run tests to verify
-    # if tests_pass:
-    #     git commit -m "After refactoring: {opportunity.description}"
-    # else:
-    #     git revert HEAD
+    #   if pass: git commit -m "After refactoring: {description}"
+    #   else:    git revert HEAD
 ```
 
 ### Configuration Options
 
 Refactor Options:
-```python
+```text
 refactor_options = {
-    'max_risk_level': 'medium',  # low, medium, high
-    'include_tests': True,
-    'focus_on': ['complexity', 'duplication', 'naming'],
-    'exclude_patterns': ['*_test.py', 'test_*.py'],
-    'min_confidence': 0.6,
-    'complexity_threshold': 10,
-    'duplication_threshold': 0.8
+    max_risk_level:        "medium",                  # low, medium, high
+    include_tests:         true,
+    focus_on:              ["complexity", "duplication", "naming"],
+    exclude_patterns:      ["*_test.<ext>", "test_*.<ext>"],   # host language's test naming
+    min_confidence:        0.6,
+    complexity_threshold:  10,
+    duplication_threshold: 0.8
 }
 ```
 
@@ -245,7 +220,7 @@ Safe Refactoring Protocol:
 
 The AIRefactorer can detect and respect project-specific conventions:
 
-- Naming conventions (snake_case, camelCase)
+- Naming conventions (snake_case, camelCase, kebab-case)
 - Architectural patterns (MVC, microservices)
 - API boundaries (public, internal)
 - Code organization preferences
@@ -256,17 +231,17 @@ See [refactoring/context-aware.md](refactoring/context-aware.md) for advanced co
 
 Track technical debt reduction over time:
 
-```python
+```text
 # Before refactoring
-initial_debt = await analyzer.analyze("/project/src")
+initial_debt  = analyzer.analyze("/project/src")
 initial_score = calculate_technical_debt_score(initial_debt)
 
 # After refactoring
-final_debt = await analyzer.analyze("/project/src")
-final_score = calculate_technical_debt_score(final_debt)
+final_debt    = analyzer.analyze("/project/src")
+final_score   = calculate_technical_debt_score(final_debt)
 
 improvement = initial_score - final_score
-print(f"Technical debt reduced by {improvement:.1%}")
+print("Technical debt reduced by " + pct(improvement))
 ```
 
 ### Safe Refactoring Patterns
@@ -291,9 +266,9 @@ For detailed refactoring techniques and best practices, see:
 
 ### Dependencies
 
-- Rope: Python refactoring library
-- AST: Python built-in AST module
-- Context7 MCP: Latest refactoring patterns (optional)
+- Refactoring tool: the host language's refactoring library/LSP (Rope, gopls, rust-analyzer, etc.)
+- Source parser: the host language's AST module
+- WebSearch/WebFetch: Latest refactoring patterns (optional)
 
 ### Related Modules
 
@@ -304,8 +279,7 @@ For detailed refactoring techniques and best practices, see:
 ### External References
 
 - Refactoring Guru: https://refactoring.guru/
-- Python AST Documentation: https://docs.python.org/3/library/ast.html
-- Rope Documentation: https://github.com/python-rope/rope
+- Martin Fowler's Refactoring catalog
 
 ---
 

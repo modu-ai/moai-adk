@@ -4,8 +4,7 @@ weight: 30
 draft: false
 ---
 
-EARS 형식으로 명확한 SPEC 문서를 생성하여, AI와 나눈 대화를 영구적인 요구사항
-문서로 만듭니다.
+AI와 나눈 대화를 영구적인 요구사항 문서로 바꿉니다. 자연어 요청이 구조화된 SPEC 문서가 되고, 이 문서가 이후 모든 단계의 기준이 됩니다.
 
 {{< callout type="info" >}}
 **슬래시 커맨드**: Claude Code에서 `/moai:plan`을 입력하면 이 명령어를 바로 실행할 수 있습니다. `/moai`만 입력하면 사용 가능한 모든 서브커맨드 목록이 표시됩니다.
@@ -13,10 +12,11 @@ EARS 형식으로 명확한 SPEC 문서를 생성하여, AI와 나눈 대화를 
 
 ## 개요
 
-`/moai plan`은 MoAI-ADK 워크플로우의 **Phase 1 (Plan)** 명령어입니다. 자연어로
-된 기능 요청을 **EARS** (Easy Approach to Requirements Syntax) 형식의 구조화된
-SPEC 문서로 변환합니다. 내부적으로 **manager-spec** 에이전트가 요구사항을
-분석하고, 모호함 없는 명세서를 생성합니다.
+`/moai plan`은 MoAI-ADK 워크플로우의 **Phase 1 (Plan)** 명령어입니다. 자연어로 된 기능 요청을 **GEARS** (Generalized Expression for AI-Ready Specs) 형식의 구조화된 SPEC 문서로 변환합니다. 내부적으로 **manager-spec** 에이전트가 요구사항을 분석하고, 모호함 없는 명세서를 생성합니다.
+
+v3.0.0부터 GEARS가 정본 표기법이며, 기존 **EARS** (Easy Approach to Requirements Syntax)는 6개월간 하위 호환으로 유지됩니다. 두 표기법의 차이와 마이그레이션은 [GEARS 표기법 섹션](#gears-notation)을 참조하세요.
+
+계획 단계는 v3 토크노믹스 설계에서 가장 깊은 추론이 배정되는 단계입니다. 여기서 요구사항이 명확해질수록 뒤따르는 구현 단계의 재작업과 토큰 낭비가 줄어듭니다. 그래서 MoAI-ADK는 "계획은 깊게, 구현은 싸게"라는 배분 원칙을 따르고, 생성된 SPEC은 **plan-auditor**가 독립적으로 감사합니다. 만든 에이전트가 스스로 검사하지 않습니다.
 
 {{< callout type="info" >}}
 
@@ -24,14 +24,11 @@ SPEC 문서로 변환합니다. 내부적으로 **manager-spec** 에이전트가
 
 **바이브코딩** (Vibe Coding)의 가장 큰 문제는 **맥락 유실**입니다.
 
-AI와 대화하다 세션이 끊기면 **이전 논의 내용이 모두 사라집니다**. 토큰 한도를
-초과하면 **오래된 대화부터 잘립니다**. 다음 날 작업을 재개하면 **어제 결정한
-사항을 기억하지 못합니다**.
+AI와 대화하다 세션이 끊기면 **이전 논의 내용이 모두 사라집니다**. 토큰 한도를 초과하면 **오래된 대화부터 잘립니다**. 다음 날 작업을 재개하면 **어제 결정한 사항을 기억하지 못합니다**.
 
 **SPEC 문서가 이 문제를 해결합니다.**
 
-요구사항을 **파일로 저장**하여 영구 보존합니다. EARS 형식으로 **모호함 없이**
-구조화합니다. 세션이 끊겨도 SPEC만 읽으면 **이어서 작업**할 수 있습니다.
+요구사항을 **파일로 저장**하여 영구 보존합니다. v3.0.0부터 정식 표기법인 **GEARS** 형식으로 **모호함 없이** 구조화합니다 (기존 EARS 표기법은 6개월간 하위 호환 유지). 세션이 끊겨도 SPEC만 읽으면 **이어서 작업**할 수 있습니다.
 
 {{< /callout >}}
 
@@ -58,23 +55,22 @@ Claude Code 대화창에서 다음과 같이 입력합니다:
 
 ## 지원 플래그
 
-| 플래그              | 설명                        | 예시                                |
-| ------------------- | --------------------------- | ----------------------------------- |
-| `--worktree`        | 워크트리 자동 생성 (최우선) | `/moai plan "기능" --worktree`      |
-| `--branch`          | 전통적 브랜치 생성          | `/moai plan "기능" --branch`        |
-| `--resume SPEC-XXX` | 중단된 SPEC 작업 재개       | `/moai plan --resume SPEC-AUTH-001` |
-| `--team`            | 에이전트 팀 모드 강제       | `/moai plan "기능" --team`          |
-| `--solo`            | 하위 에이전트 모드 강제     | `/moai plan "기능" --solo`          |
-| `--seq`             | 병렬 대신 순차 진단          | `/moai plan "기능" --seq`           |
-| `--ultrathink`      | Adaptive Thinking 활성화 | `/moai plan "기능" --ultrathink`  |
+| 플래그         | 설명                              | 예시                                     |
+| -------------- | --------------------------------- | ---------------------------------------- |
+| `--worktree`   | 워크트리 자동 생성 (최우선)       | `/moai plan "기능" --worktree`           |
+| `--branch`     | 전통적 브랜치 생성                | `/moai plan "기능" --branch`             |
+| `--resume`     | 기존 SPEC에서 이어서 계획 재개    | `/moai plan --resume SPEC-AUTH-001`      |
+| `--issue`      | GitHub 이슈 생성 (옵트인)         | `/moai plan "기능" --issue`              |
 
 ### 플래그 우선순위
 
-플래그가 여러 개 지정되면 다음 순서로 적용됩니다:
+브랜치 전략 플래그가 지정되면 다음 순서로 적용됩니다:
 
 1. **--worktree** (최우선): 독립된 Git 워크트리 생성
 2. **--branch** (차선): 전통적 feature 브랜치 생성
-3. **플래그 없음** (기본): SPEC만 생성, 사용자 선택에 따라 브랜치 생성
+3. **플래그 없음** (기본): SPEC만 생성, BODP 게이트에서 사용자가 브랜치 전략을 선택
+
+`--issue`는 브랜치 전략과 독립적인 옵트인 옵션입니다. **기본적으로 GitHub 이슈 생성은 생략**되며(late-branch 옵트인 정책), 이슈를 만들려면 `--issue` 플래그를 명시적으로 지정해야 합니다.
 
 ### --worktree 플래그
 
@@ -96,11 +92,11 @@ SPEC 생성과 동시에 **독립된 Git 워크트리**를 만들어 병렬 개�
   독립된 워크트리에서 작업되므로 서로 충돌하지 않습니다.
 {{< /callout >}}
 
-## EARS 형식 요구사항
+## 요구사항 표기법 (EARS / GEARS)
 
-SPEC 문서는 **EARS** (Easy Approach to Requirements Syntax) 형식으로 요구사항을
-정의합니다. 5가지 패턴이 있으며, manager-spec 에이전트가 자연어를 자동으로
-적절한 패턴으로 변환합니다.
+SPEC 문서는 **EARS** (Easy Approach to Requirements Syntax) 형식으로 요구사항을 정의합니다. 5가지 패턴이 있으며, manager-spec 에이전트가 자연어를 자동으로 적절한 패턴으로 변환합니다.
+
+v3.0.0부터는 EARS의 5가지 핵심 패턴을 유지하면서 AI 코딩 에이전트가 더 명확히 해석할 수 있도록 의미 경계를 가다듬은 **GEARS** (Generalized Expression for AI-Ready Specs)가 정식 표기법입니다. 기존 EARS는 6개월간 하위 호환으로 유지되며, 새 SPEC은 GEARS 패턴을 따르도록 권장합니다. 두 표기법의 차이와 마이그레이션은 [GEARS 표기법 섹션](#gears-notation)을 참조하세요.
 
 | 패턴             | 형식                          | 용도               | 예시                                             |
 | ---------------- | ----------------------------- | ------------------ | ------------------------------------------------ |
@@ -148,35 +144,58 @@ flowchart TD
 **핵심 포인트:**
 
 - 요청이 불명확하면 **Explore 하위 에이전트**가 프로젝트를 분석합니다
-- manager-spec 에이전트가 요구사항이 불분명하면 **사용자에게 추가 질문**을
-  합니다
+- manager-spec 에이전트가 요구사항이 불분명하면 **사용자에게 추가 질문**을 합니다
 - 모든 요구사항에 **Given-When-Then 형식의 인수 기준**을 자동 생성합니다
 - 생성된 SPEC 문서는 사용자의 **승인을 받은 후** 확정됩니다
 
 ## SPEC 생성 단계
 
-### Phase 1A: 프로젝트 분석 (선택적)
+`/moai plan`은 15개 Phase와 2개 Decision Point로 구성된 구조화된 워크플로우를 따릅니다. Phase 1-3은 컨텍스트 발견, Phase 4-7은 심층 인터뷰, Phase 8 이후가 본격 SPEC 조립입니다.
 
-요청이 모호하거나 프로젝트 상황을 파악해야 할 때 실행됩니다:
+### Phase 1-3: 컨텍스트 발견
 
-| 실행 조건                | 생략 조건               |
-| ------------------------ | ----------------------- |
-| 불명확한 요청            | 명확한 SPEC 제목        |
-| 기존 파일/패턴 발견 필요 | resume 시나리오         |
-| 프로젝트 상태 불확실     | 기존 SPEC 컨텍스트 존재 |
+| Phase | 이름 | 설명 |
+|-------|------|------|
+| Phase 1 | Brain 제안 감지 | Brain IDEA 스캔 및 SPEC 후보 식별 |
+| Phase 2 | 프로젝트 탐색 (선택) | `Explore` 서브에이전트 코드베이스 분석 |
+| Phase 3 | 명확도 평가 | 1-10 점수 기반 명확도 평가 및 건너뛰기 조건 |
 
-### Phase 1B: SPEC 계획
+요청이 모호하거나 프로젝트 상황을 파악해야 할 때 Phase 1-3이 실행됩니다. 명확한 요청은 Phase 3에서 건너뛸 수 있습니다.
+
+### Phase 4-7: 심층 인터뷰
+
+명확도 점수가 4-10인 경우 실행됩니다:
+
+| Phase | 이름 | 설명 |
+|-------|------|------|
+| Phase 4 | 심층 인터뷰 루프 | 1-5 라운드 주제 중심 인터뷰 |
+| Phase 5 | UltraThink 자동 활성화 | 복잡도 ≥ 7일 때 확장 추론 활성화 |
+| Phase 6 | 심층 리서치 | `Explore` 서브에이전트 research.md 산출물 |
+| Phase 7 | 디자인 방향 | UI/UX 키워드 감지 시 의도 우선 디자인 방향 |
+
+### Phase 8: SPEC 계획
 
 **manager-spec** 에이전트가 다음 작업을 수행합니다:
 
 - 프로젝트 문서 분석 (product.md, structure.md, tech.md)
 - 1-3개 SPEC 후보 제안 및 네이밍
 - 중복 SPEC 확인 (.moai/specs/)
-- EARS 구조 설계
+- GEARS 구조 설계 (EARS 레거시 형식도 허용)
 - 구현 계획 및 기술 제약조건 식별
 - 라이브러리 버전 확인 (안정버전만, beta/alpha 제외)
 
-### Phase 1.5: 사전 검증 게이트
+### Decision Point 1: 사용자 승인 게이트 (HUMAN GATE)
+
+Phase 8 완료 후, 사용자가 명시적으로 승인해야 다음 단계로 진행합니다. 4가지 선택지가 있습니다:
+
+| 선택 | 의미 |
+|------|------|
+| **Proceed** | 현재 SPEC으로 진행 |
+| **Annotate** | 피드백 반영 후 재작성 (1-6 라운드 반복) |
+| **Draft** | SPEC을 draft 상태로 보존하고 대기 |
+| **Cancel** | SPEC 생성 중단 |
+
+### Phase 9: 사전 검증 게이트
 
 SPEC 생성 전 일반적인 오류를 방지합니다:
 
@@ -194,19 +213,18 @@ SPEC 생성 전 일반적인 오류를 방지합니다:
 - **ID 유일성**: .moai/specs/에서 중복 확인
 - **디렉토리 구조**: 반드시 디렉토리 생성, 플랫 파일 금지
 
-**복합 도메인 규칙:** 최대 2개 도메인 권장 (예: UPDATE-REFACTOR-001), 최대 3개
-허용
+**복합 도메인 규칙:** 최대 2개 도메인 권장 (예: UPDATE-REFACTOR-001), 최대 3개 허용
 
-### Phase 2: SPEC 문서 생성
+### Phase 10: SPEC 문서 생성
 
 세 개 파일이 동시에 생성됩니다:
 
 **spec.md:**
 
-- YAML 프론트매터 (7개 필수 필드: id, version, status, created, updated, author,
-  priority)
+- YAML 프론트매터 (**12개 필수 필드**: id, title, version, status, created, updated,
+  author, priority, phase, module, lifecycle, tags)
 - HISTORY 섹션 (프론트매터 바로 다음)
-- 완전한 EARS 구조 (5가지 요구사항 유형)
+- 완전한 GEARS/EARS 구조 (5가지 요구사항 유형)
 - conversation_language로 작성된 콘텐츠
 
 **plan.md:**
@@ -227,15 +245,42 @@ SPEC 생성 전 일반적인 오류를 방지합니다:
 - 인수 기준: 최소 2개 Given/When/Then 시나리오
 - 기술 용어와 함수명은 영어 유지
 
-### Phase 3: Git 환경 설정 (조건부)
+### Phase 11: plan-auditor 독립 감사
 
-**실행 조건:** Phase 2 완료 AND 다음 중 하나:
+**plan-auditor** 서브에이전트가 manager-spec이 작성한 SPEC 산출물을 독립적으로 감사합니다. 만든 에이전트가 자신의 결과를 검사하지 않는 **독립 감사 원칙**을 따릅니다.
 
-- --worktree 플래그 제공
-- --branch 플래그 제공 또는 사용자가 브랜치 생성 선택
-- 설정에서 브랜치 생성 허용 (git_strategy 설정)
+- 최대 3회 반복 (Retry Loop Contract)
+- 각 라운드에서 점수 회귀 발생 시 STOP 신호 + 범위 축소 제안
+- PASS / PASS-with-debt / FAIL 3가지 판정
+- 감사 보고서는 `.moai/reports/plan-audit/`에 저장
 
-**생략 시점:** develop_direct 워크플로우, 플래그 없고 "현재 브랜치 사용" 선택
+### Phase 12: GitHub 이슈 생성 (조건부)
+
+기본적으로 이 단계는 **생략**됩니다 (late-branch 옵트인 정책). `--issue` 플래그를 명시적으로 지정한 경우에만 GitHub 이슈를 생성하고 SPEC과 양방향 참조를 연결합니다.
+
+### Phase 13: Git 환경 설정 (조건부)
+
+**BODP (Branch Origin Decision Protocol) 게이트**를 통해 브랜치 전략을 결정합니다:
+
+- **--worktree** (최우선): 독립된 Git 워크트리 생성
+- **--branch** (차선): 전통적 feature 브랜치 생성
+- **현재 브랜치 유지**: 플래그 없이 현재 체크아웃에서 계속
+
+### Phase 14: MX 태그 계획
+
+구현 단계에서 추가할 `@MX` 코드 주석의 타겟을 식별합니다:
+
+- `@MX:ANCHOR` — 불변 계약 (high fan_in 함수)
+- `@MX:WARN` — 위험 구간 (goroutine, 복잡도 ≥ 15)
+- `@MX:NOTE` — 컨텍스트/의도 기록
+
+### Phase 15: SPEC 품질 게이트
+
+GEARS/EARS 요구사항과 인수 기준(AC) 간의 커버리지를 검증하고, 보안 범위 점검을 수행합니다.
+
+### Decision Point 2/3/3.5: 실행 모드 선택
+
+SPEC 생성 완료 후 다음 단계를 선택합니다. 자세한 내용은 [Decision Point 3.5 섹션](#decision-point-35-실행-모드-선택-게이트)을 참조하세요.
 
 ## 출력 결과
 
@@ -256,7 +301,7 @@ SPEC 문서는 `.moai/specs/` 디렉토리에 저장됩니다:
 ---
 id: SPEC-AUTH-001
 version: 1.0.0
-status: ACTIVE
+status: draft
 created: 2026-01-28
 updated: 2026-01-28
 author: 개발팀
@@ -270,19 +315,59 @@ SPEC 문서는 다음과 같은 상태 라이프사이클을 가집니다:
 
 ```mermaid
 flowchart TD
-    A["DRAFT<br/>작성 중"] --> B["ACTIVE<br/>승인 완료"]
-    B --> C["IN_PROGRESS<br/>구현 중"]
-    C --> D["COMPLETED<br/>완료"]
-    B --> E["REJECTED<br/>거부"]
+    A["draft<br/>작성 중"] --> B["in-progress<br/>구현 중"]
+    B --> C["implemented<br/>구현 완료"]
+    C --> D["completed<br/>sync 완료"]
+    A --> E["rejected<br/>거부"]
 ```
 
-| 상태          | 설명                 | `/moai run` 실행 가능 |
-| ------------- | -------------------- | --------------------- |
-| `DRAFT`       | 아직 작성 중         | 아니오                |
-| `ACTIVE`      | 승인 완료, 구현 대기 | **예**                |
-| `IN_PROGRESS` | 현재 구현 중         | 예 (이어서)           |
-| `COMPLETED`   | 구현 및 검증 완료    | 아니오                |
-| `REJECTED`    | 거부됨, 재작성 필요  | 아니오                |
+| 상태           | 설명                 | `/moai run` 실행 가능 |
+| -------------- | -------------------- | --------------------- |
+| `draft`        | SPEC 작성 완료, 승인 대기 | 예 (승인 후)      |
+| `in-progress`  | 현재 구현 중         | 예 (이어서)           |
+| `implemented`  | 구현 완료, sync 대기 | 아니오                |
+| `completed`    | sync 완료, 전체 완료 | 아니오                |
+| `rejected`     | 거부됨, 재작성 필요  | 아니오                |
+
+## 브라운필드 분류 — Delta Markers
+
+기존 코드베이스 (브라운필드) 프로젝트에서 SPEC 요구사항을 분류합니다.
+
+| 마커 | 의미 | 설명 |
+|------|------|------|
+| `[EXISTING]` | 기존 유지 | 변경 없이 참조만 |
+| `[MODIFY]` | 수정 | 기존 코드 변경 |
+| `[NEW]` | 신규 | 새로 생성 |
+| `[REMOVE]` | 삭제 | 기존 코드 제거 |
+
+## 토큰 절약 장치 — spec-compact.md
+
+Plan phase에서 SPEC 문서의 요약본 (`spec-compact.md`)을 자동 생성합니다. Run phase에서 전체 spec.md 대신 요약본을 로드하여 **~30% 토큰을 절약**합니다. SPEC 라이프사이클 안에 토크노믹스 장치가 내장되어 있는 대표적 예입니다.
+
+## 범위 이탈 방지 — Exclusions와 What/Why 제약
+
+**Exclusions 필수화 ("What NOT to Build")**: 모든 SPEC 문서에 **Out of Scope / Exclusions** 섹션이 필수입니다. 범위 이탈을 사전에 방지합니다.
+
+**What/Why 제약**: SPEC 요구사항은 **What** (무엇)과 **Why** (왜)만 기술합니다. **How** (어떻게)는 구현 단계에서 결정하며, SPEC에 과명세하지 않습니다.
+
+## Decision Point 3.5: 실행 모드 선택 게이트
+
+Plan 완료 후 Run 시작 전, 실행 환경을 자동 감지하고 사용자에게 최적 모드를 제안합니다.
+
+**감지 항목:**
+1. tmux 가용성 (`$TMUX` 환경 변수)
+2. 현재 LLM 모드 (`llm.yaml`의 `team_mode`: cc/glm/cg)
+
+**tmux 사용 가능 시:**
+- Worktree + 현재 모드 (권장)
+- Sub-agent Mode (순차)
+
+**tmux 사용 불가 시:**
+- Sub-agent Mode (권장)
+
+{{< callout type="info" >}}
+Agent Teams 정적 오케스트레이션 계층(Module 3)은 은퇴했습니다. `--team` 플래그와 Team Mode 옵션은 더 이상 제공되지 않으며, 강제 시 `MODE_TEAM_UNAVAILABLE` 폴백으로 Sub-agent Mode로 전환됩니다. CG 모드(Claude+GLM)는 `moai cg` 명령으로 진입합니다.
+{{< /callout >}}
 
 ## 실전 예시
 
@@ -311,12 +396,12 @@ manager-spec 에이전트가 세부 사항을 확인하기 위해 질문할 수 
 id: SPEC-AUTH-001
 title: JWT 기반 사용자 인증 시스템
 priority: HIGH
-status: ACTIVE
+status: draft
 ---
 ```
 
 ```markdown
-# 요구사항 (EARS 형식)
+# 요구사항 (GEARS/EARS 형식)
 
 ## Ubiquitous
 
@@ -361,15 +446,11 @@ status: ACTIVE
 
 ### Q: SPEC 문서를 수동으로 수정할 수 있나요?
 
-네, `.moai/specs/SPEC-XXX/spec.md` 파일을 직접 편집할 수 있습니다. 요구사항을
-추가하거나 인수 기준을 수정한 후 `/moai run`을 실행하면 수정된 내용이
-반영됩니다.
+네, `.moai/specs/SPEC-XXX/spec.md` 파일을 직접 편집할 수 있습니다. 요구사항을 추가하거나 인수 기준을 수정한 후 `/moai run`을 실행하면 수정된 내용이 반영됩니다.
 
 ### Q: SPEC 없이 바로 코드를 작성할 수는 없나요?
 
-Claude Code에서 직접 코드를 작성할 수도 있지만, SPEC 없이 작업하면 세션이 끊길
-때마다 맥락을 잃게 됩니다. **복잡한 기능일수록 SPEC을 먼저 만드는 것이
-효율적**입니다.
+Claude Code에서 직접 코드를 작성할 수도 있지만, SPEC 없이 작업하면 세션이 끊길 때마다 맥락을 잃게 됩니다. **복잡한 기능일수록 SPEC을 먼저 만드는 것이 효율적**입니다.
 
 ### Q: SPEC ID는 어떤 규칙으로 생성되나요?
 
@@ -382,56 +463,11 @@ Claude Code에서 직접 코드를 작성할 수도 있지만, SPEC 없이 작�
 
 ### Q: `/moai plan`과 `/moai`의 차이는 무엇인가요?
 
-`/moai plan`은 **SPEC 문서 생성만** 담당합니다. `/moai`는 SPEC 생성부터 구현,
-문서화까지 **전체 워크플로우**를 자동으로 수행합니다.
+`/moai plan`은 **SPEC 문서 생성만** 담당합니다. `/moai`는 SPEC 생성부터 구현, 문서화까지 **전체 워크플로우**를 자동으로 수행합니다.
 
 ### Q: --worktree와 --branch의 차이는 무엇인가요?
 
-**--worktree**는 독립된 작업 디렉토리를 생성하여 완전히 격리된 환경을
-제공합니다. **--branch**는 현재 리포지토리에 새 브랜치를 만듭니다. 여러 기능을
-동시에 개발하려면 --worktree를 추천합니다.
-
-## v2.9.0 신규 기능
-
-### Delta Markers (브라운필드 분류)
-
-기존 코드베이스(브라운필드) 프로젝트에서 SPEC 요구사항을 분류합니다.
-
-| 마커 | 의미 | 설명 |
-|------|------|------|
-| `[EXISTING]` | 기존 유지 | 변경 없이 참조만 |
-| `[MODIFY]` | 수정 | 기존 코드 변경 |
-| `[NEW]` | 신규 | 새로 생성 |
-| `[REMOVE]` | 삭제 | 기존 코드 제거 |
-
-### spec-compact.md 생성
-
-Plan phase에서 SPEC 문서의 요약본(`spec-compact.md`)을 자동 생성합니다. Run phase에서 ~30% 토큰을 절약합니다.
-
-### Exclusions 필수화 ("What NOT to Build")
-
-모든 SPEC 문서에 **Out of Scope / Exclusions** 섹션이 필수입니다. 범위 이탈을 사전에 방지합니다.
-
-### What/Why 제약
-
-SPEC 요구사항은 **What** (무엇)과 **Why** (왜)만 기술합니다. **How** (어떻게)는 구현 단계에서 결정하며, SPEC에 과명세하지 않습니다.
-
-### Decision Point 3.5: 실행 모드 선택 게이트
-
-Plan 완료 후 Run 시작 전, 실행 환경을 자동 감지하고 사용자에게 최적 모드를 제안합니다.
-
-**감지 항목:**
-1. tmux 가용성 (`$TMUX` 환경 변수)
-2. 현재 LLM 모드 (`llm.yaml`의 `team_mode`: cc/glm/cg)
-
-**tmux 사용 가능 시:**
-- Worktree + \{현재 모드\} (Recommended)
-- Team Mode (in-process)
-- Sub-agent Mode (sequential)
-
-**tmux 사용 불가 시:**
-- Sub-agent Mode (Recommended)
-- Team Mode (in-process)
+**--worktree**는 독립된 작업 디렉토리를 생성하여 완전히 격리된 환경을 제공합니다. **--branch**는 현재 리포지토리에 새 브랜치를 만듭니다. 여러 기능을 동시에 개발하려면 --worktree를 추천합니다.
 
 ## GEARS 표기법 (v3.0.0+) {#gears-notation}
 
@@ -497,7 +533,7 @@ WHEN input is null is detected, the system shall return an error.
 
 ## 적응형 추천 배치 (Adaptive Recommendation Placement)
 
-MoAI-ADK v0.1.0부터 **AskUserQuestion 추천**이 사용자 결정 패턴에 맞춰 개인화됩니다. 시스템은 선택을 캡처하고, 시스템 기본값이 아닌 관측된 통계적 다수에 기반해 미래 질문 옵션을 개인화합니다.
+MoAI-ADK v0.1.0부터 **AskUserQuestion 추천**이 사용자 결정 패턴에 맞춰 개인화됩니다. 시스템은 선택을 캡처하고, 시스템 기본값이 아닌 관측된 통계적 다수에 기반해 미래 질문 옵션을 개인화합니다. 루프가 관찰을 축적하고 시스템이 그 관찰로부터 배운다는 점에서, v3의 **재귀적 자가 학습** 원칙이 질문·추천 영역에 적용된 사례입니다.
 
 ### 작동 원리
 
@@ -505,7 +541,7 @@ MoAI가 `AskUserQuestion`으로 질문할 때, 추천 배치를 안내하는 5�
 
 1. **Fisher 정보 타이밍** — 불확실성이 가장 높을 때(p≈0.5, Fisher 정보 I=p(1−p) 최대 결정 경계) 질문이 발화됩니다. p≈0 또는 p≈1(거의 확정)일 때는 시스템이 자동 처리하고 질문을 생략합니다.
 
-2. **질문 순서 — 정보이익 내림차순** — 여러 질문이 필요할 때, 추정 정보이익이 높은 순서대로 정렬되어 가장 중요한 결정을 먼저 내릴니다.
+2. **질문 순서 — 정보이익 내림차순** — 여러 질문이 필요할 때, 추정 정보이익이 높은 순서대로 정렬되어 가장 중요한 결정을 먼저 내립니다.
 
 3. **통계적 다수 합리적 기본값** — 추천 옵션(`(권장)` 표시)은 결정 기록의 관측된 다수 선택을 반영하며, **시스템 정책 기본값이 아닙니다**. 데이터가 부족하면(cold-start) *"기본 설정 기반, 개인화에 N건 관찰 필요"*를 공개합니다.
 

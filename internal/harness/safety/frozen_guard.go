@@ -13,13 +13,19 @@ import (
 
 // frozenPrefixes is the list of path prefixes where automatic learning updates can never occur.
 // REQ-HL-006: This list is hardcoded and cannot be changed by any config/env.
+// REQ-HEV3-023: A1 permission surfaces (.claude/settings.json, .claude/settings.local.json)
+// added — the hooks axis is covered by the settings.json prefix match.
+// REQ-HEV3-025: self-protection entries (both frozen_guard.go source files) added.
 //
 // [HARD] This constant cannot be overridden by configuration files or environment variables.
 var frozenPrefixes = []string{
 	".claude/agents/moai/",
 	".claude/skills/moai-",
 	".claude/rules/moai/",
-	".moai/project/brand/",
+	".claude/settings.json",
+	".claude/settings.local.json",
+	"internal/harness/safety/frozen_guard.go",
+	"internal/harness/frozen_guard.go",
 }
 
 // IsFrozen returns true if path corresponds to a FROZEN area.

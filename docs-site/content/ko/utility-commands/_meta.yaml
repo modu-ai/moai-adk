@@ -3,13 +3,23 @@ index:
   display: "hidden"
 moai:
   title: "/moai"
+"moai-goal":
+  title: "/moai goal"
 "moai-loop":
   title: "/moai loop"
+"moai-review":
+  title: "/moai review"
 "moai-fix":
   title: "/moai fix"
 "moai-clean":
   title: "/moai clean"
+"moai-codemaps":
+  title: "/moai codemaps"
+"moai-gate":
+  title: "/moai gate"
 "moai-mx":
   title: "/moai mx"
 "moai-feedback":
   title: "/moai feedback"
+"moai-e2e":
+  title: "/moai e2e"

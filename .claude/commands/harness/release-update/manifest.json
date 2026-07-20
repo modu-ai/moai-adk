@@ -9,9 +9,9 @@
     {
       "role": "release-update",
       "description": "Claude Code upstream change tracker. Collects CC release notes since last analyzed version, classifies by impact tier, cross-references official docs, generates update plan or umbrella SPEC, syncs docs-site 4-locale + README, opens PR via manager-git. Human-gated: user approval + PR creation. The non-interactive per-version research sweep is fanned out by the Runner.",
-      "agent_file": ".claude/agents/harness/harness-release-update-specialist.md",
+      "agent_file": ".claude/agents/harness/hns-release-update-specialist.md",
       "primitive": "sub-agent",
-      "isolation": "none",
+      "isolation": "worktree",
       "effort": "high",
       "model": "inherit"
     }
@@ -27,5 +27,5 @@
     }
   },
   "entry_command": "/harness:release-update",
-  "runner_workflow": "harness-release-update-run.js"
+  "runner_workflow": "hns-release-update-run.js"
 }

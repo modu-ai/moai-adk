@@ -27,7 +27,7 @@
 {{- else}}
             "command": "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-compact.sh\"",
 {{- end}}
-            "timeout": 5,
+            "timeout": 30,
             "type": "command"
           }
         ]
@@ -87,7 +87,7 @@
             "type": "command"
           }
         ],
-        "matcher": "Write|Edit"
+        "matcher": "Write|Edit|MultiEdit"
       }{{ if .HookOptIn.Enabled }},
       {
         "hooks": [
@@ -124,6 +124,15 @@
 {{- end}}
             "timeout": 60,
             "type": "command"
+          },
+          {
+{{- if eq .Platform "windows"}}
+            "command": "bash \"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-stop-goal.sh\"",
+{{- else}}
+            "command": "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-stop-goal.sh\"",
+{{- end}}
+            "timeout": 120,
+            "type": "command"
           }{{ if .HookOptIn.Enabled }},
           {
 {{- if eq .Platform "windows"}}
@@ -132,16 +141,8 @@
             "command": "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-harness-observe-stop.sh\"",
 {{- end}}
             "timeout": 5,
-            "type": "command"
-          }{{ end }}{{ if .HookOptIn.Enabled }},
-          {
-{{- if eq .Platform "windows"}}
-            "command": "bash \"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-iggda-phase-driver.sh\"",
-{{- else}}
-            "command": "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-iggda-phase-driver.sh\"",
-{{- end}}
-            "timeout": 5,
-            "type": "command"
+            "type": "command",
+            "async": true
           }{{ end }}
         ]
       }
@@ -165,7 +166,8 @@
             "command": "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-harness-observe-subagent-stop.sh\"",
 {{- end}}
             "timeout": 5,
-            "type": "command"
+            "type": "command",
+            "async": true
           }{{ end }}
         ]
       }
@@ -219,7 +221,8 @@
             "command": "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-harness-observe-user-prompt-submit.sh\"",
 {{- end}}
             "timeout": 5,
-            "type": "command"
+            "type": "command",
+            "async": true
           }{{ end }}
         ]
       }
@@ -233,7 +236,7 @@
 {{- else}}
             "command": "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-teammate-idle.sh\"",
 {{- end}}
-            "timeout": 5,
+            "timeout": 60,
             "type": "command"
           }
         ]
@@ -248,7 +251,7 @@
 {{- else}}
             "command": "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-task-completed.sh\"",
 {{- end}}
-            "timeout": 5,
+            "timeout": 60,
             "type": "command"
           }
         ]
@@ -312,7 +315,8 @@
             "command": "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-instructions-loaded.sh\"",
 {{- end}}
             "timeout": 5,
-            "type": "command"
+            "type": "command",
+            "async": true
           }
         ]
       }
@@ -384,22 +388,23 @@
 {{- if eq .Platform "windows"}}
     "command": "bash \"$CLAUDE_PROJECT_DIR/.moai/status_line.sh\"",
 {{- else}}
-    "command": "$CLAUDE_PROJECT_DIR/.moai/status_line.sh",
+    "command": "\"$CLAUDE_PROJECT_DIR/.moai/status_line.sh\"",
 {{- end}}
     "refreshInterval": 10
   },
-  "outputStyle": "MoAI",
   "skillListingBudgetFraction": 0.02,
   "showThinkingSummaries": false,
   "cleanupPeriodDays": 30,
   "model": "sonnet",
+  "outputStyle": "MoAI-Easy",
   "env": {
     "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1",
-    "CLAUDE_CODE_FILE_READ_MAX_OUTPUT_TOKENS": "64000",
     "ENABLE_TOOL_SEARCH": "1",
     "MOAI_CONFIG_SOURCE": "sections",
     "CLAUDE_CODE_NO_FLICKER": "1",
+{{- if ne .Platform "linux"}}
     "CLAUDE_CODE_SUBPROCESS_ENV_SCRUB": "1",
+{{- end}}
     "PATH": "{{jsonEscape .SmartPATH}}"
   },
   "permissions": {
@@ -430,10 +435,6 @@
       "ExitWorktree",
       "EnterPlanMode",
       "ExitPlanMode",
-      "ListMcpResourcesTool",
-      "ReadMcpResourceTool",
-      "mcp__context7__get-library-docs",
-      "mcp__context7__resolve-library-id",
       "Bash(git status:*)",
       "Bash(git log:*)",
       "Bash(git diff:*)",
@@ -537,22 +538,10 @@
       "Read(~/.ssh/**)",
       "Read(~/.aws/**)",
       "Read(~/.config/gcloud/**)",
-      "Write(./secrets/**)",
-      "Write(~/.ssh/**)",
-      "Write(~/.aws/**)",
-      "Write(~/.config/gcloud/**)",
       "Edit(./secrets/**)",
       "Edit(~/.ssh/**)",
       "Edit(~/.aws/**)",
       "Edit(~/.config/gcloud/**)",
-      "Grep(./secrets/**)",
-      "Grep(~/.ssh/**)",
-      "Grep(~/.aws/**)",
-      "Grep(~/.config/gcloud/**)",
-      "Glob(./secrets/**)",
-      "Glob(~/.ssh/**)",
-      "Glob(~/.aws/**)",
-      "Glob(~/.config/gcloud/**)",
       "Bash(rm -rf /:*)",
       "Bash(rm -rf /*:*)",
       "Bash(rm -rf ~:*)",
@@ -596,17 +585,11 @@
     ]
   },
   "attribution": {
-    "commit": "\ud83d\uddff MoAI",
-    "pr": "\ud83d\uddff MoAI",
+    "commit": "🗿 MoAI",
+    "pr": "🗿 MoAI",
     "sessionUrl": false
   },
-  "enableAllProjectMcpServers": false,
-  "enabledMcpjsonServers": [
-    "chrome-devtools",
-    "context7"
-  ],
   "respectGitignore": true,
-  "effortLevel": "xhigh",
   "includeGitInstructions": true,
   "plansDirectory": ".moai/plans"
 }

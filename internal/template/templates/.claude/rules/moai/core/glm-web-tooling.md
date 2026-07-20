@@ -9,7 +9,7 @@ This file is the **single source of truth** for how MoAI agents and the orchestr
 
 > **Why this rule exists**: Under a GLM backend the built-in Claude Code `WebSearch` / `WebFetch` tools route through the z.ai Anthropic-compatible gateway, which intermittently returns HTTP 529 (overload). Reading an image file with the built-in `Read` tool likewise hits a known base64-encoding failure (HTTP 422) under GLM. z.ai ships dedicated MCP servers that run server-side and bypass these failure modes. Without this doctrine, agents silently fall back to the failing built-in tools and research/fetch/vision operations break.
 
-Cross-referenced by: `agent-common-protocol.md` §MCP Fallback Strategy, `settings-management.md` §MCP Configuration, `moai-constitution.md` §URL Verification, `output-styles/moai/einstein.md`, `CLAUDE.md` §10/§12.
+Cross-referenced by: `agent-common-protocol.md` §MCP Fallback Strategy, `settings-management.md` §MCP Configuration, `moai-constitution.md` §URL Verification, `output-styles/moai/moai-learn.md`, `CLAUDE.md` §10/§12.
 
 ---
 
@@ -42,6 +42,72 @@ Three launch modes must be distinguished:
 ### cg-leader exception
 
 [ZONE:Evolvable] [HARD] Where the current pane is the `moai cg` **leader** pane (Claude backend, GLM env stripped), the HARD prohibition above does NOT apply — the built-in `WebSearch` / `WebFetch` / `Read` work normally there and are the canonical path. The HARD rule binds only `moai glm` whole-session contexts and `moai cg` GLM-teammate contexts.
+
+---
+
+## CG Mode (Claude + GLM teammates)
+
+`moai cg` is the **hybrid** launcher named in the GLM-Backend Detection table above: the Claude leader pane keeps the Claude backend while GLM teammate panes route through z.ai. This section is the operational SSOT for how `moai cg` detects, configures, and recovers the hybrid mode. Only the CG operational mechanism is retained here; the retired static Agent Teams orchestration prose (team-spawn patterns, role assignments) is out of scope.
+
+### Mechanism — tmux session-level environment isolation
+
+The hybrid split relies on **tmux session-level environment variables**:
+
+1. `moai cg` calls `tmux set-environment` to inject GLM env vars at the session level.
+2. The CURRENT pane (the leader) is NOT affected — it keeps the Claude backend.
+3. Only NEW panes inherit the session-level env vars.
+4. With `teammateMode: "tmux"` in `.claude/settings.local.json`, teammates spawn in new panes and inherit the GLM env.
+5. Result: leader = Claude API, teammates = z.ai GLM API.
+
+This is NOT headless mode — teammates run as full interactive Claude Code sessions in their own tmux panes (visible via `tmux list-panes`).
+
+### LLM mode detection (`team_mode`)
+
+Read `.moai/config/sections/llm.yaml` `team_mode` to detect the active execution flavor:
+
+| `team_mode` | Execution flavor | Leader | Teammates |
+|-------------|------------------|--------|-----------|
+| (empty) | Sub-agent | Current session | `Agent()` sub-agents (Claude) |
+| `cg` | CG Mode | Claude (this pane) | GLM (new tmux panes) |
+| `glm` | GLM-only | GLM | GLM |
+
+Detection steps: read `llm.yaml`; `cg` → activate CG mode (this section); `glm` → all-GLM mode; empty → sub-agent mode.
+
+> **Field disambiguation**: the `team_mode` field in `llm.yaml` (`cg` / `glm` / `""`) is SEPARATE from the `teammateMode` field in `.claude/settings.local.json` (`"tmux"` / `""` — tmux pane-display mode). Different location, different value set, different purpose (`internal/tmux/cg_detect.go` `IsCGMode` reads `team_mode == "cg"`).
+
+### Prerequisites
+
+1. Save the GLM API key once: `moai glm sk-your-glm-api-key` (or set `GLM_API_KEY`).
+2. Start a tmux session (required for CG mode): `tmux new -s moai`.
+3. Enable CG mode inside tmux: `moai cg`.
+4. Start Claude Code in the SAME pane: `claude` (starting it in a NEW pane would make the leader inherit GLM env).
+
+### tmux environment variables
+
+`moai cg` injects these into the tmux session (session-level, via `tmux set-environment` — not global):
+
+| Variable | Value | Purpose |
+|----------|-------|---------|
+| `ANTHROPIC_AUTH_TOKEN` | GLM API key | z.ai authentication |
+| `ANTHROPIC_BASE_URL` | `https://api.z.ai/api/anthropic` | z.ai endpoint (the GLM-backed detection substring `api.z.ai`) |
+| `ANTHROPIC_DEFAULT_OPUS_MODEL` | `glm-5.2` | Opus model override |
+| `ANTHROPIC_DEFAULT_SONNET_MODEL` | `glm-5.2` | Sonnet model override |
+| `ANTHROPIC_DEFAULT_HAIKU_MODEL` | `glm-5.2` | Haiku model override |
+| `ANTHROPIC_DEFAULT_FABLE_MODEL` | `glm-5.2` | Fable model override |
+
+### Error recovery
+
+| Failure | Recovery |
+|---------|----------|
+| Not in tmux | Error: "CG mode requires a tmux session" |
+| No API key | Error: "Run moai glm <api-key> first" |
+| Teammate spawn failure | Falls back to sub-agent mode |
+| tmux env injection failure | Fatal for CG mode (retry the tmux session) |
+| Quality gate failure | Leader creates a fix task or requests manual intervention |
+
+### Cleanup
+
+`moai cc` exits CG mode: removes GLM env from `settings.local.json`, unsets the tmux session GLM env vars, resets `team_mode` to empty in `llm.yaml`, and restores standard Claude-only operation.
 
 ---
 

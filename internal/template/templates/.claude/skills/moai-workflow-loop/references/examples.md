@@ -980,7 +980,7 @@ ralph:
 
 ```bash
 # 1. Start development
-/moai:1-plan "User authentication system"
+/moai plan "User authentication system"
 
 # 2. Implement with Ralph loop
 /moai:loop
@@ -994,7 +994,7 @@ ralph:
 moai ast-grep scan --security
 
 # 5. Sync documentation
-/moai:3-sync
+/moai sync
 ```
 
 ---

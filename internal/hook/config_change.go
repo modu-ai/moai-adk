@@ -37,12 +37,6 @@ func NewConfigChangeHandler() Handler {
 	return &configChangeHandler{}
 }
 
-// NewConfigChangeHandlerWithManager creates a ConfigChange handler that uses
-// the provided ConfigManager for diff-aware reload per SPEC-V3R2-RT-005.
-func NewConfigChangeHandlerWithManager(mgr *config.ConfigManager) Handler {
-	return &configChangeHandler{mgr: mgr}
-}
-
 // waitGroup returns the handler's internal *sync.WaitGroup for use with
 // testutil.WaitForAsync. Package-internal; not exposed via the Handler
 // interface.

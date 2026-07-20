@@ -1,61 +1,70 @@
 /* MoAI Design System — Hugo/Geekdoc Override
- * Source: 모두의AI Design System Ver 1.0 (Notion FROZEN, 2026-04-25)
- *         /tmp/moai-design/colors_and_type.css 토큰 전체 정합
- * Single source of truth: this file
+ * FROZEN (re-stamped at sync-phase close, SPEC-DESIGN-DOCSV2-001, 2026-07-16):
+ *   the v2 token vocabulary below (neutral canvas #f4f4f4 + solid green accent
+ *   #3d7d5f) is now the frozen baseline. Do not reintroduce the superseded
+ *   warm-cream Ver 1.0 tokens (--color-bg #faf9f5, 135deg gradient, warm
+ *   neutral ramp) without a new unfreeze authorization (see spec.md §G).
+ * Source: v2 token SSOT (neutral canvas + green accent) — SPEC-DESIGN-DOCSV2-001
+ *         Ver 1.0 Notion baseline superseded by v2 unfreeze (per SPEC §G, 2026-07-16)
+ * Single source of truth: this file (v2 raw tokens)
  * (assets/css/moai-brand.scss는 빌드 파이프라인에서 사용되지 않는 참고용 사본)
  */
 
-/* ── CSS Custom Properties (FROZEN tokens — Notion 가이드라인 명시) ── */
+/* ── CSS Custom Properties (v2 SSOT tokens — SPEC-DESIGN-DOCSV2-001 §G unfreeze) ── */
 :root {
-  /* ── Brand Color — Claude Warm Editorial (모두의 클로드) ── */
-  --color-primary: #cc785c;          /* 코랄 — 단 하나의 시그니처 액센트 */
-  --color-primary-hover: #a9583e;
-  --color-primary-active: #8f4731;
-  --color-ink: #141413;              /* 본문 텍스트 (#000 대체) */
-  --color-bg: #faf9f5;               /* 크림 캔버스 (#fff 대체 금지) */
+  /* ── Brand Color — 시그니처 녹색 (v2 SSOT: neutral canvas + green accent) ── */
+  --color-primary: #3d7d5f;          /* 시그니처 녹색 rgb(61,125,95) */
+  --color-primary-hover: #316750;
+  --color-primary-active: #265240;
+  --color-ink: #060606;              /* 본문 텍스트 (#000 대체) */
+  --color-bg: #f4f4f4;               /* v2 neutral canvas (#fff 대체 금지) */
   --color-surface: #ffffff;          /* 카드/모달 */
 
-  /* ── Warm Neutral Scale ── */
-  --neutral-50:  #f5f0e8;            /* surface-soft */
-  --neutral-100: #efe9de;            /* surface-card */
-  --neutral-200: #e6dfd8;            /* hairline */
-  --neutral-300: #d3cabd;
-  --neutral-400: #8e8b82;            /* muted-soft */
-  --neutral-500: #6c6a64;            /* muted */
-  --neutral-600: #3d3d3a;            /* body */
-  --neutral-700: #252523;            /* body-strong */
-  --neutral-800: #252320;            /* surface-dark-elevated */
-  --neutral-900: #181715;            /* surface-dark */
-  --neutral-950: #141413;            /* ink */
+  /* ── Neutral Scale (v2 — pure neutral, warm cream 제거) ── */
+  --neutral-50:  #f7f7f7;            /* surface-soft */
+  --neutral-100: #f0f0f0;            /* surface-card */
+  --neutral-200: #e4e4e4;            /* hairline */
+  --neutral-300: #d4d4d4;
+  --neutral-400: #a3a3a3;            /* muted-soft */
+  --neutral-500: #737373;            /* muted */
+  --neutral-600: #525252;            /* body */
+  --neutral-700: #262626;            /* body-strong */
+  --neutral-800: #171717;            /* surface-dark-elevated */
+  --neutral-900: #141414;            /* surface-dark */
+  --neutral-950: #060606;            /* ink */
 
-  /* ── Semantic ── */
+  /* ── Semantic (status) ── */
   --color-success: #5db872;
   --color-warning: #d4a017;
   --color-danger:  #c64545;
   --color-info:    #5db8a6;          /* accent-teal */
   --color-accent-amber: #e8a55a;
 
-  /* ── Foreground roles ── */
+  /* ── Foreground roles (v2 neutral) ── */
   --fg-1: var(--color-ink);
-  --fg-2: #3d3d3a;
-  --fg-3: #6c6a64;
+  --fg-2: #3d3d3d;
+  --fg-3: #6c6c6c;
   --fg-on-primary: #ffffff;
 
-  /* ── Border (warm hairline) ── */
-  --border-1: #e6dfd8;
-  --border-2: #ebe6df;
-  --border-strong: #d3cabd;
-  --border-focus-ring: rgba(204, 120, 92, 0.18);
+  /* ── Border (v2 neutral hairline) ── */
+  --border-1: #e6e6e6;
+  --border-2: #ebebeb;
+  --border-strong: #d3d3d3;
+  --border-focus-ring: rgba(61, 125, 95, 0.18);
 
-  /* ── Signature gradient (코어 자산) — 코랄→딥 웜 ── */
-  --gradient-signature: linear-gradient(135deg, #cc785c 0%, #181715 100%);
-  --gradient-signature-soft: linear-gradient(135deg, rgba(204,120,92,0.08) 0%, rgba(20,18,16,0.04) 100%);
-  --gradient-signature-dark: linear-gradient(135deg, #e0997f 0%, #cc785c 100%);
+  /* ── Signature gradient (v2 — solid green, 135deg 제거 per SPEC-DESIGN-DOCSV2-001 §G unfreeze) ── */
+  --gradient-signature: #3d7d5f;
+  --gradient-signature-soft: rgba(61, 125, 95, 0.08);
+  --gradient-signature-dark: #316750;
 
-  /* ── Type families — Pretendard + Goorm Sans Code ── */
+  /* ── Type families — Pretendard (sole KR title+body) + JetBrains Mono (UI mono) + Goorm Sans Code (code bodies) ── */
   --font-sans: "Pretendard Variable", "Pretendard", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans KR", sans-serif;
   --font-latin: "Pretendard Variable", "Pretendard", system-ui, sans-serif;
-  --font-mono: "Goorm Sans Code", ui-monospace, "SF Mono", Menlo, monospace;
+  /* M2 two-token mono split (SPEC-DESIGN-DOCSV2-001): --font-mono = JetBrains
+     for UI chips/labels/eyebrows/version pills; --font-code = Goorm Sans Code
+     for code bodies (Korean code comments stay readable). */
+  --font-mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace;
+  --font-code: "Goorm Sans Code", ui-monospace, "SF Mono", Menlo, monospace;
 
   /* ── Weights ── */
   --fw-regular: 400;
@@ -116,13 +125,13 @@
   --radius-pill: 32px;
   --radius-full: 9999px;
 
-  /* ── Shadow (outer only — inner shadow 미사용) ── */
-  --shadow-xs: 0 1px 2px rgba(20, 18, 16, 0.04);
-  --shadow-sm: 0 2px 4px rgba(20, 18, 16, 0.06);
-  --shadow-md: 0 4px 12px rgba(20, 18, 16, 0.08);
-  --shadow-lg: 0 8px 24px rgba(20, 18, 16, 0.10);
-  --shadow-xl: 0 16px 48px rgba(20, 18, 16, 0.12);
-  --shadow-signature: 0 8px 32px rgba(204, 120, 92, 0.20);  /* hover only */
+  /* ── Shadow (v2 — rgba(6,6,6,X), outer only) ── */
+  --shadow-xs: 0 1px 2px rgba(6, 6, 6, 0.04);
+  --shadow-sm: 0 2px 4px rgba(6, 6, 6, 0.06);
+  --shadow-md: 0 4px 12px rgba(6, 6, 6, 0.08);
+  --shadow-lg: 0 8px 24px rgba(6, 6, 6, 0.10);
+  --shadow-xl: 0 16px 48px rgba(6, 6, 6, 0.12);
+  --shadow-signature: 0 8px 32px rgba(61, 125, 95, 0.20);  /* hover only */
 
   /* ── Motion ── */
   --duration-instant: 75ms;
@@ -140,6 +149,33 @@
   --container-lg: 1024px;
   --container-xl: 1280px;
   --container-2xl: 1440px;
+
+  /* ── round3 layout token aliases (flat names → v2 tokens) — bridge for moai-docs-layout.css (M3a, SPEC-DESIGN-DOCSV2-001) ── */
+  --bg: var(--color-bg);
+  --surface: var(--color-surface);
+  --ink: var(--color-ink);
+  --primary: var(--color-primary);
+  --primary-700: var(--color-primary-active);
+  --muted: var(--neutral-200);
+  --muted-fg: var(--fg-2);
+  --muted-fg-2: var(--fg-3);
+  --border: var(--border-1);
+  --border-strong: var(--border-strong);
+  --border-card: #d1d1d1;   /* v2 surface-card hairline (design.md §C) — SPEC-DESIGN-DOCSV2-001 M6 */
+  --success: var(--color-success);
+  --warning: var(--color-warning);
+  --danger: var(--color-danger);
+  --info: var(--color-info);
+  --gradient: var(--gradient-signature);
+  --gradient-soft: var(--gradient-signature-soft);
+  --shadow-sm: var(--shadow-sm);
+  --shadow-md: var(--shadow-md);
+  --shadow-lg: var(--shadow-lg);
+  --shadow-sig: var(--shadow-signature);
+  /* NOTE: --font-latin is NOT redeclared here — M1 already defines it (Pretendard
+     stack, line ~57). The round3 layout classes ported in M3a do not reference it,
+     and overriding an existing M1 token with a conflicting Inter stack would be a
+     latent regression vector. 0 consumers as of M3a (grep var(--font-latin) = 0). */
 }
 
 /* 다크 모드 완전 제거 (2026-05-13) — 테마 토글 UI 전체 비표시 */
@@ -165,18 +201,18 @@
    안전망: OS 다크 모드에서도 Geekdoc 기본 다크 변수를 라이트로 강제 override */
 @media (prefers-color-scheme: dark) {
   :root {
-    --body-background: #faf9f5 !important;
-    --body-font-color: #141413 !important;
-    --accent-color: rgba(204,120,92,0.08) !important;
-    --accent-color-lite: rgba(204,120,92,0.04) !important;
-    --link-color: #cc785c !important;
-    --link-color-visited: #cc785c !important;
+    --body-background: var(--color-bg) !important;
+    --body-font-color: var(--color-ink) !important;
+    --accent-color: rgba(61, 125, 95,0.08) !important;
+    --accent-color-lite: rgba(61, 125, 95,0.04) !important;
+    --link-color: #3d7d5f !important;
+    --link-color-visited: #3d7d5f !important;
     --code-background: #ffffff !important;
-    --code-font-color: #141413 !important;
+    --code-font-color: var(--color-ink) !important;
     --header-background: #ffffff !important;
-    --header-font-color: #141413 !important;
+    --header-font-color: var(--color-ink) !important;
   }
-  html, body { background: #faf9f5 !important; color: #141413 !important; }
+  html, body { background: var(--color-bg) !important; color: var(--color-ink) !important; }
 }
 
 /* ── Dark mode 일괄 보강 — Geekdoc 기본 옅은 글자 강제 override ── */
@@ -194,7 +230,7 @@
 [data-theme="dark"] .cw-side-link:link,
 [data-theme="dark"] .cw-side-link:visited { color: var(--fg-1) !important; }
 [data-theme="dark"] .cw-side-link.active,
-[data-theme="dark"] .cw-side-link.active:visited { color: #e0997f !important; }
+[data-theme="dark"] .cw-side-link.active:visited { color: #5a9a7e !important; }
 [data-theme="dark"] .cw-side-link:hover { color: var(--fg-1); background: rgba(255,255,255,0.04); }
 [data-theme="dark"] .cw-side-head,
 [data-theme="dark"] .cw-side-title { color: var(--fg-1) !important; }
@@ -205,7 +241,7 @@
 [data-theme="dark"] .cw-toc a:link,
 [data-theme="dark"] .cw-toc a:visited { color: var(--fg-3); }
 [data-theme="dark"] .cw-toc a:hover { color: var(--fg-1); }
-[data-theme="dark"] .cw-toc a.active { color: #e0997f !important; border-left-color: #e0997f !important; }
+[data-theme="dark"] .cw-toc a.active { color: #5a9a7e !important; border-left-color: #5a9a7e !important; }
 [data-theme="dark"] .cw-toc { border-left-color: rgba(255,255,255,0.08); }
 
 /* Hint 박스 본문 가독성 (다크에서 너무 어두움) */
@@ -230,9 +266,9 @@
 [data-theme="dark"] .gdoc-tabs label:hover { color: var(--fg-1); background: rgba(255,255,255,0.04); }
 [data-theme="dark"] .gdoc-tabs input[type="radio"]:checked + label,
 [data-theme="dark"] .gdoc-tabs__label.active {
-  background: #cc785c !important;
+  background: #3d7d5f !important;
   color: #fff !important;
-  box-shadow: 0 1px 3px rgba(204,120,92,0.32);
+  box-shadow: 0 1px 3px rgba(61, 125, 95,0.32);
 }
 
 /* 테이블 다크 톤 — th 청록 옅은 강조 */
@@ -241,12 +277,12 @@
   border-color: rgba(255,255,255,0.08);
 }
 [data-theme="dark"] .table-wrap th {
-  background: rgba(204,120,92,0.14) !important;
+  background: rgba(61, 125, 95,0.14) !important;
   color: var(--fg-1);
   border-bottom-color: rgba(255,255,255,0.10);
 }
 [data-theme="dark"] .table-wrap td { color: var(--fg-2); border-bottom-color: rgba(255,255,255,0.06); }
-[data-theme="dark"] .table-wrap tbody tr:hover td { background: rgba(204,120,92,0.06); }
+[data-theme="dark"] .table-wrap tbody tr:hover td { background: rgba(61, 125, 95,0.06); }
 
 /* 카드 컴포넌트 다크 톤 보강 (제목 글자 흐림 방지) */
 [data-theme="dark"] .cw-card,
@@ -309,7 +345,7 @@ article.gdoc-markdown { counter-reset: doc-h2; }
   font-weight: 600;
   line-height: 1;
   color: var(--color-primary);
-  background: rgba(204, 120, 92, 0.08);
+  background: rgba(61, 125, 95, 0.08);
   padding: 5px 10px;
   border-radius: 999px;
   letter-spacing: 0.04em;
@@ -324,8 +360,8 @@ a {
   transition: color 150ms var(--easing-default);
 }
 a:hover { color: var(--color-primary-hover); }
-[data-theme="dark"] a { color: #e0997f; }
-[data-theme="dark"] a:hover { color: #ecc3b2; }
+[data-theme="dark"] a { color: #5a9a7e; }
+[data-theme="dark"] a:hover { color: #85bda0; }
 
 /* ── Inline code ── */
 code {
@@ -339,7 +375,7 @@ code {
 }
 [data-theme="dark"] code {
   background: rgba(255,255,255,0.06);
-  color: #e0997f;
+  color: #5a9a7e;
   border-color: rgba(255,255,255,0.08);
 }
 
@@ -354,21 +390,21 @@ code {
 [data-theme="dark"] .gdoc-markdown a code,
 [data-theme="dark"] .gdoc-hint code {
   background: rgba(255,255,255,0.06) !important;
-  color: #e0997f !important;
+  color: #5a9a7e !important;
   border: 1px solid rgba(255,255,255,0.08) !important;
 }
 
 /* ── Code blocks ── */
 pre {
   border-radius: var(--radius-lg);
-  background: #181715;
+  background: var(--neutral-900);
   box-shadow: var(--shadow-md);
   border: 1px solid rgba(255,255,255,0.06);
   font-family: var(--font-mono);
 }
 pre code {
   background: transparent;
-  color: #faf9f5;
+  color: var(--color-bg);
   border: none;
   padding: 0;
 }
@@ -394,8 +430,8 @@ th {
 [data-theme="dark"] th { background: rgba(255,255,255,0.03); }
 td, th { padding: 12px 16px; border-bottom: 1px solid var(--border-2); }
 tr:last-child td { border-bottom: 0; }
-tr:hover td { background: rgba(204,120,92,0.025); }
-[data-theme="dark"] tr:hover td { background: rgba(204,120,92,0.06); }
+tr:hover td { background: rgba(61, 125, 95,0.025); }
+[data-theme="dark"] tr:hover td { background: rgba(61, 125, 95,0.06); }
 
 /* ── Blockquotes / Hints ── */
 /* ── Hint(Note·Info·Tip·Warning) 박스 — 디자인 회색 톤 통일 ──
@@ -492,12 +528,12 @@ tr:hover td { background: rgba(204,120,92,0.025); }
 .gdoc-hint.danger  { border-left: 3px solid var(--color-danger)  !important; }
 .gdoc-hint.tip, .gdoc-hint.ok { border-left: 3px solid var(--color-success) !important; }
 .gdoc-hint.info, .gdoc-hint.note, .gdoc-hint.important { border-left: 3px solid var(--color-primary) !important; }
-[data-theme="dark"] .gdoc-hint.info, [data-theme="dark"] .gdoc-hint.note, [data-theme="dark"] .gdoc-hint.important { border-left-color: #e0997f !important; }
+[data-theme="dark"] .gdoc-hint.info, [data-theme="dark"] .gdoc-hint.note, [data-theme="dark"] .gdoc-hint.important { border-left-color: #5a9a7e !important; }
 .gdoc-hint.warning .gdoc-hint__title svg { color: var(--color-warning); }
 .gdoc-hint.danger .gdoc-hint__title svg { color: var(--color-danger); }
 .gdoc-hint.tip .gdoc-hint__title svg, .gdoc-hint.ok .gdoc-hint__title svg { color: var(--color-success); }
 .gdoc-hint.info .gdoc-hint__title svg, .gdoc-hint.note .gdoc-hint__title svg, .gdoc-hint.important .gdoc-hint__title svg { color: var(--color-primary); }
-[data-theme="dark"] .gdoc-hint.info .gdoc-hint__title svg, [data-theme="dark"] .gdoc-hint.note .gdoc-hint__title svg { color: #e0997f; }
+[data-theme="dark"] .gdoc-hint.info .gdoc-hint__title svg, [data-theme="dark"] .gdoc-hint.note .gdoc-hint__title svg { color: #5a9a7e; }
 
 /* ── Korean text wrapping: 단어 단위 줄바꿈 (한국어 가독성) ── */
 .cw-hero h1, .cw-hero .lead-p, .cw-qs-card .ttl, .cw-card .desc, .cw-track .ttl, .cw-rel .ttl {
@@ -675,19 +711,19 @@ a:hover, a:focus-visible { text-decoration: underline; text-underline-offset: 0.
   letter-spacing: -0.02em;
 }
 .gdoc-tabs__label:hover,
-.gdoc-tabs label:hover { background: rgba(20,18,16,0.04); color: var(--fg-1); }
+.gdoc-tabs label:hover { background: rgba(6,6,6,0.04); color: var(--fg-1); }
 .gdoc-tabs input[type="radio"] { display: none; }
 .gdoc-tabs input[type="radio"]:checked + label,
 .gdoc-tabs__label--active,
 .gdoc-tabs__label.active {
   background: var(--color-primary);
   color: #fff;
-  box-shadow: 0 1px 3px rgba(204,120,92,0.18);
+  box-shadow: 0 1px 3px rgba(61, 125, 95,0.18);
 }
 [data-theme="dark"] .gdoc-tabs__label:hover,
 [data-theme="dark"] .gdoc-tabs label:hover { background: rgba(255,255,255,0.04); }
 [data-theme="dark"] .gdoc-tabs input[type="radio"]:checked + label,
-[data-theme="dark"] .gdoc-tabs__label.active { background: #cc785c; color: #fff; }
+[data-theme="dark"] .gdoc-tabs__label.active { background: #3d7d5f; color: #fff; }
 .gdoc-tabs__content,
 .gdoc-tabs > div + div,
 .gdoc-markdown--nested {
@@ -722,16 +758,16 @@ a:hover, a:focus-visible { text-decoration: underline; text-underline-offset: 0.
   vertical-align: top;
 }
 .table-wrap th {
-  background: rgba(204,120,92,0.06) !important;
+  background: rgba(61, 125, 95,0.06) !important;
   font-weight: 700;
   color: var(--fg-1);
   letter-spacing: -0.02em;
   font-size: 13px;
 }
 .table-wrap tr:last-child td { border-bottom: 0; }
-.table-wrap tbody tr:hover td { background: rgba(204,120,92,0.025); }
+.table-wrap tbody tr:hover td { background: rgba(61, 125, 95,0.025); }
 [data-theme="dark"] .table-wrap th { background: rgba(255,255,255,0.04); }
-[data-theme="dark"] .table-wrap tbody tr:hover td { background: rgba(204,120,92,0.06); }
+[data-theme="dark"] .table-wrap tbody tr:hover td { background: rgba(61, 125, 95,0.06); }
 
 /* ── 가로 스크롤바 — 디자인 회색 톤 (코드블록·테이블 등) ── */
 .gdoc-markdown ::-webkit-scrollbar { height: 8px; width: 8px; }
@@ -760,7 +796,7 @@ a:hover, a:focus-visible { text-decoration: underline; text-underline-offset: 0.
   position: relative;
   margin: 22px 0;
   border-radius: 12px;
-  background: #181715;
+  background: var(--neutral-900);
   box-shadow: var(--shadow-md);
   border: 1px solid rgba(255,255,255,0.06);
   overflow: hidden;
@@ -783,7 +819,7 @@ a:hover, a:focus-visible { text-decoration: underline; text-underline-offset: 0.
   border-radius: 0;
   box-shadow: none;
   background: transparent;
-  color: #faf9f5;
+  color: var(--color-bg);
   font-family: var(--font-mono);
   font-size: 13px;
   line-height: 1.7;
@@ -798,39 +834,13 @@ a:hover, a:focus-visible { text-decoration: underline; text-underline-offset: 0.
   font-family: var(--font-mono);
   white-space: pre;
 }
-/* 줄번호 테이블 (lineNumbersInTable=true) */
-.gdoc-markdown .code-card .chroma .lntable {
-  display: block;
-  width: 100%;
-  margin: 0;
-  border: 0;
-  border-collapse: collapse;
-  overflow-x: auto;
-  background: transparent !important;
-}
-.gdoc-markdown .code-card .chroma .lntable td { padding: 0; border: 0; vertical-align: top; }
-.gdoc-markdown .code-card .chroma .lntable tr:hover td { background: transparent; }
-.gdoc-markdown .code-card .chroma .lntd { background: transparent; }
-.gdoc-markdown .code-card .chroma .lntd:first-child {
-  width: 1%;
-  white-space: nowrap;
-  user-select: none;
-}
-.gdoc-markdown .code-card .chroma .lntd:first-child pre {
-  padding: 15px 12px 15px 16px !important;
-  background: rgba(0,0,0,0.18);
-  border-right: 1px solid rgba(255,255,255,0.05);
-  color: rgba(255,255,255,0.24);
-  text-align: right;
-}
-.gdoc-markdown .code-card .chroma .lnt,
-.gdoc-markdown .code-card .chroma .ln { color: rgba(255,255,255,0.24); }
-.gdoc-markdown .code-card .chroma .lntd:last-child pre { padding: 15px 18px 15px 16px !important; }
-.gdoc-markdown .code-card .chroma .hl { background: rgba(204,120,92,0.14); display: block; }
+/* 줄번호(lineNos) 비활성화됨 — line-number 테이블 스타일(.lntable/.lntd/.lnt/.ln)은 더 이상 렌더링되지 않음.
+   코드 카드 본문은 단일 배경 var(--term-bg)로 통일. 라인 하이라이트(.hl)만 보존. */
+.gdoc-markdown .code-card .chroma .hl { background: rgba(61, 125, 95,0.14); display: block; }
 
 /* ── 신택스 토큰 색 — 디자인 .tk-* 팔레트(Claude Warm Editorial) 정합 ──
    .code-card 내부 Chroma 클래스에만 스코프. 다크 카드 위 가독성 + 코랄 키워드. */
-.gdoc-markdown .code-card .chroma { color: #faf9f5; }
+.gdoc-markdown .code-card .chroma { color: var(--color-bg); }
 .gdoc-markdown .code-card .chroma .c,
 .gdoc-markdown .code-card .chroma .ch,
 .gdoc-markdown .code-card .chroma .cm,
@@ -844,7 +854,7 @@ a:hover, a:focus-visible { text-decoration: underline; text-underline-offset: 0.
 .gdoc-markdown .code-card .chroma .kn,
 .gdoc-markdown .code-card .chroma .kp,
 .gdoc-markdown .code-card .chroma .kr,
-.gdoc-markdown .code-card .chroma .kt { color: #e0997f !important; }
+.gdoc-markdown .code-card .chroma .kt { color: #5a9a7e !important; }
 .gdoc-markdown .code-card .chroma .s,
 .gdoc-markdown .code-card .chroma .sa,
 .gdoc-markdown .code-card .chroma .sb,
@@ -870,19 +880,19 @@ a:hover, a:focus-visible { text-decoration: underline; text-underline-offset: 0.
 .gdoc-markdown .code-card .chroma .bp { color: #f0c987 !important; }
 .gdoc-markdown .code-card .chroma .nf,
 .gdoc-markdown .code-card .chroma .fm,
-.gdoc-markdown .code-card .chroma .nt { color: #e0997f !important; }
+.gdoc-markdown .code-card .chroma .nt { color: #5a9a7e !important; }
 .gdoc-markdown .code-card .chroma .o,
-.gdoc-markdown .code-card .chroma .ow { color: #ecc3b2 !important; }
+.gdoc-markdown .code-card .chroma .ow { color: #85bda0 !important; }
 .gdoc-markdown .code-card .chroma .p,
 .gdoc-markdown .code-card .chroma .nx,
 .gdoc-markdown .code-card .chroma .n,
 .gdoc-markdown .code-card .chroma .na,
 .gdoc-markdown .code-card .chroma .nl,
 .gdoc-markdown .code-card .chroma .nv,
-.gdoc-markdown .code-card .chroma .nd { color: #faf9f5 !important; }
+.gdoc-markdown .code-card .chroma .nd { color: var(--color-bg) !important; }
 .gdoc-markdown .code-card .chroma .gd { color: #c64545 !important; }
 .gdoc-markdown .code-card .chroma .gi { color: #5db872 !important; }
-.gdoc-markdown .code-card .chroma .err { color: #faf9f5 !important; background: transparent !important; }
+.gdoc-markdown .code-card .chroma .err { color: var(--color-bg) !important; background: transparent !important; }
 
 /* ── inline code — 페이지 배경과 명확히 구분되도록 더 진한 배경 + 청록 글자 ── */
 .gdoc-markdown :not(pre) > code,
@@ -890,14 +900,14 @@ a:hover, a:focus-visible { text-decoration: underline; text-underline-offset: 0.
 .gdoc-markdown p code,
 .gdoc-markdown td code,
 .gdoc-markdown th code {
-  background: rgba(204,120,92,0.08);
+  background: rgba(61, 125, 95,0.08);
   color: var(--color-primary);
   padding: 2px 6px;
   border-radius: 5px;
   font-size: 0.86em;
   font-weight: 600;
   font-family: var(--font-mono);
-  border: 1px solid rgba(204,120,92,0.10);
+  border: 1px solid rgba(61, 125, 95,0.10);
   letter-spacing: 0;
   white-space: nowrap;
 }
@@ -906,9 +916,9 @@ a:hover, a:focus-visible { text-decoration: underline; text-underline-offset: 0.
 [data-theme="dark"] .gdoc-markdown p code,
 [data-theme="dark"] .gdoc-markdown td code,
 [data-theme="dark"] .gdoc-markdown th code {
-  background: rgba(204,120,92,0.16);
-  color: #e0997f;
-  border-color: rgba(204,120,92,0.20);
+  background: rgba(61, 125, 95,0.16);
+  color: #5a9a7e;
+  border-color: rgba(61, 125, 95,0.20);
 }
 
 /* ── 디자인 standalone 사이드바 정합 (.cw-side / .cw-side-section / .cw-side-head / .cw-side-link) ── */
@@ -936,13 +946,13 @@ a:hover, a:focus-visible { text-decoration: underline; text-underline-offset: 0.
   letter-spacing: -0.02em;
   transition: background-color 120ms;
 }
-.cw-side-head:hover { background: rgba(20,18,16,0.04); }
+.cw-side-head:hover { background: rgba(6,6,6,0.04); }
 [data-theme="dark"] .cw-side-head:hover { background: rgba(255,255,255,0.04); }
 
 .cw-side-title { display: inline-flex; align-items: center; gap: 10px; }
 .cw-side-ico { color: var(--fg-1); flex: 0 0 auto; }
 .cw-side-section[open] .cw-side-ico { color: var(--color-primary); }
-[data-theme="dark"] .cw-side-section[open] .cw-side-ico { color: #e0997f; }
+[data-theme="dark"] .cw-side-section[open] .cw-side-ico { color: #5a9a7e; }
 
 .cw-side-chev { color: var(--fg-3); transition: transform 180ms ease; }
 .cw-side-section[open] .cw-side-chev { transform: rotate(90deg); }
@@ -974,15 +984,15 @@ a:hover, a:focus-visible { text-decoration: underline; text-underline-offset: 0.
 /* visited 보라색 차단 — 디자인 톤 회색으로 통일 */
 .cw-side-link, .cw-side-link:link, .cw-side-link:visited { color: var(--fg-2); }
 .cw-side-link.active, .cw-side-link.active:visited { color: var(--color-primary); }
-.cw-side-link:hover { background: rgba(20,18,16,0.04); color: var(--fg-1); }
+.cw-side-link:hover { background: rgba(6,6,6,0.04); color: var(--fg-1); }
 .cw-side-link.active {
   background: var(--color-surface);
   color: var(--color-primary);
   font-weight: 700;
-  box-shadow: 0 1px 3px rgba(20,18,16,0.06), 0 0 0 1px rgba(204,120,92,0.08);
+  box-shadow: 0 1px 3px rgba(6,6,6,0.06), 0 0 0 1px rgba(61, 125, 95,0.08);
 }
 [data-theme="dark"] .cw-side-link:hover { background: rgba(255,255,255,0.04); color: var(--fg-1); }
-[data-theme="dark"] .cw-side-link.active { background: rgba(204,120,92,0.18); color: #e0997f; }
+[data-theme="dark"] .cw-side-link.active { background: rgba(61, 125, 95,0.18); color: #5a9a7e; }
 
 .cw-side-link-name { display: inline-flex; align-items: center; gap: 6px; min-width: 0; flex-wrap: wrap; }
 .cw-side-link-name > * + * { margin-left: 0; }
@@ -1008,18 +1018,18 @@ a:hover, a:focus-visible { text-decoration: underline; text-underline-offset: 0.
   border-radius: 4px;
   text-transform: uppercase;
 }
-[data-theme="dark"] .cw-side-new { background: #cc785c; }
+[data-theme="dark"] .cw-side-new { background: #3d7d5f; }
 .cw-side-badge {
   font-family: var(--font-mono);
   font-size: 10px;
   font-weight: 600;
   color: var(--color-primary);
-  background: rgba(204,120,92,0.10);
+  background: rgba(61, 125, 95,0.10);
   padding: 1px 5px;
   border-radius: 999px;
   letter-spacing: 0.04em;
 }
-[data-theme="dark"] .cw-side-badge { background: rgba(204,120,92,0.16); color: #e0997f; }
+[data-theme="dark"] .cw-side-badge { background: rgba(61, 125, 95,0.16); color: #5a9a7e; }
 
 /* 검색 박스 (Geekdoc 자동) — 디자인 톤으로 */
 .gdoc-search { padding: 4px; margin-bottom: 12px; }
@@ -1073,7 +1083,7 @@ a:hover, a:focus-visible { text-decoration: underline; text-underline-offset: 0.
   letter-spacing: -0.025em;
 }
 [data-theme="dark"] .cw-pg-card { background: rgba(255,255,255,0.02); }
-[data-theme="dark"] .cw-pg-card:hover { border-color: #e0997f; }
+[data-theme="dark"] .cw-pg-card:hover { border-color: #5a9a7e; }
 
 /* ── 헤더 검색·다국어·GitHub Star (디자인 nav-search/nav-actions) ── */
 .cw-nav-search {
@@ -1108,7 +1118,7 @@ a:hover, a:focus-visible { text-decoration: underline; text-underline-offset: 0.
 }
 .cw-search-modal__backdrop {
   position: absolute; inset: 0;
-  background: rgba(20,18,16,0.55);
+  background: rgba(6,6,6,0.55);
   backdrop-filter: blur(4px);
   -webkit-backdrop-filter: blur(4px);
 }
@@ -1122,7 +1132,7 @@ a:hover, a:focus-visible { text-decoration: underline; text-underline-offset: 0.
   display: flex; flex-direction: column;
   overflow: hidden;
 }
-[data-theme="dark"] .cw-search-modal__panel { background: #252320; }
+[data-theme="dark"] .cw-search-modal__panel { background: var(--neutral-800); }  /* v2 achromatic (M7): warm dark literal 제거 (dark dead-code, 라이트 전용) */
 .cw-search-modal__head {
   display: flex; align-items: center; gap: 12px;
   padding: 14px 18px;
@@ -1175,13 +1185,13 @@ a:hover, a:focus-visible { text-decoration: underline; text-underline-offset: 0.
   color: var(--fg-1);
   transition: background-color 120ms;
 }
-.cw-search-modal__list a:hover { background: rgba(204,120,92,0.06); }
-[data-theme="dark"] .cw-search-modal__list a:hover { background: rgba(204,120,92,0.10); }
+.cw-search-modal__list a:hover { background: rgba(61, 125, 95,0.06); }
+[data-theme="dark"] .cw-search-modal__list a:hover { background: rgba(61, 125, 95,0.10); }
 .cw-search-modal__list .title { font-weight: 700; font-size: 14px; letter-spacing: -0.02em; }
 .cw-search-modal__list .parent { font-size: 11px; color: var(--fg-3); margin-top: 2px; font-family: var(--font-mono); }
 .cw-search-modal__list .excerpt { font-size: 12.5px; color: var(--fg-2); margin-top: 4px; line-height: 1.5; }
 .cw-search-modal__list mark { background: rgba(236,195,178,0.25); color: var(--color-primary); padding: 0 1px; border-radius: 2px; }
-[data-theme="dark"] .cw-search-modal__list mark { background: rgba(236,195,178,0.18); color: #ecc3b2; }
+[data-theme="dark"] .cw-search-modal__list mark { background: rgba(236,195,178,0.18); color: #85bda0; }
 .cw-search-input kbd {
   margin-left: auto;
   font-family: var(--font-mono);
@@ -1298,7 +1308,7 @@ a:hover, a:focus-visible { text-decoration: underline; text-underline-offset: 0.
   border-left-color: var(--color-primary);
   font-weight: 700;
 }
-[data-theme="dark"] .cw-toc a.active { color: #e0997f; border-left-color: #e0997f; }
+[data-theme="dark"] .cw-toc a.active { color: #5a9a7e; border-left-color: #5a9a7e; }
 .cw-toc ol ol, .cw-toc ul ul { padding-left: 12px; font-size: 12px; }
 @media (max-width: 1199px) {
   .cw-toc { display: none; }
@@ -1330,7 +1340,7 @@ a:hover, a:focus-visible { text-decoration: underline; text-underline-offset: 0.
 .gdoc-markdown a,
 main a {
   color: var(--color-primary);
-  text-decoration-color: rgba(204,120,92,0.35);
+  text-decoration-color: rgba(61, 125, 95,0.35);
   text-underline-offset: 0.18em;
 }
 /* hero·card 등 디자인 컴포넌트 내부 링크는 자체 색 유지 (전역 link 색 override 방지) */
@@ -1353,11 +1363,11 @@ main a:hover {
 [data-theme="dark"] .gdoc-page a,
 [data-theme="dark"] .gdoc-content a,
 [data-theme="dark"] .gdoc-markdown a,
-[data-theme="dark"] main a { color: #e0997f; text-decoration-color: rgba(88,196,185,0.35); }
+[data-theme="dark"] main a { color: #5a9a7e; text-decoration-color: rgba(88,196,185,0.35); }
 [data-theme="dark"] .gdoc-page a:hover,
 [data-theme="dark"] .gdoc-content a:hover,
 [data-theme="dark"] .gdoc-markdown a:hover,
-[data-theme="dark"] main a:hover { color: #ecc3b2; text-decoration-color: #ecc3b2; }
+[data-theme="dark"] main a:hover { color: #85bda0; text-decoration-color: #85bda0; }
 
 .gdoc-brand svg,
 .gdoc-brand img { height: 22px; width: auto; }
@@ -1390,15 +1400,15 @@ main a:hover {
   font-weight: 600;
   padding: 3px 8px;
   border-radius: 999px;
-  background: rgba(204,120,92,0.10);
+  background: rgba(61, 125, 95,0.10);
   color: var(--color-primary);
   letter-spacing: 0.04em;
 }
-[data-theme="dark"] .cw-brand-ver { background: rgba(204,120,92,0.16); color: #e0997f; }
+[data-theme="dark"] .cw-brand-ver { background: rgba(61, 125, 95,0.16); color: #5a9a7e; }
 .cw-gh-count { font-family: var(--font-mono); color: var(--fg-2); font-weight: 600; font-size: 12px; margin-left: 2px; }
 [data-theme="dark"] .cw-brand-ver {
-  background: rgba(204,120,92,0.16);
-  color: #e0997f;
+  background: rgba(61, 125, 95,0.16);
+  color: #5a9a7e;
 }
 .cw-header-nav {
   display: flex;
@@ -1481,7 +1491,7 @@ footer.cw-footer {
   inset: 0;
   background:
     radial-gradient(circle at 85% 20%, rgba(236,195,178,0.18), transparent 40%),
-    radial-gradient(circle at 15% 110%, rgba(204,120,92,0.22), transparent 50%);
+    radial-gradient(circle at 15% 110%, rgba(61, 125, 95,0.22), transparent 50%);
   pointer-events: none;
 }
 .cw-hero > * { position: relative; }
@@ -1490,7 +1500,7 @@ footer.cw-footer {
   font-size: 12px;
   letter-spacing: 0.18em;
   text-transform: uppercase;
-  color: #ecc3b2;
+  color: #85bda0;
   font-weight: 600;
   margin-bottom: 14px;
   display: inline-flex;
@@ -1499,7 +1509,7 @@ footer.cw-footer {
 }
 .cw-hero .eyebrow .dot {
   width: 6px; height: 6px; border-radius: 999px;
-  background: #ecc3b2;
+  background: #85bda0;
   box-shadow: 0 0 0 4px rgba(236,195,178,0.18);
   animation: cw-pulse 1.6s ease-in-out infinite;
 }
@@ -1513,7 +1523,7 @@ footer.cw-footer {
   max-width: 18ch;
   color: #fff;
 }
-.cw-hero h1 .accent { color: #ecc3b2; }
+.cw-hero h1 .accent { color: #85bda0; }
 .cw-hero .lead-p {
   font-size: 17.5px;
   line-height: 1.65;
@@ -1585,10 +1595,10 @@ footer.cw-footer {
 }
 .cw-card:hover {
   transform: translateY(-2px);
-  border-color: rgba(204,120,92,0.32);
+  border-color: rgba(61, 125, 95,0.32);
   box-shadow: var(--shadow-md);
 }
-[data-theme="dark"] .cw-card:hover { border-color: rgba(204,120,92,0.45); }
+[data-theme="dark"] .cw-card:hover { border-color: rgba(61, 125, 95,0.45); }
 .cw-card .head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 .cw-card .icon {
   width: 36px; height: 36px;
@@ -1600,7 +1610,7 @@ footer.cw-footer {
   font-weight: 700;
   font-family: var(--font-mono);
 }
-[data-theme="dark"] .cw-card .icon { background: rgba(204,120,92,0.14); color: #e0997f; }
+[data-theme="dark"] .cw-card .icon { background: rgba(61, 125, 95,0.14); color: #5a9a7e; }
 .cw-card .count-pill {
   font-family: var(--font-mono);
   font-size: 11px;
@@ -1696,7 +1706,7 @@ footer.cw-footer {
   padding: 2px 7px;
   border-radius: var(--radius-sm);
 }
-[data-theme="dark"] .cw-stat .num .delta { background: rgba(236,195,178,0.14); color: #ecc3b2; }
+[data-theme="dark"] .cw-stat .num .delta { background: rgba(236,195,178,0.14); color: #85bda0; }
 
 /* ── Quick start cards ── */
 .cw-qs {
@@ -1715,11 +1725,11 @@ footer.cw-footer {
   transition: all 180ms var(--easing-default);
 }
 .cw-qs-card:hover {
-  border-color: rgba(204,120,92,0.32);
+  border-color: rgba(61, 125, 95,0.32);
   transform: translateY(-2px);
   box-shadow: var(--shadow-md);
 }
-[data-theme="dark"] .cw-qs-card:hover { border-color: rgba(204,120,92,0.45); }
+[data-theme="dark"] .cw-qs-card:hover { border-color: rgba(61, 125, 95,0.45); }
 .cw-qs-card .step {
   font-family: var(--font-mono);
   font-size: 11px;
@@ -1728,7 +1738,7 @@ footer.cw-footer {
   letter-spacing: 0.08em;
   color: var(--color-primary);
 }
-[data-theme="dark"] .cw-qs-card .step { color: #e0997f; }
+[data-theme="dark"] .cw-qs-card .step { color: #5a9a7e; }
 .cw-qs-card .ttl {
   font-size: 15.5px;
   font-weight: 700;
@@ -1757,8 +1767,8 @@ footer.cw-footer {
   padding: 16px 18px;
   transition: all 180ms var(--easing-default);
 }
-.cw-track:hover { border-color: rgba(204,120,92,0.32); transform: translateY(-1px); }
-[data-theme="dark"] .cw-track:hover { border-color: rgba(204,120,92,0.45); }
+.cw-track:hover { border-color: rgba(61, 125, 95,0.32); transform: translateY(-1px); }
+[data-theme="dark"] .cw-track:hover { border-color: rgba(61, 125, 95,0.45); }
 .cw-track .num {
   width: 32px; height: 32px; flex: none;
   border-radius: var(--radius-md);
@@ -1769,7 +1779,7 @@ footer.cw-footer {
   font-weight: 700;
   display: inline-flex; align-items: center; justify-content: center;
 }
-[data-theme="dark"] .cw-track .num { background: rgba(204,120,92,0.16); color: #e0997f; }
+[data-theme="dark"] .cw-track .num { background: rgba(61, 125, 95,0.16); color: #5a9a7e; }
 .cw-track .ttl {
   font-size: 14.5px;
   font-weight: 700;
@@ -1788,7 +1798,7 @@ footer.cw-footer {
 .cw-academy-banner {
   margin: 56px 0 24px;
   border-radius: 18px;
-  background: linear-gradient(135deg, rgba(204,120,92,0.06) 0%, rgba(212,160,23,0.07) 100%);
+  background: linear-gradient(135deg, rgba(61, 125, 95,0.06) 0%, rgba(212,160,23,0.07) 100%);
   border: 1px solid var(--border-2);
   position: relative;
   overflow: hidden;
@@ -1862,7 +1872,7 @@ footer.cw-footer {
   .cw-academy-banner__title { font-size: 22px; }
 }
 [data-theme="dark"] .cw-academy-banner {
-  background: linear-gradient(135deg, rgba(204,120,92,0.10) 0%, rgba(212,160,23,0.12) 100%);
+  background: linear-gradient(135deg, rgba(61, 125, 95,0.10) 0%, rgba(212,160,23,0.12) 100%);
   border-color: var(--neutral-700);
 }
 
@@ -1885,13 +1895,13 @@ footer.cw-footer {
   font-size: 13px;
   font-weight: 600;
   color: var(--color-primary);
-  background: rgba(204,120,92,0.08);
+  background: rgba(61, 125, 95,0.08);
   padding: 3px 10px;
   border-radius: var(--radius-full);
   letter-spacing: 0.04em;
   margin-right: 12px;
 }
-[data-theme="dark"] .cw-sect-head .num { background: rgba(204,120,92,0.16); color: #e0997f; }
+[data-theme="dark"] .cw-sect-head .num { background: rgba(61, 125, 95,0.16); color: #5a9a7e; }
 
 /* ── NEW tag ── */
 .new-tag {
@@ -1908,7 +1918,7 @@ footer.cw-footer {
   vertical-align: middle;
   text-transform: uppercase;
 }
-[data-theme="dark"] .new-tag { background: #cc785c; }
+[data-theme="dark"] .new-tag { background: #3d7d5f; }
 
 /* ── Release timeline ── */
 .cw-timeline {
@@ -1931,7 +1941,7 @@ footer.cw-footer {
 }
 .cw-rel.latest::before {
   background: var(--color-primary);
-  box-shadow: 0 0 0 4px rgba(204,120,92,0.14);
+  box-shadow: 0 0 0 4px rgba(61, 125, 95,0.14);
 }
 .cw-rel .ver-row { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; margin-bottom: 6px; }
 .cw-rel .ver {
@@ -1951,12 +1961,12 @@ footer.cw-footer {
   font-weight: 700;
   letter-spacing: 0.06em;
   text-transform: uppercase;
-  background: rgba(204,120,92,0.10);
+  background: rgba(61, 125, 95,0.10);
   color: var(--color-primary);
   padding: 2px 7px;
   border-radius: var(--radius-sm);
 }
-[data-theme="dark"] .cw-rel .badge { background: rgba(204,120,92,0.16); color: #e0997f; }
+[data-theme="dark"] .cw-rel .badge { background: rgba(61, 125, 95,0.16); color: #5a9a7e; }
 .cw-rel .ttl {
   font-size: 17px;
   font-weight: 700;
@@ -1987,7 +1997,7 @@ footer.cw-footer {
 }
 .cw-chip:hover { border-color: var(--border-strong); color: var(--fg-1); }
 .cw-chip.active { background: var(--color-primary); color: #fff; border-color: var(--color-primary); }
-[data-theme="dark"] .cw-chip.active { background: #cc785c; border-color: #cc785c; }
+[data-theme="dark"] .cw-chip.active { background: #3d7d5f; border-color: #3d7d5f; }
 
 /* ── Diff summary ── */
 .cw-diff-grid {
@@ -2036,14 +2046,14 @@ footer.cw-footer {
 #gdoc-to-main:focus {
   top: 8px;
 }
-[data-theme="dark"] #gdoc-to-main { background: #cc785c; }
+[data-theme="dark"] #gdoc-to-main { background: #3d7d5f; }
 
 /* ── Header nav links ── */
 .cw-header-nav a:hover {
   color: var(--color-primary);
 }
 [data-theme="dark"] .cw-header-nav a:hover {
-  color: #e0997f;
+  color: #5a9a7e;
 }
 
 /* ── Mobile responsive ── */
@@ -2128,7 +2138,7 @@ footer.cw-footer {
 /* Mermaid 다크 모드 매핑은 라이트 단일화로 제거 (2026-05-13) */
 
 /* ── Mermaid 컨테이너 — 다크 pre 배경 해제 → 라이트 카드 (Claude Warm Editorial) ──
-   일반 `pre` 규칙(#181715 다크 배경)이 mermaid pre에도 적용돼 다크 텍스트가 묻히는
+   일반 `pre` 규칙(var(--neutral-900) 다크 배경)이 mermaid pre에도 적용돼 다크 텍스트가 묻히는
    문제 차단. 크림/화이트 카드 위 잉크 텍스트 + 코랄 보더로 통일. */
 pre.mermaid,
 pre.gdoc-mermaid,

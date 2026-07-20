@@ -12,7 +12,7 @@ Complete API reference and technical documentation for the moai-foundation-quali
 4. [Proactive Analysis](#proactive-analysis)
 5. [Best Practices Engine](#best-practices-engine)
 6. [Configuration Reference](#configuration-reference)
-7. [Context7 Integration](#context7-integration)
+7. [Documentation Integration](#docs-integration)
 8. [Quality Metrics](#quality-metrics)
 9. [Integration APIs](#integration-apis)
 10. [Error Handling](#error-handling)
@@ -34,7 +34,7 @@ class QualityOrchestrator:
  self.trust5_validator = TRUST5Validator()
  self.proactive_scanner = ProactiveScanner()
  self.best_practices_engine = BestPracticesEngine()
- self.context7_client = Context7Client()
+ self.docs_client = DocumentationClient()
  self.metrics_collector = QualityMetricsCollector()
 
  async def analyze_codebase(
@@ -94,7 +94,7 @@ class QualityConfig:
  trust5_enabled: bool = True
  proactive_analysis: bool = True
  best_practices_enforcement: bool = True
- context7_integration: bool = True
+ docs_integration: bool = True
 
  # Quality thresholds
  quality_threshold: float = 0.85
@@ -349,10 +349,10 @@ class QualityMetricsCollector:
 
 ```python
 class BestPracticesEngine:
- """Context7-powered best practices validation"""
+ """Documentation-powered best practices validation"""
 
- def __init__(self, context7_client: Context7Client):
- self.context7_client = context7_client
+ def __init__(self, docs_client: DocumentationClient):
+ self.docs_client = docs_client
  self.language_rules = self._load_language_rules()
  self.practice_validators = self._initialize_validators()
 
@@ -360,7 +360,7 @@ class BestPracticesEngine:
  self,
  codebase: str,
  languages: List[str],
- context7_docs: bool = True
+ docs_docs: bool = True
  ) -> PracticesResult:
  """
  Validate coding best practices
@@ -368,7 +368,7 @@ class BestPracticesEngine:
  Args:
  codebase: Path to codebase
  languages: List of programming languages
- context7_docs: Whether to use Context7 documentation
+ docs_docs: Whether to use Documentation documentation
 
  Returns:
  PracticesResult: Best practices validation results
@@ -393,7 +393,7 @@ class BestPracticesEngine:
  language: str,
  latest_docs: str
  ) -> LanguageValidationResult:
- """Validate against latest standards from Context7"""
+ """Validate against latest standards from Documentation"""
 ```
 
 ### Language-Specific Validators
@@ -578,13 +578,13 @@ FOCUS_AREA_CONFIGURATIONS = {
 
 ---
 
-## Context7 Integration
+## Documentation Integration
 
-### Context7Client
+### DocumentationClient
 
 ```python
-class Context7Client:
- """Context7 MCP client for real-time documentation access"""
+class DocumentationClient:
+ """WebSearch/WebFetch client for real-time documentation access"""
 
  def __init__(self, cache_ttl: int = 3600):
  self.cache = {}
@@ -596,31 +596,31 @@ class Context7Client:
  library_name: str
  ) -> str:
  """
- Resolve library name to Context7 ID
+ Resolve library name to Documentation ID
 
  Args:
  library_name: Name of the library
 
  Returns:
- str: Context7-compatible library ID
+ str: Documentation-compatible library ID
 
  Example:
- client = Context7Client()
+ client = DocumentationClient()
  library_id = await client.resolve_library_id("react")
  # Returns: "/facebook/react"
  """
 
  async def get_library_docs(
  self,
- context7CompatibleLibraryID: str,
+ docsCompatibleLibraryID: str,
  topic: str = "best-practices",
  tokens: int = 5000
  ) -> str:
  """
- Get latest documentation from Context7
+ Get latest documentation from Documentation
 
  Args:
- context7CompatibleLibraryID: Library ID from resolve_library_id
+ docsCompatibleLibraryID: Library ID from resolve_library_id
  topic: Specific topic to focus on
  tokens: Maximum tokens to retrieve
 
@@ -981,8 +981,8 @@ class QualityAnalysisError(Exception):
  """Base exception for quality analysis errors"""
  pass
 
-class Context7IntegrationError(QualityAnalysisError):
- """Context7 integration errors"""
+class DocumentationIntegrationError(QualityAnalysisError):
+ """Documentation integration errors"""
  pass
 
 class QualityThresholdError(QualityAnalysisError):
@@ -1011,7 +1011,7 @@ class ErrorRecoveryManager:
  def __init__(self, max_retries: int = 3):
  self.max_retries = max_retries
  self.retry_strategies = {
- "context7_timeout": self._retry_context7_request,
+ "docs_timeout": self._retry_docs_request,
  "file_access_error": self._retry_file_operation,
  "network_error": self._retry_network_request,
  "validation_error": self._retry_validation
@@ -1024,13 +1024,13 @@ class ErrorRecoveryManager:
  ) -> ErrorRecoveryResult:
  """Handle and recover from errors"""
 
- async def _retry_context7_request(
+ async def _retry_docs_request(
  self,
  request_func: Callable,
  *args,
  kwargs
  ) -> Any:
- """Retry Context7 request with exponential backoff"""
+ """Retry Documentation request with exponential backoff"""
 
  async def _retry_file_operation(
  self,

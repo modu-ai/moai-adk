@@ -106,6 +106,44 @@ func (r *DecayReport) String() string {
 	)
 }
 
+// reconcileRecallArchival drops recall entries that already exist in archival.
+// This is the crash-recovery dedup for REQ-CONC-001-005 / AC-005: a prior
+// DecayScan or Touch that crashed mid-write can leave the same
+// (domain, decisionKey) in both tiers (archival is written atomically, but the
+// archival+recall pair is not a single transaction). Archival is the
+// authoritative tier for a soft-deleted entry, so the recall copy is the stale
+// duplicate and is dropped here. The read paths (Query's seen-map, Get's
+// cascade) already dedupe in-memory between scans; this step keeps the on-disk
+// recall.jsonl clean so the store does not persist cross-tier duplicates.
+//
+// Fail-open: if archival cannot be read, reconciliation is skipped (the normal
+// decay path still runs) — a malformed archival file MUST NOT stall the
+// maintenance scan.
+func (s *fileStore) reconcileRecallArchival(recall []Entry) []Entry {
+	if len(recall) == 0 {
+		return recall
+	}
+	arch, err := s.loadArchival()
+	if err != nil {
+		return recall // fail-open — see godoc
+	}
+	if len(arch) == 0 {
+		return recall
+	}
+	seen := make(map[string]bool, len(arch))
+	for _, e := range arch {
+		seen[e.Domain+"\x00"+e.DecisionKey] = true
+	}
+	out := make([]Entry, 0, len(recall))
+	for _, e := range recall {
+		if seen[e.Domain+"\x00"+e.DecisionKey] {
+			continue // stale recall duplicate — archival holds the authoritative copy
+		}
+		out = append(out, e)
+	}
+	return out
+}
+
 // DecayScan executes one decay-policy pass over the recall tier at the given
 // wall-clock time (REQ-ADM-011, REQ-ADM-012, NFR-ADM-004).
 //
@@ -113,6 +151,10 @@ func (r *DecayReport) String() string {
 // 408-409 comments reserved the hook points for. It:
 //
 //  1. Loads recall.jsonl.
+//  1.5. Reconciles recall against archival (crash recovery, REQ-CONC-001-005):
+//      drops any recall entry that already has an archival copy, so a prior
+//      scan that crashed between writeArchivalEntry and the recall write-back
+//      self-heals instead of persisting a cross-tier duplicate.
 //  2. For each entry, separates stable from transient behavior:
 //     - STABLE entries are EXEMPT from pure time-decay (REQ-ADM-011, the
 //     anti-AP-ADM-006 / Koren "지속 신호 상실" invariant). Their weight is
@@ -146,6 +188,23 @@ func (s *fileStore) DecayScan(now time.Time) (*DecayReport, error) {
 	if err != nil {
 		return nil, fmt.Errorf("preference: decay scan load recall: %w", err)
 	}
+
+	// Crash reconciliation (REQ-CONC-001-005 / AC-005). A prior scan that
+	// crashed between writeArchivalEntry and the recall write-back leaves an
+	// entry in BOTH archival and recall (the archival write is individually
+	// atomic, but the archival+recall pair is not a transaction). The normal
+	// decay path below only removes EXPIRED entries from recall; a non-expired
+	// stale recall copy (e.g. a since-Touched entry, or a scan that crashed
+	// right after archiving) would survive indefinitely and the store would
+	// persist a cross-tier duplicate. Reconcile here so the store self-heals
+	// on every scan: drop any recall entry whose (domain, decisionKey) already
+	// has an archival copy. The read paths (Query's seen-map, Get's cascade)
+	// already dedupe in-memory between scans; this step keeps the on-disk
+	// recall.jsonl clean. Design choice (option b reconcile-at-load) over
+	// option (a transactional): a cross-file WAL/2PC is heavy for a preference
+	// store; reconcile-at-scan is idempotent and runs at the natural daily
+	// maintenance boundary.
+	entries = s.reconcileRecallArchival(entries)
 
 	var survivors []Entry
 	for _, e := range entries {
@@ -337,13 +396,15 @@ func ScanDue(stateDir string, now time.Time) (bool, error) {
 // MarkScanned writes the timestamp file recording that a scan ran at `now`.
 // Called by DecayScan's caller (the CLI subcommand or SessionStart branch)
 // AFTER a successful scan. The stamp is an RFC3339 timestamp on a single line.
+//
+// The write goes through atomicWrite (temp-in-same-dir + os.Rename) so a
+// concurrent ScanDue reader never observes a truncated/half-written stamp
+// (REQ-CONC-001-005 / AC-005). The prior os.WriteFile (O_TRUNC-then-write)
+// exposed a window where a concurrent reader could see a 0-byte file.
 func MarkScanned(stateDir string, now time.Time) error {
-	if err := os.MkdirAll(stateDir, 0o755); err != nil {
-		return fmt.Errorf("preference: create state dir for decay stamp: %w", err)
-	}
 	stampPath := filepath.Join(stateDir, decayLastRunFileName)
 	content := now.UTC().Format(time.RFC3339) + "\n"
-	return os.WriteFile(stampPath, []byte(content), 0o644)
+	return atomicWrite(stampPath, []byte(content))
 }
 
 // parseStampTimestamp extracts the RFC3339 timestamp from the first line of

@@ -4,14 +4,10 @@ paths: "**/*.rs,**/Cargo.toml,**/Cargo.lock"
 
 # Rust Development Guide
 
-
----
-
-
-Rust 1.92+ Development Specialist with deep patterns for high-performance, memory-safe applications.
+Rust 1.88+ Development Specialist with deep patterns for high-performance, memory-safe applications.
 
 
-Core Use Cases:
+Core Capabilities:
 
 - High-performance REST APIs and microservices
 - Memory-safe concurrent systems
@@ -19,7 +15,7 @@ Core Use Cases:
 - WebAssembly applications
 - Low-latency networking services
 
-Quick Patterns:
+### Quick Patterns
 
 Axum REST API: Create Router with route macro chaining path and handler. Add with_state for shared state. Bind TcpListener with tokio::net and serve with axum::serve.
 
@@ -28,7 +24,7 @@ Async Handler with SQLx: Define async handler function taking State extractor fo
 ---
 
 
-### Rust 1.92 Features
+### Rust 1.88 Features
 
 Modern Rust Features:
 
@@ -36,7 +32,7 @@ Modern Rust Features:
 - Async traits in stable (no more async-trait crate needed)
 - Const generics for compile-time array sizing
 - let-else for pattern matching with early return
-- Improved borrow checker with polonius
+- Improved borrow checker (polonius is experimental, opt-in with -Zpolonius on nightly)
 
 Async Traits (Stable): Define trait with async fn signatures. Implement trait for concrete types with async fn implementations. Call sqlx macros directly in trait methods.
 
@@ -86,7 +82,7 @@ For comprehensive coverage including:
 - Engineering best practices and coding guidelines
 - Async patterns and concurrency
 
-Apply the sections above together with the Context7 library mappings for these advanced topics (ownership and traits, optimization, coding standards); this guide is self-contained.
+Apply the sections above together with the Documentation References for these advanced topics (ownership and traits, optimization, coding standards); this guide is self-contained.
 
 ### Performance Optimization
 
@@ -102,7 +98,7 @@ Rate-Limited Operations: Create Arc-wrapped Semaphore with max permits. Map over
 
 ---
 
-## Context7 Integration
+## Documentation References
 
 Library Documentation Access:
 
@@ -114,8 +110,7 @@ Library Documentation Access:
 - `/dtolnay/thiserror` - Error derive
 - `/clap-rs/clap` - CLI parser
 
----
-
+## Related Resources
 
 - `.claude/rules/moai/languages/go.md` - Go systems programming patterns
 - `moai-domain-backend` - REST API architecture and microservices patterns
@@ -143,13 +138,3 @@ Performance Characteristics:
 
 ---
 
-
-See reference/engineering.md for advanced ownership patterns and trait design.
-
-See reference/performance.md for optimization strategies and profiling techniques.
-
-See reference/guidelines.md for Rust coding standards and best practices.
-
----
-
-Version: 1.2.0

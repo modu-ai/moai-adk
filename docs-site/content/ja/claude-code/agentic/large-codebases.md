@@ -2,34 +2,37 @@
 title: 大規模コードベース
 weight: 80
 draft: false
-description: "数百万行の単一ツリーや複数パッケージのモノレポにおいて、Claude Code を効率的に使う戦略をまとめます。"
+description: "数百万行の単一ツリーや複数パッケージのモノレポで Claude Code を効率的に使うコンテキスト縮小戦略を整理します。"
 ---
 
-大規模コードベース (数百万行の単一リポジトリ、または複数パッケージのモノレポ) で Claude Code は正常に動作します。ただし、基本設定は小規模プロジェクトを想定しているため、**各作業が触れる部分に限定してコンテキストを絞る戦略** が必須です。
+# 大規模コードベース
+
+大規模コードベース — 数百万行の単一リポジトリでも、複数パッケージからなるモノレポでも — で Claude Code はきちんと動作します。ただしデフォルト設定は小さなプロジェクトを想定しているため、**各作業が実際に触れる部分だけへコンテキストを絞る戦略** が必須です。
 
 {{< callout type="info" >}}
-**核心**: 大規模コードベースの問題は「全ファイルを読むこと」ではなく、現在の作業と **無関係な指示とファイルがコンテキストを占有すること** です。
+**ひとことで言うと**: 大規模コードベースの本当の問題は「ファイルが多いこと」ではなく、いまの作業と **無関係な指示文とファイルがコンテキストを埋めること** です。無関係なトークンは品質を下げると同時にコストを上げます — コンテキスト縮小こそがトークノミクスです。
 {{< /callout >}}
 
-## 1. 起動場所を決める
+## 開始位置を決める
 
-`claude` をどこで実行するかが、すべてを決めます。
+`claude` をどこで実行するかが、その後のすべてを決めます。
 
-| 起動位置 | ファイルアクセス範囲 | ロードされる CLAUDE.md | 適したケース |
+| 開始位置 | ファイルアクセス範囲 | ロードされる CLAUDE.md | 適した場合 |
 |---------|-----------|---------------|---------|
-| **リポジトリルート** | 全体 | ルートのみ (下位はオンデマンド) | 複数パッケージ・サブシステムにまたがる作業 |
-| **下位ディレクトリ** | そのサブツリーのみ | そのディレクトリ + すべての上位ディレクトリ | 1 パッケージ・サブシステムに限定された作業 |
+| **リポジトリルート** | 全体 | ルートのみ (下位はオンデマンド) | 複数のパッケージ/サブシステムにまたがる作業 |
+| **サブディレクトリ** | そのサブツリーのみ | そのディレクトリ + すべての上位ディレクトリ | 1 つのパッケージ/サブシステムに限定された作業 |
 
-**ヒント**: 1 つのパッケージ (例: `packages/api/`) に集中するなら、そのディレクトリで `claude` を実行してください。すると自動的に `packages/web/` の指示はロードされません。
+1 つのパッケージ (例: `packages/api/`) だけに集中する作業なら、そのディレクトリで `claude` を実行してください。`packages/web/` の指示文はそもそもロードされないため、ルールを削る努力なしにコンテキストが自然と軽くなります。
 
-## 2. CLAUDE.md をディレクトリごとに分割
+## CLAUDE.md をディレクトリごとに分割する
 
-ルートにすべてのルールを入れると:
-- 長すぎて可読性が落ちる
-- あまりに一般的で役に立たない
-- 作業と無関係な指示もロード
+ルートの CLAUDE.md 1 つにすべてのルールを入れると、3 つの問題が生まれます。
 
-**解決**: ルートにリポジトリ全域ルールを入れ、各下位ディレクトリにその領域のルールを入れてください。
+- 長くなりすぎて可読性が落ち
+- すべてのパッケージに通用させようとして一般的すぎて役に立たなくなり
+- 作業と無関係な指示文まで毎セッションロードされます
+
+解決策は階層化です。ルートにはリポジトリ全域のルールだけを置き、各サブディレクトリにその領域のルールを置きます。
 
 ```markdown
 # ./CLAUDE.md (ルート、すべてのセッションでロード)
@@ -42,7 +45,7 @@ Run commands from the package directory.
 ```
 
 ```markdown
-# ./packages/api/CLAUDE.md (このディレクトリ作業時のみロード)
+# ./packages/api/CLAUDE.md (このディレクトリの作業時のみロード)
 This package is the REST API server.
 
 - Run tests: `npm test` (uses Vitest)
@@ -52,13 +55,11 @@ This package is the REST API server.
 API routes are in src/routes/. Never write raw SQL in handlers.
 ```
 
-Claude が `packages/api/` から起動すると:
-- ルート + packages/api/ CLAUDE.md 両方ロード
-- packages/web/ 指示は **ロードされない**
+Claude が `packages/api/` で起動すると、ルートと `packages/api/` の CLAUDE.md はどちらもロードされますが、`packages/web/` の指示文は **ロードされません**。
 
-## 3. 無関係な CLAUDE.md を除外する
+## 無関係な CLAUDE.md を除外する
 
-別チームのパッケージやレガシーコードは `claudeMdExcludes` でスキップ:
+他チームのパッケージやレガシーコードの指示文は、`claudeMdExcludes` 設定でスキップします。
 
 ```json
 {
@@ -69,13 +70,13 @@ Claude が `packages/api/` から起動すると:
 }
 ```
 
-ルート CLAUDE.md は相変わらずロードされ、除外されたパッケージは触れられません。
+ルートの CLAUDE.md は引き続きロードされ、除外したパッケージの指示文だけがコンテキストから外れます。
 
-## 4. 生成コード・ベンダーコードを遮断
+## 生成コードとベンダーコードをブロックする
 
-`.gitignore` に既にある経路 (node_modules、dist、build) は自動的に検索結果から除外されます。
+`.gitignore` にすでにあるパス (node_modules、dist、build) は、自動的に検索結果から除外されます。
 
-コミットされた生成コードやベンダー SDK は権限ルールで遮断:
+コミットされた生成コードやベンダー SDK は、権限ルールで読み取り自体をブロックします。生成ファイルは長く反復的で、コンテキストの浪費が特に大きいのです。
 
 ```json
 {
@@ -90,22 +91,20 @@ Claude が `packages/api/` から起動すると:
 }
 ```
 
-## 5. コードインテリジェンス (LSP) プラグイン
+## コードインテリジェンス (LSP) プラグイン
 
-ファイルを 1 行ずつ読んでシンボル定義を探すのは非効率です。言語サーバープラグインをインストールすると:
+シンボルの定義を探すためにファイルを 1 行ずつ読むのは、トークンの観点で最も高くつく探索です。言語サーバープラグインをインストールすれば、定義への移動、参照検索、型エラーの直接照会が可能になり、ファイル読み取りそのものを大きく減らせます。
 
 ```bash
 /plugin install typescript-lsp@claude-plugins-official
 ```
 
-Claude が `go to definition`、`find references`、型エラーを直接照会できます。
+- TypeScript、Python、Go、Rust など主要言語をサポートします
+- 該当言語の LSP バイナリがシステムにインストールされている必要があります ([プラグインのドキュメント](/ja/claude-code/extensibility/plugins) を参照)
 
-- TypeScript、Python、Go、Rust など主要言語をサポート
-- LSP バイナリが必要 (ガイド参照)
+## ワークツリーで必要なディレクトリだけチェックアウト
 
-これでファイル読み込みを大幅に削減できます。
-
-## 6. Worktree で必要なディレクトリだけチェックアウト
+`--worktree` で作るワークツリーは、`worktree.sparsePaths` 設定で全体ではなく **列挙したディレクトリのみ** をチェックアウトできます。
 
 ```json
 {
@@ -119,11 +118,9 @@ Claude が `go to definition`、`find references`、型エラーを直接照会�
 }
 ```
 
-`--worktree` で生成したワークツリーは全体ではなく、**指定したディレクトリだけ** チェックアウトします。
-
-- 高速な生成 (全複製 vs 必要な部分のみ)
-- ディスク容量を節約
-- 複数ワークツリーの node_modules 重複排除:
+- 作成が速くなり (フルクローンの代わりに必要な部分だけ)
+- ディスク容量を節約でき
+- `symlinkDirectories` で複数ワークツリーの node_modules の重複も取り除けます。
 
 ```json
 {
@@ -134,9 +131,11 @@ Claude が `go to definition`、`find references`、型エラーを直接照会�
 }
 ```
 
-## 7. 他パッケージ・リポジトリへのアクセス権限
+`symlinkDirectories` に列挙したディレクトリは、メインチェックアウトのものをシンボリックリンクで共有します。
 
-1 つのパッケージから始めたが兄弟パッケージの修正が必要なら:
+## 他のパッケージ/リポジトリへのアクセス権を与える
+
+1 つのパッケージで始めたのに兄弟パッケージの修正が必要になったら、`additionalDirectories` でアクセス範囲を広げます。
 
 ```json
 {
@@ -149,15 +148,15 @@ Claude が `go to definition`、`find references`、型エラーを直接照会�
 }
 ```
 
-または実行時に:
+設定の代わりにランタイムフラグでも可能です。
 
 ```bash
 claude --add-dir ../shared --add-dir ../web
 ```
 
-## 8. パッケージ別 Skills を追加
+## パッケージ別スキルの追加
 
-各パッケージはその領域だけの自動化コマンド (Skills) を持つことができます。
+各パッケージは、その領域だけのスキルを持てます。スキルは必要なときだけロードされるため、パッケージ専用の知識をコンテキスト負担なしに保管する良い入れ物です。
 
 ```bash
 mkdir -p packages/api/.claude/skills/api-testing
@@ -170,39 +169,34 @@ name: api-testing
 description: API パッケージのテストパターン
 ---
 
-## テスト構造
+## Test structure
+Tests are in `src/__tests__/` mirroring `src/`.
 
-テストは `src/__tests__/` にあり `src/` の構造をミラーリングします。
+## Running tests
+- All: `npm test`
+- Single file: `npm test -- src/__tests__/routes/users.test.ts`
 
-## テスト実行
-
-- すべて: `npm test`
-- 単一ファイル: `npm test -- src/__tests__/routes/users.test.ts`
-
-## テストユーティリティ
-
-- `src/__tests__/helpers/db.ts`: setupTestDb()、teardownTestDb()
-- `src/__tests__/helpers/auth.ts`: createTestUser()、getAuthToken()
+## Test utilities
+- `src/__tests__/helpers/db.ts`: setupTestDb(), teardownTestDb()
+- `src/__tests__/helpers/auth.ts`: createTestUser(), getAuthToken()
 ```
 
-packages/api から作業すると api-testing スキルが自動ロード。packages/web ではロードされません。
+`packages/api` で作業すると api-testing スキルが自動的にロードされ、`packages/web` ではロードされません。
 
-## 9. パッケージ間の作業調整
+## パッケージをまたぐ作業の調律
 
-同じ変更が複数パッケージに触れるとき (例: 共有型アップデート + すべての呼び出し元修正):
+同じ変更が複数のパッケージに触れるとき (例: 共有型の更新とすべての呼び出し箇所の修正) は、2 つの原則が有効です。
 
-**1 つのセッションで全変更処理**: すべてのファイルを一度に読み込んで決定の一貫性を維持します。
+- **1 つのセッションで変更全体を処理**: 関連ファイルを一度にロードし、決定の一貫性を維持します。
+- **まず計画をファイルに保存**: 計画をマークダウンファイルに残しておきましょう。セッションが長くなるとコンテキストは圧縮されますが、ディスクに保存された計画は消えません。「重要な状態はファイルに残す」は、エージェンティックループ運用の基本でもあります。
 
-**事前に計画をファイルに保存**: 計画をマークダウンファイルに保存します。長いセッションはコンテキストが圧縮されますが、保存された計画は消えません。
+## 具体的な設定例: モノレポ
 
-## 10. 具体的な設定例: モノレポ
+以下は完全な設定例です。ルートにはリポジトリ全域のブロックルールを、パッケージにはそのパッケージのワークツリー・アクセス設定を置きます (MoAI-ADK プロジェクトなら `.moai/config/sections/workflow.yaml` のようなワークフロー設定もルートに位置します)。
 
-以下は完全な設定例です。
-
-**ルート** (`.moai/config/sections/workflow.yaml` のような他の設定もルートに):
+**ルート** (`.claude/settings.json`):
 
 ```json
-// .claude/settings.json
 {
   "permissions": {
     "deny": [
@@ -235,32 +229,42 @@ packages/api から作業すると api-testing スキルが自動ロード。pac
 }
 ```
 
-この設定により:
-- `.claude/`、`packages/api/`、`packages/shared/` だけチェックアウト (worktree)
-- shared パッケージアクセス可能
-- 生成・ベンダーファイルアクセス遮断
+この設定の効果は次のとおりです。
 
-## 11. 大規模コードベースのヒント
+- ワークツリーは `.claude/`、`packages/api/`、`packages/shared/` のみチェックアウト
+- shared パッケージへアクセス可能
+- 生成/ベンダーファイルへのアクセスをブロック
 
-### 範囲別検索
+## ヒントとコツ
 
-大きな変更をするときは、影響範囲を事前に把握してください:
+### 範囲を指定した検索
+
+大きな変更をする前に、影響範囲をまず把握しましょう。検索範囲を狭める習慣が、読むべきファイル数を減らします。
 
 ```bash
 grep -r "FunctionName" packages/api/  # api のみ検索
 grep -r "FunctionName" packages/      # すべてのパッケージ
 ```
 
-### レイヤー別分析
+### レイヤーごとの分析
 
-複数レイヤー (DB、API、UI) に触れる変更は、各レイヤーをそれぞれ理解して、1 つのセッションでは 1 つの変更に集中します。
+DB・API・UI のように複数レイヤーに触れる変更なら、各レイヤーを別々に理解し、1 つのセッションでは 1 つの変更だけに集中します。
 
-### ドキュメント指示
+### ドキュメント化の指示
 
-大きな変更後もドキュメント維持が続くよう、変更計画に「docs 修正」項目を入れてください。
+大規模な変更の後もドキュメントが古びないよう、変更計画に「docs の修正」項目を含めてください。
 
-## 参考
+## 関連ドキュメント
 
-このガイドは Anthropic の公式 [Set up Claude Code in a monorepo or large codebase](https://code.claude.com/docs/en/large-codebases) ドキュメントに基づいています。
+- [コンテキストウィンドウ](/ja/claude-code/context-memory/context-window)
+- [ワークツリー](/ja/claude-code/agentic/worktrees)
+- [ベストプラクティス](/ja/claude-code/agentic/best-practices)
 
-追加の戦略は Anthropic の [Best practices for Claude Code](https://code.claude.com/docs/en/best-practices) ドキュメントも参照してください。
+## 参考資料
+
+- [Set up Claude Code in a monorepo or large codebase (公式ドキュメント)](https://code.claude.com/docs/en/large-codebases)
+- [Best practices for Claude Code (公式ドキュメント)](https://code.claude.com/docs/en/best-practices)
+
+{{< callout type="tip" >}}
+モノレポで最も手軽な第一手は、「1 つのパッケージの作業はそのパッケージのディレクトリで `claude` を実行する」ことです。設定ファイルを 1 つも触らずに無関係な指示文のロードを断ち切る、費用対効果が最も大きい習慣です。
+{{< /callout >}}

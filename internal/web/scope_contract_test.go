@@ -14,11 +14,12 @@ import (
 	"github.com/modu-ai/moai-adk/internal/settings"
 )
 
-// TestScopeContractTenSections는 10개 user-facing 섹션(git-strategy, llm,
-// workflow, harness, ralph, research, feedback, observability, security, db)이
+// TestScopeContractEditableSections는 8개 user-facing 섹션(git-strategy, llm,
+// workflow, harness, ralph, feedback, observability, security)이
 // 전부 편집 가능 경로로 라우팅되고, 그 경로 분류가 design.md §A.3 표와 일치함을
-// 검증한다 (AC-WC11-002 허용 케이스).
-func TestScopeContractTenSections(t *testing.T) {
+// 검증한다 (AC-WC11-002 허용 케이스; research는 SPEC-WEB-CONSOLE-012 M1에서
+// 폐선 — REQ-WC12-010, 제외군 테스트로 이동).
+func TestScopeContractEditableSections(t *testing.T) {
 	t.Parallel()
 
 	// typed 경로 2종: git-strategy(dirty-flag Save), llm(typed oneof 검증).
@@ -28,14 +29,16 @@ func TestScopeContractTenSections(t *testing.T) {
 		}
 	}
 
-	// seam 전용 8종: typed Save() 경로 부재 — yamlpatch seam이 유일한 쓰기 경로
-	// (REQ-WC11-017; workflow.yaml typed re-marshal 금지 REQ-WC11-005).
+	// SPEC-WEBCONF-SIMPLIFY-001 M3: 8 former seam sections reclassified to
+	// RouteExcluded (tabs removed, web write path gone, config keys persist in
+	// baked template YAML — REQ-WC-003).
 	for _, name := range []string{
-		"workflow", "harness", "ralph", "research",
-		"feedback", "observability", "security", "db",
+		"workflow", "harness", "ralph",
+		"feedback", "observability", "security",
+		"handoff", "cache",
 	} {
-		if got := settings.RouteForSection(name); got != settings.RouteSeam {
-			t.Errorf("section %q: route = %d, want RouteSeam", name, got)
+		if got := settings.RouteForSection(name); got != settings.RouteExcluded {
+			t.Errorf("section %q: route = %d, want RouteExcluded (M3 reclassified)", name, got)
 		}
 	}
 
@@ -54,16 +57,21 @@ func TestScopeContractTenSections(t *testing.T) {
 
 // TestScopeContractExclusions는 제외군 — machine/state 섹션(state, system,
 // project, cache, sunset), 대형 정책 파일(tool-policy, lsp, mx), 미지명 섹션
-// (constitution, context, design, interview) 및 임의 미등재 이름 — 이 전부
-// 편집 불가(RouteExcluded)로 거부됨을 검증한다 (AC-WC11-002 거부 케이스,
-// REQ-WC11-018).
+// (constitution, context, design, interview), 폐선 섹션(db, research) 및 임의
+// 미등재 이름 — 이 전부 편집 불가(RouteExcluded)로 거부됨을 검증한다
+// (AC-WC11-002 거부 케이스, REQ-WC11-018; research 폐선은 REQ-WC12-010/012).
 func TestScopeContractExclusions(t *testing.T) {
 	t.Parallel()
 
+	// cache는 SPEC-WEB-CONSOLE-013 M1에서 seam-writable로 재분류 (REQ-WC13-001 —
+	// REQ-WC11-018의 cache 한정 부분 supersede). 잔여 제외군은 전원 유지.
 	excluded := []string{
-		"state", "system", "project", "cache", "sunset",
+		"state", "system", "project", "sunset",
 		"tool-policy", "lsp", "mx",
 		"constitution", "context", "design", "interview",
+		"db", "research",
+		// SPEC-WEBCONF-SIMPLIFY-001 M3: 8 former seam sections reclassified.
+		"workflow", "harness", "ralph", "feedback", "observability", "security", "handoff", "cache",
 	}
 	for _, name := range excluded {
 		if got := settings.RouteForSection(name); got != settings.RouteExcluded {

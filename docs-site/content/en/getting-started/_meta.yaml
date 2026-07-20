@@ -9,9 +9,7 @@ installation:
   title: "Setup Wizard"
 quickstart:
   title: "Quick Start"
-update:
-  title: "Update"
 cli:
-  title: "CLI Reference"
+  title: "CLI Overview"
 faq:
   title: "FAQ"

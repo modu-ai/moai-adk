@@ -16,11 +16,13 @@ import (
 // meta-harness output is permitted to write into. Any path starting
 // with one of these prefixes (after slash-normalisation) is ALLOWED.
 //
-// SPEC-V3R6-HARNESS-NAMESPACE-V2-001: both canonical harness-* and legacy
-// my-harness-* prefixes are allowed (REQ-HNS-005 backward-compat).
+// SPEC-HNS-PREFIX-RENAME-001: canonical hns- plus both legacy generations
+// (harness-*, my-harness-*) are allowed — tri-generation recognition
+// (REQ-HPR-009; REQ-HNS-005 backward-compat window preserved).
 var allowedPrefixes = []string{
 	".claude/agents/harness/",
 	".claude/agents/my-harness/",
+	".claude/skills/hns-",
 	".claude/skills/harness-",
 	".claude/skills/my-harness-",
 	".moai/harness/",

@@ -30,6 +30,8 @@ type Config struct {
 	Sunset        SunsetConfig               `yaml:"sunset"`
 	Research      ResearchConfig             `yaml:"research"`
 	Feedback      FeedbackConfig             `yaml:"feedback"` // SPEC-INVOCATION-MODEL-001: /moai feedback target repo
+	Handoff       HandoffConfig              `yaml:"handoff"`  // SPEC-HANDOFF-AUTORESUME-001: auto-resume 핸드오프 설정
+	Archive       ArchiveConfig              `yaml:"archive"`  // SPEC-SESSIONSTART-PERF-001: SPEC auto-archive grace window
 	Session       SessionConfig              `yaml:"session"`  // SPEC-V3R2-RT-004 REQ-022: STALE_SECONDS
 	// MIG-003: 4 new sections loaded by Loader.Load() (REQ-MIG003-001)
 	Constitution  ConstitutionConfig `yaml:"constitution"`
@@ -233,15 +235,41 @@ type MigrationsConfig struct {
 
 // LLMConfig represents the LLM configuration section.
 type LLMConfig struct {
-	// Mode selection: "", "glm"
+	// Mode selection: "" (unset) or "glm". DORMANT — no non-test writer currently
+	// sets this field (`moai glm` writes team_mode="glm", NOT mode="glm"). Retained
+	// as a reserved/future GLM signal; the GLM effort-overlay backend-detection
+	// predicate (template.IsGLMBackend, REQ-MTP-026) keeps mode=="glm" only as a
+	// defensive OR for this dormant field.
 	Mode string `yaml:"mode"`
-	// TeamMode selection: "", "claude", "glm", "hybrid"
+	// TeamMode selection: "" (`moai cc` / unset), "cg" (`moai cg` — Claude leader +
+	// GLM teammates), or "glm" (`moai glm` — all-GLM). These are the values
+	// persistTeamMode (internal/cli/glm.go) actually writes; "claude"/"hybrid" are
+	// legacy non-GLM values retained for backward-compat parsing. The GLM
+	// backend-detection predicate (template.IsGLMBackend) treats team_mode ∈
+	// {cg, glm} as a GLM backend.
 	TeamMode string `yaml:"team_mode"`
 	// Environment variable name for GLM API key
 	GLMEnvVar string `yaml:"glm_env_var"`
-	// Performance tier: "high", "medium", "low"
-	// Controls model selection for all sub-agents and team agents
-	PerformanceTier string `yaml:"performance_tier" validate:"omitempty,oneof=high medium low"`
+	// Performance tier: "max", "high", "medium", "low"
+	// Controls model selection for all sub-agents and team agents. The tag accepts
+	// "max" (the CLI-persisted --model-policy value) alongside the legacy "high"
+	// for backward compatibility (D4 adjacent drift fix: the CLI writes max/medium/low
+	// while pre-existing configs may carry the legacy high).
+	PerformanceTier string `yaml:"performance_tier" validate:"omitempty,oneof=max high medium low"`
+	// Profile selects the active per-agent-group model+effort column, one of
+	// {max, medium, low} (REQ-MPM-001). Absent/empty resolves via
+	// EffectiveProfile (profile → performance_tier alias → default medium).
+	// Closed-set validated by validateProfile.
+	Profile string `yaml:"profile"`
+	// Profiles mirrors the Matrix A default profile matrix for transparency and
+	// user editability (REQ-MPM-010): profile → agent-group → {model, effort}.
+	// The Go default (template.DefaultProfileMatrix) is the authoritative
+	// fallback for any cell absent from config.
+	Profiles map[string]map[string]ModelEffort `yaml:"profiles"`
+	// AgentOverrides is an optional per-agent {model, effort} override keyed by
+	// canonical agent name, applied on top of the active profile's group cell
+	// (REQ-MPM-006). Validated by validateAgentOverrides.
+	AgentOverrides map[string]ModelEffort `yaml:"agent_overrides"`
 	// Claude model mapping by tier
 	ClaudeModels ClaudeTierModels `yaml:"claude_models"`
 	// GLM API configuration
@@ -276,6 +304,7 @@ type GLMModels struct {
 	High   string `yaml:"high"`   // Complex reasoning
 	Medium string `yaml:"medium"` // Balanced performance
 	Low    string `yaml:"low"`    // Fast exploration
+	Fable  string `yaml:"fable"`  // Fable tier (Claude Code ANTHROPIC_DEFAULT_FABLE_MODEL)
 	// Legacy fields for backward compatibility
 	Opus   string `yaml:"opus"`   // Maps to High
 	Sonnet string `yaml:"sonnet"` // Maps to Medium
@@ -307,7 +336,7 @@ type RalphConfig struct {
 // WorkflowConfig represents the workflow configuration section.
 //
 // The nested fields below mirror the rich workflow.yaml structure (auto_clear /
-// completion / default_mode / execution_mode / loop_prevention / memory / team /
+// completion / default_mode / execution_mode / loop_prevention / memory /
 // token_budget / worktree). The trailing FLAT fields are retained for
 // backward-compat via the Option (c) accessor pattern. FLAT fields carry
 // yaml:"-" tags so yaml.Unmarshal never binds to them, eliminating the
@@ -318,8 +347,11 @@ type WorkflowConfig struct {
 	AutoClear      AutoClearConfig        `yaml:"auto_clear"`
 	DefaultMode    string                 `yaml:"default_mode"`
 	ExecutionMode  string                 `yaml:"execution_mode"`
+	// AgenticLoop mirrors workflow.agentic_loop.* — the pipeline-level completion-loop
+	// iteration ceiling. DISTINCT from LoopPrevention (per-operation diagnostic fix-loop
+	// bound) per SPEC-V3R6-AGENTIC-LOOP-CONFIG-001 §A.4 — the two MUST NOT be aliased.
+	AgenticLoop    AgenticLoopConfig      `yaml:"agentic_loop"`
 	LoopPrevention LoopPreventionConfig   `yaml:"loop_prevention"`
-	Team           TeamConfig             `yaml:"team"`
 	TokenBudget    TokenBudgetConfig      `yaml:"token_budget"`
 	Worktree       WorkflowWorktreeConfig `yaml:"worktree"`
 
@@ -335,9 +367,62 @@ type WorkflowConfig struct {
 	RunTokens int `yaml:"-"`
 	// Deprecated: use TokenBudget.Sync.
 	SyncTokens int `yaml:"-"`
-	// Deprecated: use Team.AutoSelection — the legacy field used a broken yaml
-	// path (workflow.auto_selection) that never matched team.auto_selection.
-	AutoSelectionLegacy TeamAutoSelectionConfig `yaml:"-"`
+
+	// WorkflowAgents는 dynamic-workflow purpose 분류(7종) → {model, effort} 기본값
+	// 맵이다 (SPEC-WEB-CONSOLE-011 REQ-WC11-070/071). config 블록이 기본값의
+	// SSOT이고 per-script 리터럴이 override다 (dynamic-workflows.md §Config
+	// surface — JS 스크립트가 yaml 파일을 직접 읽는다).
+	//
+	// 소비 관계 (M5-a B2 정정 — verification-claim-integrity): 이 typed 필드는
+	// 로더가 채우는 스키마 표면이며, production Go 코드는 이 필드를 읽지
+	// 않는다 (grep 실측 — config/workflow_agents_test.go만 접근). 웹 콘솔은
+	// M5-a B1부터 이 블록을 렌더/쓰기하지 않는다. dynamic-workflow JS가
+	// yaml 파일에서 직접 읽는 소비자다. 블록 부재 시 nil (zero-value, 무오류).
+	WorkflowAgents map[string]WorkflowAgentEntry `yaml:"workflow_agents"`
+
+	// ModelRouting is the Tier x Phase -> {model, effort} routing map read by
+	// RouteModelFor(tier, phase). The key format is "<TIER>-<phase>" (e.g.
+	// "S-sync", "L-run"). This is the per-spawn COST axis, orthogonal to
+	// Phase 0.95's Mode 1-6 shape axis — B (this field) decides model/effort,
+	// Phase 0.95 decides spawn shape; they compose, never compete.
+	// When the block is absent the map is nil and RouteModelFor falls back to
+	// the documented default entry with FallbackApplied=true.
+	ModelRouting map[string]ModelRoutingEntry `yaml:"model_routing"`
+
+	// ModelRoutingProfiles is the perfTier -> (Tier x Phase) -> {model, effort}
+	// 3-tier routing map read by RouteModelFor(specTier, phase, perfTier). The
+	// outer key is perfTier in {max, medium, low}; the inner key format is
+	// "<TIER>-<phase>" (e.g. "S-sync", "L-run"). This is the No-Haiku 3-tier
+	// cost axis (SPEC-AGENT-ARCH-V2-001 M3, design.md §D.5) — it supersedes the
+	// flat ModelRouting above for spawn-time routing. When the block is absent
+	// the map is nil and RouteModelFor falls back to the documented default
+	// entry with FallbackApplied=true.
+	ModelRoutingProfiles ModelRoutingProfiles `yaml:"model_routing_profiles"`
+}
+
+// ModelRoutingProfiles is perfTier -> (tier-phase) -> routing entry. perfTier
+// in {max, medium, low}; inner key "<TIER>-<phase>" (Tier in {S,M,L}, Phase in
+// {plan,run,sync,mx}). Loaded from workflow.yaml `model_routing_profiles`.
+type ModelRoutingProfiles map[string]map[string]ModelRoutingEntry
+
+// ModelRoutingEntry is a single Tier x Phase routing recommendation. It is a
+// NEW struct distinct from WorkflowAgentEntry because REQ-TR-002 mandates a
+// FallbackApplied indicator that WorkflowAgentEntry (which carries only
+// {Model, Effort}) does not have.
+type ModelRoutingEntry struct {
+	Model           string `yaml:"model"`
+	Effort          string `yaml:"effort"`
+	FallbackApplied bool   `yaml:"fallback_applied"`
+}
+
+// WorkflowAgentEntry는 dynamic-workflow purpose별 model/effort 기본값이다
+// (REQ-WC11-071 — design.md §C.2). retired된 team role-profile entry와 달리
+// Effort 필드를 가진다: role-profile effort는 Go-invisible opaque node
+// 결정(REQ-WEM-006)이었고, workflow_agents는 신설 typed 표면이라 그 결정의
+// 적용 대상이 아니다.
+type WorkflowAgentEntry struct {
+	Model  string `yaml:"model"`
+	Effort string `yaml:"effort"`
 }
 
 // AutoClearConfig mirrors workflow.auto_clear.* — context-window auto-clear policy.
@@ -348,6 +433,18 @@ type AutoClearConfig struct {
 	TokenThreshold int  `yaml:"token_threshold"`
 }
 
+// AgenticLoopConfig mirrors workflow.agentic_loop.* — the pipeline-level
+// completion-loop iteration ceiling (default DefaultAgenticLoopMaxIterations).
+// This is DISTINCT from LoopPreventionConfig.MaxIterations (per-operation
+// diagnostic fix-loop bound, default 100) per SPEC-V3R6-AGENTIC-LOOP-CONFIG-001
+// §A.4 — the two keys occupy separate YAML blocks and parse to separate Go fields.
+// @MX:ANCHOR: [AUTO] distinctness invariant — agentic_loop vs loop_prevention
+// @MX:REASON: anti-aliasing contract; a regression merging these fields silently
+// destroys the pipeline-level iteration-ceiling guarantee
+type AgenticLoopConfig struct {
+	MaxIterations int `yaml:"max_iterations"`
+}
+
 // LoopPreventionConfig mirrors workflow.loop_prevention.* — iteration/retry guards.
 type LoopPreventionConfig struct {
 	FailurePatternDetection bool `yaml:"failure_pattern_detection"`
@@ -355,27 +452,9 @@ type LoopPreventionConfig struct {
 	MaxRetriesPerOperation  int  `yaml:"max_retries_per_operation"`
 }
 
-// TeamConfig mirrors workflow.team.* — Agent Teams configuration.
-// Note: workflow.team.patterns.* is intentionally NOT modeled (EXCL-WSE-004);
-// pattern dispatch is a skill-body responsibility, not a Go responsibility.
-type TeamConfig struct {
-	AutoSelection       TeamAutoSelectionConfig     `yaml:"auto_selection"`
-	Enabled             bool                        `yaml:"enabled"`
-	MaxTeammates        int                         `yaml:"max_teammates"`
-	DefaultModel        string                      `yaml:"default_model"`
-	DelegateMode        bool                        `yaml:"delegate_mode"`
-	RequirePlanApproval bool                        `yaml:"require_plan_approval"`
-	RoleProfileKeys     []string                    `yaml:"role_profile_keys"`
-	RoleProfiles        map[string]RoleProfileEntry `yaml:"role_profiles"`
-}
-
-// RoleProfileEntry mirrors a single workflow.team.role_profiles.<name> entry.
-type RoleProfileEntry struct {
-	Description string `yaml:"description"`
-	Isolation   string `yaml:"isolation"`
-	Mode        string `yaml:"mode"`
-	Model       string `yaml:"model"`
-}
+// NOTE: the workflow.team.* Agent Teams config family (SPEC-AGENT-TEAM-RETIRE-001
+// REQ-ATR-005) was removed here — the static team layer is retired; the Claude
+// Code NATIVE teammate runtime is unaffected.
 
 // TokenBudgetConfig mirrors workflow.token_budget.* — per-phase token budgets.
 type TokenBudgetConfig struct {
@@ -430,18 +509,6 @@ type SecuritySandbox struct {
 	// DockerImage is the default Docker image for the docker backend.
 	// Default: "alpine:latest" (production image pending SPEC-V3R2-EXT-004).
 	DockerImage string `yaml:"docker_image"`
-}
-
-// TeamAutoSelectionConfig holds thresholds for automatic team vs solo mode selection.
-// These values are evaluated by the orchestrator to determine execution mode
-// when no explicit --team or --solo flag is provided.
-type TeamAutoSelectionConfig struct {
-	// MinDomainsForTeam is the minimum number of distinct domains to trigger team mode.
-	MinDomainsForTeam int `yaml:"min_domains_for_team"`
-	// MinFilesForTeam is the minimum number of affected files to trigger team mode.
-	MinFilesForTeam int `yaml:"min_files_for_team"`
-	// MinComplexityScore is the minimum complexity score (1-10) to trigger team mode.
-	MinComplexityScore int `yaml:"min_complexity_score"`
 }
 
 // StateConfig represents the project state storage configuration.
@@ -569,6 +636,31 @@ type SunsetCondition struct {
 	Threshold   int    `yaml:"threshold"`
 	Action      string `yaml:"action"`
 	Description string `yaml:"description"`
+}
+
+// HandoffConfig represents the auto-resume 핸드오프 설정 section (handoff.yaml).
+//
+// Mode gates whether the SessionStart handoffInjectHandler auto-injects a saved
+// handoff on /clear ("auto") or stays a pure no-op ("manual", the default —
+// auto-resume is opt-in, preserving the unchanged baseline UX). Guide gates
+// whether the notice-only cells (non-clear source) emit a best-effort stderr
+// hint. No Consume field: the sole consume source `clear` is a fixed semantic
+// boundary, not a configurable value (design.md §E.1 YAGNI rationale).
+type HandoffConfig struct {
+	Mode  string `yaml:"mode"`  // "manual"(default) | "auto"
+	Guide bool   `yaml:"guide"` // true → notice-only 셀에서 stderr 힌트 방출
+}
+
+// ArchiveConfig represents the SPEC auto-archive section (archive.yaml).
+//
+// SPEC-SESSIONSTART-PERF-001 REQ-SSP-012 / REQ-SSP-018: the grace window is a
+// tunable threshold, so it lives in config rather than as an inline literal.
+// Read it through Config.ArchiveGraceDays(), which applies the zero-value
+// fallback — a zero here means "unset", never "no grace at all".
+type ArchiveConfig struct {
+	// GraceDays is how long a terminal SPEC stays under .moai/specs/ after its
+	// last activity before it becomes archive-eligible.
+	GraceDays int `yaml:"grace_days"`
 }
 
 // ResearchConfig represents the Self-Research System configuration section.
@@ -921,7 +1013,6 @@ type DesignConfig struct {
 	BrandContext     DesignBrandContext `yaml:"brand_context"`
 	ClaudeDesign     DesignClaudeDesign `yaml:"claude_design"`
 	DefaultFramework string             `yaml:"default_framework"`
-	DesignDocs       DesignDocs         `yaml:"design_docs"`
 	Enabled          bool               `yaml:"enabled"`
 	Evaluator        DesignEvaluator    `yaml:"evaluator"`
 	Evolution        DesignEvolution    `yaml:"evolution"`
@@ -956,14 +1047,6 @@ type DesignClaudeDesign struct {
 	Enabled                 bool     `yaml:"enabled"`
 	FallbackPath            string   `yaml:"fallback_path"`
 	SupportedBundleVersions []string `yaml:"supported_bundle_versions"`
-}
-
-// DesignDocs holds design document auto-loading settings.
-type DesignDocs struct {
-	AutoLoadOnDesignCommand bool     `yaml:"auto_load_on_design_command"`
-	Dir                     string   `yaml:"dir"`
-	Priority                []string `yaml:"priority"`
-	TokenBudget             int      `yaml:"token_budget"`
 }
 
 // DesignEvaluator holds evaluator configuration for design pipeline.
@@ -1114,6 +1197,16 @@ type FeedbackConfig struct {
 // feedbackFileWrapper handles the feedback.yaml section file.
 type feedbackFileWrapper struct {
 	Feedback FeedbackConfig `yaml:"feedback"`
+}
+
+// handoffFileWrapper handles the handoff.yaml section file.
+type handoffFileWrapper struct {
+	Handoff HandoffConfig `yaml:"handoff"`
+}
+
+// archiveFileWrapper handles the archive.yaml section file.
+type archiveFileWrapper struct {
+	Archive ArchiveConfig `yaml:"archive"`
 }
 
 // ralphFileWrapper handles the ralph.yaml section file.

@@ -1,0 +1,7 @@
+---
+description: {{if eq .ConversationLanguage "ko"}}하네스 학습 서브시스템 관리(status/apply/rollback/disable) 또는 자연어 분석으로 하네스 생성{{else if eq .ConversationLanguage "ja"}}ハーネス学習サブシステム管理(status/apply/rollback/disable)または自然言語分析によるハーネス生成{{else if eq .ConversationLanguage "zh"}}管理 harness 学习子系统(status/apply/rollback/disable)或通过自然语言分析创建 harness{{else}}Manage harness learning subsystem (status/apply/rollback/disable) OR create a harness via natural-language analysis (Context-First Discovery + name derivation + approval gate){{end}}
+argument-hint: "{status|apply|rollback <YYYY-MM-DD>|disable|list|edit <name>|remove <name>|doctor|<natural-language request>}"
+allowed-tools: Skill
+---
+
+Use Skill("moai") with arguments: harness $ARGUMENTS

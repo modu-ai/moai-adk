@@ -7,7 +7,7 @@
 
 ## Overview
 
-Comprehensive guide to performance optimization patterns, strategies, and best practices for Python applications.
+Comprehensive guide to performance optimization patterns, strategies, and best practices, expressed language-neutrally. Code sketches are pseudo-code illustrating the algorithmic idea, not a runnable program in any single language.
 
 ## Optimization Types
 
@@ -15,26 +15,22 @@ Comprehensive guide to performance optimization patterns, strategies, and best p
 
 Pattern: Optimize algorithmic complexity by reducing time complexity from O(n^2) to O(n log n) or better.
 
-```python
+```text
 # Before: O(n^2) nested loops
-def find_duplicates_slow(items):
-    duplicates = []
-    for i, item1 in enumerate(items):
-        for j, item2 in enumerate(items[i+1:], start=i+1):
-            if item1 == item2 and item1 not in duplicates:
-                duplicates.append(item1)
-    return duplicates
+duplicates = []
+for each (i, a) in items:
+    for each (j, b) in items after i:
+        if a == b and a not in duplicates:
+            duplicates.add(a)
 
-# After: O(n) using set
-def find_duplicates_fast(items):
-    seen = set()
-    duplicates = set()
-    for item in items:
-        if item in seen:
-            duplicates.add(item)
-        else:
-            seen.add(item)
-    return list(duplicates)
+# After: O(n) using a hash set
+seen = empty set
+duplicates = empty set
+for each item in items:
+    if item in seen:
+        duplicates.add(item)
+    else:
+        seen.add(item)
 ```
 
 Impact: 10-1000x speedup depending on dataset size
@@ -43,103 +39,97 @@ Impact: 10-1000x speedup depending on dataset size
 
 #### Memoization
 
-```python
-from functools import lru_cache
-
-@lru_cache(maxsize=128)
-def fibonacci_memoized(n):
-    if n <= 1:
-        return n
-    return fibonacci_memoized(n-1) + fibonacci_memoized(n-2)
+```text
+# Cache the result of a pure function keyed by its arguments.
+# Most languages offer a built-in (Python lru_cache, Go map+sync.Once,
+# JS Map, Rust once_cell) — prefer the standard idiom over a hand-rolled cache.
+fib(n):
+    if n <= 1: return n
+    return memoized(fib, n-1) + memoized(fib, n-2)
 ```
 
 Impact: 50-90% speedup for repeated calls
 
 #### Custom Caching
 
-```python
-class CacheOptimizer:
-    def __init__(self, max_size=1000):
-        self.cache = {}
-        self.max_size = max_size
-        self.access_count = {}
-    
-    def get(self, key):
-        if key in self.cache:
-            self.access_count[key] = self.access_count.get(key, 0) + 1
-            return self.cache[key]
-        return None
-    
-    def set(self, key, value):
-        if len(self.cache) >= self.max_size:
-            lru_key = min(self.access_count, key=self.access_count.get)
-            del self.cache[lru_key]
-            del self.access_count[lru_key]
-        
-        self.cache[key] = value
-        self.access_count[key] = 0
+A bounded cache with an eviction policy (LRU by access count):
+
+```text
+Cache(max_size):
+    store = empty map
+    access_count = empty map
+
+    get(key):
+        if key in store:
+            access_count[key] += 1
+            return store[key]
+        return MISSING
+
+    set(key, value):
+        if size(store) >= max_size:
+            evict the key with the lowest access_count
+        store[key] = value
+        access_count[key] = 0
 ```
 
 ### Concurrency Patterns
 
-#### Multiprocessing for CPU-Bound Tasks
+#### Parallelism for CPU-Bound Tasks
 
-```python
-from multiprocessing import Pool
-
-def process_parallel(items):
-    with Pool(processes=multiprocessing.cpu_count()) as pool:
-        return pool.map(process_item, items)
+```text
+# Split independent CPU-bound work across available cores.
+# Idiom per language: Go errgroup/goroutines, Python multiprocessing,
+# Rust rayon, Java ForkJoinPool, JS worker threads.
+results = parallel_map(process_item, items, workers=cpu_count())
 ```
 
 Impact: 2-8x speedup on multi-core systems
 
-#### Asyncio for I/O-Bound Tasks
+#### Async for I/O-Bound Tasks
 
-```python
-import asyncio
-
-async def fetch_all_urls(urls):
-    async with aiohttp.ClientSession() as session:
-        tasks = [fetch_url(session, url) for url in urls]
-        return await asyncio.gather(*tasks)
+```text
+# Concurrently issue I/O (HTTP, disk, DB) and await all in flight.
+# Idiom per language: Go goroutines+channels, Python asyncio,
+# Rust tokio, JS Promise.all, C# Task.WhenAll.
+tasks = [fetch(url) for url in urls]
+results = await gather(tasks)
 ```
 
 Impact: 10-100x speedup for I/O-bound operations
 
 ### Memory Optimization
 
-#### Generator Patterns
+#### Generator / Streaming Patterns
 
-```python
-# Stream data instead of loading into memory
-def process_large_file_generator(filename):
-    with open(filename) as f:
-        for line in f:
-            yield process_line(line)
+```text
+# Stream data instead of materializing it all in memory.
+# Idiom: Go channels/iter, Python generators, JS async iterators,
+# Rust iterators, Java streams.
+for line in stream_lines(filename):   # one line at a time
+    yield process_line(line)
 ```
 
 Impact: 60-90% memory reduction
 
 #### Memory Pooling
 
-```python
-class ObjectPool:
-    def __init__(self, factory, max_size=100):
-        self.factory = factory
-        self.pool = []
-        self.max_size = max_size
+```text
+# Reuse allocated objects instead of churning the allocator.
+# Idiom: Go sync.Pool, Python freelists, Rust slab, Java object pools.
+Pool(factory, max_size):
+    items = empty stack
 ```
 
 ### I/O Optimization
 
 #### Buffered I/O
 
-```python
-# Batch writes for efficiency
-def write_lines_buffered(lines, filename):
-    with open(filename, 'w', buffering=8192) as f:
-        f.writelines(lines)
+```text
+# Batch writes for efficiency — let the runtime coalesce small writes.
+# Idiom: Go bufio.Writer, Python open(buffering=), Rust BufWriter,
+# Java BufferedWriter, JS writev/coalescing.
+writer = open(filename, buffering=8192)
+writer.write_all(lines)
 ```
 
 Impact: 5-20x speedup for I/O operations
@@ -148,20 +138,19 @@ Impact: 5-20x speedup for I/O operations
 
 #### Appropriate Data Structure Selection
 
-```python
-from collections import deque
-
-queue_deque = deque()  # O(1) for popleft
-search_set = set()     # O(1) for membership test
+```text
+queue  = double-ended-queue   # O(1) push/pop at both ends
+lookup = hash-set / hash-map  # O(1) membership test
 ```
 
-#### NumPy for Numerical Data
+Idiom per language: Go `container/list`+map, Python `collections.deque`/`set`, Rust `VecDeque`/`HashSet`, Java `ArrayDeque`/`HashSet`, JS array-shift is O(n) — prefer a ring buffer for queues.
 
-```python
-import numpy as np
+#### Vectorized Numerical Data
 
-def sum_arrays(arrays):
-    return np.sum(arrays, axis=0)
+```text
+# Use a vectorized container (NumPy, ndarray, SIMD-friendly array)
+# for bulk numerical operations instead of a scalar loop.
+result = elementwise_sum(arrays)   # single vectorized op
 ```
 
 Impact: 10-100x speedup for numerical operations
@@ -170,215 +159,136 @@ Impact: 10-100x speedup for numerical operations
 
 ### Optimization Plan Structure
 
-```python
-@dataclass
-class OptimizationPlan:
-    bottlenecks: List[PerformanceBottleneck]
-    execution_order: List[int]
-    estimated_total_improvement: str
-    implementation_complexity: str
-    risk_level: str
-    prerequisites: List[str]
-    validation_strategy: str
+```text
+OptimizationPlan:
+    bottlenecks:         List<Bottleneck>
+    execution_order:     List<int>
+    estimated_improvement: text
+    implementation_complexity: text
+    risk_level:          text
+    prerequisites:       List<text>
+    validation_strategy: text
 ```
 
 ### Prioritization Strategy
 
-```python
-def _prioritize_bottlenecks(
-    self, bottlenecks: List[PerformanceBottleneck]
-) -> List[PerformanceBottleneck]:
-    severity_order = {'critical': 4, 'high': 3, 'medium': 2, 'low': 1}
-    
-    return sorted(
-        bottlenecks,
-        key=lambda x: (
-            severity_order.get(x.severity, 0),
-            x.impact_score,
-            self._get_optimization_priority(x.optimization_type)
-        ),
-        reverse=True
-    )
+```text
+prioritize(bottlenecks):
+    severity_rank = { critical: 4, high: 3, medium: 2, low: 1 }
+    sort bottlenecks descending by:
+        (severity_rank[severity], impact_score, optimization_priority(type))
 ```
 
 ### Execution Order
 
-```python
-def _create_optimization_execution_order(
-    self, bottlenecks: List[PerformanceBottleneck]
-) -> List[int]:
-    type_groups = defaultdict(list)
-    for i, bottleneck in enumerate(bottlenecks):
-        type_groups[bottleneck.optimization_type].append(i)
-    
-    execution_order = []
-    type_order = [
-        OptimizationType.ALGORITHM_IMPROVEMENT,
-        OptimizationType.DATA_STRUCTURE_CHANGE,
-        OptimizationType.CACHING,
-        OptimizationType.MEMORY_OPTIMIZATION,
-        OptimizationType.CONCURRENCY,
-        OptimizationType.I_O_OPTIMIZATION,
-        OptimizationType.DATABASE_OPTIMIZATION
-    ]
-    
-    for opt_type in type_order:
-        if opt_type in type_groups:
-            execution_order.extend(type_groups[opt_type])
-    
-    return execution_order
+```text
+execution_order(bottlenecks):
+    group = bucket bottlenecks by optimization_type
+    order = []
+    for type in [ALGORITHM, DATA_STRUCTURE, CACHING, MEMORY, CONCURRENCY, IO, DATABASE]:
+        if type in group:
+            order.extend(group[type])
+    return order
 ```
 
 ## Implementation Strategies
 
 ### Risk Assessment
 
-```python
-def _assess_optimization_risk(
-    self, bottlenecks: List[PerformanceBottleneck]
-) -> str:
-    high_risk_types = {
-        OptimizationType.ALGORITHM_IMPROVEMENT,
-        OptimizationType.DATA_STRUCTURE_CHANGE,
-        OptimizationType.CONCURRENCY
-    }
-    
-    high_risk_count = sum(
-        1 for b in bottlenecks
-        if b.optimization_type in high_risk_types and b.impact_score > 0.3
-    )
-    
-    if high_risk_count > 3:
-        return "high"
-    elif high_risk_count > 1:
-        return "medium"
-    else:
-        return "low"
+```text
+assess_risk(bottlenecks):
+    high_risk_types = { ALGORITHM, DATA_STRUCTURE, CONCURRENCY }
+    high_risk_count = count of b where b.type in high_risk_types and b.impact > 0.3
+
+    if high_risk_count > 3: return "high"
+    if high_risk_count > 1: return "medium"
+    return "low"
 ```
 
 ### Prerequisites Identification
 
-```python
-def _identify_optimization_prerequisites(
-    self, bottlenecks: List[PerformanceBottleneck]
-) -> List[str]:
+```text
+identify_prerequisites(bottlenecks):
     prerequisites = [
         "Create comprehensive performance benchmarks",
         "Ensure version control with current implementation",
         "Set up performance testing environment"
     ]
-    
-    optimization_types = set(b.optimization_type for b in bottlenecks)
-    
-    if OptimizationType.CONCURRENCY in optimization_types:
-        prerequisites.extend([
-            "Review thread safety and shared resource access",
-            "Implement proper synchronization mechanisms"
-        ])
-    
-    if OptimizationType.DATABASE_OPTIMIZATION in optimization_types:
-        prerequisites.extend([
-            "Create database backup before optimization",
-            "Set up database performance monitoring"
-        ])
-    
+    types = set of b.optimization_type for b in bottlenecks
+
+    if CONCURRENCY in types:
+        prerequisites += ["Review thread safety and shared resource access",
+                          "Implement proper synchronization mechanisms"]
+    if DATABASE in types:
+        prerequisites += ["Create database backup before optimization",
+                          "Set up database performance monitoring"]
     return prerequisites
 ```
 
 ### Validation Strategy
 
-```python
-def _create_validation_strategy(
-    self, bottlenecks: List[PerformanceBottleneck]
-) -> str:
-    return """
-    Validation Strategy:
-    1. Baseline Performance Measurement
-    2. Incremental Testing
-    3. Automated Performance Testing
-    4. Functional Validation
-    5. Production Monitoring
-    """
+```text
+validation_strategy(bottlenecks):
+    return [
+        "1. Baseline performance measurement",
+        "2. Incremental testing",
+        "3. Automated performance testing",
+        "4. Functional validation",
+        "5. Production monitoring"
+    ]
 ```
 
 ## Intelligent Optimization
 
 ### AI-Powered Suggestions
 
-```python
-class IntelligentOptimizer(PerformanceProfiler):
-    async def get_ai_optimization_suggestions(
-        self, bottlenecks: List[PerformanceBottleneck],
-        codebase_context: Dict[str, Any]
-    ) -> Dict[str, Any]:
-        if not self.context7:
-            return self._get_rule_based_suggestions(bottlenecks)
-        
-        optimization_patterns = await self.context7.get_library_docs(
-            context7_library_id="/performance/python-profiling",
-            topic="advanced performance optimization patterns 2025",
-            tokens=5000
-        )
-        
-        algorithm_patterns = await self.context7.get_library_docs(
-            context7_library_id="/algorithms/python",
-            topic="algorithm optimization big-O complexity reduction",
-            tokens=3000
-        )
-        
-        return await self._generate_ai_suggestions(
-            bottlenecks, optimization_patterns, algorithm_patterns, codebase_context
-        )
+```text
+get_ai_optimization_suggestions(bottlenecks, codebase_context):
+    if docs unavailable:
+        return rule_based_suggestions(bottlenecks)
+
+    optimization_patterns = docs.get_library_docs(
+        topic="advanced performance optimization patterns",
+        tokens=5000)
+    algorithm_patterns = docs.get_library_docs(
+        topic="algorithm optimization big-O complexity reduction",
+        tokens=3000)
+
+    return generate_ai_suggestions(
+        bottlenecks, optimization_patterns, algorithm_patterns, codebase_context)
 ```
 
 ### Algorithm Improvement Suggestions
 
-```python
-def _suggest_algorithm_improvement(
-    self, bottleneck: PerformanceBottleneck, algo_patterns: Dict
-) -> Dict[str, Any]:
-    function_name = bottleneck.function_name.lower()
+```text
+suggest_algorithm_improvement(bottleneck, algo_patterns):
+    name = bottleneck.function_name
     suggestions = []
-    
-    if any(keyword in function_name for keyword in ["search", "find"]):
-        suggestions.extend([
-            "Consider using binary search for sorted data",
-            "Implement hash-based lookup for O(1) average case",
-            "Use trie structures for prefix searches"
-        ])
-    
-    elif any(keyword in function_name for keyword in ["sort", "order"]):
-        suggestions.extend([
-            "Consider using Timsort (Python's built-in sort)",
-            "Use radix sort for uniform integer data",
-            "Implement bucket sort for uniformly distributed data"
-        ])
-    
-    return {
-        'bottleneck': bottleneck.function_name,
-        'suggestions': suggestions,
-        'estimated_improvement': "30-90% depending on algorithm",
-        'implementation_complexity': "medium to high"
-    }
+    if name contains ["search", "find"]:
+        suggestions += ["Consider binary search for sorted data",
+                        "Implement hash-based lookup for O(1) average case",
+                        "Use trie structures for prefix searches"]
+    if name contains ["sort", "order"]:
+        suggestions += ["Prefer the language's built-in stable sort",
+                        "Use radix sort for uniform integer data",
+                        "Use bucket sort for uniformly distributed data"]
+    return { bottleneck: name, suggestions, improvement: "30-90% depending on algorithm" }
 ```
 
 ### Data Structure Optimization
 
-```python
-def _suggest_data_structure_improvement(
-    self, bottleneck: PerformanceBottleneck, opt_patterns: Dict
-) -> Dict[str, Any]:
+```text
+suggest_data_structure_improvement(bottleneck, opt_patterns):
     return {
-        'bottleneck': bottleneck.function_name,
-        'suggestions': [
-            "Use generators instead of lists for large datasets",
+        bottleneck: bottleneck.function_name,
+        suggestions: [
+            "Use streaming/generators instead of materializing large datasets",
             "Implement lazy loading for expensive data structures",
-            "Use memoryviews or numpy arrays for numerical data",
-            "Consider using collections.deque for queue operations",
+            "Use contiguous arrays for numerical data",
+            "Use a double-ended queue for queue operations",
             "Use set/dict for O(1) lookups instead of list searches"
         ],
-        'estimated_improvement': "30-80% memory reduction",
-        'implementation_complexity': "low to medium"
+        estimated_improvement: "30-80% memory reduction"
     }
 ```
 

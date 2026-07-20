@@ -33,7 +33,7 @@ Enterprise IAM Structure:
  "WebFetch": ["domain:*.company.com"] // Approved domains only
  },
  "mcpServers": {
- "allowed": ["context7", "figma"], // Approved MCP servers
+ "allowed": ["example-server", "figma"], // Approved MCP servers
  "blocked": ["custom-mcp"] // Blocked servers
  }
  }
@@ -91,7 +91,7 @@ MCP servers do not support wildcards - specific server names required:
 ```json
 {
  "allowedMcpServers": [
- "context7",
+ "example-server",
  "figma-dev-mode-mcp-server",
  "playwright"
  ],
@@ -165,10 +165,10 @@ MCP Server Configuration:
 ```json
 {
  "mcpServers": {
- "context7": {
+ "example-server": {
  "command": "npx",
- "args": ["@upstash/context7-mcp"],
- "env": {"CONTEXT7_API_KEY": "$CONTEXT7_KEY"}
+ "args": ["@example/mcp-server"],
+ "env": {"EXAMPLE_API_KEY": "$EXAMPLE_KEY"}
  }
  }
 }

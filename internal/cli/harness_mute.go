@@ -210,21 +210,127 @@ func loadWorkflowMuteConfig(path string) (workflowMuteConfig, error) {
 	return cfg, nil
 }
 
-// saveWorkflowMuteConfig marshals cfg and writes to path using atomic write-tmp+rename.
+// saveWorkflowMuteConfig persists the mute categories into workflow.yaml via the
+// yaml.v3 Node API so all sibling keys (agentic_loop, team, ...) and comments
+// survive the round-trip (SPEC-CLIFIX-CRITICAL-001 REQ-CRIT-001-003).
+//
+// The Node API reuses the harness.go:363 pattern but extends it to handle a
+// string sequence (the categories list) and to CREATE intermediate mapping nodes
+// when the harness.proposal.mute path does not yet exist.
 func saveWorkflowMuteConfig(path string, cfg workflowMuteConfig) error {
-	data, err := yaml.Marshal(&cfg)
+	categories := cfg.Harness.Proposal.Mute.Categories
+
+	var root yaml.Node
+	data, err := os.ReadFile(path)
+	if err != nil {
+		if !os.IsNotExist(err) {
+			return fmt.Errorf("read %s: %w", path, err)
+		}
+		// Absent file — start with an empty document + root mapping.
+		root = yaml.Node{Kind: yaml.DocumentNode, Content: []*yaml.Node{{Kind: yaml.MappingNode}}}
+	} else {
+		if err := yaml.Unmarshal(data, &root); err != nil {
+			return fmt.Errorf("parse %s: %w", path, err)
+		}
+		ensureRootMapping(&root)
+	}
+
+	if err := setYAMLNodeSequence(&root, []string{"harness", "proposal", "mute", "categories"}, categories); err != nil {
+		return fmt.Errorf("set mute categories: %w", err)
+	}
+
+	out, err := yaml.Marshal(&root)
 	if err != nil {
 		return fmt.Errorf("marshal workflow config: %w", err)
 	}
-	dir := filepath.Dir(path)
-	if err := os.MkdirAll(dir, 0o755); err != nil {
-		return fmt.Errorf("mkdirall %s: %w", dir, err)
+	return writeFileAtomic(path, out, 0o644)
+}
+
+// ensureRootMapping guarantees that root is a DocumentNode wrapping a MappingNode,
+// initializing an empty mapping when the parsed document is empty or non-mapping.
+func ensureRootMapping(root *yaml.Node) {
+	target := root
+	if target.Kind == yaml.DocumentNode {
+		if len(target.Content) == 0 {
+			target.Content = []*yaml.Node{{Kind: yaml.MappingNode}}
+			return
+		}
+		target = target.Content[0]
 	}
-	tmp := path + ".tmp"
-	if err := os.WriteFile(tmp, data, 0o644); err != nil {
-		return fmt.Errorf("write tmp: %w", err)
+	if target.Kind != yaml.MappingNode {
+		// Non-mapping (e.g. empty doc parsed as Kind 0) — reset to mapping.
+		root.Kind = yaml.DocumentNode
+		root.Content = []*yaml.Node{{Kind: yaml.MappingNode}}
 	}
-	return os.Rename(tmp, path)
+}
+
+// setYAMLNodeSequence sets a string sequence at keyPath in the yaml.Node tree,
+// creating intermediate MappingNodes when they do not exist, and replacing the
+// leaf value when it does. Sibling keys and comments are preserved.
+func setYAMLNodeSequence(node *yaml.Node, keyPath []string, values []string) error {
+	if len(keyPath) == 0 {
+		return nil
+	}
+	target := node
+	if target.Kind == yaml.DocumentNode && len(target.Content) > 0 {
+		target = target.Content[0]
+	}
+	if target.Kind != yaml.MappingNode {
+		return fmt.Errorf("setYAMLNodeSequence: expected MappingNode, got kind=%d", target.Kind)
+	}
+
+	for i, key := range keyPath {
+		isLast := i == len(keyPath)-1
+		idx := findYAMLMappingKey(target, key)
+		if idx >= 0 {
+			if isLast {
+				target.Content[idx+1] = buildYAMLSequenceNode(values)
+				return nil
+			}
+			child := target.Content[idx+1]
+			if child.Kind != yaml.MappingNode {
+				return fmt.Errorf("key %q exists but is not a mapping (kind=%d)", key, child.Kind)
+			}
+			target = child
+		} else {
+			keyNode := &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!str", Value: key}
+			var valNode *yaml.Node
+			if isLast {
+				valNode = buildYAMLSequenceNode(values)
+			} else {
+				valNode = &yaml.Node{Kind: yaml.MappingNode}
+			}
+			target.Content = append(target.Content, keyNode, valNode)
+			if isLast {
+				return nil
+			}
+			target = valNode
+		}
+	}
+	return nil
+}
+
+// findYAMLMappingKey returns the Content index of the key node matching key, or -1.
+func findYAMLMappingKey(m *yaml.Node, key string) int {
+	for i := 0; i+1 < len(m.Content); i += 2 {
+		if m.Content[i].Value == key {
+			return i
+		}
+	}
+	return -1
+}
+
+// buildYAMLSequenceNode builds a !!seq node whose items are the given strings.
+func buildYAMLSequenceNode(values []string) *yaml.Node {
+	seq := &yaml.Node{Kind: yaml.SequenceNode, Tag: "!!seq"}
+	for _, v := range values {
+		seq.Content = append(seq.Content, &yaml.Node{
+			Kind:  yaml.ScalarNode,
+			Tag:   "!!str",
+			Value: v,
+		})
+	}
+	return seq
 }
 
 // validCategoryList returns a sorted comma-separated list of valid categories.

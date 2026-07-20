@@ -1,189 +1,114 @@
 ---
 title: /moai mx
-weight: 70
+weight: 75
 draft: false
 ---
 
-Scans the codebase and adds @MX code-level annotations. Automatically inserts comments so AI agents can **quickly understand code context**.
+A command that scans the codebase and adds **@MX code annotations**. @MX tags are code-level annotations that help AI agents quickly grasp a code's context, intent, and risk.
 
 {{< callout type="info" >}}
-**One-line summary**: `/moai mx` automatically installs "code navigation signs". It **marks dangerous code, important functions, and missing tests with @MX tags** so AI agents understand your code better.
+**One-line summary**: `/moai mx` is a "code-signpost installer for the AI." It automatically finds high-fan-in functions, danger zones, incomplete spots, and more, planting `@MX:ANCHOR` · `@MX:WARN` · `@MX:NOTE` · `@MX:TODO` tags in the code.
 {{< /callout >}}
 
 {{< callout type="info" >}}
-**Slash Command**: Type `/moai:mx` in Claude Code to run this command directly. Type `/moai` alone to see the full list of available subcommands.
+**Slash command**: Type `/moai:mx` in Claude Code to run this command directly. Type just `/moai` to see the full list of available subcommands.
 {{< /callout >}}
 
 ## Overview
 
-@MX tags are metadata annotations attached to code. They help AI agents instantly identify important functions, dangerous patterns, and incomplete work. `/moai mx` analyzes the codebase with a 3-pass scan and automatically inserts appropriate tags.
+The cost of an agent understanding code is context (tokens). @MX tags embed context like "this function is called from 8 places, so do not change its signature carelessly" right next to the code, so the agent does not have to re-analyze the whole codebase every time. From a harness-engineering standpoint, this is an **anchor planted in the code** — a tokenomics device that replaces repeated exploration cost with a one-time annotation.
 
-### @MX Tag Types
+It is mainly used in the following situations:
 
-| Tag | Purpose | When to Use |
-|-----|---------|-------------|
-| `@MX:ANCHOR` | Invariant contract | fan_in >= 3 (called from 3+ locations) |
-| `@MX:WARN` | Danger zone | Complexity >= 15, goroutine/async patterns |
-| `@MX:NOTE` | Context delivery | Magic constants, business rule explanations |
-| `@MX:TODO` | Incomplete work | Missing tests, unimplemented SPEC |
+- Legacy codebases with no @MX tags
+- Marking danger zones before a large refactor
+- Updating annotations after a big code change
+- MX validation during `/moai sync` (runs automatically)
+
+## Tag types and priority
+
+| Priority | Condition | Tag type |
+|----------|------|-----------|
+| P1 | fan_in >= 3 callers | `@MX:ANCHOR` (invariant contract, high fan_in) |
+| P2 | goroutine/async, complexity >= 15 | `@MX:WARN` (danger zone, `@MX:REASON` required) |
+| P3 | Magic constants, missing docstring | `@MX:NOTE` (context · intent) |
+| P4 | Missing tests | `@MX:TODO` (incomplete) |
+| P5 | Deliberate working simplification (accompanied by `@MX:CEILING` + `@MX:UPGRADE` sub-lines) | `@MX:DEBT` |
 
 ## Usage
 
 ```bash
-# Scan entire codebase
+# Scan the whole codebase (16 languages)
 > /moai mx --all
 
-# Preview (check without modifying)
+# Preview without modifying
 > /moai mx --dry
 
-# P1 priority only (high fan_in functions)
+# P1 (high fan_in functions) only
 > /moai mx --priority P1
 
-# Force overwrite existing tags
-> /moai mx --all --force
-
-# Scan specific languages only
+# Scan Go and Python only
 > /moai mx --all --lang go,python
-
-# Lower threshold for more coverage
-> /moai mx --all --threshold 2
 ```
 
-## Supported Flags
+## Supported flags
 
 | Flag | Description | Example |
-|------|-------------|---------|
-| `--all` | Scan entire codebase (all languages, all P1+P2 files) | `/moai mx --all` |
-| `--dry` | Preview only - show tags without modifying files | `/moai mx --dry` |
+|-------|------|------|
+| `--all` | Scan the whole codebase (all languages, all P1+P2 files) | `/moai mx --all` |
+| `--dry` | Preview — show only the tags that would be added, without modifying files | `/moai mx --dry` |
 | `--priority P1-P4` | Filter by priority level (default: all) | `/moai mx --priority P1` |
-| `--force` | Overwrite existing @MX tags | `/moai mx --force` |
-| `--exclude PATTERN` | Additional exclude patterns (comma-separated) | `/moai mx --exclude "vendor/**"` |
-| `--lang LANGS` | Scan only specified languages (default: auto-detect) | `/moai mx --lang go,ts` |
-| `--threshold N` | Override fan_in threshold (default: 3) | `/moai mx --threshold 2` |
-| `--no-discovery` | Skip Phase 0 codebase discovery | `/moai mx --no-discovery` |
-| `--team` | Parallel scan by language (Agent Teams mode) | `/moai mx --team` |
+| `--force` | Overwrite existing @MX tags | `/moai mx --all --force` |
+| `--exclude pattern` | Additional exclude patterns (comma-separated) | `/moai mx --exclude "vendor/,*.gen.go"` |
+| `--lang go,py,ts` | Scan only specified languages (default: auto-detect) | `/moai mx --lang go,python` |
+| `--threshold N` | Override the fan_in threshold (default: 3) | `/moai mx --all --threshold 2` |
+| `--no-discovery` | Skip the Step 1 codebase discovery | `/moai mx --no-discovery` |
 
-## Priority Levels
+## Execution flow
 
-| Priority | Condition | Tag Type |
-|----------|-----------|----------|
-| **P1** | fan_in >= 3 (called from 3+ locations) | `@MX:ANCHOR` |
-| **P2** | goroutine/async, complexity >= 15 | `@MX:WARN` |
-| **P3** | Magic constants, missing docstrings | `@MX:NOTE` |
-| **P4** | Missing tests | `@MX:TODO` |
-
-## Execution Process
-
-`/moai mx` executes in 3 passes.
+`/moai mx` runs as a discovery Step 1 + a 3-Pass scan.
 
 ```mermaid
 flowchart TD
-    Start["/moai mx"] --> Phase0["Phase 0: Codebase Discovery"]
-
-    Phase0 --> LangDetect["Language Detection<br/>(16 languages supported)"]
-    LangDetect --> Context["Load Project Context<br/>(tech.md, structure.md)"]
-    Context --> Scope["Calculate Scan Scope"]
-
-    Scope --> Pass1["Pass 1: Full File Scan"]
-    Pass1 --> FanIn["Fan-in Analysis"]
-    Pass1 --> Complexity["Complexity Detection"]
-    Pass1 --> Pattern["Pattern Detection"]
-    FanIn --> Queue["Build Priority Queue<br/>(P1-P4)"]
-    Complexity --> Queue
-    Pattern --> Queue
-
-    Queue --> Pass2["Pass 2: Selective Deep Read<br/>(P1 + P2 files)"]
-    Pass2 --> Generate["Generate Tag Descriptions"]
-
-    Generate --> Pass3{"--dry?"}
-    Pass3 -->|Yes| Preview["Show Tag Preview"]
-    Pass3 -->|No| Insert["Pass 3: Batch Edit<br/>(1 Edit per file)"]
-    Insert --> Report["Generate Report"]
+    Start["/moai mx run"] --> Phase1["Step 1: Codebase discovery<br/>language detection + load project context"]
+    Phase1 --> Pass1["Pass 1: Full file scan<br/>fan-in · complexity · pattern analysis → priority queue"]
+    Pass1 --> Pass2["Pass 2: Selective deep read<br/>close reading of P1 · P2 files → generate tag descriptions"]
+    Pass2 --> Pass3["Pass 3: Batch edit<br/>insert tags with one Edit per file"]
+    Pass3 --> Report["Report<br/>added/updated/skipped tally"]
 ```
 
-### Phase 0: Codebase Discovery
+### Step 1: Codebase discovery
 
-Auto-detection supporting 16 languages:
+It detects the project language (16 languages, marker-file priority) and determines the language-specific comment prefix (`//`, `#`, etc.). It reads `.moai/project/tech.md` · `structure.md` · `product.md` · `README.md` to load project context for tag descriptions, and computes the scan scope and token budget. Passing `--no-discovery` skips this step.
 
-| Language | Indicator Files | Comment Prefix |
-|----------|----------------|----------------|
-| Go | go.mod, go.sum | `//` |
-| Python | pyproject.toml, requirements.txt | `#` |
-| TypeScript | tsconfig.json | `//` |
-| JavaScript | package.json | `//` |
-| Rust | Cargo.toml | `//` |
-| Java | pom.xml, build.gradle | `//` |
-| Kotlin | build.gradle.kts | `//` |
-| Ruby | Gemfile | `#` |
-| Elixir | mix.exs | `#` |
-| C++ | CMakeLists.txt | `//` |
-| Swift | Package.swift | `//` |
-| +5 more | Language-specific config files | Varies |
+### Pass 1: Full file scan
 
-### Pass 1: Full File Scan
+It globs all source files by language-specific patterns and performs fan-in analysis (counting function/method references), complexity detection (line count · branches · nesting depth), and pattern detection (goroutine · async · threading · unsafe), producing a priority queue (P1-P4) sorted by score.
 
-Scans all source files and generates a priority queue:
+### Pass 2: Selective deep read
 
-- **Fan-in Analysis**: Count function/method reference counts
-- **Complexity Detection**: Lines, branches, nesting depth
-- **Pattern Detection**: Language-specific danger patterns (goroutines, async, threading, unsafe)
+It closely reads only the P1 · P2 files to analyze function signatures and call patterns, and generates accurate tag descriptions reflecting the project context (tech.md · structure.md · product.md) in language-specific comment syntax.
 
-### Pass 2: Selective Deep Read
+### Pass 3: Batch edit
 
-Deep analysis of P1 and P2 files to generate accurate tag descriptions. Leverages project context (tech.md, structure.md, product.md).
+It inserts all of a file's tags at once with a single Edit per file. Existing @MX tags are preserved unless `--force` is given. When there are fewer than 5 insertion targets the orchestrator edits directly (no spawn); with 5 or more it delegates to a batch-edit agent.
 
-### Pass 3: Batch Edit
+## Integration with /moai sync · run
 
-Inserts tags with 1 Edit call per file. Existing @MX tags are preserved (unless `--force`).
+- **`/moai sync`**: MX validation runs automatically during the sync phase — it scans files changed since the last sync to check for missing @MX tags, and unless the `--skip-mx` flag is given, adds the tags and includes the tag changes in the sync report.
+- **`/moai run`**: During the DDD ANALYZE phase, if the codebase has no @MX tags at all, the 3-Pass is triggered automatically. Existing tags are validated and updated, and new tags are added to new code.
 
-## Batch Checkpoint
+## Agent delegation chain
 
-Large scans (50+ files) use batch processing:
+| Step | Executor | Main task |
+|------|-----------|-----------|
+| Step 1 (discovery) | Explore subagent | Language detection, load project context |
+| Pass 1 (scan) | Explore or `Agent(general-purpose)` (backend scope) | Full file scan, build priority queue |
+| Pass 2 (deep read) | `Agent(general-purpose)` (backend scope) | Close read of P1 · P2, generate tag descriptions |
+| Pass 3 (edit) | `Agent(general-purpose)` (backend scope); orchestrator directly for fewer than 5 | Batch edit, insert tags |
 
-- **Batch size**: 50 files per iteration
-- **Auto-commit**: Intermediate results committed after each batch
-- **Progress tracking**: `.moai/cache/mx-scan-progress.json`
-- **Resumable**: Continue from where an interrupted scan stopped
+## Related documents
 
-{{< callout type="info" >}}
-When a rate limit is detected, the current batch is saved and the scan stops gracefully. Running `/moai mx` again resumes from the last checkpoint.
-{{< /callout >}}
-
-## Agent Delegation Chain
-
-```mermaid
-flowchart TD
-    User["User Request"] --> MoAI["MoAI Orchestrator"]
-    MoAI --> Explore["Explore subagent<br/>Codebase Discovery"]
-    Explore --> Backend["manager-develop<br/>Tag Insertion"]
-    Backend --> Report["MoAI<br/>Report Generation"]
-```
-
-## Integration with Other Workflows
-
-| Workflow | MX Integration |
-|----------|----------------|
-| `/moai sync` | MX validation runs automatically during sync (SPEC-MX-002) |
-| `/moai edit` | Auto-validates @MX tags on file edits (v2.7.8+) |
-| `/moai run` | Auto-triggers during DDD ANALYZE phase |
-| `/moai review` | Includes MX tag compliance check |
-
-## Frequently Asked Questions
-
-### Q: Do @MX tags affect code execution?
-
-No, @MX tags exist only as comments. They have zero impact on code execution or performance.
-
-### Q: What happens with existing tags?
-
-By default, existing tags are preserved. Use `--force` to overwrite them.
-
-### Q: Are auto-generated files tagged?
-
-No. Generated files, vendor directories, and mock files are automatically skipped based on exclude patterns in `.moai/config/sections/mx.yaml`.
-
-## Related Documents
-
-- [/moai clean - Dead Code Removal](/utility-commands/moai-clean)
-- [/moai review - Code Review](/quality-commands/moai-review)
-- [/moai - Full Autonomous Automation](/utility-commands/moai)
+- [/moai sync - documentation sync](/en/workflow-commands/moai-sync)
+- [/moai run - DDD/TDD implementation](/en/workflow-commands/moai-run)
+- [/moai clean - dead-code removal](/en/utility-commands/moai-clean)

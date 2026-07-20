@@ -8,6 +8,8 @@ import (
 	"strings"
 
 	"github.com/modu-ai/moai-adk/internal/profile"
+	"github.com/modu-ai/moai-adk/internal/settings"
+	"github.com/modu-ai/moai-adk/internal/settings/agentfm"
 )
 
 // app holds the Console's request-handling dependencies. Profile read/write and
@@ -47,6 +49,25 @@ type app struct {
 	readProjectNestedConfig  func(projectRoot string) (projectNestedCurrent, error)
 	writeProjectNestedConfig func(projectRoot string, form projectNestedForm) error
 
+	// Injectable seams over the M2b 10-section schema path (SPEC-WEB-CONSOLE-011).
+	// 읽기는 settings.SchemaCurrentValues/RawBlockValues, 쓰기는
+	// settings.ApplySchemaEdits(seam 8섹션 = yamlpatch, typed = config 매니저).
+	schemaCurrentValues func(projectRoot string) (map[string]string, error)
+	rawBlockValues      func(projectRoot string) (map[string]string, error)
+	applySchemaEdits    func(projectRoot string, edits map[string]string) error
+
+	// Injectable seams over the M3 sub-agent frontmatter surface
+	// (SPEC-WEB-CONSOLE-011 REQ-WC11-025/027..029 — internal/settings/agentfm).
+	listAgentFMs func(agentsDir string) ([]agentfm.AgentInfo, error)
+	patchAgentFM func(projectRoot string, edits []agentFMEdit) error
+
+	// Injectable seams over the M4 profile CRUD surface (SPEC-WEB-CONSOLE-011
+	// REQ-WC11-032/033/034). createProfile creates the profile directory (no
+	// env side effect — distinct from profile.EnsureDir, which also mutates
+	// CLAUDE_CONFIG_DIR); deleteProfile removes it. Tests inject failures here.
+	createProfile func(name string) error
+	deleteProfile func(name string) error
+
 	// triggerShutdown is 페이지 내 서버 종료 버튼(/__shutdown__)이 호출하는
 	// injectable seam 이다. openBrowser 와 동일한 패턴이지만 app 에 두는 이유는 —
 	// Config 가 값 전달이라 server 와 handler 가 하나의 closure 를 공유해야
@@ -70,6 +91,16 @@ func newApp(cfg Config) *app {
 
 		readProjectNestedConfig:  readProjectNestedConfig,
 		writeProjectNestedConfig: writeProjectNestedConfig,
+
+		schemaCurrentValues: settings.SchemaCurrentValues,
+		rawBlockValues:      settings.RawBlockValues,
+		applySchemaEdits:    settings.ApplySchemaEdits,
+
+		listAgentFMs: agentfm.List,
+		patchAgentFM: applyAgentFMEdits,
+
+		createProfile: createProfileDir,
+		deleteProfile: profile.Delete,
 	}
 }
 
@@ -79,27 +110,50 @@ func (a *app) routes() http.Handler {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/", a.handleIndex)
 	mux.HandleFunc("/save", a.handleSave)
+	// SPEC-WEB-CONSOLE-011 M5: /specs 는 READ-ONLY SPEC 보드다. handleBoard 가
+	// GET 이외 메서드를 405 로 거부하며 쓰기 경로·명령 실행·status 전이가 전혀 없다
+	// (REQ-WC11-044/045/046). hostCheckMiddleware 는 GET 을 게이트하지 않으므로
+	// 보드 읽기는 다른 읽기 라우트와 동일하게 통과한다.
+	mux.HandleFunc("/specs", a.handleBoard)
+	// SPEC-WEB-CONSOLE-011 M4: profile CRUD (create / delete) — POST-only,
+	// loopback-gated by hostCheckMiddleware. Switch reuses the existing
+	// GET /?profile=<name> load path (no dedicated route needed).
+	mux.HandleFunc("/profile/create", a.handleProfileCreate)
+	mux.HandleFunc("/profile/delete", a.handleProfileDelete)
 	// /__shutdown__ 은 페이지 내 종료 버튼이 POST 하는 루트다. hostCheckMiddleware
-	// 가 이미 전체 mux 를 감싸 non-loopback Host 의 POST 를 403 차단하므로 추가
-	// CSRF/토큰 인프라 없이 loopback-only 단일 경계로 보호된다(@MX:NOTE app.go 참조).
+	// 가 전체 mux 를 감싸 non-loopback Host(REQ-WC-009) 및 cross-site(REQ-SEC-002)
+	// POST 를 403 차단한다. 추가 CSRF 토큰 인프라는 없다(Goal Anti + @MX:NOTE 참조).
 	mux.HandleFunc("/__shutdown__", a.handleShutdown)
 	mux.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.FS(staticFS()))))
 	return hostCheckMiddleware(mux)
 }
 
-// @MX:NOTE: [AUTO] Host-check 미들웨어는 의도적으로 최소한의 쓰기-안전 모델이다 — 루프백 바인드 + Host 헤더 검사가 전부다.
-// 토큰 인증/세션 스토어/CSRF 토큰 인프라를 추가하지 말 것(REQ-WC-009 + Goal Anti). 이는 DNS-rebinding/CSRF를 막는 단일 경계이며
+// @MX:NOTE: [AUTO] Host-check 미들웨어는 2-layer 쓰기-안전 모델이다 — (1) Host 헤더 검사로 DNS-rebinding 차단(REQ-WC-009),
+// (2) Sec-Fetch-Site same-origin 강제로 drive-by CSRF 차단(REQ-SEC-002). per-process CSRF 토큰은 사용하지 않는다(Goal Anti).
 // GET(읽기)은 게이트하지 않는다 — 읽기는 안전하므로 foreign Host여도 통과시킨다.
 //
 // hostCheckMiddleware rejects mutating requests (POST/PUT/PATCH) whose Host
 // header does not resolve to a loopback origin (127.0.0.1 / localhost / ::1),
-// returning HTTP 403. GET and other safe methods are never Host-gated.
+// returning HTTP 403 (REQ-WC-009 DNS-rebinding gate). It additionally requires
+// Sec-Fetch-Site: same-origin on mutating requests (REQ-SEC-002 CSRF gate) — a
+// drive-by auto-submit carries an honest loopback Host but a cross-site/absent
+// Sec-Fetch-Site value, so the Host check alone cannot stop CSRF. GET and other
+// safe methods are never gated by either check.
 func hostCheckMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.Method {
 		case http.MethodPost, http.MethodPut, http.MethodPatch:
 			if !isLoopbackHost(r.Host) {
 				http.Error(w, "forbidden: non-loopback Host header", http.StatusForbidden)
+				return
+			}
+			// REQ-SEC-002: same-origin enforcement via Sec-Fetch-Site.
+			// Conservative policy: only "same-origin" is allowed; cross-site,
+			// same-site, none, and absent headers are all rejected. A modern
+			// browser always sends the header for fetch-initiated state-changing
+			// requests, so absent = legacy client or non-browser agent.
+			if r.Header.Get("Sec-Fetch-Site") != "same-origin" {
+				http.Error(w, "forbidden: cross-site or unverified request origin", http.StatusForbidden)
 				return
 			}
 		}

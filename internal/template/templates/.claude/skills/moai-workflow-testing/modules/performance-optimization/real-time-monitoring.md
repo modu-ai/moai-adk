@@ -3,182 +3,119 @@
 > Module: Real-time performance monitoring system with alerting
 > Complexity: Advanced
 > Time: 15+ minutes
-> Dependencies: psutil, threading, asyncio
+> Dependencies: the host language's process-introspection API, background-task support
 
 ## Core Implementation
 
 ### RealTimeMonitor Class
 
-```python
-import threading
-import time
-from typing import Dict, List, Callable
-from dataclasses import dataclass, field
-from collections import deque
-import psutil
+Process metrics (cpu_percent, memory, open files, threads, context switches) are read via the host language's process/OS API (Go `runtime`/`gopsutil`, Python `psutil`, Node `process`/`os`, Rust `sysinfo`, Java `ManagementFactory`).
 
-@dataclass
-class PerformanceSnapshot:
-    """Snapshot of performance metrics at a point in time."""
-    timestamp: float
-    cpu_percent: float
-    memory_mb: float
-    memory_percent: float
-    open_files: int
-    threads: int
-    context_switches: int
-    custom_metrics: Dict[str, float] = field(default_factory=dict)
+```text
+record PerformanceSnapshot:
+    timestamp:       timestamp
+    cpu_percent:     float
+    memory_mb:       float
+    memory_percent:  float
+    open_files:      int
+    threads:         int
+    context_switches:int
+    custom_metrics:  Map<text, float>   # default {}
 
-class RealTimeMonitor:
-    """Real-time performance monitoring system."""
+class RealTimeMonitor(sampling_interval = 1.0):
+    sampling_interval
+    is_monitoring = false
+    snapshots = bounded_deque(maxlen=1000)   # keep last 1000 snapshots
+    callbacks  = []
+    alerts     = []
 
-    def __init__(self, sampling_interval: float = 1.0):
-        self.sampling_interval = sampling_interval
-        self.is_monitoring = False
-        self.monitor_thread = None
-        self.snapshots = deque(maxlen=1000)  # Keep last 1000 snapshots
-        self.callbacks = []
-        self.alerts = []
+    start_monitoring():
+        if is_monitoring: return
+        is_monitoring = true
+        spawn_background_task(monitor_loop())   # daemon thread / goroutine / async task
 
-    def start_monitoring(self):
-        """Start real-time performance monitoring."""
-        if self.is_monitoring:
-            return
+    stop_monitoring():
+        is_monitoring = false
+        join the monitor task (timeout ~2s)
 
-        self.is_monitoring = True
-        self.monitor_thread = threading.Thread(target=self._monitor_loop, daemon=True)
-        self.monitor_thread.start()
-
-    def stop_monitoring(self):
-        """Stop real-time performance monitoring."""
-        self.is_monitoring = False
-        if self.monitor_thread:
-            self.monitor_thread.join(timeout=2.0)
-
-    def _monitor_loop(self):
-        """Main monitoring loop."""
-        process = psutil.Process()
-
-        while self.is_monitoring:
+    monitor_loop():
+        while is_monitoring:
             try:
-                # Collect system metrics
                 snapshot = PerformanceSnapshot(
-                    timestamp=time.time(),
+                    timestamp=now(),
                     cpu_percent=process.cpu_percent(),
-                    memory_mb=process.memory_info().rss / 1024 / 1024,
+                    memory_mb=process.rss() / MB,
                     memory_percent=process.memory_percent(),
                     open_files=len(process.open_files()),
                     threads=process.num_threads(),
-                    context_switches=process.num_ctx_switches().voluntary + process.num_ctx_switches().involuntary
-                )
+                    context_switches=process.context_switches())
+                for callback in callbacks:
+                    try: snapshot.custom_metrics.update(callback())
+                    except e: log("Custom metric callback error: " + e)
+                snapshots.append(snapshot)
+                check_alerts(snapshot)
+                sleep(sampling_interval)
+            except e:
+                log("Monitoring error: " + e)
+                sleep(sampling_interval)
 
-                # Check for custom metrics callbacks
-                for callback in self.callbacks:
-                    try:
-                        custom_metrics = callback()
-                        snapshot.custom_metrics.update(custom_metrics)
-                    except Exception as e:
-                        print(f"Custom metric callback error: {e}")
+    add_callback(callback):
+        callbacks.append(callback)
 
-                self.snapshots.append(snapshot)
-
-                # Check for alerts
-                self._check_alerts(snapshot)
-
-                time.sleep(self.sampling_interval)
-
-            except Exception as e:
-                print(f"Monitoring error: {e}")
-                time.sleep(self.sampling_interval)
-
-    def add_callback(self, callback: Callable[[], Dict[str, float]]):
-        """Add custom metric collection callback."""
-        self.callbacks.append(callback)
-
-    def _check_alerts(self, snapshot: PerformanceSnapshot):
-        """Check for performance alerts."""
+    check_alerts(snapshot):
         alerts = []
-
-        # CPU usage alert
         if snapshot.cpu_percent > 90:
-            alerts.append({
-                'type': 'high_cpu',
-                'message': f"High CPU usage: {snapshot.cpu_percent:.1f}%",
-                'timestamp': snapshot.timestamp
-            })
-
-        # Memory usage alert
+            alerts.append({ type:"high_cpu", message:"High CPU usage: " + snapshot.cpu_percent })
         if snapshot.memory_percent > 85:
-            alerts.append({
-                'type': 'high_memory',
-                'message': f"High memory usage: {snapshot.memory_percent:.1f}%",
-                'timestamp': snapshot.timestamp
-            })
-
-        # File handle alert
+            alerts.append({ type:"high_memory", message:"High memory usage: " + snapshot.memory_percent })
         if snapshot.open_files > 1000:
-            alerts.append({
-                'type': 'file_handle_leak',
-                'message': f"High number of open files: {snapshot.open_files}",
-                'timestamp': snapshot.timestamp
-            })
+            alerts.append({ type:"file_handle_leak", message:"High open files: " + snapshot.open_files })
+        alerts.extend(alerts)
 
-        self.alerts.extend(alerts)
+    get_recent_snapshots(count = 100):
+        return last `count` of snapshots
 
-    def get_recent_snapshots(self, count: int = 100) -> List[PerformanceSnapshot]:
-        """Get recent performance snapshots."""
-        return list(self.snapshots)[-count:]
-
-    def get_average_metrics(self, duration_minutes: int = 5) -> Dict[str, float]:
-        """Get average metrics over specified duration."""
-        cutoff_time = time.time() - (duration_minutes * 60)
-        recent_snapshots = [s for s in self.snapshots if s.timestamp >= cutoff_time]
-
-        if not recent_snapshots:
-            return {}
-
+    get_average_metrics(duration_minutes = 5):
+        cutoff = now() - duration_minutes*60
+        recent = [s for s in snapshots if s.timestamp >= cutoff]
+        if recent is empty: return {}
         return {
-            'avg_cpu_percent': sum(s.cpu_percent for s in recent_snapshots) / len(recent_snapshots),
-            'avg_memory_mb': sum(s.memory_mb for s in recent_snapshots) / len(recent_snapshots),
-            'avg_memory_percent': sum(s.memory_percent for s in recent_snapshots) / len(recent_snapshots),
-            'avg_open_files': sum(s.open_files for s in recent_snapshots) / len(recent_snapshots),
-            'avg_threads': sum(s.threads for s in recent_snapshots) / len(recent_snapshots),
+            avg_cpu_percent:    mean(s.cpu_percent    for s in recent),
+            avg_memory_mb:      mean(s.memory_mb      for s in recent),
+            avg_memory_percent: mean(s.memory_percent for s in recent),
+            avg_open_files:     mean(s.open_files     for s in recent),
+            avg_threads:        mean(s.threads        for s in recent)
         }
 ```
 
 ## Usage Examples
 
-```python
+```text
 # Real-time monitoring example
 monitor = RealTimeMonitor(sampling_interval=0.5)
 monitor.start_monitoring()
 
-# Add custom metrics callback
-def custom_metrics():
-    return {
-        'custom_counter': some_global_counter,
-        'queue_size': len(some_queue)
-    }
-
+# Add a custom metrics callback
+custom_metrics():
+    return { custom_counter: some_global_counter, queue_size: len(some_queue) }
 monitor.add_callback(custom_metrics)
 
-# Run application while monitoring
+# Run the application while monitoring
 # ... your application code ...
 
-# Stop monitoring and get results
+# Stop monitoring and read results
 monitor.stop_monitoring()
 recent_snapshots = monitor.get_recent_snapshots(10)
 avg_metrics = monitor.get_average_metrics(5)
-
-print(f"Average CPU: {avg_metrics.get('avg_cpu_percent', 0):.1f}%")
-print(f"Average Memory: {avg_metrics.get('avg_memory_mb', 0):.1f}MB")
+print("Average CPU: " + avg_metrics.avg_cpu_percent + "%")
+print("Average Memory: " + avg_metrics.avg_memory_mb + "MB")
 ```
 
 ## Best Practices
 
 1. **Sampling Interval**: Choose appropriate intervals (0.5-2.0 seconds) to balance overhead and granularity
-2. **Snapshot Limit**: Use deque with maxlen to prevent memory growth
-3. **Thread Safety**: Monitoring runs in separate daemon thread
+2. **Snapshot Limit**: Use a bounded deque to prevent memory growth
+3. **Background Task**: Run monitoring in a separate daemon task/goroutine
 4. **Custom Metrics**: Add domain-specific metrics via callbacks
 5. **Alert Thresholds**: Configure thresholds based on application requirements
 

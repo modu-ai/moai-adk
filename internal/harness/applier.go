@@ -267,7 +267,53 @@ type snapshotFile struct {
 
 	// BackupName is the backup filename within snapshot directory.
 	BackupName string `json:"backup_name"`
+
+	// ── M5 additive fields (SPEC-HARNESS-EVOLVE-002 REQ-HEV2-021) ───────────
+	// These fields are populated ONLY by CreateSurfaceSnapshot (the dual-surface
+	// Curator path). The legacy single-file createSnapshot (called by Apply)
+	// leaves them at zero/empty, so existing Apply-path snapshots serialize
+	// byte-identically to pre-M5 output (omitempty drops the zero values).
+
+	// LearnedSurface names the curator managed-block surface this restore unit
+	// backs up ("claude.md.learned-workflow" | "claude.local.md.learned-
+	// workflow-local"). Empty on legacy Apply-path snapshots (omitempty).
+	LearnedSurface string `json:"learned_surface,omitempty"`
+
+	// ByteLengthPreWrite is the byte length of the file at snapshot time. The
+	// M5 RestoreSnapshot integrity check (REQ-HEV2-022) verifies the restored
+	// bytes match this length. Zero on legacy Apply-path snapshots → the check
+	// is skipped (backward compat).
+	ByteLengthPreWrite int `json:"byte_length_pre_write,omitempty"`
+
+	// BulletsAffected carries the ledger_keys of bullets this write touched.
+	// nil on legacy Apply-path snapshots (omitempty drops nil/empty).
+	BulletsAffected []string `json:"bullets_affected,omitempty"`
 }
+
+// SurfaceRestoreUnit describes one file surface to snapshot as a distinct
+// restore unit (SPEC-HARNESS-EVOLVE-002 REQ-HEV2-021, design.md §C.1). A
+// dual-surface snapshot (CLAUDE.md managed block + CLAUDE.local.md Learned
+// section) carries one SurfaceRestoreUnit per surface so RestoreSnapshot can
+// roll back each surface independently and byte-identically.
+type SurfaceRestoreUnit struct {
+	// LearnedSurface names the curator managed-block surface
+	// ("claude.md.learned-workflow" | "claude.local.md.learned-workflow-local").
+	LearnedSurface string
+
+	// OriginalPath is the file path to back up (absolute or project-relative).
+	OriginalPath string
+
+	// BulletsAffected carries the ledger_keys of bullets this write add/upd/del.
+	// nil when the caller has no bullet-level signal (evidence-or-null).
+	BulletsAffected []string
+}
+
+// ErrRollbackIntegrityFailed is returned by RestoreSnapshot when the M5
+// byte-length integrity check (REQ-HEV2-022) detects a mismatch between the
+// backed-up bytes and the manifest's recorded ByteLengthPreWrite. The mismatch
+// indicates the backup was truncated/corrupted or a concurrent session
+// interfered; the caller MUST surface this rather than silently restore.
+var ErrRollbackIntegrityFailed = errors.New("harness: rollback byte-length integrity check failed")
 
 // Apply safely applies Proposal after safety pipeline evaluation.
 // [HARD] Must call evaluator.Evaluate() first, return immediately if rejected.
@@ -344,16 +390,44 @@ func (a *Applier) Apply(proposal Proposal, evaluator SafetyEvaluator, snapshotBa
 // writeLineage appends one M6 LineageEntry to the Applier's manifest path.
 // When manifestPath is empty (the NewApplier() default), the lineage write is skipped
 // (no-op) so callers that did not opt into lineage logging keep the pre-lineage behavior.
+//
+// This is the legacy 4-field form used by the pre-Curator Apply path; it
+// delegates to writeLineageEntry with the M5 surface fields at zero/nil so
+// legacy transitions serialize byte-identically to pre-M5 output.
 func (a *Applier) writeLineage(proposal Proposal, decision, appliedSurface, reason string) error {
+	return a.writeLineageEntry(proposal, decision, appliedSurface, reason, "", nil, "")
+}
+
+// writeLineageCurator appends one LineageEntry with the M5 Curator-surface
+// fields populated (SPEC-HARNESS-EVOLVE-002 REQ-HEV2-023). This is the
+// write path the Curator pipeline uses on every managed-block write: it
+// carries LearnedSurface (which surface was written), BulletsChanged (the
+// ledger_keys touched — the evidence-reference, nil→null per REQ-HEV2-024),
+// and SnapshotDir (the rollback pointer from CreateSurfaceSnapshot). The
+// legacy writeLineage delegates here with these fields zeroed so existing
+// Apply-path callers are byte-unaffected.
+func (a *Applier) writeLineageCurator(proposal Proposal, decision, appliedSurface, reason, learnedSurface string, bulletsChanged []string, snapshotDir string) error {
+	return a.writeLineageEntry(proposal, decision, appliedSurface, reason, learnedSurface, bulletsChanged, snapshotDir)
+}
+
+// writeLineageEntry is the single internal append point. It is the
+// manifestation of REQ-HEV2-023 ("populate the new fields on every Curator
+// write"): the legacy writeLineage leaves the M5 fields zero; the Curator
+// writeLineageCurator populates them. When manifestPath is empty the write is
+// skipped (no-op) identically to the legacy form.
+func (a *Applier) writeLineageEntry(proposal Proposal, decision, appliedSurface, reason, learnedSurface string, bulletsChanged []string, snapshotDir string) error {
 	if a.manifestPath == "" {
 		return nil
 	}
 	return WriteLineageEntry(a.manifestPath, LineageEntry{
-		ProposalID:     proposal.ID,
-		TargetPath:     proposal.TargetPath,
-		AppliedSurface: appliedSurface,
-		Decision:       decision,
-		Reason:         reason,
+		ProposalID:      proposal.ID,
+		TargetPath:      proposal.TargetPath,
+		AppliedSurface:  appliedSurface,
+		Decision:        decision,
+		Reason:          reason,
+		LearnedSurface:  learnedSurface,
+		BulletsChanged:  bulletsChanged,
+		SnapshotDir:     snapshotDir,
 	})
 }
 
@@ -614,6 +688,89 @@ func (a *Applier) createSnapshot(proposal Proposal, snapshotBase string) (string
 	return snapshotDir, nil
 }
 
+// CreateSurfaceSnapshot snapshots one or more surfaces as distinct restore
+// units into a single snapshot directory under snapshotBase
+// (SPEC-HARNESS-EVOLVE-002 REQ-HEV2-021, design.md §C.1).
+//
+// Each SurfaceRestoreUnit is backed up byte-for-byte; the manifest carries
+// per-surface entries with learned_surface + byte_length_pre_write +
+// bullets_affected recorded. This distinct-restore-unit design lets a Tier-4
+// rollback (CLAUDE.md managed block) proceed without reverting a concurrent
+// Tier-3 append (CLAUDE.local.md Learned section) — the two surfaces are
+// independent restore units, not a coupled one.
+//
+// Returns the dated snapshotDir so RestoreSnapshot can roll back each surface
+// byte-identically (the byte-length integrity check verifies the restored
+// bytes match ByteLengthPreWrite per REQ-HEV2-022).
+//
+// An empty surfaces slice or an unreadable OriginalPath returns an error with
+// an empty snapshotDir (no partial snapshot dir is left behind on the read
+// path; a mid-write failure may leave a partial dir, which the caller cleans
+// up before retry).
+func CreateSurfaceSnapshot(snapshotBase, proposalID string, surfaces []SurfaceRestoreUnit) (string, error) {
+	if len(surfaces) == 0 {
+		return "", errors.New("CreateSurfaceSnapshot: no surfaces to snapshot")
+	}
+
+	now := time.Now().UTC()
+	dirName := now.Format("2006-01-02T15-04-05.000000000Z")
+	snapshotDir := filepath.Join(snapshotBase, dirName)
+
+	if err := os.MkdirAll(snapshotDir, 0o755); err != nil {
+		return "", fmt.Errorf("CreateSurfaceSnapshot: directory creation failed %s: %w", snapshotDir, err)
+	}
+
+	files := make([]snapshotFile, 0, len(surfaces))
+	for _, s := range surfaces {
+		data, err := os.ReadFile(s.OriginalPath)
+		if err != nil {
+			return "", fmt.Errorf("CreateSurfaceSnapshot: read %s: %w", s.OriginalPath, err)
+		}
+		backupName := filepath.Base(s.OriginalPath)
+		// Disambiguate backup names when two surfaces share a basename
+		// (e.g. both CLAUDE.md managed blocks in distinct dirs) by suffixing
+		// the learned-surface token. A bare basename is kept when unique.
+		backupPath := filepath.Join(snapshotDir, backupName)
+		if _, statErr := os.Stat(backupPath); statErr == nil {
+			backupName = sanitizeSurfaceToken(s.LearnedSurface) + "." + backupName
+			backupPath = filepath.Join(snapshotDir, backupName)
+		}
+		if err := os.WriteFile(backupPath, data, 0o644); err != nil {
+			return "", fmt.Errorf("CreateSurfaceSnapshot: backup write %s: %w", backupPath, err)
+		}
+		files = append(files, snapshotFile{
+			OriginalPath:       s.OriginalPath,
+			BackupName:         backupName,
+			LearnedSurface:     s.LearnedSurface,
+			ByteLengthPreWrite: len(data),
+			BulletsAffected:    s.BulletsAffected,
+		})
+	}
+
+	manifest := snapshotManifest{
+		ProposalID: proposalID,
+		CreatedAt:  now,
+		Files:      files,
+	}
+	manifestData, err := json.MarshalIndent(manifest, "", "  ")
+	if err != nil {
+		return "", fmt.Errorf("CreateSurfaceSnapshot: manifest serialization failed: %w", err)
+	}
+	manifestPath := filepath.Join(snapshotDir, "manifest.json")
+	if err := os.WriteFile(manifestPath, manifestData, 0o644); err != nil {
+		return "", fmt.Errorf("CreateSurfaceSnapshot: manifest write failed: %w", err)
+	}
+	return snapshotDir, nil
+}
+
+// sanitizeSurfaceToken reduces a learned-surface token to a filename-safe
+// substring (drops dots/dashes that could collide or confuse). Used only to
+// disambiguate backup names when two surfaces share a basename.
+func sanitizeSurfaceToken(surface string) string {
+	r := strings.NewReplacer(".", "-", "/", "-")
+	return r.Replace(surface)
+}
+
 // RestoreSnapshot reads manifest.json from snapshotDir and restores original files.
 // REQ-HL-009: used in rollback <date> verb.
 //
@@ -636,6 +793,18 @@ func RestoreSnapshot(snapshotDir string) error {
 		backupData, err := os.ReadFile(backupPath)
 		if err != nil {
 			return fmt.Errorf("RestoreSnapshot: 백업 파일 읽기 실패 %s: %w", backupPath, err)
+		}
+
+		// M5 byte-length integrity check (REQ-HEV2-022): when the manifest
+		// recorded the pre-write byte length (the CreateSurfaceSnapshot path),
+		// verify the backup matches it before restoring. A mismatch means the
+		// backup was truncated/corrupted or a concurrent session interfered.
+		// When ByteLengthPreWrite == 0 (the legacy Apply-path snapshot), the
+		// check is skipped — preserving the pre-M5 RestoreSnapshot behavior
+		// byte-identically (backward compat).
+		if f.ByteLengthPreWrite > 0 && len(backupData) != f.ByteLengthPreWrite {
+			return fmt.Errorf("RestoreSnapshot: %s byte-length mismatch (backup=%d manifest=%d): %w",
+				f.OriginalPath, len(backupData), f.ByteLengthPreWrite, ErrRollbackIntegrityFailed)
 		}
 
 		// Restore to original path

@@ -43,9 +43,10 @@ Exit codes:
 3 = invalid arguments`,
 		Args: cobra.ArbitraryArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			// validate arguments
+			// validate arguments. Invalid argument combination exits 3 per
+			// REQ-CONT-001-005 (SPEC-CLIFIX-CONTRACT-001 M2).
 			if jsonOutput && sarifOutput {
-				return fmt.Errorf("cannot use --json and --sarif together")
+				return &exitCodeError{code: 3, msg: "cannot use --json and --sarif together"}
 			}
 
 			// Determine BaseDir: prioritize .moai/specs/ in current working directory
@@ -67,7 +68,7 @@ Exit codes:
 			report, lintErr := linter.Lint(args)
 			if lintErr != nil {
 				_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "linter error: %v\n", lintErr)
-				os.Exit(2)
+				return &exitCodeError{code: 2, msg: fmt.Sprintf("spec lint: linter error: %v", lintErr)}
 			}
 
 			// select output format
@@ -93,7 +94,7 @@ Exit codes:
 			}
 
 			if report.HasErrors() {
-				os.Exit(1)
+				return &exitCodeError{code: 1, msg: "spec lint: error-severity findings detected"}
 			}
 
 			return nil

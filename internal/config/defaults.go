@@ -1,6 +1,8 @@
 package config
 
 import (
+	"time"
+
 	"github.com/modu-ai/moai-adk/pkg/models"
 )
 
@@ -30,6 +32,14 @@ const (
 
 	DefaultMaxIterations = 5
 
+	// DefaultAgenticLoopMaxIterations is the default for the pipeline-level
+	// completion-loop iteration ceiling (workflow.agentic_loop.max_iterations).
+	// DISTINCT from loop_prevention.max_iterations (default 100, per-operation
+	// diagnostic fix-loop bound) — SPEC-V3R6-AGENTIC-LOOP-CONFIG-001 §A.4.
+	// This is the single source of truth for the literal 10; all other
+	// references MUST use this const (CLAUDE.local.md §14 — no hardcoding).
+	DefaultAgenticLoopMaxIterations = 10
+
 	DefaultPlanTokens = 30000
 	DefaultRunTokens  = 180000
 	DefaultSyncTokens = 40000
@@ -49,6 +59,7 @@ const (
 	DefaultGLMHigh   = "glm-5.2"
 	DefaultGLMMedium = "glm-4.7"
 	DefaultGLMLow    = "glm-4.5-air"
+	DefaultGLMFable  = "glm-5.2"
 	// Additional GLM models (available but not default-mapped)
 	DefaultGLM45     = "glm-4.5"
 	DefaultGLM46     = "glm-4.6"
@@ -81,6 +92,13 @@ const (
 	// SPEC-V3R2-RT-004 REQ-022: overridable via the stale_seconds key in ralph.yaml.
 	DefaultStaleSeconds = 3600
 
+	// DefaultTraceRetentionDays is the age threshold (in days) past which
+	// non-empty trace-*.jsonl files under .moai/logs/ are pruned at SessionEnd
+	// (SPEC-OBSERVE-HYGIENE-001 REQ-OBH-002). Zero-byte traces are pruned
+	// unconditionally regardless of age; the current session's active trace is
+	// always preserved (EC-3).
+	DefaultTraceRetentionDays = 30
+
 	// Memory taxonomy defaults (SPEC-V3R2-EXT-001)
 	// @MX:NOTE: [AUTO] 메모리 감사 서브시스템의 실제 배선(wiring)은 아래 패키지 레벨 상수 +
 	// MOAI_MEMORY_AUDIT 환경변수 경로다. 과거 workflow.memory.* YAML 블록을 미러링하던
@@ -95,7 +113,72 @@ const (
 	// MoAI-ADK tool repository (bug reports about the tool itself), NOT the user's
 	// own repo; fork maintainers override via .moai/config/sections/feedback.yaml.
 	DefaultFeedbackRepository = "modu-ai/moai-adk"
+
+	// DefaultHandoffMode is the compiled default for HandoffConfig.Mode.
+	// SPEC-HANDOFF-AUTORESUME-001: auto-resume is opt-in — the default is
+	// "manual" (pure no-op), preserving the unchanged baseline UX.
+	DefaultHandoffMode = "manual"
+
+	// DefaultArchiveGraceDays is the compiled default for ArchiveConfig.GraceDays
+	// — how long a terminal SPEC stays under .moai/specs/ after its last activity
+	// before `moai spec archive` considers it eligible.
+	//
+	// SPEC-SESSIONSTART-PERF-001 REQ-SSP-009 / REQ-SSP-018: this is the single
+	// source of truth for the literal 90; it mirrors the template-shipped
+	// archive.yaml and backs the `--grace-days` flag default. It is the fallback
+	// when archive.yaml is absent, and the zero-value guard in
+	// Config.ArchiveGraceDays() — an unset grace window must never degrade into
+	// "archive every terminal SPEC immediately".
+	DefaultArchiveGraceDays = 90
+
+	// SPEC-SESSIONSTART-PERF-001 M3 (REQ-SSP-014 / REQ-SSP-015 / REQ-SSP-018):
+	// the three M3 regression-guard thresholds, extracted here so no literal
+	// 2s / 500 lives inline in business logic or tests (CLAUDE.local.md §14).
+
+	// DefaultDriftPerfBudget is the wall-clock budget the drift-detection
+	// perf-regression test asserts against (REQ-SSP-014). The single-pass design
+	// completes far under this at the current corpus; a budget breach signals the
+	// O(n)-subprocess pattern has regressed.
+	DefaultDriftPerfBudget = 2 * time.Second
+
+	// DefaultSessionStartDriftTimeout time-boxes the session-start drift advisory
+	// check (REQ-SSP-015). On deadline exceed the handler skips the (abandoned)
+	// computation and emits the advisory instead of blocking session start
+	// unboundedly — an advisory computation on the critical path must never block.
+	DefaultSessionStartDriftTimeout = 2 * time.Second
+
+	// DefaultDriftPerfFixtureSpecs is the synthetic SPEC-directory count the
+	// perf-regression fixture builds (REQ-SSP-014, N=500). It is the SSOT for the
+	// literal 500 so the fixture size is not an inline magic number.
+	DefaultDriftPerfFixtureSpecs = 500
+
+	// SPEC-HANDOFF-THRESHOLD-001 (Handoff-v2 M4): handoff-guide band boundaries.
+	// Named constants so renderer.go carries no inline band literals (§14
+	// hardcoding-prevention). These boundaries are compiled-in and NOT
+	// config-overridable — the "M3 lands / M4 consumes" contract keeps
+	// HandoffConfig limited to {Mode, Guide}, so band boundaries never become
+	// user-tunable config fields.
+	//
+	// Soft-stage thresholds (raw context-usage %): the large-window class uses
+	// 50%, the standard/medium class uses 90%. HandoffLargeWindowCutoff (tokens)
+	// separates the two classes. The hard (stage-2) ceiling is auto-compact-aware:
+	// min(HandoffHardCeilingCapPct, autoCompactThreshold + HandoffHardCeilingMarginPct),
+	// clamped up to the band's soft threshold when a degenerate override would put
+	// it below soft.
+	HandoffSoftLargePct         = 50      // ≥ HandoffLargeWindowCutoff → soft at 50% raw usage
+	HandoffSoftStandardPct      = 90      // < HandoffLargeWindowCutoff → soft at 90% raw usage
+	HandoffLargeWindowCutoff    = 500_000 // token cutoff separating large from standard/medium window
+	HandoffHardCeilingCapPct    = 95      // absolute cap for the hard (stage-2) ceiling
+	HandoffHardCeilingMarginPct = 10      // margin above auto-compact threshold for the hard ceiling
 )
+
+// DefaultHandoffStaleTTL is the age past which a handoff/pending.json is
+// considered stale and silently removed by the SessionStart handler — auto-mode
+// ONLY (SPEC-HANDOFF-AUTORESUME-001 REQ-019). Manual mode never removes a stale
+// pending record (REQ-009 pure no-op). Single source of truth consumed by the
+// M3 handoffInjectHandler; not a compile-time const because time.Duration
+// multiplication is not a constant expression.
+var DefaultHandoffStaleTTL = 7 * 24 * time.Hour
 
 // NewDefaultConfig returns a Config with all fields set to compiled defaults.
 func NewDefaultConfig() *Config {
@@ -116,6 +199,8 @@ func NewDefaultConfig() *Config {
 		Sunset:        NewDefaultSunsetConfig(),
 		Research:      NewDefaultResearchConfig(),
 		Feedback:      NewDefaultFeedbackConfig(),
+		Handoff:       NewDefaultHandoffConfig(),
+		Archive:       NewDefaultArchiveConfig(),
 		Session:       NewDefaultSessionConfig(),
 		// MIG-003: 4 new section defaults (REQ-MIG003-004)
 		Constitution:  defaultConstitutionConfig(),
@@ -167,6 +252,25 @@ func NewDefaultResearchConfig() ResearchConfig {
 func NewDefaultFeedbackConfig() FeedbackConfig {
 	return FeedbackConfig{
 		Repository: DefaultFeedbackRepository,
+	}
+}
+
+// NewDefaultHandoffConfig returns a HandoffConfig with safe defaults.
+// SPEC-HANDOFF-AUTORESUME-001 REQ-001: Mode defaults to "manual" (auto-resume
+// is opt-in) and Guide defaults to false.
+func NewDefaultHandoffConfig() HandoffConfig {
+	return HandoffConfig{
+		Mode:  DefaultHandoffMode,
+		Guide: false,
+	}
+}
+
+// NewDefaultArchiveConfig returns an ArchiveConfig with safe defaults.
+// SPEC-SESSIONSTART-PERF-001 REQ-SSP-012: an absent archive.yaml still resolves
+// to the 90-day grace window.
+func NewDefaultArchiveConfig() ArchiveConfig {
+	return ArchiveConfig{
+		GraceDays: DefaultArchiveGraceDays,
 	}
 }
 
@@ -344,6 +448,7 @@ func NewDefaultLLMConfig() LLMConfig {
 				High:   DefaultGLMHigh,
 				Medium: DefaultGLMMedium,
 				Low:    DefaultGLMLow,
+				Fable:  DefaultGLMFable,
 				// Legacy fields for backward compatibility
 				Opus:   DefaultGLMOpus,
 				Sonnet: DefaultGLMSonnet,
@@ -384,67 +489,13 @@ func NewDefaultWorkflowConfig() WorkflowConfig {
 		},
 		DefaultMode:   "",
 		ExecutionMode: "team",
+		AgenticLoop: AgenticLoopConfig{
+			MaxIterations: DefaultAgenticLoopMaxIterations,
+		},
 		LoopPrevention: LoopPreventionConfig{
 			FailurePatternDetection: true,
 			MaxIterations:           100,
 			MaxRetriesPerOperation:  3,
-		},
-		Team: TeamConfig{
-			AutoSelection: TeamAutoSelectionConfig{
-				MinDomainsForTeam:  3,
-				MinFilesForTeam:    10,
-				MinComplexityScore: 7,
-			},
-			Enabled:             true,
-			MaxTeammates:        10,
-			DefaultModel:        "sonnet",
-			DelegateMode:        true,
-			RequirePlanApproval: true,
-			RoleProfileKeys:     []string{"implementer", "tester", "reviewer"},
-			RoleProfiles: map[string]RoleProfileEntry{
-				"researcher": {
-					Mode:        "plan",
-					Model:       "haiku",
-					Isolation:   "none",
-					Description: "Read-only codebase exploration and analysis",
-				},
-				"analyst": {
-					Mode:        "plan",
-					Model:       "sonnet",
-					Isolation:   "none",
-					Description: "Requirements analysis and validation",
-				},
-				"architect": {
-					Mode:        "plan",
-					Model:       "sonnet",
-					Isolation:   "none",
-					Description: "Solution design and architecture decisions",
-				},
-				"implementer": {
-					Mode:        "acceptEdits",
-					Model:       "sonnet",
-					Isolation:   "worktree",
-					Description: "Code implementation (backend, frontend, full-stack)",
-				},
-				"tester": {
-					Mode:        "acceptEdits",
-					Model:       "sonnet",
-					Isolation:   "worktree",
-					Description: "Test creation and coverage validation",
-				},
-				"designer": {
-					Mode:        "acceptEdits",
-					Model:       "sonnet",
-					Isolation:   "worktree",
-					Description: "UI/UX design with MCP design tools",
-				},
-				"reviewer": {
-					Mode:        "plan",
-					Model:       "haiku",
-					Isolation:   "none",
-					Description: "Code review and quality validation",
-				},
-			},
 		},
 		TokenBudget: TokenBudgetConfig{
 			Plan: DefaultPlanTokens,
@@ -638,13 +689,7 @@ func defaultDesignConfig() DesignConfig {
 			SupportedBundleVersions: []string{"1.0"},
 		},
 		DefaultFramework: "next.js",
-		DesignDocs: DesignDocs{
-			AutoLoadOnDesignCommand: true,
-			Dir:                     ".moai/design",
-			Priority:                []string{"spec", "system", "research", "pencil-plan"},
-			TokenBudget:             20000,
-		},
-		Enabled: true,
+		Enabled:          true,
 		Evaluator: DesignEvaluator{
 			MemoryScope: "per_iteration",
 		},

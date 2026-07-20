@@ -59,7 +59,7 @@ const (
 	SentinelHarnessFrozenInstruction = "HARNESS_FROZEN_INSTRUCTION_VIOLATION"
 
 	// SentinelHarnessFrozenConfig is emitted when a harness-learner attempts to modify
-	// a .moai/project/brand/ path or other frozen config area.
+	// a frozen config area (e.g. system-level .moai/config/sections/*.yaml).
 	SentinelHarnessFrozenConfig = "HARNESS_FROZEN_CONFIG_VIOLATION"
 
 	// harnessLearnerIdentity is the agent name used by the harness-learner subagent.
@@ -545,35 +545,69 @@ func (h *preToolHandler) extractBashCommand(toolInput json.RawMessage) string {
 // loadGateConfig reads gate configuration from the config provider.
 // Falls back to DefaultGateConfig when the config is not available.
 func (h *preToolHandler) loadGateConfig() *quality.GateConfig {
+	var qcfg *quality.GateConfig
+
 	if h.cfg == nil {
-		return quality.DefaultGateConfig()
+		qcfg = quality.DefaultGateConfig()
+	} else {
+		cfg := h.cfg.Get()
+		if cfg == nil {
+			qcfg = quality.DefaultGateConfig()
+		} else {
+			gate := cfg.Gate
+			qcfg = &quality.GateConfig{
+				Enabled:     gate.Enabled,
+				SkipTests:   gate.SkipTests,
+				VetTimeout:  gate.VetTimeoutDuration(),
+				LintTimeout: gate.LintTimeoutDuration(),
+				TestTimeout: gate.TestTimeoutDuration(),
+			}
+			// Map config.AstGrepGateConfig → quality.AstGrepGateConfig (SPEC-SLQG-001).
+			ag := gate.AstGrepGate
+			qcfg.AstGrepGate = &quality.AstGrepGateConfig{
+				Enabled:      ag.Enabled,
+				RulesDir:     ag.RulesDir,
+				BlockOnError: ag.BlockOnError,
+				WarnOnlyMode: ag.WarnOnlyMode,
+			}
+			// Apply defaults when RulesDir is empty (not set in YAML).
+			if qcfg.AstGrepGate.RulesDir == "" {
+				qcfg.AstGrepGate.RulesDir = ".moai/config/astgrep-rules"
+			}
+		}
 	}
-	cfg := h.cfg.Get()
-	if cfg == nil {
-		return quality.DefaultGateConfig()
-	}
-	gate := cfg.Gate
-	qcfg := &quality.GateConfig{
-		Enabled:     gate.Enabled,
-		SkipTests:   gate.SkipTests,
-		VetTimeout:  gate.VetTimeoutDuration(),
-		LintTimeout: gate.LintTimeoutDuration(),
-		TestTimeout: gate.TestTimeoutDuration(),
-		ProjectDir:  h.projectDir,
-	}
-	// Map config.AstGrepGateConfig → quality.AstGrepGateConfig (SPEC-SLQG-001).
-	ag := gate.AstGrepGate
-	qcfg.AstGrepGate = &quality.AstGrepGateConfig{
-		Enabled:      ag.Enabled,
-		RulesDir:     ag.RulesDir,
-		BlockOnError: ag.BlockOnError,
-		WarnOnlyMode: ag.WarnOnlyMode,
-	}
-	// Apply defaults when RulesDir is empty (not set in YAML).
-	if qcfg.AstGrepGate.RulesDir == "" {
-		qcfg.AstGrepGate.RulesDir = ".moai/config/astgrep-rules"
-	}
+
+	// Project context + Go build tags apply uniformly across every config path
+	// (including the DefaultGateConfig fallback when no config provider is
+	// loaded), so a project requiring non-default build tags (e.g. goolm) is
+	// vetted/linted/tested under them regardless of config availability.
+	qcfg.ProjectDir = h.projectDir
+	qcfg.GoBuildTags = readGoBuildTags(h.projectDir)
 	return qcfg
+}
+
+// readGoBuildTags reads the project Go build tags from
+// <dir>/.moai/config/build-tags (first non-empty, non-comment line) when
+// present. Returns "" when the file is absent or unreadable so the gate
+// behaves as before for projects that do not declare build tags. The value
+// is passed verbatim to go vet/test (-tags=<value>) and golangci-lint
+// (--tags=<value>); Go accepts comma- or space-separated tags.
+func readGoBuildTags(dir string) string {
+	if dir == "" {
+		return ""
+	}
+	data, err := os.ReadFile(filepath.Join(dir, ".moai", "config", "build-tags"))
+	if err != nil {
+		return ""
+	}
+	for _, line := range strings.Split(string(data), "\n") {
+		line = strings.TrimSpace(line)
+		if line == "" || strings.HasPrefix(line, "#") {
+			continue
+		}
+		return line
+	}
+	return ""
 }
 
 // firstLine returns the first non-empty line of s, or s itself when there is no newline.
@@ -633,6 +667,26 @@ func (h *preToolHandler) checkFileAccess(toolInput json.RawMessage, toolName str
 		return DecisionDeny, "Invalid file path: cannot resolve"
 	}
 
+	// SPEC-INTERNAL-SECURITY-001 REQ-SEC-007: resolve symlinks before the
+	// project-boundary check and DenyPatterns matching. A project-internal
+	// symlink (e.g. notes.txt -> ~/.ssh/id_rsa) passes the lexical boundary
+	// check and matches no deny pattern on its unresolved form, but the Write
+	// tool then follows the link and overwrites the real secret (CWE-61).
+	// EvalSymlinks resolves the real target so both downstream checks see the
+	// actual destination. This mirrors the file_changed.go resolve-recheck
+	// pattern (SPEC-SEC-HARDEN-004 / REQ-SEC4-004).
+	//
+	// Unlike file_changed.go (which fails-closed on EvalSymlinks error), this
+	// is the CRITICAL path: a Write to a not-yet-existing path (new file) MUST
+	// still succeed. When EvalSymlinks returns an error (not-exist for a
+	// new-file Write, or otherwise unresolvable), fall back to the unresolved
+	// path and do NOT deny (NFR-SEC-003 behavior preservation, AC-SEC-007c).
+	resolvedSymlink := false
+	if realPath, evalErr := filepath.EvalSymlinks(resolvedPath); evalErr == nil {
+		resolvedPath = realPath
+		resolvedSymlink = true
+	}
+
 	// Check if path is within project directory
 	if h.projectDir != "" {
 		projectAbs, absErr := filepath.Abs(h.projectDir)
@@ -640,6 +694,18 @@ func (h *preToolHandler) checkFileAccess(toolInput json.RawMessage, toolName str
 			// Cannot resolve project directory, skip boundary check
 			slog.Debug("cannot resolve project directory", "error", absErr)
 		} else {
+			// Normalize projectAbs via EvalSymlinks ONLY when resolvedPath was
+			// also resolved, so the boundary comparison stays symmetric. If
+			// resolvedPath fell back to its unresolved form (new-file Write),
+			// keep projectAbs unresolved too — otherwise a symlinked project
+			// prefix (macOS /var -> /private/var) would make a legitimate
+			// in-project new-file look like an escape (false-positive deny,
+			// NFR-SEC-003 violation). Mirrors file_changed.go's normRoot.
+			if resolvedSymlink {
+				if resolvedProject, evalErr := filepath.EvalSymlinks(projectAbs); evalErr == nil {
+					projectAbs = resolvedProject
+				}
+			}
 			// Normalize both paths to Unicode NFC before comparison.
 			// macOS HFS+/APFS stores paths in NFD form, but tools like
 			// Claude Code may send paths in NFC form. Without normalization,
@@ -676,9 +742,16 @@ func (h *preToolHandler) checkFileAccess(toolInput json.RawMessage, toolName str
 		}
 	}
 
-	// For Write operations, check content for secrets
-	if toolName == "Write" {
-		content, ok := parsed["content"].(string)
+	// Check content for sensitive data. Write carries the payload in "content";
+	// Edit carries the replacement in "new_string" (REQ-SEC-008). Both must be
+	// scanned so a secret injected via Edit cannot bypass the deny that the
+	// identical Write content would trigger.
+	if toolName == "Write" || toolName == "Edit" {
+		contentField := "content"
+		if toolName == "Edit" {
+			contentField = "new_string"
+		}
+		content, ok := parsed[contentField].(string)
 		if ok && content != "" {
 			for _, pattern := range h.policy.SensitiveContentPatterns {
 				if pattern.MatchString(content) {
@@ -722,7 +795,6 @@ var frozenZonePrefixes = []struct {
 	{".claude/commands/", SentinelHarnessFrozenCommand},
 	{".claude/hooks/", SentinelHarnessFrozenHook},
 	{".claude/output-styles/", SentinelHarnessFrozenOutputStyle},
-	{".moai/project/brand/", SentinelHarnessFrozenConfig},
 }
 
 // frozenInstructionFiles lists CLAUDE.md variants guarded by HARNESS_FROZEN_INSTRUCTION_VIOLATION.

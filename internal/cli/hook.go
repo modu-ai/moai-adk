@@ -1,13 +1,16 @@
 package cli
 
 import (
+	"bufio"
 	"context"
 	"crypto/sha256"
 	"encoding/json"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"regexp"
+	"strings"
 	"time"
 	"unicode"
 	"unicode/utf8"
@@ -15,8 +18,11 @@ import (
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
 
+	"github.com/modu-ai/moai-adk/internal/cli/uikit"
 	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/harness"
+	"github.com/modu-ai/moai-adk/internal/harness/proposalgen"
+	"github.com/modu-ai/moai-adk/internal/harness/routing"
 	"github.com/modu-ai/moai-adk/internal/hook"
 	"github.com/modu-ai/moai-adk/internal/hook/dbsync"
 )
@@ -91,7 +97,7 @@ func init() {
 	hookCmd.AddCommand(&cobra.Command{
 		Use:          "agent [action]",
 		Short:        "Execute agent-specific hook action",
-		Long:         "Execute agent-specific hook actions like ddd-pre-transformation, backend-validation, etc.",
+		Long:         "Execute agent-specific hook actions like cycle-pre-transformation, backend-validation, etc.",
 		Args:         cobra.ExactArgs(1),
 		SilenceUsage: true,
 		RunE:         runAgentHook,
@@ -222,9 +228,10 @@ func runHookEvent(cmd *cobra.Command, event hook.EventType) error {
 	}
 
 	// Exit code 2 for explicit exit code requests (generic plumbing for any
-	// handler that sets ExitCode; nothing in-tree sets it today).
+	// handler that sets ExitCode; nothing in-tree sets it today). Returned as an
+	// ExitCoder so main.go maps exit 2 and defers run (SPEC-CLIFIX-CONTRACT-001 M1).
 	if output != nil && output.ExitCode == 2 {
-		os.Exit(2)
+		return &exitCodeError{code: 2, msg: "hook: explicit exit code 2 requested"}
 	}
 
 	// NOTE: there is intentionally NO exit-2 branch for deny decisions. A JSON
@@ -266,13 +273,13 @@ func runHookList(cmd *cobra.Command, _ []string) error {
 	out := cmd.OutOrStdout()
 
 	if deps == nil || deps.HookRegistry == nil {
-		_, _ = fmt.Fprintln(out, renderInfoCard("Registered Hook Handlers", "Hook system not initialized."))
+		_, _ = fmt.Fprintln(out, uikit.RenderInfoCard("Registered Hook Handlers", "Hook system not initialized."))
 		return nil
 	}
 
 	events := hook.ValidEventTypes()
 	totalHandlers := 0
-	var pairs []kvPair
+	var pairs []uikit.KVPair
 	for _, event := range events {
 		handlers := deps.HookRegistry.Handlers(event)
 		count := len(handlers)
@@ -282,21 +289,21 @@ func runHookList(cmd *cobra.Command, _ []string) error {
 			if count > 1 {
 				label = "handlers"
 			}
-			pairs = append(pairs, kvPair{string(event), fmt.Sprintf("%d %s", count, label)})
+			pairs = append(pairs, uikit.KVPair{Key: string(event), Value: fmt.Sprintf("%d %s", count, label)})
 		}
 	}
 
 	if totalHandlers == 0 {
-		_, _ = fmt.Fprintln(out, renderInfoCard("Registered Hook Handlers", "No handlers registered."))
+		_, _ = fmt.Fprintln(out, uikit.RenderInfoCard("Registered Hook Handlers", "No handlers registered."))
 	} else {
-		_, _ = fmt.Fprintln(out, renderCard("Registered Hook Handlers", renderKeyValueLines(pairs)))
+		_, _ = fmt.Fprintln(out, uikit.RenderCard("Registered Hook Handlers", uikit.RenderKeyValueLines(pairs)))
 	}
 
 	return nil
 }
 
 // runAgentHook executes an agent-specific hook action.
-// Agent actions are like: ddd-pre-transformation, backend-validation, etc.
+// Agent actions are like: cycle-pre-transformation, backend-validation, etc.
 func runAgentHook(cmd *cobra.Command, args []string) error {
 	if deps == nil || deps.HookProtocol == nil || deps.HookRegistry == nil {
 		return fmt.Errorf("hook system not initialized")
@@ -332,14 +339,6 @@ func runAgentHook(cmd *cobra.Command, args []string) error {
 		event = hook.EventPreToolUse
 	}
 
-	// Add action to input for handler identification. json.Marshal (not a
-	// format string) so an action containing quotes cannot produce malformed JSON.
-	if actionJSON, marshalErr := json.Marshal(struct {
-		Action string `json:"action"`
-	}{Action: action}); marshalErr == nil {
-		input.Data = actionJSON
-	}
-
 	ctx, cancel := context.WithTimeout(cmd.Context(), 30*time.Second)
 	defer cancel()
 
@@ -354,8 +353,9 @@ func runAgentHook(cmd *cobra.Command, args []string) error {
 
 	// Exit code 2 for explicit exit code requests (generic plumbing; see
 	// runHookEvent). A JSON deny exits 0 by design — no Decision==deny branch.
+	// Returned as an ExitCoder so main.go maps exit 2 and defers run.
 	if output != nil && output.ExitCode == 2 {
-		os.Exit(2)
+		return &exitCodeError{code: 2, msg: "hook agent: explicit exit code 2 requested"}
 	}
 
 	return nil
@@ -772,9 +772,49 @@ func runHarnessObserveStop(cmd *cobra.Command, _ []string) error {
 		_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "harness-observe-stop: auto-classify failed (non-blocking): %v\n", classifyErr)
 	} else {
 		_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "harness-observe-stop: auto-classify %d patterns → %d promotions\n", patternCount, promoCount)
+
+		// SPEC-HARNESS-RATCHET-REWIRE-001 REQ-HRR-004: auto-propose on the Stop
+		// path. Chains proposal generation after classify when promotions > 0 so
+		// that promoted patterns land in .moai/harness/proposals/ without a
+		// manual `moai harness propose` invocation. Fail-open (mirrors the
+		// classify chain's AP-3 discipline): propose errors are logged to stderr
+		// and NEVER block session end. Within the 5s hook budget (propose is a
+		// read-promotions + map + mkdir+write, O(promotions)).
+		if promoCount > 0 {
+			if n, pErr := generateProposals(root); pErr != nil {
+				_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "harness-observe-stop: auto-propose failed (non-blocking): %v\n", pErr)
+			} else if n > 0 {
+				_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "harness-observe-stop: auto-propose generated %d proposal(s)\n", n)
+			}
+		}
 	}
 
+	// SPEC-HARNESS-EVOLVE-001 REQ-HEV-012: additive, self-gated, fail-open routing
+	// finalizer. Downstream of the EXISTING HOI (gate 0) + learning (gate 1) gates
+	// already applied above. Finalizes a pending routing row into the ledger only
+	// when its machine evidence derives a terminal outcome; no-op otherwise.
+	finalizeRoutingLedgerOnStop(root, hookInput.SessionID, cmd.ErrOrStderr())
+
 	return nil
+}
+
+// finalizeRoutingLedgerOnStop is the additive routing-ledger Stop finalizer
+// (SPEC-HARNESS-EVOLVE-001, plan §A.4). It inherits BOTH harness-observe family
+// gates in their existing order/asymmetry — gate 0 isHookOptInEnabled
+// (fail-CLOSED, default OFF) then gate 1 isHarnessLearningEnabled (fail-open,
+// default true) — and then runs the self-gated, fail-open routing finalize
+// (REQ-HEV-012/015/016). Re-checking the gates here keeps this helper
+// independently testable (TestHarnessObserveStop_RoutingLedgerGated) and is two
+// cheap config reads, well within the 5s hook budget. Errors are written to
+// errSink and swallowed — the finalizer NEVER blocks session end.
+func finalizeRoutingLedgerOnStop(root, sessionID string, errSink io.Writer) {
+	if !isHookOptInEnabled(root) { // gate 0 (HOI, fail-CLOSED, default OFF)
+		return
+	}
+	if !isHarnessLearningEnabled(root) { // gate 1 (learning, fail-open, default true)
+		return
+	}
+	_ = routing.NewStore(filepath.Join(root, ".moai", "state")).FinalizeOnStop(sessionID, errSink)
 }
 
 // assistantMessageFields computes
@@ -1147,6 +1187,35 @@ func runHarnessClassify(cmd *cobra.Command, _ []string) error {
 // @MX:REASON: [AUTO] fan_in >= 2 growing to 3: runHarnessClassify,
 // runHarnessObserveStop, hook_harness_classify(_chain)_test.go — the canonical
 // classifier entry the learning loop depends on.
+// readPromotionHighWater reads tier-promotions.jsonl and returns a map of
+// PatternKey → latest ToTier (the per-pattern high-water mark). The LAST entry
+// for each key wins, so historical duplicates are tolerated and the map reflects
+// the latest recorded state (SPEC-CLIFIX-CRITICAL-001 REQ-CRIT-001-008).
+// Unparseable lines are silently skipped (tolerant of legacy entries).
+func readPromotionHighWater(path string) map[string]string {
+	highWater := make(map[string]string)
+	f, err := os.Open(path)
+	if err != nil {
+		return highWater // absent file → empty map → all promotions are new
+	}
+	defer func() { _ = f.Close() }()
+	scanner := bufio.NewScanner(f)
+	for scanner.Scan() {
+		line := strings.TrimSpace(scanner.Text())
+		if line == "" {
+			continue
+		}
+		var p harness.Promotion
+		if err := json.Unmarshal([]byte(line), &p); err != nil {
+			continue
+		}
+		if p.PatternKey != "" {
+			highWater[p.PatternKey] = p.ToTier
+		}
+	}
+	return highWater
+}
+
 func classifyHarnessPatterns(root string) (patternCount, promoCount int, err error) {
 	logPath := filepath.Join(root, ".moai", "harness", "usage-log.jsonl")
 	promoPath := filepath.Join(root, ".moai", "harness", "learning-history", "tier-promotions.jsonl")
@@ -1162,8 +1231,28 @@ func classifyHarnessPatterns(root string) (patternCount, promoCount int, err err
 	thresholds := readTierThresholds(root)
 	learner := harness.NewLearner(promoPath)
 
+	// SPEC-CLIFIX-CRITICAL-001 REQ-CRIT-001-008: build the per-pattern high-water
+	// mark from existing promotions so a promotion record is appended ONLY when
+	// the tier actually changes, not on every classify run.
+	highWater := readPromotionHighWater(promoPath)
+
 	for _, p := range patterns {
+		// REQ-HRR-003 / REQ-HRR-004 (D4: filter at classification time): skip
+		// degenerate lifecycle-noise keys (empty context hash AND empty/unknown
+		// subject) so they never become promotion candidates. This excludes the
+		// subagent_stop:unknown: / session_stop:: / user_prompt:: class that
+		// previously crowded promotion history with unlearnable patterns.
+		if !harness.IsEligibleForPromotion(p) {
+			continue
+		}
 		tier := harness.ClassifyTier(p, thresholds)
+
+		// High-water mark: skip if the tier is unchanged since the last recorded
+		// promotion for this pattern (REQ-CRIT-001-008).
+		if prev, ok := highWater[p.Key]; ok && prev == tier.String() {
+			continue
+		}
+
 		promo := harness.Promotion{
 			PatternKey:       p.Key,
 			FromTier:         "",
@@ -1178,4 +1267,34 @@ func classifyHarnessPatterns(root string) (patternCount, promoCount int, err err
 	}
 
 	return len(patterns), promoCount, nil
+}
+
+// generateProposals is the callable propose-generation core reused by the
+// Stop-path auto-chain (SPEC-HARNESS-RATCHET-REWIRE-001 REQ-HRR-004, D2
+// resolution: extract a callable seam, no subprocess). It mirrors the
+// read→map→write pipeline of `moai harness propose` but targets the
+// learning-loop proposals directory (.moai/harness/proposals/) where the
+// learning subsystem's artifacts live. Returns the number of proposal
+// directories written.
+//
+// EC-2: zero actionable candidates → no-op (no empty-proposal churn). The
+// caller is responsible for fail-open handling (propose errors must never
+// block session end — REQ-HRR-004 / AC-HRR-006).
+func generateProposals(root string) (int, error) {
+	inputPath := filepath.Join(root, ".moai", "harness", "learning-history", "tier-promotions.jsonl")
+	outputDir := filepath.Join(root, ".moai", "harness", "proposals")
+
+	promotions, _, err := proposalgen.ReadPromotions(inputPath)
+	if err != nil {
+		return 0, fmt.Errorf("propose chain: read promotions: %w", err)
+	}
+	candidates := proposalgen.MapPromotions(promotions)
+	if len(candidates) == 0 {
+		return 0, nil // EC-2: no actionable candidates → skip (no empty-proposal churn)
+	}
+	written, err := proposalgen.WriteProposals(outputDir, candidates)
+	if err != nil {
+		return 0, fmt.Errorf("propose chain: write proposals: %w", err)
+	}
+	return len(written), nil
 }

@@ -1,229 +1,110 @@
 # Proactive Quality Analysis
 
-Automated code quality issue detection and continuous improvement recommendations.
+How MoAI surfaces quality issues proactively — through gate commands,
+review, and iterative fix loops. MoAI does not ship a scanner library;
+proactive analysis is done by running the project's own toolchain via
+`/moai gate`, `/moai review`, and `/moai loop`, then triaging the output.
 
 ## Overview
 
-The Proactive Quality Scanner automatically detects code quality issues and provides improvement recommendations across multiple dimensions:
-- Performance optimization opportunities
-- Maintainability improvements
-- Security vulnerabilities
-- Code duplication
-- Technical debt analysis
-- Complexity reduction
+Proactive quality analysis covers:
 
-## Proactive Scanner Implementation
+- **Lint / type / format violations** — caught by `/moai gate` running the
+  project's toolchain.
+- **Security vulnerabilities** — caught by `/moai review` against the OWASP
+  checklist (see moai-ref-owasp-checklist).
+- **Coverage gaps** — caught by running the coverage command and comparing
+  against the threshold.
+- **Complexity and duplication** — surfaced during code review and by the
+  project's linter (golangci-lint, eslint, clippy, etc.).
+- **Technical debt** — identified via @MX:TODO / @MX:DEBT tags and triaged
+  during review.
 
-```python
-class ProactiveQualityScanner:
- """Proactive code quality issue detection and analysis"""
+## The Gate Commands
 
- def __init__(self, context7_client: Context7Client):
- self.context7_client = context7_client
- self.issue_detectors = self._initialize_detectors()
- self.pattern_analyzer = CodePatternAnalyzer()
+### `/moai gate` — pre-commit quality gate
 
- async def scan(self, codebase: str, focus_areas: List[str]) -> ProactiveResult:
- """Comprehensive proactive quality scanning"""
+Runs lint + format + type-check + test in parallel. Applies no fixes.
+Auto-detects the project language and runs the appropriate toolchain.
+Tools not installed are skipped gracefully.
 
- scan_results = {}
+Use it:
+- Before committing, to get a fast quality signal.
+- After pulling changes, to catch regressions early.
+- As the minimal/standard harness quality check.
 
- # Performance analysis
- if "performance" in focus_areas:
- scan_results["performance"] = await self._scan_performance_issues(codebase)
+### `/moai review` — code review
 
- # Maintainability analysis
- if "maintainability" in focus_areas:
- scan_results["maintainability"] = await self._scan_maintainability_issues(codebase)
+Reviews the diff with a security and @MX-tag compliance check. Deeper than
+`/moai gate` — it reasons about design, not just syntax. Use it before a
+PR or when a change is non-trivial.
 
- # Security vulnerabilities
- if "security" in focus_areas:
- scan_results["security"] = await self._scan_security_issues(codebase)
+### `/moai fix` and `/moai loop` — iterative fixing
 
- # Code duplication
- if "duplication" in focus_areas:
- scan_results["duplication"] = await self._scan_code_duplication(codebase)
+`/moai fix` auto-detects and fixes LSP/lint/type errors. `/moai loop` runs
+the fix iteratively until all issues are resolved or a max iteration count
+is reached. These are the proactive remediation tools.
 
- # Technical debt
- if "technical_debt" in focus_areas:
- scan_results["technical_debt"] = await self._analyze_technical_debt(codebase)
+## Triage Process
 
- # Code complexity
- if "complexity" in focus_areas:
- scan_results["complexity"] = await self._analyze_complexity(codebase)
+When a gate or review surfaces findings, triage them:
 
- # Generate improvement recommendations
- recommendations = await self._generate_improvement_recommendations(scan_results)
+1. **Classify** each finding: is it a real defect, a false positive, or a
+   style preference?
+2. **Severity-rank**: critical (security / data loss / crash), major
+   (functional bug), minor (style / readability), info.
+3. **Act**:
+   - Critical/major → fix now (via `/moai fix` or direct edit).
+   - Minor → fix if cheap; otherwise suppress per-line with a reason or
+     defer with an @MX:TODO.
+   - False positive → suppress per-line with a reason; do NOT disable the
+     rule globally.
+4. **Verify** the fix by re-running the gate and showing the output.
 
- return ProactiveResult(
- scan_results=scan_results,
- recommendations=recommendations,
- priority_issues=self._identify_priority_issues(scan_results),
- estimated_effort=self._calculate_improvement_effort(recommendations)
- )
+## Coverage Analysis
 
- async def _scan_performance_issues(self, codebase: str) -> PerformanceResult:
- """Scan for performance-related issues"""
+Coverage is a first-class quality signal. To assess it:
 
- issues = []
+1. Run the project's coverage command (e.g. `go test -cover ./...`,
+   `pytest --cov`, `jest --coverage`, `cargo tarpaulin`).
+2. Compare against the threshold (85%+ default; 90%+ for critical packages).
+3. For any uncovered code touched by the change:
+   - New code → add tests (cycle_type=tdd drives this).
+   - Existing untested code → add characterization tests capturing current
+     behavior before modifying.
 
- # Get language-specific performance patterns from Context7
- for language in self._detect_languages(codebase):
- try:
- # Resolve library ID
- library_id = await self.context7_client.resolve_library_id(language)
+A coverage gap is a defect to close, not an accepted state. Do not claim a
+coverage figure without running the command and observing the output (see
+verification-claim-integrity).
 
- # Get performance best practices
- perf_docs = await self.context7_client.get_library_docs(
- context7CompatibleLibraryID=library_id,
- topic="performance",
- tokens=3000
- )
+## Technical Debt Identification
 
- # Analyze code against performance patterns
- language_issues = await self._analyze_performance_patterns(
- codebase, language, perf_docs
- )
- issues.extend(language_issues)
+Technical debt is surfaced two ways:
 
- except Exception as e:
- logger.warning(f"Failed to get performance docs for {language}: {e}")
+- **@MX tags** — `@MX:TODO` marks incomplete work; `@MX:DEBT` with
+  `@MX:CEILING` / `@MX:UPGRADE` marks deliberate working simplifications.
+  These are the in-code debt markers. Scan for them with Grep.
+- **Review findings** — `/moai review` and sync-auditor flag debt during
+  assessment.
 
- # Common performance issues
- common_issues = await self._detect_common_performance_issues(codebase)
- issues.extend(common_issues)
+Debt identified is not debt that must be fixed immediately. Triage it:
+record it (via @MX:DEBT or a SPEC), assign a priority, and schedule it.
+Acting on inferred debt without running the domain's verification tool is
+an unobserved defect claim.
 
- return PerformanceResult(
- issues=issues,
- score=self._calculate_performance_score(issues),
- hotspots=self._identify_performance_hotspots(issues),
- optimizations=self._suggest_optimizations(issues)
- )
-```
+## What NOT to Do
 
-## Usage Examples
-
-```python
-# Initialize proactive scanner
-proactive_scanner = ProactiveQualityScanner(
- context7_client=context7_client,
- rule_engine=BestPracticesEngine()
-)
-
-# Scan for improvement opportunities
-improvements = await proactive_scanner.scan_codebase(
- path="src/",
- scan_types=["security", "performance", "maintainability", "testing"]
-)
-
-# Generate improvement recommendations
-recommendations = await proactive_scanner.generate_recommendations(
- issues=improvements,
- priority="high",
- auto_fix=True
-)
-```
-
-## Configuration
-
-```yaml
-proactive_analysis:
- enabled: true
- scan_frequency: "daily"
- focus_areas:
- - "performance"
- - "security"
- - "maintainability"
- - "technical_debt"
-
- auto_fix:
- enabled: true
- severity_threshold: "medium"
- confirmation_required: true
-```
-
-## Advanced Patterns
-
-### Machine Learning Quality Prediction
-
-```python
-class QualityPredictionEngine:
- """ML-powered quality issue prediction"""
-
- def __init__(self, model_path: str):
- self.model = self._load_model(model_path)
- self.feature_extractor = CodeFeatureExtractor()
-
- async def predict_quality_issues(self, codebase: str) -> PredictionResult:
- """Predict potential quality issues using ML"""
-
- # Extract code features
- features = await self.feature_extractor.extract_features(codebase)
-
- # Make predictions
- predictions = self.model.predict(features)
-
- # Analyze prediction confidence
- confidence_scores = self.model.predict_proba(features)
-
- # Group predictions by issue type
- issue_predictions = self._group_predictions_by_type(
- predictions, confidence_scores
- )
-
- return PredictionResult(
- predictions=issue_predictions,
- confidence_scores=confidence_scores,
- high_risk_areas=self._identify_high_risk_areas(issue_predictions),
- prevention_recommendations=self._generate_prevention_recommendations(
- issue_predictions
- )
- )
-```
-
-### Real-time Quality Monitoring
-
-```python
-class RealTimeQualityMonitor:
- """Real-time code quality monitoring and alerting"""
-
- def __init__(self, webhook_url: str, notification_config: Dict):
- self.webhook_url = webhook_url
- self.notification_config = notification_config
- self.quality_history = deque(maxlen=1000)
- self.alert_thresholds = notification_config.get("thresholds", {})
-
- async def monitor_quality_changes(self, codebase: str):
- """Continuously monitor quality changes"""
-
- while True:
- # Get current quality metrics
- current_metrics = await self._get_current_quality_metrics(codebase)
-
- # Compare with historical data
- if self.quality_history:
- previous_metrics = self.quality_history[-1]
- quality_change = self._calculate_quality_change(
- previous_metrics, current_metrics
- )
-
- # Check for quality degradation
- if quality_change < -self.alert_thresholds.get("degradation", 0.1):
- await self._send_quality_alert(
- alert_type="quality_degradation",
- metrics=current_metrics,
- change=quality_change
- )
-
- # Store metrics
- self.quality_history.append(current_metrics)
-
- # Wait for next check
- await asyncio.sleep(self.notification_config.get("check_interval", 300))
-```
+- Do NOT invent a scanner or analysis library. Use the project's own
+  toolchain via the gate commands.
+- Do NOT claim "coverage is X%" without running the coverage command and
+  observing the output in this run.
+- Do NOT infer a defect from a grep match alone — run the domain's
+  dedicated tool (linter, type-checker, test suite) to confirm.
+- Do NOT disable linter rules globally to silence warnings — suppress
+  per-line with a stated reason.
 
 ## Related
 
-- [TRUST 5 Validation](trust5-validation.md)
-- [Best Practices Engine](best-practices.md)
-- [Integration Patterns](integration-patterns.md)
+- [TRUST 5 Principles](trust5-validation.md) — the dimensions this analysis feeds
+- [Best Practices](best-practices.md) — documentation-grounded standards validation
+- [Integration Patterns](integration-patterns.md) — quality across SPEC phases

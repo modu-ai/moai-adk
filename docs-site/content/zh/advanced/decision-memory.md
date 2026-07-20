@@ -4,85 +4,104 @@ weight: 50
 draft: false
 ---
 
-# 决策记忆系统
-
-指导 MoAI 用户偏好学习和自适应推荐系统。
+智能体循环工程的起点是观察 — 循环每转一圈，观察就会累积，累积的观察成为学习的原料。决策记忆是把这一观察对象从代码扩展到 **用户的选择** 的层。
 
 {{< callout type="info" >}}
-**一行总结**: 决策记忆记住用户的选择，并在将来类似的情况下提供个性化推荐。
+**一句话总结**：决策记忆会记住用户的选择，并在今后类似的情境中提供个性化推荐。
 {{< /callout >}}
 
 ## 系统概述
 
-决策记忆(Decision Memory)是 MoAI-ADK 的**长期学习层**。在 AskUserQuestion 轮次中观察用户选择，并基于未来相同决策点的统计多数选择提供自适应推荐。
+决策记忆 (Decision Memory) 是 MoAI-ADK 的 **长期学习层**。它在 AskUserQuestion 轮次中观察用户的选择，并在今后同类决策点上基于统计多数的选择提供自适应推荐。
+
+关键在于方向。不是把系统想推的默认值包装成 `(推荐)`，而是让 **用户实际反复选择过的选项** 成为推荐。
 
 ### 核心原则
 
 | 原则 | 说明 |
 |------|------|
-| **观察基础** | 学习用户选择的统计多数（非政策默认值） |
-| **透明度** | 始终明示推荐依据（包括冷启动状态） |
-| **自主性** | 用户可随时拒绝推荐 |
+| **基于观察** | 学习用户选择的统计多数（而非策略默认值） |
+| **透明性** | 始终注明推荐依据（包括 cold-start 状态） |
+| **自主性** | 用户随时可以拒绝推荐 |
 | **自适应强度** | 根据熟练度自动调整推荐强度 |
 
-## 5 个组成部分
+## 4 个组成部分
 
-### 1. 3-Tier Memory Layer（内存层）
+### 1. 3-Tier Memory Layer（记忆层）
 
-决策记忆由 3 个层组成。
+决策记忆由 3 个层级组成。越往下留存越久。
 
 #### L0: Immediate（即时记忆）
-- **范围**: 当前会话内
-- **用途**: 参考用户刚选择的选项
-- **持久性**: 会话结束时消失
+- **范围**：当前会话内
+- **用途**：引用用户刚刚选择的选项
+- **持久性**：会话结束即消失
 
-#### L1: Session Span（会话范围记忆）
-- **范围**: 同一项目的最近 3 个会话
-- **用途**: 基于最近偏好的推荐
-- **持久性**: `.claude/projects/{hash}/memory/` 自动记忆
+#### L1: Session Span（会话跨度记忆）
+- **范围**：同一项目最近 3 个会话
+- **用途**：基于近期偏好的推荐
+- **持久性**：`.claude/projects/{hash}/memory/` 自动记忆
 
 #### L2: Long-term（长期记忆）
-- **范围**: 所有会话（无限制）
-- **用途**: 统计多数学习、长期趋势
-- **持久性**: MEMORY.md + topic 文件（用户管理）
+- **范围**：所有会话（无限制）
+- **用途**：统计多数学习、长期趋势
+- **持久性**：MEMORY.md + topic 文件（用户管理）
 
-### 2. Adaptive Recommendation Placement（自适应推荐配置）
+### 2. Adaptive Recommendation Placement（自适应推荐放置）
 
-推荐（第一个选项的`（推荐）`标签）基于**观察到的统计多数**。
+推荐放置由 5 项原则构成（SSOT：`.claude/rules/moai/core/askuser-protocol.md` § Recommendation Placement Principles）。
 
-#### 冷启动（初始状态）
-- **观察 < N**: 数据不足
-- **推荐配置**: 静态默认值（明确公开）
-- **显示方式**: `based on static default, N observations needed for personalization`
+#### 原则 1 — 发起时机（信息增益对齐）
 
-#### 热状态（学习中）
-- **观察 = N~M**: 部分学习
-- **推荐配置**: 观察到的多数 + 信心信号
-- **信心度**: 观察数 × 选择一致性
+编排器估算即将到来决策的不确定性 p 时，在 p ≈ 0.5（Fisher information I = p(1−p) 最大的决策边界）通过 AskUserQuestion 发起该问题。当 p 接近 0 或 1（几乎确定）时，自动用统计多数选项解决并省略提问。
 
-#### 成熟状态（稳定化）
-- **观察 > M**: 充分学习
-- **推荐配置**: 强多数信心（统计显著）
-- **信心度**: 最高（≥95% 信心度）
+#### 原则 2 — 问题排序（信息增益降序）
 
-#### 熟练度基础自适应强度
-- **专家（会话 > 50）**: 弱推荐强度（自主性优先，仅推断偏好公开）
-- **初学者（会话 < 10）**: 强推荐强度（`（推荐）`标签 + 理由明确）
-- **中级（10 ≤ 会话 ≤ 50）**: 中等强度（视情况调整）
+在一次 AskUserQuestion 调用中放置多个问题时，把信息增益最高的问题放在最前。让用户先完成核心决策，较低价值的问题稍后再遇到。
 
-### 3. PostToolUse Capture Hook（决策捕捉）
+#### 原则 3 — 推荐选项（统计多数的理性默认值）
 
-当 AskUserQuestion 响应到达时，PostToolUse 钩子自动捕捉决策。
+推荐（第一个选项的 `(推荐)` 标签）以 **观察到的统计多数** 为依据。不是系统想推的策略默认值，而是用户实际反复选择的选项成为推荐。根据观察量在三种状态间切换。
 
-#### 捕捉数据
+##### Cold-Start（初始状态）
+- **观察 < N**：缺乏足够的观察数据
+- **推荐放置**：静态默认值（显式公开）
+- **显示方式**：`based on static default, N observations needed for personalization`
+
+##### Warm State（学习中）
+- **观察 = N~M**：部分学习
+- **推荐放置**：观察到的多数 + 置信度信号
+- **置信度**：观察数 × 选择一致性
+
+##### Mature State（稳定化）
+- **观察 > M**：学习充分
+- **推荐放置**：强多数确信（统计显著）
+- **置信度**：最高（≥95% 置信度）
+
+#### 原则 4 — 明示前提条件
+
+推荐选项的说明必须明示该推荐成立的前提条件。为便于用户在前提被违反时立即拒绝，以 `"Recommended when <前提条件>"` 形式给出。未明示前提的推荐是设计缺陷。
+
+#### 原则 5 — 基于熟练度的自适应强度
+
+同一条推荐，面对不同的人强度也不同。对专家的强推荐会侵蚀自主性，对新手的弱推荐只会增加决策疲劳。
+
+- **专家（会话 > 50）**：弱推荐强度（自主性优先，仅公开 inferred preference）
+- **新手（会话 < 10）**：强推荐强度（`(推荐)` 标签 + 注明理由）
+- **中级（10 ≤ 会话 ≤ 50）**：中等强度（视情况调整）
+
+### 3. PostToolUse Capture Hook（决策捕获）
+
+AskUserQuestion 的回答到达时，PostToolUse Hook 会自动捕获决策。用户无需另行记录。
+
+#### 捕获的数据
 
 ```json
 {
   "decision_id": "moai-ask-001",
   "timestamp": "2026-07-01T10:00:00Z",
   "question": "请选择下一步",
-  "user_choice": "选项 A（推荐）",
-  "all_options": ["选项 A", "选项 B", "选项 C"],
+  "user_choice": "Option A (推荐)",
+  "all_options": ["Option A", "Option B", "Option C"],
   "context": {
     "spec_id": "SPEC-XXX-001",
     "phase": "run",
@@ -91,140 +110,110 @@ draft: false
 }
 ```
 
-#### 保存位置
+#### 存储位置
 
-- **会话期间**: `.moai/state/decisions/`（临时 JSON）
-- **会话结束**: `~/.claude/projects/{hash}/memory/decisions.jsonl`（自动记忆）
+preference 记忆把在编排器用户提问渠道中捕获的决策持久化到 `~/.claude/projects/{slug}/memory/user_decisions/`（SPEC-V3R6-ASKUSER-DECISION-MEMORY-001）。
+
+**3-tier 层级：**
+
+- **core**：最高优先级 hot 缓存。命中 core 时不再访问 recall/archival
+- **recall**（`recall.jsonl`）：最近会话事实
+- **archival**（`archival/`）：全量检索对象
 
 ### 4. Decay Policy（衰减策略）
 
-逐步降低旧决策的权重。
+过去的选择并不原样代表今天的偏好。transient 条目会受 **power-law 衰减 + 28 天 TTL**（REQ-ADM-011、REQ-ADM-012）作用，权重逐渐衰减，TTL 过后被逐出。core-tier 逐出采用从最低权重项开始降级的方式。
 
-#### 衰减函数
-
-```
-weight(t) = initial_weight × exp(-decay_rate × days_ago)
-```
-
-#### 默认值
-- **初始权重**: 1.0
-- **衰减率**: 0.1（每 7 天约 50% 衰减）
-- **保留期**: 90 天（之后自动存档）
-
-#### 示例
-
-```
-昨天选择: weight = 0.95
-7 天前选择: weight = 0.50
-30 天前选择: weight = 0.04
-90 天以上: 存档（排除推荐反映）
-```
-
-### 5. Recovery Controls（恢复控制）
-
-管理决策记忆的错误恢复和重置。
-
-#### 内存初始化
-
-用户可以重置学习的偏好:
+管理命令：
 
 ```bash
-/moai memory reset
+moai preference decay-scan   # 后台衰减遍历一次 (每天最多一次, timestamp gate)
+moai preference toggle       # 会话级个性化 on/off (非持久, 每会话重置)
 ```
 
-#### 偏好编辑
-
-修改特定决策类别的推荐:
-
-```bash
-/moai memory set <category> <preferred-option>
-```
-
-#### 偏好查询
-
-检查当前学习的偏好:
-
-```bash
-/moai memory list
-```
+{{< callout type="info" >}}
+**参考**：精确的衰减指数·半衰期常数等细节参数属于运行时实现细节（仅固定 power-law + 28 天 TTL 契约），本页只在契约层面叙述。
+{{< /callout >}}
 
 ## 决策类别
 
-内存追踪的主要决策类型:
+记忆跟踪的主要决策类型如下。
 
 | 类别 | 示例 |
-|------|------|
-| **Tier Selection** | Tier S/M/L 选择 |
+|----------|------|
+| **Tier Selection** | 选择 Tier S/M/L |
 | **Cycle Type** | DDD vs TDD 模式 |
 | **Worktree Strategy** | Main vs Branch vs Worktree |
-| **PR Routing** | 直接提交 vs 基于 PR |
+| **PR Routing** | Direct-to-main vs PR-based |
 | **Team Mode** | Solo vs Agent Teams |
 | **Model Selection** | 按任务选择模型 |
 | **Effort Level** | Effort 级别（low/medium/high/xhigh） |
 
-## 统计多数学习示例
+值得注意的是 Model Selection 与 Effort Level 也包含在内 — 决策记忆学到的偏好最终会体现在模型与推理深度的分配上，因此这个系统同时也是代币经济学的个性化层。
+
+## 统计多数学习的示例
 
 ### 场景 1: Tier Selection
 
-如果用户进行了 10 次 Tier 选择:
+假设用户做过 10 次 Tier 选择：
 
 ```
-Tier S: 3 次选择
-Tier M: 6 次选择  ← 统计多数（60%）
-Tier L: 1 次选择
+Tier S: 选择 3 次
+Tier M: 选择 6 次  ← 统计多数 (60%)
+Tier L: 选择 1 次
 
-学习结果: Tier M 显示为（推荐）
-信心度: 中等（6/10 = 60%, N=10）
-推荐显示: "Tier M（推荐）— 基于最近选择 60%"
+学习结果: Tier M 显示为 (推荐)
+置信度: 中上 (6/10 = 60%, N=10)
+推荐文案: "Tier M (推荐) — 基于最近选择 60%"
 ```
 
 ### 场景 2: Cycle Type
 
 ```
 DDD: 4 次
-TDD: 5 次选择  ← 统计多数
+TDD: 选择 5 次  ← 统计多数
 其他: 1 次
 
-学习结果: TDD 显示为（推荐）
-信心度: 中等（5/10 = 50%, N=10）
-推荐显示: "TDD（推荐）— 基于观察"
+学习结果: TDD 为 (推荐)
+置信度: 中 (5/10 = 50%, N=10)
+推荐文案: "TDD (推荐) — 基于观察"
 ```
 
-## 冷启动透明度
+## Cold-Start 透明性
 
-在观察不足时明确公开:
+观察不足时，不隐瞒这一事实，而是显式公开。
 
 ```
-选项 1: Tier M（推荐）— based on static default, 5 observations needed for personalization
+选项 1: Tier M (推荐) — based on static default, 5 observations needed for personalization
 选项 2: Tier L
 选项 3: Tier S
 ```
 
-用户清楚了解处于学习阶段。
+用户可以清楚地意识到系统仍处于学习状态。
 
-## 熟练度基础强度调整示例
+## 基于熟练度的强度调整示例
 
-### 初学用户（会话 < 10）
+### 新手用户（会话 < 10）
 ```
-Tier M（推荐）— 基于最近选择提示
-（强推荐强度）
+Tier M (推荐) — 基于最近选择提示
+(强推荐强度)
 ```
 
 ### 专家用户（会话 > 50）
 ```
 选项:
-- Tier M（最近选择 60%）
+- Tier M (最近选择 60%)
 - Tier L
 - Tier S
-（弱推荐强度，仅推断偏好公开）
+(弱推荐强度, 仅公开 inferred preference)
 ```
 
 ## 相关文档
 
-- [AskUserQuestion 协议](/advanced/agent-guide) - 推荐配置规则（HARD）
-- [工作流选择](/advanced/harness-v4-builder) - Tier 选择和决策
-- [内存系统](/getting-started/memory) - 用户偏好管理
+- [智能体指南](/zh/advanced/agent-guide) - AskUserQuestion 推荐放置规则 (HARD)
+- [Harness v4 Builder 深入指南](/zh/advanced/harness-v4-builder) - Tier 选择与决策
+- [记忆系统](/zh/getting-started/memory) - 用户偏好管理
 
 {{< callout type="info" >}}
-**提示**: 决策记忆自动运行。不需要明确配置。用户在做出决策时会自动学习。
+**提示**：决策记忆自动运行，无需显式配置 — 每当你做出决策，系统都会静静地学习。
 {{< /callout >}}

@@ -1,31 +1,31 @@
 ---
-title: Harness v4 Builder 深掘指南
+title: Harness v4 Builder 深入指南
 weight: 45
 draft: false
 ---
 
-详细指导 Harness v4 Builder 的 4 阶段工作流、Manifest 架构和 Runner 原语。
+如果说 [构建器智能体指南](/zh/advanced/builder-agents) 是 Harness v4 Builder 的概览，那么本文就是设计图 — 涵盖 4-phase 工作流各阶段的产出物、完整的 Manifest 模式，以及 Runner 原语的运行规则。
 
 {{< callout type="info" >}}
-**一行总结**: Harness v4 Builder 通过 Socratic 访谈识别所需专业性，并通过基于 manifest 的 Runner 操作动态团队。
+**一句话总结**：Harness v4 Builder 通过苏格拉底式访谈把握所需的专业能力，并用基于 manifest 的 Runner 运营动态团队。哪个成员用什么模型工作，不是由代码而是由 manifest 声明决定的。
 {{< /callout >}}
 
 ## 4-Phase Workflow 详解
 
 ### Phase 1: ANALYZE（分析）
 
-分析当前项目的技术栈和要求。
+分析当前项目的技术栈与需求。这一阶段的目标是用数据回答"这个项目缺少哪些专业能力"。
 
 #### 分析对象
 
-- **项目结构**: 目录层次、核心包识别
-- **使用语言**: Go、Python、TypeScript、Java 等检测
-- **框架**: REST API、gRPC、FastAPI、Django 等识别
-- **现有代理**: `.claude/agents/` 现有定义目录
-- **项目规模**: 基于文件数、代码行数估算
-- **依赖**: `go.mod`、`package.json`、`pyproject.toml` 分析
+- **项目结构**：目录层级、识别核心包
+- **所用语言**：检测 Go、Python、TypeScript、Java 等
+- **框架**：识别 REST API、gRPC、FastAPI、Django 等
+- **既有智能体**：`.claude/agents/` 中的既有定义目录
+- **项目规模**：基于文件数、代码行数估算
+- **依赖**：分析 `go.mod`、`package.json`、`pyproject.toml`
 
-#### 产出
+#### 产出物
 
 ```yaml
 analysis_result:
@@ -43,44 +43,45 @@ analysis_result:
     - Test coverage automation
 ```
 
-### Phase 2: PLAN（规划）
+### Phase 2: PLAN（计划）
 
-基于 ANALYZE 结果设计团队构成。
+基于 ANALYZE 的结果设计团队组成。从团队规模到按角色的模型分配，所有影响成本的决定都在此阶段做出。
 
-#### 规划决策
+#### 计划决策事项
 
-| 项目 | 决策方式 | 示例 |
-|------|--------|------|
-| **团队规模** | 项目复杂度 × 所需专业性 | 3~5 人 |
-| **角色档案** | Anthropic role_profiles（researcher/architect/implementer/tester/designer/reviewer） | architect、implementer、tester |
-| **Worktree 隔离** | 并行团队成员冲突可能性 | L1_optional（可选隔离） |
-| **模型选择** | 按角色推理复杂度 | architect: inherit、tester: haiku |
-| **技能预加载** | 角色专业性所需技能 | moai-foundation-core、moai-domain-backend |
+| 项目 | 决定方式 | 示例 |
+|------|---------|------|
+| **Specialist 数量** | 项目复杂度 × 所需专业能力（HARD 上限 3~7） | 3 个 specialist |
+| **执行原语（primitive）** | 各 specialist 的执行形态 | sub-agent、adversarial-fan-out |
+| **隔离（isolation）** | 并行 specialist 冲突可能性 | none \| worktree |
+| **模型·effort 分配** | 各 specialist 的推理复杂度（目的驱动） | content-author: opus/high, translator: sonnet/medium |
+| **companion 技能** | specialist 专业能力所需技能 | hns-oss-docs-i18n-rules |
 
-#### 规划验证
+按 specialist 选择模型·effort 是代币经济学的核心 — 把需要深度推理的写作交给高阶模型·high effort，把重复性的派生工作交给便宜的模型·medium effort。用户审批门禁在 PLAN→GENERATE 边界通过 `AskUserQuestion` 进行。
 
-生成前向用户确认:
+#### 计划确认
+
+生成前会向用户确认。没有经过审批门禁，文件绝不会被创建。
 
 ```
-计划的团队构成:
-- 团队名: Backend Development Team
-- 3 名团队成员:
-  ① architect (model: inherit)
-  ② implementer (model: inherit)
-  ③ tester (model: haiku)
-- Worktree 隔离: L1_optional
-- Manifest: .moai/harness/manifest.json
+计划的 Harness 组成:
+- 名称: backend-team
+- specialist 3 个:
+  ① architect (primitive: sub-agent, model: opus, effort: high)
+  ② implementer (primitive: sub-agent, model: inherit, effort: high)
+  ③ tester (primitive: sub-agent, model: sonnet, effort: medium)
+- entry 命令: /harness:backend-team
 
-这个构成继续吗?
+以这个组成继续吗?
 ```
 
 ### Phase 3: GENERATE（生成）
 
-PLAN 批准后生成实际代理文件和 manifest。
+PLAN 获批后，生成实际的智能体文件与 manifest。
 
-#### 生成产出
+#### 生成产物
 
-**1. 代理定义文件**
+**1. 智能体定义文件**
 
 ```
 .claude/agents/harness/
@@ -89,7 +90,7 @@ PLAN 批准后生成实际代理文件和 manifest。
 └── tester.md
 ```
 
-每个文件通过 YAML 提示定义:
+每个文件以 YAML 提示词定义。
 
 ```yaml
 ---
@@ -99,8 +100,8 @@ tools: Read, Write, Edit, Grep, Glob, Bash
 model: inherit
 ---
 
-你是这个项目的 API 架构专家。
-[按角色详细指导]
+你是本项目的 API 架构专家。
+[按角色的详细指令]
 ```
 
 **2. Manifest 文件**
@@ -109,151 +110,100 @@ model: inherit
 .moai/harness/manifest.json
 ```
 
-包含 Phase 和 Teammate 定义的 JSON（架构见 § Manifest 架构）。
+包含 Phase 与 Teammate 定义的 JSON（模式见 § Manifest 模式）。
 
-#### 生成验证
+#### 生成校验
+
+生成后可以立即直接确认文件存在与定义正确性。
 
 ```bash
 ls .claude/agents/harness/
-# 确认 architect.md、implementer.md、tester.md
+# 确认 architect.md, implementer.md, tester.md
 
 ls .moai/harness/
 # 确认 manifest.json
 
 grep -c "\"name\": \"architect\"" .moai/harness/manifest.json
-# 验证 phase 定义是否准确
+# 确认 phase 定义是否正确
 ```
 
 ### Phase 4: ACTIVATE（激活）
 
-注册生成的工具并使其立即可用。
+注册生成的 Harness 并使其立即可用。
 
 #### 激活步骤
 
-1. **代理验证**: 各代理文件语法检查
-2. **Manifest 验证**: JSON 架构和字段验证
-3. **命令注册**: `/harness:backend-team` 命令激活
-4. **Runner 初始化**: Manifest 基础 Runner 启动准备
-5. **Worktree 生成**（可选）: L1 隔离激活条件设置
+1. **智能体校验**：检查各智能体文件的语法
+2. **Manifest 校验**：JSON 模式与字段校验
+3. **命令注册**：启用 `/harness:backend-team` entry 命令
+4. **Runner 初始化**：准备启动基于 Manifest 的 Runner
+5. **Worktree 创建**（可选）：设置 specialist 隔离的启用条件
 
 #### 激活确认
 
 ```bash
-/harness list
-# 显示 backend-team
+moai harness list
+# 显示 backend-team（名称 + 领域 + entry 命令）
 
-/harness:backend-team status
-# 确认 3 名团队成员、模型、状态
+moai harness doctor
+# 引用完整性冒烟门禁（specialist·skill·workflow 引用校验）
 ```
 
-## Manifest 架构
+## Manifest 模式
 
-### 顶级字段
+### 顶层字段
 
 | 字段 | 类型 | 必需 | 说明 |
 |------|------|------|------|
-| `spec_id` | string | 是 | `HARNESS-{DOMAIN}-{NUM}` 格式 |
-| `name` | string | 是 | 团队显示名称 |
-| `version` | string | 是 | 语义版本化 `X.Y.Z` |
-| `created_at` | string | 是 | ISO 8601 时间戳 |
-| `worktree_isolation` | enum | 是 | `L1_optional` \| `none` |
-| `phases` | array | 是 | Phase 对象数组 |
+| `name` | string | 是 | Harness 名称（用于 entry 命令） |
+| `domain` | string | 是 | Harness 领域说明 |
+| `patterns` | array | 是 | 执行模式（`Pipeline`、`Fan-out/Fan-in`、`Producer-Reviewer` 等） |
+| `specialists` | array | 是 | Specialist 对象数组（3~7 个 HARD 上限） |
+| `sprint_contract` | object | 是 | 质量维度·阈值·must_pass 门禁 |
+| `companion_skills` | array | — | Harness 专用 companion 技能列表 |
+| `entry_command` | string | 是 | `/harness:<name>` entry 命令 |
+| `runner_workflow` | string | 是 | Runner 工作流脚本文件 |
+| `schedule` | object | — | （可选）重复执行调度 — `mode: discovery-only` 等 |
 
-### Phase 对象
-
-```json
-{
-  "name": "run",
-  "description": "实现阶段",
-  "teammates": [...]
-}
-```
-
-| 字段 | 类型 | 说明 |
-|------|------|------|
-| `name` | string | `plan` \| `run` \| `sync` |
-| `description` | string | Phase 目标说明 |
-| `teammates` | array | Teammate 对象数组 |
-
-### Teammate 对象
+### Specialist 对象
 
 ```json
 {
-  "name": "api-developer",
-  "role": "REST API 端点开发",
-  "model": "inherit",
-  "mode": "acceptEdits",
-  "skills": ["moai-foundation-core"],
-  "isolation": "worktree_optional"
+  "role": "content-author",
+  "description": "canonical-locale 原文写作",
+  "agent_file": ".claude/agents/harness/hns-oss-docs-content-author-specialist.md",
+  "primitive": "sub-agent",
+  "isolation": "none",
+  "effort": "high",
+  "model": "opus"
 }
 ```
 
-| 字段 | 默认值 | 说明 |
-|------|--------|------|
-| `name` | 必需 | 团队成员 ID（使用连字符，无空格） |
-| `role` | 必需 | 角色说明（自由文本） |
-| `model` | `inherit` | `inherit`、`haiku`、`sonnet`、`opus` |
-| `mode` | `acceptEdits` | 权限模式（`acceptEdits`、`default`、`bypassPermissions`） |
-| `skills` | `[]` | 预加载技能数组（例: `["moai-foundation-core"]`） |
-| `isolation` | 无 | `worktree_optional`（worktree 隔离条件激活） |
+| 字段 | 说明 |
+|------|------|
+| `role` | specialist 角色（连字符/英文） |
+| `description` | 角色说明（自由文本） |
+| `agent_file` | specialist 智能体文件路径（`.claude/agents/harness/`） |
+| `primitive` | 执行原语（`sub-agent`、`adversarial-fan-out` 等） |
+| `isolation` | 隔离级别（`none`、`worktree`） |
+| `effort` | 推理强度（`low`、`medium`、`high`、`xhigh`）— 目的驱动 |
+| `model` | 模型档位（`opus`、`sonnet`、`haiku`、`inherit`）— 目的驱动 |
 
-### 完整示例
+### Sprint Contract
 
 ```json
 {
-  "spec_id": "HARNESS-BACKEND-001",
-  "name": "Backend Development Team",
-  "version": "1.0.0",
-  "created_at": "2026-07-01T10:00:00Z",
-  "worktree_isolation": "L1_optional",
-  
-  "phases": [
-    {
-      "name": "plan",
-      "description": "架构设计和 SPEC 编写",
-      "teammates": [
-        {
-          "name": "architect",
-          "role": "API 架构专家",
-          "model": "inherit",
-          "mode": "acceptEdits",
-          "skills": ["moai-foundation-core"]
-        }
-      ]
-    },
-    {
-      "name": "run",
-      "description": "实际实现",
-      "teammates": [
-        {
-          "name": "db-engineer",
-          "role": "DB 设计和迁移",
-          "model": "inherit",
-          "mode": "acceptEdits",
-          "isolation": "worktree_optional"
-        },
-        {
-          "name": "api-developer",
-          "role": "REST API 端点实现",
-          "model": "inherit",
-          "mode": "acceptEdits",
-          "isolation": "worktree_optional"
-        },
-        {
-          "name": "test-engineer",
-          "role": "单元测试和集成测试",
-          "model": "haiku",
-          "mode": "acceptEdits"
-        }
-      ]
-    }
-  ]
+  "dimensions": ["locale-parity", "build-clean", "style-compliance", "content-fidelity"],
+  "thresholds": { "locale-parity": 1.0, "build-clean": 1.0, "style-compliance": 0.95 },
+  "must_pass": ["locale-parity", "build-clean"]
 }
 ```
+
+`dimensions` 是评分维度，`thresholds` 是各维度的通过阈值，`must_pass` 定义必须通过的门禁。
 
 ## Runner 原语
 
-基于 Manifest 的 Runner 执行生成的团队。
+基于 Manifest 的 Runner 负责执行生成的团队。
 
 ### Runner 生命周期
 
@@ -261,71 +211,72 @@ grep -c "\"name\": \"architect\"" .moai/harness/manifest.json
 Team Spawn
   ↓
 [Phase 1: plan]
-  → Teammate(architect) 生成和委托
+  → 生成并委派 Teammate(architect)
   → 收集结果
   ↓
 [Phase 2: run]
-  → Teammate(db-engineer) 并行生成
-  → Teammate(api-developer) 并行生成
-  → Teammate(test-engineer) 顺序生成
-  → 收集和集成结果
+  → 并行生成 Teammate(db-engineer)
+  → 并行生成 Teammate(api-developer)
+  → 顺序生成 Teammate(test-engineer)
+  → 收集并整合结果
   ↓
 [Phase 3: sync]
-  → 运行基础 manager-docs
+  → 执行默认 manager-docs
   ↓
 Team Teardown
 ```
 
 ### Runner 配置
 
-Runner 的行为由 manifest 的字段控制:
+Runner 的行为由 manifest 的字段控制。
 
-| 配置 | 意义 |
+| 配置 | 含义 |
 |------|------|
-| `worktree_isolation: "L1_optional"` | 冲突检测时自动应用隔离 |
-| `worktree_isolation: "none"` | 禁用隔离 |
+| `isolation: "worktree"` | 对 specialist 应用 worktree 隔离 |
+| `isolation: "none"` | 禁用隔离 |
 | `model: "inherit"` | 继承父会话模型 |
-| `model: "haiku"` | 强制 Haiku 模型（成本优化） |
-| `skills: ["..."]` | 预加载技能 |
+| `model: "sonnet"` | 派生/重复工作的低成本档位 |
+| `effort: "high"` \| `"medium"` | 各 specialist 的推理强度（目的驱动） |
+| `companion_skills: ["..."]` | Harness 专用 companion 技能 |
 
 ## Worktree 隔离规则
 
-### L1_optional 行为
+### L1_optional 的运行
 
 ```
-Runner 生成时:
-├── 团队成员 1: 主项目根
-├── 团队成员 2: 主项目根
-└── 冲突检测时
-    ├── 团队成员 2 → 切换到 L1 worktree
-    └── 团队成员 1 保持主（或也切换）
+Runner 创建时:
+├── 成员 1: 主项目根目录
+├── 成员 2: 主项目根目录
+└── 检测到冲突时
+    ├── 成员 2 → 切换到 L1 worktree
+    └── 成员 1 保持在主目录 (或成员 1 也切换)
 
 结果:
-└── 文件冲突避免 ✓
+└── 规避文件冲突 ✓
 ```
 
 ### 隔离条件
 
-满足以下任一条件时激活隔离:
+以下任一为真时启用隔离。
 
-1. **同一文件并行编辑**: 两个团队成员同时修改同一文件
-2. **递归目录写入**: 团队成员在同一目录创建多个文件
-3. **依赖冲突**: 团队成员 A 的输出是团队成员 B 的输入（顺序重要）
+1. **同一文件并行编辑**：两名成员同时修改同一文件
+2. **递归目录写入**：多名成员在同一目录生成多个文件
+3. **依赖竞争**：成员 A 的输出是成员 B 的输入（顺序重要）
 
-### 非隔离（none）选择时
+### 选择不隔离 (none) 时
 
 ```
-所有团队成员在主项目中工作
-优点: 最小内存、快速并行
-缺点: 冲突可能性
+所有成员在主项目中工作
+优点: 内存最小、并行更快
+缺点: 存在冲突可能
 ```
 
 ## 相关文档
 
-- [Harness v4 Builder 使用指南](/workflow-commands/moai-harness) - 命令参考
-- [代理指南](/advanced/agent-guide) - 代理定义格式
-- [基于 SPEC 的开发](/workflow-commands/moai-plan) - Harness 和 SPEC 集成
+- [Harness v4 Builder 使用指南](/zh/workflow-commands/moai-harness) - 命令参考
+- [智能体指南](/zh/advanced/agent-guide) - 智能体定义格式
+- [基于 SPEC 的开发](/zh/workflow-commands/moai-plan) - Harness 与 SPEC 集成
 
 {{< callout type="info" >}}
-**提示**: Manifest 生成后可以随时通过 `/harness:team-name edit` 进行修改。添加团队成员、更改技能、调整隔离策略都可以。
+**提示**：Manifest 生成后可随时用 `moai harness edit <name>` 确认编辑路径并修改。添加 specialist、更换技能、调整隔离策略均可。
 {{< /callout >}}

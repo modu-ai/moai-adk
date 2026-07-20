@@ -1,0 +1,309 @@
+/* MoAI Docs — 모두의클로드 Design System token port
+ * Source: Claude Design handoff bundle (design-system tokens/*.css, verbatim port)
+ * Load order: AFTER moai-brand.css (FROZEN) — this file only DEFINES new tokens;
+ * component overrides live in moai-docs-theme.css (loaded last).
+ *
+ * Adaptations from the handoff (documented, intentional):
+ *  - fonts.css: Press Start 2P import + NeoDunggeunmo @font-face SKIPPED
+ *    (decorative pixel face, not used on docs pages).
+ *  - fonts.css: Pretendard/GoormSansCode @font-face SKIPPED — both already load
+ *    via head/custom.html CDN stylesheets; --font-sans/--font-mono stacks below
+ *    reference the CDN-registered family names ("Pretendard Variable",
+ *    "Goorm Sans Code").
+ *  - Legacy KR serif title @font-face set RETIRED (SPEC-DESIGN-DOCSV2-001 M2)
+ *    — v2 정통 정합: Pretendard is the sole Korean title + body face. The 5
+ *    Naver woff2 @font-face blocks and the Naver CDN preconnect are removed.
+ */
+
+/* ============================================================
+   colors.css — Clay / Cream / Ink scales + semantic aliases
+   Sampled from the brand logo: terracotta clay on warm cream.
+   ============================================================ */
+:root {
+  /* ---- clay scale → v2 repoint (SPEC-DESIGN-DOCSV2-001 M1).
+     clay-500/600/700 keep green identity (brand accent); all other clay
+     shades collapse to neutrals — v2 uses a single accent green, not a
+     light-green ramp. Points one-directionally at brand.css SSOT. ---- */
+  --clay-50:  var(--gradient-signature-soft);
+  --clay-100: var(--neutral-100);
+  --clay-200: var(--neutral-200);
+  --clay-300: var(--neutral-300);
+  --clay-400: var(--neutral-400);
+  --clay-500: var(--color-primary);
+  --clay-600: var(--color-primary-hover);
+  --clay-700: var(--color-primary-active);
+  --clay-800: var(--neutral-800);
+  --clay-900: var(--neutral-900);
+
+  /* ---- cream scale → v2 neutral surfaces (was warm cream) ---- */
+  --cream-50:  var(--neutral-50);
+  --cream-100: var(--neutral-100);
+  --cream-200: var(--color-bg);
+  --cream-300: var(--neutral-200);
+  --cream-400: var(--neutral-300);
+  --cream-500: var(--neutral-400);
+
+  /* ---- ink scale → v2 neutral ink (was warm-black) ---- */
+  --ink-900: var(--color-ink);
+  --ink-800: var(--neutral-800);
+  --ink-700: var(--neutral-700);
+  --ink-600: var(--neutral-600);
+  --ink-500: var(--neutral-500);
+  --ink-400: var(--neutral-400);
+
+  /* ---- Pure / utility ---- */
+  --white: #FFFFFF;
+  --black: var(--color-ink);
+  --charcoal: var(--neutral-900);
+
+  /* ---- Semantic (status) — unchanged (not warm tokens) ---- */
+  --success: #5B8C5A;
+  --success-soft: #E6EFE4;
+  --warning: #C98A2E;
+  --warning-soft: #F7EBD4;
+  --danger:  #C0503E;
+  --danger-soft:  #F6E0DA;
+  --info:    #4A6FA5;
+  --info-soft:    #E1E8F2;
+
+  /* ---- Semantic aliases → v2 (theme.css :root overrides these, but kept
+     in sync so the file is self-consistent if loaded alone) ---- */
+  --bg-page:       var(--color-bg);
+  --bg-elevated:   var(--color-surface);
+  --surface-card:  var(--color-surface);
+  --surface-sunken:var(--neutral-200);
+  --surface-inset: var(--neutral-100);
+  --surface-dark:  var(--neutral-900);
+  --text-on-dark:  var(--color-bg);
+
+  --text-strong:   var(--color-ink);
+  --text-body:     var(--fg-2);
+  --text-muted:    var(--fg-3);
+  --text-subtle:   var(--fg-3);
+  --text-on-clay:  var(--color-bg);
+  --text-link:     var(--color-primary);
+
+  --accent:        var(--color-primary);
+  --accent-hover:  var(--color-primary-hover);
+  --accent-press:  var(--color-primary-active);
+  --accent-soft:   var(--gradient-signature-soft);
+
+  --border-subtle: var(--border-2);
+  --border-default:var(--border-1);
+  --border-strong: var(--neutral-900);
+  --border-clay:   var(--color-primary);
+
+  --focus-ring:    var(--color-primary);
+}
+
+/* ============================================================
+   typography.css — Pretendard titles/body + Goorm code (M2: legacy KR serif retired)
+   ============================================================ */
+:root {
+  /* ---- Families (stacks adapted to CDN-registered names) ---- */
+  --font-sans: "Pretendard Variable", "Pretendard", "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
+  --font-body: var(--font-sans);
+  /* v2 has no separate title face — Pretendard is the sole Korean title + body
+     face (SPEC-DESIGN-DOCSV2-001 M2). --font-title kept as an alias for
+     callers that still reference it; repointed off the retired KR serif. */
+  --font-title: var(--font-sans);
+  --font-display: var(--font-sans);
+  /* Legacy accent aliases — pixel face retired; resolve to Pretendard */
+  --font-pixel: var(--font-body);
+  --font-pixel-sm: var(--font-body);
+  --font-code: "Goorm Sans Code", "GoormSansCode", "D2Coding", ui-monospace, SFMono-Regular, Menlo, monospace;
+
+  /* ---- Type scale (rem, 16px base) ---- */
+  --text-3xs: 0.6875rem; /* 11 */
+  --text-2xs: 0.75rem;   /* 12 */
+  --text-xs:  0.8125rem; /* 13 */
+  --text-sm:  0.875rem;  /* 14 */
+  --text-md:  1rem;      /* 16 — body default */
+  --text-lg:  1.125rem;  /* 18 */
+  --text-xl:  1.375rem;  /* 22 */
+  --text-2xl: 1.75rem;   /* 28 */
+  --text-3xl: 2.25rem;   /* 36 */
+  --text-4xl: 3rem;      /* 48 */
+  --text-5xl: 4rem;      /* 64 */
+  --text-6xl: 5.5rem;    /* 88 */
+
+  /* ---- Weights (Pretendard Variable ships 100-900 via CDN) ---- */
+  --fw-regular: 400;
+  --fw-medium:  500;
+  --fw-semibold:600;
+  --fw-bold:    700;
+  --fw-extra:   800;
+  --fw-black:   900;
+
+  /* ---- Line heights ---- */
+  --lh-tight:   1.1;
+  --lh-snug:    1.25;
+  --lh-normal:  1.5;
+  --lh-relaxed: 1.7;
+
+  /* ---- Letter spacing ---- */
+  --ls-tight:  -0.02em;
+  --ls-snug:   -0.01em;
+  --ls-normal: 0;
+  --ls-wide:   0.04em;
+  --ls-pixel:  0.02em;
+}
+
+/* ============================================================
+   spacing.css — 4px base grid + container widths
+   ============================================================ */
+:root {
+  --space-0: 0;
+  --space-1: 0.25rem;  /* 4 */
+  --space-2: 0.5rem;   /* 8 */
+  --space-3: 0.75rem;  /* 12 */
+  --space-4: 1rem;     /* 16 */
+  --space-5: 1.25rem;  /* 20 */
+  --space-6: 1.5rem;   /* 24 */
+  --space-7: 1.75rem;  /* 28 */
+  --space-8: 2rem;     /* 32 */
+  --space-9: 2.5rem;   /* 40 — prototype var(--space-9,40px) compat */
+  --space-10: 2.5rem;  /* 40 */
+  --space-12: 3rem;    /* 48 */
+  --space-16: 4rem;    /* 64 */
+  --space-20: 5rem;    /* 80 */
+  --space-24: 6rem;    /* 96 */
+  --space-32: 8rem;    /* 128 */
+
+  /* Container widths */
+  --container-sm: 640px;
+  --container-md: 820px;
+  --container-lg: 1080px;
+  --container-xl: 1280px;
+  --gutter: clamp(1.25rem, 4vw, 4rem);
+}
+
+/* ============================================================
+   effects.css — radius, border, soft + pop shadows, motion curves
+   ============================================================ */
+:root {
+  /* ---- Radii ---- */
+  --radius-none: 0;
+  --radius-xs: 4px;
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --radius-xl: 20px;
+  --radius-2xl: 28px;
+  --radius-pill: 999px;
+
+  /* ---- Borders ---- */
+  --border-w: 1.5px;
+  --border-w-bold: 2px;
+  --border-w-pixel: 3px;   /* chunky 8-bit outline */
+
+  /* ---- v2 achromatic shadows (elevation) — SPEC-DESIGN-DOCSV2-001 M6.
+         warm brown-tinted 잔재 제거 → v2 ink rgba(6,6,6) 정합 (brand.css SSOT와 일치).
+         이 파일이 brand.css 뒤에 로드되므로 여기 값이 최종 승자 → v2 값으로 통일. ---- */
+  --shadow-xs: 0 1px 2px rgba(6, 6, 6, 0.04);
+  --shadow-sm: 0 2px 4px rgba(6, 6, 6, 0.06);
+  --shadow-md: 0 4px 12px rgba(6, 6, 6, 0.08);
+  --shadow-lg: 0 8px 24px rgba(6, 6, 6, 0.10);
+
+  /* ---- Pop / pixel offset (hard-edged, the logo's signature look) ---- */
+  --shadow-pop:    3px 3px 0 var(--ink-900);
+  --shadow-pop-clay: 3px 3px 0 var(--clay-600);
+  --shadow-pop-lg: 5px 5px 0 var(--ink-900);
+
+  /* ---- Focus ---- */
+  --ring: 0 0 0 3px rgba(208, 112, 80, 0.32);
+
+  /* ---- Motion ---- */
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+  --ease-pop: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --dur-fast: 120ms;
+  --dur-base: 200ms;
+  --dur-slow: 360ms;
+}
+
+/* ============================================================
+   motion.css — POP / RISE / PRESS signatures + reduced-motion
+   ============================================================ */
+:root {
+  --motion-tap: var(--dur-fast);     /* 120ms presses, toggles */
+  --motion-ui: var(--dur-base);      /* 200ms hovers, small UI */
+  --motion-enter: var(--dur-slow);   /* 360ms content entrances */
+  --motion-slow: 560ms;              /* big hero / section reveals */
+  --motion-stagger: 70ms;            /* stagger step for lists */
+  --press-travel: 3px;               /* matches --shadow-pop offset */
+}
+
+@keyframes pop-in {
+  0%   { opacity: 0; transform: scale(0.86); }
+  60%  { opacity: 1; transform: scale(1.04); }
+  100% { opacity: 1; transform: scale(1); }
+}
+@keyframes rise-in {
+  0%   { opacity: 0; transform: translateY(16px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+@keyframes fade-in {
+  from { opacity: 0; } to { opacity: 1; }
+}
+@keyframes marker-wipe {
+  from { transform: scaleX(0); }
+  to   { transform: scaleX(1); }
+}
+@keyframes blink {
+  0%, 49% { opacity: 1; } 50%, 100% { opacity: 0; }
+}
+@keyframes bob {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(-6px); }
+}
+@keyframes wiggle {
+  0%, 100% { transform: rotate(0deg); }
+  25% { transform: rotate(-3deg); } 75% { transform: rotate(3deg); }
+}
+@keyframes shimmer {
+  from { background-position: -150% 0; }
+  to   { background-position: 250% 0; }
+}
+
+.anim-pop   { animation: pop-in  var(--motion-enter) var(--ease-pop) both; }
+.anim-rise  { animation: rise-in var(--motion-enter) var(--ease-out) both; }
+.anim-fade  { animation: fade-in var(--motion-ui)    var(--ease-out) both; }
+.anim-bob   { animation: bob 2.6s var(--ease-in-out) infinite; }
+.anim-blink { animation: blink 1s steps(1, end) infinite; }
+
+.anim-stagger > * { animation: rise-in var(--motion-enter) var(--ease-out) both; }
+.anim-stagger > *:nth-child(1) { animation-delay: calc(var(--motion-stagger) * 0); }
+.anim-stagger > *:nth-child(2) { animation-delay: calc(var(--motion-stagger) * 1); }
+.anim-stagger > *:nth-child(3) { animation-delay: calc(var(--motion-stagger) * 2); }
+.anim-stagger > *:nth-child(4) { animation-delay: calc(var(--motion-stagger) * 3); }
+.anim-stagger > *:nth-child(5) { animation-delay: calc(var(--motion-stagger) * 4); }
+.anim-stagger > *:nth-child(6) { animation-delay: calc(var(--motion-stagger) * 5); }
+
+/* PRESS — the signature pixel tactile push. Pair with box-shadow: var(--shadow-pop). */
+.press-pixel {
+  transition: transform var(--motion-tap) var(--ease-out),
+              box-shadow var(--motion-tap) var(--ease-out);
+}
+.press-pixel:active {
+  transform: translate(var(--press-travel), var(--press-travel));
+  box-shadow: 0 0 0 transparent;
+}
+
+/* LIFT — soft hover for cards/links */
+.hover-lift {
+  transition: transform var(--motion-ui) var(--ease-out),
+              box-shadow var(--motion-ui) var(--ease-out);
+}
+.hover-lift:hover { transform: translateY(-3px); box-shadow: var(--shadow-lg); }
+
+/* Reduced motion: collapse to instant, keep end-state visible */
+@media (prefers-reduced-motion: reduce) {
+  .anim-pop, .anim-rise, .anim-fade, .anim-bob, .anim-blink,
+  .anim-stagger > * {
+    animation: none !important;
+    opacity: 1 !important;
+    transform: none !important;
+  }
+  .press-pixel, .hover-lift { transition: none !important; }
+}

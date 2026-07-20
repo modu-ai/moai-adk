@@ -4,27 +4,33 @@
 "core-concepts":
   title: "Core Concepts"
   weight: 20
-"claude-code":
-  title: "Claude Code Guide"
-  weight: 25
 "workflow-commands":
   title: "Workflow Commands"
   weight: 30
 "utility-commands":
   title: "Utility Commands"
   weight: 40
-"quality-commands":
-  title: "Quality Commands"
-  weight: 50
-design:
-  title: "Design System"
+"cli-reference":
+  title: "CLI Reference"
+  weight: 45
+"claude-code":
+  title: "Claude Code Guide"
+  weight: 55
+"multi-llm":
+  title: "Multi-LLM Mode"
   weight: 60
-db:
-  title: "Database Schema Management"
+"cost-optimization":
+  title: "Cost Optimization"
   weight: 70
+guides:
+  title: "Guides"
+  weight: 85
 worktree:
   title: "Git Worktree"
   weight: 90
 advanced:
   title: "Advanced"
   weight: 100
+contributing:
+  title: "Contributing"
+  weight: 110

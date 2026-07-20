@@ -4,27 +4,33 @@
 "core-concepts":
   title: "コア概念"
   weight: 20
-"claude-code":
-  title: "Claude Code ガイド"
-  weight: 25
 "workflow-commands":
   title: "ワークフローコマンド"
   weight: 30
 "utility-commands":
   title: "ユーティリティコマンド"
   weight: 40
-"quality-commands":
-  title: "品質コマンド"
-  weight: 50
-design:
-  title: "デザインシステム"
+"cli-reference":
+  title: "CLIリファレンス"
+  weight: 45
+"claude-code":
+  title: "Claude Code ガイド"
+  weight: 55
+"multi-llm":
+  title: "Multi-LLM Mode"
   weight: 60
-db:
-  title: "データベーススキーマ管理"
+"cost-optimization":
+  title: "コスト最適化"
   weight: 70
+guides:
+  title: "ガイド"
+  weight: 85
 worktree:
   title: "Git Worktree"
   weight: 90
 advanced:
   title: "詳細"
   weight: 100
+contributing:
+  title: "Contributing"
+  weight: 110

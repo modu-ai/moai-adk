@@ -79,6 +79,22 @@ func Validate(m Manifest) error {
 		return fmt.Errorf("v4manifest: sprint_contract.thresholds must be non-nil")
 	}
 
+	// schedule: OPTIONAL — nil is valid (one-shot harness, pre-schedule
+	// baseline shape). When declared, all 3 sub-fields are validated; the
+	// mode literal is the machine-checkable discovery-only invariant marker
+	// (never defaulted, never inferred).
+	if m.Schedule != nil {
+		if strings.TrimSpace(m.Schedule.Interval) == "" {
+			return fmt.Errorf("v4manifest: schedule.interval is required (non-empty)")
+		}
+		if !validMechanisms[m.Schedule.Mechanism] {
+			return fmt.Errorf("v4manifest: schedule.mechanism %q is not loop|cron", m.Schedule.Mechanism)
+		}
+		if m.Schedule.Mode != ScheduleModeDiscoveryOnly {
+			return fmt.Errorf("v4manifest: schedule.mode %q violates the discovery-only invariant (must be the exact literal %q)", m.Schedule.Mode, ScheduleModeDiscoveryOnly)
+		}
+	}
+
 	return nil
 }
 

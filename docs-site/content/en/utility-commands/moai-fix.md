@@ -4,21 +4,21 @@ weight: 50
 draft: false
 ---
 
-One-shot auto-fix command. **Parallel scans** code errors then **fixes all at once**.
+The one-shot auto-fix command. It **scans your code in parallel** for errors, then **fixes them in one pass**.
 
 {{< callout type="info" >}}
-**One-line summary**: `/moai fix` is a "quick cleanup tool". It fixes lint errors and type errors accumulated in code **all at once**.
+**One-line summary**: `/moai fix` is a "quick cleanup tool." It **sweeps up** the accumulated lint errors and type errors in your code and fixes them at once.
 {{< /callout >}}
 
 {{< callout type="info" >}}
-**Slash Command**: Type `/moai:fix` in Claude Code to run this command directly. Type `/moai` alone to see the full list of available subcommands.
+**Slash command**: In Claude Code, type `/moai:fix` to run this command directly. Typing just `/moai` shows the list of all available subcommands.
 {{< /callout >}}
 
 ## Overview
 
-During development, import ordering breaks, types don't match, and lint warnings accumulate. Instead of finding and fixing each problem one by one, run `/moai fix` and AI will automatically find and fix issues.
+During development, imports get out of order, types stop matching, and lint warnings pile up. Instead of hunting these down one by one, run `/moai fix` and the AI finds and fixes the problems automatically.
 
-Unlike `/moai loop`, it runs **only once**, making it suitable when you want to quickly clean up the current state.
+Unlike `/moai loop`, it runs **exactly once**, making it the right fit when you want to clean up the current state quickly. In the loop family, `/moai fix` is the **one-shot (single-pass) preset** — running a loop over clear-cut errors that need no iteration wastes tokens, so picking the cheapest tool that matches the size of the job is the right tokenomics call.
 
 ## Usage
 
@@ -26,35 +26,33 @@ Unlike `/moai loop`, it runs **only once**, making it suitable when you want to 
 > /moai fix
 ```
 
-When executed without separate arguments, it scans the current project for errors and auto-fixes what's possible.
+Run it without arguments and it scans the current project for errors and auto-fixes what it can.
 
 ## Supported Flags
 
 | Flag | Description | Example |
-|------|-------------|---------|
-| `--dry` (or `--dry-run`) | Show results only without fixing | `/moai fix --dry` |
+|-------|------|------|
+| `--dry` (or `--dry-run`) | Show results without fixing | `/moai fix --dry` |
 | `--sequential` (or `--seq`) | Sequential scan instead of parallel | `/moai fix --sequential` |
-| `--level N` | Specify maximum fix level (default 3) | `/moai fix --level 2` |
+| `--level N` | Set the maximum fix level (default 3) | `/moai fix --level 2` |
 | `--errors` (or `--errors-only`) | Fix errors only, skip warnings | `/moai fix --errors` |
 | `--security` (or `--include-security`) | Include security issues | `/moai fix --security` |
 | `--no-fmt` (or `--no-format`) | Skip formatting fixes | `/moai fix --no-fmt` |
-| `--resume [ID]` (or `--resume-from`) | Resume from snapshot (latest for latest) | `/moai fix --resume` |
-| `--team` | Force Agent Teams mode | `/moai fix --team` |
-| `--solo` | Force sub-agent mode | `/moai fix --solo` |
+| `--resume [ID]` (or `--resume-from`) | Resume from a snapshot (latest if `latest`) | `/moai fix --resume` |
 
-### --dry Flag
+### The --dry Flag
 
-Preview what changes will be made without fixing:
+Lets you preview what changes would be made, without applying them:
 
 ```bash
 > /moai fix --dry
 ```
 
-With this option, no actual code modifications are made - only discovered issues and expected changes are displayed.
+With this option, no actual code is modified — only the discovered issues and expected changes are displayed.
 
-### --level Flag
+### The --level Flag
 
-Limit the fix level:
+Limits the levels to be fixed:
 
 ```bash
 # Fix Level 1-2 only (formatting, lint)
@@ -64,89 +62,89 @@ Limit the fix level:
 > /moai fix --level 1
 ```
 
-## Execution Process
+## Execution Flow
 
-`/moai fix` runs in 5 phases:
+`/moai fix` runs in 5 steps.
 
 ```mermaid
 flowchart TD
-    Start["Execute /moai fix"] --> Scan
+    Start["/moai fix run"] --> Scan
 
-    subgraph Scan["Phase 1: Parallel Scan"]
-        S1["LSP Scan<br/>Check type errors"]
-        S2["AST-grep Scan<br/>Check structural patterns"]
-        S3["Linter Scan<br/>Check code style"]
+    subgraph Scan["Step 1: parallel scan"]
+        S1["LSP scan<br/>type error check"]
+        S2["AST-grep scan<br/>structural pattern check"]
+        S3["Linter scan<br/>code style check"]
     end
 
-    Scan --> Collect["Phase 2: Collect Issues"]
-    Collect --> Classify["Phase 3: Classify Levels<br/>(Level 1~4)"]
-    Classify --> Fix["Phase 4: Auto/Approve Fix"]
-    Fix --> Verify["Phase 5: Verify"]
-    Verify --> Done["Complete"]
+    Scan --> Collect["Step 2: issue collection"]
+    Collect --> Classify["Step 3: level classification<br/>(Level 1~4)"]
+    Classify --> Fix["Step 4: auto/approved fixes"]
+    Fix --> Verify["Step 5: verification"]
+    Verify --> Done["Done"]
 ```
 
-### Phase 1: Parallel Scan
+### Step 1: Parallel Scan
 
-Three tools scan code **simultaneously**.
+Three tools scan the code **simultaneously**.
 
-| Scan Tool | Checks | Problems Found |
-|-----------|--------|----------------|
+| Scan tool | Checks | Problems found |
+|-----------|-----------|---------------|
 | **LSP** | Type system | Type mismatches, undefined variables, wrong argument counts |
 | **AST-grep** | Code structure | Unused code, dangerous patterns, inefficient structures |
-| **Linter** | Code style | Import ordering, indentation, naming rule violations |
+| **Linter** | Code style | Import ordering, indentation, naming-rule violations |
 
-### Phase 2: Issue Collection
+### Step 2: Issue Collection
 
-Merges scan results into a single list.
+The scan results are merged into a single list.
 
 ```
-Discovered Issues (example):
-  [Level 1] src/api/router.py:3 - Import ordering needed
-  [Level 1] src/models/user.py:15 - Unnecessary whitespace
-  [Level 2] src/utils/helper.py:8 - Unused variable "temp"
-  [Level 2] src/auth/service.py:22 - Unnecessary else statement
-  [Level 3] src/auth/service.py:45 - Missing error handling
-  [Level 4] src/db/connection.py:12 - SQL Injection possibility
+Issues found (example):
+  [Level 1] src/api/router.py:3 - imports need sorting
+  [Level 1] src/models/user.py:15 - unnecessary whitespace
+  [Level 2] src/utils/helper.py:8 - unused variable "temp"
+  [Level 2] src/auth/service.py:22 - unnecessary else clause
+  [Level 3] src/auth/service.py:45 - missing error handling
+  [Level 4] src/db/connection.py:12 - possible SQL injection
 ```
 
-### Phase 3: Level Classification
+### Step 3: Level Classification
 
-Collected issues are **classified into 4 levels by risk**. Whether auto-fix is applied depends on level.
+The collected issues are **classified into 4 levels by risk**. Whether an issue is auto-fixed depends on its level. The safe things are handled by the machine, the risky ones get human approval — the harness design principle of pairing autonomy with safety gates applies here too.
 
 ```mermaid
 flowchart TD
-    Issue[Discovered Issue] --> L1{Level 1?}
-    L1 -->|Yes| Auto1["Auto Fix<br/>No approval needed"]
+    Issue[Discovered issue] --> L1{Level 1?}
+    L1 -->|Yes| Auto1["Auto-fix<br/>no approval needed"]
     L1 -->|No| L2{Level 2?}
-    L2 -->|Yes| Auto2["Auto Fix<br/>Log only"]
+    L2 -->|Yes| Auto2["Auto-fix<br/>log only"]
     L2 -->|No| L3{Level 3?}
-    L3 -->|Yes| Approve3["User approve then<br/>fix"]
-    L3 -->|No| Approve4["User approval required<br/>Manual review recommended"]
+    L3 -->|Yes| Approve3["Fix after<br/>user approval"]
+    L3 -->|No| Approve4["User approval required<br/>manual review recommended"]
 ```
 
-## Issue Level Details
+## Issue Levels in Detail
 
 ### Level 1: Formatting Errors
 
-Formal issues that **don't affect code behavior**. AI fixes automatically.
+Cosmetic problems that **do not affect the code's behavior**. The AI fixes them automatically.
 
-| Item | Content |
-|------|---------|
+| Item | Details |
+|------|------|
 | **Risk** | Very low |
-| **Approval** | Not needed (auto fix) |
-| **Examples** | Import ordering, trailing whitespace removal, line break unification, indentation fixes |
-| **Fix Tools** | black, isort, prettier |
+| **Approval** | Not needed (auto-fix) |
+| **Examples** | Import sorting, trailing-whitespace removal, line-ending unification, indentation fixes |
+| **Fix tools** | black, isort, prettier |
 
-**Actual Fix Example:**
+**Actual fix example:**
 
 ```python
-# Before fix (Level 1 issue)
+# Before (Level 1 issue)
 import os
 import sys
 from pathlib import Path
 import json
 
-# After fix (auto fixed)
+# After (auto-fixed)
 import json
 import os
 import sys
@@ -155,27 +153,27 @@ from pathlib import Path
 
 ### Level 2: Lint Warnings
 
-**Minor** issues affecting code quality. AI fixes automatically and logs.
+**Minor** problems that affect code quality. The AI fixes them automatically and logs the change.
 
-| Item | Content |
-|------|---------|
+| Item | Details |
+|------|------|
 | **Risk** | Low |
-| **Approval** | Not needed (auto fix, log recorded) |
-| **Examples** | Unused variables, unnecessary else, duplicate code, naming rule violations |
-| **Fix Tools** | ruff, eslint, golangci-lint |
+| **Approval** | Not needed (auto-fix, logged) |
+| **Examples** | Unused variables, unnecessary else clauses, duplicated code, naming-rule violations |
+| **Fix tools** | ruff, eslint, golangci-lint |
 
-**Actual Fix Example:**
+**Actual fix example:**
 
 ```python
-# Before fix (Level 2 issue)
+# Before (Level 2 issue)
 def get_user(user_id):
     result = db.query(user_id)
     if result:
         return result
-    else:           # Unnecessary else
+    else:           # unnecessary else
         return None
 
-# After fix (auto fixed)
+# After (auto-fixed)
 def get_user(user_id):
     result = db.query(user_id)
     if result:
@@ -185,176 +183,183 @@ def get_user(user_id):
 
 ### Level 3: Logic Errors
 
-Issues that **can change code behavior**. Fixed after user approval.
+Problems that **can change the code's behavior**. Fixed after user approval.
 
-| Item | Content |
-|------|---------|
+| Item | Details |
+|------|------|
 | **Risk** | Medium |
-| **Approval** | Needed (fix after user confirmation) |
-| **Examples** | Missing error handling, wrong conditionals, unhandled edge cases, async errors |
-| **Fix Method** | Show changes to user and request approval |
+| **Approval** | Required (fix after user confirmation) |
+| **Examples** | Missing error handling, wrong conditionals, unhandled boundary values, async errors |
+| **Fix approach** | Shows the user the change and requests approval |
 
-**Content Shown to User:**
+**What the user sees:**
 
 ```
 [Level 3] src/auth/service.py:45
-  Issue: Error handling missing on authentication failure
-  Proposal: Add try-except block to return appropriate error response on authentication failure
+  Problem: error handling for authentication failure is missing
+  Proposal: add a try-except block to return a proper error response on auth failure
 
   Approve? (y/n)
 ```
 
 ### Level 4: Security Vulnerabilities
 
-**Serious issues affecting security**. Requires user approval and manual review is recommended.
+Serious problems that **affect security**. User approval is mandatory, and manual review is recommended.
 
-| Item | Content |
-|------|---------|
+| Item | Details |
+|------|------|
 | **Risk** | High |
-| **Approval** | Required (manual review strongly recommended) |
-| **Examples** | SQL Injection, XSS vulnerabilities, hardcoded secrets, unsafe deserialization |
-| **Fix Method** | Explain problem and solution in detail, request user review |
+| **Approval** | Mandatory (manual review strongly recommended) |
+| **Examples** | SQL injection, XSS vulnerabilities, hardcoded secrets, unsafe deserialization |
+| **Fix approach** | Explains the problem and solution in detail and requests the user's review |
 
 {{< callout type="warning" >}}
-**When Level 4 issues are found**, AI doesn't fix automatically. Security vulnerabilities can create bigger problems if fixed incorrectly, so please review and fix manually.
+**When a Level 4 issue is found**, the AI does not fix it automatically. A badly fixed security vulnerability can create a bigger problem, so always verify it yourself before fixing.
 {{< /callout >}}
 
 ## Difference from /moai loop
 
-| Comparison Item | `/moai fix` | `/moai loop` |
-|-----------------|-------------|--------------|
-| **Execution Count** | Once | Repeats until complete |
-| **Level Classification** | Yes (Level 1-4) | No |
-| **Approval Process** | Level 3-4 needs approval | Handles autonomously |
-| **Time Required** | Short (1-2 min) | Can be long (5-30 min) |
-| **Best For** | Simple error cleanup | Large-scale problem resolution |
+| Comparison | `/moai fix` | `/moai loop` |
+|-----------|-------------|--------------|
+| **Runs** | Once | Repeats until complete |
+| **Level classification** | Yes (Level 1-4) | No |
+| **Approval procedure** | Level 3-4 require approval | Handled autonomously |
+| **Duration** | Short (1-2 min) | Can be long (5-30 min) |
+| **Best for** | Quick error cleanup | Large-scale problem solving |
 
 {{< callout type="info" >}}
-**Selection Guide**:
-- "Want to quickly clean lint errors before commit" → `/moai fix`
-- "Many test failures, want to fix all" → `/moai loop`
+**Selection guide**:
+- "I just want to clean up lint errors before committing" → `/moai fix`
+- "There are many failing tests and I want them all fixed" → `/moai loop`
 {{< /callout >}}
+
+## Residual Issue Handoff (handed to loop)
+
+Because `/moai fix` is a one-shot (single) pipeline, issues that a single scan-fix-verify cannot resolve may remain. The kinds of remaining issues:
+
+- **Level 4 manual items** (security · architecture — auto-fixing forbidden)
+- **Unresolved errors** (items the repair stage could not fix)
+- **Phase 5 regression-guard failures** (regressions that could neither be reverted nor reported)
+
+When such residue remains, the fix workflow persists it to `.moai/state/loop-verdict-<id>.json` with `exit_kind: "one-shot-residue"` and `iterations_used: 1`. This schema is identical to `/moai loop`'s residue-persistence schema.
+
+The report only **suggests** entering `/moai loop` for re-fixable residue; the fix workflow does not auto-invoke `/moai loop` or any other subcommand. When you re-enter `/moai loop` yourself, the persisted residue is incorporated as items in the loop's scan queue, and the goal-preset sweep drains them.
 
 ## Agent Delegation Chain
 
-The agent delegation flow for the `/moai fix` command:
+The agent delegation flow of the `/moai fix` command:
 
 ```mermaid
 flowchart TD
-    User["User Request"] --> Orchestrator["MoAI Orchestrator"]
-    Orchestrator --> Parallel["Parallel Scan"]
+    User["User request"] --> Orchestrator["MoAI orchestrator"]
+    Orchestrator --> Parallel["Parallel scan"]
 
-    Parallel --> LSP["LSP Scan"]
-    Parallel --> AST["AST-grep Scan"]
-    Parallel --> Linter["Linter Scan"]
+    Parallel --> LSP["LSP scan"]
+    Parallel --> AST["AST-grep scan"]
+    Parallel --> Linter["Linter scan"]
 
-    LSP --> Collect["Collect Issues"]
+    LSP --> Collect["Issue collection"]
     AST --> Collect
     Linter --> Collect
 
-    Collect --> Classify["Classify Levels"]
-    Classify --> Fix["Execute Fix"]
+    Collect --> Classify["Level classification"]
+    Classify --> Fix["Run fixes"]
 
-    Fix --> Level12["Level 1-2<br/>Auto Fix"]
-    Fix --> Level34["Level 3-4<br/>Approval Needed"]
+    Fix --> Level12["Level 1-2<br/>auto-fix"]
+    Fix --> Level34["Level 3-4<br/>approval required"]
 
-    Level12 --> Verify["Verify"]
-    Level34 --> UserApprove["User Approval"]
+    Level12 --> Verify["Verification"]
+    Level34 --> UserApprove["User approval"]
     UserApprove --> Verify
 
-    Verify --> Complete["Complete"]
+    Verify --> Complete["Done"]
 ```
 
-**Agent Roles:**
+**Agent roles:**
 
-| Agent | Role | Main Tasks |
-|-------|------|------------|
-| **MoAI Orchestrator** | Coordinate parallel scan |
-| **manager-develop** | Backend fixes (Level 1-2) |
-| **manager-develop** | Frontend fixes (Level 1-2) |
-| **manager-develop** | Logic error fixes (Level 3-4) |
-| **sync-auditor** | Quality verification | Verify fix results |
+| Agent | Role | Main work |
+|----------|------|----------|
+| **MoAI orchestrator** | Parallel-scan coordination + direct Level 1 fixes | Issue collection, level classification, running the Level 1 formatter directly (no agent spawn), user approval |
+| **manager-develop** | Fix execution | Level 2 auto-fixes, Level 3-4 fixes after approval |
 
-## Practical Examples
+Level 1 formatter cleanup (gofmt/prettier/ruff format, etc.) is performed directly by the orchestrator without an agent spawn. Fix-result verification is also done by the orchestrator re-running the scanners (LSP/AST-grep/linter) rather than by a separate audit agent.
 
-### Situation: Code cleanup before commit
+## Worked Example
 
-After implementing a new feature, you want to clean up code before committing.
+### Scenario: Code Cleanup Before a Commit
+
+You implemented a new feature and want to clean up the code before committing.
 
 ```bash
-# Check current status
+# Check the current state
 $ ruff check src/
-# Found 12 lint warnings
+# 12 lint warnings found
 
 # Run fix
 > /moai fix
 ```
 
-**Execution Log:**
+**Execution log:**
 
 ```
-[Parallel Scan]
-  LSP: Found 2 errors
-  AST-grep: Found 3 pattern violations
-  Linter: Found 12 warnings
+[Parallel scan]
+  LSP: 2 errors found
+  AST-grep: 3 pattern violations found
+  Linter: 12 warnings found
 
-[Issue Classification]
-  Level 1 (formatting): 7 → Auto fix
-  Level 2 (lint): 8 → Auto fix
-  Level 3 (logic): 2 → Approval needed
+[Issue classification]
+  Level 1 (formatting): 7 → auto-fix
+  Level 2 (lint): 8 → auto-fix
+  Level 3 (logic): 2 → approval required
   Level 4 (security): 0
 
-[Level 1-2 Auto Fix Complete]
-  - Import ordering: 5 fixes
-  - Trailing whitespace removal: 2 fixes
-  - Unused variable removal: 3 fixes
-  - Unnecessary else removal: 2 fixes
-  - Type hint fixes: 2 fixes
-  - Naming rule fixes: 1 fix
+[Level 1-2 auto-fixes complete]
+  - 5 import sorts
+  - 2 trailing-whitespace removals
+  - 3 unused-variable removals
+  - 2 unnecessary-else removals
+  - 2 type-hint fixes
+  - 1 naming-rule fix
 
-[Level 3 Approval Request]
+[Level 3 approval requests]
   Issue 1: src/auth/service.py:45
-    Problem: Error handling missing on token expiration
-    Proposal: Add TokenExpiredError exception handling
-    → Approved: Fix complete
+    Problem: missing error handling on token expiry
+    Proposal: add TokenExpiredError exception handling
+    → Approved: fixed
 
   Issue 2: src/api/router.py:78
-    Problem: Input validation missing
-    Proposal: Add input validation with Pydantic model
-    → Approved: Fix complete
+    Problem: missing input validation
+    Proposal: add input validation with a Pydantic model
+    → Approved: fixed
 
 [Verification]
   LSP errors: 0
   Linter warnings: 0
   All fixes verified.
 
-Complete: 17 issues fixed
+Done: 17 issues fixed
 ```
 
 ## Frequently Asked Questions
 
-### Q: Do I need to approve all Level 3-4 issues?
+### Q: If there are many Level 3-4 issues, do I have to approve them all?
 
-Yes, each Level 3-4 issue requires approval. However, you can check with `--dry` first and only approve important ones.
+Yes, Level 3-4 issues each require approval. However, you can check first with `--dry` and approve only the important ones.
 
-### Q: What if problems occur after `/moai fix`?
+### Q: What if something breaks after running `/moai fix`?
 
-You can revert with Git. It's good to commit before fixing, or backup with `git stash`.
+You can revert with Git. It is a good idea to commit before fixing, or back up with `git stash`.
 
-### Q: What if I want to fix only specific files?
+### Q: What happens to residual issues that could not be fixed?
 
-Use the `--path` flag:
+When `/moai fix` exits leaving residual issues (Level 4 manual items, unresolved errors, Phase 5 regression-guard failures), the residue is persisted to `.moai/state/loop-verdict-<id>.json` with `exit_kind: "one-shot-residue"`. The report only **suggests** entering `/moai loop` for re-fixable residue (it does not auto-invoke it), and when you re-enter `/moai loop` this residue enters the loop queue as scan items.
 
-```bash
-> /moai fix --path src/auth/
-```
+### Q: What is the difference between `/moai fix` and `/moai`?
 
-### Q: What's the difference between `/moai fix` and `/moai`?
-
-`/moai fix` is only responsible for **error fixing**. `/moai` automatically performs the **entire workflow** from SPEC creation to implementation and documentation.
+`/moai fix` handles **error fixing only**. `/moai` automatically runs the **entire workflow** from SPEC creation through implementation to documentation.
 
 ## Related Documents
 
-- [/moai loop - Iterative Fixing Loop](/utility-commands/moai-loop)
-- [/moai - Full Autonomous Automation](/utility-commands/moai)
+- [/moai loop - iterative fix loop](/utility-commands/moai-loop)
+- [/moai - fully autonomous automation](/utility-commands/moai)
 - [TRUST 5 Quality System](/core-concepts/trust-5)

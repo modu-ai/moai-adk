@@ -1,236 +1,194 @@
 # AI-Powered Optimization
 
-> Module: Intelligent optimization suggestions using Context7
+> Module: Intelligent optimization suggestions using Documentation
 > Complexity: Advanced
 > Time: 20+ minutes
-> Dependencies: Context7 MCP, asyncio
+> Dependencies: WebSearch/WebFetch
 
 ## Core Implementation
 
 ### Intelligent Optimizer
 
-```python
-from typing import Dict, List, Any
-import asyncio
+```text
+Component: IntelligentOptimizer
+Purpose: Suggest the best optimizations using AI (Documentation) with a rule-based fallback.
 
-class IntelligentOptimizer:
-    """Optimizer that uses AI to suggest the best optimizations."""
+State:
+  docs_client      // optional AI documentation client; null = rules-only mode
+  optimization_history // log of past suggestions, used to learn over time
+  performance_models   // map of profiled baselines per hot path
 
-    def __init__(self, context7_client=None):
-        self.context7 = context7_client
-        self.optimization_history = []
-        self.performance_models = {}
+Operation get_ai_optimization_suggestions(bottlenecks, codebase_context) -> suggestions:
+  // Graceful degradation: with no AI client, fall back to deterministic rules.
+  IF docs_client is null:
+    RETURN rule_based_suggestions(bottlenecks)
 
-    async def get_ai_optimization_suggestions(
-        self, bottlenecks: List[PerformanceBottleneck],
-        codebase_context: Dict[str, Any]
-    ) -> Dict[str, Any]:
-        """Get AI-powered optimization suggestions using Context7."""
+  TRY:
+    opt_patterns  = docs_client.get_library_docs(
+                      library_id="<performance/profiling>",
+                      topic="advanced performance optimization patterns",
+                      tokens=5000)
+    algo_patterns = docs_client.get_library_docs(
+                      library_id="<algorithms/complexity>",
+                      topic="algorithm optimization big-O complexity reduction",
+                      tokens=3000)
+    RETURN generate_ai_suggestions(
+             bottlenecks, opt_patterns, algo_patterns, codebase_context)
+  CATCH (error):
+    log(error)
+    RETURN rule_based_suggestions(bottlenecks)   // never hard-fail
 
-        if not self.context7:
-            return self._get_rule_based_suggestions(bottlenecks)
 
-        # Get latest performance optimization patterns
-        try:
-            optimization_patterns = await self.context7.get_library_docs(
-                context7_library_id="/performance/python-profiling",
-                topic="advanced performance optimization patterns 2025",
-                tokens=5000
-            )
+Operation generate_ai_suggestions(bottlenecks, opt_patterns, algo_patterns, context) -> suggestions:
+  suggestions = {
+    algorithm_improvements:       [],
+    data_structure_optimizations: [],
+    concurrency_improvements:     [],
+    caching_strategies:           [],
+    io_optimizations:             []
+  }
 
-            # Get algorithm complexity patterns
-            algorithm_patterns = await self.context7.get_library_docs(
-                context7_library_id="/algorithms/python",
-                topic="algorithm optimization big-O complexity reduction",
-                tokens=3000
-            )
+  FOR EACH bottleneck IN bottlenecks:
+    SWITCH (bottleneck.type):
 
-            # Generate AI suggestions
-            ai_suggestions = await self._generate_ai_suggestions(
-                bottlenecks, optimization_patterns, algorithm_patterns, codebase_context
-            )
+      CASE "cpu":
+        // (a) Algorithmic improvement when big-O / loop keywords appear
+        IF bottleneck.description MATCHES /O\(|loop|iteration|search|sort/i:
+          suggestions.algorithm_improvements.ADD(
+            suggest_algorithm_improvement(bottleneck, algo_patterns))
 
-            return ai_suggestions
+        // (b) Concurrency opportunity when call volume is high
+        IF bottleneck.metrics.call_count > 1000:
+          suggestions.concurrency_improvements.ADD(
+            suggest_concurrency_improvement(bottleneck))
 
-        except Exception as e:
-            print(f"AI optimization failed: {e}")
-            return self._get_rule_based_suggestions(bottlenecks)
+      CASE "memory":
+        suggestions.data_structure_optimizations.ADD(
+          suggest_data_structure_improvement(bottleneck, opt_patterns))
 
-    async def _generate_ai_suggestions(
-        self, bottlenecks: List[PerformanceBottleneck],
-        opt_patterns: Dict, algo_patterns: Dict, context: Dict
-    ) -> Dict[str, Any]:
-        """Generate AI-powered optimization suggestions."""
+  RETURN suggestions
 
-        suggestions = {
-            'algorithm_improvements': [],
-            'data_structure_optimizations': [],
-            'concurrency_improvements': [],
-            'caching_strategies': [],
-            'io_optimizations': []
-        }
 
-        for bottleneck in bottlenecks:
-            # Analyze bottleneck characteristics
-            if bottleneck.bottleneck_type == "cpu":
-                # Check for algorithmic improvements
-                if "O(" in bottleneck.description or any(
-                    keyword in bottleneck.description.lower()
-                    for keyword in ["loop", "iteration", "search", "sort"]
-                ):
-                    improvement = self._suggest_algorithm_improvement(
-                        bottleneck, algo_patterns
-                    )
-                    suggestions['algorithm_improvements'].append(improvement)
+Operation suggest_algorithm_improvement(bottleneck, algo_patterns) -> entry:
+  name = lowercase(bottleneck.function_name)
+  candidates = []
 
-                # Check for concurrency opportunities
-                if bottleneck.metrics.get('call_count', 0) > 1000:
-                    concurrency = self._suggest_concurrency_improvement(bottleneck)
-                    suggestions['concurrency_improvements'].append(concurrency)
+  IF name MATCHES /search|find/:
+    candidates += [
+      "Binary search on sorted data (O(log n) vs O(n) scan)",
+      "Hash-based lookup for O(1) average case",
+      "Trie / prefix index for prefix queries"
+    ]
+  ELSE IF name MATCHES /sort|order/:
+    candidates += [
+      "Use the language's idiomatic stable sort (typically O(n log n))",
+      "Radix / counting sort for uniform integer keys",
+      "Bucket sort for uniformly distributed data"
+    ]
+  ELSE IF name MATCHES /nested/
+          OR bottleneck.metrics.per_call_time > 0.1:
+    candidates += [
+      "Flatten O(n^2) nested loops",
+      "Dynamic programming for overlapping subproblems",
+      "Memoization to avoid repeated calculation"
+    ]
 
-            elif bottleneck.bottleneck_type == "memory":
-                # Suggest data structure optimizations
-                data_structure = self._suggest_data_structure_improvement(
-                    bottleneck, opt_patterns
-                )
-                suggestions['data_structure_optimizations'].append(data_structure)
+  RETURN {
+    bottleneck:                bottleneck.function_name,
+    suggestions:               candidates,
+    estimated_improvement:     "30-90% depending on algorithm",
+    implementation_complexity: "medium to high"
+  }
 
-        return suggestions
 
-    def _suggest_algorithm_improvement(
-        self, bottleneck: PerformanceBottleneck, algo_patterns: Dict
-    ) -> Dict[str, Any]:
-        """Suggest algorithmic improvements based on Context7 patterns."""
+Operation suggest_concurrency_improvement(bottleneck) -> entry:
+  RETURN {
+    bottleneck:                bottleneck.function_name,
+    suggestions: [
+      "Parallelize CPU-bound work across cores (worker pool / parallel tasks)",
+      "Threads or async tasks for I/O-bound operations",
+      "Batch small operations to amortize per-call overhead"
+    ],
+    estimated_improvement:     "2-8x on multi-core systems",
+    implementation_complexity: "medium"
+  }
 
-        # Analyze function name and code to identify algorithm type
-        function_name = bottleneck.function_name.lower()
 
-        suggestions = []
+Operation suggest_data_structure_improvement(bottleneck, opt_patterns) -> entry:
+  RETURN {
+    bottleneck:                bottleneck.function_name,
+    suggestions: [
+      "Stream / lazily evaluate large datasets instead of materializing",
+      "Lazy-load expensive structures on first access",
+      "Prefer contiguous / packed layouts for numerical data",
+      "Use a deque / ring buffer for queue workloads",
+      "Use a hash set / map for O(1) membership tests instead of list scans"
+    ],
+    estimated_improvement:     "30-80% memory reduction",
+    implementation_complexity: "low to medium"
+  }
 
-        if any(keyword in function_name for keyword in ["search", "find"]):
-            suggestions.extend([
-                "Consider using binary search for sorted data",
-                "Implement hash-based lookup for O(1) average case",
-                "Use trie structures for prefix searches"
-            ])
 
-        elif any(keyword in function_name for keyword in ["sort", "order"]):
-            suggestions.extend([
-                "Consider using Timsort (Python's built-in sort)",
-                "Use radix sort for uniform integer data",
-                "Implement bucket sort for uniformly distributed data"
-            ])
+Operation rule_based_suggestions(bottlenecks) -> suggestions:
+  // Deterministic fallback used when the AI client is unavailable or errors.
+  suggestions = {
+    algorithm_improvements:       [],
+    data_structure_optimizations: [],
+    concurrency_improvements:     [],
+    caching_strategies:           [],
+    io_optimizations:             []
+  }
 
-        elif "nested" in function_name or bottleneck.metrics.get('per_call_time', 0) > 0.1:
-            suggestions.extend([
-                "Look for O(n²) nested loops to optimize",
-                "Consider dynamic programming for overlapping subproblems",
-                "Use memoization to avoid repeated calculations"
-            ])
+  FOR EACH bottleneck IN bottlenecks:
+    SWITCH (bottleneck.type):
+      CASE "cpu":
+        IF bottleneck.metrics.call_count > 1000:
+          suggestions.caching_strategies.ADD({
+            bottleneck:  bottleneck.function_name,
+            suggestions: [
+              "Memoize pure function results (use the language's cache primitive)",
+              "Cache expensive remote / DB query results with a TTL",
+              "Pre-compute once and reuse across hot-path callers"
+            ]
+          })
+      CASE "memory":
+        suggestions.data_structure_optimizations.ADD({
+          bottleneck:  bottleneck.function_name,
+          suggestions: [
+            "Stream / generate items on demand rather than building full collections",
+            "Lazy evaluation for pipelines that may short-circuit",
+            "Slim per-instance footprint (compact fields, pooled allocations)"
+          ]
+        })
 
-        return {
-            'bottleneck': bottleneck.function_name,
-            'suggestions': suggestions,
-            'estimated_improvement': "30-90% depending on algorithm",
-            'implementation_complexity': "medium to high"
-        }
-
-    def _suggest_concurrency_improvement(
-        self, bottleneck: PerformanceBottleneck
-    ) -> Dict[str, Any]:
-        """Suggest concurrency improvements."""
-
-        return {
-            'bottleneck': bottleneck.function_name,
-            'suggestions': [
-                "Implement multiprocessing for CPU-bound tasks",
-                "Use threading for I/O-bound operations",
-                "Consider asyncio for concurrent I/O operations",
-                "Use concurrent.futures for thread/process pool execution"
-            ],
-            'estimated_improvement': "2-8x speedup on multi-core systems",
-            'implementation_complexity': "medium"
-        }
-
-    def _suggest_data_structure_improvement(
-        self, bottleneck: PerformanceBottleneck, opt_patterns: Dict
-    ) -> Dict[str, Any]:
-        """Suggest data structure optimizations."""
-
-        return {
-            'bottleneck': bottleneck.function_name,
-            'suggestions': [
-                "Use generators instead of lists for large datasets",
-                "Implement lazy loading for expensive data structures",
-                "Use memoryviews or numpy arrays for numerical data",
-                "Consider using collections.deque for queue operations",
-                "Use set/dict for O(1) lookups instead of list searches"
-            ],
-            'estimated_improvement': "30-80% memory reduction",
-            'implementation_complexity': "low to medium"
-        }
-
-    def _get_rule_based_suggestions(
-        self, bottlenecks: List[PerformanceBottleneck]
-    ) -> Dict[str, Any]:
-        """Generate rule-based optimization suggestions."""
-
-        suggestions = {
-            'algorithm_improvements': [],
-            'data_structure_optimizations': [],
-            'concurrency_improvements': [],
-            'caching_strategies': [],
-            'io_optimizations': []
-        }
-
-        for bottleneck in bottlenecks:
-            if bottleneck.bottleneck_type == "cpu":
-                if bottleneck.metrics.get('call_count', 0) > 1000:
-                    suggestions['caching_strategies'].append({
-                        'bottleneck': bottleneck.function_name,
-                        'suggestions': [
-                            "Implement functools.lru_cache decorator",
-                            "Add custom memoization for expensive operations",
-                            "Cache database query results"
-                        ]
-                    })
-
-            elif bottleneck.bottleneck_type == "memory":
-                suggestions['data_structure_optimizations'].append({
-                    'bottleneck': bottleneck.function_name,
-                    'suggestions': [
-                        "Use generators (yield) instead of lists",
-                        "Implement lazy evaluation patterns",
-                        "Use __slots__ for classes with many instances"
-                    ]
-                })
-
-        return suggestions
+  RETURN suggestions
 ```
+
+The pseudocode is language-neutral. The `bottleneck.type` and `bottleneck.metrics` fields come from your profiler (see [Profiler Core](./profiler-core.md)); map the abstract fields above to whatever your language's profiler emits.
 
 ## Usage Examples
 
-```python
+```text
 # Get AI-powered optimization suggestions
-optimizer = IntelligentOptimizer(context7_client=context7)
-ai_suggestions = await optimizer.get_ai_optimization_suggestions(
+optimizer = new IntelligentOptimizer(docs_client = docs)
+suggestions = await optimizer.get_ai_optimization_suggestions(
     bottlenecks,
-    codebase_context={'project_type': 'web_api', 'language': 'python'}
-)
+    codebase_context = { project_type:    "web_api",
+                         primary_language: <detected-from-project-markers> })
 
-print("AI Optimization Suggestions:")
-for category, items in ai_suggestions.items():
-    if items:
-        print(f"\n{category.replace('_', ' ').title()}:")
-        for item in items:
-            print(f"  - {item['bottleneck']}")
-            for suggestion in item['suggestions']:
-                print(f"    • {suggestion}")
+print "AI Optimization Suggestions:"
+for each (category, items) in suggestions:
+    if items is non-empty:
+        print "", titlecase(replace_underscores(category, " ")) + ":"
+        for each item in items:
+            print "  -", item.bottleneck
+            for each suggestion in item.suggestions:
+                print "    *", suggestion
 ```
 
 ## Best Practices
 
-1. **Context7 Integration**: Use latest documentation for up-to-date patterns
+1. **Documentation Integration**: Use latest documentation for up-to-date patterns
 2. **Hybrid Approach**: Combine AI suggestions with rule-based heuristics
 3. **Codebase Context**: Provide project context for better recommendations
 4. **Learning System**: Track optimization history for continuous improvement

@@ -4,8 +4,7 @@ weight: 20
 draft: false
 ---
 
-프로젝트의 코드베이스를 분석하여 AI가 프로젝트를 이해하는 데 필요한 기초 문서를
-자동으로 생성합니다.
+프로젝트의 코드베이스를 분석하여 AI가 프로젝트를 이해하는 데 필요한 기초 문서를 자동으로 생성합니다.
 
 {{< callout type="info" >}}
 **슬래시 커맨드**: Claude Code에서 `/moai:project`를 입력하면 이 명령어를 바로 실행할 수 있습니다. `/moai`만 입력하면 사용 가능한 모든 서브커맨드 목록이 표시됩니다.
@@ -13,9 +12,9 @@ draft: false
 
 ## 개요
 
-`/moai project`는 MoAI-ADK 워크플로우의 **프로젝트 문서 생성** 명령어입니다.
-프로젝트의 소스 코드, 설정 파일, 디렉토리 구조를 분석하여 AI가 프로젝트를 빠르게
-이해할 수 있도록 돕습니다.
+`/moai project`는 MoAI-ADK 워크플로우의 **프로젝트 문서 생성** 명령어입니다. 프로젝트의 소스 코드, 설정 파일, 디렉토리 구조를 분석하여 AI가 프로젝트를 빠르게 이해할 수 있도록 돕습니다.
+
+에이전틱 하네스 관점에서 보면, 이 명령어는 하네스의 **바닥 공사**입니다. 에이전트가 매 세션 코드베이스를 처음부터 다시 파악하게 두는 대신, 프로젝트 지식을 파일로 고정해 둡니다. 파일 기반 영속 기억이 하네스 설계의 기본 패턴이고, `/moai project`가 그 출발점을 만듭니다. 매 세션 반복될 탐색 비용을 문서 1회 생성으로 대체한다는 점에서 토크노믹스 효과도 있습니다.
 
 {{< callout type="info" >}}
 **왜 프로젝트 문서가 필요한가요?**
@@ -42,15 +41,18 @@ Claude Code는 새로운 대화를 시작할 때 프로젝트에 대해 아무�
 
 ## 생성되는 문서
 
-`/moai project`는 `.moai/project/` 디렉토리 아래에 3개의 문서를 생성합니다:
+`/moai project`는 `.moai/project/` 디렉토리 아래에 3개의 핵심 문서와 아키텍처 코드맵을 생성합니다:
 
 ```
 .moai/
 └── project/
     ├── product.md      # 프로젝트 개요
     ├── structure.md    # 디렉토리 구조 분석
-    └── tech.md         # 기술 스택 정보
+    ├── tech.md         # 기술 스택 정보
+    └── codemaps/       # 아키텍처 코드맵 (Phase 9)
 ```
+
+문서 생성과 함께 프로젝트에 맞는 **하네스 자동 구성**도 이 명령어의 역할입니다. 분석된 기술 스택을 바탕으로 프로젝트 전용 에이전트 팀(하네스)을 함께 구성할 수 있습니다. 하네스 생성의 상세는 [/moai harness](./moai-harness)를 참조하세요.
 
 ### product.md - 프로젝트 개요
 
@@ -97,30 +99,32 @@ Claude Code는 새로운 대화를 시작할 때 프로젝트에 대해 아무�
 flowchart TD
     Start["/moai project 실행"] --> Q1{프로젝트 타입은?}
 
-    Q1 -->|신규 프로젝트| New["Phase 0.5: 정보 수집"]
-    Q1 -->|기존 프로젝트| Exist["Phase 1: 코드베이스 분석"]
+    Q1 -->|신규 프로젝트| New["Phase 2: 심층 인터뷰<br/>(Stage A + B)"]
+    Q1 -->|기존 프로젝트| Exist["Phase 3: 코드베이스 분석"]
 
     New --> NewQ["프로젝트 목적"]
     New --> NewL["주요 언어"]
     New --> NewD["프로젝트 설명"]
 
-    NewQ --> Gen["Phase 3: 문서 생성"]
+    NewQ --> Gen["Phase 6: 문서 생성"]
     NewL --> Gen
     NewD --> Gen
 
     Exist --> Exp["Explore 에이전트<br/>코드베이스 분석"]
-    Exp --> Conf["Phase 2: 사용자 확인"]
+    Exp --> Conf["Phase 5: 사용자 확인"]
 
     Conf -->|승인| Gen
     Conf -->|취소| End["종료"]
 
-    Gen --> LSP["Phase 3.5: LSP 확인"]
-    LSP --> Complete["Phase 4: 완료"]
+    Gen --> Audit["Phase 7: plan-auditor 독립 감사"]
+    Audit --> CM["Phase 9: 코드맵 생성"]
+    CM --> LSP["Phase 10: LSP 확인"]
+    LSP --> Complete["Phase 14: 완료"]
 ```
 
 ## 상세 워크플로우
 
-### Phase 0: 프로젝트 타입 감지
+### Phase 1: 프로젝트 타입 감지
 
 가장 먼저 프로젝트 타입을 확인합니다.
 
@@ -136,9 +140,9 @@ flowchart TD
 | **신규 프로젝트** | 처음부터 시작하는 프로젝트. 정보를 수집형식으로 진행 |
 | **기존 프로젝트** | 이미 코드가 있는 프로젝트. 코드를 자동으로 분석      |
 
-### Phase 0.5: 신규 프로젝트 정보 수집
+### Phase 2: 심층 인터뷰 (신규 프로젝트)
 
-신규 프로젝트를 선택한 경우, 다음 정보를 수집합니다:
+신규 프로젝트를 선택한 경우, 2단계 **심층 인터뷰** (Deep Interview)를 진행합니다 — 명확도 점수 기반 Stage A (Vision-Domain / Technology-Constraints / Scope, `project.max_rounds`까지 가변 라운드) + 필수 Stage B 확장 축 라운드. 다음 정보를 수집합니다:
 
 **질문 1 - 프로젝트 목적**:
 
@@ -160,9 +164,9 @@ flowchart TD
 - 주요 기능 또는 목표
 - 타겟 사용자
 
-수집된 정보를 바탕으로 초기 문서를 생성하고 Phase 4로 이동합니다.
+수집된 정보를 바탕으로 초기 문서를 생성하고 Phase 6 문서 생성으로 이동합니다.
 
-### Phase 1: 코드베이스 분석 (기존 프로젝트)
+### Phase 3: 코드베이스 분석 (기존 프로젝트)
 
 기존 프로젝트를 선택한 경우, **Explore 에이전트**에게 분석을 위임합니다.
 
@@ -187,7 +191,11 @@ flowchart TD
 - 의존성 카탈로그
 - 진입점 식별
 
-### Phase 2: 사용자 확인
+### Phase 4: 심층 인터뷰 (기존 프로젝트)
+
+코드베이스 분석 후, 기존 프로젝트에도 2단계 **심층 인터뷰**가 진행됩니다 — 명확도 점수 기반 Stage A (Ownership-Goal / Constraints / Scope-Priority, `project.max_rounds`까지 가변 라운드) + 필수 Stage B 확장 축 라운드. 분석 결과만으로 드러나지 않는 소유권·목표·우선순위를 사용자에게서 끌어냅니다.
+
+### Phase 5: 사용자 확인
 
 분석 결과를 사용자에게 보여주고 승인을 받습니다.
 
@@ -204,14 +212,14 @@ flowchart TD
 - **상세 검토**: 분석 세부사항을 먼저 검토
 - **취소**: 프로젝트 설정 조정
 
-### Phase 3: 문서 생성
+### Phase 6: 문서 생성
 
 **manager-docs 에이전트**에게 문서 생성을 위임합니다.
 
 **전달 내용**:
 
-- Phase 1 분석 결과 (또는 Phase 0.5 사용자 입력)
-- Phase 2 사용자 확인
+- Phase 3 분석 결과 (또는 Phase 2 인터뷰 입력)
+- Phase 5 사용자 확인
 - 출력 디렉토리: `.moai/project/`
 - 언어: config의 conversation_language
 
@@ -223,7 +231,15 @@ flowchart TD
 | **structure.md** | 디렉토리 트리, 각 디렉토리의 목적, 핵심 파일 위치, 모듈 구성             |
 | **tech.md**      | 기술 스택 개요, 프레임워크 선택 근거, 개발 환경 요구사항, 빌드/배포 설정 |
 
-### Phase 3.5: 개발 환경 확인
+### Phase 7: plan-auditor 독립 감사
+
+문서 생성 후 **plan-auditor** 서브에이전트가 산출물을 조건부로 독립 감사하고 필요 시 재시도 루프를 돕니다 — 만든 에이전트(manager-docs)가 자신의 결과를 검사하지 않는 독립 감사 원칙을 프로젝트 문서 생성에도 적용합니다.
+
+### Phase 9: 코드맵 생성
+
+Explore + manager-docs가 `.moai/project/codemaps/`에 아키텍처 코드맵을 생성합니다.
+
+### Phase 10: 개발 환경 확인
 
 감지된 기술 스택에 맞는 LSP 서버가 설치되어 있는지 확인합니다.
 
@@ -243,18 +259,17 @@ flowchart TD
 | Scala                 | metals                     | -                                  |
 | Swift                 | sourcekit-lsp              | -                                  |
 | Elixir                | elixir-ls                  | -                                  |
-| Dart/Flutter          | dart language-server       | Dart SDK 내장                      |
+| Flutter               | dart language-server       | Dart SDK 내장                      |
 | C#                    | OmniSharp 또는 csharp-ls   | -                                  |
 | R                     | languageserver (R 패키지)  | -                                  |
-| Lua                   | lua-language-server        | -                                  |
 
 **LSP 미설치 시 옵션**:
 
 - **LSP 없이 계속**: 완료까지 진행
 - **설치 안내 표시**: 감지된 언어의 설정 가이드 표시
-- **지금 자동 설치**: manager-develop 에이전트로 설치 (확인 필요)
+- **지금 자동 설치**: `Agent(general-purpose)` devops 스코프로 설치 (확인 필요)
 
-### Phase 4: 완료
+### Phase 14: 완료
 
 사용자의 언어로 완료 메시지를 표시합니다.
 
@@ -268,14 +283,55 @@ flowchart TD
 - **문서 검토**: 생성된 파일 열어서 검토
 - **새 세션 시작**: 컨텍스트 지우고 새로 시작
 
+## 확장 단계 (Phase 8-16)
+
+기본 문서 생성 (Phase 0-4) 이후, `/moai project`는 프로젝트 환경을 종합적으로 구성하는 확장 단계를 수행합니다.
+
+```mermaid
+flowchart TD
+    A["Phase 4: 완료<br/>(기본 문서 생성)"] --> B["Phase 8<br/>harness-spec.yaml"]
+    B --> C["Phase 11<br/>MCP 프로비저닝"]
+    C --> D["Phase 12<br/>Dev Methodology"]
+    D --> E["Phase 13<br/>DB 감지"]
+    E --> F["Phase 14<br/>완료 요약"]
+    F --> G{"하네스 생성?"}
+    G -->|예| H["Phase 15<br/>v4 Builder 진입"]
+    H --> I["Phase 16<br/>5-Layer 활성화"]
+    G -->|아니오| J["종료"]
+    I --> J
+```
+
+### Phase 8: harness-spec.yaml 브리지
+
+인터뷰 답변에서 `.moai/project/harness-spec.yaml`을 생성합니다. 이 파일은 8-필드 스키마로 프로젝트 맥락을 하네스 빌더에게 전달하는 브리지 역할을 합니다 — 사용자 상호작용 없이 interview.md 답변에서 자동 추출됩니다.
+
+### Phase 11: MCP 서버 프로비저닝
+
+기술 스택을 감지하고 `mcp-matrix.yaml`에서 적합한 MCP 서버를 선택합니다. 오케스트레이터 승인 후 `.mcp.json`에 추가 기록 (additive write) — 기존 MCP 설정을 덮어쓰지 않습니다.
+
+### Phase 13: DB 감지
+
+Grep/Glob으로 DB 키워드를 감지하여 `db-detection.json`을 생성합니다. 지원 DB 엔진 카테고리:
+
+- **Relational/SQL**: PostgreSQL, MySQL, MariaDB, SQLite, Oracle, SQL Server, CockroachDB, Supabase, Neon, Planetscale
+- **NoSQL Document**: MongoDB, Firestore, Firebase, Couchbase
+- **NoSQL Key-Value**: Redis, DynamoDB, Cassandra, ScyllaDB, Riak
+- **Search/Analytics**: Elasticsearch, ClickHouse, Snowflake, InfluxDB
+
+### Phase 15-16: v4 Builder 연동
+
+Phase 15는 v4 하네스 빌더로 리다이렉트합니다 — Context-First Discovery + 오케스트레이터 직접 4-phase Builder (ANALYZE → PLAN → GENERATE → ACTIVATE)가 하네스를 생성합니다. Phase 16은 CLAUDE.md 마커 설치 + main.md 라우터 등록으로 5-Layer 활성화를 수행하고, 생성 후 smoke gate를 실행합니다.
+
+{{< callout type="info" >}}
+Phase 15-16은 선택 단계입니다 — `/moai project` 실행 시 하네스 생성이 필요하면 진행되고, 그렇지 않으면 Phase 14에서 완료됩니다.
+{{< /callout >}}
+
 ## 언제 사용하나?
 
 ### 반드시 실행해야 하는 경우
 
-- **새 프로젝트에 MoAI-ADK를 처음 적용할 때** - AI가 프로젝트를 이해할 기초
-  문서가 필요합니다
-- **기존 프로젝트에 MoAI-ADK를 도입할 때** - 이미 코드가 있는 프로젝트에서도
-  문서를 자동 생성합니다
+- **새 프로젝트에 MoAI-ADK를 처음 적용할 때** - AI가 프로젝트를 이해할 기초 문서가 필요합니다
+- **기존 프로젝트에 MoAI-ADK를 도입할 때** - 이미 코드가 있는 프로젝트에서도 문서를 자동 생성합니다
 
 ### 다시 실행하면 좋은 경우
 
@@ -495,8 +551,7 @@ LSP 서버가 설치되어 있으므로 즉시 개발을 시작할 수 있습니
 > /moai plan "사용자 인증 기능 구현"
 ```
 
-AI가 프로젝트의 기술 스택과 구조를 이미 알고 있으므로 더 정확한 SPEC을 생성할 수
-있습니다.
+AI가 프로젝트의 기술 스택과 구조를 이미 알고 있으므로 더 정확한 SPEC을 생성할 수 있습니다.
 
 {{< callout type="info" >}}
   `/moai project`는 프로젝트당 보통 **1-2번**만 실행하면 됩니다. 매번 실행할
@@ -507,50 +562,46 @@ AI가 프로젝트의 기술 스택과 구조를 이미 알고 있으므로 더 
 
 ```mermaid
 flowchart TD
-    Start["/moai project 실행"] --> Phase0["Phase 0: 타입 감지"]
-    Phase0 --> Phase05["Phase 0.5: 정보 수집<br/>(신규 프로젝트)"]
-    Phase0 --> Phase1["Phase 1: 코드베이스 분석<br/>(기존 프로젝트)"]
+    Start["/moai project 실행"] --> Phase0["Phase 1: 타입 감지"]
+    Phase0 --> Phase05["Phase 2: 심층 인터뷰<br/>(신규 프로젝트)"]
+    Phase0 --> Phase1["Phase 3: 코드베이스 분석<br/>(기존 프로젝트)"]
 
     Phase1 --> Explore["Explore 하위 에이전트<br/>코드 분석 위임"]
-    Explore --> Phase2["Phase 2: 사용자 확인"]
+    Explore --> Phase2["Phase 5: 사용자 확인"]
 
-    Phase05 --> Phase3["Phase 3: 문서 생성"]
+    Phase05 --> Phase3["Phase 6: 문서 생성"]
     Phase2 -->|승인| Phase3
 
     Phase3 --> Docs["manager-docs 하위 에이전트<br/>문서 생성 위임"]
-    Docs --> Phase35["Phase 3.5: LSP 확인"]
+    Docs --> Audit["Phase 7: plan-auditor 감사"]
+    Audit --> Phase35["Phase 10: LSP 확인"]
 
-    Phase35 --> DevOps["manager-develop 하위 에이전트<br/>LSP 설치 (선택사항)"]
-    DevOps --> Phase4["Phase 4: 완료"]
+    Phase35 --> DevOps["Agent(general-purpose) devops<br/>LSP 설치 (선택사항)"]
+    DevOps --> Phase4["Phase 14: 완료"]
 ```
 
 ## 자주 묻는 질문
 
 ### Q: 프로젝트 문서 없이 `/moai plan`을 실행하면 어떻게 되나요?
 
-SPEC을 생성할 수는 있지만, AI가 프로젝트의 기술 스택이나 구조를 모르기 때문에
-**부정확한 기술적 판단**을 할 수 있습니다. 항상 `/moai project`를 먼저 실행하는
-것을 권장합니다.
+SPEC을 생성할 수는 있지만, AI가 프로젝트의 기술 스택이나 구조를 모르기 때문에 **부정확한 기술적 판단**을 할 수 있습니다. 항상 `/moai project`를 먼저 실행하는 것을 권장합니다.
 
 ### Q: 비공개 코드도 분석하나요?
 
-`/moai project`는 **로컬 환경에서만** 동작합니다. 코드가 외부 서버로 전송되지
-않으며, 생성된 문서도 `.moai/project/` 디렉토리에 로컬로 저장됩니다.
+`/moai project`는 **로컬 환경에서만** 동작합니다. 코드가 외부 서버로 전송되지 않으며, 생성된 문서도 `.moai/project/` 디렉토리에 로컬로 저장됩니다.
 
 ### Q: 모노레포 프로젝트에서도 동작하나요?
 
-네, 모노레포 구조도 지원합니다. 루트 디렉토리에서 실행하면 전체 프로젝트 구조를
-분석합니다.
+네, 모노레포 구조도 지원합니다. 루트 디렉토리에서 실행하면 전체 프로젝트 구조를 분석합니다.
 
 ### Q: LSP 서버가 없으면 어떻게 되나요?
 
-LSP 서버가 없어도 문서 생성은 진행됩니다. 다만, 이후 `/moai run` 단계에서 코드
-품질 진단이 제한될 수 있습니다. Phase 3.5에서 LSP 설치 안내를 제공합니다.
+LSP 서버가 없어도 문서 생성은 진행됩니다. 다만, 이후 `/moai run` 단계에서 코드 품질 진단이 제한될 수 있습니다. Phase 10에서 LSP 설치 안내를 제공합니다.
 
 ## 관련 문서
 
 - [빠른 시작](/getting-started/quickstart) - 전체 워크플로우 튜토리얼
 - [/moai plan](./moai-plan) - 다음 단계: SPEC 문서 생성
+- [/moai harness](./moai-harness) - 프로젝트 전용 하네스 생성
 - [SPEC 기반 개발](/core-concepts/spec-based-dev) - SPEC 방법론 상세 설명
-- [하위 에이전트 카탈로그](/advanced/agent-guide) - Explore, manager-docs 에이전트
-  상세
+- [하위 에이전트 카탈로그](/advanced/agent-guide) - Explore, manager-docs 에이전트 상세

@@ -8,133 +8,79 @@
 
 ### Error Pattern Matching
 
-Comprehensive pattern matching implementation with regex support:
+Comprehensive pattern matching implementation with regex support. The logic is language-neutral; map each language's error type names to the generic categories below.
 
-```python
-import re
+```text
+match_error_patterns(error, error_analysis):
+    error_type = classify(error)            # e.g. IMPORT, TYPE, RUNTIME
+    error_message = text(error)
 
-def _match_error_patterns(
-    self, error: Exception, error_analysis: ErrorAnalysis
-) -> Dict[str, Any]:
-    """Match error against known patterns."""
-
-    error_type = type(error).__name__
-    error_message = str(error)
-
-    if error_type in self.error_patterns:
-        pattern_data = self.error_patterns[error_type]
-
-        # Try to match regex patterns
-        matched_patterns = []
-        for pattern in pattern_data['patterns']:
-            if re.search(pattern, error_message, re.IGNORECASE):
-                matched_patterns.append(pattern)
-
+    if error_type known in error_patterns:
+        pattern_data = error_patterns[error_type]
+        matched = []
+        for regex in pattern_data.patterns:
+            if regex matches error_message (case-insensitive):
+                matched.append(regex)
         return {
-            'matched_patterns': matched_patterns,
-            'solutions': pattern_data['solutions'],
-            'context7_topics': pattern_data['context7_topics']
+            matched_patterns: matched,
+            solutions:        pattern_data.solutions,
+            docs_topics:  pattern_data.docs_topics
         }
-
-    return {'matched_patterns': [], 'solutions': [], 'context7_topics': []}
+    return { matched_patterns: [], solutions: [], docs_topics: [] }
 ```
 
 ### Solution Generation
 
 Multi-source solution generation with confidence scoring:
 
-```python
-async def _generate_solutions(
-    self, error_analysis: ErrorAnalysis,
-    context7_patterns: Dict, pattern_matches: Dict,
-    context: Dict
-) -> List[Solution]:
-    """Generate comprehensive solutions using multiple sources."""
-
+```text
+generate_solutions(error_analysis, docs_patterns, pattern_matches, context):
     solutions = []
 
     # Pattern-based solutions
-    for pattern in pattern_matches.get('matched_patterns', []):
-        solution = Solution(
+    for pattern in pattern_matches.matched_patterns:
+        solutions.append(Solution(
             type='pattern_match',
-            description=f"Apply known pattern: {pattern}",
-            code_example=self._generate_pattern_example(pattern, context),
-            confidence=0.85,
-            impact='medium',
-            dependencies=[]
-        )
-        solutions.append(solution)
+            description="Apply known pattern: " + pattern,
+            code_example=generate_pattern_example(pattern, context),
+            confidence=0.85, impact='medium'))
 
-    # Context7-based solutions
-    for library_id, docs in context7_patterns.items():
-        if docs and 'solutions' in docs:
-            for sol in docs['solutions']:
-                solution = Solution(
-                    type='context7_pattern',
-                    description=sol['description'],
-                    code_example=sol.get('code_example', ''),
-                    confidence=sol.get('confidence', 0.7),
-                    impact=sol.get('impact', 'medium'),
-                    dependencies=sol.get('dependencies', [])
-                )
-                solutions.append(solution)
+    # Documentation-based solutions
+    for (library_id, docs) in docs_patterns:
+        if docs has 'solutions':
+            for sol in docs.solutions:
+                solutions.append(Solution(
+                    type='docs_pattern', description=sol.description,
+                    confidence=sol.confidence or 0.7))
 
-    # AI-generated solutions
-    if self.context7 and len(solutions) < 3:
-        ai_solutions = await self._generate_ai_solutions(error_analysis, context)
-        solutions.extend(ai_solutions)
+    # AI-generated solutions when few candidates exist
+    if docs available and len(solutions) < 3:
+        solutions.extend(generate_ai_solutions(error_analysis, context))
 
-    # Sort by confidence and impact
-    solutions.sort(key=lambda x: (x.confidence, x.impact), reverse=True)
-    return solutions[:5]
+    sort solutions descending by (confidence, impact)
+    return top 5
 ```
 
 ### Code Example Generation
 
-Pattern-based code example generation:
+Pattern-based code example generation. Examples below are illustrative fixes; the exact syntax and tooling differ per language.
 
-```python
-def _generate_pattern_example(self, pattern: str, context: Dict) -> str:
-    """Generate code example for a specific error pattern."""
-
+```text
+generate_pattern_example(pattern, context):
     examples = {
-        r"No module named '(.+)'": """
-# Install missing package
-pip install package_name
-
-# Or add to requirements.txt
-echo "package_name" >> requirements.txt
-""",
-        r"'(.+)' object has no attribute '(.+)'": """
-# Check object type before accessing attribute
-if hasattr(obj, 'attribute_name'):
-    result = obj.attribute_name
-else:
-    print(f"Object of type {type(obj)} doesn't have attribute 'attribute_name'")
-""",
-        r" takes \d+ positional arguments but \d+ were given": """
-# Check function signature and call with correct arguments
-def function_name(arg1, arg2, arg3=None):
-    pass
-
-# Correct call
-function_name(value1, value2)
-""",
-        r"invalid literal for int\(\) with base 10": """
-# Add error handling for type conversion
-try:
-    number = int(value)
-except ValueError:
-    print(f"Cannot convert '{value}' to integer")
-    # Handle the error appropriately
-""",
+      "missing dependency":   "# Install the missing package with the project's package manager,
+                              # then ensure the import path resolves.",
+      "no such member":       "# Guard member access: check the type/member exists before use,
+                              # or use the language's optional/safe-access idiom.",
+      "wrong argument count": "# Reconcile the call site with the function/method signature;
+                              # fix the number or shape of arguments passed.",
+      "invalid value conversion": "# Validate/parse the value defensively and handle the
+                                  # conversion-failure case instead of letting it throw.",
     }
-
-    for pattern_key, example in examples.items():
-        if pattern_key in pattern:
+    for (key, example) in examples:
+        if pattern references key:
             return example
-
-    return f"# Implement fix for pattern: {pattern}"
+    return "# Implement fix for pattern: " + pattern
 ```
 
 ## Error Analysis Methods
@@ -143,72 +89,41 @@ except ValueError:
 
 Comprehensive severity evaluation based on multiple factors:
 
-```python
-def _assess_severity(
-    self, error: Exception, context: Dict, frequency: int
-) -> str:
-    """Assess error severity based on context and frequency."""
-
-    # High severity indicators
-    if any(keyword in str(error).lower() for keyword in [
-        'critical', 'fatal', 'corruption', 'security'
-    ]):
+```text
+assess_severity(error, context, frequency):
+    msg = lowercase(text(error))
+    if any of ["critical", "fatal", "corruption", "security"] in msg:
         return "critical"
-
-    # Frequency-based severity
-    if frequency > 10:
-        return "high"
-    elif frequency > 3:
-        return "medium"
-
-    # Context-based severity
-    if context.get('production', False):
-        return "high"
-    elif context.get('user_facing', False):
-        return "medium"
-
+    if frequency > 10: return "high"
+    if frequency > 3:  return "medium"
+    if context.production:  return "high"
+    if context.user_facing: return "medium"
     return "low"
 ```
 
-### Likely Causes Analysis
+### Likely causes Analysis
 
-Root cause analysis for common error patterns:
+Root cause analysis for common error categories. Names below are generic; map each language's exception types (e.g. ImportError/ModuleNotFoundError, AttributeError, TypeError) onto these categories.
 
-```python
-def _analyze_likely_causes(
-    self, error_type: str, message: str, context: Dict
-) -> List[str]:
-    """Analyze likely causes of the error."""
-
+```text
+analyze_likely_causes(error_category, message, context):
     causes = []
-
-    if error_type == "ImportError":
-        if "No module named" in message:
-            causes.extend([
-                "Missing dependency installation",
-                "Incorrect import path",
-                "Virtual environment not activated"
-            ])
-        elif "circular import" in message:
-            causes.extend([
-                "Circular dependency between modules",
-                "Improper module structure"
-            ])
-
-    elif error_type == "AttributeError":
-        causes.extend([
-            "Wrong object type being used",
-            "Incorrect attribute name",
-            "Object not properly initialized"
-        ])
-
-    elif error_type == "TypeError":
-        causes.extend([
-            "Incorrect data types in operation",
-            "Function called with wrong argument types",
-            "Missing type conversion"
-        ])
-
+    if error_category == IMPORT:
+        if message contains "not found"/"cannot resolve":
+            causes += ["Missing dependency installation",
+                       "Incorrect import path / module specifier",
+                       "Dependency toolchain / lockfile out of sync"]
+        if message contains "circular":
+            causes += ["Circular dependency between modules",
+                       "Improper module structure"]
+    if error_category == MEMBER_ACCESS:
+        causes += ["Wrong object type being used",
+                   "Incorrect member name",
+                   "Object not properly initialized"]
+    if error_category == TYPE:
+        causes += ["Incorrect data types in operation",
+                   "Function called with wrong argument types",
+                   "Missing type conversion"]
     return causes
 ```
 
@@ -216,35 +131,21 @@ def _analyze_likely_causes(
 
 Rapid fix suggestions for immediate resolution:
 
-```python
-def _generate_quick_fixes(
-    self, classification: ErrorType, message: str, context: Dict
-) -> List[str]:
-    """Generate quick fixes for the error."""
-
+```text
+generate_quick_fixes(classification, message, context):
     fixes = []
-
-    if classification == ErrorType.IMPORT:
-        fixes.extend([
-            "Install missing package with pip",
-            "Check Python path configuration",
-            "Verify module exists in expected location"
-        ])
-
-    elif classification == ErrorType.ATTRIBUTE_ERROR:
-        fixes.extend([
-            "Add hasattr() check before attribute access",
-            "Verify object initialization",
-            "Check for typos in attribute name"
-        ])
-
-    elif classification == ErrorType.TYPE_ERROR:
-        fixes.extend([
-            "Add type conversion before operation",
-            "Check function signature",
-            "Use isinstance() for type validation"
-        ])
-
+    if classification == IMPORT:
+        fixes += ["Install the missing package via the project package manager",
+                  "Check the module resolution / include path configuration",
+                  "Verify the module exists in the expected location"]
+    if classification == MEMBER_ACCESS:
+        fixes += ["Guard member access before use",
+                  "Verify object initialization",
+                  "Check for typos in the member name"]
+    if classification == TYPE:
+        fixes += ["Add an explicit type conversion before the operation",
+                  "Check the function signature",
+                  "Validate the runtime type before operating"]
     return fixes
 ```
 
@@ -254,107 +155,68 @@ def _generate_quick_fixes(
 
 Comprehensive prevention strategies by error type:
 
-```python
-def _suggest_prevention_strategies(
-    self, error_analysis: ErrorAnalysis, context: Dict
-) -> List[str]:
-    """Suggest prevention strategies based on error analysis."""
-
+```text
+suggest_prevention_strategies(error_analysis, context):
     strategies = []
-
-    # Type-specific prevention
-    if error_analysis.type == ErrorType.IMPORT:
-        strategies.extend([
-            "Add proper dependency management with requirements.txt",
-            "Implement module availability checks before imports",
-            "Use virtual environments for dependency isolation"
-        ])
-
-    elif error_analysis.type == ErrorType.ATTRIBUTE_ERROR:
-        strategies.extend([
-            "Use hasattr() checks before attribute access",
-            "Implement proper object type checking",
-            "Add comprehensive unit tests for object interfaces"
-        ])
-
-    elif error_analysis.type == ErrorType.TYPE_ERROR:
-        strategies.extend([
-            "Add type hints and static type checking with mypy",
-            "Implement runtime type validation",
-            "Use isinstance() checks before operations"
-        ])
-
-    elif error_analysis.type == ErrorType.VALUE_ERROR:
-        strategies.extend([
-            "Add input validation at function boundaries",
-            "Implement comprehensive error handling",
-            "Use try-except blocks for data conversion"
-        ])
-
-    # General prevention strategies
-    strategies.extend([
-        "Implement comprehensive logging for error tracking",
-        "Add automated testing to catch errors early",
-        "Use code review process to prevent common issues"
-    ])
-
+    if error_analysis.type == IMPORT:
+        strategies += ["Pin dependencies in a lockfile / manifest",
+                       "Implement module availability checks before imports",
+                       "Use isolated dependency environments per project"]
+    if error_analysis.type == MEMBER_ACCESS:
+        strategies += ["Guard or option-type access before member use",
+                       "Implement proper object type checking",
+                       "Add unit tests for object interfaces"]
+    if error_analysis.type == TYPE:
+        strategies += ["Adopt static type checking (where the language supports it)",
+                       "Add runtime type validation at boundaries",
+                       "Validate types before operations"]
+    if error_analysis.type == VALUE:
+        strategies += ["Add input validation at function boundaries",
+                       "Implement comprehensive error handling",
+                       "Parse/convert defensively with failure handling"]
+    # General
+    strategies += ["Implement structured logging for error tracking",
+                   "Add automated testing to catch errors early",
+                   "Use code review to prevent common issues"]
     return strategies
 ```
 
 ### Related Error Detection
 
-Identify related errors that frequently occur together:
+Identify related errors that frequently occur together. The generic categories below stand in for language-specific exception types.
 
-```python
-def _find_related_errors(self, error_analysis: ErrorAnalysis) -> List[str]:
-    """Find related errors that might occur together."""
-
+```text
+find_related_errors(error_analysis):
     related_map = {
-        ErrorType.IMPORT: ["ModuleNotFoundError", "ImportError", "AttributeError"],
-        ErrorType.ATTRIBUTE_ERROR: ["TypeError", "KeyError", "ImportError"],
-        ErrorType.TYPE_ERROR: ["ValueError", "AttributeError", "TypeError"],
-        ErrorType.VALUE_ERROR: ["TypeError", "KeyError", "IndexError"],
-        ErrorType.KEY_ERROR: ["AttributeError", "TypeError", "IndexError"],
+        IMPORT:         [RESOLUTION, RUNTIME, MEMBER_ACCESS],
+        MEMBER_ACCESS:  [TYPE, KEY, IMPORT],
+        TYPE:           [VALUE, MEMBER_ACCESS, TYPE],
+        VALUE:          [TYPE, KEY, INDEX],
+        KEY:            [MEMBER_ACCESS, TYPE, INDEX],
     }
-
-    return related_map.get(error_analysis.type, ["TypeError", "ValueError"])
+    return related_map[error_analysis.type] default [TYPE, VALUE]
 ```
 
 ## Fix Time Estimation
 
 ### Time Estimation Algorithm
 
-Predict fix time based on error type and solution confidence:
+Predict fix time based on error type and solution confidence. (Estimates are rough guidance, not commitments.)
 
-```python
-def _estimate_fix_time(
-    self, error_analysis: ErrorAnalysis, solutions: List[Solution]
-) -> str:
-    """Estimate time required to fix the error."""
-
+```text
+estimate_fix_time(error_analysis, solutions):
     base_times = {
-        ErrorType.SYNTAX: "1-5 minutes",
-        ErrorType.IMPORT: "2-10 minutes",
-        ErrorType.ATTRIBUTE_ERROR: "5-15 minutes",
-        ErrorType.TYPE_ERROR: "5-20 minutes",
-        ErrorType.VALUE_ERROR: "2-15 minutes",
-        ErrorType.KEY_ERROR: "2-10 minutes",
-        ErrorType.NETWORK: "10-30 minutes",
-        ErrorType.DATABASE: "15-45 minutes",
-        ErrorType.MEMORY: "20-60 minutes",
-        ErrorType.CONCURRENCY: "30-90 minutes",
-        ErrorType.UNKNOWN: "15-60 minutes"
+        SYNTAX:   "1-5 minutes",     IMPORT:   "2-10 minutes",
+        MEMBER_ACCESS: "5-15 minutes", TYPE: "5-20 minutes",
+        VALUE:    "2-15 minutes",    KEY:      "2-10 minutes",
+        NETWORK:  "10-30 minutes",   DATABASE: "15-45 minutes",
+        MEMORY:   "20-60 minutes",   CONCURRENCY: "30-90 minutes",
+        UNKNOWN:  "15-60 minutes"
     }
-
-    base_time = base_times.get(error_analysis.type, "10-30 minutes")
-
-    # Adjust based on solution confidence
-    if solutions and solutions[0].confidence > 0.9:
-        return f"Quick fix: {base_time}"
-    elif solutions and solutions[0].confidence > 0.7:
-        return f"Standard: {base_time}"
-    else:
-        return f"Complex: {base_time}"
+    base = base_times[error_analysis.type] default "10-30 minutes"
+    if solutions[0].confidence > 0.9: return "Quick fix: " + base
+    if solutions[0].confidence > 0.7: return "Standard: " + base
+    return "Complex: " + base
 ```
 
 ## Statistics and Monitoring
@@ -363,18 +225,13 @@ def _estimate_fix_time(
 
 Comprehensive debugging session statistics:
 
-```python
-def get_debug_statistics(self) -> Dict[str, Any]:
-    """Get debugging session statistics."""
+```text
+debug_statistics():
     return {
-        'total_errors_analyzed': len(self.error_history),
-        'error_types': dict(Counter(key.split(':')[0] for key in self.error_history.keys())),
-        'cache_hits': len(self.pattern_cache),
-        'most_common_errors': sorted(
-            self.error_history.items(),
-            key=lambda x: x[1],
-            reverse=True
-        )[:5]
+        total_errors_analyzed: len(error_history),
+        error_types:           count by error category,
+        cache_hits:            len(pattern_cache),
+        most_common_errors:    top 5 by frequency
     }
 ```
 
@@ -382,22 +239,20 @@ def get_debug_statistics(self) -> Dict[str, Any]:
 
 Monitor error occurrence patterns:
 
-```python
-def get_error_frequency(self, error: Exception) -> int:
-    """Get frequency of this error occurrence."""
-    error_key = f"{type(error).__name__}:{str(error)[:50]}"
-    return self.error_history.get(error_key, 0)
+```text
+error_frequency(error):
+    key = category(error) + ":" + first 50 chars of message(error)
+    return error_history[key] default 0
 ```
 
 ### Cache Management
 
-Optimize Context7 query caching:
+Optimize Documentation query caching:
 
-```python
-def clear_error_history(self):
-    """Clear error history for fresh analysis."""
-    self.error_history.clear()
-    self.pattern_cache.clear()
+```text
+clear_error_history():
+    error_history.clear()
+    pattern_cache.clear()
 ```
 
 ## Confidence Calculation
@@ -406,18 +261,10 @@ def clear_error_history(self):
 
 Calculate confidence in error classification:
 
-```python
-def _calculate_confidence(
-    self, classification: ErrorType, message: str
-) -> float:
-    """Calculate confidence in error classification."""
-
-    # High confidence for direct type matches
-    if classification != ErrorType.UNKNOWN:
-        return 0.85
-
-    # Lower confidence for unknown errors
-    return 0.4
+```text
+calculate_confidence(classification, message):
+    if classification != UNKNOWN:  return 0.85   # direct category match
+    return 0.4                                   # unknown — low confidence
 ```
 
 ## Best Practices
@@ -430,9 +277,9 @@ Prevention Strategy Implementation: Prioritize prevention strategies based on er
 
 Learning Integration: Record successful fixes to improve pattern recognition and solution accuracy over time
 
-Performance Optimization: Use caching for Context7 queries and implement batch processing for multiple errors
+Performance Optimization: Use caching for Documentation queries and implement batch processing for multiple errors
 
-Documentation Updates: Maintain error pattern database with latest solutions and Context7 topics for continuous improvement
+Documentation Updates: Maintain error pattern database with latest solutions and Documentation topics for continuous improvement
 
 ---
 

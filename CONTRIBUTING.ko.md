@@ -238,9 +238,9 @@ Fixes #456
 
 ## 행동 강령
 
-- 존중과 포용성을 유지하세요
-- 건설적인 피드백을 제공하세요
-- 다른 기여자를 돕고 지원하세요
+- 서로 존중하고 포용하세요
+- 건설적인 피드백을 주고받으세요
+- 다른 기여자를 도와주세요
 - 행동 강령 위반 시 [report@modu-ai](mailto:report@modu-ai)로 신고하세요
 
 ---
@@ -251,4 +251,4 @@ Fixes #456
 
 ---
 
-질문이 있으시면 [GitHub Issues](https://github.com/modu-ai/moai-adk-go/issues)를 생성해 주세요.
+질문이 있으시면 [GitHub Issues](https://github.com/modu-ai/moai-adk-go/issues)에 남겨 주세요.

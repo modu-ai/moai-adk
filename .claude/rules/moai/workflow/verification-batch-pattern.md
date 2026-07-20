@@ -1,16 +1,12 @@
----
-paths: "**/verification-batch-pattern.md"
----
-
 # Verification Batch Pattern
 
-Canonical pattern for orchestrator-side read-only verification batching during run-phase completion. Added by SPEC-V3R5-WORKFLOW-OPT-001 Layer D (W3 meta-analysis: ≈10 min, ~11% of run-phase wall-time lost to serial verification).
+Canonical pattern for orchestrator-side read-only verification batching during run-phase completion. Motivation: reduces serial-verification round-trip latency at run-phase completion.
 
 Cross-reference: `.claude/rules/moai/core/agent-common-protocol.md` §Parallel Execution defines the HARD batching obligation; this file owns the grouping rationale and class taxonomy.
 
 ## Why Batch
 
-When `manager-develop` reports completion, the orchestrator independently verifies seven dimensions: test suite, coverage, subagent-boundary (C-HRA-008), sentinel-key, CLI smoke, benchmark, lint. Each is read-only and independent. Serial issuance multiplies round-trip latency; multi-Bash batching collapses it to the slowest single command.
+When `manager-develop` reports completion, the orchestrator independently verifies seven dimensions: test suite, coverage, subagent-boundary, sentinel-key, CLI smoke, benchmark, lint. Each is read-only and independent. Serial issuance multiplies round-trip latency; multi-Bash batching collapses it to the slowest single command.
 
 ## When to Batch (Verification Class Taxonomy)
 
@@ -27,7 +23,7 @@ When `manager-develop` reports completion, the orchestrator independently verifi
 
 All seven canonical batch items in agent-common-protocol §Parallel Execution are read-only batch-safe.
 
-> **Re-sync sentinel**: the verbatim 7-command batch lives in `agent-common-protocol.md` § Parallel Execution (the SSOT). If that 7-item list changes, re-sync this file's grouping rationale and the class taxonomy below to match. This file owns only the *why* (grouping rationale + class taxonomy + anti-patterns), not the *what* (the verbatim command list).
+> **Re-sync sentinel**: the verbatim 7-command batch AND the file-redirect contract (redirect + bounded-tail output representation) live in `agent-common-protocol.md` § Parallel Execution / § File-redirect contract (the SSOT). If either the 7-item list OR the file-redirect contract representation changes, re-sync this file's grouping rationale and the class taxonomy below to match. This file owns only the *why* (grouping rationale + class taxonomy + anti-patterns), not the *what* (the verbatim command list or its output representation).
 
 ## When NOT to Batch
 
@@ -42,7 +38,7 @@ Serialize dependent ops; batch independent read-only verifications by default.
 | Group | Members | Typical Total Time |
 |-------|---------|-------------------:|
 | A. Functional | `go test ./...`, coverage | 30-120 s |
-| B. Boundary | C-HRA-008 grep, sentinel scan, frontmatter check | 1-5 s |
+| B. Boundary | subagent-boundary grep, sentinel scan, frontmatter check | 1-5 s |
 | C. Quality | golangci-lint, spec-lint | 10-60 s |
 | D. Smoke | CLI --version, --help | 1-3 s |
 | E. Benchmark (optional) | go test -bench | 30-300 s |
@@ -62,11 +58,9 @@ The orchestrator's response contains multiple Bash tool calls within a single as
 ## Cross-references
 
 - `.claude/rules/moai/core/agent-common-protocol.md` §Parallel Execution (HARD batching obligation + 7-item canonical example).
-- The canonical workflow-optimization acceptance criterion for the verification batch pattern.
-- W3 HARNESS-AUTONOMY-001 meta-analysis (`feedback_w3_metaanalysis_lessons.md`).
+- reduces serial CI wait.
 
 ---
 
 Version: 1.0.0
 Classification: Evolvable operational rule, applies to all run-phase completion verifications
-Origin: SPEC-V3R5-WORKFLOW-OPT-001 Layer D (2026-05-20)

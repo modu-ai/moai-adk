@@ -3,308 +3,135 @@
 > Module: Comprehensive optimization plan generation
 > Complexity: Advanced
 > Time: 15+ minutes
-> Dependencies: asyncio
+> Dependencies: none (planning logic is language-neutral)
 
 ## Core Implementation
 
 ### Optimization Planning System
 
-```python
-from typing import Dict, List
-from dataclasses import dataclass
-import re
-from collections import defaultdict
+```text
+record OptimizationPlan:
+    bottlenecks:                 List<Bottleneck>
+    execution_order:             List<int>
+    estimated_total_improvement: text
+    implementation_complexity:   text
+    risk_level:                  text
+    prerequisites:               List<text>
+    validation_strategy:         text
 
-@dataclass
-class OptimizationPlan:
-    """Comprehensive optimization plan with prioritized actions."""
-    bottlenecks: List[PerformanceBottleneck]
-    execution_order: List[int]
-    estimated_total_improvement: str
-    implementation_complexity: str
-    risk_level: str
-    prerequisites: List[str]
-    validation_strategy: str
+class OptimizationPlanner(detector):
+    create_optimization_plan(bottlenecks, docs_patterns = none):
+        prioritized  = prioritize_bottlenecks(bottlenecks)
+        execution_order       = create_execution_order(prioritized)
+        total_improvement     = estimate_total_improvement(prioritized)
+        complexity            = assess_implementation_complexity(prioritized)
+        risk_level            = assess_optimization_risk(prioritized)
+        prerequisites         = identify_prerequisites(prioritized)
+        validation_strategy   = create_validation_strategy(prioritized)
+        return OptimizationPlan(prioritized, execution_order, total_improvement,
+                                complexity, risk_level, prerequisites, validation_strategy)
 
-class OptimizationPlanner:
-    """Create comprehensive optimization plans."""
+    prioritize_bottlenecks(bottlenecks):
+        severity_order = { critical:4, high:3, medium:2, low:1 }
+        return sort bottlenecks descending by:
+            (severity_order[severity] default 0, impact_score, optimization_priority(type))
 
-    def __init__(self, detector):
-        self.detector = detector
+    optimization_priority(opt_type):
+        priorities = { ALGORITHM:4, CACHING:3, CONCURRENCY:3, MEMORY:2,
+                       DATA_STRUCTURE:2, IO:2, DATABASE:1 }
+        return priorities[opt_type] default 1
 
-    async def create_optimization_plan(
-        self, bottlenecks: List[PerformanceBottleneck],
-        context7_patterns: Dict[str, Any] = None
-    ) -> OptimizationPlan:
-        """Create comprehensive optimization plan."""
+    create_execution_order(bottlenecks):
+        type_groups = bucket bottlenecks by optimization_type
+        order = []
+        for type in [ALGORITHM, DATA_STRUCTURE, CACHING, MEMORY, CONCURRENCY, IO, DATABASE]:
+            if type in type_groups: order.extend(type_groups[type])
+        return order
 
-        # Prioritize bottlenecks by impact and severity
-        prioritized_bottlenecks = self._prioritize_bottlenecks(bottlenecks)
-
-        # Create execution order
-        execution_order = self._create_optimization_execution_order(prioritized_bottlenecks)
-
-        # Estimate total improvement
-        total_improvement = self._estimate_total_improvement(prioritized_bottlenecks)
-
-        # Assess implementation complexity
-        complexity = self._assess_implementation_complexity(prioritized_bottlenecks)
-
-        # Assess risk level
-        risk_level = self._assess_optimization_risk(prioritized_bottlenecks)
-
-        # Identify prerequisites
-        prerequisites = self._identify_optimization_prerequisites(prioritized_bottlenecks)
-
-        # Create validation strategy
-        validation_strategy = self._create_validation_strategy(prioritized_bottlenecks)
-
-        return OptimizationPlan(
-            bottlenecks=prioritized_bottlenecks,
-            execution_order=execution_order,
-            estimated_total_improvement=total_improvement,
-            implementation_complexity=complexity,
-            risk_level=risk_level,
-            prerequisites=prerequisites,
-            validation_strategy=validation_strategy
-        )
-
-    def _prioritize_bottlenecks(
-        self, bottlenecks: List[PerformanceBottleneck]
-    ) -> List[PerformanceBottleneck]:
-        """Prioritize bottlenecks by impact and implementation complexity."""
-
-        # Sort by severity, impact score, and optimization type
-        severity_order = {'critical': 4, 'high': 3, 'medium': 2, 'low': 1}
-
-        return sorted(
-            bottlenecks,
-            key=lambda x: (
-                severity_order.get(x.severity, 0),
-                x.impact_score,
-                self._get_optimization_priority(x.optimization_type)
-            ),
-            reverse=True
-        )
-
-    def _get_optimization_priority(self, opt_type: OptimizationType) -> int:
-        """Get priority weight for optimization type."""
-        priorities = {
-            OptimizationType.ALGORITHM_IMPROVEMENT: 4,
-            OptimizationType.CACHING: 3,
-            OptimizationType.CONCURRENCY: 3,
-            OptimizationType.MEMORY_OPTIMIZATION: 2,
-            OptimizationType.DATA_STRUCTURE_CHANGE: 2,
-            OptimizationType.I_O_OPTIMIZATION: 2,
-            OptimizationType.DATABASE_OPTIMIZATION: 1
-        }
-        return priorities.get(opt_type, 1)
-
-    def _create_optimization_execution_order(
-        self, bottlenecks: List[PerformanceBottleneck]
-    ) -> List[int]:
-        """Create optimal execution order for optimizations."""
-
-        # Group by optimization type
-        type_groups = defaultdict(list)
-        for i, bottleneck in enumerate(bottlenecks):
-            type_groups[bottleneck.optimization_type].append(i)
-
-        # Define execution order by type
-        execution_order = []
-        type_order = [
-            OptimizationType.ALGORITHM_IMPROVEMENT,
-            OptimizationType.DATA_STRUCTURE_CHANGE,
-            OptimizationType.CACHING,
-            OptimizationType.MEMORY_OPTIMIZATION,
-            OptimizationType.CONCURRENCY,
-            OptimizationType.I_O_OPTIMIZATION,
-            OptimizationType.DATABASE_OPTIMIZATION
-        ]
-
-        for opt_type in type_order:
-            if opt_type in type_groups:
-                execution_order.extend(type_groups[opt_type])
-
-        return execution_order
-
-    def _estimate_total_improvement(
-        self, bottlenecks: List[PerformanceBottleneck]
-    ) -> str:
-        """Estimate total performance improvement."""
-
-        if not bottlenecks:
-            return "No significant improvement expected"
-
-        # Calculate weighted improvement
-        total_weighted_improvement = 0
-        total_weight = 0
-
-        for bottleneck in bottlenecks:
-            # Extract improvement percentage from description
-            improvement_range = self._parse_improvement_estimate(bottleneck.estimated_improvement)
-            if improvement_range:
-                avg_improvement = (improvement_range[0] + improvement_range[1]) / 2
-                weight = bottleneck.impact_score
-                total_weighted_improvement += avg_improvement * weight
-                total_weight += weight
-
+    estimate_total_improvement(bottlenecks):
+        if bottlenecks is empty: return "No significant improvement expected"
+        total_weighted = 0
+        total_weight   = 0
+        for b in bottlenecks:
+            rng = parse_improvement_estimate(b.estimated_improvement)
+            if rng:
+                avg = (rng[0] + rng[1]) / 2
+                total_weighted += avg * b.impact_score
+                total_weight   += b.impact_score
         if total_weight > 0:
-            avg_improvement = total_weighted_improvement / total_weight
-            return f"{avg_improvement:.0f}% average performance improvement"
-
+            return round(total_weighted / total_weight) + "% average performance improvement"
         return "Performance improvement depends on implementation"
 
-    def _parse_improvement_estimate(self, estimate: str) -> tuple:
-        """Parse improvement percentage from estimate string."""
+    parse_improvement_estimate(estimate):
+        # Match "20-50%" or "30%"
+        m = match(estimate, "(<int>)-?(<int>?)%")
+        if m: return (m[0], m[1] default m[0])
+        return none
 
-        # Look for percentage ranges like "20-50%" or "30%"
-        match = re.search(r'(\d+)-?(\d+)?%', estimate)
-        if match:
-            start = int(match.group(1))
-            end = int(match.group(2)) if match.group(2) else start
-            return (start, end)
+    assess_implementation_complexity(bottlenecks):
+        complexity_scores = { ALGORITHM:3, DATA_STRUCTURE:3, CONCURRENCY:4,
+                              DATABASE:3, CACHING:2, MEMORY:2, IO:2 }
+        if bottlenecks is empty: return "low"
+        avg = sum(complexity_scores[b.type] default 2 * b.impact_score for b in bottlenecks)
+              / sum(b.impact_score for b in bottlenecks)
+        if avg > 3.5: return "high"
+        if avg > 2.5: return "medium"
+        return "low"
 
-        return None
+    assess_optimization_risk(bottlenecks):
+        high_risk_types = { ALGORITHM, DATA_STRUCTURE, CONCURRENCY }
+        high_risk_count = count(b for b in bottlenecks
+                                if b.type in high_risk_types and b.impact_score > 0.3)
+        if high_risk_count > 3: return "high"
+        if high_risk_count > 1: return "medium"
+        return "low"
 
-    def _assess_implementation_complexity(
-        self, bottlenecks: List[PerformanceBottleneck]
-    ) -> str:
-        """Assess overall implementation complexity."""
-
-        complexity_scores = {
-            OptimizationType.ALGORITHM_IMPROVEMENT: 3,
-            OptimizationType.DATA_STRUCTURE_CHANGE: 3,
-            OptimizationType.CONCURRENCY: 4,
-            OptimizationType.DATABASE_OPTIMIZATION: 3,
-            OptimizationType.CACHING: 2,
-            OptimizationType.MEMORY_OPTIMIZATION: 2,
-            OptimizationType.I_O_OPTIMIZATION: 2
-        }
-
-        if not bottlenecks:
-            return "low"
-
-        avg_complexity = sum(
-            complexity_scores.get(b.optimization_type, 2) * b.impact_score
-            for b in bottlenecks
-        ) / sum(b.impact_score for b in bottlenecks)
-
-        if avg_complexity > 3.5:
-            return "high"
-        elif avg_complexity > 2.5:
-            return "medium"
-        else:
-            return "low"
-
-    def _assess_optimization_risk(
-        self, bottlenecks: List[PerformanceBottleneck]
-    ) -> str:
-        """Assess risk level of optimizations."""
-
-        high_risk_types = {
-            OptimizationType.ALGORITHM_IMPROVEMENT,
-            OptimizationType.DATA_STRUCTURE_CHANGE,
-            OptimizationType.CONCURRENCY
-        }
-
-        high_risk_count = sum(
-            1 for b in bottlenecks
-            if b.optimization_type in high_risk_types and b.impact_score > 0.3
-        )
-
-        if high_risk_count > 3:
-            return "high"
-        elif high_risk_count > 1:
-            return "medium"
-        else:
-            return "low"
-
-    def _identify_optimization_prerequisites(
-        self, bottlenecks: List[PerformanceBottleneck]
-    ) -> List[str]:
-        """Identify prerequisites for safe optimization."""
-
+    identify_prerequisites(bottlenecks):
         prerequisites = [
             "Create comprehensive performance benchmarks",
             "Ensure version control with current implementation",
-            "Set up performance testing environment"
-        ]
-
-        # Add specific prerequisites based on bottleneck types
-        optimization_types = set(b.optimization_type for b in bottlenecks)
-
-        if OptimizationType.CONCURRENCY in optimization_types:
-            prerequisites.extend([
-                "Review thread safety and shared resource access",
-                "Implement proper synchronization mechanisms"
-            ])
-
-        if OptimizationType.DATABASE_OPTIMIZATION in optimization_types:
-            prerequisites.extend([
-                "Create database backup before optimization",
-                "Set up database performance monitoring"
-            ])
-
-        if OptimizationType.ALGORITHM_IMPROVEMENT in optimization_types:
-            prerequisites.extend([
-                "Verify algorithm correctness with test suite",
-                "Compare against known reference implementations"
-            ])
-
+            "Set up performance testing environment"]
+        types = set(b.type for b in bottlenecks)
+        if CONCURRENCY in types:
+            prerequisites += ["Review thread safety and shared resource access",
+                              "Implement proper synchronization mechanisms"]
+        if DATABASE in types:
+            prerequisites += ["Create database backup before optimization",
+                              "Set up database performance monitoring"]
+        if ALGORITHM in types:
+            prerequisites += ["Verify algorithm correctness with the test suite",
+                              "Compare against known reference implementations"]
         return prerequisites
 
-    def _create_validation_strategy(
-        self, bottlenecks: List[PerformanceBottleneck]
-    ) -> str:
-        """Create validation strategy for optimizations."""
-
-        strategy = """
-Validation Strategy:
-1. Baseline Performance Measurement
-   - Record current performance metrics
-   - Establish performance regression thresholds
-
-2. Incremental Testing
-   - Apply optimizations one at a time
-   - Measure performance impact after each change
-
-3. Automated Performance Testing
-   - Implement performance regression tests
-   - Set up continuous performance monitoring
-
-4. Functional Validation
-   - Run complete test suite after each optimization
-   - Verify no functional regressions introduced
-
-5. Production Monitoring
-   - Monitor performance in staging environment
-   - Gradual rollout with performance validation
-"""
-
-        return strategy
+    create_validation_strategy(bottlenecks):
+        return """
+        Validation Strategy:
+        1. Baseline Performance Measurement — record current metrics; set regression thresholds
+        2. Incremental Testing — apply optimizations one at a time; measure after each
+        3. Automated Performance Testing — regression tests + continuous monitoring
+        4. Functional Validation — full test suite after each optimization; no regressions
+        5. Production Monitoring — validate in staging; gradual rollout
+        """
 ```
 
 ## Usage Examples
 
-```python
-# Create optimization plan
+```text
+# Create an optimization plan
 planner = OptimizationPlanner(detector)
-optimization_plan = await planner.create_optimization_plan(bottlenecks)
-
-print(f"\nOptimization Plan:")
-print(f"  Estimated improvement: {optimization_plan.estimated_total_improvement}")
-print(f"  Implementation complexity: {optimization_plan.implementation_complexity}")
-print(f"  Risk level: {optimization_plan.risk_level}")
-print(f"  Prerequisites: {len(optimization_plan.prerequisites)} items")
-print(f"  Execution order: {optimization_plan.execution_order}")
-print(f"\nValidation Strategy:")
-print(optimization_plan.validation_strategy)
+plan = planner.create_optimization_plan(bottlenecks)
+print("Optimization Plan:")
+print("  Estimated improvement: " + plan.estimated_total_improvement)
+print("  Implementation complexity: " + plan.implementation_complexity)
+print("  Risk level: " + plan.risk_level)
+print("  Prerequisites: " + len(plan.prerequisites) + " items")
+print("  Execution order: " + plan.execution_order)
+print("Validation Strategy:\n" + plan.validation_strategy)
 ```
 
 ## Best Practices
 
-1. **Prioritization**: Adddess high-impact, low-complexity optimizations first
+1. **Prioritization**: Address high-impact, low-complexity optimizations first
 2. **Risk Assessment**: Understand and mitigate optimization risks
 3. **Incremental Approach**: Apply optimizations one at a time
 4. **Baseline Measurement**: Establish performance baselines before optimization

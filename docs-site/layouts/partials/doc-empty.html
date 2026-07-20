@@ -1,0 +1,15 @@
+{{- /* 빈 섹션 empty-state partial — Searching 마스코트 + 안내 카피 + 홈 CTA (M5).
+       하위 페이지가 없는 섹션(list.html 에서 len .Pages == 0)에 렌더한다.
+       카피는 i18n 키(empty_title / empty_text) 경유 — 하드코딩 한국어 금지(AP-2).
+       CTA 텍스트는 기존 notfound_home 키 재사용. 컨텍스트(.)는 Page. */ -}}
+<section class="doc-empty">
+  <div class="doc-empty-inner">
+    {{ partial "mascot.html" (dict "pose" "searching" "size" "140" "class" "doc-empty-mascot") }}
+    <h2 class="doc-empty-title">{{ i18n "empty_title" }}</h2>
+    <p class="doc-empty-text">{{ i18n "empty_text" }}</p>
+    <a class="md-btn md-btn-primary" href="{{ .Site.Home.RelPermalink }}">
+      {{ i18n "notfound_home" }}
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" width="18" height="18"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+    </a>
+  </div>
+</section>

@@ -128,8 +128,9 @@ func TestIndexNeutralDefaultsForZeroValueProfile(t *testing.T) {
 	if !strings.Contains(body, `method="POST"`) {
 		t.Error("zero-value profile did not render a POST form (page may be blank)")
 	}
-	// The unset language option must be the selected default.
-	if !strings.Contains(body, `<option value="" selected>(unset)</option>`) {
+	// The unset language option must be the selected default (M5-b D4: carries
+	// data-i18n="opt.unset" for 4-locale rendering).
+	if !strings.Contains(body, `<option value="" selected data-i18n="opt.unset">(unset)</option>`) {
 		t.Error("zero-value profile did not render neutral (unset) language default")
 	}
 }
@@ -393,6 +394,7 @@ func TestHostCheckAllowsLoopbackHostsOnPost(t *testing.T) {
 		form := url.Values{"__profile": {"default"}, "permission_mode": {"acceptEdits"}}
 		req := httptest.NewRequest(http.MethodPost, "/save", strings.NewReader(form.Encode()))
 		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+		req.Header.Set("Sec-Fetch-Site", "same-origin") // pass the CSRF gate (REQ-SEC-002)
 		req.Host = host
 		rec := httptest.NewRecorder()
 		h.ServeHTTP(rec, req)
@@ -439,6 +441,7 @@ func servePost(t *testing.T, h http.Handler, path string, form url.Values) *http
 	t.Helper()
 	req := httptest.NewRequest(http.MethodPost, path, strings.NewReader(form.Encode()))
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req.Header.Set("Sec-Fetch-Site", "same-origin") // simulate real browser form POST (REQ-SEC-002)
 	req.Host = "127.0.0.1:8080"
 	rec := httptest.NewRecorder()
 	h.ServeHTTP(rec, req)

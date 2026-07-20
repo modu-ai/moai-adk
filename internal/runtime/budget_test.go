@@ -571,3 +571,119 @@ func TestSessionStartIntegration(t *testing.T) {
 		t.Error("expected non-empty info string")
 	}
 }
+
+// ---------------------------------------------------------------------------
+// SPEC-TOKEN-BUDGET-STOP-001 — Graceful-Abort + Handoff Generation (M1)
+// ---------------------------------------------------------------------------
+
+// TestGracefulAbortAtHardLimit (AC-TBS-001) verifies that CheckGracefulAbort
+// returns a non-empty handoff message and shouldAbort=true when the named agent
+// has reached the hard_clear_threshold (default 90%).
+func TestGracefulAbortAtHardLimit(t *testing.T) {
+	t.Parallel()
+
+	tracker := runtime.NewTracker(testConfig())
+	tracker.RecordCall("default", 900, 0) // 90% — at hard-limit
+
+	handoff, shouldAbort := tracker.CheckGracefulAbort("default", "SPEC-TBS-001")
+	if !shouldAbort {
+		t.Error("expected shouldAbort=true at 90% (hard-limit), got false")
+	}
+	if handoff == "" {
+		t.Error("expected non-empty handoff message at hard-limit, got empty string")
+	}
+}
+
+// TestGracefulAbortBelowHardLimit (EC-1) verifies that CheckGracefulAbort returns
+// ("", false) when the agent has NOT reached the hard-limit — no handoff generated.
+func TestGracefulAbortBelowHardLimit(t *testing.T) {
+	t.Parallel()
+
+	tracker := runtime.NewTracker(testConfig())
+	tracker.RecordCall("default", 500, 0) // 50% — below hard-limit
+
+	handoff, shouldAbort := tracker.CheckGracefulAbort("default", "SPEC-TBS-001")
+	if shouldAbort {
+		t.Error("expected shouldAbort=false below hard-limit (50%), got true")
+	}
+	if handoff != "" {
+		t.Errorf("expected empty handoff below hard-limit, got %q", handoff)
+	}
+}
+
+// TestGracefulAbortHandoffFormat (AC-TBS-002) verifies that the auto-generated
+// handoff conforms to session-handoff.md § Canonical Format (6-block structure +
+// cut-line markers). The STRUCTURE is the acceptance criterion, not exact values.
+func TestGracefulAbortHandoffFormat(t *testing.T) {
+	t.Parallel()
+
+	tracker := runtime.NewTracker(testConfig())
+	tracker.RecordCall("default", 950, 0) // 95% — at hard-limit
+
+	handoff, _ := tracker.CheckGracefulAbort("default", "SPEC-FMT-001")
+
+	// Required 6-block structure tokens per session-handoff.md § Canonical Format.
+	requiredTokens := []string{
+		"✂──── 여기부터 복사 ────✂", // top cut-line marker
+		"✂──── 여기까지 복사 ────✂", // bottom cut-line marker
+		"ultrathink.",                // Block 1 opener
+		"applied lessons:",           // Block 2
+		"전제 검증:",                  // Block 3 header (ko canonical locale)
+		"실행:",                       // Block 5 header (ko canonical locale)
+	}
+	for _, token := range requiredTokens {
+		if !strings.Contains(handoff, token) {
+			t.Errorf("handoff missing required 6-block token %q\n--- handoff ---\n%s", token, handoff)
+		}
+	}
+
+	// The handoff must reference the spec ID for paste-ready reuse.
+	if !strings.Contains(handoff, "SPEC-FMT-001") {
+		t.Errorf("handoff missing spec ID SPEC-FMT-001\n--- handoff ---\n%s", handoff)
+	}
+}
+
+// TestRecordCallNoErrorOnBudgetExhaustion (AC-TBS-004) verifies that RecordCall
+// continues to compile with no error return and completes without panic when an
+// agent is over budget. The graceful-abort is a separate method; RecordCall is
+// NOT modified to hard-fail (BC-V3R3-006 warning-first preserved).
+func TestRecordCallNoErrorOnBudgetExhaustion(t *testing.T) {
+	t.Parallel()
+
+	tracker := runtime.NewTracker(testConfig())
+
+	// At hard-limit (90%)
+	tracker.RecordCall("default", 900, 0)
+	if !tracker.IsAtHardLimit("default") {
+		t.Error("expected IsAtHardLimit=true at 90%")
+	}
+
+	// Over budget (140%) — RecordCall has no error return; must not panic.
+	tracker.RecordCall("default", 500, 0)
+
+	if !tracker.IsAtHardLimit("default") {
+		t.Error("expected IsAtHardLimit=true at 140%")
+	}
+	current, _, _ := tracker.Usage("default")
+	if current != 1400 {
+		t.Errorf("expected current=1400 after 900+500, got %d", current)
+	}
+}
+
+// TestGracefulAbortNoSpecID (EC-5) verifies graceful degradation when no SPEC ID
+// is available — the handoff is still generated with a generic fallback.
+func TestGracefulAbortNoSpecID(t *testing.T) {
+	t.Parallel()
+
+	tracker := runtime.NewTracker(testConfig())
+	tracker.RecordCall("default", 950, 0) // 95% — at hard-limit
+
+	// Empty specID — should still generate a handoff (graceful degradation).
+	handoff, shouldAbort := tracker.CheckGracefulAbort("default", "")
+	if !shouldAbort {
+		t.Error("expected shouldAbort=true at hard-limit even with empty specID")
+	}
+	if !strings.Contains(handoff, "ultrathink.") {
+		t.Errorf("handoff should still contain 6-block tokens with empty specID\n--- handoff ---\n%s", handoff)
+	}
+}

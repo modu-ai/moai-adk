@@ -4,7 +4,7 @@ weight: 60
 draft: false
 ---
 
-MoAI-ADK를 사용하여 첫 프로젝트를 생성하고 개발 워크플로우를 경험해보세요.
+MoAI-ADK로 첫 프로젝트를 생성하고 개발 워크플로우를 경험해보세요. 이 문서를 따라가면 SPEC 작성부터 구현, 문서화까지 한 사이클을 완주하게 됩니다.
 
 ## 사전 준비
 
@@ -12,7 +12,7 @@ MoAI-ADK를 사용하여 첫 프로젝트를 생성하고 개발 워크플로우
 
 - [x] MoAI-ADK 설치 ([설치 가이드](./installation))
 - [x] 초기 설정 완료 ([초기 설정](./init-wizard))
-- [x] GLM API 키 획득
+- [ ] GLM API 키 획득 (선택 — CG 모드로 토큰 비용을 절감하려는 경우)
 
 ## 첫 프로젝트 생성
 
@@ -34,7 +34,7 @@ moai init
 
 ### 2단계: 프로젝트 문서 생성
 
-프로젝트의 기초 문서를 생성합니다. 이 단계는 Claude Code가 프로젝트를 이해하는 데 필수적입니다.
+프로젝트의 기초 문서를 생성합니다. 이 단계는 Claude Code가 프로젝트를 이해하는 데 필수적입니다. 매 세션 프로젝트 구조를 설명하는 대신 에이전트가 이 문서를 읽습니다.
 
 ```bash
 > /moai project
@@ -60,7 +60,7 @@ flowchart TB
 | **tech.md** | 사용 기술, 프레임워크, 개발 환경, 빌드/배포 설정 |
 
 {{< callout type="info" >}}
-`/moai project`는 프로젝트 초기 설정 후 또는 구조가 크게 변경된 후에 실행하세요.
+`/moai project`는 프로젝트 초기 설정 후 또는 구조가 크게 변경된 후에 실행하세요. 프로젝트 문서와 함께 프로젝트 전용 하네스도 자동으로 구성됩니다.
 {{< /callout >}}
 
 ### 3단계: SPEC 문서 생성
@@ -68,9 +68,9 @@ flowchart TB
 첫 번째 기능에 대한 SPEC 문서를 생성합니다. EARS 형식을 사용하여 명확한 요구사항을 정의합니다.
 
 {{< callout type="info" >}}
-**SPEC이 왜 필요한가요?** 📝
+**SPEC이 왜 필요한가요?**
 
-**바이브코딩** (Vibe Coding)의 가장 큰 문제는 **맥락 유실**입니다:
+**바이브코딩**(Vibe Coding)의 가장 큰 문제는 **맥락 유실**입니다:
 
 - AI와 대화하면서 코딩하다 보면, "아까 뭘 하려고 했더라?" 하는 순간이 옵니다
 - 세션이 끊기거나 컨텍스트가 초기화되면 **이전에 논의했던 요구사항이 사라집니다**
@@ -85,7 +85,7 @@ flowchart TB
 | 커뮤니케이션 오류 | **인수 기준**으로 완료 조건 명시 |
 | 진행 상황 추적 불가 | **SPEC ID**로 작업 단위 관리 |
 
-**한 줄 요약:** SPEC은 "AI와 나눈 대화를 문서로 남기는 것"입니다. 세션이 끊겨도 SPEC 문서만 읽으면 다시 이어서 작업할 수 있습니다!
+**한 줄 요약:** SPEC은 "AI와 나눈 대화를 문서로 남기는 것"입니다. 세션이 끊겨도 SPEC 문서만 읽으면 다시 이어서 작업할 수 있습니다. 같은 설명을 반복하지 않으니 토큰도 절약됩니다.
 {{< /callout >}}
 
 ```bash
@@ -98,30 +98,30 @@ flowchart TB
 flowchart TB
     A["요구사항 입력"] --> B["EARS 형식 분석"]
     B --> C["SPEC 문서 생성"]
-    C --> D["SPEC-001 저장"]
+    C --> D["SPEC-AUTH-001 저장"]
     D --> E["요구사항 검증"]
 ```
 
-생성된 SPEC 문서는 `.moai/specs/SPEC-001/spec.md`에 저장됩니다.
+생성된 SPEC 문서는 `.moai/specs/SPEC-AUTH-001/spec.md`에 저장됩니다 (SPEC ID는 `SPEC-<도메인>-<번호>` 형식).
 
 {{< callout type="warning" >}}
-SPEC 생성 후 반드시 `/clear` 명령을 실행하여 토큰을 절약하세요.
+SPEC 생성 후 `/clear` 명령으로 컨텍스트를 비우세요. 결정 사항은 이미 SPEC 파일에 남아 있으므로 대화 기록을 유지할 이유가 없습니다. 토큰 절약의 기본기입니다.
 {{< /callout >}}
 
 ### 4단계: TDD/DDD 개발 실행
 
-SPEC 문서를 바탕으로 개발 방법론을 선택하여 구현을 진행합니다.
+SPEC 문서를 바탕으로 구현을 진행합니다.
 
 ```bash
 > /clear
-> /moai run SPEC-001
+> /moai run SPEC-AUTH-001
 ```
 
 MoAI-ADK는 프로젝트 상태에 따라 최적의 개발 방법론을 자동으로 선택합니다.
 
 ```mermaid
 flowchart TD
-    A["/moai run SPEC-001"] --> B{"프로젝트 분석"}
+    A["/moai run SPEC-AUTH-001"] --> B{"프로젝트 분석"}
     B -->|"신규 프로젝트 또는<br/>테스트 커버리지 10%+"| C["TDD<br/>RED → GREEN → REFACTOR"]
     B -->|"기존 프로젝트<br/>커버리지 10% 미만"| D["DDD<br/>ANALYZE → PRESERVE → IMPROVE"]
     C --> E["TRUST 5 품질 게이트"]
@@ -135,12 +135,12 @@ flowchart TD
 #### TDD 모드 (신규 프로젝트 / 테스트 커버리지 10%+)
 
 {{< callout type="info" >}}
-**TDD란?** 📝
+**TDD란?**
 
-TDD는 "시험 문제를 먼저 만들고 나서 공부하는 것"입니다:
-- **테스트(채점 기준)를 먼저 작성합니다** — 기능이 없으니 당연히 실패
-- **테스트를 통과하는 최소한의 코드를 작성합니다** — 딱 필요한 만큼만
-- **테스트를 유지하면서 코드를 개선합니다** — 더 좋은 코드로 다듬기
+TDD는 "신규 집 건축"과 같습니다 (DDD가 집 리모델링이라면, TDD는 새 집 짓기):
+- **설계 도면과 검수 기준 (테스트) 을 먼저 작성합니다** — 아직 집이 없으니 당연히 검수 실패
+- **검수 기준을 통과하는 최소한의 구조물 (코드) 을 짓습니다** — 딱 필요한 만큼만
+- **검수를 유지하면서 마감 (코드) 을 다듬습니다** — 더 좋은 코드로 개선
 
 **핵심:** 코드보다 테스트가 먼저입니다!
 {{< /callout >}}
@@ -149,14 +149,14 @@ TDD는 "시험 문제를 먼저 만들고 나서 공부하는 것"입니다:
 
 | 단계 | 의미 | 하는 일 |
 |------|------|--------|
-| 🔴 **RED** | 실패 | 아직 없는 기능의 테스트를 먼저 작성 |
-| 🟢 **GREEN** | 통과 | 테스트를 통과하는 최소한의 코드 작성 |
-| 🔵 **REFACTOR** | 개선 | 테스트를 유지하면서 코드 품질 향상 |
+| **RED** | 실패 | 아직 없는 기능의 테스트를 먼저 작성 |
+| **GREEN** | 통과 | 테스트를 통과하는 최소한의 코드 작성 |
+| **REFACTOR** | 개선 | 테스트를 유지하면서 코드 품질 향상 |
 
 ```mermaid
 flowchart TD
-    A["🔴 RED<br/>실패하는 테스트 작성"] --> B["🟢 GREEN<br/>최소한의 코드로 통과"]
-    B --> C["🔵 REFACTOR<br/>코드 품질 개선"]
+    A["RED<br/>실패하는 테스트 작성"] --> B["GREEN<br/>최소한의 코드로 통과"]
+    B --> C["REFACTOR<br/>코드 품질 개선"]
     C --> D{"더 구현할 기능?"}
     D -->|Yes| A
     D -->|No| E["품질 게이트 통과"]
@@ -170,7 +170,7 @@ flowchart TD
 #### DDD 모드 (기존 프로젝트 / 테스트 커버리지 10% 미만)
 
 {{< callout type="info" >}}
-**DDD란?** 🏠
+**DDD란?**
 
 DDD는 "집 리모델링"과 비슷합니다:
 - **기존 집을 부수지 않고** 방 하나씩 개선합니다
@@ -184,9 +184,9 @@ DDD는 "집 리모델링"과 비슷합니다:
 
 | 단계 | 비유 | 실제 작업 |
 |------|------|----------|
-| **ANALYZE** (분석) | 🔍 집 점검하기 | 현재 코드 구조와 문제점 파악 |
-| **PRESERVE** (보존) | 📸 현재 상태 사진 찍기 | 특성화 테스트로 현재 동작 기록 |
-| **IMPROVE** (개선) | 🔧 방 하나씩 리모델링 | 테스트 통과하면서 조금씩 개선 |
+| **ANALYZE** (분석) | 집 점검하기 | 현재 코드 구조와 문제점 파악 |
+| **PRESERVE** (보존) | 현재 상태 사진 찍기 | 특성화 테스트로 현재 동작 기록 |
+| **IMPROVE** (개선) | 방 하나씩 리모델링 | 테스트 통과하면서 조금씩 개선 |
 
 ```mermaid
 flowchart TD
@@ -212,13 +212,15 @@ flowchart TD
 - 0 errors, 0 type errors
 - LSP 베이스라인 달성
 
+완료 판정은 느낌이 아니라 증거로 이루어집니다. 인수 기준 하나하나가 태스크로 등록되고 테스트가 통과해야 체크됩니다.
+
 ### 5단계: 문서 동기화
 
 개발이 완료되면 품질 검증과 문서를 자동 생성합니다.
 
 ```bash
 > /clear
-> /moai sync SPEC-001
+> /moai sync SPEC-AUTH-001
 ```
 
 이 명령은 다음을 수행합니다:
@@ -259,12 +261,12 @@ sequenceDiagram
 
     Dev->>Plan: 기능 요구사항 입력
     Plan->>Plan: EARS 형식으로 분석
-    Plan-->>Dev: SPEC-001 문서
+    Plan-->>Dev: SPEC-AUTH-001 문서
 
     Note over Dev: /clear 실행
 
-    Dev->>Run: SPEC-001 실행
-    Run->>Run: ANALYZE-PRESERVE-IMPROVE
+    Dev->>Run: SPEC-AUTH-001 실행
+    Run->>Run: TDD/DDD 사이클 수행
     Run->>Run: 테스트 생성 (85%+)
     Run-->>Dev: 구현 완료
 
@@ -279,26 +281,22 @@ sequenceDiagram
 
 ## 통합 자동화: /moai
 
-모든 단계를 한 번에 자동 실행하려면:
+모든 단계를 한 번에 자동 실행하려면 자연어로 요청하세요:
 
 ```bash
 > /moai "사용자 인증 기능 구현"
 ```
 
-MoAI는 Plan → Run → Sync를 자동으로 실행하며, 병렬 탐색으로 3-4배 빠른 분석을 제공합니다.
+요청은 **Analyze-First** 라우팅을 거칩니다. 어떤 언어로 요청하든 의도를 먼저 분석하고 컨텍스트가 부족하면 질문으로 보완한 뒤 Plan → Run → Sync 파이프라인을 자동으로 실행합니다.
 
 ```mermaid
 flowchart TB
-    A["/moai"] --> B[병렬 탐색]
-    B --> C["Explore Agent<br>코드베이스 분석"]
-    B --> D["Research Agent<br>기술 문서 조사"]
-    B --> E["Quality Agent<br>품질 상태 평가"]
-
-    C --> F[통합 분석]
-    D --> F
-    E --> F
-
-    F --> G["Plan → Run → Sync 자동 실행"]
+    A["/moai '자연어 요청'"] --> B["의도 분석<br>Analyze-First"]
+    B --> C{"컨텍스트 충분?"}
+    C -->|"부족"| D["명확화 질문"]
+    D --> B
+    C -->|"충분"| E["실행 계획 구성<br>스킬·에이전트 체인"]
+    E --> F["Plan → Run → Sync 자동 실행"]
 ```
 
 ## 워크플로우 선택 가이드
@@ -323,17 +321,17 @@ flowchart TB
 > /clear
 
 # 3. 구현
-> /moai run SPEC-001
+> /moai run SPEC-AUTH-001
 > /clear
 
 # 4. 문서화 및 PR
-> /moai sync SPEC-001
+> /moai sync SPEC-AUTH-001
 ```
 
-### 예제 2: 복잡한 기능 (MoAI 사용)
+### 예제 2: 복잡한 기능 (자연어 자동화)
 
 ```bash
-# 프로젝트 문서가 이미 있다면 MoAI로 한 번에 실행
+# 프로젝트 문서가 이미 있다면 자연어로 한 번에 실행
 > /moai "JWT 인증 미들웨어 구현"
 ```
 
@@ -371,7 +369,7 @@ my-first-project/
 │   │   ├── structure.md             # 디렉토리 구조
 │   │   └── tech.md                  # 기술 스택
 │   ├── specs/
-│   │   └── SPEC-001/
+│   │   └── SPEC-AUTH-001/
 │   │       └── spec.md              # 요구사항 명세서
 │   └── memory/
 │       └── checkpoints/             # 세션 체크포인트
@@ -393,46 +391,48 @@ moai doctor
 
 이 명령은 다음을 확인합니다:
 
-- LSP 진단 (오류, 경고)
-- 테스트 커버리지
-- 린터 상태
-- 보안 검증
+- Claude Code 설정
+- 의존성 검증 (git, go 등 도구 설치 여부)
+- 환경 진단
+
+세부 진단은 하위 명령어로 실행합니다 — `moai doctor config` (설정), `moai doctor hook` (훅 커버리지), `moai doctor permission` (권한), `moai doctor sandbox` (샌드박스).
 
 ```mermaid
 graph TD
-    A["moai doctor"] --> B["LSP 진단"]
-    A --> C["테스트 커버리지"]
-    A --> D["린터 상태"]
-    A --> E["보안 검증"]
+    A["moai doctor"] --> B["Claude Code 설정"]
+    A --> C["의존성 검증"]
+    A --> D["환경 진단"]
 
     B --> F["종합 보고서"]
     C --> F
     D --> F
-    E --> F
 ```
 
 ## 유용한 팁
 
 ### 토큰 관리
 
-대규모 프로젝트에서는 각 단계 후 `/clear`를 실행하여 토큰을 절약하세요:
+각 단계 후 `/clear`를 실행하여 컨텍스트를 비우세요. 결정 사항은 SPEC과 `progress.md`에 파일로 남아 있으므로 대화 기록 없이도 다음 단계를 이어갈 수 있습니다:
 
 ```bash
 > /moai plan "복잡한 기능 구현"
 > /clear  # 세션 초기화
-> /moai run SPEC-001
+> /moai run SPEC-AUTH-001
 > /clear
-> /moai sync SPEC-001
+> /moai sync SPEC-AUTH-001
 ```
 
 ### 버그 수정 및 자동화
 
 ```bash
-# 자동 수정
+# 자동 수정 (단일 패스)
 > /moai fix "테스트에서 발생하는 TypeError 수정"
 
 # 반복 수정 (완료될 때까지)
 > /moai loop "모든 린터 경고 수정"
+
+# 완료 조건 선언형 루프
+> /moai goal "go test ./... exits 0; 모든 린트 경고 해소"
 ```
 
 ---

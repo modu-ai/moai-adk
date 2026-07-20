@@ -2,6 +2,8 @@ package cli
 
 import (
 	"testing"
+
+	"github.com/modu-ai/moai-adk/internal/cli/update/backup"
 )
 
 func TestValuesEqual(t *testing.T) {
@@ -117,7 +119,7 @@ func TestValuesEqual(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := valuesEqual(tt.a, tt.b)
+			got := backup.ValuesEqual(tt.a, tt.b)
 			if got != tt.want {
 				t.Errorf("valuesEqual(%v, %v) = %v, want %v", tt.a, tt.b, got, tt.want)
 			}
@@ -299,7 +301,7 @@ func TestDeepMergeMaps(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := deepMergeMaps(tt.newMap, tt.oldMap)
+			result := backup.DeepMergeMaps(tt.newMap, tt.oldMap)
 			tt.check(t, result)
 		})
 	}
@@ -391,7 +393,7 @@ func TestMergeYAMLDeep(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result, err := mergeYAMLDeep([]byte(tt.newData), []byte(tt.oldData))
+			result, err := backup.MergeYAMLDeep([]byte(tt.newData), []byte(tt.oldData))
 			if tt.wantErr {
 				if err == nil {
 					t.Error("expected error, got nil")
@@ -570,7 +572,7 @@ func TestMergeYAML3Way(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result, err := mergeYAML3Way([]byte(tt.newData), []byte(tt.oldData), []byte(tt.baseData))
+			result, err := backup.MergeYAML3Way([]byte(tt.newData), []byte(tt.oldData), []byte(tt.baseData))
 			if tt.wantErr {
 				if err == nil {
 					t.Error("expected error, got nil")
@@ -862,7 +864,7 @@ func TestDeepMerge3Way(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := deepMerge3Way(tt.newMap, tt.oldMap, tt.baseMap)
+			result := backup.DeepMerge3Way(tt.newMap, tt.oldMap, tt.baseMap)
 			tt.check(t, result)
 		})
 	}

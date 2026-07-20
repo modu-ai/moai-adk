@@ -4,7 +4,7 @@ package tui
 import (
 	"strings"
 
-	"github.com/charmbracelet/lipgloss"
+	"charm.land/lipgloss/v2"
 )
 
 // KeyHint represents a single keyboard shortcut hint for display in a HelpBar.
@@ -51,5 +51,5 @@ func HelpBar(items []KeyHint, th *Theme) string {
 	}
 
 	div := divStyle.Render(" · ")
-	return strings.Join(parts, div)
+	return downsample(strings.Join(parts, div))
 }

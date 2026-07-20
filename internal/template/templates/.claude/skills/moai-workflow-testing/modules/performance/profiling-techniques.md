@@ -7,38 +7,24 @@
 
 ## Overview
 
-Comprehensive guide to profiling techniques for Python applications, covering CPU, memory, line-by-line, and real-time monitoring approaches.
+Comprehensive guide to profiling techniques, covering CPU, memory, line-by-line, and real-time monitoring approaches. The tool names vary by language — the metrics and interpretation are universal. Map each section to your language's profiler (Go pprof, Python cProfile/tracemalloc, Rust flamegraph, Java async-profiler, Node clinic.js, .NET dotnet-trace).
 
 ## CPU Profiling
 
-### cProfile Integration
+### Profiler Integration
 
-```python
-import cProfile
-import pstats
-import io
-
+```text
 class PerformanceProfiler:
-    def start_profiling(self, profile_types: List[str] = None):
-        """Start performance profiling with specified types."""
-        if profile_types is None:
-            profile_types = ['cpu', 'memory']
+    start_profiling(profile_types = ["cpu", "memory"]):
+        if "cpu" in profile_types:
+            # Start the language's CPU profiler (e.g. Go pprof, Python cProfile,
+            # Rust perf/flamegraph, Java async-profiler).
+            cpu_profiler.start()
 
-        if 'cpu' in profile_types:
-            self.profiler = cProfile.Profile()
-            self.profiler.enable()
-
-    def _analyze_cpu_profile(self) -> List[FunctionProfile]:
-        """Analyze CPU profiling results."""
-        if not self.profiler:
-            return []
-
-        s = io.StringIO()
-        ps = pstats.Stats(self.profiler, stream=s)
-        ps.sort_stats('cumulative')
-        ps.print_stats()
-
-        return self._parse_stats_output(s.getvalue())
+    analyze_cpu_profile():
+        if no cpu_profiler: return []
+        stats = cpu_profiler.snapshot_sorted_by(cumulative_time)
+        return parse_stats(stats)
 ```
 
 ### CPU Profile Analysis
@@ -56,33 +42,22 @@ Interpretation Guide:
 
 ## Memory Profiling
 
-### Tracemalloc Integration
+### Memory Profiler Integration
 
-```python
-import tracemalloc
-import memory_profiler
-
+```text
 class PerformanceProfiler:
-    def start_profiling(self, profile_types: List[str] = None):
-        if 'memory' in profile_types:
-            tracemalloc.start()
-            self.memory_profiler = memory_profiler.Profile()
+    start_profiling(profile_types):
+        if "memory" in profile_types:
+            # Start the language's memory tracer (e.g. Go runtime.MemProfile,
+            # Python tracemalloc/memory_profiler, Rust heaptrack, Java JFR).
+            memory_tracer.start()
 
-    def stop_profiling(self) -> Dict[str, Any]:
+    stop_profiling():
         results = {}
-        
-        if tracemalloc.is_tracing():
-            current, peak = tracemalloc.get_traced_memory()
-            tracemalloc.stop()
-            results['memory_profile'] = {
-                'current_mb': current / 1024 / 1024,
-                'peak_mb': peak / 1024 / 1024
-            }
-
-        if self.memory_profiler:
-            self.memory_profiler.disable()
-            results['memory_line_profile'] = self._analyze_memory_profile()
-
+        if memory_tracer.is_tracing():
+            current, peak = memory_tracer.traced_memory()
+            memory_tracer.stop()
+            results.memory_profile = { current_mb: current/MB, peak_mb: peak/MB }
         return results
 ```
 
@@ -102,17 +77,16 @@ Memory Leak Detection:
 
 ### Line Profiler Usage
 
-```python
-from line_profiler import LineProfiler
-
+```text
 class PerformanceProfiler:
-    def start_profiling(self, profile_types: List[str] = None):
-        if 'line' in profile_types:
-            self.line_profiler = LineProfiler()
-            self.line_profiler.enable_by_count()
+    start_profiling(profile_types):
+        if "line" in profile_types:
+            # Use a line-level profiler (e.g. Python line_profiler, Rust cargo-llvm-lines,
+            # Java JFR method profiler, JS CPU profiler with line info).
+            line_profiler.start()
 
 # Add specific functions to profile
-profiler.line_profiler.add_function(expensive_function)
+line_profiler.add_function(expensive_function)
 ```
 
 ### Line Profile Interpretation
@@ -131,213 +105,125 @@ Optimization Targets:
 
 ### RealTimeMonitor Class
 
-```python
-import psutil
-import threading
-import time
-from collections import deque
+```text
+class RealTimeMonitor(sampling_interval = 1.0):
+    sampling_interval
+    is_monitoring = false
+    snapshots = bounded_deque(maxlen=1000)
+    callbacks = []
+    alerts = []
 
-class RealTimeMonitor:
-    def __init__(self, sampling_interval: float = 1.0):
-        self.sampling_interval = sampling_interval
-        self.is_monitoring = False
-        self.monitor_thread = None
-        self.snapshots = deque(maxlen=1000)
-        self.callbacks = []
-        self.alerts = []
+    start_monitoring():
+        if is_monitoring: return
+        is_monitoring = true
+        spawn_background_task(monitor_loop())   # daemon thread / goroutine / async task
 
-    def start_monitoring(self):
-        """Start real-time performance monitoring."""
-        if self.is_monitoring:
-            return
-
-        self.is_monitoring = True
-        self.monitor_thread = threading.Thread(
-            target=self._monitor_loop, daemon=True
-        )
-        self.monitor_thread.start()
-
-    def _monitor_loop(self):
-        """Main monitoring loop."""
-        process = psutil.Process()
-
-        while self.is_monitoring:
+    monitor_loop():
+        while is_monitoring:
             try:
                 snapshot = PerformanceSnapshot(
-                    timestamp=time.time(),
-                    cpu_percent=process.cpu_percent(),
-                    memory_mb=process.memory_info().rss / 1024 / 1024,
+                    timestamp=now(),
+                    cpu_percent=process.cpu_percent(),        # via OS/process API
+                    memory_mb=process.rss() / MB,
                     memory_percent=process.memory_percent(),
                     open_files=len(process.open_files()),
                     threads=process.num_threads(),
-                    context_switches=process.num_ctx_switches().voluntary + 
-                                   process.num_ctx_switches().involuntary
-                )
+                    context_switches=process.context_switches())
 
-                for callback in self.callbacks:
-                    try:
-                        custom_metrics = callback()
-                        snapshot.custom_metrics.update(custom_metrics)
-                    except Exception as e:
-                        print(f"Custom metric callback error: {e}")
+                for callback in callbacks:
+                    try: snapshot.custom_metrics.update(callback())
+                    except e: log("Custom metric callback error: " + e)
 
-                self.snapshots.append(snapshot)
-                self._check_alerts(snapshot)
-                time.sleep(self.sampling_interval)
-
-            except Exception as e:
-                print(f"Monitoring error: {e}")
-                time.sleep(self.sampling_interval)
+                snapshots.append(snapshot)
+                check_alerts(snapshot)
+                sleep(sampling_interval)
+            except e:
+                log("Monitoring error: " + e)
+                sleep(sampling_interval)
 ```
 
 ### Performance Alerting
 
-```python
-def _check_alerts(self, snapshot: PerformanceSnapshot):
-    """Check for performance alerts."""
-    alerts = []
-
+```text
+check_alerts(snapshot):
     if snapshot.cpu_percent > 90:
-        alerts.append({
-            'type': 'high_cpu',
-            'message': f"High CPU usage: {snapshot.cpu_percent:.1f}%",
-            'timestamp': snapshot.timestamp
-        })
-
+        alerts.append({ type: "high_cpu", message: "High CPU usage: " + snapshot.cpu_percent })
     if snapshot.memory_percent > 85:
-        alerts.append({
-            'type': 'high_memory',
-            'message': f"High memory usage: {snapshot.memory_percent:.1f}%",
-            'timestamp': snapshot.timestamp
-        })
-
+        alerts.append({ type: "high_memory", message: "High memory usage: " + snapshot.memory_percent })
     if snapshot.open_files > 1000:
-        alerts.append({
-            'type': 'file_handle_leak',
-            'message': f"High number of open files: {snapshot.open_files}",
-            'timestamp': snapshot.timestamp
-        })
-
-    self.alerts.extend(alerts)
+        alerts.append({ type: "file_handle_leak", message: "High open files: " + snapshot.open_files })
 ```
 
 ### Custom Metrics Integration
 
-```python
-def custom_metrics():
+```text
+custom_metrics():
     return {
-        'custom_counter': some_global_counter,
-        'queue_size': len(some_queue),
-        'cache_hit_rate': cache.hits / cache.requests if cache.requests > 0 else 0
+        custom_counter: some_global_counter,
+        queue_size:     len(some_queue),
+        cache_hit_rate: cache.hits / cache.requests if cache.requests > 0 else 0
     }
 
 monitor.add_callback(custom_metrics)
 
 # Get recent metrics
 recent_snapshots = monitor.get_recent_snapshots(10)
-avg_metrics = monitor.get_average_metrics(5)
-
-print(f"Average CPU: {avg_metrics.get('avg_cpu_percent', 0):.1f}%")
-print(f"Average Memory: {avg_metrics.get('avg_memory_mb', 0):.1f}MB")
+avg_metrics      = monitor.get_average_metrics(5)
 ```
 
 ## Bottleneck Detection
 
 ### CPU Bottleneck Detection
 
-```python
-async def _detect_cpu_bottlenecks(
-    self, cpu_profiles: List[FunctionProfile],
-    context7_patterns: Dict[str, Any] = None
-) -> List[PerformanceBottleneck]:
+```text
+detect_cpu_bottlenecks(cpu_profiles, docs_patterns = none):
     bottlenecks = []
     total_cpu_time = sum(p.cumulative_time for p in cpu_profiles)
 
     for profile in cpu_profiles:
-        if profile.cumulative_time < 0.01:
-            continue
+        if profile.cumulative_time < 0.01: continue
+        impact = profile.cumulative_time / max(total_cpu_time, 0.001)
 
-        impact_score = profile.cumulative_time / max(total_cpu_time, 0.001)
+        severity = critical if impact > 0.5
+                   else high if impact > 0.2
+                   else medium if impact > 0.1
+                   else low
 
-        # Determine severity
-        if impact_score > 0.5:
-            severity = "critical"
-        elif impact_score > 0.2:
-            severity = "high"
-        elif impact_score > 0.1:
-            severity = "medium"
-        else:
-            severity = "low"
+        (opt_type, suggestions, est_improvement) =
+            generate_cpu_optimization_suggestions(profile, docs_patterns)
 
-        optimization_type, suggestions, estimated_improvement = \
-            await self._generate_cpu_optimization_suggestions(profile, context7_patterns)
-
-        bottleneck = PerformanceBottleneck(
+        bottlenecks.append(PerformanceBottleneck(
             function_name=profile.name,
-            file_path=profile.file_path,
-            line_number=profile.line_number,
-            bottleneck_type="cpu",
-            severity=severity,
-            impact_score=impact_score,
-            description=f"Function '{profile.name}' consumes {impact_score:.1%} of total CPU time",
-            optimization_type=optimization_type,
-            suggested_fixes=suggestions,
-            estimated_improvement=estimated_improvement
-        )
-        bottlenecks.append(bottleneck)
-
+            file_path=profile.file_path, line_number=profile.line_number,
+            bottleneck_type="cpu", severity=severity, impact_score=impact,
+            description="Function '" + profile.name + "' consumes " + pct(impact) + " of CPU",
+            optimization_type=opt_type, suggested_fixes=suggestions,
+            estimated_improvement=est_improvement))
     return bottlenecks
 ```
 
 ### Memory Bottleneck Detection
 
-```python
-async def _detect_memory_bottlenecks(
-    self, memory_profile: Dict[str, Any],
-    context7_patterns: Dict[str, Any] = None
-) -> List[PerformanceBottleneck]:
+```text
+detect_memory_bottlenecks(memory_profile, docs_patterns = none):
     bottlenecks = []
-
-    if 'memory_line_profile' in memory_profile:
-        memory_by_function = memory_profile['memory_line_profile'].get('memory_by_function', {})
-
-        if memory_by_function:
-            max_memory = max(memory_by_function.values())
-
-            for func_key, memory_usage in memory_by_function.items():
-                if memory_usage < 1024 * 1024:  # 1MB
-                    continue
-
-                impact_score = memory_usage / max(max_memory, 1)
-
-                if impact_score > 0.7:
-                    severity = "critical"
-                elif impact_score > 0.4:
-                    severity = "high"
-                elif impact_score > 0.2:
-                    severity = "medium"
-                else:
-                    severity = "low"
-
-                optimization_type, suggestions, estimated_improvement = \
-                    await self._generate_memory_optimization_suggestions(
-                        memory_usage, context7_patterns
-                    )
-
-                bottleneck = PerformanceBottleneck(
-                    function_name=f"Function at {func_key}",
-                    file_path=file_path,
-                    line_number=line_number,
-                    bottleneck_type="memory",
-                    severity=severity,
-                    impact_score=impact_score,
-                    description=f"High memory usage: {memory_usage / 1024 / 1024:.1f}MB",
-                    optimization_type=optimization_type,
-                    suggested_fixes=suggestions,
-                    estimated_improvement=estimated_improvement
-                )
-                bottlenecks.append(bottleneck)
-
+    if memory_profile has memory_by_function:
+        by_fn = memory_profile.memory_by_function
+        max_mem = max(by_fn.values())
+        for (func_key, usage) in by_fn:
+            if usage < 1*MB: continue
+            impact = usage / max(max_mem, 1)
+            severity = critical if impact > 0.7
+                       else high if impact > 0.4
+                       else medium if impact > 0.2
+                       else low
+            (opt_type, suggestions, est) = generate_memory_optimization_suggestions(usage, docs_patterns)
+            bottlenecks.append(PerformanceBottleneck(
+                function_name="Function at " + func_key,
+                bottleneck_type="memory", severity=severity, impact_score=impact,
+                description="High memory: " + (usage/MB) + "MB",
+                optimization_type=opt_type, suggested_fixes=suggestions,
+                estimated_improvement=est))
     return bottlenecks
 ```
 
@@ -392,7 +278,7 @@ Optimal Sampling:
 - Real-time monitoring: Continuous with configurable intervals
 
 Data Management:
-- Limit snapshot history (deque with maxlen)
+- Limit snapshot history (bounded deque)
 - Aggregate metrics over time windows
 - Store only critical bottlenecks
 - Implement data retention policies
@@ -401,20 +287,17 @@ Data Management:
 
 ### Performance Trend Analysis
 
-```python
-def get_average_metrics(self, duration_minutes: int = 5) -> Dict[str, float]:
-    cutoff_time = time.time() - (duration_minutes * 60)
-    recent_snapshots = [s for s in self.snapshots if s.timestamp >= cutoff_time]
-
-    if not recent_snapshots:
-        return {}
-
+```text
+get_average_metrics(duration_minutes = 5):
+    cutoff = now() - duration_minutes*60
+    recent = [s for s in snapshots if s.timestamp >= cutoff]
+    if recent is empty: return {}
     return {
-        'avg_cpu_percent': sum(s.cpu_percent for s in recent_snapshots) / len(recent_snapshots),
-        'avg_memory_mb': sum(s.memory_mb for s in recent_snapshots) / len(recent_snapshots),
-        'avg_memory_percent': sum(s.memory_percent for s in recent_snapshots) / len(recent_snapshots),
-        'avg_open_files': sum(s.open_files for s in recent_snapshots) / len(recent_snapshots),
-        'avg_threads': sum(s.threads for s in recent_snapshots) / len(recent_snapshots),
+        avg_cpu_percent:    mean(s.cpu_percent    for s in recent),
+        avg_memory_mb:      mean(s.memory_mb      for s in recent),
+        avg_memory_percent: mean(s.memory_percent for s in recent),
+        avg_open_files:     mean(s.open_files     for s in recent),
+        avg_threads:        mean(s.threads        for s in recent)
     }
 ```
 
@@ -426,25 +309,19 @@ Monitor key metrics over time:
 - Alert on significant degradation
 - Maintain performance history
 
-## Integration with Context7
+## Integration with Documentation
 
 ### AI-Powered Analysis
 
-```python
-async def detect_bottlenecks(
-    self, profile_results: Dict[str, Any],
-    context7_patterns: Dict[str, Any] = None
-) -> List[PerformanceBottleneck]:
-    if not context7_patterns:
-        return await self._rule_based_detection(profile_results)
-    
-    optimization_patterns = await self.context7.get_library_docs(
-        context7_library_id="/performance/python-profiling",
-        topic="advanced performance optimization patterns 2025",
-        tokens=5000
-    )
-    
-    return await self._ai_enhanced_detection(profile_results, optimization_patterns)
+```text
+detect_bottlenecks(profile_results, docs_patterns = none):
+    if docs_patterns is none:
+        return rule_based_detection(profile_results)
+
+    optimization_patterns = docs.get_library_docs(
+        topic="advanced performance optimization patterns",
+        tokens=5000)
+    return ai_enhanced_detection(profile_results, optimization_patterns)
 ```
 
 ## Advanced Techniques
@@ -468,7 +345,7 @@ Confidence Intervals:
 ### Flame Graphs
 
 Visualization:
-- Generate flame graphs from cProfile data
+- Generate flame graphs from profiler data
 - Identify call stack hot paths
 - Understand performance hierarchy
 - Share visual insights

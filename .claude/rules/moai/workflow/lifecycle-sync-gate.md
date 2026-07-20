@@ -29,7 +29,7 @@ clause (V2.x / V3R2-R4 / V3R5).
 | V2.x | Pre-2026-02 | No `progress.md`; SPEC implementation via direct commit |
 | V3R2-R4 | 2026-02 ~ 2026-03 | `progress.md` introduced; no `sync_commit_sha` |
 | V3R5 | 2026-03 ~ 2026-04 | Sync section emerges; `sync_commit_sha` not enforced |
-| V3R6 | 2026-04 ~ present | 3-phase modern standard (plan / run / sync); `sync_commit_sha` required (the former `mx_commit_sha` / `§E.5 Mx-phase` signals were retired per SPEC-V3R6-LIFECYCLE-REDESIGN-001 — MX Tag is a cross-cutting sync concern, not a separate phase) |
+| V3R6 | 2026-04 ~ present | 3-phase modern standard (plan / run / sync); `sync_commit_sha` required (the former `mx_commit_sha` / `§E.5 Mx-phase` signals were retired — MX Tag is a cross-cutting sync concern, not a separate phase) |
 | unclassified | — | Auto-detection ambiguous; no heuristic matched (H-6 fallback) |
 
 ### Heuristic Detection Table
@@ -44,7 +44,7 @@ except for H-override which takes absolute precedence when the optional frontmat
 | H-1 | `.moai/specs/SPEC-*/progress.md` absent | V2.x |
 | H-2 | `progress.md` present, no `§E.2` / `§E.3` / `§E.4` section markers | V3R2-R4 |
 | H-3 | `progress.md` `§E.2` present, `sync_commit_sha` field absent or null | V3R5 |
-| H-4 | `progress.md` `§E.2` present + `§E.4` present + `sync_commit_sha` SHA value (the new 3-phase predicate; per SPEC-V3R6-LIFECYCLE-REDESIGN-001 REQ-LR-005/006, a legacy-layout SPEC carrying the retired `§E.5 + mx_commit_sha` also classifies as V3R6 via a migration-window dual predicate) | V3R6 |
+| H-4 | `progress.md` `§E.2` present + `§E.4` present + `sync_commit_sha` SHA value (the new 3-phase predicate; a legacy-layout SPEC carrying the retired `§E.5 + mx_commit_sha` also classifies as V3R6 via a migration-window dual predicate) | V3R6 |
 | H-5 | H-4 ambiguous; `spec.md` frontmatter `phase:` field references `"v3.0"` or `"v3R6"` OR `created:` date >= 2026-04-01 (tie-breaker) | V3R6 |
 | H-6 | No heuristic matched | unclassified |
 
@@ -199,59 +199,11 @@ for the `lint.skip` definition.
 
 ## Status Transition Ownership Matrix Cross-Reference
 
-[ZONE:Evolvable] The era classification interacts with the Status Transition
-Ownership Matrix defined in `.claude/rules/moai/development/spec-frontmatter-schema.md`
-§ Status Transition Ownership Matrix.
+The canonical Status Transition Ownership Matrix (close-subject full-ID mandate, D4 reconciliation, forbidden ownership crossings) lives in `.claude/rules/moai/development/spec-frontmatter-schema.md` § Status Transition Ownership Matrix. This file does not restate it; refer there for the authoritative matrix.
 
-### How era affects ownership enforcement
+### Close-Subject Full-ID Mandate (amendment)
 
-The `OwnershipTransitionRule` (implemented in `internal/spec/lint_ownership.go`)
-enforces that each canonical status transition is performed by the expected agent.
-Era classification modulates this enforcement as follows:
-
-| Era | Ownership enforcement | Notes |
-|-----|-----------------------|-------|
-| V2.x | **Not enforced** (grandfather-protected) | `era_final: true`; OwnershipTransitionRule emits no findings for these SPECs |
-| V3R2-R4 | **Not enforced** (grandfather-protected) | Same as V2.x |
-| V3R5 | **Not enforced** (grandfather-protected) | Same as V2.x |
-| V3R6 | **Enforced** — transitions must match canonical owner | `IsModern() == true`; rule emits `OwnershipTransitionInvalid` on mismatch |
-| unclassified | **Not enforced** (ambiguous era; conservative default) | INFO-only treatment; no MUST-FIX findings |
-
-### Canonical ownership matrix (summary)
-
-> Canonical: the full 7-row Status Transition Ownership Matrix (transition → owning agent → canonical commit subject pattern, including the `(none) → draft` / `draft → in-progress` / `in-progress → implemented → completed` / `* → superseded|archived|rejected` rows) lives in `.claude/rules/moai/development/spec-frontmatter-schema.md` § Status Transition Ownership Matrix. This file owns only the era-modulation table above and the close-subject-full-ID one-liner below — both are lifecycle-gate-local deltas not present in the schema SSOT.
-
-### Close-subject full-ID mandate
-
-Per SPEC-V3R6-DRIFT-LEGACY-CONVENTION-001, every close commit (the sync commit carrying the `implemented → completed` transition above) MUST name exactly one individual full SPEC-ID in its subject scope — e.g. `chore(SPEC-CCSYNC-CLAUDEMD-001): … 3-phase close`. A **combined/abbreviated scope** that names only a shared prefix (e.g. `chore(SPEC-CCSYNC): … 3-phase close (CLAUDEMD + TOOLCAT)`) is **prohibited**: the drift detector's exact-token SPEC-ID extraction cannot map an abbreviated prefix to its sibling SPECs, so combined-scope close subjects regenerate lifecycle drift false-positives. When closing N sibling SPECs together, emit N separate close commits, one per full SPEC-ID — combined/abbreviated scope is disallowed in close subjects. The drift detector accommodates historical combined-scope closes via a secondary scope-prefix grep fallback (see `internal/spec/drift.go` `resolveCombinedScopeClose`), but this doctrine prevents recurrence in new closes.
-
-> **D4 reconciliation note (SPEC-V3R6-LIFECYCLE-REDESIGN-001 REQ-LR-020/021)**: The close-subject convention (including the close infix literal) is owned by **SPEC-V3R6-DRIFT-LEGACY-CONVENTION-001**. SPEC-V3R6-LIFECYCLE-REDESIGN-001 amends the close infix from the legacy `"4-phase close"` to the canonical `"3-phase close"` in this prose. The drift detector's close-infix matcher (`internal/spec/transitions.go` `closeInfixMatch`) has been extended (M2) to accept BOTH infixes — the legacy `"4-phase close"` is RETAINED in the matcher because historical close commits in git history carry it. A doc-only rename without the dual-infix matcher update was forbidden (it would silently break drift close-recognition). This note credits DRIFT-LEGACY-CONVENTION-001 as the convention owner; it does NOT silently override it.
-
-### `Authored-By-Agent` trailer as the gating signal
-
-The `OwnershipTransitionRule` uses the `Authored-By-Agent:` commit body trailer
-as the mechanical WHO signal. Accepted trailer values:
-
-- `manager-spec`
-- `manager-develop`
-- `manager-docs`
-- `manager-git`
-- `orchestrator-direct`
-
-Commits **without** the `Authored-By-Agent:` trailer are treated as legacy /
-non-MoAI commits and are NOT subject to ownership validation (silent SKIP).
-This prevents false positives on historical commits written before this
-convention was established.
-
-### Lint finding codes
-
-- **`OwnershipTransitionInvalid`** (Warning severity) — emitted when a V3R6
-  SPEC commit has the `Authored-By-Agent:` trailer AND the agent performing
-  the transition does NOT match the canonical owner for that transition.
-- **`OwnershipTransitionSkipped`** (Info severity) — emitted when
-  `lint.skip: [OwnershipTransitionInvalid]` is present in frontmatter.
-- **`OwnershipTransitionUnreachable`** (Info severity) — emitted when
-  `git log` is unavailable (non-git environment, CI sandbox without history).
+Per the drift-detector close-subject convention, a combined/abbreviated scope that names only a shared prefix is prohibited in close commit subjects: the drift detector's exact-token SPEC-ID extraction cannot map an abbreviated prefix to its sibling SPECs, so a combined or abbreviated scope regenerates lifecycle drift false-positives. When closing N sibling SPECs together, emit N separate close commits — one per full SPEC-ID. A combined/abbreviated scope is disallowed; MUST use individual full-ID per close commit (see spec-frontmatter-schema.md § Close-subject full-ID mandate for the canonical prose).
 
 ---
 
@@ -284,7 +236,7 @@ tags: "example, demo"
 ---
 ```
 
-**`progress.md`** (excerpt — 4-section layout per SPEC-V3R6-LIFECYCLE-REDESIGN-001; NO `§E.5 Mx-phase` section):
+**`progress.md`** (excerpt — 4-section layout; NO `§E.5 Mx-phase` section):
 ```yaml
 # ...
 ## §E.1 Plan-phase Audit-Ready Signal
@@ -296,7 +248,7 @@ tags: "example, demo"
 # ...
 ## §E.4 Sync-phase Audit-Ready Signal
 sync_commit_sha: "a1b2c3d4e5f6"
-# (§E.5 Mx-phase section is RETIRED — folded into §E.4 per SPEC-V3R6-LIFECYCLE-REDESIGN-001;
+# (§E.5 Mx-phase section is RETIRED — folded into §E.4;
 #  MX Tag validation is a cross-cutting sync concern, not a separate phase.)
 ```
 
@@ -310,7 +262,7 @@ sync_commit_sha: "a1b2c3d4e5f6"
 6. `hasSyncSection = true` (`§E.2` marker present — note: `hasSyncSection` is a misnomer; it tests the literal `§E.2` run-evidence start marker, not the sync phase, which lives at `§E.4`).
 7. `syncSHA = "a1b2c3d4e5f6"` (non-empty — field extracted from the `§E.4 Sync-phase Audit-Ready Signal` section).
 8. H-3 check: `hasSyncSection && syncSHA == ""` → **false** (H-3 does not fire).
-9. H-4 check (new 3-phase predicate per REQ-LR-005): `hasSyncSection && hasMxSection4Phase && syncSHA != ""` where `hasMxSection4Phase` detects the `§E.4` sync marker → **true**. (Legacy-layout SPECs carrying the retired `§E.5 + mx_commit_sha` also match via the dual-predicate migration window REQ-LR-006.)
+9. H-4 check (new 3-phase predicate): `hasSyncSection && hasMxSection4Phase && syncSHA != ""` where `hasMxSection4Phase` detects the `§E.4` sync marker → **true**. (Legacy-layout SPECs carrying the retired `§E.5 + mx_commit_sha` also match via the dual-predicate migration window.)
 10. `ClassifyEra()` returns `(EraV3R6, "H-4 (§E.2 + §E.4 + sync_commit_sha present)")`.
 
 ### Audit output (JSON excerpt)

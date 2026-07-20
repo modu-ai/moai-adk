@@ -118,7 +118,6 @@ func TestSlimFS_PreservesCoreEntries(t *testing.T) {
 // through the filter unchanged.
 //
 // T3.4 path verification (pre-checked against templates/ tree):
-//   - .claude/rules/moai/core/zone-registry.md  → OK
 //   - .claude/output-styles/moai/moai.md         → OK
 //   - .moai/config/sections/harness.yaml         → OK
 //   - CLAUDE.md                                  → OK
@@ -135,7 +134,6 @@ func TestSlimFS_PreservesNonCatalogFiles(t *testing.T) {
 	// Non-catalog paths — these are NOT enumerated in catalog.yaml's
 	// skills+agents sections but are part of the templates/ tree.
 	nonCatalogPaths := []string{
-		".claude/rules/moai/core/zone-registry.md",
 		".claude/output-styles/moai/moai.md",
 		".moai/config/sections/harness.yaml",
 		"CLAUDE.md",

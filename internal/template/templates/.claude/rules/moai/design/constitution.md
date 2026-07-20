@@ -1,27 +1,25 @@
 ---
 description: "Design System Constitution — MoAI design pipeline FROZEN/EVOLVABLE zone, GAN Loop contract, brand integration. design/brand 작업 시에만 로드."
-paths: ".moai/design/**,.moai/specs/SPEC-*-DESIGN-*/**,.moai/project/brand/**,.claude/skills/moai/**/design*.md,.claude/skills/moai/**/brand*.md"
+paths: ".moai/specs/SPEC-*-DESIGN-*/**,.moai/project/brand/**,.claude/skills/moai/**/design*.md,.claude/skills/moai/**/brand*.md"
 ---
 
-# Design System Constitution v3.2
+# Design System Constitution v3.5.0
 
-> **RETIRED — historical reference.** The MoAI design production system described in this file (the `/moai design` route, the design pipeline, and the named design skills `moai-domain-copywriting`, `moai-domain-brand-design`, `moai-workflow-design`, `moai-workflow-gan-loop`) has been **retired** per the design-system retirement. None of those four skills exist in the current catalog, and `/moai design` is no longer a routed subcommand — design-language requests route to `/moai plan`, and quality/security review routes to `/moai review`. This file is preserved for two reasons only: (1) as the FROZEN-clause source mirrored by the zone-registry, and (2) as a historical record of the design pipeline contract. The `expert-frontend` name throughout resolves to a per-spawn `Agent(general-purpose)` with frontend instructions per the carve-out note below. Do not treat any pipeline, route, or skill named below as a live capability.
+> **RETIRED — historical reference.** The MoAI design production system described in this file (the `/moai design` route, the design pipeline, and the named design skills `moai-domain-copywriting`, `moai-domain-brand-design`, `moai-workflow-design`, `moai-workflow-gan-loop`) has been **retired** per the design-system retirement. None of those four skills exist in the current catalog, and `/moai design` is no longer a routed subcommand — design-language requests route to `/moai plan`, and quality/security review routes to `/moai review`. This file is preserved for two reasons only: (1) as the FROZEN-clause source mirrored by the constitution registry, and (2) as a historical record of the design pipeline contract. The `expert-frontend` name throughout resolves to a per-spawn `Agent(general-purpose)` with frontend instructions per the carve-out note below. Do not treat any pipeline, route, or skill named below as a live capability.
 
 ## HISTORY
 
-- 2026-05-20: §3.2 + §4 Pencil MCP (Path B2) row removed — Pencil MCP server no longer registered in `.mcp.json.tmpl`, dead reference cleanup as part of v2.20.0-rc1 release-readiness consolidation. Path B1 (figma-extractor) preserved. Version 3.4.0 → 3.5.0.
-- 2026-04-26: §4 Phase Contracts table extended with Path B1 (figma-extractor) and Path B2 (pencil-mcp) rows. Version 3.3.1 → 3.4.0.
-- 2026-04-26: §3.2 footnote 추가 — Reserved name violation은 `moai update` (update path)에서 warning + skip, `moai init` (scaffold path)에서 hard error. v3.3.0 → 3.3.1.
-- 2026-04-20: Section 3 expanded to tripartite structure (3.1/3.2/3.3). Version 3.2.0 → 3.3.0 (v3.3.0). FROZEN zone extended to cover each subsection individually.
+- §3.2 + §4 Pencil MCP (Path B2) row removed — Pencil MCP server no longer registered in `.mcp.json.tmpl`, dead reference cleanup as part of v2.20.0-rc1 release-readiness consolidation. Path B1 (figma-extractor) preserved. Version 3.4.0 → 3.5.0.
+- §4 Phase Contracts table extended with Path B1 (figma-extractor) and Path B2 (pencil-mcp) rows. Version 3.3.1 → 3.4.0.
+- §3.2 footnote 추가 — Reserved name violation은 `moai update` (update path)에서 warning + skip, `moai init` (scaffold path)에서 hard error. v3.3.0 → 3.3.1.
+- Section 3 expanded to tripartite structure (3.1/3.2/3.3). Version 3.2.0 → 3.3.0 (v3.3.0). FROZEN zone extended to cover each subsection individually.
 - Relocated from `.claude/rules/agency/constitution.md` (v3.2.0; the `agency/` rule namespace was retired in this relocation per the design-system absorption policy) to `.claude/rules/moai/design/constitution.md`. Original path: `.claude/rules/agency/constitution.md`. No content changes. FROZEN zone and EVOLVABLE zone definitions are preserved verbatim.
 
 ---
 
 Core principles governing the MoAI design production system. These rules define identity, safety boundaries, evolution mechanics, and integration contracts.
 
-> **Pipeline `expert-frontend` carve-out (catalog-consistency note).** The `expert-frontend` agent named throughout this design pipeline is an **archived** agent per `.claude/rules/moai/workflow/archived-agent-rejection.md`. The name here denotes the pipeline **ROLE** (frontend design-token implementation), not a live spawn target. At runtime, the role resolves to a per-spawn `Agent(general-purpose)` with a frontend domain whitelist per the archived-agent-rejection §C migration table. The FROZEN-zone clause text below is preserved verbatim for stability; the archived name is not silently load-bearing because this note cross-references the migration table.
-
----
+> **Pipeline `expert-frontend` carve-out (catalog-consistency note).** The `expert-frontend` agent named throughout this design pipeline is an **archived** agent per `.claude/rules/moai/workflow/archived-agent-rejection.md`. The name here denotes the pipeline **ROLE** (frontend design-token implementation), not a live spawn target. At runtime, the role resolves to a per-spawn `Agent(general-purpose)` with a frontend domain whitelist per the archived-agent-rejection §C migration table. The FROZEN-zone clause text below is preserved verbatim for stability; the archived name is not silently load-bearing because this note cross-references the migration table. Each `expert-frontend` FROZEN-clause occurrence below carries an inline `[ARCHIVED]` marker cross-referencing this note so the historical status is unambiguous at the clause site, and the pipeline diagrams / tables in §4-14 are covered by the §4 historical banner.
 
 ---
 
@@ -75,33 +73,37 @@ Brand context is not optional decoration. It is a constitutional constraint that
 - [ZONE:Frozen] [HARD] manager-spec MUST load brand context before generating BRIEF documents
 - [ZONE:Frozen] [HARD] moai-domain-copywriting MUST adhere to brand voice, tone, and terminology from brand-voice.md
 - [ZONE:Frozen] [HARD] moai-domain-brand-design MUST use brand color palette, typography, and visual language from visual-identity.md
-- [ZONE:Frozen] [HARD] expert-frontend MUST implement design tokens derived from brand context
+- [ZONE:Frozen] [HARD] [ARCHIVED] expert-frontend MUST implement design tokens derived from brand context (archived agent — resolves to Agent(general-purpose) with frontend whitelist per the line 22 carve-out note; historical design-pipeline clause preserved for the constitution registry mirror)
 - [ZONE:Frozen] [HARD] sync-auditor MUST score brand consistency as a must-pass criterion
 
 Brand context is stored in `.moai/project/brand/` and initialized through the brand interview process on first run. Context updates require explicit user approval.
 
 ### 3.2 Design Brief (execution scope)
 
-Iteration-specific design briefs are stored in `.moai/design/`:
+> The `.moai/design/` directory and its scaffold/sync code path were removed in a later cleanup (`scaffoldDesignDir` / `updateDesignDir` deleted; the `design_docs` config block and `DesignDocs` Go struct removed). The clauses below are preserved verbatim as the FROZEN-zone source mirrored by the constitution registry; they document the historical contract only. The `.moai/design/` path is no longer created by `moai init` or synced by `moai update`.
 
-- [ZONE:Frozen] [HARD] `/moai design` MUST auto-load human-authored design documents (research.md, system.md, spec.md) when present and not _TBD_ (RETIRED route — `/moai design` is no longer a routed subcommand; design-language requests route to `/moai plan`. See the retirement banner at the top of this file. Clause text preserved verbatim for the FROZEN zone-registry mirror.)
+Historical iteration-specific design briefs were stored in `.moai/design/`:
+
+- [ZONE:Frozen] [HARD] `/moai design` MUST auto-load human-authored design documents (research.md, system.md, spec.md) when present and not _TBD_ (RETIRED route — `/moai design` is no longer a routed subcommand; design-language requests route to `/moai plan`. See the retirement banner at the top of this file. Clause text preserved verbatim for the FROZEN constitution registry mirror.)
 - [ZONE:Frozen] [HARD] Design briefs MUST NOT override brand context — brand remains the constitutional parent
-- [ZONE:Frozen] [HARD] `moai-workflow-design` continues to write machine-generated artifacts to `.moai/design/`; the exact set of reserved file paths is enumerated below — human-authored files must not collide with them
-- [ZONE:Frozen] [HARD] Reserved file paths (canonical list): `tokens.json`, `components.json`, `assets/`, `import-warnings.json`, `brief/BRIEF-*.md`
-- [ZONE:Frozen] [HARD] Token budget for auto-loading is bounded by `.moai/config/sections/design.yaml` `design_docs.token_budget`; when the key is absent, the system MUST default to 20000
-- [ZONE:Frozen] [HARD] Priority order when truncation is needed: spec.md > system.md > research.md
+- [ZONE:Frozen] [HARD] `moai-workflow-design` continues to write machine-generated artifacts to `.moai/design/`; the exact set of reserved file paths is enumerated below — human-authored files must not collide with them (historical — the `moai-workflow-design` skill is retired and the `.moai/design/` directory is no longer created)
+- [ZONE:Frozen] [HARD] Reserved file paths (canonical list): `tokens.json`, `components.json`, `assets/`, `import-warnings.json`, `brief/BRIEF-*.md` (historical — enforcement code path removed)
+- [ZONE:Frozen] [HARD] Token budget for auto-loading is bounded by `.moai/config/sections/design.yaml` `design_docs.token_budget`; when the key is absent, the system MUST default to 20000 (historical — the `design_docs` config block was removed)
+- [ZONE:Frozen] [HARD] Priority order when truncation is needed: spec.md > system.md > research.md (historical)
 
-> **Note:** Reserved name violations during `moai update` (update path) are reported as warnings; the user file is preserved and other templates continue to sync. During `moai init` / scaffold path, reserved name collisions remain hard errors. User data is never modified or deleted in either case.
+> **Note:** Reserved name violations during `moai update` (update path) are reported as warnings; the user file is preserved and other templates continue to sync. During `moai init` / scaffold path, reserved name collisions remain hard errors. User data is never modified or deleted in either case. (Historical — the reserved-name collision check was removed alongside `.moai/design/`.)
 
 ### 3.3 Relationship
 
 - Brand (`.moai/project/brand/`) = WHO the brand is (long-lived, rarely changes)
-- Design (`.moai/design/`) = WHAT each iteration produces (per-project, evolves with redesign cycles)
+- Design (`.moai/design/`) = WHAT each iteration produces (per-project, evolves with redesign cycles) — historical; the directory is no longer created
 - When both are present, brand constraints win on conflict.
 
 ---
 
 ## 4. Pipeline Architecture
+
+(Sections 4-14 describe the retired /moai design pipeline; skill names below are retired. Preserved as historical record — the load-bearing FROZEN clauses are §2 + §3, mirrored by the constitution registry.)
 
 ### Phase Ordering
 
@@ -125,7 +127,7 @@ Each phase produces typed artifacts consumed by downstream phases:
 | moai-domain-copywriting | BRIEF + brand voice | Copy JSON (hero/features/cta/etc.) | Path B |
 | moai-domain-brand-design | BRIEF + visual identity | Design tokens JSON + component spec | Path B |
 | moai-workflow-design | Handoff bundle path | .moai/design/ reserved artifacts (see Section 3.2) | Path A |
-| expert-frontend | Copy JSON + design tokens | Working code (pages, components, styles) | Always |
+| expert-frontend *(archived — see line 22)* | Copy JSON + design tokens | Working code (pages, components, styles) | Always (historical) |
 | sync-auditor | Built code + BRIEF | Score card + feedback | Always |
 | figma-extractor (Path B1) | BRIEF + Figma file ID + page selectors | tokens.json + components.json | Path B1 |
 
@@ -316,7 +318,9 @@ When strict_mode is true (from design.yaml):
 - Score inflation protection is active (see Section 12)
 - Minimum 2 iterations required even if first iteration passes
 
-### Sprint Contract Protocol
+### Sprint Contract Protocol (RETIRED)
+
+> **RETIRED — historical reference.** The Sprint Contract Protocol is part of the retired design pipeline. The artifact directory is no longer created by the runtime. Clauses below are preserved as a historical record of the GAN Loop contract.
 
 Before each GAN Loop iteration, expert-frontend and sync-auditor negotiate a Sprint Contract:
 
@@ -342,8 +346,8 @@ Rules:
 - [ZONE:Frozen] [HARD] Sprint Contracts are required when harness level is `thorough`
 - [ZONE:Frozen] [HARD] Sprint Contracts are optional but recommended for `standard` harness level
 - [ZONE:Frozen] [HARD] sync-auditor MUST NOT score on criteria not in the Sprint Contract
-- [ZONE:Frozen] [HARD] expert-frontend MUST NOT claim criteria as met without evidence
-- Sprint Contract artifacts are stored in `.moai/sprints/` (from design.yaml `sprint_contract.artifact_dir`)
+- [ZONE:Frozen] [HARD] [ARCHIVED] expert-frontend MUST NOT claim criteria as met without evidence (archived agent — see line 22 carve-out note; historical GAN Loop clause)
+- Sprint Contract artifacts were stored in a configured artifact directory (design.yaml config key; the rules-tree path string is retired)
 
 ---
 
@@ -416,6 +420,3 @@ If a graduated learning causes regression:
 Version: 3.5.0
 Classification: FROZEN_AMENDMENT
 Original Source: v2.x `agency/constitution.md` v3.2.0 (retired per the design-system absorption policy)
-Last Updated: 2026-04-26
-Relocated: 2026-04-20
-REQ coverage: REQ-CONST-001, REQ-CONST-002, REQ-CONST-003, REQ-CONST-004

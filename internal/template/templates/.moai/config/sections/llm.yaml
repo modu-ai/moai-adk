@@ -3,28 +3,101 @@ llm:
   team_mode: ""
   glm_env_var: "GLM_API_KEY"
 
-  # Performance tier selection (set once during init/update)
-  # Controls model selection for all sub-agents and team agents
-  # Options: high (complex reasoning), medium (balanced), low (fast/cheap)
+  # Per-agent model+effort profile selection (set once during init/update).
+  # Selects the active column of the profile matrix below for all sub-agents.
+  #   max    - highest-quality column
+  #   medium - balanced default column
+  #   low    - economical column
+  # Absent or empty resolves to medium (backward compatible).
+  profile: "medium"
+
+  # Legacy performance tier (read-time alias only — `profile` supersedes it).
+  # Retained so the separate Tier x Phase routing axis keeps a tier source.
+  # When `profile` is absent, this value is aliased (high -> max; max/medium/low
+  # pass through). Options: max, high (legacy), medium, low.
   performance_tier: "medium"
 
-  # Claude model mapping by tier
-  # Effort level mapping (Opus 4.7+ adaptive thinking):
-  #   thorough harness → xhigh effort (deep reasoning)
-  #   standard harness → high effort (balanced reasoning)
-  #   minimal harness  → medium effort (fast, light)
-  claude_models:
-    high: "opus"             # Opus tier: adaptive thinking, reasoning agents
-    medium: "sonnet"         # Balanced performance for most tasks
-    low: "haiku"             # Fast exploration, simple tasks
+  # Profile matrix (transparency + editability). Each profile column maps the
+  # six agent GROUPS to a {model, effort} pair. The Go default
+  # (template.DefaultProfileMatrix) is the authoritative fallback for any cell
+  # absent here. Agent groups:
+  #   spec_auditors      - manager-spec, plan-auditor, sync-auditor
+  #   develop            - manager-develop
+  #   advisor            - super-advisor
+  #   design_harness_e2e - manager-design, builder-harness, e2e-tester
+  #   docs               - manager-docs
+  #   git                - manager-git
+  # (Explore has no group row — it stays model: inherit, never injected.)
+  #
+  # The model value is injected as a per-spawn runtime arg ([1m]-safe). The
+  # effort value is documented intent: consumed by the agent frontmatter default,
+  # the GLM effort overlay, and Workflow/general-purpose prompt steering — it is
+  # NOT a per-spawn override for a named subagent.
+  profiles:
+    max:
+      spec_auditors:      { model: fable,  effort: medium }
+      develop:            { model: fable,  effort: low }
+      advisor:            { model: fable,  effort: medium }
+      design_harness_e2e: { model: opus,   effort: high }
+      docs:               { model: sonnet, effort: medium }
+      git:                { model: sonnet, effort: low }
+    medium:
+      spec_auditors:      { model: opus,   effort: high }
+      develop:            { model: opus,   effort: high }
+      advisor:            { model: fable,  effort: low }
+      design_harness_e2e: { model: opus,   effort: medium }
+      docs:               { model: sonnet, effort: medium }
+      git:                { model: sonnet, effort: low }
+    low:
+      spec_auditors:      { model: opus,   effort: low }
+      develop:            { model: opus,   effort: medium }
+      advisor:            { model: opus,   effort: high }
+      design_harness_e2e: { model: opus,   effort: low }
+      docs:               { model: sonnet, effort: medium }
+      git:                { model: sonnet, effort: low }
+
+  # Optional per-agent overrides, keyed by canonical agent name. Each override
+  # {model, effort} pair wins over the active profile's group cell for that agent.
+  # Example (uncomment + edit to pin an agent):
+  #   agent_overrides:
+  #     manager-develop: { model: opus, effort: xhigh }
+  agent_overrides: {}
 
   # GLM backend configuration
   glm:
     base_url: "https://api.z.ai/api/anthropic"
     models:
-      high: "glm-5.2"         # Complex reasoning (the z.ai-accepted id; 1M auto-compact is driven by the resolved context window, not a model-id suffix)
-      medium: "glm-4.7"       # Balanced performance
-      low: "glm-4.5-air"      # Lightweight tasks (Z.ai official default)
+      high: "glm-5.2"         # 1M context — Opus slot (main session + inherit agents)
+      medium: "glm-4.7"       # 202K context — Sonnet slot (balanced)
+      low: "glm-4.5-air"      # 128K context — Haiku slot (lightweight)
+      fable: "glm-5.2"        # 1M context — Fable tier (ANTHROPIC_DEFAULT_FABLE_MODEL)
+
+    # ── GLM reasoning-effort mapping (documentation-only — the Go overlay at
+    #    internal/template/glm_effort_overlay.go is the runtime SSOT) ──
+    #
+    # z.ai does NOT implement Claude's 5-level effort vocabulary. The overlay
+    # collapses Claude effort onto z.ai's 3 reachable reasoning states:
+    #
+    #   thinking-off    thinking=disabled, reasoning_effort moot   ← Claude low
+    #   reasoning-high  thinking=enabled,  reasoning_effort=high   ← Claude medium/high
+    #   reasoning-max   thinking=enabled,  reasoning_effort=max    ← Claude xhigh/max
+    #
+    # Collapse table (5 Claude levels → 3 GLM states):
+    #   low      → thinking-off
+    #   medium   → reasoning-high
+    #   high     → reasoning-high
+    #   xhigh    → reasoning-max
+    #   max      → reasoning-max
+    #   (unrecognized → reasoning-max; totality clause — never under-reason)
+    #
+    # Coding-max override (z.ai "reasoning_effort: max for coding tasks"):
+    #   manager-develop forces reasoning-max regardless of its collapse result.
+    #
+    # manager-git occupies the thinking-off tier (its effort is low across all
+    # profile columns → CollapseClaudeEffortToGLM("low") = thinking-off).
+    #
+    # Wire state: the overlay is implemented and wired; live validation of z.ai
+    # wire-effectiveness is pending.
 
     # Optional: override the statusline context window gauge per GLM model
     # (issue #653). Claude Code reports context_window_size based on the
@@ -41,4 +114,3 @@ llm:
     #   glm-5.2: 1000000
     #   glm-4.7: 202752
     #   glm-4.5-air: 128000
-

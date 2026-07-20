@@ -36,6 +36,8 @@ triggers:
 
 ## Phase Owners (per the canonical agent catalog policy)
 
+Skill injection: at each `manager-docs` spawn the orchestrator injects `At start, invoke Skill("moai-workflow-project") for the sync-phase documentation cycle.` (per `.claude/rules/moai/workflow/skill-routing.md` §1 and the delegation map `.moai/config/sections/delegation.yaml`).
+
 Phase Owners: `manager-docs` (sync-phase artifact authoring — CHANGELOG.md + README.md + docs-site + progress.md §F.3 + frontmatter `in-progress → implemented` transition for all SPEC artifacts; MUST NOT modify spec.md/plan.md/acceptance.md body content per `.claude/rules/moai/development/spec-frontmatter-schema.md` § Status Transition Ownership Matrix) + `manager-git` (PR creation per branching strategy when Tier L OR `--pr` flag per the canonical Tier-based PR routing policy).
 
 Sync-phase quality gate (per the canonical sync-phase quality gate policy) is enforced by the `.claude/hooks/moai/sync-phase-quality-gate.sh` Stop hook — lint + test + coverage delta verification + dependency manifest audit. The hook returns exit 2 to block sync completion on lint/test failure or coverage regression > 5pp. The hook replaces the prior pattern of spawning an inline quality agent for coverage and security analysis during sync (that agent is archived per `.claude/rules/moai/workflow/archived-agent-rejection.md` §C row 2; the Stop hook is its canonical replacement).
@@ -44,31 +46,31 @@ Sync-phase quality gate (per the canonical sync-phase quality gate policy) is en
 
 | Phase Group | Sub-skill 경로 | 내용 |
 |------------|----------------|------|
-| Phase 0: Pre-Sync Context + Deployment Readiness | `Read workflows/sync/quality-gates-context.md` | Purpose/Scope/Input/Mode/Flags/Context Loading, Phase 0 HUMAN GATE 1, Phase 0.08 DB Check, Phase 0.1 Deployment Readiness |
-| Phase 0.5~0.7: Quality Verification | `Read workflows/sync/quality-gates-quality.md` | Phase 0.5 Quality Check, Phase 0.55 Security Scan, Phase 0.6 MX Tag Validation, Phase 0.7 Coverage Analysis |
-| Phase 1~2: Analysis + Doc Sync | `Read workflows/sync/doc-execution.md` | Phase 1 Analysis, HUMAN GATE 2 Documentation Scope, Phase 2 Execute Doc Synchronization |
-| Phase 3~4: Git Delivery + Completion | `Read workflows/sync/delivery.md` | Phase 3 Git Operations, Phase 4 Completion, Team Mode, Graceful Exit, Test Scenarios |
+| Phase 1: Pre-Sync Context + Deployment Readiness | `Read workflows/sync/quality-gates-context.md` | Purpose/Scope/Input/Mode/Flags/Context Loading, Phase 1 HUMAN GATE 1, Phase 2 DB Check, Phase 3 Deployment Readiness |
+| Phase 7~Phase 10: Quality Verification | `Read workflows/sync/quality-gates-quality.md` | Phase 7 Quality Check, Phase 8 Security Scan, Phase 9 MX Tag Validation, Phase 10 Coverage Analysis |
+| Phase 11~Phase 12: Analysis + Doc Sync | `Read workflows/sync/doc-execution.md` | Phase 11 Analysis, HUMAN GATE 2 Documentation Scope, Phase 12 Execute Doc Synchronization |
+| Phase 13~Phase 14: Git Delivery + Completion | `Read workflows/sync/delivery.md` | Phase 13 Git Operations, Phase 14 Completion, GitStrategy PR-ready transition, Graceful Exit, Test Scenarios |
 
 ## HUMAN GATE Map
 
 | GATE | Location | Formal ID | Trigger |
 |------|----------|-----------|---------|
-| GATE 1: Pre-Sync Quality | `sync/quality-gates-context.md` | `gate-sync-1` | Working tree + all tests pass check before entering Phase 0.1 |
+| GATE 1: Pre-Sync Quality | `sync/quality-gates-context.md` | `gate-sync-1` | Working tree + all tests pass check before entering Phase 3 |
 | GATE 2: Documentation Scope | `sync/doc-execution.md` | `gate-sync-2` | User reviews divergence report and approves doc regeneration scope |
 
-> Note: Additional AskUserQuestion decision points exist in Phase 0.0.1 (gate failure), Phase 0.1.1 (test failure), Phase 0.4 (breaking changes), Phase 0.5.3 (test failure), Phase 0.55.2 (security critical), Phase 3.1.5.4 (CI mirror failure), and Phase 4 (next steps). These are inline decision gates, not named evolvable GATEs.
+> Note: Additional AskUserQuestion decision points exist in Phase 1 (gate failure), Phase 3 (test failure), Phase 6 (breaking changes), Phase 7 (test failure), Phase 8 (security critical), Phase 13 (CI mirror failure), and Phase 14 (next steps). These are inline decision gates, not named evolvable GATEs.
 
 ## Invocation Flow
 
 ```
 /moai sync [mode] [--pr] [--merge] [--skip-mx]
-  ├── [trace] /moai sync Phase 0 enter
-  │   Read workflows/sync/quality-gates-context.md  → HUMAN GATE 1 + Deployment Readiness
-  ├── [trace] /moai sync Phase 0.5 enter
-  │   Read workflows/sync/quality-gates-quality.md  → Quality/Security/MX/Coverage
   ├── [trace] /moai sync Phase 1 enter
+  │   Read workflows/sync/quality-gates-context.md  → HUMAN GATE 1 + Deployment Readiness
+  ├── [trace] /moai sync Phase 7 enter
+  │   Read workflows/sync/quality-gates-quality.md  → Quality/Security/MX/Coverage
+  ├── [trace] /moai sync Phase 11 enter
   │   Read workflows/sync/doc-execution.md          → Divergence Analysis + HUMAN GATE 2 + Doc Sync
-  └── [trace] /moai sync Phase 3 enter
+  └── [trace] /moai sync Phase 13 enter
       Read workflows/sync/delivery.md               → Git Ops + CI Mirror + PR + Auto-Merge + Completion
 ```
 
@@ -82,25 +84,27 @@ Sync-phase quality gate (per the canonical sync-phase quality gate policy) is en
 
 **Flags**: `--pr` (PR 생성) | `--merge` (deprecated, auto-merge) | `--skip-mx` (MX 검증 스킵)
 
-**HUMAN GATEs**: GATE 1 (quality-gates-context.md §Phase 0) → GATE 2 (doc-execution.md §Step 1.6)
+**HUMAN GATEs**: GATE 1 (quality-gates-context.md §Phase 1) → GATE 2 (doc-execution.md §Step 1.6)
 
-**Status mode early exit**: Phase 0.6 완료 후 보고서 출력 및 종료 (Phase 1+ 실행 안 함)
+**Status mode early exit**: Phase 9 완료 후 보고서 출력 및 종료 (Phase 11+ 실행 안 함)
+
+**Chain entry**: sync may be entered via auto-chain from run-phase completion (a `full-pipeline` contract — announced in the transcript, no extra approval round at the run→sync phase boundary) or via explicit `/moai sync` invocation (a `single-phase` contract). Either way the sync-internal HUMAN GATEs (`gate-sync-1`, `gate-sync-2`) fire unchanged, and a FAIL/INCONCLUSIVE sync-audit verdict or a blocking sync quality gate HALTS the chain — no auto-completion past a failing gate.
 
 ## On-Demand Sub-skill Loading
 
 각 Phase 진입 시점에 해당 sub-skill을 로드합니다:
 
 ```
-# Phase 0 (Pre-Sync Quality Gate) 진입 시
+# Phase 1 (Pre-Sync Quality Gate) 진입 시
 Read .claude/skills/moai/workflows/sync/quality-gates-context.md
 
-# Phase 0.5 (Quality Verification) 진입 시
+# Phase 7 (Quality Verification) 진입 시
 Read .claude/skills/moai/workflows/sync/quality-gates-quality.md
 
-# Phase 1 (Analysis and Planning) 진입 시
+# Phase 11 (Analysis and Planning) 진입 시
 Read .claude/skills/moai/workflows/sync/doc-execution.md
 
-# Phase 3 (Git Operations) 진입 시
+# Phase 13 (Git Operations) 진입 시
 Read .claude/skills/moai/workflows/sync/delivery.md
 ```
 
@@ -113,3 +117,7 @@ Read .claude/skills/moai/workflows/sync/delivery.md
 ## Sentinel Error Keys
 
 A CI audit verifies the literal `MODE_PIPELINE_ONLY_UTILITY` sentinel remains present in this skill body (shared with `design.md`). Passing `--mode pipeline` to `/moai sync` is rejected because sync is a Multi-Agent subcommand; pipeline mode is reserved for utility subcommands.
+
+## Routing Ledger Recording
+
+At sync dispatch, the orchestrator records the routing decision to the routing-ledger via `moai harness ledger record` (per the SKILL.md router recording obligation). At the sync-phase quality gate, it appends the gate result as machine evidence via `moai harness ledger evidence --kind gate_exit --value <exit> --terminal --ref "sync-phase-quality-gate"`. Outcome is derived from machine evidence only — never supplied as an input. The recording is opt-in and fail-open; it never blocks the sync phase.

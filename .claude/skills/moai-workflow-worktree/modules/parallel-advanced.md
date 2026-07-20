@@ -259,7 +259,7 @@ Create and Switch:
 
 Develop in Worktree:
 - Switch to specified worktree
-- Start /moai:2-run
+- Start /moai run
 
 Push from Worktree:
 - Sync worktree

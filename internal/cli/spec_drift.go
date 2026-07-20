@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"os"
 	"strings"
 
 	"github.com/modu-ai/moai-adk/internal/spec"
@@ -15,6 +14,7 @@ func newSpecDriftCmd() *cobra.Command {
 	var jsonOutput bool
 	var exitCodeOnDrift bool
 	var countOnly bool
+	var noCache bool
 
 	cmd := &cobra.Command{
 		Use:   "drift",
@@ -22,11 +22,17 @@ func newSpecDriftCmd() *cobra.Command {
 		Long: `Detect SPEC status drift by comparing frontmatter status field against
 git log on main branch.
 
+Results are cached against the current HEAD commit, so repeated runs at an
+unchanged HEAD are served from cache. Because the cache key is the HEAD SHA,
+an uncommitted frontmatter edit does not invalidate it — pass --no-cache to
+force a fresh computation.
+
 Examples:
   moai spec drift                    # Tabular report
   moai spec drift --json             # JSON output
   moai spec drift --exit-code-on-drift  # Exit 1 if drift detected
-  moai spec drift --count            # Just print drift count`,
+  moai spec drift --count            # Just print drift count
+  moai spec drift --no-cache         # Bypass the HEAD-SHA cache (always fresh)`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			projectRoot, err := findProjectRootFn()
 			if err != nil {
@@ -34,7 +40,7 @@ Examples:
 			}
 
 			if countOnly {
-				count, err := spec.DriftCount(projectRoot)
+				count, err := driftCountFn(projectRoot, noCache)
 				if err != nil {
 					return fmt.Errorf("failed to count drift: %w", err)
 				}
@@ -42,7 +48,7 @@ Examples:
 				return nil
 			}
 
-			report, err := spec.DetectDrift(projectRoot)
+			report, err := detectDriftFn(projectRoot, noCache)
 			if err != nil {
 				return fmt.Errorf("failed to detect drift: %w", err)
 			}
@@ -65,13 +71,13 @@ Examples:
 					return nil
 				}
 
-				count, err := spec.DriftCount(projectRoot)
+				count, err := driftCountFn(projectRoot, noCache)
 				if err != nil {
 					return nil
 				}
 
 				if count > 0 {
-					os.Exit(1)
+					return &exitCodeError{code: 1, msg: "spec drift: drift detected (--exit-code-on-drift)"}
 				}
 			}
 			return nil
@@ -81,8 +87,27 @@ Examples:
 	cmd.Flags().BoolVar(&jsonOutput, "json", false, "Output in JSON format")
 	cmd.Flags().BoolVar(&exitCodeOnDrift, "exit-code-on-drift", false, "Exit with code 1 if drift detected")
 	cmd.Flags().BoolVar(&countOnly, "count", false, "Only print the drift count")
+	cmd.Flags().BoolVar(&noCache, "no-cache", false, "Bypass the HEAD-SHA result cache and recompute freshly")
 
 	return cmd
+}
+
+// detectDriftFn routes to the cached or the fresh drift entry point.
+// The --no-cache path is authoritative: it never reads the HEAD-SHA cache, so an
+// operator can always obtain a fresh count regardless of cache state.
+func detectDriftFn(projectRoot string, noCache bool) (*spec.DriftReport, error) {
+	if noCache {
+		return spec.DetectDriftFresh(projectRoot)
+	}
+	return spec.DetectDrift(projectRoot)
+}
+
+// driftCountFn is the count-only counterpart of detectDriftFn.
+func driftCountFn(projectRoot string, noCache bool) (int, error) {
+	if noCache {
+		return spec.DriftCountFresh(projectRoot)
+	}
+	return spec.DriftCount(projectRoot)
 }
 
 func printDriftReport(out io.Writer, report *spec.DriftReport) error {

@@ -8,7 +8,6 @@ import (
 	"regexp"
 	"strings"
 
-	"embed"
 	"gopkg.in/yaml.v3"
 )
 
@@ -27,15 +26,11 @@ type ValidationResult struct {
 }
 
 // Validator is the implementation that performs workflow validation
-type Validator struct {
-	templateFS embed.FS //nolint:unused // filesystem for file reading
-}
+type Validator struct{}
 
 // NewValidator creates a new Validator instance
 func NewValidator() *Validator {
-	return &Validator{
-		// templateFS is not actually used (reads directly via os.ReadFile)
-	}
+	return &Validator{}
 }
 
 // ValidateTemplate validates a single template file

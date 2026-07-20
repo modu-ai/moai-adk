@@ -64,12 +64,23 @@ func renderLoopPhaseStrip(activePhase string, th *tui.Theme) string {
 	return strings.Join(parts, "  ")
 }
 
-// loopCmd is the top-level command that controls the Ralph feedback loop lifecycle.
+// loopCmd is the top-level CLI command for the SPEC-lifecycle controller.
+//
+// This is the SPEC-lifecycle Ralph controller (start/status/pause/resume/cancel
+// for a SPEC's feedback loop). It is a DIFFERENT surface from the `/moai loop`
+// sweep skill (the goal-preset project-wide improvement sweep in
+// .claude/skills/moai/workflows/loop.md, invoked from Claude Code, not this CLI).
 var loopCmd = &cobra.Command{
 	Use:     "loop",
-	Short:   "Manage the Ralph feedback loop lifecycle",
+	Short:   "Manage the SPEC-lifecycle Ralph feedback loop controller",
 	GroupID: "tools",
-	Long: `Control the Ralph autonomous feedback loop.
+	Long: `Control the SPEC-lifecycle Ralph feedback loop controller.
+
+This is the SPEC-lifecycle controller — it starts/pauses/resumes/cancels the
+Ralph feedback loop for a given SPEC. It is a distinct surface from the
+'/moai loop' sweep skill (the Claude Code goal-preset project-wide improvement
+sweep); the two share the 'loop' name but are separate: this CLI drives the
+per-SPEC lifecycle controller, while '/moai loop' arms a goal-preset sweep.
 
 The loop iterates through Analyze -> Implement -> Test -> Review phases
 for a given SPEC, using LSP diagnostics and test results to drive decisions.

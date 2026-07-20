@@ -58,6 +58,13 @@ func acquireUpdateLock(projectRoot string) (release func(), err error) {
 	// Attempt to detect and clean a stale lock first.
 	cleanStaleLock(lockPath)
 
+	// Ensure the parent .moai/ directory exists so OpenFile does not fail with
+	// "no such file or directory" on a fresh project (SPEC-CLIFIX-CRITICAL-001
+	// REQ-CRIT-001-005 wiring robustness).
+	if err := os.MkdirAll(filepath.Dir(lockPath), 0o755); err != nil {
+		return nil, fmt.Errorf("create lock dir %q: %w", filepath.Dir(lockPath), err)
+	}
+
 	// Try to create the lock file exclusively.
 	f, err := os.OpenFile(lockPath, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0o644)
 	if err != nil {

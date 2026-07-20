@@ -1,104 +1,111 @@
 ---
-title: MCP 서버
+title: MCP 통합
 weight: 30
 draft: false
-description: "Claude Code가 MCP로 외부 도구·데이터·API를 표준 프로토콜로 연결하는 방식을 개념 수준에서 소개합니다."
+description: "MCP(Model Context Protocol)로 외부 도구와 데이터를 Claude Code에 연결하는 개념, 서버 등록과 스코프, 지연 로드(Tool Search), 그리고 MoAI-ADK의 MCP 운용 방침을 개념 중심으로 정리합니다."
 ---
 
-Claude Code는 MCP를 통해 이슈 트래커, 데이터베이스, 모니터링 대시보드 같은 외부 시스템을 표준화된 방식으로 연결해 직접 읽고 조작할 수 있습니다.
+# MCP 통합
+
+MCP (Model Context Protocol)는 외부 도구와 데이터 소스를 Claude에 꽂아 쓰기 위한 표준 커넥터입니다. 이 페이지는 그 개념과 등록 방법을 개요 수준에서 정리합니다.
 
 {{< callout type="info" >}}
-**한 줄 요약**: MCP는 다른 도구의 데이터를 복사해 붙여넣던 작업을 없애고, Claude Code가 외부 시스템을 직접 다루게 해 주는 "AI-도구 연결의 표준 콘센트"입니다.
+**한 줄 요약**: MCP는 AI를 위한 **USB 포트**입니다. 데이터베이스, 이슈 트래커, 브라우저처럼 저마다 다른 외부 도구를 하나의 표준 규격으로 Claude에 연결하면 도구마다 별도의 통합 코드를 짜지 않고도 같은 방식으로 꽂아 쓸 수 있습니다.
 {{< /callout >}}
 
-{{< callout type="tip" >}}
-이 페이지는 개념 개요입니다. 실제 서버 등록, 인증, MoAI-ADK 워크플로우에서의 활용 방법은 [MCP 서버 활용 가이드](/advanced/mcp-servers)에서 실습 중심으로 자세히 다룹니다.
-{{< /callout >}}
+## MCP란
 
-## MCP란 무엇인가
+MCP는 AI 애플리케이션이 외부 시스템에 연결하는 방식을 표준화한 오픈 프로토콜입니다. 기기마다 다른 케이블 대신 USB-C 하나로 여러 주변기기를 연결하듯 MCP는 서로 다른 외부 도구를 **하나의 규격**으로 Claude에 연결합니다.
 
-MCP (Model Context Protocol)는 AI와 외부 도구를 잇는 **오픈소스 표준 프로토콜** 입니다. 모델 제조사나 도구 종류에 상관없이 동일한 규약으로 연결되므로, 한 번 만든 MCP 서버는 여러 AI 클라이언트에서 재사용할 수 있습니다.
+연결된 MCP 서버는 Claude에게 세 가지를 제공할 수 있습니다.
 
-MCP 서버는 Claude Code에 도구·데이터·API 접근 권한을 부여합니다. 연결해 두면 Claude가 다음과 같은 일을 직접 처리합니다.
+| 제공물 | 설명 |
+|--------|------|
+| 도구 (Tools) | Claude가 호출할 수 있는 동작 (예: 쿼리 실행, 이슈 생성) |
+| 리소스 (Resources) | Claude가 읽을 수 있는 데이터 (예: 파일, 레코드) |
+| 프롬프트 (Prompts) | 재사용 가능한 프롬프트 템플릿 |
 
-| 시나리오 | MCP 없이 | MCP 연결 후 |
-| --- | --- | --- |
-| 이슈 기반 기능 구현 | 이슈 내용을 복사해 붙여넣기 | 이슈 트래커에서 직접 읽고 PR 생성 |
-| 모니터링 분석 | 대시보드 스크린샷 첨부 | Sentry 등에서 직접 오류 조회 |
-| DB 질의 | 쿼리 결과를 수동 전달 | PostgreSQL 스키마·데이터 직접 조회 |
+이 표준 덕분에 도구를 새로 붙일 때마다 통합 로직을 다시 작성하지 않아도 됩니다. {{< icon package >}} 한 번 표준을 따르면 그 표준을 지원하는 모든 도구가 같은 문을 통해 들어옵니다.
 
-> 외부 콘텐츠를 가져오는 서버는 프롬프트 인젝션 위험이 있으므로, 연결 전에 신뢰할 수 있는 서버인지 반드시 확인합니다.
+## 서버 등록
 
-## 서버 유형 (전송 방식)
+MCP 서버는 두 가지 방법으로 등록합니다.
 
-MCP 서버는 Claude Code와 통신하는 **전송 방식** 에 따라 나뉩니다. HTTP가 권장되며, 레거시 SSE는 사용이 중단되었습니다.
+- **CLI**: `claude mcp add <이름> <실행 명령>` 로 서버를 추가합니다.
+- **설정 파일**: 프로젝트 루트의 `.mcp.json` 에 서버 정의를 직접 작성합니다.
 
-| 전송 방식 | 위치 | 적합한 용도 | 비고 |
-| --- | --- | --- | --- |
-| HTTP | 원격 | 클라우드 SaaS 연동 | 권장 (OAuth 2.0 지원) |
-| stdio | 로컬 프로세스 | 시스템 접근·커스텀 스크립트 | 자동 재연결 없음 |
-| SSE | 원격 | 레거시 원격 연결 | 사용 중단, HTTP로 대체 |
-| WebSocket | 원격 | 서버가 이벤트를 밀어 넣는 경우 | HTTP 또는 stdio 우선 추천 |
+```json
+{
+  "mcpServers": {
+    "example": {
+      "command": "npx",
+      "args": ["-y", "@example/mcp-server"]
+    }
+  }
+}
+```
+
+등록한 서버 상태는 세션 안에서 `/mcp` 명령으로 확인하고 인증할 수 있습니다.
+
+### 스코프
+
+같은 서버라도 어디에 등록하느냐에 따라 적용 범위가 달라집니다.
+
+| 스코프 | 적용 범위 |
+|--------|-----------|
+| `user` | 내 모든 프로젝트 |
+| `project` | 현재 프로젝트 (팀과 공유, 버전 관리에 포함) |
+| `local` | 현재 프로젝트의 내 로컬 세션 (공유되지 않음) |
+
+팀과 나눌 서버는 `project` 스코프로, 개인 자격 증명이 필요한 서버는 `local` 스코프로 두는 것이 일반적입니다.
+
+### 전송 타입
+
+MCP 서버는 Claude와 통신하는 방식(transport)에 따라 나뉩니다.
+
+| 타입 | 동작 개요 |
+|------|-----------|
+| stdio | 로컬 프로세스를 실행하고 표준 입출력으로 통신 |
+| HTTP | 원격 엔드포인트에 네트워크로 연결 |
+
+로컬 도구는 대개 stdio, 원격 SaaS 도구는 HTTP를 씁니다.
+
+## 지연 로드와 Tool Search
+
+MCP 서버를 여러 개 연결하면 도구 정의가 그만큼 늘어납니다. 도구 정의를 전부 컨텍스트에 상시 로드하면 첫 프롬프트를 보내기도 전에 [컨텍스트 윈도우](/ko/claude-code/context-memory/context-window)가 채워집니다.
+
+그래서 Claude Code는 도구 정의를 **기본적으로 지연 로드** (deferred load)합니다. 도구의 전체 스키마는 실제로 그 도구가 필요할 때만 불러오고 평소에는 짧은 메타데이터만 컨텍스트에 둡니다. 이 지연 도구를 실제로 호출하려면 먼저 스키마를 활성 컨텍스트로 불러오는 선행 단계가 필요합니다.
+
+MoAI-ADK는 이 메커니즘을 HARD 규율로 끌어올립니다. 지연 도구(예: `AskUserQuestion`)를 호출하기 전에는 반드시 `ToolSearch` 로 스키마를 먼저 로드해야 하며 이 선행 절차를 건너뛰면 도구 호출이 검증 오류로 거부됩니다. 자세한 규칙은 `.claude/rules/moai/core/askuser-protocol.md` 의 ToolSearch Preload 절차에 나와 있습니다.
 
 ```mermaid
 flowchart TD
-    CC[Claude Code]
-    CC -->|HTTP| Remote[원격 MCP 서버<br>SaaS·API]
-    CC -->|stdio| Local[로컬 MCP 서버<br>프로세스·스크립트]
-    Remote --> Ext1[이슈 트래커·모니터링]
-    Local --> Ext2[로컬 DB·파일시스템]
+    A[도구가 필요해짐] --> B{스키마가<br/>컨텍스트에 있나?}
+    B -->|아니오| C[ToolSearch로<br/>스키마 선행 로드]
+    B -->|예| D[도구 호출]
+    C --> D
 ```
 
-### 설치 개요
+## 캐싱과의 상호작용
 
-서버 추가는 `claude mcp add` 계열 명령으로 수행합니다. 모든 옵션은 서버 이름 **앞** 에 두고, stdio의 경우 `--`로 실행 명령을 구분합니다.
+MCP 서버를 연결하거나 해제하면 컨텍스트 앞부분(프리픽스)에 놓이는 도구 정의 집합이 바뀝니다. 프리픽스가 달라지면 [프롬프트 캐싱](/ko/claude-code/context-memory/prompt-caching)의 재사용이 그 지점부터 무효화되므로 서버 구성은 세션 초반에 정해 두는 편이 캐시 효율에 유리합니다.
 
-```bash
-# 원격 HTTP 서버 추가 (권장)
-claude mcp add --transport http notion https://mcp.notion.com/mcp
+## MoAI-ADK의 MCP 운용
 
-# 로컬 stdio 서버 추가 (-- 뒤가 실행 명령)
-claude mcp add --transport stdio --env API_KEY=YOUR_KEY airtable \
-  -- npx -y airtable-mcp-server
+MoAI-ADK는 MCP 서버를 **기본으로 프로비저닝하지 않습니다**. 대신 외부 자료가 필요할 때는 내장 `WebSearch` / `WebFetch` 로 공식 문서와 모범 사례를 조회하는 폴백 전략을 씁니다 (`.claude/rules/moai/core/agent-common-protocol.md` § MCP Fallback Strategy). 아키텍처·분석 품질이 MCP 가용성에 의존하지 않게 하려는 설계입니다.
 
-# 등록 현황 확인
-claude mcp list
-```
-
-`--scope` 플래그로 설정 저장 범위를 지정합니다. `local` (기본, 나만·현재 프로젝트), `project` (`.mcp.json`으로 팀 공유), `user` (모든 프로젝트)의 세 단계가 있으며, 같은 이름이 여러 곳에 있으면 local > project > user 순으로 우선합니다.
-
-## 서버가 노출하는 것: 도구·리소스·프롬프트
-
-MCP 서버는 세 가지 종류의 기능을 Claude Code에 제공합니다.
-
-| 노출 대상 | 역할 | Claude Code에서 사용하는 법 |
-| --- | --- | --- |
-| 도구 (tools) | Claude가 호출하는 동작·함수 | 작업 중 자동 호출 |
-| 리소스 (resources) | 참조 가능한 데이터·문서 | `@서버:protocol://경로` 멘션 |
-| 프롬프트 (prompts) | 미리 정의된 명령 | `/mcp__서버명__프롬프트명` |
-
-예를 들어 리소스는 파일처럼 `@` 멘션으로 끌어올 수 있습니다.
-
-```text
-@github:issue://123 을 분석하고 수정안을 제안해줘
-```
-
-세션 안에서 `/mcp` 명령을 실행하면 연결된 서버 목록과 각 서버의 도구 개수, OAuth 인증 상태를 확인할 수 있습니다. 인증이 필요한 원격 서버는 `/mcp`에서 브라우저 OAuth 흐름으로 로그인합니다.
-
-> 도구 검색 (Tool Search)이 기본 활성화되어 있어 MCP 도구 정의는 필요할 때까지 컨텍스트 윈도우에 올라가지 않습니다. 서버를 많이 연결해도 컨텍스트 부담이 적습니다.
-
-## MoAI-ADK에서의 활용
-
-MoAI-ADK는 `mcp__context7` 같은 문서 조회 MCP를 워크플로우에 통합해 사용합니다. 서버 등록 절차, 인증 패턴, 스코프 선택, 그리고 MoAI 에이전트가 MCP 도구를 어떻게 호출하는지 등 실전 내용은 별도 심화 가이드에 정리되어 있습니다. 이 페이지에서 개념을 잡았다면 다음 단계로 그 가이드를 참고하시기 바랍니다.
+한 가지 예외는 백엔드 라우팅입니다. `moai glm` 또는 `moai cg` 의 GLM 패널에서 실행할 때는 웹 검색과 웹 조회가 내장 도구 대신 z.ai MCP 도구로 라우팅됩니다 (`.claude/rules/moai/core/glm-web-tooling.md`). 어떤 백엔드에서든 검색·조회 능력 자체는 유지되며 경로만 달라집니다.
 
 ## 관련 문서
 
-- [MCP 서버 활용 가이드](/advanced/mcp-servers)
+- [스킬](/ko/claude-code/extensibility/skills)
+- [훅 (Hooks)](/ko/claude-code/extensibility/hooks)
+- [컨텍스트 윈도우](/ko/claude-code/context-memory/context-window)
 
 ## 참고 자료
 
-- [Connect Claude Code to tools via MCP](https://code.claude.com/docs/en/mcp)
+- [Claude Code Docs — MCP](https://code.claude.com/docs/en/mcp)
 
 {{< callout type="tip" >}}
-처음에는 신뢰할 수 있는 서버 1~2개만 `local` 스코프로 추가해 동작을 확인하고, 팀과 공유할 가치가 검증되면 `--scope project`로 옮겨 `.mcp.json`을 버전 관리에 포함하는 것을 권장합니다.
+새 MCP 서버는 세션을 시작할 때 함께 정해 두세요. 세션 도중에 서버를 붙이거나 떼면 도구 정의 프리픽스가 바뀌어 그 지점부터 프롬프트 캐시가 무효화되고 이후 턴마다 프리픽스를 다시 처리하게 됩니다.
 {{< /callout >}}

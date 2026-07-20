@@ -546,17 +546,17 @@ Technical:
 ```
 User Request
     ↓
-/moai:1-plan "feature description"
+/moai plan "feature description"
     ↓
 manager-spec creates SPEC-001
     ↓
 /clear (token optimization)
     ↓
-/moai:2-run SPEC-001
+/moai run SPEC-001
     ↓
 manager-develop implements with ANALYZE-PRESERVE-IMPROVE
     ↓
-/moai:3-sync SPEC-001
+/moai sync SPEC-001
     ↓
 manager-docs updates documentation
     ↓
@@ -568,7 +568,7 @@ Feature Complete
 ```
 User Request
     ↓
-/moai:1-plan "feature1" "feature2" "feature3" --worktree
+/moai plan "feature1" "feature2" "feature3" --worktree
     ↓
 manager-spec creates SPEC-001, SPEC-002, SPEC-003
     ↓
@@ -579,12 +579,12 @@ Git Worktree setup for parallel development
 ┌─────────────┬─────────────┬─────────────┐
 │ Session 1   │ Session 2   │ Session 3   │
 │ SPEC-001    │ SPEC-002    │ SPEC-003    │
-│ /moai:2-run │ /moai:2-run │ /moai:2-run │
+│ /moai run │ /moai run │ /moai run │
 └─────────────┴─────────────┴─────────────┘
     ↓
 Worktree merge to main branch
     ↓
-/moai:3-sync SPEC-001 SPEC-002 SPEC-003
+/moai sync SPEC-001 SPEC-002 SPEC-003
     ↓
 All Features Complete
 ```
@@ -592,31 +592,31 @@ All Features Complete
 ### Dependency Chain Integration
 
 ```
-/moai:1-plan "database schema" --branch
+/moai plan "database schema" --branch
     ↓
 SPEC-001 created (foundation)
     ↓
-/moai:2-run SPEC-001
+/moai run SPEC-001
     ↓
 Database schema implemented
     ↓
-/moai:1-plan "backend API" --branch
+/moai plan "backend API" --branch
     ↓
 SPEC-002 created (depends on SPEC-001)
     ↓
-/moai:2-run SPEC-002
+/moai run SPEC-002
     ↓
 Backend API implemented
     ↓
-/moai:1-plan "frontend UI" --branch
+/moai plan "frontend UI" --branch
     ↓
 SPEC-003 created (depends on SPEC-002)
     ↓
-/moai:2-run SPEC-003
+/moai run SPEC-003
     ↓
 Frontend UI implemented
     ↓
-/moai:3-sync SPEC-001 SPEC-002 SPEC-003
+/moai sync SPEC-001 SPEC-002 SPEC-003
     ↓
 Full Stack Feature Complete
 ```

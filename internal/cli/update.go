@@ -6,21 +6,24 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"io/fs"
-	"maps"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"runtime"
-	"slices"
-	"sort"
 	"strings"
 	"syscall"
 	"time"
 
 	"github.com/charmbracelet/huh"
-	"github.com/charmbracelet/lipgloss"
 	"github.com/mattn/go-isatty"
+	"github.com/modu-ai/moai-adk/internal/cli/printer"
+	"github.com/modu-ai/moai-adk/internal/cli/uikit"
+	"github.com/modu-ai/moai-adk/internal/cli/update"
+	"github.com/modu-ai/moai-adk/internal/cli/update/backup"
+	"github.com/modu-ai/moai-adk/internal/cli/update/deploy"
+	updatemerge "github.com/modu-ai/moai-adk/internal/cli/update/merge"
+	"github.com/modu-ai/moai-adk/internal/cli/update/plan"
+	"github.com/modu-ai/moai-adk/internal/cli/update/report"
 	"github.com/modu-ai/moai-adk/internal/cli/wizard"
 	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/core/project"
@@ -37,47 +40,30 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-const (
-	// maxConfigSize is the maximum allowed size for a config YAML file to prevent DoS
-	maxConfigSize = 10 * 1024 * 1024 // 10MB
-)
-
-// CLI output styles sourced from tui.LightTheme/DarkTheme — single source of truth.
-// AC-CLI-TUI-013: no hex literals outside internal/tui/. M4-S4d cleanup uses
-// AdaptiveColor with tui.LightTheme()/DarkTheme() values evaluated at package init.
-// cliPrimary now resolves to tui.Accent (deep teal) replacing the deprecated
-// terra cotta accent — brand consistency restored per M3 banner.go.
-var (
-	cliSuccess = lipgloss.NewStyle().Foreground(lipgloss.AdaptiveColor{Light: tui.LightTheme().Success, Dark: tui.DarkTheme().Success})
-	cliWarn    = lipgloss.NewStyle().Foreground(lipgloss.AdaptiveColor{Light: tui.LightTheme().Warning, Dark: tui.DarkTheme().Warning})
-	cliError   = lipgloss.NewStyle().Foreground(lipgloss.AdaptiveColor{Light: tui.LightTheme().Danger, Dark: tui.DarkTheme().Danger})
-	cliMuted   = lipgloss.NewStyle().Foreground(lipgloss.AdaptiveColor{Light: tui.LightTheme().Dim, Dark: tui.DarkTheme().Dim})
-	cliPrimary = lipgloss.NewStyle().Foreground(lipgloss.AdaptiveColor{Light: tui.LightTheme().Accent, Dark: tui.DarkTheme().Accent})
-	cliBorder  = lipgloss.NewStyle().Foreground(lipgloss.AdaptiveColor{Light: tui.LightTheme().Rule, Dark: tui.DarkTheme().Rule})
-)
-
-func symSuccess() string { return cliSuccess.Render("\u2713") }
-func symError() string   { return cliError.Render("\u2717") }
-func symWarning() string { return cliWarn.Render("!") }
-
 // symProgress was retired by SPEC-V3R6-UPDATE-PROGRESS-001 M1. All former
 // callers now use tui.ProgressLine which renders its own progress glyph
 // from the theme. Kept as a comment for historical reference; the migration
 // eliminated 22 "\r"-pair sites that previously caused trailing-character
 // corruption when short messages overwrote longer progress messages.
 
-// fileBackup holds a file path and its backed-up content for merging.
-type fileBackup struct {
-	path string
-	data []byte
-}
-
 var updateCmd = &cobra.Command{
 	Use:     "update",
 	Short:   "Sync MoAI-ADK project templates to the latest version",
 	GroupID: "project",
 	Long:    "Check for binary updates, install if available, then synchronize embedded templates with the project.",
+	PreRunE: validateUpdateFlags,
 	RunE:    runUpdate,
+}
+
+// validateUpdateFlags validates update flag values before execution.
+// SPEC-MODEL-PROFILE-MATRIX-001 (REQ-MPM-015/017): an out-of-set --profile value
+// exits non-zero with a usage error naming the closed set {max, medium, low}.
+func validateUpdateFlags(cmd *cobra.Command, _ []string) error {
+	profileFlag := getStringFlag(cmd, "profile")
+	if profileFlag != "" && !config.IsValidProfile(profileFlag) {
+		return fmt.Errorf("invalid --profile value %q: must be one of: max, medium, low", profileFlag)
+	}
+	return nil
 }
 
 func init() {
@@ -93,6 +79,11 @@ func init() {
 	updateCmd.Flags().Bool("dry-run", false, "Show planned archive and install operations without modifying the filesystem")
 	updateCmd.Flags().Bool("no-hooks", false, "Skip git hook installation (REQ-CIAUT-002)")
 	updateCmd.Flags().Bool("verbose", false, "Show all warnings including acknowledged reserved-name and 3-way merge fallback notices (diagnostic mode; SPEC-V3R6-UPDATE-NOISE-001 REQ-UN-005/010)")
+
+	// SPEC-MODEL-PROFILE-MATRIX-001 (REQ-MPM-015/017): --profile override. When
+	// provided, persists the value to llm.profile (no agent frontmatter mutation).
+	// The retired --plan-type flag is no longer exposed.
+	updateCmd.Flags().String("profile", "", "Override the model+effort profile: max, medium, or low (persists to llm.yaml profile)")
 }
 
 // @MX:ANCHOR: [AUTO] runUpdate orchestrates binary update and template synchronization
@@ -142,12 +133,12 @@ func runUpdate(cmd *cobra.Command, _ []string) error {
 	out := cmd.OutOrStdout()
 	th := resolveTheme()
 
-	// SPEC-V3R6-UPDATE-NOISE-001 REQ-UN-005/010: propagate --verbose through the
-	// package-level updateVerboseMode flag so checkReservedCollision and
-	// recordMergeFallback can bypass ack-ledger / 3-strike suppression. `moai
-	// update` is single-process sequential — no synchronization needed. The
-	// flag is reset on function exit so subsequent in-process invocations
-	// (CLI tests, helpers) start with the default suppression-on behavior.
+	// SPEC-V3R6-UPDATE-NOISE-001 REQ-UN-010: propagate --verbose through the
+	// package-level updateVerboseMode flag so recordMergeFallback can bypass
+	// 3-strike suppression. `moai update` is single-process sequential — no
+	// synchronization needed. The flag is reset on function exit so subsequent
+	// in-process invocations (CLI tests, helpers) start with the default
+	// suppression-on behavior.
 	updateVerboseMode = getBoolFlag(cmd, "verbose")
 	defer func() { updateVerboseMode = false }()
 
@@ -215,6 +206,64 @@ func runUpdate(cmd *cobra.Command, _ []string) error {
 		return nil
 	}
 
+	// SPEC-V3R6-V2-V3-CLEAN-REINSTALL-002 REQ-CRR-005 / AC-CRR-005: refuse to
+	// operate in a non-project cwd (#1086). The positive marker is
+	// `.moai/config/sections/system.yaml`; when it is absent this directory is
+	// not a moai project and `moai update` MUST NOT write anything into it.
+	//
+	// Gating only the clean-reinstall branch is insufficient — that is why
+	// #1086 survived M2. Option α reads a missing system.yaml as a POSITIVE
+	// Signal 1, so the fingerprint returns IsV2=true in any empty directory;
+	// even when the `&& isMoAIProject(cwd)` conjunct below correctly refuses
+	// clean-reinstall, control falls through to the v3 file-level sync, which
+	// deploys the full embedded template tree just the same. The refusal must
+	// therefore precede BOTH paths.
+	//
+	// Placement is before acquireUpdateLock (and thus before
+	// detectV2Fingerprint, per plan.md §F M2) because the lock itself is a
+	// writer: it MkdirAll's `.moai/` to host `.moai/.update.lock`, and its
+	// release removes only the lock file — leaving an empty `.moai/` behind in
+	// the cwd. Gating after the lock still violates AC-CRR-005(a).
+	//
+	// The `!binaryOnly` conjunct keeps `moai update --binary` project-
+	// independent: it upgrades the moai binary itself and performs no template
+	// sync, so it has no project-marker precondition. `--check` returns earlier
+	// still and is likewise unaffected.
+	//
+	// The error names the missing marker relative to the cwd and directs the
+	// user to `moai init`. It deliberately does NOT echo the absolute cwd
+	// (acceptance.md §D.7 Secured: the structured error must not leak absolute
+	// paths or environment details).
+	if !binaryOnly {
+		cwd, err := os.Getwd()
+		if err != nil {
+			return fmt.Errorf("get working directory for project-marker check: %w", err)
+		}
+		if !isMoAIProject(cwd) {
+			marker := filepath.ToSlash(filepath.Join(
+				defs.MoAIDir, "config", "sections", "system.yaml"))
+			return fmt.Errorf(
+				"not a moai project: %s not found in the current directory\n\n"+
+					"Run `moai init` to initialize a project here, or change to an "+
+					"existing project directory and retry", marker)
+		}
+	}
+
+	// SPEC-CLIFIX-CRITICAL-001 REQ-CRIT-001-005: acquire update lock before any
+	// destructive step so a concurrent moai update fails fast with a diagnostic
+	// instead of interleaving destructive deploy/clean/restore operations.
+	lockRoot, _ := findProjectRoot()
+	if lockRoot == "" {
+		lockRoot, _ = os.Getwd()
+	}
+	if lockRoot != "" {
+		releaseLock, lockErr := acquireUpdateLock(lockRoot)
+		if lockErr != nil {
+			return lockErr
+		}
+		defer releaseLock()
+	}
+
 	// Step 1: Binary update (unless skipped)
 	if !shouldSkipBinaryUpdate(cmd) {
 		updated, err := runBinaryUpdateStep(cmd)
@@ -236,7 +285,7 @@ func runUpdate(cmd *cobra.Command, _ []string) error {
 			// reexecNewBinary replaces the process on success, so we only
 			// reach here if it failed.
 		} else if binaryOnly {
-			_, _ = fmt.Fprintln(out, tui.Pill(tui.PillOpts{Kind: tui.PillInfo, Solid: false, Label: "Already up to date", Theme: &th}))
+			_, _ = fmt.Fprintln(out, tui.Pill(tui.PillOpts{Kind: tui.PillInfo, Solid: false, Label: report.RenderOutcome(report.OutcomeAlreadyUpToDate, 0, ""), Theme: &th}))
 			return nil
 		}
 	}
@@ -267,10 +316,15 @@ func runUpdate(cmd *cobra.Command, _ []string) error {
 		if err != nil {
 			return fmt.Errorf("get working directory for v2 detection: %w", err)
 		}
+		// REQ-CRR-005 / AC-CRR-004: clean-reinstall requires BOTH a v2
+		// fingerprint AND a genuine moai-project cwd (positive marker
+		// `.moai/config/sections/system.yaml`). A non-project cwd MUST NOT
+		// trigger clean-reinstall even if legacy residue drives IsV2=true
+		// (#1086 regression repair, M2).
 		fingerprint, fpErr := detectV2Fingerprint(cwd)
 		if fpErr != nil {
 			_, _ = fmt.Fprintln(out, tui.CheckLine("warn", "v2 detection", "failed", fpErr.Error(), &th))
-		} else if fingerprint.IsV2 {
+		} else if fingerprint.IsV2 && isMoAIProject(cwd) {
 			_, _ = fmt.Fprintln(out, tui.CheckLine("info", "v2 detected",
 				"running clean reinstall",
 				fmt.Sprintf("signals: version=%v agency=%v deprecated=%v",
@@ -310,6 +364,29 @@ func runUpdate(cmd *cobra.Command, _ []string) error {
 			}))
 			return nil
 		}
+
+		// SPEC-V3R6-V2-V3-CLEAN-REINSTALL-002 REQ-CRR-007 / AC-CRR-007:
+		// Fire .agency/ migration INDEPENDENTLY of the v2 fingerprint verdict.
+		// A v3 project (IsV2=false per REQ-CRR-001's v3-version negative-
+		// override) that still carries a lingering .agency/ directory needs the
+		// migration to run, but the Step 3.5 migration inside runCleanReinstall
+		// is gated on fp.V2DetectedViaAgencyDir && IsV2 — which never opens for
+		// a v3 project. This pre-step closes that gap.
+		//
+		// Placement rationale: this is reachable ONLY when the clean-reinstall
+		// early-return above did NOT fire (detection succeeded, IsV2=false, or
+		// IsV2=true but non-moai-project cwd). The gate below narrows to the
+		// AC-CRR-007 contract: v3 project (IsV2=false) + genuine moai project
+		// + .agency/ present. Genuine-v2 projects (IsV2=true) are handled by
+		// the clean-reinstall path above and never reach here, so there is no
+		// double-fire (the adapter need not swallow ErrMigrateArchiveExists).
+		if fpErr == nil && !fingerprint.IsV2 && isMoAIProject(cwd) {
+			if _, agencyStatErr := os.Stat(filepath.Join(cwd, ".agency")); agencyStatErr == nil {
+				if migrateErr := runAgencyMigrationAdapter(cwd, getBoolFlag(cmd, "dry-run"), out); migrateErr != nil {
+					return fmt.Errorf("pre-step agency migration: %w", migrateErr)
+				}
+			}
+		}
 	}
 
 	syncSkipped, err := runTemplateSyncWithProgress(cmd)
@@ -323,6 +400,13 @@ func runUpdate(cmd *cobra.Command, _ []string) error {
 	// Pre-fix UX leaked a "Skipping sync" line immediately followed by
 	// "Legacy skill archive failed" because the archive ran unconditionally.
 	if syncSkipped {
+		// SPEC-MODEL-PROFILE-MATRIX-001 (REQ-MPM-016): an explicit --profile override
+		// must still persist to llm.profile even when the template sync short-circuits.
+		if p := getStringFlag(cmd, "profile"); p != "" {
+			if err := applyUpdateProfile(".", p); err != nil {
+				return err
+			}
+		}
 		return nil
 	}
 
@@ -343,15 +427,8 @@ func runUpdate(cmd *cobra.Command, _ []string) error {
 
 	// Ensure .moai/evolution/ directory tree exists for existing projects
 	// that predate the evolution infrastructure (R2: Directory Scaffolding).
-	if err := scaffoldEvolutionDir("."); err != nil {
+	if err := deploy.ScaffoldEvolutionDir("."); err != nil {
 		_, _ = fmt.Fprintln(out, tui.CheckLine("warn", "Evolution dir", "scaffold failed", err.Error(), &th))
-	}
-
-	// Sync .moai/design/ templates (REQ-005, REQ-008).
-	// Preserves user-modified files (SHA-256 mismatch) and rejects reserved filename collisions.
-	if err := updateDesignDir(".", out); err != nil {
-		_, _ = fmt.Fprintln(out, tui.CheckLine("err", ".moai/design/ update", "failed", err.Error(), &th))
-		return err
 	}
 
 	// Sync profile preferences to project config (after template deployment)
@@ -365,6 +442,38 @@ func runUpdate(cmd *cobra.Command, _ []string) error {
 		}
 	}
 
+	// SPEC-MODEL-PROFILE-MATRIX-001 (REQ-MPM-016): when --profile is given,
+	// persist the override to llm.profile (no agent frontmatter mutation).
+	if p := getStringFlag(cmd, "profile"); p != "" {
+		if err := applyUpdateProfile(".", p); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+// applyUpdateProfile persists a --profile override to llm.profile during
+// `moai update` (SPEC-MODEL-PROFILE-MATRIX-001 REQ-MPM-016/024). The former
+// plan_type × tier agent-frontmatter re-mutation (ApplyTierProfile) is RETIRED —
+// this path writes to llm.yaml only, leaving agent frontmatter at model: inherit.
+// An out-of-set profileFlag returns an error naming the closed set (defensive —
+// the CLI flag is validated by validateUpdateFlags before this is reached).
+func applyUpdateProfile(projectRoot, profileFlag string) error {
+	if profileFlag == "" {
+		return nil
+	}
+	if !config.IsValidProfile(profileFlag) {
+		return fmt.Errorf("invalid --profile value %q: must be one of: max, medium, low", profileFlag)
+	}
+	if err := template.ApplyProfile(projectRoot, profileFlag); err != nil {
+		return fmt.Errorf("persist profile: %w", err)
+	}
+	// Keep the legacy performance_tier alias in sync so the separate Tier x Phase
+	// axis reads a consistent tier.
+	if err := template.ApplyPerformanceTier(projectRoot, profileFlag); err != nil {
+		return fmt.Errorf("persist performance_tier: %w", err)
+	}
 	return nil
 }
 
@@ -525,13 +634,13 @@ func runTemplateSyncWithReporter(cmd *cobra.Command, reporter project.ProgressRe
 	// Compare package template_version with project config template_version
 	// If versions match, skip sync for performance (70-80% faster)
 	packageVersion := version.GetVersion()
-	projectVersion, err := getProjectConfigVersion(projectRoot)
+	projectVersion, err := plan.GetProjectConfigVersion(projectRoot)
 	if err == nil && packageVersion == projectVersion && !forceBackup {
 		if reporter != nil {
 			reporter.StepComplete("Already up-to-date")
 		}
 		_, _ = fmt.Fprintln(out)
-		_, _ = fmt.Fprintln(out, tui.Pill(tui.PillOpts{Kind: tui.PillOk, Solid: false, Label: "Template version up-to-date · Skipping sync", Theme: &th}))
+		_, _ = fmt.Fprintln(out, tui.Pill(tui.PillOpts{Kind: tui.PillOk, Solid: false, Label: report.RenderOutcome(report.OutcomeAlreadyUpToDate, 0, ""), Theme: &th}))
 		return nil
 	}
 
@@ -581,7 +690,7 @@ func runTemplateSyncWithReporter(cmd *cobra.Command, reporter project.ProgressRe
 	deployer := template.NewDeployerWithRendererAndForceUpdate(embedded, renderer, true)
 
 	// Analyze merge and get user confirmation
-	analysis := analyzeMergeChanges(deployer, projectRoot)
+	analysis := updatemerge.AnalyzeMergeChanges(deployer, projectRoot)
 
 	_, _ = fmt.Fprintln(out)
 	_, _ = fmt.Fprintln(out, tui.Section("Analyzing merge changes", tui.SectionOpts{Theme: &th}))
@@ -599,7 +708,7 @@ func runTemplateSyncWithReporter(cmd *cobra.Command, reporter project.ProgressRe
 		_, _ = fmt.Fprintln(out, tui.CheckLine("info", "Auto-confirm", "CI/CD mode", "", &th))
 	} else {
 		var err error
-		proceed, err = merge.ConfirmMerge(analysis)
+		proceed, err = confirmViaPreview(analysis, projectRoot)
 		if err != nil {
 			if reporter != nil {
 				reporter.StepError(err)
@@ -638,7 +747,7 @@ func runTemplateSyncWithReporter(cmd *cobra.Command, reporter project.ProgressRe
 				// SPEC-V3R6-UPDATE-PROGRESS-001 M1: tui.ProgressLine replaces
 				// the legacy CR-plus-format pair (REQ-UPR-004).
 				pl := tui.ProgressLine(out, "Backing up .moai/config...", nil)
-				configBackupPath, backupErr := backupMoaiConfig(projectRoot)
+				configBackupPath, backupErr := backup.BackupMoaiConfig(projectRoot)
 				if backupErr != nil {
 					pl.Fail(fmt.Sprintf("Backup failed: %v", backupErr))
 					return backupErr
@@ -682,7 +791,7 @@ func runTemplateSyncWithReporter(cmd *cobra.Command, reporter project.ProgressRe
 			name:    "Clean Managed Paths",
 			message: "Removing old MoAI-managed files",
 			execute: func() error {
-				return cleanMoaiManagedPaths(projectRoot, out)
+				return deploy.CleanMoaiManagedPaths(projectRoot, out)
 			},
 		},
 		{
@@ -730,16 +839,17 @@ func runTemplateSyncWithReporter(cmd *cobra.Command, reporter project.ProgressRe
 	// Backup of user's .gitignore content for EntryMerge after deploy
 	var gitignoreBackup []byte
 	// Backups of mergeable files for 3-way merge after deploy
-	var mergeableBackups []fileBackup
+	var mergeableBackups []updatemerge.FileBackup
 
 	// collectMergeableFiles returns a list of files that should be merged
 	// using the 3-way merge engine during update.
 	// Note: .moai/config/sections/*.yaml files are already handled by
 	// restoreMoaiConfig with 3-way merge, so they are excluded here.
 	collectMergeableFiles := func(projectRoot string) []string {
-		// Fixed mergeable files at project root that are NOT handled by restoreMoaiConfig
+		// Fixed mergeable files at project root that are NOT handled by restoreMoaiConfig.
+		// .mcp.json is intentionally absent: MoAI no longer ships an MCP template
+		// (full MCP removal), so a user's .mcp.json is not a merge target.
 		return []string{
-			".mcp.json",
 			".claude/settings.json",
 			".moai/status_line.sh",
 		}
@@ -758,7 +868,7 @@ func runTemplateSyncWithReporter(cmd *cobra.Command, reporter project.ProgressRe
 			// the legacy CR-plus-format pair (REQ-UPR-004).
 			plBackup := tui.ProgressLine(out, "Backing up .moai/config...", nil)
 			var backupErr error
-			configBackupPath, backupErr = backupMoaiConfig(projectRoot)
+			configBackupPath, backupErr = backup.BackupMoaiConfig(projectRoot)
 			if backupErr != nil {
 				plBackup.Fail(fmt.Sprintf("Backup failed: %v", backupErr))
 				if reporter != nil {
@@ -795,6 +905,22 @@ func runTemplateSyncWithReporter(cmd *cobra.Command, reporter project.ProgressRe
 				plNsBackup.Done("No user-owned namespace to back up")
 			}
 
+			// SPEC-INTERNAL-SECURITY-001 REQ-SEC-006 (AC-SEC-006a): wire the
+			// pre-modification abort sentinel as a REAL gate on the moai update
+			// deploy path. verifyNamespaceBackupCoverage runs AFTER the backup
+			// completes and BEFORE any destructive deploy step; it aborts with
+			// UPDATE_USER_NAMESPACE_VIOLATION when a user-owned namespace file
+			// on disk would be overwritten without a backup. Normal updates
+			// (no user-owned content, or fully backed up) pass through
+			// unchanged (NFR-SEC-003).
+			if covErr := verifyNamespaceBackupCoverage(projectRoot, nsBackupPath); covErr != nil {
+				plNsBackup.Fail(fmt.Sprintf("Namespace safety check failed: %v", covErr))
+				if reporter != nil {
+					reporter.StepError(covErr)
+				}
+				return covErr
+			}
+
 			// Also backup .gitignore for EntryMerge after deploy
 			gitignorePath := filepath.Join(projectRoot, ".gitignore")
 			if data, readErr := os.ReadFile(gitignorePath); readErr == nil {
@@ -805,7 +931,7 @@ func runTemplateSyncWithReporter(cmd *cobra.Command, reporter project.ProgressRe
 			for _, mf := range mergeableFiles {
 				mfPath := filepath.Join(projectRoot, mf)
 				if data, readErr := os.ReadFile(mfPath); readErr == nil {
-					mergeableBackups = append(mergeableBackups, fileBackup{path: mf, data: data})
+					mergeableBackups = append(mergeableBackups, updatemerge.FileBackup{Path: mf, Data: data})
 				}
 			}
 			if reporter != nil {
@@ -820,7 +946,13 @@ func runTemplateSyncWithReporter(cmd *cobra.Command, reporter project.ProgressRe
 				// SPEC-V3R6-UPDATE-PROGRESS-001 M1: tui.ProgressLine replaces
 				// the legacy CR-plus-format pair (REQ-UPR-004).
 				plRestore := tui.ProgressLine(out, "Restoring user settings...", nil)
-				if restoreErr := restoreMoaiConfig(projectRoot, configBackupPath); restoreErr != nil {
+				if restoreErr := backup.RestoreMoaiConfig(projectRoot, configBackupPath, func(pr, relPath string, success bool, errOut io.Writer) {
+					// Bridge to the noise-suppression ledger (recordMergeFallback +
+					// updateVerboseMode), which stays in package cli. The closure
+					// captures updateVerboseMode so the backup subpackage does not
+					// need a cross-package mutable-state seam.
+					recordMergeFallback(pr, relPath, success, updateVerboseMode, errOut)
+				}); restoreErr != nil {
 					plRestore.Fail(fmt.Sprintf("Restore failed: %v", restoreErr))
 					if reporter != nil {
 						reporter.StepError(restoreErr)
@@ -828,9 +960,9 @@ func runTemplateSyncWithReporter(cmd *cobra.Command, reporter project.ProgressRe
 					return restoreErr
 				}
 				plRestore.Done("User settings restored")
-				deletedCount := cleanup_old_backups(projectRoot, 5)
+				deletedCount := backup.CleanupOldBackups(projectRoot, 5)
 				if deletedCount > 0 {
-					_, _ = fmt.Fprintf(out, "  %s Cleaned up %d old backup(s)\n", symSuccess(), deletedCount)
+					_, _ = fmt.Fprintf(out, "  %s Cleaned up %d old backup(s)\n", uikit.SymSuccess(), deletedCount)
 				}
 				if reporter != nil {
 					reporter.StepComplete("Settings restored")
@@ -839,16 +971,16 @@ func runTemplateSyncWithReporter(cmd *cobra.Command, reporter project.ProgressRe
 			// Merge .gitignore: preserve user-added patterns via EntryMerge
 			if len(gitignoreBackup) > 0 {
 				gitignorePath := filepath.Join(projectRoot, ".gitignore")
-				if mergeErr := mergeGitignoreFile(gitignorePath, gitignoreBackup); mergeErr != nil {
-					_, _ = fmt.Fprintf(out, "  %s .gitignore merge warning: %v\n", symWarning(), mergeErr)
+				if mergeErr := updatemerge.MergeGitignoreFile(gitignorePath, gitignoreBackup); mergeErr != nil {
+					_, _ = fmt.Fprintf(out, "  %s .gitignore merge warning: %v\n", uikit.SymWarning(), mergeErr)
 				} else {
-					_, _ = fmt.Fprintf(out, "  %s .gitignore user patterns preserved\n", symSuccess())
+					_, _ = fmt.Fprintf(out, "  %s .gitignore user patterns preserved\n", uikit.SymSuccess())
 				}
 			}
 			// Merge user-customized files using 3-way merge engine
 			if len(mergeableBackups) > 0 {
-				if err := mergeUserFiles(projectRoot, mergeableBackups, out); err != nil {
-					_, _ = fmt.Fprintf(out, "  %s File merge warning: %v\n", symWarning(), err)
+				if err := updatemerge.MergeUserFiles(projectRoot, mergeableBackups, out); err != nil {
+					_, _ = fmt.Fprintf(out, "  %s File merge warning: %v\n", uikit.SymWarning(), err)
 				}
 			}
 		default:
@@ -871,7 +1003,8 @@ func runTemplateSyncWithReporter(cmd *cobra.Command, reporter project.ProgressRe
 	}
 
 	_, _ = fmt.Fprintln(out)
-	_, _ = fmt.Fprintln(out, tui.Pill(tui.PillOpts{Kind: tui.PillOk, Solid: false, Label: "Template sync complete", Theme: &th}))
+	_, _ = fmt.Fprintln(out, tui.Pill(tui.PillOpts{Kind: tui.PillOk, Solid: false, Label: report.RenderOutcome(report.OutcomeUpdatedFiles, len(analysis.Files), configBackupPath), Theme: &th}))
+	report.EmitHooksReviewGuidance(out)
 
 	_, _ = fmt.Fprintln(out)
 	_, _ = fmt.Fprintln(out, "To reconfigure project settings (development mode, git, model policy), run:")
@@ -884,6 +1017,9 @@ func runTemplateSyncWithReporter(cmd *cobra.Command, reporter project.ProgressRe
 
 	// Install pre-push hook (REQ-CIAUT-002). Non-fatal; --no-hooks opts out.
 	installPrePushHookOptional(projectRoot, getBoolFlag(cmd, "no-hooks"), out)
+
+	// Install pre-commit hook (REQ-PC-001). Fast-subset commit tier; --no-hooks opts out.
+	installPreCommitHookOptional(projectRoot, getBoolFlag(cmd, "no-hooks"), out)
 
 	return nil
 }
@@ -913,15 +1049,17 @@ func runTemplateSyncWithProgress(cmd *cobra.Command) (skipped bool, err error) {
 	autoConfirm := getBoolFlag(cmd, "yes")
 	forceUpdate := getBoolFlag(cmd, "force")
 
-	// Use simple console output for progress reporting
-	consoleReporter := project.NewConsoleReporter()
+	// Use printer-backed console output for progress reporting
+	// (REQ-CTX-015: routes step events through the Printer to stderr).
+	consoleReporter := newPrinterReporter(
+		printer.New(printer.WithWriters(cmd.OutOrStdout(), cmd.ErrOrStderr())))
 
 	// Check for version match before proceeding
 	packageVersion := version.GetVersion()
-	projectVersion, verr := getProjectConfigVersion(projectRoot)
+	projectVersion, verr := plan.GetProjectConfigVersion(projectRoot)
 	if verr == nil && packageVersion == projectVersion && !forceUpdate {
 		_, _ = fmt.Fprintln(out)
-		_, _ = fmt.Fprintln(out, tui.Pill(tui.PillOpts{Kind: tui.PillOk, Solid: false, Label: "Template version up-to-date · Skipping sync", Theme: &th}))
+		_, _ = fmt.Fprintln(out, tui.Pill(tui.PillOpts{Kind: tui.PillOk, Solid: false, Label: report.RenderOutcome(report.OutcomeAlreadyUpToDate, 0, ""), Theme: &th}))
 		return true, nil
 	}
 
@@ -933,11 +1071,11 @@ func runTemplateSyncWithProgress(cmd *cobra.Command) (skipped bool, err error) {
 		}
 
 		deployer := template.NewDeployerWithForceUpdate(embedded, true)
-		analysis := analyzeMergeChanges(deployer, projectRoot)
+		analysis := updatemerge.AnalyzeMergeChanges(deployer, projectRoot)
 
 		_, _ = fmt.Fprintln(out)
 		_, _ = fmt.Fprintln(out, tui.Section("Analyzing merge changes", tui.SectionOpts{Theme: &th}))
-		proceed, cerr := merge.ConfirmMerge(analysis)
+		proceed, cerr := confirmViaPreview(analysis, projectRoot)
 		if cerr != nil {
 			return false, fmt.Errorf("confirm merge for %d files (risk: %s): %w",
 				len(analysis.Files), analysis.RiskLevel, cerr)
@@ -952,514 +1090,55 @@ func runTemplateSyncWithProgress(cmd *cobra.Command) (skipped bool, err error) {
 	return false, runTemplateSyncWithReporter(cmd, consoleReporter, true)
 }
 
-// classifyFileRisk determines the risk level for a file modification.
-// Returns "high" for core config files (CLAUDE.md, settings.json),
-// "low" for new files, and "medium" for existing file updates.
-func classifyFileRisk(filename string, exists bool) string {
-	base := filepath.Base(filename)
-
-	// High risk files
-	highRiskFiles := []string{"CLAUDE.md", "settings.json"}
-	if slices.Contains(highRiskFiles, base) {
-		return "high"
-	}
-
-	// New files are low risk
-	if !exists {
-		return "low"
-	}
-
-	// Existing files are medium risk
-	return "medium"
-}
-
-// determineStrategy selects the appropriate merge strategy based on file type.
-// Returns SectionMerge for CLAUDE.md, EntryMerge for .gitignore, JSONMerge for .json,
-// YAMLDeep for .yaml/.yml, and LineMerge as default.
-func determineStrategy(filename string) merge.MergeStrategy {
-	base := filepath.Base(filename)
-	ext := filepath.Ext(filename)
-
-	switch {
-	case base == "CLAUDE.md":
-		return merge.SectionMerge
-	case base == ".gitignore":
-		return merge.EntryMerge
-	case ext == ".json":
-		return merge.JSONMerge
-	case ext == ".yaml" || ext == ".yml":
-		return merge.YAMLDeep
-	default:
-		return merge.LineMerge
-	}
-}
-
-// mergeGitignoreFile reads the newly deployed .gitignore template and merges
-// user-specific patterns from the backup. Template content is kept as-is;
-// user-added lines (not present in the template) are appended under a
-// "User Custom Patterns" header.
-func mergeGitignoreFile(gitignorePath string, userBackup []byte) error {
-	templateContent, err := os.ReadFile(gitignorePath)
-	if err != nil {
-		return fmt.Errorf("read new .gitignore: %w", err)
-	}
-
-	// Build a set of non-blank, non-comment lines from the template
-	templateLines := strings.Split(string(templateContent), "\n")
-	templateSet := make(map[string]bool, len(templateLines))
-	for _, line := range templateLines {
-		trimmed := strings.TrimSpace(line)
-		if trimmed != "" && !strings.HasPrefix(trimmed, "#") {
-			templateSet[trimmed] = true
-		}
-	}
-
-	// Collect user-specific lines that are not in the new template
-	userLines := strings.Split(string(userBackup), "\n")
-	var userAdditions []string
-	for _, line := range userLines {
-		trimmed := strings.TrimSpace(line)
-		if trimmed == "" || strings.HasPrefix(trimmed, "#") {
-			continue
-		}
-		if !templateSet[trimmed] {
-			userAdditions = append(userAdditions, line)
-		}
-	}
-
-	if len(userAdditions) == 0 {
-		return nil // No user-specific patterns to preserve
-	}
-
-	// Append user additions to the template content
-	result := string(templateContent)
-	if !strings.HasSuffix(result, "\n") {
-		result += "\n"
-	}
-	result += "\n# User Custom Patterns (preserved by moai update)\n"
-	for _, line := range userAdditions {
-		result += line + "\n"
-	}
-
-	return os.WriteFile(gitignorePath, []byte(result), defs.FilePerm)
-}
-
-// mergeUserFiles performs 3-way merge for user-customized files after template deployment.
-// It uses the manifest's TemplateHash as the base, user's backed-up content as current,
-// and the newly deployed template as updated. This preserves user customizations while
-// incorporating template changes.
-func mergeUserFiles(projectRoot string, backups []fileBackup, out io.Writer) error {
-	// Load embedded templates to get original template content for base version
-	embedded, err := template.EmbeddedTemplates()
-	if err != nil {
-		return fmt.Errorf("load embedded templates: %w", err)
-	}
-
-	// Load manifest to get template hashes for base version
-	mgr := manifest.NewManager()
-	if _, loadErr := mgr.Load(projectRoot); loadErr != nil {
-		return fmt.Errorf("load manifest: %w", loadErr)
-	}
-
-	// Create merge engine
-	engine := merge.NewEngine()
-
-	var mergedCount int
-	for _, fb := range backups {
-		destPath := filepath.Join(projectRoot, fb.path)
-
-		// Read newly deployed file (updated version)
-		updatedContent, err := os.ReadFile(destPath)
-		if err != nil {
-			// File might not exist in new template version - keep user's version
-			if writeErr := os.WriteFile(destPath, fb.data, defs.FilePerm); writeErr != nil {
-				return fmt.Errorf("restore removed file %s: %w", fb.path, writeErr)
-			}
-			_, _ = fmt.Fprintf(out, "  %s %s preserved (removed in new template)\n", symSuccess(), fb.path)
-			mergedCount++
-			continue
-		}
-
-		// Get original template content from embedded filesystem for base version
-		// Try both with and without leading dot
-		possiblePaths := []string{fb.path, strings.TrimPrefix(fb.path, ".")}
-		var baseContent []byte
-		for _, p := range possiblePaths {
-			if data, readErr := fs.ReadFile(embedded, p); readErr == nil {
-				baseContent = data
-				break
-			}
-		}
-
-		// Perform 3-way merge: base (original template), current (user's backup), updated (new template)
-		// If base is not available, treat as new file - preserve user content
-		if baseContent == nil {
-			// No base available - this might be a user-created file
-			// Prefer user's content but merge if compatible
-			if string(fb.data) == string(updatedContent) {
-				continue // No change needed
-			}
-			// Keep user's version as-is
-			if err := os.WriteFile(destPath, fb.data, defs.FilePerm); err != nil {
-				return fmt.Errorf("restore user file %s: %w", fb.path, err)
-			}
-			_, _ = fmt.Fprintf(out, "  %s %s user content preserved\n", symSuccess(), fb.path)
-			mergedCount++
-			continue
-		}
-
-		// Use merge engine for proper 3-way merge
-		result, mergeErr := engine.MergeFile(context.Background(), fb.path, baseContent, fb.data, updatedContent)
-		if mergeErr != nil {
-			// Merge failed - preserve user's version
-			_, _ = fmt.Fprintf(out, "  %s %s merge failed, preserving user version: %v\n", symWarning(), fb.path, mergeErr)
-			if err := os.WriteFile(destPath, fb.data, defs.FilePerm); err != nil {
-				return fmt.Errorf("preserve user file %s: %w", fb.path, err)
-			}
-			mergedCount++
-			continue
-		}
-
-		// Write merged result
-		if err := os.WriteFile(destPath, result.Content, defs.FilePerm); err != nil {
-			return fmt.Errorf("write merged file %s: %w", fb.path, err)
-		}
-
-		// Report merge status
-		if result.HasConflict {
-			_, _ = fmt.Fprintf(out, "  %s %s merged with conflicts (user version preferred)\n", symWarning(), fb.path)
-		} else {
-			_, _ = fmt.Fprintf(out, "  %s %s user customizations preserved\n", symSuccess(), fb.path)
-		}
-		mergedCount++
-	}
-
-	if mergedCount > 0 {
-		_, _ = fmt.Fprintf(out, "  %s Merged %d file(s) with 3-way merge engine\n", symSuccess(), mergedCount)
-	}
-
-	return nil
-}
-
-// determineChangeType returns a user-friendly description of the change type.
-// Returns "update existing" if the file exists, otherwise "new file".
-func determineChangeType(exists bool) string {
-	if exists {
-		return "update existing"
-	}
-	return "new file"
-}
-
-// analyzeFiles examines each template file and returns detailed analysis results.
-// For each template, it checks if the file exists, classifies its risk level,
-// determines the appropriate merge strategy, and identifies the change type.
-//
-// Filters out moai* skills from the analysis since they are managed by MoAI-ADK
-// and users typically don't need to see them in the merge confirmation UI.
-//
-// For .tmpl files, displays the rendered target path (without .tmpl extension)
-// since that's what users will see in their project.
-func analyzeFiles(templates []string, projectRoot string) []merge.FileAnalysis {
-	var files []merge.FileAnalysis
-	for _, tmpl := range templates {
-		// Strip .tmpl suffix first - display and filter using rendered target path
-		displayPath := tmpl
-		if before, ok := strings.CutSuffix(tmpl, ".tmpl"); ok {
-			displayPath = before
-		}
-
-		// Filter out MoAI-managed files - they are automatically installed
-		if isMoaiManaged(displayPath) {
-			continue
-		}
-
-		// Use rendered target path for existence check
-		targetPath := filepath.Join(projectRoot, displayPath)
-
-		_, err := os.Stat(targetPath)
-		exists := err == nil
-
-		// Classify risk and determine strategy (use displayPath for classification)
-		risk := classifyFileRisk(displayPath, exists)
-		strategy := determineStrategy(displayPath)
-		changeType := determineChangeType(exists)
-
-		files = append(files, merge.FileAnalysis{
-			Path:      displayPath,
-			Changes:   changeType,
-			Strategy:  strategy,
-			RiskLevel: risk,
-			Note:      "",
+// toPreviewInputs maps a merge.MergeAnalysis into the neutral
+// update.FilePreviewInput slice consumed by the preview entry point (M3c
+// convergence, SPEC-CLI-TUX-V3-003 plan Known Issue #7). The Exists/Conflict
+// derivation mirrors the same signals the deploy stage enforces — Exists from
+// os.Stat (mirrors analyzeFiles), Conflict from RiskLevel=="high" (mirrors
+// buildMergeAnalysis hasConflicts). The classification itself (which file is
+// preserved/added/updated/conflict) is derived downstream by update.Classify
+// via the injected isUserOwnedNamespace predicate (REQ-TUX3-001/002 single
+// source of truth — this mapping introduces NO parallel heuristic).
+func toPreviewInputs(analysis merge.MergeAnalysis, projectRoot string) []update.FilePreviewInput {
+	inputs := make([]update.FilePreviewInput, 0, len(analysis.Files))
+	for _, fa := range analysis.Files {
+		_, statErr := os.Stat(filepath.Join(projectRoot, fa.Path))
+		inputs = append(inputs, update.FilePreviewInput{
+			RelPath:  fa.Path,
+			Exists:   statErr == nil,
+			Conflict: fa.RiskLevel == "high",
+			Diff:     fa.Changes,
 		})
 	}
-	return files
+	return inputs
 }
 
-// isUserAreaPath returns true when the relative project path belongs to the
-// user customization area and must never be overwritten or deleted by moai update.
+// confirmViaPreview is the single convergence surface for BOTH merge.ConfirmMerge
+// call sites in this file (plan Known Issue #7). It launches the Bubble Tea v2
+// TUI (AC-TUX3-008/009) when stdin is a terminal, classifying through
+// update.Classify with the shared isUserOwnedNamespace predicate
+// (REQ-TUX3-001/002/014 — no parallel heuristic, `preserved (user-owned)` label
+// derived from the shared predicate).
 //
-// Protected patterns (SPEC-V3R3-HARNESS-001 REQ-HARNESS-004 + SPEC-V3R6-HARNESS-NAMESPACE-V2-001):
-//   - .claude/skills/harness-*       (user harness skill directories — canonical, doctrine §24.1)
-//   - .claude/skills/my-harness-*    (user harness skill directories — legacy, REQ-HNS-005 backward-compat)
-//   - .claude/agents/harness/        (user harness agent directory — canonical)
-//   - .claude/agents/my-harness/     (user harness agent directory — legacy, REQ-HNS-005 backward-compat)
-//
-// REQ-HNS-004: exact HasPrefix comparison (never Contains) so moai-harness-* is not misclassified.
-// REQ-HNS-005: legacy my-harness-* retained during the deprecation window (sunset = follow-up chore SPEC).
-//
-// This function is called by cleanMoaiManagedPaths before any remove operation
-// and by the template overlay write loop to skip user-owned paths.
-func isUserAreaPath(rel string) bool {
-	// Normalize to forward slashes for consistent matching on all platforms.
-	norm := strings.ReplaceAll(rel, "\\", "/")
-
-	// .claude/skills/harness-* (canonical user-owned, any sub-path inside)
-	// @MX:NOTE: [AUTO] SPEC-V3R6-HARNESS-NAMESPACE-V2-001 M1 — canonical harness-* recognition.
-	if strings.HasPrefix(norm, ".claude/skills/harness-") {
-		return true
+// Behavior preservation relative to the prior merge.ConfirmMerge calls: both
+// call sites reach this helper ONLY on the interactive (non-skipped, non-auto)
+// path — the skip-confirm and --yes (autoConfirm) branches short-circuit
+// upstream and set proceed=true directly, byte-identical to before. When stdin
+// is NOT a terminal, the user cannot be asked interactively, so this helper
+// returns an error directing them to --yes — mirroring both the explicit
+// Windows guard that merge.ConfirmMerge carried (confirm.go REQ-CFS-007/008)
+// and the de-facto tea.Run() non-TTY failure on darwin/linux that the v1
+// ConfirmMerge relied on. It MUST NOT silently proceed in the non-TTY case:
+// that would bypass the confirmation gate the caller explicitly entered (the
+// caller did not pass --yes), changing which files get deployed. The
+// preview-fallback's proceed=true semantics belong to the --yes abstraction,
+// which never reaches this helper.
+func confirmViaPreview(analysis merge.MergeAnalysis, projectRoot string) (bool, error) {
+	if !isatty.IsTerminal(os.Stdin.Fd()) {
+		return false, fmt.Errorf("merge confirmation UI requires an interactive terminal; " +
+			"rerun with --yes to auto-confirm in a non-TTY environment")
 	}
-
-	// .claude/skills/my-harness-* (legacy user-owned, REQ-HNS-005 backward-compat)
-	if strings.HasPrefix(norm, ".claude/skills/my-harness-") {
-		return true
-	}
-
-	// .claude/agents/harness/ (canonical user-owned, any sub-path inside)
-	if strings.HasPrefix(norm, ".claude/agents/harness/") || norm == ".claude/agents/harness" {
-		return true
-	}
-
-	// .claude/agents/my-harness/ (legacy user-owned, REQ-HNS-005 backward-compat)
-	if strings.HasPrefix(norm, ".claude/agents/my-harness/") || norm == ".claude/agents/my-harness" {
-		return true
-	}
-
-	// .claude/commands/harness/ (SPEC-V3R6-HARNESS-V4-001 M1 — user-generated /harness:<name> commands, AC-HV4-010a)
-	// @MX:NOTE: [AUTO] SPEC-V3R6-HARNESS-V4-001 M1 — harness command subdirectory user-owned.
-	if strings.HasPrefix(norm, ".claude/commands/harness/") || norm == ".claude/commands/harness" {
-		return true
-	}
-
-	// .claude/workflows/harness-*.js (SPEC-V3R6-HARNESS-V4-001 M1 — user-generated Runner Workflows, AC-HV4-010b)
-	// @MX:NOTE: [AUTO] SPEC-V3R6-HARNESS-V4-001 M1 — harness Runner Workflow user-owned.
-	if strings.HasPrefix(norm, ".claude/workflows/harness-") {
-		return true
-	}
-
-	return false
-}
-
-// isUserOwnedNamespace returns true when the relative project path belongs to a
-// user-owned namespace per CLAUDE.local.md §24.4 contract and
-// SPEC-V3R6-UPDATE-NAMESPACE-PROTECT-001 REQ-UNP-001..003 + REQ-UNP-009.
-//
-// Strict superset of isUserAreaPath (NFR-UNP-005 additivity guarantee). Existing
-// call sites of isUserAreaPath remain in place; isUserOwnedNamespace is the new
-// authoritative user-owned check used by backup and sentinel logic.
-//
-// Protected patterns:
-//   - .claude/skills/harness-*       (REQ-HNS-001 canonical, doctrine §24.1)
-//   - .claude/skills/my-harness-*    (REQ-UNP-001 legacy, REQ-HNS-005 backward-compat)
-//   - .claude/agents/harness/        (REQ-UNP-002 — overrides isMoaiManaged classification)
-//   - .moai/harness/                  (REQ-UNP-003)
-//   - .claude/skills/<custom>/        when prefix != "moai-" and name != "moai" (REQ-UNP-009)
-//   - .claude/agents/<custom>.md      when not under {core,expert,meta} and not "moai-" prefixed (REQ-UNP-009)
-//
-// Cross-platform: backslash normalization matches existing pattern at update.go:1115
-// per NFR-UNP-003.
-//
-// @MX:ANCHOR: [AUTO] isUserOwnedNamespace is the authoritative user-owned namespace check for moai update
-// @MX:REASON: [AUTO] called by backupUserOwnedNamespace, assertNoUserOwnedNamespaceTouch, and template overlay write loop; fan_in >= 3
-func isUserOwnedNamespace(rel string) bool {
-	// Normalize to forward slashes for consistent matching on all platforms (NFR-UNP-003).
-	norm := strings.ReplaceAll(rel, "\\", "/")
-
-	// REQ-HNS-001: user harness skills (canonical harness-* prefix, doctrine §24.1)
-	// @MX:NOTE: [AUTO] SPEC-V3R6-HARNESS-NAMESPACE-V2-001 M1 — canonical harness-* recognition.
-	if strings.HasPrefix(norm, ".claude/skills/harness-") {
-		return true
-	}
-
-	// REQ-UNP-001 / REQ-HNS-005: legacy my-harness-* user harness skills (backward-compat)
-	if strings.HasPrefix(norm, ".claude/skills/my-harness-") {
-		return true
-	}
-
-	// REQ-UNP-002: harness agents directory (overrides isMoaiManaged for this prefix)
-	if norm == ".claude/agents/harness" || strings.HasPrefix(norm, ".claude/agents/harness/") {
-		return true
-	}
-
-	// REQ-UNP-003: harness extension directory
-	if norm == ".moai/harness" || strings.HasPrefix(norm, ".moai/harness/") {
-		return true
-	}
-
-	// SPEC-V3R6-HARNESS-V4-001 M1 (AC-HV4-010a): .claude/commands/harness/ user-generated /harness:<name> commands.
-	// @MX:NOTE: [AUTO] SPEC-V3R6-HARNESS-V4-001 M1 — harness command subdirectory user-owned.
-	if norm == ".claude/commands/harness" || strings.HasPrefix(norm, ".claude/commands/harness/") {
-		return true
-	}
-
-	// SPEC-V3R6-HARNESS-V4-001 M1 (AC-HV4-010b): .claude/workflows/harness-*.js user-generated Runner Workflows.
-	// @MX:NOTE: [AUTO] SPEC-V3R6-HARNESS-V4-001 M1 — harness Runner Workflow user-owned.
-	if strings.HasPrefix(norm, ".claude/workflows/harness-") {
-		return true
-	}
-
-	// REQ-UNP-009: user direct-added skills (any name except "moai" or "moai-*" prefix)
-	if strings.HasPrefix(norm, ".claude/skills/") {
-		rest := strings.TrimPrefix(norm, ".claude/skills/")
-		seg := strings.SplitN(rest, "/", 2)[0]
-		if seg != "" && seg != "moai" && !strings.HasPrefix(seg, "moai-") {
-			return true
-		}
-	}
-
-	// REQ-UNP-009: user direct-added agents (top-level files or directories
-	// outside {core, expert, meta} and not "moai-" / "manager-" / "expert-" /
-	// "builder-" / "evaluator-" prefixed system agents).
-	if strings.HasPrefix(norm, ".claude/agents/") {
-		rest := strings.TrimPrefix(norm, ".claude/agents/")
-		seg := strings.SplitN(rest, "/", 2)[0]
-		switch seg {
-		case "core", "expert", "meta":
-			return false // MoAI system agents
-		case "harness":
-			return true // REQ-UNP-002 (also covered above; defense-in-depth)
-		}
-		// Strip extension for filename-only segment (e.g., "custom-agent.md" → "custom-agent")
-		base := seg
-		if dot := strings.LastIndex(base, "."); dot > 0 {
-			base = base[:dot]
-		}
-		if base != "" && !strings.HasPrefix(base, "moai-") && !strings.HasPrefix(base, "moai") &&
-			!strings.HasPrefix(base, "manager-") && !strings.HasPrefix(base, "expert-") &&
-			!strings.HasPrefix(base, "builder-") && !strings.HasPrefix(base, "evaluator-") {
-			return true
-		}
-	}
-
-	return false
-}
-
-// isMoaiManaged returns true if the path is managed by MoAI-ADK and should be excluded from merge confirmation.
-// MoAI-managed paths include:
-//   - .claude/skills/moai-* and .claude/skills/moai/
-//   - .claude/rules/moai/
-//   - .claude/agents/{core,expert,meta}/ (moai system agents, post SPEC-V3R6-AGENT-FOLDER-SPLIT-001)
-//   - .claude/commands/moai/
-//   - .claude/output-styles/moai/
-//   - .moai/config/ (entire directory)
-//
-// Note: .claude/agents/harness/ is intentionally EXCLUDED from this list per
-// CLAUDE.local.md §24.4 (moai update Contract) and SPEC-V3R6-UPDATE-NAMESPACE-PROTECT-001
-// REQ-UNP-002. The harness directory is user-owned (Agent Teams teammates are
-// project-specific) and must be preserved across moai update. See isUserOwnedNamespace
-// below for the authoritative user-owned namespace check.
-//
-// These paths are automatically deleted and reinstalled without user confirmation.
-func isMoaiManaged(path string) bool {
-	// Check .moai/config/ paths first
-	if strings.HasPrefix(path, ".moai/config/") || strings.HasPrefix(path, ".moai\\config\\") {
-		return true
-	}
-
-	// Protect .moai/evolution/ from template deployment (R1: Directory Protection).
-	// All evolution data (learnings, new-skills, telemetry) must survive moai update.
-	if strings.HasPrefix(path, ".moai/evolution/") || strings.HasPrefix(path, ".moai\\evolution\\") {
-		return true
-	}
-
-	// Check if path is in .claude directory
-	if !strings.Contains(path, ".claude") {
-		return false
-	}
-
-	// Split by both '/' and '\' for cross-platform compatibility.
-	// Template manifests always use '/' but filepath.Separator is '\' on Windows.
-	parts := strings.FieldsFunc(path, func(r rune) bool {
-		return r == '/' || r == '\\'
-	})
-	for i, part := range parts {
-		switch part {
-		case "skills", "rules", "commands", "output-styles", "hooks":
-			// Check if the next directory starts with "moai-"
-			if i+1 < len(parts) {
-				itemName := parts[i+1]
-				return strings.HasPrefix(itemName, "moai-") || strings.HasPrefix(itemName, "moai")
-			}
-		case "agents":
-			// Post SPEC-V3R6-AGENT-FOLDER-SPLIT-001: MoAI system agents live in
-			// .claude/agents/{core,expert,meta}/ (3 domain subfolders).
-			// .claude/agents/harness/ is user-owned per CLAUDE.local.md §24.4 and
-			// SPEC-V3R6-UPDATE-NAMESPACE-PROTECT-001 REQ-UNP-002 (preserved, not managed).
-			// Legacy `agents/moai` directory was removed; only new domain subfolders
-			// + `moai-` prefix names are MoAI-managed.
-			if i+1 < len(parts) {
-				itemName := parts[i+1]
-				switch itemName {
-				case "core", "expert", "meta":
-					return true
-				}
-				return strings.HasPrefix(itemName, "moai-") || strings.HasPrefix(itemName, "moai")
-			}
-		}
-	}
-
-	return false
-}
-
-// buildMergeAnalysis creates a summary from individual file analysis results.
-// It counts high/medium/low risk files, determines overall risk level,
-// identifies conflicts, and generates a human-readable summary.
-func buildMergeAnalysis(files []merge.FileAnalysis) merge.MergeAnalysis {
-	var highRisk, medRisk, lowRisk int
-	for _, f := range files {
-		switch f.RiskLevel {
-		case "high":
-			highRisk++
-		case "medium":
-			medRisk++
-		case "low":
-			lowRisk++
-		}
-	}
-
-	overallRisk := "low"
-	hasConflicts := false
-	if highRisk > 0 {
-		overallRisk = "high"
-		hasConflicts = true
-	} else if medRisk > 0 {
-		overallRisk = "medium"
-	}
-
-	summary := fmt.Sprintf("Found %d files to sync", len(files))
-	if highRisk > 0 {
-		summary += fmt.Sprintf(" (%d high-risk files)", highRisk)
-	}
-
-	return merge.MergeAnalysis{
-		Files:        files,
-		HasConflicts: hasConflicts,
-		SafeToMerge:  highRisk == 0,
-		Summary:      summary,
-		RiskLevel:    overallRisk,
-	}
-}
-
-// analyzeMergeChanges performs a quick analysis of template files that will be modified.
-// It evaluates risk levels based on file types and existing content:
-//   - High risk: CLAUDE.md, settings.json (core config files)
-//   - Medium risk: Existing files being updated
-//   - Low risk: New files being created
-//
-// Returns a MergeAnalysis with file-by-file risk assessment and recommended strategies.
-func analyzeMergeChanges(deployer template.Deployer, projectRoot string) merge.MergeAnalysis {
-	templates := deployer.ListTemplates()
-	files := analyzeFiles(templates, projectRoot)
-	return buildMergeAnalysis(files)
+	return update.PreviewClassification(toPreviewInputs(analysis, projectRoot), plan.IsUserOwnedNamespace, update.PreviewOptions{Interactive: true})
 }
 
 // @MX:NOTE: [AUTO] runShellEnvConfig — M4-S4d-2 DDD migration. tui.Section header,
@@ -1507,396 +1186,6 @@ func runShellEnvConfig(cmd *cobra.Command) error {
 	return nil
 }
 
-// getProjectConfigVersion reads the template_version from .moai/config/sections/system.yaml.
-// Returns "0.0.0" if the file doesn't exist or parsing fails, which triggers a sync.
-// This enables the version comparison optimization in runTemplateSync.
-func getProjectConfigVersion(projectRoot string) (string, error) {
-	configPath := filepath.Join(projectRoot, defs.MoAIDir, defs.SectionsSubdir, defs.SystemYAML)
-
-	// Check file size before reading to prevent DoS
-	info, err := os.Stat(configPath)
-	if err != nil {
-		// If config file doesn't exist, return "0.0.0" to force update
-		if os.IsNotExist(err) {
-			return "0.0.0", nil
-		}
-		return "", fmt.Errorf("stat config file: %w", err)
-	}
-
-	// Reject files larger than 10MB
-	if info.Size() > maxConfigSize {
-		return "", fmt.Errorf("config file too large: %d bytes (max: %d)", info.Size(), maxConfigSize)
-	}
-
-	data, err := os.ReadFile(configPath)
-	if err != nil {
-		return "", fmt.Errorf("read config file: %w", err)
-	}
-
-	// Parse YAML to extract moai.template_version
-	var config struct {
-		Moai struct {
-			TemplateVersion string `yaml:"template_version"`
-		} `yaml:"moai"`
-	}
-
-	if err := yaml.Unmarshal(data, &config); err != nil {
-		return "", fmt.Errorf("parse config YAML: %w", err)
-	}
-
-	// If template_version is not set, return "0.0.0" to force update
-	if config.Moai.TemplateVersion == "" {
-		return "0.0.0", nil
-	}
-
-	return config.Moai.TemplateVersion, nil
-}
-
-// backupMoaiConfig creates a backup of .moai/config/ directory.
-// Creates a timestamped backup under .moai-backups/YYYYMMDD_HHMMSS/ including
-// all files (sections/*.yaml, etc.) for full restore capability.
-// Returns the backup directory path, or empty string if directory doesn't exist.
-func backupMoaiConfig(projectRoot string) (string, error) {
-	configDir := filepath.Join(projectRoot, defs.MoAIDir, defs.ConfigSubdir)
-
-	// Check if config directory exists
-	info, err := os.Stat(configDir)
-	if err != nil {
-		if os.IsNotExist(err) {
-			return "", nil // No config to backup
-		}
-		return "", fmt.Errorf("stat config directory: %w", err)
-	}
-	if !info.IsDir() {
-		return "", fmt.Errorf("config path is not a directory")
-	}
-
-	timestamp := time.Now().Format(defs.BackupTimestampFormat)
-	backupDir := filepath.Join(projectRoot, defs.BackupsDir, timestamp)
-
-	// Create backup directory
-	if err := os.MkdirAll(backupDir, defs.DirPerm); err != nil {
-		return "", fmt.Errorf("create backup directory: %w", err)
-	}
-
-	// All config files are backed up (including sections/) for full restore.
-	// The clean step will delete everything, and the restore step will
-	// merge backed-up values back into the freshly deployed templates.
-	excludedDirs := []string{}
-
-	// Track backed up items and excluded items for metadata
-	backedUpItems := []string{}
-	excludedItems := []string{}
-
-	// Copy all files from config to backup, excluding sections directory
-	err = filepath.Walk(configDir, func(path string, info os.FileInfo, err error) error {
-		if err != nil {
-			return err
-		}
-
-		relPath, err := filepath.Rel(configDir, path)
-		if err != nil {
-			return err
-		}
-
-		// Check for exclusion first - both directory and file level
-		for _, excludedDir := range excludedDirs {
-			if relPath == excludedDir || strings.HasPrefix(relPath, excludedDir+string(filepath.Separator)) {
-				// Track excluded item
-				excludedItems = append(excludedItems, relPath)
-				// Skip this file or directory
-				if info.IsDir() {
-					return filepath.SkipDir
-				}
-				return nil
-			}
-		}
-
-		// Skip directories that are not excluded
-		if info.IsDir() {
-			return nil
-		}
-
-		// Get relative path from backup directory
-		// Use forward slashes for consistent metadata across platforms
-		backupRelPath := filepath.ToSlash(filepath.Join(defs.MoAIDir, defs.ConfigSubdir, relPath))
-		backedUpItems = append(backedUpItems, backupRelPath)
-
-		backupPath := filepath.Join(backupDir, relPath)
-		if err := os.MkdirAll(filepath.Dir(backupPath), defs.DirPerm); err != nil {
-			return err
-		}
-
-		data, err := os.ReadFile(path)
-		if err != nil {
-			return err
-		}
-
-		return os.WriteFile(backupPath, data, defs.FilePerm)
-	})
-
-	if err != nil {
-		_ = os.RemoveAll(backupDir)
-		return "", fmt.Errorf("copy config files: %w", err)
-	}
-
-	// Save template defaults from embedded FS for 3-way merge.
-	// This allows the restore step to distinguish user-modified values
-	// from unchanged template defaults.
-	templateDefaultsDir := filepath.Join(backupDir, ".template-defaults")
-	if err := saveTemplateDefaults(templateDefaultsDir); err != nil {
-		// Non-fatal: if template defaults can't be saved, restore falls back to 2-way merge
-		_, _ = fmt.Fprintf(os.Stderr, "Warning: could not save template defaults: %v\n", err)
-	}
-
-	// Create backup metadata file
-	metadata := BackupMetadata{
-		Timestamp:           timestamp,
-		Description:         "config_backup",
-		BackedUpItems:       backedUpItems,
-		ExcludedItems:       excludedItems,
-		ExcludedDirs:        excludedDirs,
-		ProjectRoot:         projectRoot,
-		BackupType:          "config",
-		TemplateDefaultsDir: ".template-defaults",
-	}
-
-	metadataPath := filepath.Join(backupDir, "backup_metadata.json")
-	data, err := json.MarshalIndent(metadata, "", "  ")
-	if err != nil {
-		_ = os.RemoveAll(backupDir)
-		return "", fmt.Errorf("marshal metadata: %w", err)
-	}
-
-	if err := os.WriteFile(metadataPath, data, defs.FilePerm); err != nil {
-		_ = os.RemoveAll(backupDir)
-		return "", fmt.Errorf("write metadata: %w", err)
-	}
-
-	return backupDir, nil
-}
-
-// saveTemplateDefaults extracts config section files from embedded templates
-// and saves them to the given directory as baseline for 3-way merge.
-func saveTemplateDefaults(destDir string) error {
-	embedded, err := template.EmbeddedTemplates()
-	if err != nil {
-		return fmt.Errorf("load embedded templates: %w", err)
-	}
-
-	// Walk embedded FS to find config section files
-	prefix := ".moai/config/sections/"
-	entries, err := fs.ReadDir(embedded, ".moai/config/sections")
-	if err != nil {
-		return fmt.Errorf("read embedded config sections: %w", err)
-	}
-
-	sectionsDestDir := filepath.Join(destDir, "sections")
-	if err := os.MkdirAll(sectionsDestDir, defs.DirPerm); err != nil {
-		return fmt.Errorf("create template defaults directory: %w", err)
-	}
-
-	for _, entry := range entries {
-		if entry.IsDir() {
-			continue
-		}
-
-		name := entry.Name()
-
-		// Read the raw file from embedded FS
-		data, err := fs.ReadFile(embedded, prefix+name)
-		if err != nil {
-			continue // Skip files that can't be read
-		}
-
-		// For .tmpl files, save the raw template (not rendered) - the keys
-		// and structure are what matter for 3-way comparison, template vars
-		// will have placeholder values like {{.Version}} which won't match
-		// user values, so they'll be treated as "user changed" = correct behavior.
-		// Strip .tmpl extension for the output filename.
-		outputName := strings.TrimSuffix(name, ".tmpl")
-		if err := os.WriteFile(filepath.Join(sectionsDestDir, outputName), data, defs.FilePerm); err != nil {
-			continue
-		}
-	}
-
-	return nil
-}
-
-// BackupMetadata represents the structure of backup_metadata.json
-type BackupMetadata struct {
-	Timestamp           string   `json:"timestamp"`
-	Description         string   `json:"description"`
-	BackedUpItems       []string `json:"backed_up_items"`
-	ExcludedItems       []string `json:"excluded_items"`
-	ExcludedDirs        []string `json:"excluded_dirs"`
-	ProjectRoot         string   `json:"project_root"`
-	BackupType          string   `json:"backup_type"`
-	TemplateDefaultsDir string   `json:"template_defaults_dir,omitempty"`
-}
-
-// cleanMoaiManagedPaths removes MoAI-managed directories and files before template
-// deployment. This ensures stale files are cleaned up during version upgrades.
-// The .moai/config/ directory is deleted entirely (backup was done by the Backup step).
-// Paths that do not exist are silently skipped.
-func cleanMoaiManagedPaths(projectRoot string, out io.Writer) error {
-	type cleanTarget struct {
-		// displayPath is shown in progress messages (e.g., ".claude/settings.json")
-		displayPath string
-		// fullPath is the absolute filesystem path to delete
-		fullPath string
-		// isGlob indicates the target uses filepath.Glob matching
-		isGlob bool
-	}
-
-	targets := []cleanTarget{
-		{
-			displayPath: filepath.Join(defs.ClaudeDir, defs.SettingsJSON),
-			fullPath:    filepath.Join(projectRoot, defs.ClaudeDir, defs.SettingsJSON),
-		},
-		{
-			displayPath: filepath.Join(defs.ClaudeDir, defs.CommandsMoaiSubdir),
-			fullPath:    filepath.Join(projectRoot, defs.ClaudeDir, defs.CommandsMoaiSubdir),
-		},
-		{
-			displayPath: filepath.Join(defs.ClaudeDir, defs.AgentsMoaiSubdir),
-			fullPath:    filepath.Join(projectRoot, defs.ClaudeDir, defs.AgentsMoaiSubdir),
-		},
-		{
-			displayPath: filepath.Join(defs.ClaudeDir, defs.SkillsSubdir, "moai*"),
-			fullPath:    filepath.Join(projectRoot, defs.ClaudeDir, defs.SkillsSubdir, "moai*"),
-			isGlob:      true,
-		},
-		{
-			displayPath: filepath.Join(defs.ClaudeDir, defs.RulesMoaiSubdir),
-			fullPath:    filepath.Join(projectRoot, defs.ClaudeDir, defs.RulesMoaiSubdir),
-		},
-		{
-			displayPath: filepath.Join(defs.ClaudeDir, defs.OutputStylesSubdir, "moai"),
-			fullPath:    filepath.Join(projectRoot, defs.ClaudeDir, defs.OutputStylesSubdir, "moai"),
-		},
-		{
-			displayPath: filepath.Join(defs.ClaudeDir, defs.HooksMoaiSubdir),
-			fullPath:    filepath.Join(projectRoot, defs.ClaudeDir, defs.HooksMoaiSubdir),
-		},
-	}
-
-	// Process standard targets (files and directories)
-	// SPEC-V3R6-UPDATE-PROGRESS-001 M1: tui.ProgressLine replaces the legacy
-	// CR-plus-format pair in this hot path (REQ-UPR-004).
-	for _, t := range targets {
-		pl := tui.ProgressLine(out, fmt.Sprintf("Removing %s...", t.displayPath), nil)
-
-		if t.isGlob {
-			matches, err := filepath.Glob(t.fullPath)
-			if err != nil {
-				pl.Fail(fmt.Sprintf("Failed to glob %s: %v", t.displayPath, err))
-				return fmt.Errorf("glob %s: %w", t.displayPath, err)
-			}
-			for _, match := range matches {
-				if err := os.RemoveAll(match); err != nil {
-					pl.Fail(fmt.Sprintf("Failed to remove %s: %v", t.displayPath, err))
-					return fmt.Errorf("remove %s: %w", match, err)
-				}
-			}
-			pl.Done(fmt.Sprintf("Removed %s", t.displayPath))
-			continue
-		}
-
-		if _, err := os.Stat(t.fullPath); err != nil {
-			if os.IsNotExist(err) {
-				// Use Done with a "skipped" marker — semantically a successful
-				// no-op (target already absent). The leading symbol shifts from
-				// "-" to "✓" but the message text is preserved; this aligns
-				// the visual category with the success branch.
-				pl.Done(fmt.Sprintf("Skipped %s (not found)", t.displayPath))
-				continue
-			}
-			pl.Fail(fmt.Sprintf("Failed to stat %s: %v", t.displayPath, err))
-			return fmt.Errorf("stat %s: %w", t.displayPath, err)
-		}
-
-		if err := os.RemoveAll(t.fullPath); err != nil {
-			pl.Fail(fmt.Sprintf("Failed to remove %s: %v", t.displayPath, err))
-			return fmt.Errorf("remove %s: %w", t.displayPath, err)
-		}
-		pl.Done(fmt.Sprintf("Removed %s", t.displayPath))
-	}
-
-	// Clean .moai/config/ entirely - backup was already done by the Backup step.
-	// For v1.x -> v2.x: old config is incompatible, fresh install needed.
-	// For v2.x -> v2.x: backup includes sections/, restore will merge values back.
-	configDir := filepath.Join(projectRoot, defs.MoAIDir, defs.ConfigSubdir)
-	configDisplayPath := filepath.Join(defs.MoAIDir, defs.ConfigSubdir)
-	// SPEC-V3R6-UPDATE-PROGRESS-001 M1: tui.ProgressLine replaces the legacy
-	// CR-plus-format pair (REQ-UPR-004).
-	plConfig := tui.ProgressLine(out, fmt.Sprintf("Removing %s...", configDisplayPath), nil)
-
-	if err := os.RemoveAll(configDir); err != nil {
-		if !os.IsNotExist(err) {
-			plConfig.Fail(fmt.Sprintf("Failed to remove %s: %v", configDisplayPath, err))
-			return fmt.Errorf("remove %s: %w", configDisplayPath, err)
-		}
-	}
-	plConfig.Done(fmt.Sprintf("Removed %s", configDisplayPath))
-
-	// Migrate legacy .moai/memory/ to .moai/state/.
-	// Prior to v2.x, state files (checkpoints, coverage, diagnostics) lived under
-	// .moai/memory/. If the old directory still exists, migrate or remove it.
-	if err := migrateLegacyMemoryDir(projectRoot, out); err != nil {
-		return err
-	}
-
-	return nil
-}
-
-// migrateLegacyMemoryDir handles the .moai/memory/ → .moai/state/ migration.
-// If only the old directory exists, it is renamed. If both exist, the old one
-// is removed (the new directory takes precedence). If neither exists, this is
-// a no-op because template deployment will create .moai/state/.
-func migrateLegacyMemoryDir(projectRoot string, out io.Writer) error {
-	legacyDir := filepath.Join(projectRoot, defs.MoAIDir, "memory")
-	stateDir := filepath.Join(projectRoot, defs.MoAIDir, defs.StateSubdir)
-
-	legacyDisplayPath := filepath.Join(defs.MoAIDir, "memory")
-
-	legacyExists := false
-	if _, err := os.Stat(legacyDir); err == nil {
-		legacyExists = true
-	}
-
-	if !legacyExists {
-		return nil
-	}
-
-	// SPEC-V3R6-UPDATE-PROGRESS-001 M1: tui.ProgressLine replaces the legacy
-	// CR-plus-format pair (REQ-UPR-004).
-	plLegacy := tui.ProgressLine(out, fmt.Sprintf("Migrating %s...", legacyDisplayPath), nil)
-
-	stateExists := false
-	if _, err := os.Stat(stateDir); err == nil {
-		stateExists = true
-	}
-
-	if !stateExists {
-		// Rename .moai/memory/ → .moai/state/ (fast atomic move).
-		if err := os.Rename(legacyDir, stateDir); err != nil {
-			plLegacy.Fail(fmt.Sprintf("Failed to migrate %s: %v", legacyDisplayPath, err))
-			return fmt.Errorf("migrate %s to %s: %w", legacyDisplayPath, defs.StateSubdir, err)
-		}
-		plLegacy.Done(fmt.Sprintf("Migrated %s → %s", legacyDisplayPath, filepath.Join(defs.MoAIDir, defs.StateSubdir)))
-	} else {
-		// Both exist — state directory takes precedence; remove legacy.
-		if err := os.RemoveAll(legacyDir); err != nil {
-			plLegacy.Fail(fmt.Sprintf("Failed to remove %s: %v", legacyDisplayPath, err))
-			return fmt.Errorf("remove legacy %s: %w", legacyDisplayPath, err)
-		}
-		plLegacy.Done(fmt.Sprintf("Removed legacy %s", legacyDisplayPath))
-	}
-
-	return nil
-}
-
 // runAgencyMigrationAdapter is the auto-invoke entrypoint for the
 // .agency/ → .moai/ migration triggered by runCleanReinstall Step 3.5
 // (REQ-VVCR-025 of SPEC-V3R6-V2-V3-CLEAN-REINSTALL-001).
@@ -1937,581 +1226,6 @@ func runAgencyMigrationAdapter(projectRoot string, dryRun bool, out io.Writer) e
 	return nil
 }
 
-// cleanup_old_backups maintains a maximum of 'keepCount' backups, deleting the oldest ones.
-// Returns the number of backups deleted.
-func cleanup_old_backups(projectRoot string, keepCount int) int {
-	backupDir := filepath.Join(projectRoot, defs.BackupsDir)
-
-	// Check if backup directory exists
-	info, err := os.Stat(backupDir)
-	if err != nil {
-		if os.IsNotExist(err) {
-			return 0 // No backups to clean up
-		}
-		// Return 0 on stat errors (ignore for cleanup)
-		return 0
-	}
-	if !info.IsDir() {
-		return 0
-	}
-
-	// Get all subdirectories in backup directory
-	entries, err := os.ReadDir(backupDir)
-	if err != nil {
-		return 0
-	}
-
-	// Filter for directories matching YYYYMMDD_HHMMSS pattern
-	// Pattern: 8 digits + underscore + 6 digits = 15 characters
-	var backups []string
-	for _, entry := range entries {
-		if entry.IsDir() && len(entry.Name()) == 15 {
-			// Check if it matches the timestamp pattern (digits + underscore + digits)
-			parts := strings.SplitN(entry.Name(), "_", 2)
-			if len(parts) == 2 {
-				if len(parts[0]) == 8 && len(parts[1]) == 6 {
-					backups = append(backups, entry.Name())
-				}
-			}
-		}
-	}
-
-	// If we have fewer backups than keepCount, no cleanup needed
-	if len(backups) <= keepCount {
-		return 0
-	}
-
-	// Sort backups by name (timestamp) ascending (oldest first)
-	sort.Strings(backups)
-
-	// Delete backups exceeding the keep limit
-	deletedCount := 0
-	for _, backupName := range backups[keepCount:] {
-		backupPath := filepath.Join(backupDir, backupName)
-		if err := os.RemoveAll(backupPath); err != nil {
-			// Log error but continue with other backups
-			fmt.Fprintf(os.Stderr, "Warning: failed to delete backup %s: %v\n", backupName, err)
-		} else {
-			deletedCount++
-		}
-	}
-
-	return deletedCount
-}
-
-// restoreMoaiConfig restores user settings from backup to new config files.
-// It performs a 3-way YAML merge using old template defaults as the base,
-// allowing it to distinguish user-modified values from unchanged defaults.
-// Falls back to 2-way merge when template defaults are not available.
-func restoreMoaiConfig(projectRoot, backupDir string) error {
-	configDir := filepath.Join(projectRoot, defs.MoAIDir, defs.ConfigSubdir)
-	templateDefaultsDir := filepath.Join(backupDir, ".template-defaults")
-
-	// Check if template defaults are available for 3-way merge
-	has3Way := false
-	if info, err := os.Stat(templateDefaultsDir); err == nil && info.IsDir() {
-		has3Way = true
-	}
-
-	// Walk through backup files (only sections/*.yaml)
-	sectionsBackupDir := filepath.Join(backupDir, "sections")
-	if info, err := os.Stat(sectionsBackupDir); err != nil || !info.IsDir() {
-		// No sections in backup, try walking from backup root
-		return restoreMoaiConfigLegacy(projectRoot, backupDir, configDir)
-	}
-
-	return filepath.Walk(sectionsBackupDir, func(backupPath string, info os.FileInfo, err error) error {
-		if err != nil {
-			return err
-		}
-		if info.IsDir() {
-			return nil
-		}
-
-		// SPEC-SEC-HARDEN-003 C-F2 봉쇄 (in-scope sibling, REQ-SEC3-006): 심볼릭 링크
-		// 백업 엔트리는 os.ReadFile로 따라가지 않고 스킵한다(CWE-61 fail-closed).
-		if isSymlinkEntry(backupPath) {
-			_, _ = fmt.Fprintf(os.Stderr, "Warning: skipping symlink backup entry %s (containment)\n", backupPath)
-			return nil
-		}
-
-		// Skip non-YAML files (e.g., backup_metadata.json)
-		if filepath.Ext(backupPath) != ".yaml" && filepath.Ext(backupPath) != ".yml" {
-			return nil
-		}
-
-		relPath, err := filepath.Rel(sectionsBackupDir, backupPath)
-		if err != nil {
-			return err
-		}
-
-		targetPath := filepath.Join(configDir, "sections", relPath)
-
-		// SPEC-SEC-HARDEN-003 C-F2 봉쇄 (REQ-SEC3-007): 쓰기 대상이 configDir를
-		// 탈출(filepath.Rel `..`)하거나 심볼릭 링크로 configDir 밖을 가리키면 거부한다.
-		if !restoreTargetContained(configDir, targetPath) {
-			_, _ = fmt.Fprintf(os.Stderr, "Warning: skipping restore target %s escaping config dir (containment)\n", targetPath)
-			return nil
-		}
-
-		// Read backup (old user) data
-		oldData, err := os.ReadFile(backupPath)
-		if err != nil {
-			return err
-		}
-
-		// Check if target file exists (new template)
-		if _, err := os.Stat(targetPath); err != nil {
-			if os.IsNotExist(err) {
-				// User's custom config section not in new template - restore as-is
-				destDir := filepath.Dir(targetPath)
-				if mkErr := os.MkdirAll(destDir, defs.DirPerm); mkErr != nil {
-					return mkErr
-				}
-				return os.WriteFile(targetPath, oldData, defs.FilePerm)
-			}
-			return err
-		}
-
-		// Read new template data
-		newData, err := os.ReadFile(targetPath)
-		if err != nil {
-			return err
-		}
-
-		// Try 3-way merge if template defaults are available
-		if has3Way {
-			basePath := filepath.Join(templateDefaultsDir, "sections", relPath)
-			baseData, err := os.ReadFile(basePath)
-			if err == nil {
-				merged, mergeErr := mergeYAML3Way(newData, oldData, baseData)
-				if mergeErr == nil {
-					// REQ-UN-009: reset the merge-history counter on success so the
-					// next failure starts a fresh 3-strike count.
-					recordMergeFallback(projectRoot, relPath, true, updateVerboseMode, os.Stderr)
-					return os.WriteFile(targetPath, merged, defs.FilePerm)
-				}
-				// 3-way merge failed, fall through to 2-way.
-				// REQ-UN-007/008/010: emit advisory or legacy warning per noise-suppression policy.
-				recordMergeFallback(projectRoot, relPath, false, updateVerboseMode, os.Stderr)
-			}
-		}
-
-		// Fallback: 2-way merge (old behavior)
-		merged, err := mergeYAMLDeep(newData, oldData)
-		if err != nil {
-			_, _ = fmt.Fprintf(os.Stderr, "Warning: merge failed for %s, restoring backup\n", relPath)
-			return os.WriteFile(targetPath, oldData, defs.FilePerm)
-		}
-
-		return os.WriteFile(targetPath, merged, defs.FilePerm)
-	})
-}
-
-// restoreMoaiConfigLegacy handles restore from legacy backup format
-// (pre-3-way merge) where files might be at the backup root level.
-func restoreMoaiConfigLegacy(projectRoot, backupDir, configDir string) error {
-	return filepath.Walk(backupDir, func(backupPath string, info os.FileInfo, err error) error {
-		if err != nil {
-			return err
-		}
-		if info.IsDir() {
-			return nil
-		}
-
-		// SPEC-SEC-HARDEN-003 C-F2 봉쇄 (REQ-SEC3-005): 심볼릭 링크 백업 엔트리는
-		// os.ReadFile로 따라가지 않고 스킵한다(CWE-61 fail-closed).
-		if isSymlinkEntry(backupPath) {
-			_, _ = fmt.Fprintf(os.Stderr, "Warning: skipping symlink backup entry %s (containment)\n", backupPath)
-			return nil
-		}
-
-		relPath, err := filepath.Rel(backupDir, backupPath)
-		if err != nil {
-			return err
-		}
-
-		// Skip metadata and template defaults
-		if filepath.Base(relPath) == "backup_metadata.json" ||
-			strings.HasPrefix(relPath, ".template-defaults") {
-			return nil
-		}
-
-		targetPath := filepath.Join(configDir, relPath)
-
-		// SPEC-SEC-HARDEN-003 C-F2 봉쇄 (REQ-SEC3-007): 쓰기 대상이 configDir를
-		// 탈출(filepath.Rel `..`)하거나 심볼릭 링크로 configDir 밖을 가리키면 거부한다.
-		if !restoreTargetContained(configDir, targetPath) {
-			_, _ = fmt.Fprintf(os.Stderr, "Warning: skipping restore target %s escaping config dir (containment)\n", targetPath)
-			return nil
-		}
-
-		backupData, err := os.ReadFile(backupPath)
-		if err != nil {
-			return err
-		}
-
-		if _, err := os.Stat(targetPath); err != nil {
-			if os.IsNotExist(err) {
-				if err := os.MkdirAll(filepath.Dir(targetPath), defs.DirPerm); err != nil {
-					return fmt.Errorf("create parent directory for %s: %w", relPath, err)
-				}
-				return os.WriteFile(targetPath, backupData, defs.FilePerm)
-			}
-			return err
-		}
-
-		targetData, err := os.ReadFile(targetPath)
-		if err != nil {
-			return err
-		}
-
-		merged, err := mergeYAMLDeep(targetData, backupData)
-		if err != nil {
-			_, _ = fmt.Fprintf(os.Stderr, "Warning: merge failed for %s, restoring backup\n", relPath)
-			return os.WriteFile(targetPath, backupData, defs.FilePerm)
-		}
-
-		return os.WriteFile(targetPath, merged, defs.FilePerm)
-	})
-}
-
-// isSymlinkEntry reports whether path is a symbolic link (via os.Lstat, which
-// does NOT follow the link). C-F2 backup-entry symlink guard for
-// SPEC-SEC-HARDEN-003 (REQ-SEC3-005/006). Fail-closed: a stat error other than
-// not-exist is treated as a symlink (reject) so a racing replacement cannot
-// slip a link past the guard; a clean not-exist returns false (regular walk).
-func isSymlinkEntry(path string) bool {
-	info, err := os.Lstat(path)
-	if err != nil {
-		// Not-exist is benign (nothing to follow); any other error → fail-closed.
-		return !os.IsNotExist(err)
-	}
-	return info.Mode()&os.ModeSymlink != 0
-}
-
-// restoreTargetContained reports whether targetPath is a safe write destination
-// inside configDir. C-F2 traversal guard for SPEC-SEC-HARDEN-003 (REQ-SEC3-007):
-// it rejects (1) a target whose cleaned relative path escapes configDir
-// (filepath.Rel yields a `..` prefix or an outside-absolute path) and (2) a
-// target that already exists as a symlink (which os.WriteFile would follow out
-// of configDir). Cross-platform via filepath (NFR-SEC3-005); fail-closed on any
-// resolution error (NFR-SEC3-004). configDir itself counts as contained.
-//
-// SPEC-SEC-HARDEN-004 F1 (REQ-SEC4-001/002/003): additionally resolves the
-// targetPath PARENT chain with filepath.EvalSymlinks and re-checks that the
-// resolved parent stays inside configDir. The leaf guards above only inspect the
-// leaf, so a pre-existing symlinked intermediate directory
-// (configDir/linkdir → /outside) would let os.MkdirAll/os.WriteFile escape
-// configDir via the symlinked parent (CWE-22). This guard is shared by both the
-// modern walk (restoreMoaiConfig) and the legacy walk (restoreMoaiConfigLegacy),
-// so the single addition closes both paths at once.
-//
-// TOCTOU note (SPEC-SEC-HARDEN-005 §F.3, OPT-SEC5-001 — non-gating): containment
-// is checked at decision time; a concurrent adversarial process could in
-// principle race the check against the subsequent os.WriteFile/os.MkdirAll write
-// (check-vs-use window). This TOCTOU window is out of scope under the offline
-// single-process threat model — `moai update` is a single process on the user's
-// own machine — per SEC-HARDEN-003/004 §F.1 precedent. No code-behavior change.
-func restoreTargetContained(configDir, targetPath string) bool {
-	if configDir == "" || targetPath == "" {
-		return false
-	}
-	absConfig, err := filepath.Abs(configDir)
-	if err != nil {
-		return false
-	}
-	absTarget, err := filepath.Abs(targetPath)
-	if err != nil {
-		return false
-	}
-	rel, err := filepath.Rel(absConfig, absTarget)
-	if err != nil {
-		return false
-	}
-	if rel == ".." || strings.HasPrefix(rel, ".."+string(os.PathSeparator)) {
-		return false
-	}
-	// Reject an existing symlink at the target path: os.WriteFile follows it and
-	// can escape configDir even when the literal path looks contained.
-	if isSymlinkEntry(absTarget) {
-		return false
-	}
-	// SPEC-SEC-HARDEN-004 F1: parent-chain symlink containment.
-	if !parentChainContained(absConfig, absTarget) {
-		return false
-	}
-	return true
-}
-
-// parentChainContained reports whether the parent directory chain of absTarget,
-// once its symbolic links are resolved, stays inside absConfig. F1 guard for
-// SPEC-SEC-HARDEN-004 (REQ-SEC4-001). Both paths are absolute and cleaned.
-//
-// Strategy (REQ-SEC4-003 + run-phase watch-item 3 + SEC-HARDEN-004 deep-variant
-// fast-follow): the configDir base is itself normalized with EvalSymlinks before
-// the containment compare, so a legitimately symlinked configDir base does NOT
-// yield a false ".." rejection.
-//
-// The parent chain is then resolved with a DEEPEST-EXISTING-ANCESTOR walk rather
-// than a single EvalSymlinks(filepath.Dir): walk UP from filepath.Dir(absTarget)
-// until a component that EXISTS is found, then EvalSymlinks that deepest-existing
-// ancestor and require it to stay inside the normalized configDir.
-//
-// Why the walk (and why a single-shot EvalSymlinks(filepath.Dir) was wrong):
-// when the leaf's immediate parent does not exist yet, EvalSymlinks fails with
-// os.IsNotExist — but a symlink CAN still be in place at a SHALLOWER component.
-// For a deep target like configDir/sections/linkdir/sub/evil.yaml where linkdir
-// is an existing symlink to /outside but sub does not exist, the old "not-exist
-// parent → no symlink can be in place → allow" reasoning was false: the restore
-// loop's os.MkdirAll(filepath.Dir(target)) creates /outside/sub THROUGH linkdir
-// and os.WriteFile escapes to /outside/sub/evil.yaml. The walk catches this by
-// resolving linkdir (the deepest existing ancestor) and rejecting its escape.
-//
-// Resolution outcomes:
-//   - deepest-existing-ancestor resolves inside configDir → allow. The
-//     not-yet-existing components below it are created by os.MkdirAll as REAL
-//     dirs (no symlink to follow), so a legit deep first-restore is permitted.
-//   - deepest-existing-ancestor resolves OUTSIDE configDir (an existing ancestor
-//     is a symlink escape) → reject. This is the F1 close, now covering the deep
-//     variant.
-//   - the walk reaches configDir itself (the floor) and configDir is contained →
-//     allow (the entire parent chain is fresh and in-config).
-//   - any EvalSymlinks error other than os.IsNotExist → fail-closed (reject); a
-//     coarse "any error → allow" would RE-OPEN the hole.
-//
-// TOCTOU note (SPEC-SEC-HARDEN-005 §F.3, OPT-SEC5-001 — non-gating): the parent
-// chain is resolved at decision time; a concurrent adversarial process could in
-// principle swap an ancestor between this check and the subsequent write
-// (check-vs-use window). This TOCTOU window is out of scope under the offline
-// single-process threat model per SEC-HARDEN-003/004 §F.1 precedent. No
-// code-behavior change.
-func parentChainContained(absConfig, absTarget string) bool {
-	// Normalize the configDir base. EvalSymlinks requires the path to exist; if
-	// it does not yet exist (or fails for a non-not-exist reason), fall back to
-	// the unresolved absConfig — the leaf/lexical guards still apply, and a
-	// not-yet-existing configDir cannot host a symlinked parent.
-	normConfig := absConfig
-	if resolved, err := filepath.EvalSymlinks(absConfig); err == nil {
-		normConfig = resolved
-	} else if !os.IsNotExist(err) {
-		// configDir present but unresolvable for a non-not-exist reason →
-		// fail-closed.
-		return false
-	}
-
-	// Deepest-existing-ancestor walk: start at the leaf's parent and climb until
-	// a component exists (EvalSymlinks succeeds). configDir is the FLOOR — never
-	// inspect an ancestor at or above it. The caller (restoreTargetContained) has
-	// already established lexically that absTarget is inside absConfig, so the
-	// parent chain from absTarget up to absConfig is in-config; only the part of
-	// that chain BELOW configDir can host an attacker-planted symlink escape.
-	// Climbing to-or-above configDir would compare a fresh, not-yet-created
-	// in-config chain against the (possibly non-existent) configDir base and
-	// produce a false ".." rejection — the floor check prevents that.
-	ancestor := filepath.Dir(absTarget)
-	for {
-		// Floor check: if ancestor is no longer strictly below absConfig (it has
-		// reached configDir itself or climbed above it), the chain below configDir
-		// is entirely fresh / in-config — no symlink to follow → allow.
-		floorRel, floorErr := filepath.Rel(absConfig, ancestor)
-		if floorErr != nil {
-			return false
-		}
-		if floorRel == "." || floorRel == ".." || strings.HasPrefix(floorRel, ".."+string(os.PathSeparator)) {
-			// "." → ancestor == configDir; ".."/"../…" → above configDir.
-			return true
-		}
-
-		resolved, err := filepath.EvalSymlinks(ancestor)
-		if err == nil {
-			// Found the deepest existing ancestor strictly below configDir.
-			// Require its resolved form to stay inside the normalized configDir.
-			rel, relErr := filepath.Rel(normConfig, resolved)
-			if relErr != nil {
-				return false
-			}
-			if rel == ".." || strings.HasPrefix(rel, ".."+string(os.PathSeparator)) {
-				return false
-			}
-			return true
-		}
-		if !os.IsNotExist(err) {
-			// Any other resolution error → fail-closed.
-			return false
-		}
-
-		// ancestor does not exist yet — climb one level toward configDir.
-		parent := filepath.Dir(ancestor)
-		if parent == ancestor {
-			// Reached the filesystem root without finding an existing ancestor
-			// (filepath.Dir of root returns root). No symlink can be in place on
-			// a fully non-existent chain → allow.
-			return true
-		}
-		ancestor = parent
-	}
-}
-
-// mergeYAML3Way performs a 3-way merge of YAML documents.
-// It uses baseData (old template defaults) to detect user changes:
-//   - If user value == base value: user didn't change it → use new template value
-//   - If user value != base value: user customized it → preserve user value
-//
-// System fields (like template_version) always use new values regardless.
-func mergeYAML3Way(newData, oldData, baseData []byte) ([]byte, error) {
-	var newMap, oldMap, baseMap map[string]any
-
-	if err := yaml.Unmarshal(newData, &newMap); err != nil {
-		return nil, fmt.Errorf("unmarshal new YAML: %w", err)
-	}
-	if err := yaml.Unmarshal(oldData, &oldMap); err != nil {
-		return nil, fmt.Errorf("unmarshal old YAML: %w", err)
-	}
-	if err := yaml.Unmarshal(baseData, &baseMap); err != nil {
-		return nil, fmt.Errorf("unmarshal base YAML: %w", err)
-	}
-
-	merged := deepMerge3Way(newMap, oldMap, baseMap)
-	return yaml.Marshal(merged)
-}
-
-// deepMerge3Way recursively performs 3-way merge of maps.
-// Decision logic for each key:
-//   - old == base → user didn't change → use new value
-//   - old != base → user changed → preserve old value
-//   - key only in new → new field added by template → use new value
-//   - key only in old → removed from template → drop it
-func deepMerge3Way(newMap, oldMap, baseMap map[string]any) map[string]any {
-	result := make(map[string]any)
-
-	// System fields that always use new values
-	systemFields := map[string]bool{
-		"template_version": true,
-		"version":          true,
-	}
-
-	// Start with all new values as the base result
-	for k, newV := range newMap {
-		// System fields always use new value
-		if systemFields[k] {
-			result[k] = newV
-			continue
-		}
-
-		oldV, oldExists := oldMap[k]
-		baseV, baseExists := baseMap[k]
-
-		if !oldExists {
-			// Key only in new template → add it (new field)
-			result[k] = newV
-			continue
-		}
-
-		// Both new and old exist
-		newMapVal, newIsMap := newV.(map[string]any)
-		oldMapVal, oldIsMap := oldV.(map[string]any)
-
-		if newIsMap && oldIsMap {
-			// Both are maps → recurse
-			baseMapVal, baseIsMap := baseV.(map[string]any)
-			if !baseIsMap {
-				baseMapVal = make(map[string]any)
-			}
-			result[k] = deepMerge3Way(newMapVal, oldMapVal, baseMapVal)
-		} else {
-			// Scalar or list values
-			if !baseExists {
-				// No base value → user added this; preserve user value
-				result[k] = oldV
-			} else if valuesEqual(oldV, baseV) {
-				// User didn't change from template default → use new template value
-				result[k] = newV
-			} else {
-				// User changed from template default → preserve user value
-				result[k] = oldV
-			}
-		}
-	}
-
-	// Keys only in old (not in new template) are dropped:
-	// they were removed from the template, so we don't carry them forward.
-
-	return result
-}
-
-// valuesEqual compares two interface{} values for equality.
-// Handles string, int, float, bool, and nil comparisons.
-func valuesEqual(a, b any) bool {
-	if a == nil && b == nil {
-		return true
-	}
-	if a == nil || b == nil {
-		return false
-	}
-	return fmt.Sprintf("%v", a) == fmt.Sprintf("%v", b)
-}
-
-// mergeYAMLDeep performs a deep merge of two YAML documents (2-way fallback).
-// The newData takes precedence for structure, but values from oldData are preserved
-// when the key exists in both.
-func mergeYAMLDeep(newData, oldData []byte) ([]byte, error) {
-	var newMap, oldMap map[string]any
-
-	if err := yaml.Unmarshal(newData, &newMap); err != nil {
-		return nil, fmt.Errorf("unmarshal new YAML: %w", err)
-	}
-	if err := yaml.Unmarshal(oldData, &oldMap); err != nil {
-		return nil, fmt.Errorf("unmarshal old YAML: %w", err)
-	}
-
-	// Deep merge old values into new structure
-	merged := deepMergeMaps(newMap, oldMap)
-
-	return yaml.Marshal(merged)
-}
-
-// deepMergeMaps recursively merges oldMap into newMap, preserving old values.
-// System fields (like template_version) always use new values.
-func deepMergeMaps(newMap, oldMap map[string]any) map[string]any {
-	result := make(map[string]any)
-
-	// System fields that should always use new values (not preserved from old config)
-	systemFields := map[string]bool{
-		"template_version": true,
-	}
-
-	// Copy all new values
-	maps.Copy(result, newMap)
-
-	// Merge old values, preserving when they exist
-	for k, v := range oldMap {
-		// Skip system fields - always use new value
-		if systemFields[k] {
-			continue
-		}
-
-		if newV, exists := newMap[k]; exists {
-			// Both exist, check if they are maps
-			newMapVal, newIsMap := newV.(map[string]any)
-			oldMapVal, oldIsMap := v.(map[string]any)
-
-			if newIsMap && oldIsMap {
-				// Recursively merge nested maps
-				result[k] = deepMergeMaps(newMapVal, oldMapVal)
-			} else {
-				// Keep old value (preserve user setting)
-				result[k] = v
-			}
-		} else {
-			// Only exists in old, add it
-			result[k] = v
-		}
-	}
-
-	return result
-}
-
 // runInitWizard runs the configuration wizard for reconfiguring an existing project.
 // Used by 'moai update -c/--config' to edit project settings.
 // @MX:NOTE: [AUTO] runInitWizard — M4-S4d-3 DDD migration. tui.Pill (uninitialized warning,
@@ -2532,12 +1246,12 @@ func runInitWizard(cmd *cobra.Command, reconfigure bool) error {
 	}
 
 	// Print banner and welcome message
-	PrintBanner(version.GetVersion())
+	uikit.PrintBanner(version.GetVersion())
 	if reconfigure {
 		_, _ = fmt.Fprintln(out, tui.Section("Project Reconfiguration Wizard", tui.SectionOpts{Theme: &th}))
 		_, _ = fmt.Fprintln(out, "This wizard will help you update your project configuration.")
 	} else {
-		PrintWelcomeMessage()
+		uikit.PrintWelcomeMessage()
 	}
 
 	// REQ-1: Read locale from language.yaml
@@ -2706,20 +1420,15 @@ func applyWizardConfig(projectRoot string, result *wizard.WizardResult) error {
 		}
 	}
 
-	// Apply model policy to agent definition files (project-level, not profile-level)
+	// SPEC-MODEL-PROFILE-MATRIX-001 (REQ-MPM-016/024): the former plan_type × tier
+	// agent-frontmatter mutation is RETIRED — persist the resolved model policy to
+	// llm.profile (normalized {high,medium,low} → {max,medium,low}) instead of
+	// mutating agent frontmatter, which stays at model: inherit.
 	if result.ModelPolicy != "" {
 		policy := template.ModelPolicy(result.ModelPolicy)
 		if template.IsValidModelPolicy(string(policy)) {
-			mgr := manifest.NewManager()
-			if _, err := mgr.Load(projectRoot); err == nil {
-				if err := template.ApplyModelPolicy(projectRoot, policy, mgr); err != nil {
-					return fmt.Errorf("apply model policy: %w", err)
-				}
-				// Inject effort level overrides for Opus 4.7 reasoning agents.
-				// Runs after ApplyModelPolicy to ensure agent files are in place first.
-				if err := template.ApplyEffortPolicy(projectRoot, mgr); err != nil {
-					return fmt.Errorf("apply effort policy: %w", err)
-				}
+			if err := template.ApplyProfile(projectRoot, template.NormalizeToTier(result.ModelPolicy)); err != nil {
+				return fmt.Errorf("apply profile: %w", err)
 			}
 			// Persist model_policy to system.yaml so it survives future updates
 			systemPath := filepath.Join(sectionsDir, defs.SystemYAML)
@@ -2787,42 +1496,21 @@ func applyWizardConfig(projectRoot string, result *wizard.WizardResult) error {
 // presetToSegments wrapper that consumed it was deleted, leaving this alias
 // unused. The canonical segment SSOT remains statusline.CanonicalSegments.
 
-// settingsLocalEnv represents the structure of .claude/settings.local.json.
-type settingsLocalEnv struct {
-	Env map[string]string `json:"env,omitempty"`
-}
-
-// updateSettingsLocalEnv updates a single environment variable in settings.local.json.
-// If the file doesn't exist, it creates a new one. If the env map doesn't exist, it creates it.
+// updateSettingsLocalEnv updates a single environment variable in
+// settings.local.json. If the file doesn't exist, it creates a new one. If the
+// env map doesn't exist, it creates it.
+//
+// SPEC-CLIFIX-CRITICAL-001 REQ-CRIT-001-001: round-trips as map[string]any so
+// unknown top-level keys (hooks, outputStyle, model, defaultMode, and any future
+// keys) survive the write. The closed settingsLocalEnv struct this function
+// previously marshaled is removed — marshaling it emitted only the env key and
+// silently wiped every other top-level key.
+// SPEC-CLIFIX-CONCURRENCY-001 REQ-CONC-001-001: route through the locked+atomic
+// mutateSettingsLocal seam so concurrent sessions cannot lose updates.
 func updateSettingsLocalEnv(settingsPath, key, value string) error {
-	var settings settingsLocalEnv
-
-	// Read existing settings if file exists
-	if data, err := os.ReadFile(settingsPath); err == nil {
-		if err := json.Unmarshal(data, &settings); err != nil {
-			return fmt.Errorf("parse settings.local.json: %w", err)
-		}
-	}
-
-	// Initialize env map if nil
-	if settings.Env == nil {
-		settings.Env = make(map[string]string)
-	}
-
-	// Set the environment variable
-	settings.Env[key] = value
-
-	// Marshal back to JSON
-	data, err := json.MarshalIndent(settings, "", "  ")
-	if err != nil {
-		return fmt.Errorf("marshal settings.local.json: %w", err)
-	}
-
-	if err := os.WriteFile(settingsPath, data, defs.FilePerm); err != nil {
-		return fmt.Errorf("write settings.local.json: %w", err)
-	}
-
-	return nil
+	return mutateSettingsLocal(settingsPath, func(m map[string]any) {
+		settingsEnvMap(m)[key] = value
+	})
 }
 
 // ensureGlobalSettingsEnv cleans up moai-managed settings from ~/.claude/settings.json.
@@ -3101,70 +1789,4 @@ func readHookOptInEnabled(projectRoot string) bool {
 		return false
 	}
 	return doc.Hook.OptIn.Enabled
-}
-
-// scaffoldEvolutionDir ensures the .moai/evolution/ directory tree exists.
-// Called during both init and update so that existing projects that predate
-// the evolution infrastructure receive the directory structure automatically.
-// Non-destructive: only creates missing files; never overwrites existing ones.
-func scaffoldEvolutionDir(projectRoot string) error {
-	evolutionDir := filepath.Join(projectRoot, ".moai", "evolution")
-
-	// Sub-directories to create.
-	subdirs := []string{
-		"telemetry",
-		"learnings",
-		"new-skills",
-	}
-
-	for _, sub := range subdirs {
-		dir := filepath.Join(evolutionDir, sub)
-		if err := os.MkdirAll(dir, 0o755); err != nil {
-			return fmt.Errorf("create %s: %w", dir, err)
-		}
-
-		// Ensure .gitkeep exists so the directory is tracked by git.
-		gitkeep := filepath.Join(dir, ".gitkeep")
-		if _, err := os.Stat(gitkeep); os.IsNotExist(err) {
-			if err := os.WriteFile(gitkeep, []byte{}, 0o644); err != nil {
-				return fmt.Errorf("create %s: %w", gitkeep, err)
-			}
-		}
-	}
-
-	// Create default manifest.yaml if missing.
-	manifestPath := filepath.Join(evolutionDir, "manifest.yaml")
-	if _, err := os.Stat(manifestPath); os.IsNotExist(err) {
-		const defaultManifest = `schema_version: 1
-evolved_skills: []
-new_skills: []
-learnings_count: 0
-last_evolution_date: ""
-rate_limit:
-  week_start: ""
-  proposals_this_week: 0
-  last_proposal_time: ""
-`
-		if err := os.WriteFile(manifestPath, []byte(defaultManifest), 0o644); err != nil {
-			return fmt.Errorf("create %s: %w", manifestPath, err)
-		}
-	}
-
-	// Create default changelog.md if missing.
-	changelogPath := filepath.Join(evolutionDir, "changelog.md")
-	if _, err := os.Stat(changelogPath); os.IsNotExist(err) {
-		const defaultChangelog = `# MoAI Evolution Changelog
-
-All notable skill evolutions and learning graduations will be documented here.
-
-## Format
-
-Each entry: date, learning ID, skill affected, change summary.
-`
-		if err := os.WriteFile(changelogPath, []byte(defaultChangelog), 0o644); err != nil {
-			return fmt.Errorf("create %s: %w", changelogPath, err)
-		}
-	}
-
-	return nil
 }

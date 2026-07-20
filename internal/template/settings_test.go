@@ -65,6 +65,51 @@ func TestSettingsTemplateValidJSON(t *testing.T) {
 	}
 }
 
+// TestSettingsTemplateSubprocessEnvScrubOSConditional guards the #1081 fix:
+// CLAUDE_CODE_SUBPROCESS_ENV_SCRUB=1 causes Claude Code to write 0-byte stub
+// dotfiles into $HOME on Linux/bash (notably ~/.bash_profile), which shadows
+// ~/.profile and strips ~/.local/bin from PATH. The env key MUST be excluded
+// when Platform=="linux" and preserved on darwin/windows.
+func TestSettingsTemplateSubprocessEnvScrubOSConditional(t *testing.T) {
+	const key = "CLAUDE_CODE_SUBPROCESS_ENV_SCRUB"
+
+	cases := []struct {
+		platform    string
+		wantPresent bool
+	}{
+		{"linux", false},
+		{"darwin", true},
+		{"windows", true},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.platform, func(t *testing.T) {
+			ctx := testContext(tc.platform)
+			output := renderTemplate(t, ".claude/settings.json.tmpl", ctx)
+
+			// Rendered output must remain valid JSON regardless of the conditional.
+			trimmed := strings.TrimSpace(output)
+			if !json.Valid([]byte(trimmed)) {
+				t.Fatalf("rendered settings.json is not valid JSON for platform %s:\n%s", tc.platform, trimmed)
+			}
+
+			var settings map[string]any
+			if err := json.Unmarshal([]byte(trimmed), &settings); err != nil {
+				t.Fatalf("Unmarshal error for platform %s: %v", tc.platform, err)
+			}
+			env, ok := settings["env"].(map[string]any)
+			if !ok {
+				t.Fatalf("missing env section for platform %s", tc.platform)
+			}
+
+			_, present := env[key]
+			if present != tc.wantPresent {
+				t.Errorf("platform %s: env[%q] present=%v, want %v", tc.platform, key, present, tc.wantPresent)
+			}
+		})
+	}
+}
+
 func TestSettingsTemplateRequiredHooks(t *testing.T) {
 	ctx := testContext("darwin")
 	output := renderTemplate(t, ".claude/settings.json.tmpl", ctx)
@@ -103,7 +148,6 @@ func TestSettingsTemplateRequiredEnvVars(t *testing.T) {
 
 	requiredKeys := []string{
 		"CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS",
-		"CLAUDE_CODE_FILE_READ_MAX_OUTPUT_TOKENS",
 		"ENABLE_TOOL_SEARCH",
 		"MOAI_CONFIG_SOURCE",
 		"PATH",
@@ -143,8 +187,14 @@ func TestSettingsTemplateOutputStyle(t *testing.T) {
 	ctx := testContext("darwin")
 	output := renderTemplate(t, ".claude/settings.json.tmpl", ctx)
 
-	if !strings.Contains(output, `"outputStyle": "MoAI"`) {
-		t.Error("settings should contain outputStyle: MoAI")
+	// outputStyle resolution precedence (per .claude/rules/moai/core/settings-management.md
+	// § Output Style Precedence): local settings.local.json > project settings.json > user
+	// settings.json > hardcoded default. The shared project template pins MoAI-Easy as the
+	// PRODUCT DEFAULT so fresh `moai init` projects start beginner-friendly. A user's own
+	// choice via `/config` writes to settings.local.json, which outranks this project pin,
+	// so pinning the default here never traps a user on MoAI-Easy.
+	if !strings.Contains(output, `"outputStyle": "MoAI-Easy"`) {
+		t.Error("settings template must pin outputStyle to MoAI-Easy (product default; user /config choice in settings.local.json outranks it)")
 	}
 }
 
@@ -204,8 +254,10 @@ func TestSettingsTemplateStatusLine(t *testing.T) {
 	// $CLAUDE_PROJECT_DIR is a Claude Code built-in token available to the
 	// statusLine command at runtime (same env vars as hooks). Anchoring the
 	// path to it makes statusLine resolve regardless of cwd (e.g. after /cd).
-	if sl["command"] != "$CLAUDE_PROJECT_DIR/.moai/status_line.sh" {
-		t.Errorf("statusLine.command = %v, want %q", sl["command"], "$CLAUDE_PROJECT_DIR/.moai/status_line.sh")
+	// The path is double-quoted so projects whose absolute path contains
+	// spaces do not word-split (issue #1096).
+	if sl["command"] != `"$CLAUDE_PROJECT_DIR/.moai/status_line.sh"` {
+		t.Errorf("statusLine.command = %v, want %q", sl["command"], `"$CLAUDE_PROJECT_DIR/.moai/status_line.sh"`)
 	}
 }
 
@@ -273,8 +325,7 @@ func TestSettingsTemplateNewFields(t *testing.T) {
 
 	// Verify new boolean fields
 	boolFields := map[string]bool{
-		"enableAllProjectMcpServers": false,
-		"respectGitignore":           true,
+		"respectGitignore": true,
 	}
 	for field, want := range boolFields {
 		val, ok := settings[field]
@@ -284,6 +335,13 @@ func TestSettingsTemplateNewFields(t *testing.T) {
 		}
 		if val != want {
 			t.Errorf("%s = %v, want %v", field, val, want)
+		}
+	}
+
+	// MCP infrastructure was fully removed; these keys MUST be absent.
+	for _, key := range []string{"enableAllProjectMcpServers", "enabledMcpjsonServers"} {
+		if _, ok := settings[key]; ok {
+			t.Errorf("%q present, want absent (MCP removed)", key)
 		}
 	}
 }
@@ -452,13 +510,23 @@ func TestSettingsTemplateNewHookStructure(t *testing.T) {
 				t.Errorf("%q: command %q does not contain expected script name %q", ne.event, command, ne.scriptName)
 			}
 
-			// Verify timeout is 5 (number)
+			// Verify timeout. SPEC-HOOK-OFFICIAL-COMPLIANCE-001 M4 (REQ-HOC-010)
+			// raised TeammateIdle/TaskCompleted from 5s to 60s toward the sync-gate
+			// 60s precedent; the remaining events stay at the 5s default.
+			expectedTimeout := map[string]float64{
+				"TeammateIdle":  60,
+				"TaskCompleted": 60,
+			}
+			want, hasCustom := expectedTimeout[ne.event]
+			if !hasCustom {
+				want = 5
+			}
 			timeout, ok := hookEntry["timeout"]
 			if !ok {
 				t.Fatalf("%q: missing 'timeout' field", ne.event)
 			}
-			if timeout != float64(5) {
-				t.Errorf("%q: timeout = %v, want 5", ne.event, timeout)
+			if timeout != float64(want) {
+				t.Errorf("%q: timeout = %v, want %v", ne.event, timeout, want)
 			}
 
 			// Verify type is "command"
@@ -582,205 +650,6 @@ func hookKeys(m map[string]any) []string {
 		keys = append(keys, k)
 	}
 	return keys
-}
-
-// --- .mcp.json.tmpl tests ---
-
-func TestMCPTemplateValidJSON(t *testing.T) {
-	platforms := []string{"darwin", "linux", "windows"}
-
-	for _, platform := range platforms {
-		t.Run(platform, func(t *testing.T) {
-			ctx := testContext(platform)
-			output := renderTemplate(t, ".mcp.json.tmpl", ctx)
-
-			trimmed := strings.TrimSpace(output)
-			if !json.Valid([]byte(trimmed)) {
-				t.Fatalf("rendered .mcp.json is not valid JSON for platform %s:\n%s", platform, trimmed)
-			}
-		})
-	}
-}
-
-func TestMCPTemplateRequiredServers(t *testing.T) {
-	ctx := testContext("darwin")
-	output := renderTemplate(t, ".mcp.json.tmpl", ctx)
-
-	var config map[string]any
-	if err := json.Unmarshal([]byte(strings.TrimSpace(output)), &config); err != nil {
-		t.Fatalf("Unmarshal error: %v", err)
-	}
-
-	servers, ok := config["mcpServers"].(map[string]any)
-	if !ok {
-		t.Fatal("missing mcpServers section")
-	}
-
-	// Sequential Thinking MCP retired in SPEC-V3R6-SEQ-THINKING-RETIRE-001;
-	// canonical deep-reasoning path is the ultrathink keyword.
-	requiredServers := []string{"context7"}
-	for _, name := range requiredServers {
-		if _, ok := servers[name]; !ok {
-			t.Errorf("missing required MCP server %q", name)
-		}
-	}
-
-	// Confirm sequential-thinking is NOT present (retirement enforced).
-	if _, exists := servers["sequential-thinking"]; exists {
-		t.Errorf("sequential-thinking server entry present; retired per SPEC-V3R6-SEQ-THINKING-RETIRE-001")
-	}
-}
-
-func TestMCPTemplatePlatformCommands(t *testing.T) {
-	t.Run("darwin_uses_bash", func(t *testing.T) {
-		ctx := testContext("darwin")
-		output := renderTemplate(t, ".mcp.json.tmpl", ctx)
-
-		if !strings.Contains(output, "/bin/bash") {
-			t.Error("darwin should use /bin/bash")
-		}
-	})
-
-	t.Run("windows_uses_cmd", func(t *testing.T) {
-		ctx := testContext("windows")
-		output := renderTemplate(t, ".mcp.json.tmpl", ctx)
-
-		if !strings.Contains(output, "cmd.exe") {
-			t.Error("windows should use cmd.exe")
-		}
-	})
-}
-
-func TestMCPTemplateStaggeredStartup(t *testing.T) {
-	ctx := testContext("darwin")
-	output := renderTemplate(t, ".mcp.json.tmpl", ctx)
-
-	var config map[string]any
-	if err := json.Unmarshal([]byte(strings.TrimSpace(output)), &config); err != nil {
-		t.Fatalf("Unmarshal error: %v", err)
-	}
-
-	startup, ok := config["staggeredStartup"].(map[string]any)
-	if !ok {
-		t.Fatal("missing staggeredStartup section")
-	}
-	if startup["enabled"] != true {
-		t.Error("staggeredStartup.enabled should be true")
-	}
-	if startup["delayMs"] != float64(500) {
-		t.Errorf("staggeredStartup.delayMs = %v, want 500", startup["delayMs"])
-	}
-	if startup["connectionTimeout"] != float64(15000) {
-		t.Errorf("staggeredStartup.connectionTimeout = %v, want 15000", startup["connectionTimeout"])
-	}
-}
-
-func TestMCPTemplateSchema(t *testing.T) {
-	ctx := testContext("darwin")
-	output := renderTemplate(t, ".mcp.json.tmpl", ctx)
-
-	var config map[string]any
-	if err := json.Unmarshal([]byte(strings.TrimSpace(output)), &config); err != nil {
-		t.Fatalf("Unmarshal error: %v", err)
-	}
-
-	expected := "https://raw.githubusercontent.com/anthropics/claude-code/main/.mcp.schema.json"
-	if config["$schema"] != expected {
-		t.Errorf("$schema = %v, want %q", config["$schema"], expected)
-	}
-}
-
-// TestMCPTemplateAlwaysLoadOnContext7 verifies that the rendered .mcp.json sets
-// "alwaysLoad": true on the context7 server entry (REQ-001, REQ-002).
-func TestMCPTemplateAlwaysLoadOnContext7(t *testing.T) {
-	platforms := []string{"darwin", "linux", "windows"}
-
-	for _, platform := range platforms {
-		t.Run(platform, func(t *testing.T) {
-			ctx := testContext(platform)
-			output := renderTemplate(t, ".mcp.json.tmpl", ctx)
-
-			var config map[string]any
-			if err := json.Unmarshal([]byte(strings.TrimSpace(output)), &config); err != nil {
-				t.Fatalf("unmarshal: %v", err)
-			}
-			servers, ok := config["mcpServers"].(map[string]any)
-			if !ok {
-				t.Fatal("missing mcpServers")
-			}
-			server, ok := servers["context7"].(map[string]any)
-			if !ok {
-				t.Fatal("missing context7 server entry")
-			}
-			val, exists := server["alwaysLoad"]
-			if !exists {
-				t.Error("context7: alwaysLoad field is absent; want true")
-				return
-			}
-			if val != true {
-				t.Errorf("context7: alwaysLoad = %v, want true", val)
-			}
-		})
-	}
-}
-
-// TestMCPTemplateSequentialThinkingRetired verifies that the rendered
-// .mcp.json does NOT contain a sequential-thinking server entry across
-// all supported platforms. Retired per SPEC-V3R6-SEQ-THINKING-RETIRE-001
-// (REQ-STR-001, REQ-STR-002). The previous test
-// (TestMCPTemplateAlwaysLoadOnSequentialThinking) is replaced.
-func TestMCPTemplateSequentialThinkingRetired(t *testing.T) {
-	platforms := []string{"darwin", "linux", "windows"}
-
-	for _, platform := range platforms {
-		t.Run(platform, func(t *testing.T) {
-			ctx := testContext(platform)
-			output := renderTemplate(t, ".mcp.json.tmpl", ctx)
-
-			var config map[string]any
-			if err := json.Unmarshal([]byte(strings.TrimSpace(output)), &config); err != nil {
-				t.Fatalf("unmarshal: %v", err)
-			}
-			servers, ok := config["mcpServers"].(map[string]any)
-			if !ok {
-				t.Fatal("missing mcpServers")
-			}
-			if _, exists := servers["sequential-thinking"]; exists {
-				t.Errorf("%s: sequential-thinking server entry present; retired per SPEC-V3R6-SEQ-THINKING-RETIRE-001", platform)
-			}
-		})
-	}
-}
-
-// TestMCPTemplateExistingFieldsPreserved verifies that adding alwaysLoad does
-// not disturb existing fields in any server entry (REQ-005).
-func TestMCPTemplateExistingFieldsPreserved(t *testing.T) {
-	ctx := testContext("darwin")
-	output := renderTemplate(t, ".mcp.json.tmpl", ctx)
-
-	var config map[string]any
-	if err := json.Unmarshal([]byte(strings.TrimSpace(output)), &config); err != nil {
-		t.Fatalf("unmarshal: %v", err)
-	}
-	servers, ok := config["mcpServers"].(map[string]any)
-	if !ok {
-		t.Fatal("missing mcpServers")
-	}
-
-	// context7 must still have command and args
-	c7, ok := servers["context7"].(map[string]any)
-	if !ok {
-		t.Fatal("missing context7")
-	}
-	if c7["command"] == nil {
-		t.Error("context7: command field missing after alwaysLoad insertion")
-	}
-	if c7["args"] == nil {
-		t.Error("context7: args field missing after alwaysLoad insertion")
-	}
-
-	// sequential-thinking retired per SPEC-V3R6-SEQ-THINKING-RETIRE-001;
-	// no longer present in the rendered template.
 }
 
 // --- BuildSmartPATH and PathContainsDir tests ---
@@ -1105,7 +974,7 @@ func TestIsWSL2_ProcVersionFallback_NonWSL(t *testing.T) {
 
 // TestRender_DbSchemaChangeHook_Removed verifies that SPEC-DB-SYNC-RELOC-001
 // has relocated the per-edit PostToolUse hook for `handle-db-schema-change.sh`
-// into the `/moai sync` Phase 0.08 workflow. The rendered settings.json for
+// into the `/moai sync` Phase 2 workflow. The rendered settings.json for
 // any platform must NOT contain a reference to the former hook script, and the
 // template tree must not ship the wrapper script either. The existing Go
 // package `internal/hook/dbsync` and `moai hook db-schema-sync` CLI remain

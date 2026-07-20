@@ -122,6 +122,77 @@ Humanizing refines *how* something is said, never *what* it says. These guardrai
 
 ---
 
-## Source & License
+## Copy Layer (English)
 
-This module's structure follows the **im-not-ai (Humanize KR)** open-source skill (https://github.com/epoko77-ai/im-not-ai, MIT License — Copyright (c) 2026 epoko77-ai). The English tell patterns here were independently web-researched, not ported from the source. See NOTICE.md.
+Genre scope: marketing headlines, hero sections, CTAs, taglines, value propositions, brand storytelling, and slide/deck titles. Copy-genre AI tells are **structural and rhetorical, not lexical** — a landing page can avoid every EN-A focal word and still read machine-written. In copy mode the over-editing guard changes: the change-rate limit is replaced by the **fact-anchor preservation guard** (see the shared SKILL.md guardrails) — numbers, dates, prices, and proper nouns stay intact and the core promise/benefit keeps its meaning, while expression and sentence structure may be rewritten freely.
+
+The `ENC-` prefix (English Copy) is deliberately distinct from the prose `EN-A…EN-J` scheme: several ENC tells are the *copy-genre instance of a prose category* (the parent is named per row), and the separate prefix lets a detector scope copy rules to copy contexts without firing them on body prose.
+
+### Detection Categories (copy)
+
+| ID | Tell | Why it reads as AI | Severity | Parent |
+|----|------|--------------------|----------|--------|
+| ENC-1 | Aspirational verb + abstract object headline: "Unleash your potential", "Elevate your workflow", "Transform the way you X", "Supercharge X" | The aspirational-verb blacklist words cluster at headline positions as the model's default promise shape; density convicts, and the whole-phrase singletons ("unleash your potential", "join the revolution") behave as decisive | S2 (whole-phrase singletons behave as S1) | EN-A |
+| ENC-2 | Contrastive-negation headline: "It's not just X — it's Y", "Not X. Y.", "More than a platform — it's a movement" | The strongest contemporary copy tell: it stages drama before the point and manufactures insight at a headline slot where a human writes the claim directly | S1 | EN-B |
+| ENC-3 | Tricolon tagline / value-prop trio: "Fast. Simple. Scalable.", "Bold. Bright. Better." | The rhetorical rule of three flattened into an algorithmic default — near-equal length, identical punctuation, interchangeable adjectives | S2 | EN-C |
+| ENC-4 | Landscaping opener: "In today's fast-paced digital world", "In the ever-evolving landscape of X" | The stock scene-setting opener appears across generated copy regardless of product or audience | S1 | EN-G / EN-A |
+| ENC-5 | Poster / wellness-mug closer — the aphoristic bow-tied platitude ending a section or page | Generated copy reflexively closes on a motivational pull-quote instead of a concrete next step | S2 | EN-G / EN-J |
+| ENC-6 | Hollow strategy-speak value prop: "Empowering innovation.", "Delivering business outcomes." — gerund + abstract noun, no object or metric | Value-prop lines with no concrete object, number, or differentiator read as generated filler | S2 | EN-D / EN-A |
+| ENC-7 | Generic/hyperbolic CTA microcopy — hype labels: "Join the Revolution", "Unleash Your Potential"; bland verbless: "Get Started", "Submit" | The hype half places ENC-1 aspirational phrases on a button; the bland half is so ubiquitous in human UI that it only ever downgrades | S2 (hype labels); S3 (bland labels) | EN-A |
+| ENC-8 | Audience-straddle opener: "Whether you're a beginner or a pro, …" | The both-audiences hedge avoids choosing a reader — a generated-copy default that human copy rarely leads with | S2 | — |
+| ENC-9 | Confirmational-authority opener: "The truth is…", "The reality is…", "Here's the thing:" | Manufactured intimacy/authority framing that announces insight instead of delivering it | S2 | relative of EN-E |
+
+### Severity Rationale (copy)
+
+- **S1**: ENC-2 (contrastive negation) and ENC-4 (landscaping opener) — structural moves a human copywriter essentially never produces by accident at a headline/hero position; one occurrence is decisive. The whole-phrase singletons "unleash your potential" / "join the revolution" behave the same way.
+- **S2**: ENC-1, ENC-3, ENC-5, ENC-6, ENC-7 (hype half), ENC-8, ENC-9 — each appears in genuine human copy occasionally; density and co-occurrence convict.
+- **S3**: the bland-CTA half of ENC-7 ("Get Started", "Submit") and the single em-dash — so common in competent human copy that they only downgrade a grade when reinforcing an S1/S2 finding.
+- **Cross-tell stacking**: a generated hero section is typically ENC-4 opener → ENC-2 negation headline → ENC-3 tricolon subhead → ENC-1 CTA. Resolve the S1 tells first, then re-score the S2 stack.
+
+### Slide & Headline Structural Notes (partial transfer)
+
+Copy-genre structure tells transfer between languages only partially; English encodes them as follows:
+
+- **Dash-contrast headline "X — Y"**: transfers as a *contrastive* structure — it is caught by ENC-2 when the dash carries a negation/contrast move. The decisive signal is negation + em-dash + buzzword together, never the dash alone.
+- **"From X to Y" transition headline**: transfers at S2 within ENC-6-adjacent judgment — humans legitimately write "From zero to hero"; the tell is the abstract, content-free version with interchangeable nouns.
+- **Predicate-less headline shapes**: do NOT transfer as a category — see High-False-Positive Signals below. English headlines and slide titles ("Q1 Revenue", "Our Approach", "Why It Matters") are natively terse in fully human decks. Such a shape contributes only when it is *also* an ENC-1 buzzword noun phrase ("Unlocking Growth").
+- **Evidence honesty note**: dedicated corpus research on English slide-title AI structure is thin; the transferable slide claims here are inherited from the general copy/headline evidence, not a slide-specific study. Judge slide decks conservatively.
+
+### Before/After Rewrite Examples (copy)
+
+- **Before:** "In today's fast-paced digital world, unleash your potential."
+  **After:** "Ship your first automation in ten minutes."
+  (ENC-4 + ENC-1: drop the landscaping opener; replace the aspirational promise with a concrete claim)
+- **Before:** "It's not just a tool — it's a movement."
+  **After:** "One tool that replaces your copy-paste routine."
+  (ENC-2: state the claim directly instead of staging a contrast)
+- **Before:** "Fast. Simple. Scalable."
+  **After:** "Queries return in under a second, and setup takes one command."
+  (ENC-3: trade the interchangeable trio for two verifiable facts)
+- **Before:** "Empowering innovation for modern teams."
+  **After:** "Cuts review turnaround from two days to two hours."
+  (ENC-6: give the value prop an object and a metric)
+- **Before:** "Join the Revolution"
+  **After:** "Start a free trial"
+  (ENC-7: hype CTA → plain action label)
+- **Before:** "Whether you're a solo founder or an enterprise team, we've got you covered."
+  **After:** "Built for teams of two to two hundred."
+  (ENC-8: choose the audience and say something checkable about it)
+- **Before:** "The truth is, most dashboards fail."
+  **After:** "Most dashboards go unopened after week one — ours starts in your inbox."
+  (ENC-9: deliver the insight instead of announcing it)
+
+### High-False-Positive Signals (copy — modifiers and downgrades, never standalone removals)
+
+- Em-dash (—): the most-hyped, least-reliable signal; flag only at high density AND with other tells present.
+- "Get Started" / "Submit" / "Sign Up" CTAs: ubiquitous in human UI; only the hype variants are diagnostic.
+- The rule of three in general: a legitimate ancient device; only the mechanical period-split, near-equal-length trio convicts.
+- Terse or verbless headlines: a natural English headline register in fully human copy and decks — a high-false-positive signal, NOT a standalone removable category (do not flag "Q1 Revenue" or "Our Approach").
+- A single buzzword ("transform", "unlock"): one occurrence is weak; ENC-1 is density-governed.
+- "From X to Y" titles: legitimate for genuine before/after narratives with real endpoints.
+
+---
+
+## Attribution
+
+The category-catalogue structure of this module is inspired by the **im-not-ai (Humanize KR)** project (https://github.com/epoko77-ai/im-not-ai). The English tell patterns here — prose and copy layers alike — were independently researched and authored.

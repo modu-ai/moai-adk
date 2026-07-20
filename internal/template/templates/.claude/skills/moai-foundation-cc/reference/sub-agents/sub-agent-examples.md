@@ -24,10 +24,10 @@ Examples Cover: Domain experts, tool specialists, process orchestrators, quality
 ```yaml
 ---
 name: code-backend
-description: Use PROACTIVELY for backend architecture, API design, server implementation, database integration, or microservices architecture. Called from /moai:1-plan architecture design and task delegation workflows.
-tools: Read, Write, Edit, Bash, WebFetch, Grep, Glob, TaskCreate, TaskUpdate, TaskList, TaskGet, AskUserQuestion, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
+description: Use PROACTIVELY for backend architecture, API design, server implementation, database integration, or microservices architecture. Called from /moai plan architecture design and task delegation workflows.
+tools: Read, Write, Edit, Bash, WebFetch, Grep, Glob, TaskCreate, TaskUpdate, TaskList, TaskGet, AskUserQuestion
 model: sonnet
-skills: moai-domain-backend, moai-essentials-perf, moai-context7-integration
+skills: moai-domain-backend, moai-essentials-perf
 ---
 
 # Backend Expert
@@ -192,10 +192,10 @@ database_selection:
 ```yaml
 ---
 name: code-frontend
-description: Use PROACTIVELY for frontend UI development, React/Vue/Angular components, responsive design, user experience optimization, or web application architecture. Called from /moai:2-run implementation and task delegation workflows.
-tools: Read, Write, Edit, Grep, Glob, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
+description: Use PROACTIVELY for frontend UI development, React/Vue/Angular components, responsive design, user experience optimization, or web application architecture. Called from /moai run implementation and task delegation workflows.
+tools: Read, Write, Edit, Grep, Glob
 model: sonnet
-skills: moai-domain-frontend, moai-cc-configuration, moai-context7-integration, moai-ui-ux-expert
+skills: moai-domain-frontend, moai-cc-configuration, moai-ui-ux-expert
 ---
 
 # Frontend Expert
@@ -433,7 +433,7 @@ module.exports = {
 ```yaml
 ---
 name: format-expert
-description: Use PROACTIVELY for code formatting, style consistency, linting configuration, and automated code quality improvements. Called from /moai:2-run quality gates and task delegation workflows.
+description: Use PROACTIVELY for code formatting, style consistency, linting configuration, and automated code quality improvements. Called from /moai run quality gates and task delegation workflows.
 tools: Read, Write, Edit, Bash, Grep, Glob
 model: haiku
 skills: moai-code-quality, moai-cc-configuration
@@ -616,9 +616,9 @@ rust_formatting:
 ---
 name: support-debug
 description: Use PROACTIVELY for error analysis, debugging assistance, troubleshooting guidance, and problem resolution. Use when encountering runtime errors, logic issues, or unexpected behavior that needs investigation.
-tools: Read, Write, Edit, Grep, Glob, Bash, WebFetch, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
+tools: Read, Write, Edit, Grep, Glob, Bash, WebFetch
 model: sonnet
-skills: moai-core-code-reviewer, moai-context7-integration
+skills: moai-core-code-reviewer
 ---
 
 # Debug Helper Expert
@@ -930,7 +930,7 @@ class DebuggingKnowledgeBase:
 ```yaml
 ---
 name: workflow-ddd
-description: Execute ANALYZE-PRESERVE-IMPROVE DDD cycle for implementing features with behavior preservation and comprehensive test coverage. Called from /moai:2-run SPEC implementation and task delegation workflows.
+description: Execute ANALYZE-PRESERVE-IMPROVE DDD cycle for implementing features with behavior preservation and comprehensive test coverage. Called from /moai run SPEC implementation and task delegation workflows.
 tools: Read, Write, Edit, Bash, Grep, Glob, TaskCreate, TaskUpdate, TaskList, TaskGet
 model: sonnet
 skills: moai-domain-testing, moai-foundation-quality, moai-core-spec-authoring
@@ -1233,7 +1233,7 @@ tdd_pipeline:
 ---
 name: security-expert
 description: Use PROACTIVELY for security audits, vulnerability assessment, OWASP Top 10 analysis, and secure code review. Use when conducting security analysis, implementing security controls, or validating security measures.
-tools: Read, Write, Edit, Grep, Glob, Bash, WebFetch, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
+tools: Read, Write, Edit, Grep, Glob, Bash, WebFetch
 model: sonnet
 skills: moai-domain-security, moai-cc-security, moai-foundation-quality, moai-core-workflow
 ---

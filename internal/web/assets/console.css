@@ -105,49 +105,49 @@
 }
 
 :root {
-  /* ── Brand Color (Notion 가이드라인 명시 3색 — 변경 금지) ── */
-  --color-primary: #144a46;          /* 어두운 청록 — CTA, 타이틀, 아이콘 */
-  --color-primary-hover: #0e3835;
-  --color-primary-active: #0a2825;
-  --color-ink: #09110f;              /* 본문 텍스트 (#000 대체) */
-  --color-bg: #f3f3f3;               /* 페이지 배경 (#fff 대체 금지) */
+  /* ── Point Color (v2 canon — 마스코트 포인트 그린, 유일한 강조 컬러) ── */
+  --color-primary: #3d7d5f;          /* 마스코트 그린 — CTA, 타이틀, 아이콘 */
+  --color-primary-hover: #316750;
+  --color-primary-active: #265240;
+  --color-ink: #060606;              /* 마스코트 아웃라인 잉크 (순수 블랙 계열) */
+  --color-bg: #f4f4f4;               /* 페이지 배경 (무채색) */
   --color-surface: #ffffff;          /* 카드/모달 */
 
-  /* ── Neutral Scale ── */
-  --neutral-50:  #f3f3f3;
-  --neutral-100: #eaeaea;
-  --neutral-200: #d4d4d4;
-  --neutral-300: #bcbcbc;
-  --neutral-400: #959595;
-  --neutral-500: #6e6e6e;
-  --neutral-600: #4c4c4c;
-  --neutral-700: #2e2e2e;
-  --neutral-800: #1a1f1d;
-  --neutral-900: #0e1513;
-  --neutral-950: #09110f;
+  /* ── Neutral Scale (순수 무채색 — hue 0%, v2 canon) ── */
+  --neutral-50:  #f4f4f4;
+  --neutral-100: #e6e6e6;
+  --neutral-200: #d1d1d1;
+  --neutral-300: #b5b5b5;
+  --neutral-400: #9fa0a0;
+  --neutral-500: #757575;
+  --neutral-600: #565656;
+  --neutral-700: #3a3a3a;
+  --neutral-800: #242424;
+  --neutral-900: #141414;
+  --neutral-950: #060606;
 
   /* ── Semantic ── */
-  --color-success: #1c7c70;
+  --color-success: #2e8a63;
   --color-warning: #c47b2a;
   --color-danger:  #c44a3a;
   --color-info:    #2a8a8c;
 
   /* ── Foreground roles ── */
   --fg-1: var(--color-ink);          /* primary text */
-  --fg-2: #4c4c4c;                   /* muted */
-  --fg-3: #6e6e6e;                   /* placeholder / caption */
+  --fg-2: #565656;                   /* muted */
+  --fg-3: #757575;                   /* placeholder / caption */
   --fg-on-primary: #ffffff;
 
-  /* ── Border ── */
-  --border-1: #d4d4d4;
-  --border-2: #eaeaea;
-  --border-strong: #bcbcbc;
-  --border-focus-ring: rgba(20, 74, 70, 0.12);
+  /* ── Border (무채색, v2 canon) ── */
+  --border-1: #d1d1d1;
+  --border-2: #e6e6e6;
+  --border-strong: #b5b5b5;
+  --border-focus-ring: rgba(61, 125, 95, 0.16);
 
-  /* ── Signature gradient (코어 자산) ── */
-  --gradient-signature: linear-gradient(135deg, #144a46 0%, #09110f 100%);
-  --gradient-signature-soft: linear-gradient(135deg, rgba(20,74,70,0.08) 0%, rgba(9,17,15,0.04) 100%);
-  --gradient-signature-dark: linear-gradient(135deg, #22938a 0%, #144a46 100%);
+  /* ── Signature accent (v2 canon — 포인트 그린 solid, gradient 제거) ── */
+  --gradient-signature: #3d7d5f;
+  --gradient-signature-soft: rgba(61, 125, 95, 0.08);
+  --gradient-signature-dark: #316750;
 
   /* ── Type families ──
      Inter / JetBrains Mono 의 Google Fonts @import 는 제거됐다(REQ-WC4-001).
@@ -215,13 +215,13 @@
   --radius-pill: 32px;
   --radius-full: 9999px;
 
-  /* ── Shadow ── */
-  --shadow-xs: 0 1px 2px rgba(9, 17, 15, 0.04);
-  --shadow-sm: 0 2px 4px rgba(9, 17, 15, 0.06);
-  --shadow-md: 0 4px 12px rgba(9, 17, 15, 0.08);
-  --shadow-lg: 0 8px 24px rgba(9, 17, 15, 0.10);
-  --shadow-xl: 0 16px 48px rgba(9, 17, 15, 0.12);
-  --shadow-signature: 0 8px 32px rgba(20, 74, 70, 0.20); /* hover only */
+  /* ── Shadow (무채색 base — v2 canon rgba(6,6,6,…)) ── */
+  --shadow-xs: 0 1px 2px rgba(6, 6, 6, 0.04);
+  --shadow-sm: 0 2px 4px rgba(6, 6, 6, 0.06);
+  --shadow-md: 0 4px 12px rgba(6, 6, 6, 0.08);
+  --shadow-lg: 0 8px 24px rgba(6, 6, 6, 0.10);
+  --shadow-xl: 0 16px 48px rgba(6, 6, 6, 0.12);
+  --shadow-signature: 0 8px 32px rgba(61, 125, 95, 0.20); /* hover only */
 
   /* ── Motion ── */
   --duration-instant: 75ms;
@@ -245,8 +245,8 @@
 [data-theme="dark"] {
   --color-bg: #0e1513;
   --color-surface: #1a1f1d;
-  --color-primary: #22938a;
-  --color-primary-hover: #2bafa3;
+  --color-primary: #5a9a7e;
+  --color-primary-hover: #aed4be;
   --color-ink: #e8eae9;
   --fg-1: #e8eae9;
   --fg-2: #a8aeac;
@@ -254,7 +254,9 @@
   --border-1: rgba(255, 255, 255, 0.08);
   --border-2: rgba(255, 255, 255, 0.06);
   --border-strong: rgba(255, 255, 255, 0.16);
-  --gradient-signature: linear-gradient(135deg, #22938a 0%, #144a46 100%);
+  /* SPEC-DESIGN-MOAIWEBV2-001 M3: signature accent = solid (drop the linear-gradient),
+     applied consistently to the dark override — dark point-green matches --color-primary. */
+  --gradient-signature: #5a9a7e;
 }
 
 /* ── Base / semantic typography ── */
@@ -304,6 +306,7 @@ html[lang="zh"] body { font-family: "Pretendard", "Noto Sans CJK SC", system-ui,
   background: var(--gradient-signature); box-shadow: var(--shadow-xs);
   display: inline-flex; align-items: center; justify-content: center;
 }
+.brand__badge img.brand__mascot { width: 28px; height: 28px; object-fit: contain; border-radius: 4px; }
 .brand__name {
   font-family: var(--font-sans); font-weight: var(--fw-black); font-size: 17px;
   letter-spacing: -0.03em; color: var(--fg-1);
@@ -318,10 +321,49 @@ html[lang="zh"] body { font-family: "Pretendard", "Noto Sans CJK SC", system-ui,
 }
 .loopback__dot { width: 7px; height: 7px; border-radius: 50%; background: var(--color-success); box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-success) 20%, transparent); }
 .appbar__spacer { flex: 1; }
+/* Cross-page nav link in the settings appbar (mirrors the .board-nav back-link
+   pattern in board.templ). Plain anchor sized to match the appbar chrome. */
+.appbar-nav {
+  font-family: var(--font-sans); font-size: 13px; font-weight: var(--fw-semibold);
+  color: var(--fg-2); text-decoration: none; padding: 4px 10px;
+  border: 1px solid var(--border-1); border-radius: var(--radius-full);
+  background: var(--color-surface); white-space: nowrap;
+}
+.appbar-nav:hover { color: var(--fg-1); border-color: var(--accent); }
 /* Interface-language picker (REQ-WC5-003) — a compact appbar select. Inherits
    the .select chrome; constrained width keeps the appbar tidy. */
 .langpick-wrap { width: auto; min-width: 96px; }
 .langpick { height: 38px; padding: 6px 34px 6px 12px; font-family: var(--font-sans); font-size: 13px; letter-spacing: var(--tracking-body); }
+
+/* Context badges (AC-WC-XXX: current project + profile badges in appbar) */
+.appbar__badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  border-radius: var(--radius-md);
+  background: var(--gradient-signature-soft);
+  color: var(--fg-1);
+  font-size: 13px;
+  font-weight: var(--fw-medium);
+  line-height: 1.4;
+}
+.appbar__badge:hover {
+  background: var(--neutral-100);
+  cursor: pointer;
+}
+.appbar__context {
+  margin-top: 8px;
+  padding: 6px 0;
+  border-top: 1px solid var(--border-2);
+}
+.appbar__context-text {
+  font-size: var(--text-xs);
+  color: var(--fg-3);
+  font-family: var(--font-sans);
+  letter-spacing: var(--tracking-body);
+  line-height: 1.4;
+}
 .iconbtn {
   display: inline-flex; align-items: center; justify-content: center;
   width: 38px; height: 38px; border-radius: var(--radius-md);
@@ -387,13 +429,35 @@ html[lang="zh"] body { font-family: "Pretendard", "Noto Sans CJK SC", system-ui,
 .banner__text { font-size: var(--text-sm); margin: 0; color: var(--fg-1); }
 .banner--success { background: color-mix(in srgb, var(--color-success) 9%, var(--color-surface)); border-color: color-mix(in srgb, var(--color-success) 38%, transparent); color: var(--color-success); }
 .banner--error   { background: color-mix(in srgb, var(--color-danger) 9%, var(--color-surface));  border-color: color-mix(in srgb, var(--color-danger) 38%, transparent);  color: var(--color-danger); }
-[data-theme="dark"] .banner--success { color: #4cc8b8; }
-[data-theme="dark"] .banner--error { color: #e8806f; }
+[data-theme="dark"] .banner--success { color: #85bda0; }
+[data-theme="dark"] .banner--error { color: #5a9a7e; }
 
 /* ============================================================
    Fieldset / section card
    ============================================================ */
 .form { display: flex; flex-direction: column; gap: var(--space-6); }
+
+/* ============================================================
+   M5-b D1 — Tab navigation (CSS show/hide, panels stay in DOM)
+   ============================================================ */
+.tabs {
+  display: flex; flex-wrap: wrap; gap: var(--space-1);
+  border-bottom: 2px solid var(--border-1);
+  padding-bottom: 0;
+}
+.tab {
+  background: transparent; border: none; border-bottom: 2px solid transparent;
+  padding: var(--space-2) var(--space-3); cursor: pointer;
+  font-size: var(--text-sm); font-weight: 500; color: var(--text-muted);
+  margin-bottom: -2px; transition: color .15s, border-color .15s;
+}
+.tab:hover { color: var(--text); }
+.tab.is-active {
+  color: var(--color-primary); border-bottom-color: var(--color-primary);
+  font-weight: 600;
+}
+.tabpanel { display: block; }
+.tabpanel:not(.is-active) { display: none; }
 .section {
   margin: 0; padding: 0; border: 1px solid var(--border-1);
   border-radius: var(--radius-lg); background: var(--color-surface);
@@ -447,6 +511,50 @@ html[lang="zh"] body { font-family: "Pretendard", "Noto Sans CJK SC", system-ui,
   font-size: 12.5px; color: var(--fg-2); line-height: 1.45;
   letter-spacing: var(--tracking-body); margin: -2px 0 1px; text-wrap: pretty;
 }
+/* SPEC-WEBCONF-SIMPLIFY-001 M4 (REQ-WC-015, design.md §H.3): field-level description
+   rendered from FieldDef.Description (fieldDesc.* i18n key), muted helper text below
+   the label. Distinct from .field__desc (the legacy label hint). */
+.field-description {
+  font-size: 11.5px; color: var(--fg-3); line-height: 1.4;
+  letter-spacing: var(--tracking-body); margin: -4px 0 2px; text-wrap: pretty;
+}
+/* SPEC-WEBCONF-SIMPLIFY-001 M5 (REQ-WC-006, design.md §E): agentfm tier color badge. */
+.agentfm-badge {
+  display: inline-block; margin-right: 6px; font-size: 13px; line-height: 1; cursor: help;
+}
+.agentfm-badge--custom {
+  font-size: 9.5px; color: var(--fg-3); border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm); padding: 1px 5px; text-transform: uppercase;
+  letter-spacing: var(--tracking-label);
+}
+.agentfm-name {
+  font-size: 15px; font-weight: 600; color: var(--fg-1);
+}
+/* SPEC-WEBCONF-SIMPLIFY-001 polish: agentfm sub-tabs (show one group at a time). */
+.agentfm-subtabs {
+  display: flex; gap: 0; border-bottom: 1px solid var(--border); margin-bottom: var(--space-5);
+}
+.agentfm-subtab {
+  font-family: var(--font-sans); font-size: 13px; font-weight: var(--fw-semibold);
+  color: var(--fg-3); background: none; border: none; cursor: pointer;
+  padding: 8px 16px; border-bottom: 2px solid transparent;
+  letter-spacing: var(--tracking-label); text-transform: uppercase;
+  transition: color var(--duration-fast) var(--easing-default),
+              border-color var(--duration-fast) var(--easing-default);
+}
+.agentfm-subtab:hover { color: var(--fg-1); }
+.agentfm-subtab.is-active {
+  color: var(--color-primary); border-bottom-color: var(--color-primary);
+}
+.agentfm-panel { display: none; }
+.agentfm-panel.is-active { display: block; }
+.agentfm-desc {
+  font-size: 11.5px; color: var(--fg-3); line-height: 1.4;
+  letter-spacing: var(--tracking-body); text-wrap: pretty;
+}
+.agentfm-default-tag {
+  font-size: 10.5px; color: var(--fg-3); font-style: italic;
+}
 
 /* inputs + selects */
 .input, .select {
@@ -493,7 +601,7 @@ html[lang="zh"] body { font-family: "Pretendard", "Noto Sans CJK SC", system-ui,
   font-size: 13px; font-weight: var(--fw-medium); color: var(--color-danger);
   letter-spacing: var(--tracking-body);
 }
-[data-theme="dark"] .field-error, [data-theme="dark"] .field.has-error .field__title { color: #e8806f; }
+[data-theme="dark"] .field-error, [data-theme="dark"] .field.has-error .field__title { color: #5a9a7e; }
 .field-error svg { width: 15px; height: 15px; flex: none; }
 
 /* ============================================================
@@ -539,6 +647,35 @@ html[lang="zh"] body { font-family: "Pretendard", "Noto Sans CJK SC", system-ui,
 .segments--disabled .seg__box:hover { border-color: var(--border-1); }
 
 /* ============================================================
+   Radio group (single-select closed enum — merge_method etc.)
+   Mirrors .seg box styling; the tick is circular to signal that
+   exactly one option is selected (radio affordance, not checkbox).
+   ============================================================ */
+.radio-group { display: flex; flex-wrap: wrap; gap: var(--space-2) var(--space-3); margin-top: var(--space-2); }
+.radio { position: relative; }
+.radio input { position: absolute; opacity: 0; width: 0; height: 0; }
+.radio__box {
+  display: flex; align-items: center; gap: 9px;
+  padding: 9px 11px; border-radius: var(--radius-md);
+  border: 1px solid var(--border-1); background: var(--color-bg);
+  cursor: pointer; transition: all var(--duration-fast) var(--easing-default);
+  min-height: 40px;
+}
+.radio__box:hover { border-color: var(--neutral-400); }
+.radio__tick {
+  flex: none; width: 18px; height: 18px; border-radius: 50%;
+  border: 1.5px solid var(--border-strong); background: var(--color-surface);
+  display: grid; place-items: center; color: #fff;
+  transition: all var(--duration-fast) var(--easing-default);
+}
+.radio__tick svg { width: 10px; height: 10px; opacity: 0; transform: scale(.6); transition: all var(--duration-fast) var(--easing-bounce); }
+.radio input:checked + .radio__box { border-color: var(--color-primary); background: var(--gradient-signature-soft); }
+.radio input:checked + .radio__box .radio__tick { background: var(--color-primary); border-color: var(--color-primary); }
+.radio input:checked + .radio__box .radio__tick svg { opacity: 1; transform: scale(1); }
+.radio input:checked + .radio__box + span { color: var(--fg-1); font-weight: 600; }
+.radio input:focus-visible + .radio__box { outline: 2px solid var(--color-primary); outline-offset: 2px; }
+
+/* ============================================================
    Actions
    ============================================================ */
 .actions {
@@ -560,6 +697,28 @@ html[lang="zh"] body { font-family: "Pretendard", "Noto Sans CJK SC", system-ui,
 .btn--primary svg { width: 18px; height: 18px; }
 .actions__meta { font-size: 13px; color: var(--fg-3); }
 .actions__meta .mono { font-size: 0.92em; color: var(--fg-2); }
+
+/* ── Profile CRUD manager (SPEC-WEB-CONSOLE-011 M4) ── */
+.profilemgr {
+  margin: 0 0 20px; padding: 18px 20px; border: 1px solid var(--border-1, #e5e2dc);
+  border-radius: var(--radius-lg, 12px); background: var(--bg-1, #fff);
+}
+.profilemgr__head { margin-bottom: 12px; }
+.profilemgr__title { font-size: var(--text-md, 16px); font-weight: var(--fw-semibold, 600); margin: 0; }
+.profilemgr__desc { font-size: var(--text-sm, 13px); color: var(--fg-3, #6b6660); margin: 4px 0 0; }
+.profilemgr__list { list-style: none; margin: 0 0 14px; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.profilemgr__item { display: flex; align-items: center; gap: 10px; }
+.profilemgr__name { font-family: var(--font-mono); font-size: var(--text-sm, 13px); color: var(--color-primary); text-decoration: none; }
+.profilemgr__name:hover { text-decoration: underline; }
+.profilemgr__name--active { color: var(--fg-1); font-weight: var(--fw-semibold, 600); text-decoration: none; }
+.profilemgr__badge { font-size: 12px; color: var(--fg-3, #6b6660); }
+.profilemgr__delete { margin-left: auto; }
+.profilemgr__create { display: flex; align-items: end; gap: 10px; flex-wrap: wrap; }
+.profilemgr__create-label { font-size: var(--text-sm, 13px); font-weight: var(--fw-semibold, 600); align-self: center; }
+.profilemgr__create .input { max-width: 240px; }
+.btn--sm { padding: 8px 16px; border-radius: var(--radius-pill, 999px); font-size: 13px; }
+.btn--ghost { background: transparent; color: var(--fg-2, #3f3a34); border: 1px solid var(--border-1, #e5e2dc); }
+.btn--ghost:hover { border-color: var(--color-primary); color: var(--color-primary); }
 
 /* reveal animation for conditional segments */
 @keyframes segIn { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: translateY(0); } }

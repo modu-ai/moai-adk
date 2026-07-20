@@ -4,37 +4,27 @@ description: |
   Documentation specialist (sync-phase: CHANGELOG.md + README.md + docs-site authoring + owns progress.md §E.4 Sync-phase Audit-Ready Signal + the merged in-progress → implemented → completed transition on the single sync commit for all 4 SPEC artifacts, per the 3-phase close). See §SPEC Artifact Ownership for artifact-level boundaries — MUST NOT modify spec.md / plan.md / acceptance.md body content.
   Absorbs the project initialization and configuration role per the Anthropic catalog consolidation (17→8 agents; the prior project-doc-role owner is archived per .claude/rules/moai/workflow/archived-agent-rejection.md §C row 4) — product.md / structure.md / tech.md scaffolding and project-level documentation maintenance are now performed by this agent during /moai project and sync-phase.
   Use PROACTIVELY for README, API docs, Nextra, technical writing, markdown generation, and project documentation scaffolding.
-  MUST INVOKE when ANY of these keywords appear in user request:
-  EN: documentation, README, API docs, Nextra, markdown, technical writing, docs, project initialization, product.md, structure.md, tech.md
-  KO: 문서, README, API문서, Nextra, 마크다운, 기술문서, 문서화, 프로젝트초기화, 제품문서, 구조문서, 기술문서
-  JA: ドキュメント, README, APIドキュメント, Nextra, マークダウン, 技術文書, プロジェクト初期化, プロダクト文書, 構造文書
-  ZH: 文档, README, API文档, Nextra, markdown, 技术写作, 项目初始化, 产品文档, 结构文档
+  Match user intent language-independently — do not require literal keyword matches.
   NOT for: SPEC body authoring (spec.md / plan.md / acceptance.md body — manager-spec only per Status Transition Ownership Matrix; manager-docs limited to frontmatter `status` + `updated` field transitions only), code implementation, testing, git branch management, security audits
-tools: Read, Write, Edit, Grep, Glob, Bash, WebFetch, WebSearch, TaskCreate, TaskUpdate, TaskList, TaskGet, Skill, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
-model: haiku
+tools: Read, Write, Edit, Grep, Glob, Bash, WebFetch, WebSearch, TaskCreate, TaskUpdate, TaskList, TaskGet, Skill
+model: sonnet
+effort: medium
+color: cyan
 permissionMode: bypassPermissions
 memory: project
 skills:
   - moai-foundation-core
-  - moai-foundation-thinking
-  - moai-foundation-quality
-  - moai-workflow-ddd
-  - moai-workflow-tdd
-  - moai-workflow-testing
-  - moai-workflow-project
-  - moai-workflow-spec
-  - moai-workflow-worktree
 hooks:
   PostToolUse:
     - matcher: "Write|Edit"
       hooks:
         - type: command
-          command: "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-agent-hook.sh\" docs-verification"
+          command: "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-agent-hook.sh\" \"docs-verification\""
           timeout: 10
-  SubagentStop:
+  Stop:
     - hooks:
         - type: command
-          command: "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-agent-hook.sh\" docs-completion"
+          command: "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-agent-hook.sh\" \"docs-completion\""
           timeout: 10
 ---
 
@@ -92,7 +82,7 @@ OUT OF SCOPE: Code implementation, deployment, security audits — route to mana
 
 ### Phase 4: Quality Assurance & Validation
 
-- Apply Context7 best practices for documentation standards
+- Apply established documentation best practices (WebSearch / WebFetch for up-to-date standards)
 - Run markdown linting rules for consistent formatting
 - Validate Mermaid diagram syntax
 - Check link integrity (internal and external)
@@ -125,7 +115,7 @@ Status values follow the canonical 8-value enum: draft, planned, in-progress, im
 
 ## SPEC Artifact Ownership
 
-This agent owns the following SPEC artifact boundaries per the canonical agent responsibility realignment policy. This agent's scope is constrained to CHANGELOG-only emission, avoiding any haiku-vs-spec-body-reasoning capability mismatch. The full schema-level transition matrix lives in `.claude/rules/moai/development/spec-frontmatter-schema.md` § Status Transition Ownership Matrix.
+This agent owns the following SPEC artifact boundaries per the canonical agent responsibility realignment policy. This agent's scope is constrained to CHANGELOG-only emission, avoiding any low-tier-model-vs-spec-body-reasoning capability mismatch. The full schema-level transition matrix lives in `.claude/rules/moai/development/spec-frontmatter-schema.md` § Status Transition Ownership Matrix.
 
 ### Artifacts owned (authoring)
 
@@ -162,6 +152,15 @@ When sync-phase reveals a need to modify SPEC body content — for example: a sc
 ### Cross-reference
 
 See `.claude/rules/moai/development/spec-frontmatter-schema.md` § Status Transition Ownership Matrix for the schema-level SSOT covering all 7 canonical transitions and the canonical commit subject patterns per transition.
+
+## Conditional Skill Loading
+
+Static `skills:` preload is kept to a minimum (token diet — progressive disclosure covers the rest); load the following skills on demand with the `Skill` tool:
+
+- When scaffolding or maintaining project documentation (product.md / structure.md / tech.md) or running docs generation, invoke Skill("moai-workflow-project") to load it on demand.
+- When reading SPEC artifacts or performing frontmatter status transitions, invoke Skill("moai-workflow-spec") to load it on demand.
+- When running TRUST 5 quality gate checks on documentation output, invoke Skill("moai-foundation-quality") to load it on demand.
+- When weighing documentation architecture trade-offs, invoke Skill("moai-foundation-thinking") to load it on demand.
 
 ## Model/effort escalation
 

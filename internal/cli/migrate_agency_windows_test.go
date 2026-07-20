@@ -47,13 +47,15 @@ func TestMigrateAgency_WindowsNoop(t *testing.T) {
 		t.Errorf("expected stderr to contain %q, got:\n%s", wantMsg, output)
 	}
 
-	// File content must match source
-	src, _ := os.ReadFile(filepath.Join(dir, ".agency", "context", "brand-voice.md"))
-	dst, err := os.ReadFile(filepath.Join(dir, ".moai", "project", "brand", "brand-voice.md"))
+	// File content must match source.
+	// (Phase 2 brand migration was removed; learnings → observations exercises the
+	// same copyFile path that emits the Windows permission notice.)
+	src, _ := os.ReadFile(filepath.Join(dir, ".agency", "learnings", "LEARN-001.md"))
+	dst, err := os.ReadFile(filepath.Join(dir, ".moai", "research", "observations", "LEARN-001.md"))
 	if err != nil {
 		t.Fatalf("read dst: %v", err)
 	}
 	if !bytes.Equal(src, dst) {
-		t.Error("brand-voice.md content mismatch after Windows migration")
+		t.Error("LEARN-001.md content mismatch after Windows migration")
 	}
 }

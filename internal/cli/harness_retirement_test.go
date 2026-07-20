@@ -47,6 +47,9 @@ var v3r5RequiredHarnessVerbs = map[string]bool{
 	// SPEC-V3R6-HARNESS-ACTIVATION-WIRING-001 activation-wiring verb:
 	// `moai harness install` wires InjectMarker + ScaffoldHarnessDir.
 	"install": true,
+	// SPEC-HARNESS-EVOLVE-001 routing-observation-ledger verb:
+	// `moai harness ledger record|evidence|list` (Loop 0 observation).
+	"ledger": true,
 }
 
 // TestHarnessV3R5VerbSurface asserts that the `moai harness` command tree exposes

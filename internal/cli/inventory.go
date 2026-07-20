@@ -13,6 +13,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/modu-ai/moai-adk/internal/cli/harness"
+	"github.com/modu-ai/moai-adk/internal/cli/uikit"
 	wtroot "github.com/modu-ai/moai-adk/internal/cli/worktree"
 	"github.com/modu-ai/moai-adk/internal/session"
 )
@@ -82,22 +83,22 @@ func renderInventoryJSON(cmd *cobra.Command, report UnifiedInventoryReport) erro
 }
 
 // renderInventoryText emits a compact human-readable 3-surface summary using
-// renderCard (one card per surface, with a count header + key-field rows). An
+// uikit.RenderCard (one card per surface, with a count header + key-field rows). An
 // all-empty report renders three (0) headers, not an error (REQ-INV-006). Each
 // surface card carries the surface label so the three labels (Sessions /
 // Worktrees / Harnesses) are always present (AC-INV-004).
 func renderInventoryText(cmd *cobra.Command, report UnifiedInventoryReport) error {
 	w := cmd.OutOrStdout()
 
-	_, _ = fmt.Fprintln(w, renderCard(
+	_, _ = fmt.Fprintln(w, uikit.RenderCard(
 		fmt.Sprintf("Sessions (%d)", report.Sessions.Count),
 		sessionsCardBody(report.Sessions),
 	))
-	_, _ = fmt.Fprintln(w, renderCard(
+	_, _ = fmt.Fprintln(w, uikit.RenderCard(
 		fmt.Sprintf("Worktrees (%d)", report.Worktrees.Count),
 		worktreesCardBody(report.Worktrees),
 	))
-	_, _ = fmt.Fprintln(w, renderCard(
+	_, _ = fmt.Fprintln(w, uikit.RenderCard(
 		fmt.Sprintf("Harnesses (%d)", report.Harnesses.Count),
 		harnessesCardBody(report.Harnesses),
 	))
@@ -123,14 +124,14 @@ func sessionsCardBody(s SessionInventory) string {
 	if body := surfaceErrorOrEmpty(s.Error, s.Count); body != "" {
 		return body
 	}
-	pairs := make([]kvPair, 0, len(s.Entries))
+	pairs := make([]uikit.KVPair, 0, len(s.Entries))
 	for _, e := range s.Entries {
-		pairs = append(pairs, kvPair{
-			key:   e.SessionID,
-			value: fmt.Sprintf("spec=%s phase=%s", e.SpecID, e.Phase),
+		pairs = append(pairs, uikit.KVPair{
+			Key:   e.SessionID,
+			Value: fmt.Sprintf("spec=%s phase=%s", e.SpecID, e.Phase),
 		})
 	}
-	return renderKeyValueLines(pairs)
+	return uikit.RenderKeyValueLines(pairs)
 }
 
 // worktreesCardBody builds the worktree card content (key fields per row).
@@ -138,14 +139,14 @@ func worktreesCardBody(wtv WorktreeInventory) string {
 	if body := surfaceErrorOrEmpty(wtv.Error, wtv.Count); body != "" {
 		return body
 	}
-	pairs := make([]kvPair, 0, len(wtv.Entries))
+	pairs := make([]uikit.KVPair, 0, len(wtv.Entries))
 	for _, e := range wtv.Entries {
-		pairs = append(pairs, kvPair{
-			key:   e.Branch,
-			value: fmt.Sprintf("head=%s path=%s", e.HEAD, e.Path),
+		pairs = append(pairs, uikit.KVPair{
+			Key:   e.Branch,
+			Value: fmt.Sprintf("head=%s path=%s", e.HEAD, e.Path),
 		})
 	}
-	return renderKeyValueLines(pairs)
+	return uikit.RenderKeyValueLines(pairs)
 }
 
 // harnessesCardBody builds the harness card content (key fields per row).
@@ -153,15 +154,15 @@ func harnessesCardBody(h HarnessInventory) string {
 	if body := surfaceErrorOrEmpty(h.Error, h.Count); body != "" {
 		return body
 	}
-	pairs := make([]kvPair, 0, len(h.Entries))
+	pairs := make([]uikit.KVPair, 0, len(h.Entries))
 	for _, e := range h.Entries {
 		val := fmt.Sprintf("domain=%s", e.Domain)
 		if e.ManifestMissing {
 			val += " manifest_missing=true"
 		}
-		pairs = append(pairs, kvPair{key: e.Name, value: val})
+		pairs = append(pairs, uikit.KVPair{Key: e.Name, Value: val})
 	}
-	return renderKeyValueLines(pairs)
+	return uikit.RenderKeyValueLines(pairs)
 }
 
 // UnifiedInventoryReport is the --json payload composing the three read-only

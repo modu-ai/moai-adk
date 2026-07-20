@@ -1,0 +1,52 @@
+{{ define "main" }}
+  {{- /* 섹션 랜딩 — round3 docs-index variant (SPEC-DESIGN-DOCSV2-001 M3c-1).
+         섹션 hero(Title/Description/페이지 수) + 직계 자식 페이지 그리드.
+         featured 카드 없음 (섹션에 featured:true 프론트매터 없음).
+         섹션 _index 본문은 그리드 하단에 렌더. */ -}}
+  <article
+    class="gdoc-markdown gdoc-markdown__align--{{ default "left" (.Page.Params.geekdocAlign | lower) }}"
+    id="main-content" tabindex="-1"
+  >
+    <section class="docs-hero">
+      <div class="docs-hero-inner">
+        <span class="docs-eyebrow">{{ i18n "browse_pill" }}</span>
+        <h1 class="docs-h1">{{ .Title }}</h1>
+        {{- with .Description }}<p class="docs-sub">{{ . }}</p>{{- end }}
+        <div class="docs-stats">
+          <div><div class="docs-stat-num">{{ len .Pages }}</div><div class="docs-stat-lbl">{{ i18n "docs_count" (len .Pages) }}</div></div>
+        </div>
+      </div>
+    </section>
+
+    {{- /* 하위 페이지가 없는 섹션은 Searching 마스코트 empty-state 렌더 (M5) */ -}}
+    {{- if eq (len .Pages) 0 -}}
+    {{ partial "doc-empty.html" . }}
+    {{- else -}}
+    <section class="docs-grid-section">
+      <div class="docs-grid">
+        {{- range $i, $page := .Pages }}
+        <a class="doc-card" href="{{ $page.RelPermalink }}">
+          <div class="doc-thumb thumb-{{ add (mod $i 8) 1 }}">
+            <span class="doc-thumb-cat">{{ $.Title }}</span>
+            <div class="doc-thumb-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg>
+            </div>
+            <span class="doc-thumb-num">{{ printf "%02d" (add $i 1) }}</span>
+          </div>
+          <div class="doc-body">
+            <h4>{{ $page.Title }}</h4>
+            <p class="doc-excerpt">{{ $page.Description | default ($page.Summary | truncate 120) }}</p>
+            <div class="doc-meta">
+              <span class="read-time">{{ $page.ReadingTime }}m</span>
+            </div>
+          </div>
+        </a>
+        {{- end }}
+      </div>
+    </section>
+    {{- end }}
+
+    {{- /* 섹션 _index 본문 (작성된 경우) — 그리드 하단에 렌더 */ -}}
+    {{ .Content }}
+  </article>
+{{ end }}

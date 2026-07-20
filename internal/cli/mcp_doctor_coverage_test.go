@@ -10,6 +10,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/modu-ai/moai-adk/internal/cli/uikit"
 )
 
 // --- parseMCPJSON ---
@@ -109,7 +111,7 @@ func TestCheckMCPScopeDuplicates_BothEmpty(t *testing.T) {
 		t.Errorf("Name = %q", check.Name)
 	}
 	// Both files missing → OK
-	if check.Status != CheckOK {
+	if check.Status != uikit.CheckOK {
 		t.Errorf("expected OK for both empty, got %q", check.Status)
 	}
 }
@@ -127,7 +129,7 @@ func TestCheckMCPScopeDuplicates_ProjectOnly_NoDup(t *testing.T) {
 
 	check := checkMCPScopeDuplicates(dir, false)
 	// No global file → no duplicates
-	if check.Status != CheckOK {
+	if check.Status != uikit.CheckOK {
 		t.Errorf("expected OK, got %q: %s", check.Status, check.Message)
 	}
 	if !strings.Contains(check.Message, "no duplicates") {
@@ -162,7 +164,7 @@ func TestCheckMCPScopeDuplicates_DuplicatesFound(t *testing.T) {
 	}
 
 	check := checkMCPScopeDuplicates(projectDir, false)
-	if check.Status != CheckWarn {
+	if check.Status != uikit.CheckWarn {
 		t.Errorf("expected Warn for duplicate, got %q: %s", check.Status, check.Message)
 	}
 	if !strings.Contains(check.Message, serverName) {
@@ -210,7 +212,7 @@ func TestCheckMCPScopeDuplicates_NoDuplicates_HasCount(t *testing.T) {
 	_ = os.WriteFile(filepath.Join(globalClaudeDir, ".mcp.json"), []byte(globalContent), 0o644)
 
 	check := checkMCPScopeDuplicates(projectDir, false)
-	if check.Status != CheckOK {
+	if check.Status != uikit.CheckOK {
 		t.Errorf("expected OK, got %q: %s", check.Status, check.Message)
 	}
 	if !strings.Contains(check.Message, "1 project") {

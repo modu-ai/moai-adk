@@ -4,96 +4,125 @@ weight: 20
 draft: false
 ---
 
-MoAI-ADK is a **high-performance AI development environment** for Claude Code. 8 specialized AI agents and 27 skills collaborate to produce high-quality code. It automatically applies TDD (default) for new projects and feature development, and DDD for existing projects with low test coverage, while supporting both Sub-Agent and Agent Teams dual execution modes.
+MoAI-ADK is an **Agentic Development Kit** that aims for **Tokenomics** (Token Economics). Code of the same quality with fewer tokens, and higher quality for the same tokens — the system manages model selection, reasoning depth, and context usage. 11 specialist AI agents and 27 skills work together, applying TDD (the default) to new projects and DDD to existing projects with low test coverage, automatically.
 
-Written as a single Go binary -- runs instantly on all platforms with zero dependencies.
+A single binary written in Go -- runs immediately on every platform with zero dependencies.
+
 
 {{< callout type="info" >}}
-**One-line summary:** MoAI-ADK is an AI development framework that "documents conversations with AI as specs (SPEC), safely improves code (DDD/TDD), and automatically validates quality (TRUST 5)."
+**One-line summary:** MoAI-ADK is an agentic development kit that "records your conversations with the AI as documents (SPECs), improves code safely (DDD/TDD), and verifies quality automatically (TRUST 5)" — **while the system also manages token cost**.
 {{< /callout >}}
 
-## MoAI-ADK Introduction
+## Introducing MoAI-ADK
 
-**MoAI** means "Everybody's AI" (MoAI - Everybody's AI). **ADK** stands for Agentic Development Kit, a toolkit where AI agents lead the development process.
+**MoAI** means "모두의 AI" (MoAI - Everybody's AI). **ADK** stands for Agentic Development Kit, a toolkit where AI agents drive the development process.
 
-MoAI-ADK is an **Agentic Development Kit that enables agents to perform agentic coding through interaction within Claude Code**. Just like an AI development team collaborating to complete a project, MoAI-ADK's AI agents perform development work in their respective areas of expertise while collaborating with each other.
+MoAI-ADK is **a development kit that has agents collaborate on agentic coding inside Claude Code**. Like an AI development team collaborating to finish a project, each agent takes on the work of its own specialty.
 
-| AI Development Team | MoAI-ADK | Role |
-|---------------------|----------|------|
-| Product Owner | User (Developer) | Decides what to build |
-| Team Lead / Tech Lead | MoAI Orchestrator | Coordinates overall work and delegates to 8 retained agents |
-| Planner / Spec Writer | manager-spec | Documents requirements in SPEC |
-| Developers / Engineers | manager-develop (with domain context) | Implements code via DDD/TDD |
-| QA / Code Reviewer | sync-auditor | Validates quality standards (4-dimension scoring) |
+| AI development team | MoAI-ADK | Role |
+|----------|----------|------|
+| Product owner | The user (developer) | Decides what to build |
+| Team lead / Tech Lead | The MoAI orchestrator | Coordinates all work and delegates to the 11 agents |
+| Planner / Spec Writer | manager-spec | Organizes requirements into SPEC documents |
+| Developers / Engineers | manager-develop (with domain context injected) | Implements the actual code with DDD/TDD |
+| QA / Code reviewers | plan-auditor · sync-auditor | Independently audit plans and deliverables |
+
+## Core Value — The Three Pillars
+
+The value of v3.0 comes down to three pillars.
+
+### Tokenomics (Token Economics)
+
+Intelligent resource allocation that maximizes quality per cost. This pillar consists of the **3-tier model policy** that declaratively assigns model and reasoning depth by work phase and SPEC size, **CG mode** that combines a Claude leader with GLM workers to cut implementation cost by 60-70%, the **Token Circuit Breaker** that stops gracefully before the budget is exceeded, and the **context diet** that shrinks always-loaded context.
+
+### Agentic Loop Engineering
+
+The loop works on its own, and observations accumulate along the way. This pillar includes the **goal engine** that keeps the session working until a declared completion condition is met, the **Ralph Engine** (`/moai loop`) that iterates on fixes until the queue of issues found by diagnostic tools is drained, and **Analyze-First routing** that analyzes the intent of natural-language requests regardless of language. The accumulated observations become the raw material of harness learning, and guidance evolves along the 4-tier learning ladder (observation → heuristic → rule → auto-update) — auto-updates are always applied only under the user-approval gate.
+
+### Agentic Harness
+
+Instead of writing code yourself, you design an environment where agents work well. This pillar is the 11-agent catalog, the SPEC-based 3-phase workflow (plan → run → sync), the TRUST 5 quality gates, and the Harness v4 Builder that creates project-specific harnesses from natural-language requests. For the full concept, see the [Harness Engineering](/en/core-concepts/harness-engineering) document.
+
+## Why Tokenomics
+
+Token unit prices keep falling, but agentic development's token consumption grows faster. With multiple agents running, longer contexts, and deeper reasoning, what determines cost is not model pricing but **how tokens are operated**.
+
+MoAI-ADK's answer is threefold.
+
+1. **Assign the right model and reasoning depth per task** — plan deeply, implement cheaply, verify independently.
+2. **Diet the context** — minimize always-loaded guidance and measure prompt-cache hit rates.
+3. **Let the system keep the budget** — track token usage and stop gracefully before crossing the threshold.
 
 ## Why MoAI-ADK?
 
-### Complete Rewrite from Python to Go
+### A Complete Rewrite from Python to Go
 
 The Python-based MoAI-ADK (~73,000 lines) was completely rewritten in Go.
 
 | Item | Python Edition | Go Edition |
-|------|---------------|-----------|
+|------|-------------|----------|
 | Distribution | pip + venv + dependencies | **Single binary**, zero dependencies |
-| Startup Time | ~800ms interpreter boot | **~5ms** native execution |
+| Startup time | ~800ms interpreter boot | **~5ms** native execution |
 | Concurrency | asyncio / threading | **Native goroutines** |
-| Type Safety | Runtime (mypy optional) | **Compile-time enforcement** |
-| Cross-Platform | Python runtime required | **Pre-built binaries** (macOS, Linux, Windows) |
-| Hook Execution | Shell wrapper + Python | **Compiled binary**, JSON protocol |
+| Type safety | Runtime (mypy optional) | **Compile-time enforced** |
+| Cross-platform | Requires Python runtime | **Prebuilt binaries** (macOS, Linux, Windows) |
+| Hook execution | Shell wrappers + Python | **Compiled binary**, JSON protocol |
 
-### Key Numbers
+### Key Numbers (as of v3.0)
 
-- **34,220 lines** of Go code, **32** packages
-- **85-100%** test coverage
-- **8** specialized AI agents + **27** skills
-- **18** programming languages supported
-- **16** Claude Code Hook events
+- **11** agents in the catalog (10 MoAI custom + 1 Anthropic built-in `Explore`)
+- **27** skills (template-managed)
+- **~37** CLI commands · **14** `/moai` subcommands
+- **16** programming languages supported
+- A codebase developed with a **SPEC-based workflow** (plan → run → sync)
 
-### Problems with Vibe Coding
+### The Problems with Vibe Coding
 
-**Vibe Coding** is a method of writing code while naturally conversing with AI. You say "create this feature" and AI generates code. It's intuitive and fast, but causes serious problems in practice.
+**Vibe coding** (Vibe Coding) means writing code through natural conversation with an AI. Say "build me this feature" and the AI generates code. It is intuitive and fast, but in practice serious problems arise.
 
 ```mermaid
 flowchart TD
-    A["Write code while talking to AI"] --> B["Get good results"]
-    B --> C["Session ends or\ncontext resets"]
-    C --> D["Context loss"]
-    D --> E["Explain from the beginning"]
+    A["Write code in conversation with the AI"] --> B["Good result produced"]
+    B --> C["Session drops or\ncontext reset"]
+    C --> D["Context lost"]
+    D --> E["Explain from scratch again"]
     E --> A
 ```
 
-**Specific problems encountered in practice:**
+**Concrete problems in practice:**
 
-| Problem | Situation Example | Result |
-|---------|-------------------|--------|
-| **Context Loss** | Have to re-explain the authentication method discussed for 1 hour yesterday | Time waste, reduced consistency |
-| **Quality Inconsistency** | AI sometimes generates good code, sometimes bad code | Unpredictable code quality |
-| **Breaking Existing Code** | Said "fix this part" but other features broke | Bugs, rollback needed |
-| **Repeated Explanations** | Have to re-explain project structure and coding rules every time | Reduced productivity |
-| **No Validation** | No way to verify if AI-generated code is safe | Security vulnerabilities, missing tests |
+| Problem | Example situation | Result |
+|------|----------|------|
+| **Context loss** | The auth approach discussed for an hour yesterday must be re-explained today | Wasted time, lower consistency |
+| **Inconsistent quality** | The AI sometimes generates good code, sometimes bad | Code quality unpredictable |
+| **Breaking existing code** | "Fix this part" ends up breaking another feature | Bugs, rollbacks needed |
+| **Repeated explanations** | The project structure and coding conventions must be re-told every time | Lower productivity |
+| **No verification** | No way to know whether AI-generated code is safe | Security vulnerabilities, insufficient tests |
+| **Wasted tokens** | Every task handled with the same model and reasoning depth | Unpredictable cost, budget overruns |
 
-### MoAI-ADK Solutions
+### MoAI-ADK's Solutions
 
-| Problem | MoAI-ADK Solution |
-|---------|-------------------|
-| Context loss | Permanently preserve requirements as files with **SPEC documents** |
-| Quality inconsistency | Apply consistent quality standards with **TRUST 5** framework |
-| Breaking existing code | Protect existing functionality by writing tests first with **DDD/TDD** |
-| Repeated explanations | Automatically load project context with **CLAUDE.md and skill system** |
-| No validation | Automatically validate code quality with **LSP quality gates** |
+| Problem | MoAI-ADK's solution |
+|------|------------------|
+| Context loss | **SPEC documents** preserve requirements permanently as files |
+| Inconsistent quality | The **TRUST 5** framework applies consistent quality standards |
+| Breaking existing code | **DDD/TDD** writes tests first, protecting existing functionality |
+| Repeated explanations | **CLAUDE.md and the skill system** auto-load the project context |
+| No verification | The **LSP quality gate** verifies code quality automatically |
+| Wasted tokens | **Model policy + Token Circuit Breaker** — the system manages cost |
 
 ## System Requirements
 
-| Platform | Supported Environments | Notes |
-|----------|----------------------|-------|
+| Platform | Supported Environment | Notes |
+|--------|---------|------|
 | macOS | Terminal, iTerm2 | Fully supported |
 | Linux | Bash, Zsh | Fully supported |
-| Windows | **WSL (recommended)**, PowerShell 7.x+ | Native cmd.exe is not supported |
+| Windows | **WSL (recommended)**, PowerShell 7.x+ | Native cmd.exe not supported |
 
 **Prerequisites:**
-- **Git** must be installed on all platforms
-- **Windows users**: [Git for Windows](https://gitforwindows.org/) is **required** (includes Git Bash)
-  - **WSL** (Windows Subsystem for Linux) is recommended for the best experience
+- **Git** required on every platform
+- **Windows users**: [Git for Windows](https://gitforwindows.org/) **required** (includes Git Bash)
+  - For the best experience, **WSL** (Windows Subsystem for Linux) is recommended
   - PowerShell 7.x or later is supported as an alternative
   - Legacy Windows PowerShell 5.x and cmd.exe are **not supported**
 
@@ -109,7 +138,7 @@ curl -fsSL https://raw.githubusercontent.com/modu-ai/moai-adk/main/install.sh | 
 
 #### Windows (PowerShell 7.x+)
 
-> **Recommended**: Use WSL with the Linux install command above for the best experience.
+> **Recommended**: using WSL with the Linux install command above provides the best experience.
 
 ```powershell
 irm https://raw.githubusercontent.com/modu-ai/moai-adk/main/install.ps1 | iex
@@ -124,7 +153,7 @@ git clone https://github.com/modu-ai/moai-adk.git
 cd moai-adk && make build
 ```
 
-> Pre-built binaries can be downloaded from the [Releases](https://github.com/modu-ai/moai-adk/releases) page.
+> Prebuilt binaries can be downloaded from the [Releases](https://github.com/modu-ai/moai-adk/releases) page.
 
 ### 2. Project Initialization
 
@@ -132,40 +161,42 @@ cd moai-adk && make build
 moai init my-project
 ```
 
-An interactive wizard auto-detects your language, framework, and methodology, then generates Claude Code integration files.
+The interactive wizard auto-detects your language, framework, and methodology, then generates the Claude Code integration files.
 
-### 3. Start Development in Claude Code
+### 3. Start Developing in Claude Code
 
 ```bash
 # After launching Claude Code
 /moai project                            # Generate project docs (product.md, structure.md, tech.md)
-/moai plan "Add user authentication"     # Create SPEC document
-/moai run SPEC-AUTH-001                  # DDD/TDD implementation
-/moai sync SPEC-AUTH-001                 # Sync documentation and create PR
+/moai plan "Add user authentication"      # Create the SPEC document
+/moai run SPEC-AUTH-001                   # DDD/TDD implementation
+/moai sync SPEC-AUTH-001                  # Documentation sync and PR creation
 ```
+
+You can also make natural-language requests directly — `/moai "fix the login bug"` goes through **Analyze-First** intent analysis and is routed to the right workflow.
 
 ## Core Philosophy
 
 {{< callout type="warning" >}}
-**"The purpose of vibe coding is not fast productivity, but code quality."**
+**"The purpose of vibe coding is not fast productivity but code quality."**
 
-MoAI-ADK is not a tool for quickly churning out code. The goal is to create **higher quality** code than what humans write directly, while leveraging AI. Fast speed is a secondary effect that naturally follows while maintaining quality.
+MoAI-ADK is not a tool for churning out code quickly. The goal is to use AI to produce code of **higher quality** than a human would write directly. Speed is the side effect that follows naturally when quality is protected.
 {{< /callout >}}
 
-This philosophy is concretized in three principles:
+This philosophy is embodied in three principles:
 
-1. **SPEC-First**: Before writing code, clearly define what to build in a document
-2. **Safe Improvement** (DDD/TDD): Incrementally improve while preserving existing code behavior
-3. **Auto Quality Validation** (TRUST 5): Automatically validate all code with 5 quality principles
+1. **SPEC-First**: before writing code, define clearly in a document what will be built
+2. **Safe improvement** (DDD/TDD): improve incrementally while preserving the behavior of existing code
+3. **Automatic quality verification** (TRUST 5): verify all code automatically with the five quality principles
 
-## MoAI Development Methodology
+## The MoAI Development Methodology
 
 MoAI-ADK automatically selects the optimal development methodology based on the project state.
 
 ```mermaid
 flowchart TD
-    A["Project Analysis"] --> B{"New project or\n10%+ test coverage?"}
-    B -->|"Yes"| C["TDD (Default)"]
+    A["Project analysis"] --> B{"New project or\n10%+ test coverage?"}
+    B -->|"Yes"| C["TDD (default)"]
     B -->|"No"| D{"Existing project\n< 10% coverage?"}
     D -->|"Yes"| E["DDD"]
     C --> F["RED → GREEN → REFACTOR"]
@@ -175,83 +206,97 @@ flowchart TD
     style E fill:#2196F3,color:#fff
 ```
 
-### TDD Methodology (Default)
+### The TDD Methodology (Default)
 
 The default methodology for new projects and feature development. Write tests first, then implement.
 
 | Phase | Description |
-|-------|-------------|
+|------|------|
 | **RED** | Write a failing test that defines the expected behavior |
-| **GREEN** | Write the minimal code to pass the test |
-| **REFACTOR** | Improve code quality while keeping tests green. |
+| **GREEN** | Write the minimum code that passes the test |
+| **REFACTOR** | Improve code quality while keeping the tests green. |
 
-For brownfield projects (existing codebases), TDD adds a **pre-RED analysis phase**: read existing code to understand current behavior before writing tests.
+For brownfield projects (existing codebases), a **pre-RED analysis phase** is added to TDD: read the existing code and understand current behavior before writing tests.
 
-### DDD Methodology (Existing Projects, < 10% Coverage)
+### The DDD Methodology (Existing Projects, Under 10% Coverage)
 
-A methodology for safely refactoring existing projects with low test coverage.
+The methodology for safely refactoring existing projects with low test coverage.
 
 ```
 ANALYZE   → Analyze existing code and dependencies, identify domain boundaries
-PRESERVE  → Write characterization tests, capture current behavior snapshots
-IMPROVE   → Improve incrementally under test protection.
+PRESERVE  → Write characterization tests, capture current-behavior snapshots
+IMPROVE   → Improve incrementally under the protection of tests.
 ```
 
 {{< callout type="info" >}}
-The methodology is auto-selected during `moai init` (`--mode <ddd|tdd>`, default: tdd) and can be changed in `development_mode` within `.moai/config/sections/quality.yaml`.
+The methodology is auto-selected at `moai init` (`--mode <ddd|tdd>`, default: tdd) and can be changed via `development_mode` in `.moai/config/sections/quality.yaml`.
 
-**Note**: MoAI-ADK v2.5.0+ uses binary methodology selection (TDD or DDD only). Hybrid mode has been removed for clarity and consistency.
+**Note**: MoAI-ADK v2.5.0+ uses a binary methodology choice (TDD or DDD only). The hybrid mode was removed for clarity and consistency.
 {{< /callout >}}
 
-## Harness Engineering Architecture
+## The Harness Engineering Architecture
 
-MoAI-ADK implements the **Harness Engineering** paradigm — designing the environment for AI agents rather than writing code directly.
+MoAI-ADK implements the **Harness Engineering** paradigm — designing the environment AI agents work in, rather than writing code directly.
 
 | Component | Description | Command |
-|-----------|-------------|---------|
-| **Self-Verify Loop** | Agents write code → test → fail → fix → pass cycle autonomously | `/moai loop` |
-| **Context Map** | Codebase architecture maps and documentation always available to agents | `/moai codemaps` |
-| **Session Persistence** | `progress.md` tracks completed phases across sessions; interrupted runs resume automatically | `/moai run SPEC-XXX` |
-| **Failing Checklist** | All acceptance criteria registered as pending tasks at run start; marked complete as implemented | `/moai run SPEC-XXX` |
-| **Language-Agnostic** | 16 languages supported: auto-detects language, selects correct LSP/linter/test/coverage tools | All workflows |
-| **Garbage Collection** | Periodic scan and removal of dead code, AI Slop, and unused imports | `/moai clean` |
-| **Scaffolding First** | Empty file stubs created before implementation to prevent entropy | `/moai run SPEC-XXX` |
+|----------|------|--------|
+| **Self-Verify Loop** | The agent autonomously runs the write code → test → fail → fix → pass cycle | `/moai loop` |
+| **Goal engine** | Declare a completion condition and the session keeps working until it is met or the turn limit is reached | `/moai goal` |
+| **Context Map** | The codebase architecture map and docs are always provided to the agent | `/moai codemaps` |
+| **Session Persistence** | `progress.md` tracks completed steps across sessions; interrupted runs resume automatically | `/moai run SPEC-XXX` |
+| **Failing Checklist** | Every acceptance criterion is registered as a pending task at run start; marked done on completion | `/moai run SPEC-XXX` |
+| **Language-Agnostic** | 16-language support: language auto-detection, correct LSP/linter/test/coverage tools selected | Every workflow |
+| **Garbage Collection** | Periodic scanning and removal of dead code, AI slop, and unused imports | `/moai clean` |
+| **Scaffolding First** | Empty file stubs generated before implementation to prevent entropy | `/moai run SPEC-XXX` |
 
 {{< callout type="info" >}}
-"Human steers, agents execute." — The engineer's role shifts from writing code to designing the harness: SPECs, quality gates, and feedback loops.
+"Human steers, agents execute." — The engineer's role shifts from writing code to designing the harness (SPECs, quality gates, feedback loops). The full concept is covered in the [Harness Engineering](/en/core-concepts/harness-engineering) document.
 {{< /callout >}}
 
 ## AI Agent Orchestration
 
-MoAI is a **strategic orchestrator**. It does not write code directly, but delegates work to **8 retained agents** (7 MoAI-custom + 1 Anthropic built-in). The 12 archived agents (manager-strategy, manager-quality, manager-brain, manager-project, claude-code-guide, researcher, and 6 expert-* agents) were consolidated per SPEC-V3R6-AGENT-TEAM-REBUILD-001.
+MoAI is the **strategic orchestrator**. It does not write code directly — it delegates work to the 11 retained agents (10 MoAI custom + 1 Anthropic built-in `Explore`). The core design principle is **separating planning from auditing** — the one who builds it does not inspect it.
 
-### Agent Categories (8 Retained)
+### The 11-Agent Catalog
 
-| Category | Count | Agents | Role |
-|----------|-------|--------|------|
-| **Manager** | 4 | manager-spec, manager-develop, manager-docs, manager-git | Workflow coordination, SPEC creation, DDD/TDD implementation, documentation, PR management |
-| **Evaluator** | 2 | plan-auditor, sync-auditor | Independent SPEC audit, 4-dimension quality scoring |
-| **Builder** | 1 | builder-harness | Dynamic project-specific harness generation |
-| **Explore** | 1 | Anthropic built-in | Read-only codebase exploration |
+| Category | Agent | Role |
+|------|---------|------|
+| **Manager** | manager-spec | Plan phase: SPEC document creation |
+| | manager-develop | Run phase: DDD/TDD/autofix implementation |
+| | manager-docs | Sync phase: documentation and PR creation |
+| | manager-git | Git workflow and tier-based PR routing |
+| | manager-design | Design phase: Claude Design collaboration |
+| **Evaluator** | plan-auditor | Independent audit of SPEC plans (bias prevention) |
+| | sync-auditor | 4-dimension quality assessment (Functionality 40 · Security 25 · Craft 20 · Consistency 15) |
+| **Builder** | builder-harness | Project-specific harness (agents/skills/commands) generation |
+| **Advisor** | super-advisor | High-reasoning consultation (E1-E4 escalation) |
+| **Specialist** | e2e-tester | E2E test execution across web/mobile/desktop |
+| **Built-in** | Explore | Read-only codebase exploration |
 
 ```mermaid
 flowchart TD
-    MoAI["MoAI Orchestrator\nAnalyze user requests and delegate"]
+    MoAI["MoAI orchestrator\nAnalyzes user requests and delegates"]
 
-    subgraph Managers["Manager Agents (4)"]
-        M1["manager-spec\nPlan-phase: SPEC creation"]
-        M2["manager-develop\nRun-phase: DDD/TDD implementation"]
-        M3["manager-docs\nSync-phase: Documentation"]
+    subgraph Managers["Manager agents (5)"]
+        M1["manager-spec\nPlan phase: SPEC creation"]
+        M2["manager-develop\nRun phase: DDD/TDD implementation"]
+        M3["manager-docs\nSync phase: documentation"]
         M4["manager-git\nPR creation, Git operations"]
+        M5["manager-design\nDesign collaboration"]
     end
 
-    subgraph Evaluators["Evaluator Agents (2)"]
-        E1["plan-auditor\nIndependent SPEC audit"]
-        E2["sync-auditor\n4-dimension quality scoring"]
+    subgraph Evaluators["Evaluator agents (2)"]
+        E1["plan-auditor\nIndependent SPEC audits"]
+        E2["sync-auditor\n4-dimension quality assessment"]
     end
 
-    subgraph Builder["Builder Agent (1)"]
+    subgraph BuilderAdvisor["Builder · Advisor (2)"]
         B1["builder-harness\nDynamic harness generation"]
+        B2["super-advisor\nHigh-reasoning consultation"]
+    end
+
+    subgraph Specialist["Specialist (1)"]
+        S1["e2e-tester\nE2E test execution"]
     end
 
     subgraph Explore["Built-in (1)"]
@@ -260,164 +305,209 @@ flowchart TD
 
     MoAI --> Managers
     MoAI --> Evaluators
-    MoAI --> Builder
+    MoAI --> BuilderAdvisor
+    MoAI --> Specialist
     MoAI --> Explore
 ```
 
 ### 27 Skills (Progressive Disclosure)
 
-Managed token-efficiently with a 3-level Progressive Disclosure system:
+Managed token-efficiently through a 3-level Progressive Disclosure system. Only the skill descriptions (~100 tokens) are always listed; the body (~5K tokens) loads only when actually invoked — one axis of the context diet.
 
 | Category | Examples |
-|----------|---------|
+|----------|------|
 | **Foundation** | core, cc, thinking, quality |
-| **Workflow** | spec, project, ddd, tdd, testing, worktree |
-| **Domain** | backend, frontend, database, html-report |
-| **Language** | Go, Python, TypeScript, Rust, Java, Kotlin, Swift, C++... |
-| **Platform** | Vercel, Supabase, Firebase, Auth0, Clerk... |
-| **Reference** | REST/GraphQL patterns, OWASP, git workflow |
-| **Tool** | ast-grep, svg |
+| **Workflow** | spec, project, ddd, tdd, testing, worktree, loop, ci-loop |
+| **Domain** | backend, frontend, database, html-report, humanize |
+| **Reference** | api-patterns, owasp-checklist, git-workflow, react-patterns, testing-pyramid, llm-security, secops, supply-chain |
+| **Harness** | harness-learner, meta-harness |
 
-## MoAI Workflow
+## The MoAI Workflow
 
-### Plan → Run → Sync Pipeline
+### The Plan → Run → Sync Pipeline
 
 MoAI's core workflow consists of 3 phases:
 
 ```mermaid
 flowchart TD
-    Start(["Development Start"]) --> Plan
+    Start(["Development begins"]) --> Plan
 
-    subgraph Plan["1. Plan Phase"]
+    subgraph Plan["1. Plan phase"]
         P1["Codebase exploration"] --> P2["Requirements analysis"]
-        P2 --> P3["Create SPEC document\nEARS format"]
+        P2 --> P3["SPEC document creation\nGEARS format"]
     end
 
     Plan --> Run
 
-    subgraph Run["2. Run Phase"]
-        R1["Analyze SPEC and\ncreate execution plan"] --> R2["DDD/TDD implementation"]
-        R2 --> R3["TRUST 5\nquality validation"]
+    subgraph Run["2. Run phase"]
+        R1["SPEC analysis and\nexecution planning"] --> R2["DDD/TDD implementation"]
+        R2 --> R3["TRUST 5\nquality verification"]
     end
 
     Run --> Sync
 
-    subgraph Sync["3. Sync Phase"]
-        S1["Generate documentation"] --> S2["Update README/CHANGELOG"]
-        S2 --> S3["Create Pull Request"]
+    subgraph Sync["3. Sync phase"]
+        S1["Documentation generation"] --> S2["README/CHANGELOG updates"]
+        S2 --> S3["Pull Request creation"]
     end
 
-    Sync --> Done(["Development Complete"])
+    Sync --> Done(["Development complete"])
 
     style Plan fill:#E3F2FD,stroke:#1565C0
     style Run fill:#E8F5E9,stroke:#2E7D32
     style Sync fill:#FFF3E0,stroke:#E65100
 ```
 
-**Actual usage example:**
+The Plan-phase artifacts are independently audited by the **plan-auditor**, and right before entering the Run phase there is the **Implementation Kickoff Approval** (a human gate). When the Sync phase ends, the **sync-auditor** performs a 4-dimension quality assessment — completion is judged by evidence, not "it seems done".
+
+**A real usage example:**
 
 ```bash
-# 1. Plan: Define requirements
+# 1. Plan: define the requirements
 > /moai plan "Implement JWT-based user authentication"
 
-# 2. Run: Implement with DDD/TDD
+# 2. Run: implement with DDD/TDD
 > /moai run SPEC-AUTH-001
 
-# 3. Sync: Generate documentation and PR
+# 3. Sync: generate docs and PR
 > /moai sync SPEC-AUTH-001
 ```
 
-#### Execution Mode Selection Gate
+#### The Execution-Mode Selection Gate
 
-When transitioning from Plan to Run phase, MoAI automatically detects the current execution environment (cc/glm/cg) and presents a selection UI for the user to confirm or change the mode before implementation begins.
+At the transition from Plan to Run, MoAI automatically detects the current execution environment (cc/glm/cg) and shows a selection UI the user can confirm or change.
 
 ```mermaid
 flowchart TD
-    A["Plan Complete"] --> B["Detect Environment"]
-    B --> C{"Mode Selection UI"}
-    C -->|"CC"| D["Claude-only Execution"]
-    C -->|"GLM"| E["GLM-only Execution"]
+    A["Plan complete"] --> B["Environment detection"]
+    B --> C{"Mode selection UI"}
+    C -->|"CC"| D["Claude-only execution"]
+    C -->|"GLM"| E["GLM-only execution"]
     C -->|"CG"| F["Claude Leader + GLM Workers"]
 ```
 
-This gate ensures the correct execution mode is used regardless of the environment state, preventing mode mismatches during implementation.
+This gate ensures the correct execution mode is used regardless of environment state, preventing mode mismatches during implementation.
 
 ### /moai Subcommands
 
-All subcommands are invoked within Claude Code as `/moai <subcommand>`.
+All subcommands run inside Claude Code as `/moai <subcommand>`.
 
 #### Core Workflow
 
-| Subcommand | Aliases | Purpose | Key Flags |
-|------------|---------|---------|-----------|
-| `plan` | `spec` | Create SPEC document (EARS format) | `--worktree`, `--branch`, `--resume SPEC-XXX`, `--team` |
-| `run` | `impl` | DDD/TDD implementation of a SPEC | `--resume SPEC-XXX`, `--team` |
-| `sync` | `docs`, `pr` | Sync documentation, codemaps, and create PR | `--merge`, `--skip-mx` |
+| Subcommand | Aliases | Purpose | Key flags |
+|-----------|------|------|-----------|
+| `plan` | `spec` | SPEC document creation (GEARS format) | `--worktree`, `--branch`, `--resume SPEC-XXX` |
+| `run` | `impl` | DDD/TDD implementation of a SPEC | `--resume SPEC-XXX` |
+| `sync` | `docs`, `pr` | Documentation sync, codemaps, PR creation | `--merge`, `--skip-mx` |
 
-#### Quality and Testing
+#### Agentic Loop
 
-| Subcommand | Aliases | Purpose | Key Flags |
-|------------|---------|---------|-----------|
-| `fix` | -- | Auto-fix LSP errors, lint, type errors (single pass) | `--dry`, `--seq`, `--level N`, `--resume`, `--team` |
-| `loop` | -- | Iterative auto-fix until completion (max 100 iterations) | `--max N`, `--auto-fix`, `--seq` |
-| `review` | `code-review` | Code review with security and @MX tag compliance | `--staged`, `--branch`, `--security` |
-| `coverage` | `test-coverage` | Test coverage analysis and gap filling (16 languages) | `--target N`, `--file PATH`, `--report` |
-| `e2e` | -- | E2E testing (Chrome, Playwright, Agent Browser) | `--record`, `--url URL`, `--journey NAME` |
-| `clean` | `refactor-clean` | Dead code identification and safe removal | `--dry`, `--safe-only`, `--file PATH` |
+| Subcommand | Purpose | Key flags |
+|-----------|------|-----------|
+| `goal` | Condition-declared autonomous continuation loop (until the condition is met or the turn limit) | `status`, `clear` |
+| `loop` | Diagnostic-driven iterative auto-fixing (a preset on the goal engine, up to 10 iterations by default) | `--max N`, `--auto-fix`, `--seq` |
+| `fix` | Auto-fix LSP errors, lint, type errors (single pass) | `--dry`, `--seq`, `--level N`, `--resume` |
 
-#### Documentation and Codebase
+#### Quality and Codebase
 
-| Subcommand | Aliases | Purpose | Key Flags |
-|------------|---------|---------|-----------|
-| `project` | `init` | Generate project docs (product.md, structure.md, tech.md, codemaps/) | -- |
-| `mx` | -- | Scan codebase and add @MX code-level annotations | `--all`, `--dry`, `--priority P1-P4`, `--force`, `--team` |
-| `codemaps` | `update-codemaps` | Generate architecture docs | `--force`, `--area AREA` |
-| `feedback` | `fb`, `bug`, `issue` | Collect feedback and create GitHub issues | -- |
+| Subcommand | Aliases | Purpose | Key flags |
+|-----------|------|------|-----------|
+| `review` | `code-review` | Code review for security and @MX tag compliance | `--staged`, `--branch`, `--security` |
+| `gate` | -- | Pre-commit quality gate (lint/format/type/test in parallel) | -- |
+| `clean` | `refactor-clean` | Dead-code identification and safe removal | `--dry`, `--safe-only`, `--file PATH` |
+| `mx` | -- | Codebase scan and @MX code-level annotation | `--all`, `--dry`, `--priority P1-P4`, `--force` |
+| `codemaps` | `update-codemaps` | Architecture documentation generation | `--force`, `--area AREA` |
 
-#### Default Workflow
+#### Project and Harness
 
-| Subcommand | Purpose | Key Flags |
-|------------|---------|-----------|
-| *(none)* | Full autonomous plan → run → sync pipeline. Auto-creates SPEC when complexity score >= 5. | `--loop`, `--max N`, `--branch`, `--pr`, `--resume SPEC-XXX`, `--team`, `--solo` |
+| Subcommand | Aliases | Purpose |
+|-----------|------|------|
+| `project` | `init` | Project docs generation (product.md, structure.md, tech.md, codemaps/) + automatic harness setup |
+| `harness` | -- | Harness learning lifecycle management · harness creation from natural language |
+| `feedback` | `fb`, `bug`, `issue` | Feedback collection and GitHub issue creation |
 
-### Execution Mode Flags
+#### The Default Workflow (Natural Language)
 
-Controls how agents are deployed during workflow execution:
+| Subcommand | Purpose | Key flags |
+|-----------|------|-----------|
+| *(none)* | Analyze-First intent analysis → the full autonomous plan → run → sync pipeline. SPEC auto-generated when the complexity score >= 5. | `--loop`, `--max N`, `--branch`, `--pr`, `--resume SPEC-XXX` |
 
-| Flag | Mode | Description |
-|------|------|-------------|
-| `--team` | Agent Teams | Parallel team-based execution. Multiple agents work simultaneously. |
-| `--solo` | Sub-Agent | Sequential single-agent delegation per phase. |
-| *(default)* | Auto | Complexity-based auto-selection (domains >= 3, files >= 10, score >= 7). |
+### Orchestration Modes
 
-**`--team` supports 3 execution environments:**
+The MoAI orchestrator analyzes task complexity and selects the execution shape.
 
-| Environment | Command | Leader | Workers | Best For |
-|-------------|---------|--------|---------|----------|
-| Claude Only | `moai cc` | Claude | Claude | Maximum quality |
-| GLM Only | `moai glm` | GLM | GLM | Maximum cost savings |
-| CG (Claude+GLM) | `moai cg` | Claude | GLM | Quality + cost balance |
+| Mode | Shape | Best-suited work |
+|------|------|-----------|
+| **Sequential sub-agents** (default) | Step-by-step single-agent delegation | Coding-heavy work, predictable workflows |
+| **Parallel sub-agents** | 3-5 read-only agents fanned out concurrently | Parallel analysis: research, review, audits |
+| **Dynamic workflows** | A script orchestrates many agents | Large-scale sweeps, cross-checked research |
 
 {{< callout type="info" >}}
-**New in v2.7.1**: CG mode is now the **default** team mode. When using `--team`, the system runs in CG mode unless explicitly changed with `moai cc` or `moai glm`.
-
-`moai cg` uses tmux session-level env isolation to separate Claude Leader from GLM Workers. If switching from `moai glm`, `moai cg` automatically resets GLM settings first.
+**Changed in v3.0**: The old Agent Teams static-orchestration layer has been retired. Forcing `--team` falls back to sub-agent mode. However, Claude Code's native teammate runtime — the tmux split panes of `moai cg` — is unaffected. The team-mode quality hooks (TeammateIdle's LSP gate verification, TaskCompleted's SPEC-reference checks) are also preserved along with the native teammate runtime.
 {{< /callout >}}
 
-### Autonomous Development Loop (Ralph Engine)
+### CG Mode (Claude + GLM Hybrid)
 
-An autonomous error-fixing engine that combines LSP diagnostics with AST-grep:
+The practical tool of the Tokenomics pillar. A hybrid mode where the Leader uses the **Claude API** and the Workers use the **GLM API**, implemented via tmux session-level environment-variable isolation. Claude handles strategy, planning, and audits; GLM handles bulk implementation — cutting costs 60-70% on implementation-heavy work.
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│  LEADER (current tmux pane, Claude API)                      │
+│  - Orchestrates with /moai commands after activating moai cg │
+│  - Handles the plan, quality, and sync phases                │
+│  - No GLM env → uses the Claude API                          │
+└──────────────────────┬──────────────────────────────────────┘
+                       │ Agent Teams (new tmux panes)
+                       ▼
+┌─────────────────────────────────────────────────────────────┐
+│  TEAMMATES (new tmux panes, GLM API)                         │
+│  - Inherit the tmux session env → use the GLM API            │
+│  - Execute implementation work in the run phase              │
+│  - Communicate with the leader via SendMessage               │
+└─────────────────────────────────────────────────────────────┘
+```
+
+```bash
+# 1. Save the GLM API key (once)
+moai glm setup sk-your-glm-api-key
+
+# 2. Activate CG mode (run inside a tmux session — Claude Code starts automatically)
+moai cg
+
+# 3. Run the workflow
+/moai "task description"
+```
+
+| Command | Leader | Workers | tmux required | Cost savings | Use case |
+|--------|--------|---------|----------|----------|----------|
+| `moai cc` | Claude | Claude | No | - | Complex work, highest quality |
+| `moai glm` | GLM | GLM | Recommended | ~70% | Cost optimization |
+| `moai cg` | Claude | GLM | **Required** | **~60%** | Quality + cost balance |
+
+### The Autonomous Development Loop (Ralph Engine)
+
+An autonomous error-fixing engine combining LSP diagnostics with AST-grep:
 
 ```bash
 /moai fix       # Single pass: scan → classify → fix → verify
-/moai loop      # Iterative fix: repeat until completion conditions are satisfied (max 100)
+/moai loop      # Iterative fixing: repeat until the completion condition is met (up to 10 iterations by default)
 ```
 
-**How Ralph Engine works:**
-1. **Parallel Scan**: Run LSP diagnostics + AST-grep + linters simultaneously
-2. **Auto Classification**: Classify errors from Level 1 (auto-fix) to Level 4 (user intervention)
-3. **Convergence Detection**: Apply alternative strategies when the same errors repeat
-4. **Completion Criteria**: 0 errors, 0 type errors, 85%+ coverage
+**How the Ralph Engine works:**
+1. **Parallel scanning**: run LSP diagnostics + AST-grep + linters simultaneously
+2. **Automatic classification**: classify errors from level 1 (auto-fixable) to level 4 (user intervention)
+3. **Convergence detection**: apply an alternative strategy when the same error repeats
+4. **Completion criteria**: 0 errors, 0 type errors, 85%+ coverage
+
+If you want to declare the completion condition yourself, use the goal engine:
+
+```text
+/moai goal "go test ./... exits 0; all ACs recorded as PASS"
+/moai goal status
+/moai goal clear
+```
+
+`/moai loop` is a preset on top of the goal engine — it keeps fixing until the queue of issues found by the diagnostic tools is drained.
 
 ### Recommended Workflow Chains
 
@@ -426,7 +516,7 @@ An autonomous error-fixing engine that combines LSP diagnostics with AST-grep:
 /moai plan → /moai run SPEC-XXX → /moai sync SPEC-XXX
 ```
 
-**Bug fix:**
+**Bug fixing:**
 ```
 /moai fix (or /moai loop) → /moai review → /moai sync
 ```
@@ -436,218 +526,90 @@ An autonomous error-fixing engine that combines LSP diagnostics with AST-grep:
 /moai plan → /moai clean → /moai run SPEC-XXX → /moai review → /moai codemaps
 ```
 
-**Documentation update:**
+**Documentation updates:**
 ```
 /moai codemaps → /moai sync
 ```
 
-## TRUST 5 Quality Framework
+## The TRUST 5 Quality Framework
 
-All code changes are validated against 5 quality criteria:
+Every code change is verified against five quality criteria:
 
-| Criterion | Meaning | Validation |
-|-----------|---------|------------|
+| Criterion | Meaning | What is verified |
+|------|------|----------|
 | **T**ested | Tested | 85%+ coverage, characterization tests, unit tests passing |
 | **R**eadable | Readable | Clear naming conventions, consistent code style, 0 lint errors |
-| **U**nified | Unified | Consistent formatting, import sorting, project structure compliance |
+| **U**nified | Unified | Consistent formatting, import ordering, project-structure compliance |
 | **S**ecured | Secured | OWASP compliance, input validation, 0 security warnings |
 | **T**rackable | Trackable | Conventional Commits, issue references, structured logging |
 
-## @MX Tag System
+## The @MX Tag System
 
-MoAI-ADK uses the **@MX code-level annotation system** to communicate context, invariants, and danger zones between AI agents.
+MoAI-ADK uses the **@MX code-level annotation system** to convey context, invariants, and danger zones between AI agents.
 
-| Tag Type | Purpose | When Added |
-|----------|---------|------------|
-| `@MX:ANCHOR` | Important contracts | Functions with fan_in >= 3, wide impact on change |
-| `@MX:WARN` | Danger zones | Goroutines, complexity >= 15, global state mutation |
-| `@MX:NOTE` | Context delivery | Magic constants, missing documentation, business rules |
+| Tag type | Purpose | When added |
+|----------|------|----------|
+| `@MX:ANCHOR` | Critical contracts | Functions with fan_in >= 3; changes have wide blast radius |
+| `@MX:WARN` | Danger zones | Goroutines, complexity >= 15, global-state mutation |
+| `@MX:NOTE` | Context transfer | Magic constants, missing docs, business rules |
 | `@MX:TODO` | Incomplete work | Missing tests, unimplemented features |
 
-The @MX tag system is designed to **mark only the most dangerous and important code**. Most code does not need tags, and this is by design.
+The @MX tag system is designed to **mark only the most dangerous and important code**. Most code needs no tags, and that is by design.
 
 ```bash
-# Scan entire codebase
+# Scan the full codebase
 /moai mx --all
 
-# Preview only (no file modifications)
+# Preview (no file changes)
 /moai mx --dry
 
 # Scan by priority
 /moai mx --priority P1
 ```
 
-## Model Policy (Token Optimization)
+## Model Policy (the Heart of Tokenomics)
 
-MoAI-ADK assigns optimal AI models to each agent based on your Claude Code subscription plan. It maximizes quality within your plan's rate limits.
+MoAI-ADK assigns the optimal AI model to each agent according to your Claude Code subscription plan. The goal is maximizing quality within the plan's usage limits — heavier-reasoning phases like planning and auditing get the top models, while repetitive implementation and documentation get lightweight models.
 
-| Policy | Plan | 🟣 Opus | 🔵 Sonnet | 🟡 Haiku | Best For |
-|--------|------|---------|-----------|----------|----------|
-| **High** | Max $200/mo | 23 | 1 | 4 | Maximum quality, highest throughput |
-| **Medium** | Max $100/mo | 4 | 19 | 5 | Balance of quality and cost |
-| **Low** | Plus $20/mo | 0 | 12 | 16 | Budget-friendly, no Opus |
+| Policy | Characteristics |
+|------|------|
+| **max** | Highest quality — Opus assigned to planning and audits, maximum throughput |
+| **medium** (default) | Balance of quality and cost |
+| **low** | Economical, no Opus — Sonnet-centric allocation |
 
-### Configuration
+### How to Configure
 
 ```bash
 # During project initialization
-moai init my-project          # Select model policy in interactive wizard
+moai init my-project          # Select the model policy in the interactive wizard
 
-# Reconfigure existing project
-moai update                   # Interactive prompts for each configuration step
+# Reconfigure an existing project
+moai update                   # Interactive prompts for each setup step
 ```
 
 {{< callout type="info" >}}
-The default policy is `High`. GLM settings are isolated in `settings.local.json` (not committed to Git).
+The default policy is `medium`. GLM settings are isolated in `settings.local.json` (never committed to Git). The config key is `profile: max | medium | low` (the profile matrix column) in `llm.yaml`, and the legacy `performance_tier` field is read as an alias when `profile` is absent (`--high`/`--low` are deprecated aliases of `--model-policy max`/`low`). You can set it directly with the `--profile max|medium|low` flag.
 {{< /callout >}}
-
-## Dual Execution Modes
-
-MoAI-ADK provides both **Sub-Agent** and **Agent Teams** execution modes supported by Claude Code.
-
-```mermaid
-flowchart TD
-    A["MoAI Orchestrator"] --> B{"Select Execution Mode"}
-    B -->|"--solo"| C["Sub-Agent Mode"]
-    B -->|"--team"| D["Agent Teams Mode"]
-    B -->|"Default (Auto)"| E["Auto Selection"]
-
-    C --> F["Sequential Expert Delegation\nTask → Expert Agent"]
-    D --> G["Parallel Team Collaboration\nAgent(name=…) → SendMessage"]
-    E -->|"High Complexity"| D
-    E -->|"Low Complexity"| C
-
-    style C fill:#2196F3,color:#fff
-    style D fill:#FF9800,color:#fff
-    style E fill:#4CAF50,color:#fff
-```
-
-### Agent Teams Mode (Default)
-
-MoAI-ADK automatically analyzes project complexity to select the optimal execution mode:
-
-| Condition | Selected Mode | Reason |
-|-----------|---------------|--------|
-| 3+ domains | Agent Teams | Multi-domain coordination |
-| 10+ affected files | Agent Teams | Large-scale changes |
-| Complexity score 7+ | Agent Teams | High complexity |
-| Otherwise | Sub-Agent | Simple, predictable workflow |
-
-**Agent Teams mode** uses parallel team-based development:
-
-- Multiple agents work simultaneously, collaborating via shared task list
-- Real-time coordination through `Agent(name=…)` (implicit team), `SendMessage`, and `TaskList`
-- Ideal for large-scale feature development and multi-domain tasks
-
-```bash
-/moai plan "large-scale feature"    # Auto: researcher + analyst + architect in parallel
-/moai run SPEC-XXX                  # Auto: backend-dev + frontend-dev + tester in parallel
-/moai run SPEC-XXX --team           # Force Agent Teams mode
-```
-
-{{< callout type="info" >}}
-**Quality hooks for Agent Teams:**
-
-- **TeammateIdle hook**: Validates LSP quality gates (errors, type errors, lint errors) before a teammate transitions to idle
-- **TaskCompleted hook**: Verifies SPEC document existence when a task references a SPEC-XXX pattern
-- All validations use graceful degradation -- warnings are logged but work continues
-{{< /callout >}}
-
-### CG Mode (Claude + GLM Hybrid)
-
-CG mode is a hybrid mode where the Leader uses the **Claude API** and Workers use the **GLM API**. It is implemented through tmux session-level environment variable isolation.
-
-```
-┌─────────────────────────────────────────────────────────────┐
-│  LEADER (current tmux pane, Claude API)                      │
-│  - Orchestrates workflow when /moai --team is executed        │
-│  - Handles plan, quality, sync phases                        │
-│  - No GLM env → uses Claude API                              │
-└──────────────────────┬──────────────────────────────────────┘
-                       │ Agent Teams (new tmux panes)
-                       ▼
-┌─────────────────────────────────────────────────────────────┐
-│  TEAMMATES (new tmux panes, GLM API)                         │
-│  - Inherits tmux session env → uses GLM API                  │
-│  - Executes implementation tasks in run phase                │
-│  - Communicates with leader via SendMessage                  │
-└─────────────────────────────────────────────────────────────┘
-```
-
-```bash
-# 1. Store GLM API key (one-time)
-moai glm sk-your-glm-api-key
-
-# 2. Activate CG mode
-moai cg
-
-# 3. Start Claude Code in the same pane (important!)
-claude
-
-# 4. Execute team workflow
-/moai --team "task description"
-```
-
-| Command | Leader | Workers | tmux Required | Cost Savings | Use Case |
-|---------|--------|---------|---------------|-------------|----------|
-| `moai cc` | Claude | Claude | No | - | Complex tasks, maximum quality |
-| `moai glm` | GLM | GLM | Recommended | ~70% | Cost optimization |
-| `moai cg` | Claude | GLM | **Required** | **~60%** | Quality + cost balance |
-
-### Sub-Agent Mode (`--solo`)
-
-A sequential agent delegation approach using the existing Claude Code `Task()` API.
-
-- Delegates work to a single expert agent and receives results
-- Proceeds step by step in Manager → Expert → Quality order
-- Suitable for simple, predictable workflows
-
-```bash
-/moai run SPEC-AUTH-001 --solo    # Force Sub-Agent mode
-```
-
-## CLI Commands
-
-| Command | Description |
-|---------|-------------|
-| `moai init` | Interactive project setup (auto-detects language/framework/methodology) |
-| `moai doctor` | System health check and environment verification |
-| `moai status` | Project status summary including Git branch and quality metrics |
-| `moai update` | Update to the latest version (with auto-rollback support) |
-| `moai update --check` | Check for updates without installing |
-| `moai update --project` | Sync project templates only |
-| `moai worktree new <name>` | Create a new Git worktree (parallel branch development) |
-| `moai worktree list` | List active worktrees |
-| `moai worktree switch <name>` | Switch worktree |
-| `moai worktree sync` | Sync with upstream |
-| `moai worktree remove <name>` | Remove a worktree |
-| `moai worktree clean` | Clean up stale worktrees |
-| `moai worktree go <name>` | Navigate to worktree directory in current shell |
-| `moai hook <event>` | Claude Code Hook dispatcher |
-| `moai glm` | Start Claude Code with GLM API (cost-efficient alternative) |
-| `moai cc` | Start Claude Code without GLM settings (Claude-only mode) |
-| `moai cg` | Activate CG mode -- Claude Leader + GLM Workers (tmux pane-level isolation) |
-| `moai version` | Display version, commit hash, and build date |
 
 ## Task Metrics Logging
 
-MoAI-ADK automatically captures Task tool metrics during development sessions:
+MoAI-ADK automatically captures Task-tool metrics during development sessions:
 
 - **Location**: `.moai/logs/task-metrics.jsonl`
-- **Captured Metrics**: Token usage, tool calls, duration, agent type
-- **Purpose**: Session analytics, performance optimization, cost tracking
+- **Captured metrics**: token usage, tool calls, duration, agent type
+- **Purpose**: session analysis, performance optimization, cost tracking
 
-The PostToolUse hook logs metrics when a Task tool completes. Use this data to analyze agent efficiency and optimize token consumption.
+A PostToolUse hook logs metrics when the Task tool completes. Use this data to analyze agent efficiency and optimize token consumption — tokenomics starts with measurement.
 
 ## Project Structure
 
-When you install MoAI-ADK, the following structure is created in your project.
+Installing MoAI-ADK creates the following structure in your project.
 
 ```
 my-project/
-├── CLAUDE.md                  # MoAI execution guidelines
+├── CLAUDE.md                  # MoAI's execution directive
 ├── .claude/
-│   ├── agents/moai/           # 8 AI agent definitions
+│   ├── agents/moai/           # 10 MoAI custom agent definitions (+ the Explore built-in)
 │   ├── skills/moai-*/         # 27 skill modules
 │   ├── hooks/moai/            # Automation hook scripts
 │   └── rules/moai/            # Coding rules and standards
@@ -655,42 +617,43 @@ my-project/
     ├── config/                # MoAI configuration files
     │   └── sections/
     │       └── quality.yaml   # TRUST 5 quality settings
-    ├── specs/                 # SPEC document storage
+    ├── specs/                 # SPEC document repository
     │   └── SPEC-XXX/
     │       └── spec.md
     └── memory/                # Cross-session context persistence
 ```
 
-**Key file descriptions:**
+**Key files:**
 
 | File/Directory | Role |
-|----------------|------|
-| `CLAUDE.md` | Execution guidelines that MoAI reads. Contains project rules, agent catalog, and workflow definitions |
-| `.claude/agents/` | Defines each agent's area of expertise and tool permissions |
-| `.claude/skills/` | Knowledge modules containing best practices for programming languages and platforms |
-| `.moai/specs/` | Where SPEC documents are stored. Each feature has its own directory |
-| `.moai/config/` | Manages project settings such as TRUST 5 quality standards and DDD/TDD configuration |
+|--------------|------|
+| `CLAUDE.md` | The execution directive MoAI reads. Contains project rules, the agent catalog, and workflow definitions |
+| `.claude/agents/` | Defines each agent's specialty and tool permissions |
+| `.claude/skills/` | Knowledge modules with best practices per programming language and platform |
+| `.moai/specs/` | Where SPEC documents live. Each feature gets its own directory |
+| `.moai/config/` | Manages project settings: TRUST 5 quality criteria, DDD/TDD configuration, etc. |
 
 ## Multilingual Support
 
-MoAI-ADK supports 4 languages. When users request in Korean, it responds in Korean; when requested in English, it responds in English.
+MoAI-ADK supports 4 languages. Ask in Korean and it answers in Korean; ask in English and it answers in English.
 
-| Language | Code | Support Range |
-|----------|------|---------------|
-| Korean | ko | Conversation, documentation, commands, error messages |
-| English | en | Conversation, documentation, commands, error messages |
-| Japanese | ja | Conversation, documentation, commands, error messages |
-| Chinese | zh | Conversation, documentation, commands, error messages |
+| Language | Code | Coverage |
+|------|------|----------|
+| Korean | ko | Conversation, docs, commands, error messages |
+| English | en | Conversation, docs, commands, error messages |
+| Japanese | ja | Conversation, docs, commands, error messages |
+| Chinese | zh | Conversation, docs, commands, error messages |
 
 {{< callout type="info" >}}
-**Language Settings:** In `.moai/config/sections/language.yaml`, you can set the conversation language, code comment language, and commit message language separately. For example, you can converse in Korean while writing code comments and commit messages in English.
+**Language settings:** in `.moai/config/sections/language.yaml` you can set the conversation language, code comment language, and commit message language independently. For example, converse in Korean while writing code comments and commit messages in English.
 {{< /callout >}}
 
 ## Next Steps
 
-Now that you understand the big picture of MoAI-ADK, it's time to learn each core concept in detail.
+Now that you understand the full picture of MoAI-ADK, it is time to explore each core concept in detail.
 
-- [SPEC-Based Development](/core-concepts/spec-based-dev) -- Learn how to define requirements as documents
-- [Domain-Driven Development](/core-concepts/ddd) -- Learn how to safely improve existing code
-- [TRUST 5 Quality](/core-concepts/trust-5) -- Learn how to automatically validate code quality
-- [MoAI Memory](/claude-code/context-memory/memory) -- Learn how context is preserved across sessions
+- [Harness Engineering](/en/core-concepts/harness-engineering) -- Learn the paradigm of designing the environment agents work in
+- [SPEC-Based Development](/en/core-concepts/spec-based-dev) -- Learn how requirements are defined as documents
+- [Domain-Driven Development](/en/core-concepts/ddd) -- Learn how to improve existing code safely
+- [TRUST 5 Quality](/en/core-concepts/trust-5) -- Learn how code quality is verified automatically
+- [MoAI Memory](/en/claude-code/context-memory/memory) -- Learn how context is preserved across sessions

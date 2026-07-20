@@ -7,6 +7,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/modu-ai/moai-adk/internal/cli/uikit"
 )
 
 // --- DDD PRESERVE: Characterization tests for doctor command behavior ---
@@ -78,9 +80,9 @@ func TestDoctorCmd_Execution(t *testing.T) {
 	if !strings.Contains(output, "System Diagnostics") {
 		t.Errorf("doctor output should contain 'System Diagnostics', got %q", output)
 	}
-	// After the tui migration, the summary uses the Pill format with the Korean "passed" label.
-	if !strings.Contains(output, "통과") {
-		t.Errorf("doctor output should contain '통과' in summary, got %q", output)
+	// After the tui migration, the summary uses the Pill format with the "Pass" label.
+	if !strings.Contains(output, "Pass") {
+		t.Errorf("doctor output should contain 'Pass' in summary, got %q", output)
 	}
 }
 
@@ -121,7 +123,7 @@ func TestCheckGit_DetailWhenMissing(t *testing.T) {
 	// when git IS available, Detail should be empty (non-verbose)
 	// when git is NOT available, Detail should contain install hint
 	check := checkGit(false)
-	if check.Status == CheckFail {
+	if check.Status == uikit.CheckFail {
 		if check.Detail == "" {
 			t.Error("checkGit should set Detail with install hint when git is not found")
 		}
@@ -130,7 +132,7 @@ func TestCheckGit_DetailWhenMissing(t *testing.T) {
 		}
 	}
 	// If git is available, Detail should be empty in non-verbose mode
-	if check.Status == CheckOK && check.Detail != "" {
+	if check.Status == uikit.CheckOK && check.Detail != "" {
 		t.Errorf("checkGit Detail should be empty in non-verbose mode when git is found, got %q", check.Detail)
 	}
 }
@@ -142,8 +144,8 @@ func TestCheckGoRuntime(t *testing.T) {
 	if check.Name != "Go Runtime" {
 		t.Errorf("check.Name = %q, want 'Go Runtime'", check.Name)
 	}
-	if check.Status != CheckOK {
-		t.Errorf("check.Status = %q, want %q", check.Status, CheckOK)
+	if check.Status != uikit.CheckOK {
+		t.Errorf("check.Status = %q, want %q", check.Status, uikit.CheckOK)
 	}
 	if check.Message == "" {
 		t.Error("check.Message should not be empty")
@@ -166,7 +168,7 @@ func TestCheckGit(t *testing.T) {
 		t.Errorf("check.Name = %q, want 'Git'", check.Name)
 	}
 	// Git should be available in test environments
-	if check.Status != CheckOK {
+	if check.Status != uikit.CheckOK {
 		t.Skipf("git not available: %s", check.Message)
 	}
 	if !strings.Contains(check.Message, "git version") {
@@ -191,8 +193,8 @@ func TestCheckMoAIConfig_Missing(t *testing.T) {
 	}()
 
 	check := checkMoAIConfig(false)
-	if check.Status != CheckWarn {
-		t.Errorf("check.Status = %q, want %q for missing .moai/", check.Status, CheckWarn)
+	if check.Status != uikit.CheckWarn {
+		t.Errorf("check.Status = %q, want %q for missing .moai/", check.Status, uikit.CheckWarn)
 	}
 }
 
@@ -216,8 +218,8 @@ func TestCheckMoAIConfig_Present(t *testing.T) {
 	}()
 
 	check := checkMoAIConfig(false)
-	if check.Status != CheckOK {
-		t.Errorf("check.Status = %q, want %q for present .moai/", check.Status, CheckOK)
+	if check.Status != uikit.CheckOK {
+		t.Errorf("check.Status = %q, want %q for present .moai/", check.Status, uikit.CheckOK)
 	}
 }
 
@@ -237,8 +239,8 @@ func TestCheckClaudeConfig_Missing(t *testing.T) {
 	}()
 
 	check := checkClaudeConfig(false)
-	if check.Status != CheckWarn {
-		t.Errorf("check.Status = %q, want %q for missing .claude/", check.Status, CheckWarn)
+	if check.Status != uikit.CheckWarn {
+		t.Errorf("check.Status = %q, want %q for missing .claude/", check.Status, uikit.CheckWarn)
 	}
 }
 
@@ -247,8 +249,8 @@ func TestCheckMoAIVersion(t *testing.T) {
 	if check.Name != "MoAI Version" {
 		t.Errorf("check.Name = %q, want 'MoAI Version'", check.Name)
 	}
-	if check.Status != CheckOK {
-		t.Errorf("check.Status = %q, want %q", check.Status, CheckOK)
+	if check.Status != uikit.CheckOK {
+		t.Errorf("check.Status = %q, want %q", check.Status, uikit.CheckOK)
 	}
 	if !strings.Contains(check.Message, "moai-adk") {
 		t.Errorf("check.Message should contain 'moai-adk', got %q", check.Message)
@@ -257,18 +259,18 @@ func TestCheckMoAIVersion(t *testing.T) {
 
 func TestStatusIcon(t *testing.T) {
 	tests := []struct {
-		status   CheckStatus
+		status   uikit.CheckStatus
 		contains string
 	}{
-		{CheckOK, "\u2713"},   // ✓
-		{CheckWarn, "!"},      // ⚠
-		{CheckFail, "\u2717"}, // ✗
-		{CheckStatus("unknown"), "?"},
+		{uikit.CheckOK, "\u2713"},   // ✓
+		{uikit.CheckWarn, "!"},      // ⚠
+		{uikit.CheckFail, "\u2717"}, // ✗
+		{uikit.CheckStatus("unknown"), "?"},
 	}
 	for _, tt := range tests {
-		got := statusIcon(tt.status)
+		got := uikit.StatusIcon(tt.status)
 		if !strings.Contains(got, tt.contains) {
-			t.Errorf("statusIcon(%q) = %q, want string containing %q", tt.status, got, tt.contains)
+			t.Errorf("uikit.StatusIcon(%q) = %q, want string containing %q", tt.status, got, tt.contains)
 		}
 	}
 }
@@ -295,7 +297,7 @@ func TestExportDiagnostics(t *testing.T) {
 	exportPath := filepath.Join(tmpDir, "diagnostics.json")
 
 	checks := []DiagnosticCheck{
-		{Name: "Test", Status: CheckOK, Message: "passed"},
+		{Name: "Test", Status: uikit.CheckOK, Message: "passed"},
 	}
 
 	if err := exportDiagnostics(exportPath, checks); err != nil {
@@ -351,7 +353,7 @@ func TestCheckBinaryFreshness_BasicInvariants(t *testing.T) {
 	if check.Name != "Binary Freshness" {
 		t.Errorf("check.Name = %q, want 'Binary Freshness'", check.Name)
 	}
-	if check.Status != CheckOK && check.Status != CheckWarn {
+	if check.Status != uikit.CheckOK && check.Status != uikit.CheckWarn {
 		t.Errorf("check.Status = %q, want ok or warn", check.Status)
 	}
 	if check.Message == "" {
@@ -372,7 +374,7 @@ func TestCheckMCPScopeDuplicates_NoDuplicates(t *testing.T) {
 	if check.Name != "MCP Scope Duplicates" {
 		t.Errorf("check.Name = %q, want 'MCP Scope Duplicates'", check.Name)
 	}
-	if check.Status != CheckOK {
+	if check.Status != uikit.CheckOK {
 		t.Errorf("no duplicates: check.Status = %q, want ok; msg=%s", check.Status, check.Message)
 	}
 }
@@ -398,7 +400,7 @@ func TestCheckMCPScopeDuplicates_MissingFile(t *testing.T) {
 	tmpDir := t.TempDir() // no .mcp.json created
 	check := checkMCPScopeDuplicates(tmpDir, false)
 	// Missing .mcp.json is OK — project may not use MCP
-	if check.Status != CheckOK {
+	if check.Status != uikit.CheckOK {
 		t.Errorf("missing .mcp.json: check.Status = %q, want ok", check.Status)
 	}
 }

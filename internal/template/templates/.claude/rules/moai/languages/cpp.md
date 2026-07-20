@@ -4,10 +4,6 @@ paths: "**/*.cpp,**/*.hpp,**/*.h,**/*.cc,**/CMakeLists.txt"
 
 # C++ Development Guide
 
-
----
-
-
 Modern C++ (C++23/C++20) Development Specialist - RAII, smart pointers, concepts, ranges, modules, and CMake.
 
 
@@ -78,11 +74,11 @@ For comprehensive coverage including:
 - Production patterns (dependency injection, factories)
 - Extended testing with Google Test and Catch2
 
-Apply the Quick Patterns and feature sections above together with the Context7 library mappings for these advanced topics; this guide is self-contained.
+Apply the Quick Patterns and feature sections above together with the Documentation References for these advanced topics; this guide is self-contained.
 
 ---
 
-## Context7 Library Mappings
+## Documentation References
 
 - /microsoft/vcpkg - Package manager
 - /conan-io/conan - Conan package manager
@@ -92,8 +88,7 @@ Apply the Quick Patterns and feature sections above together with the Context7 l
 - /nlohmann/json - JSON for Modern C++
 - /gabime/spdlog - Fast logging library
 
----
-
+## Related Resources
 
 - `.claude/rules/moai/languages/rust.md` - Systems programming comparison and interop
 - `moai-domain-backend` - Backend service architecture

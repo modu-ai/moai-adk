@@ -43,12 +43,13 @@ import (
 // newSpecAuditCmd constructs the cobra command implementing `moai spec audit`.
 //
 // Flags:
-//   --json                       Emit AuditResult as JSON on stdout per AC-LSG-007.
-//   --filter-era <era>           Restrict drift_findings to one era
-//                                (V2.x / V3R2-R4 / V3R5 / V3R6 / unclassified).
-//   --include-grandfathered      Surface pre-V3R6 SPECs as INFO findings.
-//   --strict                     Exit code 1 when any MUST-FIX drift finding exists.
-//   --base-dir <path>            Project root (defaults to current working directory).
+//
+//	--json                       Emit AuditResult as JSON on stdout per AC-LSG-007.
+//	--filter-era <era>           Restrict drift_findings to one era
+//	                             (V2.x / V3R2-R4 / V3R5 / V3R6 / unclassified).
+//	--include-grandfathered      Surface pre-V3R6 SPECs as INFO findings.
+//	--strict                     Exit code 1 when any MUST-FIX drift finding exists.
+//	--base-dir <path>            Project root (defaults to current working directory).
 func newSpecAuditCmd() *cobra.Command {
 	var (
 		jsonOutput           bool
@@ -78,7 +79,7 @@ Drift patterns (V3R6 only):
   - Y_Y_Y_Y_StatusDrift   all 4 phase markers + valid SHAs but status != completed
 
 Each MUST-FIX finding includes a remediation command (typically
-`+"`moai spec close <SPEC-ID> --backfill-only`"+`) that resolves the drift.
+` + "`moai spec close <SPEC-ID> --backfill-only`" + `) that resolves the drift.
 
 JSON output schema (--json):
   {
@@ -93,8 +94,8 @@ JSON output schema (--json):
 
 Exit codes:
   0 = success (audit completed; findings emitted)
-  1 = strict mode + MUST-FIX drift findings detected
-  2 = audit engine error (invalid spec directory, IO failure)`,
+  2 = strict mode + MUST-FIX drift findings detected (system-error class)
+  1 = audit engine error (invalid spec directory, IO failure)`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			opts := spec.AuditOptions{
 				BaseDir:              baseDir,
@@ -123,7 +124,7 @@ Exit codes:
 	cmd.Flags().BoolVar(&includeGrandfathered, "include-grandfathered", false,
 		"Surface pre-V3R6 SPECs as INFO findings (otherwise excluded)")
 	cmd.Flags().BoolVar(&strict, "strict", false,
-		"Exit code 1 when any MUST-FIX drift finding exists")
+		"Exit code 2 when any MUST-FIX drift finding exists")
 	cmd.Flags().StringVar(&baseDir, "base-dir", "",
 		"Project root directory (default: current working directory)")
 
@@ -148,12 +149,15 @@ func renderAuditResult(cmd *cobra.Command, result *spec.AuditResult, jsonOutput,
 		renderAuditHuman(out, result)
 	}
 
-	// Strict mode: exit 1 if any MUST-FIX drift finding is present.
+	// Strict mode: exit 2 if any MUST-FIX drift finding is present.
+	// REQ-CONT-001-005 (SPEC-CLIFIX-CONTRACT-001 M2) — MUST-FIX drift is a
+	// system-error-class verdict (exit 2), distinct from user-actionable exit 1.
 	if strict {
 		for _, f := range result.DriftFindings {
 			if f.Severity == "MUST-FIX" {
-				return fmt.Errorf("strict mode: %d MUST-FIX drift finding(s) detected",
-					countMustFix(result.DriftFindings))
+				return &exitCodeError{code: 2, msg: fmt.Sprintf(
+					"strict mode: %d MUST-FIX drift finding(s) detected",
+					countMustFix(result.DriftFindings))}
 			}
 		}
 	}
@@ -164,17 +168,18 @@ func renderAuditResult(cmd *cobra.Command, result *spec.AuditResult, jsonOutput,
 // renderAuditHuman emits a human-readable summary of the audit result.
 //
 // Format:
-//   Audit summary
-//   =============
-//   Total SPECs:        <N>
-//   Grandfathered:      <N> (pre-V3R6 — protected)
-//   Modern-era clean:   <N>
-//   Drift findings:     <N>
 //
-//   Findings:
-//     [MUST-FIX] SPEC-XXX (V3R6) — Y_Y_Y_Y_StatusDrift
-//                Remediation: moai spec close SPEC-XXX --backfill-only
-//     [INFO]     SPEC-YYY (V2.x) — Grandfathered
+//	Audit summary
+//	=============
+//	Total SPECs:        <N>
+//	Grandfathered:      <N> (pre-V3R6 — protected)
+//	Modern-era clean:   <N>
+//	Drift findings:     <N>
+//
+//	Findings:
+//	  [MUST-FIX] SPEC-XXX (V3R6) — Y_Y_Y_Y_StatusDrift
+//	             Remediation: moai spec close SPEC-XXX --backfill-only
+//	  [INFO]     SPEC-YYY (V2.x) — Grandfathered
 //
 // The format prioritizes scannability over machine readability; downstream
 // consumers that need structured data should use --json.
@@ -185,6 +190,12 @@ func renderAuditHuman(out interface{ Write(p []byte) (int, error) }, result *spe
 	_, _ = fmt.Fprintf(out, "Grandfathered:      %d (pre-V3R6 — protected)\n", result.Grandfathered)
 	_, _ = fmt.Fprintf(out, "Modern-era clean:   %d\n", result.ModernEraClean)
 	_, _ = fmt.Fprintf(out, "Drift findings:     %d\n", len(result.DriftFindings))
+	if result.TokensSpent != nil {
+		// M4 audit surface (REQ-TA-011): surfaced only for the single-SPEC /
+		// --filter-spec case. The value is a measurement baseline, not a
+		// billing-grade figure (see progress.md §I confidence qualifier).
+		_, _ = fmt.Fprintf(out, "Tokens spent:       %d\n", *result.TokensSpent)
+	}
 
 	if len(result.DriftFindings) == 0 {
 		_, _ = fmt.Fprintln(out, "\nNo drift findings — all modern-era SPECs clean.")

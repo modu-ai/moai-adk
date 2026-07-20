@@ -2,37 +2,40 @@
 title: 大型代码库
 weight: 80
 draft: false
-description: "整理在数百万行的单一代码树或多包 monorepo 中，让 Claude Code 聚焦于工作范围、收窄上下文的策略。"
+description: "整理在数百万行的单一树或多包 monorepo 中高效使用 Claude Code 的上下文收窄策略。"
 ---
 
-大型代码库(数百万行单一仓库，或多包 monorepo)中 Claude Code 可以正常工作。但默认配置针对小项目优化，所以**将上下文收窄到当前工作涉及的部分的策略**是必需的。
+# 大型代码库
+
+无论是数百万行的单一仓库，还是由多个包组成的 monorepo，Claude Code 在大型代码库中同样运转良好。只是默认配置假定的是小项目，因此**把上下文只收窄到每项工作实际触及的部分**的策略必不可少。
 
 {{< callout type="info" >}}
-**核心**：大型代码库的问题不是"读取全部文件"。而是**与当前工作无关的指令和文件填满上下文**。
+**一句话总结**：大型代码库的真正问题不是"文件多"，而是**与当前工作无关的指令与文件填满了上下文**。无关的令牌既拉低质量又抬高成本 —— 上下文收窄就是代币经济学。
 {{< /callout >}}
 
-## 1. 确定起点
+## 决定启动位置
 
-在哪里运行 `claude` 决定了一切。
+在哪里运行 `claude`，决定了之后的一切。
 
-| 启动位置 | 文件访问范围 | 加载的 CLAUDE.md | 适用场景 |
+| 启动位置 | 文件访问范围 | 加载的 CLAUDE.md | 适合的情形 |
 |---------|-----------|---------------|---------|
-| **仓库根目录** | 全部 | 仅根目录(下层按需加载) | 跨多个包/子系统的工作 |
-| **子目录** | 仅该子树 | 该目录 + 所有上级目录 | 限于单个包/子系统的工作 |
+| **仓库根** | 全部 | 仅根（下级按需） | 跨多个包/子系统的工作 |
+| **子目录** | 仅该子树 | 该目录 + 所有上级目录 | 限于一个包/子系统的工作 |
 
-**提示**：如果只关注一个包(如 `packages/api/`)，就在那个目录运行 `claude`。这样 `packages/web/` 的指令就不会被加载。
+若工作只聚焦于一个包（例如 `packages/api/`），就在该目录运行 `claude`。`packages/web/` 的指令根本不会被加载，无需费力删规则，上下文自然变轻。
 
-## 2. 按目录拆分 CLAUDE.md
+## 按目录拆分 CLAUDE.md
 
-如果把所有规则都放在根目录：
-- 太长，可读性差
-- 太通用，没有用处
-- 加载无关的指令
+把所有规则塞进一个根 CLAUDE.md 会产生三个问题。
 
-**解决**：在根目录放仓库全局规则，在每个子目录放该区域的规则。
+- 过长导致可读性下降
+- 为通用于所有包而写得太笼统，失去用处
+- 与工作无关的指令也在每个会话被加载
+
+解法是分层：根只放仓库全局规则，各子目录放该领域的规则。
 
 ```markdown
-# ./CLAUDE.md (根，所有会话都加载)
+# ./CLAUDE.md（根，所有会话加载）
 This is a monorepo with three packages:
 - packages/api: Node.js REST API with Express, TypeScript, PostgreSQL
 - packages/web: React frontend with Vite, TypeScript, TailwindCSS
@@ -42,7 +45,7 @@ Run commands from the package directory.
 ```
 
 ```markdown
-# ./packages/api/CLAUDE.md (该目录工作时才加载)
+# ./packages/api/CLAUDE.md（仅在此目录工作时加载）
 This package is the REST API server.
 
 - Run tests: `npm test` (uses Vitest)
@@ -52,13 +55,11 @@ This package is the REST API server.
 API routes are in src/routes/. Never write raw SQL in handlers.
 ```
 
-Claude 从 `packages/api/` 启动时：
-- 根目录和 packages/api/ CLAUDE.md 都会加载
-- packages/web/ 的指令**不会加载**
+当 Claude 从 `packages/api/` 启动时，根与 `packages/api/` 的 CLAUDE.md 都会加载，但 `packages/web/` 的指令**不会加载**。
 
-## 3. 排除无关的 CLAUDE.md
+## 排除无关的 CLAUDE.md
 
-其他团队的包或遗留代码用 `claudeMdExcludes` 跳过：
+其他团队的包或遗留代码的指令，用 `claudeMdExcludes` 配置跳过。
 
 ```json
 {
@@ -69,13 +70,13 @@ Claude 从 `packages/api/` 启动时：
 }
 ```
 
-根目录 CLAUDE.md 仍会加载，被排除的包无法访问。
+根 CLAUDE.md 仍然加载，只有被排除的包的指令从上下文中剔除。
 
-## 4. 屏蔽生成代码和第三方代码
+## 拦截生成代码与第三方代码
 
-`.gitignore` 中已有的路径(node_modules、dist、build)会自动从搜索结果中排除。
+已在 `.gitignore` 中的路径（node_modules、dist、build）会自动从搜索结果中排除。
 
-提交到仓库的生成代码或第三方 SDK 用权限规则屏蔽：
+对已提交的生成代码或第三方 SDK，用权限规则从读取层面直接拦截。生成文件又长又重复，对上下文的浪费尤其大。
 
 ```json
 {
@@ -90,22 +91,20 @@ Claude 从 `packages/api/` 启动时：
 }
 ```
 
-## 5. 代码智能 (LSP) 插件
+## 代码智能 (LSP) 插件
 
-逐行读取文件找符号定义效率很低。安装语言服务器插件后：
+为找一个符号定义而逐行读文件，是令牌视角下最昂贵的探索。装上语言服务器插件后，跳转定义、查找引用、直接查询类型错误都成为可能，文件读取本身可以大幅减少。
 
 ```bash
 /plugin install typescript-lsp@claude-plugins-official
 ```
 
-Claude 能进行 `go to definition`、`find references`、直接查询类型错误。
-
 - 支持 TypeScript、Python、Go、Rust 等主要语言
-- 需要 LSP 二进制文件(参考指南)
+- 系统中须已安装对应语言的 LSP 二进制（参考[插件文档](/claude-code/extensibility/plugins)）
 
-这样能大幅减少文件读取。
+## 用工作树只检出需要的目录
 
-## 6. 用 Worktree 只检出需要的目录
+以 `--worktree` 创建的工作树可通过 `worktree.sparsePaths` 配置只检出**列出的目录**而非全部。
 
 ```json
 {
@@ -119,11 +118,9 @@ Claude 能进行 `go to definition`、`find references`、直接查询类型错�
 }
 ```
 
-用 `--worktree` 创建的工作树不检出全部，而是**仅检出列表中的目录**。
-
-- 快速创建(全部克隆 vs 仅需部分)
+- 创建更快（只取需要的部分而非整体复制）
 - 节省磁盘空间
-- 多个工作树的 node_modules 去重：
+- 还可用 `symlinkDirectories` 消除多个工作树的 node_modules 重复。
 
 ```json
 {
@@ -134,9 +131,11 @@ Claude 能进行 `go to definition`、`find references`、直接查询类型错�
 }
 ```
 
-## 7. 授予访问其他包/仓库的权限
+列在 `symlinkDirectories` 中的目录会以符号链接共享主检出中的内容。
 
-从一个包启动但需要修改兄弟包时：
+## 授予对其他包/仓库的访问权
+
+从一个包启动后又需要修改兄弟包时，用 `additionalDirectories` 扩大访问范围。
 
 ```json
 {
@@ -149,15 +148,15 @@ Claude 能进行 `go to definition`、`find references`、直接查询类型错�
 }
 ```
 
-或在运行时：
+也可以不用配置而用运行时标志。
 
 ```bash
 claude --add-dir ../shared --add-dir ../web
 ```
 
-## 8. 为每个包添加 Skills
+## 按包添加技能
 
-每个包可以有仅限该区域的自动化命令(Skills)。
+每个包可以拥有该领域专属的技能。技能只在需要时加载，是无上下文负担地存放包专属知识的好容器。
 
 ```bash
 mkdir -p packages/api/.claude/skills/api-testing
@@ -182,24 +181,22 @@ Tests are in `src/__tests__/` mirroring `src/`.
 - `src/__tests__/helpers/auth.ts`: createTestUser(), getAuthToken()
 ```
 
-在 packages/api 中工作时自动加载 api-testing 技能，在 packages/web 中不会加载。
+在 `packages/api` 工作时 api-testing 技能自动加载，在 `packages/web` 则不会。
 
-## 9. 协调跨包工作
+## 跨包工作的协调
 
-同一变更影响多个包时(如：更新共享类型 + 修改所有调用处)：
+当同一变更触及多个包时（例如更新共享类型并修改所有调用处），两条原则有效。
 
-**在一个会话中处理全部变更**：一次性加载所有文件，保持决策一致。
+- **在一个会话中处理完整变更**：一次性加载相关文件，保持决策一致性。
+- **先把计划存成文件**：把计划留在 Markdown 文件里。会话拉长后上下文会被压缩，但存到磁盘的计划不会消失。"重要状态留在文件里"也是运营智能体循环的基本功。
 
-**事先编写计划**：把计划保存到 markdown 文件。会话变长后上下文会被压缩，但保存的计划不会消失。
+## 具体配置示例：monorepo
 
-## 10. 具体配置示例：Monorepo
+以下是完整配置示例。根放仓库全局拦截规则，包放该包的工作树·访问配置（MoAI-ADK 项目的话，`.moai/config/sections/workflow.yaml` 这类工作流配置也位于根）。
 
-下面是完整的配置示例。
-
-**根目录**(其他设置如 `.moai/config/sections/workflow.yaml` 也放根目录)：
+**根**（`.claude/settings.json`）：
 
 ```json
-// .claude/settings.json
 {
   "permissions": {
     "deny": [
@@ -210,7 +207,7 @@ Tests are in `src/__tests__/` mirroring `src/`.
 }
 ```
 
-**packages/api** (`.claude/settings.json`)：
+**packages/api**（`.claude/settings.json`）：
 
 ```json
 {
@@ -232,32 +229,42 @@ Tests are in `src/__tests__/` mirroring `src/`.
 }
 ```
 
-这样配置后：
-- 仅检出 `.claude/`、`packages/api/`、`packages/shared/` (worktree)
-- 可以访问 shared 包
-- 屏蔽生成/第三方文件
+这套配置的效果如下。
 
-## 11. 大型代码库技巧
+- 工作树只检出 `.claude/`、`packages/api/`、`packages/shared/`
+- 可访问 shared 包
+- 拦截对生成/第三方文件的访问
 
-### 按范围搜索
+## 技巧与窍门
 
-进行大规模变更时，先掌握影响范围：
+### 限定范围的搜索
+
+在做大变更之前先掌握影响范围。收窄搜索范围的习惯会减少需要读的文件数。
 
 ```bash
-grep -r "FunctionName" packages/api/  # 仅在 api 中搜索
-grep -r "FunctionName" packages/      # 在所有包中搜索
+grep -r "FunctionName" packages/api/  # 只搜 api
+grep -r "FunctionName" packages/      # 所有包
 ```
 
-### 按层分析
+### 分层分析
 
-涉及多层(数据库、API、UI)的变更时，分别理解各层，但一个会话中只集中一个变更。
+若变更触及 DB·API·UI 等多个层，就分别理解每一层，并在一个会话中只专注一项变更。
 
-### 文档化指示
+### 文档化指令
 
-大规模变更后为保持文档更新，在变更计划中加入"修改文档"项。
+为了大变更之后文档不至陈旧，在变更计划中加入"修改 docs"条目。
 
-## 参考
+## 相关文档
 
-此指南基于 Anthropic 官方文档 [Set up Claude Code in a monorepo or large codebase](https://code.claude.com/docs/en/large-codebases) 编写。
+- [上下文窗口](/claude-code/context-memory/context-window)
+- [工作树](/claude-code/agentic/worktrees)
+- [最佳实践](/claude-code/agentic/best-practices)
 
-更多策略请参考 Anthropic 的 [Best practices for Claude Code](https://code.claude.com/docs/en/best-practices) 文档。
+## 参考资料
+
+- [Set up Claude Code in a monorepo or large codebase（官方文档）](https://code.claude.com/docs/en/large-codebases)
+- [Best practices for Claude Code（官方文档）](https://code.claude.com/docs/en/best-practices)
+
+{{< callout type="tip" >}}
+在 monorepo 里最省力的第一步是"做某个包的工作就在该包目录运行 `claude`"。一个配置文件都不用碰就切断了无关指令的加载 —— 性价比最高的习惯。
+{{< /callout >}}

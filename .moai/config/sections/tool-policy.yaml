@@ -919,21 +919,6 @@ entries:
     audit: "background shell termination"
     source: ".claude/settings.json#permissions.allow"
 
-  # --- §D.5b MCP tools (read-only docs lookup) ---
-  - tool: "mcp__context7__get-library-docs"
-    args_pattern: ""
-    risk_tier: read
-    decision: allow
-    owner_agent: orchestrator
-    audit: "Context7 library docs lookup"
-    source: ".claude/settings.json#permissions.allow"
-  - tool: "mcp__context7__resolve-library-id"
-    args_pattern: ""
-    risk_tier: read
-    decision: allow
-    owner_agent: orchestrator
-    audit: "Context7 library ID resolution"
-    source: ".claude/settings.json#permissions.allow"
   - tool: "WebFetch"
     args_pattern: ""
     risk_tier: read

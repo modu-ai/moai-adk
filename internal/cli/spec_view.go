@@ -2,6 +2,7 @@ package cli
 
 import (
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -92,14 +93,27 @@ func viewAcceptanceCriteria(cmd *cobra.Command, specID string, shapeTrace bool) 
 		return nil
 	}
 
-	_, _ = fmt.Fprintf(cmd.OutOrStdout(), "Acceptance Criteria for %s:\n\n", specID)
-	printTree(cmd, criteria, "", shapeTrace, 0, "")
+	// Render through the glamour-mediated tree gateway (renderTreeMarkdown,
+	// SPEC-CLI-TUX-V3-004 REQ-TUX4-004): rich glamour render on TTY, byte-stable
+	// plain passthrough (identical to the pre-glamour surface) on
+	// non-TTY/NO_COLOR (REQ-TUX4-005).
+	var b strings.Builder
+	fprintTree(&b, criteria, "", shapeTrace, 0, "")
+	out := cmd.OutOrStdout()
+	header := fmt.Sprintf("Acceptance Criteria for %s:", specID)
+	_, _ = fmt.Fprint(out, renderTreeMarkdown(out, header, b.String()))
 
 	return nil
 }
 
-// printTree recursively outputs Acceptance Criteria in tree format.
+// printTree recursively outputs Acceptance Criteria in tree format to the
+// command's stdout. Thin wrapper over fprintTree (kept for test compatibility).
 func printTree(cmd *cobra.Command, criteria []spec.Acceptance, prefix string, shapeTrace bool, depth int, parentID string) {
+	fprintTree(cmd.OutOrStdout(), criteria, prefix, shapeTrace, depth, parentID)
+}
+
+// fprintTree recursively writes Acceptance Criteria in tree format to w.
+func fprintTree(w io.Writer, criteria []spec.Acceptance, prefix string, shapeTrace bool, depth int, parentID string) {
 	for i, ac := range criteria {
 		// determine tree glyph
 		var glyph string
@@ -115,11 +129,11 @@ func printTree(cmd *cobra.Command, criteria []spec.Acceptance, prefix string, sh
 
 		// output basic information
 		line := prefix + glyph + formatAcceptanceNode(ac, shapeTrace, depth, parentID)
-		_, _ = fmt.Fprintln(cmd.OutOrStdout(), line)
+		_, _ = fmt.Fprintln(w, line)
 
 		// recursively output child nodes
 		if len(ac.Children) > 0 {
-			printTree(cmd, ac.Children, childPrefix, shapeTrace, depth+1, ac.ID)
+			fprintTree(w, ac.Children, childPrefix, shapeTrace, depth+1, ac.ID)
 		}
 	}
 }

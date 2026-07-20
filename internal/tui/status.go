@@ -5,7 +5,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/charmbracelet/lipgloss"
+	"charm.land/lipgloss/v2"
 )
 
 // StatusIcon returns a single-glyph status indicator for the given kind.
@@ -68,7 +68,7 @@ func Spinner(label string, th *Theme) string {
 	spinStyle := lipgloss.NewStyle().Foreground(lipgloss.Color(t.Accent))
 	labelStyle := lipgloss.NewStyle().Foreground(lipgloss.Color(t.Body))
 
-	return spinStyle.Render(frame) + " " + labelStyle.Render(label)
+	return downsample(spinStyle.Render(frame) + " " + labelStyle.Render(label))
 }
 
 // ProgressOpts configures a Progress render call.
@@ -116,7 +116,7 @@ func Progress(value, max int, opts ProgressOpts) string {
 	bar := filledStyle.Render(strings.Repeat("█", filled)) +
 		emptyStyle.Render(strings.Repeat("░", empty))
 
-	return bar
+	return downsample(bar)
 }
 
 // Stepper renders a compact step indicator like "● 1 / 6 ○ ○ ○ ○ ○".
@@ -152,7 +152,7 @@ func Stepper(current, total int, th *Theme) string {
 	}
 
 	label := labelStyle.Render(" " + itoa(current) + " / " + itoa(total))
-	return b.String() + label
+	return downsample(b.String() + label)
 }
 
 // itoa converts an int to a string without importing strconv at top-level.

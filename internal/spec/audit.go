@@ -15,6 +15,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -46,6 +47,14 @@ type AuditResult struct {
 	Grandfathered  int            `json:"grandfathered"`
 	ModernEraClean int            `json:"modern_era_clean"`
 	DriftFindings  []DriftFinding `json:"drift_findings"`
+	// TokensSpent surfaces the per-SPEC tokens_spent integer parsed from the
+	// audited SPEC's progress.md §I Token Accounting section (M4 audit surface,
+	// REQ-TA-011/012). Nil when the SPEC has no §I section or no tokens_spent
+	// line — never fabricated. Populated when exactly one SPEC is audited (the
+	// --filter-spec single-SPEC case); multi-SPEC audits leave it nil because
+	// aggregating across SPECs with different confidence qualifiers would be
+	// misleading (precision-honesty, spec.md §G anti-pattern).
+	TokensSpent *int `json:"tokens_spent,omitempty"`
 }
 
 // DriftFinding represents a single audit finding.
@@ -84,6 +93,59 @@ const (
 
 // specStatusPattern extracts `status:` field from spec.md frontmatter.
 var specStatusPattern = regexp.MustCompile(`(?m)^status:\s*(.+?)\s*$`)
+
+// sectionIHeading is the canonical progress.md §I Token Accounting heading.
+// It MUST match the literal produced by the M3 §I writer
+// (internal/tokenusage.SectionIHeading). A local constant is used instead of a
+// cross-package import because (a) no import cycle exists between internal/spec
+// and internal/tokenusage, but (b) keeping the parser self-contained avoids
+// coupling the audit engine's read path to the writer's package; the two
+// literals are paired by a round-trip test contract (the M4 test fixture
+// mirrors BuildSectionI output verbatim). If the heading ever changes in M3,
+// this constant MUST be updated in lockstep.
+const sectionIHeading = "## §I Token Accounting"
+
+// parseTokensSpentFromSectionI extracts the integer value of the
+// `- tokens_spent:` field from the `## §I Token Accounting` section of a
+// progress.md body. Returns nil when the section is absent, the field line is
+// absent, or the value is not a base-10 integer — never fabricates a value
+// (REQ-TA-012 precision-honesty: absent evidence is reported as nil, not zero).
+//
+// The section span is the §I heading line through the next top-level (`## `)
+// heading or EOF, matching the M3 writer's applySectionI span contract so the
+// parser and writer agree on section boundaries.
+func parseTokensSpentFromSectionI(progressContent string) *int {
+	if progressContent == "" {
+		return nil
+	}
+	lines := strings.Split(progressContent, "\n")
+	inSection := false
+	for _, line := range lines {
+		trimmed := strings.TrimSpace(line)
+		if strings.HasPrefix(trimmed, "## ") {
+			if inSection {
+				break // reached the next top-level heading — §I section ended
+			}
+			if trimmed == sectionIHeading {
+				inSection = true
+			}
+			continue
+		}
+		if !inSection {
+			continue
+		}
+		const prefix = "- tokens_spent:"
+		if strings.HasPrefix(trimmed, prefix) {
+			valStr := strings.TrimSpace(strings.TrimPrefix(trimmed, prefix))
+			n, err := strconv.Atoi(valStr)
+			if err != nil {
+				return nil // malformed value — treat as absent, do not fabricate
+			}
+			return &n
+		}
+	}
+	return nil
+}
 
 // Audit scans .moai/specs/SPEC-*/ under opts.BaseDir, classifies each SPEC by
 // era, and emits drift findings for V3R6 SPECs with cross-tab pattern violations.
@@ -124,6 +186,13 @@ func Audit(opts AuditOptions) (*AuditResult, error) {
 	}
 	sort.Strings(specDirs)
 
+	// M4 audit surface (REQ-TA-011/012): track the parsed §I tokens_spent so
+	// AuditResult can surface it for the single-SPEC / --filter-spec case.
+	// Multi-SPEC audits leave TokensSpent nil (aggregating across SPECs with
+	// different confidence qualifiers would mislead — precision-honesty).
+	auditedCount := 0
+	var singleSpecTokensSpent *int
+
 	for _, specName := range specDirs {
 		// Apply SPEC-ID filter (SPEC-V3R6-ORCH-IGGDA-001 M5) at the TOP of the
 		// loop — this gates the AuditError branch too (avoids leaking AuditError
@@ -135,7 +204,7 @@ func Audit(opts AuditOptions) (*AuditResult, error) {
 		}
 
 		specDir := filepath.Join(specsDir, specName)
-		findings, classified, err := auditSpec(specDir, specName, opts)
+		findings, classified, tokensSpent, err := auditSpec(specDir, specName, opts)
 		if err != nil {
 			// Surface per-spec errors as findings with FindingType: "AuditError"
 			// rather than aborting the entire run.
@@ -149,6 +218,8 @@ func Audit(opts AuditOptions) (*AuditResult, error) {
 		}
 
 		result.TotalSpecs++
+		auditedCount++
+		singleSpecTokensSpent = tokensSpent // last-write wins; only surfaced when auditedCount==1
 		if classified.EraFinal() {
 			result.Grandfathered++
 		} else if classified == EraV3R6 {
@@ -174,15 +245,34 @@ func Audit(opts AuditOptions) (*AuditResult, error) {
 		result.DriftFindings = append(result.DriftFindings, findings...)
 	}
 
+	// M4: surface tokens_spent only when exactly one SPEC was audited (the
+	// --filter-spec case and the single-fixture case). For multi-SPEC audits
+	// the field stays nil — a per-SPEC breakdown is a separate concern and
+	// summing across SPECs would fabricate a misleading aggregate.
+	if auditedCount == 1 {
+		result.TokensSpent = singleSpecTokensSpent
+	}
+
+	// SPEC-OBSERVE-HYGIENE-001 M1 (REQ-OBH-001): consume the
+	// status-transition-audit.log as a write-site cross-check. The log records
+	// status values captured at Write/Edit time — a signal the per-SPEC git
+	// history scan above cannot see. Absent/corrupt log degrades to zero
+	// findings (graceful, never an error per EC-1).
+	result.DriftFindings = append(result.DriftFindings, crossCheckTransitionLog(baseDir, opts)...)
+
 	return result, nil
 }
 
-// auditSpec audits a single SPEC directory and returns (findings, classifiedEra, error).
-func auditSpec(specDir, specID string, opts AuditOptions) ([]DriftFinding, Era, error) {
+// auditSpec audits a single SPEC directory and returns (findings, classifiedEra,
+// tokensSpent, error). tokensSpent is the parsed §I value (nil when the SPEC
+// has no populated §I section — never fabricated; surfaced by Audit() on the
+// aggregate AuditResult for the single-SPEC / --filter-spec case).
+func auditSpec(specDir, specID string, opts AuditOptions) ([]DriftFinding, Era, *int, error) {
 	signals, err := LoadEraSignalsFromDir(specDir)
 	if err != nil {
-		return nil, EraUnclassified, fmt.Errorf("load era signals: %w", err)
+		return nil, EraUnclassified, nil, fmt.Errorf("load era signals: %w", err)
 	}
+	tokensSpent := parseTokensSpentFromSectionI(signals.ProgressMDContent)
 
 	era, heuristic := ClassifyEra(signals)
 	var findings []DriftFinding
@@ -214,7 +304,7 @@ func auditSpec(specDir, specID string, opts AuditOptions) ([]DriftFinding, Era, 
 				},
 			})
 		}
-		return findings, era, nil
+		return findings, era, tokensSpent, nil
 	}
 
 	// EraUnclassified — emit INFO finding for visibility but no MUST-FIX action.
@@ -229,7 +319,7 @@ func auditSpec(specDir, specID string, opts AuditOptions) ([]DriftFinding, Era, 
 				"reason":            "no era heuristic matched; consider explicit era: field",
 			},
 		})
-		return findings, era, nil
+		return findings, era, tokensSpent, nil
 	}
 
 	// V3R6 — check cross-tab pattern for drift
@@ -238,7 +328,7 @@ func auditSpec(specDir, specID string, opts AuditOptions) ([]DriftFinding, Era, 
 		findings = append(findings, *driftFinding)
 	}
 
-	return findings, era, nil
+	return findings, era, tokensSpent, nil
 }
 
 // checkV3R6Drift performs the V3R6 status-drift detection under the 3-phase

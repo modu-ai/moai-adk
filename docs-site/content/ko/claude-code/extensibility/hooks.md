@@ -14,7 +14,7 @@ description: "Claude Code 라이프사이클 이벤트에 반응해 자동으로
 {{< /callout >}}
 
 {{< callout type="tip" >}}
-이 페이지는 개념 소개에 집중합니다. MoAI-ADK가 hook을 실제로 어떻게 등록하고 운영하는지(셸 래퍼 패턴, 이벤트별 동작, 품질 게이트 연동)는 깊이 있는 MoAI-ADK 가이드에서 다룹니다. 손에 잡히는 실전 내용은 [Hooks 가이드](/advanced/hooks-guide)와 [Hooks 이벤트 레퍼런스](/advanced/hooks-reference)를 참고하세요.
+이 페이지는 개념 소개에 집중합니다. MoAI-ADK가 hook을 실제로 어떻게 등록하고 운영하는지(셸 래퍼 패턴, 이벤트별 동작, 품질 게이트 연동)는 깊이 있는 MoAI-ADK 가이드에서 다룹니다. 손에 잡히는 실전 내용은 [Hooks 가이드](/ko/advanced/hooks-guide)와 [Hooks 이벤트 레퍼런스](/ko/advanced/hooks-reference)를 참고하세요.
 {{< /callout >}}
 
 ## 훅이란
@@ -42,7 +42,7 @@ description: "Claude Code 라이프사이클 이벤트에 반응해 자동으로
 
 ## 주요 이벤트
 
-훅이 반응할 수 있는 이벤트는 30개 이상이며, 다음은 가장 자주 쓰이는 것들입니다.
+훅이 반응할 수 있는 이벤트는 30개 이상이며, 그중 가장 자주 쓰이는 이벤트는 다음과 같습니다.
 
 | 이벤트 | 발동 시점 |
 | :--- | :--- |
@@ -103,12 +103,14 @@ flowchart TD
 
 ## MoAI-ADK와 훅
 
-MoAI-ADK는 셸 스크립트 래퍼가 `moai hook <event>` 바이너리를 호출하는 패턴으로 hook을 운영하며, 상태 전이 소유권·sync 단계 품질 게이트·에이전트 팀 작업 완료 검증 등을 hook으로 강제합니다. 이 부분의 실전 등록 방법과 이벤트별 세부 동작은 아래 깊이 있는 가이드에서 다룹니다.
+MoAI-ADK는 셸 스크립트 래퍼가 `moai hook <event>` 바이너리를 호출하는 패턴으로 hook을 운영하며, 상태 전이 소유권·sync 단계 품질 게이트·에이전트 팀 작업 완료 검증 등을 hook으로 강제합니다.
+
+하네스 엔지니어링 관점에서 hook은 "평가자와 권한 컨트롤은 에이전트의 판단 밖에 두라"는 원칙의 구현체입니다. 모델이 규칙을 기억해 주길 바라는 대신 런타임이 규칙을 집행하므로, 자율 루프가 아무리 오래 돌아도 품질 게이트는 결정적으로 작동합니다. MoAI-ADK의 `/goal` 자율 실행과 자가 진화 하네스가 안전할 수 있는 이유도, Stop hook 기반 조건 평가와 사용자 승인 게이트가 루프 바깥에서 hook으로 강제되기 때문입니다. 실전 등록 방법과 이벤트별 세부 동작은 아래 깊이 있는 가이드에서 다룹니다.
 
 ## 관련 문서
 
-- [Hooks 가이드](/advanced/hooks-guide)
-- [Hooks 이벤트 레퍼런스](/advanced/hooks-reference)
+- [Hooks 가이드](/ko/advanced/hooks-guide)
+- [Hooks 이벤트 레퍼런스](/ko/advanced/hooks-reference)
 
 ## 참고 자료
 

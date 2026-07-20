@@ -6,23 +6,38 @@
 package cli
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/spf13/cobra"
 )
 
 // seedUsageLog pre-populates usage-log.jsonl with n identical user_prompt events
 // so the classifier finds at least one aggregatable pattern.
+//
+// NOTE (SPEC-HARNESS-RATCHET-REWIRE-001): the events carry a non-empty
+// context_hash so they pass the eligibility predicate (REQ-HRR-003). The prior
+// degenerate user_prompt:: form (empty subject + empty context) is now
+// excluded from promotion by design — seeding it would produce zero promotions.
+//
+// The timestamp is computed relative to now (NOT a hardcoded absolute date):
+// RecordExtendedEvent prunes events older than defaultRetentionDays (30) on
+// every call, so a fixed past date would age out of the retention window and
+// be archived away before classify runs, yielding zero promotions. Using a
+// recent timestamp keeps the seeded events inside the window regardless of the
+// wall-clock date the suite executes.
 func seedUsageLog(t *testing.T, dir string, n int) {
 	t.Helper()
 	logDir := filepath.Join(dir, ".moai", "harness")
 	if err := os.MkdirAll(logDir, 0o755); err != nil {
 		t.Fatalf("usage-log 디렉터리 생성 실패: %v", err)
 	}
-	line := `{"timestamp":"2026-06-17T10:00:00Z","event_type":"user_prompt","subject":"","context_hash":"","tier_increment":0,"schema_version":"v2.1"}` + "\n"
+	ts := time.Now().UTC().Add(-24 * time.Hour).Format(time.RFC3339)
+	line := fmt.Sprintf(`{"timestamp":%q,"event_type":"user_prompt","subject":"seed","context_hash":"seed-ctx","tier_increment":0,"schema_version":"v2.1"}`, ts) + "\n"
 	var b strings.Builder
 	for i := 0; i < n; i++ {
 		b.WriteString(line)

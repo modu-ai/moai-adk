@@ -393,4 +393,56 @@ func logEvidence(input *HookInput) {
 			"error", err,
 		)
 	}
+
+	// REQ-HRR-002: when the evidence writer detected a test failure, also feed
+	// the failure signal into the harness learning loop as a test_fail:<pkg>:
+	// event. This is the sibling of REQ-HRR-001's tool_failure path — failures
+	// are the highest-information learning signal and must not be invisible to
+	// the ratchet. The package is derived from the test command (low-cardinality
+	// identifier). Fail-open (recordTestFailEvent logs and swallows errors).
+	if rec.IsTestFail {
+		var bi bashToolInput
+		if len(input.ToolInput) > 0 {
+			_ = json.Unmarshal(input.ToolInput, &bi)
+		}
+		if pkg := extractTestPackage(bi.Command); pkg != "" {
+			recordTestFailEvent(input, pkg)
+		}
+	}
+}
+
+// extractTestPackage derives a low-cardinality package identifier from a test
+// command for the test_fail:<package>: event key (REQ-HRR-002). For the common
+// case `go test ./internal/hook/...` it returns `internal/hook`. Returns "" for
+// commands with no recognizable single package (e.g. `go test ./...`, bare
+// `go test`, or non-test commands) — the caller skips recording when empty to
+// avoid a degenerate test_fail:: key.
+//
+// The extraction is deliberately conservative: a wrong-but-stable package is
+// worse than no event (it would mis-aggregate). Only a single explicit package
+// path produces a non-empty result.
+func extractTestPackage(command string) string {
+	trimmed := strings.TrimSpace(command)
+	// Recognize `go test <pkg-arg>` where pkg-arg starts with "./".
+	rest, ok := strings.CutPrefix(trimmed, "go test ")
+	if !ok {
+		return ""
+	}
+	arg := strings.TrimSpace(rest)
+	// Reject all-packages / bare cases — no single package identifier.
+	if arg == "" || arg == "./..." || arg == "." || arg == "./" {
+		return ""
+	}
+	// Only accept a single path argument (no flags / multiple paths).
+	if strings.ContainsAny(arg, " \t") {
+		return ""
+	}
+	arg = strings.TrimPrefix(arg, "./")
+	arg = strings.TrimSuffix(arg, "/...")
+	arg = strings.TrimSuffix(arg, "/")
+	// Guard against residual bare markers after trimming.
+	if arg == "" || arg == "." || arg == "..." {
+		return ""
+	}
+	return arg
 }

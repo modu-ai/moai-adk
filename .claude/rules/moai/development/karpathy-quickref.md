@@ -13,7 +13,7 @@ Mapping Andrej Karpathy's 4 coding principles to MoAI's 6 Agent Core Behaviors w
 |---|---|---|
 | Think Before Coding | Surface Assumptions + Manage Confusion | 95% |
 | Simplicity First | Enforce Simplicity + Scope Discipline | 90% |
-| Surgical Changes | Scope Discipline + Scope Discipline | 85% |
+| Surgical Changes | Scope Discipline + Enforce Simplicity | 85% |
 | Goal-Driven Execution | Verify Don't Assume + Push Back | 80% |
 
 ## Checkpoint Questions
@@ -50,5 +50,4 @@ For concrete wrong/right code examples, see `.claude/skills/moai/references/anti
 
 ---
 
-**Version**: 1.0.0  
-**Last Updated**: 2026-04-28
+**Version**: 1.0.0

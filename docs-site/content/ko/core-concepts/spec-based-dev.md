@@ -4,7 +4,8 @@ weight: 40
 draft: false
 ---
 
-MoAI-ADK의 SPEC 기반 개발 방법론을 상세히 안내합니다.
+MoAI-ADK의 SPEC 기반 개발 방법론을 상세히 안내합니다. SPEC은 에이전틱 하네스의 입력이자, 토크노믹스의 숨은 도구입니다 — 요구사항이 파일로 남아 있으면 세션을 끊고 `/clear`로 컨텍스트를 비워도 SPEC 한 줄로 작업을 이어갈 수 있어, 같은 설명을 반복하며 토큰을 태울 일이 없습니다.
+
 
 {{< callout type="info" >}}
   **한 줄 요약:** SPEC은 "AI와 나눈 대화를 문서로 남기는 것"입니다. 세션이
@@ -63,7 +64,7 @@ flowchart TD
 
 ### SPEC으로 문제 해결하기
 
-SPEC은 대화 내용을 **파일로 저장**하여 이 문제를 근본적으로 해결합니다.
+SPEC은 대화 내용을 **파일로 저장**하여 이 문제를 근본적으로 해결합니다. 파일에 남은 결정은 컨텍스트 윈도우와 무관하게 살아남습니다 — 하네스 엔지니어링에서 말하는 "durable state in files" (파일에 담긴 지속 상태) 의 대표적인 예입니다.
 
 ```mermaid
 flowchart TD
@@ -93,17 +94,23 @@ flowchart TD
 
 {{< /callout >}}
 
-## EARS 형식
+## GEARS 요구사항 형식
 
-**EARS** (Easy Approach to Requirements Syntax) 는 요구사항을 명확하게 작성하는
-방법입니다. 자연어의 모호함을 제거하고, 테스트로 검증할 수 있는 형식으로
-요구사항을 변환합니다.
+**GEARS** (Generalized Approach to Requirements Syntax) 는 v3.0.0부터 MoAI-ADK의
+**공식 요구사항 표기법**입니다. 자연어의 모호함을 제거하고, 테스트로 검증할 수
+있는 형식으로 요구사항을 기술합니다. 신규 SPEC은 모두 GEARS 표기를 사용합니다.
 
-EARS는 5가지 유형의 요구사항 패턴을 제공합니다.
+{{< icon info >}} **레거시 호환 — EARS (만료 2026-11-22)**: GEARS 이전의 **EARS**
+(Easy Approach to Requirements Syntax) 표기는 6개월간(**2026-11-22 만료**)
+하위 호환성을 유지합니다. 기존 SPEC 워크플로우 규칙 일부가 여전히 EARS 표기를
+참조할 수 있으나, 신규 SPEC은 GEARS를 사용합니다. 아래 5가지 패턴은 EARS와
+GEARS가 공유하는 요구사항 유형이며, 예시는 레거시 EARS 표기를 기준으로 합니다.
+
+### 5가지 요구사항 패턴
 
 ### 1. Ubiquitous (항상 참)
 
-시스템이 **항상** 준수해야 하는 요구사항입니다. 조건 없이 항상 적용됩니다.
+시스템이 **항상** 준수해야 하는 요구사항입니다. 별도 조건 없이 늘 적용됩니다.
 
 **형식:** "시스템은 ~해야 한다"
 
@@ -233,7 +240,7 @@ flowchart TD
 **일상 비유:** "시간이 되면 디저트도 만들면 좋겠다"와 같습니다. 있으면 좋지만
 없어도 괜찮습니다.
 
-### EARS 한눈에 보기
+### 5가지 패턴 한눈에 보기
 
 | 유형             | 형식                          | 용도               | 우선순위         |
 | ---------------- | ----------------------------- | ------------------ | ---------------- |
@@ -256,14 +263,21 @@ SPEC 문서는 **manager-spec 에이전트**가 자동으로 생성합니다. �
 | `plan.md` | 구현 계획 | 작업 분해, 기술 스택 명세, 위험 분석 및 완화 전략 |
 | `acceptance.md` | 인수 기준 | Given/When/Then 시나리오, 엣지 케이스, 성능 및 품질 게이트 |
 
-### spec.md -- EARS 요구사항
+{{< callout type="info" >}}
+  위 3개 파일 외에, plan 단계는 세션 간 진행 상태를 추적하는 **`progress.md`**도
+  함께 생성합니다 (라이프사이클 단계별 audit-ready 신호 기록). 규모가 큰 **Tier L**
+  SPEC의 경우 설계·조사 산출물인 **`design.md`**와 **`research.md`**가 추가로
+  작성됩니다.
+{{< /callout >}}
+
+### spec.md -- GEARS/EARS 요구사항
 
 ```yaml
 ---
 id: SPEC-AUTH-001               # 고유 식별자
 title: 사용자 인증 시스템         # 명확하고 간결한 제목
 priority: HIGH                  # HIGH, MEDIUM, LOW
-status: ACTIVE                  # DRAFT, ACTIVE, IN_PROGRESS, COMPLETED
+status: draft                   # draft, in-progress, implemented, completed
 created: 2025-01-12             # 생성일
 updated: 2025-01-12             # 최종 수정일
 author: 개발팀                   # 작성자
@@ -352,7 +366,7 @@ SPEC 생성은 `/moai plan` 명령어 하나로 시작됩니다.
 flowchart TD
     A["사용자 요청\n자연어로 기능 설명"] --> B["manager-spec 에이전트 실행"]
     B --> C["요구사항 분석\n모호한 부분 질문"]
-    C --> D["EARS 형식 변환\n5가지 유형으로 분류"]
+    C --> D["GEARS 형식 변환\n5가지 유형으로 분류"]
     D --> E["인수 기준 작성\nGiven-When-Then 형식"]
     E --> F["SPEC 3개 파일 생성\nspec.md + plan.md + acceptance.md"]
     F --> G["검토 요청\n사용자에게 확인"]
@@ -409,20 +423,20 @@ flowchart TD
 
 ```mermaid
 flowchart TD
-    Start(( )) -->|"/moai plan 실행"| DRAFT["DRAFT\n작성 중"]
-    DRAFT -->|"검토 완료"| ACTIVE["ACTIVE\n승인 완료"]
-    ACTIVE -->|"/moai run 실행"| IN_PROGRESS["IN_PROGRESS\n구현 중"]
-    IN_PROGRESS -->|"구현 완료"| COMPLETED["COMPLETED\n완료"]
-    ACTIVE -->|"요구사항 거부"| REJECTED["REJECTED\n거부"]
+    Start(( )) -->|"/moai plan 실행"| draft["draft\n작성 중"]
+    draft -->|"/moai run 실행"| in_progress["in-progress\n구현 중"]
+    in_progress -->|"구현 완료"| implemented["implemented\n구현 완료"]
+    implemented -->|"/moai sync 실행"| completed["completed\n완료"]
+    draft -->|"요구사항 거부"| rejected["rejected\n거부"]
 ```
 
-| 상태          | 의미                       | 다음 가능한 상태      |
-| ------------- | -------------------------- | --------------------- |
-| `DRAFT`       | 작성 중, 검토 필요         | ACTIVE, REJECTED      |
-| `ACTIVE`      | 승인 완료, 구현 준비됨     | IN_PROGRESS, REJECTED |
-| `IN_PROGRESS` | 구현 진행 중               | COMPLETED, REJECTED   |
-| `COMPLETED`   | 모든 인수 기준 충족, 완료  | (최종 상태)           |
-| `REJECTED`    | 요구사항 거부, 재작성 필요 | (최종 상태)           |
+| 상태           | 의미                       | 다음 가능한 상태      |
+| -------------- | -------------------------- | --------------------- |
+| `draft`        | 작성 중, 검토 필요         | in-progress, rejected |
+| `in-progress`  | 구현 진행 중               | implemented, rejected |
+| `implemented`  | 구현 완료, 동기화 대기     | completed             |
+| `completed`    | 모든 인수 기준 충족, 완료  | (최종 상태)           |
+| `rejected`     | 요구사항 거부, 재작성 필요 | (최종 상태)           |
 
 ## 실전 예시: JWT 인증 SPEC
 
@@ -442,7 +456,7 @@ flowchart TD
 id: SPEC-AUTH-001
 title: JWT 기반 사용자 인증 시스템
 priority: HIGH
-status: ACTIVE
+status: draft
 created: 2025-01-15
 version: 1.0.0
 ---

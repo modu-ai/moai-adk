@@ -4,7 +4,7 @@ weight: 40
 draft: false
 ---
 
-Git Worktree 사용 중 발생하는 일반적인 문제들과 해결 방법을 정리했습니다.
+Git Worktree를 쓰다 보면 마주치는 질문과 문제를 한곳에 정리했습니다.
 
 ## 목차
 
@@ -55,16 +55,16 @@ graph TB
 
 ### Q: 왜 Worktree를 사용해야 하나요?
 
-**A**: 다음과 같은 이유로 Worktree 사용을 권장합니다:
+**A**: 병렬 개발과 토크노믹스, 두 가지 이유가 핵심입니다:
 
-1. **LLM 설정 독립성**: 각 SPEC마다 다른 LLM 사용 가능
-   - Plan 단계: Opus (고품질)
+1. **LLM 설정 독립성** — SPEC마다 다른 LLM을 배정할 수 있습니다
+   - Plan 단계: Opus (고품질 추론)
    - Implement 단계: GLM (저비용)
    - Document 단계: Sonnet (중간)
 
-2. **병렬 개발**: 동시에 여러 SPEC 개발 가능
-3. **충돌 방지**: 독립된 작업 공간으로 충돌 최소화
-4. **비용 절감**: GLM 사용으로 70% 비용 절감
+2. **병렬 개발** — 여러 SPEC을 동시에 진행할 수 있습니다
+3. **충돌 방지** — 독립된 작업 공간이 충돌을 최소화합니다
+4. **비용 절감** — 구현 단계에 GLM을 쓰면 약 70% 비용이 줄어듭니다
 
 ```mermaid
 graph TB
@@ -82,7 +82,7 @@ graph TB
 **A**: 아니요, 필수는 아니지만 **강력히 권장**합니다:
 
 - **단일 SPEC 개발**: Worktree 없이도 가능
-- **다중 SPEC 개발**: Worktree 필수적
+- **다중 SPEC 개발**: Worktree가 사실상 필수
 - **팀 협업**: Worktree로 충돌 방지
 - **비용 최적화**: Worktree로 LLM 분리
 
@@ -109,34 +109,31 @@ graph TB
 **방법 2: 수동 생성**
 
 ```bash
-# Worktree 수동 생성
+# Worktree 수동 생성 (기본: origin/main 기준)
 moai worktree new SPEC-AUTH-001
 
-# 특정 브랜치에서 생성
-moai worktree new SPEC-AUTH-001 --from develop
+# 로컬 main 기준으로 생성
+moai worktree new SPEC-AUTH-001 --base main
 ```
 
 ---
 
 ### Q: Worktree로 어떻게 진입하나요?
 
-**A**: `moai worktree go` 명령어를 사용합니다:
+**A**: `moai worktree go`는 Worktree 경로를 출력합니다. 셸의 `cd`와
+조합해 이동합니다 (셸 세션을 직접 시작하지는 않습니다):
 
 ```bash
-# Worktree 진입
-moai worktree go SPEC-AUTH-001
-
-# 새 터미널이 열리고 Worktree로 이동
-# 프롬프트가 변경됨
-(SPEC-AUTH-001) $
+# 경로 출력 후 이동
+cd "$(moai worktree go SPEC-AUTH-001)"
 ```
 
 **진입 후 작업 흐름**:
 
 ```mermaid
 flowchart TD
-    A[moai worktree go SPEC-ID] --> B[새 터미널 열림]
-    B --> C[Worktree 디렉토리로 이동]
+    A[moai worktree go SPEC-ID] --> B[경로를 stdout에 출력]
+    B --> C["cd \"$(...)\"로 이동"]
     C --> D{LLM 변경?}
     D -->|예| E[moai glm]
     D -->|아니오| F[Claude 시작]
@@ -152,16 +149,16 @@ flowchart TD
 
 ```bash
 # Terminal 1
-moai worktree go SPEC-AUTH-001
-(SPEC-AUTH-001) $ moai glm
+cd "$(moai worktree go SPEC-AUTH-001)"
+$ moai glm
 
 # Terminal 2
-moai worktree go SPEC-LOG-002
-(SPEC-LOG-002) $ moai glm
+cd "$(moai worktree go SPEC-LOG-002)"
+$ moai glm
 
 # Terminal 3
-moai worktree go SPEC-API-003
-(SPEC-API-003) $ moai glm
+cd "$(moai worktree go SPEC-API-003)"
+$ moai glm
 
 # 모두 동시에 작업 가능
 ```
@@ -207,36 +204,32 @@ graph TB
 
 ### Q: Worktree를 완료하는 방법은?
 
-**A**: `moai worktree done` 명령어를 사용합니다:
+**A**: `moai worktree done`은 Worktree를 제거하고 선택적으로 브랜치를
+삭제합니다. **병합·푸시는 하지 않습니다** — base 병합은 `git merge`나
+PR로 먼저 처리하세요:
 
 ```bash
-# 기본 완료 (병합 + 정리)
+# Worktree 제거만
 moai worktree done SPEC-AUTH-001
 
-# 원격에 푸시까지
-moai worktree done SPEC-AUTH-001 --push
+# Worktree 제거 + 브랜치 삭제
+moai worktree done SPEC-AUTH-001 --delete-branch
 
-# 병합 없이 제거만
-moai worktree done SPEC-AUTH-001 --no-merge
+# 자동화용 무출력 모드 (PR 머지 후 정리)
+moai worktree done SPEC-AUTH-001 --auto
 ```
 
 **완료 프로세스**:
 
 ```mermaid
 flowchart TD
-    A[moai worktree done SPEC-ID] --> B{--no-merge?}
-    B -->|예| C[Worktree만 제거]
-    B -->|아니오| D[main으로 전환]
-    D --> E[feature 병합]
-    E --> F{충돌?}
-    F -->|예| G[수동 해결 필요]
-    F -->|아니오| H{--push?}
-    H -->|예| I[원격 푸시]
-    H -->|아니오| J[Worktree 제거]
-    I --> J
-    C --> K[완료]
-    J --> K
-    G --> L[사용자 개입 필요]
+    A[git merge 또는 PR로 base 병합] --> B[moai worktree done SPEC-ID]
+    B --> C[Worktree 제거]
+    C --> D{--delete-branch?}
+    D -->|예| E[브랜치 삭제]
+    D -->|아니오| F[브랜치 유지]
+    E --> G[완료]
+    F --> G[완료]
 ```
 
 ---
@@ -247,25 +240,28 @@ flowchart TD
 
 **A**: 다음 단계로 해결하세요:
 
+병합 충돌은 `git merge`나 PR 단계에서 발생합니다. Worktree CLI는 병합에
+관여하지 않습니다.
+
 ```mermaid
 flowchart TD
-    A[충돌 발생] --> B[충돌 파일 확인]
+    A[git merge 충돌 발생] --> B[충돌 파일 확인]
     B --> C[충돌 파일 열기]
     C --> D[충돌 마커 찾기 &lt;&lt;&lt;&lt;&lt;&lt;&lt;]
     D --> E[수동 병합]
     E --> F[git add]
     F --> G[git commit]
-    G --> H[moai worktree done 재실행]
+    G --> H[moai worktree done으로 정리]
 ```
 
 **실제 예시**:
 
 ```bash
-moai worktree done SPEC-AUTH-001
+git checkout main
+git merge feature/SPEC-AUTH-001
 ✗ 병합 충돌 발생!
 
 # 1. 충돌 파일 확인
-cd .moai/worktrees/SPEC-AUTH-001
 git status
 # 충돌 파일: src/auth/jwt.ts
 
@@ -285,10 +281,10 @@ const secret = process.env.JWT_SECRET || config.jwt.secret;
 # 5. 커밋
 git add src/auth/jwt.ts
 git commit -m "fix: resolve merge conflict"
+git push origin main
 
-# 6. 완료 재시도
-cd /path/to/project
-moai worktree done SPEC-AUTH-001
+# 6. 병합 후 Worktree 정리
+moai worktree done SPEC-AUTH-001 --delete-branch
 ✓ 완료!
 ```
 
@@ -299,62 +295,58 @@ moai worktree done SPEC-AUTH-001
 **A**: 다음 단계로 복구하세요:
 
 ```bash
-# 1. 진단
-moai worktree status SPEC-AUTH-001
-✗ Worktree 디렉토리가 존재하지 않습니다
+# 1. 진단 (손상된 레지스트리 복구)
+moai worktree recover
 
-# 2. 기존 Worktree 제거
-moai worktree remove SPEC-AUTH-001 --force
+# 2. 현재 상태 확인
+moai worktree status
+# ╭─ Worktree Status ──────────────────────────────╮
+# │ Repository: /path/to/your-project              │
+# │ Total worktrees: 0                             │
+# │                                                │
+# │ No worktrees found.                            │
+# ╰────────────────────────────────────────────────╯
 
-# 3. Worktree 재생성
+# 3. 기존 Worktree 제거 (경로 지정)
+moai worktree remove ~/.moai/worktrees/your-project/SPEC-AUTH-001 --force
+
+# 4. Worktree 재생성
 moai worktree new SPEC-AUTH-001
-
-# 4. 복구 확인
-moai worktree status SPEC-AUTH-001
-✓ Worktree 정상
 ```
 
 ---
 
 ### Q: 디스크 공간이 부족해요
 
-**A**: 오래된 Worktree를 정리하세요:
+**A**: 병합이 끝난 Worktree를 정리하세요:
 
 ```bash
 # 1. 디스크 사용량 확인
-$ du -sh .moai/worktrees/*
-2.5G    .moai/worktrees/SPEC-AUTH-001
-1.8G    .moai/worktrees/SPEC-LOG-002
-3.2G    .moai/worktrees/SPEC-API-003
+$ du -sh ~/.moai/worktrees/your-project/*
+2.5G    ~/.moai/worktrees/your-project/SPEC-AUTH-001
+1.8G    ~/.moai/worktrees/your-project/SPEC-LOG-002
+3.2G    ~/.moai/worktrees/your-project/SPEC-API-003
 
-# 2. 오래된 Worktree 정리
-$ moai worktree clean --older-than 14
+# 2. base에 병합된 Worktree만 정리
+$ moai worktree clean --merged-only
 
-# 정리될 Worktree:
-#   - SPEC-OLD-001 (30일 전, 2.1GB)
-#   - SPEC-OLD-002 (45일 전, 1.7GB)
-
-계속 진행하시겠습니까? [y/N] y
-
-✓ 2개 Worktree 정리 완료
-✓ 3.8GB 디스크 공간 확보
+✓ 병합된 Worktree 정리 완료
+✓ 디스크 공간 확보
 ```
 
 **정리 전략**:
 
 ```mermaid
 graph TD
-    A[Worktree 정리 필요] --> B{병합 완료?}
-    B -->|예| C[moai worktree done]
-    B -->|아니오| D{14일 이상?}
-    D -->|예| E[작업 상태 확인]
-    D -->|아니오| F[유지]
-    E --> G{필요 없음?}
-    G -->|예| H[moai worktree remove]
-    G -->|아니오| F
-    C --> I[정리 완료]
-    H --> I
-    F --> I
+    A[Worktree 정리 필요] --> B{base에 병합 완료?}
+    B -->|예| C[moai worktree clean --merged-only]
+    B -->|아니오| D[작업 상태 확인]
+    D --> E{필요 없음?}
+    E -->|예| F[moai worktree remove PATH]
+    E -->|아니오| G[유지]
+    C --> H[정리 완료]
+    F --> H
+    G --> H
 ```
 
 ---
@@ -364,20 +356,18 @@ graph TD
 **A**: Worktree별 LLM 설정을 확인하세요:
 
 ```bash
-# 현재 LLM 확인
-moai config
-현재 LLM: GLM 5
+# 현재 LLM 백엔드 확인 (Worktree별 설정은 .moai/config/sections/llm.yaml에 기록됨)
+cat .moai/config/sections/llm.yaml
+# 또는 프로젝트 상태와 함께 확인
+moai status
 
 # Worktree에서 LLM 변경
-moai worktree go SPEC-AUTH-001
-(SPEC-AUTH-001) $ moai cc
-→ Claude Opus로 변경됨
+cd "$(moai worktree go SPEC-AUTH-001)"
+$ moai cc   # Claude 백엔드로 전환
 
 # 다른 Worktree는 영향 없음
-(SPEC-AUTH-001) $ exit
-moai worktree go SPEC-LOG-002
-(SPEC-LOG-002) $ moai config
-현재 LLM: GLM 5 (변경 없음)
+$ cd "$(moai worktree go SPEC-LOG-002)"
+$ cat .moai/config/sections/llm.yaml   # 이 Worktree의 설정은 그대로 유지됨
 ```
 
 ---
@@ -389,7 +379,7 @@ moai worktree go SPEC-LOG-002
 ```bash
 # Worktree 디렉토리 확인
 pwd
-/path/to/your-project/.moai/worktrees/SPEC-AUTH-001
+/Users/you/.moai/worktrees/your-project/SPEC-AUTH-001
 
 # Git 상태 확인
 git status
@@ -437,9 +427,9 @@ git worktree prune
 
 ### Q: 몇 개의 Worktree를 생성할 수 있나요?
 
-**A**: 이론적으로 무제한이지만 실제로는 다음 factors에 의해 제한됩니다:
+**A**: 이론적으로는 무제한이지만, 실제로는 다음 요인이 개수를 제한합니다:
 
-**제한 factors**:
+**제한 요인**:
 
 1. **디스크 공간**: 각 Worktree는 약 100MB-1GB 사용
 2. **메모리**: 각 Worktree에서 열린 세션
@@ -473,11 +463,8 @@ graph TD
 #!/bin/bash
 # clean-worktrees.sh
 
-# 병합된 Worktree 정리
+# base에 병합된 Worktree 정리
 moai worktree clean --merged-only
-
-# 30일 이상된 Worktree 정리
-moai worktree clean --older-than 30
 
 # Git 가비지 컬렉션
 cd /path/to/project
@@ -532,21 +519,20 @@ graph TB
 
 ---
 
-### Q: Worktree와 원격 저장소를 동기화하는 방법은?
+### Q: Worktree를 base 브랜치와 동기화하는 방법은?
 
-**A**: 정기적으로 `git pull`을 실행하세요:
+**A**: `moai worktree sync`가 base 브랜치의 변경 사항을 Worktree로 가져옵니다.
+`--strategy` 로 merge (기본) 또는 rebase 를 선택합니다:
 
 ```bash
-# 각 Worktree에서 동기화
-moai worktree go SPEC-AUTH-001
-(SPEC-AUTH-001) $ git pull origin main
+# 현재 디렉토리의 Worktree를 base(main)와 동기화 — merge 전략
+moai worktree sync
 
-# 또는 모든 Worktree 동기화
-for spec in $(moai worktree list --porcelain | awk '{print $1}'); do
-    cd ~/.moai/worktrees/$spec
-    echo "Syncing $spec..."
-    git pull origin main
-done
+# 특정 Worktree를 rebase 전략으로 동기화
+moai worktree sync SPEC-AUTH-001 --strategy rebase
+
+# 다른 base 브랜치를 기준으로 동기화
+moai worktree sync SPEC-AUTH-001 --base develop
 ```
 
 ---
@@ -557,7 +543,7 @@ done
 
 ```bash
 # PR 생성 전
-moai worktree status SPEC-AUTH-001
+moai worktree status
 # 상태 확인
 
 git log main..feature/SPEC-AUTH-001
@@ -566,12 +552,11 @@ git log main..feature/SPEC-AUTH-001
 # PR 리뷰 중
 # Worktree 유지 (병합 대기)
 
-# PR 승인 후
-moai worktree done SPEC-AUTH-001 --push
-# 병합 및 정리
+# PR 승인 및 머지 후 Worktree 정리
+moai worktree done SPEC-AUTH-001 --delete-branch
 
 # PR 거부 후
-cd .moai/worktrees/SPEC-AUTH-001
+cd "$(moai worktree go SPEC-AUTH-001)"
 # 수정 작업 계속
 ```
 
@@ -616,12 +601,11 @@ git worktree add SPEC-AUTH-001 origin/feature/SPEC-AUTH-001
 
 ## 관련 문서
 
-- [Git Worktree 개요](/worktree/index)
-- [완벽 가이드](./guide)
-- [실제 사용 예시](./examples)
+- [Git Worktree 개요](/ko/worktree/)
+- [완벽 가이드](/ko/worktree/guide)
+- [실제 사용 예시](/ko/worktree/examples)
 
 ## 추가 도움이 필요하신가요?
 
-- [GitHub Issues](https://github.com/MoAI-ADK/moai-adk/issues)
-- [Discord 커뮤니티](https://discord.gg/moai-adk)
-- [이메일 지원](mailto:support@moai-adk.org)
+- [GitHub Issues](https://github.com/modu-ai/moai-adk/issues) — 버그 리포트, 기능 요청
+- [Discord 커뮤니티](https://discord.gg/Z7E7Mdc5aN) — 실시간 소통, 팁 공유

@@ -5,6 +5,9 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/modu-ai/moai-adk/internal/cli/update/deploy"
+	"github.com/modu-ai/moai-adk/internal/cli/update/plan"
 )
 
 // TestScaffoldEvolutionDir_CreatesDirectoryTree verifies that scaffoldEvolutionDir
@@ -14,7 +17,7 @@ func TestScaffoldEvolutionDir_CreatesDirectoryTree(t *testing.T) {
 
 	root := t.TempDir()
 
-	if err := scaffoldEvolutionDir(root); err != nil {
+	if err := deploy.ScaffoldEvolutionDir(root); err != nil {
 		t.Fatalf("scaffoldEvolutionDir: %v", err)
 	}
 
@@ -57,7 +60,7 @@ func TestScaffoldEvolutionDir_ManifestContent(t *testing.T) {
 
 	root := t.TempDir()
 
-	if err := scaffoldEvolutionDir(root); err != nil {
+	if err := deploy.ScaffoldEvolutionDir(root); err != nil {
 		t.Fatalf("scaffoldEvolutionDir: %v", err)
 	}
 
@@ -90,7 +93,7 @@ func TestScaffoldEvolutionDir_Idempotent(t *testing.T) {
 	root := t.TempDir()
 
 	// First call.
-	if err := scaffoldEvolutionDir(root); err != nil {
+	if err := deploy.ScaffoldEvolutionDir(root); err != nil {
 		t.Fatalf("first scaffoldEvolutionDir: %v", err)
 	}
 
@@ -102,7 +105,7 @@ func TestScaffoldEvolutionDir_Idempotent(t *testing.T) {
 	}
 
 	// Second call — should not overwrite existing manifest.
-	if err := scaffoldEvolutionDir(root); err != nil {
+	if err := deploy.ScaffoldEvolutionDir(root); err != nil {
 		t.Fatalf("second scaffoldEvolutionDir: %v", err)
 	}
 
@@ -137,9 +140,9 @@ func TestIsMoaiManaged_EvolutionPaths(t *testing.T) {
 		tt := tt
 		t.Run(tt.path, func(t *testing.T) {
 			t.Parallel()
-			got := isMoaiManaged(tt.path)
+			got := plan.IsMoaiManaged(tt.path)
 			if got != tt.want {
-				t.Errorf("isMoaiManaged(%q) = %v, want %v", tt.path, got, tt.want)
+				t.Errorf("plan.IsMoaiManaged(%q) = %v, want %v", tt.path, got, tt.want)
 			}
 		})
 	}
@@ -164,7 +167,7 @@ func TestScaffoldEvolutionDir_PreservesLearning(t *testing.T) {
 	}
 
 	// Run scaffolding — should not touch the learning file.
-	if err := scaffoldEvolutionDir(root); err != nil {
+	if err := deploy.ScaffoldEvolutionDir(root); err != nil {
 		t.Fatalf("scaffoldEvolutionDir: %v", err)
 	}
 

@@ -27,7 +27,7 @@ import (
 	"io"
 	"os"
 
-	"github.com/charmbracelet/lipgloss"
+	"charm.land/lipgloss/v2"
 	"github.com/mattn/go-isatty"
 )
 
@@ -180,25 +180,25 @@ func (h *ProgressLineHandle) assertNotDone() {
 // dim (muted) theme color. Mirrors the cliMuted / symProgress() helper in
 // internal/cli/update.go to preserve visual consistency.
 func (h *ProgressLineHandle) symProgress() string {
-	return lipgloss.NewStyle().
+	return downsample(lipgloss.NewStyle().
 		Foreground(lipgloss.Color(h.theme.Dim)).
-		Render("○")
+		Render("○"))
 }
 
 // symSuccess returns the success glyph ("✓") rendered in the theme's
 // success color.
 func (h *ProgressLineHandle) symSuccess() string {
-	return lipgloss.NewStyle().
+	return downsample(lipgloss.NewStyle().
 		Foreground(lipgloss.Color(h.theme.Success)).
-		Render("✓")
+		Render("✓"))
 }
 
 // symError returns the error glyph ("✗") rendered in the theme's danger
 // color.
 func (h *ProgressLineHandle) symError() string {
-	return lipgloss.NewStyle().
+	return downsample(lipgloss.NewStyle().
 		Foreground(lipgloss.Color(h.theme.Danger)).
-		Render("✗")
+		Render("✗"))
 }
 
 // isTerminalWriter reports whether out is a terminal-backed writer. The

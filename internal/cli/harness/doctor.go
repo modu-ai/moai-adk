@@ -31,6 +31,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"strings"
 
 	"github.com/modu-ai/moai-adk/internal/harness/v4manifest"
 	"github.com/spf13/cobra"
@@ -68,8 +69,11 @@ type DoctorReport struct {
 var runnerManifestPathRE = regexp.MustCompile("MANIFEST_PATH\\s*=\\s*[\"'`]([^\"'`]+)[\"'`]")
 
 // runnerSpecialistRE extracts specialist agent name references
-// (harness-<x>-specialist) mentioned anywhere in a Runner JS.
-var runnerSpecialistRE = regexp.MustCompile(`harness-[a-z0-9-]+-specialist`)
+// (hns-<x>-specialist canonical, harness-<x>-specialist legacy — dual-pattern
+// per SPEC-HNS-PREFIX-RENAME-001 REQ-HPR-012) mentioned anywhere in a Runner JS.
+// Runner resolution itself needs NO dual pattern: Doctor resolves the Runner
+// from the manifest runner_workflow value via a prefix-agnostic path join.
+var runnerSpecialistRE = regexp.MustCompile(`(harness|hns)-[a-z0-9-]+-specialist`)
 
 // Doctor runs the v4 harness reference-integrity smoke gate over projectRoot.
 //
@@ -87,6 +91,11 @@ func Doctor(projectRoot string) (DoctorReport, error) {
 	for _, e := range entries {
 		report.Findings = append(report.Findings, checkHarness(projectRoot, e)...)
 	}
+	// SPEC-HARNESS-RATCHET-REWIRE-001 REQ-HRR-008: pipeline-dormancy check
+	// (independent of the v4 harness reference-integrity scan). Detects when the
+	// classify half has produced promotions but the propose back half has never
+	// run (proposals dir absent) — the starved-pipeline condition.
+	report.Findings = append(report.Findings, checkPipelineDormancy(projectRoot)...)
 	for _, f := range report.Findings {
 		switch f.Severity {
 		case SeverityError:
@@ -177,6 +186,51 @@ func checkHarness(projectRoot string, e HarnessEntry) []DoctorFinding {
 	}
 
 	return findings
+}
+
+// checkPipelineDormancy detects the starved-learning-loop condition
+// (SPEC-HARNESS-RATCHET-REWIRE-001 REQ-HRR-008): tier-promotions.jsonl contains
+// ≥1 promotion but .moai/harness/proposals/ has never been created. This means
+// the classify half turned but the propose→apply back half never ran — the
+// pipeline is dormant. The finding is advisory (SeverityInfo); it never fails
+// the smoke gate.
+func checkPipelineDormancy(projectRoot string) []DoctorFinding {
+	promoPath := filepath.Join(projectRoot, ".moai", "harness", "learning-history", "tier-promotions.jsonl")
+	proposalsDir := filepath.Join(projectRoot, ".moai", "harness", "proposals")
+
+	promoCount, err := countPromotionLines(promoPath)
+	if err != nil || promoCount < 1 {
+		return nil // no promotions → nothing starved (or unreadable — silent)
+	}
+	if _, statErr := os.Stat(proposalsDir); statErr == nil {
+		return nil // proposals dir exists → back half has run → not dormant
+	}
+	return []DoctorFinding{{
+		Harness:  "(learning-loop)",
+		Axis:     "pipeline-dormancy",
+		Severity: SeverityInfo,
+		Message:  fmt.Sprintf("pipeline dormancy: %d promotion(s) exist in tier-promotions.jsonl but .moai/harness/proposals/ is absent — the propose→apply back half has never run", promoCount),
+	}}
+}
+
+// countPromotionLines counts non-blank lines in the tier-promotions.jsonl file.
+// Returns (0, nil) when the file does not exist (normal first-run state).
+func countPromotionLines(path string) (int, error) {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return 0, nil
+		}
+		return 0, err
+	}
+	count := 0
+	for _, line := range strings.Split(string(data), "\n") {
+		line = strings.TrimSpace(line)
+		if line != "" {
+			count++
+		}
+	}
+	return count, nil
 }
 
 // NewHarnessDoctorCmd is the `moai harness doctor` factory (REQ-HEP-005). It runs

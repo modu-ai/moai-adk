@@ -2,99 +2,120 @@
 title: エージェントガイド
 weight: 30
 draft: false
+description: "MoAI-ADK v3.0の11個のコアエージェントカタログ — 役割、フェーズ範囲、計画-監査の分離原則。"
 ---
 
-MoAI-ADKの8つのコアエージェント システムを詳細に解説します。
+MoAI-ADK v3.0 の 11 個のコアエージェントカタログを詳しく解説します。
 
 {{< callout type="info" >}}
-**一言でいうと**: エージェントは各分野の**専門家チーム**です。MoAIがチームリーダーとして適切な専門家にタスクを振り分けます。
+**ひと言要約**: エージェントは各分野の **専門家チーム** です。MoAI がチームリーダーとして適切な専門家に作業を割り振ります — そして計画を作るエージェントとそれを監査するエージェントは必ず分離されます。
 {{< /callout >}}
 
-## エージェントとは？
+## エージェントとは?
 
-エージェントは特定分野に専門化された **AIタスク実行者**です。
+エージェントは特定分野に専門化された **AI 作業実行者** です。
 
-Claude Code の **Sub-agent（サブエージェント）**システムを基盤としており、各エージェントは独立したコンテキストウィンドウ、カスタムシステムプロンプト、特定ツールアクセス、独立した権限を持ちます。
+Claude Code の **Sub-agent (サブエージェント)** システムを基盤とし、各エージェントは独立したコンテキストウィンドウ、カスタムシステムプロンプト、特定のツールアクセス、独立した権限を持ちます。
 
-企業組織に例えると、MoAIはCEO、Managerエージェントは部門長、Evaluatorエージェントは品質監視官、Builderエージェントは新規チーム生成担当者です。
+会社組織にたとえると、MoAI は CEO、Manager エージェントは部門長、Evaluator エージェントは品質監視官、Builder エージェントは新規チーム編成担当者、Advisor エージェントは外部顧問です。
 
-## MoAIオーケストレーター
+エージェント数は v3 期間中に 22 → 17 → 8 → 10 → **11** へと精錬されました。エージェントが多ければ良いわけではありません — 委任のたびにコンテキストコストがかかるため、カタログを絞ること自体がトークノミクスの一部です。
 
-MoAIはMoAI-ADKの**最上位調整者**です。ユーザーのリクエストを分析し、適切なエージェント（8つの保持エージェントのみ）にタスクを委任します。
+## MoAI オーケストレーター
 
-### MoAIのコアルール
+MoAI は MoAI-ADK の **最上位コーディネーター** です。ユーザーのリクエストを分析し、適切なエージェントに作業を委任します。
+
+### MoAI のコアルール
 
 | ルール | 説明 |
 |------|------|
-| 委任専用 | 複雑なタスクは直接実行せず、専門エージェントに委任 |
-| ユーザー向け窓口 | ユーザーとの対話はMoAIのみ実行（下位エージェントは直接質問不可） |
-| 並列実行 | 独立したタスクは複数のエージェントに同時に委任（エージェントチームモード） |
-| 統合結果 | エージェント実行結果を取りまとめてユーザーに報告 |
+| 委任専用 | 複雑な作業は直接実行せず専門エージェントに委任 |
+| ユーザー窓口 | ユーザーとの対話は MoAI のみが実行 (サブエージェントは不可) |
+| 並列実行 | 独立した読み取り専用作業は複数エージェントに同時委任 |
+| 結果統合 | エージェントの実行結果を集約してユーザーに報告 |
 
-## 8つの保持エージェント カタログ
+## 11 個のコアエージェントカタログ
 
-MoAI-ADKは**8つの保持エージェント**（7つのMoAI独自エージェント + 1つのAnthropicビルトイン）を使用します。
+MoAI-ADK は **11 個のコアエージェント** (10 個の MoAI カスタム + 1 個の Anthropic ビルトイン) を使用します。
 
-### Managerエージェント（4個）
+### Manager エージェント (5 個)
 
-| エージェント | 役割 | 段階 | 主なスキル |
+| エージェント | 役割 | フェーズ | 主要スキル |
 |----------|------|------|----------|
-| `manager-spec` | SPEC文書生成、GEARS形式要件定義 | Plan | `moai-workflow-spec` |
-| `manager-develop` | DDD/TDD実装サイクル（quality.yamlのcycle_type） | Run | `moai-workflow-ddd`, `moai-workflow-tdd` |
-| `manager-docs` | ドキュメント生成、CHANGELOG、README同期 | Sync | `moai-workflow-project` |
-| `manager-git` | PR作成、Git分岐、マージ戦略 | PR（Tier L） | `moai-foundation-core` |
+| `manager-spec` | SPEC ドキュメント生成、GEARS 形式の要求事項 | Plan | `moai-workflow-spec` |
+| `manager-develop` | DDD/TDD/autofix サイクル実装 (quality.yaml の cycle_type) | Run | `moai-workflow-ddd`, `moai-workflow-tdd` |
+| `manager-docs` | ドキュメント生成、CHANGELOG、README 同期 | Sync | `moai-workflow-project` |
+| `manager-git` | PR 作成、Git ブランチ、マージ戦略 | PR (Tier L) | `moai-foundation-core` |
+| `manager-design` | Claude Design 双方向コラボレーション (D1-D5 パイプライン) | Design | `moai-foundation-core` |
 
-### Evaluatorエージェント（2個）
+### Evaluator エージェント (2 個)
 
-| エージェント | 役割 | 評価対象 | 主なスキル |
+| エージェント | 役割 | 評価対象 | 主要スキル |
 |----------|------|---------|----------|
-| `plan-auditor` | Plan段階独立監査、GEARS準拠、偏り防止 | SPEC完成度 | `moai-foundation-core`, `moai-foundation-thinking` |
-| `sync-auditor` | Sync段階品質スコア（4次元：Functionality, Security, Craft, Consistency） | 実装品質 | `moai-foundation-quality`, `moai-foundation-core` |
+| `plan-auditor` | Plan フェーズの独立監査、GEARS 準拠、バイアス防止 | SPEC 完成度 | `moai-foundation-core`, `moai-foundation-thinking` |
+| `sync-auditor` | Sync フェーズの品質スコア (4 次元: Functionality, Security, Craft, Consistency) | 実装品質 | `moai-foundation-quality`, `moai-foundation-core` |
 
-### Builderエージェント（1個）
+計画と監査が分離されている点が核心です — 作った本人が自分の仕事を検査することはありません。
+
+### Builder エージェント (1 個)
 
 | エージェント | 役割 | 生成物 |
 |----------|------|--------|
-| `builder-harness` | プロジェクト固有の動的エージェント生成（Socratic面接ベース） | `.claude/agents/harness/`, `.moai/harness/manifest.json` |
+| `builder-harness` | プロジェクト固有の動的エージェントチーム生成 (Socratic インタビューベース) | `.claude/agents/harness/`, `.moai/harness/manifest.json` |
 
-### ビルトインエージェント（1個、Anthropic）
+### Advisor エージェント (1 個)
 
 | エージェント | 役割 | 特徴 |
 |----------|------|------|
-| `Explore` | 読み取り専用コード探索・分析 | メインセッションモデルを継承（opus 上限、CC 2.1.198 以前は Haiku）、Read-onlyツール |
+| `super-advisor` | 高推論コンサルティング — デッドロック、設計上の決定点、セカンドオピニオン (E1-E4 エスカレーション) | 非拘束の処方 — 最終決定はオーケストレーター |
 
-## Manager-Developドメイン コンテキスト注入
+### Specialist エージェント (1 個)
 
-`manager-develop`はドメイン別コンテキストを注入されて呼び出されます。
+| エージェント | 役割 | 特徴 |
+|----------|------|------|
+| `e2e-tester` | ウェブ/モバイル/デスクトップの E2E テスト実行 (ジャーニースクリプティング、CLI 優先のスイート実行、アーティファクト管理) | `/moai e2e` ワークフローの実行主体 — 選択質問はオーケストレーター担当 |
 
-- **バックエンド作業**: `manager-develop` + バックエンド ドメイン コンテキスト + `moai-domain-backend` スキル
-- **フロントエンド作業**: `manager-develop` + フロントエンド ドメイン コンテキスト + `moai-domain-frontend` スキル
-- **その他ドメイン**: 言語別スキル + 専門性プロンプト
+### ビルトインエージェント (1 個、Anthropic)
 
-## エージェント選択 決定ツリー
+| エージェント | 役割 | 特徴 |
+|----------|------|------|
+| `Explore` | 読み取り専用のコード探索と分析 | Haiku モデル、Read-only ツール |
 
-MoAIがユーザーリクエストを分析して適切なエージェントを選択するプロセスです。
+## Manager-Develop ドメインコンテキスト注入
+
+ドメインごとにエージェントを 1 つずつ置く代わりに、`manager-develop` 1 つがドメイン別コンテキストを注入されて呼び出されます。
+
+- **バックエンド作業**: `manager-develop` + バックエンドドメインコンテキスト + `moai-domain-backend` スキル
+- **フロントエンド作業**: `manager-develop` + フロントエンドドメインコンテキスト + `moai-domain-frontend` スキル
+- **その他のドメイン**: 言語別スキル + 専門性プロンプト
+
+## エージェント選択デシジョンツリー
+
+MoAI がユーザーリクエストを分析して適切なエージェントを選択するプロセスです。
 
 ```mermaid
 flowchart TD
     START[ユーザーリクエスト] --> Q1{読み取り専用<br>コード探索?}
 
-    Q1 -->|はい| EXPLORE["Exploreビルトイン<br>コード構造把握"]
-    Q1 -->|いいえ| Q2{外部ドキュメント/API<br>調査必要?}
+    Q1 -->|はい| EXPLORE["Explore サブエージェント<br>コード構造の把握"]
+    Q1 -->|いいえ| Q2{外部ドキュメント/API<br>調査が必要?}
 
-    Q2 -->|はい| WEB["WebSearch / WebFetch<br>Context7 MCP"]
-    Q2 -->|いいえ| Q3{ワークフロー<br>調整必要?}
+    Q2 -->|はい| WEB["WebSearch / WebFetch"]
+    Q2 -->|いいえ| Q3{ワークフロー<br>調整が必要?}
 
-    Q3 -->|はい| MANAGER["Manager/Evaluatorエージェント<br>プロセス管理"]
-    Q3 -->|いいえ| Q4{品質検証<br>必要?}
+    Q3 -->|はい| MANAGER["Manager-* エージェント<br>プロセス管理"]
+    Q3 -->|いいえ| Q4{品質検証<br>が必要?}
 
     Q4 -->|はい| EVAL["plan-auditor または<br>sync-auditor"]
-    Q4 -->|いいえ| DIRECT["MoAI直接処理<br>単純タスク"]
+    Q4 -->|いいえ| Q5{高推論コンサル<br>が必要?}
+
+    Q5 -->|はい| ADVISOR["super-advisor<br>E1-E4 エスカレーション"]
+    Q5 -->|いいえ| DIRECT["MoAI 直接処理<br>簡単な作業"]
 ```
 
 ## エージェント定義ファイル
 
-8つの保持エージェントは`.claude/agents/moai/`ディレクトリのマークダウンファイルで定義されます。
+10 個の MoAI カスタムエージェントは `.claude/agents/moai/` ディレクトリにマークダウンファイルとして定義されます。
 
 ### ファイル構造
 
@@ -104,30 +125,33 @@ flowchart TD
 ├── manager-develop.md
 ├── manager-docs.md
 ├── manager-git.md
+├── manager-design.md
 ├── plan-auditor.md
 ├── sync-auditor.md
 ├── builder-harness.md
-└── (Explore: Anthropic組み込み、ファイルなし)
+├── super-advisor.md
+├── e2e-tester.md
+└── (Explore: Anthropic ビルトイン、ファイルなし)
 ```
 
-### エージェント定義形式
+### エージェント定義フォーマット
 
 ```markdown
 ---
 name: my-specialist
 description: >
-  このプロジェクトの専門家。特定ドメイン専門性説明。
+  このプロジェクトの専門家。特定ドメインの専門性の説明。
 tools: Read, Write, Edit, Grep, Glob, Bash
 model: inherit
 ---
 
-あなたはこのプロジェクトの[ドメイン]専門家です。
+あなたはこのプロジェクトの [ドメイン] 専門家です。
 
 ## 役割
 
-- 責任1
-- 責任2
-- 責任3
+- 責任 1
+- 責任 2
+- 責任 3
 
 ## 使用スキル
 
@@ -135,83 +159,65 @@ model: inherit
 - 言語別スキル
 ```
 
-## エージェント間連携パターン
+## エージェント間コラボレーションパターン
 
-### Plan-Run-Sync順次ワークフロー
+### Plan-Run-Sync 順次ワークフロー
+
+最も基本となるコラボレーションフローです。各フェーズの間に独立監査が挟まります。
 
 ```bash
-# 1. manager-specがSPEC作成
-/moai plan "機能説明"
+# 1. manager-spec が SPEC を生成
+/moai plan "機能の説明"
 
-# 2. plan-auditorがSPEC品質検証
+# 2. plan-auditor が SPEC の品質を検証
 # (自動実行)
 
-# 3. manager-developがDDD/TDD実装
+# 3. manager-develop が DDD/TDD で実装
 /moai run SPEC-XXX
 
-# 4. sync-auditorが4次元品質スコア
+# 4. sync-auditor が 4 次元の品質スコアリング
 # (自動実行)
 
-# 5. manager-docsがドキュメント同期
+# 5. manager-docs がドキュメントを同期
 /moai sync SPEC-XXX
 ```
 
-### エージェントチーム並列実行（実験的）
+## Sub-agent システムの基礎
 
-```bash
-# MoAIが複数の専門家を同時に委任（--teamフラグ）
-> /moai plan --team "ユーザー認証システム"
-> /moai run --team SPEC-AUTH-001
-```
+Claude Code の公式 Sub-agent システムは MoAI-ADK エージェント構造の基盤です。
 
-## Sub-agentシステム基礎
-
-Claude Code の公式Sub-agentシステムはMoAI-ADKのエージェント構造の基盤です。
-
-### Sub-agentの特徴
+### Sub-agent の特徴
 
 | 特徴 | 説明 |
 |------|------|
-| **独立コンテキスト** | 各sub-agentは独自のコンテキストウィンドウで実行。サイズはセッションモデルに従う（Anthropic API の Sonnet 5 / Opus は 1M、ゲートウェイ・旧モデルは 200K） |
-| **カスタムプロンプト** | 専門システムプロンプトで役割と行動定義 |
-| **特定ツールアクセス** | 必要なツールのみ選択的に提供 |
-| **独立権限** | 個別権限モード設定可能 |
+| **独立コンテキスト** | 各 sub-agent は自前の 200K トークンのコンテキストウィンドウで実行 |
+| **カスタムプロンプト** | 専門システムプロンプトで役割と行動を定義 |
+| **特定ツールアクセス** | 必要なツールのみを選択的に提供 |
+| **独立権限** | 個別の権限モードを設定可能 |
 
-### Sub-agent制約事項
+### Sub-agent の制約事項
 
 | 制約 | 説明 |
 |------|------|
-| サブエージェント生成不可 | 下位エージェントは他の下位エージェントを生成できない |
-| AskUserQuestion制限 | 下位エージェントはユーザーと直接対話できない |
+| サブエージェント生成制限 | サブエージェントのネスト生成は `Agent` ツールの許可有無で統制 — MoAI エージェントはネストしない |
+| AskUserQuestion 制限 | サブエージェントはユーザーと直接対話できない (blocker レポートで返却) |
 | スキル非継承 | 親会話のスキルを継承しない |
-| 独立コンテキスト | 各エージェントは独立したコンテキストを持つ（Anthropic API の Sonnet 5 / Opus は 1M、ゲートウェイ・旧モデルは 200K） |
+| 独立コンテキスト | 各エージェントは独立した 200K トークンのコンテキストを持つ |
 
-## エージェントチーム（実験的）
+## Agent Teams 静的階層 — v3.0 で引退
 
-エージェントチームモードは動的専門家が**並列で協業**する高度なワークフローです。
+以前のバージョンにあった Agent Teams 静的オーケストレーション階層 (`workflow.team.*` 設定、`--team` 強制フラグ) は v3.0.0 で **引退** しました。
 
-### チームモード設定
-
-| 設定 | 基本値 | 説明 |
-|---------|---------|-------------|
-| `workflow.team.enabled` | `false` | エージェントチームモード有効化 |
-| `workflow.team.max_teammates` | `5` | チームあたり最大チームメイト数（Anthropic推奨） |
-| `workflow.team.auto_selection` | `true` | 複雑度ベース自動モード選択 |
-
-### モード選択
-
-| フラグ | 動作 |
-|-------|------|
-| **--team** | エージェントチームモード強制 |
-| **--solo** | Sub-agentモード強制 |
-| **フラグなし** | 複雑度閾値ベース自動選択 |
+- `--team` を強制すると `MODE_TEAM_UNAVAILABLE` を通知し、sub-agent モードへ自動フォールバックします。
+- 並列性が必要な調査・レビュー作業は並列 sub-agent ファンアウトで、順次のコーディング作業は sub-agent チェーンで処理します。
+- ネイティブの Claude Code teammate ランタイム (`moai cg` の GLM ペイン、`moai worktree --team`) はこれとは別に引き続き動作します — トークノミクスの観点では、CG モードの Claude リーダー + GLM ワーカーの分業がこの役割を担います。
 
 ## 関連ドキュメント
 
-- [Harness v4 Builder](/ja/advanced/builder-agents) - 動的エージェント生成
+- [ビルダーエージェントとハーネス v4](/ja/advanced/builder-agents) - 動的エージェントチーム生成
 - [スキルガイド](/ja/advanced/skill-guide) - エージェントが活用するスキル体系
-- [SPEC基盤開発](/ja/workflow-commands/moai-plan) - SPECワークフロー詳細
+- [SPEC ベース開発](/ja/workflow-commands/moai-plan) - SPEC ワークフロー詳細
 
 {{< callout type="info" >}}
-**ヒント**: エージェントを直接指定する必要はありません。MoAIに自然言語でリクエストすれば最適のエージェントが自動的に選択されます。
+**ヒント**: エージェントを直接指定する必要はありません。MoAI に自然言語でリクエストすれば、Analyze-First ルーティングが意図を分析して最適なエージェントを自動選択します。
 {{< /callout >}}

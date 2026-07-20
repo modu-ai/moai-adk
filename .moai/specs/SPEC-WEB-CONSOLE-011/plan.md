@@ -1,8 +1,8 @@
 ---
 id: SPEC-WEB-CONSOLE-011
-status: in-progress
+status: completed
 created: 2026-07-03
-updated: 2026-07-03
+updated: 2026-07-05
 ---
 
 # Plan — SPEC-WEB-CONSOLE-011 (v0.2.1)

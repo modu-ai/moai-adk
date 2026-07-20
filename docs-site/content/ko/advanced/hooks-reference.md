@@ -4,13 +4,13 @@ weight: 60
 draft: false
 ---
 
-MoAI-ADK v2.10.1 기준, Claude Code의 훅 시스템은 **29개 이벤트 타입**, **5가지 훅 타입**, **이벤트별 매처**, **스마트 동작**을 지원합니다.
+Claude Code의 훅 시스템은 **30개 이벤트 타입**, **5가지 훅 타입**, **이벤트별 매처**, **스마트 동작**을 지원합니다. 훅은 에이전틱 하네스에서 유일하게 "반드시 실행됨"이 보장되는 결정적(deterministic) 제어 지점입니다. 프롬프트는 무시될 수 있지만 훅은 무시되지 않습니다.
 
 > 훅의 기본 개념과 설정 방법은 [Hooks 가이드](/ko/advanced/hooks-guide)를 참조하세요. 이 페이지는 이벤트 전체 레퍼런스입니다.
 
 ## 훅 타입
 
-**Five hook types are available:**
+사용 가능한 훅 타입은 다섯 가지입니다.
 
 | 타입 | 설명 | 예시 |
 |------|------|------|
@@ -20,7 +20,7 @@ MoAI-ADK v2.10.1 기준, Claude Code의 훅 시스템은 **29개 이벤트 타�
 | **http** | 웹훅 엔드포인트 | HTTP POST 요청으로 이벤트 전달 |
 | **mcp_tool** | MCP 도구 실행 | MCP 서버 도구를 원격 호출 |
 
-## 이벤트 전체 레퍼런스 (29개)
+## 이벤트 전체 레퍼런스 (30개)
 
 ### 라이프사이클 이벤트
 
@@ -28,7 +28,6 @@ MoAI-ADK v2.10.1 기준, Claude Code의 훅 시스템은 **29개 이벤트 타�
 |--------|------|------|
 | `SessionStart` | 세션 시작 | — |
 | `SessionEnd` | 세션 종료 | — |
-| `PostSession` | 세션 종료 후 실행 (self-hosted runner 라이프사이클 이벤트, CC 2.1.169+). 세션이 완전히 해제된 후, `SessionEnd`보다 늦게 발화합니다. MoAI-ADK는 현재 이 훅을 wiring하지 않습니다. 세션 후 정리/텔레메트리가 필요한 self-hosted 배포를 위한 사용 가능한 옵션으로 문서화됩니다. | — |
 | `Stop` | 에이전트 정지 | — |
 | `SubagentStop` | 서브에이전트 정지 | — |
 | `SubagentStart` | 서브에이전트 시작 | — |
@@ -96,22 +95,23 @@ MoAI-ADK v2.10.1 기준, Claude Code의 훅 시스템은 **29개 이벤트 타�
 | 이벤트 | 설명 | 매처 |
 |--------|------|------|
 | `Notification` | 사용자 알림 | — |
+| `MessageDisplay` | 어시스턴트 메시지 텍스트 표시 중 (스트리밍 중 발화) | — |
 
 ## 스마트 동작 (Smart Behaviors)
 
-MoAI-ADK 훅은 단순 이벤트 처리를 넘어 지능적인 동작을 수행합니다:
+MoAI-ADK 훅은 단순 이벤트 처리를 넘어 지능적인 동작을 수행합니다.
 
 ### PermissionDenied 자동 재시도
 
-읽기 전용 도구(Read, Grep, Glob)의 권한이 거부되면, 훅이 자동으로 재시도를 트리거합니다. 이는 백그라운드 에이전트에서 권한 프롬프트가 표시되지 않는 문제를 완화합니다.
+읽기 전용 도구(Read, Grep, Glob)의 권한이 거부되면 훅이 자동으로 재시도를 트리거합니다. 이는 백그라운드 에이전트에서 권한 프롬프트가 표시되지 않는 문제를 완화합니다.
 
 ### StopFailure 에러 타입 응답
 
-에이전트 정지 실패 시 에러 타입에 따라 차별화된 응답을 제공합니다. 장시간 실행 세션에서의 안정성을 보장합니다.
+에이전트 정지 실패 시 에러 타입에 따라 다르게 응답합니다. 장시간 실행되는 세션의 안정성을 보장합니다.
 
 ### PostCompact 세션 메모 복원
 
-컨텍스트 압축 후 중요한 세션 메모(진행 상태, SPEC 참조)를 자동으로 복원합니다. 이를 통해 컨텍스트 압축 시 핵심 정보 유실을 방지합니다.
+컨텍스트 압축 후 중요한 세션 메모(진행 상태, SPEC 참조)를 자동으로 복원합니다. 컨텍스트 압축은 토큰을 아끼는 대신 정보를 잃을 수 있는 작업인데, 이 훅이 핵심 정보는 지켜냅니다.
 
 ### SubagentStart 컨텍스트 주입
 
@@ -119,7 +119,7 @@ MoAI-ADK 훅은 단순 이벤트 처리를 넘어 지능적인 동작을 수행�
 
 ## 매처 (Matchers)
 
-매처를 사용하면 특정 조건에서만 훅이 실행되도록 필터링할 수 있습니다:
+매처를 사용하면 특정 조건에서만 훅이 실행되도록 필터링할 수 있습니다. 모든 이벤트에 훅을 걸면 그만큼 실행 비용이 늘어나므로 매처로 범위를 좁히는 것이 기본입니다.
 
 ```json
 {
@@ -146,7 +146,7 @@ MoAI-ADK 훅은 단순 이벤트 처리를 넘어 지능적인 동작을 수행�
 
 ## CLAUDE_ENV_FILE
 
-`CwdChanged`와 `FileChanged` 훅을 통해 환경 변수를 지속적으로 관리할 수 있습니다:
+`CwdChanged`와 `FileChanged` 훅으로 환경 변수를 지속적으로 관리할 수 있습니다.
 
 ```bash
 # .claude/hooks/moai/handle-cwd-changed.sh
@@ -154,7 +154,7 @@ MoAI-ADK 훅은 단순 이벤트 처리를 넘어 지능적인 동작을 수행�
 echo "MOAI_PROJECT_DIR=$(pwd)" >> "$CLAUDE_ENV_FILE"
 ```
 
-이를 통해 세션 간 환경 변수를 유지하고, 디렉터리 변경 시 자동으로 환경을 재설정할 수 있습니다.
+이렇게 하면 세션 간 환경 변수를 유지하고 디렉터리 변경 시 자동으로 환경을 재설정할 수 있습니다.
 
 ## MoAI-ADK가 사용하는 주요 훅
 
@@ -166,7 +166,12 @@ echo "MOAI_PROJECT_DIR=$(pwd)" >> "$CLAUDE_ENV_FILE"
 | `TaskCompleted` | `handle-task-completed.sh` | SPEC 문서 존재 확인 |
 | `WorktreeCreate` | (없음 — MoAI 기본 비등록) | Claude Code 기본 worktree 동작 사용 (`isolation: worktree` agent용). 등록 시 active creator 컨트랙트 (디렉터리 생성 + path stdout echo) 의무. |
 | `WorktreeRemove` | (없음 — MoAI 기본 비등록) | Claude Code 기본 worktree 정리 동작 사용. 등록 시 observer-only 컨트랙트 (출력 불필요). |
-| `UserPromptSubmit` | `handle-user-prompt.sh` | 품질 게이트 자동 실행 |
+| `UserPromptSubmit` | `handle-user-prompt-submit.sh` | 프롬프트 전처리 (사용자 입력 전달) |
+| `Stop` | `handle-stop-goal.sh` | goal 엔진 — `/goal`/`/moai goal` 자율 지속 조건 평가 |
+| `Stop` | `sync-phase-quality-gate.sh` | sync-phase 품질 게이트 (lint + test + coverage delta) |
+| `PostToolUse` | `status-transition-ownership.sh` | SPEC frontmatter status 전환 감사 로깅 (advisory) |
+| `TaskCompleted` | `team-ac-verify.sh` | team 모드 per-AC PASS 증거 파일 검증 (기본 휴면) |
+| `Stop` / `SubagentStop` / `UserPromptSubmit` | `handle-harness-observe-*.sh` | self-evolving 하네스 관찰 (Loop 0) |
 
 ## 다음 단계
 

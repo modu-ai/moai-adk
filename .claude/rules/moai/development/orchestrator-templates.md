@@ -1,5 +1,5 @@
 ---
-description: "Three orchestrator templates for task coordination in MoAI-ADK workflows"
+description: "Orchestrator templates for task coordination in MoAI-ADK workflows"
 paths: ".claude/rules/moai/core/moai-constitution.md,CLAUDE.md"
 ---
 
@@ -7,80 +7,24 @@ paths: ".claude/rules/moai/core/moai-constitution.md,CLAUDE.md"
 
 # Orchestrator Templates
 
-Three orchestration patterns for the MoAI orchestrator when coordinating sub-agents and teams.
+Orchestration patterns for the MoAI orchestrator when coordinating sub-agents. Each template maps onto a mode in the Phase 4 execution-mode catalog (`.claude/rules/moai/workflow/orchestration-mode-selection.md` §A) — the catalog decides WHICH mode; this file describes HOW to run it.
+
+| Template | Catalog mode | Shape |
+|----------|--------------|-------|
+| Sub-orchestrator | Mode 5 (`sub-agent`) | Sequential handoff, one agent per milestone — **the default** |
+| Fan-out orchestrator | Mode 4 (`parallel`) | 3-5 concurrent `Agent()` calls in one turn, results return to the orchestrator |
+| Hybrid orchestrator | Mode 4 + Mode 5 | Sequential stages with a parallel stage in the middle |
+| Workflow orchestrator | Mode 6 (`workflow`) | Script-held plan, dozens of agents — see `.claude/rules/moai/workflow/dynamic-workflows.md` |
+| ~~Team-orchestrator~~ | Mode 3 — **RETIRED** | See § Team-orchestrator — RETIRED below |
 
 ---
 
-## Team-orchestrator
-
-**When to Use**:
-- Multiple agents need to communicate (not just return results)
-- Parallel exploration with cross-agent feedback is valuable
-- High-coordination complexity (shared task list, dynamic assignment)
-
-**Structure**:
-```
-User Request
-    ↓
-[MoAI] → Agent(name=A), Agent(name=B), Agent(name=C)  (implicit team forms on first spawn)
-         ↓
-      Coordination Loop:
-      - SendMessage (member-to-member)
-      - TaskCreate/Update (shared list)
-      - TeammateIdle hook (members idle when waiting)
-      ↓
-      Final Result Assembly
-      ↓
-      User Response
-```
-
-**How to Spawn**:
-```
-Agent(
-  subagent_type: "general-purpose",
-  mode: "acceptEdits",
-  prompt: "You are leading a 3-person team to solve X. "
-          "Spawn teammates directly with Agent(name=...) — researcher, implementer, reviewer — "
-          "into the session's implicit team (no setup step). "
-          "Use SendMessage to coordinate. Use TaskCreate for shared work list. "
-          "Present final result to user."
-)
-```
-
-**Error Recovery**:
-- **Member fails task**: Other members continue, lead gets partial result
-- **Member goes idle**: Lead can SendMessage to resume or TaskCreate new work
-- **Communication loop endless**: Set max iteration count, escalate if stuck
-
-**Escalation Rules**:
-- If 2+ members report blocker → User AskUserQuestion for guidance
-- If member rejected shutdown → Lead waits 10s, then collects available output
-- If team creation fails → Fall back to sub-agent mode
-
-**Example: Research + Analysis + Synthesis**
-```
-Team Created: Researcher, Analyst, Synthesizer
-
-1. Researcher: "Investigating X..." → creates research-deep-dive.md
-2. Analyst: "Cross-checking findings..." → creates analysis-validation.md
-3. Researcher (via SendMessage): "Found Y, contradicts expectation"
-4. Analyst (reply): "Confirmed, Z explains it"
-5. Synthesizer: "Creating unified report..."
-6. All members idle
-7. Lead: "Here's the final report"
-8. Leader sends shutdown_request
-9. All approve
-10. Team cleanup is automatic on session exit (no explicit teardown call)
-```
-
----
-
-## Sub-orchestrator
+## Sub-orchestrator (Mode 5 — default)
 
 **When to Use**:
 - Sequential task handoff (output A → input B)
-- Agent coordination not needed (results only matter)
-- Simpler, lower-coordination overhead
+- Coding-heavy work (most coding tasks decompose into few truly parallel subtasks)
+- Any case where a simpler mode suffices — this is the default fallback
 
 **Structure**:
 ```
@@ -99,7 +43,8 @@ User Request
 
 **How to Spawn**:
 ```javascript
-// Sequential — all teammates are general-purpose; the role is conveyed by the prompt (role_profile)
+// Sequential — domain expertise is injected per-spawn via the prompt,
+// not read from a static config profile.
 const resultA = Agent(prompt: "Analyze X", subagent_type: "general-purpose")
 const resultB = Agent(prompt: `Design based on: ${resultA}`, subagent_type: "general-purpose")
 const resultC = Agent(prompt: `Implement: ${resultB}`, subagent_type: "general-purpose")
@@ -116,7 +61,7 @@ MoAI: "Here are the results from the pipeline..."
 **Escalation Rules**:
 - If 3+ agents fail in sequence → Escalate to user
 - If total tokens > 80% budget → Collect results and conclude
-- If result quality degrading → Switch to team mode for renegotiation
+- If a stage stalls on a decision → AskUserQuestion, then re-delegate with the answer injected
 
 **Example: Feature Development Pipeline**
 ```
@@ -137,75 +82,125 @@ MoAI: "Here are the results from the pipeline..."
 
 ---
 
-## Hybrid-orchestrator
+## Fan-out orchestrator (Mode 4 — parallel sub-agents)
 
 **When to Use**:
-- Mix of sequential and parallel stages
-- Some stages need agent coordination, others don't
-- Maximum flexibility for complex workflows
+- Multi-domain, research-heavy work (≥3 domains) where each angle is independent
+- Multi-perspective review where each reviewer should form its own judgment
+- Any place where parallel wall-clock speed matters and the agents do NOT need to talk to each other
+
+**Ceiling**: 3-5 concurrent `Agent()` calls in a single turn. Beyond that, coordination and token cost outrun the benefit.
 
 **Structure**:
 ```
-Stage 1: Sequential (Sub-orchestrator)
+User Request
+    ↓
+[MoAI] → Agent A, Agent B, Agent C   (all spawned in ONE turn)
+         ↓        ↓        ↓
+         Results return to the orchestrator's context
+         ↓
+      Orchestrator reconciles (contradictions surfaced, not smoothed)
+         ↓
+      User Response
+```
+
+**How to Spawn** — all calls in a single assistant turn:
+```javascript
+// One turn, multiple Agent() calls → they run concurrently.
+Agent(prompt: "Review for security defects: ...", subagent_type: "general-purpose")
+Agent(prompt: "Review for performance defects: ...", subagent_type: "general-purpose")
+Agent(prompt: "Review for architectural drift: ...", subagent_type: "general-purpose")
+```
+
+**Prompt discipline** (each spawned agent needs all four, or coverage duplicates and gaps appear):
+1. Objective — what this agent alone is responsible for
+2. Output format — the shape the orchestrator will consume
+3. Tool guidance — which tools to use and why
+4. Boundaries — what this agent must NOT cover (the other lenses' scope)
+
+**Error Recovery**:
+- **One agent fails**: filter it out, reconcile the survivors, and name the missing lens in the report — never present partial coverage as complete
+- **Agents contradict each other**: surface the contradiction to the user; do not silently pick one
+- **All agents fail**: fall back to Mode 5 (sequential) with a narrowed scope
+
+**Escalation Rules**:
+- If ≥2 agents report the same blocker → AskUserQuestion for guidance
+- If the work turns out to need cross-agent negotiation → it was not fan-out-shaped; re-run as Mode 5 sequential, or move it to a workflow (Mode 6) where the script holds the plan
+
+**Note**: write fan-out stays foreground and sequential (Mode 5). Parallel spawns are for read-only investigation, research, and review — concurrent writers race on the working tree.
+
+---
+
+## Hybrid orchestrator (Mode 4 + Mode 5)
+
+**When to Use**:
+- Mix of sequential and parallel stages
+- Research or review benefits from fan-out, but implementation must stay sequential
+
+**Structure**:
+```
+Stage 1: Sequential (Mode 5)
   Research Agent → Analysis Agent
 
-Stage 2: Parallel (Team-Orchestrator)
-  Agent(name=Backend), Agent(name=Frontend), Agent(name=Tests)  (implicit team forms on first spawn)
+Stage 2: Parallel fan-out (Mode 4, read-only)
+  Agent(security-lens), Agent(perf-lens), Agent(arch-lens)   ← one turn
 
-Stage 3: Sequential (Sub-orchestrator)
-  Reviewer Agent (review all outputs)
+Stage 3: Sequential (Mode 5)
+  Implementation Agent (writes; foreground, sequential)
 
 Stage 4: Consolidate
   Final result to user
 ```
 
 **How to Spawn**:
-```
+```javascript
 // Stage 1: Sequential research
-const research = Agent(prompt: "Research X and Y")
+const research = Agent(prompt: "Research X and Y", subagent_type: "general-purpose")
 
-// Stage 2: Parallel implementation
-const implementation = Agent(
-  prompt: "Lead a team to implement based on research; spawn teammates with Agent(name=...) into the implicit team...",
-  subagent_type: "general-purpose"
-)
+// Stage 2: Parallel read-only review — all in ONE turn
+Agent(prompt: `Security lens over: ${research}`, subagent_type: "general-purpose")
+Agent(prompt: `Performance lens over: ${research}`, subagent_type: "general-purpose")
+Agent(prompt: `Architecture lens over: ${research}`, subagent_type: "general-purpose")
 
-// Stage 3: Sequential review (general-purpose with reviewer role conveyed by prompt)
-const reviewed = Agent(
-  prompt: `Review this implementation: ${implementation}`,
-  subagent_type: "general-purpose"
-)
-
-// Consolidate
-MoAI: "Implementation complete and reviewed"
+// Stage 3: Sequential implementation (writes — never parallel)
+const impl = Agent(prompt: `Implement per the reconciled findings: ...`, subagent_type: "general-purpose")
 ```
 
 **Error Recovery**:
-- **Sequential stage fails**: Retry or skip to next stage
-- **Team stage fails**: Fall back to sequential sub-agents for that stage
-- **Cascade failure**: Collect partial results, present to user with blockers
+- **Sequential stage fails**: retry with adjustment, or escalate
+- **Parallel stage partially fails**: reconcile survivors, name the missing lens
+- **Cascade failure**: collect partial results, present to user with blockers
 
 **Escalation Rules**:
 - If any stage fails after 2 retries → AskUserQuestion for decision
-- If token budget exceeded → Prioritize remaining stages
-- If team created but failing → Offer to switch to sequential approach
+- If token budget exceeded → prioritize remaining stages
 
-**Example: Full-Stack Feature Development**
-```
-Stage 1 (Research):
-- Research Agent: "Analyze requirements and existing architecture"
+---
 
-Stage 2 (Implementation Team):
-- Spawn Backend, Frontend, Tester via Agent(name=...) into the implicit team
-- Parallel development across two phases
-- Integration testing
+## Workflow orchestrator (Mode 6) — pointer
 
-Stage 3 (Review):
-- Review Agent: "Security + performance review"
+When the work fans out over dozens-to-hundreds of independent, mostly-mechanical items, the plan belongs in a script rather than in the orchestrator's context. That is the dynamic-workflow primitive, documented at `.claude/rules/moai/workflow/dynamic-workflows.md` (16 concurrent agents, 1,000-total backstop, intermediate results in script variables, no mid-run user input). It is NOT a template in this file — the script IS the template.
 
-Stage 4 (User Presentation):
-- "Feature ready, here's the PR"
-```
+Reserve it for genuinely-parallel high-volume work. Coding-heavy, multi-domain, or new-code work stays Mode 5.
+
+---
+
+## Team-orchestrator — RETIRED
+
+**Mode 3 — RETIRED.** The MoAI Agent Teams static orchestration layer is retired; the Phase 4 decision tree never selects it. The former team template (a lead agent spawning named teammates that coordinate through a shared task list and peer messages) is no longer a MoAI orchestration pattern.
+
+**Where its use cases went**:
+
+| Old Team use case | Now |
+|-------------------|-----|
+| Multi-domain research / multi-perspective review | Fan-out orchestrator (Mode 4) |
+| Coding work across layers | Sub-orchestrator (Mode 5) — sequential |
+| Competing-hypothesis debugging | Fan-out orchestrator (Mode 4), one hypothesis per agent; the orchestrator falsifies |
+| Decomposable bulk migration | Workflow orchestrator (Mode 6) |
+
+The rationale is coordination cost: fan-out plus sequential covers the practical surface at lower token and latency cost than peer-coordinating teammates, and agents are not yet reliable at delegating to each other in real time.
+
+**Native runtime unaffected**: the Claude Code teammate runtime itself (`moai cg` GLM panes, `worktree --team` launch, the teammate registry) still works — only MoAI's static team-orchestration layer is retired. Do not read this section as a claim that the runtime primitive was removed.
 
 ---
 
@@ -213,46 +208,44 @@ Stage 4 (User Presentation):
 
 | Scenario | Template | Why |
 |----------|----------|-----|
-| Single feature, clear handoff | Sub | No coordination needed, simpler |
-| Feature with coordination required | Team | Agents need to negotiate |
-| Large feature with research + dev | Hybrid | Research sequential, dev parallel |
-| Bug investigation with hypotheses | Team | Debuggers need to share findings |
-| Simple change (style update) | Sub | Overkill for complexity |
-| Redesign involving multiple teams | Hybrid | Multiple phases with different needs |
-| API + Client in parallel | Team | Tight coordination needed |
+| Single feature, clear handoff | Sub (Mode 5) | No coordination needed, simplest |
+| Simple change (style update) | Sub (Mode 5) | Anything more is overkill |
+| Coding across several layers | Sub (Mode 5) | Coding rarely decomposes into truly parallel subtasks |
+| Multi-domain research (≥3 domains) | Fan-out (Mode 4) | Independent angles, parallel speed pays off |
+| Multi-perspective review | Fan-out (Mode 4) | Each reviewer forms an independent judgment |
+| Bug investigation with rival hypotheses | Fan-out (Mode 4) | One hypothesis per agent; orchestrator falsifies |
+| Large feature: research then build | Hybrid | Fan-out the research, sequence the writes |
+| Bulk mechanical migration (dozens of sites) | Workflow (Mode 6) | The script should hold the plan |
 
 ---
 
 ## Common Patterns Within Templates
 
-### Sub-Orchestrator: Fan-out (Parallel Independent Results)
+### Fan-out (Parallel Independent Results)
 ```
-[MoAI] → Agent A, Agent B, Agent C (all in parallel)
-        Combine A, B, C results
+[MoAI] → Agent A, Agent B, Agent C (all in ONE turn)
+        Reconcile A, B, C — surface contradictions, do not smooth them
 ```
 
 **When**: Independent analyses that don't depend on each other
 **Example**: Concurrent code reviews from security + performance + architecture
 
-### Sub-Orchestrator: Pipeline (Sequential Handoff)
+### Pipeline (Sequential Handoff)
 ```
 [MoAI] → Agent A → (result) → Agent B → (result) → Agent C
 ```
 
-**When**: Each stage requires previous stage's output
+**When**: Each stage requires the previous stage's output
 **Example**: Research → Design → Implementation → Testing
 
-### Team-Orchestrator: Shared Work List
+### Reconcile (the step fan-out cannot skip)
 ```
-[Lead] → TaskCreate([Task1, Task2, Task3])
-         Members self-select tasks
-         → TaskUpdate(Task1 complete)
-         → TaskUpdate(Task2 complete)
-         → Remaining tasks handled...
+[MoAI] ← results from N agents
+        → dedupe, rank, and NAME any lens that failed or returned nothing
+        → present contradictions as contradictions
 ```
 
-**When**: Work is decomposable, members can self-coordinate
-**Example**: Code migration (split files, each member migrates independently)
+**When**: Always, after a fan-out. A fan-out whose results are concatenated without reconciliation reports duplicate findings and hides coverage gaps.
 
 ---
 
@@ -260,40 +253,38 @@ Stage 4 (User Presentation):
 
 **When to Switch Templates During Execution**:
 
-1. **Sub → Team**: If agents start reporting dependency on unplanned communication
-   - Action: Collect current results, spawn team for next stage
-
-2. **Team → Sub**: If team reaches deadlock or endless coordination loop
-   - Action: Break down remaining tasks for sequential agents
-
-3. **Hybrid → Simpler**: If complex workflow can be simplified
-   - Action: Skip stages, consolidate results
+1. **Sub → Fan-out**: work turns out to be several independent read-only investigations
+   - Action: spawn the lenses in one turn, then reconcile
+2. **Fan-out → Sub**: agents keep needing each other's intermediate results
+   - Action: it was not fan-out-shaped; sequence it
+3. **Fan-out → Workflow**: the item count grows past what one turn can coordinate
+   - Action: move the plan into a script (Mode 6)
+4. **Hybrid → Simpler**: the parallel stage adds no wall-clock benefit
+   - Action: collapse to sequential
 
 **Signals to Transition**:
-- **Sub feeling like Team**: Agents sending feedback to each other → Create team instead
-- **Team feeling like Sub**: Agents work independently, little communication → Use sub-agents
-- **Over-engineering**: Simple task using complex template → Simplify
+- **Agents needing each other's output** → sequence them; do not try to make them talk
+- **Agents working independently with little overlap** → fan out
+- **Over-engineering**: a simple task using a complex template → simplify
 
 ---
 
 ## Monitoring & Adjustment
 
 **During Execution**:
-- Monitor agent progress via status messages
 - Track token consumption against budget
-- Check for communication loops or idle periods
-- Assess quality of intermediate results
+- Watch for a stalled agent (no return) — close the ledger with a synthetic note rather than proceeding as if it returned
+- Assess quality of intermediate results before feeding them downstream
 
 **Decision Points**:
-- After each major stage: Is approach working? Continue or adjust?
-- At 75% token budget: Prepare to conclude or escalate
-- After first failure: Retry with same template or switch?
+- After each major stage: is the approach working? Continue or adjust?
+- At 75% token budget: prepare to conclude or escalate
+- After a failure: retry with the same template, or switch?
 
 **Adjustment Options**:
-- Continue with current template
-- Switch to different template mid-stream
-- Add more agents / members to current team
-- Remove members / agents if not contributing
+- Continue with the current template
+- Switch templates mid-stream
+- Narrow the scope and re-delegate
 - Escalate to user for guidance
 
-These three templates provide proven structures for most MoAI orchestration scenarios. Mix and match as needed for your specific workflow.
+These templates cover most MoAI orchestration scenarios. Mix and match as needed — but let the Phase 4 catalog pick the mode, and let the simplest sufficient template win.

@@ -134,6 +134,8 @@ Refs: #123, SPEC-AUTH-001
 | Merge commit | Release branches (preserve history) | `gh pr merge --merge` |
 | Rebase | Small, clean commits | `gh pr merge --rebase` |
 
+The active method for sync-phase PR auto-merge is governed by the `git_strategy.<mode>.merge_method` config value (`squash` | `merge` | `rebase`; default `squash`), not hardcoded. The sync agent resolves it from the active mode profile and renders the matching `gh pr merge --<merge_method>` command.
+
 ## Git Safety Rules
 
 | Action | Risk | Rule |

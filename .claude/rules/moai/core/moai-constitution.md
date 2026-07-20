@@ -1,7 +1,3 @@
----
-paths: "**/.claude/**"
----
-
 # MoAI Constitution
 
 Core principles that MUST always be followed. These are HARD rules.
@@ -33,7 +29,7 @@ Rules:
 - Use sequential execution only when dependencies exist
 - Maximum 10 parallel agents for optimal throughput
 - For sub-agent mode: Launch multiple Agent() calls in a single message for parallel execution
-- For team mode: spawn teammates directly with the Agent tool's `name` parameter (the team forms implicitly on first spawn — one team per session, no setup step); use SendMessage for inter-teammate communication
+- For team mode: spawn teammates directly with the Agent tool's `name` parameter (the team forms implicitly on first spawn — one team per session, no setup step)
 - Team agents share TaskList for work coordination; sub-agents return results directly
 - Spawn multiple subagents in the same turn when fanning out across independent items or files; do not spawn a subagent for work completable directly in a single response
 - Three orchestration primitives exist — choose by who holds the plan: **sub-agents** (Claude orchestrates turn by turn, results land in Claude's context), **Agent Teams** (shared TaskList, start with 3-5 teammates), and **dynamic workflows** (a script orchestrates dozens-to-hundreds of agents, intermediate results stay in script variables). For coding-heavy work prefer sequential sub-agents; reserve workflow-scale fan-out for genuinely parallel high-volume tasks (codebase sweeps, large migrations, cross-checked research). See `.claude/rules/moai/workflow/dynamic-workflows.md`.
@@ -50,6 +46,7 @@ Rules:
 - [ZONE:Evolvable] [HARD] Principle 4 — Fewer subagents spawned by default: Opus 4.7+ / 4.8 does not auto-spawn subagents. This behavior is steerable: when fan-out helps, instruct explicitly "Spawn multiple subagents in the same turn when fanning out across items or files; do not spawn a subagent for work you can complete directly in one response."
 - [ZONE:Evolvable] [HARD] Principle 5 — Fewer tool calls by default, more reasoning: Opus 4.7+ / 4.8 prefers reasoning over tool invocation. When tool use is expected, specify when and why to use each tool (Grep for content search, Glob for file discovery, Read for full-file context). Raise effort to high/xhigh to increase tool usage when needed.
 - Effort defaults: Opus 4.8 defaults to `effort: high` on all surfaces (Claude API and Claude Code). Set `effort: xhigh` for coding/agentic work, keep a minimum of `high` for intelligence-sensitive work, and step down to `medium`/`low` only for speed-critical or simple tasks (route effort by role rather than by named agent).
+- Per-agent effort calibration: see `.claude/rules/moai/development/agent-authoring.md` § Effort-Level Calibration Matrix for the retained-agent default-effort table and the archived-agent legacy reference.
 
 ## Output Format
 
@@ -78,7 +75,7 @@ All code changes must pass TRUST 5 validation.
 Rules:
 - Tested: 85%+ coverage, characterization tests for existing code
 - Readable: Clear naming, English comments
-- Unified: Consistent style, ruff/black formatting
+- Unified: Consistent style via the project language's formatter (gofmt, ruff/black, prettier, rustfmt, ...)
 - Secured: OWASP compliance, input validation
 - Trackable: Conventional commits, issue references
 - Team mode quality: TeammateIdle hook validates work before idle acceptance
@@ -153,6 +150,7 @@ Rules:
 - Lessons are additive: never overwrite a lesson, append corrections as updates
 - To supersede a lesson, add `[SUPERSEDED by #{new_lesson_number}]` prefix to the old entry
 - Session start: scan lessons for patterns matching current task domain
+- Repo-local lessons inbox (`.moai/lessons-inbox.jsonl`): tool failures and test failures append structured stubs (timestamp, event_key, summary, source) here as they occur. The orchestrator drains these stubs into auto-memory lesson entries as part of the Lessons Protocol, converting each stub's event_key + summary into a candidate lesson before human review. Drained stubs are marked (the drain-marking mechanism is an implementation detail)
 
 Auto-Capture Triggers:
 - When a fix/refactor commit completes, check if the change matches a known anti-pattern category

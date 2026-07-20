@@ -1,6 +1,18 @@
 index:
   title: "심화 학습"
   display: "hidden"
+"tokenomics-overview":
+  title: "토크노믹스 개요"
+"token-budget":
+  title: "토큰 예산 관리와 우아한 중단"
+"no-haiku-3tier":
+  title: "3-티어 에이전트 아키텍처 (No-Haiku)"
+"profile-matrix":
+  title: "프로필 매트릭스"
+"self-evolving":
+  title: "하네스 자가 진화"
+"autonomous-loops":
+  title: "자율 연속 루프"
 "skill-guide":
   title: "스킬 가이드"
 "agent-guide":
@@ -19,13 +31,15 @@ index:
   title: "Statusline 시스템 및 PR 세그먼트"
 "claude-md-guide":
   title: "CLAUDE.md 가이드"
-"mcp-servers":
-  title: "MCP 서버 활용"
-"pencil-guide":
-  title: "Pencil 가이드"
-"stitch-guide":
-  title: "Google Stitch 가이드"
 "harness-profiles":
   title: "하네스 프로필과 평가"
 "catalog-system":
   title: "카탈로그 시스템"
+"decision-memory":
+  title: "의사결정 메모리 시스템"
+"harness-v4-builder":
+  title: "Harness v4 Builder 심화 가이드"
+"ultracode-workflows":
+  title: "동적 워크플로우와 Ultracode"
+"mx-tags":
+  title: "MX TAG 시스템"

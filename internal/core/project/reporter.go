@@ -1,13 +1,17 @@
 package project
 
-import (
-	"fmt"
-
-	"github.com/charmbracelet/lipgloss"
-)
-
 // ProgressReporter reports progress during project initialization.
 // Implemented by UI components to show real-time status updates.
+//
+// The console implementation lives on the CLI side (internal/cli
+// printerReporter, backed by internal/cli/printer) so that core stays free
+// of terminal styling concerns: colours come from internal/tui tokens via
+// the printer, and status output is routed to stderr per the CLI output
+// streams convention (SPEC-CLI-TUX-V3-001 REQ-CTX-015, REQ-CTX-008).
+//
+// @MX:ANCHOR: [AUTO] ProgressReporter is the core progress contract; fan_in >= 3
+// @MX:REASON: PhaseExecutor drives it and both init/update CLI flows inject
+// implementations; changing a method signature breaks all of them at once.
 type ProgressReporter interface {
 	// StepStart indicates the beginning of a step.
 	StepStart(name, message string)
@@ -29,45 +33,3 @@ func (r *NoOpReporter) StepStart(name, message string) {}
 func (r *NoOpReporter) StepUpdate(message string)      {}
 func (r *NoOpReporter) StepComplete(message string)    {}
 func (r *NoOpReporter) StepError(err error)            {}
-
-// ConsoleReporter is a ProgressReporter that outputs to console.
-type ConsoleReporter struct{}
-
-// NewConsoleReporter creates a new ConsoleReporter.
-func NewConsoleReporter() *ConsoleReporter {
-	return &ConsoleReporter{}
-}
-
-// Reporter styles for colored status icons.
-var (
-	reporterSuccess = lipgloss.NewStyle().Foreground(lipgloss.AdaptiveColor{Light: "#059669", Dark: "#10B981"})
-	reporterError   = lipgloss.NewStyle().Foreground(lipgloss.AdaptiveColor{Light: "#DC2626", Dark: "#EF4444"})
-	reporterMuted   = lipgloss.NewStyle().Foreground(lipgloss.AdaptiveColor{Light: "#9CA3AF", Dark: "#6B7280"})
-)
-
-func (r *ConsoleReporter) StepStart(name, message string) {
-	icon := reporterMuted.Render("\u25CB")
-	if message != "" {
-		fmt.Printf("  %s %s: %s...\n", icon, name, message)
-	} else {
-		fmt.Printf("  %s %s...\n", icon, name)
-	}
-}
-
-func (r *ConsoleReporter) StepUpdate(message string) {
-	fmt.Printf("    %s\n", message)
-}
-
-func (r *ConsoleReporter) StepComplete(message string) {
-	icon := reporterSuccess.Render("\u2713")
-	if message != "" {
-		fmt.Printf("\r  %s %s: %s\n", icon, message, "completed")
-	} else {
-		fmt.Printf("\r  %s Completed\n", icon)
-	}
-}
-
-func (r *ConsoleReporter) StepError(err error) {
-	icon := reporterError.Render("\u2717")
-	fmt.Printf("\r  %s Error: %v\n", icon, err)
-}

@@ -35,15 +35,83 @@ import (
 // RunnerTemplate read path (M3 runner_template.go readManifest).
 const v4CommandsDir = ".claude/commands/harness"
 
-// v4WorkflowsDir holds the Runner Workflow scripts (harness-<name>-run.js).
+// v4WorkflowsDir holds the Runner Workflow scripts (hns-<name>-run.js
+// canonical; legacy harness-<name>-run.js preserved).
 const v4WorkflowsDir = ".claude/workflows"
 
 // v4AgentsDir holds the specialist agent definitions (user-owned namespace).
 const v4AgentsDir = ".claude/agents/harness"
 
 // v4SkillsDir is the parent of the per-harness companion skill directories
-// (.claude/skills/harness-<name>-*/).
+// (.claude/skills/hns-<name>-*/ canonical; legacy .claude/skills/harness-<name>-*/).
 const v4SkillsDir = ".claude/skills"
+
+// v4ArtifactPrefixes are the recognized user-owned artifact-name prefixes for
+// the dual-pattern matcher, canonical generation first (SPEC-HNS-PREFIX-RENAME-001
+// REQ-HPR-010/011: hns- canonical, harness- legacy — both resolve).
+var v4ArtifactPrefixes = []string{"hns-", "harness-"}
+
+// listHarnessCommandNames scans the v4CommandsDir for *.md command files and
+// returns the set of known harness names (the file stems). It is the
+// disambiguation source for harnessArtifactBelongsTo: without the full name set,
+// a bare prefix match cannot distinguish harness "release" from "release-update"
+// (SPEC-CLIFIX-CRITICAL-001 REQ-CRIT-001-004).
+func listHarnessCommandNames(projectRoot string) []string {
+	commandsDir := filepath.Join(projectRoot, v4CommandsDir)
+	entries, err := os.ReadDir(commandsDir)
+	if err != nil {
+		return nil
+	}
+	var names []string
+	for _, e := range entries {
+		if e.IsDir() {
+			continue
+		}
+		if strings.HasSuffix(e.Name(), ".md") {
+			names = append(names, strings.TrimSuffix(e.Name(), ".md"))
+		}
+	}
+	return names
+}
+
+// harnessArtifactBelongsTo reports whether the artifact entryName (a file or dir
+// name in the hns-<name> / legacy harness-<name> namespace) belongs to the
+// harness with the given name, using the set of all known harness names to
+// disambiguate prefix collisions via longest-match
+// (SPEC-CLIFIX-CRITICAL-001 REQ-CRIT-001-004; dual-pattern per
+// SPEC-HNS-PREFIX-RENAME-001 REQ-HPR-010/011).
+//
+// "hns-release-auditor-specialist.md" belongs to "release" (not
+// "release-update") because the longest matching name is "release".
+// "hns-release-update-auditor-specialist.md" belongs to "release-update"
+// because "release-update" is a longer match than "release". The same
+// longest-name-first discipline applies to the legacy harness- generation, so
+// a mixed-generation harness resolves as one entry.
+func harnessArtifactBelongsTo(entryName, name string, allNames []string) bool {
+	bestMatch := ""
+	for _, n := range allNames {
+		for _, prefix := range v4ArtifactPrefixes {
+			art := prefix + n
+			if entryName == art || strings.HasPrefix(entryName, art+"-") {
+				if len(n) > len(bestMatch) {
+					bestMatch = n
+				}
+			}
+		}
+	}
+	// Fall back to the bare name when allNames is empty (no command files found)
+	// so the helper degrades to a prefix+"-" or exact match against name alone.
+	if bestMatch == "" {
+		for _, prefix := range v4ArtifactPrefixes {
+			art := prefix + name
+			if entryName == art || strings.HasPrefix(entryName, art+"-") {
+				return true
+			}
+		}
+		return false
+	}
+	return bestMatch == name
+}
 
 // HarnessEntry is a single harness enumerated by ListHarnesses.
 type HarnessEntry struct {
@@ -71,6 +139,13 @@ type HarnessEntry struct {
 	// ManifestPath is the absolute path to the manifest.json (may not exist
 	// when ManifestMissing is true).
 	ManifestPath string `json:"manifest_path"`
+
+	// Schedule is the harness's OPTIONAL declared recurring schedule from
+	// manifest.json. Nil when the manifest declares none — the JSON output
+	// omits the key entirely (omitempty), keeping schedule-less harnesses
+	// byte-identical to the pre-schedule baseline. The list surfaces the
+	// DECLARED schedule, not live registration state.
+	Schedule *v4manifest.Schedule `json:"schedule,omitempty"`
 }
 
 // ListHarnesses enumerates every harness under projectRoot by scanning
@@ -113,6 +188,7 @@ func ListHarnesses(projectRoot string) ([]HarnessEntry, error) {
 				entry.Domain = m.Domain
 				entry.EntryCommand = m.EntryCommand
 				entry.RunnerWorkflow = m.RunnerWorkflow
+				entry.Schedule = m.Schedule
 			}
 			// If JSON unmarshal fails, Domain stays empty but the harness is
 			// still listed (ManifestMissing=false because the file exists).
@@ -126,6 +202,24 @@ func ListHarnesses(projectRoot string) ([]HarnessEntry, error) {
 		return harnesses[i].Name < harnesses[j].Name
 	})
 	return harnesses, nil
+}
+
+// readDeclaredSchedule best-effort reads the named harness's manifest and
+// returns its declared schedule, or nil when the manifest is absent,
+// unreadable, or declares no schedule. Callers that need the schedule across
+// a destructive operation (remove) MUST call this BEFORE the operation — the
+// manifest is deleted by RemoveHarness, so post-removal reads see nothing.
+func readDeclaredSchedule(projectRoot, name string) *v4manifest.Schedule {
+	manifestPath := filepath.Join(projectRoot, v4CommandsDir, name, "manifest.json")
+	data, err := os.ReadFile(manifestPath)
+	if err != nil {
+		return nil
+	}
+	var m v4manifest.Manifest
+	if err := json.Unmarshal(data, &m); err != nil {
+		return nil
+	}
+	return m.Schedule
 }
 
 // HarnessEditPaths is the set of files EditHarness surfaces for editing. The
@@ -166,15 +260,18 @@ func EditHarness(projectRoot, name string) (HarnessEditPaths, error) {
 		ManifestPath: manifestPath,
 	}
 
+	// SPEC-CLIFIX-CRITICAL-001 REQ-CRIT-001-004: disambiguate via known harness
+	// names so "release" never collects "release-update" artifacts.
+	allNames := listHarnessCommandNames(projectRoot)
+
 	// Specialist agent files: .claude/agents/harness/harness-<name>*-specialist.md
 	agentsDir := filepath.Join(projectRoot, v4AgentsDir)
 	if entries, err := os.ReadDir(agentsDir); err == nil {
-		prefix := "harness-" + name
 		for _, e := range entries {
 			if e.IsDir() {
 				continue
 			}
-			if strings.HasPrefix(e.Name(), prefix) && strings.HasSuffix(e.Name(), "-specialist.md") {
+			if harnessArtifactBelongsTo(e.Name(), name, allNames) && strings.HasSuffix(e.Name(), "-specialist.md") {
 				paths.SpecialistPaths = append(paths.SpecialistPaths, filepath.Join(agentsDir, e.Name()))
 			}
 		}
@@ -184,12 +281,11 @@ func EditHarness(projectRoot, name string) (HarnessEditPaths, error) {
 	// Companion skill directory: .claude/skills/harness-<name>*/
 	skillsDir := filepath.Join(projectRoot, v4SkillsDir)
 	if entries, err := os.ReadDir(skillsDir); err == nil {
-		prefix := "harness-" + name
 		for _, e := range entries {
 			if !e.IsDir() {
 				continue
 			}
-			if strings.HasPrefix(e.Name(), prefix) {
+			if harnessArtifactBelongsTo(e.Name(), name, allNames) {
 				paths.SkillPaths = append(paths.SkillPaths, filepath.Join(skillsDir, e.Name()))
 			}
 		}
@@ -247,15 +343,18 @@ func RemoveHarness(projectRoot, name string) error {
 		return fmt.Errorf("v4lifecycle: remove: stat runner: %w", err)
 	}
 
+	// SPEC-CLIFIX-CRITICAL-001 REQ-CRIT-001-004: disambiguate via known harness
+	// names so "release" never collects "release-update" artifacts.
+	allNames := listHarnessCommandNames(projectRoot)
+
 	// Specialist agent files: glob .claude/agents/harness/harness-<name>*-specialist.md
 	// (matches both harness-<name>-auditor-specialist.md and any future
 	// harness-<name>-<role>-specialist.md variants).
 	agentsDir := filepath.Join(projectRoot, v4AgentsDir)
 	var specialistPaths []string
 	if entries, dErr := os.ReadDir(agentsDir); dErr == nil {
-		prefix := "harness-" + name
 		for _, e := range entries {
-			if !e.IsDir() && strings.HasPrefix(e.Name(), prefix) && strings.HasSuffix(e.Name(), "-specialist.md") {
+			if !e.IsDir() && harnessArtifactBelongsTo(e.Name(), name, allNames) && strings.HasSuffix(e.Name(), "-specialist.md") {
 				specialistPaths = append(specialistPaths, filepath.Join(agentsDir, e.Name()))
 			}
 		}
@@ -280,9 +379,8 @@ func RemoveHarness(projectRoot, name string) error {
 	skillsDir := filepath.Join(projectRoot, v4SkillsDir)
 	var skillPaths []string
 	if entries, dErr := os.ReadDir(skillsDir); dErr == nil {
-		prefix := "harness-" + name
 		for _, e := range entries {
-			if e.IsDir() && strings.HasPrefix(e.Name(), prefix) {
+			if e.IsDir() && harnessArtifactBelongsTo(e.Name(), name, allNames) {
 				skillPaths = append(skillPaths, filepath.Join(skillsDir, e.Name()))
 			}
 		}

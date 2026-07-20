@@ -60,6 +60,14 @@ type deployer struct {
 	fsys        fs.FS
 	renderer    Renderer // Optional: if set, .tmpl files are rendered with TemplateContext
 	forceUpdate bool     // If true, overwrite existing files without manifest check (used for updates)
+	// renderCache stores rendered template content from ValidateAll so Deploy can
+	// reuse it (REQ-PERF-006-A — single render per template per transaction).
+	// The cache is scoped to this deployer instance; a new deployer is created
+	// per moai init / moai update operation, so cross-transaction contamination
+	// is impossible by construction (R5 mitigated).
+	// @MX:NOTE: [AUTO] renderCache — REQ-PERF-006-A single-render optimization
+	// @MX:REASON: ValidateAll renders all .tmpl files; Deploy reuses cached results instead of re-rendering (baseline 2N renders → N)
+	renderCache map[string][]byte
 }
 
 // NewDeployer creates a Deployer backed by the given filesystem.
@@ -127,10 +135,15 @@ func (d *deployer) Deploy(ctx context.Context, projectRoot string, m manifest.Ma
 		var destRelPath string
 
 		if isTemplate && d.renderer != nil && tmplCtx != nil {
-			// Render the template
-			rendered, renderErr := d.renderer.Render(path, tmplCtx)
-			if renderErr != nil {
-				return fmt.Errorf("template render %q: %w", path, renderErr)
+			// REQ-PERF-006-A: check render cache first (populated by ValidateAll)
+			rendered, ok := d.renderCache[path]
+			if !ok {
+				// Cache miss — render now
+				var renderErr error
+				rendered, renderErr = d.renderer.Render(path, tmplCtx)
+				if renderErr != nil {
+					return fmt.Errorf("template render %q: %w", path, renderErr)
+				}
 			}
 			content = rendered
 			// Remove .tmpl suffix for destination path
@@ -264,11 +277,17 @@ func (d *deployer) ValidateAll(ctx context.Context, tmplCtx *TemplateContext) er
 			return nil
 		}
 
-		// Try to render the template (this will catch parse errors)
-		_, renderErr := d.renderer.Render(path, tmplCtx)
+		// Try to render the template (this will catch parse errors).
+		// Cache the result so Deploy can reuse it (REQ-PERF-006-A).
+		rendered, renderErr := d.renderer.Render(path, tmplCtx)
 		if renderErr != nil {
 			validationErrors = append(validationErrors,
 				fmt.Errorf("template %q: %w", path, renderErr))
+		} else {
+			if d.renderCache == nil {
+				d.renderCache = make(map[string][]byte)
+			}
+			d.renderCache[path] = rendered
 		}
 
 		return nil

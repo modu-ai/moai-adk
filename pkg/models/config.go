@@ -49,7 +49,12 @@ type LanguageConfig struct {
 type QualityConfig struct {
 	DevelopmentMode    DevelopmentMode `yaml:"development_mode" validate:"omitempty,oneof=ddd tdd"`
 	EnforceQuality     bool            `yaml:"enforce_quality"`
-	TestCoverageTarget int             `yaml:"test_coverage_target"`
+	// QualityExtrasEnabled is the single enable/disable toggle for the quality-extras
+	// feature, surfaced on the launch tab (SPEC-WEBCONF-SIMPLIFY-001 M4, REQ-WC-004 /
+	// AC-WC-004). The detailed DDD-gate fields (characterization_tests etc.) stay
+	// baked/hidden; this toggle gates the feature as a whole.
+	QualityExtrasEnabled bool             `yaml:"quality_extras_enabled"`
+	TestCoverageTarget   int             `yaml:"test_coverage_target"`
 	// CoverageThreshold is an alias for TestCoverageTarget used in some yaml files.
 	// SPEC-V3R2-RT-005 M2: adds typed field so ConfigTypeError is detectable
 	// when string is provided where int is expected (AC-05).

@@ -1,0 +1,1217 @@
+package agentlint
+
+import (
+	"bufio"
+	"bytes"
+	"encoding/json"
+	"errors"
+	"fmt"
+	"os"
+	"path/filepath"
+	"regexp"
+	"strings"
+
+	"github.com/charmbracelet/lipgloss"
+	"github.com/modu-ai/moai-adk/internal/defs"
+	"github.com/modu-ai/moai-adk/internal/tui"
+	"github.com/spf13/cobra"
+)
+
+// Local CLI output styles — the agentlint subpackage is imported BY the parent
+// cli package, so it cannot import internal/cli without an import cycle. These
+// mirror the package-cli styles using the same tui source (single source of truth).
+var (
+	cliSuccess = lipgloss.NewStyle().Foreground(lipgloss.AdaptiveColor{Light: tui.LightTheme().Success, Dark: tui.DarkTheme().Success})
+	cliWarn    = lipgloss.NewStyle().Foreground(lipgloss.AdaptiveColor{Light: tui.LightTheme().Warning, Dark: tui.DarkTheme().Warning})
+	cliError   = lipgloss.NewStyle().Foreground(lipgloss.AdaptiveColor{Light: tui.LightTheme().Danger, Dark: tui.DarkTheme().Danger})
+)
+
+// getStringFlag retrieves a string flag value from the command.
+func getStringFlag(cmd *cobra.Command, name string) string {
+	val, err := cmd.Flags().GetString(name)
+	if err != nil {
+		return ""
+	}
+	return val
+}
+
+// getBoolFlag retrieves a bool flag value from the command.
+func getBoolFlag(cmd *cobra.Command, name string) bool {
+	val, err := cmd.Flags().GetBool(name)
+	if err != nil {
+		return false
+	}
+	return val
+}
+
+// errLintViolations signals that lint violations were detected.
+// cobra's RunE returns this to exit non-zero without printing an "Error: " prefix.
+var errLintViolations = errors.New("lint violations detected")
+
+// LintSeverity represents the severity level of a lint violation.
+type LintSeverity string
+
+const (
+	// SeverityError is a critical issue that must be fixed.
+	SeverityError LintSeverity = "error"
+	// SeverityWarning is a non-critical issue that should be fixed.
+	SeverityWarning LintSeverity = "warning"
+)
+
+// LintViolation represents a single lint rule violation.
+type LintViolation struct {
+	Rule     string       `json:"rule"`
+	Severity LintSeverity `json:"severity"`
+	File     string       `json:"file"`
+	Line     int          `json:"line"`
+	Message  string       `json:"message"`
+}
+
+// LintOutput is the JSON output format for the lint command.
+type LintOutput struct {
+	Version    string          `json:"version"`
+	Summary    LintSummary     `json:"summary"`
+	Violations []LintViolation `json:"violations"`
+}
+
+// LintSummary contains summary statistics.
+type LintSummary struct {
+	Total    int `json:"total"`
+	Errors   int `json:"errors"`
+	Warnings int `json:"warnings"`
+}
+
+// AgentFrontmatter represents the YAML frontmatter of an agent file.
+type AgentFrontmatter struct {
+	Name           string            `yaml:"name"`
+	Tools          string            `yaml:"tools"`
+	Skills         []string          `yaml:"skills"`
+	Hooks          map[string][]Hook `yaml:"hooks"`
+	Effort         string            `yaml:"effort"`
+	Model          string            `yaml:"model"`
+	Isolation      string            `yaml:"isolation"`
+	PermissionMode string            `yaml:"permissionMode"`
+	// Sandbox fields (SPEC-V3R2-RT-003 REQ-033/043)
+	Sandbox struct {
+		// Backend is the sandbox value — parsed from the top-level `sandbox:` key in frontmatter.
+		Backend string `yaml:"backend"`
+		// Justification is the opt-out reason when sandbox = "none".
+		Justification string `yaml:"justification"`
+	} `yaml:"sandbox"`
+	// SandboxValue is the top-level `sandbox:` string field (e.g., `sandbox: none`).
+	// Distinct from Sandbox.Backend which would require `sandbox:\n  backend: none` nesting.
+	SandboxValue string `yaml:"sandbox_value"`
+}
+
+// Hook represents a single hook configuration.
+type Hook struct {
+	Matcher string    `yaml:"matcher"`
+	Hooks   []SubHook `yaml:"hooks"`
+}
+
+// SubHook represents a hook command.
+type SubHook struct {
+	Command string `yaml:"command"`
+}
+
+var agentLintCmd = &cobra.Command{
+	Use:   "lint",
+	Short: "Lint agent definition files",
+	Long: `Validate agent definition files (.claude/agents/{moai,harness}/*.md) against common issues.
+
+	  LR-01: Reject literal AskUserQuestion in body text (excluding code blocks)
+	  LR-02: Reject Agent token in tools: CSV list
+	  LR-03: Error on missing effort: field (promoted from warning per SPEC-V3R2-ORC-003)
+	  LR-12: Reject effort drift from SPEC-V3R2-ORC-003 canonical matrix
+	  LR-13: Reject invalid effort enum value (must be one of low/medium/high/xhigh/max)
+	  LR-14: Reject fixed budget_tokens (Opus 4.7 Adaptive Thinking rejects HTTP 400)
+	  LR-04: Reject dead hook entries (matcher tool absent from tools:)
+	  LR-05: Warn on missing isolation: worktree for write-heavy role profiles and standalone agents (SPEC-V3R2-ORC-004)
+	  LR-06: Warn on --deepthink boilerplate in description (error with --strict)
+	  LR-07: Reject duplicate Skeptical-Evaluator Mandate blocks
+	  LR-08: Warn on skill-preload drift within same category (error with --strict)
+	  LR-09: Reject isolation: worktree on read-only agents (permissionMode: plan) (SPEC-V3R2-ORC-004)
+	  LR-10: Reject static team-* agent files (dynamic generation only, SPEC-V3R2-ORC-005)
+
+
+Exit Codes:
+  0: No violations found
+  1: Violations found
+  2: Malformed frontmatter
+  3: IO error`,
+	RunE:          runAgentLint,
+	SilenceErrors: true,
+	SilenceUsage:  true,
+}
+
+// AgentCmd is the parent "agent" command group. The parent cli package registers
+// it onto rootCmd; the lint subcommand is wired onto it in init() below.
+var AgentCmd = &cobra.Command{
+	Use:   "agent",
+	Short: "Agent management commands",
+	RunE: func(cmd *cobra.Command, args []string) error {
+		return cmd.Help()
+	},
+	GroupID: "tools",
+}
+
+func init() {
+	AgentCmd.AddCommand(agentLintCmd)
+
+	agentLintCmd.Flags().String("path", "", "Path to agent directory (default: .claude/agents/{moai,harness}/ and internal/template/templates/.claude/agents/moai/)")
+	agentLintCmd.Flags().String("format", "text", "Output format: text or json")
+	agentLintCmd.Flags().Bool("strict", false, "Promote warnings to errors")
+}
+
+func runAgentLint(cmd *cobra.Command, _ []string) error {
+	customPath := getStringFlag(cmd, "path")
+	format := getStringFlag(cmd, "format")
+	strict := getBoolFlag(cmd, "strict")
+
+	if format != "text" && format != "json" {
+		return fmt.Errorf("invalid format: %s (must be 'text' or 'json')", format)
+	}
+
+	// Determine scan paths
+	var scanPaths []string
+	if customPath != "" {
+		scanPaths = []string{customPath}
+	} else {
+		cwd, err := os.Getwd()
+		if err != nil {
+			return fmt.Errorf("get working directory: %w", err)
+		}
+		scanPaths = []string{
+			filepath.Join(cwd, defs.ClaudeDir, defs.AgentsMoaiSubdir),
+			filepath.Join(cwd, defs.ClaudeDir, "agents", "harness"),
+			filepath.Join(cwd, "internal", "template", "templates", defs.ClaudeDir, defs.AgentsMoaiSubdir),
+			// harness/ 전용 template mirror는 없다 (user-owned, CLAUDE.local.md §24) —
+			// live .claude/agents/harness/만 스캔한다.
+		}
+	}
+
+	// Collect all agent files
+	var agentFiles []string
+	for _, scanPath := range scanPaths {
+		files, err := filepath.Glob(filepath.Join(scanPath, "*.md"))
+		if err != nil {
+			return fmt.Errorf("glob pattern failed: %w", err)
+		}
+		agentFiles = append(agentFiles, files...)
+	}
+
+	if len(agentFiles) == 0 {
+		out := cmd.OutOrStdout()
+		_, _ = fmt.Fprintf(out, "No agent files found in %s\n", strings.Join(scanPaths, ", "))
+		return nil
+	}
+
+	// Run all lint rules
+	var allViolations []LintViolation
+	for _, file := range agentFiles {
+		violations, err := lintAgentFile(file, strict)
+		if err != nil {
+			// Return exit code 2 for malformed frontmatter
+			return fmt.Errorf("lint %s: %w", file, err)
+		}
+		allViolations = append(allViolations, violations...)
+	}
+
+	// Run LR-07 (duplicate mandate blocks) across all files
+	dupViolations := checkDuplicateMandateBlocks(agentFiles)
+	allViolations = append(allViolations, dupViolations...)
+
+	// Run LR-08 (skill preload drift) across all files
+	driftViolations := checkSkillPreloadDrift(agentFiles)
+	allViolations = append(allViolations, driftViolations...)
+
+	// Count errors and warnings
+	errors := 0
+	warnings := 0
+	for _, v := range allViolations {
+		if v.Severity == SeverityError {
+			errors++
+		} else {
+			warnings++
+		}
+	}
+
+	// Output results
+	out := cmd.OutOrStdout()
+	if format == "json" {
+		output := LintOutput{
+			Version: "1.0",
+			Summary: LintSummary{
+				Total:    len(allViolations),
+				Errors:   errors,
+				Warnings: warnings,
+			},
+			Violations: allViolations,
+		}
+		data, err := json.MarshalIndent(output, "", "  ")
+		if err != nil {
+			return fmt.Errorf("marshal JSON: %w", err)
+		}
+		_, _ = fmt.Fprintln(out, string(data))
+	} else {
+		// Text format
+		if len(allViolations) == 0 {
+			_, _ = fmt.Fprintf(out, "%s No violations found\n", cliSuccess.Render("✓"))
+		} else {
+			for _, v := range allViolations {
+				icon := "!"
+				if v.Severity == SeverityError {
+					icon = "✗"
+					icon = cliError.Render(icon)
+				} else {
+					icon = cliWarn.Render(icon)
+				}
+				_, _ = fmt.Fprintf(out, "%s [%s] %s:%d: %s\n", icon, v.Rule, v.File, v.Line, v.Message)
+			}
+			_, _ = fmt.Fprintf(out, "\nSummary: %d total (%d errors, %d warnings)\n", len(allViolations), errors, warnings)
+		}
+	}
+
+	// Set exit code: errors block (exit 1), warnings do not. This follows the
+	// standard lint convention (golangci-lint et al.) where warnings surface for
+	// visibility but do not fail the gate — only SeverityError violations fail.
+	// Without this, any LR-08 skill-preload-drift warning leaves CI red even at
+	// zero errors. (--strict promotes warnings to errors separately.)
+	if errors > 0 {
+		return errLintViolations
+	}
+
+	return nil
+}
+
+// lintAgentFile runs all lint rules on a single agent file.
+func lintAgentFile(path string, strict bool) ([]LintViolation, error) {
+	content, err := os.ReadFile(path)
+	if err != nil {
+		return nil, fmt.Errorf("read file: %w", err)
+	}
+
+	if len(content) == 0 {
+		return nil, fmt.Errorf("empty file")
+	}
+
+	// Split frontmatter and body
+	parts := bytes.SplitN(content, []byte("---"), 3)
+	if len(parts) < 3 {
+		return nil, fmt.Errorf("missing frontmatter delimiters (need --- at start and end of frontmatter)")
+	}
+
+	frontmatterText := parts[1]
+	bodyText := parts[2]
+
+	// Parse frontmatter
+	var frontmatter AgentFrontmatter
+	if err := parseYAMLFrontmatter(frontmatterText, &frontmatter); err != nil {
+		return nil, fmt.Errorf("parse frontmatter: %w", err)
+	}
+
+	var violations []LintViolation
+
+	// LR-01: Literal AskUserQuestion in body (excluding code blocks)
+	// @MX:NOTE: [AUTO] isOrchestrator check — agents declaring AskUserQuestion in tools: are exempt from LR-01.
+	// OQ-1 resolution A (data-driven): orchestrator self-declares, no central allowlist needed. (SPEC-V3R2-ORC-002)
+	if !isOrchestrator(frontmatter) {
+		violations = append(violations, checkLiteralAskUserQuestion(path, bodyText)...)
+	}
+
+	// LR-02: Agent token in tools: CSV
+	violations = append(violations, checkAgentInTools(path, frontmatter)...)
+
+	// LR-03: Missing effort: field
+	violations = append(violations, checkMissingEffort(path, frontmatter)...)
+
+	// LR-12: Effort drift from canonical matrix (SPEC-V3R2-ORC-003)
+	violations = append(violations, checkEffortMatrixDrift(path, frontmatter)...)
+
+	// LR-13: Invalid effort enum value (SPEC-V3R2-ORC-003)
+	violations = append(violations, checkInvalidEffortEnum(path, frontmatter)...)
+
+	// LR-04: Dead hook entries
+	violations = append(violations, checkDeadHooks(path, frontmatter)...)
+
+	// LR-05: Missing isolation: worktree for write-heavy agents
+	violations = append(violations, checkMissingIsolation(path, frontmatter)...)
+
+	// LR-06: --deepthink boilerplate in description
+	violations = append(violations, checkDeepthinkBoilerplate(path, frontmatterText, strict)...)
+
+	// LR-09: isolation: worktree on read-only agents
+	violations = append(violations, checkReadOnlyIsolation(path, frontmatter)...)
+
+	// LR-10: Static team-* agent file detection
+	violations = append(violations, checkStaticTeamAgent(path)...)
+
+	// LR-14: Fixed budget_tokens prohibition (SPEC-V3R2-ORC-003)
+	// Need full file content for body scan
+	violations = append(violations, checkFixedBudgetTokens(path, content)...)
+
+	// LR-33: sandbox: none without sandbox.justification (SPEC-V3R2-RT-003 REQ-033/043)
+	// @MX:WARN: [AUTO] AGENT_LINT_NO_SANDBOX_NO_JUSTIFICATION is a security-critical lint rule
+	// @MX:REASON: sandbox: none without justification bypasses defense-in-depth (P7 principle);
+	//             CI lint must catch this before agent is spawned in production.
+	violations = append(violations, checkSandboxJustification(path, frontmatterText)...)
+
+	return violations, nil
+}
+
+// isOrchestrator returns true when the agent declares AskUserQuestion in its tools: field.
+// Orchestrator-class agents are exempt from LR-01 (literal AskUserQuestion in body) per OQ-1 resolution.
+func isOrchestrator(fm AgentFrontmatter) bool {
+	if fm.Tools == "" {
+		return false
+	}
+	tools := strings.Split(fm.Tools, ",")
+	for _, t := range tools {
+		if strings.TrimSpace(t) == "AskUserQuestion" {
+			return true
+		}
+	}
+	return false
+}
+
+// stripInlineCodeSpans removes inline-code spans (`...`) from a markdown line,
+// returning the prose with the code spans elided. Used by checkLiteralAskUserQuestion
+// (LR-01) so tool-name references inside inline code are not treated as body
+// literals — an agent referencing the orchestrator's AskUserQuestion tool by
+// name in inline code is documenting behavior, not instructing its own use.
+// Fenced code blocks (```) are handled separately by checkLiteralAskUserQuestion's
+// inCodeBlock state; this helper only strips single-backtick inline spans.
+func stripInlineCodeSpans(s string) string {
+	var b strings.Builder
+	inSpan := false
+	for _, r := range s {
+		if r == '`' {
+			inSpan = !inSpan
+			continue
+		}
+		if !inSpan {
+			b.WriteRune(r)
+		}
+	}
+	return b.String()
+}
+
+// checkLiteralAskUserQuestion checks for LR-01.
+func checkLiteralAskUserQuestion(file string, body []byte) []LintViolation {
+	var violations []LintViolation
+
+	// Calculate frontmatter offset (count lines before body starts)
+	content, _ := os.ReadFile(file)
+	frontmatterEnd := bytes.Index(content, []byte("---\n"))
+	if frontmatterEnd == -1 {
+		frontmatterEnd = bytes.Index(content, []byte("---\r\n"))
+	}
+	if frontmatterEnd == -1 {
+		return violations // Malformed, but let it slide
+	}
+
+	// Find the second --- delimiter
+	secondDelimiter := bytes.Index(content[frontmatterEnd+3:], []byte("---"))
+	if secondDelimiter == -1 {
+		return violations
+	}
+
+	// Count lines up to the start of body
+	linesBeforeBody := bytes.Count(content[:frontmatterEnd+3+secondDelimiter+3], []byte("\n")) + 1
+
+	scanner := bufio.NewScanner(bytes.NewReader(body))
+	lineNum := linesBeforeBody
+	inCodeBlock := false
+
+	for scanner.Scan() {
+		line := scanner.Text()
+
+		// Track code block state
+		if strings.HasPrefix(line, "```") {
+			inCodeBlock = !inCodeBlock
+			lineNum++
+			continue
+		}
+
+		// Skip checks inside code blocks
+		if inCodeBlock {
+			lineNum++
+			continue
+		}
+
+		// Check for literal AskUserQuestion (case-sensitive), ignoring inline-code
+		// spans (`...`). Inline code is a code reference, not body prose — LR-01's
+		// intent (block agents from instructing their own AskUserQuestion use) does
+		// not bind when an agent references the orchestrator's tool by name in
+		// inline code (e.g. plan-auditor / super-advisor documenting orchestrator
+		// behavior).
+		if strings.Contains(stripInlineCodeSpans(line), "AskUserQuestion") {
+			violations = append(violations, LintViolation{
+				Rule:     "LR-01",
+				Severity: SeverityError,
+				File:     file,
+				Line:     lineNum,
+				Message:  "Literal AskUserQuestion found in body text (use AskUserQuestion tool invocation only in orchestrator, never in agent body)",
+			})
+		}
+
+		lineNum++
+	}
+
+	return violations
+}
+
+// checkAgentInTools checks for LR-02.
+func checkAgentInTools(file string, fm AgentFrontmatter) []LintViolation {
+	var violations []LintViolation
+
+	if fm.Tools == "" {
+		return violations // No tools list, nothing to check
+	}
+
+	// Parse CSV tool list
+	tools := strings.Split(fm.Tools, ",")
+	for _, tool := range tools {
+		tool = strings.TrimSpace(tool)
+		if tool == "Agent" {
+			// Find line number by searching file
+			lineNum := findFrontmatterLine(file, "tools:")
+			violations = append(violations, LintViolation{
+				Rule:     "LR-02",
+				Severity: SeverityError,
+				File:     file,
+				Line:     lineNum,
+				Message:  "Agent tool found in tools: CSV list (subagents cannot spawn sub-subagents - Agent tool is only for orchestrator)",
+			})
+			break
+		}
+	}
+
+	return violations
+}
+
+// isHaikuAgent reports whether the agent declares model: haiku.
+// Haiku does not support the effort frontmatter field (per
+// code.claude.com/docs/en/model-config — Haiku is not listed among the
+// effort-supporting models, so an effort: value is silently inert). The
+// canonical `model: haiku ⇒ no effort` invariant is authoritatively enforced
+// by the haiku_effort_guard (internal/template/haiku_effort_guard_test.go,
+// TestHaikuAgentsHaveNoEffort). LR-03 and LR-12 therefore MUST NOT demand an
+// effort field on haiku agents — doing so contradicts that guard.
+func isHaikuAgent(fm AgentFrontmatter) bool {
+	return strings.TrimSpace(fm.Model) == "haiku"
+}
+
+// checkMissingEffort checks for LR-03.
+func checkMissingEffort(file string, fm AgentFrontmatter) []LintViolation {
+	var violations []LintViolation
+
+	// Haiku agents must NOT declare effort (it is silently inert on Haiku).
+	// Exempt them from LR-03 so the lint does not demand a field the canonical
+	// haiku_effort_guard forbids. See isHaikuAgent.
+	if isHaikuAgent(fm) {
+		return violations
+	}
+
+	if fm.Effort == "" {
+		severity := SeverityError
+
+		lineNum := findFrontmatterLine(file, "name:")
+		violations = append(violations, LintViolation{
+			Rule:     "LR-03",
+			Severity: severity,
+			File:     file,
+			Line:     lineNum,
+			Message:  "Missing effort: field in frontmatter (add 'effort: low/medium/high/xhigh' for explicit session effort control)",
+		})
+	}
+
+	return violations
+}
+
+// checkDeadHooks checks for LR-04.
+func checkDeadHooks(file string, fm AgentFrontmatter) []LintViolation {
+	var violations []LintViolation
+
+	if len(fm.Hooks) == 0 || fm.Tools == "" {
+		return violations
+	}
+
+	// Parse tools CSV into set
+	toolsSet := make(map[string]bool)
+	for _, tool := range strings.Split(fm.Tools, ",") {
+		toolsSet[strings.TrimSpace(tool)] = true
+	}
+
+	// Check each hook's matcher
+	for hookType, hookList := range fm.Hooks {
+		for _, hook := range hookList {
+			if hook.Matcher == "" {
+				continue
+			}
+
+			// Parse matcher (e.g., "Write|Edit|MultiEdit")
+			matcherTools := strings.Split(hook.Matcher, "|")
+			for _, matcherTool := range matcherTools {
+				matcherTool = strings.TrimSpace(matcherTool)
+				if !toolsSet[matcherTool] {
+					lineNum := findFrontmatterLine(file, "hooks:")
+					violations = append(violations, LintViolation{
+						Rule:     "LR-04",
+						Severity: SeverityError,
+						File:     file,
+						Line:     lineNum,
+						Message:  fmt.Sprintf("Dead hook entry: %s matcher references tool '%s' absent from tools: list", hookType, matcherTool),
+					})
+					break // Only report once per hook
+				}
+			}
+		}
+	}
+
+	return violations
+}
+
+// ============================================================================
+// SPEC-V3R2-ORC-003: Effort-Level Calibration Matrix
+// Canonical effort assignment for the 17 v3r2 agents
+// ============================================================================
+
+// canonicalEffortMatrix is the SPEC-V3R2-ORC-003 canonical effort assignment
+// for the 17 v3r2 agents. The matrix is consumed by checkEffortMatrixDrift (LR-12).
+// @MX:ANCHOR @MX:REASON: Single source of truth for agent-effort calibration; downstream
+// consumers (HRN-001 effort_mapping, doctor agent show-effort) reference this constant.
+var canonicalEffortMatrix = map[string]string{
+	"manager-spec":       "xhigh",
+	"manager-strategy":   "xhigh",
+	"manager-cycle":      "high",
+	"manager-quality":    "high",
+	"manager-docs":       "medium",
+	"manager-git":        "low",
+	"manager-project":    "medium",
+	"expert-backend":     "high",
+	"expert-frontend":    "high",
+	"expert-security":    "xhigh",
+	"expert-devops":      "medium",
+	"expert-performance": "high",
+	"expert-refactoring": "xhigh",
+	"builder-platform":   "medium",
+	"sync-auditor":   "xhigh",
+	"plan-auditor":       "xhigh",
+	"researcher":         "xhigh",
+}
+
+// validEffortValues defines the 5-value enum for effort levels
+var validEffortValues = map[string]struct{}{
+	"low":    {},
+	"medium": {},
+	"high":   {},
+	"xhigh":  {},
+	"max":    {},
+}
+
+// checkEffortMatrixDrift checks for LR-12: effort drift from canonical matrix
+// @MX:NOTE: LR-12 — 17-agent matrix drift detection; blocks the 32% drift ratio in spec.md §1.1 R5 audit to 0%; out-of-roster agents (e.g., manager-brain) are exempt from LR-12
+func checkEffortMatrixDrift(file string, fm AgentFrontmatter) []LintViolation {
+	var violations []LintViolation
+
+	// Haiku agents must NOT declare effort (it is silently inert on Haiku).
+	// This early-return fires BEFORE the canonicalEffortMatrix lookup so no
+	// drift is reported for haiku agents (manager-docs / manager-git) even
+	// though the matrix still lists a legacy effort value for them. See
+	// isHaikuAgent and the haiku_effort_guard invariant.
+	if isHaikuAgent(fm) {
+		return violations
+	}
+
+	// Extract agent name from file path (e.g., "expert-security.md" -> "expert-security")
+	baseName := filepath.Base(file)
+	agentName := strings.TrimSuffix(baseName, ".md")
+
+	// Check if agent is in the canonical matrix
+	expectedEffort, inMatrix := canonicalEffortMatrix[agentName]
+	if !inMatrix {
+		// Out-of-roster agent (e.g., manager-brain, claude-code-guide) - LR-12 does not apply
+		return violations
+	}
+
+	// If effort field is empty, LR-03 already covers it - LR-12 does not double-fire
+	if fm.Effort == "" {
+		return violations
+	}
+
+	// Check for drift
+	if fm.Effort != expectedEffort {
+		lineNum := findFrontmatterLine(file, "effort:")
+		violations = append(violations, LintViolation{
+			Rule:     "LR-12",
+			Severity: SeverityError,
+			File:     file,
+			Line:     lineNum,
+			Message:  fmt.Sprintf("ORC_EFFORT_MATRIX_DRIFT: effort: %s drifts from canonical matrix value %s for agent %s (SPEC-V3R2-ORC-003 canonical matrix)", fm.Effort, expectedEffort, agentName),
+		})
+	}
+
+	return violations
+}
+
+// checkInvalidEffortEnum checks for LR-13: invalid effort enum value
+func checkInvalidEffortEnum(file string, fm AgentFrontmatter) []LintViolation {
+	var violations []LintViolation
+
+	// If effort field is empty, LR-03 already covers it
+	if fm.Effort == "" {
+		return violations
+	}
+
+	// Check if effort value is in the valid enum
+	if _, isValid := validEffortValues[fm.Effort]; !isValid {
+		lineNum := findFrontmatterLine(file, "effort:")
+		violations = append(violations, LintViolation{
+			Rule:     "LR-13",
+			Severity: SeverityError,
+			File:     file,
+			Line:     lineNum,
+			Message:  fmt.Sprintf("AGT_INVALID_FRONTMATTER (effort): value %q is not in {low, medium, high, xhigh, max}", fm.Effort),
+		})
+	}
+
+	return violations
+}
+
+// fixedBudgetTokensRegex matches budget_tokens: <integer> patterns
+// @MX:WARN @MX:REASON: budget_tokens regex v1 may produce false positives inside code blocks; since Opus 4.7 Adaptive Thinking rejects fixed budget with HTTP 400, the cost of regression outweighs false positive cost — adopt v1 baseline, consider code-block-aware extension in v3.1
+var fixedBudgetTokensRegex = regexp.MustCompile(`\bbudget_tokens\s*:\s*\d+\b`)
+
+// checkFixedBudgetTokens checks for LR-14: fixed budget_tokens prohibition
+func checkFixedBudgetTokens(file string, content []byte) []LintViolation {
+	var violations []LintViolation
+
+	// Search for budget_tokens patterns in the full content
+	matches := fixedBudgetTokensRegex.FindAllIndex(content, -1)
+
+	for _, match := range matches {
+		// Compute line number from byte offset
+		lineNum := bytes.Count(content[:match[0]], []byte("\n")) + 1
+		violations = append(violations, LintViolation{
+			Rule:     "LR-14",
+			Severity: SeverityError,
+			File:     file,
+			Line:     lineNum,
+			Message:  "ORC_FIXED_BUDGET_PROHIBITED: Opus 4.7 Adaptive Thinking rejects fixed budget_tokens (HTTP 400). Use effort: <level> instead.",
+		})
+	}
+
+	return violations
+}
+
+// checkMissingIsolation checks for LR-05.
+// Warn on missing isolation: worktree for write-heavy role profiles and standalone agents (SPEC-V3R2-ORC-004).
+func checkMissingIsolation(file string, fm AgentFrontmatter) []LintViolation {
+	var violations []LintViolation
+
+	// Role profiles that require isolation: worktree (team mode)
+	rolePatterns := []string{"implementer", "tester", "designer", "specialist"}
+
+	nameLower := strings.ToLower(fm.Name)
+
+	for _, pattern := range rolePatterns {
+		if strings.Contains(nameLower, pattern) {
+			if fm.Isolation != "worktree" {
+				lineNum := findFrontmatterLine(file, "name:")
+				violations = append(violations, LintViolation{
+					Rule:     "LR-05",
+					Severity: SeverityWarning,
+					File:     file,
+					Line:     lineNum,
+					Message:  fmt.Sprintf("Agent name suggests role profile '%s' but missing 'isolation: worktree' (required for write teammates in team mode)", pattern),
+				})
+			}
+			return violations
+		}
+	}
+
+	// Write-heavy standalone agents that require isolation: worktree (SPEC-V3R2-ORC-004)
+	writeHeavyAgents := []string{
+		"manager-develop", "expert-backend", "expert-frontend",
+		"expert-refactoring", "researcher",
+	}
+
+	for _, agentName := range writeHeavyAgents {
+		if nameLower == agentName {
+			if fm.Isolation != "worktree" {
+				lineNum := findFrontmatterLine(file, "name:")
+				violations = append(violations, LintViolation{
+					Rule:     "LR-05",
+					Severity: SeverityWarning,
+					File:     file,
+					Line:     lineNum,
+					Message:  fmt.Sprintf("Write-heavy agent '%s' must have 'isolation: worktree' (SPEC-V3R2-ORC-004 %s)", fm.Name, SentinelWorktreeMissing),
+				})
+			}
+			return violations
+		}
+	}
+
+	return violations
+}
+
+// checkDeepthinkBoilerplate checks for LR-06.
+func checkDeepthinkBoilerplate(file string, frontmatter []byte, strict bool) []LintViolation {
+	var violations []LintViolation
+
+	// Check for --deepthink flag boilerplate in description
+	frontmatterStr := string(frontmatter)
+	if strings.Contains(frontmatterStr, "--deepthink flag:") {
+		severity := SeverityWarning
+		if strict {
+			severity = SeverityError
+		}
+
+		lineNum := findFrontmatterLine(file, "description:")
+		violations = append(violations, LintViolation{
+			Rule:     "LR-06",
+			Severity: severity,
+			File:     file,
+			Line:     lineNum,
+			Message:  "Boilerplate '--deepthink flag:' text in description field (remove redundant activation instructions - sequential thinking is invoked via MCP tools, not description text)",
+		})
+	}
+
+	return violations
+}
+
+// checkReadOnlyIsolation checks for LR-09.
+// Rejects isolation: worktree on read-only agents (permissionMode: plan) per SPEC-V3R2-ORC-004.
+func checkReadOnlyIsolation(file string, fm AgentFrontmatter) []LintViolation {
+	var violations []LintViolation
+
+	if fm.PermissionMode == "plan" && fm.Isolation == "worktree" {
+		lineNum := findFrontmatterLine(file, "isolation:")
+		violations = append(violations, LintViolation{
+			Rule:     "LR-09",
+			Severity: SeverityError,
+			File:     file,
+			Line:     lineNum,
+			Message:  fmt.Sprintf("Read-only agent (permissionMode: plan) MUST NOT have 'isolation: worktree' — plan mode already prevents writes (SPEC-V3R2-ORC-004 %s)", SentinelWorktreeOnReadonly),
+		})
+	}
+
+	return violations
+}
+
+// checkStaticTeamAgent checks for LR-10.
+// Rejects files matching team-*.md pattern in agents directory (SPEC-V3R2-ORC-005).
+// v3r2 uses exclusively dynamic team generation; static team-* agent files are prohibited.
+func checkStaticTeamAgent(file string) []LintViolation {
+	var violations []LintViolation
+
+	base := filepath.Base(file)
+	if strings.HasPrefix(base, "team-") && strings.HasSuffix(base, ".md") {
+		violations = append(violations, LintViolation{
+			Rule:     "LR-10",
+			Severity: SeverityError,
+			File:     file,
+			Line:     1,
+			Message:  "Static team-* agent file prohibited (v3r2 uses exclusively dynamic team generation via Agent(subagent_type: \"general-purpose\") with workflow.yaml role_profiles) — ORC_STATIC_TEAM_AGENT_PROHIBITED (SPEC-V3R2-ORC-005)",
+		})
+	}
+
+	return violations
+}
+
+// checkDuplicateMandateBlocks checks for LR-07 across all agent files.
+//
+// @MX:ANCHOR: LR-07 v2 fingerprint (SPEC-V2.20.0-RC1 hotfix)
+// @MX:REASON: pre-v2 fingerprint produced 141 false-positive violations across
+// 11 agent files by matching ANY 3 consecutive bullets with evaluation keywords
+// (e.g., Delegation Protocol bullets "Security concerns: Delegate to expert-security"
+// + "Performance issues: Delegate to expert-performance" + "Quality validation:
+// Delegate to manager-quality" tripped LR-07 even though they are routing rules,
+// not Skeptical-Evaluator Mandate blocks). v2 fingerprint requires:
+//   1. Preceding markdown header (#, ##, ### etc.) containing "Skeptical",
+//      "Evaluator Mandate", or "Evaluation Mandate" (case-insensitive).
+//   2. Within 30 lines after such header (or until next header), 3+ consecutive
+//      bullets matching the evaluation keyword regex.
+// This eliminates false positives from Delegation Protocol, Complexity Analysis,
+// SPEC Review Report, and other legitimate sections that happen to use eval keywords.
+func checkDuplicateMandateBlocks(files []string) []LintViolation {
+	var violations []LintViolation
+
+	// v2 fingerprint: require Skeptical-context header preceding bullet block.
+	headerPattern := regexp.MustCompile(`(?i)^#+\s+.*(skeptical|evaluator mandate|evaluation mandate)`)
+	mandatePattern := regexp.MustCompile(`(?i)^-\s+.*(evaluate|score|rubric|evidence|assess|criteria|performance|quality|security|robustness|scalability)`)
+	nextHeaderPattern := regexp.MustCompile(`^#+\s+`)
+
+	const maxLinesAfterHeader = 30
+
+	type mandateLocation struct {
+		file string
+		line int
+	}
+
+	var mandateBlocks []mandateLocation
+
+	for _, file := range files {
+		content, err := os.ReadFile(file)
+		if err != nil {
+			continue
+		}
+
+		scanner := bufio.NewScanner(bytes.NewReader(content))
+		lineNum := 0
+
+		var inSkepticalSection bool
+		var sectionHeaderLine int
+		var linesSinceHeader int
+		var consecutiveCount int
+		var blockRecordedForSection bool
+
+		for scanner.Scan() {
+			lineNum++
+			line := scanner.Text()
+
+			if headerPattern.MatchString(line) {
+				// Enter a Skeptical section.
+				inSkepticalSection = true
+				sectionHeaderLine = lineNum
+				linesSinceHeader = 0
+				consecutiveCount = 0
+				blockRecordedForSection = false
+				continue
+			}
+
+			if !inSkepticalSection {
+				continue
+			}
+
+			linesSinceHeader++
+
+			// Exit Skeptical section on any subsequent header or window cap.
+			if nextHeaderPattern.MatchString(line) || linesSinceHeader > maxLinesAfterHeader {
+				inSkepticalSection = false
+				consecutiveCount = 0
+				continue
+			}
+
+			if mandatePattern.MatchString(line) {
+				consecutiveCount++
+				if consecutiveCount == 3 && !blockRecordedForSection {
+					mandateBlocks = append(mandateBlocks, mandateLocation{
+						file: file,
+						line: sectionHeaderLine,
+					})
+					blockRecordedForSection = true
+				}
+			} else {
+				consecutiveCount = 0
+			}
+		}
+	}
+
+	if len(mandateBlocks) > 1 {
+		for i, loc := range mandateBlocks {
+			if i == 0 {
+				continue
+			}
+			violations = append(violations, LintViolation{
+				Rule:     "LR-07",
+				Severity: SeverityError,
+				File:     loc.file,
+				Line:     loc.line,
+				Message:  fmt.Sprintf("Duplicate Skeptical-Evaluator Mandate block (first occurrence at %s:%d)", mandateBlocks[0].file, mandateBlocks[0].line),
+			})
+		}
+	}
+
+	return violations
+}
+
+// checkSandboxJustification implements LR-33: agents declaring `sandbox: none` without
+// a `sandbox.justification` field fail lint. This enforces SPEC-V3R2-RT-003 REQ-033/043
+// and AC-V3R2-RT-003-08/15.
+//
+// Detection: scan raw frontmatter text for `sandbox: none` (value-level check).
+// If found, also scan for `justification:` in the sandbox sub-map.
+// A missing justification emits SeverityError.
+// A present justification emits SeverityWarning (informational, still visible in doctor output).
+func checkSandboxJustification(file string, frontmatterText []byte) []LintViolation {
+	var violations []LintViolation
+
+	// Quick search: check if frontmatter contains "sandbox: none" or "sandbox: \"none\"" pattern
+	sandboxNonePattern := regexp.MustCompile(`(?m)^\s*sandbox:\s*["']?none["']?\s*$`)
+	if !sandboxNonePattern.Match(frontmatterText) {
+		return violations // No sandbox: none — no check needed
+	}
+
+	// sandbox: none found — verify justification
+	// Search for "justification:" or "sandbox.justification:" in frontmatter
+	justificationPattern := regexp.MustCompile(`(?m)^\s*(sandbox\.)?justification:\s*\S`)
+	hasJustification := justificationPattern.Match(frontmatterText)
+
+	// Locate the line number of sandbox: none
+	lines := bytes.Split(frontmatterText, []byte("\n"))
+	lineNum := 1
+	for i, line := range lines {
+		if sandboxNonePattern.Match(line) {
+			lineNum = i + 1
+			break
+		}
+	}
+
+	if !hasJustification {
+		violations = append(violations, LintViolation{
+			Rule:     "LR-33",
+			Severity: SeverityError,
+			File:     file,
+			Line:     lineNum,
+			Message:  "sandbox: none requires sandbox.justification field (SPEC-V3R2-RT-003 REQ-033/043) — AGENT_LINT_NO_SANDBOX_NO_JUSTIFICATION",
+		})
+	} else {
+		// Justification present — emit as warning to surface content (also exposed by moai doctor sandbox)
+		violations = append(violations, LintViolation{
+			Rule:     "LR-33",
+			Severity: SeverityWarning,
+			File:     file,
+			Line:     lineNum,
+			Message:  "sandbox: none with justification — opt-out is recorded (visible in moai doctor sandbox output)",
+		})
+	}
+
+	return violations
+}
+
+// domainExemptPrefixes lists skill prefixes that are agent-specific by design.
+// Skills with these prefixes are exempt from LR-08 intra-category symmetry checking.
+// Foundation (moai-foundation-*) and workflow (moai-workflow-*) skills remain enforced.
+// See SPEC-V3R5-CORE-SLIM-001 Track A for rationale.
+var domainExemptPrefixes = []string{
+	"moai-domain-",
+	"moai-design-",
+	"moai-library-",
+	"moai-framework-",
+	"moai-platform-",
+	"moai-ref-",
+}
+
+// isDomainExemptSkill reports whether the given skill name is exempt from LR-08.
+func isDomainExemptSkill(skill string) bool {
+	for _, prefix := range domainExemptPrefixes {
+		if strings.HasPrefix(skill, prefix) {
+			return true
+		}
+	}
+	return false
+}
+
+// checkSkillPreloadDrift checks for LR-08 across all agent files.
+func checkSkillPreloadDrift(files []string) []LintViolation {
+	var violations []LintViolation
+
+	// Group agents by category
+	type agentInfo struct {
+		file   string
+		skills []string
+	}
+
+	categories := map[string][]agentInfo{
+		"manager":   {},
+		"expert":    {},
+		"builder":   {},
+		"evaluator": {},
+	}
+
+	for _, file := range files {
+		content, err := os.ReadFile(file)
+		if err != nil {
+			continue
+		}
+
+		parts := bytes.SplitN(content, []byte("---"), 3)
+		if len(parts) < 3 {
+			continue
+		}
+
+		// Parse skills list from YAML frontmatter
+		skills := parseSkillsList(parts[1])
+		name := parseFieldName(parts[1])
+
+		// Determine category from agent name
+		category := ""
+		if strings.HasPrefix(name, "manager-") {
+			category = "manager"
+		} else if strings.HasPrefix(name, "expert-") {
+			category = "expert"
+		} else if strings.HasPrefix(name, "builder-") {
+			category = "builder"
+		} else if strings.HasPrefix(name, "evaluator-") {
+			category = "evaluator"
+		}
+
+		if category != "" {
+			categories[category] = append(categories[category], agentInfo{
+				file:   file,
+				skills: skills,
+			})
+		}
+	}
+
+	// Check for skill preload drift within each category
+	for category, agents := range categories {
+		if len(agents) < 2 {
+			continue // Need at least 2 agents to compare
+		}
+
+		// Find baseline skill set (most common)
+		skillCounts := make(map[string]int)
+		for _, agent := range agents {
+			for _, skill := range agent.skills {
+				skillCounts[skill]++
+			}
+		}
+
+		// Check for drift
+		for _, agent := range agents {
+			for _, skill := range agent.skills {
+				if isDomainExemptSkill(skill) {
+					continue // Domain-scoped skills are agent-specific — exempt from LR-08 symmetry
+				}
+				if skillCounts[skill] < len(agents) {
+					// This skill is not shared by all agents in category
+					lineNum := findFrontmatterLine(agent.file, "skills:")
+					violations = append(violations, LintViolation{
+						Rule:     "LR-08",
+						Severity: SeverityWarning,
+						File:     agent.file,
+						Line:     lineNum,
+						Message:  fmt.Sprintf("Skill preload drift in category '%s': %s is not preloaded by all agents (may cause inconsistent context)", category, skill),
+					})
+				}
+			}
+		}
+	}
+
+	return violations
+}
+
+// parseSkillsList extracts the skills list from YAML frontmatter.
+func parseSkillsList(frontmatter []byte) []string {
+	var skills []string
+
+	lines := strings.Split(string(frontmatter), "\n")
+	inSkills := false
+
+	for _, line := range lines {
+		line = strings.TrimSpace(line)
+
+		if strings.HasPrefix(line, "skills:") {
+			inSkills = true
+			continue
+		}
+
+		if inSkills {
+			if strings.HasPrefix(line, "- ") {
+				skill := strings.TrimSpace(strings.TrimPrefix(line, "- "))
+				skills = append(skills, skill)
+			} else if line != "" && !strings.HasPrefix(line, "#") {
+				// End of skills list
+				break
+			}
+		}
+	}
+
+	return skills
+}
+
+// parseFieldName extracts the name field from YAML frontmatter.
+func parseFieldName(frontmatter []byte) string {
+	lines := strings.Split(string(frontmatter), "\n")
+
+	for _, line := range lines {
+		line = strings.TrimSpace(line)
+		if strings.HasPrefix(line, "name:") {
+			parts := strings.SplitN(line, ":", 2)
+			if len(parts) == 2 {
+				return strings.TrimSpace(parts[1])
+			}
+		}
+	}
+
+	return ""
+}
+
+// parseYAMLFrontmatter parses YAML frontmatter into a struct.
+func parseYAMLFrontmatter(data []byte, v interface{}) error {
+	// Simple YAML parser for our specific use case
+	// We'll parse key-value pairs line by line
+	lines := strings.Split(string(data), "\n")
+
+	type fieldSetter interface {
+		setField(key, value string)
+	}
+
+	if fs, ok := v.(fieldSetter); ok {
+		for _, line := range lines {
+			line = strings.TrimSpace(line)
+			if line == "" || strings.HasPrefix(line, "#") {
+				continue
+			}
+
+			parts := strings.SplitN(line, ":", 2)
+			if len(parts) != 2 {
+				continue
+			}
+
+			key := strings.TrimSpace(parts[0])
+			value := strings.TrimSpace(parts[1])
+
+			fs.setField(key, value)
+		}
+	}
+
+	return nil
+}
+
+// setField implements fieldSetter for AgentFrontmatter.
+func (fm *AgentFrontmatter) setField(key, value string) {
+	switch key {
+	case "name":
+		fm.Name = value
+	case "tools":
+		fm.Tools = value
+	case "effort":
+		fm.Effort = value
+	case "model":
+		fm.Model = value
+	case "isolation":
+		fm.Isolation = value
+	case "permissionMode":
+		fm.PermissionMode = value
+	case "skills":
+		// Skills is a list, but in our simple parser we just note its presence
+		// The actual list parsing happens in the main parser
+	case "hooks":
+		// Hooks parsing is complex, we'll handle it separately
+	}
+}
+
+// findFrontmatterLine finds the line number of a frontmatter key.
+func findFrontmatterLine(file string, key string) int {
+	content, err := os.ReadFile(file)
+	if err != nil {
+		return 1
+	}
+
+	scanner := bufio.NewScanner(bytes.NewReader(content))
+	lineNum := 0
+
+	for scanner.Scan() {
+		lineNum++
+		line := scanner.Text()
+		if strings.HasPrefix(line, key) {
+			return lineNum
+		}
+	}
+
+	return 1
+}

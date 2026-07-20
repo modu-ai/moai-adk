@@ -23,7 +23,7 @@ Claude Code는 두 곳에서 설정을 읽습니다. 하나는 작업 중인 프
 - **동작 강제**: `settings.json`의 권한(permissions)과 hook처럼 Claude의 준수 여부와 무관하게 "집행되는" 설정
 - **확장 기능 보관**: 스킬, 서브에이전트, 다이내믹 워크플로우 등 재사용 가능한 자산
 
-여기서 핵심 구분은 **지침 (guidance)** 과 **설정 (configuration)** 입니다. `CLAUDE.md`나 rules는 Claude가 참고하는 안내문이라 항상 지켜진다는 보장이 없지만, hook과 permissions은 런타임이 직접 집행하므로 결정적입니다. 확실한 동작이 필요하면 지침이 아니라 hook 또는 permissions로 구현해야 합니다.
+여기서 핵심 구분은 **지침 (guidance)** 과 **설정 (configuration)** 입니다. `CLAUDE.md`나 rules는 Claude가 참고하는 안내문이라 항상 지켜진다는 보장이 없지만, hook과 permissions은 런타임이 직접 집행하므로 결정적입니다. 확실한 동작이 필요하면 지침이 아니라 hook 또는 permissions로 구현해야 합니다. 이 구분이 곧 하네스 엔지니어링의 첫 번째 설계 결정입니다. MoAI-ADK도 `moai init` 한 번으로 이 디렉터리에 오케스트레이터 지침 (CLAUDE.md), 품질 게이트 hook, 에이전트·스킬 자산을 배포해 프로젝트 전용 하네스를 구성합니다.
 
 ## 프로젝트 .claude/ 디렉터리 구조
 
@@ -60,7 +60,7 @@ Claude Code는 두 곳에서 설정을 읽습니다. 하나는 작업 중인 프
 
 **`commands/*.md`**: 단일 파일 프롬프트입니다. 공식적으로 스킬과 동일한 메커니즘이며, 신규 워크플로우는 스킬로 작성하는 것이 권장됩니다.
 
-**`agents/*.md`**: 자체 시스템 프롬프트와 도구 접근 권한을 가진 서브에이전트입니다. 새 컨텍스트 윈도우에서 실행되어 메인 대화를 깨끗하게 유지합니다.
+**`agents/*.md`**: 자체 시스템 프롬프트와 도구 접근 권한을 갖춘 서브에이전트입니다. 새 컨텍스트 윈도우에서 실행되어 메인 대화를 깨끗하게 유지합니다.
 
 **`workflows/*.js`**: 다수의 서브에이전트를 스폰·조율하는 다이내믹 워크플로우 스크립트입니다.
 
@@ -106,9 +106,9 @@ Claude Code는 `settings.local.json`을 처음 만들 때 `.gitignore`에 자동
 
 ## 관련 문서
 
-- [settings.json 가이드](/advanced/settings-json)
-- [CLAUDE.md 가이드](/advanced/claude-md-guide)
-- [Statusline 시스템](/advanced/statusline)
+- [settings.json 가이드](/ko/advanced/settings-json)
+- [CLAUDE.md 가이드](/ko/advanced/claude-md-guide)
+- [Statusline 시스템](/ko/advanced/statusline)
 
 ## 참고 자료
 

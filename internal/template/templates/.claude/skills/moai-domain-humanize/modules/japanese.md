@@ -124,6 +124,71 @@ Humanization is post-editing (윤문), not rewriting. The goal is to remove AI t
 
 ---
 
-## Source & License
+## Copy Layer (Japanese)
 
-This module's structure follows the **im-not-ai (Humanize KR)** open-source skill (https://github.com/epoko77-ai/im-not-ai, MIT License — Copyright (c) 2026 epoko77-ai). The Japanese tell patterns here were independently web-researched, not ported from the source. See NOTICE.md.
+Genre scope: マーケティングコピー — headlines, キャッチコピー, CTAs, landing pages (LP), brand/founder storytelling, and slide titles. The copy layer continues the `JA-` numeric scheme (JA-10…JA-14). In copy mode the over-editing guard changes: the change-rate limit is replaced by the **fact-anchor preservation guard** (see the shared SKILL.md guardrails) — numbers, dates, prices, and proper nouns stay intact and the core offer/benefit keeps its meaning, while expression and sentence structure may be rewritten freely.
+
+A critical calibration governs this layer: 体言止め (the noun-ending sentence close) is a legitimate, prestigious device of native Japanese copywriting. The Japanese copy tell is therefore about **frequency and default rhythm, never mere occurrence** — see the boundary analysis below.
+
+### Detection Categories (copy)
+
+| ID | Tell | Why it reads as AI | Severity |
+|----|------|--------------------|----------|
+| JA-10 | 体言止め過剰依存 — noun-ending over-reliance: most headlines or consecutive sentences close on 体言止め/言い切り as the default rhythm | Skilled writers deploy 体言止め deliberately at emphasis points amid varied endings; generated copy over-produces it until the rhythm turns choppy and monotone | S2 (frequency-gated: fires at ≥3 consecutive 体言止め lines, or when every headline in a set ends that way, or when it replaces ending variation throughout — never on mere presence) |
+| JA-11 | 英語式コロン見出し — English-style heading/sentence-final colon 「見出し：」, often with a half-width space after it | Japanese rarely uses a sentence-final or heading colon; the imported punctuation leaks directly from English source patterns | S1 (on sight) |
+| JA-12 | ダッシュ対比・記号代用 — em-dash 「—」 where Japanese convention uses 「……」, 中黒, or a full sentence | An imported punctuation artifact of the same family as Markdown residue; a human writer might choose the literary 「──」 deliberately, so body-copy judgment requires repetition | S1 (raw punctuation artifact); S2 (in body copy) |
+| JA-13 | 定型訴求フレーズ — formulaic value-prop/CTA endings 「〜を実現します」「〜を可能にします」 with an abstract, ownerless benefit and no number, name, or outcome | The safe-form promise frame recurs as the model's default benefit sentence; a single concrete, true 「〜を実現します」 can be legitimate | S2 (allow 1–2; flag at 3+) |
+| JA-14 | ブランド/創業ストーリーテンプレート — founder-myth arc, creator self-narration with no 一次情報 (first-hand detail) | Generated brand stories run cold and generic without lived specifics; a fabricated beat is worse than a missing one | S2 (escalates to S1 on fabricated beats — the fix is to DELETE the invented beat, never to invent a replacement) |
+
+Cross-cutting (no new IDs): copy amplifies JA-09 katakana overload; JA-04 and JA-08 already own monotone です・ます endings and em-dash/emoji/Markdown artifacts in prose.
+
+### Severity Rationale (copy)
+
+- JA-11 is S1 by parity with the prose punctuation-artifact family (JA-08): a near-deterministic English-import leak.
+- JA-12 is S1 as a raw punctuation artifact, S2 inside body copy — require repetition before convicting, since a human might choose the literary double-dash for 余韻.
+- JA-13 inherits the prose JA-01 threshold: the padded promise form convicts at density, not on sight.
+- JA-14 is S2, escalating to S1 when a beat is fabricated. Delete invented beats; never replace them with new inventions.
+- The frequency gate on the noun-ending category is deliberate and load-bearing — see the boundary analysis below for why a presence-based rule is prohibited.
+
+### 体言止め Boundary Analysis (critical)
+
+体言止め is an established, prestigious Japanese copywriting technique — a staple of キャッチコピー, ad copy, and titles, valued for emphasis and rhythm. A detector that flags noun-endings *by presence* fires constantly on skilled human copy and becomes a guaranteed false-positive machine. The severity of this category is therefore never presence-based; only the over-reliance pattern convicts:
+
+- **Skilled craft (do NOT flag)**: ONE strategic 体言止め at the single emphasis point, amid varied verb/question endings. Humans use it deliberately (狙って).
+- **Generated slop (flag)**: 体言止め/言い切り as the *default* ending — ≥3 consecutive lines closing on a noun, or every headline in a set, or noun-endings replacing ending variation throughout a piece. Over-use turns the text ぶつ切り (choppy) and flattens the flow.
+- **The read-aloud test (声に出して読む) is decisive**: a strategic noun-ending lands as emphasis; a default noun-ending rhythm sounds like a bullet list read out loud.
+- **No particle-ending analog**: the Korean copy catalogue carries a particle-ending fragment tell, but Japanese has no clean analog — the nearest device (助詞終わりの倒置・余韻) is itself legitimate craft, so no such category exists in this layer.
+
+### Before/After Rewrite Examples (copy)
+
+- Before: 業務効率を改善。コストを削減。導入も簡単。成果も明確。
+  After: 業務のムダを減らし、コストは月3割下がりました。導入は半日。成果は数字で見えます。
+  (JA-10: four consecutive noun-endings → varied endings, one emphasis point kept)
+- Before: 導入事例：大手製造業での活用
+  After: 導入事例 — 大手製造業でどう使われているか
+  (JA-11: drop the English-style heading colon; restructure natively)
+- Before: 高速—それがこのツールの本質です。
+  After: とにかく速い。それがこのツールの本質です。
+  (JA-12: replace the imported em-dash with a native short-sentence rhythm)
+- Before: 業務の最適化を実現します。生産性の向上を可能にします。
+  After: 請求書40件の処理が10分で終わります。
+  (JA-13: swap the formulaic promise pair for one concrete, ownerless-no-more outcome)
+- Before: 情熱と挑戦を胸に、幾多の困難を乗り越えて、私たちのブランドは生まれました。
+  After: 最初の試作品は3回連続で割れました。4回目の窯出しが、いまの定番です。
+  (JA-14: replace the founder-myth arc with first-hand, verifiable detail)
+
+### High-False-Positive Signals (copy — do NOT flag)
+
+- A single strategic 体言止め amid varied endings.
+- 体言止め in bullet lists, captions, spec sheets, and complete metadata titles (「2026年Q1 事業報告」).
+- Established katakana loanwords with no natural 和語/漢語 substitute (アプリ, サイト, メール).
+- Non-sentence colons: times (14:00), ratios (3:1), fixed labels.
+- The literary double-dash 「──」 used deliberately for 余韻.
+- 「〜を実現します」 when the claim is concrete and true in a genuine spec line.
+- Third-person informational copy (FAQ, specs, prices, dates, business-registration blocks) — legitimately impersonal.
+
+---
+
+## Attribution
+
+The category-catalogue structure of this module is inspired by the **im-not-ai (Humanize KR)** project (https://github.com/epoko77-ai/im-not-ai). The Japanese tell patterns here — prose and copy layers alike — were independently researched and authored.

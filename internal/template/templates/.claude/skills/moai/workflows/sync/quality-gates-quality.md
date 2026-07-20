@@ -1,16 +1,16 @@
 ---
-description: "Sync Phase 0.5~0.7 — Quality Verification, Security Scan, MX Tag Validation, and Coverage Analysis with Test Generation."
+description: "Sync Phase 7~10 — Quality Verification, Security Scan, MX Tag Validation, and Coverage Analysis with Test Generation."
 user-invocable: false
 metadata:
   parent: moai-workflow-sync
-  phase: "Phase 0.5~0.7: Quality Verification and Coverage"
+  phase: "Phase 7~10: Quality Verification and Coverage"
 ---
 
 <!-- TRACE PROBE: workflow-split baseline trace mechanism -->
 <!-- Activated by MOAI_TRACE_PHASES=1 environment variable -->
 <!-- Emits one line per Phase entry/exit to stderr in format: [trace] /moai sync Phase <N> <enter|exit> -->
 
-### Phase 0.5: Quality Verification
+### Phase 7: Quality Verification
 
 Purpose: Detect project language and run language-specific diagnostics (tests, linter, type checker) in parallel, followed by code review.
 
@@ -51,29 +51,32 @@ Collect all results with timeouts (180s for tests, 120s for others). Handle part
 If any tests fail, use AskUserQuestion:
 
 - Continue: Proceed with sync despite failures
-- Abort: Stop sync, fix tests first (exit to Phase 4 graceful exit)
+- Abort: Stop sync, fix tests first (exit to Phase 14 graceful exit)
 
 #### Step 0.5.4: Deep Code Review with Auto-Fix
 
-Agent: sync-auditor subagent (independent quality scoring per `.claude/rules/moai/workflow/archived-agent-rejection.md` §C row 2)
+Agent: sync-auditor subagent (independent quality scoring), gated by harness level:
 
-Invoke regardless of project language. Execute multi-perspective code review beyond basic TRUST 5 validation:
+- `minimal` harness level (`harness.yaml` `levels.minimal.evaluator: false`): skip the sync-auditor invocation; rely on the orchestrator verification batch (lint + test + coverage) instead
+- `standard` / `thorough` harness level (`evaluator: true`): invoke sync-auditor for independent quality scoring
 
-Review Perspectives:
-- Security: OWASP Top 10 compliance, injection risks, secrets exposure, dependency vulnerabilities
-- Performance: Algorithmic complexity, query efficiency (N+1), memory patterns, concurrency safety
-- Quality: TRUST 5 compliance, error handling completeness, naming conventions, code consistency
-- UX: User flow integrity, error states, accessibility (WCAG/ARIA), breaking changes in public interfaces
+Execute multi-perspective code review beyond basic TRUST 5 validation, using the canonical sync-auditor rubric (`.claude/agents/moai/sync-auditor.md`):
+
+Evaluation Dimensions:
+- Functionality (40%): All SPEC acceptance criteria met
+- Security (25%): OWASP Top 10 compliance, injection risks, secrets exposure, dependency vulnerabilities — HARD THRESHOLD: any Critical/High finding causes overall FAIL regardless of other scores
+- Craft (20%): Test coverage >= 85%, error handling completeness, naming conventions, algorithmic complexity, concurrency safety
+- Consistency (15%): Codebase pattern adherence, code style consistency
 
 Auto-Fix Behavior:
-- If critical issues found: Delegate auto-fix to manager-develop or a per-spawn `Agent(general-purpose)` domain specialist (per `.claude/rules/moai/workflow/archived-agent-rejection.md` §C)
+- If critical issues found: Delegate auto-fix to manager-develop or a per-spawn `Agent(general-purpose)` domain specialist (per `.claude/rules/moai/workflow/archived-agent-rejection.md` §C) — inject the cycle_type skill (`moai-workflow-ddd`|`moai-workflow-tdd`) plus 0-3 domain `moai-ref-*` skills per the mission domain (`.moai/config/sections/delegation.yaml`; per skill-routing.md §1)
 - Re-run review after fix to verify resolution
 - Maximum 3 auto-fix iterations for critical issues before escalating to user
 - Warnings and suggestions are logged in report but do not block pipeline
 
 Output:
 - Review report with findings by severity (critical, warning, suggestion)
-- @MX tag compliance status (integrated with Phase 0.6)
+- @MX tag compliance status (integrated with Phase 9)
 - Auto-fix log if corrections were applied
 
 #### LSP Quality Gates
@@ -87,7 +90,7 @@ The sync phase enforces LSP-based quality gates as configured in quality.yaml:
 
 Aggregate all results into a quality report showing status for test-runner, linter, type-checker, and code-review. Determine overall status (PASS or WARN).
 
-### Phase 0.55: Security Scan (Conditional)
+### Phase 8: Security Scan (Conditional)
 
 Purpose: Run a targeted security audit on changed files before PR creation. Catches security vulnerabilities that code review alone may miss.
 
@@ -98,23 +101,23 @@ Purpose: Run a targeted security audit on changed files before PR creation. Catc
 - User input handling files (form, input, validation, sanitize)
 - Configuration files with secrets (.env, config with credentials)
 
-**Skip condition**: If no changed files match security-sensitive patterns, skip to Phase 0.6. Log: "Security scan skipped: no security-sensitive files changed."
+**Skip condition**: If no changed files match security-sensitive patterns, skip to Phase 9. Log: "Security scan skipped: no security-sensitive files changed."
 
 #### Step 0.55.1: Security Analysis
 
-Agent: per-spawn `Agent(general-purpose)` security reviewer (security whitelist per `.claude/rules/moai/workflow/archived-agent-rejection.md` §C row 9; OR the Stop hook dependency-manifest audit `.claude/hooks/moai/sync-phase-quality-gate.sh`)
+Agent: per-spawn `Agent(general-purpose)` security reviewer (security whitelist per `.claude/rules/moai/workflow/archived-agent-rejection.md` §C row 9).
 
 Delegate to a per-spawn `Agent(general-purpose)` security reviewer loading the retained `moai-ref-owasp-checklist` / `moai-ref-secops` skills (the documented security replacement path) in inline mode:
 - Only CRITICAL findings block the sync pipeline
 - HIGH findings are reported as warnings in PR description
 - MEDIUM and LOW findings are logged in sync report
 
-**Dependency manifest audit (always runs, regardless of whether manifest files changed in this SPEC)**:
+**Dependency manifest audit (always runs, regardless of whether manifest files changed in this SPEC)** — a SEPARATE, automatic mechanism distinct from the agent-invoked security analysis above:
 
 Audit ALL of the following manifest files present at project root — dependency surface must be checked at every sync to detect drift from transitive vulnerability changes unrelated to this SPEC:
 `go.mod`, `package.json`, `requirements.txt`, `Cargo.toml`, `pyproject.toml`, `Gemfile`, `composer.json`, `mix.exs`, `Package.swift`, `pubspec.yaml`.
 
-When any manifest is detected, run a dependency vulnerability scan of that manifest via the Stop hook dependency-manifest audit (`.claude/hooks/moai/sync-phase-quality-gate.sh`) OR a per-spawn `Agent(general-purpose)` security reviewer.
+When any manifest is detected, the dependency vulnerability scan runs automatically via the Stop hook (`.claude/hooks/moai/sync-phase-quality-gate.sh`) as a mechanical check outside agent delegation. If the Stop hook path is unavailable, a per-spawn `Agent(general-purpose)` security reviewer MAY perform the same scan as a fallback — inject `At start, invoke Skill("moai-ref-supply-chain") for the dependency / transitive-vulnerability baseline.` (per skill-routing.md §1).
 Rationale: a transitive vulnerability may have been introduced by an unrelated dependency update since the last sync, even if no manifest file was modified in the current SPEC.
 
 #### Step 0.55.2: Security Gate Decision
@@ -122,12 +125,12 @@ Rationale: a transitive vulnerability may have been introduced by an unrelated d
 If CRITICAL findings exist:
 - Present findings via AskUserQuestion:
   - Fix now (Recommended): Delegate to a per-spawn `Agent(general-purpose)` security reviewer for auto-fix, then re-scan
-  - Continue with warning: Proceed to Phase 0.6 with security warnings embedded in PR description
+  - Continue with warning: Proceed to Phase 9 with security warnings embedded in PR description
   - Abort: Exit sync workflow
 
-If no CRITICAL findings: Proceed to Phase 0.6. Include any HIGH/MEDIUM findings in the sync report.
+If no CRITICAL findings: Proceed to Phase 9. Include any HIGH/MEDIUM findings in the sync report.
 
-### Phase 0.6: MX Tag Validation (Multi-Language)
+### Phase 9: MX Tag Validation (Multi-Language)
 
 Purpose: Ensure code has appropriate @MX annotations for AI agent context. Supports all 16 MoAI-ADK languages.
 
@@ -141,7 +144,7 @@ Purpose: Ensure code has appropriate @MX annotations for AI agent context. Suppo
 When P1/P2 violations are detected:
 1. Display full violation report with file:line references
 2. Show message: "Run /moai run to add missing tags, or use --skip-mx to bypass"
-3. Halt sync — do NOT proceed to Phase 0.7+
+3. Halt sync — do NOT proceed to Phase 10+
 
 Skip if `--skip-mx` flag is provided. When skipped, log: "MX validation skipped by user flag" in sync report.
 
@@ -232,7 +235,7 @@ When MX tags are added during sync:
 
 Status mode early exit: If mode is "status", display quality report and exit. No further phases execute.
 
-### Phase 0.7: Coverage Analysis and Test Generation
+### Phase 10: Coverage Analysis and Test Generation
 
 Purpose: Measure test coverage, identify gaps, and generate missing tests to meet coverage targets before documentation sync.
 

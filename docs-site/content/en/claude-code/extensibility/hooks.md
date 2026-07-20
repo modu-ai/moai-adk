@@ -2,26 +2,26 @@
 title: Hooks
 weight: 20
 draft: false
-description: "An overview of hooks — shell scripts that run automatically in response to Claude Code lifecycle events — covering the concept and the key events."
+description: "The concept and main events of hooks — shell scripts that run automatically in response to Claude Code lifecycle events."
 ---
 
 # Hooks
 
-A hook is a shell command that runs automatically at a specific point in the Claude Code lifecycle. It deterministically guarantees "actions that must always happen" without relying on the model's judgment.
+A hook is a shell command that runs automatically at specific points in Claude Code's lifecycle, deterministically guaranteeing "actions that must always happen" without depending on the model's judgment.
 
 {{< callout type="info" >}}
-**TL;DR**: A hook is an "if-this-then-that" script that fires automatically whenever Claude Code edits a file or finishes a task, enforcing formatting, linting, and security blocks without any human intervention.
+**One-line summary**: A hook is an "if-this-then-that" script that fires automatically whenever Claude Code edits a file or finishes a task, enforcing formatting, lint, and security blocks without a human hand.
 {{< /callout >}}
 
 {{< callout type="tip" >}}
-This page focuses on the concept. How MoAI-ADK actually registers and operates hooks (the shell wrapper pattern, per-event behavior, quality-gate integration) is covered in the in-depth MoAI-ADK guides. For hands-on, practical material, see the [Hooks Guide](/advanced/hooks-guide) and the [Hooks Event Reference](/advanced/hooks-reference).
+This page focuses on the concept. How MoAI-ADK actually registers and operates hooks (the shell-wrapper pattern, per-event behavior, quality-gate integration) is covered in the in-depth MoAI-ADK guides. For hands-on content, see the [Hooks Guide](/advanced/hooks-guide) and the [Hooks Event Reference](/advanced/hooks-reference).
 {{< /callout >}}
 
 ## What Is a Hook
 
-A hook is a user-defined shell command that runs when an **event** occurs in Claude Code — such as calling a tool, finishing a response, or starting a session. Instead of waiting for the model to decide "I should run the linter," a hook runs **without fail** every time that event occurs. This deterministic execution is the core value of a hook.
+A hook is a user-defined shell command that runs when an **event** occurs — Claude Code calling a tool, finishing a response, starting a session, and so on. Instead of waiting for the model to decide "I should run the linter", the hook runs **without fail** every time that event fires. This deterministic execution is the hook's core value.
 
-Hooks are registered in the `hooks` block of `settings.json`. Each entry defines which event it responds to, which tools to narrow it down to (`matcher`), and what to execute (`command`).
+Hooks are registered in the `hooks` block of `settings.json`. Each entry defines which event to respond to, which tools to narrow to (`matcher`), and what to run (`command`).
 
 ```json
 {
@@ -38,74 +38,76 @@ Hooks are registered in the `hooks` block of `settings.json`. Each entry defines
 }
 ```
 
-The example above automatically runs `prettier` whenever a file is modified with the `Edit` or `Write` tool, keeping formatting consistent.
+The example above auto-runs `prettier` whenever a file is modified via the `Edit` or `Write` tool, keeping formatting consistent.
 
-## Key Events
+## Main Events
 
-Hooks can respond to over 30 different events; the following are the most commonly used.
+Hooks can respond to more than 30 events; these are the most commonly used.
 
-| Event | When It Fires |
+| Event | When it fires |
 | :--- | :--- |
-| `SessionStart` | When a session starts or resumes (used for context injection) |
-| `Setup` | When Claude Code starts with the `/init` or `--init` flag |
+| `SessionStart` | When a session starts or resumes (useful for context injection) |
+| `Setup` | When Claude Code starts via `/init` or the `--init` flag |
 | `UserPromptSubmit` | Right after the user submits a prompt, before Claude processes it |
-| `UserPromptExpansion` | When a user input command expands into a prompt |
-| `PreToolUse` | Just before a tool call executes (can block) |
+| `UserPromptExpansion` | When a user input command is expanded into a prompt |
+| `PreToolUse` | Right before a tool call executes (can block) |
 | `PermissionRequest` | When a permission dialog appears |
-| `PostToolUse` | Right after a tool call succeeds (used for formatting and linting) |
+| `PostToolUse` | Right after a tool call succeeds (useful for formatting and lint) |
 | `PostToolUseFailure` | When a tool call fails |
 | `SubagentStart` | When a subagent starts |
-| `SubagentStop` | When a subagent finishes its task |
+| `SubagentStop` | When a subagent finishes its work |
 | `TaskCreated` | When a task is created |
-| `TaskCompleted` | When a task is marked as completed |
-| `Stop` | When Claude finishes a response |
-| `PreCompact` | Just before the context window is compacted |
-| `PostCompact` | After the context window is compacted |
-| `SessionEnd` | When a session ends |
+| `TaskCompleted` | When a task is marked complete |
+| `Stop` | When Claude finishes its response |
+| `PreCompact` | Right before context window compaction |
+| `PostCompact` | After context compaction completes |
+| `SessionEnd` | When the session ends |
 
-The full list of events and the per-event input schemas are documented in the official [Hooks Reference](https://code.claude.com/docs/en/hooks).
+The full event list and each event's input schema are documented in the official [Hooks reference](https://code.claude.com/docs/en/hooks).
 
 ## How Hooks Work
 
-Hooks communicate with Claude Code through standard input (stdin), standard output (stdout), standard error (stderr), and exit codes. When an event occurs, Claude Code passes the event information to stdin as JSON; the script reads and processes that data, then uses the exit code to dictate the next action.
+Hooks communicate with Claude Code via standard input (stdin), standard output (stdout), standard error (stderr), and exit codes. When an event fires, Claude Code passes event information as JSON on stdin; the script reads that data, processes it, and directs the next action through its exit code.
 
 ```mermaid
 flowchart TD
-  A[Claude Code<br>event occurs] --> B[matched hooks<br>run in parallel]
-  B --> C[event data passed<br>as JSON via stdin]
-  C --> D{exit code}
-  D -->|exit 0| E[proceed normally<br>or inject context from stdout]
-  D -->|exit 2| F[block the action<br>stderr delivered as feedback]
-  D -->|other| G[action proceeds + error shown]
+  A[Claude Code<br>event fires] --> B[Matcher-matching hooks<br>run in parallel]
+  B --> C[JSON event data<br>passed on stdin]
+  C --> D{Exit code}
+  D -->|exit 0| E[Proceed normally<br>or inject stdout as context]
+  D -->|exit 2| F[Block the action<br>stderr passed back as feedback]
+  D -->|other| G[Action proceeds + error shown]
 ```
 
-The exit code convention is as follows.
+The exit-code convention:
 
-| Exit Code | Meaning |
+| Exit code | Meaning |
 | :--- | :--- |
-| `0` | No objection. The action proceeds normally. For events like `SessionStart` and `UserPromptSubmit`, the stdout content is injected into Claude's context |
-| `2` | Block the action. The reason written to stderr is delivered to Claude as feedback |
-| other | The action proceeds, but a hook error is shown in the transcript |
+| `0` | No objection. The action proceeds normally. For `SessionStart`, `UserPromptSubmit`, etc., stdout content is injected into Claude's context |
+| `2` | Block the action. The reason written to stderr is passed to Claude as feedback |
+| Other | The action proceeds, but the hook error is shown in the transcript |
 
-If you need finer-grained control, instead of using an exit code you can print structured JSON to stdout to make decisions such as `permissionDecision` (`allow`/`deny`/`ask`).
+For finer control, output structured JSON on stdout instead of relying on exit codes, making decisions like `permissionDecision` (`allow`/`deny`/`ask`).
 
 ## Where to Use Them
 
-Hooks shine when automating tasks that "must always happen," such as the following.
+Hooks shine when automating work that "must always happen":
 
-- **Auto-format**: Run `prettier` or `gofmt` right after an edit using a `PostToolUse` + `Edit|Write` matcher
-- **Lint**: Run a linter after edits to catch style and static-analysis violations immediately
-- **Security block**: Use `PreToolUse` to block edits to protected files like `.env` or `.git/`, or dangerous commands like `rm -rf` or `drop table`, with exit code `2`
-- **Notification**: Send a desktop notification with the `Notification` event when Claude is waiting for input
-- **Context injection**: Re-inject project rules and recent work at `SessionStart` or after compaction
+- **Auto-format**: run `prettier` or `gofmt` right after edits with `PostToolUse` + an `Edit|Write` matcher
+- **Auto-lint**: run the linter after edits to catch style and static-analysis violations immediately
+- **Security blocks**: use `PreToolUse` to block edits to protected files like `.env` and `.git/`, or dangerous commands like `rm -rf` and `drop table`, with exit code `2`
+- **Notifications**: send a desktop notification via the `Notification` event when Claude is waiting for input
+- **Context injection**: re-inject project rules and recent work at `SessionStart` or after compaction
 
-The scope of effect varies depending on where the hook is registered (`~/.claude/settings.json` globally, `.claude/settings.json` for the project, or in plugin/skill frontmatter). When the case requires judgment rather than a deterministic rule, you can also use prompt-based (`type: "prompt"`) or agent-based (`type: "agent"`) hooks that are evaluated by the model.
+Where a hook is registered (`~/.claude/settings.json` global, `.claude/settings.json` project, plugin/skill frontmatter) determines its scope. When judgment rather than a deterministic rule is needed, you can also use prompt-based (`type: "prompt"`) or agent-based (`type: "agent"`) hooks evaluated by a model.
 
 ## MoAI-ADK and Hooks
 
-MoAI-ADK operates hooks with a pattern in which a shell-script wrapper calls the `moai hook <event>` binary, enforcing status-transition ownership, sync-phase quality gates, agent-team task-completion verification, and more via hooks. The practical registration methods and per-event details of this part are covered in the in-depth guides below.
+MoAI-ADK operates hooks with a pattern where shell-script wrappers call the `moai hook <event>` binary, enforcing things like status-transition ownership, sync-phase quality gates, and agent-team task-completion verification through hooks.
 
-## Related Docs
+From a harness-engineering perspective, a hook is the embodiment of the principle "keep evaluators and permission controls outside the agent's judgment." Because the runtime enforces the rules instead of hoping the model remembers them, quality gates operate deterministically no matter how long the autonomous loop runs. The reason MoAI-ADK's `/goal` autonomous execution and self-evolving harness can be safe is precisely that Stop-hook-based condition evaluation and user-approval gates are enforced by hooks outside the loop. Hands-on registration and per-event details are covered in the in-depth guides below.
+
+## Related Documents
 
 - [Hooks Guide](/advanced/hooks-guide)
 - [Hooks Event Reference](/advanced/hooks-reference)
@@ -116,5 +118,5 @@ MoAI-ADK operates hooks with a pattern in which a shell-script wrapper calls the
 - [Hooks reference (official docs)](https://code.claude.com/docs/en/hooks)
 
 {{< callout type="tip" >}}
-If a hook is registered but doesn't run, type `/hooks` in Claude Code and first check whether the hook appears under the relevant event and whether the matcher exactly (case-sensitive) matches the tool name. Don't forget to grant the script execute permission with `chmod +x`.
+If a registered hook does not run, type `/hooks` in Claude Code and check whether the hook appears under that event, and whether the matcher matches the tool name exactly (case-sensitive). Do not forget to give scripts execute permission with `chmod +x`.
 {{< /callout >}}

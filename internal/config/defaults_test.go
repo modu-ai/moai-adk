@@ -471,9 +471,6 @@ func TestNewDefaultWorkflowConfigNestedDefaults(t *testing.T) {
 		{"AutoClear.AfterPlan", cfg.AutoClear.AfterPlan, true},
 		{"AutoClear.AfterRun", cfg.AutoClear.AfterRun, false},
 		{"LoopPrevention.FailurePatternDetection", cfg.LoopPrevention.FailurePatternDetection, true},
-		{"Team.Enabled", cfg.Team.Enabled, true},
-		{"Team.DelegateMode", cfg.Team.DelegateMode, true},
-		{"Team.RequirePlanApproval", cfg.Team.RequirePlanApproval, true},
 		{"Worktree.AutoCleanup", cfg.Worktree.AutoCleanup, true},
 		{"Worktree.AutoCreate", cfg.Worktree.AutoCreate, false},
 		{"Worktree.AutoMerge", cfg.Worktree.AutoMerge, true},
@@ -496,10 +493,6 @@ func TestNewDefaultWorkflowConfigNestedDefaults(t *testing.T) {
 		{"TokenBudget.Plan", cfg.TokenBudget.Plan, 30000},
 		{"TokenBudget.Run", cfg.TokenBudget.Run, 180000},
 		{"TokenBudget.Sync", cfg.TokenBudget.Sync, 40000},
-		{"Team.MaxTeammates", cfg.Team.MaxTeammates, 10},
-		{"Team.AutoSelection.MinDomainsForTeam", cfg.Team.AutoSelection.MinDomainsForTeam, 3},
-		{"Team.AutoSelection.MinFilesForTeam", cfg.Team.AutoSelection.MinFilesForTeam, 10},
-		{"Team.AutoSelection.MinComplexityScore", cfg.Team.AutoSelection.MinComplexityScore, 7},
 	}
 	for _, c := range intChecks {
 		if c.got != c.want {
@@ -512,38 +505,11 @@ func TestNewDefaultWorkflowConfigNestedDefaults(t *testing.T) {
 		got  string
 		want string
 	}{
-		{"Team.DefaultModel", cfg.Team.DefaultModel, "sonnet"},
 		{"Worktree.SessionNamePattern", cfg.Worktree.SessionNamePattern, "moai-{ProjectName}-{SPEC-ID}"},
-		{"RoleProfiles[implementer].Isolation", cfg.Team.RoleProfiles["implementer"].Isolation, "worktree"},
-		{"RoleProfiles[implementer].Mode", cfg.Team.RoleProfiles["implementer"].Mode, "acceptEdits"},
-		{"RoleProfiles[implementer].Model", cfg.Team.RoleProfiles["implementer"].Model, "sonnet"},
-		{"RoleProfiles[researcher].Model", cfg.Team.RoleProfiles["researcher"].Model, "haiku"},
 	}
 	for _, c := range strChecks {
 		if c.got != c.want {
 			t.Errorf("%s: got %q, want %q", c.name, c.got, c.want)
-		}
-	}
-
-	// RoleProfileKeys default (3-element subset per team-pattern-cookbook 5+1+1 6th pattern).
-	wantKeys := []string{"implementer", "tester", "reviewer"}
-	if len(cfg.Team.RoleProfileKeys) != len(wantKeys) {
-		t.Errorf("RoleProfileKeys: got %d keys, want %d", len(cfg.Team.RoleProfileKeys), len(wantKeys))
-	} else {
-		for i, k := range wantKeys {
-			if cfg.Team.RoleProfileKeys[i] != k {
-				t.Errorf("RoleProfileKeys[%d]: got %q, want %q", i, cfg.Team.RoleProfileKeys[i], k)
-			}
-		}
-	}
-
-	// RoleProfiles must contain exactly 7 keys (AC-WO-009 contract).
-	if len(cfg.Team.RoleProfiles) != 7 {
-		t.Errorf("RoleProfiles: got %d entries, want 7", len(cfg.Team.RoleProfiles))
-	}
-	for _, name := range []string{"analyst", "architect", "designer", "implementer", "researcher", "reviewer", "tester"} {
-		if _, ok := cfg.Team.RoleProfiles[name]; !ok {
-			t.Errorf("RoleProfiles missing expected key %q", name)
 		}
 	}
 }

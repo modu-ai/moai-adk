@@ -231,7 +231,7 @@ The orchestrator composes the domain instructions inline at delegation time rath
 
 ### When to Author a Static Agent File Instead
 
-Reserve `.claude/agents/*.md` static files for agents meeting Anthropic's "keep spawning the same kind of worker with the same instructions" criterion. The 7 MoAI-custom retained agents (`manager-spec`, `manager-develop`, `manager-docs`, `manager-git`, `plan-auditor`, `sync-auditor`, `builder-harness`) all satisfy this criterion via recurring SPEC-phase invocations. Domain-specific work that does NOT recur with identical instructions across SPEC sessions belongs in per-spawn pattern, not in a static file.
+Reserve `.claude/agents/*.md` static files for agents meeting Anthropic's "keep spawning the same kind of worker with the same instructions" criterion. The 10 MoAI-custom retained agents (`manager-spec`, `manager-develop`, `manager-design`, `manager-docs`, `manager-git`, `plan-auditor`, `sync-auditor`, `super-advisor`, `builder-harness`, `e2e-tester`) all satisfy this criterion via recurring SPEC-phase invocations. Domain-specific work that does NOT recur with identical instructions across SPEC sessions belongs in per-spawn pattern, not in a static file.
 
 See `.claude/rules/moai/development/agent-authoring.md` § Static Agent File vs Per-Spawn Specialization Decision Tree for the authoring decision tree.
 
@@ -264,9 +264,54 @@ Agent(subagent_type: "Explore", prompt: "<investigation task description>")
 
 ---
 
+## Orchestrator 4-Loop Mechanism → Catalog Mapping
+
+The MoAI orchestrator operates a 4-Loop mechanism (plan → decompose → direct → collect) that maps each loop step to specific 11-agent catalog roles. This mapping is the architectural rationale for the catalog composition (per SPEC-AGENT-ARCH-V2-001 SSOT §03/§06 M4).
+
+| Loop step | Korean | Catalog roles invoked | Example |
+|-----------|--------|----------------------|---------|
+| **1. Plan** | 계획 | `manager-spec` (plan-phase), `super-advisor` (E2 architecture decisions) | User request → SPEC plan-phase artifacts; super-advisor consulted on ≥2 viable options |
+| **2. Decompose** | 분해 | Orchestrator internal + `super-advisor` (E3 second-opinion), `Explore` (read-only scout) | Break SPEC into milestones; Explore pre-flight reconnaissance |
+| **3. Direct** | 지시 | `manager-develop` (run), `manager-design` (design), `manager-docs` (sync), per-spawn `Agent(general-purpose)` domain specialists | Spawn implementation agent with Section A-E delegation package |
+| **4. Collect/Verify** | 수집·검증 | `plan-auditor` (plan gate), `sync-auditor` (sync gate) | plan-auditor PASS/FAIL verdict; sync-auditor 4-dimension scoring |
+
+The orchestrator owns all 4 loops — it is the sole L1 coordinator. No retained sub-agent spawns other sub-agents (flat hierarchy per Anthropic "Subagents cannot spawn other subagents").
+
+---
+
+## 4 Rejected Alternatives (per SSOT §06 M4)
+
+The v2 agent architecture (SPEC-AGENT-ARCH-V2-001) explicitly rejected 4 alternative design approaches. These are recorded for architectural traceability — future revision SPECs MUST understand why each was rejected before re-proposing it.
+
+### 1. 전면 동적화 (Full Dynamization)
+
+**Rejected approach**: Make all agents dynamically spawned `Agent(general-purpose)` with no static agent files; compose all instructions inline at delegation time.
+
+**Why rejected**: Recurring SPEC-phase roles (plan, run, sync, audit, consultation) meet Anthropic's "Define a custom subagent when you keep spawning the same kind of worker with the same instructions" criterion. Static agent files capture the recurring instructions (including the Section A-E delegation template, the self-verification §E matrix, the @MX tag obligations) far better than re-composing them inline each spawn. Full dynamization would lose the instruction-stability that makes the catalog predictable.
+
+### 2. auditor 통합 (Auditor Integration)
+
+**Rejected approach**: Merge the advisor role (`super-advisor`) and the evaluator role (`plan-auditor` / `sync-auditor`) into a single agent that both consults AND issues binding verdicts.
+
+**Why rejected**: Advisor prescriptions are **non-binding** (the orchestrator remains the decision owner); auditor verdicts are **binding** (PASS/FAIL gates block phase transitions). Merging them creates a conflict of interest — an agent that both advises and judges cannot maintain the separation of concerns the §07 risk matrix identifies as critical. The `super-advisor` `description:` field carries a `NOT for: gate verdicts` mutual-exclusion clause; the auditors carry the symmetric `NOT for: consultation` clause.
+
+### 3. 정적 핀 (Static Model Pin)
+
+**Rejected approach**: Pin concrete model IDs (e.g., `model: opus`) in agent frontmatter to control per-agent model selection at the file level.
+
+**Why rejected**: The `[1m]` entitlement inheritance bug (Anthropic issues #45847 / #51060 / #36670) — a frontmatter model pin breaks `[1m]` entitlement flow from the parent session, causing spawn failures. The v2 design uses `model: inherit` (all 10 MoAI-custom agents) + per-spawn runtime-arg injection for tier-dependent model selection instead. See `.claude/rules/moai/development/model-policy.md` § Inherit-by-Default Convention.
+
+### 4. Time-루프 에이전트 (Time-loop Agent)
+
+**Rejected approach**: Introduce a dedicated agent for time-based or loop-based scheduling (e.g., a "scheduler agent" that manages `/loop`, `/moai loop`, or cron-driven cadence).
+
+**Why rejected**: The orchestrator already handles all scheduling primitives natively — Claude Code's `/loop` (time-interval scheduler), MoAI's `/moai loop` (diagnostic-driven Ralph Engine), and the cadence-bridge recipes (`.claude/rules/moai/workflow/cadence-bridge.md`). A dedicated Time-loop agent would duplicate existing scheduling primitives without adding capability, violating the "keep spawning the same worker" recurrence criterion (there is no recurring scheduling delegation pattern that warrants a static file).
+
+---
+
 ## Deprecated: Hierarchical Manager Chain Pattern
 
-The `manager-strategy → manager-develop` hierarchical chain pattern (previously documented as a viable Pattern 6 Hierarchical Delegation variant for MoAI workflows) is **deprecated** under the current agent catalog policy. Anthropic Sub-agents documentation states verbatim: *"Subagents cannot spawn other subagents. If your workflow requires nested delegation, use Skills or chain subagents from the main conversation."* The MoAI `manager-strategy → manager-develop` chain is therefore architecturally impossible to execute at runtime — the chain pattern was a documentation fiction rather than a runtime reality.
+The `manager-strategy → manager-develop` hierarchical chain pattern (previously documented as a viable Pattern 6 Hierarchical Delegation variant for MoAI workflows) is **deprecated** under the current agent catalog policy. Subagent nesting DOES exist upstream as of Claude Code v2.1.172 — a subagent can spawn nested subagents when the `Agent` tool is present in its `tools` list. MoAI nonetheless disallows this chain **by configuration and catalog policy**: the retained agents omit the `Agent` tool from their `tools` lists, so no retained MoAI sub-agent can spawn another, and the catalog mandates that all multi-agent coordination happen at the orchestrator (L1) level. The `manager-strategy → manager-develop` chain is therefore disallowed in MoAI, not because runtime nesting is impossible, but because MoAI deliberately withholds the `Agent` tool from sub-agents.
 
 All multi-agent coordination MUST happen at the **orchestrator (L1) level** in the main conversation. The retained agent catalog respects this constraint: all retained sub-agents are leaves of the L1 orchestrator, never branches that recurse into further sub-agent spawns.
 

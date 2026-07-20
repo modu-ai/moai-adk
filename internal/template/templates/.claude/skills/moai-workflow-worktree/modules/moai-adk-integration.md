@@ -10,14 +10,14 @@ Last Updated: 2026-01-06
 ## Quick Reference (30 seconds)
 
 MoAI-ADK Integration Points:
-- /moai:1-plan: Automatic worktree creation after SPEC generation
-- /moai:2-run: DDD execution in isolated worktree environment
-- /moai:3-sync: Worktree sync with documentation updates
+- /moai plan: Automatic worktree creation after SPEC generation
+- /moai run: DDD execution in isolated worktree environment
+- /moai sync: Worktree sync with documentation updates
 - Cleanup: Automatic removal of merged worktrees
 
 ---
 
-## Plan Phase Integration (/moai:1-plan)
+## Plan Phase Integration (/moai plan)
 
 ### Automatic Worktree Creation
 
@@ -32,7 +32,7 @@ Worktree Path Pattern:
 - Configurable via worktree_root setting
 
 Creation Workflow:
-1. SPEC is created with /moai:1-plan
+1. SPEC is created with /moai plan
 2. Worktree new command is invoked automatically if auto_create is enabled
 3. Branch is created from configured base branch (default: main)
 4. Template is applied if specified
@@ -56,7 +56,7 @@ Template Configuration Structure:
 
 ---
 
-## Development Phase Integration (/moai:2-run)
+## Development Phase Integration (/moai run)
 
 ### Worktree-Aware DDD
 
@@ -95,7 +95,7 @@ Server Management:
 
 ---
 
-## Sync Phase Integration (/moai:3-sync)
+## Sync Phase Integration (/moai sync)
 
 ### Automated Worktree Synchronization
 

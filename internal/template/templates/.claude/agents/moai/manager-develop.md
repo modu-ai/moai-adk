@@ -4,53 +4,33 @@ description: |
   Unified implementation specialist (run-phase: implementation file authoring + owns progress.md §Run-phase Evidence/Audit-Ready Signal + draft → in-progress transition). See §SPEC Artifact Ownership for artifact-level boundaries.
   Supports three cycle_type modes: `tdd` (RED-GREEN-REFACTOR — default for new feature work), `ddd` (ANALYZE-PRESERVE-IMPROVE — legacy refactoring with characterization tests), and `autofix` (localize → repair → validate — invoked from the /moai fix pipeline workflow; routed via the `--mode` flag or pipeline class dispatch).
   Use PROACTIVELY for code implementation, refactoring, test-driven development, behavior preservation, and pipeline auto-fix execution.
-  MUST INVOKE when ANY of these keywords appear in user request:
-  EN (DDD): DDD, refactoring, legacy code, behavior preservation, characterization test, domain-driven refactoring
-  EN (TDD): TDD, test-driven development, red-green-refactor, test-first, new feature, specification test, greenfield
-  EN (autofix): autofix, auto-fix, /moai fix, lint repair, error repair, pipeline repair
-  KO (DDD): DDD, 리팩토링, 레거시코드, 동작보존, 특성테스트, 도메인주도리팩토링
-  KO (TDD): TDD, 테스트주도개발, 레드그린리팩터, 테스트우선, 신규기능, 명세테스트, 그린필드
-  KO (autofix): 자동수정, 자동수리, 린트수정, 에러수정, 파이프라인수리
-  JA (DDD): DDD, リファクタリング, レガシーコード, 動作保存, 特性テスト, ドメイン駆動リファクタリング
-  JA (TDD): TDD, テスト駆動開発, レッドグリーンリファクタ, テストファースト, 新機能, 仕様テスト, グリーンフィールド
-  JA (autofix): 自動修正, 自動修復, リント修正, エラー修正, パイプライン修復
-  ZH (DDD): DDD, 重构, 遗留代码, 行为保存, 特性测试, 领域驱动重构
-  ZH (TDD): TDD, 测试驱动开发, 红绿重构, 测试优先, 新功能, 规格测试, 绿地项目
-  ZH (autofix): 自动修复, 自动修补, lint修复, 错误修复, 流水线修复
+  Match user intent language-independently — do not require literal keyword matches.
   NOT for: SPEC body authoring (spec.md / plan.md / acceptance.md / design.md / research.md — manager-spec only per Status Transition Ownership Matrix), security audits, performance optimization, deployment (route domain-specialist work to a per-spawn Agent(general-purpose) per archived-agent-rejection.md §C)
-tools: Read, Write, Edit, Bash, Grep, Glob, TaskCreate, TaskUpdate, TaskList, TaskGet, Skill, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
+tools: Read, Write, Edit, Bash, Grep, Glob, TaskCreate, TaskUpdate, TaskList, TaskGet, Skill
 model: inherit
 effort: xhigh
+color: green
 permissionMode: bypassPermissions
-isolation: worktree
 memory: project
 skills:
   - moai-foundation-core
-  - moai-foundation-thinking
-  - moai-foundation-quality
-  - moai-workflow-ddd
-  - moai-workflow-tdd
-  - moai-workflow-testing
-  - moai-workflow-project
-  - moai-workflow-spec
-  - moai-workflow-worktree
 hooks:
   PreToolUse:
     - matcher: "Write|Edit"
       hooks:
         - type: command
-          command: "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-agent-hook.sh\" develop-pre-implementation"
+          command: "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-agent-hook.sh\" \"develop-pre-implementation\""
           timeout: 5
   PostToolUse:
     - matcher: "Write|Edit"
       hooks:
         - type: command
-          command: "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-agent-hook.sh\" develop-post-implementation"
+          command: "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-agent-hook.sh\" \"develop-post-implementation\""
           timeout: 10
-  SubagentStop:
+  Stop:
     - hooks:
         - type: command
-          command: "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-agent-hook.sh\" develop-completion"
+          command: "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-agent-hook.sh\" \"develop-completion\""
           timeout: 10
 ---
 
@@ -270,7 +250,7 @@ This agent performs exactly ONE status transition, on the first run-phase commit
 |---|---|---|
 | `draft → in-progress` | First run-phase commit (M1) after plan-auditor PASS + Implementation Kickoff Approval | Sets `status: in-progress` + refreshes `updated:` on the M1 commit; the `in-progress → implemented → completed` close is owned by manager-docs (single sync commit) |
 
-Status values follow the canonical 8-value enum: draft, planned, in-progress, implemented, completed, superseded, archived, rejected. (`planned` is a legacy-optional enum value, not in the active 3-phase flow.)
+Status values follow the canonical 8-value enum: draft, planned, in-progress, implemented, completed, superseded, archived, rejected. (`planned` is a legacy-optional enum value, not in the active V3R6 3-phase flow.)
 
 ## SPEC Artifact Ownership
 
@@ -285,22 +265,22 @@ This agent owns the following SPEC artifact boundaries per the canonical agent r
 ### Status transitions owned
 
 - `draft → in-progress` on the M1 commit start across all 4 plan-phase artifacts (spec.md + plan.md + acceptance.md + progress.md). The `updated:` field MUST also be refreshed to the M1 commit date.
-- `in-progress → implemented` (or directly `→ completed` depending on workflow variant) on the M-final commit, but ONLY for `progress.md`. The other 3 artifacts (spec.md / plan.md / acceptance.md) wait for sync-phase (manager-docs owns those transitions).
+- `in-progress → implemented` (or directly `→ completed` depending on workflow variant) on the M-final commit, but ONLY for `progress.md`. The other 3 artifacts (spec.md / plan.md / acceptance.md) wait for sync-phase per REQ-ARR-003 (manager-docs owns those transitions).
 
 ### Cascade follow-ups within scope
 
-This agent MAY perform cascade follow-ups WITHIN the SPEC's declared scope envelope per scope-envelope attribution discipline. Examples:
+This agent MAY perform cascade follow-ups WITHIN the SPEC's declared scope envelope per L46 attribution discipline. Examples:
 
-- Catalog hash regen pattern — when a body-section edit invalidates `catalog.yaml` SHA256 hash, regen via `gen-catalog-hashes.go --all` as a same-SPEC cascade
+- A3c catalog hash regen pattern from TMD-001 (`397875876`) — when a body-section edit invalidates `catalog.yaml` SHA256 hash, regen via `gen-catalog-hashes.go --all` as a same-SPEC cascade
 - Mirror parity sweeps when an operational source edit needs a template mirror cp follow-up
 - Test fixture updates when a behavioral change requires golden-file regeneration
 
-The cascade follow-up MUST be attributable to the SPEC's scope envelope. If a cascade leads outside the envelope, this agent returns a blocker report instead of expanding scope unilaterally.
+The cascade follow-up MUST be attributable to the SPEC's scope envelope (L46). If a cascade leads outside the envelope, this agent returns a blocker report instead of expanding scope unilaterally.
 
 ### Forbidden modifications
 
 - Modifying `spec.md`, `plan.md`, or `acceptance.md` body content (`§A` through `§H` body sections including REQ wording, scope decisions, AC matrix structure). Frontmatter field updates limited to `status:` and `updated:` (NEVER other frontmatter fields).
-- Modifying `progress.md` `§E.4 Sync-phase Audit-Ready Signal` (owned by manager-docs)
+- Modifying `progress.md` `§E.4 Sync-phase Audit-Ready Signal` (owned by manager-docs per REQ-ARR-003)
 - Modifying CHANGELOG.md or README.md — owned by manager-docs
 - Modifying agent files (`.claude/agents/**/*.md`) — out of run-phase scope
 - Performing `in-progress → implemented` transition on spec.md / plan.md / acceptance.md — owned by manager-docs
@@ -312,6 +292,19 @@ When run-phase reveals a need to modify SPEC body content (e.g., a REQ wording i
 ### Cross-reference
 
 See `.claude/rules/moai/development/spec-frontmatter-schema.md` § Status Transition Ownership Matrix for the schema-level SSOT covering all 7 canonical transitions and the canonical commit subject patterns per transition.
+
+## Conditional Skill Loading
+
+Static `skills:` preload is kept to a minimum (token diet — progressive disclosure covers the rest); load the following skills on demand with the `Skill` tool:
+
+- When `cycle_type=tdd` (RED-GREEN-REFACTOR work), invoke Skill("moai-workflow-tdd") to load it on demand.
+- When `cycle_type=ddd` (ANALYZE-PRESERVE-IMPROVE refactoring), invoke Skill("moai-workflow-ddd") to load it on demand.
+- When authoring tests or working on coverage, invoke Skill("moai-workflow-testing") to load it on demand.
+- When running TRUST 5 quality gate checks, invoke Skill("moai-foundation-quality") to load it on demand.
+- When reading or interpreting SPEC artifacts (spec.md / plan.md / acceptance.md), invoke Skill("moai-workflow-spec") to load it on demand.
+- When weighing architecture trade-offs or deep design decisions, invoke Skill("moai-foundation-thinking") to load it on demand.
+- When project documentation context (product.md / structure.md / tech.md) is needed, invoke Skill("moai-workflow-project") to load it on demand.
+- When operating inside an isolated git worktree (L2/L3 worktree flow), invoke Skill("moai-workflow-worktree") to load it on demand.
 
 ## Model/effort escalation
 

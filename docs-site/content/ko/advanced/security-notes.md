@@ -1,20 +1,18 @@
 ---
 title: 보안 노트
-description: "MoAI-ADK v2.20.0-rc1 보안 강화 변경 사항 — CWE-732/214/345 매핑, 사용자 자체 점검 절차"
+description: "MoAI-ADK 보안 강화 변경 사항 (v3.0.0 도입, v3.0 계열 현행 유효) — CWE-732/214/345 매핑, 사용자 자체 점검 절차"
 weight: 72
 draft: false
 tags: ["security", "cwe", "audit"]
 ---
 
-# 보안 노트 (Security Notes)
-
-본 페이지는 MoAI-ADK v2.20.0-rc1 시점에 도입된 **사용자 가시 보안 변경 사항**을 정리합니다. 각 항목은 CWE 매핑, 변경된 동작, 자체 점검 명령을 포함합니다.
+에이전틱 하네스는 에이전트에게 실행 권한을 넘기는 시스템입니다. 권한을 넘기는 시스템일수록 자격증명과 업데이트 경로의 보안이 하네스 신뢰의 바닥을 이룹니다. 본 페이지는 MoAI-ADK v3.0.0 시점에 도입된 **사용자 가시 보안 변경 사항**을 정리합니다. 이 보안 강화는 도입 이후 v3.0 계열 현행까지 계속 유효합니다. 각 항목은 CWE 매핑, 변경된 동작, 자체 점검 명령을 포함합니다.
 
 ## Why — 왜 이 페이지가 존재하는가
 
-`SPEC-V3R5-SECURITY-CRIT-001` (PR #1032, merge commit `03a2552a2`) 은 v2.14.0 → v2.20.0-rc1 사이의 코드 리뷰에서 발견된 **P0 release blocker 보안 결함 3건**을 정정했습니다. 본 페이지는 그 정정 사실과 사용자가 자신의 환경에서 새 보호가 작동하는지 확인할 수 있는 절차를 4-locale 공식 안내로 명문화합니다.
+`SPEC-V3R5-SECURITY-CRIT-001` (PR #1032, merge commit `03a2552a2`) 은 v2.14.0 → v3.0.0 사이의 코드 리뷰에서 발견된 **P0 release blocker 보안 결함 3건**을 정정했습니다. 본 페이지는 그 정정 사실과, 사용자가 자신의 환경에서 새 보호가 작동하는지 확인할 수 있는 절차를 4-locale 공식 안내로 명문화합니다.
 
-세 결함은 모두 GLM 통합 + 자동 업데이트 경로와 관련됩니다:
+세 결함은 모두 GLM 통합 + 자동 업데이트 경로와 관련됩니다.
 
 - **CWE-732 / CWE-552** — `.claude/settings.local.json` 파일 mode `0o600` 강제 (소유자 전용 read/write)
 - **CWE-214** — `moai cg` 의 tmux 환경 변수 주입이 argv 대신 source-file 경유 (GLM token argv 비가시화)
@@ -26,7 +24,7 @@ tags: ["security", "cwe", "audit"]
 
 ### 변경 사항
 
-`.claude/settings.local.json` 파일이 생성·갱신될 때 파일 권한이 **`0o600`** (소유자만 read/write) 로 강제됩니다. 이전에는 `0o644` (소유자 read/write + group/world read) 로 생성되어 다중 사용자 워크스테이션에서 다른 로컬 사용자가 `ANTHROPIC_AUTH_TOKEN` 등 민감 자격증명을 읽을 수 있었습니다.
+`.claude/settings.local.json` 파일이 생성·갱신될 때 파일 권한이 **`0o600`** (소유자만 read/write) 로 강제됩니다. 이전에는 `0o644` (소유자 read/write + group/world read) 로 생성되어, 다중 사용자 워크스테이션에서 다른 로컬 사용자가 `ANTHROPIC_AUTH_TOKEN` 등 민감 자격증명을 읽을 수 있었습니다.
 
 ### 위협 모델
 
@@ -43,7 +41,7 @@ tags: ["security", "cwe", "audit"]
 
 ### 자체 점검
 
-기존 `settings.local.json` 권한 확인:
+기존 `settings.local.json` 권한을 확인합니다.
 
 ```bash
 # Linux
@@ -63,13 +61,15 @@ chmod 0600 .claude/settings.local.json
 
 ### 영향 (Trade-off)
 
-`group-readable` 을 기대하는 워크플로우 (동일 프로젝트 디렉터리를 별도 OS 사용자가 read 하는 매우 드문 시나리오) 는 깨질 수 있습니다. 이 트레이드오프는 의도된 것이며 보안 회복이 분명한 우선입니다.
+`group-readable` 을 기대하는 워크플로우 (동일 프로젝트 디렉터리를 별도 OS 사용자가 read 하는 매우 드문 시나리오) 는 깨질 수 있습니다. 이 트레이드오프는 의도된 것이며, 보안 회복이 분명한 우선입니다.
 
 ## CWE-214 — tmux IPC token argv 노출 차단 {#cwe-214}
 
 ### 변경 사항
 
 `moai cg` (CG 모드) 가 GLM token (`ANTHROPIC_AUTH_TOKEN`) 을 tmux 세션 환경 변수에 주입할 때, **argv 채널** (`tmux set-environment <KEY> <VALUE>`) 대신 **source-file 채널** (`tmux source-file <tmp>`) 을 사용합니다. token 은 더 이상 `ps auxe`, `/proc/<pid>/cmdline`, auditd 로그, sysmon 추적, 크래시 덤프에 평문으로 노출되지 않습니다.
+
+CG 모드는 토크노믹스의 핵심 절감 수단 (Claude 리더 + GLM 워커, 60-70% 절감) 인 만큼, 그 자격증명 경로의 보안이 특히 중요합니다.
 
 ### 구현 흐름
 
@@ -99,11 +99,11 @@ argv 에는 임시 파일 경로만 노출되며 token 자체는 노출되지 �
 
 ### 실패 시 동작
 
-source-file 주입이 실패하면 (디스크 가득 참, tmux source-file 실패 등) **argv fallback 으로 누설하지 않고** `ErrTmuxSensitiveInjectFailed` sentinel error 를 반환하여 주입 자체를 abort 합니다.
+source-file 주입이 실패하면 (디스크 가득 참, tmux source-file 실패 등) **argv fallback 으로 누설하지 않고** `ErrTmuxSensitiveInjectFailed` sentinel error 를 반환하여 주입 자체를 abort 합니다. 실패 시 편의로 되돌아가지 않는다는 점이 이 설계의 핵심입니다.
 
 ### 자체 점검
 
-CG 모드 실행 중 token 이 argv 에 노출되는지 확인:
+CG 모드 실행 중 token 이 argv 에 노출되는지 확인합니다.
 
 ```bash
 # moai cg 실행 후 새 tmux 세션 내에서
@@ -111,7 +111,7 @@ ps auxe | grep -i 'tmux set-environment.*ANTHROPIC_AUTH_TOKEN'
 # 기대값: 0 matches (token 이 argv 에 없음)
 ```
 
-임시 파일이 정상적으로 unlink 되는지 확인:
+임시 파일이 정상적으로 unlink 되는지 확인합니다.
 
 ```bash
 ls -la ~/.moai/run/ 2>/dev/null
@@ -122,7 +122,7 @@ ls -la ~/.moai/run/ 2>/dev/null
 
 ### 사용자 책임
 
-`~/.moai/.env.glm` source 파일은 사용자 환경에서 `0o600` 권한을 유지해야 합니다. 이는 `moai glm` 명령이 자동으로 설정합니다:
+`~/.moai/.env.glm` source 파일은 사용자 환경에서 `0o600` 권한을 유지해야 합니다. 이는 `moai glm` 명령이 자동으로 설정합니다.
 
 ```bash
 stat -c '%a' ~/.moai/.env.glm    # Linux: 600
@@ -139,7 +139,7 @@ stat -f '%A' ~/.moai/.env.glm    # macOS: 600
 
 ### Retry 정책
 
-`checksums.txt` 다운로드는 **3회 retry** 를 지수 백오프로 시도합니다:
+`checksums.txt` 다운로드는 **3회 retry** 를 지수 백오프로 시도합니다.
 
 | 시도 | 대기 시간 |
 |------|-----------|
@@ -154,7 +154,7 @@ stat -f '%A' ~/.moai/.env.glm    # macOS: 600
 
 ### Defense-in-depth
 
-`version.Checksum` 필드가 empty string 인 상태로 `downloadAndVerify` 에 도달하면 binary 다운로드를 진행하지 않고 `ErrChecksumUnavailable` 를 반환합니다. 이중 보호 (checker 단계 + updater 단계) 로 묵음 우회를 차단합니다.
+`version.Checksum` 필드가 empty string 인 상태로 `downloadAndVerify` 에 도달하면 binary 다운로드를 진행하지 않고 `ErrChecksumUnavailable` 를 반환합니다. 이중 보호 (checker 단계 + updater 단계) 로 소리 없는 우회를 차단합니다.
 
 ### 위협 모델
 
@@ -184,23 +184,25 @@ moai update
 # 출력 예: error: checksum unavailable: persistent retry failure after 3 attempts
 ```
 
-`ErrChecksumUnavailable` 메시지가 표시되면:
+`ErrChecksumUnavailable` 메시지가 표시되면 다음을 확인하세요.
 
 1. 네트워크 연결 확인 (`curl -I https://github.com/modu-ai/moai-adk/releases/latest`)
 2. Proxy / firewall 이 GitHub release asset 도메인을 허용하는지 확인
 3. 일시적 GitHub CDN 장애 가능성 — 잠시 후 재시도
 4. **`--skip-checksum` 같은 우회 옵션은 제공되지 않습니다** — 이는 의도된 정책
 
-영구 차단 시 수동 binary 설치를 권장합니다:
+영구 차단 시 수동 binary 설치를 권장합니다.
 
 ```bash
 # 수동 설치 (사용자가 직접 무결성 검증)
 curl -fsSL https://raw.githubusercontent.com/modu-ai/moai-adk/main/install.sh | bash
 ```
 
-자세한 내용: [업데이트](/ko/getting-started/update/)
+자세한 내용: [업데이트](/ko/cli-reference/update/)
 
 ## 자체 점검 체크리스트 (Self-Audit Checklist)
+
+다섯 항목을 한 번에 점검할 수 있습니다.
 
 ```bash
 # 1. CWE-732 — settings.local.json 권한
@@ -226,13 +228,13 @@ stat -c '%a' ~/.moai/.env.glm 2>/dev/null \
 # 기대값: 600 (해당 파일이 존재하는 경우)
 ```
 
-위 5 항목이 모두 기대값을 충족하면 v2.20.0-rc1 보안 강화가 정상 작동하고 있습니다.
+위 5개 항목이 모두 기대값을 충족하면 보안 강화가 정상 작동하고 있습니다 (v3.0.0에서 도입되어 v3.0 계열 현행까지 유효).
 
 ## References
 
 ### CHANGELOG
 
-[CHANGELOG `[Unreleased]` v2.20.0-rc1 Security 섹션](https://github.com/modu-ai/moai-adk/blob/main/CHANGELOG.md)
+[CHANGELOG v3.0.0 Security 섹션](https://github.com/modu-ai/moai-adk/blob/main/CHANGELOG.md)
 
 ### SPEC
 
@@ -256,5 +258,5 @@ stat -c '%a' ~/.moai/.env.glm 2>/dev/null \
 ### 관련 페이지
 
 - [settings.json 가이드](/ko/advanced/settings-json/) — `settings.local.json` 권한 섹션
-- [업데이트](/ko/getting-started/update/) — checksum 검증 섹션
+- [업데이트](/ko/cli-reference/update/) — checksum 검증 섹션
 - [CG 모드](/ko/multi-llm/cg-mode/) — tmux 환경 변수 주입 보안 모델

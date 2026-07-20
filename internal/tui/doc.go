@@ -7,9 +7,8 @@
 //
 // # Design Source
 //
-// Token values are extracted verbatim from:
-//
-//	.moai/design/SPEC-V3R3-CLI-TUI-001/source/project/tui.jsx:9-69
+// Token values are extracted verbatim from the original design source
+// (SPEC-V3R3-CLI-TUI-001); palette migrated to Claude coral 2026-07.
 //
 // The 28 tokens cover both light and dark modes. The mapping is 1:1: every
 // field in Theme corresponds to a key in TOK.light or TOK.dark in the design
@@ -35,7 +34,12 @@
 //
 // # lipgloss Usage Convention
 //
-// All ANSI styling is produced through the charmbracelet/lipgloss library.
+// All ANSI styling is produced through the charm.land/lipgloss/v2 library
+// (Charm v2 migration; lipgloss is an internal implementation detail — the
+// public contract of this package is plain string tokens and rendered
+// strings, never lipgloss types). Rendered output is re-encoded for the
+// detected terminal colour profile (see profile.go downsample), preserving
+// the lipgloss v1 auto-degradation behaviour on non-TTY output.
 // The canonical pattern for applying a token colour is:
 //
 //	th := tui.LightTheme()

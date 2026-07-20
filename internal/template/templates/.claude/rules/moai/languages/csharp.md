@@ -4,10 +4,6 @@ paths: "**/*.cs,**/*.csproj,**/*.sln"
 
 # C# Development Guide
 
-
----
-
-
 # C# 14 / .NET 10 (LTS) Development Specialist
 
 Modern C# development with ASP.NET Core, Entity Framework Core, Blazor, and enterprise patterns.
@@ -62,19 +58,31 @@ Entity Configuration: Create a class implementing IEntityTypeConfiguration of yo
 
 ---
 
-## Context7 Integration
+## Documentation References
 
-For latest documentation, use Context7 MCP tools.
+For latest documentation, use WebSearch / WebFetch against the official Microsoft / .NET docs.
 
-For ASP.NET Core documentation, first resolve the library ID using mcp__context7__resolve-library-id with "aspnetcore", then fetch docs using mcp__context7__get-library-docs with the resolved library ID and topic like "minimal-apis middleware".
+For ASP.NET Core documentation, WebSearch "ASP.NET Core minimal APIs middleware" and WebFetch the relevant learn.microsoft.com page.
 
-For Entity Framework Core documentation, resolve with "efcore" and fetch with topics like "dbcontext migrations".
+For Entity Framework Core documentation, WebSearch "EF Core dbcontext migrations" and fetch the official docs.
 
-For .NET Runtime documentation, resolve with "dotnet runtime" and fetch with topics like "collections threading".
+For .NET Runtime documentation, WebSearch ".NET runtime collections threading" and fetch the official docs.
 
 ---
 
-## Quick Troubleshooting
+## Testing
+
+xUnit Fixture Pattern: Define a public class implementing ICollectionFixture of DatabaseFixture. Add Collection attribute referencing the collection definition. Tests in the collection share the fixture instance across test runs, ensuring database state setup only once.
+
+NUnit TestCase Pattern: Use TestCase attribute with expected return values. Define test method with input parameters. NUnit runs the test once per TestCase attribute, comparing actual to expected via Assert.AreEqual.
+
+Moq Setup Pattern: Create Mock of IRepository. Call Setup with lambda matching method call and argument constraint (It.IsAny of T). Configure Returns with expected value. Verify the mock was called with specific arguments using Verify and Times.Once.
+
+FluentAssertions Style: Use Should assertions. Call result.Should().BeEquivalentTo expecting matching object structure. Use Should().Throw of ExceptionType for exception assertions in async methods. Note: FluentAssertions changed its license in 2025 — consider plain xUnit asserts or Shouldly as alternatives for new projects.
+
+---
+
+## Troubleshooting
 
 Build and Runtime: Run dotnet build with --verbosity detailed for detailed output. Run dotnet run with --launch-profile https for HTTPS profile. Run dotnet ef database update to apply EF migrations. Run dotnet ef migrations add with migration name to create new migrations.
 

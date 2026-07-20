@@ -1,261 +1,102 @@
-# Best Practices Enforcement
+# Best Practices Validation
 
-Context7-powered best practices validation and automated standards enforcement.
+How to validate code against up-to-date framework and library best practices.
+MoAI does not ship a "best practices engine"; the mechanism is: look up the
+latest official documentation via WebSearch / WebFetch, then compare the code
+against what those docs prescribe.
 
 ## Overview
 
-The Best Practices Engine validates coding standards and best practices using real-time documentation from Context7, ensuring code follows latest framework and language standards.
+Best-practices validation means checking that code follows current standards
+for the language and frameworks in use. Because best practices drift (a
+framework's recommended pattern changes across versions), this validation
+relies on live documentation rather than a fixed rule set.
 
-## Best Practices Engine Implementation
+The tools:
+- `WebSearch` — find candidate official-documentation sources for a framework or library.
+- `WebFetch` — fetch and verify the official documentation at a specific URL.
 
-```python
-class BestPracticesEngine:
- """Context7-powered best practices validation and enforcement"""
+## Validation Process
 
- def __init__(self, context7_client: Context7Client):
- self.context7_client = context7_client
- self.language_rules = self._load_language_rules()
- self.practice_validators = self._initialize_validators()
+To validate a change against best practices:
 
- async def validate(self, codebase: str, languages: List[str], context7_docs: bool = True) -> PracticesResult:
- """Validate coding best practices with real-time documentation"""
+1. **Identify the relevant libraries** in the change (frameworks, key
+   dependencies). Read the dependency manifest (go.mod, package.json,
+   requirements.txt / pyproject.toml, Cargo.toml, pom.xml, etc.).
+2. **Locate the official documentation** for each library via `WebSearch`
+   (target the official docs site, e.g. `"<framework> official documentation"`).
+3. **Fetch the relevant docs**, scoped to the topic at hand (e.g.
+   "best-practices", "error-handling", "testing", "performance"), via
+   `WebFetch` against the official URLs surfaced by the search.
+4. **Compare** the code against the documented patterns. Note where the code
+   diverges and whether the divergence is justified.
+5. **Report** the findings: what matches, what diverges, and the
+   recommendation.
 
- validation_results = {}
+If a documentation source cannot be reached, fall back to established
+best-practice patterns from industry experience. Architecture/analysis quality
+must not depend on a single source being available (see agent-common-protocol
+§MCP Fallback Strategy).
 
- for language in languages:
- # Get latest best practices from Context7
- if context7_docs:
- try:
- library_id = await self.context7_client.resolve_library_id(language)
- latest_docs = await self.context7_client.get_library_docs(
- context7CompatibleLibraryID=library_id,
- topic="best-practices",
- tokens=5000
- )
+## Language-Neutral Validation
 
- # Validate against latest standards
- validation_result = await self._validate_against_latest_standards(
- codebase, language, latest_docs
- )
+This skill is language-neutral. The 16 supported languages are treated
+equally — there is no "primary" language. The validation process above
+applies to any of them. Examples of what to validate per language family:
 
- except Exception as e:
- logger.warning(f"Failed to get Context7 docs for {language}: {e}")
- # Fallback to cached rules
- validation_result = await self._validate_with_cached_rules(
- codebase, language
- )
- else:
- validation_result = await self._validate_with_cached_rules(
- codebase, language
- )
+| Concern | Example check |
+|---------|--------------|
+| Error handling | Does it use the language's idiomatic error pattern (Go's error returns, Rust's Result, exceptions, etc.)? |
+| Naming | Does it follow the language's convention (camelCase vs snake_case vs PascalCase)? |
+| Concurrency | Does it use the safe primitive (mutex, channel, async/await, actor)? |
+| Testing | Does it use the language's test framework idiomatically? |
+| Dependency management | Are dependencies pinned and minimal? |
 
- validation_results[language] = validation_result
+## Documentation Source Mapping (illustrative)
 
- # Cross-language best practices
- cross_language_result = await self._validate_cross_language_practices(codebase)
+Official documentation lives at well-known upstream URLs. Resolve via
+`WebSearch` rather than hardcoding — the URL may change. Illustrative home
+pages for common quality tooling:
 
- # Calculate overall practices score
- overall_score = sum(
- result.score for result in validation_results.values()
- ) / len(validation_results)
+| Tool | Official docs home |
+|------|-------------------|
+| eslint | https://eslint.org/docs/latest |
+| prettier | https://prettier.io/docs |
+| ruff | https://docs.astral.sh/ruff |
+| golangci-lint | https://golangci-lint.run |
+| clippy (rust) | https://doc.rust-lang.org/clippy |
+| jest | https://jestjs.io/docs |
+| pytest | https://docs.pytest.org |
 
- return PracticesResult(
- language_results=validation_results,
- cross_language_practices=cross_language_result,
- overall_score=overall_score,
- compliance_level=self._determine_compliance_level(overall_score),
- improvement_roadmap=self._create_improvement_roadmap(validation_results)
- )
+Do not treat this table as authoritative — always confirm the current URL via
+`WebSearch` / `WebFetch` at validation time.
 
- async def _validate_against_latest_standards(
- self,
- codebase: str,
- language: str,
- latest_docs: str
- ) -> LanguageValidationResult:
- """Validate code against latest language standards from Context7"""
+## Custom Quality Checks
 
- # Extract best practices from documentation
- best_practices = await self._extract_best_practices_from_docs(latest_docs)
+For project-specific quality rules that go beyond the standard toolchain,
+encode them as:
 
- # Validate naming conventions
- naming_result = await self._validate_naming_conventions(
- codebase, language, best_practices.get("naming", {})
- )
+- **Linter custom rules** — most linters support custom rules (golangci-lint
+  custom analyzers, eslint custom rules, clippy lints). This is the
+  preferred mechanism because the existing gate will run them.
+- **@MX tags** — use `@MX:ANCHOR` to mark invariants the code must preserve,
+  and `@MX:WARN` to mark danger zones. These surface during review.
+- **A SPEC** — for a structural quality requirement, author a SPEC so it
+  enters the plan/run/sync lifecycle and gets audited.
 
- # Validate code structure
- structure_result = await self._validate_code_structure(
- codebase, language, best_practices.get("structure", {})
- )
+Do not invent a "custom rule engine" library. Use the project's existing
+extensibility surface.
 
- # Validate error handling
- error_handling_result = await self._validate_error_handling(
- codebase, language, best_practices.get("error_handling", {})
- )
+## What NOT to Do
 
- # Validate documentation
- documentation_result = await self._validate_documentation(
- codebase, language, best_practices.get("documentation", {})
- )
-
- # Validate testing patterns
- testing_result = await self._validate_testing_patterns(
- codebase, language, best_practices.get("testing", {})
- )
-
- # Calculate language-specific score
- language_score = (
- naming_result.score * 0.2 +
- structure_result.score * 0.3 +
- error_handling_result.score * 0.2 +
- documentation_result.score * 0.15 +
- testing_result.score * 0.15
- )
-
- return LanguageValidationResult(
- language=language,
- score=language_score,
- validations={
- "naming": naming_result,
- "structure": structure_result,
- "error_handling": error_handling_result,
- "documentation": documentation_result,
- "testing": testing_result
- },
- best_practices_version=await self._get_docs_version(latest_docs),
- recommendations=self._generate_language_recommendations(
- naming_result, structure_result, error_handling_result,
- documentation_result, testing_result
- )
- )
-```
-
-## Configuration
-
-```yaml
-best_practices:
- enabled: true
- context7_integration: true
- auto_update_standards: true
- compliance_target: 0.85
-
- language_rules:
- python:
- style_guide: "pep8"
- formatter: "black"
- linter: "ruff"
- type_checker: "mypy"
-
- javascript:
- style_guide: "airbnb"
- formatter: "prettier"
- linter: "eslint"
-
- typescript:
- style_guide: "google"
- formatter: "prettier"
- linter: "eslint"
-```
-
-## Context7 Library Mappings
-
-```python
-QUALITY_LIBRARY_MAPPINGS = {
- # Static Analysis Tools
- "eslint": "/eslint/eslint",
- "prettier": "/prettier/prettier",
- "black": "/psf/black",
- "ruff": "/astral-sh/ruff",
- "mypy": "/python/mypy",
- "pylint": "/pylint-dev/pylint",
- "sonarqube": "/SonarSource/sonarqube",
-
- # Testing Frameworks
- "jest": "/facebook/jest",
- "pytest": "/pytest-dev/pytest",
- "mocha": "/mochajs/mocha",
- "junit": "/junit-team/junit5",
-
- # Security Tools
- "bandit": "/PyCQA/bandit",
- "snyk": "/snyk/snyk",
- "owasp-zap": "/zaproxy/zaproxy",
-
- # Performance Tools
- "lighthouse": "/GoogleChrome/lighthouse",
- "py-spy": "/benfred/py-spy",
-
- # Documentation Standards
- "openapi": "/OAI/OpenAPI-Specification",
- "sphinx": "/sphinx-doc/sphinx",
- "jsdoc": "/jsdoc/jsdoc"
-}
-```
-
-## Custom Quality Rules
-
-```python
-class CustomQualityRule:
- """Define custom quality validation rules"""
-
- def __init__(self, name: str, validator: Callable, severity: str = "medium"):
- self.name = name
- self.validator = validator
- self.severity = severity
-
- async def validate(self, codebase: str) -> RuleResult:
- """Execute custom rule validation"""
- try:
- result = await self.validator(codebase)
- return RuleResult(
- rule_name=self.name,
- passed=result.passed,
- severity=self.severity,
- details=result.details,
- recommendations=result.recommendations
- )
- except Exception as e:
- return RuleResult(
- rule_name=self.name,
- passed=False,
- severity="error",
- details={"error": str(e)},
- recommendations=["Fix rule implementation"]
- )
-
-# Usage example
-async def custom_naming_convention_rule(codebase: str):
- """Custom rule: Enforce project-specific naming conventions"""
-
- patterns = {
- "api_endpoints": r"^[a-z]+_[a-z]+$",
- "database_models": r"^[A-Z][a-zA-Z]*Model$",
- "utility_functions": r"^util_[a-z_]+$"
- }
-
- violations = []
- for pattern_name, pattern in patterns.items():
- pattern_violations = await scan_for_pattern_violations(codebase, pattern, pattern_name)
- violations.extend(pattern_violations)
-
- return RuleValidationResult(
- passed=len(violations) == 0,
- details={"violations": violations, "total_violations": len(violations)},
- recommendations=[f"Fix {len(violations)} naming convention violations"]
- )
-
-# Register custom rule
-custom_rule = CustomQualityRule(
- name="project_naming_conventions",
- validator=custom_naming_convention_rule,
- severity="medium"
-)
-
-quality_orchestrator.register_custom_rule(custom_rule)
-```
+- Do NOT treat one language's conventions as universal (Python's `black`
+  is not relevant to a Go project; Go's `gofmt` is not relevant to a Rust
+  project).
+- Do NOT present cached best-practice rules as "current" without re-checking
+  the official docs via `WebSearch` / `WebFetch` — best practices drift.
 
 ## Related
 
-- [TRUST 5 Validation](trust5-validation.md)
-- [Proactive Analysis](proactive-analysis.md)
-- [Integration Patterns](integration-patterns.md)
+- [TRUST 5 Principles](trust5-validation.md) — the Unified principle this feeds
+- [Proactive Analysis](proactive-analysis.md) — gate and review triage
+- [Integration Patterns](integration-patterns.md) — quality across SPEC phases

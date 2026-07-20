@@ -4,7 +4,7 @@
 > Parent: [TRUST 5 Framework](./trust5-framework.md)
 > Complexity: Advanced
 > Time: 10+ minutes
-> Dependencies: Python 3.8+, ast, Context7 MCP
+> Dependencies: source parser (AST), WebSearch/WebFetch
 
 ## Overview
 
@@ -14,63 +14,33 @@ Truthfulness (25% weight) validates code correctness and logic accuracy through 
 
 ### Tautology Detection
 
-```python
-def _detect_tautologies(self, tree: ast.AST) -> List[CodeIssue]:
-    """Detect tautological comparisons (always True)."""
-
+```text
+detect_tautologies(tree):
     issues = []
-
-    for node in ast.walk(tree):
-        if isinstance(node, ast.Compare):
-            # Check for comparisons that are always True
-            # Example: x > -1 (where x is len(something))
-            if self._is_always_true_comparison(node):
-                issue = CodeIssue(
-                    id=f"tautology_{node.lineno}",
-                    category=TrustCategory.TRUTHFULNESS,
-                    severity="low",
-                    issue_type="code_smell",
-                    title="Tautological Comparison",
-                    description="Comparison is always True",
-                    file_path=file_path,
-                    line_number=node.lineno,
-                    column_number=node.col_offset,
-                    code_snippet="# Tautological comparison detected",
-                    suggested_fix="Remove unnecessary comparison or simplify logic",
-                    confidence=0.7,
-                    rule_violated="TAUTOLOGICAL_COMPARISON"
-                )
-                issues.append(issue)
-
+    for node in walk(tree, matching=Comparison):
+        # Flag comparisons that are always true, e.g. x > -1 when x is a length.
+        if is_always_true_comparison(node):
+            issues.append(CodeIssue(
+                id="tautology_" + node.line,
+                category=TrustCategory.TRUTHFULNESS, severity="low",
+                issue_type="code_smell", title="Tautological Comparison",
+                description="Comparison is always true",
+                file_path=file_path, line_number=node.line, column_number=node.column,
+                code_snippet="# tautological comparison detected",
+                suggested_fix="Remove the unnecessary comparison or simplify the logic",
+                confidence=0.7, rule_violated="TAUTOLOGICAL_COMPARISON"))
     return issues
 ```
 
 ### Comprehensive Logic Validation
 
-```python
-async def validate_logic_correctness(
-    self, file_path: str, tree: ast.AST
-) -> List[CodeIssue]:
-    """Comprehensive logic correctness validation."""
-
+```text
+validate_logic_correctness(file_path, tree):
     issues = []
-
-    # Check for tautological comparisons
-    tautologies = self._detect_tautologies(tree)
-    issues.extend(tautologies)
-
-    # Check for contradictory conditions
-    contradictions = self._detect_contradictions(tree)
-    issues.extend(contradictions)
-
-    # Check for constant conditions
-    constant_conditions = self._detect_constant_conditions(tree)
-    issues.extend(constant_conditions)
-
-    # Check for type confusion
-    type_issues = self._detect_type_confusion(tree)
-    issues.extend(type_issues)
-
+    issues.extend(detect_tautologies(tree))
+    issues.extend(detect_contradictions(tree))
+    issues.extend(detect_constant_conditions(tree))
+    issues.extend(detect_type_confusion(tree))
     return issues
 ```
 
@@ -78,24 +48,12 @@ async def validate_logic_correctness(
 
 ### Variable Usage Validation
 
-```python
-def analyze_data_flow(self, file_path: str, tree: ast.AST) -> List[CodeIssue]:
-    """Analyze data flow for correctness issues."""
-
+```text
+analyze_data_flow(file_path, tree):
     issues = []
-
-    # Check for undefined variables
-    undefined_vars = self._check_undefined_variables(tree)
-    issues.extend(undefined_vars)
-
-    # Check for unused variables
-    unused_vars = self._check_unused_variables(tree)
-    issues.extend(unused_vars)
-
-    # Check for variable shadowing
-    shadowing = self._check_variable_shadowing(tree)
-    issues.extend(shadowing)
-
+    issues.extend(check_undefined_variables(tree))
+    issues.extend(check_unused_variables(tree))
+    issues.extend(check_variable_shadowing(tree))
     return issues
 ```
 
@@ -111,15 +69,14 @@ def analyze_data_flow(self, file_path: str, tree: ast.AST) -> List[CodeIssue]:
 6. **Unused Variables**: Variables defined but never read
 7. **Variable Shadowing**: Inner scope variables hiding outer scope
 
-### Context7 Integration
+### Documentation Integration
 
-```python
-# Load truthfulness patterns
-truthfulness = await self.context7.get_library_docs(
-    context7_library_id="/code-correctness/python",
-    topic="logic error detection patterns 2025",
-    tokens=3000
-)
+```text
+# Load truthfulness patterns (use the host language's correctness library id)
+truthfulness = docs.get_library_docs(
+    "<code-correctness/<language>>",
+    topic="logic error detection patterns",
+    tokens=3000)
 ```
 
 ## Best Practices

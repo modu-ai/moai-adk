@@ -4,7 +4,7 @@ weight: 70
 draft: false
 ---
 
-Claude Code의 설정 파일 체계를 상세히 안내합니다.
+Claude Code의 설정 파일 체계를 상세히 안내합니다. 에이전트에게 실행 권한을 위임하는 하네스에서 settings.json은 그 위임의 경계선을 긋는 파일입니다 — 무엇을 자동 허용하고, 무엇을 물어보고, 무엇을 절대 막을지가 전부 여기서 결정됩니다.
 
 {{< callout type="info" >}}
 **한 줄 요약**: `settings.json`은 Claude Code의 **관제탑**입니다. 권한, 환경 변수, Hook, 보안 정책을 한곳에서 관리합니다.
@@ -18,14 +18,14 @@ Claude Code는 **범위 시스템**을 사용하여 설정이 적용되는 위�
 
 | 범위 | 위치 | 영향 대상 | 팀 공유 | 우선순위 |
 |------|------|-----------|---------|----------|
-| **Managed** | 시스템 수준 `managed-settings.json` | 머신의 모든 사용자 | ✅ (IT 배포) | 최고 |
-| **User** | `~/.claude/` | 사용자 개인 (모든 프로젝트) | ❌ | 낮음 |
-| **Project** | `.claude/` | 저장소의 모든 협업자 | ✅ (Git 추적) | 중간 |
-| **Local** | `.claude/*.local.*` | 사용자 (이 저장소에서만) | ❌ | 높음 |
+| **Managed** | 시스템 수준 `managed-settings.json` | 머신의 모든 사용자 | ✓ (IT 배포) | 최고 |
+| **User** | `~/.claude/` | 사용자 개인 (모든 프로젝트) | ✗ | 낮음 |
+| **Project** | `.claude/` | 저장소의 모든 협업자 | ✓ (Git 추적) | 중간 |
+| **Local** | `.claude/*.local.*` | 사용자 (이 저장소에서만) | ✗ | 높음 |
 
 ### 범위별 우선순위
 
-동일한 설정이 여러 범위에 있는 경우, 더 구체적인 범위가 우선합니다:
+동일한 설정이 여러 범위에 있는 경우, 더 구체적인 범위가 우선합니다.
 
 ```mermaid
 flowchart TD
@@ -53,7 +53,7 @@ flowchart TD
 - API 키 및 인증 (안전하게 저장)
 
 **Project 범위** - 다음에 사용:
-- 팀 공유 설정 (권한, Hook, MCP 서버)
+- 팀 공유 설정 (권한, Hook)
 - 팀이 가져야 할 플러그인
 - 협업자 간 도구 표준화
 
@@ -102,14 +102,11 @@ MoAI-ADK는 4개의 설정 파일 위치를 사용합니다.
   "permissions": {},
   "enabledPlugins": {},
   "extraKnownMarketplaces": {},
-  "enableAllProjectMcpServers": false,
-  "enabledMcpjsonServers": [],
-  "disabledMcpjsonServers": [],
   "fileSuggestion": {},
   "alwaysThinkingEnabled": false,
   "maxThinkingTokens": 0,
-  "statusLine": {},
-  "outputStyle": "",
+  "statusLine": { "type": "command", "command": "bash \"$CLAUDE_PROJECT_DIR/.moai/status_line.sh\"" },
+  "outputStyle": "MoAI-Easy",
   "cleanupPeriodDays": 30,
   "env": {}
 }
@@ -214,14 +211,14 @@ Windows Terminal 및 iTerm2와 같은 지원되는 터미널에서 진행률을 
 
 ## 권한 설정
 
-Claude Code가 실행할 수 있는 명령어의 권한을 관리합니다.
+Claude Code가 실행할 수 있는 명령어의 권한을 관리합니다. 권한 설계의 목표는 분명합니다. 안전한 명령은 확인 없이 흘려 에이전틱 루프를 끊지 않고, 위험한 명령은 어떤 경우에도 통과시키지 않는 것.
 
 ### 권한 구조
 
 ```json
 {
   "permissions": {
-    "defaultMode": "default",
+    "defaultMode": "acceptEdits",
     "allow": [],
     "ask": [],
     "deny": [],
@@ -233,17 +230,17 @@ Claude Code가 실행할 수 있는 명령어의 권한을 관리합니다.
 
 ### defaultMode
 
-Claude Code를 열 때의 기본 권한 모드입니다.
+Claude Code를 열 때의 기본 권한 모드입니다. 유효한 값은 다음 4가지입니다.
 
 | 값 | 설명 |
 |-----|------|
-| `"acceptEdits"` | 파일 편집 자동 허용 |
-| `"allowEdits"` | 파일 편집 허용 |
-| `"rejectEdits"` | 파일 편집 거부 |
-| `"default"` | 기본 동작 |
+| `"default"` | 기본 동작 — 각 작업마다 사용자 확인 |
+| `"acceptEdits"` | 파일 편집 자동 허용 (기본값) |
+| `"plan"` | 계획 모드 — 읽기 전용, 파일 수정 불가 |
+| `"bypassPermissions"` | 모든 권한 자동 허용 (위험, `disableBypassPermissionsMode`로 차단 가능) |
 
 {{< callout type="info" >}}
-**참고**: 현재 MoAI-ADK 설정 파일은 `"defaultMode": "default"`를 사용합니다. 이는 레거시 값일 수 있습니다.
+**기본값**: MoAI-ADK 템플릿은 `"defaultMode": "acceptEdits"`를 사용합니다. 이는 개발 흐름에서 파일 편집 프롬프트를 줄이면서 위험 명령은 여전히 확인하도록 균형을 맞춥니다.
 {{< /callout >}}
 
 ### allow (자동 허용)
@@ -261,7 +258,6 @@ Claude Code를 열 때의 기본 권한 모드입니다.
 | 코드 품질 | `ruff`, `black`, `prettier`, `eslint` | 6개+ |
 | 탐색 도구 | `ls`, `find`, `tree`, `cat`, `head` | 10개+ |
 | GitHub CLI | `gh issue`, `gh pr`, `gh repo view` | 2개 |
-| MCP 도구 | `mcp__context7__*` | 2개 |
 | 기타 | `AskUserQuestion`, `Task`, `Skill`, `TodoWrite` | 4개 |
 
 **allow 형식 예시:**
@@ -272,7 +268,6 @@ Claude Code를 열 때의 기본 권한 모드입니다.
     "Read",                          // 도구 이름만
     "Bash(git add:*)",               // Bash + 명령어 패턴
     "Bash(pytest:*)",                // 와일드카드
-    "mcp__context7__resolve-library-id",  // MCP 도구
     "Bash(npm run *)",               // 공백 구분 (새로운 형식)
     "WebFetch(domain:example.com)"   // 도메인 패턴
   ]
@@ -367,15 +362,15 @@ Claude가 접근할 수 있는 추가 작업 디렉토리입니다.
 }
 ```
 
-`--safe-mode` CLI 플래그는 settings가 아닌 런칭 시점에 동일한 런타임 효과를 적용합니다 — 잠긴 환경이나 어떤 동작이 번들 skill에서 기원했는지 디버깅할 때 유용합니다. MoAI-ADK는 `disableBundledSkills`를 생성하거나 `--safe-mode`를 자동으로 전달하지 않습니다. 둘 다 사용 가능한 옵션으로 이곳에 문서화됩니다.
+`--safe-mode` CLI 플래그는 settings가 아닌 런칭 시점에 동일한 런타임 효과를 적용해, 잠긴 환경이나 어떤 동작이 번들 skill에서 기원했는지 디버깅할 때 유용합니다. MoAI-ADK는 `disableBundledSkills`를 생성하거나 `--safe-mode`를 자동으로 전달하지 않습니다. 둘 다 사용 가능한 옵션입니다.
 
 ## 권한 규칙 구문 (Permission Rule Syntax)
 
-권한 규칙은 `Tool` 또는 `Tool(specifier)` 형식을 따릅니다. 매개변수 범위 와일드카드 형식인 `Tool(param:value)`도 지원됩니다 — 예: `WebFetch(domain:example.com)`은 해당 도메인에 대한 WebFetch만 허용, `Bash(cmd:git status)`는 `git status` 명령에 매칭, 값 내부의 `*` 와일드카드로 매칭 범위를 넓힐 수 있습니다 (`WebFetch(domain:*.example.com)`, `Bash(cmd:git *)`). 이 매개변수 범위 형식은 일반 `Tool(specifier)` 형식보다 더 세밀한 제어를 제공합니다. MoAI-ADK는 현재 자체 설정 생성기에서 매개변수 범위 규칙을 생성하지 않습니다. 이 구문은 매개변수 수준의 권한 제어가 필요한 프로젝트를 위한 사용 가능한 옵션으로 문서화됩니다.
+권한 규칙은 `Tool` 또는 `Tool(specifier)` 형식을 따릅니다. 매개변수 범위 와일드카드 형식인 `Tool(param:value)`도 지원됩니다. 예를 들어 `WebFetch(domain:example.com)`은 해당 도메인에 대한 WebFetch만 허용하고, `Bash(cmd:git status)`는 `git status` 명령에 매칭되며, 값 내부의 `*` 와일드카드로 매칭 범위를 넓힐 수 있습니다 (`WebFetch(domain:*.example.com)`, `Bash(cmd:git *)`). 이 매개변수 범위 형식은 일반 `Tool(specifier)` 형식보다 더 세밀한 제어를 제공합니다. MoAI-ADK의 설정 생성기는 현재 이 형식을 만들지 않지만, 매개변수 수준의 권한 제어가 필요한 프로젝트에서 쓸 수 있는 옵션입니다.
 
 ### 규칙 평가 순서
 
-여러 규칙이 동일한 도구 사용과 일치할 때, 규칙은 다음 순서로 평가됩니다:
+여러 규칙이 동일한 도구 사용과 일치할 때, 규칙은 다음 순서로 평가됩니다.
 
 1. **Deny** 규칙이 먼저 확인됨
 2. **Ask** 규칙이 두 번째로 확인됨
@@ -385,7 +380,7 @@ Claude가 접근할 수 있는 추가 작업 디렉토리입니다.
 
 ### 도구의 모든 사용 일치시키기
 
-도구의 모든 사용을 일치시키려면 괄호 없이 도구 이름만 사용하세요:
+도구의 모든 사용을 일치시키려면 괄호 없이 도구 이름만 사용하세요.
 
 | 규칙 | 효과 |
 |------|------|
@@ -397,7 +392,7 @@ Claude가 접근할 수 있는 추가 작업 디렉토리입니다.
 
 ### 세부 제어를 위한 지정자 사용
 
-괄호 안에 지정자를 추가하여 특정 도구 사용을 일치시킵니다:
+괄호 안에 지정자를 추가하여 특정 도구 사용을 일치시킵니다.
 
 | 규칙 | 효과 |
 |------|------|
@@ -426,7 +421,7 @@ Bash 규칙은 `*`와 함께 glob 패턴을 지원합니다. 와일드카드는 
 }
 ```
 
-**중요:** `*` 앞의 공백이 중요합니다:
+**중요:** `*` 앞의 공백이 중요합니다.
 - `Bash(ls *)`는 `ls -la`와 일치하지만 `lsof`는 일치하지 않음
 - `Bash(ls*)`는 둘 다와 일치
 
@@ -434,7 +429,7 @@ Bash 규칙은 `*`와 함께 glob 패턴을 지원합니다. 와일드카드는 
 
 ### 도메인별 패턴
 
-WebFetch와 같은 도구에 대해 도메인별 패턴을 사용할 수 있습니다:
+WebFetch와 같은 도구에 대해 도메인별 패턴을 사용할 수 있습니다.
 
 ```json
 {
@@ -473,7 +468,7 @@ flowchart TD
 
 ## 샌드박스 설정 (Sandbox Settings)
 
-고급 샌드박싱 동작을 구성합니다. 샌드박싱은 파일시스템과 네트워크에서 bash 명령을 격리합니다.
+고급 샌드박싱 동작을 구성합니다. 샌드박싱은 파일시스템과 네트워크에서 bash 명령을 격리합니다 — 권한 규칙이 논리적 방어선이라면, OS 샌드박스는 물리적 방어선입니다.
 
 {{< callout type="warning" >}}
 **중요:** 파일시스템 및 네트워크 제한은 Read, Edit, WebFetch 권한 규칙을 통해 구성되며, 샌드박스 설정을 통해서가 아닙니다.
@@ -572,7 +567,7 @@ Claude Code 이벤트에 반응하는 스크립트를 등록합니다.
           {
             "type": "command",
             "command": "보안 가드 스크립트 경로",
-            "timeout": 5000
+            "timeout": 5
           }
         ]
       }
@@ -584,12 +579,12 @@ Claude Code 이벤트에 반응하는 스크립트를 등록합니다.
           {
             "type": "command",
             "command": "포맷터 스크립트 경로",
-            "timeout": 30000
+            "timeout": 10
           },
           {
             "type": "command",
             "command": "린터 스크립트 경로",
-            "timeout": 60000
+            "timeout": 30
           }
         ]
       }
@@ -609,7 +604,7 @@ Claude Code 이벤트에 반응하는 스크립트를 등록합니다.
 | `PreCompact` | 컨텍스트 압축 전 실행 |
 
 {{< callout type="info" >}}
-Hook 설정의 자세한 내용은 [Hooks 가이드](/advanced/hooks-guide)를 참고하세요.
+Hook 설정의 자세한 내용은 [Hooks 가이드](/ko/advanced/hooks-guide)를 참고하세요.
 {{< /callout >}}
 
 ## 플러그인 설정 (Plugin Settings)
@@ -647,28 +642,6 @@ Hook 설정의 자세한 내용은 [Hooks 가이드](/advanced/hooks-guide)를 �
 
 저장소에서 사용 가능하게 만들 추가 마켓플레이스를 정의합니다. 일반적으로 저장소 수준 설정에서 사용하여 팀 구성원이 필요한 플러그인 소스에 접근할 수 있도록 합니다.
 
-## MCP 설정 (MCP Settings)
-
-MCP (Model Context Protocol) 서버 관련 설정입니다.
-
-```json
-{
-  "enableAllProjectMcpServers": true,
-  "enabledMcpjsonServers": ["memory", "github"],
-  "disabledMcpjsonServers": ["filesystem"]
-}
-```
-
-### MCP 설정 참조
-
-| 키 | 설명 | 예시 |
-|-----|------|------|
-| `enableAllProjectMcpServers` | 프로젝트 `.mcp.json` 파일에 정의된 모든 MCP 서버 자동 승인 | `true` |
-| `enabledMcpjsonServers` | 승인할 특정 MCP 서버 목록 | `["memory", "github"]` |
-| `disabledMcpjsonServers` | 거부할 특정 MCP 서버 목록 | `["filesystem"]` |
-| `allowedMcpServers` | managed-settings.json에서만 사용. MCP 서버 허용목록 | `[{ "serverName": "github" }]` |
-| `deniedMcpServers` | managed-settings.json에서만 사용. MCP 서버 거부목록 (우선 적용) | `[{ "serverName": "filesystem" }]` |
-
 ## 파일 제안 설정 (File Suggestion Settings)
 
 `@` 파일 경로 자동완성을 위한 사용자 정의 명령을 구성합니다.
@@ -686,7 +659,7 @@ MCP (Model Context Protocol) 서버 관련 설정입니다.
 
 ## 확장 사고 설정 (Extended Thinking Settings)
 
-확장 사고(Extended Thinking) 관련 설정입니다.
+확장 사고(Extended Thinking) 관련 설정입니다. 추론 토큰도 토큰이라 항상 켜두면 편하지만, 예산과 함께 조율하는 쪽이 토크노믹스에 맞습니다.
 
 ```json
 {
@@ -701,10 +674,6 @@ MCP (Model Context Protocol) 서버 관련 설정입니다.
 |-----|------|------|
 | `alwaysThinkingEnabled` | 모든 세션에서 기본적으로 확장 사고 활성화 | `true` |
 | `maxThinkingTokens` | 사고 토큰 예산 재정의 (기본값: 31999, 0 = 비활성화) | `10000` |
-
-환경 변수를 통해서도 설정 가능합니다:
-- `MAX_THINKING_TOKENS=10000`: 사고 토큰 제한
-- `MAX_THINKING_TOKENS=0`: 사고 비활성화
 
 ## 회사 공지사항 (Company Announcements)
 
@@ -728,9 +697,9 @@ Claude Code 하단에 표시되는 상태 표시줄을 설정합니다.
 {
   "statusLine": {
     "type": "command",
-    "command": "${SHELL:-/bin/bash} -l -c 'uv run --no-sync moai-adk statusline'",
+    "command": "bash \"$CLAUDE_PROJECT_DIR/.moai/status_line.sh\"",
     "padding": 0,
-    "refreshInterval": 300
+    "refreshInterval": 10
   }
 }
 ```
@@ -738,19 +707,19 @@ Claude Code 하단에 표시되는 상태 표시줄을 설정합니다.
 | 필드 | 설명 |
 |------|------|
 | `type` | `"command"` (명령어 실행) |
-| `command` | 실행할 명령어 (상태 정보 반환) |
+| `command` | 실행할 명령어 (상태 정보 반환). MoAI-ADK는 `$CLAUDE_PROJECT_DIR/.moai/status_line.sh` 래퍼를 사용합니다 |
 | `padding` | 패딩 크기 |
-| `refreshInterval` | 갱신 주기 (밀리초) |
+| `refreshInterval` | 갱신 주기 (초) |
 
 ## 출력 스타일 설정
 
 ```json
 {
-  "outputStyle": "R2-D2"
+  "outputStyle": "MoAI-Easy"
 }
 ```
 
-출력 스타일은 Claude Code의 응답 형식을 결정합니다. `settings.local.json`에서 개인 선호 스타일로 변경할 수 있습니다.
+출력 스타일은 Claude Code의 응답 형식을 결정합니다. MoAI-ADK 템플릿은 기본값으로 `"MoAI-Easy"`를 사용하며, `settings.local.json`에서 개인 선호 스타일로 변경할 수 있습니다.
 
 ## 환경 변수 설정
 
@@ -779,10 +748,7 @@ Claude Code 하단에 표시되는 상태 표시줄을 설정합니다.
 ```json
 {
   "env": {
-    "ENABLE_TOOL_SEARCH": "auto:5",
-    "MAX_THINKING_TOKENS": "31999",
-    "CLAUDE_CODE_FILE_READ_MAX_OUTPUT_TOKENS": "64000",
-    "CLAUDE_CODE_MAX_OUTPUT_TOKENS": "32000",
+    "ENABLE_TOOL_SEARCH": "1",
     "CLAUDE_AUTOCOMPACT_PCT_OVERRIDE": "50"
   }
 }
@@ -792,24 +758,21 @@ Claude Code 하단에 표시되는 상태 표시줄을 설정합니다.
 
 | 변수 | 값 | 설명 |
 |------|-----|------|
-| `ENABLE_TOOL_SEARCH` | `"auto"`, `"auto:N"`, `"true"`, `"false"` | MCP 도구 검색 제어 |
-| `MAX_THINKING_TOKENS` | `0`-`31999` | 사고 토큰 제한 (0=비활성화) |
-| `CLAUDE_CODE_MAX_OUTPUT_TOKENS` | `1`-`64000` | 최대 출력 토큰 (기본값: 32000) |
-| `CLAUDE_CODE_FILE_READ_MAX_OUTPUT_TOKENS` | 숫자 | 파일 읽기 최대 출력 토큰 |
+| `ENABLE_TOOL_SEARCH` | `"1"`, `"auto"`, `"auto:N"`, `"true"`, `"false"` | 도구 검색 제어 (MoAI 기본값: `"1"`) |
 | `CLAUDE_AUTOCOMPACT_PCT_OVERRIDE` | `1`-`100` | 자동 압축 트리거 백분율 (기본값: ~95%) |
 | `CLAUDE_CODE_ENABLE_TELEMETRY` | `"1"` | OpenTelemetry 데이터 수집 활성화 |
 | `CLAUDE_CODE_DISABLE_BACKGROUND_TASKS` | `"1"` | 백그라운드 작업 비활성화 |
-| `DISABLE_AUTOUPDATER` | `"1"` | 자동 업�데이트 비활성화 |
+| `DISABLE_AUTOUPDATER` | `"1"` | 자동 업데이트 비활성화 |
 | `HTTP_PROXY` | URL | HTTP 프록시 서버 |
 | `HTTPS_PROXY` | URL | HTTPS 프록시 서버 |
 
 {{< callout type="info" >}}
-**팁**: `ENABLE_TOOL_SEARCH` 값 `"auto:5"`는 컨텍스트 사용량이 5%일 때 도구 검색을 활성화합니다. `"auto"`는 기본 10%, `"true"`는 항상 켜기, `"false"`는 항상 끕니다.
+**팁**: MoAI-ADK 템플릿은 `ENABLE_TOOL_SEARCH`를 `"1"`로 설정합니다 — 지연 도구 로딩(deferred tool preload)을 활성화하여 세션 시작 시 전체 도구 스키마를 로드하지 않고 필요할 때 검색해 로드합니다. `"auto"`는 컨텍스트 사용량 10%에서 활성화, `"auto:N"`은 N%에서 활성화, `"false"`는 항상 끕니다.
 {{< /callout >}}
 
 ### 도구 검색 상세
 
-`ENABLE_TOOL_SEARCH`는 MCP 도구 검색을 제어합니다:
+`ENABLE_TOOL_SEARCH`는 도구 검색을 제어합니다. 도구 스키마를 전부 상시 로드하는 대신 필요할 때 검색해 로드하므로, 여러 서버 환경에서 컨텍스트를 크게 절약합니다.
 
 | 값 | 설명 |
 |-----|------|
@@ -838,10 +801,7 @@ Claude Code 하단에 표시되는 상태 표시줄을 설정합니다.
       "Bash(bun add:*)"
     ]
   },
-  "enabledMcpjsonServers": [
-    "context7"          // 개인적으로 활성화하는 MCP 서버
-  ],
-  "outputStyle": "Mr.Alfred"  // 개인 선호 출력 스타일
+  "outputStyle": "MoAI-Easy"  // 개인 선호 출력 스타일
 }
 ```
 
@@ -851,7 +811,7 @@ Claude Code 하단에 표시되는 상태 표시줄을 설정합니다.
 
 ### settings.local.json 권한 강화 (0o600) {#settings-local-json-permission}
 
-v2.20.0-rc1 부터 `settings.local.json` 은 생성·갱신 시 **`0o600`** (소유자 전용 read/write) 권한이 강제됩니다. 이전 `0o644` 는 다중 사용자 워크스테이션에서 `ANTHROPIC_AUTH_TOKEN` 등 민감 자격증명이 다른 로컬 사용자에게 노출되는 위험이 있었습니다 (CWE-732 / CWE-552).
+v3.0.0 부터 `settings.local.json` 은 생성·갱신 시 **`0o600`** (소유자 전용 read/write) 권한이 강제됩니다. 이전 `0o644` 는 다중 사용자 워크스테이션에서 `ANTHROPIC_AUTH_TOKEN` 등 민감 자격증명이 다른 로컬 사용자에게 노출되는 위험이 있었습니다 (CWE-732 / CWE-552).
 
 **자체 점검**:
 
@@ -877,38 +837,41 @@ stat -f '%A' .claude/settings.local.json
 
 ### MoAI 사용자 정의 statusLine
 
-MoAI-ADK는 사용자 정의 상태 표시줄을 제공합니다:
+MoAI-ADK는 사용자 정의 상태 표시줄을 제공합니다.
 
 ```json
 {
   "statusLine": {
     "type": "command",
-    "command": "${SHELL:-/bin/bash} -l -c 'uv run --no-sync moai-adk statusline'",
+    "command": "bash \"$CLAUDE_PROJECT_DIR/.moai/status_line.sh\"",
     "padding": 0,
-    "refreshInterval": 300
+    "refreshInterval": 10
   }
 }
 ```
 
-### MoAI Statusline v3 기능
+### MoAI Statusline 기능
 
-MoAI-ADK statusline v3에는 다음이 포함됩니다:
+MoAI-ADK statusline에는 다음이 포함됩니다.
 
-- **RGB 그라디언트 색상**: 시스템 상태에 따른 동적 색상 그라디언트
+- **그라디언트 색상**: 컨텍스트 사용률에 따른 동적 색상 그라디언트
 - **5H/7D 사용량 모니터링**: 5시간 및 7일 API 사용량 바 표시
 - **다중 라인 레이아웃**: Compact (3줄), default, full 디스플레이 모드
-- **테마**:
-  - **MoAI Dark** (기본값): RGB 그라디언트가 있는 다크 테마
-  - **MoAI Light**: 밝은 환경을 위한 라이트 테마
+- **테마** (`internal/statusline/theme.go` 정의):
+  - **catppuccin-mocha** (기본값): 다크 팔레트
+  - **catppuccin-latte**: 밝은 환경을 위한 라이트 팔레트
 
 {{< callout type="info" >}}
-**참고**: 이전 테마(Default, Catppuccin Mocha, Catppuccin Latte)는 MoAI Dark/MoAI Light로 이름이 변경되었습니다.
+**참고**: 알 수 없는 테마 이름은 `catppuccin-mocha`로 폴백됩니다. 색상 값은 `internal/tui/catppuccin.go`에서 가져옵니다.
 {{< /callout >}}
 
 statusline 테마와 세그먼트는 `.moai/config/sections/statusline.yaml`에서 설정합니다.
+
 ### MoAI 사용자 정의 Hooks
 
-MoAI-ADK는 다음 사용자 정의 Hook을 제공합니다:
+MoAI-ADK는 다음 사용자 정의 Hook을 제공합니다.
+
+MoAI-ADK의 Hook은 **셸 스크립트 래퍼 → Go 바이너리** 구조입니다. Python/`uv`가 아니라, 각 이벤트마다 `.claude/hooks/moai/handle-<event>.sh` 래퍼가 stdin JSON을 `moai hook <event>` 서브커맨드로 전달합니다.
 
 ```json
 {
@@ -919,7 +882,8 @@ MoAI-ADK는 다음 사용자 정의 Hook을 제공합니다:
         "hooks": [
           {
             "type": "command",
-            "command": "/bin/zsh -l -c 'uv run \"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/session_start__show_project_info.py\"'"
+            "command": "bash \"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-session-start.sh\"",
+            "timeout": 30
           }
         ]
       }
@@ -930,8 +894,8 @@ MoAI-ADK는 다음 사용자 정의 Hook을 제공합니다:
         "hooks": [
           {
             "type": "command",
-            "command": "/bin/zsh -l -c 'uv run \"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/pre_compact__save_context.py\"'",
-            "timeout": 5000
+            "command": "bash \"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-compact.sh\"",
+            "timeout": 30
           }
         ]
       }
@@ -942,7 +906,8 @@ MoAI-ADK는 다음 사용자 정의 Hook을 제공합니다:
         "hooks": [
           {
             "type": "command",
-            "command": "/bin/zsh -l -c 'uv run \"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/session_end__auto_cleanup.py\" &'"
+            "command": "bash \"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-session-end.sh\"",
+            "timeout": 10
           }
         ]
       }
@@ -953,8 +918,8 @@ MoAI-ADK는 다음 사용자 정의 Hook을 제공합니다:
         "hooks": [
           {
             "type": "command",
-            "command": "/bin/zsh -l -c 'uv run \"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/pre_tool__security_guard.py\"'",
-            "timeout": 5000
+            "command": "bash \"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-pre-tool.sh\"",
+            "timeout": 5
           }
         ]
       }
@@ -965,18 +930,8 @@ MoAI-ADK는 다음 사용자 정의 Hook을 제공합니다:
         "hooks": [
           {
             "type": "command",
-            "command": "/bin/zsh -l -c 'uv run \"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/post_tool__code_formatter.py\"'",
-            "timeout": 30000
-          },
-          {
-            "type": "command",
-            "command": "/bin/zsh -l -c 'uv run \"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/post_tool__linter.py\"'",
-            "timeout": 60000
-          },
-          {
-            "type": "command",
-            "command": "/bin/zsh -l -c 'uv run \"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/post_tool__ast_grep_scan.py\"'",
-            "timeout": 30000
+            "command": "bash \"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-post-tool.sh\"",
+            "timeout": 10
           }
         ]
       }
@@ -985,15 +940,25 @@ MoAI-ADK는 다음 사용자 정의 Hook을 제공합니다:
 }
 ```
 
+각 래퍼는 stdin JSON을 읽어 Go 바이너리에 넘기는 얇은 셸 스크립트입니다.
+
+```bash
+#!/bin/bash
+# .claude/hooks/moai/handle-session-start.sh
+moai hook session-start
+```
+
+셸 스크립트를 쓰는 이유: Python 시작 오버헤드가 없고(빠른 실행), `uv`/`python` 의존성이 필요 없으며, 크로스 플랫폼(bash, /bin/sh)입니다. Hook `timeout` 값의 단위는 **초**입니다(밀리초 아님).
+
 ### MoAI 출력 스타일
 
 ```json
 {
-  "outputStyle": "Mr.Alfred"
+  "outputStyle": "MoAI-Easy"
 }
 ```
 
-이 스타일은 Alfred AI 오케스트레이터의 고유한 응답 형식을 제공합니다.
+`MoAI-Easy`는 MoAI-ADK의 기본 출력 스타일로, 친근하고 간결한 응답 형식을 제공합니다.
 
 ## 실전 예시: 설정 커스터마이징
 
@@ -1011,18 +976,6 @@ MoAI-ADK는 다음 사용자 정의 Hook을 제공합니다:
       "Bash(bun run:*)"
     ]
   }
-}
-```
-
-### MCP 서버 활성화
-
-Context7 MCP 서버를 활성화합니다.
-
-```json
-{
-  "enabledMcpjsonServers": [
-    "context7"
-  ]
 }
 ```
 
@@ -1064,8 +1017,8 @@ Context7 MCP 서버를 활성화합니다.
         "hooks": [
           {
             "type": "command",
-            "command": "python3 .claude/hooks/my-hooks/custom_check.py",
-            "timeout": 10000
+            "command": "bash .claude/hooks/my-hooks/custom_check.sh",
+            "timeout": 10
           }
         ]
       }
@@ -1085,34 +1038,46 @@ Context7 MCP 서버를 활성화합니다.
 }
 ```
 
-## v2.9.0 신규 설정 파일
+## 관련 설정 파일
 
 ### Harness 설정 (harness.yaml)
 
-품질 파이프라인 깊이 수준과 자동 감지 임계값을 정의합니다.
+품질 파이프라인 깊이 수준과 자동 감지 임계값을 정의합니다. 변경의 크기에 맞춰 검증 비용을 조절하는 적응형 품질의 설정 표면입니다.
 
 **3단계 깊이 수준:**
 
 | 레벨 | 설명 | evaluator | 건너뛰는 Phase |
 |------|------|-----------|---------------|
 | minimal | 빠른 반복 (간단한 변경) | 비활성 | 0, 0.5, 2.0, 2.5, 2.75, 2.8a, 2.9, 2.10 |
-| standard | 균형 잡힌 품질 (대부분 개발) | final-pass | 없음 |
-| thorough | 최대 품질 (중요한 기능) | per-sprint | 없음 |
+| standard | 균형 잡힌 품질 (대부분 개발) | 활성 | 없음 |
+| thorough | 최대 품질 (중요한 기능) | 활성 | 없음 |
 
 ```yaml
 # .moai/config/sections/harness.yaml
 harness:
-  default_level: standard
+  default_profile: "default"
+  mode_defaults:
+    solo: auto
+    team: auto
+    cg: thorough
   auto_detection:
-    minimal:
-      - "file_count <= 3 AND single_domain"
-      - "spec_type in [bugfix, docs, config]"
-    thorough:
-      - "security_keywords OR payment_keywords present"
-      - "spec_priority == critical"
+    enabled: true
+    rules:
+      minimal:
+        conditions:
+          - "file_count <= 3 AND single_domain"
+          - "spec_type in [bugfix, docs, config]"
+      thorough:
+        conditions:
+          - "security_keywords OR payment_keywords present"
+          - "spec_priority == critical"
+  effort_mapping:
+    minimal:  "low"
+    standard: "medium"
+    thorough: "high"
   levels:
     thorough:
-      evaluator_profile: "strict"
+      evaluator: true
 ```
 
 ### Constitution 설정 (constitution.yaml)
@@ -1148,9 +1113,8 @@ constitution:
 ## 관련 문서
 
 - [Claude Code 공식 설정 문서](https://code.claude.com/docs/en/settings) - 공식 Claude Code 설정
-- [Hooks 가이드](/advanced/hooks-guide) - Hook 설정 상세
-- [CLAUDE.md 가이드](/advanced/claude-md-guide) - 프로젝트 지침 설정
-- [MCP 서버 활용](/advanced/mcp-servers) - MCP 서버 설정 방법
+- [Hooks 가이드](/ko/advanced/hooks-guide) - Hook 설정 상세
+- [CLAUDE.md 가이드](/ko/advanced/claude-md-guide) - 프로젝트 지침 설정
 - [IAM 문서](https://code.claude.com/docs/en/iam) - 권한 시스템 개요
 
 {{< callout type="info" >}}

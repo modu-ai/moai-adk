@@ -1,5 +1,5 @@
 ---
-paths: "**/dynamic-workflows.md"
+paths: "**/.claude/workflows/**,**/.moai/config/sections/workflow.yaml,**/dynamic-workflows.md"
 ---
 
 # Dynamic Workflows (Claude Code Orchestration Primitive)
@@ -58,6 +58,7 @@ The deciding question is **who should hold the plan**: the script (workflow), a 
 
 - The runtime executes the script in an isolated environment, separate from the conversation.
 - Up to **16 concurrent agents** (fewer on machines with limited CPU cores); **1,000 agents total per run** as a runaway-loop backstop.
+- **Workflow size is user-tunable** — the `/config` **Dynamic workflow size** setting (`small` / `medium` / `large`, v2.1.202+) sets a guideline for how many agents a workflow targets, scaling the effective agent count within the 16-concurrent / 1,000-total ceilings above. MoAI does not pin a size in the deployed template — the choice is left to the user/org, so a size guideline surfaced in a session (e.g. "keep workflows under 15 agents") is user configuration, not a MoAI default.
 - **No mid-run user input** — only agent permission prompts can pause a run. For sign-off between stages, run each stage as its own workflow.
 - The workflow script itself has **no direct filesystem or shell access** — its agents read, write, and run commands; the script only coordinates them.
 - Runs are **resumable within the same session**: completed agents return cached results, the rest run live. Exiting Claude Code restarts a running workflow fresh in the next session.
@@ -86,6 +87,8 @@ The dynamic workflow `agent()` primitive accepts an opts object `{model, effort,
 [ZONE:Evolvable] [HARD] When a `.claude/workflows/*.js` script invokes `agent()`, the script author SHALL set `effort` explicitly per the purpose taxonomy below rather than inheriting the session default. Set `model` explicitly only when the purpose demands a specific tier (haiku for mechanical extraction; opus for deep architectural reasoning); otherwise omit it to inherit the main-loop model.
 
 The official effort levels are `low`, `medium`, `high` (default), `xhigh`, `max` (`https://platform.claude.com/docs/en/build-with-claude/effort`). The taxonomy below maps each workflow-agent purpose to a recommended `(model, effort)`.
+
+> **Config surface.** The `workflow_agents:` block in `.moai/config/sections/workflow.yaml` is the SSOT for these per-purpose `(model, effort)` DEFAULTS — the web console and tooling read/write that block, and per-script literals in `.claude/workflows/*.js` remain overrides that win over the config defaults. Values are validated against the closed sets above (model: inherit/haiku/sonnet/opus; effort: low/medium/high/xhigh/max).
 
 | Purpose | Example surfaces | Recommended model | Recommended effort | Official citation |
 |---------|------------------|-------------------|--------------------|-------------------|
@@ -131,7 +134,7 @@ Validated patterns from MoAI dynamic-workflow pilots — each entry records the 
 
 - https://code.claude.com/docs/en/workflows — canonical Claude Code workflows documentation
 - `.claude/rules/moai/core/moai-constitution.md` § Parallel Execution — orchestration primitive selection
-- `.claude/rules/moai/workflow/team-protocol.md` + `team-pattern-cookbook.md` — Agent Teams primitive
+- `.claude/rules/moai/workflow/orchestration-mode-selection.md` §C.1 — Agent Teams static layer (RETIRED; Mode 3 `agent-team` tombstone)
 - `.claude/rules/moai/core/agent-common-protocol.md` § User Interaction Boundary — AskUserQuestion asymmetry (applies to workflow agents)
 - `.claude/rules/moai/workflow/goal-directive.md` — `/goal` autonomous-continuation primitive (complementary)
 

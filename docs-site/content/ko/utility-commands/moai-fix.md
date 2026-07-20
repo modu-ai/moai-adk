@@ -18,7 +18,7 @@ draft: false
 
 개발하다 보면 import 정렬이 깨지거나, 타입이 맞지 않거나, 린트 경고가 쌓이곤 합니다. 이런 문제를 하나씩 찾아 고치는 대신, `/moai fix`를 실행하면 AI가 자동으로 문제를 찾아 수정합니다.
 
-`/moai loop`와 달리 **딱 1회만** 실행되므로, 빠르게 현재 상태를 깨끗하게 만들고 싶을 때 적합합니다.
+`/moai loop`와 달리 **딱 1회만** 실행되므로, 빠르게 현재 상태를 깨끗하게 만들고 싶을 때 적합합니다. 루프 계열에서 보면 `/moai fix`는 **단발 (1회) 프리셋**입니다. 반복이 필요 없는 명확한 오류에 루프를 돌리는 건 토큰 낭비이고, 작업 크기에 맞는 가장 싼 도구를 고르는 것이 토크노믹스 관점의 올바른 선택입니다.
 
 ## 사용법
 
@@ -33,14 +33,12 @@ draft: false
 | 플래그 | 설명 | 예시 |
 |-------|------|------|
 | `--dry` (또는 `--dry-run`) | 수정 없이 결과만 표시 | `/moai fix --dry` |
-| `--sequential` (또는 `--seq`) | 순차 스캔 instead of 병렬 | `/moai fix --sequential` |
+| `--sequential` (또는 `--seq`) | 병렬 대신 순차 스캔 | `/moai fix --sequential` |
 | `--level N` | 최대 수정 레벨 지정 (기본값 3) | `/moai fix --level 2` |
 | `--errors` (또는 `--errors-only`) | 오류만 수정, 경고 건너뜀 | `/moai fix --errors` |
 | `--security` (또는 `--include-security`) | 보안 이슈 포함 | `/moai fix --security` |
 | `--no-fmt` (또는 `--no-format`) | 포맷팅 수정 건너뜀 | `/moai fix --no-fmt` |
 | `--resume [ID]` (또는 `--resume-from`) | 스냅샷에서 재개 (latest면 최신) | `/moai fix --resume` |
-| `--team` | 에이전트 팀 모드 강제 | `/moai fix --team` |
-| `--solo` | 하위 에이전트 모드 강제 | `/moai fix --solo` |
 
 ### --dry 플래그
 
@@ -111,7 +109,7 @@ flowchart TD
 
 ### 3단계: 레벨 분류
 
-수집된 이슈를 **위험도에 따라 4단계로 분류**합니다. 레벨에 따라 자동 수정 여부가 달라집니다.
+수집된 이슈를 **위험도에 따라 4단계로 분류**합니다. 레벨에 따라 자동 수정 여부가 달라집니다. 안전한 것은 기계가 처리하고, 위험한 것은 사람의 승인을 받는다. 자율성과 안전 게이트를 함께 두는 하네스 설계 원칙이 여기에도 적용됩니다.
 
 ```mermaid
 flowchart TD
@@ -235,6 +233,18 @@ def get_user(user_id):
 - "테스트 실패가 많아서 전부 고치고 싶다" → `/moai loop`
 {{< /callout >}}
 
+## 잔여 이슈 핸드오프 (loop으로 인계)
+
+`/moai fix`는 단발 (1회) 파이프라인이므로 한 번의 스캔-수정-검증으로 해결되지 않는 이슈가 남을 수 있습니다. 남는 이슈의 종류:
+
+- **Level 4 수동 항목** (보안·아키텍처 — 자동 수정 금지)
+- **미해결 오류** (repair 단계에서 고치지 못한 항목)
+- **Phase 5 회귀 가드 실패** (되돌리지도 보고하지도 못한 회귀)
+
+이런 잔여가 남으면 fix 워크플로우는 이를 `.moai/state/loop-verdict-<id>.json`에 `exit_kind: "one-shot-residue"`, `iterations_used: 1`로 영속화합니다. 이 스키마는 `/moai loop`의 잔여 영속화 스키마와 동일합니다.
+
+보고서는 재수정 가능한 잔여에 대해 `/moai loop` 진입을 **제안만** 하며, fix 워크플로우가 `/moai loop`나 다른 서브커맨드를 자동 호출하지는 않습니다. 사용자가 직접 `/moai loop`에 재진입하면 영속화된 잔여가 루프의 스캔 큐에 항목으로 편입되어 goal-preset 스윕이 이를 비웁니다.
+
 ## 에이전트 위임 체인
 
 `/moai fix` 명령어의 에이전트 위임 흐름입니다:
@@ -269,11 +279,10 @@ flowchart TD
 
 | 에이전트 | 역할 | 주요 작업 |
 |----------|------|----------|
-| **MoAI 오케스트레이터** | 병렬 스캔 조율 |
-| **manager-develop** | 백엔드 수정 (Level 1-2) |
-| **manager-develop** | 프론트엔드 수정 (Level 1-2) |
-| **manager-develop** | 로직 오류 수정 (Level 3-4) |
-| **sync-auditor** | 품질 검증 | 수정 결과 확인 |
+| **MoAI 오케스트레이터** | 병렬 스캔 조율 + Level 1 직접 수정 | 이슈 수집, 레벨 분류, Level 1 포매터 직접 실행 (에이전트 spawn 없음), 사용자 승인 |
+| **manager-develop** | 수정 실행 | Level 2 자동 수정, Level 3-4 승인 후 수정 |
+
+Level 1 포매터 정리(gofmt/prettier/ruff format 등)는 오케스트레이터가 에이전트 spawn 없이 직접 수행합니다. 수정 결과 검증도 별도 감사 에이전트가 아니라 오케스트레이터가 스캐너(LSP/AST-grep/린터)를 다시 돌려 확인합니다.
 
 ## 실전 예시
 
@@ -341,13 +350,9 @@ $ ruff check src/
 
 Git으로 되돌릴 수 있습니다. 수정 전에 커밋하거나, `git stash`로 백업해두는 것이 좋습니다.
 
-### Q: 특정 파일만 수정하고 싶다면?
+### Q: 수정하지 못한 잔여 이슈는 어떻게 되나요?
 
-`--path` 플래그를 사용하세요:
-
-```bash
-> /moai fix --path src/auth/
-```
+`/moai fix`가 잔여 이슈 (Level 4 수동 항목, 미해결 오류, Phase 5 회귀 가드 실패) 를 남긴 채 종료하면, 잔여 항목은 `.moai/state/loop-verdict-<id>.json`에 `exit_kind: "one-shot-residue"`로 영속화됩니다. 보고서는 재수정 가능한 잔여에 대해 `/moai loop` 진입을 **제안만** 하며 (자동 호출하지 않음), 사용자가 `/moai loop`에 재진입하면 이 잔여가 루프 큐에 스캔 항목으로 들어갑니다.
 
 ### Q: `/moai fix`와 `/moai`의 차이는 무엇인가요?
 

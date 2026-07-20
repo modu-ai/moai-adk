@@ -1,194 +1,117 @@
 # Integration Patterns
 
-Enterprise integration patterns for CI/CD pipelines, GitHub Actions, and Quality-as-Service APIs.
+How quality fits into the MoAI SPEC workflow and the harness levels. MoAI
+does not ship a CI/CD integration library or a "Quality-as-a-Service" API;
+quality is integrated by routing work through the SPEC phases and running
+the gate commands at the right points.
 
-## CI/CD Pipeline Integration
+## Quality Across the SPEC Phases
 
-```python
-async def quality_gate_pipeline():
- """Integrate quality validation into CI/CD pipeline"""
+The SPEC workflow has three phases (plan → run → sync), with an audit
+layer. Quality is enforced at each boundary.
 
- # Initialize quality orchestrator
- quality_orchestrator = QualityOrchestrator.from_config("quality-config.yaml")
+### Plan phase (manager-spec)
 
- # Run comprehensive quality analysis
- quality_result = await quality_orchestrator.analyze_codebase(
- path="src/",
- languages=["python", "typescript"],
- quality_threshold=0.85
- )
+- Capture the LSP baseline so the run phase can measure against it.
+- Identify quality risks in the plan: untested code that will be touched,
+  security-sensitive surfaces, complexity hotspots.
+- Define acceptance criteria that are machine-verifiable where possible
+  (test suite green, lint clean, coverage threshold met).
 
- # Quality gate validation
- if not quality_result.trust5_validation.passed:
- print(" Quality gate failed!")
- print(f"Overall score: {quality_result.overall_score:.2f}")
+### Run phase (manager-develop)
 
- # Print failed principles
- for principle, result in quality_result.trust5_validation.principles.items():
- if not result.passed:
- print(f" {principle}: {result.score:.2f} (threshold: 0.80)")
+- Zero errors / type-errors / lint-errors required.
+- Tests must pass; coverage must meet the threshold.
+- The `cycle_type` shapes the approach:
+  - **tdd** — failing test first, then implementation (RED-GREEN-REFACTOR).
+  - **ddd** — behavior-preserving transformation (ANALYZE-PRESERVE-IMPROVE).
+  - **autofix** — diagnostic-driven fixing.
+- Run `/moai gate` before committing to get a fast quality signal.
 
- # Exit with error code
- sys.exit(1)
+### Sync phase (manager-docs → sync-auditor)
 
- # Check for critical security issues
- critical_issues = [
- issue for issue in quality_result.proactive_analysis.recommendations
- if issue.severity == "critical" and issue.category == "security"
- ]
+- Lint clean (≤10 warnings), docs updated, CHANGELOG entry present.
+- TRUST 5 re-affirmed across the change.
+- sync-auditor provides independent 4-dimension scoring
+  (Functionality / Security / Craft / Consistency) as a fresh-judgment
+  audit.
 
- if critical_issues:
- print(f" Found {len(critical_issues)} critical security issues!")
- for issue in critical_issues:
- print(f" - {issue.description}")
- sys.exit(1)
+## Harness Levels and When Each Runs
 
- print(" Quality gate passed!")
- print(f"Overall quality score: {quality_result.overall_score:.2f}")
+The harness level controls quality depth and is auto-determined by the
+Complexity Estimator based on SPEC scope.
 
- # Generate quality report
- await generate_quality_report(quality_result, output_path="quality-report.json")
-```
+| Level | Gate | sync-auditor | Typical use |
+|-------|------|--------------|-------------|
+| minimal | `/moai gate` (lint + type + test) | No | Small SPECs, low risk, fast iteration |
+| standard | `/moai gate` + format | No (unless invoked) | Most SPECs |
+| thorough | `/moai gate` + `/moai review` | Yes — full 4-dimension scoring | Large SPECs, high risk, security-sensitive |
 
-## GitHub Actions Integration
+## CI/CD Integration Pattern
 
-```python
-async def github_actions_quality_check():
- """Quality check for GitHub Actions workflow"""
+In a CI pipeline, the quality gate maps to running the project's toolchain
+on every push/PR. The pattern (language-neutral — substitute the project's
+commands):
 
- # Parse inputs
- github_token = os.getenv("GITHUB_TOKEN")
- repo_path = os.getenv("GITHUB_WORKSPACE", ".")
- pr_number = os.getenv("PR_NUMBER")
+1. **Lint** — run the project linter; fail on errors.
+2. **Format check** — run the formatter in check mode; fail if not
+   formatted.
+3. **Type check** — run the type checker; fail on errors.
+4. **Test** — run the test suite; fail on any failure.
+5. **Coverage** — generate coverage; fail if below threshold.
 
- # Run quality analysis
- quality_orchestrator = QualityOrchestrator()
- quality_result = await quality_orchestrator.analyze_codebase(
- path=repo_path,
- languages=["python", "javascript", "typescript"]
- )
+`/moai gate` runs steps 1-4 in parallel locally. In CI, replicate the same
+checks. Do not invent a separate quality pipeline that duplicates the gate —
+use the same toolchain so local and CI signals agree.
 
- # Post comment on PR if quality issues found
- if pr_number and quality_result.overall_score < 0.85:
- comment = generate_pr_quality_comment(quality_result)
- await post_github_comment(github_token, pr_number, comment)
+## Review Integration Pattern
 
- # Set output for GitHub Actions
- print(f"::set-output name=quality_score::{quality_result.overall_score}")
- print(f"::set-output name=quality_passed::{quality_result.trust5_validation.passed}")
-```
+For non-trivial changes, `/moai review` goes beyond the gate:
 
-## Quality-as-Service REST API
+- Security review against the OWASP checklist (Secured principle).
+- @MX-tag compliance check (are invariants annotated? are danger zones
+  marked?).
+- Design-level review (readability, abstraction appropriateness).
 
-```python
-from fastapi import FastAPI, HTTPException
-from pydantic import BaseModel
+Use `/moai review` before opening a PR, or when the change is too complex
+for the gate alone to judge.
 
-app = FastAPI(title="Code Quality Analysis API")
+## Iterative Fix Pattern
 
-class QualityAnalysisRequest(BaseModel):
- repository_url: str
- languages: List[str]
- quality_threshold: float = 0.85
+When the gate or review surfaces a cluster of fixable issues:
 
-class QualityAnalysisResponse(BaseModel):
- analysis_id: str
- overall_score: float
- trust5_validation: Dict
- recommendations: List[Dict]
- analysis_completed_at: datetime
+1. Run `/moai fix` to auto-fix LSP/lint/type errors.
+2. If issues remain, run `/moai loop` to iterate until resolved or the max
+   iteration count is reached.
+3. For issues that cannot be auto-fixed, either fix directly or defer with
+   an @MX:TODO and a stated reason.
 
-@app.post("/api/quality/analyze", response_model=QualityAnalysisResponse)
-async def analyze_quality(request: QualityAnalysisRequest):
- """API endpoint for quality analysis"""
+`/moai loop` exits with a ceiling-exit verdict when max iterations are
+reached without full resolution — surface that verdict rather than
+silently stopping.
 
- try:
- # Clone and analyze repository
- with tempfile.TemporaryDirectory() as temp_dir:
- await clone_repository(request.repository_url, temp_dir)
+## Team Mode Quality
 
- quality_orchestrator = QualityOrchestrator()
- quality_result = await quality_orchestrator.analyze_codebase(
- path=temp_dir,
- languages=request.languages,
- quality_threshold=request.quality_threshold
- )
+In Agent Teams mode (experimental), two hooks enforce quality:
 
- return QualityAnalysisResponse(
- analysis_id=str(uuid.uuid4()),
- overall_score=quality_result.overall_score,
- trust5_validation=quality_result.trust5_validation.dict(),
- recommendations=[rec.dict() for rec in quality_result.proactive_analysis.recommendations],
- analysis_completed_at=datetime.now(UTC)
- )
+- **TeammateIdle hook** — validates a teammate's work before accepting idle
+  state. If LSP errors exceed the threshold, the teammate is kept working.
+- **TaskCompleted hook** — validates deliverables before completion.
 
- except Exception as e:
- raise HTTPException(status_code=500, detail=str(e))
-```
+These are the team-mode equivalents of the gate, applied per-teammate. See
+the spec-workflow rule for the full team-quality contract.
 
-## Cross-Project Quality Benchmarking
+## What NOT to Do
 
-```python
-class QualityBenchmarking:
- """Cross-project quality benchmarking and comparison"""
-
- def __init__(self, benchmark_database: str):
- self.benchmark_db = benchmark_database
- self.comparison_metrics = [
- "code_coverage",
- "security_score",
- "maintainability_index",
- "technical_debt_ratio",
- "duplicate_code_percentage"
- ]
-
- async def benchmark_project(self, project_path: str, project_metadata: Dict) -> BenchmarkResult:
- """Benchmark project quality against similar projects"""
-
- # Analyze current project
- current_metrics = await self._analyze_project_quality(project_path)
-
- # Find comparable projects from database
- comparable_projects = await self._find_comparable_projects(project_metadata)
-
- # Calculate percentiles and rankings
- benchmark_comparison = await self._calculate_benchmark_comparison(
- current_metrics, comparable_projects
- )
-
- # Generate improvement recommendations based on top performers
- improvement_recommendations = await self._generate_benchmark_recommendations(
- current_metrics, benchmark_comparison
- )
-
- return BenchmarkResult(
- project_metrics=current_metrics,
- benchmark_comparison=benchmark_comparison,
- industry_percentiles=benchmark_comparison.percentiles,
- improvement_roadmap=improvement_recommendations,
- competitive_analysis=self._analyze_competitive_position(
- current_metrics, benchmark_comparison
- )
- )
-
- async def _find_comparable_projects(self, project_metadata: Dict) -> List[ProjectMetrics]:
- """Find projects with similar characteristics for comparison"""
-
- query = {
- "language": project_metadata.get("language"),
- "project_type": project_metadata.get("type", "web_application"),
- "team_size_range": self._get_team_size_range(project_metadata.get("team_size", 5)),
- "industry": project_metadata.get("industry", "technology")
- }
-
- # Query benchmark database
- comparable_projects = await self.benchmark_db.find_projects(query)
-
- return comparable_projects[:50] # Limit to top 50 comparable projects
-```
+- Do NOT invent a CI/CD integration library or a "Quality-as-a-Service"
+  REST API. Use the project's existing CI + the gate commands.
+- Do NOT run a separate quality pipeline that disagrees with `/moai gate` —
+  local and CI must use the same toolchain.
+- Do NOT skip sync-auditor at the thorough level — its independent scoring
+  is the bias-prevention check.
 
 ## Related
 
-- [TRUST 5 Validation](trust5-validation.md)
-- [Proactive Analysis](proactive-analysis.md)
-- [Best Practices Engine](best-practices.md)
+- [TRUST 5 Principles](trust5-validation.md) — the dimensions enforced per phase
+- [Proactive Analysis](proactive-analysis.md) — gate and review triage
+- [Best Practices](best-practices.md) — documentation-grounded standards validation

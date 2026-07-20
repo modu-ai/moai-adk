@@ -5,6 +5,7 @@ package safety
 
 import (
 	"fmt"
+	"strings"
 	"time"
 
 	harness "github.com/modu-ai/moai-adk/internal/harness"
@@ -66,11 +67,13 @@ func NewPipeline(cfg PipelineConfig) *Pipeline {
 			return EvaluateCanary(proposal, sessions)
 		},
 
-		// Layer 3: contradiction detection (called with empty trigger list — actual triggers injected in Phase 4)
-		l3ContradictionCheck: func(_ harness.Proposal) harness.ContradictionReport {
-			// Always return empty report in Phase 3 (actual skill trigger loading in Phase 4)
-			return harness.ContradictionReport{}
-		},
+		// Layer 3: contradiction detection — Frozen-rules consult for the Curator
+		// write path (REQ-HEV3-015, SPEC-HARNESS-EVOLVE-003 M3). Replaces the prior
+		// no-op (the old "Phase 4" deferral that was never honored). The existing
+		// DetectOverlappingTriggers / DetectChainRuleContradictions (harness-applier
+		// path) are NOT removed; DetectFrozenRuleContradictions is the Curator-path
+		// sibling (design.md §C.4). L1→L2→L3→L4→L5 order is immutable (pipeline.go:14).
+		l3ContradictionCheck: DetectFrozenRuleContradictions,
 
 		// Layer 4: sliding-window rate limit
 		l4RateLimitCheck: rl.CheckLimit,
@@ -115,12 +118,20 @@ func (p *Pipeline) Evaluate(proposal harness.Proposal, sessions []harness.Sessio
 	// ── Layer 3: Contradiction Detector ────────────────────────────────────
 	contradictionReport := p.l3ContradictionCheck(proposal)
 	if contradictionReport.HasContradiction() {
+		// REQ-HEV3-017: cite the contradiction item Descriptions (which carry the
+		// Frozen-rule stable identifier for the Curator path, or the trigger/chain
+		// detail for the harness-applier path) in the rejection Reason.
+		var descs []string
+		for _, item := range contradictionReport.Items {
+			descs = append(descs, item.Description)
+		}
 		return harness.Decision{
 			Kind:       harness.DecisionRejected,
 			RejectedBy: 3,
 			Reason: fmt.Sprintf(
-				"L3 Contradiction: %d contradictions detected",
+				"L3 Contradiction: %d detected: %s",
 				len(contradictionReport.Items),
+				strings.Join(descs, "; "),
 			),
 		}, nil
 	}

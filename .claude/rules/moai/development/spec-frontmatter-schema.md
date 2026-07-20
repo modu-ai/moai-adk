@@ -1,14 +1,13 @@
 ---
 description: "SPEC 파일 frontmatter canonical 12-field 스키마 — Single Source of Truth (SSOT)"
-paths: "**/*.md,.moai/specs/**/*.md"
+paths: "**/.moai/specs/**,internal/spec/**"
 ---
 
 # SPEC Frontmatter Schema — SSOT
 
 > **Single Source of Truth** for the canonical SPEC frontmatter schema.
-> Enforcement: `internal/spec/lint.go` `FrontmatterSchemaRule` (REQ-SPC-003-006).
-> Cross-referenced by: `.claude/skills/moai/workflows/plan.md` § Pre-Write Frontmatter Checklist,
-> `.claude/skills/moai/team/plan.md` § Pre-Write Frontmatter Checklist.
+> Enforcement: `internal/spec/lint.go` `FrontmatterSchemaRule`.
+> Cross-referenced by: `.claude/skills/moai/workflows/plan.md` § Pre-Write Frontmatter Checklist.
 
 ## Canonical 12 Required Fields
 
@@ -61,6 +60,8 @@ Valid values: `draft`, `planned`, `in-progress`, `implemented`, `completed`, `su
 
 > **`planned` is legacy-optional — NOT part of the active V3R6 flow.** The modern flow transitions `draft → in-progress` directly (manager-develop, on the first run-phase commit). `planned` is retained in the enum for backward compatibility with pre-V3R6 SPECs that recorded it, but it has **no active-flow owner** — no agent authors a `draft → planned` transition in the current lifecycle, and the Status Transition Ownership Matrix below deliberately omits a `draft → planned` row. Do NOT invent a new owner for it, and do NOT remove it from the enum (removal would break parsing of grandfathered SPECs that carry `status: planned`).
 
+> **`completed → in-progress (amendment)` transition** — a SPEC with `status: completed` MAY transition back to `status: in-progress` for an in-place amendment. This reuses the existing `in-progress` status (NO new `amended` enum value is added). The amendment is declared via the `amendment_of:` optional frontmatter field (self-referential for in-place, or parent SPEC ID for successor) plus a HISTORY `## Amendments` sub-section recording the prior completed version, prior_completed_sha, rationale, and scope. See the `completed → in-progress (amendment)` row in the matrix below. During amendment, the `internal/spec/audit.go` completed-no-drift predicate does NOT fire (frontmatter is `in-progress`, not `completed`), so normal drift detection resumes — no Go change required.
+
 ## Status Transition Ownership Matrix
 
 Per the canonical agent-responsibility realignment policy (DRI ownership at agent-artifact granularity per Anthropic Best Practice #7) and the agent catalog consolidation policy (8 retained agents). This matrix is the **schema-level SSOT** for which agent performs each canonical status transition. Owner columns reference only the 7 MoAI-custom retained agents (`manager-spec`, `manager-develop`, `manager-docs`, `manager-git`, `plan-auditor`, `sync-auditor`, `builder-harness`) plus orchestrator-direct entries; archived agent names (`manager-strategy`, `manager-quality`, `manager-brain`, `manager-project`, `claude-code-guide`, `researcher`, and the 6 `expert-*` agents) MUST NOT appear as owners — see `.claude/rules/moai/workflow/archived-agent-rejection.md` for migration guidance. Cross-referenced by the `## SPEC Artifact Ownership` body sections in `.claude/agents/moai/manager-{spec,develop,docs}.md`.
@@ -73,8 +74,9 @@ Per the canonical agent-responsibility realignment policy (DRI ownership at agen
 | `* → superseded` | manager-spec (when authoring the new superseding SPEC) | `feat(SPEC-{NEW-ID}): supersedes SPEC-{OLD-ID}` |
 | `* → archived` | manager-docs (administrative cleanup) | `chore(specs): archive SPEC-{ID}` |
 | `* → rejected` | orchestrator decision, recorded by manager-docs | `chore(SPEC-{ID}): rejected per <rationale>` |
+| `completed → in-progress (amendment)` | manager-spec (re-delegation per D-NEW-1 inline-fix pattern) | `feat(SPEC-{ID}): in-place amendment <rationale-summary>` — distinct from `(none) → draft` and `* → superseded`; the SPEC's HISTORY `## Amendments` sub-section MUST record the prior completed version + prior_completed_sha + rationale + scope |
 
-> **3-phase close (plan→run→sync)** — Per SPEC-V3R6-LIFECYCLE-REDESIGN-001, the MoAI lifecycle is exactly three phases (`plan`, `run`, `sync`); MX Tag is a cross-cutting concern validated during sync, NOT a separate fourth phase. The `completed` status transition rides the sync commit (manager-docs owns it); there is no separate "Mx chore commit". The progress.md §E structure is 4 sections (§E.1 Plan / §E.2 Run Evidence / §E.3 Run Audit-Ready / §E.4 Sync Audit-Ready) — the former `§E.5 Mx-phase` section is retired (folded into §E.4).
+> **3-phase close (plan→run→sync)** — the MoAI lifecycle is exactly three phases (`plan`, `run`, `sync`); MX Tag is a cross-cutting concern validated during sync, NOT a separate fourth phase. The `completed` status transition rides the sync commit (manager-docs owns it); there is no separate "Mx chore commit". The progress.md §E structure is 4 sections (§E.1 Plan / §E.2 Run Evidence / §E.3 Run Audit-Ready / §E.4 Sync Audit-Ready) — the former `§E.5 Mx-phase` section is retired (folded into §E.4).
 
 ## progress.md Section Map (canonical SSOT)
 
@@ -87,24 +89,26 @@ Per the canonical agent-responsibility realignment policy (DRI ownership at agen
 | `## §E.3 Run-phase Audit-Ready Signal` | Run-phase completion signal | **YES** — literal `§E.3` heading | manager-develop (run-phase) |
 | `## §E.4 Sync-phase Audit-Ready Signal` | Sync-phase close; carries the literal `sync_commit_sha:` field (populated by the single sync commit) | **YES** — literal `§E.4` heading + `sync_commit_sha` field | manager-docs (sync commit) |
 | `## §E.5 Mx-phase` (RETIRED) | Legacy Mx-phase marker; folded into §E.4. era.go still matches it for the H-4-legacy migration-window dual predicate (§E.5 + `mx_commit_sha`) so pre-redesign SPECs classify as V3R6 | **YES** — literal `§E.5` heading + `mx_commit_sha` field (legacy only) | (retired — do NOT author new §E.5 sections; retained in the parser for backward-compat classification of legacy SPECs) |
-| `## §F Phase 0.95 Mode Selection` | Orchestrator's Phase 0.95 mode-selection log (must preserve the `Mode Selection` token for the grep AC) | No | orchestrator (before first run-phase `Agent()` spawn) |
-| `## §G IGGDA Kickoff Predicate` | IGGDA safe-condition predicate evaluation log (conditions a-d + verdict + timestamp) | No | orchestrator (at the plan→run boundary, IGGDA Path B) |
+| `## §F Phase 4 Mode Selection` | Orchestrator's Phase 4 mode-selection log (must preserve the `Mode Selection` token for the grep AC) | No | orchestrator (before first run-phase `Agent()` spawn) |
 | `## §H Recursive Self-Diagnosis Log` | Phase 2 bounded recursive self-diagnosis loop record (DIAGNOSE-PATCH-VERIFY, mechanical failures) | No | manager-develop / orchestrator (run-phase) |
+| `## §I Token Accounting` | Token-accounting baseline — sync-close per-SPEC token spend measurement (`tokens_spent` + attribution confidence qualifier) | No (only `§E.*` headings + the two SHA fields are matched) | token-accounting mechanism at sync-close (manager-docs invokes the writer) |
 
 **Section-letter allocation rule.** New progress.md concerns MUST claim a fresh top-level letter (`§F`, `§G`, `§H`, `§I`, ...) — they MUST NOT overload `§E` or any `§E.N` sub-heading, because the `§E.*` namespace is reserved for the era.go-parsed lifecycle-phase structure. A concern that reuses `## §E — <something else>` collides with the parser's heading match and is prohibited.
 
-> **§F disambiguation (progress.md vs SPEC-body §F).** The `§F` allocated here is a **progress.md** section (Phase 0.95 Mode Selection log). It is distinct from the SPEC-body "§F" that `plan.md` / `sync.md` skill workflows reference (a spec.md / plan.md body section, a different document). The two live in different files and do not collide; when citing "§F", name the file (`progress.md §F` vs `spec.md §F`).
+> **§F disambiguation (progress.md vs SPEC-body §F).** The `§F` allocated here is a **progress.md** section (Phase 4 Mode Selection log). It is distinct from the SPEC-body "§F" that `plan.md` / `sync.md` skill workflows reference (a spec.md / plan.md body section, a different document). The two live in different files and do not collide; when citing "§F", name the file (`progress.md §F` vs `spec.md §F`).
 
 ### Close-subject full-ID mandate
 
-Per the drift-detector close-subject convention (owned by SPEC-V3R6-DRIFT-LEGACY-CONVENTION-001), every close commit (the sync commit carrying the `implemented → completed` transition above) MUST name exactly one individual full SPEC-ID in its subject scope — e.g. `chore(SPEC-{DOMAIN}-{SUB}-001): … 3-phase close`. A **combined/abbreviated scope** that names only a shared prefix (e.g. `chore(SPEC-{DOMAIN}): … 3-phase close (SUB-A + SUB-B)`) is **prohibited**: the drift detector's exact-token SPEC-ID extraction cannot map an abbreviated prefix to its sibling SPECs, so combined-scope close subjects regenerate lifecycle drift false-positives. When closing N sibling SPECs together, emit N separate close commits, one per full SPEC-ID — combined/abbreviated scope is disallowed in close subjects.
+Per the drift-detector close-subject convention, every close commit (the sync commit carrying the `implemented → completed` transition above) MUST name exactly one individual full SPEC-ID in its subject scope — e.g. `chore(SPEC-{DOMAIN}-{SUB}-001): … 3-phase close`. A **combined/abbreviated scope** that names only a shared prefix (e.g. `chore(SPEC-{DOMAIN}): … 3-phase close (SUB-A + SUB-B)`) is **prohibited**: the drift detector's exact-token SPEC-ID extraction cannot map an abbreviated prefix to its sibling SPECs, so combined-scope close subjects regenerate lifecycle drift false-positives. When closing N sibling SPECs together, emit N separate close commits, one per full SPEC-ID — combined/abbreviated scope is disallowed in close subjects.
 
-> **D4 reconciliation note (SPEC-V3R6-LIFECYCLE-REDESIGN-001 REQ-LR-020/021)**: The close-subject convention is owned by **SPEC-V3R6-DRIFT-LEGACY-CONVENTION-001**. SPEC-V3R6-LIFECYCLE-REDESIGN-001 amends the close infix from the legacy `"4-phase close"` to the canonical `"3-phase close"` in this prose, and the drift detector's close-infix matcher (`internal/spec/transitions.go` `closeInfixMatch`) has been extended (M2) to accept BOTH infixes — the legacy `"4-phase close"` is RETAINED in the matcher because historical close commits in git history carry it. A doc-only rename without the dual-infix matcher update was forbidden (it would silently break drift close-recognition for all future closes). This note credits DRIFT-LEGACY-CONVENTION-001 as the convention owner; it does NOT silently override it.
+> **D4 reconciliation note**: The close-subject convention above owns the close-infix matcher contract. The legacy `"4-phase close"` infix was amended to the canonical `"3-phase close"` in this prose, and the drift detector's close-infix matcher (`internal/spec/transitions.go` `closeInfixMatch`) has been extended to accept BOTH infixes — the legacy `"4-phase close"` is RETAINED in the matcher because historical close commits in git history carry it. A doc-only rename without the dual-infix matcher update was forbidden (it would silently break drift close-recognition for all future closes).
 
 ### Forbidden ownership crossings
 
 - `manager-docs` MUST NOT modify `spec.md` / `plan.md` / `acceptance.md` body content (frontmatter `status:` + `updated:` updates across the full `in-progress → implemented → completed` sync-commit transition are allowed — the single sync commit carries the terminal `completed` transition, so manager-docs' allowed frontmatter scope reaches `completed`, NOT only `implemented`; ALL other body modifications are forbidden). When sync-phase reveals a need to modify SPEC body content, manager-docs MUST return a blocker report and the orchestrator re-delegates to manager-spec.
 - `manager-develop` MUST NOT modify `spec.md` / `plan.md` / `acceptance.md` body content (frontmatter `status:` + `updated:` updates on the `draft → in-progress` transition are allowed; ALL other body modifications are forbidden). When run-phase reveals a need to modify SPEC body content, manager-develop MUST return a blocker report and the orchestrator re-delegates to manager-spec for the scope-doc update before re-delegating back.
+
+> **SHA placeholder backfill exemption (D3)** — The forbidden crossings above bind `spec.md` / `plan.md` / `acceptance.md` body content. The `progress.md` §E.3 / §E.4 `sync_commit_sha` / `mx_commit_sha` SHA fields are a DISTINCT surface: a sync-phase (or legacy Mx-phase) commit cannot reference its own SHA — a commit does not know its own hash until after it lands — so the established pattern writes a `pending-backfill-*` placeholder in the phase's own commit and backfills the real SHA in a follow-up commit. This mechanical placeholder completion is NOT an ownership crossing; it is the self-referential-hazard workaround for a field that, by physics, cannot be populated within the same commit it describes. The ownership matrix therefore scopes its forbidden crossings to SPEC body content (spec/plan/acceptance) and does NOT bind `progress.md` SHA-field backfill performed by the phase-owning agent (manager-develop for §E.3, manager-docs for §E.4) in a subsequent commit.
 
 ### Forward-looking enforcement (optional defense-in-depth)
 
@@ -120,6 +124,8 @@ These fields may be included when needed but are NOT required by `FrontmatterSch
 | `depends_on` | list | SPEC IDs this SPEC depends on. Used by BODP signal A. |
 | `lint.skip` | list | Lint rule codes to skip. Use only for documented debt. |
 | `bc_id` | string | Backward-compatibility tracking ID. |
+| `amendment_of` | string | SPEC ID declaring this SPEC is an in-place amendment of a prior completed SPEC. Self-referential (value = own ID) for in-place amendment; parent SPEC ID for successor amendment. Paired with a HISTORY `## Amendments` sub-section recording prior completed version, prior_completed_sha, rationale, and scope. See Status Transition Ownership Matrix `completed → in-progress (amendment)` row. |
+| `tier` | enum (S\|M\|L) | SPEC complexity Tier classification. Tier S = 2 files (spec.md + plan.md); Tier M = 3 files (spec.md + plan.md + acceptance.md); Tier L = 5 files (spec.md + plan.md + acceptance.md + design.md + research.md). When `tier:` is absent, the SPEC is treated as Tier L for backward compat. See `.claude/rules/moai/workflow/spec-workflow.md` § SPEC Complexity Tier. |
 
 ## Rejected Snake_Case Aliases
 
@@ -139,7 +145,7 @@ Snake_case aliases are silently dropped by the decoder, causing empty-value `Fro
 
 - **Rule code**: `FrontmatterInvalid`
 - **Severity**: Warning
-- **REQ coverage**: REQ-SPC-003-006
+- **REQ coverage**: covered by the schema-lint SPEC (owning-SPEC pointer retained in the footer)
 - **Check**: Iterates all 12 required fields; emits one finding per missing/empty field.
 - **YAML binding**: `SPECFrontmatter` struct uses canonical field names (`created`, `updated`, `tags`).
   Snake_case aliases in the source YAML file are not recognized — they produce empty values.
@@ -169,8 +175,8 @@ id: SPEC-AUTH-001
 title: "OAuth2 Authentication"
 version: "0.1.0"
 status: draft
-created: 2026-05-16
-updated: 2026-05-16
+created: YYYY-MM-DD
+updated: YYYY-MM-DD
 author: Author Name
 priority: P1
 phase: "v3.0.0"
@@ -204,3 +210,8 @@ labels: [auth, oauth2]   # WRONG — use tags: "auth, oauth2"
 | Date | Author | Change |
 |------|--------|--------|
 | (initial) | maintainer | Initial creation — resolves dual-schema drift between plan.md (9-field) and lint.go (12-field) |
+
+## Owning SPEC
+
+- Schema enforcement (`FrontmatterSchemaRule`): the lifecycle-redesign SPEC
+- Close-subject convention + 3-phase close infix matcher: the drift-detector convention SPEC

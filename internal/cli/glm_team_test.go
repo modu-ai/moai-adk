@@ -28,10 +28,12 @@ func TestBuildGLMEnvVars(t *testing.T) {
 					High   string
 					Medium string
 					Low    string
+					Fable  string
 				}{
 					High:   "glm-5.1",
 					Medium: "glm-4.7",
 					Low:    "glm-4.5-air",
+					Fable:  "glm-5.1",
 				},
 				EnvVar: "GLM_API_KEY",
 			},
@@ -42,6 +44,7 @@ func TestBuildGLMEnvVars(t *testing.T) {
 				"ANTHROPIC_DEFAULT_OPUS_MODEL",
 				"ANTHROPIC_DEFAULT_SONNET_MODEL",
 				"ANTHROPIC_DEFAULT_HAIKU_MODEL",
+				"ANTHROPIC_DEFAULT_FABLE_MODEL",
 				"CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS",
 				"API_TIMEOUT_MS",
 			},
@@ -51,6 +54,7 @@ func TestBuildGLMEnvVars(t *testing.T) {
 				"ANTHROPIC_DEFAULT_OPUS_MODEL":           "glm-5.1",
 				"ANTHROPIC_DEFAULT_SONNET_MODEL":         "glm-4.7",
 				"ANTHROPIC_DEFAULT_HAIKU_MODEL":          "glm-4.5-air",
+				"ANTHROPIC_DEFAULT_FABLE_MODEL":          "glm-5.1",
 				"CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS": "1",
 				"API_TIMEOUT_MS":                         "3000000",
 			},
@@ -63,10 +67,12 @@ func TestBuildGLMEnvVars(t *testing.T) {
 					High   string
 					Medium string
 					Low    string
+					Fable  string
 				}{
 					High:   "custom-high",
 					Medium: "custom-medium",
 					Low:    "custom-low",
+					Fable:  "custom-fable",
 				},
 				EnvVar: "CUSTOM_API_KEY",
 			},
@@ -77,6 +83,7 @@ func TestBuildGLMEnvVars(t *testing.T) {
 				"ANTHROPIC_DEFAULT_OPUS_MODEL",
 				"ANTHROPIC_DEFAULT_SONNET_MODEL",
 				"ANTHROPIC_DEFAULT_HAIKU_MODEL",
+				"ANTHROPIC_DEFAULT_FABLE_MODEL",
 				"CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS",
 				"API_TIMEOUT_MS",
 			},
@@ -86,6 +93,7 @@ func TestBuildGLMEnvVars(t *testing.T) {
 				"ANTHROPIC_DEFAULT_OPUS_MODEL":           "custom-high",
 				"ANTHROPIC_DEFAULT_SONNET_MODEL":         "custom-medium",
 				"ANTHROPIC_DEFAULT_HAIKU_MODEL":          "custom-low",
+				"ANTHROPIC_DEFAULT_FABLE_MODEL":          "custom-fable",
 				"CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS": "1",
 				"API_TIMEOUT_MS":                         "3000000",
 			},
@@ -98,10 +106,12 @@ func TestBuildGLMEnvVars(t *testing.T) {
 					High   string
 					Medium string
 					Low    string
+					Fable  string
 				}{
 					High:   "glm-5.1",
 					Medium: "glm-4.7",
 					Low:    "glm-4.5-air",
+					Fable:  "glm-5.1",
 				},
 				EnvVar: "GLM_API_KEY",
 			},
@@ -112,6 +122,7 @@ func TestBuildGLMEnvVars(t *testing.T) {
 				"ANTHROPIC_DEFAULT_OPUS_MODEL",
 				"ANTHROPIC_DEFAULT_SONNET_MODEL",
 				"ANTHROPIC_DEFAULT_HAIKU_MODEL",
+				"ANTHROPIC_DEFAULT_FABLE_MODEL",
 				"CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS",
 				"API_TIMEOUT_MS",
 			},
@@ -121,6 +132,7 @@ func TestBuildGLMEnvVars(t *testing.T) {
 				"ANTHROPIC_DEFAULT_OPUS_MODEL":           "glm-5.1",
 				"ANTHROPIC_DEFAULT_SONNET_MODEL":         "glm-4.7",
 				"ANTHROPIC_DEFAULT_HAIKU_MODEL":          "glm-4.5-air",
+				"ANTHROPIC_DEFAULT_FABLE_MODEL":          "glm-5.1",
 				"CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS": "1",
 				"API_TIMEOUT_MS":                         "3000000",
 			},
@@ -131,9 +143,9 @@ func TestBuildGLMEnvVars(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			got := buildGLMEnvVars(tt.glmConfig, tt.apiKey)
 
-			// Verify the map has exactly 7 keys (5 GLM + 2 compatibility flags)
-			if len(got) != 7 {
-				t.Errorf("buildGLMEnvVars() returned %d keys, want 7", len(got))
+			// Verify the map has exactly 8 keys (6 GLM + 2 compatibility flags)
+			if len(got) != 8 {
+				t.Errorf("buildGLMEnvVars() returned %d keys, want 8", len(got))
 			}
 
 			// Verify all required keys exist

@@ -1,9 +1,5 @@
 ---
-paths:
-  - "internal/cli/worktree/**/*.go"
-  - "internal/cli/status.go"
-  - "internal/bodp/**/*.go"
-  - ".claude/skills/moai/workflows/plan.md"
+paths: "internal/cli/worktree/**/*.go,internal/cli/status.go,internal/bodp/**/*.go,.claude/skills/moai/workflows/plan.md"
 ---
 
 # Branch Origin Decision Protocol (BODP)
@@ -55,7 +51,7 @@ All three paths consume `internal/bodp.Check()` and `internal/bodp.WriteDecision
  a  b  c → continue  @ "" (b dominates)
 ```
 
-When SignalC fires, Rationale is suffixed with the parent-merge gotcha pointer (`§18.11 Case Study`) per REQ-CIAUT-047b.
+When SignalC fires, Rationale is suffixed with the parent-merge gotcha pointer (`§18.11 Case Study`) per the parent-merge gotcha case study.
 
 ## Off-Protocol Reminder
 

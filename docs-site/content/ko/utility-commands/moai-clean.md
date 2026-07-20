@@ -18,6 +18,8 @@ draft: false
 
 프로젝트가 성장하면 더 이상 사용하지 않는 코드가 쌓이게 됩니다. 미사용 import, 호출되지 않는 함수, 참조되지 않는 타입 등이 코드베이스를 복잡하게 만듭니다. `/moai clean`은 이런 데드 코드를 정적 분석으로 찾아내고, 테스트 검증을 거쳐 안전하게 제거합니다.
 
+하네스 엔지니어링 관점에서 이 명령어는 **가비지 컬렉션** 역할입니다. 죽은 코드는 사람에게만 부담이 아니라 에이전트에게도 부담입니다 — 에이전트가 읽는 코드 한 줄 한 줄이 컨텍스트 (토큰)이므로, 데드 코드 제거는 코드 위생인 동시에 컨텍스트 다이어트, 즉 토크노믹스입니다.
+
 ## 사용법
 
 ```bash
@@ -69,42 +71,45 @@ draft: false
 
 ## 실행 과정
 
-`/moai clean`은 6단계로 실행됩니다.
+`/moai clean`은 7단계로 실행됩니다.
 
 ```mermaid
 flowchart TD
     Start["/moai clean 실행"] --> Phase1["1단계: 정적 분석 스캔"]
 
-    Phase1 --> Phase2["2단계: 사용 그래프 분석"]
-
-    Phase2 --> Phase3["3단계: 분류"]
-    Phase3 --> Classify{"분류 결과"}
+    Phase1 --> Phase2["2단계: 사용 그래프 분석 및 분류"]
+    Phase2 --> Classify{"분류 결과"}
     Classify --> Dead["확실한 데드 코드"]
     Classify --> TestOnly["테스트 전용"]
     Classify --> Likely["가능성 있는 데드 코드"]
     Classify --> False["오탐 (실제 사용 중)"]
 
-    Dead --> Approval{"--dry?"}
-    Approval -->|예| Report["분석 결과 표시 후 종료"]
-    Approval -->|아니오| Phase4["4단계: 안전 제거"]
+    Dead --> Phase3{"3단계: 제거 계획 승인<br/>(AskUserQuestion / --dry?)"}
+    Phase3 -->|--dry 또는 거부| Report["분석 결과 표시 후 종료"]
+    Phase3 -->|승인| Phase4["4단계: 안전 제거"]
 
     Phase4 --> Phase5["5단계: 테스트 검증"]
     Phase5 --> Pass{"테스트 통과?"}
-    Pass -->|예| Phase6["6단계: 보고서"]
     Pass -->|아니오| Rollback["롤백 후 재시도"]
+    Pass -->|예| Phase6["6단계: MX 태그 정리"]
     Rollback --> Phase6
+    Phase6 --> Phase7["7단계: 보고서"]
 ```
+
+3단계 **제거 계획 승인**은 오케스트레이터가 `AskUserQuestion`으로 제거 대상 목록을 사용자에게 제시하고 승인을 받는 휴먼 게이트입니다. 6단계 **MX 태그 정리**는 제거된 코드에 붙어 있던 `@MX` 주석을 함께 정리하여 dangling 주석이 남지 않도록 합니다.
 
 ### 1단계: 정적 분석 스캔
 
-언어별 도구를 사용하여 데드 코드 후보를 탐지합니다:
+프로젝트 언어를 project marker로 자동 감지하고, 각 언어의 표준 데드 코드 분석 도구로 후보를 탐지합니다. **16개 지원 언어를 동등하게 취급**하며 (go, python, typescript, javascript, rust, java, kotlin, csharp, ruby, php, elixir, cpp, scala, r, flutter, swift), 설치되지 않은 도구는 알아서 건너뜁니다. 인식된 언어 마커가 없는 프로젝트는 조용히 통과됩니다. 아래는 대표 예시일 뿐 특정 언어를 우대하지 않습니다:
 
-| 언어 | 분석 도구 | 검사 대상 |
+| 언어 (예시) | 분석 도구 (예시) | 검사 대상 |
 |------|-----------|-----------|
-| **Go** | `go vet`, `staticcheck`, `deadcode` | 미사용 변수, 함수, 타입 |
-| **Python** | `vulture`, `autoflake` | 데드 코드, 미사용 import |
-| **TypeScript/JavaScript** | `ts-prune`, ESLint `no-unused-vars` | 미사용 export, 변수 |
-| **Rust** | `cargo clippy`, `cargo udeps` | 데드 코드 경고, 미사용 의존성 |
+| Go | `go vet`, `staticcheck`, `deadcode` | 미사용 변수, 함수, 타입 |
+| Python | `vulture`, `autoflake` | 데드 코드, 미사용 import |
+| TypeScript/JavaScript | `ts-prune`, ESLint `no-unused-vars` | 미사용 export, 변수 |
+| Rust | `cargo clippy`, `cargo udeps` | 데드 코드 경고, 미사용 의존성 |
+
+나머지 12개 언어(java, kotlin, csharp, ruby, php, elixir, cpp, scala, r, flutter, swift 등)도 각자의 표준 툴체인으로 동일하게 스캔됩니다.
 
 **스캔 카테고리:**
 
@@ -144,7 +149,7 @@ flowchart TD
 
 ### 5단계: 테스트 검증
 
-제거 후 전체 테스트 스위트를 실행하여 회귀를 검증합니다. 테스트가 실패하면 해당 제거를 롤백하고 "오탐"으로 분류합니다.
+제거 후 전체 테스트 스위트를 실행하여 회귀를 검증합니다. 테스트가 실패하면 해당 제거를 롤백하고 "오탐"으로 분류합니다. "지웠는데 괜찮은 것 같다"가 아니라 테스트 통과라는 증거로 안전을 판정합니다.
 
 ### 6단계: 보고서
 
@@ -168,22 +173,23 @@ flowchart TD
 
 ## 에이전트 위임 체인
 
+`/moai clean`은 `Agent(general-purpose)` 리팩토링 스페셜리스트 스폰 2회로 실행됩니다 (전용 named 에이전트가 아니라, 리팩토링 화이트리스트 + ANALYZE-PRESERVE-IMPROVE 지침이 스폰 시점에 주입되는 범용 에이전트). 1·2단계는 하나의 결합 스폰, 4·5단계는 또 하나의 결합 스폰, 6단계는 오케스트레이터 직접 (스폰 없음) 입니다.
+
 ```mermaid
 flowchart TD
     User["사용자 요청"] --> MoAI["MoAI 오케스트레이터"]
-    MoAI --> Refactor1["manager-develop<br/>정적 분석 스캔"]
-    Refactor1 --> Refactor2["manager-develop<br/>사용 그래프 분석"]
-    Refactor2 --> MoAI2["MoAI 오케스트레이터<br/>사용자 승인"]
-    MoAI2 --> Refactor3["manager-develop<br/>안전 제거"]
-    Refactor3 --> Testing["manager-develop<br/>테스트 검증"]
-    Testing --> Complete["완료"]
+    MoAI --> Refactor1["Agent(general-purpose) 리팩토링 스페셜리스트<br/>정적 분석 + 사용 그래프 (결합 스폰 1)"]
+    Refactor1 --> MoAI2["MoAI 오케스트레이터<br/>사용자 승인"]
+    MoAI2 --> Refactor2["Agent(general-purpose) 리팩토링 스페셜리스트<br/>안전 제거 + 테스트 검증 (결합 스폰 2)"]
+    Refactor2 --> MoAI3["MoAI 오케스트레이터<br/>@MX 태그 정리 (직접)"]
+    MoAI3 --> Complete["완료"]
 ```
 
 | 에이전트 | 역할 | 주요 작업 |
 |----------|------|----------|
-| **manager-develop** | 분석 및 제거 | 정적 분석, 사용 그래프, 안전 제거 |
-| **manager-develop** | 검증 | 테스트 스위트 실행, 회귀 확인 |
-| **MoAI 오케스트레이터** | 조율 | 사용자 승인, @MX 태그 정리 |
+| **Agent(general-purpose) 리팩토링 스페셜리스트** (스폰 1) | 분석 | 정적 분석 + 사용 그래프 (1·2단계 결합) |
+| **Agent(general-purpose) 리팩토링 스페셜리스트** (스폰 2) | 제거 및 검증 | 안전 제거 + 테스트 스위트 실행·회귀 확인 (4·5단계 결합) |
+| **MoAI 오케스트레이터** | 조율 | 사용자 승인, @MX 태그 정리 (6단계, 직접) |
 
 ## 자주 묻는 질문
 
@@ -202,5 +208,4 @@ Git으로 되돌릴 수 있습니다. MoAI는 의존성 역순으로 제거하�
 ## 관련 문서
 
 - [/moai fix - 일회성 자동 수정](/utility-commands/moai-fix)
-- [/moai mx - @MX 태그 스캔](/utility-commands/moai-mx)
-- [/moai review - 코드 리뷰](/quality-commands/moai-review)
+- [/moai codemaps - 아키텍처 문서 생성](/utility-commands/moai-codemaps)

@@ -2,9 +2,9 @@
 id: SPEC-WEB-CONSOLE-011
 title: "Web Console Redesign — Agent Settings + Profile CRUD + SPEC Board + Full Config Expansion"
 version: "0.2.1"
-status: in-progress
+status: completed
 created: 2026-07-03
-updated: 2026-07-03
+updated: 2026-07-05
 author: manager-spec
 priority: P1
 phase: "v3.0.0"

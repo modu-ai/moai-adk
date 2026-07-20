@@ -12,6 +12,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/hook/handoff"
 	"github.com/modu-ai/moai-adk/internal/hook/mx"
 	"github.com/modu-ai/moai-adk/internal/hook/trace"
@@ -96,6 +97,16 @@ func (h *sessionEndHandler) Handle(ctx context.Context, input *HookInput) (*Hook
 	if projectDir != "" {
 		cleanupGLMSettingsLocal(projectDir)
 		cleanupBogusRootDir(projectDir)
+		// SPEC-OBSERVE-HYGIENE-001 M2 (REQ-OBH-002): prune zero-byte + aged
+		// trace-*.jsonl and stale task-metrics.jsonl under .moai/logs/. Best-effort;
+		// absent logs dir is a silent no-op (EC-2); the current session's active
+		// trace is always preserved (EC-3).
+		PruneObservationLogs(
+			filepath.Join(projectDir, ".moai", "logs"),
+			input.SessionID,
+			config.DefaultTraceRetentionDays,
+			time.Now(),
+		)
 	}
 
 	// Validate MX tags for files modified during this session.

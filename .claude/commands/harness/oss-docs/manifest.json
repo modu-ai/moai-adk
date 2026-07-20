@@ -1,0 +1,48 @@
+{
+  "name": "oss-docs",
+  "domain": "OSS project public documentation — GitHub README (4-locale) + Hugo geekdoc docs-site (docs-site/, content/{ko,en,ja,zh}, ko-canonical) deployed to adk.mo.ai.kr via Vercel. Automates README redesign/maintenance and docs-site authoring/menu-restructuring with strict 4-locale synchronization.",
+  "source_request": "오픈소스 프로젝트의 깃허브와 온라인 문서를 제작하는 하네스를 생성해라. 본 프로젝트의 README.md와 docs-site의 업무는 다룬다. .moai/reports/readme-docs-redesign-20260713.md 참고해서 하네스 제작해라",
+  "patterns": ["Pipeline", "Fan-out/Fan-in", "Producer-Reviewer"],
+  "specialists": [
+    {
+      "role": "content-author",
+      "description": "Author/rewrite canonical-locale source content (ko for docs-site pages, en for README): README section redesign per SSOT report, new docs pages, heading hierarchy, TD-only Mermaid, icon shortcodes over body emoji. Produces the single source of truth; does not translate.",
+      "agent_file": ".claude/agents/harness/hns-oss-docs-content-author-specialist.md",
+      "primitive": "sub-agent",
+      "isolation": "none",
+      "effort": "high",
+      "model": "opus"
+    },
+    {
+      "role": "locale-translator",
+      "description": "Derive the 3 non-canonical locales in the same PR (ko->en->ja/zh for docs, en->ko/ja/zh for README), preserving facts/figures/code/icon-shortcodes/Mermaid direction, applying per-locale emphasis-marker spacing and URL-blacklist compliance. One parallel worker per derived locale.",
+      "agent_file": ".claude/agents/harness/hns-oss-docs-locale-translator-specialist.md",
+      "primitive": "adversarial-fan-out",
+      "isolation": "none",
+      "effort": "medium",
+      "model": "sonnet"
+    },
+    {
+      "role": "structure-curator",
+      "description": "Maintain docs-site structure/navigation: per-locale _meta.yaml section order, data/menu/main.yaml 4-locale name maps + icons, matching SVG cases in layouts/partials/menu.html, vercel.json redirects for moved pages; reconcile _meta.yaml/main.yaml divergences. Single-writer on shared config.",
+      "agent_file": ".claude/agents/harness/hns-oss-docs-structure-curator-specialist.md",
+      "primitive": "sub-agent",
+      "isolation": "none",
+      "effort": "medium",
+      "model": "sonnet"
+    }
+  ],
+  "sprint_contract": {
+    "dimensions": ["locale-parity", "build-clean", "style-compliance", "content-fidelity"],
+    "thresholds": {
+      "locale-parity": 1.0,
+      "build-clean": 1.0,
+      "style-compliance": 0.95,
+      "content-fidelity": 0.9
+    },
+    "must_pass": ["locale-parity", "build-clean"]
+  },
+  "companion_skills": ["hns-oss-docs-i18n-rules", "hns-oss-docs-readme-sync", "hns-oss-docs-structure-map", "hns-oss-docs-verify"],
+  "entry_command": "/harness:oss-docs",
+  "runner_workflow": "hns-oss-docs-run.js"
+}

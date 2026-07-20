@@ -1,12 +1,13 @@
 // Package defs unit tests for DeprecatedPaths enumeration.
 //
 // @MX:ANCHOR: DeprecatedPaths is the SSOT for v.2.x → v3 cleanup targets;
-// the 41-entry count is governed by SPEC-DEPRECATEDPATHS-RECONCILE-001
-// (origin SPEC-V3R6-V2-V3-CLEAN-REINSTALL-001 §A.4 is the historical
-// 43-entry derivation, reconciled 43→41 after design.yaml + db.yaml were
-// un-deprecated as live v3 config).
-// @MX:REASON: External-user cleanup correctness depends on the 41-entry
-// total + 9/29/3 category split; any future modification MUST update both
+// the 40-entry count is governed by SPEC-DEPRECATEDPATHS-RECONCILE-001 +
+// SPEC-UPDATE-REINSTALL-LOOP-001 (origin SPEC-V3R6-V2-V3-CLEAN-REINSTALL-001
+// §A.4 is the historical 43-entry derivation; reconciled 43→41 after
+// design.yaml + db.yaml were un-deprecated, then 41→40 after the stale
+// `.claude/rules/moai/design` template-collision entry was removed, #1084).
+// @MX:REASON: External-user cleanup correctness depends on the 40-entry
+// total + 9/28/3 category split; any future modification MUST update both
 // this test and the dirs.go slice atomically.
 package defs
 
@@ -21,12 +22,14 @@ import (
 // Origin SPEC-V3R6-V2-V3-CLEAN-REINSTALL-001 §A.4 derived 43 entries
 // (9 Category A + 31 Category B + 3 Category C). SPEC-DEPRECATEDPATHS-RECONCILE-001
 // un-deprecated the 2 live config yaml files (design.yaml + db.yaml), reducing
-// Category B 31→29 and the total 43→41. AC-DPR-002 references this assertion.
+// Category B 31→29 and the total 43→41. SPEC-UPDATE-REINSTALL-LOOP-001 (#1084)
+// removed the `.claude/rules/moai/design` template-collision entry, reducing
+// Category B 29→28 and the total 41→40. AC-DPR-002 / AC-RIL-004 reference this.
 func TestDeprecatedPathsTotalCount(t *testing.T) {
-	const want = 41
+	const want = 40
 	got := len(DeprecatedPaths)
 	if got != want {
-		t.Errorf("len(DeprecatedPaths) = %d, want %d (per SPEC-DEPRECATEDPATHS-RECONCILE-001: 9 Category A + 29 Category B + 3 Category C)", got, want)
+		t.Errorf("len(DeprecatedPaths) = %d, want %d (9 Category A + 28 Category B + 3 Category C)", got, want)
 	}
 }
 
@@ -34,16 +37,17 @@ func TestDeprecatedPathsTotalCount(t *testing.T) {
 // the reconciled derivation, classified by DeprecatedSince field.
 //
 //   - Category A (9 entries): DeprecatedSince == "SPEC-AGENCY-ABSORB-001"
-//   - Category B (29 entries): DeprecatedSince == "SPEC-V3R6-V2-V3-CLEAN-REINSTALL-001"
+//   - Category B (28 entries): DeprecatedSince == "SPEC-V3R6-V2-V3-CLEAN-REINSTALL-001"
 //   - Category C (3 entries):  DeprecatedSince == "SPEC-V3R6-AGENT-FOLDER-SPLIT-001"
 //
 // Category B was reduced 31→29 by SPEC-DEPRECATEDPATHS-RECONCILE-001 (design.yaml
-// + db.yaml un-deprecated). AC-DPR-003 verifies both the total count and the
-// per-category subtotals.
+// + db.yaml un-deprecated), then 29→28 by SPEC-UPDATE-REINSTALL-LOOP-001
+// (`.claude/rules/moai/design` template-collision entry removed, #1084).
+// AC-DPR-003 / AC-RIL-004 verify both the total count and the per-category subtotals.
 func TestDeprecatedPathsCategorySplit(t *testing.T) {
 	const (
 		wantCategoryA = 9  // SPEC-AGENCY-ABSORB-001
-		wantCategoryB = 29 // SPEC-V3R6-V2-V3-CLEAN-REINSTALL-001 (reconciled 31→29 by SPEC-DEPRECATEDPATHS-RECONCILE-001)
+		wantCategoryB = 28 // SPEC-V3R6-V2-V3-CLEAN-REINSTALL-001 (reconciled 31→29, then 29→28 by SPEC-UPDATE-REINSTALL-LOOP-001)
 		wantCategoryC = 3  // SPEC-V3R6-AGENT-FOLDER-SPLIT-001
 	)
 
@@ -82,13 +86,15 @@ func TestDeprecatedPathsRequiredFields(t *testing.T) {
 	}
 }
 
-// TestDeprecatedPathsCategoryBExpectedEntries asserts the 29 Category B entries
+// TestDeprecatedPathsCategoryBExpectedEntries asserts the 28 Category B entries
 // match the exact reconciled enumeration.
 //
 // This test catches accidental additions/removals that would drift away from
 // the canonical derivation without a simultaneous slice update. The 2 live
 // config yaml files (design.yaml + db.yaml) were removed by
-// SPEC-DEPRECATEDPATHS-RECONCILE-001 (31→29).
+// SPEC-DEPRECATEDPATHS-RECONCILE-001 (31→29), and the design-rule directory
+// (`.claude/rules/moai/design`) was removed by SPEC-UPDATE-REINSTALL-LOOP-001
+// (29→28, #1084 template-collision).
 func TestDeprecatedPathsCategoryBExpectedEntries(t *testing.T) {
 	wantCategoryB := []string{
 		// v2 directories
@@ -126,8 +132,9 @@ func TestDeprecatedPathsCategoryBExpectedEntries(t *testing.T) {
 		// design workflow skill directories
 		".claude/skills/moai-workflow-design",
 		".claude/skills/moai-workflow-gan-loop",
-		// design rule directory
-		".claude/rules/moai/design",
+		// design rule directory (`.claude/rules/moai/design`) REMOVED by
+		// SPEC-UPDATE-REINSTALL-LOOP-001 — it collided with the v3 template
+		// (#1084 infinite clean-reinstall loop).
 		// brand + db directories
 		".moai/project/brand",
 		".moai/db",

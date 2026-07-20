@@ -4,46 +4,48 @@ weight: 30
 draft: false
 ---
 
-以 EARS 格式创建清晰的 SPEC 文档，将您与 AI 的对话转换为永久的需求文档。
+把与 AI 的对话转化为永久的需求文档。自然语言请求成为结构化的 SPEC 文档,这份文档将成为后续所有阶段的基准。
 
 {{< callout type="info" >}}
-**斜杠命令**: 在 Claude Code 中输入 `/moai:plan` 可以直接运行此命令。仅输入 `/moai` 即可查看所有可用子命令列表。
+**斜杠命令**: 在 Claude Code 中输入 `/moai:plan` 即可直接执行此命令。仅输入 `/moai` 会显示所有可用子命令列表。
 {{< /callout >}}
 
 ## 概述
 
-`/moai plan` 是 MoAI-ADK 工作流的 **Phase 1 (Plan)** 命令。它将自然语言功能请求转换为结构化的 **EARS** (Easy Approach to Requirements Syntax) 格式的 **SPEC** 文档。在内部，**manager-spec** agent 分析需求并生成无歧义的规格说明。
+`/moai plan` 是 MoAI-ADK 工作流的 **Phase 1 (Plan)** 命令。它将自然语言形式的功能请求转换为 **EARS** (Easy Approach to Requirements Syntax) 格式的结构化 SPEC 文档。内部由 **manager-spec** 智能体分析需求,生成没有歧义的规格说明书。
+
+在 v3 令牌经济学设计中,计划阶段是被分配最深推理的阶段 — 需求在这里越清晰,后续实现阶段的返工和令牌浪费就越少。因此 MoAI-ADK 遵循"计划要深,实现要省"的分配原则,并且生成的 SPEC 由 **plan-auditor** 独立审计。创建它的智能体不会自行检查。
 
 {{< callout type="info" >}}
 
-**为什么需要 SPEC？**
+**为什么需要 SPEC?**
 
-**Vibe Coding** 的最大问题是**上下文丢失**。
+**氛围编程** (Vibe Coding) 最大的问题是 **上下文丢失**。
 
-当您与 AI 的对话结束时，**所有之前的讨论都会消失**。当超出 token 限制时，**旧对话会被截断**。第二天继续工作时，**您不会记得昨天做出的决定**。
+与 AI 对话时会话一旦中断,**之前讨论的内容全部消失**。超过令牌上限时,**旧对话会最先被截断**。第二天恢复工作时,**AI 不记得昨天决定的事项**。
 
 **SPEC 文档解决了这个问题。**
 
-它们将需求**保存到文件**中以便永久保存。它们以 EARS 格式**无歧义地**构建结构。即使会话中断，也可以**继续工作**，只需阅读 SPEC。
+将需求 **保存为文件** 永久留存。以 EARS 格式 **毫无歧义地** 结构化。即使会话中断,只要读取 SPEC 就能 **继续工作**。
 
 {{< /callout >}}
 
-## 用法
+## 使用方法
 
-在 Claude Code 对话中输入以下内容：
+在 Claude Code 对话框中如下输入:
 
 ```bash
-> /moai plan "要实现的功能描述"
+> /moai plan "想要实现的功能描述"
 ```
 
-**使用示例：**
+**使用示例:**
 
 ```bash
 # 简单功能
 > /moai plan "用户登录功能"
 
 # 详细功能描述
-> /moai plan "基于 JWT 的用户认证：登录、注册、令牌刷新 API"
+> /moai plan "基于 JWT 的用户认证: 登录、注册、令牌刷新 API"
 
 # 重构请求
 > /moai plan "将遗留认证系统重构为基于 JWT"
@@ -51,82 +53,84 @@ draft: false
 
 ## 支持的标志
 
-| 标志                | 描述                        | 示例                                |
+| 标志              | 说明                        | 示例                                |
 | ------------------- | --------------------------- | ----------------------------------- |
-| `--worktree`        | 自动创建 worktree（最高优先）     | `/moai plan "功能" --worktree`      |
+| `--worktree`        | 自动创建 worktree(最优先) | `/moai plan "功能" --worktree`      |
 | `--branch`          | 创建传统分支          | `/moai plan "功能" --branch`        |
-| `--resume SPEC-XXX` | 恢复中断的 SPEC 工作       | `/moai plan --resume SPEC-AUTH-001`    |
-| `--team`            | 强制代理团队模式             | `/moai plan "feature" --team`          |
-| `--solo`            | 强制子代理模式               | `/moai plan "feature" --solo`          |
-| `--seq`             | 顺序诊断而不是并行诊断       | `/moai plan "feature" --seq`           |
-| `--ultrathink`      | 启用 Adaptive Thinking | `/moai plan "feature" --ultrathink`    |
+| `--resume SPEC-XXX` | 恢复中断的 SPEC 工作       | `/moai plan --resume SPEC-AUTH-001` |
+| `--team`            | 强制智能体团队模式       | `/moai plan "功能" --team`          |
+| `--solo`            | 强制子智能体模式     | `/moai plan "功能" --solo`          |
+| `--seq`             | 顺序诊断代替并行          | `/moai plan "功能" --seq`           |
+| `--ultrathink`      | 启用 Adaptive Thinking | `/moai plan "功能" --ultrathink`  |
 
 ### 标志优先级
 
-当指定多个标志时，它们按以下顺序应用：
+指定多个标志时,按以下顺序应用:
 
-1. **--worktree**（最高优先级）：创建独立的 Git worktree
-2. **--branch**（次选）：创建传统 feature 分支
-3. **无标志**（默认）：仅创建 SPEC，根据用户选择创建分支
+1. **--worktree** (最优先): 创建独立的 Git worktree
+2. **--branch** (次优先): 创建传统 feature 分支
+3. **无标志** (默认): 仅生成 SPEC,由用户选择是否创建分支
 
 ### --worktree 标志
 
-创建 **独立的 Git worktree** 以及 SPEC，为并行开发做准备：
+在生成 SPEC 的同时创建 **独立的 Git worktree**,准备并行开发环境:
 
 ```bash
 > /moai plan "实现支付系统" --worktree
 ```
 
-使用此选项时：
+使用此选项时:
 
-1. 创建 SPEC 文档
-2. 提交 SPEC（worktree 创建所需）
-3. 在 `feature/SPEC-{ID}` 分支上创建 worktree
-4. 允许在不影响主代码的情况下独立开发
+1. 生成 SPEC 文档
+2. 提交 SPEC(创建 worktree 的必要条件)
+3. 以 `feature/SPEC-{ID}` 分支创建 worktree
+4. 可以在不影响主代码的情况下独立开发
 
 {{< callout type="info" >}}
-  `--worktree` 选项在**同时开发多个功能**时很有用。每个 SPEC 在独立的 worktree 中工作，因此它们不会相互冲突。
+  `--worktree` 选项在 **同时开发多个功能** 时非常有用。每个 SPEC
+  都在独立的 worktree 中工作,互不冲突。
 {{< /callout >}}
 
 ## EARS 格式需求
 
-SPEC 文档使用 **EARS** (Easy Approach to Requirements Syntax) 格式定义需求。有 5 种模式，manager-spec agent 自动将自然语言转换为适当的模式。
+SPEC 文档以 **EARS** (Easy Approach to Requirements Syntax) 格式定义需求。共有 5 种模式,manager-spec 智能体会自动将自然语言转换为合适的模式。
 
-| 模式         | 格式                          | 目的              | 示例                                                |
-| --------------- | ------------------------------- | -------------------- | ------------------------------------------------------ |
-| **Ubiquitous**  | "The system SHALL ~"            | 始终适用的规则 | "The system SHALL log all API requests"                |
-| **Event-driven**| "WHEN ~, THEN the system SHALL ~"| 事件响应       | "WHEN logging in, THEN the system SHALL issue a JWT"   |
-| **State-driven**| "WHILE ~, the system SHALL ~"   | 基于状态的行为 | "WHILE logged in, the system SHALL maintain session"   |
-| **Unwanted**    | "The system SHALL NOT ~"        | 禁止事项         | "The system SHALL NOT store passwords in plain text"   |
-| **Optional**    | "WHERE PRACTICAL, the system SHALL ~" | 可选功能  | "WHERE PRACTICAL, the system SHALL support 2FA"        |
+| 模式             | 格式                          | 用途               | 示例                                             |
+| ---------------- | ----------------------------- | ------------------ | ------------------------------------------------ |
+| **Ubiquitous**   | "系统应当 ~"         | 始终适用的规则 | "系统应当记录所有 API 请求"         |
+| **Event-driven** | "WHEN ~ 时,THEN 应当 ~" | 事件响应        | "WHEN 登录时,THEN 应当签发 JWT"      |
+| **State-driven** | "WHILE ~ 期间,应当 ~"  | 基于状态的行为     | "WHILE 处于登录状态期间,应当保持会话" |
+| **Unwanted**     | "系统不得 ~"      | 禁止事项          | "系统不得以明文存储密码"      |
+| **Optional**     | "如有可能,应当 ~"      | 可选功能          | "如有可能,应当支持两步验证"         |
 
 {{< callout type="info" >}}
-  您不需要记住 EARS 格式。manager-spec agent **自动转换**自然语言。只需自然地描述您想要的功能。
+  无需背诵 EARS 格式。manager-spec 智能体会将自然语言 **自动
+  转换**。您只需自然地描述想要的功能即可。
 {{< /callout >}}
 
 ## 执行过程
 
-`/moai plan` 内部执行的过程：
+`/moai plan` 在内部执行的过程如下:
 
 ```mermaid
 flowchart TD
-    A["用户请求<br/>/moai plan '功能描述'"] --> B{清晰吗？}
-    B -->|否| C["Explore Subagent<br/>项目分析"]
-    B -->|是| D["调用 manager-spec Agent"]
+    A["用户请求<br/>/moai plan '功能描述'"] --> B{是否明确?}
+    B -->|否| C["Explore 子智能体<br/>分析项目"]
+    B -->|是| D["调用 manager-spec 智能体"]
     C --> D
-    D --> E["需求分析<br/>功能范围、复杂度评估"]
-    E --> F{"需要澄清吗？"}
-    F -->|是| G["询问用户<br/>确认细节"]
+    D --> E["分析需求<br/>评估功能范围、复杂度"]
+    E --> F{"需要澄清?"}
+    F -->|是| G["向用户提问<br/>确认细节"]
     G --> E
     F -->|否| H["转换为 EARS 格式<br/>应用 5 种模式"]
     H --> I["定义验收标准<br/>Given-When-Then"]
-    I --> J["创建 SPEC 文档<br/>spec.md, plan.md, acceptance.md"]
+    I --> J["生成 SPEC 文档<br/>spec.md, plan.md, acceptance.md"]
     J --> K{"用户批准"}
-    K -->|批准| L["Git 环境设置"]
+    K -->|批准| L["设置 Git 环境"]
     K -->|请求修改| E
-    K -->|取消| M["退出"]
+    K -->|取消| M["结束"]
     L --> N{"检查标志"}
-    N -->|--worktree| O["创建 Worktree"]
+    N -->|--worktree| O["创建 worktree"]
     N -->|--branch| P["创建分支"]
     N -->|无标志| Q["用户选择"]
     O --> R["完成"]
@@ -134,97 +138,150 @@ flowchart TD
     Q --> R
 ```
 
-**关键点：**
+**核心要点:**
 
-- 如果请求不清晰，**Explore subagent** 会分析项目
-- 如果需求不清晰，manager-spec agent 会**向用户询问其他问题**
-- 自动为所有需求生成 **Given-When-Then 格式的验收标准**
-- 生成的 SPEC 文档在获得**用户批准**后定稿
+- 请求不明确时,**Explore 子智能体** 会分析项目
+- 需求不清晰时,manager-spec 智能体会 **向用户追加提问**
+- 为所有需求自动生成 **Given-When-Then 格式的验收标准**
+- 生成的 SPEC 文档在获得用户 **批准之后** 才最终确定
 
-## SPEC 创建阶段
+## SPEC 生成阶段
 
-### Phase 1A: 项目分析（可选）
+`/moai plan` 遵循由 15 个 Phase 与 2 个 Decision Point 构成的结构化工作流。Phase 1-3 是上下文发现,Phase 4-7 是深度访谈,Phase 8 之后才是正式的 SPEC 组装。
 
-在请求不明确或需要了解项目情况时执行：
+### Phase 1-3: 上下文发现
 
-| 执行条件         | 跳过条件             |
-| --------------------------- | -------------------------- |
-| 不明确的请求             | 清晰的 SPEC 标题           |
-| 需要查找现有文件/模式 | Resume 场景        |
-| 项目状态不确定    | 现有 SPEC 上下文存在 |
+| Phase | 名称 | 说明 |
+|-------|------|------|
+| Phase 1 | Brain 建议检测 | 扫描 Brain IDEA 并识别 SPEC 候选 |
+| Phase 2 | 项目探索(可选) | `Explore` 子智能体分析代码库 |
+| Phase 3 | 明确度评估 | 基于 1-10 分的明确度评估与跳过条件 |
 
-### Phase 1B: SPEC 规划
+当请求模糊或需要把握项目状况时执行 Phase 1-3。明确的请求可在 Phase 3 跳过。
 
-**manager-spec** agent 执行以下任务：
+### Phase 4-7: 深度访谈
 
-- 项目文档分析（product.md、structure.md、tech.md）
-- 提出 1-3 个 SPEC 候选和命名
-- 检查重复的 SPEC（.moai/specs/）
-- 设计 EARS 结构
-- 识别实现计划和技术约束
-- 验证库版本（仅稳定版本，排除 beta/alpha）
+在明确度分数为 4-10 时执行:
 
-### Phase 1.5: 预验证门
+| Phase | 名称 | 说明 |
+|-------|------|------|
+| Phase 4 | 深度访谈循环 | 1-5 轮主题中心访谈 |
+| Phase 5 | UltraThink 自动激活 | 复杂度 ≥ 7 时激活扩展推理 |
+| Phase 6 | 深度研究 | `Explore` 子智能体产出 research.md |
+| Phase 7 | 设计方向 | 检测到 UI/UX 关键词时的意图优先设计方向 |
 
-在 SPEC 创建之前防止常见错误：
+### Phase 8: SPEC 规划
 
-**步骤 1 - 文档类型分类：**
+**manager-spec** 智能体执行以下工作:
 
-- 检测 SPEC、Report、Documentation 关键字
-- 将 Report 路由到 .moai/reports/
-- 将 Documentation 路由到 .moai/docs/
+- 分析项目文档 (product.md, structure.md, tech.md)
+- 提出并命名 1-3 个 SPEC 候选
+- 检查重复 SPEC (.moai/specs/)
+- 设计 GEARS 结构(也允许 EARS 遗留格式)
+- 识别实现计划与技术约束条件
+- 确认库版本(仅稳定版,排除 beta/alpha)
 
-**步骤 2 - SPEC ID 验证（所有检查必须通过）：**
+### Decision Point 1: 用户批准门禁 (HUMAN GATE)
 
-- **ID 格式**：`SPEC-domain-number` 模式（例如 `SPEC-AUTH-001`）
-- **域名**：批准的域名列表（AUTH、API、UI、DB、REFACTOR、FIX、UPDATE、PERF、TEST、DOCS、INFRA、DEVOPS、SECURITY 等）
-- **ID 唯一性**：在 .moai/specs/ 中检查重复
-- **目录结构**：必须创建目录，禁止平面文件
+Phase 8 完成后,用户必须明确批准才能进入下一阶段。有 4 个选项:
 
-**复合域名规则：** 最多推荐 2 个域名（例如 UPDATE-REFACTOR-001），最多允许 3 个。
+| 选择 | 含义 |
+|------|------|
+| **Proceed** | 以当前 SPEC 继续 |
+| **Annotate** | 反映反馈后重写(1-6 轮迭代) |
+| **Draft** | 把 SPEC 保留为 draft 状态并等待 |
+| **Cancel** | 中止 SPEC 生成 |
 
-### Phase 2: SPEC 文档创建
+### Phase 9: 预验证门禁
 
-同时创建三个文件：
+在生成 SPEC 之前防止常见错误:
+
+**Step 1 - 文档类型分类:**
+
+- 检测 SPEC、Report、Documentation 关键词
+- Report 路由到 .moai/reports/
+- Documentation 路由到 .moai/docs/
+
+**Step 2 - SPEC ID 验证(必须通过所有检查):**
+
+- **ID 格式**: `SPEC-域-编号` 模式(例: `SPEC-AUTH-001`)
+- **域名称**: 已批准的域列表 (AUTH, API, UI, DB, REFACTOR, FIX, UPDATE,
+  PERF, TEST, DOCS, INFRA, DEVOPS, SECURITY 等)
+- **ID 唯一性**: 在 .moai/specs/ 中检查重复
+- **目录结构**: 必须创建目录,禁止平铺文件
+
+**复合域规则:** 建议最多 2 个域(例: UPDATE-REFACTOR-001),最多允许 3 个
+
+### Phase 10: 生成 SPEC 文档
+
+三个文件同时生成:
 
 **spec.md:**
 
-- YAML frontmatter（7 个必填字段：id、version、status、created、updated、author、priority）
-- HISTORY 部分（紧接 frontmatter 之后）
-- 完整的 EARS 结构（5 种需求类型）
-- 使用 conversation_language 编写的内容
+- YAML frontmatter(**12 个必填字段**: id, title, version, status, created, updated,
+  author, priority, phase, module, lifecycle, tags)
+- HISTORY 部分(紧跟在 frontmatter 之后)
+- 完整的 GEARS/EARS 结构(5 种需求类型)
+- 以 conversation_language 编写的内容
 
 **plan.md:**
 
-- 包含任务分解的实现计划
-- 技术栈规格和依赖项
-- 风险分析和缓解策略
+- 工作分解实现计划
+- 技术栈规格与依赖
+- 风险分析与缓解策略
 
 **acceptance.md:**
 
-- 最少 2 个 Given/When/Then 场景
-- 边缘情况测试场景
-- 性能和质量门标准
+- 至少 2 个 Given/When/Then 场景
+- 边界情况测试场景
+- 性能与质量门禁标准
 
-**质量约束：**
+**质量约束条件:**
 
-- 需求模块：每个 SPEC 最多 5 个
-- 验收标准：最少 2 个 Given/When/Then 场景
-- 技术术语和函数名保持英文
+- 需求模块: 每个 SPEC 最多 5 个
+- 验收标准: 至少 2 个 Given/When/Then 场景
+- 技术术语与函数名保持英文
 
-### Phase 3: Git 环境设置（有条件）
+### Phase 11: plan-auditor 独立审计
 
-**执行条件：** Phase 2 完成 且满足以下之一：
+**plan-auditor** 子智能体独立审计 manager-spec 编写的 SPEC 产出物。遵循制作的智能体不检查自己结果的 **独立审计原则**。
 
-- 提供了 --worktree 标志
-- 提供了 --branch 标志或用户选择创建分支
-- 设置中允许分支创建（git_strategy 配置）
+- 最多 3 轮迭代 (Retry Loop Contract)
+- 每轮出现分数回退时给出 STOP 信号 + 缩小范围建议
+- PASS / PASS-with-debt / FAIL 三种判定
+- 审计报告保存到 `.moai/reports/plan-audit/`
 
-**跳过点：** develop_direct 工作流，无标志且选择了"使用当前分支"
+### Phase 12: 创建 GitHub issue(条件性)
 
-## 输出
+若无 `--no-issue` 标志则创建 GitHub issue 并与 SPEC 建立双向引用。从 v3.0.0 起 issue 创建默认省略,可用 `--issue` 标志显式启用。
 
-SPEC 文档保存在 `.moai/specs/` 目录中：
+### Phase 13: 设置 Git 环境(条件性)
+
+通过 **BODP (Branch Origin Decision Protocol) 门禁** 决定分支策略:
+
+- **--worktree**(最高优先):创建独立的 Git 工作树
+- **--branch**(次选):创建传统的 feature 分支
+- **保持当前分支**:无标志时在当前 checkout 上继续
+
+### Phase 14: MX 标签规划
+
+识别在实现阶段要添加的 `@MX` 代码注释目标:
+
+- `@MX:ANCHOR` —— 不变契约(high fan_in 函数)
+- `@MX:WARN` —— 危险区间(goroutine, 复杂度 ≥ 15)
+- `@MX:NOTE` —— 上下文/意图记录
+
+### Phase 15: SPEC 质量门禁
+
+验证 GEARS/EARS 需求与验收标准(AC)之间的覆盖,并执行安全范围检查。
+
+### Decision Point 2/3/3.5: 执行模式选择
+
+SPEC 生成完成后选择下一步。详情请参阅 [Decision Point 3.5 部分](#decision-point-35-执行模式选择门禁)。
+
+## 输出结果
+
+SPEC 文档保存在 `.moai/specs/` 目录中:
 
 ```
 .moai/
@@ -235,7 +292,7 @@ SPEC 文档保存在 `.moai/specs/` 目录中：
         └── acceptance.md     # 验收标准
 ```
 
-**SPEC 文档的基本结构：**
+**SPEC 文档的基本结构:**
 
 ```yaml
 ---
@@ -251,66 +308,105 @@ priority: HIGH
 
 ## SPEC 状态管理
 
-SPEC 文档具有以下状态生命周期：
+SPEC 文档具有如下状态生命周期:
 
 ```mermaid
 flowchart TD
-    A["DRAFT<br/>起草中"] --> B["ACTIVE<br/>已批准"]
+    A["DRAFT<br/>撰写中"] --> B["ACTIVE<br/>批准完成"]
     B --> C["IN_PROGRESS<br/>实现中"]
-    C --> D["COMPLETED<br/>已完成"]
-    B --> E["REJECTED<br/>已拒绝"]
+    C --> D["COMPLETED<br/>完成"]
+    B --> E["REJECTED<br/>拒绝"]
 ```
 
-| 状态       | 描述                  | 可以运行 `/moai run` |
-| ------------ | ---------------------------- | ------------------- |
-| `DRAFT`      | 仍在起草中          | 否                  |
-| `ACTIVE`     | 已批准，等待实现   | **是**             |
-| `IN_PROGRESS`| 当前正在实现  | 是（恢复）        |
-| `COMPLETED`  | 实现和验证完成    | 否  |
-| `REJECTED`   | 已拒绝，需要重写    | 否                  |
+| 状态          | 说明                 | 可执行 `/moai run` |
+| ------------- | -------------------- | --------------------- |
+| `DRAFT`       | 仍在撰写中         | 否                |
+| `ACTIVE`      | 批准完成,等待实现 | **是**                |
+| `IN_PROGRESS` | 当前正在实现         | 是(继续)           |
+| `COMPLETED`   | 实现与验证完成    | 否                |
+| `REJECTED`    | 已拒绝,需要重写  | 否                |
 
-## 实际示例
+## 棕地分类 — Delta Markers
 
-### 示例：创建 JWT 认证 SPEC
+在既有代码库(棕地)项目中对 SPEC 需求进行分类。
 
-**步骤 1：执行命令**
+| 标记 | 含义 | 说明 |
+|------|------|------|
+| `[EXISTING]` | 保留现有 | 不变更,仅引用 |
+| `[MODIFY]` | 修改 | 变更现有代码 |
+| `[NEW]` | 新增 | 全新创建 |
+| `[REMOVE]` | 删除 | 移除现有代码 |
+
+## 节省令牌的装置 — spec-compact.md
+
+在 Plan phase 自动生成 SPEC 文档的摘要版 (`spec-compact.md`)。Run phase 加载摘要版而非完整 spec.md,可 **节省约 30% 令牌** — 这是令牌经济学装置内嵌于 SPEC 生命周期之中的典型例子。
+
+## 防止范围偏移 — Exclusions 与 What/Why 约束
+
+**强制 Exclusions ("What NOT to Build")**: 所有 SPEC 文档必须包含 **Out of Scope / Exclusions** 部分。预先防止范围偏移。
+
+**What/Why 约束**: SPEC 需求只描述 **What** (什么) 和 **Why** (为什么)。**How** (如何) 在实现阶段决定,不在 SPEC 中过度规格化。
+
+## Decision Point 3.5: 执行模式选择门禁
+
+在 Plan 完成后、Run 开始前,自动检测执行环境并向用户推荐最优模式。
+
+**检测项目:**
+1. tmux 可用性 (`$TMUX` 环境变量)
+2. 当前 LLM 模式 (`llm.yaml` 的 `team_mode`: cc/glm/cg)
+
+**tmux 可用时:**
+- Worktree + \{当前模式\} (Recommended)
+- Team Mode (in-process)
+- Sub-agent Mode (sequential)
+
+**tmux 不可用时:**
+- Sub-agent Mode (Recommended)
+- Team Mode (in-process)
+
+## 实战示例
+
+### 示例: 生成 JWT 认证 SPEC
+
+**第 1 步: 执行命令**
 
 ```bash
-> /moai plan "基于 JWT 的用户认证系统：注册、登录、令牌刷新"
+> /moai plan "基于 JWT 的用户认证系统: 注册、登录、令牌刷新"
 ```
 
-**步骤 2：manager-spec 询问**（如需要）
+**第 2 步: manager-spec 提问**(必要时)
 
-manager-spec agent 可能会询问细节：
+manager-spec 智能体可能会为确认细节而提问:
 
-- "密码最小长度是多少？"
-- "令牌过期时间应该设置多少？"
-- "包括社交登录吗？"
+- "密码最小长度是多少位?"
+- "令牌过期时间设置为多久?"
+- "是否也包括社交登录?"
 
-**步骤 3：SPEC 文档创建结果**
+**第 3 步: SPEC 文档生成结果**
 
-创建具有以下结构的 SPEC 文档：
+将生成如下结构的 SPEC 文档:
 
 ```yaml
 ---
 id: SPEC-AUTH-001
-title: 基于_jwt_的_user_authentication_system
+title: 基于 JWT 的用户认证系统
 priority: HIGH
 status: ACTIVE
 ---
 ```
 
 ```markdown
-# 需求（EARS 格式）
+# 需求 (EARS 格式)
 
 ## Ubiquitous
 
-- 系统必须使用 bcrypt 哈希所有密码进行存储
-- 系统必须记录所有认证请求
+- 系统应当使用 bcrypt 对所有密码进行哈希后存储
+- 系统应当记录所有认证请求
 
 ## Event-driven
 
-- WHEN 使用有效凭据登录时，THEN 系统必须签发 JWT 访问令牌（1 小时）和刷新令牌（7 天）
+- WHEN 使用有效凭证登录时,THEN 应当签发 JWT 访问令牌(1 小时)与刷新
+  令牌(7 天)
 
 ## Unwanted
 
@@ -318,23 +414,23 @@ status: ACTIVE
 - 系统不得允许使用过期令牌访问 API
 ```
 
-**步骤 4：用户批准后的 Git 环境设置**
+**第 4 步: 用户批准后设置 Git 环境**
 
 ```bash
 # 使用 --worktree 标志时
 > /moai plan "JWT 认证" --worktree
 
 # 结果:
-# 1. 创建 SPEC 文档 (.moai/specs/SPEC-AUTH-001/)
+# 1. 生成 SPEC 文档 (.moai/specs/SPEC-AUTH-001/)
 # 2. 提交 SPEC (feat(spec): Add SPEC-AUTH-001)
 # 3. 创建 worktree (.git/worktrees/SPEC-AUTH-001)
 # 4. 显示 worktree 路径
 ```
 
-**步骤 5：执行 `/clear` 后进入实现阶段**
+**第 5 步: 执行 `/clear` 后进入实现阶段**
 
 ```bash
-# 清理 tokens
+# 清理令牌
 > /clear
 
 # 开始实现
@@ -343,172 +439,130 @@ status: ACTIVE
 
 ## 常见问题
 
-### Q: 我可以手动编辑 SPEC 文档吗？
+### Q: 可以手动修改 SPEC 文档吗?
 
-可以，您可以直接编辑 `.moai/specs/SPEC-XXX/spec.md` 文件。如果您添加需求或修改验收标准，然后运行 `/moai run`，更改将被反映。
+可以,您可以直接编辑 `.moai/specs/SPEC-XXX/spec.md` 文件。添加需求或修改验收标准后执行 `/moai run`,修改内容就会被反映。
 
-### Q: 我可以直接编写代码而不用 SPEC 吗？
+### Q: 不写 SPEC 直接编写代码不行吗?
 
-您可以在 Claude Code 中直接编写代码，但没有 SPEC 的工作意味着每当会话结束时都会丢失上下文。**对于复杂功能，首先创建 SPEC 更高效。**
+也可以在 Claude Code 中直接编写代码,但没有 SPEC 的话,每次会话中断都会丢失上下文。**功能越复杂,先创建 SPEC 越高效**。
 
-### Q: 生成 SPEC ID 使用什么规则？
+### Q: SPEC ID 按什么规则生成?
 
-遵循格式 `SPEC-domain-number`（例如 `SPEC-AUTH-001`）
+采用 `SPEC-域-编号` 格式(例: `SPEC-AUTH-001`)
 
-- `SPEC-AUTH-001`：第一个认证相关的 SPEC
-- `SPEC-PAYMENT-002`：第二个支付相关的 SPEC
+- `SPEC-AUTH-001`: 认证相关的第一个 SPEC
+- `SPEC-PAYMENT-002`: 支付相关的第二个 SPEC
 
-域名由 manager-spec 根据功能区域自动确定。
+域由 manager-spec 根据功能所属领域自动决定。
 
-### Q: `/moai plan` 和 `/moai` 有什么区别？
+### Q: `/moai plan` 和 `/moai` 有什么区别?
 
-`/moai plan` 只负责 **SPEC 文档创建**。`/moai` 自动执行从 SPEC 创建到实现和文档的**整个工作流**。
+`/moai plan` 只负责 **生成 SPEC 文档**。`/moai` 则从 SPEC 生成到实现、文档化,自动执行 **完整工作流**。
 
-### Q: --worktree 和 --branch 有什么区别？
+### Q: --worktree 和 --branch 有什么区别?
 
-**--worktree** 创建独立的工作目录，用于完全隔离的环境。**--branch** 在当前仓库中创建新分支。如果同时开发多个功能，推荐使用 --worktree。
-
-## v2.9.0 新增功能
-
-### Delta Markers（棕地分类）
-
-在棕地（现有代码库）项目中对 SPEC 需求进行分类。
-
-| 标记 | 含义 | 描述 |
-|------|------|------|
-| `[EXISTING]` | 保留现有 | 仅参考，无更改 |
-| `[MODIFY]` | 修改 | 更改现有代码 |
-| `[NEW]` | 新增 | 创建新文件 |
-| `[REMOVE]` | 删除 | 删除现有代码 |
-
-### spec-compact.md 生成
-
-在 Plan 阶段自动生成 SPEC 文档的摘要版本 (`spec-compact.md`)。在 Run 阶段节省约 30% 的 tokens。
-
-### Exclusions 强制化（"不构建的内容"）
-
-所有 SPEC 文档必须包含 **Out of Scope / Exclusions** 部分。提前防止范围偏离。
-
-### What/Why 约束
-
-SPEC 需求仅阐述 **What**（什么）和 **Why**（为什么）。**How**（如何）在实现阶段决定，不在 SPEC 中过度指定。
-
-### Decision Point 3.5: 执行模式选择门
-
-Plan 完成后、Run 开始前，自动检测执行环境并建议用户最优模式。
-
-**检测项目：**
-1. tmux 可用性（`$TMUX` 环境变量）
-2. 当前 LLM 模式（`llm.yaml` 中的 `team_mode`: cc/glm/cg）
-
-**tmux 可用时：**
-- Worktree + \{当前模式\}（推荐）
-- Team Mode（in-process）
-- Sub-agent Mode（顺序）
-
-**tmux 不可用时：**
-- Sub-agent Mode（推荐）
-- Team Mode（in-process）
+**--worktree** 创建独立的工作目录,提供完全隔离的环境。**--branch** 在当前仓库中创建新分支。若要同时开发多个功能,推荐使用 --worktree。
 
 ## GEARS 表示法 (v3.0.0+) {#gears-notation}
 
-从 MoAI-ADK v3.0.0 开始，**GEARS**(Generalized Expression for AI-Ready Specs)被引入为推荐的 SPEC 编写表示法。原有的 EARS 表示法在 **6 个月** 期间内保持向后兼容，期间可逐步迁移到 GEARS。新建 SPEC 建议从一开始就遵循 GEARS 模式。
+从 MoAI-ADK v3.0.0 起,引入 **GEARS**(Generalized Expression for AI-Ready Specs)作为撰写 SPEC 的推荐表示法。既有的 EARS 表示法在 **6 个月** 内保持向后兼容,期间可以逐步迁移到 GEARS。建议新 SPEC 从一开始就遵循 GEARS 模式。
 
-GEARS 保留 EARS 的 5 个核心模式，同时收紧其语义边界，使 AI 编码代理能够更明确地解释。两项实质性变更是：**废弃 IF/THEN 模式**(归一化为 WHEN)以及**重新定义 WHERE 的语义**(静态前置条件、配置、功能开关)。
+GEARS 保留了 EARS 的 5 种核心模式,同时打磨了语义边界,使 AI 编程智能体能够更清晰地解读。核心变更是 **废弃 IF/THEN 模式**(归一化为 WHEN)以及 **重新定义 WHERE 的语义**(静态前提条件/配置/功能开关)。
 
-参考资料：Σ\*/SubLang, **"GEARS: The Spec Syntax That Makes AI Coding Actually Work"**, DEV Community 2026-01-23. <https://dev.to/sublang/gears-the-spec-syntax-that-makes-ai-coding-actually-work-4f3f>
+参考资料: Σ\*/SubLang, **"GEARS: The Spec Syntax That Makes AI Coding Actually Work"**, DEV Community 2026-01-23. <https://dev.to/sublang/gears-the-spec-syntax-that-makes-ai-coding-actually-work-4f3f>
 
-### 5 种模式对照表
+### 5 种模式对比表
 
-| 表示法 | EARS (legacy) | GEARS (canonical) | Lint 行为 |
+| 表示模式 | EARS (legacy) | GEARS (canonical) | Lint 行为 |
 |---|---|---|---|
-| Ubiquitous (普遍) | `The system shall <action>` | Same | 不变 |
-| Event-driven (WHEN) | `WHEN <event>, the system shall <action>` | Same | 不变 |
-| State-driven (WHILE) | `WHILE <state>, the system shall <action>` | Same (stateful precondition) | 不变 |
-| Precondition (WHERE) | `WHERE <feature-exists>, the system shall <action>` | `WHERE <precondition>, the system shall <action>` (重新定义：静态前置条件、配置、功能开关) | lint 层不变 |
-| Negative trigger | `IF <condition>, THEN the system shall <action>` | **DEPRECATED** — 改用 `WHEN <event-detected>, the system shall <action>` | **新增：`LegacyEARSKeyword` warning** |
+| Ubiquitous (普遍) | `The system shall <action>` | Same | 无变更 |
+| Event-driven (WHEN) | `WHEN <event>, the system shall <action>` | Same | 无变更 |
+| State-driven (WHILE) | `WHILE <state>, the system shall <action>` | Same (stateful precondition) | 无变更 |
+| Precondition (WHERE) | `WHERE <feature-exists>, the system shall <action>` | `WHERE <precondition>, the system shall <action>` (重新定义: 静态前提条件、配置、功能开关) | lint 层无变更 |
+| Negative trigger | `IF <condition>, THEN the system shall <action>` | **DEPRECATED** — 改用 `WHEN <event-detected>, the system shall <action>` | **新增: `LegacyEARSKeyword` warning** |
 
-### 向后兼容窗口 (6 个月)
+### 向后兼容期(6 个月)
 
-迁移窗口自 v3.0.0 发布起持续 **6 个月**，或在批量修正 SPEC `SPEC-V3R6-GEARS-SWEEP-001`(provisional)完成时结束，以两者中先到者为准。窗口期间的行为如下：
+迁移窗口自 v3.0.0 发布起 **6 个月**,或至 `SPEC-V3R6-GEARS-SWEEP-001`(provisional) 批量修正 SPEC 完成之时,以先到者为准。窗口期内的行为如下。
 
-- **非 strict 模式(默认)**：仅发出 `LegacyEARSKeyword` 警告，lint 不会失败。
-- **`--strict` 模式(opt-in)**：警告升级为错误并阻断 CI。
-- **现有 88 个 SPEC**：本 SPEC 范围内不直接修改(REQ-GM-007)；批量迁移由后续 SWEEP SPEC 负责。
+- **非 strict 模式(默认)**: 仅产生 `LegacyEARSKeyword` 代码的 warning,不导致 lint 失败
+- **`--strict` 模式(opt-in)**: warning 升级为 error,阻断 CI
+- **既有 88 个 SPEC**: 不在本 SPEC 范围内直接修改 (REQ-GM-007)。批量修正由后续 SWEEP SPEC 负责
 
 ### LegacyEARSKeyword 诊断
 
-`internal/spec/lint.go` 中的 `isLegacyEARSPattern()` 辅助函数在检测到 EARS legacy IF/THEN 模式时发出以下消息：
+`internal/spec/lint.go` 的 `isLegacyEARSPattern()` 助手在检测到 EARS legacy IF/THEN 模式时,输出如下消息。
 
 ```
 REQ <REQ-ID>: GEARS migration: replace IF/THEN with WHEN/event normalization; see https://adk.mo.ai.kr/en/workflow-commands/moai-plan/#gears-notation
 ```
 
-- **代码**：`LegacyEARSKeyword`
-- **严重等级**：warning(非 strict)/ error(`--strict`)
-- **来源**：`internal/spec/lint.go`
+- **代码**: `LegacyEARSKeyword`
+- **严重度**: warning (非 strict) / error (`--strict`)
+- **来源**: `internal/spec/lint.go`
 
-### 工具作者指南
+### 面向工具作者的指南
 
-在下游工具(校验器、代码生成器、IDE 插件等)中匹配 SPEC 文本时，请按如下方式迁移：
+在 downstream 工具(验证器、代码生成器、IDE 插件等)中匹配 SPEC 文本时,请按以下方式迁移。
 
-- 将 `IF .* THEN` 匹配器切换为 `WHEN .* shall` 匹配器。
-- 注意 6 个月的废弃窗口；在窗口关闭前同时识别两种模式。
-- 将 `LegacyEARSKeyword` finding 代码作为升级信号使用。
+- 将 `IF .* THEN` 匹配逐步转换为 `WHEN .* shall` 匹配
+- 认知 6 个月的 deprecation 窗口,在窗口结束前实现为同时识别两种模式
+- 将 `LegacyEARSKeyword` finding 代码用作 upgrade 信号
 
 ### 迁移示例
 
-**Before (EARS legacy)：**
+**Before (EARS legacy):**
 
 ```
 IF input is null, THEN the system shall return an error.
 ```
 
-**After (GEARS canonical)：**
+**After (GEARS canonical):**
 
 ```
 WHEN input is null is detected, the system shall return an error.
 ```
 
-这种归一化将触发条件表达为 "事件" 而非 "条件"，从而减少 AI 代理的意图解释模糊性，并在编写测试用例时更清晰地界定输入和验证时机。
+这种归一化通过将触发器明确表述为"事件"而非"条件",降低了 AI 智能体解读意图的模糊性,并使测试用例编写时的输入/验证时机更加清晰。
 
-## 自适应推荐配置 (Adaptive Recommendation Placement)
+## 自适应推荐布局 (Adaptive Recommendation Placement)
 
-MoAI-ADK v0.1.0 起，**AskUserQuestion 推荐**现在适配您的决策模式。系统捕获您的选择，并基于观察到的统计多数而非系统默认值来个性化未来的问题选项。
+从 MoAI-ADK v0.1.0 起,**AskUserQuestion 推荐** 会根据用户的决策模式实现个性化。系统捕获选择,并基于观察到的统计多数(而非系统默认值)对未来的问题选项进行个性化。从回路积累观察、系统从观察中学习这一点来看,这是 v3 **递归式自我学习** 原则应用于提问·推荐领域的实例。
 
 ### 工作原理
 
-当 MoAI 通过 `AskUserQuestion` 向您提问时，推荐配置遵循以下 5 条原则：
+当 MoAI 通过 `AskUserQuestion` 提问时,适用指导推荐布局的 5 项原则:
 
-1. **Fisher 信息时机** — 在不确定性最高时（p≈0.5，Fisher 信息 I=p(1−p) 在决策边界处最大）提问。当 p≈0 或 p≈1（几乎确定）时，系统自动处理并跳过提问。
+1. **Fisher 信息时机** — 在不确定性最高时(p≈0.5,Fisher 信息 I=p(1−p) 最大的决策边界)发起提问。当 p≈0 或 p≈1(几乎确定)时,系统自动处理并省略提问。
 
-2. **问题排序按信息增益** — 需要多个问题时，按估计的信息增益降序排列，以便您尽早做出最重要的决策。
+2. **问题排序 — 信息增益降序** — 需要多个问题时,按估算信息增益从高到低排序,让最重要的决策先被做出。
 
-3. **统计多数合理默认值** — 推荐选项（标记 `(推荐)`）反映您决策历史中观察到的多数选择，**而非**系统策略默认值。数据不足时（冷启动）会公开说明：*"基于静态默认值，个性化需要 N 次观察"*。
+3. **统计多数的理性默认值** — 推荐选项(带 `(推荐)` 标记)反映决策记录中观察到的多数选择,**而非系统策略默认值**。数据不足时(cold-start)会公开 *"基于默认设置,个性化需 N 次观察"*。
 
-4. **前提条件公开** — 每个推荐选项包含其成功前提条件，格式为：*"Recommended when <precondition>"*，便于您立即评估权衡。
+4. **公开前提条件** — 每个推荐选项以 *"Recommended when <precondition>"* 格式明示成立的前提条件,便于立即评估权衡。
 
-5. **基于熟练度的自适应强度** — 推荐强度根据您的会话数调整：
-   - **专家**(20+ 会话): 弱强度 — 推断偏好仅公开，无 `(推荐)` 覆盖（info-centric，尊重自主性）
-   - **一般用户**(5-19 会话): 强强度 — 推荐选项带 `(推荐)` + 透明理由
-   - **冷启动**(<5 会话): 中立强度 — 无覆盖，应用系统默认
+5. **基于熟练度的自适应强度** — 推荐强度按会话计数调节:
+   - **专家**(20+ 会话): 弱强度 — 仅公开 inferred preference,不使用 `(推荐)` override(info-centric,尊重自主性)
+   - **一般用户**(5-19 会话): 强强度 — `(推荐)` + 透明的依据说明
+   - **Cold-start**(<5 会话): 中立强度 — 无 override,应用系统默认值
 
 ### 隐私与安全
 
-- **会话范围切换**: `moai preference toggle` 按项目禁用个性化（会话间不持久）
-- **敏感域门槛**: 安全相关主题（漏洞、渗透测试、泄露）接收中立推荐 + 公开日志
-- **自动衰减**: 瞬时偏好 28 天后 soft-delete，稳定偏好（显式标记）保留
-- **Advisory 捕获**: PostToolUse 捕获钩绝不阻塞 AskUserQuestion 执行（fail-open 设计）
-- **Recovery-Signal Carve-Out**: recovery 回合（compact 恢复、prompt_too_long 等）advisory 钩子让步于恢复（recovery-signal carve-out 准则，doctrine-honest）
+- **会话范围开关**: 通过 `moai preference toggle` 按项目禁用个性化(不跨会话持久)
+- **敏感域门禁**: 安全相关主题(漏洞、渗透 test、泄露)采用中立推荐 + 公开日志
+- **自动衰减**: Transient 偏好 28 天后 soft-delete,stable 偏好(明确标记)保留
+- **Advisory 捕获**: PostToolUse 捕获钩子绝不阻断 AskUserQuestion 执行(fail-open 设计)
+- **Recovery-Signal Carve-Out**: 在 recovery 轮次(compact 恢复、prompt_too_long 等)中,advisory 钩子让位于恢复(遵循 recovery-signal carve-out,doctrine-honest)
 
 ### 技术实现
 
 {{< callout type="info" >}}
-**内部原理**：5 条原则在 `.claude/rules/moai/core/askuser-protocol.md` § Recommendation Placement Principles 中详细说明，由 `moai.md` 渲染。捕获钩子实现在 `internal/hook/user_decision_capture.go`，支持 schema 容错解析和域分类。衰减策略遵循 power-law 函数 `(age+1)^(-0.5)`，α=0.5 固定（Standard tier）。完整架构和验收标准参见项目的 SPEC 文档。
+**内部机制**: 5 项原则在 `.claude/rules/moai/core/askuser-protocol.md` § Recommendation Placement Principles 中规格化,并渲染到 `moai.md`。捕获钩子实现于 `internal/hook/user_decision_capture.go`,支持 schema 宽容解析与域分类。衰减策略遵循 power-law 函数 `(age+1)^(-0.5)`,α=0.5 固定(Standard tier)。完整架构与验收标准请参阅项目的 SPEC 文档。
 {{< /callout >}}
 
 ## 相关文档
 
-- [基于 SPEC 的开发](/core-concepts/spec-based-dev) - EARS 格式详细说明
-- [/moai run](./moai-run) - 下一步：DDD 实现
-- [/moai sync](./moai-sync) - 最后一步：文档同步
+- [基于 SPEC 的开发](/core-concepts/spec-based-dev) - EARS 格式详解
+- [/moai run](./moai-run) - 下一步: DDD 实现
+- [/moai sync](./moai-sync) - 最终步骤: 文档同步

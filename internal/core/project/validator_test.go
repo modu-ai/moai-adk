@@ -1,7 +1,6 @@
 package project
 
 import (
-	"os"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -379,17 +378,4 @@ func containsSubstring(ss []string, sub string) bool {
 		}
 	}
 	return false
-}
-
-// ensureFileContent reads a file and checks it contains a substring.
-// Currently unused but kept for future test expansions.
-func ensureFileContent(t *testing.T, path, want string) { //nolint:unused
-	t.Helper()
-	data, err := os.ReadFile(path)
-	if err != nil {
-		t.Fatalf("read %s: %v", path, err)
-	}
-	if !strings.Contains(string(data), want) {
-		t.Errorf("file %s does not contain %q", filepath.Base(path), want)
-	}
 }

@@ -21,7 +21,7 @@ progressive_disclosure:
 # MoAI Extension: Triggers
 triggers:
   keywords: ["mx", "annotation", "code context", "tag scan", "mx tag"]
-  agents: ["manager-develop"]
+  agents: ["Explore", "general-purpose"]
   phases: ["mx", "sync"]
 ---
 # Workflow: MX Tag Scan and Annotation
@@ -54,8 +54,7 @@ For tag types, lifecycle rules, mandatory fields, and per-file limits, see: .cla
 | `--exclude pattern` | Additional exclude patterns (comma-separated) |
 | `--lang go,py,ts` | Scan only specified languages (default: auto-detect) |
 | `--threshold N` | Override fan_in threshold (default: 3) |
-| `--no-discovery` | Skip Phase 0 codebase discovery |
-| `--team` | Parallel scan by language (Agent Teams mode) |
+| `--no-discovery` | Skip Phase 1 codebase discovery |
 
 ## Pipeline Contract (Agentless Classification)
 
@@ -81,10 +80,11 @@ See [Subcommand Classification matrix](../../rules/moai/workflow/spec-workflow.m
 | P2 | goroutine/async, complexity >= 15 | `@MX:WARN` |
 | P3 | magic constant, missing docstring | `@MX:NOTE` |
 | P4 | missing test | `@MX:TODO` |
+| P5 | deliberate working simplification (with `@MX:CEILING` + `@MX:UPGRADE` sub-lines) | `@MX:DEBT` |
 
 ## Workflow Phases
 
-### Phase 0: Codebase Discovery
+### Phase 1: Codebase Discovery
 
 **Purpose**: Detect project languages and load context before scanning.
 
@@ -155,6 +155,8 @@ See [Subcommand Classification matrix](../../rules/moai/workflow/spec-workflow.m
 ### Pass 3: Batch Edit
 
 **Purpose**: Insert tags into files.
+
+**<5-item orchestrator-direct rule**: Where the pending tag-insertion set is fewer than 5 items, the Pass 3 batch edit is performed orchestrator-direct (no Agent() spawn) — an agent spawn does not amortize for so few edits. Sets of 5 or more items keep the batch-edit agent delegation.
 
 **Steps**:
 1. One Edit call per file
@@ -233,6 +235,14 @@ During DDD ANALYZE phase:
 # Lower threshold for more coverage
 /moai mx --all --threshold 2
 ```
+
+## Agent Chain Summary
+
+- Phase 1: Explore subagent (codebase discovery, language detection, project context loading)
+- Pass 1: Explore subagent or a per-spawn `Agent(general-purpose)` agent with backend scope (full file scan, priority queue generation)
+- Pass 2: a per-spawn `Agent(general-purpose)` agent with backend scope (selective deep read, tag description generation)
+- Pass 3: a per-spawn `Agent(general-purpose)` agent with backend scope (batch edit, tag insertion); pending sets of fewer than 5 items are edited orchestrator-direct (no spawn)
+
 
 ---
 

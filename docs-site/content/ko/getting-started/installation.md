@@ -4,7 +4,8 @@ weight: 30
 draft: false
 ---
 
-MoAI-ADK 2.x를 시스템에 설치하는 방법을 안내합니다.
+MoAI-ADK를 시스템에 설치하는 방법을 안내합니다. 설치물은 Go로 빌드된 단일 바이너리 하나입니다 — Python도, 가상환경도, 패키지 매니저도 필요 없습니다.
+
 
 ## 라이선스
 
@@ -87,8 +88,8 @@ moai version
 #### 설치 옵션
 
 ```bash
-# 특정 버전 설치
-curl -fsSL https://raw.githubusercontent.com/modu-ai/moai-adk/main/install.sh | bash -s -- --version v3.0.0-rc6
+# 특정 버전 설치 (원하는 릴리스 태그 지정)
+curl -fsSL https://raw.githubusercontent.com/modu-ai/moai-adk/main/install.sh | bash -s -- --version <릴리스-태그>
 
 # 커스텀 디렉터리에 설치
 curl -fsSL https://raw.githubusercontent.com/modu-ai/moai-adk/main/install.sh | bash -s -- --install-dir /usr/local/bin
@@ -124,7 +125,7 @@ cp ./bin/moai ~/.local/bin/
 {{< callout type="error" >}}
 **MoAI-ADK 1.x (Python 버전) 사용자는 반드시 먼저 기존 버전을 제거하세요.**
 
-1.x와 2.x는 동일한 `moai` 명령어를 사용하므로, 기존 버전이 남아있으면 충돌이 발생합니다.
+1.x와 2.x는 동일한 `moai` 명령어를 사용하므로 기존 버전이 남아있으면 충돌이 발생합니다.
 {{< /callout >}}
 
 ### 1단계: 기존 1.x 제거
@@ -154,16 +155,25 @@ curl -fsSL https://raw.githubusercontent.com/modu-ai/moai-adk/main/install.sh | 
 
 ```bash
 moai version
-# 출력 예시: moai v3.0.0-rc6 (commit: abc1234, built: 2026-06-03)
+```
+
+```text
+╭────────────────────────╮
+│                        │
+│    moai-adk v3.0.0     │
+│                        │
+│                        │
+╰────────────────────────╯
+ v3.0.0   none   built unknown
 ```
 
 {{< callout type="info" >}}
-2.x는 단일 Go 바이너리로, Python 런타임이나 가상환경이 필요하지 않습니다. 시작 시간이 약 800ms에서 5ms로 크게 향상되었습니다.
+Go 에디션 (v2.0+) 은 단일 바이너리로, Python 런타임이나 가상환경이 필요하지 않습니다. 시작 시간이 약 800ms에서 5ms로 크게 향상되었습니다.
 {{< /callout >}}
 
 ## WSL 지원
 
-Windows 사용자를 위해 WSL (Windows Subsystem for Linux) 환경에서의 설치 및 사용 방법을 안내합니다.
+Windows 사용자를 위해 WSL(Windows Subsystem for Linux) 환경에서 설치하고 사용하는 방법을 안내합니다.
 
 ### WSL 설치
 
@@ -376,35 +386,24 @@ moai update
 # 버전 확인만 (업데이트 안 함)
 moai update --check
 
-# 템플릿 동기화만 (패키지 업그레이드 건너뜀)
+# 템플릿 동기화만 (바이너리 업데이트 건너뜀)
 moai update --templates-only
 
 # 설정 편집 모드 (초기화 마법사 다시 실행)
-moai update --config
 moai update -c
 
-# 백업 없이 강제 업데이트
+# 강제 업데이트 (사용자 변경 사항은 백업 후 덮어쓰기)
 moai update --force
 
-# 자동 승인 모드 (모든 확인 자동 승인)
+# 자동 승인 모드 (CI/CD)
 moai update --yes
 ```
 
-### 병합 전략
-
-```bash
-# 자동 병합 강제 (기본값)
-moai update --merge
-
-# 수동 병합 강제
-moai update --manual
-```
-
 {{< callout type="info" >}}
-**자동 보존 항목**: 사용자 설정, 커스텀 에이전트, 커스텀 명령어, 커스텀 스킬, 커스텀 훅, SPEC 문서, 보고서는 업데이트 시 자동으로 보존됩니다.
+**자동 보존 항목**: 사용자 설정, 커스텀 에이전트, 커스텀 명령어, 커스텀 스킬, 커스텀 훅, SPEC 문서, 보고서는 업데이트 시 자동으로 보존됩니다. 사용자가 수정한 템플릿 파일은 백업 후 3-way 병합됩니다.
 {{< /callout >}}
 
-자세한 내용은 [업데이트 가이드](https://adk.mo.ai.kr/getting-started/update)를 참조하세요.
+자세한 내용은 [업데이트 가이드](https://adk.mo.ai.kr/cli-reference/update)를 참조하세요.
 
 ## 제거
 

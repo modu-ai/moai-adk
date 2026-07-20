@@ -29,7 +29,7 @@ func (m *mockTeamCreator) Create(_ context.Context, _ string) error {
 // It enforces that TeamCreate is only called when audit gate passes.
 // Returns true if TeamCreate was attempted.
 func orchestrateTeamRun(ctx context.Context, gate *runtime.GateConfig, teamCreator *mockTeamCreator) (bool, error) {
-	// Phase 0.5: Plan Audit Gate must pass before TeamCreate.
+	// Phase 1: Plan Audit Gate must pass before TeamCreate.
 	result, err := gate.TeamModeInvoke(ctx)
 	if err != nil {
 		return false, err

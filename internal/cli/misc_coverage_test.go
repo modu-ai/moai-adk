@@ -24,13 +24,13 @@ func TestEndsWith(t *testing.T) {
 	}{
 		{
 			name:     "single suffix match",
-			s:        "ddd-pre-transformation",
+			s:        "cycle-pre-transformation",
 			suffixes: []string{"-pre-transformation"},
 			want:     true,
 		},
 		{
 			name:     "single suffix no match",
-			s:        "ddd-pre-transformation",
+			s:        "cycle-pre-transformation",
 			suffixes: []string{"-validation"},
 			want:     false,
 		},
@@ -369,11 +369,11 @@ func TestRunAgentHook_ReadInputError(t *testing.T) {
 		if cmd.Name() == "agent" {
 			cmd.SetContext(context.Background())
 			err := cmd.RunE(cmd, []string{"test-validation"})
-			if err == nil {
-				t.Error("should error on ReadInput failure")
-			}
-			if !strings.Contains(err.Error(), "read hook input") {
-				t.Errorf("error should mention read hook input, got %v", err)
+			// runAgentHook gracefully degrades on ReadInput failure:
+			// warn to stderr + emit default output + exit 0 (no error returned).
+			// See internal/cli/hook.go runAgentHook "Same graceful degradation as runHookEvent".
+			if err != nil {
+				t.Errorf("should gracefully degrade on ReadInput failure (default emit + exit 0), got err: %v", err)
 			}
 			return
 		}
@@ -472,7 +472,7 @@ func TestRunAgentHook_PreTransformationAction(t *testing.T) {
 	for _, cmd := range hookCmd.Commands() {
 		if cmd.Name() == "agent" {
 			cmd.SetContext(context.Background())
-			err := cmd.RunE(cmd, []string{"ddd-pre-transformation"})
+			err := cmd.RunE(cmd, []string{"cycle-pre-transformation"})
 			if err != nil {
 				t.Fatalf("runAgentHook error: %v", err)
 			}
@@ -667,54 +667,6 @@ func TestRunPrePush_DisabledByDefault(t *testing.T) {
 	output := buf.String()
 	if output != "" {
 		t.Errorf("runPrePush should produce no output when disabled, got %q", output)
-	}
-}
-
-// --- PrintWelcomeMessage tests ---
-
-func TestPrintWelcomeMessage_OutputFormat(t *testing.T) {
-	output, err := captureStdout(func() {
-		PrintWelcomeMessage()
-	})
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	if len(output) == 0 {
-		t.Error("PrintWelcomeMessage should produce output")
-	}
-
-	expectedStrings := []string{
-		"Welcome",
-		"MoAI-ADK",
-		"Initialization",
-		"Ctrl+C",
-	}
-
-	for _, expected := range expectedStrings {
-		if !strings.Contains(output, expected) {
-			t.Errorf("PrintWelcomeMessage output should contain %q, got:\n%s", expected, output)
-		}
-	}
-}
-
-func TestPrintWelcomeMessage_MultipleCallsConsistent(t *testing.T) {
-	output1, err := captureStdout(func() {
-		PrintWelcomeMessage()
-	})
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	output2, err := captureStdout(func() {
-		PrintWelcomeMessage()
-	})
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	if output1 != output2 {
-		t.Error("PrintWelcomeMessage should produce consistent output across calls")
 	}
 }
 

@@ -86,6 +86,13 @@ type leakClass struct {
 	// template tree would flag dozens of legitimately-scoped agent/rule
 	// references and make the GREEN state unreachable.
 	skillBodyScoped bool
+	// skillMoaiScoped is a narrower sibling of skillBodyScoped: it restricts
+	// the class to files under skillMoaiPrefix (".claude/skills/moai/") only,
+	// excluding every sibling skill package. See skillMoaiPrefix doc comment
+	// for the false-positive rationale (SPEC-MOAI-SKILL-DOCTRINE-FIX-001
+	// REQ-SKF-053). A class MUST NOT set both skillBodyScoped and
+	// skillMoaiScoped — skillMoaiScoped alone is the strictly narrower gate.
+	skillMoaiScoped bool
 	// requireHexLetter, when true, restricts a regex match to strings that
 	// contain at least one [a-f] hex letter. The S2 short-sha class sets it
 	// so a purely-decimal run (e.g. the 10485760 byte constant in the hook
@@ -98,6 +105,25 @@ type leakClass struct {
 // identifies a deployed skill body. A leak class with skillBodyScoped=true
 // matches ONLY files whose relForAllowlist path begins with this prefix.
 const skillBodyPrefix = ".claude/skills/"
+
+// skillMoaiPrefix is a NARROWER relative-path prefix than skillBodyPrefix:
+// it identifies files under the single `.claude/skills/moai/` skill package
+// (distinct from sibling packages like `.claude/skills/moai-foundation-core/`
+// or `.claude/skills/moai-harness-learner/` — the trailing slash after "moai"
+// makes the prefix match unambiguous, since "moai-foundation-core" does not
+// begin with "moai/"). A leak class with skillMoaiScoped=true matches ONLY
+// files within this package.
+//
+// SPEC-MOAI-SKILL-DOCTRINE-FIX-001 REQ-SKF-053: this narrower scope is
+// REQUIRED (not merely preferred) for the new REQ/AC-short-code and
+// C-PH-citation classes below, because the broader skillBodyPrefix scope
+// would false-positive on legitimate pedagogical EARS-format examples in
+// `.claude/skills/moai-foundation-core/` (e.g. `SPEC-001-REQ-01` teaching
+// content) and on the policy-preserved `REQ-HRN-FND-0NN` tokens in
+// `.claude/skills/moai-harness-learner/` and `.claude/skills/moai-meta-harness/`
+// — none of which are in scope for this SPEC's 42-file `.claude/skills/moai/`
+// doctrine-fix target.
+const skillMoaiPrefix = ".claude/skills/moai/"
 
 // leakClasses is the ordered list of regression patterns enforced by this
 // test. The order matches CLAUDE.local.md §25.3 C1-C5 for diagnostic
@@ -220,6 +246,62 @@ var leakClasses = []leakClass{
 		name:            "S3-req-ac-token-any-prefix",
 		pattern:         regexp.MustCompile(`\b(REQ|AC)-[A-Z][A-Z0-9]*-[0-9]+\b`),
 		skillBodyScoped: true,
+	},
+	// --- SPEC-MOAI-SKILL-DOCTRINE-FIX-001 REQ-SKF-053 additions ---
+	//
+	// The four classes below extend regex-family coverage to shapes the
+	// existing classes structurally cannot match (2-segment REQ/AC short
+	// codes, the C-PH-NNN citation shape, non-V3R SPEC-ID prefixes, and
+	// 4-segment REQ tokens). The first three of these are skillMoaiScoped
+	// (narrower than skillBodyScoped): they fire ONLY under
+	// ".claude/skills/moai/", NOT the whole ".claude/skills/" tree, because
+	// the broader scope would false-positive on legitimate pedagogical
+	// EARS-format examples in moai-foundation-core and on the
+	// policy-preserved REQ-HRN-FND tokens in moai-harness-learner /
+	// moai-meta-harness (see skillMoaiPrefix doc comment).
+	{
+		// C1c — non-V3R/AGENCY/WORKTREE SPEC-ID prefixes (REQ-SKF-053c). The
+		// whole-tree C1 class above matches only SPEC-(V3R[2-6]|AGENCY|WORKTREE)-;
+		// this sibling enumerates known single-domain-family prefixes that
+		// escape it (e.g. SPEC-DB-SYNC-RELOC-001, SPEC-PROJECT-DB-HINT-001).
+		// Deliberately NARROW (enumerated families, not a generic
+		// `SPEC-[A-Z-]+-[0-9]+` wildcard): a generic form would flag dozens
+		// of legitimate pedagogical placeholder SPEC IDs used throughout
+		// skill bodies (SPEC-BUG-042, SPEC-X-001, SPEC-PAY-001, etc.). New
+		// families require an explicit extension here, matching the C1
+		// enumeration precedent. Whole-tree (no skill scoping), matching C1.
+		name:    "C1c-spec-id-non-v3r-known-families",
+		pattern: regexp.MustCompile(`\bSPEC-(DB-SYNC-RELOC|PROJECT-DB-HINT)-[0-9]{3}\b`),
+	},
+	{
+		// C2b — 2-segment REQ/AC short-code tokens with no domain segment
+		// (REQ-SKF-053a), e.g. REQ-006 / AC-6. Structurally distinct from
+		// the existing C2/S3 classes, which both require an alpha domain
+		// segment between the prefix and the trailing number
+		// ((REQ|AC)-[A-Z][A-Z0-9]*-[0-9]+) — REQ-006 has no such segment, so
+		// digits follow the hyphen directly and neither existing class can
+		// match it. skillMoaiScoped: true (see rationale above).
+		name:            "C2b-req-ac-2segment",
+		pattern:         regexp.MustCompile(`\b(REQ|AC)-[0-9]+\b`),
+		skillMoaiScoped: true,
+	},
+	{
+		// C2c — 4-segment REQ-HRN-FND-NNN shape (REQ-SKF-053d). The existing
+		// single-segment (REQ|AC)-[A-Z][A-Z0-9]*-[0-9]+ classes structurally
+		// cannot match a token with two alpha segments before the trailing
+		// number. Enumerated to the HRN-FND family named by the audit
+		// finding (matching the C1/C1c enumeration precedent) rather than a
+		// generic 2-alpha-segment wildcard.
+		name:            "C2c-req-4segment-hrn-fnd",
+		pattern:         regexp.MustCompile(`\bREQ-HRN-FND-[0-9]{3}\b`),
+		skillMoaiScoped: true,
+	},
+	{
+		// C8 — C-PH-NNN constraint-citation shape (REQ-SKF-053b). No prior
+		// class covers this shape.
+		name:            "C8-constraint-token-c-ph",
+		pattern:         regexp.MustCompile(`\bC-PH-[0-9]{3}\b`),
+		skillMoaiScoped: true,
 	},
 }
 
@@ -409,6 +491,28 @@ var pedagogicalAllowlist = []pedagogicalAllowlistEntry{
 		SpecID:    "SPEC-V3R5-WORKFLOW-OPT-001",
 		Rationale: "Mirror-parity-enforced provenance (spec-workflow.md byte-parity with .claude/ source); internal SPEC provenance retained on both trees",
 	},
+	// --- SPEC-MOAI-SKILL-DOCTRINE-FIX-001 REQ-SKF-053(a) new-class allowlist ---
+	//
+	// The new C2b-req-ac-2segment class (2-segment REQ/AC short codes) flags
+	// a legitimate illustrative task-decomposition table in
+	// workflows/run/phase-execution.md — a generic placeholder example
+	// (task IDs T-001/T-002, file names file1.go/file2.go, requirement
+	// codes REQ-001/REQ-002) demonstrating table format, not an internal
+	// tracking-token leak.
+	{
+		File:      ".claude/skills/moai/workflows/run/phase-execution.md",
+		LineStart: 324,
+		LineEnd:   324,
+		SpecID:    "REQ-001",
+		Rationale: "Generic placeholder requirement code in an illustrative task-decomposition table example (format demonstration, not a tracked internal REQ)",
+	},
+	{
+		File:      ".claude/skills/moai/workflows/run/phase-execution.md",
+		LineStart: 325,
+		LineEnd:   325,
+		SpecID:    "REQ-002",
+		Rationale: "Generic placeholder requirement code in an illustrative task-decomposition table example (format demonstration, not a tracked internal REQ)",
+	},
 }
 
 // isPedagogicallyAllowed returns true when the (relPath, matched) pair
@@ -487,6 +591,12 @@ func collectLeakViolations(displayPath, relForAllowlist, text string, classes []
 		// a skillBodyScoped class applies ONLY to files under ".claude/skills/"
 		// — skip it for agents/rules/hooks/config (EXCL-SBN-002).
 		if class.skillBodyScoped && !strings.HasPrefix(relForAllowlist, skillBodyPrefix) {
+			continue
+		}
+		// Narrower skill-body scope gate (SPEC-MOAI-SKILL-DOCTRINE-FIX-001
+		// REQ-SKF-053): a skillMoaiScoped class applies ONLY to files under
+		// ".claude/skills/moai/" — skip it for every other skill package.
+		if class.skillMoaiScoped && !strings.HasPrefix(relForAllowlist, skillMoaiPrefix) {
 			continue
 		}
 		matches := class.pattern.FindAllString(text, -1)
@@ -867,5 +977,158 @@ func TestC7PackageRestriction(t *testing.T) {
 		if !c7.MatchString(real) {
 			t.Errorf("AC-SBN-020(a): C7 regex must match real restricted-package path %q", real)
 		}
+	}
+}
+
+// TestReqSkf053NewLeakClassesDetectShapes enforces REQ-SKF-053 end-to-end via
+// collectLeakViolations (not just regexp.MatchString): each of the 4 shapes
+// the audit found the pre-existing regex families structurally missed MUST
+// be flagged when planted in a file under the appropriate scope, and MUST
+// NOT be flagged when the same literal appears outside that scope (proving
+// the skillMoaiScoped gate, not just the raw pattern, is exercised).
+//
+// SPEC-MOAI-SKILL-DOCTRINE-FIX-001 REQ-SKF-053 (a)-(d).
+func TestReqSkf053NewLeakClassesDetectShapes(t *testing.T) {
+	t.Parallel()
+
+	cases := []struct {
+		name         string // sub-test label
+		class        string // expected leakClass name that must fire
+		text         string // synthetic content containing the shape
+		inScopePath  string // relForAllowlist path where the class IS scoped to fire
+		outScopePath string // relForAllowlist path where a skillMoaiScoped class must NOT fire (empty = whole-tree class, skip this check)
+	}{
+		{
+			name:         "2-segment REQ short code",
+			class:        "C2b-req-ac-2segment",
+			text:         "the fix addresses REQ-006 in this milestone",
+			inScopePath:  ".claude/skills/moai/workflows/example.md",
+			outScopePath: ".claude/skills/moai-foundation-core/modules/example.md",
+		},
+		{
+			name:         "2-segment AC short code",
+			class:        "C2b-req-ac-2segment",
+			text:         "see AC-6 for the acceptance criterion",
+			inScopePath:  ".claude/skills/moai/workflows/example.md",
+			outScopePath: ".claude/skills/moai-foundation-core/modules/example.md",
+		},
+		{
+			name:         "C-PH-NNN constraint citation",
+			class:        "C8-constraint-token-c-ph",
+			text:         "bounded by constraint C-PH-003 per the plan",
+			inScopePath:  ".claude/skills/moai/workflows/example.md",
+			outScopePath: ".claude/skills/moai-foundation-core/modules/example.md",
+		},
+		{
+			name:         "4-segment REQ-HRN-FND token",
+			class:        "C2c-req-4segment-hrn-fnd",
+			text:         "preserved verbatim under REQ-HRN-FND-004",
+			inScopePath:  ".claude/skills/moai/workflows/example.md",
+			outScopePath: ".claude/skills/moai-harness-learner/SKILL.md",
+		},
+		{
+			name:        "non-V3R SPEC-ID known family (whole-tree class)",
+			class:       "C1c-spec-id-non-v3r-known-families",
+			text:        "migrated per SPEC-DB-SYNC-RELOC-001 and SPEC-PROJECT-DB-HINT-001",
+			inScopePath: ".claude/agents/moai/example.md",
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			inViolations := collectLeakViolations(tc.inScopePath, tc.inScopePath, tc.text, leakClasses)
+			if !anyViolationHasClass(inViolations, tc.class) {
+				t.Errorf("expected class %q to fire for text %q at path %q, got violations: %v",
+					tc.class, tc.text, tc.inScopePath, inViolations)
+			}
+
+			if tc.outScopePath == "" {
+				return
+			}
+			outViolations := collectLeakViolations(tc.outScopePath, tc.outScopePath, tc.text, leakClasses)
+			if anyViolationHasClass(outViolations, tc.class) {
+				t.Errorf("expected class %q NOT to fire outside its scope for text %q at path %q, got violations: %v",
+					tc.class, tc.text, tc.outScopePath, outViolations)
+			}
+		})
+	}
+}
+
+// anyViolationHasClass reports whether any violation string produced by
+// collectLeakViolations carries the given class name (violation strings are
+// formatted as "path | class=<name> | match=<substring>").
+func anyViolationHasClass(violations []string, class string) bool {
+	needle := "class=" + class + " "
+	for _, v := range violations {
+		if strings.Contains(v, needle) {
+			return true
+		}
+	}
+	return false
+}
+
+// TestTemplateLearnedWorkflowBlockNeutral pins the MOAI:LEARNED-WORKFLOW managed
+// block shipped in templates/CLAUDE.md (the Template-First empty marker). The
+// block ships to every user project on `moai init` / `moai update`, so it MUST:
+//
+//   (a) be PRESENT — the heading + start/end markers exist in the template;
+//   (b) ship EMPTY — zero bullets between the markers (a populated block in the
+//       template would leak internal learning data — the AP-HEV2-006 anti-pattern);
+//   (c) be NEUTRAL — no forbidden-class content (internal SPEC IDs / REQ-AC
+//       tokens / internal dates / short-shas) in the block region.
+//
+// This EXTENDS the leak-scan coverage for the new block: the whole-tree
+// TestTemplateNoInternalContentLeak already walks templates/CLAUDE.md, but this
+// test pins the new managed block explicitly with a targeted default+strict
+// forbidden-class scan over the block region, plus presence + emptiness guards.
+// A future edit that plants an internal token (or a bullet) in the template
+// block fails here.
+func TestTemplateLearnedWorkflowBlockNeutral(t *testing.T) {
+	t.Parallel()
+
+	const (
+		heading     = "## MOAI:LEARNED-WORKFLOW"
+		startMarker = "<!-- moai:learned-start -->"
+		endMarker   = "<!-- moai:learned-end -->"
+	)
+
+	rel := filepath.Join(templatesRoot, "CLAUDE.md")
+	data, err := os.ReadFile(rel)
+	if err != nil {
+		t.Fatalf("read %s: %v", rel, err)
+	}
+	content := string(data)
+
+	// (a) Presence: heading + start + end markers all ship in the template.
+	for _, marker := range []string{heading, startMarker, endMarker} {
+		if !strings.Contains(content, marker) {
+			t.Errorf("templates/CLAUDE.md missing MOAI:LEARNED-WORKFLOW marker %q", marker)
+		}
+	}
+
+	headingIdx := strings.Index(content, heading)
+	start := strings.Index(content, startMarker)
+	end := strings.Index(content, endMarker)
+	if headingIdx < 0 || start < 0 || end < 0 || end < start {
+		t.Fatalf("MOAI:LEARNED-WORKFLOW markers malformed (heading=%d start=%d end=%d)",
+			headingIdx, start, end)
+	}
+
+	// (b) Emptiness: the block ships with ZERO bullets — the body strictly
+	// between the start and end markers is whitespace-only.
+	body := content[start+len(startMarker) : end]
+	if strings.TrimSpace(body) != "" {
+		t.Errorf("MOAI:LEARNED-WORKFLOW template block must ship EMPTY (zero bullets); body=%q", body)
+	}
+
+	// (c) Neutrality: the block region (heading through end marker) carries no
+	// forbidden-class content across the default + strict tiers. An empty block
+	// trivially passes; a planted internal SPEC ID / REQ token / date / SHA fails.
+	region := content[headingIdx : end+len(endMarker)]
+	classes := make([]leakClass, 0, len(leakClasses)+len(strictLeakClasses))
+	classes = append(classes, leakClasses...)
+	classes = append(classes, strictLeakClasses...)
+	if v := collectLeakViolations(rel, "CLAUDE.md", region, classes); len(v) != 0 {
+		t.Errorf("MOAI:LEARNED-WORKFLOW template block leaked forbidden content: %v", v)
 	}
 }

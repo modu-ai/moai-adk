@@ -1,22 +1,22 @@
 ---
-description: "Plan Phase 1.5/2/2.3/2.5/3/3.5/3.6/DP2/DP3/DP3.5 — Pre-creation validation, SPEC document creation, independent review, GitHub Issue creation, Git environment setup, MX tag planning, quality gate, and execution mode selection"
+description: "Plan Phase 9/9.1/10/11/12/13/14/15/DP2/DP3/DP3.5 — Pre-creation validation, SPEC document creation, independent review, GitHub Issue creation, Git environment setup, MX tag planning, quality gate, and execution mode selection"
 user-invocable: false
 metadata:
   parent: moai-workflow-plan
-  phase: "Phase 1.5 through Decision Point 3.5: SPEC Assembly, Review, and Environment Setup"
+  phase: "Phase 9 through Decision Point 3.5: SPEC Assembly, Review, and Environment Setup"
 ---
 
 <!-- TRACE PROBE: workflow-split baseline trace mechanism -->
 <!-- Activated by MOAI_TRACE_PHASES=1 environment variable -->
 
-### Phase 1.5: Pre-Creation Validation Gate
+### Phase 9: Pre-Creation Validation Gate
 
 Purpose: Prevent common SPEC creation errors before file generation.
 
 Step 1 - Document Type Classification:
 - Detect keywords to classify as SPEC, Report, or Documentation
 - Reports route to .moai/reports/, Documentation to .moai/docs/
-- Only SPEC-type content proceeds to Phase 2
+- Only SPEC-type content proceeds to Phase 10
 
 Step 2 - SPEC ID Validation (all checks must pass):
 - ID Format: Must match SPEC-{DOMAIN}-{NUMBER} pattern (e.g., SPEC-AUTH-001)
@@ -26,11 +26,13 @@ Step 2 - SPEC ID Validation (all checks must pass):
 
 Composite domain rules: Maximum 2 domains recommended, maximum 3 allowed.
 
-### Phase 1.6: Tier Judgment Socratic Question (LEAN Workflow)
+### Phase 9: Tier Judgment Socratic Question (LEAN Workflow)
 
 [ZONE:Evolvable] [HARD] Before artifact creation begins, the orchestrator MUST present a Tier judgment AskUserQuestion to classify the SPEC's complexity tier (S, M, or L). This drives the artifact set, the manager-develop delegation prompt template applicability, and the plan-auditor PASS threshold. Origin: the LEAN-tier workflow policy.
 
 Skip condition: when the user explicitly provided the tier in the original request (e.g., "Tier S", "small SPEC, Tier S"), the orchestrator MAY skip the question and record the user-provided tier directly.
+
+Preload: `ToolSearch(query: "select:AskUserQuestion")`.
 
 Tier judgment AskUserQuestion (Socratic, in conversation_language):
 
@@ -50,19 +52,19 @@ Persistence: the chosen tier is written to `spec.md` frontmatter as `tier: S | M
 
 Tier-conditional artifact set (driven by user response):
 
-- **Tier S** → Phase 2 creates only `spec.md` + `plan.md`; AC is inline in `spec.md §3`. No `acceptance.md`, no `design.md`, no `research.md`. Phase 2.3 plan-auditor uses 0.75 PASS threshold.
-- **Tier M** → Phase 2 creates `spec.md` + `plan.md` + `acceptance.md`. Phase 2.3 plan-auditor uses 0.80 PASS threshold.
-- **Tier L** → Phase 2 creates full 5-artifact set (spec.md + plan.md + acceptance.md + design.md + research.md). Phase 2.3 plan-auditor uses 0.85 PASS threshold (preserves pre-LEAN strict behavior).
+- **Tier S** → Phase 10 creates only `spec.md` + `plan.md`; AC is inline in `spec.md §3`. No `acceptance.md`, no `design.md`, no `research.md`. Phase 11 plan-auditor uses 0.75 PASS threshold.
+- **Tier M** → Phase 10 creates `spec.md` + `plan.md` + `acceptance.md`. Phase 11 plan-auditor uses 0.80 PASS threshold.
+- **Tier L** → Phase 10 creates full 5-artifact set (spec.md + plan.md + acceptance.md + design.md + research.md). Phase 11 plan-auditor uses 0.85 PASS threshold (preserves pre-LEAN strict behavior).
 
 Anti-pattern: classifying a 1000+ LOC SPEC as Tier S to skip overhead. Mitigation: plan-auditor first-pass score regression triggers tier-up suggestion to the user.
 
 Reference: `.claude/rules/moai/workflow/spec-workflow.md` § SPEC Complexity Tier (S/M/L).
 
-### Phase 2: SPEC Document Creation
+### Phase 10: SPEC Document Creation
 
 Agent: manager-spec subagent
 
-Input: Approved plan from Phase 1B, validated SPEC ID from Phase 1.5.
+Input: Approved plan from Phase 8, validated SPEC ID from Phase 9.
 
 File generation (all three files created simultaneously):
 
@@ -104,7 +106,7 @@ Pre-write gate behavior:
 1. manager-spec generates frontmatter draft in memory.
 2. manager-spec self-audits against the 12-field checklist above.
 3. If any required field is missing OR any rejected alias appears: manager-spec HALTS, reports the schema violation, and re-generates. It does NOT call Write.
-4. Phase 2.3 plan-auditor independently re-verifies the schema on the written file as a second line of defense.
+4. Phase 11 plan-auditor independently re-verifies the schema on the written file as a second line of defense.
 
 - .moai/specs/SPEC-{ID}/plan.md
   - Implementation plan with task decomposition
@@ -151,19 +153,21 @@ Quality constraints:
 - Technical terms and function names remain in English
 - Exclusions section MUST contain at least 1 entry
 
-### Phase 2.3: Independent SPEC Review (Conditional)
+### Phase 11: Independent SPEC Review (Conditional)
 
 Purpose: Prevent confirmation bias by running an adversarial audit of the just-created SPEC before user approval and GitHub Issue creation. The reviewer sees only the final spec.md — not the author's reasoning — and is prompted to find defects, not rationalize acceptance.
 
 Execution conditions:
-- `harness.yaml` `levels.{current_level}.plan_audit.enabled` is `true`
-- Current harness level is `standard` or `thorough` (default: enabled)
-- SPEC files were successfully created in Phase 2
+- `harness.yaml` `levels.{current_level}.plan_audit.enabled` is `true` — this holds at ALL three harness levels (`minimal`, `standard`, `thorough`); `plan_audit_global.always_enabled: true` additionally forces this phase on regardless of level
+- SPEC files were successfully created in Phase 10
 
 Skip conditions:
-- Harness level is `minimal` (fast iteration path, plan_audit.enabled: false)
 - `--no-review` flag is present in $ARGUMENTS
-- spec.md was not created (Phase 2 failed)
+- spec.md was not created (Phase 10 failed)
+
+Harness-level intensity (plan-audit ALWAYS runs — the level changes rigor, not whether it runs):
+- `minimal`: lightweight, non-blocking 1-iteration audit (`max_iterations: 1`, `require_must_pass: false`) — a FAIL verdict is logged but does not block Phase 12
+- `standard`/`thorough`: full retry loop up to 3 iterations, blocking (`max_iterations: 3`, `require_must_pass: true`)
 
 #### Step 2.3.1: Invoke plan-auditor
 
@@ -181,9 +185,9 @@ Extract the verdict line: `Verdict: PASS | FAIL`
 
 #### Step 2.3.3: PASS Path
 
-If verdict is PASS: proceed directly to Phase 2.5 (GitHub Issue Creation).
+If verdict is PASS: proceed directly to Phase 12 (GitHub Issue Creation).
 
-Log: "SPEC review passed (iteration 1). Proceeding to Phase 2.5."
+Log: "SPEC review passed (iteration 1). Proceeding to Phase 12."
 
 #### Step 2.3.4: FAIL Path — Retry Loop (max 3 iterations)
 
@@ -201,24 +205,25 @@ Iteration tracking: Display "SPEC review iteration {N}/3" after each verdict.
 
 #### Step 2.3.5: Escalation after 3 FAIL Iterations
 
-If all three iterations result in FAIL, do NOT proceed to Phase 2.5 automatically.
+If all three iterations result in FAIL, do NOT proceed to Phase 12 automatically.
 
 Present the full defect history to the user:
 - Show `.moai/reports/plan-audit/{SPEC-ID}-review-1.md` through `-review-3.md`
 - Summarize blocking defects that persisted across all iterations
+- Preload: `ToolSearch(query: "select:AskUserQuestion")`
 - Use AskUserQuestion with options:
-  - Force-accept SPEC with known defects (proceed to Phase 2.5): "Accept SPEC with known defects — I will fix them manually before /moai run"
+  - Force-accept SPEC with known defects (proceed to Phase 12): "Accept SPEC with known defects — I will fix them manually before /moai run"
   - Request manual SPEC revision: "I will manually edit the SPEC — re-run review after my edits"
   - Abort plan workflow: "Abort — start over with a clearer feature description"
 
 Harness configuration reference (harness.yaml):
-- `minimal`: plan_audit.enabled: false (skip this entire phase)
+- `minimal`: plan_audit.enabled: true, max_iterations: 1, require_must_pass: false (lightweight, non-blocking 1-iteration audit — NOT skipped; `plan_audit_global.always_enabled: true` guarantees this phase always runs)
 - `standard`: plan_audit.enabled: true, max_iterations: 3, require_must_pass: true
 - `thorough`: plan_audit.enabled: true, max_iterations: 3, require_must_pass: true, cross_validate_with_evaluator_active: true
 
 For `thorough` harness with `cross_validate_with_evaluator_active: true`: after plan-auditor PASS, additionally invoke sync-auditor in SPEC-review mode to cross-validate must-pass criteria. If sync-auditor disagrees with plan-auditor's PASS, treat as FAIL and trigger one additional iteration.
 
-### Phase 2.5: GitHub Issue Creation (Conditional, opt-in)
+### Phase 12: GitHub Issue Creation (Conditional, opt-in)
 
 Purpose: Create a GitHub Issue linked to the SPEC document for bidirectional traceability between planning artifacts and issue tracker.
 
@@ -244,7 +249,7 @@ Create a GitHub Issue from SPEC metadata (only executed when `--issue` flag is s
 
 ```bash
 # Pre-check: this block runs only when --issue flag is present.
-# If --issue is absent, Phase 2.5 is silently skipped — no gh issue create occurs.
+# If --issue is absent, Phase 12 is silently skipped — no gh issue create occurs.
 gh issue create \
   --title "[SPEC-{ID}] {SPEC title}" \
   --body "$(cat <<'EOF'
@@ -288,9 +293,9 @@ The SPEC ↔ Issue link enables:
 - run.md Phase 3 uses `issue_number` to include `Fixes #{N}` in commits/PRs
 - sync.md leverages `Fixes #{N}` in PR for automatic Issue closure on merge
 
-### Phase 3: Git Environment Setup (Conditional)
+### Phase 13: Git Environment Setup (Conditional)
 
-Execution conditions: Phase 2 completed successfully AND one of the following:
+Execution conditions: Phase 10 completed successfully AND one of the following:
 - --worktree flag provided
 - --branch flag provided or user chose branch creation
 - Configuration permits branch creation (git_strategy settings)
@@ -301,13 +306,13 @@ Skipped when: develop_direct workflow, no flags and user chooses "Use current br
 
 Before evaluating any of the paths below (Worktree / Branch / Current Branch), the orchestrator MUST read `team.branch_creation.auto_enabled` from `.moai/config/sections/git-strategy.yaml`.
 
-- When `auto_enabled == false`: SKIP branch creation entirely. Cwd remains on the current branch (typically `main` — the default for Step 1 per SPEC Phase Discipline). SPEC files are committed to the current branch via the standard commit pipeline. Phase 3.5 mode-selection display MUST surface "Late-branch (main commit + late switch)" as the active mode to communicate the deferred-branch state to the user. Phase 3.0 BODP Gate STILL runs (with EntryPoint = `EntryPlanLateBranch`) — Late-branch does NOT bypass BODP, it only defers branch creation to Phase C (manual `git switch -c feat/SPEC-*` at PR time). Per the late-branch opt-in policy, no automated `git push origin main` is performed during this phase even if `team.automation.auto_push == true`.
+- When `auto_enabled == false`: SKIP branch creation entirely. Cwd remains on the current branch (typically `main` — the default for Step 1 per SPEC Phase Discipline). SPEC files are committed to the current branch via the standard commit pipeline. Decision Point 3.5 mode-selection display MUST surface "Late-branch (main commit + late switch)" as the active mode to communicate the deferred-branch state to the user. Phase 13 BODP Gate STILL runs (with EntryPoint = `EntryPlanLateBranch`) — Late-branch does NOT bypass BODP, it only defers branch creation to Phase C (manual `git switch -c feat/SPEC-*` at PR time). Per the late-branch opt-in policy, no automated `git push origin main` is performed during this phase even if `team.automation.auto_push == true`.
 
 - When `auto_enabled == true`: continue to the Worktree/Branch/Current Branch path evaluation below (existing behavior, unchanged).
 
 Reference: see `.claude/agents/moai/manager-git.md` § Late-Branch Invocation Pattern for the 4-phase procedure (A→D) the user follows after this skill defers branch creation.
 
-#### Phase 3.0: BODP Gate (공통)
+#### Phase 13: BODP Gate (공통)
 
 Both Worktree Path and Branch Path execute this gate immediately before delegating worktree/branch creation. Source: the CI-autonomy policy W7-T02.
 
@@ -334,7 +339,7 @@ Out of Scope (BODP Gate):
 #### Worktree Path (--worktree flag)
 
 Prerequisite: SPEC files MUST be committed before worktree creation.
-- Run **Phase 3.0: BODP Gate** above (EntryPoint = `EntryPlanWorktree`).
+- Run **Phase 13: BODP Gate** above (EntryPoint = `EntryPlanWorktree`).
 - Stage SPEC files: git add .moai/specs/SPEC-{ID}/
 - Create commit: feat(spec): Add SPEC-{ID} - {title}
 - Create worktree: `moai worktree new SPEC-{ID} --base <chosenBase>` (or `--from-current` when the user chose to continue on the current HEAD).
@@ -372,19 +377,19 @@ See `.claude/rules/moai/workflow/session-handoff.md` "Worktree-Anchored Resume P
 #### Branch Path (--branch flag or user choice)
 
 Agent: manager-git subagent
-- Run **Phase 3.0: BODP Gate** above (EntryPoint = `EntryPlanBranch`).
+- Run **Phase 13: BODP Gate** above (EntryPoint = `EntryPlanBranch`).
 - Delegate to manager-git with `base=<chosenBase>` derived from the gate answer.
 - Create branch: feature/SPEC-{ID}-{description} from `<chosenBase>`.
 - Set tracking upstream if remote exists.
 - Switch to new branch.
-- Team mode: Create draft PR via manager-git subagent.
+- GitStrategy team profile (draft-PR enabled): Create draft PR via manager-git subagent.
 
 #### Current Branch Path (no flag or user choice)
 
 - No branch creation, no manager-git invocation
 - SPEC files remain on current branch
 
-### Phase 3.5: MX Tag Planning [MANDATORY]
+### Phase 14: MX Tag Planning [MANDATORY]
 
 Purpose: Identify code locations that will need @MX annotations during implementation. This information is passed to run workflow agents as context constraints.
 
@@ -399,7 +404,7 @@ Tasks:
 - Document MX tag strategy in `plan.md`
 - Output: `mx_plan` section in SPEC document with annotation targets and priorities
 
-### Phase 3.6: SPEC Quality Gate
+### Phase 15: SPEC Quality Gate
 
 <!-- moai:evolvable-start id="gate-plan-2" -->
 ### HUMAN GATE: SPEC Quality Validation
@@ -425,6 +430,8 @@ Gate decision:
 - **WARNING**: Minor gaps found (e.g., missing acceptance criteria for edge cases). Present findings and offer fix or continue.
 - **FAIL**: Critical gaps (e.g., no acceptance criteria, security-sensitive scope without security considerations). Must fix before proceeding.
 
+Preload: `ToolSearch(query: "select:AskUserQuestion")`.
+
 Tool: AskUserQuestion (when WARNING or FAIL)
 Options:
 - Fix SPEC issues (Recommended): Return to SPEC editing with specific gaps highlighted
@@ -433,21 +440,25 @@ Options:
 
 ### Decision Point 2: Development Environment Selection
 
+Preload: `ToolSearch(query: "select:AskUserQuestion")`.
+
 Tool: AskUserQuestion (when prompt_always config is true and auto_branch is true)
 
 Options:
-- Create Worktree (recommended for parallel SPEC development)
-- Create Branch (traditional workflow)
+- Create Worktree (Recommended): recommended for parallel SPEC development
+- Create Branch: traditional workflow
 - Use current branch
 
 ### Decision Point 3: Next Action Selection
 
+Preload: `ToolSearch(query: "select:AskUserQuestion")`.
+
 Tool: AskUserQuestion (after SPEC creation completes)
 
 Options:
-- Start Implementation (execute /moai run SPEC-{ID})
+- Start Implementation (Recommended): execute /moai run SPEC-{ID}
 - Modify Plan
-- Add New Feature (create additional SPEC)
+- Add New Feature: create additional SPEC
 
 ### Decision Point 3.5: Execution Mode Selection Gate
 
@@ -466,17 +477,17 @@ Check `$TMUX` environment variable via Bash: `test -n "$TMUX" && echo "tmux" || 
 
 **Step 3: Present options based on detection**
 
+Preload: `ToolSearch(query: "select:AskUserQuestion")`.
+
 When tmux IS available: AskUserQuestion with 3 options (descriptions adapt to active_mode):
 - Option 1 (Recommended): Worktree + {active_mode}
   - CC: "Create MoAI worktree with tmux session. All agents use Claude. Highest quality."
   - GLM: "Create MoAI worktree with tmux session. All agents use GLM. Cost optimized."
   - CG: "Create MoAI worktree with tmux session. Leader=Claude, Workers=GLM. Balanced quality-cost."
-- Option 2: Team Mode (in-process): Use Agent Teams for parallel implementation within current session. Best for multi-domain features.
-- Option 3: Sub-agent Mode (sequential): Use sequential sub-agents. Best for simple, single-domain tasks.
+- Option 2: Sub-agent Mode (sequential): Use sequential sub-agents. Best for simple, single-domain tasks. (Agent Teams in-process mode retired.)
 
-When tmux is NOT available: AskUserQuestion with 2 options:
-- Option 1 (Recommended): Sub-agent Mode: Use sequential sub-agents for implementation. Tmux is not available for session isolation.
-- Option 2: Team Mode (in-process): Use Agent Teams for parallel implementation within current session.
+When tmux is NOT available: AskUserQuestion with 1 option:
+- Option 1 (Recommended): Sub-agent Mode: Use sequential sub-agents for implementation. Tmux is not available for session isolation. (Agent Teams in-process mode retired.)
 
 **Step 4: Execute selected mode**
 - **Worktree mode**: Execute `moai worktree new SPEC-{ID} --tmux` to create worktree with tmux session. The tmux session will:
@@ -484,7 +495,6 @@ When tmux is NOT available: AskUserQuestion with 2 options:
   - GLM mode: Create session, inject GLM env, cd to worktree, run `/moai run SPEC-{ID}`
   - CG mode: Create session, inject GLM env to session, clear GLM from settings.local.json, cd to worktree, run `/moai run SPEC-{ID}`
   - Display: "Implementation started in tmux session: moai-{ProjectName}-{SPEC-ID}"
-- **Team mode**: Proceed to `/moai run SPEC-{ID} --team`
 - **Sub-agent mode**: Proceed to `/moai run SPEC-{ID} --solo`
 
 **Step 5: Gate result passing**
@@ -498,17 +508,17 @@ When tmux is NOT available: AskUserQuestion with 2 options:
 
 All of the following must be verified:
 
-- Phase 1: manager-spec analyzed project and proposed SPEC candidates
+- Phase 8: manager-spec analyzed project and proposed SPEC candidates
 - User approval obtained via AskUserQuestion before SPEC creation
-- Phase 2: All SPEC files created (spec.md, plan.md, acceptance.md, spec-compact.md)
+- Phase 10: All SPEC files created (spec.md, plan.md, acceptance.md, spec-compact.md)
 - Directory naming follows .moai/specs/SPEC-{ID}/ format
 - YAML frontmatter contains all 8 required fields (including issue_number)
 - GEARS structure is complete (EARS legacy form accepted for pre-v3 SPECs until 2026-11-22)
 - Exclusions section present with at least 1 entry
 - Delta markers applied for brownfield requirements (if applicable)
 - spec-compact.md auto-generated with requirements + acceptance criteria only
-- Phase 2.5: GitHub Issue created and linked (unless --no-issue)
-- Phase 3: Appropriate git action taken based on flags and user choice
+- Phase 12: GitHub Issue created and linked (only when `--issue` opt-in flag is set; default skips Issue creation)
+- Phase 13: Appropriate git action taken based on flags and user choice
 - If --worktree: SPEC committed before worktree creation
 - Next steps presented to user
 - **Audit-ready signal**: Before transitioning to `/moai run`, append to `.moai/specs/SPEC-{ID}/progress.md`:
@@ -517,7 +527,7 @@ All of the following must be verified:
   - plan_status: audit-ready
   ```
   This signal indicates plan artifacts (spec.md, plan.md, acceptance.md, tasks.md) are finalized
-  and ready for Plan Audit Gate validation at `/moai run` Phase 0.5.
+  and ready for Plan Audit Gate validation at `/moai run` Phase 1.
 
 ---
 
@@ -526,12 +536,12 @@ All of the following must be verified:
 ### Normal Flow
 **Prompt**: "/moai plan JWT authentication with refresh token rotation"
 **Expected Result**:
-- Phase 1A: Explore discovers existing auth files if any
-- Phase 1B: manager-spec designs GEARS-notation requirements for JWT auth (canonical notation; EARS legacy form for pre-v3 SPECs only)
+- Phase 2: Explore discovers existing auth files if any
+- Phase 8: manager-spec designs GEARS-notation requirements for JWT auth (canonical notation; EARS legacy form for pre-v3 SPECs only)
 - Annotation cycle: 1-3 iterations refining requirements
-- Phase 2: SPEC-AUTH-001 created with spec.md, plan.md, acceptance.md
-- Phase 2.5: GitHub Issue created and linked to SPEC
-- Phase 3: Feature branch feat/SPEC-AUTH-001-jwt-auth created (if --branch)
+- Phase 10: SPEC-AUTH-001 created with spec.md, plan.md, acceptance.md
+- Phase 12: GitHub Issue created and linked to SPEC
+- Phase 13: Feature branch feat/SPEC-AUTH-001-jwt-auth created (if --branch)
 
 ### Existing Assets Flow
 **Prompt**: "/moai plan add payment gateway" (existing e-commerce codebase)

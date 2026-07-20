@@ -6,6 +6,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/modu-ai/moai-adk/internal/cli/uikit"
 )
 
 // updateDoctorGolden controls golden snapshot regeneration. Set via UPDATE_GOLDEN=1.
@@ -39,19 +41,23 @@ func checkDoctorGolden(t *testing.T, name, got string) {
 	}
 }
 
-// captureDoctorCmd executes doctorCmd and returns stdout as a string.
-func captureDoctorCmd(t *testing.T) string {
+// captureDoctorCmd executes doctorCmd and returns (stdout, stderr) as
+// separate strings. Split capture per SPEC-CLI-TUX-V3-004 M4c: stdout carries
+// the result surface (golden subject), stderr carries the live progress step
+// lines (REQ-TUX4-001 channel discipline) which are asserted separately.
+func captureDoctorCmd(t *testing.T) (string, string) {
 	t.Helper()
-	buf := new(bytes.Buffer)
-	doctorCmd.SetOut(buf)
-	doctorCmd.SetErr(buf)
+	outBuf := new(bytes.Buffer)
+	errBuf := new(bytes.Buffer)
+	doctorCmd.SetOut(outBuf)
+	doctorCmd.SetErr(errBuf)
 	if err := doctorCmd.RunE(doctorCmd, []string{}); err != nil {
 		t.Fatalf("doctorCmd.RunE: %v", err)
 	}
 	// Reset cobra output writers after capture to avoid test pollution.
 	doctorCmd.SetOut(nil)
 	doctorCmd.SetErr(nil)
-	return buf.String()
+	return outBuf.String(), errBuf.String()
 }
 
 // --- DDD PRESERVE: Characterization tests for doctor command output ---
@@ -68,11 +74,11 @@ func captureDoctorCmd(t *testing.T) string {
 //   - Each env combination receives its own golden file for clarity.
 //
 // To regenerate snapshots:
-//   UPDATE_GOLDEN=1 go test ./internal/cli/ -run "TestDoctor_Current" -count=1
+//   UPDATE_GOLDEN=1 go test ./internal/cli/ -run "TestDoctorGolden" -count=1
 
-// TestDoctor_Current_Light captures doctorCmd output with light-theme env.
+// TestDoctorGolden_Light captures doctorCmd output with light-theme env.
 // Characteristics: tui.Section + 19+ tui.CheckLine + tui.Box + tui.Pill summary.
-func TestDoctor_Current_Light(t *testing.T) {
+func TestDoctorGolden_Light(t *testing.T) {
 	t.Setenv("NO_COLOR", "")
 	t.Setenv("MOAI_THEME", "light")
 	t.Setenv("MOAI_GO_VERSION_OVERRIDE", "1.99.99")
@@ -82,16 +88,16 @@ func TestDoctor_Current_Light(t *testing.T) {
 	t.Setenv("MOAI_GOOS_OVERRIDE", "testos")
 	t.Setenv("MOAI_GOARCH_OVERRIDE", "testarch")
 
-	got := captureDoctorCmd(t)
+	got, _ := captureDoctorCmd(t)
 	if len(got) == 0 {
 		t.Fatal("doctorCmd produced no output")
 	}
 	checkDoctorGolden(t, "doctor-light", got)
 }
 
-// TestDoctor_Current_Dark captures doctorCmd output with dark-theme env.
+// TestDoctorGolden_Dark captures doctorCmd output with dark-theme env.
 // Characteristics: applies tui.DarkTheme(); Section headers + CheckLine + Pill summary.
-func TestDoctor_Current_Dark(t *testing.T) {
+func TestDoctorGolden_Dark(t *testing.T) {
 	t.Setenv("NO_COLOR", "")
 	t.Setenv("MOAI_THEME", "dark")
 	t.Setenv("MOAI_GO_VERSION_OVERRIDE", "1.99.99")
@@ -101,16 +107,16 @@ func TestDoctor_Current_Dark(t *testing.T) {
 	t.Setenv("MOAI_GOOS_OVERRIDE", "testos")
 	t.Setenv("MOAI_GOARCH_OVERRIDE", "testarch")
 
-	got := captureDoctorCmd(t)
+	got, _ := captureDoctorCmd(t)
 	if len(got) == 0 {
 		t.Fatal("doctorCmd produced no output")
 	}
 	checkDoctorGolden(t, "doctor-dark", got)
 }
 
-// TestDoctor_NoColor captures doctorCmd output with NO_COLOR=1 (plain text mode).
+// TestDoctorGolden_NoColor captures doctorCmd output with NO_COLOR=1 (plain text mode).
 // Applies tui.MonochromeTheme(): all ANSI colors stripped; Pill degrades to the [label] form.
-func TestDoctor_NoColor(t *testing.T) {
+func TestDoctorGolden_NoColor(t *testing.T) {
 	t.Setenv("NO_COLOR", "1")
 	t.Setenv("MOAI_GO_VERSION_OVERRIDE", "1.99.99")
 	t.Setenv("CLAUDE_CODE_VERSION", "test-claude-99")
@@ -119,9 +125,17 @@ func TestDoctor_NoColor(t *testing.T) {
 	t.Setenv("MOAI_GOOS_OVERRIDE", "testos")
 	t.Setenv("MOAI_GOARCH_OVERRIDE", "testarch")
 
-	got := captureDoctorCmd(t)
+	got, gotErr := captureDoctorCmd(t)
 	if len(got) == 0 {
 		t.Fatal("doctorCmd produced no output")
+	}
+	// REQ-TUX4-003: NO_COLOR output carries zero ANSI escape sequences on
+	// BOTH channels — asserted by the golden test itself, not only by diffing.
+	if strings.Contains(got, "\x1b") {
+		t.Error("NO_COLOR doctor stdout must contain zero ANSI escape sequences")
+	}
+	if strings.Contains(gotErr, "\x1b") {
+		t.Error("NO_COLOR doctor stderr must contain zero ANSI escape sequences")
 	}
 	checkDoctorGolden(t, "doctor-nocolor", got)
 }
@@ -146,7 +160,7 @@ func TestDoctor_GroupsPresent(t *testing.T) {
 	t.Setenv("MOAI_GOOS_OVERRIDE", "testos")
 	t.Setenv("MOAI_GOARCH_OVERRIDE", "testarch")
 
-	got := captureDoctorCmd(t)
+	got, _ := captureDoctorCmd(t)
 	for _, group := range []string{"System", "MoAI-ADK", "Workspace"} {
 		if !strings.Contains(got, group) {
 			t.Errorf("doctor output should contain group %q", group)
@@ -164,12 +178,12 @@ func TestDoctor_GlamourCachePlaceholder(t *testing.T) {
 	t.Setenv("MOAI_GOOS_OVERRIDE", "testos")
 	t.Setenv("MOAI_GOARCH_OVERRIDE", "testarch")
 
-	got := captureDoctorCmd(t)
+	got, _ := captureDoctorCmd(t)
 	if !strings.Contains(got, "Glamour Cache") {
 		t.Errorf("doctor output should contain 'Glamour Cache' D8 placeholder")
 	}
-	if !strings.Contains(got, "glamour 미도입") {
-		t.Errorf("doctor output should contain 'glamour 미도입' placeholder message")
+	if !strings.Contains(got, "glamour not integrated") {
+		t.Errorf("doctor output should contain 'glamour not integrated' placeholder message")
 	}
 }
 
@@ -183,10 +197,10 @@ func TestDoctor_SummaryPillsPresent(t *testing.T) {
 	t.Setenv("MOAI_GOOS_OVERRIDE", "testos")
 	t.Setenv("MOAI_GOARCH_OVERRIDE", "testarch")
 
-	got := captureDoctorCmd(t)
+	got, _ := captureDoctorCmd(t)
 	// At least one of the passed / warning / failed Pills must be present in the output.
-	if !strings.Contains(got, "통과") {
-		t.Errorf("doctor output should contain '통과' pill in summary")
+	if !strings.Contains(got, "Pass") {
+		t.Errorf("doctor output should contain 'Pass' pill in summary")
 	}
 }
 
@@ -200,7 +214,7 @@ func TestDoctor_GoVersionDeterministic(t *testing.T) {
 	t.Setenv("MOAI_GOARCH_OVERRIDE", "testarch")
 	t.Setenv("NO_COLOR", "1")
 
-	got := captureDoctorCmd(t)
+	got, _ := captureDoctorCmd(t)
 	if !strings.Contains(got, "1.99.99") {
 		t.Errorf("doctor output should contain pinned Go version '1.99.99', got:\n%s", got)
 	}
@@ -216,7 +230,7 @@ func TestDoctor_ClaudeVersionDeterministic(t *testing.T) {
 	t.Setenv("MOAI_GOARCH_OVERRIDE", "testarch")
 	t.Setenv("NO_COLOR", "1")
 
-	got := captureDoctorCmd(t)
+	got, _ := captureDoctorCmd(t)
 	if !strings.Contains(got, "test-claude-99") {
 		t.Errorf("doctor output should contain pinned claude version 'test-claude-99', got:\n%s", got)
 	}
@@ -239,13 +253,13 @@ func TestCheckGoRuntime_UsesGoVersionHelper(t *testing.T) {
 // TestCheckStatusToTUI verifies the status mapping is correct.
 func TestCheckStatusToTUI(t *testing.T) {
 	tests := []struct {
-		status CheckStatus
+		status uikit.CheckStatus
 		want   string
 	}{
-		{CheckOK, "ok"},
-		{CheckWarn, "warn"},
-		{CheckFail, "err"},
-		{CheckStatus("unknown"), "info"},
+		{uikit.CheckOK, "ok"},
+		{uikit.CheckWarn, "warn"},
+		{uikit.CheckFail, "err"},
+		{uikit.CheckStatus("unknown"), "info"},
 	}
 	for _, tt := range tests {
 		got := checkStatusToTUI(tt.status)
@@ -281,7 +295,7 @@ func TestNewChecks_Names(t *testing.T) {
 		}
 		// status must be one of the valid values
 		switch c.Status {
-		case CheckOK, CheckWarn, CheckFail:
+		case uikit.CheckOK, uikit.CheckWarn, uikit.CheckFail:
 			// valid
 		default:
 			t.Errorf("check %q returned invalid status %q", tc.name, c.Status)
@@ -289,11 +303,11 @@ func TestNewChecks_Names(t *testing.T) {
 	}
 }
 
-// TestGlamourCacheIsWarn verifies the D8 placeholder returns CheckWarn (not CheckFail).
+// TestGlamourCacheIsWarn verifies the D8 placeholder returns uikit.CheckWarn (not uikit.CheckFail).
 func TestGlamourCacheIsWarn(t *testing.T) {
 	c := checkGlamourCache(false)
-	if c.Status != CheckWarn {
-		t.Errorf("Glamour Cache D8 placeholder should return CheckWarn, got %q", c.Status)
+	if c.Status != uikit.CheckWarn {
+		t.Errorf("Glamour Cache D8 placeholder should return uikit.CheckWarn, got %q", c.Status)
 	}
 }
 
