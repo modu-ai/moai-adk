@@ -51,7 +51,7 @@ Worktree 生成中...
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 次のステップ:
-  1. 新しいターミナルで実行: moai worktree go SPEC-AUTH-001
+  1. 新しいターミナルで実行: cd "$(moai worktree go SPEC-AUTH-001)"
   2. LLM 変更: moai glm
   3. Claude 開始: claude
   4. 開発開始: /moai run SPEC-AUTH-001
@@ -65,10 +65,10 @@ Worktree 生成中...
 計画が終わったので実装は低コストモデルに切り替えます:
 
 ```bash
-# 新しいターミナルを開く
-$ moai worktree go SPEC-AUTH-001
+# 新しいターミナルを開き、Worktree へ cd で移動
+$ cd "$(moai worktree go SPEC-AUTH-001)"
 
-# 新しいターミナルが開き Worktree へ移動
+# cd で Worktree ディレクトリへ移動
 # プロンプトが変わる
 (SPEC-AUTH-001) ~/moai-project/.moai/worktrees/SPEC-AUTH-001
 
@@ -183,15 +183,15 @@ graph TB
     end
 
     subgraph T2["Terminal 2: Implement (GLM)"]
-        I1[moai worktree go AUTH-001<br/>/moai run/]
+        I1["cd $(moai worktree go AUTH-001)<br/>/moai run/"]
     end
 
     subgraph T3["Terminal 3: Implement (GLM)"]
-        I2[moai worktree go LOG-002<br/>/moai run/]
+        I2["cd $(moai worktree go LOG-002)<br/>/moai run/"]
     end
 
     subgraph T4["Terminal 4: Implement (GLM)"]
-        I3[moai worktree go API-003<br/>/moai run/]
+        I3["cd $(moai worktree go API-003)<br/>/moai run/"]
     end
 
     P1 --> I1
@@ -224,7 +224,7 @@ SPEC-API-003   feature/SPEC-API-003   /path/to/SPEC-API-003
 #### Terminal 2: AUTH-001 実装
 
 ```bash
-$ moai worktree go SPEC-AUTH-001
+$ cd "$(moai worktree go SPEC-AUTH-001)"
 (SPEC-AUTH-001) $ moai glm
 (SPEC-AUTH-001) $ claude
 > /moai run SPEC-AUTH-001
@@ -234,7 +234,7 @@ $ moai worktree go SPEC-AUTH-001
 #### Terminal 3: LOG-002 実装
 
 ```bash
-$ moai worktree go SPEC-LOG-002
+$ cd "$(moai worktree go SPEC-LOG-002)"
 (SPEC-LOG-002) $ moai glm
 (SPEC-LOG-002) $ claude
 > /moai run SPEC-LOG-002
@@ -244,7 +244,7 @@ $ moai worktree go SPEC-LOG-002
 #### Terminal 4: API-003 実装
 
 ```bash
-$ moai worktree go SPEC-API-003
+$ cd "$(moai worktree go SPEC-API-003)"
 (SPEC-API-003) $ moai glm
 (SPEC-API-003) $ claude
 > /moai run SPEC-API-003
@@ -316,7 +316,7 @@ cd project
 ✓ SPEC-FE-001 生成
 
 # Worktree で開発
-moai worktree go SPEC-FE-001
+cd "$(moai worktree go SPEC-FE-001)"
 (SPEC-FE-001) $ moai glm
 (SPEC-FE-001) $ claude
 > /moai run SPEC-FE-001
@@ -341,7 +341,7 @@ cd project
 ✓ SPEC-BE-001 生成
 
 # Worktree で開発
-moai worktree go SPEC-BE-001
+cd "$(moai worktree go SPEC-BE-001)"
 (SPEC-BE-001) $ moai glm
 (SPEC-BE-001) $ claude
 > /moai run SPEC-BE-001
@@ -480,12 +480,12 @@ sequenceDiagram
     Git->>Git: SPEC ドキュメントのコミット
     T1->>Dev: Worktree 生成完了
 
-    Dev->>T2: moai worktree go SPEC-FB-001
+    Dev->>T2: cd $(moai worktree go SPEC-FB-001)
     Dev->>T2: moai glm
     T2->>Git: DDD 実装コミット群
     Note over T2: 4f3a2b1, 7c8d9e0
 
-    Dev->>T3: moai worktree go SPEC-FB-001
+    Dev->>T3: cd $(moai worktree go SPEC-FB-001)
     T3->>Git: ドキュメント化コミット
     Note over T3: b5e6f7a
 
@@ -513,11 +513,11 @@ sequenceDiagram
 
 # 2-4 日目: 並列実装
 # Terminal 1: ユーザー管理
-$ moai worktree go SPEC-USER-001 && moai glm
+$ cd "$(moai worktree go SPEC-USER-001)" && moai glm
 # Terminal 2: 決済システム
-$ moai worktree go SPEC-PAY-001 && moai glm
+$ cd "$(moai worktree go SPEC-PAY-001)" && moai glm
 # Terminal 3: 通知システム
-$ moai worktree go SPEC-NOTIF-001 && moai glm
+$ cd "$(moai worktree go SPEC-NOTIF-001)" && moai glm
 
 # 5-6 日目: ドキュメント化およびテスト
 # 各 Worktree で /moai sync を実行
@@ -541,8 +541,8 @@ $ moai worktree done SPEC-NOTIF-001 --delete-branch
 
 ```bash
 # tmux を使ってセッションを管理
-tmux new-session -d -s spec-user 'moai worktree go SPEC-USER-001'
-tmux new-session -d -s spec-pay 'moai worktree go SPEC-PAY-001'
+tmux new-session -d -s spec-user -c "$(moai worktree go SPEC-USER-001)"
+tmux new-session -d -s spec-pay -c "$(moai worktree go SPEC-PAY-001)"
 
 # セッション一覧
 tmux ls
@@ -578,7 +578,7 @@ echo "1. SPEC 計画の生成..."
 > /moai plan "$2" --worktree
 
 echo "2. Worktree 進入..."
-moai worktree go $SPEC_ID
+cd "$(moai worktree go "$SPEC_ID")"
 
 echo "3. LLM 変更..."
 moai glm

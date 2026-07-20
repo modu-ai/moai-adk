@@ -145,15 +145,15 @@ graph TB
     end
 
     subgraph T2["Terminal 2: Implement (GLM)"]
-        I1[moai worktree go AUTH-001<br/>/moai run/]
+        I1["cd $(moai worktree go AUTH-001)<br/>/moai run/"]
     end
 
     subgraph T3["Terminal 3: Implement (GLM)"]
-        I2[moai worktree go LOG-002<br/>/moai run/]
+        I2["cd $(moai worktree go LOG-002)<br/>/moai run/"]
     end
 
     subgraph T4["Terminal 4: Implement (GLM)"]
-        I3[moai worktree go API-003<br/>/moai run/]
+        I3["cd $(moai worktree go API-003)<br/>/moai run/"]
     end
 
     P1 --> I1
@@ -435,12 +435,12 @@ sequenceDiagram
     Git->>Git: 提交 SPEC 文档
     T1->>Dev: Worktree 创建完成
 
-    Dev->>T2: moai worktree go SPEC-FB-001
+    Dev->>T2: cd $(moai worktree go SPEC-FB-001)
     Dev->>T2: moai glm
     T2->>Git: DDD 实现提交
     Note over T2: 4f3a2b1, 7c8d9e0
 
-    Dev->>T3: moai worktree go SPEC-FB-001
+    Dev->>T3: cd $(moai worktree go SPEC-FB-001)
     T3->>Git: 文档化提交
     Note over T3: b5e6f7a
 
@@ -496,8 +496,8 @@ $ moai worktree done SPEC-NOTIF-001 --delete-branch
 
 ```bash
 # 用 tmux 管理会话
-tmux new-session -d -s spec-user 'moai worktree go SPEC-USER-001'
-tmux new-session -d -s spec-pay 'moai worktree go SPEC-PAY-001'
+tmux new-session -d -s spec-user -c "$(moai worktree go SPEC-USER-001)"
+tmux new-session -d -s spec-pay -c "$(moai worktree go SPEC-PAY-001)"
 
 # 会话列表
 tmux ls
@@ -533,7 +533,7 @@ echo "1. 生成 SPEC 计划..."
 > /moai plan "$2" --worktree
 
 echo "2. 进入 Worktree..."
-cd "$(moai worktree go $SPEC_ID)"
+cd "$(moai worktree go "$SPEC_ID")"
 
 echo "3. 更换 LLM..."
 moai glm

@@ -146,15 +146,15 @@ graph TB
     end
 
     subgraph T2["Terminal 2: Implement (GLM)"]
-        I1[moai worktree go AUTH-001<br/>/moai run/]
+        I1["cd $(moai worktree go AUTH-001)<br/>/moai run/"]
     end
 
     subgraph T3["Terminal 3: Implement (GLM)"]
-        I2[moai worktree go LOG-002<br/>/moai run/]
+        I2["cd $(moai worktree go LOG-002)<br/>/moai run/"]
     end
 
     subgraph T4["Terminal 4: Implement (GLM)"]
-        I3[moai worktree go API-003<br/>/moai run/]
+        I3["cd $(moai worktree go API-003)<br/>/moai run/"]
     end
 
     P1 --> I1
@@ -436,12 +436,12 @@ sequenceDiagram
     Git->>Git: SPEC 문서 커밋
     T1->>Dev: Worktree 생성 완료
 
-    Dev->>T2: moai worktree go SPEC-FB-001
+    Dev->>T2: cd $(moai worktree go SPEC-FB-001)
     Dev->>T2: moai glm
     T2->>Git: DDD 구현 커밋들
     Note over T2: 4f3a2b1, 7c8d9e0
 
-    Dev->>T3: moai worktree go SPEC-FB-001
+    Dev->>T3: cd $(moai worktree go SPEC-FB-001)
     T3->>Git: 문서화 커밋
     Note over T3: b5e6f7a
 
@@ -497,8 +497,8 @@ $ moai worktree done SPEC-NOTIF-001 --delete-branch
 
 ```bash
 # tmux 사용하여 세션 관리
-tmux new-session -d -s spec-user 'moai worktree go SPEC-USER-001'
-tmux new-session -d -s spec-pay 'moai worktree go SPEC-PAY-001'
+tmux new-session -d -s spec-user -c "$(moai worktree go SPEC-USER-001)"
+tmux new-session -d -s spec-pay -c "$(moai worktree go SPEC-PAY-001)"
 
 # 세션 목록
 tmux ls
@@ -534,7 +534,7 @@ echo "1. SPEC 계획 생성..."
 > /moai plan "$2" --worktree
 
 echo "2. Worktree 진입..."
-cd "$(moai worktree go $SPEC_ID)"
+cd "$(moai worktree go "$SPEC_ID")"
 
 echo "3. LLM 변경..."
 moai glm

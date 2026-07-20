@@ -58,7 +58,7 @@ flowchart TD
     end
 
     subgraph Phase2["Phase 2: Implement (Terminals 2, 3, 4...)"]
-        B1[moai worktree go SPEC-ID] --> B2[进入 Worktree]
+        B1["cd $(moai worktree go SPEC-ID)"] --> B2[进入 Worktree]
         B2 --> B3[moai glm<br/>切换 LLM]
         B3 --> B4[/moai run SPEC-ID]
         B4 --> B5[/moai sync SPEC-ID]
@@ -103,7 +103,7 @@ flowchart TD
 
 ```bash
 # 进入 Worktree（新终端）
-$ moai worktree go SPEC-AUTH-001
+$ cd "$(moai worktree go SPEC-AUTH-001)"
 
 # 切换 LLM
 $ moai glm
@@ -132,7 +132,8 @@ moai worktree done SPEC-AUTH-001 --delete-branch    # 清理 + 删除本地分�
 | 命令                     | 说明                       | 使用示例                       |
 | ------------------------ | -------------------------- | ------------------------------ |
 | `moai worktree new SPEC-ID`    | 创建新 Worktree            | `moai worktree new SPEC-AUTH-001`    |
-| `moai worktree go SPEC-ID`     | 进入 Worktree（打开新 Shell） | `moai worktree go SPEC-AUTH-001`     |
+| `moai worktree go SPEC-ID`     | 输出 Worktree 路径（供 `cd` 使用） | `cd "$(moai worktree go SPEC-AUTH-001)"` |
+| `moai worktree switch SPEC-ID` | 输出 Worktree 位置（不会 `cd`） | `moai worktree switch SPEC-AUTH-001`  |
 | `moai worktree list`           | 显示 Worktree 列表         | `moai worktree list`                 |
 | `moai worktree done SPEC-ID`   | 合并并清理                 | `moai worktree done SPEC-AUTH-001`   |
 | `moai worktree remove SPEC-ID` | 移除 Worktree              | `moai worktree remove SPEC-AUTH-001` |
@@ -217,17 +218,17 @@ sequenceDiagram
 > /moai plan "认证系统" --worktree
 
 # Terminal 2: 实现 SPEC-AUTH-002 (GLM)
-$ moai worktree go SPEC-AUTH-002
+$ cd "$(moai worktree go SPEC-AUTH-002)"
 $ moai glm
 > /moai run SPEC-AUTH-002
 
 # Terminal 3: 实现 SPEC-AUTH-003 (GLM)
-$ moai worktree go SPEC-AUTH-003
+$ cd "$(moai worktree go SPEC-AUTH-003)"
 $ moai glm
 > /moai run SPEC-AUTH-003
 
 # Terminal 4: SPEC-AUTH-004 文档化
-$ moai worktree go SPEC-AUTH-004
+$ cd "$(moai worktree go SPEC-AUTH-004)"
 > /moai sync SPEC-AUTH-004
 ```
 
@@ -266,19 +267,19 @@ graph TB
     end
 
     subgraph Terminal2["Terminal 2: Implementing"]
-        T2A[moai worktree go<br/>SPEC-AUTH-001]
+        T2A["cd $(moai worktree go<br/>SPEC-AUTH-001)"]
         T2B[moai glm<br/>低成本]
         T2C[/moai run<br/>DDD 实现]
     end
 
     subgraph Terminal3["Terminal 3: Implementing"]
-        T3A[moai worktree go<br/>SPEC-AUTH-002]
+        T3A["cd $(moai worktree go<br/>SPEC-AUTH-002)"]
         T3B[moai glm<br/>低成本]
         T3C[/moai run<br/>DDD 实现]
     end
 
     subgraph Terminal4["Terminal 4: Documenting"]
-        T4A[moai worktree go<br/>SPEC-AUTH-003]
+        T4A["cd $(moai worktree go<br/>SPEC-AUTH-003)"]
         T4B[moai cc<br/>Claude]
         T4C[/moai sync<br/>文档化]
     end

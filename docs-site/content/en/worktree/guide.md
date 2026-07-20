@@ -384,7 +384,7 @@ flowchart TD
 ✓ Branch switch complete
 
 Next steps:
-1. Run in a new terminal: moai worktree go SPEC-AUTH-001
+1. Run in a new terminal: cd "$(moai worktree go SPEC-AUTH-001)"
 2. Change LLM: moai glm
 3. Start development: claude
 ```
@@ -393,7 +393,7 @@ Next steps:
 
 ```bash
 # In Terminal 2
-moai worktree go SPEC-AUTH-001
+cd "$(moai worktree go SPEC-AUTH-001)"
 
 # The prompt changes once you enter the Worktree
 (SPEC-AUTH-001) $ moai glm
@@ -414,7 +414,7 @@ sequenceDiagram
     T1->>Git: Create feature/SPEC-AUTH-001
     T1->>T2: Notify that the Worktree is created
 
-    T2->>T2: moai worktree go SPEC-AUTH-001
+    T2->>T2: cd $(moai worktree go SPEC-AUTH-001)
     T2->>T2: moai glm
     T2->>Git: DDD implementation commits
     Note over T2: ANALYZE → PRESERVE → IMPROVE
@@ -468,9 +468,9 @@ graph TB
     end
 
     subgraph Implementation["Implementation Phase (GLM)"]
-        I1[moai worktree go<br/>SPEC-001]
-        I2[moai worktree go<br/>SPEC-002]
-        I3[moai worktree go<br/>SPEC-003]
+        I1["cd $(moai worktree go<br/>SPEC-001)"]
+        I2["cd $(moai worktree go<br/>SPEC-002)"]
+        I3["cd $(moai worktree go<br/>SPEC-003)"]
     end
 
     Planning --> Implementation
@@ -486,9 +486,9 @@ graph TB
 > /moai plan "Logging" --worktree
 
 # Terminals 3, 4, 5: parallel implementation
-moai worktree go SPEC-001 && moai glm  # Terminal 3
-moai worktree go SPEC-002 && moai glm  # Terminal 4
-moai worktree go SPEC-003 && moai glm  # Terminal 5
+cd "$(moai worktree go SPEC-001)" && moai glm  # Terminal 3
+cd "$(moai worktree go SPEC-002)" && moai glm  # Terminal 4
+cd "$(moai worktree go SPEC-003)" && moai glm  # Terminal 5
 ```
 
 ### Switching between Worktrees
@@ -498,7 +498,7 @@ moai worktree go SPEC-003 && moai glm  # Terminal 5
 moai worktree status
 
 # Switch to a different Worktree
-moai worktree go SPEC-AUTH-002
+cd "$(moai worktree go SPEC-AUTH-002)"
 
 # Or move directly
 cd ~/.moai/worktrees/SPEC-AUTH-002
@@ -575,8 +575,8 @@ Co-Authored-By: Claude <noreply@anthropic.com>"
 # iTerm2, VS Code, or tmux is recommended
 
 # tmux example
-tmux new-session -d -s spec-001 'moai worktree go SPEC-001'
-tmux new-session -d -s spec-002 'moai worktree go SPEC-002'
+tmux new-session -d -s spec-001 -c "$(moai worktree go SPEC-001)"
+tmux new-session -d -s spec-002 -c "$(moai worktree go SPEC-002)"
 
 # Switch sessions
 tmux attach-session -t spec-001

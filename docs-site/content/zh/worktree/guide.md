@@ -468,7 +468,7 @@ flowchart TD
 ✓ 分支切换完成
 
 下一步:
-1. 在新终端运行: moai worktree go SPEC-AUTH-001
+1. 在新终端运行: cd "$(moai worktree go SPEC-AUTH-001)"
 2. 更换 LLM: moai glm
 3. 开始开发: claude
 ```
@@ -497,7 +497,7 @@ sequenceDiagram
     T1->>Git: 创建 feature/SPEC-AUTH-001
     T1->>T2: 通知 Worktree 创建完成
 
-    T2->>T2: moai worktree go SPEC-AUTH-001
+    T2->>T2: cd $(moai worktree go SPEC-AUTH-001)
     T2->>T2: moai glm
     T2->>Git: DDD 实现提交
     Note over T2: ANALYZE → PRESERVE → IMPROVE
@@ -551,9 +551,9 @@ graph TB
     end
 
     subgraph Implementation["Implementation Phase (GLM)"]
-        I1[moai worktree go<br/>SPEC-001]
-        I2[moai worktree go<br/>SPEC-002]
-        I3[moai worktree go<br/>SPEC-003]
+        I1["cd $(moai worktree go<br/>SPEC-001)"]
+        I2["cd $(moai worktree go<br/>SPEC-002)"]
+        I3["cd $(moai worktree go<br/>SPEC-003)"]
     end
 
     Planning --> Implementation
@@ -658,8 +658,8 @@ Co-Authored-By: Claude <noreply@anthropic.com>"
 # 推荐使用 iTerm2、VS Code 或 tmux
 
 # tmux 示例
-tmux new-session -d -s spec-001 'moai worktree go SPEC-001'
-tmux new-session -d -s spec-002 'moai worktree go SPEC-002'
+tmux new-session -d -s spec-001 -c "$(moai worktree go SPEC-001)"
+tmux new-session -d -s spec-002 -c "$(moai worktree go SPEC-002)"
 
 # 切换会话
 tmux attach-session -t spec-001

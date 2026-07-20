@@ -49,7 +49,7 @@ Creating Worktree...
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 Next steps:
-  1. Run in a new terminal: moai worktree go SPEC-AUTH-001
+  1. Run in a new terminal: cd "$(moai worktree go SPEC-AUTH-001)"
   2. Change LLM: moai glm
   3. Start Claude: claude
   4. Start development: /moai run SPEC-AUTH-001
@@ -63,10 +63,10 @@ Cost-saving tip: at the implementation stage, 'moai glm' saves 70%!
 Planning is done, so switch implementation to a low-cost model:
 
 ```bash
-# Open a new terminal
-$ moai worktree go SPEC-AUTH-001
+# Open a new terminal, then cd into the Worktree
+$ cd "$(moai worktree go SPEC-AUTH-001)"
 
-# A new terminal opens and moves into the Worktree
+# cd moves into the Worktree directory
 # The prompt changes
 (SPEC-AUTH-001) ~/moai-project/.moai/worktrees/SPEC-AUTH-001
 
@@ -179,15 +179,15 @@ graph TB
     end
 
     subgraph T2["Terminal 2: Implement (GLM)"]
-        I1[moai worktree go AUTH-001<br/>/moai run/]
+        I1["cd $(moai worktree go AUTH-001)<br/>/moai run/"]
     end
 
     subgraph T3["Terminal 3: Implement (GLM)"]
-        I2[moai worktree go LOG-002<br/>/moai run/]
+        I2["cd $(moai worktree go LOG-002)<br/>/moai run/"]
     end
 
     subgraph T4["Terminal 4: Implement (GLM)"]
-        I3[moai worktree go API-003<br/>/moai run/]
+        I3["cd $(moai worktree go API-003)<br/>/moai run/"]
     end
 
     P1 --> I1
@@ -220,7 +220,7 @@ SPEC-API-003   feature/SPEC-API-003   /path/to/SPEC-API-003
 #### Terminal 2: implementing AUTH-001
 
 ```bash
-$ moai worktree go SPEC-AUTH-001
+$ cd "$(moai worktree go SPEC-AUTH-001)"
 (SPEC-AUTH-001) $ moai glm
 (SPEC-AUTH-001) $ claude
 > /moai run SPEC-AUTH-001
@@ -230,7 +230,7 @@ $ moai worktree go SPEC-AUTH-001
 #### Terminal 3: implementing LOG-002
 
 ```bash
-$ moai worktree go SPEC-LOG-002
+$ cd "$(moai worktree go SPEC-LOG-002)"
 (SPEC-LOG-002) $ moai glm
 (SPEC-LOG-002) $ claude
 > /moai run SPEC-LOG-002
@@ -240,7 +240,7 @@ $ moai worktree go SPEC-LOG-002
 #### Terminal 4: implementing API-003
 
 ```bash
-$ moai worktree go SPEC-API-003
+$ cd "$(moai worktree go SPEC-API-003)"
 (SPEC-API-003) $ moai glm
 (SPEC-API-003) $ claude
 > /moai run SPEC-API-003
@@ -312,7 +312,7 @@ cd project
 ✓ SPEC-FE-001 created
 
 # Develop in the Worktree
-moai worktree go SPEC-FE-001
+cd "$(moai worktree go SPEC-FE-001)"
 (SPEC-FE-001) $ moai glm
 (SPEC-FE-001) $ claude
 > /moai run SPEC-FE-001
@@ -337,7 +337,7 @@ cd project
 ✓ SPEC-BE-001 created
 
 # Develop in the Worktree
-moai worktree go SPEC-BE-001
+cd "$(moai worktree go SPEC-BE-001)"
 (SPEC-BE-001) $ moai glm
 (SPEC-BE-001) $ claude
 > /moai run SPEC-BE-001
@@ -475,12 +475,12 @@ sequenceDiagram
     Git->>Git: Commit SPEC documents
     T1->>Dev: Worktree created
 
-    Dev->>T2: moai worktree go SPEC-FB-001
+    Dev->>T2: cd $(moai worktree go SPEC-FB-001)
     Dev->>T2: moai glm
     T2->>Git: DDD implementation commits
     Note over T2: 4f3a2b1, 7c8d9e0
 
-    Dev->>T3: moai worktree go SPEC-FB-001
+    Dev->>T3: cd $(moai worktree go SPEC-FB-001)
     T3->>Git: Documentation commit
     Note over T3: b5e6f7a
 
@@ -508,11 +508,11 @@ sequenceDiagram
 
 # Days 2-4: parallel implementation
 # Terminal 1: user management
-$ moai worktree go SPEC-USER-001 && moai glm
+$ cd "$(moai worktree go SPEC-USER-001)" && moai glm
 # Terminal 2: payment system
-$ moai worktree go SPEC-PAY-001 && moai glm
+$ cd "$(moai worktree go SPEC-PAY-001)" && moai glm
 # Terminal 3: notification system
-$ moai worktree go SPEC-NOTIF-001 && moai glm
+$ cd "$(moai worktree go SPEC-NOTIF-001)" && moai glm
 
 # Days 5-6: documentation and testing
 # Run /moai sync in each Worktree
@@ -536,8 +536,8 @@ $ moai worktree done SPEC-NOTIF-001 --delete-branch
 
 ```bash
 # Manage sessions with tmux
-tmux new-session -d -s spec-user 'moai worktree go SPEC-USER-001'
-tmux new-session -d -s spec-pay 'moai worktree go SPEC-PAY-001'
+tmux new-session -d -s spec-user -c "$(moai worktree go SPEC-USER-001)"
+tmux new-session -d -s spec-pay -c "$(moai worktree go SPEC-PAY-001)"
 
 # List sessions
 tmux ls
@@ -573,7 +573,7 @@ echo "1. Creating the SPEC plan..."
 > /moai plan "$2" --worktree
 
 echo "2. Entering the Worktree..."
-moai worktree go $SPEC_ID
+cd "$(moai worktree go "$SPEC_ID")"
 
 echo "3. Changing the LLM..."
 moai glm
