@@ -1,0 +1,127 @@
+# Standardized label definitions for this repository
+# Compatible with EndBug/label-sync or manual reference
+#
+# Usage with EndBug/label-sync (see .github/workflows/label-sync.yml):
+#   - uses: EndBug/label-sync@v2
+#     with:
+#       config-file: .github/labels.yml
+#
+# Taxonomy: 3-axis scheme (type:* / priority:* / status:*) plus
+# GitHub-standard functional labels. Extend with project-specific
+# area:* labels as needed.
+
+# ============================================================================
+# GitHub-standard / functional labels
+# ============================================================================
+
+- name: stale
+  color: "ededed"
+  description: "Marked as stale due to inactivity"
+
+- name: pinned
+  color: "006b75"
+  description: "Pinned and exempt from stale bot"
+
+- name: "help wanted"
+  color: "008672"
+  description: "Extra attention is needed"
+
+- name: "good first issue"
+  color: "7ae07a"
+  description: "Good for newcomers"
+
+- name: wontfix
+  color: "ffffff"
+  description: "This will not be worked on"
+
+- name: duplicate
+  color: "cfd3d7"
+  description: "This issue or pull request already exists"
+
+- name: security
+  color: "ee0701"
+  description: "Security-related issue"
+
+- name: dependencies
+  color: "0366d6"
+  description: "Dependency updates"
+
+# ============================================================================
+# type:* (one per PR)
+# ============================================================================
+
+- name: "type:feature"
+  color: "1f883d"
+  description: "New feature or capability"
+
+- name: "type:fix"
+  color: "d73a4a"
+  description: "Bug fix"
+
+- name: "type:docs"
+  color: "0075ca"
+  description: "Documentation only change"
+
+- name: "type:chore"
+  color: "fbca04"
+  description: "Maintenance (dependencies, cleanup)"
+
+- name: "type:ci"
+  color: "e3d21c"
+  description: "CI/CD change"
+
+- name: "type:refactor"
+  color: "d2dae6"
+  description: "Code restructuring without behavior change"
+
+- name: "type:security"
+  color: "ee0701"
+  description: "Security fix or hardening"
+
+- name: "type:test"
+  color: "d876e3"
+  description: "Test addition or improvement"
+
+# ============================================================================
+# priority:*
+# ============================================================================
+
+- name: "priority:P0"
+  color: "b60205"
+  description: "Critical — immediate response required"
+
+- name: "priority:P1"
+  color: "d93f0b"
+  description: "High"
+
+- name: "priority:P2"
+  color: "fbca04"
+  description: "Medium"
+
+- name: "priority:P3"
+  color: "85e89d"
+  description: "Low — backlog"
+
+- name: "priority:P4"
+  color: "c2c2c2"
+  description: "Icebox — deferred indefinitely"
+
+# ============================================================================
+# status:* (optional, progress tracking)
+# ============================================================================
+
+- name: "status:in-progress"
+  color: "ffd700"
+  description: "Currently being worked on"
+
+- name: "status:review"
+  color: "0075ca"
+  description: "In code review"
+
+- name: "status:blocked"
+  color: "d73a4a"
+  description: "Blocked on external dependency"
+
+- name: "status:needs-info"
+  color: "ffffa5"
+  description: "Waiting for additional information from reporter"
