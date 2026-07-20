@@ -46,7 +46,7 @@
             </div>
           </div>
           <div class="doc-meta-strip">
-            <span>{{ .Date.Format "2006.01.02" }}</span>
+            {{- if not .Date.IsZero }}<span>{{ .Date.Format "2006.01.02" }}</span>{{ end }}
             <span>{{ .ReadingTime }}분 분량</span>
           </div>
         </div>
