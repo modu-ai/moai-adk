@@ -83,10 +83,58 @@ plan_complete_at: 2026-07-13
 - **TDD**: RED `internal/cli/help_order_test.go` (`TestHelpGroupOrder_{FrequencyWithinGroups,MembershipUnchanged,Idempotent}`, `TestHelpGolden_FangGroupHeaders`) → GREEN reorder implementation. The help "golden" is assertion-based (headers + relative order), NOT a byte snapshot — per acceptance.md §C edge (command additions must not break it).
 - **End-to-end**: `TestHelpGolden_FangGroupHeaders` runs the ADOPTED fang surface in-process (runFang + `--help`, NO_COLOR) asserting the 3 header literals + zero ANSI + frequency order spot-checks; live `NO_COLOR=1 go run ./cmd/moai --help` re-verified: LAUNCH renders `cc, glm, cg`, PROJECT renders `init, status, doctor, update, migrate, pr`.
 - **Verification**: full `internal/cli` + `uikit` suites green in the isolated worktree (`ok 17.932s` / `ok 0.248s`).
+- **M4d-2 commit**: `408fe19f0` (pushed to main).
+
+### M4e — ratchet floor + stdout matrix + series-final verification batch
+
+- **Ratchet sweep outcome**: the banner absorption (M4d-1) exhausted the in-scope inventory. Final state (pristine worktree at `1e95bf381`): raw grep = 2 lines — `worktree/new.go:433` (commented-out, D1) + `branch_protection.go:44` (D2 out-of-scope, owned by deferred SPEC-V3R6-CI-BASELINE-DRIFT-001 §D.1, NOT modified by this SPEC); D1 comment-excluded = 1; **D1+D2-scoped final gate = 0** (series 46→40→14→**0** on the §E surface set). Residual: PASS-WITH-DEBT (1 deferred call site).
+- **Stdout matrix (REQ-TUX4-010)**: `internal/cli/stdout_clean_test.go` — doctor/status/banner/spec-view stdout captures assert absence of `Warning:` / `Error:` / `[!]` status vocabulary; spec view exercised end-to-end via `newSpecViewCmd` + temp-project fixture + `findProjectRootFn` override. M4e commit: `1e95bf381`.
+- **Final verification batch** (single-turn parallel, pristine worktree at `1e95bf381` = origin/main; evidence at `.moai/state/verify/tux4/final-*.log`):
+  - full suite `go test ./... -count=1` → **exit 0** (`final-1-full.log`)
+  - coverage (`final-2-cover.log`): cli **74.5%** (baseline 74.3% → **non-regression PASS**, +0.2pt); template 83.2% (baseline 85.2%); hook 83.4% (baseline 83.5%)
+  - `GOOS=windows` build exit 0 + `GOOS=linux` build exit 0 (`final-3-*.log`)
+  - `golangci-lint run --timeout=5m` → `0 issues.` (baseline 0 → **NEW = 0**, `final-4-lint.log`)
+  - AC grep set (`final-5-greps.log`) + live NO_COLOR matrix (`final-6-nocolor.log`): doctor/help/status ANSI counts all 0; 3 fang group headers present
+- **Coverage delta attribution (REQ-TUX4-011 gap record)**: my 6 commits touch NEITHER `internal/template` NOR `internal/hook` (verified: `git log db70597a2..1e95bf381 --grep SPEC-CLI-TUX-V3-004 -- internal/template/ internal/hook/` = empty). template 85.2→83.2 is attributable to the ONLY two commits touching that package in the window — SPEC-MODEL-PROFILE-MATRIX-001 `eee1c4fc1` + `319c3e93e` (parallel session; their coverage debt, not this SPEC's). hook 83.5→83.4: ZERO commits touched internal/hook in the window — the −0.1pt is run-to-run variance of time-dependent test paths on git-identical code. cli (this SPEC's package): +0.2pt non-regression PASS.
+- **AC-TUX4-014 evidence**: `git diff db70597a2..1e95bf381 --stat -- internal/cli/doctor.go` = 1 file, 50+/47−; the ONLY function signature added is `runGroupedChecksObserved` (the seam); zero check-function (`checkGit`/`checkGoRuntime`/…) signatures or verdict criteria changed (diff `^[+-]func` grep shows only the seam function).
+
+### E1 — 14-AC PASS/FAIL matrix (final, evidence at .moai/state/verify/tux4/)
+
+| AC | Status | Evidence (verbatim anchor) |
+|----|--------|---------------------------|
+| AC-TUX4-001 | PASS | `--- PASS: TestDoctorLiveProgress_SeamPreservesVerdicts` + `--- PASS: TestDoctorStep_ProgressOnStderr` (M4c run; re-green in final-1-full.log) |
+| AC-TUX4-002 | PASS | `--- PASS: TestDoctorTable_PlainAlignedColumns` + `TestDoctorSectionResult_Counts` + `TestDoctorTable_RichUsesBubblesTable`; grep `charm.land/bubbles/v2` → `doctor_render.go:17` (≥1) |
+| AC-TUX4-003 | PASS | TestDoctorGolden_{Light,Dark,NoColor} green (final-1-full.log); live `NO_COLOR=1 moai doctor \| grep -c $'\x1b'` = 0 (final-6-nocolor.log) |
+| AC-TUX4-004 | PASS | `go list -m` → `github.com/charmbracelet/glamour v1.0.0`; non-test import: `glamour_style.go`; wiring: status.go:104,123 `renderMarkdown(out`, spec_view.go:104 `renderTreeMarkdown(out` (final-5-greps.log) |
+| AC-TUX4-005 | PASS | hex grep over status.go/spec_view.go/glamour_style.go = **0** (final-5-greps.log) |
+| AC-TUX4-006 | PASS | TestStatusGolden_* + TestSpecViewPlain_* green; live `NO_COLOR=1 moai status \| grep -c $'\x1b'` = 0 |
+| AC-TUX4-007 | PASS | TestCompactBanner_* + TestBannerPill_* green (6/6, M4d-1); `grep -c 'fmt\.Print' internal/cli/uikit/banner.go` = **0** (was 12) |
+| AC-TUX4-008 | PASS | verdict literal grep = 2 (§E.2 M4d-1); verdict commit `77893579e` PRECEDES reorder commit `408fe19f0` (timeline); 3 header literals each ≥1 live (final-6: header count 3); TestHelpGolden_* + TestHelpGroupOrder_* green; non-adopted paths N/A |
+| AC-TUX4-009 | PASS | all goldens green in final-1-full.log; `GOOS=windows` build exit 0; per-golden-file rationale recorded in §E.2 (M4b/M4c/M4d-1 sections) |
+| AC-TUX4-010 | PASS-WITH-DEBT | D1 comment-exclusion idiom applied; D2 scope: final gate grep (comment-excluded, minus branch_protection.go) = **0**; residual = branch_protection.go:44 deferred to SPEC-V3R6-CI-BASELINE-DRIFT-001 (final-5-greps.log verbatim) |
+| AC-TUX4-011 | PASS | `--- PASS: TestStdoutClean_{Doctor,Status,Banner}` + `TestNoWarnOnStdout_SpecView` (M4e; re-green in final-1-full.log) |
+| AC-TUX4-012 | PASS (non-regression basis) | pre-flight #7 baseline <90% for all three → REQ-TUX4-011 downgrade; cli 74.5% ≥ 74.3% PASS; template/hook deltas attributed cross-SPEC / run-variance with git evidence (§E.2 M4e) |
+| AC-TUX4-013 | PASS | full suite exit 0 + lint `0 issues.` (NEW=0) + windows/linux builds exit 0 (final-1/3/4 logs) |
+| AC-TUX4-014 | PASS | doctor.go diff 50+/47− limited to observer seam + printer wiring + render delegation; only added func = `runGroupedChecksObserved`; render moved to doctor_render.go (new file) |
 
 ## §E.3 Run-phase Audit-Ready Signal
 
-_<pending run-phase>_
+run_complete_at: 2026-07-20
+run_commit_sha: 1e95bf381
+run_status: PASS-WITH-DEBT
+ac_pass_count: 14
+ac_fail_count: 0
+ac_pass_with_debt: [AC-TUX4-010]
+debt_register: "branch_protection.go:44 fmt.Printf (interactive y/N) — owned by deferred SPEC-V3R6-CI-BASELINE-DRIFT-001 §D.1; worktree/new.go:433 commented-out line excluded via D1 comment-exclusion idiom"
+preserve_list_post_run_count: 0 violations (per-commit `git status --porcelain` + staged-path checks; PRESERVE files untouched across all 6 commits)
+l44_pre_commit_fetch: yes (git fetch + rev-list divergence check before every commit)
+l44_post_push_fetch: yes (post-push divergence re-checked; all pushes fast-forward)
+new_warnings_or_lints_introduced: 0 (lint baseline 0 → final 0)
+cross_platform_build:
+  windows_amd64: exit 0
+  linux_amd64: exit 0
+total_run_phase_files: 32
+m1_to_mN_commit_strategy: "per-milestone commit + push direct-to-main (Route A Hybrid Trunk): M4a 3b3b397cc / M4b 1317b9567 / M4c 2b886c39b / M4d-1 77893579e / M4d-2 408fe19f0 / M4e 1e95bf381; mid-run parallel-session (SPEC-MODEL-PROFILE-MATRIX-001) races absorbed via isolated-worktree verification + strict path staging"
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
