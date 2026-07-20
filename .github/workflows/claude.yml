@@ -65,7 +65,7 @@ jobs:
 
       - name: Setup Go
         # Tag: v6.0.0 | SHA: 44694675825211faa026b3c33043df3e48a5fa00 (Node 24 runtime)
-        uses: actions/setup-go@44694675825211faa026b3c33043df3e48a5fa00
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e
         with:
           go-version-file: go.mod
           cache: true
@@ -77,7 +77,7 @@ jobs:
         # AND a prompt input is provided (per docs/custom-automations.md §
         # "Author-Specific Code Reviews"). Without a prompt it would fall back
         # to interactive @claude-mention mode, which is not what this job wants.
-        uses: anthropics/claude-code-action@80b31826338489861333dc17217865dfe8085cdc
+        uses: anthropics/claude-code-action@af0559ee4f514d1ef21826982bed13f7edc3c35e
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
 
@@ -124,7 +124,7 @@ jobs:
 
       - name: Setup Go
         # Tag: v6.0.0 | SHA: 44694675825211faa026b3c33043df3e48a5fa00 (Node 24 runtime)
-        uses: actions/setup-go@44694675825211faa026b3c33043df3e48a5fa00
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e
         with:
           go-version-file: go.mod
           cache: true
@@ -133,7 +133,7 @@ jobs:
         # Pinned to commit SHA to prevent supply chain attacks via floating tags.
         # Tag: v1.0.82 | SHA: 567fe954a4527e81f132d87d1bdbcc94f7737434
         # No prompt input → interactive mode (responds to @claude mentions).
-        uses: anthropics/claude-code-action@80b31826338489861333dc17217865dfe8085cdc
+        uses: anthropics/claude-code-action@af0559ee4f514d1ef21826982bed13f7edc3c35e
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           # C4 Fix: Use claude_args for max-turns (max_turns input is deprecated).

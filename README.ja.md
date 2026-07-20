@@ -370,5 +370,5 @@ flowchart TD
 - [公式ドキュメント](https://adk.mo.ai.kr)
 - [書籍: Claude Code 実践エージェンティックコーディング](https://adk.mo.ai.kr/book)
 - [CHANGELOG](./CHANGELOG.md)
-- [Claude Code](https://docs.anthropic.com/en/docs/claude-code)
+- [Claude Code](https://code.claude.com/docs/en)
 - [Discord コミュニティ](https://discord.gg/Z7E7Mdc5aN)

@@ -30,7 +30,7 @@ Active settings.json keys: 20. RETIRE-OBS-ONLY (Go-only): 4.
 | StopFailure | Error type | No | Runs when a turn ends due to API error (v2.1.78+). Matchers: rate_limit, overloaded, authentication_failed, oauth_org_not_allowed, billing_error, invalid_request, model_not_found, server_error, max_output_tokens, unknown |
 | SubagentStart | Agent type | No | Runs when a subagent spawns |
 | SubagentStop | Agent type | Yes | Runs when a subagent terminates |
-| Notification | Type | No | Runs when notifications sent. Matchers: permission_prompt, idle_prompt, auth_success, elicitation_dialog, elicitation_complete, elicitation_response, agent_needs_input, agent_completed. **Go-only observability tap (see sub-table below).** |
+| Notification | Type | No | Runs when notifications sent. Matchers: permission_prompt, idle_prompt, auth_success, elicitation_dialog, elicitation_complete, elicitation_response, agent_needs_input, agent_completed (last two added CC 2.1.198 — fire for background agents). **Go-only observability tap (see sub-table below).** |
 | UserPromptSubmit | No | Yes | Runs when user submits a prompt, before processing |
 | PermissionRequest | Tool name | Yes | Runs when permission dialog appears |
 | PermissionDenied | Tool name | No | Runs after auto mode denies a tool call. Return {retry: true} to retry (v2.1.89+) |
@@ -91,7 +91,7 @@ The following Claude Code hook event exists upstream but MoAI does not register 
 | PermissionRequest | `toolName`, `toolInput` | `reason`, `decision.behavior`, `updatedInput`, `updatedPermissions` | Exit 0 = allow, exit 2 = deny; JSON `decision.behavior` (allow/deny/ask) also available |
 | PermissionDenied | `toolName`, `toolInput` | `{retry: true}` | Return retry to allow model to retry (v2.1.89+) |
 | PostToolUseFailure | `toolName`, `toolInput`, `error`, `is_interrupt` | `systemMessage` | Non-blocking |
-| Notification | `type`, `message` | - | Types: permission_prompt, idle_prompt, auth_success, elicitation_dialog, elicitation_complete, elicitation_response, agent_needs_input, agent_completed |
+| Notification | `type`, `message` | - | Types: permission_prompt, idle_prompt, auth_success, elicitation_dialog, elicitation_complete, elicitation_response, agent_needs_input, agent_completed (last two added CC 2.1.198 — background-agent notifications; handler is a generic pass-through, no Go change) |
 | Setup | `trigger` | `systemMessage` | trigger: init, init-only, or maintenance (v2.1.10+) |
 | InstructionsLoaded | `files`, `source` | - | Lists loaded instruction files (v2.1.69+) |
 | SubagentStart | `agentType`, `agentName`, `agent_id` | `additionalContext` | Inject context into subagent. `agent_id` added in v2.1.69 |

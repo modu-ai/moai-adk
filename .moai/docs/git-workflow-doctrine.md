@@ -13,7 +13,7 @@ v2.14.0 릴리스 이후 공식 채택. Gitflow 대안 비교 분석 결과 (v2.
 
 | # | 개선 항목 | 현재 구현 | 참조 |
 |---|----------|-----------|------|
-| 1 | **Branch protection rule 강제** (`main` + `release/*`) | ⏳ `gh api` 명령어 준비 완료, admin 적용 대기 | §18.7 |
+| 1 | **Branch protection rule 강제** (`main` + `release/*`) | ✅ **적용 완료 (2026-07-20) — `enforce_admins: true`** (admin 포함 main direct push 완전 차단, PR-mandatory) | §18.7 |
 | 2 | **Label 3축 체계** (`type:` / `priority:` / `area:`) + `status:` 보조축 | ✅ `.github/labels.yml` 정의 완료, 25 labels 추가됨 | §18.6 |
 | 3 | **Merge strategy 명시** (release = merge commit, feature = squash) | ✅ `.github/PULL_REQUEST_TEMPLATE.md` + `git-strategy.yaml` | §18.3 |
 | 4 | **Release Drafter로 CHANGELOG 자동화** | ✅ `.github/release-drafter.yml` + workflow 구성 완료 | §18.9 |
@@ -99,14 +99,16 @@ main ──●──●──●──●──●──  (protected, 항상 배
 
 ### §18.3.1 [HARD] Tier-based PR Routing (SPEC-V3R6-AGENT-TEAM-REBUILD-001 REQ-ATR-020)
 
-SPEC tier에 따라 PR 생성 경로가 다르며, 본 정책은 Hybrid Trunk 1-person OSS 운영의 기본 (default) 동작을 명문화한다:
+SPEC tier에 따라 PR **ceremony 무게**가 다르며, 본 정책은 PR-mandatory 1-person OSS 운영의 기본 (default) 동작을 명문화한다. **(2026-07-20 개정) `enforce_admins: true`로 모든 tier가 PR을 경유한다** — tier는 더 이상 main-direct 여부를 가르지 않고 PR ceremony 무게(브랜치 수명 / CI 매트릭스 / 리뷰 깊이)만 결정:
 
 | SPEC tier | Branch policy | Owner | Rationale |
 |-----------|---------------|-------|-----------|
-| **Tier S** (≤ 300 LOC, < 5 files) | **main-direct push** (Hybrid Trunk default) | orchestrator OR manager-develop (per `.claude/rules/moai/development/manager-develop-prompt-template.md` B9) | Tier S commits 직접 main 적층; pre-push hook warn-only 5s + CI 4 status checks가 보호 |
-| **Tier M** (300-1000 LOC, 5-15 files) | **main-direct push** (Hybrid Trunk default) | orchestrator OR manager-develop | Tier M도 main 직진; CI 4 status checks + pre-push hook이 안전 보장 |
-| **Tier L** (> 1000 LOC OR constitutional) | **PR via manager-git** on `feat/SPEC-XXX` branch + `gh pr create` | manager-git | Tier L의 광범위한 scope (≥ 15 files OR constitutional)는 PR review window 확보 + CI 풀 매트릭스 검증 필요 |
-| **Explicit `--pr` flag** (any tier) | **PR via manager-git** on `feat/SPEC-XXX` branch + `gh pr create` | manager-git | 사용자가 명시적으로 review round 요구한 경우 (cross-team review, security-sensitive change, breaking change 검토 등) |
+| **Tier S** (≤ 300 LOC, < 5 files) | **PR via manager-git** on `fix/*`·`chore/*`·`docs/*` short-lived branch + `gh pr create` → self-merge (0 approvals) | manager-git (commit은 manager-develop/manager-docs) | 경량 ceremony — Tier 1 CI (4 checks) green 즉시 self-merge; 리뷰 오버헤드 최소 |
+| **Tier M** (300-1000 LOC, 5-15 files) | **PR via manager-git** on `feat/SPEC-XXX` branch + `gh pr create` → self-merge | manager-git | 중간 ceremony — 3축 라벨 + PR body; Tier 1 CI |
+| **Tier L** (> 1000 LOC OR constitutional) | **PR via manager-git** on `feat/SPEC-XXX` branch + `gh pr create` → self-merge | manager-git | 무거운 ceremony — Late-Branch 4-Phase + PR review window + CI 풀 매트릭스 (release PR 시 Tier 2 macOS/Windows) |
+| **Explicit `--pr` flag** (any tier) | **PR via manager-git** on `feat/SPEC-XXX` branch + `gh pr create` | manager-git | 사용자가 명시적으로 무거운 review round 요구한 경우 (cross-team review, security-sensitive change, breaking change 검토 등) |
+
+> **[RETIRED 2026-07-20]** 종전 이 표의 Tier S/M 행은 **main-direct push** (Hybrid Trunk default, orchestrator OR manager-develop이 직접 commit+push) 였다. `enforce_admins: true` 적용으로 main-direct가 불가능해지면서 두 행 모두 PR routing으로 통합. `manager-develop`은 commit을 수행하되 push+PR은 `manager-git`이 담당 (self-merge 흐름).
 
 #### Tier L OR --pr flag → manager-git invocation pattern
 
@@ -115,7 +117,7 @@ Agent(subagent_type: "manager-git",
       prompt: "... Create PR for SPEC-XXX via feat/SPEC-XXX branch + gh pr create; Tier L (or --pr explicit). ...")
 ```
 
-manager-git은 본 매트릭스 (Tier L OR --pr) 조건에서만 invoke된다. Tier S/M의 main-direct push는 manager-develop이 자체 수행 (per manager-develop-prompt-template.md B9 Git Commit + Push 자체 수행 절). 본 정책은 §23.7 [HARD] 운영 원칙의 "1-person OSS Hybrid Trunk: 모든 tier (S/M/L) main 직진 push 허용" 기본 동작과 manager-git PR routing의 명시적 opt-in의 합집합으로 운영된다.
+**(2026-07-20 개정)** manager-git은 이제 **모든 tier**에서 PR 생성을 담당한다 (`enforce_admins: true`로 main-direct 불가). Tier L OR `--pr`은 무거운 ceremony (위 invocation pattern), Tier S/M은 경량 ceremony (short-lived 브랜치 + self-merge)를 쓰되 둘 다 PR 경유다. `manager-develop`/`manager-docs`는 commit만 수행 후 push+PR을 `manager-git`에 위임 (self-merge 흐름). ~~Tier S/M의 main-direct push는 manager-develop이 자체 수행 (manager-develop-prompt-template.md B9)~~ **[RETIRED 2026-07-20]** — B9의 main-direct 자체 push 절은 이 repo에서 무효(§18.7 참조).
 
 #### Cross-reference
 
@@ -128,7 +130,7 @@ manager-git은 본 매트릭스 (Tier L OR --pr) 조건에서만 invoke된다. T
 
 | 타입 | 기준 | 주기 | 브랜치 |
 |------|------|------|--------|
-| **Patch (vX.Y.Z)** | 버그 수정만 | 필요 시 즉시 | `fix/*` 여러 개 직접 main → tag bump |
+| **Patch (vX.Y.Z)** | 버그 수정만 | 필요 시 즉시 | `fix/*` PR (self-merge) 여러 개 → main → tag bump (2026-07-20: 직접 main push 불가, PR 경유) |
 | **Minor (vX.Y.0)** | SPEC cluster (2-4 SPECs) 또는 주요 feature | 1-2주 | `release/vX.Y.0` 경유 |
 | **Major (vX.0.0)** | Breaking changes | 3-6개월 | `release/vX.0.0` + migration guide |
 | **Hotfix (vX.Y.Z+1)** | 프로덕션 긴급 수정 | 24h 이내 | `hotfix/vX.Y.Z+1-*` → main |
@@ -223,7 +225,7 @@ gh pr merge <PR> --merge --delete-branch
 - `Test (macos-latest)` — Tier 2 (release PR) 로 이전
 - `Test (windows-latest)` — Tier 2 (release PR) 로 이전
 
-[HARD] `main` 브랜치 보호 설정 (admin 실행 필요):
+[HARD] `main` 브랜치 보호 설정 — **적용 완료 (2026-07-20): `enforce_admins: true`로 PR-mandatory 체제 전환. admin 포함 누구도 main direct push 불가; self-merge는 `required_approving_review_count: 0`으로 허용. 종전 Hybrid Trunk main-direct 정책은 RETIRED** (`.moai/docs/git-local-workflow-doctrine.md` §23.2 참조):
 
 ```bash
 gh api -X PUT /repos/modu-ai/moai-adk/branches/main/protection \
@@ -233,11 +235,11 @@ gh api -X PUT /repos/modu-ai/moai-adk/branches/main/protection \
     "strict": true,
     "contexts": ["Lint", "Test (ubuntu-latest)", "Build (linux/amd64)", "CodeQL"]
   },
-  "enforce_admins": false,
+  "enforce_admins": true,
   "required_pull_request_reviews": {
     "dismiss_stale_reviews": true,
     "require_code_owner_reviews": false,
-    "required_approving_review_count": 1
+    "required_approving_review_count": 0
   },
   "restrictions": null,
   "allow_force_pushes": false,
@@ -247,6 +249,8 @@ gh api -X PUT /repos/modu-ai/moai-adk/branches/main/protection \
 }
 EOF
 ```
+
+> **[변경 이력 2026-07-20]** `enforce_admins`: `false` → **`true`** (admin bypass 제거 → main direct push 전면 차단). `required_approving_review_count`: `1` → **`0`** (1인 OSS self-merge — 4개 CI check 통과 시 리뷰어 없이 본인 머지). 이 조합 = **PR-mandatory + self-merge**: 모든 변경 (daily Tier S/M 포함)은 PR을 열되, CI green이면 즉시 self-merge 가능. `vX.Y.Z` tag push는 branch protection 대상이 아니므로 `scripts/release.sh` tag flow는 무영향.
 
 [HARD] `release/*` 패턴 보호 (feature freeze 기간 안정성):
 
@@ -298,10 +302,10 @@ git checkout main && git pull
 # → tag 생성, push, GoReleaser 자동 실행, GitHub Release 생성
 ```
 
-**Patch Release (fix 직접 main)**:
+**Patch Release (fix 브랜치 PR → main)** — (2026-07-20: 직접 main push 불가, PR self-merge 경유):
 
 ```bash
-# 1. fix 브랜치에서 수정 + PR + squash merge
+# 1. fix 브랜치에서 수정 + PR + squash merge (self-merge, 0 approvals, 4 CI checks)
 # 2. main pull + tag + push (release 스크립트)
 ./scripts/release.sh v2.14.1
 ```
