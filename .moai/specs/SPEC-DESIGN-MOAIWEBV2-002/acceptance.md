@@ -1,7 +1,7 @@
 ---
 id: SPEC-DESIGN-MOAIWEBV2-002
 document: acceptance
-version: "0.1.0"
+version: "0.1.1"
 status: draft
 created: 2026-07-21
 updated: 2026-07-21
@@ -11,6 +11,8 @@ updated: 2026-07-21
 
 All commands run from repo root `/Users/goos/MoAI/moai-adk-go` unless noted. Every PASS claim in progress.md §E.2 must cite the executed command + verbatim output (verification-claim integrity §2).
 
+`$BASELINE_SHA` below is the pre-flight-recorded origin/main SHA (`BASELINE_SHA=$(git rev-parse origin/main)`, captured BEFORE the first run-phase commit — plan.md §C). Committed-diff ACs compare against it so committed edits are caught and per-milestone pushes cannot vacuously empty the diff.
+
 ## §D. AC Matrix (machine-verifiable)
 
 | AC | REQ | Command | Expected |
@@ -19,11 +21,12 @@ All commands run from repo root `/Users/goos/MoAI/moai-adk-go` unless noted. Eve
 | AC-MWA-002a | REQ-MWA-002 | `grep -c 'themeToggle' internal/web/board.templ internal/web/root.templ \| grep -v ':0$'` | no output (both files 0) |
 | AC-MWA-002b | REQ-MWA-002 | `grep -cE 'icon-sun\|icon-moon' internal/web/icons.templ` | `0` |
 | AC-MWA-002c | REQ-MWA-002 | `grep -c '"theme.aria"' internal/web/assets/i18n.js` | `0` |
-| AC-MWA-003 | REQ-MWA-003 | `grep -cE 'data-theme\|moai-console-theme' internal/web/assets/app.js internal/web/root.templ \| grep -v ':0$'` | no output (both files 0) |
-| AC-MWA-004 | REQ-MWA-004 | `go test -run 'Dark\|Theme\|Restyle' ./internal/web/` | exit 0 (dark-ABSENCE assertions green) |
+| AC-MWA-003a | REQ-MWA-003 | `grep -cE 'data-theme\|moai-console-theme' internal/web/assets/app.js internal/web/root.templ internal/web/board.templ \| grep -v ':0$'` | no output (all 3 files 0 — includes the server-rendered `<html>` attr in board.templ) |
+| AC-MWA-003b | REQ-MWA-003 | `grep -c 'moai-console-lang' internal/web/root.templ` | ≥ 1 (FOUC language branch preserved verbatim — REQ-WC5-005 CJK font activation) |
+| AC-MWA-004 | REQ-MWA-004 | `go test -v -run 'TestDarkThemeAbsence$' ./internal/web/ 2>&1 \| tee /tmp/ac-mwa-004.log; grep -c -- '--- PASS: TestDarkThemeAbsence' /tmp/ac-mwa-004.log` | test exit 0 AND grep count ≥ 1 (pinned name actually ran — a zero-match vacuous pass is rejected) |
 | AC-MWA-005 | REQ-MWA-005 | `for t in success warning danger info; do a=$(grep -oE -- "--color-$t:[[:space:]]*#[0-9a-f]{6}" docs-site/static/moai-brand.css \| grep -oE '#[0-9a-f]{6}'); b=$(grep -oE -- "--color-$t:[[:space:]]*#[0-9a-f]{6}" internal/web/assets/console.css \| grep -oE '#[0-9a-f]{6}'); [ -n "$a" ] && [ "$a" = "$b" ] && echo "$t OK $a" \|\| echo "$t MISMATCH $a/$b"; done` | 4 lines `... OK ...`, zero MISMATCH |
 | AC-MWA-006 | REQ-MWA-006 | contrast script (WCAG formula) over final computed colors of every live status-TEXT usage on its actual surface | every live status-text usage ≥ 4.5:1; table recorded in progress.md §E.2; failing raw-token usages carry usage-scoped `color-mix` (token bytes unchanged — cross-check with AC-MWA-005) |
-| AC-MWA-007a | REQ-MWA-007/014 | `git diff --exit-code -- docs-site/static/` | exit 0 (baseline byte-unchanged) |
+| AC-MWA-007a | REQ-MWA-007/014 | `git diff --name-only "$BASELINE_SHA"..HEAD -- docs-site/ \| wc -l` AND `git status --porcelain docs-site/ \| wc -l` | both `0` (no committed AND no uncommitted change under the FULL `docs-site/` pathspec) |
 | AC-MWA-007b | REQ-MWA-014 | `hugo -s docs-site 2>&1 \| tee /tmp/hugo.log; grep -ci 'WARN' /tmp/hugo.log` | build exit 0 AND `0` warnings |
 | AC-MWA-008a | REQ-MWA-008 | `ls internal/web/assets/fonts/GoormSansCode*.woff2 \| wc -l` | ≥ 1 |
 | AC-MWA-008b | REQ-MWA-008/011 | `ls internal/web/assets/fonts/ \| grep -ci 'goorm'` (license file, e.g. `OFL-GoormSansCode.txt`) counted incl. woff2; explicit: `test -f internal/web/assets/fonts/OFL-GoormSansCode.txt && echo OK` | `OK` (filename may adapt to the actually-verified license type; a license file MUST ship) |
@@ -32,7 +35,7 @@ All commands run from repo root `/Users/goos/MoAI/moai-adk-go` unless noted. Eve
 | AC-MWA-010 | REQ-MWA-010 | `grep -c 'http' internal/web/assets/console.css` | `0` |
 | AC-MWA-011 | REQ-MWA-013 | `go test ./internal/web/...` | exit 0 |
 | AC-MWA-012 | §C templ discipline | `templ generate && git diff --exit-code -- 'internal/web/*_templ.go'` | exit 0 (generated files in sync) |
-| AC-MWA-013 | REQ-MWA-013 | `git diff --name-only origin/main..HEAD -- internal/web \| grep -vE '(_templ\.go$\|_test\.go$\|\.templ$\|/assets/)'` | empty output (no server-side Go change) |
+| AC-MWA-013 | REQ-MWA-013 | `git diff --name-only "$BASELINE_SHA"..HEAD -- internal/web \| grep -vE '(_templ\.go$\|_test\.go$\|\.templ$\|/assets/)'` | empty output (no server-side Go change vs the pre-flight baseline SHA) |
 | AC-MWA-014 | REQ-MWA-012 | tone-alignment decision table (current → target → docs-site ref per row) + before/after evidence present in progress.md §E.2 | table present with ≥ 1 row per axis (header, card density, spacing scale, mascot) |
 
 ### AC sub-ID note
@@ -69,6 +72,7 @@ All commands run from repo root `/Users/goos/MoAI/moai-adk-go` unless noted. Eve
 
 - Stale `moai-console-theme` localStorage key on returning users (Scenario 1 — must be inert).
 - htmx-boosted navigation re-binding: removing the theme listener must not break `uiLangSelect` re-bind (plan §B.3); i18n language switch still works after boost navigation.
+- ja/zh interface-language users: the preserved FOUC language branch still sets `<html lang>` pre-paint (CJK @font-face activation, REQ-WC5-005 — no system-ui flash); only the theme branch disappears (AC-MWA-003b).
 - `warning` / `info` tokens have no live text usage today — the AA carve-out rule (REQ-MWA-006) still binds FUTURE usages; record this in the contrast table so the rule is discoverable.
 - `danger` text on the `#f4f4f4` canvas measures 4.40:1 (< 4.5) — if any danger-text usage sits directly on canvas (not on a white-mixed surface), it needs the carve-out too; verify per actual surface.
 - woff2 subset missing a symbol glyph actually used by console output → fallback renders it; visual check that mixed-font lines do not jump line-height.

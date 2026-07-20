@@ -1,7 +1,7 @@
 ---
 id: SPEC-DESIGN-MOAIWEBV2-002
 document: plan
-version: "0.1.0"
+version: "0.1.1"
 status: draft
 created: 2026-07-21
 updated: 2026-07-21
@@ -28,10 +28,12 @@ Branch `fix/docs-layout-collapse` (== `origin/main`). Target module `internal/we
 4. **i18n key parity**: `"theme.aria"` exists in all 4 locales (i18n.js L160/539/894/1249); `i18n_test.go` may assert cross-locale key-set parity — remove the key from all 4 locales atomically.
 5. **Goorm Sans Code sourcing**: docs-site consumes `https://statics.goorm.io/fonts/GoormSansCode/v1.0.1/GoormSansCode.min.css` (CDN). Self-hosting requires obtaining the upstream font files and verifying the license BEFORE committing artifacts. The license is expected to be OFL but is NOT yet verified — treat as an open verification step (REQ-MWA-011 halt path), not a fact.
 6. **Predecessor coupling**: SPEC-DESIGN-MOAIWEBV2-001 M3 deliberately styled the dark override (`--gradient-signature` solid dark). Retiring the block reverses that completed work by design — record the supersession note (spec.md §H) so audit does not flag it as accidental regression.
+7. **FOUC dual-branch + server-rendered attr (audit D1/D2/D6)**: the `root.templ` `foucHeadScript` carries BOTH a theme branch (`moai-console-theme` → `data-theme`) AND a language branch (`moai-console-lang` → `<html lang>`, CJK @font-face activation, REQ-WC5-005 lineage). ONLY the theme branch is removed; the language branch is preserved VERBATIM (machine guard AC-MWA-003b). Additionally, `board.templ:15` ships a server-rendered `<html lang="en" data-theme="light">` attribute (remove `data-theme`, keep `lang="en"`), and `page.templ:9` carries a stale `data-theme` markup-contract comment (comment-only update).
 
 ## §C. Pre-flight
 
 - [ ] `git rev-list --count --left-right origin/main...HEAD` → `0 0` (or local-ahead only) before run-phase spawn
+- [ ] Record `BASELINE_SHA=$(git rev-parse origin/main)` BEFORE the first run-phase commit/push — the committed-diff comparator for AC-MWA-007a / AC-MWA-013 (per-milestone pushes must not vacuously empty the diff; committed edits must be caught)
 - [ ] `go test ./internal/web/...` green on baseline (record as pre-change baseline)
 - [ ] `hugo -s docs-site` builds warning-free on baseline (record; REQ-MWA-014 comparator)
 - [ ] `templ` CLI + `pyftsubset` (fonttools) availability checked; if `pyftsubset` absent, install `fonttools` or perform the subset step on the maintainer machine (artifact is committed either way)
@@ -47,7 +49,7 @@ Branch `fix/docs-layout-collapse` (== `origin/main`). Target module `internal/we
 
 ## §E. Self-Verification (run-phase exit)
 
-Run the full AC matrix (acceptance.md §D) as a single-turn verification batch; record verbatim outputs in `progress.md` §E.2. Minimum set: dark grep 0 · 4-value byte-equal loop · font artifact ls + license test · http grep 0 · `go test ./internal/web/...` · `templ generate` clean diff · `git diff --exit-code -- docs-site/static/` · hugo warning-free · contrast table with post-fix ratios ≥ 4.5:1 for all live status-text usages.
+Run the full AC matrix (acceptance.md §D) as a single-turn verification batch; record verbatim outputs in `progress.md` §E.2. Minimum set: dark grep 0 · 4-value byte-equal loop · font artifact ls + license test · http grep 0 · `go test ./internal/web/...` · pinned `TestDarkThemeAbsence` non-vacuous PASS · `templ generate` clean diff · `git diff --name-only $BASELINE_SHA..HEAD -- docs-site/` empty (+ clean working tree) · hugo warning-free · contrast table with post-fix ratios ≥ 4.5:1 for all live status-text usages.
 
 ## §F. Milestones (decision-reversibility order)
 
@@ -73,12 +75,15 @@ Run the full AC matrix (acceptance.md §D) as a single-turn verification batch; 
 ### M4 — Dark-theme retirement sweep (mechanical)
 
 - `console.css`: remove all 9 `data-theme` references (token block ~L245, overrides L375/380-381/432-433/485/604, L7 comment).
-- `board.templ` + `root.templ`: remove `themeToggle` buttons; `root.templ`: remove the FOUC `<head>` snippet (`moai-console-theme` / `data-theme`); `icons.templ`: remove sun/moon SVGs; `app.js`: remove theme read/write/toggle logic WITHOUT disturbing the shared htmx-boost re-bind path for `uiLangSelect` (§B.3); `i18n.js`: remove `theme.aria` from all 4 locales atomically (§B.4).
+- `board.templ`: remove the `themeToggle` button AND the server-rendered `data-theme="light"` attribute from `<html>` (L15; keep `lang="en"`).
+- `root.templ`: remove the `themeToggle` button; in the FOUC `<head>` snippet remove ONLY the theme branch (`moai-console-theme` read + `data-theme` set) and its comment mention — preserve the `moai-console-lang` / `<html lang>` language branch VERBATIM (CJK font activation, REQ-WC5-005 lineage; machine guard AC-MWA-003b).
+- `page.templ`: update the stale L9 markup-contract comment to drop `data-theme` from the attribute enumeration (comment-only edit).
+- `icons.templ`: remove sun/moon SVGs; `app.js`: remove theme read/write/toggle logic WITHOUT disturbing the shared htmx-boost re-bind path for `uiLangSelect` (§B.3); `i18n.js`: remove `theme.aria` from all 4 locales atomically (§B.4).
 - `templ generate` after every `.templ` edit.
 
 ### M5 — Test-surface inversion + full verification batch (mechanical)
 
-- Invert `restyle_test.go`: required-token list drops `[data-theme="dark"]`; `TestDarkModeAndThemeToggle` becomes a dark-ABSENCE assertion (rename accordingly); FOUC assertions inverted. Update `i18n_test.go` if key-set parity asserts `theme.aria`. Confirm `mascots_test.go` unaffected.
+- Invert `restyle_test.go`: required-token list drops `[data-theme="dark"]`; `TestDarkModeAndThemeToggle` becomes the dark-ABSENCE assertion renamed to the PINNED name `TestDarkThemeAbsence` (AC-MWA-004 runs it by exact name with a non-vacuous `--- PASS` grep — a silent rename cannot match zero tests); FOUC assertions inverted to assert theme-branch absence AND language-branch (`moai-console-lang`) presence. Update `i18n_test.go` if key-set parity asserts `theme.aria`. Confirm `mascots_test.go` unaffected.
 - Add/extend a stylesheet test asserting the 4 docs-site status bytes and the Goorm `@font-face` presence (regression lock for AC-MWA-005/009).
 - Execute §E verification batch; populate progress.md §E.2/§E.3.
 
