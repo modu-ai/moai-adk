@@ -12,7 +12,7 @@ package web
 
 templ boardPage(view boardView) {
 	<!DOCTYPE html>
-	<html lang="en" data-theme="light">
+	<html lang="en">
 		<head>
 			<meta charset="utf-8"/>
 			<meta name="viewport" content="width=device-width, initial-scale=1"/>
@@ -102,9 +102,10 @@ templ boardPage(view boardView) {
 }
 
 // boardAppbar ports the settings-page appbar chrome (brand + loopback indicator +
-// langpick + theme toggle), plus a link back to the settings page. It omits the
-// shutdown button and the settings form's controls — the board is read-only. The
-// langpick and theme toggle are wired by the same app.js initConsole path.
+// langpick), plus a link back to the settings page. It omits the shutdown button
+// and the settings form's controls — the board is read-only. The langpick is
+// wired by the same app.js initConsole path. (The former theme toggle is retired
+// — SPEC-DESIGN-MOAIWEBV2-002 REQ-MWA-002, light-only console.)
 templ boardAppbar(view boardView) {
 	<header class="appbar">
 		<span class="brand" aria-label="MoAI-ADK">
@@ -125,10 +126,6 @@ templ boardAppbar(view boardView) {
 				<option value="zh">中文</option>
 			</select>
 		</span>
-		<button class="iconbtn" id="themeToggle" type="button" aria-label="Toggle light / dark theme" title="Toggle theme">
-			@icon("sun")
-			@icon("moon")
-		</button>
 	</header>
 }
 

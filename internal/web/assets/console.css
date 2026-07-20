@@ -4,7 +4,8 @@
 
    토큰 레이어는 from-claude-design/assets/colors_and_type.css 의
    FROZEN 토큰을 그대로 가져온다(브랜드 3색 / 서명 그라디언트 / 타입·간격·
-   반경·그림자·모션 스케일 / [data-theme="dark"] 오버라이드).
+   반경·그림자·모션 스케일). 라이트 단일 테마 — 다크 테마는
+   SPEC-DESIGN-MOAIWEBV2-002 에서 폐지됐다(docs-site v2 light-only 정책).
 
    오프라인 불변식(REQ-WC4-001/002): Google Fonts CDN @import 제거.
    Pretendard 는 self-host woff2 subset(상대 경로 @font-face)로만 로드한다.
@@ -278,25 +279,10 @@
   --container-2xl: 1440px;
 }
 
-/* ── Dark mode tokens (REQ-WC4-006) ── */
-[data-theme="dark"] {
-  --color-bg: #0e1513;
-  --color-surface: #1a1f1d;
-  --color-primary: #5a9a7e;
-  --color-primary-hover: #aed4be;
-  --color-ink: #e8eae9;
-  --fg-1: #e8eae9;
-  --fg-2: #a8aeac;
-  --fg-3: #8a908e;
-  --border-1: rgba(255, 255, 255, 0.08);
-  --border-2: rgba(255, 255, 255, 0.06);
-  --border-strong: rgba(255, 255, 255, 0.16);
-  /* SPEC-DESIGN-MOAIWEBV2-001 M3: signature accent = solid (drop the linear-gradient),
-     applied consistently to the dark override — dark point-green matches --color-primary. */
-  --gradient-signature: #5a9a7e;
-}
-
-/* ── Base / semantic typography ── */
+/* ── Base / semantic typography ──
+   (The former dark-mode token block — REQ-WC4-006, restyled by
+   SPEC-DESIGN-MOAIWEBV2-001 M3 — is retired by SPEC-DESIGN-MOAIWEBV2-002
+   Group 1: the console is light-only, matching the docs-site v2 policy.) */
 *, *::before, *::after { box-sizing: border-box; }
 html, body { margin: 0; padding: 0; }
 body {
@@ -409,13 +395,8 @@ html[lang="zh"] body { font-family: "Pretendard", "Noto Sans CJK SC", system-ui,
   transition: background var(--duration-fast) var(--easing-default), border-color var(--duration-fast) var(--easing-default);
 }
 .iconbtn:hover { background: var(--neutral-100); }
-[data-theme="dark"] .iconbtn:hover { background: rgba(255,255,255,0.06); }
 .iconbtn:focus-visible { outline: 2px solid var(--color-primary); outline-offset: 2px; }
 .iconbtn svg { width: 20px; height: 20px; }
-/* theme toggle: show sun in light, moon in dark */
-.iconbtn .icon-moon { display: none; }
-[data-theme="dark"] .iconbtn .icon-sun { display: none; }
-[data-theme="dark"] .iconbtn .icon-moon { display: block; }
 
 /* ============================================================
    Page shell + header
@@ -481,8 +462,6 @@ html[lang="zh"] body { font-family: "Pretendard", "Noto Sans CJK SC", system-ui,
    tint/border still derive from the raw docs-site tokens. */
 .banner--success { background: color-mix(in srgb, var(--color-success) 9%, var(--color-surface)); border-color: color-mix(in srgb, var(--color-success) 38%, transparent); color: var(--status-text-success); }
 .banner--error   { background: color-mix(in srgb, var(--color-danger) 9%, var(--color-surface));  border-color: color-mix(in srgb, var(--color-danger) 38%, transparent);  color: var(--status-text-danger); }
-[data-theme="dark"] .banner--success { color: #85bda0; }
-[data-theme="dark"] .banner--error { color: #5a9a7e; }
 
 /* ============================================================
    Fieldset / section card
@@ -535,7 +514,6 @@ html[lang="zh"] body { font-family: "Pretendard", "Noto Sans CJK SC", system-ui,
   background: var(--gradient-signature-soft); color: var(--color-primary);
   flex: none;
 }
-[data-theme="dark"] .section__ico { color: var(--color-primary-hover); }
 .section__ico svg { width: 18px; height: 18px; }
 .section__count { margin-left: auto; font-family: var(--font-mono); font-size: 11px; letter-spacing: 0; color: var(--fg-3); }
 .section__body { padding: var(--space-5); }
@@ -658,7 +636,6 @@ html[lang="zh"] body { font-family: "Pretendard", "Noto Sans CJK SC", system-ui,
   font-size: 13px; font-weight: var(--fw-medium); color: var(--status-text-danger);
   letter-spacing: var(--tracking-body);
 }
-[data-theme="dark"] .field-error, [data-theme="dark"] .field.has-error .field__title { color: #5a9a7e; }
 .field-error svg { width: 15px; height: 15px; flex: none; }
 
 /* ============================================================

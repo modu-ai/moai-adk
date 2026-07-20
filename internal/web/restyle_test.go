@@ -63,13 +63,13 @@ func readEmbeddedAsset(t *testing.T, path string) string {
 func TestConsoleCSSEmbedded(t *testing.T) {
 	css := readEmbeddedAsset(t, "console.css")
 
-	// Brand tokens present (AC-WC4-001).
+	// Brand tokens present (AC-WC4-001). The former [data-theme="dark"] entry is
+	// INVERTED by SPEC-DESIGN-MOAIWEBV2-002 (light-only) — see TestDarkThemeAbsence.
 	for _, want := range []string{
 		"--color-primary: #3d7d5f",
 		// SPEC-DESIGN-MOAIWEBV2-001 M3: bg de-tinted to the v2 achromatic canon.
 		"--color-bg: #f4f4f4",
 		"--gradient-signature:",
-		`[data-theme="dark"]`,
 	} {
 		if !strings.Contains(css, want) {
 			t.Errorf("console.css missing brand token %q", want)
@@ -204,12 +204,13 @@ func TestComponentChromePresent(t *testing.T) {
 func TestAppbarRendered(t *testing.T) {
 	body := renderIndexBody(t, profile.ProfilePreferences{})
 
+	// The former id="themeToggle" expected marker is INVERTED by
+	// SPEC-DESIGN-MOAIWEBV2-002 (light-only) — see TestDarkThemeAbsence.
 	for _, marker := range []string{
 		`class="appbar"`,       // appbar present
 		`class="brand__badge"`, // signature-gradient brand badge
 		`MoAI-ADK`,             // brand name (mascot green theme rebrand)
 		`class="loopback"`,     // loopback indicator
-		`id="themeToggle"`,     // theme toggle button
 		`id="uiLangSelect"`,    // S3 langpick (the non-colliding interface id)
 		`data-i18n`,            // S3 chrome translation markers
 	} {
@@ -393,43 +394,84 @@ func TestBannerKindMapping(t *testing.T) {
 	}
 }
 
-// --- M3: dark mode + theme toggle ---
+// --- M3 (SPEC-WEB-CONSOLE-004) dark mode — RETIRED by SPEC-DESIGN-MOAIWEBV2-002 ---
 
-// TestDarkModeAndThemeToggle verifies AC-WC4-006: the [data-theme] override block
-// is present in the token CSS, the theme-toggle element is present, the FOUC
-// inline <head> snippet applies the persisted theme before first paint, the
-// prefers-reduced-motion guard is present, and theme persistence is client-side
-// only (no server theme field).
-func TestDarkModeAndThemeToggle(t *testing.T) {
+// TestDarkThemeAbsence verifies AC-MWA-001/002/003 by INVERTING the retired
+// AC-WC4-006 dark-mode assertions (REQ-MWA-004 partially supersedes
+// SPEC-WEB-CONSOLE-004 REQ-WC4-006): the console is light-only. Zero data-theme
+// references in the stylesheet, no theme-toggle control, no data-theme
+// attribute or theme FOUC branch in the rendered page, no moai-console-theme
+// persistence key in app.js, no theme.aria i18n key — while the FOUC snippet's
+// language branch (moai-console-lang -> <html lang>, REQ-WC5-005 CJK font
+// activation lineage) is preserved verbatim (AC-MWA-003b).
+func TestDarkThemeAbsence(t *testing.T) {
 	css := readEmbeddedAsset(t, "console.css")
 	body := renderIndexBody(t, profile.ProfilePreferences{})
 	js := readEmbeddedAsset(t, "app.js")
 
-	if !strings.Contains(css, `[data-theme="dark"]`) {
-		t.Error("token CSS missing [data-theme=\"dark\"] override block")
+	// (1) Stylesheet: zero data-theme references (AC-MWA-001); the
+	// prefers-reduced-motion accessibility guard survives the retirement.
+	if strings.Contains(css, "data-theme") {
+		t.Error("console.css still contains a data-theme reference (dark theme must be fully retired)")
 	}
 	if !strings.Contains(css, "prefers-reduced-motion") {
-		t.Error("token CSS missing prefers-reduced-motion guard")
+		t.Error("token CSS missing prefers-reduced-motion guard (must survive dark retirement)")
 	}
-	// SPEC-WEB-CONSOLE-006 Class C mechanism retarget (spec.md §2.1.1 #6 / §D.3):
-	// the prior version grepped the page.html.tmpl SOURCE for id="themeToggle" + the
-	// FOUC `moai-console-theme` / `data-theme` <head> snippet. The template source is
-	// deleted; both render in the BODY (the appbar emits the themeToggle button and
-	// the <html data-theme> + <head> FOUC <script> render), so the assertions are
-	// retargeted to the rendered body.
-	if !strings.Contains(body, `id="themeToggle"`) {
-		t.Error("theme-toggle element missing from rendered page")
+
+	// (2) Rendered settings page: no toggle, no data-theme attr (including the
+	// server-rendered <html> attribute), no theme FOUC branch, no sun/moon icons
+	// (AC-MWA-002/003a).
+	for _, forbidden := range []string{`id="themeToggle"`, "data-theme", "moai-console-theme", "icon-sun", "icon-moon"} {
+		if strings.Contains(body, forbidden) {
+			t.Errorf("rendered page still contains %q (dark theme must be fully retired)", forbidden)
+		}
 	}
-	if !strings.Contains(body, "moai-console-theme") || !strings.Contains(body, "data-theme") {
-		t.Error("FOUC-prevention inline theme init missing from rendered <head>")
+
+	// (3) FOUC language branch preserved (AC-MWA-003b): the <head> still applies
+	// the persisted interface language before first paint.
+	if !strings.Contains(body, "moai-console-lang") {
+		t.Error("FOUC language branch (moai-console-lang) missing from rendered <head> — REQ-MWA-003 preserves it verbatim")
 	}
-	// Client-side persistence in app.js, no server round-trip.
-	if !strings.Contains(js, "localStorage") || !strings.Contains(js, "moai-console-theme") {
-		t.Error("app.js theme toggle does not persist client-side via localStorage")
+
+	// (4) app.js: theme read/write/toggle logic fully removed; the shared
+	// htmx-boost re-bind path for the langpick survives (plan §B.3).
+	for _, forbidden := range []string{"moai-console-theme", "data-theme", "applyTheme", "themeToggle"} {
+		if strings.Contains(js, forbidden) {
+			t.Errorf("app.js still contains %q (theme logic must be fully removed)", forbidden)
+		}
 	}
-	// No theme field added to the server persistence path (negative guard).
+	if !strings.Contains(js, "uiLangSelect") {
+		t.Error("app.js langpick wiring (uiLangSelect) lost during theme removal — plan §B.3 forbids this")
+	}
+
+	// (5) i18n dictionary: theme.aria removed from all 4 locales (AC-MWA-002c).
+	if strings.Contains(readEmbeddedAsset(t, "i18n.js"), "theme.aria") {
+		t.Error("i18n.js still carries the theme.aria key (must be removed from all 4 locales)")
+	}
+
+	// (6) Board page source (board.templ:15 lineage): the server-rendered
+	// data-theme attribute and the board theme toggle are gone; lang="en" stays.
+	boardSrc := readGoSource(t, "board.templ")
+	if strings.Contains(boardSrc, "data-theme") || strings.Contains(boardSrc, "themeToggle") {
+		t.Error("board.templ still carries data-theme / themeToggle (dark theme must be fully retired)")
+	}
+	if !strings.Contains(boardSrc, `lang="en"`) {
+		t.Error(`board.templ <html> lost its lang="en" attribute (must be preserved)`)
+	}
+
+	// (7) Settings page source: theme markers gone, language branch present.
+	rootSrc := readGoSource(t, "root.templ")
+	if strings.Contains(rootSrc, "data-theme") || strings.Contains(rootSrc, "moai-console-theme") || strings.Contains(rootSrc, "themeToggle") {
+		t.Error("root.templ still carries theme markers (dark theme must be fully retired)")
+	}
+	if !strings.Contains(rootSrc, "moai-console-lang") {
+		t.Error("root.templ FOUC language branch (moai-console-lang) missing — AC-MWA-003b")
+	}
+
+	// (8) No theme field on the server persistence path (negative guard kept
+	// from the retired test — the retirement must not push theme server-side).
 	if strings.Contains(readGoSource(t, "handlers.go"), `"theme"`) {
-		t.Error("a theme field leaked into the server handler (theme must be client-side only)")
+		t.Error("a theme field leaked into the server handler (no server-side theme successor)")
 	}
 }
 
@@ -475,12 +517,11 @@ func TestAccessibilityCues(t *testing.T) {
 		t.Error("CSS missing prefers-reduced-motion guard")
 	}
 	// SPEC-WEB-CONSOLE-006 Class C mechanism retarget (spec.md §2.1.1 #8 / §D.3):
-	// the prior version grepped the page.html.tmpl SOURCE for id="themeToggle" +
-	// aria-label + class="field-error" + has-error. The template source is deleted;
-	// these render in the BODY — the appbar emits the themeToggle button with its
-	// aria-label, and an errored render carries the field-error / has-error cues.
-	if !strings.Contains(body, `id="themeToggle"`) || !strings.Contains(body, "aria-label=") {
-		t.Error("theme toggle / icon-only control missing aria-label")
+	// these render in the BODY. SPEC-DESIGN-MOAIWEBV2-002 retired the theme
+	// toggle, so the icon-only-control aria-label cue is asserted on the
+	// remaining #serverShutdown appbar icon button instead.
+	if !strings.Contains(body, `id="serverShutdown"`) || !strings.Contains(body, "aria-label=") {
+		t.Error("icon-only appbar control (#serverShutdown) missing aria-label")
 	}
 	// Error cue is non-color: an errored render carries the field-error icon+text
 	// span and the has-error border class.

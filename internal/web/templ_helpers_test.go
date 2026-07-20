@@ -265,7 +265,9 @@ func TestNumberFieldHelperMarkupParity(t *testing.T) {
 // SVG markup for a representative set of icon names with no CDN reference, and an
 // empty string for an unknown name (REQ-WC6-017 — templ.Raw on a closed switch).
 func TestIconHelperParity(t *testing.T) {
-	for _, name := range []string{"alert-circle", "save", "sun", "moon", "check", "user-round"} {
+	// sun/moon removed from the set — the theme toggle is retired
+	// (SPEC-DESIGN-MOAIWEBV2-002 REQ-MWA-002).
+	for _, name := range []string{"alert-circle", "save", "check", "user-round"} {
 		out := renderTempl(t, icon(name))
 		if !strings.Contains(out, "<svg class=\"icon-"+name+"\"") {
 			t.Errorf("icon(%q) did not render the inline <svg class=\"icon-%s\">: %q", name, name, out)
