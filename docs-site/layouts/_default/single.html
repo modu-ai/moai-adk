@@ -22,50 +22,36 @@
     {{- /* (1) 읽기 진행률 바 — position:fixed; top:64px; height:3px (#rp width = JS). */ -}}
     <div class="read-progress"><div id="rp"></div></div>
 
-    {{- /* (2) 문서 히어로 — 그라데이션 풀-블리드. frontmatter/CurrentSection에서 메타 구성. */ -}}
-    <section class="doc-hero">
+    {{- /* (2) 문서 히어로 — 컴팩트 밴드 + 마스코트. crumb/카테고리/제목/분량 1열 + 우측 마스코트.
+           마스코트는 페이지 경로 해시로 6종 중 하나를 결정적으로 선택(같은 페이지=같은 마스코트). */ -}}
+    {{- $mascots := slice "MoAI-Mascot-Pointing" "MoAI-Mascot-Explaining" "MoAI-Mascot-Searching" "MoAI-Mascot-Thinking" "MoAI-Mascot-Teaching" "MoAI-Mascot-Coffee" -}}
+    {{- $mi := mod (len .RelPermalink) (len $mascots) -}}
+    <section class="doc-hero doc-hero--compact">
       <div class="doc-hero-inner">
-        <nav class="crumb" aria-label="breadcrumb">
-          <a href="{{ .Site.Home.RelPermalink }}">{{ .Site.Title }}</a>
-          {{- if not (eq .CurrentSection.RelPermalink .Site.Home.RelPermalink) }}
-          <span class="sep">›</span>
-          <a href="{{ .CurrentSection.RelPermalink }}">{{ .CurrentSection.Title }}</a>
-          {{- end }}
-          <span class="sep">›</span>
-          <span>{{ .Title }}</span>
-        </nav>
-        <span class="doc-cat">{{ .Params.category | default .CurrentSection.Title }}</span>
-        <h1 class="doc-h1">{{ .Title }}</h1>
-        {{- with .Description }}<p class="doc-deck">{{ . }}</p>{{- end }}
-        <div class="doc-byline">
-          <div class="doc-author">
-            <div class="doc-author-avatar">M</div>
-            <div>
-              <strong>{{ or .Params.author "MoAI" }}</strong>
-              <div class="doc-author-sub">{{ .Params.authorRole | default "MoAI Team" }}</div>
-            </div>
-          </div>
+        <div class="doc-hero-text">
+          <nav class="crumb" aria-label="breadcrumb">
+            <a href="{{ .Site.Home.RelPermalink }}">{{ .Site.Title }}</a>
+            {{- if not (eq .CurrentSection.RelPermalink .Site.Home.RelPermalink) }}
+            <span class="sep">›</span>
+            <a href="{{ .CurrentSection.RelPermalink }}">{{ .CurrentSection.Title }}</a>
+            {{- end }}
+            <span class="sep">›</span>
+            <span>{{ .Title }}</span>
+          </nav>
+          <span class="doc-cat">{{ .Params.category | default .CurrentSection.Title }}</span>
+          <h1 class="doc-h1">{{ .Title }}</h1>
           <div class="doc-meta-strip">
             {{- if not .Date.IsZero }}<span>{{ .Date.Format "2006.01.02" }}</span>{{ end }}
             <span>{{ .ReadingTime }}분 분량</span>
           </div>
         </div>
+        <img class="doc-hero-mascot" src="{{ (printf "mascots/%s.png" (index $mascots $mi)) | relURL }}" alt="" aria-hidden="true">
       </div>
     </section>
 
-    {{- /* (3) 3-컬럼 본문 레이아웃 — TOC | 본문 | rail (grid 220px 1fr 280px). */ -}}
-    <div class="doc-layout">
-
-      {{- /* 좌측 TOC — 본문에 h2가 있을 때만 렌더(findRE로 존재 확인). h2 목록은
-             doc-toc-walk 헬퍼가 .Fragments.Headings 트리를 재귀 순회해 flat하게 수집. */ -}}
-      {{- if gt (len (findRE "<h2" .Content)) 0 }}
-      <aside class="docs-toc" aria-label="{{ i18n "toc_label" }}">
-        <div class="docs-toc-h">{{ i18n "toc_label" }}</div>
-        <ul class="docs-toc-list">
-          {{- template "doc-toc-walk" .Fragments.Headings -}}
-        </ul>
-      </aside>
-      {{- end }}
+    {{- /* (3) 2-단 본문 레이아웃 — 본문 | 우측 TOC (grid minmax(0,1fr) 260px).
+           구 3-컬럼(좌 TOC | 본문 | rail)에서 TOC를 rail 위치로 이동, rail 카드 삭제. */ -}}
+    <div class="doc-layout doc-layout--2col">
 
       {{- /* 본문 — .Content를 gdoc-markdown(마크다운 타이포) + prose-kr(향후 M3c 타이포)로 감싼다.
              .next-cta는 gdoc-markdown 바깥 형제로 두어 prose 여백이 CTA에 묻지 않게 한다. */ -}}
@@ -84,10 +70,15 @@
         {{- end }}
       </article>
 
-      {{- /* 우측 rail — doc-rail partial (액션 / 관련 가이드 / CTA). */ -}}
-      <aside class="rail">
-        {{ partial "doc-rail" . }}
+      {{- /* 우측 TOC — 본문에 h2가 있을 때만 렌더. doc-toc-walk가 h2 flat 수집. */ -}}
+      {{- if gt (len (findRE "<h2" .Content)) 0 }}
+      <aside class="docs-toc" aria-label="{{ i18n "toc_label" }}">
+        <div class="docs-toc-h">{{ i18n "toc_label" }}</div>
+        <ul class="docs-toc-list">
+          {{- template "doc-toc-walk" .Fragments.Headings -}}
+        </ul>
       </aside>
+      {{- end }}
 
     </div>
   </article>
