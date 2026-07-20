@@ -372,5 +372,5 @@ Contributions are welcome. See [CONTRIBUTING.md](CONTRIBUTING.md) for detailed p
 - [Official Documentation](https://adk.mo.ai.kr)
 - [Book: Practical Agentic Coding with Claude Code](https://adk.mo.ai.kr/book)
 - [CHANGELOG](./CHANGELOG.md)
-- [Claude Code](https://docs.anthropic.com/en/docs/claude-code)
+- [Claude Code](https://code.claude.com/docs/en)
 - [Discord Community](https://discord.gg/Z7E7Mdc5aN)

@@ -372,5 +372,5 @@ flowchart TD
 - [官方文档](https://adk.mo.ai.kr)
 - [图书：Claude Code 实战 Agentic 编程](https://adk.mo.ai.kr/book)
 - [CHANGELOG](./CHANGELOG.md)
-- [Claude Code](https://docs.anthropic.com/en/docs/claude-code)
+- [Claude Code](https://code.claude.com/docs/en)
 - [Discord 社区](https://discord.gg/Z7E7Mdc5aN)
