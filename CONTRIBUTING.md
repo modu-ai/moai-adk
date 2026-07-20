@@ -20,11 +20,11 @@ Thank you for your interest in contributing to MoAI-ADK Go Edition! This guide w
 ```bash
 # Fork the repository on GitHub
 # Clone your fork locally
-git clone https://github.com/YOUR_USERNAME/moai-adk-go.git
-cd moai-adk-go
+git clone https://github.com/YOUR_USERNAME/moai-adk.git
+cd moai-adk
 
 # Add upstream remote
-git remote add upstream https://github.com/modu-ai/moai-adk-go.git
+git remote add upstream https://github.com/modu-ai/moai-adk.git
 ```
 
 ### 2. Create Development Branch
@@ -251,4 +251,4 @@ Your contributions will be licensed under the project's [Apache License 2.0](LIC
 
 ---
 
-For questions, please create a [GitHub Issue](https://github.com/modu-ai/moai-adk-go/issues).
+For questions, please create a [GitHub Issue](https://github.com/modu-ai/moai-adk/issues).
