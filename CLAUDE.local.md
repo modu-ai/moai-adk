@@ -691,7 +691,7 @@ docs-site는 Claude Warm Editorial 디자인 시스템(코랄 `#cc785c` · Prete
 
 ## 18. Git Workflow — Enhanced GitHub Flow
 
-v2.14.0 릴리스 이후 공식 채택. 5-axis 즉시 개선 (branch protection / label 3축 / merge strategy / Release Drafter / hotfix naming) + Enhanced GitHub Flow 11 branch prefix + Merge strategy 표 + BODP 3-Signal Evaluation + v2.14.0 Case Study + AskUserQuestion Enforcement Protocol 등 전체 doctrine은 외부 파일 참조.
+v2.14.0 릴리스 이후 공식 채택. 5-axis 즉시 개선 (branch protection / label 3축 / merge strategy / Release Drafter / hotfix naming) + Enhanced GitHub Flow 11 branch prefix + Merge strategy 표 + BODP 3-Signal Evaluation + v2.14.0 Case Study + AskUserQuestion Enforcement Protocol 등 전체 doctrine은 외부 파일 참조. **(2026-07-20) branch protection 축이 `enforce_admins: true`로 적용 완료 — main direct push 전면 차단, 모든 tier PR 경유 (§18.7 + §18.3.1 참조). Hybrid Trunk main-direct는 RETIRED.**
 
 See: `.moai/docs/git-workflow-doctrine.md`
 
@@ -814,9 +814,9 @@ Workflow audit 2026-05-16 finding M2 후속. 로컬 `.claude/settings.json`의 �
 
 ---
 
-## 23. Local Git Workflows + Hook Setup (Hybrid Trunk 1-person OSS)
+## 23. Local Git Workflows + Hook Setup (PR-mandatory 1-person OSS)
 
-[HARD] 1인 OSS Hybrid Trunk 정책 — 모든 tier(S/M/L) main 직접 push 허용 (CI 4 status checks + pre-push 5s warn + Conventional Commits + Release Drafter 4중 보호). 다루는 주제: pre-push hook 수동 설치(§23.1), GitHub branch protection 현황(§23.2), 운영 오류 패턴 A4/A5/A6 + Late-Branch Phase D 2중 보호(§23.3–§23.6), 6개 [HARD] 운영 원칙(§23.7), Tier-based PR Routing(§23.9), Multi-Session Race Mitigation 4중 방어(§23.8).
+[HARD] **(2026-07-20 개정) 1인 OSS PR-mandatory 정책 — `enforce_admins: true`로 main direct push 완전 차단 (admin 포함).** 모든 변경 (daily Tier S/M commit 포함)은 PR 경유; self-merge 허용 (0 approvals, 4개 CI check 통과 시). 종전 "모든 tier(S/M/L) main 직접 push 허용" Hybrid Trunk 정책은 RETIRED. tier는 이제 main-direct 여부가 아니라 PR ceremony 무게(§23.9)에만 영향. tag push(`scripts/release.sh`)는 branch protection 무관 → tag flow 무영향. 다루는 주제: pre-push hook 수동 설치(§23.1, main엔 이제 redundant·harmless), GitHub branch protection 현황(§23.2, enforce_admins:true), 운영 오류 패턴 A4/A5/A6 + Late-Branch Phase D 2중 보호(§23.3–§23.6), [HARD] 운영 원칙(§23.7, PR-mandatory), Tier-based PR Routing(§23.9, 모든 tier PR), Multi-Session Race Mitigation 4중 방어(§23.8).
 
 See: `.moai/docs/git-local-workflow-doctrine.md`
 
