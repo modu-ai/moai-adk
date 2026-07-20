@@ -139,7 +139,7 @@ m1_to_mN_commit_strategy: "per-milestone commit + push direct-to-main (Route A H
 ## §E.4 Sync-phase Audit-Ready Signal
 
 sync_complete_at: 2026-07-20
-sync_commit_sha: "pending-backfill-2026-07-20"
+sync_commit_sha: "a1ca4a28372155f80855cde3b7978e83e1d43e30"
 sync_status: PASS-WITH-DEBT
 changelog_entry_position: "[Unreleased] > Added (first entry)"
 debt_carried_forward: "AC-TUX4-010 PASS-WITH-DEBT — internal/cli/branch_protection.go:44 (interactive y/N fmt.Printf) deferred to SPEC-V3R6-CI-BASELINE-DRIFT-001 §D.1; not modified by this SPEC"
