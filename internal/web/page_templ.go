@@ -14,7 +14,7 @@ import (
 
 // Templ component tree for the Console page (SPEC-WEB-CONSOLE-006). Ported 1:1
 // from the retired internal/web/assets/page.html.tmpl (html/template) so the
-// emitted markup contract — CSS class names, data-i18n / data-theme attributes,
+// emitted markup contract — CSS class names, data-i18n attributes,
 // name= POST attributes, id= values, inline-SVG icons, and {{range}}->for
 // option-list semantics — is byte-comparable and the characterization gate
 // (spec.md §2: Class B server-contract unmodified, Class A markup parity) stays
