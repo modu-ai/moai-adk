@@ -13,6 +13,8 @@ MoAI-ADK(Agentic Development Kit)는 Claude Code를 위한 전략적 오케스�
 
 ![MoAI-ADK](/og.jpg)
 
+![문서 구조 지도](/images/sections/doc-map-ko.png)
+
 ## MoAI 3.0의 세 가지 핵심 가치
 
 - **🪙 토크노믹스** — 컨텍스트 다이어트와 프롬프트 캐싱으로 추론 비용을 60-70% 절감합니다. [멀티 LLM](/multi-llm), [비용 최적화](/cost-optimization), [심화 학습/토크노믹스 개요](/advanced/tokenomics-overview)를 참조하세요.

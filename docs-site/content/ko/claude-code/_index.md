@@ -9,6 +9,8 @@ description: "MoAI-ADK의 세 기둥(토크노믹스·에이전틱 루프 엔지
 {{< /callout >}}
 <!-- @value: agentic-harness, self-learning -->
 
+![Claude Code 확장](/images/sections/claude-code-ko.png)
+
 이 섹션은 앤트로픽의 터미널 CLI인 Claude Code를 처음부터 이해하기 위한 학습 경로입니다.
 
 

@@ -9,6 +9,8 @@ description: "A 4-group learning path for understanding Claude Code from scratch
 {{< /callout >}}
 <!-- @value: agentic-harness, self-learning -->
 
+![Claude Code extensions](/images/sections/claude-code-en.png)
+
 This section is a learning path for understanding Claude Code, Anthropic's terminal CLI, from scratch. It is a guide for developers who are new to Claude Code, and for anyone who wants a precise grasp of the foundation MoAI-ADK operates on.
 
 

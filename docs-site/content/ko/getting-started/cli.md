@@ -73,8 +73,8 @@ moai init [project-name] [OPTIONS]
 | `--enable-lsp` | LSP 연동 활성화 (기본값: false) |
 | `--enforce-quality` | 품질 게이트 강제 (기본값: true) |
 | `--enable-design` | 디자인 워크플로우 활성화 (기본값: true) |
-| `--model-policy <max\|medium\|low>` | 성능 티어 — `llm.yaml` `performance_tier` 에 저장 |
-| `--plan-type <api\|subscription>` | 요금제 유형 — `llm.yaml` `plan_type` 에 저장 |
+| `--profile <max\|medium\|low>` | 모델+effort 프로필 — `llm.yaml` `profile` 에 저장 (프로필 매트릭스 열 선택) |
+| `--model-policy <max\|medium\|low>` | legacy 성능 티어 — `llm.yaml` `performance_tier` 에 저장 (`profile` 부재 시 별칭) |
 | `--high` | **삭제 예정** `--model-policy max` 의 별칭 |
 
 ### 예시
@@ -120,7 +120,7 @@ moai update [OPTIONS]
 | `--no-hooks` | Git 훅 설치 건너뛰기 |
 | `--verbose` | 모든 경고 표시 (진단 모드) |
 | `--shell-env` | Claude Code 용 셸 환경변수 구성 |
-| `--plan-type <api\|subscription>` | 요금제 유형 덮어쓰기 (`llm.yaml` `plan_type` 및 티어 프로필 재적용) |
+| `--profile <max\|medium\|low>` | 모델+effort 프로필 덮어쓰기 (`llm.yaml` `profile` 에 저장) |
 
 ### 예시
 

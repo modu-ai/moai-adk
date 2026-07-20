@@ -8,6 +8,8 @@ draft: false
 {{< /callout >}}
 <!-- @value: tokenomics, self-learning, agentic-harness -->
 
+![Tokenomics 3 axes](/images/sections/advanced-en.png)
+
 This section is for developers who want to take MoAI-ADK apart and see how it works inside. Once you are comfortable with the basic workflow (plan → run → sync), this is where you can see how the harness is actually assembled.
 
 

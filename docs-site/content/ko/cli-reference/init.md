@@ -60,8 +60,8 @@ moai init [project-name]
 | `--git-mode <manual\|personal\|team>` | Git 워크플로우 모드 (기본: manual) |
 | `--git-provider <github\|gitlab>` | Git 제공자 |
 | `--github-username <name>` | GitHub 사용자명 (personal/team 모드 필수) |
-| `--model-policy <max\|medium\|low>` | 성능 티어 — `llm.yaml` 의 `performance_tier` 에 저장 |
-| `--plan-type <api\|subscription>` | 청구 플랜 유형 — `llm.yaml` 의 `plan_type` 에 저장 |
+| `--profile <max\|medium\|low>` | 모델+effort 프로필 — `llm.yaml` 의 `profile` 에 저장 (프로필 매트릭스 열 선택) |
+| `--model-policy <max\|medium\|low>` | legacy 성능 티어 — `llm.yaml` 의 `performance_tier` 에 저장 (`profile` 부재 시 별칭으로 읽힘) |
 
 ## 예시
 

@@ -10,6 +10,8 @@ MoAI-ADK (Agentic Development Kit) は、Claude Code 用の戦略的オーケス
 
 ![MoAI-ADK](/og.jpg)
 
+![ドキュメント構造マップ](/images/sections/doc-map-ja.png)
+
 ## MoAI 3.0の3つのコアバリュー
 
 - **🪙 トークノミクス** — コンテキストダイエットとプロンプトキャッシングで推論コストを60-70%削減します。[マルチ LLM](/multi-llm)、[コスト最適化](/cost-optimization)、[高度な使い方/トークノミクス概要](/advanced/tokenomics-overview)を参照してください。

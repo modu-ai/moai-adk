@@ -10,6 +10,8 @@ MoAI-ADK (Agentic Development Kit) 是 Claude Code 的战略编排框架。
 
 ![MoAI-ADK](/og.jpg)
 
+![文档结构图](/images/sections/doc-map-zh.png)
+
 ## MoAI 3.0 的三大核心价值
 
 - **🪙 代币经济学** — 通过上下文瘦身和提示缓存将推理成本降低60-70%。参见[多 LLM](/multi-llm)、[成本优化](/cost-optimization)和[高级/代币经济学概述](/advanced/tokenomics-overview)。

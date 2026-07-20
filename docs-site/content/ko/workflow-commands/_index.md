@@ -8,6 +8,8 @@ draft: false
 {{< /callout >}}
 <!-- @value: agentic-harness -->
 
+![SPEC 3-페이즈 파이프라인](/images/sections/workflow-commands-ko.png)
+
 SPEC 기반 3-Phase 라이프사이클 (plan → run → sync)을 실행하는 명령어 모음입니다。
 
 

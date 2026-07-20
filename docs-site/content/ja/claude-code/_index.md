@@ -9,6 +9,8 @@ description: "MoAI-ADK の三本柱 (トークノミクス・エージェンテ�
 {{< /callout >}}
 <!-- @value: agentic-harness, self-learning -->
 
+![Claude Code拡張](/images/sections/claude-code-ja.png)
+
 このセクションは、Anthropic のターミナル CLI である Claude Code を基礎から理解するための学習パスです。Claude Code に触れたばかりの開発者、そして MoAI-ADK の動作基盤を正確に把握したい方のための案内書です。
 
 Claude Code はターミナル上で実行されるコーディングエージェントで、コードを読み取り、修正し、コマンドを実行しながら、開発者との対話を通じて作業します。MoAI-ADK はこの Claude Code の上で動作するオーケストレーション層であり、3 つのコアバリュー — **トークノミクス** (Token Economics)、**エージェンティックループエンジニアリング** (再帰的な自己学習)、**エージェンティックハーネス** (Agentic Harness) — はすべて、このセクションで扱う Claude Code の基本メカニズムの上に築かれています。コンテキストウィンドウとプロンプトキャッシュを知らなければトークノミクスは設計できず、サブエージェントと `/goal` を知らなければエージェンティックループは理解できず、スキル・フック・MCP を知らなければハーネスは作れません。

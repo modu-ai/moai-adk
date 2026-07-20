@@ -8,6 +8,8 @@ draft: false
 {{< /callout >}}
 <!-- @value: tokenomics, self-learning, agentic-harness -->
 
+![代币经济学三轴](/images/sections/advanced-zh.png)
+
 本节面向想深入拆解 MoAI-ADK 内部结构的开发者。如果你已经熟悉了基本工作流（plan → run → sync），可以在这里看到 Harness 实际是如何组装起来的。
 
 

@@ -24,7 +24,7 @@ v3.0의 제품 차별화는 세 기둥으로 구성됩니다. 토크노믹스는
 
 {{< icon rotate >}} **자율 연속 루프** — 언제 멈추고 언제 계속할 것인가. [자율 연속 루프](/ko/advanced/autonomous-loops/) 페이지에서 다룹니다.
 
-{{< icon database >}} **에이전틱 하네스** — 어떤 에이전트가, 어떤 티어로, 어떻게 진화하는가. [3-티어 아키텍처](/ko/advanced/no-haiku-3tier/), [plan_type 티어 프로필](/ko/advanced/plan-type-profiles/), [하네스 자가 진화](/ko/advanced/self-evolving/) 페이지에서 다룹니다.
+{{< icon database >}} **에이전틱 하네스** — 어떤 에이전트가, 어떤 프로필로, 어떻게 진화하는가. [3-티어 아키텍처](/ko/advanced/no-haiku-3tier/), [프로필 매트릭스](/ko/advanced/profile-matrix/), [하네스 자가 진화](/ko/advanced/self-evolving/) 페이지에서 다룹니다.
 
 ## 4-층 토크노믹스 구조
 
@@ -48,7 +48,7 @@ flowchart TD
 
 ### B층 — 라우팅 (Routing)
 
-{{< icon package >}} 작업 단계(phase: plan / run / sync)와 SPEC 크기(Tier S / M / L)에 따라 모델과 추론 깊이(effort)를 선언적으로 배정합니다. 깊은 추론이 필요한 계획 단계에는 고추론 모델을, 기계적 반복이 많은 구현 단계에는 가벼운 모델을 배정하여 비용 대비 품질을 극대화합니다. 상세한 60-셀 프로필 매트릭스는 [plan_type 티어 프로필](/ko/advanced/plan-type-profiles/) 페이지를 참조하세요.
+{{< icon package >}} 유지되는 각 에이전트에 모델과 추론 깊이(effort)를 선언적으로 배정합니다. 활성 프로필(`max`/`medium`/`low`)이 프로필 매트릭스의 한 열을 선택하고, 깊은 추론이 필요한 지점에는 고추론 모델을, 기계적 작업에는 가벼운 모델을 배정하여 비용 대비 품질을 극대화합니다. 상세한 프로필 매트릭스는 [프로필 매트릭스](/ko/advanced/profile-matrix/) 페이지를 참조하세요.
 
 ### C층 — 검증 다이어트 (Verify-diet)
 
@@ -60,10 +60,10 @@ flowchart TD
 
 ## 모델 티어 라우팅
 
-B층의 라우팅을 구체화하는 것이 모델 티어 정책입니다. MoAI-ADK v3.0은 Haiku를 라우팅 모델 세트에서 배제하고, 3-티어 구조(Sonnet / Opus / Fable)로 작업을 분산합니다. 이 설계의 근거와 ApplyTierProfile 구현은 다음 두 페이지에서 다룹니다.
+B층의 라우팅을 구체화하는 것이 모델 프로필 정책입니다. MoAI-ADK v3.0은 Haiku를 라우팅 모델 세트에서 배제하고, 3-티어 구조(Sonnet / Opus / Fable)로 작업을 분산합니다. 이 설계의 근거와 프로필 매트릭스 구현은 다음 두 페이지에서 다룹니다.
 
 - [3-티어 에이전트 아키텍처](/ko/advanced/no-haiku-3tier/) — 왜 Haiku를 배제했는가, DeepSWE 리더보드 근거
-- [plan_type 티어 프로필](/ko/advanced/plan-type-profiles/) — api vs 구독 요금제별 60-셀 프로필 매트릭스
+- [프로필 매트릭스](/ko/advanced/profile-matrix/) — 단일 3-열 per-agent 프로필 매트릭스
 
 ## CG 모드 (비용 최적화)
 
@@ -75,12 +75,12 @@ GLM-5.2는 1M 컨텍스트 단일 모델로 입력 $2 / 출력 $8 (1M 토큰당)
 
 이 페이지에 기재된 내용 중 구현 상태를 명확히 구분합니다.
 
-{{< icon check ok >}} **구현 완료 (배포 중)** — 4-층 구조(A/B/C/D) 전 층, 3-티어 모델 정책(ApplyTierProfile), CG 모드, 검증 다이어트 파일-리다이렉트 계약, 우아한 중단 메커니즘.
+{{< icon check ok >}} **구현 완료 (배포 중)** — 4-층 구조(A/B/C/D) 전 층, 3-티어 모델 정책(프로필 매트릭스 리졸버), CG 모드, 검증 다이어트 파일-리다이렉트 계약, 우아한 중단 메커니즘.
 
-{{< icon clock >}} **설계 단계 (로드맵)** — GLM 백엔드 effort 오버레이의 wire 유효성은 라이브 GLM 세션 아웃바운드 관측이 필요한 실증 과제입니다. plan_type 티어 프로필 페이지에서 이 구분을 명시합니다.
+{{< icon clock >}} **설계 단계 (로드맵)** — GLM 백엔드 effort 오버레이의 wire 유효성은 라이브 GLM 세션 아웃바운드 관측이 필요한 실증 과제입니다. 프로필 매트릭스 페이지에서 이 구분을 명시합니다.
 
 ## 다음 단계
 
 - [토큰 예산 관리와 우아한 중단](/ko/advanced/token-budget/) — D층 심화 (모델별 임계치, paste-ready resume 구조)
 - [3-티어 에이전트 아키텍처](/ko/advanced/no-haiku-3tier/) — 하네스 아키텍처 기초
-- [plan_type 티어 프로필](/ko/advanced/plan-type-profiles/) — 60-셀 프로필 매트릭스
+- [프로필 매트릭스](/ko/advanced/profile-matrix/) — 단일 3-열 per-agent 프로필 매트릭스

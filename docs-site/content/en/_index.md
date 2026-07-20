@@ -12,6 +12,8 @@ MoAI-ADK (Agentic Development Kit) is a strategic orchestration framework for Cl
 
 ![MoAI-ADK](/og.jpg)
 
+![Documentation map](/images/sections/doc-map-en.png)
+
 ## Three Core Values of MoAI 3.0
 
 - **🪙 Tokenomics** — Reduces inference costs by 60-70% through context dieting and prompt caching. See [Multi-LLM](/multi-llm), [Cost Optimization](/cost-optimization), and [Advanced/Tokenomics Overview](/advanced/tokenomics-overview).

@@ -8,6 +8,8 @@ draft: false
 {{< /callout >}}
 <!-- @value: tokenomics, self-learning, agentic-harness -->
 
+![토크노믹스 3축](/images/sections/advanced-ko.png)
+
 MoAI-ADK의 내부 구조를 뜯어보고 싶은 개발자를 위한 섹션입니다。 기본 워크플로우(plan → run → sync)에 익숙해졌다면 여기서 하네스가 실제로 어떻게 조립되어 있는지 확인할 수 있습니다.
 
 

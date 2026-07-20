@@ -8,6 +8,8 @@ draft: false
 {{< /callout >}}
 <!-- @value: agentic-harness -->
 
+![SPEC 3-phase pipeline](/images/sections/workflow-commands-en.png)
+
 A set of commands that run the SPEC-based 3-Phase lifecycle (plan → run → sync).
 
 

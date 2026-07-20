@@ -8,6 +8,8 @@ draft: false
 {{< /callout >}}
 <!-- @value: agentic-harness -->
 
+![コア概念: ハーネス構造](/images/sections/core-concepts-ja.png)
+
 MoAI-ADK v3.0 を理解するために必要なコアコンセプトを紹介します。v3.0 の価値は3つの柱に要約されます — **トークノミクス** (Token Economics)、**エージェンティックループエンジニアリング** (Agentic Loop Engineering)、そして **エージェンティックハーネス** (Agentic Harness)。このセクションのドキュメントは、その3つの柱が実際の開発フローでどのように機能するのかを1つずつ解き明かします。
 
 

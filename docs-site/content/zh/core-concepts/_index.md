@@ -8,6 +8,8 @@ draft: false
 {{< /callout >}}
 <!-- @value: agentic-harness -->
 
+![核心概念: 工具架结构](/images/sections/core-concepts-zh.png)
+
 本节介绍理解 MoAI-ADK v3.0 所需的核心概念。v3.0 的价值可以概括为三大支柱 — **代币经济学** (Token Economics)、**智能体循环工程** (Agentic Loop Engineering)，以及 **智能体挽具** (Agentic Harness)。本节的文档将逐一展开这三大支柱在实际开发流程中的运作方式。
 
 
