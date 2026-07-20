@@ -34,6 +34,19 @@ plan_complete_at: 2026-07-13
 - **Render routing (REQ-TUX4-005)**: rich glamour path only when NO_COLOR unset AND destination writer is a character-device `*os.File`; all other cases (pipes, CI, golden-test buffers) are byte-stable plain markdown passthrough. Fixed word-wrap width 100 (`glamourWordWrap`) — no live terminal-width probing, keeping golden line-wrap stable (acceptance §C width edge).
 - **Shared render symbols (AC-TUX4-004 wiring record)**: `renderMarkdown(w, md)` is the glamour-mediated gateway; `glamourRender(md, theme)` is the always-rich body; `markdownRichEnabled(noColor, tty)` is the routing predicate. M4b wires `status.go` and `spec_view.go` through these symbols.
 - **TDD**: RED `internal/cli/glamour_style_test.go` (token-mapping, light/dark divergence, routing matrix, passthrough byte-stability, rich-path ANSI presence) → GREEN `internal/cli/glamour_style.go`.
+- **M4a commit**: `3b3b397cc` (pushed to main). Verification performed in an isolated scratch worktree at HEAD because the parallel session (SPEC-MODEL-PROFILE-MATRIX-001) held the shared working tree in a transiently broken mid-refactor state (`TierProfileEntry`/`applyUpdateTierProfile` undefined in THEIR uncommitted files); my staged paths verified independent of that WIP.
+
+### M4b — status/spec glamour render (REQ-TUX4-004/005, AC-TUX4-004~006)
+
+- **Wiring (AC-TUX4-004 symbol record)**: `internal/cli/status.go` `runStatus` composes its data as markdown and calls `renderMarkdown(out, md)`; `internal/cli/spec_view.go` `viewAcceptanceCriteria` calls `renderTreeMarkdown(out, header, tree)`. Both symbols live in `internal/cli/glamour_style.go` and route through `glamourRender` (glamour TermRenderer) on the rich path — shared-helper placement, so the AC grep uses the symbols `renderMarkdown` / `renderTreeMarkdown` (not a file-restricted grep).
+- **status surface change (render-layer swap)**: tui.Box/Section/KV/Pill composition → markdown document (`# Project Status`, `## Project`, `## Configuration`, `**Status**` line). Every data field preserved: project name, ADK version, config path, SPEC count, section-file count, initialized/not-initialized status (§D behavior-preserving on the data surface). Non-TTY/NO_COLOR = plain markdown passthrough (REQ-TUX4-005); TTY = glamour rich render.
+- **spec view surface**: non-TTY output byte-stable vs pre-M4b (`header\n\ntree` — no fences, no ANSI, verified by `TestSpecViewPlain_TreePassthrough`); TTY wraps the tree in a text fence under glamour so glyphs stay monospace. `printTree` kept as thin wrapper over new writer-based `fprintTree` (existing test compatibility).
+- **TDD**: RED `internal/cli/status_specview_render_test.go` (`TestStatusGolden_MarkdownSurface`, `TestStatusGolden_NoColorByteIdentical`, `TestStatusGolden_NotInitialized`, `TestSpecViewPlain_TreePassthrough`, `TestSpecViewPlain_CommandUsesGlamourGateway`) → GREEN wiring above.
+- **Golden changes (per-file rationale — REQ-TUX4-008 discipline)**:
+  - `internal/cli/testdata/status-light.golden`: REGENERATED — render-layer swap Box→markdown per REQ-TUX4-004; light theme affects only the TTY glamour path, so the non-TTY capture is plain markdown.
+  - `internal/cli/testdata/status-dark.golden`: REGENERATED — same rationale; dark theme invisible off-TTY.
+  - `internal/cli/testdata/status-nocolor.golden`: REGENERATED — same rationale; NO_COLOR forces the same plain passthrough. All three goldens are now byte-identical (md5 `76c6e564…`) — expected: theme env vars cannot change non-TTY bytes under REQ-TUX4-005, and `TestStatusGolden_NoColorByteIdentical` pins this invariant.
+- **Verification**: full `internal/cli` + `internal/cli/uikit` suites green in the isolated worktree (`ok 18.896s` / `ok 0.415s`); live `NO_COLOR=1 go run ./cmd/moai status | grep -c $'\x1b'` = 0 (AC-TUX4-006 second half).
 
 ## §E.3 Run-phase Audit-Ready Signal
 

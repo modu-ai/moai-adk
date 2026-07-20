@@ -175,3 +175,22 @@ func renderMarkdown(w io.Writer, md string) string {
 	}
 	return out
 }
+
+// renderTreeMarkdown is the glamour-mediated gateway for the spec view tree
+// surface (REQ-TUX4-004). Rich path: glamour renders the header as an H1 and
+// the preformatted tree body inside a text fence, so tree glyphs stay
+// monospace and unreflowed. Plain path (non-TTY or NO_COLOR): byte-stable
+// passthrough of "header\n\nbody" — identical to the pre-glamour surface, no
+// fences, zero ANSI (REQ-TUX4-005).
+func renderTreeMarkdown(w io.Writer, header, body string) string {
+	plain := header + "\n\n" + body
+	if !markdownRichEnabled((tui.OSEnv{}).NoColor(), writerIsTerminal(w)) {
+		return plain
+	}
+	md := "# " + header + "\n\n```text\n" + body + "```\n"
+	out, err := glamourRender(md, resolveTheme())
+	if err != nil {
+		return plain
+	}
+	return out
+}

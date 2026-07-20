@@ -15,7 +15,6 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/modu-ai/moai-adk/internal/bodp"
-	"github.com/modu-ai/moai-adk/internal/tui"
 	"github.com/modu-ai/moai-adk/pkg/version"
 )
 
@@ -74,12 +73,15 @@ func init() {
 	rootCmd.AddCommand(statusCmd)
 }
 
-// @MX:NOTE: [AUTO] status command output — composed of tui.Box + tui.Section + tui.KV + tui.Pill.
-// runStatus displays the current project status using the internal/tui design system.
-// All colours are sourced from resolveTheme(); no hex literals appear in this function.
+// @MX:NOTE: [AUTO] status command output — markdown payload through the
+// glamour gateway (renderMarkdown): rich on TTY, plain markdown passthrough on
+// non-TTY/NO_COLOR (SPEC-CLI-TUX-V3-004 REQ-TUX4-004/005). Data fields are
+// unchanged from the legacy Box surface (render-layer-only swap, plan §D).
+// runStatus displays the current project status as a glamour-rendered
+// markdown document. No hex literals; the glamour style derives from
+// internal/tui tokens (glamour_style.go).
 func runStatus(cmd *cobra.Command, _ []string) error {
 	out := cmd.OutOrStdout()
-	th := resolveTheme()
 
 	cwd, err := os.Getwd()
 	if err != nil {
@@ -88,60 +90,37 @@ func runStatus(cmd *cobra.Command, _ []string) error {
 
 	projectName := filepath.Base(cwd)
 
-	// Build body lines using tui primitives.
-	var bodyLines []string
-
-	// Section: Project (project information)
-	bodyLines = append(bodyLines, tui.Section("Project", tui.SectionOpts{Theme: &th}))
-	bodyLines = append(bodyLines, tui.KV("Project", projectName, tui.KVOpts{Theme: &th, KeyWidth: 8}))
-	bodyLines = append(bodyLines, tui.KV("ADK", "moai-adk "+version.GetVersion(), tui.KVOpts{Theme: &th, KeyWidth: 8}))
-	bodyLines = append(bodyLines, "")
+	var b strings.Builder
+	b.WriteString("# Project Status\n\n")
+	b.WriteString("## Project\n\n")
+	fmt.Fprintf(&b, "- **Project**: %s\n", projectName)
+	fmt.Fprintf(&b, "- **ADK**: moai-adk %s\n", version.GetVersion())
 
 	// Check .moai/ directory
 	moaiDir := filepath.Join(cwd, ".moai")
 	if _, statErr := os.Stat(moaiDir); statErr != nil {
-		// Not initialized path: show single status pill.
-		bodyLines = append(bodyLines, tui.Section("Status", tui.SectionOpts{Theme: &th}))
-		pill := tui.Pill(tui.PillOpts{Kind: tui.PillWarn, Solid: false, Label: "Not initialized", Theme: &th})
-		bodyLines = append(bodyLines, pill+" run 'moai init'")
-
-		box := tui.Box(tui.BoxOpts{
-			Title: "Project Status",
-			Body:  strings.Join(bodyLines, "\n"),
-			Theme: &th,
-		})
-		_, _ = fmt.Fprintln(out, box)
+		// Not initialized path.
+		b.WriteString("\n**Status**: Not initialized — run 'moai init'\n")
+		_, _ = fmt.Fprint(out, renderMarkdown(out, b.String()))
 		return nil
 	}
 
-	// Section: Configuration
-	bodyLines = append(bodyLines, tui.Section("Configuration", tui.SectionOpts{Theme: &th}))
+	b.WriteString("\n## Configuration\n\n")
 	// Use forward-slash separator in display so the value is identical on
 	// Windows (\) and macOS/Linux (/) golden tests.
-	bodyLines = append(bodyLines, tui.KV("Config", filepath.ToSlash(filepath.Join(".moai", "config", "sections")), tui.KVOpts{Theme: &th, KeyWidth: 8}))
+	fmt.Fprintf(&b, "- **Config**: %s\n", filepath.ToSlash(filepath.Join(".moai", "config", "sections")))
 
 	// Count SPECs
-	specsDir := filepath.Join(moaiDir, "specs")
-	specCount := countDirs(specsDir)
-	bodyLines = append(bodyLines, tui.KV("SPECs", fmt.Sprintf("%d found", specCount), tui.KVOpts{Theme: &th, KeyWidth: 8}))
+	specCount := countDirs(filepath.Join(moaiDir, "specs"))
+	fmt.Fprintf(&b, "- **SPECs**: %d found\n", specCount)
 
 	// Count config section files
-	sectionsDir := filepath.Join(moaiDir, "config", "sections")
-	sectionFiles := countFiles(sectionsDir, ".yaml")
-	bodyLines = append(bodyLines, tui.KV("Configs", fmt.Sprintf("%d section files", sectionFiles), tui.KVOpts{Theme: &th, KeyWidth: 8}))
-	bodyLines = append(bodyLines, "")
+	sectionFiles := countFiles(filepath.Join(moaiDir, "config", "sections"), ".yaml")
+	fmt.Fprintf(&b, "- **Configs**: %d section files\n", sectionFiles)
 
-	// Summary pill row: status indicator
-	pillStatus := tui.Pill(tui.PillOpts{Kind: tui.PillOk, Solid: false, Label: "Initialized", Theme: &th})
-	pillSpecs := tui.Pill(tui.PillOpts{Kind: tui.PillInfo, Solid: false, Label: fmt.Sprintf("SPECs %d", specCount), Theme: &th})
-	bodyLines = append(bodyLines, pillStatus+"  "+pillSpecs)
+	fmt.Fprintf(&b, "\n**Status**: Initialized (SPECs %d)\n", specCount)
 
-	box := tui.Box(tui.BoxOpts{
-		Title: "Project Status",
-		Body:  strings.Join(bodyLines, "\n"),
-		Theme: &th,
-	})
-	_, _ = fmt.Fprintln(out, box)
+	_, _ = fmt.Fprint(out, renderMarkdown(out, b.String()))
 
 	// W7-T05: BODP off-protocol branch reminder. Failures are silent — git
 	// missing or non-repo cwd simply suppresses the reminder.
