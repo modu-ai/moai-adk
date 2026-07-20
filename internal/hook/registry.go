@@ -79,9 +79,13 @@ func (r *registry) Dispatch(ctx context.Context, event EventType, input *HookInp
 		return r.defaultOutputForEvent(event, input), nil
 	}
 
-	// Lazily initialize TraceWriter on first Dispatch with a known SessionID (REQ-OBS-001).
+	// Lazily initialize TraceWriter on first Dispatch with a known SessionID
+	// (REQ-OBS-001). REQ-HFC-004: when session_id was omitted by Claude Code
+	// (validateInput substituted "unknown"), derive the session UUID from
+	// transcript_path so resolvable sessions do not collide into
+	// trace-unknown.jsonl.
 	if input != nil {
-		r.ensureTraceWriter(input.SessionID)
+		r.ensureTraceWriter(resolveTraceSessionID(input))
 	}
 
 	// Apply timeout from registry configuration

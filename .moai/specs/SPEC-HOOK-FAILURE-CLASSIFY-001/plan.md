@@ -2,9 +2,9 @@
 id: SPEC-HOOK-FAILURE-CLASSIFY-001
 title: "Implementation plan — PostToolUseFailure nested-error classification"
 version: "0.1.0"
-status: draft
+status: in-progress
 created: 2026-07-17
-updated: 2026-07-17
+updated: 2026-07-21
 author: manager-spec
 tier: S
 ---
