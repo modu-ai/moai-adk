@@ -139,7 +139,7 @@ glm_wire_claim: "implemented + wired, live wire-effectiveness pending (REQ-MPM-0
 
 ```yaml
 sync_complete_at: 2026-07-20
-sync_commit_sha: "pending-backfill-sync"   # backfilled in a follow-up commit per the D3 SHA-placeholder exemption (spec-frontmatter-schema.md)
+sync_commit_sha: "8fb69f6cc"   # backfilled per the D3 SHA-placeholder exemption (spec-frontmatter-schema.md)
 sync_status: PASS-WITH-DEBT                # mirrors run_status; 23/25 AC PASS, 2 PASS-WITH-DEBT (AC-MPM-013/014 web UI wiring), 0 FAIL
 ac_summary: "23 PASS / 2 PASS-WITH-DEBT / 0 FAIL of 25 AC-MPM (all 7 must-pass AC PASS)"
 changelog_entry_position: "CHANGELOG.md [Unreleased] > Added, first entry (SPEC-MODEL-PROFILE-MATRIX-001)"
