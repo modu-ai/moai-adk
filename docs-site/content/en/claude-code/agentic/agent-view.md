@@ -55,6 +55,7 @@ The icon at the front of each row indicates the session status through color and
 | Completed | Green | The work finished successfully |
 | Failed | Red | The work ended with an error |
 | Stopped | Gray | Stopped via `Ctrl+X` or `claude stop` |
+| Needs attention | Orange | A session that stalled and needs a look (e.g. no stream events for a while); floated to the top (CC 2.1.196) |
 
 Separately, the icon **shape** indicates whether the underlying process is alive. `✻` (or animated `✽`) means the process is alive and responds instantly; `∙` means the process has exited (you can still peek, reply, or attach, and Claude resumes from where it stopped); `✢` means a `/loop` session is waiting between iterations.
 
