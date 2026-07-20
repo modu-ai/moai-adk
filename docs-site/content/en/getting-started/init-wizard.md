@@ -136,19 +136,7 @@ Choose the AI model tier assigned to agents — the core Tokenomics setting.
 | **medium** (default) | Balance of quality and cost |
 | **low** | Economical — Sonnet-centric allocation |
 
-This setting is saved in the `performance_tier` field of `.moai/config/sections/llm.yaml`.
-
-### Step 9: pricing plan type (plan_type)
-
-Choose the model-assignment profile based on billing method.
-
-```bash
-? Choose the pricing plan type:
-▸ subscription (Recommended) - subscription plan (weekly quota optimized)
-  api - API usage-based billing (per-task cost optimized)
-```
-
-This setting is saved in the `plan_type` field of `.moai/config/sections/llm.yaml`. Even at the same performance tier, model assignment differs by pricing plan type.
+This setting is saved in the `performance_tier` field of `.moai/config/sections/llm.yaml` and is read as a legacy alias of the `profile` field (the profile matrix column). Specifying the `--profile max|medium|low` flag directly stores it in the `profile` field. For the per-profile agent model+effort mapping, see the [Profile Matrix](/en/advanced/profile-matrix/) page.
 
 ## Standard mode (Phase 1 questions)
 
@@ -206,8 +194,7 @@ By specifying all values with flags, you can initialize without the wizard:
 moai init my-project \
   --non-interactive \
   --project-mode personal \
-  --model-policy medium \
-  --plan-type subscription \
+  --profile medium \
   --harness-profile default \
   --enable-lsp=false \
   --enforce-quality

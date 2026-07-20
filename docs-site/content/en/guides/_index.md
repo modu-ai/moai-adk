@@ -5,6 +5,10 @@ weight: 85
 draft: false
 ---
 
+{{< callout type="info" >}}{{< icon flash primary >}} <strong>Belongs to</strong>: 🪙 Tokenomics · 🧠 Recursive Self-Learning
+{{< /callout >}}
+<!-- @value: tokenomics, self-learning -->
+
 A collection of guides for operating MoAI-ADK. The autonomous CI/CD guide extends
 the idea of loops guarding quality (agentic loop engineering) into the CI
 environment, and the GitHub integration guide covers a lightweight workflow that

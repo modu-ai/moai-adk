@@ -39,7 +39,7 @@ draft: false
 | `--security`(或 `--include-security`) | 包含安全问题 | `/moai fix --security` |
 | `--no-fmt`(或 `--no-format`) | 跳过格式化修复 | `/moai fix --no-fmt` |
 | `--resume [ID]`(或 `--resume-from`) | 从快照恢复(latest 为最新) | `/moai fix --resume` |
-| `--team` | 强制智能体团队模式 | `/moai fix --team` |
+| `--team` | (已退役)伴随 `MODE_TEAM_UNAVAILABLE` 回退到子智能体模式 | `/moai fix --team` |
 | `--solo` | 强制子智能体模式 | `/moai fix --solo` |
 
 ### --dry 标志

@@ -32,11 +32,11 @@ moai version
 ```text
 ╭────────────────────────╮
 │                        │
-│  moai-adk v3.0.0-rc11  │
+│    moai-adk v3.0.0     │
 │                        │
 │                        │
 ╰────────────────────────╯
- v3.0.0-rc11   none   built unknown
+ v3.0.0   none   built unknown
 ```
 
 框式横幅下方一行按 `<版本>   <提交哈希>   built <构建时刻>` 顺序显示。若像 `go install` 那样在无 ldflags 下构建,提交显示为 `none`,构建时刻显示为 `unknown`。
@@ -73,8 +73,8 @@ moai init [project-name] [OPTIONS]
 | `--enable-lsp` | 启用 LSP 联动(默认: false) |
 | `--enforce-quality` | 强制质量门禁(默认: true) |
 | `--enable-design` | 启用 design 工作流(默认: true) |
-| `--model-policy <max\|medium\|low>` | 性能层级 —— 保存到 `llm.yaml` `performance_tier` |
-| `--plan-type <api\|subscription>` | 计费套餐类型 —— 保存到 `llm.yaml` `plan_type` |
+| `--profile <max\|medium\|low>` | 模型+effort 配置文件 —— 保存到 `llm.yaml` `profile` (选择配置矩阵列) |
+| `--model-policy <max\|medium\|low>` | legacy 性能层级 —— 保存到 `llm.yaml` `performance_tier` (`profile` 缺失时作为别名) |
 | `--high` | **将被删除** `--model-policy max` 的别名 |
 
 ### 示例
@@ -120,7 +120,7 @@ moai update [OPTIONS]
 | `--no-hooks` | 跳过 Git 钩子安装 |
 | `--verbose` | 显示所有警告(诊断模式) |
 | `--shell-env` | 为 Claude Code 配置 shell 环境变量 |
-| `--plan-type <api\|subscription>` | 覆盖计费套餐类型(重新应用 `llm.yaml` `plan_type` 及层级配置) |
+| `--profile <max\|medium\|low>` | 覆盖模型+effort 配置文件(保存到 `llm.yaml` `profile`) |
 
 ### 示例
 
@@ -489,7 +489,7 @@ moai init my-project --model-policy max
 moai update -c
 ```
 
-计费套餐类型(`plan_type`: api 或 subscription)单独设置,即使层级相同,也会因计费方式不同而使模型分配不同。详细的模型-层级映射请参阅[模型策略](/zh/multi-llm/model-policy)页面。
+配置文件(`profile`: max/medium/low)选择配置矩阵的活动列，确定每个代理的 model+effort。详细的每个代理映射请参阅[配置矩阵](/zh/advanced/profile-matrix/)页面。
 
 ---
 

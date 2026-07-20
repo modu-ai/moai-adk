@@ -144,21 +144,20 @@ func (a *app) applySchemaCurrent(view *pageView) error {
 		view.AgentFMs = agents
 	}
 
-	// goal-to-test (non-SPEC): seed the plan_type / performance_tier selectors
-	// now rendered at the top of the agentfm panel (migrated from the retired
-	// standalone Model Policy page). llm.yaml is read directly — these two
-	// fields are deliberately NOT part of the generic schema (the M4 diet
-	// excluded them because their write path re-applies the tier profile to
-	// shipped agent files, unlike the plain yamlpatch/typed writes
-	// ApplySchemaEdits performs).
+	// goal-to-test (non-SPEC): seed the profile selector (hosted as the
+	// performance_tier wire field) rendered at the top of the agentfm panel.
+	// llm.yaml is read directly — this field is deliberately NOT part of the
+	// generic schema. The plan_type display was removed
+	// (SPEC-MODEL-PROFILE-MATRIX-001 REQ-MPM-019); the save persists to
+	// llm.profile only and no longer mutates agent frontmatter (REQ-MPM-040).
 	cfg, err := config.NewConfigManager().LoadRaw(a.cfg.ProjectRoot)
 	if err != nil {
 		return err
 	}
-	view.ActivePlanType = cfg.LLM.EffectivePlanType()
-	view.PlanTypeIsEmpty = strings.TrimSpace(cfg.LLM.PlanType) == ""
-	view.PerfTier = cfg.LLM.PerformanceTier
-	view.PerfTierIsEmpty = strings.TrimSpace(cfg.LLM.PerformanceTier) == ""
+	// Prefer the new llm.profile; fall back to the legacy performance_tier alias.
+	activeProfile := cfg.LLM.EffectiveProfile()
+	view.PerfTier = activeProfile
+	view.PerfTierIsEmpty = strings.TrimSpace(cfg.LLM.Profile) == "" && strings.TrimSpace(cfg.LLM.PerformanceTier) == ""
 	return nil
 }
 

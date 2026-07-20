@@ -6,6 +6,7 @@ package cli
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"os/exec"
@@ -16,11 +17,11 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/modu-ai/moai-adk/internal/cli/printer"
 	"github.com/modu-ai/moai-adk/internal/cli/uikit"
 	"github.com/modu-ai/moai-adk/internal/constitution"
 	"github.com/modu-ai/moai-adk/internal/defs"
 	"github.com/modu-ai/moai-adk/internal/migration"
-	"github.com/modu-ai/moai-adk/internal/tui"
 	"github.com/modu-ai/moai-adk/pkg/version"
 )
 
@@ -55,7 +56,9 @@ func init() {
 	doctorCmd.Flags().String("check", "", "Run a specific check only (e.g., git, go, config)")
 }
 
-// @MX:NOTE: [AUTO] doctor command output — composed of tui.Section + 19+ CheckLine + summary Box/Pill.
+// @MX:NOTE: [AUTO] doctor command output — live per-check Printer step feedback
+// on stderr (REQ-TUX4-001) + per-section pass/fail tables with counts on stdout
+// (REQ-TUX4-002, doctor_render.go). Verdict logic untouched (AC-TUX4-014).
 // runDoctor executes the system diagnostics workflow.
 func runDoctor(cmd *cobra.Command, _ []string) error {
 	verbose := getBoolFlag(cmd, "verbose")
@@ -66,7 +69,23 @@ func runDoctor(cmd *cobra.Command, _ []string) error {
 	out := cmd.OutOrStdout()
 	th := resolveTheme()
 
-	groups := runGroupedChecks(verbose, checkName)
+	// Live progress seam (REQ-TUX4-001): one Printer step per check on stderr.
+	// TTY renders in-place spinner-style updates; non-TTY/NO_COLOR degrades to
+	// plain line-per-event output (printer ModePlain, zero ANSI).
+	p := printer.New(printer.WithWriters(out, cmd.ErrOrStderr()))
+	obs := func(group, name string, run func() DiagnosticCheck) DiagnosticCheck {
+		h := p.Step(name)
+		c := run()
+		switch c.Status {
+		case uikit.CheckFail:
+			h.Fail(errors.New(c.Message))
+		default:
+			h.Complete("%s", name)
+		}
+		return c
+	}
+
+	groups := runGroupedChecksObserved(verbose, checkName, obs)
 
 	// Flatten for export / fix path.
 	var allChecks []DiagnosticCheck
@@ -74,49 +93,15 @@ func runDoctor(cmd *cobra.Command, _ []string) error {
 		allChecks = append(allChecks, g.checks...)
 	}
 
-	okCount, warnCount, failCount := 0, 0, 0
+	// Render per-section pass/fail tables + counts + summary (REQ-TUX4-002).
+	_, _ = fmt.Fprintln(out, renderDoctorGroups(out, groups, verbose, th))
+
+	failCount := 0
 	for _, c := range allChecks {
-		switch c.Status {
-		case uikit.CheckOK:
-			okCount++
-		case uikit.CheckWarn:
-			warnCount++
-		case uikit.CheckFail:
+		if c.Status == uikit.CheckFail {
 			failCount++
 		}
 	}
-
-	// Render grouped output.
-	var bodyLines []string
-	for _, g := range groups {
-		if len(g.checks) == 0 {
-			continue
-		}
-		bodyLines = append(bodyLines, tui.Section(g.title, tui.SectionOpts{Theme: &th}))
-		for _, c := range g.checks {
-			status := checkStatusToTUI(c.Status)
-			bodyLines = append(bodyLines, tui.CheckLine(status, c.Name, c.Message, "", &th))
-			if verbose && c.Detail != "" {
-				bodyLines = append(bodyLines, "    "+c.Detail)
-			}
-		}
-		bodyLines = append(bodyLines, "")
-	}
-
-	// Summary pill row.
-	pPass := tui.Pill(tui.PillOpts{Kind: tui.PillOk, Solid: false, Label: fmt.Sprintf("Pass %d", okCount), Theme: &th})
-	pWarn := tui.Pill(tui.PillOpts{Kind: tui.PillWarn, Solid: false, Label: fmt.Sprintf("Warn %d", warnCount), Theme: &th})
-	pErr := tui.Pill(tui.PillOpts{Kind: tui.PillErr, Solid: false, Label: fmt.Sprintf("Fail %d", failCount), Theme: &th})
-	summaryPills := pPass + "  " + pWarn + "  " + pErr
-
-	bodyLines = append(bodyLines, summaryPills)
-
-	box := tui.Box(tui.BoxOpts{
-		Title: "System Diagnostics",
-		Body:  strings.Join(bodyLines, "\n"),
-		Theme: &th,
-	})
-	_, _ = fmt.Fprintln(out, box)
 
 	if fix && failCount > 0 {
 		var fixes []string
@@ -153,9 +138,22 @@ func checkStatusToTUI(s uikit.CheckStatus) string {
 	}
 }
 
+// checkObserver wraps each diagnostic check execution (progress reporter
+// seam, SPEC-CLI-TUX-V3-004 REQ-TUX4-001). The observer receives the group
+// title, the check name, and the check thunk; it MUST invoke run exactly once
+// and return its result unchanged. The seam carries render-layer concerns
+// only — verdict logic stays inside the check functions (AC-TUX4-014).
+type checkObserver func(group, name string, run func() DiagnosticCheck) DiagnosticCheck
+
 // runGroupedChecks runs all diagnostic checks grouped into sections.
 // It returns groups in a deterministic order: System, MoAI-ADK, Workspace.
 func runGroupedChecks(verbose bool, filterCheck string) []checkGroup {
+	return runGroupedChecksObserved(verbose, filterCheck, nil)
+}
+
+// runGroupedChecksObserved is runGroupedChecks with the progress observer
+// seam. A nil observer runs each check directly (legacy behavior).
+func runGroupedChecksObserved(verbose bool, filterCheck string, obs checkObserver) []checkGroup {
 	cwd, _ := os.Getwd()
 
 	type checkFunc struct {
@@ -199,21 +197,26 @@ func runGroupedChecks(verbose bool, filterCheck string) []checkGroup {
 		{"Glamour Cache", checkGlamourCache},
 	}
 
-	run := func(items []checkFunc) []DiagnosticCheck {
+	run := func(title string, items []checkFunc) []DiagnosticCheck {
 		var results []DiagnosticCheck
 		for _, c := range items {
 			if filterCheck != "" && c.name != filterCheck {
 				continue
 			}
-			results = append(results, c.fn(verbose))
+			thunk := func() DiagnosticCheck { return c.fn(verbose) }
+			if obs != nil {
+				results = append(results, obs(title, c.name, thunk))
+				continue
+			}
+			results = append(results, thunk())
 		}
 		return results
 	}
 
 	return []checkGroup{
-		{title: "System", checks: run(systemChecks)},
-		{title: "MoAI-ADK", checks: run(moaiChecks)},
-		{title: "Workspace", checks: run(workspaceChecks)},
+		{title: "System", checks: run("System", systemChecks)},
+		{title: "MoAI-ADK", checks: run("MoAI-ADK", moaiChecks)},
+		{title: "Workspace", checks: run("Workspace", workspaceChecks)},
 	}
 }
 

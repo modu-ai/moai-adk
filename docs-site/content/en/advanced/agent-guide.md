@@ -209,7 +209,7 @@ Claude Code's official Sub-agent system is the foundation of the MoAI-ADK agent 
 
 ## Agent Teams Static Layer — Retired in v3.0
 
-The Agent Teams static orchestration layer from earlier versions (the `workflow.team.*` settings and the `--team` force flag) was **retired** in v3.0.0-rc11.
+The Agent Teams static orchestration layer from earlier versions (the `workflow.team.*` settings and the `--team` force flag) was **retired** in v3.0.0.
 
 - Forcing `--team` announces `MODE_TEAM_UNAVAILABLE` and automatically falls back to sub-agent mode.
 - Research and review work that needs parallelism is handled with parallel sub-agent fan-out; sequential coding work is handled with a sub-agent chain.

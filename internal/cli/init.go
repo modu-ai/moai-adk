@@ -99,10 +99,10 @@ func init() {
 	initCmd.Flags().Bool("medium-alias", false, "Deprecated alias for --model-policy medium (one-cycle backward compat)")
 	initCmd.Flags().Bool("low", false, "Deprecated alias for --model-policy low (one-cycle backward compat)")
 
-	// SPEC-MODEL-TIER-PLANTYPE-001 M3 (REQ-MTP-014): plan_type billing context.
-	// Selects the api vs subscription model tier profile; persists to llm.yaml
-	// plan_type. Absent → the wizard answer, else the subscription default.
-	initCmd.Flags().String("plan-type", "", "Billing plan type: api or subscription (persists to llm.yaml plan_type)")
+	// SPEC-MODEL-PROFILE-MATRIX-001 (REQ-MPM-015): per-agent model+effort profile
+	// selection. Persists to llm.profile; closed-set validated {max, medium, low}.
+	// Takes precedence over the wizard answer. Supersedes the retired --plan-type.
+	initCmd.Flags().String("profile", "", "Model+effort profile: max, medium, or low (persists to llm.yaml profile)")
 }
 
 // getStringFlag retrieves a string flag value from the command.
@@ -178,11 +178,11 @@ func validateInitFlags(cmd *cobra.Command, _ []string) error {
 		}
 	}
 
-	// SPEC-MODEL-TIER-PLANTYPE-001 M3 (REQ-MTP-014): validate --plan-type enum.
+	// SPEC-MODEL-PROFILE-MATRIX-001 (REQ-MPM-015): validate --profile enum.
 	// Invalid value exits non-zero with a usage error naming the closed set.
-	planType := getStringFlag(cmd, "plan-type")
-	if planType != "" && !config.IsValidPlanType(planType) {
-		return fmt.Errorf("invalid --plan-type value %q: must be one of: api, subscription", planType)
+	profileFlag := getStringFlag(cmd, "profile")
+	if profileFlag != "" && !config.IsValidProfile(profileFlag) {
+		return fmt.Errorf("invalid --profile value %q: must be one of: max, medium, low", profileFlag)
 	}
 
 	return nil
@@ -310,10 +310,10 @@ func runInit(cmd *cobra.Command, args []string) error {
 		GitLabInstanceURL: getStringFlag(cmd, "gitlab-instance-url"),
 		NonInteractive:    nonInteractive,
 		Force:             getBoolFlag(cmd, "force"),
-		// SPEC-MODEL-TIER-PLANTYPE-001 M3 (REQ-MTP-016/017): --plan-type flag value
-		// (validated in validateInitFlags). The wizard fills this only when the flag
-		// is absent, so the flag takes precedence over the wizard answer.
-		PlanType: getStringFlag(cmd, "plan-type"),
+		// SPEC-MODEL-PROFILE-MATRIX-001 (REQ-MPM-015/016): --profile flag value
+		// (validated in validateInitFlags). The wizard fills opts.Profile only when
+		// the flag is absent, so the flag takes precedence over the wizard answer.
+		Profile: getStringFlag(cmd, "profile"),
 		// Phase 1 mode flags
 		StandardMode: standardMode,
 		// Phase 1 non-interactive overrides — defaults match wizard defaults (REQ-IWE-008)
@@ -407,11 +407,10 @@ func runInit(cmd *cobra.Command, args []string) error {
 		if result.ModelPolicy != "" {
 			opts.ModelPolicy = result.ModelPolicy
 		}
-		// SPEC-MODEL-TIER-PLANTYPE-001 M3 (REQ-MTP-017): the wizard fills plan_type
-		// ONLY when the --plan-type flag was absent, giving the flag precedence.
-		if opts.PlanType == "" && result.PlanType != "" {
-			opts.PlanType = result.PlanType
-		}
+		// SPEC-MODEL-PROFILE-MATRIX-001 (REQ-MPM-014/016): the model-routing wizard
+		// answer IS the profile selection; it flows through opts.ModelPolicy and is
+		// normalized to {max, medium, low} at profile persistence (the --profile flag
+		// takes precedence over it).
 		// Report format is wizard-only (no CLI flag); empty resolves to the
 		// html+md default at persistence time (initializer.writeReportConfig).
 		if opts.ReportFormat == "" && result.ReportFormat != "" {
@@ -551,14 +550,23 @@ func runInit(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	// SPEC-MODEL-TIER-PLANTYPE-001 M3 (REQ-MTP-016): persist the resolved plan
-	// type to llm.yaml. opts.PlanType already carries the --plan-type flag value
-	// (validated in validateInitFlags), falling back to the wizard answer. The
-	// tier-profile apply pass during Execute already consumed opts.PlanType for
-	// the agent frontmatter; this persists the choice for future update runs.
-	if opts.PlanType != "" && config.IsValidPlanType(opts.PlanType) {
-		if err := template.ApplyPlanType(opts.ProjectRoot, opts.PlanType); err != nil {
-			p.Warn("Failed to apply plan type: %v", err)
+	// SPEC-MODEL-PROFILE-MATRIX-001 (REQ-MPM-016): persist the resolved per-agent
+	// profile to llm.profile. Precedence: the --profile flag (opts.Profile, already
+	// validated to {max, medium, low}), else the resolved model-policy tier
+	// (perfTier / opts.ModelPolicy). NormalizeToTier is total (high→max, ""→medium),
+	// so the wizard's legacy {high, medium, low} answer maps correctly.
+	{
+		profile := opts.Profile
+		if profile == "" {
+			profile = perfTier
+		}
+		if profile == "" {
+			profile = opts.ModelPolicy
+		}
+		if resolved := template.NormalizeToTier(profile); resolved != "" {
+			if err := template.ApplyProfile(opts.ProjectRoot, resolved); err != nil {
+				p.Warn("Failed to apply profile: %v", err)
+			}
 		}
 	}
 

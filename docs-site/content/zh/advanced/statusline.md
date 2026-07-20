@@ -13,9 +13,9 @@ draft: false
 ### 最终布局 (3-line v3)
 
 ```
-🤖 Opus 4.7 │ 🧠 xhigh·t │ 💾 67% │ 🔅 v2.1.146 │ 🗿 v3.0.0-rc6 │ ⏳ 4h 52m │ 💬 MoAI
+🤖 Opus │ 🧠 xhigh·t │ ♻️ 87% │ 🔅 v2.1.212 │ 🗿 v3.0.0 │ ⏳ 4h 52m │ 💬 MoAI
 🪫 CW: ███████░░░ 72% (⚠️/clear) │ 🔋 5H: █████░░░░░ 56% (46m) │ 🔋 7D: █░░░░░░░░░ 13% (May 28)
-📁 moai-adk-go │ 🔀 modu-ai/moai-adk (🅱️ main ↑5 +2) │ 💾 +0 M1 ?1 │ 💌 PR #1234 (⌥approved)
+📁 moai-adk-go │ 🔀 modu-ai/moai-adk | 🅱️ main ↑5 +2 │ 💾 +0 M1 ?1 │ 💌 PR #1234 (⌥approved)
 ```
 
 - **Line 1 (Info)**：模型 · effort/thinking · 缓存命中率 · Claude Code 版本 · MoAI 版本 · 会话时长 · output style
@@ -25,7 +25,11 @@ draft: false
 ### 数据流
 
 ```
-Claude Code stdin (JSON)
+Claude Code (传入 stdin JSON)
+    ↓
+.moai/status_line.sh (shell wrapper — settings.json statusLine.command)
+    ↓
+moai statusline (Go binary)
     ↓
 internal/statusline/types.go (解析 StdinData)
     ↓
@@ -33,7 +37,7 @@ internal/statusline/builder.go (CollectMemory, CollectMetrics, etc.)
     ↓
 internal/statusline/renderer.go (3-line v3 layout)
     ↓
-.moai/status_line.sh → 终端显示
+终端显示
 ```
 
 ## Line 1 — Info（7 个段）
@@ -63,21 +67,22 @@ internal/statusline/renderer.go (3-line v3 layout)
 
 ### 缓存命中率
 
-- **格式**：`💾 <N>%`（N = cache_read / (cache_read + cache_creation) × 100，向下取整）
+- **格式**：`♻️ <N>%`（N = cache_read / (cache_read + cache_creation) × 100，向下取整）
 - **数据来源**：stdin `current_usage.cache_read_tokens` + `current_usage.cache_creation_tokens`
-- **示例**：`💾 28%`（cache_read 2000、cache_creation 5000 → 2000/7000）
+- **示例**：`♻️ 28%`（cache_read 2000、cache_creation 5000 → 2000/7000）
 - **隐藏条件**：无 `current_usage` · `cache_creation == 0`（无 fresh cache write）· 两者均为 0 — 不编造数值而是静默省略 (graceful degradation)
 - **开关**：statusline.yaml 中 `cache_hit: false` → 隐藏（默认开启）
 - **段键**：`cache_hit`
-- **备注**：同一 `💾` emoji 也用于 Line 3 Git Status（`💾 +N M? ?`）— 本段位于 Line 1，以百分比格式区分。用于监控 prompt-cache 复用率 (SPEC-TOKEN-EFFICIENCY-001 P0-2)
+- **备注**：缓存命中率用 `♻️`，Line 3 的 Git Status 用 `💾`，两者以 emoji 区分。用于监控 prompt-cache 复用率 (SPEC-TOKEN-EFFICIENCY-001 P0-2)
 
 缓存命中率是上下文瘦身的效果测量仪 — 缩减常驻加载指令后，可以立即看到这个数字上升。
 
 ### Claude Code 版本
 
-- **格式**：`🔅 v<version>`（默认）或 `🔅 cc v<version>`（full 模式）
+- **格式**：`🔅 v<version>`（在 3-line 布局中实际渲染的形式）
 - **数据来源**：stdin `version` 字符串
-- **示例**：`🔅 v2.1.146`
+- **示例**：`🔅 v2.1.212`
+- **备注**：命名预设 (full/compact/minimal) 已废弃，改为直接开关各段 (SPEC-V3R6-STATUSLINE-PRESET-RETIRE-001)。旧 full 模式的 `🔅 cc v<version>` 前缀变体已与 5-line 布局一同废弃，不再渲染。
 - **隐藏条件**：`version` 为空字符串
 - **段键**：`claude_version`
 
@@ -86,8 +91,8 @@ internal/statusline/renderer.go (3-line v3 layout)
 - **格式**：`🗿 v<current>`，或可更新时 `🗿 v<current> -> 🗿 v<latest>`
 - **数据来源**：`.moai/config/sections/system.yaml` `moai.version` + 后台 update checker 结果
 - **示例**：
-  - `🗿 v2.20.0-rc1`（最新）
-  - `🗿 v2.18.0 -> 🗿 v2.20.0-rc1`（建议更新）
+  - `🗿 v3.0.0`（最新）
+  - `🗿 v2.18.0 -> 🗿 v3.0.0`（建议更新）
 - **段键**：`moai_version`
 
 ### 会话时长
@@ -109,16 +114,16 @@ internal/statusline/renderer.go (3-line v3 layout)
 
 ### CW (Context Window)
 
-- **格式**：`<icon> CW: <bar> <pct>% [(⚠️/clear)]`
+- **格式**：`<icon> CW: <bar> <pct>% [(⚠️/clear) | (🛑/clear!)]`
 - **数据来源**：
   - bar：`context_window.context_window_size` × auto-compact 阈值（默认 85%）→ scaled budget
   - 百分比：`context_window.used_percentage`（预先计算）或 `current_usage` tokens 合计
-  - `(⚠️/clear)` 激活条件：`shouldShowHandoffGuide(data) == true`
-- **Emoji**：
-  - `🔋`（正常，<50% scaled）
-  - `🪫`（警告，50-79% scaled）
-  - `🪫`（危险，≥80% scaled，附加颜色）
-- **`(⚠️/clear)` handoff 后缀**：
+  - handoff 后缀激活条件：由 `handoffGuideStage(data)` 判定（见下方两阶段表）
+- **电量 emoji**（`BatteryIcon`, `internal/statusline/gradient.go`）：
+  - `🔋`（显示百分比 ≤ 70%）
+  - `🪫`（显示百分比 > 70%）
+  - bar 本身按块着以绿 → 黄 → 红的连续渐变色（与电量阈值无关）
+- **`(⚠️/clear)` / `(🛑/clear!)` handoff 后缀**：
   - 1M context 模型 (Opus 4.8, GLM-5.2)：used_percentage ≥50%（基于 raw context_window_size）
   - 200K context 模型 (Sonnet/Haiku)：used_percentage ≥90%
   - 含义：建议在下一个 turn 开始前 `/clear` + 使用 paste-ready resume message
@@ -159,7 +164,7 @@ internal/statusline/renderer.go (3-line v3 layout)
 
 ### Repo + Branch（合并段）
 
-- **格式**：`🔀 <owner>/<name> (🅱️ <branch>[ ↑N][ ↓N][ +N])`
+- **格式**：`🔀 <owner>/<name> | 🅱️ <branch>[ ↑N][ ↓N][ +N]`
 - **数据来源**：
   - `🔀 owner/name`：stdin `workspace.repo.{host, owner, name}`（Claude Code v2.1.145+）
   - `🅱️ branch`：本地 git `branch --show-current`
@@ -167,14 +172,14 @@ internal/statusline/renderer.go (3-line v3 layout)
   - `↓N`：behind 计数
   - `+N`：dirty 计数 = Modified + Staged + Untracked
 - **示例**：
-  - `🔀 modu-ai/moai-adk (🅱️ main ↑3 +2)`（repo + branch + ahead + dirty）
-  - `🔀 modu-ai/moai-adk (🅱️ main)`（clean 分支，无 ahead）
-  - `🔀 (🅱️ feat/auth ↑2 ↓1 +6)`（无 repo 信息的 fallback）
-- **隐藏条件**：
-  - branch 为空字符串 → 隐藏整个段
-  - repo 为 nil 时 fallback（只显示括号内 branch）
-- **Worktree 模式**：`worktree` 段激活时 branch 前加 `[WT] ` 前缀
-- **段键**：`git_branch`（combined）
+  - `🔀 modu-ai/moai-adk | 🅱️ main ↑3 +2`（repo + branch + ahead + dirty）
+  - `🔀 modu-ai/moai-adk | 🅱️ main`（clean 分支，无 ahead）
+- **隐藏条件**（三者任一命中则隐藏整个段）：
+  - branch 为空字符串或 git 不可用
+  - `workspace.repo` 为 nil（git 未初始化或未设置 remote）— 没有只显示 branch 而不显示 repo 的 fallback
+  - `repo.owner` 或 `repo.name` 为空字符串
+- **Worktree 模式**：`worktree` 段激活 + `workspace.git_worktree` 存在时，branch 前加 `[WT] ` 前缀
+- **段键**：`git_branch`（combined）。`🔀 owner/name` 部分（`repo`）在该段内渲染，是 16-key 配置模式之外的第 17 个段（无法单独开关）。
 
 ### Git Status
 
@@ -189,14 +194,14 @@ internal/statusline/renderer.go (3-line v3 layout)
 
 - **格式**：`📋 [<command> <SPEC-ID>-<stage>]`
 - **数据来源**：`~/.moai/state/last-session-state.json` 的 `active_task` 字段（仅在该文件被写入时显示）
-- **示例**：`📋 [/moai run SPEC-V3R5-STATUSLINE-001-implement]`
-- **隐藏条件**：文件缺失或 `active_task` 为 nil → 隐藏该段
-- **段键**：`task`（opt-in，默认关闭）
+- **示例**：`📋 [run SPEC-AUTH-001-run]`
+- **隐藏条件**：无活动 task（`active_task` 为 nil 或 command 为空字符串）→ 隐藏该段
+- **段键**：`task`（v3.0.0 起默认开启 — 未设置的键视为激活）
 
 ### PR（活动 GitHub Pull Request）
 
 - **格式**：`💌 PR #<number> (⌥<review_state>)`（有 state 时）/ `💌 PR #<number>`（state 为空字符串）
-- **数据来源**：stdin `pr.{number, url, review_state}`（Claude Code v2.1.146+）
+- **数据来源**：stdin `pr.{number, url, review_state}`（Claude Code v2.1.145+）
 - **Review state 值**：`approved` / `pending` / `changes_requested` / `draft` / 其他（raw passthrough）
 - **颜色编码**（review_state 部分）：
   - `approved`：绿色 (Success)
@@ -214,7 +219,7 @@ internal/statusline/renderer.go (3-line v3 layout)
   - 无 `pr` 字段（无 PR 或 v2.1.145 以下）
   - `pr.number == 0`
   - `SegmentPR` 配置显式为 false
-- **段键**：`pr`（v2.20.0-rc1 起默认开启）
+- **段键**：`pr`（v3.0.0 起默认开启）
 
 ## 配置
 
@@ -229,6 +234,7 @@ statusline:
     # Line 1
     model: true
     effort_thinking: true
+    cache_hit: true        # 缓存命中率 ♻️
     claude_version: true
     moai_version: true
     session_time: true
@@ -243,8 +249,8 @@ statusline:
     directory: true
     git_branch: true       # combined repo+branch
     git_status: true
-    task: true             # opt-in default off in older versions
-    pr: true               # default on per v2.20.0-rc1
+    task: true             # default-on per v3.0.0
+    pr: true               # default on per v3.0.0
     worktree: false
 ```
 
@@ -268,6 +274,7 @@ Statusline 的刷新周期由 `settings.json` 的 `statusLine.refreshInterval` �
 |---------|------|----------|-------------|
 | `model` | L1 | ✓ | `model.display_name` |
 | `effort_thinking` | L1 | ✓ | `effort.level` + `thinking.enabled` |
+| `cache_hit` | L1 | ✓ | `current_usage.cache_read_tokens` + `cache_creation_tokens` |
 | `claude_version` | L1 | ✓ | `version` |
 | `moai_version` | L1 | ✓ | （本地 config） |
 | `session_time` | L1 | ✓ | `cost.total_duration_ms` |
@@ -278,9 +285,11 @@ Statusline 的刷新周期由 `settings.json` 的 `statusLine.refreshInterval` �
 | `directory` | L3 | ✓ | `workspace.project_dir` |
 | `git_branch` (combined) | L3 | ✓ | `workspace.repo.*` + local git |
 | `git_status` | L3 | ✓ | local git |
-| `task` | L3 | opt-in | `~/.moai/state/last-session-state.json` |
-| `pr` | L3 | ✓ (v2.20.0-rc1+) | `pr.*` (Claude Code v2.1.146+) |
+| `task` | L3 | ✓ (v3.0.0+) | 会话状态的 `active_task` |
+| `pr` | L3 | ✓ (v3.0.0+) | `pr.*` (Claude Code v2.1.145+) |
 | `worktree` | L3 | ✗ opt-in | `workspace.git_worktree` |
+
+> 以上 16 个是正式的配置模式键。`repo`（`🔀 owner/name`）是在 `git_branch` 段内渲染的第 17 个段，因位于配置模式之外，无法单独开关。
 
 ## Handoff Guide — `(⚠️/clear)` 建议标准
 
@@ -319,14 +328,14 @@ Claude Code 传给 statusline 脚本的 stdin JSON 完整字段列表见 [官方
   "session_id": "abc...",
   "transcript_path": "/path/to/transcript.jsonl",
   "cwd": "/path/to/cwd",
-  "model": {"id": "claude-opus-4-7", "display_name": "Opus 4.7"},
+  "model": {"id": "claude-opus-4-8", "display_name": "Opus"},
   "workspace": {
     "current_dir": "...",
     "project_dir": "...",
     "git_worktree": "feature-xyz",
     "repo": {"host": "github.com", "owner": "modu-ai", "name": "moai-adk"}
   },
-  "version": "2.1.146",
+  "version": "2.1.212",
   "output_style": {"name": "MoAI"},
   "cost": {
     "total_cost_usd": 1.234,
@@ -363,17 +372,17 @@ Claude Code 传给 statusline 脚本的 stdin JSON 完整字段列表见 [官方
 
 ## 版本历史
 
-- **v2.20.0-rc1 layout v3**（2026-05-22）：3-line 布局重设计 — repo+branch 合并段、directory 移到 L3 首位、`🪫 CW:` emoji 前置、`(⚠️/clear)` handoff 后缀、`💾` git status 统一、`💌 PR #N (⌥state)` 格式
-- **v2.20.0-rc1 STATUSLINE-STDINFIELDS-001**（2026-05-21）：新增 `workspace.repo` + `exceeds_200k_tokens` + `pr` stdin 字段映射，1M context handoff 阈值 75% → 50%
-- **v2.20.0-rc1 STATUSLINE-V2145-001**（2026-05-20）：新增 PR 段（v2.1.145+ stdin），4 语言文档同步
+- **v3.0.0 layout v3**（2026-05-22）：3-line 布局重设计 — repo+branch 合并段、directory 移到 L3 首位、`🪫 CW:` emoji 前置、`(⚠️/clear)` handoff 后缀、`💾` git status 统一、`💌 PR #N (⌥state)` 格式
+- **v3.0.0 STATUSLINE-STDINFIELDS-001**（2026-05-21）：新增 `workspace.repo` + `exceeds_200k_tokens` + `pr` stdin 字段映射，1M context handoff 阈值 75% → 50%
+- **v3.0.0 STATUSLINE-V2145-001**（2026-05-20）：新增 PR 段（v2.1.145+ stdin），4 语言文档同步
 - **v2.1.139**（Claude Code）：stdin JSON 新增 `effort.level` + `thinking.enabled`
-- **v2.1.146**（Claude Code）：stdin JSON 新增 `workspace.repo` + `pr`
+- **v2.1.145**（Claude Code）：stdin JSON 新增 `workspace.repo` + `pr`
 
 ## 故障排查
 
 ### Statusline 不显示 PR
 
-- 确认 Claude Code 版本：需要 `🔅 v2.1.146` 以上（v2.1.145 的 stdin 不含 `pr` 字段）
+- 确认 Claude Code 版本：需要 `🔅 v2.1.145` 以上（更早版本的 stdin 不含 `pr` 字段）
 - 确认当前分支是否有 OPEN PR：`gh pr view`
 - 确认 `statusline.yaml` 中是否显式设为 `pr: false`
 
@@ -394,7 +403,7 @@ Claude Code 传给 statusline 脚本的 stdin JSON 完整字段列表见 [官方
 ```bash
 # 用 stdin fixture 确认 statusline 实际输出
 NOW=$(date +%s)
-echo '{"session_id":"test","model":{"display_name":"Opus 4.7"},"workspace":{"repo":{"host":"github.com","owner":"modu-ai","name":"moai-adk"}},"version":"2.1.146","output_style":{"name":"MoAI"},"context_window":{"used_percentage":62,"context_window_size":1000000},"exceeds_200k_tokens":true,"effort":{"level":"xhigh"},"thinking":{"enabled":true},"rate_limits":{"five_hour":{"used_percentage":56,"resets_at":'$((NOW + 2820))'},"seven_day":{"used_percentage":13,"resets_at":'$((NOW + 518400))'}},"cost":{"total_duration_ms":17520000},"pr":{"number":1234,"url":"https://github.com/modu-ai/moai-adk/pull/1234","review_state":"approved"}}' | moai statusline
+echo '{"session_id":"test","model":{"display_name":"Opus"},"workspace":{"repo":{"host":"github.com","owner":"modu-ai","name":"moai-adk"}},"version":"2.1.212","output_style":{"name":"MoAI"},"context_window":{"used_percentage":62,"context_window_size":1000000},"exceeds_200k_tokens":true,"effort":{"level":"xhigh"},"thinking":{"enabled":true},"rate_limits":{"five_hour":{"used_percentage":56,"resets_at":'$((NOW + 2820))'},"seven_day":{"used_percentage":13,"resets_at":'$((NOW + 518400))'}},"cost":{"total_duration_ms":17520000},"pr":{"number":1234,"url":"https://github.com/modu-ai/moai-adk/pull/1234","review_state":"approved"}}' | moai statusline
 ```
 
 ## `/cd` 保留缓存的目录切换 (CC 2.1.169+)

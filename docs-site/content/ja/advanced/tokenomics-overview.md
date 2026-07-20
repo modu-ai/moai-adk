@@ -24,7 +24,7 @@ v3.0の製品差別化は3本柱で構成されます。トークノミクスは
 
 {{< icon rotate >}} **自律連続ループ** — いつ止まり、いつ続くか。[自律連続ループ](/ja/advanced/autonomous-loops/)ページで扱います。
 
-{{< icon database >}} **エージェント的ハーネス** — どのエージェントが、どのティアで、どう進化するか。[3層アーキテクチャ](/ja/advanced/no-haiku-3tier/)、[plan_type ティアプロファイル](/ja/advanced/plan-type-profiles/)、[ハーネス自己進化](/ja/advanced/self-evolving/)ページで扱います。
+{{< icon database >}} **エージェント的ハーネス** — どのエージェントが、どのプロファイルで、どう進化するか。[3層アーキテクチャ](/ja/advanced/no-haiku-3tier/)、[プロファイルマトリクス](/ja/advanced/profile-matrix/)、[ハーネス自己進化](/ja/advanced/self-evolving/)ページで扱います。
 
 ## 4層トークノミクス構造
 
@@ -48,7 +48,7 @@ flowchart TD
 
 ### Layer B — ルーティング (Routing)
 
-{{< icon package >}} 作業フェーズ(plan / run / sync)とSPECサイズ(Tier S / M / L)に応じてモデルと推論深度(effort)を宣言的に割り当てます。深い推論が必要な計画フェーズには高推論モデルを、機械的反復の多い実装フェーズには軽いモデルを割り当て、コスト対品質を最大化します。詳細な60セルプロファイルマトリクスは[plan_type ティアプロファイル](/ja/advanced/plan-type-profiles/)ページを参照してください。
+{{< icon package >}} 維持される各エージェントにモデルと推論深度(effort)を宣言的に割り当てます。アクティブプロファイル(`max`/`medium`/`low`)がプロファイルマトリクスの 1 列を選択し、深い推論が必要なポイントには高推論モデルを、機械的な作業には軽いモデルを割り当て、コスト対品質を最大化します。詳細なプロファイルマトリクスは[プロファイルマトリクス](/ja/advanced/profile-matrix/)ページを参照してください。
 
 ### Layer C — 検証ダイエット (Verify-diet)
 
@@ -60,10 +60,10 @@ flowchart TD
 
 ## モデルティアルーティング
 
-Layer Bのルーティングを具体化するのがモデルティアポリシーです。MoAI-ADK v3.0はHaikuをルーティングモデルセットから除外し、3層構造(Sonnet / Opus / Fable)で作業を分散します。この設計の根拠とApplyTierProfile実装は次の2ページで扱います。
+Layer Bのルーティングを具体化するのがモデルプロファイルポリシーです。MoAI-ADK v3.0はHaikuをルーティングモデルセットから除外し、3層構造(Sonnet / Opus / Fable)で作業を分散します。この設計の根拠とプロファイルマトリクス実装は次の2ページで扱います。
 
 - [3層エージェントアーキテクチャ](/ja/advanced/no-haiku-3tier/) — なぜHaikuを除外したか、DeepSWEリーダーボード根拠
-- [plan_type ティアプロファイル](/ja/advanced/plan-type-profiles/) — api vs サブスクリプション課金ごとの60セルプロファイルマトリクス
+- [プロファイルマトリクス](/ja/advanced/profile-matrix/) — 単一の 3 列 per-agent プロファイルマトリクス
 
 ## CGモード (コスト最適化)
 
@@ -75,12 +75,12 @@ GLM-5.2は1Mコンテキストの単一モデルで、入力$2 / 出力$8 (1Mト
 
 このページの記載内容のうち、実装状態を明確に区別します。
 
-{{< icon check ok >}} **実装完了 (配信中)** — 4層構造(A/B/C/D)全層、3層モデルポリシー(ApplyTierProfile)、CGモード、検証ダイエットファイルリダイレクト契約、graceful abortメカニズム。
+{{< icon check ok >}} **実装完了 (配信中)** — 4層構造(A/B/C/D)全層、3層モデルポリシー(プロファイルマトリクスリゾルバ)、CGモード、検証ダイエットファイルリダイレクト契約、graceful abortメカニズム。
 
-{{< icon clock >}} **設計段階 (ロードマップ)** — GLMバックエンドeffortオーバーレイのwire有効性はライブGLMセッションのアウトバウンド観測が必要な実証課題です。plan_type ティアプロファイルページでこの区別を明示します。
+{{< icon clock >}} **設計段階 (ロードマップ)** — GLMバックエンドeffortオーバーレイのwire有効性はライブGLMセッションのアウトバウンド観測が必要な実証課題です。プロファイルマトリクスページでこの区別を明示します。
 
 ## 次のステップ
 
 - [トークン予算管理とgraceful stop](/ja/advanced/token-budget/) — Layer Dの深掘り (モデルごとのしきい値、paste-ready resume構造)
 - [3層エージェントアーキテクチャ](/ja/advanced/no-haiku-3tier/) — ハーネスアーキテクチャの基礎
-- [plan_type ティアプロファイル](/ja/advanced/plan-type-profiles/) — 60セルプロファイルマトリクス
+- [プロファイルマトリクス](/ja/advanced/profile-matrix/) — 単一の 3 列 per-agent プロファイルマトリクス

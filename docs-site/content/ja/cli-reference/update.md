@@ -130,7 +130,7 @@ graph TD
 | `--no-hooks` | Git フックのインストールをスキップ |
 | `--verbose` | すべての警告を表示 (診断モード) |
 | `--shell-env` | Claude Code 用のシェル環境変数を構成 |
-| `--plan-type <api\|subscription>` | 料金プランタイプの上書き |
+| `--profile <max\|medium\|low>` | モデル+effort プロファイルの上書き (`llm.yaml` の `profile` に保存) |
 
 ### 動作方式
 

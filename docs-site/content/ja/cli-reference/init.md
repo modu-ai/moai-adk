@@ -60,8 +60,8 @@ moai init [project-name]
 | `--git-mode <manual\|personal\|team>` | Git ワークフローモード (デフォルト: manual) |
 | `--git-provider <github\|gitlab>` | Git プロバイダ |
 | `--github-username <name>` | GitHub ユーザー名 (personal/team モードで必須) |
-| `--model-policy <max\|medium\|low>` | パフォーマンスティア — `llm.yaml` の `performance_tier` に保存 |
-| `--plan-type <api\|subscription>` | 課金プランタイプ — `llm.yaml` の `plan_type` に保存 |
+| `--profile <max\|medium\|low>` | モデル+effort プロファイル — `llm.yaml` の `profile` に保存 (プロファイルマトリクス列の選択) |
+| `--model-policy <max\|medium\|low>` | legacy パフォーマンスティア — `llm.yaml` の `performance_tier` に保存 (`profile` 不在時にエイリアスとして読み込み) |
 
 ## 例
 

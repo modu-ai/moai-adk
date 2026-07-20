@@ -32,11 +32,11 @@ moai version
 ```text
 ╭────────────────────────╮
 │                        │
-│  moai-adk v3.0.0-rc11  │
+│    moai-adk v3.0.0     │
 │                        │
 │                        │
 ╰────────────────────────╯
- v3.0.0-rc11   none   built unknown
+ v3.0.0   none   built unknown
 ```
 
 박스 배너 아래 줄은 `<버전>   <커밋 해시>   built <빌드 시각>` 순서로 표시됩니다. `go install` 등 ldflags 없이 빌드한 경우 커밋은 `none`, 빌드 시각은 `unknown` 으로 나옵니다.
@@ -73,8 +73,8 @@ moai init [project-name] [OPTIONS]
 | `--enable-lsp` | LSP 연동 활성화 (기본값: false) |
 | `--enforce-quality` | 품질 게이트 강제 (기본값: true) |
 | `--enable-design` | 디자인 워크플로우 활성화 (기본값: true) |
-| `--model-policy <max\|medium\|low>` | 성능 티어 — `llm.yaml` `performance_tier` 에 저장 |
-| `--plan-type <api\|subscription>` | 요금제 유형 — `llm.yaml` `plan_type` 에 저장 |
+| `--profile <max\|medium\|low>` | 모델+effort 프로필 — `llm.yaml` `profile` 에 저장 (프로필 매트릭스 열 선택) |
+| `--model-policy <max\|medium\|low>` | legacy 성능 티어 — `llm.yaml` `performance_tier` 에 저장 (`profile` 부재 시 별칭) |
 | `--high` | **삭제 예정** `--model-policy max` 의 별칭 |
 
 ### 예시
@@ -120,7 +120,7 @@ moai update [OPTIONS]
 | `--no-hooks` | Git 훅 설치 건너뛰기 |
 | `--verbose` | 모든 경고 표시 (진단 모드) |
 | `--shell-env` | Claude Code 용 셸 환경변수 구성 |
-| `--plan-type <api\|subscription>` | 요금제 유형 덮어쓰기 (`llm.yaml` `plan_type` 및 티어 프로필 재적용) |
+| `--profile <max\|medium\|low>` | 모델+effort 프로필 덮어쓰기 (`llm.yaml` `profile` 에 저장) |
 
 ### 예시
 
@@ -489,7 +489,7 @@ moai init my-project --model-policy max
 moai update -c
 ```
 
-요금제 유형(`plan_type`: api 또는 subscription) 은 별도로 설정하여, 같은 티어라도 과금 방식에 따라 모델 배정이 달라집니다. 자세한 모델-티어 매핑은 [모델 정책](/ko/multi-llm/model-policy) 페이지를 참조하세요.
+프로필(`profile`: max/medium/low)은 프로필 매트릭스의 활성 열을 선택하여 각 에이전트의 model+effort를 결정합니다. 자세한 에이전트별 매핑은 [프로필 매트릭스](/ko/advanced/profile-matrix/) 페이지를 참조하세요.
 
 ---
 

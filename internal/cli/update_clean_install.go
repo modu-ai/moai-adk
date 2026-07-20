@@ -228,6 +228,18 @@ func runCleanReinstall(ctx context.Context, projectRoot string, opts CleanReinst
 	// ---------------------------------------------------------------
 	// Step 4 — REMOVE deprecated paths
 	// ---------------------------------------------------------------
+	//
+	// REQ-CRR-006 / AC-CRR-006: the removal count reported below is derived
+	// from the FILESYSTEM DIFF, not from the planned-list length.
+	//
+	// scanDeprecatedPaths already existence-filters (os.Lstat + silent skip on
+	// IsNotExist), so its return value is the set of deprecated paths that
+	// actually exist pre-REMOVE. Re-scanning post-REMOVE yields those that
+	// survived, and the difference is what was genuinely removed. On a project
+	// with no deprecated residue both scans return empty and the count is 0 —
+	// the case that previously emitted the phantom `Removed N deprecated paths`
+	// line reported by #1084 (the log printed the planned count while `git diff`
+	// showed nothing removed).
 	deprecated, err := scanDeprecatedPaths(projectRoot)
 	if err != nil {
 		return result, fmt.Errorf("step 4: scan deprecated paths: %w", err)
@@ -239,7 +251,21 @@ func runCleanReinstall(ctx context.Context, projectRoot string, opts CleanReinst
 		}
 	}
 	result.RemovedPaths = deprecated
-	_, _ = fmt.Fprintf(out, "[clean-reinstall] Removed %d deprecated paths\n", len(deprecated))
+
+	// Post-REMOVE re-scan → actual removal count (AC-CRR-006(a)).
+	remaining, err := scanDeprecatedPaths(projectRoot)
+	if err != nil {
+		return result, fmt.Errorf("step 4: re-scan deprecated paths: %w", err)
+	}
+	removedCount := len(deprecated) - len(remaining)
+
+	// AC-CRR-006(b)(c)(d): emit the removal line ONLY when the actual count is
+	// positive; otherwise emit the informational no-op line.
+	if removedCount > 0 {
+		_, _ = fmt.Fprintf(out, "[clean-reinstall] Removed %d deprecated paths\n", removedCount)
+	} else {
+		_, _ = fmt.Fprintln(out, "[clean-reinstall] No deprecated paths found to remove")
+	}
 
 	// ---------------------------------------------------------------
 	// Step 4.5 — Capture user config for merge-preservation

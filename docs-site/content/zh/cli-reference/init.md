@@ -60,8 +60,8 @@ moai init [project-name]
 | `--git-mode <manual\|personal\|team>` | Git 工作流模式(默认:manual) |
 | `--git-provider <github\|gitlab>` | Git 提供商 |
 | `--github-username <name>` | GitHub 用户名(personal/team 模式必填) |
-| `--model-policy <max\|medium\|low>` | 性能层级 —— 保存到 `llm.yaml` 的 `performance_tier` |
-| `--plan-type <api\|subscription>` | 计费方案类型 —— 保存到 `llm.yaml` 的 `plan_type` |
+| `--profile <max\|medium\|low>` | 模型+effort 配置文件 —— 保存到 `llm.yaml` 的 `profile` (选择配置矩阵列) |
+| `--model-policy <max\|medium\|low>` | legacy 性能层级 —— 保存到 `llm.yaml` 的 `performance_tier` (`profile` 缺失时作为别名读取) |
 
 ## 示例
 

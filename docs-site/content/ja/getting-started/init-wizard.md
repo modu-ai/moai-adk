@@ -136,19 +136,7 @@ Git 設定は `.moai/config/sections/git-strategy.yaml` ファイルに保存さ
 | **medium** (デフォルト値) | 品質とコストのバランス |
 | **low** | 経済的 — Sonnet 中心の配分 |
 
-この設定は `.moai/config/sections/llm.yaml` の `performance_tier` フィールドに保存されます。
-
-### ステップ 9: 料金プランタイプ (plan_type)
-
-課金方式に応じたモデル割り当てプロファイルを選択します。
-
-```bash
-? 料金プランタイプを選択:
-▸ subscription (推奨) - サブスクリプション料金プラン (週間割当量の最適化)
-  api - API 使用量ベースの課金 (タスク別のコスト最適化)
-```
-
-この設定は `.moai/config/sections/llm.yaml` の `plan_type` フィールドに保存されます。同じパフォーマンスティアでも料金プランタイプに応じてモデル割り当てが変わります。
+この設定は `.moai/config/sections/llm.yaml` の `performance_tier` フィールドに保存され、`profile` フィールド(プロファイルマトリクス列)の legacy エイリアスとして読み込まれます。`--profile max|medium|low` フラグで直接指定すると `profile` フィールドに保存されます。プロファイル別のエージェント model+effort マッピングは [プロファイルマトリクス](/ja/advanced/profile-matrix/) ページを参照してください。
 
 ## Standard モード (Phase 1 質問)
 
@@ -206,8 +194,7 @@ MoAI デザインパイプラインと Claude Design 連携を有効化するか
 moai init my-project \
   --non-interactive \
   --project-mode personal \
-  --model-policy medium \
-  --plan-type subscription \
+  --profile medium \
   --harness-profile default \
   --enable-lsp=false \
   --enforce-quality

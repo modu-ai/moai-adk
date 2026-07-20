@@ -61,36 +61,38 @@ delegation:
 
 관련: [에이전트 가이드](/ko/advanced/agent-guide), [스킬 가이드](/ko/advanced/skill-guide).
 
-## llm.yaml — 백엔드·모델 티어
+## llm.yaml — 백엔드·프로필 매트릭스
 
-성능 티어, 청구 플랜, Claude/GLM 모델 매핑을 정의합니다.
+프로필, 프로필 매트릭스, 에이전트별 override, GLM 모델 매핑을 정의합니다.
 
 ```yaml
 llm:
-  performance_tier: "medium"   # high | medium | low
-  plan_type: "subscription"    # api | subscription
-  claude_models:
-    high: "opus"
-    medium: "sonnet"
-    low: "sonnet"
+  profile: "medium"            # max | medium | low (활성 매트릭스 열)
+  performance_tier: "medium"   # legacy 별칭 (profile 부재 시 읽힘, high→max)
+  profiles:                    # 프로필 열 → 6개 그룹 → {model, effort}
+    max: { ... }               # 상세 표: 프로필 매트릭스 페이지
+    medium: { ... }
+    low: { ... }
+  agent_overrides: {}          # 에이전트별 {model, effort} override (선택)
   glm:
     base_url: "https://api.z.ai/api/anthropic"
     models:
       high: "glm-5.2"          # 1M context — Opus 슬롯
       medium: "glm-4.7"        # 202K context — Sonnet 슬롯
-      low: "glm-4.5-air"       # 128K context — Haiku 슬롯
+      low: "glm-4.5-air"       # 128K context — 경량 슬롯
       fable: "glm-5.2"
 ```
 
 | 키 | 설명 |
 |----|------|
-| `performance_tier` | 모든 서브에이전트·팀 에이전트의 모델 선택 제어 (high=복잡 추론, medium=균형, low=빠름/저비용) |
-| `plan_type` | 청구 플랜 유형. `api`=태스크당 비용 최적화, `subscription`=주간 쿼터 최적화 (비어 있으면 subscription으로 해석) |
-| `claude_models` | 티어별 Claude 모델 매핑. 하네스 레벨이 effort로 연결됨 (thorough→xhigh, standard→high, minimal→medium) |
+| `profile` | 활성 프로필 매트릭스 열 (`max`/`medium`/`low`). 비어 있으면 `medium`으로 해석. 모든 서브에이전트 spawn의 model+effort 소스 |
+| `performance_tier` | legacy 별칭 필드. `profile`이 없을 때만 읽히며 `high`→`max`로 정규화 |
+| `profiles` | 프로필 열별 그룹 → `{model, effort}` 매트릭스. Go 기본값(`template.DefaultProfileMatrix`)이 누락 셀의 권위 있는 fallback |
+| `agent_overrides` | 정규 에이전트 이름별 `{model, effort}` override. 활성 프로필의 그룹 셀보다 우선 (카탈로그+enum 검증) |
 | `glm.base_url` | Z.AI Anthropic 호환 프록시 엔드포인트 |
-| `glm.models` | 티어별 GLM 모델 매핑. GLM은 Claude의 5단계 effort를 3개 reasoning 상태(thinking-off / reasoning-high / reasoning-max)로 collapse |
+| `glm.models` | 슬롯별 GLM 모델 매핑. GLM은 Claude의 5단계 effort를 3개 reasoning 상태(thinking-off / reasoning-high / reasoning-max)로 collapse |
 
-관련: [plan_type 티어 프로필](/ko/advanced/plan-type-profiles), [3-티어 에이전트 아키텍처](/ko/advanced/no-haiku-3tier).
+관련: [프로필 매트릭스](/ko/advanced/profile-matrix), [3-티어 에이전트 아키텍처](/ko/advanced/no-haiku-3tier).
 
 ## statusline.yaml — 상태 표시줄
 

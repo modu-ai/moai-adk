@@ -4,6 +4,10 @@ weight: 40
 draft: false
 ---
 
+{{< callout type="info" >}}{{< icon flash primary >}} <strong>所属价值</strong>: 🧠 递归式自学习 · 🛡️ 代理型线束
+{{< /callout >}}
+<!-- @value: self-learning, agentic-harness -->
+
 自主自动化、迭代修复回路、代码管理与反馈命令的集合。
 
 

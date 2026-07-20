@@ -24,7 +24,7 @@ v3.0 的产品差异化由三根支柱组成。代币经济学是第一根，与
 
 {{< icon rotate >}} **自主连续循环** — 何时停止、何时继续。在[自主连续循环](/zh/advanced/autonomous-loops/)页面讨论。
 
-{{< icon database >}} **代理式线束** — 哪个代理、哪个层级、如何进化。在[三层架构](/zh/advanced/no-haiku-3tier/)、[plan_type 层级配置](/zh/advanced/plan-type-profiles/)、[线束自我进化](/zh/advanced/self-evolving/)页面讨论。
+{{< icon database >}} **代理式线束** — 哪个代理、哪个配置文件、如何进化。在[三层架构](/zh/advanced/no-haiku-3tier/)、[配置矩阵](/zh/advanced/profile-matrix/)、[线束自我进化](/zh/advanced/self-evolving/)页面讨论。
 
 ## 四层代币经济学结构
 
@@ -48,7 +48,7 @@ flowchart TD
 
 ### Layer B — 路由 (Routing)
 
-{{< icon package >}} 根据工作阶段(plan / run / sync)和 SPEC 大小(Tier S / M / L)，声明式地分配模型和推理深度(effort)。需要深度推理的规划阶段分配高推理模型，机械重复多的实现阶段分配轻量模型，最大化性价比。详细的 60 格配置矩阵见 [plan_type 层级配置](/zh/advanced/plan-type-profiles/)页面。
+{{< icon package >}} 为每个保留代理声明式地分配模型和推理深度(effort)。活动配置文件(`max`/`medium`/`low`)选择配置矩阵的一列，在需要深度推理的节点分配高推理模型，在机械性工作分配轻量模型，最大化性价比。详细的配置矩阵见 [配置矩阵](/zh/advanced/profile-matrix/)页面。
 
 ### Layer C — 验证节食 (Verify-diet)
 
@@ -60,10 +60,10 @@ flowchart TD
 
 ## 模型层级路由
 
-将 Layer B 路由具体化的是模型层级策略。MoAI-ADK v3.0 将 Haiku 从路由模型集合中排除，以三层结构(Sonnet / Opus / Fable)分散工作。此设计的依据和 ApplyTierProfile 实现在以下两页讨论。
+将 Layer B 路由具体化的是模型配置文件策略。MoAI-ADK v3.0 将 Haiku 从路由模型集合中排除，以三层结构(Sonnet / Opus / Fable)分散工作。此设计的依据和配置矩阵实现在以下两页讨论。
 
 - [三层代理架构](/zh/advanced/no-haiku-3tier/) — 为什么排除 Haiku、DeepSWE 排行榜依据
-- [plan_type 层级配置](/zh/advanced/plan-type-profiles/) — api vs 订阅计费各自的 60 格配置矩阵
+- [配置矩阵](/zh/advanced/profile-matrix/) — 单一 3 列 per-agent 配置矩阵
 
 ## CG 模式 (成本优化)
 
@@ -75,12 +75,12 @@ GLM-5.2 是 1M 上下文的单一模型，定价为输入 $2 / 输出 $8 (每 1M
 
 本页内容的实现状态明确区分如下。
 
-{{< icon check ok >}} **已实现 (已发布)** — 四层结构(A/B/C/D)全部、三层模型策略(ApplyTierProfile)、CG 模式、验证节食文件重定向契约、优雅中止机制。
+{{< icon check ok >}} **已实现 (已发布)** — 四层结构(A/B/C/D)全部、三层模型策略(配置矩阵解析器)、CG 模式、验证节食文件重定向契约、优雅中止机制。
 
-{{< icon clock >}} **设计阶段 (路线图)** — GLM 后端 effort 叠加的 wire 有效性是需要实时 GLM 会话出站观测的实证课题。在 plan_type 层级配置页面中明确标注此区分。
+{{< icon clock >}} **设计阶段 (路线图)** — GLM 后端 effort 叠加的 wire 有效性是需要实时 GLM 会话出站观测的实证课题。在配置矩阵页面中明确标注此区分。
 
 ## 下一步
 
 - [代币预算管理与优雅停止](/zh/advanced/token-budget/) — Layer D 深入 (各模型阈值、paste-ready resume 结构)
 - [三层代理架构](/zh/advanced/no-haiku-3tier/) — 线束架构基础
-- [plan_type 层级配置](/zh/advanced/plan-type-profiles/) — 60 格配置矩阵
+- [配置矩阵](/zh/advanced/profile-matrix/) — 单一 3 列 per-agent 配置矩阵

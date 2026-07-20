@@ -5,6 +5,10 @@ weight: 10
 draft: false
 ---
 
+{{< callout type="info" >}}{{< icon flash primary >}} <strong>Belongs to</strong>: 🪙 Tokenomics · 🧠 Recursive Self-Learning · 🛡️ Agentic Harness
+{{< /callout >}}
+<!-- @value: tokenomics, self-learning, agentic-harness -->
+
 This is the onboarding path for anyone meeting MoAI-ADK for the first time. Read in the order **Introduction → Installation → Quick Start** and you can have your first MoAI-ADK project running within 30 minutes. Installation is nothing more than downloading a single binary, and no extra runtime or dependency is needed to run your first SPEC.
 
 

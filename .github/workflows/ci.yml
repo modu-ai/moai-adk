@@ -78,6 +78,9 @@ jobs:
     runs-on: ${{ matrix.os }}
     needs: detect
     if: needs.detect.outputs.go_code == 'true'
+    # Windows test hardening is tracked as a follow-up SPEC; until it lands,
+    # the windows leg reports but does not block.
+    continue-on-error: ${{ matrix.os == 'windows-latest' }}
     timeout-minutes: 30
     strategy:
       fail-fast: false

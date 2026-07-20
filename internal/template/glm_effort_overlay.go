@@ -142,24 +142,6 @@ func ResolveGLMReasoning(agentName, claudeEffort string) GLMReasoningState {
 	return CollapseClaudeEffortToGLM(claudeEffort)
 }
 
-// ApplyGLMEffortOverlay applies the GLM effort overlay to a plan_type profile's
-// {model, effort} pair (REQ-MTP-029). Under a GLM backend it changes ONLY the
-// effort representation — the returned Model is byte-identical to the input
-// (the overlay never rewrites model:, whose GLM mapping is owned by
-// llm.glm.models), and the returned Effort is the collapsed GLM canonical state
-// name. Under a non-GLM backend (glmBackend == false) the overlay is an identity
-// no-op: the pair is returned unchanged (the plan_type profile output).
-func ApplyGLMEffortOverlay(entry TierProfileEntry, agentName string, glmBackend bool) TierProfileEntry {
-	if !glmBackend {
-		return entry // identity no-op under a Claude backend (REQ-MTP-029)
-	}
-	state := ResolveGLMReasoning(agentName, entry.Effort)
-	return TierProfileEntry{
-		Model:  entry.Model, // byte-identical — the overlay never touches model
-		Effort: state.Name,  // effort representation remapped to the GLM canonical state
-	}
-}
-
 // SessionGLMReasoningState derives the SESSION-GLOBAL GLM reasoning state for the
 // Branch-B explicit-write delivery (REQ-MTP-030). Env vars and the
 // settings.local.json env block are session-global (no per-agent reasoning-control

@@ -115,7 +115,7 @@ Run without a flag and MoAI looks at the size of the work and auto-selects the o
 | (none) | Complexity-based auto-selection |
 
 {{< callout type="warning" >}}
-**v3.0.0-rc11 change**: the Agent Teams static-orchestration layer is **retired**. Forcing `--team` falls back to sub-agent mode with `MODE_TEAM_UNAVAILABLE`. Parallel execution is handled by parallel sub-agent fan-out and 2 dynamic workflows (plan-phase parallel research fan-out, sync-phase 4-dimension quality evaluation), while the native teammate runtime (`moai cg` tmux panes) remains intact.
+**v3.0.0 change**: the Agent Teams static-orchestration layer is **retired**. Forcing `--team` falls back to sub-agent mode with `MODE_TEAM_UNAVAILABLE`. Parallel execution is handled by parallel sub-agent fan-out and 2 dynamic workflows (plan-phase parallel research fan-out, sync-phase 4-dimension quality evaluation), while the native teammate runtime (`moai cg` tmux panes) remains intact.
 {{< /callout >}}
 
 Parallel execution increases token usage because each agent uses an independent context window. For simple single-domain work, `--solo` (sequential) is more economical — which is why scale-based auto-selection is the default.

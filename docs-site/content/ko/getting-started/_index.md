@@ -5,6 +5,10 @@ weight: 10
 draft: false
 ---
 
+{{< callout type="info" >}}{{< icon flash primary >}} <strong>소속 가치</strong>: 🪙 토크노믹스 · 🧠 재귀적 자가 학습 · 🛡️ 에이전틱 하네스
+{{< /callout >}}
+<!-- @value: tokenomics, self-learning, agentic-harness -->
+
 MoAI-ADK를 처음 만나는 분을 위한 온보딩 경로입니다. **소개 → 설치 → 빠른 시작** 순서로 읽으면 30분 안에 첫 MoAI-ADK 프로젝트를 실행할 수 있습니다. 설치는 단일 바이너리 하나를 받는 것으로 끝나고, 첫 SPEC 실행까지 별도 런타임이나 의존성은 필요 없습니다.
 
 

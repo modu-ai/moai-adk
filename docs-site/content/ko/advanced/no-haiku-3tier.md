@@ -62,9 +62,9 @@ flowchart TD
 
 **설계 단계** (`.moai/reports/agent-architecture-redesign-v2-20260709.html`) — v2 아키텍처 설계 의도. 3-티어 모델 정책의 원칙과 DeepSWE 근거를 제시합니다.
 
-**구현된 동작** (SPEC-MODEL-TIER-PLANTYPE-001, CLOSED) — `ApplyTierProfile` 60-셀 프로필이 실제 라우팅을 수행합니다. 에이전트 frontmatter의 model과 effort를 모두 교체하여(replace-both) 티어 프로필을 적용합니다. 상세한 60-셀 매트릭스는 [plan_type 티어 프로필](/ko/advanced/plan-type-profiles/) 페이지를 참조하세요.
+**구현된 동작** — 단일 프로필 매트릭스가 실제 라우팅을 수행합니다. 활성 프로필(`max`/`medium`/`low`)이 매트릭스의 한 열을 선택하고, 리졸버가 각 에이전트의 `{model, effort}`를 결정하여 spawn 시점에 model을 런타임 인자로 주입합니다. 상세한 매트릭스는 [프로필 매트릭스](/ko/advanced/profile-matrix/) 페이지를 참조하세요.
 
-독자는 설계 의도(이 페이지의 DeepSWE 근거)와 구현된 동작(60-셀 ApplyTierProfile)을 구분할 수 있어야 합니다.
+독자는 설계 의도(이 페이지의 DeepSWE 근거)와 구현된 동작(단일 프로필 매트릭스)을 구분할 수 있어야 합니다.
 
 ## 하네스 자가 진화와의 연결
 
@@ -72,5 +72,5 @@ flowchart TD
 
 ## 다음 단계
 
-- [plan_type 티어 프로필](/ko/advanced/plan-type-profiles/) — 60-셀 프로필 매트릭스 (10 에이전트 × 3 티어 × 2 plan_type)
+- [프로필 매트릭스](/ko/advanced/profile-matrix/) — 단일 3-열 per-agent 프로필 매트릭스 (10 에이전트 × 3 프로필)
 - [토크노믹스 개요](/ko/advanced/tokenomics-overview/) — 4-층 토크노믹스 구조의 B층 라우팅

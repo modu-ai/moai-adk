@@ -811,7 +811,7 @@ Claude Code 下部に表示されるステータスバーを設定します。
 
 ### settings.local.json 権限強化 (0o600) {#settings-local-json-permission}
 
-v2.20.0-rc1 から `settings.local.json` は生成・更新時に **`0o600`** (所有者専用 read/write) 権限が強制されます。以前の `0o644` はマルチユーザーワークステーションで `ANTHROPIC_AUTH_TOKEN` などの機密資格情報が他のローカルユーザーに露出するリスクがありました (CWE-732 / CWE-552)。
+v3.0.0 から `settings.local.json` は生成・更新時に **`0o600`** (所有者専用 read/write) 権限が強制されます。以前の `0o644` はマルチユーザーワークステーションで `ANTHROPIC_AUTH_TOKEN` などの機密資格情報が他のローカルユーザーに露出するリスクがありました (CWE-732 / CWE-552)。
 
 **自己点検**:
 

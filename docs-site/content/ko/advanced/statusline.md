@@ -13,9 +13,9 @@ Claude Code와 moai-adk-go 통합을 위한 **커스텀 statusline 시스템**�
 ### 최종 레이아웃 (3-line v3)
 
 ```
-🤖 Opus 4.7 │ 🧠 xhigh·t │ 💾 67% │ 🔅 v2.1.146 │ 🗿 v3.0.0-rc6 │ ⏳ 4h 52m │ 💬 MoAI
+🤖 Opus │ 🧠 xhigh·t │ ♻️ 87% │ 🔅 v2.1.212 │ 🗿 v3.0.0 │ ⏳ 4h 52m │ 💬 MoAI
 🪫 CW: ███████░░░ 72% (⚠️/clear) │ 🔋 5H: █████░░░░░ 56% (46m) │ 🔋 7D: █░░░░░░░░░ 13% (May 28)
-📁 moai-adk-go │ 🔀 modu-ai/moai-adk (🅱️ main ↑5 +2) │ 💾 +0 M1 ?1 │ 💌 PR #1234 (⌥approved)
+📁 moai-adk-go │ 🔀 modu-ai/moai-adk | 🅱️ main ↑5 +2 │ 💾 +0 M1 ?1 │ 💌 PR #1234 (⌥approved)
 ```
 
 - **Line 1 (Info)**: 모델 · effort/thinking · 캐시 히트율 · Claude Code 버전 · MoAI 버전 · 세션 시간 · output style
@@ -67,21 +67,22 @@ internal/statusline/renderer.go (3-line v3 layout)
 
 ### 캐시 히트율
 
-- **포맷**: `💾 <N>%` (N = cache_read / (cache_read + cache_creation) × 100, 소수점 버림)
+- **포맷**: `♻️ <N>%` (N = cache_read / (cache_read + cache_creation) × 100, 소수점 버림)
 - **데이터 소스**: stdin `current_usage.cache_read_tokens` + `current_usage.cache_creation_tokens`
-- **예시**: `💾 28%` (cache_read 2000, cache_creation 5000 → 2000/7000)
+- **예시**: `♻️ 28%` (cache_read 2000, cache_creation 5000 → 2000/7000)
 - **숨김 조건**: `current_usage` 부재 · `cache_creation == 0` (fresh cache write 없음) · 둘 다 0 — 값을 지어내지 않고 조용히 생략 (graceful degradation)
 - **토글**: `cache_hit: false` in statusline.yaml → 숨김 (default-on)
 - **세그먼트 키**: `cache_hit`
-- **참고**: 동일 `💾` 이모지가 Line 3 Git Status(`💾 +N M? ?`)에도 사용 — 본 세그먼트는 Line 1에 위치하며 백분율 포맷으로 구분. prompt-cache 재사용률 모니터링 (SPEC-TOKEN-EFFICIENCY-001 P0-2)
+- **참고**: 캐시 히트율은 `♻️`, Line 3 Git Status는 `💾`로 이모지가 구분됩니다. prompt-cache 재사용률 모니터링 (SPEC-TOKEN-EFFICIENCY-001 P0-2)
 
 캐시 히트율은 컨텍스트 다이어트의 효과를 보여주는 측정기입니다. 항상 로드되는 지침을 줄이면 이 숫자가 바로 올라가는 것을 볼 수 있습니다.
 
 ### Claude Code 버전
 
-- **포맷**: `🔅 v<version>` (default) 또는 `🔅 cc v<version>` (full mode)
+- **포맷**: `🔅 v<version>` (3-line 레이아웃에서 실제로 렌더되는 형식)
 - **데이터 소스**: stdin `version` 문자열
-- **예시**: `🔅 v2.1.146`
+- **예시**: `🔅 v2.1.212`
+- **참고**: 이름 붙은 프리셋(full/compact/minimal)은 폐기되어 세그먼트를 직접 켜고 끕니다 (SPEC-V3R6-STATUSLINE-PRESET-RETIRE-001). 과거 full 모드의 `🔅 cc v<version>` 접두 변형은 5-line 레이아웃과 함께 폐기되어 더 이상 렌더되지 않습니다.
 - **숨김 조건**: `version` 빈 문자열
 - **세그먼트 키**: `claude_version`
 
@@ -90,8 +91,8 @@ internal/statusline/renderer.go (3-line v3 layout)
 - **포맷**: `🗿 v<current>` 또는 업데이트 가능 시 `🗿 v<current> -> 🗿 v<latest>`
 - **데이터 소스**: `.moai/config/sections/system.yaml` `moai.version` + 백그라운드 update checker 결과
 - **예시**:
-  - `🗿 v2.20.0-rc1` (최신)
-  - `🗿 v2.18.0 -> 🗿 v2.20.0-rc1` (업데이트 권고)
+  - `🗿 v3.0.0` (최신)
+  - `🗿 v2.18.0 -> 🗿 v3.0.0` (업데이트 권고)
 - **세그먼트 키**: `moai_version`
 
 ### 세션 시간
@@ -113,16 +114,16 @@ internal/statusline/renderer.go (3-line v3 layout)
 
 ### CW (Context Window)
 
-- **포맷**: `<icon> CW: <bar> <pct>% [(⚠️/clear)]`
+- **포맷**: `<icon> CW: <bar> <pct>% [(⚠️/clear) | (🛑/clear!)]`
 - **데이터 소스**:
   - bar: `context_window.context_window_size` × auto-compact threshold (default 85%) → scaled budget
   - 퍼센티지: `context_window.used_percentage` (사전 계산) 또는 `current_usage` tokens 합산
-  - `(⚠️/clear)` 활성 조건: `shouldShowHandoffGuide(data) == true`
-- **이모지**:
-  - `🔋` (정상, <50% scaled)
-  - `🪫` (경고, 50-79% scaled)
-  - `🪫` (위험, ≥80% scaled, 색상 추가)
-- **`(⚠️/clear)` handoff suffix**:
+  - handoff suffix 활성 조건: `handoffGuideStage(data)` 판정 (아래 2단계 표 참조)
+- **배터리 이모지** (`BatteryIcon`, `internal/statusline/gradient.go`):
+  - `🔋` (표시 퍼센티지 ≤ 70%)
+  - `🪫` (표시 퍼센티지 > 70%)
+  - bar 자체는 블록마다 초록 → 노랑 → 빨강 연속 그라디언트 색을 입힙니다 (배터리 임계값과 별개)
+- **`(⚠️/clear)` / `(🛑/clear!)` handoff suffix**:
   - 1M context 모델 (Opus 4.8, GLM-5.2): used_percentage ≥50% (raw context_window_size 기준)
   - 200K context 모델 (Sonnet/Haiku): used_percentage ≥90%
   - 의미: 다음 turn 시작 전에 `/clear` 권고 + paste-ready resume message 활용
@@ -163,7 +164,7 @@ internal/statusline/renderer.go (3-line v3 layout)
 
 ### Repo + Branch (통합 세그먼트)
 
-- **포맷**: `🔀 <owner>/<name> (🅱️ <branch>[ ↑N][ ↓N][ +N])`
+- **포맷**: `🔀 <owner>/<name> | 🅱️ <branch>[ ↑N][ ↓N][ +N]`
 - **데이터 소스**:
   - `🔀 owner/name`: stdin `workspace.repo.{host, owner, name}` (Claude Code v2.1.145+)
   - `🅱️ branch`: 로컬 git `branch --show-current`
@@ -171,14 +172,14 @@ internal/statusline/renderer.go (3-line v3 layout)
   - `↓N`: behind count
   - `+N`: dirty count = Modified + Staged + Untracked
 - **예시**:
-  - `🔀 modu-ai/moai-adk (🅱️ main ↑3 +2)` (repo + branch + ahead + dirty)
-  - `🔀 modu-ai/moai-adk (🅱️ main)` (clean branch, no ahead)
-  - `🔀 (🅱️ feat/auth ↑2 ↓1 +6)` (repo 정보 부재 fallback)
-- **숨김 조건**:
-  - branch 빈 문자열 → 전체 segment 숨김
-  - repo nil 시 fallback (괄호 안 branch만 표시)
-- **Worktree 모드**: `worktree` segment 활성 시 branch에 `[WT] ` prefix
-- **세그먼트 키**: `git_branch` (combined)
+  - `🔀 modu-ai/moai-adk | 🅱️ main ↑3 +2` (repo + branch + ahead + dirty)
+  - `🔀 modu-ai/moai-adk | 🅱️ main` (clean branch, no ahead)
+- **숨김 조건** (셋 중 하나라도 해당하면 세그먼트 전체 숨김):
+  - branch 빈 문자열 또는 git 미가용
+  - `workspace.repo` nil (git 미초기화 또는 remote 미설정) — repo 없이 branch만 표시하는 fallback은 없습니다
+  - `repo.owner` 또는 `repo.name` 빈 문자열
+- **Worktree 모드**: `worktree` segment 활성 + `workspace.git_worktree` 존재 시 branch에 `[WT] ` prefix
+- **세그먼트 키**: `git_branch` (combined). `🔀 owner/name` 부분(`repo`)은 이 세그먼트 안에서 렌더되며 16-key 설정 스키마 밖의 17번째 세그먼트입니다 (개별 토글 불가).
 
 ### Git Status
 
@@ -193,14 +194,14 @@ internal/statusline/renderer.go (3-line v3 layout)
 
 - **포맷**: `📋 [<command> <SPEC-ID>-<stage>]`
 - **데이터 소스**: `~/.moai/state/last-session-state.json` `active_task` 필드 (해당 파일 작성 시점에만 노출)
-- **예시**: `📋 [/moai run SPEC-V3R5-STATUSLINE-001-implement]`
-- **숨김 조건**: 파일 부재 또는 `active_task` nil → segment 숨김
-- **세그먼트 키**: `task` (opt-in default off)
+- **예시**: `📋 [run SPEC-AUTH-001-run]`
+- **숨김 조건**: 활성 task 부재 (`active_task` nil 또는 command 빈 문자열) → segment 숨김
+- **세그먼트 키**: `task` (v3.0.0부터 default-on — 미설정 키는 활성으로 해석)
 
 ### PR (활성 GitHub Pull Request)
 
 - **포맷**: `💌 PR #<number> (⌥<review_state>)` (state 있을 때) / `💌 PR #<number>` (state 빈 문자열)
-- **데이터 소스**: stdin `pr.{number, url, review_state}` (Claude Code v2.1.146+)
+- **데이터 소스**: stdin `pr.{number, url, review_state}` (Claude Code v2.1.145+)
 - **Review state 값**: `approved` / `pending` / `changes_requested` / `draft` / 기타 (raw passthrough)
 - **색상 코딩** (review_state portion):
   - `approved`: 녹색 (Success)
@@ -218,7 +219,7 @@ internal/statusline/renderer.go (3-line v3 layout)
   - `pr` 필드 부재 (PR 없음 또는 v2.1.145 이하)
   - `pr.number == 0`
   - `SegmentPR` config 명시적 false
-- **세그먼트 키**: `pr` (default on per v2.20.0-rc1)
+- **세그먼트 키**: `pr` (default on per v3.0.0)
 
 ## 설정
 
@@ -233,6 +234,7 @@ statusline:
     # Line 1
     model: true
     effort_thinking: true
+    cache_hit: true        # 캐시 히트율 ♻️
     claude_version: true
     moai_version: true
     session_time: true
@@ -247,8 +249,8 @@ statusline:
     directory: true
     git_branch: true       # combined repo+branch
     git_status: true
-    task: true             # opt-in default off in older versions
-    pr: true               # default on per v2.20.0-rc1
+    task: true             # default-on per v3.0.0
+    pr: true               # default on per v3.0.0
     worktree: false
 ```
 
@@ -272,6 +274,7 @@ Statusline의 새로고침 주기는 `settings.json`의 `statusLine.refreshInter
 |---------|------|----------|-------------|
 | `model` | L1 | ✓ | `model.display_name` |
 | `effort_thinking` | L1 | ✓ | `effort.level` + `thinking.enabled` |
+| `cache_hit` | L1 | ✓ | `current_usage.cache_read_tokens` + `cache_creation_tokens` |
 | `claude_version` | L1 | ✓ | `version` |
 | `moai_version` | L1 | ✓ | (로컬 config) |
 | `session_time` | L1 | ✓ | `cost.total_duration_ms` |
@@ -282,9 +285,11 @@ Statusline의 새로고침 주기는 `settings.json`의 `statusLine.refreshInter
 | `directory` | L3 | ✓ | `workspace.project_dir` |
 | `git_branch` (combined) | L3 | ✓ | `workspace.repo.*` + local git |
 | `git_status` | L3 | ✓ | local git |
-| `task` | L3 | opt-in | `~/.moai/state/last-session-state.json` |
-| `pr` | L3 | ✓ (v2.20.0-rc1+) | `pr.*` (Claude Code v2.1.146+) |
+| `task` | L3 | ✓ (v3.0.0+) | 세션 상태의 `active_task` |
+| `pr` | L3 | ✓ (v3.0.0+) | `pr.*` (Claude Code v2.1.145+) |
 | `worktree` | L3 | ✗ opt-in | `workspace.git_worktree` |
+
+> 위 16개가 정식 설정 스키마 키입니다. `repo`(`🔀 owner/name`)는 `git_branch` 세그먼트 안에서 렌더되는 17번째 세그먼트로, 설정 스키마 밖이라 개별 토글이 없습니다.
 
 ## Handoff Guide — `(⚠️/clear)` 권고 기준
 
@@ -323,14 +328,14 @@ Claude Code가 statusline 스크립트로 전달하는 stdin JSON 전체 필드 
   "session_id": "abc...",
   "transcript_path": "/path/to/transcript.jsonl",
   "cwd": "/path/to/cwd",
-  "model": {"id": "claude-opus-4-7", "display_name": "Opus 4.7"},
+  "model": {"id": "claude-opus-4-8", "display_name": "Opus"},
   "workspace": {
     "current_dir": "...",
     "project_dir": "...",
     "git_worktree": "feature-xyz",
     "repo": {"host": "github.com", "owner": "modu-ai", "name": "moai-adk"}
   },
-  "version": "2.1.146",
+  "version": "2.1.212",
   "output_style": {"name": "MoAI"},
   "cost": {
     "total_cost_usd": 1.234,
@@ -367,17 +372,17 @@ Claude Code가 statusline 스크립트로 전달하는 stdin JSON 전체 필드 
 
 ## 버전 히스토리
 
-- **v2.20.0-rc1 layout v3** (2026-05-22): 3-line layout 재설계 — repo+branch 통합 segment, directory L3 head, `🪫 CW:` emoji 앞으로, `(⚠️/clear)` handoff suffix, `💾` git status 통일, `💌 PR #N (⌥state)` 형식
-- **v2.20.0-rc1 STATUSLINE-STDINFIELDS-001** (2026-05-21): `workspace.repo` + `exceeds_200k_tokens` + `pr` stdin 필드 매핑 추가, 1M context handoff threshold 75% → 50%
-- **v2.20.0-rc1 STATUSLINE-V2145-001** (2026-05-20): PR segment 추가 (v2.1.145+ stdin), 4-locale docs 동기화
+- **v3.0.0 layout v3** (2026-05-22): 3-line layout 재설계 — repo+branch 통합 segment, directory L3 head, `🪫 CW:` emoji 앞으로, `(⚠️/clear)` handoff suffix, `💾` git status 통일, `💌 PR #N (⌥state)` 형식
+- **v3.0.0 STATUSLINE-STDINFIELDS-001** (2026-05-21): `workspace.repo` + `exceeds_200k_tokens` + `pr` stdin 필드 매핑 추가, 1M context handoff threshold 75% → 50%
+- **v3.0.0 STATUSLINE-V2145-001** (2026-05-20): PR segment 추가 (v2.1.145+ stdin), 4-locale docs 동기화
 - **v2.1.139** (Claude Code): `effort.level` + `thinking.enabled` stdin JSON 추가
-- **v2.1.146** (Claude Code): `workspace.repo` + `pr` stdin JSON 추가
+- **v2.1.145** (Claude Code): `workspace.repo` + `pr` stdin JSON 추가
 
 ## 트러블슈팅
 
 ### Statusline에 PR이 안 나옴
 
-- Claude Code 버전 확인: `🔅 v2.1.146` 이상 필요 (v2.1.145는 stdin에 `pr` 필드 미포함)
+- Claude Code 버전 확인: `🔅 v2.1.145` 이상 필요 (그 이전 버전은 stdin에 `pr` 필드 미포함)
 - 현재 branch에 OPEN PR이 있는지 확인: `gh pr view`
 - `statusline.yaml`에 `pr: false`로 명시되었는지 확인
 
@@ -398,7 +403,7 @@ Claude Code가 statusline 스크립트로 전달하는 stdin JSON 전체 필드 
 ```bash
 # stdin fixture로 statusline 실 출력 확인
 NOW=$(date +%s)
-echo '{"session_id":"test","model":{"display_name":"Opus 4.7"},"workspace":{"repo":{"host":"github.com","owner":"modu-ai","name":"moai-adk"}},"version":"2.1.146","output_style":{"name":"MoAI"},"context_window":{"used_percentage":62,"context_window_size":1000000},"exceeds_200k_tokens":true,"effort":{"level":"xhigh"},"thinking":{"enabled":true},"rate_limits":{"five_hour":{"used_percentage":56,"resets_at":'$((NOW + 2820))'},"seven_day":{"used_percentage":13,"resets_at":'$((NOW + 518400))'}},"cost":{"total_duration_ms":17520000},"pr":{"number":1234,"url":"https://github.com/modu-ai/moai-adk/pull/1234","review_state":"approved"}}' | moai statusline
+echo '{"session_id":"test","model":{"display_name":"Opus"},"workspace":{"repo":{"host":"github.com","owner":"modu-ai","name":"moai-adk"}},"version":"2.1.212","output_style":{"name":"MoAI"},"context_window":{"used_percentage":62,"context_window_size":1000000},"exceeds_200k_tokens":true,"effort":{"level":"xhigh"},"thinking":{"enabled":true},"rate_limits":{"five_hour":{"used_percentage":56,"resets_at":'$((NOW + 2820))'},"seven_day":{"used_percentage":13,"resets_at":'$((NOW + 518400))'}},"cost":{"total_duration_ms":17520000},"pr":{"number":1234,"url":"https://github.com/modu-ai/moai-adk/pull/1234","review_state":"approved"}}' | moai statusline
 ```
 
 ## `/cd` 캐시 보존 디렉터리 전환 (CC 2.1.169+)

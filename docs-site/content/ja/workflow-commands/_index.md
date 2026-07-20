@@ -4,6 +4,12 @@ weight: 30
 draft: false
 ---
 
+{{< callout type="info" >}}{{< icon flash primary >}} <strong>所属バリュー</strong>: 🛡️ エージェント型ハーネス
+{{< /callout >}}
+<!-- @value: agentic-harness -->
+
+![SPEC 3フェーズパイプライン](/images/sections/workflow-commands-ja.png)
+
 SPEC ベースの 3-Phase ライフサイクル (plan → run → sync) を実行するコマンド群です。
 
 

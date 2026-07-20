@@ -79,6 +79,8 @@
 - 각 파일 front matter `title` 존재 (비어있지 않음)
 - H1 heading 존재
 - MoAI 용어집 (glossary) 준수 — "MoAI-ADK" 등은 모든 locale에서 불번역 유지
+- **섹션 메타 패리티**: 각 locale `content/<locale>/_meta.yaml`의 섹션 키·weight·순서 일치 (canonical ko 기준). 신규 섹션 추가 시 en/ja/zh 4-locale 동시 반영 의무 — en/ja/zh 누락 시 사이드바 정렬·타이틀 불일치 발생 (과거 multi-llm·contributing 누락 사례 재발 방지). 검증: `for l in en ko ja zh; do echo "$l: $(grep -c 'weight:' content/$l/_meta.yaml)"; done` — 4-locale 동일 카운트 필수
+- **사이드바 아이콘 매핑**: `data/menu/main.yaml`의 모든 `icon:` 값이 `layouts/partials/menu.html`의 `if/else if eq` 분기에 대응하는지 확인 (미매칭 시 빈 SVG 렌더 → 아이콘 누락). 신규 icon 추가 시 menu.html 분기 동시 추가. 참고: menu.html은 `case` 키워드가 아닌 Go template `if/else if eq` 체인으로 아이콘을 매핑하므로, 분기 탐지 시 `case` 리터럴이 아닌 `eq $i` 패턴으로 확인할 것
 
 ### §17.4 버전 스냅샷
 

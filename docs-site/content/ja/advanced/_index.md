@@ -4,6 +4,12 @@ weight: 100
 draft: false
 ---
 
+{{< callout type="info" >}}{{< icon flash primary >}} <strong>所属バリュー</strong>: 🪙 トークノミクス · 🧠 再帰的自己学習 · 🛡️ エージェント型ハーネス
+{{< /callout >}}
+<!-- @value: tokenomics, self-learning, agentic-harness -->
+
+![トークノミクス3軸](/images/sections/advanced-ja.png)
+
 MoAI-ADK の内部構造を掘り下げたい開発者のためのセクションです。基本ワークフロー(plan → run → sync)に慣れたら、ここでハーネスが実際にどのように組み立てられているかを確認できます。
 
 

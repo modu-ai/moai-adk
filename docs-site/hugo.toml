@@ -52,8 +52,8 @@ disablePathToLower = true
 # Geekdoc 사이트 파라미터
 [params]
   # SSOT — Version 갱신은 이 두 줄만 동시에 수정
-  version = "v3.0.0-rc11"
-  releaseDate = "2026-07-13"
+  version = "v3.0.0"
+  releaseDate = "2026-07-16"
   geekdocRepo = "https://github.com/modu-ai/moai-adk"
   geekdocEditPath = "edit/main/docs-site/content"
   geekdocSearch = true

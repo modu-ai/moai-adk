@@ -16,6 +16,9 @@
 "claude-code":
   title: "Claude Code ガイド"
   weight: 55
+"multi-llm":
+  title: "Multi-LLM Mode"
+  weight: 60
 "cost-optimization":
   title: "コスト最適化"
   weight: 70
@@ -28,3 +31,6 @@ worktree:
 advanced:
   title: "詳細"
   weight: 100
+contributing:
+  title: "Contributing"
+  weight: 110

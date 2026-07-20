@@ -7,8 +7,8 @@ description: |
   Match user intent language-independently — do not require literal keyword matches.
   NOT for: SPEC body authoring (spec.md / plan.md / acceptance.md / design.md / research.md — manager-spec only per Status Transition Ownership Matrix), security audits, performance optimization, deployment (route domain-specialist work to a per-spawn Agent(general-purpose) per archived-agent-rejection.md §C)
 tools: Read, Write, Edit, Bash, Grep, Glob, TaskCreate, TaskUpdate, TaskList, TaskGet, Skill
-model: opus
-effort: high
+model: inherit
+effort: xhigh
 color: green
 permissionMode: bypassPermissions
 memory: project

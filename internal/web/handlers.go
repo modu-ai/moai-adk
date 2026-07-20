@@ -73,14 +73,10 @@ type pageView struct {
 	// (7 agents — model/effort, effort 부재는 유효 상태 EC-7).
 	AgentFMs []agentfm.AgentInfo
 
-	// ActivePlanType / PerfTier: the plan_type + performance_tier selectors,
-	// migrated into the TOP of the agentfm panel from the retired standalone
-	// Model Policy page (goal-to-test, non-SPEC). ActivePlanType is the
-	// EFFECTIVE plan (llm.plan_type resolved to the subscription default when
-	// absent); PerfTier is the RAW llm.performance_tier value — the *IsEmpty
-	// flags drive the "(default: ...)" empty-value hints.
-	ActivePlanType  string
-	PlanTypeIsEmpty bool
+	// PerfTier is the profile selector (hosted as the performance_tier wire
+	// field) at the TOP of the agentfm panel — one of {max, medium, low}. The
+	// plan_type display was removed (SPEC-MODEL-PROFILE-MATRIX-001 REQ-MPM-019).
+	// PerfTierIsEmpty drives the "(default: ...)" empty-value hint.
 	PerfTier        string
 	PerfTierIsEmpty bool
 

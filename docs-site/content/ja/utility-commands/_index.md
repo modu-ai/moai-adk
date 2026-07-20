@@ -4,6 +4,10 @@ weight: 40
 draft: false
 ---
 
+{{< callout type="info" >}}{{< icon flash primary >}} <strong>所属バリュー</strong>: 🧠 再帰的自己学習 · 🛡️ エージェント型ハーネス
+{{< /callout >}}
+<!-- @value: self-learning, agentic-harness -->
+
 自律的な自動化と反復修正ループ、コード管理、フィードバックコマンドの集まりです。
 
 

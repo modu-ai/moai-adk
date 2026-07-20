@@ -62,9 +62,9 @@ Four conclusions drawn from the leaderboard measurements:
 
 **Design stage** (`.moai/reports/agent-architecture-redesign-v2-20260709.html`) — the v2 architecture design intent. Presents the 3-tier model policy principles and DeepSWE rationale.
 
-**Implemented behavior** (SPEC-MODEL-TIER-PLANTYPE-001, CLOSED) — `ApplyTierProfile` 60-cell profile performs the actual routing. It replaces both model and effort in agent frontmatter (replace-both) to apply the tier profile. For the detailed 60-cell matrix, see the [plan_type Tier Profiles](/en/advanced/plan-type-profiles/) page.
+**Implemented behavior** — a single profile matrix performs the actual routing. The active profile (`max`/`medium`/`low`) selects one column of the matrix, and the resolver determines each agent's `{model, effort}` and injects the model as a runtime argument at spawn time. For the detailed matrix, see the [Profile Matrix](/en/advanced/profile-matrix/) page.
 
-Readers must be able to distinguish design intent (the DeepSWE rationale on this page) from implemented behavior (the 60-cell ApplyTierProfile).
+Readers must be able to distinguish design intent (the DeepSWE rationale on this page) from implemented behavior (the single profile matrix).
 
 ## Connection to Harness Self-Evolution
 
@@ -72,5 +72,5 @@ The 3-tier architecture is the substrate for harness self-evolution. For the evo
 
 ## Next Steps
 
-- [plan_type Tier Profiles](/en/advanced/plan-type-profiles/) — the 60-cell profile matrix (10 agents × 3 tiers × 2 plan_types)
+- [Profile Matrix](/en/advanced/profile-matrix/) — the single 3-column per-agent profile matrix (10 agents × 3 profiles)
 - [Tokenomics Overview](/en/advanced/tokenomics-overview/) — Layer B routing of the 4-layer tokenomics structure

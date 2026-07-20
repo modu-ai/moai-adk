@@ -68,8 +68,10 @@ v3.0 在代理级分配之上，新增了**工作阶段 (phase) 与 SPEC 规模 
 - **tier**（SPEC 规模）: S / M / L
 - **phase**（工作阶段）: plan / run / sync / mx
 
-由于同一工作流在 API 按量计费与订阅计费下的最优分配并不相同，计费方案
-感知 (plan_type) 配置文件会按计费方案分别应用矩阵。
+每个代理的 model+effort 分配由单一配置矩阵负责。活动配置文件(`profile` ——
+`max`/`medium`/`low`)选择矩阵的一列，`profile` 缺失时 legacy `performance_tier`
+作为别名读取，再缺失则解释为 `medium`。详细的每个代理映射请参阅
+[配置矩阵](/zh/advanced/profile-matrix/)页面。
 
 ## 配置方法
 

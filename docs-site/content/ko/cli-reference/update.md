@@ -130,7 +130,7 @@ graph TD
 | `--no-hooks` | Git 훅 설치 건너뛰기 |
 | `--verbose` | 모든 경고 표시 (진단 모드) |
 | `--shell-env` | Claude Code 용 셸 환경변수 구성 |
-| `--plan-type <api\|subscription>` | 요금제 유형 덮어쓰기 |
+| `--profile <max\|medium\|low>` | 모델+effort 프로필 덮어쓰기 (`llm.yaml` 의 `profile` 에 저장) |
 
 ### 동작 방식
 

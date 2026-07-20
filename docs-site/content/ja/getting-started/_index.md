@@ -5,6 +5,10 @@ weight: 10
 draft: false
 ---
 
+{{< callout type="info" >}}{{< icon flash primary >}} <strong>所属バリュー</strong>: 🪙 トークノミクス · 🧠 再帰的自己学習 · 🛡️ エージェント型ハーネス
+{{< /callout >}}
+<!-- @value: tokenomics, self-learning, agentic-harness -->
+
 MoAI-ADK に初めて触れる方のためのオンボーディング経路です。**紹介 → インストール → クイックスタート** の順に読めば、30分以内に最初の MoAI-ADK プロジェクトを実行できます。インストールは単一バイナリを1つ取得するだけで、最初の SPEC 実行まで別途ランタイムや依存関係は必要ありません。
 
 

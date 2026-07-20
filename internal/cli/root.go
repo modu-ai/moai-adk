@@ -66,6 +66,9 @@ func Execute() error {
 	} else {
 		InitDependencies()
 	}
+	// SPEC-CLI-TUX-V3-004 M4d (REQ-TUX4-007, keep-fang verdict): order each
+	// help group's rows by usage frequency before fang renders Commands().
+	reorderRootHelpCommands(rootCmd)
 	return executeRoot(context.Background(), rootCmd)
 }
 
@@ -194,4 +197,8 @@ func init() {
 	// SPEC-V3R6-ASKUSER-DECISION-MEMORY-001 M4: register the preference
 	// subtree (parent + decay-scan child). M5 will add `toggle` as a sibling.
 	rootCmd.AddCommand(preference.PreferenceCmd)
+
+	// SPEC-MODEL-PROFILE-MATRIX-001 M2: register the read-only `moai model
+	// profile` resolver — the per-agent model+effort profile injection surface.
+	rootCmd.AddCommand(newModelCmd())
 }

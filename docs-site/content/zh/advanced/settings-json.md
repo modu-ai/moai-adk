@@ -811,7 +811,7 @@ Hook 配置的详细内容见 [Hooks 指南](/zh/advanced/hooks-guide)。
 
 ### settings.local.json 权限加固 (0o600) {#settings-local-json-permission}
 
-自 v2.20.0-rc1 起，`settings.local.json` 在创建、更新时被强制设为 **`0o600`**（仅所有者可读写）权限。以前的 `0o644` 在多用户工作站上存在 `ANTHROPIC_AUTH_TOKEN` 等敏感凭据暴露给其他本地用户的风险（CWE-732 / CWE-552）。
+自 v3.0.0 起，`settings.local.json` 在创建、更新时被强制设为 **`0o600`**（仅所有者可读写）权限。以前的 `0o644` 在多用户工作站上存在 `ANTHROPIC_AUTH_TOKEN` 等敏感凭据暴露给其他本地用户的风险（CWE-732 / CWE-552）。
 
 **自检**：
 

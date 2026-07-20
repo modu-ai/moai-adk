@@ -7,8 +7,8 @@ index:
   title: "代币预算管理与优雅停止"
 "no-haiku-3tier":
   title: "三层代理架构 (No-Haiku)"
-"plan-type-profiles":
-  title: "plan_type 层级配置"
+"profile-matrix":
+  title: "配置矩阵"
 "self-evolving":
   title: "线束自我进化"
 "autonomous-loops":

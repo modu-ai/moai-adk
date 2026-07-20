@@ -600,3 +600,65 @@
 .prose-kr { overflow-wrap: break-word; }
 :lang(ko) .prose-kr,
 html[lang="ko"] .prose-kr { word-break: keep-all; }
+
+/* ============================================================================
+ * Hotfix (2026-07-21) — single 문서 상세 레이아웃 붕괴 3건
+ * (1) .doc-hero 텍스트가 theme heading/link 색에 오버라이드되어 초록 배경 위
+ *     검정 h1 + 비가시 초록 링크로 렌더 → hero 내부는 흰색 강제.
+ * (2) geekdoc flex 프레임 안에서 .gdoc-page가 좁게 잡혀 1280px 그리드가
+ *     656px로 압축 → cw-toc 제거(baseof)와 함께 페이지 컨테이너를 flex:1로.
+ * ==========================================================================*/
+.doc-hero h1.doc-h1,
+.doc-hero .crumb,
+.doc-hero .crumb a,
+.doc-hero .crumb span,
+.doc-hero .doc-cat,
+.doc-hero .doc-deck,
+.doc-hero .doc-byline,
+.doc-hero .doc-author strong { color: #fff !important; }
+main.docs-main > .gdoc-page { flex: 1 1 auto; min-width: 0; max-width: none; }
+/* (3) grid 1fr 트랙 min-width:auto 수축 불가 → 컨테이너보다 넓어져 rail이
+ *     뷰포트 밖으로 overflow. minmax(0,1fr) + 자식 min-width:0으로 교정. */
+.doc-layout { grid-template-columns: 220px minmax(0, 1fr) 280px; }
+.doc-layout > * { min-width: 0; }
+@media (max-width: 1199px) {
+  .doc-layout { grid-template-columns: 200px minmax(0, 1fr); }
+}
+/* (4) geekdoc .container 1312px 제한이 3-컬럼(고정 596px)과 충돌해 본문이
+ *     ~244px로 압축 → 문서 상세가 있는 main 프레임 폭을 확장. */
+main.docs-main { max-width: 1720px; }
+@media (max-width: 1500px) {
+  .doc-layout { grid-template-columns: 200px minmax(0, 1fr); gap: 36px; }
+  .doc-layout .rail { display: none; }
+}
+
+/* ============================================================================
+ * Redesign (2026-07-21) — doc-hero 컴팩트 밴드 + 마스코트, 2-단 본문
+ * (구 3-컬럼: 좌 TOC | 본문 | rail → 2단: 본문 | 우측 TOC. rail 카드 삭제) */
+.doc-hero--compact { padding: 28px 40px 32px; }
+.doc-hero--compact .doc-hero-inner {
+  display: flex; align-items: center; justify-content: space-between; gap: 32px;
+}
+.doc-hero--compact .doc-hero-text { min-width: 0; }
+.doc-hero--compact .crumb { margin-bottom: 10px; }
+.doc-hero--compact .doc-cat { margin-bottom: 10px; }
+.doc-hero--compact .doc-h1 { font-size: clamp(26px, 3vw, 36px); margin-bottom: 10px; }
+.doc-hero--compact .doc-meta-strip { margin-left: 0; opacity: 0.85; color: #fff; }
+.doc-hero-mascot {
+  flex: 0 0 auto; width: 110px; height: 110px; object-fit: contain;
+  filter: drop-shadow(0 4px 12px rgba(0,0,0,0.18));
+}
+@media (max-width: 1023px) {
+  .doc-hero--compact { padding: 20px 20px 24px; }
+  .doc-hero-mascot { width: 80px; height: 80px; }
+}
+/* 2-단: 본문 | TOC(260px). 이전 핫픽스의 3-컬럼/2-컬럼 트랙 정의를 덮는다. */
+.doc-layout.doc-layout--2col,
+main.docs-main .doc-layout--2col { grid-template-columns: minmax(0, 1fr) 260px; }
+@media (max-width: 1500px) {
+  .doc-layout.doc-layout--2col { grid-template-columns: minmax(0, 1fr) 240px; gap: 36px; }
+}
+@media (max-width: 1023px) {
+  .doc-layout.doc-layout--2col { grid-template-columns: 1fr; }
+  .doc-layout--2col .docs-toc { display: none; }
+}

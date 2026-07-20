@@ -250,16 +250,26 @@ type LLMConfig struct {
 	TeamMode string `yaml:"team_mode"`
 	// Environment variable name for GLM API key
 	GLMEnvVar string `yaml:"glm_env_var"`
-	// PlanType selects the billing-context tier profile: "api" (API-metered) or
-	// "subscription". Absent or empty resolves to subscription via
-	// EffectivePlanType (REQ-MTP-001/002). Closed-set validated by validatePlanType.
-	PlanType string `yaml:"plan_type"`
 	// Performance tier: "max", "high", "medium", "low"
 	// Controls model selection for all sub-agents and team agents. The tag accepts
 	// "max" (the CLI-persisted --model-policy value) alongside the legacy "high"
 	// for backward compatibility (D4 adjacent drift fix: the CLI writes max/medium/low
 	// while pre-existing configs may carry the legacy high).
 	PerformanceTier string `yaml:"performance_tier" validate:"omitempty,oneof=max high medium low"`
+	// Profile selects the active per-agent-group model+effort column, one of
+	// {max, medium, low} (REQ-MPM-001). Absent/empty resolves via
+	// EffectiveProfile (profile → performance_tier alias → default medium).
+	// Closed-set validated by validateProfile.
+	Profile string `yaml:"profile"`
+	// Profiles mirrors the Matrix A default profile matrix for transparency and
+	// user editability (REQ-MPM-010): profile → agent-group → {model, effort}.
+	// The Go default (template.DefaultProfileMatrix) is the authoritative
+	// fallback for any cell absent from config.
+	Profiles map[string]map[string]ModelEffort `yaml:"profiles"`
+	// AgentOverrides is an optional per-agent {model, effort} override keyed by
+	// canonical agent name, applied on top of the active profile's group cell
+	// (REQ-MPM-006). Validated by validateAgentOverrides.
+	AgentOverrides map[string]ModelEffort `yaml:"agent_overrides"`
 	// Claude model mapping by tier
 	ClaudeModels ClaudeTierModels `yaml:"claude_models"`
 	// GLM API configuration
