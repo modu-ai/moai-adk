@@ -126,11 +126,27 @@
   --neutral-900: #141414;
   --neutral-950: #060606;
 
-  /* ── Semantic ── */
-  --color-success: #2e8a63;
-  --color-warning: #c47b2a;
-  --color-danger:  #c44a3a;
-  --color-info:    #2a8a8c;
+  /* ── Semantic (SPEC-DESIGN-MOAIWEBV2-002 M2 — byte-equal to the docs-site
+     moai-brand.css baseline; REQ-MWA-005) ── */
+  --color-success: #5db872;
+  --color-warning: #d4a017;
+  --color-danger:  #c64545;
+  --color-info:    #5db8a6;
+
+  /* ── Status TEXT carve-outs (REQ-MWA-006) ──
+     The docs-site status tokens fail WCAG AA (>= 4.5:1) as TEXT on the
+     console's light surfaces (measured: success 2.28:1 on the .banner--success
+     tint #f0f9f2; danger 4.27:1 on the .banner--error tint #faeeee and 4.40:1
+     on the #f4f4f4 canvas chip). Per the token-vs-usage separation [HARD], the
+     token bytes above stay byte-equal to moai-brand.css and every status-TEXT
+     usage darkens through these usage-scoped mixes toward --color-ink instead
+     (post-fix: success+40% ink = 5.38:1 on the banner tint; danger+10% ink
+     = 5.01:1 on the error tint / 5.16:1 on the canvas chip / 5.68:1 on white).
+     `warning` / `info` have no live text usage today — a FUTURE text usage of
+     either MUST route through an equivalent --status-text-* mix, never the raw
+     token. */
+  --status-text-success: color-mix(in srgb, var(--color-success), var(--color-ink) 40%);
+  --status-text-danger: color-mix(in srgb, var(--color-danger), var(--color-ink) 10%);
 
   /* ── Foreground roles ── */
   --fg-1: var(--color-ink);          /* primary text */
@@ -444,8 +460,10 @@ html[lang="zh"] body { font-family: "Pretendard", "Noto Sans CJK SC", system-ui,
 .banner__icon svg { width: 22px; height: 22px; }
 .banner__body { flex: 1; }
 .banner__text { font-size: var(--text-sm); margin: 0; color: var(--fg-1); }
-.banner--success { background: color-mix(in srgb, var(--color-success) 9%, var(--color-surface)); border-color: color-mix(in srgb, var(--color-success) 38%, transparent); color: var(--color-success); }
-.banner--error   { background: color-mix(in srgb, var(--color-danger) 9%, var(--color-surface));  border-color: color-mix(in srgb, var(--color-danger) 38%, transparent);  color: var(--color-danger); }
+/* Banner TEXT consumes the --status-text-* AA carve-outs (REQ-MWA-006) — the
+   tint/border still derive from the raw docs-site tokens. */
+.banner--success { background: color-mix(in srgb, var(--color-success) 9%, var(--color-surface)); border-color: color-mix(in srgb, var(--color-success) 38%, transparent); color: var(--status-text-success); }
+.banner--error   { background: color-mix(in srgb, var(--color-danger) 9%, var(--color-surface));  border-color: color-mix(in srgb, var(--color-danger) 38%, transparent);  color: var(--status-text-danger); }
 [data-theme="dark"] .banner--success { color: #85bda0; }
 [data-theme="dark"] .banner--error { color: #5a9a7e; }
 
@@ -612,11 +630,15 @@ html[lang="zh"] body { font-family: "Pretendard", "Noto Sans CJK SC", system-ui,
    ============================================================ */
 .field.has-error .input,
 .field.has-error .select { border-color: var(--color-danger); box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-danger) 14%, transparent); }
-.field.has-error .field__title { color: var(--color-danger); }
-.field.has-error .field__key { border-color: color-mix(in srgb, var(--color-danger) 45%, var(--border-1)); color: var(--color-danger); }
+/* Danger TEXT consumes --status-text-danger (REQ-MWA-006): the field__key chip
+   sits on the #f4f4f4 canvas where the raw token measures 4.40:1 (< 4.5); the
+   white-surface siblings (field__title / field-error) adopt the same mix for a
+   uniform danger hue (they pass raw at 4.84:1 — darkening only adds margin). */
+.field.has-error .field__title { color: var(--status-text-danger); }
+.field.has-error .field__key { border-color: color-mix(in srgb, var(--color-danger) 45%, var(--border-1)); color: var(--status-text-danger); }
 .field-error {
   display: flex; align-items: center; gap: 6px;
-  font-size: 13px; font-weight: var(--fw-medium); color: var(--color-danger);
+  font-size: 13px; font-weight: var(--fw-medium); color: var(--status-text-danger);
   letter-spacing: var(--tracking-body);
 }
 [data-theme="dark"] .field-error, [data-theme="dark"] .field.has-error .field__title { color: #5a9a7e; }

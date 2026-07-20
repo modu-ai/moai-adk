@@ -500,6 +500,49 @@ func TestAccessibilityCues(t *testing.T) {
 	}
 }
 
+// --- SPEC-DESIGN-MOAIWEBV2-002 M2: status tokens = docs-site bytes + AA carve-outs ---
+
+// TestStatusTokensDocsSiteParity verifies AC-MWA-005/006 (regression lock): the
+// four semantic status tokens are byte-equal to the docs-site moai-brand.css
+// baseline (L37-40), and the contrast-failing status-TEXT usages consume the
+// usage-scoped color-mix darkening toward --color-ink — the token bytes
+// themselves never darken (token-vs-usage separation, REQ-MWA-005/006).
+func TestStatusTokensDocsSiteParity(t *testing.T) {
+	css := readEmbeddedAsset(t, "console.css")
+
+	// (1) Token bytes equal to docs-site moai-brand.css.
+	for _, want := range []string{
+		"--color-success: #5db872",
+		"--color-warning: #d4a017",
+		"--color-danger:  #c64545",
+		"--color-info:    #5db8a6",
+	} {
+		if !strings.Contains(css, want) {
+			t.Errorf("console.css missing docs-site status token %q", want)
+		}
+	}
+
+	// (2) Usage-scoped AA carve-out: derived text tokens darken via color-mix
+	// toward the ink token, and the pre-measured failing text usages
+	// (.banner--success / .banner--error / has-error danger text) consume them.
+	for _, want := range []string{
+		"--status-text-success: color-mix(in srgb, var(--color-success), var(--color-ink)",
+		"--status-text-danger: color-mix(in srgb, var(--color-danger), var(--color-ink)",
+	} {
+		if !strings.Contains(css, want) {
+			t.Errorf("console.css missing usage-scoped AA carve-out token %q", want)
+		}
+	}
+	for _, usage := range []string{
+		".banner--success",
+		".banner--error",
+	} {
+		if !regexp.MustCompile(regexp.QuoteMeta(usage) + `[^}]*color: var\(--status-text-`).MatchString(css) {
+			t.Errorf("%s text color does not consume the --status-text-* AA carve-out", usage)
+		}
+	}
+}
+
 // renderErroredBody POSTs an invalid submission and returns the re-rendered body
 // (which carries a per-field error).
 func renderErroredBody(t *testing.T) string {
