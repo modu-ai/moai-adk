@@ -567,6 +567,7 @@ claude --plugin-dir ./plugin-one --plugin-dir ./plugin-two
 
 - Commands: `/plugin-name:command-name` invocation
 - Agents: `/agents` to list, then invoke by name
+  - > **CHANGELOG delta (CC 2.1.198, annotated 2026-07-03)**: The `/agents` wizard was removed in CC 2.1.198 (ask Claude or edit `.claude/agents/` directly). This mirror tracks the source doc, not the CHANGELOG, and is NOT rewritten; the `/agents` listing behavior may still hold. Verify in a live 2.1.198 session.
 - Skills: Ask questions relevant to skill domain
 - Hooks: Trigger events and check debug logs
 
