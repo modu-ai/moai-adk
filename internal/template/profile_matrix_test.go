@@ -1,10 +1,77 @@
 package template
 
 import (
+	"os"
+	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/modu-ai/moai-adk/internal/config"
 )
+
+// writeProfileLLM writes a llm.yaml under root and returns its path.
+func writeProfileLLM(t *testing.T, root, body string) string {
+	t.Helper()
+	dir := filepath.Join(root, ".moai", "config", "sections")
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		t.Fatalf("mkdir: %v", err)
+	}
+	p := filepath.Join(dir, "llm.yaml")
+	if err := os.WriteFile(p, []byte(body), 0o644); err != nil {
+		t.Fatalf("write: %v", err)
+	}
+	return p
+}
+
+// TestApplyProfile_RoundTripStripsRetiredKeys covers REQ-MPM-005 / AC-MPM-003: a
+// write updating the llm section removes plan_type + the claude_models block and
+// writes profile:.
+func TestApplyProfile_RoundTripStripsRetiredKeys(t *testing.T) {
+	root := t.TempDir()
+	p := writeProfileLLM(t, root, `llm:
+    plan_type: "subscription"
+    performance_tier: "max"
+    profile: "medium"
+    claude_models:
+        high: "opus"
+        medium: "sonnet"
+        low: "sonnet"
+    glm:
+        base_url: "https://api.z.ai/api/anthropic"
+`)
+	if err := ApplyProfile(root, "max"); err != nil {
+		t.Fatalf("ApplyProfile: %v", err)
+	}
+	got, _ := os.ReadFile(p)
+	s := string(got)
+	if strings.Contains(s, "plan_type") {
+		t.Errorf("plan_type not stripped:\n%s", s)
+	}
+	if strings.Contains(s, "claude_models") || strings.Contains(s, `high: "opus"`) {
+		t.Errorf("claude_models block not stripped:\n%s", s)
+	}
+	if !strings.Contains(s, "profile: max") {
+		t.Errorf("profile: max not written:\n%s", s)
+	}
+	// The glm block (a sibling AFTER claude_models) must survive the strip.
+	if !strings.Contains(s, "base_url:") {
+		t.Errorf("glm block was over-stripped:\n%s", s)
+	}
+}
+
+// TestApplyProfile_InsertsProfileWhenAbsent covers the migration insert path — a
+// legacy config with no profile: key gains one.
+func TestApplyProfile_InsertsProfileWhenAbsent(t *testing.T) {
+	root := t.TempDir()
+	p := writeProfileLLM(t, root, "llm:\n    performance_tier: \"low\"\n")
+	if err := ApplyProfile(root, "low"); err != nil {
+		t.Fatalf("ApplyProfile: %v", err)
+	}
+	got, _ := os.ReadFile(p)
+	if !strings.Contains(string(got), "profile: low") {
+		t.Errorf("profile not inserted:\n%s", got)
+	}
+}
 
 // TestResolveAgentModelEffort_MatrixAFidelity covers REQ-MPM-009/010/011/012 /
 // AC-MPM-005: profile:max with no overrides resolves every agent to the Matrix A

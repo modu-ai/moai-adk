@@ -1,9 +1,74 @@
 package config
 
 import (
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 )
+
+// TestLoad_LegacyLLMYaml_Migration covers REQ-MPM-003/004 / AC-MPM-002: a legacy
+// llm.yaml carrying plan_type + claude_models + performance_tier loads without
+// error (unknown keys ignored), and the effective profile resolves via the
+// performance_tier alias (max here).
+func TestLoad_LegacyLLMYaml_Migration(t *testing.T) {
+	root := t.TempDir()
+	dir := filepath.Join(root, "config", "sections")
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		t.Fatalf("mkdir: %v", err)
+	}
+	body := `llm:
+    plan_type: "subscription"
+    performance_tier: "max"
+    claude_models:
+        high: "opus"
+        medium: "sonnet"
+        low: "sonnet"
+`
+	if err := os.WriteFile(filepath.Join(dir, "llm.yaml"), []byte(body), 0o644); err != nil {
+		t.Fatalf("write: %v", err)
+	}
+	cfg, err := NewLoader().Load(root)
+	if err != nil {
+		t.Fatalf("legacy llm.yaml must load without error, got: %v", err)
+	}
+	if got := cfg.LLM.EffectiveProfile(); got != "max" {
+		t.Errorf("EffectiveProfile() = %q, want max (performance_tier alias)", got)
+	}
+	// profile: absent + performance_tier: max → profile resolves max; no error.
+	if cfg.LLM.Profile != "" {
+		t.Errorf("Profile should be empty (absent in legacy config), got %q", cfg.LLM.Profile)
+	}
+}
+
+// TestLoad_NewSchemaLLMYaml covers AC-MPM-001: a new-schema llm.yaml with
+// profile + profiles + agent_overrides loads and resolves correctly.
+func TestLoad_NewSchemaLLMYaml(t *testing.T) {
+	root := t.TempDir()
+	dir := filepath.Join(root, "config", "sections")
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		t.Fatalf("mkdir: %v", err)
+	}
+	body := `llm:
+    profile: low
+    agent_overrides:
+        manager-develop: { model: opus, effort: xhigh }
+`
+	if err := os.WriteFile(filepath.Join(dir, "llm.yaml"), []byte(body), 0o644); err != nil {
+		t.Fatalf("write: %v", err)
+	}
+	cfg, err := NewLoader().Load(root)
+	if err != nil {
+		t.Fatalf("new-schema llm.yaml must load, got: %v", err)
+	}
+	if cfg.LLM.EffectiveProfile() != "low" {
+		t.Errorf("EffectiveProfile() = %q, want low", cfg.LLM.EffectiveProfile())
+	}
+	ov, ok := cfg.LLM.AgentOverrides["manager-develop"]
+	if !ok || ov.Model != "opus" || ov.Effort != "xhigh" {
+		t.Errorf("agent_overrides not parsed: %+v ok=%v", ov, ok)
+	}
+}
 
 // TestEffectiveProfile covers REQ-MPM-002 / AC-MPM-001 / AC-MPM-002: profile
 // pass-through, the performance_tier legacy alias (high→max), and the medium

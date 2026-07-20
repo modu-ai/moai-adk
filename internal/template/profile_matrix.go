@@ -13,9 +13,55 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"strings"
 
 	"github.com/modu-ai/moai-adk/internal/config"
 )
+
+// leadingWS returns the count of leading space/tab characters in a line.
+func leadingWS(line string) int {
+	n := 0
+	for _, r := range line {
+		if r == ' ' || r == '\t' {
+			n++
+			continue
+		}
+		break
+	}
+	return n
+}
+
+// stripRetiredLLMKeys removes the retired `plan_type:` line and the entire
+// `claude_models:` block (header + its more-indented child lines) from llm.yaml
+// content (REQ-MPM-005 write-time removal of retired fields). A line-based
+// processor is used rather than a regex so the multi-line block is handled
+// robustly by indentation depth. Returns the cleaned content.
+func stripRetiredLLMKeys(content []byte) []byte {
+	lines := strings.Split(string(content), "\n")
+	out := make([]string, 0, len(lines))
+	skipBlockIndent := -1 // -1 = not inside a stripped block
+	for _, line := range lines {
+		trimmed := strings.TrimSpace(line)
+		if skipBlockIndent >= 0 {
+			// Inside a stripped block: skip blank lines and lines indented deeper
+			// than the block header; a line at the header's indent or shallower ends
+			// the block.
+			if trimmed == "" || leadingWS(line) > skipBlockIndent {
+				continue
+			}
+			skipBlockIndent = -1 // block ended; fall through to normal handling
+		}
+		if strings.HasPrefix(trimmed, "plan_type:") {
+			continue // drop the retired plan_type line
+		}
+		if strings.HasPrefix(trimmed, "claude_models:") {
+			skipBlockIndent = leadingWS(line) // begin skipping the block
+			continue
+		}
+		out = append(out, line)
+	}
+	return []byte(strings.Join(out, "\n"))
+}
 
 // profileLineRegex matches the profile: line in llm.yaml for a value-replacing
 // write, capturing the leading indentation (group 1). Uses `[\w-]*` so an empty
@@ -41,6 +87,11 @@ func ApplyProfile(projectRoot, profile string) error {
 		return fmt.Errorf("read llm.yaml: %w", err)
 	}
 
+	original := content
+	// Write-time removal of retired fields (REQ-MPM-005): strip plan_type + the
+	// claude_models block before persisting the profile.
+	content = stripRetiredLLMKeys(content)
+
 	var newContent []byte
 	if profileLineRegex.Match(content) {
 		newContent = profileLineRegex.ReplaceAll(content, []byte("${1}profile: "+profile))
@@ -49,7 +100,7 @@ func ApplyProfile(projectRoot, profile string) error {
 		// (migration: REQ-MPM-005 write-time schema upgrade).
 		newContent = llmRootRegex.ReplaceAll(content, []byte("${0}\n    profile: "+profile))
 	}
-	if string(newContent) == string(content) {
+	if string(newContent) == string(original) {
 		return nil
 	}
 

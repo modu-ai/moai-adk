@@ -80,9 +80,60 @@ M3 deliverables: init `--profile <max\|medium\|low>` flag + `template.ApplyProfi
 
 M4 deletions: `internal/config/plan_type.go` (PlanType* constants, IsValidPlanType, ValidPlanTypes, EffectivePlanType, validatePlanType); LLMConfig.PlanType field; template `tierProfiles` (66-cell), `TierProfileEntry`, `tierProfileRow`, `tierColumnIndex`, `GetTierProfileEntry`, `tierProfileAgentOrder`, `TierProfileAgents`, `ApplyTierProfile` (+ modelLineRegex/effortLineRegex/insertEffortInFrontmatter/frontmatterOpenPrefix), `ApplyPlanType`, `ResolveProjectPlanType`, `ApplyGLMEffortOverlay`. All 4 ApplyTierProfile call sites retired (initializer.go, update.go ×2, web/agentfm.go — last was M3). update.go `--plan-type` flag → `--profile`; `applyUpdateTierProfile` → `applyUpdateProfile` (llm.profile persistence, no frontmatter mutation). wizard PlanType field removed. Retired test files deleted: config/plan_type_test.go, cli/update_plantype_test.go. model_policy_test.go rewritten (kept model-alias/deployer/MapModelPolicy/NormalizeToTier/perf-tier tests; dropped tier-profile/plan-type tests). KEPT (design §F): MapModelPolicyToTier/Effort, NormalizeToTier, ResolveProjectPerformanceTier (perf_tier alias axis). Cross-platform build exit 0; lint 0 issues.
 
+### M5 — Tests + docs impact list
+
+| AC | Status | Verification | Actual Output |
+|----|--------|--------------|---------------|
+| AC-MPM-001 (new-schema load) | PASS | `go test ./internal/config -run TestLoad_NewSchemaLLMYaml` | ok (profile+agent_overrides parse) |
+| AC-MPM-002 (legacy migration load) MUST-PASS | PASS | `go test ./internal/config -run TestLoad_LegacyLLMYaml_Migration` | ok (plan_type+claude_models+perf_tier loads no error → profile max) |
+| AC-MPM-003 (round-trip strip) | PASS | `go test ./internal/template -run TestApplyProfile_RoundTripStripsRetiredKeys` | ok (plan_type + claude_models block stripped, profile written, glm sibling survives) |
+| AC-MPM-020 (build+tests green) MUST-PASS | PASS | `go build ./...` + `GOOS=windows` exit 0; `go test ./...` = 0 failures | verified |
+| AC-MPM-021 (doc-impact list) | PASS | doc-impact list produced below (run-phase artifact, flagged follow-up sync) | listed |
+| AC-MPM-023 (GLM wire honesty) | PASS | `moai model profile --json` GLM wire_note = "implemented + wired, live wire-effectiveness pending"; no verified-effectiveness claim | verified |
+
+M5 deliverables: config migration/new-schema load tests; `template.ApplyProfile` write-time strip of plan_type + claude_models block (REQ-MPM-005, line-based indentation processor) + round-trip + insert tests. init/web/wizard tests were delivered in M3.
+
+Coverage (touched packages, full-package baseline): config 80.2%, template 84.9%, cli 74.4%, web 59.5%, core/project 88.5%. New code (profile.go / profile_matrix.go / model.go / ApplyProfile / init --profile) is directly covered by dedicated tests; package figures reflect large pre-existing packages, not the new-code subset.
+
+#### Documentation-Impact List (REQ-MPM-036 / AC-MPM-021) — follow-up sync-phase scope, NOT authored here
+
+Surfaces describing the retired `plan_type` axis / 60-cell (plan_type × tier) matrix / `--plan-type` flag that need sync-phase rewrite to the profile model:
+
+- **README (4 locales)**: `README.md` / `README.ko.md` / `README.ja.md` / `README.zh.md` — the "plan_type Profiles" prose + "60-cell profile matrix (10 agents × 3 tiers × 2 plan_type)" claim (README.md:83). Rewrite to the single 3-column (max/medium/low) per-agent profile matrix.
+- **docs-site (11 pages × 4 locales = 44 files)**:
+  - `advanced/plan-type-profiles.md` — dedicated page for the retired axis (candidate for replacement with a `profile-matrix.md` page or retirement).
+  - `advanced/_meta.yaml` — nav entry for the plan-type-profiles page.
+  - `advanced/config-sections.md`, `advanced/no-haiku-3tier.md`, `advanced/tokenomics-overview.md` — plan_type references.
+  - `cli-reference/init.md`, `cli-reference/update.md` — `--plan-type` flag docs → `--profile`.
+  - `getting-started/cli.md`, `getting-started/init-wizard.md` — init flow plan_type mentions.
+  - `core-concepts/what-is-moai-adk.md`, `multi-llm/model-policy.md` — model-routing prose.
+- **`.claude/rules/moai/development/model-policy.md`**: already updated in M2 (added "Per-Agent Profile Resolver" section; 0 plan_type residuals) — no further sync edit required.
+
+Doc edits are explicitly deferred to sync-phase per REQ-MPM-036; run-phase produced only this enumeration.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
-_<pending run-phase>_
+```yaml
+run_complete_at: 2026-07-20
+run_commit_sha: pending-backfill-M5   # backfilled after the M5 commit lands
+run_status: PASS-WITH-DEBT            # all must-pass AC PASS; AC-MPM-013/014 web UI = PASS-WITH-DEBT (config+CLI support in place, web override-editing UI deferred)
+ac_pass_count: 23                     # of 25 AC-MPM gating criteria PASS
+ac_pass_with_debt_count: 2            # AC-MPM-013 (web matrix-render), AC-MPM-014 (web agent_overrides editing UI)
+ac_fail_count: 0
+must_pass_status: ALL PASS            # AC-MPM-001/002/005/015/025/020/024 all PASS
+preserve_list_post_run_count: 0       # SPEC-HOOK-FAILURE-CLASSIFY-001, .moai/state/*, docs-site/, unrelated SPEC dirs untouched
+l44_pre_commit_fetch: "0 0 at M1 start; parallel SPEC-CLI-TUX-V3-004 commits interleaved on shared main (bd2334d54 parent 1ef2d9db0); M1-M4 linear chain intact, M3 verified ancestor of M4"
+l44_post_push_fetch: verified per-milestone (M1..M4 pushed; M5 pending)
+new_warnings_or_lints_introduced: 0   # golangci-lint 0 issues (baseline 0)
+cross_platform_build:
+  linux_amd64: exit 0
+  windows_amd64: exit 0
+total_run_phase_files: 33             # approx across M1-M5 (excl. 3 deleted plan_type files)
+m1_to_mN_commit_strategy: "5 per-milestone Conventional Commits pushed directly to main (Hybrid Trunk); db70597a2 (M1) → eee1c4fc1 (M2) → 319c3e93e (M3) → bd2334d54 (M4) → M5 pending"
+matrix_a_fidelity: verified verbatim (spec §A.3, no re-derivation)
+haiku_residual: green (0 haiku in matrix)
+glm_wire_claim: "implemented + wired, live wire-effectiveness pending (REQ-MPM-039 honesty preserved)"
+```
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
