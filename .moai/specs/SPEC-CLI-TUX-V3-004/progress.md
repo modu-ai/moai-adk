@@ -62,6 +62,18 @@ plan_complete_at: 2026-07-13
   - `internal/cli/testdata/doctor-dark.golden`: REGENERATED — same rationale (light/dark identical off-TTY).
   - `internal/cli/testdata/doctor-nocolor.golden`: REGENERATED — same rationale + zero-ANSI assertion added in the test body.
 - **Verification**: contract tests + full `internal/cli`/`uikit` suites green in the isolated worktree (`ok 17.509s` / `ok 0.784s`); live `NO_COLOR=1 go run ./cmd/moai doctor | grep -c $'\x1b'` = 0; bubbles-v2 reachability grep = `doctor_render.go:17` (≥1).
+- **M4c commit**: `2b886c39b` (pushed to main).
+
+### M4d-1 — compact banner (REQ-TUX4-006, AC-TUX4-007) + help render path verdict (REQ-TUX4-007, AC-TUX4-008 precedence record)
+
+- **Banner**: large ASCII logo + "Version:" label retired. New surface = 2 lines: `◆ MoAI-ADK <tagline>` identity (accent bold + body dim, ◆ from the §D glyph whitelist) + pill row `[vX] [go X] [claude X]`. `PrintBanner`/`PrintWelcomeMessage` keep their signatures (call sites in init.go/update.go are PRESERVE-frozen under the parallel-session envelope) and route through `printer.New().Data(...)` — the Printer gateway absorption; `grep -c 'fmt\.Print' internal/cli/uikit/banner.go` = **0** (was 12).
+- **TDD**: RED `internal/cli/uikit/banner_compact_test.go` (`TestCompactBanner_{TwoLineIdentity,NoASCIILogo,GlyphWhitelist,BrandTagline}`, `TestBannerPill_{Metadata,ClaudeFallback}`) → GREEN `bannerString`/`welcomeString` + Printer routing. Legacy `TestPrintBanner_OutputFormat` expectation updated ("Version" label → `v1.2.3` pill; SPEC-sanctioned redesign).
+- **Golden changes (per-file rationale)**: `uikit/testdata/banner-current-{light,dark,nocolor}.golden` REGENERATED — ASCII logo → compact 2-line identity (REQ-TUX4-006); `uikit/testdata/welcome-current-{light,dark,nocolor}.golden` REGENERATED — same content routed through Printer.Data (trailing blank-line shape normalized; text unchanged).
+- **help render path verdict (recorded BEFORE any reorder/golden commit — AC-TUX4-008(1))**: **(a) keep-fang**. Evidence + rationale:
+  - Live surface re-verified 2026-07-20: fang v2 renders cobra Groups as uppercase headers — actual literals `LAUNCH COMMANDS:` / `PROJECT COMMANDS:` / `TOOLS:` (+ ungrouped `COMMANDS` section). Matches spec.md §A.4 재실측.
+  - `renderRootHelpTUI` (help.go:101) is confirmed shadowed in production: `runFang` installs fang's own helpFunc (`fang.go:130-140` writes via `colorprofile.NewWriter(c.OutOrStdout())`), so the custom 4-group surface renders only for in-process cobra `Execute()` test paths. Reviving it would trade a maintained, token-styled fang surface for a hand-rolled one + 4-group→3-group reconciliation — no UX gain, higher risk.
+  - Option (c) fang-customize: fang v2.0.1's public options are Version/Manpage/ColorScheme/ErrorHandler (+ completion) — **no help-layout/group-ordering API exists**; plan-B not required because ordering is controllable at the cobra layer: fang's help iterates `c.Commands()` verbatim (`help.go:420`), and cobra's alphabetical sort is gated by `cobra.EnableCommandSorting`. Reorder point = cobra command registration order with sorting disabled.
+  - Adopted-surface header literals for AC-TUX4-008(2): `LAUNCH COMMANDS:`, `PROJECT COMMANDS:`, `TOOLS:`. Non-adopted paths (revive / customize) header checks: **N/A** (-002 M2a spike pattern mirror).
 
 ## §E.3 Run-phase Audit-Ready Signal
 
