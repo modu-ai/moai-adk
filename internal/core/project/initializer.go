@@ -42,7 +42,8 @@ type InitOptions struct {
 	Force             bool     // If true, allow reinitializing an existing project.
 	SkipShellConfig   bool     // If true, skip shell environment configuration.
 	ModelPolicy       string   // Token consumption tier: "high", "medium", "low".
-	PlanType          string   // Billing plan type: "api" or "subscription" (empty → persisted/subscription default).
+	PlanType          string   // DEPRECATED (SPEC-MODEL-PROFILE-MATRIX-001): billing plan type, retired. No longer flag-wired; retained until the ApplyTierProfile removal milestone.
+	Profile           string   // Per-agent model+effort profile: "max", "medium", "low" (empty → template default medium). Persists to llm.profile.
 	ReportFormat      string   // Report output format: "html+md" or "md" (empty → html+md default).
 
 	// Phase 1 wizard fields (REQ-IWE-001..005) — populated from wizard result or CLI flags.

@@ -54,6 +54,22 @@ New files: internal/config/profile.go, internal/config/profile_test.go, internal
 
 M2 deliverables: `moai model profile [--json]` read-only resolver (`internal/cli/model.go`); model-policy.md + template mirror gain a "Per-Agent Profile Resolver" section (model = per-spawn runtime arg; effort = documented intent); 8 local agent files restored `model: opus → inherit` (+ manager-develop/manager-design `effort: high → xhigh`) to match template lint-canonical source. REQ-MPM-039 honesty: GLM wire-note "implemented + wired, live wire-effectiveness pending". Full `go test ./...` = 0 failures. catalog.yaml unchanged (rules/local-agents not hashed).
 
+### M3 — Selection surfaces: init wizard + web console
+
+| AC | Status | Verification | Actual Output |
+|----|--------|--------------|---------------|
+| AC-MPM-009 (one wizard question, no plan_type) | PASS | wizard has one `model_policy` select; no plan_type question (`grep plan_type internal/cli/wizard/`) | verified |
+| AC-MPM-010 (--profile flag persist) | PASS | `go test ./internal/cli -run TestInitCmd_ProfilePersistence` | ok (init --profile max → llm.yaml profile: max, no plan_type) |
+| AC-MPM-011 (--plan-type retired) | PASS | `go test ./internal/cli -run TestInitCmd_PlanTypeFlagRetired` | ok (flag not registered; --profile registered) |
+| AC-MPM-012 (web profile selector, no plan_type surface) | PASS | ActivePlanType/PlanTypeIsEmpty removed; selector persists llm.profile | verified (schemaform.go seeds EffectiveProfile) |
+| AC-MPM-025 (web save no frontmatter mutation) MUST-PASS | PASS | `go test ./internal/web -run TestAgentFMPolicy_ProfilePersistsWithoutFrontmatterMutation` + `grep -rn ApplyTierProfile internal/web --include=*.go \| grep -v _test.go` = empty | ok (frontmatter untouched; 0 production ApplyTierProfile calls in internal/web) |
+| AC-MPM-013 (web per-agent resolved render from matrix) | PASS-WITH-DEBT | resolved render available via `moai model profile`; the web agentfm rows still render per-agent frontmatter (a pre-existing SPEC-WEB-CONSOLE-011 surface), not the matrix | debt: web matrix-render swap deferred |
+| AC-MPM-014 (web agent_overrides editing) | PASS-WITH-DEBT | config-layer agent_overrides parse/validate/persist implemented (M1 validateAgentOverrides); the existing web agentfm frontmatter-editing surface remains (persists frontmatter, not llm.agent_overrides) | debt: web override-editing → llm.agent_overrides UI not wired |
+
+M3 deliverables: init `--profile <max\|medium\|low>` flag + `template.ApplyProfile` writer (inserts profile: when absent, migration-safe); `--plan-type` flag removed; init persists llm.profile (wizard answer normalized high→max). web: retire the `applyPerfTierEdits` → tier-profile frontmatter re-application (REQ-MPM-040 MUST-PASS); profile selector persists llm.profile + performance_tier alias; ActivePlanType display removed.
+
+**Web debt (honest gap per verification-claim-integrity §3.4)**: the SPEC-WEB-CONSOLE-011 agentfm surface (per-agent frontmatter model/effort editing) is a large pre-existing subsystem. AC-MPM-013 (matrix-render) and AC-MPM-014 (agent_overrides editing UI) require a templ redesign of that surface beyond safe run-phase scope; the config-layer agent_overrides support (M1) + the `moai model profile` matrix render (M2) are in place, so the debt is UI-wiring only. Neither AC is in the §D.1 must-pass set. Full `go test ./...` = 0 failures.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<pending run-phase>_

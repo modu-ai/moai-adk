@@ -8,7 +8,60 @@ package template
 // profile axis (max/medium/low) consumed via runtime-arg spawn injection rather
 // than agent-frontmatter mutation.
 
-import "github.com/modu-ai/moai-adk/internal/config"
+import (
+	"fmt"
+	"os"
+	"path/filepath"
+	"regexp"
+
+	"github.com/modu-ai/moai-adk/internal/config"
+)
+
+// profileLineRegex matches the profile: line in llm.yaml for a value-replacing
+// write, capturing the leading indentation (group 1). Uses `[\w-]*` so an empty
+// value (`profile: ""`) is also matched and rewritten.
+var profileLineRegex = regexp.MustCompile(`(?m)^(\s*)profile:\s*["']?[\w-]*["']?`)
+
+// ApplyProfile patches the profile field in llm.yaml under the given project
+// root (REQ-MPM-016), mirroring ApplyPerformanceTier. It reads
+// .moai/config/sections/llm.yaml, replaces the profile: line with the new value
+// (preserving indentation), and writes the file back. Returns nil when the file
+// is absent (graceful no-op) or when the profile line already carries the target
+// value. The profile MUST be validated by the caller (config.IsValidProfile).
+//
+// @MX:ANCHOR: [AUTO] ApplyProfile — llm.profile persistence entry point (init/update/web)
+// @MX:REASON: [AUTO] fan_in >= 2 (initializer + update); the shipped-profile SSOT persistence, mirrors ApplyPerformanceTier
+func ApplyProfile(projectRoot, profile string) error {
+	llmPath := filepath.Join(projectRoot, ".moai", "config", "sections", "llm.yaml")
+	content, err := os.ReadFile(llmPath)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil
+		}
+		return fmt.Errorf("read llm.yaml: %w", err)
+	}
+
+	var newContent []byte
+	if profileLineRegex.Match(content) {
+		newContent = profileLineRegex.ReplaceAll(content, []byte("${1}profile: "+profile))
+	} else {
+		// Legacy config with no profile: key — insert one under the llm: root
+		// (migration: REQ-MPM-005 write-time schema upgrade).
+		newContent = llmRootRegex.ReplaceAll(content, []byte("${0}\n    profile: "+profile))
+	}
+	if string(newContent) == string(content) {
+		return nil
+	}
+
+	if err := os.WriteFile(llmPath, newContent, 0o644); err != nil {
+		return fmt.Errorf("write llm.yaml: %w", err)
+	}
+	return nil
+}
+
+// llmRootRegex matches the top-level `llm:` key line for profile insertion into
+// a legacy config that has no profile: key.
+var llmRootRegex = regexp.MustCompile(`(?m)^llm:[ \t]*$`)
 
 // Profile agent-group keys (REQ-MPM-011). The six groups partition the retained
 // agents by model+effort class. git and docs rows are profile-invariant.
