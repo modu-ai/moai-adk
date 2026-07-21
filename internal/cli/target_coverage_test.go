@@ -143,9 +143,17 @@ func TestRemoveGLMEnv_GLMOnlyVarsResultsInNilEnv(t *testing.T) {
 func TestSaveLLMSection_NonexistentDirFails(t *testing.T) {
 	t.Parallel()
 
-	err := saveLLMSection("/nonexistent/path/that/does/not/exist", config.LLMConfig{})
+	// A regular FILE in the parent-dir position makes MkdirAll fail with
+	// ENOTDIR on every platform (a bare /nonexistent path is creatable on
+	// Windows CI runners, so it cannot serve as the failure fixture).
+	base := t.TempDir()
+	blocker := filepath.Join(base, "blocker")
+	if err := os.WriteFile(blocker, []byte("x"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	err := saveLLMSection(filepath.Join(blocker, "sub"), config.LLMConfig{})
 	if err == nil {
-		t.Fatal("saveLLMSection should error when sectionsDir does not exist")
+		t.Fatal("saveLLMSection should error when sectionsDir cannot be created")
 	}
 }
 

@@ -7,11 +7,13 @@ package cli
 // 간접화 패턴을 따라 테스트에서 페이크로 대체 가능하게 두었다(플랫폼 syscall 미의존 테스트).
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"net"
 	"strconv"
 	"strings"
+	"syscall"
 	"time"
 )
 
@@ -42,7 +44,11 @@ var (
 func isPortInUse(port int) bool {
 	ln, err := net.Listen("tcp", net.JoinHostPort("127.0.0.1", strconv.Itoa(port)))
 	if err != nil {
-		return strings.Contains(err.Error(), "address already in use")
+		// errors.Is(syscall.EADDRINUSE) is the cross-platform signal (on
+		// Windows it maps to WSAEADDRINUSE); the string fallback keeps the
+		// historical unix behavior for wrapped errors that lose the errno.
+		return errors.Is(err, syscall.EADDRINUSE) ||
+			strings.Contains(err.Error(), "address already in use")
 	}
 	_ = ln.Close()
 	return false

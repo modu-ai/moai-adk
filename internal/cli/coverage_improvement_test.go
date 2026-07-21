@@ -7167,10 +7167,16 @@ func TestInjectGLMEnvForTeam_MergesWithExisting(t *testing.T) {
 // --- saveLLMSection error path ---
 
 func TestSaveLLMSection_ErrorOnBadDir(t *testing.T) {
-	// Use a non-existent deeply nested path that can't be used for temp files
-	err := saveLLMSection("/nonexistent/deeply/nested/path", config.LLMConfig{TeamMode: "glm"})
+	// A regular FILE in the parent-dir position fails MkdirAll with ENOTDIR
+	// on every platform (a bare /nonexistent path is creatable on Windows).
+	base := t.TempDir()
+	blocker := filepath.Join(base, "blocker")
+	if err := os.WriteFile(blocker, []byte("x"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	err := saveLLMSection(filepath.Join(blocker, "sub"), config.LLMConfig{TeamMode: "glm"})
 	if err == nil {
-		t.Error("expected error when directory doesn't exist")
+		t.Error("expected error when directory cannot be created")
 	}
 }
 
