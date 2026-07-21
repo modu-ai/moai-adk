@@ -34,7 +34,6 @@ func TestIT04_FrozenGuardBlock(t *testing.T) {
 		".claude/skills/moai-workflow-tdd/SKILL.md",
 		".claude/agents/moai/manager-spec.md",
 		".claude/rules/moai/core/moai-constitution.md",
-		".moai/project/brand/brand-voice.md",
 	}
 
 	for _, frozen := range frozenPaths {
@@ -48,6 +47,9 @@ func TestIT04_FrozenGuardBlock(t *testing.T) {
 		".claude/skills/my-harness-search/SKILL.md",
 		".moai/harness/usage-log.jsonl",
 		"internal/harness/learner.go",
+		// The former .moai/project/brand/ prefix is no longer a FROZEN area
+		// (unit ground truth: internal/harness/safety/frozen_guard_test.go).
+		".moai/project/brand/brand-voice.md",
 	}
 
 	for _, notFrozen := range nonFrozenPaths {
