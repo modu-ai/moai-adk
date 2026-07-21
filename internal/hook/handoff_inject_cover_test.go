@@ -2,6 +2,7 @@ package hook
 
 import (
 	"context"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -184,7 +185,10 @@ func TestConsumedDir_Path(t *testing.T) {
 
 	pd := "/tmp/proj"
 	got := handoff.ConsumedDir(pd)
-	want := "/tmp/proj/.moai/state/handoff/consumed"
+	// ConsumedDir is a real filesystem path (MkdirAll/rename target), so it is
+	// built with filepath.Join and uses OS-native separators. Build the
+	// expectation the same way rather than hardcoding forward slashes.
+	want := filepath.Join(pd, ".moai", "state", "handoff", "consumed")
 	if got != want {
 		t.Errorf("ConsumedDir: got %q, want %q", got, want)
 	}

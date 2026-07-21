@@ -14,6 +14,8 @@ import (
 	"path/filepath"
 	"strings"
 	"time"
+
+	"github.com/modu-ai/moai-adk/internal/atomicfile"
 )
 
 // Status represents the maturity status of an observation entry.
@@ -198,7 +200,16 @@ func (e *Engine) FlagAntiPattern(ev AntiPatternEvidence) error {
 // Internal helpers
 // ──────────────────────────────────────────────────────────────────
 
-// withLock acquires an exclusive flock on observations.yaml for the duration of fn.
+// withLock acquires an exclusive advisory lock for the duration of fn.
+//
+// The lock is taken on a sidecar observations.yaml.lock file, NOT on
+// observations.yaml itself. Locking the data file directly is broken in two
+// ways: on Windows an open handle on the destination makes the saveEntries
+// rename fail with ERROR_ACCESS_DENIED, and on Unix the flock is dropped the
+// moment the rename swaps in a new inode, so a later caller opening the path
+// locks a different inode and mutual exclusion silently lapses. The sidecar
+// file is never renamed, so its inode/handle is stable. This matches the
+// pattern already used by internal/session (registry) and internal/migration.
 func (e *Engine) withLock(fn func() error) error {
 	path := e.cfg.ObservationsPath
 	if dir := filepath.Dir(path); dir != "." && dir != "" {
@@ -206,9 +217,10 @@ func (e *Engine) withLock(fn func() error) error {
 			return fmt.Errorf("tier: mkdirall %s: %w", dir, err)
 		}
 	}
-	f, err := os.OpenFile(path, os.O_RDWR|os.O_CREATE, 0o644)
+	lockPath := path + ".lock"
+	f, err := os.OpenFile(lockPath, os.O_RDWR|os.O_CREATE, 0o644)
 	if err != nil {
-		return fmt.Errorf("tier: open lock file %s: %w", path, err)
+		return fmt.Errorf("tier: open lock file %s: %w", lockPath, err)
 	}
 	defer func() { _ = f.Close() }()
 	// Platform-specific advisory exclusive lock (Unix flock; Windows no-op).
@@ -281,7 +293,7 @@ func saveEntries(path string, entries []Entry) error {
 	if err := os.WriteFile(tmpPath, []byte(sb.String()), 0o644); err != nil {
 		return fmt.Errorf("tier: write tmp %s: %w", tmpPath, err)
 	}
-	if err := os.Rename(tmpPath, path); err != nil {
+	if err := atomicfile.Replace(tmpPath, path); err != nil {
 		return fmt.Errorf("tier: rename to %s: %w", path, err)
 	}
 	return nil

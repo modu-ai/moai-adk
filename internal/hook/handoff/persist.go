@@ -29,6 +29,7 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/modu-ai/moai-adk/internal/atomicfile"
 	"gopkg.in/yaml.v3"
 )
 
@@ -308,7 +309,7 @@ func atomicWriteFile(dir, baseName string, data []byte, perm os.FileMode) error 
 	}
 
 	targetPath := filepath.Join(dir, baseName)
-	if err := os.Rename(tmpPath, targetPath); err != nil {
+	if err := atomicfile.Replace(tmpPath, targetPath); err != nil {
 		cleanup()
 		return fmt.Errorf("rename: %w", err)
 	}

@@ -117,10 +117,16 @@ func (r *gitRepo) commit(specID string, when time.Time) {
 }
 
 // tracked reports whether a path is in the git index (i.e. survived as tracked).
+//
+// The argument to `git ls-files --error-unmatch` is a PATHSPEC, which git
+// matches against its own forward-slash paths — and where a backslash is a glob
+// escape character, not a separator. Callers build paths with filepath.Join for
+// the os.Stat assertions, so convert here rather than making every call site
+// remember it.
 func (r *gitRepo) tracked(path string) bool {
 	r.t.Helper()
 
-	cmd := exec.Command("git", "ls-files", "--error-unmatch", path)
+	cmd := exec.Command("git", "ls-files", "--error-unmatch", filepath.ToSlash(path))
 	cmd.Dir = r.dir
 	return cmd.Run() == nil
 }

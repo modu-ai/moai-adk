@@ -36,6 +36,15 @@ func TestResolveMemoryDir(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
+			// These cases feed POSIX-shaped absolute inputs. On Windows
+			// filepath.Abs drive-qualifies them ("/Users/goos" → "D:\Users\goos"),
+			// so the observed-from-macOS expected slugs cannot match — an
+			// artifact of the test input, not of the resolver contract. The
+			// Windows slug contract is covered by TestProjectSlug_Windows.
+			// Mirrors the same skip already used by TestProjectSlug.
+			if runtime.GOOS == "windows" {
+				t.Skip("POSIX-shaped memory-dir inputs are validated on non-Windows hosts only")
+			}
 			got, err := resolveMemoryDir(homeDir, tt.projectDir)
 			if err != nil {
 				t.Fatalf("resolveMemoryDir(%q, %q) returned error: %v", homeDir, tt.projectDir, err)
@@ -111,6 +120,40 @@ func TestProjectSlug(t *testing.T) {
 			got := projectSlug(tt.in)
 			if got != tt.want {
 				t.Errorf("projectSlug(%q) = %q, want %q", tt.in, got, tt.want)
+			}
+		})
+	}
+}
+
+// TestProjectSlug_DriveQualified pins the Windows drive-colon contract: a
+// drive-qualified absolute path (what filepath.Abs yields on Windows) must not
+// leak `:` into the slug, because a colon is illegal inside a Windows path
+// component and makes ~/.claude/projects/{slug} impossible to create ("The
+// directory name is invalid").
+//
+// projectSlug maps `\` and `:` unconditionally, so this contract holds on every
+// host and needs no GOOS guard.
+func TestProjectSlug_DriveQualified(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name string
+		in   string
+		want string
+	}{
+		{"drive root", `C:\Users\goos\MoAI`, "C--Users-goos-MoAI"},
+		{"drive with dot dir", `D:\Users\goos\.claude`, "D--Users-goos--claude"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			got := projectSlug(tt.in)
+			if got != tt.want {
+				t.Errorf("projectSlug(%q) = %q, want %q", tt.in, got, tt.want)
+			}
+			if strings.ContainsRune(got, ':') {
+				t.Errorf("projectSlug(%q) = %q: slug must not contain ':'", tt.in, got)
 			}
 		})
 	}

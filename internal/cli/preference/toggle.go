@@ -210,7 +210,17 @@ func acquireToggleLock(projectRoot string) (release func(), err error) {
 			_ = f.Close()
 			return func() { _ = os.Remove(lockPath) }, nil
 		}
-		if !errors.Is(oErr, os.ErrExist) {
+		// ErrExist → another toggle holds the lock; retry.
+		//
+		// ErrPermission is ALSO retryable, because of Windows delete semantics:
+		// os.Remove only marks a file for deletion, and the name stays in a
+		// "delete pending" state until the last handle closes. Creating the same
+		// name in that window fails with ERROR_ACCESS_DENIED, not ERROR_EXISTS —
+		// so the previous holder's release() can make the next acquirer fail
+		// outright. Treating it as transient lets the backoff ride out the
+		// window; a genuinely unwritable lock path still surfaces an error after
+		// the attempt budget rather than being swallowed.
+		if !errors.Is(oErr, os.ErrExist) && !errors.Is(oErr, os.ErrPermission) {
 			return nil, fmt.Errorf("preference: acquire toggle lock: %w", oErr)
 		}
 		time.Sleep(toggleLockBackoff)

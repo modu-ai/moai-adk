@@ -6,6 +6,7 @@ import (
 	"math"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -569,6 +570,9 @@ func TestScanDue_FailOpenOnUnreadableStamp(t *testing.T) {
 	t.Parallel()
 	if os.Geteuid() == 0 {
 		t.Skip("running as root — file-perm test is non-deterministic")
+	}
+	if runtime.GOOS == "windows" {
+		t.Skip("POSIX permission bits are not enforced on Windows: a 0o000 file stays readable there, so the unreadable-stamp fail-open path cannot be provoked; the branch stays covered on unix")
 	}
 	stateDir := t.TempDir()
 	stampPath := filepath.Join(stateDir, decayLastRunFileName)

@@ -298,6 +298,17 @@ func isEraFinal(specDir string) bool {
 // --name-only paths follow on their own lines.
 const gitActivityFormat = "--format=" + gitLogRecordSep + "%cI"
 
+// git speaks forward slashes on every platform: `--name-only` always prints
+// repo-relative paths with "/", and a pathspec is matched against those same
+// forward-slash paths (a backslash in a pathspec is a glob escape character,
+// not a separator). Building either with filepath.Join / filepath.Separator
+// yields ".moai\specs" on Windows, which matches nothing — the activity map
+// comes back empty and every SPEC silently falls back to its frontmatter date.
+const (
+	gitPathSeparator = "/"
+	gitSpecsPathspec = moaiDirName + gitPathSeparator + specsDirName
+)
+
 // gitLastActivity resolves the newest commit date per SPEC directory in ONE git
 // subprocess.
 //
@@ -308,9 +319,7 @@ const gitActivityFormat = "--format=" + gitLogRecordSep + "%cI"
 // A git failure (no repository, no history) yields an empty map, and every SPEC
 // then falls back to its frontmatter date.
 func gitLastActivity(baseDir string) map[string]time.Time {
-	specsPath := filepath.Join(moaiDirName, specsDirName)
-
-	cmd := exec.Command("git", "log", "--no-merges", gitActivityFormat, "--name-only", "--", specsPath)
+	cmd := exec.Command("git", "log", "--no-merges", gitActivityFormat, "--name-only", "--", gitSpecsPathspec)
 	cmd.Dir = baseDir
 
 	output, err := cmd.Output()
@@ -328,7 +337,7 @@ func gitLastActivity(baseDir string) map[string]time.Time {
 // its newest touch — later appearances are older and are ignored.
 func parseGitActivity(output string) map[string]time.Time {
 	activity := make(map[string]time.Time)
-	prefix := filepath.Join(moaiDirName, specsDirName) + string(filepath.Separator)
+	prefix := gitSpecsPathspec + gitPathSeparator
 
 	for _, record := range strings.Split(output, gitLogRecordSep) {
 		record = strings.TrimLeft(record, "\r\n")
@@ -350,7 +359,7 @@ func parseGitActivity(output string) map[string]time.Time {
 
 			// .moai/specs/<SPEC-ID>/<file> → <SPEC-ID>
 			rest := strings.TrimPrefix(path, prefix)
-			specID, _, found := strings.Cut(rest, string(filepath.Separator))
+			specID, _, found := strings.Cut(rest, gitPathSeparator)
 			if !found || specID == "" {
 				continue
 			}

@@ -2,6 +2,7 @@ package cluster
 
 import (
 	"encoding/json"
+	"path/filepath"
 	"reflect"
 	"strings"
 	"testing"
@@ -281,7 +282,9 @@ func TestClusterAbsentLogZeroClusters(t *testing.T) {
 // TestDefaultLogPath: projectRoot 기준 기본 usage-log 경로를 올바르게 결합한다.
 func TestDefaultLogPath(t *testing.T) {
 	got := DefaultLogPath("/proj")
-	want := "/proj/.moai/harness/usage-log.jsonl"
+	// 실제 파일시스템 경로(append 대상)이므로 filepath.Join 이 OS 고유 구분자를
+	// 쓴다. 기대값도 동일하게 조립한다(슬래시 하드코딩 금지).
+	want := filepath.Join("/proj", ".moai", "harness", "usage-log.jsonl")
 	if got != want {
 		t.Errorf("DefaultLogPath() = %q, want %q", got, want)
 	}

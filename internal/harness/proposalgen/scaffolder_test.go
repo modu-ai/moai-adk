@@ -8,6 +8,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -64,9 +65,13 @@ func TestScaffolder_CreatesDirectoryAndFiles(t *testing.T) {
 	if !info.IsDir() {
 		t.Errorf("draftDir is not a directory: %v", info.Mode())
 	}
-	mode := info.Mode().Perm()
-	if mode != 0o755 {
-		t.Errorf("draftDir permission = %o, want 0755", mode)
+	// Windows has no POSIX mode bits (Go synthesizes them from the read-only
+	// attribute), so the 0755 comparison is only meaningful on unix.
+	if runtime.GOOS != "windows" {
+		mode := info.Mode().Perm()
+		if mode != 0o755 {
+			t.Errorf("draftDir permission = %o, want 0755", mode)
+		}
 	}
 
 	// spec.md exists and contains the Origin section with pattern_key

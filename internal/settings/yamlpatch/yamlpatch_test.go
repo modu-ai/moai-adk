@@ -3,6 +3,7 @@ package yamlpatch
 import (
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 
@@ -389,6 +390,9 @@ func TestYAMLPatchAtomicWriteErrors(t *testing.T) {
 
 	t.Run("read-only directory", func(t *testing.T) {
 		t.Parallel()
+		if runtime.GOOS == "windows" {
+			t.Skip("POSIX permission bits are not enforced on Windows: os.Chmod on a directory is a no-op there, so the temp-file-creation failure cannot be provoked; the branch stays covered on unix")
+		}
 		dir := t.TempDir()
 		path := filepath.Join(dir, "section.yaml")
 		if err := os.WriteFile(path, []byte("a: 1\n"), 0o644); err != nil {

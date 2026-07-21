@@ -7,6 +7,7 @@ import (
 	"bytes"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 )
@@ -180,6 +181,9 @@ func TestPatchGuards(t *testing.T) {
 // 경로와 원본 무변경을 검증한다.
 func TestPatchReadOnlyDirFails(t *testing.T) {
 	t.Parallel()
+	if runtime.GOOS == "windows" {
+		t.Skip("POSIX permission bits are not enforced on Windows: os.Chmod on a directory is a no-op there, so the temp-file-creation failure cannot be provoked; the branch stays covered on unix")
+	}
 	dir := t.TempDir()
 	path := writeAgent(t, dir, "a.md", sampleAgent)
 	before, _ := os.ReadFile(path)
@@ -218,6 +222,9 @@ func TestPatchInvalidFrontmatterYAML(t *testing.T) {
 // TestListDirReadError는 디렉터리가 아닌 경로 스캔의 오류 경로를 검증한다.
 func TestListDirReadError(t *testing.T) {
 	t.Parallel()
+	if runtime.GOOS == "windows" {
+		t.Skip("os.ReadDir on a non-directory does not surface as a distinct not-a-directory error on Windows, so List's IsNotExist shortcut swallows it; the branch stays covered on unix")
+	}
 	dir := t.TempDir()
 	notDir := writeAgent(t, dir, "file.md", sampleAgent)
 	if _, err := List(notDir); err == nil {
