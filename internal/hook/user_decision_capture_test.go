@@ -95,7 +95,7 @@ func mustMarshal(t *testing.T, v any) []byte {
 // (a): when the tool_input JSON is malformed, the capture MUST fail open.
 func TestCaptureUserDecision_StdinParseFailure_FailOpen(t *testing.T) {
 	dir := t.TempDir()
-	t.Setenv("HOME", dir) // isolate home so resolveMemoryDir targets the temp.
+	setTestHome(t, dir) // isolate home so resolveMemoryDir targets the temp.
 
 	h := NewPostToolHandler()
 	input := &HookInput{
@@ -126,7 +126,7 @@ func TestCaptureUserDecision_UpsertFailure_FailOpen(t *testing.T) {
 		t.Skip("permission-denied injection ineffective when running as root")
 	}
 	dir := t.TempDir()
-	t.Setenv("HOME", dir)
+	setTestHome(t, dir)
 
 	// Pre-create the user_decisions layout but make the memory root read-only
 	// so atomicWrite's temp-file creation fails.
@@ -163,7 +163,7 @@ func TestCaptureUserDecision_UpsertFailure_FailOpen(t *testing.T) {
 // cause.
 func TestCaptureUserDecision_DiskFullInjection_FailOpen(t *testing.T) {
 	dir := t.TempDir()
-	t.Setenv("HOME", dir)
+	setTestHome(t, dir)
 
 	// Plant a regular file at the user_decisions path — NewFileStore's
 	// MkdirAll will fail because the path is a file.
@@ -200,7 +200,7 @@ func TestCaptureUserDecision_PermissionDeniedInjection_FailOpen(t *testing.T) {
 		t.Skip("permission-denied injection ineffective when running as root")
 	}
 	dir := t.TempDir()
-	t.Setenv("HOME", dir)
+	setTestHome(t, dir)
 
 	memDir := filepath.Join(dir, ".claude", "projects", "test", "memory")
 	udDir := filepath.Join(memDir, "user_decisions")
@@ -235,7 +235,7 @@ func TestCaptureUserDecision_PermissionDeniedInjection_FailOpen(t *testing.T) {
 // to confirm no panic escapes.
 func TestCaptureUserDecision_PanicRecovery_FailOpen(t *testing.T) {
 	dir := t.TempDir()
-	t.Setenv("HOME", dir)
+	setTestHome(t, dir)
 
 	h := NewPostToolHandler()
 	toolInput, toolResponse := buildAskUserQuestionInput(t, "effort", "high")
@@ -316,7 +316,7 @@ func TestCaptureUserDecision_RecoverySignalCarveOut_Documented(t *testing.T) {
 // NOT produce an inferred entry.
 func TestCaptureUserDecision_ObservedConfidenceAndCitation(t *testing.T) {
 	dir := t.TempDir()
-	t.Setenv("HOME", dir)
+	setTestHome(t, dir)
 
 	memDir := resolveMemoryDirForTest(t, dir)
 	if err := os.MkdirAll(filepath.Join(memDir, "user_decisions", "archival"), 0o755); err != nil {
@@ -381,7 +381,7 @@ func TestCaptureUserDecision_ObservedConfidenceAndCitation(t *testing.T) {
 // orchestrator elsewhere, not by this advisory hook (REQ-ADM-018).
 func TestCaptureUserDecision_NoInferredEntryFromCapturePath(t *testing.T) {
 	dir := t.TempDir()
-	t.Setenv("HOME", dir)
+	setTestHome(t, dir)
 	memDir := resolveMemoryDirForTest(t, dir)
 	if err := os.MkdirAll(filepath.Join(memDir, "user_decisions", "archival"), 0o755); err != nil {
 		t.Fatalf("seed mkdir: %v", err)
@@ -423,7 +423,7 @@ func TestCaptureUserDecision_NoInferredEntryFromCapturePath(t *testing.T) {
 // status-transition-ownership.sh.
 func TestCaptureUserDecision_NonAskUserTools_DoNotCapture(t *testing.T) {
 	dir := t.TempDir()
-	t.Setenv("HOME", dir)
+	setTestHome(t, dir)
 	memDir := resolveMemoryDirForTest(t, dir)
 	_ = os.MkdirAll(filepath.Join(memDir, "user_decisions", "archival"), 0o755)
 
@@ -461,6 +461,23 @@ func assertAllow(t *testing.T, out *HookOutput) {
 			t.Errorf("expected PostToolUse event, got %q", out.HookSpecificOutput.HookEventName)
 		}
 	}
+}
+
+// setTestHome redirects the home directory production code resolves via
+// os.UserHomeDir() to dir, on every platform.
+//
+// os.UserHomeDir() reads $HOME on Unix but %USERPROFILE% on Windows, so
+// setting HOME alone leaves the real user profile in effect on Windows: the
+// capture wrote into the runner's actual C:\Users\<user>\.claude\projects\...
+// while the test seeded and read the temp dir, so every assertion that a
+// recall entry EXISTS failed. Tests asserting absence passed vacuously for the
+// same reason. Both env vars are set so exactly one takes effect per platform.
+//
+// Passing "" clears both, which is how a test forces os.UserHomeDir() to fail.
+func setTestHome(t *testing.T, dir string) {
+	t.Helper()
+	t.Setenv("HOME", dir)
+	t.Setenv("USERPROFILE", dir)
 }
 
 // resolveMemoryDirForTest returns the memory dir the production resolver will

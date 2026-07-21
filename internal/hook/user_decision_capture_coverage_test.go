@@ -59,7 +59,7 @@ func TestCaptureUserDecision_WarnFailOpen_UpsertError(t *testing.T) {
 		t.Skip("permission injection ineffective as root")
 	}
 	dir := t.TempDir()
-	t.Setenv("HOME", dir)
+	setTestHome(t, dir)
 
 	memDir := resolveMemoryDirForTest(t, dir)
 	udDir := filepath.Join(memDir, "user_decisions")
@@ -93,7 +93,7 @@ func TestCaptureUserDecision_WarnFailOpen_UpsertError(t *testing.T) {
 // expected (NewFileStore MkdirAll fails).
 func TestCaptureUserDecision_WarnFailOpen_StoreConstructionError(t *testing.T) {
 	dir := t.TempDir()
-	t.Setenv("HOME", dir)
+	setTestHome(t, dir)
 
 	memDir := resolveMemoryDirForTest(t, dir)
 	if err := os.MkdirAll(memDir, 0o755); err != nil {
@@ -118,7 +118,7 @@ func TestCaptureUserDecision_WarnFailOpen_StoreConstructionError(t *testing.T) {
 // memory-dir resolution error path by unsetting HOME so os.UserHomeDir
 // fails.
 func TestCaptureUserDecision_WarnFailOpen_ResolveError(t *testing.T) {
-	t.Setenv("HOME", "")
+	setTestHome(t, "")
 	input := &HookInput{
 		ToolName:     askUserQuestionTool,
 		ToolInput:    mustMarshal(t, map[string]any{"questions": []map[string]any{{"header": "x"}}}),
@@ -134,7 +134,7 @@ func TestCaptureUserDecision_WarnFailOpen_ResolveError(t *testing.T) {
 // tool_response.
 func TestCaptureUserDecision_ToolInputOnlySelection(t *testing.T) {
 	dir := t.TempDir()
-	t.Setenv("HOME", dir)
+	setTestHome(t, dir)
 	memDir := resolveMemoryDirForTest(t, dir)
 	if err := os.MkdirAll(filepath.Join(memDir, "user_decisions", "archival"), 0o755); err != nil {
 		t.Fatalf("mkdir: %v", err)
@@ -168,7 +168,7 @@ func TestCaptureUserDecision_ToolInputOnlySelection(t *testing.T) {
 // empty.
 func TestCaptureUserDecision_CLAUDEProjectDirFallback(t *testing.T) {
 	dir := t.TempDir()
-	t.Setenv("HOME", dir)
+	setTestHome(t, dir)
 	t.Setenv("CLAUDE_PROJECT_DIR", dir)
 	memDir := resolveMemoryDirForTest(t, dir)
 	if err := os.MkdirAll(filepath.Join(memDir, "user_decisions", "archival"), 0o755); err != nil {
@@ -206,7 +206,7 @@ func TestCaptureUserDecision_NilInputSafe(t *testing.T) {
 // returns early for a non-AskUserQuestion tool.
 func TestCaptureUserDecision_WrongToolNameSafe(t *testing.T) {
 	dir := t.TempDir()
-	t.Setenv("HOME", dir)
+	setTestHome(t, dir)
 	input := &HookInput{
 		ToolName: "Write",
 		CWD:      dir,
@@ -223,7 +223,7 @@ func TestCaptureUserDecision_WrongToolNameSafe(t *testing.T) {
 // tool_use_id-present and tool_use_id-absent citation formats.
 func TestCaptureUserDecision_SourceCitationVariants(t *testing.T) {
 	dir := t.TempDir()
-	t.Setenv("HOME", dir)
+	setTestHome(t, dir)
 	memDir := resolveMemoryDirForTest(t, dir)
 	_ = os.MkdirAll(filepath.Join(memDir, "user_decisions", "archival"), 0o755)
 
