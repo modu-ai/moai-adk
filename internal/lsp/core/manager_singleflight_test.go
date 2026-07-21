@@ -48,8 +48,13 @@ func TestGetOrSpawn_SingleflightBarrier_SecondBlocksUntilFirst(t *testing.T) {
 	t.Parallel()
 
 	var factoryCount atomic.Int32
-	// factory waits until it receives the unblock signal
-	firstStarted := make(chan struct{})
+	// factory waits until it receives the unblock signal.
+	// firstStarted is BUFFERED (size 1): the factory signals via a
+	// non-blocking send, so with an unbuffered channel the signal was LOST
+	// whenever the factory reached the send before the main goroutine
+	// reached the receive — the 2s wait then timed out (flaky on loaded CI).
+	// A buffered send always lands, making the handshake deterministic.
+	firstStarted := make(chan struct{}, 1)
 	unblock := make(chan struct{})
 
 	m := NewManager(
