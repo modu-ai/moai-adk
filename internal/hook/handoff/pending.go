@@ -60,6 +60,13 @@ func ConsumedDir(projectDir string) string {
 	return filepath.Join(handoffStateDir(projectDir), "consumed")
 }
 
+// ClaimGatePath returns the exclusive-creation gate that elects a single
+// consumer of pending.json when several SessionStart hooks race. It sits beside
+// pending.json rather than inside consumed/, which is an enumerated audit trail.
+func ClaimGatePath(projectDir string) string {
+	return PendingPath(projectDir) + ".claim"
+}
+
 // SavePending writes rec to handoff/pending.json using an atomic temp-file +
 // rename (reusing the persist.go atomicWriteFile contract). REQ-AUTORESUME-005:
 // it writes ONLY the handoff/ tree and NEVER touches session-handoff/pending.md.
@@ -87,6 +94,12 @@ func SavePending(projectDir string, rec *PendingRecord) error {
 	if err := atomicWriteFile(dir, "pending.json", data, 0o600); err != nil {
 		return fmt.Errorf("atomic write pending.json: %w", err)
 	}
+	// Clear any claim gate leaked by a killed consumer. This record was just
+	// written, so it has never been claimed and no live consumer can hold a gate
+	// for it; leaving a stale gate here would silently block every future
+	// auto-resume. Best-effort — a failure here only costs one injection, and
+	// the save itself already succeeded.
+	_ = os.Remove(ClaimGatePath(projectDir))
 	return nil
 }
 

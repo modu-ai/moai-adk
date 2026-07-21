@@ -14,13 +14,16 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/hex"
+	"errors"
 	"fmt"
+	"io/fs"
 	"log/slog"
 	"os"
 	"path/filepath"
 	"strings"
 	"time"
 
+	"github.com/modu-ai/moai-adk/internal/atomicfile"
 	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/hook/handoff"
 )
@@ -117,13 +120,36 @@ func (h *handoffInjectHandler) claimAndInject(projectDir string, rec *handoff.Pe
 		return &HookOutput{}
 	}
 
+	// Elect the winner BEFORE renaming. Exclusivity must come from a primitive
+	// that guarantees it (O_CREATE|O_EXCL on a path both racers compute
+	// identically), not from the rename failing for the loser: POSIX rename(2)
+	// gives the loser ENOENT once the source is gone, but that is a property of
+	// POSIX, not a documented cross-platform contract, and on Windows two
+	// concurrent claims were observed to both succeed (AC-013a: injected=2 with
+	// a single consumed file — one file object moved twice).
+	if !claimPendingGate(projectDir) {
+		return &HookOutput{}
+	}
+	defer releasePendingGate(projectDir)
+
+	// Re-check inside the gate. The record was read before the gate was taken,
+	// so a contender that lost an earlier round still holds a stale "present"
+	// observation; without this the read-then-consume window stays open and the
+	// gate only narrows it. Every consumer serializes through the gate, so this
+	// check and the rename below are now atomic with respect to each other.
+	if _, err := os.Stat(handoff.PendingPath(projectDir)); err != nil {
+		return &HookOutput{}
+	}
+
 	// Consumed filename: <UnixNano ts>-<nonce8>.json. ts is the integer consume
 	// timestamp (not the RFC3339 saved_at) so AC-014's `^\d+-` regex holds.
 	ts := time.Now().UnixNano()
 	consumedPath := filepath.Join(consumedDir, fmt.Sprintf("%d-%s.json", ts, consumeNonce(rec.SavedBySession)))
 
-	// Claim via atomic rename. The rename-as-claim guarantee means at most one
-	// concurrent session wins; the loser observes a rename error (errno-agnostic).
+	// Archive the claimed record. This rename is no longer load-bearing for
+	// exclusivity — the gate above already decided the winner — so it is a plain
+	// move whose only job is preserving the pending bytes verbatim (AC-013b:
+	// any rename error still skips injection, errno-agnostic).
 	if err := handoffRenameFunc(handoff.PendingPath(projectDir), consumedPath); err != nil {
 		slog.Warn("session_start: handoff: claim rename failed; skipping injection (fail-open)",
 			"error", err,
@@ -137,6 +163,37 @@ func (h *handoffInjectHandler) claimAndInject(projectDir string, rec *handoff.Pe
 			HookEventName:     string(EventSessionStart),
 			AdditionalContext: renderHandoffContext(rec),
 		},
+	}
+}
+
+// claimPendingGate reports whether this caller won the right to consume
+// pending.json. Exactly one concurrent caller gets true.
+//
+// The gate is never force-reclaimed here. Timing out and stealing it would
+// reintroduce the very defect this replaced: two contenders that both decide a
+// gate is stale each remove it and each then create it, so both win. A gate
+// leaked by a killed process is instead cleared by handoff.SavePending when the
+// next record is written — a record that has just been saved has by definition
+// never been claimed, so clearing it there is unambiguous and race-free.
+func claimPendingGate(projectDir string) bool {
+	err := atomicfile.Claim(handoff.ClaimGatePath(projectDir), 0o600)
+	if err == nil {
+		return true
+	}
+	if !errors.Is(err, fs.ErrExist) {
+		slog.Warn("session_start: handoff: claim gate unavailable; skipping injection (fail-open)",
+			"error", err,
+		)
+	}
+	return false
+}
+
+// releasePendingGate drops the gate once the claim is complete. The gate is
+// held only across the rename below, so this normally runs microseconds after
+// claimPendingGate.
+func releasePendingGate(projectDir string) {
+	if err := os.Remove(handoff.ClaimGatePath(projectDir)); err != nil && !os.IsNotExist(err) {
+		slog.Warn("session_start: handoff: could not release claim gate", "error", err)
 	}
 }
 

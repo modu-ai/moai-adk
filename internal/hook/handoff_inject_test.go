@@ -382,6 +382,134 @@ func TestRenameFailure_FailOpen(t *testing.T) {
 	}
 }
 
+// TestConcurrentConsume_SingleWinner_RenameAlwaysSucceeds reproduces, on any
+// platform, the Windows failure this claim path was fixed for: two concurrent
+// claims both saw their rename succeed, so both injected (AC-013a observed
+// injected=2 against a single consumed file — one file object moved twice).
+//
+// Stubbing rename to always succeed models exactly that, and pins the invariant
+// that exclusivity comes from the claim gate rather than from the loser's
+// rename happening to fail. Under the previous rename-as-claim design this
+// fails with injected=2.
+//
+// NOT parallel: mutates the handoffRenameFunc package global.
+func TestConcurrentConsume_SingleWinner_RenameAlwaysSucceeds(t *testing.T) {
+	pd := t.TempDir()
+	mustSavePending(t, pd, livePending("resume"))
+
+	orig := handoffRenameFunc
+	defer func() { handoffRenameFunc = orig }()
+	// Model the observed Windows behaviour: the move still happens, but a caller
+	// whose source is already gone is told it succeeded rather than failing.
+	handoffRenameFunc = func(from, to string) error {
+		_ = os.Rename(from, to)
+		return nil
+	}
+
+	h := NewHandoffInjectHandler(autoCfgProvider(false))
+	var injected int32
+	var wg sync.WaitGroup
+	for i := 0; i < 8; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			out, err := h.Handle(context.Background(), injectInput("clear", pd))
+			if err != nil {
+				t.Errorf("Handle: %v", err)
+				return
+			}
+			if additionalContextOf(out) != "" {
+				atomic.AddInt32(&injected, 1)
+			}
+		}()
+	}
+	wg.Wait()
+
+	if injected != 1 {
+		t.Errorf("expected exactly 1 winner even when every rename succeeds, got %d", injected)
+	}
+}
+
+// TestClaimGate_HeldGateBlocksClaim pins that a held gate makes the claim yield
+// rather than steal it — the property that keeps the winner single.
+//
+// NOT parallel: mutates the handoffRenameFunc package global.
+func TestClaimGate_HeldGateBlocksClaim(t *testing.T) {
+	pd := t.TempDir()
+	mustSavePending(t, pd, livePending("resume"))
+
+	orig := handoffRenameFunc
+	defer func() { handoffRenameFunc = orig }()
+	handoffRenameFunc = func(from, to string) error { _ = os.Rename(from, to); return nil }
+
+	if err := os.WriteFile(handoff.ClaimGatePath(pd), nil, 0o600); err != nil {
+		t.Fatalf("seed gate: %v", err)
+	}
+
+	h := NewHandoffInjectHandler(autoCfgProvider(false))
+	out, err := h.Handle(context.Background(), injectInput("clear", pd))
+	if err != nil {
+		t.Fatalf("Handle must be fail-open, got: %v", err)
+	}
+	if additionalContextOf(out) != "" {
+		t.Error("a held gate must block the claim")
+	}
+	if !pendingExists(pd) {
+		t.Error("a blocked claim must leave pending.json in place")
+	}
+}
+
+// TestClaimGate_ReleasedAfterClaim proves the gate does not leak on the success
+// path: a second record saved afterwards is still claimable.
+func TestClaimGate_ReleasedAfterClaim(t *testing.T) {
+	t.Parallel()
+
+	pd := t.TempDir()
+	mustSavePending(t, pd, livePending("first"))
+
+	h := NewHandoffInjectHandler(autoCfgProvider(false))
+	if out, err := h.Handle(context.Background(), injectInput("clear", pd)); err != nil {
+		t.Fatalf("Handle: %v", err)
+	} else if additionalContextOf(out) == "" {
+		t.Fatal("expected the first record to be injected")
+	}
+	if _, err := os.Stat(handoff.ClaimGatePath(pd)); !os.IsNotExist(err) {
+		t.Errorf("gate must be released after a successful claim; stat err=%v", err)
+	}
+
+	mustSavePending(t, pd, livePending("second"))
+	if out, err := h.Handle(context.Background(), injectInput("clear", pd)); err != nil {
+		t.Fatalf("Handle: %v", err)
+	} else if additionalContextOf(out) == "" {
+		t.Error("expected the second record to be injected too")
+	}
+}
+
+// TestSavePending_ClearsLeakedGate proves a gate orphaned by a killed consumer
+// does not disable auto-resume forever: writing the next record clears it.
+func TestSavePending_ClearsLeakedGate(t *testing.T) {
+	t.Parallel()
+
+	pd := t.TempDir()
+	mustSavePending(t, pd, livePending("resume"))
+	if err := os.WriteFile(handoff.ClaimGatePath(pd), nil, 0o600); err != nil {
+		t.Fatalf("seed gate: %v", err)
+	}
+
+	// Re-saving is the recovery point: the new record has never been claimed.
+	mustSavePending(t, pd, livePending("resume"))
+	if _, err := os.Stat(handoff.ClaimGatePath(pd)); !os.IsNotExist(err) {
+		t.Fatalf("SavePending must clear a leaked gate; stat err=%v", err)
+	}
+
+	h := NewHandoffInjectHandler(autoCfgProvider(false))
+	if out, err := h.Handle(context.Background(), injectInput("clear", pd)); err != nil {
+		t.Fatalf("Handle: %v", err)
+	} else if additionalContextOf(out) == "" {
+		t.Error("expected injection after the leaked gate was cleared")
+	}
+}
+
 // --- AC-014: NULL session_id nonce filename shape ----------------------------
 
 func TestNonceFallback_FilenameShape(t *testing.T) {
