@@ -370,6 +370,15 @@ func runCleanReinstall(ctx context.Context, projectRoot string, opts CleanReinst
 	}
 	_, _ = fmt.Fprintln(out, "[clean-reinstall] user config (settings.json + sections/*.yaml) merge-preserved")
 
+	// One-shot v2->v3 deny-rule migration (issue #1101): the wholesale
+	// settings.json preservation above also preserves retired v2-era deny
+	// entries (Write/Grep/Glob x 4 protected paths) that the v3 template no
+	// longer ships, causing Claude Code startup warnings every session. Strip
+	// exact-match retired entries only; user customizations are untouched.
+	if stripErr := stripRetiredV2DenyEntries(projectRoot, out); stripErr != nil {
+		_, _ = fmt.Fprintf(out, "[clean-reinstall] deny-rule migration warning: %v\n", stripErr)
+	}
+
 	// ---------------------------------------------------------------
 	// Step 6 — MERGE-back PRESERVE inventory
 	// ---------------------------------------------------------------
