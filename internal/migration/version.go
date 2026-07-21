@@ -44,7 +44,9 @@ func readVersion(projectRoot string) (int, error) {
 //
 // Lock semantics:
 //   - Unix: unix.Flock(LOCK_EX) — blocking until acquired (kernel serializes contention).
-//   - Windows: file mutex based on O_CREATE|O_EXCL — bounded retry up to ~1s.
+//   - Windows: file mutex based on O_CREATE|O_EXCL — bounded retry up to ~5s,
+//     covering both ordinary contention and the delete-pending window a
+//     concurrent release opens (see isLockContention in version_windows.go).
 //     Under the single-user assumption, a lock acquire timeout indicates an abnormal state.
 func writeVersion(projectRoot string, version int) error {
 	stateDir := filepath.Join(projectRoot, ".moai", "state")
