@@ -280,9 +280,8 @@ func loadHarnessProfiles(projectRoot string) []Option {
 		if e.IsDir() {
 			continue
 		}
-		name := e.Name()
-		if strings.HasSuffix(name, ".md") {
-			profiles = append(profiles, strings.TrimSuffix(name, ".md"))
+		if base, ok := strings.CutSuffix(e.Name(), ".md"); ok {
+			profiles = append(profiles, base)
 		}
 	}
 

@@ -85,7 +85,11 @@ func bannerString(version string) string {
 	ident := identStyle.Render("◆ MoAI-ADK") + " " +
 		dimStyle.Render("Modu-AI's Agentic Development Kit w/ SuperAgent MoAI")
 
-	p1 := tui.Pill(tui.PillOpts{Kind: tui.PillPrimary, Solid: true, Label: fmt.Sprintf("v%s", version), Theme: &th})
+	// Tolerate an optional leading "v" so the version pill never renders a
+	// doubled prefix (regression: vv3.0.0). version.GetVersion() carries a "v"
+	// prefix ("v3.0.0") while test callers pass bare versions ("1.2.3"); both
+	// normalize to a single-"v" pill by trimming at most one leading "v".
+	p1 := tui.Pill(tui.PillOpts{Kind: tui.PillPrimary, Solid: true, Label: "v" + strings.TrimPrefix(version, "v"), Theme: &th})
 	p2 := tui.Pill(tui.PillOpts{Kind: tui.PillOk, Solid: false, Label: fmt.Sprintf("go %s", GoVersion()), Theme: &th})
 	p3 := tui.Pill(tui.PillOpts{Kind: tui.PillInfo, Solid: false, Label: ClaudeVersion(), Theme: &th})
 	pillRow := lipgloss.JoinHorizontal(lipgloss.Top, p1, " ", p2, " ", p3)
