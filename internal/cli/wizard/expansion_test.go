@@ -361,13 +361,12 @@ func TestTotalVisibleQuestions_StandardMode(t *testing.T) {
 	tmpDir := t.TempDir()
 	all := append(DefaultQuestions(tmpDir), Phase1Questions(tmpDir)...)
 
-	// Quick mode: 4 unconditional questions visible (git conditionals hidden)
+	// Quick mode: the init set is fully unconditional apart from
+	// advanced_bridge (visible while StandardMode is false); no git questions
+	// and 0 Phase 1 questions.
 	quickResult := &WizardResult{StandardMode: false}
-	// 4 unconditional questions (project_name, model_policy, report_format, git_mode)
-	// Plus 4 conditional git questions (default hidden unless GitMode is set)
-	// and 0 Phase 1 questions
 	quickCount := TotalVisibleQuestions(all, quickResult)
-	if quickCount != 4 { // project_name, model_policy, report_format, git_mode
+	if quickCount != 4 {
 		// More lenient check: all originals minus conditional ones
 		if quickCount > 9 {
 			t.Errorf("Quick mode shows more than 9 questions: %d", quickCount)

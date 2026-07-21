@@ -326,6 +326,21 @@ func runInit(cmd *cobra.Command, args []string) error {
 		ClaudeDesignEnabled:       true, // wizard-only; default true
 	}
 
+	// Git mode + provider are auto-detected from the repository's configured
+	// remotes rather than asked in the wizard (no remote → manual, ≥1 remote →
+	// personal; provider from the origin host). Explicit --git-mode /
+	// --git-provider flags take precedence: detection only fills a value still
+	// empty after flag parsing.
+	if opts.GitMode == "" || opts.GitProvider == "" {
+		detectedMode, detectedProvider := detectGitConfig(rootFlag)
+		if opts.GitMode == "" {
+			opts.GitMode = detectedMode
+		}
+		if opts.GitProvider == "" {
+			opts.GitProvider = detectedProvider
+		}
+	}
+
 	// Apply user-level defaults from profile preferences.
 	// Profile preferences (identity, languages, model policy) are set via
 	// "moai profile setup" and stored in ~/.moai/claude-profiles/<name>/preferences.yaml.
@@ -408,18 +423,10 @@ func runInit(cmd *cobra.Command, args []string) error {
 		if opts.DevelopmentMode == "" {
 			opts.DevelopmentMode = result.DevelopmentMode
 		}
-		if opts.GitMode == "" {
-			opts.GitMode = result.GitMode
-		}
-		if opts.GitProvider == "" {
-			opts.GitProvider = result.GitProvider
-		}
-		if opts.GitHubUsername == "" {
-			opts.GitHubUsername = result.GitHubUsername
-		}
-		if opts.GitLabInstanceURL == "" {
-			opts.GitLabInstanceURL = result.GitLabInstanceURL
-		}
+		// Git mode, provider, and credentials are NOT wizard-supplied on the
+		// init path: mode/provider come from remote detection above, and the
+		// remaining Git values stay flag-fed (--github-username,
+		// --gitlab-instance-url). The reconfigure wizard still asks them.
 		if result.ModelPolicy != "" {
 			opts.ModelPolicy = result.ModelPolicy
 		}

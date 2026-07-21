@@ -1265,7 +1265,7 @@ func runInitWizard(cmd *cobra.Command, reconfigure bool) error {
 	ghAuthenticated := wizard.IsGhAuthenticated()
 
 	// Generate default questions and set defaults from existing values
-	questions := wizard.DefaultQuestions(cwd)
+	questions := wizard.ReconfigureQuestions(cwd)
 	if existingGitHubUsername != "" {
 		if q := wizard.QuestionByID(questions, "github_username"); q != nil {
 			q.Default = existingGitHubUsername
