@@ -60,7 +60,7 @@ flowchart TD
     end
 
     subgraph Phase2["Phase 2: Implement (Terminals 2, 3, 4...)"]
-        B1[moai worktree go SPEC-ID] --> B2[Worktree 진입]
+        B1["cd $(moai worktree go SPEC-ID)"] --> B2[Worktree 진입]
         B2 --> B3[moai glm<br/>LLM 변경]
         B3 --> B4[/moai run SPEC-ID]
         B4 --> B5[/moai sync SPEC-ID]
@@ -106,7 +106,7 @@ flowchart TD
 
 ```bash
 # Worktree 진입 (새 터미널)
-$ moai worktree go SPEC-AUTH-001
+$ cd "$(moai worktree go SPEC-AUTH-001)"
 
 # LLM 변경
 $ moai glm
@@ -136,6 +136,7 @@ moai worktree done SPEC-AUTH-001 --delete-branch    # 정리 + 로컬 브랜치 
 | ------------------------ | -------------------------- | ------------------------------ |
 | `moai worktree new SPEC-ID`    | 새 Worktree 생성           | `moai worktree new SPEC-AUTH-001`    |
 | `moai worktree go SPEC-ID`     | Worktree 경로 출력 (`cd`용) | `cd "$(moai worktree go SPEC-AUTH-001)"` |
+| `moai worktree switch SPEC-ID` | Worktree 위치 출력 (`cd` 안 함) | `moai worktree switch SPEC-AUTH-001`  |
 | `moai worktree list`           | Worktree 목록 표시         | `moai worktree list`                 |
 | `moai worktree done SPEC-ID`   | Worktree 정리 (병합은 별도) | `moai worktree done SPEC-AUTH-001`   |
 | `moai worktree remove [path]`  | Worktree 제거 (경로 지정)  | `moai worktree remove ~/.moai/worktrees/your-project/SPEC-AUTH-001` |
@@ -220,17 +221,17 @@ sequenceDiagram
 > /moai plan "인증 시스템" --worktree
 
 # Terminal 2: SPEC-AUTH-002 구현 (GLM)
-$ moai worktree go SPEC-AUTH-002
+$ cd "$(moai worktree go SPEC-AUTH-002)"
 $ moai glm
 > /moai run SPEC-AUTH-002
 
 # Terminal 3: SPEC-AUTH-003 구현 (GLM)
-$ moai worktree go SPEC-AUTH-003
+$ cd "$(moai worktree go SPEC-AUTH-003)"
 $ moai glm
 > /moai run SPEC-AUTH-003
 
 # Terminal 4: SPEC-AUTH-004 문서화
-$ moai worktree go SPEC-AUTH-004
+$ cd "$(moai worktree go SPEC-AUTH-004)"
 > /moai sync SPEC-AUTH-004
 ```
 
@@ -269,19 +270,19 @@ graph TB
     end
 
     subgraph Terminal2["Terminal 2: Implementing"]
-        T2A[moai worktree go<br/>SPEC-AUTH-001]
+        T2A["cd $(moai worktree go<br/>SPEC-AUTH-001)"]
         T2B[moai glm<br/>저비용]
         T2C[/moai run<br/>DDD 구현]
     end
 
     subgraph Terminal3["Terminal 3: Implementing"]
-        T3A[moai worktree go<br/>SPEC-AUTH-002]
+        T3A["cd $(moai worktree go<br/>SPEC-AUTH-002)"]
         T3B[moai glm<br/>저비용]
         T3C[/moai run<br/>DDD 구현]
     end
 
     subgraph Terminal4["Terminal 4: Documenting"]
-        T4A[moai worktree go<br/>SPEC-AUTH-003]
+        T4A["cd $(moai worktree go<br/>SPEC-AUTH-003)"]
         T4B[moai cc<br/>Claude]
         T4C[/moai sync<br/>문서화]
     end

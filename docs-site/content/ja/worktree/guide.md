@@ -394,7 +394,7 @@ flowchart TD
 ✓ ブランチ切替完了
 
 次のステップ:
-1. 新しいターミナルで実行: moai worktree go SPEC-AUTH-001
+1. 新しいターミナルで実行: cd "$(moai worktree go SPEC-AUTH-001)"
 2. LLM 変更: moai glm
 3. 開発開始: claude
 ```
@@ -403,7 +403,7 @@ flowchart TD
 
 ```bash
 # Terminal 2 で
-moai worktree go SPEC-AUTH-001
+cd "$(moai worktree go SPEC-AUTH-001)"
 
 # Worktree に進入するとプロンプトが変わる
 (SPEC-AUTH-001) $ moai glm
@@ -424,7 +424,7 @@ sequenceDiagram
     T1->>Git: feature/SPEC-AUTH-001 生成
     T1->>T2: Worktree 生成完了の通知
 
-    T2->>T2: moai worktree go SPEC-AUTH-001
+    T2->>T2: cd $(moai worktree go SPEC-AUTH-001)
     T2->>T2: moai glm
     T2->>Git: DDD 実装コミット群
     Note over T2: ANALYZE → PRESERVE → IMPROVE
@@ -479,9 +479,9 @@ graph TB
     end
 
     subgraph Implementation["Implementation Phase (GLM)"]
-        I1[moai worktree go<br/>SPEC-001]
-        I2[moai worktree go<br/>SPEC-002]
-        I3[moai worktree go<br/>SPEC-003]
+        I1["cd $(moai worktree go<br/>SPEC-001)"]
+        I2["cd $(moai worktree go<br/>SPEC-002)"]
+        I3["cd $(moai worktree go<br/>SPEC-003)"]
     end
 
     Planning --> Implementation
@@ -497,9 +497,9 @@ graph TB
 > /moai plan "ログ" --worktree
 
 # Terminal 3, 4, 5: 並列実装
-moai worktree go SPEC-001 && moai glm  # Terminal 3
-moai worktree go SPEC-002 && moai glm  # Terminal 4
-moai worktree go SPEC-003 && moai glm  # Terminal 5
+cd "$(moai worktree go SPEC-001)" && moai glm  # Terminal 3
+cd "$(moai worktree go SPEC-002)" && moai glm  # Terminal 4
+cd "$(moai worktree go SPEC-003)" && moai glm  # Terminal 5
 ```
 
 ### Worktree 間の切替
@@ -509,7 +509,7 @@ moai worktree go SPEC-003 && moai glm  # Terminal 5
 moai worktree status
 
 # 別の Worktree へ切替
-moai worktree go SPEC-AUTH-002
+cd "$(moai worktree go SPEC-AUTH-002)"
 
 # または直接移動
 cd ~/.moai/worktrees/SPEC-AUTH-002
@@ -586,8 +586,8 @@ Co-Authored-By: Claude <noreply@anthropic.com>"
 # iTerm2、VS Code、または tmux の使用を推奨
 
 # tmux の例
-tmux new-session -d -s spec-001 'moai worktree go SPEC-001'
-tmux new-session -d -s spec-002 'moai worktree go SPEC-002'
+tmux new-session -d -s spec-001 -c "$(moai worktree go SPEC-001)"
+tmux new-session -d -s spec-002 -c "$(moai worktree go SPEC-002)"
 
 # セッションの切替
 tmux attach-session -t spec-001

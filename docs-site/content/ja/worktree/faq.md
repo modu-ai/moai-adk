@@ -149,15 +149,15 @@ flowchart TD
 
 ```bash
 # Terminal 1
-moai worktree go SPEC-AUTH-001
+cd "$(moai worktree go SPEC-AUTH-001)"
 (SPEC-AUTH-001) $ moai glm
 
 # Terminal 2
-moai worktree go SPEC-LOG-002
+cd "$(moai worktree go SPEC-LOG-002)"
 (SPEC-LOG-002) $ moai glm
 
 # Terminal 3
-moai worktree go SPEC-API-003
+cd "$(moai worktree go SPEC-API-003)"
 (SPEC-API-003) $ moai glm
 
 # すべて同時に作業可能
@@ -357,13 +357,13 @@ moai config
 現在の LLM: GLM 5
 
 # Worktree で LLM を変更
-moai worktree go SPEC-AUTH-001
+cd "$(moai worktree go SPEC-AUTH-001)"
 (SPEC-AUTH-001) $ moai cc
 → Claude Opus に変更された
 
 # 他の Worktree は影響なし
 (SPEC-AUTH-001) $ exit
-moai worktree go SPEC-LOG-002
+cd "$(moai worktree go SPEC-LOG-002)"
 (SPEC-LOG-002) $ moai config
 現在の LLM: GLM 5 (変更なし)
 ```
@@ -523,7 +523,7 @@ graph TB
 
 ```bash
 # 各 Worktree で同期
-moai worktree go SPEC-AUTH-001
+cd "$(moai worktree go SPEC-AUTH-001)"
 (SPEC-AUTH-001) $ git pull origin main
 
 # またはすべての Worktree を同期

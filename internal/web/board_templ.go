@@ -38,7 +38,7 @@ func boardPage(view boardView) templ.Component {
 			templ_7745c5c3_Var1 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<!doctype html><html lang=\"en\" data-theme=\"light\"><head><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width, initial-scale=1\"><title>MoAI Web Console — SPEC Board</title><link rel=\"stylesheet\" href=\"/static/console.css\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<!doctype html><html lang=\"en\"><head><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width, initial-scale=1\"><title>MoAI Web Console — SPEC Board</title><link rel=\"stylesheet\" href=\"/static/console.css\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -54,7 +54,7 @@ func boardPage(view boardView) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 3, "<main class=\"page\"><div class=\"pagehead\"><h1>SPEC <span class=\"accent\" data-i18n=\"board.title\">Board</span></h1><p class=\"pagehead__sub\" data-i18n=\"board.subtitle\">Read-only SPEC lifecycle dashboard (loopback only — local machine)</p></div>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 3, "<main class=\"page\"><div class=\"pagehead\"><div class=\"pagehead__text\"><h1>SPEC <span class=\"accent\" data-i18n=\"board.title\">Board</span></h1><p class=\"pagehead__sub\" data-i18n=\"board.subtitle\">Read-only SPEC lifecycle dashboard (loopback only — local machine)</p></div><img class=\"pagehead__mascot\" src=\"/static/mascots/mascot-searching.png\" alt=\"\" width=\"110\" height=\"110\"></div>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -71,7 +71,7 @@ func boardPage(view boardView) templ.Component {
 		var templ_7745c5c3_Var2 string
 		templ_7745c5c3_Var2, templ_7745c5c3_Err = templ.JoinStringErrs(boardCount(view.TotalSpecs))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `board.templ`, Line: 36, Col: 101}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `board.templ`, Line: 42, Col: 101}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var2))
 		if templ_7745c5c3_Err != nil {
@@ -89,7 +89,7 @@ func boardPage(view boardView) templ.Component {
 			var templ_7745c5c3_Var3 string
 			templ_7745c5c3_Var3, templ_7745c5c3_Err = templ.JoinStringErrs(sc.Status)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `board.templ`, Line: 40, Col: 44}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `board.templ`, Line: 46, Col: 44}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var3))
 			if templ_7745c5c3_Err != nil {
@@ -102,7 +102,7 @@ func boardPage(view boardView) templ.Component {
 			var templ_7745c5c3_Var4 string
 			templ_7745c5c3_Var4, templ_7745c5c3_Err = templ.JoinStringErrs(boardCount(sc.Count))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `board.templ`, Line: 40, Col: 77}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `board.templ`, Line: 46, Col: 77}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var4))
 			if templ_7745c5c3_Err != nil {
@@ -135,7 +135,7 @@ func boardPage(view boardView) templ.Component {
 				var templ_7745c5c3_Var5 string
 				templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.JoinStringErrs(s.ID)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `board.templ`, Line: 53, Col: 44}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `board.templ`, Line: 59, Col: 44}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var5))
 				if templ_7745c5c3_Err != nil {
@@ -153,7 +153,7 @@ func boardPage(view boardView) templ.Component {
 					var templ_7745c5c3_Var6 string
 					templ_7745c5c3_Var6, templ_7745c5c3_Err = templ.JoinStringErrs(s.Tier)
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `board.templ`, Line: 55, Col: 43}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `board.templ`, Line: 61, Col: 43}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var6))
 					if templ_7745c5c3_Err != nil {
@@ -172,7 +172,7 @@ func boardPage(view boardView) templ.Component {
 					var templ_7745c5c3_Var7 string
 					templ_7745c5c3_Var7, templ_7745c5c3_Err = templ.JoinStringErrs(s.Title)
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `board.templ`, Line: 58, Col: 51}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `board.templ`, Line: 64, Col: 51}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var7))
 					if templ_7745c5c3_Err != nil {
@@ -191,7 +191,7 @@ func boardPage(view boardView) templ.Component {
 					var templ_7745c5c3_Var8 string
 					templ_7745c5c3_Var8, templ_7745c5c3_Err = templ.JoinStringErrs(s.Updated)
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `board.templ`, Line: 61, Col: 52}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `board.templ`, Line: 67, Col: 52}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var8))
 					if templ_7745c5c3_Err != nil {
@@ -234,7 +234,7 @@ func boardPage(view boardView) templ.Component {
 				var templ_7745c5c3_Var9 string
 				templ_7745c5c3_Var9, templ_7745c5c3_Err = templ.JoinStringErrs(f.SpecID)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `board.templ`, Line: 78, Col: 51}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `board.templ`, Line: 84, Col: 51}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var9))
 				if templ_7745c5c3_Err != nil {
@@ -247,7 +247,7 @@ func boardPage(view boardView) templ.Component {
 				var templ_7745c5c3_Var10 string
 				templ_7745c5c3_Var10, templ_7745c5c3_Err = templ.JoinStringErrs(f.FindingType)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `board.templ`, Line: 79, Col: 58}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `board.templ`, Line: 85, Col: 58}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var10))
 				if templ_7745c5c3_Err != nil {
@@ -265,7 +265,7 @@ func boardPage(view boardView) templ.Component {
 					var templ_7745c5c3_Var11 string
 					templ_7745c5c3_Var11, templ_7745c5c3_Err = templ.JoinStringErrs(f.Remediation)
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `board.templ`, Line: 81, Col: 52}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `board.templ`, Line: 87, Col: 52}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var11))
 					if templ_7745c5c3_Err != nil {
@@ -278,7 +278,7 @@ func boardPage(view boardView) templ.Component {
 					var templ_7745c5c3_Var12 string
 					templ_7745c5c3_Var12, templ_7745c5c3_Err = templ.ResolveAttributeValue(f.Remediation)
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `board.templ`, Line: 82, Col: 76}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `board.templ`, Line: 88, Col: 76}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var12)
 					if templ_7745c5c3_Err != nil {
@@ -308,9 +308,10 @@ func boardPage(view boardView) templ.Component {
 }
 
 // boardAppbar ports the settings-page appbar chrome (brand + loopback indicator +
-// langpick + theme toggle), plus a link back to the settings page. It omits the
-// shutdown button and the settings form's controls — the board is read-only. The
-// langpick and theme toggle are wired by the same app.js initConsole path.
+// langpick), plus a link back to the settings page. It omits the shutdown button
+// and the settings form's controls — the board is read-only. The langpick is
+// wired by the same app.js initConsole path. (The former theme toggle is retired
+// — SPEC-DESIGN-MOAIWEBV2-002 REQ-MWA-002, light-only console.)
 func boardAppbar(view boardView) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
@@ -339,25 +340,13 @@ func boardAppbar(view boardView) templ.Component {
 		var templ_7745c5c3_Var14 string
 		templ_7745c5c3_Var14, templ_7745c5c3_Err = templ.JoinStringErrs(view.BindAddr)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `board.templ`, Line: 111, Col: 75}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `board.templ`, Line: 118, Col: 75}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var14))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 35, "</span> <span class=\"appbar__spacer\"></span> <a class=\"board-nav\" href=\"/\" data-i18n=\"board.nav.settings\">Settings</a> <span class=\"select-wrap langpick-wrap\"><select class=\"select langpick\" id=\"uiLangSelect\" aria-label=\"Interface language\" title=\"Interface language\"><option value=\"en\">English</option> <option value=\"ko\">한국어</option> <option value=\"ja\">日本語</option> <option value=\"zh\">中文</option></select></span> <button class=\"iconbtn\" id=\"themeToggle\" type=\"button\" aria-label=\"Toggle light / dark theme\" title=\"Toggle theme\">")
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		templ_7745c5c3_Err = icon("sun").Render(ctx, templ_7745c5c3_Buffer)
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		templ_7745c5c3_Err = icon("moon").Render(ctx, templ_7745c5c3_Buffer)
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 36, "</button></header>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 35, "</span> <span class=\"appbar__spacer\"></span> <a class=\"board-nav\" href=\"/\" data-i18n=\"board.nav.settings\">Settings</a> <span class=\"select-wrap langpick-wrap\"><select class=\"select langpick\" id=\"uiLangSelect\" aria-label=\"Interface language\" title=\"Interface language\"><option value=\"en\">English</option> <option value=\"ko\">한국어</option> <option value=\"ja\">日本語</option> <option value=\"zh\">中文</option></select></span></header>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -388,7 +377,7 @@ func boardBanner(view boardView) templ.Component {
 			templ_7745c5c3_Var15 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 37, "<div class=\"banner banner--error\" role=\"status\" aria-live=\"polite\"><span class=\"banner__icon\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 36, "<div class=\"banner banner--error\" role=\"status\" aria-live=\"polite\"><span class=\"banner__icon\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -396,20 +385,20 @@ func boardBanner(view boardView) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 38, "</span><div class=\"banner__body\"><p class=\"banner__text\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 37, "</span><div class=\"banner__body\"><p class=\"banner__text\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var16 string
 		templ_7745c5c3_Var16, templ_7745c5c3_Err = templ.JoinStringErrs(view.Banner)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `board.templ`, Line: 134, Col: 65}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `board.templ`, Line: 137, Col: 65}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var16))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 39, "</p></div></div>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 38, "</p></div></div>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

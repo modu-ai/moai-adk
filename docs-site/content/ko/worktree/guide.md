@@ -481,7 +481,7 @@ flowchart TD
 ✓ 브랜치 전환 완료
 
 다음 단계:
-1. 새 터미널에서 실행: moai worktree go SPEC-AUTH-001
+1. 새 터미널에서 실행: cd "$(moai worktree go SPEC-AUTH-001)"
 2. LLM 변경: moai glm
 3. 개발 시작: claude
 ```
@@ -510,7 +510,7 @@ sequenceDiagram
     T1->>Git: feature/SPEC-AUTH-001 생성
     T1->>T2: Worktree 생성 완료 알림
 
-    T2->>T2: moai worktree go SPEC-AUTH-001
+    T2->>T2: cd $(moai worktree go SPEC-AUTH-001)
     T2->>T2: moai glm
     T2->>Git: DDD 구현 커밋들
     Note over T2: ANALYZE → PRESERVE → IMPROVE
@@ -565,9 +565,9 @@ graph TB
     end
 
     subgraph Implementation["Implementation Phase (GLM)"]
-        I1[moai worktree go<br/>SPEC-001]
-        I2[moai worktree go<br/>SPEC-002]
-        I3[moai worktree go<br/>SPEC-003]
+        I1["cd $(moai worktree go<br/>SPEC-001)"]
+        I2["cd $(moai worktree go<br/>SPEC-002)"]
+        I3["cd $(moai worktree go<br/>SPEC-003)"]
     end
 
     Planning --> Implementation
@@ -672,8 +672,8 @@ Co-Authored-By: Claude <noreply@anthropic.com>"
 # iTerm2, VS Code, 또는 tmux 사용 권장
 
 # tmux 예시
-tmux new-session -d -s spec-001 'moai worktree go SPEC-001'
-tmux new-session -d -s spec-002 'moai worktree go SPEC-002'
+tmux new-session -d -s spec-001 -c "$(moai worktree go SPEC-001)"
+tmux new-session -d -s spec-002 -c "$(moai worktree go SPEC-002)"
 
 # 세션 전환
 tmux attach-session -t spec-001

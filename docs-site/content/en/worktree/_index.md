@@ -61,7 +61,7 @@ flowchart TD
     end
 
     subgraph Phase2["Phase 2: Implement (Terminals 2, 3, 4...)"]
-        B1[moai worktree go SPEC-ID] --> B2[Enter Worktree]
+        B1["cd $(moai worktree go SPEC-ID)"] --> B2[Enter Worktree]
         B2 --> B3[moai glm<br/>switch LLM]
         B3 --> B4[/moai run SPEC-ID]
         B4 --> B5[/moai sync SPEC-ID]
@@ -107,7 +107,7 @@ direction — so a cost-efficient model like GLM does the job well:
 
 ```bash
 # Enter the Worktree (new terminal)
-$ moai worktree go SPEC-AUTH-001
+$ cd "$(moai worktree go SPEC-AUTH-001)"
 
 # Switch LLM
 $ moai glm
@@ -137,6 +137,7 @@ moai worktree done SPEC-AUTH-001 --delete-branch    # cleanup + delete local bra
 | ------------------------ | -------------------------- | ------------------------------ |
 | `moai worktree new SPEC-ID`    | Create a new Worktree      | `moai worktree new SPEC-AUTH-001`    |
 | `moai worktree go SPEC-ID`     | Print the Worktree path (for `cd`) | `cd "$(moai worktree go SPEC-AUTH-001)"` |
+| `moai worktree switch SPEC-ID` | Print the Worktree location (does not `cd`) | `moai worktree switch SPEC-AUTH-001`  |
 | `moai worktree list`           | List Worktrees             | `moai worktree list`                 |
 | `moai worktree done SPEC-ID`   | Clean up the Worktree (merge is separate) | `moai worktree done SPEC-AUTH-001`   |
 | `moai worktree remove [path]`  | Remove a Worktree (path-specified) | `moai worktree remove ~/.moai/worktrees/your-project/SPEC-AUTH-001` |
@@ -221,17 +222,17 @@ You can run multiple SPECs at the same time:
 > /moai plan "Authentication system" --worktree
 
 # Terminal 2: implement SPEC-AUTH-002 (GLM)
-$ moai worktree go SPEC-AUTH-002
+$ cd "$(moai worktree go SPEC-AUTH-002)"
 $ moai glm
 > /moai run SPEC-AUTH-002
 
 # Terminal 3: implement SPEC-AUTH-003 (GLM)
-$ moai worktree go SPEC-AUTH-003
+$ cd "$(moai worktree go SPEC-AUTH-003)"
 $ moai glm
 > /moai run SPEC-AUTH-003
 
 # Terminal 4: document SPEC-AUTH-004
-$ moai worktree go SPEC-AUTH-004
+$ cd "$(moai worktree go SPEC-AUTH-004)"
 > /moai sync SPEC-AUTH-004
 ```
 
@@ -270,19 +271,19 @@ graph TB
     end
 
     subgraph Terminal2["Terminal 2: Implementing"]
-        T2A[moai worktree go<br/>SPEC-AUTH-001]
+        T2A["cd $(moai worktree go<br/>SPEC-AUTH-001)"]
         T2B[moai glm<br/>low cost]
         T2C[/moai run<br/>DDD implementation]
     end
 
     subgraph Terminal3["Terminal 3: Implementing"]
-        T3A[moai worktree go<br/>SPEC-AUTH-002]
+        T3A["cd $(moai worktree go<br/>SPEC-AUTH-002)"]
         T3B[moai glm<br/>low cost]
         T3C[/moai run<br/>DDD implementation]
     end
 
     subgraph Terminal4["Terminal 4: Documenting"]
-        T4A[moai worktree go<br/>SPEC-AUTH-003]
+        T4A["cd $(moai worktree go<br/>SPEC-AUTH-003)"]
         T4B[moai cc<br/>Claude]
         T4C[/moai sync<br/>documentation]
     end
