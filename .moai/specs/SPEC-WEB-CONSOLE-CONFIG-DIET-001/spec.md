@@ -2,7 +2,7 @@
 id: SPEC-WEB-CONSOLE-CONFIG-DIET-001
 title: "Web Console Config 과다 노출 정리 — Dead-Config 다이어트"
 version: "0.1.0"
-status: cancelled
+status: rejected
 created: 2026-07-05
 updated: 2026-07-05
 author: manager-spec
