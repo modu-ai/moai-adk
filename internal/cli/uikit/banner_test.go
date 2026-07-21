@@ -145,6 +145,37 @@ func TestPrintBanner_WithVersion(t *testing.T) {
 	}
 }
 
+// TestPrintBanner_OptionalLeadingV is the regression guard for the vv3.0.0
+// banner bug: version.GetVersion() returns "v3.0.0" (already v-prefixed) and the
+// pill previously prepended a second "v", rendering "vv3.0.0". The pill must
+// normalize an optional leading "v" — both a prefixed ("v3.0.0") and a bare
+// ("3.0.0") version yield exactly a single-"v" pill ("v3.0.0"), never "vv3.0.0".
+func TestPrintBanner_OptionalLeadingV(t *testing.T) {
+	tests := []struct {
+		name  string
+		input string
+	}{
+		{"prefixed version (v3.0.0)", "v3.0.0"},
+		{"bare version (3.0.0)", "3.0.0"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			output, err := captureStdout(func() {
+				uikit.PrintBanner(tt.input)
+			})
+			if err != nil {
+				t.Fatal(err)
+			}
+			if !strings.Contains(output, "v3.0.0") {
+				t.Errorf("banner should contain single-v %q, got:\n%s", "v3.0.0", output)
+			}
+			if strings.Contains(output, "vv3.0.0") {
+				t.Errorf("banner must NOT contain doubled-v %q, got:\n%s", "vv3.0.0", output)
+			}
+		})
+	}
+}
+
 // TestPrintBanner_EmptyVersion verifies banner handles empty version gracefully.
 func TestPrintBanner_EmptyVersion(t *testing.T) {
 	output, err := captureStdout(func() {

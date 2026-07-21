@@ -404,6 +404,124 @@ func TestApplyWizardConfig_AllFields(t *testing.T) {
 	}
 }
 
+// --- ConversationLang persistence tests (reconfigure wizard language question) ---
+
+func TestApplyWizardConfig_ConversationLang(t *testing.T) {
+	root := setupSectionsDir(t)
+
+	// Pre-create language.yaml with the full schema to verify sibling keys survive.
+	sectionsDir := filepath.Join(root, defs.MoAIDir, defs.SectionsSubdir)
+	langPath := filepath.Join(sectionsDir, defs.LanguageYAML)
+	existing := "language:\n  conversation_language: en\n  conversation_language_name: en\n  agent_prompt_language: en\n  code_comments: en\n"
+	if err := os.WriteFile(langPath, []byte(existing), defs.FilePerm); err != nil {
+		t.Fatalf("write language.yaml: %v", err)
+	}
+
+	result := &wizard.WizardResult{ConversationLang: "ko"}
+	if err := applyWizardConfig(root, result); err != nil {
+		t.Fatalf("applyWizardConfig: %v", err)
+	}
+
+	parsed := readYAML(t, langPath)
+	language, ok := parsed["language"].(map[string]any)
+	if !ok {
+		t.Fatal("expected language key in language.yaml")
+	}
+	if language["conversation_language"] != "ko" {
+		t.Errorf("conversation_language = %v, want %q", language["conversation_language"], "ko")
+	}
+	if language["conversation_language_name"] != "ko" {
+		t.Errorf("conversation_language_name = %v, want %q", language["conversation_language_name"], "ko")
+	}
+	// Sibling keys must be preserved.
+	if language["agent_prompt_language"] != "en" {
+		t.Errorf("agent_prompt_language should be preserved, got %v", language["agent_prompt_language"])
+	}
+	if language["code_comments"] != "en" {
+		t.Errorf("code_comments should be preserved, got %v", language["code_comments"])
+	}
+}
+
+func TestApplyWizardConfig_ConversationLang_NoFileCreatedWhenEmpty(t *testing.T) {
+	root := setupSectionsDir(t)
+
+	result := &wizard.WizardResult{ConversationLang: ""}
+	if err := applyWizardConfig(root, result); err != nil {
+		t.Fatalf("applyWizardConfig: %v", err)
+	}
+
+	langPath := filepath.Join(root, defs.MoAIDir, defs.SectionsSubdir, defs.LanguageYAML)
+	if _, err := os.Stat(langPath); !os.IsNotExist(err) {
+		t.Error("language.yaml should not be created when ConversationLang is empty")
+	}
+}
+
+// --- UserName persistence tests (reconfigure wizard user_name question) ---
+
+func TestApplyWizardConfig_UserName(t *testing.T) {
+	root := setupSectionsDir(t)
+
+	result := &wizard.WizardResult{UserName: "GOOS"}
+	if err := applyWizardConfig(root, result); err != nil {
+		t.Fatalf("applyWizardConfig: %v", err)
+	}
+
+	userPath := filepath.Join(root, defs.MoAIDir, defs.SectionsSubdir, defs.UserYAML)
+	parsed := readYAML(t, userPath)
+	user, ok := parsed["user"].(map[string]any)
+	if !ok {
+		t.Fatal("expected user key in user.yaml")
+	}
+	if user["name"] != "GOOS" {
+		t.Errorf("user.name = %v, want %q", user["name"], "GOOS")
+	}
+}
+
+// TestApplyWizardConfig_UserNameWithoutGitCredentials verifies the user.yaml
+// write triggers on UserName alone — no git credentials present.
+func TestApplyWizardConfig_UserNameWithoutGitCredentials(t *testing.T) {
+	root := setupSectionsDir(t)
+
+	result := &wizard.WizardResult{UserName: "Solo"}
+	if err := applyWizardConfig(root, result); err != nil {
+		t.Fatalf("applyWizardConfig: %v", err)
+	}
+
+	userPath := filepath.Join(root, defs.MoAIDir, defs.SectionsSubdir, defs.UserYAML)
+	if _, err := os.Stat(userPath); err != nil {
+		t.Fatalf("user.yaml should be created when only UserName is set: %v", err)
+	}
+	parsed := readYAML(t, userPath)
+	user := parsed["user"].(map[string]any)
+	if user["name"] != "Solo" {
+		t.Errorf("user.name = %v, want %q", user["name"], "Solo")
+	}
+}
+
+// TestApplyWizardConfig_UserNamePreservesGitCredentials verifies user.name does
+// not clobber github/gitlab credentials written in the same call.
+func TestApplyWizardConfig_UserNamePreservesGitCredentials(t *testing.T) {
+	root := setupSectionsDir(t)
+
+	result := &wizard.WizardResult{
+		UserName:       "Both",
+		GitHubUsername: "ghuser",
+	}
+	if err := applyWizardConfig(root, result); err != nil {
+		t.Fatalf("applyWizardConfig: %v", err)
+	}
+
+	userPath := filepath.Join(root, defs.MoAIDir, defs.SectionsSubdir, defs.UserYAML)
+	parsed := readYAML(t, userPath)
+	user := parsed["user"].(map[string]any)
+	if user["name"] != "Both" {
+		t.Errorf("user.name = %v, want %q", user["name"], "Both")
+	}
+	if user["github_username"] != "ghuser" {
+		t.Errorf("github_username = %v, want %q", user["github_username"], "ghuser")
+	}
+}
+
 // presetToSegments tests removed (SPEC-V3R6-STATUSLINE-PRESET-RETIRE-001):
 // the lowercase presetToSegments wrapper in update.go and the capital
 // statusline.PresetToSegments function were both deleted. Named presets no

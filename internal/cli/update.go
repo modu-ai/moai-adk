@@ -1308,9 +1308,13 @@ func runInitWizard(cmd *cobra.Command, reconfigure bool) error {
 func applyWizardConfig(projectRoot string, result *wizard.WizardResult) error {
 	sectionsDir := filepath.Join(projectRoot, defs.MoAIDir, defs.SectionsSubdir)
 
-	// user.yaml: Save GitHub/GitLab username and token (REQ-4, REQ-5)
+	// user.yaml: Save GitHub/GitLab username and token (REQ-4, REQ-5) plus the
+	// wizard-collected user display name. The block also triggers on UserName
+	// alone, so a reconfigure that answers only the user_name question (no git
+	// credentials) still persists user.name.
 	hasUserFields := result.GitHubUsername != "" || result.GitHubToken != "" ||
-		result.GitLabUsername != "" || result.GitLabToken != ""
+		result.GitLabUsername != "" || result.GitLabToken != "" ||
+		result.UserName != ""
 	if hasUserFields {
 		userPath := filepath.Join(sectionsDir, defs.UserYAML)
 		// Read existing file
@@ -1353,6 +1357,11 @@ func applyWizardConfig(projectRoot string, result *wizard.WizardResult) error {
 			userConfig["gitlab_token"] = result.GitLabToken
 		}
 
+		// Save user display name (reconfigure wizard user_name question)
+		if result.UserName != "" {
+			userConfig["name"] = result.UserName
+		}
+
 		user["user"] = userConfig
 
 		// Save to file
@@ -1362,6 +1371,46 @@ func applyWizardConfig(projectRoot string, result *wizard.WizardResult) error {
 		}
 		if err := os.WriteFile(userPath, updatedData, defs.FilePerm); err != nil {
 			return fmt.Errorf("write user.yaml: %w", err)
+		}
+	}
+
+	// language.yaml: Save conversation language (reconfigure wizard language
+	// question). Sets both conversation_language and conversation_language_name
+	// while preserving all sibling keys (agent_prompt_language, code_comments, ...).
+	if result.ConversationLang != "" {
+		langPath := filepath.Join(sectionsDir, defs.LanguageYAML)
+		langData, err := os.ReadFile(langPath)
+		if err != nil && !os.IsNotExist(err) {
+			return fmt.Errorf("read language.yaml: %w", err)
+		}
+
+		var lang map[string]any
+		if len(langData) > 0 {
+			if err := yaml.Unmarshal(langData, &lang); err != nil {
+				return fmt.Errorf("parse language.yaml: %w", err)
+			}
+		} else {
+			lang = make(map[string]any)
+		}
+
+		// Ensure language section exists
+		var language map[string]any
+		if existing, ok := lang["language"].(map[string]any); ok {
+			language = existing
+		} else {
+			language = make(map[string]any)
+		}
+
+		language["conversation_language"] = result.ConversationLang
+		language["conversation_language_name"] = result.ConversationLang
+		lang["language"] = language
+
+		updatedData, err := yaml.Marshal(lang)
+		if err != nil {
+			return fmt.Errorf("marshal language.yaml: %w", err)
+		}
+		if err := os.WriteFile(langPath, updatedData, defs.FilePerm); err != nil {
+			return fmt.Errorf("write language.yaml: %w", err)
 		}
 	}
 
