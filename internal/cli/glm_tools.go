@@ -26,6 +26,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/modu-ai/moai-adk/internal/atomicfile"
 	"github.com/modu-ai/moai-adk/internal/lockfile"
 )
 
@@ -472,7 +473,11 @@ func writeClaudeJSONBytes(configPath string, data []byte) error {
 // feeds the prep-phase apply. Returns (nil, empty-map, nil) when the file does
 // not exist, matching readClaudeJSON semantics.
 func readClaudeJSONRaw(configPath string) ([]byte, map[string]any, error) {
-	data, err := os.ReadFile(configPath)
+	// The prep read runs OUTSIDE the guard's lock, so it races another writer's
+	// atomic replace. On Windows that read transiently fails with a sharing
+	// violation, which would surface as a spurious "설정 파일 읽기 실패" rather
+	// than the lost update the guard exists to prevent.
+	data, err := atomicfile.ReadFile(configPath)
 	if os.IsNotExist(err) {
 		return nil, map[string]any{}, nil
 	}
@@ -574,7 +579,9 @@ func mutateClaudeJSONAtomic(configPath string, apply func(root map[string]any) (
 		publishOut := prepOut
 		compareData := prepData
 		for attempt := 0; ; attempt++ {
-			data, rerr := os.ReadFile(configPath)
+			// A non-cooperating writer (Claude Code itself) can be replacing the
+			// file even while we hold the lock, so this read races too.
+			data, rerr := atomicfile.ReadFile(configPath)
 			if rerr != nil && !os.IsNotExist(rerr) {
 				return fmt.Errorf("설정 파일 읽기 실패: %w", rerr)
 			}
@@ -645,7 +652,7 @@ func withClaudeJSONLock(configPath string, fn func(locked bool) error) error {
 // backupClaudeJSON backs up the current contents of configPath (REQ-GMC-005)
 // Does not back up when the file does not exist.
 func backupClaudeJSON(configPath string) error {
-	data, err := os.ReadFile(configPath)
+	data, err := atomicfile.ReadFile(configPath)
 	if os.IsNotExist(err) {
 		return nil // No backup needed when the file does not exist
 	}
