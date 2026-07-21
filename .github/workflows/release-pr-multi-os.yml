@@ -79,13 +79,7 @@ jobs:
 
       - name: Run tests with race detector
         shell: bash
-        # -timeout 20m raises Go's 10m per-package default. internal/cli under
-        # -race on Windows sits right at that boundary (measured 600.35s, i.e.
-        # a timeout, not a hang), and this matrix runs three OS legs plus the
-        # release-range job concurrently, so the windows runner is the most
-        # contended one. The job's own timeout-minutes: 30 remains the outer
-        # bound.
-        run: go test -race -timeout 20m ./...
+        run: go test -race ./...
 
   # ---------------------------------------------------------------------------
   # Release Range Verify (Wave 3 2026-06-24): for release/* → main PRs, confirm

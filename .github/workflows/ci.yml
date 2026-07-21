@@ -135,10 +135,7 @@ jobs:
       - name: Run tests with race detector (Windows, no coverage)
         if: matrix.os == 'windows-latest'
         shell: bash
-        # -timeout 20m raises Go's 10m per-package default; internal/cli under
-        # -race on Windows sits at that boundary. Kept in sync with the same
-        # step in release-pr-multi-os.yml.
-        run: go test -race -timeout 20m ./...
+        run: go test -race ./...
 
       - name: Upload coverage to Codecov
         if: matrix.os == 'ubuntu-latest'

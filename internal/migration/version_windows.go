@@ -19,56 +19,70 @@ import (
 type lockHandle struct{ path string }
 
 const (
-	lockMaxRetries = 500 // ~5s @ 10ms/retry
+	// Ordinary contention: another holder owns the lock (fs.ErrExist). Budget
+	// ~1s, unchanged from the original design.
+	lockMaxRetries = 100
 	lockRetryDelay = 10 * time.Millisecond
+
+	// Delete-pending window: os.Remove on Windows only *marks* a name for
+	// deletion; it lingers in a delete-pending state until the last handle
+	// closes, and re-creating that name meanwhile fails with
+	// ERROR_ACCESS_DENIED (surfaced as os.ErrPermission) rather than
+	// ERROR_FILE_EXISTS. This window clears in microseconds, so it needs only a
+	// tiny budget — NOT the full contention budget. A genuinely unwritable lock
+	// path (read-only dir, ACL denial) therefore fails in ~50ms, not seconds,
+	// which is what kept slow permission-denied paths from ballooning package
+	// test time on Windows CI.
+	lockTransientRetries = 10
+	lockTransientDelay   = 5 * time.Millisecond
 )
 
-// acquireLock acquires the mutex by creating the lock file with O_CREATE|O_EXCL,
-// retrying on transient contention until the budget is exhausted.
+// acquireLock acquires the mutex by creating the lock file with O_CREATE|O_EXCL.
+//
+// The two failure classes get different budgets so a genuine permission failure
+// is not retried as long as real lock contention:
+//   - fs.ErrExist (another holder) → lockMaxRetries (~1s)
+//   - a transient Windows delete-pending / sharing conflict → lockTransientRetries (~50ms)
+//
+// Neither budget can weaken mutual exclusion: the lock is granted on exactly one
+// path — the atomic O_CREATE|O_EXCL create, which the OS serializes — and that
+// path is untouched. A retry only prolongs the wait; it can never admit a second
+// holder. A non-retryable error returns immediately.
 func acquireLock(lockPath string) (*lockHandle, error) {
 	var lastErr error
-	for i := 0; i < lockMaxRetries; i++ {
+	contentionLeft := lockMaxRetries
+	transientLeft := lockTransientRetries
+	for {
 		f, err := os.OpenFile(lockPath, os.O_CREATE|os.O_EXCL|os.O_WRONLY|os.O_TRUNC, 0600)
 		if err == nil {
 			_ = f.Close()
 			return &lockHandle{path: lockPath}, nil
 		}
-		if !isLockContention(err) {
+		lastErr = err
+		switch {
+		case errors.Is(err, fs.ErrExist):
+			if contentionLeft--; contentionLeft <= 0 {
+				return nil, fmt.Errorf("lock acquire timeout (windows) after %d contention retries: %w", lockMaxRetries, lastErr)
+			}
+			time.Sleep(lockRetryDelay)
+		case isTransientLockError(err):
+			if transientLeft--; transientLeft <= 0 {
+				return nil, fmt.Errorf("lock acquire failed (windows) after %d transient retries: %w", lockTransientRetries, lastErr)
+			}
+			time.Sleep(lockTransientDelay)
+		default:
 			return nil, err
 		}
-		lastErr = err
-		time.Sleep(lockRetryDelay)
 	}
-	return nil, fmt.Errorf("lock acquire timeout (windows) after %d attempts: %w", lockMaxRetries, lastErr)
 }
 
-// isLockContention reports whether a failed O_CREATE|O_EXCL acquire is a
-// transient condition a later retry may clear, rather than a hard failure:
-//
-//   - fs.ErrExist — another holder owns the lock. The ordinary contention path.
-//   - os.ErrPermission (ERROR_ACCESS_DENIED) — the previous holder's releaseLock
-//     removed the file, but os.Remove on Windows only *marks* a name for
-//     deletion: it stays in a "delete pending" state until the last handle
-//     closes, and creating that name meanwhile fails with ERROR_ACCESS_DENIED
-//     rather than ERROR_FILE_EXISTS. Treating it as fatal lets an ordinary
-//     release make the very next acquirer fail outright — which is precisely
-//     what made this lock fail under contention on Windows CI.
-//   - ERROR_SHARING_VIOLATION — another handle (search indexer, virus scanner)
-//     is briefly open on the lock file.
-//
-// Retrying these can NEVER weaken mutual exclusion. The lock is granted on
-// exactly one path — the atomic O_CREATE|O_EXCL create succeeding (CREATE_NEW
-// on Windows, which the OS serializes) — and that path is untouched here. A
-// retry only prolongs the wait; it can never admit a second holder.
-//
-// Mirrors the same classification used for lock acquisition in
-// internal/cli/preference/toggle.go and for rename/read in internal/atomicfile.
-// The os.ErrPermission arm makes a genuinely unwritable lock path (read-only
-// directory, ACL denial) fail after the budget instead of immediately; the
-// error is still surfaced, wrapped, never swallowed.
-func isLockContention(err error) bool {
-	return errors.Is(err, fs.ErrExist) ||
-		errors.Is(err, os.ErrPermission) ||
+// isTransientLockError reports whether a failed O_CREATE|O_EXCL acquire is a
+// short-lived Windows condition (delete-pending or a sharing conflict from a
+// search indexer / virus scanner) that a brief retry may clear. It deliberately
+// does NOT cover fs.ErrExist, which acquireLock handles on its own longer
+// budget. Mirrors the transient classification in internal/atomicfile.
+func isTransientLockError(err error) bool {
+	return errors.Is(err, os.ErrPermission) ||
 		errors.Is(err, windows.ERROR_SHARING_VIOLATION)
 }
 
