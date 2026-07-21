@@ -463,22 +463,19 @@ func assertAllow(t *testing.T, out *HookOutput) {
 	}
 }
 
-// resolveMemoryDirForTest replicates the in-package resolveMemoryDir for the
-// test's HOME-isolated dir. It mirrors the slug derivation so the test seeds
-// the same path the production resolver will target.
+// resolveMemoryDirForTest returns the memory dir the production resolver will
+// target for the test's HOME-isolated dir.
+//
+// It delegates to the in-package resolveMemoryDir rather than re-deriving the
+// slug: a duplicated derivation drifts from production silently. It previously
+// omitted the `:` mapping, so on Windows the seeded path kept the drive colon
+// (`...\projects\C:-Users-...`) and every seeding mkdir failed with "The
+// directory name is invalid" while production wrote elsewhere.
 func resolveMemoryDirForTest(t *testing.T, homeDir string) string {
 	t.Helper()
-	abs, err := filepath.Abs(homeDir)
+	dir, err := resolveMemoryDir(homeDir, homeDir)
 	if err != nil {
-		t.Fatalf("abs: %v", err)
+		t.Fatalf("resolveMemoryDir: %v", err)
 	}
-	slug := strings.Map(func(r rune) rune {
-		switch r {
-		case '/', '\\', '.':
-			return '-'
-		default:
-			return r
-		}
-	}, filepath.Clean(abs))
-	return filepath.Join(homeDir, ".claude", "projects", slug, "memory")
+	return dir
 }
