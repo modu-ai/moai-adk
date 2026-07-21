@@ -88,12 +88,12 @@ func TestUnifiedForm_MultiGroupSinglePage(t *testing.T) {
 	form := buildUnifiedForm(questions, result, "")
 	d := newFormDriver(t, form)
 
-	// Initial page is the Language select (question 1 of 7 visible:
-	// conversation_language, user_name, project_name, model_policy, report_format,
-	// git_mode, advanced_bridge; git conditionals hidden). The stepper note
-	// renders the dynamic denominator "1 / 7" (REQ-TUX2-008).
-	if initial := d.view(); !strings.Contains(initial, "1 / 7") {
-		t.Errorf("initial stepper note must render dynamic denominator '1 / 7', frame:\n%s", initial)
+	// Initial page is the Language select (question 1 of 6 visible:
+	// conversation_language, user_name, project_name, model_policy,
+	// report_format, advanced_bridge — the init set asks nothing about Git).
+	// The stepper note renders the dynamic denominator "1 / 6" (REQ-TUX2-008).
+	if initial := d.view(); !strings.Contains(initial, "1 / 6") {
+		t.Errorf("initial stepper note must render dynamic denominator '1 / 6', frame:\n%s", initial)
 	}
 
 	// Page 1 is the Language select, page 2 is the Identity (user_name) input;
@@ -118,7 +118,8 @@ func TestUnifiedForm_MultiGroupSinglePage(t *testing.T) {
 // harvested WizardResult must match the v1 per-question-form behavior.
 func TestUnifiedForm_ConditionalGroupsAppear(t *testing.T) {
 	result := &WizardResult{}
-	questions := DefaultQuestions("/tmp/unified-cond")
+	// Git conditionals live on the reconfigure set only.
+	questions := ReconfigureQuestions("/tmp/unified-cond")
 	form := buildUnifiedForm(questions, result, "")
 	d := newFormDriver(t, form)
 
@@ -203,7 +204,7 @@ func TestUnifiedForm_ConditionalGroupsAppear(t *testing.T) {
 // never surfaces provider questions (visibility semantics preserved).
 func TestUnifiedForm_ManualModeSkipsConditionals(t *testing.T) {
 	result := &WizardResult{}
-	questions := DefaultQuestions("/tmp/unified-manual")
+	questions := ReconfigureQuestions("/tmp/unified-manual")
 	form := buildUnifiedForm(questions, result, "")
 	d := newFormDriver(t, form)
 
@@ -239,17 +240,22 @@ func TestUnifiedForm_ManualModeSkipsConditionals(t *testing.T) {
 func TestBuildFormGroups_Partition(t *testing.T) {
 	result := &WizardResult{}
 	locale := ""
-	questions := DefaultQuestions("/tmp/unified-partition")
 
-	groups := buildFormGroups(questions, result, &locale)
-	// DefaultQuestions groups: "Language" (conversation_language) + "Identity"
-	// (user_name) + "Project" (project_name, model_policy, report_format) + "Git"
-	// (git_mode) + 6 conditional git questions + advanced_bridge (conditional) =
-	// 1 + 1 + 1 + 1 + 6 + 1 = 11 groups.
+	// Init set: "Language" (conversation_language) + "Identity" (user_name) +
+	// "Project" (project_name, model_policy, report_format) + advanced_bridge
+	// (conditional) = 1 + 1 + 1 + 1 = 4 groups. No Git groups.
+	initGroups := buildFormGroups(DefaultQuestions("/tmp/unified-partition"), result, &locale)
+	if len(initGroups) != 4 {
+		t.Errorf("expected 4 init groups (Language, Identity, Project, advanced_bridge), got %d", len(initGroups))
+	}
+
+	// Reconfigure set adds "Git" (git_mode) + 6 conditional git questions,
+	// each its own hideable group = 4 + 1 + 6 = 11 groups.
+	groups := buildFormGroups(ReconfigureQuestions("/tmp/unified-partition"), result, &locale)
 	if len(groups) != 11 {
 		t.Errorf("expected 11 groups (Language, Identity, Project, Git, 6 git conditionals, advanced_bridge), got %d", len(groups))
 	}
-	for i, g := range groups {
+	for i, g := range append(initGroups, groups...) {
 		if g == nil {
 			t.Fatalf("group %d is nil", i)
 		}

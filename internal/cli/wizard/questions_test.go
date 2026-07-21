@@ -93,7 +93,76 @@ func TestQuestionOrder(t *testing.T) {
 		t.Errorf("first question should be 'conversation_language', got %q", questions[0].ID)
 	}
 
+	// Git questions are absent from the init set — mode and provider are
+	// auto-detected from the repository's remotes.
 	expectedIDs := []string{
+		"conversation_language",
+		"user_name",
+		"project_name",
+		"model_policy",
+		"report_format",
+		"advanced_bridge",
+	}
+
+	if len(questions) != len(expectedIDs) {
+		t.Fatalf("DefaultQuestions() returned %d questions, want %d", len(questions), len(expectedIDs))
+	}
+	for i, expectedID := range expectedIDs {
+		if questions[i].ID != expectedID {
+			t.Errorf("question[%d].ID = %q, want %q", i, questions[i].ID, expectedID)
+		}
+	}
+}
+
+// gitQuestionIDs is the canonical Git question ID set, in order. Shared by the
+// split-set tests below.
+var gitQuestionIDs = []string{
+	"git_mode",
+	"git_provider",
+	"gitlab_instance_url",
+	"github_username",
+	"github_token",
+	"gitlab_username",
+	"gitlab_token",
+}
+
+// TestDefaultQuestionsHasNoGitQuestions verifies the init path asks nothing
+// about Git — the 7 Git questions moved to the reconfigure-only set.
+func TestDefaultQuestionsHasNoGitQuestions(t *testing.T) {
+	questions := DefaultQuestions("/tmp/test-project")
+
+	for _, id := range gitQuestionIDs {
+		if q := QuestionByID(questions, id); q != nil {
+			t.Errorf("git question %q must not be in DefaultQuestions (init auto-detects git config)", id)
+		}
+	}
+}
+
+// TestGitQuestionsReturnsExactSet verifies GitQuestions returns exactly the 7
+// Git questions, in canonical order.
+func TestGitQuestionsReturnsExactSet(t *testing.T) {
+	questions := GitQuestions()
+
+	if len(questions) != len(gitQuestionIDs) {
+		t.Fatalf("GitQuestions() returned %d questions, want %d", len(questions), len(gitQuestionIDs))
+	}
+	for i, want := range gitQuestionIDs {
+		if questions[i].ID != want {
+			t.Errorf("GitQuestions()[%d].ID = %q, want %q", i, questions[i].ID, want)
+		}
+		if questions[i].Group != "Git" {
+			t.Errorf("question %q group = %q, want %q", questions[i].ID, questions[i].Group, "Git")
+		}
+	}
+}
+
+// TestReconfigureQuestionsOrder verifies the reconfigure set is the union of
+// both sets with the Git block spliced between report_format and
+// advanced_bridge — the pre-split order, preserved for `moai update`.
+func TestReconfigureQuestionsOrder(t *testing.T) {
+	questions := ReconfigureQuestions("/tmp/test-project")
+
+	wantIDs := []string{
 		"conversation_language",
 		"user_name",
 		"project_name",
@@ -109,12 +178,37 @@ func TestQuestionOrder(t *testing.T) {
 		"advanced_bridge",
 	}
 
-	for i, expectedID := range expectedIDs {
-		if i >= len(questions) {
-			t.Fatalf("expected question at index %d (%s), but only %d questions", i, expectedID, len(questions))
+	if len(questions) != len(wantIDs) {
+		t.Fatalf("ReconfigureQuestions() returned %d questions, want %d", len(questions), len(wantIDs))
+	}
+	for i, want := range wantIDs {
+		if questions[i].ID != want {
+			t.Errorf("ReconfigureQuestions()[%d].ID = %q, want %q", i, questions[i].ID, want)
 		}
-		if questions[i].ID != expectedID {
-			t.Errorf("question[%d].ID = %q, want %q", i, questions[i].ID, expectedID)
+	}
+
+	// Every ID from both source sets must be present.
+	for _, q := range append(DefaultQuestions("/tmp/test-project"), GitQuestions()...) {
+		if QuestionByID(questions, q.ID) == nil {
+			t.Errorf("ReconfigureQuestions() missing %q", q.ID)
+		}
+	}
+
+	// The Git block sits strictly between report_format and advanced_bridge.
+	indexOf := func(id string) int {
+		for i, q := range questions {
+			if q.ID == id {
+				return i
+			}
+		}
+		return -1
+	}
+	reportIdx, bridgeIdx := indexOf("report_format"), indexOf("advanced_bridge")
+	for _, id := range gitQuestionIDs {
+		i := indexOf(id)
+		if i <= reportIdx || i >= bridgeIdx {
+			t.Errorf("git question %q at index %d must sit between report_format (%d) and advanced_bridge (%d)",
+				id, i, reportIdx, bridgeIdx)
 		}
 	}
 }
@@ -207,13 +301,6 @@ func TestQuestionsAllPresent(t *testing.T) {
 		"project_name",
 		"model_policy",
 		"report_format",
-		"git_mode",
-		"git_provider",
-		"gitlab_instance_url",
-		"github_username",
-		"github_token",
-		"gitlab_username",
-		"gitlab_token",
 		"advanced_bridge",
 	}
 
@@ -224,9 +311,10 @@ func TestQuestionsAllPresent(t *testing.T) {
 	}
 }
 
-// TestGitConditionalFilteredByMode verifies conditional git questions hide when manual.
+// TestGitConditionalFilteredByMode verifies conditional git questions hide when
+// manual. Git questions live on the reconfigure set only.
 func TestGitConditionalFilteredByMode(t *testing.T) {
-	questions := DefaultQuestions("/tmp/test-project")
+	questions := ReconfigureQuestions("/tmp/test-project")
 
 	// When git_mode is "manual", git provider questions should be hidden
 	result := &WizardResult{GitMode: "manual"}

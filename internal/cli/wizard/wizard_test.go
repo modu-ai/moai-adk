@@ -300,7 +300,8 @@ func TestGetUIStrings(t *testing.T) {
 // --- Git provider conditional tests ---
 
 func TestGitProviderQuestion(t *testing.T) {
-	questions := DefaultQuestions("/tmp/test-project")
+	// Git questions live on the reconfigure path only (init auto-detects).
+	questions := ReconfigureQuestions("/tmp/test-project")
 
 	// Verify git_provider question exists
 	q := QuestionByID(questions, "git_provider")
@@ -327,7 +328,7 @@ func TestGitProviderQuestion(t *testing.T) {
 }
 
 func TestGitLabQuestionsConditional(t *testing.T) {
-	questions := DefaultQuestions("/tmp/test-project")
+	questions := ReconfigureQuestions("/tmp/test-project")
 
 	// gitlab_instance_url should only show for gitlab provider
 	q := QuestionByID(questions, "gitlab_instance_url")
@@ -373,7 +374,7 @@ func TestGitLabQuestionsConditional(t *testing.T) {
 }
 
 func TestGitHubQuestionsHiddenForGitLab(t *testing.T) {
-	questions := DefaultQuestions("/tmp/test-project")
+	questions := ReconfigureQuestions("/tmp/test-project")
 
 	// github_username should be hidden for gitlab provider
 	q := QuestionByID(questions, "github_username")
@@ -574,7 +575,9 @@ func TestCharacterize_WizardTheme_BlurredInheritsFromFocused(t *testing.T) {
 // derived from the single dynamic source (TotalVisibleQuestions) and varies
 // with the visible-question set (AC-TUX2-007).
 func TestStepperTotal_DynamicDenominator(t *testing.T) {
-	questions := DefaultQuestions("/tmp/steppertotal")
+	// Exercised against the reconfigure set, which retains the conditional Git
+	// questions that make the denominator vary.
+	questions := ReconfigureQuestions("/tmp/steppertotal")
 
 	cases := []struct {
 		name   string
@@ -604,7 +607,7 @@ func TestStepperTotal_DynamicDenominator(t *testing.T) {
 	// Standard mode expands the denominator further (Phase 1 questions). The
 	// advanced_bridge hides when StandardMode is preset, so the total is 6
 	// unconditional defaults (git conditionals hidden for manual) + 7 Phase 1 = 13.
-	all := append(DefaultQuestions("/tmp/steppertotal"), Phase1Questions("/tmp/steppertotal")...)
+	all := append(ReconfigureQuestions("/tmp/steppertotal"), Phase1Questions("/tmp/steppertotal")...)
 	std := &WizardResult{GitMode: "manual", StandardMode: true, DesignEnabled: true}
 	if got := stepperDenominator(all, std); got != 13 {
 		t.Errorf("standard-mode denominator: expected 13 (6 + 7 Phase 1), got %d", got)
@@ -944,7 +947,9 @@ func TestDefaultQuestions_SelectQuestionsHaveOptions(t *testing.T) {
 }
 
 func TestDefaultQuestions_ConditionalQuestionsHaveConditions(t *testing.T) {
-	questions := DefaultQuestions("/tmp/test")
+	// The conditional IDs below are Git questions, which survive on the
+	// reconfigure set only.
+	questions := ReconfigureQuestions("/tmp/test")
 	conditionalIDs := map[string]bool{
 		"git_provider":        true,
 		"gitlab_instance_url": true,
@@ -1006,7 +1011,7 @@ func TestRunWithDefaults_AcceptsLocaleParameter(t *testing.T) {
 
 func TestDefaultQuestions_GitHubUsernameDefaultOverride(t *testing.T) {
 	// The github_username default from DefaultQuestions should be overridable
-	questions := DefaultQuestions("/tmp/test")
+	questions := ReconfigureQuestions("/tmp/test")
 	q := QuestionByID(questions, "github_username")
 	if q == nil {
 		t.Fatal("github_username question not found")
@@ -1025,7 +1030,7 @@ func TestDefaultQuestions_GitHubUsernameDefaultOverride(t *testing.T) {
 }
 
 func TestDefaultQuestions_GitLabUsernameDefaultOverride(t *testing.T) {
-	questions := DefaultQuestions("/tmp/test")
+	questions := ReconfigureQuestions("/tmp/test")
 	q := QuestionByID(questions, "gitlab_username")
 	if q == nil {
 		t.Fatal("gitlab_username question not found")
@@ -1046,7 +1051,7 @@ func TestDefaultQuestions_GitLabUsernameDefaultOverride(t *testing.T) {
 // --- REQ-3: skip github_token question when gh auth is authenticated test ---
 
 func TestDefaultQuestions_GitHubTokenCondition(t *testing.T) {
-	questions := DefaultQuestions("/tmp/test")
+	questions := ReconfigureQuestions("/tmp/test")
 	q := QuestionByID(questions, "github_token")
 	if q == nil {
 		t.Fatal("github_token question not found")
@@ -1213,7 +1218,7 @@ func TestGetUIStrings_AllLocales(t *testing.T) {
 }
 
 func TestGetLocalizedQuestion_AllLocales_ForGitModeQuestion(t *testing.T) {
-	questions := DefaultQuestions("/tmp/test")
+	questions := ReconfigureQuestions("/tmp/test")
 	q := QuestionByID(questions, "git_mode")
 	if q == nil {
 		t.Fatal("git_mode question not found")

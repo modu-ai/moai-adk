@@ -7,21 +7,26 @@ import (
 	"strings"
 )
 
-// DefaultQuestions returns the standard set of questions for project initialization.
-// The questions follow this order:
-// 1. Conversation language (drives the rendering language of every later question)
-// 2. User name (optional)
-// 3. Project name (required)
-// 4. Model policy
-// 5. Report format
-// 6. Git mode
-// 7. Git provider (conditional)
-// 8. GitLab instance URL (conditional)
-// 9. GitHub username (conditional)
-// 10. GitHub token (conditional)
-// 11. GitLab username (conditional)
-// 12. GitLab token (conditional)
-// 13. Advanced-settings bridge (conditional — hidden when StandardMode is preset by flag)
+// The wizard question set is split across three constructors:
+//
+//   - DefaultQuestions      — the `moai init` set (NO Git questions)
+//   - GitQuestions          — the 7 Git questions, on their own
+//   - ReconfigureQuestions  — DefaultQuestions with GitQuestions spliced back in,
+//     used by the `moai update --reconfigure` path
+//
+// DefaultQuestions returns the question set asked during project
+// initialization, in this order:
+//  1. Conversation language (drives the rendering language of every later question)
+//  2. User name (optional)
+//  3. Project name (required)
+//  4. Model policy
+//  5. Report format
+//  6. Advanced-settings bridge (conditional — hidden when StandardMode is preset by flag)
+//
+// Git mode and provider are NOT asked here: `moai init` derives them from the
+// repository's configured remotes (see detectGitConfig in internal/cli), so a
+// fresh init no longer interrogates the user about Git. The reconfigure path
+// still asks them — see ReconfigureQuestions.
 //
 // plan_type and development_mode are NO LONGER interactive questions — they
 // default silently (plan_type → subscription at persistence; development_mode →
@@ -108,7 +113,39 @@ func DefaultQuestions(projectRoot string) []Question {
 			Default:  "html+md",
 			Required: true,
 		},
-		// 4. Git Mode
+		// 6. Advanced-settings bridge (Quick mode only). Answering Yes flips
+		// StandardMode on, which reveals the Phase 1 questions (gated on
+		// r.StandardMode) in the same wizard run. Hidden when --standard/--advanced
+		// already preset StandardMode (Condition returns false), so the flag path
+		// never double-asks.
+		{
+			ID:          "advanced_bridge",
+			Group:       "Options",
+			Type:        QuestionTypeConfirm,
+			Title:       "Configure advanced settings? (default: No)",
+			Description: "Reveals project mode, harness profile, LSP, quality gates, and design options in this run.",
+			Default:     "false",
+			Required:    false,
+			Condition:   func(r *WizardResult) bool { return !r.StandardMode },
+		},
+	}
+}
+
+// GitQuestions returns the 7 Git questions, in their canonical order:
+//  1. Git mode
+//  2. Git provider (conditional)
+//  3. GitLab instance URL (conditional)
+//  4. GitHub username (conditional)
+//  5. GitHub token (conditional)
+//  6. GitLab username (conditional)
+//  7. GitLab token (conditional)
+//
+// These are asked by the `moai update --reconfigure` path only (via
+// ReconfigureQuestions); `moai init` auto-detects mode and provider from the
+// repository's remotes instead.
+func GitQuestions() []Question {
+	return []Question{
+		// 1. Git Mode
 		{
 			ID:          "git_mode",
 			Group:       "Git",
@@ -123,7 +160,7 @@ func DefaultQuestions(projectRoot string) []Question {
 			Default:  "manual",
 			Required: true,
 		},
-		// 4. Git Provider (conditional - only for personal/team modes)
+		// 2. Git Provider (conditional - only for personal/team modes)
 		{
 			ID:          "git_provider",
 			Group:       "Git",
@@ -140,7 +177,7 @@ func DefaultQuestions(projectRoot string) []Question {
 				return r.GitMode == "personal" || r.GitMode == "team"
 			},
 		},
-		// 5. GitLab Instance URL (conditional - only for gitlab provider)
+		// 3. GitLab Instance URL (conditional - only for gitlab provider)
 		{
 			ID:          "gitlab_instance_url",
 			Group:       "Git",
@@ -153,7 +190,7 @@ func DefaultQuestions(projectRoot string) []Question {
 				return (r.GitMode == "personal" || r.GitMode == "team") && r.GitProvider == "gitlab"
 			},
 		},
-		// 6. GitHub Username (conditional - only for github provider)
+		// 4. GitHub Username (conditional - only for github provider)
 		{
 			ID:          "github_username",
 			Group:       "Git",
@@ -166,7 +203,7 @@ func DefaultQuestions(projectRoot string) []Question {
 				return (r.GitMode == "personal" || r.GitMode == "team") && r.GitProvider == "github"
 			},
 		},
-		// 7. GitHub Token (conditional - only for github provider)
+		// 5. GitHub Token (conditional - only for github provider)
 		{
 			ID:          "github_token",
 			Group:       "Git",
@@ -179,7 +216,7 @@ func DefaultQuestions(projectRoot string) []Question {
 				return (r.GitMode == "personal" || r.GitMode == "team") && r.GitProvider == "github"
 			},
 		},
-		// 8. GitLab Username (conditional - only for gitlab provider)
+		// 6. GitLab Username (conditional - only for gitlab provider)
 		{
 			ID:          "gitlab_username",
 			Group:       "Git",
@@ -192,7 +229,7 @@ func DefaultQuestions(projectRoot string) []Question {
 				return (r.GitMode == "personal" || r.GitMode == "team") && r.GitProvider == "gitlab"
 			},
 		},
-		// 9. GitLab Token (conditional - only for gitlab provider)
+		// 7. GitLab Token (conditional - only for gitlab provider)
 		{
 			ID:          "gitlab_token",
 			Group:       "Git",
@@ -205,22 +242,33 @@ func DefaultQuestions(projectRoot string) []Question {
 				return (r.GitMode == "personal" || r.GitMode == "team") && r.GitProvider == "gitlab"
 			},
 		},
-		// 13. Advanced-settings bridge (Quick mode only). Answering Yes flips
-		// StandardMode on, which reveals the Phase 1 questions (gated on
-		// r.StandardMode) in the same wizard run. Hidden when --standard/--advanced
-		// already preset StandardMode (Condition returns false), so the flag path
-		// never double-asks.
-		{
-			ID:          "advanced_bridge",
-			Group:       "Options",
-			Type:        QuestionTypeConfirm,
-			Title:       "Configure advanced settings? (default: No)",
-			Description: "Reveals project mode, harness profile, LSP, quality gates, and design options in this run.",
-			Default:     "false",
-			Required:    false,
-			Condition:   func(r *WizardResult) bool { return !r.StandardMode },
-		},
 	}
+}
+
+// ReconfigureQuestions returns the full question set used by the
+// `moai update --reconfigure` path: DefaultQuestions with GitQuestions spliced
+// back in at their original position — after report_format, before
+// advanced_bridge — so the reconfigure wizard's question order is unchanged.
+func ReconfigureQuestions(projectRoot string) []Question {
+	base := DefaultQuestions(projectRoot)
+	git := GitQuestions()
+
+	// Splice point: immediately after report_format. Falling back to
+	// "before the trailing advanced_bridge" keeps the order correct if the
+	// base set is ever reordered.
+	splice := len(base)
+	for i, q := range base {
+		if q.ID == "report_format" {
+			splice = i + 1
+			break
+		}
+	}
+
+	merged := make([]Question, 0, len(base)+len(git))
+	merged = append(merged, base[:splice]...)
+	merged = append(merged, git...)
+	merged = append(merged, base[splice:]...)
+	return merged
 }
 
 // FilteredQuestions returns questions filtered by their conditions.
