@@ -5,6 +5,8 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
+
+	"github.com/modu-ai/moai-adk/internal/atomicfile"
 )
 
 // @MX:NOTE - SPEC-V3R2-RT-007 .moai/state/migration-version is the single source of truth for "applied migrations".
@@ -67,7 +69,7 @@ func writeVersion(projectRoot string, version int) error {
 	}
 
 	// Atomic rename (REQ-V3R2-RT-007-013).
-	if err := os.Rename(versionTmpFile, versionFile); err != nil {
+	if err := atomicfile.Replace(versionTmpFile, versionFile); err != nil {
 		return fmt.Errorf("version-file atomic rename 실패: %w", err)
 	}
 

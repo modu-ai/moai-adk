@@ -8,6 +8,8 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
+
+	"github.com/modu-ai/moai-adk/internal/atomicfile"
 )
 
 // StateDir is the per-session goal-state directory under a project root.
@@ -87,7 +89,7 @@ func SaveGoal(projectRoot string, g *Goal) error {
 	if err := tmp.Close(); err != nil {
 		return fmt.Errorf("goal tmp close: %w", err)
 	}
-	if err := os.Rename(tmpName, finalPath); err != nil {
+	if err := atomicfile.Replace(tmpName, finalPath); err != nil {
 		return fmt.Errorf("goal rename %s: %w", finalPath, err)
 	}
 	cleanup = false

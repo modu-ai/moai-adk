@@ -10,6 +10,7 @@
 package cli
 
 import (
+	"errors"
 	"fmt"
 	"os/exec"
 	"strconv"
@@ -49,4 +50,11 @@ func findPortHolderImpl(port int) (int, bool, error) {
 // 검증한 뒤에만 호출된다 — 외부 프로세스에는 절대 도달하지 않는 것이 안전 계약이다.
 func killProcessImpl(pid int) error {
 	return syscall.Kill(pid, syscall.SIGTERM)
+}
+
+// isAddrInUse reports whether a bind failure is "address already in use".
+//
+// syscall.EADDRINUSE is the POSIX errno the kernel returns here.
+func isAddrInUse(err error) bool {
+	return errors.Is(err, syscall.EADDRINUSE)
 }

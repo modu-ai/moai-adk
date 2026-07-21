@@ -25,6 +25,8 @@ import (
 	"runtime"
 	"sort"
 	"time"
+
+	"github.com/modu-ai/moai-adk/internal/atomicfile"
 )
 
 // DefaultRegistryPath is the canonical project-relative path for the
@@ -423,7 +425,7 @@ func (r *Registry) writeAtomic(entries []Entry) error {
 		return fmt.Errorf("session registry: close temp: %w", err)
 	}
 
-	if err := os.Rename(tmpPath, r.path); err != nil {
+	if err := atomicfile.Replace(tmpPath, r.path); err != nil {
 		cleanup()
 		return fmt.Errorf("session registry: rename temp -> %s: %w", r.path, err)
 	}

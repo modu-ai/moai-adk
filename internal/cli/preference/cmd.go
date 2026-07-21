@@ -149,13 +149,18 @@ func resolveMemoryDirOverride(flagValue string) (string, error) {
 
 // memorySlug mirrors internal/hook/session_end.go projectSlug: encode an
 // absolute path into Claude Code's project-directory naming convention
-// (/ and \ and . → -). Duplicated here to avoid an internal/hook import.
+// (/ and \ and . and : → -). Duplicated here to avoid an internal/hook import;
+// the two implementations must stay character-for-character identical.
+//
+// The `:` mapping is required on Windows, where filepath.Abs yields a
+// drive-qualified path (`C:\Users\...`) and a colon is not legal inside a path
+// component. POSIX slugs are unaffected (no colon to map).
 func memorySlug(absPath string) string {
 	clean := filepath.Clean(absPath)
 	var out []rune
 	for _, r := range clean {
 		switch r {
-		case '/', '\\', '.':
+		case '/', '\\', '.', ':':
 			out = append(out, '-')
 		default:
 			out = append(out, r)

@@ -14,6 +14,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 
@@ -27,6 +28,18 @@ func skipIfRoot(t *testing.T) {
 	t.Helper()
 	if os.Geteuid() == 0 {
 		t.Skip("skipped as root: permission-based error path is unreachable")
+	}
+}
+
+// skipIfWindows skips a test whose error path is forced by clearing POSIX
+// permission bits. Windows does not enforce them (os.Chmod only toggles the
+// read-only attribute, and directories ignore it entirely), so the operation
+// under test succeeds and the error branch is unreachable. The branch stays
+// covered on unix — this is a platform-coverage gap, not a dropped assertion.
+func skipIfWindows(t *testing.T) {
+	t.Helper()
+	if runtime.GOOS == "windows" {
+		t.Skip("POSIX permission bits are not enforced on Windows; error path covered on unix")
 	}
 }
 
@@ -134,6 +147,7 @@ func TestMergeYAMLDeep_InvalidOldData(t *testing.T) {
 // EACCES (not IsNotExist).
 func TestBackupMoaiConfig_StatError(t *testing.T) {
 	skipIfRoot(t)
+	skipIfWindows(t)
 
 	root := t.TempDir()
 	moaiDir := filepath.Join(root, defs.MoAIDir)
@@ -188,6 +202,7 @@ func TestBackupMoaiConfig_MkdirAllError(t *testing.T) {
 // read directory entries and passes an error to the walk function.
 func TestBackupMoaiConfig_WalkError(t *testing.T) {
 	skipIfRoot(t)
+	skipIfWindows(t)
 
 	root := t.TempDir()
 	configDir := filepath.Join(root, defs.MoAIDir, defs.ConfigSubdir)
@@ -217,6 +232,7 @@ func TestBackupMoaiConfig_WalkError(t *testing.T) {
 // read, causing ReadFile to fail.
 func TestBackupMoaiConfig_ReadFileError(t *testing.T) {
 	skipIfRoot(t)
+	skipIfWindows(t)
 
 	root := t.TempDir()
 	configDir := filepath.Join(root, defs.MoAIDir, defs.ConfigSubdir)
@@ -243,15 +259,12 @@ func TestBackupMoaiConfig_ReadFileError(t *testing.T) {
 }
 
 // TestSaveTemplateDefaults_MkdirAllError covers the MkdirAll error for the
-// sections destination directory (backup.go:163-165). With destDir at mode
-// 0o500, MkdirAll for the sections subdirectory fails.
+// sections destination directory (backup.go:163-165). A regular FILE at the
+// "sections" path makes MkdirAll fail on every platform (ENOTDIR on unix, a
+// name collision on Windows), so this needs neither a root nor a Windows skip.
 func TestSaveTemplateDefaults_MkdirAllError(t *testing.T) {
-	skipIfRoot(t)
-
 	destDir := t.TempDir()
-	restorePerm(t, destDir)
-
-	if err := os.Chmod(destDir, 0o500); err != nil {
+	if err := os.WriteFile(filepath.Join(destDir, "sections"), []byte("not a dir"), 0o644); err != nil {
 		t.Fatal(err)
 	}
 
@@ -372,6 +385,7 @@ func TestCleanupOldBackups_ReadDirError(t *testing.T) {
 // removal, triggering the warning path.
 func TestCleanupOldBackups_RemoveAllError(t *testing.T) {
 	skipIfRoot(t)
+	skipIfWindows(t)
 
 	root := t.TempDir()
 	backupsDir := filepath.Join(root, defs.BackupsDir)
@@ -456,6 +470,7 @@ func TestRestoreMoaiConfig_TargetNotExists(t *testing.T) {
 // directory is read-only, so MkdirAll for the parent fails.
 func TestRestoreMoaiConfig_TargetNotExists_MkdirAllError(t *testing.T) {
 	skipIfRoot(t)
+	skipIfWindows(t)
 
 	root := t.TempDir()
 	backupDir := filepath.Join(root, "backup")
@@ -538,6 +553,7 @@ func TestRestoreMoaiConfig_3WayMergeFail(t *testing.T) {
 // so Walk passes an error to the walk function.
 func TestRestoreMoaiConfig_WalkError(t *testing.T) {
 	skipIfRoot(t)
+	skipIfWindows(t)
 
 	root := t.TempDir()
 	backupDir := filepath.Join(root, "backup")
@@ -563,6 +579,7 @@ func TestRestoreMoaiConfig_WalkError(t *testing.T) {
 // error (restore.go:93-95). The backup .yaml file is unreadable (mode 0o000).
 func TestRestoreMoaiConfig_ReadFileBackupError(t *testing.T) {
 	skipIfRoot(t)
+	skipIfWindows(t)
 
 	root := t.TempDir()
 	backupDir := filepath.Join(root, "backup")
@@ -688,6 +705,7 @@ func TestRestoreMoaiConfigLegacy_MergeFail(t *testing.T) {
 // propagation in the legacy path (restore.go:153-155).
 func TestRestoreMoaiConfigLegacy_WalkError(t *testing.T) {
 	skipIfRoot(t)
+	skipIfWindows(t)
 
 	root := t.TempDir()
 	backupDir := filepath.Join(root, "backup")
@@ -716,6 +734,7 @@ func TestRestoreMoaiConfigLegacy_WalkError(t *testing.T) {
 // error in the legacy path (restore.go:188-190).
 func TestRestoreMoaiConfigLegacy_ReadFileBackupError(t *testing.T) {
 	skipIfRoot(t)
+	skipIfWindows(t)
 
 	root := t.TempDir()
 	backupDir := filepath.Join(root, "backup")

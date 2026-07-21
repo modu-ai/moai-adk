@@ -216,18 +216,26 @@ func resolveMemoryDir(homeDir, projectDir string) (string, error) {
 }
 
 // projectSlug encodes an absolute path into Claude Code's project directory
-// naming convention. Both `/` (or `\` on Windows) and `.` are mapped to `-`.
+// naming convention. `/` (or `\` on Windows), `.` and `:` are mapped to `-`.
+//
+// The `:` mapping is required on Windows, where filepath.Abs yields a
+// drive-qualified path (`C:\Users\...`). A colon is not a legal character in a
+// Windows path component, so leaving it in the slug makes the derived
+// ~/.claude/projects/{slug} directory impossible to create ("The directory
+// name is invalid"). POSIX absolute paths contain no colon, so their slugs are
+// unchanged by this mapping.
 //
 // Examples (observed empirically from ~/.claude/projects/):
 //
 //	/Users/goos/MoAI/moai-adk-go        → -Users-goos-MoAI-moai-adk-go
 //	/Users/goos/.moai/worktrees/foo     → -Users-goos--moai-worktrees-foo
 //	/Users/goos/.claude                 → -Users-goos--claude
+//	C:\Users\goos\MoAI                  → C--Users-goos-MoAI   (Windows)
 func projectSlug(absPath string) string {
 	clean := filepath.Clean(absPath)
 	return strings.Map(func(r rune) rune {
 		switch r {
-		case '/', '\\', '.':
+		case '/', '\\', '.', ':':
 			return '-'
 		default:
 			return r

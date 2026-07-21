@@ -3,6 +3,7 @@ package migration
 import (
 	"os"
 	"path/filepath"
+	"runtime"
 	"strconv"
 	"sync"
 	"testing"
@@ -60,9 +61,15 @@ func TestVersionFile_AtomicRename(t *testing.T) {
 	if string(data) != strconv.Itoa(7) {
 		t.Errorf("version file content: got %q, want %q", string(data), "7")
 	}
-	// The lock file must have been created during the write.
-	if _, err := os.Stat(filepath.Join(stateDir, versionFileName+".lock")); err != nil {
-		t.Errorf("lock file should exist after write; stat err=%v", err)
+	// The lock file must have been created during the write and left behind.
+	// This is Unix-only: the Unix lock is a flock(2) on a persistent file,
+	// whereas the Windows lock is an O_CREATE|O_EXCL file mutex whose
+	// releaseLock deletes the file by design (version_windows.go). Asserting
+	// residue on Windows would assert against the documented contract.
+	if runtime.GOOS != "windows" {
+		if _, err := os.Stat(filepath.Join(stateDir, versionFileName+".lock")); err != nil {
+			t.Errorf("lock file should exist after write; stat err=%v", err)
+		}
 	}
 }
 

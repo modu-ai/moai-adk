@@ -32,6 +32,7 @@ func TestToggleRace_ConcurrentFlipsPreserveParity(t *testing.T) {
 		}
 
 		const N = 10 // even
+		var toggleErrs atomic.Value
 		var wg sync.WaitGroup
 		barrier := make(chan struct{})
 		start := make(chan struct{})
@@ -42,7 +43,12 @@ func TestToggleRace_ConcurrentFlipsPreserveParity(t *testing.T) {
 				defer wg.Done()
 				ready.Add(1)
 				<-start
-				_, _ = TogglePersonalization(root, time.Now())
+				// A swallowed error here is indistinguishable from a lost
+				// update: the flip never happens and parity breaks with no
+				// explanation. Record it so the failure is attributable.
+				if _, err := TogglePersonalization(root, time.Now()); err != nil {
+					toggleErrs.Store(err)
+				}
 				barrier <- struct{}{} // signal done (drained below)
 			}()
 		}
@@ -57,6 +63,9 @@ func TestToggleRace_ConcurrentFlipsPreserveParity(t *testing.T) {
 		}
 		wg.Wait()
 
+		if err, ok := toggleErrs.Load().(error); ok {
+			t.Fatalf("TogglePersonalization returned an error; a failed flip is a lost flip: %v", err)
+		}
 		if IsPersonalizationDisabled(root) {
 			t.Fatalf("after %d (even) concurrent flips from active, expected ACTIVE (sentinel absent); got DISABLED — a concurrent toggle was lost (read-then-flip TOCTOU)", N)
 		}
@@ -69,6 +78,7 @@ func TestToggleRace_ConcurrentFlipsPreserveParity(t *testing.T) {
 		}
 
 		const N = 7 // odd
+		var toggleErrs atomic.Value
 		var wg sync.WaitGroup
 		barrier := make(chan struct{})
 		start := make(chan struct{})
@@ -79,7 +89,9 @@ func TestToggleRace_ConcurrentFlipsPreserveParity(t *testing.T) {
 				defer wg.Done()
 				ready.Add(1)
 				<-start
-				_, _ = TogglePersonalization(root, time.Now())
+				if _, err := TogglePersonalization(root, time.Now()); err != nil {
+					toggleErrs.Store(err)
+				}
 				barrier <- struct{}{}
 			}()
 		}
@@ -92,6 +104,9 @@ func TestToggleRace_ConcurrentFlipsPreserveParity(t *testing.T) {
 		}
 		wg.Wait()
 
+		if err, ok := toggleErrs.Load().(error); ok {
+			t.Fatalf("TogglePersonalization returned an error; a failed flip is a lost flip: %v", err)
+		}
 		if !IsPersonalizationDisabled(root) {
 			t.Fatalf("after %d (odd) concurrent flips from active, expected DISABLED (sentinel present); got ACTIVE — a concurrent toggle was lost (read-then-flip TOCTOU)", N)
 		}

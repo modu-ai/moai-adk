@@ -13,6 +13,7 @@ import (
 	"bytes"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 
@@ -25,6 +26,18 @@ func skipIfRoot(t *testing.T) {
 	t.Helper()
 	if os.Geteuid() == 0 {
 		t.Skip("skipped as root: permission-based error path is unreachable")
+	}
+}
+
+// skipIfWindows skips a test whose error path is forced by clearing POSIX
+// permission bits. Windows does not enforce them (os.Chmod only toggles the
+// read-only attribute, and directories ignore it entirely), so the operation
+// under test succeeds and the error branch is unreachable. The branch stays
+// covered on unix — this is a platform-coverage gap, not a dropped assertion.
+func skipIfWindows(t *testing.T) {
+	t.Helper()
+	if runtime.GOOS == "windows" {
+		t.Skip("POSIX permission bits are not enforced on Windows; error path covered on unix")
 	}
 }
 
@@ -43,6 +56,7 @@ func restorePerm(t *testing.T, dir string) {
 // fail with EACCES (not IsNotExist), triggering the Fail+return path.
 func TestCleanMoaiManagedPaths_StatPermissionError(t *testing.T) {
 	skipIfRoot(t)
+	skipIfWindows(t)
 
 	root := t.TempDir()
 	claudeDir := filepath.Join(root, defs.ClaudeDir)
@@ -70,6 +84,7 @@ func TestCleanMoaiManagedPaths_StatPermissionError(t *testing.T) {
 // stat succeeds (execute bit set) but RemoveAll fails (no write bit to unlink).
 func TestCleanMoaiManagedPaths_RemoveAllError(t *testing.T) {
 	skipIfRoot(t)
+	skipIfWindows(t)
 
 	root := t.TempDir()
 	claudeDir := filepath.Join(root, defs.ClaudeDir)
@@ -101,6 +116,7 @@ func TestCleanMoaiManagedPaths_RemoveAllError(t *testing.T) {
 // matched by Glob, but .claude/skills at mode 0o500 prevents removal.
 func TestCleanMoaiManagedPaths_GlobRemoveAllError(t *testing.T) {
 	skipIfRoot(t)
+	skipIfWindows(t)
 
 	root := t.TempDir()
 	skillsDir := filepath.Join(root, defs.ClaudeDir, defs.SkillsSubdir)
@@ -129,6 +145,7 @@ func TestCleanMoaiManagedPaths_GlobRemoveAllError(t *testing.T) {
 // 0o500, removing the config subdirectory fails with EACCES.
 func TestCleanMoaiManagedPaths_ConfigDirRemoveAllError(t *testing.T) {
 	skipIfRoot(t)
+	skipIfWindows(t)
 
 	root := t.TempDir()
 	moaiDir := filepath.Join(root, defs.MoAIDir)
@@ -158,6 +175,7 @@ func TestCleanMoaiManagedPaths_ConfigDirRemoveAllError(t *testing.T) {
 // fails and the error propagates through CleanMoaiManagedPaths.
 func TestCleanMoaiManagedPaths_MigrateErrorPropagation(t *testing.T) {
 	skipIfRoot(t)
+	skipIfWindows(t)
 
 	root := t.TempDir()
 	moaiDir := filepath.Join(root, defs.MoAIDir)
@@ -188,6 +206,7 @@ func TestCleanMoaiManagedPaths_MigrateErrorPropagation(t *testing.T) {
 // mode 0o500 prevents the Rename (no write permission on parent).
 func TestMigrateLegacyMemoryDir_RenameError(t *testing.T) {
 	skipIfRoot(t)
+	skipIfWindows(t)
 
 	root := t.TempDir()
 	moaiDir := filepath.Join(root, defs.MoAIDir)
@@ -216,6 +235,7 @@ func TestMigrateLegacyMemoryDir_RenameError(t *testing.T) {
 // at 0o500, removing the legacy directory fails (no write on parent).
 func TestMigrateLegacyMemoryDir_RemoveAllLegacyError(t *testing.T) {
 	skipIfRoot(t)
+	skipIfWindows(t)
 
 	root := t.TempDir()
 	moaiDir := filepath.Join(root, defs.MoAIDir)
@@ -274,6 +294,7 @@ func TestScaffoldEvolutionDir_MkdirAllError(t *testing.T) {
 // so Stat(.gitkeep) returns IsNotExist but WriteFile fails (no write on parent).
 func TestScaffoldEvolutionDir_GitkeepWriteError(t *testing.T) {
 	skipIfRoot(t)
+	skipIfWindows(t)
 
 	root := t.TempDir()
 	evolutionDir := filepath.Join(root, ".moai", "evolution")
@@ -302,6 +323,7 @@ func TestScaffoldEvolutionDir_GitkeepWriteError(t *testing.T) {
 // creating manifest.yaml.
 func TestScaffoldEvolutionDir_ManifestWriteError(t *testing.T) {
 	skipIfRoot(t)
+	skipIfWindows(t)
 
 	root := t.TempDir()
 	evolutionDir := filepath.Join(root, ".moai", "evolution")
@@ -336,6 +358,7 @@ func TestScaffoldEvolutionDir_ManifestWriteError(t *testing.T) {
 // changelog.md.
 func TestScaffoldEvolutionDir_ChangelogWriteError(t *testing.T) {
 	skipIfRoot(t)
+	skipIfWindows(t)
 
 	root := t.TempDir()
 	evolutionDir := filepath.Join(root, ".moai", "evolution")

@@ -9,7 +9,11 @@
 
 package cli
 
-import "errors"
+import (
+	"errors"
+
+	"golang.org/x/sys/windows"
+)
 
 // findPortHolderImpl은 Windows에서 지원되지 않는다. 에러를 돌려 ensurePortFree가
 // 회수를 건너뛰고 web.Run에 위임하게 한다.
@@ -22,4 +26,16 @@ func findPortHolderImpl(_ int) (int, bool, error) {
 // 인터페이스 완결성을 위해 명시적 미지원 에러를 돌려준다.
 func killProcessImpl(_ int) error {
 	return errors.New("process termination not supported on windows")
+}
+
+// isAddrInUse reports whether a bind failure is "address already in use".
+//
+// Winsock reports WSAEADDRINUSE (10048), NOT the POSIX syscall.EADDRINUSE (48)
+// constant that also exists on Windows with an unrelated value — matching only
+// the POSIX constant makes every Windows port conflict read as "port free".
+// The Windows error message ("Only one usage of each socket address ... is
+// normally permitted") does not contain the unix "address already in use"
+// string either, so the caller's string fallback cannot cover this.
+func isAddrInUse(err error) bool {
+	return errors.Is(err, windows.WSAEADDRINUSE)
 }

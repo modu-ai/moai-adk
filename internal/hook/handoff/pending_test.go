@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 	"time"
 )
@@ -293,6 +294,12 @@ func TestSavePending_FilePerm(t *testing.T) {
 	info, err := os.Stat(PendingPath(projectDir))
 	if err != nil {
 		t.Fatalf("stat: %v", err)
+	}
+	if runtime.GOOS == "windows" {
+		// Windows has no POSIX mode bits: Go synthesizes 0666/0444 from the
+		// read-only attribute, so a 0600 comparison is not meaningful there.
+		// The 0600 discipline stays asserted on unix.
+		t.Skip("POSIX file mode bits are not represented on Windows; 0600 assertion covered on unix")
 	}
 	if perm := info.Mode().Perm(); perm != 0o600 {
 		t.Errorf("pending.json perm: got %o, want 0600", perm)

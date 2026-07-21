@@ -65,8 +65,11 @@ func TestStatePathPerSession(t *testing.T) {
 	if filepath.Base(a) != "sess-A.json" {
 		t.Errorf("path A base: want sess-A.json, got %s", filepath.Base(a))
 	}
-	if !strings.Contains(a, StateDir) {
-		t.Errorf("path A must be under %s: %s", StateDir, a)
+	// StateDir is declared in slash form as a logical location; StatePath joins
+	// it with filepath.Join, so the rendered path carries OS-native separators.
+	wantDir := filepath.FromSlash(StateDir)
+	if !strings.Contains(a, wantDir) {
+		t.Errorf("path A must be under %s: %s", wantDir, a)
 	}
 }
 

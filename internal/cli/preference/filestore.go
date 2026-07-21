@@ -10,6 +10,7 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/modu-ai/moai-adk/internal/atomicfile"
 	"gopkg.in/yaml.v3"
 )
 
@@ -491,7 +492,7 @@ func atomicWrite(path string, data []byte) error {
 		cleanup()
 		return fmt.Errorf("close temp file: %w", err)
 	}
-	if err := os.Rename(tmpName, path); err != nil {
+	if err := atomicfile.Replace(tmpName, path); err != nil {
 		cleanup()
 		return fmt.Errorf("rename temp → final: %w", err)
 	}

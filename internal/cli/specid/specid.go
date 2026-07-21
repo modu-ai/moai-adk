@@ -48,8 +48,14 @@ func ValidateSpecID(specID string) error {
 //
 // @MX:NOTE: [AUTO] SPEC-SEC-HARDEN-002 M2a — worktree new args[0]용 traversal 가드. 브랜치명 "/" 허용, ".."/절대경로(봉쇄 탈출)만 거부. strict 검증은 ValidateSpecID.
 func ValidateNoTraversal(arg string) error {
-	// 절대 경로 거부 (봉쇄 디렉터리 밖 지정 방지)
-	if filepath.IsAbs(arg) {
+	// 절대 경로 거부 (봉쇄 디렉터리 밖 지정 방지).
+	//
+	// filepath.IsAbs만으로는 부족하다: Windows에서 IsAbs("/tmp/evil")는 드라이브
+	// 문자가 없으므로 false이지만, 그런 rooted 경로는 현재 드라이브 루트로 해석돼
+	// 봉쇄 디렉터리를 그대로 벗어난다. 선행 구분자("/" 또는 "\")를 플랫폼과 무관하게
+	// 거부해 가드가 모든 OS에서 동일하게 동작하도록 한다. 브랜치명("fix/something")은
+	// 선행 구분자가 없으므로 계속 통과한다.
+	if filepath.IsAbs(arg) || strings.HasPrefix(arg, "/") || strings.HasPrefix(arg, `\`) {
 		return fmt.Errorf("worktree name must not be an absolute path: %q", arg)
 	}
 	// ".." 거부 (path traversal 봉쇄 탈출 방지) — "/"는 브랜치명에 정상이므로 허용
