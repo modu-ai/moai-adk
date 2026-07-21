@@ -36,6 +36,12 @@ type Finding struct {
 	Severity Severity `json:"severity"`
 	Code     string   `json:"code"`
 	Message  string   `json:"message"`
+	// Advisory marks a warning that --strict must NOT escalate to error.
+	// Set for (a) findings on grandfather-era SPECs (V2.x / V3R2-R4 / V3R5 —
+	// same era classification as `moai spec audit`) and (b) inherently
+	// heuristic rules such as StatusGitConsistency whose git-implied signal
+	// is environment-dependent.
+	Advisory bool `json:"advisory,omitempty"`
 }
 
 // Report represents lint execution results
@@ -52,7 +58,7 @@ func (r *Report) HasErrors() bool {
 		if f.Severity == SeverityError {
 			return true
 		}
-		if r.Strict && f.Severity == SeverityWarning {
+		if r.Strict && f.Severity == SeverityWarning && !f.Advisory {
 			return true
 		}
 	}
@@ -195,6 +201,7 @@ func (l *Linter) Lint(paths []string) (*Report, error) {
 		if doc.ParseError != nil {
 			continue // Skip rules for failed SPEC
 		}
+		var docFindings []Finding
 		for _, rule := range l.rules {
 			// cross-SPEC rules are processed later
 			if _, ok := rule.(crossSPECRule); ok {
@@ -202,8 +209,10 @@ func (l *Linter) Lint(paths []string) (*Report, error) {
 			}
 			ruleFindings := rule.Check(doc, docs)
 			ruleFindings = applylintSkip(ruleFindings, doc.LintSkip)
-			findings = append(findings, ruleFindings...)
+			docFindings = append(docFindings, ruleFindings...)
 		}
+		demote := isGrandfatheredSpecDir(filepath.Dir(doc.Path)) || terminalStatusEnum[doc.Frontmatter.Status]
+		findings = append(findings, applyEraDemotion(docFindings, demote)...)
 	}
 
 	for _, rule := range l.rules {
@@ -228,6 +237,53 @@ type Rule interface {
 	Code() string
 	// Check inspects a single SPEC document and returns findings
 	Check(doc *SPECDoc, all []*SPECDoc) []Finding
+}
+
+// eraDemotableCodes are the structural rules that grandfather-era SPECs are
+// exempt from failing on. The findings stay visible (as advisory warnings)
+// but no longer gate the lint exit code — mirroring the grandfather clause
+// `moai spec audit` applies (AC-LSG-017): pre-V3R6 SPECs predate the
+// structural requirements these rules enforce.
+var eraDemotableCodes = map[string]bool{
+	"MissingExclusions":  true,
+	"FrontmatterInvalid": true,
+}
+
+// isGrandfatheredSpecDir reuses the era classifier (era.go — the SSOT shared
+// with `moai spec audit` and drift detection; NOT a parallel heuristic) to
+// report whether the SPEC directory is grandfather-clause-protected.
+func isGrandfatheredSpecDir(specDir string) bool {
+	signals, err := LoadEraSignalsFromDir(specDir)
+	if err != nil {
+		return false
+	}
+	era, _ := ClassifyEra(signals)
+	return era.EraFinal()
+}
+
+// applyEraDemotion downgrades structural ERROR findings on protected SPECs
+// to advisory warnings, and marks the SPEC's remaining warnings advisory so
+// --strict does not escalate them. Protected = grandfather-era (V2.x /
+// V3R2-R4 / V3R5) OR terminal lifecycle status (terminalStatusEnum: closed
+// history — retro-enforcing later structural rules on closed SPECs is the
+// same false-positive class the grandfather clause exists for). Active
+// modern-era SPECs pass through untouched — full enforcement.
+func applyEraDemotion(findings []Finding, grandfathered bool) []Finding {
+	if !grandfathered {
+		return findings
+	}
+	for i := range findings {
+		f := &findings[i]
+		switch {
+		case f.Severity == SeverityError && eraDemotableCodes[f.Code]:
+			f.Severity = SeverityWarning
+			f.Advisory = true
+			f.Message += " [grandfathered era — downgraded to warning]"
+		case f.Severity == SeverityWarning:
+			f.Advisory = true
+		}
+	}
+	return findings
 }
 
 // applylintSkip removes findings that match doc's lint.skip code list
@@ -1041,7 +1097,9 @@ var terminalStatusEnum = map[string]bool{
 
 // StatusGitConsistencyRule checks if SPEC frontmatter status agrees with git log
 // Implements Round 3: W3-T4
-// Default severity: warning (promoted to error under --strict)
+// Severity: advisory warning — the git-implied status is a heuristic over the
+// available git history (shallow CI checkouts routinely disagree), so this
+// finding is surfaced but never escalated to error under --strict.
 type StatusGitConsistencyRule struct{}
 
 func (r *StatusGitConsistencyRule) Code() string { return "StatusGitConsistency" }
@@ -1074,7 +1132,8 @@ func (r *StatusGitConsistencyRule) Check(doc *SPECDoc, _ []*SPECDoc) []Finding {
 		findings = append(findings, Finding{
 			File:     doc.Path,
 			Line:     1,
-			Severity: SeverityWarning, // Default: warning
+			Severity: SeverityWarning,
+			Advisory: true, // heuristic git-implied signal — never strict-escalated
 			Code:     "StatusGitConsistency",
 			Message:  fmt.Sprintf("SPEC %s frontmatter status '%s' disagrees with git-implied status '%s'", fm.ID, fm.Status, gitStatus),
 		})
@@ -1082,4 +1141,3 @@ func (r *StatusGitConsistencyRule) Check(doc *SPECDoc, _ []*SPECDoc) []Finding {
 
 	return findings
 }
-
