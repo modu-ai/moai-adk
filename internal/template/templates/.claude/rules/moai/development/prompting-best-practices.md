@@ -1,5 +1,5 @@
 ---
-paths: "**/.claude/agents/**,**/.claude/skills/**"
+paths: "**/.claude/agents/**,**/.claude/skills/**/SKILL.md"
 ---
 
 # Prompting Best Practices (Claude Latest Models)

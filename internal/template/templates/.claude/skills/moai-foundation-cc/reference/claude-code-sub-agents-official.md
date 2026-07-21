@@ -28,6 +28,8 @@ Flexible Permissions: Each can have different tool access levels for security
 
 ### Quick Start Using /agents Command (Recommended)
 
+> **CHANGELOG delta (CC 2.1.198, annotated 2026-07-03)**: The CC 2.1.198 CHANGELOG states the `/agents` wizard was **removed** — "ask Claude to create or manage subagents, or edit `.claude/agents/` directly." This official doc (source above) still documents the `/agents` tabbed interface, so it lags the CHANGELOG (or the removal covers only the creation wizard). This mirror is NOT rewritten — it tracks the source doc, not the CHANGELOG. Verify in a live 2.1.198 session before relying on the `/agents` flow below.
+
 Step 1: Open the agents interface by typing /agents
 
 Step 2: Select "Create New Agent" (project or user level)

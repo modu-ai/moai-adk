@@ -1,10 +1,14 @@
-# Local Git Workflow Doctrine (Hybrid Trunk 1-person OSS) — extracted from CLAUDE.local.md §23
+# Local Git Workflow Doctrine (PR-mandatory 1-person OSS) — extracted from CLAUDE.local.md §23
 
 > Maintainer-local doctrine extracted from CLAUDE.local.md to cut session-launch context (CLAUDE.local.md loads in full at every launch). The matching CLAUDE.local.md section now carries a short stub pointing here. This file is NOT loaded at launch — read it when the topic applies. Subsection numbering is preserved so existing cross-references still resolve.
 
-## 23. Local Git Workflows + Hook Setup (Hybrid Trunk 1-person OSS)
+## 23. Local Git Workflows + Hook Setup (PR-mandatory 1-person OSS)
 
-2026-05-22 commit `cd9eead14` (`chore(config)`)로 1인 OSS Hybrid Trunk policy 채택. main 직접 push 허용 + auto_branch/auto_pr 활성. 본 섹션은 정책 운영 시 마주치는 6가지 오류/경고 패턴과 처리 절차를 정리.
+> **[HARD] POLICY CHANGE (2026-07-20) — Hybrid Trunk main-direct RETIRED.** modu-ai/moai-adk main branch에 `enforce_admins: true` 적용됨 (`gh api`로 live 검증). 이제 admin 포함 **누구도 main에 직접 push 불가**. 모든 변경 (daily Tier S/M commit 포함)은 PR을 경유해야 한다. self-merge는 허용 (`required_approving_review_count: 0`) — 4개 CI status check (Test ubuntu-latest / Lint / Build linux/amd64 / CodeQL) 통과 시 리뷰어 대기 없이 본인이 머지. 종전 "모든 tier main 직진 push 허용" 정책 (2026-05-22 `cd9eead14`)은 폐기(RETIRED)되었으며, 아래 본문에서 superseded로 표시된 문장은 역사적 기록으로만 유지한다.
+
+**변경 전 (2026-05-22 ~ 2026-07-19, RETIRED)**: commit `cd9eead14` (`chore(config)`)로 1인 OSS Hybrid Trunk policy 채택. main 직접 push 허용 + auto_branch/auto_pr 활성.
+
+**변경 후 (2026-07-20 ~)**: `enforce_admins: true` → PR-mandatory. tier는 이제 main-direct 여부가 아니라 PR ceremony 무게(§23.9)에만 영향. 본 섹션은 정책 운영 시 마주치는 6가지 오류/경고 패턴과 처리 절차를 정리한다 (PR merge 후 로컬 동기화 패턴 A4/A5/A6는 PR-mandatory 체제에서 오히려 상시 적용).
 
 ### §23.1 pre-push hook (manual setup — local infra)
 
@@ -15,6 +19,8 @@
 - ALLOW_MAIN_PUSH=1 escape hatch 불필요 (차단 모드 폐기)
 - 보호 장치 4중: pre-commit hook (enforce) + CI workflows (main push 트리거) + GitHub branch protection (4 status checks) + Conventional Commits / Release Drafter (audit)
 
+> **[2026-07-20 주석]** `enforce_admins: true` 적용 이후 이 warn-only hook은 main direct push에 대해 **redundant** (server-side가 이미 차단). 그러나 harmless — direct push 시도는 서버에서 rejected되고, hook은 로컬에서 5초 경고만 낼 뿐 무해하므로 제거 불필요. 여전히 실수로 `git push origin main`을 시도할 때 즉각적 로컬 피드백을 준다는 부수 이점이 있다. 유지한다.
+
 **다른 머신 manual setup**:
 
 ```bash
@@ -22,7 +28,7 @@ cat > .git/hooks/pre-push <<'EOF'
 #!/bin/bash
 while read local_ref local_sha remote_ref remote_sha; do
   if echo "$remote_ref" | grep -qE "refs/heads/main$"; then
-    echo "⚠️  main 직접 push — Hybrid Trunk (모든 tier 허용) | CI 자동 트리거" >&2
+    echo "⚠️  main direct push는 enforce_admins:true로 server-side 차단됨 — PR 경유 필요 (redundant 로컬 경고)" >&2
     sleep 5
   fi
 done
@@ -40,18 +46,23 @@ echo "refs/heads/feat/test 0000 refs/heads/feat/test 0000" | .git/hooks/pre-push
 
 ### §23.2 GitHub branch protection 현황 (modu-ai/moai-adk main)
 
-`gh api repos/modu-ai/moai-adk/branches/main/protection` 조회 결과 (2026-05-22):
+`gh api repos/modu-ai/moai-adk/branches/main/protection` 조회 결과 (2026-07-20 live 검증):
 
 | 설정 | 값 | 의도 |
 |------|------|------|
 | `required_status_checks.strict` | `true` | up-to-date 강제 (병합 전 rebase) |
-| `required_status_checks.contexts` | 4개 (Test ubuntu / Lint / Build linux/amd64 / CodeQL) | CI 보호 (main push에도 작동) |
-| `required_approving_review_count` | `0` | 1인 OSS — self admin merge 허용 |
-| `enforce_admins` | `false` | admin이 정책 bypass 가능 |
+| `required_status_checks.contexts` | 4개 (Test ubuntu / Lint / Build linux/amd64 / CodeQL) | CI 보호 (PR에서 required) |
+| `required_pull_request_reviews` | 활성 (0 approvals) | **PR 경유 필수** — 단, self-merge 허용 |
+| `required_approving_review_count` | `0` | 1인 OSS — 리뷰어 없이 self-merge |
+| `enforce_admins` | **`true`** ⭐ (2026-07-20 변경, 종전 `false`) | **admin 포함 누구도 정책 bypass 불가 → main direct push 완전 차단** |
 | `allow_force_pushes` | `false` | history 보호 |
 | `allow_deletions` | `false` | branch 삭제 보호 |
 | `required_conversation_resolution` | `true` | PR 대화 해결 필수 |
 | `required_signatures` | `false` | GPG signing 강제 안함 |
+
+**핵심 (2026-07-20)**: `enforce_admins: true` + `required_pull_request_reviews` (0 approvals) 조합 → **모든 변경은 PR 경유, self-merge 가능**. daily Tier S/M commit도 예외 없음. 종전 `enforce_admins: false` (admin이 main 직접 push로 정책 bypass) 는 폐기.
+
+**tag push는 branch protection 대상 아님**: `vX.Y.Z` 태그 push (`scripts/release.sh`)는 branch protection이 적용되지 않으므로 릴리스 tag flow는 이 변경의 영향을 받지 않는다.
 
 조정 필요 시: `gh api -X PATCH repos/modu-ai/moai-adk/branches/main/protection ...`
 
@@ -129,27 +140,32 @@ git stash pop || git checkout stash@{0} -- <missing-paths>                  # 5)
 - [HARD] `git reset --hard` 대신 `--keep` 사용 (sandbox 안전)
 - [HARD] `gh pr merge --delete-branch` 후 fatal 발생 시 `gh pr view --json state` 별도 확인 (실제 머지 여부)
 - [HARD] `git stash pop` 결과는 `git status` 별도 검증 필수 (silent skip 가능성)
-- [HARD] 1-person OSS Hybrid Trunk: 모든 tier (S/M/L) main 직진 push 허용 — CI 4 status checks + pre-push hook 5s warn + Conventional Commits + Release Drafter 4중 보호 (§23.0 chore commit `cd9eead14`, 2026-05-22 채택). feat 브랜치 + 자동 PR은 사용자가 명시적으로 review round 필요하다고 결정한 경우 (예: cross-team review, security-sensitive change) opt-in으로만 사용
+- [HARD] **(2026-07-20 신규) PR-mandatory: 모든 tier (S/M/L) 변경은 PR 경유.** `enforce_admins: true`로 main direct push는 admin 포함 완전 차단. self-merge 허용 (0 approvals) — 4개 CI status check 통과 시 리뷰어 대기 없이 본인 머지. tier는 main-direct 여부가 아니라 PR ceremony 무게(§23.9)에만 영향.
+- [HARD] **`git push origin main` 금지** — 시도 시 server-side rejected. 항상 feat/fix/chore/docs/release 브랜치 → `gh pr create` → CI green → `gh pr merge` 흐름.
+- ~~[HARD] 1-person OSS Hybrid Trunk: 모든 tier (S/M/L) main 직진 push 허용~~ **[RETIRED 2026-07-20 — enforce_admins: true 적용으로 무효]** (종전: CI 4 status checks + pre-push hook 5s warn + Conventional Commits + Release Drafter 4중 보호, §23.0 chore commit `cd9eead14`, 2026-05-22 채택. 이 문장은 역사적 기록으로만 유지.)
 
-### §23.9 Tier-based PR Routing (REQ-ATR-020 — SPEC-V3R6-AGENT-TEAM-REBUILD-001)
+### §23.9 Tier-based PR Routing (REQ-ATR-020 — SPEC-V3R6-AGENT-TEAM-REBUILD-001; 2026-07-20 PR-mandatory 개정)
 
-[HARD] **§23.7의 "모든 tier main 직진" 일반화에 대한 Tier-based 예외 명문화.** Hybrid Trunk 1-person OSS 정책의 기본은 모든 tier (S/M/L) main 직진 push이지만, SPEC tier 가 L 이거나 사용자가 명시적으로 `--pr` 플래그를 사용한 경우 `manager-git` 서브에이전트로 PR 생성을 routing한다.
+[HARD] **(2026-07-20 개정) 모든 tier (S/M/L)는 이제 PR을 경유한다.** `enforce_admins: true` 적용으로 main direct push가 완전히 차단되었으므로, tier는 더 이상 "main-direct vs PR" 을 가르지 않는다. tier가 결정하는 것은 **PR ceremony 무게** (브랜치 수명 / 리뷰 깊이 / 라벨 세밀도 / 풀 CI 매트릭스 여부)뿐이다. 모든 경우 PR 생성·머지는 `manager-git` 서브에이전트가 담당한다.
 
-| Tier / 조건 | 기본 routing | Owner | 비고 |
+| Tier / 조건 | 기본 routing | Owner | PR ceremony 무게 |
 |------------|-------------|-------|------|
-| Tier S (< 300 LOC, < 5 files) | main 직접 push | manager-develop / manager-docs (commit 직접 수행) | Hybrid Trunk 기본 — CI 4 status checks + pre-push hook 5s warn |
-| Tier M (300-1000 LOC, 5-15 files) | main 직접 push | manager-develop / manager-docs (commit 직접 수행) | Hybrid Trunk 기본 |
-| Tier L (> 1000 LOC OR > 15 files OR constitutional) | `feat/SPEC-XXX` 브랜치 + `gh pr create` | **manager-git** | Tier L 또는 사용자 `--pr` 플래그 시 PR routing |
-| Tier S/M + 사용자 `--pr` opt-in | `feat/SPEC-XXX` 브랜치 + `gh pr create` | **manager-git** | 사용자 명시적 review round 요구 시 (cross-team review, security-sensitive change 등) |
+| Tier S (< 300 LOC, < 5 files) | `fix/*`·`chore/*`·`docs/*` 등 단기 브랜치 + `gh pr create` → self-merge (0 approvals) | **manager-git** (commit은 manager-develop/manager-docs) | 경량 — 3축 라벨 최소, Tier 1 CI (4 checks) 통과 즉시 self-merge |
+| Tier M (300-1000 LOC, 5-15 files) | `feat/SPEC-XXX` 브랜치 + `gh pr create` → self-merge | **manager-git** | 중간 — 3축 라벨 + PR body 설명, Tier 1 CI |
+| Tier L (> 1000 LOC OR > 15 files OR constitutional) | `feat/SPEC-XXX` 브랜치 + `gh pr create` → self-merge | **manager-git** | 무거움 — Late-Branch 4-Phase + 풀 CI 매트릭스 (release PR 시 Tier 2 macOS/Windows) + 상세 리뷰 |
+| Explicit `--pr` (any tier) | `feat/SPEC-XXX` 브랜치 + `gh pr create` | **manager-git** | 사용자 명시적 review round 요구 시 (cross-team review, security-sensitive change 등) — Tier 무관 무거운 ceremony 적용 |
 
-**Owner 명시 (REQ-ATR-020 정합)**: Tier L OR `--pr` 케이스에서 PR 생성은 `manager-git` 의 책임이다. `manager-develop` 또는 `manager-docs` 는 PR 생성을 직접 수행하지 않으며, commit 만 수행 후 `manager-git` 에게 PR 생성을 위임한다. 이는 Anthropic 2026 SRP (Single Responsibility Principle) 정합 — 각 retained agent 가 명확한 phase boundary 를 가진다.
+> **[RETIRED 2026-07-20]** 종전 이 표의 Tier S/M 행은 "main 직접 push (manager-develop/manager-docs commit 직접 수행)" 이었다. `enforce_admins: true` 로 main-direct가 불가능해지면서 두 행 모두 PR routing으로 통합. `manager-develop`/`manager-docs`는 여전히 commit을 수행하되, push·PR은 `manager-git`이 담당한다 (self-merge 흐름).
+
+**Owner 명시 (REQ-ATR-020 정합)**: 모든 tier에서 PR 생성은 `manager-git` 의 책임이다. `manager-develop` 또는 `manager-docs` 는 commit 만 수행 후 `manager-git` 에게 push + PR 생성을 위임한다. 이는 Anthropic 2026 SRP (Single Responsibility Principle) 정합 — 각 retained agent 가 명확한 phase boundary 를 가진다. (2026-07-20 이전: Tier S/M은 manager-develop이 commit+push를 자체 수행했으나, main-direct push 차단으로 이제 push도 PR 경유.)
 
 **Late-Branch 4-Phase Pattern**: Tier L PR routing 시 `manager-git` 은 `.moai/docs/git-workflow-doctrine.md` §18.3.1 의 Late-Branch 4-Phase 패턴 (A: branch creation / B: commit / C: PR creation / D: Late-Branch closure)을 따른다. Phase D Late-Branch closure 는 PR 머지 후 local main 정렬 의무 — `.claude/agents/moai/manager-git.md` § Late-Branch Invocation Pattern 참조.
 
-**Routing 결정 흐름**:
-1. SPEC tier 가 L → `manager-git` routing (자동)
-2. 사용자가 `/moai sync --pr` 또는 `/moai run --pr` 명시적 사용 → `manager-git` routing
-3. 그 외 (Tier S/M without `--pr`) → main 직접 push (manager-develop/manager-docs commit 직접 수행)
+**Routing 결정 흐름 (2026-07-20 PR-mandatory)**:
+1. 모든 SPEC/변경 → `manager-git` routing으로 PR 생성 (main-direct 불가)
+2. SPEC tier 가 L OR 사용자가 `--pr` 명시 → 무거운 ceremony (Late-Branch 4-Phase + 풀 CI 매트릭스)
+3. Tier S/M (without `--pr`) → 경량 ceremony (단기 브랜치 + Tier 1 CI 통과 즉시 self-merge) — 여전히 PR 경유이나 리뷰 오버헤드 최소
+   > **[RETIRED 2026-07-20]** 종전 item 3은 "그 외 (Tier S/M without `--pr`) → main 직접 push" 였다. `enforce_admins: true`로 무효 — 모든 tier PR 경유.
 
 상위 SPEC 참조:
 - `.moai/specs/SPEC-V3R6-AGENT-TEAM-REBUILD-001/spec.md` REQ-ATR-020 (manager-git PR doctrine reconciliation)
@@ -178,7 +194,7 @@ git stash pop || git checkout stash@{0} -- <missing-paths>                  # 5)
 - `ps aux | grep claude` 또는 `tmux list-panes` 다중 결과
 - mystery commit 1회 이상 발견된 경험 있음
 
-본 정책 적용 시 §23.7 일반화 (모든 tier main 직진)는 single-session 환경 기본값. Multi-session 시 사용자는 L2 worktree로 자발적 분리 OR feat 브랜치 + PR opt-in 활용.
+본 정책 적용 시 §23.9 PR-mandatory routing (모든 tier PR 경유, 2026-07-20)은 single/multi-session 공통 기본값. Multi-session 시 사용자는 L2 worktree로 자발적 분리 OR SPEC별 독립 feat 브랜치로 race 원천 차단 (branch 격리가 PR-mandatory 체제에서 자연스러운 완화책). ~~§23.7 일반화 (모든 tier main 직진)는 single-session 환경 기본값~~ **[RETIRED 2026-07-20]**.
 
 선례: SPEC-V3R6-LEGACY-CLEANUP-001 race incident (2026-05-23) + agent-common-protocol.md §Pre-Spawn Sync Check L1 정책 도입.
 
