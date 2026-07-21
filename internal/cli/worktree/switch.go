@@ -9,8 +9,8 @@ import (
 func newSwitchCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "switch [branch-name]",
-		Short: "Switch to a worktree",
-		Long:  "Change the working directory to the worktree associated with the given branch.",
+		Short: "Print the worktree's location",
+		Long:  "Print the filesystem path of the worktree for the given branch.",
 		Args:  cobra.ExactArgs(1),
 		RunE:  runSwitch,
 	}
