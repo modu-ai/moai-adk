@@ -53,9 +53,11 @@ jobs:
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
     runs-on: ${{ matrix.os }}
-    # Windows test hardening is tracked as a follow-up SPEC; until it lands,
-    # the windows leg reports but does not block the release gate.
-    continue-on-error: ${{ matrix.os == 'windows-latest' }}
+    # Every OS leg blocks the release gate. The windows leg was previously
+    # pinned to continue-on-error while it carried 71 known failures across
+    # 17 packages; that debt was cleared (PRs #1114, #1115, #1116), so a
+    # windows regression must now stop a release rather than be reported
+    # and ignored.
 
     steps:
       - name: Checkout code
