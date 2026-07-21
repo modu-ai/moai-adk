@@ -25,16 +25,23 @@ func Run(questions []Question, styles *Styles) (*WizardResult, error) {
 }
 
 // RunWithDefaults runs the wizard with default questions for the given project root.
-// If locale is not empty, the wizard UI is displayed in that language.
-func RunWithDefaults(projectRoot, locale string) (*WizardResult, error) {
-	questions := DefaultQuestions(projectRoot)
-	return RunWithLocale(questions, nil, locale)
+// If locale is not empty, the wizard UI is displayed in that language and the
+// conversation_language question defaults to it. userName pre-fills the user_name
+// question. Quick mode is RunWithDefaultsModes with both mode flags off — the
+// advanced-settings bridge (Condition: !StandardMode) is therefore visible and,
+// when answered Yes, reveals the Phase 1 questions in the same run.
+func RunWithDefaults(projectRoot, locale, userName string) (*WizardResult, error) {
+	return RunWithDefaultsModes(projectRoot, locale, userName, false, false)
 }
 
 // RunWithDefaultsModes runs the wizard with mode flags controlling Phase 1 question visibility.
 // standardMode=true presents Phase 1 questions; advancedMode=true implies standardMode.
-func RunWithDefaultsModes(projectRoot, locale string, standardMode, advancedMode bool) (*WizardResult, error) {
-	// Merge default + Phase 1 questions
+// locale pre-fills the conversation_language default (and initial render language);
+// userName pre-fills the user_name default.
+func RunWithDefaultsModes(projectRoot, locale, userName string, standardMode, advancedMode bool) (*WizardResult, error) {
+	// Merge default + Phase 1 questions. Phase 1 questions are always present in
+	// the form but gated on r.StandardMode, so the Quick-mode advanced_bridge can
+	// reveal them by flipping StandardMode without rebuilding the form.
 	questions := DefaultQuestions(projectRoot)
 	questions = append(questions, Phase1Questions(projectRoot)...)
 
@@ -43,6 +50,9 @@ func RunWithDefaultsModes(projectRoot, locale string, standardMode, advancedMode
 		gate := IsAdvancedWizardReady()
 		questions = append(questions, Phase2Questions(gate)...)
 	}
+
+	// Pre-fill the identity/locale defaults from the caller (profile values).
+	prefillIdentityDefaults(questions, userName)
 
 	// Pre-populate mode flags so Condition funcs see them from the start
 	result := &WizardResult{
@@ -60,6 +70,28 @@ func RunWithDefaultsModes(projectRoot, locale string, standardMode, advancedMode
 		return nil, err
 	}
 	return result, nil
+}
+
+// prefillLocaleDefault seeds the conversation_language question default from the
+// incoming locale. Empty locale leaves the static "en" default untouched.
+func prefillLocaleDefault(questions []Question, locale string) {
+	if locale != "" {
+		if q := QuestionByID(questions, "conversation_language"); q != nil {
+			q.Default = locale
+		}
+	}
+}
+
+// prefillIdentityDefaults overrides the user_name question default from the
+// caller-supplied value (typically the active profile's UserName). The
+// conversation_language default is handled centrally in runWithResult so every
+// entry point (including the update reconfigure flow) benefits.
+func prefillIdentityDefaults(questions []Question, userName string) {
+	if userName != "" {
+		if q := QuestionByID(questions, "user_name"); q != nil {
+			q.Default = userName
+		}
+	}
 }
 
 // RunWithLocale initializes the locale and runs the wizard.
@@ -82,6 +114,12 @@ func runWithResult(questions []Question, _ *Styles, locale string, result *Wizar
 	if len(questions) == 0 {
 		return ErrNoQuestions
 	}
+
+	// Seed the conversation_language default from the incoming locale so the
+	// pre-selected option matches the initial render language (profile value on
+	// init, project value on update reconfigure). Empty locale keeps the static
+	// "en" default.
+	prefillLocaleDefault(questions, locale)
 
 	// Behavior preservation: when every question's condition is false for the
 	// pre-populated result, the former per-question loop skipped all forms and
@@ -325,6 +363,17 @@ func buildInputField(q *Question, result *WizardResult, locale *string) *huh.Inp
 // saveAnswer stores an answer in the result.
 func saveAnswer(id, value string, result *WizardResult, locale *string) {
 	switch id {
+	case "conversation_language":
+		result.ConversationLang = value
+		// Update the live locale so every subsequent question re-renders in the
+		// chosen language (huh re-evaluates the Title/Description funcs bound to
+		// this pointer when the pointee changes).
+		if locale != nil {
+			*locale = value
+		}
+		return
+	case "user_name":
+		result.UserName = value
 	case "project_name":
 		result.ProjectName = value
 	case "model_policy":
@@ -359,6 +408,10 @@ func saveAnswer(id, value string, result *WizardResult, locale *string) {
 // saveBoolAnswer stores a boolean answer in the result.
 func saveBoolAnswer(id string, value bool, result *WizardResult) {
 	switch id {
+	case "advanced_bridge":
+		// Quick-mode bridge: Yes reveals the Phase 1 questions (gated on
+		// StandardMode) within the same wizard run.
+		result.StandardMode = value
 	case "lsp_enabled":
 		result.LSPEnabled = value
 	case "enforce_quality":

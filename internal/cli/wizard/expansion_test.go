@@ -51,6 +51,37 @@ func TestPhase1QuestionsStructure(t *testing.T) {
 	}
 }
 
+// TestAdvancedBridgeRevealsPhase1 verifies the requirement-C mechanism: in a
+// quick-mode question set (DefaultQuestions + Phase1Questions), answering the
+// advanced_bridge Confirm Yes flips StandardMode, which makes the Phase 1
+// questions visible in the same run (and hides the bridge itself).
+func TestAdvancedBridgeRevealsPhase1(t *testing.T) {
+	t.Parallel()
+	tmpDir := t.TempDir()
+	all := append(DefaultQuestions(tmpDir), Phase1Questions(tmpDir)...)
+
+	// Quick mode before answering the bridge: Phase 1 hidden, bridge visible.
+	quick := &WizardResult{EnforceQuality: true, DesignEnabled: true, ClaudeDesignEnabled: true}
+	if q := QuestionByID(all, "project_mode"); q == nil || q.Condition(quick) {
+		t.Error("project_mode (Phase 1) must be hidden before the bridge is answered")
+	}
+	if q := QuestionByID(all, "advanced_bridge"); q == nil || !q.Condition(quick) {
+		t.Error("advanced_bridge must be visible in quick mode")
+	}
+
+	// Bridge answered Yes → StandardMode flips → Phase 1 revealed, bridge hidden.
+	saveBoolAnswer("advanced_bridge", true, quick)
+	if !quick.StandardMode {
+		t.Fatal("advanced_bridge=Yes must set StandardMode")
+	}
+	if q := QuestionByID(all, "project_mode"); q == nil || !q.Condition(quick) {
+		t.Error("project_mode (Phase 1) must be visible after the bridge is answered Yes")
+	}
+	if q := QuestionByID(all, "advanced_bridge"); q == nil || q.Condition(quick) {
+		t.Error("advanced_bridge must hide itself once StandardMode is set")
+	}
+}
+
 // TestPhase1Questions_StandardModeGating verifies questions are hidden when StandardMode=false.
 func TestPhase1Questions_StandardModeGating(t *testing.T) {
 	t.Parallel()

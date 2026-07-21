@@ -109,7 +109,7 @@ func TestInitNoNetworkBeforeWizard(t *testing.T) {
 	t.Cleanup(func() { isInteractiveStdin = origInteractive })
 
 	origWizard := runWizardFn
-	runWizardFn = func(rootFlag, locale string, standardMode, advancedMode bool) (*wizard.WizardResult, error) {
+	runWizardFn = func(rootFlag, locale, userName string, standardMode, advancedMode bool) (*wizard.WizardResult, error) {
 		rec.record("wizard-start")
 		if got := rec.count("update-check"); got != 0 {
 			t.Errorf("update-check ran before/during wizard: %d calls", got)

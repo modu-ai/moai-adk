@@ -76,9 +76,10 @@ func TestDefaultQuestions(t *testing.T) {
 		t.Fatal("DefaultQuestions() returned empty slice")
 	}
 
-	// Verify first question is project_name
-	if questions[0].ID != "project_name" {
-		t.Errorf("expected first question ID 'project_name', got %q", questions[0].ID)
+	// Verify first question is conversation_language (asked before everything
+	// else so subsequent questions render in the chosen language).
+	if questions[0].ID != "conversation_language" {
+		t.Errorf("expected first question ID 'conversation_language', got %q", questions[0].ID)
 	}
 
 	// Verify project name question default
@@ -580,14 +581,16 @@ func TestStepperTotal_DynamicDenominator(t *testing.T) {
 		result *WizardResult
 		want   int
 	}{
-		// Quick mode, git manual: 4 unconditional questions
-		// (project_name, model_policy, report_format, git_mode).
-		{"manual", &WizardResult{GitMode: "manual"}, 4},
-		// personal+github reveals git_provider + github_username + github_token.
-		{"personal-github", &WizardResult{GitMode: "personal", GitProvider: "github"}, 7},
+		// Quick mode, git manual: 6 unconditional questions (conversation_language,
+		// user_name, project_name, model_policy, report_format, git_mode) plus the
+		// advanced_bridge (visible while StandardMode is false) = 7.
+		{"manual", &WizardResult{GitMode: "manual"}, 7},
+		// personal+github reveals git_provider + github_username + github_token
+		// (6 base + 3 + advanced_bridge = 10).
+		{"personal-github", &WizardResult{GitMode: "personal", GitProvider: "github"}, 10},
 		// personal+gitlab reveals git_provider + gitlab_instance_url +
-		// gitlab_username + gitlab_token.
-		{"personal-gitlab", &WizardResult{GitMode: "personal", GitProvider: "gitlab"}, 8},
+		// gitlab_username + gitlab_token (6 base + 4 + advanced_bridge = 11).
+		{"personal-gitlab", &WizardResult{GitMode: "personal", GitProvider: "gitlab"}, 11},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -598,11 +601,13 @@ func TestStepperTotal_DynamicDenominator(t *testing.T) {
 		})
 	}
 
-	// Standard mode expands the denominator further (Phase 1 questions).
+	// Standard mode expands the denominator further (Phase 1 questions). The
+	// advanced_bridge hides when StandardMode is preset, so the total is 6
+	// unconditional defaults (git conditionals hidden for manual) + 7 Phase 1 = 13.
 	all := append(DefaultQuestions("/tmp/steppertotal"), Phase1Questions("/tmp/steppertotal")...)
 	std := &WizardResult{GitMode: "manual", StandardMode: true, DesignEnabled: true}
-	if got := stepperDenominator(all, std); got != 11 {
-		t.Errorf("standard-mode denominator: expected 11 (4 + 7 Phase 1), got %d", got)
+	if got := stepperDenominator(all, std); got != 13 {
+		t.Errorf("standard-mode denominator: expected 13 (6 + 7 Phase 1), got %d", got)
 	}
 	// Single dynamic source invariant: stepperDenominator == TotalVisibleQuestions.
 	if stepperDenominator(all, std) != TotalVisibleQuestions(all, std) {
@@ -915,7 +920,9 @@ func TestBuildInputField_RequiredWithDefault(t *testing.T) {
 func TestDefaultQuestions_AllQuestionTypesValid(t *testing.T) {
 	questions := DefaultQuestions("/tmp/test")
 	for _, q := range questions {
-		if q.Type != QuestionTypeSelect && q.Type != QuestionTypeInput {
+		// DefaultQuestions now includes the advanced_bridge Confirm, so Confirm is
+		// a valid type alongside Select and Input.
+		if q.Type != QuestionTypeSelect && q.Type != QuestionTypeInput && q.Type != QuestionTypeConfirm {
 			t.Errorf("question %q has invalid type %v", q.ID, q.Type)
 		}
 		if q.ID == "" {
