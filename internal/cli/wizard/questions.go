@@ -9,16 +9,19 @@ import (
 
 // DefaultQuestions returns the standard set of questions for project initialization.
 // The questions follow this order:
-// 1. Project name (required)
-// 2. Model policy
-// 3. Report format
-// 4. Git mode
-// 5. Git provider (conditional)
-// 6. GitLab instance URL (conditional)
-// 7. GitHub username (conditional)
-// 8. GitHub token (conditional)
-// 9. GitLab username (conditional)
-// 10. GitLab token (conditional)
+// 1. Conversation language (drives the rendering language of every later question)
+// 2. User name (optional)
+// 3. Project name (required)
+// 4. Model policy
+// 5. Report format
+// 6. Git mode
+// 7. Git provider (conditional)
+// 8. GitLab instance URL (conditional)
+// 9. GitHub username (conditional)
+// 10. GitHub token (conditional)
+// 11. GitLab username (conditional)
+// 12. GitLab token (conditional)
+// 13. Advanced-settings bridge (conditional — hidden when StandardMode is preset by flag)
 //
 // plan_type and development_mode are NO LONGER interactive questions — they
 // default silently (plan_type → subscription at persistence; development_mode →
@@ -31,7 +34,39 @@ func DefaultQuestions(projectRoot string) []Question {
 	}
 
 	return []Question{
-		// 1. Project Name
+		// 1. Conversation language — asked first so every subsequent question
+		// renders in the chosen language (saveAnswer updates the live locale).
+		// The default is pre-filled from the profile's ConversationLang by the
+		// wizard entry point when available (else "en"). Option labels carry the
+		// native language name and are never translated (GetLocalizedQuestion
+		// leaves them untouched because the translation entry supplies no options).
+		{
+			ID:          "conversation_language",
+			Group:       "Language",
+			Type:        QuestionTypeSelect,
+			Title:       "Select conversation language",
+			Description: "The language MoAI uses when talking with you. The wizard switches to it immediately.",
+			Options: []Option{
+				{Label: "English", Value: "en", Desc: "English"},
+				{Label: "Korean (한국어)", Value: "ko", Desc: "한국어"},
+				{Label: "Japanese (日本語)", Value: "ja", Desc: "日本語"},
+				{Label: "Chinese (中文)", Value: "zh", Desc: "中文"},
+			},
+			Default:  "en",
+			Required: true,
+		},
+		// 2. User Name — optional; pre-filled from the profile's UserName by the
+		// wizard entry point when available. Empty is allowed.
+		{
+			ID:          "user_name",
+			Group:       "Identity",
+			Type:        QuestionTypeInput,
+			Title:       "Enter your name",
+			Description: "How MoAI addresses you. Persisted to user.yaml (user.name). Leave empty to skip.",
+			Default:     "",
+			Required:    false,
+		},
+		// 3. Project Name
 		{
 			ID:          "project_name",
 			Group:       "Project",
@@ -169,6 +204,21 @@ func DefaultQuestions(projectRoot string) []Question {
 			Condition: func(r *WizardResult) bool {
 				return (r.GitMode == "personal" || r.GitMode == "team") && r.GitProvider == "gitlab"
 			},
+		},
+		// 13. Advanced-settings bridge (Quick mode only). Answering Yes flips
+		// StandardMode on, which reveals the Phase 1 questions (gated on
+		// r.StandardMode) in the same wizard run. Hidden when --standard/--advanced
+		// already preset StandardMode (Condition returns false), so the flag path
+		// never double-asks.
+		{
+			ID:          "advanced_bridge",
+			Group:       "Options",
+			Type:        QuestionTypeConfirm,
+			Title:       "Configure advanced settings? (default: No)",
+			Description: "Reveals project mode, harness profile, LSP, quality gates, and design options in this run.",
+			Default:     "false",
+			Required:    false,
+			Condition:   func(r *WizardResult) bool { return !r.StandardMode },
 		},
 	}
 }

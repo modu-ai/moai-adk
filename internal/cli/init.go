@@ -376,13 +376,29 @@ func runInit(cmd *cobra.Command, args []string) error {
 		// Use RunWithDefaultsModes when --standard or --advanced is set; otherwise
 		// fall back to RunWithDefaults for Quick mode backward-compat (REQ-IWE-006).
 		// runWizardFn is the injectable wizard seam (REQ-TUX2-001 order contract).
-		result, wizErr := runWizardFn(rootFlag, "", standardMode, advancedMode)
+		// The profile locale + user name pre-fill the conversation_language and
+		// user_name question defaults (empty when no profile exists).
+		result, wizErr := runWizardFn(rootFlag, opts.ConvLang, opts.UserName, standardMode, advancedMode)
 		if wizErr != nil {
 			if errors.Is(wizErr, wizard.ErrCancelled) {
 				_, _ = fmt.Fprintln(cmd.OutOrStderr(), "Initialization cancelled.")
 				return nil
 			}
 			return fmt.Errorf("wizard failed: %w", wizErr)
+		}
+
+		// Conversation language + user name: the wizard answer wins over the
+		// profile value. Update both opts (drives template deployment of
+		// language.yaml/user.yaml) AND prefs (SyncToProjectConfig runs after
+		// deployment and would otherwise re-apply the stale profile value over
+		// the wizard choice). Empty answers leave the profile fallback intact.
+		if result.ConversationLang != "" {
+			opts.ConvLang = result.ConversationLang
+			prefs.ConversationLang = result.ConversationLang
+		}
+		if result.UserName != "" {
+			opts.UserName = result.UserName
+			prefs.UserName = result.UserName
 		}
 
 		// Apply wizard results to opts (wizard values override empty flags)

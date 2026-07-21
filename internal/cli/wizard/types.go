@@ -10,6 +10,11 @@ import (
 
 // WizardResult holds the user's selections from the init wizard.
 type WizardResult struct {
+	// Identity / locale (asked first so the rest of the wizard renders in the
+	// chosen language).
+	ConversationLang string // conversation_language code: en, ko, ja, zh
+	UserName         string // user.name display value (empty allowed)
+
 	// Core settings
 	ProjectName string // Project name (required)
 

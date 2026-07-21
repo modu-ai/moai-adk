@@ -88,6 +88,19 @@ func TestUnifiedForm_MultiGroupSinglePage(t *testing.T) {
 	form := buildUnifiedForm(questions, result, "")
 	d := newFormDriver(t, form)
 
+	// Initial page is the Language select (question 1 of 7 visible:
+	// conversation_language, user_name, project_name, model_policy, report_format,
+	// git_mode, advanced_bridge; git conditionals hidden). The stepper note
+	// renders the dynamic denominator "1 / 7" (REQ-TUX2-008).
+	if initial := d.view(); !strings.Contains(initial, "1 / 7") {
+		t.Errorf("initial stepper note must render dynamic denominator '1 / 7', frame:\n%s", initial)
+	}
+
+	// Page 1 is the Language select, page 2 is the Identity (user_name) input;
+	// advance past both to reach the unified Project page.
+	d.enter() // conversation_language = en -> Identity page
+	d.enter() // user_name (empty) -> Project page
+
 	frame := d.view()
 	for _, want := range []string{
 		"Enter project name",
@@ -97,11 +110,6 @@ func TestUnifiedForm_MultiGroupSinglePage(t *testing.T) {
 		if !strings.Contains(frame, want) {
 			t.Errorf("Project group page must render %q (unified multi-field page), frame:\n%s", want, frame)
 		}
-	}
-	// Initial state: 4 visible questions (git conditionals hidden) — the
-	// stepper note renders "1 / 4" (dynamic denominator, REQ-TUX2-008).
-	if !strings.Contains(frame, "1 / 4") {
-		t.Errorf("stepper note must render dynamic denominator '1 / 4', frame:\n%s", frame)
 	}
 }
 
@@ -114,7 +122,13 @@ func TestUnifiedForm_ConditionalGroupsAppear(t *testing.T) {
 	form := buildUnifiedForm(questions, result, "")
 	d := newFormDriver(t, form)
 
-	// Group 1 (Project): project name + 3 selects. The input pre-fills the
+	// Page 1 (Language): default "en" selected.
+	d.enter() // conversation_language = en -> Identity page
+	// Page 2 (Identity): user_name input.
+	d.typeText("octo-dev")
+	d.enter() // user_name -> Project page
+
+	// Group (Project): project name + 3 selects. The input pre-fills the
 	// default (directory basename, v1-preserved behavior) — clear it first,
 	// then type a fresh name.
 	for range len("unified-cond") {
@@ -125,7 +139,7 @@ func TestUnifiedForm_ConditionalGroupsAppear(t *testing.T) {
 	d.enter() // model_policy (high)
 	d.enter() // report_format (html+md) -> next group
 
-	// Group 2 (Git): git_mode manual -> personal (one cursor down).
+	// Group (Git): git_mode manual -> personal (one cursor down).
 	frame := d.view()
 	if !strings.Contains(frame, "Select Git automation mode") {
 		t.Fatalf("expected git_mode group, frame:\n%s", frame)
@@ -137,10 +151,12 @@ func TestUnifiedForm_ConditionalGroupsAppear(t *testing.T) {
 	if !strings.Contains(frame, "Select your Git provider") {
 		t.Fatalf("conditional git_provider group must appear for personal mode, frame:\n%s", frame)
 	}
-	// Dynamic denominator grew: git_provider visible -> 5 total; provider
-	// answer pending so github/gitlab questions are still hidden.
-	if !strings.Contains(frame, "5 / 5") {
-		t.Errorf("git_provider stepper must render '5 / 5' (dynamic), frame:\n%s", frame)
+	// Dynamic denominator: base 6 (language, user_name, project_name,
+	// model_policy, report_format, git_mode) + git_provider + advanced_bridge = 8;
+	// git_provider is question 7. Provider answer pending so github/gitlab
+	// sub-questions are still hidden.
+	if !strings.Contains(frame, "7 / 8") {
+		t.Errorf("git_provider stepper must render '7 / 8' (dynamic), frame:\n%s", frame)
 	}
 	d.enter() // git_provider = github -> github_username group
 
@@ -148,25 +164,35 @@ func TestUnifiedForm_ConditionalGroupsAppear(t *testing.T) {
 	if !strings.Contains(frame, "GitHub username") {
 		t.Fatalf("github_username group must appear for github provider, frame:\n%s", frame)
 	}
-	// Provider answered: github_username + github_token now visible -> 6/7.
-	if !strings.Contains(frame, "6 / 7") {
-		t.Errorf("github_username stepper must render '6 / 7' (dynamic), frame:\n%s", frame)
+	// Provider answered: github_username + github_token now visible. Total = base
+	// 6 + git_provider + github_username + github_token + advanced_bridge = 10;
+	// github_username is question 8.
+	if !strings.Contains(frame, "8 / 10") {
+		t.Errorf("github_username stepper must render '8 / 10' (dynamic), frame:\n%s", frame)
 	}
 	d.typeText("octocat")
 	d.enter() // github_username
-	d.enter() // github_token (empty, optional) -> form complete
+	d.enter() // github_token (empty, optional) -> advanced_bridge group
+
+	frame = d.view()
+	if !strings.Contains(frame, "advanced settings") {
+		t.Fatalf("advanced_bridge group must appear at end of quick mode, frame:\n%s", frame)
+	}
+	d.enter() // advanced_bridge = No (default) -> form complete
 
 	if form.State != huh.StateCompleted {
 		t.Fatalf("form must complete, state=%v", form.State)
 	}
 
 	want := WizardResult{
-		ProjectName:    "uniproj",
-		ModelPolicy:    "high",
-		ReportFormat:   "html+md",
-		GitMode:        "personal",
-		GitProvider:    "github",
-		GitHubUsername: "octocat",
+		ConversationLang: "en",
+		UserName:         "octo-dev",
+		ProjectName:      "uniproj",
+		ModelPolicy:      "high",
+		ReportFormat:     "html+md",
+		GitMode:          "personal",
+		GitProvider:      "github",
+		GitHubUsername:   "octocat",
 	}
 	if *result != want {
 		t.Errorf("WizardResult mismatch:\n got: %+v\nwant: %+v", *result, want)
@@ -181,19 +207,26 @@ func TestUnifiedForm_ManualModeSkipsConditionals(t *testing.T) {
 	form := buildUnifiedForm(questions, result, "")
 	d := newFormDriver(t, form)
 
-	d.typeText("quickproj")
-	d.enter() // project_name
+	d.enter() // conversation_language = en -> Identity page
+	d.enter() // user_name (empty) -> Project page
+	d.enter() // project_name (keep default) -> model_policy
 	d.enter() // model_policy
-	d.enter() // report_format
+	d.enter() // report_format -> Git page
 
 	frame := d.view()
 	if strings.Contains(frame, "Select your Git provider") {
 		t.Fatalf("git_provider must stay hidden before git_mode is answered, frame:\n%s", frame)
 	}
-	d.enter() // git_mode = manual -> all conditional groups hidden -> complete
+	d.enter() // git_mode = manual -> all git conditionals hidden -> advanced_bridge
+
+	frame = d.view()
+	if !strings.Contains(frame, "advanced settings") {
+		t.Fatalf("advanced_bridge group must appear after manual git_mode, frame:\n%s", frame)
+	}
+	d.enter() // advanced_bridge = No (default) -> complete
 
 	if form.State != huh.StateCompleted {
-		t.Fatalf("form must complete after manual git_mode, state=%v", form.State)
+		t.Fatalf("form must complete after manual git_mode + advanced_bridge, state=%v", form.State)
 	}
 	if result.GitMode != "manual" || result.GitProvider != "" {
 		t.Errorf("manual path result mismatch: %+v", *result)
@@ -209,11 +242,12 @@ func TestBuildFormGroups_Partition(t *testing.T) {
 	questions := DefaultQuestions("/tmp/unified-partition")
 
 	groups := buildFormGroups(questions, result, &locale)
-	// DefaultQuestions: 3 unconditional "Project" (project_name, model_policy,
-	// report_format) + 1 unconditional "Git" (git_mode) + 6 conditional git
-	// questions = 1 + 1 + 6 = 8 groups.
-	if len(groups) != 8 {
-		t.Errorf("expected 8 groups (Project, Git, 6 conditionals), got %d", len(groups))
+	// DefaultQuestions groups: "Language" (conversation_language) + "Identity"
+	// (user_name) + "Project" (project_name, model_policy, report_format) + "Git"
+	// (git_mode) + 6 conditional git questions + advanced_bridge (conditional) =
+	// 1 + 1 + 1 + 1 + 6 + 1 = 11 groups.
+	if len(groups) != 11 {
+		t.Errorf("expected 11 groups (Language, Identity, Project, Git, 6 git conditionals, advanced_bridge), got %d", len(groups))
 	}
 	for i, g := range groups {
 		if g == nil {

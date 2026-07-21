@@ -65,11 +65,11 @@ var isInteractiveStdin = func() bool {
 
 // runWizardFn runs the init wizard. Injectable seam for the network-order
 // contract test (AC-TUX2-001); the default dispatches on the mode flags.
-var runWizardFn = func(rootFlag, locale string, standardMode, advancedMode bool) (*wizard.WizardResult, error) {
+var runWizardFn = func(rootFlag, locale, userName string, standardMode, advancedMode bool) (*wizard.WizardResult, error) {
 	if standardMode {
-		return wizard.RunWithDefaultsModes(rootFlag, locale, standardMode, advancedMode)
+		return wizard.RunWithDefaultsModes(rootFlag, locale, userName, standardMode, advancedMode)
 	}
-	return wizard.RunWithDefaults(rootFlag, locale)
+	return wizard.RunWithDefaults(rootFlag, locale, userName)
 }
 
 // startDeferredUpdateNotice launches the non-blocking deferred binary-update

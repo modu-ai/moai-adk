@@ -87,12 +87,15 @@ func TestReportFormatTranslationsExist(t *testing.T) {
 func TestQuestionOrder(t *testing.T) {
 	questions := DefaultQuestions("/tmp/test-project")
 
-	// The first question should now be "project_name"
-	if questions[0].ID != "project_name" {
-		t.Errorf("first question should be 'project_name', got %q", questions[0].ID)
+	// The first question is now "conversation_language" (drives the render
+	// language of every later question); "user_name" is second.
+	if questions[0].ID != "conversation_language" {
+		t.Errorf("first question should be 'conversation_language', got %q", questions[0].ID)
 	}
 
 	expectedIDs := []string{
+		"conversation_language",
+		"user_name",
 		"project_name",
 		"model_policy",
 		"report_format",
@@ -103,6 +106,7 @@ func TestQuestionOrder(t *testing.T) {
 		"github_token",
 		"gitlab_username",
 		"gitlab_token",
+		"advanced_bridge",
 	}
 
 	for i, expectedID := range expectedIDs {
@@ -164,8 +168,10 @@ func TestRemovedQuestionsAbsent(t *testing.T) {
 	questions := DefaultQuestions("/tmp/test-project")
 
 	removedIDs := []string{
+		// "locale" stays removed — the language question uses the clearer ID
+		// "conversation_language". "user_name" was RE-ADDED as wizard step 2, so
+		// it is intentionally absent from this removed list.
 		"locale",
-		"user_name",
 		"git_commit_lang",
 		"code_comment_lang",
 		"doc_lang",
@@ -196,6 +202,8 @@ func TestQuestionsAllPresent(t *testing.T) {
 	questions := DefaultQuestions("/tmp/test-project")
 
 	expectedIDs := []string{
+		"conversation_language",
+		"user_name",
 		"project_name",
 		"model_policy",
 		"report_format",
@@ -206,6 +214,7 @@ func TestQuestionsAllPresent(t *testing.T) {
 		"github_token",
 		"gitlab_username",
 		"gitlab_token",
+		"advanced_bridge",
 	}
 
 	for _, id := range expectedIDs {
@@ -241,6 +250,201 @@ func TestGitConditionalFilteredByMode(t *testing.T) {
 	}
 	if !providerFound {
 		t.Error("git_provider should be visible when git_mode is 'team'")
+	}
+}
+
+// TestConversationLanguageQuestion verifies the language question is first, is a
+// Select with the 4 supported locales, defaults to "en", and is unconditional.
+func TestConversationLanguageQuestion(t *testing.T) {
+	questions := DefaultQuestions("/tmp/test-project")
+
+	if questions[0].ID != "conversation_language" {
+		t.Fatalf("conversation_language must be the first question, got %q", questions[0].ID)
+	}
+	q := QuestionByID(questions, "conversation_language")
+	if q == nil {
+		t.Fatal("conversation_language question not found")
+		return
+	}
+	if q.Type != QuestionTypeSelect {
+		t.Errorf("conversation_language should be QuestionTypeSelect, got %v", q.Type)
+	}
+	wantValues := []string{"en", "ko", "ja", "zh"}
+	if len(q.Options) != len(wantValues) {
+		t.Fatalf("conversation_language should have %d options, got %d", len(wantValues), len(q.Options))
+	}
+	for i, v := range wantValues {
+		if q.Options[i].Value != v {
+			t.Errorf("option %d value = %q, want %q", i, q.Options[i].Value, v)
+		}
+	}
+	if q.Default != "en" {
+		t.Errorf("conversation_language default = %q, want %q", q.Default, "en")
+	}
+	if !q.Required {
+		t.Error("conversation_language should be required")
+	}
+	if q.Condition != nil {
+		t.Error("conversation_language should be unconditional (always visible)")
+	}
+}
+
+// TestUserNameQuestion verifies the user_name question is second, is an optional
+// Input, and is unconditional.
+func TestUserNameQuestion(t *testing.T) {
+	questions := DefaultQuestions("/tmp/test-project")
+
+	if questions[1].ID != "user_name" {
+		t.Fatalf("user_name must be the second question, got %q", questions[1].ID)
+	}
+	q := QuestionByID(questions, "user_name")
+	if q == nil {
+		t.Fatal("user_name question not found")
+		return
+	}
+	if q.Type != QuestionTypeInput {
+		t.Errorf("user_name should be QuestionTypeInput, got %v", q.Type)
+	}
+	if q.Required {
+		t.Error("user_name should not be required (empty allowed)")
+	}
+	if q.Condition != nil {
+		t.Error("user_name should be unconditional (always visible)")
+	}
+}
+
+// TestAdvancedBridgeQuestion verifies the bridge Confirm is last, defaults to No,
+// and is hidden once StandardMode is preset (by --standard/--advanced).
+func TestAdvancedBridgeQuestion(t *testing.T) {
+	questions := DefaultQuestions("/tmp/test-project")
+
+	if last := questions[len(questions)-1]; last.ID != "advanced_bridge" {
+		t.Fatalf("advanced_bridge must be the last question, got %q", last.ID)
+	}
+	q := QuestionByID(questions, "advanced_bridge")
+	if q == nil {
+		t.Fatal("advanced_bridge question not found")
+		return
+	}
+	if q.Type != QuestionTypeConfirm {
+		t.Errorf("advanced_bridge should be QuestionTypeConfirm, got %v", q.Type)
+	}
+	if q.Default != "false" {
+		t.Errorf("advanced_bridge default = %q, want %q (No)", q.Default, "false")
+	}
+	if q.Condition == nil {
+		t.Fatal("advanced_bridge must have a condition")
+	}
+	// Visible in quick mode (StandardMode false), hidden when preset by flag.
+	if !q.Condition(&WizardResult{StandardMode: false}) {
+		t.Error("advanced_bridge should be visible in quick mode (StandardMode=false)")
+	}
+	if q.Condition(&WizardResult{StandardMode: true}) {
+		t.Error("advanced_bridge should be hidden when StandardMode is preset by flag")
+	}
+}
+
+// TestSaveAnswerConversationLanguage verifies the answer stores the code AND
+// updates the live locale pointer (drives reactive re-render of later questions).
+func TestSaveAnswerConversationLanguage(t *testing.T) {
+	result := &WizardResult{}
+	locale := "en"
+
+	saveAnswer("conversation_language", "ko", result, &locale)
+	if result.ConversationLang != "ko" {
+		t.Errorf("ConversationLang = %q, want %q", result.ConversationLang, "ko")
+	}
+	if locale != "ko" {
+		t.Errorf("live locale = %q, want %q (must update for reactive rendering)", locale, "ko")
+	}
+}
+
+// TestSaveAnswerUserName verifies the user_name answer is stored.
+func TestSaveAnswerUserName(t *testing.T) {
+	result := &WizardResult{}
+	locale := ""
+
+	saveAnswer("user_name", "GOOS", result, &locale)
+	if result.UserName != "GOOS" {
+		t.Errorf("UserName = %q, want %q", result.UserName, "GOOS")
+	}
+}
+
+// TestSaveBoolAnswerAdvancedBridge verifies the bridge flips StandardMode so the
+// gated Phase 1 questions become visible in the same run.
+func TestSaveBoolAnswerAdvancedBridge(t *testing.T) {
+	result := &WizardResult{}
+	saveBoolAnswer("advanced_bridge", true, result)
+	if !result.StandardMode {
+		t.Error("advanced_bridge=Yes must set StandardMode=true")
+	}
+	saveBoolAnswer("advanced_bridge", false, result)
+	if result.StandardMode {
+		t.Error("advanced_bridge=No must set StandardMode=false")
+	}
+}
+
+// TestNewQuestionTranslationsExist verifies ko/ja/zh translations exist for the
+// three new questions (no hardcoded UI strings that belong in the tables).
+func TestNewQuestionTranslationsExist(t *testing.T) {
+	ids := []string{"conversation_language", "user_name", "advanced_bridge"}
+	for _, locale := range []string{"ko", "ja", "zh"} {
+		langTrans, ok := translations[locale]
+		if !ok {
+			t.Fatalf("translations for locale %q not found", locale)
+		}
+		for _, id := range ids {
+			trans, ok := langTrans[id]
+			if !ok {
+				t.Errorf("translation for %q in locale %q not found", id, locale)
+				continue
+			}
+			if trans.Title == "" {
+				t.Errorf("translation for %q in locale %q has empty title", id, locale)
+			}
+			if trans.Description == "" {
+				t.Errorf("translation for %q in locale %q has empty description", id, locale)
+			}
+		}
+	}
+	// The conversation_language options must NOT be translated — native language
+	// names (Korean (한국어), etc.) stay in the base question.
+	q := QuestionByID(DefaultQuestions("/tmp/test"), "conversation_language")
+	localized := GetLocalizedQuestion(q, "ko")
+	if localized.Options[1].Label != "Korean (한국어)" {
+		t.Errorf("language option labels must stay native, got %q", localized.Options[1].Label)
+	}
+}
+
+// TestPrefillIdentityDefaults verifies the profile user name pre-fills the
+// user_name question default (empty leaves it untouched).
+func TestPrefillIdentityDefaults(t *testing.T) {
+	questions := DefaultQuestions("/tmp/test")
+	prefillIdentityDefaults(questions, "GOOS")
+	if q := QuestionByID(questions, "user_name"); q == nil || q.Default != "GOOS" {
+		t.Errorf("user_name default should be pre-filled to 'GOOS', got %+v", q)
+	}
+
+	questions2 := DefaultQuestions("/tmp/test")
+	prefillIdentityDefaults(questions2, "")
+	if q := QuestionByID(questions2, "user_name"); q == nil || q.Default != "" {
+		t.Errorf("empty userName should leave default empty, got %+v", q)
+	}
+}
+
+// TestPrefillLocaleDefault verifies the profile/project locale pre-fills the
+// conversation_language default (empty leaves the static "en" default).
+func TestPrefillLocaleDefault(t *testing.T) {
+	questions := DefaultQuestions("/tmp/test")
+	prefillLocaleDefault(questions, "ja")
+	if q := QuestionByID(questions, "conversation_language"); q == nil || q.Default != "ja" {
+		t.Errorf("conversation_language default should be 'ja', got %+v", q)
+	}
+
+	questions2 := DefaultQuestions("/tmp/test")
+	prefillLocaleDefault(questions2, "")
+	if q := QuestionByID(questions2, "conversation_language"); q == nil || q.Default != "en" {
+		t.Errorf("empty locale should keep the static 'en' default, got %+v", q)
 	}
 }
 
