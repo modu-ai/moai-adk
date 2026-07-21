@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
+	"time"
 
 	"github.com/modu-ai/moai-adk/internal/lockfile"
 )
@@ -142,7 +144,25 @@ func writeFileAtomic(path string, data []byte, perm os.FileMode) error {
 		return fmt.Errorf("close temp file: %w", err)
 	}
 
-	return os.Rename(tmpName, path)
+	return renameWithRetry(tmpName, path)
+}
+
+// renameWithRetry renames tmpName onto path. On Windows, a rename onto a file
+// that a concurrent reader holds open fails with a sharing violation
+// (ERROR_ACCESS_DENIED); a brief bounded retry absorbs that window. On other
+// platforms the first attempt is authoritative (POSIX rename is atomic).
+func renameWithRetry(tmpName, path string) error {
+	err := os.Rename(tmpName, path)
+	if err == nil || runtime.GOOS != "windows" {
+		return err
+	}
+	for range 10 {
+		time.Sleep(5 * time.Millisecond)
+		if err = os.Rename(tmpName, path); err == nil {
+			return nil
+		}
+	}
+	return err
 }
 
 // stripGLMCredsAndSetTeammateMode is the CG-leader-cleanup mutate closure used by

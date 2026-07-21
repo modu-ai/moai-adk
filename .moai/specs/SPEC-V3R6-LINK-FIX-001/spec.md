@@ -1,7 +1,7 @@
 ---
 spec_id: SPEC-V3R6-LINK-FIX-001
 title: Fix broken links — GitHub repo rename and stale Anthropic docs URL
-status: draft
+status: completed
 tier: S
 created: 2026-07-19
 updated: 2026-07-19

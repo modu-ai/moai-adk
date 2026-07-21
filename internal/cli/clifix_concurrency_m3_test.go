@@ -15,6 +15,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 
@@ -38,7 +39,7 @@ func TestCharacterize_WriteFileAtomic_Perm0600(t *testing.T) {
 	if err != nil {
 		t.Fatalf("stat: %v", err)
 	}
-	if perm := info.Mode().Perm(); perm != 0o600 {
+	if perm := info.Mode().Perm(); runtime.GOOS != "windows" && perm != 0o600 {
 		t.Errorf("perm = %04o, want 0600", perm)
 	}
 	got, err := os.ReadFile(path)
@@ -66,7 +67,7 @@ func TestCharacterize_WriteFileAtomic_Perm0644(t *testing.T) {
 	if err != nil {
 		t.Fatalf("stat: %v", err)
 	}
-	if perm := info.Mode().Perm(); perm != 0o644 {
+	if perm := info.Mode().Perm(); runtime.GOOS != "windows" && perm != 0o644 {
 		t.Errorf("perm = %04o, want 0644", perm)
 	}
 }
@@ -153,7 +154,7 @@ func TestCharacterize_SaveMergeHistoryLedger_JSONTrailingNewline(t *testing.T) {
 	}
 	// File mode is 0600 (CreateTemp default, credential-bearing cache).
 	info, _ := os.Stat(path)
-	if perm := info.Mode().Perm(); perm != 0o600 {
+	if perm := info.Mode().Perm(); runtime.GOOS != "windows" && perm != 0o600 {
 		t.Errorf("perm = %04o, want 0600", perm)
 	}
 }
@@ -181,7 +182,7 @@ func TestCharacterize_SaveWorkflowMuteConfig_Perm0644(t *testing.T) {
 	if err != nil {
 		t.Fatalf("stat: %v", err)
 	}
-	if perm := info.Mode().Perm(); perm != 0o644 {
+	if perm := info.Mode().Perm(); runtime.GOOS != "windows" && perm != 0o644 {
 		t.Errorf("perm = %04o, want 0644", perm)
 	}
 	data, err := os.ReadFile(path)
@@ -216,7 +217,7 @@ func TestCharacterize_SaveLLMSection_WritesLLMYaml(t *testing.T) {
 	}
 	// File mode is 0600 (CreateTemp default, potentially credential-bearing).
 	info, _ := os.Stat(path)
-	if perm := info.Mode().Perm(); perm != 0o600 {
+	if perm := info.Mode().Perm(); runtime.GOOS != "windows" && perm != 0o600 {
 		t.Errorf("perm = %04o, want 0600", perm)
 	}
 }
@@ -249,7 +250,7 @@ func TestCharacterize_WriteClaudeJSONBytes_NoTrailingNewline(t *testing.T) {
 	}
 	// File mode is 0600 (credential-bearing).
 	info, _ := os.Stat(path)
-	if perm := info.Mode().Perm(); perm != 0o600 {
+	if perm := info.Mode().Perm(); runtime.GOOS != "windows" && perm != 0o600 {
 		t.Errorf("perm = %04o, want 0600", perm)
 	}
 }
