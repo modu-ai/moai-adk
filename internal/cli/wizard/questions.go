@@ -140,9 +140,13 @@ func DefaultQuestions(projectRoot string) []Question {
 //  6. GitLab username (conditional)
 //  7. GitLab token (conditional)
 //
-// These are asked by the `moai update --reconfigure` path only (via
-// ReconfigureQuestions); `moai init` auto-detects mode and provider from the
-// repository's remotes instead.
+// These are asked ONLY by the `moai update --reconfigure` path — runInitWizard
+// (internal/cli/update.go) is the sole caller and it builds ReconfigureQuestions.
+// The interactive `moai init` path is DISTINCT: init.go -> runWizardFn ->
+// RunWithDefaultsModes builds DefaultQuestions (+ Phase1/Phase2), which contain
+// NO Git questions; `moai init` auto-detects mode and provider from the
+// repository's remotes via detectGitConfig instead. This split is enforced by
+// TestInitWizardQuestionSetHasNoGitCredentialQuestions.
 func GitQuestions() []Question {
 	return []Question{
 		// 1. Git Mode
@@ -209,7 +213,7 @@ func GitQuestions() []Question {
 			Group:       "Git",
 			Type:        QuestionTypeInput,
 			Title:       "Enter GitHub personal access token (optional)",
-			Description: "Required for PR creation and pushing. Leave empty to skip or use gh CLI.",
+			Description: "Prefer 'gh auth login' — it stores credentials securely outside the project and MoAI never writes them to disk. A token pasted here is NOT saved to any file; if you use one, scope it minimally (fine-grained: Contents + Pull requests read/write; classic: repo). Leave empty to use the gh CLI.",
 			Default:     "",
 			Required:    false,
 			Condition: func(r *WizardResult) bool {
@@ -235,7 +239,7 @@ func GitQuestions() []Question {
 			Group:       "Git",
 			Type:        QuestionTypeInput,
 			Title:       "Enter GitLab personal access token (optional)",
-			Description: "Required for MR creation and pushing. Leave empty to skip or use glab CLI.",
+			Description: "Prefer 'glab auth login' — it stores credentials securely outside the project and MoAI never writes them to disk. A token pasted here is NOT saved to any file; if you use one, scope it minimally (write_repository, api). Leave empty to use the glab CLI.",
 			Default:     "",
 			Required:    false,
 			Condition: func(r *WizardResult) bool {

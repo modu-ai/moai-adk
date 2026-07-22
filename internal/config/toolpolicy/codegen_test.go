@@ -81,6 +81,51 @@ func sampleDoc() *PolicyDocument {
 	}
 }
 
+// TestPermissionsRegionHasDirective covers the F2 codegen guard: a permissions
+// block that carries a Go-template directive (render-time git_mode gating) is
+// detected so the tool-policy build command can SKIP the template target
+// instead of corrupting the conditional or erroring on the non-JSON block. A
+// directive OUTSIDE the permissions region (the env.PATH {{jsonEscape}} present
+// in every .tmpl) must NOT count — the check is permissions-region-specific,
+// unlike the whole-body DetectTargetKind check.
+func TestPermissionsRegionHasDirective(t *testing.T) {
+	t.Parallel()
+
+	// Pure JSON permissions block (env has no directive) -> false.
+	if has, err := PermissionsRegionHasDirective([]byte(sampleSettingsJSON)); err != nil || has {
+		t.Errorf("pure-JSON body: has=%v err=%v, want has=false", has, err)
+	}
+
+	// A .tmpl whose ONLY directive is in the env block (env.PATH), not in the
+	// permissions region -> false.
+	if has, err := PermissionsRegionHasDirective([]byte(sampleSettingsTmpl)); err != nil || has {
+		t.Errorf("env-only-directive body: has=%v err=%v, want has=false", has, err)
+	}
+
+	// A permissions block carrying a git_mode {{if}} gate -> true. The balanced
+	// {{ }} directives must not fool the string-literal-aware region matcher.
+	conditional := `{
+  "env": { "PATH": "{{jsonEscape .SmartPATH}}" },
+  "permissions": {
+    "defaultMode": "acceptEdits",
+    "allow": [
+      "Bash(git status:*)",
+{{- if ne .GitMode "manual"}}
+      "Bash(git commit:*)",
+{{- end}}
+{{- if eq .GitMode "team"}}
+      "Bash(git push:*)",
+{{- end}}
+      "Bash(git pull:*)"
+    ]
+  }
+}
+`
+	if has, err := PermissionsRegionHasDirective([]byte(conditional)); err != nil || !has {
+		t.Errorf("git_mode-conditional body: has=%v err=%v, want has=true", has, err)
+	}
+}
+
 // TestRoundTripEquivalence_JSON (AC-TPS-004) verifies that for every YAML
 // entry, the generated settings.json permissions block reflects the YAML
 // decision — codegenDecision(entry) == entry.Decision.
