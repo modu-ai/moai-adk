@@ -261,7 +261,7 @@ flowchart TD
 
 루프의 성공 종료는 **기계적 완료 술어**로 판정합니다. 이슈 큐가 비었고 진단(LSP/AST-grep/테스트/커버리지)이 clean한지를 오케스트레이터가 직접 확인합니다. 별도의 감사 에이전트(sync-auditor)가 완료를 판정하지 않습니다.
 
-술어가 충족되면 **Step 1.5 독립 최종 검증(Independent Final Pass)**이 성공 종료 경로로 실행됩니다. `/moai gate --fresh`를 새 컨텍스트로 돌리거나 read-only 검증 Agent를 spawn하여, 루프가 자신을 검사하지 않도록 독립적으로 최종 상태를 확인합니다.
+술어가 충족되면 **Step 1.5 독립 최종 검증**(Independent Final Pass)이 성공 종료 경로로 실행됩니다. `/moai gate --fresh`를 새 컨텍스트로 돌리거나 read-only 검증 Agent를 spawn하여, 루프가 자신을 검사하지 않도록 독립적으로 최종 상태를 확인합니다.
 
 **에이전트 역할:**
 

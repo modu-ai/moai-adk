@@ -26,7 +26,7 @@ draft: false
 | `--file PATH` | 특정 파일만 검토 | `/moai review --file src/auth.go` |
 
 {{< callout type="warning" >}}
-`--team` 병렬 리뷰 모드는 Agent Teams 정적 계층과 함께 **은퇴(tombstone)**했습니다. 병렬 리뷰는 Mode 4 서브에이전트 팬아웃으로 수행되며, 팀이 아닙니다.
+`--team` 병렬 리뷰 모드는 Agent Teams 정적 계층과 함께 **은퇴**(tombstone)했습니다. 병렬 리뷰는 Mode 4 서브에이전트 팬아웃으로 수행되며, 팀이 아닙니다.
 {{< /callout >}}
 
 ## 에이전트 체인
