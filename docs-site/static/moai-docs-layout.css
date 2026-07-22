@@ -662,3 +662,1014 @@ main.docs-main .doc-layout--2col { grid-template-columns: minmax(0, 1fr) 260px; 
   .doc-layout.doc-layout--2col { grid-template-columns: 1fr; }
   .doc-layout--2col .docs-toc { display: none; }
 }
+
+/* ============================================================================
+ * v3 — Claude Design handoff ("01 Docs Home" header + "03 Doc Detail" shell)
+ * ----------------------------------------------------------------------------
+ * Milestone 1: common shell (header / left sidebar / right TOC rail) and the
+ * document-detail page. Recreated from the handoff HTML prototypes as CLASSES
+ * (the prototypes ship inline styles + DC bindings; none of that is copied).
+ *
+ * Load order: this file is last in head/custom.html, so same-specificity rules
+ * here beat moai-brand / moai-design / moai-docs-theme. Where those files use
+ * !important (header background, code-card chrome) the rules below match with a
+ * higher-specificity selector plus !important.
+ *
+ * LIGHT THEME ONLY — the handoff's dark-mode tokens and its dark-mode toggle
+ * button are intentionally NOT ported. No dark-theme attribute selector belongs
+ * in this stylesheet.
+ *
+ * Mono discipline: --cw-mono (JetBrains Mono) dresses UI mono surfaces only —
+ * header chips, kbd, eyebrows, meta lines, code-card labels. Code BODIES keep
+ * var(--font-code) (Goorm Sans Code) because the docs carry Korean comments
+ * inside code blocks and JetBrains Mono has no Hangul coverage.
+ * ========================================================================== */
+
+:root {
+  --cw-mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace;
+}
+
+/* ───────────────────────── Header (sticky 64px) ───────────────────────── */
+
+.gdoc-header.cw-hdr {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  height: 64px;
+  background: rgba(244, 244, 244, 0.85) !important;
+  -webkit-backdrop-filter: blur(12px) !important;
+  backdrop-filter: blur(12px) !important;
+  border-bottom: 1px solid #d1d1d1 !important;
+  box-shadow: none !important;
+}
+.cw-hdr-inner {
+  max-width: 1440px;
+  height: 64px;
+  margin: 0 auto;
+  padding: 0 24px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+/* brand lockup — mascot logo + wordmark + DOCS chip */
+.cw-hdr-brand { display: flex; align-items: center; gap: 10px; flex: none; }
+.cw-hdr-brand,
+.cw-hdr-brand:hover,
+.cw-hdr-brand:focus { text-decoration: none !important; }
+.cw-hdr-logo { height: 26px; width: auto; display: block; }
+.cw-hdr-name { font-size: 15px; font-weight: 800; letter-spacing: -0.05em; color: #060606; }
+.cw-hdr-chip {
+  font-family: var(--cw-mono);
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  color: #565656;
+  border: 1px solid #d1d1d1;
+  border-radius: 4px;
+  padding: 2px 6px;
+}
+
+/* centred search trigger */
+.cw-hdr-searchwrap { flex: 1; display: flex; justify-content: center; min-width: 0; }
+.cw-hdr-search {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  max-width: 420px;
+  height: 36px;
+  padding: 0 12px;
+  border: 1px solid #d1d1d1;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #757575;
+  font-family: inherit;
+  font-size: 13px;
+  letter-spacing: -0.025em;
+  cursor: pointer;
+  transition: border-color 150ms cubic-bezier(0.4, 0, 0.2, 1),
+              color 150ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+.cw-hdr-search:hover { border-color: #9fa0a0; color: #565656; }
+.cw-hdr-search-txt { flex: 1; text-align: left; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cw-hdr-kbd {
+  font-family: var(--cw-mono);
+  font-size: 11px;
+  color: #757575;
+  background: #f4f4f4;
+  border: 1px solid #e6e6e6;
+  border-radius: 4px;
+  padding: 1px 6px;
+}
+
+/* right cluster — version pill + language menu + GitHub */
+.cw-hdr-actions { display: flex; align-items: center; gap: 10px; flex: none; }
+.cw-hdr-ver {
+  font-family: var(--cw-mono);
+  font-size: 11px;
+  font-weight: 600;
+  color: #3d7d5f;
+  border: 1px solid rgba(61, 125, 95, 0.35);
+  background: rgba(61, 125, 95, 0.08);
+  border-radius: 999px;
+  padding: 3px 10px;
+  white-space: nowrap;
+}
+.cw-hdr-ver:hover { background: rgba(61, 125, 95, 0.14); text-decoration: none; }
+
+.cw-hdr-lang { position: relative; }
+.cw-hdr-langbtn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 32px;
+  padding: 0 10px;
+  border: 1px solid #d1d1d1;
+  border-radius: 8px;
+  background: #ffffff;
+  font-size: 12.5px;
+  font-weight: 500;
+  color: #3a3a3a;
+  cursor: pointer;
+  list-style: none;
+  transition: border-color 150ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+.cw-hdr-langbtn::-webkit-details-marker { display: none; }
+.cw-hdr-langbtn::marker { content: ""; }
+.cw-hdr-langbtn:hover { border-color: #9fa0a0; }
+.cw-hdr-langchev { transition: transform 150ms cubic-bezier(0.4, 0, 0.2, 1); }
+.cw-hdr-lang[open] .cw-hdr-langchev { transform: rotate(180deg); }
+.cw-hdr-langpop {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 6px);
+  min-width: 156px;
+  z-index: 60;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 4px;
+  background: #ffffff;
+  border: 1px solid #d1d1d1;
+  border-radius: 8px;
+  box-shadow: 0 8px 24px rgba(6, 6, 6, 0.10);
+}
+.cw-hdr-langitem {
+  padding: 7px 10px;
+  border-radius: 6px;
+  font-size: 13px;
+  color: #3a3a3a;
+  white-space: nowrap;
+}
+.cw-hdr-langitem:hover { background: #f4f4f4; color: #060606; text-decoration: none; }
+.cw-hdr-langitem.active { color: #3d7d5f; background: rgba(61, 125, 95, 0.08); font-weight: 700; }
+
+.cw-hdr-gh {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border: 1px solid #d1d1d1;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #3a3a3a;
+  transition: border-color 150ms cubic-bezier(0.4, 0, 0.2, 1),
+              color 150ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+.cw-hdr-gh:hover { border-color: #9fa0a0; color: #060606; text-decoration: none; }
+
+/* ─────────────── Shell — 260px | body | 220px, hairline separators ───────────────
+   baseof.html renders `main.docs-main > (aside.gdoc-nav, div.gdoc-page[, aside.cw-toc])`.
+   The third track is `auto` so it collapses to 0 on document-detail pages, where
+   the rail is rendered inside .gdoc-page by single.html instead. */
+
+main.container.docs-main {
+  max-width: 1440px;
+  margin: 0 auto;
+  padding: 0 24px;
+  display: grid;
+  grid-template-columns: 260px minmax(0, 1fr) auto;
+  gap: 0;
+  align-items: start;
+}
+main.docs-main > .gdoc-nav {
+  width: auto;
+  flex: none;
+  min-width: 0;
+  position: sticky;
+  top: 64px;
+  align-self: start;
+  max-height: calc(100vh - 64px);
+  overflow-y: auto;
+  padding: 28px 20px 40px 0;
+  border-right: 1px solid #e6e6e6;
+}
+main.docs-main > .gdoc-page {
+  flex: none;
+  min-width: 0;
+  max-width: none;
+  padding: 36px 48px 96px;
+}
+main.docs-main > .cw-toc {
+  width: 220px;
+  flex: none;
+  position: sticky;
+  top: 64px;
+  align-self: start;
+  max-height: calc(100vh - 64px);
+  overflow-y: auto;
+  margin-left: 0;
+  padding: 36px 0 40px 20px;
+  border-left: 1px solid #e6e6e6;
+}
+/* document detail supplies its own right rail → drop the page's right gutter so
+   the rail's hairline lands on the container edge. Progressive enhancement: a
+   browser without :has() simply keeps the 48px gutter. */
+main.docs-main > .gdoc-page:has(> .doc-single) { padding-right: 0; }
+
+/* ───────────────────────── Left sidebar (menu.html) ───────────────────────── */
+
+.cw-side--v3 { display: flex; flex-direction: column; gap: 0; }
+.cw-side--v3 .cw-side-section { border-radius: 0; margin-bottom: 24px; }
+.cw-side--v3 .cw-side-head {
+  padding: 0 0 8px 12px;
+  border-radius: 0;
+  background: none;
+  font-family: var(--cw-mono);
+  font-size: 10.5px;
+  font-weight: 500;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: #9fa0a0;
+}
+.cw-side--v3 .cw-side-head:hover { background: none; color: #565656; }
+.cw-side--v3 .cw-side-head:hover .cw-side-title { color: #565656; }
+.cw-side--v3 .cw-side-title { gap: 6px; color: inherit; }
+.cw-side--v3 .cw-side-ico,
+.cw-side--v3 .cw-side-section[open] .cw-side-ico { width: 12px; height: 12px; color: inherit; }
+.cw-side--v3 .cw-side-chev { width: 11px; height: 11px; color: #b5b5b5; }
+.cw-side--v3 .cw-side-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.cw-side--v3 .cw-side-list li { margin: 0; }
+.cw-side--v3 .cw-side-link {
+  display: block;
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-size: 13.5px;
+  font-weight: 400;
+  letter-spacing: -0.025em;
+  line-height: 1.5;
+  color: #565656;
+  background: none;
+  transition: color 150ms cubic-bezier(0.4, 0, 0.2, 1),
+              background-color 150ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+.cw-side--v3 .cw-side-link::before { display: none; }
+.cw-side--v3 .cw-side-link:hover { color: #060606; background: #ffffff; text-decoration: none; }
+.cw-side--v3 .cw-side-link.active { color: #3d7d5f; background: rgba(61, 125, 95, 0.08); font-weight: 700; }
+.cw-side--v3 .cw-side-count { color: #9fa0a0; font-family: var(--cw-mono); font-size: 10.5px; }
+.cw-side--v3 .cw-side-badge,
+.cw-side--v3 .cw-side-new {
+  font-family: var(--cw-mono);
+  font-size: 9px;
+  letter-spacing: 0.08em;
+  color: #3d7d5f;
+  background: rgba(61, 125, 95, 0.08);
+  border-radius: 4px;
+  padding: 1px 5px;
+  margin-left: 6px;
+}
+
+/* ───────────────────── Right rail — ON THIS PAGE (doc-rail.html) ───────────────────── */
+
+.doc-single .docs-toc.doc-rail {
+  position: sticky;
+  top: 64px;
+  align-self: start;
+  max-height: calc(100vh - 64px);
+  overflow-y: auto;
+  padding: 0 0 40px 20px;
+  border-left: 1px solid #e6e6e6;
+}
+.doc-rail .docs-toc-h {
+  font-family: var(--cw-mono);
+  font-size: 10.5px;
+  font-weight: 500;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: #9fa0a0;
+  margin-bottom: 12px;
+  padding-bottom: 0;
+  border-bottom: 0;
+}
+.doc-rail .docs-toc-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+.doc-rail .docs-toc-list li { margin: 0; }
+.doc-rail .docs-toc-list a {
+  display: block;
+  padding: 5px 0 5px 12px;
+  border-left: 2px solid #e6e6e6;
+  border-radius: 0;
+  background: none;
+  font-size: 12.5px;
+  letter-spacing: -0.025em;
+  line-height: 1.5;
+  color: #757575;
+  transition: color 150ms cubic-bezier(0.4, 0, 0.2, 1),
+              border-color 150ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+.doc-rail .docs-toc-list a:hover { color: #060606; background: none; border-radius: 0; text-decoration: none; }
+.doc-rail .docs-toc-list a.active { color: #3d7d5f; border-left-color: #3d7d5f; font-weight: 700; }
+.doc-rail-links {
+  margin-top: 28px;
+  padding-top: 20px;
+  border-top: 1px solid #e6e6e6;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.doc-rail-link {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: #757575;
+  transition: color 150ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+.doc-rail-link:hover { color: #3d7d5f; text-decoration: none; }
+.doc-rail-link svg { flex: none; }
+
+/* ─────────────────── Document detail — article chrome (single.html) ─────────────────── */
+
+main.docs-main .doc-layout--2col {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 220px;
+  gap: 0;
+  align-items: start;
+  max-width: none;
+  margin: 0;
+  padding: 0;
+}
+/* reset the docs-index card `.doc-body` skin that also matches this article */
+.doc-single .doc-body {
+  display: block;
+  min-width: 0;
+  max-width: 720px;
+  padding: 0;
+  flex: none;
+}
+
+.doc-crumb {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  font-size: 12.5px;
+  color: #757575;
+  margin-bottom: 20px;
+}
+.doc-crumb a { color: #757575; }
+.doc-crumb a:hover { color: #060606; text-decoration: none; }
+.doc-crumb .sep { color: #b5b5b5; }
+.doc-crumb .cur { color: #060606; font-weight: 600; }
+
+.doc-single .doc-h1 {
+  margin: 0 0 14px;
+  font-size: 38px;
+  font-weight: 900;
+  letter-spacing: -0.05em;
+  line-height: 1.12;
+  color: #060606;
+  max-width: none;
+}
+.doc-lede {
+  margin: 0 0 20px;
+  font-size: 16px;
+  line-height: 1.65;
+  letter-spacing: -0.025em;
+  color: #565656;
+  text-wrap: pretty;
+}
+.doc-metaline {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+  font-family: var(--cw-mono);
+  font-size: 11.5px;
+  color: #9fa0a0;
+  border-bottom: 1px solid #e6e6e6;
+  padding-bottom: 20px;
+  margin-bottom: 32px;
+}
+.doc-metaline .dot { color: #b5b5b5; }
+.doc-metaline a { color: #757575; }
+.doc-metaline a:hover { color: #3d7d5f; text-decoration: none; }
+
+.doc-single .gdoc-markdown h2 {
+  font-size: 24px;
+  font-weight: 800;
+  letter-spacing: -0.05em;
+  line-height: 1.3;
+  color: #060606;
+  margin: 40px 0 14px;
+  scroll-margin-top: 88px;
+}
+.doc-single .gdoc-markdown h3 {
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: -0.05em;
+  color: #060606;
+  margin: 28px 0 10px;
+  scroll-margin-top: 88px;
+}
+.doc-single .gdoc-markdown p,
+.doc-single .gdoc-markdown li {
+  font-size: 15px;
+  line-height: 1.75;
+  letter-spacing: -0.025em;
+  color: #3a3a3a;
+}
+
+/* PREV / NEXT — baseof.html renders .cw-pg-nav (menu-order traversal); this is
+   the handoff card skin for it, constrained to the article column. */
+.doc-single ~ .cw-pg-nav {
+  max-width: 720px;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin: 48px 0 0;
+  border-top: 1px solid #e6e6e6;
+  padding-top: 24px;
+}
+.doc-single ~ .cw-pg-nav .cw-pg-card {
+  gap: 4px;
+  min-height: 0;
+  padding: 14px 18px;
+  border: 1px solid #e6e6e6;
+  border-radius: 12px;
+  background: #ffffff;
+  box-shadow: none;
+  transition: border-color 150ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+.doc-single ~ .cw-pg-nav .cw-pg-card:hover {
+  border-color: #3d7d5f;
+  transform: none;
+  box-shadow: none;
+}
+.doc-single ~ .cw-pg-nav .cw-pg-card .lbl {
+  font-family: var(--cw-mono);
+  font-size: 11px;
+  font-weight: 400;
+  letter-spacing: 0.1em;
+  color: #9fa0a0;
+}
+.doc-single ~ .cw-pg-nav .cw-pg-card .ttl {
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: -0.025em;
+  color: #060606;
+}
+
+/* ───────────────────── Code block (render-codeblock.html) ─────────────────────
+   `.code-card` is kept for the copy handler + Chroma rules; `--v3` raises
+   specificity over the legacy macOS traffic-light skin in moai-docs-theme.css.
+   Re-pointing the --term-* customs also re-colours every inherited !important
+   rule that reads them. */
+
+.gdoc-markdown .code-card.code-card--v3 {
+  --term-bg: #141414;
+  --term-head: #242424;
+  --term-fg: #e6e6e6;
+  --term-dim: #9fa0a0;
+  --term-divider: rgba(255, 255, 255, 0.07);
+  position: relative;
+  margin: 24px 0;
+  border: 1px solid #d1d1d1 !important;
+  border-radius: 12px !important;
+  background: #141414 !important;
+  box-shadow: none !important;
+  overflow: hidden;
+}
+.gdoc-markdown .code-card.code-card--v3 .code-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  background: #242424;
+  padding: 8px 14px;
+  border-bottom: 0;
+}
+.gdoc-markdown .code-card.code-card--v3 .code-head-lang {
+  font-family: var(--cw-mono);
+  font-size: 11px;
+  font-weight: 400;
+  letter-spacing: 0.04em;
+  color: #9fa0a0;
+}
+.gdoc-markdown .code-card.code-card--v3 .copy-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: auto !important;
+  padding: 0 !important;
+  border: none !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  color: #9fa0a0 !important;
+  font-family: var(--cw-mono) !important;
+  font-size: 11px !important;
+  font-weight: 400 !important;
+  cursor: pointer;
+  transition: color 150ms cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+.gdoc-markdown .code-card.code-card--v3 .copy-btn:hover {
+  color: #e6e6e6 !important;
+  background: transparent !important;
+  border: none !important;
+}
+.gdoc-markdown .code-card.code-card--v3 .copy-btn.copied {
+  color: #3d7d5f !important;
+  background: transparent !important;
+  border: none !important;
+}
+.gdoc-markdown .code-card.code-card--v3 .copy-btn svg { width: 12px; height: 12px; flex: none; }
+.gdoc-markdown .code-card.code-card--v3 pre {
+  margin: 0;
+  padding: 16px 18px !important;
+  background: #141414 !important;
+  color: #e6e6e6 !important;
+  font-family: var(--font-code) !important;
+  font-size: 13px;
+  line-height: 1.7;
+  overflow-x: auto;
+}
+.gdoc-markdown .code-card.code-card--v3 .chroma code,
+.gdoc-markdown .code-card.code-card--v3 .chroma .line,
+.gdoc-markdown .code-card.code-card--v3 .chroma .cl,
+.gdoc-markdown .code-card.code-card--v3 pre code {
+  color: #e6e6e6 !important;
+  font-weight: 500 !important;
+  font-family: var(--font-code) !important;
+  background: transparent !important;
+}
+.gdoc-markdown .code-card.code-card--v3 ::-webkit-scrollbar { height: 10px; width: 10px; background: #141414; }
+.gdoc-markdown .code-card.code-card--v3 ::-webkit-scrollbar-thumb { background: rgba(230, 230, 230, 0.20); border-radius: 5px; }
+.gdoc-markdown .code-card.code-card--v3 ::-webkit-scrollbar-track { background: #141414; }
+
+/* ───────────────────────────── Responsive ─────────────────────────────
+   Mirrors the pre-existing intent: drop the right rail on tablet, collapse to a
+   single column on mobile. (Below geekdoc's 41rem breakpoint the sidebar was
+   already pushed off-canvas with no toggle; here it is hidden outright so the
+   grid track does not squeeze the body.) */
+
+@media (max-width: 1200px) {
+  main.container.docs-main { grid-template-columns: 260px minmax(0, 1fr); }
+  main.docs-main > .cw-toc { display: none; }
+  main.docs-main .doc-layout--2col { grid-template-columns: minmax(0, 1fr); }
+  .doc-single .docs-toc.doc-rail { display: none; }
+  main.docs-main > .gdoc-page:has(> .doc-single) { padding-right: 48px; }
+}
+@media (max-width: 900px) {
+  main.container.docs-main { grid-template-columns: minmax(0, 1fr); padding: 0 20px; }
+  main.docs-main > .gdoc-nav { display: none; }
+  main.docs-main > .gdoc-page,
+  main.docs-main > .gdoc-page:has(> .doc-single) { padding: 28px 0 64px; }
+  .cw-hdr-inner { padding: 0 16px; gap: 10px; }
+  .cw-hdr-name,
+  .cw-hdr-search-txt,
+  .cw-hdr-kbd,
+  .cw-hdr-langname { display: none; }
+  .cw-hdr-search { max-width: 36px; padding: 0; justify-content: center; }
+  .doc-single .doc-h1 { font-size: 30px; }
+  .doc-single ~ .cw-pg-nav { grid-template-columns: 1fr; }
+}
+
+/* ============================================================================
+ * v3 — Claude Design handoff — Milestone 2
+ * ("01 Docs Home" landing · "02 Getting Started" section index · "05 Search"
+ *  empty-state polish · "06 Not Found" 404)
+ * ----------------------------------------------------------------------------
+ * Recreated from the handoff HTML prototypes as CLASSES. The prototypes ship
+ * inline styles + DC bindings + `style-hover` attributes; none of that markup
+ * is copied — the visual output is reproduced here and `style-hover` is
+ * converted to real `:hover` rules.
+ *
+ * This file loads LAST in head/custom.html, so same-specificity rules here beat
+ * moai-brand / moai-design / moai-docs-theme.
+ *
+ * LIGHT THEME ONLY — no dark-theme attribute selector belongs here. Ink is
+ * #060606 (never pure black). Motion 150ms cubic-bezier(0.4,0,0.2,1); mascots
+ * may use the bounce easing; prefers-reduced-motion respected.
+ * ========================================================================== */
+
+/* ───────────────────────── Home landing (standalone) ───────────────────────── */
+
+.cw-home { min-height: 100vh; background: #f4f4f4; }
+.cw-home-main { max-width: 1024px; margin: 0 auto; padding: 0 24px 96px; }
+
+/* Hero — text column + 300px mascot column */
+.cw-home-hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 300px;
+  gap: 48px;
+  align-items: center;
+  padding: 72px 0 56px;
+}
+.cw-home-eyebrow {
+  font-family: var(--cw-mono);
+  font-size: 12px;
+  letter-spacing: 0.14em;
+  color: #3d7d5f;
+  margin-bottom: 18px;
+}
+.cw-home-h1 {
+  margin: 0 0 18px;
+  font-size: clamp(38px, 5.4vw, 56px);
+  font-weight: 900;
+  letter-spacing: -0.05em;
+  line-height: 1.05;
+  color: #060606;
+}
+.cw-home-h1 .clay,
+.cw-home-h1 .accent { color: #3d7d5f; display: inline; }
+.cw-home-lede {
+  margin: 0 0 28px;
+  font-size: 18px;
+  line-height: 1.6;
+  letter-spacing: -0.025em;
+  color: #565656;
+  max-width: 520px;
+  text-wrap: pretty;
+}
+.cw-home-cta { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+.cw-home-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 44px;
+  padding: 0 22px;
+  border-radius: 999px;
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: -0.025em;
+  border: 1px solid transparent;
+  cursor: pointer;
+  font-family: inherit;
+  transition: box-shadow 150ms cubic-bezier(0.4, 0, 0.2, 1),
+              background-color 150ms cubic-bezier(0.4, 0, 0.2, 1),
+              color 150ms cubic-bezier(0.4, 0, 0.2, 1),
+              border-color 150ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+.cw-home-btn svg { width: 18px; height: 18px; flex: none; }
+.cw-home-btn--primary { background: #3d7d5f; color: #ffffff; }
+.cw-home-btn--primary:hover {
+  color: #ffffff;
+  box-shadow: 0 4px 32px rgba(61, 125, 95, 0.35);
+  text-decoration: none;
+}
+.cw-home-btn--ghost {
+  background: #ffffff;
+  border-color: #d1d1d1;
+  color: #060606;
+  font-weight: 600;
+}
+.cw-home-btn--ghost:hover {
+  background: #3d7d5f;
+  border-color: #3d7d5f;
+  color: #ffffff;
+  text-decoration: none;
+}
+.cw-home-install {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 28px;
+  max-width: 520px;
+  padding: 12px 16px;
+  border-radius: 8px;
+  background: #141414;
+  color: #e6e6e6;
+  font-family: var(--cw-mono);
+  font-size: 13px;
+}
+.cw-home-install .dollar { color: #3d7d5f; }
+.cw-home-install code {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  background: none;
+  color: #e6e6e6;
+  font-family: inherit;
+  font-size: inherit;
+  padding: 0;
+}
+.cw-home-install svg { flex: none; }
+.cw-home-hero-aside {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+.cw-home-hero-aside .mascot { width: 260px; }
+.cw-home-cap {
+  font-family: var(--cw-mono);
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  color: #9fa0a0;
+  text-align: center;
+}
+
+/* Feature cards — 3-up */
+.cw-home-feats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+  padding: 8px 0 48px;
+}
+.cw-feat-card {
+  background: #ffffff;
+  border: 1px solid #d1d1d1;
+  border-radius: 16px;
+  padding: 24px;
+}
+.cw-feat-idx {
+  font-family: var(--cw-mono);
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  color: #3d7d5f;
+  margin-bottom: 10px;
+}
+.cw-feat-card h3 {
+  margin: 0 0 8px;
+  font-size: 17px;
+  font-weight: 800;
+  letter-spacing: -0.05em;
+  color: #060606;
+}
+.cw-feat-card p {
+  margin: 0;
+  font-size: 13.5px;
+  line-height: 1.6;
+  letter-spacing: -0.025em;
+  color: #565656;
+}
+.cw-feat-tags { margin-top: 14px; font-size: 13px; color: #9fa0a0; }
+.cw-feat-tags a { color: #3d7d5f; }
+.cw-feat-tags a:hover { color: #316750; text-decoration: none; }
+
+/* Section grid — real menu-driven doc structure */
+.cw-home-sections { padding: 16px 0 0; }
+.cw-sec-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+.cw-sec-head h2 {
+  margin: 0;
+  font-size: 24px;
+  font-weight: 800;
+  letter-spacing: -0.05em;
+  color: #060606;
+}
+.cw-sec-meta { font-family: var(--cw-mono); font-size: 12px; color: #757575; white-space: nowrap; }
+.cw-sec-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+.cw-sec-card {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  background: #ffffff;
+  border: 1px solid #e6e6e6;
+  border-radius: 12px;
+  padding: 18px 20px;
+  color: #060606;
+  transition: transform 150ms cubic-bezier(0.4, 0, 0.2, 1),
+              border-color 150ms cubic-bezier(0.4, 0, 0.2, 1),
+              box-shadow 150ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+.cw-sec-card:hover {
+  transform: translateY(-2px);
+  border-color: #3d7d5f;
+  box-shadow: 0 12px 24px rgba(9, 17, 15, 0.06);
+  color: #060606;
+  text-decoration: none;
+}
+.cw-sec-card-top { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.cw-sec-card-title { font-size: 15px; font-weight: 700; letter-spacing: -0.05em; color: #060606; }
+.cw-sec-card-en { font-family: var(--cw-mono); font-size: 10px; letter-spacing: 0.08em; color: #9fa0a0; text-transform: uppercase; white-space: nowrap; }
+.cw-sec-card-desc { font-size: 12.5px; line-height: 1.55; letter-spacing: -0.025em; color: #565656; }
+
+/* Book CTA band */
+.cw-home-book {
+  margin-top: 56px;
+  display: flex;
+  align-items: center;
+  gap: 32px;
+  background: #ffffff;
+  border: 1px solid #d1d1d1;
+  border-radius: 24px;
+  padding: 36px 40px;
+}
+.cw-home-book .mascot { width: 120px; flex: none; }
+.cw-book-text { flex: 1; min-width: 0; }
+.cw-book-eyebrow {
+  font-family: var(--cw-mono);
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  color: #3d7d5f;
+  margin-bottom: 8px;
+}
+.cw-home-book h3 {
+  margin: 0 0 6px;
+  font-size: 20px;
+  font-weight: 800;
+  letter-spacing: -0.05em;
+  color: #060606;
+}
+.cw-home-book p {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.6;
+  letter-spacing: -0.025em;
+  color: #565656;
+}
+.cw-book-cta {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 42px;
+  padding: 0 20px;
+  border: 1.5px solid #060606;
+  border-radius: 999px;
+  font-size: 14px;
+  font-weight: 700;
+  color: #060606;
+  transition: background-color 150ms cubic-bezier(0.4, 0, 0.2, 1),
+              color 150ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+.cw-book-cta:hover { background: #060606; color: #ffffff; text-decoration: none; }
+
+@media (max-width: 860px) {
+  .cw-home-hero { grid-template-columns: minmax(0, 1fr); gap: 28px; padding: 48px 0 40px; }
+  .cw-home-hero-aside { order: -1; flex-direction: row; justify-content: flex-start; gap: 16px; }
+  .cw-home-hero-aside .mascot { width: 132px; }
+  .cw-home-feats { grid-template-columns: 1fr; }
+  .cw-sec-grid { grid-template-columns: 1fr 1fr; }
+  .cw-home-book { flex-direction: column; align-items: flex-start; gap: 20px; padding: 28px 24px; }
+}
+@media (max-width: 560px) {
+  .cw-sec-grid { grid-template-columns: 1fr; }
+  .cw-sec-head { flex-direction: column; align-items: flex-start; gap: 6px; }
+}
+
+/* ───────────────────── Section index (list.html, in shell) ───────────────────── */
+
+.cw-sec-intro { margin-bottom: 32px; }
+.cw-sec-crumb {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  font-size: 12.5px;
+  color: #757575;
+  margin-bottom: 20px;
+}
+.cw-sec-crumb a { color: #757575; }
+.cw-sec-crumb a:hover { color: #060606; text-decoration: none; }
+.cw-sec-crumb .sep { color: #b5b5b5; }
+.cw-sec-crumb .cur { color: #060606; font-weight: 600; }
+.cw-sec-intro-row {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 24px;
+}
+.cw-sec-eyebrow {
+  font-family: var(--cw-mono);
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  color: #3d7d5f;
+  margin-bottom: 12px;
+}
+.cw-sec-h1 {
+  margin: 0;
+  font-size: clamp(30px, 3.4vw, 40px);
+  font-weight: 900;
+  letter-spacing: -0.05em;
+  line-height: 1.1;
+  color: #060606;
+}
+.cw-sec-intro .mascot { width: 120px; flex: none; margin-bottom: -8px; }
+.cw-sec-card-chev { flex: none; color: #9fa0a0; }
+.cw-sec-lede {
+  margin: 20px 0 0;
+  font-size: 16px;
+  line-height: 1.65;
+  letter-spacing: -0.025em;
+  color: #565656;
+  max-width: 640px;
+  text-wrap: pretty;
+}
+@media (max-width: 640px) {
+  .cw-sec-intro .mascot { display: none; }
+}
+
+/* ───────────────────────── 404 (standalone) ───────────────────────── */
+
+.cw-404 {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 64px 24px 96px;
+}
+.cw-404-num {
+  font-family: var(--cw-mono);
+  font-size: clamp(80px, 14vw, 150px);
+  font-weight: 600;
+  letter-spacing: -0.05em;
+  line-height: 1;
+  color: #e6e6e6;
+  user-select: none;
+}
+.cw-404-num .mid { color: #3d7d5f; }
+.cw-404 .mascot {
+  width: 200px;
+  margin: -36px 0 20px;
+  animation: cw-404-drop 600ms cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+@keyframes cw-404-drop {
+  0%   { transform: translateY(-14px); opacity: 0; }
+  60%  { transform: translateY(3px); opacity: 1; }
+  100% { transform: translateY(0); }
+}
+.cw-404-title {
+  margin: 0 0 10px;
+  font-size: 28px;
+  font-weight: 900;
+  letter-spacing: -0.05em;
+  color: #060606;
+}
+.cw-404-text {
+  margin: 0 0 28px;
+  font-size: 15px;
+  line-height: 1.65;
+  letter-spacing: -0.025em;
+  color: #565656;
+  max-width: 440px;
+  text-wrap: pretty;
+}
+.cw-404-cta { display: flex; gap: 12px; flex-wrap: wrap; justify-content: center; }
+.cw-404-cta .cw-home-btn--ghost:hover {
+  background: #ffffff;
+  border-color: #060606;
+  color: #060606;
+}
+.cw-404-cta .cw-home-btn--ghost .cw-hdr-kbd { pointer-events: none; }
+.cw-404-links { display: flex; gap: 20px; margin-top: 36px; font-size: 13px; }
+.cw-404-links a { color: #3d7d5f; }
+.cw-404-links a:hover { color: #316750; text-decoration: none; }
+@media (prefers-reduced-motion: reduce) {
+  .cw-404 .mascot { animation-duration: 1ms; }
+}
+
+/* ───────────────── Search modal — design polish (over FROZEN brand base) ─────────────────
+   The modal chrome, panel, input, result rows + green hover already live in
+   moai-brand.css (.cw-search-modal*). These rules only nudge it toward the
+   handoff "05 Search" screen: green magnifier, 16px radius, and a mascot-bearing
+   empty state. The modal markup + JS in site-header.html are NOT touched. */
+.cw-search-modal__panel { border-radius: 16px; }
+.cw-search-modal__head svg { color: #3d7d5f; }
+.cw-search-modal__hint {
+  background-image: url("mascots/MoAI-Mascot-Searching.png");
+  background-repeat: no-repeat;
+  background-position: center 24px;
+  background-size: 96px auto;
+  padding-top: 128px;
+  font-family: var(--cw-mono);
+  letter-spacing: 0.02em;
+  color: #9fa0a0;
+}
+.cw-search-modal__panel::after {
+  content: "↑↓ · ↵ · esc · KO / EN / JA / ZH";
+  flex: none;
+  padding: 10px 20px;
+  border-top: 1px solid #e6e6e6;
+  background: #f4f4f4;
+  font-family: var(--cw-mono);
+  font-size: 10.5px;
+  letter-spacing: 0.04em;
+  color: #9fa0a0;
+}

@@ -1,8 +1,9 @@
 <!DOCTYPE html>
-{{- /* 404 — round3 docs-detail hero geometry (SPEC-DESIGN-DOCSV2-001 M3c-2).
-       그라데이션 .doc-hero 풀-블리드에 404 메시지 + 마스코트 + 홈 CTA.
-       standalone 페이지 (baseof 미사용). 기존 i18n 키 + .md-btn 버튼 클래스 유지.
-       마스코트: v2 Thinking 포즈 (M5, partials/mascot.html 경유). */ -}}
+{{- /* 404 — Claude Design handoff "06 Not Found" (Milestone 2).
+       평평한 라이트 배경 위 센터 레이아웃: mono 404(가운데 0 초록) + Thinking 마스코트
+       + 헤딩 + 본문 + 초록 pill(홈) + 검색 pill. standalone(baseof 미사용).
+       기존 i18n 키(notfound_*) + 검색 트리거(data-search-trigger) 보존.
+       스킨은 moai-docs-layout.css (.cw-404*). 종전 .doc-hero 그라데이션 밴드는 폐기. */ -}}
 <html lang="{{ .Site.Language.Lang }}" class="color-toggle-light" color-theme="light">
   <head>
     {{ partial "head/meta" . }}
@@ -16,24 +17,29 @@
   <body>
     {{ partial "svg-icon-symbols" . }}
 
-    <div class="wrapper">
+    <div class="wrapper page">
       {{ partial "site-header" (dict "Root" . "MenuEnabled" false) }}
 
-      <main class="doc-hero" style="min-height:70vh;display:flex;align-items:center;">
-        <div class="doc-hero-inner" style="text-align:center;margin:0 auto;padding:64px 24px;">
-          {{- /* 404 마스코트 — v2 Thinking 포즈 (M5, "고민" 공감 인텐트) */ -}}
-          {{ partial "mascot.html" (dict "pose" "thinking" "size" "120" "class" "md-404-mascot") }}
-          <div class="big" aria-hidden="true"
-               style="font-family:var(--font-mono);font-size:clamp(72px,14vw,144px);font-weight:900;letter-spacing:0.04em;line-height:1;margin:16px 0;">404</div>
-          <h1 class="doc-h1" style="margin:0 auto 12px;">{{ i18n "notfound_title" }}</h1>
-          <p class="doc-deck" style="margin:0 auto 32px;">{{ i18n "notfound_text" }}</p>
-          <div class="md-hero-cta" style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap;">
-            <a class="md-btn md-btn-primary" href="{{ .Site.Home.RelPermalink }}">
-              {{ i18n "notfound_home" }}
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" width="18" height="18"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
-            </a>
-            <button type="button" class="md-btn md-btn-ghost" data-search-trigger>{{ i18n "notfound_search" }}</button>
-          </div>
+      <main class="cw-404" id="main-content" tabindex="-1">
+        <div class="cw-404-num" aria-hidden="true">4<span class="mid">0</span>4</div>
+        {{ partial "mascot.html" (dict "pose" "thinking" "size" "200") }}
+        <h1 class="cw-404-title">{{ i18n "notfound_title" }}</h1>
+        <p class="cw-404-text">{{ i18n "notfound_text" }}</p>
+        <div class="cw-404-cta">
+          <a class="cw-home-btn cw-home-btn--primary" href="{{ .Site.Home.RelPermalink }}">
+            {{ i18n "notfound_home" }}
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+          </a>
+          <button type="button" class="cw-home-btn cw-home-btn--ghost" data-search-trigger>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35" stroke-linecap="round"/></svg>
+            {{ i18n "notfound_search" }}
+            <kbd class="cw-hdr-kbd">⌘K</kbd>
+          </button>
+        </div>
+        <div class="cw-404-links">
+          {{- with site.GetPage "/getting-started" }}<a href="{{ .RelPermalink }}">{{ .Title }}</a>{{ end -}}
+          {{- with site.GetPage "/cli-reference" }}<a href="{{ .RelPermalink }}">{{ .Title }}</a>{{ end -}}
+          {{- with site.GetPage "/workflow-commands" }}<a href="{{ .RelPermalink }}">{{ .Title }}</a>{{ end -}}
         </div>
       </main>
 

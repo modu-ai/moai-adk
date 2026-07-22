@@ -40,6 +40,12 @@ notfound_search: "검색하기"
 empty_title: "아직 준비 중인 섹션이에요"
 empty_text: "이 섹션의 하위 가이드가 곧 추가됩니다. 그동안 다른 문서를 둘러보세요."
 
+# 문서 상세 — 메타 라인 + 우측 rail 하단 링크
+doc_updated: "업데이트"
+doc_edit_github: "GitHub에서 수정"
+rail_suggest_edit: "이 페이지 수정 제안"
+rail_feedback: "피드백 남기기"
+
 # 문서 상세 우측 rail (doc-rail partial)
 rail_actions_title: "이 가이드 활용"
 rail_like: "좋아요"
@@ -62,3 +68,14 @@ card_desc_db: "스키마 동기화와 마이그레이션 패턴."
 pagination_page_prev: "이전"
 pagination_page_next: "다음"
 pagination_page_state: "{{ .PageNumber }} / {{ .TotalPages }}"
+
+# Claude Design handoff — home landing (Milestone 2) + section breadcrumb
+docs_home_crumb: "문서"
+home_feat_tokenomics_title: "토크노믹스"
+home_feat_tokenomics_body: "컨텍스트 다이어트와 프롬프트 캐싱으로 추론 비용을 60–70% 절감합니다."
+home_feat_learning_title: "재귀적 자가 학습"
+home_feat_learning_body: "의사 결정 메모리와 자율 에이전트 시스템으로 자율 개선 루프를 구현합니다."
+home_feat_harness_title: "에이전틱 하네스"
+home_feat_harness_body: "스킬·후크·MCP로 구성 가능한 실행 환경과 TRUST 5 품질 게이트."
+home_book_title: "클로드 코드로 시작하는 실전 에이전틱 코딩"
+home_book_body: "바이브 코딩의 끝, 하네스 엔지니어링의 시작. MoAI-ADK 메인테이너가 직접 쓴 실무 가이드 — 추천사 9인."

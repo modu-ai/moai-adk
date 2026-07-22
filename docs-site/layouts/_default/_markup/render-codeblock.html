@@ -1,21 +1,22 @@
-{{- /* macOS 스타일 코드 카드 render hook — Claude Warm Editorial 디자인 정합.
-       다크 카드 + 트래픽 라이트 + 파일명 + 언어 pill + 복사 버튼. (줄번호 미표시)
-       mermaid는 별도 훅(render-codeblock-mermaid.html)이 처리하므로 여기로 오지 않음. */ -}}
+{{- /* Code block render hook — Claude Design handoff "03 Doc Detail" chrome.
+       Header bar (#242424) with the language name on the left and a copy button
+       on the right, over a #141414 pre. The outer `.code-card` class is KEPT so
+       the copy-to-clipboard handler in baseof.html (`.code-card .copy-btn[data-copy]`)
+       and the Chroma syntax rules keep binding; `.code-card--v3` raises specificity
+       so this chrome wins over the legacy macOS traffic-light skin.
+       mermaid is handled by render-codeblock-mermaid.html and never reaches here. */ -}}
 {{- $lang := strings.ToLower (.Type | default "") -}}
 {{- $code := trim .Inner "\n\r" -}}
 {{- $filename := "" -}}{{- with .Attributes.filename }}{{ $filename = . }}{{ end -}}
 {{- $langLabel := cond (eq $lang "") "text" $lang -}}
 {{- $opts := "noClasses=false,tabWidth=2" -}}
-<div class="code-card" data-lang="{{ $langLabel }}">
-  <div class="code-chrome">
-    <div class="traffic"><span class="red"></span><span class="yellow"></span><span class="green"></span></div>
-    <div class="code-title">{{ with $filename }}<span class="fname">{{ . }}</span>{{ end }}<span class="lang">{{ $langLabel }}</span></div>
-    <div class="code-tools">
-      <button type="button" class="copy-btn" data-copy data-label-copy="{{ i18n "code_copy" }}" data-label-copied="{{ i18n "code_copied" }}" aria-label="{{ i18n "code_copy" }}">
-        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
-        <span class="copy-label">{{ i18n "code_copy" }}</span>
-      </button>
-    </div>
+<div class="code-card code-card--v3" data-lang="{{ $langLabel }}">
+  <div class="code-head">
+    <span class="code-head-lang">{{ with $filename }}{{ . }}{{ else }}{{ $langLabel }}{{ end }}</span>
+    <button type="button" class="copy-btn code-head-copy" data-copy data-label-copy="{{ i18n "code_copy" }}" data-label-copied="{{ i18n "code_copied" }}" aria-label="{{ i18n "code_copy" }}">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" aria-hidden="true"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+      <span class="copy-label">{{ i18n "code_copy" }}</span>
+    </button>
   </div>
   {{ highlight $code $lang $opts }}
 </div>

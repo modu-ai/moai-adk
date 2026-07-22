@@ -40,6 +40,12 @@ notfound_search: "検索する"
 empty_title: "このセクションは準備中です"
 empty_text: "このセクションのサブガイドは近日追加されます。それまで他のドキュメントをご覧ください。"
 
+# ドキュメント詳細 — メタ行 + 右サイドレール下部リンク
+doc_updated: "更新"
+doc_edit_github: "GitHub で編集"
+rail_suggest_edit: "このページの修正を提案"
+rail_feedback: "フィードバックを送る"
+
 # ドキュメント詳細の右サイドレール (doc-rail partial)
 rail_actions_title: "このガイドを活用"
 rail_like: "いいね"
@@ -62,3 +68,14 @@ card_desc_db: "スキーマ同期とマイグレーションパターン。"
 pagination_page_prev: "前へ"
 pagination_page_next: "次へ"
 pagination_page_state: "{{ .PageNumber }} / {{ .TotalPages }}"
+
+# Claude Design handoff — home landing (Milestone 2) + section breadcrumb
+docs_home_crumb: "ドキュメント"
+home_feat_tokenomics_title: "トークノミクス"
+home_feat_tokenomics_body: "コンテキストダイエットとプロンプトキャッシュで推論コストを60〜70%削減します。"
+home_feat_learning_title: "再帰的自己学習"
+home_feat_learning_body: "意思決定メモリと自律エージェントシステムで自己改善ループを実現します。"
+home_feat_harness_title: "エージェンティックハーネス"
+home_feat_harness_body: "スキル・フック・MCPで構成できる実行環境と TRUST 5 品質ゲート。"
+home_book_title: "Claude Code で始める実践エージェンティックコーディング"
+home_book_body: "バイブコーディングの終わり、ハーネスエンジニアリングの始まり。MoAI-ADK メンテナ自らが書いた実務ガイド（推薦文9名）。"
