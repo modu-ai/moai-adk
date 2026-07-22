@@ -4,6 +4,7 @@ import (
 	"os"
 
 	"charm.land/lipgloss/v2"
+	"github.com/mattn/go-isatty"
 )
 
 // Env is the interface used by Resolve to inspect the execution environment.
@@ -100,8 +101,28 @@ func (OSEnv) MoaiTheme() string {
 // resolution order is unchanged: this is only consulted by Resolve when the
 // env-var chain (NO_COLOR > MOAI_THEME) does not decide the theme, and it
 // returns true (dark, the safe default) when detection fails (non-TTY, error).
+//
+// A non-TTY guard precedes the query. HasDarkBackground writes an OSC 11
+// background-color query to the terminal and blocks reading the reply; when
+// stdin/stdout are not both character devices (a test harness, a pipe, a
+// redirected file, or a non-interactive CI runner) no terminal answers, and on
+// Windows that read blocks indefinitely rather than timing out — the observed
+// 9-minute `[syscall]` hang that stalled internal/cli and internal/cli/worktree
+// under `go test` on Windows CI. Skipping the query for a non-TTY returns the
+// same safe-dark default the error path already yields, so the observable
+// result is unchanged; only the hang is removed. isTerminal is the same
+// mattn/go-isatty check already used by isTerminalWriter in this package.
 func (OSEnv) DetectDark() bool {
+	if !isTerminalFile(os.Stdin) || !isTerminalFile(os.Stdout) {
+		return true // safe dark default; matches HasDarkBackground's error path
+	}
 	return lipgloss.HasDarkBackground(os.Stdin, os.Stdout)
+}
+
+// isTerminalFile reports whether f is a character-device terminal. Nil or
+// non-terminal handles (pipes, redirected files) return false.
+func isTerminalFile(f *os.File) bool {
+	return f != nil && isatty.IsTerminal(f.Fd())
 }
 
 // ResolveOS is a convenience wrapper that calls Resolve with the production
