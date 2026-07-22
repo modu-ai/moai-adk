@@ -3,6 +3,7 @@ package tui_test
 
 import (
 	"testing"
+	"time"
 
 	"github.com/modu-ai/moai-adk/internal/tui"
 )
@@ -134,5 +135,26 @@ func TestThemeResolve(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+// TestOSEnvDetectDark_NonTTYDoesNotHang runs under `go test`, where stdin and
+// stdout are pipes, not terminals. Before the non-TTY guard, OSEnv.DetectDark
+// issued an OSC 11 background-color query and blocked reading a reply that no
+// terminal sends — an indefinite [syscall] hang on Windows CI. The guard must
+// short-circuit to the safe-dark default (true) without querying. A hang here
+// fails the whole package via the test binary's timeout, which is the exact
+// failure this reproduces and guards against.
+func TestOSEnvDetectDark_NonTTYDoesNotHang(t *testing.T) {
+	done := make(chan bool, 1)
+	go func() { done <- tui.OSEnv{}.DetectDark() }()
+
+	select {
+	case got := <-done:
+		if !got {
+			t.Errorf("OSEnv.DetectDark() under non-TTY = %v, want true (safe-dark default)", got)
+		}
+	case <-time.After(2 * time.Second):
+		t.Fatal("OSEnv.DetectDark() did not return under non-TTY — terminal query blocked (the Windows CI hang)")
 	}
 }
