@@ -4094,9 +4094,10 @@ func TestApplyWizardConfig_WithGitHubUser(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	fakeToken := "FAKE-not-persisted-token"
 	result := &wizard.WizardResult{
 		GitHubUsername: "testuser",
-		GitHubToken:    "gh_token123",
+		GitHubToken:    fakeToken,
 	}
 
 	err := applyWizardConfig(tmpDir, result)
@@ -4112,8 +4113,9 @@ func TestApplyWizardConfig_WithGitHubUser(t *testing.T) {
 	if !strings.Contains(string(userData), "testuser") {
 		t.Error("expected user.yaml to contain testuser")
 	}
-	if !strings.Contains(string(userData), "gh_token123") {
-		t.Error("expected user.yaml to contain token")
+	// F1 security fix: the token MUST NOT be persisted to user.yaml.
+	if strings.Contains(string(userData), fakeToken) {
+		t.Error("user.yaml must NOT contain the token (F1 security fix)")
 	}
 }
 
@@ -5359,9 +5361,10 @@ func TestApplyWizardConfig_WithGitHubUserAndToken(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	fakeToken := "FAKE-not-persisted-token"
 	result := &wizard.WizardResult{
 		GitHubUsername: "testgithub",
-		GitHubToken:    "ghp_test_token_123",
+		GitHubToken:    fakeToken,
 	}
 
 	err := applyWizardConfig(tmpDir, result)
@@ -5377,8 +5380,9 @@ func TestApplyWizardConfig_WithGitHubUserAndToken(t *testing.T) {
 	if !strings.Contains(content, "github_username: testgithub") {
 		t.Error("expected user.yaml to contain 'github_username: testgithub'")
 	}
-	if !strings.Contains(content, "ghp_test_token_123") {
-		t.Error("expected user.yaml to contain github token")
+	// F1 security fix: the token MUST NOT be persisted to user.yaml.
+	if strings.Contains(content, fakeToken) {
+		t.Error("user.yaml must NOT contain the github token (F1 security fix)")
 	}
 }
 

@@ -157,6 +157,14 @@ secret-*.*
 .aws/config
 .aws/credentials
 
+# MoAI git-credential runtime files (defense-in-depth). The reconfigure wizard
+# delegates git provider credentials to the gh/glab CLI and never writes an
+# access token to a tracked config; these patterns ensure that if a
+# credential-bearing runtime file is ever introduced under .moai/, it is not
+# committed.
+.moai/**/credentials.yaml
+.moai/**/*.credentials
+
 # MINK agent credentials (plaintext API keys, per AC-CR-026).
 # Ignored anywhere in the tree so per-project auth dirs are never committed.
 **/.mink/auth/
