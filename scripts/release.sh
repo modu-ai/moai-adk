@@ -80,18 +80,35 @@ log_info "Release version: ${BOLD}$VERSION${NC}"
 [[ "$DRY_RUN" == true ]] && log_warn "DRY RUN mode — no tag/push will occur"
 [[ "$HOTFIX" == true ]] && log_info "Hotfix mode — relaxed branch check"
 
-# ─── Validation 2: Repository root ─────────────────────────────────────────
+# ─── Validation 2: 하네스 경유 확인 (release provenance) ────────────────────
+# 프로덕션 릴리스는 `/harness:release` 하네스를 통해서만 수행한다.
+# 하네스가 MOAI_RELEASE_VIA_HARNESS=1 을 export 한 상태로 이 스크립트를 호출하며,
+# 여기서 생성되는 annotated tag 에는 provenance trailer 가 기록된다
+# (release.yml 의 verify-provenance job 이 이를 검증).
+# --dry-run 은 tag/push 가 발생하지 않으므로 예외로 허용하되 경고를 출력한다.
+if [[ "${MOAI_RELEASE_VIA_HARNESS:-}" != "1" ]]; then
+    if [[ "$DRY_RUN" == true ]]; then
+        log_warn "MOAI_RELEASE_VIA_HARNESS is not set — dry-run only."
+        log_warn "The real release run requires the /harness:release harness (it exports MOAI_RELEASE_VIA_HARNESS=1)."
+    else
+        die "Release must run through the /harness:release harness (MOAI_RELEASE_VIA_HARNESS=1 not set). Run '/harness:release $VERSION' instead of invoking this script directly."
+    fi
+else
+    log_ok "Harness provenance confirmed (MOAI_RELEASE_VIA_HARNESS=1)"
+fi
+
+# ─── Validation 3: Repository root ─────────────────────────────────────────
 REPO_ROOT="$(git rev-parse --show-toplevel 2>/dev/null || die 'Not in a git repository')"
 cd "$REPO_ROOT"
 
-# ─── Validation 3: Clean working tree ──────────────────────────────────────
+# ─── Validation 4: Clean working tree ──────────────────────────────────────
 if [[ -n "$(git status --porcelain)" ]]; then
     git status --short
     die "Working tree is dirty. Commit or stash changes first."
 fi
 log_ok "Working tree clean"
 
-# ─── Validation 4: Current branch ──────────────────────────────────────────
+# ─── Validation 5: Current branch ──────────────────────────────────────────
 CURRENT_BRANCH="$(git rev-parse --abbrev-ref HEAD)"
 if [[ "$CURRENT_BRANCH" != "main" ]]; then
     if [[ "$HOTFIX" == true ]]; then
@@ -102,7 +119,7 @@ if [[ "$CURRENT_BRANCH" != "main" ]]; then
 fi
 log_ok "On expected branch: $CURRENT_BRANCH"
 
-# ─── Validation 5: Synced with origin ──────────────────────────────────────
+# ─── Validation 6: Synced with origin ──────────────────────────────────────
 git fetch origin --tags --quiet
 LOCAL_SHA="$(git rev-parse HEAD)"
 REMOTE_SHA="$(git rev-parse "origin/$CURRENT_BRANCH" 2>/dev/null || echo "")"
@@ -118,7 +135,7 @@ if [[ "$LOCAL_SHA" != "$REMOTE_SHA" ]]; then
 fi
 log_ok "Local $CURRENT_BRANCH synced with origin"
 
-# ─── Validation 6: Tag does not exist ──────────────────────────────────────
+# ─── Validation 7: Tag does not exist ──────────────────────────────────────
 if git rev-parse "$VERSION" >/dev/null 2>&1; then
     die "Tag $VERSION already exists (local)."
 fi
@@ -127,7 +144,7 @@ if git ls-remote --exit-code --tags origin "$VERSION" >/dev/null 2>&1; then
 fi
 log_ok "Tag $VERSION does not exist yet"
 
-# ─── Validation 7: CHANGELOG.md 에 해당 버전 섹션 존재 ───────────────────────
+# ─── Validation 8: CHANGELOG.md 에 해당 버전 섹션 존재 ───────────────────────
 CHANGELOG_VERSION="${VERSION#v}" # v2.14.0 → 2.14.0
 CHANGELOG_HEADER="## [$CHANGELOG_VERSION]"
 
@@ -136,7 +153,7 @@ if ! grep -q "^## \[$CHANGELOG_VERSION\]" CHANGELOG.md; then
 fi
 log_ok "CHANGELOG.md contains $CHANGELOG_HEADER section"
 
-# ─── Validation 8: CI status on HEAD (optional) ────────────────────────────
+# ─── Validation 9: CI status on HEAD (optional) ────────────────────────────
 if [[ "$SKIP_CI_CHECK" != true ]]; then
     if command -v gh >/dev/null 2>&1; then
         CI_STATE="$(gh pr list --head "$CURRENT_BRANCH" --state merged --limit 1 --json number --jq '.[0].number // ""' 2>/dev/null || echo "")"
@@ -168,7 +185,7 @@ else
     log_warn "CI check skipped (--skip-ci-check)"
 fi
 
-# ─── Validation 9: SPEC status 확인 (optional, informational) ───────────────
+# ─── Validation 10: SPEC status 확인 (optional, informational) ───────────────
 if [[ -d .moai/specs ]]; then
     DRAFT_COUNT="$(find .moai/specs -name 'spec.md' -exec grep -l '^status: draft' {} \; 2>/dev/null | wc -l | tr -d ' ')"
     if [[ "$DRAFT_COUNT" -gt 0 ]]; then
@@ -196,6 +213,18 @@ awk -v target="$CHANGELOG_HEADER " '
 if [[ ! -s "$TMP_NOTES" ]]; then
     die "Failed to extract CHANGELOG section for $VERSION"
 fi
+
+# ─── Provenance trailer 추가 ────────────────────────────────────────────────
+# annotation 본문 끝에 provenance trailer 3줄을 append 한다.
+# release.yml 의 verify-provenance job 이 이 3개 키를 literal 로 파싱하므로
+# 키 철자(Released-via / Release-version / Release-commit)를 변경하면 안 된다.
+TAG_COMMIT="$(git rev-parse HEAD^{commit})"
+{
+    echo
+    echo "Released-via: harness:release"
+    echo "Release-version: $VERSION"
+    echo "Release-commit: $TAG_COMMIT"
+} >> "$TMP_NOTES"
 
 NOTES_LINES="$(wc -l < "$TMP_NOTES" | tr -d ' ')"
 log_ok "Extracted $NOTES_LINES line(s) from CHANGELOG.md as tag annotation"
