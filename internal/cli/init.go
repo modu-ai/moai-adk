@@ -185,6 +185,24 @@ func validateInitFlags(cmd *cobra.Command, _ []string) error {
 		return fmt.Errorf("invalid --profile value %q: must be one of: max, medium, low", profileFlag)
 	}
 
+	// F3 git-provider identity validation (init-path parity with the
+	// reconfigure path's validateWizardInput). Reuses the in-package helpers
+	// from wizard_validate.go so a malformed username or a plaintext http URL
+	// never lands in a persisted config. Empty values are permitted: the field
+	// is simply not set.
+	githubUsername := getStringFlag(cmd, "github-username")
+	if githubUsername != "" && !isValidGitHubUsername(githubUsername) {
+		return fmt.Errorf("invalid --github-username value %q: must be 1-%d characters, alphanumeric or single hyphens, with no leading or trailing hyphen",
+			githubUsername, githubUsernameMaxLen)
+	}
+
+	gitlabInstanceURL := getStringFlag(cmd, "gitlab-instance-url")
+	if gitlabInstanceURL != "" {
+		if err := validateHTTPSURL(gitlabInstanceURL); err != nil {
+			return fmt.Errorf("invalid --gitlab-instance-url value %q: %w", gitlabInstanceURL, err)
+		}
+	}
+
 	return nil
 }
 
