@@ -79,6 +79,51 @@ func Resolve(env Env) Theme {
 	return LightTheme()
 }
 
+// IsDark reports whether the dark colour axis applies for the given
+// environment. It is the boolean twin of [Resolve] and follows the same
+// priority chain:
+//
+//  1. NO_COLOR set → true (safe dark). Resolve returns MonochromeTheme on this
+//     path, which has no light/dark counterpart; colour is suppressed anyway,
+//     so the axis must report dark rather than fall through to the light
+//     near-black tokens and render unreadable text on a dark terminal.
+//  2. MOAI_THEME="light" → false
+//  3. MOAI_THEME="dark"  → true
+//  4. MOAI_THEME="auto" or unset → env.DetectDark()
+//  5. any other MOAI_THEME value → true (safe dark default, matching Resolve)
+//
+// Callers that need the palette should use Resolve; IsDark exists for the ones
+// that need the axis itself — notably the huh v2 theme factory, whose own
+// isDark argument stays false until the terminal answers the async OSC 11
+// background query.
+//
+// @MX:NOTE: [AUTO] Boolean twin of Resolve; NO_COLOR yields dark (safe default),
+// not light, because the light tokens are unreadable on a dark background.
+func IsDark(env Env) bool {
+	if env.NoColor() {
+		return true
+	}
+
+	switch env.MoaiTheme() {
+	case "light":
+		return false
+	case "dark":
+		return true
+	case "auto", "":
+		return env.DetectDark()
+	default:
+		// Invalid value: safe dark default without querying the terminal,
+		// mirroring Resolve.
+		return true
+	}
+}
+
+// IsDarkOS is a convenience wrapper that calls IsDark with the production
+// OSEnv, mirroring [ResolveOS].
+func IsDarkOS() bool {
+	return IsDark(OSEnv{})
+}
+
 // OSEnv is the production implementation of Env that reads from the process
 // environment and uses [lipgloss.HasDarkBackground] for terminal background detection.
 //

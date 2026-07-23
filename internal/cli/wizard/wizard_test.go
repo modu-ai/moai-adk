@@ -3,6 +3,9 @@ package wizard
 import (
 	"os"
 	"testing"
+
+	"charm.land/lipgloss/v2"
+	"github.com/modu-ai/moai-adk/internal/tui"
 )
 
 func TestWizardResult(t *testing.T) {
@@ -510,6 +513,50 @@ func TestNewMoAIWizardTheme_ReturnsNonNil(t *testing.T) {
 	theme := newMoAIWizardTheme()
 	if theme == nil {
 		t.Error("expected non-nil theme")
+	}
+}
+
+// TestNewMoAIWizardTheme_IgnoresHuhBackgroundArgument reproduces the dark-terminal
+// contrast defect: huh v2 assigns Form.hasDarkBg only when the terminal answers
+// the async OSC 11 background query (tea.BackgroundColorMsg), so it holds the
+// zero value false on every render before that reply lands — and forever on
+// terminals that never answer. Theme(false) therefore painted the LightTheme
+// near-black body token over a dark background, making the question description
+// unreadable. The theme factory must resolve the axis itself and discard huh's
+// argument.
+//
+// Foregrounds are compared through RGBA() rather than == because
+// lipgloss.Color returns an interface whose concrete type is an
+// implementation detail. Expected values come from the tui tokens, never a
+// hex literal (AC-CLI-TUI-013).
+func TestNewMoAIWizardTheme_IgnoresHuhBackgroundArgument(t *testing.T) {
+	tests := []struct {
+		name     string
+		dark     bool
+		wantBody string
+	}{
+		{"resolver says dark", true, tui.DarkTheme().Body},
+		{"resolver says light", false, tui.LightTheme().Body},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			orig := wizardIsDark
+			t.Cleanup(func() { wizardIsDark = orig })
+			wizardIsDark = func() bool { return tt.dark }
+
+			// false simulates huh's pre-OSC-11 zero value; true simulates the
+			// post-reply value. Both must yield the resolver's axis.
+			for _, huhArg := range []bool{false, true} {
+				got := newMoAIWizardTheme().Theme(huhArg).Focused.Description.GetForeground()
+				wantR, wantG, wantB, wantA := lipgloss.Color(tt.wantBody).RGBA()
+				gotR, gotG, gotB, gotA := got.RGBA()
+				if gotR != wantR || gotG != wantG || gotB != wantB || gotA != wantA {
+					t.Errorf("Theme(%v).Focused.Description foreground = %v, want tui token %q",
+						huhArg, got, tt.wantBody)
+				}
+			}
+		})
 	}
 }
 
