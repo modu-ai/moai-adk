@@ -2,6 +2,7 @@
 package tui_test
 
 import (
+	"os"
 	"testing"
 	"time"
 
@@ -135,6 +136,67 @@ func TestThemeResolve(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+// TestIsDark verifies the boolean axis mirrors Resolve's priority chain:
+// NO_COLOR > MOAI_THEME > DetectDark > default-dark. The NO_COLOR case returns
+// true (safe dark) rather than falling through to the light near-black tokens.
+func TestIsDark(t *testing.T) {
+	tests := []struct {
+		name string
+		env  staticEnv
+		want bool
+	}{
+		{"NO_COLOR wins and yields safe dark", staticEnv{noColor: true, moaiTheme: "light", darkBg: false}, true},
+		{"NO_COLOR wins over dark-bg detection", staticEnv{noColor: true, moaiTheme: "", darkBg: false}, true},
+		{"MOAI_THEME=light overrides dark-bg detection", staticEnv{noColor: false, moaiTheme: "light", darkBg: true}, false},
+		{"MOAI_THEME=dark overrides light-bg detection", staticEnv{noColor: false, moaiTheme: "dark", darkBg: false}, true},
+		{"MOAI_THEME=auto defers to DetectDark (dark)", staticEnv{noColor: false, moaiTheme: "auto", darkBg: true}, true},
+		{"MOAI_THEME=auto defers to DetectDark (light)", staticEnv{noColor: false, moaiTheme: "auto", darkBg: false}, false},
+		{"MOAI_THEME unset defers to DetectDark (dark)", staticEnv{noColor: false, moaiTheme: "", darkBg: true}, true},
+		{"MOAI_THEME unset defers to DetectDark (light)", staticEnv{noColor: false, moaiTheme: "", darkBg: false}, false},
+		{"MOAI_THEME invalid falls back to safe dark", staticEnv{noColor: false, moaiTheme: "sepia", darkBg: false}, true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := tui.IsDark(tt.env); got != tt.want {
+				t.Errorf("IsDark(%+v) = %v, want %v", tt.env, got, tt.want)
+			}
+		})
+	}
+}
+
+// TestIsDark_AgreesWithResolve pins the two entry points to one decision: for
+// every colour-enabled case, IsDark must select the same palette Resolve does.
+// NO_COLOR is excluded because Resolve returns MonochromeTheme there, which has
+// no light/dark counterpart.
+func TestIsDark_AgreesWithResolve(t *testing.T) {
+	for _, theme := range []string{"", "auto", "light", "dark", "sepia"} {
+		for _, darkBg := range []bool{false, true} {
+			env := staticEnv{noColor: false, moaiTheme: theme, darkBg: darkBg}
+			want := tui.DarkTheme()
+			if !tui.IsDark(env) {
+				want = tui.LightTheme()
+			}
+			if got := tui.Resolve(env); got != want {
+				t.Errorf("IsDark/Resolve disagree for MOAI_THEME=%q darkBg=%v", theme, darkBg)
+			}
+		}
+	}
+}
+
+// TestIsDarkOS_NonTTYDefaultsDark exercises the production wrapper. Under
+// `go test` stdin/stdout are pipes, so OSEnv.DetectDark short-circuits to the
+// safe-dark default; with NO_COLOR and MOAI_THEME unset in the test
+// environment, IsDarkOS must report dark rather than the light near-black axis.
+func TestIsDarkOS_NonTTYDefaultsDark(t *testing.T) {
+	if os.Getenv("NO_COLOR") != "" || os.Getenv("MOAI_THEME") != "" {
+		t.Skip("NO_COLOR or MOAI_THEME set in the ambient environment")
+	}
+	if !tui.IsDarkOS() {
+		t.Error("IsDarkOS() under non-TTY = false, want true (safe-dark default)")
 	}
 }
 
