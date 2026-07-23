@@ -260,19 +260,21 @@ MoAI 是 **战略编排器**。它不亲自写代码,而是把工作委派给 11
 
 ### 11 个智能体目录
 
-| 分类 | 智能体 | 角色 |
-|------|---------|------|
-| **Manager** | manager-spec | Plan 阶段: 生成 SPEC 文档 |
-| | manager-develop | Run 阶段: DDD/TDD/autofix 实现 |
-| | manager-docs | Sync 阶段: 文档化与创建 PR |
-| | manager-git | Git 工作流与基于 Tier 的 PR 路由 |
-| | manager-design | Design 阶段: Claude Design 协作 |
-| **Evaluator** | plan-auditor | SPEC 计划的独立审计(防偏见) |
-| | sync-auditor | 4 维质量评估(功能 40 · 安全 25 · 匠心 20 · 一致性 15) |
-| **Builder** | builder-harness | 生成项目专用 harness(智能体/技能/命令) |
-| **Advisor** | super-advisor | 高推理咨询(E1-E4 升级) |
-| **Specialist** | e2e-tester | 执行 Web/移动/桌面 E2E 测试 |
-| **内置** | Explore | 只读代码库探索 |
+| 分类 | 智能体 | 成本 | 角色 |
+|------|---------|------|------|
+| **Manager** | manager-spec | 🔴 | Plan 阶段: 生成 SPEC 文档 |
+| | manager-develop | 🔴 | Run 阶段: DDD/TDD/autofix 实现 |
+| | manager-docs | 🔵 | Sync 阶段: 文档化与创建 PR |
+| | manager-git | 🩵 | Git 工作流与基于 Tier 的 PR 路由 |
+| | manager-design | 🟠 | Design 阶段: Claude Design 协作 |
+| **Evaluator** | plan-auditor | 🔴 | SPEC 计划的独立审计(防偏见) |
+| | sync-auditor | 🔴 | 4 维质量评估(功能 40 · 安全 25 · 匠心 20 · 一致性 15) |
+| **Builder** | builder-harness | 🟠 | 生成项目专用 harness(智能体/技能/命令) |
+| **Advisor** | super-advisor | 🔵 | 高推理咨询(E1-E4 升级) |
+| **Specialist** | e2e-tester | 🟠 | 执行 Web/移动/桌面 E2E 测试 |
+| **内置** | Explore | ⚪ | 只读代码库探索 |
+
+成本颜色以默认 `medium` 配置文件的 model×effort 单元为准（用 `moai model profile` 查看）：🔴 opus+high · 🟠 opus+medium · 🔵 sonnet+medium / fable+low · 🩵 sonnet+low · ⚪ 继承会话模型。切换配置文件（`max`/`low`）时分配会变化。
 
 ```mermaid
 flowchart TD

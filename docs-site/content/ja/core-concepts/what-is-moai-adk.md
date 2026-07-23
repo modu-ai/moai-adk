@@ -260,19 +260,21 @@ MoAI は **戦略的オーケストレーター** です。直接コードを書
 
 ### 11 個のエージェントカタログ
 
-| 分類 | エージェント | 役割 |
-|------|---------|------|
-| **Manager** | manager-spec | Plan ステップ: SPEC ドキュメント生成 |
-| | manager-develop | Run ステップ: DDD/TDD/autofix 実装 |
-| | manager-docs | Sync ステップ: ドキュメント化および PR 生成 |
-| | manager-git | Git ワークフローおよび Tier ベースの PR ルーティング |
-| | manager-design | Design ステップ: Claude Design 協業 |
-| **Evaluator** | plan-auditor | SPEC 計画の独立した監査 (バイアス防止) |
-| | sync-auditor | 4 次元品質評価 (機能 40 · セキュリティ 25 · 職人技 20 · 一貫性 15) |
-| **Builder** | builder-harness | プロジェクト専用ハーネス (エージェント/スキル/コマンド) の生成 |
-| **Advisor** | super-advisor | 高推論の助言 (E1-E4 エスカレーション) |
-| **Specialist** | e2e-tester | Web/モバイル/デスクトップの E2E テスト実行 |
-| **ビルトイン** | Explore | 読み取り専用のコードベース探索 |
+| 分類 | エージェント | コスト | 役割 |
+|------|---------|------|------|
+| **Manager** | manager-spec | 🔴 | Plan ステップ: SPEC ドキュメント生成 |
+| | manager-develop | 🔴 | Run ステップ: DDD/TDD/autofix 実装 |
+| | manager-docs | 🔵 | Sync ステップ: ドキュメント化および PR 生成 |
+| | manager-git | 🩵 | Git ワークフローおよび Tier ベースの PR ルーティング |
+| | manager-design | 🟠 | Design ステップ: Claude Design 協業 |
+| **Evaluator** | plan-auditor | 🔴 | SPEC 計画の独立した監査 (バイアス防止) |
+| | sync-auditor | 🔴 | 4 次元品質評価 (機能 40 · セキュリティ 25 · 職人技 20 · 一貫性 15) |
+| **Builder** | builder-harness | 🟠 | プロジェクト専用ハーネス (エージェント/スキル/コマンド) の生成 |
+| **Advisor** | super-advisor | 🔵 | 高推論の助言 (E1-E4 エスカレーション) |
+| **Specialist** | e2e-tester | 🟠 | Web/モバイル/デスクトップの E2E テスト実行 |
+| **ビルトイン** | Explore | ⚪ | 読み取り専用のコードベース探索 |
+
+コスト色はデフォルト `medium` プロファイルの model×effort セル基準です (`moai model profile` で確認): 🔴 opus+high · 🟠 opus+medium · 🔵 sonnet+medium / fable+low · 🩵 sonnet+low · ⚪ セッションモデル継承。プロファイル (`max`/`low`) 切り替え時は割り当てが変わります。
 
 ```mermaid
 flowchart TD

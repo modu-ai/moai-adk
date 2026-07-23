@@ -114,7 +114,7 @@ MoAI-ADK는 이 배정을 그때그때 운에 맡기지 않고 시스템으로 �
 
 **Routing Ledger**. 라우팅 결정과 게이트 증거를 프라이버시 보존 다이제스트로 기록한다. 관찰이 규칙으로 승격된다.
 
-**4-티어 학습 사다리**. 관찰 (≥1) → 휴리스틱 (≥3) → 규칙 (≥5) → 자동 업데이트 (≥10, 사용자 승인 필수); 신뢰도 하한 0.70. 모든 적용은 `moai harness rollback`으로 되돌릴 수 있다.
+**4-티어 학습 사다리**. 관찰 (≥1) → 휴리스틱 (≥3) → 규칙 (≥5) → 자동 업데이트 (≥10, 사용자 승인 필수); 신뢰도 하한 0.70. 모든 적용은 `moai harness rollback`으로 되돌릴 수 있다. 하네스 편집(규칙·에이전트·훅 수정)에는 예측–검증 규율이 적용된다: 편집마다 반증 가능한 예측을 기록하고, held-in/held-out 이중 검사를 통과해야 채택되며, 기각된 편집도 기록으로 남는다.
 
 **결정 메모리**. 질문은 불확실성이 가장 높은 곳(p ≈ 0.5)에서 나오고, 추천은 시스템 기본값이 아니라 관찰된 통계적 다수를 따른다.
 
@@ -231,19 +231,21 @@ claude        # launch Claude Code inside the project
 
 ### 11-에이전트 카탈로그
 
-| 분류 | 에이전트 | 역할 |
-|----------|-------|------|
-| **Manager** | manager-spec | Plan-phase SPEC 작성 |
-| | manager-develop | Run-phase TDD/DDD/autofix 구현 |
-| | manager-docs | Sync-phase 문서화 |
-| | manager-git | PR 생성 및 라우팅 |
-| | manager-design | Design-phase 협업 (Claude Design) |
-| **Evaluator** | plan-auditor | 독립 계획 감사 (편향 방지) |
-| | sync-auditor | 4-차원 품질 채점 (Functionality 40 · Security 25 · Craft 20 · Consistency 15) |
-| **Builder** | builder-harness | 프로젝트 전용 에이전트, 스킬, 커맨드, 훅 스캐폴딩 |
-| **Advisor** | super-advisor | 온디맨드 고추론 자문 (E1-E4 에스컬레이션) |
-| **Specialist** | e2e-tester | 웹/모바일/데스크톱 E2E 테스트 실행 (CLI 우선) |
-| **Built-in** | Explore | 읽기 전용 코드베이스 탐색 |
+| 분류 | 에이전트 | 비용 | 역할 |
+|----------|-------|------|------|
+| **Manager** | manager-spec | 🔴 | Plan-phase SPEC 작성 |
+| | manager-develop | 🔴 | Run-phase TDD/DDD/autofix 구현 |
+| | manager-docs | 🔵 | Sync-phase 문서화 |
+| | manager-git | 🩵 | PR 생성 및 라우팅 |
+| | manager-design | 🟠 | Design-phase 협업 (Claude Design) |
+| **Evaluator** | plan-auditor | 🔴 | 독립 계획 감사 (편향 방지) |
+| | sync-auditor | 🔴 | 4-차원 품질 채점 (Functionality 40 · Security 25 · Craft 20 · Consistency 15) |
+| **Builder** | builder-harness | 🟠 | 프로젝트 전용 에이전트, 스킬, 커맨드, 훅 스캐폴딩 |
+| **Advisor** | super-advisor | 🔵 | 온디맨드 고추론 자문 (E1-E4 에스컬레이션) |
+| **Specialist** | e2e-tester | 🟠 | 웹/모바일/데스크톱 E2E 테스트 실행 (CLI 우선) |
+| **Built-in** | Explore | ⚪ | 읽기 전용 코드베이스 탐색 |
+
+비용 색상은 기본 `medium` 프로파일의 model×effort 셀 기준이다 (`moai model profile`로 확인): 🔴 opus+high · 🟠 opus+medium · 🔵 sonnet+medium / fable+low · 🩵 sonnet+low · ⚪ 세션 모델 상속. 프로파일(`max`/`low`) 전환 시 배정이 달라진다. 장기 위임의 진행 상태는 Task 채널에 기록되고, 오케스트레이터가 아이콘 Progress Board로 중계한다.
 
 ### TRUST 5 품질 게이트
 

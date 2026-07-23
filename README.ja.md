@@ -114,7 +114,7 @@ MoAI-ADK はこの割り当てをその場の運任せにせず、システム�
 
 **Routing Ledger**。ルーティング決定とゲート証拠をプライバシー保持ダイジェストとして記録する。観察がルールに昇格する。
 
-**4 段階学習ラダー**。観察（≥1）→ ヒューリスティック（≥3）→ ルール（≥5）→ 自動更新（≥10、ユーザー承認必須）；信頼度下限 0.70。すべての適用は `moai harness rollback` で元に戻せる。
+**4 段階学習ラダー**。観察（≥1）→ ヒューリスティック（≥3）→ ルール（≥5）→ 自動更新（≥10、ユーザー承認必須）；信頼度下限 0.70。すべての適用は `moai harness rollback` で元に戻せる。ハーネス編集（ルール・エージェント・フックの修正）には予測–検証の規律が適用される: 編集ごとに反証可能な予測を記録し、held-in/held-out の二重チェックを通過して初めて採用され、却下された編集も記録に残る。
 
 **決定メモリ**。質問は不確実性が最も高い箇所（p ≒ 0.5）から出て、推奨はシステムデフォルトではなく観測された統計的多数に従う。
 
@@ -231,19 +231,21 @@ claude        # launch Claude Code inside the project
 
 ### 11 エージェントカタログ
 
-| カテゴリ | エージェント | 役割 |
-|----------|-------|------|
-| **Manager** | manager-spec | Plan-phase SPEC 作成 |
-| | manager-develop | Run-phase TDD/DDD/autofix 実装 |
-| | manager-docs | Sync-phase ドキュメント化 |
-| | manager-git | PR 作成とルーティング |
-| | manager-design | Design-phase 協業（Claude Design） |
-| **Evaluator** | plan-auditor | 独立計画監査（バイアス防止） |
-| | sync-auditor | 4 次元品質スコアリング（Functionality 40 · Security 25 · Craft 20 · Consistency 15） |
-| **Builder** | builder-harness | プロジェクト専用エージェント、スキル、コマンド、フックスキャフォールディング |
-| **Advisor** | super-advisor | オンデマンド高推論コンサルティング（E1-E4 エスカレーション） |
-| **Specialist** | e2e-tester | Web/モバイル/デスクトップ E2E テスト実行（CLI 優先） |
-| **Built-in** | Explore | 読み取り専用コードベース探索 |
+| カテゴリ | エージェント | コスト | 役割 |
+|----------|-------|------|------|
+| **Manager** | manager-spec | 🔴 | Plan-phase SPEC 作成 |
+| | manager-develop | 🔴 | Run-phase TDD/DDD/autofix 実装 |
+| | manager-docs | 🔵 | Sync-phase ドキュメント化 |
+| | manager-git | 🩵 | PR 作成とルーティング |
+| | manager-design | 🟠 | Design-phase 協業（Claude Design） |
+| **Evaluator** | plan-auditor | 🔴 | 独立計画監査（バイアス防止） |
+| | sync-auditor | 🔴 | 4 次元品質スコアリング（Functionality 40 · Security 25 · Craft 20 · Consistency 15） |
+| **Builder** | builder-harness | 🟠 | プロジェクト専用エージェント、スキル、コマンド、フックスキャフォールディング |
+| **Advisor** | super-advisor | 🔵 | オンデマンド高推論コンサルティング（E1-E4 エスカレーション） |
+| **Specialist** | e2e-tester | 🟠 | Web/モバイル/デスクトップ E2E テスト実行（CLI 優先） |
+| **Built-in** | Explore | ⚪ | 読み取り専用コードベース探索 |
+
+コスト色はデフォルト `medium` プロファイルの model×effort セル基準（`moai model profile` で確認）: 🔴 opus+high · 🟠 opus+medium · 🔵 sonnet+medium / fable+low · 🩵 sonnet+low · ⚪ セッションモデル継承。プロファイル（`max`/`low`）切り替え時は割り当てが変わる。長期委任の進行状況は Task チャンネルに記録され、オーケストレーターがアイコン Progress Board として中継する。
 
 ### TRUST 5 品質ゲート
 
