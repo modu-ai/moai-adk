@@ -116,7 +116,7 @@ MoAI-ADK 将这种分配系统化，不再听天由命。
 
 **Routing Ledger**。将路由决策和门控证据记录为隐私保护摘要。观察升级为规则。
 
-**4 层学习阶梯**。观察（≥1）→ 启发式（≥3）→ 规则（≥5）→ 自动更新（≥10，需用户批准）；信任度下限 0.70。所有应用可通过 `moai harness rollback` 回滚。
+**4 层学习阶梯**。观察（≥1）→ 启发式（≥3）→ 规则（≥5）→ 自动更新（≥10，需用户批准）；信任度下限 0.70。所有应用可通过 `moai harness rollback` 回滚。挽具编辑（规则/智能体/钩子修改）遵循预测–验证纪律：每次编辑记录一条可证伪的预测，须通过 held-in/held-out 双重检查方可采纳，被否决的编辑也会留档。
 
 **决策记忆**。问题在不确定性最高处（p ≈ 0.5）出现；推荐跟随观察到的统计多数，而非系统默认。
 
@@ -233,19 +233,21 @@ claude        # launch Claude Code inside the project
 
 ### 11-Agent 目录
 
-| 分类 | Agent | 职责 |
-|----------|-------|------|
-| **Manager** | manager-spec | Plan-phase SPEC 编写 |
-| | manager-develop | Run-phase TDD/DDD/autofix 实现 |
-| | manager-docs | Sync-phase 文档化 |
-| | manager-git | PR 创建和路由 |
-| | manager-design | Design-phase 协作（Claude Design） |
-| **Evaluator** | plan-auditor | 独立计划审计（偏见防止） |
-| | sync-auditor | 4 维质量评分（Functionality 40 · Security 25 · Craft 20 · Consistency 15） |
-| **Builder** | builder-harness | 项目专用 agent·skill·command·hook 脚手架 |
-| **Advisor** | super-advisor | 按需高推理咨询（E1-E4 升级） |
-| **Specialist** | e2e-tester | Web/移动/桌面 E2E 测试执行（CLI 优先） |
-| **Built-in** | Explore | 只读代码库探索 |
+| 分类 | Agent | 成本 | 职责 |
+|----------|-------|------|------|
+| **Manager** | manager-spec | 🔴 | Plan-phase SPEC 编写 |
+| | manager-develop | 🔴 | Run-phase TDD/DDD/autofix 实现 |
+| | manager-docs | 🔵 | Sync-phase 文档化 |
+| | manager-git | 🩵 | PR 创建和路由 |
+| | manager-design | 🟠 | Design-phase 协作（Claude Design） |
+| **Evaluator** | plan-auditor | 🔴 | 独立计划审计（偏见防止） |
+| | sync-auditor | 🔴 | 4 维质量评分（Functionality 40 · Security 25 · Craft 20 · Consistency 15） |
+| **Builder** | builder-harness | 🟠 | 项目专用 agent·skill·command·hook 脚手架 |
+| **Advisor** | super-advisor | 🔵 | 按需高推理咨询（E1-E4 升级） |
+| **Specialist** | e2e-tester | 🟠 | Web/移动/桌面 E2E 测试执行（CLI 优先） |
+| **Built-in** | Explore | ⚪ | 只读代码库探索 |
+
+成本颜色以默认 `medium` 配置文件的 model×effort 单元为准（用 `moai model profile` 查看）：🔴 opus+high · 🟠 opus+medium · 🔵 sonnet+medium / fable+low · 🩵 sonnet+low · ⚪ 继承会话模型。切换配置文件（`max`/`low`）时分配会变化。长期委托的进度记录在 Task 通道，由编排器以图标 Progress Board 转达。
 
 ### TRUST 5 质量门控
 

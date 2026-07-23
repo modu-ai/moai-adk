@@ -152,6 +152,13 @@ Rules:
 - Session start: scan lessons for patterns matching current task domain
 - Repo-local lessons inbox (`.moai/lessons-inbox.jsonl`): tool failures and test failures append structured stubs (timestamp, event_key, summary, source) here as they occur. The orchestrator drains these stubs into auto-memory lesson entries as part of the Lessons Protocol, converting each stub's event_key + summary into a candidate lesson before human review. Drained stubs are marked (the drain-marking mechanism is an implementation detail)
 
+Harness Edit Discipline (decision observability):
+- Harness surface tag: each lesson entry SHOULD carry a `surface:` tag naming the harness component it binds to (rule / agent / skill / hook / config / template / workflow) — enables clustering recurring failures by component
+- Prediction pairing: when a lesson motivates a harness edit (a change to a rule, agent, skill, hook, config, or template), the lesson entry SHOULD record `prediction:` — the falsifiable expected effect (which failure class stops recurring) — and later `verified: true|false` with the observed evidence
+- Held-in / held-out acceptance: before accepting a harness edit, verify BOTH (a) held-in — the edit demonstrably addresses the motivating failure (reproduce or cite the failing case), and (b) held-out — existing guards still pass (lint, mirror-parity, neutrality checks, test suite). An edit failing either check is rejected, not merged
+- Preserve rejected candidates: a rejected or reverted harness edit is recorded as a lesson entry with `verified: false` and the rejection reason — never silently discarded. This prevents re-attempting known-bad edits
+- A falsified prediction (`verified: false`) is itself a signal: re-diagnose the root cause before authoring a second edit to the same surface
+
 Auto-Capture Triggers:
 - When a fix/refactor commit completes, check if the change matches a known anti-pattern category
 - If match found, propose a lesson entry to the user via AskUserQuestion

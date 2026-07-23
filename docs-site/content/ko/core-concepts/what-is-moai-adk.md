@@ -260,19 +260,21 @@ MoAI는 **전략적 오케스트레이터**입니다. 직접 코드를 작성하
 
 ### 11개 에이전트 카탈로그
 
-| 분류 | 에이전트 | 역할 |
-|------|---------|------|
-| **Manager** | manager-spec | Plan 단계: SPEC 문서 생성 |
-| | manager-develop | Run 단계: DDD/TDD/autofix 구현 |
-| | manager-docs | Sync 단계: 문서화 및 PR 생성 |
-| | manager-git | Git 워크플로우 및 Tier 기반 PR 라우팅 |
-| | manager-design | Design 단계: Claude Design 협업 |
-| **Evaluator** | plan-auditor | SPEC 계획의 독립적 감사 (편향 방지) |
-| | sync-auditor | 4차원 품질 평가 (기능 40 · 보안 25 · 장인정신 20 · 일관성 15) |
-| **Builder** | builder-harness | 프로젝트 전용 하네스 (에이전트/스킬/커맨드) 생성 |
-| **Advisor** | super-advisor | 고추론 자문 (E1-E4 에스컬레이션) |
-| **Specialist** | e2e-tester | 웹/모바일/데스크탑 E2E 테스트 실행 |
-| **빌트인** | Explore | 읽기 전용 코드베이스 탐색 |
+| 분류 | 에이전트 | 비용 | 역할 |
+|------|---------|------|------|
+| **Manager** | manager-spec | 🔴 | Plan 단계: SPEC 문서 생성 |
+| | manager-develop | 🔴 | Run 단계: DDD/TDD/autofix 구현 |
+| | manager-docs | 🔵 | Sync 단계: 문서화 및 PR 생성 |
+| | manager-git | 🩵 | Git 워크플로우 및 Tier 기반 PR 라우팅 |
+| | manager-design | 🟠 | Design 단계: Claude Design 협업 |
+| **Evaluator** | plan-auditor | 🔴 | SPEC 계획의 독립적 감사 (편향 방지) |
+| | sync-auditor | 🔴 | 4차원 품질 평가 (기능 40 · 보안 25 · 장인정신 20 · 일관성 15) |
+| **Builder** | builder-harness | 🟠 | 프로젝트 전용 하네스 (에이전트/스킬/커맨드) 생성 |
+| **Advisor** | super-advisor | 🔵 | 고추론 자문 (E1-E4 에스컬레이션) |
+| **Specialist** | e2e-tester | 🟠 | 웹/모바일/데스크탑 E2E 테스트 실행 |
+| **빌트인** | Explore | ⚪ | 읽기 전용 코드베이스 탐색 |
+
+비용 색상은 기본 `medium` 프로파일의 model×effort 셀 기준입니다 (`moai model profile`로 확인): 🔴 opus+high · 🟠 opus+medium · 🔵 sonnet+medium / fable+low · 🩵 sonnet+low · ⚪ 세션 모델 상속. 프로파일 (`max`/`low`) 전환 시 배정이 달라집니다.
 
 ```mermaid
 flowchart TD

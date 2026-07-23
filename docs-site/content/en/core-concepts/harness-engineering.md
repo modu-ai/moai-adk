@@ -160,6 +160,10 @@ moai harness rollback    # Roll back the last apply
 moai harness disable     # Disable learning
 ```
 
+### Harness Edit Discipline (predict–verify)
+
+Fixing the harness is itself an experiment. When a harness component — a rule, agent, or hook — is edited, **decision observability** applies: each edit records a falsifiable prediction (which failure class stops recurring), and must pass a two-sided check before acceptance — **held-in** (the edit demonstrably catches the motivating failure) and **held-out** (existing guards and tests still pass). Rejected edits are preserved on record, so the same failed attempt is never repeated.
+
 ## Traditional Development vs Harness Engineering
 
 | Aspect | Traditional Development | Harness Engineering |
