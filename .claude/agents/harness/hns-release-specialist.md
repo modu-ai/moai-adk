@@ -47,7 +47,7 @@ to surface a user-decision prompt (patch/minor/major).
 - Target `main` (production only). Tag `vX.Y.Z` (SemVer, GoReleaser trigger). Tags
   are NOT branch-protected — the `scripts/release.sh` tag-push flow is unaffected.
 - [HARD] Merge strategy **merge commit** (`gh pr merge --merge --delete-branch`) — squash forbidden (preserve individual SPEC commits, project git workflow doctrine §18.3).
-- [HARD] Tag push via `./scripts/release.sh vX.Y.Z` or `make release V=vX.Y.Z` — manual `git tag + push` forbidden.
+- [HARD] Tag push via `MOAI_RELEASE_VIA_HARNESS=1 ./scripts/release.sh vX.Y.Z` (or `make release V=vX.Y.Z` with the same prefix) — manual `git tag + push` forbidden. The env var is the release provenance gate: without it the script aborts, and a tag produced any other way fails `verify-provenance` in `release.yml` so GoReleaser never runs.
 - [HARD] PR 3-axis labels: `type:*` + `priority:*` + `area:*`.
 
 ## Phase Sequence (Enhanced GitHub Flow — structural fidelity preserved)
@@ -115,7 +115,7 @@ no reviewer wait. Delegate to manager-git (`isolation: "worktree"`):
 3. `gh pr checks --watch`.
 4. [HARD] `gh pr merge --merge --delete-branch` (merge commit, NOT squash — §18.3).
 5. `git checkout main && git pull origin main`.
-6. [HARD] `./scripts/release.sh vX.Y.Z` (or `make release V=vX.Y.Z`; `--hotfix` for hotfix) — automatic CHANGELOG verify + CI check + tag + push + GoReleaser watch. Fallback (script failure): manual tag AFTER CHANGELOG verify (`grep "^## \[X.Y.Z\]" CHANGELOG.md` → `git tag -a vX.Y.Z -m ...` → `git push origin vX.Y.Z`).
+6. [HARD] `MOAI_RELEASE_VIA_HARNESS=1 ./scripts/release.sh vX.Y.Z` (or `MOAI_RELEASE_VIA_HARNESS=1 make release V=vX.Y.Z`; add `--hotfix` for hotfix) — automatic CHANGELOG verify + CI check + tag + push + GoReleaser watch. The `MOAI_RELEASE_VIA_HARNESS=1` prefix is mandatory: `scripts/release.sh` aborts without it (release provenance gate), and it is what causes the annotated tag to carry the `Released-via: harness:release` / `Release-version:` / `Release-commit:` trailer that `.github/workflows/release.yml` `verify-provenance` requires before GoReleaser runs. Never export it outside this harness-driven invocation, and never hand-craft the trailer on a manual tag. Fallback on script failure: re-run the script (fix the reported validation) — a manual `git tag` + push is NOT a valid fallback, because such a tag fails `verify-provenance` and publishes nothing.
 7. Verify GoReleaser workflow triggered (tags bypass branch protection).
 
 ### Phase 7 — GitHub Release Notes (bilingual: English first)
@@ -145,7 +145,9 @@ needed; `moai version` confirms `vX.Y.Z`.
 | Anti-Pattern | Correct Approach |
 |--------------|-----------------|
 | Squash-merging the release PR | `--merge` (merge commit) — preserve individual SPEC commits (§18.3) |
-| Manual `git tag + push` | `./scripts/release.sh vX.Y.Z` (CHANGELOG verify + CI check included) |
+| Manual `git tag + push` | `MOAI_RELEASE_VIA_HARNESS=1 ./scripts/release.sh vX.Y.Z` (CHANGELOG verify + CI check + provenance trailer included) |
+| Running `scripts/release.sh` without `MOAI_RELEASE_VIA_HARNESS=1` | Prefix the invocation — the script aborts otherwise (release provenance gate) |
+| Hand-writing the `Released-via:` trailer onto a manual tag | Let `scripts/release.sh` stamp it; a hand-crafted tag still fails `verify-provenance` checks 5-7 |
 | Direct `git push origin main` | Always PR merge flow via manager-git |
 | Calling the user-decision channel directly (Phase 3/5) | Return blocker report; orchestrator surfaces the user-decision prompt + re-delegates |
 | Referencing archived `expert-debug` | Use a per-spawn `Agent(general-purpose)` diagnostic specialist |
