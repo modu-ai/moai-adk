@@ -116,7 +116,7 @@ MoAI-ADK systematizes this assignment instead of leaving it to chance.
 
 **Routing Ledger**. Record routing decisions and gate evidence as privacy-preserving digests. Observations upgrade to rules.
 
-**4-Tier Learning Ladder**. Observation (≥1) → Heuristic (≥3) → Rule (≥5) → Auto-update (≥10, user approval required); trust threshold 0.70. All applications revertible via `moai harness rollback`.
+**4-Tier Learning Ladder**. Observation (≥1) → Heuristic (≥3) → Rule (≥5) → Auto-update (≥10, user approval required); trust threshold 0.70. All applications revertible via `moai harness rollback`. Harness edits (rule/agent/hook changes) follow a predict–verify discipline: each edit records a falsifiable prediction, must pass held-in/held-out double checks before acceptance, and rejected edits stay on record.
 
 **Decision Memory**. Questions emerge where uncertainty is highest (p ≈ 0.5); recommendations follow observed statistical majority, not system defaults.
 
@@ -233,19 +233,21 @@ Natural language works too. `/moai "fix the login bug"` triggers intent analysis
 
 ### 11-Agent Catalog
 
-| Category | Agent | Role |
-|----------|-------|------|
-| **Manager** | manager-spec | Plan-phase SPEC authoring |
-| | manager-develop | Run-phase TDD/DDD/autofix implementation |
-| | manager-docs | Sync-phase documentation |
-| | manager-git | PR creation and routing |
-| | manager-design | Design-phase collaboration (Claude Design) |
-| **Evaluator** | plan-auditor | Independent plan audit (bias prevention) |
-| | sync-auditor | 4-dimensional quality scoring (Functionality 40 · Security 25 · Craft 20 · Consistency 15) |
-| **Builder** | builder-harness | Project-specific agents, skills, commands, hooks scaffolding |
-| **Advisor** | super-advisor | On-demand high-reasoning consultation (E1-E4 escalation) |
-| **Specialist** | e2e-tester | Web/mobile/desktop E2E test execution (CLI-first) |
-| **Built-in** | Explore | Read-only codebase exploration |
+| Category | Agent | Cost | Role |
+|----------|-------|------|------|
+| **Manager** | manager-spec | 🔴 | Plan-phase SPEC authoring |
+| | manager-develop | 🔴 | Run-phase TDD/DDD/autofix implementation |
+| | manager-docs | 🔵 | Sync-phase documentation |
+| | manager-git | 🩵 | PR creation and routing |
+| | manager-design | 🟠 | Design-phase collaboration (Claude Design) |
+| **Evaluator** | plan-auditor | 🔴 | Independent plan audit (bias prevention) |
+| | sync-auditor | 🔴 | 4-dimensional quality scoring (Functionality 40 · Security 25 · Craft 20 · Consistency 15) |
+| **Builder** | builder-harness | 🟠 | Project-specific agents, skills, commands, hooks scaffolding |
+| **Advisor** | super-advisor | 🔵 | On-demand high-reasoning consultation (E1-E4 escalation) |
+| **Specialist** | e2e-tester | 🟠 | Web/mobile/desktop E2E test execution (CLI-first) |
+| **Built-in** | Explore | ⚪ | Read-only codebase exploration |
+
+Cost colors follow the default `medium` profile's model×effort cells (inspect via `moai model profile`): 🔴 opus+high · 🟠 opus+medium · 🔵 sonnet+medium / fable+low · 🩵 sonnet+low · ⚪ session-model inherit. Assignments shift when switching profiles (`max`/`low`). Progress of long-running delegations is recorded on the Task channel and relayed by the orchestrator as an icon Progress Board.
 
 ### TRUST 5 Quality Gates
 

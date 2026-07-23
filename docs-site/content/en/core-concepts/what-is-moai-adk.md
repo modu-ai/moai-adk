@@ -259,19 +259,21 @@ MoAI is the **strategic orchestrator**. It does not write code directly — it d
 
 ### The 11-Agent Catalog
 
-| Category | Agent | Role |
-|------|---------|------|
-| **Manager** | manager-spec | Plan phase: SPEC document creation |
-| | manager-develop | Run phase: DDD/TDD/autofix implementation |
-| | manager-docs | Sync phase: documentation and PR creation |
-| | manager-git | Git workflow and tier-based PR routing |
-| | manager-design | Design phase: Claude Design collaboration |
-| **Evaluator** | plan-auditor | Independent audit of SPEC plans (bias prevention) |
-| | sync-auditor | 4-dimension quality assessment (Functionality 40 · Security 25 · Craft 20 · Consistency 15) |
-| **Builder** | builder-harness | Project-specific harness (agents/skills/commands) generation |
-| **Advisor** | super-advisor | High-reasoning consultation (E1-E4 escalation) |
-| **Specialist** | e2e-tester | E2E test execution across web/mobile/desktop |
-| **Built-in** | Explore | Read-only codebase exploration |
+| Category | Agent | Cost | Role |
+|------|---------|------|------|
+| **Manager** | manager-spec | 🔴 | Plan phase: SPEC document creation |
+| | manager-develop | 🔴 | Run phase: DDD/TDD/autofix implementation |
+| | manager-docs | 🔵 | Sync phase: documentation and PR creation |
+| | manager-git | 🩵 | Git workflow and tier-based PR routing |
+| | manager-design | 🟠 | Design phase: Claude Design collaboration |
+| **Evaluator** | plan-auditor | 🔴 | Independent audit of SPEC plans (bias prevention) |
+| | sync-auditor | 🔴 | 4-dimension quality assessment (Functionality 40 · Security 25 · Craft 20 · Consistency 15) |
+| **Builder** | builder-harness | 🟠 | Project-specific harness (agents/skills/commands) generation |
+| **Advisor** | super-advisor | 🔵 | High-reasoning consultation (E1-E4 escalation) |
+| **Specialist** | e2e-tester | 🟠 | E2E test execution across web/mobile/desktop |
+| **Built-in** | Explore | ⚪ | Read-only codebase exploration |
+
+Cost colors follow the default `medium` profile's model×effort cells (inspect via `moai model profile`): 🔴 opus+high · 🟠 opus+medium · 🔵 sonnet+medium / fable+low · 🩵 sonnet+low · ⚪ session-model inherit. Assignments shift when switching profiles (`max`/`low`).
 
 ```mermaid
 flowchart TD
