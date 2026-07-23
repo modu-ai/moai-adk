@@ -118,11 +118,31 @@ ordering and sorted specifier lists.`,
 			if !localOnlyFlag {
 				tmplPath := toolpolicy.TemplateSettingsPath(repoRoot)
 				if _, statErr := os.Stat(tmplPath); statErr == nil {
-					res, runErr := toolpolicy.BuildInto(tmplPath, doc, toolpolicy.TargetTemplate, defaultModeFlag)
-					if runErr != nil {
-						return fmt.Errorf("codegen template settings.json.tmpl: %w", runErr)
+					// F2 security fix: the template's permissions block may be
+					// render-time-conditional (a git_mode {{if}} gate on the AI
+					// git-write specifiers). Such a block cannot be regenerated
+					// into a flat, directive-free JSON block — skip it rather
+					// than clobber the conditional or error on the non-JSON
+					// permissions object. The local settings.json target is
+					// pure JSON and is unaffected.
+					tmplBody, readErr := os.ReadFile(tmplPath)
+					hasDirective := false
+					if readErr == nil {
+						if hd, derr := toolpolicy.PermissionsRegionHasDirective(tmplBody); derr == nil {
+							hasDirective = hd
+						}
 					}
-					results = append(results, res)
+					if hasDirective {
+						if !asJSONFlag {
+							_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "Info: template %s has a render-time-conditional permissions block (git_mode gating); skipping template target to preserve the conditional.\n", tmplPath)
+						}
+					} else {
+						res, runErr := toolpolicy.BuildInto(tmplPath, doc, toolpolicy.TargetTemplate, defaultModeFlag)
+						if runErr != nil {
+							return fmt.Errorf("codegen template settings.json.tmpl: %w", runErr)
+						}
+						results = append(results, res)
+					}
 				} else {
 					// Template target absent is not an error in consumer projects
 					// (only moai-adk dev carries the template tree).

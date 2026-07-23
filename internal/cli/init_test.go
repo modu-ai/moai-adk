@@ -482,3 +482,97 @@ func TestInitCmd_ProfilePersistence(t *testing.T) {
 		t.Errorf("deployed llm.yaml must NOT contain a plan_type key (retired), got:\n%s", content)
 	}
 }
+
+// --- F3 init-path input validation: git-provider identity parity ---
+//
+// The reconfigure/update path validates --github-username and
+// --gitlab-instance-url via validateWizardInput (update.go). The init path
+// (validateInitFlags) previously did NOT, so `moai init` accepted a malformed
+// username or a plaintext http URL that the reconfigure path rejected. These
+// tests close that asymmetry.
+
+// resetInitFlagsForGitIdentity clears every flag validateInitFlags reads so a
+// prior test's leftover value on the shared global initCmd cannot bleed into
+// the git-identity validation under test.
+func resetInitFlagsForGitIdentity(t *testing.T) {
+	t.Helper()
+	for _, f := range []string{
+		"mode", "git-mode", "git-provider", "model-policy", "profile",
+		"github-username", "gitlab-instance-url",
+	} {
+		if initCmd.Flags().Lookup(f) != nil {
+			_ = initCmd.Flags().Set(f, "")
+		}
+	}
+}
+
+// TestValidateInitFlags_InvalidGitHubUsername (F3 init-path parity) — a
+// malformed --github-username is rejected on the init path, mirroring the
+// reconfigure path's validateWizardInput.
+func TestValidateInitFlags_InvalidGitHubUsername(t *testing.T) {
+	for _, name := range []string{"--bad--name", "-leadinghyphen", "trailinghyphen-", "has--consecutive"} {
+		t.Run(name, func(t *testing.T) {
+			resetInitFlagsForGitIdentity(t)
+			if err := initCmd.Flags().Set("github-username", name); err != nil {
+				t.Fatal(err)
+			}
+			err := validateInitFlags(initCmd, []string{})
+			if err == nil {
+				t.Fatalf("validateInitFlags with github-username=%q should error, got nil", name)
+			}
+			if !strings.Contains(err.Error(), "invalid --github-username") {
+				t.Errorf("error should mention 'invalid --github-username', got: %v", err)
+			}
+		})
+	}
+	resetInitFlagsForGitIdentity(t)
+}
+
+// TestValidateInitFlags_InvalidGitLabInstanceURL (F3 init-path parity) — a
+// plaintext-http, wrong-scheme, or missing-host --gitlab-instance-url is
+// rejected on the init path so a captured credential is never transmitted over
+// an unencrypted channel.
+func TestValidateInitFlags_InvalidGitLabInstanceURL(t *testing.T) {
+	for _, raw := range []string{"http://gitlab.example.com", "ftp://gitlab.example.com", "https://"} {
+		t.Run(raw, func(t *testing.T) {
+			resetInitFlagsForGitIdentity(t)
+			if err := initCmd.Flags().Set("gitlab-instance-url", raw); err != nil {
+				t.Fatal(err)
+			}
+			err := validateInitFlags(initCmd, []string{})
+			if err == nil {
+				t.Fatalf("validateInitFlags with gitlab-instance-url=%q should error, got nil", raw)
+			}
+			if !strings.Contains(err.Error(), "invalid --gitlab-instance-url") {
+				t.Errorf("error should mention 'invalid --gitlab-instance-url', got: %v", err)
+			}
+		})
+	}
+	resetInitFlagsForGitIdentity(t)
+}
+
+// TestValidateInitFlags_ValidGitIdentity (F3 init-path parity) — a well-formed
+// --github-username plus an https --gitlab-instance-url passes.
+func TestValidateInitFlags_ValidGitIdentity(t *testing.T) {
+	resetInitFlagsForGitIdentity(t)
+	if err := initCmd.Flags().Set("github-username", "octocat"); err != nil {
+		t.Fatal(err)
+	}
+	if err := initCmd.Flags().Set("gitlab-instance-url", "https://gitlab.example.com"); err != nil {
+		t.Fatal(err)
+	}
+	if err := validateInitFlags(initCmd, []string{}); err != nil {
+		t.Errorf("validateInitFlags with valid git identity should not error, got: %v", err)
+	}
+	resetInitFlagsForGitIdentity(t)
+}
+
+// TestValidateInitFlags_EmptyGitIdentity (F3 init-path parity) — empty
+// git-identity flags are permitted (the field is simply not set), mirroring the
+// empty-is-OK semantics of validateWizardInput.
+func TestValidateInitFlags_EmptyGitIdentity(t *testing.T) {
+	resetInitFlagsForGitIdentity(t)
+	if err := validateInitFlags(initCmd, []string{}); err != nil {
+		t.Errorf("validateInitFlags with empty git identity should not error, got: %v", err)
+	}
+}

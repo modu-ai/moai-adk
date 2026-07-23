@@ -3,6 +3,7 @@ package cli
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/modu-ai/moai-adk/internal/cli/wizard"
@@ -38,6 +39,77 @@ func readYAML(t *testing.T, path string) map[string]any {
 
 // --- applyWizardConfig tests ---
 
+// TestApplyWizardConfig_TokenNotPersisted is the F1 [CRITICAL] security
+// regression guard: a captured github_token / gitlab_token MUST NOT be written
+// into the git-tracked user.yaml (or any git-tracked plaintext config). The
+// wizard delegates credentials to the gh / glab CLI instead of persisting the
+// secret. Non-secret username fields are still persisted. The sentinel values
+// below are obviously-fake placeholders, not real credentials.
+func TestApplyWizardConfig_TokenNotPersisted(t *testing.T) {
+	root := setupSectionsDir(t)
+	ghToken := "FAKE-gh-token-do-not-store-" + t.Name()
+	glToken := "FAKE-gl-token-do-not-store-" + t.Name()
+	result := &wizard.WizardResult{
+		GitHubUsername: "ghuser",
+		GitHubToken:    ghToken,
+		GitLabUsername: "gluser",
+		GitLabToken:    glToken,
+	}
+	if err := applyWizardConfig(root, result); err != nil {
+		t.Fatalf("applyWizardConfig: %v", err)
+	}
+
+	userPath := filepath.Join(root, defs.MoAIDir, defs.SectionsSubdir, defs.UserYAML)
+	data, err := os.ReadFile(userPath)
+	if err != nil {
+		t.Fatalf("read user.yaml: %v", err)
+	}
+	raw := string(data)
+	if strings.Contains(raw, ghToken) {
+		t.Errorf("user.yaml MUST NOT contain the GitHub token; file content:\n%s", raw)
+	}
+	if strings.Contains(raw, glToken) {
+		t.Errorf("user.yaml MUST NOT contain the GitLab token; file content:\n%s", raw)
+	}
+
+	// Non-secret username fields ARE still persisted.
+	parsed := readYAML(t, userPath)
+	user, ok := parsed["user"].(map[string]any)
+	if !ok {
+		t.Fatal("expected user key in user.yaml")
+	}
+	if user["github_username"] != "ghuser" {
+		t.Errorf("github_username = %v, want ghuser", user["github_username"])
+	}
+	if user["gitlab_username"] != "gluser" {
+		t.Errorf("gitlab_username = %v, want gluser", user["gitlab_username"])
+	}
+	if _, present := user["github_token"]; present {
+		t.Errorf("github_token key must be absent from user.yaml, got %v", user["github_token"])
+	}
+	if _, present := user["gitlab_token"]; present {
+		t.Errorf("gitlab_token key must be absent from user.yaml, got %v", user["gitlab_token"])
+	}
+}
+
+// TestApplyWizardConfig_TokenOnlyCreatesNoUserYAML verifies a token-only input
+// (no username, no name) does not create a user.yaml at all — a token is not a
+// persistable user field.
+func TestApplyWizardConfig_TokenOnlyCreatesNoUserYAML(t *testing.T) {
+	root := setupSectionsDir(t)
+	result := &wizard.WizardResult{
+		GitHubToken: "FAKE-gh-token-only",
+		GitLabToken: "FAKE-gl-token-only",
+	}
+	if err := applyWizardConfig(root, result); err != nil {
+		t.Fatalf("applyWizardConfig: %v", err)
+	}
+	userPath := filepath.Join(root, defs.MoAIDir, defs.SectionsSubdir, defs.UserYAML)
+	if _, err := os.Stat(userPath); !os.IsNotExist(err) {
+		t.Error("user.yaml should not be created when only tokens are provided (tokens are not persisted)")
+	}
+}
+
 func TestApplyWizardConfig_GitHubUsername(t *testing.T) {
 	root := setupSectionsDir(t)
 	result := &wizard.WizardResult{
@@ -61,10 +133,13 @@ func TestApplyWizardConfig_GitHubUsername(t *testing.T) {
 	}
 }
 
+// TestApplyWizardConfig_GitHubToken verifies the F1 security fix: a token-only
+// answer persists nothing (a token is not a persistable user field, and the
+// secret is never written to a git-tracked file).
 func TestApplyWizardConfig_GitHubToken(t *testing.T) {
 	root := setupSectionsDir(t)
 	result := &wizard.WizardResult{
-		GitHubToken: "ghp_testtoken123",
+		GitHubToken: "FAKE-gh-token-value",
 	}
 
 	if err := applyWizardConfig(root, result); err != nil {
@@ -72,11 +147,8 @@ func TestApplyWizardConfig_GitHubToken(t *testing.T) {
 	}
 
 	userPath := filepath.Join(root, defs.MoAIDir, defs.SectionsSubdir, defs.UserYAML)
-	parsed := readYAML(t, userPath)
-
-	user := parsed["user"].(map[string]any)
-	if user["github_token"] != "ghp_testtoken123" {
-		t.Errorf("user.github_token = %v, want %q", user["github_token"], "ghp_testtoken123")
+	if _, err := os.Stat(userPath); !os.IsNotExist(err) {
+		t.Error("user.yaml should not be created for a token-only answer (F1: tokens are not persisted)")
 	}
 }
 
@@ -84,7 +156,7 @@ func TestApplyWizardConfig_GitHubUsernameAndToken(t *testing.T) {
 	root := setupSectionsDir(t)
 	result := &wizard.WizardResult{
 		GitHubUsername: "myuser",
-		GitHubToken:    "ghp_tok",
+		GitHubToken:    "FAKE-gh-token-value",
 	}
 
 	if err := applyWizardConfig(root, result); err != nil {
@@ -98,8 +170,9 @@ func TestApplyWizardConfig_GitHubUsernameAndToken(t *testing.T) {
 	if user["github_username"] != "myuser" {
 		t.Errorf("user.github_username = %v, want %q", user["github_username"], "myuser")
 	}
-	if user["github_token"] != "ghp_tok" {
-		t.Errorf("user.github_token = %v, want %q", user["github_token"], "ghp_tok")
+	// F1 security fix: the token MUST NOT be persisted.
+	if _, present := user["github_token"]; present {
+		t.Errorf("user.github_token must be absent, got %v", user["github_token"])
 	}
 }
 
@@ -156,7 +229,7 @@ func TestApplyWizardConfig_AllFieldsPopulated(t *testing.T) {
 	root := setupSectionsDir(t)
 	result := &wizard.WizardResult{
 		GitHubUsername: "fulluser",
-		GitHubToken:    "ghp_full",
+		GitHubToken:    "FAKE-gh-token-value",
 	}
 
 	if err := applyWizardConfig(root, result); err != nil {
@@ -171,8 +244,9 @@ func TestApplyWizardConfig_AllFieldsPopulated(t *testing.T) {
 	if user["github_username"] != "fulluser" {
 		t.Errorf("github_username = %v, want fulluser", user["github_username"])
 	}
-	if user["github_token"] != "ghp_full" {
-		t.Errorf("github_token = %v, want ghp_full", user["github_token"])
+	// F1 security fix: the token MUST NOT be persisted.
+	if _, present := user["github_token"]; present {
+		t.Errorf("github_token must be absent, got %v", user["github_token"])
 	}
 }
 
@@ -286,7 +360,7 @@ func TestApplyWizardConfig_GitLabCredentials(t *testing.T) {
 
 	result := &wizard.WizardResult{
 		GitLabUsername: "gluser",
-		GitLabToken:    "glpat-test123",
+		GitLabToken:    "FAKE-gl-token-value",
 	}
 
 	if err := applyWizardConfig(root, result); err != nil {
@@ -302,8 +376,9 @@ func TestApplyWizardConfig_GitLabCredentials(t *testing.T) {
 	if user["gitlab_username"] != "gluser" {
 		t.Errorf("user.gitlab_username = %v, want %q", user["gitlab_username"], "gluser")
 	}
-	if user["gitlab_token"] != "glpat-test123" {
-		t.Errorf("user.gitlab_token = %v, want %q", user["gitlab_token"], "glpat-test123")
+	// F1 security fix: the token MUST NOT be persisted.
+	if _, present := user["gitlab_token"]; present {
+		t.Errorf("user.gitlab_token must be absent, got %v", user["gitlab_token"])
 	}
 }
 
@@ -357,9 +432,9 @@ func TestApplyWizardConfig_AllFields(t *testing.T) {
 
 	result := &wizard.WizardResult{
 		GitHubUsername:    "ghuser",
-		GitHubToken:       "ghp_tok",
+		GitHubToken:       "FAKE-gh-token-value",
 		GitLabUsername:    "gluser",
-		GitLabToken:       "glpat-tok",
+		GitLabToken:       "FAKE-gl-token-value",
 		GitLabInstanceURL: "https://self-hosted.gl.com",
 		GitMode:           "team",
 		GitProvider:       "github",
@@ -376,14 +451,15 @@ func TestApplyWizardConfig_AllFields(t *testing.T) {
 	if user["github_username"] != "ghuser" {
 		t.Errorf("github_username = %v, want ghuser", user["github_username"])
 	}
-	if user["github_token"] != "ghp_tok" {
-		t.Errorf("github_token = %v, want ghp_tok", user["github_token"])
-	}
 	if user["gitlab_username"] != "gluser" {
 		t.Errorf("gitlab_username = %v, want gluser", user["gitlab_username"])
 	}
-	if user["gitlab_token"] != "glpat-tok" {
-		t.Errorf("gitlab_token = %v, want glpat-tok", user["gitlab_token"])
+	// F1 security fix: neither token is persisted to user.yaml.
+	if _, present := user["github_token"]; present {
+		t.Errorf("github_token must be absent, got %v", user["github_token"])
+	}
+	if _, present := user["gitlab_token"]; present {
+		t.Errorf("gitlab_token must be absent, got %v", user["gitlab_token"])
 	}
 
 	// Verify quality.yaml
@@ -519,6 +595,89 @@ func TestApplyWizardConfig_UserNamePreservesGitCredentials(t *testing.T) {
 	}
 	if user["github_username"] != "ghuser" {
 		t.Errorf("github_username = %v, want %q", user["github_username"], "ghuser")
+	}
+}
+
+// --- F3: input validation tests ---
+
+// TestApplyWizardConfig_RejectsMalformedGitLabURL verifies a gitlab_instance_url
+// without a scheme is rejected and nothing is persisted.
+func TestApplyWizardConfig_RejectsMalformedGitLabURL(t *testing.T) {
+	root := setupSectionsDir(t)
+	result := &wizard.WizardResult{
+		GitMode:           "personal",
+		GitProvider:       "gitlab",
+		GitLabInstanceURL: "not-a-url",
+	}
+	if err := applyWizardConfig(root, result); err == nil {
+		t.Fatal("expected error for malformed gitlab_instance_url, got nil")
+	}
+	// No config file should be written when validation fails.
+	gitStratPath := filepath.Join(root, defs.MoAIDir, defs.SectionsSubdir, defs.GitStrategyYAML)
+	if _, err := os.Stat(gitStratPath); !os.IsNotExist(err) {
+		t.Error("git-strategy.yaml must not be written when input is invalid")
+	}
+}
+
+// TestApplyWizardConfig_RejectsHTTPGitLabURL verifies a plaintext http:// URL is
+// rejected (https required).
+func TestApplyWizardConfig_RejectsHTTPGitLabURL(t *testing.T) {
+	root := setupSectionsDir(t)
+	result := &wizard.WizardResult{
+		GitMode:           "team",
+		GitProvider:       "gitlab",
+		GitLabInstanceURL: "http://gitlab.company.com",
+	}
+	if err := applyWizardConfig(root, result); err == nil {
+		t.Fatal("expected error for http:// gitlab_instance_url, got nil")
+	}
+}
+
+// TestApplyWizardConfig_RejectsMalformedGitHubUsername verifies a username with
+// illegal characters is rejected and user.yaml is not written.
+func TestApplyWizardConfig_RejectsMalformedGitHubUsername(t *testing.T) {
+	root := setupSectionsDir(t)
+	result := &wizard.WizardResult{
+		GitHubUsername: "bad user!",
+	}
+	if err := applyWizardConfig(root, result); err == nil {
+		t.Fatal("expected error for malformed github username, got nil")
+	}
+	userPath := filepath.Join(root, defs.MoAIDir, defs.SectionsSubdir, defs.UserYAML)
+	if _, err := os.Stat(userPath); !os.IsNotExist(err) {
+		t.Error("user.yaml must not be written when username is invalid")
+	}
+}
+
+// TestApplyWizardConfig_RejectsLeadingHyphenUsername verifies a leading-hyphen
+// GitHub username is rejected.
+func TestApplyWizardConfig_RejectsLeadingHyphenUsername(t *testing.T) {
+	root := setupSectionsDir(t)
+	result := &wizard.WizardResult{GitHubUsername: "-badstart"}
+	if err := applyWizardConfig(root, result); err == nil {
+		t.Fatal("expected error for leading-hyphen github username, got nil")
+	}
+}
+
+// TestApplyWizardConfig_AcceptsValidIdentityInput verifies well-formed input is
+// accepted and persisted.
+func TestApplyWizardConfig_AcceptsValidIdentityInput(t *testing.T) {
+	root := setupSectionsDir(t)
+	result := &wizard.WizardResult{
+		GitMode:           "personal",
+		GitProvider:       "gitlab",
+		GitHubUsername:    "octo-cat",
+		GitLabUsername:    "octo.cat_1",
+		GitLabInstanceURL: "https://gitlab.example.com",
+	}
+	if err := applyWizardConfig(root, result); err != nil {
+		t.Fatalf("valid input should be accepted: %v", err)
+	}
+	userPath := filepath.Join(root, defs.MoAIDir, defs.SectionsSubdir, defs.UserYAML)
+	parsed := readYAML(t, userPath)
+	user := parsed["user"].(map[string]any)
+	if user["github_username"] != "octo-cat" {
+		t.Errorf("github_username = %v, want octo-cat", user["github_username"])
 	}
 }
 

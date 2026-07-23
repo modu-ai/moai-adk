@@ -430,6 +430,82 @@ func TestConcurrentConsume_SingleWinner_RenameAlwaysSucceeds(t *testing.T) {
 	}
 }
 
+// TestClaimGate_DurableAcrossCallers_WhenRenameLies forces, deterministically and
+// on every platform, the interleaving that
+// TestConcurrentConsume_SingleWinner_RenameAlwaysSucceeds only reaches by luck on
+// Windows CI.
+//
+// The Windows failure is a claim whose rename reported success while the record
+// did NOT move: the real os.Rename hit a sharing violation from a concurrent
+// reader of pending.json and the caller was still told it succeeded, so it
+// injected and left the record live for the next caller (AC-013a: injected=2
+// against a single consumed file). Reporting success without moving models that
+// exactly, with no timing dependency.
+//
+// Sequential calls are the serialized form of that race: each call is a caller
+// that reaches the gate after the previous one is done with it. Exactly one may
+// consume the record, and that must hold without relying on the rename moving
+// the file or on the stat re-check observing it gone.
+//
+// NOT parallel: mutates the handoffRenameFunc package global.
+func TestClaimGate_DurableAcrossCallers_WhenRenameLies(t *testing.T) {
+	pd := t.TempDir()
+	mustSavePending(t, pd, livePending("resume"))
+
+	orig := handoffRenameFunc
+	defer func() { handoffRenameFunc = orig }()
+	handoffRenameFunc = func(_, _ string) error { return nil }
+
+	h := NewHandoffInjectHandler(autoCfgProvider(false))
+	injected := 0
+	for i := 0; i < 4; i++ {
+		out, err := h.Handle(context.Background(), injectInput("clear", pd))
+		if err != nil {
+			t.Fatalf("Handle #%d must be fail-open, got: %v", i, err)
+		}
+		if additionalContextOf(out) != "" {
+			injected++
+		}
+	}
+
+	if injected != 1 {
+		t.Errorf("expected exactly 1 caller to consume the record even when rename reports success without moving it, got %d", injected)
+	}
+}
+
+// TestClaimGate_ReleasedWhenNothingConsumed pins the release policy for the
+// non-consuming early return: a rename that fails consumed nothing and left the
+// record live, so the gate must be dropped and a later session must still be
+// able to claim the same record.
+//
+// NOT parallel: mutates the handoffRenameFunc package global.
+func TestClaimGate_ReleasedWhenNothingConsumed(t *testing.T) {
+	pd := t.TempDir()
+	mustSavePending(t, pd, livePending("resume"))
+
+	orig := handoffRenameFunc
+	defer func() { handoffRenameFunc = orig }()
+	handoffRenameFunc = func(_, _ string) error { return errors.New("forced rename failure (EACCES-like)") }
+
+	h := NewHandoffInjectHandler(autoCfgProvider(false))
+	if out, err := h.Handle(context.Background(), injectInput("clear", pd)); err != nil {
+		t.Fatalf("Handle must be fail-open, got: %v", err)
+	} else if additionalContextOf(out) != "" {
+		t.Fatal("a failed rename must skip injection")
+	}
+	if _, err := os.Stat(handoff.ClaimGatePath(pd)); !os.IsNotExist(err) {
+		t.Errorf("gate must be released when nothing was consumed; stat err=%v", err)
+	}
+
+	// A later session (working rename) must still be able to claim the record.
+	handoffRenameFunc = orig
+	if out, err := h.Handle(context.Background(), injectInput("clear", pd)); err != nil {
+		t.Fatalf("Handle: %v", err)
+	} else if additionalContextOf(out) == "" {
+		t.Error("a record left live by a failed claim must remain claimable")
+	}
+}
+
 // TestClaimGate_HeldGateBlocksClaim pins that a held gate makes the claim yield
 // rather than steal it — the property that keeps the winner single.
 //
@@ -459,9 +535,17 @@ func TestClaimGate_HeldGateBlocksClaim(t *testing.T) {
 	}
 }
 
-// TestClaimGate_ReleasedAfterClaim proves the gate does not leak on the success
-// path: a second record saved afterwards is still claimable.
-func TestClaimGate_ReleasedAfterClaim(t *testing.T) {
+// TestClaimGate_RetainedAfterClaim_NextRecordStillClaimable proves the gate is a
+// durable claim marker on the success path — it survives the consume so no later
+// contender can win the same record — and that retaining it does not disable
+// auto-resume: a second record saved afterwards is still claimable, because
+// handoff.SavePending clears the gate when it writes the next record.
+//
+// The retention assertion replaces an earlier "gate must be released after a
+// successful claim" assertion. That earlier assertion encoded the defect this
+// test file's Windows failure came from: a gate released on the success path is
+// only a mutex, leaving exclusivity to the rename and the stat re-check.
+func TestClaimGate_RetainedAfterClaim_NextRecordStillClaimable(t *testing.T) {
 	t.Parallel()
 
 	pd := t.TempDir()
@@ -473,8 +557,8 @@ func TestClaimGate_ReleasedAfterClaim(t *testing.T) {
 	} else if additionalContextOf(out) == "" {
 		t.Fatal("expected the first record to be injected")
 	}
-	if _, err := os.Stat(handoff.ClaimGatePath(pd)); !os.IsNotExist(err) {
-		t.Errorf("gate must be released after a successful claim; stat err=%v", err)
+	if _, err := os.Stat(handoff.ClaimGatePath(pd)); err != nil {
+		t.Errorf("gate must be retained after a successful claim; stat err=%v", err)
 	}
 
 	mustSavePending(t, pd, livePending("second"))

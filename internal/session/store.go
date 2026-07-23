@@ -10,6 +10,8 @@ import (
 	"strings"
 	"time"
 	"unicode/utf8"
+
+	"github.com/modu-ai/moai-adk/internal/atomicfile"
 )
 
 var (
@@ -124,7 +126,7 @@ func (fs *FileSessionStore) Checkpoint(state PhaseState) error {
 	}
 
 	// Atomic rename
-	if err := os.Rename(tmpFile, filename); err != nil {
+	if err := atomicfile.Replace(tmpFile, filename); err != nil {
 		_ = os.Remove(tmpFile) // Clean up on failure
 		return fmt.Errorf("atomic rename: %w", err)
 	}
@@ -410,7 +412,7 @@ func (fs *FileSessionStore) WriteRunArtifact(iterID, name string, body []byte) e
 		return fmt.Errorf("write artifact: %w", err)
 	}
 
-	if err := os.Rename(tmpFile, artifactPath); err != nil {
+	if err := atomicfile.Replace(tmpFile, artifactPath); err != nil {
 		_ = os.Remove(tmpFile)
 		return fmt.Errorf("atomic rename artifact: %w", err)
 	}
@@ -447,7 +449,7 @@ func (fs *FileSessionStore) RecordBlocker(report BlockerReport) error {
 		return fmt.Errorf("write tmp blocker: %w", err)
 	}
 
-	if err := os.Rename(tmpFile, filename); err != nil {
+	if err := atomicfile.Replace(tmpFile, filename); err != nil {
 		_ = os.Remove(tmpFile)
 		return fmt.Errorf("atomic rename blocker: %w", err)
 	}
@@ -503,7 +505,7 @@ func (fs *FileSessionStore) ResolveBlocker(phase Phase, specID string, resolutio
 		return fmt.Errorf("write resolved blocker: %w", err)
 	}
 
-	if err := os.Rename(tmpFile, latestPath); err != nil {
+	if err := atomicfile.Replace(tmpFile, latestPath); err != nil {
 		_ = os.Remove(tmpFile)
 		return fmt.Errorf("atomic rename resolved blocker: %w", err)
 	}

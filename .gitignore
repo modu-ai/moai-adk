@@ -164,6 +164,14 @@ secret-*.*
 .aws/config
 .aws/credentials
 
+# MoAI git-credential runtime files (defense-in-depth). The reconfigure wizard
+# delegates git provider credentials to the gh/glab CLI and never writes an
+# access token to a tracked config; these patterns ensure that if a
+# credential-bearing runtime file is ever introduced under .moai/, it is not
+# committed.
+.moai/**/credentials.yaml
+.moai/**/*.credentials
+
 # ===========================================
 # Claude Code Configuration
 # ===========================================
@@ -275,3 +283,8 @@ temp/
 
 # Hugo docs-site Hextra 백업 (마이그레이션 안전망)
 docs-site.hextra.backup/
+
+# E2E journey run artifacts. The journey script writes per-run logs, results.tsv
+# and hash dumps under e2e/.runs/<suite>-<date>/; these are regenerated on every
+# run and must not be tracked. The journey scripts themselves (e2e/cli/*.sh) are.
+e2e/.runs/

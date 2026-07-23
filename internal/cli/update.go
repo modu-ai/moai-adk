@@ -1299,6 +1299,16 @@ func runInitWizard(cmd *cobra.Command, reconfigure bool) error {
 		return fmt.Errorf("apply configuration: %w", err)
 	}
 
+	// F1 security fix: a token entered in the wizard is NOT persisted to any
+	// git-tracked config. Tell the user so the credential is not silently
+	// dropped — direct them to the provider CLI credential store.
+	if result.GitHubToken != "" {
+		_, _ = fmt.Fprintln(out, tui.Pill(tui.PillOpts{Kind: tui.PillWarn, Solid: false, Label: "GitHub token was not saved (never stored in plaintext). Run 'gh auth login' to authenticate.", Theme: &th}))
+	}
+	if result.GitLabToken != "" {
+		_, _ = fmt.Fprintln(out, tui.Pill(tui.PillOpts{Kind: tui.PillWarn, Solid: false, Label: "GitLab token was not saved (never stored in plaintext). Run 'glab auth login' to authenticate.", Theme: &th}))
+	}
+
 	_, _ = fmt.Fprintln(out, tui.Pill(tui.PillOpts{Kind: tui.PillOk, Solid: false, Label: "Configuration updated successfully", Theme: &th}))
 
 	return nil
@@ -1306,14 +1316,24 @@ func runInitWizard(cmd *cobra.Command, reconfigure bool) error {
 
 // applyWizardConfig applies wizard results to the project configuration files.
 func applyWizardConfig(projectRoot string, result *wizard.WizardResult) error {
+	// F3: validate externally-supplied identity fields before any write so a
+	// malformed URL or username never lands in a persisted config file.
+	if err := validateWizardInput(result); err != nil {
+		return err
+	}
+
 	sectionsDir := filepath.Join(projectRoot, defs.MoAIDir, defs.SectionsSubdir)
 
-	// user.yaml: Save GitHub/GitLab username and token (REQ-4, REQ-5) plus the
-	// wizard-collected user display name. The block also triggers on UserName
-	// alone, so a reconfigure that answers only the user_name question (no git
-	// credentials) still persists user.name.
-	hasUserFields := result.GitHubUsername != "" || result.GitHubToken != "" ||
-		result.GitLabUsername != "" || result.GitLabToken != "" ||
+	// user.yaml: Save GitHub/GitLab username plus the wizard-collected user
+	// display name. Access tokens are DELIBERATELY NOT persisted here (F1
+	// security fix): user.yaml is git-tracked and world-readable, so writing a
+	// secret into it leaks the credential. Credentials are delegated to the
+	// `gh` / `glab` CLI (see the advisory surfaced by runInitWizard). The block
+	// triggers on any non-secret user field (username or display name), so a
+	// reconfigure that answers only the user_name question still persists
+	// user.name — but a token-only answer creates nothing.
+	hasUserFields := result.GitHubUsername != "" ||
+		result.GitLabUsername != "" ||
 		result.UserName != ""
 	if hasUserFields {
 		userPath := filepath.Join(sectionsDir, defs.UserYAML)
@@ -1341,20 +1361,16 @@ func applyWizardConfig(projectRoot string, result *wizard.WizardResult) error {
 			userConfig = make(map[string]any)
 		}
 
-		// Save GitHub credentials
+		// Save GitHub/GitLab usernames (non-secret). Access tokens
+		// (result.GitHubToken / result.GitLabToken) are intentionally NOT
+		// written — persisting a secret into the git-tracked user.yaml is the
+		// F1 vulnerability this fix closes. Tokens are delegated to the
+		// `gh` / `glab` CLI credential store instead.
 		if result.GitHubUsername != "" {
 			userConfig["github_username"] = result.GitHubUsername
 		}
-		if result.GitHubToken != "" {
-			userConfig["github_token"] = result.GitHubToken
-		}
-
-		// Save GitLab credentials (REQ-5)
 		if result.GitLabUsername != "" {
 			userConfig["gitlab_username"] = result.GitLabUsername
-		}
-		if result.GitLabToken != "" {
-			userConfig["gitlab_token"] = result.GitLabToken
 		}
 
 		// Save user display name (reconfigure wizard user_name question)

@@ -49,6 +49,80 @@ func testContext(platform string) *TemplateContext {
 
 // --- settings.json.tmpl tests ---
 
+// TestSettingsTemplateGitModeGating is the F2 [HIGH] security regression guard:
+// git_mode MUST gate the AI git-write permissions in the deployed settings.json.
+//   - manual   -> AI cannot commit / push / tag
+//   - personal -> commit allowed; push + tag gated
+//   - team     -> full git-write access
+//
+// Read-only / local git verbs stay allowed in every mode, and the rendered
+// output must remain valid JSON in every mode.
+func TestSettingsTemplateGitModeGating(t *testing.T) {
+	writeVerbs := map[string]string{
+		"commit": "Bash(git commit:*)",
+		"push":   "Bash(git push:*)",
+		"tag":    "Bash(git tag:*)",
+	}
+	alwaysAllowed := []string{
+		"Bash(git status:*)", "Bash(git log:*)", "Bash(git diff:*)",
+		"Bash(git branch:*)", "Bash(git fetch:*)", "Bash(git add:*)",
+	}
+	cases := []struct {
+		mode        string
+		wantPresent map[string]bool
+	}{
+		{"manual", map[string]bool{"commit": false, "push": false, "tag": false}},
+		{"personal", map[string]bool{"commit": true, "push": false, "tag": false}},
+		{"team", map[string]bool{"commit": true, "push": true, "tag": true}},
+	}
+	for _, tc := range cases {
+		t.Run(tc.mode, func(t *testing.T) {
+			ctx := NewTemplateContext(
+				WithPlatform("darwin"),
+				WithSmartPATH("/usr/local/bin:/usr/bin"),
+				WithGoBinPath("/usr/local/go/bin"),
+				WithHomeDir("/home/test"),
+				WithGitMode(tc.mode),
+			)
+			output := renderTemplate(t, ".claude/settings.json.tmpl", ctx)
+
+			trimmed := strings.TrimSpace(output)
+			if !json.Valid([]byte(trimmed)) {
+				t.Fatalf("rendered settings.json is not valid JSON for git_mode %s:\n%s", tc.mode, trimmed)
+			}
+			var settings map[string]any
+			if err := json.Unmarshal([]byte(trimmed), &settings); err != nil {
+				t.Fatalf("unmarshal for git_mode %s: %v", tc.mode, err)
+			}
+			perms, ok := settings["permissions"].(map[string]any)
+			if !ok {
+				t.Fatalf("missing permissions section for git_mode %s", tc.mode)
+			}
+			allowRaw, ok := perms["allow"].([]any)
+			if !ok {
+				t.Fatalf("permissions.allow is not an array for git_mode %s", tc.mode)
+			}
+			allow := map[string]bool{}
+			for _, v := range allowRaw {
+				if s, ok := v.(string); ok {
+					allow[s] = true
+				}
+			}
+			for verb, spec := range writeVerbs {
+				want := tc.wantPresent[verb]
+				if allow[spec] != want {
+					t.Errorf("git_mode %s: allow[%q] present=%v, want %v", tc.mode, spec, allow[spec], want)
+				}
+			}
+			for _, spec := range alwaysAllowed {
+				if !allow[spec] {
+					t.Errorf("git_mode %s: read-only/local verb %q must always be allowed", tc.mode, spec)
+				}
+			}
+		})
+	}
+}
+
 func TestSettingsTemplateValidJSON(t *testing.T) {
 	platforms := []string{"darwin", "linux", "windows"}
 

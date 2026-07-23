@@ -450,15 +450,27 @@ func buildConfirmField(q *Question, result *WizardResult, locale *string) *huh.C
 	return conf
 }
 
+// wizardIsDark resolves the light/dark axis for the wizard theme. It is a
+// package-level var so tests can force either axis without mutating the
+// process environment.
+var wizardIsDark = tui.IsDarkOS
+
 // newMoAIWizardTheme adapts the MoAI wizard styles to the huh v2 Theme
-// interface: huh resolves the terminal background once and passes the isDark
-// axis to moaiWizardStyles (this replaces the lipgloss v1 AdaptiveColor
-// mechanism used before the v2 migration).
+// interface. The axis is resolved once from internal/tui (NO_COLOR >
+// MOAI_THEME > terminal detection) and huh's own isDark argument is
+// deliberately discarded: huh assigns Form.hasDarkBg only when the terminal
+// answers the async OSC 11 background query (tea.BackgroundColorMsg), so it
+// holds the zero value false on every render before that reply lands — and
+// permanently on terminals that never answer. Honouring it painted the
+// LightTheme near-black body token over a dark background, leaving the
+// question descriptions unreadable. huh v2 exposes no option to seed the
+// field, so resolving it here is the only correction point.
 //
 // @MX:ANCHOR: [AUTO] Consumed by every buildUnifiedForm invocation; single huh.Theme factory
 // @MX:REASON: All wizard groups share one theme; changes here affect the entire init wizard UX
 func newMoAIWizardTheme() huh.Theme {
-	return huh.ThemeFunc(moaiWizardStyles)
+	dark := wizardIsDark()
+	return huh.ThemeFunc(func(bool) *huh.Styles { return moaiWizardStyles(dark) })
 }
 
 // moaiWizardStyles builds the MoAI-branded huh v2 style set for the resolved

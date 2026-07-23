@@ -138,6 +138,29 @@ func TestDefaultQuestionsHasNoGitQuestions(t *testing.T) {
 	}
 }
 
+// TestInitWizardQuestionSetHasNoGitCredentialQuestions locks the F5 ground
+// truth: the interactive `moai init` wizard set (DefaultQuestions +
+// Phase1Questions, as assembled by RunWithDefaultsModes) never asks
+// git_mode / git_provider / tokens — those live only in the reconfigure set
+// (ReconfigureQuestions, built by runInitWizard). `moai init` auto-detects git
+// config via detectGitConfig. This refutes the mistaken belief that the
+// git_mode select appears during `moai init`.
+func TestInitWizardQuestionSetHasNoGitCredentialQuestions(t *testing.T) {
+	initSet := append(DefaultQuestions("/tmp/test-project"), Phase1Questions("/tmp/test-project")...)
+	for _, id := range gitQuestionIDs {
+		if QuestionByID(initSet, id) != nil {
+			t.Errorf("init wizard set must not contain git question %q (moai init auto-detects git config)", id)
+		}
+	}
+	// The reconfigure set, by contrast, MUST contain every git question.
+	reconf := ReconfigureQuestions("/tmp/test-project")
+	for _, id := range gitQuestionIDs {
+		if QuestionByID(reconf, id) == nil {
+			t.Errorf("reconfigure set must contain git question %q", id)
+		}
+	}
+}
+
 // TestGitQuestionsReturnsExactSet verifies GitQuestions returns exactly the 7
 // Git questions, in canonical order.
 func TestGitQuestionsReturnsExactSet(t *testing.T) {

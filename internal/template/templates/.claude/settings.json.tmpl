@@ -443,10 +443,14 @@
       "Bash(git branch:*)",
       "Bash(git remote:*)",
       "Bash(git config:*)",
-      "Bash(git tag:*)",
       "Bash(git add:*)",
+{{- if ne .GitMode "manual"}}
       "Bash(git commit:*)",
+{{- end}}
+{{- if eq .GitMode "team"}}
+      "Bash(git tag:*)",
       "Bash(git push:*)",
+{{- end}}
       "Bash(git pull:*)",
       "Bash(git fetch:*)",
       "Bash(git checkout:*)",
