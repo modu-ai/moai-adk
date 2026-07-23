@@ -19,9 +19,106 @@ concurrency:
   group: release-${{ github.ref }}
   cancel-in-progress: false
 
+# Release provenance gate (verify-provenance job below).
+#
+# This workflow is the only publishing surface, and its only trigger is a `v*`
+# tag push — so every route to a production release converges on one choke
+# point. The gate checks that the pushed tag was produced by the
+# `/harness:release` maintainer harness (via scripts/release.sh, which stamps a
+# provenance trailer into the annotated tag message).
+#
+# Honest limitations — do NOT read this gate as making unauthorized releases
+# impossible:
+#   - The trailer lives in a public tag annotation. Anyone with push rights can
+#     read it and hand-craft a tag carrying the same three lines. The trailer
+#     therefore stops *accidental* and *habitual* releases through the
+#     unsanctioned routes (direct scripts/release.sh runs, manual `git tag` +
+#     push, `gh release create`, the GitHub web UI, other CI automation) — it is
+#     not an authentication mechanism.
+#   - The substantive protection is checks 5-7 (CHANGELOG section present at the
+#     tagged commit, version SSOT agreement, tagged commit is an ancestor of
+#     origin/main). An ad-hoc or out-of-process tag fails those even when the
+#     trailer has been copied verbatim.
+#   - A repository admin can still bypass the gate entirely by editing this
+#     workflow. That bypass is a commit and is therefore visible in git history.
 jobs:
+  verify-provenance:
+    name: Verify release provenance
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Verify tag provenance, version bindings and ancestry
+        env:
+          TAG: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+
+          fail() {
+            echo "::error::RELEASE_PROVENANCE_GATE: $1"
+            echo "Releases must be produced by the /harness:release maintainer harness."
+            exit 1
+          }
+
+          git fetch --force origin "refs/tags/${TAG}:refs/tags/${TAG}"
+          git fetch origin +refs/heads/main:refs/remotes/origin/main
+
+          # Check 1 — annotated tag (lightweight tags from `gh release create` or
+          # the GitHub web UI resolve to `commit` and are rejected here).
+          TAG_TYPE="$(git cat-file -t "${TAG}")"
+          if [ "${TAG_TYPE}" != "tag" ]; then
+            fail "check 1 (annotated tag): '${TAG}' is a ${TAG_TYPE} object, not an annotated tag."
+          fi
+
+          ANNOTATION="$(git for-each-ref "refs/tags/${TAG}" --format='%(contents)')"
+
+          # Check 2 — provenance trailer written by scripts/release.sh.
+          if ! printf '%s\n' "${ANNOTATION}" | grep -qxF 'Released-via: harness:release'; then
+            fail "check 2 (provenance trailer): tag annotation has no 'Released-via: harness:release' line."
+          fi
+
+          # Check 3 — the trailer's version equals the pushed tag name.
+          TRAILER_VERSION="$(printf '%s\n' "${ANNOTATION}" | sed -n 's/^Release-version: //p' | tail -n1)"
+          if [ "${TRAILER_VERSION}" != "${TAG}" ]; then
+            fail "check 3 (version binding): trailer Release-version='${TRAILER_VERSION}' != pushed tag '${TAG}'."
+          fi
+
+          # Check 4 — the trailer's commit equals the commit the tag points to.
+          TAG_COMMIT="$(git rev-list -n1 "${TAG}")"
+          TRAILER_COMMIT="$(printf '%s\n' "${ANNOTATION}" | sed -n 's/^Release-commit: //p' | tail -n1)"
+          if [ "${TRAILER_COMMIT}" != "${TAG_COMMIT}" ]; then
+            fail "check 4 (commit binding): trailer Release-commit='${TRAILER_COMMIT}' != tagged commit '${TAG_COMMIT}'."
+          fi
+
+          # Check 5 — CHANGELOG.md at the tagged commit has this version's section.
+          VERSION_NO_V="${TAG#v}"
+          if ! git show "${TAG_COMMIT}:CHANGELOG.md" | grep -qE "^## \[${VERSION_NO_V}\]"; then
+            fail "check 5 (CHANGELOG): CHANGELOG.md at ${TAG_COMMIT} has no '## [${VERSION_NO_V}]' section."
+          fi
+
+          # Check 6 — version SSOT (.moai/config/sections/system.yaml stores the
+          # v-prefixed form, e.g. `version: v3.0.1`).
+          SSOT_PATH='.moai/config/sections/system.yaml'
+          if ! git show "${TAG_COMMIT}:${SSOT_PATH}" | grep -qE "^[[:space:]]*version:[[:space:]]*${TAG}[[:space:]]*$"; then
+            ACTUAL="$(git show "${TAG_COMMIT}:${SSOT_PATH}" | sed -n 's/^[[:space:]]*version:[[:space:]]*//p' | head -n1)"
+            fail "check 6 (version SSOT): ${SSOT_PATH} at ${TAG_COMMIT} has version='${ACTUAL}', expected '${TAG}'."
+          fi
+
+          # Check 7 — the tagged commit is an ancestor of origin/main.
+          if ! git merge-base --is-ancestor "${TAG_COMMIT}" origin/main; then
+            fail "check 7 (main ancestry): tagged commit ${TAG_COMMIT} is not an ancestor of origin/main."
+          fi
+
+          echo "RELEASE_PROVENANCE_GATE: all 7 checks passed for ${TAG} (${TAG_COMMIT})."
+
   release:
     name: Release
+    needs: verify-provenance
     runs-on: ubuntu-latest
     timeout-minutes: 45
 
