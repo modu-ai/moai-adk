@@ -50,7 +50,7 @@ func NewHandoffInjectHandler(cfg ConfigProvider) Handler {
 func (h *handoffInjectHandler) EventType() EventType { return EventSessionStart }
 
 // @MX:ANCHOR: [AUTO] SessionStart auto-resume 주입 단일 진입점 (4-source × mode branch table). 유일 소비 셀 = source==clear ∧ mode==auto ∧ live pending. 나머지 7셀은 pending 보존.
-// @MX:REASON: registry에 3번째 SessionStart 핸들러로 등록 (deps.go). claim-then-inject 순서(rename 성공 후 주입)가 2세션 race에서 중복 주입을 방지하는 불변식 — 순서 반전 시 AC-013 회귀. rename 실패는 errno 무관 fail-open (Windows MoveFileEx). manual mode는 stale이어도 pure no-op (REQ-009 vs REQ-019 모순 해소). AskUserQuestion 미호출 (C-HRA-008).
+// @MX:REASON: registry에 3번째 SessionStart 핸들러로 등록 (deps.go). 중복 주입을 막는 불변식은 exclusive-create claim gate 단독 — 소비 경로에서 gate를 계속 보유하므로 rename이 loser에게 실패를 돌려주지 않아도(Windows sharing violation) 뒤 세션이 같은 레코드를 다시 이길 수 없다. gate 해제는 SavePending(다음 레코드 기록) 담당. claim-then-inject 순서(claim 성공 후 주입)는 유지 — 순서 반전 시 AC-013 회귀. rename 실패는 errno 무관 fail-open (Windows MoveFileEx). manual mode는 stale이어도 pure no-op (REQ-009 vs REQ-019 모순 해소). AskUserQuestion 미호출 (C-HRA-008).
 // @MX:SPEC: SPEC-HANDOFF-AUTORESUME-001
 //
 // Handle processes a SessionStart event. Best-effort: every path returns allow
@@ -130,14 +130,25 @@ func (h *handoffInjectHandler) claimAndInject(projectDir string, rec *handoff.Pe
 	if !claimPendingGate(projectDir) {
 		return &HookOutput{}
 	}
-	defer releasePendingGate(projectDir)
+
+	// The gate is a DURABLE claim marker, not a mutex, so it is NOT released on
+	// every path. It is dropped only on the two early returns below, where
+	// nothing was consumed and the record is still live — holding it there would
+	// strand a record no caller ever claimed. From the rename onwards the gate is
+	// retained, because this caller may have consumed the record: retaining it is
+	// the only thing that stops a later contender from winning the same record
+	// when the rename reports success without the record actually moving (the
+	// Windows fault above). Exclusivity therefore rests solely on the
+	// exclusive-create claim, never on the rename failing for the loser and never
+	// on the stat re-check below. The retained gate is cleared by
+	// handoff.SavePending when the next record is written.
 
 	// Re-check inside the gate. The record was read before the gate was taken,
 	// so a contender that lost an earlier round still holds a stale "present"
-	// observation; without this the read-then-consume window stays open and the
-	// gate only narrows it. Every consumer serializes through the gate, so this
-	// check and the rename below are now atomic with respect to each other.
+	// observation. This narrows the read-then-consume window; it is a freshness
+	// check, not the exclusivity mechanism.
 	if _, err := os.Stat(handoff.PendingPath(projectDir)); err != nil {
+		releasePendingGate(projectDir)
 		return &HookOutput{}
 	}
 
@@ -149,11 +160,14 @@ func (h *handoffInjectHandler) claimAndInject(projectDir string, rec *handoff.Pe
 	// Archive the claimed record. This rename is no longer load-bearing for
 	// exclusivity — the gate above already decided the winner — so it is a plain
 	// move whose only job is preserving the pending bytes verbatim (AC-013b:
-	// any rename error still skips injection, errno-agnostic).
+	// any rename error still skips injection, errno-agnostic). A rename error
+	// consumed nothing and left the record live, so the gate is released here to
+	// keep it claimable by a later session.
 	if err := handoffRenameFunc(handoff.PendingPath(projectDir), consumedPath); err != nil {
 		slog.Warn("session_start: handoff: claim rename failed; skipping injection (fail-open)",
 			"error", err,
 		)
+		releasePendingGate(projectDir)
 		return &HookOutput{}
 	}
 
@@ -171,10 +185,12 @@ func (h *handoffInjectHandler) claimAndInject(projectDir string, rec *handoff.Pe
 //
 // The gate is never force-reclaimed here. Timing out and stealing it would
 // reintroduce the very defect this replaced: two contenders that both decide a
-// gate is stale each remove it and each then create it, so both win. A gate
-// leaked by a killed process is instead cleared by handoff.SavePending when the
-// next record is written — a record that has just been saved has by definition
-// never been claimed, so clearing it there is unambiguous and race-free.
+// gate is stale each remove it and each then create it, so both win. A gate that
+// outlives its consumer — retained by a caller that claimed the record, or
+// leaked by a killed process — is instead cleared by handoff.SavePending when
+// the next record is written: a record that has just been saved has by
+// definition never been claimed, so clearing it there is unambiguous and
+// race-free.
 func claimPendingGate(projectDir string) bool {
 	err := atomicfile.Claim(handoff.ClaimGatePath(projectDir), 0o600)
 	if err == nil {
@@ -188,9 +204,11 @@ func claimPendingGate(projectDir string) bool {
 	return false
 }
 
-// releasePendingGate drops the gate once the claim is complete. The gate is
-// held only across the rename below, so this normally runs microseconds after
-// claimPendingGate.
+// releasePendingGate drops the gate. It is called ONLY from the paths that
+// consumed nothing and left pending.json live (the in-gate stat re-check finding
+// the record already gone, and a failed claim rename), so that the record stays
+// claimable by a later session. A caller that reached the rename keeps the gate:
+// see the release policy in claimAndInject.
 func releasePendingGate(projectDir string) {
 	if err := os.Remove(handoff.ClaimGatePath(projectDir)); err != nil && !os.IsNotExist(err) {
 		slog.Warn("session_start: handoff: could not release claim gate", "error", err)
