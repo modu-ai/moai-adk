@@ -40,6 +40,12 @@ notfound_search: "搜索"
 empty_title: "该分区正在完善中"
 empty_text: "本分区的子指南即将上线。在此期间，欢迎浏览其他文档。"
 
+# 文档详情 — 元信息行 + 右侧栏底部链接
+doc_updated: "更新"
+doc_edit_github: "在 GitHub 上编辑"
+rail_suggest_edit: "建议修改此页"
+rail_feedback: "留下反馈"
+
 # 文档详情右侧栏 (doc-rail partial)
 rail_actions_title: "使用本指南"
 rail_like: "点赞"
@@ -62,3 +68,14 @@ card_desc_db: "模式同步与迁移模式。"
 pagination_page_prev: "上一页"
 pagination_page_next: "下一页"
 pagination_page_state: "{{ .PageNumber }} / {{ .TotalPages }}"
+
+# Claude Design handoff — home landing (Milestone 2) + section breadcrumb
+docs_home_crumb: "文档"
+home_feat_tokenomics_title: "代币经济学"
+home_feat_tokenomics_body: "上下文精简与提示词缓存将推理成本降低 60–70%。"
+home_feat_learning_title: "递归自我学习"
+home_feat_learning_body: "决策记忆与自主智能体系统构成自我改进闭环。"
+home_feat_harness_title: "代理式线束"
+home_feat_harness_body: "由技能、钩子和 MCP 组成的可配置运行环境，配备 TRUST 5 质量门。"
+home_book_title: "用 Claude Code 开启实战代理式编程"
+home_book_body: "感觉式编程的终结，线束工程的开端。由 MoAI-ADK 维护者亲自撰写的实战指南（9 篇推荐序）。"

@@ -40,6 +40,12 @@ notfound_search: "Search"
 empty_title: "This section is coming soon"
 empty_text: "Sub-guides for this section are on the way. Browse the other docs in the meantime."
 
+# Doc-detail meta line + right-rail footer links
+doc_updated: "UPDATED"
+doc_edit_github: "EDIT ON GITHUB"
+rail_suggest_edit: "Suggest an edit"
+rail_feedback: "Leave feedback"
+
 # Doc-detail right rail (doc-rail partial)
 rail_actions_title: "Use this guide"
 rail_like: "Like"
@@ -62,3 +68,14 @@ card_desc_db: "Schema sync and migration patterns."
 pagination_page_prev: "Previous"
 pagination_page_next: "Next"
 pagination_page_state: "{{ .PageNumber }} / {{ .TotalPages }}"
+
+# Claude Design handoff — home landing (Milestone 2) + section breadcrumb
+docs_home_crumb: "Docs"
+home_feat_tokenomics_title: "Tokenomics"
+home_feat_tokenomics_body: "Context diet and prompt caching cut inference cost by 60–70%."
+home_feat_learning_title: "Recursive self-learning"
+home_feat_learning_body: "Decision memory and autonomous agents form a self-improving loop."
+home_feat_harness_title: "Agentic harness"
+home_feat_harness_body: "A configurable runtime of skills, hooks, and MCP with TRUST 5 quality gates."
+home_book_title: "Practical Agentic Coding with Claude Code"
+home_book_body: "The end of vibe coding, the start of harness engineering. A hands-on guide by the MoAI-ADK maintainer, with 9 forewords."

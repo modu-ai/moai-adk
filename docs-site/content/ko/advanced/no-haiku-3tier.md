@@ -8,7 +8,7 @@ MoAI-ADK v3.0은 Haiku를 라우팅 모델 세트에서 배제하고, 3-티어 �
 
 ## 왜 Haiku를 배제했는가
 
-DeepSWE 리더보드(deepswe.datacurve.ai, 113 tasks, 2026-07-09)의 핵심 발견은 **"약한 모델 + 높은 effort = 가용성의 적"**이라는 점입니다. max effort에서 Sonnet 5는 268스텝, 214k 출력 토큰을 소모하며, 이는 과도한 재시도 루프로 이어집니다.
+DeepSWE 리더보드(deepswe.datacurve.ai, 113 tasks, 2026-07-09)의 핵심 발견은 "**약한 모델 + 높은 effort = 가용성의 적**"이라는 점입니다. max effort에서 Sonnet 5는 268스텝, 214k 출력 토큰을 소모하며, 이는 과도한 재시도 루프로 이어집니다.
 
 | 모델 [effort] | Pass@1 | 과제당 비용 | $/해결과제 | 토큰/해결과제 | 스텝 |
 |---|---|---|---|---|---|

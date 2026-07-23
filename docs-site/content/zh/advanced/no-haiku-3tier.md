@@ -8,7 +8,7 @@ MoAI-ADK v3.0 将 Haiku 从路由模型集合中排除，以三层结构(Sonnet 
 
 ## 为何排除 Haiku
 
-DeepSWE 排行榜(deepswe.datacurve.ai, 113 tasks, 2026-07-09)的核心发现是**"弱模型 + 高 effort = 可用性的敌人"**。在 max effort 下，Sonnet 5 消耗 268 步、214k 输出 token，产生过度的重试循环。
+DeepSWE 排行榜(deepswe.datacurve.ai, 113 tasks, 2026-07-09)的核心发现是"**弱模型 + 高 effort = 可用性的敌人**"。在 max effort 下，Sonnet 5 消耗 268 步、214k 输出 token，产生过度的重试循环。
 
 | 模型 [effort] | Pass@1 | 每任务成本 | $/已解决 | token/已解决 | 步数 |
 |---|---|---|---|---|---|

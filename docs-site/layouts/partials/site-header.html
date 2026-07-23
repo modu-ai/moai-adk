@@ -1,44 +1,60 @@
-<header class="gdoc-header docs-nav" role="banner">
-  <div class="nav-inner cw-header-inner">
-    {{- /* 브랜드: 로고 이미지 + MoAI-ADK + docs pill (round3 nav-logo) */ -}}
-    <a class="gdoc-brand cw-brand nav-logo" href="{{ "/" | relLangURL }}">
-      {{- /* 브랜드 로고 — 모아이 석상 이모지 🗿 (브랜드 마크) */ -}}
-      <img class="cw-brand-logo cw-brand-mascot" loading="lazy" decoding="async"
+{{- /* site-header.html — Claude Design handoff "03 Doc Detail" header.
+       Sticky 64px bar: brand lockup + DOCS chip | centred search trigger | version
+       pill + language menu + GitHub icon button. Light theme only — the handoff's
+       dark-mode toggle is intentionally omitted (docs-site is single-theme).
+       All search / i18n / version wiring is preserved from the previous header;
+       only the chrome changed. Geometry + skin live in moai-docs-layout.css
+       (.cw-hdr* selectors). */ -}}
+<header class="gdoc-header docs-nav cw-hdr" role="banner">
+  <div class="cw-hdr-inner">
+    {{- /* 브랜드 — 마스코트 로고 + 워드마크 + DOCS mono chip */ -}}
+    <a class="cw-hdr-brand" href="{{ "/" | relLangURL }}">
+      <img class="cw-hdr-logo" loading="lazy" decoding="async"
            src="{{ "mascots/mascot-coding.png" | relURL }}"
-           width="30" alt="MoAI-ADK 마스코트" />
-      <span class="cw-brand-name">MoAI-ADK</span>
-      <span class="cw-brand-tag">docs</span>
+           width="30" alt="MoAI-ADK" />
+      <span class="cw-hdr-name">MoAI-ADK</span>
+      <span class="cw-hdr-chip">DOCS</span>
     </a>
-    {{- /* round3 nav-utility cluster — search trigger + version + lang + github */ -}}
-    {{- $page := .Root -}}
-    {{- $labels := dict "ko" "KO" "en" "EN" "ja" "JA" "zh" "CN" -}}
-    <div class="nav-utility cw-nav-actions">
-      <button type="button" class="nav-search" data-search-trigger aria-label="{{ i18n "search_aria" }}">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3" stroke-linecap="round"/></svg>
-        <span>{{ i18n "search_label" }}</span>
-        <kbd class="nav-search-key">⌘K</kbd>
+
+    {{- /* 검색 트리거 — 헤더 중앙, 최대 420px. ⌘K 모달을 연다(하단 스크립트). */ -}}
+    <div class="cw-hdr-searchwrap">
+      <button type="button" class="cw-hdr-search" data-search-trigger aria-label="{{ i18n "search_aria" }}">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35" stroke-linecap="round"/></svg>
+        <span class="cw-hdr-search-txt">{{ i18n "search_label" }}</span>
+        <kbd class="cw-hdr-kbd">⌘K</kbd>
       </button>
+    </div>
+
+    {{- $page := .Root -}}
+    <div class="cw-hdr-actions">
       {{- /* 버전 pill — hugo.toml params.version SSOT */ -}}
-      <a class="cw-ver-pill" href="https://github.com/modu-ai/moai-adk/releases" target="_blank" rel="noopener noreferrer" title="{{ site.Params.version }}">{{ site.Params.version }}</a>
-      {{- /* 언어 선택 — KO/EN/JA/CN 4-locale. 현재 페이지의 번역본으로 링크, 없으면 해당 언어 홈으로 fallback */ -}}
-      <div class="cw-lang-switch" role="tablist" aria-label="{{ i18n "lang_aria" }}">
-        {{- range hugo.Sites -}}
-          {{- $l := .Language -}}
-          {{- $href := printf "/%s/" $l.Lang | relURL -}}
-          {{- with $page -}}
-            {{- range .AllTranslations -}}
-              {{- if eq .Language.Lang $l.Lang -}}{{- $href = .RelPermalink -}}{{- end -}}
+      <a class="cw-hdr-ver" href="https://github.com/modu-ai/moai-adk/releases" target="_blank" rel="noopener noreferrer" title="{{ site.Params.version }}">{{ site.Params.version }}</a>
+
+      {{- /* 언어 메뉴 — KO/EN/JA/ZH 4-locale. 현재 페이지의 번역본으로 링크하고,
+             번역본이 없으면 해당 언어 홈으로 fallback. <details>라 JS 없이 열린다. */ -}}
+      <details class="cw-hdr-lang" data-lang-menu>
+        <summary class="cw-hdr-langbtn" aria-label="{{ i18n "lang_aria" }}">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+          <span class="cw-hdr-langname">{{ site.Language.LanguageName }}</span>
+          <svg class="cw-hdr-langchev" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
+        </summary>
+        <div class="cw-hdr-langpop" role="menu">
+          {{- range hugo.Sites -}}
+            {{- $l := .Language -}}
+            {{- $href := printf "/%s/" $l.Lang | relURL -}}
+            {{- with $page -}}
+              {{- range .AllTranslations -}}
+                {{- if eq .Language.Lang $l.Lang -}}{{- $href = .RelPermalink -}}{{- end -}}
+              {{- end -}}
             {{- end -}}
+            {{- $isActive := and $page (eq $page.Language.Lang $l.Lang) -}}
+            <a class="cw-hdr-langitem{{ if $isActive }} active{{ end }}" role="menuitem" href="{{ $href }}" hreflang="{{ $l.Lang }}"{{ if $isActive }} aria-current="page"{{ end }}>{{ $l.LanguageName }}</a>
           {{- end -}}
-          {{- $label := index $labels $l.Lang | default (upper $l.Lang) -}}
-          {{- $isActive := and $page (eq $page.Language.Lang $l.Lang) -}}
-          <a class="cw-lang-btn{{ if $isActive }} active{{ end }}" href="{{ $href }}" hreflang="{{ $l.Lang }}"{{ if $isActive }} aria-current="page"{{ end }}>{{ $label }}</a>
-        {{- end -}}
-      </div>
-      <a class="cw-gh-stars" href="https://github.com/modu-ai/moai-adk" target="_blank" rel="noopener noreferrer" aria-label="{{ i18n "github_aria" }}">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 .3a12 12 0 0 0-3.8 23.4c.6.1.8-.3.8-.6v-2c-3.3.7-4-1.6-4-1.6-.5-1.4-1.3-1.7-1.3-1.7-1-.7.1-.7.1-.7 1.2.1 1.8 1.2 1.8 1.2 1.1 1.8 2.8 1.3 3.5 1 .1-.8.4-1.3.8-1.6-2.7-.3-5.5-1.3-5.5-5.9 0-1.3.5-2.4 1.2-3.2-.1-.3-.5-1.5.1-3.2 0 0 1-.3 3.3 1.2a11.5 11.5 0 0 1 6 0c2.3-1.5 3.3-1.2 3.3-1.2.7 1.7.3 2.9.1 3.2.8.8 1.2 1.9 1.2 3.2 0 4.6-2.8 5.6-5.5 5.9.4.4.8 1.1.8 2.2v3.3c0 .3.2.7.8.6A12 12 0 0 0 12 .3"/></svg>
-        <span>Star</span>
-        <span class="cw-gh-count" data-gh-stars>—</span>
+        </div>
+      </details>
+
+      <a class="cw-hdr-gh" href="https://github.com/modu-ai/moai-adk" target="_blank" rel="noopener noreferrer" aria-label="{{ i18n "github_aria" }}">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 .3a12 12 0 0 0-3.8 23.4c.6.1.8-.3.8-.6v-2c-3.3.7-4-1.6-4-1.6-.5-1.4-1.3-1.7-1.3-1.7-1-.7.1-.7.1-.7 1.2.1 1.8 1.2 1.8 1.2 1.1 1.8 2.8 1.3 3.5 1 .1-.8.4-1.3.8-1.6-2.7-.3-5.5-1.3-5.5-5.9 0-1.3.5-2.4 1.2-3.2-.1-.3-.5-1.5.1-3.2 0 0 1-.3 3.3 1.2a11.5 11.5 0 0 1 6 0c2.3-1.5 3.3-1.2 3.3-1.2.7 1.7.3 2.9.1 3.2.8.8 1.2 1.9 1.2 3.2 0 4.6-2.8 5.6-5.5 5.9.4.4.8 1.1.8 2.2v3.3c0 .3.2.7.8.6A12 12 0 0 0 12 .3"/></svg>
       </a>
     </div>
   </div>
@@ -60,23 +76,15 @@
 </div>
 
 <script>
-// GitHub stars 실시간 (24h 캐시)
+// 언어 메뉴 — 바깥 클릭 / ESC 로 닫기 (details 기본 동작 보완)
 (function(){
-  const el = document.querySelector('[data-gh-stars]'); if (!el) return;
-  const KEY = 'cw-gh-stars'; const TTL = 24*60*60*1000;
-  const fmt = (n) => n >= 1000 ? (n/1000).toFixed(1).replace(/\.0$/, '') + 'k' : String(n);
-  try {
-    const c = JSON.parse(localStorage.getItem(KEY) || 'null');
-    if (c && Date.now() - c.t < TTL) { el.textContent = fmt(c.n); return; }
-  } catch(e) {}
-  fetch('https://api.github.com/repos/modu-ai/moai-adk')
-    .then(r => r.ok ? r.json() : Promise.reject())
-    .then(d => {
-      const n = d.stargazers_count;
-      el.textContent = fmt(n);
-      try { localStorage.setItem(KEY, JSON.stringify({ n, t: Date.now() })); } catch(e) {}
-    })
-    .catch(() => { el.textContent = ''; });
+  var d = document.querySelector('[data-lang-menu]'); if (!d) return;
+  document.addEventListener('click', function(e){
+    if (d.open && !d.contains(e.target)) d.removeAttribute('open');
+  });
+  document.addEventListener('keydown', function(e){
+    if (e.key === 'Escape' && d.open) d.removeAttribute('open');
+  });
 })();
 
 // 검색 모달 — Geekdoc search.json 활용

@@ -1,89 +1,60 @@
-{{- /* doc-toc-walk — .Fragments.Headings 트리를 재귀 순회해 Level-2(h2)마다
-       <li><a href="#ID">Title</a></li> 를 내뱉는 헬퍼 템플릿. .Fragments.Headings는
-       최상위 루트(headings)만 반환하므로(hugo 0.160) 자식 .Headings까지 내려가야
-       모든 h2를 flat하게 수집할 수 있다. 컨텍스트: Headings 슬라이스. */ -}}
-{{ define "doc-toc-walk" }}
-  {{- range . -}}
-    {{- if eq .Level 2 -}}<li><a href="#{{ .ID }}">{{ .Title }}</a></li>{{- end -}}
-    {{- with .Headings -}}{{- template "doc-toc-walk" . -}}{{- end -}}
-  {{- end -}}
-{{ end }}
-
+{{- /* h2 수집(.Fragments.Headings 재귀 순회)은 partials/doc-rail.html이 자체
+       재귀 partial로 처리한다 — partial은 별도 템플릿 네임스페이스라 여기의
+       {{ define }}을 볼 수 없기 때문. */ -}}
 {{ define "main" }}
-  {{- /* 문서 상세 — round3 docs-detail 3-column layout (SPEC-DESIGN-DOCSV2-001 M3c-2).
-         (1) .read-progress(고정 상단 바, JS가 #rp width 구동)
-         (2) .doc-hero(그라데이션 풀-블리드 — crumb / doc-cat / h1 / deck / byline)
-         (3) .doc-layout(grid 220px 1fr 280px — TOC | 본문 | rail)
-         baseof가 gdoc-nav/cw-toc/cw-pg-nav 프레임을 제공하므로 본 블록은 round3 본문만 담당.
-         클래스명은 M3a CSS SSOT에 정렬: .docs-toc / .docs-toc-list / .docs-toc-h
-         (§C/§D 초안 .toc-list는 .toc→.docs-toc 리네임(라인 23)으로 .docs-toc-list가 정명). */ -}}
-  <article id="main-content" tabindex="-1">
-
-    {{- /* (1) 읽기 진행률 바 — position:fixed; top:64px; height:3px (#rp width = JS). */ -}}
-    <div class="read-progress"><div id="rp"></div></div>
-
-    {{- /* (2) 문서 히어로 — 컴팩트 밴드 + 마스코트. crumb/카테고리/제목/분량 1열 + 우측 마스코트.
-           마스코트는 페이지 경로 해시로 6종 중 하나를 결정적으로 선택(같은 페이지=같은 마스코트). */ -}}
-    {{- $mascots := slice "MoAI-Mascot-Pointing" "MoAI-Mascot-Explaining" "MoAI-Mascot-Searching" "MoAI-Mascot-Thinking" "MoAI-Mascot-Teaching" "MoAI-Mascot-Coffee" -}}
-    {{- $mi := mod (len .RelPermalink) (len $mascots) -}}
-    <section class="doc-hero doc-hero--compact">
-      <div class="doc-hero-inner">
-        <div class="doc-hero-text">
-          <nav class="crumb" aria-label="breadcrumb">
-            <a href="{{ .Site.Home.RelPermalink }}">{{ .Site.Title }}</a>
-            {{- if not (eq .CurrentSection.RelPermalink .Site.Home.RelPermalink) }}
-            <span class="sep">›</span>
-            <a href="{{ .CurrentSection.RelPermalink }}">{{ .CurrentSection.Title }}</a>
-            {{- end }}
-            <span class="sep">›</span>
-            <span>{{ .Title }}</span>
-          </nav>
-          <span class="doc-cat">{{ .Params.category | default .CurrentSection.Title }}</span>
-          <h1 class="doc-h1">{{ .Title }}</h1>
-          <div class="doc-meta-strip">
-            {{- if not .Date.IsZero }}<span>{{ .Date.Format "2006.01.02" }}</span>{{ end }}
-            <span>{{ .ReadingTime }}분 분량</span>
-          </div>
-        </div>
-        <img class="doc-hero-mascot" src="{{ (printf "mascots/%s.png" (index $mascots $mi)) | relURL }}" alt="" aria-hidden="true">
-      </div>
-    </section>
-
-    {{- /* (3) 2-단 본문 레이아웃 — 본문 | 우측 TOC (grid minmax(0,1fr) 260px).
-           구 3-컬럼(좌 TOC | 본문 | rail)에서 TOC를 rail 위치로 이동, rail 카드 삭제. */ -}}
+  {{- /* 문서 상세 — Claude Design handoff "03 Doc Detail".
+         (1) breadcrumb → h1 → lede → mono meta line(UPDATED · 분량 · EDIT ON GITHUB)
+         (2) .doc-layout--2col grid: 본문(max 720px) | 우측 ON THIS PAGE rail
+         PREV/NEXT 푸터는 baseof.html의 .cw-pg-nav(메뉴 순서 기반 글로벌 순회)가
+         담당하고, moai-docs-layout.css가 handoff 카드 스펙으로 스킨을 입힌다 —
+         여기서 별도 next-cta를 내면 내비게이션이 이중으로 렌더된다. */ -}}
+  <article id="main-content" class="doc-single" tabindex="-1">
     <div class="doc-layout doc-layout--2col">
 
-      {{- /* 본문 — .Content를 gdoc-markdown(마크다운 타이포) + prose-kr(향후 M3c 타이포)로 감싼다.
-             .next-cta는 gdoc-markdown 바깥 형제로 두어 prose 여백이 CTA에 묻지 않게 한다. */ -}}
       <article class="doc-body">
+        <nav class="doc-crumb" aria-label="breadcrumb">
+          <a href="{{ .Site.Home.RelPermalink }}">{{ .Site.Title }}</a>
+          {{- if not (eq .CurrentSection.RelPermalink .Site.Home.RelPermalink) }}
+          <span class="sep" aria-hidden="true">/</span>
+          <a href="{{ .CurrentSection.RelPermalink }}">{{ .CurrentSection.Title }}</a>
+          {{- end }}
+          <span class="sep" aria-hidden="true">/</span>
+          <span class="cur">{{ .Title }}</span>
+        </nav>
+
+        <h1 class="doc-h1">{{ .Title }}</h1>
+
+        {{- with .Description }}
+        <p class="doc-lede">{{ . }}</p>
+        {{- end }}
+
+        <div class="doc-metaline">
+          {{- if not .Lastmod.IsZero }}
+          <span>{{ i18n "doc_updated" }} {{ .Lastmod.Format "2006-01-02" }}</span>
+          <span class="dot" aria-hidden="true">·</span>
+          {{- end }}
+          <span>{{ i18n "rail_read_min" .ReadingTime }}</span>
+          {{- with .File }}
+          <span class="dot" aria-hidden="true">·</span>
+          <a href="{{ printf "%s/%s/%s/%s" site.Params.geekdocRepo site.Params.geekdocEditPath $.Lang .Path }}" target="_blank" rel="noopener noreferrer">{{ i18n "doc_edit_github" }} ↗</a>
+          {{- end }}
+        </div>
+
         <div class="gdoc-markdown prose-kr">
           {{ .Content }}
         </div>
-        {{- with .NextInSection }}
-        <a class="next-cta" href="{{ .RelPermalink }}">
-          <div>
-            <div class="next-cta-eye">다음 가이드</div>
-            <h3>{{ .Title }}</h3>
-          </div>
-          <span class="next-cta-arrow" aria-hidden="true">→</span>
-        </a>
-        {{- end }}
       </article>
 
-      {{- /* 우측 TOC — 본문에 h2가 있을 때만 렌더. doc-toc-walk가 h2 flat 수집. */ -}}
+      {{- /* 우측 rail — 본문에 h2가 있을 때만 렌더. */ -}}
       {{- if gt (len (findRE "<h2" .Content)) 0 }}
-      <aside class="docs-toc" aria-label="{{ i18n "toc_label" }}">
-        <div class="docs-toc-h">{{ i18n "toc_label" }}</div>
-        <ul class="docs-toc-list">
-          {{- template "doc-toc-walk" .Fragments.Headings -}}
-        </ul>
-      </aside>
+        {{ partial "doc-rail" . }}
       {{- end }}
 
     </div>
   </article>
 
-  {{- /* doc-detail JS — read-progress(#rp) + TOC scroll-spy(.docs-toc-list).
-         defer로 DOM 파싱 후 실행. §D 통합. */ -}}
+  {{- /* doc-detail JS — TOC scroll-spy(.docs-toc-list a ↔ .doc-body h2[id]).
+         read-progress 바(#rp)는 handoff 디자인에 없어 제거했고, 스크립트는
+         `if (rp)` 가드가 있어 그대로 두어도 안전하다. */ -}}
   <script src="{{ "js/doc-detail.js" | relURL }}" defer></script>
 {{ end }}

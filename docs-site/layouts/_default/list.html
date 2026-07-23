@@ -1,52 +1,54 @@
 {{ define "main" }}
-  {{- /* 섹션 랜딩 — round3 docs-index variant (SPEC-DESIGN-DOCSV2-001 M3c-1).
-         섹션 hero(Title/Description/페이지 수) + 직계 자식 페이지 그리드.
-         featured 카드 없음 (섹션에 featured:true 프론트매터 없음).
-         섹션 _index 본문은 그리드 하단에 렌더. */ -}}
-  <article
-    class="gdoc-markdown gdoc-markdown__align--{{ default "left" (.Page.Params.geekdocAlign | lower) }}"
-    id="main-content" tabindex="-1"
-  >
-    <section class="docs-hero">
-      <div class="docs-hero-inner">
-        <span class="docs-eyebrow">{{ i18n "browse_pill" }}</span>
-        <h1 class="docs-h1">{{ .Title }}</h1>
-        {{- with .Description }}<p class="docs-sub">{{ . }}</p>{{- end }}
-        <div class="docs-stats">
-          <div><div class="docs-stat-num">{{ len .Pages }}</div><div class="docs-stat-lbl">{{ i18n "docs_count" (len .Pages) }}</div></div>
+  {{- /* 섹션 인덱스 — Claude Design handoff "02 Getting Started" (Milestone 2).
+         공용 shell(좌측 사이드바 + 우측 TOC) 안에서 렌더. breadcrumb + 섹션 eyebrow
+         + h1 + lede + Teaching 마스코트, 그다음 홈 섹션-카드 그리드로 직계 자식 페이지
+         (.Pages)를 나열. 하위 페이지가 없으면 Searching 마스코트 empty-state.
+         섹션 _index 본문(.Content)은 그리드 하단(.gdoc-markdown 안)에 렌더.
+         카드/hover 스킨은 moai-docs-layout.css (.cw-sec*). i18n·.Pages 순회 보존. */ -}}
+  <div id="main-content" tabindex="-1">
+    {{- /* 현재 섹션의 EN 코드네임을 상단 메뉴에서 실데이터로 조회 (mono eyebrow용).
+           relLangURL 은 후행 슬래시가 없어 .RelPermalink 와 직접 비교하면 어긋나므로
+           양쪽 모두 슬래시를 trim 해 비교한다. */ -}}
+    {{- $pageKey := trim .RelPermalink "/" -}}
+    {{- $en := "" -}}
+    {{- range hugo.Data.menu.main.main -}}
+      {{- if eq (trim (relLangURL .ref) "/") $pageKey -}}{{- $en = index .name "en" -}}{{- end -}}
+    {{- end -}}
+
+    <section class="cw-sec-intro">
+      <nav class="cw-sec-crumb" aria-label="breadcrumb">
+        <a href="{{ .Site.Home.RelPermalink }}">{{ i18n "docs_home_crumb" }}</a>
+        <span class="sep">/</span>
+        <span class="cur">{{ .Title }}</span>
+      </nav>
+      <div class="cw-sec-intro-row">
+        <div>
+          <div class="cw-sec-eyebrow">SECTION{{ with $en }} · {{ . | upper }}{{ end }}</div>
+          <h1 class="cw-sec-h1">{{ .Title }}</h1>
         </div>
+        {{ partial "mascot.html" (dict "pose" "teaching" "size" "120") }}
       </div>
+      {{- with .Description }}<p class="cw-sec-lede">{{ . }}</p>{{ end }}
     </section>
 
-    {{- /* 하위 페이지가 없는 섹션은 Searching 마스코트 empty-state 렌더 (M5) */ -}}
     {{- if eq (len .Pages) 0 -}}
     {{ partial "doc-empty.html" . }}
     {{- else -}}
-    <section class="docs-grid-section">
-      <div class="docs-grid">
-        {{- range $i, $page := .Pages }}
-        <a class="doc-card" href="{{ $page.RelPermalink }}">
-          <div class="doc-thumb thumb-{{ add (mod $i 8) 1 }}">
-            <span class="doc-thumb-cat">{{ $.Title }}</span>
-            <div class="doc-thumb-icon">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg>
-            </div>
-            <span class="doc-thumb-num">{{ printf "%02d" (add $i 1) }}</span>
-          </div>
-          <div class="doc-body">
-            <h4>{{ $page.Title }}</h4>
-            <p class="doc-excerpt">{{ $page.Description | default ($page.Summary | truncate 120) }}</p>
-            <div class="doc-meta">
-              <span class="read-time">{{ $page.ReadingTime }}m</span>
-            </div>
-          </div>
-        </a>
-        {{- end }}
-      </div>
-    </section>
-    {{- end }}
+    <div class="cw-sec-grid">
+      {{- range .Pages }}
+      <a class="cw-sec-card" href="{{ .RelPermalink }}">
+        <div class="cw-sec-card-top">
+          <span class="cw-sec-card-title">{{ .Title }}</span>
+          <svg class="cw-sec-card-chev" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18l6-6-6-6"/></svg>
+        </div>
+        {{- $d := or .Description (.Summary | plainify | truncate 80) -}}
+        {{- with $d }}<span class="cw-sec-card-desc">{{ . }}</span>{{ end }}
+      </a>
+      {{- end }}
+    </div>
+    {{- end -}}
 
     {{- /* 섹션 _index 본문 (작성된 경우) — 그리드 하단에 렌더 */ -}}
-    {{ .Content }}
-  </article>
+    {{- with .Content }}<div class="gdoc-markdown gdoc-markdown__align--{{ default "left" ($.Page.Params.geekdocAlign | lower) }}">{{ . }}</div>{{ end }}
+  </div>
 {{ end }}

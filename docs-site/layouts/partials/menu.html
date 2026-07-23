@@ -1,6 +1,10 @@
-{{- /* Cowork docs custom sidebar — design standalone parity
-       Reads data/menu/main.yaml directly (icon · count · isNew · badge fields). */ -}}
-<nav class="cw-side">
+{{- /* Cowork docs custom sidebar — Claude Design handoff "03 Doc Detail" left rail.
+       Reads data/menu/main.yaml directly (icon · count · isNew · badge fields).
+       The `cw-side--v3` modifier switches the skin to the handoff spec (mono
+       eyebrow group labels + compact 13.5px items); the <details> structure,
+       the icon→SVG case map and the 4-locale name maps are unchanged so the
+       sidebar collapse-state script in baseof.html keeps working. */ -}}
+<nav class="cw-side cw-side--v3">
   {{- /* 검색은 헤더에 있으므로 사이드바 안 별도 검색박스 출력 안 함 */ -}}
   {{- $current := .RelPermalink -}}
   {{- range hugo.Data.menu.main.main }}
