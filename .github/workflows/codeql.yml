@@ -123,12 +123,23 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     needs: detect
-    # EC-1 mutual exclusivity guard: mixed PR (docs + Go code) runs real analyze only, NOT skip-marker.
-    if: needs.detect.outputs.docs_only == 'true' && needs.detect.outputs.go_code != 'true' && github.event_name == 'pull_request'
+    # Complement of the real `analyze` job (go_code == 'true' || push || schedule),
+    # so exactly one of the two always runs and the required context
+    # "Analyze (Go) (go)" is ALWAYS reported on a pull request.
+    # EC-1 mutual exclusivity still holds: this is the strict negation, so a mixed
+    # PR (docs + Go) runs the real analyze only.
+    #
+    # Previously this was gated on `docs_only == 'true'`, which is NARROWER than
+    # "not go_code": a PR touching only files in neither filter — .gitignore, a
+    # shell script, e2e/**, any root config — matched neither job, so the required
+    # context was never reported and the PR could never merge (GitHub waits forever
+    # for a status that will not arrive). Gating on the negation closes that hole
+    # for every non-Go change, not just documentation.
+    if: needs.detect.outputs.go_code != 'true' && github.event_name == 'pull_request'
     strategy:
       fail-fast: false
       matrix:
         language: [go]
     steps:
-      - name: Skip (docs-only PR)
-        run: echo "Docs-only PR — CodeQL analysis skipped via skip-marker (SPEC-V3R4-CI-FASTTRACK-001)"
+      - name: Skip (no Go changes)
+        run: echo "No Go-code changes per paths-filter — CodeQL analysis skipped; required check satisfied."
