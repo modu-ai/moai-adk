@@ -155,7 +155,10 @@ func TestAllSkillsInCatalog(t *testing.T) {
 	// 7 dependent skills — moai-domain-ideation + moai-domain-research (core.skills)
 	// and moai-domain-brand-design + moai-domain-copywriting + moai-domain-design-handoff
 	// + moai-workflow-design + moai-workflow-gan-loop (optional-pack:design); net -7 = 28.
-	const expectedSkillCount = 28
+	// moai-workflow-docs-claim-check added as a read-only documentation
+	// claim-vs-evidence verification workflow (registered under core.skills),
+	// net +1 = 29.
+	const expectedSkillCount = 29
 	if len(diskSkills) != expectedSkillCount {
 		t.Errorf("expected %d skill directories on disk, found %d: %v", expectedSkillCount, len(diskSkills), diskSkills)
 	}

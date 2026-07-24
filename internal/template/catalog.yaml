@@ -58,6 +58,11 @@ catalog:
               path: templates/.claude/skills/moai-workflow-ddd/
               hash: 6f89fb725214bf8f5299d7aa5cfcd8313998b9f09c5fe228029e677b83d5fb64
               version: 1.0.0
+            - name: moai-workflow-docs-claim-check
+              tier: core
+              path: templates/.claude/skills/moai-workflow-docs-claim-check/
+              hash: 662166edc5f5d59e961e407214b1c87f1e67267405410da3660c920173d4300b
+              version: 1.0.0
             - name: moai-workflow-loop
               tier: core
               path: templates/.claude/skills/moai-workflow-loop/

@@ -54,7 +54,9 @@ func TestLoadCatalog(t *testing.T) {
 	// subcommands (2 core.skills + 5 optional-pack:design); agents unchanged, net -7 = 35.
 	// SPEC-E2E-REVIVAL-001 (2026-07-13): e2e-tester agent added (core.agents,
 	// /moai e2e revival), net +1 = 38.
-	const expectedTotal = 38
+	// moai-workflow-docs-claim-check added (read-only documentation
+	// claim-vs-evidence verification workflow, core.skills), net +1 = 39.
+	const expectedTotal = 39
 	if len(all) != expectedTotal {
 		t.Errorf("AllEntries() returned %d entries, want %d", len(all), expectedTotal)
 	}

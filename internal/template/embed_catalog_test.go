@@ -45,7 +45,9 @@ func TestLoadEmbeddedCatalog_Success(t *testing.T) {
 	// subcommands (2 core.skills + 5 optional-pack:design); agents unchanged, net -7 = 35.
 	// SPEC-E2E-REVIVAL-001 (2026-07-13): e2e-tester agent added (core.agents,
 	// /moai e2e revival), net +1 = 38.
-	const wantTotal = 38
+	// moai-workflow-docs-claim-check added (read-only documentation
+	// claim-vs-evidence verification workflow, core.skills), net +1 = 39.
+	const wantTotal = 39
 	all := cat.AllEntries()
 	if len(all) != wantTotal {
 		t.Errorf("LoadEmbeddedCatalog() AllEntries() = %d, want %d", len(all), wantTotal)
