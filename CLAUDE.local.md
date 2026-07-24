@@ -742,12 +742,6 @@ See: `.moai/docs/git-workflow-doctrine.md`
 
 ---
 
-**Status**: Active (Local Development)
-**Version**: 3.10.0 (§23/§24/§25 본문을 `.moai/docs/` 3개 doctrine 파일로 추출 — 세션 런칭 컨텍스트 59.9K→32.0K 축소; §17/§18/§21 stub+pointer 패턴 일관 적용)
-**Last Updated**: 2026-06-03
-
----
-
 ## 20. Vercel Build Cost Guard
 
 ### [HARD] Build Machine = Elastic 유지
