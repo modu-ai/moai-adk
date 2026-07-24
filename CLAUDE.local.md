@@ -118,6 +118,7 @@ Never add files directly to the local project directories without also adding th
 .claude/agent-memory/          # Per-project agent memory
 .claude/hooks/moai/handle-*.sh # Generated hook wrappers (not templates)
 .claude/rules/moai/workflow/lifecycle-sync-gate.md         # Dev-only: maintainer lifecycle sync-gate rule (no template mirror, unreferenced by any shipped template file — intentional local-only)
+.claude/rules/moai/workflow/repo-local-pr-policy.md        # Dev-only: repo-local all-tier PR policy override (Route A main-direct disabled by branch protection enforce_admins:true; no template mirror — intentional local-only)
 .claude/commands/harness/{release-update,github,release}*  # Dev-only: split maintainer harness entries (§21)
 .claude/commands/harness/release-update/manifest.json      # Dev-only: release-update harness manifest (§21)
 .claude/workflows/hns-release-update-run.js                # Dev-only: release-update harness Runner (§21)
