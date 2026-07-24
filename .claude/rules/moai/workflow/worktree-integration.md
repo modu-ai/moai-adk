@@ -176,7 +176,7 @@ Is this a one-shot sub-agent task?
 ### HARD Rules
 
 - [ZONE:Evolvable] [HARD] Implementation teammates in team mode (write-capable implementation roles: implementer / tester / designer) MUST use `isolation: "worktree"` when spawned via Agent()
-- [ZONE:Evolvable] [HARD] Read-only teammates (read-only research/review roles: researcher / analyst / reviewer) MUST NOT use `isolation: "worktree"` — their `mode: "plan"` already prevents writes
+- [ZONE:Evolvable] [HARD] Read-only teammates (read-only research/review roles: researcher / analyst / reviewer) MUST NOT use `isolation: "worktree"` — read-only enforcement rests on tool restriction (`Explore`, or a `tools:` list omitting Write/Edit); the spawn-time `mode` parameter is deprecated and ignored since Claude Code v2.1.213, so a teammate is read-only only when its tools cannot write
 - [ZONE:Evolvable] [HARD] One-shot sub-agents that write files across 3 or more paths per invocation MUST use `isolation: "worktree"`. This includes write-heavy retained agents (manager-develop), per-spawn `Agent(general-purpose)` specialists with a write-heavy domain whitelist (e.g. backend / frontend / devops / refactoring), and team-mode role profiles (implementer, tester, designer).
 <!-- @MX:ANCHOR: WorktreeMUSTRule — invariant contract; all write-heavy agents MUST declare isolation:worktree; enforced by LR-05 lint rule -->
 <!-- @MX:REASON: MUST level required to eliminate silent file-write conflict failure mode in parallel Agent() execution. -->
@@ -247,9 +247,11 @@ permissionMode: acceptEdits
 
 ```yaml
 # Read-only teammates (read-only research/review roles: researcher / analyst / reviewer)
-# Spawned via: Agent(subagent_type: "general-purpose", mode: "plan")
-# No isolation: worktree (read-only, mode: plan prevents writes)
-permissionMode: plan  # Read-only mode already provides safety
+# Spawned via: Agent(subagent_type: "general-purpose") with a read-only tools list
+# No isolation: worktree (read-only via tool restriction — the spawn-time mode
+# parameter is deprecated/ignored since v2.1.213; a parent bypassPermissions/
+# acceptEdits mode takes precedence over child permission settings)
+permissionMode: plan  # advisory frontmatter; the tool restriction is the guarantee
 ```
 
 ## WorktreeCreate and WorktreeRemove Hooks (Not Registered by Default)

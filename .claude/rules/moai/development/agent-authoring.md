@@ -91,13 +91,13 @@ All agent definitions use YAML frontmatter. The following fields are available:
 The `tools` field supports `Agent(worker, explore)` syntax to restrict which subagent types an agent can spawn. Prior to v2.1.63, this was `Task(worker, explore)` — the old syntax still works as a backward-compatible alias.
 
 - Only applies to agents running as the main thread via `claude --agent`
-- As of Claude Code v2.1.217, subagent nesting is gated by BOTH the `Agent` tool being present in a subagent's `tools` list AND the env var `CLAUDE_CODE_MAX_SUBAGENT_SPAWN_DEPTH` set to a positive integer; the depth is now configurable via that env var (default off since v2.1.217 — `CLAUDE_CODE_MAX_SUBAGENT_SPAWN_DEPTH` defaults to `0`). Inside a subagent definition the parenthesized `Agent(agent_type)` allowlist is ignored — it is a main-thread-only feature.
+- As of Claude Code v2.1.219, subagent nesting is **enabled by default** (changelog: up to depth 3); set `CLAUDE_CODE_MAX_SUBAGENT_SPAWN_DEPTH=1` to disable nesting. The former default-off state applied only to v2.1.217–2.1.218. The depth-3 ceiling is changelog-sourced, not observed (empirical evidence covers a single depth-1 nested spawn with the env unset). Inside a subagent definition the parenthesized `Agent(agent_type)` allowlist is ignored — it is a main-thread-only feature.
 - MoAI retained agents omit `Agent` from their `tools` list, so MoAI subagents do not nest by configuration — the flat hierarchy holds
 - Useful for creating coordinator agents that run as the main thread
 
 ## Fork Subagents (experimental)
 
-Fork subagents are an experimental, opt-in feature (Claude Code v2.1.117+) enabled via the `CLAUDE_CODE_FORK_SUBAGENT` environment variable and invoked with `/fork`. A forked subagent inherits the parent conversation's context (rather than starting fresh), which makes it useful for branching exploratory work off the current state. A forked subagent cannot itself fork, but it can spawn other subagent types. The former "fixed depth cap (depth 5) as of Claude Code v2.1.187" framing is **superseded** by v2.1.217: nesting depth is now configurable via `CLAUDE_CODE_MAX_SUBAGENT_SPAWN_DEPTH` and defaults to off. MoAI's flat hierarchy holds by configuration — the retained agents omit the `Agent` tool from their `tools` list, so they do not spawn nested subagents regardless. MoAI does not enable fork subagents by default; the env var is opt-in.
+Fork subagents are an experimental, opt-in feature (Claude Code v2.1.117+) enabled via the `CLAUDE_CODE_FORK_SUBAGENT` environment variable and invoked with `/fork`. A forked subagent inherits the parent conversation's context (rather than starting fresh), which makes it useful for branching exploratory work off the current state. A forked subagent cannot itself fork, but it can spawn other subagent types. The former "fixed depth cap (depth 5) as of Claude Code v2.1.187" framing is **superseded**: nesting depth is configurable via `CLAUDE_CODE_MAX_SUBAGENT_SPAWN_DEPTH` and is enabled by default (depth 3) on v2.1.219+ (`=1` disables). MoAI's flat hierarchy holds by configuration — the retained agents omit the `Agent` tool from their `tools` list, so they do not spawn nested subagents regardless. MoAI does not enable fork subagents by default; the env var is opt-in.
 
 ## Permission Modes
 
@@ -160,7 +160,7 @@ Domain-specific implementation work (backend, frontend, security, devops, perfor
 
 **Spawn pattern** (Agent Teams only):
 ```
-Agent(subagent_type: "general-purpose", name: "researcher", model: "haiku", mode: "plan")
+Agent(subagent_type: "general-purpose", name: "researcher", model: "haiku")
 ```
 
 > Note: the `researcher` role_profile here is a workflow.yaml role, unrelated to the retired `researcher` agent file.
@@ -223,16 +223,16 @@ See also `.claude/rules/moai/development/karpathy-quickref.md` (4 coding princip
 
 Recommended tool sets by category:
 
-Manager agents: Read, Write, Edit, Grep, Glob, Bash, Skill, TaskCreate, TaskUpdate, TaskList, TaskGet (NOTE: Agent tool is NOT included by default for regular subagents. As of Claude Code v2.1.217 the runtime default is now ALSO off — nesting additionally requires `CLAUDE_CODE_MAX_SUBAGENT_SPAWN_DEPTH` set to a positive integer — so the MoAI flat hierarchy no longer rests on tools-omission alone; it holds by a double guarantee (the runtime default-off AND `Agent`-tool omission). Consistent with the official Claude Code limitation that subagents cannot spawn other subagents by default, Agent Teams teammates also cannot spawn their own teammates — only the team lead spawns teammates via Agent() with the `name` parameter, into the session's implicit team.)
+Manager agents: Read, Write, Edit, Grep, Glob, Bash, Skill, TaskCreate, TaskUpdate, TaskList, TaskGet (NOTE: Agent tool is NOT included for retained subagents. As of Claude Code v2.1.219 subagent nesting is enabled by default (depth 3; `CLAUDE_CODE_MAX_SUBAGENT_SPAWN_DEPTH=1` disables), so omitting the `Agent` tool from a subagent's `tools` list is the sole flat-hierarchy guarantee. Agent Teams teammates likewise do not spawn their own teammates in the MoAI configuration — only the team lead spawns teammates via Agent() with the `name` parameter, into the session's implicit team.)
 
 Expert agents: Read, Write, Edit, Grep, Glob, Bash
 
 Builder agents: Read, Write, Edit, Grep, Glob
 
-Dynamic teammates (general-purpose): Inherit all tools from parent session. Permission control via `mode` parameter at spawn time.
+Dynamic teammates (general-purpose): Inherit all tools from parent session. The spawn-time `mode` parameter is deprecated and ignored since Claude Code v2.1.213 (changelog-sourced); teammates inherit the parent session's permission mode.
 
 Notes:
-- Dynamic teammates use `mode: "plan"` for read-only enforcement instead of tool restrictions
+- Read-only enforcement for dynamic teammates rests on tool restriction (`Explore`, or a `tools:` list omitting Write/Edit) — the deprecated spawn-time `mode` parameter is ignored (v2.1.213+), and a parent in `bypassPermissions`/`acceptEdits` takes precedence over any child permission setting
 - Project-specific context is included in the spawn prompt, not preloaded skills
 - Teammates can self-load skills via Skill() tool when deeper documentation is needed
 
