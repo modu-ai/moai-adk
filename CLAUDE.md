@@ -140,7 +140,7 @@ For TRUST 5 framework details, see .claude/rules/moai/core/moai-constitution.md
 
 MoAI-ADK uses a 3-level harness system for adaptive quality depth: **minimal** (fast validation), **standard** (default checks), **thorough** (full sync-auditor + TRUST 5). Harness level is auto-determined by the Complexity Estimator based on SPEC scope; sync-auditor provides independent skeptical assessment with 4-dimension scoring (Functionality/Security/Craft/Consistency).
 
-LSP quality gates apply phase-specific thresholds — plan: capture LSP baseline; run: zero errors/type-errors/lint-errors required; sync: zero errors, max 10 warnings, clean LSP. For configuration and threshold details, see `.claude/rules/moai/workflow/spec-workflow.md` (harness/LSP routing) + `.moai/config/sections/harness.yaml`, `.moai/config/evaluator-profiles/`, `.moai/config/sections/quality.yaml`.
+LSP quality gates apply phase-specific thresholds — plan: capture LSP baseline; run: zero errors/type-errors/lint-errors required; sync: zero errors, max 10 warnings, clean LSP. For configuration and threshold details, see `.claude/rules/moai/workflow/spec-workflow.md` (harness/LSP routing) + `.moai/config/sections/harness.yaml`, `.moai/config/evaluator-profiles/`, `.moai/config/sections/quality.yaml`; the LSP threshold values themselves live in `.moai/config/sections/lsp.yaml` (the LSP-gate SSOT).
 
 ---
 
