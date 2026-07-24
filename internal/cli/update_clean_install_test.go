@@ -1173,3 +1173,139 @@ func TestCleanReinstall_PrunesOldConfigBackups(t *testing.T) {
 		t.Errorf("config-backup accumulation cap not applied: %d timestamped dirs remain; want 5", stamped)
 	}
 }
+
+// TestRunCleanReinstall_BackupCoverageGate_AbortsBeforeRemove verifies the
+// clean-reinstall backup-coverage abort gate: when a PRESERVE-inventory file
+// (e.g. a user-owned .claude/skills/hns-foo/SKILL.md) is MISSING from the
+// Step 3 snapshot at the moment the destructive steps would start, the
+// orchestrator MUST abort BEFORE Step 4 REMOVE runs — no deprecated path may
+// be deleted, and no deploy may occur.
+//
+// The corruption is injected through the RunMigrateAgency seam (Step 3.5),
+// which executes between the snapshot (Step 3) and the REMOVE (Step 4):
+// the injected runner deletes one user-owned file from the backup dir,
+// simulating an incomplete snapshot / backup-dir tamper race.
+//
+// This is the clean-path counterpart of the normal update path's
+// verifyNamespaceBackupCoverage gate (update.go Backup step). The clean path
+// verifies against the STRICT PRESERVE inventory its Step 3 snapshot actually
+// uses — NOT the conservative set — so real v2 upgrades (whose snapshot
+// legitimately omits template-managed moai-* assets) do not spuriously abort.
+func TestRunCleanReinstall_BackupCoverageGate_AbortsBeforeRemove(t *testing.T) {
+	root := t.TempDir()
+	writeTestFile(t, root, ".moai/config/sections/system.yaml",
+		"moai:\n    version: v2.16.1\n")
+	makeTestDir(t, root, ".agency")
+	writeTestFile(t, root, ".agency/index.md", "legacy agency content\n")
+	// Deprecated path — the Step 4 REMOVE target that must SURVIVE the abort.
+	deprecatedRel := ".claude/agents/moai/manager-strategy.md"
+	writeTestFile(t, root, deprecatedRel, "retired agent\n")
+	// User-owned PRESERVE file whose backup copy the injected runner deletes.
+	victimRel := ".claude/skills/hns-foo/SKILL.md"
+	writeTestFile(t, root, victimRel, "user harness skill\n")
+
+	deployer := &stubDeployer{}
+	opts := CleanReinstallOptions{
+		Out:      io.Discard,
+		Deployer: deployer,
+		// Step 3.5 seam: delete the victim's backup copy AFTER the snapshot
+		// completed, BEFORE the REMOVE step. The backup dir is the single
+		// .moai/backups/v2-to-v3-* directory in this fresh TempDir.
+		RunMigrateAgency: func(projectRoot string, dryRun, force bool, out io.Writer) error {
+			matches, globErr := filepath.Glob(filepath.Join(projectRoot, ".moai", "backups", "v2-to-v3-*"))
+			if globErr != nil || len(matches) != 1 {
+				t.Fatalf("expected exactly 1 v2-to-v3 backup dir, got %v (err %v)", matches, globErr)
+			}
+			victimBackup := filepath.Join(matches[0], filepath.FromSlash(victimRel))
+			if rmErr := os.Remove(victimBackup); rmErr != nil {
+				t.Fatalf("failed to delete victim backup copy %s: %v", victimBackup, rmErr)
+			}
+			return nil
+		},
+	}
+
+	_, err := runCleanReinstall(context.Background(), root, opts)
+	if err == nil {
+		t.Fatal("runCleanReinstall succeeded; want abort — a PRESERVE file was missing from the backup before REMOVE")
+	}
+	if !strings.Contains(err.Error(), "CLEAN_REINSTALL_BACKUP_INCOMPLETE") {
+		t.Errorf("error %q missing CLEAN_REINSTALL_BACKUP_INCOMPLETE sentinel", err.Error())
+	}
+	if !strings.Contains(err.Error(), victimRel) {
+		t.Errorf("error %q does not name the unprotected file %s", err.Error(), victimRel)
+	}
+
+	// The abort must fire BEFORE any removal: the deprecated path survives.
+	if _, statErr := os.Stat(filepath.Join(root, filepath.FromSlash(deprecatedRel))); statErr != nil {
+		t.Errorf("deprecated path %s was removed despite abort (stat: %v) — gate fired too late", deprecatedRel, statErr)
+	}
+	// And before any deploy.
+	if deployer.deployCalls != 0 {
+		t.Errorf("deployer invoked %d times despite abort; want 0", deployer.deployCalls)
+	}
+}
+
+// TestVerifyPreserveBackupCoverage_Unit exercises the gate function directly:
+// pass when every on-disk inventory file has a backup copy, fail (with the
+// grep-able sentinel) when one is missing, and pass when the on-disk file
+// itself is gone (nothing left to destroy).
+func TestVerifyPreserveBackupCoverage_Unit(t *testing.T) {
+	root := t.TempDir()
+	writeTestFile(t, root, ".claude/skills/hns-foo/SKILL.md", "skill\n")
+	writeTestFile(t, root, ".moai/specs/SPEC-X/spec.md", "spec\n")
+	inv := PreserveInventory{Files: []string{
+		".claude/skills/hns-foo/SKILL.md",
+		".moai/specs/SPEC-X/spec.md",
+	}}
+
+	backupDir := filepath.Join(root, ".moai", "backups", "v2-to-v3-test")
+	if err := snapshotPreserveInventory(root, inv, backupDir); err != nil {
+		t.Fatalf("snapshot: %v", err)
+	}
+
+	t.Run("full coverage passes", func(t *testing.T) {
+		if err := verifyPreserveBackupCoverage(root, inv, backupDir); err != nil {
+			t.Errorf("verifyPreserveBackupCoverage = %v; want nil", err)
+		}
+	})
+
+	t.Run("missing backup copy aborts", func(t *testing.T) {
+		if err := os.Remove(filepath.Join(backupDir, ".claude", "skills", "hns-foo", "SKILL.md")); err != nil {
+			t.Fatal(err)
+		}
+		err := verifyPreserveBackupCoverage(root, inv, backupDir)
+		if err == nil {
+			t.Fatal("want error for missing backup copy, got nil")
+		}
+		if !strings.Contains(err.Error(), "CLEAN_REINSTALL_BACKUP_INCOMPLETE") {
+			t.Errorf("error %q missing sentinel", err.Error())
+		}
+		if !strings.Contains(err.Error(), ".claude/skills/hns-foo/SKILL.md") {
+			t.Errorf("error %q does not name the unprotected file", err.Error())
+		}
+	})
+
+	t.Run("source file gone on disk passes", func(t *testing.T) {
+		// The backup copy is still missing, but the source is gone too —
+		// there is nothing left on disk to destroy, so the gate passes.
+		if err := os.Remove(filepath.Join(root, ".claude", "skills", "hns-foo", "SKILL.md")); err != nil {
+			t.Fatal(err)
+		}
+		if err := verifyPreserveBackupCoverage(root, inv, backupDir); err != nil {
+			t.Errorf("verifyPreserveBackupCoverage = %v; want nil when source absent", err)
+		}
+	})
+
+	t.Run("empty backupDir with non-empty inventory aborts", func(t *testing.T) {
+		err := verifyPreserveBackupCoverage(root, inv, "")
+		if err == nil {
+			t.Fatal("want error for empty backupDir with non-empty inventory, got nil")
+		}
+	})
+
+	t.Run("empty inventory passes", func(t *testing.T) {
+		if err := verifyPreserveBackupCoverage(root, PreserveInventory{}, backupDir); err != nil {
+			t.Errorf("verifyPreserveBackupCoverage(empty inv) = %v; want nil", err)
+		}
+	})
+}
