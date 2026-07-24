@@ -11,6 +11,7 @@ import (
 	"path/filepath"
 
 
+	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/profile"
 	"github.com/modu-ai/moai-adk/internal/settings"
 	"github.com/modu-ai/moai-adk/internal/settings/agentfm"
@@ -39,7 +40,6 @@ type pageView struct {
 	LangOptions     []settings.OptionDef
 	ModelOptions    []settings.OptionDef
 	EffortLevels    []settings.OptionDef
-	ModelPolicies   []settings.OptionDef
 	PermissionModes []settings.OptionDef
 
 	// Project-config selects (SPEC-WEB-CONSOLE-003). Option lists + the current
@@ -80,6 +80,18 @@ type pageView struct {
 	PerfTier        string
 	PerfTierIsEmpty bool
 
+	// LLM carries the loaded llm.yaml config so the agentfm rows resolve each
+	// agent's selected model/effort through the profile matrix
+	// (template.ResolveAgentModelEffort) — G3-1 repoint. On the POST re-render
+	// path a read failure degrades to the zero value (medium-profile defaults).
+	LLM config.LLMConfig
+
+	// PerfTierCustom marks the client "Custom" pseudo-state: true when
+	// llm.agent_overrides is non-empty, so the perf-tier control preselects the
+	// Custom radio instead of a named tier (G3-4). Custom is a derived display
+	// state, NOT a persisted enum value (ValidPerformanceTiers stays {max,medium,low}).
+	PerfTierCustom bool
+
 	// Banner is an optional status/error message; BannerKind is "ok" or "error".
 	Banner     string
 	BannerKind string
@@ -113,7 +125,6 @@ func (a *app) newPageView(prefs profile.ProfilePreferences, selected string) pag
 		LangOptions:       langOptionDefs(),
 		ModelOptions:      modelOptionDefs(),
 		EffortLevels:      effortOptionDefs(),
-		ModelPolicies:     modelPolicyOptionDefs(),
 		PermissionModes:   permissionModeOptionDefs(),
 		DevelopmentModes:  developmentModeOptionDefs(),
 		Conventions:       conventionOptionDefs(),
@@ -313,6 +324,13 @@ func (a *app) handleSave(w http.ResponseWriter, r *http.Request) {
 
 	prefs := bindForm(r)
 
+	// G3-5: model_policy is no longer a UI field. Carry its persisted value forward
+	// so the save does not blank the resolveLaunchEffort fallback (launcher.go). A
+	// forged model_policy form value is therefore ignored, not persisted.
+	if cur, err := a.readPreferences(selected); err == nil {
+		prefs.ModelPolicy = cur.ModelPolicy
+	}
+
 	// REQ-WC3-005: bind the two project-config fields (NOT into ProfilePreferences —
 	// they are project config, not profile).
 	devMode := r.PostFormValue("development_mode")
@@ -326,17 +344,22 @@ func (a *app) handleSave(w http.ResponseWriter, r *http.Request) {
 	// (FieldDef가 SSOT — read-only/제외군 키는 스키마에 없어 자동 무시, EC-8).
 	schemaEdits, schemaErrs := parseSchemaForm(r)
 
-	// SPEC-WEB-CONSOLE-011 M3: parse the sub-agent frontmatter edits against the
-	// CURRENT live frontmatter state (no-change 제출은 편집으로 승격되지 않는다 —
-	// 불필요한 frontmatter 재직렬화 방지). 목록 실패는 편집 불가로 저하한다.
-	agents, _ := a.listAllAgentFMs(a.cfg.ProjectRoot)
-	agentEdits, agentErrs := parseAgentFMForm(r, agents)
-
 	// goal-to-test (non-SPEC): parse the performance_tier selector hosted at the
-	// top of the agentfm panel. The plan_type selector was removed from the web
-	// UI (llm.plan_type stays read-only, consumed for the effective-tier display
-	// and the tier-profile re-application, but no longer editable here).
+	// top of the agentfm panel. Parsed BEFORE the agentfm edits because it is the
+	// target tier the per-agent default comparison resolves under (G3-2/G3-4). A
+	// "custom" submission (the client pseudo-state) resolves to "" here (preserve).
 	perfTier, perfTierErrs := parsePerfTierForm(r)
+
+	// SPEC-WEB-CONSOLE-011 M3 + G3-2: parse the sub-agent model/effort edits into
+	// the desired llm.agent_overrides state. Resolution is against the loaded
+	// llm.yaml (the read seam SSOT); a load failure degrades to the zero config
+	// (medium-profile defaults). 목록 실패는 편집 불가로 저하한다.
+	agents, _ := a.listAllAgentFMs(a.cfg.ProjectRoot)
+	var llmCfg config.LLMConfig
+	if loaded, err := config.NewConfigManager().LoadRaw(a.cfg.ProjectRoot); err == nil {
+		llmCfg = loaded.LLM
+	}
+	agentPins, agentSubmitted, agentErrs := parseAgentFMForm(r, agents, llmCfg, perfTier)
 
 	// REQ-WC-008 / REQ-WC3-001/002 / REQ-WC7-007: run ALL validators and merge
 	// their FieldErrors. Any failure → atomic reject (EC-2): leave ALL persisted
@@ -419,12 +442,13 @@ func (a *app) handleSave(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// SPEC-WEB-CONSOLE-011 M3: persist sub-agent frontmatter edits through the
-	// frontmatter-only patch layer (body byte-무접촉, live 파일 전용 —
-	// REQ-WC11-025/027).
-	if err := a.patchAgentFM(a.cfg.ProjectRoot, agentEdits); err != nil {
+	// G3-2: persist sub-agent model/effort edits to llm.agent_overrides (config
+	// manager round-trip). Runs AFTER applyPerfTierEdits so an explicit per-agent
+	// override submitted in the same request is computed against the newly-applied
+	// tier. Agent .md frontmatter is NO LONGER mutated by the console.
+	if err := a.patchAgentFM(a.cfg.ProjectRoot, agentPins, agentSubmitted); err != nil {
 		a.renderErrorPage(w, prefs, selected, devMode, convention,
-			"settings saved, but agent frontmatter write failed: "+err.Error())
+			"settings saved, but agent override write failed: "+err.Error())
 		return
 	}
 
@@ -489,6 +513,11 @@ func (a *app) renderErrorPage(w http.ResponseWriter, prefs profile.ProfilePrefer
 // the TUI / profile_setup CLI path + statusline.yaml sync), but the web handler
 // leaves them zero — a profile save from the web console no longer touches
 // statusline config, so syncStatusline preserves the on-disk values.
+//
+// model_policy is likewise NOT bound here (G3-5 — removed from the UI as a
+// duplicate of the agentfm performance tier). Its ProfilePreferences field is
+// preserved by an explicit carry-forward in handleSave so a web save never blanks
+// the resolveLaunchEffort fallback (launcher.go).
 func bindForm(r *http.Request) profile.ProfilePreferences {
 	prefs := profile.ProfilePreferences{
 		UserName:         r.PostFormValue("user_name"),
@@ -496,7 +525,6 @@ func bindForm(r *http.Request) profile.ProfilePreferences {
 		GitCommitLang:    r.PostFormValue("git_commit_lang"),
 		CodeCommentLang:  r.PostFormValue("code_comment_lang"),
 		DocLang:          r.PostFormValue("doc_lang"),
-		ModelPolicy:      r.PostFormValue("model_policy"),
 		Model:            r.PostFormValue("model"),
 		EffortLevel:      r.PostFormValue("effort_level"),
 		PermissionMode:   r.PostFormValue("permission_mode"),

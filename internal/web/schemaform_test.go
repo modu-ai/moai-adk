@@ -90,3 +90,33 @@ func TestConsoleRendersReportTab(t *testing.T) {
 		t.Error(`orphan project panel still rendered (data-panel="project" should be removed)`)
 	}
 }
+
+// TestReportFormatRendersAsRadio verifies N2-a (select-minimization): report.format
+// has only 2 options (html+md / md), so it renders as a radio group via the generic
+// schemaFieldWidget → schemaRadioRow path, NOT a <select>. The report panel is the
+// last content panel, so slicing from its marker isolates its controls from the
+// git_strategy radios that render earlier.
+func TestReportFormatRendersAsRadio(t *testing.T) {
+	html := renderConsolePage(t)
+	reportStart := strings.Index(html, `data-panel="report"`)
+	if reportStart < 0 {
+		t.Fatal(`report panel not found (data-panel="report")`)
+	}
+	reportPanel := html[reportStart:]
+	if !strings.Contains(reportPanel, `name="report.format"`) {
+		t.Error("report panel missing the report.format control")
+	}
+	if !strings.Contains(reportPanel, `type="radio"`) {
+		t.Error("report.format did not render as radio inputs (N2-a select→radio)")
+	}
+	// Both closed-set options render as radios.
+	for _, opt := range []string{"html+md", "md"} {
+		if !strings.Contains(reportPanel, `name="report.format" value="`+opt+`"`) {
+			t.Errorf("report.format radio missing option %q", opt)
+		}
+	}
+	// The <select> form of report.format must be gone.
+	if strings.Contains(reportPanel, `<select class="select" id="report.format"`) {
+		t.Error("report.format still renders as a <select> (should be a radio group after N2-a)")
+	}
+}

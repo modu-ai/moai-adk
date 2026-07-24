@@ -73,13 +73,28 @@ func (l LLMConfig) EffectiveProfile() string {
 }
 
 // validOverrideModels is the closed set of model aliases accepted in an
-// llm.agent_overrides entry. It matches the aliases used by Matrix A plus the
-// inherit sentinel; "haiku" is intentionally excluded (HaikuResidualRule
-// forbids haiku anywhere in the model-routing surface).
+// llm.agent_overrides entry. It matches the aliases used by Matrix A, plus the
+// inherit sentinel, plus "haiku" as an explicit user opt-in.
+//
+// haiku is admitted HERE ONLY. The relaxation is deliberately scoped to the
+// per-agent override surface — a hand-picked, per-agent economy choice — and
+// changes nothing else:
+//   - defaultProfileMatrix (template package) stays haiku-free: no profile
+//     column ever resolves an agent to haiku on its own.
+//   - validRoutingModels (model_routing.go) stays haiku-free: the
+//     model_routing_profiles closed set is a separate surface.
+//
+// The tier layer already contemplates haiku for mechanical agents (see
+// template.ModelPolicyMedium/Low), so admitting it as an explicit override
+// removes an asymmetry rather than introducing one.
+//
+// Caveat worth knowing when picking haiku: Claude's reasoning-effort levels do
+// not apply to Haiku, so the effort paired with a haiku override is inert.
 var validOverrideModels = map[string]bool{
 	"opus":    true,
 	"sonnet":  true,
 	"fable":   true,
+	"haiku":   true,
 	"inherit": true,
 }
 
@@ -146,7 +161,7 @@ func validateAgentOverrides(cfg *Config) []ValidationError {
 		if m := strings.TrimSpace(me.Model); m != "" && !validOverrideModels[m] {
 			errs = append(errs, ValidationError{
 				Field:   "llm.agent_overrides." + agent + ".model",
-				Message: "model " + m + " is not in the valid set {opus, sonnet, fable, inherit}",
+				Message: "model " + m + " is not in the valid set {opus, sonnet, fable, haiku, inherit}",
 				Value:   m,
 				Wrapped: ErrInvalidConfig,
 			})

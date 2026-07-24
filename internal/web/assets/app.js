@@ -172,10 +172,18 @@
     if (!dict) {
       return;
     }
+    // Enum <option> labels stay ENGLISH in every locale: keys containing ".opt."
+    // (f.permission_mode.opt.*, f.model.opt.*, f.effort_level.opt.*, ...) carry
+    // runtime enum tokens ("Bypass permissions", "High quality", "High") that are
+    // more intuitive untranslated. Field titles, descriptions and tooltips still
+    // follow the active locale — and so do the placeholder options, whose keys
+    // (opt.project_default / opt.unset / opt.runtime_default) have no ".opt."
+    // substring, which is why the guard is key-scoped rather than tag-scoped.
+    var enDict = (window.MOAI_I18N && window.MOAI_I18N.en) || dict;
     var nodes = document.querySelectorAll("[data-i18n]");
     for (var i = 0; i < nodes.length; i++) {
       var key = nodes[i].getAttribute("data-i18n");
-      var str = dict[key];
+      var str = (key.indexOf(".opt.") >= 0 ? enDict : dict)[key];
       // Missing key → keep the existing baseline text (do not blank the element).
       if (typeof str === "string" && str.length > 0) {
         nodes[i].textContent = str;
@@ -262,35 +270,105 @@
     }
   }
 
-  // wireAgentFMSubtabs 배선: agentfm 섹션 내의 sub-tab(subagents/harness) 클릭
-  // 시 .is-active 토글. 상위 wireTabs 와 별도 스코프(data-agentfm-* 속성 사용)로
-  // 동작하며, 두 그룹 중 한 그룹만 표시한다. 두 패널 모두 DOM 에 상주하므로
-  // 비활성 패널의 폼 필드도 제출된다 (atomic Save contract).
-  function wireAgentFMSubtabs() {
-    var btns = document.querySelectorAll("[data-agentfm-tab]");
-    if (btns.length === 0) {
+  // (구 wireAgentFMSubtabs 는 제거됐다: agentfm 섹션의 subagents/harness sub-tab
+  // 이 사라지고 .claude/agents/moai/ 행만 단일 그리드로 렌더된다. data-agentfm-*
+  // 속성을 방출하는 마크업이 더 이상 없다.)
+
+  // wireProfileMatrix 는 성능 티어 라디오(max/medium/low) 변경 시 각 에이전트의
+  // model/effort select 를 그 티어의 프로파일 매트릭스 셀로 즉시 재설정한다 (G3-3 —
+  // 클라이언트 전용, 서버 왕복 없음). #moai-profile-matrix JSON blob 에서
+  // matrix[tier][agent] = {model, effort} 를 읽는다. 사용자가 이번 세션에서 직접
+  // 편집한 select(dirty)는 보존하며, 셀을 직접 편집하면 즉시 Custom 라디오로 전환한다.
+  function wireProfileMatrix() {
+    var el = document.getElementById("moai-profile-matrix");
+    if (!el) return;
+    var matrix;
+    try {
+      matrix = JSON.parse(el.textContent);
+    } catch (e) {
       return;
     }
-    for (var i = 0; i < btns.length; i++) {
-      btns[i].addEventListener("click", function () {
-        var tabId = this.getAttribute("data-agentfm-tab");
-        var allBtns = document.querySelectorAll("[data-agentfm-tab]");
-        var allPanels = document.querySelectorAll("[data-agentfm-panel]");
-        for (var j = 0; j < allBtns.length; j++) {
-          allBtns[j].classList.remove("is-active");
-          allBtns[j].setAttribute("aria-selected", "false");
+    var selects = document.querySelectorAll('select[name^="agentfm."]');
+    var custom = document.getElementById("performance_tier--custom");
+    var dirty = {};
+    for (var s = 0; s < selects.length; s++) {
+      (function (sel) {
+        sel.addEventListener("change", function () {
+          dirty[sel.name] = true;
+          if (custom) custom.checked = true; // 직접 편집 → Custom 상태로 전환
+        });
+      })(selects[s]);
+    }
+    var radios = document.querySelectorAll('input[name="performance_tier"]');
+    for (var r = 0; r < radios.length; r++) {
+      radios[r].addEventListener("change", function () {
+        if (!this.checked) return;
+        var cells = matrix[this.value]; // Custom(=undefined)이면 재설정하지 않음
+        if (!cells) return;
+        for (var i = 0; i < selects.length; i++) {
+          var sel = selects[i];
+          if (dirty[sel.name]) continue; // 미저장 직접 편집 보존
+          var mm = sel.name.match(/^agentfm\.(.+)\.(model|effort)$/);
+          if (!mm) continue;
+          var cell = cells[mm[1]];
+          if (!cell) continue;
+          var val = mm[2] === "model" ? cell.model : cell.effort;
+          for (var o = 0; o < sel.options.length; o++) {
+            if (sel.options[o].value === val) {
+              sel.value = val;
+              break;
+            }
+          }
         }
-        for (var k = 0; k < allPanels.length; k++) {
-          allPanels[k].classList.remove("is-active");
-        }
-        this.classList.add("is-active");
-        this.setAttribute("aria-selected", "true");
-        var panel = document.querySelector('[data-agentfm-panel="' + tabId + '"]');
-        if (panel) {
-          panel.classList.add("is-active");
-        }
+        // 티어 재설정이 model 셀을 haiku 로 또는 haiku 에서 바꿨을 수 있으므로
+        // 각 행의 effort 잠금 규칙을 재적용한다 (repopulation 은 model select 에
+        // change 이벤트를 발생시키지 않으므로 명시적 재적용이 필요하다).
+        reapplyHaikuLocks();
       });
     }
+  }
+
+  // ── Haiku → effort-select lock ──
+
+  // applyHaikuEffortLock 은 한 model select 값이 "haiku" 이면 같은 행(.agentfm-row)
+  // 의 effort select 를 비활성화하고, "Effort N/A for Haiku" 힌트를 노출한다. haiku 가
+  // 아니면 되돌린다. 행 단위 페어링은 name 매칭이 아니라 공유 컨테이너(.agentfm-row)
+  // 로 스코프하므로 다른 에이전트 행에 새지 않는다. disabled select 는 제출되지
+  // 않으며(서버 save 경로가 미제출 effort 를 resolved 값으로 backfill), 프로그램적
+  // 값 설정(wireProfileMatrix)에는 영향이 없다.
+  function applyHaikuEffortLock(modelSel) {
+    var row = modelSel.closest ? modelSel.closest(".agentfm-row") : null;
+    if (!row) return;
+    var effort = row.querySelector('select[name$=".effort"]');
+    var hint = row.querySelector(".agentfm-haiku-hint");
+    var isHaiku = modelSel.value === "haiku";
+    if (effort) effort.disabled = isHaiku;
+    if (hint) {
+      if (isHaiku) hint.classList.remove("is-hidden");
+      else hint.classList.add("is-hidden");
+    }
+  }
+
+  // reapplyHaikuLocks 는 리스너를 건드리지 않고 현재 값 기준으로 모든 행의 잠금을
+  // 다시 적용한다 (초기 로드 + 티어 repopulation 이후 호출).
+  function reapplyHaikuLocks() {
+    var models = document.querySelectorAll('select[name^="agentfm."][name$=".model"]');
+    for (var i = 0; i < models.length; i++) applyHaikuEffortLock(models[i]);
+  }
+
+  // wireHaikuEffortLock 는 각 model select 의 change 에 잠금 규칙을 배선하고 초기
+  // 상태를 적용한다. boost body swap 후 재호출돼도 새 요소는 리스너가 없어 중복
+  // 등록 우려가 없다(다른 wire* 함수와 동일).
+  function wireHaikuEffortLock() {
+    var models = document.querySelectorAll('select[name^="agentfm."][name$=".model"]');
+    for (var i = 0; i < models.length; i++) {
+      (function (sel) {
+        sel.addEventListener("change", function () {
+          applyHaikuEffortLock(sel);
+        });
+      })(models[i]);
+    }
+    reapplyHaikuLocks(); // 초기 상태(서버 렌더가 이미 disabled 를 방출하지만 재확인).
   }
 
   // initConsole 는 모든 콘솔 초기화를 한 곳에서 수행한다 — DOMContentLoaded(첫
@@ -312,8 +390,10 @@
     // M5-b D1: 탭 nav 배선. CSS show/hide 만으로 동작 — 패널은 DOM 에 상주한다
     // (atomic Save contract: 비활성 패널의 필드도 제출됨).
     wireTabs();
-    // SPEC-WEBCONF-SIMPLIFY-001 polish: agentfm sub-tabs 배선.
-    wireAgentFMSubtabs();
+    // G3-3: 성능 티어 → 에이전트 매트릭스 셀 즉시 재설정.
+    wireProfileMatrix();
+    // haiku model → effort select 비활성 잠금(초기 + change + 티어 repopulation).
+    wireHaikuEffortLock();
   }
 
   document.addEventListener("DOMContentLoaded", initConsole);

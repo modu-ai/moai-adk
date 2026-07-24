@@ -208,7 +208,7 @@ func TestAppbarRendered(t *testing.T) {
 	// SPEC-DESIGN-MOAIWEBV2-002 (light-only) — see TestDarkThemeAbsence.
 	for _, marker := range []string{
 		`class="appbar"`,       // appbar present
-		`class="brand__badge"`, // signature-gradient brand badge
+		`class="brand__badge"`, // brand badge (bare mascot — no fill/rounded box)
 		`MoAI-ADK`,             // brand name (mascot green theme rebrand)
 		`class="loopback"`,     // loopback indicator
 		`id="uiLangSelect"`,    // S3 langpick (the non-colliding interface id)
@@ -298,7 +298,7 @@ func TestNameAttributesPreserved(t *testing.T) {
 
 	wantNames := []string{
 		"user_name", "conversation_lang", "git_commit_lang", "code_comment_lang",
-		"doc_lang", "permission_mode", "model_policy", "model", "effort_level",
+		"doc_lang", "permission_mode", "model", "effort_level",
 		// statusline_preset / statusline_theme removed
 		// (SPEC-V3R6-STATUSLINE-PRESET-RETIRE-001) — no statusline panel.
 		// development_mode / git_convention removed with the orphan `project`
