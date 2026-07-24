@@ -65,7 +65,7 @@ The §D.7 indirect check (a live `/moai review --deep --repo` smoke invocation p
 
 ```yaml
 run_complete_at: 2026-07-24
-run_commit_sha: pending-backfill-M1
+run_commit_sha: 93d91e2e7
 run_status: audit-ready
 ac_pass_count: 27
 ac_fail_count: 0
