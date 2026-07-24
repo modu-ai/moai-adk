@@ -25,6 +25,7 @@ import (
 	"github.com/modu-ai/moai-adk/internal/harness/routing"
 	"github.com/modu-ai/moai-adk/internal/hook"
 	"github.com/modu-ai/moai-adk/internal/hook/dbsync"
+	"github.com/modu-ai/moai-adk/internal/hook/security"
 )
 
 var hookCmd = &cobra.Command{
@@ -150,6 +151,35 @@ func init() {
 		RunE:  runSpecStatus,
 	}
 	hookCmd.AddCommand(specStatusCmd)
+
+	// Add the in-session security guardian subcommands (SPEC-SEC-GUARDIAN-001).
+	// Three thin RunE wrappers forward stdin/stdout to the compiled Go handlers
+	// in internal/hook/security. Each is advisory-first + fail-open; none blocks
+	// by default and none invokes AskUserQuestion (REQ-SG-040/042/060).
+	//   security-scan   L1 PostToolUse — instant regex pattern warnings (advisory)
+	//   security-turn   L2 Stop        — turn-diff review (advisory; opt-in block)
+	//   security-commit L3 Stop        — commit cross-file review (dormant by default)
+	hookCmd.AddCommand(&cobra.Command{
+		Use:          "security-scan",
+		Short:        "Layer-1 in-session security guardian: PostToolUse pattern warnings",
+		Long:         "Scan a written buffer (PostToolUse) for known-dangerous patterns and emit advisory findings. Regex-only, in-process, never blocks. SPEC-SEC-GUARDIAN-001.",
+		SilenceUsage: true,
+		RunE:         runSecurityScan,
+	})
+	hookCmd.AddCommand(&cobra.Command{
+		Use:          "security-turn",
+		Short:        "Layer-2 in-session security guardian: Stop turn-diff review",
+		Long:         "Review the turn's working-tree diff (Stop) for high-severity findings. Advisory by default; blocking is opt-in via MOAI_SECURITY_BLOCKING. SPEC-SEC-GUARDIAN-001.",
+		SilenceUsage: true,
+		RunE:         runSecurityTurn,
+	})
+	hookCmd.AddCommand(&cobra.Command{
+		Use:          "security-commit",
+		Short:        "Layer-3 in-session security guardian: commit cross-file review",
+		Long:         "Review a commit's changed + related files for cross-file data-flow risks (IDOR / auth-bypass / SSRF). Dormant unless MOAI_SECURITY_COMMIT_REVIEW is set. SPEC-SEC-GUARDIAN-001.",
+		SilenceUsage: true,
+		RunE:         runSecurityCommit,
+	})
 
 	// Add "harness-classify" subcommand (SPEC-V3R6-HARNESS-CLASSIFIER-WIRING-001).
 	// Wired into the /moai:harness status workflow body §2.1 to close the V3R4
@@ -445,6 +475,27 @@ func runSpecStatus(cmd *cobra.Command, _ []string) error {
 
 	// Always exit 0 (non-blocking)
 	return nil
+}
+
+// runSecurityScan forwards a PostToolUse payload to the Layer-1 guardian handler
+// (SPEC-SEC-GUARDIAN-001). It is advisory-first + fail-open: the handler reads
+// stdin, writes any advisory findings to stdout, and always returns nil so the
+// PostToolUse pipeline is never broken.
+func runSecurityScan(cmd *cobra.Command, args []string) error {
+	return security.HandleSecurityScan(args, cmd.InOrStdin(), cmd.OutOrStdout(), resolveHookProjectRoot())
+}
+
+// runSecurityTurn forwards a Stop payload to the Layer-2 guardian handler
+// (turn-diff review). Advisory by default; blocking opt-in. Fail-open.
+func runSecurityTurn(cmd *cobra.Command, args []string) error {
+	return security.HandleSecurityTurn(args, cmd.InOrStdin(), cmd.OutOrStdout(), resolveHookProjectRoot())
+}
+
+// runSecurityCommit forwards a Stop payload to the Layer-3 guardian handler
+// (commit cross-file review). Dormant unless MOAI_SECURITY_COMMIT_REVIEW is set.
+// Fail-open.
+func runSecurityCommit(cmd *cobra.Command, args []string) error {
+	return security.HandleSecurityCommit(args, cmd.InOrStdin(), cmd.OutOrStdout(), resolveHookProjectRoot())
 }
 
 // defaultMigrationPatterns are the built-in migration patterns from SPEC-DB-SYNC-001.
