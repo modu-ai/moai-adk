@@ -105,7 +105,7 @@ The `project` mode performs comprehensive project-wide synchronization:
 
 Before execution, load these essential files:
 
-- .moai/config/config.yaml (git strategy, language settings)
+- .moai/config/sections/git-strategy.yaml + language.yaml (git strategy, language settings)
 - .moai/config/sections/git-strategy.yaml (auto_branch, branch creation policy)
 - .moai/config/sections/language.yaml (git_commit_messages setting)
 - .moai/specs/ directory listing (SPEC documents for sync)
@@ -159,7 +159,7 @@ Evaluate all conditions in order; skip the phase if any fails:
 
 1. `.moai/config/sections/db.yaml` exists (project opted into DB doc management)
 2. `db.enabled: true` in that file
-3. `db.auto_sync: true` in that file
+3. `db.auto_sync.enabled: true` in that file (`auto_sync` is a map, not a scalar)
 
 If any condition is not met, skip Phase 2 silently and proceed to Phase 3.
 
@@ -192,9 +192,9 @@ The `/moai db` slash command was retired (Bundle A, 2026-05-16) — sync workflo
 
 #### Step 0.08.4: Advisory Path
 
-When migration files changed but `db.auto_sync: false`:
+When migration files changed but `db.auto_sync.enabled: false`:
 
-- Emit one-line advisory to the sync report: "N migration files changed but db.auto_sync is disabled — set `db.auto_sync: true` in `.moai/config/sections/db.yaml` to enable automatic db doc refresh on sync"
+- Emit one-line advisory to the sync report: "N migration files changed but db.auto_sync is disabled — set `db.auto_sync.enabled: true` in `.moai/config/sections/db.yaml` to enable automatic db doc refresh on sync"
 - Do not invoke refresh automatically — respect user opt-out
 
 Output: phase_result with one of `skipped | refreshed | advised | failed` and the migration file count.

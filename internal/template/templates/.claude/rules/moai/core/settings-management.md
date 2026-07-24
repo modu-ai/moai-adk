@@ -71,7 +71,7 @@ Use the `ultrathink` keyword in user prompts to activate Adaptive Thinking (Opus
 
 `.moai/config/` - MoAI-specific settings:
 
-- config.yaml: Main configuration
+- sections/*.yaml: Section-file family — the configuration SSOT (no aggregate config.yaml file exists)
 - sections/quality.yaml: Quality gates, coverage targets
 - sections/language.yaml: Language preferences
 - sections/user.yaml: User information
