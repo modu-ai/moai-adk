@@ -98,12 +98,33 @@ func bannerString(version string) string {
 }
 
 // @MX:NOTE: [AUTO] CLI banner output — called from root/init/update/version entry points
-// PrintBanner displays the compact MoAI identity banner with pill metadata
-// (version / go / claude). Output routes through the Printer gateway
-// (REQ-TUX4-006 direct-print absorption): the banner is the data payload of
-// the banner surface, so it rides Printer.Data onto stdout.
+// PrintBanner displays the restored large MoAI-ADK logo stacked ABOVE the
+// compact identity band with pill metadata (version / go / claude). One edit
+// covers all 3 surfaces (root no-args, moai init, moai update) because they
+// share this single PrintBanner entry.
+//
+// SPEC-CLI-TUX-INIT-UPDATE-001 Group F (REQ-TUXIU-050/054) REVERSES
+// SPEC-CLI-TUX-V3-004 REQ-TUX4-006 (which retired the logo at commit 77893579e):
+// the logo is restored, but the reversal is minimized — it stacks ONLY here at
+// the PrintBanner composition layer; bannerString stays logo-free so the compact
+// band remains compact (§A.1 L3 / §B R6). tui.Logo owns NO_COLOR / non-TTY
+// degradation. Output routes through the Printer gateway (REQ-TUX4-006
+// direct-print absorption / REQ-TUXIU-044 stdout partition unchanged): both the
+// logo and the band are the data payload of the banner surface, so they ride
+// Printer.Data onto stdout.
 func PrintBanner(version string) {
-	_ = printer.New().Data(bannerString(version))
+	th := ResolveTheme()
+	_ = printer.New().Data(tui.Logo(th) + bannerString(version))
+}
+
+// PrintLogo renders JUST the restored large MoAI-ADK logo through the Printer
+// gateway — the same stdout Data channel as PrintBanner. It is used by the
+// root-help predicate (cli/fang.go) so an explicit `moai --help` / `moai help`
+// carries the logo ABOVE fang's styled help body, WITHOUT the compact identity
+// band (fang renders its own header) — REQ-TUXIU-055. NO_COLOR / non-TTY
+// degradation is handled entirely by tui.Logo.
+func PrintLogo() {
+	_ = printer.New().Data(tui.Logo(ResolveTheme()))
 }
 
 // welcomeString composes the project-initialization welcome message.
