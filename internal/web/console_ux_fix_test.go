@@ -191,6 +191,45 @@ func TestLLMSectionRenamedThirdParty(t *testing.T) {
 	}
 }
 
+// TestModelOptLabelsCarryContextWindow verifies N3: the model <option> labels carry
+// a context-window annotation — (200K) for the standard 200K models, (1M) for the
+// [1m] variants. The annotation is the same token across all 4 locales (labels render
+// in English via the .opt. guard), so each annotated value appears exactly 4 times in
+// i18n.js. opusplan (a routing alias, no single window) stays un-annotated.
+func TestModelOptLabelsCarryContextWindow(t *testing.T) {
+	dict := readEmbeddedAsset(t, "i18n.js")
+	wants := map[string]string{
+		"f.model.opt.opus":       "Opus 4.8 (200K)",
+		"f.model.opt.opus[1m]":   "Opus 4.8 (1M)",
+		"f.model.opt.sonnet":     "Sonnet 5 (200K)",
+		"f.model.opt.sonnet[1m]": "Sonnet 5 (1M)",
+		"f.model.opt.fable":      "Fable 5 (200K)",
+		"f.model.opt.fable[1m]":  "Fable 5 (1M)",
+		"f.model.opt.haiku":      "Haiku 4.5 (200K)",
+	}
+	for key, val := range wants {
+		entry := `"` + key + `": "` + val + `"`
+		if n := strings.Count(dict, entry); n != 4 {
+			t.Errorf("i18n.js has %d occurrences of %s, want 4 (one per locale)", n, entry)
+		}
+	}
+	// The old un-annotated / locale-specific "(1M context)" labels must be gone.
+	for _, banned := range []string{
+		`"f.model.opt.opus": "Opus 4.8"`,
+		`"f.model.opt.opus[1m]": "Opus 4.8 (1M context)"`,
+		`"f.model.opt.opus[1m]": "Opus 4.8 (1M 컨텍스트)"`,
+	} {
+		if strings.Contains(dict, banned) {
+			t.Errorf("i18n.js still carries the old model label %q", banned)
+		}
+	}
+	// opusplan stays a routing alias (no single context window) — must NOT gain (200K)/(1M).
+	if strings.Contains(dict, `"f.model.opt.opusplan": "OpusPlan (200K)"`) ||
+		strings.Contains(dict, `"f.model.opt.opusplan": "OpusPlan (1M)"`) {
+		t.Error("opusplan must stay un-annotated (it is a routing alias, not a single-window model)")
+	}
+}
+
 // TestAgentFMSinglePanel verifies G2-2: the "Harness agents" sub-tab is gone. Only
 // the .claude/agents/moai/ rows render, the sub-tab/panel chrome is absent, and
 // the section count reports the RENDERED agent count (not the full catalog).
@@ -238,7 +277,7 @@ func agentFMSectionCount(t *testing.T, body string) int {
 	if legend < 0 {
 		t.Fatal("agentfm legend not found in render")
 	}
-	if !strings.HasPrefix(body[legend:], `data-i18n="sec.agentfm.title">Sub-agent Frontmatter</span></legend>`) {
+	if !strings.HasPrefix(body[legend:], `data-i18n="sec.agentfm.title">Agents</span></legend>`) {
 		t.Fatalf("expected the agentfm legend at the last sec.agentfm.title occurrence, got: %.80q", body[legend:])
 	}
 	rest := body[legend:]

@@ -34,9 +34,9 @@ func consoleTabs() []consoleTab {
 	return []consoleTab{
 		{ID: "identity", LabelKey: "sec.identity.title", Baseline: "Identity"},
 		{ID: "language", LabelKey: "sec.language.title", Baseline: "Language"},
-		{ID: "launch", LabelKey: "sec.launch.title", Baseline: "Launch"},
+		{ID: "launch", LabelKey: "sec.launch.title", Baseline: "LLM"},
 		{ID: "llm", LabelKey: "sec.llm.title", Baseline: "3rd Party LLM"},
-		{ID: "agentfm", LabelKey: "sec.agentfm.title", Baseline: "Sub-agent Frontmatter"},
+		{ID: "agentfm", LabelKey: "sec.agentfm.title", Baseline: "Agents"},
 		{ID: "report", LabelKey: "sec.report.title", Baseline: "Report"},
 	}
 }

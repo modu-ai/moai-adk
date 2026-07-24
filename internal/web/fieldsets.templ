@@ -78,7 +78,7 @@ templ fieldsetLaunch(view pageView) {
 	<fieldset class="section">
 		<div class="section__head">
 			<div class="section__head-row">
-				<legend class="section__legend"><span class="section__ico">@icon("rocket")</span><span data-i18n="sec.launch.title">Launch</span></legend>
+				<legend class="section__legend"><span class="section__ico">@icon("rocket")</span><span data-i18n="sec.launch.title">LLM</span></legend>
 				@sectionCount(len(settings.SectionFields(settings.SectionLaunch)))
 			</div>
 			<p class="section__desc" data-i18n="sec.launch.desc">How sessions start — permissions, model, and reasoning effort.</p>
@@ -393,7 +393,7 @@ templ fieldsetAgentFrontmatter(view pageView) {
 	<fieldset class="section">
 		<div class="section__head">
 			<div class="section__head-row">
-				<legend class="section__legend"><span class="section__ico">@icon("user-round")</span><span data-i18n="sec.agentfm.title">Sub-agent Frontmatter</span></legend>
+				<legend class="section__legend"><span class="section__ico">@icon("user-round")</span><span data-i18n="sec.agentfm.title">Agents</span></legend>
 				@sectionCount(agentFMRenderCount(view.AgentFMs))
 			</div>
 			<p class="section__desc" data-i18n="sec.agentfm.desc">Per-agent model/effort frontmatter of the live agent files (frontmatter-only writes; bodies untouched).</p>
@@ -406,13 +406,19 @@ templ fieldsetAgentFrontmatter(view pageView) {
 				<div class={ "field", templ.KV("has-error", hasFieldError(view.FieldErrors, "performance_tier")) }>
 					<span class="field__label"><span class="field__title" data-i18n="agentfm.tier.title">Performance tier</span><code class="field__key">llm.performance_tier</code></span>
 					<span class="field__desc" data-i18n="agentfm.tier.desc">Model/effort tier column applied to the shipped agents (max / medium / low). Switching re-applies the matching tier profile to every shipped agent definition file.</span>
-					<span class="select-wrap">
-						<select class="select" id="performance_tier" name="performance_tier">
-							for _, opt := range agentFMPerfTierOptions() {
-								<option value={ opt } selected?={ opt == view.PerfTier || (view.PerfTierIsEmpty && opt == "medium") }>{ opt }</option>
-							}
-						</select>
-					</span>
+					<div class="radio-group">
+						for _, opt := range agentFMPerfTierOptions() {
+							<label class="radio">
+								if opt == view.PerfTier || (view.PerfTierIsEmpty && opt == "medium") {
+									<input type="radio" id={ "performance_tier--" + opt } name="performance_tier" value={ opt } checked/>
+								} else {
+									<input type="radio" id={ "performance_tier--" + opt } name="performance_tier" value={ opt }/>
+								}
+								<span class="radio__box"><span class="radio__tick">@icon("check")</span></span>
+								<span>{ opt }</span>
+							</label>
+						}
+					</div>
 					if view.PerfTierIsEmpty {
 						<span class="field__hint" data-i18n="agentfm.tier.default">(runtime default: medium)</span>
 					}

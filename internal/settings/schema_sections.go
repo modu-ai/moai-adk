@@ -333,12 +333,13 @@ func cacheFields() []FieldDef {
 // moai-domain-html-report skill이 읽어 출력 포맷을 결정한다.
 var reportFormatValues = []string{"html+md", "md"}
 
-// reportFields는 report 섹션의 편집 FieldDef를 반환한다: format(select).
-// launch tab에 렌더되며 (fieldsetLaunch가 schemaSelectRow로 호출), seam 경로
-// (report.yaml)로 영속화된다. Description은 fieldDesc.report.format i18n 키로
-// field-level 설명 문단을 방출한다.
+// reportFields는 report 섹션의 편집 FieldDef를 반환한다: format(radio). 2-옵션
+// 닫힌 집합(html+md / md)이라 select-minimization으로 라디오 버튼 그룹으로 렌더한다
+// (withRadio). report tab에서 제네릭 schemaFieldWidget(→ schemaRadioRow)로 렌더되며,
+// seam 경로(report.yaml)로 영속화된다. Description은 fieldDesc.report.format i18n
+// 키로 field-level 설명 문단을 방출한다.
 func reportFields() []FieldDef {
-	f := withSelect(seamField(SectionReport, "report", TypeSelect, "report", "format"),
+	f := withRadio(seamField(SectionReport, "report", TypeRadio, "report", "format"),
 		"f.report.format.opt.", reportFormatValues, "", "")
 	f.Description = "fieldDesc.report.format"
 	return []FieldDef{f}
