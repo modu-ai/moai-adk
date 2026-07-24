@@ -2,7 +2,7 @@
 id: SPEC-CLI-WIZARD-RESTRUCTURE-001
 title: "moai init wizard restructure — 3-page topic layout + default recalibration + Page-3 answer persistence (방안 A)"
 version: "0.2.1"
-status: draft
+status: in-progress
 created: 2026-07-25
 updated: 2026-07-25
 author: manager-spec

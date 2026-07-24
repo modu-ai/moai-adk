@@ -80,15 +80,17 @@ func (d *formDriver) down()  { d.send(tea.KeyPressMsg{Code: tea.KeyDown}) }
 func (d *formDriver) view() string { return d.m.(*huh.Form).View() }
 
 // TestUnifiedForm_MultiGroupSinglePage asserts the one-question-one-form
-// workaround is gone: the Project group renders multiple fields on ONE page
+// workaround is gone: a topic page renders multiple fields on ONE page
 // (REQ-TUX2-006) and the stepper note carries the dynamic denominator.
+// Post-restructure the merged pages are "Basic" (3 fields) and
+// "Model & Report" (2 fields).
 func TestUnifiedForm_MultiGroupSinglePage(t *testing.T) {
 	result := &WizardResult{}
 	questions := DefaultQuestions("/tmp/unified-page")
 	form := buildUnifiedForm(questions, result, "")
 	d := newFormDriver(t, form)
 
-	// Initial page is the Language select (question 1 of 6 visible:
+	// Initial page is the merged "Basic" group (question 1 of 6 visible:
 	// conversation_language, user_name, project_name, model_policy,
 	// report_format, advanced_bridge — the init set asks nothing about Git).
 	// The stepper note renders the dynamic denominator "1 / 6" (REQ-TUX2-008).
@@ -96,19 +98,30 @@ func TestUnifiedForm_MultiGroupSinglePage(t *testing.T) {
 		t.Errorf("initial stepper note must render dynamic denominator '1 / 6', frame:\n%s", initial)
 	}
 
-	// Page 1 is the Language select, page 2 is the Identity (user_name) input;
-	// advance past both to reach the unified Project page.
-	d.enter() // conversation_language = en -> Identity page
-	d.enter() // user_name (empty) -> Project page
-
+	// Page 1 "Basic" renders all three of its fields together.
 	frame := d.view()
 	for _, want := range []string{
+		"Select conversation language",
+		"Enter your name",
 		"Enter project name",
+	} {
+		if !strings.Contains(frame, want) {
+			t.Errorf("Basic group page must render %q (unified multi-field page), frame:\n%s", want, frame)
+		}
+	}
+
+	// Advance past the three Basic fields to reach the merged Model & Report page.
+	d.enter() // conversation_language = en
+	d.enter() // user_name (empty)
+	d.enter() // project_name (default) -> Model & Report page
+
+	frame = d.view()
+	for _, want := range []string{
 		"Select model policy",
 		"Select report format",
 	} {
 		if !strings.Contains(frame, want) {
-			t.Errorf("Project group page must render %q (unified multi-field page), frame:\n%s", want, frame)
+			t.Errorf("Model & Report group page must render %q, frame:\n%s", want, frame)
 		}
 	}
 }
@@ -241,19 +254,19 @@ func TestBuildFormGroups_Partition(t *testing.T) {
 	result := &WizardResult{}
 	locale := ""
 
-	// Init set: "Language" (conversation_language) + "Identity" (user_name) +
-	// "Project" (project_name, model_policy, report_format) + advanced_bridge
-	// (conditional) = 1 + 1 + 1 + 1 = 4 groups. No Git groups.
+	// Init set: "Basic" (conversation_language, user_name, project_name) +
+	// "Model & Report" (model_policy, report_format) + advanced_bridge
+	// (conditional) = 1 + 1 + 1 = 3 groups. No Git groups.
 	initGroups := buildFormGroups(DefaultQuestions("/tmp/unified-partition"), result, &locale)
-	if len(initGroups) != 4 {
-		t.Errorf("expected 4 init groups (Language, Identity, Project, advanced_bridge), got %d", len(initGroups))
+	if len(initGroups) != 3 {
+		t.Errorf("expected 3 init groups (Basic, Model & Report, advanced_bridge), got %d", len(initGroups))
 	}
 
 	// Reconfigure set adds "Git" (git_mode) + 6 conditional git questions,
-	// each its own hideable group = 4 + 1 + 6 = 11 groups.
+	// each its own hideable group = 3 + 1 + 6 = 10 groups.
 	groups := buildFormGroups(ReconfigureQuestions("/tmp/unified-partition"), result, &locale)
-	if len(groups) != 11 {
-		t.Errorf("expected 11 groups (Language, Identity, Project, Git, 6 git conditionals, advanced_bridge), got %d", len(groups))
+	if len(groups) != 10 {
+		t.Errorf("expected 10 groups (Basic, Model & Report, Git, 6 git conditionals, advanced_bridge), got %d", len(groups))
 	}
 	for i, g := range append(initGroups, groups...) {
 		if g == nil {

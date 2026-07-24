@@ -39,11 +39,10 @@ func RunWithDefaults(projectRoot, locale, userName string) (*WizardResult, error
 // locale pre-fills the conversation_language default (and initial render language);
 // userName pre-fills the user_name default.
 func RunWithDefaultsModes(projectRoot, locale, userName string, standardMode, advancedMode bool) (*WizardResult, error) {
-	// Merge default + Phase 1 questions. Phase 1 questions are always present in
-	// the form but gated on r.StandardMode, so the Quick-mode advanced_bridge can
-	// reveal them by flipping StandardMode without rebuilding the form.
-	questions := DefaultQuestions(projectRoot)
-	questions = append(questions, Phase1Questions(projectRoot)...)
+	// The full 3-page init set (Basic / Model & Report / Quality & Workflow).
+	// Page 3 is no longer gated on r.StandardMode — every user sees it
+	// (SPEC-CLI-WIZARD-RESTRUCTURE-001 REQ-WIZ-001/002).
+	questions := InitQuestions(projectRoot)
 
 	// When advanced mode requested, check Phase 2 prerequisites and append stubs.
 	if advancedMode {

@@ -2,7 +2,7 @@
 id: SPEC-CLI-WIZARD-RESTRUCTURE-001
 title: "Acceptance criteria — moai init wizard restructure (방안 A)"
 version: "0.2.1"
-status: draft
+status: in-progress
 created: 2026-07-25
 updated: 2026-07-25
 author: manager-spec
