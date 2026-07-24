@@ -372,13 +372,19 @@ func TestSchemaCurrentValuesReadsAllSections(t *testing.T) {
 		"quality.ddd_settings.characterization_tests":  "true",
 		"quality.ddd_settings.behavior_snapshots":      "true",
 		"quality.ddd_settings.preserve_before_improve": "true",
-		// read-only 표시 키.
-		"llm.mode":      "",
-		"llm.team_mode": "",
 	}
 	for name, want := range cases {
 		if got := values[name]; got != want {
 			t.Errorf("value[%q] = %q, want %q", name, got, want)
+		}
+	}
+
+	// llm.mode / llm.team_mode 는 read-only 표시 목록에서 제거되었으므로 제네릭
+	// 읽기 seam 이 더 이상 값을 채우지 않는다 (web console UX fix G2-1). 지속
+	// 경로는 struct 기반이라 yaml 키 자체는 그대로 보존된다.
+	for _, name := range []string{"llm.mode", "llm.team_mode"} {
+		if _, ok := values[name]; ok {
+			t.Errorf("value[%q] present — the key was removed from ReadOnlyDisplayFields", name)
 		}
 	}
 }

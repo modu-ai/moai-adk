@@ -46,14 +46,18 @@ func TestM5AgentTierBadgeAll20Agents(t *testing.T) {
 }
 
 // TestM5AgentTierBadgeCustomOverride verifies AC-WC-018 / EC-2: when the agent's
-// current effort is `max` or model is `inherit`, the badge renders a neutral
-// "custom" marker (NOT a tier color).
+// current effort is `max`, the badge renders a neutral "custom" marker (NOT a
+// tier color).
+//
+// `model: inherit` was REMOVED from the custom predicate by the console UX fix
+// batch (G2-3): SPEC-MODEL-PROFILE-MATRIX-001 stopped mutating agent frontmatter,
+// making `inherit` the SHIPPED default rather than a manual override — see
+// TestAgentTierBadgeInheritIsDefault. `effort: max` is now the sole signal.
 func TestM5AgentTierBadgeCustomOverride(t *testing.T) {
 	cases := []struct {
 		name, model, effort string
 	}{
 		{"manager-spec", v4manifest.ModelOpus, v4manifest.EffortMax},
-		{"manager-spec", v4manifest.ModelInherit, v4manifest.EffortXhigh},
 		{"hns-github-specialist", v4manifest.ModelInherit, v4manifest.EffortMax},
 	}
 	for _, tc := range cases {

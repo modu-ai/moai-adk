@@ -113,10 +113,15 @@ func TestAgentSettingsFourSurfacesRendered(t *testing.T) {
 	if !strings.Contains(body, `data-i18n="agentfm.warn"`) {
 		t.Error("persistent moai-update warning missing")
 	}
-	// M5-a B5: effort 필드 "(Go 미독)" 배지 렌더 (agentfm effort — 구 role_profiles.effort
-	// 표면은 SPEC-AGENT-TEAM-RETIRE-001 M2에서 제거, 배지는 agentfm이 계속 렌더).
+	// M5-a B5: effort 필드 "declarative" 배지 렌더 (agentfm effort — 구
+	// role_profiles.effort 표면은 SPEC-AGENT-TEAM-RETIRE-001 M2에서 제거, 배지는
+	// agentfm이 계속 렌더). 서버측 baseline은 영어다 (console UX fix G1-3 —
+	// 종전 하드코딩 한국어 "(Go 미독)"는 모든 로케일에 한국어를 노출했다).
 	if !strings.Contains(body, `data-i18n="hint.effort.go_unbound"`) {
-		t.Error("effort (Go 미독) hint badge missing")
+		t.Error("effort declarative-hint badge missing")
+	}
+	if !strings.Contains(body, "(declarative — not read by the runtime)") {
+		t.Error("effort hint badge does not render the English baseline text")
 	}
 }
 

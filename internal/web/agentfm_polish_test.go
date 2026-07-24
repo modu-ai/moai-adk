@@ -14,60 +14,49 @@ import (
 // Tests for the post-close agentfm polish rounds (SPEC-WEBCONF-SIMPLIFY-001):
 // Round 1: namespace grouping → name font → actual-value selection.
 // Round 2: sub-tabs (replacing group headers) → agent description per row.
+//
+// The web console UX fix batch (G2-2) then RETIRED the sub-tabs: only the
+// .claude/agents/moai/ rows render, in a single flat panel.
 
-// TestAgentFMSubTabs verifies the sub-tab nav renders with the two labels, both
-// group panels exist in the DOM, and the default-active panel is "subagents".
-func TestAgentFMSubTabs(t *testing.T) {
+// TestAgentFMNoSubTabs verifies the sub-tab chrome (and the harness rows behind
+// it) no longer render — neither the buttons, the panels, nor the old group
+// headers they had replaced.
+func TestAgentFMNoSubTabs(t *testing.T) {
 	root := t.TempDir()
 	// Seed one moai-core + one harness agent.
 	seedAgentFMFile(t, root, "moai", "manager-spec", "opus", "xhigh")
 	seedAgentFMFile(t, root, "harness", "hook-ci-specialist", "", "")
 	body := renderAgentFMBody(t, root)
 
-	// Sub-tab nav buttons with i18n keys.
-	if !strings.Contains(body, `data-agentfm-tab="subagents"`) {
-		t.Error(`missing Sub-agents sub-tab button (data-agentfm-tab="subagents")`)
-	}
-	if !strings.Contains(body, `data-agentfm-tab="harness"`) {
-		t.Error(`missing Harness agents sub-tab button (data-agentfm-tab="harness")`)
-	}
-	if !strings.Contains(body, `data-i18n="agentfm.subtab.subagents"`) {
-		t.Error(`missing i18n key agentfm.subtab.subagents on the sub-tab label`)
-	}
-	if !strings.Contains(body, `data-i18n="agentfm.subtab.harness"`) {
-		t.Error(`missing i18n key agentfm.subtab.harness on the sub-tab label`)
-	}
-
-	// Both panels render (DOM-resident for atomic Save).
-	if !strings.Contains(body, `data-agentfm-panel="subagents"`) {
-		t.Error(`missing subagents panel container`)
-	}
-	if !strings.Contains(body, `data-agentfm-panel="harness"`) {
-		t.Error(`missing harness panel container`)
+	// Sub-tab nav buttons + panels are gone.
+	for _, banned := range []string{
+		`data-agentfm-tab="subagents"`,
+		`data-agentfm-tab="harness"`,
+		`data-i18n="agentfm.subtab.subagents"`,
+		`data-i18n="agentfm.subtab.harness"`,
+		`data-agentfm-panel="subagents"`,
+		`data-agentfm-panel="harness"`,
+		`class="agentfm-subtabs"`,
+	} {
+		if strings.Contains(body, banned) {
+			t.Errorf(`sub-tab markup %q must be removed (G2-2 single-panel agentfm)`, banned)
+		}
 	}
 
-	// Default active: subagents panel is active, harness panel is NOT active.
-	if !strings.Contains(body, `class="agentfm-panel is-active" data-agentfm-panel="subagents"`) {
-		t.Error(`subagents panel should be the default-active panel (is-active class)`)
-	}
-	if strings.Contains(body, `data-agentfm-panel="harness"`) && strings.Contains(body, `agentfm-panel is-active" data-agentfm-panel="harness"`) {
-		t.Error(`harness panel should NOT be active by default`)
-	}
-
-	// Agents are partitioned: moai core agent in the DOM, harness agent in the DOM.
+	// The moai core agent renders directly; the harness agent does not render.
 	if !strings.Contains(body, `agentfm.manager-spec.model`) {
 		t.Error(`moai core agent (manager-spec) row not rendered`)
 	}
-	if !strings.Contains(body, `agentfm.hook-ci-specialist.model`) {
-		t.Error(`harness agent (hook-ci-specialist) row not rendered`)
+	if strings.Contains(body, `agentfm.hook-ci-specialist.model`) {
+		t.Error(`harness agent (hook-ci-specialist) row must NOT render (G2-2)`)
 	}
 
-	// Old group headers should NOT render (replaced by sub-tabs).
+	// Old group headers stay removed.
 	if strings.Contains(body, `agentfm.group.moai`) {
-		t.Error(`old agentfm.group.moai header should be removed (replaced by sub-tabs)`)
+		t.Error(`old agentfm.group.moai header should be removed`)
 	}
 	if strings.Contains(body, `agentfm.group.harness`) {
-		t.Error(`old agentfm.group.harness header should be removed (replaced by sub-tabs)`)
+		t.Error(`old agentfm.group.harness header should be removed`)
 	}
 }
 
@@ -86,15 +75,16 @@ func TestAgentFMActualValueSelection(t *testing.T) {
 
 // TestAgentFMAbsentEffortShowsTierDefault verifies an absent-effort agent shows
 // the tier-suggested default as the selected option + "(default)" annotation.
-// hook-ci-specialist is 🩵 tier → suggested effort = low.
+// manager-develop is 🟠 tier → suggested effort = high. (A moai-core agent is
+// used because the harness rows no longer render — G2-2.)
 func TestAgentFMAbsentEffortShowsTierDefault(t *testing.T) {
 	root := t.TempDir()
-	seedAgentFMFile(t, root, "harness", "hook-ci-specialist", "", "")
+	seedAgentFMFile(t, root, "moai", "manager-develop", "", "")
 	body := renderAgentFMBody(t, root)
 
-	// 🩵 tier suggested effort = low → should be selected.
-	if !strings.Contains(body, `<option value="low" selected`) {
-		t.Error(`absent-effort agent (hook-ci-specialist, 🩵 tier) should show tier-suggested "low" as selected`)
+	// 🟠 tier suggested effort = high → should be selected.
+	if !strings.Contains(body, `<option value="high" selected`) {
+		t.Error(`absent-effort agent (manager-develop, 🟠 tier) should show tier-suggested "high" as selected`)
 	}
 	// "(default)" annotation for the derived default.
 	if !strings.Contains(body, `data-i18n="agentfm.default"`) {
@@ -128,23 +118,20 @@ func TestAgentFMDescriptionShown(t *testing.T) {
 	}
 }
 
-// TestAgentFMTierSortOrder verifies agents within each sub-tab render in tier
-// order (most expensive first: 🔴 → 🟠 → 🔵 → 🩵), with alphabetical secondary
-// within the same tier (post-close polish round 3).
+// TestAgentFMTierSortOrder verifies agents render in tier order (most expensive
+// first: 🔴 → 🟠 → 🔵 → 🩵), with alphabetical secondary within the same tier
+// (post-close polish round 3).
 func TestAgentFMTierSortOrder(t *testing.T) {
 	root := t.TempDir()
-	// Moai sub-tab: seed one agent from each tier.
+	// Seed one agent from each tier present in .claude/agents/moai/.
 	// 🔴 manager-spec, 🔴 plan-auditor, 🟠 manager-develop, 🔵 manager-docs.
 	seedAgentFMFile(t, root, "moai", "manager-spec", "", "")
 	seedAgentFMFile(t, root, "moai", "plan-auditor", "", "")
 	seedAgentFMFile(t, root, "moai", "manager-develop", "", "")
 	seedAgentFMFile(t, root, "moai", "manager-docs", "", "")
-	// Harness sub-tab: 🔵 quality-specialist, 🩵 hook-ci-specialist.
-	seedAgentFMFile(t, root, "harness", "quality-specialist", "", "")
-	seedAgentFMFile(t, root, "harness", "hook-ci-specialist", "", "")
 	body := renderAgentFMBody(t, root)
 
-	// Sub-tab panel: red agents before orange before blue.
+	// Red agents before orange before blue.
 	// Use the form field name anchor (agentfm.<name>.model) to find document positions.
 	specPos := strings.Index(body, `agentfm.manager-spec.model`)
 	auditorPos := strings.Index(body, `agentfm.plan-auditor.model`)
@@ -164,16 +151,6 @@ func TestAgentFMTierSortOrder(t *testing.T) {
 	// Alphabetical within same tier (red): manager-spec before plan-auditor.
 	if auditorPos < specPos {
 		t.Errorf(`within red tier, manager-spec (pos=%d) should come before plan-auditor (pos=%d) alphabetically`, specPos, auditorPos)
-	}
-
-	// Harness sub-tab: blue (quality-specialist) before lightblue (hook-ci-specialist).
-	qualityPos := strings.Index(body, `agentfm.quality-specialist.model`)
-	hookCIPos := strings.Index(body, `agentfm.hook-ci-specialist.model`)
-	if qualityPos < 0 || hookCIPos < 0 {
-		t.Fatalf(`harness agent anchors not found (quality=%d hook-ci=%d)`, qualityPos, hookCIPos)
-	}
-	if hookCIPos < qualityPos {
-		t.Errorf(`lightblue agent (hook-ci-specialist pos=%d) must come AFTER blue agent (quality-specialist pos=%d)`, hookCIPos, qualityPos)
 	}
 }
 

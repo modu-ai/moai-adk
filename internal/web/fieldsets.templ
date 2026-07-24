@@ -274,16 +274,17 @@ templ schemaToggleRow(f settings.FieldDef, checked bool) {
 }
 
 // schemaSelectRow — 닫힌 옵션 select. EmptyLabel이 있으면 빈 옵션을 렌더한다.
-// effort 필드에는 "(Go 미독)" 배지를 표시한다 — Go 런타임이 행동적으로 바인딩하지
+// effort 필드에는 declarative 배지를 표시한다 — Go 런타임이 행동적으로 바인딩하지
 // 않는 선언적 힌트임을 사용자에게 알린다 (M5-a B5). M5-b D3: field__title +
-// field__desc 추가.
+// field__desc 추가. baseline 텍스트는 영어다: 하드코딩된 한국어는 JS 미실행 렌더에서
+// 모든 로케일에 한국어를 노출했다.
 templ schemaSelectRow(f settings.FieldDef, value string, errs map[string]string) {
 	<div class={ "field", templ.KV("has-error", hasFieldError(errs, f.Name)) }>
 		<span class="field__label">
 			<span class="field__title" data-i18n={ f.I18nKey + ".title" }>{ schemaFieldTitle(f) }</span>
 			<code class="field__key">{ f.Name }</code>
 			if strings.HasSuffix(f.Name, ".effort") {
-				<span class="field__hint" data-i18n="hint.effort.go_unbound">(Go 미독)</span>
+				<span class="field__hint" data-i18n="hint.effort.go_unbound">(declarative — not read by the runtime)</span>
 			}
 		</span>
 		<span class="field__desc" data-i18n={ f.I18nKey + ".desc" }>{ schemaFieldDesc(f) }</span>
@@ -380,16 +381,20 @@ templ schemaRawBlock(name, content, noteKey string) {
 // LLM 섹션에서 편집(교차 참조 노트), (b) role_profiles + (d) workflow_agents는
 // 제네릭 Agent Settings fieldset(SectionAgentSettings)이 렌더한다.
 
-// fieldsetAgentFrontmatter는 20개 sub-agent의 model/effort frontmatter 편집 표를
-// 렌더한다. 지속 경고("moai update가 덮어쓸 수 있음", REQ-WC11-028) + llm 교차
-// 참조 + dynamic-workflows taxonomy 참조(REQ-WC11-026)를 포함한다. effort의
-// "(absent)" 옵션은 키 삭제를 의미한다 (EC-7).
+// fieldsetAgentFrontmatter는 .claude/agents/moai/ sub-agent의 model/effort
+// frontmatter 편집 표를 렌더한다. 지속 경고("moai update가 덮어쓸 수 있음",
+// REQ-WC11-028) + llm 교차 참조 + dynamic-workflows taxonomy 참조(REQ-WC11-026)를
+// 포함한다. effort의 "(absent)" 옵션은 키 삭제를 의미한다 (EC-7).
+//
+// 구 "하네스 에이전트" sub-tab은 제거됐다: harness 행은 렌더하지 않는다. 스캔
+// 자체는 그대로라 미렌더 agent는 폼 값을 제출하지 않고, parseAgentFMForm이 이를
+// "preserve"로 읽으므로 harness frontmatter는 기록되지 않는다.
 templ fieldsetAgentFrontmatter(view pageView) {
 	<fieldset class="section">
 		<div class="section__head">
 			<div class="section__head-row">
 				<legend class="section__legend"><span class="section__ico">@icon("user-round")</span><span data-i18n="sec.agentfm.title">Sub-agent Frontmatter</span></legend>
-				@sectionCount(len(view.AgentFMs))
+				@sectionCount(agentFMRenderCount(view.AgentFMs))
 			</div>
 			<p class="section__desc" data-i18n="sec.agentfm.desc">Per-agent model/effort frontmatter of the live agent files (frontmatter-only writes; bodies untouched).</p>
 			<p class="section__desc agentfm-warn">@icon("alert-circle") <span data-i18n="agentfm.warn">These files are template-managed — a later `moai update` may overwrite live edits.</span></p>
@@ -416,27 +421,12 @@ templ fieldsetAgentFrontmatter(view pageView) {
 					}
 				</div>
 			</div>
-			<div class="agentfm-subtabs">
-				<button type="button" class="agentfm-subtab is-active" data-agentfm-tab="subagents" aria-selected="true" data-i18n="agentfm.subtab.subagents">Sub-agents</button>
-				<button type="button" class="agentfm-subtab" data-agentfm-tab="harness" aria-selected="false" data-i18n="agentfm.subtab.harness">Harness agents</button>
-			</div>
-			<div class="agentfm-panel is-active" data-agentfm-panel="subagents">
-				<div class="grid">
-					for _, agent := range view.AgentFMs {
-						if agentIsMoaiCore(agent) {
-							@agentFMRow(agent, view.FieldErrors)
-						}
+			<div class="grid">
+				for _, agent := range view.AgentFMs {
+					if agentIsMoaiCore(agent) {
+						@agentFMRow(agent, view.FieldErrors)
 					}
-				</div>
-			</div>
-			<div class="agentfm-panel" data-agentfm-panel="harness">
-				<div class="grid">
-					for _, agent := range view.AgentFMs {
-						if !agentIsMoaiCore(agent) {
-							@agentFMRow(agent, view.FieldErrors)
-						}
-					}
-				</div>
+				}
 			</div>
 		</div>
 	</fieldset>
@@ -485,7 +475,7 @@ templ agentFMRow(agent agentfm.AgentInfo, errs map[string]string) {
 			if agentEffortIsDefault(agent) {
 				<span class="field__hint agentfm-default-tag" data-i18n="agentfm.default">(default)</span>
 			}
-			<span class="field__hint" data-i18n="hint.effort.go_unbound">(Go 미독)</span>
+			<span class="field__hint" data-i18n="hint.effort.go_unbound">(declarative — not read by the runtime)</span>
 			if msg := fieldErrorMsg(errs, "agentfm."+agent.Name+".model"); msg != "" {
 				<span class="field-error">@icon("alert-circle")<span>{ msg }</span></span>
 			}

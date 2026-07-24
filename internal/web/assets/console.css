@@ -324,12 +324,13 @@ html[lang="zh"] body { font-family: "Pretendard", "Noto Sans CJK SC", system-ui,
 }
 /* Moai statue brand lockup */
 .brand { display: inline-flex; align-items: center; gap: 10px; }
+/* The mascot PNG is alpha-transparent, so the badge is a bare layout anchor:
+   no fill, no shadow, no rounded box — only sizing + flex centering. */
 .brand__badge {
-  width: 36px; height: 36px; flex: none; border-radius: var(--radius-md);
-  background: var(--gradient-signature); box-shadow: var(--shadow-xs);
+  width: 36px; height: 36px; flex: none;
   display: inline-flex; align-items: center; justify-content: center;
 }
-.brand__badge img.brand__mascot { width: 28px; height: 28px; object-fit: contain; border-radius: 4px; }
+.brand__badge img.brand__mascot { width: 28px; height: 28px; object-fit: contain; }
 .brand__name {
   font-family: var(--font-sans); font-weight: var(--fw-black); font-size: 17px;
   letter-spacing: -0.03em; color: var(--fg-1);
@@ -561,24 +562,9 @@ html[lang="zh"] body { font-family: "Pretendard", "Noto Sans CJK SC", system-ui,
 .agentfm-name {
   font-size: 15px; font-weight: 600; color: var(--fg-1);
 }
-/* SPEC-WEBCONF-SIMPLIFY-001 polish: agentfm sub-tabs (show one group at a time). */
-.agentfm-subtabs {
-  display: flex; gap: 0; border-bottom: 1px solid var(--border); margin-bottom: var(--space-5);
-}
-.agentfm-subtab {
-  font-family: var(--font-sans); font-size: 13px; font-weight: var(--fw-semibold);
-  color: var(--fg-3); background: none; border: none; cursor: pointer;
-  padding: 8px 16px; border-bottom: 2px solid transparent;
-  letter-spacing: var(--tracking-label); text-transform: uppercase;
-  transition: color var(--duration-fast) var(--easing-default),
-              border-color var(--duration-fast) var(--easing-default);
-}
-.agentfm-subtab:hover { color: var(--fg-1); }
-.agentfm-subtab.is-active {
-  color: var(--color-primary); border-bottom-color: var(--color-primary);
-}
-.agentfm-panel { display: none; }
-.agentfm-panel.is-active { display: block; }
+/* The agentfm sub-tabs (.agentfm-subtabs / .agentfm-subtab / .agentfm-panel) were
+   removed together with the "Harness agents" group — the section renders a single
+   flat grid of the .claude/agents/moai/ rows. */
 .agentfm-desc {
   font-size: 11.5px; color: var(--fg-3); line-height: 1.4;
   letter-spacing: var(--tracking-body); text-wrap: pretty;

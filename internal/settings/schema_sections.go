@@ -379,14 +379,16 @@ type ReadOnlyField struct {
 	NoteKey string
 }
 
-// ReadOnlyDisplayFields는 read-only 표시 키를 반환한다: llm.mode / llm.team_mode
-// (runtime-managed 레이스, REQ-WC11-013) + SPEC-WEB-CONSOLE-014 강등 키 2종
-// (learning.auto_apply governance FROZEN, observability.hook_metrics.output_path
-// dead config — REQ-WC14-001/040).
+// ReadOnlyDisplayFields는 read-only 표시 키를 반환한다: SPEC-WEB-CONSOLE-014
+// 강등 키 2종 (learning.auto_apply governance FROZEN,
+// observability.hook_metrics.output_path dead config — REQ-WC14-001/040).
+//
+// llm.mode / llm.team_mode(구 REQ-WC11-013 runtime-managed 표시)는 콘솔 UI에서
+// 제거됐다: 두 키는 `moai glm` / `moai cg` / `moai cc` 가 런타임에 기록하는 값이라
+// 콘솔에서 읽어 보여줄 이유가 없다. 지속 경로는 struct 기반(LLMConfig 전체 재
+// marshal, omitempty 없음)이므로 표시 목록에서 빠져도 yaml 키는 보존된다.
 func ReadOnlyDisplayFields() []ReadOnlyField {
 	return []ReadOnlyField{
-		{SectionLLM, "llm", "llm.mode", []string{"llm", "mode"}, ""},
-		{SectionLLM, "llm", "llm.team_mode", []string{"llm", "team_mode"}, ""},
 		// SPEC-WEB-CONSOLE-014 M2 (REQ-WC14-001): governance FROZEN false.
 		{SectionHarness, "harness", "learning.auto_apply", []string{"learning", "auto_apply"}, "ro.note.governance"},
 		// SPEC-WEB-CONSOLE-014 M2 (REQ-WC14-040): dead config (기록 경로 상수 고정).

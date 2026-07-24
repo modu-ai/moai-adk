@@ -206,11 +206,14 @@ func TestAgentFMPolicy_EmptySubmissionPreservesCurrent(t *testing.T) {
 }
 
 // TestAgentFMPolicy_SelectorsRenderAtTopOfPanel verifies the performance_tier
-// selector renders inside the agentfm section, BEFORE the sub-tabs, and
-// pre-selects the active value. (The plan_type selector was removed.)
+// selector renders inside the agentfm section, BEFORE the per-agent rows, and
+// pre-selects the active value. (The plan_type selector was removed; the
+// sub-tabs the selector used to precede were removed by G2-2, so the first
+// agent row is now the ordering anchor.)
 func TestAgentFMPolicy_SelectorsRenderAtTopOfPanel(t *testing.T) {
 	root := t.TempDir()
 	writeLLMYAML(t, root, "api", "max")
+	seedAgentFMFile(t, root, "moai", "manager-spec", "opus", "xhigh")
 	body := renderAgentFMBody(t, root)
 
 	if strings.Contains(body, `name="plan_type"`) {
@@ -225,12 +228,12 @@ func TestAgentFMPolicy_SelectorsRenderAtTopOfPanel(t *testing.T) {
 
 	secIdx := strings.Index(body, `data-i18n="sec.agentfm.title"`)
 	tierIdx := strings.Index(body, `name="performance_tier"`)
-	subtabIdx := strings.Index(body, `data-agentfm-tab="subagents"`)
-	if secIdx < 0 || tierIdx < 0 || subtabIdx < 0 {
+	rowIdx := strings.Index(body, `name="agentfm.manager-spec.model"`)
+	if secIdx < 0 || tierIdx < 0 || rowIdx < 0 {
 		t.Fatal("could not locate agentfm section markers")
 	}
-	if secIdx >= tierIdx || tierIdx >= subtabIdx {
-		t.Error("performance_tier selector is not positioned at the TOP of the agentfm panel (before the sub-tabs)")
+	if secIdx >= tierIdx || tierIdx >= rowIdx {
+		t.Error("performance_tier selector is not positioned at the TOP of the agentfm panel (before the per-agent rows)")
 	}
 }
 

@@ -106,10 +106,17 @@ type agentBadgeInfo struct {
 
 // agentTierBadge computes the display-only tier badge for an agent row. The badge
 // comes from the name-keyed lookup table (design.md §C — Option A, NOT from the
-// agent's effort file). When the agent's current model/effort is an override
-// sentinel (max/inherit), the badge is a neutral "custom" marker (EC-2, AC-WC-018).
+// agent's effort file). When the agent's current effort is the override sentinel
+// `max`, the badge is a neutral "custom" marker (EC-2, AC-WC-018).
+//
+// `model: inherit` is NOT an override signal: SPEC-MODEL-PROFILE-MATRIX-001
+// REQ-MPM-040 stopped mutating agent frontmatter (see applyPerfTierEdits above),
+// so `inherit` is the SHIPPED default for the core agents. Treating it as a
+// manual override mislabeled those defaults CUSTOM and produced the inconsistent
+// mix of CUSTOM pills and tier glyphs across the agent rows. The model parameter
+// is retained (unused) so the call sites keep passing the row's full state.
 func agentTierBadge(name, model, effort string) agentBadgeInfo {
-	if effort == v4manifest.EffortMax || model == v4manifest.ModelInherit {
+	if effort == v4manifest.EffortMax {
 		return agentBadgeInfo{Glyph: "custom", TooltipKey: "fieldDesc.agentfm.custom", HasBadge: true, IsCustom: true}
 	}
 	tier, ok := v4manifest.AgentTier(name)
@@ -174,6 +181,21 @@ func agentIsSuggestedEffort(name, e string) bool {
 // from the source directory path.
 func agentIsMoaiCore(info agentfm.AgentInfo) bool {
 	return strings.Contains(info.Path, string(filepath.Separator)+"moai"+string(filepath.Separator))
+}
+
+// agentFMRenderCount reports how many of the listed agents actually render in the
+// agentfm section. Only the .claude/agents/moai/ rows render (the harness sub-tab
+// was removed), so the section count must report that subset rather than the full
+// scanned catalog. The harness agents stay in the scan — an unrendered agent
+// simply submits no form values, which parseAgentFMForm reads as "preserve".
+func agentFMRenderCount(agents []agentfm.AgentInfo) int {
+	n := 0
+	for _, a := range agents {
+		if agentIsMoaiCore(a) {
+			n++
+		}
+	}
+	return n
 }
 
 // agentTierSuggestedModel returns the tier-suggested model for the agent name
