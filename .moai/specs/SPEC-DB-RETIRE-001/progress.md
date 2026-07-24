@@ -54,7 +54,7 @@ Category-split decision (plan §B.8): chose option (b) — new `DeprecatedSince:
 
 ```yaml
 run_complete_at: 2026-07-25
-run_commit_sha: <backfill>
+run_commit_sha: 1cd72e9ede40ec32bed4d6eb2a8c19acee3c5dc8
 run_status: PASS
 ac_pass_count: 24
 ac_fail_count: 0
