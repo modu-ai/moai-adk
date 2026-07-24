@@ -2,7 +2,7 @@
 id: SPEC-SUBAGENT-NESTING-DOCTRINE-001
 title: "Subagent-nesting doctrine correction + auditor read-only nesting pilot"
 version: "0.1.0"
-status: in-progress
+status: completed
 created: 2026-07-24
 updated: 2026-07-24
 author: manager-spec

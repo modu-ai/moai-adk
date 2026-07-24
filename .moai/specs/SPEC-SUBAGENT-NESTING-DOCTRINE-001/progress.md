@@ -2,7 +2,7 @@
 id: SPEC-SUBAGENT-NESTING-DOCTRINE-001
 title: "Subagent-nesting doctrine correction + auditor read-only nesting pilot — Progress"
 version: "0.1.0"
-status: in-progress
+status: completed
 created: 2026-07-24
 updated: 2026-07-24
 author: manager-spec
@@ -65,7 +65,7 @@ Invariants:
 
 ```yaml
 run_complete_at: 2026-07-24
-run_commit_sha: pending-backfill-M1
+run_commit_sha: 190579229
 run_status: complete
 ac_pass_count: 15
 ac_pass_with_debt_count: 1        # AC-SND-016 (whole-tree grep proxy vs settings.json-scoped intent)
@@ -97,4 +97,22 @@ ac_debt_reconciliation: >
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+```yaml
+sync_complete_at: 2026-07-24
+sync_commit_sha: pending-backfill-sync
+sync_status: complete
+changelog_entry_position: "[Unreleased] > ### Changed (first entry)"
+frontmatter_status_transitions:
+  spec_md: "in-progress -> completed"
+  plan_md: "in-progress -> completed"
+  acceptance_md: "in-progress -> completed"
+  progress_md: "in-progress -> completed"
+b12_self_test_a: "grep -c SUBAGENT-NESTING-DOCTRINE-001 CHANGELOG.md (pre-emission) = 0 -> emission proceeded"
+b12_self_test_b: "acceptance.md AC row count (grep -n '^| AC-') = 16; progress.md §E.2 ac_pass_count(15) + ac_pass_with_debt_count(1) = 16 -> match"
+b12_self_test_c: "CHANGELOG entry cites .moai/specs/SPEC-SUBAGENT-NESTING-DOCTRINE-001/spec.md and internal/template/templates/ mirror paths; all pre-existing per run-phase §E.2"
+canary_compliance_check: not-applicable  # this SPEC does not define a forward-looking policy that its own sync tests
+ac_debt_carryover: >
+  AC-SND-016 PASS-WITH-DEBT carried through sync unchanged (see §E.3
+  ac_debt_reconciliation) — no sync-phase action required; the load-bearing
+  settings.json.tmpl invariant is satisfied.
+```
