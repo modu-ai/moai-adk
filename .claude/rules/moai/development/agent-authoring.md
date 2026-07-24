@@ -217,7 +217,7 @@ Agent bodies are system prompts. Author them per Anthropic's prompting best prac
 - Control reasoning depth with `effort` (xhigh for coding/agentic, minimum high for intelligence-sensitive); never `budget_tokens` (rejected on Opus 4.7+).
 - Steer subagent fan-out explicitly: Opus 4.8 spawns fewer subagents by default — say when fan-out across items/files is desirable, and when to work directly instead.
 
-See also `.claude/rules/moai/development/karpathy-quickref.md` (4 coding principles) and `.claude/rules/moai/core/moai-constitution.md` § Opus 4.7+ / 4.8 Prompt Philosophy.
+See also `.claude/rules/moai/development/karpathy-quickref.md` (4 coding principles) and `.claude/rules/moai/core/moai-constitution.md` § Opus 5 / 4.8 Prompt Philosophy.
 
 ## Tool Permissions
 
@@ -333,7 +333,7 @@ This mechanism→context-cost ladder is a *cross-mechanism* cost axis. It runs p
 
 ## Effort-Level Calibration Matrix
 
-Per-agent default effort levels for the Opus 4.7+ / 4.8 substrate. The `effort` frontmatter field overrides the session effort level and is scoped to a single agent run; `xhigh` and `max` require Opus 4.7 or later. For the substrate-level effort policy (defaults, when to raise/lower), see `.claude/rules/moai/core/moai-constitution.md` § Opus 4.7+ / 4.8 Prompt Philosophy.
+Per-agent default effort levels for the Opus 4.7+ / 4.8 substrate. The `effort` frontmatter field overrides the session effort level and is scoped to a single agent run; `xhigh` and `max` require Opus 4.7 or later. For the substrate-level effort policy (defaults, when to raise/lower), see `.claude/rules/moai/core/moai-constitution.md` § Opus 5 / 4.8 Prompt Philosophy.
 
 ### Retained Agents (10 — active, spawnable)
 

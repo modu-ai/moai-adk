@@ -231,7 +231,7 @@ Resume interrupted agent work using agentId (e.g., "Resume agent abc123 and cont
 
 MoAI-ADK integrates MCP servers and deep-analysis modes:
 
-- **UltraThink** (`ultrathink` keyword) / **Adaptive Thinking** (Opus 4.7+, including 4.8): the `ultrathink` keyword sets `effort: xhigh` and triggers Adaptive Thinking (dynamically allocated reasoning tokens, no fixed budget_tokens; controlled by effort level high/xhigh/max, not budget_tokens). See Skill("moai-foundation-thinking").
+- **UltraThink** (`ultrathink` keyword) / **Adaptive Thinking** (Opus 4.7+, including Opus 5 and 4.8): the `ultrathink` keyword sets `effort: xhigh` and triggers Adaptive Thinking (dynamically allocated reasoning tokens, no fixed budget_tokens; controlled by effort level high/xhigh/max, not budget_tokens). See Skill("moai-foundation-thinking").
 - **Context7**: Up-to-date library documentation lookup (resolve-library-id, get-library-docs).
 - **claude-in-chrome**: Browser automation for web-based tasks.
 - **Dynamic Workflows / ultracode**: `/effort ultracode` combines xhigh effort with automatic workflow orchestration (Claude Code v2.1.154+). See .claude/rules/moai/workflow/dynamic-workflows.md.

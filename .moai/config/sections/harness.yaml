@@ -44,7 +44,7 @@ harness:
     max_escalations: 2
 
   # Effort level mapping
-  # Maps harness depth to CLAUDE_CODE_EFFORT_LEVEL for Opus 4.7 adaptive thinking.
+  # Maps harness depth to CLAUDE_CODE_EFFORT_LEVEL for Opus adaptive thinking (Opus 5 / 4.8 / 4.7).
   # Deeper harness = more extended reasoning budget for evaluator and planner agents.
   effort_mapping:
     minimal:  "low"      # Fast iteration: no extended reasoning

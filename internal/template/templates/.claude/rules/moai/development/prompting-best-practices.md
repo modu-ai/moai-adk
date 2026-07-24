@@ -59,7 +59,7 @@ On the latest models, a review prompt that says "only report high-severity issue
 
 Most of this guidance is already encoded in MoAI doctrine — this file is the consolidated external reference:
 
-- Literal instruction following + no `budget_tokens` + effort routing → `.claude/rules/moai/core/moai-constitution.md` § Opus 4.7+ / 4.8 Prompt Philosophy
+- Literal instruction following + no `budget_tokens` + effort routing → `.claude/rules/moai/core/moai-constitution.md` § Opus 5 / 4.8 Prompt Philosophy
 - Anti-overengineering + scope discipline + verify-don't-assume → `moai-constitution.md` § Agent Core Behaviors
 - Persistence / never-stop-early → `.claude/output-styles/moai/moai.md` § Persistence & Context Awareness
 - Parallel tool calls → `.claude/rules/moai/core/agent-common-protocol.md` § Parallel Execution

@@ -279,16 +279,16 @@ Examples and reference: [examples.md](references/philosopher-examples.md), [refe
 
 ---
 
-## Adaptive Thinking (Opus 4.7+ built-in, including 4.8)
+## Adaptive Thinking (Opus 4.7+ built-in, including Opus 5 and 4.8)
 
-The model's built-in reasoning mode (Opus 4.7 and later, including 4.8) that dynamically allocates reasoning tokens based on task complexity.
+The model's built-in reasoning mode (Opus 4.7 and later, including Opus 5 and 4.8) that dynamically allocates reasoning tokens based on task complexity.
 
 ### Reasoning Modes
 
 | Mode | Trigger | Mechanism | GLM Compatible? |
 |------|---------|-----------|-----------------|
 | `ultrathink` | Keyword | Claude native extended reasoning | YES |
-| Adaptive Thinking | Automatic | Opus 4.7+ built-in (incl. 4.8) | YES |
+| Adaptive Thinking | Automatic | Opus 4.7+ built-in (incl. Opus 5 and 4.8) | YES |
 
 Rules: `ultrathink` → ALWAYS use Claude native extended reasoning with xhigh effort.
 

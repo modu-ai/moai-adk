@@ -369,7 +369,7 @@ The 7-field schema (`spec_id`, `worktree_path`, `branch`, `pane_id`, `mode`, `cr
 | `CLAUDE_ENV_FILE` on Windows | **2.1.111** | Prior versions: no-op on Windows; fixed to inject env as on macOS/Linux |
 | `disableBypassPermissionsMode` policy | **2.1.111** | Prevents agents from requesting `bypassPermissions` when `true` |
 
-**Recommended**: Claude Code **2.1.186 or later** for current background-agent permission-prompt semantics, Opus 4.7+ / 4.8 support, MCP doctor warnings, and Windows CLAUDE_ENV_FILE parity. Minimum baseline: **2.1.97** for worktree isolation.
+**Recommended**: Claude Code **2.1.186 or later** for current background-agent permission-prompt semantics, Opus 4.7+ / 4.8 / Opus 5 support, MCP doctor warnings, and Windows CLAUDE_ENV_FILE parity. Minimum baseline: **2.1.97** for worktree isolation.
 
 ## Troubleshooting
 

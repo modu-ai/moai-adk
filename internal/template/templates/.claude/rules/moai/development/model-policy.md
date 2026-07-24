@@ -16,12 +16,12 @@ Agent definition `model` field accepts only these values:
 - haiku: Claude Haiku (fastest, lowest cost)
 
 Current model generation mapping:
-- opus = Opus 4.8 (default effort: high across all surfaces incl. Claude Code; set xhigh explicitly for coding/agentic work)
+- opus = Opus 5 (`claude-opus-5`) on the Anthropic API — the default Opus model as of CC 2.1.219, native 1M context, fast mode available (default effort: high across all surfaces incl. Claude Code; set xhigh explicitly for coding/agentic work; Opus 5 carries a previously-set effort level across sessions — no hold)
 - sonnet = Sonnet 5 on the Anthropic API (current generation; native 1M window, no `[1m]` suffix, no usage credits — CC 2.1.197). Behind an LLM gateway or with `CLAUDE_CODE_DISABLE_1M_CONTEXT=1`, `sonnet` budgets 200K. See § Sonnet 5 Native-1M Re-scope (CC 2.1.198).
 - fable = Fable (current generation; added to the model enum per CC v2.1.196 model-priority update)
 - haiku = Haiku (current generation; retired from MoAI agent routing per the No-Haiku policy — value remains valid for documentation/example YAML)
 
-Opus 4.8 serves the full 1M token context window by default (no beta header, no long-context premium). Fast mode (speed: "fast") is a research preview for higher output throughput. Explore (Anthropic built-in) inherits the session model per CC v2.1.198 — no separate deployment or model pin needed.
+Opus 5 and Opus 4.8 serve the full 1M token context window by default (no beta header, no long-context premium). Fast mode applies to Opus 5 and Opus 4.8 as of CC 2.1.219 (Opus 4.7 was removed from fast mode). Explore (Anthropic built-in) inherits the session model per CC v2.1.198 — no separate deployment or model pin needed.
 
 Invalid values (NEVER use):
 - glm: Not a model field value (GLM is configured via environment variables)
@@ -149,9 +149,9 @@ CG Mode (Claude + GLM) uses environment variable overrides, not model field chan
 
 ## Effort Levels
 
-Claude models support effort levels that control reasoning depth (Opus 4.8 calibration):
+Claude models support effort levels that control reasoning depth (`xhigh`/`max` available on Opus 5, Sonnet 5, Opus 4.8, and Opus 4.7):
 - xhigh: best setting for coding and agentic use cases
-- high: default on Opus 4.8 across all surfaces; minimum for intelligence-sensitive work
+- high: default on Opus 5 / Opus 4.8 across all surfaces; minimum for intelligence-sensitive work
 - medium: cost-sensitive work that can trade off intelligence
 - low: short, scoped, latency-sensitive tasks
 
