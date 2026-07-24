@@ -6,7 +6,18 @@ Plan-phase artifacts authored 2026-07-25; amended to 0.2.0 same day after Implem
 
 ## §E.2 Run-phase Evidence
 
-_<pending run-phase>_
+### M-2 — ast-grep gate restore (REQ-CAR-011/019/020/021)
+
+| Item | Evidence |
+|------|----------|
+| gate.yaml loader (REQ-CAR-011) | `internal/config/loader_gate.go` + `Loader.Load` registration; `go test -run TestLoadGateSection ./internal/config/` → PASS (enable / default-off / partial-override) |
+| Explicit default OFF (REQ-CAR-019) | `defaults.go NewDefaultGateConfig` sets `AstGrepGate.Enabled: false` explicitly; `TestLoadGateSection_DefaultOff` + `TestPreToolHandler_LoadGateConfig/astgrep_gate_default_off_via_config` PASS |
+| Guard reachability (AC-CAR-011) | `TestQualityGate_Run_AstGrepGuardReachable` (zig marker + pure-Go suppression violation → Run returns false via gate.go astgrep branch) + `TestPreToolHandler_LoadGateConfig/astgrep_gate_enabled_via_config` (pre_tool mapping) — both PASS |
+| V1 deletion (REQ-CAR-021) | `RunAstGrepGate` + `runSGConfig`/`runSGRule`/`parseSGScanOutput`/`astGrepScanMatch` deleted from `astgrep_gate.go`; V1 tests + `TestRunAstGrepGate_V1_V2_Equivalence` removed; `go build ./...` green |
+| sgconfig `utils` phantom (REQ-CAR-020a) | `grep -n utils sgconfig.yml` → 0; ruleDirs now `[go, security]` (loadable curated set; demo-stub language dirs excluded pending ASTGREP-DOGFOOD-CLEANUP-001) |
+| Config-mode loadability (REQ-CAR-020b) | go/ + security/ rules converted to sg-native `rule:` nested format; 2 sg-unparseable multi-node demo rules dropped (go-http-response-body-not-closed, go-mutex-not-deferred); manual run `sg scan --config .moai/config/astgrep-rules/sgconfig.yml --json internal/config/loader_gate.go` → exit 0, output `[]` |
+| Graceful degrade without `sg` (REQ-CAR-020c) | `TestRunAstGrepGateV2_NoSgCLI` (PATH="") PASS — enabled gate skips scan, no hard failure |
+| gate.yaml template+local | template-first: `internal/template/templates/.moai/config/sections/gate.yaml` + local mirror; `make build` exit 0; `TestStructYAMLSymmetry_Gate` + `TestAuditLoaderCompleteness` PASS |
 
 ## §E.3 Run-phase Audit-Ready Signal
 

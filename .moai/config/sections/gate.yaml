@@ -1,0 +1,23 @@
+# Pre-commit quality gate configuration.
+#
+# The gate detects the project language from marker files (go.mod, package.json,
+# pyproject.toml, Cargo.toml, ...) and runs the matching vet/lint/test toolchain
+# before git commit. Tools that are not installed are skipped gracefully.
+#
+# The ast_grep_gate sub-section controls the optional ast-grep domain-rule scan
+# step. It is OFF by default (opt-in): enable it only when the `sg` CLI is
+# installed and the rules directory contains loadable rules. When `sg` is
+# absent, an enabled gate degrades gracefully (scan is skipped with a notice).
+gate:
+  enabled: true
+  skip_tests: false
+  timeouts:
+    vet: 30
+    lint: 60
+    test: 120
+  ast_grep_gate:
+    enabled: false
+    # rules_dir defaults to .moai/config/astgrep-rules when empty.
+    rules_dir: ""
+    block_on_error: true
+    warn_only_mode: false
