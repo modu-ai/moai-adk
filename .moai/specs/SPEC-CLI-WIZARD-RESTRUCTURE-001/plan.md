@@ -1,7 +1,7 @@
 ---
 id: SPEC-CLI-WIZARD-RESTRUCTURE-001
 title: "Implementation plan — moai init wizard restructure (방안 A)"
-version: "0.1.1"
+version: "0.1.2"
 status: draft
 created: 2026-07-25
 updated: 2026-07-25
@@ -119,8 +119,9 @@ session; see §B B-race).
 | C23 (M5) | `internal/cli/wizard/advanced_gate.go` | whole file (`IsAdvancedWizardReady` / `AdvancedGate` reflection stub) | **Delete** the file. Full retirement — no consumer remains after the gate is removed. |
 | C24 (M5) | `internal/cli/init.go` | `--standard` / `--advanced` cobra flag registration (~L84-85) + the `RunWithDefaultsModes(standardMode, advancedMode)` call passing the flag values + any `resolveModelPolicy`/init wiring reading the modes | **Remove** the flag registrations + collapse the call to the no-mode form. Distinct from C20 (which removes the `if result.StandardMode` *application* gate). |
 | C25 (M5) | `internal/cli/wizard/wizard.go` | `RunWithDefaultsModes(standardMode, advancedMode)` signature (~L58-66) + the orphaned `WizardResult.StandardMode` / `AdvancedMode` fields | **Remove** the `standardMode`/`advancedMode` params (collapse to the no-mode signature); drop the two now-dead result fields once C1/C17/C20 leave them with no writer/reader. |
-| C26 (M5) | `internal/cli/wizard/questions.go` | `Phase2Questions(gate)` constructor (4 inert stubs) + the `Phase1Questions` gated-constructor wrapper | **Remove** `Phase2Questions`; unwind `Phase1Questions` per C8. **Carve-out:** the Page-3 questions themselves are NOT deleted (they move to Page 3 per C3/C8) — only the gated wrapper is unwound. |
-| C27 (M5) | repo-wide caller reconciliation | `.github/` CI scripts, docs, `*_test.go` referencing `--advanced` / `--standard` / `advancedMode` / `standardMode` / `IsAdvancedWizardReady` / `RunWithDefaultsModes` / `Phase2Questions` | **Reconcile** every residual reference (`grep -rn` across the repo, including `.github/` + docs + `_test.go`); 0 dangling references, build + tests green. |
+| C26 (M5) | `internal/cli/wizard/questions.go` (`Phase1Questions` ONLY — NOT `Phase2Questions`) | the `Phase1Questions` gated-constructor wrapper (questions.go:383). **D4 correction:** `Phase2Questions(gate)` is defined in `advanced_gate.go:100`, NOT questions.go — it is already removed wholesale by C23's `advanced_gate.go` delete, so C26 scopes to the `Phase1Questions` unwind ONLY. | **Unwind** the `Phase1Questions` gated-constructor wrapper per C8. **Carve-out:** the Page-3 questions themselves are NOT deleted (they move to Page 3 per C3/C8) — only the gated wrapper is unwound. |
+| C27 (M5) | repo-wide caller reconciliation | `.github/` CI scripts + `internal/cli/` Go source + `*_test.go` referencing `--advanced` / `--standard` / `advancedMode` / `standardMode` / `IsAdvancedWizardReady` / `RunWithDefaultsModes` / `Phase2Questions` | **Reconcile** every residual CODE + CI reference (`grep -rn` across `internal/cli/` + `.github/` + `_test.go`); 0 dangling references, build + tests green. **Scope (D2):** docs-site `--standard`/`--advanced` references are EXCLUDED here — deferred to the sync-phase deliverable (see §F sync-phase note + spec.md §C Out of Scope — docs-site flag-reference removal). |
+| C28 (M5) | `internal/cli/init_update_notice.go` | `var runWizardFn = func(rootFlag, locale, userName string, standardMode, advancedMode bool)` (L68) + its `if standardMode` dispatch + the `init.go:418` call site passing the mode flags (D3 — third production seam beyond init.go C24 + wizard.go C25) | **Collapse** the `runWizardFn` signature to drop the `standardMode`/`advancedMode` params + remove the `if standardMode` branch (always `RunWithDefaults`). AC-WIZ-015's `advancedMode`/`standardMode` grep already binds this seam; §A.5 now lists it authoritatively. |
 
 #### PRESERVE
 
@@ -146,11 +147,13 @@ of the advanced-settings plumbing. In addition to removing the in-wizard
   (init.go ~L84-85), the `RunWithDefaultsModes(standardMode, advancedMode)`
   params + call site, and the `resolveModelPolicy` / init wiring that reads the
   modes. — C24/C25.
-- The inert `Phase2Questions` stub constructor + the `Phase1Questions`
-  gated-constructor wrapper that existed only to feed the gated advanced path.
-  — C26. **Carve-out:** the former Phase-1 QUESTIONS themselves are NOT deleted
-  — they survive as Page 3 (D1 / REQ-WIZ-005); only their `StandardMode`-gated
-  constructor wrapper is unwound (per C3/C8). The now-orphaned
+- The inert `Phase2Questions` stub constructor (defined in `advanced_gate.go`,
+  removed wholesale by C23's file delete — NOT in questions.go) + the
+  `Phase1Questions` gated-constructor wrapper (questions.go, unwound by C26) that
+  existed only to feed the gated advanced path. **Carve-out:** the former Phase-1
+  QUESTIONS themselves are NOT deleted — they survive as Page 3 (D1 /
+  REQ-WIZ-005); only their `StandardMode`-gated constructor wrapper is unwound
+  (per C3/C8). The now-orphaned
   `WizardResult.StandardMode` / `AdvancedMode` fields (no writer after C1/C17,
   no reader after C20) are removed too.
 
@@ -178,7 +181,7 @@ per verification-claim-integrity, do not carry the brief's claim forward):
 - `internal/cli/wizard/wizard.go` "~line 58 seed in `RunWithDefaultsModes`" — **DOES NOT EXIST**. `RunWithDefaultsModes` (L58-66) seeds only `StandardMode`/`AdvancedMode`/`EnforceQuality`/`CoverageExemptionsEnabled`/`DesignEnabled`/`ClaudeDesignEnabled` — there is NO `ModelPolicy` seed. The only `ModelPolicy` reference in wizard.go is L396 (`saveAnswer` answer-capture, not a default). Do NOT edit wizard.go for the model_policy default.
 - `internal/cli/init.go` "~line 97 / `resolveModelPolicy` seed" — **NOT a "high" default seed**. `resolveModelPolicy` (L214-228) reads flags only and returns `""` when unset; the non-interactive default already resolves to medium via `NormalizeToTier("")→medium` (init.go L601 comment confirms). No "high" seed to change here.
 - **Additionally found (brief missed these):** `internal/template/context.go` L64 doc + L106 const-consumer (C10), and `internal/config/profile.go` L59 stale comment (C11).
-- **Reachability caveat:** NO template renders `{{.ModelPolicy}}` (grep of `internal/template/templates/` returned zero matches), so the `DefaultModelPolicy` const change is largely inert for deployed template output; the const feeds `TemplateContext.ModelPolicy` via `WithModelPolicy` (seeded in `internal/core/project/initializer.go` L287/L338). The **functionally observable** default change is C2 (the interactive pre-selection). C9-C11 are consistency/hygiene changes. Run-phase should re-verify the `WithModelPolicy` seed path is not the operative default before claiming the const change is user-visible.
+- **Reachability caveat (D5-corrected mechanism):** NO template renders `{{.ModelPolicy}}` (grep of `internal/template/templates/` returned zero matches), so the `DefaultModelPolicy` const change is largely inert for deployed template output. The const feeds `TemplateContext.ModelPolicy` via the `NewTemplateContext` **default assignment** at `internal/template/context.go:106` (`ModelPolicy: string(DefaultModelPolicy)`) — NOT via the `WithModelPolicy` functional option (`context.go:260`), which has **ZERO non-test callers**. (The earlier citation to `internal/core/project/initializer.go` L287/L338 / `WithModelPolicy` was a **phantom** — those lines are `NewTemplateContext(...)` calls carrying `WithProject`/`WithUser`/`WithLanguage` only, no `WithModelPolicy`. The section CONCLUSION — const inert, 0 template `{{.ModelPolicy}}` renders — was correct; only the mechanism/line citation was wrong.) The **functionally observable** default change is C2 (the interactive pre-selection). C9-C11 are consistency/hygiene changes.
 
 **B-standardmode-gate (must-fix reachability)** — C20 is the single most
 critical wiring change. If Page-3 questions become always-visible but the
@@ -211,6 +214,19 @@ that a mid-page language change updates the sibling field titles. Not a blocker.
 sits on Page 2; the splice-by-ID logic still resolves. Assert the reconfigure
 question set/order is unchanged (REQ-WIZ-016) so `moai update --reconfigure`
 is not regressed.
+
+**B-reconfigure-leak (D6 — membership risk).** `ReconfigureQuestions` =
+`DefaultQuestions` + spliced `GitQuestions`. If C8 folds the former Page-3
+questions (`lsp_enabled`, `enforce_quality`, `project_mode`, `design_enabled`,
+`claude_design_enabled`) INTO `DefaultQuestions` (a permitted C8 mechanical
+option), those Page-3 questions would **leak** into the
+`moai update --reconfigure` set — silently changing the reconfigure UX.
+REQ-WIZ-016 / AC-WIZ-012 pin only the Git-ordering invariant, NOT reconfigure
+MEMBERSHIP. Run-phase MUST keep the reconfigure set membership unchanged from
+the pre-restructure baseline (Basic + Model + Git); if the fold-into-
+`DefaultQuestions` option is taken, `ReconfigureQuestions` MUST explicitly
+select its former member set rather than inherit the enlarged
+`DefaultQuestions`. Bound by AC-WIZ-012a (reconfigure membership unchanged).
 
 **B-race** — This SPEC is authored during a LIVE parallel session
 (SPEC-CONFIG-AUDIT-REPAIR-001) with uncommitted edits to `internal/cli/cc.go`,
@@ -268,20 +284,32 @@ go test ./internal/cli/wizard/... ./internal/cli/... ./internal/template/...   #
   C17 (dead capture case), **C20 (remove `if result.StandardMode` application
   gate — MUST-FIX)**. This makes M1/M3's always-visible answers persist.
 - **M5 — advanced-path full retirement (RESOLVED 방안 A option A).** Delete
-  `advanced_gate.go` (C23); remove the `--standard`/`--advanced` cobra flag
+  `advanced_gate.go` (C23 — this also removes `Phase2Questions`, which lives
+  there, per the D4 correction); remove the `--standard`/`--advanced` cobra flag
   registrations + the `RunWithDefaultsModes(standardMode, advancedMode)` params /
   call site + the `resolveModelPolicy`/init wiring that reads them (C24/C25);
   drop the orphaned `WizardResult.StandardMode`/`AdvancedMode` fields (C25);
-  remove the inert `Phase2Questions` stubs + unwind the `Phase1Questions`
-  gated-constructor wrapper (C26 — preserving the Page-3 questions per M1). Then
-  reconcile every residual caller across the repo (C27 — `grep -rn` for
-  `--advanced` / `--standard` / `advancedMode` / `standardMode` /
-  `IsAdvancedWizardReady` / `RunWithDefaultsModes` / `Phase2Questions` across
-  `internal/cli/`, `.github/`, docs, `_test.go`; 0 dangling references, build +
-  tests green). Isolated so M1-M4 can land independently; M5 lands after them.
+  unwind the `Phase1Questions` gated-constructor wrapper (C26 — preserving the
+  Page-3 questions per M1); collapse the `init_update_notice.go` `runWizardFn`
+  seam (C28 — third production seam). Then reconcile every residual CODE + CI
+  caller (C27 — `grep -rn` for `--advanced` / `--standard` / `advancedMode` /
+  `standardMode` / `IsAdvancedWizardReady` / `RunWithDefaultsModes` /
+  `Phase2Questions` across `internal/cli/`, `.github/`, `_test.go`; 0 dangling
+  references, build + tests green). **docs-site is NOT reconciled here** — see the
+  sync-phase note below. Isolated so M1-M4 can land independently; M5 lands after
+  them.
 - **M6 — test reconciliation + full verification (mechanical; bottom).** C22
   (reconcile test assertions), `go test ./internal/cli/... ./internal/template/...`,
   cross-platform build, coverage check.
+- **Sync-phase (post-run, manager-docs / `/moai sync`) — docs-site reconciliation
+  (D2; NOT a run-phase milestone).** The 12 docs-site files documenting
+  `--standard` / `--advanced` (4 locales × `cli-reference/init.md` / `cli.md` /
+  the init-wizard doc) are reconciled at SYNC phase by manager-docs, per the
+  docs-site 4-locale parity obligation (CLAUDE.local.md §17). This is scoped OUT
+  of the run-phase code milestones (M1-M6) and AC-WIZ-015 to keep the run-phase
+  code scope at Tier M (spec.md §C Out of Scope — docs-site flag-reference
+  removal at run-phase; REQ-WIZ-019). It is in the SPEC's overall scope, delivered
+  at sync rather than run.
 
 ## §G — Anti-patterns to avoid
 

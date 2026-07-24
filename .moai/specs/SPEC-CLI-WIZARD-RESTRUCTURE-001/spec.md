@@ -1,7 +1,7 @@
 ---
 id: SPEC-CLI-WIZARD-RESTRUCTURE-001
 title: "moai init wizard restructure — 3-page topic layout + default recalibration (방안 A)"
-version: "0.1.1"
+version: "0.1.2"
 status: draft
 created: 2026-07-25
 updated: 2026-07-25
@@ -23,6 +23,7 @@ related_specs: [SPEC-V3R5-INIT-WIZARD-EXPANSION-001, SPEC-V3R5-STATUSLINE-PROFIL
 |---------|------|--------|--------|
 | 0.1.0 | 2026-07-25 | manager-spec | Initial plan-phase authoring. Encodes user-confirmed 방안 A: remove the advanced-settings gate, reorganize the `moai init` wizard into 3 topic-based pages shown to every user, recalibrate `model_policy` default High→Medium and `lsp_enabled` default false→true, and remove the `harness_profile` / `coverage_exemptions_enabled` questions (fix them at defaults). |
 | 0.1.1 | 2026-07-25 | manager-spec | Folded the resolved advanced_gate retirement clarification. User chose 방안 A **option A — FULL retirement** of the advanced-settings plumbing (`advanced_gate.go`, the `--standard` / `--advanced` flag modes + their `standardMode` / `advancedMode` plumbing, and the inert `Phase2Questions` / gated-`Phase1Questions` stubs; the Page-3 questions survive). Added REQ-WIZ-018/019 (retirement + caller reconciliation), reframed the §C advanced_gate exclusion, and made plan.md M5 concrete (rows C23-C27). Rejected option B (hidden `--advanced` power-user path). |
+| 0.1.2 | 2026-07-25 | manager-spec | Folded plan-audit review-1 findings (PASS 0.80). D1 (must-fix): rewrote AC-WIZ-015 flag-retirement grep to the real cobra `.Bool("standard"/"advanced")` idiom (the prior `--standard`/`BoolVar` grep was empirically vacuous). D2 (must-fix): scoped the docs-site 4-locale `--standard`/`--advanced` reference removal to the SYNC phase (manager-docs), keeping the run-phase code scope at Tier M — REQ-WIZ-019 clarified + a §C Out-of-Scope H3 added. D3-D7 (cleanup): added the `init_update_notice.go:68` `runWizardFn` seam to plan §A.5 (C28); corrected C26 `Phase2Questions` mis-location (lives in `advanced_gate.go`, deleted by C23); fixed the B-brief-correction phantom `WithModelPolicy`/`initializer.go` citation to `context.go:106`; added the reconfigure-membership leak note + AC-WIZ-012a; corrected the progress §E.1 CHANGE-row count. |
 
 ## §A — Overview
 
@@ -64,7 +65,7 @@ This SPEC defines WHAT the restructured wizard observably does. The HOW (huh gro
 ### §B.5 — Advanced-path full retirement (resolved 방안 A option A)
 
 - **REQ-WIZ-018** (Unwanted): The CLI shall not expose the `--standard` or `--advanced` init flag modes, and the wizard shall not retain the reflection-based advanced-readiness gate or the inert Phase-2 stub questions — the advanced-settings plumbing is retired outright, not hidden behind a power-user path. The former Phase-1 questions are preserved as Page 3 (REQ-WIZ-005); only their mode-gated wrapper is retired.
-- **REQ-WIZ-019** (Ubiquitous): After retirement, the build and test suite shall be free of dangling references to the removed advanced-path flags and symbols; every existing caller of `--advanced` / `--standard` (CI scripts, documentation, tests) shall be reconciled so all documented invocations and assertions remain consistent.
+- **REQ-WIZ-019** (Ubiquitous): After retirement, the build and test suite shall be free of dangling references to the removed advanced-path flags and symbols; every existing CODE + CI caller of `--advanced` / `--standard` (CI scripts under `.github/`, `internal/cli/` Go source, tests) shall be reconciled at run-phase so all invocations and assertions remain consistent. The docs-site 4-locale `--standard` / `--advanced` reference removal (12 files across en/ko/ja/zh) is NOT a run-phase code deliverable — it is a **sync-phase deliverable** owned by manager-docs during `/moai sync` (per the docs-site 4-locale parity obligation, CLAUDE.local.md §17), keeping the run-phase code scope at Tier M (see §C Out of Scope — docs-site flag-reference removal at run-phase).
 
 ## §C — Exclusions
 
@@ -89,3 +90,7 @@ The following are explicitly out of scope for this SPEC. Each is routed to its c
 ### Out of Scope — wizard rendering engine / theme
 
 - The huh v2 theme, styling tokens, and stepper mechanics (`styles.go`, `wizard.go` theme functions) are untouched except for the group-assembly changes needed to form three pages.
+
+### Out of Scope — docs-site flag-reference removal at run-phase
+
+- The 12 docs-site files (4 locales × `cli-reference/init.md` / `cli.md` / the init-wizard doc) that document the `--standard` / `--advanced` flags are NOT edited during run-phase. Their reconciliation is deferred to the **sync phase** (manager-docs, `/moai sync`), per the docs-site 4-locale parity obligation (CLAUDE.local.md §17). Run-phase AC-WIZ-015 is therefore scoped to CODE + CI (`internal/cli/`, `.github/`) only and does NOT grep docs-site clean. This split keeps the run-phase code scope at Tier M (REQ-WIZ-019); the docs-site removal is in the SPEC's overall scope but delivered at sync, not run.

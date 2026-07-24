@@ -1,7 +1,7 @@
 ---
 id: SPEC-CLI-WIZARD-RESTRUCTURE-001
 title: "Acceptance criteria — moai init wizard restructure (방안 A)"
-version: "0.1.1"
+version: "0.1.2"
 status: draft
 created: 2026-07-25
 updated: 2026-07-25
@@ -129,6 +129,20 @@ tier: M
 - **Verify:** assert the Git-question block position relative to
   `report_format` in `ReconfigureQuestions`.
 
+### AC-WIZ-012a — Reconfigure membership unchanged (REQ-WIZ-016; D6)
+- **Given** `ReconfigureQuestions` after the restructure,
+- **When** the reconfigure question-set membership is enumerated,
+- **Then** it contains exactly the pre-restructure member set (Basic + Model +
+  spliced Git questions) and does NOT include the Page-3 questions
+  (`lsp_enabled`, `enforce_quality`, `project_mode`, `design_enabled`,
+  `claude_design_enabled`) — i.e. C8's fold-into-`DefaultQuestions` mechanical
+  option MUST NOT leak the Page-3 questions into `moai update --reconfigure`.
+- **Verify:** assert `ReconfigureQuestions` membership EXCLUDES the five Page-3
+  IDs while retaining the Basic + Model + Git set; the reconfigure UX is
+  unchanged from the pre-restructure baseline. (If C8 folds Page-3 into
+  `DefaultQuestions`, `ReconfigureQuestions` MUST explicitly select its former
+  member set rather than inherit the enlarged `DefaultQuestions`.)
+
 ### AC-WIZ-013 — No orphaned capture branches (REQ-WIZ-017)
 - **Given** the wizard after removals,
 - **When** `saveAnswer` / `saveBoolAnswer` are inspected,
@@ -148,21 +162,33 @@ tier: M
 - **Given** the repo after the change,
 - **When** the advanced-settings plumbing is audited,
 - **Then** `internal/cli/wizard/advanced_gate.go` no longer exists, the
-  `--standard` / `--advanced` init flags are unregistered, and no dangling
-  reference to the removed flags/symbols remains in `internal/cli/`, `.github/`,
-  docs, or tests — build + full suite stay green.
-- **Verify (retirement grep — 0 residual; intentional CHANGELOG/history mentions
-  excepted):**
+  `--standard` / `--advanced` init flags are unregistered, the
+  `RunWithDefaultsModes` mode params + `WizardResult.StandardMode`/`AdvancedMode`
+  fields are gone, and no dangling reference to the removed flags/symbols remains
+  in `internal/cli/` or `.github/` (CODE + CI scope) or tests — build + full
+  suite stay green.
+- **Verify (retirement grep — 0 residual after retirement; intentional
+  CHANGELOG/history mentions excepted):**
   ```bash
   test ! -f internal/cli/wizard/advanced_gate.go                                  # file gone
   grep -rn 'IsAdvancedWizardReady\|AdvancedGate' internal/cli/                    # 0 matches
-  grep -rn 'advancedMode\|standardMode' internal/cli/                             # 0 matches (params/fields gone)
+  grep -rn 'advancedMode\|standardMode' internal/cli/                             # 0 matches (params/fields gone — also catches init_update_notice.go:68 runWizardFn seam + init.go:418 caller)
   grep -rn 'RunWithDefaultsModes\|Phase2Questions' internal/cli/                  # 0 matches (retired constructors)
-  grep -rn '"--standard"\|"--advanced"\|advanced.*BoolVar\|standard.*BoolVar' internal/cli/ .github/   # 0 flag registrations/invocations
+  # D1 non-vacuity fix: the cobra registration idiom is `.Flags().Bool("standard"/"advanced", ...)`
+  #   — a BARE flag name (no `--` prefix), via `.Bool(` (NOT `.BoolVar`). The prior
+  #   `'"--standard"|advanced.*BoolVar'` grep matched NOTHING even while the flags were PRESENT
+  #   (empirically 0 matches against init.go:84-85), so it would falsely PASS. Grep the real idiom:
+  grep -rn '\.Bool("standard"\|\.Bool("advanced"' internal/cli/                   # 0 after retirement; ≥1 against the CURRENT pre-retirement init.go:84-85 (proves the grep is NON-VACUOUS)
   ```
   **This is the retirement AC — presence of the pages (AC-WIZ-001) is not
   sufficient; the vestigial advanced plumbing must be gone with no dangling
   callers.**
+  **Scope note (D2):** the docs-site `--standard`/`--advanced` reference removal
+  (4-locale, 12 files) is NOT verified by AC-WIZ-015 — it is a **sync-phase
+  deliverable** (manager-docs, per REQ-WIZ-019 + spec.md §C Out of Scope —
+  docs-site flag-reference removal at run-phase). AC-WIZ-015 greps CODE + CI
+  (`internal/cli/`, `.github/`) only; a docs-site grep is intentionally excluded
+  here and verified at `/moai sync`, not run.
 
 ## §D — Severity & traceability
 
@@ -174,7 +200,7 @@ tier: M
 | AC-WIZ-005, 006 | MUST | Behaviour-affecting default change. |
 | AC-WIZ-010 | **MUST (blocking)** | Reachability — without it the whole restructure is cosmetic. |
 | AC-WIZ-008, 009, 011 | MUST | Question removal + locale correctness (test-guarded). |
-| AC-WIZ-003, 004, 007, 012, 013 | SHOULD | Preservation of existing behaviours (nesting, live-render, reconfigure, no-orphans). |
+| AC-WIZ-003, 004, 007, 012, 012a, 013 | SHOULD | Preservation of existing behaviours (nesting, live-render, reconfigure order + membership, no-orphans). |
 | AC-WIZ-014 | MUST | Green gate (tests + cross-platform + coverage). |
 | AC-WIZ-015 | MUST | Full advanced-path retirement (resolved 방안 A option A); no vestigial plumbing or dangling callers. |
 
@@ -195,7 +221,7 @@ tier: M
 | REQ-WIZ-013 | AC-WIZ-009 |
 | REQ-WIZ-014 | AC-WIZ-011 |
 | REQ-WIZ-015 | AC-WIZ-010 |
-| REQ-WIZ-016 | AC-WIZ-012 |
+| REQ-WIZ-016 | AC-WIZ-012, AC-WIZ-012a |
 | REQ-WIZ-017 | AC-WIZ-013 |
 | REQ-WIZ-018 | AC-WIZ-015 |
 | REQ-WIZ-019 | AC-WIZ-015 |
@@ -220,6 +246,8 @@ while `ModelPolicyHigh` remains defined. Do not assert "no `high` anywhere":
       recommended-marker, lsp_enabled enabled-by-default).
 - [ ] Advanced-path retirement complete (resolved 방안 A option A): AC-WIZ-015
       green — `advanced_gate.go` gone, `--standard`/`--advanced` flags
-      unregistered, 0 dangling callers across `internal/cli/` + `.github/` +
-      docs + tests (M5 executed).
+      unregistered (verified via the real cobra `.Bool("standard"/"advanced")`
+      idiom, 0 residual), 0 dangling callers across `internal/cli/` + `.github/`
+      + tests (M5 executed). (The docs-site 4-locale flag-reference removal is a
+      SYNC-phase deliverable — verified at `/moai sync`, NOT this run-phase DoD.)
 - [ ] No orphan locale entries / dead capture cases remain.
