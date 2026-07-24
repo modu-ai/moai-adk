@@ -48,7 +48,9 @@ func NewObserverWithRetention(logPath string, retention *Retention) *Observer {
 // Creates file if it does not exist, appends if it exists.
 // Auto-creates parent directory if it does not exist.
 //
-// @MX:TODO: [AUTO] Phase 4: Plan to add gate with learning.enabled setting.
+// @MX:NOTE: [AUTO] The learning.enabled gate lives in the CLI hook wrapper
+// (internal/cli/hook.go isHarnessLearningEnabled, the caller), so RecordEvent
+// itself needs no gate.
 // @MX:SPEC: SPEC-V3R3-HARNESS-LEARNING-001 REQ-HL-001
 func (o *Observer) RecordEvent(eventType EventType, subject, contextHash string) error {
 	evt := Event{

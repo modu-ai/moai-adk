@@ -96,6 +96,11 @@
             "type": "command"
           },
           {
+            "command": "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-stop-goal.sh\"",
+            "timeout": 120,
+            "type": "command"
+          },
+          {
             "command": "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-security-turn.sh\"",
             "timeout": 5,
             "type": "command"
@@ -187,6 +192,28 @@
           {
             "command": "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-task-completed.sh\"",
             "timeout": 60,
+            "type": "command"
+          }
+        ]
+      }
+    ],
+    "TaskCreated": [
+      {
+        "hooks": [
+          {
+            "command": "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-task-created.sh\"",
+            "timeout": 60,
+            "type": "command"
+          }
+        ]
+      }
+    ],
+    "Notification": [
+      {
+        "hooks": [
+          {
+            "command": "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-notification.sh\"",
+            "timeout": 5,
             "type": "command"
           }
         ]
