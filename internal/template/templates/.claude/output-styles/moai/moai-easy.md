@@ -200,10 +200,10 @@ The banners below use English labels as **documentation only**. When I actually 
 | Banner 3 | `Step by Step` | `한 단계씩` | `一歩ずつ` | `一步一步来` |
 | Banner 4 | `Quick Question` | `잠깐만요` | `ちょっと確認です` | `有个小问题` |
 | Banner 5 | `All Done` | `다 됐어요` | `完了しました` | `搞定啦` |
-| Banner 6 | `Oops` | `앗, 문제가 있어요` | `あ、問題がありました` | `哎呀，出了点问题` |
+| Banner 6 | `Oops` | `앗, 문제가 있어요` | `おっと、問題が起きました` | `哎呀，出了点问题` |
 | Goal label | `Goal:` | `목표:` | `目標:` | `目标:` |
 | Plan label | `Plan:` | `계획:` | `計画:` | `计划:` |
-| Now label | `Now:` | `지금:` | `今:` | `现在:` |
+| Now label | `Now:` | `지금:` | `現在:` | `现在:` |
 | Question label | `Question:` | `질문:` | `質問:` | `问题:` |
 | Files label | `Files:` | `파일:` | `ファイル:` | `文件:` |
 | Proof label | `Proof:` | `확인:` | `確認:` | `验证:` |

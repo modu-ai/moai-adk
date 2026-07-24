@@ -380,7 +380,7 @@ When `conversation_language` is ko / ja / zh, emitting raw English literals from
 | Analogy banner | `🧠 MoAI-Learn ★ Analogy` | `🧠 MoAI-Learn ★ 비유` | `🧠 MoAI-Learn ★ たとえ話` | `🧠 MoAI-Learn ★ 类比` |
 | Analogy: Imagine prefix | `Imagine...` | `상상해 보세요...` | `想像してみてください...` | `想象一下...` |
 | Analogy: Why this works | `Why this works:` | `왜 이게 통하는가:` | `なぜこれが成り立つのか:` | `为什么这个比喻成立:` |
-| Analogy: Not yet | `Not yet:` | `아직은 NOT 등장:` (또는 `잠시 보류:`) | `まだ扱わない点:` | `暂时不涉及:` |
+| Analogy: Not yet | `Not yet:` | `아직 다루지 않을 부분:` | `まだ扱わない点:` | `暂时不涉及:` |
 | Gap Audit banner | `🧠 MoAI-Learn ★ Your Turn` | `🧠 MoAI-Learn ★ 학습자 차례` | `🧠 MoAI-Learn ★ あなたの番` | `🧠 MoAI-Learn ★ 该你了` |
 | Gap Audit: prompt | `Now explain it back to me — pretend I'm your younger sibling.` | `이제 저에게 설명해 주세요 — 어린 동생에게 설명한다고 생각하세요.` | `では、私に説明してみてください — 年下のきょうだいに教えるつもりで。` | `现在请你解释给我听 — 就当我是你的弟弟妹妹。` |
 | Gap Audit: noticed | `🔍 I noticed:` | `🔍 발견한 갭:` | `🔍 気づいた点:` | `🔍 发现的问题:` |
