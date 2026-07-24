@@ -1,7 +1,7 @@
 ---
 id: SPEC-AGENT-PARALLEL-OPT-001
 title: "Agent instruction diet + plan/run/sync parallelization maximization — Acceptance Criteria"
-version: "0.7.0"
+version: "0.8.0"
 status: draft
 created: 2026-07-25
 updated: 2026-07-25
@@ -20,6 +20,15 @@ tier: L
 - 판정 근거는 명령의 **verbatim 출력**이어야 한다. 요약·추정·이월 수치는 근거로 인정하지 않는다.
 - 라인 수 AC는 `wc -l` 출력의 정확한 정수로 판정한다. 근사치("약 340줄") 금지.
 - MUST 등급 AC 1건이라도 FAIL이면 SPEC은 close 불가다.
+
+### A.1 판정 명령 저작 규칙 (공허 GREEN 방지)
+
+아래 4개 규칙은 본 SPEC에서 **실제 공허 GREEN을 만들어낸 원인**을 코드화한 것이다. 새 판정 명령을 쓰거나 기존 명령을 고칠 때 매번 적용한다.
+
+1. **표 셀에 `-E` 교대 금지.** 마크다운 표 셀에서 `|`는 셀 구분자라 `\|`로 escape해야 하는데, `grep -E`에서 `\|`는 교대가 아니라 **리터럴 `|` 문자**다. 두 제약이 충돌하므로 교대가 필요하면 코드블록(§D.2.1 / §D.5.1)에 두거나 `-e` 반복(`grep -E -e 'A' -e 'B'`)으로 파이프를 제거한다. `grep -c`/`-l`/`-r` 같은 **BRE** 모드에서만 표 셀의 `\|`가 정상 교대로 동작한다. 실측 피해: AC-APO-024b·050·061·071·071b가 **공허 GREEN**, AC-APO-023이 **부당 FAIL**.
+2. **대상 파일의 언어와 패턴의 언어를 일치시킨다.** `.claude/skills/**` · `.claude/agents/**` · `.claude/rules/**`는 CLAUDE.md §9(*Commands, Agents, Skills Instructions: Always English*)에 따라 **영어 전용**이므로 한국어 패턴은 그 파일이 담을 수 **있는** 어떤 문자열과도 매치하지 못한다 — 결과가 항상 0이라 `== 0` 판정이 자동 통과한다. 실측 피해: AC-APO-024b.
+3. **부정형 판정은 RED fixture로 증명한다.** `== 0` 판정은 "0이 나왔다"만으로 유효하지 않다. **금지 대상 문자열을 실제로 심은 사본에서 명령이 FAIL함**을 보이고, 원본에서 PASS함을 보이는 RED/GREEN 왕복이 있어야 근거로 인정한다(§E 품질 게이트의 중립성 항목과 동일 규범).
+4. **이식성을 확인한다.** 판정 명령은 BSD `grep`(macOS `/usr/bin/grep`)과 `ugrep` 양쪽에서 **같은 값**을 내야 한다. `\b`(word boundary)를 한 패턴에 **여러 번** 쓰면 `ugrep`이 조용히 0을 반환하거나 정지하는 사례를 실측했다 — 그 자체가 또 하나의 공허 GREEN 경로다. `\b` 대신 POSIX 문자클래스(`[^a-z]` 등)를 쓴다.
 
 ---
 
@@ -111,18 +120,89 @@ tier: L
 
 | AC | REQ | 등급 | 판정 |
 |---|---|---|---|
-| AC-APO-020 | 020 | MUST | plan Phase 11 서술에 병렬 read-only 심사 + plan-auditor 단일 verdict 구조 명시 |
-| AC-APO-021 | 021 | MUST | plan Phase 10 단일 writer 유지 명시 + 단일 턴 병렬 Write 지시 존재 |
-| AC-APO-022 | 022 | SHOULD | RED 단계 drafter pool + 단일 applier 구조 서술 존재 |
-| AC-APO-023 | 023 | MUST | run Phase 13/16/17 축약 구조 서술 존재 **AND** `grep -cE 'Maximum 3 (fix-evaluate cycles\|review iterations)' .claude/skills/moai/workflows/run/task-decomposition.md` == 2 (baseline 2 — **Phase 16**(Active Quality Evaluation) `Maximum 3 fix-evaluate cycles` @:190, **Phase 17**(TRUST 5 Static Verification) `Maximum 3 review iterations` @:230. Phase 13은 반복 상한을 갖지 않는다. 둘 중 하나라도 삭제되면 1로 떨어져 FAIL) |
-| AC-APO-024 | 024 | MUST | sync Phase 12에 5개 read-only drafter 구조 서술 + 단일 `manager-docs` 순차 적용 명시; disjoint-writer 변형 서술 0건 |
-| AC-APO-024b | 024b | MUST | Phase 12 서술이 **현행 write-concurrency 규칙과 독립**임이 명시(현행 `[HARD]` 절대 금지형 규칙을 그대로 둔 채 성립) **AND** 규칙 완화의 진행 여부를 전제로 삼는 서술 0건 — `grep -cE "규칙 완화(가|를) (전제|선행)\|write-concurrency 개정.*(선행\|의존)" .claude/skills/moai/workflows/sync/doc-execution.md` == 0 (baseline 0 — 실측 확인). 주의: `grep -c`는 0건일 때 **exit status 1**을 반환하므로 종료 코드가 아니라 **출력 숫자**로 판정한다 |
-| AC-APO-025 | 025 | SHOULD | sync Phase 10 패키지별 fan-out 서술 존재 |
+| AC-APO-020 | 020 | MUST | **파일 앵커 2항 동시 충족** — 판정 명령 `CMD-020`(§D.2.1). (a) 병렬 렌즈 구조 heading 실재 == 1(baseline 1 — `plan/spec-assembly.md:172`), (b) verdict 소유자를 **이름으로 지명한** 문장 실재 == 1(baseline 1 — `:176`). (b)가 소유자명(`plan-auditor`)까지 포함해야 하는 이유: `single binding PASS/FAIL` 같은 **소유자 없는 토큰**만 세면 "verdict가 렌즈로 넘어갔다"는 **정반대 문장에도 통과**한다(토큰 존재 ≠ 요구사항 성립). **prose-judged 잔여(반사적 강화 금지)**: 렌즈 서술의 *적정성*(렌즈가 실제 read-only인지, fan-out 폭이 3-5인지)은 본 명령이 판정하지 않는다 — fan-out 규범은 AC-APO-028/030이, 적정성은 리뷰어 독해가 담당한다 |
+| AC-APO-021 | 021 | MUST | 판정 명령 `CMD-021`(§D.2.1) == 1 — `plan/spec-assembly.md`에 `single writer, single-turn parallel Write` 구문 실재(baseline 1 — `:69`). **파일 앵커 필수**(재귀형 금지). 본 AC는 *그 구문이 존재할 것* 자체가 요구사항이므로 구문 앵커가 곧 요구사항 판정이며 대리 토큰 검사가 아니다. 산출물 **개수** 일치는 본 AC가 아니라 AC-APO-046 소관 |
+| AC-APO-022 | 022 | SHOULD | **파일 앵커 필수** — 판정 명령 `CMD-022`(§D.2.1) 2항 동시 충족: (a) RED-stage drafter pool heading == 1(baseline 1 — `run/task-decomposition.md:72`), (b) 동일 파일 내 단일 적용자 서술 ≥ 1(baseline 1 — `:74` `remains the only writer`). 종전 판정은 트리 전역 존재형이라 `plan.md` M2 작업 3이 지정한 표면(`run/task-decomposition.md`)이 **아닌 어느 파일에서 매치돼도 GREEN**이었다(AC-APO-012/014가 실측한 이설·무관인용 해저드와 동형). 등급 SHOULD 유지 — 본 수정은 판정 정밀화이지 등급 변경이 아니다 |
+| AC-APO-023 | 023 | MUST | run Phase 13/16/17 축약 구조 서술 존재 **AND** 판정 명령 `CMD-023`(§D.2.1) == 2 (baseline 2 — **Phase 16**(Active Quality Evaluation) `Maximum 3 fix-evaluate cycles` @:190, **Phase 17**(TRUST 5 Static Verification) `Maximum 3 review iterations` @:230. Phase 13은 반복 상한을 갖지 않는다. 둘 중 하나라도 삭제되면 1로 떨어져 FAIL). **구 명령 폐기 사유(실측)**: 종전 표 셀 형태 `grep -cE 'Maximum 3 (fix-evaluate cycles\|review iterations)'`는 `grep -E`에서 `\|`가 교대가 아니라 **리터럴 `|` 문자**이므로 `Maximum 3 fix-evaluate cycles|review iterations`라는 단일 연접 문자열을 찾았고, 현행 트리에서 **0**을 반환해 정상 구현을 **부당 FAIL**시켰다(정상 교대형은 2 반환). 파이프 없는 `-e` 반복형으로 교체 — §D.2.1 서두의 표-셀 파이프 금지 규칙 참조 |
+| AC-APO-024 | 024 | MUST | 판정 명령 `CMD-024`(§D.2.1) 3항 동시 충족: (a) drafter 표 행 수 == 5 (D1..D5 — **구조 카운트**이므로 토큰 존재 검사가 아니다; drafter가 4개로 줄거나 6개로 늘면 즉시 FAIL), (b) 단일 적용자 서술 ≥ 1 (`single writer of every final artifact`), (c) **disjoint-writer 변형 서술 == 0** (`disjoint`, 대소문자 무시, baseline 0). (c)는 사용자 결정 D2(disjoint-writer 불채택)의 **유일한 기계 가드**다 |
+| AC-APO-024b | 024b | MUST | **2항 동시 충족.** (1) Phase 12 서술이 **현행 write-concurrency 규칙과 독립**임이 명시(현행 `[HARD]` 절대 금지형 규칙을 그대로 둔 채 성립) — baseline 충족(`sync/doc-execution.md:138`). (2) 규칙 완화의 진행 여부를 전제로 삼는 서술 0건 — 판정 명령 `CMD-024b`(§D.2.1) 4항 전량 충족(2a 총 언급 == 1 / 2b 독립선언 줄 밖 언급 == 0 / 2c 의존마커→규칙어 근접 == 0 / 2d 규칙어→의존마커 근접 == 0). **구 명령 폐기 사유 2건(각각 독립 실측)**: (i) **언어 불일치로 공허** — 구 패턴은 한국어(`규칙 완화가 전제`)를 찾았으나 대상 `doc-execution.md`는 CLAUDE.md §9(*Commands, Agents, Skills Instructions: Always English*)에 따라 **영어 전용**이라 그 패턴은 이 파일이 담을 수 **있는** 어떤 문자열과도 매치 불가였다. 금지 대상 영어 문장 7종을 심은 fixture에서 구 명령은 **0**을 반환(공허 GREEN 실측). (ii) **`\|` 리터럴 파이프** — `grep -E`에서 `\|`는 교대가 아니라 **리터럴 `|` 문자**이므로 구 패턴은 두 절이 한 줄에 연접해야 하는 단일 패턴이었다. **한국어** 금지 문장 `규칙 완화가 전제이다`에 대해서조차 구 명령은 0, 정상 교대형(`|`)은 1을 반환해 (i)과 무관하게 독립 확인됐다. **잔여 취약점(공개 — clean 아님)**: `CMD-024b`는 `write-concurrency`를 명명하지 **않으면서** 마커 어휘(`prerequisite`/`pending`/`depends on` 등) **밖**의 표현을 쓰는 의존 주장(예: `cannot ship until the rule is relaxed`)을 잡지 못한다(fixture R13이 4항 전부 통과함을 실측). 따라서 (2)는 *부재의 증명이 아니라 회귀 tripwire*이며, 1차 통제는 (1)의 적극적 독립 선언 + 리뷰어 독해다 |
+| AC-APO-025 | 025 | SHOULD | **파일 앵커 필수** — 판정 명령 `CMD-025`(§D.2.1) ≥ 1: `sync/quality-gates-quality.md`에 `Per-package fan-out` 구문 실재(baseline 1 — `:280`, Phase 10 Step 0.7.3 Test Generation). 종전 판정은 트리 전역 존재형이라 표면 앵커가 없어 배선 이설 시 공허해진다. 등급 SHOULD 유지 |
 | AC-APO-026 | 026 | MUST | sync Phase 1/7에 `moai verify` 스냅샷 소비 서술 + 신선도(키 일치/TTL) 조건 동반 |
-| AC-APO-027 | 027 | SHOULD | MX 스캔 샤딩 서술 존재 |
-| AC-APO-028 | 028 | MUST | 모든 신규 fan-out 서술이 오케스트레이터 launch로 기술 — subagent nesting 의존 문구 0건 |
+| AC-APO-027 | 027 | SHOULD | **3개 표면 파일별 판정** — 판정 명령 `CMD-027`(§D.2.1). `plan.md` M2 작업 8이 지정한 표면은 run Phase 9 / run Phase 18 / sync Phase 9 **3곳**이므로 각각 ≥ 1: (a) `run/phase-execution.md`(Phase 9 Pre-Implementation MX Context Scan, baseline 1 — `:397`), (b) `run/task-decomposition.md`(Phase 18 MX Tag Update, baseline 1 — `:260`), (c) `sync/quality-gates-quality.md`(Phase 9 Step 0.6.2 Scan Modified Files, baseline 1 — `:182`). **재귀형 `≥1` 및 재귀형 `== 3` 모두 금지** — 전자는 3곳 중 1곳만 있어도, 후자는 3건이 한 파일에 몰려도 통과한다(AC-APO-012가 실측한 동형 해저드). 판정에 `read-only` 동반을 요구하는 이유: 샤딩이 write fan-out으로 변질되면 REQ-APO-028 위반이므로 "샤딩됨"만으로는 요구사항이 성립하지 않는다. 등급 SHOULD 유지 |
+| AC-APO-028 | 028 | MUST | 판정 명령 `CMD-028`(§D.2.1) 2항 동시 충족. (a) **부정형 — nesting 의존 서술 == 0**: `subagent nesting` / `nested subagent` 언급 중 부정어(`not`/`never`/`rather than`/`instead of`/`without`)의 지배를 받지 **않는** 것이 0건(baseline 0 — 현행 8건 전량이 `scaling, not subagent nesting` 형태). 단순 `grep -c 'subagent nesting' == 0`은 **정상 문장까지 FAIL**시키므로 사용 불가다. (b) **긍정형 — 파일별 커버리지**: fan-out 도입 5개 파일 각각 오케스트레이터-launch 서술 ≥ 기대 건수(spec-assembly 1 / task-decomposition 3 / phase-execution 1 / doc-execution 1 / quality-gates-quality 2). **부분 기계화 명시(과신 금지)**: (b)는 *파일별* 카운트이지 *사이트별* 카운트가 아니다 — 한 파일에 fan-out 2곳이 있고 그중 1곳만 규범을 달아도 (b)는 통과한다. REQ-APO-028의 "모든" 전칭은 신규 fan-out 블록 추가 시 **리뷰어 독해**로 보증하며, 명령은 기존 규범의 회귀 탐지용 tripwire다 |
 | AC-APO-029 | 029 | MUST | 게이트 토큰 4종(`Decision Point 1` / `Implementation Kickoff Approval` / `gate-sync-1` / `gate-sync-2`) 모두 편집 후에도 존재 |
-| AC-APO-030 | 030 | MUST | drafter/judge 서브에이전트 서술에 blocker report 반환 규범 존재, `AskUserQuestion` 호출 지시 0건 |
+| AC-APO-030 | 030 | MUST | 판정 명령 `CMD-030`(§D.2.1) 2항 동시 충족. (a) **부정형 — fan-out 서술 줄의 `AskUserQuestion` 지시 == 0**(baseline 0). 열거자(`read-only` **AND** `Agent()`를 동시에 포함하는 줄, 현행 9줄)가 다소 넓은 것은 **안전한 방향**이다 — `== 0` 부정형 판정에서 열거자가 넓으면 판정이 더 **엄격**해질 뿐 느슨해지지 않는다(반대로 긍정형 "모든 사이트" 판정에서 넓은 열거자는 오탐을 만든다). 파일 전역 `grep -c AskUserQuestion == 0`은 오케스트레이터 게이트의 **정당한** 언급(예: `plan/spec-assembly.md` 19건)까지 잡으므로 성립 불가. (b) **긍정형 — 파일별 blocker report 규범 커버리지** ≥ 기대 건수(spec-assembly 1 / task-decomposition 3 / phase-execution 1 / doc-execution 1 / quality-gates-quality 2). **부분 기계화 명시**: (b)는 AC-APO-028(b)와 동일하게 파일별이지 사이트별이 아니다 |
+
+#### D.2.1 Group 2 판정 명령 블록
+
+[HARD] **교대(alternation)가 필요한 판정 명령은 표 셀에 두지 않는다.** 마크다운 표 셀에서 `|`는 셀 구분자라 `\|`로 escape해야 하는데, `grep -E`에서 `\|`는 교대가 아니라 **리터럴 `|` 문자**다. 이 이중 제약이 AC-APO-024b(구판)를 **공허 GREEN**으로, AC-APO-023(구판)을 **부당 FAIL**로 만든 직접 원인이다. 따라서 교대가 필요하면 (a) 아래 코드블록에 두거나 (b) `-e` 반복(`grep -E -e 'A' -e 'B'`)으로 파이프를 **아예 제거**한다. 표 셀 안 `\|`는 `grep -c`/`grep -l`/`grep -r` 같은 **BRE** 모드에서만 정상 교대로 동작한다(§D.4/§D.5의 AC-APO-049/054/070/076이 그 경우).
+
+**이식성**: 아래 결과는 BSD `grep`(macOS `/usr/bin/grep`)과 `ugrep` **양쪽에서 동일**함을 실측했다. `\b`(word boundary)를 **한 패턴에 여러 번** 쓰면 `ugrep`이 조용히 0을 반환하거나 정지하는 사례를 실측했으므로 — 그 자체가 또 하나의 공허 GREEN 경로다 — 아래 패턴은 `\b`를 쓰지 않고 POSIX 문자클래스만 사용한다. 모든 명령은 리포 루트에서 실행하며 기재된 baseline은 M2 완료 시점(`HEAD`) 실측이다. `grep -c`는 0건일 때 **exit status 1**을 반환하므로 종료 코드가 아니라 **출력 숫자**로 판정한다.
+
+```bash
+W=.claude/skills/moai/workflows
+
+# CMD-020  (a)==1  (b)==1
+grep -c '^#### Parallel Review Lenses' $W/plan/spec-assembly.md
+grep -cE 'binding PASS/FAIL stays with .plan-auditor.' $W/plan/spec-assembly.md
+
+# CMD-021  ==1
+grep -c 'single writer, single-turn parallel Write' $W/plan/spec-assembly.md
+
+# CMD-022  (a)==1  (b)>=1
+grep -c '^### RED-stage Drafter Pool' $W/run/task-decomposition.md
+grep -c 'remains the only writer' $W/run/task-decomposition.md
+
+# CMD-023  ==2   (구판의 표-셀 `\|` 리터럴 파이프 버그를 -e 반복으로 제거)
+grep -cE -e 'Maximum 3 fix-evaluate cycles' -e 'Maximum 3 review iterations' \
+  $W/run/task-decomposition.md
+
+# CMD-024  (a)==5  (b)>=1  (c)==0
+grep -cE '^\| D[1-5] \|' $W/sync/doc-execution.md
+grep -c  'single writer of every final artifact' $W/sync/doc-execution.md
+grep -ci 'disjoint' $W/sync/doc-execution.md
+
+# CMD-024b  (2a)==1  (2b)==0  (2c)==0  (2d)==0
+grep -ciE 'write.?concurrency' $W/sync/doc-execution.md
+grep -inE 'write.?concurrency' $W/sync/doc-execution.md \
+  | grep -civ 'Independent of the write-concurrency rule'
+grep -ciE '(prerequisite|precondition|blocked on|pending|awaiting|contingent|depends on|dependent on|conditional on|predicated on)[^.]{0,80}(rule|relax|revis|amend|loosen|concurren)' \
+  $W/sync/doc-execution.md
+grep -ciE '(rule|relax|revis|amend|loosen|concurren)[^.]{0,80}(prerequisite|precondition|blocked on|pending|awaiting|contingent|depends on|dependent on|conditional on|predicated on)' \
+  $W/sync/doc-execution.md
+
+# CMD-025  >=1
+grep -c 'Per-package fan-out' $W/sync/quality-gates-quality.md
+
+# CMD-027  (a)(b)(c) 각각 >=1  — 파일별 판정(재귀형 금지)
+grep -ciE -e 'shard.*read-only' -e 'read-only.*shard' $W/run/phase-execution.md
+grep -ciE -e 'shard.*read-only' -e 'read-only.*shard' $W/run/task-decomposition.md
+grep -ciE -e 'shard.*read-only' -e 'read-only.*shard' $W/sync/quality-gates-quality.md
+
+# CMD-028 (a)  ==0  — 부정어의 지배를 받지 않는 nesting 언급
+grep -oinE -e '.{0,30}subagent nesting' -e '.{0,30}nested subagent' \
+  $W/plan/spec-assembly.md $W/run/task-decomposition.md $W/run/phase-execution.md \
+  $W/sync/doc-execution.md $W/sync/quality-gates-quality.md $W/sync/quality-gates-context.md \
+  | grep -civE -e 'not[^a-z]' -e 'never[^a-z]' -e 'rather than' -e 'instead of' -e 'without'
+
+# CMD-028 (b)  파일별 >= 1 / 3 / 1 / 1 / 2
+for f in plan/spec-assembly.md run/task-decomposition.md run/phase-execution.md \
+         sync/doc-execution.md sync/quality-gates-quality.md; do
+  printf '%s %s\n' "$f" "$(grep -c 'scaling, not subagent nesting' "$W/$f")"
+done
+
+# CMD-030 (a)  ==0  — fan-out 서술 줄에 AskUserQuestion 지시가 없을 것
+grep -nE 'read-only' \
+  $W/plan/spec-assembly.md $W/run/task-decomposition.md $W/run/phase-execution.md \
+  $W/sync/doc-execution.md $W/sync/quality-gates-quality.md $W/sync/quality-gates-context.md \
+  | grep -E 'Agent\(\)' | grep -cE 'AskUserQuestion'
+
+# CMD-030 (b)  파일별 >= 1 / 3 / 1 / 1 / 2
+for f in plan/spec-assembly.md run/task-decomposition.md run/phase-execution.md \
+         sync/doc-execution.md sync/quality-gates-quality.md; do
+  printf '%s %s\n' "$f" "$(grep -c 'blocker report' "$W/$f")"
+done
+```
 
 ### D.3 Group 3 — 본문 다이어트 (REQ-APO-040..055)
 
@@ -138,7 +218,7 @@ tier: L
 | AC-APO-047 | 047 | MUST | `manager-develop.md`에 DDD/TDD 전문 2회 기술 부재 — 공통 골격 + 모드 차이 구조 |
 | AC-APO-048 | 048 | MUST | "one atomic change" 제약에 패키지 내부 한정 수식어 존재 |
 | AC-APO-049 | 049 | MUST | 3개 판정 동시 충족: (a) **선택 규칙 산문 소멸** — `grep -ci "two scoring models\|scoring model selection" .claude/agents/moai/sync-auditor.md` == 0 (baseline 2 — L44 `## Scoring Model Selection`, L46 `Two scoring models exist`). 잔존 모델을 설명하는 일반 표현(예: `## Scoring`)은 허용된다. (b) `grep -c "^## Evaluation Report" .claude/agents/moai/sync-auditor.md` == 1 (baseline 2 — L67 평면형 + L178 계층형). (c) **정확히 1개 모델만 잔존** — 두 **정의 마커**의 합이 1: `M=$(grep -c "^## HRN-003 Hierarchical Scoring Protocol" .claude/agents/moai/sync-auditor.md); N=$(grep -c "^### Dimension Scores" .claude/agents/moai/sync-auditor.md); test $((M+N)) -eq 1`. **baseline M=1(:130 정의 heading), N=1(:71 평면 모델 report) → 합 2 → FAIL**. `M`은 반드시 heading 앵커(`^## `)여야 한다 — 앵커 없는 `grep -c "HRN-003 Hierarchical Scoring Protocol"`는 2를 반환하며(:49는 정의가 아니라 산문 cross-reference), 그 형태를 쓰면 "계층형 유지 + 평면형 제거" 분기가 M=2·N=0·합 2로 **부당 FAIL** 한다. 앵커 적용 시 두 분기 모두 합 1 → PASS |
-| AC-APO-050 | 050 | MUST | `grep -ciE "nextra\|wcag\|page.?speed\|lighthouse" manager-docs.md` == 0 |
+| AC-APO-050 | 050 | MUST | `grep -ciE -e 'nextra' -e 'wcag' -e 'page.?speed' -e 'lighthouse' .claude/agents/moai/manager-docs.md` == 0. **구 명령 폐기 사유(실측)**: 종전 `grep -ciE "nextra\|wcag\|page.?speed\|lighthouse"`는 `-E` 모드에서 `\|`가 교대가 아니라 리터럴 파이프라 `nextra|wcag|page.?speed|lighthouse`라는 **단일 연접 문자열**을 찾았고 **0을 반환 → 공허 GREEN**이었다(정상 교대형 실측 **8**). 즉 M3 다이어트 이전 상태에서도 PASS로 보였다. 파이프 없는 `-e` 반복형으로 교체(§D.2.1 서두 규칙). **현재 실측 8이므로 본 AC는 M3 완료 전까지 정상 FAIL이다** — 이 FAIL은 명령 수정이 만든 것이 아니라 **원래부터 존재하던 미충족 상태가 드러난 것**이다 |
 | AC-APO-051 | 051 | MUST | `e2e-tester.md`에 비-호스트 OS 레시피 본문 부재 **AND** `.claude/skills/moai-workflow-testing/references/e2e-desktop-native-recipes.md` 실재(`test -f`) **AND** `e2e-tester.md`가 해당 경로를 참조 **AND** 템플릿 미러 `internal/template/templates/.claude/skills/moai-workflow-testing/references/e2e-desktop-native-recipes.md` 존재 + 0-diff |
 | AC-APO-052 | 052 | MUST | `grep -c 'squash | merge | rebase' .claude/agents/moai/manager-git.md` == 1 (baseline 3 — L126 주석 / L163 auto-merge / L191 manual). **해석 규칙**만 1회화 대상이며, L163·L191의 두 운용 경로와 각각의 `gh pr merge --<merge_method>` 명령 템플릿은 **보존**(제거 시 REQ-APO-068 위반) |
 | AC-APO-053 | 053 | MUST | `builder-harness.md`의 `Model/effort escalation` 중복 문장 1개 이하, model-policy 표 재진술 0건 |
@@ -150,7 +230,7 @@ tier: L
 | AC | REQ | 등급 | 판정 |
 |---|---|---|---|
 | AC-APO-060 | 060 | MUST | 편집된 미러 쌍 전량 `diff` 결과가 Pre-flight baseline 차이 외 0 |
-| AC-APO-061 | 061 | MUST | `git diff --name-only origin/main...HEAD -- internal/template/templates/ \| xargs -r grep -nE "SPEC-(V3R[2-6]\|AGENCY\|WORKTREE)-[A-Z0-9-]+\|(REQ\|AC)-(ATR\|WO\|COORD\|UNP\|LNC\|TII)-[0-9]{3}\|REQ-APO-\|AC-APO-"` == 0. 정규식은 CI 가드 클래스(C1/C2)에 정렬; `REQ-APO-`/`AC-APO-`는 본 SPEC 고유 토큰으로 추가 |
+| AC-APO-061 | 061 | MUST | 판정 명령 `CMD-061`(§D.5.1) == 0. 정규식은 CI 가드 클래스(C1/C2)에 정렬; `REQ-APO-`/`AC-APO-`는 본 SPEC 고유 토큰으로 추가. **구 명령 폐기 사유(실측)**: 종전 표-셀 형태는 `-E` 모드에서 `\|`가 리터럴 파이프라 전체가 **단일 연접 문자열**이 되어 **0을 반환 → 공허 GREEN**이었다. **정상 교대형 실측 2건** — 둘 다 `internal/template/templates/.claude/agents/moai/manager-spec.md`(`:160`, `:175`)의 `SPEC-V3R6-SPEC-ID-VALIDATION-001` 예시 토큰이다. **중요 — 이 2건은 `origin/main`에 이미 존재하는 선행 부채이며 본 SPEC이 유입시킨 것이 아니다**(`git show origin/main:<path>` 실측 2건 동일). 본 AC의 스코프가 *변경된 파일 전체*(`--name-only`)라 본 SPEC이 그 파일을 건드리자 선행 토큰까지 판정에 걸린 구조적 문제이며, 라인 스코프(`git diff -U0`) 전환 또는 baseline 명시가 필요하다 — **판정 스코프 재설계는 본 AC 소관 밖이므로 blocker로 보고한다**(수정 주체는 템플릿 파일 소유자) |
 | AC-APO-062 | 062 | MUST | `ls internal/template/templates/.claude/workflows/` 결과에 `hns-*` / `harness-*` 접두 파일 0개 (generic fan-out 3개만 존재) |
 | AC-APO-063 | 063 | MUST | 시나리오 3 통과 — 스크립트 부재 시 fallback 경로가 문서상 완결 |
 | AC-APO-064 | 064 | MUST | `go test ./...` exit 0; template-neutrality CI guard green |
@@ -165,11 +245,33 @@ tier: L
 |---|---|---|---|
 | AC-APO-069 | 069 | MUST | `ls internal/template/templates/.claude/workflows/` 에 3개 파일 존재; `make build` 후 embedded 트리에서도 조회 가능 |
 | AC-APO-070 | 070 | MUST | 4개 동시 충족: (a) 본 SPEC frontmatter `partially_supersedes: [SPEC-DWF-CODEMAPS-PILOT-001]`, (b) `spec.md`가 superseded AC를 **ID로 인용** — `AC-DCP-010`(`acceptance.md:79` / `progress.md:86`) + 그 소유 요구사항 `REQ-DCP-009/010`, (c) 정식 grep 문구 `grep -r "codemaps-extract\|codemaps-pilot" internal/template/templates/` → nothing 이 더 이상 성립하지 않음을 명시, (d) 파일럿 SPEC 아티팩트에 supersession 주석 추가로 상호 참조 성립 |
-| AC-APO-071 | 071 | MUST | 배포된 3개 파일에 대해 **CI 정렬 정규식** `grep -nE "SPEC-(V3R[2-6]\|AGENCY\|WORKTREE)-[A-Z0-9-]+\|(REQ\|AC)-(ATR\|WO\|COORD\|UNP\|LNC\|TII)-[0-9]{3}\|[0-9a-f]{7,8}([[:space:].,;:!?]\|$)"` == 0. 정규식은 `internal_content_leak_test.go` C1/C2/S2 클래스에 정렬됨 — 일반형 `SPEC-[A-Z0-9-]+-[0-9]{3}`는 **의도적으로 제외**한다(`spec.md` §F.8.3-a: `SPEC-FOO-001`은 CI 미매치 일반 플레이스홀더이며 중립화 대상이 아니다). **선행 조건**: AC-APO-072 PASS (미충족 시 본 AC는 공허하여 무효) |
-| AC-APO-071b | 071 | SHOULD | **manual-only / CI-unenforced 표기 의무 이행** (`spec.md` §F.8.3-a 귀결 3). 아래 클래스는 CI 가드가 강제하지 **않으므로** 수동 점검이며, "CI green"을 근거로 인용하지 않는다: 내부 날짜 `20[0-9]{2}-[0-9]{2}-[0-9]{2}`, 메인테이너 절대경로 `/Users/`, 9자 이상 SHA `[0-9a-f]{9,40}`(CI S2는 `{7,8}`로 **겹치지 않음**). 판정 **2항 동시 충족**: (i) 배포된 3개 파일에 대해 `grep -nE "20[0-9]{2}-[0-9]{2}-[0-9]{2}\|/Users/\|[0-9a-f]{9,40}"` **== 0** — REQ-APO-071이 금지한 5개 클래스 전량이 MUST 수준으로 커버되도록 하는 조항이며, SHOULD 등급이라는 이유로 면제되지 **않는다**. (ii) 그 결과가 `progress.md`에 **CI-unenforced 라벨과 함께** 기록됨 — 기록 의무는 "CI green"을 이 3개 클래스의 근거로 오인용하지 못하게 하는 장치다 |
+| AC-APO-071 | 071 | MUST | 배포된 3개 파일에 대해 **CI 정렬 정규식** 판정 명령 `CMD-071`(§D.5.1) == 0. **구 명령 폐기 사유**: 종전 표-셀 형태는 `-E` 모드에서 `\|`가 리터럴 파이프라 공허했다(실측 0 반환). 다만 **정상 교대형으로도 현재 값은 0**이므로 이 공허성은 잠복 상태였고 판정 결과는 바뀌지 않는다 — 그럼에도 교체하는 이유는 배포 스크립트가 오염되는 순간 공허 명령이 그것을 **가려주기** 때문이다. 정규식은 `internal_content_leak_test.go` C1/C2/S2 클래스에 정렬됨 — 일반형 `SPEC-[A-Z0-9-]+-[0-9]{3}`는 **의도적으로 제외**한다(`spec.md` §F.8.3-a: `SPEC-FOO-001`은 CI 미매치 일반 플레이스홀더이며 중립화 대상이 아니다). **선행 조건**: AC-APO-072 PASS (미충족 시 본 AC는 공허하여 무효) |
+| AC-APO-071b | 071 | SHOULD | **manual-only / CI-unenforced 표기 의무 이행** (`spec.md` §F.8.3-a 귀결 3). 아래 클래스는 CI 가드가 강제하지 **않으므로** 수동 점검이며, "CI green"을 근거로 인용하지 않는다: 내부 날짜 `20[0-9]{2}-[0-9]{2}-[0-9]{2}`, 메인테이너 절대경로 `/Users/`, 9자 이상 SHA `[0-9a-f]{9,40}`(CI S2는 `{7,8}`로 **겹치지 않음**). 판정 **2항 동시 충족**: (i) 배포된 3개 파일에 대해 판정 명령 `CMD-071b`(§D.5.1) **== 0**(구 표-셀 형태는 `-E` + `\|` 리터럴 파이프로 공허했다 — 정상 교대형 실측도 0이라 판정 결과는 불변이나 잠복 공허성은 제거) — REQ-APO-071이 금지한 5개 클래스 전량이 MUST 수준으로 커버되도록 하는 조항이며, SHOULD 등급이라는 이유로 면제되지 **않는다**. (ii) 그 결과가 `progress.md`에 **CI-unenforced 라벨과 함께** 기록됨 — 기록 의무는 "CI green"을 이 3개 클래스의 근거로 오인용하지 못하게 하는 장치다 |
 | AC-APO-072 | 072 | MUST | `leakTextExtensions`에 `".js": true` 존재 (`grep -n '".js"' internal/template/internal_content_leak_test.go` ≥ 1) **AND** 시나리오 8의 RED/GREEN 왕복이 관측됨 — 미중립 스크립트 심었을 때 FAIL, 중립화 후 PASS |
 | AC-APO-072b | 062/069 | MUST | `TestSplitHarnessNamespaceNoLeak` PASS **AND** 차단 유효성 확인: `hns-release-update-run.js`를 템플릿에 심고 실행 시 `SPLIT_HARNESS_NAMESPACE_LEAK`으로 FAIL (심은 파일은 제거) |
 | AC-APO-073 | 073 | MUST | `internal/cli/update/plan/plan.go`의 user-owned 판정이 3개 generic 스크립트에 대해 false 반환 — 접두사 `hns-`/`harness-` 미매치로 확인. 보존 목록 소스 무변경(`git diff` 0줄) |
+
+#### D.5.1 Group 4/5 중립성 판정 명령 블록
+
+§D.2.1 서두의 표-셀 파이프 금지 규칙이 그대로 적용된다. 아래 세 명령은 중첩 교대를 포함해 `-e` 반복으로 평탄화하기 어려우므로 코드블록에 둔다. 모두 리포 루트에서 실행한다.
+
+```bash
+# CMD-061  ==0   (변경된 템플릿 파일의 내부 토큰 유입 — CI C1/C2 클래스 정렬)
+git diff --name-only origin/main...HEAD -- internal/template/templates/ \
+  | xargs -r grep -nE 'SPEC-(V3R[2-6]|AGENCY|WORKTREE)-[A-Z0-9-]+|(REQ|AC)-(ATR|WO|COORD|UNP|LNC|TII)-[0-9]{3}|REQ-APO-|AC-APO-'
+# 실측 baseline 2 — 둘 다 templates/.claude/agents/moai/manager-spec.md (:160, :175),
+# origin/main 에 이미 존재하는 선행 부채(본 SPEC 유입 아님). blocker 보고 대상.
+
+# CMD-071  ==0   (배포된 3개 스크립트 — CI C1/C2/S2 클래스 정렬)
+grep -nE 'SPEC-(V3R[2-6]|AGENCY|WORKTREE)-[A-Z0-9-]+|(REQ|AC)-(ATR|WO|COORD|UNP|LNC|TII)-[0-9]{3}|[0-9a-f]{7,8}([[:space:].,;:!?]|$)' \
+  internal/template/templates/.claude/workflows/*.js
+# 실측 baseline 0.
+
+# CMD-071b  ==0  (CI-unenforced 3클래스 — 수동 점검, "CI green"을 근거로 인용 금지)
+grep -nE '20[0-9]{2}-[0-9]{2}-[0-9]{2}|/Users/|[0-9a-f]{9,40}' \
+  internal/template/templates/.claude/workflows/*.js
+# 실측 baseline 0.
+```
 
 ### D.6 Group 6 — 배포 정합성 (REQ-APO-074..078)
 
