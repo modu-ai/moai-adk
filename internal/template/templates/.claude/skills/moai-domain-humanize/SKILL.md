@@ -18,10 +18,10 @@ compatibility: Designed for Claude Code
 allowed-tools: Read, Write, Edit, Grep, Glob
 user-invocable: false
 metadata:
-  version: "1.2.0"
+  version: "1.3.0"
   category: "domain"
   status: "active"
-  updated: "2026-07-10"
+  updated: "2026-07-24"
   tags: "humanize, ai-tell, 윤문, post-edit, naturalness, multilingual, copy"
 
 # MoAI Extension: Progressive Disclosure
@@ -132,6 +132,43 @@ Hard rule (both modes): any residual S1 caps the grade at C; any meaning-distort
 
 ---
 
+## Invariant Ledger and Delta Audit
+
+Two techniques harden the meaning-preservation machinery above: the **Invariant Ledger** makes the boundary explicit *before* editing, and the **Delta Audit** makes the survival check systematic *after* editing. They thread into the workflow (steps 2 and 6) rather than replacing any step, and they reinforce — never replace — the severity model, grades, guardrails, and the meaning-preservation checklist.
+
+### Invariant Ledger (pre-edit boundary)
+
+Before editing, record an Invariant Ledger — the explicit list of what MUST survive the humanization pass unchanged. This is the written, checkable form of "Anchor facts first" (checklist item 1). Capture every item across the four categories:
+
+1. **facts** (with evidence boundaries)
+2. **identifiers** (commands, paths, URLs, status values, error codes, product names)
+3. **conditions / numbers / dates / versions / units / comparisons**
+4. **exceptions / limitations / risks / uncertainty / approvals / rollback / next-actions**
+
+**Fidelity rule.** Never silently add, remove, narrow, broaden, strengthen, or weaken a ledger item. The wording is free to change; the commitment the text makes is not.
+
+**Mark each item supplied or inferred.** A **supplied** item is something the source text actually asserts — it is hard-anchored, and any drift on it triggers a rollback (see Delta Audit). An **inferred** item is an adjacent benefit or guarantee the source never stated but a reader might assume — it is recorded for reviewer awareness only, and dropping it during humanization is NOT a rollback trigger, because the original never promised it. When an item is left unmarked, treat it as **supplied**: the fail-safe direction is preservation.
+
+**Depth by processing mode.**
+- **Fast mode**: a lightweight inline anchor list that still covers every one of the four categories above. Fast is shorter in FORM, never narrower in CATEGORY COVERAGE — even a short text gets a line for each category that applies.
+- **Strict mode**: an explicit written boundary document with each item enumerated and marked supplied/inferred.
+
+### Delta Audit (post-edit verification)
+
+After the edit pass completes, run a Delta Audit — compare the output against the Invariant Ledger before grading. This is the systematic form of "Final diff check" (checklist item 6), across three axes:
+
+1. **Claim & intent parity** — every claim the source makes, the output still makes, at the same strength and with the same intent.
+2. **Survival check** — every ledger identifier, number, condition, limitation, and risk is still present and unchanged.
+3. **Audience / tone / purpose fit** — the output still addresses the same reader, register, and goal.
+
+Also flag any ambiguity the edit newly introduced: an unresolved actor, unclear ownership or handoff, or a softened destructive-effect or approval/rollback caveat.
+
+**Rollback on a supplied-item violation.** When the audit finds any **supplied** ledger item added, removed, narrowed, broadened, strengthened, or weakened, roll back that edit — the same meaning-drift rollback the Operating Principles already require. Removal of an item marked **inferred** is reported in the audit output but does NOT trigger a rollback.
+
+**Feeds grading.** A ledger violation is a meaning-distortion flag, and a meaning-distortion flag forces **Grade D** in both modes per the existing hard rule (see Common Quality Grades) — the Delta Audit is the mechanism that detects it.
+
+---
+
 ## Language Routing
 
 Each target language has its own tell catalogue (categories, before/after examples in the target language, per-category severity). Load the module that matches the text being edited:
@@ -165,11 +202,11 @@ When both conditions hold (a QA-gate review of display-surface copy), load both 
 ### Workflow (per text)
 
 1. **Identify language, genre mode, and processing mode.** Pick the module by dominant language; pick prose vs copy mode by genre (see Genre Mode Selection); pick Fast vs Strict by length / stakes.
-2. **Anchor facts.** Record the numbers, names, dates, quotations, and stance that must not change (meaning-preservation checklist item 1). In copy mode these anchors are the guard itself.
+2. **Anchor facts — build the Invariant Ledger.** Record the four-category ledger (facts; identifiers; conditions/numbers/dates/versions/units/comparisons; exceptions/limitations/risks/uncertainty/approvals/rollback/next-actions) that must survive unchanged, marking each item supplied or inferred (see Invariant Ledger and Delta Audit above). Fast mode uses a lightweight inline anchor list covering every category; Strict mode uses an explicit written boundary document. In copy mode these anchors are the guard itself.
 3. **Detect tells.** Scan against the module's catalogue — the prose categories in prose mode, plus the module's Copy Layer categories in copy mode. Record each hit with its category ID, span, and severity. Count occurrences (S2/S3 gate on repetition).
 4. **Rewrite surgically.** Edit only flagged spans. Replace each tell with a natural rendering in the same register. Do not touch unflagged text.
 5. **Apply the mode's guardrail.** Prose mode: estimate the change rate and apply the change-rate guard (WARN >30%, HALT >50%, conservative near the thresholds). Copy mode: verify every fact anchor and the core promise/benefit instead.
-6. **Self-verify (Fast) or audit + review (Strict).** Re-run the meaning-preservation checklist. In Strict mode, run the content-fidelity audit and naturalness review as separate stages.
+6. **Self-verify (Fast) or audit + review (Strict) — run the Delta Audit.** Compare the output against the Invariant Ledger for claim & intent parity, identifier/number/condition/limitation/risk survival, and audience/tone/purpose fit (see Invariant Ledger and Delta Audit above). A supplied-item violation rolls back that edit and raises a meaning-distortion flag (forcing Grade D); an inferred-item removal is reported but not rolled back. Re-run the meaning-preservation checklist. In Strict mode, run the content-fidelity audit and naturalness review as separate stages.
 7. **Grade.** Count residual S1/S2 and improvement %; assign A/B/C/D. Second pass on C; human review on D.
 8. **Emit** the humanized text + change report.
 
@@ -194,4 +231,4 @@ Automated AI-text detectors are unreliable across these four languages (notably 
 
 Category-catalogue structure inspired by the im-not-ai (Humanize KR) project.
 
-Version: 1.2.0
+Version: 1.3.0

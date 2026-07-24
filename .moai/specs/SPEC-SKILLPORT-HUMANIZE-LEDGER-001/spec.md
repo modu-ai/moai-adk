@@ -2,7 +2,7 @@
 id: SPEC-SKILLPORT-HUMANIZE-LEDGER-001
 title: "Graft Invariant Ledger + Delta Audit into moai-domain-humanize"
 version: "0.1.3"
-status: draft
+status: in-progress
 created: 2026-07-24
 updated: 2026-07-24
 author: manager-spec
