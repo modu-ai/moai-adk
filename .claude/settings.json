@@ -278,7 +278,6 @@
   "skillListingBudgetFraction": 0.02,
   "showThinkingSummaries": false,
   "cleanupPeriodDays": 30,
-  "model": "sonnet",
   "outputStyle": "MoAI-Easy",
   "env": {
     "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1",

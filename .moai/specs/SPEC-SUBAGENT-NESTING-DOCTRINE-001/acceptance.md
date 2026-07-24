@@ -231,8 +231,15 @@ grep -ciE "binding.*verdict.*(sync-auditor|top-level|not delegat)|verdict.*(rema
 ### AC-SND-016 — Pilot env is local/dev-only
 
 ```bash
-# distributed template settings.json does NOT set the pilot env (== AC-SND-012 first grep, restated as an explicit dev-only AC)
-grep -rn "CLAUDE_CODE_MAX_SUBAGENT_SPAWN_DEPTH" internal/template/templates/   # → 0 matches
+# distributed template settings.json.tmpl does NOT set the pilot env.
+# Re-scoped from the whole-tree grep to the settings template only: the env-var
+# NAME legitimately appears 8× in doctrine-mirror prose (CLAUDE.md + agents/ +
+# rules/) required by AC-SND-001/002/003, so a whole-tree "0 matches" reading
+# is unsatisfiable by construction and contradicts the sibling doc-mirror ACs.
+# The load-bearing invariant of REQ-SND-019 is the env var's ABSENCE from the
+# SHIPPED settings template (so the distributed default stays flat), NOT its
+# absence from the whole tree — this scoped grep verifies exactly that.
+grep -rn "CLAUDE_CODE_MAX_SUBAGENT_SPAWN_DEPTH" internal/template/templates/.claude/settings.json*   # → 0 matches
 ```
 
 ## §D.5 Edge Cases
