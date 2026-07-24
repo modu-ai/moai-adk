@@ -71,6 +71,31 @@ type Conflict struct {
 	Updated string
 }
 
+// MergeAnalysis holds analysis results for multiple files to be merged.
+//
+// It is consumed outside this package by internal/cli/update.go
+// (toPreviewInputs) and internal/cli/update/merge (AnalyzeMergeChanges).
+type MergeAnalysis struct {
+	Files        []FileAnalysis
+	HasConflicts bool
+	SafeToMerge  bool
+	Summary      string
+	RiskLevel    string
+}
+
+// FileAnalysis contains merge analysis for a single file.
+//
+// The field set is load-bearing: internal/cli/update/plan constructs this type
+// with a named-field composite literal, so renaming or removing a field breaks
+// that call site at compile time.
+type FileAnalysis struct {
+	Path      string
+	Changes   string
+	Strategy  MergeStrategy
+	RiskLevel string // "low", "medium", "high"
+	Note      string
+}
+
 // Engine defines the 3-way merge operations.
 type Engine interface {
 	// ThreeWayMerge performs a generic line-based 3-way merge on byte slices.
