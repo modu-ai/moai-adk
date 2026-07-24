@@ -1,7 +1,7 @@
 ---
 id: SPEC-AGENT-PARALLEL-OPT-001
 title: "Agent instruction diet + plan/run/sync parallelization maximization — Acceptance Criteria"
-version: "0.5.0"
+version: "0.7.0"
 status: draft
 created: 2026-07-25
 updated: 2026-07-25
@@ -99,12 +99,12 @@ tier: L
 
 | AC | REQ | 등급 | 판정 |
 |---|---|---|---|
-| AC-APO-010 | 010 | MUST | `grep -rn "plan-research-fanout" .claude/skills/moai/workflows/` ≥ 1건 |
+| AC-APO-010 | 010 | MUST | `grep -c "plan-research-fanout" .claude/skills/moai/workflows/plan.md` ≥ 1 (baseline 1 — `plan.md` 실측). **재귀형 금지**: REQ-APO-010이 지정한 표면은 `plan.md` 단일이므로 파일 앵커가 필수다. 재귀형(`grep -rn … workflows/`)은 배선이 다른 파일로 이동해도 GREEN이라 요구 표면을 검증하지 못한다(AC-APO-012가 실제로 겪은 이설 해저드와 동형). `grep -c`는 0건일 때 **exit status 1**을 반환하므로 종료 코드가 아니라 **출력 숫자**로 판정한다 |
 | AC-APO-011 | 011 | MUST | 3개 참조 각각에 capability-gate 문구 동반 — gate 조건이 **파일 존재 AND 런타임 지원** 두 가지를 모두 명시하고, 참조 건수와 gate 문구 건수 일치 |
-| AC-APO-012 | 012 | MUST | `grep -rn "sync-audit-4dim" .claude/skills/moai/workflows/` ≥ 1건 |
+| AC-APO-012 | 012 | MUST | **2항 동시 충족**(어느 한쪽 회귀도 독립적으로 FAIL): (a) `grep -c "sync-audit-4dim" .claude/skills/moai/workflows/sync.md` ≥ 1 (baseline 1 — `sync.md:56`), (b) `grep -c "sync-audit-4dim" .claude/skills/moai/workflows/run/task-decomposition.md` ≥ 1 (baseline 1 — `:104`). **재귀형 `≥ 1건` 금지**: REQ-APO-012는 2개 표면을 요구하는데 재귀 `≥1`은 한쪽만 있어도 통과한다(실측 반증 — `task-decomposition.md` 배선 삭제 후에도 재귀 카운트 1로 GREEN 잔존). 재귀형에 `== 2`를 걸어도 두 매치가 한 파일에 몰리면 통과하므로 **파일별 판정만이 유효**하다. `grep -c`는 0건일 때 **exit status 1**을 반환하므로 종료 코드가 아니라 **출력 숫자**로 판정한다 |
 | AC-APO-013 | 013 | MUST | 각 스크립트 참조 지점 인근에 verdict 소유권 보존 문장 존재(auditor가 verdict 소유) |
-| AC-APO-014 | 014 | MUST | `grep -rn "codemaps-extract" .claude/skills/moai/workflows/` ≥ 1건, 그리고 high-count 스코핑 문구 동반 |
-| AC-APO-015 | 015 | MUST | zero-orphan: 3개 스크립트명 각각이 `.claude/skills/moai/workflows/` 하위에서 최소 1건 매치 (3/3) |
+| AC-APO-014 | 014 | MUST | `grep -c "codemaps-extract" .claude/skills/moai/workflows/codemaps.md` ≥ 1 (baseline 1 — `codemaps.md:83`), 그리고 high-count 스코핑 문구 동반. **재귀형 금지(공허 GREEN 실측 확인)**: `harness-builder.md:81`이 REQ-APO-014과 **무관한 선례 인용**으로 `codemaps-extract`를 포함하므로, 재귀 `≥1`은 요구 표면인 `codemaps.md` 배선을 삭제해도 그 무관 인용 1건으로 GREEN을 유지한다 — 즉 재귀형은 대상 표면을 전혀 검증하지 못한다. `grep -c`는 0건일 때 **exit status 1**을 반환하므로 종료 코드가 아니라 **출력 숫자**로 판정한다 |
+| AC-APO-015 | 015 | MUST | zero-orphan: 3개 스크립트명 각각이 `.claude/skills/moai/workflows/` 하위에서 최소 1건 매치 (3/3). **의도적으로 느슨한 판정 — 강화 금지**: 본 AC의 목적은 *고아 스크립트 탐지*(배포했으나 아무 데서도 참조되지 않는 `.js`)이지 표면별 커버리지가 아니다. 스크립트당 `≥1`이 이미 per-item 판정이며, 어느 파일에서 매치되는지는 본 AC의 관심사가 아니다. 요구 표면별 배선 검증은 AC-APO-010(`plan.md`) / 012(`sync.md` + `run/task-decomposition.md`) / 014(`codemaps.md`)가 소유한다 |
 | AC-APO-016 | 016 | MUST | docs-site 4-locale `workflows.md`의 파이프라인 투입 주장이 **참임이 검증**됨 — AC-APO-015(zero-orphan) AND AC-APO-069(배포 존재) 동시 PASS가 근거. 배선/배포 미완 시에는 4개 로케일 동시 정정으로 대체 판정 |
 
 ### D.2 Group 2 — 재구조화 (REQ-APO-020..030 + 024b)

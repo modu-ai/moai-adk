@@ -1,7 +1,7 @@
 ---
 id: SPEC-AGENT-PARALLEL-OPT-001
 title: "Agent instruction diet + plan/run/sync parallelization maximization"
-version: "0.6.0"
+version: "0.7.0"
 status: draft
 created: 2026-07-25
 updated: 2026-07-25
@@ -21,6 +21,7 @@ partially_supersedes: [SPEC-DWF-CODEMAPS-PILOT-001]
 | Version | Date | Author | Change |
 |---------|------|--------|--------|
 | 0.1.0 | 2026-07-25 | manager-spec | 최초 plan-phase draft. §F Ground Truth 전량 본 세션 실측(agent line count 10파일, orphan grep, template mirror 8경로, write-concurrency 3표면, run/sync/plan phase 번호). 브리프 2건 실측 정정(§F.7). Tier L(§E). |
+| 0.7.0 | 2026-07-25 | manager-spec | **약한-AC 스윕**(코디네이터 승인). `acceptance.md`의 `≥ 1` 임계값 7곳을 전수 점검해 부분 커버리지로 통과하는 3건을 파일별 판정으로 강화. **AC-APO-014가 최악 사례** — `harness-builder.md:81`이 REQ-APO-014과 무관한 선례 인용으로 `codemaps-extract`를 포함하므로, 재귀 `≥1`은 요구 표면 `codemaps.md` 배선을 삭제해도 그 무관 인용으로 GREEN 유지(공허 실측 확인). **AC-APO-012**는 2개 요구 표면(`sync.md` + `run/task-decomposition.md`)에 재귀 `≥1`이라 한쪽만으로 통과 — 재귀형 `== 2`도 두 매치가 한 파일에 몰리면 통과하므로 파일별 판정으로 교체. **AC-APO-010**은 현재 트리에서 유일 매치라 오늘은 정상 FAIL하지만 재귀형이 표면 앵커를 갖지 않아 향후 이설 시 공허해지는 해저드 — 예방적으로 `plan.md` 앵커. 3건 모두 RED/GREEN 왕복 실측(배선 삭제 시 강화형 0=FAIL, 동일 트리에서 구 재귀형은 1=PASS 잔존). **AC-APO-015는 의도적 느슨함으로 존치** — 목적이 고아 스크립트 탐지이지 표면 커버리지가 아니며 스크립트당 `≥1`이 이미 per-item 판정, 그 사유를 AC 셀에 명문화해 향후 반사적 강화를 차단. 존치 판정 근거: AC-041/045/072는 단일 명명 파일 대상이라 부분 커버리지 불가, AC-043의 `≥1`은 분기 선택자이지 통과 임계값이 아님. 요구사항 의미 불변(판정 강화, 스코프 변경 아님). `acceptance.md`도 0.7.0으로 동반 상향(HISTORY 표는 `spec.md` 단독 보유). |
 | 0.6.0 | 2026-07-25 | manager-spec | M1 후속 정밀화 3건(코디네이터 재위임). (1) REQ-APO-070 AC-APO-070(b) 충족 — supersede 대상을 **ID로 명명**(`AC-DCP-010`, 앵커 `acceptance.md:79` / `progress.md:86`, 소유 요구사항 `REQ-DCP-009` / `REQ-DCP-010`). 종전 문구는 "비배포 acceptance criterion"이라는 산문 서술만 있어 ID 인용 0건이었다. (2) AC-APO-070(c) 충족 — 인용 grep을 축약형 `grep -r "codemaps-extract" …`에서 정식 문구 `grep -r "codemaps-extract\|codemaps-pilot" …`로 복원(`\|codemaps-pilot` 교대 누락 시 엄격 판정 FAIL). §H 교차참조(선행 SPEC 항목)에도 동일 ID·문구 반영. (3) REQ-APO-012 정밀화 — Phase 13/16/17의 소유자를 진입 라우터 `run.md`가 아닌 하위 스킬 `run/task-decomposition.md`로 정정. `run.md`는 `TestEntryRouterLOCCeiling`(`internal/skills`)이 강제하는 200 LOC 상한 아래의 얇은 라우터(실측 197)로 배선 수용 불가이며, 실제 Phase 정의(L108/178/217)와 4dim 배선(L104)은 하위 스킬에 있다. M1이 라우터에 선배치했다가 203 LOC로 가드를 깨고 하위 스킬로 이설한 사실과 정합. `sync.md` Phase 7 배선은 진입 라우터 본문(`sync.md:56`)에 실재하므로 무변경. 요구사항 의미 불변(정밀화, 스코프 변경 아님). AC-APO-012 판정 명령은 `.claude/skills/moai/workflows/` 재귀 grep이라 경로 정정 불요(하위 스킬 포함). |
 | 0.5.0 | 2026-07-25 | manager-spec | plan-audit iter-3 0.847(임계 0.85 대비 -0.003) → 마감 편집 F1-F4. F1: AC-049(c)의 `M` 마커를 정의 heading(`^## `)으로 앵커링 — 앵커 없는 형태는 :49 산문 cross-reference까지 세어 "계층형 유지" 분기를 부당 FAIL시켰고 기재 baseline(합 2)도 실제(합 3)와 불일치했다. F2: AC-024b가 v0.2.0 상태로 잔존(구-넘버링 4번째 사례) → REQ-024b 문구로 재작성. F3: REQ-071의 5개 금지 클래스 중 3개가 SHOULD로 새던 구조적 누수 → AC-071b에 `== 0` 판정 추가. F4: 미한정 "Group 1" 2곳에 `구` 한정어 적용. 사전 제출 검사에 **REQ-touched ∖ AC-changed 집합차** 절차 추가. |
 | 0.4.0 | 2026-07-25 | manager-spec | plan-audit iter-2 FAIL 0.77 → **결정의 binding surface 미전파** 결함 해소. iter-1에서 서사(narrative)만 고치고 MUST AC 셀·마일스톤 실행 지시를 v0.2.0 상태로 남긴 3건이 근본 원인 — N1(AC-043 + M3 작업 0 게이트 명령), N2(AC-071 정규식), N3(AC-055 합계 상한). 부가: N4 구-넘버링 잔재 4곳(§E Tier 근거 포함), N5 AC-049 이진 판정화, N6 `module:` 전체 경로, N7 AC-076 다중파일 `grep -c` 오용, N8 AC-074 과잉 `== 0`, N9 AC-023 Phase 귀속 정정. AC 총수 55 → 56(AC-071b 신설: manual-only 클래스 표기 의무 이행). |
