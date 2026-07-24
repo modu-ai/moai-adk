@@ -2,7 +2,7 @@
 id: SPEC-SEC-DEEPSCAN-001
 title: "On-demand multi-agent deep vulnerability scan (/moai review --deep) — Epic SECURITY-ABSORB SPEC-1"
 version: "0.1.0"
-status: draft
+status: in-progress
 created: 2026-07-24
 updated: 2026-07-24
 author: manager-spec
