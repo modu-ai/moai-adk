@@ -88,12 +88,16 @@ func TestPrintBanner_OutputFormat(t *testing.T) {
 	// Verify output contains expected strings.
 	// SPEC-CLI-TUX-V3-004 M4d: the "Version:" label line is retired with the
 	// large ASCII logo — the version now rides the pill row (v1.2.3).
+	// SPEC-CLI-TUX-INIT-UPDATE-001 M3 (logo-aware): the large logo is RESTORED and
+	// stacks above the compact band, so the composed PrintBanner surface now also
+	// carries the logo's first-row signature (███╗   ███╗) — REQ-TUXIU-050/054.
 	expectedStrings := []string{
-		"MoAI",        // Banner should contain MoAI
-		"v1.2.3",      // Version pill
-		"Agentic",     // Description text
-		"Development", // Description text
-		"Kit",         // Description text
+		"███╗   ███╗",  // Restored logo signature (stacked above the compact band)
+		"MoAI",         // Banner should contain MoAI
+		"v1.2.3",       // Version pill
+		"Agentic",      // Description text
+		"Development",  // Description text
+		"Kit",          // Description text
 	}
 
 	for _, expected := range expectedStrings {

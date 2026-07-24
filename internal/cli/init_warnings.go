@@ -18,6 +18,7 @@ import (
 
 	"github.com/modu-ai/moai-adk/internal/cli/printer"
 	"github.com/modu-ai/moai-adk/internal/cli/uikit"
+	"github.com/modu-ai/moai-adk/internal/tui"
 )
 
 // warnCollector wraps a printer.Printer, recording every Warn message for
@@ -82,23 +83,41 @@ func (w *warnCollector) emitSummary(errOut io.Writer) {
 	_, _ = fmt.Fprintln(errOut, uikit.WarnStyle.Render(b.String()))
 }
 
-// buildInitSuccessCard renders the init completion card (REQ-TUX2-016):
-// created-artifact counts, the next-action sequence, and — when warnings
-// were collected — a one-line pointer to the stderr warning summary.
+// buildInitSuccessCard renders the init completion card (REQ-TUX2-016 /
+// REQ-TUXIU-031): created-artifact counts, the next-action sequence, and — when
+// warnings were collected — a one-line pointer to the stderr warning summary.
+//
+// SPEC-CLI-TUX-INIT-UPDATE-001 M3 (AC-TUXIU-011) re-dresses the card in the
+// shared tui.Box + tui.Pill visual language, mirroring the update
+// classification summary (renderClassificationSummary in update_tux.go): the
+// counts ride semantic tui.Pill pills (dirs = PillOk, files = PillInfo) inside
+// an accent-bordered tui.Box. This is presentation-only — the emitted data
+// (counts, next-action steps, warning pointer) is byte-identical to the legacy
+// form. Colour is sourced from tui.Theme tokens (paintToken); under NO_COLOR
+// every helper degrades to plain text (tui.Pill → "[label]", tui.Box border
+// runes intact) — REQ-TUXIU-040/041.
 func buildInitSuccessCard(projectName string, dirs, files, warnCount int) string {
-	details := []string{
-		uikit.RenderKeyValueLines([]uikit.KVPair{
-			{Key: "Directories", Value: fmt.Sprintf("%d created", dirs)},
-			{Key: "Files", Value: fmt.Sprintf("%d created", files)},
-		}),
-		"Next steps:\n" +
-			"  1. cd " + projectName + "\n" +
-			"  2. moai cc\n" +
-			"  3. /moai plan \"describe your first feature\"",
-	}
+	th := resolveTheme()
+
+	countRow := tui.Pill(tui.PillOpts{Kind: tui.PillOk, Label: fmt.Sprintf("%d dirs", dirs), Theme: &th}) +
+		"  " + tui.Pill(tui.PillOpts{Kind: tui.PillInfo, Label: fmt.Sprintf("%d files", files), Theme: &th})
+
+	nextSteps := "Next steps:\n" +
+		"  1. cd " + projectName + "\n" +
+		"  2. moai cc\n" +
+		"  3. /moai plan \"describe your first feature\""
+
+	body := countRow + "\n\n" + nextSteps
 	if warnCount > 0 {
-		details = append(details, uikit.WarnStyle.Render(
-			fmt.Sprintf("%d warning(s) collected — see the warning summary on stderr below", warnCount)))
+		body += "\n\n" + paintToken(
+			fmt.Sprintf("%d warning(s) collected — see the warning summary on stderr below", warnCount),
+			th.Warning, false)
 	}
-	return uikit.RenderSuccessCard("MoAI project initialized", details...)
+
+	return tui.Box(tui.BoxOpts{
+		Title:  paintToken(tui.StatusIcon("ok")+" MoAI project initialized", th.Success, true),
+		Accent: true,
+		Body:   body,
+		Theme:  &th,
+	})
 }

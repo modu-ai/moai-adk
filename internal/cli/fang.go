@@ -5,11 +5,13 @@ import (
 	"errors"
 	"image/color"
 	"io"
+	"os"
 
 	"charm.land/fang/v2"
 	"charm.land/lipgloss/v2"
 	"github.com/spf13/cobra"
 
+	"github.com/modu-ai/moai-adk/internal/cli/uikit"
 	"github.com/modu-ai/moai-adk/internal/tui"
 	"github.com/modu-ai/moai-adk/pkg/version"
 )
@@ -29,6 +31,31 @@ import (
 // in-process cli test suite (the tui-based renderRootHelp set at package init
 // stays the effective help func for the ~20 sibling tests that call
 // rootCmd.Execute() directly).
+// isRootHelpArgs reports whether the CLI args indicate the explicit root-help
+// surface (moai --help / moai -h / moai help) that should carry the restored
+// large logo BEFORE fang renders its help body (REQ-TUXIU-055, AC-TUXIU-024).
+// It inspects ONLY os.Args[1:] shape.
+//
+// The three matched tokens (--help / -h / help) are a subset of the root.go
+// trivialCommands token map. The empty arg vector MUST NOT match: no-args `moai`
+// already prints the logo via rootCmd.Run→PrintBanner, so matching [] here would
+// double-print the logo on the most-visible surface (§A.1 L4 HARD invariant).
+// Subcommand-help shapes (`moai help <sub>`, `moai <sub> --help`) MUST NOT match
+// either — subcommand help is logo-free by design.
+func isRootHelpArgs(args []string) bool {
+	if len(args) == 0 {
+		return false // no-args is covered by PrintBanner in rootCmd.Run
+	}
+	switch args[0] {
+	case "--help", "-h":
+		return true
+	case "help":
+		return len(args) == 1 // "moai help" only; "moai help <sub>" is subcommand help
+	default:
+		return false
+	}
+}
+
 func runFang(ctx context.Context, cmd *cobra.Command) error {
 	origHelp := cmd.HelpFunc()
 	origSilenceUsage := cmd.SilenceUsage
@@ -40,6 +67,13 @@ func runFang(ctx context.Context, cmd *cobra.Command) error {
 		cmd.SilenceErrors = origSilenceErrors
 		cmd.Version = origVersion
 	}()
+	// Explicit root-help surface (moai --help / -h / help): print the restored
+	// large logo through the same Printer/stdout gateway as PrintBanner, ABOVE
+	// fang's styled help body (REQ-TUXIU-055). fang v2 has no header hook, so the
+	// logo is emitted here before fang.Execute — no fang change / no go.mod change.
+	if isRootHelpArgs(os.Args[1:]) {
+		uikit.PrintLogo()
+	}
 	return fang.Execute(ctx, cmd, fangOptions()...)
 }
 
