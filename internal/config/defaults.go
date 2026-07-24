@@ -292,10 +292,12 @@ func NewDefaultGateConfig() GateConfig {
 			Lint: 60,
 			Test: 120,
 		},
-		// The ast-grep sub-gate is OFF by default (opt-in via gate.yaml).
-		// Projects without a gate.yaml MUST observe unchanged behavior.
+		// The ast-grep sub-gate is ON by default in advisory mode (findings
+		// reported, commits never blocked); blocking is opt-in via gate.yaml.
 		AstGrepGate: AstGrepGateConfig{
-			Enabled: false,
+			Enabled:      true,
+			BlockOnError: false,
+			WarnOnlyMode: true,
 		},
 	}
 }

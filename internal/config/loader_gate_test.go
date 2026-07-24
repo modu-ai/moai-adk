@@ -10,8 +10,9 @@ import (
 //
 // The gate section previously had a registry entry and a GateConfig struct but
 // no loader path, so AstGrepGate.Enabled could never become true from config.
-// These tests prove the loader completes the pair while keeping the ast-grep
-// sub-gate OFF by default (opt-in enable).
+// These tests prove the loader completes the pair with the ast-grep sub-gate
+// ON by default in advisory mode (findings reported, commits never blocked);
+// blocking is opt-in via gate.yaml.
 
 // writeGateYAML writes a gate.yaml into a temp .moai/config/sections dir and
 // returns the .moai dir suitable for Loader.Load.
@@ -51,10 +52,11 @@ func TestLoadGateSection_AstGrepEnable(t *testing.T) {
 	}
 }
 
-// TestLoadGateSection_DefaultOff is the default-OFF characterization:
-// with no gate.yaml the ast-grep sub-gate stays disabled and the outer
-// gate defaults are unchanged (byte-identical pre-existing behavior).
-func TestLoadGateSection_DefaultOff(t *testing.T) {
+// TestLoadGateSection_DefaultAdvisoryOn is the default-advisory-ON
+// characterization: with no gate.yaml the ast-grep sub-gate is enabled in
+// advisory mode (WarnOnlyMode=true, BlockOnError=false — findings reported,
+// commits never blocked) and the outer gate defaults are unchanged.
+func TestLoadGateSection_DefaultAdvisoryOn(t *testing.T) {
 	moaiDir := writeGateYAML(t, "")
 
 	loader := NewLoader()
@@ -62,8 +64,14 @@ func TestLoadGateSection_DefaultOff(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Load: %v", err)
 	}
-	if cfg.Gate.AstGrepGate.Enabled {
-		t.Error("AstGrepGate.Enabled = true, want false by default (opt-in invariant)")
+	if !cfg.Gate.AstGrepGate.Enabled {
+		t.Error("AstGrepGate.Enabled = false, want true by default (advisory-on)")
+	}
+	if !cfg.Gate.AstGrepGate.WarnOnlyMode {
+		t.Error("AstGrepGate.WarnOnlyMode = false, want true by default (advisory-on)")
+	}
+	if cfg.Gate.AstGrepGate.BlockOnError {
+		t.Error("AstGrepGate.BlockOnError = true, want false by default (advisory-on)")
 	}
 	if !cfg.Gate.Enabled {
 		t.Error("Gate.Enabled = false, want true default (unchanged)")
@@ -93,7 +101,26 @@ func TestLoadGateSection_PartialOverride(t *testing.T) {
 	if cfg.Gate.Timeouts.Vet != 30 {
 		t.Errorf("Gate.Timeouts.Vet = %d, want seeded default 30", cfg.Gate.Timeouts.Vet)
 	}
+	if !cfg.Gate.AstGrepGate.Enabled {
+		t.Error("AstGrepGate.Enabled = false, want true (seeded advisory-on default retained)")
+	}
+	if !cfg.Gate.AstGrepGate.WarnOnlyMode {
+		t.Error("AstGrepGate.WarnOnlyMode = false, want true (seeded advisory-on default retained)")
+	}
+}
+
+// TestLoadGateSection_ExplicitDisable verifies an explicit
+// ast_grep_gate.enabled: false in gate.yaml overrides the advisory-on seed
+// (opt-out remains available via config).
+func TestLoadGateSection_ExplicitDisable(t *testing.T) {
+	moaiDir := writeGateYAML(t, "gate:\n  ast_grep_gate:\n    enabled: false\n")
+
+	loader := NewLoader()
+	cfg, err := loader.Load(moaiDir)
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
 	if cfg.Gate.AstGrepGate.Enabled {
-		t.Error("AstGrepGate.Enabled = true, want false (not set in yaml)")
+		t.Error("AstGrepGate.Enabled = true, want false when gate.yaml disables it")
 	}
 }

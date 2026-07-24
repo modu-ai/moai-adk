@@ -45,7 +45,7 @@ When releasing new version, update:
 
 **Configuration Files:**
 - .moai/config/sections/system.yaml (moai.version)
-- internal/template/templates/.moai/config/config.yaml (moai.version)
+- internal/template/templates/.moai/config/sections/system.yaml.tmpl (moai.version)
 
 ### Release Process
 
