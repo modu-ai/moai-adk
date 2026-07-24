@@ -62,16 +62,32 @@
 
 **Parallel-session note:** at M2 run-time the shared checkout carried an unrelated live session's uncommitted edits (catalog.yaml, `SKILL.md`, `manager-{develop,spec}.md`, `gate.yaml`, `tool_policy.go`). These trip `TestCatalogHashParity` / `TestManifestHashFormat` / `TestDeprecatedPaths_NoTemplateCollision` and 2 `tool_policy.go` errcheck lints — NONE are in M2 scope (`internal/cli/update.go` + `internal/cli/update_tux*.go`); only those 3 files were staged for the M2 commit.
 
+**Milestone M3 — init banner + success card + large logo placement (the headline reversal).** Stacked `tui.Logo(th)` ABOVE the compact `bannerString` inside `PrintBanner` — `bannerString` UNMODIFIED (reversal-minimizing, §A.1 L3 / §B R6), so one edit covers all 3 shared-entry surfaces (`root.go:32`, `init.go:410`, `update.go:1274`). Reconciled the SPEC-CLI-TUX-V3-004 REQ-TUX4-006 retirement tests RED-first: re-targeted `TestCompactBanner_NoASCIILogo/_TwoLineIdentity/_GlyphWhitelist` to assert against `bannerString` DIRECTLY (via a new `uikit/export_test.go` `BannerString` test hook — the band stays logo-free / ≤2 lines / status-glyph-only), added `TestPrintBanner_CarriesLogo` (composed surface carries the logo), and made `TestPrintBanner_OutputFormat` logo-aware. Wired the root-help predicate `isRootHelpArgs` on the `runFang` seam (pre-`fang.Execute` `uikit.PrintLogo()`) — matches `moai --help`/`-h`/`help`, excludes the empty arg vector (no-args double-print guard) and subcommand-help. Re-dressed `buildInitSuccessCard` in the shared `tui.Box` + `tui.Pill` language. Regenerated the 3 uikit banner goldens (logo now present). No `go.mod` change, no fang fork.
+
+| AC | REQ | M3 status | Verification command | Actual output |
+|----|-----|-----------|----------------------|---------------|
+| AC-TUXIU-010 | 030 | PASS | `moai init` shares `PrintBanner` (`init.go:410`) → `bannerString` band+pills | `◆ MoAI-ADK` band + `[v…] [go …] [claude]` pills present (`TestCompactBanner_BrandTagline`/`TestBannerPill_Metadata`) |
+| AC-TUXIU-011 | 031 | PASS | `go test -run TestInitSuccessCard_TuiBoxPillLanguage` | PASS — `NO_COLOR` card renders `[3 dirs]` / `[7 files]` `tui.Pill` inside `tui.Box` border; next-actions retained |
+| AC-TUXIU-018 | 004 | PASS | `-run TestCompactBanner_GlyphWhitelist` (band-scoped) | PASS — whitelist scoped to `bannerString`; logo block/box runes (`█ ╗ ╔ ╚ ╝ ═`) exempt (REQ-TUXIU-056 carve-out) yet present in `PrintBanner` |
+| AC-TUXIU-020 | 050/054 | PASS | scratchpad `moai` no-args ANSI-stripped; shared-entry xref | logo `███╗   ███╗` ABOVE `◆ MoAI-ADK` band (both present); 3 surfaces share `PrintBanner` (`TestPrintBanner_CarriesLogo` in-process) |
+| AC-TUXIU-023 | 051/040 | PASS | `grep -rnE '#[0-9a-fA-F]{6}' internal/cli/ | grep -v _test` + `internal/tui/logo.go` | `internal/cli` hex == 1 baseline (`wizard/styles.go:20`); `logo.go` hex `<<0>>` — ramp from `Accent`/`AccentDeep` tokens |
+| AC-TUXIU-013a/b | 041 | PASS | scratchpad `NO_COLOR=1 moai --help` SGR count | `<<0>>` SGR codes; logo runes intact (art degrades to plain, no ANSI) |
+| AC-TUXIU-024 | 055 | PASS | scratchpad binary, ANSI-stripped `grep -c -F '███╗   ███╗'` | `moai --help`=1, `moai help`=1, `moai init --help`=0, `moai help init`=0, no-args `moai`=**1** (double-print guard); predicate `TestIsRootHelpArgs` 6/6 shapes PASS |
+
+**M3 build/test evidence:** `go test ./...` exit 0 (full suite); `go build ./...` + `GOOS=windows GOARCH=amd64 go build ./...` exit 0; `golangci-lint run ./internal/cli/...` = 0 issues (== baseline). Per-function coverage: `isRootHelpArgs` 100%, `PrintBanner` 100%, `PrintLogo` 100%, `buildInitSuccessCard` 100%, `runFang` 91.7% (the `PrintLogo` root-help branch is exercised by the scratchpad binary, not in-process), `tui.Logo`/`CoralRamp` 100%. `internal/cli/uikit` whole-package 98.8%; `internal/cli` 74.8% (≥ 74.6% baseline, no regression). `git diff -- go.mod go.sum` empty.
+
+**Parallel-session note (M3):** the shared `feat/SPEC-CLI-TUX-INIT-UPDATE-001` branch carries an unrelated live session's uncommitted `CLAUDE.local.md` + untracked `.moai/reports/*.html` + `SPEC-TDD-ANTICHEAT-001/` — NONE staged (explicit-pathspec commit only; M3 files are disjoint from SPEC-CONFIG-AUDIT-REPAIR-001's `uikit`/`fang`/`root`/`init_warnings` scope).
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 ```yaml
-run_complete_at: 2026-07-25            # M1+M2 complete; M3-M4 pending (multi-milestone SPEC)
-run_commit_sha: pending-backfill-M2    # M2 commit SHA backfilled in a follow-up chore commit; full run-phase SHA finalizes at M-final
-run_status: M2-complete                # M1 foundation + M2 update.go presentation wiring done; M3 (init/PrintBanner/root-help), M4 (verify) pending
-ac_pass_count: 22                      # M1: 004,006,007,019,021,022,023,050(8) + M2: 001,002a,002b,003,005,008,009,011,012,013a,013b,015,019,016(PASS-WITH-DEBT)(14)
+run_complete_at: 2026-07-25            # M1+M2+M3 complete; M4 (final verify/golden re-capture) pending
+run_commit_sha: pending-backfill-M3    # M3 commit SHA backfilled in a follow-up chore commit; full run-phase SHA finalizes at M-final
+run_status: M3-complete                # M1 foundation + M2 update wiring + M3 init/PrintBanner-logo/root-help done; M4 (verify) pending
+ac_pass_count: 26                      # M1(8) + M2(14) + M3: 010,020,024,018 newly-passing (+4); 011/013a/b re-confirmed on the init surface, 023 logo-ramp SSOT held
 ac_fail_count: 0
-ac_deferred_count: 2                   # AC-020 (3-surface presence) + AC-024 (root-help predicate) deferred to M3/M4 by milestone design
-preserve_list_post_run_count: unchanged  # bannerString NOT modified; Spinner/Stepper/term/form literals left per AC-004 carve-out; update.go/banner.go/fang.go/root.go untouched (M2/M3)
+ac_deferred_count: 0                   # AC-020 (3-surface presence) + AC-024 (root-help predicate) now PASS in M3; none deferred
+preserve_list_post_run_count: unchanged  # bannerString NOT modified (logo stacks only in PrintBanner); root.go untouched; Spinner/Stepper/term/form literals left per AC-004 carve-out
 l44_pre_commit_fetch: not-run          # orchestrator-owned pre-spawn fetch (agent does not fetch/push in isolation); PR-route branch
 l44_post_push_fetch: pending           # push to feat/SPEC-CLI-TUX-INIT-UPDATE-001 (Route B; enforce_admins main-direct disabled)
 new_warnings_or_lints_introduced: 0    # golangci-lint 0 issues == pre-edit baseline 0
