@@ -697,7 +697,7 @@ Commands:
 
 Memory:
 - Skill("moai-foundation-core") modules/token-optimization.md - Optimization strategies
-- .moai/config/config.json - Budget configuration
+- .moai/config/sections/context.yaml - Budget configuration
 
 ---
 

@@ -6,9 +6,10 @@ import "log/slog"
 //
 // Completes the gate registry pair: GateConfig and the "gate" registry entry
 // existed, but no loader path read gate.yaml, so the ast-grep pre-tool gate
-// (AstGrepGate.Enabled) had no path to true. The ast-grep sub-gate remains
-// OFF by default (opt-in enable): an absent gate.yaml, or one that omits
-// ast_grep_gate.enabled, yields Enabled=false and unchanged gate behavior.
+// (AstGrepGate.Enabled) had no path to true. The ast-grep sub-gate is ON by
+// default in advisory mode (findings reported, commits never blocked): an
+// absent gate.yaml, or one that omits ast_grep_gate keys, yields
+// Enabled=true + WarnOnlyMode=true; blocking is opt-in via gate.yaml.
 
 // loadGateSection loads the gate configuration section from gate.yaml.
 //

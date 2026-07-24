@@ -4,6 +4,8 @@ import (
 	"context"
 	"os"
 	"path/filepath"
+	"runtime"
+	"strings"
 	"testing"
 )
 
@@ -283,5 +285,56 @@ func TestRunAstGrepGateV2_ContextCancellation(t *testing.T) {
 
 	if !passed {
 		t.Error("cancelled context should still allow gate to pass gracefully")
+	}
+}
+
+// TestRunAstGrepGateV2_AdvisoryOutputWithFindings characterizes advisory mode:
+// with error-severity findings present and WarnOnlyMode enabled, the gate
+// returns passed==true together with non-empty advisory output (the findings
+// are reported but the commit is never blocked).
+func TestRunAstGrepGateV2_AdvisoryOutputWithFindings(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("fake sg shell script requires a POSIX shell")
+	}
+
+	// Fake sg binary on PATH emitting one error-severity finding as sg JSON.
+	binDir := t.TempDir()
+	script := `#!/bin/sh
+echo '[{"ruleId":"demo-rule","severity":"error","message":"demo finding","file":"main.go","range":{"start":{"line":0,"column":0},"end":{"line":0,"column":1}}}]'
+`
+	if err := os.WriteFile(filepath.Join(binDir, "sg"), []byte(script), 0o755); err != nil {
+		t.Fatalf("write fake sg: %v", err)
+	}
+	// t.Setenv is incompatible with t.Parallel().
+	t.Setenv("PATH", binDir)
+
+	// Project with an sgconfig.yml so the scanner takes the single-invocation
+	// config-based path.
+	projectDir := t.TempDir()
+	rulesDir := filepath.Join(projectDir, ".moai", "config", "astgrep-rules")
+	if err := os.MkdirAll(rulesDir, 0o755); err != nil {
+		t.Fatalf("mkdir rules dir: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(rulesDir, "sgconfig.yml"), []byte("ruleDirs:\n  - .\n"), 0o644); err != nil {
+		t.Fatalf("write sgconfig.yml: %v", err)
+	}
+
+	cfg := &AstGrepGateConfig{
+		Enabled:      true,
+		RulesDir:     ".moai/config/astgrep-rules",
+		BlockOnError: false,
+		WarnOnlyMode: true,
+	}
+
+	passed, output := RunAstGrepGateV2(context.Background(), projectDir, cfg)
+
+	if !passed {
+		t.Errorf("advisory mode must never block, got blocked with output: %q", output)
+	}
+	if output == "" {
+		t.Error("advisory mode with findings should return non-empty advisory output")
+	}
+	if !strings.Contains(output, "demo-rule") {
+		t.Errorf("advisory output should contain the finding rule id, got: %q", output)
 	}
 }

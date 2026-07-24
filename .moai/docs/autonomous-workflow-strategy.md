@@ -481,7 +481,7 @@ workflow:
   # 기존 team 설정과 공존 (별도 키)
   team:
     enabled: false
-    role_profiles: { ... }   # 기존 유지
+    role_profiles: { ... }   # (RETIRED — Agent Teams static layer, see CLAUDE.md §15)
 
   # 신규: 서브커맨드별 autonomy profile
   autonomy:
@@ -534,10 +534,10 @@ workflow:
       feedback: { engine: none }
 ```
 
-### 8.2 기존 team/role_profiles 와의 관계
+### 8.2 기존 team/role_profiles 와의 관계 (RETIRED — Agent Teams static layer, see CLAUDE.md §15)
 
-- `workflow.team` (기존)과 `workflow.autonomy` (신규)는 **별도 키, 공존**. team은 Agent Teams(3-5 teammate) 모드, autonomy는 엔진 선택(goal/workflow/loop). Phase 0.95 모드 선택(`orchestration-mode-selection.md`)이 두 키를 모두 읽어 trivial/background/agent-team/parallel/sub-agent/**workflow**(신규 Mode 6) 중 결정.
-- `role_profiles` (researcher/analyst/architect/implementer/tester/designer/reviewer)는 Workflow fan-out 에이전트의 prompt 합성에도 재사용 가능 — Workflow의 read-only fan-out 단위가 researcher/analyst profile을 상속, 단 Workflow agent는 사용자 prompt 불가 제약 추가.
+- (RETIRED — Agent Teams static layer, see CLAUDE.md §15) `workflow.team` (기존)과 `workflow.autonomy` (신규)는 **별도 키, 공존**. team은 Agent Teams(3-5 teammate) 모드, autonomy는 엔진 선택(goal/workflow/loop). Phase 0.95 모드 선택(`orchestration-mode-selection.md`)이 두 키를 모두 읽어 trivial/background/agent-team/parallel/sub-agent/**workflow**(신규 Mode 6) 중 결정.
+- (RETIRED — Agent Teams static layer, see CLAUDE.md §15) `role_profiles` (researcher/analyst/architect/implementer/tester/designer/reviewer)는 Workflow fan-out 에이전트의 prompt 합성에도 재사용 가능 — Workflow의 read-only fan-out 단위가 researcher/analyst profile을 상속, 단 Workflow agent는 사용자 prompt 불가 제약 추가.
 - **[HARD] autonomy.enabled 기본 off**: research preview이고 org/user가 `disableWorkflows`/`CLAUDE_CODE_DISABLE_WORKFLOWS`로 비활성 가능하므로 항상 가용하다고 가정 금지. preflight에서 Claude Code 버전(workflows ≥2.1.154, /goal ≥2.1.139) + hook 활성(/goal은 hook 의존, `disableAllHooks`/`allowManagedHooksOnly` 시 불가) 검증.
 
 ---
