@@ -210,7 +210,7 @@ Execution: (1) Initial Search via WebSearch with targeted queries → (2) URL Va
 
 > **GLM-backend routing**: under `moai glm` or the GLM panes of `moai cg`, WebSearch and WebFetch route to the z.ai MCP tools instead of the built-in tools — see `.claude/rules/moai/core/glm-web-tooling.md` for the HARD routing table.
 
-For research-heavy questions, the bundled `/deep-research <question>` workflow fans out multiple web searches, cross-checks sources, votes on contested claims, and returns a cited report (requires WebSearch; spends meaningfully more tokens; the AskUserQuestion boundary holds — collect the question before launch). See `.claude/rules/moai/workflow/dynamic-workflows.md`.
+For research-heavy questions, the bundled `/deep-research <question>` workflow fans out multiple web searches, cross-checks sources, votes on contested claims, and returns a cited report (manual invocation only since Claude Code v2.1.218 — Claude no longer launches it on its own; requires WebSearch; spends meaningfully more tokens; the AskUserQuestion boundary holds — collect the question before launch). See `.claude/rules/moai/workflow/dynamic-workflows.md`.
 
 ---
 

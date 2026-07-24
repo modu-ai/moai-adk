@@ -54,6 +54,7 @@ MCP tools (when a user configures their own `.mcp.json`) are deferred by default
 | `requiredMinimumVersion` | v2.1.163+ | Managed | Hard version-gate — Claude Code refuses to start when its version is below the floor. An org/admin decision, parallel to the `disableWorkflows` stance. Distinct from the older advisory `minimumVersion`. |
 | `requiredMaximumVersion` | v2.1.163+ | Managed | Hard version-ceiling — refuses to start above the cap. Likewise an org/admin decision. |
 | `effortLevel` | v2.1.110+ | User/Project/Local | Intentionally NOT shipped in `settings.json.tmpl`. Per-session effort is controlled by the `ultrathink` keyword or the `CLAUDE_CODE_EFFORT_LEVEL` environment variable; pinning a fixed high effort level project-wide would force elevated token cost on every user session. |
+| `workflowSizeGuideline` | v2.1.219+ | Any settings file | Sets the advisory Dynamic workflow size guideline (`small` / `medium` / `large` / `unrestricted`; default `medium` — aim for fewer than 15 agents); the `/config` row is hidden while one is set. MoAI does not pin a size — the choice is left to the user/org (see `.claude/rules/moai/workflow/dynamic-workflows.md`). |
 
 Reference: https://code.claude.com/docs/en/settings.
 

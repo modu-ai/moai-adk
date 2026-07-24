@@ -74,7 +74,7 @@ Optional Fields:
 
 - model: Model to use when Skill is active (e.g., `claude-sonnet-4-20250514`). Defaults to the current model.
 
-- context: Set to `fork` to run Skill in isolated sub-agent context with separate conversation history.
+- context: Set to `fork` to run Skill in isolated sub-agent context with separate conversation history. As of v2.1.218 such skills run in the background by default; opt out per skill with `background: false`.
 
 - agent: Agent type when `context: fork` is set. Options: `Explore`, `Plan`, `general-purpose`. Defaults to `general-purpose`.
 
