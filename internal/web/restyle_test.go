@@ -298,7 +298,7 @@ func TestNameAttributesPreserved(t *testing.T) {
 
 	wantNames := []string{
 		"user_name", "conversation_lang", "git_commit_lang", "code_comment_lang",
-		"doc_lang", "permission_mode", "model_policy", "model", "effort_level",
+		"doc_lang", "permission_mode", "model", "effort_level",
 		// statusline_preset / statusline_theme removed
 		// (SPEC-V3R6-STATUSLINE-PRESET-RETIRE-001) — no statusline panel.
 		// development_mode / git_convention removed with the orphan `project`

@@ -40,7 +40,6 @@ type pageView struct {
 	LangOptions     []settings.OptionDef
 	ModelOptions    []settings.OptionDef
 	EffortLevels    []settings.OptionDef
-	ModelPolicies   []settings.OptionDef
 	PermissionModes []settings.OptionDef
 
 	// Project-config selects (SPEC-WEB-CONSOLE-003). Option lists + the current
@@ -126,7 +125,6 @@ func (a *app) newPageView(prefs profile.ProfilePreferences, selected string) pag
 		LangOptions:       langOptionDefs(),
 		ModelOptions:      modelOptionDefs(),
 		EffortLevels:      effortOptionDefs(),
-		ModelPolicies:     modelPolicyOptionDefs(),
 		PermissionModes:   permissionModeOptionDefs(),
 		DevelopmentModes:  developmentModeOptionDefs(),
 		Conventions:       conventionOptionDefs(),
@@ -326,6 +324,13 @@ func (a *app) handleSave(w http.ResponseWriter, r *http.Request) {
 
 	prefs := bindForm(r)
 
+	// G3-5: model_policy is no longer a UI field. Carry its persisted value forward
+	// so the save does not blank the resolveLaunchEffort fallback (launcher.go). A
+	// forged model_policy form value is therefore ignored, not persisted.
+	if cur, err := a.readPreferences(selected); err == nil {
+		prefs.ModelPolicy = cur.ModelPolicy
+	}
+
 	// REQ-WC3-005: bind the two project-config fields (NOT into ProfilePreferences —
 	// they are project config, not profile).
 	devMode := r.PostFormValue("development_mode")
@@ -508,6 +513,11 @@ func (a *app) renderErrorPage(w http.ResponseWriter, prefs profile.ProfilePrefer
 // the TUI / profile_setup CLI path + statusline.yaml sync), but the web handler
 // leaves them zero — a profile save from the web console no longer touches
 // statusline config, so syncStatusline preserves the on-disk values.
+//
+// model_policy is likewise NOT bound here (G3-5 — removed from the UI as a
+// duplicate of the agentfm performance tier). Its ProfilePreferences field is
+// preserved by an explicit carry-forward in handleSave so a web save never blanks
+// the resolveLaunchEffort fallback (launcher.go).
 func bindForm(r *http.Request) profile.ProfilePreferences {
 	prefs := profile.ProfilePreferences{
 		UserName:         r.PostFormValue("user_name"),
@@ -515,7 +525,6 @@ func bindForm(r *http.Request) profile.ProfilePreferences {
 		GitCommitLang:    r.PostFormValue("git_commit_lang"),
 		CodeCommentLang:  r.PostFormValue("code_comment_lang"),
 		DocLang:          r.PostFormValue("doc_lang"),
-		ModelPolicy:      r.PostFormValue("model_policy"),
 		Model:            r.PostFormValue("model"),
 		EffortLevel:      r.PostFormValue("effort_level"),
 		PermissionMode:   r.PostFormValue("permission_mode"),

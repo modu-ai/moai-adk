@@ -73,8 +73,8 @@ templ fieldsetLanguage(view pageView) {
 }
 
 // fieldsetLaunch ports the Launch fieldset (~149-177): an inline permission_mode
-// select (with the "(project default)" empty-option-when-blank logic) + 3x
-// optSelect (model_policy / model / effort_level).
+// select (with the "(project default)" empty-option-when-blank logic) + 2x
+// optSelect (model / effort_level). model_policy was removed (G3-5).
 templ fieldsetLaunch(view pageView) {
 	<fieldset class="section">
 		<div class="section__head">
@@ -108,7 +108,6 @@ templ fieldsetLaunch(view pageView) {
 						<span class="field-error" id="err_permission_mode">@icon("alert-circle")<span>{ msg }</span></span>
 					}
 				</div>
-				@optSelect(optSelectArgs{Name: "model_policy", Title: "Model policy", Key: "model_policy", Desc: "Quality vs. speed bias when a model is auto-selected.", Value: view.Prefs.ModelPolicy, Empty: settings.EmptyLabelFor("model_policy"), EmptyKey: settings.EmptyLabelKeyFor("model_policy"), Options: view.ModelPolicies, Errors: view.FieldErrors})
 				@optSelect(optSelectArgs{Name: "model", Title: "Model", Key: "model", Desc: "The specific model to run, including 1M-context variants.", Value: view.Prefs.Model, Empty: settings.EmptyLabelFor("model"), EmptyKey: settings.EmptyLabelKeyFor("model"), Options: view.ModelOptions, Errors: view.FieldErrors})
 				@optSelect(optSelectArgs{Name: "effort_level", Title: "Effort level", Key: "effort_level", Desc: "How much reasoning effort the model spends per task.", Value: view.Prefs.EffortLevel, Empty: settings.EmptyLabelFor("effort_level"), EmptyKey: settings.EmptyLabelKeyFor("effort_level"), Options: view.EffortLevels, Errors: view.FieldErrors})
 				<div class="field">
