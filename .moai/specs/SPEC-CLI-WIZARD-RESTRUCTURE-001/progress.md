@@ -1,7 +1,7 @@
 ---
 id: SPEC-CLI-WIZARD-RESTRUCTURE-001
 title: "Progress — moai init wizard restructure (방안 A)"
-version: "0.1.1"
+version: "0.1.2"
 status: draft
 created: 2026-07-25
 updated: 2026-07-25
@@ -17,10 +17,10 @@ tier: M
   (`questions.go`, `wizard.go`, `translations.go`, `init.go`,
   `model_policy.go`, `context.go`, `profile.go` + test files); presentation/UX
   + config-default changes; no data-model rewrite, no new subsystem.
-- **Artifacts:** spec.md (17 GEARS REQs across 4 groups + 5 Out-of-Scope H3
-  sub-sections) · plan.md (§A context, §A.1 reversibility-ordered D1-D3, §A.5
-  22-row CHANGE + PRESERVE map, §B risks incl. 1 NEEDS-CLARIFICATION, §C-§H) ·
-  acceptance.md (14 Given-When-Then ACs + severity + full REQ→AC traceability).
+- **Artifacts:** spec.md (19 GEARS REQs across 5 groups §B.1-§B.5 + 6 Out-of-Scope
+  H3 sub-sections) · plan.md (§A context, §A.1 reversibility-ordered D1-D3, §A.5
+  28-row CHANGE (C1-C28) + PRESERVE map, §B risks, §C-§H) · acceptance.md (16
+  Given-When-Then ACs incl. AC-WIZ-012a + severity + full REQ→AC traceability).
 - **SPEC-ID self-check:** `SPEC-CLI-WIZARD-RESTRUCTURE-001` → regex
   `^SPEC(-[A-Z][A-Z0-9]*)+-[0-9]{3}$` → PASS
   (decomposition: SPEC ✓ | CLI ✓ | WIZARD ✓ | RESTRUCTURE ✓ | 001 ✓ → PASS).
@@ -46,6 +46,7 @@ tier: M
   result.StandardMode` application gate (C20) must be removed or Page-3 answers
   are discarded.
 - **Plan-auditor target:** PASS ≥ 0.80 (Tier M threshold).
+- **Plan-audit fold (review-1): PASS 0.80; D1/D2 must-fix + D3-D7 cleanup applied; docs-site scoped to sync-phase (Tier M preserved).** D1 rewrote AC-WIZ-015's vacuous flag grep to the real cobra `.Bool("standard"/"advanced")` idiom; D2 scoped the docs-site 4-locale `--standard`/`--advanced` removal to sync-phase (REQ-WIZ-019 + new §C Out-of-Scope H3) keeping run-phase code at Tier M; D3 added the `init_update_notice.go:68` `runWizardFn` seam (§A.5 C28); D4 corrected C26 `Phase2Questions` mis-location (it lives in `advanced_gate.go`, deleted by C23); D5 fixed the B-brief-correction phantom `WithModelPolicy`/`initializer.go` citation → `context.go:106`; D6 added the reconfigure-membership leak note + AC-WIZ-012a; D7 corrected this §E.1 CHANGE-row count (22 → 28). All 4 artifacts bumped 0.1.1 → 0.1.2.
 
 ## §E.2 Run-phase Evidence
 
