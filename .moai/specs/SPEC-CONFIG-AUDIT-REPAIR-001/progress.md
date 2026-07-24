@@ -28,6 +28,16 @@ Plan-phase artifacts authored 2026-07-25; amended to 0.2.0 same day after Implem
 | mcp-matrix reword (REQ-CAR-014) | Template refs removed: `grep -rn 'mcp-matrix' internal/template/templates/` → 0 matches (project.md table row + doc-generation.md Step 3.6.2 generalized to matrix-optional wording, both trees); CLAUDE.local.md §2 entry added |
 | Build + guards | `make build` exit 0; `go test ./internal/cli/ ./internal/template/...` green |
 
+### M-4 — M7 test repair + registry reconciliation (REQ-CAR-009/010/007a/007b)
+
+| Item | Evidence |
+|------|----------|
+| TestAuditParity repo-root fix (REQ-CAR-009) | `audit_test.go` resolves repo root via `runtime.Caller` (Skip → Fatalf); `go test -run 'TestAuditParity$' -v ./internal/config/` → `--- PASS: TestAuditParity`, no SKIP |
+| Orphan reconciliation (REQ-CAR-010) | Repaired test exposed 7 orphan yamls (cache/db/feedback/mcp-matrix/observability/report/tool-policy) + 1 orphan struct (runtime). feedback → registry (loadFeedbackSection exists); runtime removed (RuntimeConfig loads from internal/runtime path, not sections/); remaining 6 registered as documented exceptions with rationale |
+| Zero skips (AC-CAR-010) | `go test ./internal/config/... -v \| grep -c SKIP` → 0; package green |
+| db comment fix (REQ-CAR-007a) | completeness-test allowlist db comment corrected — hook consumes migration_patterns via internal/cli/hook.go line-scan |
+| constitution labeling (REQ-CAR-007b) | audit_registry exceptions relabeled loader-present (loader_constitution.go et al. via Loader.Load); entries retained for TestAuditParity_ExceptionsRespected compatibility |
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<pending run-phase>_
