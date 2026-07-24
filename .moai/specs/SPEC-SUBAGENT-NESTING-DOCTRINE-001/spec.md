@@ -82,7 +82,7 @@ Note on surface 8: the live CONST-V3R2-020 clause mirrors the CLAUDE.md §14 *ba
 ### M2 — Auditor read-only nesting pilot (behavioral, OPT-IN, env-gated)
 
 - **REQ-SND-013** (Ubiquitous): `sync-auditor` shall add `Agent` to its `tools` list while keeping `permissionMode: plan`.
-- **REQ-SND-014** (Where — capability gate): **Where** `CLAUDE_CODE_MAX_SUBAGENT_SPAWN_DEPTH` is set to a positive integer, `sync-auditor` MAY spawn read-only per-dimension verifier children — one per scoring dimension (Functionality / Security / Craft / Consistency).
+- **REQ-SND-014** (Where — capability gate): **Where** `CLAUDE_CODE_MAX_SUBAGENT_SPAWN_DEPTH` is set to a positive integer, `sync-auditor` shall be permitted to spawn read-only per-dimension verifier children — one per scoring dimension (Functionality / Security / Craft / Consistency).
 - **REQ-SND-015** (While — state-driven, held-out default): **While** `CLAUDE_CODE_MAX_SUBAGENT_SPAWN_DEPTH` is unset (the shipped distribution default), `sync-auditor` shall behave exactly as today — flat, non-nesting, byte-identical runtime behavior.
 - **REQ-SND-016** (Ubiquitous, verdict ownership): The binding 4-dimension verdict shall remain owned by the top-level `sync-auditor`; a spawned child shall NOT own or produce the binding verdict.
 - **REQ-SND-017** (Ubiquitous, read-only children): A spawned verifier child shall be read-only — either `Explore` (inherently read-only) or `general-purpose` spawned with `mode: "plan"`. Because the parenthesized `Agent(agent_type)` allowlist is ignored inside a subagent, read-only enforcement rests on the `mode: "plan"` parameter (for `general-purpose`) or the `Explore` choice, NOT on a type allowlist.

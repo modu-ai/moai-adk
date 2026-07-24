@@ -61,13 +61,17 @@ grep -ci "sync-auditor" CLAUDE.md                          # >= 1 (pilot excepti
 
 ### AC-SND-002 — §14 concurrency caps
 
+Presence greps are §14-anchored (REQ-SND-003 documents the caps in §14), not global — a global grep would PASS even if the caps landed in the wrong section. The §14 body is bounded between the `## 14.` and `## 15.` headings.
+
 ```bash
-grep -c "CLAUDE_CODE_MAX_CONCURRENT_SUBAGENTS" CLAUDE.md    # >= 1
-grep -c "CLAUDE_CODE_MAX_SUBAGENTS_PER_SESSION" CLAUDE.md   # >= 1
-grep -A2 "MAX_CONCURRENT_SUBAGENTS" CLAUDE.md | grep -c "20"   # >= 1
-grep -A2 "MAX_SUBAGENTS_PER_SESSION" CLAUDE.md | grep -c "200" # >= 1
-# mirror parity
-grep -c "CLAUDE_CODE_MAX_CONCURRENT_SUBAGENTS" internal/template/templates/CLAUDE.md  # >= 1
+# §14-anchored: extract the §14 section, assert the caps are present WITHIN it
+S14() { awk '/^## 14\. /{f=1} /^## 15\. /{f=0} f' CLAUDE.md; }
+S14 | grep -c "CLAUDE_CODE_MAX_CONCURRENT_SUBAGENTS"    # >= 1 (within §14)
+S14 | grep -c "CLAUDE_CODE_MAX_SUBAGENTS_PER_SESSION"   # >= 1 (within §14)
+S14 | grep -A2 "MAX_CONCURRENT_SUBAGENTS" | grep -c "20"    # >= 1
+S14 | grep -A2 "MAX_SUBAGENTS_PER_SESSION" | grep -c "200"  # >= 1
+# mirror parity (template §14)
+awk '/^## 14\. /{f=1} /^## 15\. /{f=0} f' internal/template/templates/CLAUDE.md | grep -c "CLAUDE_CODE_MAX_CONCURRENT_SUBAGENTS"  # >= 1
 ```
 
 ### AC-SND-003 — agent-authoring §Agent(agent_type) Restrictions
@@ -99,11 +103,21 @@ grep -ciE "runtime default.*off|default.*off.*v2\.1\.217" "$F"   # >= 1 in Tool 
 
 ### AC-SND-006 — agent-patterns §Deprecated Hierarchical
 
+Delta-form (not presence-only, per the acceptance.md header "delta, not presence-only" principle): asserts BOTH the v2.1.217 facts are present AND the stale-as-current "nesting DOES exist ... as of v2.1.172" framing REQ-SND-007 targets cannot survive a PASS unless it is explicitly marked historical/superseded. Applies to BOTH the live file AND its template mirror.
+
 ```bash
 F=".claude/rules/moai/development/agent-patterns.md"
-# v2.1.172 "nesting DOES exist" framing updated
+T="internal/template/templates/.claude/rules/moai/development/agent-patterns.md"
+# presence: v2.1.217 fact + M2 pilot exception reference present
 grep -c "v2.1.217" "$F"        # >= 1
 grep -ci "sync-auditor" "$F"   # >= 1 (M2 pilot exception reference)
+# absence (delta): the present-tense stale framing cannot survive a PASS unless marked historical.
+# NOTE: the historical-marker filter deliberately OMITS the generic word "previously" — it collides
+# with an unrelated clause ("previously documented as a viable Pattern 6") on the very target line,
+# which would falsely exclude the stale match. Use phrase-specific historical markers only.
+grep -nE "nesting DOES exist|as of Claude Code v2\.1\.172" "$F" | grep -viE "supersed|until v2\.1\.216|no longer|introduced in"   # → 0 unmarked matches
+# template mirror: same gone-check
+grep -nE "nesting DOES exist|as of Claude Code v2\.1\.172" "$T" | grep -viE "supersed|until v2\.1\.216|no longer|introduced in"   # → 0 unmarked matches
 ```
 
 ### AC-SND-007 — orchestration-mode-selection §Mode 6
@@ -184,21 +198,27 @@ done
 # → no "UNEXPECTED" lines
 ```
 
-### AC-SND-013 — Boundary guard: no AskUserQuestion in auditor path
+### AC-SND-013 — Boundary guard: no AskUserQuestion invocation in auditor path
+
+Verifies the ABSENCE of an actual `AskUserQuestion` invocation in the sync-auditor / child path — NOT the mere presence of the word. The exclusion filter is widened so REQ-SND-021's mandated inline boundary sentence (REQ-SND-018 phrasing: "no ... shall invoke AskUserQuestion ... the single-point-of-contact boundary holds at every depth") does not produce a false result; any surviving match would be an actual invocation instruction.
 
 ```bash
 grep -rn 'AskUserQuestion\|mcp__askuser' .claude/agents/moai/sync-auditor.md \
-  | grep -v "^[^:]*:[0-9]*:[ \t]*#" | grep -viE "MUST NOT|never|prohibited|boundary|barred"
-# → 0 matches (any occurrence is a prohibition statement, never an invocation)
+  | grep -v "^[^:]*:[0-9]*:[ \t]*#" \
+  | grep -viE "MUST NOT|never|prohibited|boundary|barred|shall not invoke|no .*shall invoke|single-point-of-contact|holds at every depth|nesting-independent"
+# → 0 matches (every remaining occurrence would be an actual invocation, never a prohibition statement)
 ```
 
 ### AC-SND-014 — No write-capable child (read-only enforcement)
 
+The no-write-child check targets tool-GRANT syntax — a `tools:`-line scope or an explicit `Write, Edit` tool-list adjacency — NOT free prose. REQ-SND-021's mandated inline read-only-child documentation (REQ-SND-017) naturally contains prose like "a verifier child is NOT granted Write/Edit", which a free-prose `child.*Write` grep would false-match; the tool-grant-syntax grep does not.
+
 ```bash
 F=".claude/agents/moai/sync-auditor.md"
-# body asserts children are read-only via Explore or mode:plan; children are NOT granted Write/Edit
+# read-only enforcement mechanism documented (Explore / mode:plan)
 grep -ciE "read-only|Explore|mode: \"plan\"" "$F"   # >= 1
-grep -ciE "child.*(Write|Edit)|verifier.*(Write|Edit)" "$F"   # 0 (no write-capable child granted)
+# no write-capable grant: no tools:-line granting Write/Edit, and no explicit Write,Edit tool-list adjacency
+grep -nE "^[[:space:]]*tools:.*(Write|Edit)|Write, ?Edit|Edit, ?Write" "$F"   # → 0 matches (no write-capable child/agent tool grant)
 ```
 
 ### AC-SND-015 — Verdict ownership retained by top-level sync-auditor
