@@ -304,6 +304,39 @@ func TestApplySchemaEditsRejectsUnknownAndReadOnly(t *testing.T) {
 	}
 }
 
+// TestLLMRuntimeKeysSurviveUnrelatedEdit는 llm.mode / llm.team_mode 가 콘솔 UI
+// 표시 목록에서 제거된 뒤에도 (web console UX fix G2-1) 무관한 llm 필드 편집에서
+// 보존됨을 검증한다. 지속 경로가 struct 기반(LLMConfig 전체 재 marshal, 두 필드에
+// omitempty 없음)이라 표시 목록과 무관하다 — 이 테스트가 그 불변식의 가드다.
+func TestLLMRuntimeKeysSurviveUnrelatedEdit(t *testing.T) {
+	t.Parallel()
+	root := t.TempDir()
+	dir := filepath.Join(root, ".moai", "config", "sections")
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	llmPath := filepath.Join(dir, "llm.yaml")
+	seed := "llm:\n  mode: glm\n  team_mode: cg\n  glm:\n    models:\n      high: glm-5.2\n"
+	if err := os.WriteFile(llmPath, []byte(seed), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	// 무관한 필드(glm tier 매핑) 편집.
+	if err := ApplySchemaEdits(root, map[string]string{"llm.glm.models.high": "glm-test-model"}); err != nil {
+		t.Fatalf("ApplySchemaEdits: %v", err)
+	}
+
+	after, err := os.ReadFile(llmPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{"mode: glm", "team_mode: cg", "glm-test-model"} {
+		if !strings.Contains(string(after), want) {
+			t.Errorf("llm.yaml lost %q after an unrelated edit:\n%s", want, after)
+		}
+	}
+}
+
 // TestHonestDemotionReadOnlyAndRaw는 SPEC-WEB-CONSOLE-014 M2 정직화를 검증한다:
 // (i) learning.auto_apply / observability.hook_metrics.output_path는 편집 필드에서
 // 철거되고 read-only 표시 키로 등록됨 (REQ-WC14-001/040), (ii) learning.tier_thresholds /
