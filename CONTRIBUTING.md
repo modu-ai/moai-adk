@@ -117,7 +117,7 @@ return fmt.Errorf("read " + path + ": " + err.Error())  // BAD
 
 ### Test Coverage Requirements
 
-- All packages must maintain **minimum 85%** coverage
+- All packages must maintain a **minimum of 85%** coverage
 - New code follows **TDD approach** (RED-GREEN-REFACTOR)
 - Existing code changes follow **DDD approach** (ANALYZE-PRESERVE-IMPROVE)
 
