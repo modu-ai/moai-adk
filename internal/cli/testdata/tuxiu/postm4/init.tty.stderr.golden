@@ -1,0 +1,20 @@
+[38;2;92;199;201m·[m Initializing MoAI project...
+  [38;2;217;119;87m⠋[m Detection: Analyzing project structure...[2K  [38;2;91;191;154m✓[m Detected project structure
+  [38;2;217;119;87m⠋[m Validation: Using mode: tdd...[2K  [38;2;91;191;154m✓[m Mode validated
+  [38;2;217;119;87m⠋[m Validation: Validating project structure...[2K  [38;2;91;191;154m✓[m Validation passed
+  [38;2;217;119;87m⠋[m Initialization: Creating project structure...[2K  [38;2;217;119;87m⠙[m Initialization: Creating project structure...[2K  [38;2;91;191;154m✓[m Created 2 files
+
+[38;2;217;119;87m╭─────────────────────────────────────────────────╮[m
+[38;2;217;119;87m│[m                                                 [38;2;217;119;87m│[m
+[38;2;217;119;87m│[m  [38;2;238;242;239m[1;38;2;91;191;154m✓ MoAI project initialized[m[m                     [38;2;217;119;87m│[m
+[38;2;217;119;87m│[m  [38;2;238;242;239m [1;38;2;91;191;154m13 dirs[m    [1;38;2;92;199;201m2 files[m [m                           [38;2;217;119;87m│[m
+[38;2;217;119;87m│[m  [38;2;238;242;239m[m                                               [38;2;217;119;87m│[m
+[38;2;217;119;87m│[m  [38;2;238;242;239mNext steps:[m                                    [38;2;217;119;87m│[m
+[38;2;217;119;87m│[m  [38;2;238;242;239m  1. cd cap_init_tty[m                           [38;2;217;119;87m│[m
+[38;2;217;119;87m│[m  [38;2;238;242;239m  2. moai cc[m                                   [38;2;217;119;87m│[m
+[38;2;217;119;87m│[m  [38;2;238;242;239m  3. /moai plan "describe your first feature"[m  [38;2;217;119;87m│[m
+[38;2;217;119;87m│[m                                                 [38;2;217;119;87m│[m
+[38;2;217;119;87m╰─────────────────────────────────────────────────╯[m
+  Pre-push hook installed (.git/hooks/pre-push)
+  Pre-commit hook installed (.git/hooks/pre-commit)
+[38;2;92;199;201m·[m A newer moai binary is available: v3.0.1 (current: v3.0.0). Run 'moai update' to upgrade and refresh templates.

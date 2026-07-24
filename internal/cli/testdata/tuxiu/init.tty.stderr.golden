@@ -1,0 +1,19 @@
+[38;2;92;199;201m·[m Initializing MoAI project...
+  [38;2;217;119;87m⠋[m Detection: Analyzing project structure...[2K  [38;2;91;191;154m✓[m Detected project structure
+  [38;2;217;119;87m⠋[m Validation: Using mode: tdd...[2K  [38;2;91;191;154m✓[m Mode validated
+  [38;2;217;119;87m⠋[m Validation: Validating project structure...[2K  [38;2;91;191;154m✓[m Validation passed
+  [38;2;217;119;87m⠋[m Initialization: Creating project structure...[2K  [38;2;217;119;87m⠙[m Initialization: Creating project structure...[2K  [38;2;91;191;154m✓[m Created 2 files
+
+[38;2;28;38;36m╭─────────────────────────────────────────────────╮[0m
+[38;2;28;38;36m│[0m  [38;2;91;191;154m✓[0m MoAI project initialized                     [38;2;28;38;36m│[0m
+[38;2;28;38;36m│[0m                                                 [38;2;28;38;36m│[0m
+[38;2;28;38;36m│[0m  [38;2;154;163;160mDirectories[0m  13 created                        [38;2;28;38;36m│[0m
+[38;2;28;38;36m│[0m  [38;2;154;163;160mFiles      [0m  2 created                         [38;2;28;38;36m│[0m
+[38;2;28;38;36m│[0m  Next steps:                                    [38;2;28;38;36m│[0m
+[38;2;28;38;36m│[0m    1. cd cap_init_tty                           [38;2;28;38;36m│[0m
+[38;2;28;38;36m│[0m    2. moai cc                                   [38;2;28;38;36m│[0m
+[38;2;28;38;36m│[0m    3. /moai plan "describe your first feature"  [38;2;28;38;36m│[0m
+[38;2;28;38;36m╰─────────────────────────────────────────────────╯[0m
+  Pre-push hook installed (.git/hooks/pre-push)
+  Pre-commit hook installed (.git/hooks/pre-commit)
+[38;2;92;199;201m·[m A newer moai binary is available: v3.0.1 (current: v3.0.0). Run 'moai update' to upgrade and refresh templates.

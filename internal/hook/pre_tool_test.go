@@ -1168,7 +1168,7 @@ func TestPreToolHandler_LoadGateConfig(t *testing.T) {
 		}
 	})
 
-	t.Run("astgrep gate default off via config", func(t *testing.T) {
+	t.Run("astgrep gate default advisory-on via config", func(t *testing.T) {
 		t.Parallel()
 		appCfg := newTestConfig()
 		h := &preToolHandler{
@@ -1179,8 +1179,14 @@ func TestPreToolHandler_LoadGateConfig(t *testing.T) {
 		if cfg == nil || cfg.AstGrepGate == nil {
 			t.Fatal("expected non-nil astgrep gate config")
 		}
-		if cfg.AstGrepGate.Enabled {
-			t.Error("AstGrepGate.Enabled should default to false (opt-in invariant)")
+		if !cfg.AstGrepGate.Enabled {
+			t.Error("AstGrepGate.Enabled should default to true (advisory-on)")
+		}
+		if !cfg.AstGrepGate.WarnOnlyMode {
+			t.Error("AstGrepGate.WarnOnlyMode should default to true (advisory-on)")
+		}
+		if cfg.AstGrepGate.BlockOnError {
+			t.Error("AstGrepGate.BlockOnError should default to false (advisory-on)")
 		}
 	})
 
