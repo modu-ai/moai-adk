@@ -66,7 +66,7 @@ m1_to_mN_commit_strategy: one commit per milestone (M1..M5) + M6 evidence commit
 
 ```yaml
 sync_complete_at: 2026-07-25
-sync_commit_sha: pending-backfill-cc2219-sync
+sync_commit_sha: e13362996dd3e01512e628d495c0bedebad155ff
 sync_status: audit-ready
 changelog_entry_position: Unreleased > Added (single entry, top of section)
 frontmatter_status_transitions:
