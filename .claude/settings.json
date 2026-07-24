@@ -96,6 +96,11 @@
             "type": "command"
           },
           {
+            "command": "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-stop-goal.sh\"",
+            "timeout": 120,
+            "type": "command"
+          },
+          {
             "command": "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-security-turn.sh\"",
             "timeout": 5,
             "type": "command"
