@@ -52,7 +52,7 @@ Measured the SKILL.md body **after** the inline draft: 17,683 bytes / 2,614 word
 
 ```yaml
 run_complete_at: "2026-07-24"
-run_commit_sha: "pending-backfill-M1"   # backfilled in the follow-up chore commit (sibling SKILLPORT pattern)
+run_commit_sha: "372289b7e"   # backfilled in this follow-up chore commit (sibling SKILLPORT pattern)
 run_status: PASS
 ac_pass_count: 18
 ac_fail_count: 0
