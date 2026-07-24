@@ -1,0 +1,50 @@
+Current version   moai-adk v3.0.0
+Current version   moai-adk v3.0.0
+●  Syncing templates  from embedded filesystem
+
+Analyzing merge changes ---
+
+Proceeding with template deployment ---
+
+  ○ Backing up .moai/config...
+  ✓ .moai/config backed up
+  ○ Backing up user-owned namespace...
+  ✓ User-owned namespace backed up: .moai/backups/update-2026-07-24T17-07-47Z
+  ○ Validating templates...
+  ✓ All templates validated
+  ○ Removing .claude/settings.json...
+  ✓ Removed .claude/settings.json
+  ○ Removing .claude/commands/moai...
+  ✓ Removed .claude/commands/moai
+  ○ Removing .claude/agents/moai...
+  ✓ Removed .claude/agents/moai
+  ○ Removing .claude/skills/moai*...
+  ✓ Removed .claude/skills/moai*
+  ○ Removing .claude/rules/moai...
+  ✓ Removed .claude/rules/moai
+  ○ Removing .claude/output-styles/moai...
+  ✓ Removed .claude/output-styles/moai
+  ○ Removing .claude/hooks/moai...
+  ✓ Removed .claude/hooks/moai
+  ○ Removing .moai/config...
+  ✓ Removed .moai/config
+  ○ Deploying templates...
+  ✓ Templates deployed
+  ○ Restoring user settings...
+  ✓ User settings restored
+  ✓ .gitignore user patterns preserved
+
+[✓ Updated 26 files
+
+Backup: .moai-backups/20260725_020747
+Recover: moai update --restore-config .moai-backups/20260725_020747]
+Hooks: running Claude Code sessions need a /hooks review (or a Claude Code restart) for new or changed hooks to take effect.
+
+To reconfigure project settings (development mode, git, model policy), run:
+   moai update -c
+  Pre-push hook installed (.git/hooks/pre-push)
+  Pre-commit hook installed (.git/hooks/pre-commit)
+✓  archive: moai-domain-backend  → .moai/archive/skills/v2.16/moai-domain-backend
+✓  archive: moai-domain-frontend  → .moai/archive/skills/v2.16/moai-domain-frontend
+✓  archive: moai-domain-database  → .moai/archive/skills/v2.16/moai-domain-database
+[total: 3 skills archived, 0 user customizations modified]

@@ -1,0 +1,23 @@
+· Initializing MoAI project...
+  ● Detection: Analyzing project structure...
+  ✓ Detected project structure
+  ● Validation: Using mode: tdd...
+  ✓ Mode validated
+  ● Validation: Validating project structure...
+  ✓ Validation passed
+  ● Initialization: Creating project structure...
+  ✓ Created 2 files
+
+╭─────────────────────────────────────────────────╮
+│  ✓ MoAI project initialized                     │
+│                                                 │
+│  Directories  13 created                        │
+│  Files        2 created                         │
+│  Next steps:                                    │
+│    1. cd cap_init_notty                         │
+│    2. moai cc                                   │
+│    3. /moai plan "describe your first feature"  │
+╰─────────────────────────────────────────────────╯
+  Pre-push hook installed (.git/hooks/pre-push)
+  Pre-commit hook installed (.git/hooks/pre-commit)
+· A newer moai binary is available: v3.0.1 (current: v3.0.0). Run 'moai update' to upgrade and refresh templates.

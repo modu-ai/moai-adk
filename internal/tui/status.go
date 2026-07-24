@@ -18,19 +18,19 @@ import (
 func StatusIcon(kind string) string {
 	switch kind {
 	case "ok":
-		return "✓"
+		return string(GlyphDone)
 	case "warn":
-		return "!"
+		return string(GlyphWarn)
 	case "err":
-		return "✗"
+		return string(GlyphErr)
 	case "info":
-		return "·"
+		return string(GlyphInfo)
 	case "run":
-		return "●"
+		return string(GlyphRun)
 	case "skip":
-		return "○"
+		return string(GlyphSkip)
 	default: // "dot" and unknown
-		return "·"
+		return string(GlyphInfo)
 	}
 }
 

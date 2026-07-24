@@ -69,7 +69,7 @@ func RenderStatusLine(status CheckStatus, label, message string, labelWidth int)
 
 // RenderSuccessCard renders a success message inside a rounded border card.
 func RenderSuccessCard(title string, details ...string) string {
-	titleLine := SuccessStyle.Render("✓") + " " + title
+	titleLine := SuccessStyle.Render(string(tui.GlyphDone)) + " " + title
 	body := titleLine
 	if len(details) > 0 {
 		body += "\n\n" + strings.Join(details, "\n")
