@@ -596,10 +596,8 @@ html[lang="zh"] body { font-family: "Pretendard", "Noto Sans CJK SC", system-ui,
   letter-spacing: var(--tracking-body); text-wrap: pretty;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
-.agentfm-default-tag {
-  font-size: 10px; color: var(--fg-3); font-style: normal;
-  white-space: nowrap; flex: none;
-}
+/* The per-row "(default)" caption rule was removed — the tier badge already
+   distinguishes a profile default from a manual override. */
 
 /* inputs + selects */
 .input, .select {

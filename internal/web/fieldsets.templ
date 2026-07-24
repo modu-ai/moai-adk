@@ -465,8 +465,13 @@ templ agentFMRow(agent agentfm.AgentInfo, llm config.LLMConfig, errs map[string]
 					}
 					<code class="field__key agentfm-name">{ agent.Name }</code>
 				</span>
+				// The English text is the SERVER-SIDE BASELINE, read from the agent
+				// .md frontmatter (the SSOT). agentdesc.<name> carries only the
+				// ko/ja/zh translations — applyI18n leaves a node untouched when the
+				// key is absent from the active locale, so en renders the .md text
+				// verbatim and never a duplicated (and drift-prone) i18n copy.
 				if short := agentDescriptionShort(agent.Description); short != "" {
-					<span class="agentfm-desc">{ short }</span>
+					<span class="agentfm-desc" data-i18n={ "agentdesc." + agent.Name }>{ short }</span>
 				}
 			</div>
 			<div class="agentfm-row__ctrl">
@@ -481,9 +486,6 @@ templ agentFMRow(agent agentfm.AgentInfo, llm config.LLMConfig, errs map[string]
 						}
 					</select>
 				</span>
-				if agentModelIsDefault(llm, agent) {
-					<span class="field__hint agentfm-default-tag" data-i18n="agentfm.default">(default)</span>
-				}
 			</div>
 			<div class="agentfm-row__ctrl">
 				<span class="select-wrap">
@@ -497,9 +499,6 @@ templ agentFMRow(agent agentfm.AgentInfo, llm config.LLMConfig, errs map[string]
 						}
 					</select>
 				</span>
-				if agentEffortIsDefault(llm, agent) {
-					<span class="field__hint agentfm-default-tag" data-i18n="agentfm.default">(default)</span>
-				}
 			</div>
 			if msg := fieldErrorMsg(errs, "agentfm."+agent.Name+".model"); msg != "" {
 				<span class="field-error">@icon("alert-circle")<span>{ msg }</span></span>

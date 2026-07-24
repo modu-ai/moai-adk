@@ -79,10 +79,14 @@ func TestAgentFMActualValueSelection(t *testing.T) {
 }
 
 // TestAgentFMDefaultShowsProfileMatrixValue verifies an agent with no override
-// shows the PROFILE-MATRIX default as the selected option + "(default)" annotation.
-// manager-develop under the medium profile (develop group) resolves to opus/xhigh
-// (defaultProfileMatrix). (A moai-core agent is used because the harness rows no
-// longer render — G2-2.)
+// shows the PROFILE-MATRIX default as the selected option. manager-develop under
+// the medium profile (develop group) resolves to opus/xhigh (defaultProfileMatrix).
+// (A moai-core agent is used because the harness rows no longer render — G2-2.)
+//
+// The former "(default)" annotation half of this test is INVERTED: the caption was
+// removed in the UX follow-up batch (the tier badge already carries the
+// profile-vs-override distinction), so the assertion now pins its ABSENCE. The
+// selected-value semantics it guarded are unchanged.
 func TestAgentFMDefaultShowsProfileMatrixValue(t *testing.T) {
 	root := t.TempDir()
 	seedAgentFMFile(t, root, "moai", "manager-develop", "", "")
@@ -96,9 +100,9 @@ func TestAgentFMDefaultShowsProfileMatrixValue(t *testing.T) {
 	if strings.Contains(body, `<option value="high" selected`) {
 		t.Error(`manager-develop shows the badge-tier "high" — read path must derive from the profile matrix (xhigh under medium)`)
 	}
-	// "(default)" annotation for the profile-derived (non-override) value.
-	if !strings.Contains(body, `data-i18n="agentfm.default"`) {
-		t.Error(`missing "(default)" annotation for the profile-derived default`)
+	// The "(default)" annotation is REMOVED — no caption on a profile-derived value.
+	if strings.Contains(body, `data-i18n="agentfm.default"`) {
+		t.Error(`the "(default)" annotation must no longer render on a profile-derived value`)
 	}
 }
 

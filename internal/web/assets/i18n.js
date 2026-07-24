@@ -367,7 +367,13 @@ window.MOAI_I18N = {
     "fieldDesc.agentfm.effort.high": "High effort.",
     "fieldDesc.agentfm.effort.xhigh": "Extra-high effort (adaptive thinking).",
     "fieldDesc.agentfm.effort.max": "Maximum effort (override sentinel — no tier color).",
-    "agentfm.default": "(default)",
+    // NOTE: the agentdesc.* per-agent description keys are deliberately ABSENT
+    // from `en`. English is rendered server-side from each agent's .md
+    // frontmatter `description:` field (the single source of truth), and
+    // applyI18n leaves a node untouched when the key is missing from the active
+    // locale. Adding en copies here would duplicate the .md text into a second
+    // surface that silently goes stale whenever an agent description is edited.
+    // The ko/ja/zh blocks below carry the translations.
   },
 
   ko: {
@@ -390,7 +396,17 @@ window.MOAI_I18N = {
     "fieldDesc.agentfm.effort.high": "높은 effort.",
     "fieldDesc.agentfm.effort.xhigh": "최고 effort(적응형 사고).",
     "fieldDesc.agentfm.effort.max": "최대 effort(오버라이드 센티넬 — 티어 색상 없음).",
-    "agentfm.default": "(기본값)",
+    // 서브 에이전트 한 줄 설명 (en은 agent .md frontmatter를 그대로 사용).
+    "agentdesc.manager-spec": "SPEC 작성 전담 — plan 단계에서 spec.md / plan.md / acceptance.md를 씁니다.",
+    "agentdesc.plan-auditor": "plan 단계 문서 독립 감사 — 구현 전에 SPEC의 결함을 비판적으로 찾아냅니다.",
+    "agentdesc.sync-auditor": "구현 결과를 회의적으로 평가 — 완성된 코드를 인수 기준에 맞춰 직접 검증합니다.",
+    "agentdesc.manager-develop": "구현 전담 (run 단계) — tdd / ddd / autofix 세 가지 사이클을 지원합니다.",
+    "agentdesc.super-advisor": "고심도 추론 자문 — 모든 단계에서 구속력 없는 진단과 선택지를 제시합니다.",
+    "agentdesc.manager-design": "Claude Design 연동 담당 — 디자인 시스템 생성·동기화와 화면 산출물, 핸드오프를 맡습니다.",
+    "agentdesc.builder-harness": "산출물 메타 생성 — 에이전트·스킬·플러그인·커맨드·훅·MCP/LSP 서버의 뼈대를 만듭니다.",
+    "agentdesc.e2e-tester": "종단 간(E2E) 테스트 실행 — 웹·모바일·데스크톱 앱의 사용자 여정을 검증합니다.",
+    "agentdesc.manager-docs": "문서화 전담 (sync 단계) — CHANGELOG.md, README.md, docs-site를 씁니다.",
+    "agentdesc.manager-git": "Git 워크플로 전담 — 커밋, 브랜치, PR, 머지, 릴리스를 관리합니다.",
     "f.quality.quality_extras_enabled.title": "퀄리티 추가 기능",
     "f.quality.quality_extras_enabled.desc": "고급 퀄리티 추가 기능(DDD 게이트)을 활성화합니다.",
     // Agent-settings surface keys (frontmatter card + generic section).
@@ -743,7 +759,17 @@ window.MOAI_I18N = {
     "fieldDesc.agentfm.effort.high": "高 effort。",
     "fieldDesc.agentfm.effort.xhigh": "最高 effort（適応型思考）。",
     "fieldDesc.agentfm.effort.max": "最大 effort（オーバーライドセンチネル — ティア色なし）。",
-    "agentfm.default": "(デフォルト)",
+    // サブエージェントの一行説明（en は agent .md の frontmatter をそのまま使用）。
+    "agentdesc.manager-spec": "SPEC 作成の専任 — plan フェーズで spec.md / plan.md / acceptance.md を書きます。",
+    "agentdesc.plan-auditor": "plan フェーズ文書の独立監査 — 実装前に SPEC の欠陥を批判的に洗い出します。",
+    "agentdesc.sync-auditor": "実装結果を懐疑的に評価 — 完成したコードを受け入れ基準に照らして検証します。",
+    "agentdesc.manager-develop": "実装の専任（run フェーズ）— tdd / ddd / autofix の3サイクルに対応します。",
+    "agentdesc.super-advisor": "高度な推論による助言 — 全フェーズで拘束力のない診断と選択肢を示します。",
+    "agentdesc.manager-design": "Claude Design 連携の担当 — デザインシステムの生成・同期、画面成果物、ハンドオフを扱います。",
+    "agentdesc.builder-harness": "成果物メタの生成 — エージェント・スキル・プラグイン・コマンド・フック・MCP/LSP サーバーの骨組みを作ります。",
+    "agentdesc.e2e-tester": "エンドツーエンド（E2E）テストの実行 — Web・モバイル・デスクトップの利用動線を検証します。",
+    "agentdesc.manager-docs": "ドキュメントの専任（sync フェーズ）— CHANGELOG.md、README.md、docs-site を書きます。",
+    "agentdesc.manager-git": "Git ワークフローの専任 — コミット、ブランチ、PR、マージ、リリースを管理します。",
     "f.quality.quality_extras_enabled.title": "品質エクストラ",
     "f.quality.quality_extras_enabled.desc": "高度な品質エクストラ機能（DDDゲート）を有効化します。",
     // Agent-settings surface keys (frontmatter card + generic section).
@@ -1096,7 +1122,17 @@ window.MOAI_I18N = {
     "fieldDesc.agentfm.effort.high": "高 effort。",
     "fieldDesc.agentfm.effort.xhigh": "最高 effort（自适应思考）。",
     "fieldDesc.agentfm.effort.max": "最大 effort（覆盖哨兵 — 无层颜色）。",
-    "agentfm.default": "(默认)",
+    // 子代理的一行说明（en 直接沿用 agent .md 的 frontmatter）。
+    "agentdesc.manager-spec": "SPEC 编写专员 — 在 plan 阶段撰写 spec.md / plan.md / acceptance.md。",
+    "agentdesc.plan-auditor": "plan 阶段文档独立审计 — 在实现之前挑出 SPEC 中的缺陷。",
+    "agentdesc.sync-auditor": "以怀疑视角评估实现 — 对照验收标准实测已完成的代码。",
+    "agentdesc.manager-develop": "实现专员（run 阶段）— 支持 tdd / ddd / autofix 三种循环。",
+    "agentdesc.super-advisor": "高强度推理咨询 — 在各阶段给出不具约束力的诊断与备选方案。",
+    "agentdesc.manager-design": "Claude Design 协作负责人 — 负责设计系统生成与同步、页面产物及交接。",
+    "agentdesc.builder-harness": "产物元信息生成 — 搭建 agent、skill、plugin、command、hook 及 MCP/LSP 服务器的骨架。",
+    "agentdesc.e2e-tester": "端到端（E2E）测试执行 — 验证 Web、移动端与桌面应用的用户路径。",
+    "agentdesc.manager-docs": "文档专员（sync 阶段）— 撰写 CHANGELOG.md、README.md 与 docs-site。",
+    "agentdesc.manager-git": "Git 工作流专员 — 管理提交、分支、PR、合并与发布。",
     "f.quality.quality_extras_enabled.title": "质量附加功能",
     "f.quality.quality_extras_enabled.desc": "启用高级质量附加功能（DDD 门控）。",
     // Agent-settings surface keys (frontmatter card + generic section).

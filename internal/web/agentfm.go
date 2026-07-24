@@ -38,11 +38,12 @@ const perfTierCustom = "custom"
 
 // agentFMModelValues / agentFMEffortValues는 agentfm override select의 폼 옵션
 // 값이다. G3 repoint 이후 per-agent 편집은 llm.agent_overrides 로 영속화되므로,
-// model 옵션은 override-valid 집합 {inherit, sonnet, opus, fable} 에 맞춘다 —
-// haiku 는 HaikuResidualRule(config.validOverrideModels) 에서 override 로 금지되어
-// 제외한다.
+// model 옵션은 override-valid 집합 {inherit, haiku, sonnet, opus, fable} 에 맞춘다
+// (config.validOverrideModels 와 동일 집합). haiku 는 명시적 per-agent 경제성
+// 선택지로 허용되며, 정렬은 저렴한 모델부터 inherit → haiku → sonnet → opus →
+// fable 순이다.
 func agentFMModelValues() []string {
-	return []string{v4manifest.ModelInherit, v4manifest.ModelSonnet, v4manifest.ModelOpus, modelFable}
+	return []string{v4manifest.ModelInherit, v4manifest.ModelHaiku, v4manifest.ModelSonnet, v4manifest.ModelOpus, modelFable}
 }
 
 func agentFMEffortValues() []string {
@@ -202,13 +203,6 @@ func agentResolvedEffort(llm config.LLMConfig, name string) string {
 	return me.Effort
 }
 
-// agentHasOverride reports whether the agent carries an explicit
-// llm.agent_overrides pin (vs a profile-derived default value).
-func agentHasOverride(llm config.LLMConfig, name string) bool {
-	_, ok := llm.AgentOverrides[name]
-	return ok
-}
-
 // agentSelectedModel returns the model the row's select should display as
 // selected — the profile-matrix-resolved value (G3-1).
 func agentSelectedModel(llm config.LLMConfig, info agentfm.AgentInfo) string {
@@ -221,18 +215,9 @@ func agentSelectedEffort(llm config.LLMConfig, info agentfm.AgentInfo) string {
 	return agentResolvedEffort(llm, info.Name)
 }
 
-// agentModelIsDefault reports whether the shown model is a profile-derived default
-// (no per-agent override) rather than a hand-pinned value. Drives the "(default)"
-// row tag.
-func agentModelIsDefault(llm config.LLMConfig, info agentfm.AgentInfo) bool {
-	return !agentHasOverride(llm, info.Name)
-}
-
-// agentEffortIsDefault reports whether the shown effort is a profile-derived
-// default (no per-agent override).
-func agentEffortIsDefault(llm config.LLMConfig, info agentfm.AgentInfo) bool {
-	return !agentHasOverride(llm, info.Name)
-}
+// NOTE: agentHasOverride / agentModelIsDefault / agentEffortIsDefault were
+// removed with the per-row "(default)" caption — the profile-vs-override
+// distinction is already carried by the tier badge, so the extra tag was noise.
 
 // profileMatrixData returns the per-profile per-agent {model, effort} matrix for
 // the client-side tier-repopulation handler (G3-3), emitted via templ.JSONScript.
