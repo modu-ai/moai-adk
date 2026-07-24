@@ -72,7 +72,7 @@ m1_to_mN_commit_strategy: single M1 commit (removal-only; no milestone split)
 
 ```yaml
 sync_complete_at: 2026-07-25
-sync_commit_sha: PENDING_BACKFILL
+sync_commit_sha: 1c46c206e
 sync_status: PASS
 changelog_entry_position: "Unreleased > Removed (SPEC-DB-RETIRE-001)"
 readme_change: "none needed — no README.md/README.ko.md reference to db-schema-sync/dbsync/.moai/project/db/db.yaml found"
