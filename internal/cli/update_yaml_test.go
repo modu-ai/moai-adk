@@ -207,6 +207,48 @@ func TestDeepMergeMaps(t *testing.T) {
 			},
 		},
 		{
+			// 2-way/3-way system-field parity: DeepMerge3Way protects both
+			// "version" and "template_version"; the 2-way fallback must agree,
+			// otherwise a restore that degrades to 2-way (missing template
+			// defaults) resurrects a stale v2 moai.version over the deployed v3.
+			name: "version always uses new value (parity with 3-way)",
+			newMap: map[string]any{
+				"version": "v3.0.0",
+			},
+			oldMap: map[string]any{
+				"version": "v2.1.0",
+			},
+			check: func(t *testing.T, result map[string]any) {
+				if result["version"] != "v3.0.0" {
+					t.Errorf("expected v3.0.0, got %v", result["version"])
+				}
+			},
+		},
+		{
+			// Real system.yaml shape: version nested under the moai key. The
+			// systemFields guard applies at every recursion level.
+			name: "nested moai.version always uses new value",
+			newMap: map[string]any{
+				"moai": map[string]any{
+					"version": "v3.0.0",
+				},
+			},
+			oldMap: map[string]any{
+				"moai": map[string]any{
+					"version": "v2.16.1",
+				},
+			},
+			check: func(t *testing.T, result map[string]any) {
+				moai, ok := result["moai"].(map[string]any)
+				if !ok {
+					t.Fatal("moai should be a map")
+				}
+				if moai["version"] != "v3.0.0" {
+					t.Errorf("moai.version = %v, want v3.0.0 (backup must not override deployed version)", moai["version"])
+				}
+			},
+		},
+		{
 			name: "nested maps merged recursively",
 			newMap: map[string]any{
 				"nested": map[string]any{
@@ -348,6 +390,22 @@ func TestMergeYAMLDeep(t *testing.T) {
 				s := string(result)
 				if !contains(s, "2.0") {
 					t.Errorf("expected template_version 2.0, got %s", s)
+				}
+			},
+		},
+		{
+			// 2-way fallback must not restore a stale v2 moai.version over the
+			// deployed v3 one (parity with the 3-way path's systemFields).
+			name:    "backup moai.version does not override deployed version",
+			newData: "moai:\n  version: v3.0.0\n",
+			oldData: "moai:\n  version: v2.1.0\n",
+			check: func(t *testing.T, result []byte) {
+				s := string(result)
+				if !contains(s, "v3.0.0") {
+					t.Errorf("expected deployed version v3.0.0 in result, got %s", s)
+				}
+				if contains(s, "v2.1.0") {
+					t.Errorf("stale backup version v2.1.0 leaked into result: %s", s)
 				}
 			},
 		},

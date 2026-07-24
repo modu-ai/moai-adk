@@ -130,13 +130,17 @@ func MergeYAMLDeep(newData, oldData []byte) ([]byte, error) {
 }
 
 // DeepMergeMaps recursively merges oldMap into newMap, preserving old values.
-// System fields (like template_version) always use new values.
+// System fields (version, template_version) always use new values.
 func DeepMergeMaps(newMap, oldMap map[string]any) map[string]any {
 	result := make(map[string]any)
 
-	// System fields that should always use new values (not preserved from old config)
+	// System fields that should always use new values (not preserved from old
+	// config). MUST stay in parity with DeepMerge3Way's systemFields: when the
+	// restore degrades to this 2-way fallback (template defaults unavailable),
+	// a backup carrying an old moai.version must not override the deployed one.
 	systemFields := map[string]bool{
 		"template_version": true,
+		"version":          true,
 	}
 
 	// Copy all new values
