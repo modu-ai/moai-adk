@@ -61,6 +61,8 @@ Invariants:
 | No Go test enforces whole-tree DEPTH-env=0 | PASS | `grep -rn CLAUDE_CODE_MAX_SUBAGENT_SPAWN_DEPTH --include=*.go internal/ cmd/ pkg/` → 0 matches (CI does not break) |
 | Other 10 retained agents carry no `Agent` in `tools` | PASS | AC-SND-012 loop → no UNEXPECTED lines |
 
+> M2 tooling-enforcement completion (post-close cascade, status stays `completed`): the `moai agent lint` LR-02 rule (`internal/cli/agentlint/agent_lint.go` `checkAgentInTools` + `nestingPilotAllowlist`) now allowlists `sync-auditor` so the pilot frontmatter (`tools: … Agent …`) passes CI, while LR-02 STILL errors for every non-allowlisted agent (flat-hierarchy guard for the other 10). New tests: `TestCheckAgentInTools_NestingPilotAllowlist` + 2 table cases (allowlist-exempt + guard-intact). `bin/moai agent lint` → LR-02 count 0 on both the live `sync-auditor.md` and its template mirror.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 ```yaml
