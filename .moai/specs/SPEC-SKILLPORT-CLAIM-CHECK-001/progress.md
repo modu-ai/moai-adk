@@ -120,7 +120,7 @@ repo-wide condition that this SPEC neither improves nor worsens.
 
 ```yaml
 sync_complete_at: "2026-07-24"
-sync_commit_sha: "pending-backfill-skillport-epic"
+sync_commit_sha: "880bdc98d"
 sync_status: PASS
 b12_self_test_a: "grep -c 'SPEC-SKILLPORT-CLAIM-CHECK-001' CHANGELOG.md (pre-emission) → 0"
 b12_self_test_b: "acceptance.md SSOT AC row count (grep -cE '^\\| AC-DCC-[0-9]+ \\|') → 17; CHANGELOG entry references '17/17' for this SPEC"

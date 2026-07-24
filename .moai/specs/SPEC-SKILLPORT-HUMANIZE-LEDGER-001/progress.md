@@ -72,7 +72,7 @@ level3_placement: inline   # measured 17683B/2614w < ~5K-token Level-2 budget (R
 
 ```yaml
 sync_complete_at: "2026-07-24"
-sync_commit_sha: "pending-backfill-skillport-epic"
+sync_commit_sha: "880bdc98d"
 sync_status: PASS
 b12_self_test_a: "grep -c 'SPEC-SKILLPORT-HUMANIZE-LEDGER-001' CHANGELOG.md (pre-emission) → 0"
 b12_self_test_b: "acceptance.md SSOT AC row count (grep -cE '^\\| AC-HML-[0-9]+ \\|') → 18; CHANGELOG entry references '18/18' for this SPEC"

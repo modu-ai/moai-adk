@@ -84,7 +84,7 @@ m1_to_mN_commit_strategy: single run-phase commit (net-new skill authoring, no b
 
 ```yaml
 sync_complete_at: "2026-07-24"
-sync_commit_sha: "pending-backfill-skillport-epic"
+sync_commit_sha: "880bdc98d"
 sync_status: PASS
 b12_self_test_a: "grep -c 'SPEC-SKILLPORT-SVG-INFOGRAPHIC-001' CHANGELOG.md (pre-emission) → 0"
 b12_self_test_b: "acceptance.md SSOT AC row count (grep -cE '^\\| AC-SVG-[0-9]+ \\|') → 19; CHANGELOG entry references '19/19' for this SPEC"
