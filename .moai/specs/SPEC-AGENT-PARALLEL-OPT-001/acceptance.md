@@ -1,7 +1,7 @@
 ---
 id: SPEC-AGENT-PARALLEL-OPT-001
 title: "Agent instruction diet + plan/run/sync parallelization maximization — Acceptance Criteria"
-version: "0.8.0"
+version: "0.9.0"
 status: draft
 created: 2026-07-25
 updated: 2026-07-25
@@ -21,14 +21,15 @@ tier: L
 - 라인 수 AC는 `wc -l` 출력의 정확한 정수로 판정한다. 근사치("약 340줄") 금지.
 - MUST 등급 AC 1건이라도 FAIL이면 SPEC은 close 불가다.
 
-### A.1 판정 명령 저작 규칙 (공허 GREEN 방지)
+### A.1 판정 명령 저작 규칙 (공허 GREEN·거짓 실패 방지)
 
-아래 4개 규칙은 본 SPEC에서 **실제 공허 GREEN을 만들어낸 원인**을 코드화한 것이다. 새 판정 명령을 쓰거나 기존 명령을 고칠 때 매번 적용한다.
+아래 5개 규칙은 본 SPEC에서 **실제로 공허 GREEN(규칙 1·2·3·5) 또는 거짓 실패(규칙 1·4)를 만들어낸 원인**을 코드화한 것이다. 새 판정 명령을 쓰거나 기존 명령을 고칠 때 매번 적용한다. 공통 뿌리는 하나다 — 판정 명령이 **무엇을 실제로 읽고 무엇을 실제로 판정하는지** 확인하지 않은 것.
 
 1. **표 셀에 `-E` 교대 금지.** 마크다운 표 셀에서 `|`는 셀 구분자라 `\|`로 escape해야 하는데, `grep -E`에서 `\|`는 교대가 아니라 **리터럴 `|` 문자**다. 두 제약이 충돌하므로 교대가 필요하면 코드블록(§D.2.1 / §D.5.1)에 두거나 `-e` 반복(`grep -E -e 'A' -e 'B'`)으로 파이프를 제거한다. `grep -c`/`-l`/`-r` 같은 **BRE** 모드에서만 표 셀의 `\|`가 정상 교대로 동작한다. 실측 피해: AC-APO-024b·050·061·071·071b가 **공허 GREEN**, AC-APO-023이 **부당 FAIL**.
 2. **대상 파일의 언어와 패턴의 언어를 일치시킨다.** `.claude/skills/**` · `.claude/agents/**` · `.claude/rules/**`는 CLAUDE.md §9(*Commands, Agents, Skills Instructions: Always English*)에 따라 **영어 전용**이므로 한국어 패턴은 그 파일이 담을 수 **있는** 어떤 문자열과도 매치하지 못한다 — 결과가 항상 0이라 `== 0` 판정이 자동 통과한다. 실측 피해: AC-APO-024b.
 3. **부정형 판정은 RED fixture로 증명한다.** `== 0` 판정은 "0이 나왔다"만으로 유효하지 않다. **금지 대상 문자열을 실제로 심은 사본에서 명령이 FAIL함**을 보이고, 원본에서 PASS함을 보이는 RED/GREEN 왕복이 있어야 근거로 인정한다(§E 품질 게이트의 중립성 항목과 동일 규범).
-4. **이식성을 확인한다.** 판정 명령은 BSD `grep`(macOS `/usr/bin/grep`)과 `ugrep` 양쪽에서 **같은 값**을 내야 한다. `\b`(word boundary)를 한 패턴에 **여러 번** 쓰면 `ugrep`이 조용히 0을 반환하거나 정지하는 사례를 실측했다 — 그 자체가 또 하나의 공허 GREEN 경로다. `\b` 대신 POSIX 문자클래스(`[^a-z]` 등)를 쓴다.
+4. **가드의 정규식을 면제 없이 재구현하지 않는다.** 기계 가드(`TestTemplateNoInternalContentLeak` 등)는 **탐지 패턴과 면제 목록을 한 쌍으로** 소유한다. AC가 그 패턴만 베끼고 면제(`pedagogicalAllowlist` 등)를 빼면, 그 AC는 **거짓 실패만 생산할 수 있고 가드가 놓친 것은 하나도 잡지 못한다** — 특히 스코프까지 더 좁으면(변경 파일 ⊂ 전체 트리) 순수 손실이다. 판정은 **가드 실행을 권위로 삼고**(`go test -run <Guard>`), 보조 스캔은 *가드가 구조적으로 알 수 없는 클래스*(예: 본 SPEC 고유 토큰 계열, 가드가 CI에서 강제하지 않는 opt-in 티어)로만 좁혀 **조기 경보**로 표기한다. 보조 스캔은 변경 **라인**(`git diff -U0`) 스코프를 쓴다 — 파일 스코프는 건드린 파일의 **선행** 토큰까지 끌어와 거짓 실패를 만든다. 실측 피해: AC-APO-061이 allowlist 등재된 교육용 예시 2건에 대해 곧 거짓 실패할 예정이었고, AC-APO-071은 가드 S2의 `requireHexLetter` 정련을 빠뜨려 십진 상수를 오탐하는 형태였다. **보조 스캔을 붙이기 전에 "가드가 이미 덮는가"를 클래스 단위로 실측 대조하고, 덮는다면 붙이지 않는다** — 거짓 양성만 내는 중복 검사는 검사가 없는 것보다 나쁘다.
+5. **이식성을 확인한다.** 판정 명령은 BSD `grep`(macOS `/usr/bin/grep`)과 `ugrep` 양쪽에서 **같은 값**을 내야 한다. `\b`(word boundary)를 한 패턴에 **여러 번** 쓰면 `ugrep`이 조용히 0을 반환하거나 정지하는 사례를 실측했다 — 그 자체가 또 하나의 공허 GREEN 경로다. `\b` 대신 POSIX 문자클래스(`[^a-z]` 등)를 쓴다.
 
 ---
 
@@ -218,7 +219,7 @@ done
 | AC-APO-047 | 047 | MUST | `manager-develop.md`에 DDD/TDD 전문 2회 기술 부재 — 공통 골격 + 모드 차이 구조 |
 | AC-APO-048 | 048 | MUST | "one atomic change" 제약에 패키지 내부 한정 수식어 존재 |
 | AC-APO-049 | 049 | MUST | 3개 판정 동시 충족: (a) **선택 규칙 산문 소멸** — `grep -ci "two scoring models\|scoring model selection" .claude/agents/moai/sync-auditor.md` == 0 (baseline 2 — L44 `## Scoring Model Selection`, L46 `Two scoring models exist`). 잔존 모델을 설명하는 일반 표현(예: `## Scoring`)은 허용된다. (b) `grep -c "^## Evaluation Report" .claude/agents/moai/sync-auditor.md` == 1 (baseline 2 — L67 평면형 + L178 계층형). (c) **정확히 1개 모델만 잔존** — 두 **정의 마커**의 합이 1: `M=$(grep -c "^## HRN-003 Hierarchical Scoring Protocol" .claude/agents/moai/sync-auditor.md); N=$(grep -c "^### Dimension Scores" .claude/agents/moai/sync-auditor.md); test $((M+N)) -eq 1`. **baseline M=1(:130 정의 heading), N=1(:71 평면 모델 report) → 합 2 → FAIL**. `M`은 반드시 heading 앵커(`^## `)여야 한다 — 앵커 없는 `grep -c "HRN-003 Hierarchical Scoring Protocol"`는 2를 반환하며(:49는 정의가 아니라 산문 cross-reference), 그 형태를 쓰면 "계층형 유지 + 평면형 제거" 분기가 M=2·N=0·합 2로 **부당 FAIL** 한다. 앵커 적용 시 두 분기 모두 합 1 → PASS |
-| AC-APO-050 | 050 | MUST | `grep -ciE -e 'nextra' -e 'wcag' -e 'page.?speed' -e 'lighthouse' .claude/agents/moai/manager-docs.md` == 0. **구 명령 폐기 사유(실측)**: 종전 `grep -ciE "nextra\|wcag\|page.?speed\|lighthouse"`는 `-E` 모드에서 `\|`가 교대가 아니라 리터럴 파이프라 `nextra|wcag|page.?speed|lighthouse`라는 **단일 연접 문자열**을 찾았고 **0을 반환 → 공허 GREEN**이었다(정상 교대형 실측 **8**). 즉 M3 다이어트 이전 상태에서도 PASS로 보였다. 파이프 없는 `-e` 반복형으로 교체(§D.2.1 서두 규칙). **현재 실측 8이므로 본 AC는 M3 완료 전까지 정상 FAIL이다** — 이 FAIL은 명령 수정이 만든 것이 아니라 **원래부터 존재하던 미충족 상태가 드러난 것**이다 |
+| AC-APO-050 | 050 | MUST | `grep -ciE -e 'nextra' -e 'wcag' -e 'page.?speed' -e 'lighthouse' .claude/agents/moai/manager-docs.md` == 0. **구 명령 폐기 사유(실측)**: 종전 `grep -ciE "nextra\|wcag\|page.?speed\|lighthouse"`는 `-E` 모드에서 `\|`가 교대가 아니라 리터럴 파이프라 `nextra|wcag|page.?speed|lighthouse`라는 **단일 연접 문자열**을 찾았고 **0을 반환 → 공허 GREEN**이었다(정상 교대형 실측 **8**). 즉 M3 다이어트 이전 상태에서도 PASS로 보였다. 파이프 없는 `-e` 반복형으로 교체(§D.2.1 서두 규칙). **현재 실측 8이므로 본 AC는 M3 완료 전까지 정상 FAIL이다** — 이 FAIL은 명령 수정이 만든 것이 아니라 **원래부터 존재하던 미충족 상태가 드러난 것**이다. **중립성 가드와 무관함(혼동 방지)**: 실측 8건은 `Nextra`×5 + `WCAG`×3으로 **라이브** `.claude/agents/moai/manager-docs.md`의 docs-플랫폼 어휘이며 M3 본문 다이어트 대상이다. 내부 유출 가드는 `internal/template/templates/` 만 스캔하고 이 토큰들에 대응 클래스도 없으므로 AC-APO-061/071과 달리 **allowlist 인지 처리 대상이 아니다** — M3가 해당 서술을 제거하면 그대로 해소된다 |
 | AC-APO-051 | 051 | MUST | `e2e-tester.md`에 비-호스트 OS 레시피 본문 부재 **AND** `.claude/skills/moai-workflow-testing/references/e2e-desktop-native-recipes.md` 실재(`test -f`) **AND** `e2e-tester.md`가 해당 경로를 참조 **AND** 템플릿 미러 `internal/template/templates/.claude/skills/moai-workflow-testing/references/e2e-desktop-native-recipes.md` 존재 + 0-diff |
 | AC-APO-052 | 052 | MUST | `grep -c 'squash | merge | rebase' .claude/agents/moai/manager-git.md` == 1 (baseline 3 — L126 주석 / L163 auto-merge / L191 manual). **해석 규칙**만 1회화 대상이며, L163·L191의 두 운용 경로와 각각의 `gh pr merge --<merge_method>` 명령 템플릿은 **보존**(제거 시 REQ-APO-068 위반) |
 | AC-APO-053 | 053 | MUST | `builder-harness.md`의 `Model/effort escalation` 중복 문장 1개 이하, model-policy 표 재진술 0건 |
@@ -230,7 +231,7 @@ done
 | AC | REQ | 등급 | 판정 |
 |---|---|---|---|
 | AC-APO-060 | 060 | MUST | 편집된 미러 쌍 전량 `diff` 결과가 Pre-flight baseline 차이 외 0 |
-| AC-APO-061 | 061 | MUST | 판정 명령 `CMD-061`(§D.5.1) == 0. 정규식은 CI 가드 클래스(C1/C2)에 정렬; `REQ-APO-`/`AC-APO-`는 본 SPEC 고유 토큰으로 추가. **구 명령 폐기 사유(실측)**: 종전 표-셀 형태는 `-E` 모드에서 `\|`가 리터럴 파이프라 전체가 **단일 연접 문자열**이 되어 **0을 반환 → 공허 GREEN**이었다. **정상 교대형 실측 2건** — 둘 다 `internal/template/templates/.claude/agents/moai/manager-spec.md`(`:160`, `:175`)의 `SPEC-V3R6-SPEC-ID-VALIDATION-001` 예시 토큰이다. **중요 — 이 2건은 `origin/main`에 이미 존재하는 선행 부채이며 본 SPEC이 유입시킨 것이 아니다**(`git show origin/main:<path>` 실측 2건 동일). 본 AC의 스코프가 *변경된 파일 전체*(`--name-only`)라 본 SPEC이 그 파일을 건드리자 선행 토큰까지 판정에 걸린 구조적 문제이며, 라인 스코프(`git diff -U0`) 전환 또는 baseline 명시가 필요하다 — **판정 스코프 재설계는 본 AC 소관 밖이므로 blocker로 보고한다**(수정 주체는 템플릿 파일 소유자) |
+| AC-APO-061 | 061 | MUST | **2항 동시 충족 — 가드가 권위, 보조는 조기 경보**(§D.5.1). (a) `CMD-061(a)` **PASS**: `TestTemplateNoInternalContentLeak`이 C1-C8/S1-S3 클래스 **와 `pedagogicalAllowlist` 면제를 함께** 소유하므로 *무엇이 leak인지*의 SSOT다. (b) `CMD-061(b)` == 0: 본 SPEC 고유 토큰(`SPEC-AGENT-PARALLEL-OPT-001` / `REQ-APO-` / `AC-APO-`)을 **변경된 라인**(`git diff -U0`)에서만 스캔. **구 명령 전면 폐기 사유 2건**: (i) `-E` + `\|` 리터럴 파이프로 **공허 GREEN**이었다(정상 교대형 실측 2). (ii) 더 심각하게 — 구 명령은 **가드의 C1/C2 정규식을 면제 목록 없이 재구현**하면서 스코프는 오히려 좁았다(변경 파일 ⊂ 전체 트리). 이 조합은 **거짓 실패만 생산할 수 있고 가드가 놓친 것은 하나도 잡지 못한다**(§A.1 규칙 5). 실증: 정상 교대형이 잡은 2건은 `templates/.claude/agents/moai/manager-spec.md`(`:160`,`:175`)의 `SPEC-V3R6-SPEC-ID-VALIDATION-001`인데, 이는 가드 `pedagogicalAllowlist`에 *"Demonstrates SPEC ID regex validation pre-write self-check pattern"* 사유로 **등재된 정당한 교육용 예시**이고 `origin/main`에 이미 존재한다(가드 PASS 실측). M3 대상이 `manager-spec.md`이므로 이 거짓 실패는 곧 발생할 예정이었다. (b)가 additive인 근거는 §D.5.1 참조 — 가드는 `SPEC-AGENT-PARALLEL-OPT-001`에 대응 클래스가 **없고**, `REQ-APO-`를 잡는 S3는 `skillBodyScoped`라 본 SPEC 대상인 agents/workflows에서 **미발화**한다 |
 | AC-APO-062 | 062 | MUST | `ls internal/template/templates/.claude/workflows/` 결과에 `hns-*` / `harness-*` 접두 파일 0개 (generic fan-out 3개만 존재) |
 | AC-APO-063 | 063 | MUST | 시나리오 3 통과 — 스크립트 부재 시 fallback 경로가 문서상 완결 |
 | AC-APO-064 | 064 | MUST | `go test ./...` exit 0; template-neutrality CI guard green |
@@ -245,32 +246,48 @@ done
 |---|---|---|---|
 | AC-APO-069 | 069 | MUST | `ls internal/template/templates/.claude/workflows/` 에 3개 파일 존재; `make build` 후 embedded 트리에서도 조회 가능 |
 | AC-APO-070 | 070 | MUST | 4개 동시 충족: (a) 본 SPEC frontmatter `partially_supersedes: [SPEC-DWF-CODEMAPS-PILOT-001]`, (b) `spec.md`가 superseded AC를 **ID로 인용** — `AC-DCP-010`(`acceptance.md:79` / `progress.md:86`) + 그 소유 요구사항 `REQ-DCP-009/010`, (c) 정식 grep 문구 `grep -r "codemaps-extract\|codemaps-pilot" internal/template/templates/` → nothing 이 더 이상 성립하지 않음을 명시, (d) 파일럿 SPEC 아티팩트에 supersession 주석 추가로 상호 참조 성립 |
-| AC-APO-071 | 071 | MUST | 배포된 3개 파일에 대해 **CI 정렬 정규식** 판정 명령 `CMD-071`(§D.5.1) == 0. **구 명령 폐기 사유**: 종전 표-셀 형태는 `-E` 모드에서 `\|`가 리터럴 파이프라 공허했다(실측 0 반환). 다만 **정상 교대형으로도 현재 값은 0**이므로 이 공허성은 잠복 상태였고 판정 결과는 바뀌지 않는다 — 그럼에도 교체하는 이유는 배포 스크립트가 오염되는 순간 공허 명령이 그것을 **가려주기** 때문이다. 정규식은 `internal_content_leak_test.go` C1/C2/S2 클래스에 정렬됨 — 일반형 `SPEC-[A-Z0-9-]+-[0-9]{3}`는 **의도적으로 제외**한다(`spec.md` §F.8.3-a: `SPEC-FOO-001`은 CI 미매치 일반 플레이스홀더이며 중립화 대상이 아니다). **선행 조건**: AC-APO-072 PASS (미충족 시 본 AC는 공허하여 무효) |
-| AC-APO-071b | 071 | SHOULD | **manual-only / CI-unenforced 표기 의무 이행** (`spec.md` §F.8.3-a 귀결 3). 아래 클래스는 CI 가드가 강제하지 **않으므로** 수동 점검이며, "CI green"을 근거로 인용하지 않는다: 내부 날짜 `20[0-9]{2}-[0-9]{2}-[0-9]{2}`, 메인테이너 절대경로 `/Users/`, 9자 이상 SHA `[0-9a-f]{9,40}`(CI S2는 `{7,8}`로 **겹치지 않음**). 판정 **2항 동시 충족**: (i) 배포된 3개 파일에 대해 판정 명령 `CMD-071b`(§D.5.1) **== 0**(구 표-셀 형태는 `-E` + `\|` 리터럴 파이프로 공허했다 — 정상 교대형 실측도 0이라 판정 결과는 불변이나 잠복 공허성은 제거) — REQ-APO-071이 금지한 5개 클래스 전량이 MUST 수준으로 커버되도록 하는 조항이며, SHOULD 등급이라는 이유로 면제되지 **않는다**. (ii) 그 결과가 `progress.md`에 **CI-unenforced 라벨과 함께** 기록됨 — 기록 의무는 "CI green"을 이 3개 클래스의 근거로 오인용하지 못하게 하는 장치다 |
+| AC-APO-071 | 071 | MUST | **2항 동시 충족 — 가드가 권위**(§D.5.1). (a) `CMD-071(a)`: 가드 **PASS** **AND** 스캐너가 `.js`를 실제로 읽음(`leakTextExtensions`에 `".js"` 등재 ≥ 1 — M1이 추가). (b) `CMD-071(b)` == 0: 본 SPEC 고유 토큰만 3개 배포 스크립트에서 스캔(해당 파일들은 `.claude/workflows/` 라 S3 `skillBodyScoped`가 미발화하므로 이 구간은 실재하는 가드 사각지대다). **손수 쓴 정규식 전면 폐기 사유 2건**: (i) `-E` + `\|` 리터럴 파이프로 공허했다(실측 0 — 다만 정상 교대형으로도 0이라 잠복 상태였다). (ii) 더 중요하게 — 구 정규식은 가드 **C1/C2/S2를 면제 없이 재구현**한 것이라 `.js`가 `leakTextExtensions`에 등재된 지금 **가드에 완전히 포섭**되며, 게다가 S2의 `requireHexLetter` 정련을 빠뜨려 **가드가 올바르게 제외하는 십진 상수까지 오탐**한다(실증: `const maxBytes = 10485760;` → 구 형태 1 매치, 가드 S2는 제외). 일반형 `SPEC-[A-Z0-9-]+-[0-9]{3}` 제외 방침(`spec.md` §F.8.3-a)은 이제 가드가 직접 소유한다. **선행 조건**: AC-APO-072 PASS — (a)의 `.js` 등재 확인이 그 왕복의 정적 대응물이다 |
+| AC-APO-071b | 071 | SHOULD | **존치 — 가드 중복 여부 실측 검증 완료.** 본 AC가 덮는 3클래스는 AC-APO-071과 달리 가드에 포섭되지 **않는다**: (α) 날짜 `20[0-9]{2}-[0-9]{2}-[0-9]{2}` — 가드 `S1-internal-date`가 유사 패턴을 갖지만 `strictLeakClasses` 소속이고 그 티어는 `MOAI_TEMPLATE_LEAK_STRICT=1` **opt-in**이다(`.github/` · `Makefile` 전수 grep 결과 **어디에도 미설정** → CI 미강제). (β) `/Users/` — **대응 클래스가 아예 없다**. (γ) SHA `[0-9a-f]{9,40}` — 가드 S2는 `{7,8}` + 후행 구두점/EOL 요구라 9자 이상 연속 hex와 **겹치지 않는다**. 따라서 본 AC는 "가드 정규식 재구현"이 아니라 **가드가 CI에서 강제하지 않는 잔여 구간의 유일한 커버리지**이며, 이것이 REQ-APO-071의 5개 금지 클래스를 온전히 채우는 부분이다. **manual-only / CI-unenforced 표기 의무**(`spec.md` §F.8.3-a 귀결 3): "CI green"을 이 3클래스의 근거로 인용하지 않는다. 판정 **2항 동시 충족**: (i) 배포된 3개 파일에 대해 판정 명령 `CMD-071b`(§D.5.1) **== 0**(구 표-셀 형태는 `-E` + `\|` 리터럴 파이프로 공허했다 — 정상 교대형 실측도 0이라 판정 결과는 불변이나 잠복 공허성은 제거) — REQ-APO-071이 금지한 5개 클래스 전량이 MUST 수준으로 커버되도록 하는 조항이며, SHOULD 등급이라는 이유로 면제되지 **않는다**. (ii) 그 결과가 `progress.md`에 **CI-unenforced 라벨과 함께** 기록됨 — 기록 의무는 "CI green"을 이 3개 클래스의 근거로 오인용하지 못하게 하는 장치다 |
 | AC-APO-072 | 072 | MUST | `leakTextExtensions`에 `".js": true` 존재 (`grep -n '".js"' internal/template/internal_content_leak_test.go` ≥ 1) **AND** 시나리오 8의 RED/GREEN 왕복이 관측됨 — 미중립 스크립트 심었을 때 FAIL, 중립화 후 PASS |
 | AC-APO-072b | 062/069 | MUST | `TestSplitHarnessNamespaceNoLeak` PASS **AND** 차단 유효성 확인: `hns-release-update-run.js`를 템플릿에 심고 실행 시 `SPLIT_HARNESS_NAMESPACE_LEAK`으로 FAIL (심은 파일은 제거) |
 | AC-APO-073 | 073 | MUST | `internal/cli/update/plan/plan.go`의 user-owned 판정이 3개 generic 스크립트에 대해 false 반환 — 접두사 `hns-`/`harness-` 미매치로 확인. 보존 목록 소스 무변경(`git diff` 0줄) |
 
 #### D.5.1 Group 4/5 중립성 판정 명령 블록
 
-§D.2.1 서두의 표-셀 파이프 금지 규칙이 그대로 적용된다. 아래 세 명령은 중첩 교대를 포함해 `-e` 반복으로 평탄화하기 어려우므로 코드블록에 둔다. 모두 리포 루트에서 실행한다.
+**[HARD] 무엇이 leak인지는 가드가 권위다.** `TestTemplateNoInternalContentLeak`은 클래스 집합(C1-C8 / S1-S3)과 **면제 목록(`pedagogicalAllowlist`)을 함께** 소유한다. 판정 명령이 가드의 정규식만 베끼고 면제를 빼면 **거짓 실패만 생산할 수 있고 가드가 놓친 것은 하나도 잡지 못한다**(§A.1 규칙 5). 따라서 아래 (a)는 가드 실행이며, (b)는 **가드가 구조적으로 알 수 없는 클래스**로만 좁힌 보조 스캔 — **조기 경보이지 verdict가 아니다**. 새 교육용 예시를 추가하는 유지보수자는 가드 allowlist에 등재하면 되고, (b)가 그것을 막지 않는다.
+
+**보조 스캔이 additive임의 근거(가드 클래스 전수 대조 실측)**:
+
+- `SPEC-AGENT-PARALLEL-OPT-001` → **어떤 가드 클래스에도 매치되지 않음**(C1은 `V3R[2-6]|AGENCY|WORKTREE`만, C1c는 `DB-SYNC-RELOC|PROJECT-DB-HINT`만 열거).
+- `REQ-APO-` / `AC-APO-` → `S3-req-ac-token-any-prefix`가 매치하나 **`skillBodyScoped: true`** 라 `.claude/skills/` 하위에서만 발화한다. C2의 도메인 열거(`ATR|WO|COORD|UNP|LNC|TII`)에도 `APO`는 없다.
+- 본 SPEC의 템플릿 대상은 `.claude/agents/`(M3)와 `.claude/workflows/`(M1) — **둘 다 비-skill 표면**이라 S3가 발화하지 않는다. 따라서 (b)가 덮는 구간은 실재한다.
 
 ```bash
-# CMD-061  ==0   (변경된 템플릿 파일의 내부 토큰 유입 — CI C1/C2 클래스 정렬)
-git diff --name-only origin/main...HEAD -- internal/template/templates/ \
-  | xargs -r grep -nE 'SPEC-(V3R[2-6]|AGENCY|WORKTREE)-[A-Z0-9-]+|(REQ|AC)-(ATR|WO|COORD|UNP|LNC|TII)-[0-9]{3}|REQ-APO-|AC-APO-'
-# 실측 baseline 2 — 둘 다 templates/.claude/agents/moai/manager-spec.md (:160, :175),
-# origin/main 에 이미 존재하는 선행 부채(본 SPEC 유입 아님). blocker 보고 대상.
+# CMD-061 (a) — 권위 판정. PASS 필수.
+go test ./internal/template/ -run TestTemplateNoInternalContentLeak -count=1
 
-# CMD-071  ==0   (배포된 3개 스크립트 — CI C1/C2/S2 클래스 정렬)
-grep -nE 'SPEC-(V3R[2-6]|AGENCY|WORKTREE)-[A-Z0-9-]+|(REQ|AC)-(ATR|WO|COORD|UNP|LNC|TII)-[0-9]{3}|[0-9a-f]{7,8}([[:space:].,;:!?]|$)' \
-  internal/template/templates/.claude/workflows/*.js
-# 실측 baseline 0.
+# CMD-061 (b) — 보조(조기 경보). 변경된 **라인**만 스코프. ==0
+#   파일 스코프(--name-only)를 쓰면 본 SPEC이 건드린 파일의 **선행** 토큰까지 걸려
+#   거짓 실패가 난다(실측: 파일 스코프 2 / 라인 스코프 0 — 그 2건은 가드 allowlist에
+#   등재된 manager-spec.md 교육용 regex 예시다).
+git diff -U0 origin/main...HEAD -- internal/template/templates/ \
+  | grep '^+' | grep -v '^+++' \
+  | grep -cE -e 'SPEC-AGENT-PARALLEL-OPT-001' -e 'REQ-APO-[0-9]' -e 'AC-APO-[0-9]'
 
-# CMD-071b  ==0  (CI-unenforced 3클래스 — 수동 점검, "CI green"을 근거로 인용 금지)
+# CMD-071 (a) — 권위 판정 + 스캐너가 .js를 실제로 읽는지(공허 green 차단).
+go test ./internal/template/ -run TestTemplateNoInternalContentLeak -count=1
+grep -c '"\.js":' internal/template/internal_content_leak_test.go   # >=1 (leakTextExtensions 등재)
+
+# CMD-071 (b) — 보조. 3개 배포 스크립트는 .claude/workflows/ 라 S3 미발화. ==0
+grep -lE -e 'SPEC-AGENT-PARALLEL-OPT-001' -e 'REQ-APO-[0-9]' -e 'AC-APO-[0-9]' \
+  internal/template/templates/.claude/workflows/*.js | wc -l
+
+# CMD-071b — CI 미강제 3클래스 수동 점검. ==0
+#   S1(날짜)·S2(sha 7-8자)는 strictLeakClasses 소속이고 그 티어는
+#   MOAI_TEMPLATE_LEAK_STRICT=1 opt-in이다(.github/ · Makefile 전수 grep 결과 **미설정**).
+#   `/Users/`는 대응 클래스가 아예 없고, sha {9,40}은 S2의 {7,8}과 겹치지 않는다.
 grep -nE '20[0-9]{2}-[0-9]{2}-[0-9]{2}|/Users/|[0-9a-f]{9,40}' \
-  internal/template/templates/.claude/workflows/*.js
-# 실측 baseline 0.
+  internal/template/templates/.claude/workflows/*.js | wc -l
 ```
 
 ### D.6 Group 6 — 배포 정합성 (REQ-APO-074..078)
