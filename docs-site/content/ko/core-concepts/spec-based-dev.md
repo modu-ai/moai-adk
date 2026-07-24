@@ -264,9 +264,9 @@ SPEC 문서는 **manager-spec 에이전트**가 자동으로 생성합니다. �
 | `acceptance.md` | 인수 기준 | Given/When/Then 시나리오, 엣지 케이스, 성능 및 품질 게이트 |
 
 {{< callout type="info" >}}
-  위 3개 파일 외에, plan 단계는 세션 간 진행 상태를 추적하는 **`progress.md`**도
+  위 3개 파일 외에, plan 단계는 세션 간 진행 상태를 추적하는 `progress.md`도
   함께 생성합니다 (라이프사이클 단계별 audit-ready 신호 기록). 규모가 큰 **Tier L**
-  SPEC의 경우 설계·조사 산출물인 **`design.md`**와 **`research.md`**가 추가로
+  SPEC의 경우 설계·조사 산출물인 `design.md`와 `research.md`가 추가로
   작성됩니다.
 {{< /callout >}}
 

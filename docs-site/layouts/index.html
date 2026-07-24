@@ -1,130 +1,136 @@
-{{ define "main" }}
-  {{- /* 홈 랜딩 — round3 docs-index 레이아웃 (SPEC-DESIGN-DOCSV2-001 M3c-1).
-         docs-hero + docs-filters(정적 섹션 링크) + docs-featured + docs-grid.
-         i18n 키·마스코트·실측 stat 수치·curated $cards 슬라이스 모두 기존에서 보존.
-         기존 content/<locale>/_index.md 본문은 하단에 그대로 렌더. */ -}}
-  {{- $cards := slice
-    (dict "slug" "getting-started"      "icon" "rocket"   "desc" "card_desc_getting_started")
-    (dict "slug" "core-concepts"        "icon" "book"     "desc" "card_desc_core_concepts")
-    (dict "slug" "workflow-commands"    "icon" "terminal" "desc" "card_desc_workflow_commands")
-    (dict "slug" "quality-commands"     "icon" "layers"   "desc" "card_desc_quality_commands")
-    (dict "slug" "utility-commands"     "icon" "wrench"   "desc" "card_desc_utility_commands")
-    (dict "slug" "advanced"             "icon" "cpu"      "desc" "card_desc_advanced")
-    (dict "slug" "worktree"             "icon" "git"      "desc" "card_desc_worktree")
-    (dict "slug" "db"                   "icon" "db"       "desc" "card_desc_db")
-  -}}
-  <article
-    class="gdoc-markdown gdoc-markdown__align--{{ default "left" (.Page.Params.geekdocAlign | lower) }}"
-    id="main-content" tabindex="-1"
-  >
-    {{- /* 1. HERO — eyebrow / h1 / sub / CTAs / 실측 stats */ -}}
-    <section class="docs-hero">
-      <div class="docs-hero-inner">
-        {{- /* 홈 히어로 마스코트 — v2 Explaining 포즈 (M5, welcome 인텐트) */ -}}
-        {{ partial "mascot.html" (dict "pose" "explaining" "size" "150" "class" "md-hero-mascot") }}
-        <span class="docs-eyebrow">{{ i18n "hero_eyebrow" }}</span>
-        <h1 class="docs-h1">{{ i18n "hero_title" | safeHTML }}</h1>
-        <p class="docs-sub">{{ i18n "hero_lead" }}</p>
-        <div class="md-hero-cta">
-          <a class="md-btn md-btn-primary" href="{{ "/getting-started/" | relLangURL }}">
-            {{ i18n "hero_cta_start" }}
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
-          </a>
-          <a class="md-btn md-btn-ghost" href="{{ "/workflow-commands/" | relLangURL }}">{{ i18n "hero_cta_browse" }}</a>
-        </div>
-        {{- /* 실측 stat row — placeholder 수치 금지: 11 retained agents / 16 supported
-               languages / 85%+ coverage target / Go single binary */ -}}
-        <div class="docs-stats">
-          <div><div class="docs-stat-num">11</div><div class="docs-stat-lbl">{{ i18n "stat_agents" }}</div></div>
-          <div><div class="docs-stat-num">16</div><div class="docs-stat-lbl">{{ i18n "stat_langs" }}</div></div>
-          <div><div class="docs-stat-num">85%+</div><div class="docs-stat-lbl">{{ i18n "stat_coverage" }}</div></div>
-          <div><div class="docs-stat-num">Go</div><div class="docs-stat-lbl">{{ i18n "stat_binary" }}</div></div>
-        </div>
-      </div>
-    </section>
+{{- /* 홈 랜딩 — Claude Design handoff "01 Docs Home" (Milestone 2).
+       standalone 전체 문서 (baseof 미사용, 404.html 과 같은 패턴). 디자인의 홈은
+       사이드바 없는 1024px 센터 랜딩이라, 공용 shell(좌측 사이드바 + 우측 TOC)을
+       두르지 않고 header/footer 파트셜만 재사용한다. 데이터 배선(i18n, 실제 섹션
+       링크, 메뉴 순회, 마스코트, 실측 install 커맨드)은 보존.
+       LIGHT theme only. 스킨/hover 는 moai-docs-layout.css (.cw-home* / .cw-feat*
+       / .cw-sec*). */ -}}
+<!DOCTYPE html>
+<html lang="{{ .Site.Language.Lang }}" class="color-toggle-light" color-theme="light">
+  <head>
+    {{ partial "head/meta" . }}
+    <title>{{ .Site.Title }}</title>
 
-    {{- /* 2. FILTERS — 정적 섹션 필러 바 (sticky). 각 필러는 섹션 페이지로 링크,
-           count 배지 = 섹션 페이지 수. 클라이언트 사이드 JS 없음 (faithful static). */ -}}
-    <div class="docs-filters">
-      <div class="docs-filters-inner">
-        <div class="docs-pill-row">
-          {{- range $card := $cards }}
-            {{- with site.GetPage (printf "/%s" $card.slug) }}
-          <a class="docs-pill" href="{{ .RelPermalink }}">{{ .Title }}<span class="count">{{ len .RegularPagesRecursive }}</span></a>
+    {{ partial "head/favicons" . }}
+    {{ partial "head/rel-me" . }}
+    {{ partial "head/microformats" . }}
+    {{ partial "head/others" . }}
+    {{ partial "head/custom" . }}
+  </head>
+
+  <body>
+    {{ partial "svg-icon-symbols" . }}
+
+    <div class="wrapper page cw-home">
+      {{ partial "site-header" (dict "Root" . "MenuEnabled" false) }}
+
+      <main class="cw-home-main" id="main-content" tabindex="-1">
+        {{- /* 1. HERO — eyebrow / h1(초록 강조) / lede / CTA 2 / install chip / 마스코트 */ -}}
+        <section class="cw-home-hero">
+          <div>
+            <div class="cw-home-eyebrow">MOAI-ADK · AGENTIC DEVELOPMENT KIT</div>
+            <h1 class="cw-home-h1">{{ i18n "hero_title" | safeHTML }}</h1>
+            <p class="cw-home-lede">{{ i18n "hero_lead" }}</p>
+            <div class="cw-home-cta">
+              <a class="cw-home-btn cw-home-btn--primary" href="{{ "/getting-started/" | relLangURL }}">
+                {{ i18n "hero_cta_start" }}
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+              </a>
+              <a class="cw-home-btn cw-home-btn--ghost" href="{{ "/workflow-commands/" | relLangURL }}">{{ i18n "hero_cta_browse" }}</a>
+            </div>
+            <div class="cw-home-install">
+              <span class="dollar">$</span>
+              <code>curl -fsSL https://raw.githubusercontent.com/modu-ai/moai-adk/main/install.sh | bash</code>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#9fa0a0" stroke-width="1.75" aria-hidden="true"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+            </div>
+          </div>
+          <div class="cw-home-hero-aside">
+            {{ partial "mascot.html" (dict "pose" "explaining" "size" "260") }}
+            <div class="cw-home-cap">SINGLE BINARY · GO · APACHE-2.0</div>
+          </div>
+        </section>
+
+        {{- /* 2. 3 FEATURE CARDS — MoAI 3.0 세 기둥. 태그는 실제 섹션 페이지로(로컬라이즈 타이틀). */ -}}
+        <section class="cw-home-feats">
+          <div class="cw-feat-card">
+            <div class="cw-feat-idx">01 · TOKENOMICS</div>
+            <h3>{{ i18n "home_feat_tokenomics_title" }}</h3>
+            <p>{{ i18n "home_feat_tokenomics_body" }}</p>
+            <div class="cw-feat-tags">
+              {{- with site.GetPage "/multi-llm" }}<a href="{{ .RelPermalink }}">{{ .Title }}</a>{{ end -}}
+              {{- with site.GetPage "/cost-optimization" }} · <a href="{{ .RelPermalink }}">{{ .Title }}</a>{{ end -}}
+            </div>
+          </div>
+          <div class="cw-feat-card">
+            <div class="cw-feat-idx">02 · SELF-LEARNING</div>
+            <h3>{{ i18n "home_feat_learning_title" }}</h3>
+            <p>{{ i18n "home_feat_learning_body" }}</p>
+            <div class="cw-feat-tags">
+              {{- with site.GetPage "/advanced/self-evolving" }}<a href="{{ .RelPermalink }}">{{ .Title }}</a>{{ end -}}
+              {{- with site.GetPage "/advanced/decision-memory" }} · <a href="{{ .RelPermalink }}">{{ .Title }}</a>{{ end -}}
+            </div>
+          </div>
+          <div class="cw-feat-card">
+            <div class="cw-feat-idx">03 · HARNESS</div>
+            <h3>{{ i18n "home_feat_harness_title" }}</h3>
+            <p>{{ i18n "home_feat_harness_body" }}</p>
+            <div class="cw-feat-tags">
+              {{- with site.GetPage "/core-concepts" }}<a href="{{ .RelPermalink }}">{{ .Title }}</a>{{ end -}}
+              {{- with site.GetPage "/workflow-commands" }} · <a href="{{ .RelPermalink }}">{{ .Title }}</a>{{ end -}}
+            </div>
+          </div>
+        </section>
+
+        {{- /* 3. 문서 구조 — data/menu/main.yaml 상단 섹션(external 제외)에서 실데이터로 구동.
+               카드 = 로컬라이즈 타이틀 + EN mono 코드네임 + 섹션 설명. 카운트 동적. */ -}}
+        {{- $secs := slice -}}
+        {{- range hugo.Data.menu.main.main -}}
+          {{- if not .external -}}
+            {{- $title := partial "menu/name" .name -}}
+            {{- $en := or (index .name "en") $title -}}
+            {{- $href := relLangURL .ref -}}
+            {{- $desc := "" -}}
+            {{- with site.GetPage .ref -}}
+              {{- $href = .RelPermalink -}}
+              {{- $desc = or .Description (.Summary | plainify | truncate 68) -}}
+            {{- end -}}
+            {{- $secs = $secs | append (dict "title" $title "en" $en "href" $href "desc" $desc) -}}
+          {{- end -}}
+        {{- end -}}
+        <section class="cw-home-sections">
+          <div class="cw-sec-head">
+            <h2>{{ i18n "browse_title" }}</h2>
+            <span class="cw-sec-meta">{{ len $secs }} SECTIONS · KO / EN / JA / ZH</span>
+          </div>
+          <div class="cw-sec-grid">
+            {{- range $secs }}
+            <a class="cw-sec-card" href="{{ .href }}">
+              <div class="cw-sec-card-top">
+                <span class="cw-sec-card-title">{{ .title }}</span>
+                <span class="cw-sec-card-en">{{ .en }}</span>
+              </div>
+              {{- with .desc }}<span class="cw-sec-card-desc">{{ . }}</span>{{ end }}
+            </a>
             {{- end }}
-          {{- end }}
-        </div>
-      </div>
-    </div>
-
-    {{- /* 3. FEATURED — getting-started 섹션을 "시작점" CTA로 피처링.
-           전용 featured:true 프론트매터가 없으므로 getting-started 페이지를 사용. */ -}}
-    {{- with site.GetPage "/getting-started" }}
-    <section class="docs-featured">
-      <div class="featured-card">
-        <div>
-          <span class="featured-eye"><span class="dot"></span>{{ i18n "browse_pill" }}</span>
-          <h2>{{ .Title }}</h2>
-          <p>{{ .Description | default .Summary }}</p>
-          <div class="featured-meta">
-            <span>{{ i18n "docs_count" (len .RegularPagesRecursive) }}</span>
           </div>
-          <a class="featured-cta" href="{{ .RelPermalink }}">
-            {{ i18n "hero_cta_start" }}
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+        </section>
+
+        {{- /* 4. BOOK CTA 밴드 — Coffee 마스코트 + 책 소개 + book.mo.ai.kr CTA */ -}}
+        <section class="cw-home-book">
+          {{ partial "mascot.html" (dict "pose" "coffee" "size" "120") }}
+          <div class="cw-book-text">
+            <div class="cw-book-eyebrow">OFFICIAL BOOK · 488P</div>
+            <h3>{{ i18n "home_book_title" }}</h3>
+            <p>{{ i18n "home_book_body" }}</p>
+          </div>
+          <a class="cw-book-cta" href="https://book.mo.ai.kr" target="_blank" rel="noopener noreferrer">
+            book.mo.ai.kr
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
           </a>
-        </div>
-        <div class="featured-illu" aria-hidden="true">
-          <img loading="lazy" decoding="async" src="{{ "mascots/mascot-talking.png" | relURL }}" width="120" alt="" />
-        </div>
-      </div>
-    </section>
-    {{- end }}
+        </section>
+      </main>
 
-    {{- /* 4. GRID — curated $cards를 round3 doc-card로 렌더.
-           thumb-N 변형은 카드 위치(1..8)에 고정 할당, 인라인 SVG 아이콘은 기존 매핑 보존. */ -}}
-    <section class="docs-grid-section">
-      <div class="grid-section-head">
-        <h3>{{ i18n "browse_title" }}</h3>
-        <span class="count">{{ len $cards }}</span>
-      </div>
-      <div class="docs-grid">
-        {{- range $i, $card := $cards }}
-          {{- with site.GetPage (printf "/%s" $card.slug) }}
-        <a class="doc-card" href="{{ .RelPermalink }}">
-          <div class="doc-thumb thumb-{{ add $i 1 }}">
-            <span class="doc-thumb-cat">{{ .Title }}</span>
-            <div class="doc-thumb-icon">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                {{- if eq $card.icon "rocket" -}}<path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09z"/><path d="M12 15l-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 0 1-4 2z"/><path d="M9 12H4s.55-3.03 2-4c1.62-1.08 5 0 5 0"/>
-                {{- else if eq $card.icon "book" -}}<path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
-                {{- else if eq $card.icon "terminal" -}}<path d="m4 17 6-6-6-6"/><path d="M12 19h8"/>
-                {{- else if eq $card.icon "layers" -}}<path d="m12 2 9 5-9 5-9-5 9-5z"/><path d="m3 12 9 5 9-5"/><path d="m3 17 9 5 9-5"/>
-                {{- else if eq $card.icon "wrench" -}}<path d="M14.7 6.3a4 4 0 0 0-5.6 5.6L3 18v3h3l6.1-6.1a4 4 0 0 0 5.6-5.6l-2.4 2.4-2-2 2.4-2.4z"/>
-                {{- else if eq $card.icon "cpu" -}}<rect x="4" y="4" width="16" height="16" rx="2"/><rect x="9" y="9" width="6" height="6"/><path d="M9 2v2M15 2v2M9 20v2M15 20v2M2 9h2M2 15h2M20 9h2M20 15h2"/>
-                {{- else if eq $card.icon "git" -}}<circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M6 9v6"/><path d="M18 9a9 9 0 0 1-9 9"/><circle cx="18" cy="6" r="3"/>
-                {{- else if eq $card.icon "db" -}}<ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5v14a9 3 0 0 0 18 0V5"/><path d="M3 12a9 3 0 0 0 18 0"/>
-                {{- end -}}
-              </svg>
-            </div>
-            <span class="doc-thumb-num">{{ printf "%02d" (add $i 1) }}</span>
-          </div>
-          <div class="doc-body">
-            <h4>{{ .Title }}</h4>
-            <p class="doc-excerpt">{{ i18n $card.desc }}</p>
-            <div class="doc-meta">
-              <span class="views">{{ i18n "docs_count" (len .RegularPagesRecursive) }}</span>
-            </div>
-          </div>
-        </a>
-          {{- end }}
-        {{- end }}
-      </div>
-    </section>
-
-    {{- /* 기존 홈 콘텐츠 (content/<locale>/_index.md) — 파이프라인 소유, 그대로 렌더 */ -}}
-    <div class="md-home-content">
-      {{ partial "utils/content" . }}
+      {{ partial "site-footer" . }}
     </div>
-  </article>
-{{ end }}
+  </body>
+</html>

@@ -224,7 +224,7 @@ Plan Audit Gate의 skip 정책(plan-auditor 재실행 생략)은 점수 기반�
 
 ### Implementation Kickoff Approval
 
-Plan Audit Gate 통과 후, 구현을 시작하기 전 사용자의 명시적 승인을 받는 **인간 게이트 (HUMAN GATE)**입니다.
+Plan Audit Gate 통과 후, 구현을 시작하기 전 사용자의 명시적 승인을 받는 **인간 게이트** (HUMAN GATE)입니다.
 
 - plan-auditor 판정 요약 + SPEC 산출물을 사용자에게 제시
 - `AskUserQuestion`으로 "run 진입 / 추가 검토 / 중단" 3가지 옵션 제시
