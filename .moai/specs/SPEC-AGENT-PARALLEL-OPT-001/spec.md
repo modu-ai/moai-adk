@@ -1,14 +1,14 @@
 ---
 id: SPEC-AGENT-PARALLEL-OPT-001
 title: "Agent instruction diet + plan/run/sync parallelization maximization"
-version: "0.2.0"
+version: "0.5.0"
 status: draft
 created: 2026-07-25
 updated: 2026-07-25
 author: manager-spec
 priority: P1
 phase: "v3.1.0 target"
-module: ".claude/agents/moai, .claude/skills/moai/workflows, .claude/rules/moai/core, internal/template/templates"
+module: ".claude/agents/moai, .claude/skills/moai/workflows, .claude/skills/moai-workflow-testing/references/e2e-desktop-native-recipes.md, .claude/rules/moai/workflow, .claude/workflows, internal/template/templates, internal/template/internal_content_leak_test.go"
 lifecycle: spec-anchored
 tags: "agent-diet, parallelization, fan-out, write-concurrency, workflow-wiring, template-first"
 tier: L
@@ -21,6 +21,9 @@ partially_supersedes: [SPEC-DWF-CODEMAPS-PILOT-001]
 | Version | Date | Author | Change |
 |---------|------|--------|--------|
 | 0.1.0 | 2026-07-25 | manager-spec | 최초 plan-phase draft. §F Ground Truth 전량 본 세션 실측(agent line count 10파일, orphan grep, template mirror 8경로, write-concurrency 3표면, run/sync/plan phase 번호). 브리프 2건 실측 정정(§F.7). Tier L(§E). |
+| 0.5.0 | 2026-07-25 | manager-spec | plan-audit iter-3 0.847(임계 0.85 대비 -0.003) → 마감 편집 F1-F4. F1: AC-049(c)의 `M` 마커를 정의 heading(`^## `)으로 앵커링 — 앵커 없는 형태는 :49 산문 cross-reference까지 세어 "계층형 유지" 분기를 부당 FAIL시켰고 기재 baseline(합 2)도 실제(합 3)와 불일치했다. F2: AC-024b가 v0.2.0 상태로 잔존(구-넘버링 4번째 사례) → REQ-024b 문구로 재작성. F3: REQ-071의 5개 금지 클래스 중 3개가 SHOULD로 새던 구조적 누수 → AC-071b에 `== 0` 판정 추가. F4: 미한정 "Group 1" 2곳에 `구` 한정어 적용. 사전 제출 검사에 **REQ-touched ∖ AC-changed 집합차** 절차 추가. |
+| 0.4.0 | 2026-07-25 | manager-spec | plan-audit iter-2 FAIL 0.77 → **결정의 binding surface 미전파** 결함 해소. iter-1에서 서사(narrative)만 고치고 MUST AC 셀·마일스톤 실행 지시를 v0.2.0 상태로 남긴 3건이 근본 원인 — N1(AC-043 + M3 작업 0 게이트 명령), N2(AC-071 정규식), N3(AC-055 합계 상한). 부가: N4 구-넘버링 잔재 4곳(§E Tier 근거 포함), N5 AC-049 이진 판정화, N6 `module:` 전체 경로, N7 AC-076 다중파일 `grep -c` 오용, N8 AC-074 과잉 `== 0`, N9 AC-023 Phase 귀속 정정. AC 총수 55 → 56(AC-071b 신설: manual-only 클래스 표기 의무 이행). |
+| 0.3.0 | 2026-07-25 | manager-spec | plan-audit FAIL 0.69 → 결함 해소. **구 Group 1(write-concurrency, REQ-001..005) 전면 철회** — REQ-024b가 이미 Phase 12를 Group 1에서 분리했고 §C가 disjoint-writer를 제외하므로 in-scope 수혜자가 0인 채 `[HARD]` 가드만 넓히는 구조였다(사용자 승인). 후속 SPEC으로 이관. Group 6 신설(REQ-074..078): shipped rule 모순 해소(D2)·SSOT 방향(D12)·e2e 목적지 명명(D11). D4 게이트 grep 판별형 교체(12,133→0), D5 공허 AC 실문구 교정, D6 `design.md` 신규 저작, D7 C1 정규식 사실오류 정정, D8/D9/D10 AC 실행가능화. |
 | 0.2.0 | 2026-07-25 | manager-spec | 사용자 결정 D1/D2/D3 반영. D1=3개 fan-out 스크립트 **템플릿 배포**(REQ-069~073 신설, DWF-CODEMAPS-PILOT-001 비배포 AC 부분 supersede). D2=sync P12를 drafter+단일 적용자로 **확정**하고 M1 의존 해제. D3=SPEC-ID 마커는 **선행 grep 게이트** 후 결정. 배포 전제 3건 실측 정정(§F.8) — split_namespace 가드는 이미 prefix-scoped라 개정 불요, leak 가드는 `.js` 미스캔이라 확장 필수, `moai update` 보존목록도 prefix-scoped. |
 
 ---
@@ -37,36 +40,21 @@ MoAI 오케스트레이션 표면은 두 축에서 동시에 비용을 지불하
 
 두 축은 하나의 근원을 공유한다. **병렬 배칭 지시가 카탈로그 전체에 단 1개 파일에만 존재한다** — `verification-batch-pattern.md` 또는 `agent-common-protocol.md § Parallel Execution`을 참조하는 에이전트 본문은 `plan-auditor.md` **단 1개**이며 나머지 9개는 참조가 전무하다(§F.3 실측). 병렬화 규범이 에이전트 계층에 도달하지 못한 채 규칙 파일 안에만 갇혀 있다.
 
-### A.2 정책 차단 요인
+### A.2 병렬화를 위해 write-concurrency 완화가 필요하지 **않다**
 
-`agent-common-protocol.md § Background Agent Execution`은 동시성 안전장치를 **절대 금지 형태**로 서술한다("MoAI does not run two write-capable agents concurrently"). 반면 이미 배포된 `e2e.md:251`은 **스코프 한정 형태**("never run concurrently **on overlapping scope**")를 쓰고 있다. 두 표면이 불일치하며, 절대 금지 형태가 sync Phase 12(서로 겹치지 않는 ~10개 산출물)의 병렬화를 원천 차단한다. 실제 위험은 "동시 쓰기"가 아니라 **"겹치는 경로에 대한 동시 쓰기"**다.
+초기 초안(v0.1.0~v0.2.0)은 `agent-common-protocol.md`의 절대 금지형 동시성 규칙을 스코프 한정형으로 완화하는 것을 세 번째 축으로 두었다. 그러나 본 SPEC이 채택한 병렬화 형태는 **전부 read-only fan-out + single-writer**다 — drafter/judge는 쓰기를 하지 않고 적용자는 항상 1개다. 따라서 규칙 완화의 in-scope 수혜자가 0이며, `[HARD]` 파일 쓰기 레이스 가드를 넓힐 근거가 본 SPEC 안에 존재하지 않는다.
+
+이 축은 v0.3.0에서 **전면 철회**되어 후속 SPEC으로 이관되었다(§C `Out of Scope — write-concurrency rule relaxation`). 본 SPEC의 병렬화는 현행 `[HARD]` 규칙을 **한 글자도 바꾸지 않은 채** 성립한다.
 
 ### A.3 목표
 
-에이전트 본문에서 SSOT 중복·금지된 스캐폴딩·반복 제약을 제거하고(축 1), 기존 fan-out 자산을 배선하며 read-only fan-out + single-writer 패턴으로 plan/run/sync를 재구조화하고(축 2), 그 전제가 되는 write-concurrency 규칙을 안전 의도를 보존한 채 스코프 한정 형태로 정합화한다(축 3).
+에이전트 본문에서 SSOT 중복·금지된 스캐폴딩·반복 제약을 제거하고(축 1), 기존 fan-out 자산을 배선·배포하며 read-only fan-out + single-writer 패턴으로 plan/run/sync를 재구조화한다(축 2). 배포에 수반되는 shipped-rule 정합성과 SSOT 방향도 함께 정리한다(축 3, Group 5~6).
 
 ---
 
 ## §B Requirements (GEARS)
 
-### B.1 Group 1 — Write-concurrency 스코프 한정 (기반 축)
-
-#### REQ-APO-001 (Ubiquitous)
-The `agent-common-protocol.md § Background Agent Execution` 절은 동시성 안전장치를 **스코프 한정 형태**로 서술 **shall** — 즉 "겹치는 스코프(overlapping scope)에 대해 두 write-capable 에이전트를 동시 실행하지 않는다"로, 절대 금지 서술을 대체한다.
-
-#### REQ-APO-002 (Where)
-**Where** 오케스트레이터가 2개 이상의 write-capable 에이전트를 동시 spawn하는 경우, 각 spawn 프롬프트는 **disjoint path manifest**(해당 에이전트가 쓸 수 있는 경로의 명시적 allow-list)를 선언 **shall**.
-
-#### REQ-APO-003 (When)
-**When** 두 개 이상의 선언된 manifest가 교집합을 가지는 것이 탐지되면, 오케스트레이터는 해당 spawn들을 동시 실행하지 **shall not** 하고 직렬화 **shall**.
-
-#### REQ-APO-004 (Ubiquitous)
-`CLAUDE.md §14` 미러 문장과 `internal/template/templates/CLAUDE.md`의 대응 문장은 REQ-APO-001과 동일한 스코프 한정 어휘를 담 **shall**, 두 파일의 해당 문장은 byte-parity를 유지 **shall**.
-
-#### REQ-APO-005 (Ubiquitous)
-본 개정은 read-only 오케스트레이터 안전장치를 원문 그대로 보존 **shall** — "orchestrator work concurrent with a write-capable agent stays read-only"는 스코프 한정 대상이 아니며 약화되지 **shall not**.
-
-### B.2 Group 2 — 고아 fan-out 자산 배선
+### B.1 Group 1 — 고아 fan-out 자산 배선
 
 #### REQ-APO-010 (Ubiquitous)
 `plan.md` Phase Routing Table은 `plan-research-fanout.js`를 Phase 2(Project Exploration)와 Phase 6(Deep Research)를 통합한 리서치 수행 수단으로 명시 **shall**.
@@ -93,7 +81,7 @@ capability gate는 배포(REQ-APO-069) 이후에도 유지 **shall** — 배포�
 
 **When** 배선 또는 배포 중 하나라도 미완인 채 SPEC이 종료되면, 해당 서술은 실제 상태에 맞게 정정 **shall** — 미검증 주장을 잔존시키지 **shall not**.
 
-### B.3 Group 3 — read-only fan-out + single-writer 재구조화
+### B.2 Group 2 — read-only fan-out + single-writer 재구조화
 
 #### REQ-APO-020 (Ubiquitous)
 plan Phase 11(Independent SPEC Review)은 복수의 read-only 심사 렌즈를 병렬 수집한 뒤 `plan-auditor` 단일 에이전트가 구속력 있는 verdict를 산출하는 구조 **shall**.
@@ -111,7 +99,7 @@ run Phase 13 / 16 / 17의 3회 직렬 감사 패스는 1회 병렬 증거 수집
 sync Phase 12(Execute Document Synchronization)는 5개 산출물군(CHANGELOG / README+docs-site / project-docs / SPEC-artifacts / codemaps)에 대해 **병렬 read-only drafter**를 운용하고 **단일 `manager-docs`가 순차 적용** **shall**. 이 형태가 확정 설계이며 disjoint-writer 변형은 채택하지 **shall not**.
 
 #### REQ-APO-024b (Ubiquitous)
-REQ-APO-024의 구조는 Group 1(write-concurrency 개정) 결과와 **독립** **shall** — drafter는 전원 read-only이고 적용자는 단일이므로 동시 write가 발생하지 않는다. 따라서 M1이 지연·실패·철회되더라도 M3의 Phase 12 재구조화는 차단되지 **shall not**.
+REQ-APO-024의 구조는 write-concurrency 규칙 개정과 **독립** **shall** — drafter는 전원 read-only이고 적용자는 단일이므로 동시 write가 발생하지 않는다. 따라서 현행 `[HARD]` 절대 금지형 규칙을 **그대로 둔 채** Phase 12 재구조화가 성립 **shall** 하며, §C가 후속 SPEC으로 이관한 규칙 완화의 진행 여부는 본 요구사항의 전제가 되지 **shall not**.
 
 #### REQ-APO-025 (Where)
 **Where** sync Phase 10 커버리지 갭이 복수 패키지에 걸쳐 있는 경우, 패키지별 테스트 생성은 병렬 fan-out으로 수행 **shall**.
@@ -131,7 +119,7 @@ REQ-APO-024의 구조는 Group 1(write-concurrency 개정) 결과와 **독립** 
 #### REQ-APO-030 (Ubiquitous)
 `AskUserQuestion` 오케스트레이터 전용 경계는 보존 **shall** — 모든 drafter/judge 서브에이전트는 사용자에게 질문하지 **shall not** 하고 구조화된 blocker report를 반환 **shall**.
 
-### B.4 Group 4 — 에이전트 본문 다이어트
+### B.3 Group 3 — 에이전트 본문 다이어트
 
 #### REQ-APO-040 (Ubiquitous)
 `plan-auditor.md`는 12-field frontmatter 스키마를 본문에서 **최대 1회만** 서술 **shall** — 현재 MP-3와 FC-1..FC-12 두 곳에 존재하는 중복 열거 중 하나는 SSOT(`spec-frontmatter-schema.md`) 교차참조로 대체 **shall**.
@@ -181,7 +169,7 @@ REQ-APO-024의 구조는 Group 1(write-concurrency 개정) 결과와 **독립** 
 #### REQ-APO-055 (Ubiquitous)
 `.claude/agents/moai/*.md` 10개 파일의 합계 라인 수는 지정된 상한 이하 **shall** 하며, 파일별 상한도 각각 충족 **shall**(§D.2 표).
 
-### B.5 Group 5 — 불변식 및 Template-First
+### B.4 Group 4 — 불변식 및 Template-First
 
 #### REQ-APO-060 (When)
 **When** 템플릿 미러가 존재하는 파일을 수정할 때, 편집은 `internal/template/templates/` 원본에 먼저 수행하고 `make build` 후 로컬로 동기화 **shall**.
@@ -210,7 +198,7 @@ archived 12개 에이전트 이름은 어떤 편집 산출물에도 신규 도�
 #### REQ-APO-068 (Ubiquitous)
 제거된 모든 본문 중복은 선언된 SSOT를 가리키는 교차참조로 대체 **shall** — 정보의 무성 소실(silent information loss)이 발생하지 **shall not**.
 
-### B.6 Group 6 — dynamic workflow 스크립트 배포 (사용자 결정 D1)
+### B.5 Group 5 — dynamic workflow 스크립트 배포 (사용자 결정 D1)
 
 #### REQ-APO-069 (Ubiquitous)
 `plan-research-fanout.js`, `sync-audit-4dim.js`, `codemaps-extract.js` 3개 스크립트는 `internal/template/templates/.claude/workflows/`에 미러되어 배포 사용자에게 전달 **shall**.
@@ -226,6 +214,25 @@ archived 12개 에이전트 이름은 어떤 편집 산출물에도 신규 도�
 
 #### REQ-APO-073 (Ubiquitous)
 배포된 3개 스크립트는 `moai update`의 **template-managed**(덮어쓰기 가능) 집합에 속 **shall** — user-owned 보존 집합(`hns-*` / `harness-*`)에 편입되지 **shall not**. 사용자 개인 Runner Workflow의 보존 계약은 변경되지 **shall not**.
+
+### B.6 Group 6 — 배포 정합성 (shipped rule / SSOT / 목적지)
+
+#### REQ-APO-074 (When)
+**When** 3개 스크립트가 템플릿에 배포되면, `dynamic-workflows.md`의 두 서술 — "MoAI does not ship any saved workflows by default; the user-owned `.claude/workflows/` directory is not template-managed"(L80)와 "the validated script lives in the local, user-owned `.claude/workflows/` directory (not template-managed, per the statement above)"(L131) — 은 개정 **shall**. 개정 후 서술은 **MoAI-shipped generic fan-out 스크립트**와 **user-owned `hns-*` / `harness-*` Runner**를 구분 **shall** 하며, 배포된 스크립트가 존재하는 상태에서 "어떤 saved workflow도 배포하지 않는다"는 서술이 잔존하지 **shall not**.
+
+#### REQ-APO-075 (When)
+**When** REQ-APO-074 개정이 수행되면, 로컬 `.claude/rules/moai/workflow/dynamic-workflows.md`와 `internal/template/templates/.claude/rules/moai/workflow/dynamic-workflows.md`는 개정 후에도 byte-parity를 유지 **shall** — 두 파일은 개정 전 0-diff 상태이므로 한쪽만 고치면 미러가 깨진다.
+
+#### REQ-APO-076 (Ubiquitous)
+배포되는 `.js` 스크립트 헤더 주석은 자기 자신을 "user-owned workflows"로 기술하지 **shall not** — `plan-research-fanout.js` L36과 `sync-audit-4dim.js` L38의 해당 문구는 배포 후 사실과 모순되므로 정정 **shall**.
+
+#### REQ-APO-077 (Ubiquitous)
+배포되는 3개 generic fan-out 스크립트의 SSOT는 `internal/template/templates/.claude/workflows/` **shall** — 편집은 템플릿 원본에서 수행하고 로컬 `.claude/workflows/`는 파생본으로 취급 **shall**. 로컬을 먼저 고쳐 템플릿에 복사하는 방향은 금지 **shall not**.
+
+이 SSOT 방향의 실무적 귀결은 문서화 **shall**: 3개 스크립트는 user-owned 보존 집합 밖이므로(REQ-APO-073) `moai update` 실행 시 **로컬 사본이 템플릿 내용으로 덮어써진다**. 사용자가 로컬에서 스크립트를 수정하면 다음 `moai update`에서 소실되며, 이 사실이 `dynamic-workflows.md` 개정 서술에 명시 **shall**.
+
+#### REQ-APO-078 (Ubiquitous)
+REQ-APO-051이 이관하는 e2e 비-호스트 OS 레시피의 목적지는 `.claude/skills/moai-workflow-testing/references/e2e-desktop-native-recipes.md` **shall** — 목적지 경로는 spec.md / plan.md / §E.2 파일 인벤토리 / frontmatter `module:`에 모두 명시 **shall**. 해당 경로는 템플릿 미러가 존재하므로 Template-First 및 byte-parity 의무가 적용 **shall**.
 
 ---
 
@@ -261,11 +268,20 @@ archived 12개 에이전트 이름은 어떤 편집 산출물에도 신규 도�
 - 3개 스크립트 내부 **로직**의 기능 변경은 범위 밖이다. 배포를 위한 §25 중립화(헤더·주석의 내부 토큰 제거, REQ-APO-071)는 범위 내이며 실행 로직을 바꾸지 않는다.
 - `hns-oss-docs-run.js` / `hns-release-update-run.js` 등 harness Runner의 배포는 범위 밖이다(비배포 유지, REQ-APO-062).
 
+### Out of Scope — write-concurrency rule relaxation
+
+v0.1.0~v0.2.0의 Group 1(REQ-APO-001..005 — `agent-common-protocol.md` / `CLAUDE.md`의 write-concurrency 규칙을 절대 금지형에서 스코프 한정형으로 완화)은 **전면 철회**되어 본 SPEC 범위 밖이다.
+
+- **철회 사유**: REQ-APO-024b가 이미 sync Phase 12를 Group 1에서 분리했고, 바로 아래 `Out of Scope — disjoint-writer 병렬 쓰기 변형`이 유일한 잠재 소비자였던 disjoint-writer 변형을 제외한다. 따라서 본 SPEC 안에 규칙 완화의 수혜자가 **0**이며, `[HARD]` 파일 쓰기 레이스 가드를 수혜자 없이 넓히는 결과가 된다.
+- **본 SPEC의 모든 병렬화는 현행 규칙을 바꾸지 않고 성립한다** — drafter/judge는 전원 read-only이고 적용자는 항상 단일이므로 동시 write 자체가 발생하지 않는다.
+- **이관 대상 작업**: manifest 포맷 정의, manifest와 spawn 프롬프트의 바인딩 방식, 교집합 판정 checker, 파일 이외 공유 상태(git index, 원격 브랜치, 외부 API)의 취급, 그리고 최소 1개의 실제 강제 지점(enforcement point).
+- **후속 SPEC 소관**: 위 5개 항목은 `design.md`를 갖춘 별도 SPEC에서 다룬다(§G 후속 SPEC 항목). 본 SPEC은 후속 SPEC을 저작하지 않는다.
+
 ### Out of Scope — disjoint-writer 병렬 쓰기 변형
 
 - sync Phase 12의 경로 소유 writer 병렬 실행 변형은 **채택하지 않는다**(사용자 결정 D2). 확정 설계는 read-only drafter + 단일 적용자다(REQ-APO-024).
-- 해당 변형은 **문서화된 향후 선택지**로만 보존한다 — 후속 SPEC이 Group 1 규칙 정착 이후 재검토할 수 있으나 본 SPEC의 산출물·AC·마일스톤에 포함되지 않는다.
-- Group 1(write-concurrency 개정)은 그 자체로 독립 가치를 가지므로 유지되나, Phase 12는 Group 1 결과에 의존하지 않는다(REQ-APO-024b).
+- 해당 변형은 **문서화된 향후 선택지**로만 보존한다 — 후속 SPEC이 구 Group 1(write-concurrency) 규칙 완화를 정착시킨 이후 재검토할 수 있으나 본 SPEC의 산출물·AC·마일스톤에 포함되지 않는다.
+- write-concurrency 규칙 완화는 그 자체로 독립 가치를 가질 수 있으나 본 SPEC에서는 철회되었고(위 `Out of Scope — write-concurrency rule relaxation`), Phase 12는 그 진행 여부에 의존하지 않는다(REQ-APO-024b).
 
 ### Out of Scope — docs-site 본문 재작성
 
@@ -279,12 +295,13 @@ archived 12개 에이전트 이름은 어떤 편집 산출물에도 신규 도�
 
 | REQ 그룹 | REQ 범위 | AC 범위 | 검증 성격 |
 |---|---|---|---|
-| Group 1 — write-concurrency | REQ-APO-001..005 | AC-APO-001..005 | grep(스코프 한정 어휘) + byte-parity diff |
-| Group 2 — fan-out 배선 | REQ-APO-010..016 | AC-APO-010..016 | zero-orphan grep + fallback 문구 grep |
-| Group 3 — 재구조화 | REQ-APO-020..030 (024b 포함) | AC-APO-020..030 (024b 포함) | 단계 서술 grep + 게이트 보존 grep + M1 독립성 서술 |
-| Group 4 — 본문 다이어트 | REQ-APO-040..055 | AC-APO-040..055 | 중복 카운트 grep + line-count 상한 |
-| Group 5 — 불변식 | REQ-APO-060..068 | AC-APO-060..068 | 미러 diff + CI green + 부재 grep |
-| Group 6 — 배포 (D1) | REQ-APO-069..073 | AC-APO-069..073 | 배포 존재 grep + supersession 기록 + 중립성(비공허) + hns 차단 유지 + update 분류 |
+| Group 1 — fan-out 배선 | REQ-APO-010..016 (7) | AC-APO-010..016 (7) | zero-orphan grep + capability-gate 문구 grep |
+| Group 2 — 재구조화 | REQ-APO-020..030 + 024b (12) | AC-APO-020..030 + 024b (12) | 단계 서술 grep + 게이트 보존 grep + 규칙 독립성 서술 |
+| Group 3 — 본문 다이어트 | REQ-APO-040..055 (16) | AC-APO-040..055 (16) | 중복 카운트 grep + line-count 분기 상한 |
+| Group 4 — 불변식 | REQ-APO-060..068 (9) | AC-APO-060..068 (9) | 미러 diff + CI green + 부재 grep |
+| Group 5 — 배포 (D1) | REQ-APO-069..073 (5) | AC-APO-069..073 + 071b + 072b (7) | 배포 존재 grep + supersession(AC ID 인용) + 비공허 중립성(CI 정렬) + manual-only 표기 + hns 차단 유지 + update 분류 |
+| Group 6 — 배포 정합성 | REQ-APO-074..078 (5) | AC-APO-074..078 (5) | shipped rule 개정 grep + byte-parity + SSOT 방향 + 목적지 실재 |
+| **합계** | **54 REQ** | **56 AC** | — |
 
 전체 AC 열거·판정 명령·MUST/SHOULD 등급은 `acceptance.md` §D에 있다.
 
@@ -293,7 +310,7 @@ archived 12개 에이전트 이름은 어떤 편집 산출물에도 신규 도�
 | 파일 | 현재(실측) | 상한 | 근거 |
 |---|---:|---:|---|
 | `plan-auditor.md` | 505 | **340** | FC-1..12 중복 열거 + M6 CoVe + 보고 템플릿 CoVe 섹션 제거 |
-| `manager-spec.md` | 317 | **230** | frontmatter 스키마 블록 + ID 자가검사 의례 + GEARS 표 + Step5 중복 제거 |
+| `manager-spec.md` | 317 | **230** (분기 A) / **250** (분기 B) | frontmatter 스키마 블록 + GEARS 표 + Step5 중복 제거. **분기 조건부** — D3 게이트(§`plan.md` §B.3)가 마커 소비자 0건이면 분기 A(230), ≥1건이면 출력 계약 보존분만큼 완화된 분기 B(250) |
 | `manager-develop.md` | 311 | **240** | DDD/TDD 동형 워크플로우 통합 |
 | `sync-auditor.md` | 221 | **150** | scoring model 2→1, report template 2→1 |
 | `manager-git.md` | 211 | **190** | merge_method 3회→1회 |
@@ -302,9 +319,11 @@ archived 12개 에이전트 이름은 어떤 편집 산출물에도 신규 도�
 | `e2e-tester.md` | 182 | **150** | 비-호스트 OS 레시피 스킬 레퍼런스 이관 |
 | `manager-docs.md` | 167 | **120** | Nextra/WCAG/page-speed 레거시 제거 |
 | `super-advisor.md` | 107 | **112** | 다이어트 대상 아님(교차참조 1줄 허용) |
-| **합계** | **2,417** | **≤ 1,907** | 최소 21% 감축 |
+| **합계** | **2,417** | **≤ 1,907** (분기 A) / **≤ 1,927** (분기 B) | 최소 20% 감축 |
 
 상한은 각각 **이하(≤)** 판정이며, 합계 상한은 개별 상한의 합이다. 개별 파일이 상한보다 더 줄어드는 것은 허용된다(단 REQ-APO-068 정보 무성 소실 금지가 우선한다).
+
+`manager-spec.md` 행은 **분기 조건부 상한**이다. D3 게이트 결과에 따라 적용 상한이 결정되며, 어느 분기든 해당 상한은 MUST로 판정된다 — 상한을 맞추기 위해 마커 출력 계약을 깨는 것은 금지된다(그 경우 분기 B 상한이 적용되어야 하며, "상한 미달성 + 사유 기록"으로 회피하지 않는다).
 
 ---
 
@@ -314,10 +333,31 @@ Tier L로 판정한다. 근거:
 
 - **표면 수**: 에이전트 본문 10 + 워크플로우 스킬 문서 3(plan/run/sync) + 하위 스킬 문서 최소 4(`run/phase-execution.md`, `run/task-decomposition.md`, `sync/doc-execution.md`, `sync/quality-gates-quality.md`) + 정규 규칙 2(`agent-common-protocol.md`, `CLAUDE.md`) + 각각의 템플릿 미러. 편집 파일 수는 **30개 이상**이다.
 - **도메인 수**: 에이전트 정의 / 워크플로우 스킬 / 정규 규칙 / 템플릿 배포 / docs-site 콘텐츠 — 5개 도메인.
-- **정책 위험**: Group 1은 [HARD] 안전 규칙의 의미를 바꾼다. 문구 오작성 시 파일 쓰기 레이스를 허용하게 된다 — 최고 심사 밀도가 필요하다.
+- **배포 위험**: Group 5~6은 **배포 사용자에게 출하되는 자산**(3개 `.js` + shipped rule 문구)을 변경한다. 중립성 누락 시 내부 토큰이 출하되고, shipped rule 미개정 시 자기모순 상태로 출하된다 — 되돌리기 비용이 로컬 편집보다 크므로 최고 심사 밀도가 필요하다. (참고: 본 SPEC은 `[HARD]` write-concurrency 규칙을 편집하지 않는다 — §A.2·§C 참조.)
 - **불변식 밀도**: mirror byte-parity, 템플릿 중립성, 비배포 불변식, 게이트 보존, verdict 소유권 보존 — 5종 불변식이 동시에 걸린다.
 
-Tier M은 30+ 파일 다중 미러 표면과 [HARD] 정책 개정을 과소 커버한다.
+Tier M은 30+ 파일 다중 미러 표면을 과소 커버한다. Tier L의 5-artifact 의무(spec + plan + acceptance + design + research)는 본 SPEC이 충족한다 — `progress.md`는 모든 Tier에 존재하므로 5번째 산출물로 계수되지 **않는다**.
+
+### §E.2 파일 인벤토리 (편집 대상)
+
+| 경로 | 성격 | 템플릿 미러 | REQ |
+|---|---|---|---|
+| `.claude/agents/moai/*.md` (10) | 에이전트 본문 | 있음 | 040-055 |
+| `.claude/skills/moai/workflows/{plan,run,sync,codemaps}.md` | 워크플로우 진입 | 있음 | 010-016 |
+| `.claude/skills/moai/workflows/plan/spec-assembly.md` | plan 하위 | 있음 | 020-021 |
+| `.claude/skills/moai/workflows/run/{phase-execution,task-decomposition}.md` | run 하위 | 있음 | 022-023, 026-027 |
+| `.claude/skills/moai/workflows/sync/{doc-execution,quality-gates-quality,quality-gates-context}.md` | sync 하위 | 있음 | 024-026 |
+| `.claude/skills/moai-workflow-testing/references/e2e-desktop-native-recipes.md` | **신규** — e2e 비-호스트 레시피 목적지 | 있음 | 051, 078 |
+| `.claude/rules/moai/workflow/dynamic-workflows.md` | shipped rule (L80/L131 개정) | 있음 | 074-075, 077 |
+| `.claude/workflows/{plan-research-fanout,sync-audit-4dim,codemaps-extract}.js` | fan-out 스크립트 (중립화 + 헤더 정정) | **신규 생성** | 069, 071, 076 |
+| `internal/template/templates/.claude/workflows/*.js` (3) | **신규** — 배포 원본(SSOT) | (원본) | 069, 077 |
+| `internal/template/internal_content_leak_test.go` | `.js` 확장자 추가 | n/a | 072 |
+| `docs-site/content/{en,ko,ja,zh}/claude-code/agentic/workflows.md` | 주장 검증 | n/a | 016 |
+| `.moai/specs/SPEC-DWF-CODEMAPS-PILOT-001/*` | supersession 주석 | n/a | 070 |
+
+편집 대상은 **로컬 + 템플릿 미러 쌍**을 각각 1건으로 세면 약 **40 파일**이다.
+
+미편집 확인 대상(변경 없음을 검증): `internal/template/split_namespace_test.go`(§F.8.2), `internal/cli/update/plan/plan.go`(§F.8.4), `.claude/rules/moai/core/agent-common-protocol.md`(구 Group 1 철회로 무편집), `CLAUDE.md`(동일).
 
 ---
 
@@ -339,11 +379,14 @@ Tier M은 30+ 파일 다중 미러 표면과 [HARD] 정책 개정을 과소 커�
 
 `grep -ln "verification-batch-pattern\|Parallel Execution" .claude/agents/moai/*.md` 관측: **`plan-auditor.md` 1개 파일**만 매치. 나머지 9개 에이전트는 병렬 배칭 규범 참조 전무.
 
-### F.4 write-concurrency 3표면
+### F.4 write-concurrency 3표면 (후속 SPEC 입력 — 본 SPEC은 무편집)
+
+구 Group 1 철회에 따라 아래 실측은 **후속 SPEC의 입력 자료**로만 보존된다. 본 SPEC은 이 3표면을 편집하지 않는다.
 
 - `agent-common-protocol.md` L191 / L193 / L198 — 절대 금지 형태.
 - `CLAUDE.md` L250 및 `internal/template/templates/CLAUDE.md` L250 — 동일 절대 금지 문장(byte-parity 상태).
-- `.claude/skills/moai/workflows/e2e.md` L251 — **이미 스코프 한정 형태** ("on overlapping scope").
+- `.claude/skills/moai/workflows/e2e.md` L251 — **이미 스코프 한정 형태** ("on overlapping scope") — 두 표면의 불일치는 실재하나 본 SPEC의 소관이 아니다.
+- 추가 관찰(후속 SPEC 주의): read-only 안전장치 문장이 `agent-common-protocol.md`에 **두 번** 나타난다 — L198의 "orchestrator work concurrent with a write-capable agent stays read-only"와 L193의 변형 "orchestrator work **performed concurrently with** a write-capable agent is read-only". 단일 리터럴 grep으로 보존을 검증하면 L193 변형을 놓친다.
 
 ### F.5 템플릿 미러 인벤토리
 
@@ -398,9 +441,33 @@ hns-release-update-run.js        BLOCKED (prefix=hns-release)
 |---|---|---|
 | `codemaps-extract.js` (62줄) | — | **0건 — 이미 중립** |
 | `plan-research-fanout.js` (132줄) | 35-36, 54 | `REQ-ATR-018/019/020`, `AC-ATR-023/024/025`, `design.md §D`, `acceptance.md` 내부 참조 |
-| `sync-audit-4dim.js` (173줄) | 37-38, 42 | `REQ-ATR-015/016/017`, `AC-ATR-020/021/022`, 예시 문자열 `spec_id: "SPEC-FOO-001"`(C1 정규식 매칭 대상) |
+| `sync-audit-4dim.js` (173줄) | 37-38 | `REQ-ATR-015/016/017`, `AC-ATR-020/021/022` |
 
 따라서 REQ-APO-072(`.js` 확장자 추가)는 REQ-APO-071(중립화) 판정이 유효해지기 위한 **선행 조건**이다. 이것이 D1이 실제로 요구하는 유일한 Go 변경이며, 예상되었던 "가드 축소"와는 반대 방향이다.
+
+#### F.8.3-a 정정 — CI 가드 정규식 클래스의 실제 범위 (v0.2.0 서술 오류)
+
+v0.2.0의 §F.8.3은 `sync-audit-4dim.js:42`의 예시 문자열 `spec_id: "SPEC-FOO-001"`이 "C1 정규식 `SPEC-[A-Z0-9-]+-[0-9]{3}` 매칭 대상"이라고 기술했다. **이는 사실이 아니다.** `internal_content_leak_test.go`의 실제 클래스는 접두사 제한형이다:
+
+| 클래스 | 실제 정규식 (실측) |
+|---|---|
+| C1 (`C1-spec-id-prefix`) | `\bSPEC-(V3R[2-6]\|AGENCY\|WORKTREE)-[A-Z0-9-]+\b` |
+| C2 (`C2-req-ac-internal-prefix`) | `\b(REQ\|AC)-(ATR\|WO\|COORD\|UNP\|LNC\|TII)-[0-9]{3}\b` |
+| S2 (short-sha) | `\b[0-9a-f]{7,8}([\s\.,;:!?]\|$)` |
+
+토큰별 매칭 실측:
+
+| 토큰 | C1 | C2 |
+|---|---|---|
+| `SPEC-FOO-001` | **미매치** | **미매치** |
+| `REQ-ATR-018` / `AC-ATR-023` / `REQ-ATR-015` | 미매치 | **매치** |
+| `SPEC-V3R6-FOO-001` | 매치 | 미매치 |
+
+귀결 3가지:
+
+1. `SPEC-FOO-001`은 CI 가드가 잡지 않는다. 이것은 도메인이 `FOO`인 **일반 플레이스홀더**이며 내부 개발 흔적이 아니므로 실질적으로도 무해하다. 중립화 대상은 `REQ-ATR-*` / `AC-ATR-*` / `design.md §C/§D` / `acceptance.md` 참조에 한정된다.
+2. **RED/GREEN 왕복(AC-APO-072)은 달성 가능하다** — C2가 `plan-research-fanout.js:35-36,54`와 `sync-audit-4dim.js:37-38`의 실제 `REQ-ATR-*` / `AC-ATR-*` 토큰을 genuinely 매치하므로, `.js` 확장자 추가 전후로 FAIL→PASS 전이가 실제로 관측된다. 다만 이 왕복이 입증하는 것은 **"스캐너가 C2 클래스에 대해 `.js`를 읽는다"**이지 AC-APO-071이 나열한 정규식 전체가 CI로 강제된다는 뜻이 아니다.
+3. AC-APO-071의 수동 정규식은 CI 클래스보다 **넓다**(SHA 범위 `{9,40}` vs CI `{7,8}`은 겹치지도 않는다). 비중첩 토큰 클래스는 **manual-only / CI-unenforced**로 명시 표기해야 하며, "CI green"을 그 클래스의 근거로 인용해서는 안 된다.
 
 ### F.8.4 정정 3 — `moai update` 보존 목록도 prefix-scoped이며 배포와 양립
 
@@ -416,7 +483,7 @@ hns-release-update-run.js        BLOCKED (prefix=hns-release)
 
 ## §G Cross-References
 
-- `.claude/rules/moai/core/agent-common-protocol.md` § Background Agent Execution / § Parallel Execution — Group 1 개정 대상 및 REQ-APO-054 참조 대상 SSOT.
+- `.claude/rules/moai/core/agent-common-protocol.md` § Parallel Execution — REQ-APO-054가 각 에이전트 본문에 교차참조로 삽입할 SSOT. **본 SPEC은 이 파일을 편집하지 않는다**(§E.2 미편집 확인 대상). § Background Agent Execution의 write-concurrency 문장은 후속 SPEC 소관이다.
 - `.claude/rules/moai/workflow/verification-batch-pattern.md` — 병렬 배칭 근거 및 클래스 분류.
 - `.claude/rules/moai/development/agent-authoring.md` § Prompt Craft — REQ-APO-042 금지 근거.
 - `.claude/rules/moai/development/spec-frontmatter-schema.md` — REQ-APO-040/041 교차참조 대상 SSOT.
@@ -426,5 +493,12 @@ hns-release-update-run.js        BLOCKED (prefix=hns-release)
 - `internal/template/split_namespace_test.go` — `hns-*` / `harness-*` Runner 차단 가드(prefix-scoped, 개정 불요 — §F.8.2).
 - `internal/template/internal_content_leak_test.go` — `leakTextExtensions`에 `.js` 추가 대상(REQ-APO-072, §F.8.3).
 - `internal/cli/update/plan/plan.go` — user-owned 보존 분류(prefix-scoped, 변경 불요 — §F.8.4).
+- `internal/template/internal_content_leak_test.go` — C1/C2/S2 클래스 정의(§F.8.3-a) + `leakTextExtensions` 확장 대상(REQ-APO-072).
+- `.claude/rules/moai/workflow/dynamic-workflows.md` L80 / L131 — Group 6 개정 대상(REQ-APO-074).
+
+### 후속 SPEC (본 SPEC에서 저작하지 않음)
+
+- **`SPEC-WRITE-CONCURRENCY-SCOPE-001` (가칭)** — §C `Out of Scope — write-concurrency rule relaxation`이 이관한 축. 범위: `agent-common-protocol.md` / `CLAUDE.md`의 절대 금지형 → 스코프 한정형 개정, disjoint path manifest 포맷·바인딩·checker, 파일 이외 공유 상태(git index / 원격 브랜치 / 외부 API) 취급, 최소 1개 강제 지점. Tier L 예상(`design.md` 필수 — manifest 포맷이 설계 산출물이다). 입력 자료: 본 SPEC §F.4(3표면 실측 + L193/L198 이중 서술 관찰).
+- 본 SPEC은 위 후속 SPEC을 저작하지 않으며, 그 진행 여부가 본 SPEC의 어떤 REQ/AC의 전제도 되지 않는다(REQ-APO-024b).
 - `SPEC-WORKFLOW-CACHE-OPT-001` — `sync-audit-4dim` 병렬 심사 선례 인용.
 - `CLAUDE.local.md` §2 / §25 — Template-First 및 템플릿 중립성.

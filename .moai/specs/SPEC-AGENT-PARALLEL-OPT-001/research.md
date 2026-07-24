@@ -1,14 +1,14 @@
 ---
 id: SPEC-AGENT-PARALLEL-OPT-001
 title: "Agent instruction diet + plan/run/sync parallelization maximization — Research"
-version: "0.2.0"
+version: "0.5.0"
 status: draft
 created: 2026-07-25
 updated: 2026-07-25
 author: manager-spec
 priority: P1
 phase: "v3.1.0 target"
-module: ".claude/agents/moai, .claude/skills/moai/workflows, .claude/rules/moai/core, internal/template/templates"
+module: ".claude/agents/moai, .claude/skills/moai/workflows, .claude/skills/moai-workflow-testing/references/e2e-desktop-native-recipes.md, .claude/rules/moai/workflow, .claude/workflows, internal/template/templates, internal/template/internal_content_leak_test.go"
 lifecycle: spec-anchored
 tags: "agent-diet, parallelization, fan-out, write-concurrency, workflow-wiring, template-first"
 tier: L
@@ -182,8 +182,17 @@ tier: L
 세 항목 모두 사용자 결정으로 해소되었다. 미해소 clarification 마커는 남아 있지 않다.
 
 - **D1 — 배포 채택.** 3개 스크립트를 템플릿 미러한다. SPEC-DWF-CODEMAPS-PILOT-001의 비배포 AC를 명시 supersede하고 §25 중립화를 수행한다. capability gate는 존치(§H.4).
-- **D2 — read-only drafter + 단일 적용자 확정.** disjoint-writer 변형은 문서화된 향후 선택지로만 보존. Phase 12는 Group 1 결과와 독립이다.
-- **D3 — 선행 측정 후 결정.** M4 첫 작업으로 게이트 grep을 실행하고 출력을 기록한 뒤 분기한다. 현 시점에 제거 여부를 단정하지 않는다.
+- **D2 — read-only drafter + 단일 적용자 확정.** disjoint-writer 변형은 문서화된 향후 선택지로만 보존. Phase 12는 구 Group 1(write-concurrency) 규칙 완화의 진행 여부와 독립이다.
+- **D3 — 선행 측정 후 결정.** M3 첫 작업으로 **판별형** 게이트 grep을 실행하고 출력을 기록한 뒤 분기한다. 현 시점에 제거 여부를 단정하지 않는다. v0.2.0이 지정했던 비판별형 grep은 §H.5에서 교정되었다.
+
+### F.4 Group 1 (write-concurrency) 철회 — v0.3.0
+
+plan-audit 결과를 반영해 write-concurrency 규칙 완화 축(REQ-APO-001..005)이 **전면 철회**되어 후속 SPEC으로 이관되었다.
+
+- **철회 논거**: REQ-APO-024b가 sync Phase 12를 규칙 개정에서 분리했고, `spec.md` §C가 disjoint-writer 변형을 제외했다. 그 결과 규칙 완화의 in-scope 수혜자가 0이 되었다 — 본 SPEC의 병렬화는 전부 read-only fan-out + single-writer이므로 동시 write 자체가 발생하지 않는다(설계 근거: `design.md` §B.2).
+- **철회 이득**: `[HARD]` 파일 쓰기 레이스 가드를 수혜자 없이 넓히는 위험이 제거되고, 본 SPEC은 현행 규칙을 한 글자도 바꾸지 않은 채 성립한다.
+- **이관 범위**: manifest 포맷, 바인딩 방식, 교집합 checker, 파일 이외 공유 상태(git index / 원격 브랜치 / 외부 API) 취급, 최소 1개 강제 지점. 후속 SPEC은 `design.md`를 갖춘 Tier L이 될 것으로 예상된다(manifest 포맷이 설계 산출물이기 때문).
+- **후속 SPEC 입력 자료**: `spec.md` §F.4에 3표면 실측이 보존되어 있다. 추가 관찰 — read-only 안전장치 문장이 `agent-common-protocol.md`에 **두 번** 등장한다(L198 정본 + L193 변형 "performed concurrently with"). 단일 리터럴 grep으로 보존을 검증하면 L193 변형을 놓친다.
 
 ---
 
@@ -217,11 +226,26 @@ hns-release-update-run.js        BLOCKED (prefix=hns-release)
 | `plan-research-fanout.js` (132줄) | 35-36 | `REQ-ATR-018/019/020`, `AC-ATR-023/024/025`, `design.md §D`, `acceptance.md` |
 | | 54 | `design.md §D + REQ-ATR-020` |
 | `sync-audit-4dim.js` (173줄) | 37-38 | `REQ-ATR-015/016/017`, `AC-ATR-020/021/022`, `design.md §C` |
-| | 42 | `spec_id: "SPEC-FOO-001"` — 플레이스홀더지만 C1 정규식 `SPEC-[A-Z0-9-]+-[0-9]{3}` 매칭 대상 |
 
 따라서 `.js` 확장자 추가(REQ-APO-072)는 중립성 판정(REQ-APO-071)이 유효해지기 위한 **선행 조건**이며, D1이 실제로 요구하는 유일한 Go 변경이다. 예상되었던 "가드 축소"와 방향이 반대다.
 
-참고: `pedagogicalAllowlist` 기구가 존재하므로 `SPEC-FOO-001` 같은 교육용 플레이스홀더는 allowlist 등재로도 해결 가능하나, 스크립트 예시는 일반 식별자(`<spec-id>` 등)로 바꾸는 편이 단순하다.
+### H.2-a 정정 — `SPEC-FOO-001`은 C1 매칭 대상이 아니다 (v0.2.0 서술 오류)
+
+v0.2.0의 §H.2 표는 `sync-audit-4dim.js:42`의 `spec_id: "SPEC-FOO-001"`을 "C1 정규식 `SPEC-[A-Z0-9-]+-[0-9]{3}` 매칭 대상"으로 기재했다. **CI 가드의 실제 클래스는 접두사 제한형이며 이 토큰을 잡지 않는다.** 실측(`internal_content_leak_test.go` L163/L167/L337):
+
+| 클래스 | 실제 정규식 |
+|---|---|
+| C1 | `\bSPEC-(V3R[2-6]\|AGENCY\|WORKTREE)-[A-Z0-9-]+\b` |
+| C2 | `\b(REQ\|AC)-(ATR\|WO\|COORD\|UNP\|LNC\|TII)-[0-9]{3}\b` |
+| S2 | `\b[0-9a-f]{7,8}([\s\.,;:!?]\|$)` |
+
+토큰별 실측: `SPEC-FOO-001` → C1 미매치 / C2 미매치. `REQ-ATR-018`·`AC-ATR-023`·`REQ-ATR-015` → C2 **매치**. `SPEC-V3R6-FOO-001` → C1 매치.
+
+귀결:
+
+1. `SPEC-FOO-001`은 도메인이 `FOO`인 일반 플레이스홀더이며 CI 가드 대상도, 내부 흔적도 아니다 — **중립화 대상에서 제외**한다. `pedagogicalAllowlist` 등재도 불필요하다.
+2. RED/GREEN 왕복(AC-APO-072)은 **여전히 달성 가능**하다 — C2가 실제 `REQ-ATR-*` / `AC-ATR-*` 토큰을 매치하므로 `.js` 확장 전후 FAIL→PASS 전이가 관측된다. 다만 입증 범위는 "스캐너가 C2 클래스에 대해 `.js`를 읽는다"이지 AC-APO-071의 정규식 전체가 CI 강제된다는 뜻이 아니다.
+3. AC-APO-071의 수동 정규식은 CI보다 넓다 — SHA 범위 `{9,40}`는 CI의 `{7,8}`과 **겹치지도 않는다**. 비중첩 클래스는 manual-only / CI-unenforced로 표기해야 하며 "CI green"을 그 근거로 인용해서는 안 된다.
 
 ### H.3 `moai update` 보존 계약도 prefix-scoped — 변경 불요
 
@@ -232,6 +256,32 @@ hns-release-update-run.js        BLOCKED (prefix=hns-release)
 ### H.4 배포해도 capability gate는 필요하다
 
 배포는 **파일 존재**를 보장하지만 **런타임 지원**을 보장하지 않는다. dynamic workflow 실행에는 Claude Code 최소 버전 요구가 있으므로 구버전 사용자는 파일을 받고도 실행할 수 없다. gate 조건을 "파일 존재 AND 런타임 지원"으로 확장해 유지한다(REQ-APO-011).
+
+### H.5 D3 게이트 grep 판별력 실측 — v0.2.0 형태는 사용 불가
+
+v0.2.0 `plan.md` §B.3이 지정한 게이트 명령과 판별형 대안의 실측 결과:
+
+| 형태 | 명령 | 매치 수 |
+|---|---|---|
+| v0.2.0 (비판별형) | `grep -rn "decomposition\|segment match trace" internal/ .github/ .claude/` | **12,133** |
+| v0.3.0 (판별형) | `grep -rn 'decomposition:' --include='*.go' --include='*.sh' --include='*.yaml' internal/ .github/ .claude/hooks/` | **0** |
+
+비판별형이 실패하는 이유는 두 가지다. (a) `decomposition`이 리포 전반의 일반 어휘다 — `run/task-decomposition.md` 파일명, "hierarchical decomposition", "Task Decomposition" 섹션 등. (b) 그 결과 AC-APO-043이 요구한 "출력 verbatim 기록"이 물리적으로 불가능하고, 0-branch가 도달 불가능해 게이트가 항상 ≥1로 귀결되어 판별력이 없다.
+
+판별형은 3중 조건으로 좁힌다: 콜론 앵커(`decomposition:` — 마커의 실제 출력 형태) + 실행 가능 파일 확장자 한정 + 마커 정의처(`.claude/agents/moai/manager-spec.md`) 제외. 실측 0건이므로 소비자 부재가 유력하나, **게이트는 run-phase에서 실제로 실행하고 기록**한다(현 실측은 plan-phase 참고치일 뿐이며, AC 판정 근거는 run-phase 실행 출력이다).
+
+보조 관찰: `manager-spec.md:166`은 마커가 "downstream grep verification"을 가능하게 한다고 주장하지만, 그 문장이 인용하는 grep 자체가 마커 정의처를 가리키는 **자기참조**다. 게이트 0 결과는 이 주장이 근거 없음을 확정한다.
+
+### H.6 shipped rule 모순 실측 (D2)
+
+`.claude/rules/moai/workflow/dynamic-workflows.md`가 배포 대상 템플릿에 포함되어 있으며, 로컬과 템플릿이 **0-diff**임을 실측했다. 문제 서술 2곳:
+
+- **L80**: "Saved workflows … MoAI does not ship any saved workflows by default; the user-owned `.claude/workflows/` directory is not template-managed."
+- **L131**: "**Artifact**: the validated script lives in the local, user-owned `.claude/workflows/` directory (not template-managed, per the statement above)."
+
+배포 후에는 템플릿이 `.claude/workflows/*.js` 3개를 담은 채 "그 디렉터리는 template-managed가 아니다"라고 선언하게 되어 자기모순이다. 아울러 스크립트 헤더 자체가 이 모순을 반복한다 — `plan-research-fanout.js:36`과 `sync-audit-4dim.js:38`이 각각 `dynamic-workflows.md (…, user-owned workflows)`를 cross-ref로 기재한다(실측 2건).
+
+이 관찰이 Group 6(REQ-APO-074..077)을 신설하게 했다. v0.2.0은 이 파일을 §G에서 "worked example 출처"로만 인용했고 내용을 검토하지 않았다 — 인용은 검토가 아니다.
 
 ---
 

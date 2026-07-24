@@ -1,14 +1,14 @@
 ---
 id: SPEC-AGENT-PARALLEL-OPT-001
 title: "Agent instruction diet + plan/run/sync parallelization maximization — Acceptance Criteria"
-version: "0.2.0"
+version: "0.5.0"
 status: draft
 created: 2026-07-25
 updated: 2026-07-25
 author: manager-spec
 priority: P1
 phase: "v3.1.0 target"
-module: ".claude/agents/moai, .claude/skills/moai/workflows, .claude/rules/moai/core, internal/template/templates"
+module: ".claude/agents/moai, .claude/skills/moai/workflows, .claude/skills/moai-workflow-testing/references/e2e-desktop-native-recipes.md, .claude/rules/moai/workflow, .claude/workflows, internal/template/templates, internal/template/internal_content_leak_test.go"
 lifecycle: spec-anchored
 tags: "agent-diet, parallelization, fan-out, write-concurrency, workflow-wiring, template-first"
 tier: L
@@ -25,24 +25,7 @@ tier: L
 
 ## §B Given-When-Then 시나리오
 
-### 시나리오 1 — 겹치지 않는 경로에 대한 동시 write spawn 허용
-
-**Given** `agent-common-protocol.md`가 스코프 한정 형태로 개정되어 있고,
-**And** 오케스트레이터가 sync Phase 12에서 CHANGELOG 담당과 project-docs 담당 두 write-capable 에이전트를 준비했고,
-**And** 두 spawn 프롬프트가 각각 disjoint path manifest를 선언했으며 두 manifest의 교집합이 공집합일 때,
-**When** 오케스트레이터가 두 에이전트를 동시 spawn하면,
-**Then** 규칙 위반이 아니며,
-**And** 두 에이전트가 쓴 파일 집합은 서로 겹치지 않고,
-**And** 오케스트레이터 자신은 그 구간 동안 read-only 작업만 수행한다.
-
-### 시나리오 2 — 겹치는 경로 선언 시 직렬화
-
-**Given** 두 write-capable spawn의 manifest가 `README.md`를 공통으로 포함할 때,
-**When** 오케스트레이터가 동시 실행을 검토하면,
-**Then** 동시 spawn을 수행하지 않고 직렬로 실행하며,
-**And** 직렬화 사유를 기록한다.
-
-### 시나리오 3 — 런타임 미지원 환경에서의 graceful degradation
+### 시나리오 1 — 런타임 미지원 환경에서의 graceful degradation
 
 **Given** 배포 사용자가 3개 스크립트 파일은 수령했으나 런타임이 dynamic workflow를 지원하지 않고(구버전 Claude Code),
 **And** `plan.md`가 `plan-research-fanout.js`를 capability-gate 형태로 참조할 때,
@@ -53,29 +36,14 @@ tier: L
 
 파일 부재 환경(스크립트를 수동 삭제한 사용자)에서도 동일 결과여야 한다 — gate는 "파일 존재 AND 런타임 지원" 두 조건을 모두 확인한다.
 
-### 시나리오 7 — 배포가 harness Runner 격리를 깨뜨리지 않음
-
-**Given** 3개 generic fan-out 스크립트가 `internal/template/templates/.claude/workflows/`에 배포되어 있을 때,
-**When** `go test ./internal/template/...`를 실행하면,
-**Then** `TestSplitHarnessNamespaceNoLeak`이 통과하고,
-**And** `hns-release-update-run.js` 등 dev-only Runner를 템플릿에 심으면 여전히 FAIL한다(차단 유효성 확인),
-**And** `moai update`가 3개 스크립트를 template-managed로, 사용자의 `hns-*` Runner를 user-owned로 분류한다.
-
-### 시나리오 8 — 중립성 판정이 공허하지 않음
-
-**Given** `leakTextExtensions`에 `.js`가 추가되어 있을 때,
-**When** 중립화되지 않은 스크립트(`REQ-ATR-018` 등 포함)를 템플릿에 심고 leak 테스트를 실행하면,
-**Then** 테스트가 **FAIL**하고(스캐너가 실제로 `.js`를 읽었음의 증거),
-**And** 중립화 후 재실행하면 PASS한다.
-
-### 시나리오 4 — 병렬 심사 후 단일 구속 verdict
+### 시나리오 2 — 병렬 심사 후 단일 구속 verdict
 
 **Given** run Phase 품질 단계가 병렬 증거 수집 + 단일 verdict 구조로 재구조화되어 있을 때,
 **When** 4개 차원 read-only 심사가 병렬 완료되면,
 **Then** 최종 PASS/FAIL verdict는 `sync-auditor` 1개 에이전트가 산출하며,
 **And** 스크립트가 계산한 집계 점수는 증거로만 인용되고 verdict를 대체하지 않는다.
 
-### 시나리오 5 — 다이어트 후 SSOT 도달성 보존
+### 시나리오 3 — 다이어트 후 SSOT 도달성 보존
 
 **Given** `manager-spec.md`에서 12-field frontmatter 스키마 블록이 제거되었을 때,
 **When** 독자가 해당 위치를 읽으면,
@@ -83,13 +51,28 @@ tier: L
 **And** 그 경로의 파일이 실재하며,
 **And** 12개 필드 정보가 그 파일에서 조회 가능하다.
 
-### 시나리오 6 — Template-First 위반 탐지
+### 시나리오 4 — Template-First 위반 탐지
 
 **Given** 미러가 존재하는 파일이 편집되었을 때,
 **When** 로컬 파일과 템플릿 미러를 `diff`하면,
 **Then** §C Pre-flight에서 확정한 baseline 차이 외의 신규 차이가 0이다.
 
 ---
+
+### 시나리오 5 — 배포가 harness Runner 격리를 깨뜨리지 않음
+
+**Given** 3개 generic fan-out 스크립트가 `internal/template/templates/.claude/workflows/`에 배포되어 있을 때,
+**When** `go test ./internal/template/...`를 실행하면,
+**Then** `TestSplitHarnessNamespaceNoLeak`이 통과하고,
+**And** `hns-release-update-run.js` 등 dev-only Runner를 템플릿에 심으면 여전히 FAIL한다(차단 유효성 확인),
+**And** `moai update`가 3개 스크립트를 template-managed로, 사용자의 `hns-*` Runner를 user-owned로 분류한다.
+
+### 시나리오 6 — 중립성 판정이 공허하지 않음
+
+**Given** `leakTextExtensions`에 `.js`가 추가되어 있을 때,
+**When** 중립화되지 않은 스크립트(`REQ-ATR-018` 등 포함)를 템플릿에 심고 leak 테스트를 실행하면,
+**Then** 테스트가 **FAIL**하고(스캐너가 실제로 `.js`를 읽었음의 증거),
+**And** 중립화 후 재실행하면 PASS한다.
 
 ## §C 엣지 케이스
 
@@ -112,17 +95,7 @@ tier: L
 
 ## §D AC 매트릭스
 
-### D.1 Group 1 — write-concurrency (REQ-APO-001..005)
-
-| AC | REQ | 등급 | 판정 |
-|---|---|---|---|
-| AC-APO-001 | 001 | MUST | `grep -n "overlapping scope" .claude/rules/moai/core/agent-common-protocol.md` ≥ 1건, 그리고 절대 금지 문장("does not run two write-capable agents concurrently" 단독형)이 0건 |
-| AC-APO-002 | 002 | MUST | `agent-common-protocol.md`에 disjoint path manifest 계약 서술 존재(`grep -n "disjoint"` ≥ 1) |
-| AC-APO-003 | 003 | MUST | 교집합 시 직렬화 규칙 서술 존재, 그리고 "판정 불가 = 직렬화" 기본값 명시 |
-| AC-APO-004 | 004 | MUST | `CLAUDE.md`와 `internal/template/templates/CLAUDE.md`의 해당 문장이 동일하고 양쪽 모두 `overlapping scope` 포함 |
-| AC-APO-005 | 005 | MUST | `grep -n "orchestrator work concurrent with a write-capable agent"` 문장이 3표면 모두에 보존 |
-
-### D.2 Group 2 — fan-out 배선 (REQ-APO-010..016)
+### D.1 Group 1 — fan-out 배선 (REQ-APO-010..016)
 
 | AC | REQ | 등급 | 판정 |
 |---|---|---|---|
@@ -134,16 +107,16 @@ tier: L
 | AC-APO-015 | 015 | MUST | zero-orphan: 3개 스크립트명 각각이 `.claude/skills/moai/workflows/` 하위에서 최소 1건 매치 (3/3) |
 | AC-APO-016 | 016 | MUST | docs-site 4-locale `workflows.md`의 파이프라인 투입 주장이 **참임이 검증**됨 — AC-APO-015(zero-orphan) AND AC-APO-069(배포 존재) 동시 PASS가 근거. 배선/배포 미완 시에는 4개 로케일 동시 정정으로 대체 판정 |
 
-### D.3 Group 3 — 재구조화 (REQ-APO-020..030)
+### D.2 Group 2 — 재구조화 (REQ-APO-020..030 + 024b)
 
 | AC | REQ | 등급 | 판정 |
 |---|---|---|---|
 | AC-APO-020 | 020 | MUST | plan Phase 11 서술에 병렬 read-only 심사 + plan-auditor 단일 verdict 구조 명시 |
 | AC-APO-021 | 021 | MUST | plan Phase 10 단일 writer 유지 명시 + 단일 턴 병렬 Write 지시 존재 |
 | AC-APO-022 | 022 | SHOULD | RED 단계 drafter pool + 단일 applier 구조 서술 존재 |
-| AC-APO-023 | 023 | MUST | run Phase 13/16/17 축약 구조 서술 존재, 그리고 최대 3회 반복 상한 문구 보존(`grep -n "max 3 iterations"` ≥ 1) |
+| AC-APO-023 | 023 | MUST | run Phase 13/16/17 축약 구조 서술 존재 **AND** `grep -cE 'Maximum 3 (fix-evaluate cycles\|review iterations)' .claude/skills/moai/workflows/run/task-decomposition.md` == 2 (baseline 2 — **Phase 16**(Active Quality Evaluation) `Maximum 3 fix-evaluate cycles` @:190, **Phase 17**(TRUST 5 Static Verification) `Maximum 3 review iterations` @:230. Phase 13은 반복 상한을 갖지 않는다. 둘 중 하나라도 삭제되면 1로 떨어져 FAIL) |
 | AC-APO-024 | 024 | MUST | sync Phase 12에 5개 read-only drafter 구조 서술 + 단일 `manager-docs` 순차 적용 명시; disjoint-writer 변형 서술 0건 |
-| AC-APO-024b | 024b | MUST | Phase 12 서술이 Group 1 결과와 독립임이 명시 — M1 미완/철회 시에도 M3 진행 가능함이 문서상 확인 |
+| AC-APO-024b | 024b | MUST | Phase 12 서술이 **현행 write-concurrency 규칙과 독립**임이 명시(현행 `[HARD]` 절대 금지형 규칙을 그대로 둔 채 성립) **AND** 규칙 완화의 진행 여부를 전제로 삼는 서술 0건 — `grep -cE "규칙 완화(가|를) (전제|선행)\|write-concurrency 개정.*(선행\|의존)" .claude/skills/moai/workflows/sync/doc-execution.md` == 0 (baseline 0 — 실측 확인). 주의: `grep -c`는 0건일 때 **exit status 1**을 반환하므로 종료 코드가 아니라 **출력 숫자**로 판정한다 |
 | AC-APO-025 | 025 | SHOULD | sync Phase 10 패키지별 fan-out 서술 존재 |
 | AC-APO-026 | 026 | MUST | sync Phase 1/7에 `moai verify` 스냅샷 소비 서술 + 신선도(키 일치/TTL) 조건 동반 |
 | AC-APO-027 | 027 | SHOULD | MX 스캔 샤딩 서술 존재 |
@@ -151,33 +124,33 @@ tier: L
 | AC-APO-029 | 029 | MUST | 게이트 토큰 4종(`Decision Point 1` / `Implementation Kickoff Approval` / `gate-sync-1` / `gate-sync-2`) 모두 편집 후에도 존재 |
 | AC-APO-030 | 030 | MUST | drafter/judge 서브에이전트 서술에 blocker report 반환 규범 존재, `AskUserQuestion` 호출 지시 0건 |
 
-### D.4 Group 4 — 본문 다이어트 (REQ-APO-040..055)
+### D.3 Group 3 — 본문 다이어트 (REQ-APO-040..055)
 
 | AC | REQ | 등급 | 판정 |
 |---|---|---|---|
 | AC-APO-040 | 040 | MUST | `plan-auditor.md` 내 12-field 열거 블록 1개 이하 (현재 2개: MP-3 + FC-1..12) |
 | AC-APO-041 | 041 | MUST | `manager-spec.md`에 12-field 열거 블록 0개, `spec-frontmatter-schema.md` 교차참조 ≥ 1건 |
 | AC-APO-042 | 042 | MUST | `grep -c "Chain-of-Verification" .claude/agents/moai/plan-auditor.md` == 0 |
-| AC-APO-043 | 043 | MUST | **선행 게이트**: `grep -rn "decomposition\|segment match trace" internal/ .github/ .claude/` 출력이 `progress.md`에 verbatim 기록됨. **소비자 0건**이면 마커 강제 제거 + 블록 축약; **소비자 ≥1건**이면 마커의 출력 계약을 보존한 채 주변 산문만 축약. 어느 경우든 실행 Bash 검사는 존치 |
+| AC-APO-043 | 043 | MUST | **선행 게이트 (판별형)**: `grep -rn 'decomposition:' --include='*.go' --include='*.sh' --include='*.yaml' internal/ .github/ .claude/hooks/` 를 실행하고 출력을 `progress.md`에 verbatim 기록. **기대 출력량 0-5줄**(plan-phase 참고 실측 0건) — 이 범위를 넘으면 명령이 잘못 좁혀진 것이므로 재작성. 비판별형(`decomposition\|segment match trace` 전역 grep, 12,133-match)은 **사용 금지**(§F DoD와 동일 규범). 분기: **소비자 0건** → 마커 강제 제거 + 블록 축약(라인 상한 분기 A); **소비자 ≥1건** → 마커 출력 계약 보존 + 주변 산문만 축약(라인 상한 분기 B). 어느 분기든 실행 Bash 검사는 존치 |
 | AC-APO-044 | 044 | MUST | Step 5 체크리스트 항목 중 Step 4 서술의 축자 재진술 0건 |
 | AC-APO-045 | 045 | MUST | `manager-spec.md`에 GEARS/EARS 패턴 표 0개, `moai-workflow-spec` 교차참조 ≥ 1건 |
 | AC-APO-046 | 046 | MUST | `manager-spec.md` Step 4의 산출물 개수 서술이 실제 열거 개수와 일치 |
 | AC-APO-047 | 047 | MUST | `manager-develop.md`에 DDD/TDD 전문 2회 기술 부재 — 공통 골격 + 모드 차이 구조 |
 | AC-APO-048 | 048 | MUST | "one atomic change" 제약에 패키지 내부 한정 수식어 존재 |
-| AC-APO-049 | 049 | MUST | `grep -c "scoring model" sync-auditor.md` 기준 복수 모델 서술 0건, report template 섹션 1개 |
+| AC-APO-049 | 049 | MUST | 3개 판정 동시 충족: (a) **선택 규칙 산문 소멸** — `grep -ci "two scoring models\|scoring model selection" .claude/agents/moai/sync-auditor.md` == 0 (baseline 2 — L44 `## Scoring Model Selection`, L46 `Two scoring models exist`). 잔존 모델을 설명하는 일반 표현(예: `## Scoring`)은 허용된다. (b) `grep -c "^## Evaluation Report" .claude/agents/moai/sync-auditor.md` == 1 (baseline 2 — L67 평면형 + L178 계층형). (c) **정확히 1개 모델만 잔존** — 두 **정의 마커**의 합이 1: `M=$(grep -c "^## HRN-003 Hierarchical Scoring Protocol" .claude/agents/moai/sync-auditor.md); N=$(grep -c "^### Dimension Scores" .claude/agents/moai/sync-auditor.md); test $((M+N)) -eq 1`. **baseline M=1(:130 정의 heading), N=1(:71 평면 모델 report) → 합 2 → FAIL**. `M`은 반드시 heading 앵커(`^## `)여야 한다 — 앵커 없는 `grep -c "HRN-003 Hierarchical Scoring Protocol"`는 2를 반환하며(:49는 정의가 아니라 산문 cross-reference), 그 형태를 쓰면 "계층형 유지 + 평면형 제거" 분기가 M=2·N=0·합 2로 **부당 FAIL** 한다. 앵커 적용 시 두 분기 모두 합 1 → PASS |
 | AC-APO-050 | 050 | MUST | `grep -ciE "nextra\|wcag\|page.?speed\|lighthouse" manager-docs.md` == 0 |
-| AC-APO-051 | 051 | MUST | `e2e-tester.md`에 비-호스트 OS 레시피 본문 부재 + 스킬 레퍼런스 경로 참조 존재(참조 대상 파일 실재) |
-| AC-APO-052 | 052 | MUST | `grep -c "merge_method" manager-git.md` == 1 |
+| AC-APO-051 | 051 | MUST | `e2e-tester.md`에 비-호스트 OS 레시피 본문 부재 **AND** `.claude/skills/moai-workflow-testing/references/e2e-desktop-native-recipes.md` 실재(`test -f`) **AND** `e2e-tester.md`가 해당 경로를 참조 **AND** 템플릿 미러 `internal/template/templates/.claude/skills/moai-workflow-testing/references/e2e-desktop-native-recipes.md` 존재 + 0-diff |
+| AC-APO-052 | 052 | MUST | `grep -c 'squash | merge | rebase' .claude/agents/moai/manager-git.md` == 1 (baseline 3 — L126 주석 / L163 auto-merge / L191 manual). **해석 규칙**만 1회화 대상이며, L163·L191의 두 운용 경로와 각각의 `gh pr merge --<merge_method>` 명령 템플릿은 **보존**(제거 시 REQ-APO-068 위반) |
 | AC-APO-053 | 053 | MUST | `builder-harness.md`의 `Model/effort escalation` 중복 문장 1개 이하, model-policy 표 재진술 0건 |
 | AC-APO-054 | 054 | MUST | `grep -l "verification-batch-pattern\|Parallel Execution" .claude/agents/moai/*.md` 결과 파일 수 ≥ 8 (현재 1) |
-| AC-APO-055 | 055 | MUST | `wc -l .claude/agents/moai/*.md` 합계 ≤ 1907, 그리고 파일별 상한(`spec.md` §D.2) 전량 충족 |
+| AC-APO-055 | 055 | MUST | `wc -l .claude/agents/moai/*.md` 합계와 파일별 값이 **모두** `spec.md` §D.2 표의 적용 분기 상한 이하. 합계 상한은 분기 조건부 — **분기 A ≤ 1907** / **분기 B ≤ 1927**(`manager-spec.md` 230 → 250 차이). 적용 분기는 AC-APO-043 게이트 결과가 결정하며, 분기 B 적용은 "MUST 미달성 + 사유 기록"이 아니라 **정상 적용**이다 |
 
-### D.5 Group 5 — 불변식 (REQ-APO-060..068)
+### D.4 Group 4 — 불변식 (REQ-APO-060..068)
 
 | AC | REQ | 등급 | 판정 |
 |---|---|---|---|
 | AC-APO-060 | 060 | MUST | 편집된 미러 쌍 전량 `diff` 결과가 Pre-flight baseline 차이 외 0 |
-| AC-APO-061 | 061 | MUST | `grep -rnE "SPEC-[A-Z0-9-]+-[0-9]{3}\|REQ-APO-\|20[0-9]{2}-[0-9]{2}-[0-9]{2}" internal/template/templates/<edited files>` == 0 |
+| AC-APO-061 | 061 | MUST | `git diff --name-only origin/main...HEAD -- internal/template/templates/ \| xargs -r grep -nE "SPEC-(V3R[2-6]\|AGENCY\|WORKTREE)-[A-Z0-9-]+\|(REQ\|AC)-(ATR\|WO\|COORD\|UNP\|LNC\|TII)-[0-9]{3}\|REQ-APO-\|AC-APO-"` == 0. 정규식은 CI 가드 클래스(C1/C2)에 정렬; `REQ-APO-`/`AC-APO-`는 본 SPEC 고유 토큰으로 추가 |
 | AC-APO-062 | 062 | MUST | `ls internal/template/templates/.claude/workflows/` 결과에 `hns-*` / `harness-*` 접두 파일 0개 (generic fan-out 3개만 존재) |
 | AC-APO-063 | 063 | MUST | 시나리오 3 통과 — 스크립트 부재 시 fallback 경로가 문서상 완결 |
 | AC-APO-064 | 064 | MUST | `go test ./...` exit 0; template-neutrality CI guard green |
@@ -186,16 +159,27 @@ tier: L
 | AC-APO-067 | 067 | MUST | `go test ./internal/template/...` exit 0 (`split_namespace_test.go`, `internal_content_leak_test.go` 포함) |
 | AC-APO-068 | 068 | MUST | 제거된 각 중복 블록 위치에 SSOT 교차참조 존재, 참조 경로 파일 전량 실재 |
 
-### D.6 Group 6 — 배포 (REQ-APO-069..073)
+### D.5 Group 5 — 배포 (REQ-APO-069..073)
 
 | AC | REQ | 등급 | 판정 |
 |---|---|---|---|
 | AC-APO-069 | 069 | MUST | `ls internal/template/templates/.claude/workflows/` 에 3개 파일 존재; `make build` 후 embedded 트리에서도 조회 가능 |
-| AC-APO-070 | 070 | MUST | 본 SPEC frontmatter에 `partially_supersedes: [SPEC-DWF-CODEMAPS-PILOT-001]` 존재 **AND** `spec.md`가 supersede 대상 AC를 명시 **AND** `SPEC-DWF-CODEMAPS-PILOT-001` 아티팩트에 supersession 주석이 추가되어 상호 참조 성립 |
-| AC-APO-071 | 071 | MUST | 배포된 3개 파일에 대해 `grep -nE "SPEC-[A-Z0-9-]+-[0-9]{3}\|REQ-[A-Z]+-[0-9]\|AC-[A-Z]+-[0-9]\|20[0-9]{2}-[0-9]{2}-[0-9]{2}\|/Users/\|[0-9a-f]{9,40}"` == 0. **선행 조건**: AC-APO-072 PASS (미충족 시 본 AC는 공허하여 무효) |
+| AC-APO-070 | 070 | MUST | 4개 동시 충족: (a) 본 SPEC frontmatter `partially_supersedes: [SPEC-DWF-CODEMAPS-PILOT-001]`, (b) `spec.md`가 superseded AC를 **ID로 인용** — `AC-DCP-010`(`acceptance.md:79` / `progress.md:86`) + 그 소유 요구사항 `REQ-DCP-009/010`, (c) 정식 grep 문구 `grep -r "codemaps-extract\|codemaps-pilot" internal/template/templates/` → nothing 이 더 이상 성립하지 않음을 명시, (d) 파일럿 SPEC 아티팩트에 supersession 주석 추가로 상호 참조 성립 |
+| AC-APO-071 | 071 | MUST | 배포된 3개 파일에 대해 **CI 정렬 정규식** `grep -nE "SPEC-(V3R[2-6]\|AGENCY\|WORKTREE)-[A-Z0-9-]+\|(REQ\|AC)-(ATR\|WO\|COORD\|UNP\|LNC\|TII)-[0-9]{3}\|[0-9a-f]{7,8}([[:space:].,;:!?]\|$)"` == 0. 정규식은 `internal_content_leak_test.go` C1/C2/S2 클래스에 정렬됨 — 일반형 `SPEC-[A-Z0-9-]+-[0-9]{3}`는 **의도적으로 제외**한다(`spec.md` §F.8.3-a: `SPEC-FOO-001`은 CI 미매치 일반 플레이스홀더이며 중립화 대상이 아니다). **선행 조건**: AC-APO-072 PASS (미충족 시 본 AC는 공허하여 무효) |
+| AC-APO-071b | 071 | SHOULD | **manual-only / CI-unenforced 표기 의무 이행** (`spec.md` §F.8.3-a 귀결 3). 아래 클래스는 CI 가드가 강제하지 **않으므로** 수동 점검이며, "CI green"을 근거로 인용하지 않는다: 내부 날짜 `20[0-9]{2}-[0-9]{2}-[0-9]{2}`, 메인테이너 절대경로 `/Users/`, 9자 이상 SHA `[0-9a-f]{9,40}`(CI S2는 `{7,8}`로 **겹치지 않음**). 판정 **2항 동시 충족**: (i) 배포된 3개 파일에 대해 `grep -nE "20[0-9]{2}-[0-9]{2}-[0-9]{2}\|/Users/\|[0-9a-f]{9,40}"` **== 0** — REQ-APO-071이 금지한 5개 클래스 전량이 MUST 수준으로 커버되도록 하는 조항이며, SHOULD 등급이라는 이유로 면제되지 **않는다**. (ii) 그 결과가 `progress.md`에 **CI-unenforced 라벨과 함께** 기록됨 — 기록 의무는 "CI green"을 이 3개 클래스의 근거로 오인용하지 못하게 하는 장치다 |
 | AC-APO-072 | 072 | MUST | `leakTextExtensions`에 `".js": true` 존재 (`grep -n '".js"' internal/template/internal_content_leak_test.go` ≥ 1) **AND** 시나리오 8의 RED/GREEN 왕복이 관측됨 — 미중립 스크립트 심었을 때 FAIL, 중립화 후 PASS |
 | AC-APO-072b | 062/069 | MUST | `TestSplitHarnessNamespaceNoLeak` PASS **AND** 차단 유효성 확인: `hns-release-update-run.js`를 템플릿에 심고 실행 시 `SPLIT_HARNESS_NAMESPACE_LEAK`으로 FAIL (심은 파일은 제거) |
 | AC-APO-073 | 073 | MUST | `internal/cli/update/plan/plan.go`의 user-owned 판정이 3개 generic 스크립트에 대해 false 반환 — 접두사 `hns-`/`harness-` 미매치로 확인. 보존 목록 소스 무변경(`git diff` 0줄) |
+
+### D.6 Group 6 — 배포 정합성 (REQ-APO-074..078)
+
+| AC | REQ | 등급 | 판정 |
+|---|---|---|---|
+| AC-APO-074 | 074 | MUST | 3항 동시 충족: (a) `grep -c "MoAI does not ship any saved workflows by default" .claude/rules/moai/workflow/dynamic-workflows.md` == 0 (baseline 1, L80 — 배포 후 거짓이 되는 전칭 주장). (b) **무한정 전칭형 소멸** — `grep -c "the user-owned \`.claude/workflows/\` directory is not template-managed" .claude/rules/moai/workflow/dynamic-workflows.md` == 0 (baseline 1, L80). `not template-managed` 문구 **자체는 금지되지 않는다** — `hns-*` / `harness-*` 한정 서술로는 보존되어야 하며(`design.md` §E R5), L131의 "사용자 자신이 검증한 스크립트" 서술도 여전히 참이다. (c) 개정문에 MoAI-shipped generic fan-out과 user-owned `hns-*`/`harness-*` 구분 서술 존재 |
+| AC-APO-075 | 075 | MUST | `diff .claude/rules/moai/workflow/dynamic-workflows.md internal/template/templates/.claude/rules/moai/workflow/dynamic-workflows.md` == 0-diff (개정 전 baseline도 0-diff — 실측 확인) |
+| AC-APO-076 | 076 | MUST | 대상 3개 파일을 **명시 열거**해 판정(glob은 out-of-scope `hns-*` Runner를 포함하므로 금지): `grep -l "user-owned workflows" internal/template/templates/.claude/workflows/{plan-research-fanout,sync-audit-4dim,codemaps-extract}.js \| wc -l` == 0 **AND** 동일 명령을 로컬 `.claude/workflows/` 경로로 실행해도 == 0. baseline 2 (`plan-research-fanout.js:36`, `sync-audit-4dim.js:38`). `grep -c` 다중 파일 형태는 파일당 `path:count` 줄을 출력하므로 == 0 비교에 부적합 |
+| AC-APO-077 | 077 | MUST | `plan.md` M1 작업 순서가 **템플릿 원본 우선 → 로컬 파생** 임이 문서상 확인(로컬 선편집 후 복사 서술 0건) **AND** `dynamic-workflows.md` 개정문에 `moai update`가 3개 스크립트의 로컬 사본을 덮어쓴다는 서술 존재 |
+| AC-APO-078 | 078 | MUST | 전체 경로 `.claude/skills/moai-workflow-testing/references/e2e-desktop-native-recipes.md` 가 3곳에 문자열로 존재: (a) `spec.md` §E.2 파일 인벤토리, (b) `plan.md` M4 작업 3, (c) **`spec.md` frontmatter `module:`**. `design.md`는 자체 스코프에 한정된 별도 `module:` 값을 갖는 것이 정상이며 본 판정 대상이 아니다 |
 
 ---
 
@@ -217,9 +201,11 @@ tier: L
 
 - [ ] MUST 등급 AC 전량 PASS, verbatim 명령 출력으로 근거 제시
 - [ ] SHOULD 등급 AC 미충족 시 사유가 `progress.md`에 기록
-- [ ] §B 시나리오 8개 전량 통과
-- [ ] 사용자 결정 D1 / D2 / D3 반영 확인 — D3는 게이트 grep 출력이 `progress.md`에 verbatim 기록
-- [ ] `spec.md` §D.2 라인 상한 전량 충족(실측 `wc -l` 인용)
+- [ ] §B 시나리오 6개 전량 통과 (구 Group 1 철회로 write-concurrency 시나리오 2개 제거)
+- [ ] 사용자 결정 D1 / D2 / D3 반영 확인 — D3는 **판별형** 게이트 grep 출력이 `progress.md`에 verbatim 기록(비판별형 12,133-match 형태 금지)
+- [ ] 구 Group 1(write-concurrency) 철회 확인 — `agent-common-protocol.md` / `CLAUDE.md`의 write-concurrency 문장 `git diff` 0줄
+- [ ] 후속 SPEC 이관 기록 확인 — `spec.md` §C + §G에 이관 범위와 사유 명시
+- [ ] `spec.md` §D.2 라인 상한 전량 충족(실측 `wc -l` 인용) — `manager-spec.md`는 D3 게이트 분기에 대응하는 상한 적용
 - [ ] Template-First 순서 준수 감사 통과
 - [ ] HUMAN GATE 4종 보존 확인
 - [ ] verdict 소유권 불변 확인
