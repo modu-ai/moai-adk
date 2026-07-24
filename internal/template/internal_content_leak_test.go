@@ -971,7 +971,7 @@ func TestC7PackageRestriction(t *testing.T) {
 	for _, real := range []string{
 		"internal/spec/lint.go",
 		"internal/cli/harness.go",
-		"internal/hook/dbsync/db_schema_sync.go",
+		"internal/hook/security/scan.go",
 		"internal/ciwatch/handoff.go",
 	} {
 		if !c7.MatchString(real) {

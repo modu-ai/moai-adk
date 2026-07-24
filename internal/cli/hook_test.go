@@ -64,8 +64,9 @@ func TestHookCmd_SubcommandCount(t *testing.T) {
 	// +1 "harness-classify" (added by SPEC-V3R6-HARNESS-CLASSIFIER-WIRING-001) = 36.
 	// +1 "stop-goal" (added by SPEC-GOAL-ENGINE-001) = 37.
 	// +3 "security-scan"/"security-turn"/"security-commit" (in-session security guardian) = 40.
-	if count != 40 {
-		t.Errorf("hook should have 40 subcommands, got %d", count)
+	// -1 the retired DB documentation-subsystem hook subcommand (SPEC-DB-RETIRE-001) = 39.
+	if count != 39 {
+		t.Errorf("hook should have 39 subcommands, got %d", count)
 	}
 }
 

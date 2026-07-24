@@ -149,56 +149,6 @@ Purpose: Run the gate workflow (workflows/gate.md) as a fast pre-check before th
 
 Output: gate_report with pass/fail per check category.
 
-### Phase 2: DB Schema Doc Check (Conditional)
-
-Purpose: Refresh `.moai/project/db/` derived documents (schema.md, erd.mmd, migrations.md) when the sync scope includes migration file changes. Replaces the per-event PostToolUse hook with a batch refresh at milestone boundary — eliminates the ~30-60ms/edit overhead the hook used to incur.
-
-#### Step 0.08.1: Activation Gate
-
-Evaluate all conditions in order; skip the phase if any fails:
-
-1. `.moai/config/sections/db.yaml` exists (project opted into DB doc management)
-2. `db.enabled: true` in that file
-3. `db.auto_sync.enabled: true` in that file (`auto_sync` is a map, not a scalar)
-
-If any condition is not met, skip Phase 2 silently and proceed to Phase 3.
-
-#### Step 0.08.2: Migration File Diff Detection
-
-Compute the list of migration files changed since the base branch:
-
-- Use `git diff --name-only <base-branch>..HEAD` to collect changed files
-- Filter by the glob patterns in `db.migration_patterns` (typically Prisma schema, Alembic versions, Rails migrations, raw SQL, Supabase, custom)
-- Further exclude paths matching `db.excluded_patterns` (defaults: `.moai/project/db/**`, `.moai/cache/**`, `.moai/logs/**`) to prevent recursion
-
-If the filtered list is empty, skip to Phase 3 with log line: "Phase 2: no migration files changed, skipping DB doc refresh".
-
-#### Step 0.08.3: Refresh Invocation
-
-Invoke the internal db-schema-sync hook subcommand directly via Bash:
-
-```
-moai hook db-schema-sync
-```
-
-- Input (stdin JSON): filtered migration file list, project language, `db.yaml` config — read from current working directory by the Go handler
-- Implementation: the DB-schema-sync hook handler, registered as the `moai hook db-schema-sync` subcommand
-- Output: updated `.moai/project/db/schema.md`, `erd.mmd`, `migrations.md`; refresh report
-- Changes are staged for the sync commit — no separate commit is created
-
-On refresh failure (parser error, template conflict): log the error, include in sync report under "DB doc refresh warnings", and continue to Phase 3. Non-blocking by contract.
-
-The `/moai db` slash command was retired (Bundle A, 2026-05-16) — sync workflow is now the sole entry point for db doc refresh. Internal `moai hook db-schema-sync` Go subcommand remains for hook event handlers and direct invocation by sync workflow.
-
-#### Step 0.08.4: Advisory Path
-
-When migration files changed but `db.auto_sync.enabled: false`:
-
-- Emit one-line advisory to the sync report: "N migration files changed but db.auto_sync is disabled — set `db.auto_sync.enabled: true` in `.moai/config/sections/db.yaml` to enable automatic db doc refresh on sync"
-- Do not invoke refresh automatically — respect user opt-out
-
-Output: phase_result with one of `skipped | refreshed | advised | failed` and the migration file count.
-
 ### Phase 3: Deployment Readiness Check
 
 Purpose: Verify the implementation is deployment-ready before quality verification and documentation sync. Catches deployment-blocking issues early.

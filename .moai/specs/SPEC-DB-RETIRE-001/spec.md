@@ -2,7 +2,7 @@
 id: SPEC-DB-RETIRE-001
 title: "DB 문서화 서브시스템 전면 제거"
 version: "0.1.0"
-status: draft
+status: in-progress
 created: 2026-07-25
 updated: 2026-07-25
 author: manager-spec

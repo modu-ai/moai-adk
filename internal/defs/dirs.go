@@ -42,18 +42,25 @@ type DeprecatedPathEntry struct {
 // Category B = 31 v.2.x-era NEW entries + Category C = 3 rc1-stage staging
 // artifacts (43 entries at that point).
 // Reconciled by SPEC-DEPRECATEDPATHS-RECONCILE-001: design.yaml + db.yaml
-// un-deprecated (live v3 config, shipped by the template AND read by
-// loadDesignSection / loadMigrationPatterns), reducing Category B 31→29 and
-// the total to 41 entries.
+// un-deprecated (live v3 config shipped by the template), reducing Category B
+// 31→29 and the total to 41 entries.
 // Further reduced by SPEC-UPDATE-REINSTALL-LOOP-001 (issue #1084): the stale
 // `.claude/rules/moai/design` entry was removed because it collided with the
 // v3 template (infinite clean-reinstall loop), reducing Category B 29→28 and
 // the total 41→40 entries.
+// Further reduced by SPEC-CONFIG-AUDIT-REPAIR-001: gate.yaml un-deprecated
+// (live v3 config shipped by the template), reducing Category B 28→27 and the
+// total 40→39 entries.
+// Re-extended by SPEC-DB-RETIRE-001: the DB documentation subsystem was fully
+// removed, so db.yaml is no longer shipped by the template and is registered
+// here (new Category D) for active clean-reinstall removal from user projects,
+// raising the total 39→40.
 //
 // @MX:ANCHOR: SSOT for v.2.x → v3 cleanup targets.
 // @MX:REASON: External-user cleanup correctness depends on the 40-entry total
-// + 9/28/3 category split; the count is governed by
-// SPEC-DEPRECATEDPATHS-RECONCILE-001 + SPEC-UPDATE-REINSTALL-LOOP-001 (origin
+// + 9/27/3/1 category split; the count is governed by
+// SPEC-DEPRECATEDPATHS-RECONCILE-001 + SPEC-UPDATE-REINSTALL-LOOP-001 +
+// SPEC-CONFIG-AUDIT-REPAIR-001 + SPEC-DB-RETIRE-001 (origin
 // SPEC-V3R6-V2-V3-CLEAN-REINSTALL-001 §A.4 is the historical 43-entry
 // derivation). Modifications MUST update both this slice and
 // internal/defs/dirs_test.go atomically. The DeprecatedPaths↔template
@@ -235,10 +242,11 @@ var DeprecatedPaths = []DeprecatedPathEntry{
 		DeprecatedBy:    "SPEC-V3R6-V2-V3-CLEAN-REINSTALL-001",
 		RemovalSchedule: "v3.0.0",
 	},
-	// deprecated config yaml files (design.yaml + db.yaml un-deprecated by
+	// deprecated config yaml files (design.yaml un-deprecated by
 	// SPEC-DEPRECATEDPATHS-RECONCILE-001; gate.yaml un-deprecated by
 	// SPEC-CONFIG-AUDIT-REPAIR-001 — live v3 config shipped by the template
-	// AND read by loadDesignSection / loadMigrationPatterns / loadGateSection)
+	// AND read by loadDesignSection / loadGateSection. db.yaml was re-deprecated
+	// by SPEC-DB-RETIRE-001 — see the Category D entry below.)
 	{
 		Path:            ".moai/config/sections/github-actions.yaml",
 		DeprecatedSince: "SPEC-V3R6-V2-V3-CLEAN-REINSTALL-001",
@@ -331,6 +339,22 @@ var DeprecatedPaths = []DeprecatedPathEntry{
 		DeprecatedSince: "SPEC-V3R6-AGENT-FOLDER-SPLIT-001",
 		DeprecatedBy:    "SPEC-V3R6-V2-V3-CLEAN-REINSTALL-001",
 		RemovalSchedule: "v3.0.0",
+	},
+	// ====================================================================
+	// Category D — DB documentation subsystem removal (1; SPEC-DB-RETIRE-001)
+	// The DB documentation subsystem (its hook subcommand + db.yaml config + the
+	// .moai/project/db/ scaffold) was fully removed. db.yaml is no longer
+	// shipped by the template, so it is registered here for active
+	// clean-reinstall removal from existing user projects. Unlike the
+	// .moai/project/db/ docs (a preserve root, manual deletion per CHANGELOG),
+	// db.yaml is NOT under a preserve root and is actively removed by
+	// `moai update`.
+	// ====================================================================
+	{
+		Path:            ".moai/config/sections/db.yaml",
+		DeprecatedSince: "SPEC-DB-RETIRE-001",
+		DeprecatedBy:    "SPEC-DB-RETIRE-001",
+		RemovalSchedule: "v3.1.0",
 	},
 }
 

@@ -71,7 +71,6 @@ var yamlAuditExceptions = map[string]string{
 	// Local-tree sections without a Loader.Load struct mapping (real-tree
 	// parity reconciliation):
 	"cache":         "dedicated loader (LoadCacheConfig) — consumed by the SDK cache_control injector, not the aggregate Config struct",
-	"db":            "consumed via hook line-scan (internal/cli/hook.go migration_patterns); struct loader owned by the DB subsystem track",
 	"mcp-matrix":    "maintainer-only prompt-consumed inventory (dev-only, not distributed; zero Go consumers)",
 	"observability": "observability config — no Go loader yet (separate SPEC)",
 	"report":        "settings-seam only (report.format select persisted via internal/settings) — not in the Loader.Load chain",
