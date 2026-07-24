@@ -212,8 +212,9 @@ func ApplyPerformanceTier(projectRoot, tier string) error {
 }
 
 // modelInherit is the "inherit" model sentinel. Agents whose profile model is
-// inherit (only Explore) are never injected — inherit is never written as a
-// model: value, and Explore has no agent file on disk.
+// inherit (user-added agents with no group membership) are never injected —
+// inherit is never written as a model: value. The built-in Explore now has an
+// explicit explore group cell (sonnet/low) and is no longer an inherit agent.
 const modelInherit = "inherit"
 
 // MapModelPolicyToTier translates a legacy template.ModelPolicy value

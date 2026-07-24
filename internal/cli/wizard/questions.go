@@ -88,10 +88,19 @@ func DefaultQuestions(projectRoot string) []Question {
 			Type:        QuestionTypeSelect,
 			Title:       "Select model policy",
 			Description: "Controls which Claude model tier is assigned to each agent. Match to your Claude plan.",
+			// Labels use the v3.0.1 tier naming (Max / Medium / Low). Values stay
+			// "high"/"medium"/"low": the internal ModelPolicy vocabulary
+			// (internal/template/model_policy.go IsValidModelPolicy) expects those
+			// values and NormalizeToTier maps high→max downstream.
+			// Descriptions mirror the actual per-tier assignments in the profile
+			// matrix SSOT (internal/template/profile_matrix.go defaultProfileMatrix,
+			// Matrix A): max leans on Fable + Opus for core agents; medium/low mix
+			// Opus and Sonnet across effort levels. Keep these in sync with that
+			// matrix, not with a marketing summary.
 			Options: []Option{
-				{Label: "High (Recommended)", Value: "high", Desc: "Opus for critical agents — Max $200 plan"},
-				{Label: "Medium", Value: "medium", Desc: "Opus for key agents, sonnet for rest — Max $100 plan"},
-				{Label: "Low", Value: "low", Desc: "Sonnet and haiku only — Plus $20 plan"},
+				{Label: "Max (Recommended)", Value: "high", Desc: "Fable 5 (low) + Opus 4.8 (high) + Sonnet (medium~low) — Max $200 plan"},
+				{Label: "Medium", Value: "medium", Desc: "Opus 4.8 (xhigh~low) + Sonnet (medium~low) — Max $100 plan"},
+				{Label: "Low", Value: "low", Desc: "Opus 4.8 (high~low) + Sonnet (medium~low) — Plus $20 plan"},
 			},
 			Default:  "high",
 			Required: true,
