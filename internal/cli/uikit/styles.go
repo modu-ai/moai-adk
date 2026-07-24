@@ -22,10 +22,10 @@ var (
 )
 
 // SymSuccess returns a styled check mark for success indicators.
-func SymSuccess() string { return SuccessStyle.Render("✓") }
+func SymSuccess() string { return SuccessStyle.Render(string(tui.GlyphDone)) }
 
 // SymError returns a styled cross mark for error indicators.
-func SymError() string   { return ErrorStyle.Render("✗") }
+func SymError() string { return ErrorStyle.Render(string(tui.GlyphErr)) }
 
 // SymWarning returns a styled exclamation mark for warning indicators.
-func SymWarning() string { return WarnStyle.Render("!") }
+func SymWarning() string { return WarnStyle.Render(string(tui.GlyphWarn)) }

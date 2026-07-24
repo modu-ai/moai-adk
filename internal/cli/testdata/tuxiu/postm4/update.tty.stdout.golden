@@ -1,0 +1,47 @@
+[1;38;2;154;163;160mCurrent version [m  [38;2;216;222;219mmoai-adk v3.0.0[m
+[1;38;2;217;119;87m◆ MoAI-ADK[m [48;2;217;119;87m [m[1;38;2;10;17;15;48;2;217;119;87mv3.0.0[m[48;2;217;119;87m [m [38;2;154;163;160mgo1.26.4 · claude[m
+[1;38;2;154;163;160mCurrent version [m  [38;2;216;222;219mmoai-adk v3.0.0[m
+[38;2;154;163;160m●[m  [38;2;216;222;219mSyncing templates[m  [38;2;238;242;239mfrom embedded filesystem[m
+
+[1;38;2;217;119;87mAnalyzing merge changes[m[38;2;28;38;36m ---[m
+[38;2;217;119;87m╭─────────────────────────────────╮[m
+[38;2;217;119;87m│[m                                 [38;2;217;119;87m│[m
+[38;2;217;119;87m│[m  [38;2;238;242;239m [1;38;2;92;199;201m~ 24 update[m    [1;38;2;237;125;107m! 2 conflict[m [m  [38;2;217;119;87m│[m
+[38;2;217;119;87m│[m                                 [38;2;217;119;87m│[m
+[38;2;217;119;87m╰─────────────────────────────────╯[m
+
+[1;38;2;217;119;87mProceeding with template deployment[m[38;2;28;38;36m ---[m
+
+  [38;2;91;98;95m○[m Backing up .moai/config...[2K  [38;2;61;139;110m✓[m .moai/config backed up
+  [38;2;91;98;95m○[m Backing up user-owned namespace...[2K  [38;2;61;139;110m✓[m User-owned namespace backed up: .moai/backups/update-2026-07-24T18-57-02Z
+  [1;38;2;217;119;87m●[m [38;2;217;119;87m██[m[38;2;28;38;36m░░░░░░░░[m 1/5 steps
+  [38;2;91;98;95m○[m Validating templates...[2K  [38;2;61;139;110m✓[m All templates validated
+  [1;38;2;217;119;87m●[m [38;2;217;119;87m████[m[38;2;28;38;36m░░░░░░[m 2/5 steps
+  [38;2;91;98;95m○[m Removing .claude/settings.json...[2K  [38;2;61;139;110m✓[m Removed .claude/settings.json
+  [38;2;91;98;95m○[m Removing .claude/commands/moai...[2K  [38;2;61;139;110m✓[m Removed .claude/commands/moai
+  [38;2;91;98;95m○[m Removing .claude/agents/moai...[2K  [38;2;61;139;110m✓[m Removed .claude/agents/moai
+  [38;2;91;98;95m○[m Removing .claude/skills/moai*...[2K  [38;2;61;139;110m✓[m Removed .claude/skills/moai*
+  [38;2;91;98;95m○[m Removing .claude/rules/moai...[2K  [38;2;61;139;110m✓[m Removed .claude/rules/moai
+  [38;2;91;98;95m○[m Removing .claude/output-styles/moai...[2K  [38;2;61;139;110m✓[m Removed .claude/output-styles/moai
+  [38;2;91;98;95m○[m Removing .claude/hooks/moai...[2K  [38;2;61;139;110m✓[m Removed .claude/hooks/moai
+  [38;2;91;98;95m○[m Removing .moai/config...[2K  [38;2;61;139;110m✓[m Removed .moai/config
+  [1;38;2;217;119;87m●[m [38;2;217;119;87m██████[m[38;2;28;38;36m░░░░[m 3/5 steps
+  [38;2;91;98;95m○[m Deploying templates...[2K  [38;2;61;139;110m✓[m Templates deployed
+  [1;38;2;217;119;87m●[m [38;2;217;119;87m████████[m[38;2;28;38;36m░░[m 4/5 steps
+  [38;2;91;98;95m○[m Restoring user settings...[2K  [38;2;61;139;110m✓[m User settings restored
+  [38;2;91;191;154m✓[0m .gitignore user patterns preserved
+  [38;2;91;191;154m✓[m [38;2;217;119;87m██████████[m[38;2;28;38;36m[m 5/5 steps
+
+[48;2;91;191;154m [m[1;38;2;10;17;15;48;2;91;191;154m✓ Updated 26 files[m[48;2;91;191;154m [m
+[38;2;154;163;160mBackup: .moai-backups/20260725_035702[m                              
+[38;2;154;163;160mRecover: moai update --restore-config .moai-backups/20260725_035702[m
+Hooks: running Claude Code sessions need a /hooks review (or a Claude Code restart) for new or changed hooks to take effect.
+
+To reconfigure project settings (development mode, git, model policy), run:
+   moai update -c
+  Pre-push hook installed (.git/hooks/pre-push)
+  Pre-commit hook installed (.git/hooks/pre-commit)
+[1;38;2;91;191;154m✓[m  [38;2;216;222;219marchive: moai-domain-backend[m  [38;2;238;242;239m→ .moai/archive/skills/v2.16/moai-domain-backend[m
+[1;38;2;91;191;154m✓[m  [38;2;216;222;219marchive: moai-domain-frontend[m  [38;2;238;242;239m→ .moai/archive/skills/v2.16/moai-domain-frontend[m
+[1;38;2;91;191;154m✓[m  [38;2;216;222;219marchive: moai-domain-database[m  [38;2;238;242;239m→ .moai/archive/skills/v2.16/moai-domain-database[m
+ [1;38;2;91;191;154mtotal: 3 skills archived, 0 user customizations modified[m 
