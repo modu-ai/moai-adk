@@ -61,7 +61,7 @@ distinct from the existing `Severity` / `Finding` / `ScanResult`).
 
 ```yaml
 run_complete_at: 2026-07-24
-run_commit_sha: pending-backfill-run-final
+run_commit_sha: 8d12ebab8
 run_status: complete
 ac_pass_count: 25
 ac_fail_count: 0
