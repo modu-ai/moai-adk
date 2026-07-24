@@ -277,9 +277,9 @@ func isTTYFile(w io.Writer) bool {
 // eraseLine matches tui's progressClearPrefix (ECMA-48 Erase in Line 2).
 const (
 	eraseLine     = "\r\x1b[2K"
-	stepMarker    = "○" // in-flight step marker (ConsoleReporter precedent)
-	spinnerFrame  = "⠋" // frame 0, matches tui.Spinner
-	spinnerStatic = "●" // reduced-motion static marker, matches tui.Spinner
+	stepMarker    = string(tui.GlyphSkip) // in-flight step marker (canonical tui glyph SSOT)
+	spinnerFrame  = "⠋"                   // frame 0, matches tui.Spinner (animation frame, not a status glyph)
+	spinnerStatic = string(tui.GlyphRun)  // reduced-motion static marker, matches tui.Spinner
 )
 
 // printerImpl is the concrete Printer.

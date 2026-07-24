@@ -182,7 +182,7 @@ func (h *ProgressLineHandle) assertNotDone() {
 func (h *ProgressLineHandle) symProgress() string {
 	return downsample(lipgloss.NewStyle().
 		Foreground(lipgloss.Color(h.theme.Dim)).
-		Render("○"))
+		Render(string(GlyphSkip)))
 }
 
 // symSuccess returns the success glyph ("✓") rendered in the theme's
@@ -190,7 +190,7 @@ func (h *ProgressLineHandle) symProgress() string {
 func (h *ProgressLineHandle) symSuccess() string {
 	return downsample(lipgloss.NewStyle().
 		Foreground(lipgloss.Color(h.theme.Success)).
-		Render("✓"))
+		Render(string(GlyphDone)))
 }
 
 // symError returns the error glyph ("✗") rendered in the theme's danger
@@ -198,7 +198,7 @@ func (h *ProgressLineHandle) symSuccess() string {
 func (h *ProgressLineHandle) symError() string {
 	return downsample(lipgloss.NewStyle().
 		Foreground(lipgloss.Color(h.theme.Danger)).
-		Render("✗"))
+		Render(string(GlyphErr)))
 }
 
 // isTerminalWriter reports whether out is a terminal-backed writer. The

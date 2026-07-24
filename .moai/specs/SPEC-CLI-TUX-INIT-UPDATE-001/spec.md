@@ -2,7 +2,7 @@
 id: SPEC-CLI-TUX-INIT-UPDATE-001
 title: "moai init/update terminal output TUX redesign (init + update presentation modernization)"
 version: "0.1.3"
-status: draft
+status: in-progress
 created: 2026-07-25
 updated: 2026-07-25
 author: manager-spec
