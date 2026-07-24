@@ -58,6 +58,11 @@ catalog:
               path: templates/.claude/skills/moai-workflow-ddd/
               hash: 6f89fb725214bf8f5299d7aa5cfcd8313998b9f09c5fe228029e677b83d5fb64
               version: 1.0.0
+            - name: moai-workflow-docs-claim-check
+              tier: core
+              path: templates/.claude/skills/moai-workflow-docs-claim-check/
+              hash: 662166edc5f5d59e961e407214b1c87f1e67267405410da3660c920173d4300b
+              version: 1.0.0
             - name: moai-workflow-loop
               tier: core
               path: templates/.claude/skills/moai-workflow-loop/
@@ -92,6 +97,11 @@ catalog:
               tier: core
               path: templates/.claude/skills/moai-domain-html-report/
               hash: 47075119942dabcbf8791aed9411bab50219c394b4d9cfa87fd008edaf8be386
+              version: 1.0.0
+            - name: moai-domain-svg-infographic
+              tier: core
+              path: templates/.claude/skills/moai-domain-svg-infographic/
+              hash: 2d73f3fecd40cf83629301bf1b0325ec03ff9d8c33785fc20bebad6cf8c253f0
               version: 1.0.0
         agents:
             - name: sync-auditor
@@ -174,8 +184,8 @@ catalog:
                 - name: moai-domain-humanize
                   tier: optional-pack:design
                   path: templates/.claude/skills/moai-domain-humanize/
-                  hash: d100f171cdb76a4395d905578cc9b79a45d79e6c30e75ade08ce429cf2cb4ae4
-                  version: 1.2.0
+                  hash: c7ffa13aaa66c78597286353789061b0b5c361c5b26d9b3e38707d945e9ce7f0
+                  version: 1.3.0
             agents: []
         devops:
             description: Security review, OWASP compliance, performance optimization, and infrastructure
