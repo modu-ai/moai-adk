@@ -84,7 +84,7 @@ m1_to_mN_commit_strategy: per-milestone pathspec commits on feat/SPEC-CLI-TUX-IN
 
 ```yaml
 sync_complete_at: 2026-07-25
-sync_commit_sha: pending-backfill-sync-config-audit-repair-001
+sync_commit_sha: 7b990188f
 sync_status: audit-ready
 changelog_entry_position: "[Unreleased] > ### Fixed (top entry, above SPEC-SUBAGENT-NESTING-DOCTRINE-001)"
 frontmatter_status_transitions:
