@@ -128,7 +128,29 @@ golden_postm4_captured: true           # FRESH logo-era goldens at internal/cli/
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase — owned by manager-docs>_
+```yaml
+sync_complete_at: 2026-07-25          # CHANGELOG + spec.md status close + this block, single sync commit
+sync_commit_sha: pending-backfill-sync  # backfilled in a follow-up chore(...) commit after this commit lands
+sync_status: sync-complete            # all 4 milestones (M1-M4) complete; presentation-only redesign shipped
+changelog_entry_position: "[Unreleased] / ### Changed"  # new bullet appended after SPEC-SUBAGENT-NESTING-DOCTRINE-001
+frontmatter_status_transitions:
+  spec_md: "in-progress -> completed"   # this SPEC's plan/acceptance artifacts carry no YAML frontmatter status field (Tier M convention for this SPEC); spec.md is the sole status SSOT
+  plan_md: "N/A - no frontmatter status field in this artifact"
+  acceptance_md: "N/A - no frontmatter status field in this artifact"
+close_summary: >
+  All 4 milestones (M1 glyph SSOT + logo primitive, M2 update.go wiring +
+  spinner-residue fix, M3 init/PrintBanner-logo/root-help, M4
+  verification + golden re-capture) complete. Full AC matrix PASS:
+  AC-TUXIU-001..024 (24/24 gating AC PASS, AC-TUXIU-017 N/A - no
+  machine-readable output surface exists to preserve). Presentation-only
+  -- DATA emitted and stdout/stderr channel discipline unchanged
+  (REQ-TUXIU-044), go.mod byte-unchanged. Cross-platform build (darwin +
+  GOOS=windows) exit 0; internal/cli + internal/tui full suites green;
+  coverage: new/touched render functions 100% (one at 91.7%,
+  binary-exercised only), internal/cli 74.9% (>= 74.6% baseline, no
+  regression), internal/tui 93.6% (>= 93.0% baseline). No README change
+  -- no stale claim found describing CLI banner/output visual details.
+```
 
 ## §F Phase 4 Mode Selection
 
