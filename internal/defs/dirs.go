@@ -236,14 +236,9 @@ var DeprecatedPaths = []DeprecatedPathEntry{
 		RemovalSchedule: "v3.0.0",
 	},
 	// deprecated config yaml files (design.yaml + db.yaml un-deprecated by
-	// SPEC-DEPRECATEDPATHS-RECONCILE-001 — live v3 config shipped by the
-	// template AND read by loadDesignSection / loadMigrationPatterns)
-	{
-		Path:            ".moai/config/sections/gate.yaml",
-		DeprecatedSince: "SPEC-V3R6-V2-V3-CLEAN-REINSTALL-001",
-		DeprecatedBy:    "SPEC-V3R6-V2-V3-CLEAN-REINSTALL-001",
-		RemovalSchedule: "v3.0.0",
-	},
+	// SPEC-DEPRECATEDPATHS-RECONCILE-001; gate.yaml un-deprecated by
+	// SPEC-CONFIG-AUDIT-REPAIR-001 — live v3 config shipped by the template
+	// AND read by loadDesignSection / loadMigrationPatterns / loadGateSection)
 	{
 		Path:            ".moai/config/sections/github-actions.yaml",
 		DeprecatedSince: "SPEC-V3R6-V2-V3-CLEAN-REINSTALL-001",

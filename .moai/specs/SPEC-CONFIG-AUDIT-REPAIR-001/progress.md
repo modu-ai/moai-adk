@@ -38,9 +38,47 @@ Plan-phase artifacts authored 2026-07-25; amended to 0.2.0 same day after Implem
 | db comment fix (REQ-CAR-007a) | completeness-test allowlist db comment corrected — hook consumes migration_patterns via internal/cli/hook.go line-scan |
 | constitution labeling (REQ-CAR-007b) | audit_registry exceptions relabeled loader-present (loader_constitution.go et al. via Loader.Load); entries retained for TestAuditParity_ExceptionsRespected compatibility |
 
+### M-5 — Mechanical doc/rule sweep (REQ-CAR-001..008, LOW c/d/e)
+
+| Item | Evidence |
+|------|----------|
+| H1 role_profiles (AC-CAR-001) | 3 rule files reworded (retired/historical wording only); grep shows no live-config phrasing; ORC_WORKTREE_REQUIRED row marked legacy-inert (sentinel const in agentlint retained) |
+| H2 config.yaml → sections SSOT (AC-CAR-002) | `grep -rn '\.moai/config/config\.yaml'` over the 6 enumerated files → 0 matches; CLAUDE.local §5 version list repointed to sections/system.yaml.tmpl |
+| Harness abort gate (AC-CAR-003) | harness.md gate now checks `.moai/config/sections/` directory existence (both trees) |
+| M2 delivery keys (AC-CAR-004) | `grep -c spec_git_workflow delivery.md` → 5; `grep -n '[^_]git_workflow'` → 0 |
+| M4 mcp-servers.yaml (AC-CAR-005) | repo grep (excl. this SPEC dir + reports + worktrees) → 0 matches |
+| M6 (AC-CAR-006) | phase_weights → adaptation.iteration_limits (real design.yaml key); bare `quality.yaml development_mode` grep (excl. stale `.claude/worktrees/` copies) → 0 |
+| LOW c/d/e (AC-CAR-007) | dynamic-workflows enum haiku-free at 87/91/95 sites; `grep -c haiku internal/config/defaults.go` = 2 (unchanged baseline); db.auto_sync described as map (auto_sync.enabled); `grep 'coverage_threshold: 0' quality.yaml` → 0 |
+| Template-first parity (AC-CAR-008) | Every mirrored file edited template-first + local; `make build` exit 0; template neutrality/leak tests green. Parity-skip list (no mirror, by design): CLAUDE.local.md, MCP_OAUTH_SETUP.md, local quality.yaml, sgconfig/astgrep-rules |
+
+### M-6 — Closeout (REQ-CAR-015/016/017/018) + collision fix
+
+| Item | Evidence |
+|------|----------|
+| M1 db dependency (AC-CAR-015) | No auto_sync key implementation (db Go surfaces untouched); dependency on the parallel DB-removal track recorded in spec.md REQ-CAR-015 + plan.md §B; fallback (delete 3 dead keys) armed if that track stalls |
+| tool-policy/lsp SSOT refs (AC-CAR-016) | CLAUDE.local §2 tool-policy entry; CLAUDE.md §6 names lsp.yaml as the LSP-gate SSOT (both trees); acknowledged-orphan inventory added in exactly one location (settings-management.md § Acknowledged config orphans, both trees) |
+| gate.yaml DeprecatedPaths collision | `TestDeprecatedPaths_NoTemplateCollision` caught the stale v2 gate.yaml deprecation entry vs the newly-shipped template file (clean-reinstall-loop hazard, #1084 class); entry removed from internal/defs/dirs.go, count pins 40→39 / Category B 28→27 updated with rationale |
+| Lint delta (AC-CAR-017) | `golangci-lint run` → `0 issues.` (fixed the one NEW errcheck my change introduced; pre-edit `go vet ./...` baseline exit 0, post exit 0) |
+| Neutrality guards (AC-CAR-018) | `go test ./internal/template/...` green after every template edit |
+| Full suite | `go test ./...` exit 0, 107 packages ok (evidence: .moai/state/verify/config-audit-repair-001/mv-test2.log); `GOOS=windows GOARCH=amd64 go build ./...` exit 0 |
+
 ## §E.3 Run-phase Audit-Ready Signal
 
-_<pending run-phase>_
+```yaml
+run_complete_at: 2026-07-25
+run_commit_sha: pending-backfill-M6
+run_status: audit-ready
+ac_pass_count: 20
+ac_fail_count: 0
+ac_pass_with_debt: 1   # AC-CAR-020(b) — config-mode loads the curated go/security set (not the literal root file; same rules, see M-2 row)
+preserve_list_post_run_count: intact (internal/cli/uikit, internal/cli/printer, internal/tui, SPEC-CLI-TUX-INIT-UPDATE-001 dir untouched)
+new_warnings_or_lints_introduced: 0 (golangci-lint "0 issues.")
+cross_platform_build:
+  darwin: pass
+  windows_amd64: pass
+total_run_phase_files: 55
+m1_to_mN_commit_strategy: per-milestone pathspec commits on feat/SPEC-CLI-TUX-INIT-UPDATE-001 (no push per session constraint)
+```
 
 ## §E.4 Sync-phase Audit-Ready Signal
 

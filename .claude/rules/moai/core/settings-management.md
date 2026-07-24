@@ -121,6 +121,15 @@ Loads the following 15 sections in fixed order. All return defaults on absent fi
 - `YAML_SECTION_NO_LOADER` (`audit_loader_completeness_test.go:TestAuditLoaderCompleteness`): fails if a new `.moai/config/sections/*.yaml` file has no loader and is not in the acknowledged allowlist.
 - `CONFIG_STRUCT_YAML_MISMATCH` (`audit_struct_yaml_symmetry_test.go:TestStructYAMLSymmetry_*`): fails if a Go struct field lacks a matching YAML key or vice versa.
 
+**Acknowledged config orphans** (single documented inventory): the following section
+files currently have no doc cross-references and/or no `Loader.Load()` consumer and are
+acknowledged as-is — `security.yaml`, `observability.yaml`, `report.yaml`, `sunset.yaml`
+(DORMANT by design), `archive.yaml`, `cache.yaml` (dedicated `LoadCacheConfig`),
+`feedback.yaml`, `project.yaml`. Maintainer-only surfaces (`tool-policy.yaml`,
+`mcp-matrix.yaml`) are not distributed to user projects; `lsp.yaml` is the LSP-gate
+threshold SSOT referenced from CLAUDE.md §6. The Go-side registry of these dispositions
+is `internal/config/audit_registry.go` + the loader-completeness allowlist.
+
 **Adding a new YAML section** (5-step procedure):
 1. Add `<name>.yaml` to `internal/template/templates/.moai/config/sections/`
 2. Add `XxxConfig` struct + sub-types + `xxxFileWrapper` to `internal/config/types.go`

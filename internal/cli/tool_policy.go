@@ -103,7 +103,7 @@ ordering and sorted specifier lists.`,
 			}
 
 			if _, statErr := os.Stat(policyPath); os.IsNotExist(statErr) {
-				fmt.Fprintln(cmd.OutOrStdout(), toolPolicyDevOnlyNotice)
+				_, _ = fmt.Fprintln(cmd.OutOrStdout(), toolPolicyDevOnlyNotice)
 				return nil
 			}
 			doc, err := toolpolicy.Load(policyPath)
@@ -254,7 +254,7 @@ constitution schemas are DISJOINT and cannot share an implementation
 			}
 
 			if _, statErr := os.Stat(policyPath); os.IsNotExist(statErr) {
-				fmt.Fprintln(cmd.OutOrStdout(), toolPolicyDevOnlyNotice)
+				_, _ = fmt.Fprintln(cmd.OutOrStdout(), toolPolicyDevOnlyNotice)
 				return nil
 			}
 			doc, err := toolpolicy.Load(policyPath)
