@@ -192,5 +192,86 @@ both `gh pr checks --watch` and `run_in_background: true` literals.
 
 ---
 
-Version: 1.1.0
+## Merge Convergence Under a Strict Base
+
+Applies when the base branch requires branches to be up to date before merging
+(GitHub branch protection `required_status_checks.strict: true`). Under that
+setting a merge into the base makes every other open pull request `BEHIND`, and
+bringing one up to date **restarts its entire check suite from zero**.
+
+Two failure modes follow, and both are self-inflicted.
+
+### Failure mode 1 — update-restart livelock
+
+Updating a branch whose own checks are still running discards their progress and
+starts them again. Repeat that while waiting for a long-tail check — a
+cross-platform test matrix routinely runs ten minutes or more — and the check
+can never complete. The pull request appears permanently `pending`, and the loop
+looks like slow CI rather than the caller resetting it.
+
+[ZONE:Evolvable] [HARD] Do NOT update a branch while any of its own required
+checks is `pending`. Update only when the check set has settled — every required
+check `pass` or `fail`, none `pending` — AND merge state is `BEHIND`.
+
+### Failure mode 2 — parallel update convergence collapse
+
+Updating several pull requests in the same round makes them all up to date at
+once. The first to merge returns every other one to `BEHIND`, and each of those
+restarts a full check suite. For N pull requests against a base whose slowest
+check takes T, updating in parallel costs on the order of N²·T; serializing
+costs N·T.
+
+[ZONE:Evolvable] [HARD] Drive **one** pull request to merge at a time. Do not
+update a second branch until the first has merged or has been abandoned.
+
+### Procedure
+
+```bash
+# 1. Enable auto-merge once per PR. GitHub merges each one as soon as its
+#    requirements are met, so no polling is needed to complete the merge.
+gh pr merge <PR> --squash --auto
+
+# 2. Read state without mutating it.
+gh pr view <PR> --json state,mergeStateStatus --jq '"\(.state) \(.mergeStateStatus)"'
+gh pr checks <PR> --json name,bucket
+
+# 3. Update ONLY when checks have settled and the branch is BEHIND.
+gh pr update-branch <PR>
+```
+
+Between steps, follow § Background watch standardization — `gh pr checks --watch`
+under `run_in_background: true`, never a foreground `sleep N` loop. The
+sleep-and-poll anti-pattern is what turns a slow merge into an hour of blocked
+wall-time, and it compounds this section's failure modes by hiding them behind
+apparent progress.
+
+### Bounded retries
+
+[ZONE:Evolvable] [HARD] Allow at most **3** update cycles per pull request.
+Exceeding that means the base is advancing faster than the check suite
+completes, which no amount of retrying resolves. Stop, report the situation, and
+let the user choose: pause the other merge sources, adopt a merge queue, batch
+the changes into one pull request, or accept a longer settle window.
+
+Never leave an unbounded update-or-poll loop running. A loop with no exit
+condition other than success cannot report the case where success is
+unreachable.
+
+### Anti-patterns
+
+```bash
+# PROHIBITED — updates while the PR's own checks are still running.
+for pr in 1 2 3; do gh pr update-branch $pr; done; sleep 60
+```
+
+- Updating a branch on a `pending` check set — resets the work being waited on.
+- Updating several pull requests in one round under a strict base — guarantees
+  that all but one are immediately invalidated again.
+- Treating `mergeStateStatus: UNKNOWN` as a failure. It means GitHub has not
+  finished computing mergeability; re-read it rather than acting on it.
+- Foreground `sleep N` polling of a check that takes minutes.
+
+---
+
+Version: 1.2.0
 Classification: HARD operational rule, applies to all /moai sync workflows

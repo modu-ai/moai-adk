@@ -32,10 +32,9 @@
 │    warn    Worktree State    .moai/state/ not found — worktree checkpoint storage unavailable                                                        │
 │    warn    BODP Config       .moai/branches/ not found — BODP audit trail disabled                                                                   │
 │    warn    Telemetry Config  .moai/config/sections/telemetry.yaml not found — telemetry uses defaults                                                │
-│    ok      Cache Hit Rate    prompt caching disabled (cacheStrategy.enabled: false)                                                                  │
 │    warn    Glamour Cache     glamour not integrated                                                                                                  │
-│    2 ok, 8 warn, 0 fail                                                                                                                              │
+│    1 ok, 8 warn, 0 fail                                                                                                                              │
 │                                                                                                                                                      │
-│  [Pass 12]  [Warn 11]  [Fail 0]                                                                                                                      │
+│  [Pass 11]  [Warn 11]  [Fail 0]                                                                                                                      │
 │                                                                                                                                                      │
 ╰──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
