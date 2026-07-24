@@ -284,7 +284,7 @@ templ schemaSelectRow(f settings.FieldDef, value string, errs map[string]string)
 			<span class="field__title" data-i18n={ f.I18nKey + ".title" }>{ schemaFieldTitle(f) }</span>
 			<code class="field__key">{ f.Name }</code>
 			if strings.HasSuffix(f.Name, ".effort") {
-				<span class="field__hint" data-i18n="hint.effort.go_unbound">(declarative — not read by the runtime)</span>
+				<span class="field__hint" data-i18n="hint.effort.go_unbound">Resolved from the performance tier above — per-agent edits save as overrides.</span>
 			}
 		</span>
 		<span class="field__desc" data-i18n={ f.I18nKey + ".desc" }>{ schemaFieldDesc(f) }</span>
@@ -398,14 +398,14 @@ templ fieldsetAgentFrontmatter(view pageView) {
 			</div>
 			<p class="section__desc" data-i18n="sec.agentfm.desc">Per-agent model/effort frontmatter of the live agent files (frontmatter-only writes; bodies untouched).</p>
 			<p class="section__desc agentfm-warn">@icon("alert-circle") <span data-i18n="agentfm.warn">These files are template-managed — a later `moai update` may overwrite live edits.</span></p>
-			<p class="section__desc"><span data-i18n="agentfm.llmnote">LLM tier mappings are edited in the LLM section above.</span></p>
+			<p class="section__desc"><span data-i18n="agentfm.llmnote">Per-agent model/effort here follows the performance tier above. GLM backend tiers are in the 3rd Party LLM section.</span></p>
 			<p class="section__desc"><span data-i18n="agentfm.taxonomy">workflow_agents purpose defaults follow the purpose taxonomy in</span> <code class="field__key">.claude/rules/moai/workflow/dynamic-workflows.md</code></p>
 		</div>
 		<div class="section__body">
 			<div class="grid">
 				<div class={ "field", templ.KV("has-error", hasFieldError(view.FieldErrors, "performance_tier")) }>
 					<span class="field__label"><span class="field__title" data-i18n="agentfm.tier.title">Performance tier</span><code class="field__key">llm.performance_tier</code></span>
-					<span class="field__desc" data-i18n="agentfm.tier.desc">Model/effort tier column applied to the shipped agents (max / medium / low). Switching re-applies the matching tier profile to every shipped agent definition file.</span>
+					<span class="field__desc" data-i18n="agentfm.tier.desc">Sets each sub-agent's model/effort from this tier column (max / medium / low). Per-agent edits below are saved as overrides and shown as Custom.</span>
 					<div class="radio-group">
 						for _, opt := range agentFMPerfTierOptions() {
 							<label class="radio">
@@ -490,7 +490,7 @@ templ agentFMRow(agent agentfm.AgentInfo, llm config.LLMConfig, errs map[string]
 			if agentEffortIsDefault(llm, agent) {
 				<span class="field__hint agentfm-default-tag" data-i18n="agentfm.default">(default)</span>
 			}
-			<span class="field__hint" data-i18n="hint.effort.go_unbound">(declarative — not read by the runtime)</span>
+			<span class="field__hint" data-i18n="hint.effort.go_unbound">Resolved from the performance tier above — per-agent edits save as overrides.</span>
 			if msg := fieldErrorMsg(errs, "agentfm."+agent.Name+".model"); msg != "" {
 				<span class="field-error">@icon("alert-circle")<span>{ msg }</span></span>
 			}

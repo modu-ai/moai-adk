@@ -118,10 +118,10 @@ func TestAgentSettingsFourSurfacesRendered(t *testing.T) {
 	// agentfm이 계속 렌더). 서버측 baseline은 영어다 (console UX fix G1-3 —
 	// 종전 하드코딩 한국어 "(Go 미독)"는 모든 로케일에 한국어를 노출했다).
 	if !strings.Contains(body, `data-i18n="hint.effort.go_unbound"`) {
-		t.Error("effort declarative-hint badge missing")
+		t.Error("effort hint badge missing")
 	}
-	if !strings.Contains(body, "(declarative — not read by the runtime)") {
-		t.Error("effort hint badge does not render the English baseline text")
+	if !strings.Contains(body, "Resolved from the performance tier above — per-agent edits save as overrides.") {
+		t.Error("effort hint badge does not render the reworded English baseline text (G3-6)")
 	}
 }
 

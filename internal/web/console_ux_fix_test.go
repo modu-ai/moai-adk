@@ -100,23 +100,25 @@ func TestOptionLabelsStayEnglish(t *testing.T) {
 	}
 }
 
-// TestEffortGoUnboundWording verifies G1-3: the mistranslated Korean "(Go 미독)"
-// ("unread") is replaced in all 4 locales, and the templ server-side baseline
-// renders the ENGLISH string (a no-JS render must not show Korean to everyone).
+// TestEffortGoUnboundWording verifies G3-6: the stale "(declarative — not read by
+// the runtime)" caption is reworded in all 4 locales (post-G3-1 the per-agent
+// model/effort IS runtime-bound via the profile matrix, so the old caption is
+// misleading), and the templ server-side baseline renders the new ENGLISH string.
 func TestEffortGoUnboundWording(t *testing.T) {
 	dict := readEmbeddedAsset(t, "i18n.js")
 
 	for _, want := range []string{
-		`"hint.effort.go_unbound": "(declarative — not read by the runtime)"`,
-		`"hint.effort.go_unbound": "(런타임 미반영)"`,
-		`"hint.effort.go_unbound": "（宣言用 — ランタイム未使用）"`,
-		`"hint.effort.go_unbound": "（声明式 — 运行时不读取）"`,
+		`"hint.effort.go_unbound": "Resolved from the performance tier above — per-agent edits save as overrides."`,
+		`"hint.effort.go_unbound": "위의 성능 티어에서 결정됩니다. 개별 편집은 override로 저장됩니다."`,
+		`"hint.effort.go_unbound": "上のパフォーマンスティアで決まります。個別の編集はオーバーライドとして保存されます。"`,
+		`"hint.effort.go_unbound": "由上方的性能层级决定；单独修改会保存为覆盖项。"`,
 	} {
 		if !strings.Contains(dict, want) {
-			t.Errorf("i18n.js missing corrected hint.effort.go_unbound entry: %s", want)
+			t.Errorf("i18n.js missing reworded hint.effort.go_unbound entry: %s", want)
 		}
 	}
-	for _, banned := range []string{"(Go 미독)", "(not Go-bound)", "（Go 未バインド）", "（Go 未绑定）"} {
+	// The stale/mistranslated values must all be gone.
+	for _, banned := range []string{"(declarative — not read by the runtime)", "(런타임 미반영)", "(Go 미독)", "（Go 未バインド）"} {
 		if strings.Contains(dict, banned) {
 			t.Errorf("i18n.js still carries the old hint.effort.go_unbound value %q", banned)
 		}
@@ -129,21 +131,15 @@ func TestEffortGoUnboundWording(t *testing.T) {
 	if !strings.Contains(body, `data-i18n="hint.effort.go_unbound"`) {
 		t.Fatal("the effort hint badge did not render — the baseline assertion below would be vacuous")
 	}
-	if strings.Contains(body, "(Go 미독)") {
-		t.Error("the templ baseline still hardcodes the Korean (Go 미독) string — a no-JS render shows Korean to every locale")
-	}
-	if !strings.Contains(body, "(declarative — not read by the runtime)") {
-		t.Error("the templ baseline does not render the English hint.effort.go_unbound text")
+	if !strings.Contains(body, "Resolved from the performance tier above — per-agent edits save as overrides.") {
+		t.Error("the templ baseline does not render the reworded English hint.effort.go_unbound text")
 	}
 
-	// Both templ call sites carry the English baseline (the schemaSelectRow branch
-	// has no live `.effort` FieldDef today, so it is asserted at the source level).
+	// Both templ call sites carry the reworded English baseline (the schemaSelectRow
+	// branch has no live `.effort` FieldDef today, so it is asserted at the source level).
 	src := readGoSource(t, "fieldsets.templ")
-	if strings.Contains(src, "(Go 미독)") {
-		t.Error("fieldsets.templ still hardcodes the Korean (Go 미독) baseline")
-	}
-	if n := strings.Count(src, `data-i18n="hint.effort.go_unbound">(declarative — not read by the runtime)`); n != 2 {
-		t.Errorf("fieldsets.templ has %d English hint.effort.go_unbound baselines, want 2 (schemaSelectRow + agentFMRow)", n)
+	if n := strings.Count(src, `data-i18n="hint.effort.go_unbound">Resolved from the performance tier above — per-agent edits save as overrides.`); n != 2 {
+		t.Errorf("fieldsets.templ has %d reworded hint.effort.go_unbound baselines, want 2 (schemaSelectRow + agentFMRow)", n)
 	}
 }
 
