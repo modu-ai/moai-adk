@@ -57,6 +57,12 @@ func ReadRelatedFiles(projectRoot string, changedRelPaths []string) map[string]s
 	seenDirs := make(map[string]bool)
 
 	readInto := func(abs, rel string) {
+		// Normalize the corpus key to forward slashes so cross-file matching and
+		// the map keys are platform-independent: git yields OS-native separators
+		// on Windows (e.g. "handlers\route.js"), which would otherwise miss the
+		// slash-keyed lookups. The filesystem read still uses the OS-native abs
+		// path; only the logical corpus key is canonicalized.
+		rel = filepath.ToSlash(rel)
 		if _, ok := corpus[rel]; ok {
 			return
 		}
