@@ -1,7 +1,7 @@
 ---
 id: SPEC-CLI-WIZARD-RESTRUCTURE-001
 title: "Acceptance criteria — moai init wizard restructure (방안 A)"
-version: "0.1.0"
+version: "0.1.1"
 status: draft
 created: 2026-07-25
 updated: 2026-07-25
@@ -144,6 +144,26 @@ tier: M
   and `GOOS=windows GOARCH=amd64 go build ./...` run,
 - **Then** all pass with wizard-package coverage ≥ 85%.
 
+### AC-WIZ-015 — Advanced-path fully retired (REQ-WIZ-018/019)
+- **Given** the repo after the change,
+- **When** the advanced-settings plumbing is audited,
+- **Then** `internal/cli/wizard/advanced_gate.go` no longer exists, the
+  `--standard` / `--advanced` init flags are unregistered, and no dangling
+  reference to the removed flags/symbols remains in `internal/cli/`, `.github/`,
+  docs, or tests — build + full suite stay green.
+- **Verify (retirement grep — 0 residual; intentional CHANGELOG/history mentions
+  excepted):**
+  ```bash
+  test ! -f internal/cli/wizard/advanced_gate.go                                  # file gone
+  grep -rn 'IsAdvancedWizardReady\|AdvancedGate' internal/cli/                    # 0 matches
+  grep -rn 'advancedMode\|standardMode' internal/cli/                             # 0 matches (params/fields gone)
+  grep -rn 'RunWithDefaultsModes\|Phase2Questions' internal/cli/                  # 0 matches (retired constructors)
+  grep -rn '"--standard"\|"--advanced"\|advanced.*BoolVar\|standard.*BoolVar' internal/cli/ .github/   # 0 flag registrations/invocations
+  ```
+  **This is the retirement AC — presence of the pages (AC-WIZ-001) is not
+  sufficient; the vestigial advanced plumbing must be gone with no dangling
+  callers.**
+
 ## §D — Severity & traceability
 
 ### §D.1 — Severity classification
@@ -156,6 +176,7 @@ tier: M
 | AC-WIZ-008, 009, 011 | MUST | Question removal + locale correctness (test-guarded). |
 | AC-WIZ-003, 004, 007, 012, 013 | SHOULD | Preservation of existing behaviours (nesting, live-render, reconfigure, no-orphans). |
 | AC-WIZ-014 | MUST | Green gate (tests + cross-platform + coverage). |
+| AC-WIZ-015 | MUST | Full advanced-path retirement (resolved 방안 A option A); no vestigial plumbing or dangling callers. |
 
 ### §D.2 — Requirement → AC traceability
 
@@ -176,6 +197,8 @@ tier: M
 | REQ-WIZ-015 | AC-WIZ-010 |
 | REQ-WIZ-016 | AC-WIZ-012 |
 | REQ-WIZ-017 | AC-WIZ-013 |
+| REQ-WIZ-018 | AC-WIZ-015 |
+| REQ-WIZ-019 | AC-WIZ-015 |
 
 ### §D.3 — Indirect verification note
 
@@ -186,7 +209,7 @@ while `ModelPolicyHigh` remains defined. Do not assert "no `high` anywhere":
 
 ## §E — Definition of Done
 
-- [ ] All MUST ACs pass (AC-WIZ-001/002/005/006/008/009/010/011/014).
+- [ ] All MUST ACs pass (AC-WIZ-001/002/005/006/008/009/010/011/014/015).
 - [ ] AC-WIZ-010 (reachability) verified end-to-end: a Page-3 answer with no
       mode flag reaches the persisted config.
 - [ ] `go test ./internal/cli/... ./internal/template/... ./internal/config/...`
@@ -195,6 +218,8 @@ while `ModelPolicyHigh` remains defined. Do not assert "no `high` anywhere":
 - [ ] `golangci-lint run` clean for touched packages.
 - [ ] 4-locale parity verified for the two flipped defaults (model_policy
       recommended-marker, lsp_enabled enabled-by-default).
-- [ ] `[NEEDS CLARIFICATION: advanced_gate retirement scope]` resolved at
-      kickoff; M5 executed or explicitly deferred per the resolution.
+- [ ] Advanced-path retirement complete (resolved 방안 A option A): AC-WIZ-015
+      green — `advanced_gate.go` gone, `--standard`/`--advanced` flags
+      unregistered, 0 dangling callers across `internal/cli/` + `.github/` +
+      docs + tests (M5 executed).
 - [ ] No orphan locale entries / dead capture cases remain.
