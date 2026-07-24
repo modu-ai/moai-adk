@@ -13,7 +13,7 @@ import (
 // Each entry should have a comment explaining why it's out of scope.
 // REQ-MIG003-013 (OQ6 decision): maintain as sorted []string literal.
 var acknowledgedUnloadedSections = []string{
-	"db",             // out-of-scope: separate SPEC (database config not yet runtime-consumed)
+	"db",             // out-of-scope: consumed via hook line-scan (internal/cli/hook.go migration_patterns), no Loader.Load struct; owned by the DB subsystem track
 	"delegation",     // out-of-scope: orchestrator-doctrine SSOT consumed by the AI orchestrator at prompt level; no Go loader by design
 	"github-actions", // out-of-scope: CI config, not consumed at runtime
 	"lsp",            // out-of-scope: LSP config not yet runtime-enforced (separate SPEC)
