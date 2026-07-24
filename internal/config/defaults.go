@@ -44,6 +44,14 @@ const (
 	DefaultRunTokens  = 180000
 	DefaultSyncTokens = 40000
 
+	// DefaultSecurityMaxScanBytes bounds the input the in-session security
+	// guardian (SPEC-SEC-GUARDIAN-001) scans in a single pass. It mirrors the
+	// handle-pre-tool.sh 1MB stdin cap precedent so a very large Write/Edit
+	// payload is not scanned unboundedly within the 5s hook budget. This is the
+	// single source of truth for the guardian scan cap (CLAUDE.local.md §14 —
+	// no hardcoding).
+	DefaultSecurityMaxScanBytes = 1048576
+
 	DefaultBranchPrefix = "moai/"
 	DefaultCommitStyle  = "conventional"
 

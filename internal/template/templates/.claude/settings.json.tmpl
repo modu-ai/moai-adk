@@ -85,6 +85,16 @@
 {{- end}}
             "timeout": 5,
             "type": "command"
+          },
+          {
+{{- if eq .Platform "windows"}}
+            "command": "bash \"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-security-scan.sh\"",
+{{- else}}
+            "command": "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-security-scan.sh\"",
+{{- end}}
+            "timeout": 5,
+            "type": "command",
+            "async": true
           }
         ],
         "matcher": "Write|Edit|MultiEdit"
@@ -132,6 +142,24 @@
             "command": "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-stop-goal.sh\"",
 {{- end}}
             "timeout": 120,
+            "type": "command"
+          },
+          {
+{{- if eq .Platform "windows"}}
+            "command": "bash \"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-security-turn.sh\"",
+{{- else}}
+            "command": "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-security-turn.sh\"",
+{{- end}}
+            "timeout": 5,
+            "type": "command"
+          },
+          {
+{{- if eq .Platform "windows"}}
+            "command": "bash \"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-security-commit.sh\"",
+{{- else}}
+            "command": "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-security-commit.sh\"",
+{{- end}}
+            "timeout": 5,
             "type": "command"
           }{{ if .HookOptIn.Enabled }},
           {

@@ -371,13 +371,14 @@ func TestHookCmd_PrePushSubcommandCount(t *testing.T) {
 	// 36 previous - 1 "setup" (removed by SPEC-V3R2-MIG-002 M2.1) = 35.
 	// +1 "harness-classify" (added by SPEC-V3R6-HARNESS-CLASSIFIER-WIRING-001) = 36.
 	// +1 "stop-goal" (added by SPEC-GOAL-ENGINE-001) = 37.
+	// +3 "security-scan"/"security-turn"/"security-commit" (in-session security guardian) = 40.
 	count := len(hookCmd.Commands())
-	if count != 37 {
+	if count != 40 {
 		names := make([]string, 0, count)
 		for _, cmd := range hookCmd.Commands() {
 			names = append(names, cmd.Name())
 		}
-		t.Errorf("hook should have 37 subcommands, got %d: %v", count, names)
+		t.Errorf("hook should have 40 subcommands, got %d: %v", count, names)
 	}
 }
 

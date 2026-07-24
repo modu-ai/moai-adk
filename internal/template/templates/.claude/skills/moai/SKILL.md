@@ -3,7 +3,7 @@ name: moai
 description: >
   MoAI unified orchestrator for autonomous development. Routes natural
   language or subcommands (plan, run, sync, project, fix, loop, mx,
-  feedback, review, clean, codemaps, gate, e2e, harness) to specialized
+  feedback, review, clean, codemaps, gate, e2e, harness, goal) to specialized
   agents.
 allowed-tools: Agent, AskUserQuestion, Skill, TaskCreate, TaskUpdate, TaskList, TaskGet, Bash, Read, Write, Edit, Glob, Grep
 argument-hint: "[subcommand] [args] | \"natural language task\""
@@ -35,7 +35,7 @@ Rules and constraints governing all workflows are always loaded from these sourc
 
 ## Routing Observation Ledger
 
-When dispatching a subcommand or workflow, the orchestrator records the routing decision to the append-only routing-ledger (`.moai/state/routing-ledger.jsonl`) via `moai harness ledger record` at dispatch time — the request text is piped via stdin and only a privacy-preserving digest is stored, never verbatim user text. As the routed pipeline reaches gate points, machine evidence is appended via `moai harness ledger evidence` (gate exits, audit verdicts, verify-log paths). Outcome is never supplied as an input; it is finalized from machine evidence only. This observation is opt-in and fail-open — it never blocks routing, and it is a silent no-op unless the harness observability opt-in is enabled.
+When dispatching a subcommand or workflow, the orchestrator records the routing decision to the append-only routing-ledger (`.moai/state/routing-ledger.jsonl`) via `moai harness ledger record` at dispatch time — the request text is piped via stdin and only a privacy-preserving digest is stored, never verbatim user text. As the routed pipeline reaches gate points, machine evidence is appended via `moai harness ledger evidence` (gate exits, audit verdicts, verify-log paths). Outcome is never supplied as an input; it is finalized from machine evidence only. This observation is opt-in and fail-open — it never blocks routing. NOTE: recording depends on the orchestrator actually invoking `moai harness ledger record` at dispatch; when the observability opt-in is ON but that record call is not emitted, the ledger stays empty — an un-recorded dispatch, NOT an opt-in-off no-op. Do not read an empty routing-ledger as 'opt-in disabled'.
 
 ---
 
@@ -61,11 +61,13 @@ The `--team` / `--solo` flags are forced overrides onto the catalog; the flag-fr
 
 [HARD] Extract the FIRST WORD from the Raw User Input section above. If it matches any subcommand below (or its alias), route to that workflow IMMEDIATELY. Do NOT analyze the remaining text for routing — it is context for the matched workflow:
 
+[HARD] Mixed-language guard: FIRST-WORD subcommand matching applies only when (a) the input is pure ASCII/Latin, OR (b) the message is prefixed with a literal `/moai ` slash form. When the message contains non-Latin script (Korean/Japanese/Chinese/etc.) beyond the first token, do NOT route immediately on the leading English word — treat it as a possible embedded loanword and fall through to Priority 3 semantic classification of the ENTIRE message. Rationale: CJK technical writing embeds English loanwords such as 'goal', 'run', 'fix', 'plan' at sentence start; immediate first-word routing misfires on them.
+
 - **plan** (aliases: spec): SPEC document creation workflow
 - **run** (aliases: impl): DDD/TDD implementation workflow (per quality.yaml development_mode)
 - **sync** (aliases: docs, pr): Documentation synchronization and PR creation
 - **project** (aliases: init): Project documentation generation
-- **feedback** (aliases: fb, bug, issue): GitHub issue creation
+- **feedback** (aliases: fb): GitHub issue creation
 - **fix**: Auto-fix errors in a single pass
 - **loop**: Iterative auto-fix until completion conditions are satisfied
 - **mx**: MX tag scan and annotation for codebase
@@ -74,7 +76,7 @@ The `--team` / `--solo` flags are forced overrides onto the catalog; the flag-fr
 - **codemaps**: Generate architecture documentation in `.moai/project/codemaps/`
 - **gate** (aliases: check, pre-commit): Lightweight pre-commit quality gate (lint+format+type-check+test)
 - **e2e** (aliases: e2e-test, end-to-end): Multi-platform end-to-end testing (web/mobile/desktop) with project-type auto-detection and CLI-first toolchain selection
-- **harness** (aliases: hrn, learn): harness lifecycle management — learning-lifecycle verbs (status / apply / rollback &lt;date&gt; / disable) + v4-lifecycle verbs (list / edit / remove / doctor), all dispatching through the unified `moai harness` Go-binary Cobra subcommand tree; the slash command is the documented user-facing entry point
+- **harness** (aliases: hrn): harness lifecycle management — learning-lifecycle verbs (status / apply / rollback &lt;date&gt; / disable) + v4-lifecycle verbs (list / edit / remove / doctor), all dispatching through the unified `moai harness` Go-binary Cobra subcommand tree; the slash command is the documented user-facing entry point
 - **goal**: Condition-declared universal agentic loop — arm a completion condition (`/moai goal "<condition>"`), check status, clear, or resume; evaluated each turn-end by the `stop-goal` Stop hook
 
 ### Priority 2: SPEC-ID Detection

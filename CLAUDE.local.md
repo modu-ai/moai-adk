@@ -118,6 +118,7 @@ Never add files directly to the local project directories without also adding th
 .claude/agent-memory/          # Per-project agent memory
 .claude/hooks/moai/handle-*.sh # Generated hook wrappers (not templates)
 .claude/rules/moai/workflow/lifecycle-sync-gate.md         # Dev-only: maintainer lifecycle sync-gate rule (no template mirror, unreferenced by any shipped template file — intentional local-only)
+.claude/rules/moai/workflow/repo-local-pr-policy.md        # Dev-only: repo-local all-tier PR policy override (Route A main-direct disabled by branch protection enforce_admins:true; no template mirror — intentional local-only)
 .claude/commands/harness/{release-update,github,release}*  # Dev-only: split maintainer harness entries (§21)
 .claude/commands/harness/release-update/manifest.json      # Dev-only: release-update harness manifest (§21)
 .claude/workflows/hns-release-update-run.js                # Dev-only: release-update harness Runner (§21)
@@ -739,12 +740,6 @@ See: `.moai/docs/git-workflow-doctrine.md`
 상위 SPEC 참조:
 - `.moai/specs/SPEC-V3R6-AGENT-TEAM-REBUILD-001/spec.md` REQ-ATR-015 (구현 착수 승인 restoration)
 - `.claude/rules/moai/workflow/orchestration-mode-selection.md` §E (구현 착수 승인 vs Phase 0.5 vs Phase 0.95 boundary)
-
----
-
-**Status**: Active (Local Development)
-**Version**: 3.10.0 (§23/§24/§25 본문을 `.moai/docs/` 3개 doctrine 파일로 추출 — 세션 런칭 컨텍스트 59.9K→32.0K 축소; §17/§18/§21 stub+pointer 패턴 일관 적용)
-**Last Updated**: 2026-06-03
 
 ---
 

@@ -69,11 +69,17 @@ type CleanReinstallOptions struct {
 	// new manifest.Manager using projectRoot.
 	Manifest manifest.Manager
 
+	// Force: propagate the CLI --force flag to the Step 3.5 agency-migration
+	// adapter (issue #1132). When true, an explicit `moai update --force`
+	// performs a real forced migration (overwriting existing targets) instead
+	// of the already-migrated skip no-op.
+	Force bool
+
 	// RunMigrateAgency: optional override for the .agency/ → .moai/ migration
 	// invocation (REQ-VVCR-025). nil defaults to a no-op when not testing;
 	// production callers from M5 inject the canonical runMigrateAgency
 	// adapter that proxies cobra command flags.
-	RunMigrateAgency func(projectRoot string, dryRun bool, out io.Writer) error
+	RunMigrateAgency func(projectRoot string, dryRun, force bool, out io.Writer) error
 }
 
 // CleanReinstallResult summarizes the outcome of runCleanReinstall for
@@ -218,11 +224,27 @@ func runCleanReinstall(ctx context.Context, projectRoot string, opts CleanReinst
 	// Step 3.5 — Auto-invoke .agency/ migration if present (REQ-VVCR-025)
 	// ---------------------------------------------------------------
 	if fp.V2DetectedViaAgencyDir && opts.RunMigrateAgency != nil {
-		if err := opts.RunMigrateAgency(projectRoot, opts.DryRun, out); err != nil {
+		if err := opts.RunMigrateAgency(projectRoot, opts.DryRun, opts.Force, out); err != nil {
 			return result, fmt.Errorf("step 3.5: auto-invoke migrate agency: %w", err)
 		}
 		result.AgencyMigrated = true
 		_, _ = fmt.Fprintln(out, "[clean-reinstall] .agency/ → .moai/ migration completed")
+	}
+
+	// ---------------------------------------------------------------
+	// Step 3.9 — Backup-coverage abort gate (pre-destructive invariant)
+	// ---------------------------------------------------------------
+	// Clean-path counterpart of the normal update path's
+	// verifyNamespaceBackupCoverage gate: every PRESERVE-inventory file still
+	// on disk MUST have a copy in the Step 3 backup before the first
+	// destructive step (Step 4 REMOVE / Step 5 Deploy) runs. Verifies against
+	// the STRICT inventory the snapshot actually captured — not the
+	// conservative superset — so real v2 upgrades do not spuriously abort.
+	// Placed AFTER Step 3.5 so anything the agency migration did to the
+	// backup directory is also caught. On violation the backup dir is left in
+	// place for forensic inspection (HARD-5 backup-before-removal).
+	if covErr := verifyPreserveBackupCoverage(projectRoot, inv, finalBackupDir); covErr != nil {
+		return result, fmt.Errorf("step 3.9: backup coverage gate: %w", covErr)
 	}
 
 	// ---------------------------------------------------------------
@@ -293,6 +315,17 @@ func runCleanReinstall(ctx context.Context, projectRoot string, opts CleanReinst
 			mergeableBackups = append(mergeableBackups, updatemerge.FileBackup{Path: mf, Data: data})
 		}
 	}
+	// Backup .gitignore for the user-pattern EntryMerge after deploy (issues
+	// #1131/#1094): the Step 5 force-deploy overwrites .gitignore with the
+	// template version, silently dropping user-added patterns. This mirrors
+	// the normal `moai update` path's Backup-step capture. .gitignore is
+	// intentionally NOT part of the PRESERVE inventory — Step 7 requires
+	// byte-identical restore, while .gitignore must MERGE (deployed template
+	// content + user additions appended).
+	var gitignoreBackup []byte
+	if data, readErr := os.ReadFile(filepath.Join(projectRoot, ".gitignore")); readErr == nil {
+		gitignoreBackup = data
+	}
 
 	// ---------------------------------------------------------------
 	// Step 5 — Reinstall embedded templates
@@ -354,11 +387,23 @@ func runCleanReinstall(ctx context.Context, projectRoot string, opts CleanReinst
 	// to the normal path's (AC-RIL-007), not a lower-protection bypass. The
 	// preserved config files are OUTSIDE the PRESERVE inventory (inv.Files), so the
 	// Step 7 byte-identical integrity check does not flag their merged content.
+	// Log-claim accuracy: each restoration below reports its own success line
+	// scoped to what actually ran, instead of one unconditional
+	// "merge-preserved" claim emitted even when nothing was backed up.
 	if configBackupPath != "" {
 		// nil recorder: the noise-suppression merge-history ledger stays in the
 		// normal update flow; the clean-reinstall path does not need it.
 		if restoreErr := backup.RestoreMoaiConfig(projectRoot, configBackupPath, nil); restoreErr != nil {
 			return result, fmt.Errorf("step 5.5: restore .moai/config sections: %w", restoreErr)
+		}
+		_, _ = fmt.Fprintln(out, "[clean-reinstall] .moai/config/sections/*.yaml merge-restored (user values preserved)")
+		// Backup-dir accumulation cap — the same pruning the normal path
+		// performs after its restore step (backup.CleanupOldBackups). Only
+		// timestamped config-backup dirs under .moai-backups/ are candidates;
+		// the v2-to-v3-* forensic backups live under .moai/backups/ and are
+		// never touched by this cleanup.
+		if deleted := backup.CleanupOldBackups(projectRoot, 5); deleted > 0 {
+			_, _ = fmt.Fprintf(out, "[clean-reinstall] Cleaned up %d old config backup(s)\n", deleted)
 		}
 	}
 	if len(mergeableBackups) > 0 {
@@ -366,9 +411,22 @@ func runCleanReinstall(ctx context.Context, projectRoot string, opts CleanReinst
 		// warning (not a hard error) matches the normal path's tolerance.
 		if mergeErr := updatemerge.MergeUserFiles(projectRoot, mergeableBackups, out); mergeErr != nil {
 			_, _ = fmt.Fprintf(out, "[clean-reinstall] settings merge warning: %v\n", mergeErr)
+		} else {
+			_, _ = fmt.Fprintln(out, "[clean-reinstall] settings.json / status_line.sh merge-preserved")
 		}
 	}
-	_, _ = fmt.Fprintln(out, "[clean-reinstall] user config (settings.json + sections/*.yaml) merge-preserved")
+	// Merge .gitignore: preserve user-added patterns via EntryMerge (issues
+	// #1131/#1094) — the same updatemerge.MergeGitignoreFile call the normal
+	// `moai update` path performs after deploy. Warn-not-fail matches that
+	// path's tolerance.
+	if len(gitignoreBackup) > 0 {
+		gitignorePath := filepath.Join(projectRoot, ".gitignore")
+		if mergeErr := updatemerge.MergeGitignoreFile(gitignorePath, gitignoreBackup); mergeErr != nil {
+			_, _ = fmt.Fprintf(out, "[clean-reinstall] .gitignore merge warning: %v\n", mergeErr)
+		} else {
+			_, _ = fmt.Fprintln(out, "[clean-reinstall] .gitignore user patterns preserved")
+		}
+	}
 
 	// One-shot v2->v3 deny-rule migration (issue #1101): the wholesale
 	// settings.json preservation above also preserves retired v2-era deny
@@ -413,7 +471,10 @@ func runCleanReinstall(ctx context.Context, projectRoot string, opts CleanReinst
 		_, _ = fmt.Fprintf(out, "[clean-reinstall] Integrity check FAILED: %d mismatches\n", len(mismatches))
 		return result, fmt.Errorf("step 7: PRESERVE integrity violation on %d paths (backup retained at %s)", len(mismatches), finalBackupDir)
 	}
-	_, _ = fmt.Fprintln(out, "[clean-reinstall] Integrity check PASSED")
+	// Log-claim accuracy: the integrity check covers ONLY the PRESERVE
+	// inventory hashes (inv.Files) — not merged config, settings, or
+	// .gitignore, whose content legitimately changes via the merges above.
+	_, _ = fmt.Fprintf(out, "[clean-reinstall] Integrity check PASSED (%d PRESERVE-inventory files verified)\n", len(hashesPre))
 
 	return result, nil
 }

@@ -8,6 +8,7 @@ description: |
   project-local e2e/ directories.
   Use PROACTIVELY when the e2e workflow delegates detection, journey mapping, script
   creation, execution, or recording.
+  Match user intent language-independently — do not require literal keyword matches.
   NOT for: implementation-cycle code changes (manager-develop), SPEC authoring
   (manager-spec), unit/integration test authoring within a TDD cycle (manager-develop),
   documentation (manager-docs), git operations (manager-git).

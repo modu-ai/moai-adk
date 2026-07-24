@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"bytes"
 	"os"
 	"path/filepath"
 	"strings"
@@ -810,5 +811,128 @@ func TestMigrateAgency_NoMergeConflict(t *testing.T) {
 	_, err := m.Run()
 	if err != nil {
 		t.Fatalf("expected success when frameworks match, got: %v", err)
+	}
+}
+
+// --- runAgencyMigrationAdapter swallow/force coverage (issue #1132) ---
+//
+// The adapter-level tests below pin the #1132 fix contract:
+//   - MIGRATE_TARGET_EXISTS / MIGRATE_ARCHIVE_EXISTS are already-migrated
+//     no-ops (return nil + skip log) so clean-reinstall Step 3.5 never
+//     aborts before Step 4 clears the .agency/ residue.
+//   - force=true reaches the runner and performs a real forced migration
+//     (the CLI --force contract the pre-fix hardcoded force:false dropped).
+//   - Genuine migration failures (e.g. merge conflict) still propagate —
+//     the swallow is narrow, not a blanket error suppressor.
+
+// TestAgencyMigrationAdapter_TargetExistsSwallowed_Issue1132 verifies the
+// adapter treats MIGRATE_TARGET_EXISTS as an already-migrated no-op.
+func TestAgencyMigrationAdapter_TargetExistsSwallowed_Issue1132(t *testing.T) {
+	dir := t.TempDir()
+	setupAgencyFixture(t, dir)
+	if err := os.MkdirAll(filepath.Join(dir, ".moai", "config", "sections"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	designYAML := filepath.Join(dir, ".moai", "config", "sections", "design.yaml")
+	if err := os.WriteFile(designYAML, []byte("existing"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	var out bytes.Buffer
+	if err := runAgencyMigrationAdapter(dir, false, false, &out); err != nil {
+		t.Fatalf("#1132: adapter returned error on pre-existing target (loop re-trigger): %v", err)
+	}
+	if !strings.Contains(out.String(), "agency migration skipped: target already migrated") {
+		t.Errorf("missing skip log; output:\n%s", out.String())
+	}
+	// The skip path must not mutate the pre-existing target.
+	data, err := os.ReadFile(designYAML)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(data) != "existing" {
+		t.Errorf("design.yaml mutated by skip path: %q", data)
+	}
+}
+
+// TestAgencyMigrationAdapter_ArchiveExistsSwallowed_Issue1132 verifies the
+// adapter treats MIGRATE_ARCHIVE_EXISTS as an already-migrated no-op.
+func TestAgencyMigrationAdapter_ArchiveExistsSwallowed_Issue1132(t *testing.T) {
+	dir := t.TempDir()
+	setupAgencyFixture(t, dir)
+	if err := os.MkdirAll(filepath.Join(dir, ".agency.archived"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	var out bytes.Buffer
+	if err := runAgencyMigrationAdapter(dir, false, false, &out); err != nil {
+		t.Fatalf("#1132: adapter returned error on pre-existing archive (loop re-trigger): %v", err)
+	}
+	if !strings.Contains(out.String(), "agency migration skipped: target already migrated") {
+		t.Errorf("missing skip log; output:\n%s", out.String())
+	}
+}
+
+// TestAgencyMigrationAdapter_ForceRunsRealMigration verifies that force=true
+// reaches the runner: the pre-existing target is overwritten by a real forced
+// migration instead of the skip no-op.
+func TestAgencyMigrationAdapter_ForceRunsRealMigration(t *testing.T) {
+	dir := t.TempDir()
+	setupAgencyFixture(t, dir)
+	if err := os.MkdirAll(filepath.Join(dir, ".moai", "config", "sections"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(filepath.Join(dir, ".moai", "research"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	designYAML := filepath.Join(dir, ".moai", "config", "sections", "design.yaml")
+	if err := os.WriteFile(designYAML, []byte("old-content"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	var out bytes.Buffer
+	if err := runAgencyMigrationAdapter(dir, false, true, &out); err != nil {
+		t.Fatalf("adapter with force=true returned error: %v", err)
+	}
+	if strings.Contains(out.String(), "agency migration skipped") {
+		t.Errorf("force=true must not take the skip path; output:\n%s", out.String())
+	}
+	data, err := os.ReadFile(designYAML)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(data) == "old-content" {
+		t.Error("force=true did not overwrite the pre-existing target (force not plumbed to runner)")
+	}
+}
+
+// TestAgencyMigrationAdapter_GenuineErrorPropagates verifies the swallow is
+// narrow: a genuine migration failure (tech-preferences merge conflict) still
+// aborts, so clean-reinstall Step 4 cannot destroy an unmigrated .agency/
+// after a real failure.
+func TestAgencyMigrationAdapter_GenuineErrorPropagates(t *testing.T) {
+	dir := t.TempDir()
+	setupAgencyFixture(t, dir)
+	// Conflicting Framework declarations trigger MIGRATE_MERGE_CONFLICT
+	// (checked after the target-exists gates, so no targets pre-exist here).
+	if err := os.WriteFile(filepath.Join(dir, ".agency", "context", "tech-preferences.md"),
+		[]byte("Framework: React\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(filepath.Join(dir, ".moai", "project"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, ".moai", "project", "tech.md"),
+		[]byte("Framework: Vue\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	var out bytes.Buffer
+	err := runAgencyMigrationAdapter(dir, false, false, &out)
+	if err == nil {
+		t.Fatal("expected merge-conflict error to propagate; adapter swallowed it")
+	}
+	if !strings.Contains(err.Error(), ErrMigrateMergeConflict) {
+		t.Errorf("expected %s in error, got: %v", ErrMigrateMergeConflict, err)
 	}
 }

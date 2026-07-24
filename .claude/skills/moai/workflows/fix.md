@@ -172,13 +172,13 @@ Before applying fixes, scan target files for existing @MX tags to understand con
 - List of @MX:WARN zones (approach with caution)
 - Relevant @MX:NOTE context (understand before modifying)
 
-**Skip Condition:** If no @MX tags found in target files, proceed directly to Phase 3.
+**Skip Condition:** If no @MX tags found in target files, proceed directly to Phase 4.
 
 See .claude/rules/moai/workflow/mx-tag-protocol.md for tag type definitions.
 
 ## Phase 4: Auto-Fix
 
-<!-- @MX:WARN @MX:REASON - Future PRs may be tempted to add LLM-driven Level-to-agent dispatch here. The current static lookup table (lines 175-179) MUST remain a fixed mapping. Any LLM-decided dispatch fails TestAgentlessUtilityNoLLMControlFlow. -->
+<!-- @MX:WARN @MX:REASON - Future PRs may be tempted to add LLM-driven Level-to-agent dispatch here. The current static lookup table (lines 185-188) MUST remain a fixed mapping. Any LLM-decided dispatch fails TestAgentlessUtilityNoLLMControlFlow. -->
 
 [HARD] Agent delegation mandate (Level 2+): ALL Level 2 and above fix tasks MUST be delegated to specialized agents. NEVER execute Level 2+ fixes directly. Level 1 (import sorting, whitespace, formatting) is exempt: the orchestrator runs the language's deterministic formatter command directly (e.g., gofmt/goimports, ruff format, prettier, rustfmt) without an Agent() spawn — a formatter run needs no agent specialization.
 

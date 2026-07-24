@@ -271,6 +271,54 @@ func snapshotPreserveInventory(projectRoot string, inv PreserveInventory, backup
 	return nil
 }
 
+// verifyPreserveBackupCoverage is the clean-reinstall pre-destructive abort
+// gate: it confirms that every PRESERVE-inventory file still present on disk
+// has a copy in backupDir BEFORE the REMOVE (Step 4) / Deploy (Step 5) steps
+// run. It is the clean-path counterpart of the normal update path's
+// verifyNamespaceBackupCoverage gate (update.go Backup step).
+//
+// Unlike the normal-path gate, this one verifies against the STRICT PRESERVE
+// inventory (inv.Files) — the exact set snapshotPreserveInventory captured in
+// Step 3 — NOT the conservative user-owned superset. Verifying the
+// conservative set here would demand backup copies of template-managed
+// moai-* assets the clean-path snapshot legitimately omits and spuriously
+// abort every real v2 upgrade. The guaranteed invariant is: every file the
+// gate demands is actually in the backup before anything destructive runs.
+//
+// Rules:
+//   - inventory file absent from projectRoot → skip (nothing left on disk to
+//     destroy; e.g. legitimately consumed by the Step 3.5 agency migration).
+//   - inventory file present on disk but missing from backupDir → abort with
+//     the grep-able CLEAN_REINSTALL_BACKUP_INCOMPLETE sentinel naming the
+//     first unprotected file.
+//   - empty inventory → pass (nothing to protect).
+//
+// @MX:NOTE: [AUTO] clean-reinstall backup-coverage gate — wired between
+// Step 3.5 and Step 4 of runCleanReinstall so no PRESERVE file can be
+// destroyed without a verified backup copy.
+func verifyPreserveBackupCoverage(projectRoot string, inv PreserveInventory, backupDir string) error {
+	for _, rel := range inv.Files {
+		srcPath := filepath.Join(projectRoot, filepath.FromSlash(rel))
+		if _, srcErr := os.Stat(srcPath); srcErr != nil {
+			if errors.Is(srcErr, os.ErrNotExist) {
+				continue // nothing on disk to destroy
+			}
+			return fmt.Errorf("verify preserve backup coverage: stat %s: %w", rel, srcErr)
+		}
+
+		backedUp := false
+		if backupDir != "" {
+			if _, bkErr := os.Stat(filepath.Join(backupDir, filepath.FromSlash(rel))); bkErr == nil {
+				backedUp = true
+			}
+		}
+		if !backedUp {
+			return fmt.Errorf("CLEAN_REINSTALL_BACKUP_INCOMPLETE: PRESERVE file %s has no backup copy in %s — aborting before REMOVE/Deploy", rel, backupDir)
+		}
+	}
+	return nil
+}
+
 // mergeBackPreserveInventory restores files from backupDir back into
 // projectRoot at their original project-root-relative paths. Used by Step 6
 // of the canonical clean-reinstall order (REQ-VVCR-021, REQ-VVCR-022).

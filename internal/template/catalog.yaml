@@ -6,7 +6,7 @@ catalog:
             - name: moai
               tier: core
               path: templates/.claude/skills/moai/
-              hash: 67a8502b837c4c7e313f8de1d185a6ecc12e49cc8ffe3056d0d4227c4d42ea07
+              hash: fb78f579583a99743bbdbb02e391b786a20131f5c5d4cd30cb1fa466c8ea0f6f
               version: 1.0.0
             - name: moai-foundation-cc
               tier: core
@@ -16,7 +16,7 @@ catalog:
             - name: moai-foundation-core
               tier: core
               path: templates/.claude/skills/moai-foundation-core/
-              hash: c9d4dab9d8bbf3ce47341a4dda6af5ab659089df42e30b45e7db249f200da2af
+              hash: f9abe12668904cc90c1cb424a00fa84e9db927ea5396ab852bbb10bf8a02c7fb
               version: 1.0.0
             - name: moai-foundation-quality
               tier: core
@@ -58,6 +58,11 @@ catalog:
               path: templates/.claude/skills/moai-workflow-ddd/
               hash: 6f89fb725214bf8f5299d7aa5cfcd8313998b9f09c5fe228029e677b83d5fb64
               version: 1.0.0
+            - name: moai-workflow-docs-claim-check
+              tier: core
+              path: templates/.claude/skills/moai-workflow-docs-claim-check/
+              hash: 662166edc5f5d59e961e407214b1c87f1e67267405410da3660c920173d4300b
+              version: 1.0.0
             - name: moai-workflow-loop
               tier: core
               path: templates/.claude/skills/moai-workflow-loop/
@@ -92,6 +97,11 @@ catalog:
               tier: core
               path: templates/.claude/skills/moai-domain-html-report/
               hash: 47075119942dabcbf8791aed9411bab50219c394b4d9cfa87fd008edaf8be386
+              version: 1.0.0
+            - name: moai-domain-svg-infographic
+              tier: core
+              path: templates/.claude/skills/moai-domain-svg-infographic/
+              hash: 2d73f3fecd40cf83629301bf1b0325ec03ff9d8c33785fc20bebad6cf8c253f0
               version: 1.0.0
         agents:
             - name: sync-auditor
@@ -137,7 +147,7 @@ catalog:
             - name: e2e-tester
               tier: core
               path: templates/.claude/agents/moai/e2e-tester.md
-              hash: e8b57600567d8025f5596b449dda5de69130d8ef77462e5910c2958e7c2a5287
+              hash: ddab0ddbf28412dc0170d23b08b35a54b6b8cc601033db843514d16f41321682
               version: 1.0.0
     optional_packs:
         backend:
@@ -174,8 +184,8 @@ catalog:
                 - name: moai-domain-humanize
                   tier: optional-pack:design
                   path: templates/.claude/skills/moai-domain-humanize/
-                  hash: d100f171cdb76a4395d905578cc9b79a45d79e6c30e75ade08ce429cf2cb4ae4
-                  version: 1.2.0
+                  hash: c7ffa13aaa66c78597286353789061b0b5c361c5b26d9b3e38707d945e9ce7f0
+                  version: 1.3.0
             agents: []
         devops:
             description: Security review, OWASP compliance, performance optimization, and infrastructure

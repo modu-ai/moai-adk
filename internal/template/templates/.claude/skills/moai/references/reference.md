@@ -79,8 +79,8 @@ When team mode is enabled, use Agent Teams for persistent parallel coordination.
 
 Use Cases:
 
-- Plan Phase: Parallel research team (researcher + analyst + architect)
-- Run Phase: Parallel implementation team (backend-dev + frontend-dev + tester) with file ownership boundaries
+- Plan Phase: Parallel read-only exploration via the Explore subagent + per-spawn Agent(general-purpose) with domain instructions (the archived researcher/analyst/architect agents are retired)
+- Run Phase: Sequential implementation via manager-develop (write fan-out stays foreground-sequential; the archived backend-dev/frontend-dev/tester agents are retired) with file ownership boundaries
 - Debug Phase: Competing hypothesis investigation team
 
 Implementation:
@@ -147,7 +147,7 @@ Propagation Method:
 - --worktree: Create an isolated git worktree for the SPEC implementation
 - --branch: Create a feature branch for the SPEC (default branch naming: feature/SPEC-XXX)
 - --resume SPEC-XXX: Resume an interrupted plan session
-- --team: Force team-based exploration (researcher + analyst + architect)
+- --team: RETIRED — Agent Teams Mode 3 is a tombstone; a forced --team falls back to sub-agent mode. Use parallel Agent(general-purpose) fan-out for exploration.
 
 ### Run Flags
 

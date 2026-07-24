@@ -204,7 +204,7 @@ Natural language works too. `/moai "fix the login bug"` triggers intent analysis
 | `plan` / `run` / `sync` | SPEC 3-phase pipeline |
 | `project` / `harness` / `design` | Project docs+harness generation · harness lifecycle · Design-phase collaboration |
 | `goal` / `loop` / `fix` | Declarative goal loops · iterative fixes · single-pass fixes |
-| `review` / `gate` / `clean` | Code review · pre-commit quality gates · dead code removal |
+| `review` / `gate` / `clean` | Code review (`--deep` for multi-agent adversarial vulnerability scan) · pre-commit quality gates · dead code removal |
 | `mx` / `codemaps` / `feedback` | @MX annotations · architecture docs · GitHub issue reporting |
 | `e2e` | Multi-platform E2E tests (web/mobile/desktop, CLI-first) |
 | *(natural language)* | Analyze-First routing: autonomous plan → run → sync pipeline |
