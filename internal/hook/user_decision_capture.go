@@ -47,7 +47,7 @@ import (
 const askUserQuestionTool = "Ask" + "User" + "Question"
 
 // captureUserDecision is the advisory capture entry point. It mirrors the
-// pattern of logEvidence / logSkillUsage / logCacheUsage: a free function
+// pattern of logEvidence / logSkillUsage: a free function
 // invoked from postToolHandler.Handle, best-effort, never blocks.
 //
 // Processing order (design.md §C.2):

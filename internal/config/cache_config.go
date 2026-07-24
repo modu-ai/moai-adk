@@ -15,10 +15,15 @@ import (
 // injector was never reachable from production code — moai does not own the
 // API call path, and .claude/rules/moai/workflow/cache-aware-execution.md
 // states the orchestrator cannot place cache_control markers — so it was
-// removed. Prompt caching is performed by Claude Code itself.
+// removed along with the doctor metric and telemetry that depended on it.
+// Prompt caching is performed by Claude Code itself, and the live cache-hit
+// signal is the statusline's ♻️ segment (internal/statusline.renderCacheHit),
+// which reads context_window.current_usage straight from Claude Code.
 //
-// @MX:DEBT: cache.yaml is retained and remains editable through the moai web
-// settings seam, but no code acts on its values any more.
+// @MX:DEBT: LoadCacheConfig now has no caller. Only ValidSessionTTLs survives,
+// consumed by the moai web settings seam for the session_ttl select options;
+// cache.yaml itself round-trips through that seam without any code acting on
+// its values.
 // @MX:CEILING: harmless while the file merely round-trips through the settings
 // editor; it misleads as soon as a user expects the values to change behaviour.
 // @MX:UPGRADE: retire cache.yaml (template + settings schema + this loader) in
