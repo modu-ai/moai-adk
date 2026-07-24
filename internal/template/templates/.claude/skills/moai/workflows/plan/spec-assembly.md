@@ -66,7 +66,7 @@ Agent: manager-spec subagent
 
 Input: Approved plan from Phase 8, validated SPEC ID from Phase 9.
 
-File generation (all three files created simultaneously):
+File generation — **single writer, single-turn parallel Write**: `manager-spec` is the sole writer of every plan-phase artifact, and no second agent writes into `.moai/specs/SPEC-{ID}/` while it works. Within that single writer, issue one `Write` call per artifact in the SAME assistant turn (per `.claude/rules/moai/core/agent-common-protocol.md` § Parallel Execution) rather than one artifact per turn — the artifacts are independent files, so batching costs one turn instead of N. The artifact set is Tier-determined (Tier S = 2, Tier M = 3, Tier L = 5):
 
 - .moai/specs/SPEC-{ID}/spec.md
   - YAML frontmatter with **12 required fields** (canonical schema — see checklist below and `.claude/rules/moai/development/spec-frontmatter-schema.md` § Canonical 12 Required Fields)
@@ -168,6 +168,12 @@ Skip conditions:
 Harness-level intensity (plan-audit ALWAYS runs — the level changes rigor, not whether it runs):
 - `minimal`: lightweight, non-blocking 1-iteration audit (`max_iterations: 1`, `require_must_pass: false`) — a FAIL verdict is logged but does not block Phase 12
 - `standard`/`thorough`: full retry loop up to 3 iterations, blocking (`max_iterations: 3`, `require_must_pass: true`)
+
+#### Parallel Review Lenses (read-only, optional)
+
+**Where** the harness level is `standard` or `thorough`, the orchestrator MAY gather review evidence by launching several read-only review lenses in a single turn — one `Agent()` per lens (frontmatter-schema conformance, requirement testability, scope coherence, acceptance-command validity), 3-5 concurrent per the Mode 4 ceiling (`.claude/rules/moai/workflow/orchestration-mode-selection.md` §C.2) — instead of one serial reading pass. Every lens is read-only: it reads `.moai/specs/SPEC-{ID}/` and returns findings as text, writes no file, and never prompts the user (a lens missing a required input returns a structured blocker report per `.claude/rules/moai/core/agent-common-protocol.md` § Blocker Report Format, and the orchestrator re-delegates that lens alone). The orchestrator launches the lenses itself — this is scaling, not subagent nesting, so the flat agent hierarchy holds.
+
+**The lenses gather evidence; they do not produce the verdict.** The single binding PASS/FAIL stays with `plan-auditor` (Step 2.3.1 below), which may cite lens findings but is never replaced by them. **Where** the lens pass is skipped or unavailable, Phase 11 runs its existing single `plan-auditor` path unchanged — no error, no warning.
 
 #### Step 2.3.1: Invoke plan-auditor
 
