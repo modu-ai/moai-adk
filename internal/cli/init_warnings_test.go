@@ -118,6 +118,36 @@ func TestCompletionCardNextActions(t *testing.T) {
 	}
 }
 
+// TestInitSuccessCard_TuiBoxPillLanguage asserts the init completion card uses
+// the shared tui.Box + tui.Pill visual language mirroring the update
+// classification summary (SPEC-CLI-TUX-INIT-UPDATE-001 REQ-TUXIU-031,
+// AC-TUXIU-011). Under NO_COLOR the tui.Pill primitive degrades to bracketed
+// "[label]" text (its monochrome contract), which is the greppable signal that
+// the card routes counts through tui.Pill rather than the legacy
+// RenderKeyValueLines "Directories  N created" form.
+func TestInitSuccessCard_TuiBoxPillLanguage(t *testing.T) {
+	t.Setenv("NO_COLOR", "1")
+	card := buildInitSuccessCard("proj", 3, 7, 0)
+
+	// Count summary rendered via tui.Pill (NO_COLOR bracketed form).
+	for _, want := range []string{"[3 dirs]", "[7 files]"} {
+		if !strings.Contains(card, want) {
+			t.Errorf("init success card must render counts via tui.Pill (want %q), got:\n%s", want, card)
+		}
+	}
+	// Rendered inside a tui.Box rounded border (structural border runes present
+	// regardless of colour).
+	if !strings.ContainsAny(card, "╭╮╰╯─│") {
+		t.Errorf("init success card must render inside a tui.Box border, got:\n%s", card)
+	}
+	// Next-action sequence preserved (data unchanged).
+	for _, want := range []string{"cd proj", "moai cc", "/moai plan"} {
+		if !strings.Contains(card, want) {
+			t.Errorf("init success card must retain next-action %q, got:\n%s", want, card)
+		}
+	}
+}
+
 // TestExistingProjectUpdateRedirectHint asserts REQ-TUX2-015 (AC-TUX2-015):
 // re-running moai init on an already-initialized project without --force
 // surfaces a redirect hint naming `moai update` as the likely intent.
