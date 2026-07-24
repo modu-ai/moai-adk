@@ -47,7 +47,9 @@ func TestLoadEmbeddedCatalog_Success(t *testing.T) {
 	// /moai e2e revival), net +1 = 38.
 	// moai-workflow-docs-claim-check added (read-only documentation
 	// claim-vs-evidence verification workflow, core.skills), net +1 = 39.
-	const wantTotal = 39
+	// moai-domain-svg-infographic added (editable-SVG-infographic authoring
+	// domain skill, core.skills), net +1 = 40.
+	const wantTotal = 40
 	all := cat.AllEntries()
 	if len(all) != wantTotal {
 		t.Errorf("LoadEmbeddedCatalog() AllEntries() = %d, want %d", len(all), wantTotal)

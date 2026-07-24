@@ -98,6 +98,11 @@ catalog:
               path: templates/.claude/skills/moai-domain-html-report/
               hash: 47075119942dabcbf8791aed9411bab50219c394b4d9cfa87fd008edaf8be386
               version: 1.0.0
+            - name: moai-domain-svg-infographic
+              tier: core
+              path: templates/.claude/skills/moai-domain-svg-infographic/
+              hash: 2d73f3fecd40cf83629301bf1b0325ec03ff9d8c33785fc20bebad6cf8c253f0
+              version: 1.0.0
         agents:
             - name: sync-auditor
               tier: core
