@@ -39,13 +39,36 @@
 
 **Full-suite regression (R2 cross-package glyph re-point):** `go test ./...` → exit 0, 0 FAIL (all `internal/tui`, `internal/cli`, `internal/cli/printer`, `internal/cli/uikit` packages green). B2 cross-SPEC retirement tests (`TestCompactBanner_*`, `TestPrintBanner_*`) all PASS unchanged.
 
+**Milestone M2 — update.go presentation wiring.** Wired the M1 `tui` primitives (Box/Pill/Progress/StatusIcon) into `runTemplateSyncWithReporter` via a new `internal/cli/update_tux.go` (7 render helpers) + `update_tux_test.go` (15 tests, RED→GREEN). Fixed the visible two-part `○…○` spinner residue by removing the redundant reporter Step-wrapper from the deploy loop (it double-rendered every step on stderr alongside the stdout `tui.ProgressLine`, and called `StepStart` twice for "Restore Settings"); the inline `ProgressLine` is now the single per-step renderer. Empirically verified against a throwaway `moai init` project (never this repo): identity band, classification card, per-step progress bars, and outcome banner all render; stderr no longer carries deploy-step reporter lines.
+
+| AC | REQ | M2 status | Verification command | Actual output |
+|----|-----|-----------|----------------------|---------------|
+| AC-TUXIU-001 | 010 | PASS | `go test -run TestRenderClassificationSummary_AllThreePills` | PASS — accent `tui.Box` border + pills `+ 1 add` / `~ 23 update` / `! 2 conflict` |
+| AC-TUXIU-002a | 011 | PASS | `-run TestRenderClassificationSummary_ZeroConflictOmitted` | PASS — 0-count conflict pill absent; add/update present |
+| AC-TUXIU-002b | 011 | PASS | `-run TestRenderClassificationSummary_OnlyUpdatePill` | PASS — only `5 update`; add+conflict omitted |
+| AC-TUXIU-003 | 012/013 | PASS | `-run TestDeployStepStateIcon` | PASS — pending/running/done glyph == `tui.StatusIcon(skip/run/ok)` = ○/●/✓ |
+| AC-TUXIU-005 | 014 | PASS | `-run TestRenderDeployProgress` + live capture | PASS — `● ██░░░░░░░░ 1/5 steps` … `✓ ██████████ 5/5 steps` |
+| AC-TUXIU-008 | 015 | PASS | `-run TestRenderIdentityBand` + live | PASS — `◆ MoAI-ADK <PillPrimary v3.0.0> go1.26.4 · claude` |
+| AC-TUXIU-009 | 016 | PASS | `-run TestRenderUpdateOutcome` + live | PASS — solid `PillOk` `✓ Updated N files` + dim `Backup:`/`Recover:` note |
+| AC-TUXIU-011 | 011 | PASS | `-run TestRenderClassificationSummary_AllZeroEmpty` | PASS — all-zero → empty card (no noise) |
+| AC-TUXIU-012 | 040 | PASS | `grep -rnE '#[0-9a-fA-F]{6}' internal/cli/update.go internal/cli/update_tux.go` | `<<0>>`; `internal/cli` overall still only `wizard/styles.go:20` comment baseline |
+| AC-TUXIU-013a | 041 | PASS | `-run 'TestRender.*NoColor'` + `NO_COLOR=1` live | PASS — 0 SGR; pills → `[+ 1 add]` / `[~ 24 update]` / `[✓ Updated 26 files]` |
+| AC-TUXIU-013b | 041 | PASS | non-TTY pipe capture of `moai update` | PASS — pills bracketed, `grep -c $'\x1b['[0-9;]*m'` = 0 |
+| AC-TUXIU-015 | 043 | PASS | `git diff HEAD -- go.mod go.sum` | `<<0 lines>>` — no new module dependency |
+| AC-TUXIU-016 | 044 | PASS-WITH-DEBT → M4 | data-invariance (residue fix removes stderr **presentation** only) | DATA lines preserved on-channel: `· Found 26 files` (stderr), `✓ Updated 26 files` + removed-path list + `Backup:` path (stdout). Final golden diff owned by M4. |
+| AC-TUXIU-019 | 046 | PASS | `go tool cover -func` on update_tux.go funcs | 7 new render funcs **100.0%**; `internal/cli` whole-package **74.8%** (≥ 74.7% baseline, no regression) |
+
+**Residue fix evidence (REQ-TUXIU-020/021, task load-bearing):** pre-fix stderr showed the duplicate `○ Restore Settings: Restoring user settings...` line twice + a coarse reporter Step per deploy step; post-fix stderr carries only the pre-deploy phases (`Version Check` / `Loading Templates` / `Loading Manifest`) + the `· Found 26 files to sync` data line — the deploy-step double-render is gone. `go test ./internal/cli/ ./internal/cli/update/... ./internal/cli/printer/... ./internal/tui/...` all green; `go build ./...` + `GOOS=windows GOARCH=amd64 go build ./...` exit 0.
+
+**Parallel-session note:** at M2 run-time the shared checkout carried an unrelated live session's uncommitted edits (catalog.yaml, `SKILL.md`, `manager-{develop,spec}.md`, `gate.yaml`, `tool_policy.go`). These trip `TestCatalogHashParity` / `TestManifestHashFormat` / `TestDeprecatedPaths_NoTemplateCollision` and 2 `tool_policy.go` errcheck lints — NONE are in M2 scope (`internal/cli/update.go` + `internal/cli/update_tux*.go`); only those 3 files were staged for the M2 commit.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 ```yaml
-run_complete_at: 2026-07-25            # M1 only; M2-M4 pending (multi-milestone SPEC)
-run_commit_sha: 5ee17e9e1              # M1 commit (backfilled; full run-phase SHA finalizes at M-final)
-run_status: M1-complete                # foundation milestone; M2 (update.go), M3 (init/PrintBanner/root-help), M4 (verify) pending
-ac_pass_count: 9                       # M1-scoped ACs PASS: 004(×2 rows→1 AC), 006, 007, 019, 021, 022, 023, + 050 byte-identity
+run_complete_at: 2026-07-25            # M1+M2 complete; M3-M4 pending (multi-milestone SPEC)
+run_commit_sha: pending-backfill-M2    # M2 commit SHA backfilled in a follow-up chore commit; full run-phase SHA finalizes at M-final
+run_status: M2-complete                # M1 foundation + M2 update.go presentation wiring done; M3 (init/PrintBanner/root-help), M4 (verify) pending
+ac_pass_count: 22                      # M1: 004,006,007,019,021,022,023,050(8) + M2: 001,002a,002b,003,005,008,009,011,012,013a,013b,015,019,016(PASS-WITH-DEBT)(14)
 ac_fail_count: 0
 ac_deferred_count: 2                   # AC-020 (3-surface presence) + AC-024 (root-help predicate) deferred to M3/M4 by milestone design
 preserve_list_post_run_count: unchanged  # bannerString NOT modified; Spinner/Stepper/term/form literals left per AC-004 carve-out; update.go/banner.go/fang.go/root.go untouched (M2/M3)
