@@ -46,6 +46,7 @@ Common metadata keys:
 - modularized: Whether content is split into modules ("true" or "false")
 - tags: Comma-separated tag list as single string
 - author: Skill author name
+- docs-libraries: Comma-separated library identifiers for documentation lookup (WebSearch / WebFetch)
 - related-skills: Comma-separated related skill names
 - aliases: Comma-separated alternative names
 

@@ -46,7 +46,7 @@ Common metadata keys:
 - modularized: Whether content is split into modules ("true" or "false")
 - tags: Comma-separated tag list as single string
 - author: Skill author name
-- docs-libraries: Comma-separated library identifiers for WebSearch/WebFetch
+- docs-libraries: Comma-separated library identifiers for documentation lookup (WebSearch / WebFetch)
 - related-skills: Comma-separated related skill names
 - aliases: Comma-separated alternative names
 
@@ -165,7 +165,7 @@ MoAI's 3-level disclosure sits on top of two runtime budgets the Claude Code hos
 ## Tool Permissions by Category
 
 Foundation Skills:
-- Allowed: Read, Grep, Glob, WebSearch/WebFetch
+- Allowed: Read, Grep, Glob, WebFetch
 - Never: Bash, Agent
 
 Workflow Skills:
@@ -178,7 +178,7 @@ Domain Skills:
 - Never: AskUserQuestion, Agent
 
 Language Skills:
-- Allowed: Read, Grep, Glob, Bash, WebSearch/WebFetch
+- Allowed: Read, Grep, Glob, Bash, WebFetch
 - Conditional: Write, Edit (implementation tasks only)
 - Never: AskUserQuestion, Agent
 

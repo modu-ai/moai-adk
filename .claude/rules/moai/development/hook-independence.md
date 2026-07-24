@@ -93,6 +93,20 @@ dependency. The key reading is **row (a)** (the positive signal) and **row (d)**
 > *should it be wired*, not an active timeout today. Do not read row (g) as
 > evidence the gate is active.
 
+> **Other intentionally-dormant surfaces.** The dormant pattern above is not
+> unique to `team-ac-verify.sh`; the following surfaces are also shipped
+> forward-looking, with no live registration:
+>
+> - `Notification` / `TaskCreated` / `Elicitation` / `ElicitationResult` — retired
+>   obs-only events: the Go handlers and wrappers (`handle-notification.sh`,
+>   `handle-task-created.sh`, `handle-elicitation.sh`, `handle-elicitation-result.sh`)
+>   are kept, but these events are deliberately NOT registered in settings —
+>   a guard test enforces their absence. Do not re-register them.
+> - `handle-worktree-create.sh` / `handle-worktree-remove.sh` — worktree
+>   lifecycle wrappers; dormant, no settings registration; activation deferred.
+> - `moai hook spec-status` CLI subcommand — dormant (no wrapper, no
+>   registration); activation deferred to the lifecycle sync-gate work.
+
 ### 4.1 Positive signal — the governance layer does NOT share mode A
 
 Row (a) is the load-bearing positive finding. The 3 governance gates do **NOT**
