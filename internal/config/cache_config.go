@@ -8,15 +8,21 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-// SPEC-V3R6-PROMPT-CACHE-001 M2 — cache.yaml config schema.
+// cache.yaml config schema.
 //
 // CacheConfig is the typed representation of the cacheStrategy section of
-// cache.yaml. It is consumed by the M1 cache_control injector
-// (internal/runtime.CacheStrategy mirrors these fields).
+// cache.yaml. It once fed a cache_control injector in internal/runtime; that
+// injector was never reachable from production code — moai does not own the
+// API call path, and .claude/rules/moai/workflow/cache-aware-execution.md
+// states the orchestrator cannot place cache_control markers — so it was
+// removed. Prompt caching is performed by Claude Code itself.
 //
-// REQ-PC-005: when session_ttl == "off", no session-level breakpoint is injected.
-// AC-PC-002: the four cacheStrategy keys (enabled / session_ttl / spec_ttl /
-//            min_cacheable_tokens) MUST be present and validated.
+// @MX:DEBT: cache.yaml is retained and remains editable through the moai web
+// settings seam, but no code acts on its values any more.
+// @MX:CEILING: harmless while the file merely round-trips through the settings
+// editor; it misleads as soon as a user expects the values to change behaviour.
+// @MX:UPGRADE: retire cache.yaml (template + settings schema + this loader) in
+// a dedicated SPEC that handles migration for already-deployed projects.
 
 // Default values for the cacheStrategy section.
 const (
@@ -25,13 +31,13 @@ const (
 	// DefaultCacheSpecTTL is the SPEC-body breakpoint TTL default.
 	DefaultCacheSpecTTL = "5m"
 	// DefaultCacheMinTokens is the conservative model-agnostic threshold
-	// (haiku minimum) below which cache_control is omitted (R4 fallback).
+	// (haiku minimum) the removed injector used as its cacheability floor.
 	DefaultCacheMinTokens = 2048
 )
 
 // CacheConfig holds the parsed cacheStrategy section.
 type CacheConfig struct {
-	// Enabled toggles cache_control injection. Ships disabled (safe default).
+	// Enabled once toggled cache_control injection; no code reads it now.
 	Enabled bool `yaml:"enabled"`
 	// SessionTTL is the session-start breakpoint TTL: "1h" | "5m" | "off".
 	SessionTTL string `yaml:"session_ttl"`

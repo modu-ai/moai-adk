@@ -1,22 +1,16 @@
 package cli
 
-// doctor_cache.go — SPEC-V3R6-PROMPT-CACHE-001 M4.
+// doctor_cache.go — `moai doctor` cache hit-rate metric.
 //
-// `moai doctor` cache hit-rate metric. Reports the 7-day rolling cache hit rate
-// from .moai/state/cache-usage.jsonl when cacheStrategy.enabled == true, and
-// warns when the single-turn session ratio (K5) exceeds 10%.
-//
-// REQ-PC-006: report cache hit rate (last 7 days) when cacheStrategy.enabled.
-// K5: single-turn ratio > 10% → WARN to consider session_ttl: "off".
+// Reports the 7-day rolling cache hit rate from .moai/state/cache-usage.jsonl,
+// which the PostToolUse hook records on every turn, and warns when the
+// single-turn session ratio exceeds 10%.
 
 import (
 	"fmt"
-	"path/filepath"
 	"time"
 
 	"github.com/modu-ai/moai-adk/internal/cli/uikit"
-	"github.com/modu-ai/moai-adk/internal/config"
-	"github.com/modu-ai/moai-adk/internal/defs"
 	"github.com/modu-ai/moai-adk/internal/state"
 )
 
@@ -24,42 +18,35 @@ import (
 // (REQ-PC-006, KPI K1 7-day rolling).
 const cacheHitRateWindow = 7 * 24 * time.Hour
 
-// singleTurnRatioThreshold is the K5 threshold: above this single-turn-session
-// ratio, the doctor warns to consider session_ttl: "off".
+// singleTurnRatioThreshold is the threshold above which the doctor warns that
+// one-shot sessions dominate the window.
 const singleTurnRatioThreshold = 0.10
 
 // checkCacheHitRate reports the 7-day cache hit rate from the cache-usage JSONL
 // telemetry. The check has three outcomes:
-//   - cacheStrategy.enabled == false (or no cache.yaml): reports OK with a
-//     "caching disabled" message and NO "Cache hit rate" line (AC-PC-007 §3).
-//   - enabled, single-turn ratio <= 10%: OK with the "Cache hit rate (last 7
-//     days): NN%" line (AC-PC-007).
-//   - enabled, single-turn ratio > 10%: WARN with a session_ttl: "off"
-//     recommendation in Detail (K5).
+//   - no readable telemetry in the window: OK with an "n/a" message.
+//   - single-turn ratio <= 10%: OK with the "Cache hit rate (last 7 days): NN%"
+//     line.
+//   - single-turn ratio > 10%: WARN naming the cache-write cost of one-shot
+//     sessions.
+//
+// The metric is deliberately NOT gated on cacheStrategy.enabled. Prompt caching
+// is performed by Claude Code itself, not by moai — see
+// .claude/rules/moai/workflow/cache-aware-execution.md, which states the
+// orchestrator cannot place cache_control markers. The flag therefore never
+// controlled whether caching happened, and gating this metric on it hid real
+// PostToolUse telemetry behind a toggle that did nothing.
 //
 // @MX:ANCHOR: [AUTO] checkCacheHitRate — sole moai doctor cache metric surfacing (hit rate + single-turn warning)
-// @MX:REASON: fan_in >= 3 expected — runGroupedChecks workspace registration, AC-PC-007 doctor test, and the K5 single-turn-warning test all depend on this single check; the "Cache hit rate (last 7 days): NN%" output literal is grep-verified by AC-PC-007, and the enabled-gated absence (no line when disabled) is a contractual KPI surfacing behavior.
+// @MX:REASON: fan_in >= 3 — runGroupedChecks workspace registration, the doctor golden snapshots, and the single-turn-warning test all depend on this single check; the "Cache hit rate (last 7 days): NN%" output literal is grep-verified by the doctor tests.
 func checkCacheHitRate(projectRoot string, verbose bool) DiagnosticCheck {
 	check := DiagnosticCheck{Name: "Cache Hit Rate"}
-
-	cachePath := filepath.Join(projectRoot, defs.MoAIDir, defs.SectionsSubdir, "cache.yaml")
-	// LoadCacheConfig never errors: file-not-found / malformed → safe default
-	// (enabled: false). The doctor metric only surfaces when caching is on.
-	cfg, _ := config.LoadCacheConfig(cachePath)
-	if cfg == nil || !cfg.Enabled {
-		check.Status = uikit.CheckOK
-		check.Message = "prompt caching disabled (cacheStrategy.enabled: false)"
-		if verbose {
-			check.Detail = "set .moai/config/sections/cache.yaml `cacheStrategy.enabled: true` to enable + surface hit rate"
-		}
-		return check
-	}
 
 	entries, err := state.ReadCacheUsage(projectRoot)
 	if err != nil {
 		// Telemetry read failure degrades to OK — never a hard failure.
 		check.Status = uikit.CheckOK
-		check.Message = "prompt caching enabled — no telemetry yet (cache-usage.jsonl unreadable)"
+		check.Message = "Cache hit rate (last 7 days): n/a (telemetry unreadable)"
 		if verbose {
 			check.Detail = err.Error()
 		}
@@ -80,7 +67,7 @@ func checkCacheHitRate(projectRoot string, verbose bool) DiagnosticCheck {
 	if ratio > singleTurnRatioThreshold {
 		check.Status = uikit.CheckWarn
 		check.Detail = fmt.Sprintf(
-			"WARN: consider setting session_ttl: \"off\" — single-turn sessions are %.0f%% of the window (> %.0f%%), incurring 1h cache-write penalty",
+			"WARN: %.0f%% of sessions in the window are single-turn (> %.0f%%). Each pays a cache-write cost with no later turn to read it back; batching work into fewer, longer sessions recovers that cost",
 			ratio*100, singleTurnRatioThreshold*100,
 		)
 		return check

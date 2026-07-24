@@ -64,12 +64,10 @@ func seedCacheUsage(t *testing.T, root string, singleTurnSessions int) {
 	}
 }
 
-// TestCheckCacheHitRate_EnabledShowsRate (AC-PC-007) verifies that when
-// cacheStrategy.enabled == true and a 7-day JSONL window exists, the check emits
-// a message matching "Cache hit rate (last 7 days): NN%".
-func TestCheckCacheHitRate_EnabledShowsRate(t *testing.T) {
+// TestCheckCacheHitRate_ShowsRate verifies that a populated 7-day JSONL
+// window produces a message matching "Cache hit rate (last 7 days): NN%".
+func TestCheckCacheHitRate_ShowsRate(t *testing.T) {
 	root := t.TempDir()
-	writeCacheYAML(t, root, true)
 	seedCacheUsage(t, root, 0)
 
 	check := checkCacheHitRate(root, false)
@@ -84,26 +82,42 @@ func TestCheckCacheHitRate_EnabledShowsRate(t *testing.T) {
 	}
 }
 
-// TestCheckCacheHitRate_DisabledNoRate (AC-PC-007 §3) verifies that when
-// cacheStrategy.enabled == false, the check does NOT report a hit-rate line
-// (absence is correct).
-func TestCheckCacheHitRate_DisabledNoRate(t *testing.T) {
+// TestCheckCacheHitRate_FlagDoesNotSuppressRate guards the correction: the
+// metric reports PostToolUse telemetry regardless of cacheStrategy.enabled.
+// The flag once gated a cache_control injector that no production code ever
+// called, so gating the metric on it hid real data behind a no-op toggle.
+func TestCheckCacheHitRate_FlagDoesNotSuppressRate(t *testing.T) {
 	root := t.TempDir()
 	writeCacheYAML(t, root, false)
 	seedCacheUsage(t, root, 0)
 
 	check := checkCacheHitRate(root, false)
-	if strings.Contains(check.Message, "Cache hit rate") {
-		t.Errorf("disabled cache must NOT report hit rate; got: %q", check.Message)
+	if !strings.Contains(check.Message, "Cache hit rate") {
+		t.Errorf("cacheStrategy.enabled: false must NOT suppress the hit rate; got: %q", check.Message)
+	}
+	if !strings.Contains(check.Message, "80%") {
+		t.Errorf("expected the seeded 80%% hit rate; got: %q", check.Message)
 	}
 }
 
-// TestCheckCacheHitRate_SingleTurnWarning (K5) verifies the WARN when the
-// single-turn session ratio exceeds 10% — message must recommend
-// `session_ttl: "off"`.
+// TestCheckCacheHitRate_NoConfigStillReports verifies a project without
+// cache.yaml still reports telemetry — the config file is not a precondition.
+func TestCheckCacheHitRate_NoConfigStillReports(t *testing.T) {
+	root := t.TempDir()
+	seedCacheUsage(t, root, 0)
+
+	check := checkCacheHitRate(root, false)
+	if !strings.Contains(check.Message, "Cache hit rate") {
+		t.Errorf("missing cache.yaml must NOT suppress the hit rate; got: %q", check.Message)
+	}
+}
+
+// TestCheckCacheHitRate_SingleTurnWarning verifies the WARN raised when the
+// single-turn session ratio exceeds 10%. The detail names the cache-write cost
+// rather than recommending a session_ttl setting: TTLs are chosen by Claude
+// Code, so no moai-side config change can alter them.
 func TestCheckCacheHitRate_SingleTurnWarning(t *testing.T) {
 	root := t.TempDir()
-	writeCacheYAML(t, root, true)
 	// 1 multi-turn session + 9 single-turn sessions → 9/10 = 90% > 10%.
 	seedCacheUsage(t, root, 9)
 
@@ -111,30 +125,22 @@ func TestCheckCacheHitRate_SingleTurnWarning(t *testing.T) {
 	if check.Status != uikit.CheckWarn {
 		t.Errorf("status = %q, want warn (single-turn ratio > 10%%)", check.Status)
 	}
-	if !strings.Contains(check.Detail, `session_ttl: "off"`) {
-		t.Errorf("warning detail must recommend session_ttl: \"off\"; got: %q", check.Detail)
+	if !strings.Contains(check.Detail, "single-turn") {
+		t.Errorf("warning detail must name the single-turn ratio; got: %q", check.Detail)
+	}
+	if strings.Contains(check.Detail, "session_ttl") {
+		t.Errorf("warning detail must not recommend a no-op session_ttl change; got: %q", check.Detail)
 	}
 }
 
-// TestCheckCacheHitRate_NoConfigNoRate verifies a project without cache.yaml
-// (cache disabled by safe default) does not report a hit-rate line.
-func TestCheckCacheHitRate_NoConfigNoRate(t *testing.T) {
+// TestCheckCacheHitRate_NoTelemetryReportsNA verifies that an empty JSONL
+// window reports n/a rather than a percentage.
+func TestCheckCacheHitRate_NoTelemetryReportsNA(t *testing.T) {
 	root := t.TempDir()
-	check := checkCacheHitRate(root, false)
-	if strings.Contains(check.Message, "Cache hit rate") {
-		t.Errorf("no cache.yaml must NOT report hit rate; got: %q", check.Message)
-	}
-}
-
-// TestCheckCacheHitRate_EnabledNoTelemetry verifies that when caching is enabled
-// but the JSONL window has no entries, the check reports n/a (not a percentage).
-func TestCheckCacheHitRate_EnabledNoTelemetry(t *testing.T) {
-	root := t.TempDir()
-	writeCacheYAML(t, root, true)
 	// No cache-usage.jsonl written → empty window.
 	check := checkCacheHitRate(root, false)
 	if check.Status != uikit.CheckOK {
-		t.Errorf("status = %q, want ok (enabled, no telemetry)", check.Status)
+		t.Errorf("status = %q, want ok (no telemetry)", check.Status)
 	}
 	if !strings.Contains(check.Message, "n/a") {
 		t.Errorf("empty-window message should be n/a; got: %q", check.Message)
@@ -145,7 +151,6 @@ func TestCheckCacheHitRate_EnabledNoTelemetry(t *testing.T) {
 // breakdown detail for the healthy (OK) case.
 func TestCheckCacheHitRate_VerboseDetail(t *testing.T) {
 	root := t.TempDir()
-	writeCacheYAML(t, root, true)
 	seedCacheUsage(t, root, 0)
 	check := checkCacheHitRate(root, true)
 	if check.Status != uikit.CheckOK {
@@ -156,23 +161,11 @@ func TestCheckCacheHitRate_VerboseDetail(t *testing.T) {
 	}
 }
 
-// TestCheckCacheHitRate_DisabledVerboseHint verifies the disabled+verbose path
-// surfaces the enablement hint detail.
-func TestCheckCacheHitRate_DisabledVerboseHint(t *testing.T) {
-	root := t.TempDir()
-	writeCacheYAML(t, root, false)
-	check := checkCacheHitRate(root, true)
-	if !strings.Contains(check.Detail, "cacheStrategy.enabled: true") {
-		t.Errorf("disabled+verbose should hint at enabling; got detail: %q", check.Detail)
-	}
-}
-
 // TestCheckCacheHitRate_TelemetryReadError verifies that an unreadable telemetry
 // log (here: the JSONL path is a directory) degrades to OK with a "no telemetry
 // yet" message rather than failing the check.
 func TestCheckCacheHitRate_TelemetryReadError(t *testing.T) {
 	root := t.TempDir()
-	writeCacheYAML(t, root, true)
 	// Create the JSONL path as a DIRECTORY so os.Open succeeds but reads error.
 	jsonlPath := filepath.Join(root, ".moai", "state", "cache-usage.jsonl")
 	if err := os.MkdirAll(jsonlPath, 0o755); err != nil {
