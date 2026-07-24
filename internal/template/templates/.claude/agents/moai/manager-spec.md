@@ -99,7 +99,7 @@ OUT OF SCOPE: Code implementation (manager-develop/tdd), Git operations (manager
 ### Step 1: Load Project Context
 
 - Read `.moai/project/{product,structure,tech}.md`
-- Read `.moai/config/config.yaml` for mode settings
+- Read `.moai/config/sections/quality.yaml` (constitution.development_mode) for mode settings
 - List existing SPECs in `.moai/specs/` for deduplication
 
 ### Step 2: Analyze and Propose SPEC Candidates

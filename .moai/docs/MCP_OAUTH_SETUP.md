@@ -160,7 +160,7 @@ MoAI-ADK templates include `.mcp.json` handling during `moai init`:
 - Environment variable placeholders are preserved
 - OAuth configurations are validated for required fields
 
-For MoAI-specific MCP server configurations, see `.moai/config/mcp-servers.yaml`.
+For MoAI-specific MCP server configurations, see the project `.mcp.json` (Claude Code native MCP config) and the maintainer-only recommendation matrix `.moai/config/sections/mcp-matrix.yaml`.
 
 ---
 

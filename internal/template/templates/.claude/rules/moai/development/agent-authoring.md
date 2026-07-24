@@ -164,7 +164,7 @@ Agent(subagent_type: "general-purpose", name: "researcher", model: "haiku", mode
 
 > Note: the `researcher` role_profile here is a workflow.yaml role, unrelated to the retired `researcher` agent file.
 
-Role profiles are defined in `.moai/config/sections/workflow.yaml` under `team.role_profiles`:
+Role profiles were formerly defined in workflow.yaml under a `team.role_profiles` block — that config block was REMOVED with the Agent Teams retirement, and the table below is retained only as historical reference for per-spawn role shaping:
 
 | Role Profile | Default Model | Mode | Isolation | Purpose |
 |-------------|---------------|------|-----------|---------|

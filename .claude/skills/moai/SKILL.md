@@ -16,7 +16,7 @@ argument-hint: "[subcommand] [args] | \"natural language task\""
 
 ## Essential Files
 
-.moai/config/config.yaml
+.moai/config/sections/*.yaml
 
 ---
 
@@ -64,7 +64,7 @@ The `--team` / `--solo` flags are forced overrides onto the catalog; the flag-fr
 [HARD] Mixed-language guard: FIRST-WORD subcommand matching applies only when (a) the input is pure ASCII/Latin, OR (b) the message is prefixed with a literal `/moai ` slash form. When the message contains non-Latin script (Korean/Japanese/Chinese/etc.) beyond the first token, do NOT route immediately on the leading English word — treat it as a possible embedded loanword and fall through to Priority 3 semantic classification of the ENTIRE message. Rationale: CJK technical writing embeds English loanwords such as 'goal', 'run', 'fix', 'plan' at sentence start; immediate first-word routing misfires on them.
 
 - **plan** (aliases: spec): SPEC document creation workflow
-- **run** (aliases: impl): DDD/TDD implementation workflow (per quality.yaml development_mode)
+- **run** (aliases: impl): DDD/TDD implementation workflow (per quality.yaml constitution.development_mode)
 - **sync** (aliases: docs, pr): Documentation synchronization and PR creation
 - **project** (aliases: init): Project documentation generation
 - **feedback** (aliases: fb): GitHub issue creation
@@ -332,7 +332,7 @@ Step 3 - Load Workflow Details:
 Read `workflows/<name>.md` for the target subcommand. (The Agent Teams static layer is retired; a `--team` flag falls back to sub-agent mode per `.claude/rules/moai/workflow/orchestration-mode-selection.md` — there is no separate `team/<name>.md` workflow file.)
 
 Step 4 - Read Configuration:
-Load relevant configuration from .moai/config/config.yaml and section files as needed.
+Load relevant configuration from the .moai/config/sections/*.yaml section files as needed.
 
 Step 5 - Initialize Task Tracking:
 Use TaskCreate to register discovered work items with pending status.

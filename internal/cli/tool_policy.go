@@ -20,6 +20,13 @@ import (
 	"github.com/modu-ai/moai-adk/internal/config/toolpolicy"
 )
 
+// toolPolicyDevOnlyNotice is printed when tool-policy.yaml is absent.
+// The 6-field policy inventory is a maintainer-only surface of the moai-adk
+// repository and is not distributed to user projects, so an absent file is
+// the expected state everywhere except the moai-adk checkout itself.
+const toolPolicyDevOnlyNotice = "tool-policy is a maintainer-only surface of the moai-adk repository; " +
+	"tool-policy.yaml is not distributed to user projects, so this command is a no-op here."
+
 // newToolPolicyCmd creates the `moai tool-policy` parent command with `build`
 // and `list` subcommands. Modeled on the `moai constitution` CLI shape
 // (group registration, RunE pattern, flag-based filtering).
@@ -95,6 +102,10 @@ ordering and sorted specifier lists.`,
 				}
 			}
 
+			if _, statErr := os.Stat(policyPath); os.IsNotExist(statErr) {
+				_, _ = fmt.Fprintln(cmd.OutOrStdout(), toolPolicyDevOnlyNotice)
+				return nil
+			}
 			doc, err := toolpolicy.Load(policyPath)
 			if err != nil {
 				return fmt.Errorf("load policy: %w", err)
@@ -242,6 +253,10 @@ constitution schemas are DISJOINT and cannot share an implementation
 				}
 			}
 
+			if _, statErr := os.Stat(policyPath); os.IsNotExist(statErr) {
+				_, _ = fmt.Fprintln(cmd.OutOrStdout(), toolPolicyDevOnlyNotice)
+				return nil
+			}
 			doc, err := toolpolicy.Load(policyPath)
 			if err != nil {
 				return fmt.Errorf("load policy: %w", err)

@@ -1144,6 +1144,46 @@ func TestPreToolHandler_LoadGateConfig(t *testing.T) {
 		}
 	})
 
+	t.Run("astgrep gate enabled via config", func(t *testing.T) {
+		t.Parallel()
+		appCfg := newTestConfig()
+		appCfg.Gate.AstGrepGate.Enabled = true
+		appCfg.Gate.AstGrepGate.BlockOnError = true
+		h := &preToolHandler{
+			cfg:    &mockConfigProvider{cfg: appCfg},
+			policy: DefaultSecurityPolicy(),
+		}
+		cfg := h.loadGateConfig()
+		if cfg == nil || cfg.AstGrepGate == nil {
+			t.Fatal("expected non-nil astgrep gate config")
+		}
+		if !cfg.AstGrepGate.Enabled {
+			t.Error("AstGrepGate.Enabled should map through from config")
+		}
+		if !cfg.AstGrepGate.BlockOnError {
+			t.Error("AstGrepGate.BlockOnError should map through from config")
+		}
+		if cfg.AstGrepGate.RulesDir != ".moai/config/astgrep-rules" {
+			t.Errorf("AstGrepGate.RulesDir default = %q, want .moai/config/astgrep-rules", cfg.AstGrepGate.RulesDir)
+		}
+	})
+
+	t.Run("astgrep gate default off via config", func(t *testing.T) {
+		t.Parallel()
+		appCfg := newTestConfig()
+		h := &preToolHandler{
+			cfg:    &mockConfigProvider{cfg: appCfg},
+			policy: DefaultSecurityPolicy(),
+		}
+		cfg := h.loadGateConfig()
+		if cfg == nil || cfg.AstGrepGate == nil {
+			t.Fatal("expected non-nil astgrep gate config")
+		}
+		if cfg.AstGrepGate.Enabled {
+			t.Error("AstGrepGate.Enabled should default to false (opt-in invariant)")
+		}
+	})
+
 	t.Run("gate disabled via config", func(t *testing.T) {
 		t.Parallel()
 		appCfg := newTestConfig()

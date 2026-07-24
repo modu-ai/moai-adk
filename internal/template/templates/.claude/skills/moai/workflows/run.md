@@ -2,7 +2,7 @@
 description: >
   DDD/TDD implementation workflow for SPEC requirements. Second step
   of the Plan-Run-Sync workflow. Routes to manager-develop based
-  on quality.yaml development_mode setting.
+  on quality.yaml constitution.development_mode setting.
 user-invocable: false
 metadata:
   version: "2.6.0"
@@ -71,7 +71,7 @@ Phase 4 Mode Selection: orchestrator autonomous decision over the 6-mode catalog
 
 **Input**: `$ARGUMENTS` = SPEC-ID (예: `SPEC-AUTH-001`)
 
-**Development mode**: `.moai/config/sections/quality.yaml` `development_mode` 설정 (`ddd` 또는 `tdd`)에 따라 자동 선택.
+**Development mode**: `.moai/config/sections/quality.yaml` `constitution.development_mode` 설정 (`ddd` 또는 `tdd`)에 따라 자동 선택.
 
 **Mode dispatch** (`--mode` flag):
 - `autopilot` (기본): Phase 4 scale-based 선택 후 Phase 11/2B 실행

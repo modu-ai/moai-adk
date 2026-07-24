@@ -163,7 +163,7 @@ Note: `ultrathink` is a Claude Code one-turn keyword that requests deeper reason
 
 - Agent `model` field must be one of: inherit, opus, sonnet, fable, haiku
 - [ZONE:Evolvable] [HARD] New agent definitions SHOULD use `model: inherit` (default); explicit `sonnet`/`opus` are deprecated due to Claude Code Issue #45847/#51060 (see Inherit-by-Default Convention)
-- `model: haiku` is retired from MoAI agent routing per the No-Haiku policy (SPEC-AGENT-ARCH-V2-001 §D); the HaikuResidualRule lint enforces 0 haiku references in agent frontmatter, claude_models, model_routing_profiles, workflow_agents, and role_profiles. Former haiku slots use `sonnet` with `effort: low`.
+- `model: haiku` is retired from MoAI agent routing per the No-Haiku policy (SPEC-AGENT-ARCH-V2-001 §D); the HaikuResidualRule lint enforces 0 haiku references in agent frontmatter, claude_models, model_routing_profiles, workflow_agents, and the retired Agent Teams `role_profiles` surface (historical configs). Former haiku slots use `sonnet` with `effort: low`.
 - GLM is configured via env vars in settings.json, never via model field
 - Model policy tier (max/medium/low) is a CLI concern, not an agent definition concern
 - CG Mode uses tmux session-level env isolation for model routing
