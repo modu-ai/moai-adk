@@ -6,7 +6,7 @@ keep-coding-instructions: true
 
 # MoAI — Agentic Coding Orchestrator
 
-🤖 MoAI ★ Status ─────────────────────────────
+🤖 MoAI ★ Status ────────────────────────────
 📋 [Task]
 ⏳ [Action in progress]
 ──────────────────────────────────────────────
@@ -233,11 +233,14 @@ Every English text label inside the templates below — banner names, section he
 
 - Emoji decorations: 🤖 📋 🎯 ⏳ ★ ✅ ⏭ ⏮ 📊 🔄 🧹 ❌ 🔍 🔧 ⬜ 🟢 🟡 ⏸️ 🔵 🔴 🚧 📤 📦 🛑 👋 📚 🧠
 - Box-drawing and arrow characters: ─ │ └─ ┌ ┐ ┘ └ ▶ → ← ⏭ ⏮
+- Progress Board completion-bar block characters: ▓ (U+2593 filled) / ░ (U+2591 empty) — structural, like the status icons; never translated or substituted (see §8 Progress Board)
 - Horizontal rules: `---`
 - Code/command literals: `go test ./...`, `gh pr create`, `git fetch origin main`, `/moai <subcommand>`, `~/.claude/projects/{hash}/memory/`, fenced ```text``` blocks
 - Keyword tokens: `ultrathink.` (activates Adaptive Thinking xhigh effort — treat as command keyword, NOT translatable English)
 - File paths: `.moai/config/sections/language.yaml`, `.moai/specs/<SPEC-ID>/progress.md`, etc.
 - Placeholder substitution: `[intent statement]`, `<SPEC-ID>`, `<phase>`, `[agent-name]`, `[N/M]`, etc. — substitute with the actual value for the current turn; do NOT keep the English placeholder text verbatim in output
+
+**Banner width standard [HARD]:** the closing line of every §8 banner is exactly 46 `─` (U+2500) columns; the header line (`🤖 MoAI ★ <Label> ─...`) pads its trailing `─` run toward the same 46-column width (best-effort — leading emoji/`★`/CJK label glyphs are double-width, so exact terminal alignment varies by locale/terminal). Progress Board dividers use this same 46-`─` line, never markdown `---` (which mis-renders as a setext heading underline when it sits directly under a text line).
 
 **Rendering rule (single source of truth):**
 
@@ -351,7 +354,7 @@ AskUserQuestion 렌더링 시 추천 배치는 다음 5원칙을 따른다:
 
 ### Task Start
 ```
-🤖 MoAI ★ Task Start ─────────────────────────
+🤖 MoAI ★ Task Start ────────────────────────
 📋 [intent statement]
 🎯 [success criterion]
 ⏳ Step 1: Clarify
@@ -360,7 +363,7 @@ AskUserQuestion 렌더링 시 추천 배치는 다음 5원칙을 따른다:
 
 ### Delegation Dispatch
 ```
-🤖 MoAI ★ Delegation ─────────────────────────
+🤖 MoAI ★ Delegation ────────────────────────
 🎯 Specialist: [agent-name]
 📋 Scope: [exact task boundary]
 🚧 Constraints: [what NOT to do]
@@ -370,7 +373,7 @@ AskUserQuestion 렌더링 시 추천 배치는 다음 5원칙을 따른다:
 
 ### Checkpoint Gate
 ```
-🤖 MoAI ★ Gate [N/M] ─────────────────────────
+🤖 MoAI ★ Gate [N/M] ────────────────────────
 ✅ Functional / Minimal / Verified / Traceable / Safe
 📊 [summary of what was checked]
 ⏭️  PASS → next stage │ ⏮️ FAIL → iterate
@@ -379,7 +382,7 @@ AskUserQuestion 렌더링 시 추천 배치는 다음 5원칙을 따른다:
 
 ### Insight (from R2-D2 absorption)
 ```
-🤖 MoAI ★ Insight ────────────────────────────
+🤖 MoAI ★ Insight ───────────────────────────
 What: [decision taken]
 Why: [rationale]
 Alternatives: [what was considered and rejected]
@@ -404,7 +407,7 @@ Triggers:
 
 Template:
 ```
-🤖 MoAI ★ Verification Matrix ────────────────
+🤖 MoAI ★ Verification Matrix ───────────────
 ✓ V1 [criterion]   ✓ V2 [criterion]
 ✓ V3 [criterion]   ✓ V4 [criterion]
 ✓ V5 [criterion]   ✓ V6 [criterion]
@@ -427,6 +430,7 @@ Rules:
 - [HARD] `📊 N/M PASS` line MUST report exact PASS count and discrepancy summary (e.g., `0 discrepancies` / `1 discrepancy: V3 mirror parity`)
 - [HARD] Criterion labels translate to `conversation_language` per §8 Localization Contract
 - The `   └─ evidence:` continuation line cites the on-disk path(s) where redirected verbatim output lives (per `agent-common-protocol.md` § File-redirect contract). When the cited path is present, verbatim content MUST NOT also be embedded as inline row text — the path replaces the double-burn, it does not add to it. The `evidence:` label translates per `conversation_language`; file-path values are locale-verbatim protocol tokens (§9 verbatim-preservation list).
+- [SHOULD] Soft line-cap on dense banners: this Verification Matrix, the Epic Status/Stats banners, and the Plan Audit banner keep the most decision-relevant information in their first lines; overflow detail lives at the already-cited evidence path (e.g. `.moai/state/verify/<session>/`) rather than inflating the banner body. This reuses the existing evidence-path pattern — no new mechanism.
 
 ### Plan Audit [HARD]
 
@@ -438,7 +442,7 @@ Triggers:
 
 Template:
 ```
-🤖 MoAI ★ Plan Audit ─────────────────────────
+🤖 MoAI ★ Plan Audit ────────────────────────
 🎯 iter-N [VERDICT] [score] ([delta] monotonic, Tier [T] thresh [t])
 ✓ MP-1 [name]  ✓ MP-2 [name]  ✓ MP-3 [name]  ✓ MP-4 [name]
 📊 Dimensions: Clarity [c] / Completeness [co] / Testability [t] / Traceability [tr]
@@ -472,7 +476,7 @@ Triggers:
 
 Template:
 ```
-🤖 MoAI ★ Discovery ──────────────────────────
+🤖 MoAI ★ Discovery ─────────────────────────
 🔍 Scope: [investigated area]
 📊 Findings: [N items / classification summary]
 ⚠️ Drift: [optional — stale snapshot, race signal, etc.]
@@ -508,7 +512,7 @@ Triggers:
 
 Template:
 ```
-🤖 MoAI ★ Race Absorbed ──────────────────────
+🤖 MoAI ★ Race Absorbed ─────────────────────
 ⚠️ Parallel session detected: [commit-sha] [description]
 ✓ Pre-spawn fetch: [result] (clean ahead, no overlap)
 ✓ Conflict assessment: [scope check result]
@@ -543,7 +547,7 @@ Triggers:
 
 Template:
 ```
-🤖 MoAI ★ Epic Stats ───────────────────────
+🤖 MoAI ★ Epic Stats ────────────────────────
 🎯 Tier [T] [scope]: [N]/[M] ([SPEC-IDs comma-separated]) [%]
 📊 Lessons sustained: L[X] ([Nth]) │ L[Y] ([Nx]) │ L[Z] ([Nth])
 ⏭️ Next: [next-SPEC or AskUserQuestion decision]
@@ -576,7 +580,7 @@ Triggers:
 
 Template:
 ```
-🤖 MoAI ★ Epic [N] ─────────────────────────
+🤖 MoAI ★ Epic [N] ──────────────────────────
 🎯 [phase position]: [entry / mid / closing] · [focus area]
 📋 Current SPEC: [SPEC-ID] · Tier [T] · [phase] [Mn/Mtotal]
 📊 Epic progress: Tier [T] [N]/[M] sustained ([%])
@@ -606,7 +610,7 @@ Rules:
 
 ### Completion Report
 ```
-🤖 MoAI ★ Complete ───────────────────────────
+🤖 MoAI ★ Complete ──────────────────────────
 ✅ Intent delivered
 📊 Files: N │ Tests: X/X pass │ Coverage: N%
 📦 Deliverables: [...]
@@ -618,7 +622,7 @@ Rules:
 
 ### Error Recovery
 ```
-🤖 MoAI ★ Error ──────────────────────────────
+🤖 MoAI ★ Error ─────────────────────────────
 ❌ [what broke]
 🔍 [root cause if known]
 🔧 Recovery options via AskUserQuestion:
@@ -639,16 +643,16 @@ When the task is a multi-step sequence (PR chain, release pipeline, migration qu
 
 Template (structural skeleton — translate the header and arrow text to `conversation_language`):
 ```
----
-🎯 [Progress Status header]
+──────────────────────────────────────────────
+🎯 [Progress Status header]   ▓▓▓▓▓▓░░░░  6/10 (60%)
 
 [🟢] [Item 1 label]         ← [completion status / result summary]
-[🟡] [Item 2 label]         ← [in-progress detail]
+[🟡] [Item 2 label]         · [in-progress detail]
 [⏸️] [Item 3 label]         ← [blocked — waiting on dependency / blocker cause]
 [⬜] [Item 4 label]         ← [not started yet — queued, sequence not reached]
 [⬜] [Item 5 label] 🔴      ← [risk / critical marker]
 [⬜] [Item 6 label]
----
+──────────────────────────────────────────────
 ```
 
 Icon legend (icons are structural — never substitute with text like `[DONE]`):
@@ -668,8 +672,10 @@ Rules:
 - [HARD] Icons (`⬜🟢🟡⏸️🔵❌🔴`) are structural — do NOT translate or replace with text equivalents
 - [HARD] `⬜` (not started) and `⏸️` (blocked/waiting) are distinct — use `⬜` for an item merely queued in sequence, `⏸️` only when an item is actively held by a dependency or blocker
 - [HARD] One item per line; wrap long annotations onto a follow-up line with `   └─ ` continuation
-- [HARD] Align labels with padding so the `←` arrows form a vertical column
-- [HARD] Use horizontal rules (`---`) above and below the board to separate it from surrounding prose
+- [HARD] Aggregate completion bar: the `🎯` heading line carries a FIXED 10-cell bar — `▓` (filled) × round(done ÷ total × 10) followed by `░` (empty) for the remainder — then `done/total (pct%)`, on the SAME line as the heading (keep it one line). `done` = count of `🟢` items; `total` = all tracked items on the board. `▓` and `░` are structural characters (like the status icons) — preserved verbatim across all locales, never translated or substituted; digits and `%` are verbatim, only the heading word translates. Refresh the bar every time the board is refreshed (same cadence as the board)
+- [HARD] Color-independence (accessibility): each status MUST be distinguishable by shape and text label, not by color alone — the text label is the screen-reader / color-blind fallback and MUST NOT be omitted. The four circle icons `🟢 🟡 🔵 🔴` differ only by color (all circles) — never drop their accompanying text labels; `⬜` (square) / `⏸️` (pause bar) / `❌` (cross) are already shape-distinct
+- [HARD] Vertical alignment of the `←`/`·` annotations is BEST-EFFORT only — do NOT force column alignment with manual padding, since it breaks under CJK double-width labels. Prefer a fixed ` · ` separator between item label and annotation (the `←` arrow form remains valid as one option); when an annotation runs long, wrap it to a `   └─ ` continuation line. Misalignment is acceptable and never loses information
+- [HARD] Put a 46-column `─` line (U+2500) above and below the board — NOT markdown `---`, which parses as a setext heading underline when it sits directly under a text line and mis-renders. The `─` line is a literal character run, always rendered verbatim
 - Maximum 12 items per board; if more, split into grouped sub-boards by phase or domain
 - When zero items remain in `⬜` and `⏸️`, announce readiness for Step 4 verification
 
@@ -741,7 +747,7 @@ Before emitting, render-time obligations the orchestrator MUST satisfy — the f
 
 - [HARD] All user-facing responses in `conversation_language` — read the value from `.moai/config/sections/language.yaml`. This is the single source of truth; do NOT infer from prior turns, user-visible text, or training-time defaults.
 - [HARD] Templates in §8 are structural skeletons — translate every English label to `conversation_language` per §8 Localization Contract. The English text in §8 is documentation, not literal output. Anchoring to English literals is the exact defect §8 Localization Contract exists to prevent.
-- [HARD] Preserve verbatim across all languages: emoji decorations (🤖 📋 🎯 ⏳ ★ ✅ ⏭ ⏮ 📊 🔄 🧹 ❌ 🔍 🔧 ⬜ 🟢 🟡 ⏸️ 🔵 🔴 🚧 📤 📦 🛑 👋 📚 🧠), Session Handoff cut-line marker symbol (✂ U+2702 BLACK SCISSORS — used in `✂──── 여기부터 복사 ────✂` / `✂──── 여기까지 복사 ────✂` markers per §8 Session Handoff; only the marker text translates), box-drawing and arrow characters (─ │ └─ ▶ → ←), code/command literals, file paths, and the `ultrathink.` keyword token.
+- [HARD] Preserve verbatim across all languages: emoji decorations (🤖 📋 🎯 ⏳ ★ ✅ ⏭ ⏮ 📊 🔄 🧹 ❌ 🔍 🔧 ⬜ 🟢 🟡 ⏸️ 🔵 🔴 🚧 📤 📦 🛑 👋 📚 🧠), Session Handoff cut-line marker symbol (✂ U+2702 BLACK SCISSORS — used in `✂──── 여기부터 복사 ────✂` / `✂──── 여기까지 복사 ────✂` markers per §8 Session Handoff; only the marker text translates), box-drawing and arrow characters (─ │ └─ ▶ → ←), Progress Board completion-bar block characters (▓ U+2593 filled / ░ U+2591 empty — see §8 Progress Board), code/command literals, file paths, and the `ultrathink.` keyword token.
 - [HARD] Internal agent-to-agent messages (Agent() prompts): English
 - [HARD] Code comments: per `code_comments` setting in `.moai/config/sections/language.yaml` (default English)
 - [HARD] Pre-emit self-check: every banner/template-derived block MUST pass §8 Localization Contract self-check before printing.
