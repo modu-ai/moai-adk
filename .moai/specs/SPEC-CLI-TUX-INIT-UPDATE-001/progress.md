@@ -130,7 +130,7 @@ golden_postm4_captured: true           # FRESH logo-era goldens at internal/cli/
 
 ```yaml
 sync_complete_at: 2026-07-25          # CHANGELOG + spec.md status close + this block, single sync commit
-sync_commit_sha: pending-backfill-sync  # backfilled in a follow-up chore(...) commit after this commit lands
+sync_commit_sha: 62ca87133            # backfilled (was pending-backfill-sync placeholder in the sync commit itself)
 sync_status: sync-complete            # all 4 milestones (M1-M4) complete; presentation-only redesign shipped
 changelog_entry_position: "[Unreleased] / ### Changed"  # new bullet appended after SPEC-SUBAGENT-NESTING-DOCTRINE-001
 frontmatter_status_transitions:
