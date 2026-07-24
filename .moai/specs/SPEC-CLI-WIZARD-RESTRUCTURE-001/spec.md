@@ -1,7 +1,7 @@
 ---
 id: SPEC-CLI-WIZARD-RESTRUCTURE-001
 title: "moai init wizard restructure — 3-page topic layout + default recalibration (방안 A)"
-version: "0.1.0"
+version: "0.1.1"
 status: draft
 created: 2026-07-25
 updated: 2026-07-25
@@ -22,6 +22,7 @@ related_specs: [SPEC-V3R5-INIT-WIZARD-EXPANSION-001, SPEC-V3R5-STATUSLINE-PROFIL
 | Version | Date | Author | Change |
 |---------|------|--------|--------|
 | 0.1.0 | 2026-07-25 | manager-spec | Initial plan-phase authoring. Encodes user-confirmed 방안 A: remove the advanced-settings gate, reorganize the `moai init` wizard into 3 topic-based pages shown to every user, recalibrate `model_policy` default High→Medium and `lsp_enabled` default false→true, and remove the `harness_profile` / `coverage_exemptions_enabled` questions (fix them at defaults). |
+| 0.1.1 | 2026-07-25 | manager-spec | Folded the resolved advanced_gate retirement clarification. User chose 방안 A **option A — FULL retirement** of the advanced-settings plumbing (`advanced_gate.go`, the `--standard` / `--advanced` flag modes + their `standardMode` / `advancedMode` plumbing, and the inert `Phase2Questions` / gated-`Phase1Questions` stubs; the Page-3 questions survive). Added REQ-WIZ-018/019 (retirement + caller reconciliation), reframed the §C advanced_gate exclusion, and made plan.md M5 concrete (rows C23-C27). Rejected option B (hidden `--advanced` power-user path). |
 
 ## §A — Overview
 
@@ -60,6 +61,11 @@ This SPEC defines WHAT the restructured wizard observably does. The HOW (huh gro
 - **REQ-WIZ-016** (Ubiquitous): The reconfigure question set (used by `moai update --reconfigure`) shall preserve the Git question set and their ordering relative to the report-format question.
 - **REQ-WIZ-017** (Unwanted): The wizard shall not leave orphaned answer-capture branches that no longer correspond to any presented question.
 
+### §B.5 — Advanced-path full retirement (resolved 방안 A option A)
+
+- **REQ-WIZ-018** (Unwanted): The CLI shall not expose the `--standard` or `--advanced` init flag modes, and the wizard shall not retain the reflection-based advanced-readiness gate or the inert Phase-2 stub questions — the advanced-settings plumbing is retired outright, not hidden behind a power-user path. The former Phase-1 questions are preserved as Page 3 (REQ-WIZ-005); only their mode-gated wrapper is retired.
+- **REQ-WIZ-019** (Ubiquitous): After retirement, the build and test suite shall be free of dangling references to the removed advanced-path flags and symbols; every existing caller of `--advanced` / `--standard` (CI scripts, documentation, tests) shall be reconciled so all documented invocations and assertions remain consistent.
+
 ## §C — Exclusions
 
 The following are explicitly out of scope for this SPEC. Each is routed to its correct home rather than expanded here.
@@ -76,9 +82,9 @@ The following are explicitly out of scope for this SPEC. Each is routed to its c
 
 - The per-agent profile matrix, `llm.profile` / `performance_tier` persistence, and the tier→effort/tier mapping are unchanged. Only the *default selection* of the model-policy tier moves High→Medium (REQ-WIZ-008/009). The Max, Medium, and Low tiers remain fully selectable.
 
-### Out of Scope — advanced_gate / Phase 2 retirement decision
+### Out of Scope — replacement mode system / hidden power-user path
 
-- Whether to fully retire `advanced_gate.go`, the `--standard` / `--advanced` flags, and the inert `Phase2Questions` stubs is deferred to a kickoff clarification (see `plan.md` §B `[NEEDS CLARIFICATION]`). This SPEC's core deliverable (3-page layout + default recalibration + question removal) does not depend on that decision.
+- The advanced-settings plumbing (`advanced_gate.go`, the `--standard` / `--advanced` flag modes, the inert `Phase2Questions` stubs) is RETIRED outright by this SPEC (REQ-WIZ-018/019; resolved 방안 A option A) — its removal is in scope. What remains out of scope is any *replacement*: this SPEC introduces no new wizard mode system, no hidden power-user flag, and no new Phase-2 settings surface. Every user sees exactly the three topic pages with no alternative entry path.
 
 ### Out of Scope — wizard rendering engine / theme
 

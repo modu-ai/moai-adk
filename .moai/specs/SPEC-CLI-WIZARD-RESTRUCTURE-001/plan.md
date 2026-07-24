@@ -1,7 +1,7 @@
 ---
 id: SPEC-CLI-WIZARD-RESTRUCTURE-001
 title: "Implementation plan — moai init wizard restructure (방안 A)"
-version: "0.1.0"
+version: "0.1.1"
 status: draft
 created: 2026-07-25
 updated: 2026-07-25
@@ -116,6 +116,11 @@ session; see §B B-race).
 | C20 | `internal/cli/init.go` | **`if result.StandardMode {` gate (L465-477)** — MUST-FIX REACHABILITY | Remove the `StandardMode` gate so the always-visible Page-3 answers (LSP/enforce_quality/project_mode/design/claude_design) are actually applied. Without this, the pages render but the answers are discarded. |
 | C21 | `internal/cli/wizard/translations_completeness_test.go` | `optionTranslationExemptIDs` (`harness_profile`, L16) + the question-gather line (L100 `append(DefaultQuestions, Phase1Questions...)`) | Reconcile to the new question set (drop the `harness_profile` exempt entry; update the gather line if the constructor shape changed in C8). |
 | C22 | wizard test files | `questions_test.go`, `wizard_test.go`, `expansion_test.go`, `unified_form_test.go` | Reconcile any assertions referencing removed questions (`advanced_bridge`, `harness_profile`, `coverage_exemptions_enabled`), `StandardMode`-gated visibility, or the 6-question `DefaultQuestions` count. (Mechanical — run-phase, bottom.) |
+| C23 (M5) | `internal/cli/wizard/advanced_gate.go` | whole file (`IsAdvancedWizardReady` / `AdvancedGate` reflection stub) | **Delete** the file. Full retirement — no consumer remains after the gate is removed. |
+| C24 (M5) | `internal/cli/init.go` | `--standard` / `--advanced` cobra flag registration (~L84-85) + the `RunWithDefaultsModes(standardMode, advancedMode)` call passing the flag values + any `resolveModelPolicy`/init wiring reading the modes | **Remove** the flag registrations + collapse the call to the no-mode form. Distinct from C20 (which removes the `if result.StandardMode` *application* gate). |
+| C25 (M5) | `internal/cli/wizard/wizard.go` | `RunWithDefaultsModes(standardMode, advancedMode)` signature (~L58-66) + the orphaned `WizardResult.StandardMode` / `AdvancedMode` fields | **Remove** the `standardMode`/`advancedMode` params (collapse to the no-mode signature); drop the two now-dead result fields once C1/C17/C20 leave them with no writer/reader. |
+| C26 (M5) | `internal/cli/wizard/questions.go` | `Phase2Questions(gate)` constructor (4 inert stubs) + the `Phase1Questions` gated-constructor wrapper | **Remove** `Phase2Questions`; unwind `Phase1Questions` per C8. **Carve-out:** the Page-3 questions themselves are NOT deleted (they move to Page 3 per C3/C8) — only the gated wrapper is unwound. |
+| C27 (M5) | repo-wide caller reconciliation | `.github/` CI scripts, docs, `*_test.go` referencing `--advanced` / `--standard` / `advancedMode` / `standardMode` / `IsAdvancedWizardReady` / `RunWithDefaultsModes` / `Phase2Questions` | **Reconcile** every residual reference (`grep -rn` across the repo, including `.github/` + docs + `_test.go`); 0 dangling references, build + tests green. |
 
 #### PRESERVE
 
@@ -130,17 +135,40 @@ session; see §B B-race).
 
 ## §B — Known issues / risks
 
-**[NEEDS CLARIFICATION: advanced_gate retirement scope]** — 방안 A clearly
-removes the in-wizard `advanced_bridge` gate (C1), but does NOT clearly state
-whether to fully retire `advanced_gate.go`, the `--standard` / `--advanced`
-CLI flags (init.go L84-85), the `RunWithDefaultsModes(standardMode,
-advancedMode)` plumbing, and the inert `Phase2Questions` stubs. Two clean
-options: **(A)** full retirement (delete `advanced_gate.go` + Phase2 stubs +
-`--standard`/`--advanced` flags; simplify the wizard signature) — cleanest,
-larger blast radius; **(B)** keep `--advanced` as a hidden power-user path for
-the Phase-2 stubs, only removing the `advanced_bridge` in-wizard gate — smaller
-change, leaves vestigial plumbing. The core deliverable (D1/D2/D3) does not
-depend on this; it is isolated to milestone M5. Resolve at kickoff before M5.
+**B-advanced-retirement (RESOLVED — 방안 A option A, FULL retirement)** — The
+kickoff clarification is resolved: the user chose **option (A) full retirement**
+of the advanced-settings plumbing. In addition to removing the in-wizard
+`advanced_bridge` gate (C1), this SPEC retires:
+- `internal/cli/wizard/advanced_gate.go` (the reflection-based Phase-2 readiness
+  stub — `IsAdvancedWizardReady` / `AdvancedGate`, which always returns false
+  because its prerequisite SPECs are draft). — C23.
+- The `--standard` / `--advanced` flag modes: the cobra flag registrations
+  (init.go ~L84-85), the `RunWithDefaultsModes(standardMode, advancedMode)`
+  params + call site, and the `resolveModelPolicy` / init wiring that reads the
+  modes. — C24/C25.
+- The inert `Phase2Questions` stub constructor + the `Phase1Questions`
+  gated-constructor wrapper that existed only to feed the gated advanced path.
+  — C26. **Carve-out:** the former Phase-1 QUESTIONS themselves are NOT deleted
+  — they survive as Page 3 (D1 / REQ-WIZ-005); only their `StandardMode`-gated
+  constructor wrapper is unwound (per C3/C8). The now-orphaned
+  `WizardResult.StandardMode` / `AdvancedMode` fields (no writer after C1/C17,
+  no reader after C20) are removed too.
+
+Rationale (recorded): the three topic pages are shown to EVERY user, so the gate
++ flag modes + readiness stub become dead plumbing — full retirement is the
+cleanest end state and leaves no vestigial code. **Rejected alternative (B):**
+keep `--advanced` as a hidden power-user path for the Phase-2 stubs — leaves
+`advanced_gate.go` vestigial and needs a later cleanup SPEC.
+
+**Blast-radius (MUST reconcile at run-phase — C27):** any existing `--advanced`
+/ `--standard` caller (CI scripts under `.github/`, docs, tests referencing the
+flags or the `advancedMode` / `standardMode` / `IsAdvancedWizardReady` /
+`RunWithDefaultsModes` / `Phase2Questions` symbols) breaks. Run-phase M5 MUST
+`grep -rn` for these across the repo (including `.github/`, docs, and `_test.go`)
+and reconcile every hit so the build + test suite stay green (0 dangling
+references). The core deliverable (D1/D2/D3) does not depend on this; it is
+isolated to milestone M5, which is now a concrete milestone (no longer gated on
+clarification) that lands after M1-M4.
 
 **B-brief-correction (model_policy sites)** — The task brief named 4 change
 sites for the model_policy default; **verified reality diverges** (record faithfully
@@ -239,9 +267,18 @@ go test ./internal/cli/wizard/... ./internal/cli/... ./internal/template/...   #
 - **M4 — gate removal + answer-application wiring.** C1 (remove advanced_bridge),
   C17 (dead capture case), **C20 (remove `if result.StandardMode` application
   gate — MUST-FIX)**. This makes M1/M3's always-visible answers persist.
-- **M5 — [NEEDS CLARIFICATION-gated] advanced_gate / --advanced / Phase2
-  retirement.** Execute only after the §B clarification resolves option A vs B.
-  Isolated so M1-M4 can land independently.
+- **M5 — advanced-path full retirement (RESOLVED 방안 A option A).** Delete
+  `advanced_gate.go` (C23); remove the `--standard`/`--advanced` cobra flag
+  registrations + the `RunWithDefaultsModes(standardMode, advancedMode)` params /
+  call site + the `resolveModelPolicy`/init wiring that reads them (C24/C25);
+  drop the orphaned `WizardResult.StandardMode`/`AdvancedMode` fields (C25);
+  remove the inert `Phase2Questions` stubs + unwind the `Phase1Questions`
+  gated-constructor wrapper (C26 — preserving the Page-3 questions per M1). Then
+  reconcile every residual caller across the repo (C27 — `grep -rn` for
+  `--advanced` / `--standard` / `advancedMode` / `standardMode` /
+  `IsAdvancedWizardReady` / `RunWithDefaultsModes` / `Phase2Questions` across
+  `internal/cli/`, `.github/`, docs, `_test.go`; 0 dangling references, build +
+  tests green). Isolated so M1-M4 can land independently; M5 lands after them.
 - **M6 — test reconciliation + full verification (mechanical; bottom).** C22
   (reconcile test assertions), `go test ./internal/cli/... ./internal/template/...`,
   cross-platform build, coverage check.
