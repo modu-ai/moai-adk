@@ -47,7 +47,7 @@ Edge case D.1 (`opus[1m]` picker): **kept** for back-compat (decision recorded a
 
 ```yaml
 run_complete_at: 2026-07-25
-run_commit_sha: pending-backfill-m6
+run_commit_sha: 5f47749af
 run_status: audit-ready
 ac_pass_count: 27
 ac_fail_count: 0
