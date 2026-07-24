@@ -27,7 +27,7 @@ Execute all independent tool calls in parallel when no dependencies exist.
 Rules:
 - Launch multiple agents in a single message when tasks are independent
 - Use sequential execution only when dependencies exist
-- Maximum 10 parallel agents for optimal throughput
+- MoAI ceiling: 3-5 concurrent Agent() calls (Mode 4); runtime cap is 20. See orchestration-mode-selection.md §C.2 (SSOT).
 - For sub-agent mode: Launch multiple Agent() calls in a single message for parallel execution
 - For team mode: spawn teammates directly with the Agent tool's `name` parameter (the team forms implicitly on first spawn — one team per session, no setup step)
 - Team agents share TaskList for work coordination; sub-agents return results directly

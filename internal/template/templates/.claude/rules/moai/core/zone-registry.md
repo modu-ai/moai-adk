@@ -1,6 +1,6 @@
 ---
 description: "Constitution zone registry — CONST-* clause records consumed by moai constitution CLI and zone audits"
-paths: "**/.claude/rules/**,**/.moai/config/sections/constitution.yaml"
+paths: "**/zone-registry.md,**/.moai/config/sections/constitution.yaml"
 ---
 
 # Zone Registry

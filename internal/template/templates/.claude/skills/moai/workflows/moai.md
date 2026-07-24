@@ -35,7 +35,7 @@ For phase overview, token budgets, and phase transitions, see: .claude/rules/moa
 ## Supported Flags
 
 - --loop: Enable auto iterative fixing during run phase
-- --max N: Maximum iteration count for loop (default 100)
+- --max N: Maximum iteration count for loop (effective default is ralph.yaml loop.max_iterations = 10; the workflow.yaml loop_prevention fallback of 100 is the lowest-precedence ceiling, not the default)
 - --branch: Auto-create feature branch
 - --pr: Auto-create pull request after completion
 - --resume SPEC-XXX: Resume previous work from existing SPEC
