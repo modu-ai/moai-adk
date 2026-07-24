@@ -1055,3 +1055,121 @@ func TestReproduction_MigrateTargetExistsLoop_Issue1132(t *testing.T) {
 		t.Errorf("second run: AgencyMigrated = true; want false (no .agency/ left)")
 	}
 }
+
+// gitignoreClobberingDeployer reproduces the #1131/#1094 clobber: on Deploy()
+// it overwrites .gitignore with template-only content — exactly what the real
+// forceUpdate deployer does to a v2 project's .gitignore, silently dropping
+// every user-added pattern because the clean-reinstall path (pre-fix) never
+// captured or merged the user's .gitignore the way the normal `moai update`
+// path does (EntryMerge via updatemerge.MergeGitignoreFile).
+type gitignoreClobberingDeployer struct {
+	deployCalls int
+}
+
+func (d *gitignoreClobberingDeployer) Deploy(ctx context.Context, projectRoot string, mgr manifest.Manager, tmplCtx *template.TemplateContext) error {
+	d.deployCalls++
+	content := "# MoAI template gitignore\n.moai/cache/\n.moai/logs/\nnode_modules/\n"
+	return os.WriteFile(filepath.Join(projectRoot, ".gitignore"), []byte(content), 0o644)
+}
+
+func (d *gitignoreClobberingDeployer) ListTemplates() []string { return nil }
+func (d *gitignoreClobberingDeployer) ValidateAll(ctx context.Context, c *template.TemplateContext) error {
+	return nil
+}
+func (d *gitignoreClobberingDeployer) ExtractTemplate(name string) ([]byte, error) { return nil, nil }
+
+// TestReproduction_GitignoreUserBlockDeleted_Issue1131 reproduces the
+// #1131/#1094 data loss: a v2 project's .gitignore carrying user-added
+// patterns loses them across the clean-reinstall because Step 5's force-deploy
+// overwrites .gitignore with the template version and (pre-fix) no backup +
+// EntryMerge step existed on the clean path — unlike the normal `moai update`
+// path, which backs up .gitignore before deploy and merges user patterns back
+// afterwards.
+//
+// Pre-fix: user patterns absent from post-reinstall .gitignore → FAIL.
+// Post-fix: Step 4.5 captures .gitignore, Step 5.5 merges user additions back
+// under the "User Custom Patterns" header → PASS.
+func TestReproduction_GitignoreUserBlockDeleted_Issue1131(t *testing.T) {
+	root := t.TempDir()
+	// v2 fingerprint via v2.* version + a deprecated path (Signals 1 + 3).
+	writeTestFile(t, root, ".moai/config/sections/system.yaml",
+		"moai:\n    version: v2.16.1\n")
+	writeTestFile(t, root, ".claude/agents/moai/manager-strategy.md", "retired\n")
+	writeTestFile(t, root, ".moai/specs/SPEC-USER-GI/spec.md", "user spec\n")
+
+	// The user's .gitignore: template-era lines + user-added patterns.
+	writeTestFile(t, root, ".gitignore",
+		"# MoAI template gitignore\n.moai/cache/\n.moai/logs/\n\n"+
+			"# User Custom Patterns (preserved by moai update)\n"+
+			"my-secret-dir/\n*.private\n")
+
+	var out bytes.Buffer
+	_, err := runCleanReinstall(context.Background(), root, CleanReinstallOptions{
+		Out:              &out,
+		Deployer:         &gitignoreClobberingDeployer{},
+		RunMigrateAgency: (&stubMigrateRunner{}).Run,
+	})
+	if err != nil {
+		t.Fatalf("runCleanReinstall: %v", err)
+	}
+
+	data, readErr := os.ReadFile(filepath.Join(root, ".gitignore"))
+	if readErr != nil {
+		t.Fatalf("read .gitignore after reinstall: %v", readErr)
+	}
+	content := string(data)
+
+	// #1131/#1094: user-added patterns must survive the clean-reinstall.
+	for _, pattern := range []string{"my-secret-dir/", "*.private"} {
+		if !strings.Contains(content, pattern) {
+			t.Errorf("#1131 regression: user .gitignore pattern %q lost after clean-reinstall; content:\n%s",
+				pattern, content)
+		}
+	}
+	// The deployed template content is kept as-is (merge appends, not restores).
+	if !strings.Contains(content, "node_modules/") {
+		t.Errorf("deployed template .gitignore content missing after merge; content:\n%s", content)
+	}
+}
+
+// TestCleanReinstall_PrunesOldConfigBackups verifies the clean path applies
+// the same config-backup accumulation cap the normal `moai update` path
+// applies after its restore step (backup.CleanupOldBackups keepCount=5).
+// Without the cap, the pre-fix #1132 retry loop left one new
+// .moai-backups/<stamp>/ directory behind on EVERY `moai update` attempt.
+func TestCleanReinstall_PrunesOldConfigBackups(t *testing.T) {
+	root := t.TempDir()
+	writeTestFile(t, root, ".moai/config/sections/system.yaml",
+		"moai:\n    version: v2.16.1\n")
+	writeTestFile(t, root, ".claude/agents/moai/manager-strategy.md", "retired\n")
+	writeTestFile(t, root, ".moai/specs/SPEC-USER-PRUNE/spec.md", "user spec\n")
+
+	// Seed 7 stale timestamped config-backup dirs (the shape BackupMoaiConfig
+	// creates and CleanupOldBackups targets: YYYYMMDD_HHMMSS under .moai-backups/).
+	for i := 1; i <= 7; i++ {
+		makeTestDir(t, root, fmt.Sprintf(".moai-backups/2025010%d_000000", i))
+	}
+
+	if _, err := runCleanReinstall(context.Background(), root, CleanReinstallOptions{
+		Out:              io.Discard,
+		Deployer:         &stubDeployer{},
+		RunMigrateAgency: (&stubMigrateRunner{}).Run,
+	}); err != nil {
+		t.Fatalf("runCleanReinstall: %v", err)
+	}
+
+	entries, err := os.ReadDir(filepath.Join(root, ".moai-backups"))
+	if err != nil {
+		t.Fatalf("read .moai-backups: %v", err)
+	}
+	var stamped int
+	for _, e := range entries {
+		if e.IsDir() && len(e.Name()) == 15 {
+			stamped++
+		}
+	}
+	// 7 stale + 1 created by Step 4.5 = 8; the keepCount=5 cap prunes to 5.
+	if stamped != 5 {
+		t.Errorf("config-backup accumulation cap not applied: %d timestamped dirs remain; want 5", stamped)
+	}
+}
