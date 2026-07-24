@@ -126,7 +126,7 @@ If `$ARGUMENTS` is empty or matches `help` / `--help` / `-h`, render the verb ta
 
 Before executing any verb, verify:
 
-1. Project root is detected (`.moai/config/config.yaml` exists). If absent, abort with guidance to run `moai init` first.
+1. Project root is detected (`.moai/config/sections/` directory exists). If absent, abort with guidance to run `moai init` first.
 2. Harness learning subsystem state: read `.moai/config/sections/harness.yaml` `learning.enabled` field.
    - If `enabled: false` and verb is anything other than `status`, surface a warning that the subsystem is disabled via AskUserQuestion (continue / abort). The first option is `Continue (권장)` only when the verb is `rollback` (rollback should remain functional even with learning disabled); for `apply`, first option is `Abort (권장)`.
 3. For `rollback`: the date argument is mandatory. If missing, abort with usage hint `/moai:harness rollback <YYYY-MM-DD>`.

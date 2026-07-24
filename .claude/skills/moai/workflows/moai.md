@@ -48,7 +48,7 @@ For phase overview, token budgets, and phase transitions, see: .claude/rules/moa
 
 ## Configuration Files
 
-- quality.yaml: TRUST 5 quality thresholds AND development_mode routing
+- quality.yaml: TRUST 5 quality thresholds AND constitution.development_mode routing
 - workflow.yaml: Execution mode, team settings, loop prevention
 
 ## Development Mode Routing (CRITICAL)
@@ -262,7 +262,7 @@ Mode selection:
    - Pass harness level to Run phase
 13. **Phase 4 (Run)**: Route based on Gate result (execution_mode parameter)
    - worktree: Already running in isolated tmux+worktree session (Gate handled transition)
-   - sub-agent: manager-develop (cycle_type=ddd or tdd, per quality.yaml development_mode)
+   - sub-agent: manager-develop (cycle_type=ddd or tdd, per quality.yaml constitution.development_mode)
    - Harness level determines phase skipping and evaluator involvement
 14. **Phase 5 (Sync)**: Always manager-docs sub-agent (sync phase is always sub-agent) — entered via auto-chain on a `full-pipeline` contract, or via the "(Recommended)" next-step option on a `single-phase` contract
 14.5. **Sync-audit gate**: sync-auditor independent 4-dimension scoring (Pipeline Gates #4); FAIL/INCONCLUSIVE halts the chain

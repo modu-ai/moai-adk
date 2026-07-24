@@ -11,7 +11,7 @@ MoAI's three-phase development workflow with token budget management.
 | Phase | Command | Agent | Token Budget | Purpose |
 |-------|---------|-------|--------------|---------|
 | Plan | /moai plan | manager-spec | 30K | Create SPEC document |
-| Run | /moai run | manager-develop (per quality.yaml development_mode; cycle_type=ddd / tdd / autofix) | 180K | DDD / TDD / autofix implementation |
+| Run | /moai run | manager-develop (per quality.yaml constitution.development_mode; cycle_type=ddd / tdd / autofix) | 180K | DDD / TDD / autofix implementation |
 | Sync | /moai sync | manager-docs | 40K | Documentation sync |
 
 Per the canonical agent catalog policy, the MoAI agent catalog consists of exactly 11 retained agents (`manager-spec`, `manager-develop`, `manager-docs`, `manager-git`, `manager-design`, `e2e-tester`, `plan-auditor`, `sync-auditor`, `builder-harness`, `super-advisor`, plus the Anthropic built-in `Explore` — per CLAUDE.md §4). 12 phantom and domain-expert agents (`manager-strategy`, `manager-quality`, `manager-brain`, `manager-project`, `claude-code-guide`, `researcher`, and the 6 `expert-*` agents) were archived offline during the catalog consolidation. For migration guidance and the per-archived-agent replacement pattern, see `.claude/rules/moai/workflow/archived-agent-rejection.md`.
@@ -188,7 +188,7 @@ Token Strategy:
 - Selective file loading
 - Enables 70% larger implementations
 
-Development Methodology (configured in quality.yaml development_mode):
+Development Methodology (configured in quality.yaml constitution.development_mode):
 
 ### DDD Mode — ANALYZE-PRESERVE-IMPROVE
 
