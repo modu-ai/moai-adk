@@ -239,6 +239,89 @@ func TestScaffolder_IdempotentOverwrite(t *testing.T) {
 	}
 }
 
+// backdatedStamp / backdatedDate are the fixed past values written over a
+// freshly rendered draft so that the "a re-run must not re-stamp" assertion
+// below does not depend on how fast the two runs execute.
+const (
+	backdatedStamp = "2020-01-02T03:04:05Z"
+	backdatedDate  = "2020-01-02"
+)
+
+// backdateStamps rewrites every wall-clock-derived field of a rendered draft
+// file to a fixed past value.
+func backdateStamps(t *testing.T, path string) {
+	t.Helper()
+	lines := strings.Split(mustReadFile(t, path), "\n")
+	for i, line := range lines {
+		switch {
+		case strings.HasPrefix(line, "created: "):
+			lines[i] = "created: " + backdatedDate
+		case strings.HasPrefix(line, "updated: "):
+			lines[i] = "updated: " + backdatedDate
+		case strings.HasPrefix(line, "- generated_at: "):
+			lines[i] = "- generated_at: " + backdatedStamp
+		case strings.HasPrefix(strings.TrimSpace(line), `"generated_at":`):
+			lines[i] = `  "generated_at": "` + backdatedStamp + `",`
+		}
+	}
+	if err := os.WriteFile(path, []byte(strings.Join(lines, "\n")), 0o644); err != nil {
+		t.Fatalf("backdateStamps write %s: %v", path, err)
+	}
+}
+
+func mustReadFile(t *testing.T, path string) string {
+	t.Helper()
+	b, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatalf("read %s: %v", path, err)
+	}
+	return string(b)
+}
+
+// TestScaffolder_PreservesStampsAcrossRuns is the deterministic guard behind
+// TestScaffolder_IdempotentOverwrite. That test compares two back-to-back
+// runs, so it only catches a re-stamping scaffolder when the two writes happen
+// to straddle a second boundary — a timing-dependent flake that surfaced on
+// the slower Windows CI runner. Backdating the first run's stamps removes the
+// timing dependency: a scaffolder that re-stamps on overwrite fails every time.
+func TestScaffolder_PreservesStampsAcrossRuns(t *testing.T) {
+	t.Parallel()
+
+	root := t.TempDir()
+	outDir := filepath.Join(root, ".moai", "proposals")
+	candidate := ProposalCandidate{
+		PatternKey:       "tool_failure:bash_timeout:db_migrate",
+		ObservationCount: 6,
+		Confidence:       0.82,
+		Tier:             "recommendation",
+		SourceTs:         time.Date(2026, 5, 24, 0, 0, 0, 0, time.UTC),
+		DraftID:          "PROPOSAL-20260524-bbbbbbbb",
+	}
+
+	if _, err := WriteProposals(outDir, []ProposalCandidate{candidate}); err != nil {
+		t.Fatalf("WriteProposals first: %v", err)
+	}
+
+	specPath := filepath.Join(outDir, candidate.DraftID, "spec.md")
+	jsonPath := filepath.Join(outDir, candidate.DraftID, "proposal.json")
+	backdateStamps(t, specPath)
+	backdateStamps(t, jsonPath)
+	firstSpec := mustReadFile(t, specPath)
+	firstJSON := mustReadFile(t, jsonPath)
+
+	// Second run with identical input must reuse the on-disk stamps.
+	if _, err := WriteProposals(outDir, []ProposalCandidate{candidate}); err != nil {
+		t.Fatalf("WriteProposals second: %v", err)
+	}
+
+	if got := mustReadFile(t, specPath); got != firstSpec {
+		t.Errorf("spec.md re-stamped on overwrite; want byte-identical output")
+	}
+	if got := mustReadFile(t, jsonPath); got != firstJSON {
+		t.Errorf("proposal.json re-stamped on overwrite; want byte-identical output")
+	}
+}
+
 // TestScaffolder_RejectsEmptyDraftID guards against a downstream regression
 // where mapper neglects to populate DraftID; the scaffolder must surface
 // this as an error rather than write to .moai/proposals/.
