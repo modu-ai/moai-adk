@@ -19,6 +19,15 @@ Plan-phase artifacts authored 2026-07-25; amended to 0.2.0 same day after Implem
 | Graceful degrade without `sg` (REQ-CAR-020c) | `TestRunAstGrepGateV2_NoSgCLI` (PATH="") PASS — enabled gate skips scan, no hard failure |
 | gate.yaml template+local | template-first: `internal/template/templates/.moai/config/sections/gate.yaml` + local mirror; `make build` exit 0; `TestStructYAMLSymmetry_Gate` + `TestAuditLoaderCompleteness` PASS |
 
+### M-3 — H4+M3 distribution codification (REQ-CAR-013/014)
+
+| Item | Evidence |
+|------|----------|
+| tool-policy graceful CLI (REQ-CAR-013) | `internal/cli/tool_policy.go`: absent-file guard prints one-line dev-only notice, exit 0 for both `list` and `build`; verified in clean `/tmp/tpclean` — `moai tool-policy list` → notice + exit=0, no stack |
+| tool-policy dev-only declaration | CLAUDE.local.md §2 Local-Only Files entry added (`.moai/config/sections/tool-policy.yaml`) |
+| mcp-matrix reword (REQ-CAR-014) | Template refs removed: `grep -rn 'mcp-matrix' internal/template/templates/` → 0 matches (project.md table row + doc-generation.md Step 3.6.2 generalized to matrix-optional wording, both trees); CLAUDE.local.md §2 entry added |
+| Build + guards | `make build` exit 0; `go test ./internal/cli/ ./internal/template/...` green |
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<pending run-phase>_
