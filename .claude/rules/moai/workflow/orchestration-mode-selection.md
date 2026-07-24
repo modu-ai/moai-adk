@@ -132,7 +132,9 @@ Mode 6 (`workflow`) is candidate ONLY when ALL of the following preconditions ho
 
 #### Mode 6 is scaling, not nesting
 
-The Workflow is launched by the **orchestrator** (main session) as a scaling primitive. The Workflow script coordinates agents and keeps intermediate results in script variables; it returns only the final synthesis to the session context. This is NOT a subagent spawning a subagent — the flat hierarchy is preserved (Anthropic guidance: "Subagents cannot spawn other subagents"). The concurrency model (16 concurrent / 1000-total backstop) is the published cap of the Workflow primitive cited from `dynamic-workflows.md`, NOT a MoAI-invented API.
+The Workflow is launched by the **orchestrator** (main session) as a scaling primitive. The Workflow script coordinates agents and keeps intermediate results in script variables; it returns only the final synthesis to the session context. This is NOT a subagent spawning a subagent — the flat hierarchy is preserved (Anthropic guidance: "Subagents cannot spawn other subagents" — the historical default). The concurrency model (16 concurrent / 1000-total backstop) is the published cap of the Workflow primitive cited from `dynamic-workflows.md`, NOT a MoAI-invented API.
+
+> **Version note (Claude Code v2.1.217)**: subagent *nesting* itself changed at v2.1.217 — the runtime default is now off, configurable via `CLAUDE_CODE_MAX_SUBAGENT_SPAWN_DEPTH` (default `0`). Mode 6 is unaffected by that change because it is orchestrator-launched **scaling, NOT subagent nesting**: the Workflow primitive is a main-session fan-out, not a subagent recursing into further subagent spawns.
 
 #### No named-script Workflow API
 
