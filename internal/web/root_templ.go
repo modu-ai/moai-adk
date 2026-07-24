@@ -422,7 +422,7 @@ func appbar(view pageView) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 31, "</span><div class=\"appbar__context\"><span class=\"appbar__context-text\">lang: ko · model: claude-opus-4-8 · effort: high · dev: ddd</span></div><span class=\"appbar__spacer\"></span> <span class=\"select-wrap langpick-wrap\"><select class=\"select langpick\" id=\"uiLangSelect\" aria-label=\"Interface language\" title=\"Interface language\"><option value=\"en\">English</option> <option value=\"ko\">한국어</option> <option value=\"ja\">日本語</option> <option value=\"zh\">中文</option></select></span> <button class=\"iconbtn\" id=\"serverShutdown\" type=\"button\" aria-label=\"Shut down server\" title=\"Shut down server\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 31, "</span><div class=\"appbar__context\"><span class=\"appbar__context-text\">lang: ko · model: claude-opus-5 · effort: high · dev: ddd</span></div><span class=\"appbar__spacer\"></span> <span class=\"select-wrap langpick-wrap\"><select class=\"select langpick\" id=\"uiLangSelect\" aria-label=\"Interface language\" title=\"Interface language\"><option value=\"en\">English</option> <option value=\"ko\">한국어</option> <option value=\"ja\">日本語</option> <option value=\"zh\">中文</option></select></span> <button class=\"iconbtn\" id=\"serverShutdown\" type=\"button\" aria-label=\"Shut down server\" title=\"Shut down server\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
