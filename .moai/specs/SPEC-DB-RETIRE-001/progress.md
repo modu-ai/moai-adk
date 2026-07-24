@@ -2,7 +2,7 @@
 id: SPEC-DB-RETIRE-001
 title: "DB 문서화 서브시스템 전면 제거 — 진행 기록"
 version: "0.1.0"
-status: in-progress
+status: completed
 created: 2026-07-25
 updated: 2026-07-25
 author: manager-spec
@@ -70,4 +70,17 @@ m1_to_mN_commit_strategy: single M1 commit (removal-only; no milestone split)
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase — manager-docs 소유>_
+```yaml
+sync_complete_at: 2026-07-25
+sync_commit_sha: PENDING_BACKFILL
+sync_status: PASS
+changelog_entry_position: "Unreleased > Removed (SPEC-DB-RETIRE-001)"
+readme_change: "none needed — no README.md/README.ko.md reference to db-schema-sync/dbsync/.moai/project/db/db.yaml found"
+docs_site_change: "removed db-schema-sync row from the hooks subcommand table in getting-started/cli.md across all 4 locales (en/ko/ja/zh)"
+frontmatter_status_transitions:
+  spec_md: "in-progress -> completed"
+  plan_md: "in-progress -> completed"
+  acceptance_md: "in-progress -> completed"
+  progress_md: "in-progress -> completed"
+```
+

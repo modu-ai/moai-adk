@@ -294,7 +294,6 @@ MoAI-specific subcommands are also included.
 | `spec-status` | Auto-update SPEC status on git commit |
 | `harness-classify` | Run the harness classifier and record tier promotions |
 | `harness-observe` · `harness-observe-stop` · `harness-observe-subagent-stop` · `harness-observe-user-prompt-submit` | Record harness usage logs |
-| `db-schema-sync` | Detect DB schema changes in the PostToolUse hook |
 
 You do not run hooks directly — Claude Code's `settings.json` calls them automatically.
 
