@@ -78,25 +78,52 @@
 
 **Parallel-session note (M3):** the shared `feat/SPEC-CLI-TUX-INIT-UPDATE-001` branch carries an unrelated live session's uncommitted `CLAUDE.local.md` + untracked `.moai/reports/*.html` + `SPEC-TDD-ANTICHEAT-001/` — NONE staged (explicit-pathspec commit only; M3 files are disjoint from SPEC-CONFIG-AUDIT-REPAIR-001's `uikit`/`fang`/`root`/`init_warnings` scope).
 
+**Milestone M4 — Verification and coverage + logo-bearing golden re-capture (mechanical; final run milestone).** Added the AC-016 standing guard `internal/cli/tuxiu_characterization_test.go` (data-line filter drops the EXPECTED-NEW presentation — logo/band/card/progress-bar — the M2 residue-fix reporter block, and normalizes run-variant backup timestamps + NO_COLOR pill brackets + indentation) comparing the immutable M1.0 PRE-logo baseline against a FRESH post-M4 presentation baseline. Golden strategy = **option (a)**: 12 fresh logo-era goldens captured via the M1 scratchpad harness (`capture.sh` + `pty_capture.py`, throwaway dirs — repo never mutated) and committed ALONGSIDE the M1.0 goldens at `internal/cli/testdata/tuxiu/postm4/`, so the data-invariance guarantee vs the PRE-logo baseline stays a diff of two committed fixtures. Negative-control verified (injected `Updated 27 files` → test FAILs at the drifted line + missing-token; restore → PASS), so the guard is non-vacuous. Logo/gradient/root-help verified from the BUILT BINARY under a forced-truecolor pty (the `tui.downsample` `sync.Once` constraint requires a real binary, not an in-process test).
+
+| AC | REQ | M4 status | Verification command | Actual output |
+|----|-----|-----------|----------------------|---------------|
+| AC-TUXIU-016 | 044 | PASS | `go test -run 'TestInitUpdateTUXCharacterization\|TestTUXChannelPartition\|TestTUXDataValuesPreserved' ./internal/cli/` | PASS — DATA-line subset byte-identical across all 12 surface×variant×channel pairs; `Updated 26 files` on stdout (never stderr), `Found 26 files to sync` on stderr (never stdout); counts 26/26/13/2/3 preserved. Negative control (27 files) FAILs the guard |
+| AC-TUXIU-020 | 050/054 | PASS | binary pty capture, ANSI-stripped `grep -c -F '███╗   ███╗'` + `TestPrintBanner_CarriesLogo` | no-args `moai`: logo=1 ABOVE `◆ MoAI-ADK` band=1; PrintBanner shared entry carries logo (root.go:32 / init.go:410 / update.go:1274 same func) |
+| AC-TUXIU-021 | 051/052 | PASS | `COLORTERM=truecolor` pty capture; `grep -oE $'\x1b\\[38;2;[0-9;]*m' \| sort -u` | 6 distinct coral fg stops `217;119;87 → 211;114;82 → 204;109;77 → 197;104;72 → 191;99;67 → 184;94;63`, monotonically deepening (row1 luminance > row6) — top-light→bottom-deep, ≥3 distinct |
+| AC-TUXIU-022 | 053 | PASS | `NO_COLOR=1` binary + non-TTY pipe binary | NO_COLOR → 0 SGR colour, `███╗   ███╗` runes intact; non-TTY pipe → 0 distinct fg (≤1) via downsample |
+| AC-TUXIU-023 | 051/040 | PASS | `grep -rnE '#[0-9a-fA-F]{6}' internal/tui/logo.go` ; `internal/cli/ \| grep -v _test` | logo.go `<<0 hex>>`; internal/cli only `wizard/styles.go:20` (1 comment baseline) — no NEW hex |
+| AC-TUXIU-024 | 055 | PASS | binary pty captures, `grep -c -F '███╗   ███╗'` on 5 surfaces | `moai --help`=1, `moai help`=1, `moai init --help`=0, `moai help init`=0, no-args `moai`=**1** (double-print guard); `TestIsRootHelpArgs` 6/6 shapes |
+| AC-TUXIU-013a/b | 041 | PASS | `TestRenderClassificationSummary_NoColorBracketPills` / `_NoColor` + NO_COLOR binary | 0 SGR under NO_COLOR; pills → `[label]` (`[~ 24 update]` `[! 2 conflict]` `[✓ Updated 26 files]`) on init+update+banner |
+| AC-TUXIU-014 | 042 | PASS | `go test -run 'TestSpinnerStatic\|TestProgressStatic' ./internal/tui/` | MOAI_REDUCED_MOTION=1 → static `●` spinner + fully-filled bar (0 `⠋`-family, 0 `░`) |
+| AC-TUXIU-004/018 | 001/002/003 | PASS | `grep -rnE '"✓"\|"✗"\|"○"\|"●"' internal/cli/printer/ internal/cli/uikit/ \| grep -v _test` | `<<0 raw-rune status-glyph literals>>` — all resolve from `tui.Glyph*`; whitelist scoped to status glyphs (logo decorative runes exempt, REQ-056) |
+| AC-TUXIU-012 | 040 | PASS | `grep -rnE '#[0-9a-fA-F]{6}' internal/cli/ \| grep -v _test` | exactly 1 — `wizard/styles.go:20` comment baseline (no NEW hex) |
+| AC-TUXIU-015 | 043 | PASS | `git diff HEAD -- go.mod go.sum` | `<<0 lines>>` — no new module dependency |
+| AC-TUXIU-019 | 046 | PASS | `go tool cover -func` on new/touched render funcs | isRootHelpArgs/PrintBanner/PrintLogo/bannerString/buildInitSuccessCard/paintToken/deployStepStateIcon/renderIdentityBand/classifyUpdateCounts/renderClassificationSummary/renderDeployProgress/renderUpdateOutcome/Logo/CoralRamp/coralRamp/StatusIcon **100.0%**; runFang 91.7% (root-help branch is binary-exercised) — all ≥90%; `internal/cli` whole 74.9% (≥74.6% baseline, no regression), `internal/tui` 93.6% |
+
+**M4 build/test evidence:** `go build ./...` + `GOOS=windows GOARCH=amd64 go build ./...` exit 0; `golangci-lint run ./internal/cli/... ./internal/tui/...` = 0 issues; `go test ./internal/cli/... ./internal/tui/...` all packages `ok` (0 FAIL — TestCatalogHashParity green; reversal tests `TestCompactBanner_*`/`TestPrintBanner_*` green). Subagent-boundary grep on internal/tui + internal/cli: 0 actual invocations (pre-existing matches are cobra Long doc-strings + the `agentlint` detector + test fixtures — none are calls). `git diff HEAD -- go.mod go.sum` empty.
+
+**Parallel-session note (M4):** the shared branch carries the live SPEC-CONFIG-AUDIT-REPAIR-001 session's uncommitted `CLAUDE.local.md` + `internal/cli/{cc,cg,glm,launcher}.go` + `launcher_test.go` edits + untracked `.moai/reports/*.html` + `SPEC-TDD-ANTICHEAT-001/` — NONE staged. M4 staged ONLY `internal/cli/tuxiu_characterization_test.go` + `internal/cli/testdata/tuxiu/postm4/` + this `progress.md` (explicit-pathspec commit; disjoint from the parallel scope).
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 ```yaml
-run_complete_at: 2026-07-25            # M1+M2+M3 complete; M4 (final verify/golden re-capture) pending
-run_commit_sha: pending-backfill-M3    # M3 commit SHA backfilled in a follow-up chore commit; full run-phase SHA finalizes at M-final
-run_status: M3-complete                # M1 foundation + M2 update wiring + M3 init/PrintBanner-logo/root-help done; M4 (verify) pending
-ac_pass_count: 26                      # M1(8) + M2(14) + M3: 010,020,024,018 newly-passing (+4); 011/013a/b re-confirmed on the init surface, 023 logo-ramp SSOT held
+run_complete_at: 2026-07-25            # M1+M2+M3+M4 complete — run-phase DONE; ready for sync-phase (manager-docs)
+run_commit_sha: pending-backfill-M4    # M4 commit SHA backfilled in a follow-up chore commit (a commit cannot name its own hash); finalizes the run-phase SHA
+run_status: run-complete               # M1 foundation + M2 update wiring + M3 init/PrintBanner-logo/root-help + M4 verify/golden-recapture all done
+ac_pass_count: 25                      # all gating AC-TUXIU-001..024 PASS (12 MUST + 13 SHOULD); M4 finalized AC-016 (PASS, was PASS-WITH-DEBT at M2) + AC-021/022 truecolor gradient from binary + AC-014/012/023 guards
 ac_fail_count: 0
-ac_deferred_count: 0                   # AC-020 (3-surface presence) + AC-024 (root-help predicate) now PASS in M3; none deferred
-preserve_list_post_run_count: unchanged  # bannerString NOT modified (logo stacks only in PrintBanner); root.go untouched; Spinner/Stepper/term/form literals left per AC-004 carve-out
-l44_pre_commit_fetch: not-run          # orchestrator-owned pre-spawn fetch (agent does not fetch/push in isolation); PR-route branch
-l44_post_push_fetch: pending           # push to feat/SPEC-CLI-TUX-INIT-UPDATE-001 (Route B; enforce_admins main-direct disabled)
-new_warnings_or_lints_introduced: 0    # golangci-lint 0 issues == pre-edit baseline 0
+ac_na_count: 1                         # AC-TUXIU-017 (JSON preservation) N/A — no machine-readable surface (D2)
+ac_deferred_count: 0
+preserve_list_post_run_count: unchanged  # bannerString NOT modified (logo stacks only in PrintBanner); root.go untouched; M4 touched only testdata/tuxiu + a new _test.go (zero source edits); no defect uncovered
+l44_pre_commit_fetch: orchestrator-owned  # pre-spawn fetch is orchestrator-side (agent does not fetch/push in isolation); Route B feat branch
+l44_post_push_fetch: pending           # orchestrator pushes feat/SPEC-CLI-TUX-INIT-UPDATE-001; PR created by orchestrator via cherry-pick onto a clean branch (parallel-session contamination)
+new_warnings_or_lints_introduced: 0    # golangci-lint ./internal/cli/... ./internal/tui/... = 0 issues == pre-edit baseline
 cross_platform_build:
   darwin_amd64: pass                   # go build ./... exit 0
   windows_amd64: pass                  # GOOS=windows GOARCH=amd64 go build ./... exit 0
-total_run_phase_files: 15              # 4 new src/test (glyphs.go, glyphs_test.go, logo.go, logo_test.go) + 1 (progress_line_residue_test.go) + 1 (step_residue_test.go) + 5 modified (status.go, progress_line.go, printer.go, uikit/styles.go, uikit/status.go, uikit/render.go = 6 modified) + 12 golden fixtures; scoped to internal/tui + internal/cli/{printer,uikit} + testdata/tuxiu
-m1_to_mN_commit_strategy: single-M1-commit  # M1 delivered in one commit carrying draft→in-progress; M2/M3/M4 are separate future commits/spawns
-golden_baseline_captured: true         # M1.0 pre-logo goldens at internal/cli/testdata/tuxiu/{init,update}.{tty,notty,nocolor}.{stdout,stderr}.golden — executed in scratchpad throwaway dirs (repo never mutated)
+coverage:
+  new_render_funcs: ">=90% each"       # 16 funcs 100.0%, runFang 91.7% — all >=90%
+  internal_cli_whole: 74.9%            # >= 74.6% baseline (no regression, +0.3%)
+  internal_tui_whole: 93.6%            # >= 93.0% baseline
+total_run_phase_files: 28              # M1-M3: 4 new tui src/test + 2 residue tests + 6 modified + 12 M1.0 goldens + M2 update_tux.go/_test.go + M3 export_test.go/fang_roothelp_test.go/banner reconcile; M4: +1 tuxiu_characterization_test.go + 12 postm4 goldens + progress.md
+m1_to_mN_commit_strategy: per-milestone-commit  # M1 (draft→in-progress) / M2 / M3 / M4 separate commits on the shared feat branch
+golden_baseline_captured: true         # M1.0 PRE-logo goldens at internal/cli/testdata/tuxiu/{init,update}.{tty,notty,nocolor}.{stdout,stderr}.golden (immutable data-invariance reference)
+golden_postm4_captured: true           # FRESH logo-era goldens at internal/cli/testdata/tuxiu/postm4/ (option a — alongside M1.0); both captured in scratchpad throwaway dirs (repo never mutated); AC-016 diffs the two committed sets
 ```
 
 ## §E.4 Sync-phase Audit-Ready Signal
