@@ -43,7 +43,7 @@
 
 ```yaml
 run_complete_at: 2026-07-25            # M1 only; M2-M4 pending (multi-milestone SPEC)
-run_commit_sha: pending-backfill-M1    # backfilled after the M1 commit lands (self-referential-SHA workaround)
+run_commit_sha: 5ee17e9e1              # M1 commit (backfilled; full run-phase SHA finalizes at M-final)
 run_status: M1-complete                # foundation milestone; M2 (update.go), M3 (init/PrintBanner/root-help), M4 (verify) pending
 ac_pass_count: 9                       # M1-scoped ACs PASS: 004(×2 rows→1 AC), 006, 007, 019, 021, 022, 023, + 050 byte-identity
 ac_fail_count: 0
