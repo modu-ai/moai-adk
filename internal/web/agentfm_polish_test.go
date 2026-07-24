@@ -61,34 +61,44 @@ func TestAgentFMNoSubTabs(t *testing.T) {
 }
 
 // TestAgentFMActualValueSelection verifies the select shows the agent's ACTUAL
-// current value as the selected option (not the "(keep current)" sentinel).
+// current value as the selected option — post-G3 the "actual" value is the
+// profile-matrix resolution, so an llm.agent_overrides pin is the selected option.
 func TestAgentFMActualValueSelection(t *testing.T) {
 	root := t.TempDir()
-	// manager-spec: explicit effort=xhigh → xhigh should be the selected effort.
-	seedAgentFMFile(t, root, "moai", "manager-spec", "opus", "xhigh")
+	seedAgentFMFile(t, root, "moai", "manager-spec", "opus", "xhigh") // frontmatter ignored
+	// An override pins manager-spec to sonnet/xhigh → those must be selected.
+	writeLLMProfileYAML(t, root, "medium", map[string][2]string{"manager-spec": {"sonnet", "xhigh"}})
 	body := renderAgentFMBody(t, root)
 
+	if !strings.Contains(body, `<option value="sonnet" selected`) {
+		t.Error(`override model (sonnet) not shown as the selected model option`)
+	}
 	if !strings.Contains(body, `<option value="xhigh" selected`) {
-		t.Error(`explicit effort xhigh not shown as the selected effort option`)
+		t.Error(`override effort (xhigh) not shown as the selected effort option`)
 	}
 }
 
-// TestAgentFMAbsentEffortShowsTierDefault verifies an absent-effort agent shows
-// the tier-suggested default as the selected option + "(default)" annotation.
-// manager-develop is 🟠 tier → suggested effort = high. (A moai-core agent is
-// used because the harness rows no longer render — G2-2.)
-func TestAgentFMAbsentEffortShowsTierDefault(t *testing.T) {
+// TestAgentFMDefaultShowsProfileMatrixValue verifies an agent with no override
+// shows the PROFILE-MATRIX default as the selected option + "(default)" annotation.
+// manager-develop under the medium profile (develop group) resolves to opus/xhigh
+// (defaultProfileMatrix). (A moai-core agent is used because the harness rows no
+// longer render — G2-2.)
+func TestAgentFMDefaultShowsProfileMatrixValue(t *testing.T) {
 	root := t.TempDir()
 	seedAgentFMFile(t, root, "moai", "manager-develop", "", "")
+	writeLLMProfileYAML(t, root, "medium", nil)
 	body := renderAgentFMBody(t, root)
 
-	// 🟠 tier suggested effort = high → should be selected.
-	if !strings.Contains(body, `<option value="high" selected`) {
-		t.Error(`absent-effort agent (manager-develop, 🟠 tier) should show tier-suggested "high" as selected`)
+	// medium/develop → opus/xhigh (profile matrix), NOT the badge-tier "high".
+	if !strings.Contains(body, `<option value="xhigh" selected`) {
+		t.Error(`no-override agent (manager-develop) should show the medium-profile develop cell (xhigh) as selected`)
 	}
-	// "(default)" annotation for the derived default.
+	if strings.Contains(body, `<option value="high" selected`) {
+		t.Error(`manager-develop shows the badge-tier "high" — read path must derive from the profile matrix (xhigh under medium)`)
+	}
+	// "(default)" annotation for the profile-derived (non-override) value.
 	if !strings.Contains(body, `data-i18n="agentfm.default"`) {
-		t.Error(`missing "(default)" annotation for the tier-suggested default`)
+		t.Error(`missing "(default)" annotation for the profile-derived default`)
 	}
 }
 

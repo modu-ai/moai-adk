@@ -274,6 +274,56 @@
   // 이 사라지고 .claude/agents/moai/ 행만 단일 그리드로 렌더된다. data-agentfm-*
   // 속성을 방출하는 마크업이 더 이상 없다.)
 
+  // wireProfileMatrix 는 성능 티어 라디오(max/medium/low) 변경 시 각 에이전트의
+  // model/effort select 를 그 티어의 프로파일 매트릭스 셀로 즉시 재설정한다 (G3-3 —
+  // 클라이언트 전용, 서버 왕복 없음). #moai-profile-matrix JSON blob 에서
+  // matrix[tier][agent] = {model, effort} 를 읽는다. 사용자가 이번 세션에서 직접
+  // 편집한 select(dirty)는 보존하며, 셀을 직접 편집하면 즉시 Custom 라디오로 전환한다.
+  function wireProfileMatrix() {
+    var el = document.getElementById("moai-profile-matrix");
+    if (!el) return;
+    var matrix;
+    try {
+      matrix = JSON.parse(el.textContent);
+    } catch (e) {
+      return;
+    }
+    var selects = document.querySelectorAll('select[name^="agentfm."]');
+    var custom = document.getElementById("performance_tier--custom");
+    var dirty = {};
+    for (var s = 0; s < selects.length; s++) {
+      (function (sel) {
+        sel.addEventListener("change", function () {
+          dirty[sel.name] = true;
+          if (custom) custom.checked = true; // 직접 편집 → Custom 상태로 전환
+        });
+      })(selects[s]);
+    }
+    var radios = document.querySelectorAll('input[name="performance_tier"]');
+    for (var r = 0; r < radios.length; r++) {
+      radios[r].addEventListener("change", function () {
+        if (!this.checked) return;
+        var cells = matrix[this.value]; // Custom(=undefined)이면 재설정하지 않음
+        if (!cells) return;
+        for (var i = 0; i < selects.length; i++) {
+          var sel = selects[i];
+          if (dirty[sel.name]) continue; // 미저장 직접 편집 보존
+          var mm = sel.name.match(/^agentfm\.(.+)\.(model|effort)$/);
+          if (!mm) continue;
+          var cell = cells[mm[1]];
+          if (!cell) continue;
+          var val = mm[2] === "model" ? cell.model : cell.effort;
+          for (var o = 0; o < sel.options.length; o++) {
+            if (sel.options[o].value === val) {
+              sel.value = val;
+              break;
+            }
+          }
+        }
+      });
+    }
+  }
+
   // initConsole 는 모든 콘솔 초기화를 한 곳에서 수행한다 — DOMContentLoaded(첫
   // 로드 / htmx 비활성 전체 새로고침) 와 htmx:afterSettle(boost body swap 직후)
   // 양쪽에서 호출된다. boost swap 은 body 전체를 교체하므로 새 요소는 리스너가
@@ -293,6 +343,8 @@
     // M5-b D1: 탭 nav 배선. CSS show/hide 만으로 동작 — 패널은 DOM 에 상주한다
     // (atomic Save contract: 비활성 패널의 필드도 제출됨).
     wireTabs();
+    // G3-3: 성능 티어 → 에이전트 매트릭스 셀 즉시 재설정.
+    wireProfileMatrix();
   }
 
   document.addEventListener("DOMContentLoaded", initConsole);

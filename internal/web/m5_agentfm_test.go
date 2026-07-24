@@ -74,28 +74,12 @@ func TestM5AgentTierBadgeCustomOverride(t *testing.T) {
 	}
 }
 
-// TestM5AgentTierSuggestedMarkers verifies the tier-suggested model/effort helpers
-// (design.md §D): each tier's suggested pair matches the table.
-func TestM5AgentTierSuggestedMarkers(t *testing.T) {
-	cases := []struct {
-		name         string
-		wantModel    string
-		wantEffort   string
-	}{
-		{"manager-spec", v4manifest.ModelOpus, v4manifest.EffortXhigh},       // 🔴
-		{"manager-develop", v4manifest.ModelOpus, v4manifest.EffortHigh},     // 🟠
-		{"manager-docs", v4manifest.ModelSonnet, v4manifest.EffortMedium},    // 🔵
-		{"hns-github-specialist", v4manifest.ModelHaiku, v4manifest.EffortLow}, // 🩵
-	}
-	for _, tc := range cases {
-		if !agentIsSuggestedModel(tc.name, tc.wantModel) {
-			t.Errorf("%s: suggested model check failed (want %q)", tc.name, tc.wantModel)
-		}
-		if !agentIsSuggestedEffort(tc.name, tc.wantEffort) {
-			t.Errorf("%s: suggested effort check failed (want %q)", tc.name, tc.wantEffort)
-		}
-	}
-}
+// NOTE: TestM5AgentTierSuggestedMarkers was removed by the G3 profile-matrix
+// repoint. The badge-tier "suggested model/effort" helpers (agentIsSuggestedModel /
+// agentIsSuggestedEffort) that it exercised are retired — the agentfm read path now
+// derives each agent's selected value from the runtime profile matrix
+// (template.ResolveAgentModelEffort), not the badge-tier table. Profile-matrix
+// resolution is covered by TestG3ReadPathDerivesFromProfileMatrix.
 
 // seedAgentFMFile writes a minimal agent .md frontmatter file for a render test.
 func seedAgentFMFile(t *testing.T, root, dir, name, model, effort string) {

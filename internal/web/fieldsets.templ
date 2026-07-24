@@ -4,6 +4,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/settings"
 	"github.com/modu-ai/moai-adk/internal/settings/agentfm"
 )
@@ -409,7 +410,7 @@ templ fieldsetAgentFrontmatter(view pageView) {
 					<div class="radio-group">
 						for _, opt := range agentFMPerfTierOptions() {
 							<label class="radio">
-								if opt == view.PerfTier || (view.PerfTierIsEmpty && opt == "medium") {
+								if !view.PerfTierCustom && (opt == view.PerfTier || (view.PerfTierIsEmpty && opt == "medium")) {
 									<input type="radio" id={ "performance_tier--" + opt } name="performance_tier" value={ opt } checked/>
 								} else {
 									<input type="radio" id={ "performance_tier--" + opt } name="performance_tier" value={ opt }/>
@@ -418,6 +419,15 @@ templ fieldsetAgentFrontmatter(view pageView) {
 								<span>{ opt }</span>
 							</label>
 						}
+						<label class="radio">
+							if view.PerfTierCustom {
+								<input type="radio" id="performance_tier--custom" name="performance_tier" value="custom" checked/>
+							} else {
+								<input type="radio" id="performance_tier--custom" name="performance_tier" value="custom"/>
+							}
+							<span class="radio__box"><span class="radio__tick">@icon("check")</span></span>
+							<span data-i18n="agentfm.tier.custom">Custom</span>
+						</label>
 					</div>
 					if view.PerfTierIsEmpty {
 						<span class="field__hint" data-i18n="agentfm.tier.default">(runtime default: medium)</span>
@@ -427,10 +437,11 @@ templ fieldsetAgentFrontmatter(view pageView) {
 					}
 				</div>
 			</div>
+			@templ.JSONScript("moai-profile-matrix", profileMatrixData())
 			<div class="grid">
 				for _, agent := range view.AgentFMs {
 					if agentIsMoaiCore(agent) {
-						@agentFMRow(agent, view.FieldErrors)
+						@agentFMRow(agent, view.LLM, view.FieldErrors)
 					}
 				}
 			</div>
@@ -440,7 +451,7 @@ templ fieldsetAgentFrontmatter(view pageView) {
 
 // agentFMRow는 agent 1종의 model/effort select 쌍이다. 빈 옵션 = 현재값 유지
 // (empty=preserve). 파싱 실패 행은 편집 비활성 표시만 한다 (design.md §C.1).
-templ agentFMRow(agent agentfm.AgentInfo, errs map[string]string) {
+templ agentFMRow(agent agentfm.AgentInfo, llm config.LLMConfig, errs map[string]string) {
 	if agent.ParseOK {
 		<div class="field">
 			<span class="field__label">
@@ -455,7 +466,7 @@ templ agentFMRow(agent agentfm.AgentInfo, errs map[string]string) {
 			<span class="select-wrap">
 				<select class="select" name={ "agentfm." + agent.Name + ".model" } id={ "agentfm." + agent.Name + ".model" }>
 					for _, m := range agentFMModelValues() {
-						if m == agentSelectedModel(agent) {
+						if m == agentSelectedModel(llm, agent) {
 							<option value={ m } selected data-i18n-title={ "fieldDesc.agentfm.model." + m }>{ m }</option>
 						} else {
 							<option value={ m } data-i18n-title={ "fieldDesc.agentfm.model." + m }>{ m }</option>
@@ -463,22 +474,21 @@ templ agentFMRow(agent agentfm.AgentInfo, errs map[string]string) {
 					}
 				</select>
 			</span>
-			if agentModelIsDefault(agent) {
+			if agentModelIsDefault(llm, agent) {
 				<span class="field__hint agentfm-default-tag" data-i18n="agentfm.default">(default)</span>
 			}
 			<span class="select-wrap">
 				<select class="select" name={ "agentfm." + agent.Name + ".effort" } id={ "agentfm." + agent.Name + ".effort" }>
 					for _, e := range agentFMEffortValues() {
-						if e == agentSelectedEffort(agent) {
+						if e == agentSelectedEffort(llm, agent) {
 							<option value={ e } selected data-i18n-title={ "fieldDesc.agentfm.effort." + e }>{ e }</option>
 						} else {
 							<option value={ e } data-i18n-title={ "fieldDesc.agentfm.effort." + e }>{ e }</option>
 						}
 					}
-					<option value="__absent__" data-i18n="agentfm.absent">(absent)</option>
 				</select>
 			</span>
-			if agentEffortIsDefault(agent) {
+			if agentEffortIsDefault(llm, agent) {
 				<span class="field__hint agentfm-default-tag" data-i18n="agentfm.default">(default)</span>
 			}
 			<span class="field__hint" data-i18n="hint.effort.go_unbound">(declarative — not read by the runtime)</span>

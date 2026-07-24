@@ -158,6 +158,12 @@ func (a *app) applySchemaCurrent(view *pageView) error {
 	activeProfile := cfg.LLM.EffectiveProfile()
 	view.PerfTier = activeProfile
 	view.PerfTierIsEmpty = strings.TrimSpace(cfg.LLM.Profile) == "" && strings.TrimSpace(cfg.LLM.PerformanceTier) == ""
+
+	// G3-1/G3-4: seed the loaded LLM config so the agentfm rows resolve each
+	// agent's model/effort through the profile matrix, and preselect the Custom
+	// pseudo-tier when any per-agent override is present.
+	view.LLM = cfg.LLM
+	view.PerfTierCustom = len(cfg.LLM.AgentOverrides) > 0
 	return nil
 }
 
