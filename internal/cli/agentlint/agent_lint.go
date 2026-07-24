@@ -120,7 +120,7 @@ var agentLintCmd = &cobra.Command{
 	Long: `Validate agent definition files (.claude/agents/{moai,harness}/*.md) against common issues.
 
 	  LR-01: Reject literal AskUserQuestion in body text (excluding code blocks)
-	  LR-02: Reject Agent token in tools: CSV list
+	  LR-02: Reject Agent token in tools: CSV list (except the sanctioned read-only nesting-pilot allowlist)
 	  LR-03: Error on missing effort: field (promoted from warning per SPEC-V3R2-ORC-003)
 	  LR-12: Reject effort drift from SPEC-V3R2-ORC-003 canonical matrix
 	  LR-13: Reject invalid effort enum value (must be one of low/medium/high/xhigh/max)
@@ -461,6 +461,33 @@ func checkLiteralAskUserQuestion(file string, body []byte) []LintViolation {
 	return violations
 }
 
+// nestingPilotAllowlist names the agents sanctioned for the opt-in, read-only
+// subagent-nesting pilot (SPEC-SUBAGENT-NESTING-DOCTRINE-001 M2). An agent in
+// this set MAY declare the Agent tool in its tools: CSV without tripping LR-02.
+//
+// The shipped default remains a FLAT hierarchy: even for a pilot agent, nested
+// spawning only occurs at runtime when CLAUDE_CODE_MAX_SUBAGENT_SPAWN_DEPTH is
+// raised above its default-off value. This allowlist only lets the pilot agent's
+// frontmatter pass CI — it does NOT enable nesting on its own. Every agent NOT
+// in this set still fails LR-02, preserving the flat-hierarchy guard for the
+// other retained agents (subagents cannot spawn sub-subagents).
+//
+// Keyed by agent name (frontmatter `name:`, or the file basename when `name:`
+// is absent — see agentNameFor). Initially the single sanctioned pilot agent.
+var nestingPilotAllowlist = map[string]bool{
+	"sync-auditor": true,
+}
+
+// agentNameFor resolves the canonical agent name used for allowlist lookups.
+// It prefers the frontmatter `name:` field and falls back to the file basename
+// (e.g. "sync-auditor.md" -> "sync-auditor") when `name:` is absent.
+func agentNameFor(file string, fm AgentFrontmatter) string {
+	if n := strings.TrimSpace(fm.Name); n != "" {
+		return n
+	}
+	return strings.TrimSuffix(filepath.Base(file), ".md")
+}
+
 // checkAgentInTools checks for LR-02.
 func checkAgentInTools(file string, fm AgentFrontmatter) []LintViolation {
 	var violations []LintViolation
@@ -474,6 +501,12 @@ func checkAgentInTools(file string, fm AgentFrontmatter) []LintViolation {
 	for _, tool := range tools {
 		tool = strings.TrimSpace(tool)
 		if tool == "Agent" {
+			// Read-only nesting pilot exception (SPEC-SUBAGENT-NESTING-DOCTRINE-001
+			// M2): allowlisted agents may carry the Agent tool. The guard remains an
+			// error for every non-allowlisted agent (flat hierarchy for the rest).
+			if nestingPilotAllowlist[agentNameFor(file, fm)] {
+				break
+			}
 			// Find line number by searching file
 			lineNum := findFrontmatterLine(file, "tools:")
 			violations = append(violations, LintViolation{

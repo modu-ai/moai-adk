@@ -134,6 +134,27 @@ name: test
 `,
 			wantCount: 0,
 		},
+		{
+			// Read-only nesting pilot allowlist (SPEC-SUBAGENT-NESTING-DOCTRINE-001 M2):
+			// sync-auditor MAY carry Agent in tools without tripping LR-02.
+			name: `tools: "Agent" on sync-auditor should pass (nesting pilot allowlist)`,
+			frontmatter: `---
+name: sync-auditor
+tools: Read, Grep, Glob, Bash, Agent
+---
+`,
+			wantCount: 0,
+		},
+		{
+			// Guard intact: a non-allowlisted agent with Agent in tools STILL fails LR-02.
+			name: `tools: "Agent" on non-allowlisted agent should still fail (guard intact)`,
+			frontmatter: `---
+name: plan-auditor
+tools: Read, Write, Agent
+---
+`,
+			wantCount: 1,
+		},
 	}
 
 	for _, tt := range tests {
@@ -153,6 +174,56 @@ name: test
 			}
 		})
 	}
+}
+
+// TestCheckAgentInTools_NestingPilotAllowlist verifies the LR-02 read-only
+// subagent-nesting allowlist (SPEC-SUBAGENT-NESTING-DOCTRINE-001 M2): the
+// sanctioned pilot agent (sync-auditor) may declare the Agent tool without
+// tripping LR-02, while every other agent still fails LR-02 (flat-hierarchy
+// guard intact for the remaining retained agents). It also covers the basename
+// fallback used when the frontmatter name: field is absent.
+func TestCheckAgentInTools_NestingPilotAllowlist(t *testing.T) {
+	t.Run("sync-auditor with Agent in tools is exempt (allowlist)", func(t *testing.T) {
+		fm := AgentFrontmatter{Name: "sync-auditor", Tools: "Read, Grep, Glob, Bash, Agent"}
+		violations := checkAgentInTools("/tmp/agents/sync-auditor.md", fm)
+		if len(violations) != 0 {
+			t.Errorf("got %d LR-02 violations for allowlisted sync-auditor, want 0: %v", len(violations), violations)
+		}
+	})
+
+	t.Run("non-allowlisted agent with Agent in tools still fails (guard intact)", func(t *testing.T) {
+		fm := AgentFrontmatter{Name: "manager-develop", Tools: "Read, Write, Agent"}
+		violations := checkAgentInTools("/tmp/agents/manager-develop.md", fm)
+		if len(violations) != 1 {
+			t.Fatalf("got %d violations for non-allowlisted agent, want 1 (LR-02 guard)", len(violations))
+		}
+		if violations[0].Rule != "LR-02" {
+			t.Errorf("rule = %s, want LR-02", violations[0].Rule)
+		}
+		if violations[0].Severity != SeverityError {
+			t.Errorf("LR-02 severity = %s, want error", violations[0].Severity)
+		}
+	})
+
+	t.Run("allowlist resolves from file basename when name: is absent", func(t *testing.T) {
+		// name field empty -> identify from basename sync-auditor.md -> allowlisted
+		fm := AgentFrontmatter{Tools: "Read, Grep, Glob, Bash, Agent"}
+		violations := checkAgentInTools("/tmp/agents/sync-auditor.md", fm)
+		if len(violations) != 0 {
+			t.Errorf("got %d violations for basename-identified sync-auditor, want 0: %v", len(violations), violations)
+		}
+	})
+
+	t.Run("basename fallback still fires for non-allowlisted file when name: is absent", func(t *testing.T) {
+		fm := AgentFrontmatter{Tools: "Read, Write, Agent"}
+		violations := checkAgentInTools("/tmp/agents/manager-git.md", fm)
+		if len(violations) != 1 {
+			t.Fatalf("got %d violations for non-allowlisted basename, want 1 (LR-02 guard)", len(violations))
+		}
+		if violations[0].Rule != "LR-02" {
+			t.Errorf("rule = %s, want LR-02", violations[0].Rule)
+		}
+	})
 }
 
 // Helper to extract tools from frontmatter string
