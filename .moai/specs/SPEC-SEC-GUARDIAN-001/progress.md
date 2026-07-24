@@ -81,4 +81,16 @@ full_suite: pass (go test -count=1 ./... exit 0)
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase — owned by manager-docs>_
+```yaml
+sync_complete_at: 2026-07-24
+sync_status: audit-ready
+sync_commit_sha: <pending-backfill-next-commit>
+changelog_entry_position: "[Unreleased] > ### Added (Epic SECURITY-ABSORB, joint entry with SPEC-SEC-DEEPSCAN-001)"
+frontmatter_status_transitions:
+  spec_md: "in-progress -> completed"
+readme_update: "one-line --deep mention added to the /moai Slash Commands review row (shared row, this SPEC ships the guardian layer under the same Epic)"
+docs_site_4locale: "DEFERRED — follow-up required (not performed in this sync per scope note)"
+b12_self_test_a: "grep -c 'SPEC-SEC-DEEPSCAN-001\|SPEC-SEC-GUARDIAN-001' CHANGELOG.md -> 0 before emission (no duplicate)"
+b12_self_test_b: "acceptance.md AC row count 25 == CHANGELOG claim '25/25 AC'"
+b12_self_test_c: "ls .moai/specs/SPEC-SEC-DEEPSCAN-001/spec.md .moai/specs/SPEC-SEC-GUARDIAN-001/spec.md CHANGELOG.md README.md -> all exist"
+```

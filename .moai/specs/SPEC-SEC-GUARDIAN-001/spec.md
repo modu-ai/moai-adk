@@ -2,7 +2,7 @@
 id: SPEC-SEC-GUARDIAN-001
 title: "In-session always-on 3-layer security guardian (pattern warnings + turn-diff review + commit-time cross-file review) — Epic SECURITY-ABSORB SPEC-2"
 version: "0.1.0"
-status: in-progress
+status: completed
 created: 2026-07-24
 updated: 2026-07-24
 author: manager-spec
