@@ -24,12 +24,15 @@ import (
 // un-deprecated the 2 live config yaml files (design.yaml + db.yaml), reducing
 // Category B 31→29 and the total 43→41. SPEC-UPDATE-REINSTALL-LOOP-001 (#1084)
 // removed the `.claude/rules/moai/design` template-collision entry, reducing
-// Category B 29→28 and the total 41→40. AC-DPR-002 / AC-RIL-004 reference this.
+// Category B 29→28 and the total 41→40. SPEC-CONFIG-AUDIT-REPAIR-001
+// un-deprecated gate.yaml (live v3 config now shipped by the template and
+// read by loadGateSection), reducing Category B 28→27 and the total 40→39.
+// AC-DPR-002 / AC-RIL-004 reference this.
 func TestDeprecatedPathsTotalCount(t *testing.T) {
-	const want = 40
+	const want = 39
 	got := len(DeprecatedPaths)
 	if got != want {
-		t.Errorf("len(DeprecatedPaths) = %d, want %d (9 Category A + 28 Category B + 3 Category C)", got, want)
+		t.Errorf("len(DeprecatedPaths) = %d, want %d (9 Category A + 27 Category B + 3 Category C)", got, want)
 	}
 }
 
@@ -37,17 +40,18 @@ func TestDeprecatedPathsTotalCount(t *testing.T) {
 // the reconciled derivation, classified by DeprecatedSince field.
 //
 //   - Category A (9 entries): DeprecatedSince == "SPEC-AGENCY-ABSORB-001"
-//   - Category B (28 entries): DeprecatedSince == "SPEC-V3R6-V2-V3-CLEAN-REINSTALL-001"
+//   - Category B (27 entries): DeprecatedSince == "SPEC-V3R6-V2-V3-CLEAN-REINSTALL-001"
 //   - Category C (3 entries):  DeprecatedSince == "SPEC-V3R6-AGENT-FOLDER-SPLIT-001"
 //
 // Category B was reduced 31→29 by SPEC-DEPRECATEDPATHS-RECONCILE-001 (design.yaml
 // + db.yaml un-deprecated), then 29→28 by SPEC-UPDATE-REINSTALL-LOOP-001
-// (`.claude/rules/moai/design` template-collision entry removed, #1084).
+// (`.claude/rules/moai/design` template-collision entry removed, #1084), then
+// 28→27 by SPEC-CONFIG-AUDIT-REPAIR-001 (gate.yaml un-deprecated — template-shipped live config).
 // AC-DPR-003 / AC-RIL-004 verify both the total count and the per-category subtotals.
 func TestDeprecatedPathsCategorySplit(t *testing.T) {
 	const (
 		wantCategoryA = 9  // SPEC-AGENCY-ABSORB-001
-		wantCategoryB = 28 // SPEC-V3R6-V2-V3-CLEAN-REINSTALL-001 (reconciled 31→29, then 29→28 by SPEC-UPDATE-REINSTALL-LOOP-001)
+		wantCategoryB = 27 // SPEC-V3R6-V2-V3-CLEAN-REINSTALL-001 (reconciled 31→29→28, then 28→27 by SPEC-CONFIG-AUDIT-REPAIR-001)
 		wantCategoryC = 3  // SPEC-V3R6-AGENT-FOLDER-SPLIT-001
 	)
 
@@ -122,7 +126,6 @@ func TestDeprecatedPathsCategoryBExpectedEntries(t *testing.T) {
 		".claude/agents/moai/expert-refactoring.md",
 		// deprecated config yaml files (design.yaml + db.yaml un-deprecated by
 		// SPEC-DEPRECATEDPATHS-RECONCILE-001 — live v3 config, not v2 removal targets)
-		".moai/config/sections/gate.yaml",
 		".moai/config/sections/github-actions.yaml",
 		".moai/config/sections/memo.yaml",
 		// design skill directories

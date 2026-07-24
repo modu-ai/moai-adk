@@ -37,13 +37,16 @@ var yamlToStructRegistry = map[string]string{
 	"gate":           "GateConfig",
 	"sunset":         "SunsetConfig",
 	"research":       "ResearchConfig",
-	"handoff":        "HandoffConfig", // SPEC-HANDOFF-AUTORESUME-001: auto-resume config
-	"archive":        "ArchiveConfig", // SPEC-SESSIONSTART-PERF-001: SPEC auto-archive grace window
+	"handoff":        "HandoffConfig",  // SPEC-HANDOFF-AUTORESUME-001: auto-resume config
+	"archive":        "ArchiveConfig",  // SPEC-SESSIONSTART-PERF-001: SPEC auto-archive grace window
+	"feedback":       "FeedbackConfig", // loaded via Loader.Load → loadFeedbackSection
 	// Additional sections with partial/specialized loaders:
 	"lsp":      "LSPQualityGates",
 	"mx":       "MXConfig",
 	"security": "SecurityConfig",
-	"runtime":  "RuntimeConfig",
+	// NOTE: "runtime" removed — RuntimeConfig lives in internal/runtime and is
+	// loaded from its own path (LoadRuntime), not from a sections/runtime.yaml
+	// file; keeping it here made the orphan-struct check fail against the real tree.
 }
 
 // yamlAuditExceptions registers yaml files that intentionally do NOT have Go struct
@@ -53,14 +56,26 @@ var yamlToStructRegistry = map[string]string{
 // Key: yaml basename without extension.
 // Value: reason string citing the blocking SPEC.
 var yamlAuditExceptions = map[string]string{
-	// 5 yaml-only artifacts deferred to SPEC-V3R2-MIG-003 loader additions:
-	"constitution": "deferred to SPEC-V3R2-MIG-003 — yaml-only artifact, no Go loader",
-	"context":      "deferred to SPEC-V3R2-MIG-003 — yaml-only artifact, no Go loader",
-	"interview":    "deferred to SPEC-V3R2-MIG-003 — yaml-only artifact, no Go loader",
-	"design":       "deferred to SPEC-V3R2-MIG-003 — yaml-only artifact, no Go loader",
-	"harness":      "deferred to SPEC-V3R2-MIG-003 — yaml-only artifact, no Go loader",
+	// MIG-003 loaders LANDED for these 4 sections (loader_constitution.go /
+	// loader_context.go / loader_interview.go / loader_design.go, wired into
+	// Loader.Load); harness has a dedicated entry point (LoadHarnessConfig).
+	// The entries are retained here for compatibility with
+	// TestAuditParity_ExceptionsRespected, with corrected loader-present labels.
+	"constitution": "loader present (loader_constitution.go via Loader.Load) — exception entry retained for compatibility",
+	"context":      "loader present (loader_context.go via Loader.Load) — exception entry retained for compatibility",
+	"interview":    "loader present (loader_interview.go via Loader.Load) — exception entry retained for compatibility",
+	"design":       "loader present (loader_design.go via Loader.Load) — exception entry retained for compatibility",
+	"harness":      "dedicated loader (LoadHarnessConfig, outside Loader.Load by design) — exception entry retained for compatibility",
 	// Delegation map is consumed by the orchestrator (CLAUDE.md), not by Go code.
 	"delegation": "orchestrator-consumed delegation map — yaml-only artifact, no Go loader",
+	// Local-tree sections without a Loader.Load struct mapping (real-tree
+	// parity reconciliation):
+	"cache":         "dedicated loader (LoadCacheConfig) — consumed by the SDK cache_control injector, not the aggregate Config struct",
+	"db":            "consumed via hook line-scan (internal/cli/hook.go migration_patterns); struct loader owned by the DB subsystem track",
+	"mcp-matrix":    "maintainer-only prompt-consumed inventory (dev-only, not distributed; zero Go consumers)",
+	"observability": "observability config — no Go loader yet (separate SPEC)",
+	"report":        "settings-seam only (report.format select persisted via internal/settings) — not in the Loader.Load chain",
+	"tool-policy":   "maintainer-only codegen SSOT (internal/config/toolpolicy dedicated loader; dev-only, not distributed)",
 }
 
 // GetYAMLToStructRegistry returns a copy of the yaml→struct registry.

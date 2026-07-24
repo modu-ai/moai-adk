@@ -90,12 +90,12 @@ background: true      # Agent runs without blocking main conversation
 ```
 
 When to use `isolation: worktree`:
-- Implementation teammates that write files (role_profiles: implementer, tester, designer)
+- Implementation teammates that write files (write-capable implementation roles: implementer / tester / designer)
 - Prevents file conflicts between parallel teammates
 - Each agent gets its own clean worktree at `.claude/worktrees/<auto-name>/`
 
 When NOT to use `isolation: worktree`:
-- Read-only teammates (role_profiles: researcher, analyst, reviewer)
+- Read-only teammates (read-only research/review roles: researcher / analyst / reviewer)
 - `permissionMode: plan` already prevents writes; adding isolation adds overhead without benefit
 
 ### `background: true` in Agent Frontmatter
@@ -175,8 +175,8 @@ Is this a one-shot sub-agent task?
 
 ### HARD Rules
 
-- [ZONE:Evolvable] [HARD] Implementation teammates in team mode (role_profiles: implementer, tester, designer) MUST use `isolation: "worktree"` when spawned via Agent()
-- [ZONE:Evolvable] [HARD] Read-only teammates (role_profiles: researcher, analyst, reviewer) MUST NOT use `isolation: "worktree"` — their `mode: "plan"` already prevents writes
+- [ZONE:Evolvable] [HARD] Implementation teammates in team mode (write-capable implementation roles: implementer / tester / designer) MUST use `isolation: "worktree"` when spawned via Agent()
+- [ZONE:Evolvable] [HARD] Read-only teammates (read-only research/review roles: researcher / analyst / reviewer) MUST NOT use `isolation: "worktree"` — their `mode: "plan"` already prevents writes
 - [ZONE:Evolvable] [HARD] One-shot sub-agents that write files across 3 or more paths per invocation MUST use `isolation: "worktree"`. This includes write-heavy retained agents (manager-develop), per-spawn `Agent(general-purpose)` specialists with a write-heavy domain whitelist (e.g. backend / frontend / devops / refactoring), and team-mode role profiles (implementer, tester, designer).
 <!-- @MX:ANCHOR: WorktreeMUSTRule — invariant contract; all write-heavy agents MUST declare isolation:worktree; enforced by LR-05 lint rule -->
 <!-- @MX:REASON: MUST level required to eliminate silent file-write conflict failure mode in parallel Agent() execution. -->
@@ -190,7 +190,7 @@ Structured error codes emitted by `moai agent lint` and `moai workflow lint` for
 |---|---|---|
 | `ORC_WORKTREE_MISSING` | LR-05 (agent lint) | Write-heavy agent lacks `isolation: worktree` in frontmatter |
 | `ORC_WORKTREE_ON_READONLY` | LR-09 (agent lint) | Read-only agent (`permissionMode: plan`) has `isolation: worktree` — prohibited overhead |
-| `ORC_WORKTREE_REQUIRED` | `moai workflow lint` | `workflow.yaml` role_profiles entry for implementer/tester/designer has incorrect isolation value |
+| `ORC_WORKTREE_REQUIRED` | `moai workflow lint` | Legacy sentinel from the retired Agent Teams `role_profiles` isolation check — inert since the `team:` config block was removed from workflow.yaml |
 
 ### When to Use Which
 
@@ -236,7 +236,7 @@ SYNC PHASE
 ### Implementation Agents (isolation: worktree + background: true)
 
 ```yaml
-# Implementation teammates (role_profiles: implementer, tester, designer)
+# Implementation teammates (write-capable implementation roles: implementer / tester / designer)
 # Spawned via: Agent(subagent_type: "general-purpose", mode: "acceptEdits", isolation: "worktree")
 isolation: worktree   # Isolated worktree per agent
 background: true      # Non-blocking parallel execution
@@ -246,7 +246,7 @@ permissionMode: acceptEdits
 ### Research/Analysis Agents (no isolation needed)
 
 ```yaml
-# Read-only teammates (role_profiles: researcher, analyst, reviewer)
+# Read-only teammates (read-only research/review roles: researcher / analyst / reviewer)
 # Spawned via: Agent(subagent_type: "general-purpose", mode: "plan")
 # No isolation: worktree (read-only, mode: plan prevents writes)
 permissionMode: plan  # Read-only mode already provides safety

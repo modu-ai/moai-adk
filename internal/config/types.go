@@ -1209,6 +1209,11 @@ type archiveFileWrapper struct {
 	Archive ArchiveConfig `yaml:"archive"`
 }
 
+// gateFileWrapper handles the gate.yaml section file.
+type gateFileWrapper struct {
+	Gate GateConfig `yaml:"gate"`
+}
+
 // ralphFileWrapper handles the ralph.yaml section file.
 // stale_seconds lives under the ralph: key in ralph.yaml and is injected into Config.Session.StaleSeconds.
 // SPEC-V3R2-RT-004 REQ-022: source of the STALE_SECONDS setting.

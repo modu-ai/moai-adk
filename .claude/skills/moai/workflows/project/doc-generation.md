@@ -205,11 +205,12 @@ to the mobile row.
 
 ### Step 3.6.2: Select recommended servers from the matrix
 
-Read the externalized recommendation matrix at `.moai/config/sections/mcp-matrix.yaml` (the
-SSOT — the matrix rows are NOT duplicated in this skill; only this fallback pointer is
-carried here). Select the row matching the detected stack. When the stack cannot be
-classified into web-frontend / mobile / backend-db, fall back to the `universal_starter` row
-rather than skipping provisioning silently.
+Where a maintainer-provided MCP recommendation matrix exists in the project config
+(an optional, locally-maintained inventory — not distributed with the template), read it and
+select the row matching the detected stack. Where no matrix is present, derive the
+recommendation directly from the detected stack (web-frontend / mobile / backend-db). When
+the stack cannot be classified, fall back to a minimal universal starter set rather than
+skipping provisioning silently.
 
 [HARD] Cap the recommendation at 3-5 servers maximum, and prefer vendor-maintained servers
 over community-maintained equivalents (2026 MCP CVE surge). The matrix marks each server
