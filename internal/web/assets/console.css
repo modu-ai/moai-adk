@@ -888,6 +888,19 @@ html[lang="zh"] body { font-family: "Pretendard", "Noto Sans CJK SC", system-ui,
 .agentfm-row--unavailable { padding: 11px var(--space-4); }
 .agentfm-row--unavailable + .agentfm-row { border-top: 1px solid var(--border-2); }
 
+/* Haiku ignores reasoning effort: the paired effort select is disabled (greyed,
+   non-interactive) and a muted note explains why. The note spans the row so it
+   sits under the effort column; is-hidden collapses it for non-haiku rows. */
+.agentfm-row__ctrl .select:disabled {
+  opacity: 0.5; cursor: not-allowed;
+  background: var(--surface-sunken); color: var(--fg-3);
+}
+.agentfm-row__ctrl .select-wrap:has(.select:disabled)::after { opacity: 0.4; }
+.agentfm-haiku-hint {
+  grid-column: 1 / -1; margin-top: -2px; text-align: right;
+}
+.agentfm-haiku-hint.is-hidden { display: none; }
+
 /* Narrow viewports: stack the row so the selects go full-width and touch-sized. */
 @media (max-width: 680px) {
   .agentfm-row { grid-template-columns: 1fr; gap: 8px; padding: 14px var(--space-4); }

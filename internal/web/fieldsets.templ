@@ -489,7 +489,11 @@ templ agentFMRow(agent agentfm.AgentInfo, llm config.LLMConfig, errs map[string]
 			</div>
 			<div class="agentfm-row__ctrl">
 				<span class="select-wrap">
-					<select class="select" name={ "agentfm." + agent.Name + ".effort" } id={ "agentfm." + agent.Name + ".effort" } aria-label={ "Effort for " + agent.Name }>
+					// Haiku does not honor reasoning effort — disable the effort select
+					// (initial render, so the no-JS page is correct too). app.js re-toggles
+					// this live when the paired model select changes. A disabled select does
+					// not submit; parseAgentFMForm backfills the unsubmitted effort.
+					<select class="select" name={ "agentfm." + agent.Name + ".effort" } id={ "agentfm." + agent.Name + ".effort" } aria-label={ "Effort for " + agent.Name } disabled?={ agentModelIsHaiku(llm, agent) }>
 						for _, e := range agentFMEffortValues() {
 							if e == agentSelectedEffort(llm, agent) {
 								<option value={ e } selected data-i18n-title={ "fieldDesc.agentfm.effort." + e }>{ e }</option>
@@ -500,6 +504,9 @@ templ agentFMRow(agent agentfm.AgentInfo, llm config.LLMConfig, errs map[string]
 					</select>
 				</span>
 			</div>
+			// Muted note explaining the disabled effort — visible only when the model is
+			// haiku; present in the DOM always so app.js can toggle it client-side.
+			<span class={ "field__hint", "agentfm-haiku-hint", templ.KV("is-hidden", !agentModelIsHaiku(llm, agent)) } data-i18n="hint.effort.haiku_na">Effort N/A for Haiku</span>
 			if msg := fieldErrorMsg(errs, "agentfm."+agent.Name+".model"); msg != "" {
 				<span class="field-error">@icon("alert-circle")<span>{ msg }</span></span>
 			}

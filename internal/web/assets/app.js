@@ -320,8 +320,55 @@
             }
           }
         }
+        // 티어 재설정이 model 셀을 haiku 로 또는 haiku 에서 바꿨을 수 있으므로
+        // 각 행의 effort 잠금 규칙을 재적용한다 (repopulation 은 model select 에
+        // change 이벤트를 발생시키지 않으므로 명시적 재적용이 필요하다).
+        reapplyHaikuLocks();
       });
     }
+  }
+
+  // ── Haiku → effort-select lock ──
+
+  // applyHaikuEffortLock 은 한 model select 값이 "haiku" 이면 같은 행(.agentfm-row)
+  // 의 effort select 를 비활성화하고, "Effort N/A for Haiku" 힌트를 노출한다. haiku 가
+  // 아니면 되돌린다. 행 단위 페어링은 name 매칭이 아니라 공유 컨테이너(.agentfm-row)
+  // 로 스코프하므로 다른 에이전트 행에 새지 않는다. disabled select 는 제출되지
+  // 않으며(서버 save 경로가 미제출 effort 를 resolved 값으로 backfill), 프로그램적
+  // 값 설정(wireProfileMatrix)에는 영향이 없다.
+  function applyHaikuEffortLock(modelSel) {
+    var row = modelSel.closest ? modelSel.closest(".agentfm-row") : null;
+    if (!row) return;
+    var effort = row.querySelector('select[name$=".effort"]');
+    var hint = row.querySelector(".agentfm-haiku-hint");
+    var isHaiku = modelSel.value === "haiku";
+    if (effort) effort.disabled = isHaiku;
+    if (hint) {
+      if (isHaiku) hint.classList.remove("is-hidden");
+      else hint.classList.add("is-hidden");
+    }
+  }
+
+  // reapplyHaikuLocks 는 리스너를 건드리지 않고 현재 값 기준으로 모든 행의 잠금을
+  // 다시 적용한다 (초기 로드 + 티어 repopulation 이후 호출).
+  function reapplyHaikuLocks() {
+    var models = document.querySelectorAll('select[name^="agentfm."][name$=".model"]');
+    for (var i = 0; i < models.length; i++) applyHaikuEffortLock(models[i]);
+  }
+
+  // wireHaikuEffortLock 는 각 model select 의 change 에 잠금 규칙을 배선하고 초기
+  // 상태를 적용한다. boost body swap 후 재호출돼도 새 요소는 리스너가 없어 중복
+  // 등록 우려가 없다(다른 wire* 함수와 동일).
+  function wireHaikuEffortLock() {
+    var models = document.querySelectorAll('select[name^="agentfm."][name$=".model"]');
+    for (var i = 0; i < models.length; i++) {
+      (function (sel) {
+        sel.addEventListener("change", function () {
+          applyHaikuEffortLock(sel);
+        });
+      })(models[i]);
+    }
+    reapplyHaikuLocks(); // 초기 상태(서버 렌더가 이미 disabled 를 방출하지만 재확인).
   }
 
   // initConsole 는 모든 콘솔 초기화를 한 곳에서 수행한다 — DOMContentLoaded(첫
@@ -345,6 +392,8 @@
     wireTabs();
     // G3-3: 성능 티어 → 에이전트 매트릭스 셀 즉시 재설정.
     wireProfileMatrix();
+    // haiku model → effort select 비활성 잠금(초기 + change + 티어 repopulation).
+    wireHaikuEffortLock();
   }
 
   document.addEventListener("DOMContentLoaded", initConsole);

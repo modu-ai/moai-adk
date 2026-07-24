@@ -215,6 +215,16 @@ func agentSelectedEffort(llm config.LLMConfig, info agentfm.AgentInfo) string {
 	return agentResolvedEffort(llm, info.Name)
 }
 
+// agentModelIsHaiku reports whether the agent's profile-matrix-resolved model is
+// haiku. Haiku does not honor reasoning effort, so the paired effort select is
+// disabled in that case (fieldsets.templ) with a muted inline hint. The save path
+// is unaffected: a disabled select does not submit, and parseAgentFMForm backfills
+// an unsubmitted effort with the resolved value (empty=preserve), so nothing is
+// corrupted or dropped.
+func agentModelIsHaiku(llm config.LLMConfig, info agentfm.AgentInfo) bool {
+	return agentResolvedModel(llm, info.Name) == v4manifest.ModelHaiku
+}
+
 // NOTE: agentHasOverride / agentModelIsDefault / agentEffortIsDefault were
 // removed with the per-row "(default)" caption — the profile-vs-override
 // distinction is already carried by the tier badge, so the extra tag was noise.

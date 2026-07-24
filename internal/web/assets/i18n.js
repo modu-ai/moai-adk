@@ -41,6 +41,7 @@ window.MOAI_I18N = {
     "agentfm.absent": "(absent)",
     "agentfm.unavailable": "unavailable (frontmatter parse failed)",
     "hint.effort.go_unbound": "Resolved from the performance tier above — per-agent edits save as overrides.",
+    "hint.effort.haiku_na": "Effort N/A for Haiku",
     // SPEC section keys — 10-section expansion (generic schema fieldsets).
     "count.fields": "field(s)",
     "ro.note": "read-only (runtime-managed)",
@@ -432,6 +433,7 @@ window.MOAI_I18N = {
     "agentfm.absent": "(부재)",
     "agentfm.unavailable": "사용 불가 (frontmatter 파싱 실패)",
     "hint.effort.go_unbound": "위의 성능 티어에서 결정됩니다. 개별 편집은 override로 저장됩니다.",
+    "hint.effort.haiku_na": "Haiku는 추론 강도 미적용",
     // SPEC section keys — 10-section expansion (generic schema fieldsets).
     "count.fields": "개 필드",
     "ro.note": "읽기 전용 (런타임 관리)",
@@ -795,6 +797,7 @@ window.MOAI_I18N = {
     "agentfm.absent": "（未設定）",
     "agentfm.unavailable": "利用不可（frontmatter 解析失敗）",
     "hint.effort.go_unbound": "上のパフォーマンスティアで決まります。個別の編集はオーバーライドとして保存されます。",
+    "hint.effort.haiku_na": "Haikuは推論強度が非対応",
     // SPEC section keys — 10-section expansion (generic schema fieldsets).
     "count.fields": "項目",
     "ro.note": "読み取り専用（ランタイム管理）",
@@ -1158,6 +1161,7 @@ window.MOAI_I18N = {
     "agentfm.absent": "（未设置）",
     "agentfm.unavailable": "不可用（frontmatter 解析失败）",
     "hint.effort.go_unbound": "由上方的性能层级决定；单独修改会保存为覆盖项。",
+    "hint.effort.haiku_na": "Haiku 不适用推理强度",
     // SPEC section keys — 10-section expansion (generic schema fieldsets).
     "count.fields": "个字段",
     "ro.note": "只读（运行时管理）",
