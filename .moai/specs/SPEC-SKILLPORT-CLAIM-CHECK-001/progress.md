@@ -87,7 +87,7 @@ updated in the same commit. Pre-change catalog entry count verified as 38 at
 
 ```yaml
 run_complete_at: 2026-07-24
-run_commit_sha: "pending-backfill-run"
+run_commit_sha: "7e05b10c246543818b4af630d38d925331aac108"
 run_status: complete
 ac_pass_count: 17
 ac_fail_count: 0
