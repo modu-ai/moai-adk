@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/profile"
 	"github.com/modu-ai/moai-adk/internal/settings"
 	"github.com/modu-ai/moai-adk/internal/settings/agentfm"
@@ -59,7 +60,7 @@ type app struct {
 	// Injectable seams over the M3 sub-agent frontmatter surface
 	// (SPEC-WEB-CONSOLE-011 REQ-WC11-025/027..029 — internal/settings/agentfm).
 	listAgentFMs func(agentsDir string) ([]agentfm.AgentInfo, error)
-	patchAgentFM func(projectRoot string, edits []agentFMEdit) error
+	patchAgentFM func(projectRoot string, pins map[string]config.ModelEffort, submitted []string) error
 
 	// Injectable seams over the M4 profile CRUD surface (SPEC-WEB-CONSOLE-011
 	// REQ-WC11-032/033/034). createProfile creates the profile directory (no
@@ -97,7 +98,7 @@ func newApp(cfg Config) *app {
 		applySchemaEdits:    settings.ApplySchemaEdits,
 
 		listAgentFMs: agentfm.List,
-		patchAgentFM: applyAgentFMEdits,
+		patchAgentFM: applyAgentOverrides,
 
 		createProfile: createProfileDir,
 		deleteProfile: profile.Delete,

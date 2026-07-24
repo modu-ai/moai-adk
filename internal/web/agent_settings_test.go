@@ -113,10 +113,15 @@ func TestAgentSettingsFourSurfacesRendered(t *testing.T) {
 	if !strings.Contains(body, `data-i18n="agentfm.warn"`) {
 		t.Error("persistent moai-update warning missing")
 	}
-	// M5-a B5: effort 필드 "(Go 미독)" 배지 렌더 (agentfm effort — 구 role_profiles.effort
-	// 표면은 SPEC-AGENT-TEAM-RETIRE-001 M2에서 제거, 배지는 agentfm이 계속 렌더).
+	// M5-a B5: effort 필드 "declarative" 배지 렌더 (agentfm effort — 구
+	// role_profiles.effort 표면은 SPEC-AGENT-TEAM-RETIRE-001 M2에서 제거, 배지는
+	// agentfm이 계속 렌더). 서버측 baseline은 영어다 (console UX fix G1-3 —
+	// 종전 하드코딩 한국어 "(Go 미독)"는 모든 로케일에 한국어를 노출했다).
 	if !strings.Contains(body, `data-i18n="hint.effort.go_unbound"`) {
-		t.Error("effort (Go 미독) hint badge missing")
+		t.Error("effort hint badge missing")
+	}
+	if !strings.Contains(body, "Resolved from the performance tier above — per-agent edits save as overrides.") {
+		t.Error("effort hint badge does not render the reworded English baseline text (G3-6)")
 	}
 }
 
@@ -163,66 +168,62 @@ func TestAgentFMWarnI18nParity(t *testing.T) {
 // 레이어와 함께 retired. agentfm enum reject 커버리지는
 // TestAgentFMValidationAndAbsent가 유지한다.
 
-// TestAgentFMEditRoundTrip은 AC-WC11-025 + GWT-6을 검증한다: frontmatter 편집이
-// 파일에 반영되고 body는 byte-identical이며 재렌더에 현재 값이 반영된다.
-func TestAgentFMEditRoundTrip(t *testing.T) {
+// TestAgentFMEditDoesNotTouchFrontmatter (G3-2): a sub-agent model/effort edit no
+// longer patches the agent .md file — persistence moved to llm.agent_overrides. The
+// agent file (frontmatter + body) is byte-identical after a save. (dev-a is a
+// non-matrix fixture, so its submission is a no-op; the override round-trip for a
+// matrix agent is covered by TestG3SaveWritesAgentOverrideNotFrontmatter.)
+func TestAgentFMEditDoesNotTouchFrontmatter(t *testing.T) {
 	a, root := newAgentTestApp(t)
 	agentPath := filepath.Join(root, ".claude", "agents", "moai", "dev-a.md")
+	before, err := os.ReadFile(agentPath)
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	rec := postSave(t, a, url.Values{"agentfm.dev-a.effort": {"high"}})
 	if rec.Code != http.StatusOK {
 		t.Fatalf("POST /save status = %d, want 200 (body: %.300s)", rec.Code, rec.Body.String())
 	}
-	raw, err := os.ReadFile(agentPath)
+	after, err := os.ReadFile(agentPath)
 	if err != nil {
 		t.Fatal(err)
 	}
-	content := string(raw)
-	if !strings.Contains(content, "effort: high") {
-		t.Errorf("frontmatter effort not patched:\n%s", content)
-	}
-	if !strings.Contains(content, "Sentinel body content (byte-preservation).") {
-		t.Error("body content lost")
-	}
-	// 재렌더에 현재 값 반영 (selected 옵션으로 표시).
-	body := getIndex(t, a)
-	if !strings.Contains(body, `<option value="high" selected`) {
-		t.Error("re-render does not reflect the patched effort value (selected option)")
+	if string(after) != string(before) {
+		t.Errorf("agent .md mutated by the console — writes must go to llm.agent_overrides, not frontmatter\nbefore:\n%s\nafter:\n%s", before, after)
 	}
 }
 
-// TestAgentFMValidationAndAbsent는 AC-WC11-029를 검증한다: (i) out-of-set
-// model/effort → 4xx + 파일 불변; (ii) effort 부재 agent에 model만 저장 시
-// effort 키 미주입 (EC-7).
-func TestAgentFMValidationAndAbsent(t *testing.T) {
+// TestAgentFMValidationRejectsOutOfSet (G3-2): an out-of-set model/effort
+// submission is rejected 4xx (atomic reject) and mutates no agent file — even for a
+// non-matrix agent (validation runs before the matrix-membership skip). A valid but
+// non-matrix submission is a no-op that leaves the file byte-identical.
+func TestAgentFMValidationRejectsOutOfSet(t *testing.T) {
 	a, root := newAgentTestApp(t)
 	devPath := filepath.Join(root, ".claude", "agents", "moai", "dev-a.md")
 	docsPath := filepath.Join(root, ".claude", "agents", "moai", "docs-b.md")
 	devBefore, _ := os.ReadFile(devPath)
 
-	// (i) 거부.
+	// (i) out-of-set → 4xx, no file change.
 	rec := postSave(t, a, url.Values{
 		"agentfm.dev-a.model":  {"gpt5"},
 		"agentfm.dev-a.effort": {"superhigh"},
 	})
 	if rec.Code != http.StatusBadRequest {
-		t.Fatalf("out-of-set frontmatter submission status = %d, want 400", rec.Code)
+		t.Fatalf("out-of-set submission status = %d, want 400", rec.Code)
 	}
 	if devAfter, _ := os.ReadFile(devPath); string(devAfter) != string(devBefore) {
 		t.Error("agent file changed despite validation reject")
 	}
 
-	// (ii) effort 부재 agent에 model만 변경 — effort 키 미주입.
+	// (ii) valid but non-matrix submission is a no-op — the agent .md is untouched.
+	docsBefore, _ := os.ReadFile(docsPath)
 	rec = postSave(t, a, url.Values{"agentfm.docs-b.model": {"sonnet"}})
 	if rec.Code != http.StatusOK {
-		t.Fatalf("model-only patch status = %d, want 200", rec.Code)
+		t.Fatalf("valid non-matrix submission status = %d, want 200", rec.Code)
 	}
-	docsAfter, _ := os.ReadFile(docsPath)
-	if strings.Contains(string(docsAfter), "effort:") {
-		t.Errorf("effort key injected into effort-absent agent:\n%s", docsAfter)
-	}
-	if !strings.Contains(string(docsAfter), "model: sonnet") {
-		t.Errorf("model not patched:\n%s", docsAfter)
+	if docsAfter, _ := os.ReadFile(docsPath); string(docsAfter) != string(docsBefore) {
+		t.Errorf("non-matrix agent file mutated by the console (must be a no-op):\nbefore:\n%s\nafter:\n%s", docsBefore, docsAfter)
 	}
 }
 

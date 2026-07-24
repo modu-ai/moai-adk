@@ -174,43 +174,50 @@ func TestSaveValidEffortLevelPersisted(t *testing.T) {
 	}
 }
 
-// TestSaveInvalidModelPolicyRejected verifies AC-WC2-004: an out-of-list
-// model_policy is rejected (400) via template.IsValidModelPolicy, state unchanged.
-func TestSaveInvalidModelPolicyRejected(t *testing.T) {
+// TestSaveModelPolicyFormIgnored (G3-5): model_policy was removed from the UI, so
+// a forged model_policy form value is IGNORED — the save succeeds (200) and the
+// forged value is never persisted (bindForm no longer reads it; handleSave carries
+// the persisted value forward).
+func TestSaveModelPolicyFormIgnored(t *testing.T) {
 	a := newTestApp(t)
-	var wrote bool
-	a.writePreferences = func(string, profile.ProfilePreferences) error { wrote = true; return nil }
+	a.readPreferences = func(string) (profile.ProfilePreferences, error) {
+		return profile.ProfilePreferences{ModelPolicy: "high"}, nil
+	}
+	var wrotePrefs profile.ProfilePreferences
+	a.writePreferences = func(_ string, prefs profile.ProfilePreferences) error {
+		wrotePrefs = prefs
+		return nil
+	}
 	a.syncToProject = func(string, profile.ProfilePreferences) error { return nil }
 	h := a.routes()
 
 	form := url.Values{
 		"__profile":       {"default"},
 		"permission_mode": {"acceptEdits"},
-		"model_policy":    {"ultra"},
+		"model_policy":    {"ultra"}, // forged — no longer a rendered field
 	}
 	rec := servePost(t, h, "/save", form)
-	if rec.Code != http.StatusBadRequest {
-		t.Errorf("invalid model_policy status = %d, want 400", rec.Code)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("forged model_policy status = %d, want 200 (field removed → ignored, not rejected); body:\n%s", rec.Code, rec.Body.String())
 	}
-	if wrote {
-		t.Error("WritePreferences called despite invalid model_policy")
+	if wrotePrefs.ModelPolicy == "ultra" {
+		t.Error("forged model_policy value was persisted — it must be ignored")
 	}
-	if body := rec.Body.String(); !strings.Contains(body, "unrecognized model policy") {
-		t.Errorf("per-field model_policy error not rendered:\n%s", body)
+	if wrotePrefs.ModelPolicy != "high" {
+		t.Errorf("persisted model_policy = %q, want the carried-forward %q", wrotePrefs.ModelPolicy, "high")
 	}
 }
 
 // TestRenderModelEffortPolicyAreSelects verifies AC-WC2-005 / REQ-WC2-005: the
-// model, effort_level, and model_policy fields render as <select> dropdowns with
-// their canonical option sets plus the empty-default option, and NO <input
-// type="text"> remains for those three field names.
+// model and effort_level fields render as <select> dropdowns with their canonical
+// option sets plus the empty-default option, and NO <input type="text"> remains.
+// model_policy was removed from the console (G3-5), so it is no longer asserted.
 func TestRenderModelEffortPolicyAreSelects(t *testing.T) {
 	a := newTestApp(t)
 	a.readPreferences = func(string) (profile.ProfilePreferences, error) {
 		return profile.ProfilePreferences{
 			Model:       "sonnet[1m]",
 			EffortLevel: "xhigh",
-			ModelPolicy: "medium",
 		}, nil
 	}
 	a.listProfiles = func() []profile.ProfileEntry {
@@ -218,8 +225,13 @@ func TestRenderModelEffortPolicyAreSelects(t *testing.T) {
 	}
 	body := serveGet(t, a.routes(), "/").Body.String()
 
-	// Negative: no text inputs for the three constrained fields.
-	for _, name := range []string{"model", "effort_level", "model_policy"} {
+	// model_policy must NOT render (G3-5 removal).
+	if strings.Contains(body, `name="model_policy"`) {
+		t.Error(`model_policy field still renders — it was removed from the console (G3-5)`)
+	}
+
+	// Negative: no text inputs for the two constrained fields.
+	for _, name := range []string{"model", "effort_level"} {
 		needle := `<input type="text" id="` + name + `"`
 		if strings.Contains(body, needle) {
 			t.Errorf("field %q is still a text input; want <select>", name)
@@ -227,15 +239,13 @@ func TestRenderModelEffortPolicyAreSelects(t *testing.T) {
 	}
 
 	// Positive: each field is a <select> carrying its name attribute.
-	for _, name := range []string{"model", "effort_level", "model_policy"} {
+	for _, name := range []string{"model", "effort_level"} {
 		needle := `name="` + name + `"`
 		idx := strings.Index(body, needle)
 		if idx < 0 {
 			t.Errorf("field %q not found in rendered page", name)
 			continue
 		}
-		// The name attribute must belong to a <select> opening tag. Find the
-		// nearest preceding '<' and confirm it opens a <select.
 		open := strings.LastIndex(body[:idx], "<")
 		if open < 0 || !strings.HasPrefix(body[open:], "<select") {
 			t.Errorf("field %q name attribute is not on a <select> element", name)
@@ -250,7 +260,7 @@ func TestRenderModelEffortPolicyAreSelects(t *testing.T) {
 	}
 	for _, opt := range []string{"low", "medium", "high", "xhigh", "max"} {
 		if !strings.Contains(body, `<option value="`+opt+`"`) {
-			t.Errorf("effort/policy option %q missing from rendered selects", opt)
+			t.Errorf("effort option %q missing from rendered selects", opt)
 		}
 	}
 
@@ -258,7 +268,6 @@ func TestRenderModelEffortPolicyAreSelects(t *testing.T) {
 	for _, want := range []string{
 		`<option value="sonnet[1m]" selected`,
 		`<option value="xhigh" selected`,
-		`<option value="medium" selected`,
 	} {
 		if !strings.Contains(body, want) {
 			t.Errorf("expected current value marked selected: %q\nbody:\n%s", want, body)
@@ -266,12 +275,15 @@ func TestRenderModelEffortPolicyAreSelects(t *testing.T) {
 	}
 }
 
-// TestSaveValidModelPolicyPersisted verifies AC-WC2-004 / AC-WC2-007: a canonical
-// model_policy persists (200) to the profile store. The synced prefs also carry
-// the value (SyncToProjectConfig owns the profile-only decision — REQ-WC2-007 adds
-// no new config section).
-func TestSaveValidModelPolicyPersisted(t *testing.T) {
+// TestSaveModelPolicyCarriedForward (G3-5): a web save preserves the persisted
+// model_policy (the resolveLaunchEffort fallback) rather than blanking it — the
+// value is carried forward from the profile store, and a divergent form value does
+// not override it.
+func TestSaveModelPolicyCarriedForward(t *testing.T) {
 	a := newTestApp(t)
+	a.readPreferences = func(string) (profile.ProfilePreferences, error) {
+		return profile.ProfilePreferences{ModelPolicy: "medium"}, nil
+	}
 	var wrotePrefs profile.ProfilePreferences
 	a.writePreferences = func(_ string, prefs profile.ProfilePreferences) error {
 		wrotePrefs = prefs
@@ -283,13 +295,13 @@ func TestSaveValidModelPolicyPersisted(t *testing.T) {
 	form := url.Values{
 		"__profile":       {"default"},
 		"permission_mode": {"acceptEdits"},
-		"model_policy":    {"medium"},
+		"model_policy":    {"low"}, // divergent form value — ignored
 	}
 	rec := servePost(t, h, "/save", form)
 	if rec.Code != http.StatusOK {
-		t.Fatalf("valid model_policy save status = %d, want 200; body:\n%s", rec.Code, rec.Body.String())
+		t.Fatalf("save status = %d, want 200; body:\n%s", rec.Code, rec.Body.String())
 	}
 	if wrotePrefs.ModelPolicy != "medium" {
-		t.Errorf("persisted model_policy = %q, want medium", wrotePrefs.ModelPolicy)
+		t.Errorf("persisted model_policy = %q, want the carried-forward medium (not the blanked or forged value)", wrotePrefs.ModelPolicy)
 	}
 }

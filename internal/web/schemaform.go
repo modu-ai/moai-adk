@@ -34,9 +34,9 @@ func consoleTabs() []consoleTab {
 	return []consoleTab{
 		{ID: "identity", LabelKey: "sec.identity.title", Baseline: "Identity"},
 		{ID: "language", LabelKey: "sec.language.title", Baseline: "Language"},
-		{ID: "launch", LabelKey: "sec.launch.title", Baseline: "Launch"},
-		{ID: "llm", LabelKey: "sec.llm.title", Baseline: "LLM"},
-		{ID: "agentfm", LabelKey: "sec.agentfm.title", Baseline: "Sub-agent Frontmatter"},
+		{ID: "launch", LabelKey: "sec.launch.title", Baseline: "LLM"},
+		{ID: "llm", LabelKey: "sec.llm.title", Baseline: "3rd Party LLM"},
+		{ID: "agentfm", LabelKey: "sec.agentfm.title", Baseline: "Agents"},
 		{ID: "report", LabelKey: "sec.report.title", Baseline: "Report"},
 	}
 }
@@ -56,7 +56,7 @@ type schemaSectionMeta struct {
 // 반환한다 (settings.SchemaSectionIDs와 동순).
 func schemaSectionMetas() []schemaSectionMeta {
 	return []schemaSectionMeta{
-		{settings.SectionLLM, "rocket", "LLM", "GLM backend model tier mappings (high/medium/low/fable)."},
+		{settings.SectionLLM, "rocket", "3rd Party LLM", "GLM backend model tier mappings (high/medium/low/fable)."},
 		{settings.SectionReport, "panel-bottom", "Report", "Output format for the HTML report skill (report.format: html+md or md)."},
 	}
 }
@@ -158,6 +158,12 @@ func (a *app) applySchemaCurrent(view *pageView) error {
 	activeProfile := cfg.LLM.EffectiveProfile()
 	view.PerfTier = activeProfile
 	view.PerfTierIsEmpty = strings.TrimSpace(cfg.LLM.Profile) == "" && strings.TrimSpace(cfg.LLM.PerformanceTier) == ""
+
+	// G3-1/G3-4: seed the loaded LLM config so the agentfm rows resolve each
+	// agent's model/effort through the profile matrix, and preselect the Custom
+	// pseudo-tier when any per-agent override is present.
+	view.LLM = cfg.LLM
+	view.PerfTierCustom = len(cfg.LLM.AgentOverrides) > 0
 	return nil
 }
 

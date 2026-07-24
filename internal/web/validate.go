@@ -63,8 +63,6 @@ func modelOptionDefs() []settings.OptionDef { return settings.FieldOptionDefs("m
 // effortOptionDefs returns the OptionDef slice for the effort_level select.
 func effortOptionDefs() []settings.OptionDef { return settings.FieldOptionDefs("effort_level") }
 
-// modelPolicyOptionDefs returns the OptionDef slice for the model_policy select.
-func modelPolicyOptionDefs() []settings.OptionDef { return settings.FieldOptionDefs("model_policy") }
 
 // permissionModeOptionDefs returns the OptionDef slice for permission_mode.
 func permissionModeOptionDefs() []settings.OptionDef { return settings.FieldOptionDefs("permission_mode") }
