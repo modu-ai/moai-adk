@@ -704,16 +704,14 @@ func TestSettingsTemplateHookEventCount(t *testing.T) {
 		t.Fatal("missing hooks section")
 	}
 
-	// 26 total events - 2 elicitation events (Elicitation, ElicitationResult —
-	// dormant until the runtime emits them)
+	// 26 total events - 4 RETIRE-OBS-ONLY (Notification, Elicitation, ElicitationResult, TaskCreated)
 	// - 2 WorktreeCreate/WorktreeRemove (unregistered by default per
 	// .claude/rules/moai/workflow/worktree-integration.md §WorktreeCreate and
 	// WorktreeRemove Hooks; Claude Code default git worktree behavior is used)
-	// = 22 active hook registrations, including Notification and TaskCreated
-	// (registered by the hook-coverage repair). (The previously-registered
-	// PreCommit hook was removed because PreCommit is not a valid Claude Code
-	// hook event — see anthropics/claude-code#4834, "Closed as not planned".)
-	const expectedCount = 22
+	// = 20 active hook registrations. (The previously-registered PreCommit hook
+	// was removed because PreCommit is not a valid Claude Code hook event — see
+	// anthropics/claude-code#4834, "Closed as not planned".)
+	const expectedCount = 20
 	if len(hooks) != expectedCount {
 		t.Errorf("hook event count = %d, want %d; events: %v", len(hooks), expectedCount, hookKeys(hooks))
 	}

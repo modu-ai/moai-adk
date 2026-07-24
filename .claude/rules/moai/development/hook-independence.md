@@ -97,8 +97,11 @@ dependency. The key reading is **row (a)** (the positive signal) and **row (d)**
 > unique to `team-ac-verify.sh`; the following surfaces are also shipped
 > forward-looking, with no live registration:
 >
-> - `handle-elicitation.sh` / `handle-elicitation-result.sh` — MCP elicitation
->   wrappers; dormant until the runtime emits elicitation hook events.
+> - `Notification` / `TaskCreated` / `Elicitation` / `ElicitationResult` — retired
+>   obs-only events: the Go handlers and wrappers (`handle-notification.sh`,
+>   `handle-task-created.sh`, `handle-elicitation.sh`, `handle-elicitation-result.sh`)
+>   are kept, but these events are deliberately NOT registered in settings —
+>   a guard test enforces their absence. Do not re-register them.
 > - `handle-worktree-create.sh` / `handle-worktree-remove.sh` — worktree
 >   lifecycle wrappers; dormant, no settings registration; activation deferred.
 > - `moai hook spec-status` CLI subcommand — dormant (no wrapper, no

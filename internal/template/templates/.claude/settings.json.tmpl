@@ -285,36 +285,6 @@
         ]
       }
     ],
-    "TaskCreated": [
-      {
-        "hooks": [
-          {
-{{- if eq .Platform "windows"}}
-            "command": "bash \"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-task-created.sh\"",
-{{- else}}
-            "command": "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-task-created.sh\"",
-{{- end}}
-            "timeout": 60,
-            "type": "command"
-          }
-        ]
-      }
-    ],
-    "Notification": [
-      {
-        "hooks": [
-          {
-{{- if eq .Platform "windows"}}
-            "command": "bash \"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-notification.sh\"",
-{{- else}}
-            "command": "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-notification.sh\"",
-{{- end}}
-            "timeout": 5,
-            "type": "command"
-          }
-        ]
-      }
-    ],
     "ConfigChange": [
       {
         "matcher": "project_settings|local_settings|skills",
