@@ -82,4 +82,24 @@ m1_to_mN_commit_strategy: per-milestone pathspec commits on feat/SPEC-CLI-TUX-IN
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+```yaml
+sync_complete_at: 2026-07-25
+sync_commit_sha: pending-backfill-sync-config-audit-repair-001
+sync_status: audit-ready
+changelog_entry_position: "[Unreleased] > ### Fixed (top entry, above SPEC-SUBAGENT-NESTING-DOCTRINE-001)"
+frontmatter_status_transitions:
+  spec_md: "in-progress -> completed"
+  plan_md: "in-progress -> completed"
+  acceptance_md: "in-progress -> completed"
+docs_scope_decision: "README/docs-site untouched — repaired surfaces are internal harness docs (.claude/rules, .claude/skills, internal/config), not user-facing product docs"
+residual_debt:
+  - id: AC-CAR-020b
+    note: "config-mode scan loads curated go/security rule set (sg-native format), not literal unconverted root go-hardcoding.yml; 2 sg-unparseable demo rules dropped"
+    owner: "SPEC-ASTGREP-DOGFOOD-CLEANUP-001 (backlog, already related_specs)"
+  - id: template-extra-config-yaml-refs
+    note: "residual .moai/config/config.yaml-shaped references may remain in moai-foundation-core / moai-workflow-worktree template skill modules outside the 6 enumerated AC-CAR-002 sites"
+    owner: "follow-up candidate, not yet a SPEC"
+  - id: M1-db-yaml-dead-keys
+    note: "auto_sync.{debounce_seconds,require_user_approval,excluded_patterns} intentionally not implemented; dependency on parallel DB-removal track (memory: project_db_retire_removal_approved.md), delete-3-keys fallback armed if that track stalls"
+    owner: "DB subsystem removal track"
+```
