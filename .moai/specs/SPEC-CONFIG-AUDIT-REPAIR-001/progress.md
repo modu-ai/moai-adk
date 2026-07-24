@@ -66,7 +66,7 @@ Plan-phase artifacts authored 2026-07-25; amended to 0.2.0 same day after Implem
 
 ```yaml
 run_complete_at: 2026-07-25
-run_commit_sha: pending-backfill-M6
+run_commit_sha: 850f579fb
 run_status: audit-ready
 ac_pass_count: 20
 ac_fail_count: 0
