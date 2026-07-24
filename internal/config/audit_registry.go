@@ -70,7 +70,7 @@ var yamlAuditExceptions = map[string]string{
 	"delegation": "orchestrator-consumed delegation map — yaml-only artifact, no Go loader",
 	// Local-tree sections without a Loader.Load struct mapping (real-tree
 	// parity reconciliation):
-	"cache":         "dedicated loader (LoadCacheConfig) — consumed by the SDK cache_control injector, not the aggregate Config struct",
+	"cache":         "settings-seam only (cacheStrategy.enabled / session_ttl editable via internal/settings); the cache_control injector, doctor metric, and PostToolUse telemetry it once fed were all removed as unreachable — prompt caching is performed by Claude Code, and the live signal is the statusline ♻️ segment",
 	"db":            "consumed via hook line-scan (internal/cli/hook.go migration_patterns); struct loader owned by the DB subsystem track",
 	"mcp-matrix":    "maintainer-only prompt-consumed inventory (dev-only, not distributed; zero Go consumers)",
 	"observability": "observability config — no Go loader yet (separate SPEC)",
