@@ -2,7 +2,7 @@
 id: SPEC-CC2219-UPSTREAM-ALIGN-001
 title: "Claude Code 2.1.208..2.1.219 upstream alignment umbrella (GD-1/2/4/5/6/7/8/9)"
 version: "0.1.1"
-status: in-progress
+status: completed
 created: 2026-07-25
 updated: 2026-07-25
 author: manager-spec

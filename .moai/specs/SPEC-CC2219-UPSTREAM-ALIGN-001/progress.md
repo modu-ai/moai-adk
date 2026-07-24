@@ -64,4 +64,14 @@ m1_to_mN_commit_strategy: one commit per milestone (M1..M5) + M6 evidence commit
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+```yaml
+sync_complete_at: 2026-07-25
+sync_commit_sha: pending-backfill-cc2219-sync
+sync_status: audit-ready
+changelog_entry_position: Unreleased > Added (single entry, top of section)
+frontmatter_status_transitions:
+  spec_md: "in-progress -> completed (merged 3-phase close; no separate implemented intermediate commit)"
+b12_self_test_a: "grep -c 'SPEC-CC2219-UPSTREAM-ALIGN-001' CHANGELOG.md (pre-emission) -> 0; no duplicate entry risk"
+b12_self_test_b: "acceptance.md AC bullet count (27 unique AC IDs) matches progress.md §E.3 ac_pass_count: 27"
+b12_self_test_c: "file paths cited in CHANGELOG entry verified via ls/grep: internal/template/model_policy.go, internal/web appbar, CLAUDE.md, .claude/rules/moai/development/{agent-authoring,agent-patterns,skill-authoring}.md, .claude/rules/moai/workflow/{orchestration-mode-selection,dynamic-workflows,native-invocation-model,hooks-system}.md — all present"
+```
