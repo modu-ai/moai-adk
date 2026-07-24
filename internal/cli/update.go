@@ -342,14 +342,17 @@ func runUpdate(cmd *cobra.Command, _ []string) error {
 
 			result, runErr := runCleanReinstall(ctx, cwd, CleanReinstallOptions{
 				DryRun: getBoolFlag(cmd, "dry-run"),
-				Out:    out,
+				// Propagate the CLI --force flag to the Step 3.5 migration
+				// adapter (issue #1132): explicit `moai update --force`
+				// performs a real forced migration instead of the
+				// already-migrated skip.
+				Force: getBoolFlag(cmd, "force"),
+				Out:   out,
 				// Inject the canonical .agency/ migration adapter. When the
 				// project carries a .agency/ legacy directory, this is invoked
 				// in Step 3.5 of the canonical order (REQ-VVCR-025), mirroring
 				// the migrateLegacyMemoryDir auto-invoke precedent at line 1731.
-				RunMigrateAgency: func(projectRoot string, dryRun bool, out io.Writer) error {
-					return runAgencyMigrationAdapter(projectRoot, dryRun, out)
-				},
+				RunMigrateAgency: runAgencyMigrationAdapter,
 			})
 			if runErr != nil {
 				return fmt.Errorf("v2-to-v3 clean reinstall: %w", runErr)
@@ -386,7 +389,7 @@ func runUpdate(cmd *cobra.Command, _ []string) error {
 		// double-fire (the adapter need not swallow ErrMigrateArchiveExists).
 		if fpErr == nil && !fingerprint.IsV2 && isMoAIProject(cwd) {
 			if _, agencyStatErr := os.Stat(filepath.Join(cwd, ".agency")); agencyStatErr == nil {
-				if migrateErr := runAgencyMigrationAdapter(cwd, getBoolFlag(cmd, "dry-run"), out); migrateErr != nil {
+				if migrateErr := runAgencyMigrationAdapter(cwd, getBoolFlag(cmd, "dry-run"), getBoolFlag(cmd, "force"), out); migrateErr != nil {
 					return fmt.Errorf("pre-step agency migration: %w", migrateErr)
 				}
 			}
@@ -1192,18 +1195,32 @@ func runShellEnvConfig(cmd *cobra.Command) error {
 
 // runAgencyMigrationAdapter is the auto-invoke entrypoint for the
 // .agency/ → .moai/ migration triggered by runCleanReinstall Step 3.5
-// (REQ-VVCR-025 of SPEC-V3R6-V2-V3-CLEAN-REINSTALL-001).
+// (REQ-VVCR-025 of SPEC-V3R6-V2-V3-CLEAN-REINSTALL-001) and by the
+// runUpdate v3-project pre-step (REQ-CRR-007).
 //
 // Unlike runMigrateAgency (which is cobra-driven and reads --dry-run /
 // --force / --resume from CLI flags), this adapter constructs the runner
 // directly with the values supplied by the clean-reinstall orchestrator.
 // It mirrors the auto-invoke precedent of migrateLegacyMemoryDir.
 //
-// When `.agency/` is absent at projectRoot, the underlying migrateAgency
-// runner returns ErrMigrateNoSource — which this adapter swallows
-// gracefully because the clean-reinstall flow already verified .agency/
-// presence via Signal 2.
-func runAgencyMigrationAdapter(projectRoot string, dryRun bool, out io.Writer) error {
+// force propagates the CLI --force flag (issue #1132): an explicit
+// `moai update --force` performs a real forced migration (overwriting
+// existing targets), matching the `moai migrate agency --force` contract.
+//
+// Swallowed error codes (graceful no-ops):
+//   - ErrMigrateNoSource: .agency/ disappeared between detection and
+//     adapter invocation (race-safe no-op).
+//   - ErrMigrateTargetExists / ErrMigrateArchiveExists (issue #1132):
+//     a migration target (design.yaml / research/observations) or the
+//     .agency.archived/ backup already exists — the project is already
+//     migrated (typically by an earlier interrupted update whose v3
+//     template deploy created the targets). Pre-fix, this error aborted
+//     clean-reinstall Step 3.5 BEFORE Step 4 removed .agency/, so the v2
+//     fingerprint (Signal 2) never converged and every `moai update`
+//     re-entered the same abort — a permanent retry loop the CLI --force
+//     flag never reached. Treating it as already-migrated lets Step 4
+//     clear the residue and the fingerprint converge.
+func runAgencyMigrationAdapter(projectRoot string, dryRun, force bool, out io.Writer) error {
 	homeDir, err := os.UserHomeDir()
 	if err != nil {
 		return fmt.Errorf("agency migration adapter: home dir: %w", err)
@@ -1213,17 +1230,20 @@ func runAgencyMigrationAdapter(projectRoot string, dryRun bool, out io.Writer) e
 		projectRoot: projectRoot,
 		homeDir:     homeDir,
 		dryRun:      dryRun,
-		// force=false: respect existing .moai/ contents; clean-reinstall
-		// pre-emptively preserves user-owned namespaces via Step 2 inventory
-		// so any forced overwrite here would risk re-introducing collisions.
-		force: false,
+		force:       force,
 	}
 
 	if _, runErr := r.Run(); runErr != nil {
-		// ErrMigrateNoSource is acceptable when .agency/ disappeared
-		// between detection and adapter invocation (race-safe no-op).
-		if me, ok := runErr.(*MigrateError); ok && me.Code == ErrMigrateNoSource {
-			return nil
+		var me *MigrateError
+		if errors.As(runErr, &me) {
+			switch me.Code {
+			case ErrMigrateNoSource:
+				return nil
+			case ErrMigrateTargetExists, ErrMigrateArchiveExists:
+				_, _ = fmt.Fprintf(out,
+					"[clean-reinstall] agency migration skipped: target already migrated (%s)\n", me.Code)
+				return nil
+			}
 		}
 		return fmt.Errorf("agency migration: %w", runErr)
 	}

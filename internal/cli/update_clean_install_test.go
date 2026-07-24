@@ -25,6 +25,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"testing"
 
 	"github.com/modu-ai/moai-adk/internal/manifest"
@@ -66,14 +67,16 @@ func (s *stubDeployer) ExtractTemplate(name string) ([]byte, error) {
 // stubMigrateRunner is the fake adapter for opts.RunMigrateAgency. Records
 // invocations for assertion.
 type stubMigrateRunner struct {
-	calls    int
-	lastRoot string
-	err      error
+	calls     int
+	lastRoot  string
+	lastForce bool
+	err       error
 }
 
-func (s *stubMigrateRunner) Run(projectRoot string, dryRun bool, out io.Writer) error {
+func (s *stubMigrateRunner) Run(projectRoot string, dryRun, force bool, out io.Writer) error {
 	s.calls++
 	s.lastRoot = projectRoot
+	s.lastForce = force
 	return s.err
 }
 
@@ -963,5 +966,210 @@ func TestFingerprintPredicate_CrossPlatformParity(t *testing.T) {
 			t.Errorf("iteration %d: AC-CRR-010(a): IsV2=true on a v3 project; "+
 				"verdict must be a stable false on %s", i, runtime.GOOS)
 		}
+	}
+}
+
+// TestReproduction_MigrateTargetExistsLoop_Issue1132 reproduces the #1132
+// permanent-retry loop: a v2-fingerprint project whose .agency/ legacy
+// directory remains while a migration target (.moai/config/sections/design.yaml)
+// already exists — e.g. an earlier interrupted update already deployed the v3
+// template that ships design.yaml.
+//
+// Pre-fix mechanics: runAgencyMigrationAdapter hardcodes force=false, so the
+// migrateAgencyRunner's checkTargetsAbsent gate returns MIGRATE_TARGET_EXISTS,
+// runCleanReinstall aborts at Step 3.5 BEFORE Step 4 removes .agency/, the v2
+// fingerprint (Signal 2) stays positive, and every subsequent `moai update`
+// re-enters the same abort — a permanent retry loop the CLI --force flag never
+// reaches.
+//
+// Post-fix: the adapter treats MIGRATE_TARGET_EXISTS (and
+// MIGRATE_ARCHIVE_EXISTS) as already-migrated no-ops, so the reinstall
+// completes, Step 4 removes .agency/, and the migration never re-fires.
+//
+// Pre-fix: runCleanReinstall returns "step 3.5: ... MIGRATE_TARGET_EXISTS" → FAIL.
+// Post-fix: reinstall completes; second run has no .agency/ signal → PASS.
+func TestReproduction_MigrateTargetExistsLoop_Issue1132(t *testing.T) {
+	root := t.TempDir()
+	// v2 fingerprint: v2.* version (Signal 1) + .agency/ residue (Signal 2).
+	writeTestFile(t, root, ".moai/config/sections/system.yaml",
+		"moai:\n    version: v2.16.1\n")
+	makeTestDir(t, root, ".agency")
+	writeTestFile(t, root, ".agency/index.md", "legacy agency content\n")
+	// The #1132 trigger: a migration target already exists on disk.
+	writeTestFile(t, root, ".moai/config/sections/design.yaml",
+		"design:\n    default_framework: flutter\n")
+
+	var out bytes.Buffer
+	opts := CleanReinstallOptions{
+		Out:      &out,
+		Deployer: &stubDeployer{},
+		// The REAL adapter — the loop lives in its error handling, so the
+		// stubMigrateRunner must not stand in for it here.
+		RunMigrateAgency: runAgencyMigrationAdapter,
+	}
+
+	// First run: pre-fix this aborts at Step 3.5 with MIGRATE_TARGET_EXISTS.
+	result, err := runCleanReinstall(context.Background(), root, opts)
+	if err != nil {
+		t.Fatalf("#1132 regression: clean-reinstall aborted on a pre-existing "+
+			"migration target (permanent retry loop): %v", err)
+	}
+	if !result.AgencyMigrated {
+		t.Errorf("first run: AgencyMigrated = false; want true (Step 3.5 ran)")
+	}
+	if !strings.Contains(out.String(), "agency migration skipped: target already migrated") {
+		t.Errorf("first run: missing skip log line; output:\n%s", out.String())
+	}
+
+	// Step 4 must have removed the loop-driving Signal 2 residue.
+	if _, statErr := os.Stat(filepath.Join(root, ".agency")); !os.IsNotExist(statErr) {
+		t.Errorf(".agency/ still present after clean-reinstall (statErr=%v); "+
+			"Signal 2 stays positive → the retry loop persists", statErr)
+	}
+
+	// The pre-existing migration target is untouched by the skip path.
+	design, readErr := os.ReadFile(filepath.Join(root, ".moai/config/sections/design.yaml"))
+	if readErr != nil {
+		t.Fatalf("read design.yaml after reinstall: %v", readErr)
+	}
+	if !strings.Contains(string(design), "flutter") {
+		t.Errorf("design.yaml content clobbered by the skip path: %s", design)
+	}
+
+	// Signal 2 converged: the fingerprint no longer reports the agency dir.
+	fp2, fpErr := detectV2Fingerprint(root)
+	if fpErr != nil {
+		t.Fatalf("second fingerprint: %v", fpErr)
+	}
+	if fp2.V2DetectedViaAgencyDir {
+		t.Errorf("second fingerprint: V2DetectedViaAgencyDir = true; want false")
+	}
+
+	// Second run is a migration no-op: no .agency/ → Step 3.5 gate closed,
+	// and the reinstall completes cleanly again (no re-abort).
+	result2, err2 := runCleanReinstall(context.Background(), root, opts)
+	if err2 != nil {
+		t.Fatalf("second run: unexpected error (loop not converged): %v", err2)
+	}
+	if result2.AgencyMigrated {
+		t.Errorf("second run: AgencyMigrated = true; want false (no .agency/ left)")
+	}
+}
+
+// gitignoreClobberingDeployer reproduces the #1131/#1094 clobber: on Deploy()
+// it overwrites .gitignore with template-only content — exactly what the real
+// forceUpdate deployer does to a v2 project's .gitignore, silently dropping
+// every user-added pattern because the clean-reinstall path (pre-fix) never
+// captured or merged the user's .gitignore the way the normal `moai update`
+// path does (EntryMerge via updatemerge.MergeGitignoreFile).
+type gitignoreClobberingDeployer struct {
+	deployCalls int
+}
+
+func (d *gitignoreClobberingDeployer) Deploy(ctx context.Context, projectRoot string, mgr manifest.Manager, tmplCtx *template.TemplateContext) error {
+	d.deployCalls++
+	content := "# MoAI template gitignore\n.moai/cache/\n.moai/logs/\nnode_modules/\n"
+	return os.WriteFile(filepath.Join(projectRoot, ".gitignore"), []byte(content), 0o644)
+}
+
+func (d *gitignoreClobberingDeployer) ListTemplates() []string { return nil }
+func (d *gitignoreClobberingDeployer) ValidateAll(ctx context.Context, c *template.TemplateContext) error {
+	return nil
+}
+func (d *gitignoreClobberingDeployer) ExtractTemplate(name string) ([]byte, error) { return nil, nil }
+
+// TestReproduction_GitignoreUserBlockDeleted_Issue1131 reproduces the
+// #1131/#1094 data loss: a v2 project's .gitignore carrying user-added
+// patterns loses them across the clean-reinstall because Step 5's force-deploy
+// overwrites .gitignore with the template version and (pre-fix) no backup +
+// EntryMerge step existed on the clean path — unlike the normal `moai update`
+// path, which backs up .gitignore before deploy and merges user patterns back
+// afterwards.
+//
+// Pre-fix: user patterns absent from post-reinstall .gitignore → FAIL.
+// Post-fix: Step 4.5 captures .gitignore, Step 5.5 merges user additions back
+// under the "User Custom Patterns" header → PASS.
+func TestReproduction_GitignoreUserBlockDeleted_Issue1131(t *testing.T) {
+	root := t.TempDir()
+	// v2 fingerprint via v2.* version + a deprecated path (Signals 1 + 3).
+	writeTestFile(t, root, ".moai/config/sections/system.yaml",
+		"moai:\n    version: v2.16.1\n")
+	writeTestFile(t, root, ".claude/agents/moai/manager-strategy.md", "retired\n")
+	writeTestFile(t, root, ".moai/specs/SPEC-USER-GI/spec.md", "user spec\n")
+
+	// The user's .gitignore: template-era lines + user-added patterns.
+	writeTestFile(t, root, ".gitignore",
+		"# MoAI template gitignore\n.moai/cache/\n.moai/logs/\n\n"+
+			"# User Custom Patterns (preserved by moai update)\n"+
+			"my-secret-dir/\n*.private\n")
+
+	var out bytes.Buffer
+	_, err := runCleanReinstall(context.Background(), root, CleanReinstallOptions{
+		Out:              &out,
+		Deployer:         &gitignoreClobberingDeployer{},
+		RunMigrateAgency: (&stubMigrateRunner{}).Run,
+	})
+	if err != nil {
+		t.Fatalf("runCleanReinstall: %v", err)
+	}
+
+	data, readErr := os.ReadFile(filepath.Join(root, ".gitignore"))
+	if readErr != nil {
+		t.Fatalf("read .gitignore after reinstall: %v", readErr)
+	}
+	content := string(data)
+
+	// #1131/#1094: user-added patterns must survive the clean-reinstall.
+	for _, pattern := range []string{"my-secret-dir/", "*.private"} {
+		if !strings.Contains(content, pattern) {
+			t.Errorf("#1131 regression: user .gitignore pattern %q lost after clean-reinstall; content:\n%s",
+				pattern, content)
+		}
+	}
+	// The deployed template content is kept as-is (merge appends, not restores).
+	if !strings.Contains(content, "node_modules/") {
+		t.Errorf("deployed template .gitignore content missing after merge; content:\n%s", content)
+	}
+}
+
+// TestCleanReinstall_PrunesOldConfigBackups verifies the clean path applies
+// the same config-backup accumulation cap the normal `moai update` path
+// applies after its restore step (backup.CleanupOldBackups keepCount=5).
+// Without the cap, the pre-fix #1132 retry loop left one new
+// .moai-backups/<stamp>/ directory behind on EVERY `moai update` attempt.
+func TestCleanReinstall_PrunesOldConfigBackups(t *testing.T) {
+	root := t.TempDir()
+	writeTestFile(t, root, ".moai/config/sections/system.yaml",
+		"moai:\n    version: v2.16.1\n")
+	writeTestFile(t, root, ".claude/agents/moai/manager-strategy.md", "retired\n")
+	writeTestFile(t, root, ".moai/specs/SPEC-USER-PRUNE/spec.md", "user spec\n")
+
+	// Seed 7 stale timestamped config-backup dirs (the shape BackupMoaiConfig
+	// creates and CleanupOldBackups targets: YYYYMMDD_HHMMSS under .moai-backups/).
+	for i := 1; i <= 7; i++ {
+		makeTestDir(t, root, fmt.Sprintf(".moai-backups/2025010%d_000000", i))
+	}
+
+	if _, err := runCleanReinstall(context.Background(), root, CleanReinstallOptions{
+		Out:              io.Discard,
+		Deployer:         &stubDeployer{},
+		RunMigrateAgency: (&stubMigrateRunner{}).Run,
+	}); err != nil {
+		t.Fatalf("runCleanReinstall: %v", err)
+	}
+
+	entries, err := os.ReadDir(filepath.Join(root, ".moai-backups"))
+	if err != nil {
+		t.Fatalf("read .moai-backups: %v", err)
+	}
+	var stamped int
+	for _, e := range entries {
+		if e.IsDir() && len(e.Name()) == 15 {
+			stamped++
+		}
+	}
+	// 7 stale + 1 created by Step 4.5 = 8; the keepCount=5 cap prunes to 5.
+	if stamped != 5 {
+		t.Errorf("config-backup accumulation cap not applied: %d timestamped dirs remain; want 5", stamped)
 	}
 }
