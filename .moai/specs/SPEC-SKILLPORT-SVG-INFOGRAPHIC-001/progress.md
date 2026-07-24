@@ -65,7 +65,7 @@ absence-invariant half is AC-SVG-016 (evidence below); this is the process half.
 
 ```yaml
 run_complete_at: 2026-07-24
-run_commit_sha: pending-backfill-run-commit
+run_commit_sha: 19bff2844c603e7913a1954677801fce29e3da3a
 run_status: complete
 ac_pass_count: 19
 ac_fail_count: 0
