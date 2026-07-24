@@ -16,7 +16,7 @@ Active settings.json keys: 20. RETIRE-OBS-ONLY (Go-only): 4.
 
 | Event | Matcher | Can Block | Description |
 |-------|---------|-----------|-------------|
-| SessionStart | Source | No | Runs when a new session begins. Matchers: startup, resume, clear, compact |
+| SessionStart | Source | No | Runs when a new session begins. Matchers: startup, resume, clear, compact, fork |
 | SessionEnd | Reason | No | Runs when session terminates. Matchers: clear, resume, logout, prompt_input_exit, bypass_permissions_disabled, other |
 | PostSession | No | No | Runs after a session ends (self-hosted runner lifecycle event, CC 2.1.169+). Fires once the session is fully torn down, later than SessionEnd. MoAI-ADK does not wire this hook today; documented as an available option for self-hosted deployments that need post-session cleanup/telemetry. |
 | PreToolUse | Tool name | Yes | Runs before a tool executes |
@@ -226,7 +226,7 @@ Define hooks in `.claude/settings.json`. Each event key maps to an array of matc
 {
   "hooks": {
     "SessionStart": [{
-      "matcher": "startup|resume|clear|compact",
+      "matcher": "startup|resume|clear|compact|fork",
       "hooks": [{
         "type": "command",
         "command": "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-session-start.sh\"",

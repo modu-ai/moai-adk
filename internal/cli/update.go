@@ -630,6 +630,9 @@ func runTemplateSyncWithReporter(cmd *cobra.Command, reporter project.ProgressRe
 	projectRoot := "."
 
 	currentVersion := version.GetVersion()
+	// Identity header band (REQ-TUXIU-015): "◆ MoAI-ADK <version> <go-runtime>
+	// · claude" with the version as a solid brand pill.
+	_, _ = fmt.Fprintln(out, renderIdentityBand(currentVersion, th))
 	_, _ = fmt.Fprintln(out, tui.KV("Current version", "moai-adk "+currentVersion, tui.KVOpts{Theme: &th, KeyWidth: 16}))
 	_, _ = fmt.Fprintln(out, tui.CheckLine("run", "Syncing templates", "from embedded filesystem", "", &th))
 
@@ -701,6 +704,13 @@ func runTemplateSyncWithReporter(cmd *cobra.Command, reporter project.ProgressRe
 
 	_, _ = fmt.Fprintln(out)
 	_, _ = fmt.Fprintln(out, tui.Section("Analyzing merge changes", tui.SectionOpts{Theme: &th}))
+	// Card-style classification summary (REQ-TUXIU-010/011): accent box with
+	// up to three count pills; zero-count pills omitted; suppressed entirely
+	// when the run is clean (all counts zero).
+	addCount, updateCount, conflictCount := classifyUpdateCounts(analysis.Files)
+	if card := renderClassificationSummary(addCount, updateCount, conflictCount, th); card != "" {
+		_, _ = fmt.Fprintln(out, card)
+	}
 
 	if reporter != nil {
 		reporter.StepUpdate("Found " + fmt.Sprintf("%d files to sync", len(analysis.Files)))
@@ -862,12 +872,14 @@ func runTemplateSyncWithReporter(cmd *cobra.Command, reporter project.ProgressRe
 		}
 	}
 
-	// Execute each step with progress reporting
+	// Execute each step with progress reporting. The per-step in-flight line is
+	// rendered by the inline tui.ProgressLine primitive inside each step body;
+	// the coarse reporter Step wrapper is intentionally NOT driven here — doing
+	// so double-rendered every step on the stderr channel (the printer.Step
+	// in-flight line) alongside the stdout ProgressLine, producing the two-part
+	// "○…○" spinner residue on a TTY (REQ-TUXIU-020/021). Errors still surface
+	// via reporter.StepError (orphan-safe) below.
 	for i, step := range steps {
-		if reporter != nil {
-			reporter.StepStart(step.name, step.message)
-		}
-
 		// Special handling for backup/restore steps; default executes normally
 		switch step.name {
 		case "Backup":
@@ -941,15 +953,9 @@ func runTemplateSyncWithReporter(cmd *cobra.Command, reporter project.ProgressRe
 					mergeableBackups = append(mergeableBackups, updatemerge.FileBackup{Path: mf, Data: data})
 				}
 			}
-			if reporter != nil {
-				reporter.StepComplete("Configuration backed up")
-			}
 		case "Restore Settings":
 			// Handle restore step with captured backup path
 			if configBackupPath != "" {
-				if reporter != nil {
-					reporter.StepStart("Restore Settings", "Restoring user settings")
-				}
 				// SPEC-V3R6-UPDATE-PROGRESS-001 M1: tui.ProgressLine replaces
 				// the legacy CR-plus-format pair (REQ-UPR-004).
 				plRestore := tui.ProgressLine(out, "Restoring user settings...", nil)
@@ -970,9 +976,6 @@ func runTemplateSyncWithReporter(cmd *cobra.Command, reporter project.ProgressRe
 				deletedCount := backup.CleanupOldBackups(projectRoot, 5)
 				if deletedCount > 0 {
 					_, _ = fmt.Fprintf(out, "  %s Cleaned up %d old backup(s)\n", uikit.SymSuccess(), deletedCount)
-				}
-				if reporter != nil {
-					reporter.StepComplete("Settings restored")
 				}
 			}
 			// Merge .gitignore: preserve user-added patterns via EntryMerge
@@ -998,19 +1001,17 @@ func runTemplateSyncWithReporter(cmd *cobra.Command, reporter project.ProgressRe
 				}
 				return err
 			}
-			if reporter != nil {
-				reporter.StepComplete(fmt.Sprintf("%s complete", step.name))
-			}
 		}
 
-		// Update progress for remaining steps
-		if reporter != nil && i < len(steps)-1 {
-			reporter.StepUpdate(fmt.Sprintf("%d/%d steps complete", i+1, len(steps)))
-		}
+		// Block progress bar reflecting completed/total deploy steps
+		// (REQ-TUXIU-014). Replaces the legacy "N/M steps complete" reporter
+		// text; the bar rides the same stdout channel as the step ProgressLines.
+		_, _ = fmt.Fprintln(out, renderDeployProgress(i+1, len(steps), th))
 	}
 
 	_, _ = fmt.Fprintln(out)
-	_, _ = fmt.Fprintln(out, tui.Pill(tui.PillOpts{Kind: tui.PillOk, Solid: false, Label: report.RenderOutcome(report.OutcomeUpdatedFiles, len(analysis.Files), configBackupPath), Theme: &th}))
+	// Outcome banner (REQ-TUXIU-016): solid success pill + dim detail note.
+	renderUpdateOutcome(out, len(analysis.Files), configBackupPath, th)
 	report.EmitHooksReviewGuidance(out)
 
 	_, _ = fmt.Fprintln(out)
