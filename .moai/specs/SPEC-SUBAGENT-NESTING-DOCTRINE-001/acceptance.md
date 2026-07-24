@@ -176,7 +176,7 @@ Residual-risk (not a mechanical AC): a full runtime nested execution is exercisa
 ```bash
 # env absent from distributed template settings.json
 grep -rn "CLAUDE_CODE_MAX_SUBAGENT_SPAWN_DEPTH" internal/template/templates/.claude/settings.json internal/template/templates/.claude/settings.json.tmpl 2>/dev/null   # → 0 matches
-# the other 10 retained agents carry NO standalone Agent in tools (pilot set = sync-auditor only, +plan-auditor iff D5 approved)
+# the other 10 retained agents carry NO standalone Agent in tools (pilot set = sync-auditor only; plan-auditor deferred, carries no Agent)
 for f in .claude/agents/moai/*.md; do
   case "$f" in *sync-auditor.md) continue;; esac
   grep -n "^tools:" "$f" | grep -qw "Agent" && echo "UNEXPECTED Agent in $f"
@@ -217,7 +217,7 @@ grep -rn "CLAUDE_CODE_MAX_SUBAGENT_SPAWN_DEPTH" internal/template/templates/   #
 
 ## §D.5 Edge Cases
 
-- **plan-auditor pilot (D5 optional)**: if plan-auditor is approved into scope, AC-SND-012's loop MUST also skip `plan-auditor.md`, and plan-auditor's body MUST spawn children with explicit `mode: "plan"` (its `permissionMode` is `default`). If plan-auditor is deferred (default), it stays in the "other 10 flat" set.
+- **plan-auditor (D5 RESOLVED — deferred)**: `plan-auditor` is NOT in the pilot scope (sync-auditor only). It stays in the "other 10 flat" set — AC-SND-012's loop does NOT skip `plan-auditor.md`, and `plan-auditor.md` MUST carry no `Agent` in `tools` and remain unmodified. The `plan-auditor` read-only nesting pilot is deferred to a future SPEC (spec.md §E Out of Scope — plan-auditor nesting pilot).
 - **Concurrency-cap sentence placement (D4)**: if the §14 caps land inside the CONST-V3R2-020 mirrored span, AC-SND-008's re-sync branch applies; recommended authoring keeps the caps as a distinct sentence so no re-sync fires.
 - **Line-number drift**: all live anchors are 2026-07-24 reads; re-anchor by content token before edit (AP-4).
 
@@ -227,9 +227,9 @@ grep -rn "CLAUDE_CODE_MAX_SUBAGENT_SPAWN_DEPTH" internal/template/templates/   #
 - [ ] AC-SND-009/010 mirror-parity + neutrality PASS (`make build` + `go test ./internal/template/...` exit 0).
 - [ ] AC-SND-011..016 M2 held-in / held-out / boundary / read-only / verdict / env-dev-only PASS.
 - [ ] `moai spec lint` (or repo spec-lint) MUST-FIX 0 for this SPEC (repo-global exit code filtered via `--json`).
-- [ ] `[NEEDS CLARIFICATION]` markers (D5, D6) resolved via orchestrator AskUserQuestion before Implementation Kickoff Approval.
+- [x] Clarification markers (D5, D6) RESOLVED at plan finalization — D5: M2 pilot = `sync-auditor` only (`plan-auditor` deferred to a future SPEC); D6: M1 + M2 both ship in v3.0.2 (shipped default flat).
 - [ ] No `model-policy.md` edit (scope discipline).
 
 ## §D.7 Traceability
 
-Every REQ-SND-001..022 maps to at least one AC-SND row above (M1 doc-accuracy REQ-001..008 → AC-001..008; mirror/neutrality REQ-010/011/022 → AC-009/010; M2 REQ-013..021 → AC-011..016). REQ-SND-012 (no runtime behavior change) and REQ-SND-020 (plan-auditor optional) are verified indirectly by AC-SND-012 (held-out flat) + §D.5 edge cases.
+Every REQ-SND-001..022 maps to at least one AC-SND row above (M1 doc-accuracy REQ-001..008 → AC-001..008; mirror/neutrality REQ-010/011/022 → AC-009/010; M2 REQ-013..021 → AC-011..016). REQ-SND-012 (no runtime behavior change) and REQ-SND-020 (plan-auditor NOT piloted — deferred; no `Agent` tool) are verified by AC-SND-012 (held-out flat: plan-auditor is one of the "other 10" agents the loop confirms carry no `Agent`) + the §D.5 plan-auditor edge case.

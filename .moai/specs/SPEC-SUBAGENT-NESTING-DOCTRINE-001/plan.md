@@ -20,7 +20,7 @@ tier: M
 
 ## §A Context
 
-Single SPEC, two milestones. **M1** corrects stale v2.1.172-era nesting facts across 7 always-loaded doctrine surfaces to the v2.1.217 reality (default-off + configurable depth + concurrency caps). **M2** enables a selective, opt-in, env-gated read-only nesting pilot on `sync-auditor` (primary; `plan-auditor` optional). The two are coupled: M1's Watch-note "double guarantee" wording and the M1 § Deprecated cross-reference both point at the M2 pilot exception, and M2's env-default-off design is precisely what keeps the M1 "flat by default" claim true even after `sync-auditor` gains the `Agent` tool. **Recommendation: keep as ONE SPEC** (splitting would force M1 to forward-reference an unauthored M2, or drop the exception wording).
+Single SPEC, two milestones. **M1** corrects stale v2.1.172-era nesting facts across 7 always-loaded doctrine surfaces to the v2.1.217 reality (default-off + configurable depth + concurrency caps). **M2** enables a selective, opt-in, env-gated read-only nesting pilot on `sync-auditor` ONLY (`plan-auditor` is excluded and deferred to a future SPEC — see spec.md §E Out of Scope — plan-auditor nesting pilot). Both milestones ship in v3.0.2. The two are coupled: M1's Watch-note "double guarantee" wording and the M1 § Deprecated cross-reference both point at the M2 pilot exception, and M2's env-default-off design is precisely what keeps the M1 "flat by default" claim true even after `sync-auditor` gains the `Agent` tool. **Recommendation: keep as ONE SPEC** (splitting would force M1 to forward-reference an unauthored M2, or drop the exception wording).
 
 Ground truth is orchestrator-verified (see spec.md §A) — do NOT re-derive; run-phase re-anchors live line numbers by content token before editing.
 
@@ -46,13 +46,13 @@ After M2, `sync-auditor` WILL carry `Agent` in `tools`, so the blanket claim "Mo
 
 CONST-V3R2-020 mirrors the CLAUDE.md §14 background/concurrency clause; CONST-V3R2-044 mirrors the agent-common-protocol background clause. Neither is about nesting. Decision: re-sync the zone-registry entry **only if** the M1 §14 concurrency-cap sentence is authored *inside* the mirrored clause span; otherwise leave both entries untouched (REQ-SND-009). Recommended authoring: add the concurrency caps as a NEW sentence/bullet distinct from the mirrored clause, so no re-sync is triggered.
 
-### D5 — plan-auditor optional secondary pilot [NEEDS CLARIFICATION]
+### D5 — M2 pilot scope: sync-auditor ONLY (RESOLVED)
 
-`[NEEDS CLARIFICATION: include plan-auditor in the M2 pilot scope, or defer to a follow-up?]` — `plan-auditor` has `permissionMode: default` (not `plan`), so its read-only child scoping needs an explicit `mode: "plan"` (REQ-SND-020). Default recommendation: pilot `sync-auditor` only this SPEC; defer `plan-auditor`. Resolve via orchestrator `AskUserQuestion` before Implementation Kickoff Approval.
+The M2 pilot scope is **`sync-auditor` only**. `plan-auditor` is explicitly excluded from this SPEC; its read-only nesting pilot is DEFERRED to a future SPEC (spec.md §E Out of Scope — plan-auditor nesting pilot). Rationale: `plan-auditor` has `permissionMode: default` (not `plan`), so its read-only child scoping would need an explicit `mode: "plan"` — a distinct design the future SPEC will own. REQ-SND-020 is now an Unwanted requirement asserting `plan-auditor` is untouched (no `Agent` tool, no verifier-child documentation); no REQ/AC grants `plan-auditor` the `Agent` tool.
 
-### D6 — Target release phase [NEEDS CLARIFICATION]
+### D6 — Target release: M1 + M2 both ship in v3.0.2 (RESOLVED)
 
-`[NEEDS CLARIFICATION: ship in v3.0.2 (current release-prep branch) or defer the M2 behavioral pilot to v3.1.0 while landing M1 doc-correction in v3.0.2?]` — M1 is a pure doc correction safe for v3.0.2; M2 is opt-in and behavior-inert at the shipped default, also v3.0.2-safe. Default recommendation: both in v3.0.2.
+Both milestones ship in **v3.0.2** (single release). M1 is a pure doc correction; M2 is opt-in and behavior-inert at the shipped default. The shipped default stays flat: `CLAUDE_CODE_MAX_SUBAGENT_SPAWN_DEPTH` is ABSENT from the distributed template `settings.json` (env-opt-in only, local/dev), so no user project receives nesting on by default.
 
 ## §C Constraints
 
@@ -77,8 +77,8 @@ CONST-V3R2-020 mirrors the CLAUDE.md §14 background/concurrency clause; CONST-V
 1. Add `Agent` to `sync-auditor` `tools`; keep `permissionMode: plan` (REQ-SND-013).
 2. Document the read-only per-dimension verifier pattern in the `sync-auditor` body: one child per Functionality/Security/Craft/Consistency dimension, `Explore` or `general-purpose` + `mode: "plan"`, with HARD constraints REQ-SND-016/017/018 stated inline (REQ-SND-021).
 3. Assert the env is local/dev-only: confirm the distributed template `settings.json` does NOT set `CLAUDE_CODE_MAX_SUBAGENT_SPAWN_DEPTH`; document the opt-in path (REQ-SND-019).
-4. (conditional, D5) If plan-auditor is in scope: mirror the pattern with explicit `mode: "plan"` child scoping (REQ-SND-020).
-5. (mechanical) Mirror `sync-auditor.md` (+optional `plan-auditor.md`) to template; `make build`; `go test ./internal/template/...` green (REQ-SND-022).
+4. Confirm `plan-auditor` is untouched: NO `Agent` tool added, body unmodified (REQ-SND-020 Unwanted; the `plan-auditor` pilot is deferred to a future SPEC per D5).
+5. (mechanical) Mirror `sync-auditor.md` to template; `make build`; `go test ./internal/template/...` green (REQ-SND-022).
 6. Commit plan artifacts to `release/v3.0.2-prep` (Tier M Hybrid Trunk 1-person OSS; no PR at plan-phase).
 
 ## §E Self-Verification (plan-phase)
@@ -88,8 +88,8 @@ CONST-V3R2-020 mirrors the CLAUDE.md §14 background/concurrency clause; CONST-V
 - [ ] `sync-auditor` `permissionMode: plan` + tools-without-`Agent` confirmed (frontmatter read).
 - [ ] `plan-auditor` `permissionMode: default` confirmed (frontmatter read).
 - [ ] zone-registry CONST-V3R2-020/044 clause text confirmed to be background/concurrency (NOT nesting) — re-sync is conditional.
-- [ ] Out of Scope section present (5 `### Out of Scope — <topic>` H3 sub-headings).
-- [ ] `[NEEDS CLARIFICATION]` markers (D5 plan-auditor scope, D6 release phase) present for orchestrator resolution before Implementation Kickoff Approval.
+- [ ] Out of Scope section present (6 `### Out of Scope — <topic>` H3 sub-headings, incl. plan-auditor nesting pilot).
+- [x] Clarification markers RESOLVED at plan finalization — D5: M2 pilot = `sync-auditor` only (`plan-auditor` deferred, spec.md §E Out of Scope); D6: M1 + M2 both ship in v3.0.2 (shipped default flat, env opt-in only). 0 open markers remain.
 
 ## §F Risks & Anti-Patterns
 

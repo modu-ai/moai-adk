@@ -41,7 +41,7 @@ Internal (orchestrator-verified via frontmatter reads):
 
 - All 11 retained agents omit the `Agent`/`Task` tool → the flat hierarchy holds by configuration. With the v2.1.217 default-off, MoAI now also aligns with the runtime default (a **double guarantee**).
 - `sync-auditor` frontmatter: `tools: Read, Grep, Glob, Bash, TaskCreate, TaskUpdate, TaskList, TaskGet, Skill`; `permissionMode: plan` (ALREADY read-only) — the primary pilot target.
-- `plan-auditor` frontmatter: `permissionMode: default` — secondary/optional pilot target.
+- `plan-auditor` frontmatter: `permissionMode: default` — NOT piloted by this SPEC. Its read-only nesting pilot is DEFERRED to a future SPEC (see §E Out of Scope — plan-auditor nesting pilot); the `default` permission mode would require an explicit `mode: "plan"` for read-only child scoping, which the future SPEC will own.
 - The `AskUserQuestion` single-point-of-contact boundary is nesting-independent (a nested child is even further from the user; still barred). This invariant MUST be preserved unchanged.
 
 ### Affected surfaces (live + template mirror — all 7 confirmed to have mirrors)
@@ -56,8 +56,7 @@ Internal (orchestrator-verified via frontmatter reads):
 | 6 | `.claude/rules/moai/development/agent-patterns.md` § Deprecated: Hierarchical Manager Chain (~L314) | M1 |
 | 7 | `.claude/rules/moai/workflow/orchestration-mode-selection.md` § Mode 6 "scaling NOT nesting" (~L66) | M1 (SHOULD-REVIEW) |
 | 8 | `.claude/rules/moai/core/zone-registry.md` CONST-V3R2-020 (L219) / CONST-V3R2-044 (L417) | M1 (conditional re-sync only) |
-| 9 | `.claude/agents/moai/sync-auditor.md` (primary) | M2 |
-| 10 | `.claude/agents/moai/plan-auditor.md` (optional secondary) | M2 |
+| 9 | `.claude/agents/moai/sync-auditor.md` (sole M2 pilot target) | M2 |
 
 Live line numbers are indicative (2026-07-24 reads); run-phase MUST re-anchor by content token before editing.
 
@@ -89,9 +88,9 @@ Note on surface 8: the live CONST-V3R2-020 clause mirrors the CLAUDE.md §14 *ba
 - **REQ-SND-017** (Ubiquitous, read-only children): A spawned verifier child shall be read-only — either `Explore` (inherently read-only) or `general-purpose` spawned with `mode: "plan"`. Because the parenthesized `Agent(agent_type)` allowlist is ignored inside a subagent, read-only enforcement rests on the `mode: "plan"` parameter (for `general-purpose`) or the `Explore` choice, NOT on a type allowlist.
 - **REQ-SND-018** (Unwanted): No `sync-auditor` path, and no spawned child at any depth, shall invoke `AskUserQuestion` or `mcp__askuser` (the single-point-of-contact boundary holds at every depth).
 - **REQ-SND-019** (Unwanted): The pilot-enabling env var shall NOT appear in the distributed template `settings.json`; it shall be LOCAL/dev-only (`settings.local.json` or a documented opt-in), so the shipped default distribution remains flat.
-- **REQ-SND-020** (Where — optional secondary): **Where** `plan-auditor` is also selected for the pilot (optional), the `plan-auditor` body shall spawn read-only children with explicit `mode: "plan"` (its `permissionMode` is `default`, NOT `plan`, so children are not read-only unless scoped). By default this SPEC pilots `sync-auditor` only and defers `plan-auditor`.
+- **REQ-SND-020** (Unwanted): This SPEC shall NOT modify `plan-auditor` — `plan-auditor` shall NOT gain the `Agent` tool and shall NOT receive per-dimension / per-MUST-PASS verifier-child documentation. The M2 pilot scope is `sync-auditor` ONLY; the `plan-auditor` read-only nesting pilot is DEFERRED to a future SPEC (see §E Out of Scope — plan-auditor nesting pilot), which will own the explicit `mode: "plan"` child scoping that `plan-auditor`'s `permissionMode: default` requires.
 - **REQ-SND-021** (Ubiquitous, body documentation): The `sync-auditor` body shall document the read-only per-dimension verifier pattern (one child per dimension, `Explore` or `general-purpose` + `mode: "plan"`) with the HARD constraints REQ-SND-016 / REQ-SND-017 / REQ-SND-018 stated inline.
-- **REQ-SND-022** (Ubiquitous): The M2 `sync-auditor` (and optional `plan-auditor`) edits shall be mirrored to `internal/template/templates/` and `make build` shall be run (Template-First), preserving template neutrality (REQ-SND-011).
+- **REQ-SND-022** (Ubiquitous): The M2 `sync-auditor` edits shall be mirrored to `internal/template/templates/` and `make build` shall be run (Template-First), preserving template neutrality (REQ-SND-011).
 
 ## §C Non-Functional Constraints
 
@@ -123,6 +122,12 @@ The following are explicitly **out of scope** for this SPEC.
 - `manager-develop`, `manager-docs`, `manager-git`, `builder-harness`, `manager-design`, `e2e-tester`, `super-advisor`, `manager-spec` retain flat configuration; none gains the `Agent` tool.
 - No write-capable child spawning is introduced.
 
+### Out of Scope — plan-auditor nesting pilot
+
+- `plan-auditor` is NOT part of the M2 pilot. This SPEC pilots read-only nesting on `sync-auditor` ONLY.
+- `plan-auditor` does NOT gain the `Agent` tool in this SPEC, and its body is not modified.
+- Rationale: `plan-auditor` has `permissionMode: default` (not `plan`), so read-only child scoping would require an explicit `mode: "plan"` — a distinct design deferred to a future SPEC. This SPEC records the deferral here rather than as an open question.
+
 ### Out of Scope — Claude Code runtime internals
 
 - MoAI consumes the runtime nesting/concurrency mechanism; it does NOT implement or modify Claude Code's depth/concurrency enforcement.
@@ -144,5 +149,5 @@ The following are explicitly **out of scope** for this SPEC.
 - `.claude/rules/moai/development/agent-patterns.md` § Deprecated Hierarchical Manager Chain (M1 surface 6).
 - `.claude/rules/moai/workflow/orchestration-mode-selection.md` § Mode 6 (M1 surface 7).
 - `.claude/rules/moai/core/zone-registry.md` CONST-V3R2-020 / CONST-V3R2-044 (M1 surface 8, conditional).
-- `.claude/agents/moai/sync-auditor.md` / `plan-auditor.md` (M2 surfaces 9-10).
+- `.claude/agents/moai/sync-auditor.md` (M2 surface 9 — sole pilot target). `plan-auditor.md` nesting pilot is deferred (spec.md §E Out of Scope — plan-auditor nesting pilot).
 - `CLAUDE.local.md` §2 (Template-First) + §25 (Template internal-content isolation) + §15 (language neutrality).
