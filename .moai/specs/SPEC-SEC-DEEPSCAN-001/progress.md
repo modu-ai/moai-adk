@@ -90,7 +90,7 @@ m1_to_mN_commit_strategy: single-run-commit  # markdown-first SPEC; M1-M6 delive
 ```yaml
 sync_complete_at: 2026-07-24
 sync_status: audit-ready
-sync_commit_sha: <pending-backfill-next-commit>
+sync_commit_sha: d2690740e169213529727f32add7875f0509959b
 changelog_entry_position: "[Unreleased] > ### Added (Epic SECURITY-ABSORB, joint entry with SPEC-SEC-GUARDIAN-001)"
 frontmatter_status_transitions:
   spec_md: "in-progress -> completed"
