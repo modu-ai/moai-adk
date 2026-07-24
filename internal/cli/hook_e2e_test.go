@@ -368,6 +368,9 @@ func TestHookValidEventTypes_AllHaveSubcommands(t *testing.T) {
 		"spec-status":                        true, // SPEC-STATUS-AUTO-001: domain hook, not a Claude Code event
 		"harness-classify":                   true, // SPEC-V3R6-HARNESS-CLASSIFIER-WIRING-001: domain hook, not a Claude Code event
 		"stop-goal":                          true, // SPEC-GOAL-ENGINE-001: goal-evaluator Stop hook, not a Claude Code event
+		"security-scan":                      true, // in-session security guardian L1: domain hook, not a Claude Code event
+		"security-turn":                      true, // in-session security guardian L2: domain hook, not a Claude Code event
+		"security-commit":                    true, // in-session security guardian L3: domain hook, not a Claude Code event
 	}
 
 	for _, cmd := range hookCmd.Commands() {

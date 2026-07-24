@@ -45,7 +45,10 @@ Non-overlap: run a `/moai review` to SEE findings without changing anything; run
 - --design: Extract design patterns from UI code and create/update `.moai/design/system.md`
 - --critique: Post-build craft review focusing on subtle layering, surface elevation, token architecture, and typography hierarchy
 - --lean: Over-engineering-ONLY lean audit mode. Short-circuits the comprehensive 4-perspective analysis (Security / Performance / Quality / UX) and runs ONLY the over-engineering scan with the 5-tag finding format + net-reduction summary. Read-only and advisory: applies no fixes, modifies no files, renders no PASS/FAIL verdict. See the "--lean Mode" section below.
-- --repo: Repo-wide scope. With --lean, sweeps the WHOLE tree instead of the diff-scope default. Ignored without --lean.
+- --repo: Repo-wide scope. With --lean, sweeps the WHOLE tree instead of the diff-scope default. With --deep, scopes the deep scan to the whole tree. Ignored without --lean or --deep.
+- --deep: On-demand multi-agent DEEP vulnerability scan mode — a six-phase, adversarially-verified pipeline (architecture map -> threat model -> hunt -> adversarial verify -> report -> patch). A bare `--deep` is treated as a security-focused deep scan and composes with `--security`. Additive and non-breaking: it never modifies the existing single-pass `--security` lens. See the "--deep Mode" section below.
+- --patch: (--deep only) Opt-in patch drafting. OFF by default: while `--patch` is absent, the deep scan stops after the report phase and drafts no patch. Present only when the user explicitly passes it.
+- --commit SHA: (--deep diff scope) Scope the deep scan to a single commit `<SHA>` (the single-commit diff scope, alongside `--staged` and `--branch`).
 
 ## Phase 1: Identify Changes
 
@@ -274,6 +277,134 @@ The --lean mode is read-only and advisory. It applies NO fixes, modifies NO file
 
 - The 5 lean tags are the OPERATIONAL scan surface for the over-engineering anti-patterns already catalogued in `.claude/skills/moai/references/anti-patterns.md` (the Premature Abstraction and Over-Engineering categories, mapped to Agent Core Behavior #4 Enforce Simplicity). Consult that catalogue for the wrong/right examples; this section does not restate it.
 - The lean audit is the post-hoc DETECTION counterpart to the pre-code PREVENTION ladder in `.claude/rules/moai/core/moai-constitution.md` § Agent Core Behaviors #4 Enforce Simplicity (the simplicity decision ladder). The ladder prevents over-engineering before code is written; the lean audit detects what slipped through. Consult that ladder for the ordered prevention steps; this section does not restate it.
+
+## --deep Mode — On-Demand Multi-Agent Deep Vulnerability Scan
+
+When the `--deep` flag is present, `/moai review` runs an on-demand, adversarially-verified deep vulnerability scan. `--deep` is a *depth* modifier layered on the existing *breadth* review: it reuses the same scope-selection machinery (`--repo` / `--staged` / `--branch B` / `--commit SHA`) and the Security perspective, then adds independent adversarial verification, a machine-readable findings artifact, and (opt-in) reviewer-vouched patch drafts. A bare `--deep` is treated as a security-focused deep scan and composes with `--security`; `--security --deep` is the explicit form. `--deep` is additive and non-breaking — the existing single-pass `--security` lens is unchanged.
+
+This deep scan is the heavy, explicitly-invoked layer. It composes with the lighter always-on review lens rather than replacing it. It lives entirely under `/moai review --deep`; there is no separate top-level security subcommand (the former `/moai security` entry was retired and is not revived — the deep scan is a mode of `/moai review`, and no `security` / `audit` / `sec` alias is added).
+
+### Job menu — mapped onto review scope flags
+
+`/moai review --deep` offers the following jobs, each mapped onto the existing scope-selection mechanism (Phase 1). The orchestrator collects the job + scope + `--patch` opt-in via `AskUserQuestion` BEFORE the pipeline launches (see the User-Interaction Boundary below).
+
+| Job | Scope flag | What it scans |
+|-----|-----------|---------------|
+| Scan the whole repository | `--repo` | The entire working tree |
+| Scan staged changes | `--staged` | The staged diff |
+| Scan a branch diff | `--branch B` | `current...B` |
+| Scan a single commit | `--commit SHA` | Exactly the one commit `<SHA>` |
+| Draft patches for confirmed findings | `--patch` (opt-in) | Enables the patch phase (see below); OFF by default |
+
+`--patch` is an independent opt-in and is OFF by default: while `--patch` is absent, the deep scan stops after the report phase and drafts, writes, or applies no patch. Patch drafting happens only when `--patch` is explicitly present.
+
+### Prerequisite & graceful degradation ladder
+
+The deep scan's PRIMARY execution path requires Dynamic Workflows (Claude Code v2.1.154+). Availability is checked BEFORE launch (pipeline agents cannot prompt mid-run, so the degradation choice is made up front). Observable signals that mean Dynamic Workflows are unavailable: the runtime version is below v2.1.154, the `CLAUDE_CODE_DISABLE_WORKFLOWS` environment variable is set, or workflows are disabled in settings. When Dynamic Workflows are unavailable the scan degrades gracefully rather than failing:
+
+| Rung | Condition | Path | Rigor |
+|------|-----------|------|-------|
+| PRIMARY | Dynamic Workflows available (v2.1.154+, not disabled) | Runtime-constructed `Workflow()` — full fan-out across phases | Full |
+| FALLBACK | Workflows unavailable, but bounded parallel is viable | Mode-4 bounded parallel fan-out (3-5 concurrent read-only agents), findings batched | **2-of-3 quorum preserved** — degradation drops concurrency/scale, NOT verification rigor |
+| DEGRADED | Neither viable | Single-pass `/moai review --security` plus the native `/security-review` | Reduced (single-pass, no per-finding 3-voter panel) — the report MUST label this rung as rigor-reduced so a reduced result is never mistaken for a full adversarially-verified scan |
+
+The FALLBACK rung is a genuine degradation of scale only: it preserves the 3-voter panel and the 2-of-3 quorum. Only the DEGRADED last-resort rung reduces rigor, and it self-labels as such in the report.
+
+The shipped artifact of this mode is THIS playbook (template-safe markdown), not a static workflow script. The orchestrator constructs the `Workflow()` at runtime from the phase descriptions below. A user MAY save the generated script into their own `.claude/workflows/` for reuse, but no static script is shipped.
+
+### The six-phase pipeline
+
+The deep scan executes six phases in order. Phases 1-4 are strictly READ-ONLY against the working tree; phase 5 writes only under the results directory; phase 6 writes only inside an isolated scratch clone.
+
+1. **Architecture map** — a single read-only recon agent (or `Explore`) maps modules, entry points, and trust boundaries. READ-ONLY (Read / Grep / Glob only).
+2. **Threat model** — a single agent consumes the phase-1 map and enumerates the attack surface. READ-ONLY. Loads `Skill("moai-ref-owasp-checklist")` for the baseline vocabulary.
+3. **Vulnerability hunt** — a parallel fan-out of hunt agents (per area / per manifest) surfaces candidate findings. READ-ONLY. Each hunt agent loads the relevant security reference skill(s) on demand via `Skill()` injection (NOT via static frontmatter preload): `Skill("moai-ref-owasp-checklist")` for web-app classes, `Skill("moai-ref-llm-security")` for LLM/agentic classes, `Skill("moai-ref-secops")` for CI/CD, container, and API-operational classes, and `Skill("moai-ref-supply-chain")` for dependency and provenance classes.
+4. **Adversarial verification** — each candidate finding is cross-examined by an independent 3-voter panel (detail below). READ-ONLY.
+5. **Report** — the orchestrator (or a synthesizer agent) writes the results directory (schema below). Writes ONLY under the results directory.
+6. **Patch** — gated by `--patch`; drafts one reviewer-vouched patch per confirmed finding in an isolated scratch clone (detail below). Writes ONLY inside the scratch clone; never the live tree.
+
+The scan reasons across all supported languages equally — it names vulnerability classes and platform-native features generically, not by any single language's toolchain, standard library, or package manager.
+
+### Phase 4 — adversarial verification panel
+
+Every candidate finding from the hunt phase passes a 3-voter panel before it may enter the report. The three voters are perspective-diverse and REFUTE-skewed:
+
+- **REACHABILITY** — Is the vulnerable code path actually reachable by attacker-controlled input? (affirm | refute)
+- **IMPACT** — If reached, what is the concrete blast radius? Is the stated impact real, not theoretical? (affirm | refute)
+- **DEFENSES** — Do existing defenses (validation, authorization, framework guards) already neutralize this? (affirm undefended | refute defended)
+
+Quorum admission rule:
+
+- A finding is ADMITTED to the report only when at least **2 of the 3** voters affirm it (the 2-of-3 quorum).
+- When all 3 voters affirm (unanimous), the finding's confidence MAY be stated as "high".
+- A non-unanimous panel (2-of-3, not 3-of-3) caps the finding's stated confidence at medium and MUST NOT state "high" — the cap binds confidence only, not severity (a high-severity finding may keep high severity while its confidence is capped at medium).
+- A candidate that fails the 2-of-3 quorum is REJECTED: it is excluded from the confirmed-findings body and recorded only under a trailing "Unconfirmed candidates" appendix, never mixed with confirmed findings.
+
+Voter independence: each voter is a separate agent given ONLY the finding claim plus the surrounding code context — never the hunt agent's own reasoning chain. Each voter's default posture is to disprove the finding (REFUTE-skewed), reusing the skeptical-evaluation stance. No voter reuses the hunt agent's reasoning as its sole basis.
+
+### Phase 6 — patch drafting & reviewer vouch (`--patch` only)
+
+When `--patch` is present and at least one confirmed finding exists, each patch is drafted in isolation and independently reviewed:
+
+- **Drafter** — an `Agent(isolation: "worktree")` operates in an isolated scratch clone of the repository, drafts the minimal fix for exactly one finding, and emits a unified diff. The drafter never touches the user's live working tree.
+- **Independent reviewer** — a SEPARATE agent spawn (distinct from the drafter) reads the drafted diff plus the finding and surrounding code (read-only) and vouches, all-or-nothing, for THREE claims: (a) it addresses only the one finding, (b) it introduces no new vulnerability, (c) it leaves behavior otherwise unchanged.
+- When all three claims are vouched, the diff is written into the results directory as a patch artifact. When the reviewer cannot vouch for all three, the pipeline emits a short explanatory note for that finding instead of a patch; other findings' patches are unaffected.
+
+Patches are NEVER auto-applied: the pipeline never runs `git apply`, and never stages, commits, or pushes any drafted patch to the user's repository. Each confirmed-and-vouched finding yields exactly one patch artifact the user applies manually — one finding = one patch = one PR. The drafter and reviewer are always different spawns (independence is a hard requirement).
+
+### Results directory — a report, not a SPEC
+
+The deep scan writes its outputs to a timestamped results directory classified as a REPORT (an analysis of existing code), under `.moai/reports/` — never under `.moai/specs/` (a scan is a report, not a specification). The timestamp is injected as an input argument or stamped after the run returns; it is never generated inside the workflow script body (so resume-caching stays valid).
+
+```
+.moai/reports/security-deepscan-<timestamp>/
+  .gitignore        # a single line: *  (so a stray `git add` can never sweep the results into a commit)
+  report.md         # the human report
+  findings.jsonl    # machine-readable, one finding per line
+  revision.json     # the revision stamp
+  patches/          # only when --patch: one F<i>.patch or F<i>.note.md per confirmed finding
+```
+
+Every results directory ships its own `.gitignore` (ignoring its entire contents) so a stray `git add` never sweeps a scan into a commit.
+
+`report.md` — each confirmed finding carries a stable finding ID (`F1`, `F2`, ...) plus five fields:
+
+```
+### F<i> — <title>
+- Severity:        <critical | high | medium | low>
+- Confidence:      <high | medium>        (medium max when the panel was non-unanimous)
+- Impact:          <concrete blast radius>
+- Exploit scenario: <step-by-step reachability narrative>
+- Recommendation:  <fix direction>
+- Panel:           REACHABILITY=<affirm|refute> IMPACT=<...> DEFENSES=<...> (<N>/3)
+```
+
+Rejected candidates appear ONLY under a trailing `## Unconfirmed candidates (did not reach 2-of-3)` appendix.
+
+`findings.jsonl` — machine-readable, exactly one finding per line (JSONL); each line carries the finding ID plus its structured fields:
+
+```json
+{"id":"F1","severity":"high","confidence":"medium","title":"...","impact":"...","exploit":"...","recommendation":"...","panel":{"reachability":true,"impact":true,"defenses":false},"location":{"path":"...","hint":"..."}}
+```
+
+`revision.json` — the revision stamp records which commit was scanned, the effort tier used, and whether the working tree was included in the scan:
+
+```json
+{"scanned_commit":"<sha>","effort_tier":"<low|medium|high|xhigh|max>","working_tree_included":true,"scope":"repo|branch|commit|staged|file","generated_at":"<injected-timestamp>"}
+```
+
+### User-interaction boundary
+
+All user decisions for the deep scan — scope selection, the `--patch` opt-in, and the degradation-path choice — are collected by the orchestrator via `AskUserQuestion` BEFORE the pipeline launches. The pipeline agents (recon, threat-modeler, hunters, voters, drafter, reviewer) never prompt the user: an agent that lacks a required input returns a structured blocker report to the orchestrator, which resolves it and re-delegates. No pipeline or workflow agent asks the user anything directly.
+
+### Edge cases
+
+- **Zero confirmed findings** — the scan completes cleanly, writes a results directory stating "0 confirmed findings", and drafts no patch. No error, no empty patch.
+- **Confirmed finding but `--patch` absent** — the report is written; the patch phase does not run.
+- **Reviewer cannot vouch** — a note (not a patch) is emitted for that finding; other findings' patches are unaffected.
+- **Non-unanimous panel on a high-severity finding** — severity may remain high, but the stated CONFIDENCE is capped at medium (severity and confidence are independent axes).
+- **Dynamic Workflows disabled** — the availability signal is checked BEFORE launch; the degradation rung is chosen up front, not mid-run.
+- **Large repository, hundreds of candidates** — the PRIMARY `Workflow()` path handles scale; the FALLBACK Mode-4 path batches findings within the 3-5 concurrent ceiling. Neither path drops the quorum.
 
 ## Task Tracking
 

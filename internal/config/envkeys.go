@@ -70,6 +70,24 @@ const (
 	// named profile was previously launched. Users who want strict default
 	// semantics set this to opt out of the fallback.
 	EnvNoProfileFallback = "MOAI_NO_PROFILE_FALLBACK"
+
+	// EnvSecurityCommitReview activates the in-session security guardian's
+	// Layer-3 commit-time cross-file review (SPEC-SEC-GUARDIAN-001). Layer 3 is
+	// dormant (a silent no-op) unless this flag is set to a truthy value. Aligned
+	// with the MOAI_SYNC_GATE_BLOCKING opt-in precedent.
+	EnvSecurityCommitReview = "MOAI_SECURITY_COMMIT_REVIEW"
+
+	// EnvSecurityTurnReview opts the guardian's Layer-2 turn-diff review into a
+	// model-backed / agentic escalation (SPEC-SEC-GUARDIAN-001). Unset, Layer 2
+	// stays regex-only and advisory; the hook itself never invokes a sub-model —
+	// the orchestrator translates the hook's structured signal into an Agent()
+	// review.
+	EnvSecurityTurnReview = "MOAI_SECURITY_TURN_REVIEW"
+
+	// EnvSecurityBlocking promotes a guardian finding from advisory to a blocking
+	// decision (SPEC-SEC-GUARDIAN-001). Unset, every guardian layer is advisory.
+	// Aligned with the MOAI_SYNC_GATE_BLOCKING opt-in precedent.
+	EnvSecurityBlocking = "MOAI_SECURITY_BLOCKING"
 )
 
 // MoAI test-only environment variables.
