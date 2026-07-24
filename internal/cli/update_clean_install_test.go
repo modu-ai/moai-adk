@@ -25,6 +25,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"testing"
 
 	"github.com/modu-ai/moai-adk/internal/manifest"
@@ -66,14 +67,16 @@ func (s *stubDeployer) ExtractTemplate(name string) ([]byte, error) {
 // stubMigrateRunner is the fake adapter for opts.RunMigrateAgency. Records
 // invocations for assertion.
 type stubMigrateRunner struct {
-	calls    int
-	lastRoot string
-	err      error
+	calls     int
+	lastRoot  string
+	lastForce bool
+	err       error
 }
 
-func (s *stubMigrateRunner) Run(projectRoot string, dryRun bool, out io.Writer) error {
+func (s *stubMigrateRunner) Run(projectRoot string, dryRun, force bool, out io.Writer) error {
 	s.calls++
 	s.lastRoot = projectRoot
+	s.lastForce = force
 	return s.err
 }
 
@@ -963,5 +966,92 @@ func TestFingerprintPredicate_CrossPlatformParity(t *testing.T) {
 			t.Errorf("iteration %d: AC-CRR-010(a): IsV2=true on a v3 project; "+
 				"verdict must be a stable false on %s", i, runtime.GOOS)
 		}
+	}
+}
+
+// TestReproduction_MigrateTargetExistsLoop_Issue1132 reproduces the #1132
+// permanent-retry loop: a v2-fingerprint project whose .agency/ legacy
+// directory remains while a migration target (.moai/config/sections/design.yaml)
+// already exists — e.g. an earlier interrupted update already deployed the v3
+// template that ships design.yaml.
+//
+// Pre-fix mechanics: runAgencyMigrationAdapter hardcodes force=false, so the
+// migrateAgencyRunner's checkTargetsAbsent gate returns MIGRATE_TARGET_EXISTS,
+// runCleanReinstall aborts at Step 3.5 BEFORE Step 4 removes .agency/, the v2
+// fingerprint (Signal 2) stays positive, and every subsequent `moai update`
+// re-enters the same abort — a permanent retry loop the CLI --force flag never
+// reaches.
+//
+// Post-fix: the adapter treats MIGRATE_TARGET_EXISTS (and
+// MIGRATE_ARCHIVE_EXISTS) as already-migrated no-ops, so the reinstall
+// completes, Step 4 removes .agency/, and the migration never re-fires.
+//
+// Pre-fix: runCleanReinstall returns "step 3.5: ... MIGRATE_TARGET_EXISTS" → FAIL.
+// Post-fix: reinstall completes; second run has no .agency/ signal → PASS.
+func TestReproduction_MigrateTargetExistsLoop_Issue1132(t *testing.T) {
+	root := t.TempDir()
+	// v2 fingerprint: v2.* version (Signal 1) + .agency/ residue (Signal 2).
+	writeTestFile(t, root, ".moai/config/sections/system.yaml",
+		"moai:\n    version: v2.16.1\n")
+	makeTestDir(t, root, ".agency")
+	writeTestFile(t, root, ".agency/index.md", "legacy agency content\n")
+	// The #1132 trigger: a migration target already exists on disk.
+	writeTestFile(t, root, ".moai/config/sections/design.yaml",
+		"design:\n    default_framework: flutter\n")
+
+	var out bytes.Buffer
+	opts := CleanReinstallOptions{
+		Out:      &out,
+		Deployer: &stubDeployer{},
+		// The REAL adapter — the loop lives in its error handling, so the
+		// stubMigrateRunner must not stand in for it here.
+		RunMigrateAgency: runAgencyMigrationAdapter,
+	}
+
+	// First run: pre-fix this aborts at Step 3.5 with MIGRATE_TARGET_EXISTS.
+	result, err := runCleanReinstall(context.Background(), root, opts)
+	if err != nil {
+		t.Fatalf("#1132 regression: clean-reinstall aborted on a pre-existing "+
+			"migration target (permanent retry loop): %v", err)
+	}
+	if !result.AgencyMigrated {
+		t.Errorf("first run: AgencyMigrated = false; want true (Step 3.5 ran)")
+	}
+	if !strings.Contains(out.String(), "agency migration skipped: target already migrated") {
+		t.Errorf("first run: missing skip log line; output:\n%s", out.String())
+	}
+
+	// Step 4 must have removed the loop-driving Signal 2 residue.
+	if _, statErr := os.Stat(filepath.Join(root, ".agency")); !os.IsNotExist(statErr) {
+		t.Errorf(".agency/ still present after clean-reinstall (statErr=%v); "+
+			"Signal 2 stays positive → the retry loop persists", statErr)
+	}
+
+	// The pre-existing migration target is untouched by the skip path.
+	design, readErr := os.ReadFile(filepath.Join(root, ".moai/config/sections/design.yaml"))
+	if readErr != nil {
+		t.Fatalf("read design.yaml after reinstall: %v", readErr)
+	}
+	if !strings.Contains(string(design), "flutter") {
+		t.Errorf("design.yaml content clobbered by the skip path: %s", design)
+	}
+
+	// Signal 2 converged: the fingerprint no longer reports the agency dir.
+	fp2, fpErr := detectV2Fingerprint(root)
+	if fpErr != nil {
+		t.Fatalf("second fingerprint: %v", fpErr)
+	}
+	if fp2.V2DetectedViaAgencyDir {
+		t.Errorf("second fingerprint: V2DetectedViaAgencyDir = true; want false")
+	}
+
+	// Second run is a migration no-op: no .agency/ → Step 3.5 gate closed,
+	// and the reinstall completes cleanly again (no re-abort).
+	result2, err2 := runCleanReinstall(context.Background(), root, opts)
+	if err2 != nil {
+		t.Fatalf("second run: unexpected error (loop not converged): %v", err2)
+	}
+	if result2.AgencyMigrated {
+		t.Errorf("second run: AgencyMigrated = true; want false (no .agency/ left)")
 	}
 }

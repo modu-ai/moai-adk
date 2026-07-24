@@ -69,11 +69,17 @@ type CleanReinstallOptions struct {
 	// new manifest.Manager using projectRoot.
 	Manifest manifest.Manager
 
+	// Force: propagate the CLI --force flag to the Step 3.5 agency-migration
+	// adapter (issue #1132). When true, an explicit `moai update --force`
+	// performs a real forced migration (overwriting existing targets) instead
+	// of the already-migrated skip no-op.
+	Force bool
+
 	// RunMigrateAgency: optional override for the .agency/ → .moai/ migration
 	// invocation (REQ-VVCR-025). nil defaults to a no-op when not testing;
 	// production callers from M5 inject the canonical runMigrateAgency
 	// adapter that proxies cobra command flags.
-	RunMigrateAgency func(projectRoot string, dryRun bool, out io.Writer) error
+	RunMigrateAgency func(projectRoot string, dryRun, force bool, out io.Writer) error
 }
 
 // CleanReinstallResult summarizes the outcome of runCleanReinstall for
@@ -218,7 +224,7 @@ func runCleanReinstall(ctx context.Context, projectRoot string, opts CleanReinst
 	// Step 3.5 — Auto-invoke .agency/ migration if present (REQ-VVCR-025)
 	// ---------------------------------------------------------------
 	if fp.V2DetectedViaAgencyDir && opts.RunMigrateAgency != nil {
-		if err := opts.RunMigrateAgency(projectRoot, opts.DryRun, out); err != nil {
+		if err := opts.RunMigrateAgency(projectRoot, opts.DryRun, opts.Force, out); err != nil {
 			return result, fmt.Errorf("step 3.5: auto-invoke migrate agency: %w", err)
 		}
 		result.AgencyMigrated = true
@@ -293,7 +299,6 @@ func runCleanReinstall(ctx context.Context, projectRoot string, opts CleanReinst
 			mergeableBackups = append(mergeableBackups, updatemerge.FileBackup{Path: mf, Data: data})
 		}
 	}
-
 	// ---------------------------------------------------------------
 	// Step 5 — Reinstall embedded templates
 	// ---------------------------------------------------------------
