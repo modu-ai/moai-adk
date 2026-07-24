@@ -99,7 +99,7 @@ ac_debt_reconciliation: >
 
 ```yaml
 sync_complete_at: 2026-07-24
-sync_commit_sha: pending-backfill-sync
+sync_commit_sha: 8e2880378
 sync_status: complete
 changelog_entry_position: "[Unreleased] > ### Changed (first entry)"
 frontmatter_status_transitions:
