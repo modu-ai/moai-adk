@@ -2,7 +2,7 @@
 id: SPEC-SKILLPORT-SVG-INFOGRAPHIC-001
 title: "Clean-room author moai-domain-svg-infographic skill"
 version: "0.1.3"
-status: in-progress
+status: completed
 created: 2026-07-24
 updated: 2026-07-24
 author: manager-spec

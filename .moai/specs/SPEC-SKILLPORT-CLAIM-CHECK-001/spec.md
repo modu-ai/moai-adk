@@ -2,7 +2,7 @@
 id: SPEC-SKILLPORT-CLAIM-CHECK-001
 title: "Clean-room author moai-workflow-docs-claim-check skill"
 version: "0.1.4"
-status: in-progress
+status: completed
 created: 2026-07-24
 updated: 2026-07-24
 author: manager-spec

@@ -70,4 +70,20 @@ level3_placement: inline   # measured 17683B/2614w < ~5K-token Level-2 budget (R
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+```yaml
+sync_complete_at: "2026-07-24"
+sync_commit_sha: "pending-backfill-skillport-epic"
+sync_status: PASS
+b12_self_test_a: "grep -c 'SPEC-SKILLPORT-HUMANIZE-LEDGER-001' CHANGELOG.md (pre-emission) → 0"
+b12_self_test_b: "acceptance.md SSOT AC row count (grep -cE '^\\| AC-HML-[0-9]+ \\|') → 18; CHANGELOG entry references '18/18' for this SPEC"
+b12_self_test_c: "file paths cited in the CHANGELOG entry verified via ls: internal/template/templates/.claude/skills/moai-domain-humanize/, .claude/skills/moai-domain-humanize/, internal/template/catalog.yaml — all exist"
+changelog_entry_position: "[Unreleased] > Added, single Epic-level SKILLPORT entry covering all 3 SPECs (this is one of the three)"
+frontmatter_status_transitions:
+  spec_md: "in-progress -> completed (status field), updated unchanged (already 2026-07-24)"
+  plan_md: "no frontmatter status/updated field present (Tier S artifact — header-only per house convention); no transition applicable"
+  acceptance_md: "no frontmatter status/updated field present (Tier S artifact — header-only per house convention); no transition applicable"
+  progress_md: "this §E.4 block added on the sync commit"
+canary_compliance_check:
+  applicable: false
+  note: "this SPEC defines no forward-looking policy that its own sync tests; canary check not applicable"
+```
