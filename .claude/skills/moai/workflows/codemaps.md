@@ -78,6 +78,12 @@ Expected Output from Explore agent:
 - Technology stack summary
 - Architecture pattern identification (MVC, Clean, Hexagonal, etc.)
 
+### High-Count Extraction Fan-Out (capability-gated)
+
+**Where** `.claude/workflows/codemaps-extract.js` exists on disk **AND** the runtime supports dynamic workflows, **and** the source-package count is high — approaching the full codebase, where parallel wall-clock speed offsets per-agent cost — the orchestrator MAY launch it to layer per-package architecture insight on top of Phase 1's output. **Where** any of those conditions is absent, including the ordinary low-package-count case, Phase 1 and Phase 2 run their existing path with no error, no warning, and no interruption.
+
+The scoping is augmentation, never replacement: `go list -deps -json` + `go doc` — or the project language's equivalent dependency and doc extractors — remain the mechanically complete source for the dependency graph and public surface. The fan-out contributes only review-grade inference (coupling risk, latent contracts, layering judgments, negative-space gaps) that the deterministic baseline cannot produce, so a run that reduces to restating import edges has added nothing. The orchestrator launches the script itself (scaling, not subagent nesting); every extractor is read-only and returns markdown — one missing required input returns a structured blocker report, and no extractor ever prompts the user. Launching it is executor delegation inside Phase 1, so the Agentless pipeline contract above is unaffected — it does not select the next phase.
+
 ## Phase 2: Architecture Analysis
 
 The orchestrator performs architecture analysis directly (no Agent() spawn) from the Phase 1 exploration output plus deterministic tooling (e.g., `go list -deps -json` + `go doc`, or the project language's equivalent dependency/doc extractors) — replacing the former analysis delegation spawn.

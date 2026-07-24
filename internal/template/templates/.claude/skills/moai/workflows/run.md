@@ -51,6 +51,12 @@ Phase 4 Mode Selection: orchestrator autonomous decision over the 6-mode catalog
 | Phase 11~4: Implementation | `Read workflows/run/task-decomposition.md` | DDD/TDD cycles, quality validation (Phase 13/2.8), git operations (Phase 19), completion guidance (Phase 20) |
 | Mode Routing + Completion | `Read workflows/run/mode-orchestration.md` | Execution mode gate, mode dispatch routing, context propagation, completion criteria, test scenarios |
 
+## Parallel Quality-Evidence Fan-Out (capability-gated)
+
+**Where** `.claude/workflows/sync-audit-4dim.js` exists on disk **AND** the runtime supports dynamic workflows, the orchestrator MAY launch it once across the Phase 13 / 16 / 17 quality band to collect four-dimension evidence (Functionality / Security / Craft / Consistency) in one parallel pass rather than three serial audit passes. **Where** either condition is absent — the script was removed, or the runtime predates dynamic-workflow support — those phases run their existing serial path with no error, no warning, and no interruption. The existing maximum-3-iteration ceilings on the quality phases are preserved on both paths.
+
+The orchestrator launches the script itself; this is scaling, not subagent nesting, so the flat agent hierarchy is preserved. All four judges are read-only: a judge that cannot run a check records an `evidence_gaps` entry, and one missing required input returns a structured blocker report — neither prompts the user. The script's harmonic-mean aggregate is **evidence, not a verdict**: the binding PASS/FAIL remains owned by `sync-auditor`, which may cite the aggregate but is never replaced by it. Implementation Kickoff Approval is likewise unaffected — it is decided before any workflow launches.
+
 ## Invocation Flow
 
 ```
