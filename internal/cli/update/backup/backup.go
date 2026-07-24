@@ -248,9 +248,13 @@ func CleanupOldBackups(projectRoot string, keepCount int) int {
 	// Sort backups by name (timestamp) ascending (oldest first)
 	sort.Strings(backups)
 
-	// Delete backups exceeding the keep limit
+	// Delete the OLDEST excess backups so the NEWEST keepCount survive.
+	// The timestamps sort ascending, so the retention window is the tail
+	// backups[len-keepCount:]; everything before it is the oldest excess.
+	// (A prior revision deleted backups[keepCount:] — the newest — which
+	// destroyed the most recent restore points on every rotation.)
 	deletedCount := 0
-	for _, backupName := range backups[keepCount:] {
+	for _, backupName := range backups[:len(backups)-keepCount] {
 		backupPath := filepath.Join(backupDir, backupName)
 		if err := os.RemoveAll(backupPath); err != nil {
 			// Log error but continue with other backups
