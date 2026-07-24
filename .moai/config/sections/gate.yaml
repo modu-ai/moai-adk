@@ -4,10 +4,12 @@
 # pyproject.toml, Cargo.toml, ...) and runs the matching vet/lint/test toolchain
 # before git commit. Tools that are not installed are skipped gracefully.
 #
-# The ast_grep_gate sub-section controls the optional ast-grep domain-rule scan
-# step. It is OFF by default (opt-in): enable it only when the `sg` CLI is
-# installed and the rules directory contains loadable rules. When `sg` is
-# absent, an enabled gate degrades gracefully (scan is skipped with a notice).
+# The ast_grep_gate sub-section controls the ast-grep domain-rule scan step.
+# It is ON by default in advisory mode (findings reported, commits never
+# blocked); blocking is opt-in via block_on_error/warn_only_mode below. When
+# the `sg` CLI is absent, the scan is skipped gracefully with a notice.
+# Known limitation: the PreToolUse hook budget is 5s while the scan timeout is
+# 30s; in advisory mode a timeout only loses the advisory output.
 gate:
   enabled: true
   skip_tests: false
@@ -16,8 +18,8 @@ gate:
     lint: 60
     test: 120
   ast_grep_gate:
-    enabled: false
+    enabled: true
     # rules_dir defaults to .moai/config/astgrep-rules when empty.
     rules_dir: ""
-    block_on_error: true
-    warn_only_mode: false
+    block_on_error: false
+    warn_only_mode: true
