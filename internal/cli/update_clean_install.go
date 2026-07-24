@@ -232,6 +232,22 @@ func runCleanReinstall(ctx context.Context, projectRoot string, opts CleanReinst
 	}
 
 	// ---------------------------------------------------------------
+	// Step 3.9 — Backup-coverage abort gate (pre-destructive invariant)
+	// ---------------------------------------------------------------
+	// Clean-path counterpart of the normal update path's
+	// verifyNamespaceBackupCoverage gate: every PRESERVE-inventory file still
+	// on disk MUST have a copy in the Step 3 backup before the first
+	// destructive step (Step 4 REMOVE / Step 5 Deploy) runs. Verifies against
+	// the STRICT inventory the snapshot actually captured — not the
+	// conservative superset — so real v2 upgrades do not spuriously abort.
+	// Placed AFTER Step 3.5 so anything the agency migration did to the
+	// backup directory is also caught. On violation the backup dir is left in
+	// place for forensic inspection (HARD-5 backup-before-removal).
+	if covErr := verifyPreserveBackupCoverage(projectRoot, inv, finalBackupDir); covErr != nil {
+		return result, fmt.Errorf("step 3.9: backup coverage gate: %w", covErr)
+	}
+
+	// ---------------------------------------------------------------
 	// Step 4 — REMOVE deprecated paths
 	// ---------------------------------------------------------------
 	//
