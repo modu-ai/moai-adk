@@ -1,7 +1,7 @@
 ---
 id: SPEC-AGENT-PARALLEL-OPT-001
 title: "Agent instruction diet + plan/run/sync parallelization maximization"
-version: "0.5.0"
+version: "0.6.0"
 status: draft
 created: 2026-07-25
 updated: 2026-07-25
@@ -21,6 +21,7 @@ partially_supersedes: [SPEC-DWF-CODEMAPS-PILOT-001]
 | Version | Date | Author | Change |
 |---------|------|--------|--------|
 | 0.1.0 | 2026-07-25 | manager-spec | 최초 plan-phase draft. §F Ground Truth 전량 본 세션 실측(agent line count 10파일, orphan grep, template mirror 8경로, write-concurrency 3표면, run/sync/plan phase 번호). 브리프 2건 실측 정정(§F.7). Tier L(§E). |
+| 0.6.0 | 2026-07-25 | manager-spec | M1 후속 정밀화 3건(코디네이터 재위임). (1) REQ-APO-070 AC-APO-070(b) 충족 — supersede 대상을 **ID로 명명**(`AC-DCP-010`, 앵커 `acceptance.md:79` / `progress.md:86`, 소유 요구사항 `REQ-DCP-009` / `REQ-DCP-010`). 종전 문구는 "비배포 acceptance criterion"이라는 산문 서술만 있어 ID 인용 0건이었다. (2) AC-APO-070(c) 충족 — 인용 grep을 축약형 `grep -r "codemaps-extract" …`에서 정식 문구 `grep -r "codemaps-extract\|codemaps-pilot" …`로 복원(`\|codemaps-pilot` 교대 누락 시 엄격 판정 FAIL). §H 교차참조(선행 SPEC 항목)에도 동일 ID·문구 반영. (3) REQ-APO-012 정밀화 — Phase 13/16/17의 소유자를 진입 라우터 `run.md`가 아닌 하위 스킬 `run/task-decomposition.md`로 정정. `run.md`는 `TestEntryRouterLOCCeiling`(`internal/skills`)이 강제하는 200 LOC 상한 아래의 얇은 라우터(실측 197)로 배선 수용 불가이며, 실제 Phase 정의(L108/178/217)와 4dim 배선(L104)은 하위 스킬에 있다. M1이 라우터에 선배치했다가 203 LOC로 가드를 깨고 하위 스킬로 이설한 사실과 정합. `sync.md` Phase 7 배선은 진입 라우터 본문(`sync.md:56`)에 실재하므로 무변경. 요구사항 의미 불변(정밀화, 스코프 변경 아님). AC-APO-012 판정 명령은 `.claude/skills/moai/workflows/` 재귀 grep이라 경로 정정 불요(하위 스킬 포함). |
 | 0.5.0 | 2026-07-25 | manager-spec | plan-audit iter-3 0.847(임계 0.85 대비 -0.003) → 마감 편집 F1-F4. F1: AC-049(c)의 `M` 마커를 정의 heading(`^## `)으로 앵커링 — 앵커 없는 형태는 :49 산문 cross-reference까지 세어 "계층형 유지" 분기를 부당 FAIL시켰고 기재 baseline(합 2)도 실제(합 3)와 불일치했다. F2: AC-024b가 v0.2.0 상태로 잔존(구-넘버링 4번째 사례) → REQ-024b 문구로 재작성. F3: REQ-071의 5개 금지 클래스 중 3개가 SHOULD로 새던 구조적 누수 → AC-071b에 `== 0` 판정 추가. F4: 미한정 "Group 1" 2곳에 `구` 한정어 적용. 사전 제출 검사에 **REQ-touched ∖ AC-changed 집합차** 절차 추가. |
 | 0.4.0 | 2026-07-25 | manager-spec | plan-audit iter-2 FAIL 0.77 → **결정의 binding surface 미전파** 결함 해소. iter-1에서 서사(narrative)만 고치고 MUST AC 셀·마일스톤 실행 지시를 v0.2.0 상태로 남긴 3건이 근본 원인 — N1(AC-043 + M3 작업 0 게이트 명령), N2(AC-071 정규식), N3(AC-055 합계 상한). 부가: N4 구-넘버링 잔재 4곳(§E Tier 근거 포함), N5 AC-049 이진 판정화, N6 `module:` 전체 경로, N7 AC-076 다중파일 `grep -c` 오용, N8 AC-074 과잉 `== 0`, N9 AC-023 Phase 귀속 정정. AC 총수 55 → 56(AC-071b 신설: manual-only 클래스 표기 의무 이행). |
 | 0.3.0 | 2026-07-25 | manager-spec | plan-audit FAIL 0.69 → 결함 해소. **구 Group 1(write-concurrency, REQ-001..005) 전면 철회** — REQ-024b가 이미 Phase 12를 Group 1에서 분리했고 §C가 disjoint-writer를 제외하므로 in-scope 수혜자가 0인 채 `[HARD]` 가드만 넓히는 구조였다(사용자 승인). 후속 SPEC으로 이관. Group 6 신설(REQ-074..078): shipped rule 모순 해소(D2)·SSOT 방향(D12)·e2e 목적지 명명(D11). D4 게이트 grep 판별형 교체(12,133→0), D5 공허 AC 실문구 교정, D6 `design.md` 신규 저작, D7 C1 정규식 사실오류 정정, D8/D9/D10 AC 실행가능화. |
@@ -65,7 +66,9 @@ MoAI 오케스트레이션 표면은 두 축에서 동시에 비용을 지불하
 capability gate는 배포(REQ-APO-069) 이후에도 유지 **shall** — 배포는 파일 존재를 보장할 뿐 런타임 지원(Claude Code dynamic workflow 최소 버전)을 보장하지 않으므로 gate는 여전히 필요하다.
 
 #### REQ-APO-012 (Ubiquitous)
-`run.md` 품질 단계(Phase 13/16/17)와 `sync.md` 품질 단계(Phase 7)는 `sync-audit-4dim.js`를 4차원 증거 수집 수단으로 명시 **shall**.
+`run/task-decomposition.md` 품질 단계(Phase 13/16/17)와 `sync.md` 품질 단계(Phase 7)는 `sync-audit-4dim.js`를 4차원 증거 수집 수단으로 명시 **shall**.
+
+Phase 13/16/17을 소유하는 것은 하위 스킬 `.claude/skills/moai/workflows/run/task-decomposition.md`이며 진입 라우터 `run.md`가 **아니다** — `run.md`는 해당 Phase들을 하위 스킬로 위임하는 라우팅 표만 보유하고(`run.md:51`), `internal/skills`의 `TestEntryRouterLOCCeiling`이 강제하는 200 LOC 상한 아래(실측 197)의 얇은 라우터이므로 배선을 수용할 여지가 없다. 반면 `sync.md`의 Phase 7 배선은 진입 라우터 본문에 위치하므로(`sync.md:56`) 위 문장의 `sync.md` 지정은 그대로 유효하다.
 
 #### REQ-APO-013 (Ubiquitous)
 3개 workflow 스크립트는 **증거 수집 수단(evidence vehicle)**으로만 기능 **shall** — 구속력 있는 PASS/FAIL verdict 소유권은 `plan-auditor` / `sync-auditor`에 유지되며 스크립트 산출물이 verdict를 대체하지 **shall not**.
@@ -204,7 +207,7 @@ archived 12개 에이전트 이름은 어떤 편집 산출물에도 신규 도�
 `plan-research-fanout.js`, `sync-audit-4dim.js`, `codemaps-extract.js` 3개 스크립트는 `internal/template/templates/.claude/workflows/`에 미러되어 배포 사용자에게 전달 **shall**.
 
 #### REQ-APO-070 (Ubiquitous)
-본 SPEC은 `SPEC-DWF-CODEMAPS-PILOT-001`의 **비배포 acceptance criterion을 명시적으로 supersede** **shall** — 해당 SPEC의 `grep -r "codemaps-extract" internal/template/templates/` → nothing 판정은 본 SPEC 이후 무효이며, 그 사실이 본 SPEC 산출물과 선행 SPEC 아티팩트 양쪽에 기록 **shall**. 선행 판정을 침묵 속에 위반하지 **shall not**.
+본 SPEC은 `SPEC-DWF-CODEMAPS-PILOT-001`의 **비배포 acceptance criterion을 명시적으로 supersede** **shall** — 대상 criterion은 `AC-DCP-010`(정의 위치 `acceptance.md:79`, 판정 기록 `progress.md:86`)이며, 이를 소유하는 요구사항은 `REQ-DCP-009` / `REQ-DCP-010`이다. 해당 AC의 정식 판정 문구인 `grep -r "codemaps-extract\|codemaps-pilot" internal/template/templates/` → nothing 은 본 SPEC 이후 무효이며, 그 사실이 본 SPEC 산출물과 선행 SPEC 아티팩트 양쪽에 기록 **shall**. 선행 판정을 침묵 속에 위반하지 **shall not**.
 
 #### REQ-APO-071 (Ubiquitous)
 배포되는 3개 스크립트는 §25 템플릿 중립성을 충족 **shall** — 내부 SPEC ID, REQ/AC 토큰, 내부 날짜, commit SHA, 메인테이너 절대 경로가 스크립트 헤더·주석·문자열 어디에도 잔존하지 **shall not**.
@@ -489,7 +492,7 @@ v0.2.0의 §F.8.3은 `sync-audit-4dim.js:42`의 예시 문자열 `spec_id: "SPEC
 - `.claude/rules/moai/development/spec-frontmatter-schema.md` — REQ-APO-040/041 교차참조 대상 SSOT.
 - `.claude/rules/moai/workflow/dynamic-workflows.md` — workflow 원시 및 `codemaps-extract.js` worked example.
 - `.claude/rules/moai/workflow/orchestration-mode-selection.md` §C.2 — Mode 4 동시 spawn 3-5 상한(REQ-APO-028 fan-out 폭 제약).
-- `SPEC-DWF-CODEMAPS-PILOT-001` — `codemaps-extract.js` 스코핑 선례. 본 SPEC이 그 **비배포 acceptance criterion을 부분 supersede**한다(REQ-APO-070); high-count 증강 스코핑은 유지된다(REQ-APO-014).
+- `SPEC-DWF-CODEMAPS-PILOT-001` — `codemaps-extract.js` 스코핑 선례. 본 SPEC이 그 **비배포 acceptance criterion `AC-DCP-010`**(소유 요구사항 `REQ-DCP-009` / `REQ-DCP-010`; 정식 문구 `grep -r "codemaps-extract\|codemaps-pilot" internal/template/templates/` → nothing)을 **부분 supersede**한다(REQ-APO-070); high-count 증강 스코핑은 유지된다(REQ-APO-014).
 - `internal/template/split_namespace_test.go` — `hns-*` / `harness-*` Runner 차단 가드(prefix-scoped, 개정 불요 — §F.8.2).
 - `internal/template/internal_content_leak_test.go` — `leakTextExtensions`에 `.js` 추가 대상(REQ-APO-072, §F.8.3).
 - `internal/cli/update/plan/plan.go` — user-owned 보존 분류(prefix-scoped, 변경 불요 — §F.8.4).
