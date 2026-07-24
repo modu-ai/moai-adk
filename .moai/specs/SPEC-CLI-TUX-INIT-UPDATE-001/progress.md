@@ -103,7 +103,7 @@
 
 ```yaml
 run_complete_at: 2026-07-25            # M1+M2+M3+M4 complete — run-phase DONE; ready for sync-phase (manager-docs)
-run_commit_sha: pending-backfill-M4    # M4 commit SHA backfilled in a follow-up chore commit (a commit cannot name its own hash); finalizes the run-phase SHA
+run_commit_sha: 0164ef002              # M4 commit (backfilled here); finalizes the run-phase SHA. run-phase milestone commits: M1 5ee17e9e1, M2 d6d19bbc5, M3 c2fd0bf8c, M4 0164ef002
 run_status: run-complete               # M1 foundation + M2 update wiring + M3 init/PrintBanner-logo/root-help + M4 verify/golden-recapture all done
 ac_pass_count: 25                      # all gating AC-TUXIU-001..024 PASS (12 MUST + 13 SHOULD); M4 finalized AC-016 (PASS, was PASS-WITH-DEBT at M2) + AC-021/022 truecolor gradient from binary + AC-014/012/023 guards
 ac_fail_count: 0
