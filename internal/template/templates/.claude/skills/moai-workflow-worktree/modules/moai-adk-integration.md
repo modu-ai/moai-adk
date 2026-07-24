@@ -189,10 +189,12 @@ Access Levels:
 
 ### MoAI Configuration Integration
 
-Worktree settings in .moai/config/config.yaml:
+Worktree settings live in .moai/config/sections/workflow.yaml (the
+workflow.worktree section); worktree_root is configured in
+.moai/config/sections/git-strategy.yaml:
 
-worktree section:
-- auto_create: Enable automatic worktree creation (default: true)
+workflow.worktree section:
+- auto_create: Enable automatic worktree creation (default: false)
 - auto_sync: Enable automatic synchronization (default: true)
 - cleanup_merged: Remove worktrees for merged branches (default: true)
 - worktree_root: Base directory for worktrees (default: {repo}/.moai/worktrees)
