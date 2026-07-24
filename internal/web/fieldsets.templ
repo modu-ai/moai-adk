@@ -402,11 +402,11 @@ templ fieldsetAgentFrontmatter(view pageView) {
 			<p class="section__desc"><span data-i18n="agentfm.taxonomy">workflow_agents purpose defaults follow the purpose taxonomy in</span> <code class="field__key">.claude/rules/moai/workflow/dynamic-workflows.md</code></p>
 		</div>
 		<div class="section__body">
-			<div class="grid">
-				<div class={ "field", templ.KV("has-error", hasFieldError(view.FieldErrors, "performance_tier")) }>
+			<div class="agentfm-tierbar">
+				<div class={ "field", "agentfm-tierfield", templ.KV("has-error", hasFieldError(view.FieldErrors, "performance_tier")) }>
 					<span class="field__label"><span class="field__title" data-i18n="agentfm.tier.title">Performance tier</span><code class="field__key">llm.performance_tier</code></span>
 					<span class="field__desc" data-i18n="agentfm.tier.desc">Sets each sub-agent's model/effort from this tier column (max / medium / low). Per-agent edits below are saved as overrides and shown as Custom.</span>
-					<div class="radio-group">
+					<div class="radio-group tier-segments">
 						for _, opt := range agentFMPerfTierOptions() {
 							<label class="radio">
 								if !view.PerfTierCustom && (opt == view.PerfTier || (view.PerfTierIsEmpty && opt == "medium")) {
@@ -437,7 +437,12 @@ templ fieldsetAgentFrontmatter(view pageView) {
 				</div>
 			</div>
 			@templ.JSONScript("moai-profile-matrix", profileMatrixData())
-			<div class="grid">
+			// Single consolidated per-agent explanation (was repeated under every
+			// agent row before the density redesign — moved here so it renders ONCE
+			// at the grid head). schemaSelectRow keeps the second baseline for its
+			// dormant `.effort` field branch (source count stays 2).
+			<p class="agentfm-gridnote"><span class="field__hint" data-i18n="hint.effort.go_unbound">Resolved from the performance tier above — per-agent edits save as overrides.</span></p>
+			<div class="agentfm-grid">
 				for _, agent := range view.AgentFMs {
 					if agentIsMoaiCore(agent) {
 						@agentFMRow(agent, view.LLM, view.FieldErrors)
@@ -452,45 +457,50 @@ templ fieldsetAgentFrontmatter(view pageView) {
 // (empty=preserve). 파싱 실패 행은 편집 비활성 표시만 한다 (design.md §C.1).
 templ agentFMRow(agent agentfm.AgentInfo, llm config.LLMConfig, errs map[string]string) {
 	if agent.ParseOK {
-		<div class="field">
-			<span class="field__label">
-				if agentTierBadge(agent.Name, agent.Model, agent.Effort).HasBadge {
-					<span class={ "agentfm-badge", templ.KV("agentfm-badge--custom", agentTierBadge(agent.Name, agent.Model, agent.Effort).IsCustom) } data-i18n-title={ agentTierBadge(agent.Name, agent.Model, agent.Effort).TooltipKey }>{ agentTierBadge(agent.Name, agent.Model, agent.Effort).Glyph }</span>
+		<div class="agentfm-row">
+			<div class="agentfm-row__id">
+				<span class="agentfm-row__name">
+					if agentTierBadge(agent.Name, agent.Model, agent.Effort).HasBadge {
+						<span class={ "agentfm-badge", templ.KV("agentfm-badge--custom", agentTierBadge(agent.Name, agent.Model, agent.Effort).IsCustom) } data-i18n-title={ agentTierBadge(agent.Name, agent.Model, agent.Effort).TooltipKey }>{ agentTierBadge(agent.Name, agent.Model, agent.Effort).Glyph }</span>
+					}
+					<code class="field__key agentfm-name">{ agent.Name }</code>
+				</span>
+				if short := agentDescriptionShort(agent.Description); short != "" {
+					<span class="agentfm-desc">{ short }</span>
 				}
-				<code class="field__key agentfm-name">{ agent.Name }</code>
-			</span>
-			if short := agentDescriptionShort(agent.Description); short != "" {
-				<span class="agentfm-desc">{ short }</span>
-			}
-			<span class="select-wrap">
-				<select class="select" name={ "agentfm." + agent.Name + ".model" } id={ "agentfm." + agent.Name + ".model" }>
-					for _, m := range agentFMModelValues() {
-						if m == agentSelectedModel(llm, agent) {
-							<option value={ m } selected data-i18n-title={ "fieldDesc.agentfm.model." + m }>{ m }</option>
-						} else {
-							<option value={ m } data-i18n-title={ "fieldDesc.agentfm.model." + m }>{ m }</option>
+			</div>
+			<div class="agentfm-row__ctrl">
+				<span class="select-wrap">
+					<select class="select" name={ "agentfm." + agent.Name + ".model" } id={ "agentfm." + agent.Name + ".model" } aria-label={ "Model for " + agent.Name }>
+						for _, m := range agentFMModelValues() {
+							if m == agentSelectedModel(llm, agent) {
+								<option value={ m } selected data-i18n-title={ "fieldDesc.agentfm.model." + m }>{ m }</option>
+							} else {
+								<option value={ m } data-i18n-title={ "fieldDesc.agentfm.model." + m }>{ m }</option>
+							}
 						}
-					}
-				</select>
-			</span>
-			if agentModelIsDefault(llm, agent) {
-				<span class="field__hint agentfm-default-tag" data-i18n="agentfm.default">(default)</span>
-			}
-			<span class="select-wrap">
-				<select class="select" name={ "agentfm." + agent.Name + ".effort" } id={ "agentfm." + agent.Name + ".effort" }>
-					for _, e := range agentFMEffortValues() {
-						if e == agentSelectedEffort(llm, agent) {
-							<option value={ e } selected data-i18n-title={ "fieldDesc.agentfm.effort." + e }>{ e }</option>
-						} else {
-							<option value={ e } data-i18n-title={ "fieldDesc.agentfm.effort." + e }>{ e }</option>
+					</select>
+				</span>
+				if agentModelIsDefault(llm, agent) {
+					<span class="field__hint agentfm-default-tag" data-i18n="agentfm.default">(default)</span>
+				}
+			</div>
+			<div class="agentfm-row__ctrl">
+				<span class="select-wrap">
+					<select class="select" name={ "agentfm." + agent.Name + ".effort" } id={ "agentfm." + agent.Name + ".effort" } aria-label={ "Effort for " + agent.Name }>
+						for _, e := range agentFMEffortValues() {
+							if e == agentSelectedEffort(llm, agent) {
+								<option value={ e } selected data-i18n-title={ "fieldDesc.agentfm.effort." + e }>{ e }</option>
+							} else {
+								<option value={ e } data-i18n-title={ "fieldDesc.agentfm.effort." + e }>{ e }</option>
+							}
 						}
-					}
-				</select>
-			</span>
-			if agentEffortIsDefault(llm, agent) {
-				<span class="field__hint agentfm-default-tag" data-i18n="agentfm.default">(default)</span>
-			}
-			<span class="field__hint" data-i18n="hint.effort.go_unbound">Resolved from the performance tier above — per-agent edits save as overrides.</span>
+					</select>
+				</span>
+				if agentEffortIsDefault(llm, agent) {
+					<span class="field__hint agentfm-default-tag" data-i18n="agentfm.default">(default)</span>
+				}
+			</div>
 			if msg := fieldErrorMsg(errs, "agentfm."+agent.Name+".model"); msg != "" {
 				<span class="field-error">@icon("alert-circle")<span>{ msg }</span></span>
 			}
@@ -499,7 +509,7 @@ templ agentFMRow(agent agentfm.AgentInfo, llm config.LLMConfig, errs map[string]
 			}
 		</div>
 	} else {
-		<div class="field field--readonly">
+		<div class="field field--readonly agentfm-row--unavailable">
 			<span class="field__label"><code class="field__key">{ agent.Name }</code><span class="field__ro" data-i18n="agentfm.unavailable">unavailable (frontmatter parse failed)</span></span>
 		</div>
 	}

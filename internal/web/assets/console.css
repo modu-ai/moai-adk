@@ -204,6 +204,7 @@
   --tracking-body: -0.025em;
   --tracking-body-tight: -0.05em;
   --tracking-caption: 0;
+  --tracking-label: 0.04em;    /* uppercased micro-labels (tier badge, controls) */
 
   /* ── Sizes ── */
   --text-xs: 0.75rem;
@@ -277,6 +278,17 @@
   --container-lg: 1024px;
   --container-xl: 1280px;
   --container-2xl: 1440px;
+
+  /* ── Console v3 modernization aliases (build ON the frozen scale above) ──
+     Semantic surface + accent aliases so component rules read intent, not raw
+     token names. Every value resolves to an existing brand token — no new hues. */
+  --surface: var(--color-surface);          /* raised cards */
+  --surface-sunken: var(--color-bg);        /* recessed strips / grid heads */
+  --surface-tint: var(--gradient-signature-soft); /* faint brand wash */
+  --accent: var(--color-primary);           /* alias — was undefined (latent bug) */
+  --focus-ring: 0 0 0 3px var(--border-focus-ring);
+  --control-h: 44px;                          /* unified control height */
+  --control-h-sm: 38px;                       /* compact control height */
 }
 
 /* ── Base / semantic typography ──
@@ -316,11 +328,13 @@ html[lang="zh"] body { font-family: "Pretendard", "Noto Sans CJK SC", system-ui,
    ============================================================ */
 .appbar {
   position: sticky; top: 0; z-index: 40;
-  display: flex; align-items: center; gap: var(--space-4);
-  height: 56px; padding: 0 var(--space-6);
-  background: color-mix(in srgb, var(--color-bg) 85%, transparent);
-  backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
-  border-bottom: 1px solid var(--border-1);
+  display: flex; align-items: center; flex-wrap: wrap;
+  gap: var(--space-2) var(--space-3);
+  min-height: 56px; padding: var(--space-2) var(--space-6);
+  background: color-mix(in srgb, var(--color-surface) 82%, transparent);
+  backdrop-filter: saturate(1.4) blur(14px); -webkit-backdrop-filter: saturate(1.4) blur(14px);
+  border-bottom: 1px solid var(--border-2);
+  box-shadow: var(--shadow-xs);
 }
 /* Moai statue brand lockup */
 .brand { display: inline-flex; align-items: center; gap: 10px; }
@@ -361,32 +375,25 @@ html[lang="zh"] body { font-family: "Pretendard", "Noto Sans CJK SC", system-ui,
 
 /* Context badges (AC-WC-XXX: current project + profile badges in appbar) */
 .appbar__badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  padding: 4px 10px;
-  border-radius: var(--radius-md);
-  background: var(--gradient-signature-soft);
-  color: var(--fg-1);
-  font-size: 13px;
-  font-weight: var(--fw-medium);
-  line-height: 1.4;
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 4px 11px; border-radius: var(--radius-full);
+  background: var(--surface); border: 1px solid var(--border-2);
+  color: var(--fg-1); font-size: 12.5px; font-weight: var(--fw-medium);
+  line-height: 1.4; letter-spacing: var(--tracking-body); max-width: 240px;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  transition: border-color var(--duration-fast) var(--easing-default), background var(--duration-fast) var(--easing-default);
 }
-.appbar__badge:hover {
-  background: var(--neutral-100);
-  cursor: pointer;
-}
+.appbar__badge:hover { background: var(--surface-sunken); border-color: var(--border-strong); cursor: default; }
+/* Metadata strip (lang / model / effort / dev) — a recessed monospace status pill
+   that reads like a terminal statusline instead of a bordered mid-row block. */
 .appbar__context {
-  margin-top: 8px;
-  padding: 6px 0;
-  border-top: 1px solid var(--border-2);
+  display: inline-flex; align-items: center;
+  padding: 4px 11px; border-radius: var(--radius-full);
+  background: var(--surface-sunken); border: 1px solid var(--border-2);
 }
 .appbar__context-text {
-  font-size: var(--text-xs);
-  color: var(--fg-3);
-  font-family: var(--font-sans);
-  letter-spacing: var(--tracking-body);
-  line-height: 1.4;
+  font-family: var(--font-mono); font-size: 11.5px; letter-spacing: 0;
+  color: var(--fg-2); line-height: 1.4; white-space: nowrap;
 }
 .iconbtn {
   display: inline-flex; align-items: center; justify-content: center;
@@ -477,29 +484,40 @@ html[lang="zh"] body { font-family: "Pretendard", "Noto Sans CJK SC", system-ui,
   border-bottom: 2px solid var(--border-1);
   padding-bottom: 0;
 }
+/* Modern tab: muted label, sunken hover pill, and a solid brand underline bar on
+   the active tab (drawn via ::after so it sits flush on the strip border). The
+   former `--text-muted`/`--text` vars were undefined — tabs rendered in the
+   inherited body color with no hover feedback; now resolved to the fg roles. */
 .tab {
-  background: transparent; border: none; border-bottom: 2px solid transparent;
-  padding: var(--space-2) var(--space-3); cursor: pointer;
-  font-size: var(--text-sm); font-weight: 500; color: var(--text-muted);
-  margin-bottom: -2px; transition: color .15s, border-color .15s;
+  position: relative; background: transparent; border: none;
+  border-radius: var(--radius-md) var(--radius-md) 0 0;
+  padding: 10px 14px; cursor: pointer; margin-bottom: -1px;
+  font-family: var(--font-sans); font-size: var(--text-sm); font-weight: var(--fw-semibold);
+  color: var(--fg-2); letter-spacing: var(--tracking-body);
+  transition: color var(--duration-fast) var(--easing-default), background var(--duration-fast) var(--easing-default);
 }
-.tab:hover { color: var(--text); }
-.tab.is-active {
-  color: var(--color-primary); border-bottom-color: var(--color-primary);
-  font-weight: 600;
+.tab::after {
+  content: ""; position: absolute; left: 10px; right: 10px; bottom: 0; height: 2px;
+  border-radius: 2px 2px 0 0; background: transparent;
+  transition: background var(--duration-fast) var(--easing-default);
 }
+.tab:hover { color: var(--fg-1); background: var(--surface-sunken); }
+.tab.is-active { color: var(--color-primary); font-weight: var(--fw-bold); }
+.tab.is-active::after { background: var(--color-primary); }
+.tab:focus-visible { outline: 2px solid var(--color-primary); outline-offset: -2px; border-radius: var(--radius-md); }
 .tabpanel { display: block; }
 .tabpanel:not(.is-active) { display: none; }
 .section {
-  margin: 0; padding: 0; border: 1px solid var(--border-1);
-  border-radius: var(--radius-card); background: var(--color-surface);
+  margin: 0; padding: 0; border: 1px solid var(--border-2);
+  border-radius: var(--radius-card); background: var(--surface);
   box-shadow: var(--shadow-sm);
   overflow: clip;
 }
 .section__head {
   /* M1 card density: docs-site v2 card padding scale (18px 20px). */
   padding: 18px 20px;
-  border-bottom: 1px solid var(--border-1);
+  border-bottom: 1px solid var(--border-2);
+  background: color-mix(in srgb, var(--surface-sunken) 55%, var(--surface));
 }
 .section__head-row { display: flex; align-items: center; gap: var(--space-3); }
 .section__desc { margin: var(--space-2) 0 0; font-size: 13.5px; color: var(--fg-2); letter-spacing: var(--tracking-body); line-height: var(--lh-snug); }
@@ -550,17 +568,25 @@ html[lang="zh"] body { font-family: "Pretendard", "Noto Sans CJK SC", system-ui,
   font-size: 11.5px; color: var(--fg-3); line-height: 1.4;
   letter-spacing: var(--tracking-body); margin: -4px 0 2px; text-wrap: pretty;
 }
-/* SPEC-WEBCONF-SIMPLIFY-001 M5 (REQ-WC-006, design.md §E): agentfm tier color badge. */
+/* SPEC-WEBCONF-SIMPLIFY-001 M5 (REQ-WC-006, design.md §E): agentfm tier color badge.
+   Console v3: the badge sits inline in the compact agent row (gap-driven spacing,
+   no margin), sized to read as a status dot beside the agent name. */
 .agentfm-badge {
-  display: inline-block; margin-right: 6px; font-size: 13px; line-height: 1; cursor: help;
+  display: inline-flex; align-items: center; justify-content: center;
+  font-size: 14px; line-height: 1; cursor: help; flex: none;
 }
 .agentfm-badge--custom {
-  font-size: 9.5px; color: var(--fg-3); border: 1px solid var(--border-strong);
-  border-radius: var(--radius-sm); padding: 1px 5px; text-transform: uppercase;
-  letter-spacing: var(--tracking-label);
+  font-size: 9px; color: var(--fg-2); background: var(--surface-sunken);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm); padding: 2px 6px; text-transform: uppercase;
+  letter-spacing: var(--tracking-label); font-weight: var(--fw-bold);
 }
+/* Agent name — a bare, readable mono identifier (drops the field__key chip box
+   it shares markup with, since it is the row's primary label, not a token chip). */
 .agentfm-name {
-  font-size: 15px; font-weight: 600; color: var(--fg-1);
+  font-family: var(--font-mono); font-size: 13px; font-weight: var(--fw-semibold);
+  color: var(--fg-1); background: transparent; border: none; padding: 0;
+  letter-spacing: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 /* The agentfm sub-tabs (.agentfm-subtabs / .agentfm-subtab / .agentfm-panel) were
    removed together with the "Harness agents" group — the section renders a single
@@ -568,9 +594,11 @@ html[lang="zh"] body { font-family: "Pretendard", "Noto Sans CJK SC", system-ui,
 .agentfm-desc {
   font-size: 11.5px; color: var(--fg-3); line-height: 1.4;
   letter-spacing: var(--tracking-body); text-wrap: pretty;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 .agentfm-default-tag {
-  font-size: 10.5px; color: var(--fg-3); font-style: italic;
+  font-size: 10px; color: var(--fg-3); font-style: normal;
+  white-space: nowrap; flex: none;
 }
 
 /* inputs + selects */
@@ -698,9 +726,14 @@ html[lang="zh"] body { font-family: "Pretendard", "Noto Sans CJK SC", system-ui,
 /* ============================================================
    Actions
    ============================================================ */
+/* Save footer — a distinct raised action band so the primary Save reads as the
+   page's terminal commit affordance, set apart from the panels above it. */
 .actions {
   display: flex; align-items: center; gap: var(--space-4);
   margin-top: var(--space-8); flex-wrap: wrap;
+  padding: var(--space-5) var(--space-6);
+  background: var(--surface); border: 1px solid var(--border-2);
+  border-radius: var(--radius-card); box-shadow: var(--shadow-sm);
 }
 .btn {
   font-family: var(--font-sans); font-weight: var(--fw-bold); letter-spacing: var(--tracking-body);
@@ -720,10 +753,10 @@ html[lang="zh"] body { font-family: "Pretendard", "Noto Sans CJK SC", system-ui,
 
 /* ── Profile CRUD manager (SPEC-WEB-CONSOLE-011 M4) ── */
 .profilemgr {
-  margin: 0 0 20px; padding: 18px 20px; border: 1px solid var(--border-1, #e5e2dc);
-  border-radius: var(--radius-card, 12px); background: var(--bg-1, #fff);
+  margin: 0 0 var(--space-6); padding: 18px 20px; border: 1px solid var(--border-2);
+  border-radius: var(--radius-card); background: var(--surface); box-shadow: var(--shadow-xs);
 }
-.profilemgr__head { margin-bottom: 12px; }
+.profilemgr__head { margin-bottom: 14px; }
 .profilemgr__title { font-size: var(--text-md, 16px); font-weight: var(--fw-semibold, 600); margin: 0; }
 .profilemgr__desc { font-size: var(--text-sm, 13px); color: var(--fg-3, #6b6660); margin: 4px 0 0; }
 .profilemgr__list { list-style: none; margin: 0 0 14px; padding: 0; display: flex; flex-direction: column; gap: 6px; }
@@ -743,6 +776,193 @@ html[lang="zh"] body { font-family: "Pretendard", "Noto Sans CJK SC", system-ui,
 /* reveal animation for conditional segments */
 @keyframes segIn { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: translateY(0); } }
 .segments { animation: segIn var(--duration-normal) var(--easing-default); }
+
+/* ============================================================
+   Console v3 — shared helper chrome (previously unstyled classes)
+   ============================================================ */
+/* Inline muted hint text — used by (default) tags, the tier default note, and the
+   consolidated agentfm grid note. Was referenced widely but never styled. */
+.field__hint {
+  font-size: 11.5px; color: var(--fg-3); letter-spacing: var(--tracking-body);
+  line-height: 1.4;
+}
+
+/* Read-only display key rows (schemaReadOnlyRow) — a dashed, recessed control so
+   the value reads as non-editable at a glance. */
+.field--readonly { gap: 6px; }
+.field__ro { font-size: 11.5px; color: var(--fg-3); font-style: normal; }
+.input--ro {
+  display: block; width: 100%; min-height: var(--control-h);
+  padding: 10px 14px; border-radius: var(--radius-md);
+  border: 1px dashed var(--border-strong); background: var(--surface-sunken);
+  color: var(--fg-2); font-family: var(--font-mono); font-size: 13px; letter-spacing: 0;
+}
+
+/* Collapsed raw-view sub-blocks (schemaRawBlock) — a disclosure card. */
+.rawview {
+  margin-top: var(--space-4); border: 1px solid var(--border-2);
+  border-radius: var(--radius-md); background: var(--surface-sunken); overflow: clip;
+}
+.rawview summary {
+  cursor: pointer; padding: 10px 14px; font-size: 13px; color: var(--fg-2);
+  display: flex; align-items: center; gap: 8px; list-style: none;
+}
+.rawview summary::-webkit-details-marker { display: none; }
+.rawview summary:hover { color: var(--fg-1); }
+.rawview[open] summary { border-bottom: 1px solid var(--border-2); color: var(--fg-1); }
+.rawview__pre {
+  margin: 0; padding: 12px 14px; overflow-x: auto;
+  font-family: var(--font-mono); font-size: 12px; line-height: 1.55;
+  color: var(--fg-1); letter-spacing: 0;
+}
+
+/* ============================================================
+   Agents tab — compact, scannable per-agent grid (the density redesign)
+   ============================================================ */
+/* Tier selector prominence: a recessed bar hosting the segmented control that
+   drives the whole agent grid below it. */
+.agentfm-tierbar {
+  padding: var(--space-4) var(--space-5); margin-bottom: var(--space-4);
+  background: var(--surface-sunken); border: 1px solid var(--border-2);
+  border-radius: var(--radius-md);
+}
+.agentfm-tierfield { gap: 8px; }
+
+/* Segmented tier control — the max/medium/low/Custom radios rendered as one
+   connected control (the tick circle is hidden; the filled segment IS the state).
+   Reuses the .radio markup; only the .tier-segments scope restyles it. */
+.tier-segments {
+  display: inline-flex; flex-wrap: wrap; gap: 0; margin-top: var(--space-1);
+  border: 1px solid var(--border-strong); border-radius: var(--radius-md);
+  overflow: clip; background: var(--surface);
+}
+.tier-segments .radio { display: flex; margin: 0; }
+.tier-segments .radio + .radio { border-left: 1px solid var(--border-2); }
+.tier-segments .radio__box { display: none; }
+.tier-segments .radio > span {
+  padding: 9px 18px; font-family: var(--font-mono); font-size: 13px; letter-spacing: 0;
+  color: var(--fg-2); cursor: pointer; white-space: nowrap; text-transform: capitalize;
+  transition: background var(--duration-fast) var(--easing-default), color var(--duration-fast) var(--easing-default);
+}
+.tier-segments .radio:hover > span { background: var(--surface-sunken); color: var(--fg-1); }
+.tier-segments .radio input:checked + .radio__box + span {
+  background: var(--color-primary); color: var(--fg-on-primary); font-weight: var(--fw-bold);
+}
+.tier-segments .radio input:focus-visible + .radio__box + span {
+  outline: 2px solid var(--color-primary); outline-offset: -2px;
+}
+
+/* Template-managed warning — a muted advisory with a warning-tinted glyph
+   (the glyph carries the color signal; the text stays AA-safe muted). */
+.agentfm-warn { display: flex; align-items: center; gap: 6px; color: var(--fg-2); }
+.agentfm-warn svg { width: 14px; height: 14px; flex: none; color: var(--color-warning); }
+
+/* The single consolidated per-agent explanation (was repeated under every row). */
+.agentfm-gridnote {
+  margin: 0 0 var(--space-2); padding: 0;
+}
+
+/* The scannable agent grid — one row per agent, laid out as
+   [ badge + name + description | model select | effort select ]. */
+.agentfm-grid {
+  display: flex; flex-direction: column;
+  border: 1px solid var(--border-2); border-radius: var(--radius-md);
+  background: var(--surface); overflow: clip;
+}
+.agentfm-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(150px, 200px) minmax(128px, 168px);
+  align-items: center; gap: var(--space-2) var(--space-4);
+  padding: 11px var(--space-4);
+  transition: background var(--duration-fast) var(--easing-default);
+}
+.agentfm-row + .agentfm-row { border-top: 1px solid var(--border-2); }
+.agentfm-row:hover { background: var(--surface-sunken); }
+.agentfm-row__id { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.agentfm-row__name { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.agentfm-row__ctrl { display: flex; align-items: center; gap: 7px; min-width: 0; }
+.agentfm-row__ctrl .select-wrap { flex: 1 1 auto; min-width: 0; }
+.agentfm-row__ctrl .select {
+  height: var(--control-h-sm); font-size: 13px; padding: 6px 32px 6px 12px;
+}
+.agentfm-row__ctrl .select-wrap::after { right: 12px; width: 9px; height: 9px; }
+.agentfm-row .field-error { grid-column: 1 / -1; margin-top: 2px; }
+.agentfm-row--unavailable { padding: 11px var(--space-4); }
+.agentfm-row--unavailable + .agentfm-row { border-top: 1px solid var(--border-2); }
+
+/* Narrow viewports: stack the row so the selects go full-width and touch-sized. */
+@media (max-width: 680px) {
+  .agentfm-row { grid-template-columns: 1fr; gap: 8px; padding: 14px var(--space-4); }
+  .agentfm-row__ctrl .select { height: var(--control-h); font-size: 14px; }
+  .agentfm-row__ctrl { justify-content: space-between; }
+}
+
+/* ============================================================
+   SPEC Board page (/specs) — cohesion pass (shares console.css + the appbar,
+   pagehead, and banner chrome; its board-* classes were otherwise unstyled).
+   ============================================================ */
+.board-summary, .board-section {
+  margin: 0 0 var(--space-6); padding: 18px 20px;
+  background: var(--surface); border: 1px solid var(--border-2);
+  border-radius: var(--radius-card); box-shadow: var(--shadow-xs);
+}
+.board-summary h2, .board-section h2 {
+  margin: 0 0 8px; font-size: var(--text-lg); font-weight: var(--fw-bold);
+  letter-spacing: var(--tracking-heading); color: var(--fg-1);
+}
+.board-summary__total { margin: 0 0 12px; font-size: var(--text-sm); color: var(--fg-2); }
+.board-summary__total strong { font-family: var(--font-mono); color: var(--fg-1); }
+.board-section__desc { margin: 0 0 12px; font-size: 13px; color: var(--fg-2); line-height: var(--lh-snug); }
+.board-badges { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+.board-badge {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 4px 11px; border-radius: var(--radius-full);
+  background: var(--surface-sunken); border: 1px solid var(--border-2);
+  font-size: 12.5px; color: var(--fg-2);
+}
+.board-badge strong { font-family: var(--font-mono); color: var(--fg-1); }
+.board-badge--mustfix {
+  background: color-mix(in srgb, var(--color-danger) 9%, var(--surface));
+  border-color: color-mix(in srgb, var(--color-danger) 38%, transparent);
+  color: var(--status-text-danger); font-weight: var(--fw-semibold);
+}
+.board-empty { margin: 0; font-size: 13px; color: var(--fg-3); }
+.board-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.board-item, .board-finding {
+  display: flex; align-items: center; flex-wrap: wrap; gap: 8px;
+  padding: 10px 12px; border: 1px solid var(--border-2); border-radius: var(--radius-md);
+  background: var(--surface-sunken);
+}
+.board-item__id, .board-finding__id {
+  font-family: var(--font-mono); font-size: 12.5px; color: var(--color-primary);
+}
+.board-tier {
+  font-size: 11px; padding: 1px 7px; border-radius: var(--radius-full);
+  border: 1px solid var(--border-strong); color: var(--fg-2);
+}
+.board-item__title, .board-finding__type { font-size: 13px; color: var(--fg-1); }
+.board-item__meta { margin-left: auto; font-size: 11.5px; color: var(--fg-3); font-family: var(--font-mono); }
+.board-remedy {
+  flex-basis: 100%; margin-top: 4px; padding: 8px 10px;
+  font-family: var(--font-mono); font-size: 12px; color: var(--fg-1);
+  background: var(--color-surface); border: 1px solid var(--border-2); border-radius: var(--radius-sm);
+  overflow-x: auto;
+}
+.board-copy {
+  font-family: var(--font-sans); font-size: 12px; font-weight: var(--fw-semibold);
+  color: var(--fg-2); cursor: pointer; padding: 5px 12px;
+  background: var(--surface); border: 1px solid var(--border-1); border-radius: var(--radius-full);
+  transition: border-color var(--duration-fast) var(--easing-default), color var(--duration-fast) var(--easing-default);
+}
+.board-copy:hover { border-color: var(--color-primary); color: var(--color-primary); }
+.board-copy:focus-visible { outline: 2px solid var(--color-primary); outline-offset: 2px; }
+.board-nav {
+  font-family: var(--font-sans); font-size: 13px; font-weight: var(--fw-semibold);
+  color: var(--fg-2); text-decoration: none; padding: 5px 12px;
+  border: 1px solid var(--border-1); border-radius: var(--radius-full);
+  background: var(--surface); white-space: nowrap;
+}
+.board-nav:hover { color: var(--fg-1); border-color: var(--border-strong); }
 
 /* ── Reduced motion guard (accessibility — REQ-WC4-006/011) ── */
 @media (prefers-reduced-motion: reduce) {
