@@ -282,21 +282,36 @@ func buildSelectField(q *Question, result *WizardResult, locale *string) *huh.Se
 		selected = q.Default
 	}
 
-	// Build options eagerly at form-construction time using the current
-	// locale. Static Options() keep the select on the defect-free layout
-	// path (the M2a spike verified huh v2 clamps scrolling minimally via
-	// ensureVisible; OptionsFunc is still unnecessary here because the
-	// option sets are fixed).
-	lq := GetLocalizedQuestion(q, *locale)
-	opts := make([]huh.Option[string], len(lq.Options))
-	for i, opt := range lq.Options {
-		key := opt.Label
-		if opt.Desc != "" {
-			key = opt.Label + " - " + opt.Desc
+	// optionsFn re-derives the localized huh options from the current locale.
+	// It is used two ways below: once eagerly to seed the materialized option
+	// set (Options), and again as the reactive OptionsFunc.
+	optionsFn := func() []huh.Option[string] {
+		lq := GetLocalizedQuestion(q, *locale)
+		opts := make([]huh.Option[string], len(lq.Options))
+		for i, opt := range lq.Options {
+			key := opt.Label
+			if opt.Desc != "" {
+				key = opt.Label + " - " + opt.Desc
+			}
+			opts[i] = huh.NewOption(key, opt.Value)
 		}
-		opts[i] = huh.NewOption(key, opt.Value)
+		return opts
 	}
 
+	// Seed the materialized option set (Options) with the build-time locale AND
+	// bind a reactive OptionsFunc to the locale pointer. huh v2 stores these
+	// separately: Options sets s.options.val (used for the initial render and by
+	// the standalone RunAccessible path), while OptionsFunc sets s.options.fn,
+	// re-evaluated whenever its binding changes — the same reactive mechanism
+	// the Title/Description funcs use. This is the huh-documented dual-call
+	// pattern (Options + OptionsFunc together) and it fixes the defect where a
+	// select showed a localized title but English options because the options
+	// were frozen at form-construction time. Option Values are locale-invariant,
+	// so the selected/default Value binding stays valid across re-localization.
+	// The huh v0.8.x YOffset scroll defect that once motivated static Options()
+	// was resolved in huh v2 (ensureVisible minimum-scroll clamping, verified by
+	// the M2a spike), and every option set here is short and fixed-length, so
+	// OptionsFunc carries no scroll regression.
 	sel := huh.NewSelect[string]().
 		TitleFunc(func() string {
 			lq := GetLocalizedQuestion(q, *locale)
@@ -306,7 +321,8 @@ func buildSelectField(q *Question, result *WizardResult, locale *string) *huh.Se
 			lq := GetLocalizedQuestion(q, *locale)
 			return lq.Description
 		}, locale).
-		Options(opts...).
+		Options(optionsFn()...).
+		OptionsFunc(optionsFn, locale).
 		Value(&selected)
 
 	// Wire up value storage (huh runs Validate on field completion/blur).
@@ -430,6 +446,15 @@ func buildConfirmField(q *Question, result *WizardResult, locale *string) *huh.C
 	// Parse default value
 	value := q.Default == "true"
 
+	// Localize the Yes/No buttons from the locale in effect at build time. huh
+	// v2's Confirm exposes only static Affirmative/Negative setters (no *Func
+	// variant), so — unlike the Title/Description funcs above — the button
+	// labels do NOT re-render when the user changes the conversation language
+	// mid-wizard. In practice the confirm questions (advanced_bridge + Phase 1)
+	// all follow the conversation_language question, so the build-time locale is
+	// normally the user's chosen language already.
+	ui := GetUIStrings(*locale)
+
 	conf := huh.NewConfirm().
 		TitleFunc(func() string {
 			lq := GetLocalizedQuestion(q, *locale)
@@ -439,6 +464,8 @@ func buildConfirmField(q *Question, result *WizardResult, locale *string) *huh.C
 			lq := GetLocalizedQuestion(q, *locale)
 			return lq.Description
 		}, locale).
+		Affirmative(ui.ConfirmYes).
+		Negative(ui.ConfirmNo).
 		Value(&value)
 
 	qID := q.ID

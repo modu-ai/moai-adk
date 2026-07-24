@@ -22,11 +22,11 @@ func TestResolveModelProfileReport_MaxClaude(t *testing.T) {
 	for _, e := range rpt.Agents {
 		got[e.Agent] = e
 	}
-	if e := got["manager-develop"]; e.Model != "fable" || e.Effort != "low" {
-		t.Errorf("manager-develop max: got %s/%s, want fable/low", e.Model, e.Effort)
+	if e := got["manager-develop"]; e.Model != "opus" || e.Effort != "high" {
+		t.Errorf("manager-develop max: got %s/%s, want opus/high", e.Model, e.Effort)
 	}
-	if e := got["Explore"]; e.Model != "inherit" || e.Group != "-" {
-		t.Errorf("Explore: got %s group=%s, want inherit group=-", e.Model, e.Group)
+	if e := got["Explore"]; e.Model != "sonnet" || e.Effort != "low" || e.Group != "explore" {
+		t.Errorf("Explore: got %s/%s group=%s, want sonnet/low group=explore", e.Model, e.Effort, e.Group)
 	}
 	if len(rpt.Agents) != 11 {
 		t.Errorf("expected 11 agents, got %d", len(rpt.Agents))
@@ -34,8 +34,8 @@ func TestResolveModelProfileReport_MaxClaude(t *testing.T) {
 }
 
 // TestResolveModelProfileReport_GLMOverlay covers REQ-MPM-029/030/031 /
-// AC-MPM-019: under GLM, fable maps to glm-5.2 and manager-develop's effort
-// collapses to reasoning-max (coding-max override), with a wire-honesty note.
+// AC-MPM-019: under GLM, opus/fable both map to glm-5.2 and manager-develop's
+// effort collapses to reasoning-max (coding-max override), with a wire-honesty note.
 func TestResolveModelProfileReport_GLMOverlay(t *testing.T) {
 	llm := config.LLMConfig{
 		Profile:  "max",
@@ -56,7 +56,7 @@ func TestResolveModelProfileReport_GLMOverlay(t *testing.T) {
 	for _, e := range rpt.Agents {
 		got[e.Agent] = e
 	}
-	// manager-develop max = fable/low → glm-5.2 + coding-max override → reasoning-max.
+	// manager-develop max = opus/high → glm-5.2 + coding-max override → reasoning-max.
 	md := got["manager-develop"]
 	if md.GLMModel != "glm-5.2" {
 		t.Errorf("manager-develop glm model: got %s, want glm-5.2", md.GLMModel)
@@ -69,8 +69,9 @@ func TestResolveModelProfileReport_GLMOverlay(t *testing.T) {
 	if mg.GLMModel != "glm-4.7" || mg.GLMReasoning != "thinking-off" {
 		t.Errorf("manager-git glm: got %s/%s, want glm-4.7/thinking-off", mg.GLMModel, mg.GLMReasoning)
 	}
-	// Explore stays inherit — no GLM injection.
-	if e := got["Explore"]; e.GLMModel != "" {
-		t.Errorf("Explore should not be GLM-injected, got %s", e.GLMModel)
+	// Explore = sonnet/low → glm-4.7 + low collapses to thinking-off (now that
+	// Explore has an explicit group it IS GLM-injected).
+	if e := got["Explore"]; e.GLMModel != "glm-4.7" || e.GLMReasoning != "thinking-off" {
+		t.Errorf("Explore glm: got %s/%s, want glm-4.7/thinking-off", e.GLMModel, e.GLMReasoning)
 	}
 }

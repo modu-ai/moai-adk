@@ -18,6 +18,13 @@ type UIStrings struct {
 	HelpSelect    string
 	HelpInput     string
 	ErrorRequired string
+	// ConfirmYes / ConfirmNo localize the huh Confirm affirmative/negative
+	// button labels. huh v2's Confirm exposes only static Affirmative/Negative
+	// setters (no *Func variant), so these are applied once at field-build time
+	// from the locale then in effect — they do NOT re-render when the user
+	// changes the conversation language mid-wizard (see buildConfirmField).
+	ConfirmYes string
+	ConfirmNo  string
 }
 
 // translations maps language code -> question ID -> translation.
@@ -93,6 +100,47 @@ var translations = map[string]map[string]QuestionTranslation{
 			Title:       "GitLab 개인 액세스 토큰 입력 (선택사항)",
 			Description: "MR 생성 및 푸시에 필요합니다. 비워두거나 glab CLI를 사용할 수 있습니다.",
 		},
+		"model_policy": {
+			Title:       "모델 정책 선택",
+			Description: "각 에이전트에 할당되는 Claude 모델 등급을 제어합니다. Claude 플랜에 맞추세요.",
+			Options: []OptionTranslation{
+				{Label: "Max (권장)", Desc: "Fable 5 (low) + Opus 4.8 (high) + Sonnet (medium~low) — Max $200 플랜"},
+				{Label: "Medium", Desc: "Opus 4.8 (xhigh~low) + Sonnet (medium~low) — Max $100 플랜"},
+				{Label: "Low", Desc: "Opus 4.8 (high~low) + Sonnet (medium~low) — Plus $20 플랜"},
+			},
+		},
+		"project_mode": {
+			Title:       "프로젝트 모드 선택",
+			Description: "협업 설정을 제어합니다. 솔로 개발자는 'personal'이 권장 기본값입니다.",
+			Options: []OptionTranslation{
+				{Label: "Personal (권장)", Desc: "솔로 개발자 — 팀 조율 오버헤드 없음"},
+				{Label: "Team", Desc: "다중 개발자 환경 — 팀 협업 기능 활성화"},
+			},
+		},
+		"harness_profile": {
+			Title:       "기본 하네스 평가 프로파일 선택",
+			Description: "품질 점수 산정 깊이를 제어합니다. 프로파일은 .moai/config/evaluator-profiles/에서 로드됩니다.",
+		},
+		"lsp_enabled": {
+			Title:       "LSP 통합을 활성화할까요? (기본값: 아니오)",
+			Description: "LSP는 run 단계에서 language-server 진단을 제공합니다. 기본값은 꺼짐(옵트인)입니다.",
+		},
+		"enforce_quality": {
+			Title:       "품질 게이트를 강제할까요? (기본값: 예)",
+			Description: "활성화하면 TRUST 5 품질 게이트가 실패 시 구현 진행을 차단합니다.",
+		},
+		"coverage_exemptions_enabled": {
+			Title:       "커버리지 예외를 허용할까요? (기본값: 아니오)",
+			Description: "특정 파일이나 패키지를 커버리지 목표에서 제외할 수 있게 합니다.",
+		},
+		"design_enabled": {
+			Title:       "디자인 워크플로우를 활성화할까요? (기본값: 예)",
+			Description: "MoAI 디자인 파이프라인(GAN 루프, 브랜드 컨텍스트, Claude Design 통합)을 활성화합니다.",
+		},
+		"claude_design_enabled": {
+			Title:       "Claude Design 통합을 활성화할까요? (기본값: 예)",
+			Description: "디자인 파이프라인 내에서 Claude Design 핸드오프 워크플로우를 활성화합니다.",
+		},
 	},
 	"ja": {
 		"conversation_language": {
@@ -163,6 +211,47 @@ var translations = map[string]map[string]QuestionTranslation{
 		"gitlab_token": {
 			Title:       "GitLabパーソナルアクセストークンを入力（省略可）",
 			Description: "MR作成とプッシュに必要です。空欄のままスキップまたはglab CLIを使用してください。",
+		},
+		"model_policy": {
+			Title:       "モデルポリシーを選択",
+			Description: "各エージェントに割り当てる Claude モデルのティアを制御します。ご利用の Claude プランに合わせてください。",
+			Options: []OptionTranslation{
+				{Label: "Max (推奨)", Desc: "Fable 5 (low) + Opus 4.8 (high) + Sonnet (medium~low) — Max $200 プラン"},
+				{Label: "Medium", Desc: "Opus 4.8 (xhigh~low) + Sonnet (medium~low) — Max $100 プラン"},
+				{Label: "Low", Desc: "Opus 4.8 (high~low) + Sonnet (medium~low) — Plus $20 プラン"},
+			},
+		},
+		"project_mode": {
+			Title:       "プロジェクトモードを選択",
+			Description: "コラボレーション設定を制御します。ソロ開発者には 'personal' が推奨デフォルトです。",
+			Options: []OptionTranslation{
+				{Label: "Personal (推奨)", Desc: "ソロ開発者 — チーム調整のオーバーヘッドなし"},
+				{Label: "Team", Desc: "複数人開発 — チームコラボレーション機能を有効化"},
+			},
+		},
+		"harness_profile": {
+			Title:       "デフォルトのハーネス評価プロファイルを選択",
+			Description: "品質スコアリングの深さを制御します。プロファイルは .moai/config/evaluator-profiles/ から読み込まれます。",
+		},
+		"lsp_enabled": {
+			Title:       "LSP 統合を有効にしますか？（デフォルト: いいえ）",
+			Description: "LSP は run フェーズで language-server の診断を提供します。デフォルトはオフ（オプトイン）です。",
+		},
+		"enforce_quality": {
+			Title:       "品質ゲートを強制しますか？（デフォルト: はい）",
+			Description: "有効にすると、TRUST 5 品質ゲートが失敗時に実装の進行をブロックします。",
+		},
+		"coverage_exemptions_enabled": {
+			Title:       "カバレッジの除外を許可しますか？（デフォルト: いいえ）",
+			Description: "特定のファイルやパッケージをカバレッジ目標から除外できるようにします。",
+		},
+		"design_enabled": {
+			Title:       "デザインワークフローを有効にしますか？（デフォルト: はい）",
+			Description: "MoAI デザインパイプライン（GAN ループ、ブランドコンテキスト、Claude Design 統合）を有効にします。",
+		},
+		"claude_design_enabled": {
+			Title:       "Claude Design 統合を有効にしますか？（デフォルト: はい）",
+			Description: "デザインパイプライン内で Claude Design ハンドオフワークフローを有効にします。",
 		},
 	},
 	"zh": {
@@ -235,6 +324,47 @@ var translations = map[string]map[string]QuestionTranslation{
 			Title:       "输入GitLab个人访问令牌（可选）",
 			Description: "MR创建和推送所需。留空以跳过或使用glab CLI。",
 		},
+		"model_policy": {
+			Title:       "选择模型策略",
+			Description: "控制为每个智能体分配的 Claude 模型等级。请与您的 Claude 套餐匹配。",
+			Options: []OptionTranslation{
+				{Label: "Max (推荐)", Desc: "Fable 5 (low) + Opus 4.8 (high) + Sonnet (medium~low) — Max $200 套餐"},
+				{Label: "Medium", Desc: "Opus 4.8 (xhigh~low) + Sonnet (medium~low) — Max $100 套餐"},
+				{Label: "Low", Desc: "Opus 4.8 (high~low) + Sonnet (medium~low) — Plus $20 套餐"},
+			},
+		},
+		"project_mode": {
+			Title:       "选择项目模式",
+			Description: "控制协作设置。单人开发者推荐使用 'personal' 默认值。",
+			Options: []OptionTranslation{
+				{Label: "Personal (推荐)", Desc: "单人开发者 — 无团队协调开销"},
+				{Label: "Team", Desc: "多人开发 — 启用团队协作功能"},
+			},
+		},
+		"harness_profile": {
+			Title:       "选择默认评估套件配置",
+			Description: "控制质量评分深度。配置从 .moai/config/evaluator-profiles/ 加载。",
+		},
+		"lsp_enabled": {
+			Title:       "启用 LSP 集成？（默认：否）",
+			Description: "LSP 在运行阶段提供语言服务器诊断。默认关闭（选择性启用）。",
+		},
+		"enforce_quality": {
+			Title:       "强制执行质量门禁？（默认：是）",
+			Description: "启用后，TRUST 5 质量门禁在失败时会阻止实施进度。",
+		},
+		"coverage_exemptions_enabled": {
+			Title:       "允许覆盖率豁免？（默认：否）",
+			Description: "允许将特定文件或包排除在覆盖率目标之外。",
+		},
+		"design_enabled": {
+			Title:       "启用设计工作流？（默认：是）",
+			Description: "启用 MoAI 设计流水线（GAN 循环、品牌上下文、Claude Design 集成）。",
+		},
+		"claude_design_enabled": {
+			Title:       "启用 Claude Design 集成？（默认：是）",
+			Description: "在设计流水线中启用 Claude Design 交接工作流。",
+		},
 	},
 }
 
@@ -244,21 +374,29 @@ var uiStrings = map[string]UIStrings{
 		HelpSelect:    "Use arrow keys to navigate, Enter to select, Esc to cancel",
 		HelpInput:     "Type your answer, Enter to confirm, Esc to cancel",
 		ErrorRequired: "This field is required",
+		ConfirmYes:    "Yes",
+		ConfirmNo:     "No",
 	},
 	"ko": {
 		HelpSelect:    "방향키로 이동, Enter로 선택, Esc로 취소",
 		HelpInput:     "답변 입력 후 Enter로 확인, Esc로 취소",
 		ErrorRequired: "필수 입력 항목입니다",
+		ConfirmYes:    "예",
+		ConfirmNo:     "아니오",
 	},
 	"ja": {
 		HelpSelect:    "矢印キーで移動、Enterで選択、Escでキャンセル",
 		HelpInput:     "入力してEnterで確定、Escでキャンセル",
 		ErrorRequired: "この項目は必須です",
+		ConfirmYes:    "はい",
+		ConfirmNo:     "いいえ",
 	},
 	"zh": {
 		HelpSelect:    "使用方向键导航，Enter选择，Esc取消",
 		HelpInput:     "输入答案，Enter确认，Esc取消",
 		ErrorRequired: "此字段为必填项",
+		ConfirmYes:    "是",
+		ConfirmNo:     "否",
 	},
 }
 

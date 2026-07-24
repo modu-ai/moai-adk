@@ -157,7 +157,11 @@ func runUpdate(cmd *cobra.Command, _ []string) error {
 				Title("No profile found. Set up profile preferences now?").
 				Description("Configure your name, language, and model preferences.").
 				Value(&wantSetup)
-			if err := confirm.Run(); err == nil && wantSetup {
+			// Wrap the standalone confirm in a themed form: field.Run() cannot take
+			// a theme, so the MoAI-branded dark-readable theme is applied at the
+			// form level (parity with the wizard fix for the other huh surfaces).
+			confirmForm := huh.NewForm(huh.NewGroup(confirm)).WithTheme(moaiHuhTheme())
+			if err := confirmForm.Run(); err == nil && wantSetup {
 				if err := runProfileSetup(cmd, nil); err != nil {
 					_, _ = fmt.Fprintf(out, "Warning: profile setup failed: %v\n", err)
 				}
