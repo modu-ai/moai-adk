@@ -2,9 +2,9 @@
 id: SPEC-GOAL-SURFACE-UNIFY-001
 title: Unify the goal surface on /moai goal and relocate goal presentation to the Implementation Kickoff Approval gate
 version: 1.3.0
-status: draft
+status: in-progress
 created: 2026-07-25
-updated: 2026-07-25
+updated: 2026-07-26
 author: manager-spec
 priority: HIGH
 phase: "v3.1.0"
