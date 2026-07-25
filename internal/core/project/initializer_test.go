@@ -218,6 +218,12 @@ func TestInit_QualityYAMLContent(t *testing.T) {
 		UserName:        "test",
 		ConvLang:        "en",
 		DevelopmentMode: "tdd",
+		// C31 removed the StandardMode gate, so opts.EnforceQuality now always
+		// drives the persisted constitution.enforce_quality (REQ-WIZ-015 — the
+		// Page-3 answer must land). The production caller always supplies it
+		// (init.go getBoolFlagWithDefault("enforce-quality", true)); this
+		// fixture must do the same or it asserts a zero value it never set.
+		EnforceQuality: true,
 	}
 
 	_, err := init.Init(context.Background(), opts)

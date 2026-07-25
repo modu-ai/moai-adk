@@ -1,8 +1,10 @@
 package project
 
-// initializer_expansion.go — Phase 1 yaml write helpers for SPEC-V3R5-INIT-WIZARD-EXPANSION-001.
+// initializer_expansion.go — Page-3 (formerly Phase 1) yaml write helpers.
 //
-// Each function writes a single section yaml file when StandardMode is active.
+// Each function persists a single wizard answer into its section yaml file.
+// Writers that target a template-deployed file patch it in place rather than
+// replacing it (REQ-WIZ-021); only the no-deployer fallback path creates files.
 // Defaults for coverage_exemptions sibling fields are sourced here rather than
 // hardcoded, satisfying plan.md R-IWE-003 mitigation (no hardcoded sibling values).
 
@@ -21,13 +23,12 @@ const defaultMaxExemptPercentage = 15
 // defaultRequireJustification matches internal/config/defaults.go default for CoverageExemptions.
 const defaultRequireJustification = true
 
-// WritePhase1Configs writes the Phase 1 section yaml files when StandardMode is active.
-// When opts.StandardMode is false this function is a no-op (Quick mode backward-compat).
+// WritePhase1Configs persists the Page-3 wizard answers to their section yaml
+// files. It runs unconditionally (C31 / REQ-WIZ-015): the Page-3 questions are
+// shown to every user now that the advanced-mode gate is retired, so the former
+// `if !opts.StandardMode { return nil }` early return would have made every
+// answer unreachable.
 func WritePhase1Configs(opts InitOptions, result *InitResult) error {
-	if !opts.StandardMode {
-		return nil
-	}
-
 	sectionsDir := filepath.Clean(filepath.Join(opts.ProjectRoot, defs.MoAIDir, defs.SectionsSubdir))
 
 	if err := writeProjectModeYAML(sectionsDir, opts, result); err != nil {

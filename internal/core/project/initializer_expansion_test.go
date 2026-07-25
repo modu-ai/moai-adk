@@ -24,31 +24,10 @@ func setupSectionsDir(t *testing.T) (root, sectionsDir string) {
 	return root, sectionsDir
 }
 
-// TestWritePhase1Configs_NoOpWhenNotStandard verifies that Quick mode produces no files.
-func TestWritePhase1Configs_NoOpWhenNotStandard(t *testing.T) {
-	t.Parallel()
-	root, sectionsDir := setupSectionsDir(t)
-
-	opts := InitOptions{
-		ProjectRoot:  root,
-		StandardMode: false,
-	}
-	result := &InitResult{}
-
-	if err := WritePhase1Configs(opts, result); err != nil {
-		t.Fatalf("WritePhase1Configs: %v", err)
-	}
-	if len(result.CreatedFiles) != 0 {
-		t.Errorf("no-op: got CreatedFiles = %v, want empty", result.CreatedFiles)
-	}
-
-	// Verify no Phase 1 files created
-	for _, name := range []string{defs.HarnessYAML, defs.LSPYAML, defs.DesignYAML} {
-		if _, err := os.Stat(filepath.Join(sectionsDir, name)); err == nil {
-			t.Errorf("Quick mode: %s should not exist", name)
-		}
-	}
-}
+// TestWritePhase1Configs_NoOpWhenNotStandard was DELETED by C31: its subject
+// was the `if !opts.StandardMode { return nil }` early return that C31 removes,
+// so it asserts behaviour this SPEC deliberately eliminates and cannot be
+// reconciled. It is named on the plan.md §G carve-out delete-list.
 
 // TestWriteHarnessProfileYAML verifies harness.yaml content.
 func TestWriteHarnessProfileYAML(t *testing.T) {
