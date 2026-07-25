@@ -367,17 +367,12 @@ func TestGetBoolFlagWithDefault_WhenNotChanged(t *testing.T) {
 	}
 }
 
-// TestAdvancedImpliesStandard verifies that --advanced=true results in StandardMode=true.
-// This tests the EC-3 requirement from acceptance.md.
-func TestAdvancedImpliesStandard(t *testing.T) {
-	advanced := true
-	standard := false
-	// Simulate the resolution logic from runInit
-	resolved := standard || advanced
-	if !resolved {
-		t.Error("--advanced should imply --standard (standardMode should be true)")
-	}
-}
+// TestAdvancedImpliesStandard was DELETED by
+// SPEC-CLI-WIZARD-RESTRUCTURE-001 C38 (plan.md §G delete-list): its subject —
+// the "one wizard mode flag implies the other" resolution rule — is removed by
+// C24, which unregisters both flags. A test of removed behaviour cannot be
+// reconciled. The replacement coverage is AC-WIZ-015's retirement grep, which
+// asserts neither flag is registered anywhere under internal/.
 
 // resetInitFlagsForProfile clears the flags a profile test cares about so a
 // prior test's leftover value on the shared global initCmd cannot bleed in.

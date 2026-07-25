@@ -210,7 +210,11 @@ func TestWriteQualityExpansionYAML_ExistingFile(t *testing.T) {
 	}
 }
 
-// TestWritePhase1Configs_AllFiles verifies WritePhase1Configs creates all 4 Phase 1 files.
+// TestWritePhase1Configs_AllFiles pins the CREATE-IF-ABSENT fallback: when no
+// lsp.yaml / design.yaml exists (the no-deployer path), WritePhase1Configs
+// creates a minimal block. C35 deliberately preserved this branch, so it stays
+// asserted here. The PATCH branch — which is what the deployer path actually
+// takes — is pinned by TestWritePhase1Configs_PatchesExistingFiles below.
 func TestWritePhase1Configs_AllFiles(t *testing.T) {
 	t.Parallel()
 	root, sectionsDir := setupSectionsDir(t)
@@ -271,6 +275,87 @@ func TestWritePhase1Configs_AllFiles(t *testing.T) {
 	project, _ := os.ReadFile(filepath.Join(sectionsDir, defs.ProjectYAML))
 	if !bytes.Contains(project, []byte("mode: team")) {
 		t.Errorf("project.yaml: mode not updated to team; got: %q", project)
+	}
+}
+
+// TestWritePhase1Configs_PatchesExistingFiles pins the C35 read-patch semantics
+// at the WritePhase1Configs (aggregate) level: when lsp.yaml and design.yaml
+// ALREADY exist — which is the real deployer-path state — the Page-3 answers
+// are patched into them in place, and every unrelated line survives.
+//
+// Non-vacuity: reverting writeLSPYAML / writeDesignYAML to their pre-C35
+// wholesale os.WriteFile form fails this test, because the surrounding keys
+// (`servers:`, `delegate_to_astgrep.enabled`, `gan_loop.enabled`, `figma`)
+// would be erased rather than preserved.
+func TestWritePhase1Configs_PatchesExistingFiles(t *testing.T) {
+	t.Parallel()
+	root, sectionsDir := setupSectionsDir(t)
+
+	// Deployed-shaped fixtures: a nested same-named `enabled:` key at a deeper
+	// indent in each file, mirroring the real lsp.yaml / design.yaml shapes.
+	lspBefore := `lsp:
+  enabled: false
+  servers:
+    go: gopls
+  delegate_to_astgrep:
+    enabled: true
+`
+	designBefore := `design:
+  enabled: false
+  gan_loop:
+    enabled: true
+  claude_design:
+    enabled: false
+  figma:
+    enabled: true
+`
+	if err := os.WriteFile(filepath.Join(sectionsDir, defs.LSPYAML), []byte(lspBefore), 0644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(sectionsDir, defs.DesignYAML), []byte(designBefore), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	opts := InitOptions{
+		ProjectRoot:         root,
+		LSPEnabled:          true,
+		DesignEnabled:       true,
+		ClaudeDesignEnabled: true,
+	}
+	if err := WritePhase1Configs(opts, &InitResult{}); err != nil {
+		t.Fatalf("WritePhase1Configs: %v", err)
+	}
+
+	lspAfter, err := os.ReadFile(filepath.Join(sectionsDir, defs.LSPYAML))
+	if err != nil {
+		t.Fatalf("ReadFile lsp.yaml: %v", err)
+	}
+	wantLSP := `lsp:
+  enabled: true
+  servers:
+    go: gopls
+  delegate_to_astgrep:
+    enabled: true
+`
+	if string(lspAfter) != wantLSP {
+		t.Errorf("lsp.yaml not patched in place:\ngot:\n%s\nwant:\n%s", lspAfter, wantLSP)
+	}
+
+	designAfter, err := os.ReadFile(filepath.Join(sectionsDir, defs.DesignYAML))
+	if err != nil {
+		t.Fatalf("ReadFile design.yaml: %v", err)
+	}
+	wantDesign := `design:
+  enabled: true
+  gan_loop:
+    enabled: true
+  claude_design:
+    enabled: true
+  figma:
+    enabled: true
+`
+	if string(designAfter) != wantDesign {
+		t.Errorf("design.yaml not patched in place:\ngot:\n%s\nwant:\n%s", designAfter, wantDesign)
 	}
 }
 

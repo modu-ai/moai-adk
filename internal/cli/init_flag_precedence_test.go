@@ -3,7 +3,7 @@ package cli
 // SPEC-CLI-WIZARD-RESTRUCTURE-001 M4 — flag-vs-wizard precedence (C41,
 // AC-WIZ-016, REQ-WIZ-020).
 //
-// Once C20 removes the `if result.StandardMode` application gate, the Page-3
+// Once C20 removes the mode gate on the wizard result, the Page-3
 // wizard answers reach `opts` on EVERY interactive init. Without a precedence
 // rule they would unconditionally overwrite the flag-seeded values, inverting
 // today's behaviour and contradicting the documented `--profile` rule
@@ -42,7 +42,7 @@ func seedOptsFromFlags(cmd *cobra.Command) project.InitOptions {
 // wizardAnswers builds a Page-3 wizard result. Every field is stated
 // explicitly at each call site (DAMP over DRY): a partially-specified literal
 // would silently carry Go's zero value where the real wizard carries its own
-// seeded default (RunWithDefaultsModes seeds EnforceQuality/DesignEnabled true),
+// seeded default (RunWithDefaults seeds EnforceQuality/DesignEnabled true),
 // which is exactly the fixture error this signature prevents.
 func wizardAnswers(projectMode string, lsp, quality, design bool) *wizard.WizardResult {
 	return &wizard.WizardResult{
