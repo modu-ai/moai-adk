@@ -730,19 +730,48 @@ PRESERVE 후 검증 5건: `LockTimeout = 2 * time.Second` 불변, `unix.LOCK_EX|
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-Sync close rationale: this SPEC is an internal test-infrastructure fix (two CI flaky root-cause repairs — cobra lazy-sort data race + session registry flock starvation) with no user-facing behavior change and no new/changed public API. README and docs-site were deliberately NOT touched — nothing they describe changed. All 27 AC PASS (0 FAIL, 0 PASS-WITH-DEBT); §F Gaps (8 items) and §G/§H (from spec.md, 8 verification-gap + 6 residual-risk items) were preserved as-is per §G Definition-of-Done and are not repeated here — see acceptance.md §F and spec.md §G/§H.
+Sync close rationale: this SPEC is an internal test-infrastructure fix (two CI flaky root-cause repairs — cobra lazy-sort data race + session registry flock starvation) with no user-facing behavior change and no new/changed public API. README and docs-site were deliberately NOT touched — nothing they describe changed. All 28 AC PASS (0 FAIL, 0 PASS-WITH-DEBT) — AC count increased from 27 to 28 in the 0.4.0 amendment (AC-CFS-004c added). §F Gaps (8 items) and §G/§H (from spec.md, 8 verification-gap + 6 residual-risk items) were preserved as-is per §G Definition-of-Done and are not repeated here — see acceptance.md §F and spec.md §G/§H.
 
 ```yaml
 sync_complete_at: 2026-07-25
 sync_commit_sha: pending-backfill-sync   # placeholder; orchestrator backfills after the commit lands
 sync_status: complete
-ac_pass_count: 27
+ac_pass_count: 28
 ac_fail_count: 0
 changelog_entry_added: true
 readme_updated: false        # internal test-infra fix; no user-facing behavior change
 docs_site_updated: false     # same rationale
 route: "Route B (PR-mandatory per repo-local branch protection)"
+sync_audit:
+  verdict: PASS
+  harmonic_mean: 0.904
+  tier_m_threshold: 0.80
+  dimension_scores:
+    functionality: 0.90
+    security: 1.00
+    craft: 0.88
+    consistency: 0.85
+  findings:
+    F1:
+      severity: Medium
+      status: resolved
+      resolved_in_commit: 54aa18e69
+    F2:
+      severity: Low-Medium
+      status: corrected_in_changelog
+      corrected_in_commit: pending-backfill-sync  # same self-referential-hazard placeholder as sync_commit_sha
+    F3:
+      severity: Low
+      status: recorded_as_debt
+      current_violations: 0
+    F4:
+      severity: Info
+      status: no_action
 ```
+
+**AC-CFS-004c round-trip (F1 resolution) — recorded for future auditors.** The 0.3.0 reachability signal `warmUpDone` proved only that `warmUpCommandTree` was *called*, not that it *traversed* the tree — a sync-audit found that keeping the `TestMain` call while gutting only the recursive loop body left `warmUpDone == true` yet still reproduced the race in 1 of 20 runs. The 0.4.0 fix adds a second, additive signal `warmUpVisited` (incremented once per node the warm-up recursion actually visits), compared against `warmUpTreeSize` — a node count produced by a **deliberately separate** traversal (`countCommandTree`) captured in `TestMain` immediately after warm-up and before `m.Run()`. Round-trip verified in both packages: body-gutting (recursive loop removed, `TestMain` call kept) → deterministic FAIL (`visited 1` vs `tree 182` in `internal/cli`; vs `tree 3` in `internal/cli/preference`); call-removal (whole `TestMain` invocation removed) → still FAILs, on `warmUpDone`; restored → `ok` in both packages.
+
+**Tree-growth discovery (why the node count must NOT be recomputed inside the guard test).** The implementation surfaced a structural pitfall: the global `rootCmd` command tree grows by exactly 6 nodes during a test run — `internal/cli/help_order_test.go:124` calls `runFang(ctx, rootCmd)`, and cobra's Execute path appends `help` + `completion` + 4 shell-completion children via `InitDefaultHelpCmd`/`InitDefaultCompletionCmd`. That test file sorts before `main_test.go` alphabetically and runs non-parallel, so it executes first. A guard-test-time recount (rather than the `TestMain`-captured `warmUpTreeSize`) therefore measures the tree *after* this growth, producing a false `visited 182` vs `holds 188` FAIL against a **correct** implementation — exactly the number of nodes cobra appends. This is a structural defect, not a tuning issue, and is resolved by capturing both `warmUpVisited` and `warmUpTreeSize` at the same point in time (immediately after warm-up, before `m.Run()`).
 
 ## §F Phase 4 Mode Selection
 

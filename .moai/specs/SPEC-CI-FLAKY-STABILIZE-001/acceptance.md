@@ -1,7 +1,7 @@
 ---
 id: SPEC-CI-FLAKY-STABILIZE-001
 title: "CI Flaky 안정화 — 인수 기준"
-version: "0.3.0"
+version: "0.4.0"
 status: completed
 created: 2026-07-25
 updated: 2026-07-25
@@ -95,6 +95,7 @@ tier: M
 | AC-CFS-004 | REQ-CFS-003 | `grep -B2 -A8 "warmUpDone" internal/cli/main_test.go internal/cli/preference/main_test.go` | 출력에 `commandsAreSorted`, `t.Parallel`, `sorts in place` 취지의 영문 설명 포함. 삭제 시 재발 + 정렬 상태 관측 금지 사유 명시 | MUST |
 | AC-CFS-004b | REQ-CFS-004 | `sed -n '/func warmUpCommandTree/,/^}/p' internal/cli/main_test.go internal/cli/preference/main_test.go` 및 `sed -n '/func TestMain/,/^}/p' internal/cli/main_test.go internal/cli/preference/main_test.go` | 전자 출력에 `warmUpDone = true` **존재**, 후자 출력에 `warmUpDone` 대입 **부재**. 대입이 `TestMain`에 있으면 AC-CFS-005의 왕복이 FAIL을 만들 수 없으므로 즉시 blocker | MUST |
 | AC-CFS-005 | REQ-CFS-004 | (a) `warmUpCommandTree(...)` 호출 **한 줄만** 주석 처리 → `go test -run '<가드테스트명>' ./internal/cli/preference/`; (b) 원복 후 재실행 | (a) `FAIL` — 대입이 함수 본문 안에 있어 호출과 함께 도달 불가가 되므로 `warmUpDone`이 `false`, **결정론적** 실패; (b) `ok`. 두 출력 모두 `progress.md`에 기록. (a)에서 FAIL이 나오지 않으면 가드가 무효이므로 blocker 보고 — 가장 흔한 원인은 대입이 `TestMain`에 있는 것이며 AC-CFS-004b가 이를 선행 차단한다 | MUST |
+| AC-CFS-004c | REQ-CFS-004 | (a) `warmUpCommandTree` 본문의 **재귀 루프만** 제거하고 `TestMain`의 호출 한 줄은 **그대로 유지** → `go test -run '<가드테스트명>' ./internal/cli/ ./internal/cli/preference/`; (b) 원복 후 재실행 | (a) 두 패키지 모두 `FAIL` — 호출이 남아 `warmUpDone`은 여전히 `true`지만, `warmUpVisited`가 `1`에 머물러 **`TestMain`이 warm-up 직후·`m.Run()` 이전에 산출해 둔** 트리 노드 수(`warmUpTreeSize`)와 불일치하므로 **결정론적** 실패. 가드 테스트는 이 두 수를 **비교만** 하며 노드 수를 재계산하지 않는다(재계산이 오탐을 만드는 사유는 §D.3b); (b) `ok`. 두 출력 모두 `progress.md`에 기록. AC-CFS-005가 *호출 제거*를 봉쇄하고 본 AC가 *본문 무력화*를 봉쇄한다 — 두 왕복이 함께 있어야 가드 깊이가 성립한다. (a)에서 FAIL이 나오지 않으면 가드가 순회 깊이를 관측하지 못하는 것이므로 blocker 보고 | MUST |
 | AC-CFS-006 | REQ-CFS-005 | §D.5의 AWK 인벤토리 명령 재실행 | 정확히 11행 출력, `spec.md` §C.1 표의 구문 후보 집합과 동일 | MUST |
 | AC-CFS-007 | REQ-CFS-002 | `for i in $(seq 1 50); do go test -race -count=1 ./internal/cli/preference/ \|\| exit 1; done; echo "exit=$?"` | `exit=0`, 어떤 반복에서도 `WARNING: DATA RACE` 부재. **`-count=50` 단일 프로세스 실행으로 대체 금지**(§F 6항) | MUST |
 | AC-CFS-008 | REQ-CFS-002 | `for i in $(seq 1 50); do go test -race -count=1 ./internal/cli/ \|\| exit 1; done; echo "exit=$?"` | `exit=0`, `WARNING: DATA RACE` 부재 | MUST |
@@ -126,6 +127,20 @@ cobra v1.10.2 `command.go:1332-1339`는 `Commands()` 접근자 **내부에서** 
 0.2.0은 관측 대상을 **도달 가능성 신호**(`warmUpDone` 테스트 스코프 변수)로 교체했다. 이 신호는 warm-up 코드 경로의 실행 여부를 직접 기록하므로 warm-up 제거 시 결정론적으로 FAIL한다. 초판이 대안으로 언급했던 "등록 순서 셔플 어서션"도 동일 이유로 무효이므로 채택하지 않는다(어떤 순서로 등록하든 `Commands()` 호출 후에는 정렬된다).
 
 `warmUpDone`은 `main_test.go`(테스트 전용 파일)의 패키지 스코프 변수이므로 프로덕션 코드에 테스트 전용 상태를 추가하지 않는다 — 초판이 이 방식을 기각한 사유는 본 케이스에 적용되지 않았다.
+
+### D.3b 신호 깊이 보강 — `warmUpVisited` 추가 (0.4.0)
+
+0.3.0의 `warmUpDone`은 warm-up 코드 경로의 **실행 여부**만 기록한다. 따라서 "`TestMain`의 호출은 그대로 두고 `warmUpCommandTree` 본문의 재귀 루프만 무력화하는" 변형을 통과시킨다는 것이 sync-audit에서 **실측으로 확인**되었다 — 호출 유지 + 재귀 루프 제거 상태에서 테스트 스위트가 전부 통과했고, 그럼에도 20회 반복 중 1회 레이스가 재발했다. 즉 0.3.0 신호가 증명하는 것은 warm-up 함수가 **호출되었다**는 사실이지 **트리를 순회했다**는 사실이 아니다.
+
+0.4.0은 `warmUpDone`을 **유지한 채** 방문 노드 수 신호 `warmUpVisited`(warm-up 재귀가 노드를 방문할 때마다 1씩 증가)를 추가한다. 비교 대상인 트리 노드 수는 **`TestMain`에서 warm-up 직후·`m.Run()` 이전에** 별개 구현 `countCommandTree`로 산출해 `warmUpTreeSize`에 보관하며, 가드 테스트는 `warmUpVisited`와 `warmUpTreeSize`를 **비교만** 한다. 본문 무력화 시 `warmUpVisited`는 `1`에 머물고 `warmUpTreeSize`는 1보다 크므로, 두 수가 갈라져 결정론적으로 실패한다.
+
+**노드 수를 가드 테스트 안에서 재계산하면 안 되는 이유**: 전역 커맨드 트리는 **실행 도중 자란다**. `internal/cli`의 `help_order_test.go`가 `runFang(ctx, rootCmd)`를 호출하고, cobra의 Execute 경로가 `InitDefaultHelpCmd` / `InitDefaultCompletionCmd`로 `help` + `completion`(+ 셸 4종 자식) = **6 노드**를 전역 루트에 덧붙인다. `help_order_test.go`는 파일명 정렬상 `main_test.go`보다 앞이고 비-병렬이므로 가드보다 먼저 실행된다. 따라서 가드 시점의 재계산은 warm-up이 순회한 트리가 **아닌 더 나중의 트리**를 재는 것이며, 실제로 **올바른 구현에서 `visited 182` vs `holds 188`로 FAIL**했다(정확히 6 차이). 이는 튜닝 문제가 아니라 구조적 오류이므로, 두 수를 **같은 시점에** 취하는 것으로 해소한다.
+
+**신호를 교체하지 않고 추가한 이유**: AC-CFS-003 / AC-CFS-004 / AC-CFS-004b / AC-CFS-005는 모두 `warmUpDone`을 참조하며 그 판정은 여전히 유효하다(호출 제거 변형은 `warmUpDone`만으로 결정론적으로 탐지된다). 교체는 유효한 AC 4건을 무효화하나, 추가는 무효화하지 않는다. 따라서 0.4.0의 변경은 순수 가산이다.
+
+**독립 산출이 순환 논리가 아닌 이유 (측정 위치 이동으로 약화되지 않음)**: 반증 가능성을 지탱하는 두 불변은 **별개 구현**과 **warm-up 직후 직렬 실행**이며, `TestMain` 배치는 이 둘을 모두 보존한다 — 오히려 더 강하게 보존한다.
+- **별개 구현**: `countCommandTree`는 `warmUpCommandTree`와 순회 코드를 공유하지 않는다. 공유하면 한쪽이 깨질 때 두 수가 함께 움직여 가드가 결코 실패할 수 없고, §A의 "어떤 구현 상태에서도 반드시 통과하는 AC는 무효" 원칙에 저촉된다. `countCommandTree`는 `warmUpDone`·`warmUpVisited` 중 무엇도 건드리지 않으므로, 재귀를 무력화하면 `warmUpVisited`만 `1`로 고정되고 `warmUpTreeSize`는 전체 크기를 유지해 두 수가 갈라진다.
+- **직렬 실행**: `TestMain` 배치는 `m.Run()` **이전**이므로 엄격히 단일 goroutine이다. 가드 테스트 배치(테스트 실행 중)보다 오히려 병렬 접근 여지가 적다. 따라서 재계산이 새 레이스를 만들지 않는다는 근거는 유지·강화된다.
 
 ### D.4 REQ-CFS-006 인벤토리 가드 (AC-CFS-026)
 
@@ -168,7 +183,7 @@ inf { body = body $0 }
 | REQ-CFS-001 | AC-CFS-001, AC-CFS-002 |
 | REQ-CFS-002 | AC-CFS-003, AC-CFS-007, AC-CFS-008 |
 | REQ-CFS-003 | AC-CFS-004 |
-| REQ-CFS-004 | AC-CFS-004b, AC-CFS-005 |
+| REQ-CFS-004 | AC-CFS-004b, AC-CFS-005, AC-CFS-004c |
 | REQ-CFS-005 | AC-CFS-006, AC-CFS-024 |
 | REQ-CFS-006 | AC-CFS-026 |
 | REQ-CFS-010 | AC-CFS-011, AC-CFS-019 |
@@ -208,11 +223,12 @@ AC ID 배번 주의: `AC-CFS-026`은 §D.4에 있으며 `AC-CFS-020`~`025`(§D.5
 
 전부 충족해야 sync 단계로 진입한다.
 
-- [ ] §D의 MUST AC 25건 전부 PASS, 각 항목에 실제 명령 출력 인용
+- [ ] §D의 MUST AC 26건 전부 PASS, 각 항목에 실제 명령 출력 인용 (0.4.0에서 AC-CFS-004c 신설 — 25 → 26)
 - [ ] SHOULD AC 2건(AC-CFS-010, AC-CFS-025) PASS 또는 미충족 사유 기록
 - [ ] `progress.md` §E.2에 M1 실패 출력 **및 M1 테스트 전체 소스**, M6 기준선 수치, M8 개선 후 수치가 verbatim으로 기록
 - [ ] AC-CFS-004b 대입 위치 확인 통과 — `warmUpDone` 대입이 `warmUpCommandTree` 본문에 존재하고 `TestMain`에 부재
 - [ ] AC-CFS-005 가드 왕복 검증 결과(FAIL → PASS) 기록 — FAIL이 실제로 관측되었을 것
+- [ ] AC-CFS-004c 본문 무력화 왕복 검증 결과(FAIL → PASS) 기록 — 호출 유지 + 재귀 루프 제거 시 FAIL이 실제로 관측되었을 것
 - [ ] AC-CFS-026 인벤토리 가드 왕복 검증 결과(PASS → FAIL → PASS) 기록
 - [ ] §F Gaps 8항목이 완료 보고에 그대로 포함(축약·삭제 금지)
 - [ ] `spec.md` §G 검증 공백 8항목 + §H 잔여 위험 6항목이 완료 보고에 포함
