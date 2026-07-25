@@ -734,7 +734,7 @@ Sync close rationale: this SPEC is an internal test-infrastructure fix (two CI f
 
 ```yaml
 sync_complete_at: 2026-07-25
-sync_commit_sha: pending-backfill-sync   # placeholder; orchestrator backfills after the commit lands
+sync_commit_sha: f3805c00e   # 3-phase close commit (implemented -> completed transition on all 4 artifacts); pre-squash local SHA on feat/SPEC-CI-FLAKY-STABILIZE-001, does not survive squash-merge into main
 sync_status: complete
 ac_pass_count: 28
 ac_fail_count: 0
@@ -759,7 +759,7 @@ sync_audit:
     F2:
       severity: Low-Medium
       status: corrected_in_changelog
-      corrected_in_commit: pending-backfill-sync  # same self-referential-hazard placeholder as sync_commit_sha
+      corrected_in_commit: 0239bffe3  # sync-audit follow-up commit; pre-squash local SHA on feat/SPEC-CI-FLAKY-STABILIZE-001, does not survive squash-merge into main
     F3:
       severity: Low
       status: recorded_as_debt
@@ -772,6 +772,8 @@ sync_audit:
 **AC-CFS-004c round-trip (F1 resolution) — recorded for future auditors.** The 0.3.0 reachability signal `warmUpDone` proved only that `warmUpCommandTree` was *called*, not that it *traversed* the tree — a sync-audit found that keeping the `TestMain` call while gutting only the recursive loop body left `warmUpDone == true` yet still reproduced the race in 1 of 20 runs. The 0.4.0 fix adds a second, additive signal `warmUpVisited` (incremented once per node the warm-up recursion actually visits), compared against `warmUpTreeSize` — a node count produced by a **deliberately separate** traversal (`countCommandTree`) captured in `TestMain` immediately after warm-up and before `m.Run()`. Round-trip verified in both packages: body-gutting (recursive loop removed, `TestMain` call kept) → deterministic FAIL (`visited 1` vs `tree 182` in `internal/cli`; vs `tree 3` in `internal/cli/preference`); call-removal (whole `TestMain` invocation removed) → still FAILs, on `warmUpDone`; restored → `ok` in both packages.
 
 **Tree-growth discovery (why the node count must NOT be recomputed inside the guard test).** The implementation surfaced a structural pitfall: the global `rootCmd` command tree grows by exactly 6 nodes during a test run — `internal/cli/help_order_test.go:124` calls `runFang(ctx, rootCmd)`, and cobra's Execute path appends `help` + `completion` + 4 shell-completion children via `InitDefaultHelpCmd`/`InitDefaultCompletionCmd`. That test file sorts before `main_test.go` alphabetically and runs non-parallel, so it executes first. A guard-test-time recount (rather than the `TestMain`-captured `warmUpTreeSize`) therefore measures the tree *after* this growth, producing a false `visited 182` vs `holds 188` FAIL against a **correct** implementation — exactly the number of nodes cobra appends. This is a structural defect, not a tuning issue, and is resolved by capturing both `warmUpVisited` and `warmUpTreeSize` at the same point in time (immediately after warm-up, before `m.Run()`).
+
+**Pre-squash SHA note.** `sync_commit_sha` (`f3805c00e`) and `sync_audit.findings.F2.corrected_in_commit` (`0239bffe3`) above are local commit SHAs on `feat/SPEC-CI-FLAKY-STABILIZE-001`. This branch merges by squash, so neither SHA survives into `main` history verbatim — the squash produces a single new commit on `main`. This is the established repo pattern (Route B PR-mandatory, squash merge), not a defect; a future auditor reading `main` history should not expect to find these two SHAs there.
 
 ## §F Phase 4 Mode Selection
 
