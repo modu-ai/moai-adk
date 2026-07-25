@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/modu-ai/moai-adk/internal/defs"
 )
@@ -209,6 +210,96 @@ func patchYAMLKey(content, section, key, newValue string) string {
 		}
 	}
 	return result
+}
+
+// yamlFrame is one ancestor mapping key held in scope while walking a YAML
+// document line by line, so patchYAMLPathValue can reconstruct the full dotted
+// path of every key it visits.
+type yamlFrame struct {
+	indent int
+	key    string
+}
+
+// patchYAMLPathValue rewrites the value of the key identified by its full
+// dotted path (for example "design.claude_design.enabled"), preserving that
+// line's original indentation and leaving every other byte of the document
+// untouched. It returns the content and whether the path was found.
+//
+// It exists because patchYAMLKey is depth-blind: that helper matches on
+// whitespace-stripped lines and rewrites at a hardcoded 2-space indent, so it
+// rewrites EVERY key of a given name inside the section and flattens each to
+// depth 2. Against the deployed lsp.yaml (two `enabled:` keys) and design.yaml
+// (five) it would trade a visible clobber for silent structural corruption.
+// patchYAMLKey is deliberately left untouched — its two existing callers target
+// keys that are unique within their files.
+//
+// Only the first match is rewritten. When the path is absent the content is
+// returned byte-identical with ok=false, so a caller can decide whether that is
+// a no-op or an error rather than appending a duplicate mapping key.
+func patchYAMLPathValue(content, path, newValue string) (string, bool) {
+	if content == "" || path == "" {
+		return content, false
+	}
+	segments := strings.Split(path, ".")
+	lines := splitLines(content)
+	var stack []yamlFrame
+
+	for i, line := range lines {
+		trimmed := trimLeadingSpaces(line)
+		// Blank lines, comments and sequence entries carry no mapping key.
+		if trimmed == "" || trimmed[0] == '#' || trimmed[0] == '-' {
+			continue
+		}
+		colon := strings.IndexByte(trimmed, ':')
+		if colon <= 0 {
+			continue
+		}
+		key := trimmed[:colon]
+		indent := len(line) - len(trimmed)
+
+		// Leave every scope that is no longer an ancestor of this line.
+		for len(stack) > 0 && stack[len(stack)-1].indent >= indent {
+			stack = stack[:len(stack)-1]
+		}
+
+		if yamlPathMatches(stack, key, segments) {
+			lines[i] = line[:indent] + key + ": " + newValue
+			return joinYAMLLines(lines, strings.HasSuffix(content, "\n")), true
+		}
+
+		// A key with no inline value opens a nested mapping.
+		if strings.TrimSpace(trimmed[colon+1:]) == "" {
+			stack = append(stack, yamlFrame{indent: indent, key: key})
+		}
+	}
+	return content, false
+}
+
+// yamlPathMatches reports whether the ancestor stack plus key spells out
+// exactly the target segment list.
+func yamlPathMatches(stack []yamlFrame, key string, segments []string) bool {
+	if len(stack)+1 != len(segments) {
+		return false
+	}
+	for i := range stack {
+		if stack[i].key != segments[i] {
+			return false
+		}
+	}
+	return key == segments[len(segments)-1]
+}
+
+// joinYAMLLines reassembles lines produced by splitLines, restoring the
+// document's original trailing-newline state.
+func joinYAMLLines(lines []string, trailingNewline bool) string {
+	var b strings.Builder
+	for i, l := range lines {
+		b.WriteString(l)
+		if i < len(lines)-1 || trailingNewline {
+			b.WriteByte('\n')
+		}
+	}
+	return b.String()
 }
 
 func splitLines(s string) []string {
