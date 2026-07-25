@@ -170,6 +170,59 @@ pattern: panic("boom")
 	}
 }
 
+// TestAstEditCmd_UnreadableMatcherReportedSeparately verifies that a rule whose
+// matcher the loader cannot read — ast-grep's nested `rule:` block, which leaves
+// Pattern empty because only the flat top-level `pattern:` field is parsed — is
+// reported as a loader limitation and NOT misattributed to a missing fix:.
+// Every shipped rule uses the nested form, so this is the path a user actually
+// hits when running rule mode against the shipped ruleset. REQ-AGE-004.
+func TestAstEditCmd_UnreadableMatcherReportedSeparately(t *testing.T) {
+	requireSG(t)
+
+	// The rule declares a fix:, so any notice blaming a missing fix: is wrong.
+	rulesDir := writeRuleFixture(t, `id: fixture-nested-matcher
+language: go
+severity: warning
+message: "nested rule block"
+rule:
+  pattern: panic("boom")
+fix: panic("handled")
+`)
+
+	tmpDir := t.TempDir()
+	target := filepath.Join(tmpDir, "sample.go")
+	original := "package sample\n\nfunc run() {\n\tpanic(\"boom\")\n}\n"
+	if err := os.WriteFile(target, []byte(original), 0644); err != nil {
+		t.Fatalf("failed to write fixture: %v", err)
+	}
+
+	var out bytes.Buffer
+	cmd := cli.NewAstEditCmd()
+	cmd.SetOut(&out)
+	cmd.SetErr(&bytes.Buffer{})
+	cmd.SetArgs([]string{"--rules-dir", rulesDir, "--lang", "go", target})
+
+	if err := cmd.Execute(); err != nil {
+		t.Fatalf("rule-mode run returned an error: %v", err)
+	}
+
+	got := out.String()
+	if !strings.Contains(got, "matcher could not be read") {
+		t.Errorf("expected the unreadable-matcher notice; got %q", got)
+	}
+	if strings.Contains(got, "no fix: field") {
+		t.Errorf("a rule that declares fix: was reported as missing one; got %q", got)
+	}
+
+	after, err := os.ReadFile(target)
+	if err != nil {
+		t.Fatalf("failed to read fixture back: %v", err)
+	}
+	if string(after) != original {
+		t.Errorf("a rule with an unreadable matcher must not be applied:\n%s", string(after))
+	}
+}
+
 // TestAstEditCmd_RuleFilterNarrowsToOneRule verifies that --rule restricts the pass.
 // REQ-AGE-004 / AC-031.
 func TestAstEditCmd_RuleFilterNarrowsToOneRule(t *testing.T) {

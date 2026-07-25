@@ -133,7 +133,10 @@ func applyPatternEdit(ctx context.Context, analyzer *astgrep.SGAnalyzer, flags *
 }
 
 // applyRuleEdits applies the fix: field of every loaded rule that declares one.
-// Rules without a fix: are detection-only and are skipped with a counted notice.
+// Two disjoint classes of rule are skipped, each with its own counted notice:
+// a rule with no fix: is detection-only by its author's choice, whereas a rule
+// whose matcher the loader cannot read (a nested `rule:` block) is skipped
+// because of a loader limitation the author neither chose nor can see.
 // REQ-AGE-004.
 func applyRuleEdits(ctx context.Context, analyzer *astgrep.SGAnalyzer, flags *astEditFlags, path string, cmd *cobra.Command) (*astgrep.ReplaceResult, error) {
 	loader := astgrep.NewRuleLoader()
@@ -143,7 +146,11 @@ func applyRuleEdits(ctx context.Context, analyzer *astgrep.SGAnalyzer, flags *as
 	}
 
 	aggregate := &astgrep.ReplaceResult{DryRun: flags.dry}
-	var skipped int
+	// The two skip reasons are counted separately because they mean different
+	// things to the user: an absent fix: is the rule author's deliberate
+	// detection-only choice, whereas an unreadable matcher is a loader
+	// limitation the rule author did not choose and cannot see from the rule.
+	var skippedNoFix, skippedUnreadableMatcher int
 
 	for _, rule := range rules {
 		if flags.rule != "" && rule.ID != flags.rule {
@@ -153,9 +160,16 @@ func applyRuleEdits(ctx context.Context, analyzer *astgrep.SGAnalyzer, flags *as
 		// match and a fix to apply. Rules written with ast-grep's nested `rule:`
 		// block (kind/regex/any) land here with an empty Pattern — the loader
 		// reads only the flat `pattern:` field — so they are skipped, not
-		// silently passed to sg with an empty pattern.
-		if rule.Fix == "" || rule.Pattern == "" {
-			skipped++
+		// silently passed to sg with an empty pattern. Check Pattern first: an
+		// unreadable matcher is the more specific diagnosis, and a rule with a
+		// nested rule: block yields an empty Fix as well, so reporting it as
+		// "no fix: field" would misattribute a parser limit to the author.
+		if rule.Pattern == "" {
+			skippedUnreadableMatcher++
+			continue
+		}
+		if rule.Fix == "" {
+			skippedNoFix++
 			continue
 		}
 
@@ -174,8 +188,14 @@ func applyRuleEdits(ctx context.Context, analyzer *astgrep.SGAnalyzer, flags *as
 		aggregate.Changes = append(aggregate.Changes, result.Changes...)
 	}
 
-	if skipped > 0 && flags.format == "text" {
-		_, _ = fmt.Fprintf(cmd.OutOrStdout(), "skipped %d detection-only rule(s) (no fix: field)\n", skipped)
+	if flags.format == "text" {
+		out := cmd.OutOrStdout()
+		if skippedNoFix > 0 {
+			_, _ = fmt.Fprintf(out, "skipped %d detection-only rule(s) (no fix: field)\n", skippedNoFix)
+		}
+		if skippedUnreadableMatcher > 0 {
+			_, _ = fmt.Fprintf(out, "skipped %d rule(s) whose matcher could not be read: the loader parses only the flat `pattern:` field, so a nested `rule:` block (kind/regex/any) yields no pattern to match\n", skippedUnreadableMatcher)
+		}
 	}
 
 	return aggregate, nil

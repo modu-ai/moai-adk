@@ -1,7 +1,7 @@
 ---
 id: SPEC-ASTGREP-EDIT-001
 title: "Acceptance criteria — ast-grep wiring repair and moai ast-edit"
-version: "0.2.0"
+version: "0.3.0"
 status: in-progress
 created: 2026-07-25
 updated: 2026-07-26
@@ -224,10 +224,13 @@ PASS: the value omits `moai-tool-ast-grep`.
 
 ## REQ-AGE-008 — template parity and neutrality
 
-**AC-060** — Every changed `.claude/` or `.moai/` file is byte-identical to its
-template mirror.
+**AC-060** — Every change this branch makes to a `.claude/` or `.moai/` file is
+applied byte-identically to that file's template mirror.
 
-The criterion is unchanged; only its command is. The committed form read
+Two corrections were applied here, and the second changes what the criterion
+asserts — recorded explicitly rather than folded in silently.
+
+*Correction 1 (runnability).* The committed form read
 `for p in <changed paths>; do ...` — an unfilled placeholder, so it was never
 runnable and therefore never observable. That is the same class of defect the
 Convention above names: a check that cannot fail is not a check. The path list is
@@ -235,6 +238,23 @@ now derived mechanically from the branch diff so it cannot drift from the actual
 changed set, and an empty list is an explicit FAIL — a loop that iterates zero
 times reports no differences and would otherwise certify a missing mirror as
 clean.
+
+*Correction 2 (delta, not whole-file).* The committed wording asserted whole-file
+byte-identity between each changed path and its mirror. REQ-AGE-008 states that
+"the corresponding mirror SHALL be updated byte-identically", which reads
+naturally as *the update* being mirrored byte-identically, and the whole-file
+reading is not merely stricter — it is **unsatisfiable without violating a
+different HARD rule**. `.claude/skills/moai-foundation-cc/SKILL.md` carries a
+14-line local-only block (a `## Decision Heuristics` section plus a Provenance
+line naming an internal constitution token and an internal memory reference)
+that is absent from its mirror and is present on `origin/main`, so this branch
+neither introduced nor widened it. Satisfying the whole-file reading would mean
+copying that internal-provenance text into `internal/template/templates/`, which
+the template internal-content isolation rule forbids. The criterion therefore
+asserts delta identity, which is both what REQ-AGE-008 says and the only reading
+compatible with template neutrality. The pre-existing whole-file divergence is
+recorded as named debt in `progress.md` § Residual findings — it is out of this
+SPEC's scope, not resolved by this rewording.
 
 `.moai/specs/` is excluded because SPEC artifacts are project-local and have no
 template mirror by design; the `-- '.claude' '.moai'` pathspec already excludes
@@ -245,13 +265,19 @@ paths=$(git diff --name-only origin/main...HEAD -- '.claude' '.moai' \
           | grep -v '^\.moai/specs/')
 test -n "$paths" || { echo "FAIL: empty path list"; exit 1; }
 printf '%s\n' "$paths" | while read -r p; do
-  diff -q "$p" "internal/template/templates/$p" >/dev/null 2>&1 \
-    && echo "IDENTICAL  $p" \
-    || echo "MIRROR-DIFF  $p"
+  a=$(git diff origin/main...HEAD -- "$p" \
+        | grep -E '^[+-]' | grep -vE '^(\+\+\+|---)')
+  b=$(git diff origin/main...HEAD -- "internal/template/templates/$p" \
+        | grep -E '^[+-]' | grep -vE '^(\+\+\+|---)')
+  if [ -z "$a" ]; then echo "FAIL: no delta for $p"
+  elif [ "$a" = "$b" ]; then echo "DELTA-MIRRORED  $p"
+  else echo "DELTA-DIVERGED  $p"; fi
 done
 ```
-PASS: the path list is non-empty AND every line reads `IDENTICAL`. Any
-`MIRROR-DIFF` line is a FAIL, as is the `empty path list` message.
+PASS: the path list is non-empty AND every line reads `DELTA-MIRRORED`. Any
+`DELTA-DIVERGED` line, any `FAIL:` line, or the `empty path list` message is a
+FAIL. Falsification check: mirroring a `.claude/` edit incompletely — or not at
+all — yields `DELTA-DIVERGED` for that path.
 
 **AC-061** — Build and guards are clean.
 

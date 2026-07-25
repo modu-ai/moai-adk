@@ -44,7 +44,7 @@ Six run-phase commits landed on `feat/SPEC-ASTGREP-EDIT-001`:
 | Milestone | Requirement | Commit | Evidence |
 |---|---|---|---|
 | M1 | REQ-AGE-005 — `FindRulesConfig` resolves shipped ruleset | `b0d6d4215 fix(SPEC-ASTGREP-EDIT-001): resolve shipped ast-grep ruleset in FindRulesConfig` | `internal/hook/security/rules.go` `searchPaths` now includes `.moai/config/astgrep-rules/sgconfig.{yml,yaml}`; retired `moai-tool-ast-grep` skill paths removed (verified: `grep -c "moai-tool-ast-grep" internal/hook/security/rules.go` → 0) |
-| M2 | REQ-AGE-001 / REQ-AGE-002 — `moai ast-edit` command skeleton, dry-run safe default | `b3c857dfe feat(SPEC-ASTGREP-EDIT-001): add moai ast-edit and fix the rewrite no-op` | `internal/cli/astedit.go` created (`NewAstEditCmd`), registered in `internal/cli/root.go` alongside `ast-grep`; `--dry` flag defaults to safe preview |
+| M2 | REQ-AGE-001 / REQ-AGE-002 — `moai ast-edit` command skeleton, `--dry` preview path | `b3c857dfe feat(SPEC-ASTGREP-EDIT-001): add moai ast-edit and fix the rewrite no-op` | `internal/cli/astedit.go` created (`NewAstEditCmd`), registered in `internal/cli/root.go` alongside `ast-grep`; `--dry` suppresses all writes, guarded by `TestAstEditCmd_DryRunLeavesFileUnchanged`. **Correction:** `--dry` is NOT the default — `astedit.go` declares `BoolVar(&flags.dry, "dry", false, …)`, so a bare `moai ast-edit <path>` writes in place. An earlier revision of this row claimed a safe-preview default; that was contradicted by the code and is corrected here. REQ-AGE-002 requires only that `--dry` not modify files, which holds |
 | M3 | REQ-AGE-003 — pattern-mode rewrite + `--update-all` no-op fix | same commit `b3c857dfe` | `internal/astgrep/analyzer.go` `PatternReplace` now passes `--update-all` to `sg run --rewrite` (previously the rewrite printed a diff and never touched disk); fixture-rewrite assertion added, not mock-arg-only |
 | M4 | REQ-AGE-004 — rule-mode rewrite, `--rule` filter | `9bfb039b7 feat(SPEC-ASTGREP-EDIT-001): rule-mode tests, fix: assessment, dead-reference cleanup` | `applyRuleEdits` in `internal/cli/astedit.go`; tests `TestAstEditCmd_RuleModeAppliesFix` / `TestAstEditCmd_RuleFilterNarrowsToOneRule` |
 | M5 | REQ-AGE-006 — shipped rule `fix:` assessment | same commit `9bfb039b7` | Disposition table recorded in `acceptance.md` § REQ-AGE-006 — all 4 shipped rule files remain detection-only (0 `fix:` fields added), each with an evidence-backed verdict |
@@ -87,3 +87,44 @@ Rationale: sequential single-agent sync-phase work (CHANGELOG emission,
 progress.md authoring, frontmatter transitions) — no multi-domain fan-out or
 high-volume mechanical transformation applies. Implementation Kickoff
 Approval is not applicable to sync-phase delegation.
+
+## §G Sync-Audit Remediation
+
+The first sync-audit returned **FAIL (weighted harmonic mean 0.770, Tier L
+threshold 0.85)**. Report: `.moai/reports/sync-audit/SPEC-ASTGREP-EDIT-001-2026-07-26.md`
+(gitignored-adjacent local artifact — untracked, not committed). Three
+must-fix findings were remediated on this branch before close:
+
+| Finding | Defect | Remediation | Falsification evidence |
+|---|---|---|---|
+| F0 | Five AC commands (`AC-001/020/030/031/040`) named `go test -run` selectors matching **zero** tests. `go test -run` exits 0 on a zero-match selector and prints `[no tests to run]`, so all five certified a fully reverted implementation as passing | `acceptance.md` in-place amendment `aa225f284` — every selector replaced with a verified-existing test name, `-count=1` added, PASS restated as the presence of a `--- PASS: <name>` line, and a Convention section added declaring `[no tests to run]` a FAIL. AC-040 rewritten to assert its vacuity premise mechanically instead of naming a test that never existed | Each corrected command re-run verbatim; all show `--- PASS:` |
+| F1 | CHANGELOG claimed "`--dry` is the safe default surface"; `astedit.go` declares `BoolVar(&flags.dry, "dry", false, …)`, so a bare run writes in place | CHANGELOG corrected to state `--dry` is opt-in and that a run without it rewrites files; §E.2 M2 row corrected likewise. Behaviour deliberately unchanged — REQ-AGE-002 requires only that `--dry` not modify files, which holds | Code inspection (`astedit.go` `BoolVar` default `false`) |
+| F2 | `applyRuleEdits` skipped on `Fix == "" \|\| Pattern == ""` but reported every skip as "(no fix: field)". All 11 shipped rules fail the **Pattern** leg (nested `rule:` block the loader cannot read), so a loader limitation was misattributed to the rule author's choice | The two skip reasons are counted and reported separately; `Pattern` is checked first because it is the more specific diagnosis | New guard `TestAstEditCmd_UnreadableMatcherReportedSeparately`. Reverting the fix makes it FAIL with the misattributed message verbatim |
+
+## §G.1 Residual findings (deferred, named)
+
+Recorded so they are not silently inherited. None is introduced by this SPEC.
+
+- **`--dry` is not the default.** Inverting the default, or gating the write
+  path behind an explicit `--write`, is a UX decision for a follow-up SPEC.
+  REQ-AGE-002 is satisfied as written.
+- **Whole-file template-mirror divergence in `moai-foundation-cc/SKILL.md`.**
+  A 14-line local-only block (a `## Decision Heuristics` section plus a
+  Provenance line naming an internal constitution token and an internal memory
+  reference) is present locally and absent from the mirror, on `origin/main` —
+  it pre-dates this branch. It cannot be closed by copying the block into
+  `internal/template/templates/`, because that would push internal-provenance
+  text into a distributed template, which the template internal-content
+  isolation rule forbids. Closing it properly means deciding whether the local
+  block should exist at all — out of this SPEC's scope. See AC-060 § Correction 2.
+- **Nested `rule:` block form unparsed.** `astgrep.Rule` reads only the flat
+  top-level `pattern:` field, so all 11 shipped rules load with an empty
+  `Pattern` and rule mode is a no-op against the shipped ruleset. Teaching the
+  loader the nested form also affects the scanner path; recorded in
+  `acceptance.md` § Known gap.
+- **`internal/cli` coverage 75.3%**, below the 90% critical-package target.
+  Pre-existing package-level state; `astedit.go` itself measures higher. Not a
+  regression introduced here.
+- **Tier L declared, 3 of 5 plan artifacts shipped** (no `design.md`,
+  no `research.md`). A plan-phase gap; sync-phase does not create plan
+  artifacts retroactively.

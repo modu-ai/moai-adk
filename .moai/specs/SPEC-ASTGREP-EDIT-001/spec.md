@@ -1,7 +1,7 @@
 ---
 id: SPEC-ASTGREP-EDIT-001
 title: "ast-grep wiring repair and moai ast-edit command"
-version: "0.1.0"
+version: "0.2.0"
 status: in-progress
 created: 2026-07-25
 updated: 2026-07-26
@@ -28,6 +28,13 @@ amendment_of: SPEC-ASTGREP-EDIT-001
 | `prior_completed_sha` | `1c52b43cf` |
 | Rationale | sync-audit returned FAIL (0.770 vs Tier L threshold 0.85). Blocking finding **F0**: five `acceptance.md` criteria invoked `go test -run <selector>` with selectors naming tests that do not exist. `go test -run` exits 0 when a selector matches zero tests (`[no tests to run]`), so all five passed vacuously — and would keep passing with the entire branch reverted. This violates `acceptance.md`'s own opening pledge and reproduces the exact failure mode §A.1b diagnoses: a guard written to match the implementation rather than the requirement. |
 | Scope | `acceptance.md` AC command corrections only. **No requirement changed** — REQ-AGE-001 through REQ-AGE-008 are untouched in wording and in scope. The corrections make criteria harder to pass vacuously, never easier. |
+
+**Amendment 2 — 2026-07-26 (in-place, same amendment window)**
+
+| Field | Value |
+|---|---|
+| Rationale | Remediation of the two remaining sync-audit must-fix findings, plus one criterion whose repair changed what it asserts. **F1**: the CHANGELOG claimed `--dry` was the safe default; `astedit.go` declares `BoolVar(&flags.dry, "dry", false, …)`, so a bare run writes in place. **F2**: `applyRuleEdits` skipped on `Fix == "" \|\| Pattern == ""` but reported every skip as "(no fix: field)", misattributing a loader limitation (nested `rule:` block, which all 11 shipped rules use) to the rule author's choice. **AC-060**: its committed wording asserted whole-file mirror identity, a reading unsatisfiable without copying internal-provenance text into a distributed template — forbidden by the template internal-content isolation rule. |
+| Scope | `internal/cli/astedit.go` (+ new guard in `astedit_test.go`), `CHANGELOG.md`, `progress.md` §G/§G.1, and `acceptance.md` AC-060. **REQ-AGE-001 through REQ-AGE-008 remain untouched in wording and scope.** AC-060 is rescoped to delta identity, which is what REQ-AGE-008 states ("the corresponding mirror SHALL be **updated** byte-identically") and the only reading compatible with template neutrality; the pre-existing whole-file divergence it exposed is recorded as named debt in `progress.md` §G.1 rather than silently closed. F1 is a documentation correction only — the `--dry` default is deliberately NOT changed here. |
 
 Amendment mechanics per `.claude/rules/moai/development/spec-frontmatter-schema.md`
 § Status Transition Ownership Matrix (`completed → in-progress (amendment)` row):
