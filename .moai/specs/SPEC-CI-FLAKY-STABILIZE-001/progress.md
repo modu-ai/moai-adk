@@ -240,6 +240,100 @@ FAIL
 
 `internal/cli/help_order.go:54` `reorderRootHelpCommands`가 `cobra.EnableCommandSorting = false`를 설정한다. 이 함수는 `root.go:71`(Execute 경로)과 `help_order_test.go` 5곳에서 호출된다. 즉 `internal/cli` 테스트 바이너리에서는 **비병렬 테스트가 먼저 실행되며 그 과정에서 정렬이 꺼지므로**, 이후 재개되는 병렬 테스트에는 레이스 창이 이미 닫혀 있을 수 있다 — CI에서 `internal/cli`가 아니라 `internal/cli/preference`만 실패한 것과 정합한다. 이는 **우연한 방어**이며 테스트 실행 순서에 의존한다. M2의 `TestMain` warm-up은 이 우연성에 의존하지 않는 명시적 보장을 제공한다.
 
+### M2 — 결함 1 GREEN: TestMain 재귀 warm-up
+
+`internal/cli/main_test.go`, `internal/cli/preference/main_test.go` 신규. 각각 패키지 스코프 `var warmUpDone bool` + `warmUpCommandTree`(본문 첫 줄에서 신호 대입, 깊이 우선 재귀) + `TestMain`(호출만 수행).
+
+M1과 **동일한 명령**을 warm-up 적용 상태에서 재실행:
+
+```
+$ for i in $(seq 1 20); do go test -race -count=1 -run '^TestRaceRepro_PreferenceCmdLazySort$' ./internal/cli/preference/; done
+preference repro WITH warm-up: failures=0 / 20
+$ for i in $(seq 1 20); do go test -race -count=1 -run '^TestRaceRepro_RootCmdLazySort$' ./internal/cli/; done
+cli repro WITH warm-up: failures=0 / 20
+```
+
+RED 20/20 실패 → GREEN 0/20 실패. **동일 명령·동일 대상**에서의 전환이므로 인과가 분리되어 있지 않다.
+
+GWT-3 (재귀가 `githubCmd`에 도달) 임시 관측 — 확인 후 임시 파일 삭제, 최종 트리에 미포함:
+
+```
+=== RUN   TestTmpWarmUpReachesNamedGlobals
+    tmp_reach_test.go:20: total nodes reachable from rootCmd: 182
+    tmp_reach_test.go:21: githubCmd visited = true
+    tmp_reach_test.go:22: hookCmd visited   = true
+--- PASS: TestTmpWarmUpReachesNamedGlobals (0.00s)
+```
+
+회귀 확인 (warm-up이 `rootCmd` 자식을 사전순 정렬하므로 help-order 계열 테스트 영향 여부를 실측):
+
+```
+$ go test -race -count=1 ./internal/cli/ ./internal/cli/preference/
+ok  	github.com/modu-ai/moai-adk/internal/cli	29.187s
+ok  	github.com/modu-ai/moai-adk/internal/cli/preference	2.315s
+```
+
+`help_order_test.go`의 4개 테스트는 그룹 내 빈도 순서만 어서션하고 등록 순서를 어서션하지 않으므로 영향 없음 — 가정이 아니라 위 실행으로 확인했다.
+
+### M3 — 결함 1 가드 (REQ-CFS-004): 도달 가능성 신호 + 왕복 검증
+
+AC-CFS-004b (대입 위치):
+
+```
+$ sed -n '/func warmUpCommandTree/,/^}/p' internal/cli/main_test.go internal/cli/preference/main_test.go
+func warmUpCommandTree(c *cobra.Command) {
+	warmUpDone = true
+	for _, sub := range c.Commands() { // triggers the lazy sort on c
+		warmUpCommandTree(sub)
+	}
+}
+(두 파일 동일)
+
+$ sed -n '/func TestMain/,/^}/p' internal/cli/main_test.go internal/cli/preference/main_test.go
+func TestMain(m *testing.M) {
+	warmUpCommandTree(rootCmd)
+	os.Exit(m.Run())
+}
+func TestMain(m *testing.M) {
+	warmUpCommandTree(PreferenceCmd)
+	os.Exit(m.Run())
+}
+
+$ sed -n '/func TestMain/,/^}/p' <두 파일> | grep -c "warmUpDone"
+0
+```
+
+대입은 `warmUpCommandTree` 본문에만 존재하고 `TestMain`에는 부재 → 왕복 검증의 FAIL 경로가 도달 가능함이 선행 확인되었다.
+
+AC-CFS-005 왕복 (preference) — `warmUpCommandTree(PreferenceCmd)` **한 줄만** 주석 처리:
+
+```
+--- (a) guard run with call removed ---
+=== RUN   TestWarmUpReachability
+    main_test.go:70: cobra lazy-sort warm-up did not run: TestMain must call warmUpCommandTree(PreferenceCmd) before m.Run(). Removing it reintroduces the data race documented at the top of main_test.go.
+--- FAIL: TestWarmUpReachability (0.00s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/cli/preference	0.419s
+
+--- (b) guard run after restore ---
+=== RUN   TestWarmUpReachability
+--- PASS: TestWarmUpReachability (0.00s)
+ok  	github.com/modu-ai/moai-adk/internal/cli/preference	0.355s
+```
+
+동일 왕복을 `internal/cli`에서도 수행:
+
+```
+--- (a) internal/cli guard with call removed ---
+--- FAIL: TestWarmUpReachability (0.00s)
+    main_test.go:71: cobra lazy-sort warm-up did not run: TestMain must call warmUpCommandTree(rootCmd) before m.Run(). ...
+FAIL	github.com/modu-ai/moai-adk/internal/cli	0.617s
+--- (b) restored ---
+ok  	github.com/modu-ai/moai-adk/internal/cli	0.583s
+```
+
+FAIL이 **실제로 관측**되었다 — 초판의 정렬 상태 가드(구조적 반증 불가)와 달리 이 가드는 반증 가능하다.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<pending run-phase>_
