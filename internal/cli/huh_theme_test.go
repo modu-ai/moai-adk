@@ -54,3 +54,68 @@ func TestMoAIHuhTheme_ResolvesDarkAxis(t *testing.T) {
 		})
 	}
 }
+
+// TestMoAIHuhTheme_ClosesWizardFactoryDivergence pins the fields the huh v2
+// wizard factory set and this v1 factory previously left at the huh defaults.
+// The two factories stay separate — the Theme types differ across the library
+// major boundary — but their token-to-role assignment is now the same, so a
+// regression that drops one of these closures is caught here rather than
+// discovered visually.
+//
+// Expected values are read from the tui tokens, never written as hex literals.
+func TestMoAIHuhTheme_ClosesWizardFactoryDivergence(t *testing.T) {
+	for _, dark := range []bool{false, true} {
+		th := tui.LightTheme()
+		if dark {
+			th = tui.DarkTheme()
+		}
+
+		styles := moaiHuhStyles(dark)
+		f := styles.Focused
+
+		t.Run(map[bool]string{false: "light", true: "dark"}[dark], func(t *testing.T) {
+			assertFg := func(name string, got lipgloss.TerminalColor, want string) {
+				t.Helper()
+				col, ok := got.(lipgloss.Color)
+				if !ok {
+					t.Fatalf("%s foreground: expected lipgloss.Color, got %T", name, got)
+				}
+				if string(col) != want {
+					t.Errorf("%s foreground = %q, want tui token %q", name, string(col), want)
+				}
+			}
+
+			// Base / Card border — the principal gap the audit surfaced.
+			assertFg("Focused.Base border", f.Base.GetBorderTopForeground(), th.Rule)
+			assertFg("Focused.Card border", f.Card.GetBorderTopForeground(), th.Rule)
+
+			// Prefix and selector strings, matching the wizard factory verbatim.
+			if got := f.SelectSelector.Value(); got != "▸ " {
+				t.Errorf("Focused.SelectSelector = %q, want %q", got, "▸ ")
+			}
+			if got := f.SelectedPrefix.Value(); got != "◆ " {
+				t.Errorf("Focused.SelectedPrefix = %q, want %q", got, "◆ ")
+			}
+			if got := f.UnselectedPrefix.Value(); got != "◇ " {
+				t.Errorf("Focused.UnselectedPrefix = %q, want %q", got, "◇ ")
+			}
+			assertFg("Focused.SelectedPrefix", f.SelectedPrefix.GetForeground(), th.Success)
+			assertFg("Focused.UnselectedPrefix", f.UnselectedPrefix.GetForeground(), th.Dim)
+
+			// Next mirrors FocusedButton, as it does in the wizard factory.
+			if f.Next.GetBackground() != f.FocusedButton.GetBackground() {
+				t.Errorf("Focused.Next background does not mirror FocusedButton")
+			}
+
+			// NoteTitle gained the bottom margin the wizard factory applies.
+			if got := f.NoteTitle.GetMarginBottom(); got != 1 {
+				t.Errorf("Focused.NoteTitle margin-bottom = %d, want 1", got)
+			}
+
+			// The blurred variant keeps its hidden border, so focus stays legible.
+			if styles.Blurred.Base.GetBorderStyle() != lipgloss.HiddenBorder() {
+				t.Errorf("Blurred.Base lost its hidden border")
+			}
+		})
+	}
+}
