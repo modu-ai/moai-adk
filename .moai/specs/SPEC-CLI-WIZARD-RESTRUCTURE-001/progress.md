@@ -403,9 +403,12 @@ Recorded so sync-phase inherits these rather than rediscovering them.
   SHA placeholder backfill exemption (`spec-frontmatter-schema.md` § Status
   Transition Ownership Matrix); the sync commit itself (`adee2f46b`) could not
   reference its own hash.
-- **`base_merge`**: origin/main was ahead by 21 commits at sync entry
-  (`git rev-list --count --left-right origin/main...HEAD` → `0 21` local-ahead-only
-  pre-observed baseline at 96d35723c, per the orchestrator's pre-verified baseline).
+- **`base_merge`**: at sync entry the branch was ahead of origin/main by 21
+  commits and origin/main was ahead by 0
+  (`git rev-list --count --left-right origin/main...HEAD` → `0 21`, i.e.
+  local-ahead-only; pre-observed baseline at 96d35723c, per the orchestrator's
+  pre-verified baseline). Before the merge the same command reported `9 20`
+  (origin/main ahead by 9, branch ahead by 20).
   The worktree HEAD (`96d35723c`) already carries the merged state — 9 origin/main
   commits merged with 0 conflicts; the only file both sides touched was
   `internal/template/model_policy.go`, in non-overlapping regions (confirmed by
