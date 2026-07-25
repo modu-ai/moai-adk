@@ -95,15 +95,38 @@ func writeHarnessProfileYAML(sectionsDir string, opts InitOptions, result *InitR
 	return nil
 }
 
-// writeLSPYAML writes lsp.enabled to lsp.yaml (B3, REQ-IWE-003).
+// writeLSPYAML persists lsp.enabled to lsp.yaml (B3, REQ-IWE-003).
+//
+// The deployed lsp.yaml is ~11 KB of 16-language LSP configuration, so an
+// existing file is PATCHED at lsp.enabled only — never replaced (REQ-WIZ-021).
+// The patch is depth-aware because lsp.yaml carries a second `enabled:` key
+// under delegate_to_astgrep that must keep both its value and its indentation.
+// Only when no file exists (the no-deployer fallback path) is a minimal block
+// created.
 func writeLSPYAML(sectionsDir string, opts InitOptions, result *InitResult) error {
-	content := fmt.Sprintf("lsp:\n  enabled: %t\n", opts.LSPEnabled)
 	lspPath := filepath.Join(sectionsDir, defs.LSPYAML)
-	if err := os.WriteFile(lspPath, []byte(content), defs.FilePerm); err != nil {
-		return fmt.Errorf("write lsp.yaml: %w", err)
+	value := fmt.Sprintf("%t", opts.LSPEnabled)
+
+	existing, readErr := os.ReadFile(lspPath) //nolint:govet
+	if readErr != nil {
+		content := fmt.Sprintf("lsp:\n  enabled: %s\n", value)
+		if err := os.WriteFile(lspPath, []byte(content), defs.FilePerm); err != nil {
+			return fmt.Errorf("write lsp.yaml: %w", err)
+		}
+		result.CreatedFiles = append(result.CreatedFiles,
+			filepath.Join(defs.MoAIDir, defs.SectionsSubdir, defs.LSPYAML))
+		return nil
 	}
-	result.CreatedFiles = append(result.CreatedFiles,
-		filepath.Join(defs.MoAIDir, defs.SectionsSubdir, defs.LSPYAML))
+
+	patched, ok := patchYAMLPathValue(string(existing), "lsp.enabled", value)
+	if !ok {
+		// Key absent from an existing document: leave it byte-identical rather
+		// than append a duplicate top-level `lsp:` mapping.
+		return nil
+	}
+	if err := os.WriteFile(lspPath, []byte(patched), defs.FilePerm); err != nil {
+		return fmt.Errorf("patch lsp.yaml: %w", err)
+	}
 	return nil
 }
 
@@ -154,22 +177,54 @@ func writeQualityExpansionYAML(sectionsDir string, opts InitOptions, result *Ini
 	return nil
 }
 
-// writeDesignYAML writes design.enabled and design.claude_design.enabled to design.yaml (B8, REQ-IWE-005).
+// writeDesignYAML persists design.enabled and design.claude_design.enabled to
+// design.yaml (B8, REQ-IWE-005).
+//
+// An existing file is PATCHED at those two paths only — never replaced
+// (REQ-WIZ-021). The patch is depth-aware because design.yaml carries five
+// `enabled:` keys across three depths; a depth-blind rewrite would flatten
+// gan_loop.sprint_contract, figma and adaptation into the top-level mapping.
+// Only when no file exists (the no-deployer fallback path) is a minimal block
+// created.
 func writeDesignYAML(sectionsDir string, opts InitOptions, result *InitResult) error {
-	content := fmt.Sprintf(`design:
+	designPath := filepath.Join(sectionsDir, defs.DesignYAML)
+
+	existing, readErr := os.ReadFile(designPath) //nolint:govet
+	if readErr != nil {
+		content := fmt.Sprintf(`design:
   enabled: %t
   claude_design:
     enabled: %t
 `,
-		opts.DesignEnabled,
-		opts.ClaudeDesignEnabled,
-	)
-	designPath := filepath.Join(sectionsDir, defs.DesignYAML)
-	if err := os.WriteFile(designPath, []byte(content), defs.FilePerm); err != nil {
-		return fmt.Errorf("write design.yaml: %w", err)
+			opts.DesignEnabled,
+			opts.ClaudeDesignEnabled,
+		)
+		if err := os.WriteFile(designPath, []byte(content), defs.FilePerm); err != nil {
+			return fmt.Errorf("write design.yaml: %w", err)
+		}
+		result.CreatedFiles = append(result.CreatedFiles,
+			filepath.Join(defs.MoAIDir, defs.SectionsSubdir, defs.DesignYAML))
+		return nil
 	}
-	result.CreatedFiles = append(result.CreatedFiles,
-		filepath.Join(defs.MoAIDir, defs.SectionsSubdir, defs.DesignYAML))
+
+	content := string(existing)
+	patched := false
+	for _, target := range []struct{ path, value string }{
+		{"design.enabled", fmt.Sprintf("%t", opts.DesignEnabled)},
+		{"design.claude_design.enabled", fmt.Sprintf("%t", opts.ClaudeDesignEnabled)},
+	} {
+		if next, ok := patchYAMLPathValue(content, target.path, target.value); ok {
+			content = next
+			patched = true
+		}
+	}
+	if !patched {
+		// Neither key present: leave the document byte-identical.
+		return nil
+	}
+	if err := os.WriteFile(designPath, []byte(content), defs.FilePerm); err != nil {
+		return fmt.Errorf("patch design.yaml: %w", err)
+	}
 	return nil
 }
 
