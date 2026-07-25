@@ -77,7 +77,12 @@ While a workflow run is active, the `/workflows` TUI lets you manage it: list ac
 - **Cost awareness**: a single workflow run can spend meaningfully more tokens than the same task in conversation. It counts toward the session's usage and the context-window thresholds in `.claude/rules/moai/workflow/context-window-management.md`. Surface the cost trade-off to the user before launching a large fan-out.
 - **Bundled `/deep-research`**: Claude Code ships a built-in research workflow (`/deep-research <question>`) that fans out web searches, cross-checks sources, votes on claims, and returns a cited report. As of v2.1.218 it starts only when invoked manually — Claude no longer launches it on its own. It requires the WebSearch tool. This complements MoAI's WebSearch + Explore exploration pattern for research-heavy questions.
 - **`ultracode` per-prompt trigger vs session effort**: the `ultracode` trigger keyword (or asking to "use a workflow") is a **per-prompt** trigger — it launches a workflow for that one request. This is distinct from the **session-wide** `/effort ultracode` mode, which combines `xhigh` reasoning with automatic workflow orchestration so Claude plans a workflow for each substantive task across the whole session. Use the session mode deliberately; every task then uses more tokens. Session mode reverts on a new session; step back with `/effort high` for routine work. Because it resets on a new session, `ultracode` is **not** restored by the `ultrathink.` opener of a paste-ready resume message — that opener restores reasoning effort only. A resumed session that needs auto-orchestration must explicitly re-issue `/effort ultracode`, parallel to how a `/goal` must be re-set after a session boundary.
-- **Saved workflows**: a run's script can be saved as a `/command` in `.claude/workflows/` (project, shared) or `~/.claude/workflows/` (personal). A project workflow with the same name wins over a personal one. A saved workflow accepts an `args` global input — the arguments string passed when the workflow command is invoked. MoAI does not ship any saved workflows by default; the user-owned `.claude/workflows/` directory is not template-managed.
+- **Saved workflows**: a run's script can be saved as a `/command` in `.claude/workflows/` (project, shared) or `~/.claude/workflows/` (personal). A project workflow with the same name wins over a personal one. A saved workflow accepts an `args` global input — the arguments string passed when the workflow command is invoked.
+
+  `.claude/workflows/` holds two kinds of script, split by filename prefix:
+
+  - **MoAI-shipped generic fan-out** — `plan-research-fanout.js`, `sync-audit-4dim.js`, and `codemaps-extract.js` ship with the template and **are** template-managed. `moai update` **overwrites** their local copies, so a local edit to one of them is lost on the next update; edit the template source instead. These are the scripts the plan / run / sync / codemaps workflow docs reference behind a capability gate.
+  - **User-owned Runner Workflows** — the `hns-*` and `harness-*` prefixes are **not template-managed**. MoAI never ships them, and `moai update` preserves whatever the user has authored there.
 - **Plan / provider availability**: dynamic workflows require a paid plan and are available on the Claude API, Amazon Bedrock, Google Vertex AI, and Microsoft Foundry; on the Pro plan the feature is enabled via `/config`.
 
 ## Purpose-driven model+effort selection
@@ -128,7 +133,7 @@ Validated patterns from MoAI dynamic-workflow pilots — each entry records the 
 
 **When to use**: high-count codebase codemaps where architecture INSIGHT beyond mechanical extraction is wanted AND parallel speed matters. **When NOT to use**: pure dependency-graph / public-surface extraction (use the deterministic `go list -deps -json` + `go doc` path), or small scale (use a single sub-agent).
 
-**Artifact**: the validated script lives in the local, user-owned `.claude/workflows/` directory (not template-managed, per the statement above).
+**Artifact**: `codemaps-extract.js` is one of the MoAI-shipped generic fan-out scripts under `.claude/workflows/` — template-managed, so `moai update` overwrites the local copy (see the Saved workflows note above). A user's own validated scripts sit alongside it under the user-owned `hns-*` / `harness-*` prefixes and stay untouched by updates.
 
 ## Cross-references
 

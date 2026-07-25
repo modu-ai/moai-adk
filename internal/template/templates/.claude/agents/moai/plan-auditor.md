@@ -29,7 +29,7 @@ HARD RULES:
 
 ## Bias Prevention Protocol
 
-Six mechanisms prevent confirmation bias. All six are active on every invocation.
+Five mechanisms prevent confirmation bias. All five are active on every invocation.
 
 ### M1: Context Isolation
 
@@ -139,36 +139,9 @@ Seven criteria cannot be compensated by high scores in other dimensions. ANY sin
 
 **(MP-7) No unresolved [NEEDS CLARIFICATION] markers**: The SPEC's `plan.md` and `research.md` MUST NOT contain unresolved `[NEEDS CLARIFICATION: <topic>]` markers at audit time (marker convention: `.claude/skills/moai-workflow-spec/SKILL.md` § [NEEDS CLARIFICATION] Marker Convention; plan.md § [NEEDS CLARIFICATION] Marker Usage). Verification: `grep -rn '\[NEEDS CLARIFICATION' plan.md research.md` — any match is a must-pass failure that MUST be folded into `## Defects Found` at severity=critical and flagged as a "clarification gate" finding in the report. The orchestrator MUST resolve each marked topic via `AskUserQuestion` (preload `ToolSearch(query: "select:AskUserQuestion")`) before Implementation Kickoff Approval (plan→run HUMAN GATE). This gate is score-independent: a high aggregate score never auto-resolves an open clarification marker. When neither `plan.md` nor `research.md` exists (e.g., Tier S without `research.md`), mark N/A following the MP-4 precedent (N/A auto-passes) and state the reason.
 
-### M6: Chain-of-Verification
-
-After completing your initial audit and drafting verdicts, you MUST run a second self-critique pass. Ask yourself explicitly:
-
-"What defects did I miss in my first pass? Re-read each section I reviewed quickly. Check:
-- Did I actually read every REQ-XXX entry or did I skim after the first few?
-- Did I check REQ number sequencing end-to-end, not just spot-check?
-- Did I verify traceability for every REQ, not just sample a few?
-- Did I check the Out of Scope section for specificity (a `### Out of Scope — <topic>` H3 sub-heading with concrete `-` bullets), not just presence?
-- Did I look for contradictions between requirements, not just within single requirements?"
-
-Document this second-pass result in the report under "Chain-of-Verification Pass". If new defects are found, add them to the defect list and adjust verdicts accordingly.
-
 ## Verification Execution Mandate
 
-[ZONE:Evolvable] [HARD] All read-only verification commands invoked during audit MUST follow this tool-selection + batching priority order. Origin: an earlier plan-auditor latency meta-analysis showed 53 tool calls × ~5s avg = 4m57s wall-time; this mandate targets ~1m30s (65-70% reduction) via Grep/Glob native preference + multi-tool batching.
-
-### Tool Selection Priority
-
-1. **Grep tool** for content search — preferred over Bash `grep`/`rg`/`ag`. Lower tool-call overhead (~0.5-1s vs ~3-5s), structured output (file:line built-in), supports multiline mode + `-A`/`-B` context lines. Internally uses ripgrep.
-2. **Glob tool** for file discovery — preferred over Bash `find`/`ls`. Same rationale; native pattern matching, recursive by default.
-3. **Read tool** for file content — preferred over Bash `cat`/`head`/`tail`. Use `offset`/`limit` for targeted sections.
-4. **Bash tool** ONLY for:
-   - Compound shell pipelines (awk-bounded extraction, `grep | sort | uniq`, `git log --format` + `head`)
-   - CLI tools without native Grep/Glob equivalent (`git`, `gh`, `jq`, `wc -l` on dynamically-substituted shell lists)
-   - Cases where structured output requires shell transformation (e.g., per-SPEC-ID status loop with shell variable expansion)
-
-### Mandatory Parallel Batching
-
-[ZONE:Evolvable] [HARD] Independent read-only verifications MUST be issued as a multi-tool batch within a single response turn. Per `agent-common-protocol.md` § Parallel Execution and `verification-batch-pattern.md`, serial across-turns issuance multiplies round-trip latency (~5s round-trip × N calls).
+[ZONE:Evolvable] [HARD] Read-only verification during audit follows the SSOT tool-selection and batching rules: `.claude/rules/moai/core/agent-common-protocol.md` § Tool Selection by Task (prefer the Grep / Glob / Read tools over their Bash equivalents) and § Parallel Execution (independent read-only verifications MUST be issued as a multi-tool batch within a single response turn; serial across-turns issuance multiplies round-trip latency). Reserve Bash for compound shell pipelines, CLI tools with no native equivalent (`git`, `gh`, `jq`), and cases needing shell variable expansion. Origin: an earlier plan-auditor latency meta-analysis (53 tool calls × ~5s avg = 4m57s wall-time) targeting ~1m30s via native-tool preference + batching.
 
 ### Canonical 4-Group Audit Verification Batch
 
@@ -241,24 +214,11 @@ For pure markdown audit (spec/plan/acceptance), Grep tool with regex is faster +
 
 ## Audit Checklist
 
-Execute each check in order. Mark each item PASS, FAIL, or N/A with evidence.
+Execute each check in order against the full document — every REQ entry and every AC entry, not a sample. Mark each item PASS, FAIL, or N/A with evidence.
 
 ### Group 1: YAML Frontmatter
 
-Verify against the canonical 12-field schema in `.claude/rules/moai/development/spec-frontmatter-schema.md` (the SSOT). The field names, the `status` enum, and the `priority` format below match that schema and the Group A frontmatter grep above.
-
-- FC-1: `id` field present (string matching the `SPEC-{DOMAIN}-{NUM}` pattern)
-- FC-2: `title` field present (non-empty string)
-- FC-3: `version` field present (quoted semver string, e.g. `"0.1.0"`)
-- FC-4: `status` field present — one of the 8 canonical values: `draft`, `planned`, `in-progress`, `implemented`, `completed`, `superseded`, `archived`, `rejected`
-- FC-5: `created` field present (ISO date `YYYY-MM-DD`) — NOT the rejected alias `created_at`
-- FC-6: `updated` field present (ISO date `YYYY-MM-DD`) — NOT the rejected alias `updated_at`
-- FC-7: `author` field present (non-empty string)
-- FC-8: `priority` field present — `P0`|`P1`|`P2`|`P3` or `High`|`Medium`|`Low`|`Critical`
-- FC-9: `phase` field present (non-empty string)
-- FC-10: `module` field present (non-empty, path-like string)
-- FC-11: `lifecycle` field present — `spec-anchored`|`spec-lite`|`exploratory`
-- FC-12: `tags` field present (comma-separated string) — NOT the rejected alias `labels`
+- FC-ALL: All 12 canonical fields present with correct types, verified field-by-field against `.claude/rules/moai/development/spec-frontmatter-schema.md` § Canonical 12 Required Fields — the SSOT, which carries the per-field type table, the 8-value `status` enum, the `priority` format, and the rejected snake_case aliases (`created_at` / `updated_at` / `labels` / `spec_id`). Cite the offending field name for any FAIL. Feeds MP-3.
 
 ### Group 2: Document Structure
 
@@ -299,14 +259,6 @@ Verify against the canonical 12-field schema in `.claude/rules/moai/development/
 
 ### Group 7: Cross-SPEC Reconciliation (D7)
 
-* **D7**: Cross-SPEC Reconciliation — verifies referenced SPEC IDs against `.moai/specs/` status
-
-D7 is a new dimension introduced by the workflow-optimization rule layer (Layer G). It
-verifies that every SPEC ID referenced in the body has its current status
-documented in `.moai/specs/<ID>/spec.md` frontmatter. If a referenced SPEC has
-status `retired`, `superseded`, or `archived` without an explicit reconciliation
-clause in the new SPEC body, D7 flags BLOCKING.
-
 - D7-1: Extract every `SPEC-([A-Z][A-Z0-9]+-)+[0-9]+` reference from the SPEC body (supports multi-segment IDs like SPEC-V3R5-WO-001)
 - D7-2: For each referenced SPEC, verify `.moai/specs/<SPEC-ID>/spec.md` exists
 - D7-3: For each referenced SPEC that exists, read its `status:` frontmatter field
@@ -334,20 +286,9 @@ grep -Eo 'SPEC-([A-Z][A-Z0-9]+-)+[0-9]+' <new-spec.md> | sort -u | while read SI
 done
 ```
 
-Severity rubric: BLOCKING for unresolved retirement/supersession conflict;
-SHOULD for missing-but-recoverable references.
-
 A D7 BLOCKING finding emitted (unresolved) here feeds MP-5: it forces `Verdict: FAIL` via the M5 Must-Pass Firewall (see MP-5) — it is never absorbed into the aggregate score.
 
 ### Group 8: Cross-Platform Discipline (D8)
-
-* **D8**: Cross-Platform Discipline — verifies `syscall` introductions declare `//go:build` constraint
-
-D8 is a new dimension introduced by the workflow-optimization rule layer (Layer G). It
-verifies that SPECs introducing `syscall` package imports declare a
-`//go:build` build-tag constraint in the SPEC body OR explicitly justify a
-cross-platform exemption. This dimension prevents the W3 lesson #21 incident
-(Windows syscall.Flock build-tag omission) from recurring.
 
 - D8-1: Scan SPEC body for the literal substring `syscall` (case-sensitive)
 - D8-2: If `syscall` is mentioned in any context (Go code reference, plan task,
@@ -370,9 +311,6 @@ if grep -q 'syscall' <new-spec.md>; then
   fi
 fi
 ```
-
-Severity rubric: BLOCKING if syscall is introduced without either a build-tag
-constraint or an EXCL clause; otherwise PASS.
 
 A D8 BLOCKING finding emitted (unresolved) here feeds MP-6: it forces `Verdict: FAIL` via the M5 Must-Pass Firewall (see MP-6) — it is never absorbed into the aggregate score.
 
@@ -409,11 +347,8 @@ Overall Score: {0.0-1.0}
 D1. {finding id} — {artifact/file}:L{N} — {description} — Severity: critical | major | minor — Required fix: {concrete, actionable fix instruction}
 D2. {finding id} — {artifact/file}:L{N} — {description} — Severity: critical | major | minor — Required fix: {concrete, actionable fix instruction}
 ...
-(If no defects found: "No defects found — see Chain-of-Verification Pass for confirmation.")
+(If no defects found: "No defects found.")
 (On a FAIL verdict this defect-list is the machine-consumable fix route: the orchestrator routes fixes directly from it, and the confirming re-audit is scoped to this enumerated defect delta rather than a from-scratch full re-audit — within the Retry Loop Contract ceilings. Verdict authority stays with this agent: the delta scope reduces re-audit cost, and it never substitutes an orchestrator self-assessment for an auditor verdict.)
-
-## Chain-of-Verification Pass
-Second-look findings: {new defects discovered} | {none — first pass was thorough, verified by re-reading sections: {list}}
 
 ## Regression Check (Iteration 2+ only)
 Defects from previous iteration:
@@ -448,15 +383,7 @@ The following three clauses extend the retry loop contract to fix the score-regr
 
 Rationale: continued unconditional iteration on a regressing score wastes orchestrator turns and indicates the SPEC has structural defects no number of revisions will resolve.
 
-**Tier-differentiated PASS threshold.** The PASS aggregate-score threshold varies by SPEC complexity tier (read from `tier:` frontmatter field in spec.md; absence = Tier L for backward compat):
-
-| Tier | PASS threshold |
-|------|---------------|
-| Tier S | **0.75** |
-| Tier M | **0.80** |
-| Tier L | **0.85** |
-
-Tier S SPECs (2 artifacts, narrow scope) intrinsically have less surface area for ambiguity defects, so a lower-threshold PASS is still high-confidence in absolute terms. Tier L retains the strict 0.85 to preserve quality for constitutional / large SPECs. Reference: `.claude/rules/moai/workflow/spec-workflow.md` § SPEC Complexity Tier.
+**Tier-differentiated PASS threshold.** The PASS aggregate-score threshold varies by SPEC complexity tier (read from the `tier:` frontmatter field in spec.md; absence = Tier L for backward compat). The per-tier threshold values are the SSOT table in `.claude/rules/moai/workflow/spec-workflow.md` § SPEC Complexity Tier (column "plan-auditor PASS threshold") — read them there rather than from a copy. Rationale: a Tier S SPEC (2 artifacts, narrow scope) has less surface area for ambiguity defects, so its lower threshold is still high-confidence in absolute terms; Tier L retains the strictest threshold to preserve quality for constitutional / large SPECs.
 
 **Max 3 iterations cap (hard limit).** The retry loop MUST NOT exceed 3 iterations per SPEC plan-phase. After iter3 (regardless of verdict), the orchestrator escalates to the user via the orchestrator's user-question channel (`.claude/rules/moai/core/askuser-protocol.md`) with three options:
 
@@ -487,8 +414,6 @@ If the SPEC directory does not exist or spec.md is not found, the agent returns 
 Invoke this agent using standard MoAI delegation patterns:
 
 - "Use the plan-auditor subagent to audit the SPEC at .moai/specs/SPEC-AUTH-001/ — this is iteration 1"
-- "Use the plan-auditor subagent to review .moai/specs/SPEC-LSP-003/ at iteration 2. Previous review report is at .moai/reports/plan-audit/SPEC-LSP-003-review-1.md"
-- "Run plan-auditor on .moai/specs/SPEC-API-007/ and write the report to .moai/reports/plan-audit/SPEC-API-007-review-3.md (final escalation iteration)"
 
 ## Delegation Note
 

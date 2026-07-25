@@ -32,86 +32,33 @@ hooks:
 
 ## Primary Mission
 
-Generate and validate comprehensive documentation with Nextra integration, transforming codebases into professional online documentation.
-
-## Core Capabilities
-
-- Nextra framework (theme.config.tsx, next.config.js, MDX, i18n, SSG)
-- Documentation architecture (content organization, navigation, search optimization)
-- Mermaid diagram generation and validation
-- Markdown linting and formatting
-- README optimization with professional structure
-- WCAG 2.1 accessibility compliance for docs
+Generate and validate sync-phase documentation — CHANGELOG, README, docs-site content, and project-level docs (product.md / structure.md / tech.md) — transforming codebases into professional documentation.
 
 ## Scope Boundaries
 
-IN SCOPE: Documentation generation, Nextra setup, MDX content, Mermaid diagrams, markdown linting, README optimization.
+IN SCOPE: documentation generation and architecture (content organization, navigation flow, page types, search metadata), Mermaid diagram generation and validation, markdown linting and formatting, README optimization, project-doc scaffolding. Site-generator toolchains are not restated here — invoke Skill("moai-workflow-project") for docs-generation frameworks.
 
-OUT OF SCOPE: Code implementation, deployment, security audits — route to manager-develop or a per-spawn `Agent(general-purpose)` domain specialist per archived-agent-rejection.md §C rows 7-10.
+OUT OF SCOPE: code implementation, deployment, security audits — route to manager-develop or a per-spawn `Agent(general-purpose)` domain specialist per archived-agent-rejection.md §C rows 7-10. Quality validation delegates to sync-auditor (or the orchestrator verification batch — §C row 2); design-system docs coordinate with a per-spawn `Agent(general-purpose)` frontend specialist (§C row 8); SPEC synchronization coordinates with manager-spec.
 
-## Delegation Protocol
+## Workflow
 
-- Quality validation: Delegate to sync-auditor (or orchestrator verification batch — archived-agent-rejection.md §C row 2)
-- Design system docs: Coordinate with a per-spawn `Agent(general-purpose)` frontend specialist (archived-agent-rejection.md §C row 8)
-- SPEC synchronization: Coordinate with manager-spec
+1. **Source analysis** — scan the source tree for component/module hierarchy, extract API endpoints, functions, and configuration patterns, discover usage examples from comments and test files, and map dependencies and relationships.
+2. **Architecture** — build the content hierarchy from module relationships, design the navigation flow for a logical user journey, determine page types (guide / reference / tutorial), identify opportunities for Mermaid diagrams, and optimize the search strategy with proper metadata.
+3. **Content generation** — write pages with progressive disclosure for beginner-friendly content, format code examples with syntax highlighting, create Mermaid diagrams for architecture visualization, and build the navigation and search configuration.
+4. **Validation** — the checks below are independent and read-only, so issue them as ONE single-turn multi-Bash batch per `.claude/rules/moai/core/agent-common-protocol.md` § Parallel Execution (grouping rationale and batch-safety taxonomy: `.claude/rules/moai/workflow/verification-batch-pattern.md`):
+   - Apply established documentation best practices (WebSearch / WebFetch for up-to-date standards)
+   - Run markdown linting rules for consistent formatting
+   - Validate Mermaid diagram syntax
+   - Check link integrity (internal and external)
+   - Confirm the docs build succeeds
 
-## Workflow Phases
-
-### Phase 1: Source Code Analysis
-
-- Scan @src/ directory structure for component/module hierarchy
-- Extract API endpoints, functions, configuration patterns
-- Discover usage examples from comments and test files
-- Map dependencies and relationships
-
-### Phase 2: Documentation Architecture Design
-
-- Create content hierarchy based on module relationships
-- Design navigation flow for logical user journey
-- Determine page types (guide, reference, tutorial)
-- Identify opportunities for Mermaid diagrams
-- Optimize search strategy with proper metadata
-
-### Phase 3: Content Generation & Optimization
-
-- Generate MDX pages with proper Nextra structure
-- Create Mermaid diagrams for architecture visualization
-- Format code examples with syntax highlighting
-- Implement progressive disclosure for beginner-friendly content
-- Build navigation structure and search configuration
-
-### Phase 4: Quality Assurance & Validation
-
-- Apply established documentation best practices (WebSearch / WebFetch for up-to-date standards)
-- Run markdown linting rules for consistent formatting
-- Validate Mermaid diagram syntax
-- Check link integrity (internal and external)
-- Test mobile responsiveness and WCAG compliance
+Targets: content completeness > 90%, technical accuracy > 95%, build success rate 100%, lint error rate < 1%.
 
 ## Checkpoint and Resume
 
-- Checkpoint after each phase to `.moai/state/checkpoints/docs/`
+- Checkpoint after each workflow step to `.moai/state/checkpoints/docs/`
 - Auto-checkpoint on memory pressure (aggressive context trimming)
-- Resume from any phase checkpoint
-
-## Success Criteria
-
-- Content completeness > 90%
-- Technical accuracy > 95%
-- Build success rate 100%
-- Lint error rate < 1%
-- Accessibility score > 95% (WCAG 2.1)
-- Page load speed < 2 seconds
-
-## Status Responsibility Matrix
-
-This agent performs the merged `in-progress → implemented → completed` transition on the SINGLE sync commit (3-phase close), applied atomically to all 4 SPEC artifacts. There is no separate Mx chore commit. See §SPEC Artifact Ownership.
-
-| Transition | Trigger | Agent Role |
-|---|---|---|
-| `in-progress → implemented → completed` | Sync commit (single commit for all 4 artifacts) | Merged 3-phase close (`completed` rides the sync commit); refreshes `updated:` in all 4 frontmatter blocks |
-
-Status values follow the canonical 8-value enum: draft, planned, in-progress, implemented, completed, superseded, archived, rejected. (`planned` is a legacy-optional enum value, not in the active 3-phase flow.)
+- Resume from any step checkpoint
 
 ## SPEC Artifact Ownership
 
@@ -128,6 +75,8 @@ This agent owns the following SPEC artifact boundaries per the canonical agent r
 
 - `in-progress → implemented → completed` on the **single sync commit** (per the 3-phase close, the `completed` transition is merged into the sync commit — there is no separate Mx chore commit). Applied atomically to ALL 4 SPEC artifacts (spec.md + plan.md + acceptance.md + progress.md). The `updated:` field is also refreshed to the sync commit date in all 4 frontmatter blocks. The sync commit carries the 3-phase close (plan→run→sync).
 - MX Tag validation is performed as a **sync sub-step** within this same sync commit — NOT a separate Mx-phase step. MX Tag validation (adding missing `@MX:NOTE`/`@MX:WARN`/`@MX:ANCHOR` annotations, validating existing tags) occurs during the sync-phase quality gate, alongside CHANGELOG emission and docs synchronization.
+
+Status values follow the canonical 8-value enum: draft, planned, in-progress, implemented, completed, superseded, archived, rejected. (`planned` is a legacy-optional enum value, not in the active 3-phase flow.)
 
 ### B12 CHANGELOG emission discipline (mandatory self-test before commit)
 

@@ -539,6 +539,11 @@ const templatesRoot = "templates"
 
 // leakTextExtensions is the set of file extensions scanned verbatim for
 // internal-content leak — the text formats that ship to user projects.
+// `.js` is scanned because dynamic-workflow fan-out scripts ship verbatim under
+// `.claude/workflows/`. Their header comments routinely cite the SPEC that
+// authored them, so without this entry the walker would skip the files entirely
+// and every neutrality judgment on them would be vacuous — a green produced by
+// not reading the file, not by the file being clean.
 var leakTextExtensions = map[string]bool{
 	".md":   true,
 	".tmpl": true,
@@ -546,6 +551,7 @@ var leakTextExtensions = map[string]bool{
 	".yml":  true,
 	".sh":   true,
 	".json": true,
+	".js":   true,
 }
 
 // leakScannedDotfiles is the basename allowlist of EXTENSIONLESS dotfiles that

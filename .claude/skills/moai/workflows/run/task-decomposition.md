@@ -69,6 +69,10 @@ Requirements:
 - Write tests before implementation (test-first discipline)
 - Ensure minimum 80% coverage per commit (85% recommended for new code)
 
+### RED-stage Drafter Pool (read-only, optional)
+
+**Where** a milestone's RED stage spans several independent test targets — distinct packages, or distinct acceptance criteria with no shared fixture — the orchestrator MAY draft them in parallel: one read-only `Agent()` per target in a single turn, 3-5 concurrent per the Mode 4 ceiling (`.claude/rules/moai/workflow/orchestration-mode-selection.md` §C.2). Each drafter reads the SPEC plus the existing test conventions and **returns test source as text — it writes no file and never prompts the user**, returning a structured blocker report (`.claude/rules/moai/core/agent-common-protocol.md` § Blocker Report Format) when an input is missing. The single `manager-develop` subagent then applies the drafts sequentially and drives RED-GREEN-REFACTOR from there: it remains the only writer, so two write-capable agents never run at once. **Where** the targets share fixtures, or the RED stage is a single test, the existing serial path runs unchanged. The orchestrator launches the drafters itself — scaling, not subagent nesting.
+
 Output: files_created list, specification_tests_created list, test_results (all passing), coverage percentage, refactoring_improvements list, implementation_divergence report.
 
 Implementation Divergence Tracking:
@@ -99,9 +103,19 @@ After each TDD REFACTOR cycle completion, compare planned vs actual:
    - 20% < drift <= 30%: Warning in progress.md
    - drift > 30% (cumulative): Trigger Phase 14 re-planning gate
 
+## Parallel Quality-Evidence Fan-Out (capability-gated)
+
+**Where** `.claude/workflows/sync-audit-4dim.js` exists on disk **AND** the runtime supports dynamic workflows, the orchestrator MAY launch it once across the Phase 13 / 16 / 17 quality band to collect four-dimension evidence (Functionality / Security / Craft / Consistency) in one parallel pass rather than three serial audit passes. **Where** either condition is absent — the script was removed, or the runtime predates dynamic-workflow support — those phases run their existing serial path with no error, no warning, and no interruption. The existing maximum-3-iteration ceilings on Phase 16 and Phase 17 are preserved on both paths.
+
+The orchestrator launches the script itself; this is scaling, not subagent nesting, so the flat agent hierarchy is preserved. All four judges are read-only: a judge that cannot run a check records an `evidence_gaps` entry, and one missing required input returns a structured blocker report — neither prompts the user. The script's harmonic-mean aggregate is **evidence, not a verdict**: the binding PASS/FAIL remains owned by `sync-auditor`, which may cite the aggregate but is never replaced by it. Implementation Kickoff Approval is likewise unaffected — it is decided before any workflow launches.
+
+**Collapsed structure (one evidence pass, one verdict).** Phases 13, 16, and 17 otherwise re-read the same changeset three times in series — Phase 13 for TRUST 5, Phase 16 for the four dimensions, Phase 17 for static review. On the fan-out path the three share **one** parallel evidence pass: the read-only judges run once, and each phase then consumes that recorded evidence instead of re-running its own scan. **One verdict follows** — `sync-auditor` issues the single binding PASS/FAIL for the band; the aggregate score is quoted as evidence beneath it, never in place of it. Collapsing the evidence collection does NOT collapse the iteration limits: each phase below keeps its own stated limit verbatim, and a FAIL re-enters that phase's fix cycle with freshly gathered evidence rather than reusing the stale pass.
+
 ## Phase 13: Quality Validation
 
 Agent: sync-auditor subagent (independent quality scoring per `.claude/rules/moai/workflow/archived-agent-rejection.md` §C row 2; OR orchestrator verification batch — lint + test + coverage)
+
+Evidence source: on the fan-out path above, consume the shared parallel evidence pass for the checks it already covers rather than re-running them here; on the serial path, run them as described below. Either way the binding verdict stays with `sync-auditor`.
 
 Input: Both Phase 5 planning context and Phase 11 implementation results.
 
@@ -242,6 +256,8 @@ Purpose: Update @MX code annotations for modified files. See .claude/rules/moai/
 - P1: Every new exported function with fan_in >= 3 MUST have `@MX:ANCHOR`
 - P2: Every new goroutine/async pattern MUST have `@MX:WARN`
 - P1/P2 violations block Phase 19 until resolved
+
+**Sharding (optional).** **Where** the modified files span several packages, the *scan* MAY be sharded — one read-only `Agent()` per package shard in a single turn, 3-5 concurrent per the Mode 4 ceiling (`.claude/rules/moai/workflow/orchestration-mode-selection.md` §C.2), each returning its proposed tag insertions as text and writing nothing; a shard that cannot read a target records the gap and returns a structured blocker report rather than prompting the user. Tag *application* is NOT sharded: one agent applies every insertion, so the write path stays single-writer. The blocking P1/P2 determination is made on the merged scan result, never per-shard, so no shard can clear the gate alone. The orchestrator launches the shards itself — scaling, not subagent nesting. **Where** the changeset is small, the scan runs as one pass.
 
 **TDD Mode:**
 - Remove `@MX:TODO` tags for tests that now pass
