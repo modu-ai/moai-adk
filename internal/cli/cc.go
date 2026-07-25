@@ -32,6 +32,8 @@ Flags:
   -b, --bypass                  Shorthand for --permission-mode bypassPermissions
   -c, --continue                Continue previous session
   -m, --model <model>           Override model selection
+  -w, --worktree [name]         Launch in an isolated git worktree (.claude/worktrees/<name>/);
+                                name omitted = auto-generated (same as claude --worktree)
   --chrome / --no-chrome        Toggle Chrome MCP
 
 Permission Modes:
@@ -46,7 +48,9 @@ Examples:
   moai cc                              # Default profile, launch Claude
   moai cc -p work                      # Use 'work' profile
   moai cc --permission-mode auto       # Launch with auto mode
-  moai cc -p work -- --print           # Profile + pass-through args to Claude`,
+  moai cc -p work -- --print           # Profile + pass-through args to Claude
+  moai cc -w feat-login                # Launch in isolated worktree 'feat-login'
+  moai cc -w                           # Launch in auto-named isolated worktree`,
 	GroupID:            "launch",
 	DisableFlagParsing: true,
 	RunE:               runCC,
@@ -71,5 +75,6 @@ func runCC(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
+	filteredArgs = normalizeWorktreeFlag(filteredArgs)
 	return unifiedLaunch(profileName, "claude", filteredArgs)
 }
