@@ -2,7 +2,7 @@
 id: SPEC-AGENT-PARALLEL-OPT-001
 title: "Agent instruction diet + plan/run/sync parallelization maximization — Implementation Plan"
 version: "0.6.0"
-status: in-progress
+status: completed
 created: 2026-07-25
 updated: 2026-07-25
 author: manager-spec

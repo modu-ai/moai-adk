@@ -2,7 +2,7 @@
 id: SPEC-AGENT-PARALLEL-OPT-001
 title: "Agent instruction diet + plan/run/sync parallelization maximization — Progress"
 version: "0.5.0"
-status: in-progress
+status: completed
 created: 2026-07-25
 updated: 2026-07-25
 author: manager-spec
@@ -342,4 +342,69 @@ m1_to_mN_commit_strategy: multi-commit (M1..M5)    # 본 세션 기여분 4커�
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+```yaml
+sync_complete_at: 2026-07-25
+sync_commit_sha: pending-backfill
+sync_status: audit-ready
+ac_pass_count: 54
+ac_fail_count: 0
+ac_debt_count: 2
+ac_total: 56
+```
+
+### 4-dimension score + verdict
+
+독립 sync-auditor 패스(격리 워크트리 `.claude/worktrees/sync-apo001`, HEAD `8f0426f4b`, read-only, git 변경 없음)가 `.moai/reports/sync-audit/SPEC-AGENT-PARALLEL-OPT-001-sync-audit.md`에 전체 리포트를 남겼다.
+
+| Dimension | Weight | Score | Verdict | Evidence |
+|---|---:|---:|---|---|
+| Functionality | 40% | 0.92 | PASS | `go test ./...` → `exit=0`, 107 packages `ok`, 0 FAIL. 52/56 AC PASS(교정 전); 54개 REQ 전량 실질 충족 |
+| Security | 25% | 0.95 | PASS | 배포된 `.js` 3종에 대한 위험 구문 프로브(`eval\|new Function\|child_process\|exec(\|execSync\|spawn(\|require(\|process.env\|fs.(write\|unlink\|rm)`) → 매치 0. Credential 프로브 → 0. Subagent boundary: `AskUserQuestion` 2건 전량 부정형 주석("No AskUserQuestion") |
+| Craft | 20% | 0.84 | PASS | `golangci-lint run --timeout=3m` → `exit=0`, `0 issues.` 라인 상한 전량 충족(1974/1997). AC 판정 명령 2건의 저작 결함(scope-mismatch·formatting-brittleness) |
+| Consistency | 15% | 0.93 | PASS | SPEC 전 구간 mirror-parity 회귀 스윕 → REGRESSION 0건. frontmatter-field diff → 0 |
+
+**Harmonic mean = 4 / (1/0.92 + 1/0.95 + 1/0.84 + 1/0.93) = 0.908** — Tier L 임계 0.85 대비 PASS.
+
+### AC-050 / AC-052 교정 기록 (MUST FAIL → PASS)
+
+sync-audit 최초 패스는 must-pass firewall 위반으로 **FAIL** 판정했다(`acceptance.md` §A: "MUST 등급 AC 1건이라도 FAIL이면 SPEC은 close 불가"). 두 결함 모두 **판정 명령 저작 결함**이며 기반 REQ는 이미 충족되어 있었다.
+
+**AC-APO-050 (MUST)** — 구 명령 `grep -ciE -e 'nextra' -e 'wcag' -e 'page.?speed' -e 'lighthouse' manager-docs.md`(전체 파일) → `1`(요구 `== 0`). 유일한 매치는 frontmatter `description:` 블록(:6) — AC-065가 **변경 금지**로 명시한 필드. 본문(body)만 스코프한 재실행:
+```bash
+awk 'NR>1 && /^---$/{f=1;next} f' .claude/agents/moai/manager-docs.md \
+  | grep -ciE -e 'nextra' -e 'wcag' -e 'page.?speed' -e 'lighthouse'
+```
+결과: **0**(origin/main 동일 파이프라인 baseline: 7). 구 명령은 AC-065와 동시 충족 불가능한 형태였다. 교정: `acceptance.md`에서 body-scope 명령으로 대체(manager-spec 소관, 커밋 `6f5a28ff0`).
+
+**AC-APO-052 (MUST)** — 구 명령 `grep -c 'squash | merge | rebase' manager-git.md`(bare pipe, BRE literal-string 해석) → `0`(요구 `== 1`, baseline 3). origin/main baseline은 정확히 `3`으로 검증됨. 잔존 유일 서술이 백틱으로 재포맷되어(`:32`) 리터럴 매치가 깨진 것 — **REQ-APO-052("규칙을 한 번만 명시")는 실질 충족**. 포맷-관용 재실행:
+```bash
+grep -cE 'squash.{0,2} \| .{0,2}merge.{0,2} \| .{0,2}rebase' .claude/agents/moai/manager-git.md
+```
+결과: **1**(origin/main 동일 패턴: 3) — AC가 의도한 3→1 축약이 실제로 발생했음을 확인. 운용 경로 2곳(`gh pr merge --squash`, `gh pr merge --<merge_method>`) 보존 확인. 교정: `acceptance.md`에서 포맷-관용 정규식으로 대체(manager-spec 소관, 커밋 `6f5a28ff0`, 3줄 변경).
+
+**교정 후 AC 매트릭스: 54 PASS / 0 FAIL / 2 PASS-WITH-DEBT / 0 UNVERIFIED (총 56).** MUST 등급 FAIL 0건 — `acceptance.md` §A close firewall 해제.
+
+### PASS-WITH-DEBT 2건
+
+- **AC-APO-072 (MUST)** — 1차 조건(`internal_content_leak_test.go:554` `".js": true` 존재 + `TestTemplateNoInternalContentLeak` green)은 기계적으로 검증됨. 부채: RED/GREEN round-trip(비중립 스크립트 주입 → guard FAIL → 중립화 → guard PASS)은 템플릿 트리 변형이 필요해 read-only 감사 범위 밖. run-phase 기록으로 대체(§E.2).
+- **AC-APO-072b (MUST)** — 1차 조건(`TestSplitHarnessNamespaceNoLeak` green + `ls .../.claude/workflows/ | grep -cE '^(hns-|harness-)'` → 0)은 기계적으로 검증됨. 부채: blocking-validity 확인(`hns-release-update-run.js` 주입 → `SPLIT_HARNESS_NAMESPACE_LEAK` FAIL 기대)은 템플릿 트리 변형이 필요해 재실행하지 않음.
+
+### CI-unenforced 라벨 (AC-APO-071b)
+
+AC-APO-071b가 요구하는 3개 manual-only 누출 클래스(내부 날짜 / `/Users/` 경로 / SHA `{9,40}`)는 **CI-unenforced**로 명시 라벨링한다 — `MOAI_TEMPLATE_LEAK_STRICT=1`이 `.github/` 또는 `Makefile` 어디에도 설정되어 있지 않다(sync-audit 실측, `.moai/reports/sync-audit/SPEC-AGENT-PARALLEL-OPT-001-sync-audit.md` § Residual Risk #3). 감사 실측상 3개 클래스 전량 매치 0이나, 이는 **"CI green"이 이 3클래스의 증거가 아님**을 의미한다 — 향후 회귀는 CI가 포착하지 못한다. 이는 문서화·라벨링된 한계이며 결함이 아니다.
+
+### Gaps
+
+1. AC-072 RED/GREEN round-trip + AC-072b blocking-validity 주입 — 둘 다 `internal/template/templates/` 변형이 필요, read-only 감사 범위 밖.
+2. `make build` embedded-tree lookup(AC-069 2번째 조건) — 미실행(변형 빌드 스텝). 정적 대체 관측: `embed.go:28`의 `//go:embed all:templates`가 `.claude/workflows/`를 포괄하며, `go test ./internal/template/`(catalog/manifest 해시 parity 검사 포함)는 통과.
+3. Coverage 측정 — 미실행. 이 SPEC은 구조적으로 무관(`git diff --name-only a1aa064b2^..8f0426f4b | grep '\.go$'` → M3-M5 구간 없음; 유일한 Go 파일 변경은 M1의 `internal_content_leak_test.go`뿐 — 프로덕션 Go 코드 무변경).
+4. docs-site 렌더 출력(AC-016) — 소스 텍스트만 검증(en/ko/ja/zh `workflows.md` 각 1건 fan-out-script 언급 확인); Hugo 빌드 미실행.
+5. 산문-판정 잔여 항목(AC-020 lens adequacy, AC-028(b)/AC-030(b) per-site 전칭) — 명령은 per-file 개수만 기계화, reviewer-read 설계 그대로 유지.
+
+### Residual risk
+
+1. **브랜치가 `origin/main` 대비 189개 파일 변경 보유** — 27개만 이 SPEC의 M3-M5 구간 소속. `origin/main`을 baseline으로 삼는 향후 머지-타임 검증은 무관 작업을 이 SPEC에 오귀속할 위험(CFP-1이 실증한 바로 그 함정) — SPEC 자체 커밋 구간을 baseline으로 삼아야 한다.
+2. **`builder-harness.md`에 상속된 mirror drift**(이 SPEC의 결함 아님, 그러나 이 브랜치에 잠복) — 로컬 `:75`/`:131`이 템플릿의 `Use WebSearch / WebFetch`와 다름(`:131`은 의미상 중복 오탈). `make build`가 *템플릿*을 embed하므로 배포 사용자는 정상 텍스트를 받으며, 로컬 dev 사본만 오류 — 별도 1줄 수정을 PR #1141 트랙에 권고.
+3. **CI-unenforced 3클래스**(위 § 참조) — 오늘 0매치이나 향후 회귀 미포착 가능.
+4. **F1/F2 결함은 반복 클래스의 신규 2가지 형태다** — `acceptance.md` §A.1이 이미 5개 저작 규칙을 카탈로그하고 있으나, F1(scope mismatch: 파일 전체 vs 본문)과 F2(formatting brittleness: 리터럴 vs 백틱)는 그 5개에 없던 신규 형태. 다음 SPEC이 반복하지 않도록 §A.1에 추가 권고.
+5. **`plan-auditor.md`가 상한 정확히(430/430)에 위치**, `manager-git.md`도 190/190 — 향후 1줄 추가가 즉시 AC-055를 깨뜨릴 여유 없음.
