@@ -37,7 +37,6 @@ import (
 //  3. Project name (required)
 //  4. Model policy
 //  5. Report format
-//  6. Advanced-settings bridge (conditional — hidden when StandardMode is preset by flag)
 //
 // Git mode and provider are NOT asked here: `moai init` derives them from the
 // repository's configured remotes (see detectGitConfig in internal/cli), so a

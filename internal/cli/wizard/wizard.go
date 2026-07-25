@@ -27,9 +27,9 @@ func Run(questions []Question, styles *Styles) (*WizardResult, error) {
 // RunWithDefaults runs the wizard with default questions for the given project root.
 // If locale is not empty, the wizard UI is displayed in that language and the
 // conversation_language question defaults to it. userName pre-fills the user_name
-// question. Quick mode is RunWithDefaultsModes with both mode flags off — the
-// advanced-settings bridge (Condition: !StandardMode) is therefore visible and,
-// when answered Yes, reveals the Phase 1 questions in the same run.
+// question. It is RunWithDefaultsModes with both mode flags off; page 3 is
+// unconditional (REQ-WIZ-001/002), so the same three pages are presented either
+// way — the mode flags no longer change what the user is asked.
 func RunWithDefaults(projectRoot, locale, userName string) (*WizardResult, error) {
 	return RunWithDefaultsModes(projectRoot, locale, userName, false, false)
 }

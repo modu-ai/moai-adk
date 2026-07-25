@@ -123,6 +123,46 @@ func getBoolFlag(cmd *cobra.Command, name string) bool {
 	return val
 }
 
+// applyWizardPage3ToOpts applies the always-visible Page-3 wizard answers to
+// opts, honouring flag-over-wizard precedence (REQ-WIZ-020).
+//
+// Page 3 is ungated, so without this rule the wizard result would
+// unconditionally overwrite every flag-seeded value — inverting the documented
+// `--profile` precedence above ("the wizard fills opts.Profile only when the
+// flag is absent"). Each of the four overlapping settings therefore yields to
+// the wizard ONLY when its flag was not explicitly supplied.
+//
+// Explicitness is probed with cmd.Flags().Changed(name), never by value:
+// getBoolFlag / getBoolFlagWithDefault cannot distinguish "flag absent" from
+// "flag explicitly set to the same value as the default", so a value-only
+// check would silently drop `--enable-lsp=false` and `--enforce-quality=false`.
+func applyWizardPage3ToOpts(cmd *cobra.Command, result *wizard.WizardResult, opts *project.InitOptions) {
+	if !cmd.Flags().Changed("project-mode") && result.ProjectMode != "" {
+		opts.ProjectMode = result.ProjectMode
+	}
+	if !cmd.Flags().Changed("enable-lsp") {
+		opts.LSPEnabled = result.LSPEnabled
+	}
+	if !cmd.Flags().Changed("enforce-quality") {
+		opts.EnforceQuality = result.EnforceQuality
+	}
+	if !cmd.Flags().Changed("enable-design") {
+		opts.DesignEnabled = result.DesignEnabled
+	}
+
+	// harness_profile and coverage_exemptions_enabled are no longer asked
+	// (REQ-WIZ-012/013), so these result fields are permanently zero and the
+	// assignments are inert; they are retained so the wizard→opts mapping stays
+	// complete if either question ever returns.
+	if result.HarnessProfile != "" {
+		opts.HarnessProfile = result.HarnessProfile
+	}
+	opts.CoverageExemptionsEnabled = result.CoverageExemptionsEnabled
+
+	// claude_design_enabled is wizard-only (no CLI flag), so it always applies.
+	opts.ClaudeDesignEnabled = result.ClaudeDesignEnabled
+}
+
 // getBoolFlagWithDefault retrieves a bool flag value, returning defaultVal when
 // the flag is not set or an error occurs.
 func getBoolFlagWithDefault(cmd *cobra.Command, name string, defaultVal bool) bool {
@@ -461,20 +501,10 @@ func runInit(cmd *cobra.Command, args []string) error {
 		if opts.ReportFormat == "" && result.ReportFormat != "" {
 			opts.ReportFormat = result.ReportFormat
 		}
-		// Apply Phase 1 wizard results (only when StandardMode was active)
-		if result.StandardMode {
-			if result.ProjectMode != "" {
-				opts.ProjectMode = result.ProjectMode
-			}
-			if result.HarnessProfile != "" {
-				opts.HarnessProfile = result.HarnessProfile
-			}
-			opts.LSPEnabled = result.LSPEnabled
-			opts.EnforceQuality = result.EnforceQuality
-			opts.CoverageExemptionsEnabled = result.CoverageExemptionsEnabled
-			opts.DesignEnabled = result.DesignEnabled
-			opts.ClaudeDesignEnabled = result.ClaudeDesignEnabled
-		}
+		// Apply the Page-3 wizard results. The former `if result.StandardMode`
+		// gate is removed (REQ-WIZ-001/002): Page 3 is always visible, so its
+		// answers always reach opts.
+		applyWizardPage3ToOpts(cmd, result, &opts)
 	}
 
 	// Default git provider to "github" for backward compatibility
