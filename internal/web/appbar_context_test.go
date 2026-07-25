@@ -22,7 +22,7 @@ func TestAppbarContextBadge(t *testing.T) {
 	a.readPreferences = func(name string) (profile.ProfilePreferences, error) {
 		return profile.ProfilePreferences{
 			ConversationLang: "ko",
-			Model:           "claude-opus-4-8",
+			Model:           "claude-opus-5",
 			EffortLevel:     "high",
 		}, nil
 	}
@@ -70,7 +70,7 @@ func TestAppbarContextBadge(t *testing.T) {
 	}
 
 	// Check for model segment
-	if !strings.Contains(body, `model: claude-opus-4-8`) {
+	if !strings.Contains(body, `model: claude-opus-5`) {
 		t.Error("model segment not found in context subline")
 	}
 
