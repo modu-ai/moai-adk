@@ -559,6 +559,151 @@ internal/session/registry_starvation_test.go
 
 M1 재현 테스트 2개 파일은 최종 diff에 **부재** (AC-CFS-010) — 소스는 위 §E.2 M1-a/M1-b에 보존.
 
+### AC-CFS-004c — 순회 깊이 신호 `warmUpVisited` 보강 (sync-audit F1 대응, 0.4.0)
+
+#### 봉쇄하려는 변형과 기존 가드의 공백
+
+M3의 `warmUpDone`은 warm-up 함수가 **호출되었음**만 기록한다. sync-audit F1(Medium)은 이 신호가 통과시키는 변형을 실측으로 제시했다 — `TestMain`의 호출 한 줄은 **그대로 두고** `warmUpCommandTree` 본문의 재귀 루프만 삭제하면 `warmUpDone = true`는 여전히 실행되어 스위트 전체가 통과하지만, 그 상태에서 20회 반복 중 1회 레이스가 재발했다. 즉 기존 가드의 방어 경계는 *호출 제거* 한정이었다.
+
+0.4.0은 `warmUpDone`을 **유지한 채** 방문 노드 수 신호 `warmUpVisited`를 가산한다(교체 아님 — AC-CFS-003/004/004b/005의 판정은 그대로 유효). 두 신호가 서로 다른 변형을 봉쇄한다:
+
+| 신호 | 봉쇄 대상 변형 | 판정 근거 |
+|------|----------------|-----------|
+| `warmUpDone` | 호출 제거 (AC-CFS-005) | 대입이 함수 본문 안이라 호출과 함께 도달 불가 → `false` |
+| `warmUpVisited` | 본문 무력화 (AC-CFS-004c) | 증가문이 재귀 루프 **위**라 루프만 지워도 루트 1회는 방문 → `1`에 고정, 독립 산출값과 불일치 |
+
+#### 독립 산출의 반증 가능성 — `countCommandTree` 별개 구현
+
+노드 수는 `countCommandTree`가 산출한다. `warmUpCommandTree`와 **순회 코드를 공유하지 않는 별개 구현**이며, 같은 헬퍼로 합치면 두 수가 항상 함께 움직여 구조적 반증 불가가 되므로(§D.3b) 코드 주석에 중복이 의도임을 명시해 향후 "중복 제거" 리팩터링을 차단했다.
+
+#### 산출 시점을 `TestMain`으로 둔 이유 (실측 기반 정정)
+
+당초 설계는 독립 산출을 가드 테스트 본문에서 수행하는 것이었으나, **올바른 구현이 FAIL하는 위양성**이 실측되었다:
+
+```
+--- FAIL: TestWarmUpReachability (0.00s)
+    main_test.go:133: cobra lazy-sort warm-up did not traverse the whole command tree:
+    warmUpCommandTree visited 182 node(s) but the tree holds 188.
+```
+
+원인: `internal/cli`의 전역 `rootCmd` 트리가 실행 도중 **자란다**. `help_order_test.go`(파일명 정렬상 `main_test.go`보다 앞이고 비-병렬이므로 가드보다 먼저 실행됨)가 `runFang(ctx, rootCmd)`를 호출하고, cobra의 Execute 경로가 `InitDefaultHelpCmd` / `InitDefaultCompletionCmd`로 `help` + `completion`(+ 셸 4종 자식) = **6 노드**를 전역 루트에 추가한다. 182 → 188의 차이가 정확히 이 6이다.
+
+따라서 산출을 `TestMain`의 warm-up **직후**로 옮겨 `warmUpTreeSize`에 고정한다. SPEC이 요구하는 두 조건(§D.3b)은 그대로 충족된다 — (a) `warmUpCommandTree`와 별개 구현, (b) warm-up 완료 이후 **직렬** 실행(`m.Run()` 이전, 단일 고루틴이라 새 레이스 창을 만들지 않음). 두 수를 **동일 시점**에 취해 트리 성장으로 인한 위양성만 제거했고, 반증 가능성은 아래 왕복이 실측으로 증명한다. AC-CFS-004b도 유지된다 — `TestMain`에는 `warmUpDone`/`warmUpVisited` 어느 쪽의 대입·증가도 없다(`warmUpTreeSize`는 제3의 변수).
+
+#### AC-CFS-004b 재확인 (두 신호 모두 함수 본문 내부)
+
+```
+$ sed -n '/func warmUpCommandTree/,/^}/p' internal/cli/main_test.go internal/cli/preference/main_test.go
+func warmUpCommandTree(c *cobra.Command) {
+	warmUpDone = true
+	warmUpVisited++
+	for _, sub := range c.Commands() { // triggers the lazy sort on c
+		warmUpCommandTree(sub)
+	}
+}
+(두 파일 동일)
+
+$ sed -n '/func TestMain/,/^}/p' internal/cli/main_test.go internal/cli/preference/main_test.go
+func TestMain(m *testing.M) {
+	warmUpCommandTree(rootCmd)
+	// Serial, single-goroutine, immediately after the warm-up: these Commands()
+	// calls cannot open a race window, and the tree cannot have drifted yet.
+	warmUpTreeSize = countCommandTree(rootCmd)
+	os.Exit(m.Run())
+}
+func TestMain(m *testing.M) {
+	warmUpCommandTree(PreferenceCmd)
+	// Serial, single-goroutine, immediately after the warm-up: these Commands()
+	// calls cannot open a race window, and the tree cannot have drifted yet.
+	warmUpTreeSize = countCommandTree(PreferenceCmd)
+	os.Exit(m.Run())
+}
+```
+
+`TestMain`에 `warmUpDone`/`warmUpVisited` 대입 **부재** → 두 왕복 모두 FAIL 경로가 도달 가능하다.
+
+#### 왕복 (a) 본문 무력화 — 호출 유지 + 재귀 루프만 주석 처리
+
+```
+$ go test -count=1 -run 'TestWarmUpReachability' ./internal/cli/ ./internal/cli/preference/
+--- FAIL: TestWarmUpReachability (0.00s)
+    main_test.go:153: cobra lazy-sort warm-up did not traverse the whole command tree: warmUpCommandTree visited 1 node(s) but the tree holds 182. TestMain must call warmUpCommandTree(rootCmd) AND that function must recurse over Commands() — visiting the root alone leaves every subcommand's commandsAreSorted unwritten, which reintroduces the data race documented at the top of main_test.go.
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/cli	1.001s
+--- FAIL: TestWarmUpReachability (0.00s)
+    main_test.go:152: cobra lazy-sort warm-up did not traverse the whole command tree: warmUpCommandTree visited 1 node(s) but the tree holds 3. TestMain must call warmUpCommandTree(PreferenceCmd) AND that function must recurse over Commands() — visiting the root alone leaves every subcommand's commandsAreSorted unwritten, which reintroduces the data race documented at the top of main_test.go.
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/cli/preference	0.427s
+FAIL
+exit=1
+```
+
+두 패키지 모두 **결정론적 FAIL**, `warmUpVisited`는 기대대로 `1`, 독립 산출값은 각각 182 / 3. `warmUpDone`은 이 상태에서도 `true`이므로 첫 어서션은 통과했고 **깊이 어서션만이 잡아냈다** — 이것이 F1이 지적한 공백이 실제로 닫혔다는 증거다.
+
+#### 왕복 (b) 호출 제거 — 기존 커버리지 회귀 확인
+
+```
+$ go test -count=1 -run 'TestWarmUpReachability' ./internal/cli/ ./internal/cli/preference/
+--- FAIL: TestWarmUpReachability (0.00s)
+    main_test.go:138: cobra lazy-sort warm-up did not run: TestMain must call warmUpCommandTree(rootCmd) before m.Run(). Removing it reintroduces the data race documented at the top of main_test.go.
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/cli	0.937s
+--- FAIL: TestWarmUpReachability (0.00s)
+    main_test.go:137: cobra lazy-sort warm-up did not run: TestMain must call warmUpCommandTree(PreferenceCmd) before m.Run(). Removing it reintroduces the data race documented at the top of main_test.go.
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/cli/preference	0.372s
+FAIL
+exit=1
+```
+
+`warmUpVisited` 가산 이후에도 AC-CFS-005의 왕복이 그대로 FAIL한다 — 기존 커버리지 무회귀.
+
+#### 왕복 (c) 완전 원복
+
+```
+$ go test -count=1 -run 'TestWarmUpReachability' ./internal/cli/ ./internal/cli/preference/
+ok  	github.com/modu-ai/moai-adk/internal/cli	0.575s
+ok  	github.com/modu-ai/moai-adk/internal/cli/preference	0.193s
+exit=0
+
+$ go test -count=1 ./internal/cli/ ./internal/cli/preference/    # 패키지 전체 (트리 성장 경로 포함)
+ok  	github.com/modu-ai/moai-adk/internal/cli	20.247s
+ok  	github.com/modu-ai/moai-adk/internal/cli/preference	1.082s
+```
+
+가드 단독 실행뿐 아니라 **패키지 전체 실행**(트리를 6 노드 늘리는 `help_order_test.go`가 함께 도는 경로)에서도 통과 — 위양성이 제거되었음을 확인.
+
+#### 회귀 세트 재실행 (warm-up 경로를 건드렸으므로 필수)
+
+```
+$ go test -count=1 ./...                    → exit 0 (105 packages ok, FAIL 0)
+$ go vet ./...                              → exit 0 (출력 없음)
+$ golangci-lint run --timeout=2m            → exit 0, "0 issues."  (§C baseline과 동일 → 신규 0건)
+$ go build ./...                            → exit 0
+$ GOOS=windows GOARCH=amd64 go build ./...  → exit 0
+$ GOOS=linux   GOARCH=amd64 go build ./...  → exit 0
+```
+
+AC-CFS-007 (preference, 신규 프로세스 50회):
+
+```
+$ for i in $(seq 1 50); do go test -race -count=1 ./internal/cli/preference/ || exit 1; done; echo "exit=$?"
+exit=0
+# "^ok" 라인 수: 50
+# "WARNING: DATA RACE" 발생 건수: 0
+```
+
+AC-CFS-008 (internal/cli, 신규 프로세스 50회):
+
+```
+$ for i in $(seq 1 50); do go test -race -count=1 ./internal/cli/ || exit 1; done; echo "exit=$?"
+exit=0
+# "^ok" 라인 수: 50
+# "WARNING: DATA RACE" 발생 건수: 0
+```
+
+두 루프 모두 `-count=50` 단일 프로세스가 아닌 **신규 프로세스 반복**이다(§F 6항).
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 ```yaml
