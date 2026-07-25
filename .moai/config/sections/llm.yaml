@@ -5,30 +5,67 @@ llm:
     profile: medium
     performance_tier: medium
     profiles:
-        max:
-            spec_auditors: { model: fable, effort: low }
-            develop: { model: opus, effort: high }
-            advisor: { model: fable, effort: low }
-            design_harness_e2e: { model: opus, effort: high }
-            docs: { model: sonnet, effort: medium }
-            git: { model: sonnet, effort: low }
-            explore: { model: sonnet, effort: low }
+        high:
+            manager-spec: { model: fable, effort: xhigh }
+            plan-auditor: { model: fable, effort: xhigh }
+            sync-auditor: { model: fable, effort: xhigh }
+            manager-develop: { model: opus, effort: xhigh }
+            super-advisor: { model: opus, effort: xhigh }
+            manager-design: { model: fable, effort: high }
+            builder-harness: { model: opus, effort: xhigh }
+            e2e-tester: { model: fable, effort: high }
+            manager-docs: { model: sonnet, effort: high }
+            manager-git: { model: sonnet, effort: low }
+            Explore: { model: sonnet, effort: low }
         medium:
-            spec_auditors: { model: opus, effort: high }
-            develop: { model: opus, effort: xhigh }
-            advisor: { model: opus, effort: low }
-            design_harness_e2e: { model: opus, effort: medium }
-            docs: { model: sonnet, effort: medium }
-            git: { model: sonnet, effort: low }
-            explore: { model: sonnet, effort: low }
+            manager-spec: { model: opus, effort: high }
+            plan-auditor: { model: opus, effort: high }
+            sync-auditor: { model: opus, effort: high }
+            manager-develop: { model: opus, effort: high }
+            super-advisor: { model: opus, effort: high }
+            manager-design: { model: opus, effort: medium }
+            builder-harness: { model: opus, effort: medium }
+            e2e-tester: { model: opus, effort: medium }
+            manager-docs: { model: sonnet, effort: medium }
+            manager-git: { model: sonnet, effort: low }
+            Explore: { model: sonnet, effort: low }
         low:
-            spec_auditors: { model: opus, effort: low }
-            develop: { model: opus, effort: medium }
-            advisor: { model: opus, effort: high }
-            design_harness_e2e: { model: opus, effort: low }
-            docs: { model: sonnet, effort: medium }
-            git: { model: sonnet, effort: low }
-            explore: { model: sonnet, effort: low }
+            manager-spec: { model: opus, effort: low }
+            plan-auditor: { model: opus, effort: low }
+            sync-auditor: { model: opus, effort: low }
+            manager-develop: { model: sonnet, effort: medium }
+            super-advisor: { model: opus, effort: medium }
+            manager-design: { model: sonnet, effort: medium }
+            builder-harness: { model: sonnet, effort: medium }
+            e2e-tester: { model: sonnet, effort: medium }
+            manager-docs: { model: sonnet, effort: medium }
+            manager-git: { model: sonnet, effort: low }
+            Explore: { model: sonnet, effort: low }
+    harness_agents:
+        high:
+            read-only-extract: { effort: low }
+            mechanical-transform: { effort: low }
+            synthesize: { effort: high }
+            research: { effort: xhigh }
+            verify-judge: { effort: xhigh }
+            implement: { effort: xhigh }
+            design-architecture: { effort: high }
+        medium:
+            read-only-extract: { effort: low }
+            mechanical-transform: { effort: low }
+            synthesize: { effort: medium }
+            research: { effort: high }
+            verify-judge: { effort: high }
+            implement: { effort: high }
+            design-architecture: { effort: medium }
+        low:
+            read-only-extract: { effort: low }
+            mechanical-transform: { effort: low }
+            synthesize: { effort: medium }
+            research: { effort: low }
+            verify-judge: { effort: low }
+            implement: { effort: medium }
+            design-architecture: { effort: medium }
     agent_overrides: {}
     glm:
         base_url: https://api.z.ai/api/anthropic

@@ -276,15 +276,15 @@ func TestDeployExistingUserFile(t *testing.T) {
 	}
 }
 
-// TestMapModelPolicyToTier (REQ-MPM-002 alias) asserts the legacy ModelPolicy→tier
-// mapping is tier-only (high→max, medium→medium, low→low) — the read-time alias
-// source for legacy performance_tier: high → profile: max.
+// TestMapModelPolicyToTier (REQ-MPM-002 alias) asserts the ModelPolicy→tier
+// mapping. Since the top tier was renamed max→high the mapping is an IDENTITY on
+// every member; empty/unknown still fall back to medium.
 func TestMapModelPolicyToTier(t *testing.T) {
 	tests := []struct {
 		policy ModelPolicy
 		want   string
 	}{
-		{ModelPolicyHigh, "max"},
+		{ModelPolicyHigh, "high"},
 		{ModelPolicyMedium, "medium"},
 		{ModelPolicyLow, "low"},
 		{ModelPolicy(""), "medium"},      // empty → default-when-absent
@@ -318,13 +318,13 @@ func TestMapModelPolicyToEffort(t *testing.T) {
 	}
 }
 
-// TestNormalizeToTier asserts the call-site resolver accepts BOTH the canonical
-// performance-tier vocabulary ({max, medium, low}) and the legacy ModelPolicy
-// vocabulary ({high, medium, low}), defaulting to medium.
+// TestNormalizeToTier asserts the call-site resolver folds the superseded top-tier
+// name ("max") onto the canonical vocabulary ({high, medium, low}) and defaults
+// unknown/empty input to medium.
 func TestNormalizeToTier(t *testing.T) {
 	cases := map[string]string{
-		"max": "max", "medium": "medium", "low": "low",
-		"high": "max", "": "medium", "bogus": "medium",
+		"high": "high", "medium": "medium", "low": "low",
+		"max": "high", "": "medium", "bogus": "medium",
 	}
 	for in, want := range cases {
 		if got := NormalizeToTier(in); got != want {

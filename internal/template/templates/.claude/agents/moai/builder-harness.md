@@ -6,7 +6,7 @@ description: |
   NOT for: SPEC body authoring (spec.md / plan.md / acceptance.md content — manager-spec only), code implementation, testing, documentation writing, git operations, production deployment
 tools: Read, Write, Edit, Grep, Glob, WebFetch, WebSearch, Bash, TaskCreate, TaskUpdate, TaskList, TaskGet, Skill
 model: inherit
-effort: high
+effort: medium
 color: purple
 permissionMode: bypassPermissions
 memory: user

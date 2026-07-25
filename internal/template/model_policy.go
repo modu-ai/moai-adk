@@ -5,6 +5,9 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"slices"
+
+	"github.com/modu-ai/moai-adk/internal/config"
 )
 
 // ModelPolicy represents the token consumption tier for agent models.
@@ -39,13 +42,18 @@ func IsValidModelPolicy(s string) bool {
 	return false
 }
 
-// ModelIDOpus5 is the canonical model ID for Claude Opus 5, the default
-// Opus model as of Claude Code v2.1.219 (native 1M context).
-// Used by launcher.go to route the new model and by profile translations.
+// ModelIDOpus5 is the canonical model ID for Claude Opus 5 — the current target
+// of the "opus" alias and the default Opus model as of Claude Code v2.1.219
+// (native 1M context). Opus 5 is priced identically to its predecessor Opus 4.8
+// ($5/$25 per MTok) while Opus 4.8 has moved to the vendor's legacy model list,
+// so the alias is advanced with no cost delta.
+// Used by launcher.go to route the model and by profile translations.
 const ModelIDOpus5 = "claude-opus-5"
 
-// ModelIDOpus48 is the superseded canonical model ID for Claude Opus 4.8.
-// Retained for deprecated-id normalization (see ModelDeprecatedCanonicalIDs).
+// ModelIDOpus48 is the superseded canonical model ID for Claude Opus 4.8, now
+// replaced by ModelIDOpus5. Retained as a named constant because historical
+// prefs files still carry it; it resolves back to the "opus" alias via
+// ModelDeprecatedCanonicalIDs (deprecated-id normalization).
 const ModelIDOpus48 = "claude-opus-4-8"
 
 // ModelAliasTable is the single source of truth mapping short model aliases
@@ -161,35 +169,38 @@ const (
 	EffortLevelMax = "max"
 )
 
-// Performance tier tokens — the canonical {max, medium, low} vocabulary of the
+// Performance tier tokens — the canonical {high, medium, low} vocabulary of the
 // --model-policy CLI flag and the legacy performance_tier axis (the read-time
 // alias source for llm.profile). Named constants per CLAUDE.local.md §14.
+//
+// Since the top column was renamed max -> high, these tokens are now identical
+// to both the ModelPolicy vocabulary above and config.ValidProfiles(); the three
+// axes no longer disagree, so MapModelPolicyToTier is an identity.
 const (
-	// PerformanceTierMax is the highest-quality tier column.
-	PerformanceTierMax = "max"
+	// PerformanceTierHigh is the highest-quality tier column.
+	PerformanceTierHigh = "high"
 	// PerformanceTierMedium is the balanced default tier column.
 	PerformanceTierMedium = "medium"
 	// PerformanceTierLow is the economical tier column.
 	PerformanceTierLow = "low"
+	// LegacyPerformanceTierMax is the superseded name of the top tier, accepted
+	// as a read-time alias and never written back.
+	LegacyPerformanceTierMax = "max"
 )
 
 // performanceTierRegex matches the performance_tier: line in llm.yaml.
 var performanceTierRegex = regexp.MustCompile(`(?m)^(\s*)performance_tier:\s*["']?[\w-]*["']?`)
 
 // ValidPerformanceTiers returns the closed set of valid No-Haiku performance
-// tiers.
+// tiers. The legacy max alias is readable but never offered.
 func ValidPerformanceTiers() []string {
-	return []string{PerformanceTierMax, PerformanceTierMedium, PerformanceTierLow}
+	return []string{PerformanceTierHigh, PerformanceTierMedium, PerformanceTierLow}
 }
 
-// IsValidPerformanceTier checks if the given string is a valid performance tier.
+// IsValidPerformanceTier checks if the given string is a valid performance tier,
+// accepting the superseded max alias for the top tier.
 func IsValidPerformanceTier(s string) bool {
-	for _, t := range ValidPerformanceTiers() {
-		if s == t {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(ValidPerformanceTiers(), config.NormalizeProfile(s))
 }
 
 // ApplyPerformanceTier patches the performance_tier field in llm.yaml under
@@ -201,6 +212,9 @@ func IsValidPerformanceTier(s string) bool {
 // @MX:ANCHOR: [AUTO] ApplyPerformanceTier — performance_tier persistence entry point
 // @MX:REASON: fan_in >= 2 (init.go, web save)
 func ApplyPerformanceTier(projectRoot, tier string) error {
+	// The superseded top-tier name is readable but never written back, so the two
+	// persisted axes (profile + performance_tier) cannot disagree.
+	tier = config.NormalizeProfile(tier)
 	llmPath := filepath.Join(projectRoot, ".moai", "config", "sections", "llm.yaml")
 	content, err := os.ReadFile(llmPath)
 	if err != nil {
@@ -229,16 +243,16 @@ func ApplyPerformanceTier(projectRoot, tier string) error {
 // explicit explore group cell (sonnet/low) and is no longer an inherit agent.
 const modelInherit = "inherit"
 
-// MapModelPolicyToTier translates a legacy template.ModelPolicy value
-// ({high, medium, low}) to the canonical performance tier ({max, medium, low}):
-// high→max, medium→medium, low→low. It maps the TIER dimension ONLY. An empty or
-// unrecognized policy falls back to the medium tier (default-when-absent). This
-// projection is retained as the read-time alias for the legacy
-// performance_tier: high → profile: max mapping.
+// MapModelPolicyToTier translates a template.ModelPolicy value
+// ({high, medium, low}) to the canonical performance tier ({high, medium, low}).
+// Since the top tier was renamed max -> high the mapping is now an IDENTITY on
+// every member; the function is retained as the named projection site so call
+// sites keep a single place to reason about the two axes. An empty or
+// unrecognized policy falls back to the medium tier (default-when-absent).
 func MapModelPolicyToTier(policy ModelPolicy) string {
 	switch policy {
 	case ModelPolicyHigh:
-		return PerformanceTierMax
+		return PerformanceTierHigh
 	case ModelPolicyMedium:
 		return PerformanceTierMedium
 	case ModelPolicyLow:
@@ -248,11 +262,12 @@ func MapModelPolicyToTier(policy ModelPolicy) string {
 	}
 }
 
-// MapModelPolicyToEffort translates a legacy template.ModelPolicy value
+// MapModelPolicyToEffort translates a template.ModelPolicy value
 // ({high, medium, low}) to the runtime-LAUNCH effort level vocabulary
 // (EffortLevelHigh/Medium/Low): high→high, medium→medium, low→low. This is the
-// runtime-LAUNCH effort projection of the legacy vocabulary and is DISTINCT from
-// MapModelPolicyToTier — which projects high→max on the TIER axis. An empty or
+// runtime-LAUNCH effort projection and remains DISTINCT from
+// MapModelPolicyToTier — it targets the EFFORT axis, not the TIER axis, even
+// though both are now identity mappings on the shared vocabulary. An empty or
 // unrecognized policy returns "" (no override), so an absent model_policy
 // preserves today's launch behavior byte-identically.
 func MapModelPolicyToEffort(policy ModelPolicy) string {
@@ -269,15 +284,14 @@ func MapModelPolicyToEffort(policy ModelPolicy) string {
 }
 
 // NormalizeToTier resolves any performance-policy string to the canonical tier
-// vocabulary {max, medium, low}. It accepts the canonical performance-tier
-// tokens verbatim and bridges the legacy ModelPolicy vocabulary via
-// MapModelPolicyToTier (high→max). Empty or unrecognized input falls back to the
-// medium tier. This is the call-site resolver used by the init/update apply
-// paths (and llm.profile persistence), whose vocabularies differ ({max,medium,
-// low} vs {high,medium,low}).
+// vocabulary {high, medium, low}. Canonical tokens pass through; the superseded
+// top-tier name "max" is folded to "high" via config.NormalizeProfile; anything
+// else is bridged through MapModelPolicyToTier, which falls back to the medium
+// tier. This is the call-site resolver used by the init/update apply paths and
+// llm.profile persistence.
 func NormalizeToTier(s string) string {
 	if IsValidPerformanceTier(s) {
-		return s
+		return config.NormalizeProfile(s)
 	}
 	return MapModelPolicyToTier(ModelPolicy(s))
 }

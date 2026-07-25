@@ -49,24 +49,27 @@ func writeLLMProfileYAML(t *testing.T, root, profile string, overrides map[strin
 }
 
 // TestG3ReadPathDerivesFromProfileMatrix (G3-1): the manager-spec select's
-// selected model/effort comes from the max-profile spec_auditors cell (fable/low),
-// NOT the seeded frontmatter (opus/xhigh) — proving the read path repointed off
-// frontmatter onto the profile matrix.
+// selected model/effort comes from its own high-profile cell (fable/xhigh), NOT
+// the seeded frontmatter (sonnet/medium) — proving the read path repointed off
+// frontmatter onto the profile matrix. The seeded profile is the superseded
+// "max", so this also exercises the max -> high read alias. The frontmatter
+// effort is "medium" because no cell in the high column carries it, which keeps
+// the negative assertion below discriminating.
 func TestG3ReadPathDerivesFromProfileMatrix(t *testing.T) {
 	root := t.TempDir()
-	seedAgentFMFile(t, root, "moai", "manager-spec", "opus", "xhigh") // frontmatter deliberately divergent
+	seedAgentFMFile(t, root, "moai", "manager-spec", "sonnet", "medium") // frontmatter deliberately divergent
 	writeLLMProfileYAML(t, root, "max", nil)
 
 	body := renderAgentFMBody(t, root)
 
 	if !strings.Contains(body, `<option value="fable" selected`) {
-		t.Error("manager-spec model select did not select the max-profile cell (fable) — read path still reads frontmatter/badge-tier")
+		t.Error("manager-spec model select did not select the high-profile cell (fable) — read path still reads frontmatter/badge-tier")
 	}
-	if !strings.Contains(body, `<option value="low" selected`) {
-		t.Error("manager-spec effort select did not select the max-profile cell (low)")
+	if !strings.Contains(body, `<option value="xhigh" selected`) {
+		t.Error("manager-spec effort select did not select the high-profile cell (xhigh)")
 	}
-	if strings.Contains(body, `<option value="xhigh" selected`) {
-		t.Error("manager-spec effort select shows the FRONTMATTER value (xhigh) — read path must derive from the profile matrix")
+	if strings.Contains(body, `<option value="medium" selected`) {
+		t.Error("manager-spec effort select shows the FRONTMATTER value (medium) — read path must derive from the profile matrix")
 	}
 }
 

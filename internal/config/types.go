@@ -250,24 +250,33 @@ type LLMConfig struct {
 	TeamMode string `yaml:"team_mode"`
 	// Environment variable name for GLM API key
 	GLMEnvVar string `yaml:"glm_env_var"`
-	// Performance tier: "max", "high", "medium", "low"
-	// Controls model selection for all sub-agents and team agents. The tag accepts
-	// "max" (the CLI-persisted --model-policy value) alongside the legacy "high"
-	// for backward compatibility (D4 adjacent drift fix: the CLI writes max/medium/low
-	// while pre-existing configs may carry the legacy high).
+	// Performance tier: "high", "medium", "low" (canonical), plus "max" accepted
+	// as the superseded name of the top tier. Controls model selection for all
+	// sub-agents. Since the top column was renamed max -> high this axis shares the
+	// llm.profile vocabulary exactly; the tag keeps "max" so pre-rename configs
+	// still validate, and NormalizeProfile folds it to "high" on read.
 	PerformanceTier string `yaml:"performance_tier" validate:"omitempty,oneof=max high medium low"`
-	// Profile selects the active per-agent-group model+effort column, one of
-	// {max, medium, low} (REQ-MPM-001). Absent/empty resolves via
-	// EffectiveProfile (profile → performance_tier alias → default medium).
-	// Closed-set validated by validateProfile.
+	// Profile selects the active per-agent model+effort column, one of
+	// {high, medium, low} (REQ-MPM-001). The superseded top-column name "max" is
+	// accepted as a read-time alias. Absent/empty resolves via EffectiveProfile
+	// (profile → performance_tier alias → default medium). Closed-set validated
+	// by validateProfile.
 	Profile string `yaml:"profile"`
-	// Profiles mirrors the Matrix A default profile matrix for transparency and
-	// user editability (REQ-MPM-010): profile → agent-group → {model, effort}.
-	// The Go default (template.DefaultProfileMatrix) is the authoritative
-	// fallback for any cell absent from config.
+	// Profiles mirrors the default profile matrix for transparency and user
+	// editability (REQ-MPM-010): profile → agent NAME → {model, effort}. The Go
+	// default (template.DefaultProfileMatrix) is the authoritative fallback for
+	// any cell absent from config. Pre-rename configs keyed by agent GROUP name
+	// simply miss on lookup and fall through to the Go default, so a stale
+	// mirror degrades rather than breaking.
 	Profiles map[string]map[string]ModelEffort `yaml:"profiles"`
+	// HarnessAgents is the profile → harness purpose class → {effort} map read by
+	// template.ResolveHarnessAgentModelEffort when /moai:harness generates a
+	// specialist. Only the Effort field is consumed: harness agents are pinned to
+	// template.HarnessAgentModel, so a Model value here is ignored. Absent
+	// entries fall through to the effort of the class's profile-matrix row.
+	HarnessAgents map[string]map[string]ModelEffort `yaml:"harness_agents"`
 	// AgentOverrides is an optional per-agent {model, effort} override keyed by
-	// canonical agent name, applied on top of the active profile's group cell
+	// canonical agent name, applied on top of the active profile's cell
 	// (REQ-MPM-006). Validated by validateAgentOverrides.
 	AgentOverrides map[string]ModelEffort `yaml:"agent_overrides"`
 	// Claude model mapping by tier
@@ -391,7 +400,8 @@ type WorkflowConfig struct {
 
 	// ModelRoutingProfiles is the perfTier -> (Tier x Phase) -> {model, effort}
 	// 3-tier routing map read by RouteModelFor(specTier, phase, perfTier). The
-	// outer key is perfTier in {max, medium, low}; the inner key format is
+	// outer key is perfTier in {high, medium, low} (the superseded "max" name is
+	// accepted as a read-time alias); the inner key format is
 	// "<TIER>-<phase>" (e.g. "S-sync", "L-run"). This is the No-Haiku 3-tier
 	// cost axis (SPEC-AGENT-ARCH-V2-001 M3, design.md §D.5) — it supersedes the
 	// flat ModelRouting above for spawn-time routing. When the block is absent
@@ -401,7 +411,7 @@ type WorkflowConfig struct {
 }
 
 // ModelRoutingProfiles is perfTier -> (tier-phase) -> routing entry. perfTier
-// in {max, medium, low}; inner key "<TIER>-<phase>" (Tier in {S,M,L}, Phase in
+// in {high, medium, low}; inner key "<TIER>-<phase>" (Tier in {S,M,L}, Phase in
 // {plan,run,sync,mx}). Loaded from workflow.yaml `model_routing_profiles`.
 type ModelRoutingProfiles map[string]map[string]ModelRoutingEntry
 
