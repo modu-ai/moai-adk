@@ -70,7 +70,7 @@ and `golangci-lint run` both clean at run-phase completion.
 
 sync_status: complete
 sync_complete_at: 2026-07-26
-sync_commit_sha: "pending-backfill-close"
+sync_commit_sha: "8c6ef0acb"
 
 CHANGELOG entry appended under `[Unreleased]`. Frontmatter transitions
 `in-progress → implemented → completed` applied atomically across spec.md,
