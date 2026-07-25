@@ -870,7 +870,9 @@ func TestPatternReplace_ActualReplace(t *testing.T) {
 	mock.on("sg --version", []byte("0.25.0"), nil)
 	mock.on("sg run --pattern fmt.Println($MSG) --lang go --json /project",
 		makeSGJSON(t, sgOutput), nil)
-	mock.on("sg run --pattern fmt.Println($MSG) --rewrite log.Info($MSG) --lang go /project",
+	// --update-all is what makes the rewrite reach disk; without it sg only prints
+	// a diff, so this expectation pins the write flag rather than the old no-op form.
+	mock.on("sg run --pattern fmt.Println($MSG) --rewrite log.Info($MSG) --lang go --update-all /project",
 		[]byte(""), nil)
 
 	a := NewAnalyzer("/project", WithCommandExecutor(mock))

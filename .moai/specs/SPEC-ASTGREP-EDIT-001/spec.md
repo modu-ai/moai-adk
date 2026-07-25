@@ -52,6 +52,33 @@ The function therefore returns the empty string for every default MoAI project,
 and the security hook's rule load silently finds nothing. This is a functional
 defect, not a documentation defect.
 
+### A.1b Defect discovered during M3 (added 2026-07-25)
+
+Wiring `PatternReplace` to a CLI and asserting a real file rewrite (AC-020)
+surfaced a latent no-op: the non-dry branch invoked
+
+```
+sg run --pattern <p> --rewrite <r> --lang <l> <path>
+```
+
+`sg run --rewrite` prints a diff and exits 0 **without touching the file** —
+`--update-all` is what makes the rewrite reach disk. Verified directly:
+
+```
+sg run --pattern 'println("before")' --rewrite 'println("after")' --lang go a.go
+  exit=0, file still contains 'before'
+sg run ... --update-all a.go
+  exit=0, 'before' -> 0 occurrences, 'after' -> 1
+```
+
+The existing unit test did pin the argument string, but it pinned the buggy
+form — the mock key was written to match the implementation rather than the
+requirement, so the guard could never falsify it. The fix adds `--update-all`
+and the mock expectation now pins the write flag.
+
+This is why REQ-AGE-003 is satisfied by a fixture-rewrite assertion rather than
+by a mock-arg assertion alone.
+
 ### A.2 Scope boundary
 
 This SPEC does **not** remove the DB documentation subsystem. That removal
