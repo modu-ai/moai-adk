@@ -1,7 +1,7 @@
 ---
 id: SPEC-AGENT-PARALLEL-OPT-001
 title: "Agent instruction diet + plan/run/sync parallelization maximization — Implementation Plan"
-version: "0.5.0"
+version: "0.6.0"
 status: draft
 created: 2026-07-25
 updated: 2026-07-25
@@ -188,7 +188,8 @@ M2 이후에는 항목 4가 "3개 존재 AND `hns-*`/`harness-*` 0개" 이중 �
 
    **기대 출력량 0-5줄**(plan-phase 참고 실측 0건). 이 범위를 넘으면 명령이 잘못 좁혀진 것이므로 재작성한다. **비판별형 금지** — `grep -rn "decomposition\|segment match trace" internal/ .github/ .claude/` 는 12,133건을 반환해 verbatim 기록이 불가능하고 0-branch가 도달 불가능하다(§B.3). 결과에 따라 작업 2의 범위와 `manager-spec.md` 적용 라인 상한이 분기된다. 이 게이트 없이 마커를 건드리는 것은 금지된다.
 1. plan-auditor — frontmatter 스키마 열거 1회화, M6 Chain-of-Verification 절 및 보고 템플릿 CoVe 섹션 제거.
-2. manager-spec — frontmatter 스키마 블록을 SSOT 교차참조로 대체, Step 5 중복 제거, GEARS/EARS 표를 스킬 교차참조로 대체, 산출물 개수 서술 정정. **SPEC-ID 자가검사 블록은 작업 0의 결과에 따라**: 소비자 0건 → 마커 강제 제거 + 축약; 소비자 ≥1건 → **출력 계약 보존** + 주변 산문(예시 표, AC sub-ID 혼동 표)만 축약. 두 분기 모두 실행 Bash 검사는 존치.
+1b. **plan-auditor 잔여 — 파일 내 재진술 제거**(상한 430 재보정에 대응, `spec.md` §D.2.1). 작업 1의 렌즈는 *파일 간* SSOT 중복이었고 잔여 구간은 *파일 내* 동일 규칙 반복이다. Group 7/8이 각 차원을 5중 진술(① 요약 불릿 ② 유래 산문 ③ 번호 체크 ④ bash 검증 동사 ⑤ Severity rubric)하는 것에서 **①②⑤만 제거하고 ③④는 존치**한다 — ③④가 조작적 내용이므로 이를 건드리면 REQ-APO-068 위반이다. 추가로 AP-VEM-003(`verification-batch-pattern.md` AP-VBP-002 중복), Delegation Note 말미의 `NOT for:` 재진술, Invocation Examples 3→1, Output Format 2-stream 산문을 정리한다. 제거 가능 28행 중 24행 필요. **공백 전용 압축 금지**(§D.2.1 [HARD]).
+2. manager-spec — frontmatter 스키마 블록을 SSOT 교차참조로 대체, Step 5 중복 제거, GEARS/EARS 표를 스킬 교차참조로 대체, 산출물 개수 서술 정정. **잔여 6행**: § Status Responsibility Matrix의 1행 표가 § SPEC Artifact Ownership "Status transitions owned"와 동일 사실을 진술하므로 두 구간을 병합한다(상한 230 유지 — `spec.md` §D.2.1). **SPEC-ID 자가검사 블록은 작업 0의 결과에 따라**: 소비자 0건 → 마커 강제 제거 + 축약; 소비자 ≥1건 → **출력 계약 보존** + 주변 산문(예시 표, AC sub-ID 혼동 표)만 축약. 두 분기 모두 실행 Bash 검사는 존치.
 3. manager-develop — DDD/TDD 동형 워크플로우 통합, "one atomic change" 제약을 패키지 내부로 한정.
 4. 제거된 각 블록 자리에 SSOT 교차참조 삽입(정보 무성 소실 금지).
 

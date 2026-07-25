@@ -1,7 +1,7 @@
 ---
 id: SPEC-AGENT-PARALLEL-OPT-001
 title: "Agent instruction diet + plan/run/sync parallelization maximization — Acceptance Criteria"
-version: "0.9.0"
+version: "0.10.0"
 status: draft
 created: 2026-07-25
 updated: 2026-07-25
@@ -224,7 +224,7 @@ done
 | AC-APO-052 | 052 | MUST | `grep -c 'squash | merge | rebase' .claude/agents/moai/manager-git.md` == 1 (baseline 3 — L126 주석 / L163 auto-merge / L191 manual). **해석 규칙**만 1회화 대상이며, L163·L191의 두 운용 경로와 각각의 `gh pr merge --<merge_method>` 명령 템플릿은 **보존**(제거 시 REQ-APO-068 위반) |
 | AC-APO-053 | 053 | MUST | `builder-harness.md`의 `Model/effort escalation` 중복 문장 1개 이하, model-policy 표 재진술 0건 |
 | AC-APO-054 | 054 | MUST | `grep -l "verification-batch-pattern\|Parallel Execution" .claude/agents/moai/*.md` 결과 파일 수 ≥ 8 (현재 1) |
-| AC-APO-055 | 055 | MUST | `wc -l .claude/agents/moai/*.md` 합계와 파일별 값이 **모두** `spec.md` §D.2 표의 적용 분기 상한 이하. 합계 상한은 분기 조건부 — **분기 A ≤ 1907** / **분기 B ≤ 1927**(`manager-spec.md` 230 → 250 차이). 적용 분기는 AC-APO-043 게이트 결과가 결정하며, 분기 B 적용은 "MUST 미달성 + 사유 기록"이 아니라 **정상 적용**이다 |
+| AC-APO-055 | 055 | MUST | `wc -l .claude/agents/moai/*.md` 합계와 파일별 값이 **모두** `spec.md` §D.2 표의 적용 분기 상한 이하. 합계 상한은 분기 조건부 — **분기 A ≤ 1997** / **분기 B ≤ 2017**(`manager-spec.md` 230 → 250 차이). 적용 분기는 AC-APO-043 게이트 결과가 결정하며, 분기 B 적용은 "MUST 미달성 + 사유 기록"이 아니라 **정상 적용**이다. **합계 상한은 개별 상한의 산술 합이며 파생값이다** — 개별 상한이 §D.2.1 절차로 재보정되면 합계도 함께 재계산하고, 감축률 주장(§D.2 각주)도 갱신한다. **판정 시 주의**: 상한 충족이 **공백 전용 압축**으로 달성되지 않았음을 확인한다(`spec.md` §D.2.1 [HARD] 조항) — `git diff` 상 제거된 행이 실질 내용 없이 빈 줄뿐인 구간은 이 AC의 충족 근거로 인정하지 않는다 |
 
 ### D.4 Group 4 — 불변식 (REQ-APO-060..068)
 
