@@ -411,11 +411,10 @@ func saveAnswer(id, value string, result *WizardResult, locale *string) {
 		result.GitLabUsername = value
 	case "gitlab_token":
 		result.GitLabToken = value
-	// Phase 1 fields (REQ-IWE-001..005)
+	// Page-3 field (REQ-IWE-001). harness_profile is no longer asked
+	// (REQ-WIZ-012), so it has no capture branch.
 	case "project_mode":
 		result.ProjectMode = value
-	case "harness_profile":
-		result.HarnessProfile = value
 	}
 	_ = locale // locale is kept for GetLocalizedQuestion compatibility
 }
@@ -431,8 +430,6 @@ func saveBoolAnswer(id string, value bool, result *WizardResult) {
 		result.LSPEnabled = value
 	case "enforce_quality":
 		result.EnforceQuality = value
-	case "coverage_exemptions_enabled":
-		result.CoverageExemptionsEnabled = value
 	case "design_enabled":
 		result.DesignEnabled = value
 	case "claude_design_enabled":

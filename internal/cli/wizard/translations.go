@@ -117,21 +117,13 @@ var translations = map[string]map[string]QuestionTranslation{
 				{Label: "Team", Desc: "다중 개발자 환경 — 팀 협업 기능 활성화"},
 			},
 		},
-		"harness_profile": {
-			Title:       "기본 하네스 평가 프로파일 선택",
-			Description: "품질 점수 산정 깊이를 제어합니다. 프로파일은 .moai/config/evaluator-profiles/에서 로드됩니다.",
-		},
 		"lsp_enabled": {
-			Title:       "LSP 통합을 활성화할까요? (기본값: 아니오)",
-			Description: "LSP는 run 단계에서 language-server 진단을 제공합니다. 기본값은 꺼짐(옵트인)입니다.",
+			Title:       "LSP 통합을 활성화할까요? (기본값: 예)",
+			Description: "LSP는 run 단계에서 language-server 진단을 제공합니다. 기본값은 켜짐이며, 필요 없으면 끌 수 있습니다.",
 		},
 		"enforce_quality": {
 			Title:       "품질 게이트를 강제할까요? (기본값: 예)",
 			Description: "활성화하면 TRUST 5 품질 게이트가 실패 시 구현 진행을 차단합니다.",
-		},
-		"coverage_exemptions_enabled": {
-			Title:       "커버리지 예외를 허용할까요? (기본값: 아니오)",
-			Description: "특정 파일이나 패키지를 커버리지 목표에서 제외할 수 있게 합니다.",
 		},
 		"design_enabled": {
 			Title:       "디자인 워크플로우를 활성화할까요? (기본값: 예)",
@@ -229,21 +221,13 @@ var translations = map[string]map[string]QuestionTranslation{
 				{Label: "Team", Desc: "複数人開発 — チームコラボレーション機能を有効化"},
 			},
 		},
-		"harness_profile": {
-			Title:       "デフォルトのハーネス評価プロファイルを選択",
-			Description: "品質スコアリングの深さを制御します。プロファイルは .moai/config/evaluator-profiles/ から読み込まれます。",
-		},
 		"lsp_enabled": {
-			Title:       "LSP 統合を有効にしますか？（デフォルト: いいえ）",
-			Description: "LSP は run フェーズで language-server の診断を提供します。デフォルトはオフ（オプトイン）です。",
+			Title:       "LSP 統合を有効にしますか？（デフォルト: はい）",
+			Description: "LSP は run フェーズで language-server の診断を提供します。デフォルトはオンで、不要な場合はオフにできます。",
 		},
 		"enforce_quality": {
 			Title:       "品質ゲートを強制しますか？（デフォルト: はい）",
 			Description: "有効にすると、TRUST 5 品質ゲートが失敗時に実装の進行をブロックします。",
-		},
-		"coverage_exemptions_enabled": {
-			Title:       "カバレッジの除外を許可しますか？（デフォルト: いいえ）",
-			Description: "特定のファイルやパッケージをカバレッジ目標から除外できるようにします。",
 		},
 		"design_enabled": {
 			Title:       "デザインワークフローを有効にしますか？（デフォルト: はい）",
@@ -341,21 +325,13 @@ var translations = map[string]map[string]QuestionTranslation{
 				{Label: "Team", Desc: "多人开发 — 启用团队协作功能"},
 			},
 		},
-		"harness_profile": {
-			Title:       "选择默认评估套件配置",
-			Description: "控制质量评分深度。配置从 .moai/config/evaluator-profiles/ 加载。",
-		},
 		"lsp_enabled": {
-			Title:       "启用 LSP 集成？（默认：否）",
-			Description: "LSP 在运行阶段提供语言服务器诊断。默认关闭（选择性启用）。",
+			Title:       "启用 LSP 集成？（默认：是）",
+			Description: "LSP 在运行阶段提供语言服务器诊断。默认开启，如不需要可以关闭。",
 		},
 		"enforce_quality": {
 			Title:       "强制执行质量门禁？（默认：是）",
 			Description: "启用后，TRUST 5 质量门禁在失败时会阻止实施进度。",
-		},
-		"coverage_exemptions_enabled": {
-			Title:       "允许覆盖率豁免？（默认：否）",
-			Description: "允许将特定文件或包排除在覆盖率目标之外。",
 		},
 		"design_enabled": {
 			Title:       "启用设计工作流？（默认：是）",

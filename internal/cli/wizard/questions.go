@@ -424,14 +424,16 @@ func harnessProfileOptions(profiles []string) []Option {
 // huh has the design answer before evaluating the nested hide func.
 func Phase1Questions(projectRoot string) []Question {
 	return []Question{
-		// B3 — lsp.enabled
+		// B3 — lsp.enabled. Enabled by default since
+		// SPEC-CLI-WIZARD-RESTRUCTURE-001 (REQ-WIZ-010): the diagnostics are
+		// worth more than the startup cost, and opting out is one keystroke.
 		{
 			ID:          "lsp_enabled",
 			Group:       "Quality & Workflow",
 			Type:        QuestionTypeConfirm,
-			Title:       "Enable LSP integration? (default: No)",
-			Description: "LSP provides language-server diagnostics during the run phase. Default is off (opt-in).",
-			Default:     "false",
+			Title:       "Enable LSP integration? (default: Yes)",
+			Description: "LSP provides language-server diagnostics during the run phase. Enabled by default; answer No to opt out.",
+			Default:     "true",
 			Required:    false,
 		},
 		// B5 — quality.enforce_quality
@@ -480,33 +482,6 @@ func Phase1Questions(projectRoot string) []Question {
 			Default:     "true",
 			Required:    false,
 			Condition:   func(r *WizardResult) bool { return r.DesignEnabled },
-		},
-		// --- Pending removal (REQ-WIZ-012 / REQ-WIZ-013) -------------------
-		// These two questions are deleted in the question-removal milestone.
-		// Until then they keep their StandardMode gate and a non-page Group
-		// label so they cannot join the "Quality & Workflow" page.
-		// B2 — harness.default_profile (dynamic enumeration)
-		{
-			ID:          "harness_profile",
-			Group:       "Options",
-			Type:        QuestionTypeSelect,
-			Title:       "Select default harness evaluator profile",
-			Description: "Controls quality scoring depth. Profiles are loaded from .moai/config/evaluator-profiles/.",
-			Options:     loadHarnessProfiles(projectRoot),
-			Default:     "default",
-			Required:    true,
-			Condition:   func(r *WizardResult) bool { return r.StandardMode },
-		},
-		// B5 — quality.coverage_exemptions.enabled
-		{
-			ID:          "coverage_exemptions_enabled",
-			Group:       "Options",
-			Type:        QuestionTypeConfirm,
-			Title:       "Allow coverage exemptions? (default: No)",
-			Description: "Permits specific files or packages to be excluded from the coverage target.",
-			Default:     "false",
-			Required:    false,
-			Condition:   func(r *WizardResult) bool { return r.StandardMode },
 		},
 	}
 }

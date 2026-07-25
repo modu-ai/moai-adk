@@ -8,8 +8,8 @@ import (
 
 // TestPhase1QuestionsStructure verifies each page-3 Question entry has the
 // required fields, in the REQ-WIZ-005 order. The page-3 questions are
-// unconditional; only claude_design_enabled (nested on design_enabled) and the
-// two questions pending removal still carry a Condition.
+// unconditional; claude_design_enabled (nested on design_enabled) is the only
+// one that still carries a Condition.
 func TestPhase1QuestionsStructure(t *testing.T) {
 	t.Parallel()
 	tmpDir := t.TempDir()
@@ -30,8 +30,6 @@ func TestPhase1QuestionsStructure(t *testing.T) {
 		{"project_mode", QuestionTypeSelect, true, false},
 		{"design_enabled", QuestionTypeConfirm, false, false},
 		{"claude_design_enabled", QuestionTypeConfirm, false, true},
-		{"harness_profile", QuestionTypeSelect, true, true},
-		{"coverage_exemptions_enabled", QuestionTypeConfirm, false, true},
 	}
 
 	if len(questions) != len(want) {
@@ -117,9 +115,9 @@ func TestPhase1Questions_ClaudeDesignConditional(t *testing.T) {
 			t.Error("claude_design_enabled visible when DesignEnabled=false, want hidden")
 		}
 	}
-	// Expect 6 visible (7 minus claude_design_enabled)
-	if len(visible) != 6 {
-		t.Errorf("Expected 6 visible questions when DesignEnabled=false, got %d", len(visible))
+	// Expect 4 visible (the 5 page-3 questions minus claude_design_enabled)
+	if len(visible) != 4 {
+		t.Errorf("Expected 4 visible questions when DesignEnabled=false, got %d", len(visible))
 	}
 }
 
@@ -189,7 +187,10 @@ func TestHarnessProfileDynamic(t *testing.T) {
 	}
 }
 
-// TestSaveAnswerPhase1 verifies saveAnswer stores Phase 1 string fields correctly.
+// TestSaveAnswerPhase1 verifies saveAnswer stores the page-3 string field.
+// harness_profile is deliberately absent — its capture branch was removed with
+// the question (REQ-WIZ-012); the absence is asserted in
+// TestRemovedQuestionsHaveNoCaptureBranch.
 func TestSaveAnswerPhase1(t *testing.T) {
 	t.Parallel()
 	locale := ""
@@ -199,14 +200,11 @@ func TestSaveAnswerPhase1(t *testing.T) {
 	if result.ProjectMode != "team" {
 		t.Errorf("ProjectMode = %q, want 'team'", result.ProjectMode)
 	}
-
-	saveAnswer("harness_profile", "strict", result, &locale)
-	if result.HarnessProfile != "strict" {
-		t.Errorf("HarnessProfile = %q, want 'strict'", result.HarnessProfile)
-	}
 }
 
-// TestSaveBoolAnswer verifies saveBoolAnswer stores all Phase 1 boolean fields.
+// TestSaveBoolAnswer verifies saveBoolAnswer stores the page-3 boolean fields.
+// coverage_exemptions_enabled is deliberately absent — its capture branch was
+// removed with the question (REQ-WIZ-013).
 func TestSaveBoolAnswer(t *testing.T) {
 	t.Parallel()
 	cases := []struct {
@@ -216,7 +214,6 @@ func TestSaveBoolAnswer(t *testing.T) {
 	}{
 		{"lsp_enabled", true, func(r *WizardResult) bool { return r.LSPEnabled }},
 		{"enforce_quality", false, func(r *WizardResult) bool { return !r.EnforceQuality }},
-		{"coverage_exemptions_enabled", true, func(r *WizardResult) bool { return r.CoverageExemptionsEnabled }},
 		{"design_enabled", false, func(r *WizardResult) bool { return !r.DesignEnabled }},
 		{"claude_design_enabled", false, func(r *WizardResult) bool { return !r.ClaudeDesignEnabled }},
 	}
@@ -370,7 +367,21 @@ func TestTotalVisibleQuestions_Page3AlwaysCounted(t *testing.T) {
 	if got < 10 {
 		t.Errorf("TotalVisibleQuestions = %d, want >= 10 (3 Basic + 2 Model & Report + 5 Quality & Workflow)", got)
 	}
-	if withStd := TotalVisibleQuestions(all, &WizardResult{DesignEnabled: true, StandardMode: true}); withStd < got {
-		t.Errorf("StandardMode must not reduce page-3 visibility: %d < %d", withStd, got)
+	// StandardMode must not change PAGE-3 visibility. The TOTAL can still
+	// differ between the two states while the StandardMode-gated
+	// advanced_bridge survives (it is retired in a later milestone), so the
+	// invariant is asserted over the page-3 questions only.
+	countPage3 := func(standardMode bool) int {
+		res := &WizardResult{DesignEnabled: true, StandardMode: standardMode}
+		n := 0
+		for _, q := range FilteredQuestions(all, res) {
+			if q.Group == "Quality & Workflow" {
+				n++
+			}
+		}
+		return n
+	}
+	if off, on := countPage3(false), countPage3(true); off != 5 || on != 5 {
+		t.Errorf("visible page-3 questions = %d (StandardMode off) / %d (on), want 5 / 5", off, on)
 	}
 }

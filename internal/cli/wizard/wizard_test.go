@@ -651,13 +651,13 @@ func TestStepperTotal_DynamicDenominator(t *testing.T) {
 		})
 	}
 
-	// Standard mode expands the denominator further (Phase 1 questions). The
-	// advanced_bridge hides when StandardMode is preset, so the total is 6
-	// unconditional defaults (git conditionals hidden for manual) + 7 Phase 1 = 13.
+	// Adding page 3 expands the denominator further. The advanced_bridge hides
+	// when StandardMode is preset, so the total is 6 unconditional defaults (git
+	// conditionals hidden for manual) + 5 page-3 questions = 11.
 	all := append(ReconfigureQuestions("/tmp/steppertotal"), Phase1Questions("/tmp/steppertotal")...)
 	std := &WizardResult{GitMode: "manual", StandardMode: true, DesignEnabled: true}
-	if got := stepperDenominator(all, std); got != 13 {
-		t.Errorf("standard-mode denominator: expected 13 (6 + 7 Phase 1), got %d", got)
+	if got := stepperDenominator(all, std); got != 11 {
+		t.Errorf("standard-mode denominator: expected 11 (6 + 5 page-3), got %d", got)
 	}
 	// Single dynamic source invariant: stepperDenominator == TotalVisibleQuestions.
 	if stepperDenominator(all, std) != TotalVisibleQuestions(all, std) {
