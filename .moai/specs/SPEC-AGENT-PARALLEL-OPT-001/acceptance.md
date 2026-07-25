@@ -1,8 +1,8 @@
 ---
 id: SPEC-AGENT-PARALLEL-OPT-001
 title: "Agent instruction diet + plan/run/sync parallelization maximization — Acceptance Criteria"
-version: "0.11.0"
-status: completed
+version: "0.12.0"
+status: in-progress
 created: 2026-07-25
 updated: 2026-07-25
 author: manager-spec
@@ -248,8 +248,8 @@ done
 | AC-APO-070 | 070 | MUST | 4개 동시 충족: (a) 본 SPEC frontmatter `partially_supersedes: [SPEC-DWF-CODEMAPS-PILOT-001]`, (b) `spec.md`가 superseded AC를 **ID로 인용** — `AC-DCP-010`(`acceptance.md:79` / `progress.md:86`) + 그 소유 요구사항 `REQ-DCP-009/010`, (c) 정식 grep 문구 `grep -r "codemaps-extract\|codemaps-pilot" internal/template/templates/` → nothing 이 더 이상 성립하지 않음을 명시, (d) 파일럿 SPEC 아티팩트에 supersession 주석 추가로 상호 참조 성립 |
 | AC-APO-071 | 071 | MUST | **2항 동시 충족 — 가드가 권위**(§D.5.1). (a) `CMD-071(a)`: 가드 **PASS** **AND** 스캐너가 `.js`를 실제로 읽음(`leakTextExtensions`에 `".js"` 등재 ≥ 1 — M1이 추가). (b) `CMD-071(b)` == 0: 본 SPEC 고유 토큰만 3개 배포 스크립트에서 스캔(해당 파일들은 `.claude/workflows/` 라 S3 `skillBodyScoped`가 미발화하므로 이 구간은 실재하는 가드 사각지대다). **손수 쓴 정규식 전면 폐기 사유 2건**: (i) `-E` + `\|` 리터럴 파이프로 공허했다(실측 0 — 다만 정상 교대형으로도 0이라 잠복 상태였다). (ii) 더 중요하게 — 구 정규식은 가드 **C1/C2/S2를 면제 없이 재구현**한 것이라 `.js`가 `leakTextExtensions`에 등재된 지금 **가드에 완전히 포섭**되며, 게다가 S2의 `requireHexLetter` 정련을 빠뜨려 **가드가 올바르게 제외하는 십진 상수까지 오탐**한다(실증: `const maxBytes = 10485760;` → 구 형태 1 매치, 가드 S2는 제외). 일반형 `SPEC-[A-Z0-9-]+-[0-9]{3}` 제외 방침(`spec.md` §F.8.3-a)은 이제 가드가 직접 소유한다. **선행 조건**: AC-APO-072 PASS — (a)의 `.js` 등재 확인이 그 왕복의 정적 대응물이다 |
 | AC-APO-071b | 071 | SHOULD | **존치 — 가드 중복 여부 실측 검증 완료.** 본 AC가 덮는 3클래스는 AC-APO-071과 달리 가드에 포섭되지 **않는다**: (α) 날짜 `20[0-9]{2}-[0-9]{2}-[0-9]{2}` — 가드 `S1-internal-date`가 유사 패턴을 갖지만 `strictLeakClasses` 소속이고 그 티어는 `MOAI_TEMPLATE_LEAK_STRICT=1` **opt-in**이다(`.github/` · `Makefile` 전수 grep 결과 **어디에도 미설정** → CI 미강제). (β) `/Users/` — **대응 클래스가 아예 없다**. (γ) SHA `[0-9a-f]{9,40}` — 가드 S2는 `{7,8}` + 후행 구두점/EOL 요구라 9자 이상 연속 hex와 **겹치지 않는다**. 따라서 본 AC는 "가드 정규식 재구현"이 아니라 **가드가 CI에서 강제하지 않는 잔여 구간의 유일한 커버리지**이며, 이것이 REQ-APO-071의 5개 금지 클래스를 온전히 채우는 부분이다. **manual-only / CI-unenforced 표기 의무**(`spec.md` §F.8.3-a 귀결 3): "CI green"을 이 3클래스의 근거로 인용하지 않는다. 판정 **2항 동시 충족**: (i) 배포된 3개 파일에 대해 판정 명령 `CMD-071b`(§D.5.1) **== 0**(구 표-셀 형태는 `-E` + `\|` 리터럴 파이프로 공허했다 — 정상 교대형 실측도 0이라 판정 결과는 불변이나 잠복 공허성은 제거) — REQ-APO-071이 금지한 5개 클래스 전량이 MUST 수준으로 커버되도록 하는 조항이며, SHOULD 등급이라는 이유로 면제되지 **않는다**. (ii) 그 결과가 `progress.md`에 **CI-unenforced 라벨과 함께** 기록됨 — 기록 의무는 "CI green"을 이 3개 클래스의 근거로 오인용하지 못하게 하는 장치다 |
-| AC-APO-072 | 072 | MUST | `leakTextExtensions`에 `".js": true` 존재 (`grep -n '".js"' internal/template/internal_content_leak_test.go` ≥ 1) **AND** 시나리오 8의 RED/GREEN 왕복이 관측됨 — 미중립 스크립트 심었을 때 FAIL, 중립화 후 PASS |
-| AC-APO-072b | 062/069 | MUST | `TestSplitHarnessNamespaceNoLeak` PASS **AND** 차단 유효성 확인: `hns-release-update-run.js`를 템플릿에 심고 실행 시 `SPLIT_HARNESS_NAMESPACE_LEAK`으로 FAIL (심은 파일은 제거) |
+| AC-APO-072 | 072 | MUST | `leakTextExtensions`에 `".js": true` 존재 (`grep -n '".js"' internal/template/internal_content_leak_test.go` ≥ 1) **AND** 시나리오 8의 RED/GREEN 왕복이 관측됨 — 미중립 스크립트 심었을 때 FAIL, 중립화 후 PASS. **왕복 직접 관측 완료(2026-07-25, 격리 worktree)**: probe `redgreen-probe.js`(C1 토큰 `SPEC-V3R6-REDGREEN-PROBE`)를 `internal/template/templates/.claude/workflows/`에 심고 실행 → `TestTemplateNoInternalContentLeak` 이 `class=C1-spec-id-prefix` 로 **FAIL**, probe 제거 후 **PASS**(전후 baseline 모두 `ok`). C1 클래스는 always-on(strict 티어 아님)이고 `.js`는 `leakTextExtensions`에 등재돼 있어 RED가 공허하지 않음을 저작 전 판독으로 확인했다. 이로써 close 당시의 PASS-WITH-DEBT 유예 사유("템플릿 트리 변형이 필요해 read-only 감사 범위 밖")는 **무효**다 |
+| AC-APO-072b | 062/069 | MUST | `TestSplitHarnessNamespaceNoLeak` PASS **AND** 차단 유효성 확인: `hns-release-update-run.js`를 템플릿에 심고 실행 시 `SPLIT_HARNESS_NAMESPACE_LEAK`으로 FAIL (심은 파일은 제거). **왕복 직접 관측 완료(2026-07-25, 격리 worktree)**: probe `.claude/workflows/hns-release-update-run.js`를 템플릿 트리에 심은 상태에서 `TestSplitHarnessNamespaceNoLeak` 이 sentinel `SPLIT_HARNESS_NAMESPACE_LEAK` 과 dev-only 배포 금지 메시지를 내며 **FAIL**, probe 제거 후 **PASS**. probe 파일명은 `splitHarnessAgentPrefixes`(`hns-release-update` 포함)를 저작 전 판독해 선택했으므로 RED가 공허하지 않다. 이로써 close 당시의 PASS-WITH-DEBT 유예 사유("템플릿 트리 변형이 필요해 read-only 감사 범위 밖")는 **무효**다 |
 | AC-APO-073 | 073 | MUST | `internal/cli/update/plan/plan.go`의 user-owned 판정이 3개 generic 스크립트에 대해 false 반환 — 접두사 `hns-`/`harness-` 미매치로 확인. 보존 목록 소스 무변경(`git diff` 0줄) |
 
 #### D.5.1 Group 4/5 중립성 판정 명령 블록
