@@ -1,8 +1,10 @@
 package project
 
-// initializer_expansion.go — Phase 1 yaml write helpers for SPEC-V3R5-INIT-WIZARD-EXPANSION-001.
+// initializer_expansion.go — Page-3 (formerly Phase 1) yaml write helpers.
 //
-// Each function writes a single section yaml file when StandardMode is active.
+// Each function persists a single wizard answer into its section yaml file.
+// Writers that target a template-deployed file patch it in place rather than
+// replacing it (REQ-WIZ-021); only the no-deployer fallback path creates files.
 // Defaults for coverage_exemptions sibling fields are sourced here rather than
 // hardcoded, satisfying plan.md R-IWE-003 mitigation (no hardcoded sibling values).
 
@@ -10,6 +12,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/modu-ai/moai-adk/internal/defs"
 )
@@ -20,21 +23,20 @@ const defaultMaxExemptPercentage = 15
 // defaultRequireJustification matches internal/config/defaults.go default for CoverageExemptions.
 const defaultRequireJustification = true
 
-// WritePhase1Configs writes the Phase 1 section yaml files when StandardMode is active.
-// When opts.StandardMode is false this function is a no-op (Quick mode backward-compat).
+// WritePhase1Configs persists the Page-3 wizard answers to their section yaml
+// files. It runs unconditionally (C31 / REQ-WIZ-015): the Page-3 questions are
+// shown to every user now that the advanced-mode gate is retired, so the former
+// standard-mode early return would have made every answer unreachable.
 func WritePhase1Configs(opts InitOptions, result *InitResult) error {
-	if !opts.StandardMode {
-		return nil
-	}
-
 	sectionsDir := filepath.Clean(filepath.Join(opts.ProjectRoot, defs.MoAIDir, defs.SectionsSubdir))
 
 	if err := writeProjectModeYAML(sectionsDir, opts, result); err != nil {
 		return err
 	}
-	if err := writeHarnessProfileYAML(sectionsDir, opts, result); err != nil {
-		return err
-	}
+	// harness.yaml is deliberately NOT written (C36 / REQ-WIZ-012): the
+	// harness-profile question is removed from the wizard and the deployed
+	// harness.yaml already ships default_profile: "default", so a write here
+	// would destroy 8,165 B of deployed config to restate a correct value.
 	if err := writeLSPYAML(sectionsDir, opts, result); err != nil {
 		return err
 	}
@@ -79,6 +81,13 @@ func writeProjectModeYAML(sectionsDir string, opts InitOptions, result *InitResu
 }
 
 // writeHarnessProfileYAML writes harness.default_profile to harness.yaml (B2, REQ-IWE-002).
+//
+// NO LONGER PART OF THE PAGE-3 WRITE SET (C36 / REQ-WIZ-012). Its call was
+// removed from WritePhase1Configs because the harness-profile question is gone
+// and the deployed harness.yaml already carries the correct default; this
+// wholesale writer would destroy that file. The function is retained only
+// because its two dedicated tests are outside the plan.md §G delete-list —
+// removing both is C37's (M7) scope.
 func writeHarnessProfileYAML(sectionsDir string, opts InitOptions, result *InitResult) error {
 	profile := opts.HarnessProfile
 	if profile == "" {
@@ -94,15 +103,38 @@ func writeHarnessProfileYAML(sectionsDir string, opts InitOptions, result *InitR
 	return nil
 }
 
-// writeLSPYAML writes lsp.enabled to lsp.yaml (B3, REQ-IWE-003).
+// writeLSPYAML persists lsp.enabled to lsp.yaml (B3, REQ-IWE-003).
+//
+// The deployed lsp.yaml is ~11 KB of 16-language LSP configuration, so an
+// existing file is PATCHED at lsp.enabled only — never replaced (REQ-WIZ-021).
+// The patch is depth-aware because lsp.yaml carries a second `enabled:` key
+// under delegate_to_astgrep that must keep both its value and its indentation.
+// Only when no file exists (the no-deployer fallback path) is a minimal block
+// created.
 func writeLSPYAML(sectionsDir string, opts InitOptions, result *InitResult) error {
-	content := fmt.Sprintf("lsp:\n  enabled: %t\n", opts.LSPEnabled)
 	lspPath := filepath.Join(sectionsDir, defs.LSPYAML)
-	if err := os.WriteFile(lspPath, []byte(content), defs.FilePerm); err != nil {
-		return fmt.Errorf("write lsp.yaml: %w", err)
+	value := fmt.Sprintf("%t", opts.LSPEnabled)
+
+	existing, readErr := os.ReadFile(lspPath) //nolint:govet
+	if readErr != nil {
+		content := fmt.Sprintf("lsp:\n  enabled: %s\n", value)
+		if err := os.WriteFile(lspPath, []byte(content), defs.FilePerm); err != nil {
+			return fmt.Errorf("write lsp.yaml: %w", err)
+		}
+		result.CreatedFiles = append(result.CreatedFiles,
+			filepath.Join(defs.MoAIDir, defs.SectionsSubdir, defs.LSPYAML))
+		return nil
 	}
-	result.CreatedFiles = append(result.CreatedFiles,
-		filepath.Join(defs.MoAIDir, defs.SectionsSubdir, defs.LSPYAML))
+
+	patched, ok := patchYAMLPathValue(string(existing), "lsp.enabled", value)
+	if !ok {
+		// Key absent from an existing document: leave it byte-identical rather
+		// than append a duplicate top-level `lsp:` mapping.
+		return nil
+	}
+	if err := os.WriteFile(lspPath, []byte(patched), defs.FilePerm); err != nil {
+		return fmt.Errorf("patch lsp.yaml: %w", err)
+	}
 	return nil
 }
 
@@ -153,22 +185,54 @@ func writeQualityExpansionYAML(sectionsDir string, opts InitOptions, result *Ini
 	return nil
 }
 
-// writeDesignYAML writes design.enabled and design.claude_design.enabled to design.yaml (B8, REQ-IWE-005).
+// writeDesignYAML persists design.enabled and design.claude_design.enabled to
+// design.yaml (B8, REQ-IWE-005).
+//
+// An existing file is PATCHED at those two paths only — never replaced
+// (REQ-WIZ-021). The patch is depth-aware because design.yaml carries five
+// `enabled:` keys across three depths; a depth-blind rewrite would flatten
+// gan_loop.sprint_contract, figma and adaptation into the top-level mapping.
+// Only when no file exists (the no-deployer fallback path) is a minimal block
+// created.
 func writeDesignYAML(sectionsDir string, opts InitOptions, result *InitResult) error {
-	content := fmt.Sprintf(`design:
+	designPath := filepath.Join(sectionsDir, defs.DesignYAML)
+
+	existing, readErr := os.ReadFile(designPath) //nolint:govet
+	if readErr != nil {
+		content := fmt.Sprintf(`design:
   enabled: %t
   claude_design:
     enabled: %t
 `,
-		opts.DesignEnabled,
-		opts.ClaudeDesignEnabled,
-	)
-	designPath := filepath.Join(sectionsDir, defs.DesignYAML)
-	if err := os.WriteFile(designPath, []byte(content), defs.FilePerm); err != nil {
-		return fmt.Errorf("write design.yaml: %w", err)
+			opts.DesignEnabled,
+			opts.ClaudeDesignEnabled,
+		)
+		if err := os.WriteFile(designPath, []byte(content), defs.FilePerm); err != nil {
+			return fmt.Errorf("write design.yaml: %w", err)
+		}
+		result.CreatedFiles = append(result.CreatedFiles,
+			filepath.Join(defs.MoAIDir, defs.SectionsSubdir, defs.DesignYAML))
+		return nil
 	}
-	result.CreatedFiles = append(result.CreatedFiles,
-		filepath.Join(defs.MoAIDir, defs.SectionsSubdir, defs.DesignYAML))
+
+	content := string(existing)
+	patched := false
+	for _, target := range []struct{ path, value string }{
+		{"design.enabled", fmt.Sprintf("%t", opts.DesignEnabled)},
+		{"design.claude_design.enabled", fmt.Sprintf("%t", opts.ClaudeDesignEnabled)},
+	} {
+		if next, ok := patchYAMLPathValue(content, target.path, target.value); ok {
+			content = next
+			patched = true
+		}
+	}
+	if !patched {
+		// Neither key present: leave the document byte-identical.
+		return nil
+	}
+	if err := os.WriteFile(designPath, []byte(content), defs.FilePerm); err != nil {
+		return fmt.Errorf("patch design.yaml: %w", err)
+	}
 	return nil
 }
 
@@ -209,6 +273,96 @@ func patchYAMLKey(content, section, key, newValue string) string {
 		}
 	}
 	return result
+}
+
+// yamlFrame is one ancestor mapping key held in scope while walking a YAML
+// document line by line, so patchYAMLPathValue can reconstruct the full dotted
+// path of every key it visits.
+type yamlFrame struct {
+	indent int
+	key    string
+}
+
+// patchYAMLPathValue rewrites the value of the key identified by its full
+// dotted path (for example "design.claude_design.enabled"), preserving that
+// line's original indentation and leaving every other byte of the document
+// untouched. It returns the content and whether the path was found.
+//
+// It exists because patchYAMLKey is depth-blind: that helper matches on
+// whitespace-stripped lines and rewrites at a hardcoded 2-space indent, so it
+// rewrites EVERY key of a given name inside the section and flattens each to
+// depth 2. Against the deployed lsp.yaml (two `enabled:` keys) and design.yaml
+// (five) it would trade a visible clobber for silent structural corruption.
+// patchYAMLKey is deliberately left untouched — its two existing callers target
+// keys that are unique within their files.
+//
+// Only the first match is rewritten. When the path is absent the content is
+// returned byte-identical with ok=false, so a caller can decide whether that is
+// a no-op or an error rather than appending a duplicate mapping key.
+func patchYAMLPathValue(content, path, newValue string) (string, bool) {
+	if content == "" || path == "" {
+		return content, false
+	}
+	segments := strings.Split(path, ".")
+	lines := splitLines(content)
+	var stack []yamlFrame
+
+	for i, line := range lines {
+		trimmed := trimLeadingSpaces(line)
+		// Blank lines, comments and sequence entries carry no mapping key.
+		if trimmed == "" || trimmed[0] == '#' || trimmed[0] == '-' {
+			continue
+		}
+		colon := strings.IndexByte(trimmed, ':')
+		if colon <= 0 {
+			continue
+		}
+		key := trimmed[:colon]
+		indent := len(line) - len(trimmed)
+
+		// Leave every scope that is no longer an ancestor of this line.
+		for len(stack) > 0 && stack[len(stack)-1].indent >= indent {
+			stack = stack[:len(stack)-1]
+		}
+
+		if yamlPathMatches(stack, key, segments) {
+			lines[i] = line[:indent] + key + ": " + newValue
+			return joinYAMLLines(lines, strings.HasSuffix(content, "\n")), true
+		}
+
+		// A key with no inline value opens a nested mapping.
+		if strings.TrimSpace(trimmed[colon+1:]) == "" {
+			stack = append(stack, yamlFrame{indent: indent, key: key})
+		}
+	}
+	return content, false
+}
+
+// yamlPathMatches reports whether the ancestor stack plus key spells out
+// exactly the target segment list.
+func yamlPathMatches(stack []yamlFrame, key string, segments []string) bool {
+	if len(stack)+1 != len(segments) {
+		return false
+	}
+	for i := range stack {
+		if stack[i].key != segments[i] {
+			return false
+		}
+	}
+	return key == segments[len(segments)-1]
+}
+
+// joinYAMLLines reassembles lines produced by splitLines, restoring the
+// document's original trailing-newline state.
+func joinYAMLLines(lines []string, trailingNewline bool) string {
+	var b strings.Builder
+	for i, l := range lines {
+		b.WriteString(l)
+		if i < len(lines)-1 || trailingNewline {
+			b.WriteByte('\n')
+		}
+	}
+	return b.String()
 }
 
 func splitLines(s string) []string {

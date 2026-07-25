@@ -56,9 +56,11 @@ type ModelEffort struct {
 //     "high" maps to "max"; "max"/"medium"/"low" pass through;
 //  3. else the default profile ("medium", DECISION-002).
 //
-// The divergent legacy init-selection constant DefaultModelPolicy = "high"
-// (template package) is a SEPARATE default and is NOT consulted here — its
-// high→max projection is preserved only for the performance_tier alias.
+// The separate init-selection constant DefaultModelPolicy = "medium"
+// (template package) is NOT consulted here; since
+// SPEC-CLI-WIZARD-RESTRUCTURE-001 it happens to agree with this function's own
+// default. The high→max projection above is kept only for the
+// performance_tier alias.
 func (l LLMConfig) EffectiveProfile() string {
 	if p := strings.TrimSpace(l.Profile); p != "" {
 		return p

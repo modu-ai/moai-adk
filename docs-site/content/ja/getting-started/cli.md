@@ -59,8 +59,6 @@ moai init [project-name] [OPTIONS]
 | `--force` | 既存プロジェクトの強制再初期化 (現在の `.moai/` をバックアップ) |
 | `--no-hooks` | Git フックのインストールをスキップ |
 | `--all` | カタログの全項目を配布 (core + optional packs + harness-generated) |
-| `--standard` | Phase 1 質問を表示 (project mode, harness profile, LSP, quality gates, design) |
-| `--advanced` | Phase 1 + Phase 2 質問を表示 (`--standard` を含む; Phase 2 は前提条件を満たす場合のみ) |
 | `--mode <ddd\|tdd>` | 開発方法論 (デフォルト値: tdd) |
 | `--language <lang>` | 主要プログラミング言語 |
 | `--framework <name>` | フレームワーク名 (デフォルト値: 自動検出または "none") |
@@ -69,8 +67,8 @@ moai init [project-name] [OPTIONS]
 | `--git-mode <manual\|personal\|team>` | Git ワークフローモード (デフォルト値: manual) |
 | `--git-provider <github\|gitlab>` | Git プロバイダー |
 | `--project-mode <personal\|team>` | プロジェクトモード (デフォルト値: personal) |
-| `--harness-profile <profile>` | ハーネス評価者プロファイル (default, strict, lenient, frontend) |
-| `--enable-lsp` | LSP 連携の有効化 (デフォルト値: false) |
+| `--harness-profile <profile>` | ハーネス評価者プロファイル (default, strict, lenient, frontend); 値は受け付けるが現在は永続化されない |
+| `--enable-lsp` | LSP 連携の有効化 (デフォルト値: true) |
 | `--enforce-quality` | 品質ゲートの強制 (デフォルト値: true) |
 | `--enable-design` | デザインワークフローの有効化 (デフォルト値: true) |
 | `--profile <max\|medium\|low>` | モデル+effort プロファイル — `llm.yaml` `profile` に保存 (プロファイルマトリクス列の選択) |
@@ -89,9 +87,6 @@ moai init
 
 # 非対話型 (CI/CD)
 moai init --non-interactive --project-mode personal --model-policy medium
-
-# Phase 1 質問まで表示
-moai init my-project --standard
 ```
 
 詳しいウィザードステップは [初期設定](./init-wizard) ページを参照してください。

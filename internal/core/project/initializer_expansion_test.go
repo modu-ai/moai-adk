@@ -24,31 +24,10 @@ func setupSectionsDir(t *testing.T) (root, sectionsDir string) {
 	return root, sectionsDir
 }
 
-// TestWritePhase1Configs_NoOpWhenNotStandard verifies that Quick mode produces no files.
-func TestWritePhase1Configs_NoOpWhenNotStandard(t *testing.T) {
-	t.Parallel()
-	root, sectionsDir := setupSectionsDir(t)
-
-	opts := InitOptions{
-		ProjectRoot:  root,
-		StandardMode: false,
-	}
-	result := &InitResult{}
-
-	if err := WritePhase1Configs(opts, result); err != nil {
-		t.Fatalf("WritePhase1Configs: %v", err)
-	}
-	if len(result.CreatedFiles) != 0 {
-		t.Errorf("no-op: got CreatedFiles = %v, want empty", result.CreatedFiles)
-	}
-
-	// Verify no Phase 1 files created
-	for _, name := range []string{defs.HarnessYAML, defs.LSPYAML, defs.DesignYAML} {
-		if _, err := os.Stat(filepath.Join(sectionsDir, name)); err == nil {
-			t.Errorf("Quick mode: %s should not exist", name)
-		}
-	}
-}
+// TestWritePhase1Configs_NoOpWhenNotStandard was DELETED by C31: its subject
+// was the standard-mode early return that C31 removes, so it asserts behaviour
+// this SPEC deliberately eliminates and cannot be reconciled. It is named on
+// the plan.md §G carve-out delete-list.
 
 // TestWriteHarnessProfileYAML verifies harness.yaml content.
 func TestWriteHarnessProfileYAML(t *testing.T) {
@@ -57,7 +36,6 @@ func TestWriteHarnessProfileYAML(t *testing.T) {
 
 	opts := InitOptions{
 		ProjectRoot:    root,
-		StandardMode:   true,
 		HarnessProfile: "strict",
 	}
 	result := &InitResult{}
@@ -82,7 +60,6 @@ func TestWriteHarnessProfileYAML_DefaultProfile(t *testing.T) {
 
 	opts := InitOptions{
 		ProjectRoot:    root,
-		StandardMode:   true,
 		HarnessProfile: "", // empty → default
 	}
 	result := &InitResult{}
@@ -113,7 +90,7 @@ func TestWriteLSPYAML(t *testing.T) {
 		t.Run(c.name, func(t *testing.T) {
 			t.Parallel()
 			root, sectionsDir := setupSectionsDir(t)
-			opts := InitOptions{ProjectRoot: root, StandardMode: true, LSPEnabled: c.enabled}
+			opts := InitOptions{ProjectRoot: root, LSPEnabled: c.enabled}
 			result := &InitResult{}
 			if err := writeLSPYAML(sectionsDir, opts, result); err != nil {
 				t.Fatalf("writeLSPYAML: %v", err)
@@ -130,10 +107,10 @@ func TestWriteLSPYAML(t *testing.T) {
 func TestWriteDesignYAML(t *testing.T) {
 	t.Parallel()
 	cases := []struct {
-		name              string
-		designEnabled     bool
+		name                string
+		designEnabled       bool
 		claudeDesignEnabled bool
-		want              string
+		want                string
 	}{
 		{
 			"both enabled (default)",
@@ -158,7 +135,6 @@ func TestWriteDesignYAML(t *testing.T) {
 			root, sectionsDir := setupSectionsDir(t)
 			opts := InitOptions{
 				ProjectRoot:         root,
-				StandardMode:        true,
 				DesignEnabled:       c.designEnabled,
 				ClaudeDesignEnabled: c.claudeDesignEnabled,
 			}
@@ -181,7 +157,6 @@ func TestWriteQualityExpansionYAML_Fresh(t *testing.T) {
 
 	opts := InitOptions{
 		ProjectRoot:               root,
-		StandardMode:              true,
 		EnforceQuality:            false,
 		CoverageExemptionsEnabled: true,
 	}
@@ -216,7 +191,6 @@ func TestWriteQualityExpansionYAML_ExistingFile(t *testing.T) {
 
 	opts := InitOptions{
 		ProjectRoot:               root,
-		StandardMode:              true,
 		EnforceQuality:            false,
 		CoverageExemptionsEnabled: false,
 	}
@@ -236,7 +210,11 @@ func TestWriteQualityExpansionYAML_ExistingFile(t *testing.T) {
 	}
 }
 
-// TestWritePhase1Configs_AllFiles verifies WritePhase1Configs creates all 4 Phase 1 files.
+// TestWritePhase1Configs_AllFiles pins the CREATE-IF-ABSENT fallback: when no
+// lsp.yaml / design.yaml exists (the no-deployer path), WritePhase1Configs
+// creates a minimal block. C35 deliberately preserved this branch, so it stays
+// asserted here. The PATCH branch — which is what the deployer path actually
+// takes — is pinned by TestWritePhase1Configs_PatchesExistingFiles below.
 func TestWritePhase1Configs_AllFiles(t *testing.T) {
 	t.Parallel()
 	root, sectionsDir := setupSectionsDir(t)
@@ -257,7 +235,6 @@ func TestWritePhase1Configs_AllFiles(t *testing.T) {
 
 	opts := InitOptions{
 		ProjectRoot:               root,
-		StandardMode:              true,
 		ProjectMode:               "team",
 		HarnessProfile:            "lenient",
 		LSPEnabled:                true,
@@ -271,10 +248,12 @@ func TestWritePhase1Configs_AllFiles(t *testing.T) {
 		t.Fatalf("WritePhase1Configs: %v", err)
 	}
 
-	// Verify harness.yaml created with correct content
-	harness, _ := os.ReadFile(filepath.Join(sectionsDir, defs.HarnessYAML))
-	if !bytes.Contains(harness, []byte("default_profile: lenient")) {
-		t.Errorf("harness.yaml: %q", harness)
+	// C36: harness.yaml is NOT part of the Page-3 write set any more. On the
+	// real (deployer) path the file is already deployed with the correct
+	// default_profile, so WritePhase1Configs must leave it entirely alone —
+	// here that means never creating it.
+	if _, err := os.Stat(filepath.Join(sectionsDir, defs.HarnessYAML)); err == nil {
+		t.Error("harness.yaml was written; C36 removed it from the Page-3 write set")
 	}
 
 	// Verify lsp.yaml created with enabled=true
@@ -296,6 +275,87 @@ func TestWritePhase1Configs_AllFiles(t *testing.T) {
 	project, _ := os.ReadFile(filepath.Join(sectionsDir, defs.ProjectYAML))
 	if !bytes.Contains(project, []byte("mode: team")) {
 		t.Errorf("project.yaml: mode not updated to team; got: %q", project)
+	}
+}
+
+// TestWritePhase1Configs_PatchesExistingFiles pins the C35 read-patch semantics
+// at the WritePhase1Configs (aggregate) level: when lsp.yaml and design.yaml
+// ALREADY exist — which is the real deployer-path state — the Page-3 answers
+// are patched into them in place, and every unrelated line survives.
+//
+// Non-vacuity: reverting writeLSPYAML / writeDesignYAML to their pre-C35
+// wholesale os.WriteFile form fails this test, because the surrounding keys
+// (`servers:`, `delegate_to_astgrep.enabled`, `gan_loop.enabled`, `figma`)
+// would be erased rather than preserved.
+func TestWritePhase1Configs_PatchesExistingFiles(t *testing.T) {
+	t.Parallel()
+	root, sectionsDir := setupSectionsDir(t)
+
+	// Deployed-shaped fixtures: a nested same-named `enabled:` key at a deeper
+	// indent in each file, mirroring the real lsp.yaml / design.yaml shapes.
+	lspBefore := `lsp:
+  enabled: false
+  servers:
+    go: gopls
+  delegate_to_astgrep:
+    enabled: true
+`
+	designBefore := `design:
+  enabled: false
+  gan_loop:
+    enabled: true
+  claude_design:
+    enabled: false
+  figma:
+    enabled: true
+`
+	if err := os.WriteFile(filepath.Join(sectionsDir, defs.LSPYAML), []byte(lspBefore), 0644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(sectionsDir, defs.DesignYAML), []byte(designBefore), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	opts := InitOptions{
+		ProjectRoot:         root,
+		LSPEnabled:          true,
+		DesignEnabled:       true,
+		ClaudeDesignEnabled: true,
+	}
+	if err := WritePhase1Configs(opts, &InitResult{}); err != nil {
+		t.Fatalf("WritePhase1Configs: %v", err)
+	}
+
+	lspAfter, err := os.ReadFile(filepath.Join(sectionsDir, defs.LSPYAML))
+	if err != nil {
+		t.Fatalf("ReadFile lsp.yaml: %v", err)
+	}
+	wantLSP := `lsp:
+  enabled: true
+  servers:
+    go: gopls
+  delegate_to_astgrep:
+    enabled: true
+`
+	if string(lspAfter) != wantLSP {
+		t.Errorf("lsp.yaml not patched in place:\ngot:\n%s\nwant:\n%s", lspAfter, wantLSP)
+	}
+
+	designAfter, err := os.ReadFile(filepath.Join(sectionsDir, defs.DesignYAML))
+	if err != nil {
+		t.Fatalf("ReadFile design.yaml: %v", err)
+	}
+	wantDesign := `design:
+  enabled: true
+  gan_loop:
+    enabled: true
+  claude_design:
+    enabled: true
+  figma:
+    enabled: true
+`
+	if string(designAfter) != wantDesign {
+		t.Errorf("design.yaml not patched in place:\ngot:\n%s\nwant:\n%s", designAfter, wantDesign)
 	}
 }
 
@@ -341,7 +401,7 @@ func TestWriteProjectModeYAML_FreshFile(t *testing.T) {
 	t.Parallel()
 	root, sectionsDir := setupSectionsDir(t)
 
-	opts := InitOptions{ProjectRoot: root, StandardMode: true, ProjectMode: "team"}
+	opts := InitOptions{ProjectRoot: root, ProjectMode: "team"}
 	result := &InitResult{}
 	if err := writeProjectModeYAML(sectionsDir, opts, result); err != nil {
 		t.Fatalf("writeProjectModeYAML: %v", err)

@@ -41,15 +41,13 @@ moai init [project-name]
 | `--mode <ddd\|tdd>` | 开发方法论(默认:tdd) |
 | `--non-interactive` | 跳过交互式向导 —— 仅使用标志与默认值 |
 
-### 向导阶段
+### 向导提问标志
 
 | 标志 | 说明 |
 |--------|------|
-| `--standard` | 提出 Phase 1 问题(项目模式、harness 配置、LSP、质量门禁、设计) |
-| `--advanced` | 提出 Phase 1 + Phase 2 问题(含 `--standard`) |
 | `--project-mode <personal\|team>` | 项目模式(默认:personal) |
-| `--harness-profile <name>` | harness 评估配置:default、strict、lenient、frontend |
-| `--enable-lsp` | 启用 LSP 集成(默认:false) |
+| `--harness-profile <name>` | harness 评估配置:default、strict、lenient、frontend;接受该值,但目前不会持久化生效 |
+| `--enable-lsp` | 启用 LSP 集成(默认:true) |
 | `--enforce-quality` | 强制质量门禁(默认:true) |
 | `--enable-design` | 启用设计工作流(默认:true) |
 

@@ -61,7 +61,7 @@ type TemplateContext struct {
 	ResolvedMoaiPath string
 
 	// Model policy for agent model assignment
-	ModelPolicy string // "high", "medium", "low" (default: "high")
+	ModelPolicy string // "high", "medium", "low" (default: "medium")
 
 	// HookOptIn controls rendering of the 3 observability hook series in
 	// settings.json.tmpl (SPEC-V3R6-HOOK-OBSERVE-OPT-IN-001 REQ-HOI-004).
