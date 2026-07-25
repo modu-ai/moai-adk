@@ -2,7 +2,7 @@
 id: SPEC-CLI-WIZARD-RESTRUCTURE-001
 title: "Research — verified ground truth for the wizard restructure + persistence chain"
 version: "0.2.1"
-status: in-progress
+status: completed
 created: 2026-07-25
 updated: 2026-07-25
 author: manager-spec

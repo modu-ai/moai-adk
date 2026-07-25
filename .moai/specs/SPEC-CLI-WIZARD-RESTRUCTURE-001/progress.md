@@ -397,12 +397,28 @@ Recorded so sync-phase inherits these rather than rediscovering them.
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-- **`sync_status: complete`**
-- **`sync_complete_at: 2026-07-25`**
-- **`sync_commit_sha: adee2f46b`** — backfilled in this follow-up commit per the
-  SHA placeholder backfill exemption (`spec-frontmatter-schema.md` § Status
-  Transition Ownership Matrix); the sync commit itself (`adee2f46b`) could not
-  reference its own hash.
+```yaml
+sync_status: complete
+sync_complete_at: 2026-07-25
+sync_commit_sha: adee2f46b
+```
+
+The three fields above are written as bare `key: value` lines inside a fenced
+block because that is the only form `internal/spec/era.go` `extractProgressField`
+can read. The first sync report wrote them as bold-and-backtick-wrapped list
+items — a leading dash, then bold markers, then the whole "key: value" pair
+wrapped in a single pair of backticks. Neither `progressFieldYAMLPattern` nor
+`progressFieldListPattern` matches that shape, because the colon sits inside the
+backticks rather than after the key. `moai spec audit --json` consequently classified this SPEC
+as `era: V3R5` via `H-3 (§E.2 present, sync_commit_sha missing)`, which would have
+placed it under the grandfather clause and exempted it from lifecycle drift
+detection permanently. Found by the sync-phase audit (finding F1) and corrected
+here; every other closed SPEC in the catalogue uses the bare form.
+
+`sync_commit_sha` names `adee2f46b` and was backfilled in a later commit per the
+SHA placeholder backfill exemption (`spec-frontmatter-schema.md` § Status
+Transition Ownership Matrix) — the sync commit cannot reference its own hash.
+
 - **`base_merge`**: at sync entry the branch was ahead of origin/main by 21
   commits and origin/main was ahead by 0
   (`git rev-list --count --left-right origin/main...HEAD` → `0 21`, i.e.
@@ -525,3 +541,41 @@ evaluated and rejected on transformation kind rather than file count — the 22-
 scope is below the ~30 threshold, and more decisively the work comprises seven
 distinct transform rules with inter-file dependencies, which the §C.3 gate
 excludes.
+
+## §G Sync-phase Audit Record
+
+Independent 4-dimension audit (`sync-auditor`) run against `da85ad13e`, after the
+sync artifacts landed and before PR creation.
+
+```yaml
+sync_audit_verdict: FAIL
+sync_audit_score: 0.745
+sync_audit_threshold: 0.85
+sync_audit_report: .moai/reports/sync-audit/SPEC-CLI-WIZARD-RESTRUCTURE-001-2026-07-25.md
+```
+
+Dimension scores (harmonic mean, not arithmetic): Functionality 0.80 · Security
+0.70 · Craft 0.82 · Consistency 0.68. The FAIL is **score-driven** — no must-pass
+criterion failed, and the auditor independently reproduced all 19 ACs (including
+an end-to-end `moai init` against the built binary, matching the §E.2.4 byte
+sizes exactly) and confirmed the 4-locale parity is semantic rather than
+line-count-only.
+
+### Findings fixed before close
+
+| ID | Severity | Finding | Resolution |
+|----|----------|---------|------------|
+| F1 | critical | `sync_commit_sha` was written bold-and-backtick-wrapped, which `internal/spec/era.go` cannot parse; `moai spec audit --json` reported `era: V3R5` via `H-3 (§E.2 present, sync_commit_sha missing)`, placing the SPEC under the grandfather clause and exempting it from lifecycle drift detection permanently | §E.4 rewritten with a bare-`key: value` fenced block; re-verified `era: V3R6` via `H-4 (§E.2 + §E.4 + sync_commit_sha)` |
+| S1 | major | `--project-mode` reached the project-mode YAML writer unvalidated while all seven sibling flags on the same command validate; C32 of this SPEC is what made that write path reachable from `moai init`, so the exposure is SPEC-introduced | `validateInitFlags` now enforces the `personal`/`team` enum, with an injection-reproduction test (commit `0e34ac7a3`) |
+| F5 | minor | `design.md` / `research.md` left at `status: in-progress` on a `completed` SPEC | both transitioned to `completed` |
+| F6 | minor | CHANGELOG cited `internal/template` coverage 84.9%; the post-merge tree measures 86.0% | CHANGELOG now states the measured value with its baseline attribution |
+| F2 | major (doc) | CHANGELOG claimed `--harness-profile` "remains selectable"; the flag is parsed but its only writer lost its last production caller in C36, so it persists nothing | CHANGELOG corrected to state the flag has no persisted effect and is declared dead code (debt (a)) |
+
+### Findings deferred (user-scoped, follow-up SPEC)
+
+| ID | Severity | Finding | Why deferred |
+|----|----------|---------|--------------|
+| F3 | major | `--enable-lsp` cobra default is `false` while the wizard default flipped to `true` (REQ-WIZ-010), so `moai init --non-interactive` yields `lsp.enabled: false`; siblings `--enforce-quality` / `--enable-design` both default `true` | The interactive path is correct (`applyWizardPage3ToOpts` honours `cmd.Flags().Changed()`); fixing the non-interactive default is a behaviour change to a flag this SPEC did not introduce |
+| S2 | major | Seven config writers use non-atomic `os.WriteFile` on the ~22 KB deployed config set while `internal/atomicfile.Replace` ships unused | A cross-cutting writer refactor beyond this SPEC's scope; would widen the PR substantially |
+
+Both deferred findings are recorded in the CHANGELOG entry as debt (f) and (g).
