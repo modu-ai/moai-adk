@@ -89,6 +89,7 @@ Scope boundaries — what this agent does and does NOT own — are stated once i
 - Completeness: Required sections present (requirements, constraints, Out of Scope)
 - Consistency: Alignment with project documents
 - Out of Scope check: At least one `### Out of Scope — <topic>` H3 sub-heading with at least one `-` bullet
+- Batch the independent read-only checks above into ONE turn of parallel Bash calls rather than running them across turns — see `.claude/rules/moai/core/agent-common-protocol.md` § Parallel Execution.
 
 ### Step 4: Create SPEC Documents
 

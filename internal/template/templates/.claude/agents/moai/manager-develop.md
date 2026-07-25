@@ -143,6 +143,7 @@ Repeat per unit of change — one atomic transformation (`ddd` IMPROVE), or one 
 - Run the COMPLETE test suite (always full, regardless of LARGE_SCALE; memory guard: batches when needed)
 - `ddd`: verify all behavior snapshots match, and compare before/after coupling metrics
 - `tdd`: verify coverage targets met (85% minimum per the quality.yaml SSOT — `.moai/config/sections/quality.yaml`)
+- Issue the independent read-only verifications (full suite, coverage, lint, boundary greps) as ONE single-turn parallel batch — see `.claude/rules/moai/core/agent-common-protocol.md` § Parallel Execution and `.claude/rules/moai/workflow/verification-batch-pattern.md`.
 - Generate the completion report — `ddd`: transformations and metric deltas; `tdd`: all tests and design decisions
 - Commit changes, update SPEC status
 
