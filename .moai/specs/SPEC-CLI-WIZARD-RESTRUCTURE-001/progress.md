@@ -399,10 +399,10 @@ Recorded so sync-phase inherits these rather than rediscovering them.
 
 - **`sync_status: complete`**
 - **`sync_complete_at: 2026-07-25`**
-- **`sync_commit_sha: pending-backfill-wizard-sync`** — this commit cannot reference
-  its own SHA (physics: a commit does not know its own hash until it lands); backfilled
-  in a follow-up commit per the SHA placeholder backfill exemption
-  (`spec-frontmatter-schema.md` § Status Transition Ownership Matrix).
+- **`sync_commit_sha: adee2f46b`** — backfilled in this follow-up commit per the
+  SHA placeholder backfill exemption (`spec-frontmatter-schema.md` § Status
+  Transition Ownership Matrix); the sync commit itself (`adee2f46b`) could not
+  reference its own hash.
 - **`base_merge`**: origin/main was ahead by 21 commits at sync entry
   (`git rev-list --count --left-right origin/main...HEAD` → `0 21` local-ahead-only
   pre-observed baseline at 96d35723c, per the orchestrator's pre-verified baseline).
