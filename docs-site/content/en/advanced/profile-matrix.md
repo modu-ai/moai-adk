@@ -4,70 +4,79 @@ weight: 4
 draft: false
 ---
 
-MoAI-ADK maps each retained agent to a `{model, effort}` pair through a single **profile matrix**. The active **profile** (`max` / `medium` / `low`) selects one column of the matrix, and that column's values apply to every subagent spawn. This single 3-column profile axis replaces the former `plan_type × tier` 60-cell matrix (SPEC-MODEL-PROFILE-MATRIX-001).
+MoAI-ADK maps each of the 11 retained agents to its own `{model, effort}` pair through a single **profile matrix**. The active **profile** (`high` / `medium` / `low`) selects one column of the matrix, and that column's values apply to every subagent spawn. The matrix is **33 cells** keyed by agent name (11 agents × 3 profiles), replacing both the former group abstraction and the `plan_type × tier` axis.
 
 ## Profile axis
 
 The profile has three values:
 
-- `max` — highest-quality column. Places Fable at reasoning points, and Opus for design/harness/E2E.
-- `medium` (default) — balanced column. Places Opus/high for reasoning and execution. An absent or empty value is interpreted as `medium`.
-- `low` — economy column. Places Opus at low effort and routes mechanical work to Sonnet.
+- `high` — quality-first column. Fable 5 carries the reasoning and audit rows; Opus 5 carries coding at `xhigh`, the vendor's recommended starting point for coding and agentic work.
+- `medium` (default) — the balanced column. Opus 5 runs at `high`, the vendor API default effort, making this the most predictable operating point. An absent or empty value is interpreted as `medium`.
+- `low` — economical column. Opus 5 at `low`/`medium` effort is the primary token-cost lever, before dropping to Sonnet 5.
 
-The profile is not a separate field from `performance_tier` but the same axis — `llm.profile` takes precedence, and when absent the legacy `performance_tier` is read as an alias (`high` → `max` normalization; `max`/`medium`/`low` pass through). The resolver reads this effective profile to determine each agent's cell.
+`max` is a **read-time alias** of `high`. An existing `profile: max` still resolves to `high`, and saves always write the canonical name `high`. No migration step is required.
+
+The profile is not a separate field from `performance_tier` but the same axis — `llm.profile` takes precedence, and when absent the legacy `performance_tier` is read as an alias. Both fields share the `high`/`medium`/`low` vocabulary. The resolver reads this effective profile to determine each agent's cell.
 
 ## Setting the profile
 
 ```bash
-moai init . --profile max              # set at init
+moai init . --profile high             # set at init
 moai update --profile low              # switch afterward
 ```
 
-The current value is visible in the `llm.profile` field of `.moai/config/sections/llm.yaml`. In the `moai init` interactive wizard, a `high` answer is normalized to `max`.
+The accepted values are `high` / `medium` / `low`; the legacy `max` is also accepted as input and normalized to `high`. The current value is visible in the `llm.profile` field of `.moai/config/sections/llm.yaml`.
 
 ## Profile matrix
 
-The 10 grouped agents receive their `{model, effort}` from the matrix below. `Explore` and user-defined agents have no group, so they resolve to `inherit` (inherit the parent session model) and are not model-injection targets. Haiku appears nowhere in the matrix.
+The 11 retained agents receive their `{model, effort}` directly from the matrix below. Only user-added agents resolve to `inherit` (inherit the parent session model) and are excluded from model injection. Haiku appears nowhere in the matrix.
 
-| Agent (group) | max | medium (default) | low |
+| Agent | high | medium (default) | low |
 |---|---|---|---|
-| manager-spec (spec_auditors) | fable / medium | opus / high | opus / low |
-| plan-auditor (spec_auditors) | fable / medium | opus / high | opus / low |
-| sync-auditor (spec_auditors) | fable / medium | opus / high | opus / low |
-| manager-develop (develop) | fable / low | opus / high | opus / medium |
-| super-advisor (advisor) | fable / medium | fable / low | opus / high |
-| manager-design (design_harness_e2e) | opus / high | opus / medium | opus / low |
-| builder-harness (design_harness_e2e) | opus / high | opus / medium | opus / low |
-| e2e-tester (design_harness_e2e) | opus / high | opus / medium | opus / low |
-| manager-docs (docs) | sonnet / medium | sonnet / medium | sonnet / medium |
-| manager-git (git) | sonnet / low | sonnet / low | sonnet / low |
-| Explore (—) | inherit | inherit | inherit |
+| manager-spec | fable / xhigh | opus / high | opus / low |
+| plan-auditor | fable / xhigh | opus / high | opus / low |
+| sync-auditor | fable / xhigh | opus / high | opus / low |
+| manager-develop | opus / xhigh | opus / high | sonnet / medium |
+| super-advisor | opus / xhigh | opus / high | opus / medium |
+| manager-design | fable / high | opus / medium | sonnet / medium |
+| builder-harness | opus / xhigh | opus / medium | sonnet / medium |
+| e2e-tester | fable / high | opus / medium | sonnet / medium |
+| manager-docs | sonnet / high | sonnet / medium | sonnet / medium |
+| manager-git | sonnet / low | sonnet / low | sonnet / low |
+| Explore | sonnet / low | sonnet / low | sonnet / low |
 
-The `docs` and `git` rows are fixed regardless of the profile (sonnet/medium and sonnet/low respectively) — mechanical work does not raise its model class even when the profile changes.
+The `manager-git` and `Explore` rows are fixed at `sonnet / low` regardless of the profile — mechanical work and read-only exploration do not raise their model class even when the profile rises.
 
-## Agent groups
+Every row is monotone: `high` ≥ `medium` ≥ `low`. Lowering the profile never gives any agent a stronger combination than before.
 
-The matrix is defined over 6 **groups**, not individual agent names. The group → agent membership is as follows:
+The Anthropic built-in `Explore` no longer resolves to `inherit` but to its own cell (`sonnet / low`). The `inherit` sentinel now survives only for user-added agents.
 
-| Group | Agents |
-|---|---|
-| `spec_auditors` | manager-spec, plan-auditor, sync-auditor |
-| `develop` | manager-develop |
-| `advisor` | super-advisor |
-| `design_harness_e2e` | manager-design, builder-harness, e2e-tester |
-| `docs` | manager-docs |
-| `git` | manager-git |
+## Harness specialist model + effort
 
-`Explore` and user-added agents have no membership and resolve to `inherit`.
+Specialists generated by `/moai:harness` are **model-uniform on `opus`** and **differentiated by effort alone**. Harness agents are persistent, user-owned specialists whose distinguishing axis is reasoning depth, not model tier. Pinning the model costs no context, since every non-Haiku model now carries a 1M context window.
+
+Each purpose class borrows its effort from a corresponding retained-agent row:
+
+| Purpose class | Effort source row | high | medium | low |
+|---|---|---|---|---|
+| `read-only-extract` | Explore | opus / low | opus / low | opus / low |
+| `mechanical-transform` | manager-git | opus / low | opus / low | opus / low |
+| `synthesize` | manager-docs | opus / high | opus / medium | opus / medium |
+| `research` | plan-auditor | opus / xhigh | opus / high | opus / low |
+| `verify-judge` | sync-auditor | opus / xhigh | opus / high | opus / low |
+| `implement` | manager-develop | opus / xhigh | opus / high | opus / medium |
+| `design-architecture` | manager-design | opus / high | opus / medium | opus / medium |
+
+`llm.harness_agents[profile][class].effort` overrides a class's effort. The model never changes through any path. An unrecognized class falls back to `implement`.
 
 ## Resolver precedence
 
 Each agent's effective `{model, effort}` is determined in this order:
 
 1. If `llm.agent_overrides[agent]` exists, it wins.
-2. Otherwise the active profile's group cell (config `llm.profiles`) is used.
-3. If the config has no cell, the group cell of the Go default matrix (`template.DefaultProfileMatrix`) is used.
-4. If there is no group membership, it is `inherit` (no injection).
+2. Otherwise the active profile's agent cell (config `llm.profiles`) is used.
+3. If the config has no cell, the agent cell of the Go default matrix (`template.DefaultProfileMatrix`) is used.
+4. An agent absent from the matrix (user-added) is `inherit` (no injection).
 
 `agent_overrides` is keyed by canonical agent name and validated against the catalog + enum:
 
@@ -100,7 +109,7 @@ On the GLM backend (`moai glm` / `moai cg` GLM panes), an overlay is applied on 
 - Claude's 5-step effort collapses into the 3-state z.ai can reach:
   - `low` → **thinking-off**
   - `medium` / `high` → **reasoning-high**
-  - `xhigh` / `max` → **reasoning-max**
+  - `xhigh` / `max` (legacy effort value) → **reasoning-max**
   - (unrecognized value → reasoning-max, to prevent under-reasoning)
 - coding-max override: `manager-develop` is forced to **reasoning-max** regardless of the collapse result
 - `manager-git` at low effort → **thinking-off**

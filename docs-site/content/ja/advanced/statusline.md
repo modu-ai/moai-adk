@@ -124,7 +124,7 @@ internal/statusline/renderer.go (3-line v3 layout)
   - `🪫` (表示パーセンテージ > 70%)
   - bar 自体はブロックごとに緑 → 黄 → 赤の連続グラデーション色を付けます (バッテリー閾値とは別)
 - **`(⚠️/clear)` / `(🛑/clear!)` handoff suffix**:
-  - 1M context モデル (Opus 4.8, GLM-5.2): used_percentage ≥50% (raw context_window_size 基準)
+  - 1M context モデル (Opus 5, GLM-5.2): used_percentage ≥50% (raw context_window_size 基準)
   - 200K context モデル (Sonnet/Haiku): used_percentage ≥90%
   - 意味: 次の turn 開始前に `/clear` を勧告 + paste-ready resume message の活用
 - **例**: `🪫 CW: ███████░░░ 72% (⚠️/clear)`
@@ -300,7 +300,7 @@ CW bar の handoff suffix はコンテキスト使用量がモデル別の閾値
 
 | モデルクラス | Context Window | 閾値 | 勧告タイミング |
 |------------|----------------|--------|----------|
-| **1M context** (Opus 4.8) | 1,000,000 tokens | **≥50%** | ~500K トークン使用 |
+| **1M context** (Opus 5) | 1,000,000 tokens | **≥50%** | ~500K トークン使用 |
 | **256K context** (Fable) | 256,000 tokens | **≥90%** | ~230K トークン使用 |
 | **200K context** (Sonnet, Haiku) | 200,000 tokens | **≥90%** | ~180K トークン使用 |
 | その他 / 不明 | — | 表示しない | (安全 default) |

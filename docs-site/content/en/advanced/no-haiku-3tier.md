@@ -13,7 +13,7 @@ The key finding from the DeepSWE leaderboard (deepswe.datacurve.ai, 113 tasks, 2
 | Model [effort] | Pass@1 | Cost/task | $/solved | Tokens/solved | Steps |
 |---|---|---|---|---|---|
 | Fable 5 [max] | 70% | $21.63 | $30.9 | 170k | 88 |
-| Opus 4.8 [max] | 59% | $13.22 | $22.4 | 229k | 120 |
+| Opus 5 [max] | 59% | $13.22 | $22.4 | 229k | 120 |
 | Sonnet 5 [max] | 54% | $26.40 | $48.9 | 396k | 268 |
 
 {{< icon warning warn >}} **Price inversion**: Sonnet's nominal price ($3/$15) is half of Opus ($5/$25), but per-task cost inverts: Opus $13.22 < Sonnet $26.40. Sonnet consumes 1.6x tokens and 2.2x steps. The conventional wisdom that "running a cheaper model saves quota" does not hold.
@@ -49,12 +49,12 @@ flowchart TD
 
 Four conclusions drawn from the leaderboard measurements:
 
-1. **Sonnet 5 max is the worst value in the Claude family** — more expensive than Opus 4.8 max ($26.40 vs $13.22) and lower score (54% vs 59%). The cause is the 268-step excessive retry loop. High effort does not mean high value.
-2. **API value leader is Opus 4.8** ($22.4/solved). Quality leader is Fable 5 (70%). Fable's premium is +$8.5/solved.
+1. **Sonnet 5 max is the worst value in the Claude family** — more expensive than Opus 5 max ($26.40 vs $13.22) and lower score (54% vs 59%). The cause is the 268-step excessive retry loop. High effort does not mean high value.
+2. **API value leader is Opus 5** ($22.4/solved). Quality leader is Fable 5 (70%). Fable's premium is +$8.5/solved.
 3. **Availability-wise: Fable(170k) < Opus(229k) < Sonnet(396k)** — subscription weekly quotas are token-based, so weaker models actually burn more quota.
 4. **Steps = speed** — Fable 88 < Opus 120 < Sonnet 268. Higher-tier models win on wall-clock time too.
 
-{{< icon info >}} **Limitation note**: The leaderboard does not have Claude model effort-variant data (low/medium/high/xhigh — all max). Therefore "Sonnet xhigh vs high quality difference" cannot be directly verified; the effort downshift is inferred from (a) Sonnet 5 max loop-waste measurements, (b) Opus 4.8's default effort being high per Anthropic's official positioning, and (c) the general property that effort is quasi-linear with output tokens.
+{{< icon info >}} **Limitation note**: The leaderboard does not have Claude model effort-variant data (low/medium/high/xhigh — all max). Therefore "Sonnet xhigh vs high quality difference" cannot be directly verified; the effort downshift is inferred from (a) Sonnet 5 max loop-waste measurements, (b) Opus 5's default effort being high per Anthropic's official positioning, and (c) the general property that effort is quasi-linear with output tokens.
 
 ## Design Report vs Implementation
 
