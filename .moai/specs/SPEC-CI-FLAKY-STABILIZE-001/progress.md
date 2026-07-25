@@ -334,6 +334,43 @@ ok  	github.com/modu-ai/moai-adk/internal/cli	0.583s
 
 FAIL이 **실제로 관측**되었다 — 초판의 정렬 상태 가드(구조적 반증 불가)와 달리 이 가드는 반증 가능하다.
 
+### M4 — 결함 1 인벤토리 가드 (REQ-CFS-006)
+
+`internal/cli/inventory_guard_test.go` 신규 (stdlib `go/ast` + `go/parser` + `go/token`만 사용, 신규 모듈 의존 0).
+
+`plan.md` §B.4 0단계대로 도달 집합을 **정적 도출**한다 — 비-테스트 파일의 `<parent>.AddCommand(<ident>)` 간선 수집 + 루트(`rootCmd` / `PreferenceCmd`)로부터의 전이적 폐포. 하드코딩 리터럴 목록 없음.
+
+AC-CFS-026 (a) 가드 통과:
+
+```
+=== RUN   TestInventoryGuard_ParallelCommandsReceiversAreWarmedUp
+--- PASS: TestInventoryGuard_ParallelCommandsReceiversAreWarmedUp (0.05s)
+```
+
+AC-CFS-026 (b) 도달 집합에서 `githubCmd` 간선을 일시 제외 → 가드 FAIL, 위반 항목의 파일·함수·수신자 이름 표시:
+
+```
+--- FAIL: TestInventoryGuard_ParallelCommandsReceiversAreWarmedUp (0.05s)
+    inventory_guard_test.go:236: dir .: 1 unguarded parallel Commands() receiver(s):
+          github_integration_test.go: TestGithubCLI_ErrorPropagation calls githubCmd.Commands() under t.Parallel(); githubCmd is a package-level global NOT reachable from the warm-up root "rootCmd", so the cobra lazy-sort race is unguarded there
+FAIL	github.com/modu-ai/moai-adk/internal/cli	0.660s
+```
+
+AC-CFS-026 (c) 원복 → PASS:
+
+```
+ok  	github.com/modu-ai/moai-adk/internal/cli	0.459s
+```
+
+**계획 대비 추가분 (범위 내 강화)**: 위 왕복은 수동 1회성이므로, 동일 판별을 **영구 음성 경로 테스트** `TestInventoryGuard_DetectsUnreachableGlobal`로도 고정했다. `analyzeDir`의 `skipChild` 매개변수를 통해 `githubCmd` 간선을 제외한 뒤 위반이 **반드시** 보고되는지 상시 검증한다. 이로써 가드의 반증 가능성이 수동 절차가 아니라 테스트 스위트로 보장된다.
+
+```
+=== RUN   TestInventoryGuard_DetectsUnreachableGlobal
+    inventory_guard_test.go:252: expected violation(s) with githubCmd excluded:
+          github_integration_test.go: TestGithubCLI_ErrorPropagation calls githubCmd.Commands() under t.Parallel(); ...
+--- PASS: TestInventoryGuard_DetectsUnreachableGlobal (0.04s)
+```
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<pending run-phase>_
