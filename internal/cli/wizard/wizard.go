@@ -24,40 +24,26 @@ func Run(questions []Question, styles *Styles) (*WizardResult, error) {
 	return RunWithLocale(questions, styles, "")
 }
 
-// RunWithDefaults runs the wizard with default questions for the given project root.
-// If locale is not empty, the wizard UI is displayed in that language and the
-// conversation_language question defaults to it. userName pre-fills the user_name
-// question. It is RunWithDefaultsModes with both mode flags off; page 3 is
-// unconditional (REQ-WIZ-001/002), so the same three pages are presented either
-// way — the mode flags no longer change what the user is asked.
+// RunWithDefaults runs the wizard with the full `moai init` question set for the
+// given project root. If locale is not empty, the wizard UI is displayed in that
+// language and the conversation_language question defaults to it. userName
+// pre-fills the user_name question.
+//
+// It is the SINGLE init entry point: the former mode-parameterised variant is
+// retired (SPEC-CLI-WIZARD-RESTRUCTURE-001 REQ-WIZ-018), because every user now
+// sees the same three pages and no flag changes what is asked.
 func RunWithDefaults(projectRoot, locale, userName string) (*WizardResult, error) {
-	return RunWithDefaultsModes(projectRoot, locale, userName, false, false)
-}
-
-// RunWithDefaultsModes runs the wizard with mode flags controlling Phase 1 question visibility.
-// standardMode=true presents Phase 1 questions; advancedMode=true implies standardMode.
-// locale pre-fills the conversation_language default (and initial render language);
-// userName pre-fills the user_name default.
-func RunWithDefaultsModes(projectRoot, locale, userName string, standardMode, advancedMode bool) (*WizardResult, error) {
 	// The full 3-page init set (Basic / Model & Report / Quality & Workflow).
-	// Page 3 is no longer gated on r.StandardMode — every user sees it
+	// Page 3 is unconditional — every user sees it
 	// (SPEC-CLI-WIZARD-RESTRUCTURE-001 REQ-WIZ-001/002).
 	questions := InitQuestions(projectRoot)
-
-	// When advanced mode requested, check Phase 2 prerequisites and append stubs.
-	if advancedMode {
-		gate := IsAdvancedWizardReady()
-		questions = append(questions, Phase2Questions(gate)...)
-	}
 
 	// Pre-fill the identity/locale defaults from the caller (profile values).
 	prefillIdentityDefaults(questions, userName)
 
-	// Pre-populate mode flags so Condition funcs see them from the start
+	// Pre-populate the boolean defaults so Condition funcs and the
+	// non-interactive path see them from the start.
 	result := &WizardResult{
-		StandardMode: standardMode || advancedMode,
-		AdvancedMode: advancedMode,
-		// Phase 1 boolean defaults (applied before wizard so non-interactive path works)
 		EnforceQuality:            true,
 		CoverageExemptionsEnabled: false,
 		DesignEnabled:             true,
@@ -422,8 +408,9 @@ func saveAnswer(id, value string, result *WizardResult, locale *string) {
 // saveBoolAnswer stores a boolean answer in the result.
 func saveBoolAnswer(id string, value bool, result *WizardResult) {
 	switch id {
-	// The advanced_bridge gate is no longer asked (REQ-WIZ-001/002): Page 3 is
-	// always visible, so nothing flips StandardMode mid-wizard.
+	// The former reveal-more confirm is no longer asked (REQ-WIZ-001/002):
+	// Page 3 is always visible, so no answer can widen the question set
+	// mid-wizard.
 	case "lsp_enabled":
 		result.LSPEnabled = value
 	case "enforce_quality":

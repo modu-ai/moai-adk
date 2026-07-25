@@ -332,18 +332,19 @@ func TestValidateInitFlags_EmptyFlags(t *testing.T) {
 	}
 }
 
-// TestInitCmd_HasPhase1Flags verifies all Phase 1 flags are registered (REQ-IWE-006/007/008).
-func TestInitCmd_HasPhase1Flags(t *testing.T) {
-	phase1Flags := []string{
-		"standard",
-		"advanced",
+// TestInitCmd_HasPage3OverrideFlags verifies the Page-3 non-interactive override
+// flags are registered (REQ-IWE-008). The two wizard mode flags that used to
+// head this list are retired (REQ-WIZ-018) and are asserted absent by
+// AC-WIZ-015's retirement grep, not here.
+func TestInitCmd_HasPage3OverrideFlags(t *testing.T) {
+	page3Flags := []string{
 		"project-mode",
 		"harness-profile",
 		"enable-lsp",
 		"enforce-quality",
 		"enable-design",
 	}
-	for _, name := range phase1Flags {
+	for _, name := range page3Flags {
 		if initCmd.Flags().Lookup(name) == nil {
 			t.Errorf("init command should have --%s flag", name)
 		}

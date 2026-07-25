@@ -139,13 +139,13 @@ func TestDefaultQuestionsHasNoGitQuestions(t *testing.T) {
 
 // TestInitWizardQuestionSetHasNoGitCredentialQuestions locks the F5 ground
 // truth: the interactive `moai init` wizard set (DefaultQuestions +
-// Phase1Questions, as assembled by RunWithDefaultsModes) never asks
+// Page3Questions, as assembled by InitQuestions) never asks
 // git_mode / git_provider / tokens — those live only in the reconfigure set
 // (ReconfigureQuestions, built by runInitWizard). `moai init` auto-detects git
 // config via detectGitConfig. This refutes the mistaken belief that the
 // git_mode select appears during `moai init`.
 func TestInitWizardQuestionSetHasNoGitCredentialQuestions(t *testing.T) {
-	initSet := append(DefaultQuestions("/tmp/test-project"), Phase1Questions("/tmp/test-project")...)
+	initSet := append(DefaultQuestions("/tmp/test-project"), Page3Questions("/tmp/test-project")...)
 	for _, id := range gitQuestionIDs {
 		if QuestionByID(initSet, id) != nil {
 			t.Errorf("init wizard set must not contain git question %q (moai init auto-detects git config)", id)
@@ -454,7 +454,7 @@ func TestSaveAnswerUserName(t *testing.T) {
 
 // TestSaveBoolAnswerAdvancedBridge was DELETED by
 // SPEC-CLI-WIZARD-RESTRUCTURE-001 C17 (plan.md §G delete-list): its subject —
-// the advanced_bridge → StandardMode capture branch — no longer exists. The
+// the advanced_bridge mode-capture branch — no longer exists. The
 // replacement coverage lives in restructure_test.go (TestAdvancedBridgeRemoved),
 // which asserts the branch is gone.
 

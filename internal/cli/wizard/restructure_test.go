@@ -134,10 +134,10 @@ func TestInitPages_MergeIntoOneGroupPerPage(t *testing.T) {
 	}
 }
 
-// TestPage3_NoStandardModeGate pins AC-WIZ-003 + the C3 half of AC-WIZ-001: the
+// TestPage3_NoModeGate pins AC-WIZ-003 + the C3 half of AC-WIZ-001: the
 // Quality & Workflow questions are visible with NO gate, and the nested design
-// condition survives with StandardMode dropped from it.
-func TestPage3_NoStandardModeGate(t *testing.T) {
+// condition survives with the mode term dropped from it.
+func TestPage3_NoModeGate(t *testing.T) {
 	t.Parallel()
 	questions := InitQuestions(t.TempDir())
 
@@ -147,7 +147,7 @@ func TestPage3_NoStandardModeGate(t *testing.T) {
 			t.Fatalf("%s missing from the init question set", id)
 		}
 		if q.Condition != nil {
-			t.Errorf("%s must be unconditional (no StandardMode gate) so it merges into Page 3", id)
+			t.Errorf("%s must be unconditional (no mode gate) so it merges into Page 3", id)
 		}
 	}
 
@@ -158,10 +158,10 @@ func TestPage3_NoStandardModeGate(t *testing.T) {
 	if cd.Condition == nil {
 		t.Fatal("claude_design_enabled must stay conditional (nested on design_enabled)")
 	}
-	// The condition collapses from (StandardMode && DesignEnabled) to
-	// DesignEnabled: it must now be TRUE with DesignEnabled alone.
+	// The condition collapses from the two-term (mode && DesignEnabled) form to
+	// DesignEnabled alone: it must now be TRUE with DesignEnabled alone.
 	if !cd.Condition(&WizardResult{DesignEnabled: true}) {
-		t.Error("claude_design_enabled must be visible when DesignEnabled=true regardless of StandardMode")
+		t.Error("claude_design_enabled must be visible when DesignEnabled=true")
 	}
 	if cd.Condition(&WizardResult{DesignEnabled: false}) {
 		t.Error("claude_design_enabled must be hidden when DesignEnabled=false")
@@ -198,7 +198,7 @@ func TestReconfigureMembershipExcludesPage3(t *testing.T) {
 // TestAdvancedBridgeRemoved pins the advanced_bridge half of AC-WIZ-001,
 // AC-WIZ-011 and AC-WIZ-013 (plan.md C1/C14/C17): the gate question is absent
 // from BOTH question sets, leaves no ko/ja/zh orphan translation, and no longer
-// has an answer-capture branch that could flip StandardMode back on.
+// has an answer-capture branch that could reopen the retired path.
 func TestAdvancedBridgeRemoved(t *testing.T) {
 	t.Parallel()
 	root := t.TempDir()
@@ -223,12 +223,14 @@ func TestAdvancedBridgeRemoved(t *testing.T) {
 		}
 	}
 
-	// AC-WIZ-013: the saveBoolAnswer case is gone, so the ID can no longer
-	// flip StandardMode (the dead bridge into the retired advanced path).
+	// AC-WIZ-013: the saveBoolAnswer case is gone, so answering the removed ID
+	// mutates nothing. The two mode fields it used to write are themselves
+	// retired (REQ-WIZ-018), so the assertion is now the stronger "no field
+	// changes at all" form rather than a single-field check.
 	r := &WizardResult{}
 	saveBoolAnswer("advanced_bridge", true, r)
-	if r.StandardMode {
-		t.Error("saveBoolAnswer still captures advanced_bridge into StandardMode — the case must be gone")
+	if *r != (WizardResult{}) {
+		t.Errorf("saveBoolAnswer still captures advanced_bridge (%+v) — the case must be gone", *r)
 	}
 }
 

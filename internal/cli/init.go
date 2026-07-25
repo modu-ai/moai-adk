@@ -80,11 +80,10 @@ func init() {
 	initCmd.Flags().Bool("no-hooks", false, "Skip git hook installation (REQ-CIAUT-002)")
 	initCmd.Flags().Bool("all", false, "Deploy all catalog entries (core + optional packs + harness-generated). Bypasses slim mode (SPEC-V3R4-CATALOG-002).")
 
-	// Phase 1 mode flags (REQ-IWE-006, REQ-IWE-007)
-	initCmd.Flags().Bool("standard", false, "Present Phase 1 questions (project mode, harness profile, LSP, quality gates, design)")
-	initCmd.Flags().Bool("advanced", false, "Present Phase 1 + Phase 2 questions (implies --standard; Phase 2 skipped when prerequisites absent)")
+	// The two wizard mode flags are retired (REQ-WIZ-018): the wizard presents
+	// the same three pages to every user, so there is no mode to select.
 
-	// Phase 1 non-interactive override flags (REQ-IWE-008)
+	// Page-3 non-interactive override flags (REQ-IWE-008)
 	initCmd.Flags().String("project-mode", "", "Project mode: personal or team (default: personal)")
 	initCmd.Flags().String("harness-profile", "", "Default harness evaluator profile: default, strict, lenient, frontend")
 	initCmd.Flags().Bool("enable-lsp", false, "Enable LSP integration (default: false)")
@@ -352,10 +351,6 @@ func runInit(cmd *cobra.Command, args []string) error {
 
 	nonInteractive := getBoolFlag(cmd, "non-interactive")
 
-	// Resolve mode flags: --advanced implies --standard (REQ-IWE-007, EC-3)
-	advancedMode := getBoolFlag(cmd, "advanced")
-	standardMode := getBoolFlag(cmd, "standard") || advancedMode
-
 	opts := project.InitOptions{
 		ProjectRoot:       rootFlag,
 		ProjectName:       projectName,
@@ -373,7 +368,7 @@ func runInit(cmd *cobra.Command, args []string) error {
 		// the flag is absent, so the flag takes precedence over the wizard answer.
 		Profile: getStringFlag(cmd, "profile"),
 		// Page-3 non-interactive overrides — defaults match wizard defaults (REQ-IWE-008).
-		// InitOptions.StandardMode is gone (C33): the Page-3 writes are
+		// The InitOptions mode field is gone (C33): the Page-3 writes are
 		// unconditional now, so there is no mode to carry into the initializer.
 		ProjectMode:               getStringFlag(cmd, "project-mode"),
 		HarnessProfile:            getStringFlag(cmd, "harness-profile"),
@@ -450,12 +445,12 @@ func runInit(cmd *cobra.Command, args []string) error {
 		uikit.PrintBanner(version.GetVersion())
 		uikit.PrintWelcomeMessage()
 
-		// Use RunWithDefaultsModes when --standard or --advanced is set; otherwise
-		// fall back to RunWithDefaults for Quick mode backward-compat (REQ-IWE-006).
+		// One wizard entry point for every user: the mode flags that used to
+		// select between two question sets are retired (REQ-WIZ-018).
 		// runWizardFn is the injectable wizard seam (REQ-TUX2-001 order contract).
 		// The profile locale + user name pre-fill the conversation_language and
 		// user_name question defaults (empty when no profile exists).
-		result, wizErr := runWizardFn(rootFlag, opts.ConvLang, opts.UserName, standardMode, advancedMode)
+		result, wizErr := runWizardFn(rootFlag, opts.ConvLang, opts.UserName)
 		if wizErr != nil {
 			if errors.Is(wizErr, wizard.ErrCancelled) {
 				_, _ = fmt.Fprintln(cmd.OutOrStderr(), "Initialization cancelled.")
@@ -501,8 +496,8 @@ func runInit(cmd *cobra.Command, args []string) error {
 		if opts.ReportFormat == "" && result.ReportFormat != "" {
 			opts.ReportFormat = result.ReportFormat
 		}
-		// Apply the Page-3 wizard results. The former `if result.StandardMode`
-		// gate is removed (REQ-WIZ-001/002): Page 3 is always visible, so its
+		// Apply the Page-3 wizard results. The former mode gate on the wizard
+		// result is removed (REQ-WIZ-001/002): Page 3 is always visible, so its
 		// answers always reach opts.
 		applyWizardPage3ToOpts(cmd, result, &opts)
 	}

@@ -6,15 +6,15 @@ import (
 	"testing"
 )
 
-// TestPhase1QuestionsStructure verifies each page-3 Question entry has the
+// TestPage3QuestionsStructure verifies each page-3 Question entry has the
 // required fields, in the REQ-WIZ-005 order. The page-3 questions are
 // unconditional; claude_design_enabled (nested on design_enabled) is the only
 // one that still carries a Condition.
-func TestPhase1QuestionsStructure(t *testing.T) {
+func TestPage3QuestionsStructure(t *testing.T) {
 	t.Parallel()
 	tmpDir := t.TempDir()
 
-	questions := Phase1Questions(tmpDir)
+	questions := Page3Questions(tmpDir)
 
 	// Expected IDs, their types, and whether they are gated.
 	type entry struct {
@@ -33,7 +33,7 @@ func TestPhase1QuestionsStructure(t *testing.T) {
 	}
 
 	if len(questions) != len(want) {
-		t.Fatalf("Phase1Questions() returned %d questions, want %d", len(questions), len(want))
+		t.Fatalf("Page3Questions() returned %d questions, want %d", len(questions), len(want))
 	}
 
 	for i, w := range want {
@@ -63,7 +63,7 @@ func TestPage3VisibleWithoutBridge(t *testing.T) {
 	tmpDir := t.TempDir()
 	all := InitQuestions(tmpDir)
 
-	// A fresh quick-mode result: no bridge answered, StandardMode false.
+	// A fresh result with no bridge answered and no mode selected.
 	quick := &WizardResult{EnforceQuality: true, DesignEnabled: true, ClaudeDesignEnabled: true}
 	visible := FilteredQuestions(all, quick)
 
@@ -77,38 +77,48 @@ func TestPage3VisibleWithoutBridge(t *testing.T) {
 	}
 }
 
-// TestPage3Questions_UngatedByStandardMode supersedes
-// TestPhase1Questions_StandardModeGating: C3 removed the StandardMode gate, so
-// the page-3 questions are visible in BOTH StandardMode states.
-func TestPage3Questions_UngatedByStandardMode(t *testing.T) {
+// TestPage3Questions_Ungated supersedes the former mode-gating test: C3 removed
+// the gate and REQ-WIZ-018 retired the flag it read, so the page-3 questions are
+// visible for any result whose DesignEnabled reveals the one nested question.
+// The gate cannot be re-asserted through a field that no longer exists, so the
+// invariant is pinned structurally instead: only claude_design_enabled carries a
+// Condition, and the whole page is visible in one pass.
+func TestPage3Questions_Ungated(t *testing.T) {
 	t.Parallel()
 	tmpDir := t.TempDir()
-	questions := Phase1Questions(tmpDir)
+	questions := Page3Questions(tmpDir)
 
 	page3 := []string{
 		"lsp_enabled", "enforce_quality", "project_mode",
 		"design_enabled", "claude_design_enabled",
 	}
-	for _, standardMode := range []bool{false, true} {
-		result := &WizardResult{StandardMode: standardMode, DesignEnabled: true}
-		visible := FilteredQuestions(questions, result)
-		for _, id := range page3 {
-			if QuestionByID(visible, id) == nil {
-				t.Errorf("StandardMode=%v: page-3 question %q must be visible", standardMode, id)
-			}
+	visible := FilteredQuestions(questions, &WizardResult{DesignEnabled: true})
+	for _, id := range page3 {
+		if QuestionByID(visible, id) == nil {
+			t.Errorf("page-3 question %q must be visible", id)
+		}
+	}
+
+	// Structural half: nothing on page 3 is gated except the nested design question.
+	for _, q := range questions {
+		if q.ID == "claude_design_enabled" {
+			continue
+		}
+		if q.Condition != nil {
+			t.Errorf("page-3 question %q carries a Condition — page 3 must be ungated", q.ID)
 		}
 	}
 }
 
-// TestPhase1Questions_ClaudeDesignConditional verifies claude_design_enabled is hidden
+// TestPage3Questions_ClaudeDesignConditional verifies claude_design_enabled is hidden
 // when DesignEnabled=false (AC-IWE-005 conditional skip).
-func TestPhase1Questions_ClaudeDesignConditional(t *testing.T) {
+func TestPage3Questions_ClaudeDesignConditional(t *testing.T) {
 	t.Parallel()
 	tmpDir := t.TempDir()
-	questions := Phase1Questions(tmpDir)
+	questions := Page3Questions(tmpDir)
 
-	// Standard mode but design disabled: claude_design_enabled should be hidden
-	result := &WizardResult{StandardMode: true, DesignEnabled: false}
+	// Design disabled: claude_design_enabled should be hidden.
+	result := &WizardResult{DesignEnabled: false}
 	visible := FilteredQuestions(questions, result)
 	for _, q := range visible {
 		if q.ID == "claude_design_enabled" {
@@ -125,7 +135,7 @@ func TestPhase1Questions_ClaudeDesignConditional(t *testing.T) {
 func TestProjectModeQuestion(t *testing.T) {
 	t.Parallel()
 	tmpDir := t.TempDir()
-	questions := Phase1Questions(tmpDir)
+	questions := Page3Questions(tmpDir)
 
 	q := QuestionByID(questions, "project_mode")
 	if q == nil {
@@ -226,46 +236,6 @@ func TestSaveBoolAnswer(t *testing.T) {
 	}
 }
 
-// TestIsAdvancedWizardReady verifies gate returns false for P2 and P4 (not yet implemented).
-func TestIsAdvancedWizardReady(t *testing.T) {
-	t.Parallel()
-	gate := IsAdvancedWizardReady()
-	if gate.P2Ready {
-		t.Error("P2Ready = true, want false (SPEC-V3R5-GIT-STRATEGY-SCHEMA-001 not implemented)")
-	}
-	if gate.P4Ready {
-		t.Error("P4Ready = true, want false (SPEC-V3R5-WORKFLOW-SCHEMA-EXTEND-001 not implemented)")
-	}
-}
-
-// TestPhase2Questions_SkippedWhenGateNotReady verifies Phase 2 stubs are hidden
-// when prerequisites are absent.
-func TestPhase2Questions_SkippedWhenGateNotReady(t *testing.T) {
-	t.Parallel()
-	gate := AdvancedGate{P2Ready: false, P4Ready: false}
-	questions := Phase2Questions(gate)
-
-	result := &WizardResult{StandardMode: true, AdvancedMode: true}
-	visible := FilteredQuestions(questions, result)
-	if len(visible) != 0 {
-		t.Errorf("Expected 0 visible Phase 2 questions when gate not ready, got %d", len(visible))
-	}
-}
-
-// TestPhase2Questions_VisibleWhenGateReady verifies Phase 2 stubs are visible
-// when prerequisites are met (mock scenario).
-func TestPhase2Questions_VisibleWhenGateReady(t *testing.T) {
-	t.Parallel()
-	gate := AdvancedGate{P2Ready: true, P4Ready: true}
-	questions := Phase2Questions(gate)
-
-	result := &WizardResult{StandardMode: true, AdvancedMode: true}
-	visible := FilteredQuestions(questions, result)
-	if len(visible) != 4 {
-		t.Errorf("Expected 4 visible Phase 2 questions when gate ready, got %d", len(visible))
-	}
-}
-
 // TestBuildQuestionGroup_ConfirmType verifies buildQuestionGroup handles QuestionTypeConfirm.
 func TestBuildQuestionGroup_ConfirmType(t *testing.T) {
 	t.Parallel()
@@ -284,23 +254,20 @@ func TestBuildQuestionGroup_ConfirmType(t *testing.T) {
 	}
 }
 
-// TestWizardResultDefaultsPrePopulated verifies RunWithDefaultsModes pre-populates
-// the result with correct defaults before wizard interaction.
+// TestWizardResultDefaultsPrePopulated verifies RunWithDefaults pre-populates
+// the result with correct defaults before wizard interaction. The two mode
+// fields it used to seed are retired (REQ-WIZ-018), so only the four boolean
+// defaults remain.
 func TestWizardResultDefaultsPrePopulated(t *testing.T) {
 	t.Parallel()
 	// We test the pre-population logic directly since we can't run interactive wizard in tests.
 	result := &WizardResult{
-		StandardMode:              true,
-		AdvancedMode:              false,
 		EnforceQuality:            true,
 		CoverageExemptionsEnabled: false,
 		DesignEnabled:             true,
 		ClaudeDesignEnabled:       true,
 	}
 
-	if !result.StandardMode {
-		t.Error("StandardMode should be true")
-	}
 	if !result.EnforceQuality {
 		t.Error("EnforceQuality default should be true")
 	}
@@ -350,37 +317,30 @@ func TestBuildConfirmField_DefaultTrue(t *testing.T) {
 	}
 }
 
-// TestTotalVisibleQuestions_Page3AlwaysCounted supersedes
-// TestTotalVisibleQuestions_StandardMode: the stepper denominator no longer
-// depends on StandardMode for the page-3 questions.
+// TestTotalVisibleQuestions_Page3AlwaysCounted supersedes the former
+// mode-parameterised stepper test: the denominator no longer depends on any
+// mode flag for the page-3 questions, and REQ-WIZ-018 retired the flag itself.
 func TestTotalVisibleQuestions_Page3AlwaysCounted(t *testing.T) {
 	t.Parallel()
 	tmpDir := t.TempDir()
 	all := InitQuestions(tmpDir)
 
-	// StandardMode deliberately left false to prove page 3 no longer needs it.
+	// No mode is selected — page 3 no longer needs one.
 	// DesignEnabled reveals the nested claude_design_enabled.
 	res := &WizardResult{DesignEnabled: true}
 	got := TotalVisibleQuestions(all, res)
-	// Page 1 (3) + Page 2 (2) + Page 3 (5) = 10 at minimum; questions still
-	// pending removal in a later milestone can only add to the count.
-	if got < 10 {
-		t.Errorf("TotalVisibleQuestions = %d, want >= 10 (3 Basic + 2 Model & Report + 5 Quality & Workflow)", got)
+	// Page 1 (3) + Page 2 (2) + Page 3 (5) = 10 exactly.
+	if got != 10 {
+		t.Errorf("TotalVisibleQuestions = %d, want 10 (3 Basic + 2 Model & Report + 5 Quality & Workflow)", got)
 	}
-	// StandardMode must not change PAGE-3 visibility. The invariant is asserted
-	// over the page-3 questions only, so it stays valid regardless of what the
-	// remaining StandardMode-gated plumbing does to the TOTAL.
-	countPage3 := func(standardMode bool) int {
-		res := &WizardResult{DesignEnabled: true, StandardMode: standardMode}
-		n := 0
-		for _, q := range FilteredQuestions(all, res) {
-			if q.Group == "Quality & Workflow" {
-				n++
-			}
+	// All five page-3 questions are counted with no flag to enable them.
+	n := 0
+	for _, q := range FilteredQuestions(all, res) {
+		if q.Group == "Quality & Workflow" {
+			n++
 		}
-		return n
 	}
-	if off, on := countPage3(false), countPage3(true); off != 5 || on != 5 {
-		t.Errorf("visible page-3 questions = %d (StandardMode off) / %d (on), want 5 / 5", off, on)
+	if n != 5 {
+		t.Errorf("visible page-3 questions = %d, want 5", n)
 	}
 }

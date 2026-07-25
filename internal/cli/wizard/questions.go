@@ -10,8 +10,8 @@ import (
 // The wizard question set is split across these constructors:
 //
 //   - DefaultQuestions      — pages 1-2 of the `moai init` set (NO Git questions)
-//   - Phase1Questions       — page 3 of the `moai init` set
-//   - InitQuestions         — DefaultQuestions + Phase1Questions: the full
+//   - Page3Questions        — page 3 of the `moai init` set
+//   - InitQuestions         — DefaultQuestions + Page3Questions: the full
 //     3-page `moai init` set, assembled once for the wizard entry point
 //   - GitQuestions          — the 7 Git questions, on their own
 //   - ReconfigureQuestions  — DefaultQuestions with GitQuestions spliced back
@@ -29,7 +29,7 @@ import (
 //
 // A page is a run of consecutive UNCONDITIONAL questions sharing one Group
 // label: buildFormGroups (wizard.go) merges each such run into a single huh
-// group. Pages 1-2 come from DefaultQuestions, page 3 from Phase1Questions.
+// group. Pages 1-2 come from DefaultQuestions, page 3 from Page3Questions.
 //
 // DefaultQuestions returns pages 1-2, in this order:
 //  1. Conversation language (drives the rendering language of every later question)
@@ -155,7 +155,8 @@ func DefaultQuestions(projectRoot string) []Question {
 // These are asked ONLY by the `moai update --reconfigure` path — runInitWizard
 // (internal/cli/update.go) is the sole caller and it builds ReconfigureQuestions.
 // The interactive `moai init` path is DISTINCT: init.go -> runWizardFn ->
-// RunWithDefaultsModes builds DefaultQuestions (+ Phase1/Phase2), which contain
+// RunWithDefaults builds InitQuestions (DefaultQuestions + Page3Questions),
+// which contain
 // NO Git questions; `moai init` auto-detects mode and provider from the
 // repository's remotes via detectGitConfig instead. This split is enforced by
 // TestInitWizardQuestionSetHasNoGitCredentialQuestions.
@@ -287,7 +288,7 @@ func ReconfigureQuestions(projectRoot string) []Question {
 }
 
 // InitQuestions returns the FULL `moai init` question set: pages 1-2
-// (DefaultQuestions) followed by page 3 (Phase1Questions). It is the single
+// (DefaultQuestions) followed by page 3 (Page3Questions). It is the single
 // assembly point consumed by the wizard entry point, so the init set cannot
 // drift from what the tests exercise.
 //
@@ -295,7 +296,7 @@ func ReconfigureQuestions(projectRoot string) []Question {
 // questions must not leak into `moai update --reconfigure` (AC-WIZ-012a).
 func InitQuestions(projectRoot string) []Question {
 	base := DefaultQuestions(projectRoot)
-	page3 := Phase1Questions(projectRoot)
+	page3 := Page3Questions(projectRoot)
 	all := make([]Question, 0, len(base)+len(page3))
 	all = append(all, base...)
 	all = append(all, page3...)
@@ -396,16 +397,19 @@ func harnessProfileOptions(profiles []string) []Option {
 	return opts
 }
 
-// Phase1Questions returns page 3 of the `moai init` set, "Quality & Workflow".
+// Page3Questions returns page 3 of the `moai init` set, "Quality & Workflow".
 //
-// The questions are UNCONDITIONAL: the former `r.StandardMode` gate was removed
+// The questions are UNCONDITIONAL: the former mode gate was removed
 // (REQ-WIZ-001/002), so every user sees them and they merge into one page. The
 // single exception is claude_design_enabled, which stays nested on
 // design_enabled (REQ-WIZ-006) and therefore renders as its own sub-group.
 //
+// The constructor is named for the page it builds rather than for the retired
+// mode taxonomy (REQ-WIZ-018): no flag selects it any more.
+//
 // Order is load-bearing: design_enabled MUST precede claude_design_enabled so
 // huh has the design answer before evaluating the nested hide func.
-func Phase1Questions(projectRoot string) []Question {
+func Page3Questions(projectRoot string) []Question {
 	return []Question{
 		// B3 — lsp.enabled. Enabled by default since
 		// SPEC-CLI-WIZARD-RESTRUCTURE-001 (REQ-WIZ-010): the diagnostics are
@@ -454,8 +458,8 @@ func Phase1Questions(projectRoot string) []Question {
 			Required:    false,
 		},
 		// B8 — design.claude_design.enabled. The ONLY conditional question on
-		// page 3: nested on design_enabled (REQ-WIZ-006). The StandardMode half of
-		// the former `r.StandardMode && r.DesignEnabled` predicate is gone.
+		// page 3: nested on design_enabled (REQ-WIZ-006). The mode half of the
+		// former two-term predicate is gone — only DesignEnabled remains.
 		{
 			ID:          "claude_design_enabled",
 			Group:       "Quality & Workflow",
