@@ -2,9 +2,11 @@
 
 Every judgment command below was **executed against this tree at `c7309aeb6`** during plan phase, and its observed baseline is recorded verbatim. Commands live in fenced blocks, never inside table cells, so no regex metacharacter is reinterpreted by the markdown table parser.
 
-**Scope convention.** Unless stated otherwise, commands run from `internal/template/` and paths are relative to it, so `templates/...` denotes the distributed template tree — the same root the guard uses (`const templatesRoot = "templates"`). Commands marked *(repo root)* run from the worktree root. Criteria asserting on the classifier operate on **occurrence-class rows** (the edit unit, 180); criteria asserting on the guard operate on **findings** (the guard's `(file, date)` unit, 135). The two units are never conflated — each criterion names which it uses.
+**Scope convention.** **Every command below runs from the worktree root.** Criteria asserting on the classifier operate on **occurrence-class rows** (the edit unit, 180); criteria asserting on the guard operate on **findings** (the guard's `(file, date)` unit, 135). The two units are never conflated — each criterion names which it uses.
 
-**Classifier invocation.** `CL` denotes `../../.moai/specs/SPEC-TEMPLATE-DATE-NEUTRALITY-001/classify.sh`, the committed classifier (REQ-TDN-006 / REQ-TDN-020).
+**[WATCH] Never `cd` into `internal/template/` to run these commands.** The moai statusline/memory subsystem creates a `.moai/` marker directory in the cwd of any command it observes. A marker at `internal/template/` makes `findProjectRoot()` in `output_styles_audit_test.go` halt its ascent there instead of at the repo root, and `TestOutputStylesTemplateLiveParity` + `TestOutputStylesFallbackDocsContract` then both FAIL with `no such file or directory` on a path rooted at `internal/template/`. The marker is recreated on any later command run from that cwd, so it is a recurring trap that presents as a phantom test failure unrelated to this SPEC. Every command in this file is written in the repo-root form for that reason; `classify.sh` takes the template root as `$1` precisely so no `cd` is ever needed. Verified equivalent: the repo-root form emits the same 180 rows and the same six category counts, and leaves no marker.
+
+**Anti-tamper discipline.** `classify.sh` is a committed SPEC artifact that run phase can edit, so a criterion expressed *only* through it is satisfiable by editing the measuring instrument rather than the tree. Every classifier-expressed criterion below therefore carries a **classifier-independent second form** that greps the tree directly. Both forms must hold. See §E for the tamper evidence that motivated this.
 
 ---
 
@@ -20,12 +22,12 @@ Every judgment command below was **executed against this tree at `c7309aeb6`** d
 | AC-TDN-006 | REQ-TDN-008 (DC-4) | line | M3 | yes |
 | AC-TDN-007 | REQ-TDN-001 (DC-2a) | row | M3 | yes |
 | AC-TDN-008 | REQ-TDN-009 | row | M3 | yes |
-| AC-TDN-009 | REQ-TDN-010b | code | M4 | yes |
+| AC-TDN-009 | REQ-TDN-021 | code | M4 | yes |
 | AC-TDN-010 | REQ-TDN-016 | code | M5 | yes |
 | AC-TDN-011 | REQ-TDN-013 | CI | M6 | yes |
 | AC-TDN-012 | REQ-TDN-010 | finding | M4 | yes |
 | AC-TDN-013 | REQ-TDN-014 | test | M7 | yes |
-| AC-TDN-014 | (build non-regression) | build | M7 | yes |
+| AC-TDN-014 | REQ-TDN-014 (build clause) | build | M7 | yes |
 | AC-TDN-015 | REQ-TDN-012 | probe | M6 | yes |
 | AC-TDN-016 | REQ-TDN-018 (mirror) | code | M3 | yes |
 | AC-TDN-017 | REQ-TDN-011 | row | M3 | yes |
@@ -79,10 +81,8 @@ Observed baseline: `narrow exit=0` / `ok  github.com/modu-ai/moai-adk/internal/t
 A **data row** is any line after the single header line, so the count command is unambiguous:
 
 ```bash
-# from internal/template/
-CL=../../.moai/specs/SPEC-TEMPLATE-DATE-NEUTRALITY-001/classify.sh
-TSV=../../.moai/specs/SPEC-TEMPLATE-DATE-NEUTRALITY-001/triage.tsv
-echo "classifier rows: $(bash "$CL" | wc -l)"
+TSV=.moai/specs/SPEC-TEMPLATE-DATE-NEUTRALITY-001/triage.tsv
+echo "classifier rows: $(bash .moai/specs/SPEC-TEMPLATE-DATE-NEUTRALITY-001/classify.sh internal/template/templates | wc -l)"
 echo "tsv data rows:   $(( $(wc -l < "$TSV") - 1 ))"
 ```
 
@@ -115,20 +115,22 @@ Observed baseline *(repo root)*: file absent (`exit=1` from the `test -f` above)
 The remediation **shall not** remove any `2026-11-22` occurrence.
 
 ```bash
-# from internal/template/
-bash "$CL" | awk -F'\t' '$5=="DC-3"' | wc -l
+bash .moai/specs/SPEC-TEMPLATE-DATE-NEUTRALITY-001/classify.sh internal/template/templates \
+  | awk -F'\t' '$5=="DC-3"' | wc -l
 ```
 
-Observed baseline: `13` rows (across 9 findings / 9 files).
+Observed baseline: `13` rows (across 9 findings / 9 files). PASS condition: still `13`.
 
-PASS condition: still `13` after remediation.
+**Classifier-independent second form** (must also hold):
 
-**Falsifiability probe (executed).** On a disposable copy of the template tree, stripping the date from one file dropped the file-level count `9 → 8`:
-
+```bash
+grep -rhE '\b2026-11-22\b' internal/template/templates --include='*.md' --include='*.tmpl' \
+  --include='*.yaml' --include='*.yml' --include='*.sh' --include='*.json' --include='*.js' | wc -l
 ```
-before: 9
-after removing the date from 1 file: 8
-```
+
+Observed baseline: `13` lines — equal to the row count here because no line carries `2026-11-22` twice.
+
+**Falsifiability probes (executed).** File-level, on a disposable copy: `9 → 8` after stripping the date from one file. Line-level, on the second form: `13 → 11` after removing one occurrence.
 
 ---
 
@@ -137,8 +139,7 @@ after removing the date from 1 file: 8
 The remediation **shall not** alter the import-date records in the attribution notice.
 
 ```bash
-# from internal/template/
-grep -cE 'imported 202[6-9]-[0-1][0-9]-[0-3][0-9]' templates/.claude/rules/moai/NOTICE.md
+grep -cE 'imported 202[6-9]-[0-1][0-9]-[0-3][0-9]' internal/template/templates/.claude/rules/moai/NOTICE.md
 ```
 
 Observed baseline: `3`
@@ -157,15 +158,25 @@ after: 2
 **When** remediation completes, no `DC-2a` occurrence-class row **shall** remain.
 
 ```bash
-# from internal/template/
-bash "$CL" | awk -F'\t' '$5=="DC-2a"' | wc -l
+bash .moai/specs/SPEC-TEMPLATE-DATE-NEUTRALITY-001/classify.sh internal/template/templates \
+  | awk -F'\t' '$5=="DC-2a"' | wc -l
 ```
 
-Observed baseline: `80`
+Observed baseline: `80`. PASS condition: `0`.
 
-PASS condition: `0`.
+**Classifier-independent second form** (must also hold) — all three DC-2 shapes, excluding the `DC-2b` mirror directory:
 
-This criterion is expressed against the **classifier**, not a hand-written grep, precisely so the requirement (REQ-TDN-001's full three-shape DC-2 rule) and the criterion cannot diverge. A narrower hand-written regex — for example one matching only `Last Updated:` — reaches `0` while 18 `Updated:`-shaped dated lines remain in the tree; the classifier-based form cannot exhibit that blind spot because the same rule text drives both.
+```bash
+grep -rnE '^[[:space:]]*(#[[:space:]]*)?(\*\*)?(Last )?Updated(\*\*)?:[[:space:]]*"?202[6-9]-[0-1][0-9]-[0-3][0-9]' \
+  internal/template/templates --include='*.md' --include='.gitignore' \
+  | grep -v 'moai-foundation-cc/reference/' | wc -l
+```
+
+Observed baseline: `78` lines. PASS condition: `0`.
+
+Reconciling `78` lines against `80` rows: the two-row surplus is `moai/workflows/loop.md:380`, a single prose-stamp line carrying three distinct date literals (see `research.md` §C.4). Both forms are non-zero at baseline, so neither `-eq 0` assertion is vacuous.
+
+The classifier form exists so the requirement (REQ-TDN-001's full three-shape DC-2 rule) and the criterion cannot diverge — a narrower hand-written regex matching only `Last Updated:` reaches `0` while 18 `Updated:`-shaped dated lines remain. The second form exists because the classifier alone is tamper-satisfiable (§E).
 
 ---
 
@@ -174,15 +185,24 @@ This criterion is expressed against the **classifier**, not a hand-written grep,
 The remediation **shall not** delete a frontmatter `updated:` key or alter its value.
 
 ```bash
-# from internal/template/
-bash "$CL" | awk -F'\t' '$5=="DC-1"' | wc -l
+bash .moai/specs/SPEC-TEMPLATE-DATE-NEUTRALITY-001/classify.sh internal/template/templates \
+  | awk -F'\t' '$5=="DC-1"' | wc -l
 ```
 
-Observed baseline: `48`
+Observed baseline: `48`. PASS condition: `48`.
 
-PASS condition: `48`.
+**Classifier-independent second form** (must also hold) — the whole-file superset, fenced example included:
 
-Scope note: this counts `LS-FM` rows only. Fenced pedagogical examples are classified `LS-FM-FENCED` → `DC-5` by construction and are therefore **excluded** — the one measured instance is `skill-authoring.md:89`, a `metadata:` block inside a fenced skill-frontmatter example, to which REQ-TDN-009's schema-break rationale does not apply. A whole-file grep for indented `updated:` lines returns `49` because it includes that fenced example; the one-row difference is the exclusion, not a discrepancy.
+```bash
+grep -rhE '^[[:space:]]+updated:[[:space:]]*"?202[6-9]-[0-1][0-9]-[0-3][0-9]"?[[:space:]]*$' \
+  internal/template/templates --include='*.md' | wc -l
+```
+
+Observed baseline: `49` lines. PASS condition: `49`.
+
+**Falsifiability probe (executed).** On a disposable copy, deleting one frontmatter `updated:` key: `49 → 48`.
+
+Scope note: the classifier form counts `LS-FM` rows only. Fenced pedagogical examples are classified `LS-FM-FENCED` → `DC-5` by construction and are therefore **excluded** — the one measured instance is `skill-authoring.md:89`, a `metadata:` block inside a fenced skill-frontmatter example, to which REQ-TDN-009's schema-break rationale does not apply. A whole-file grep for indented `updated:` lines returns `49` because it includes that fenced example; the one-row difference is the exclusion, not a discrepancy.
 
 ---
 
@@ -198,7 +218,6 @@ The mechanism is now decided (hybrid, REQ-TDN-010), so the enforcement surfaces 
 The window spans every function the carve-out touches:
 
 ```bash
-# from internal/template/
 awk '/^func (collectLeakViolations|isPedagogicallyAllowed|isDateAllowlisted)/,/^}/' \
   internal_content_leak_test.go | grep -cE 'LineStart|LineEnd|lineNo|LineNumber'
 ```
@@ -227,8 +246,7 @@ Two halves, both binary-testable.
 Half 1 — the hard-coded literal is gone:
 
 ```bash
-# from internal/template/
-grep -c 'limit := 50' internal_content_leak_test.go
+grep -c "limit := 50" internal/template/internal_content_leak_test.go
 ```
 
 Observed baseline: `1`. PASS condition: `0`.
@@ -236,11 +254,11 @@ Observed baseline: `1`. PASS condition: `0`.
 Half 2 — executable injection recipe. The guard reports zero findings after M4, so a synthetic finding is injected to exercise the truncation branch, then reverted:
 
 ```bash
-# from internal/template/ — run AFTER M4 (strict tier at zero)
-printf '\n<!-- probe 2029-12-31 -->\n' >> templates/.claude/rules/moai/NOTICE.md
+# run AFTER M4 (strict tier at zero)
+printf '\n<!-- probe 2029-12-31 -->\n' >> internal/template/templates/.claude/rules/moai/NOTICE.md
 MOAI_TEMPLATE_LEAK_STRICT=1 go test . -run TestTemplateNoInternalContentLeak -count=1 2>&1 \
   | grep -oE 'full listing: [^ ]+' || echo "NO-PATH-EMITTED"
-git checkout -- templates/.claude/rules/moai/NOTICE.md
+git checkout -- internal/template/templates/.claude/rules/moai/NOTICE.md
 ```
 
 Expected output at M5: a single `full listing: <path>` line, and `test -f <path>` succeeds.
@@ -261,7 +279,6 @@ The current message names a count and no path, which is exactly the defect. PASS
 **Where** preconditions P1-P3 (`design.md` §C) all hold, the CI configuration **shall** run the strict tier.
 
 ```bash
-# from repo root
 grep -rn "LEAK_STRICT" --include="*.yaml" --include="*.yml" --include="Makefile" . \
   | grep -v "internal_content_leak_test.go"
 ```
@@ -272,7 +289,7 @@ PASS condition (M6 adopted): at least one match inside `.github/workflows/`.
 PASS condition (M6 not adopted): unchanged baseline **and** a recorded failing precondition. The not-adopted branch is closed by an executable check, not by prose:
 
 ```bash
-# from repo root — the not-adopted branch requires a recorded reason
+# the not-adopted branch requires a recorded reason
 grep -cE '^precondition_failed: (P1|P2|P3)' \
   .moai/specs/SPEC-TEMPLATE-DATE-NEUTRALITY-001/progress.md
 ```
@@ -292,7 +309,15 @@ MOAI_TEMPLATE_LEAK_STRICT=1 go test ./internal/template/ \
 
 Observed baseline: `exit=1`, `135 occurrences, mode=strict`. PASS condition: `exit=0`.
 
-**Joint reachability with AC-TDN-007.** AC-TDN-007 drives `DC-2a` rows to `0` (80 deletions). The remaining 100 rows (`DC-1` 48 + `DC-5` 22 + `DC-3` 13 + `DC-2b` 11 + `DC-4` 6) are all PRESERVE-dispositioned and leave the guard's view via the M4 carve-out, not via deletion. `80 + 100 = 180` — every row is accounted for by exactly one of the two mechanisms, so both criteria are simultaneously satisfiable. Under the iteration-1 formulation they were not: AC-TDN-007's regex reached `0` while 18 DC-2-shaped dated lines survived, and those lines were neither deleted nor carved out, so AC-TDN-012 could not reach `exit=0`.
+**Joint reachability with AC-TDN-007 — robust, not conditional.** Write `k` for the number of `DC-5` rows adjudicated REMOVE at M2 (`0 ≤ k ≤ 22`; `spec.md` REQ-TDN-005 requires per-row adjudication, so `k` is not fixed at plan time). Then:
+
+- deleted by remediation = `DC-2a` 80 + `k` = **`80 + k`**
+- carved out by the guard = `DC-1` 48 + `DC-3` 13 + `DC-2b` 11 + `DC-4` 6 + `(22 − k)` = **`100 − k`**
+- total = `(80 + k) + (100 − k)` = **180 for every `k`**
+
+Every row exits by exactly one mechanism whatever M2 decides, so AC-TDN-007 (`DC-2a → 0`) and AC-TDN-012 (`exit=0`) are simultaneously satisfiable across the whole range. An earlier draft argued this by asserting all 100 non-`DC-2a` rows were PRESERVE — i.e. `k = 0` — which contradicted REQ-TDN-005 and `plan.md` M3 step 2. The `k`-parameterised form is strictly stronger: it does not depend on an M2 outcome at all.
+
+Under the iteration-1 formulation the two were genuinely unreachable together: AC-TDN-007's regex reached `0` while 18 DC-2-shaped dated lines survived, neither deleted nor carved out, so AC-TDN-012 could not reach `exit=0`.
 
 ---
 
@@ -310,7 +335,7 @@ Observed baseline: `exit=0` / `ok  github.com/modu-ai/moai-adk/internal/template
 
 ### AC-TDN-014 — Build stays green
 
-The tree **shall** continue to build.
+The tree **shall** continue to build. This closes REQ-TDN-014's build clause; REQ-TDN-014 is the SPEC's single non-regression requirement and owns all three checks (narrow tier → AC-TDN-002, neutrality target → AC-TDN-013, build → this criterion).
 
 ```bash
 go build ./...
@@ -353,11 +378,11 @@ PASS condition at M6: after the carve-out is in place, appending each synthetic 
 **Where** a remediating edit lands on a rule file, it **shall** be paired with an identical local-tree edit if and only if that file is enrolled in the byte-parity allowlist.
 
 ```bash
-# from internal/template/ — sample form; M3 re-runs it over the actual edited-file list
+# sample form; M3 re-runs it over the actual edited-file list
 for f in NOTICE.md development/spec-frontmatter-schema.md \
          development/skill-authoring.md workflow/archived-agent-rejection.md; do
   p=".claude/rules/moai/$f"
-  if grep -qF "\"$p\"" rule_template_mirror_test.go; then echo "IN-ALLOWLIST: $p"
+  if grep -qF "\"$p\"" internal/template/rule_template_mirror_test.go; then echo "IN-ALLOWLIST: $p"
   else echo "not-enrolled: $p"; fi
 done
 ```
@@ -367,7 +392,7 @@ Observed baseline: all four report `not-enrolled`.
 **Positive control (executed)** — the check is not vacuously "not-enrolled":
 
 ```
-$ grep -qF '".claude/rules/moai/workflow/session-handoff.md"' rule_template_mirror_test.go && echo IN-ALLOWLIST
+$ grep -qF '".claude/rules/moai/workflow/session-handoff.md"' internal/template/rule_template_mirror_test.go && echo IN-ALLOWLIST
 IN-ALLOWLIST
 ```
 
@@ -380,8 +405,7 @@ PASS condition: re-run at M3 over the actual edited-file list; any `IN-ALLOWLIST
 The remediation **shall not** delete a `DC-2b` mirror-capture stamp.
 
 ```bash
-# from internal/template/
-bash "$CL" | awk -F'\t' '$5=="DC-2b"' | wc -l
+bash .moai/specs/SPEC-TEMPLATE-DATE-NEUTRALITY-001/classify.sh internal/template/templates | awk -F'\t' '$5=="DC-2b"' | wc -l
 ```
 
 Observed baseline: `11` rows across `11` distinct files.
@@ -391,9 +415,8 @@ PASS condition: `11` after remediation.
 A second, classifier-independent form asserts the lines themselves still exist, so the criterion does not become vacuous if the classifier's DC-2b rule is ever narrowed:
 
 ```bash
-# from internal/template/
 grep -rlE '^(\*\*)?Updated(\*\*)?:[[:space:]]*202[6-9]-' \
-  templates/.claude/skills/moai-foundation-cc/reference --include='*.md' | wc -l
+  internal/template/templates/.claude/skills/moai-foundation-cc/reference --include='*.md' | wc -l
 ```
 
 Observed baseline: `11`. PASS condition: `11`.
@@ -407,9 +430,8 @@ Naming note: 10 of the 11 files carry the `-official.md` suffix; the eleventh is
 **When** a row's disposition is REMOVE, the edit **shall** delete the construct rather than substitute a placeholder.
 
 ```bash
-# from internal/template/
 grep -rlE 'DATE-REDACTED|DATE-REMOVED|\{\{ *DATE *\}\}|YYYY-MM-DD-PLACEHOLDER|<date-elided>' \
-  templates | wc -l
+  internal/template/templates | wc -l
 ```
 
 Observed baseline: `0`.
@@ -423,7 +445,6 @@ PASS condition: `0` after remediation. This is a no-regression assertion — it 
 The strict-tier CI step **shall** invoke the guard by test name, not the package as a whole.
 
 ```bash
-# from repo root
 grep -c -- '-run TestTemplateNoInternalContentLeak' \
   .github/workflows/template-neutrality-check.yaml
 ```
@@ -446,7 +467,6 @@ PASS condition (M6 adopted): `1`. AC-TDN-011 alone cannot distinguish an isolate
 The remediation **shall not** copy content between the template tree and the local working trees.
 
 ```bash
-# from repo root
 git status --porcelain -- '.claude/' '.moai/' \
   | grep -v 'SPEC-TEMPLATE-DATE-NEUTRALITY-001' | wc -l
 ```
@@ -462,8 +482,7 @@ PASS condition: `0`, **unless** AC-TDN-016 reported an `IN-ALLOWLIST` file — i
 The committed classifier **shall** emit exactly the guard's `(file, date)` finding set.
 
 ```bash
-# from internal/template/
-bash "$CL" | cut -f1,2 | sort -u | wc -l
+bash .moai/specs/SPEC-TEMPLATE-DATE-NEUTRALITY-001/classify.sh internal/template/templates | cut -f1,2 | sort -u | wc -l
 ```
 
 Observed baseline: `135` — identical to the guard's reported occurrence count, verified by set diff against an independent `grep`-based enumeration of the same regex (`diff` returned no output).
@@ -479,15 +498,14 @@ Falsifiable, and it caught a real defect during authoring: the classifier's firs
 Every remediating edit **shall** land under `internal/template/templates/`, the guard file, or the CI workflow — and nowhere else.
 
 ```bash
-# from repo root
-git diff --name-only c7309aeb6..HEAD -- . \
+git diff --name-only "$(git merge-base origin/main HEAD)"..HEAD -- . \
   ':(exclude).moai/specs/SPEC-TEMPLATE-DATE-NEUTRALITY-001/**' \
   ':(exclude)internal/template/templates/**' \
   ':(exclude)internal/template/internal_content_leak_test.go' \
   ':(exclude).github/workflows/template-neutrality-check.yaml' | wc -l
 ```
 
-Observed baseline: `0` (plan phase has touched only the SPEC directory).
+Observed baseline: `0` (plan phase has touched only the SPEC directory). The merge-base resolves to `c7309aeb6` today; `origin/main` has since advanced to `f99bf4b8a`. A hardcoded `c7309aeb6..HEAD` would keep working now but silently report unrelated files the moment this branch is rebased onto the advanced `origin/main` — a false positive the orchestrator hit this iteration. `$(git merge-base origin/main HEAD)` is rebase-stable.
 
 PASS condition: `0`. Paired with `make build` exiting 0 at M3, this is the mechanical half of REQ-TDN-017; the `make build` invocation itself is deferred to run phase per the plan-phase constraint and is recorded in `progress.md` §E.2 when performed.
 
@@ -498,21 +516,52 @@ PASS condition: `0`. Paired with `make build` exiting 0 at M3, this is the mecha
 **Where** a finding's rows fall into two conflicting categories, each row **shall** receive its own disposition.
 
 ```bash
-# from internal/template/ — findings spanning more than one category
-bash "$CL" | awk -F'\t' '{print $1"|"$2"\t"$5}' | sort -u | cut -f1 | uniq -d | wc -l
+# findings spanning more than one category
+bash .moai/specs/SPEC-TEMPLATE-DATE-NEUTRALITY-001/classify.sh internal/template/templates \
+  | awk -F'\t' '{print $1"|"$2"\t"$5}' | sort -u | cut -f1 | uniq -d | wc -l
 ```
 
 Observed baseline: `13` dual-shape findings — 12 `DC-1`/`DC-2a` conflicts and 1 `DC-1`/`DC-5` span.
 
-PASS condition after M3: `0` remaining `DC-1`/`DC-2a` conflicts, verified by:
+PASS condition after M3: `0` remaining `DC-1`/`DC-2a` conflicts —
 
 ```bash
-# from internal/template/
-bash "$CL" | awk -F'\t' '$5=="DC-1"||$5=="DC-2a"{print $1"|"$2"\t"$5}' \
-  | sort -u | cut -f1 | uniq -d | wc -l
+bash .moai/specs/SPEC-TEMPLATE-DATE-NEUTRALITY-001/classify.sh internal/template/templates \
+  | awk -F'\t' '$5=="DC-1"||$5=="DC-2a"{print $1"|"$2"\t"$5}' | sort -u | cut -f1 | uniq -d | wc -l
 ```
 
-Observed baseline: `12`. PASS condition: `0` — reached because each conflicting finding's `DC-2a` prose row is deleted while its `DC-1` frontmatter row is preserved, so no finding remains in both categories. A finding-level disposition could not express this; that is what REQ-TDN-019 exists to prevent.
+Observed baseline: `12`. PASS condition: `0` — each conflicting finding's `DC-2a` prose row is deleted while its `DC-1` frontmatter row is preserved, so no finding remains in both categories.
+
+**Classifier-independent second form** (must also hold) — files carrying both a frontmatter `updated:` line and a prose stamp on the *same* literal:
+
+```bash
+find internal/template/templates -type f -name '*.md' -print0 | while IFS= read -r -d '' f; do
+  grep -oE '\b202[6-9]-[0-1][0-9]-[0-3][0-9]\b' "$f" 2>/dev/null | sort -u | while read -r d; do
+    fm=$(grep -cE "^[[:space:]]+updated:[[:space:]]*\"?$d\"?[[:space:]]*$" "$f")
+    pr=$(grep -cE "^[[:space:]]*(\*\*)?(Last )?Updated(\*\*)?:[[:space:]]*$d" "$f")
+    [ "$fm" -ge 1 ] && [ "$pr" -ge 1 ] && echo "$f|$d"
+  done
+done | wc -l
+```
+
+Observed baseline: `12`. PASS condition: `0`.
+
+**Falsifiability probe (executed).** On a disposable copy, deleting one prose stamp from a conflict file: `12 → 11`.
+
+**Coverage of the 13th finding (`DC-1`/`DC-5` span).** The commands above scope to `DC-1`/`DC-2a`, so they do not observe `moai-foundation-cc/SKILL.md | 2026-01-11` (frontmatter line 21 + changelog line 242). That exclusion is sound only where line 242 is adjudicated PRESERVE; adjudicated REMOVE, it becomes a `DC-1`-PRESERVE / `DC-5`-REMOVE conflict of exactly the shape REQ-TDN-019 governs. REQ-TDN-022 closes the gap by requiring M2 to adjudicate any `DC-5` row sharing a finding with a `DC-1` row explicitly against REQ-TDN-019 and to record the determination in the row's `rationale`. The conditional check:
+
+```bash
+# run at M3 — every DC-5 row that shares a finding with a DC-1 row must carry a REQ-TDN-019 note
+awk -F'\t' 'NR>1 && $5=="DC-5" && $7 !~ /REQ-TDN-019/ {print $1"\t"$2}' \
+  .moai/specs/SPEC-TEMPLATE-DATE-NEUTRALITY-001/triage.tsv \
+  | while IFS=$'\t' read -r f d; do
+      grep -qP "^\Q$f\E\t\Q$d\E\t.*\tDC-1\t" .moai/specs/SPEC-TEMPLATE-DATE-NEUTRALITY-001/triage.tsv && echo "UNANNOTATED: $f $d"
+    done | wc -l
+```
+
+Expected at M3: `0`. Observed baseline: not runnable — `triage.tsv` does not exist yet (`test -f` → `exit=1`), which is the same not-yet-satisfiable state as AC-TDN-003/004 and is not a vacuous pass.
+
+A finding-level disposition could express none of this; that is what REQ-TDN-019 exists to prevent.
 
 ---
 
@@ -534,3 +583,33 @@ Observed baseline: `12`. PASS condition: `0` — reached because each conflictin
 - **AC-TDN-010 half 1 is weak alone** — renaming the literal would pass the grep. Half 2 (the injection recipe) is the load-bearing half; both are required.
 - **AC-TDN-022 does not verify `make build` itself.** It verifies edit scope. The `make build` exit code is recorded in `progress.md` §E.2 at M3; no plan-phase command can assert it without violating the plan-phase constraint.
 - **No AC covers orphaned header blocks** after a DC-2a removal (`research.md` gap G5). That remains a review-quality property this set does not mechanize.
+- **The second forms are not exact duplicates of the classifier rules.** Each is a deliberately simpler tree grep, so their baselines differ from the row counts by explained deltas (78 vs 80, 49 vs 48). They are a cross-check, not a reimplementation; a divergence beyond the documented delta is itself a signal worth investigating.
+
+---
+
+## §E Tamper evidence (why every classifier-expressed criterion carries a second form)
+
+`classify.sh` is a committed SPEC artifact, so run phase can edit it. Measured, on a copy with one category branch disabled (`else if (shape == "LS-PROSE-STAMP")` → `else if (0)`) and the template tree **completely untouched**:
+
+```
+real classifier      DC-2a: 80
+tampered classifier  DC-2a: 0
+tampered classifier  DC-2b: 0
+tampered total rows:       180
+tampered (file,date) findings: 135
+```
+
+AC-TDN-007's PASS condition of `DC-2a == 0` is reached with all 80 lines still present. **AC-TDN-021 does not backstop this**: the `(file, date)` set and the row total are both unchanged under the tamper, so category-rule tampering is invisible to it.
+
+Scope of the problem, precisely: with respect to **tree** changes these criteria are not circular — the classifier greps the tree, so deleting a `DC-1` line does drop the count. With respect to **classifier** changes they are.
+
+### Approach chosen: replicate the dual-form pattern (not a classifier pin)
+
+AC-TDN-017 already carried a classifier-independent second form and was the only criterion immune — it held at `11` under the tampered classifier. That pattern is now applied to AC-TDN-005, 007, 008, and 023 as well.
+
+The alternative — pinning `classify.sh`'s category-rule block by content hash or by grepping for the rule literals — was rejected on two measured grounds:
+
+1. **A rule-literal grep is tamper-shape-dependent.** Against this very tamper, `grep -c 'DC-2a'` returns `1` on both the real and the tampered file — the tamper is invisible to it. (`grep -c 'LS-PROSE-STAMP'` does drop `2 → 1` here, but only because this particular edit happened to remove that literal; an edit renaming the emitted category, or negating a different condition, would leave both literal counts intact.) A pin that catches some tampers and not others provides false assurance.
+2. **A content hash produces false failures on legitimate edits.** `classify.sh`'s header changed in this very iteration to document the repo-root invocation; a hash pin would have failed on that no-op-to-behaviour change, training a maintainer to re-baseline the hash reflexively — which defeats the pin.
+
+The dual-form approach has neither failure mode: each second form independently reads the tree, so it is unaffected by any classifier edit, and it does not break when the classifier is legitimately maintained.

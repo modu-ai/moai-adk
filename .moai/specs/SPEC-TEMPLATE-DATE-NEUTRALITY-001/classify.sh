@@ -5,8 +5,21 @@
 # The guard's FINDING unit is (file, date-literal); an occurrence-class row is finer, because a
 # single finding may appear under two conflicting line shapes in the same file (REQ-TDN-003b).
 #
-# Run from internal/template/ :   bash <path-to>/classify.sh
-# Row count is NOT expected to equal the guard's finding count; see the reconcile block at the end.
+# CANONICAL INVOCATION — run from the REPO ROOT, passing the template tree as $1:
+#
+#     bash .moai/specs/SPEC-TEMPLATE-DATE-NEUTRALITY-001/classify.sh internal/template/templates
+#
+# [WATCH] Do NOT cd into internal/template/ to run this. The moai statusline/memory
+# subsystem creates a `.moai/` marker directory in the cwd of any command it observes.
+# A `.moai/` marker at internal/template/ makes findProjectRoot() in
+# output_styles_audit_test.go stop its ascent there instead of at the repo root, so
+# TestOutputStylesTemplateLiveParity and TestOutputStylesFallbackDocsContract both FAIL
+# with "no such file or directory" on a path rooted at internal/template/. The marker is
+# recreated automatically on any later command run from that cwd, so it is a recurring
+# trap, not a one-off. The repo-root form above produces byte-identical output (verified:
+# 180 rows, same six category counts) and creates no marker.
+#
+# Row count is NOT expected to equal the guard's finding count; see §2 Definitions in spec.md.
 
 set -uo pipefail
 ROOT="${1:-templates}"

@@ -85,6 +85,10 @@ Recorded so downstream readers do not re-litigate them:
 
 Row counts sum to 180 — the total occurrence-class row count. Finding counts sum to 148 rather than 135 because the 13 dual-shape findings are counted once per category they span.
 
+**Disposition arithmetic.** Exactly one category — `DC-5` — has a disposition that is not fixed at plan time. Let `k` be the number of `DC-5` rows adjudicated REMOVE at M2, where `0 ≤ k ≤ 22`. Then across all 180 rows: **deleted = `80 + k`**, **carved out = `100 − k`**, and `(80 + k) + (100 − k) = 180` for every value of `k`. Every row exits the guard's view by exactly one of the two mechanisms regardless of how M2 adjudicates, so no downstream criterion may assume `k = 0`.
+
+**REQ-TDN-022** — When a `DC-5` row shares a finding with a `DC-1` row, M2 shall adjudicate that row explicitly against REQ-TDN-019 and shall record the conflict determination in the row's `rationale` column. One such row is measured today (`moai-foundation-cc/SKILL.md | 2026-01-11`, frontmatter line 21 + changelog line 242); adjudicating it REMOVE creates a `DC-1`-PRESERVE / `DC-5`-REMOVE conflict of exactly the shape REQ-TDN-019 governs.
+
 **REQ-TDN-002** — The classifier shall operate on occurrence-class rows rather than findings, so that a dual-shape finding receives one disposition per row rather than a single disposition it cannot express.
 
 **REQ-TDN-003** — When a single line carries two or more distinct date literals, the classifier shall bind each literal to its own row and shall not bind a literal to a leading token belonging to a different literal.
@@ -115,7 +119,7 @@ Row counts sum to 180 — the total occurrence-class row count. Finding counts s
 
 **REQ-TDN-010** — The carve-out shall be the hybrid mechanism: a structural gate in the guard's per-class scan for the mechanically-decidable recurring shapes (`DC-1` and `DC-4`), plus a content-anchored allowlist for the judgement-call categories (`DC-3`, `DC-2b`, and the PRESERVE subset of `DC-5`). A shape qualifies for a structural gate only where it is both mechanically decidable from the line's own syntax and expected to recur in ordinary authoring; every other preserved row is an allowlist entry.
 
-**REQ-TDN-010b** — The carve-out shall be content-anchored: neither the structural gate nor the allowlist shall identify a preserved row by line number.
+**REQ-TDN-021** — The carve-out shall be content-anchored: neither the structural gate nor the allowlist shall identify a preserved row by line number.
 
 **REQ-TDN-012** — The carve-out shall not require a Go source edit when a maintainer adds a new attribution record to `NOTICE.md` or bumps a skill frontmatter `updated:` value.
 
@@ -125,7 +129,7 @@ Row counts sum to 180 — the total occurrence-class row count. Finding counts s
 
 **REQ-TDN-015** — The strict-tier CI step shall invoke the guard as an isolated target by test name and shall not invoke the `internal/template` package as a whole.
 
-**REQ-TDN-014** — The narrow tier and the existing `TestTemplateNeutralityAudit` target shall remain green throughout.
+**REQ-TDN-014** — The narrow tier, the existing `TestTemplateNeutralityAudit` target, and `go build ./...` shall all remain green throughout. This is the SPEC's single non-regression requirement; it owns the build check as well as the two test targets.
 
 ### Guard reporting
 

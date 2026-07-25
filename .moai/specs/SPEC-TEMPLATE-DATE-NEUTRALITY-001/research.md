@@ -1,6 +1,6 @@
 # SPEC-TEMPLATE-DATE-NEUTRALITY-001 — Research
 
-Every figure below was produced by a command actually run against this worktree at `c7309aeb6`. Figures that were not measured are stated as gaps in §G.
+Every figure below was produced by a command actually run against this worktree at `c7309aeb6`. Figures that were not measured are stated as gaps in §H.
 
 ---
 
@@ -45,7 +45,7 @@ $ grep -o "class=[A-Za-z0-9-]*" <strict.log> | sort | uniq -c
   50 class=S1-internal-date
 ```
 
-Only 50 rows are visible (the cap). See §G gap G1 — the guard's own classification of rows 51-135 was not observed, though §B's S1-only enumeration reproducing exactly 135 is strong circumstantial evidence.
+Only 50 rows are visible (the cap). See §H gap G1 — the guard's own classification of rows 51-135 was not observed, though §B's S1-only enumeration reproducing exactly 135 is strong circumstantial evidence.
 
 ### A.4 Finding identity is `(file, distinct match literal)`
 
@@ -161,7 +161,18 @@ $ bash classify.sh | cut -f3 | sort | uniq -c | sort -rn
    1 LS-FM-FENCED
 ```
 
-`LS-PROSE-STAMP` 91 = `DC-2a` 80 + `DC-2b` 11 (minus/plus the DC-3 and DC-4 rows that outrank shape in the rule order — the arithmetic is exact only when read against the ordered rule, which is why the category table, not this one, is normative).
+`LS-PROSE-STAMP` 91 = `DC-2a` 80 + `DC-2b` 11 (the arithmetic is exact only when read against the ordered rule, since DC-3 and DC-4 outrank shape — which is why the category table, not this one, is normative).
+
+**Line → row delta (91 rows from 89 lines).** §C.6 measures the DC-2 line total as **89**; this table reports **91** `LS-PROSE-STAMP` rows. The two-row surplus is not a unit slip — it is the row unit doing its job:
+
+```
+$ classify.sh … | awk -F'\t' '$3=="LS-PROSE-STAMP"' | wc -l                     → 91
+$ classify.sh … | awk -F'\t' '$3=="LS-PROSE-STAMP"{print $1"\t"$4}' | sort -u | wc -l → 89
+$ … | sort | uniq -c | awk '$1>1'
+   3 .claude/skills/moai/workflows/loop.md	380
+```
+
+A single line — `moai/workflows/loop.md:380` — carries **three** distinct date literals (`2026-07-12` in the leading `Updated:` token, plus `2026-07-09` and `2026-03-02` in the changelog prose that follows). Per REQ-TDN-003 each literal binds to its own row, so that one line yields 3 rows: `89 − 1 + 3 = 91`. This is the same line that motivated REQ-TDN-003 in the first place, and it is the only line in the tree carrying more than one literal.
 
 ### C.5 Dual-shape findings
 
@@ -289,11 +300,39 @@ $ grep -c -- '-run TestTemplateNoInternalContentLeak' .github/workflows/template
 0
 ```
 
-Its trigger paths already include `internal/template/internal_content_leak_test.go`. Its in-file comment states a package-wide green "is NOT required" because of pre-existing failures — a claim §A.1 measures as false today. The comment is out of scope for this SPEC and is not corrected here.
+Its trigger paths already include `internal/template/internal_content_leak_test.go`. Its in-file comment states a package-wide green "is NOT required" because of pre-existing failures. §A.1 measures the package green **from the repo root in a clean checkout** — which withdraws the claim as *this SPEC's* rationale but does not establish it false in general: §F shows the same package failing two tests when a stray `.moai` marker sits inside `internal/template/`. The comment is left in place; deleting an environment-dependent claim on the strength of one green run would be the larger error.
 
 ---
 
-## §F Frontmatter key reach (DC-1 scope correction)
+## §F The `internal/template/.moai` cwd trap (measured)
+
+`classify.sh` originally documented "run from `internal/template/`". Any command run from that cwd causes the moai statusline/memory subsystem to create a `.moai/` marker directory there. `output_styles_audit_test.go:137-149` `findProjectRoot()` ascends looking for a `.moai` marker; with one present at `internal/template/`, the ascent halts there instead of at the repo root, `liveDir` resolves to a nonexistent path, and two tests fail:
+
+```
+--- FAIL: TestOutputStylesTemplateLiveParity
+    output_styles_audit_test.go:415: ReadDir(".../debt-clear/internal/template/.claude/output-styles/moai") error: ... no such file or directory
+--- FAIL: TestOutputStylesFallbackDocsContract
+    output_styles_audit_test.go:513: ReadFile(".../debt-clear/internal/template/.claude/rules/moai/core/settings-management.md") error: ... no such file or directory
+```
+
+The marker is recreated automatically on any later command run from that cwd, so deleting it once does not fix the trap — the documented invocation has to change. `classify.sh` already accepted the template root as `$1` (`ROOT="${1:-templates}"`), so the fix is free. Measured from the repo root:
+
+```
+$ bash .moai/specs/SPEC-TEMPLATE-DATE-NEUTRALITY-001/classify.sh internal/template/templates | wc -l
+180
+$ … | awk -F'\t' 'NF>=5{print $5}' | sort | uniq -c
+  80 DC-2a   48 DC-1   22 DC-5   13 DC-3   11 DC-2b   6 DC-4
+$ ls -d internal/template/.moai
+ls: internal/template/.moai: No such file or directory
+```
+
+Identical output, no marker created. The repo-root form is now canonical in `classify.sh`'s header, in every `acceptance.md` command block, and as a `[WATCH]` note in `plan.md` M2/M3.
+
+This is also why §E.3 does not assert the workflow's "pre-existing failures" comment is false in general: the same package is green from the repo root and red from a polluted cwd.
+
+---
+
+## §G Frontmatter key reach (DC-1 scope correction)
 
 ```
 $ grep -rhE '^[[:space:]]+created:[[:space:]]*"?202[6-9]-…' templates … | wc -l
@@ -306,7 +345,7 @@ The tree contains **zero** dated `created:` and **zero** dated `version:` frontm
 
 ---
 
-## §G Gaps (not observed)
+## §H Gaps (not observed)
 
 - **G1** — That *all 135* findings carry `class=S1-internal-date` is **not** verified. The guard caps at 50 rows; all 50 visible rows are S1, and the independent S1-only enumeration in §B reproduces exactly 135 — strong circumstantial evidence — but the guard's own classification of rows 51-135 was not observed. The cap was never raised.
 - **G2** — `S2-short-sha-sentence-final` contributes 0 findings *among the visible 50*. Its contribution to rows 51-135 is unobserved.

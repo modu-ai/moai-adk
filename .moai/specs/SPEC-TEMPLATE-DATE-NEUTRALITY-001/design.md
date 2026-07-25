@@ -6,7 +6,17 @@ Decisions are ordered by reversibility: the hardest-to-reverse and most-likely-t
 
 ## §A Decision 1 — Carve-out mechanism — SETTLED: hybrid (Option 4)
 
-The guard must stop reporting the 100 rows whose disposition is PRESERVE (`DC-1` 48 + `DC-5` 22 + `DC-3` 13 + `DC-2b` 11 + `DC-4` 6) without stopping it from reporting a genuinely internal date added later.
+The guard must stop reporting the rows whose disposition is PRESERVE without stopping it from reporting a genuinely internal date added later.
+
+**How many rows that is depends on M2.** Five of the six categories carry a plan-time-fixed disposition; `DC-5` does not — `spec.md` REQ-TDN-005 requires each of its 22 rows to be adjudicated individually, and `plan.md` M3 schedules a non-empty `DC-5` REMOVE subset. Writing `k` for the number of `DC-5` rows adjudicated REMOVE (`0 ≤ k ≤ 22`):
+
+| Exit mechanism | Rows | At `k = 0` | At `k = 22` |
+|---|---|---:|---:|
+| Deleted by remediation (M3) | `80 + k` | 80 | 102 |
+| Carved out by the guard (M4) | `100 − k` | 100 | 78 |
+| **Total** | **180** | 180 | 180 |
+
+The carve-out therefore sizes to `100 − k` rows, not a fixed 100. An earlier draft of this section asserted all 100 non-`DC-2a` rows were PRESERVE, which contradicted `spec.md:82`, REQ-TDN-005, and `plan.md` M3 step 2. The conclusion it supported — that AC-TDN-007 and AC-TDN-012 are jointly reachable — survives unchanged and is in fact *stronger* under the corrected premise: the identity holds for every `k`, so joint reachability is robust rather than conditional on a particular M2 outcome.
 
 **Decision: Option 4 (hybrid).** Structural gates for `DC-1` and `DC-4`; a content-anchored allowlist for `DC-3`, `DC-2b`, and the PRESERVE subset of `DC-5`. Binding as REQ-TDN-010 in `spec.md` — this is a requirement, not a recommendation, so no downstream reader has to re-derive the choice.
 
@@ -18,6 +28,8 @@ The guard must stop reporting the 100 rows whose disposition is PRESERVE (`DC-1`
 |---|---|---|
 | Structural gate | `collectLeakViolations` (`internal_content_leak_test.go:593-634`) | `DC-1` (frontmatter `updated:` line shape) and `DC-4` (attribution file path) |
 | Allowlist gate | `isDateAllowlisted` (new, sibling of `isPedagogicallyAllowed`) | `DC-3`, `DC-2b`, `DC-5-PRESERVE` |
+
+Allowlist size: `DC-3` 13 + `DC-2b` 11 + `DC-5-PRESERVE` `(22 − k)` = **`24 + (22 − k)`** entries — between 24 (if M2 adjudicates every `DC-5` row REMOVE) and 46 (if none). The structural gate absorbs the other `DC-1` 48 + `DC-4` 6 = 54 rows and does not grow with `k`. Sizing the allowlist at a fixed 46 would assume `k = 0`, which REQ-TDN-005 forbids.
 
 The structural gate must live in `collectLeakViolations` because that function is where per-class gating already happens (`skillBodyScoped`, `skillMoaiScoped`, `requireHexLetter`). It currently scans whole-file text via `FindAllString`, so adding a line-shape gate requires the scan loop to become line-aware — a real structural change, not a struct-field addition. That cost is the main price of Option 4 and is scheduled as M4.
 
@@ -99,7 +111,9 @@ ok  	github.com/modu-ai/moai-adk/internal/template	1.292s
 
 The package is green. The claim originates in the workflow file's own in-file comment (written by an earlier SPEC) and was repeated here without verification. It is withdrawn.
 
-The isolated-target convention still stands, on two grounds that *are* verified: (a) it is the user's settled decision (§3 of `spec.md`), and (b) it matches the existing step's shape in the same workflow (`-run TestTemplateNeutralityAudit`, confirmed present — AC-TDN-019's positive control). The workflow's own stale comment is out of scope for this SPEC and is not corrected here.
+The isolated-target convention still stands, on two grounds that *are* verified: (a) it is the user's settled decision (§3 of `spec.md`), and (b) it matches the existing step's shape in the same workflow (`-run TestTemplateNeutralityAudit`, confirmed present — AC-TDN-019's positive control).
+
+**The workflow's comment is left in place, and not merely on scope grounds.** The measurement above is environment-dependent in a way this SPEC itself discovered: `output_styles_audit_test.go` resolves its root by ascending for a `.moai` marker, so a stray marker inside `internal/template/` — which the moai statusline creates in the cwd of any command run from there — makes `TestOutputStylesTemplateLiveParity` and `TestOutputStylesFallbackDocsContract` fail on nonexistent paths. A package that is green from the repo root can be red from a polluted cwd. Deleting a comment whose truth is conditional on invocation environment, on the strength of one green run, would be the larger error. The claim is withdrawn *as this SPEC's rationale*; it is not asserted false in general, and the comment stays.
 
 ### Future-legitimate-date regression risk
 

@@ -34,14 +34,14 @@ Four of the five iteration-1 clarification markers are resolved by user ruling a
 
 | Question | Ruling | Binding requirement |
 |---|---|---|
-| Carve-out mechanism | Hybrid: structural gates for DC-1/DC-4, content-anchored allowlist for DC-3/DC-2b/DC-5-PRESERVE. The `design.md` §A admissibility boundary is accepted as stated. | REQ-TDN-010, REQ-TDN-010b |
+| Carve-out mechanism | Hybrid: structural gates for DC-1/DC-4, content-anchored allowlist for DC-3/DC-2b/DC-5-PRESERVE. The `design.md` §A admissibility boundary is accepted as stated. | REQ-TDN-010, REQ-TDN-021 |
 | DC-1 frontmatter `updated:` (48 rows) | Preserve as authored. No schema change, no render-time neutralization. | REQ-TDN-009 |
 | Mirror-capture stamps (11 rows) | Preserve. They are the reader's only staleness signal for a third-party document mirror. | REQ-TDN-011 |
 | CI enforcement | Isolated target (`-run TestTemplateNoInternalContentLeak`) added to the existing neutrality workflow, only after the finding count reaches 0. Never a package-wide invocation. | REQ-TDN-013, REQ-TDN-015 |
 
 ### Scope correction carried into this plan
 
-`DC-1` matches the frontmatter key **`updated:` only**. Measured: the tree contains **0** dated `created:` lines and **0** dated `version:` lines (`research.md` §F). Iteration-1 prose describing DC-1 as `updated:` / `created:` / `version:` overstated the rule and is corrected.
+`DC-1` matches the frontmatter key **`updated:` only**. Measured: the tree contains **0** dated `created:` lines and **0** dated `version:` lines (`research.md` §G). Iteration-1 prose describing DC-1 as `updated:` / `created:` / `version:` overstated the rule and is corrected.
 
 ### Deferred question (NOT a pre-Kickoff gate)
 
@@ -94,7 +94,12 @@ Constraints:
 - Data-row count equals `classify.sh`'s row count (AC-TDN-003).
 - No `disposition` cell is unset, `TODO`, `UNTRIAGED`, or `TBD` (AC-TDN-004).
 - Each of the 22 `DC-5` rows is adjudicated against **its own line**, not the file's first matching line (REQ-TDN-003). This is where the deferred §B question is answered.
+- Any `DC-5` row that shares a finding with a `DC-1` row is adjudicated **explicitly against REQ-TDN-019**, with the determination recorded in its `rationale` column (REQ-TDN-022). One such row exists today: `moai-foundation-cc/SKILL.md | 2026-01-11` (frontmatter line 21 + changelog line 242). AC-TDN-023's primary commands scope to `DC-1`/`DC-2a` and would not observe it if M2 adjudicates line 242 REMOVE.
 - `classify.sh` still reproduces the guard's finding set exactly (AC-TDN-021).
+
+**M2 output feeds the `k` accounting.** Writing `k` for the number of `DC-5` rows adjudicated REMOVE (`0 ≤ k ≤ 22`), M2 fixes `k` and therefore fixes M3's deletion count (`80 + k`) and M4's carve-out size (`100 − k`, of which `24 + (22 − k)` are allowlist entries). No milestone downstream may assume `k = 0`.
+
+**[WATCH] Do not `cd` into `internal/template/` to run `classify.sh`.** The moai statusline/memory subsystem creates a `.moai/` marker directory in the cwd of any command it observes; a marker there makes `findProjectRoot()` in `output_styles_audit_test.go` halt its ascent at `internal/template/` instead of the repo root, and `TestOutputStylesTemplateLiveParity` + `TestOutputStylesFallbackDocsContract` then both FAIL on paths rooted at `internal/template/`. The marker is recreated on any later command from that cwd, so it presents as a recurring phantom test failure unrelated to this SPEC. Run everything from the repo root; `classify.sh` takes the template root as `$1` for exactly this reason. If the marker appears, `rm -r internal/template/.moai` and re-verify with `go test ./internal/template/ -count=1` from the repo root.
 
 Closes: AC-TDN-003, AC-TDN-004, AC-TDN-021.
 
@@ -118,7 +123,7 @@ Deliverable: the §B-ruled mechanism in `internal_content_leak_test.go` —
 - a line-shape structural gate inside `collectLeakViolations` for `DC-1` and `DC-4`;
 - a new `isDateAllowlisted` content-anchored allowlist for `DC-3`, `DC-2b`, and the `DC-5` PRESERVE subset, each entry traceable to a `triage.tsv` row.
 
-Constraint: content-anchored, never line-number-anchored (REQ-TDN-010b / AC-TDN-009). The `pedagogicalAllowlist` precedent is already content-anchored — copy its enforcement shape, not the unused diagnostic line fields.
+Constraint: content-anchored, never line-number-anchored (REQ-TDN-021 / AC-TDN-009). The `pedagogicalAllowlist` precedent is already content-anchored — copy its enforcement shape, not the unused diagnostic line fields.
 
 Note the real cost: `collectLeakViolations` currently scans whole-file text via `FindAllString`, so the structural gate requires the scan loop to become line-aware. This is a structural change to the scan, not a struct-field addition.
 
@@ -157,7 +162,7 @@ Closes: AC-TDN-002, AC-TDN-013, AC-TDN-014.
 - **Line-number-anchored carve-outs.** Drift-prone, and unnecessary — the existing precedent is content-anchored.
 - **Enforcing CI before both future-date probes pass.** A guard that blocks a legitimate future attribution entry or a routine frontmatter bump is a regression.
 - **Replacing a removed date with a placeholder token.** Creates a new grep surface with no gain (REQ-TDN-007 / AC-TDN-018).
-- **Citing "pre-existing package failures" as CI rationale.** Measured false — `go test ./internal/template/...` exits 0. Do not re-import that claim from the workflow file's stale comment.
+- **Citing "pre-existing package failures" as CI rationale without measuring.** `go test ./internal/template/...` exits 0 in a clean checkout run from the repo root, so the claim does not hold under those conditions. It is not unconditionally false: the package's own `output_styles_audit_test.go` resolves its root by ascending for a `.moai` marker, so a stray marker inside `internal/template/` makes two of its tests fail on paths that do not exist (see the M2/M3 Watch). The claim is environment-dependent, and a single green run is not grounds for asserting it false in general — nor for deleting the workflow's comment that records it. Use the isolated-target convention because it is the settled decision and matches the existing step's shape, not because the package is assumed broken.
 
 ---
 
