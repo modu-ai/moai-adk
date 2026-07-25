@@ -571,7 +571,7 @@ ac_fail_count: 0
 ac_pass_with_debt_count: 0
 preserve_list_post_run_count: 5
 l44_pre_commit_fetch: "1 5 (origin/main ahead 1 — PR #1158 SPEC-AGENT-PARALLEL-OPT-001; zero file overlap with this SPEC's 9 files)"
-l44_post_push_fetch: pending-push
+l44_post_push_fetch: "branch pushed to origin/feat/SPEC-CI-FLAKY-STABILIZE-001 (0 0 vs its remote); origin/main still ahead 1 — base refresh is a PR-time concern under branch protection strict:true, owned by manager-git"
 new_warnings_or_lints_introduced: 0
 cross_platform_build:
   darwin_arm64: pass
