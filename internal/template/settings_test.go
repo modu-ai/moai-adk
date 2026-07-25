@@ -1047,12 +1047,11 @@ func TestIsWSL2_ProcVersionFallback_NonWSL(t *testing.T) {
 // --- SPEC-DB-SYNC-RELOC-001: verify db-schema-change PostToolUse hook is removed ---
 
 // TestRender_DbSchemaChangeHook_Removed verifies that SPEC-DB-SYNC-RELOC-001
-// has relocated the per-edit PostToolUse hook for `handle-db-schema-change.sh`
-// into the `/moai sync` Phase 2 workflow. The rendered settings.json for
-// any platform must NOT contain a reference to the former hook script, and the
-// template tree must not ship the wrapper script either. The existing Go
-// package `internal/hook/dbsync` and `moai hook db-schema-sync` CLI remain
-// intact for manual invocation (verified by package-level tests).
+// relocated the per-edit PostToolUse hook for `handle-db-schema-change.sh`
+// into the `/moai sync` Phase 2 workflow, and that SPEC-DB-RETIRE-001
+// subsequently removed the DB documentation subsystem entirely. The rendered
+// settings.json for any platform must NOT contain a reference to the former
+// hook script, and the template tree must not ship the wrapper script either.
 func TestRender_DbSchemaChangeHook_Removed(t *testing.T) {
 	for _, platform := range []string{"darwin", "linux", "windows"} {
 		platform := platform

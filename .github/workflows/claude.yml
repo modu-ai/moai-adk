@@ -49,12 +49,14 @@ jobs:
       contents: read
       pull-requests: write  # post review comments on the PR
       issues: read
-      # C2 audit (Wave 2): id-token: write was previously granted on the claim
-      # that claude-code-action needs OIDC for Anthropic API auth. Verified the
-      # action authenticates via the claude_code_oauth_token secret (bearer/OAuth
-      # token) directly — no cloud-provider OIDC exchange step exists in this
-      # workflow. Per least-privilege, id-token: write is REMOVED. If a future
-      # change introduces a cloud-provider OIDC exchange, re-add it then.
+      # id-token: write RESTORED (falsifies the C2 audit Wave 2 removal): the
+      # C2 claim was that claude-code-action authenticates via the
+      # claude_code_oauth_token secret alone with no OIDC exchange. Observed
+      # runs (PR #1146 / #1151) show the action DOES call the GitHub Actions
+      # OIDC endpoint (ACTIONS_ID_TOKEN_REQUEST_URL) and fails all retries
+      # without this permission ("Could not fetch an OIDC token. Did you
+      # remember to add `id-token: write`?"), so the job errors before review.
+      id-token: write
     steps:
       - name: Checkout repository
         # Pinned to commit SHA to prevent supply chain attacks via floating tags.
@@ -113,7 +115,8 @@ jobs:
       contents: read
       pull-requests: write  # @claude can act on PR comments too
       issues: read
-      # id-token REMOVED — see C2 audit note in claude-pr-review job above.
+      # id-token RESTORED — see the OIDC-restore note in claude-pr-review above.
+      id-token: write
     steps:
       - name: Checkout repository
         # Pinned to commit SHA to prevent supply chain attacks via floating tags.

@@ -6,7 +6,7 @@ description: |
   Operates post-implementation only — once code exists and acceptance criteria are testable. Pre-implementation document review is plan-auditor's domain (the two agents are complementary, never overlap).
   Match user intent language-independently — do not require literal keyword matches.
   NOT for: SPEC plan-phase audit (that is plan-auditor's domain; sync-auditor is post-implementation only), code implementation, architecture design, documentation writing, git operations
-tools: Read, Grep, Glob, Bash, Agent, TaskCreate, TaskUpdate, TaskList, TaskGet, Skill
+tools: Read, Grep, Glob, Bash, TaskCreate, TaskUpdate, TaskList, TaskGet, Skill
 model: inherit
 effort: xhigh
 color: red
@@ -117,15 +117,11 @@ When invoked for contract negotiation before implementation:
 - Sub-agent: Invoked via Agent(subagent_type="sync-auditor")
 - CG: Leader (Claude) performs evaluation directly without spawning agent
 
-## Read-Only Per-Dimension Verifier Pilot (opt-in, env-gated)
+## Read-Only Per-Dimension Verifier Pilot (RETIRED)
 
-**Where** `CLAUDE_CODE_MAX_SUBAGENT_SPAWN_DEPTH` is set to a positive integer, `sync-auditor` MAY spawn one read-only per-dimension verifier child per scoring dimension (Functionality / Security / Craft / Consistency) to gather evidence in parallel. This is a selective, opt-in nesting pilot: `sync-auditor` carries `Agent` in its `tools`, but the shipped distribution leaves `CLAUDE_CODE_MAX_SUBAGENT_SPAWN_DEPTH` unset, so the default behavior is flat and byte-identical to a non-nesting run — a maintainer must set the depth env locally (dev-only) to exercise nesting.
+The former opt-in nesting pilot (this agent carrying `Agent` in `tools`, with flat shipped behavior resting on the runtime depth-env default being off) is **retired**. On Claude Code v2.1.219+ subagent nesting is enabled by default (changelog-sourced), and the spawn-time permission-mode parameter is deprecated and ignored since v2.1.213 (changelog/doc-sourced, not runtime-observed) — so both of the pilot's safety premises (shipped-default-flat via the env default; read-only children via the spawn-time mode parameter) no longer hold. `Agent` is removed from this agent's `tools` frontmatter, restoring the flat-hierarchy guarantee by tool omission — the same sole guarantee every other retained agent relies on. Read-only child scoping, where ever needed at the orchestrator level, rests on tool restriction (`Explore`, or a `tools:` list omitting Write/Edit), never on the deprecated spawn-time permission-mode parameter.
 
-Three HARD constraints bound the pilot:
-
-1. **Verdict ownership.** The binding 4-dimension verdict remains owned by the top-level `sync-auditor`; a spawned verifier child does NOT own or produce the binding verdict (never delegated). A child only returns per-dimension evidence for the top-level to score.
-2. **Read-only children.** A spawned verifier child MUST be read-only — either `Explore` (inherently read-only) or `general-purpose` spawned with `mode: "plan"`. Because the parenthesized `Agent(agent_type)` allowlist is ignored inside a subagent, read-only enforcement rests on the `mode: "plan"` parameter (for `general-purpose`) or the `Explore` choice, NOT on a type allowlist. A verifier child is never granted Write/Edit.
-3. **User-interaction boundary at every depth.** No `sync-auditor` path — and no spawned verifier child at any depth — shall invoke `AskUserQuestion` or `mcp__askuser`; the single-point-of-contact boundary holds at every depth (a nested child is even further from the user, still barred).
+Evidence gathering for the 4 scoring dimensions runs sequentially within this agent. The user-interaction boundary is unchanged: no `sync-auditor` path invokes `AskUserQuestion` or `mcp__askuser`.
 
 ## HRN-003 Hierarchical Scoring Protocol
 

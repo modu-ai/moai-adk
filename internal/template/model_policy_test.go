@@ -53,7 +53,21 @@ func TestIsValidModelPolicy(t *testing.T) {
 	}
 }
 
-// TestModelClaudeOpus48Constant verifies the claude-opus-4-8 model ID constant.
+// TestModelClaudeOpus5Constant verifies the claude-opus-5 model ID constant
+// and that the opus alias resolves to it.
+func TestModelClaudeOpus5Constant(t *testing.T) {
+	if ModelIDOpus5 != "claude-opus-5" {
+		t.Errorf("ModelIDOpus5 = %q, want %q", ModelIDOpus5, "claude-opus-5")
+	}
+	if got := ModelAliasCanonicalID("opus"); got != ModelIDOpus5 {
+		t.Errorf("opus alias = %q, want %q", got, ModelIDOpus5)
+	}
+	if got := ModelAliasFromCanonicalID(ModelIDOpus48); got != "opus" {
+		t.Errorf("deprecated claude-opus-4-8 reverse-maps to %q, want opus", got)
+	}
+}
+
+// TestModelClaudeOpus48Constant verifies the superseded claude-opus-4-8 model ID constant.
 func TestModelClaudeOpus48Constant(t *testing.T) {
 	if ModelIDOpus48 == "" {
 		t.Error("ModelIDOpus48 constant is empty, want non-empty model ID")

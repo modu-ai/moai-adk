@@ -26,7 +26,7 @@ catalog:
             - name: moai-foundation-thinking
               tier: core
               path: templates/.claude/skills/moai-foundation-thinking/
-              hash: eb10aa617e8e1f0bb9fbbfb13820349795473a7d75159f2726e164bc7b6340a3
+              hash: 8567978c13ce6ed0249f35b82cedca53f0004ef0fc3cb2e3d5b8a13acb005c1c
               version: 1.0.0
             - name: moai-harness-learner
               tier: core
@@ -107,7 +107,7 @@ catalog:
             - name: sync-auditor
               tier: core
               path: templates/.claude/agents/moai/sync-auditor.md
-              hash: 008c47b6208dbfd82f2492259bd9cb6a5762e0f875e048837dd4c7dce9b3a495
+              hash: 208d3029344d2adfeba789ba4a62ecdd4aad0efc4373eaa5f0f414f1dc8cdede
               version: 1.0.0
             - name: manager-develop
               tier: core

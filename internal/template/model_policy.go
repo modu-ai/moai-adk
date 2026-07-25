@@ -39,8 +39,13 @@ func IsValidModelPolicy(s string) bool {
 	return false
 }
 
-// ModelIDOpus48 is the canonical model ID for Claude Opus 4.8.
+// ModelIDOpus5 is the canonical model ID for Claude Opus 5, the default
+// Opus model as of Claude Code v2.1.219 (native 1M context).
 // Used by launcher.go to route the new model and by profile translations.
+const ModelIDOpus5 = "claude-opus-5"
+
+// ModelIDOpus48 is the superseded canonical model ID for Claude Opus 4.8.
+// Retained for deprecated-id normalization (see ModelDeprecatedCanonicalIDs).
 const ModelIDOpus48 = "claude-opus-4-8"
 
 // ModelAliasTable is the single source of truth mapping short model aliases
@@ -62,7 +67,7 @@ const ModelIDOpus48 = "claude-opus-4-8"
 // @MX:ANCHOR: [AUTO] ModelAliasTable — single SSOT for alias↔canonical-id mapping
 // @MX:REASON: [AUTO] fan_in >= 3 (launcher.go expandModelString + profile_setup.go normalizeModel + settings/schema.go modelOptions); hardcoding-prevention per CLAUDE.local.md §14
 var ModelAliasTable = map[string]string{
-	"opus":     ModelIDOpus48,
+	"opus":     ModelIDOpus5,
 	"sonnet":   "claude-sonnet-5",
 	"fable":    "claude-fable-5",
 	"haiku":    "claude-haiku-4-5",
@@ -81,6 +86,7 @@ var ModelAliasTable = map[string]string{
 var ModelDeprecatedCanonicalIDs = map[string]string{
 	"claude-opus-4-6":   "opus",
 	"claude-opus-4-7":   "opus",
+	ModelIDOpus48:       "opus",
 	"claude-sonnet-4-6": "sonnet",
 }
 
@@ -123,6 +129,9 @@ func ModelAliasFromCanonicalID(canonicalID string) string {
 // because the [1m] suffix is a Claude Code native context-window modifier, not
 // a separate model.
 func ModelAliasPickerValues() []string {
+	// opus[1m] is retained for back-compat even though Opus 5 is natively 1M:
+	// the [1m] suffix remains a valid Claude Code context-window modifier and
+	// historical prefs files may carry it (kept rather than dropped).
 	return []string{
 		"opus", "opus[1m]",
 		"sonnet", "sonnet[1m]",

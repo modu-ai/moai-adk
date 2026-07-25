@@ -599,11 +599,11 @@ func TestExpandModelString(t *testing.T) {
 	}{
 		{"empty string", "", ""},
 		// Short alias → canonical id resolution (forward map via central table)
-		{"opus alias resolves", "opus", template.ModelIDOpus48},
+		{"opus alias resolves", "opus", template.ModelIDOpus5},
 		{"sonnet alias resolves", "sonnet", template.ModelAliasCanonicalID("sonnet")},
 		{"haiku alias resolves", "haiku", template.ModelAliasCanonicalID("haiku")},
 		// [1m] suffix preserved across resolution
-		{"opus alias 1m resolves", "opus[1m]", template.ModelIDOpus48 + "[1m]"},
+		{"opus alias 1m resolves", "opus[1m]", template.ModelIDOpus5 + "[1m]"},
 		{"sonnet alias 1m resolves", "sonnet[1m]", template.ModelAliasCanonicalID("sonnet") + "[1m]"},
 		// opusplan is its own canonical form (CC-native routing alias, no full-id)
 		{"opusplan resolves to self", "opusplan", "opusplan"},
@@ -895,7 +895,7 @@ func TestResolveMainSessionModel_GLMAvoidsCanonicalID(t *testing.T) {
 		{"glm alias with 1m suffix preserved", "opus[1m]", true, "opus[1m]"},
 		{"glm canonical id reverse-mapped to alias", "claude-opus-4-8", true, "opus"},
 		{"glm deprecated canonical id reverse-mapped", "claude-opus-4-7", true, "opus"},
-		{"claude backend alias expands to canonical id", "opus", false, template.ModelIDOpus48},
+		{"claude backend alias expands to canonical id", "opus", false, template.ModelIDOpus5},
 		{"claude backend canonical passes through", "claude-opus-4-8", false, "claude-opus-4-8"},
 		{"glm empty stays empty", "", true, ""},
 		{"glm unknown value passes through", "custom-xyz", true, "custom-xyz"},
