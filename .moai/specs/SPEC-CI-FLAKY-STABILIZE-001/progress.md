@@ -563,7 +563,8 @@ M1 재현 테스트 2개 파일은 최종 diff에 **부재** (AC-CFS-010) — �
 
 ```yaml
 run_complete_at: 2026-07-25
-run_commit_sha: pending-backfill-run-final
+run_commit_sha: 729035836   # M5+M9 evidence commit; this line backfilled in the next commit
+run_phase_commits: [8cc64a9c3, 66ad175cb, 4eaff994b, dd625e19b, e8cbfb675, 729035836]
 run_status: complete
 ac_pass_count: 27
 ac_fail_count: 0
