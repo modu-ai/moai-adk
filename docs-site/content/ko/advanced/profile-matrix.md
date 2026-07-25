@@ -4,70 +4,79 @@ weight: 4
 draft: false
 ---
 
-MoAI-ADK는 유지되는 각 에이전트를 하나의 **프로필 매트릭스**를 통해 `{model, effort}` 쌍에 매핑합니다. 활성 **프로필**(`max` / `medium` / `low`)이 매트릭스의 한 열(column)을 선택하고, 그 열의 값이 모든 서브에이전트 spawn에 적용됩니다. 이 단일 3-열 프로필 축은 이전의 `plan_type × tier` 60-셀 매트릭스를 대체합니다(SPEC-MODEL-PROFILE-MATRIX-001).
+MoAI-ADK는 유지되는 에이전트 11개를 하나의 **프로필 매트릭스**를 통해 각각의 `{model, effort}` 쌍에 매핑합니다. 활성 **프로필**(`high` / `medium` / `low`)이 매트릭스의 한 열(column)을 선택하고, 그 열의 값이 모든 서브에이전트 spawn에 적용됩니다. 매트릭스는 에이전트 이름 단위의 **33셀**(에이전트 11개 × 프로필 3개)이며, 이전의 그룹 추상화와 `plan_type × tier` 축을 모두 대체합니다.
 
 ## 프로필 축
 
 프로필은 세 가지 값을 가집니다:
 
-- `max` — 최고 품질 열. 추론 지점에 Fable을, 설계·하네스·E2E에 Opus를 배치합니다.
-- `medium` (기본값) — 균형 열. 추론과 실행에 Opus/high를 배치합니다. 값이 없거나 비어 있으면 `medium`으로 해석됩니다.
-- `low` — 경제 열. Opus를 낮은 effort로 배치하고 기계적 작업을 Sonnet으로 돌립니다.
+- `high` — 품질 우선 열. 추론·감사 행에 Fable 5를 배치하고, 코딩에는 Opus 5를 `xhigh`로 배치합니다(벤더가 코딩·에이전틱 작업에 권장하는 시작점).
+- `medium` (기본값) — 균형 열. Opus 5를 벤더 API 기본 effort인 `high`로 배치하므로 가장 예측 가능한 운용점입니다. 값이 없거나 비어 있으면 `medium`으로 해석됩니다.
+- `low` — 경제 열. Opus 5의 `low`/`medium` effort를 1차 토큰 비용 레버로 쓰고, 그다음 Sonnet 5로 내립니다.
 
-프로필은 `performance_tier`와 별개 필드가 아니라 동일한 축입니다 — `llm.profile`이 우선이고, 없으면 legacy `performance_tier`가 별칭으로 읽힙니다(`high` → `max` 정규화, `max`/`medium`/`low`는 그대로). 리졸버는 이 유효 프로필을 읽어 각 에이전트의 셀을 결정합니다.
+`max`는 `high`의 **읽기 전용 별칭**입니다. 기존 설정의 `profile: max`는 그대로 `high`로 해석되며, 저장 시에는 항상 정규 이름 `high`로 기록됩니다. 마이그레이션 작업은 필요하지 않습니다.
+
+프로필은 `performance_tier`와 별개 필드가 아니라 동일한 축입니다 — `llm.profile`이 우선이고, 없으면 legacy `performance_tier`가 별칭으로 읽힙니다. 두 필드 모두 `high`/`medium`/`low` 어휘를 공유합니다. 리졸버는 이 유효 프로필을 읽어 각 에이전트의 셀을 결정합니다.
 
 ## 프로필 설정
 
 ```bash
-moai init . --profile max              # 초기화 시 설정
+moai init . --profile high             # 초기화 시 설정
 moai update --profile low              # 사후 전환
 ```
 
-현재 값은 `.moai/config/sections/llm.yaml`의 `llm.profile` 필드에서 확인할 수 있습니다. `moai init` 대화형 마법사에서 `high` 답변은 `max`로 정규화됩니다.
+허용 값은 `high` / `medium` / `low`이며, legacy `max`도 입력으로 받아 `high`로 정규화합니다. 현재 값은 `.moai/config/sections/llm.yaml`의 `llm.profile` 필드에서 확인할 수 있습니다.
 
 ## 프로필 매트릭스
 
-10개의 그룹화된 에이전트가 아래 매트릭스에서 `{model, effort}`를 받습니다. `Explore`와 사용자 정의 에이전트는 그룹이 없으므로 `inherit`(부모 세션 모델 상속)로 해석되며 model 주입 대상이 아닙니다. 매트릭스 어디에도 Haiku는 없습니다.
+유지되는 에이전트 11개가 아래 매트릭스에서 각자의 `{model, effort}`를 직접 받습니다. 사용자가 추가한 에이전트만 `inherit`(부모 세션 모델 상속)로 해석되어 model 주입 대상에서 제외됩니다. 매트릭스 어디에도 Haiku는 없습니다.
 
-| 에이전트 (그룹) | max | medium (기본) | low |
+| 에이전트 | high | medium (기본) | low |
 |---|---|---|---|
-| manager-spec (spec_auditors) | fable / medium | opus / high | opus / low |
-| plan-auditor (spec_auditors) | fable / medium | opus / high | opus / low |
-| sync-auditor (spec_auditors) | fable / medium | opus / high | opus / low |
-| manager-develop (develop) | fable / low | opus / high | opus / medium |
-| super-advisor (advisor) | fable / medium | fable / low | opus / high |
-| manager-design (design_harness_e2e) | opus / high | opus / medium | opus / low |
-| builder-harness (design_harness_e2e) | opus / high | opus / medium | opus / low |
-| e2e-tester (design_harness_e2e) | opus / high | opus / medium | opus / low |
-| manager-docs (docs) | sonnet / medium | sonnet / medium | sonnet / medium |
-| manager-git (git) | sonnet / low | sonnet / low | sonnet / low |
-| Explore (—) | inherit | inherit | inherit |
+| manager-spec | fable / xhigh | opus / high | opus / low |
+| plan-auditor | fable / xhigh | opus / high | opus / low |
+| sync-auditor | fable / xhigh | opus / high | opus / low |
+| manager-develop | opus / xhigh | opus / high | sonnet / medium |
+| super-advisor | opus / xhigh | opus / high | opus / medium |
+| manager-design | fable / high | opus / medium | sonnet / medium |
+| builder-harness | opus / xhigh | opus / medium | sonnet / medium |
+| e2e-tester | fable / high | opus / medium | sonnet / medium |
+| manager-docs | sonnet / high | sonnet / medium | sonnet / medium |
+| manager-git | sonnet / low | sonnet / low | sonnet / low |
+| Explore | sonnet / low | sonnet / low | sonnet / low |
 
-`docs`와 `git` 행은 프로필과 무관하게 고정됩니다(각각 sonnet/medium, sonnet/low) — 기계적 작업은 프로필이 바뀌어도 모델 클래스를 올리지 않습니다.
+`manager-git`과 `Explore` 행은 프로필과 무관하게 `sonnet / low`로 고정됩니다 — 기계적 작업과 읽기 전용 탐색은 프로필이 올라가도 모델 클래스를 올리지 않습니다.
 
-## 에이전트 그룹
+각 행은 단조(monotone)입니다: `high` ≥ `medium` ≥ `low`. 프로필을 낮추면 어떤 에이전트도 이전보다 강한 조합을 받지 않습니다.
 
-매트릭스는 에이전트 이름이 아니라 6개 **그룹** 단위로 정의됩니다. 그룹 → 에이전트 멤버십은 다음과 같습니다:
+Anthropic 내장 `Explore`는 더 이상 `inherit`이 아니라 자기 셀(`sonnet / low`)로 해석됩니다. `inherit` 센티널은 이제 사용자가 추가한 에이전트에만 남습니다.
 
-| 그룹 | 에이전트 |
-|---|---|
-| `spec_auditors` | manager-spec, plan-auditor, sync-auditor |
-| `develop` | manager-develop |
-| `advisor` | super-advisor |
-| `design_harness_e2e` | manager-design, builder-harness, e2e-tester |
-| `docs` | manager-docs |
-| `git` | manager-git |
+## 하네스 스페셜리스트 model + effort
 
-`Explore`와 사용자가 추가한 에이전트는 멤버십이 없어 `inherit`로 해석됩니다.
+`/moai:harness`가 생성하는 스페셜리스트는 **모델이 `opus`로 통일**되고 **effort로만 차별화**됩니다. 하네스 에이전트는 사용자 소유의 지속적 스페셜리스트이며, 이들을 가르는 축은 모델 티어가 아니라 추론 깊이이기 때문입니다. 모든 비-Haiku 모델이 1M 컨텍스트를 갖게 되어 모델을 고정해도 컨텍스트 손실이 없습니다.
+
+effort는 각 목적 클래스가 대응하는 유지 에이전트 행에서 빌려옵니다:
+
+| 목적 클래스 | effort 출처 행 | high | medium | low |
+|---|---|---|---|---|
+| `read-only-extract` | Explore | opus / low | opus / low | opus / low |
+| `mechanical-transform` | manager-git | opus / low | opus / low | opus / low |
+| `synthesize` | manager-docs | opus / high | opus / medium | opus / medium |
+| `research` | plan-auditor | opus / xhigh | opus / high | opus / low |
+| `verify-judge` | sync-auditor | opus / xhigh | opus / high | opus / low |
+| `implement` | manager-develop | opus / xhigh | opus / high | opus / medium |
+| `design-architecture` | manager-design | opus / high | opus / medium | opus / medium |
+
+`llm.harness_agents[프로필][클래스].effort`로 클래스별 effort를 덮어쓸 수 있습니다. 모델은 어떤 경로로도 바뀌지 않습니다. 인식되지 않는 클래스는 `implement`로 폴백합니다.
 
 ## 리졸버 우선순위
 
 각 에이전트의 유효 `{model, effort}`는 다음 순서로 결정됩니다:
 
 1. `llm.agent_overrides[agent]`가 있으면 그것이 이깁니다.
-2. 없으면 활성 프로필의 그룹 셀(config `llm.profiles`)을 사용합니다.
-3. config에 셀이 없으면 Go 기본 매트릭스(`template.DefaultProfileMatrix`)의 그룹 셀을 사용합니다.
-4. 그룹 멤버십이 없으면 `inherit`(주입 안 함)입니다.
+2. 없으면 활성 프로필의 에이전트 셀(config `llm.profiles`)을 사용합니다.
+3. config에 셀이 없으면 Go 기본 매트릭스(`template.DefaultProfileMatrix`)의 에이전트 셀을 사용합니다.
+4. 매트릭스에 없는 에이전트(사용자 추가)는 `inherit`(주입 안 함)입니다.
 
 `agent_overrides`는 정규 에이전트 이름을 키로 하며 카탈로그 + enum에 대해 검증됩니다:
 
@@ -100,7 +109,7 @@ GLM 백엔드(`moai glm` / `moai cg` GLM 패널)에서는 프로필 매트릭스
 - Claude의 5단 effort를 z.ai가 도달 가능한 3-state로 collapse:
   - `low` → **thinking-off**
   - `medium` / `high` → **reasoning-high**
-  - `xhigh` / `max` → **reasoning-max**
+  - `xhigh` / `max`(legacy effort 값) → **reasoning-max**
   - (인식 불가 값 → reasoning-max, 과소 추론 방지)
 - coding-max override: `manager-develop`은 collapse 결과와 무관하게 **reasoning-max** 강제
 - `manager-git`은 low effort → **thinking-off**

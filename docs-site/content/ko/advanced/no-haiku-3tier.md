@@ -13,7 +13,7 @@ DeepSWE 리더보드(deepswe.datacurve.ai, 113 tasks, 2026-07-09)의 핵심 발�
 | 모델 [effort] | Pass@1 | 과제당 비용 | $/해결과제 | 토큰/해결과제 | 스텝 |
 |---|---|---|---|---|---|
 | Fable 5 [max] | 70% | $21.63 | $30.9 | 170k | 88 |
-| Opus 4.8 [max] | 59% | $13.22 | $22.4 | 229k | 120 |
+| Opus 5 [max] | 59% | $13.22 | $22.4 | 229k | 120 |
 | Sonnet 5 [max] | 54% | $26.40 | $48.9 | 396k | 268 |
 
 {{< icon warning warn >}} **단가 역전**: Sonnet의 명목 단가($3/$15)는 Opus($5/$25)의 절반이지만, 과제당 비용은 Opus $13.22 < Sonnet $26.40으로 역전합니다. Sonnet이 토큰을 1.6배, 스텝을 2.2배 더 소모하기 때문입니다. "싼 모델로 돌리면 쿼터가 절약된다"는 통념은 성립하지 않습니다.
@@ -49,12 +49,12 @@ flowchart TD
 
 리더보드 실측에서 도출된 4가지 결론:
 
-1. **Sonnet 5 max는 Claude 계열 최악의 가성비** — Opus 4.8 max보다 비싸고($26.40 vs $13.22) 점수는 낮습니다(54% vs 59%). 원인은 268스텝의 과도한 재시도 루프입니다. 높은 effort가 높은 가치를 의미하지 않습니다.
-2. **API 가성비 1위는 Opus 4.8** ($22.4/해결과제). 품질 1위는 Fable 5 (70%). Fable의 프리미엄은 해결과제당 +$8.5입니다.
+1. **Sonnet 5 max는 Claude 계열 최악의 가성비** — Opus 5 max보다 비싸고($26.40 vs $13.22) 점수는 낮습니다(54% vs 59%). 원인은 268스텝의 과도한 재시도 루프입니다. 높은 effort가 높은 가치를 의미하지 않습니다.
+2. **API 가성비 1위는 Opus 5** ($22.4/해결과제). 품질 1위는 Fable 5 (70%). Fable의 프리미엄은 해결과제당 +$8.5입니다.
 3. **가용성 관점에서도 Fable(170k) < Opus(229k) < Sonnet(396k)** — 구독 주간 한도는 토큰 기반이므로 약한 모델이 오히려 쿼터를 더 태웁니다.
 4. **스텝 수 = 속도** — Fable 88 < Opus 120 < Sonnet 268. 벽시계 시간에서도 상위 모델이 유리합니다.
 
-{{< icon info >}} **한계 고지**: 리더보드에는 Claude 모델의 effort 변형(low/medium/high/xhigh) 데이터가 없습니다(전부 max). 따라서 "Sonnet xhigh vs high 품질 차이"는 직접 실증 불가하며, effort 하향은 (a) Sonnet 5 max 루프 낭비 실측, (b) Opus 4.8 기본 effort가 high라는 Anthropic 공식 포지셔닝, (c) effort가 출력 토큰에 준선형이라는 일반 특성에서 추정한 것입니다.
+{{< icon info >}} **한계 고지**: 리더보드에는 Claude 모델의 effort 변형(low/medium/high/xhigh) 데이터가 없습니다(전부 max). 따라서 "Sonnet xhigh vs high 품질 차이"는 직접 실증 불가하며, effort 하향은 (a) Sonnet 5 max 루프 낭비 실측, (b) Opus 5 기본 effort가 high라는 Anthropic 공식 포지셔닝, (c) effort가 출력 토큰에 준선형이라는 일반 특성에서 추정한 것입니다.
 
 ## 설계 보고서 vs 구현
 

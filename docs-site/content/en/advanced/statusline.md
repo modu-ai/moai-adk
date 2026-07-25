@@ -124,7 +124,7 @@ The cache hit rate is the effect meter of the context diet — trim the always-l
   - `🪫` (displayed percentage > 70%)
   - the bar itself is colored per block with a continuous green → yellow → red gradient (separate from the battery threshold)
 - **The `(⚠️/clear)` / `(🛑/clear!)` handoff suffix**:
-  - 1M-context models (Opus 4.8, GLM-5.2): used_percentage ≥50% (based on raw context_window_size)
+  - 1M-context models (Opus 5, GLM-5.2): used_percentage ≥50% (based on raw context_window_size)
   - 200K-context models (Sonnet/Haiku): used_percentage ≥90%
   - Meaning: recommend `/clear` before the next turn + use the paste-ready resume message
 - **Example**: `🪫 CW: ███████░░░ 72% (⚠️/clear)`
@@ -300,7 +300,7 @@ The handoff suffix on the CW bar activates when context usage crosses the model-
 
 | Model class | Context Window | Threshold | Recommended at |
 |------------|----------------|--------|----------|
-| **1M context** (Opus 4.8) | 1,000,000 tokens | **≥50%** | ~500K tokens used |
+| **1M context** (Opus 5) | 1,000,000 tokens | **≥50%** | ~500K tokens used |
 | **256K context** (Fable) | 256,000 tokens | **≥90%** | ~230K tokens used |
 | **200K context** (Sonnet, Haiku) | 200,000 tokens | **≥90%** | ~180K tokens used |
 | Other / unknown | — | Not shown | (safe default) |
