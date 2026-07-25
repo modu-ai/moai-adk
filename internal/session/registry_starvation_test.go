@@ -19,6 +19,7 @@ package session
 // contributor, which is precisely the class of defect this SPEC removes.
 
 import (
+	"errors"
 	"fmt"
 	"sort"
 	"sync"
@@ -96,5 +97,77 @@ func TestRegisterStarvationCharacterization(t *testing.T) {
 
 	if max > maxWaitCeiling {
 		t.Errorf("worst single acquisition %v exceeds ceiling %v — a goroutine was starved", max, maxWaitCeiling)
+	}
+}
+
+// TestWithLockTimeoutContract pins the REQ-CFS-014 error contract: when the
+// budget elapses with the lock held elsewhere, withLock still returns an error
+// wrapping ErrLockTimeout, and errors.Is still recognizes it. Swapping the
+// fixed retry sleep for jittered backoff must not change either fact.
+func TestWithLockTimeoutContract(t *testing.T) {
+	r, _ := newTestRegistry(t)
+
+	// Hold the lock via a separate open file description so the registry's
+	// non-blocking acquisition genuinely fails on every retry.
+	blocker := newRegistryLock()
+	if err := blocker.acquire(r.path + ".lock"); err != nil {
+		t.Fatalf("test blocker could not take the lock: %v", err)
+	}
+	defer func() { _ = blocker.release() }()
+
+	const budget = 80 * time.Millisecond
+	start := time.Now()
+	err := r.WithLockTimeout(budget).Register("uuid-timeout", "SPEC-TIMEOUT", "run")
+	elapsed := time.Since(start)
+
+	if !errors.Is(err, ErrLockTimeout) {
+		t.Fatalf("Register while the lock is held: got %v, want an error wrapping ErrLockTimeout", err)
+	}
+	// A sleep that overshot the deadline would stretch this far past budget
+	// (REQ-CFS-011 / EC-1).
+	if elapsed > time.Second {
+		t.Errorf("timeout path took %v against an %v budget — backoff is not clamped to the deadline",
+			elapsed, budget)
+	}
+	t.Logf("timeout path returned %q after %v", err, elapsed)
+}
+
+// TestLockRetryDelayBoundsAndJitter covers REQ-CFS-010 (jitter is real) and
+// REQ-CFS-011 (the ceiling and the deadline clamp both hold).
+func TestLockRetryDelayBoundsAndJitter(t *testing.T) {
+	// The exponential ceiling never exceeds lockBackoffCap, at any attempt.
+	for attempt := 0; attempt < 20; attempt++ {
+		d := lockRetryDelay(attempt, time.Hour)
+		if d <= 0 || d > lockBackoffCap {
+			t.Fatalf("attempt %d: delay %v outside (0, %v]", attempt, d, lockBackoffCap)
+		}
+	}
+
+	// A sleep never exceeds the remaining budget (EC-1).
+	for _, remaining := range []time.Duration{time.Nanosecond, time.Microsecond, time.Millisecond} {
+		for attempt := 0; attempt < 20; attempt++ {
+			if d := lockRetryDelay(attempt, remaining); d > remaining {
+				t.Fatalf("attempt %d: delay %v exceeds remaining budget %v", attempt, d, remaining)
+			}
+		}
+	}
+
+	// An exhausted budget yields an immediate retry, so the caller's deadline
+	// check runs instead of sleeping past it.
+	if d := lockRetryDelay(3, 0); d != 0 {
+		t.Errorf("zero budget: got %v, want 0", d)
+	}
+	if d := lockRetryDelay(3, -time.Second); d != 0 {
+		t.Errorf("negative budget: got %v, want 0", d)
+	}
+
+	// Jitter must actually vary: the fixed-interval implementation this replaces
+	// would collapse to a single value here.
+	seen := map[time.Duration]bool{}
+	for i := 0; i < 200; i++ {
+		seen[lockRetryDelay(4, time.Hour)] = true
+	}
+	if len(seen) < 2 {
+		t.Errorf("delay is constant across 200 samples (%v) — jitter is absent", seen)
 	}
 }

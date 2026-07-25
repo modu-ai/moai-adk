@@ -401,6 +401,88 @@ $ go test -short -count=1 -run '^TestRegisterStarvationCharacterization$' -v ./i
 ok  	github.com/modu-ai/moai-adk/internal/session	4.613s
 ```
 
+### M7 — 결함 2 GREEN: full jitter 지수 백오프 적용
+
+`internal/session/registry.go` `withLock` 재시도 루프 1개소만 변경 (`plan.md` §B.1 파라미터 그대로).
+
+```go
+	deadline := time.Now().Add(timeout)
+	for attempt := 0; ; attempt++ {
+		err := lock.acquire(lockPath)
+		if err == nil {
+			break
+		}
+		if time.Now().After(deadline) {
+			return fmt.Errorf("%w: %v", ErrLockTimeout, err)
+		}
+		time.Sleep(lockRetryDelay(attempt, time.Until(deadline)))
+	}
+```
+
+파라미터: base `5ms`, 배수 2, cap `50ms`, full jitter (`rand(0, ceiling]`), 난수원 `math/rand/v2`(전역 시드 오염 없음, goroutine-safe). 남은 데드라인 클램프 포함; `remaining <= 0`이면 0을 반환해 다음 반복의 데드라인 검사가 즉시 `ErrLockTimeout`을 내도록 한다.
+
+PRESERVE 확인:
+
+```
+$ grep -n "time.Sleep(20 \* time.Millisecond)" internal/session/registry.go
+(출력 없음 — 고정 슬립 소멸)                                    # AC-CFS-011
+$ grep -n "LockTimeout = " internal/session/registry.go
+69:const LockTimeout = 2 * time.Second                          # AC-CFS-012 불변
+$ grep -n "unix.LOCK_EX" internal/session/registry_lock_unix.go
+40:	if err := unix.Flock(fd, unix.LOCK_EX|unix.LOCK_NB); err != nil {   # AC-CFS-013 불변
+```
+
+### M8 — 결함 2 검증
+
+동일 테스트·동일 머신에서 재측정 (3회):
+
+```
+$ for i in 1 2 3; do go test -count=1 -run '^TestRegisterStarvationCharacterization$' -v ./internal/session/; done
+per-acquisition wait under contention (workers=8 perWorker=25 n=200): p50=589.083µs p95=1.114166ms max=123.423375ms
+per-acquisition wait under contention (workers=8 perWorker=25 n=200): p50=607.834µs p95=1.612ms    max=134.744917ms
+per-acquisition wait under contention (workers=8 perWorker=25 n=200): p50=624.417µs p95=2.205125ms max=133.75775ms
+--- PASS (3/3)
+```
+
+기준선(M6) 대비:
+
+| 지표 | 기준선 (고정 20ms) | 적용 후 (jitter+backoff) |
+|------|--------------------|--------------------------|
+| p50 | 0.558 ~ 1.680 ms | 0.589 ~ 0.624 ms |
+| p95 | 0.916 ~ 32.201 ms | 1.114 ~ 2.205 ms |
+| **max** | **168.6 ~ 539.2 ms** | **123.4 ~ 134.7 ms** |
+| max 실행 간 편차 | 3.2배 | 1.1배 |
+
+max가 기준선 이하이며(GWT-4 충족), 특히 **실행 간 편차가 3.2배 → 1.1배로 축소**됐다. 꼬리 지연의 산포가 줄어든 것이 고정 간격 동기화 해소의 직접적 신호다. p50은 사실상 동일 — 저경합 경로에 지연을 추가하지 않았다(EC-3).
+
+**해석 한계 (은폐 금지)**: 로컬에서 기아가 발생하지 않았으므로 위 개선은 **꼬리 지연 감소**로만 관측되며 기아 소멸의 직접 증거가 아니다 (`acceptance.md` §F 3항).
+
+AC-CFS-014 오류 계약 불변:
+
+```
+=== RUN   TestWithLockTimeoutContract
+    registry_starvation_test.go:132: timeout path returned "session registry: lock acquisition timed out: registry lock flock .../active-sessions.json.lock: resource temporarily unavailable" after 81.202792ms
+--- PASS: TestWithLockTimeoutContract (0.08s)
+ok  	github.com/modu-ai/moai-adk/internal/session	0.276s
+```
+
+80ms 예산에 81.2ms 소요 — 단일 슬립이 데드라인을 넘기지 않음을 실측으로 확인 (REQ-CFS-011 / EC-1). `errors.Is(err, ErrLockTimeout)`이 `true`임을 어서션한다.
+
+AC-CFS-018 클램프 + 지터 단위 검증 (`TestLockRetryDelayBoundsAndJitter`): 모든 attempt에서 delay ∈ (0, cap], 남은 예산 초과 없음, 예산 0/음수 시 0 반환, 200 샘플에서 값이 2종 이상(고정 간격이면 1종으로 붕괴 → 반증 가능).
+
+```
+--- PASS: TestLockRetryDelayBoundsAndJitter (0.00s)
+```
+
+AC-CFS-019:
+
+```
+$ go test -race -count=10 ./internal/session/
+ok  	github.com/modu-ai/moai-adk/internal/session	226.442s
+exit=0
+# "DATA RACE" / "lock acquisition timed out" 발생 건수: 0
+```
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<pending run-phase>_

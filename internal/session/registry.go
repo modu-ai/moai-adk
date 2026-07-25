@@ -20,6 +20,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"math/rand/v2"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -302,6 +303,49 @@ func (r *Registry) Purge(thresholdMinutes int) (int, error) {
 	return purged, nil
 }
 
+// Retry backoff for the non-blocking registry lock loop
+// (SPEC-CI-FLAKY-STABILIZE-001, REQ-CFS-010 / REQ-CFS-011).
+//
+// lockBackoffCap is deliberately far below the LockTimeout default (2s) so a
+// single sleep can never consume the whole acquisition budget.
+const (
+	lockBackoffBase     = 5 * time.Millisecond
+	lockBackoffCap      = 50 * time.Millisecond
+	lockBackoffMaxShift = 8 // ceiling saturates well before this; guards the shift
+)
+
+// lockRetryDelay returns how long to sleep before retry number attempt
+// (0-based) of the acquisition loop: full jitter over an exponentially growing
+// ceiling, clamped to the time remaining before the deadline.
+//
+// Why jitter rather than a fixed interval: acquisition is LOCK_EX|LOCK_NB, so
+// contenders never queue in the kernel and there is no fairness guarantee. With
+// a fixed sleep every contender wakes on the same cadence, and an unlucky
+// goroutine can lose the race repeatedly. Randomizing wake times breaks that
+// synchronization. This is a probabilistic mitigation, NOT structural fairness —
+// under sustained contention a repeated loser remains possible.
+//
+// The clamp keeps one sleep from overshooting the deadline and costing the
+// caller its final retry.
+func lockRetryDelay(attempt int, remaining time.Duration) time.Duration {
+	if remaining <= 0 {
+		return 0
+	}
+	shift := attempt
+	if shift > lockBackoffMaxShift {
+		shift = lockBackoffMaxShift
+	}
+	ceiling := lockBackoffBase << shift
+	if ceiling > lockBackoffCap {
+		ceiling = lockBackoffCap
+	}
+	delay := time.Duration(rand.Int64N(int64(ceiling)) + 1) // full jitter over (0, ceiling]
+	if delay > remaining {
+		delay = remaining
+	}
+	return delay
+}
+
 // withLock acquires the advisory lock, reads the registry, applies the
 // mutation function, writes back atomically (temp + rename), and releases
 // the lock. The lock is best-effort: on contention, it retries up to
@@ -326,7 +370,7 @@ func (r *Registry) withLock(mutate func([]Entry) ([]Entry, error)) error {
 		timeout = LockTimeout
 	}
 	deadline := time.Now().Add(timeout)
-	for {
+	for attempt := 0; ; attempt++ {
 		err := lock.acquire(lockPath)
 		if err == nil {
 			break
@@ -334,7 +378,7 @@ func (r *Registry) withLock(mutate func([]Entry) ([]Entry, error)) error {
 		if time.Now().After(deadline) {
 			return fmt.Errorf("%w: %v", ErrLockTimeout, err)
 		}
-		time.Sleep(20 * time.Millisecond)
+		time.Sleep(lockRetryDelay(attempt, time.Until(deadline)))
 	}
 	defer func() { _ = lock.release() }()
 
