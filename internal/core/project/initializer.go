@@ -197,6 +197,25 @@ func (i *projectInitializer) Init(ctx context.Context, opts InitOptions) (*InitR
 		i.logger.Warn("report config write failed", "error", err)
 	}
 
+	// Step 3d: Persist the Page-3 wizard answers (project mode, LSP, quality
+	// enforcement, design) to their section yaml files. Like Step 3c this sits
+	// OUTSIDE the deployer/fallback branch so it runs on BOTH paths: on the
+	// deployer path it patches the freshly deployed templates with the
+	// wizard/flag-selected values, and on the fallback path it patches the
+	// files generateConfigsFallback just wrote.
+	//
+	// Its former call site was inside generateConfigsFallback, which the CLI
+	// never reaches — moai init always constructs a non-nil deployer
+	// (init.go NewInitializer), so every Page-3 write was structurally
+	// unreachable (plan.md §A.2 gate 3, REQ-WIZ-015).
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
+	if err := WritePhase1Configs(opts, result); err != nil {
+		result.Warnings = append(result.Warnings, fmt.Sprintf("page-3 config: %s", err))
+		i.logger.Warn("page-3 config write failed", "error", err)
+	}
+
 	// Step 4: Create CLAUDE.md
 	if err := ctx.Err(); err != nil {
 		return nil, err
@@ -434,10 +453,9 @@ func (i *projectInitializer) generateConfigsFallback(opts InitOptions, result *I
 	}
 	result.CreatedFiles = append(result.CreatedFiles, filepath.Join(defs.MoAIDir, defs.SectionsSubdir, defs.ProjectYAML))
 
-	// Phase 1 yaml writes (REQ-IWE-001..005) — only when StandardMode is active.
-	if err := WritePhase1Configs(opts, result); err != nil {
-		return fmt.Errorf("phase 1 config: %w", err)
-	}
+	// NOTE: the Page-3 yaml writes (REQ-IWE-001..005) are NOT called here any
+	// more. They moved to Step 3d in Init, outside the deployer/fallback
+	// branch, because this function is unreachable from the CLI (C32).
 
 	return nil
 }

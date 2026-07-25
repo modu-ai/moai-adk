@@ -26,8 +26,7 @@ const defaultRequireJustification = true
 // WritePhase1Configs persists the Page-3 wizard answers to their section yaml
 // files. It runs unconditionally (C31 / REQ-WIZ-015): the Page-3 questions are
 // shown to every user now that the advanced-mode gate is retired, so the former
-// `if !opts.StandardMode { return nil }` early return would have made every
-// answer unreachable.
+// standard-mode early return would have made every answer unreachable.
 func WritePhase1Configs(opts InitOptions, result *InitResult) error {
 	sectionsDir := filepath.Clean(filepath.Join(opts.ProjectRoot, defs.MoAIDir, defs.SectionsSubdir))
 

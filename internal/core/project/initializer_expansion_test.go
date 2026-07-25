@@ -25,9 +25,9 @@ func setupSectionsDir(t *testing.T) (root, sectionsDir string) {
 }
 
 // TestWritePhase1Configs_NoOpWhenNotStandard was DELETED by C31: its subject
-// was the `if !opts.StandardMode { return nil }` early return that C31 removes,
-// so it asserts behaviour this SPEC deliberately eliminates and cannot be
-// reconciled. It is named on the plan.md §G carve-out delete-list.
+// was the standard-mode early return that C31 removes, so it asserts behaviour
+// this SPEC deliberately eliminates and cannot be reconciled. It is named on
+// the plan.md §G carve-out delete-list.
 
 // TestWriteHarnessProfileYAML verifies harness.yaml content.
 func TestWriteHarnessProfileYAML(t *testing.T) {
