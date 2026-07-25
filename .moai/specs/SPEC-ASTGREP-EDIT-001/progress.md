@@ -1,8 +1,8 @@
 ---
 id: SPEC-ASTGREP-EDIT-001
 title: "Progress — ast-grep wiring repair and moai ast-edit"
-version: "0.1.0"
-status: in-progress
+version: "0.2.0"
+status: completed
 created: 2026-07-25
 updated: 2026-07-26
 author: GOOS
@@ -70,14 +70,22 @@ and `golangci-lint run` both clean at run-phase completion.
 
 sync_status: complete
 sync_complete_at: 2026-07-26
-sync_commit_sha: "1c52b43cf"
+sync_commit_sha: "pending-backfill-close"
 
 CHANGELOG entry appended under `[Unreleased]`. Frontmatter transitions
 `in-progress → implemented → completed` applied atomically across spec.md,
-plan.md, acceptance.md (this single sync commit). `sync_commit_sha` above is
-a placeholder — a commit cannot know its own hash — backfilled in the
-immediately following `chore(SPEC-ASTGREP-EDIT-001): backfill sync_commit_sha`
-commit per the SHA placeholder backfill exemption (D3).
+plan.md, acceptance.md, progress.md. `sync_commit_sha` above is a placeholder —
+a commit cannot know its own hash — backfilled in the immediately following
+`chore(SPEC-ASTGREP-EDIT-001): backfill sync_commit_sha` commit per the SHA
+placeholder backfill exemption (D3).
+
+**Close re-issued.** The first close landed at `1c52b43cf` and was reopened by
+Amendment 1 when the sync audit returned FAIL (0.770) — an amendment sets
+`status: in-progress`, which `moai spec audit` correctly reported as
+`SyncStatusDrift` / MUST-FIX for as long as the amendment window stayed open
+(§E.4 signals present, status not `completed`). The field above therefore names
+the **final** close commit, not the superseded first one. Remediation history is
+in §G; the residual items the close deliberately carries are in §G.1.
 
 ## §F Phase 4 Mode Selection
 
@@ -128,3 +136,25 @@ Recorded so they are not silently inherited. None is introduced by this SPEC.
 - **Tier L declared, 3 of 5 plan artifacts shipped** (no `design.md`,
   no `research.md`). A plan-phase gap; sync-phase does not create plan
   artifacts retroactively.
+- **`FilesModified` double-counts across rules** (audit F3). `applyRuleEdits`
+  sums `result.FilesModified` per rule instead of taking the union of touched
+  paths, so two rules rewriting the same file report `across 2 file(s)` when one
+  file changed. Reproduced by the re-audit. Cosmetic in the reported count only —
+  the rewrites themselves are correct — but the number is wrong and a user
+  reading it to gauge blast radius is misled.
+- **`requireSG(t)` silently disarms the rewrite guards** (audit F4). Every
+  fixture-rewrite test — including the falsification guards this SPEC added —
+  calls `requireSG(t)` and SKIPs when the `sg` binary is absent. On an
+  `sg`-less runner a fully reverted implementation yields 5 SKIPs, `PASS`, `ok`:
+  green. That is the same shape as F0 (a guard that cannot fail) displaced from
+  the selector to the environment, and CI has never run this branch, so the
+  `sg`-less configuration is untested in practice. Closing it means either
+  provisioning `sg` in CI or asserting at least one rewrite guard without
+  shelling out to `sg`.
+- **Three validation branches and the JSON render path are untested** (audit F5).
+  Behaviour was verified manually during the audit but carries no guard.
+- **`astEditTimeout` comment does not match its behaviour** (audit F7).
+- **`.moai/reports/sync-audit/` is not gitignored.** Audit reports land as
+  untracked files rather than ignored ones, so they surface in every
+  `git status` until manually removed. Both prior sync-phase prompts asserted
+  the directory was ignored; `git check-ignore` refutes that.

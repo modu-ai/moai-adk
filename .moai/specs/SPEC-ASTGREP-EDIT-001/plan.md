@@ -2,7 +2,7 @@
 id: SPEC-ASTGREP-EDIT-001
 title: "Implementation plan — ast-grep wiring repair and moai ast-edit"
 version: "0.1.0"
-status: in-progress
+status: completed
 created: 2026-07-25
 updated: 2026-07-26
 author: GOOS

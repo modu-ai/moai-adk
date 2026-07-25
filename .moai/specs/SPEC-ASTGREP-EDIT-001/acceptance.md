@@ -2,7 +2,7 @@
 id: SPEC-ASTGREP-EDIT-001
 title: "Acceptance criteria — ast-grep wiring repair and moai ast-edit"
 version: "0.3.0"
-status: in-progress
+status: completed
 created: 2026-07-25
 updated: 2026-07-26
 author: GOOS
@@ -78,13 +78,30 @@ PASS: `2`.
 
 **AC-012** — A dry run modifies nothing.
 
+The committed form carried `'<p>'` / `'<r>'` placeholders — the same unfilled-
+placeholder defect AC-060 § Correction 1 names. It matched nothing, so it proved
+only that a zero-match run writes nothing, which a completely broken command also
+satisfies. It also ran against the live working tree and read its PASS token
+(`dry_run: true`) from text output, where that token never appears — it is a JSON
+field. The criterion now runs against a throwaway fixture, uses a pattern that
+demonstrably matches, and requires a non-zero match count so that a no-op cannot
+masquerade as a successful preview.
+
 ```bash
-git stash list > /tmp/pre.txt; git diff --stat > /tmp/pre-diff.txt
-moai ast-edit --dry --pattern '<p>' --rewrite '<r>' ./internal/config
-git diff --stat > /tmp/post-diff.txt; diff /tmp/pre-diff.txt /tmp/post-diff.txt
+tmp=$(mktemp -d)
+printf 'package sample\n\nfunc run() {\n\tprintln("before")\n}\n' > "$tmp/sample.go"
+before=$(cksum "$tmp/sample.go" | cut -d' ' -f1)
+moai ast-edit --dry --format json --lang go \
+  --pattern 'println("before")' --rewrite 'println("after")' "$tmp/sample.go"
+after=$(cksum "$tmp/sample.go" | cut -d' ' -f1)
+[ "$before" = "$after" ] && echo "UNCHANGED" || echo "MODIFIED"
 ```
-PASS: `diff` is empty (no working-tree change), and the command's output reports
-`dry_run: true`.
+PASS: all three hold — the JSON reports `"dry_run": true`, it reports
+`"matches_found"` ≥ 1, and the final line reads `UNCHANGED`. `MODIFIED` is a
+FAIL; so is `"matches_found": 0`, because a run that matches nothing cannot
+distinguish a working `--dry` from a command that does nothing at all.
+Falsification check: dropping `--dry` rewrites the fixture and the last line
+reads `MODIFIED`.
 
 ## REQ-AGE-003 — pattern-mode rewrite
 

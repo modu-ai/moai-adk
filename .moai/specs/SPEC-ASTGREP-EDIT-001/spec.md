@@ -2,7 +2,7 @@
 id: SPEC-ASTGREP-EDIT-001
 title: "ast-grep wiring repair and moai ast-edit command"
 version: "0.2.0"
-status: in-progress
+status: completed
 created: 2026-07-25
 updated: 2026-07-26
 author: GOOS
@@ -35,6 +35,13 @@ amendment_of: SPEC-ASTGREP-EDIT-001
 |---|---|
 | Rationale | Remediation of the two remaining sync-audit must-fix findings, plus one criterion whose repair changed what it asserts. **F1**: the CHANGELOG claimed `--dry` was the safe default; `astedit.go` declares `BoolVar(&flags.dry, "dry", false, …)`, so a bare run writes in place. **F2**: `applyRuleEdits` skipped on `Fix == "" \|\| Pattern == ""` but reported every skip as "(no fix: field)", misattributing a loader limitation (nested `rule:` block, which all 11 shipped rules use) to the rule author's choice. **AC-060**: its committed wording asserted whole-file mirror identity, a reading unsatisfiable without copying internal-provenance text into a distributed template — forbidden by the template internal-content isolation rule. |
 | Scope | `internal/cli/astedit.go` (+ new guard in `astedit_test.go`), `CHANGELOG.md`, `progress.md` §G/§G.1, and `acceptance.md` AC-060. **REQ-AGE-001 through REQ-AGE-008 remain untouched in wording and scope.** AC-060 is rescoped to delta identity, which is what REQ-AGE-008 states ("the corresponding mirror SHALL be **updated** byte-identically") and the only reading compatible with template neutrality; the pre-existing whole-file divergence it exposed is recorded as named debt in `progress.md` §G.1 rather than silently closed. F1 is a documentation correction only — the `--dry` default is deliberately NOT changed here. |
+
+**Amendment 3 — 2026-07-26 (in-place, closes the amendment window)**
+
+| Field | Value |
+|---|---|
+| Rationale | Re-audit at `9a6a81299` scored **0.843**, short of the Tier L 0.85 threshold by 0.007, with two must-fix items. **G1**: AC-012 still carried `'<p>'` / `'<r>'` placeholders — the same unfilled-placeholder defect AC-060 § Correction 1 condemns four sections earlier in the same file — so it proved only that a zero-match run writes nothing, and read its stated PASS token from text output where that token is a JSON field. **G2**: the REQ-AGE-002 *heading* still read "Dry-run is the safe default surface", the last surviving instance of the false default claim F1 removed elsewhere. **G3**: `progress.md` §G.1 claimed to record residuals "so they are not silently inherited" while omitting audit findings F3, F4, F5, F7. **G0**: the amendment window left all four artifacts at `status: in-progress`, which `moai spec audit` correctly reported as `SyncStatusDrift` / MUST-FIX. |
+| Scope | AC-012 rewritten against a throwaway fixture with a matching pattern, a `≥ 1` match-count requirement, and a falsification check (dropping `--dry` yields `MODIFIED`); REQ-AGE-002 heading corrected to "Dry-run is a non-destructive preview" — **heading only, both SHALL clauses untouched and both still hold**; §G.1 extended with F3 (`FilesModified` double-count), F4 (`requireSG` disarms the rewrite guards on an `sg`-less runner), F5 (untested validation branches), F7 (`astEditTimeout` comment drift), and the un-gitignored report directory; the close re-issued across all four artifacts. |
 
 Amendment mechanics per `.claude/rules/moai/development/spec-frontmatter-schema.md`
 § Status Transition Ownership Matrix (`completed → in-progress (amendment)` row):
@@ -127,7 +134,7 @@ The command SHALL be registered separately from `moai ast-grep` so that a
 permission rule granting `Bash(moai ast-grep:*)` does not thereby grant write
 capability.
 
-### REQ-AGE-002 — Dry-run is the safe default surface
+### REQ-AGE-002 — Dry-run is a non-destructive preview
 
 **When** `moai ast-edit` runs with `--dry`, the command SHALL compute and print
 the changes **without modifying any file**, delegating to the existing
@@ -135,6 +142,14 @@ the changes **without modifying any file**, delegating to the existing
 
 The command SHALL make the destructive nature of a non-`--dry` run explicit in
 its help text.
+
+> Heading corrected in Amendment 2. It previously read "Dry-run is the safe
+> default surface", which the requirement body never said and the implementation
+> never did — `--dry` is opt-in (`BoolVar(&flags.dry, "dry", false, …)`), so a
+> bare run writes in place. The heading was the last surviving instance of the
+> false default claim that finding F1 removed from the CHANGELOG and
+> `progress.md`. Only the heading changed; the two SHALL clauses are untouched,
+> and both hold as written.
 
 ### REQ-AGE-003 — Pattern-mode rewrite
 
