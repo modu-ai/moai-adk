@@ -39,3 +39,5 @@ constitution:
   title: "moai constitution 憲法"
 github:
   title: "moai github GitHub 連携"
+"ast-grep":
+  title: "moai ast-grep / ast-edit 構造検索・置換"
