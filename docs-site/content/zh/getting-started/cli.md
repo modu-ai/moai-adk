@@ -294,7 +294,6 @@ moai hook <event>
 | `spec-status` | git 提交时自动更新 SPEC status |
 | `harness-classify` | 运行 harness 分类器并记录层级晋升 |
 | `harness-observe` · `harness-observe-stop` · `harness-observe-subagent-stop` · `harness-observe-user-prompt-submit` | 记录 harness 使用日志 |
-| `db-schema-sync` | 在 PostToolUse 钩子中检测 DB schema 变更 |
 
 钩子不由用户直接执行 —— Claude Code 的 `settings.json` 会自动调用。
 

@@ -186,3 +186,65 @@ func TestRunCleanReinstall_ZeroRemovalOnDesignOnlyV3(t *testing.T) {
 	}
 }
 
+// TestCleanReinstall_RemovesOrphanedDBYaml is the SPEC-DB-RETIRE-001 active-removal
+// proof (AC-DBR-023(b)): a user project carrying an orphaned
+// `.moai/config/sections/db.yaml` — left behind after the DB documentation
+// subsystem was removed — has that file ACTIVELY removed by the clean-reinstall
+// path, because db.yaml is registered in defs.DeprecatedPaths (Category D) and is
+// NOT under a PRESERVE root (preserve roots are .moai/specs, .moai/project,
+// .claude/commands — verified in update_preserve_inventory.go). A genuine v2
+// signal (.agency/) forces the clean-reinstall body to run; a stub deployer
+// avoids writing real templates. Contrast: the `.moai/project/db/` docs ARE under
+// the .moai/project preserve root, so they are never removed (CHANGELOG documents
+// the manual deletion path for those).
+func TestCleanReinstall_RemovesOrphanedDBYaml(t *testing.T) {
+	root := t.TempDir()
+	// Seed the orphaned db.yaml the retired DB subsystem left behind.
+	writeTestFile(t, root, ".moai/config/sections/db.yaml", "db:\n    enabled: true\n")
+
+	// scanDeprecatedPaths must report db.yaml as removable (Category D entry).
+	removable, err := scanDeprecatedPaths(root)
+	if err != nil {
+		t.Fatalf("scanDeprecatedPaths: %v", err)
+	}
+	foundInScan := false
+	for _, rel := range removable {
+		if rel == ".moai/config/sections/db.yaml" {
+			foundInScan = true
+		}
+	}
+	if !foundInScan {
+		t.Fatalf("scanDeprecatedPaths did not report .moai/config/sections/db.yaml as "+
+			"removable; the Category D DeprecatedPaths entry is missing (got %v)", removable)
+	}
+
+	// Force the clean-reinstall body to run by adding a genuine v2 signal (.agency/).
+	makeTestDir(t, root, ".agency")
+	writeTestFile(t, root, ".agency/index.md", "legacy\n")
+
+	deployer := &stubDeployer{}
+	migrate := &stubMigrateRunner{}
+	result, err := runCleanReinstall(context.Background(), root, CleanReinstallOptions{
+		Out:              io.Discard,
+		Deployer:         deployer,
+		RunMigrateAgency: migrate.Run,
+	})
+	if err != nil {
+		t.Fatalf("runCleanReinstall: %v", err)
+	}
+
+	// db.yaml must appear in RemovedPaths and be gone from disk.
+	foundRemoved := false
+	for _, rel := range result.RemovedPaths {
+		if rel == ".moai/config/sections/db.yaml" {
+			foundRemoved = true
+		}
+	}
+	if !foundRemoved {
+		t.Errorf("clean-reinstall did not remove .moai/config/sections/db.yaml; "+
+			"RemovedPaths=%v", result.RemovedPaths)
+	}
+	if _, statErr := os.Stat(filepath.Join(root, ".moai/config/sections/db.yaml")); !os.IsNotExist(statErr) {
+		t.Errorf("db.yaml still present on disk after clean-reinstall (stat err=%v)", statErr)
+	}
+}

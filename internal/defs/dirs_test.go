@@ -2,12 +2,15 @@
 //
 // @MX:ANCHOR: DeprecatedPaths is the SSOT for v.2.x → v3 cleanup targets;
 // the 40-entry count is governed by SPEC-DEPRECATEDPATHS-RECONCILE-001 +
-// SPEC-UPDATE-REINSTALL-LOOP-001 (origin SPEC-V3R6-V2-V3-CLEAN-REINSTALL-001
-// §A.4 is the historical 43-entry derivation; reconciled 43→41 after
-// design.yaml + db.yaml were un-deprecated, then 41→40 after the stale
-// `.claude/rules/moai/design` template-collision entry was removed, #1084).
+// SPEC-UPDATE-REINSTALL-LOOP-001 + SPEC-CONFIG-AUDIT-REPAIR-001 +
+// SPEC-DB-RETIRE-001 (origin SPEC-V3R6-V2-V3-CLEAN-REINSTALL-001 §A.4 is the
+// historical 43-entry derivation; reconciled 43→41 after design.yaml + db.yaml
+// were un-deprecated, 41→40 after the stale `.claude/rules/moai/design`
+// template-collision entry was removed (#1084), 40→39 after gate.yaml was
+// un-deprecated, then 39→40 after SPEC-DB-RETIRE-001 re-deprecated db.yaml
+// (Category D) on removing the DB documentation subsystem).
 // @MX:REASON: External-user cleanup correctness depends on the 40-entry
-// total + 9/28/3 category split; any future modification MUST update both
+// total + 9/27/3/1 category split; any future modification MUST update both
 // this test and the dirs.go slice atomically.
 package defs
 
@@ -27,12 +30,14 @@ import (
 // Category B 29→28 and the total 41→40. SPEC-CONFIG-AUDIT-REPAIR-001
 // un-deprecated gate.yaml (live v3 config now shipped by the template and
 // read by loadGateSection), reducing Category B 28→27 and the total 40→39.
+// SPEC-DB-RETIRE-001 re-deprecated db.yaml (new Category D) on removing the DB
+// documentation subsystem, raising the total 39→40.
 // AC-DPR-002 / AC-RIL-004 reference this.
 func TestDeprecatedPathsTotalCount(t *testing.T) {
-	const want = 39
+	const want = 40
 	got := len(DeprecatedPaths)
 	if got != want {
-		t.Errorf("len(DeprecatedPaths) = %d, want %d (9 Category A + 27 Category B + 3 Category C)", got, want)
+		t.Errorf("len(DeprecatedPaths) = %d, want %d (9 Category A + 27 Category B + 3 Category C + 1 Category D)", got, want)
 	}
 }
 
@@ -53,6 +58,7 @@ func TestDeprecatedPathsCategorySplit(t *testing.T) {
 		wantCategoryA = 9  // SPEC-AGENCY-ABSORB-001
 		wantCategoryB = 27 // SPEC-V3R6-V2-V3-CLEAN-REINSTALL-001 (reconciled 31→29→28, then 28→27 by SPEC-CONFIG-AUDIT-REPAIR-001)
 		wantCategoryC = 3  // SPEC-V3R6-AGENT-FOLDER-SPLIT-001
+		wantCategoryD = 1  // SPEC-DB-RETIRE-001 (db.yaml re-deprecated on DB subsystem removal)
 	)
 
 	counts := map[string]int{}
@@ -68,6 +74,9 @@ func TestDeprecatedPathsCategorySplit(t *testing.T) {
 	}
 	if got := counts["SPEC-V3R6-AGENT-FOLDER-SPLIT-001"]; got != wantCategoryC {
 		t.Errorf("Category C (DeprecatedSince=SPEC-V3R6-AGENT-FOLDER-SPLIT-001): got %d entries, want %d", got, wantCategoryC)
+	}
+	if got := counts["SPEC-DB-RETIRE-001"]; got != wantCategoryD {
+		t.Errorf("Category D (DeprecatedSince=SPEC-DB-RETIRE-001): got %d entries, want %d", got, wantCategoryD)
 	}
 }
 
@@ -217,6 +226,11 @@ func TestDeprecatedPathsDeprecatedByConsistency(t *testing.T) {
 			// carry DeprecatedBy = this SPEC.
 			if entry.DeprecatedBy != "SPEC-V3R6-V2-V3-CLEAN-REINSTALL-001" {
 				t.Errorf("entry %q DeprecatedBy = %q, want %q", entry.Path, entry.DeprecatedBy, "SPEC-V3R6-V2-V3-CLEAN-REINSTALL-001")
+			}
+		case "SPEC-DB-RETIRE-001":
+			// Category D (DB doc subsystem removal): DeprecatedBy = this SPEC.
+			if entry.DeprecatedBy != "SPEC-DB-RETIRE-001" {
+				t.Errorf("entry %q DeprecatedBy = %q, want %q", entry.Path, entry.DeprecatedBy, "SPEC-DB-RETIRE-001")
 			}
 		default:
 			t.Errorf("entry %q has unexpected DeprecatedSince value %q", entry.Path, entry.DeprecatedSince)

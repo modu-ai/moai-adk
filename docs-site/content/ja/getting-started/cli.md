@@ -294,7 +294,6 @@ MoAI 専用のサブコマンドも含まれます。
 | `spec-status` | git コミット時に SPEC status を自動更新 |
 | `harness-classify` | ハーネス分類器の実行とティア昇格の記録 |
 | `harness-observe` · `harness-observe-stop` · `harness-observe-subagent-stop` · `harness-observe-user-prompt-submit` | ハーネス使用ログの記録 |
-| `db-schema-sync` | PostToolUse フックで DB スキーマ変更を検出 |
 
 フックはユーザーが直接実行しません — Claude Code の `settings.json` が自動的に呼び出します。
 

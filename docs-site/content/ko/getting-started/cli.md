@@ -294,7 +294,6 @@ MoAI 전용 서브커맨드도 포함됩니다.
 | `spec-status` | git 커밋 시 SPEC status 자동 갱신 |
 | `harness-classify` | 하네스 분류기 실행 및 티어 승급 기록 |
 | `harness-observe` · `harness-observe-stop` · `harness-observe-subagent-stop` · `harness-observe-user-prompt-submit` | 하네스 사용 로그 기록 |
-| `db-schema-sync` | PostToolUse 훅에서 DB 스키마 변경 감지 |
 
 훅은 사용자가 직접 실행하지 않습니다 — Claude Code의 `settings.json` 이 자동으로 호출합니다.
 
