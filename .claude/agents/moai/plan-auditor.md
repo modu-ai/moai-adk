@@ -259,14 +259,6 @@ Execute each check in order against the full document — every REQ entry and ev
 
 ### Group 7: Cross-SPEC Reconciliation (D7)
 
-* **D7**: Cross-SPEC Reconciliation — verifies referenced SPEC IDs against `.moai/specs/` status
-
-D7 is a new dimension introduced by the workflow-optimization rule layer (Layer G). It
-verifies that every SPEC ID referenced in the body has its current status
-documented in `.moai/specs/<ID>/spec.md` frontmatter. If a referenced SPEC has
-status `retired`, `superseded`, or `archived` without an explicit reconciliation
-clause in the new SPEC body, D7 flags BLOCKING.
-
 - D7-1: Extract every `SPEC-([A-Z][A-Z0-9]+-)+[0-9]+` reference from the SPEC body (supports multi-segment IDs like SPEC-V3R5-WO-001)
 - D7-2: For each referenced SPEC, verify `.moai/specs/<SPEC-ID>/spec.md` exists
 - D7-3: For each referenced SPEC that exists, read its `status:` frontmatter field
@@ -294,20 +286,9 @@ grep -Eo 'SPEC-([A-Z][A-Z0-9]+-)+[0-9]+' <new-spec.md> | sort -u | while read SI
 done
 ```
 
-Severity rubric: BLOCKING for unresolved retirement/supersession conflict;
-SHOULD for missing-but-recoverable references.
-
 A D7 BLOCKING finding emitted (unresolved) here feeds MP-5: it forces `Verdict: FAIL` via the M5 Must-Pass Firewall (see MP-5) — it is never absorbed into the aggregate score.
 
 ### Group 8: Cross-Platform Discipline (D8)
-
-* **D8**: Cross-Platform Discipline — verifies `syscall` introductions declare `//go:build` constraint
-
-D8 is a new dimension introduced by the workflow-optimization rule layer (Layer G). It
-verifies that SPECs introducing `syscall` package imports declare a
-`//go:build` build-tag constraint in the SPEC body OR explicitly justify a
-cross-platform exemption. This dimension prevents the W3 lesson #21 incident
-(Windows syscall.Flock build-tag omission) from recurring.
 
 - D8-1: Scan SPEC body for the literal substring `syscall` (case-sensitive)
 - D8-2: If `syscall` is mentioned in any context (Go code reference, plan task,
@@ -330,9 +311,6 @@ if grep -q 'syscall' <new-spec.md>; then
   fi
 fi
 ```
-
-Severity rubric: BLOCKING if syscall is introduced without either a build-tag
-constraint or an EXCL clause; otherwise PASS.
 
 A D8 BLOCKING finding emitted (unresolved) here feeds MP-6: it forces `Verdict: FAIL` via the M5 Must-Pass Firewall (see MP-6) — it is never absorbed into the aggregate score.
 
@@ -436,8 +414,6 @@ If the SPEC directory does not exist or spec.md is not found, the agent returns 
 Invoke this agent using standard MoAI delegation patterns:
 
 - "Use the plan-auditor subagent to audit the SPEC at .moai/specs/SPEC-AUTH-001/ — this is iteration 1"
-- "Use the plan-auditor subagent to review .moai/specs/SPEC-LSP-003/ at iteration 2. Previous review report is at .moai/reports/plan-audit/SPEC-LSP-003-review-1.md"
-- "Run plan-auditor on .moai/specs/SPEC-API-007/ and write the report to .moai/reports/plan-audit/SPEC-API-007-review-3.md (final escalation iteration)"
 
 ## Delegation Note
 

@@ -170,16 +170,6 @@ Detect domain keywords and recommend a per-spawn `Agent(general-purpose)` domain
 - DevOps keywords (deployment, Docker, CI/CD): recommend a per-spawn `Agent(general-purpose)` devops specialist
 - Return a blocker report to the orchestrator for user confirmation before consultation — the orchestrator's user-interaction channel (see [askuser-protocol.md](.claude/rules/moai/core/askuser-protocol.md)) handles this
 
-## Status Responsibility Matrix
-
-This agent emits exactly the initial `status: draft` at SPEC creation. It performs NO later transition — `draft → in-progress` is owned by manager-develop, and `in-progress → implemented → completed` by manager-docs. See §SPEC Artifact Ownership.
-
-| Transition | Trigger | Agent Role |
-|---|---|---|
-| `(none) → draft` | Plan-phase artifact creation | Sets initial `status: draft` across all 4 plan-phase artifacts (spec.md + plan.md + acceptance.md + progress.md) |
-
-Status values follow the canonical 8-value enum: draft, planned, in-progress, implemented, completed, superseded, archived, rejected. (`planned` is a legacy-optional enum value, not in the active V3R6 3-phase flow.)
-
 ## SPEC Artifact Ownership
 
 This agent owns the following SPEC artifact boundaries per the canonical agent responsibility realignment policy. The full schema-level transition matrix lives in `.claude/rules/moai/development/spec-frontmatter-schema.md` § Status Transition Ownership Matrix.
@@ -192,7 +182,9 @@ This agent owns the following SPEC artifact boundaries per the canonical agent r
 
 ### Status transitions owned
 
-- `(none) → draft` emitted on plan-phase artifact creation across all 4 plan-phase files (spec.md + plan.md + acceptance.md + progress.md). Initial `status: draft` is set by this agent at SPEC creation time.
+- `(none) → draft` emitted on plan-phase artifact creation across all 4 plan-phase files (spec.md + plan.md + acceptance.md + progress.md). Initial `status: draft` is set by this agent at SPEC creation time. This is the ONLY transition this agent performs — `draft → in-progress` is owned by manager-develop, and `in-progress → implemented → completed` by manager-docs.
+
+Status values follow the canonical 8-value enum: draft, planned, in-progress, implemented, completed, superseded, archived, rejected. (`planned` is a legacy-optional enum value, not in the active V3R6 3-phase flow.)
 
 ### Mid-run authority (orchestrator-mediated only)
 
