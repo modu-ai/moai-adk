@@ -483,9 +483,104 @@ exit=0
 # "DATA RACE" / "lock acquisition timed out" 발생 건수: 0
 ```
 
+### M5 — 결함 1 검증 (신규 프로세스 50회 루프)
+
+`plan.md` §E2 / AP-8에 따라 `-count=50`이 아니라 **신규 프로세스 50회 루프**를 사용했다.
+
+AC-CFS-007:
+
+```
+$ for i in $(seq 1 50); do go test -race -count=1 ./internal/cli/preference/ || exit 1; done
+AC-CFS-007 preference: failures=0 / 50
+"WARNING: DATA RACE" 발생 건수: 0
+```
+
+AC-CFS-008:
+
+```
+$ for i in $(seq 1 50); do go test -race -count=1 ./internal/cli/ || exit 1; done
+AC-CFS-008 internal/cli: failures=0 / 50
+"WARNING: DATA RACE" 발생 건수: 0
+```
+
+AC-CFS-006 인벤토리 재도출 — 정확히 11행, `spec.md` §C.1 구문 후보 표와 동일:
+
+```
+internal/cli/github_integration_test.go: TestGithubCLI_ErrorPropagation
+internal/cli/handoff_test.go: TestHandoffCmdRegistered
+internal/cli/harness_clusters_test.go: TestHarnessClustersRegisteredInLiveTree
+internal/cli/harness_execute_test.go: TestExecuteCmd_RegisteredInRouter
+internal/cli/harness_retirement_test.go: TestHarnessV3R5VerbSurface
+internal/cli/harness_route_test.go: TestHarnessRouterCmd
+internal/cli/hook_e2e_test.go: TestHookSubcommands_AllNewEventsRegistered
+internal/cli/hook_e2e_test.go: TestHookValidEventTypes_AllHaveSubcommands
+internal/cli/preference/cmd_test.go: TestPreferenceCmd_HasDecayScanChild
+internal/cli/preference/cmd_test.go: TestPreferenceCmd_HasToggleChild
+internal/cli/tool_policy_test.go: TestToolPolicyCmd_Registered
+11
+```
+
+`t.Parallel()` 11건 전원 보존 (REQ-CFS-005) — AC-CFS-024의 제거 라인 grep 출력 없음.
+
+### M9 — 품질 게이트 및 범위 규율
+
+```
+$ go test ./...                       → exit 0 (105 packages ok, FAIL 0)
+$ go vet ./...                        → exit 0 (출력 없음)
+$ golangci-lint run --timeout=5m      → exit 0, "0 issues."
+$ go build ./...                      → exit 0
+$ GOOS=windows GOARCH=amd64 go build ./...  → exit 0
+$ GOOS=linux   GOARCH=amd64 go build ./...  → exit 0
+```
+
+lint은 착수 전 baseline(§C 사전 점검)도 `0 issues`였으므로 **신규 lint 0건**이다.
+
+커버리지 (touched 패키지, origin/main baseline은 `git archive`로 별도 트리를 만들어 실측):
+
+| 패키지 | baseline (origin/main) | 적용 후 | 델타 |
+|--------|------------------------|---------|------|
+| `internal/cli` | 75.1% | 75.1% | ±0 |
+| `internal/cli/preference` | 85.8% | 85.8% | ±0 |
+| `internal/session` | 85.8% | **86.3%** | +0.5pp |
+
+`internal/cli` 75.1%는 85% 목표 미달이나 **본 SPEC 이전부터의 상태**이며 실측으로 확인했다(추론 아님). 본 SPEC이 `internal/cli`에 추가한 파일은 `_test.go` 2개뿐이라 커버리지 분모가 불변이다.
+
+범위 규율 (AC-CFS-023) — 변경 파일이 `plan.md` §D 열거와 정확히 일치, 초과 0건:
+
+```
+.moai/specs/SPEC-CI-FLAKY-STABILIZE-001/{spec,plan,acceptance,progress}.md
+internal/cli/inventory_guard_test.go
+internal/cli/main_test.go
+internal/cli/preference/main_test.go
+internal/session/registry.go
+internal/session/registry_starvation_test.go
+9 files changed, 2017 insertions(+), 2 deletions(-)
+```
+
+M1 재현 테스트 2개 파일은 최종 diff에 **부재** (AC-CFS-010) — 소스는 위 §E.2 M1-a/M1-b에 보존.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
-_<pending run-phase>_
+```yaml
+run_complete_at: 2026-07-25
+run_commit_sha: pending-backfill-run-final
+run_status: complete
+ac_pass_count: 27
+ac_fail_count: 0
+ac_pass_with_debt_count: 0
+preserve_list_post_run_count: 5
+l44_pre_commit_fetch: "1 5 (origin/main ahead 1 — PR #1158 SPEC-AGENT-PARALLEL-OPT-001; zero file overlap with this SPEC's 9 files)"
+l44_post_push_fetch: pending-push
+new_warnings_or_lints_introduced: 0
+cross_platform_build:
+  darwin_arm64: pass
+  windows_amd64: pass
+  linux_amd64: pass
+total_run_phase_files: 9
+m1_to_mN_commit_strategy: "5 commits, one per milestone group (M1 / M2+M3 / M4 / M6 / M7+M8), RED committed before GREEN in both defect tracks"
+```
+
+PRESERVE 후 검증 5건: `LockTimeout = 2 * time.Second` 불변, `unix.LOCK_EX|unix.LOCK_NB` 불변, `ErrLockTimeout` 래핑·`errors.Is` 판정 불변, cobra 트리 구성 불변(`AddCommand` 미변경), 구문 후보 11건 `t.Parallel()` 전원 보존.
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
