@@ -545,7 +545,10 @@ excludes.
 ## §G Sync-phase Audit Record
 
 Independent 4-dimension audit (`sync-auditor`) run against `da85ad13e`, after the
-sync artifacts landed and before PR creation.
+sync artifacts landed and before PR creation. A second independent re-audit ran
+against `209c8f9f9`, after the round-1 remediation commits landed. Both report
+files are committed at the paths cited below (the directory is tracked; not
+gitignored).
 
 ```yaml
 sync_audit_verdict: FAIL
@@ -561,7 +564,25 @@ an end-to-end `moai init` against the built binary, matching the §E.2.4 byte
 sizes exactly) and confirmed the 4-locale parity is semantic rather than
 line-count-only.
 
-### Findings fixed before close
+### Round-2 re-audit (after round-1 remediation)
+
+```yaml
+sync_audit_verdict_reaudit: FAIL
+sync_audit_score_reaudit: 0.834
+sync_audit_threshold: 0.85
+sync_audit_report_reaudit: .moai/reports/sync-audit/SPEC-CLI-WIZARD-RESTRUCTURE-001-2026-07-25-reaudit.md
+```
+
+Dimension scores (harmonic mean): Functionality 0.88 · Security 0.82 · Craft
+0.84 · Consistency 0.80. Five of the seven round-1 findings were independently
+re-verified fixed (F1, S1, F4/F2-CHANGELOG-half, F5, F6). The FAIL persisted for
+two distinct reasons: the two user-deferred findings (F3, S2) held Security and
+Functionality below the bar; and a second cluster the round-1 fix had not
+reached — the docs-site half of F2, C2, F7, and four new findings the
+remediation itself introduced or exposed (N3-N8) — held Consistency and Craft
+down. This re-audit is what surfaced N3 through N8.
+
+### Findings fixed (round 1, before first close attempt)
 
 | ID | Severity | Finding | Resolution |
 |----|----------|---------|------------|
@@ -569,13 +590,29 @@ line-count-only.
 | S1 | major | `--project-mode` reached the project-mode YAML writer unvalidated while all seven sibling flags on the same command validate; C32 of this SPEC is what made that write path reachable from `moai init`, so the exposure is SPEC-introduced | `validateInitFlags` now enforces the `personal`/`team` enum, with an injection-reproduction test (commit `0e34ac7a3`) |
 | F5 | minor | `design.md` / `research.md` left at `status: in-progress` on a `completed` SPEC | both transitioned to `completed` |
 | F6 | minor | CHANGELOG cited `internal/template` coverage 84.9%; the post-merge tree measures 86.0% | CHANGELOG now states the measured value with its baseline attribution |
-| F2 | major (doc) | CHANGELOG claimed `--harness-profile` "remains selectable"; the flag is parsed but its only writer lost its last production caller in C36, so it persists nothing | CHANGELOG corrected to state the flag has no persisted effect and is declared dead code (debt (a)) |
+| F2 (CHANGELOG half) / F4 | major (doc) | CHANGELOG claimed `--harness-profile` "remains selectable"; the flag is parsed but its only writer lost its last production caller in C36, so it persists nothing | CHANGELOG corrected to state the flag has no persisted effect and is declared dead code (debt (a)) |
 
-### Findings deferred (user-scoped, follow-up SPEC)
+### Findings fixed (round 2, this repair pass)
+
+| ID | Severity | Finding | Resolution |
+|----|----------|---------|------------|
+| F3 | major | `--enable-lsp` cobra default was `false` while the wizard default flipped to `true` (REQ-WIZ-010), so `moai init --non-interactive` yielded `lsp.enabled: false` | `internal/cli/init.go` `LSPEnabled` now reads `getBoolFlagWithDefault(cmd, "enable-lsp", true)`; `moai init --non-interactive` (no flags) now persists `lsp.enabled: true`; explicit `--enable-lsp=false` unaffected |
+| C2 | major | `init.go`'s Page-3 override comment ("defaults match wizard defaults") was false for `LSPEnabled` | Resolved automatically by the F3 fix — the comment is true again |
+| F7 | minor | `init-wizard.md` said the LSP default is "enabled (Yes)" while `cli.md`/`cli-reference/init.md` said "(default: false)" (all 4 locales) | Resolved by the F3 fix; both `cli.md` and `cli-reference/init.md` now state "(default: true)" in all 4 locales |
+| F2 (docs half) | major | The 4-locale docs-site pages this SPEC's own sync phase rewrote still taught the inert `--harness-profile` flag in the non-interactive CI example, and 8 flag-table rows presented it as a normal flag | `--harness-profile default \` removed from the non-interactive example in all 4 `init-wizard.md` files; the 8 flag-table rows in `cli.md`/`cli-reference/init.md` now state the flag is accepted but currently has no persisted effect |
+| N3 | minor | The S1 validator fix (`0e34ac7a3`) rejects `enterprise` for `--project-mode`, but `project.yaml.tmpl`'s own comments still documented it as an accepted value — a regression introduced by the S1 fix narrowing accepted input against the template's own documentation | `enterprise` removed from `project.yaml.tmpl:11,14` comments (commit `580d49959`); enum stays `personal|team` |
+| N4 | minor | The S2 debt row and CHANGELOG debt (g) claimed `internal/atomicfile.Replace` "ships unused" — false repo-wide (10 production call sites across 7 files) | Restated below and in the CHANGELOG: the helper is used elsewhere; it is the config writers in `initializer_expansion.go` that do not use it |
+| N5 | minor | The CHANGELOG coverage sentence said the run-phase (84.9%) and post-merge (86.0%) figures were "above" the package's own unchanged baseline; both are in fact exactly equal to their respective baselines, not above them | CHANGELOG restated as "unchanged from" |
+| N6 | minor | §G cited `.moai/reports/sync-audit/SPEC-CLI-WIZARD-RESTRUCTURE-001-2026-07-25.md` as evidence, but the file was untracked and in no commit | Both the round-1 report and this round-2 re-audit report are committed (the `sync-audit/` directory is tracked; sibling reports already exist there) |
+| N7 | minor | §G's "Findings fixed / deferred" tables omitted three live findings (C2, F7, S3) while presenting themselves as the complete resolution record | This §G revision adds C2 and F7 to the fixed table above and S3 to the deferred table below |
+| N8 | minor | CHANGELOG debt (f)/(g) and this section routed the deferred debt to "a follow-up SPEC" that does not exist | Reworded below to "deferred, unscheduled" rather than naming a nonexistent SPEC |
+
+### Findings deferred (user-scoped)
 
 | ID | Severity | Finding | Why deferred |
 |----|----------|---------|--------------|
-| F3 | major | `--enable-lsp` cobra default is `false` while the wizard default flipped to `true` (REQ-WIZ-010), so `moai init --non-interactive` yields `lsp.enabled: false`; siblings `--enforce-quality` / `--enable-design` both default `true` | The interactive path is correct (`applyWizardPage3ToOpts` honours `cmd.Flags().Changed()`); fixing the non-interactive default is a behaviour change to a flag this SPEC did not introduce |
-| S2 | major | Seven config writers use non-atomic `os.WriteFile` on the ~22 KB deployed config set while `internal/atomicfile.Replace` ships unused | A cross-cutting writer refactor beyond this SPEC's scope; would widen the PR substantially |
+| S2 | major | Seven config writers use non-atomic `os.WriteFile` on the ~22 KB deployed config set. (Correction, N4: `internal/atomicfile.Replace` is NOT unused repo-wide — it has 10 production call sites across `internal/cli/preference/filestore.go`, `internal/harness/tier/tier.go`, `internal/migration/version.go`, `internal/hook/handoff/persist.go`, `internal/goal/state.go`, `internal/session/registry.go`, and `internal/session/store.go` (×3); it is only the *config writers* in `initializer_expansion.go` that do not route through it.) | A cross-cutting writer refactor beyond this SPEC's scope; would widen the PR substantially. Deferred and currently unscheduled — no follow-up SPEC exists yet (N8) |
+| S3 | minor | `initializer_expansion.go:118,200` reads the patch target with an unbounded `os.ReadFile`; bounded in practice by deployed template size, no explicit limit | Defense-in-depth gap, not a live issue at current template sizes; deferred alongside S2 |
+| S1-residual | minor | `writeProjectModeYAML` / `patchYAMLKey` interpolate their value raw — the injection invariant lives in the two current callers (the now-validated `--project-mode` flag and the wizard's constrained select), not in the writer itself. No live injection path exists today with the current producer set, but restoring `--harness-profile`'s writer (debt (a)) without adding validation would reopen the identical hole `validateInitFlags` closed for `--project-mode` | Defense-in-depth gap; the writer-level fix is deferred alongside S2/S3 |
 
-Both deferred findings are recorded in the CHANGELOG entry as debt (f) and (g).
+The deferred findings are recorded in the CHANGELOG entry as debt (g), (h), (i).

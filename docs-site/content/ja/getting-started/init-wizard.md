@@ -162,7 +162,6 @@ moai init my-project \
   --non-interactive \
   --project-mode personal \
   --profile medium \
-  --harness-profile default \
   --enable-lsp=false \
   --enforce-quality
 ```
