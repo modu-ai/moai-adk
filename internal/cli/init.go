@@ -372,9 +372,9 @@ func runInit(cmd *cobra.Command, args []string) error {
 		// (validated in validateInitFlags). The wizard fills opts.Profile only when
 		// the flag is absent, so the flag takes precedence over the wizard answer.
 		Profile: getStringFlag(cmd, "profile"),
-		// Phase 1 mode flags
-		StandardMode: standardMode,
-		// Phase 1 non-interactive overrides — defaults match wizard defaults (REQ-IWE-008)
+		// Page-3 non-interactive overrides — defaults match wizard defaults (REQ-IWE-008).
+		// InitOptions.StandardMode is gone (C33): the Page-3 writes are
+		// unconditional now, so there is no mode to carry into the initializer.
 		ProjectMode:               getStringFlag(cmd, "project-mode"),
 		HarnessProfile:            getStringFlag(cmd, "harness-profile"),
 		LSPEnabled:                getBoolFlag(cmd, "enable-lsp"),

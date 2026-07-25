@@ -36,7 +36,6 @@ func TestWriteHarnessProfileYAML(t *testing.T) {
 
 	opts := InitOptions{
 		ProjectRoot:    root,
-		StandardMode:   true,
 		HarnessProfile: "strict",
 	}
 	result := &InitResult{}
@@ -61,7 +60,6 @@ func TestWriteHarnessProfileYAML_DefaultProfile(t *testing.T) {
 
 	opts := InitOptions{
 		ProjectRoot:    root,
-		StandardMode:   true,
 		HarnessProfile: "", // empty → default
 	}
 	result := &InitResult{}
@@ -92,7 +90,7 @@ func TestWriteLSPYAML(t *testing.T) {
 		t.Run(c.name, func(t *testing.T) {
 			t.Parallel()
 			root, sectionsDir := setupSectionsDir(t)
-			opts := InitOptions{ProjectRoot: root, StandardMode: true, LSPEnabled: c.enabled}
+			opts := InitOptions{ProjectRoot: root, LSPEnabled: c.enabled}
 			result := &InitResult{}
 			if err := writeLSPYAML(sectionsDir, opts, result); err != nil {
 				t.Fatalf("writeLSPYAML: %v", err)
@@ -137,7 +135,6 @@ func TestWriteDesignYAML(t *testing.T) {
 			root, sectionsDir := setupSectionsDir(t)
 			opts := InitOptions{
 				ProjectRoot:         root,
-				StandardMode:        true,
 				DesignEnabled:       c.designEnabled,
 				ClaudeDesignEnabled: c.claudeDesignEnabled,
 			}
@@ -160,7 +157,6 @@ func TestWriteQualityExpansionYAML_Fresh(t *testing.T) {
 
 	opts := InitOptions{
 		ProjectRoot:               root,
-		StandardMode:              true,
 		EnforceQuality:            false,
 		CoverageExemptionsEnabled: true,
 	}
@@ -195,7 +191,6 @@ func TestWriteQualityExpansionYAML_ExistingFile(t *testing.T) {
 
 	opts := InitOptions{
 		ProjectRoot:               root,
-		StandardMode:              true,
 		EnforceQuality:            false,
 		CoverageExemptionsEnabled: false,
 	}
@@ -236,7 +231,6 @@ func TestWritePhase1Configs_AllFiles(t *testing.T) {
 
 	opts := InitOptions{
 		ProjectRoot:               root,
-		StandardMode:              true,
 		ProjectMode:               "team",
 		HarnessProfile:            "lenient",
 		LSPEnabled:                true,
@@ -322,7 +316,7 @@ func TestWriteProjectModeYAML_FreshFile(t *testing.T) {
 	t.Parallel()
 	root, sectionsDir := setupSectionsDir(t)
 
-	opts := InitOptions{ProjectRoot: root, StandardMode: true, ProjectMode: "team"}
+	opts := InitOptions{ProjectRoot: root, ProjectMode: "team"}
 	result := &InitResult{}
 	if err := writeProjectModeYAML(sectionsDir, opts, result); err != nil {
 		t.Fatalf("writeProjectModeYAML: %v", err)
