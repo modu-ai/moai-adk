@@ -2,7 +2,7 @@
 id: SPEC-AGENT-PARALLEL-OPT-001
 title: "Agent instruction diet + plan/run/sync parallelization maximization — Acceptance Criteria"
 version: "0.10.0"
-status: draft
+status: in-progress
 created: 2026-07-25
 updated: 2026-07-25
 author: manager-spec

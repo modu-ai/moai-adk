@@ -2,7 +2,7 @@
 id: SPEC-AGENT-PARALLEL-OPT-001
 title: "Agent instruction diet + plan/run/sync parallelization maximization — Progress"
 version: "0.5.0"
-status: draft
+status: in-progress
 created: 2026-07-25
 updated: 2026-07-25
 author: manager-spec
@@ -208,6 +208,65 @@ verbatim 출력:
 
 AC-APO-055는 M4 소관(`plan.md` M4 작업 7)이므로 본 M3에서 판정하지 않는다. 다만 M3 대상 3파일은 M4가 손대지 않으므로, 위 2건의 미달성은 M4에서 해소 불가하며 blocker B2로 보고한다.
 
+### 본 세션 run-phase 커밋 이력 (M3 잔여 + M4)
+
+| SHA | 마일스톤 | 파일 | diff |
+|---|---|---:|---|
+| `87ea1bc18` | M3 작업 0-4 — core-agent 본문 다이어트 | 8 | +336 / −621 |
+| `03d42eeb3` | M3 작업 1b — 파일 내 재진술 제거 | 5 | +8 / −72 |
+| `cdeceb251` | M4 작업 1-5 — 5개 에이전트 다이어트 + recipe 추출 | 13 | +233 / −599 |
+| `25231bd6d` | M4 작업 6 — parallel-batching 교차참조 스윕 | 9 | +12 / −4 |
+
+**커밋 방식 (방법 기록 — blocker B1 해소 경로)**: 병렬 트랙이 동일 에이전트 파일에 미커밋 편집을 보유한 상태였으므로, 본 세션의 run-phase 커밋 전량을 격리된 `git worktree`에서 저작하고 `git hash-object` + `git update-index`로 index에 직접 스테이징했다 — 공유 워킹트리는 건드리지 않았다. 그 결과 동일 파일 6개에 걸친 병렬 트랙의 frontmatter 변경(`effort: xhigh` → `high`)이 **본 SPEC의 모든 커밋에서 배제**되어 REQ-APO-065 스코프 순도가 보존됐다.
+
+### AC-APO-055 라인 수 판정 — `wc -l .claude/agents/moai/*.md` @ `25231bd6d`
+
+| 파일 | 실측 | 상한 | 판정 |
+|---|---:|---:|---|
+| `plan-auditor.md` | 430 | 430 | PASS |
+| `manager-spec.md` | 229 | 230 | PASS |
+| `manager-develop.md` | 239 | 240 | PASS |
+| `sync-auditor.md` | 146 | 150 | PASS |
+| `manager-git.md` | 190 | 190 | PASS |
+| `manager-design.md` | 202 | 205 | PASS |
+| `builder-harness.md` | 168 | 170 | PASS |
+| `e2e-tester.md` | 146 | 150 | PASS |
+| `manager-docs.md` | 116 | 120 | PASS |
+| `super-advisor.md` | 108 | 112 | PASS |
+| **합계** | **1974** | **1997** | **PASS** |
+
+**감축률 — 두 baseline을 분리해 기록한다 (혼동 방지)**:
+
+| baseline | 기준점 | 값 | → 1974 | 감축 |
+|---|---|---:|---|---|
+| 본 브랜치 직전 | `c48faf6ed` 시점 10파일 합계 | 2212 | 2212 → 1974 | **−238 (−10.8%)** |
+| plan-phase §F.1 | `origin/main` 10파일 합계 | 2417 | 2417 → 1974 | **−443 (−18.3%)** |
+
+`spec.md` §D.2가 명시한 "≥16%" 주장은 **plan-phase `origin/main` baseline 2417 기준**이며 위 표의 두 번째 행(−18.3%)이 그 판정 대상이다. 첫 번째 행(−10.8%)은 본 브랜치에서 실제로 발생한 감축량이며 서로 다른 기준점이므로 상호 대체 불가하다. 분기 A가 적용된다(D3 게이트가 기계적 소비자 0건을 반환).
+
+### AC-APO-054 — M4 작업 6 parallel-batching 교차참조 스윕
+
+```bash
+grep -l "verification-batch-pattern\|Parallel Execution" .claude/agents/moai/*.md | wc -l
+```
+
+실제 출력: **10** (임계 ≥ 8 → PASS). 본 SPEC 착수 전 값은 **1**이었다.
+
+### M5 검증 배치 — 격리 워크트리 `25231bd6d` 실행 결과
+
+| # | 검증 항목 | 결과 |
+|---|---|---|
+| 1 | `make build` | exit 0. 실행 후 워킹트리 clean — 즉 커밋된 `catalog.yaml`이 생성기 산출물과 **바이트 동일** |
+| 2 | 미러 바이트 parity (에이전트 10개 전량) | 선행 SPEC-ID 중립화 차이만 잔존 — `builder-harness` 4줄 / `manager-docs` 1줄 / `manager-spec` 1줄 / `sync-auditor` 1줄, 나머지 6개는 동일. **신규 차이 0** |
+| 3 | 템플릿 중립성 | `internal/template/templates/` 하위에서 `REQ-APO\|AC-APO\|SPEC-AGENT-PARALLEL` 매치 파일 **0건**. 범용 fan-out 스크립트 3종 배포 확인: `codemaps-extract.js`, `sync-audit-4dim.js`, `plan-research-fanout.js` |
+| 4 | 하네스 비배포 invariant | 템플릿 트리에 `hns-*` / `harness-*` / `my-harness-*` 스킬 디렉터리 **없음**, `.claude/agents/harness/` **없음**. 로컬에는 user-owned `hns-*` 스킬 **7개** 존재 — 의도된 상태 |
+| 5 | `go test ./...` | exit 0 — **107 패키지 ok, 0 FAIL**. 명명 가드 개별 실행: `TestTemplateNeutralityAudit` PASS / `TestTemplateNoInternalContentLeak` PASS / `TestSplitHarnessNamespaceNoLeak` PASS / `TestRuleTemplateMirrorDrift` PASS / `TestCatalogHashParity` PASS |
+| 6 | archived 에이전트 명 | `.claude/agents/moai/` 전량에서 매치 **0건** |
+| 7 | frontmatter invariant (REQ-APO-065) | `git diff origin/main...HEAD -- .claude/agents/moai/ internal/template/templates/.claude/agents/moai/ \| grep -E '^[-+](effort\|model\|tools\|color\|name\|description\|permissionMode\|memory\|hooks\|skills):'` → **출력 없음** (SPEC 전 구간) |
+| 8 | supersession (AC-APO-070) | 4개 조건 전량 충족 — `partially_supersedes: [SPEC-DWF-CODEMAPS-PILOT-001]` 실재 / `AC-DCP-010`·`REQ-DCP-009`·`REQ-DCP-010` ID 인용 / 무효화된 grep 문구 명시 / 파일럿 SPEC의 `acceptance.md`+`progress.md`가 `REQ-APO-070`·`AC-APO-070`을 역참조하는 SUPERSESSION 주석 보유 |
+| 9 | `dynamic-workflows.md` 로컬 vs 템플릿 | 동일 |
+| 10 | `moai-workflow-testing/references/e2e-desktop-native-recipes.md` | 양쪽 실재, **27줄**, 미러 0-diff |
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 ```yaml
@@ -250,6 +309,36 @@ m1_to_mN_commit_strategy: not-applied      # blocker B1 로 커밋 보류
 - `manager-spec.md` 236 vs 분기 A 상한 230(-6 부족). 동일 사유.
 - 아울러 `spec.md` §F.1 / §D.2의 `builder-harness.md` 기재값 195는 실측 222와 불일치하며(합계 2417 vs 2444), 이는 plan-phase 측정 오류다. §D.2 합계 상한(1907/1927)의 근거 수치 정정이 필요하다.
 - 상한 조정 또는 M3 범위 확대는 `spec.md` / `plan.md` body 수정이므로 **manager-spec 소관**이다.
+
+### 최종 run-phase 신호 (M1-M5 완료 — 위 M3 시점 신호를 갱신)
+
+```yaml
+run_complete_at: 2026-07-25
+run_commit_sha: 25231bd6d
+run_status: audit-ready
+milestone: M1-M5 (전량 완료)
+ac_pass_count: 13        # 본 progress.md에 실측 기록된 AC 한정 — M3 매트릭스 10건 + M4/M5 실측 3건(054/055/070). SPEC 전량 AC 집계가 아님
+ac_fail_count: 0
+preserve_list_post_run_count: not-measured-at-M5   # M5 배치 미포함 (미러 parity 검증 #2는 별개 항목)
+l44_pre_commit_fetch: not-recorded-in-this-delegation
+l44_post_push_fetch: not-recorded-in-this-delegation
+new_warnings_or_lints_introduced: 0                # go test ./... exit 0, 107 pkg ok / 0 FAIL
+cross_platform_build:
+  host: pass                                       # make build exit 0 @ 25231bd6d, 이후 워킹트리 clean
+  windows: not-re-run-at-M5                        # M5 검증 배치에 미포함 (M3 시점 신호의 pass 기록 참조)
+full_test_suite: pass                              # go test ./... exit 0 — 107 패키지 ok, 0 FAIL
+total_run_phase_files: "8 / 5 / 13 / 9"            # 본 세션 4커밋의 커밋별 파일 수. 합산은 중복 포함이므로 미기재
+m1_to_mN_commit_strategy: multi-commit (M1..M5)    # 본 세션 기여분 4커밋, 격리 워크트리 + index-level 스테이징
+```
+
+### blocker 해소 상태
+
+- **B1 (catalog 해시 재생성 충돌로 커밋 보류)** — **해소**. 격리 워크트리 저작 + `git hash-object` / `git update-index` index-level 스테이징으로 병렬 트랙의 frontmatter 변경을 흡수하지 않고 커밋했다(§E.2 커밋 방식 기록). REQ-APO-065 invariant는 SPEC 전 구간에서 **출력 없음**으로 실측 확인됐다(§E.2 M5 배치 #7).
+- **B2 (`spec.md` §D.2 상한 2건 도달 불가)** — **해소**. `spec.md` v0.10.0(`c48faf6ed`)의 §D.2 상한 재보정 이후 실측 10파일 전량이 상한을 충족한다(§E.2 AC-APO-055 표: `plan-auditor` 430/430, `manager-spec` 229/230).
+
+### 잔여 부채 — sync-phase 이관
+
+`builder-harness.md`는 커밋 시점 **168/170**으로 충족하나, 병렬 트랙이 동일 파일에 하네스 model/effort 정책 **+27줄** 추가를 미커밋 상태로 보유하고 있다. 양쪽이 모두 랜딩하면 해당 파일은 약 **195줄**이 되어 상한 170을 초과하며, 그 경우 `spec.md` §D.2.1 절차에 따른 상한 재보정이 필요하다. 본 run-phase에서는 해소하지 않고 **sync-phase 부채 항목으로 기록**한다.
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
