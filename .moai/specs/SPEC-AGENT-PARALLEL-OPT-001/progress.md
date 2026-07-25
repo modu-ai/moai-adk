@@ -344,7 +344,7 @@ m1_to_mN_commit_strategy: multi-commit (M1..M5)    # 본 세션 기여분 4커�
 
 ```yaml
 sync_complete_at: 2026-07-25
-sync_commit_sha: pending-backfill
+sync_commit_sha: aa24273aa
 sync_status: audit-ready
 ac_pass_count: 54
 ac_fail_count: 0
