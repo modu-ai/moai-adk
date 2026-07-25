@@ -104,8 +104,8 @@ var translations = map[string]map[string]QuestionTranslation{
 			Title:       "모델 정책 선택",
 			Description: "각 에이전트에 할당되는 Claude 모델 등급을 제어합니다. Claude 플랜에 맞추세요.",
 			Options: []OptionTranslation{
-				{Label: "Max (권장)", Desc: "Fable 5 (low) + Opus 4.8 (high) + Sonnet (medium~low) — Max $200 플랜"},
-				{Label: "Medium", Desc: "Opus 4.8 (xhigh~low) + Sonnet (medium~low) — Max $100 플랜"},
+				{Label: "Max", Desc: "Fable 5 (low) + Opus 4.8 (high) + Sonnet (medium~low) — Max $200 플랜"},
+				{Label: "Medium (권장)", Desc: "Opus 4.8 (xhigh~low) + Sonnet (medium~low) — Max $100 플랜"},
 				{Label: "Low", Desc: "Opus 4.8 (high~low) + Sonnet (medium~low) — Plus $20 플랜"},
 			},
 		},
@@ -216,8 +216,8 @@ var translations = map[string]map[string]QuestionTranslation{
 			Title:       "モデルポリシーを選択",
 			Description: "各エージェントに割り当てる Claude モデルのティアを制御します。ご利用の Claude プランに合わせてください。",
 			Options: []OptionTranslation{
-				{Label: "Max (推奨)", Desc: "Fable 5 (low) + Opus 4.8 (high) + Sonnet (medium~low) — Max $200 プラン"},
-				{Label: "Medium", Desc: "Opus 4.8 (xhigh~low) + Sonnet (medium~low) — Max $100 プラン"},
+				{Label: "Max", Desc: "Fable 5 (low) + Opus 4.8 (high) + Sonnet (medium~low) — Max $200 プラン"},
+				{Label: "Medium (推奨)", Desc: "Opus 4.8 (xhigh~low) + Sonnet (medium~low) — Max $100 プラン"},
 				{Label: "Low", Desc: "Opus 4.8 (high~low) + Sonnet (medium~low) — Plus $20 プラン"},
 			},
 		},
@@ -328,8 +328,8 @@ var translations = map[string]map[string]QuestionTranslation{
 			Title:       "选择模型策略",
 			Description: "控制为每个智能体分配的 Claude 模型等级。请与您的 Claude 套餐匹配。",
 			Options: []OptionTranslation{
-				{Label: "Max (推荐)", Desc: "Fable 5 (low) + Opus 4.8 (high) + Sonnet (medium~low) — Max $200 套餐"},
-				{Label: "Medium", Desc: "Opus 4.8 (xhigh~low) + Sonnet (medium~low) — Max $100 套餐"},
+				{Label: "Max", Desc: "Fable 5 (low) + Opus 4.8 (high) + Sonnet (medium~low) — Max $200 套餐"},
+				{Label: "Medium (推荐)", Desc: "Opus 4.8 (xhigh~low) + Sonnet (medium~low) — Max $100 套餐"},
 				{Label: "Low", Desc: "Opus 4.8 (high~low) + Sonnet (medium~low) — Plus $20 套餐"},
 			},
 		},

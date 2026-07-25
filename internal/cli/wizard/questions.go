@@ -113,12 +113,15 @@ func DefaultQuestions(projectRoot string) []Question {
 			// Matrix A): max leans on Fable + Opus for core agents; medium/low mix
 			// Opus and Sonnet across effort levels. Keep these in sync with that
 			// matrix, not with a marketing summary.
+			// The (Recommended) marker tracks the Default below: Medium is the default
+			// for new projects (SPEC-CLI-WIZARD-RESTRUCTURE-001 REQ-WIZ-008). Max/High
+			// remains a fully selectable tier — only the DEFAULT moved.
 			Options: []Option{
-				{Label: "Max (Recommended)", Value: "high", Desc: "Fable 5 (low) + Opus 4.8 (high) + Sonnet (medium~low) — Max $200 plan"},
-				{Label: "Medium", Value: "medium", Desc: "Opus 4.8 (xhigh~low) + Sonnet (medium~low) — Max $100 plan"},
+				{Label: "Max", Value: "high", Desc: "Fable 5 (low) + Opus 4.8 (high) + Sonnet (medium~low) — Max $200 plan"},
+				{Label: "Medium (Recommended)", Value: "medium", Desc: "Opus 4.8 (xhigh~low) + Sonnet (medium~low) — Max $100 plan"},
 				{Label: "Low", Value: "low", Desc: "Opus 4.8 (high~low) + Sonnet (medium~low) — Plus $20 plan"},
 			},
-			Default:  "high",
+			Default:  "medium",
 			Required: true,
 		},
 		// 3. Report Format — html+md vs md.

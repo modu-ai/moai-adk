@@ -150,7 +150,7 @@ func TestUnifiedForm_ConditionalGroupsAppear(t *testing.T) {
 	}
 	d.typeText("uniproj")
 	d.enter() // project_name -> model_policy
-	d.enter() // model_policy (high)
+	d.enter() // model_policy (medium — the new default)
 	d.enter() // report_format (html+md) -> next group
 
 	// Group (Git): git_mode manual -> personal (one cursor down).
@@ -202,7 +202,7 @@ func TestUnifiedForm_ConditionalGroupsAppear(t *testing.T) {
 		ConversationLang: "en",
 		UserName:         "octo-dev",
 		ProjectName:      "uniproj",
-		ModelPolicy:      "high",
+		ModelPolicy:      "medium",
 		ReportFormat:     "html+md",
 		GitMode:          "personal",
 		GitProvider:      "github",

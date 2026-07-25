@@ -20,7 +20,10 @@ const (
 )
 
 // DefaultModelPolicy is the default model policy for new projects.
-const DefaultModelPolicy = ModelPolicyHigh
+// Medium since SPEC-CLI-WIZARD-RESTRUCTURE-001 (REQ-WIZ-009): it matches the
+// most common plan and is the tier the init wizard pre-selects. ModelPolicyHigh
+// is unchanged and remains a fully selectable tier — only the DEFAULT moved.
+const DefaultModelPolicy = ModelPolicyMedium
 
 // ValidModelPolicies returns all valid model policy values.
 func ValidModelPolicies() []string {
