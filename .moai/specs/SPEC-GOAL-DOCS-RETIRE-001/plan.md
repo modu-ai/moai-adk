@@ -76,7 +76,7 @@ ls docs-site/content/{en,ja,ko,zh}/advanced/self-evolving.md | wc -l      # expe
 
 ## §D Constraints
 
-- **D1 [HARD]** Every emission detector anchors on a translation-surviving token; every emission baseline is recorded per locale and is symmetric (REQ-GDR-003, REQ-GDR-004).
+- **D1 [HARD]** Every emission detector anchors on a translation-surviving token (REQ-GDR-003) and records a per-locale baseline (REQ-GDR-004). Symmetry is required where the targeted content is symmetric, with a named exemption otherwise (REQ-GDR-009); every zero-target detector additionally carries a liveness floor against the immutable base (REQ-GDR-010).
 - **D2 [HARD]** Exactly the four surfaces in §A.2 are retained. Test every sweep-style criterion against each of the four before recording it.
 - **D3 [HARD]** No new locale pages (REQ-GDR-008).
 - **D4 [HARD]** No edit outside the 13 scoped files. `docs-site/content/*/claude-code/**` and `.moai/research/` are untouched.
@@ -163,7 +163,7 @@ ACs: AC-GDR-006, AC-GDR-011, AC-GDR-012.
 
 ## §H Cross-References
 
-- `spec.md` §B — REQ-GDR-001..008.
+- `spec.md` §B — REQ-GDR-001..010.
 - `acceptance.md` — 12 criteria with per-locale baselines, plus the REQ↔AC matrix (§E).
 - `research.md` — the documentation measurement and per-detector locale-symmetry proof.
 - `SPEC-GOAL-SURFACE-UNIFY-001` — the parent (`depends_on`).

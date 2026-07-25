@@ -400,6 +400,7 @@ sed -n '/^## §E.2 Run-phase Evidence/,/^## §E.3/p' .moai/specs/SPEC-GOAL-SURFA
 
 - Recorded baseline: `0` (§E.2 is the `_<pending run-phase>_` placeholder)
 - Target: `>= 1`
+- **Self-attestation limit, stated rather than implied (finding A-7).** The artefact is a string the run phase writes into its own `progress.md`, so this criterion attests to itself: its truthfulness is bound by `verification-claim-integrity.md` §1.1 surface 2 (manager-agent self-verification), not by an independent observation. It is the best mechanism available at this layer — the RED state is transient and leaves no other durable trace — and it is a real improvement over asserting AC-GSU-023 blocks the ordering, which it does not. It is **not** mechanical proof, and must not be cited as such.
 
 ---
 
@@ -438,10 +439,10 @@ These already pass at baseline, so they are regression gates rather than ACs —
 - **Renaming the `--goal` flag while updating its help string.** Blocked by AC-GSU-026's first half (`"goal", ""` must still be present).
 - **Deleting `internal/goal/evaluate.go`'s native-`/goal` yield references as part of a Go sweep.** Blocked by AC-GSU-027's `>= 2` / `>= 3` pins — this would remove the no-double-block safety invariant.
 - **Hard-renaming `PrimitiveGoal` after a manifest starts declaring the old token.** AC-GSU-024 re-measures occupancy at judgment time; a non-zero count fails the compound and forces the back-compat path (REQ-GSU-022).
-- **Sweeping `docs-site/content/*/claude-code/**` along with the MoAI surface.** Blocked by AC-GSU-029's `80` pin.
+- **Sweeping `docs-site/content/*/claude-code/**`.** Out of this SPEC's scope entirely (`spec.md` §C excludes `docs-site/content/**`); owned by `SPEC-GOAL-DOCS-RETIRE-001` AC-GDR-008's `cc=80` pin.
 - **Treating `cli-reference/loop.md` as in scope.** Its `/goal` match is the URL path `/en/cli-reference/goal`, not a command reference; it appears in no AC file list.
-- **Sweeping `autonomous-loops.md` to zero.** Blocked by AC-GSU-028's three retention pins at `4`/`4`/`4`.
-- **Sweeping the strategy record.** Blocked by AC-GSU-032's `25` content pin.
+- **Sweeping `autonomous-loops.md` to zero.** Out of scope here; owned by `SPEC-GOAL-DOCS-RETIRE-001` AC-GDR-006's per-locale `h3/h2/row` pins.
+- **Sweeping the strategy record.** Out of scope here; owned by `SPEC-GOAL-DOCS-RETIRE-001` AC-GDR-007's `25` content pin.
 - **Leaving the v4manifest test fixture behind.** Blocked by AC-GSU-030's marker half; the suite-exit half alone would pass at baseline.
 - **Swapping only the backticked token on a mixed-form line** (`orchestration-mode-selection.md:18,145,204,205`). Blocked by AC-GSU-031's union detector on the files it covers.
 

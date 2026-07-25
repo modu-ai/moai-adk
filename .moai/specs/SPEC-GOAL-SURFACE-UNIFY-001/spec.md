@@ -72,15 +72,11 @@ The public-documentation layer (13 paths) was split out to `SPEC-GOAL-DOCS-RETIR
 
 - **REQ-GSU-003** (Unwanted) — The MoAI pipeline shall not emit a native `/goal` line on any surface, because native `/goal` is HUMAN-ONLY and no tool call can trigger it.
 
-- **REQ-GSU-004** (Capability gate) — **Where** a surface's native-`/goal` reference is a *classification, prohibition rationale, or runtime-interoperation invariant* rather than an emission instruction, that reference shall be retained. The authoritative membership list is the retention register at `plan.md` §A.2 — this requirement binds to that register rather than restating it, so the two cannot drift apart. Within this SPEC's post-split scope (doctrine + Go) the register holds **three** surfaces:
+- **REQ-GSU-004** (Capability gate) — **Where** a surface's native-`/goal` reference is a *classification, prohibition rationale, or runtime-interoperation invariant* rather than an emission instruction, that reference shall be retained. The authoritative membership list is the **retention register at `plan.md` §A.2**, which this requirement binds to by reference and does not reproduce.
 
-  | # | Retention surface | Layer | Why it is not an emission path |
-  |---|---|---|---|
-  | 1 | `goal-directive.md` § Native `/goal` Prohibition | doctrine | A prohibition needs its subject |
-  | 2 | `native-invocation-model.md` § Classification Matrix + Axis B | doctrine | A factual statement about Claude Code; it is the justification for `/moai goal` existing |
-  | 3 | `internal/goal/evaluate.go` (native-`/goal` yield invariant) | Go | Implements interoperation *with* native `/goal` (`stop-goal` yields to avoid double-block). Deleting it would remove a safety invariant, not an emission |
+  Binding by reference is deliberate and load-bearing: a restated membership table here is the exact drift channel that produced the retention-count contradiction twice (audit findings D2 and N1). The register is the single place membership is stated; this requirement names it as the authority. Its count is verified consistent across the four dependent surfaces by `plan.md` §A.2's own derivation note.
 
-  The three documentation-layer retention surfaces — `docs-site/content/*/claude-code/**`, the `autonomous-loops.md` native sections, and `.moai/docs/autonomous-workflow-strategy.md` — moved to `SPEC-GOAL-DOCS-RETIRE-001` with the sync-phase scope. They are registered in that SPEC's own retention register, not here.
+  Documentation-layer retention surfaces are registered in `SPEC-GOAL-DOCS-RETIRE-001`'s own register (`plan.md` §A.2 there), not here — see §B.7.
 
 - **REQ-GSU-005** (Ubiquitous) — The `goal-directive.md` rule shall be rewritten in place under its existing filename, so that no cross-reference path anywhere in the repository requires updating.
 
@@ -138,14 +134,19 @@ The public-documentation layer (13 paths) was split out to `SPEC-GOAL-DOCS-RETIR
 
 The public-documentation scope was split out to **`SPEC-GOAL-DOCS-RETIRE-001`** after plan-audit iteration 2 emitted STOP. Identifiers are **NOT renumbered** here: 62 judgment-command baselines (29 at iteration 1 + 33 at iteration 2) reproduced verbatim against these identifiers across two independent audits, and renumbering would discard that audit trail. The gaps below are deliberate.
 
-| Vacated here | Destination | Subject |
+| Vacated here | Destination in `SPEC-GOAL-DOCS-RETIRE-001` | Subject |
 |---|---|---|
-| REQ-GSU-025 | `SPEC-GOAL-DOCS-RETIRE-001` REQ-GDR-001 | sync phase updates the affected doc set |
-| REQ-GSU-026 | `SPEC-GOAL-DOCS-RETIRE-001` REQ-GDR-002 | sync phase retains CC pages / contrast pages / archives |
-| REQ-GSU-027 | `SPEC-GOAL-DOCS-RETIRE-001` REQ-GDR-003 | no locale-symmetry manufacture |
-| AC-GSU-028 | `SPEC-GOAL-DOCS-RETIRE-001` AC-GDR-001..005 | split-surface emission markers + retention pins (re-anchored locale-invariantly) |
-| AC-GSU-029 | `SPEC-GOAL-DOCS-RETIRE-001` AC-GDR-006 | sync retention pins |
-| AC-GSU-032 | `SPEC-GOAL-DOCS-RETIRE-001` AC-GDR-007 | strategy-record superseding note |
+| REQ-GSU-025 | REQ-GDR-001 | sync phase replaces emission references in the sweep-target doc set |
+| REQ-GSU-026 | **REQ-GDR-006** | sync phase retains CC pages / contrast pages / archives |
+| REQ-GSU-027 | **REQ-GDR-008** | no locale-symmetry manufacture |
+| AC-GSU-028 (emission half) | **AC-GDR-001, 002, 003, 005** | per-marker emission criteria; the a3 detector re-anchored locale-invariantly |
+| AC-GSU-028 (retention half) | **AC-GDR-006** | split-surface `h3`/`h2`/`row` retention pins, per locale |
+| AC-GSU-029 | **AC-GDR-008** | sync retention pins (`cc=80 goal.md=12 moai-goal=4 hooks=2 research=4`) |
+| AC-GSU-032 | AC-GDR-007 | strategy-record superseding note + `25` content pin |
+
+Corrected at audit iteration 3 (finding A-1): four destinations were wrong. Each row above was re-derived by reading the destination requirement's or criterion's actual subject in SPEC-B rather than by carrying the earlier mapping — for example `AC-GSU-029`'s destination was fixed by locating its `cc=80 goal.md=12` baseline, which sits inside AC-GDR-008. `SPEC-GOAL-DOCS-RETIRE-001` §D carries the mirror-image table; the two are cross-checked against each other and against the identifiers actually present in each SPEC.
+
+Note that `AC-GDR-004` is **new** in SPEC-B (the L7 mis-attribution, previously in a coverage hole) and is deliberately absent from this register — the earlier `AC-GDR-001..005` range wrongly absorbed it while omitting AC-GDR-006.
 
 Retained identifier set in this SPEC: **REQ-GSU-001..024 + 028** (25 requirements) and **AC-GSU-001..027 + 030, 031, 033** (30 criteria). Numbering is non-contiguous by design.
 
@@ -173,7 +174,7 @@ Retained identifier set in this SPEC: **REQ-GSU-001..024 + 028** (25 requirement
 
 - Any edit to the 106 dirty files on the stale branch in the main checkout. This SPEC executes entirely in the isolated worktree at `origin/main`.
 - Renaming `goal-directive.md`. The rewrite is in place under the existing filename by explicit decision (D3).
-- Closing the pre-existing four-locale content gap in `docs-site/content/*/advanced/hooks-reference.md` (the page exists in all four locales; only `en` and `ko` carry the reference). Flagged, not fixed (REQ-GSU-027).
+- Closing the pre-existing four-locale content gap in `docs-site/content/*/advanced/hooks-reference.md`. Out of this SPEC's scope with the rest of `docs-site/**`; owned by `SPEC-GOAL-DOCS-RETIRE-001` REQ-GDR-008.
 - Reconciling the pre-existing verb-surface inconsistency where `SKILL.md` advertises a `resume` verb that `workflows/goal.md` documents as deferred and not delivered. M3 aligns the wrapper's `argument-hint` to the delivered surface; it does not adjudicate the `resume` verb itself.
 
 ### Out of Scope — URL-path false positives
@@ -183,6 +184,7 @@ Retained identifier set in this SPEC: **REQ-GSU-001..024 + 028** (25 requirement
 ### Out of Scope — historical records
 
 - `.moai/specs/**` historical SPEC artifacts (~60 files carrying native-`/goal`). A completed SPEC body is an immutable record of what was decided at the time; retroactively rewriting it would falsify the record. Same rationale as the `.moai/research/` archives — stated explicitly here rather than left to silence.
+
 ### Out of Scope — public and internal documentation (split to SPEC-GOAL-DOCS-RETIRE-001)
 
 - `docs-site/content/{en,ja,ko,zh}/**` in full, and `.moai/docs/autonomous-workflow-strategy.md`. The 13-file affected set and the documentation-layer retention surfaces are owned by `SPEC-GOAL-DOCS-RETIRE-001`, which depends on this SPEC. See §B.7.

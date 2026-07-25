@@ -55,7 +55,7 @@ which mirrors `internal/cli/handoff.go:104`'s help string `"record a /goal condi
 Commands and observed outputs are recorded in `research.md`. Backticked detector (`` `/goal ``) throughout, because an unbackticked search matches link paths such as `/en/cli-reference/goal`:
 
 - **50 `docs-site` files** carry a native-`/goal` reference: **28** under `claude-code/`, **22** on the MoAI surface.
-- **13 files** are in this SPEC's scope; of those, **8 are sweep targets** carrying **18 emission markers**, and 5 are retained.
+- **13 files** are in this SPEC's scope; of those, **8 are sweep targets** carrying **24 emission markers**, and 5 are retained. The figure is the measured AC-GDR-012 aggregate (`total=24`), derived by running the command rather than carried from an earlier estimate. A superseded `18` appeared here at authoring: it used the disqualified `per-turn` detector's `2` instead of the corrected `4`, and omitted the L7 marker's `4` entirely — understating scope by exactly the two things this SPEC exists to fix (finding B-4).
 - **Four retention surfaces** at this layer — see §B.2 and `plan.md` §A.2.
 
 ---
@@ -70,7 +70,7 @@ Commands and observed outputs are recorded in `research.md`. Backticked detector
 
 - **REQ-GDR-003** (Ubiquitous) — Every emission detector used to judge this SPEC shall anchor on a token that survives translation — a backticked code literal, a structural marker, or a string already untranslated in all four locales — and shall not anchor on translatable prose.
 
-- **REQ-GDR-004** (Event-driven) — **When** an emission detector is recorded, its baseline shall be stated **per locale**, and the per-locale values shall be symmetric; an asymmetric baseline is evidence the detector is prose-anchored and shall be re-anchored before the criterion is accepted.
+- **REQ-GDR-004** (Event-driven) — **When** an emission detector is recorded, its baseline shall be stated **per locale**.
 
 ### §B.2 Retention
 
@@ -83,6 +83,12 @@ Commands and observed outputs are recorded in `research.md`. Backticked detector
 ### §B.3 Locale parity
 
 - **REQ-GDR-008** (Unwanted) — The sync phase shall not create new locale pages to force symmetry. The four-locale obligation binds pages that exist; a content gap predating this SPEC is not this SPEC's drift to close.
+
+### §B.4 Detector discipline
+
+- **REQ-GDR-009** (Capability gate) — **Where** the content a detector targets is locale-symmetric, the detector's per-locale baseline shall be symmetric; an asymmetric baseline is then evidence the detector is prose-anchored and shall be re-anchored before the criterion is accepted. **Where** the targeted content is genuinely locale-asymmetric, the asymmetry shall be recorded with its justification and the detector exempted by name, because forcing symmetry there would require creating content REQ-GDR-008 forbids.
+
+- **REQ-GDR-010** (Event-driven) — **When** an emission detector's target state is zero in every locale, the criterion judging it shall additionally assert the detector matches non-zero content against an immutable recorded base, so a detector that matches nothing is distinguishable from a surface that was swept.
 
 ---
 
@@ -113,21 +119,26 @@ Commands and observed outputs are recorded in `research.md`. Backticked detector
 
 ## §D Acceptance Criteria
 
-Enumerated in `acceptance.md`: **12 criteria**, AC-GDR-001 through AC-GDR-012, each with its judgment command and the verbatim baseline observed in the worktree. Every emission criterion carries a **per-locale** baseline demonstrating symmetry (REQ-GDR-004).
+Enumerated in `acceptance.md`: **12 criteria**, AC-GDR-001 through AC-GDR-012 (contiguous), each with its judgment command and the verbatim baseline observed in the worktree. Every emission criterion carries a **per-locale** baseline demonstrating symmetry (REQ-GDR-004).
 
 Provenance of the carried criteria — the parent's identifiers are recorded so the two audits' evidence stays connected:
 
-| This SPEC | Came from | Change |
+| This SPEC | Came from `SPEC-GOAL-SURFACE-UNIFY-001` | Change |
 |---|---|---|
-| AC-GDR-001..003 | `SPEC-GOAL-SURFACE-UNIFY-001` AC-GSU-028 (emission half) | Split per marker; a3 **re-anchored** locale-invariantly (parent audit finding N2) |
-| AC-GDR-004 | new | Closes parent finding S-new-3 (the L7 mis-attribution, previously in a coverage hole) |
-| AC-GDR-005 | AC-GSU-028 (retention half) | Per-locale pins |
-| AC-GDR-006 | AC-GSU-029 | Unchanged baselines |
-| AC-GDR-007 | AC-GSU-032 | Unchanged baseline |
-| AC-GDR-008..011 | new | Locale-parity criteria (REQ-GDR-004) |
-| AC-GDR-012 | new | Held-out docs build |
+| AC-GDR-001, 002, 003 | AC-GSU-028 (emission half) | Split per marker; per-locale baselines added |
+| AC-GDR-004 | **new** | Closes the parent's finding S-new-3 — the L7 mis-attribution, previously neither swept nor pinned |
+| AC-GDR-005 | AC-GSU-028 (emission half) | **The N2 fix** — the a3 detector re-anchored from `per-turn` prose onto the untranslated `auto mode` |
+| AC-GDR-006 | AC-GSU-028 (retention half) | Split-surface pins, converted to per-locale |
+| AC-GDR-007 | AC-GSU-032 | Baseline unchanged (`0` / `25`) |
+| AC-GDR-008 | AC-GSU-029 | Baseline unchanged (`cc=80 goal.md=12 moai-goal=4 hooks=2 research=4`) |
+| AC-GDR-009, 010, 011 | **new** | Locale inventory · the symmetry+liveness meta-guard · the docs build |
+| AC-GDR-012 | **new** | Aggregate emission integration criterion (`total=24`), which the four compounds reference |
+
+Corrected at this SPEC's audit iteration 1 (finding B-3): four rows mapped to the wrong criterion. Each row was re-derived from the criterion's actual subject rather than carried — AC-GDR-005 is emission (not retention), AC-GDR-006 is the retention half (not AC-GSU-029), AC-GDR-008 carries AC-GSU-029 verbatim (not "new"), and AC-GDR-012 is the aggregate integration criterion (the docs build is AC-GDR-011). The parent's §B.7 register carries the mirror-image table; the two are cross-checked against each other and against the identifiers actually present in each SPEC.
 
 A **REQ ↔ AC traceability matrix** is at `acceptance.md` §E.
+
+**Artifact set — deliberately beyond the Tier M minimum (finding B-6).** Tier M requires three artifacts (`spec` + `plan` + `acceptance`); six are delivered. `design.md` and `research.md` are retained deliberately, not by tier misclassification: the two MUST-FIX findings of this SPEC's first audit (B-1 liveness, B-2 asymmetry carve-out) are both *design* questions about detector semantics, and `research.md` §C carries the per-detector locale-symmetry proof plus the disqualified-detector record that keeps the N2 anchor from being reintroduced. Trimming them would discard the evidence that makes the criteria auditable. The tier remains **M** — confirmed correct against the complexity criteria (13 files, one verification regime, non-constitutional, fully reversible); only the artifact count exceeds the minimum.
 
 ---
 
