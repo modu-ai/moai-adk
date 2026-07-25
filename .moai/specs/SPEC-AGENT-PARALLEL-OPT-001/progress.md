@@ -346,9 +346,9 @@ m1_to_mN_commit_strategy: multi-commit (M1..M5)    # 본 세션 기여분 4커�
 sync_complete_at: 2026-07-25
 sync_commit_sha: 52c5dba79
 sync_status: audit-ready
-ac_pass_count: 54
+ac_pass_count: 56
 ac_fail_count: 0
-ac_debt_count: 2
+ac_debt_count: 0
 ac_total: 56
 ```
 
@@ -381,12 +381,18 @@ grep -cE 'squash.{0,6}merge.{0,6}rebase' .claude/agents/moai/manager-git.md
 ```
 결과: **1**(origin/main 동일 패턴: 3) — AC가 의도한 3→1 축약이 실제로 발생했음을 확인. 운용 경로 2곳(`gh pr merge --squash`, `gh pr merge --<merge_method>`) 보존 확인. 교정: `acceptance.md`에서 포맷-관용 정규식으로 대체(manager-spec 소관, 커밋 `6f5a28ff0`, 3줄 변경). 위 인용은 `acceptance.md` AC-APO-052 셀의 축자 명령이다 — 리터럴 `\|` 교대(alternation) 대신 `.{0,6}` 스팬으로 세 토큰의 순차 근접을 판정하며, 이는 markdown 표 셀 안에서 리터럴 파이프가 행을 깨뜨리는 문제도 함께 회피한다.
 
-**교정 후 AC 매트릭스: 54 PASS / 0 FAIL / 2 PASS-WITH-DEBT / 0 UNVERIFIED (총 56).** MUST 등급 FAIL 0건 — `acceptance.md` §A close firewall 해제.
+**교정 후 AC 매트릭스: 56 PASS / 0 FAIL / 0 PASS-WITH-DEBT / 0 UNVERIFIED (총 56).** MUST 등급 FAIL 0건 — `acceptance.md` §A close firewall 해제. (2026-07-25 amendment로 AC-APO-072/072b PASS-WITH-DEBT 2건이 해소되어 최종 56 PASS로 갱신 — 아래 "PASS-WITH-DEBT 2건 — RESOLVED" 참조.)
 
-### PASS-WITH-DEBT 2건
+### PASS-WITH-DEBT 2건 — RESOLVED (2026-07-25 amendment)
 
-- **AC-APO-072 (MUST)** — 1차 조건(`internal_content_leak_test.go:554` `".js": true` 존재 + `TestTemplateNoInternalContentLeak` green)은 기계적으로 검증됨. 부채: RED/GREEN round-trip(비중립 스크립트 주입 → guard FAIL → 중립화 → guard PASS)은 템플릿 트리 변형이 필요해 read-only 감사 범위 밖. run-phase 기록으로 대체(§E.2).
-- **AC-APO-072b (MUST)** — 1차 조건(`TestSplitHarnessNamespaceNoLeak` green + `ls .../.claude/workflows/ | grep -cE '^(hns-|harness-)'` → 0)은 기계적으로 검증됨. 부채: blocking-validity 확인(`hns-release-update-run.js` 주입 → `SPLIT_HARNESS_NAMESPACE_LEAK` FAIL 기대)은 템플릿 트리 변형이 필요해 재실행하지 않음.
+원래 두 AC는 "템플릿 트리 변형이 필요해 read-only 감사 범위 밖"이라는 이유로 RED/GREEN round-trip 미실행 상태로 PASS-WITH-DEBT 판정되었다. 이 이연 사유는 본 amendment에서 무효화되었다 — 격리 워크트리(`fix/SPEC-APO-001-ac072-amendment`, base `c7309aeb6`)에서 실제 RED/GREEN round-trip을 수행하고 직접 관측했다.
+
+- **AC-APO-072 (MUST)** — 원 이연 사유: "비중립 스크립트 주입 → guard FAIL → 중립화 → guard PASS round-trip은 템플릿 트리 변형이 필요해 범위 밖". 사용 프로브: `internal/template/templates/.claude/workflows/redgreen-probe.js` (SPEC-ID 리터럴 `SPEC-V3R6-REDGREEN-PROBE` 포함). 관측된 FAIL: `TestTemplateNoInternalContentLeak` → `internal_content_leak_test.go:735: [1] templates/.claude/workflows/redgreen-probe.js | class=C1-spec-id-prefix | match=SPEC-V3R6-REDGREEN-PROBE`. 프로브 제거 후 GREEN: `ok  github.com/modu-ai/moai-adk/internal/template  0.672s`. → **RESOLVED, PASS**.
+- **AC-APO-072b (MUST)** — 원 이연 사유: "`hns-release-update-run.js` 주입 → `SPLIT_HARNESS_NAMESPACE_LEAK` FAIL 기대 확인은 템플릿 트리 변형이 필요해 재실행하지 않음". 사용 프로브: `internal/template/templates/.claude/workflows/hns-release-update-run.js`. 관측된 FAIL: `TestSplitHarnessNamespaceNoLeak` → `split_namespace_test.go:96: SPLIT_HARNESS_NAMESPACE_LEAK: dev-only split-harness Runner ".claude/workflows/hns-release-update-run.js" found in embedded template tree.` 프로브 제거 후 GREEN: `ok  github.com/modu-ai/moai-adk/internal/template  0.227s`. → **RESOLVED, PASS**.
+
+두 프로브 모두 매처를 먼저 읽은 뒤 저작되어 vacuous RED가 아님을 확인했다: C1 클래스 패턴(`internal_content_leak_test.go:163`)은 always-on(strict-gate 아님)이고 `.js`는 `leakTextExtensions`(:554)에 등록되어 있으며, `splitHarnessAgentPrefixes`에는 `hns-release-update`가 포함되어 있다. 프로브 제거 후 워크트리 clean 상태(`git status --short` → 0 dirty)도 확인됨. 전체 round-trip 로그: `/private/tmp/claude-501/-Users-goos-MoAI-moai-adk-go/57efc472-b30c-47d3-8baf-87bb4d01d8d3/scratchpad/verify/ac072-roundtrip.log` (세션 로컬 경로 — 재현 시 동일 절차로 재생성).
+
+**Amendment-close 기록**: `amendment_of: SPEC-AGENT-PARALLEL-OPT-001` (self-referential in-place amendment). manager-spec 재오픈 커밋 `bf683eb7b`(spec.md/plan.md/acceptance.md → `status: in-progress`). 본 sync 커밋(§ 아래 SHA)이 4개 아티팩트를 `status: completed`로 재클로즈한다. `sync_commit_sha`는 원본 클로즈 값(`52c5dba79`)을 그대로 보존 — 이 amendment는 원본 sync 커밋을 재작성하지 않으며, 새 커밋이 자기 자신의 SHA를 참조할 수 없다는 물리적 제약과 `internal/spec/era.go` H-4가 필드의 non-empty 여부만 요구한다는 점(`moai spec audit --json` 재확인 결과 이 SPEC 유일 finding은 `EraAutoDetected` INFO, repo-wide MUST-FIX 0)에 근거한다.
 
 ### CI-unenforced 라벨 (AC-APO-071b)
 
@@ -394,7 +400,7 @@ AC-APO-071b가 요구하는 3개 manual-only 누출 클래스(내부 날짜 / `/
 
 ### Gaps
 
-1. AC-072 RED/GREEN round-trip + AC-072b blocking-validity 주입 — 둘 다 `internal/template/templates/` 변형이 필요, read-only 감사 범위 밖.
+1. ~~AC-072 RED/GREEN round-trip + AC-072b blocking-validity 주입~~ — **RESOLVED (2026-07-25 amendment)**: 격리 워크트리에서 실제 프로브 주입 → FAIL 관측 → 제거 → GREEN 확인까지 완주했다. 상세는 위 "PASS-WITH-DEBT 2건 — RESOLVED" 참조.
 2. `make build` embedded-tree lookup(AC-069 2번째 조건) — 미실행(변형 빌드 스텝). 정적 대체 관측: `embed.go:28`의 `//go:embed all:templates`가 `.claude/workflows/`를 포괄하며, `go test ./internal/template/`(catalog/manifest 해시 parity 검사 포함)는 통과.
 3. Coverage 측정 — 미실행. 이 SPEC은 구조적으로 무관(`git diff --name-only a1aa064b2^..8f0426f4b | grep '\.go$'` → M3-M5 구간 없음; 유일한 Go 파일 변경은 M1의 `internal_content_leak_test.go`뿐 — 프로덕션 Go 코드 무변경).
 4. docs-site 렌더 출력(AC-016) — 소스 텍스트만 검증(en/ko/ja/zh `workflows.md` 각 1건 fan-out-script 언급 확인); Hugo 빌드 미실행.
