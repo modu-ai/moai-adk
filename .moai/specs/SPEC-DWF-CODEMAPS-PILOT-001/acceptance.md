@@ -19,6 +19,14 @@
 
 > AC-DCP-004 and AC-DCP-005 are mutually exclusive — exactly one fires per run. Both are PASS states. The MUST-PASS gate for the verdict is satisfied when EITHER fires with evidence.
 
+> **SUPERSESSION — `AC-DCP-010` (covering `REQ-DCP-009` / `REQ-DCP-010`), superseded by `SPEC-AGENT-PARALLEL-OPT-001`.**
+>
+> The criterion — `grep -r "codemaps-extract\|codemaps-pilot" internal/template/templates/` → *nothing* — no longer holds, and is not expected to hold again. `SPEC-AGENT-PARALLEL-OPT-001` M1 distributed three generic fan-out scripts into the template tree, including `internal/template/templates/.claude/workflows/codemaps-extract.js`; that directory did not previously exist. The pilot's non-distribution **intent** is therefore obsolete by decision, not by accident. The high-count augmentation scoping from §E.3 of `progress.md` is retained and unaffected.
+>
+> **Accuracy note — M1 did not create the first violation.** The criterion was already false on `origin/main` before M1: two prose mentions of `codemaps-extract.js` existed in the template tree, at `templates/.claude/rules/moai/workflow/dynamic-workflows.md:105` and `templates/.claude/skills/moai/workflows/harness-builder.md:81`. The first of those described "the bundled `.claude/workflows/codemaps-extract.js`" while shipping no such file — a live dead reference for distributed users, which M1 resolves by actually shipping the script. M1 made the underlying non-distribution *intent* obsolete; it did not break an otherwise-holding criterion.
+>
+> This is an annotation, not an amendment: `status: completed`, the requirements, the AC matrix rows above, and the recorded run-phase verdicts are all unchanged. Reciprocal reference: `SPEC-AGENT-PARALLEL-OPT-001` `REQ-APO-070` / `AC-APO-070`.
+
 ## D.1 Given-When-Then Scenarios
 
 ### Scenario 1 — Falsification test, value-proven outcome (PASS)
@@ -81,6 +89,8 @@ THEN the grep returns nothing
   AND any persisted workflow script lives only under the local user-owned .claude/workflows/ directory
   AND .claude/skills/moai/workflows/codemaps.md is byte-unchanged.
 ```
+
+> **Superseded** — this scenario's grep no longer returns nothing. See the SUPERSESSION note under §D: `SPEC-AGENT-PARALLEL-OPT-001` M1 ships `codemaps-extract.js` in the template tree by decision (`AC-DCP-010`, `REQ-DCP-009` / `REQ-DCP-010`).
 
 ### Scenario 6 — Workflow primitive unavailable (graceful fallback)
 

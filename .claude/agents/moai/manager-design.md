@@ -139,6 +139,7 @@ agent is spawned. Before exercising D2, verify operational availability:
   but D2-D5 live execution is gated on the tool. Return a blocker report (H1
   path: `/design-login` guidance + tool-registration note). This is graceful
   degradation — the agent does not fail; it waits on the tool.
+- **Several independent probes** → issue them as ONE single-turn parallel batch, not across turns (`.claude/rules/moai/core/agent-common-protocol.md` § Parallel Execution).
 
 ## Re-delegation to manager-develop (H8 detail)
 
