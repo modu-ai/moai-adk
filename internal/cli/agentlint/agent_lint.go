@@ -13,6 +13,7 @@ import (
 
 	"github.com/charmbracelet/lipgloss"
 	"github.com/modu-ai/moai-adk/internal/defs"
+	"github.com/modu-ai/moai-adk/internal/template"
 	"github.com/modu-ai/moai-adk/internal/tui"
 	"github.com/spf13/cobra"
 )
@@ -606,32 +607,37 @@ func checkDeadHooks(file string, fm AgentFrontmatter) []LintViolation {
 }
 
 // ============================================================================
-// SPEC-V3R2-ORC-003: Effort-Level Calibration Matrix
-// Canonical effort assignment for the 17 v3r2 agents
+// Effort-Level Calibration Matrix
+// Derived from the profile matrix — NOT a second hand-maintained copy
 // ============================================================================
 
-// canonicalEffortMatrix is the SPEC-V3R2-ORC-003 canonical effort assignment
-// for the 17 v3r2 agents. The matrix is consumed by checkEffortMatrixDrift (LR-12).
-// @MX:ANCHOR @MX:REASON: Single source of truth for agent-effort calibration; downstream
-// consumers (HRN-001 effort_mapping, doctor agent show-effort) reference this constant.
-var canonicalEffortMatrix = map[string]string{
-	"manager-spec":       "xhigh",
-	"manager-strategy":   "xhigh",
-	"manager-cycle":      "high",
-	"manager-quality":    "high",
-	"manager-docs":       "medium",
-	"manager-git":        "low",
-	"manager-project":    "medium",
-	"expert-backend":     "high",
-	"expert-frontend":    "high",
-	"expert-security":    "xhigh",
-	"expert-devops":      "medium",
-	"expert-performance": "high",
-	"expert-refactoring": "xhigh",
-	"builder-platform":   "medium",
-	"sync-auditor":   "xhigh",
-	"plan-auditor":       "xhigh",
-	"researcher":         "xhigh",
+// canonicalEffortMatrix is the agent -> baseline effort map consumed by
+// checkEffortMatrixDrift (LR-12). It is DERIVED from the medium column of
+// template.DefaultProfileMatrix, which is the single source of truth for
+// per-agent {model, effort}; agent frontmatter records that same medium column
+// as its baseline, so the two cannot disagree.
+//
+// It replaces a hand-maintained 17-entry literal that had drifted: it still
+// carried archived agents (manager-strategy, manager-cycle, manager-quality,
+// manager-project, expert-*, builder-platform, researcher) and pre-rename effort
+// values, so a matrix change had to be mirrored here by hand or LR-12 would
+// reject the very values the matrix produced. Agents absent from the matrix
+// (archived names, harness specialists, user-added agents) are out-of-roster and
+// LR-12 does not apply to them.
+//
+// @MX:ANCHOR @MX:REASON: LR-12 effort baseline; derived from template.DefaultProfileMatrix
+// so the lint rule and the runtime resolver share one source.
+var canonicalEffortMatrix = buildCanonicalEffortMatrix()
+
+// buildCanonicalEffortMatrix projects the medium column of the profile matrix
+// onto the agent -> effort shape LR-12 needs.
+func buildCanonicalEffortMatrix() map[string]string {
+	medium := template.DefaultProfileMatrix()[template.PerformanceTierMedium]
+	out := make(map[string]string, len(medium))
+	for agent, me := range medium {
+		out[agent] = me.Effort
+	}
+	return out
 }
 
 // validEffortValues defines the 5-value enum for effort levels

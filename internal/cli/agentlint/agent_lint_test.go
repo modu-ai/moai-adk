@@ -935,19 +935,21 @@ Custom team agent body`
 // These tests FAIL initially and turn GREEN after M2 implementation.
 // ============================================================================
 
-// TestLintLR12_MatrixDrift_DriftedAgent tests LR-12: effort drift from canonical matrix
-// This is a RED test - it will FAIL until checkEffortMatrixDrift is implemented in M2
+// TestLintLR12_MatrixDrift_DriftedAgent tests LR-12: effort drift from the
+// canonical matrix. Uses a RETAINED agent (manager-spec, medium cell = high)
+// because canonicalEffortMatrix is derived from template.DefaultProfileMatrix —
+// archived names are out-of-roster and can no longer exercise this rule.
 func TestLintLR12_MatrixDrift_DriftedAgent(t *testing.T) {
 	content := `---
-name: expert-security
-description: Security specialist
+name: manager-spec
+description: SPEC authoring specialist
 tools: Read, Write, Agent
-effort: high
+effort: low
 ---
-Security agent body`
+SPEC agent body`
 
 	tmpDir := t.TempDir()
-	agentPath := filepath.Join(tmpDir, "expert-security.md")
+	agentPath := filepath.Join(tmpDir, "manager-spec.md")
 
 	if err := os.WriteFile(agentPath, []byte(content), 0644); err != nil {
 		t.Fatalf("failed to create temp file: %v", err)
@@ -980,20 +982,24 @@ Security agent body`
 	// For now, this test documents the expected behavior
 
 	if !foundLR12 {
-		t.Error("expected LR-12 violation for expert-security with effort: high (should be xhigh)")
+		t.Error("expected LR-12 violation for manager-spec with effort: low (matrix medium cell is high)")
 	}
 }
 
-// TestLintLR12_MatrixDrift_CleanAgent tests LR-12: agent with correct effort value
-// This is a RED test - it will FAIL until checkEffortMatrixDrift is implemented in M2
-func TestLintLR12_MatrixDrift_CleanAgent(t *testing.T) {
+// TestLintLR12_OutOfRosterAgentExempt pins the derivation's exemption boundary:
+// an agent absent from template.DefaultProfileMatrix (an archived name, a
+// harness specialist, or any user-added agent) is out-of-roster, so LR-12 never
+// fires for it regardless of the effort value it declares. Without this the
+// DriftedAgent test above could silently stop discriminating if the roster
+// changed.
+func TestLintLR12_OutOfRosterAgentExempt(t *testing.T) {
 	content := `---
 name: expert-security
-description: Security specialist
+description: Archived agent name, absent from the profile matrix
 tools: Read, Write, Agent
-effort: xhigh
+effort: low
 ---
-Security agent body`
+Archived agent body`
 
 	tmpDir := t.TempDir()
 	agentPath := filepath.Join(tmpDir, "expert-security.md")
@@ -1007,10 +1013,42 @@ Security agent body`
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	// After M2, we expect 0 LR-12 violations for correct effort value
 	for _, v := range violations {
 		if v.Rule == "LR-12" {
-			t.Error("expected no LR-12 violations for expert-security with correct effort: xhigh")
+			t.Errorf("LR-12 must not fire for an out-of-roster agent, got: %s", v.Message)
+		}
+	}
+}
+
+// TestLintLR12_MatrixDrift_CleanAgent tests LR-12: a RETAINED agent whose effort
+// matches its matrix cell produces no violation. Previously this used an
+// archived name and therefore passed for the wrong reason (out-of-roster
+// exemption rather than a value match).
+func TestLintLR12_MatrixDrift_CleanAgent(t *testing.T) {
+	content := `---
+name: manager-spec
+description: SPEC authoring specialist
+tools: Read, Write, Agent
+effort: high
+---
+SPEC agent body`
+
+	tmpDir := t.TempDir()
+	agentPath := filepath.Join(tmpDir, "manager-spec.md")
+
+	if err := os.WriteFile(agentPath, []byte(content), 0644); err != nil {
+		t.Fatalf("failed to create temp file: %v", err)
+	}
+
+	violations, err := lintAgentFile(agentPath, false)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	// Correct effort value for the medium cell -> no LR-12 violation
+	for _, v := range violations {
+		if v.Rule == "LR-12" {
+			t.Errorf("expected no LR-12 violations for manager-spec with correct effort: high, got: %s", v.Message)
 		}
 	}
 
