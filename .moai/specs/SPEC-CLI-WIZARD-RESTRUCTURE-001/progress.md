@@ -611,8 +611,53 @@ down. This re-audit is what surfaced N3 through N8.
 
 | ID | Severity | Finding | Why deferred |
 |----|----------|---------|--------------|
-| S2 | major | Seven config writers use non-atomic `os.WriteFile` on the ~22 KB deployed config set. (Correction, N4: `internal/atomicfile.Replace` is NOT unused repo-wide — it has 10 production call sites across `internal/cli/preference/filestore.go`, `internal/harness/tier/tier.go`, `internal/migration/version.go`, `internal/hook/handoff/persist.go`, `internal/goal/state.go`, `internal/session/registry.go`, and `internal/session/store.go` (×3); it is only the *config writers* in `initializer_expansion.go` that do not route through it.) | A cross-cutting writer refactor beyond this SPEC's scope; would widen the PR substantially. Deferred and currently unscheduled — no follow-up SPEC exists yet (N8) |
-| S3 | minor | `initializer_expansion.go:118,200` reads the patch target with an unbounded `os.ReadFile`; bounded in practice by deployed template size, no explicit limit | Defense-in-depth gap, not a live issue at current template sizes; deferred alongside S2 |
+| S2 | major | Seven config writers use non-atomic `os.WriteFile` on the ~22 KB deployed config set. (Correction, N4: `internal/atomicfile.Replace` is NOT unused repo-wide — it has 10 production call sites across `internal/cli/preference/filestore.go`, `internal/harness/tier/tier.go`, `internal/migration/version.go`, `internal/hook/handoff/persist.go`, `internal/goal/state.go`, `internal/session/registry.go`, and `internal/session/store.go` (×4); it is only the *config writers* in `initializer_expansion.go` that do not route through it.) | A cross-cutting writer refactor beyond this SPEC's scope; would widen the PR substantially. Deferred and currently unscheduled — no follow-up SPEC exists yet (N8) |
+| S3 | minor | `initializer_expansion.go:63,118,149,200` reads the patch target with an unbounded `os.ReadFile` (line 63 is `writeProjectModeYAML`, the reader C32 newly exposed on the deployer path); bounded in practice by deployed template size, no explicit limit | Defense-in-depth gap, not a live issue at current template sizes; deferred alongside S2 |
 | S1-residual | minor | `writeProjectModeYAML` / `patchYAMLKey` interpolate their value raw — the injection invariant lives in the two current callers (the now-validated `--project-mode` flag and the wizard's constrained select), not in the writer itself. No live injection path exists today with the current producer set, but restoring `--harness-profile`'s writer (debt (a)) without adding validation would reopen the identical hole `validateInitFlags` closed for `--project-mode` | Defense-in-depth gap; the writer-level fix is deferred alongside S2/S3 |
 
 The deferred findings are recorded in the CHANGELOG entry as debt (g), (h), (i).
+
+### Round 3 re-audit — PASS
+
+```yaml
+sync_audit_round3_verdict: PASS
+sync_audit_round3_score: 0.858
+sync_audit_round3_threshold: 0.85
+sync_audit_round3_report: .moai/reports/sync-audit/SPEC-CLI-WIZARD-RESTRUCTURE-001-2026-07-25-reaudit-2.md
+```
+
+Dimension scores: Functionality 0.92 (+0.04) · Security 0.82 (unchanged) · Craft 0.84
+(unchanged) · Consistency 0.86 (+0.06). All nine round-2 findings verified RESOLVED by
+reproduction rather than by reading the commit messages — including three binary
+reproductions of the `--enable-lsp` default across flag variants and a re-reproduction of
+the `--project-mode` injection rejection.
+
+Security did not move: the shipped security surface is byte-identical to round 2 (the three
+intervening commits touch the LSP seed, a template comment, and markdown only). Roughly
+0.11 of the 0.18 Security deficit is the user-deferred S2 — that portion is structural and
+not closable without reversing the deferral.
+
+Four NEW record-accuracy findings were raised and are fixed here:
+
+| ID | Severity | Finding | Resolution |
+|----|----------|---------|------------|
+| N9 | major (doc) | The CHANGELOG still read "above the package's own unchanged baseline" for the coverage figures, while both this section and the CHANGELOG's own repair narrative claimed that wording had already been corrected — a claimed correction that was never applied. Re-measured independently via `git archive`: base 84.9% = run-phase 84.9%, origin/main 86.0% = HEAD 86.0%; the figures are EQUAL to baseline, not above it | CHANGELOG now states each figure equals its own tree point's baseline |
+| N10 | minor | The `atomicfile.Replace` breakdown listed `internal/session/store.go` ×3; the file carries 4 calls, so the per-file breakdown summed to 9 against a stated total of 10 | corrected to ×4 in both surfaces; 6 files × 1 + store ×4 = 10 |
+| N11 | minor | "closes finding (f) above" pointed at a debt item deleted in the same commit, leaving a dangling label; a second `debt (a) below` reference pointed backwards | the (f) reference is replaced by a description of what was closed and why no `(f)` remains; the misdirected `(a)` reference now points above |
+| N12 | minor | The S3 row cited `initializer_expansion.go:118,200`, omitting the same unbounded read at lines 63 and 149 — line 63 being `writeProjectModeYAML`, the reader C32 newly exposed on the deployer path | S3 now cites all four sites and names line 63 explicitly |
+
+Two round-3 observations recorded for honesty rather than acted on:
+
+- The auditor corrected **its own** round-2 measurement: it had reported 5 `atomicfile.Replace`
+  call sites; the true count is 10 across 7 files. The round-2 record inherited that
+  undercount, and the N4 correction written into this section had already used the
+  independently re-measured 10.
+- The auditor's N11 claim covered two `debt (a)` references. Only one was actually
+  misdirected — verified by character offset: the reference at CHANGELOG line 28 precedes
+  the `(a)` definition and is correct as written; the one in the later paragraph followed it
+  and was wrong. Only the wrong one was changed.
+
+Reporting-error rate across the three rounds: 2 → 2 → 4. The rate is not declining even as
+the code fixes hold up cleanly under adversarial re-verification, which is itself the most
+useful signal this audit chain produced: on this SPEC, the prose about the work has been a
+less reliable artifact than the work.
