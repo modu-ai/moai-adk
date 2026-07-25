@@ -124,7 +124,7 @@ internal/statusline/renderer.go (3-line v3 layout)
   - `🪫`（显示百分比 > 70%）
   - bar 本身按块着以绿 → 黄 → 红的连续渐变色（与电量阈值无关）
 - **`(⚠️/clear)` / `(🛑/clear!)` handoff 后缀**：
-  - 1M context 模型 (Opus 4.8, GLM-5.2)：used_percentage ≥50%（基于 raw context_window_size）
+  - 1M context 模型 (Opus 5, GLM-5.2)：used_percentage ≥50%（基于 raw context_window_size）
   - 200K context 模型 (Sonnet/Haiku)：used_percentage ≥90%
   - 含义：建议在下一个 turn 开始前 `/clear` + 使用 paste-ready resume message
 - **示例**：`🪫 CW: ███████░░░ 72% (⚠️/clear)`
@@ -300,7 +300,7 @@ CW bar 的 handoff 后缀在上下文使用量超过按模型的阈值时激活�
 
 | 模型类别 | Context Window | 阈值 | 建议时点 |
 |------------|----------------|--------|----------|
-| **1M context** (Opus 4.8) | 1,000,000 tokens | **≥50%** | 使用约 500K 代币时 |
+| **1M context** (Opus 5) | 1,000,000 tokens | **≥50%** | 使用约 500K 代币时 |
 | **256K context** (Fable) | 256,000 tokens | **≥90%** | 使用约 230K 代币时 |
 | **200K context** (Sonnet, Haiku) | 200,000 tokens | **≥90%** | 使用约 180K 代币时 |
 | 其他 / 未知 | — | 不显示 | （安全默认） |

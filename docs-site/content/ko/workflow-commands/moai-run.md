@@ -46,7 +46,7 @@ Plan 단계에서 생성된 SPEC ID를 인자로 전달합니다:
 {{< callout type="warning" >}}
   `/moai run` 실행 전에 반드시 `/clear`를 실행하세요. Plan 단계에서 사용한
   토큰을 정리해야 Run 단계에서 컨텍스트 윈도우를 온전히 활용할 수 있습니다.
-  GLM-5.2 및 Opus 4.8은 1M 컨텍스트 (권장 사용량 50%), Sonnet/Haiku 계열은
+  GLM-5.2 및 Opus 5은 1M 컨텍스트 (권장 사용량 50%), Sonnet/Haiku 계열은
   200K 컨텍스트 (권장 사용량 90%)입니다.
 {{< /callout >}}
 

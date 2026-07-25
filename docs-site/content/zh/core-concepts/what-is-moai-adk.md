@@ -591,7 +591,7 @@ moai update                   # 对各设置步骤给出交互式提示
 ```
 
 {{< callout type="info" >}}
-默认策略是 `medium`。GLM 设置隔离在 `settings.local.json` 中(不提交到 Git)。设置键是 `llm.yaml` 的 `profile: max | medium | low`(配置矩阵列)，legacy `performance_tier` 字段在 `profile` 缺失时作为别名读取(`--high`/`--low` 分别是 `--model-policy max`/`low` 的 deprecated 别名)。可用 `--profile max|medium|low` 标志直接指定。
+默认策略是 `medium`。GLM 设置隔离在 `settings.local.json` 中(不提交到 Git)。设置键是 `llm.yaml` 的 `profile: high | medium | low`(配置矩阵列)，legacy `performance_tier` 字段在 `profile` 缺失时作为别名读取(`--high`/`--low` 分别是 `--model-policy max`/`low` 的 deprecated 别名)。可用 `--profile high|medium|low` 标志直接指定，legacy 的 `max` 值也可作为输入并规范化为 `high`。
 {{< /callout >}}
 
 ## Task 指标日志

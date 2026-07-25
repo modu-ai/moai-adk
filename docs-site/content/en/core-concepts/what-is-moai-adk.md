@@ -590,7 +590,7 @@ moai update                   # Interactive prompts for each setup step
 ```
 
 {{< callout type="info" >}}
-The default policy is `medium`. GLM settings are isolated in `settings.local.json` (never committed to Git). The config key is `profile: max | medium | low` (the profile matrix column) in `llm.yaml`, and the legacy `performance_tier` field is read as an alias when `profile` is absent (`--high`/`--low` are deprecated aliases of `--model-policy max`/`low`). You can set it directly with the `--profile max|medium|low` flag.
+The default policy is `medium`. GLM settings are isolated in `settings.local.json` (never committed to Git). The config key is `profile: high | medium | low` (the profile matrix column) in `llm.yaml`, and the legacy `performance_tier` field is read as an alias when `profile` is absent (`--high`/`--low` are deprecated aliases of `--model-policy max`/`low`). You can set it directly with the `--profile high|medium|low` flag; the legacy `max` value is also accepted as input and normalized to `high`.
 {{< /callout >}}
 
 ## Task Metrics Logging

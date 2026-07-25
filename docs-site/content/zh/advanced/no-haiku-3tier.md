@@ -13,7 +13,7 @@ DeepSWE 排行榜(deepswe.datacurve.ai, 113 tasks, 2026-07-09)的核心发现是
 | 模型 [effort] | Pass@1 | 每任务成本 | $/已解决 | token/已解决 | 步数 |
 |---|---|---|---|---|---|
 | Fable 5 [max] | 70% | $21.63 | $30.9 | 170k | 88 |
-| Opus 4.8 [max] | 59% | $13.22 | $22.4 | 229k | 120 |
+| Opus 5 [max] | 59% | $13.22 | $22.4 | 229k | 120 |
 | Sonnet 5 [max] | 54% | $26.40 | $48.9 | 396k | 268 |
 
 {{< icon warning warn >}} **单价反转**: Sonnet 的名义单价($3/$15)是 Opus($5/$25)的一半，但每任务成本反转: Opus $13.22 < Sonnet $26.40。因为 Sonnet 消耗 1.6 倍 token、2.2 倍步数。"用便宜模型跑就能省配额"的通念不成立。
@@ -49,12 +49,12 @@ flowchart TD
 
 从排行榜实测得出的四点结论:
 
-1. **Sonnet 5 max 是 Claude 家族中性价比最差的** — 比 Opus 4.8 max 更贵($26.40 vs $13.22)且分数更低(54% vs 59%)。原因是 268 步的过度重试循环。高 effort 不等于高价值。
-2. **API 性价比第一是 Opus 4.8** ($22.4/已解决)。质量第一是 Fable 5 (70%)。Fable 的溢价是每已解决 +$8.5。
+1. **Sonnet 5 max 是 Claude 家族中性价比最差的** — 比 Opus 5 max 更贵($26.40 vs $13.22)且分数更低(54% vs 59%)。原因是 268 步的过度重试循环。高 effort 不等于高价值。
+2. **API 性价比第一是 Opus 5** ($22.4/已解决)。质量第一是 Fable 5 (70%)。Fable 的溢价是每已解决 +$8.5。
 3. **可用性方面: Fable(170k) < Opus(229k) < Sonnet(396k)** — 订阅周限额基于 token，所以弱模型反而消耗更多配额。
 4. **步数 = 速度** — Fable 88 < Opus 120 < Sonnet 268。高层级模型在挂钟时间上也更优。
 
-{{< icon info >}} **局限说明**: 排行榜没有 Claude 模型的 effort 变体数据(low/medium/high/xhigh — 全是 max)。因此"Sonnet xhigh vs high 质量差"无法直接验证; effort 下调是从(a) Sonnet 5 max 循环浪费实测、(b) Opus 4.8 默认 effort 为 high 的 Anthropic 官方定位、(c) effort 与输出 token 准线性的普遍特性推定的。
+{{< icon info >}} **局限说明**: 排行榜没有 Claude 模型的 effort 变体数据(low/medium/high/xhigh — 全是 max)。因此"Sonnet xhigh vs high 质量差"无法直接验证; effort 下调是从(a) Sonnet 5 max 循环浪费实测、(b) Opus 5 默认 effort 为 high 的 Anthropic 官方定位、(c) effort 与输出 token 准线性的普遍特性推定的。
 
 ## 设计报告 vs 实现
 

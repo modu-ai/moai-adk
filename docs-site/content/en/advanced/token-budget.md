@@ -18,7 +18,7 @@ The operational threshold is model-specific. Larger windows tolerate higher perc
 
 | Model class | Window | Handoff threshold | Absolute ceiling |
 |-------------|--------|-------------------|------------------|
-| Opus 4.8 (1M) | 1,000,000 tokens | 50% | ~500,000 tokens |
+| Opus 5 (1M) | 1,000,000 tokens | 50% | ~500,000 tokens |
 | GLM-5.2 (1M) | 1,000,000 tokens | 50% | ~500,000 tokens |
 | Opus / Fable (256K) | 256,000 tokens | 90% | ~230,000 tokens |
 | Sonnet / Opus standard (200K) | 200,000 tokens | 90% | ~180,000 tokens |
