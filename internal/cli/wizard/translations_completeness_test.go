@@ -10,11 +10,8 @@ var localizableLocales = []string{"ko", "ja", "zh"}
 // intentionally NOT carried in the fixed-length translation table:
 //   - conversation_language: option labels are native language names, never
 //     translated (GetLocalizedQuestion leaves them untouched).
-//   - harness_profile: options are enumerated dynamically from the
-//     evaluator-profiles directory, so a fixed table cannot match them.
 var optionTranslationExemptIDs = map[string]bool{
 	"conversation_language": true,
-	"harness_profile":       true,
 }
 
 // TestModelPolicyTranslationsExist verifies the model_policy question is fully
@@ -91,13 +88,13 @@ func TestGetLocalizedModelPolicyFullyTranslated(t *testing.T) {
 
 // TestWizardQuestionTranslationCompleteness is the regression guard the user's
 // bug proved we need: EVERY interactive question in the init wizard set
-// (DefaultQuestions + Phase1Questions) must have a title + description
+// (InitQuestions: pages 1-3) must have a title + description
 // translation for ko/ja/zh, and every Select question with a static option set
 // (all except the exempt IDs) must have matching-length, non-empty option
 // translations. Adding a new question without translations will FAIL this test.
 func TestWizardQuestionTranslationCompleteness(t *testing.T) {
 	root := t.TempDir()
-	questions := append(DefaultQuestions(root), Phase1Questions(root)...)
+	questions := InitQuestions(root)
 
 	for _, locale := range localizableLocales {
 		langTrans, ok := translations[locale]

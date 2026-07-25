@@ -38,11 +38,9 @@ type WizardResult struct {
 	GitLabUsername    string // GitLab username (for personal/team modes with gitlab provider)
 	GitLabToken       string // GitLab personal access token (optional)
 
-	// Mode flags — set by CLI before wizard invocation (REQ-IWE-006, REQ-IWE-007)
-	StandardMode bool // True when --standard or --advanced flag is set
-	AdvancedMode bool // True when --advanced flag is set (implies StandardMode)
-
-	// Phase 1 fields — exposed by --standard/--advanced (REQ-IWE-001..005)
+	// Page-3 fields ("Quality & Workflow") — asked of every user
+	// (SPEC-CLI-WIZARD-RESTRUCTURE-001 REQ-WIZ-001/002). The two mode-flag
+	// fields that formerly gated them are retired (REQ-WIZ-018).
 	ProjectMode               string // project.mode: personal, team (B1)
 	HarnessProfile            string // harness.default_profile: default, strict, lenient, frontend (B2)
 	LSPEnabled                bool   // lsp.enabled: false (opt-in) (B3)

@@ -46,8 +46,6 @@ func newInitTestCmd() *cobra.Command {
 	cmd.Flags().Bool("force", false, "")
 	cmd.Flags().Bool("no-hooks", true, "")
 	cmd.Flags().Bool("all", false, "")
-	cmd.Flags().Bool("standard", false, "")
-	cmd.Flags().Bool("advanced", false, "")
 	cmd.Flags().String("project-mode", "", "")
 	cmd.Flags().String("harness-profile", "", "")
 	cmd.Flags().Bool("enable-lsp", false, "")
@@ -109,7 +107,7 @@ func TestInitNoNetworkBeforeWizard(t *testing.T) {
 	t.Cleanup(func() { isInteractiveStdin = origInteractive })
 
 	origWizard := runWizardFn
-	runWizardFn = func(rootFlag, locale, userName string, standardMode, advancedMode bool) (*wizard.WizardResult, error) {
+	runWizardFn = func(rootFlag, locale, userName string) (*wizard.WizardResult, error) {
 		rec.record("wizard-start")
 		if got := rec.count("update-check"); got != 0 {
 			t.Errorf("update-check ran before/during wizard: %d calls", got)

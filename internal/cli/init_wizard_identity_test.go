@@ -30,7 +30,7 @@ func TestInitWizardIdentityPersisted(t *testing.T) {
 	t.Cleanup(func() { deps = origDeps })
 
 	origWizard := runWizardFn
-	runWizardFn = func(_, _, _ string, _, _ bool) (*wizard.WizardResult, error) {
+	runWizardFn = func(_, _, _ string) (*wizard.WizardResult, error) {
 		return &wizard.WizardResult{
 			ConversationLang: "ja",
 			UserName:         "WizardName",
