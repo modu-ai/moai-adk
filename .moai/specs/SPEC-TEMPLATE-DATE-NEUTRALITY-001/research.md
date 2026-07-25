@@ -1,17 +1,16 @@
 # SPEC-TEMPLATE-DATE-NEUTRALITY-001 — Research
 
-Every figure below was produced by a command actually run against this worktree at `c7309aeb6`. Figures that were not measured are stated as gaps in §F.
+Every figure below was produced by a command actually run against this worktree at `c7309aeb6`. Figures that were not measured are stated as gaps in §G.
 
 ---
 
 ## §A Guard behaviour (measured)
 
-### A.1 Strict tier fails; narrow tier passes
+### A.1 Strict tier fails; narrow tier passes; package is green
 
 ```
 $ MOAI_TEMPLATE_LEAK_STRICT=1 go test ./internal/template/ -run TestTemplateNoInternalContentLeak -count=1
 exit=1
---- FAIL: TestTemplateNoInternalContentLeak (0.54s)
     internal_content_leak_test.go:725: template internal-content leak detected (135 occurrences, mode=strict):
     ...
     internal_content_leak_test.go:738:   ... 85 more (capped)
@@ -24,6 +23,14 @@ narrow exit=0
 ok  	github.com/modu-ai/moai-adk/internal/template	0.677s
 ```
 
+```
+$ go test ./internal/template/...
+package-wide exit=0
+ok  	github.com/modu-ai/moai-adk/internal/template	1.292s
+```
+
+The third result **withdraws** an iteration-1 claim. `design.md` §C previously justified the isolated-target CI convention by citing "pre-existing unrelated failures" in `internal/template`. The package is green; that rationale is false. It originated in the workflow file's own in-file comment and was repeated without verification.
+
 ### A.2 Strict mode is wired nowhere
 
 ```
@@ -31,14 +38,14 @@ $ grep -rn "LEAK_STRICT" --include="*.yaml" --include="*.yml" --include="Makefil
 exit=1 (1 = no matches)
 ```
 
-### A.3 All 50 visible rows are S1
+### A.3 Class attribution of the reported rows
 
 ```
 $ grep -o "class=[A-Za-z0-9-]*" <strict.log> | sort | uniq -c
   50 class=S1-internal-date
 ```
 
-Only 50 rows are visible (the cap). The claim that *all 135* are S1 is not established by this run — see §F Gap G1.
+Only 50 rows are visible (the cap). See §G gap G1 — the guard's own classification of rows 51-135 was not observed, though §B's S1-only enumeration reproducing exactly 135 is strong circumstantial evidence.
 
 ### A.4 Finding identity is `(file, distinct match literal)`
 
@@ -55,7 +62,7 @@ for _, m := range matches {
     seen[trimmed] = struct{}{}
 ```
 
-Consequence: repeated occurrences of the same date in one file collapse to one finding. This is why raw line counts exceed finding counts (§C.3).
+Consequence: repeated occurrences of the same date in one file collapse to one finding. This is why line counts exceed finding counts, and why this SPEC introduces the finer **occurrence-class row** unit (§C).
 
 ### A.5 Scan scope
 
@@ -63,13 +70,23 @@ Consequence: repeated occurrences of the same date in one file collapse to one f
 
 ### A.6 Report cap
 
-`limit := 50` at `internal_content_leak_test.go:730`, with `... %d more (capped)` at :738.
+`limit := 50` at `internal_content_leak_test.go:730`, with `... %d more (capped)` at :738. Observed truncation line: `... 85 more (capped)`.
 
 ---
 
-## §B Independent re-enumeration
+## §B The committed classifier
 
-The guard's scan scope and dedup semantics were reimplemented as a shell enumeration to obtain the full finding set (rather than raising the guard's cap):
+`classify.sh` (this directory) is the committed classification recipe required by REQ-TDN-006, and its finding-set equivalence is REQ-TDN-020.
+
+```
+$ bash classify.sh                                  # from internal/template/
+rows: 180
+distinct (file,date) findings: 135
+$ diff <classifier-findings> <independent-grep-findings>
+(no output — IDENTICAL to the 135-finding guard-equivalent set)
+```
+
+The independent enumeration it is diffed against reimplements the guard's scan scope and dedup semantics in shell:
 
 ```bash
 find templates -type f \( -name '*.md' -o -name '*.tmpl' -o -name '*.yaml' -o -name '*.yml' \
@@ -79,15 +96,23 @@ find templates -type f \( -name '*.md' -o -name '*.tmpl' -o -name '*.yaml' -o -n
   done
 ```
 
-Result: **135** rows — exactly matching the guard's reported count. The recipe is therefore an adequate regeneration mechanism for REQ-TDN-006.
+Result: **135** rows — matching the guard's reported count exactly.
 
-Distinct files: **116**.
+### B.1 A real defect the equivalence check caught
+
+The classifier's first revision emitted **137**, not 135. Cause: `awk` ERE has no `\b`, so the date pattern matched inside longer tokens. The two extras were `"expiresAt": "2026-01-06T10:00:00Z"` in `moai-workflow-spec/references/examples.md` and one analogous embedded literal in `moai-harness-learner/SKILL.md`. Explicit non-word-character boundary checks on the characters flanking each match brought the count to exactly 135.
+
+This is the reason REQ-TDN-020 asserts *set equality*, not "the classifier runs": the broken revision ran fine and produced a plausible-looking number.
+
+### B.2 Distinct files
+
+116.
 
 ---
 
-## §C Finding distribution (measured)
+## §C Finding and row distribution (measured)
 
-### C.1 By date literal (top values)
+### C.1 By date literal (top values, finding-level)
 
 | Date | Findings |
 |---|---:|
@@ -98,29 +123,93 @@ Distinct files: **116**.
 | 2026-07-10 | 4 |
 | 2026-01-11 | 4 |
 
-### C.2 By category (mechanical partition, sums to 135)
+### C.2 By category — occurrence-class rows (the normative partition)
 
-Applying the REQ-TDN-001 decision rule as an `awk` classifier over the enumerated set with first-line context:
+```
+$ bash classify.sh | cut -f5 | sort | uniq -c | sort -rn
+  80 DC-2a
+  48 DC-1
+  22 DC-5
+  13 DC-3
+  11 DC-2b
+   6 DC-4
+```
 
-| Category | Count |
+Sum: **180** = the total row count. This is the partition REQ-TDN-001 states.
+
+### C.3 By category — collapsed to findings (spans allowed)
+
+```
+$ bash classify.sh | awk -F'\t' '{print $1"|"$2"\t"$5}' | sort -u | cut -f2 | sort | uniq -c | sort -rn
+  60 DC-2a
+  48 DC-1
+  17 DC-5
+  11 DC-2b
+   9 DC-3
+   3 DC-4
+```
+
+Sum: 148, not 135, because 13 findings span two categories (§C.5).
+
+### C.4 By line shape
+
+```
+$ bash classify.sh | cut -f3 | sort | uniq -c | sort -rn
+  91 LS-PROSE-STAMP
+  48 LS-FM
+  44 LS-OTHER
+   1 LS-FM-FENCED
+```
+
+`LS-PROSE-STAMP` 91 = `DC-2a` 80 + `DC-2b` 11 (minus/plus the DC-3 and DC-4 rows that outrank shape in the rule order — the arithmetic is exact only when read against the ordered rule, which is why the category table, not this one, is normative).
+
+### C.5 Dual-shape findings
+
+```
+$ bash classify.sh | awk -F'\t' '{print $1"|"$2"\t"$5}' | sort -u | cut -f1 | uniq -d | wc -l
+13
+```
+
+Twelve are `DC-1`/`DC-2a` conflicts — a file whose frontmatter `updated:` and whose prose `Updated:` footer carry the *same* date literal:
+
+```
+.claude/skills/moai-domain-backend/SKILL.md|2026-01-11
+.claude/skills/moai-domain-frontend/SKILL.md|2026-03-28
+.claude/skills/moai-workflow-ddd/SKILL.md|2026-01-16
+.claude/skills/moai-workflow-loop/SKILL.md|2026-01-11
+.claude/skills/moai-workflow-tdd/SKILL.md|2026-02-03
+.claude/skills/moai-workflow-testing/SKILL.md|2026-07-10
+.claude/skills/moai/references/reference.md|2026-02-22
+.claude/skills/moai/workflows/gate.md|2026-03-29
+.claude/skills/moai/workflows/loop.md|2026-07-12
+.claude/skills/moai/workflows/mx.md|2026-02-22
+.claude/skills/moai/workflows/plan.md|2026-05-25
+.claude/skills/moai/workflows/project.md|2026-02-21
+```
+
+The thirteenth is a `DC-1`/`DC-5` span: `moai-foundation-cc/SKILL.md|2026-01-11` (frontmatter line 21 + a changelog line 242 `- v5.0.0 (2026-01-11): …`).
+
+These 13 are why the classification unit is the occurrence-class row. A finding-level disposition cannot express "delete one of my two lines, keep the other" — it must pick one, and either choice is wrong for half the file.
+
+### C.6 The 18-line DC-2 blind spot (iteration-1 defect, now closed)
+
+Iteration 1's `AC-TDN-007` regex matched only the `Last Updated:` shape (70 lines), while `REQ-TDN-001`'s DC-2 rule named three shapes. Measured:
+
+| Shape | Lines |
 |---|---:|
-| DC-2 prose authoring stamp | 58 |
-| DC-1 frontmatter schema field | 48 |
-| DC-5 adjudicated residue | 17 |
-| DC-3 functional deadline (`2026-11-22`) | 9 |
-| DC-4 attribution (`NOTICE.md`) | 3 |
-| **Total** | **135** |
+| `Last Updated:` | 70 |
+| bare `Updated:` | 18 |
+| `# Updated:` (in `.gitignore`) | 1 |
+| **DC-2 total (all three shapes)** | **89** |
 
-### C.3 Raw line counts exceed finding counts (dedup effect)
+The 18 bare-`Updated:` lines were the blind spot. Their locations:
 
-| Shape | Raw matching lines | Findings |
-|---|---:|---:|
-| `Last Updated: <date>` header/footer lines | 70 | (subset of DC-2's 58) |
-| frontmatter `updated: "<date>"` lines | 49 | 48 |
+- 11 in `.claude/skills/moai-foundation-cc/reference/` — the mirror-capture stamps, now `DC-2b` PRESERVE
+- 7 in `.claude/skills/moai/workflows/` — `gate.md:195`, `loop.md:380`, `clean.md:268`, `moai.md:276`, `plan.md:167`, `run/mode-orchestration.md:112`, `sync/delivery.md:465` — all `DC-2a` REMOVE
 
-The gap is the dedup in §A.4: a file whose `Last Updated:` prose line and frontmatter `updated:` field carry the same date yields one finding, not two.
+Iteration 2 closes this by expressing AC-TDN-007 against the committed classifier rather than a hand-written grep, so the rule and the criterion cannot diverge again.
 
-### C.4 Where the 43 `2026-01-06` findings actually live
+### C.7 Where the 43 `2026-01-06` findings live
 
 | Directory | Findings |
 |---|---:|
@@ -132,32 +221,21 @@ The gap is the dedup in §A.4: a file whose `Last Updated:` prose line and front
 | `.claude/skills/moai-workflow-testing/modules/automated-code-review` | 2 |
 | `.claude/skills/moai-foundation-cc` | 1 |
 
-The largest cluster is `moai-foundation-cc/reference` (11), whose files mirror third-party documentation and whose `Updated: 2026-01-06` line is a mirror-capture stamp — not an authoring stamp. This is the origin of REQ-TDN-011 and the first open question.
+The largest cluster is `moai-foundation-cc/reference` (11), whose files mirror third-party documentation and whose `Updated: 2026-01-06` line is a mirror-capture stamp — not an authoring stamp. This is the origin of `DC-2b` and REQ-TDN-011.
 
-### C.5 DC-5 residue (all 17)
+Naming precision: 10 of those 11 files carry the `-official.md` suffix; the eleventh is `advanced-agent-patterns.md`. The directory holds 15 `-official.md` files, only 10 of which bear a stamp. An `*-official.md` glob would therefore both over- and under-select; the category rule is scoped by directory instead.
 
-| File | Date | Shape |
-|---|---|---|
-| `.gitignore` | 2026-01-10 | `# Updated:` comment in a dotfile |
-| `.moai/docs/agent-lint.md` | 2026-07-13 | policy date inside a table cell |
-| `.claude/output-styles/moai/moai-learn.md` | 2026-04-11 | pedagogical example filename |
-| `.moai/config/sections/lsp.yaml.tmpl` | 2026-04-11 | internal audit citation |
-| `.moai/config/sections/harness.yaml` | 2026-04-21 | internal incident reference |
-| `.claude/agents/moai/plan-auditor.md` | 2026-05-20 | internal incident reference |
-| `.claude/agents/moai/manager-spec.md` | 2026-05-25 | external-event citation |
-| `.claude/rules/moai/development/spec-frontmatter-schema.md` | 2026-05-16 | pedagogical counter-example |
-| `.claude/rules/moai/development/skill-authoring.md` | 2026-01-28 | pedagogical schema example |
-| `.claude/skills/moai-foundation-cc/SKILL.md` | 2026-01-06 | changelog entry |
-| `.claude/skills/moai-foundation-cc/SKILL.md` | 2026-07-03 | external-doc annotation |
-| `.claude/skills/moai-meta-harness/SKILL.md` | 2026-03-26 | upstream repo creation date |
-| `.claude/skills/moai/references/anti-patterns.md` | 2026-04-28 | (context not re-read) |
-| `.claude/skills/moai/workflows/fix.md` | 2026-03-02 | changelog entry |
-| `.claude/skills/moai-foundation-cc/reference/claude-code-sub-agents-official.md` | 2026-07-03 | external-doc annotation |
-| `.claude/skills/moai-foundation-cc/reference/claude-code-plugins-official.md` | 2026-07-03 | external-doc annotation |
-| `.claude/skills/moai-workflow-spec/references/worktree-workflow.md` | 2026-05-17 | date-named policy heading |
-| `.claude/skills/moai/workflows/project/mode-detection.md` | 2026-04-21 | internal incident reference |
+### C.8 Corrected misclassifications (iteration 1 → iteration 2)
 
-Note the row count above is 18 lines for 17 findings because `moai-foundation-cc/SKILL.md` contributes two distinct date literals.
+Three rows were misclassified in iteration 1 and are corrected by the committed classifier:
+
+| Row | Iter-1 | Iter-2 | Evidence |
+|---|---|---|---|
+| `.gitignore \| 2026-01-10` | DC-5 | **DC-2a** | line 5 is `# Updated: 2026-01-10` — a shape `spec.md` explicitly names as DC-2 |
+| `skill-authoring.md \| 2026-01-28` | DC-5 | **DC-5** (confirmed, for a different reason) | line 89 is `  updated: "2026-01-28"` *inside a fenced block* → `LS-FM-FENCED`, and line 45 is `- updated: ISO date as string (e.g., "2026-01-28")` → `LS-OTHER`. Both pedagogical. Not real frontmatter, so not DC-1 |
+| `anti-patterns.md \| 2026-04-28` | DC-5 (gap G3, "context not re-read") | **DC-2a** | line 425 is `**Last Updated**: 2026-04-28` — an unambiguous prose stamp. Gap G3 is now CLOSED |
+
+The `DC-1` count is 48 rather than 49 precisely because of the fenced-example exclusion above.
 
 ---
 
@@ -168,9 +246,14 @@ Note the row count above is 18 lines for 17 findings because `moai-foundation-cc
 | `skillBodyScoped` | class applies only under `.claude/skills/` | path prefix |
 | `skillMoaiScoped` | class applies only under `.claude/skills/moai/` | path prefix |
 | `requireHexLetter` | match must contain `[a-f]` | match content |
-| `pedagogicalAllowlist` | `(File, SpecID)` pair skip, 5 entries | **file + match content** (`LineStart`/`LineEnd` are documented diagnostic-only and unused in `isPedagogicallyAllowed`) |
+| `pedagogicalAllowlist` | `(File, SpecID)` pair skip, 5 entries | **file + match content** |
 
-The frequently-repeated claim that `pedagogicalAllowlist` is line-number-anchored and therefore drift-prone is **not supported by the code**. The enforcement path compares `entry.File == relPath && entry.SpecID == matched` only.
+The frequently-repeated claim that `pedagogicalAllowlist` is line-number-anchored and therefore drift-prone is **not supported by the code**. `isPedagogicallyAllowed` compares `entry.File == relPath && entry.SpecID == matched` only; `LineStart`/`LineEnd` are documented diagnostic-only fields, never read in enforcement.
+
+```
+$ awk '/^func isPedagogicallyAllowed/,/^}/' internal_content_leak_test.go | grep -cE 'LineStart|LineEnd'
+0
+```
 
 ---
 
@@ -189,7 +272,7 @@ The frequently-repeated claim that `pedagogicalAllowlist` is line-number-anchore
 .moai/config/evaluator-profiles/frontend.md
 ```
 
-The six date-bearing files under `templates/.claude/rules/moai/` are `NOTICE.md`, `development/spec-frontmatter-schema.md`, `development/skill-authoring.md`, and `workflow/archived-agent-rejection.md` — none appears in the list above.
+The four date-bearing files under `templates/.claude/rules/moai/` — `NOTICE.md`, `development/spec-frontmatter-schema.md`, `development/skill-authoring.md`, `workflow/archived-agent-rejection.md` — do not appear. A positive control confirms the membership check is not vacuous: `session-handoff.md` is correctly detected as `IN-ALLOWLIST`.
 
 ### E.2 Local-counterpart overlap
 
@@ -197,15 +280,38 @@ Of the 116 affected template files, **115** have a counterpart at the correspond
 
 ### E.3 Existing CI workflow convention
 
-`.github/workflows/template-neutrality-check.yaml` runs `TestTemplateNeutralityAudit` **in isolation by test name**, with an in-file comment stating that a package-wide green is not required because `internal/template` carries pre-existing unrelated failures. Its trigger paths already include `internal/template/internal_content_leak_test.go`.
+`.github/workflows/template-neutrality-check.yaml` runs `TestTemplateNeutralityAudit` in isolation by test name:
+
+```
+$ grep -c -- '-run TestTemplateNeutralityAudit' .github/workflows/template-neutrality-check.yaml
+1
+$ grep -c -- '-run TestTemplateNoInternalContentLeak' .github/workflows/template-neutrality-check.yaml
+0
+```
+
+Its trigger paths already include `internal/template/internal_content_leak_test.go`. Its in-file comment states a package-wide green "is NOT required" because of pre-existing failures — a claim §A.1 measures as false today. The comment is out of scope for this SPEC and is not corrected here.
 
 ---
 
-## §F Gaps (not observed)
+## §F Frontmatter key reach (DC-1 scope correction)
 
-- **G1** — That *all 135* findings carry `class=S1-internal-date` was **not** verified. The guard's report is capped at 50; all 50 visible rows are S1, and the independent enumeration in §B reproduces 135 using the S1 regex alone, which is strong circumstantial evidence — but the guard's own classification of rows 51-135 was not observed.
-- **G2** — `S2-short-sha-sentence-final` contributes 0 findings *among the 50 visible rows*. Its contribution among rows 51-135 was not observed.
-- **G3** — The DC-5 context for `.claude/skills/moai/references/anti-patterns.md | 2026-04-28` was captured by the enumeration but not individually re-read; its shape is recorded as unknown.
-- **G4** — The mechanical classifier in §C.2 binds each finding to the **first** line in the file containing that date literal. For a line carrying two distinct date literals (observed in `workflows/loop.md` and `workflows/fix.md` changelog lines), this can bind a finding to a leading `Updated:` token that is not its own literal. REQ-TDN-003 exists because of this; the §C.2 counts should be treated as a first-pass partition requiring per-finding confirmation during run-phase triage, not as a final adjudication.
-- **G5** — No measurement was taken of how many DC-2 removals would leave a file with an orphaned or empty header/footer block.
-- **G6** — Whether a CI-enforced strict tier would block any currently-planned future date entry was not probed; that probe is precondition P2 in `design.md` §C.
+```
+$ grep -rhE '^[[:space:]]+created:[[:space:]]*"?202[6-9]-…' templates … | wc -l
+0
+$ grep -rhE '^[[:space:]]+version:[[:space:]]*"?202[6-9]-…' templates … | wc -l
+0
+```
+
+The tree contains **zero** dated `created:` and **zero** dated `version:` frontmatter lines. `DC-1` reaches the `updated:` key only. Iteration-1 prose describing DC-1 as `updated:` / `created:` / `version:` overstated the rule; corrected in `spec.md` REQ-TDN-001 and `plan.md`.
+
+---
+
+## §G Gaps (not observed)
+
+- **G1** — That *all 135* findings carry `class=S1-internal-date` is **not** verified. The guard caps at 50 rows; all 50 visible rows are S1, and the independent S1-only enumeration in §B reproduces exactly 135 — strong circumstantial evidence — but the guard's own classification of rows 51-135 was not observed. The cap was never raised.
+- **G2** — `S2-short-sha-sentence-final` contributes 0 findings *among the visible 50*. Its contribution to rows 51-135 is unobserved.
+- **G3** — **CLOSED.** `anti-patterns.md | 2026-04-28` was re-read: the file carries exactly one line with that literal, line 425 `**Last Updated**: 2026-04-28`. Reclassified `DC-2a`.
+- **G4** — **CLOSED by design change.** Iteration 1's classifier bound each finding to the *first* line in the file containing that literal, which mis-binds a finding on a line carrying two literals. The committed classifier operates per-line-per-literal with explicit boundary checks, so this class of error is structurally excluded. REQ-TDN-003 states the rule; §B.1 documents the boundary-check defect that the equivalence assertion caught.
+- **G5** — No measurement of how many `DC-2a` removals would leave an orphaned or empty header/footer block. No AC mechanizes this (`acceptance.md` §D).
+- **G6** — Whether the carve-out actually satisfies REQ-TDN-012 is unproven at plan phase; it is precondition P2, probed at M6 (AC-TDN-015). What *is* measured today is the hazard's reality: the current S1 pattern matches both a synthetic future attribution date and a synthetic future frontmatter bump.
+- **G7** — The 7 `DC-2a` bare-`Updated:` rows in `moai/workflows/` (§C.6) were classified but not individually adjudicated for surrounding-block damage. They are ordinary REMOVE rows; the G5 caveat applies to them as it does to the other 73.
