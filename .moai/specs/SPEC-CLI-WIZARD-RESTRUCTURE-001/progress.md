@@ -153,11 +153,247 @@ tier: L
 
 ## §E.2 Run-phase Evidence
 
-_<pending run-phase>_
+### §E.2.1 — Commit map (15 run-phase commits, M1-M7)
+
+Plan-phase carried 4 commits (`ab4eb4a01` initial Tier M · `5722a5d39` v0.1.1 ·
+`c6341af89` v0.1.2 · `67dea24ee` v0.2.1 re-tier M→L). The run phase is the 15
+commits below; the SPEC branch also carries 7 unrelated main-line commits that
+are NOT part of this SPEC.
+
+| # | Commit | Milestone | CHANGE rows landed |
+|---|--------|-----------|--------------------|
+| 1 | `1a2f59168` | M1 | C3, C7, C8 (3-page grouping; ungated Page 3) |
+| 2 | `527a0a7cf` | M2 | C2, C9, C10, C11, C12 (model_policy High→Medium) |
+| 3 | `0a037ed9f` | M3 | C4, C5, C6, C13, C15, C16, C18, C19, C21 (question removal + LSP default flip) |
+| 4 | `de26b2abc` | M4 | C1, C14, C17 (advanced_bridge retired) |
+| 5 | `daa940025` | M4 | C20, C30, C41 (gate 1 removed + flag-vs-wizard precedence) |
+| 6 | `b03cee315` | M5 | C34, C40 (depth-aware YAML path patcher + its unit test) |
+| 7 | `43b698c30` | M5 | C35 (lsp/design writers → read-patch) |
+| 8 | `5920649a2` | M5 | C36 (harness.yaml dropped from the Page-3 write set) |
+| 9 | `b391819f6` | M5 | C31 (gate 2 removed from WritePhase1Configs) |
+| 10 | `247703d47` | M5 | C32 (Page-3 writes relocated to Step 3d — both paths) |
+| 11 | `d5b2406e2` | M5 | C33 (dead `InitOptions` mode field removed) |
+| 12 | `59545e585` | M5 | (chore) retired-token comment cleanup |
+| 13 | `881c970f8` | M5 | C39 (deployer-path persistence integration test) |
+| 14 | `c08cf24f3` | M6 | C23, C24, C25, C26, C27, C28, C29 (advanced-path full retirement) |
+| 15 | `c87bbfb3a` | M7 | C22, C37, C38 (test reconciliation + AC-WIZ-015 close) |
+
+All 41 CHANGE rows (C1-C41) are accounted for above. M5's intra-milestone
+ordering constraint held in commit order: C34/C35/C36 (commits 6-8) landed
+BEFORE C32 (commit 10), so the wholesale writers were never reachable against
+template-deployed config (plan.md §B B-clobber).
+
+### §E.2.2 — Per-AC record (19 ACs)
+
+**Verification-provenance legend.** `first-hand (M7)` = the M7 agent ran the
+AC's own verification procedure and observed its output. `test-bound` = the AC's
+Go test binding executed inside the M7 `go test -count=1` full-suite run and
+passed, but the M7 agent did NOT re-run the AC's own bespoke procedure.
+`milestone-only` = verified at the named milestone; **not re-verified in M7 by
+any means** — recorded here as inherited, not as an M7 observation.
+
+| AC | Verified at | M7 provenance | Result |
+|----|-------------|---------------|--------|
+| AC-WIZ-001 — three topic pages, no gate | M1 | test-bound (`restructure_test.go`) | PASS |
+| AC-WIZ-002 — page membership & order | M1 | test-bound (`restructure_test.go`) | PASS |
+| AC-WIZ-003 — nested design condition preserved | M1 | test-bound (`TestPage3_NoModeGate`) | PASS |
+| AC-WIZ-004 — locale live-render on Page 1 | M1 | test-bound (`TestBasicPage_LocaleLiveRender`) | PASS |
+| AC-WIZ-005 — model_policy default = Medium | M2 | **milestone-only** (grep-bound; not re-run in M7) | PASS |
+| AC-WIZ-006 — no "high" default seed remains | M2 | **milestone-only** (grep-bound; not re-run in M7) | PASS |
+| AC-WIZ-007 — lsp_enabled default = true, 4-locale | M3 | **milestone-only** (CJK-punctuation grep; not re-run in M7) | PASS |
+| AC-WIZ-008 — harness_profile removed | M3 | test-bound (`question_removal_test.go`) | PASS |
+| AC-WIZ-009 — coverage_exemptions removed | M3 | test-bound (`question_removal_test.go`) | PASS |
+| AC-WIZ-010 — Page-3 answers persist (MUST-blocking) | M5 | test-bound (`initializer_persist_test.go` Scenarios A+B) | PASS |
+| AC-WIZ-010a — persistence non-destructive (MUST-blocking) | M5 | test-bound (`TestDeployerPath_PersistenceIsNonDestructive`, `..._NestedSameNamedKeysSurvive`) | PASS |
+| AC-WIZ-011 — translation completeness | M3 | test-bound (`translations_completeness_test.go`) | PASS |
+| AC-WIZ-012 — reconfigure order preserved | M1 | test-bound (`restructure_test.go`) | PASS |
+| AC-WIZ-012a — reconfigure membership unchanged | M1 | test-bound (`TestReconfigureMembershipExcludesPage3`) | PASS |
+| AC-WIZ-013 — no orphaned capture branches | M3 / M4 | test-bound (`TestAdvancedBridgeRemoved`, strengthened in M6) | PASS |
+| AC-WIZ-014 — full suite + cross-platform green | M7 | **first-hand (M7)** | PASS |
+| AC-WIZ-015 — advanced-path fully retired | M6 / M7 | **first-hand (M7)** | PASS |
+| AC-WIZ-016 — flag beats wizard | M4 | test-bound (`init_flag_precedence_test.go`) | PASS |
+| AC-WIZ-017 — depth-aware patch preserves nested keys | M5 | test-bound (`yaml_patch_test.go`) | PASS |
+
+Tally: **19/19 PASS, 0 FAIL, 0 PASS-WITH-DEBT.** Two ACs are first-hand M7
+observations; 14 are test-bound (their bindings ran green in M7's suite); 3
+(AC-WIZ-005/006/007) are grep-bound and inherited from their own milestone
+without M7 re-execution.
+
+### §E.2.3 — AC-WIZ-015 retirement grep (first-hand, M7)
+
+PRE counts measured at `881c970f8` before any M6 edit; POST measured on the M7
+tree. Evidence: `.moai/state/verify/m7/ac-wiz-015.log`.
+
+| Check | PRE | POST |
+|-------|-----|------|
+| `test ! -f internal/cli/wizard/advanced_gate.go` | file EXISTS | file GONE |
+| `grep -rn 'IsAdvancedWizardReady\|AdvancedGate' internal/` | 13 | **0** |
+| `grep -rn 'advancedMode\|standardMode' internal/` | 18 | **0** |
+| `grep -rn 'StandardMode\|AdvancedMode' internal/` | 51 | **0** |
+| `grep -rn 'RunWithDefaultsModes\|Phase2Questions' internal/` | 19 | **0** |
+| `grep -rn '\.Bool("standard"\|\.Bool("advanced"' internal/` | 4 | **0** |
+| `grep -rn '\-\-standard\|\-\-advanced' .github/` | 0 | **0** (declared non-regression guard) |
+
+Non-vacuity is visible in the five `internal/`-scoped rows (13/18/51/19/4 → 0).
+The `.github/` row is 0 on both sides by design (plan.md §B N5 — the "CI scripts
+break" claim was a verified phantom); it is a guard, not evidence of work.
+
+### §E.2.4 — M5 non-vacuity + byte-preservation record (inherited, not M7-measured)
+
+The figures in this sub-section are carried from the **orchestrator's M5
+verification record**. The M7 agent did NOT re-measure them; they are recorded
+here for audit completeness with that provenance stated (per
+`verification-claim-integrity.md` §2 — a carried-over number is not an M7
+baseline).
+
+**AC-WIZ-010 non-vacuity** — before the M5 chain landed, the deployer-path
+assertions failed on Scenario A rows 1/2/3/5 and Scenario B row 6. Row 4
+(`design_enabled=true`) is default-coincident with the shipped
+`design.yaml:8 enabled: true` and is annotated in acceptance.md as a
+template-default regression guard rather than a discriminating row (the review-3
+D1 fold).
+
+**AC-WIZ-010a byte-preservation** — post-init file sizes on the deployer path:
+
+| File | Before | After | Interpretation |
+|------|--------|-------|----------------|
+| `lsp.yaml` | 11,306 B | 11,305 B | patched in place (`false`→`true`, −1 byte) |
+| `design.yaml` | 2,867 B | 2,868 B | patched in place (+1 byte) |
+| `harness.yaml` | 8,165 B | 8,165 B | untouched — C36 removed it from the write set |
+
+The pre-C35 wholesale writers would have collapsed these to ~2-4 line documents
+(~22 KB of deployed configuration destroyed per `moai init`).
+
+**AC-WIZ-017 indentation multisets** — `enabled:` keys by indent depth after a
+deployer-path init:
+
+| File | Depth-aware (C34, actual) | Naive `patchYAMLKey` (rejected) |
+|------|---------------------------|----------------------------------|
+| `design.yaml` | `{2sp: 1, 4sp: 3, 6sp: 1}` | `{2sp: 5, 4sp: 0, 6sp: 0}` |
+| `lsp.yaml` | `{2sp: 1, 4sp: 1}` | `{2sp: 2, 4sp: 0}` |
+
+The naive column is the flattening the review-2 auditor's prescription would
+have produced — a silent structural corruption strictly worse than the visible
+clobber it was meant to fix (plan.md §B B-audit-correction 2).
+
+**M7-added corroboration (first-hand).** M7's C37 added
+`TestWritePhase1Configs_PatchesExistingFiles`, which asserts byte-exact in-place
+patching at the `WritePhase1Configs` aggregate level. Its non-vacuity was proven
+by temporarily forcing `writeLSPYAML` down the wholesale-write branch — the test
+FAILED — after which the source was restored byte-identical
+(`git diff --stat` clean).
+
+### §E.2.5 — M7 quality gate (first-hand)
+
+| Check | Command | Result | Evidence |
+|-------|---------|--------|----------|
+| Scoped suite | `go test -count=1 ./internal/cli/... ./internal/template/... ./internal/config/... ./internal/core/project/...` | exit 0, **21 ok, 0 FAIL** | `.moai/state/verify/m7/1-suite.log` |
+| Host build | `go build ./...` | exit 0 | — |
+| Cross-platform build | `GOOS=windows GOARCH=amd64 go build ./...` | exit 0 | — |
+| Lint | `golangci-lint run --timeout=3m` | exit 0, `0 issues.` (baseline 0 → zero NEW) | `.moai/state/verify/m7/3-lint.log` |
+| Coverage `internal/cli/wizard` | `go test -count=1 -cover` | **93.9%** (floor 85%; M5 baseline 93.5%) | `.moai/state/verify/m7/2-cover.log` |
+| Coverage `internal/core/project` | `go test -count=1 -cover` | **88.7%** (floor 85%; M5 baseline 88.7% — no regression) | `.moai/state/verify/m7/2-cover.log` |
+| Subagent boundary `internal/cli` | canonical grep (excl. `_test.go` + comment lines) | 32 at `881c970f8` → **32** now (delta 0) | — |
+| Subagent boundary `internal/core/project` | same | 0 → **0** | — |
+| Retired-token reintroduction | `grep -rn 'StandardMode\|AdvancedMode' internal/ --include='*.go'` | **0** — no literal token reintroduced in any comment | — |
+
+### §E.2.6 — Orchestrator independent verification (at `c87bbfb3a`)
+
+Re-run independently by the orchestrator after the M7 commit, over the **full
+repository** rather than the four scoped trees:
+
+```
+go build ./...                            exit 0
+go vet ./...                              exit 0
+go test -count=1 ./...                    exit 0, 107 packages ok, 0 FAIL
+GOOS=windows GOARCH=amd64 go build ./...  exit 0
+golangci-lint run --timeout=3m            exit 0, "0 issues."
+git status --short                        clean
+```
+
+The orchestrator also independently re-ran all 7 AC-WIZ-015 retirement greps and
+confirmed `advanced_gate.go` is gone and all six token greps return 0.
 
 ## §E.3 Run-phase Audit-Ready Signal
 
-_<pending run-phase>_
+- **`run_status: audit-ready`** — run-phase implementation complete across all
+  seven milestones (M1-M7). No milestone remains open; no CHANGE row (C1-C41) is
+  unlanded.
+- **`run_complete_at: 2026-07-25`**
+- **`run_commit_sha: c87bbfb3a`** — the final run-phase commit
+  (`test(SPEC-CLI-WIZARD-RESTRUCTURE-001): M7 test reconciliation + AC-WIZ-015
+  close (C22/C37/C38)`). No placeholder backfill is required: this signal is
+  written in a later commit than the one it names.
+- **`run_phase_commits: 15`** (M1×1, M2×1, M3×1, M4×2, M5×8, M6×1, M7×1) —
+  enumerated in §E.2.1.
+- **`ac_pass_count: 19` / `ac_fail_count: 0` / `ac_pass_with_debt_count: 0`** —
+  per the §E.2.2 matrix. Provenance is mixed by design and stated per-row there:
+  2 first-hand M7, 14 test-bound, 3 grep-bound milestone-only.
+- **`cross_platform_build`**: host `go build ./...` exit 0; `GOOS=windows
+  GOARCH=amd64 go build ./...` exit 0. Confirmed independently by the
+  orchestrator at `c87bbfb3a` over the full repo.
+- **`new_warnings_or_lints_introduced: 0`** — `golangci-lint run --timeout=3m`
+  reports `0 issues.` against a 0-issue baseline.
+- **`coverage`**: `internal/cli/wizard` 93.9%, `internal/core/project` 88.7%,
+  `internal/template` 84.9% (unchanged from baseline). Both floored packages are
+  above the 85% threshold.
+- **`subagent_boundary_delta: 0`** — `internal/cli` 32→32, `internal/core/project`
+  0→0 (canonical grep form).
+- **`push_state: NOT pushed`** — Tier L routes to Route B (PR); `manager-git`
+  owns branch/PR creation. Branch `feat/SPEC-CLI-WIZARD-RESTRUCTURE-001`,
+  working tree clean.
+- **`preserve_list_post_run`** — the plan.md §A.5 PRESERVE list holds:
+  `GitQuestions()` + reconfigure splice, the three `ModelPolicy*` const
+  definitions, the locale live-render mechanism, `patchYAMLKey` + its two
+  existing callers (untouched — C34 is additive),
+  `writeQualityExpansionYAML`'s append-if-absent branch, and
+  `generateConfigsFallback`'s other writes. No PRESERVE entry was modified.
+
+### §E.3.1 — Residual debt inherited by sync-phase
+
+Recorded so sync-phase inherits these rather than rediscovering them.
+
+1. **`writeHarnessProfileYAML` retained as dead code.** C36 removed its only
+   production call (satisfying AC-WIZ-010a — `harness.yaml` is left
+   byte-identical), but the function and its two tests
+   (`TestWriteHarnessProfileYAML`, `TestWriteHarnessProfileYAML_DefaultProfile`)
+   remain. Deleting the function forces deleting those tests, which are NOT on
+   the plan.md §G delete-list — and §G states that deleting a test outside that
+   list "requires a new §G entry, not a judgement call at run-phase." Removal is
+   pure hygiene with zero AC impact; it needs a §G amendment, not a run-phase
+   decision. `golangci-lint`'s `unused` check does not fire (the function is
+   test-referenced).
+2. **`patchYAMLPathValue` is a line-walker, not a YAML parser.** The C34 helper
+   walks lines and tracks indentation depth; it does not parse YAML. Block
+   scalars (`|`, `>`) whose content happens to look like a matching key path are
+   a known limitation. design.md §D2 option C (a real YAML round-trip) is the
+   documented future fix. No current config file exercises the limitation.
+3. **Key-absent behavior is a silent no-op.** When a target path is absent from
+   an existing document, `writeLSPYAML` / `writeDesignYAML` leave the file
+   byte-identical rather than appending a duplicate top-level mapping. This is
+   deliberate (it protects hand-edited config), but it means a user who deletes
+   `lsp.enabled` from their `lsp.yaml` silently stops receiving the wizard
+   answer, with no warning.
+4. **`TestInit_QualityYAMLContent` behavior change.** A caller that leaves
+   `opts.EnforceQuality` unset now receives `false` where the template default
+   was `true`. No production path is exposed — `init.go` always sets the field
+   via `getBoolFlagWithDefault(cmd, "enforce-quality", true)` — so this is a
+   direct-API-caller concern only.
+5. **Removal tombstone comments.** Four test files
+   (`questions_test.go`, `wizard_test.go`, `expansion_test.go`,
+   `unified_form_test.go`) retain comments naming `advanced_bridge` /
+   `harness_profile` / `coverage_exemptions_enabled` to document what §G
+   authorized removing. They carry no AC-WIZ-015 token and cannot defeat that
+   grep, but a future repo-wide grep on those literals would surface them as
+   false positives.
+6. **docs-site 4-locale flag references — the largest inherited item.**
+   Twelve docs-site files (4 locales × `cli-reference/init.md` / `cli.md` /
+   the init-wizard doc) still document `--standard` / `--advanced`, which no
+   longer exist. This is scoped OUT of run-phase by design (spec.md §C Out of
+   Scope, REQ-WIZ-019, plan.md §F sync-phase note) and OUT of AC-WIZ-015, whose
+   scope is CODE + CI only. **It is a sync-phase deliverable owned by
+   manager-docs**, bound by the CLAUDE.local.md §17 4-locale parity obligation.
+   Run-phase deliberately did not touch `docs-site/`.
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
