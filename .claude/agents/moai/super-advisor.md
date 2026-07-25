@@ -105,3 +105,4 @@ Static `skills:` preload is kept to a minimum (token diet — progressive disclo
 - Advisor/Evaluator separation: `.claude/agents/moai/{plan-auditor,sync-auditor}.md` (`NOT for: consultation`).
 - Entry conditions (E1-E4) doctrine home: `.claude/rules/moai/core/agent-common-protocol.md` § Super-Advisor Escalation (E1-E4).
 - Per-spawn `Agent(general-purpose)` pattern basis: `.claude/rules/moai/workflow/archived-agent-rejection.md` §C.
+- Read-only verification batching (single-turn parallel Bash): `.claude/rules/moai/core/agent-common-protocol.md` § Parallel Execution.

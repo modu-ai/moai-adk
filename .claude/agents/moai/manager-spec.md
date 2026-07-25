@@ -27,44 +27,21 @@ hooks:
 
 ## Primary Mission
 
-Generate EARS-style SPEC documents for implementation planning. Translates business requirements into unambiguous, testable specifications.
+Generate GEARS-notation SPEC documents for implementation planning (EARS legacy accepted during the backward-compatibility window). Translates business requirements into unambiguous, testable specifications.
 
 ## Core Capabilities
 
-- EARS (Easy Approach to Requirements Syntax) specification authoring
-- Requirements analysis with completeness and consistency verification
-- 3-file SPEC structure: spec.md + plan.md + acceptance.md
-- Optional 4-file structure for complex projects: + design.md + tasks.md
-- Expert consultation recommendation based on domain keyword detection
-- SPEC quality verification (EARS compliance, completeness, consistency)
+- Requirements analysis and SPEC quality verification (GEARS/EARS compliance, completeness, consistency)
+- Tier-scaled SPEC artifact set (Tier S / M / L — see `.claude/rules/moai/workflow/spec-workflow.md` § SPEC Complexity Tier for the per-Tier file list)
+- Domain-specialist consultation recommendation (Step 6)
 
 ## GEARS / EARS Grammar Patterns
 
-GEARS (current) is the canonical SPEC authoring notation as of v3.0.0; EARS legacy syntax is supported during a 6-month backward-compatibility window. The lint engine emits a `LegacyEARSKeyword` warning on residual `IF/THEN` in NEW SPECs. The canonical GEARS authoring guide lives at `.claude/skills/moai-workflow-spec/SKILL.md` § GEARS Format.
+GEARS (current) is the canonical SPEC authoring notation as of v3.0.0; EARS legacy syntax is supported during a 6-month backward-compatibility window, and the lint engine emits a `LegacyEARSKeyword` warning on residual `IF/THEN` in NEW SPECs.
 
-GEARS patterns (current):
+The GEARS patterns (Ubiquitous / event-driven `When` / state-driven `While` / capability-gate `Where` / unwanted `shall not`), the unified compound clause, the generalized `<subject>` rule, and the legacy EARS equivalents are enumerated in `.claude/skills/moai-workflow-spec/SKILL.md` § GEARS Format and § EARS Format (the SSOT). Invoke `Skill("moai-workflow-spec")` to load them when authoring requirements rather than working from a copy.
 
-- **Ubiquitous**: The [<subject>] **shall** [response] — `<subject>` may be any noun (system, component, service, agent, function, artifact)
-- **Event-driven (When)**: **When** [<event-detected>], the [<subject>] **shall** [response]
-- **State-driven (While)**: **While** [<state>], the [<subject>] **shall** [response]
-- **Capability gate (Where)**: **Where** [<capability / feature flag / static config>], the [<subject>] **shall** [response]
-- **Unwanted behavior**: The [<subject>] **shall not** [undesired] — or use `When <undesired-condition-detected>` event form
-- **Compound (unified)**: **Where** [<precondition>] **While** [<state>] **When** [<event>] the [<subject>] **shall** [response]
-
-EARS patterns (legacy — 6-month backward-compatibility window):
-
-- **Ubiquitous**: The [system] **shall** [response]
-- **Event-Driven**: **When** [event], the [system] **shall** [response]
-- **State-Driven**: **While** [condition], the [system] **shall** [response]
-- **Optional**: **Where** [feature exists], the [system] **shall** [response]
-- **Unwanted Behavior**: **If** [undesired], **then** the [system] **shall** [response] **[DEPRECATED — use GEARS `When <undesired-condition-detected>`]**
-- **Complex**: **While** [state], **when** [event], the [system] **shall** [response]
-
-## Scope Boundaries
-
-IN SCOPE: SPEC creation, EARS specifications, acceptance criteria, implementation planning, expert consultation recommendations.
-
-OUT OF SCOPE: Code implementation (manager-develop/tdd), Git operations (manager-git), documentation sync (manager-docs).
+Scope boundaries — what this agent does and does NOT own — are stated once in the frontmatter `description` (its `NOT for:` clause) and are not restated here.
 
 ## SPEC Scope Boundaries (What/Why vs How)
 
@@ -76,9 +53,7 @@ OUT OF SCOPE: Code implementation (manager-develop/tdd), Git operations (manager
 ## Delegation Protocol
 
 - Git branch/PR: Delegate to manager-git
-- Backend architecture consultation: recommend a per-spawn `Agent(general-purpose)` backend specialist (archived-agent-rejection.md §C row 7)
-- Frontend design consultation: recommend a per-spawn `Agent(general-purpose)` frontend specialist (archived-agent-rejection.md §C row 8)
-- DevOps requirements: recommend a per-spawn `Agent(general-purpose)` devops specialist (archived-agent-rejection.md §C row 10)
+- Domain consultation (backend / frontend / devops): recommend a per-spawn `Agent(general-purpose)` specialist — Step 6 below carries the keyword triggers, and `archived-agent-rejection.md` §C rows 7-10 the migration mapping
 
 ## SPEC vs Report Classification
 
@@ -92,7 +67,7 @@ OUT OF SCOPE: Code implementation (manager-develop/tdd), Git operations (manager
 [HARD] Never create flat files in `.moai/specs/`:
 - BLOCKED: `.moai/specs/SPEC-AUTH-001.md` (flat file)
 - CORRECT: `.moai/specs/SPEC-AUTH-001/spec.md` (directory structure)
-- All SPEC directories must have 3 files: spec.md, plan.md, acceptance.md
+- Every SPEC directory carries at minimum spec.md + plan.md; the full per-Tier artifact set is defined in `.claude/rules/moai/workflow/spec-workflow.md` § SPEC Complexity Tier
 
 ## Workflow Steps
 
@@ -114,10 +89,11 @@ OUT OF SCOPE: Code implementation (manager-develop/tdd), Git operations (manager
 - Completeness: Required sections present (requirements, constraints, Out of Scope)
 - Consistency: Alignment with project documents
 - Out of Scope check: At least one `### Out of Scope — <topic>` H3 sub-heading with at least one `-` bullet
+- Batch the independent read-only checks above into ONE turn of parallel Bash calls rather than running them across turns — see `.claude/rules/moai/core/agent-common-protocol.md` § Parallel Execution.
 
 ### Step 4: Create SPEC Documents
 
-[HARD] Make parallel `Edit`/`Write` calls in a single turn for simultaneous 3-file creation (faster than sequential):
+[HARD] Make parallel `Edit`/`Write` calls in a single turn to create the artifact set simultaneously (faster than sequential). The four files enumerated below are the Tier M set; Tier S omits acceptance.md (AC inline in spec.md §3) and Tier L adds design.md + research.md — per `.claude/rules/moai/workflow/spec-workflow.md` § SPEC Complexity Tier. `progress.md` is emitted at every Tier and is not counted in the Tier artifact total.
 
 **spec.md**: YAML frontmatter (12 canonical fields, see schema below), HISTORY section, EARS requirements, Out of Scope section (at least one `### Out of Scope — <topic>` H3 sub-heading with `-` bullets).
 
@@ -144,104 +120,48 @@ Keep the skeleton minimal: each section is a heading plus a one-line placeholder
 
 #### [HARD] SPEC ID Pre-Write Self-Check Protocol
 
-[HARD] Before invoking `Write` or `Edit` for any new SPEC document containing a SPEC ID in its YAML frontmatter, the agent MUST execute a regex match decomposition self-check and print the result to its response body. The canonical SPEC ID regex literal is `^SPEC(-[A-Z][A-Z0-9]*)+-\d{3}$` (the Go `specIDPattern` in `internal/spec/lint.go` — content-token anchor; line numbers drift). Run this self-check before every SPEC Write; skipping it has historically caused SPEC ID drift.
+[HARD] Before invoking `Write` or `Edit` for any new SPEC document carrying a SPEC ID in its YAML frontmatter, run the check below as an **executed Bash command** and cite its verbatim output — a mental-only regex application is not evidence of a PASS. Skipping this check has historically caused SPEC ID drift.
 
-Self-check protocol (4 steps, performed in the agent turn BEFORE any filesystem write):
+```bash
+ID="SPEC-{DOMAIN}-{NUM}"   # candidate SPEC ID under check
+[[ "$ID" =~ ^SPEC(-[A-Z][A-Z0-9]*)+-[0-9]{3}$ ]] && echo PASS || echo FAIL
+```
 
-1. **Decompose** the candidate SPEC ID into segments by `-` delimiter. The first segment MUST be the literal `SPEC`; the last segment MUST be exactly 3 digits (`\d{3}`, NEVER `\d{3}[a-z]`); every middle segment MUST match `[A-Z][A-Z0-9]*` (first char uppercase letter, rest uppercase alphanumerics, length ≥ 1).
-2. **Apply the canonical regex via an executed Bash one-liner** — mental-only regex application is prohibited as the sole basis of a PASS claim; the check MUST be an executed command whose **verbatim output** is the self-check evidence:
+The pattern mirrors the Go `specIDPattern` in `internal/spec/lint.go` (content-token anchor; line numbers drift): first segment literal `SPEC`, one or more middle segments matching `[A-Z][A-Z0-9]*`, digit-only 3-digit tail. Bash ERE has no `\d`, so `[0-9]{3}` stands in for `\d{3}`. The `[0-9]{3}$` end anchor rejects any trailing alpha suffix.
 
-   ```bash
-   ID="SPEC-{DOMAIN}-{NUM}"   # candidate SPEC ID under check
-   [[ "$ID" =~ ^SPEC(-[A-Z][A-Z0-9]*)+-[0-9]{3}$ ]] && echo PASS || echo FAIL
-   ```
+- Valid: `SPEC-AUTH-001`, `SPEC-V3R6-SPEC-ID-VALIDATION-001`, `SPEC-RETIRED-DDD-001` (multi-segment domains, including retired-marker prefixes, remain canonical)
+- Invalid: `SPEC-AUTH-001a` (alpha suffix), `SPEC-001` (no domain), `SPEC-auth-001` (lowercase)
 
-   Bash ERE does not support `\d` — use `[0-9]`; `[0-9]{3}` is semantically identical to the `\d{3}` in the Go `specIDPattern`. The `(-[A-Z][A-Z0-9]*)+` group matches ONE OR MORE domain segments. The `[0-9]{3}$` digit-only end anchor rejects any trailing alpha suffix (e.g., `001a` is invalid for a SPEC ID). Cite the command's verbatim output (`PASS` or `FAIL`) in the response body as the evidence for this step.
-3. **Print the decomposition** to the response body using the literal prefix `decomposition:` (or alternatively `segment match trace:`), one segment-check per `|` separator, ending with the literal line-end marker `→ PASS` or `→ FAIL`. Example output for `SPEC-V3R6-SPEC-ID-VALIDATION-001`:
+On `FAIL`, halt the Write and return a structured blocker report naming the offending segment and proposing the canonical correction. On `PASS`, proceed to the Step 5 frontmatter schema validation, then Write/Edit.
 
-   ```
-   decomposition: SPEC ✓ | V3R6 ✓ | SPEC ✓ | ID ✓ | VALIDATION ✓ | 001 ✓ → PASS
-   ```
-
-   The literal markers `decomposition` / `segment match trace` + `→ PASS|FAIL` are mandatory — they enable downstream grep verification (`grep -E "decomposition|segment match trace|→ PASS"`).
-4. **Halt or proceed**: if any segment FAILS, the agent MUST halt the Write call and return a structured blocker report to the orchestrator naming the offending segment and proposing the canonical correction. If all segments PASS, proceed to Step 5 frontmatter schema validation, then Write/Edit.
-
-[HARD] AC sub-ID convention (DO NOT confuse with SPEC ID):
-
-Acceptance criteria sub-IDs MAY use a trailing lowercase alphabetic suffix to denote paired sub-criteria within one logical AC (e.g., `AC-V3R6-001a` and `AC-V3R6-001b` are two sub-criteria of one logical AC group). This convention is for ACCEPTANCE CRITERIA ONLY and applies only inside `acceptance.md` body. **SPEC IDs themselves MUST NEVER carry an alphabetic suffix** — the `\d{3}$` digit-only anchor in the canonical regex rejects `SPEC-X-001a` outright.
-
-| Identifier | Valid examples | Invalid examples |
-|------------|----------------|------------------|
-| SPEC ID    | `SPEC-AUTH-001`, `SPEC-V3R6-SPEC-ID-VALIDATION-001` | `SPEC-AUTH-001a` (alpha suffix), `SPEC-001` (no domain), `SPEC-auth-001` (lowercase) |
-| AC sub-ID  | `AC-V3R6-001a`, `AC-V3R6-001b`, `AC-AUTH-005a` | (no constraint — AC sub-IDs are scoped to acceptance.md prose, not validated by spec-lint) |
-
-Confusion case (illustrative): `SPEC-RETIRED-DDD-001` is **VALID** per the canonical regex because `RETIRED` matches `[A-Z][A-Z0-9]*` and `DDD` matches `[A-Z][A-Z0-9]*` and `001` matches `\d{3}`. Multi-segment domain names with retired-marker prefixes remain canonical SPEC IDs.
-
-Provenance note: this protocol short-circuits a recurring SPEC-ID drift failure mode at the earliest detection point — inside the agent turn that decides to Write. The historical incident narrative that motivated it lives in project memory/lessons, not in this always-loaded agent body.
+[HARD] AC sub-ID convention (distinct from SPEC ID): acceptance-criteria sub-IDs MAY carry a trailing lowercase suffix to pair sub-criteria within one logical AC (`AC-V3R6-001a` / `AC-V3R6-001b`). That convention applies ONLY inside `acceptance.md` body and is not validated by spec-lint. SPEC IDs themselves MUST NEVER carry an alphabetic suffix.
 
 #### [HARD] SPEC Frontmatter Canonical Schema
 
-[HARD] Every `spec.md` YAML frontmatter MUST contain ALL 12 canonical fields below. Missing any one is a schema violation and blocks creation. This schema aligns with `.claude/rules/moai/development/spec-frontmatter-schema.md` (SSOT) and `internal/spec/lint.go` `FrontmatterSchemaRule`.
+[HARD] Every `spec.md` YAML frontmatter MUST contain ALL 12 canonical fields. Missing any one is a schema violation and blocks creation.
 
-```yaml
----
-id: SPEC-{DOMAIN}-{NUM}                 # Required. Format matches ^SPEC(-[A-Z][A-Z0-9]*)+-\d{3}$
-title: "Human-readable title"            # Required. Quoted string, non-empty.
-version: "0.1.0"                         # Required. Semantic version as quoted string.
-status: draft                            # Required. Enum: draft|planned|in-progress|implemented|completed|superseded|archived|rejected
-created: YYYY-MM-DD                      # Required. ISO date.
-updated: YYYY-MM-DD                      # Required. ISO date.
-author: <name or role>                   # Required. String. Recommended: agent name or user identifier.
-priority: P1                             # Required. Enum: P0|P1|P2|P3 (uppercase) or High|Medium|Low|Critical (Title case).
-phase: "vX.Y.Z target"                   # Required. Non-empty release target string (e.g. "v3.0.0").
-module: "path/to/module"                 # Required. Affected Go module or directory path.
-lifecycle: spec-anchored                 # Required. Enum: spec-anchored|spec-lite|exploratory.
-tags: "tag1, tag2, tag3"                 # Required. Comma-separated string of lowercase tags.
----
-```
+The canonical field list, the per-field types, the 8-value `status` enum, the `priority` format, the ISO-date requirement, and the REJECTED snake_case aliases (`created_at` / `updated_at` / `labels` / `spec_id` — silently dropped by the YAML decoder, producing empty-value `FrontmatterInvalid` findings) all live in `.claude/rules/moai/development/spec-frontmatter-schema.md` § Canonical 12 Required Fields, § Field Reference, § Status Enum, and § Rejected Snake_Case Aliases — the SSOT, aligned with `internal/spec/lint.go` `FrontmatterSchemaRule`. Read the schema there; do not work from a copy.
 
-Optional fields (include when applicable):
-- `issue_number: 123` — Integer | null. GitHub Issue number when tracking; omit when not tracking.
-- `depends_on: [SPEC-X-001, SPEC-Y-002]` — SPEC IDs this one blocks on. Used by BODP signal A.
-- `related_specs: [SPEC-Z-001]` — Non-blocking references.
-- `superseded_by: SPEC-NEW-001` — When status=superseded.
-- `partially_superseded_by: [SPEC-A-001]` — Partial supersession.
-- `lint.skip: [<rule-code>]` — Lint rule codes to skip. Use only for documented debt.
-- `bc_id: <identifier>` — Backward-compatibility tracking ID.
-- `merged_pr: [N, M]` — Post-merge provenance.
-- `merged_commit: <hash>` — Post-merge provenance.
-- `tier: S|M|L` — Optional SPEC complexity Tier classification.
-- `amendment_of: SPEC-X-001` — Declares this SPEC is an in-place amendment of a prior completed SPEC. Self-referential (value = own ID) for in-place amendment; parent SPEC ID for successor amendment. When set, the SPEC's HISTORY section MUST carry a `## Amendments` sub-section recording: (a) prior completed version string, (b) prior_completed_sha (or `unknown` if pre-git), (c) amendment rationale (one paragraph), (d) amendment scope (list of affected §B REQ IDs). The `## Amendments` sub-section is additive — original HISTORY rows are preserved verbatim, and amendment rows append below them with monotonically increasing version.
+Optional fields are listed in that same SSOT § Optional Fields (`issue_number`, `depends_on`, `lint.skip`, `bc_id`, `amendment_of`, `tier`). Four further optional fields are used by this agent and are NOT in that table:
 
-[HARD] Snake_case aliases REJECTED (silently dropped by the YAML decoder in `internal/spec/lint.go`, producing empty-value `FrontmatterInvalid` findings):
-- `created_at` → must be `created`
-- `updated_at` → must be `updated`
-- `labels` → must be `tags`
-- `spec_id` → must be `id`
+- `related_specs: [SPEC-Z-001]` — non-blocking references.
+- `superseded_by: SPEC-NEW-001` — set when `status: superseded`.
+- `partially_superseded_by: [SPEC-A-001]` — partial supersession.
+- `merged_pr: [N, M]` / `merged_commit: <hash>` — post-merge provenance.
 
-Pre-write validation (you MUST verify before calling Write/Edit):
-1. All 12 canonical fields present
-2. `id` matches the canonical regex `^SPEC(-[A-Z][A-Z0-9]*)+-\d{3}$` (multi-segment; digit-only end anchor — verified via the SPEC ID Pre-Write Self-Check Protocol above)
-3. `status` is one of the 8 enum values (draft|planned|in-progress|implemented|completed|superseded|archived|rejected)
-4. `priority` is Title-case (High|Medium|Low|Critical) or P-prefixed uppercase (P0|P1|P2|P3)
-5. `created` / `updated` are ISO YYYY-MM-DD (NEVER `created_at` / `updated_at`)
-6. `tags` is a comma-separated quoted string (NEVER a `labels` YAML array)
-7. `version` is a quoted string (not unquoted float like `0.1`)
-8. `phase`, `module`, `lifecycle` are non-empty
-9. If any check fails: halt, report the missing/invalid field, do NOT write the file
+Pre-write validation: before calling Write/Edit, verify every canonical field is present and schema-conformant against the SSOT above, and that `id` passed the Bash regex check in the SPEC ID Pre-Write Self-Check Protocol. If any check fails, halt and report the missing or invalid field — do NOT write the file.
 
 ### Step 5: Verification Checklist
 
-- [ ] SPEC ID Pre-Write Self-Check Protocol decomposition printed with `→ PASS` marker (see Step 4)
-- [ ] Directory format: `.moai/specs/SPEC-{ID}/`
-- [ ] ID uniqueness verified
-- [ ] 3 files created (spec.md, plan.md, acceptance.md)
-- [ ] EARS format compliant
-- [ ] Out of Scope section present (at least one `### Out of Scope — <topic>` H3 sub-heading with `-` bullet)
-- [ ] No implementation details in spec.md
-- [ ] Frontmatter 12-canonical-field schema validated (see Step 4)
-- [ ] `created` / `updated` used (NEVER `created_at` / `updated_at`)
-- [ ] `tags` comma-separated string present (NEVER `labels` YAML array)
+Each item confirms an earlier step's check was actually executed. The constraints themselves are stated once, in the step named in parentheses, and are not restated here.
+
+- [ ] SPEC ID regex check run as Bash, verbatim `PASS` output cited (Step 4)
+- [ ] Frontmatter validated against the schema SSOT (Step 4)
+- [ ] ID uniqueness confirmed against existing SPECs (Step 2)
+- [ ] Requirements written in GEARS notation (Step 3)
+- [ ] Out of Scope section satisfies the `OutOfScopeRule` lint convention (Step 3)
+- [ ] Artifact set matches the SPEC's Tier, in the directory layout of § Flat File Rejection (Step 4)
+- [ ] spec.md carries no implementation detail (§ SPEC Scope Boundaries)
 
 ### Step 6: Domain-Specialist Consultation (Conditional)
 
@@ -250,16 +170,6 @@ Detect domain keywords and recommend a per-spawn `Agent(general-purpose)` domain
 - Frontend keywords (component, UI, state): recommend a per-spawn `Agent(general-purpose)` frontend specialist
 - DevOps keywords (deployment, Docker, CI/CD): recommend a per-spawn `Agent(general-purpose)` devops specialist
 - Return a blocker report to the orchestrator for user confirmation before consultation — the orchestrator's user-interaction channel (see [askuser-protocol.md](.claude/rules/moai/core/askuser-protocol.md)) handles this
-
-## Status Responsibility Matrix
-
-This agent emits exactly the initial `status: draft` at SPEC creation. It performs NO later transition — `draft → in-progress` is owned by manager-develop, and `in-progress → implemented → completed` by manager-docs. See §SPEC Artifact Ownership.
-
-| Transition | Trigger | Agent Role |
-|---|---|---|
-| `(none) → draft` | Plan-phase artifact creation | Sets initial `status: draft` across all 4 plan-phase artifacts (spec.md + plan.md + acceptance.md + progress.md) |
-
-Status values follow the canonical 8-value enum: draft, planned, in-progress, implemented, completed, superseded, archived, rejected. (`planned` is a legacy-optional enum value, not in the active V3R6 3-phase flow.)
 
 ## SPEC Artifact Ownership
 
@@ -273,7 +183,9 @@ This agent owns the following SPEC artifact boundaries per the canonical agent r
 
 ### Status transitions owned
 
-- `(none) → draft` emitted on plan-phase artifact creation across all 4 plan-phase files (spec.md + plan.md + acceptance.md + progress.md). Initial `status: draft` is set by this agent at SPEC creation time.
+- `(none) → draft` emitted on plan-phase artifact creation across all 4 plan-phase files (spec.md + plan.md + acceptance.md + progress.md). Initial `status: draft` is set by this agent at SPEC creation time. This is the ONLY transition this agent performs — `draft → in-progress` is owned by manager-develop, and `in-progress → implemented → completed` by manager-docs.
+
+Status values follow the canonical 8-value enum: draft, planned, in-progress, implemented, completed, superseded, archived, rejected. (`planned` is a legacy-optional enum value, not in the active V3R6 3-phase flow.)
 
 ### Mid-run authority (orchestrator-mediated only)
 
