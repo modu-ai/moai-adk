@@ -1,16 +1,16 @@
 ---
 id: SPEC-GOAL-SURFACE-UNIFY-001
 title: Unify the goal surface on /moai goal and relocate goal presentation to the Implementation Kickoff Approval gate
-version: 1.0.0
+version: 1.3.0
 status: draft
 created: 2026-07-25
 updated: 2026-07-25
 author: manager-spec
 priority: HIGH
-phase: plan
+phase: "v3.1.0"
 module: doctrine
 lifecycle: spec-anchored
-tags: [goal, doctrine, session-handoff, slash-command, template-mirror]
+tags: "goal, doctrine, session-handoff, slash-command, template-mirror"
 tier: L
 ---
 
@@ -24,30 +24,44 @@ Workspace: isolated worktree, branch `feat/SPEC-GOAL-SURFACE-UNIFY-001`, based a
 
 The brief measured 13 local + 13 template = 26 files. A `.claude/`-scoped `grep -rl` missed one pair: the root `CLAUDE.md` and its mirror `internal/template/templates/CLAUDE.md`, both carrying one native-`/goal` occurrence on line 41 (the §2 stage-⑤ clause `when a goal is armed (\`/goal\`, \`/moai goal\`)`).
 
-Corrected scope: **28 existing files** (14 local + 14 template) + **2 new** wrapper files = **30 paths**.
+Post-split scope: **15 local doctrine + 15 template mirrors + 5 Go + 2 new = 37 run-phase paths** (`plan.md` §F.1 is the arithmetic SSOT). The 13 public-documentation paths moved to `SPEC-GOAL-DOCS-RETIRE-001`.
 
 The `CLAUDE.md` pair is NOT byte-identical (intentional — the template copy is neutralized per CLAUDE.local.md §25), so it is excluded from the byte-parity loop and verified by the specific edited clause instead (REQ-GSU-018).
 
-### §A.2 Four retained native-`/goal` surfaces (guard against over-deletion)
+### §A.2 Retention register — three retained native-`/goal` surfaces (guard against over-deletion)
 
-Deleting every native-`/goal` mention would erase the subject the prohibition governs. Exactly **four** surfaces retain their references, for categorically different reasons:
+Deleting every native-`/goal` mention would erase the subject the prohibition governs. This table is the **canonical retention register** for this SPEC, and `spec.md` REQ-GSU-004 binds to it by reference rather than restating it — so the two cannot drift apart (the failure mode that produced audit findings D2 and N1).
 
-| Surface | Retained content | Why | Guard |
-|---|---|---|---|
-| `goal-directive.md` § Native `/goal` Prohibition | The prohibition rationale: native `/goal` is HUMAN-ONLY, the model cannot invoke it, so the pipeline does not emit it | Edit kind 3 — the prohibition needs its subject | AC-GSU-003 |
-| `native-invocation-model.md` § Classification Matrix + Axis B | The `/goal` HUMAN-ONLY classification row and the Axis B worked illustration | A factual statement about Claude Code, and the *justification* for `/moai goal` existing. Retiring the emission path does not make it false | AC-GSU-013 |
-| `docs-site/content/*/claude-code/**` (28 pages) | Documentation of Claude Code's own `/goal` feature | Same logic one layer out: these describe the upstream product, not MoAI's pipeline | AC-GSU-029 |
-| `internal/goal/evaluate.go` | `NativeGoalActive` field, the step-4 yield branch, the verdict reason string | Implements interoperation *with* native `/goal` — `stop-goal` yields so the two evaluators do not double-block. This is a safety invariant, not an emission | AC-GSU-027 |
+The membership test is `design.md` §B.3's: **does the sentence become false when MoAI stops emitting native `/goal`?** If it stays true, it is retention.
 
-This is why `native-invocation-model.md` is owned by M3 (retention semantics) and not M4 (mechanical emission sweep) — its edit adds a cross-reference, it does not swap tokens.
+| # | Surface | Layer | Retained content | Why | Guard |
+|---|---|---|---|---|---|
+| 1 | `goal-directive.md` § Native `/goal` Prohibition | doctrine | The prohibition rationale: native `/goal` is HUMAN-ONLY, the model cannot invoke it, so the pipeline does not emit it | A prohibition needs its subject | AC-GSU-003, AC-GSU-002 (section-carved) |
+| 2 | `native-invocation-model.md` § Classification Matrix + Axis B | doctrine | The `/goal` HUMAN-ONLY classification row and the Axis B worked illustration | A factual statement about Claude Code, and the justification for `/moai goal` existing | AC-GSU-013 |
+| 3 | `internal/goal/evaluate.go` | Go | `NativeGoalActive` field, the step-4 yield branch, the verdict reason string | Implements interoperation *with* native `/goal` — `stop-goal` yields so the two evaluators do not double-block. A safety invariant, not an emission | AC-GSU-027 |
 
-**Correction to the D4 brief.** The delegation brief framed the non-M7 Go references as "the `/moai goal` implementation, not the native command" and said not to touch them. That framing is right about the outcome but wrong about the reason for four of them: `internal/goal/evaluate.go` lines 74, 135-137 are references *to the native command*, implementing the yield invariant. They are retained because they are a retention surface, not because they are implementation identifiers — which matters, because an AC written as "zero native-`/goal` in non-test Go" would force their deletion and silently remove the no-double-block guarantee. AC-GSU-027 pins them explicitly.
+**Count re-derived, not edited (audit finding N1).** Iteration 1 recorded six rows. Three of those were documentation-layer surfaces — `docs-site/content/*/claude-code/**` (28 pages), the `autonomous-loops.md` native sections, and `.moai/docs/autonomous-workflow-strategy.md` — and all three left with the sync-phase scope when it was split to `SPEC-GOAL-DOCS-RETIRE-001`. The count is therefore **6 − 3 = 3**, derived from post-split layer membership rather than by editing the previous number. Derivation:
+
+```bash
+# Retention rows whose surface is doctrine-or-Go (i.e. remains in this SPEC):
+#   goal-directive.md prohibition      → doctrine  ✓
+#   native-invocation-model.md matrix  → doctrine  ✓
+#   internal/goal/evaluate.go yield    → Go        ✓
+#   docs-site/*/claude-code/**         → docs      → SPEC-GOAL-DOCS-RETIRE-001
+#   autonomous-loops.md native sects   → docs      → SPEC-GOAL-DOCS-RETIRE-001
+#   .moai/docs/autonomous-workflow-strategy.md → docs → SPEC-GOAL-DOCS-RETIRE-001
+# => 3
+```
+
+Five surfaces must agree on this number: `spec.md` REQ-GSU-004, this register, `plan.md` §D D3, `design.md` §B.3's heading, and `acceptance.md` §D. Verified in §E.
+
+**Correction to the D4 brief (M7 framing).** The delegation brief framed the non-M7 Go references as "the `/moai goal` implementation, not the native command" and said not to touch them. That framing is right about the outcome but wrong about the reason for row 3: `internal/goal/evaluate.go` lines 74, 135-137 are references *to the native command*. They are retained because they are a retention surface, not because they are implementation identifiers — which matters, because an AC written as "zero native-`/goal` in non-test Go" would force their deletion and silently remove the no-double-block guarantee. AC-GSU-027 pins them explicitly.
 
 ---
 
 ## §B Known Issues / Risks
 
-- **B1 — Mirror parity is a hard CI gate.** `internal/template/rule_template_mirror_test.go` asserts byte-identity for SSOT mirrors. Both sides of each pair must be edited in the same commit, or CI fails.
+- **B1 — Mirror parity is CI-enforced for only 2 of the 15 pairs; AC-GSU-019 is the sole guard for the other 13 (S4).** `internal/template/rule_template_mirror_test.go` enforces byte-identity for five named paths, of which only `workflow/session-handoff.md` is in this SPEC's set; `internal/template/output_styles_audit_test.go` separately byte-parity-enforces `.claude/output-styles/moai`, covering `moai.md`. The remaining 13 pairs — including `goal-directive.md`, every `skills/moai/**` mirror, `moai-meta-harness/SKILL.md`, and `CLAUDE.md` — have **no CI parity gate**. This raises AC-GSU-019's importance rather than lowering it: a mirror left unedited fails no test and ships as silent drift. Both sides of every pair must be edited in the same commit.
 - **B2 — Template neutrality is a hard CI gate.** `.github/workflows/template-neutrality-check.yaml` + `internal/template/internal_content_leak_test.go` reject a SPEC ID, REQ/AC token, internal date, or commit SHA under `internal/template/templates/`. The M6 sweep must copy *neutral* doctrine text, never SPEC-annotated text.
 - **B3 — `make build` is required for W3, not optional.** Templates are embedded via `//go:embed all:templates`; a `.md.tmpl` added without `make build` is invisible to `TestCommandsThinPattern`, which walks the embedded FS. This is exactly what AC-GSU-016 detects.
 - **B4 — Section-name churn cascades.** M1 renames `goal-directive.md`'s title and adds two new headings that M2/M3/M4 cross-reference. M1 must land first or the later milestones cite headings that do not exist yet.
@@ -73,7 +87,7 @@ Expected at entry: `e306e21a9` / `feat/SPEC-GOAL-SURFACE-UNIFY-001` / `0` dirty;
 
 - **D1 [HARD]** All writes stay inside the worktree. Nothing is written to the main checkout's `.moai/specs/`.
 - **D2 [HARD]** `goal-directive.md` is rewritten **in place** — filename unchanged, so zero cross-reference paths need updating.
-- **D3 [HARD]** Exactly the two surfaces in §A.2 retain native-`/goal` references. Every other occurrence becomes `/moai goal` or is removed with its structure.
+- **D3 [HARD]** Exactly the **three** surfaces in §A.2 retain native-`/goal` references. Every other occurrence becomes `/moai goal` or is removed with its structure. Before recording or satisfying any sweep-style AC, test it against **each** of the six — a sweep phrased broadly enough to satisfy itself by deleting a retention surface is rejected.
 - **D4 [HARD]** No file has two milestone owners (see §F ownership map).
 - **D5 [HARD]** No time estimates. Priority labels and phase ordering only.
 - **D6 [HARD]** Template edits carry no SPEC ID, REQ/AC token, internal date, commit SHA, or audit citation.
@@ -106,6 +120,7 @@ Work:
 2. Add `## Native \`/goal\` Prohibition` — the single retained rationale section (REQ-GSU-004). All residual native-`/goal` references in this file live inside it.
 3. Add `### Goal-Presentation Timing` — the W2 codification home: the arm-only property, presentation at the Implementation Kickoff Approval progression-mode axis, the Kickoff-remains-required invariant, and the rejected `/moai goal --run` alternative with its reason (REQ-GSU-008, -010, -011, -012).
 4. Repoint the § Guardrails bullet that currently delegates resume-context goal handling to the `session-handoff.md` Post-Paste section (removed in M2) onto the Block 5 rule.
+5. **Relocate the comparison table's native row into the prohibition section (S11).** § Comparing Autonomous-Continuation Approaches carries a `| /goal | The previous turn finishes | A fresh model confirms the condition is met |` row. By the §A.2 membership test that row is retention-class — but AC-GSU-002 requires zero native-`/goal` occurrences *outside* the prohibition section. The resolution is relocation, not deletion: the native row moves into `## Native \`/goal\` Prohibition` (where the comparison belongs anyway, since the prohibition's whole point is to distinguish the two commands), and the comparison table keeps `/moai goal`, `/moai loop`, `/loop`, and the Stop-hook rows. This is a deliberate design decision, not an AC-forced deletion.
 
 ACs: AC-GSU-001 .. AC-GSU-005.
 
@@ -124,7 +139,8 @@ Work:
 3. Delete the follow-up-block item from § Pre-emit self-check and update the stated count 10 → 9 (REQ-GSU-007).
 4. In `session-handoff-examples.md`: remove the goal-first bootstrap variant's dependence on the removed section, update the Paste-Time Activation Matrix so the class-(d) row no longer routes a MoAI-emitted goal line, and drop the two anti-pattern bullets that describe the retired mechanism.
 5. In `moai.md` §8: remove the post-paste follow-up block clause, update the emission-time save clause's `--goal` condition wording, and update the stated self-check count 12 → 11.
-6. **Close B6**: state in the Block 5 spec that `/moai goal` is arm-only and therefore Block 5's single primary action stays `/moai run`; cross-reference `workflows/goal.md` § Progression Mode (REQ-GSU-008, -009).
+6. **Decided, not deferred — the Paste-Time Activation Matrix classification (audit iteration 2 flagged judgment call).** `session-handoff.md:163` reads "(d) user-only TUI commands (`/goal`, `/effort`, `/clear`) fire ONLY as a standalone user message. A `/goal` line is class (d)". By the §A.2 membership test this is a *classification* statement that stays true after retirement — yet AC-GSU-031's target `0` forces the token out. Resolution: **keep the classification, drop the `/goal` token from it.** The class-(d) enumeration keeps `/effort` and `/clear`, and the routing sentence naming a MoAI-emitted goal line is removed. No unique content is lost, because the native-`/goal` classification survives canonically in retention register row 2 (`native-invocation-model.md`) and in row 1's prohibition section. The run phase implements this decision rather than rediscovering it.
+7. **Close B6**: state in the Block 5 spec that `/moai goal` is arm-only and therefore Block 5's single primary action stays `/moai run`; cross-reference `workflows/goal.md` § Progression Mode (REQ-GSU-008, -009).
 
 ACs: AC-GSU-006 .. AC-GSU-011.
 
@@ -146,15 +162,20 @@ ACs: AC-GSU-012 .. AC-GSU-014.
 
 **Priority Medium.** Mechanical once M1-M3 fix the doctrine shape and heading names.
 
-Owns 8 files:
+Owns 9 files:
 - `.claude/skills/moai/workflows/run.md`
 - `.claude/skills/moai/workflows/harness-builder.md`
 - `.claude/skills/moai/workflows/harness-build-entry.md`
 - `.claude/skills/moai/workflows/moai.md`
 - `.claude/skills/moai/SKILL.md`
+- `.claude/skills/moai-meta-harness/SKILL.md` — **added at audit iteration 1 (D6)**: line 51 documents the `PrimitiveGoal` manifest token M7 renames. `harness-builder.md:107,199` document the same token and were already owned, so the omission was an inconsistency, not a deliberate exclusion. Leaving it would let this SPEC introduce doc-vs-code drift it does not own
 - `.claude/rules/moai/workflow/orchestration-mode-selection.md`
 - `.claude/rules/moai/workflow/dynamic-workflows.md`
 - `CLAUDE.md` (root, §2 stage ⑤)
+
+**Mixed-form lines (S8).** `orchestration-mode-selection.md:18,145,204,205` each carry BOTH a backticked `` `/goal` `` and an unbackticked `(/goal ac_converge)`. Swapping only the backticked token leaves the unbackticked residue. Same shape at `run.md:126` and `harness-builder.md:149`, which `plan.md` already instructs changing. AC-GSU-031's union detector is the guard.
+
+**Graceful-degradation rewrite must be re-derived, not transposed (S10).** `goal-directive.md` states native `/goal` "Requires Claude Code v2.1.139 or later, an accepted workspace trust dialog, and hooks enabled". That v2.1.139 floor is a property of the **native** command's Stop-hook wrapper, NOT of `moai hook stop-goal`. Transposing it would assert a version requirement `/moai goal` does not have. M4 re-derives the condition for `stop-goal` (hooks enabled; no version floor) and MUST NOT copy the version number across.
 
 Work: switch every emission-path reference to `/moai goal`. Notable per-file specifics:
 - `run.md` — § Run-phase Autonomy heading, the `ac_converge` set instruction, the graceful-degradation bullet (native runtime-version / hooks-disabled conditions become the `stop-goal` hook's own availability conditions), and the § Cross-references entry.
@@ -180,9 +201,10 @@ ACs: AC-GSU-016 .. AC-GSU-018.
 
 **Priority Medium.** Strictly last: it propagates the settled local text.
 
-Owns 14 existing mirrors:
+Owns 15 existing mirrors:
 - `internal/template/templates/.claude/rules/moai/workflow/{goal-directive,session-handoff,session-handoff-examples,native-invocation-model,orchestration-mode-selection,dynamic-workflows}.md`
 - `internal/template/templates/.claude/skills/moai/{SKILL.md,workflows/goal.md,workflows/run.md,workflows/moai.md,workflows/harness-builder.md,workflows/harness-build-entry.md}`
+- `internal/template/templates/.claude/skills/moai-meta-harness/SKILL.md` — **added at audit iteration 1 (D6)**; the pair is byte-identical at baseline (`diff -q` → `same`)
 - `internal/template/templates/.claude/output-styles/moai/moai.md`
 - `internal/template/templates/CLAUDE.md`
 
@@ -196,7 +218,7 @@ ACs: AC-GSU-019 .. AC-GSU-021.
 
 **[HARD] M7 is the only milestone with `cycle_type: tdd`.** M1-M6 are documentation edits with no test cycle. M7 changes Go behaviour in a file that has **no test** (`ls internal/hook/handoff_inject_render*_test.go` → no matches), so it follows RED-GREEN-REFACTOR: author the four-locale renderer assertion, observe it fail, then change the renderer. The run phase must route M7 accordingly and must not fold it into the documentation cycle.
 
-Owns 4 files, 8 literals:
+Owns 5 files, 8 literals:
 
 | File | Literals | Change |
 |---|---:|---|
@@ -204,57 +226,41 @@ Owns 4 files, 8 literals:
 | `internal/harness/v4manifest/schema.go` | 1 (line 15) | `PrimitiveGoal = "/goal"` → `"/moai goal"` |
 | `internal/harness/v4manifest/runner_template.go` | 2 (lines 13, 87) | doc comment + `case "/goal":` dispatch arm |
 | `internal/cli/handoff.go` | 1 (line 104) | flag **help string** only |
+| `internal/harness/v4manifest/runner_template_test.go` | 0 (test fixture) | **added at audit iteration 1 (D3)** — see below |
 
-Three constraints:
+**[HARD] M7 breaks an existing passing test unless it updates it (D3).** `runner_template_test.go:19` reads `{PrimitiveGoal, \`case "/goal"\`}` and asserts both `strings.Contains(RunnerTemplate, tc.marker)` and `strings.Contains(RunnerTemplate, tc.primitive)`. Verified: the suite passes at baseline (`go test ./internal/harness/v4manifest/` → `ok`). Once M7 sets `PrimitiveGoal = "/moai goal"` and rewrites the dispatch arm, the hard-coded `marker` literal `case "/goal"` is absent and the subtest FAILS — breaking this SPEC's own §C held-out gate. M7 therefore updates the marker to `` `case "/moai goal"` `` in the same change. Note this is invisible to AC-GSU-027, whose third component excludes `_test.go`, so it would read `0` while the suite is red; AC-GSU-030 is the guard.
+
+Four constraints:
 
 1. **Renderer test first (REQ-GSU-021).** The test asserts rendered output for all four locales and must fail before the change (AC-GSU-023).
 2. **`PrimitiveGoal` occupancy precondition (REQ-GSU-022).** Measured now: **0** — no harness manifest or workflow script declares the `/goal` primitive (`grep -rl '"/goal"' .claude/commands/harness/ .claude/workflows/` → 0 files, across 2 manifests and 5 workflow scripts). A hard rename is therefore safe and **back-compat is not required**. The run phase re-verifies before changing, because occupancy could change between plan and run; AC-GSU-024 pins it at 0 as part of a compound.
 3. **`--goal` flag NAME is a CLI contract (REQ-GSU-023).** `moai handoff save --goal` is invoked from the session-handoff doctrine itself. `StringVar(&goal, "goal", …)` keeps its `"goal"` name; only the help string changes. AC-GSU-026 asserts both halves so a rename cannot pass.
+4. **The v4manifest test fixture moves with the token (REQ-GSU-028, D3).** Verified by AC-GSU-030, which pins the package suite at exit 0 *and* the updated marker literal.
 
-ACs: AC-GSU-022 .. AC-GSU-027.
+ACs: AC-GSU-022 .. AC-GSU-027, AC-GSU-030.
 
 ### §F.1 Ownership map (no file owned twice)
 
-| Milestone | Phase | Cycle | Local doctrine | Template | Go | New |
-|---|---|---|---:|---:|---:|---:|
-| M1 | run | docs | 1 | 0 | 0 | 0 |
-| M2 | run | docs | 3 | 0 | 0 | 0 |
-| M3 | run | docs | 2 | 0 | 0 | 0 |
-| M4 | run | docs | 8 | 0 | 0 | 0 |
-| M5 | run | docs | 0 | 0 | 0 | 2 |
-| M6 | run | docs | 0 | 14 | 0 | 0 |
-| M7 | run | **tdd** | 0 | 0 | 4 | 1 (test) |
-| Sync set | **sync** | docs | 0 | 0 | 0 | 0 |
-| **Total** | | | **14** | **14** | **4** | **3** |
+| Milestone | Phase | Cycle | Paths | Composition |
+|---|---|---|---:|---|
+| M1 | run | docs | 1 | 1 local doctrine |
+| M2 | run | docs | 3 | 3 local doctrine |
+| M3 | run | docs | 2 | 2 local doctrine |
+| M4 | run | docs | 9 | 9 local doctrine (incl. `moai-meta-harness/SKILL.md`, D6) |
+| M5 | run | docs | 2 | 2 new (1 template source + 1 local) |
+| M6 | run | docs | 15 | 15 template mirrors (incl. the `moai-meta-harness` mirror, D6) |
+| M7 | run | **tdd** | 5 | 5 Go (4 emission files + `runner_template_test.go`, D3) |
+| **Total** | | | **37** | all run-phase |
 
-Run-phase paths: 14 + 14 + 4 + 3 = **35**. Plus the 13 sync-phase paths (§F.2) = **48 paths**. Every path appears in exactly one row.
+**Canonical path total: 37**, all run-phase (1+3+2+9+2+15+5). Every path appears in exactly one row. This SPEC has no sync-phase paths — see §F.2.
 
-### §F.2 Sync-phase scope (owner `manager-docs`, NOT a run-phase milestone)
+Derivation of each column, so the number is computed rather than carried: the doctrine layer is **15 local + 15 template = 30 files** (M1-M4 own the 15 local; M6 owns their 15 mirrors), plus 5 Go (M7) and 2 new (M5). Since audit iteration 1: M4 gained `moai-meta-harness/SKILL.md` (D6) → 9 local and M6 gained its mirror → 15 template; M7 gained `runner_template_test.go` (D3) → 5 Go, counted as an existing file rather than "new". Since audit iteration 2 the 13 sync paths left with the scope reduction, taking the total from 50 to 37.
 
-Per approved decision D5, the public and internal documentation surface is updated in the **sync phase**, not the run phase. Owner: `manager-docs`. 13 files:
+### §F.2 Sync-phase scope — MOVED to `SPEC-GOAL-DOCS-RETIRE-001`
 
-| Group | Files | Occurrences | Why affected |
-|---|---:|---:|---|
-| `docs-site/content/{en,ja,ko,zh}/advanced/autonomous-loops.md` | 4 | 52 | The public render surface of the doctrine M1 rewrites — carries a dedicated native-`/goal` section plus the three-primitive comparison table |
-| `docs-site/content/{en,ja,ko,zh}/cli-reference/handoff.md` | 4 | 4 | The `--goal` row mirrors the Go help string M7 changes |
-| `docs-site/content/{en,ja,ko,zh}/advanced/self-evolving.md` | 4 | 8 | Names `/goal` as a MoAI convergence primitive whose trajectories the routing ledger records (lines 40, 97) |
-| `.moai/docs/autonomous-workflow-strategy.md` | 1 | 25 | Internal strategy doc built on native `/goal` as one of three engines |
+The public-documentation scope (13 files) that this section previously carried was split out after plan-audit iteration 2 emitted STOP. It now lives in `SPEC-GOAL-DOCS-RETIRE-001`, which declares `depends_on: [SPEC-GOAL-SURFACE-UNIFY-001]` because its `cli-reference/handoff.md` work mirrors the Go help string that M7 rewrites.
 
-**Correction to the D5 brief: 13 files, not 9.** The brief classified `advanced/self-evolving.md` (×4) as retain, in the "MoAI-surface factual-contrast" group. Sampling all four locales shows both of its references are MoAI-surface *primitive naming* — `` `/moai loop` / `/goal` convergence trajectories `` — not a factual statement contrasting the two commands. Under W1 those read `/moai goal`. The genuinely factual-contrast pages (`cli-reference/goal.md`, `utility-commands/moai-goal.md`) are retained as the brief specified; verified by sampling `ko/cli-reference/goal.md:9` and `ko/utility-commands/moai-goal.md:14`.
-
-Sync-phase retention set — do NOT modify (AC-GSU-029 pins each count):
-
-| Group | Files | Occurrences | Why retained |
-|---|---:|---:|---|
-| `docs-site/content/*/claude-code/**` | 28 | 80 | Documents Claude Code's own feature; statements stay factually true |
-| `docs-site/content/*/cli-reference/goal.md` | 4 | 12 | States that `/moai goal` is the programmatic counterpart of the HUMAN-ONLY native command — the justification for `/moai goal` existing |
-| `docs-site/content/*/utility-commands/moai-goal.md` | 4 | 4 | Same factual contrast |
-| `docs-site/content/*/advanced/hooks-reference.md` | 2 (en, ko) | 2 | Stop-hook table dual mention `` `/goal`/`/moai goal` ``, consistent with the retained yield invariant |
-| `.moai/research/*.md` | 3 | 4 | Historical research archives; retroactively editing a past record is inappropriate |
-
-**Locale-asymmetry correction to the D5 brief.** The brief stated `advanced/hooks-reference.md` "exists only in `en` and `ko`" and instructed the sync phase not to create `ja`/`zh` pages. The page **exists in all four locales** (`ls docs-site/content/*/advanced/hooks-reference.md` → 4 files). What differs is which locales *carry the reference*: `en:170` and `ko:170` have the Stop-hook row mentioning `/goal`; the `ja` and `zh` copies have no such line. So there is no page to create — the asymmetry is a pre-existing four-locale **content** gap inside existing pages. Per REQ-GSU-027 the sync phase flags it and does not close it; the instruction's intent (do not manufacture symmetry) holds, its stated premise does not.
-
----
+Nothing in this SPEC is sync-phase scoped any longer: M1-M7 are all run-phase. The moved requirement and criterion identifiers are registered at `spec.md` §B.7.
 
 ## §G Anti-Patterns
 
@@ -269,8 +275,8 @@ Sync-phase retention set — do NOT modify (AC-GSU-029 pins each count):
 
 ## §H Cross-References
 
-- `spec.md` §B — REQ-GSU-001..018.
-- `acceptance.md` — 21 ACs with recorded baselines.
+- `spec.md` §B — REQ-GSU-001..028.
+- `acceptance.md` — 33 ACs with recorded baselines, plus the REQ↔AC traceability matrix (§F).
 - `design.md` — doctrine-surface boundary and SSOT/render-surface parity.
 - `research.md` — baseline commands and observed outputs.
 - `CLAUDE.local.md` §2 / §25 / §27.3.

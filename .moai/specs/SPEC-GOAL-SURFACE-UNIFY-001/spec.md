@@ -1,16 +1,16 @@
 ---
 id: SPEC-GOAL-SURFACE-UNIFY-001
 title: Unify the goal surface on /moai goal and relocate goal presentation to the Implementation Kickoff Approval gate
-version: 1.0.0
+version: 1.3.0
 status: draft
 created: 2026-07-25
 updated: 2026-07-25
 author: manager-spec
 priority: HIGH
-phase: plan
+phase: "v3.1.0"
 module: doctrine
 lifecycle: spec-anchored
-tags: [goal, doctrine, session-handoff, slash-command, template-mirror]
+tags: "goal, doctrine, session-handoff, slash-command, template-mirror"
 tier: L
 ---
 
@@ -20,6 +20,8 @@ tier: L
 |---------|------|--------|--------|
 | 1.0.0 | 2026-07-25 | Initial plan-phase authoring (Tier L, 6 milestones) | manager-spec |
 | 1.1.0 | 2026-07-25 | Scope expansion per approved decisions D4 (Go emission paths → M7, `cycle_type: tdd`) and D5 (public docs → sync phase). Scope now spans three layers: doctrine, Go code, public docs. | manager-spec |
+| 1.2.0 | 2026-07-25 | Plan-audit iteration 1 remediation (D1-D6 + material SHOULD-FIX): frontmatter `tags` string form, retention register, M7 test-fixture ownership, split-surface reclassification, union detector, REQ↔AC matrix. | manager-spec |
+| 1.3.0 | 2026-07-25 | Plan-audit iteration 2 returned FAIL 0.64 with STOP (score regression). **Scope reduction executed**: public-documentation scope split to `SPEC-GOAL-DOCS-RETIRE-001`. N1-N5 closed; retention register re-derived to three surfaces; identifiers deliberately not renumbered (§B.7). | manager-spec |
 
 ---
 
@@ -40,18 +42,23 @@ Measured baseline at `origin/main` = `e306e21a9` (commands and observed outputs 
 - **14 template mirrors, 176 occurrences**; the 13 `.claude/**` pairs are byte-identical (`diff -q` → 13 `same`, 0 `DIFF`), while the `CLAUDE.md` pair is intentionally divergent.
 - Slash-command wrappers: **14 present**, `goal` **absent** in both trees.
 - **8 native-`/goal` emission literals in non-test Go code** (`research.md` §F) — 4 of them inside the auto-injected-resume renderer that the user actually reads.
-- **13 public/internal doc files** carrying native-`/goal` emission references (`research.md` §G).
+- **13 public/internal doc files** carrying native-`/goal` emission references — **split out** to `SPEC-GOAL-DOCS-RETIRE-001` (§B.7).
 
-### §A.1 Three-layer scope
+### §A.1 Four-layer scope (post-split)
 
-| Layer | Phase | Scope |
+| Layer | Phase | Paths |
 |---|---|---|
-| Doctrine (rules / skills / output-style / root instruction) | run — M1..M4, M6 | 28 existing files + 14 template mirrors |
-| Slash-command surface | run — M5 | 2 new files |
-| Go emission paths | run — M7 (`cycle_type: tdd`) | 4 files, 8 literals |
-| Public + internal docs | **sync** (owner `manager-docs`) | 13 files |
+| Doctrine — local (rules / skills / output-style / root instruction) | run — M1..M4 | 15 |
+| Doctrine — template mirrors | run — M6 | 15 |
+| Slash-command surface | run — M5 | 2 new |
+| Go emission paths | run — M7 (`cycle_type: tdd`) | 5 files, 8 literals |
+| **Canonical total** | | **37** |
 
-**Tier L is re-confirmed.** The tier rests on three independent factors, any two of which alone would already exceed Tier M: (a) file count — 47 paths across 4 layers; (b) layer heterogeneity — doctrine prose, Go code with a TDD cycle, and 4-locale public docs are three different verification regimes; (c) an irreversibility surface — the Go renderer at `internal/hook/handoff_inject_render.go` is user-visible output with **no existing test**, so M7 must author its own regression guard before changing behaviour.
+The per-milestone breakdown is `plan.md` §F.1, which is the arithmetic SSOT for this table.
+
+The public-documentation layer (13 paths) was split out to `SPEC-GOAL-DOCS-RETIRE-001` — see §B.7.
+
+**Tier L is re-confirmed after the split.** The tier rests on three independent factors, any two of which alone would already exceed Tier M: (a) file count — 37 paths across four layers, against Tier M's 15-file ceiling; (b) layer heterogeneity — doctrine prose, Go code with a TDD cycle, and byte-identical template mirrors are three different verification regimes; (c) an irreversibility surface — the Go renderer at `internal/hook/handoff_inject_render.go` is user-visible output with **no existing test**, so M7 must author its own regression guard before changing behaviour.
 
 ---
 
@@ -65,14 +72,15 @@ Measured baseline at `origin/main` = `e306e21a9` (commands and observed outputs 
 
 - **REQ-GSU-003** (Unwanted) — The MoAI pipeline shall not emit a native `/goal` line on any surface, because native `/goal` is HUMAN-ONLY and no tool call can trigger it.
 
-- **REQ-GSU-004** (Capability gate) — **Where** a surface's native-`/goal` reference is a *classification, prohibition rationale, or runtime-interoperation invariant* rather than an emission instruction, that reference shall be retained. Exactly **four** such surfaces exist:
+- **REQ-GSU-004** (Capability gate) — **Where** a surface's native-`/goal` reference is a *classification, prohibition rationale, or runtime-interoperation invariant* rather than an emission instruction, that reference shall be retained. The authoritative membership list is the retention register at `plan.md` §A.2 — this requirement binds to that register rather than restating it, so the two cannot drift apart. Within this SPEC's post-split scope (doctrine + Go) the register holds **three** surfaces:
 
-  | Retention surface | Retained content | Why it is not an emission path |
-  |---|---|---|
-  | `goal-directive.md` § Native `/goal` Prohibition | The prohibition rationale | A prohibition needs its subject |
-  | `native-invocation-model.md` § Classification Matrix + Axis B | The HUMAN-ONLY classification | A factual statement about Claude Code; it is the justification for `/moai goal` existing |
-  | `docs-site/content/*/claude-code/**` (28 pages) | Documentation of Claude Code's own feature | Native `/goal` genuinely is a Claude Code command; the statements stay true |
-  | `internal/goal/evaluate.go` (native-`/goal` yield invariant) | `NativeGoalActive` field, the step-4 yield branch, and the verdict reason string | Implements interoperation *with* native `/goal` (`stop-goal` yields to avoid double-block). Deleting it would remove a safety invariant, not an emission |
+  | # | Retention surface | Layer | Why it is not an emission path |
+  |---|---|---|---|
+  | 1 | `goal-directive.md` § Native `/goal` Prohibition | doctrine | A prohibition needs its subject |
+  | 2 | `native-invocation-model.md` § Classification Matrix + Axis B | doctrine | A factual statement about Claude Code; it is the justification for `/moai goal` existing |
+  | 3 | `internal/goal/evaluate.go` (native-`/goal` yield invariant) | Go | Implements interoperation *with* native `/goal` (`stop-goal` yields to avoid double-block). Deleting it would remove a safety invariant, not an emission |
+
+  The three documentation-layer retention surfaces — `docs-site/content/*/claude-code/**`, the `autonomous-loops.md` native sections, and `.moai/docs/autonomous-workflow-strategy.md` — moved to `SPEC-GOAL-DOCS-RETIRE-001` with the sync-phase scope. They are registered in that SPEC's own retention register, not here.
 
 - **REQ-GSU-005** (Ubiquitous) — The `goal-directive.md` rule shall be rewritten in place under its existing filename, so that no cross-reference path anywhere in the repository requires updating.
 
@@ -124,13 +132,22 @@ Measured baseline at `origin/main` = `e306e21a9` (commands and observed outputs 
 
 - **REQ-GSU-024** (Unwanted) — The run phase shall not remove the native-`/goal` yield invariant in `internal/goal/evaluate.go`, nor any `/moai goal` implementation identifier (the `internal/goal/` package, the `.moai/state/goal/` path constants, the `stop-goal` hook name, `internal/cli/goal.go`).
 
-### §B.7 Public and internal documentation (D5 — sync phase)
+- **REQ-GSU-028** (Event-driven) — **When** M7 changes the `PrimitiveGoal` token value or the runner-template dispatch arm, it shall update `internal/harness/v4manifest/runner_template_test.go` in the same change, so the `v4manifest` package suite continues to exit 0.
 
-- **REQ-GSU-025** (Event-driven) — **When** the sync phase runs, `manager-docs` shall update the 13 documentation files whose native-`/goal` references are emission-surface renderings of the doctrine this SPEC rewrites.
+### §B.7 Moved-identifier register (scope reduction, plan-audit iteration 2)
 
-- **REQ-GSU-026** (Unwanted) — The sync phase shall not modify the 28 `docs-site/content/*/claude-code/**` pages, the `/moai goal`-vs-native factual-contrast pages, or the `.moai/research/` archives.
+The public-documentation scope was split out to **`SPEC-GOAL-DOCS-RETIRE-001`** after plan-audit iteration 2 emitted STOP. Identifiers are **NOT renumbered** here: 62 judgment-command baselines (29 at iteration 1 + 33 at iteration 2) reproduced verbatim against these identifiers across two independent audits, and renumbering would discard that audit trail. The gaps below are deliberate.
 
-- **REQ-GSU-027** (Capability gate) — **Where** a page carrying a native-`/goal` reference exists in only some locales, the sync phase shall not create new locale pages to force symmetry; the four-locale obligation binds pages that exist, and a content gap predating this SPEC is not this SPEC's drift to close.
+| Vacated here | Destination | Subject |
+|---|---|---|
+| REQ-GSU-025 | `SPEC-GOAL-DOCS-RETIRE-001` REQ-GDR-001 | sync phase updates the affected doc set |
+| REQ-GSU-026 | `SPEC-GOAL-DOCS-RETIRE-001` REQ-GDR-002 | sync phase retains CC pages / contrast pages / archives |
+| REQ-GSU-027 | `SPEC-GOAL-DOCS-RETIRE-001` REQ-GDR-003 | no locale-symmetry manufacture |
+| AC-GSU-028 | `SPEC-GOAL-DOCS-RETIRE-001` AC-GDR-001..005 | split-surface emission markers + retention pins (re-anchored locale-invariantly) |
+| AC-GSU-029 | `SPEC-GOAL-DOCS-RETIRE-001` AC-GDR-006 | sync retention pins |
+| AC-GSU-032 | `SPEC-GOAL-DOCS-RETIRE-001` AC-GDR-007 | strategy-record superseding note |
+
+Retained identifier set in this SPEC: **REQ-GSU-001..024 + 028** (25 requirements) and **AC-GSU-001..027 + 030, 031, 033** (30 criteria). Numbering is non-contiguous by design.
 
 ---
 
@@ -163,11 +180,20 @@ Measured baseline at `origin/main` = `e306e21a9` (commands and observed outputs 
 
 - `docs-site/content/*/cli-reference/loop.md` (4 files). A bare `/goal` search matches these, but the match is the link path `/en/cli-reference/goal`, not a command reference. They carry no native-`/goal` command mention and are excluded from every count in this SPEC.
 
+### Out of Scope — historical records
+
+- `.moai/specs/**` historical SPEC artifacts (~60 files carrying native-`/goal`). A completed SPEC body is an immutable record of what was decided at the time; retroactively rewriting it would falsify the record. Same rationale as the `.moai/research/` archives — stated explicitly here rather than left to silence.
+### Out of Scope — public and internal documentation (split to SPEC-GOAL-DOCS-RETIRE-001)
+
+- `docs-site/content/{en,ja,ko,zh}/**` in full, and `.moai/docs/autonomous-workflow-strategy.md`. The 13-file affected set and the documentation-layer retention surfaces are owned by `SPEC-GOAL-DOCS-RETIRE-001`, which depends on this SPEC. See §B.7.
+
 ---
 
 ## §D Acceptance Criteria
 
-Enumerated in `acceptance.md` (**29** criteria, AC-GSU-001 through AC-GSU-029), each with its judgment command and the verbatim baseline output observed at `origin/main` = `e306e21a9`. AC-GSU-022..027 cover M7 (Go); AC-GSU-028..029 cover the sync-phase doc set.
+Enumerated in `acceptance.md` (**30** criteria — AC-GSU-001..027 plus 030, 031, 033; the gaps at 028/029/032 are the moved identifiers registered in §B.7), each with its judgment command and the verbatim baseline output observed in the worktree. AC-GSU-022..027 and AC-GSU-030 cover M7 (Go); AC-GSU-031 is the union-detector sweep; AC-GSU-033 makes the M7 RED ordering auditable.
+
+A **REQ ↔ AC traceability matrix** is at `acceptance.md` §F: all 25 REQs are cited by at least one AC, and every AC appears in at least one row.
 
 ---
 

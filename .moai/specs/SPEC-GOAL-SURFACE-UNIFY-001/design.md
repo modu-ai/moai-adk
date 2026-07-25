@@ -1,16 +1,16 @@
 ---
 id: SPEC-GOAL-SURFACE-UNIFY-001
 title: Unify the goal surface on /moai goal and relocate goal presentation to the Implementation Kickoff Approval gate
-version: 1.0.0
+version: 1.3.0
 status: draft
 created: 2026-07-25
 updated: 2026-07-25
 author: manager-spec
 priority: HIGH
-phase: plan
+phase: "v3.1.0"
 module: doctrine
 lifecycle: spec-anchored
-tags: [goal, doctrine, session-handoff, slash-command, template-mirror]
+tags: "goal, doctrine, session-handoff, slash-command, template-mirror"
 tier: L
 ---
 
@@ -18,7 +18,7 @@ tier: L
 
 ## §A Surface Boundary
 
-The in-scope files sit on **six** distinct surfaces. The surface determines *what kind of edit* is legitimate, which is why the milestone decomposition follows surface boundaries rather than file counts.
+The in-scope files sit on **five** distinct surfaces (the public-docs surface left with the scope reduction). The surface determines *what kind of edit* is legitimate, which is why the milestone decomposition follows surface boundaries rather than file counts.
 
 | Surface | Location | Role | Legitimate edit |
 |---|---|---|---|
@@ -59,20 +59,23 @@ The 14th pair is the exception that shapes M6: the root `CLAUDE.md` and its mirr
 
 This asymmetry is the reason the delegation brief's `.claude/`-scoped file discovery missed the pair: the local half lives at the repository root, outside `.claude/`.
 
-## §B.3 The Four Retention Surfaces
+## §B.3 The Three Retention Surfaces
 
 A single test separates an emission path from a retention surface: **does the sentence become false when MoAI stops emitting native `/goal`?** If it stays true, it is a retention surface.
 
-| Surface | Layer | Sentence it makes | Still true after retirement? |
-|---|---|---|---|
-| `goal-directive.md` § Native `/goal` Prohibition | doctrine | "the pipeline does not emit native `/goal`, because it is HUMAN-ONLY" | Yes — it *is* the retirement |
-| `native-invocation-model.md` Classification Matrix | doctrine | "native `/goal` is HUMAN-ONLY, therefore Axis B justifies `/moai goal`" | Yes — a fact about Claude Code |
-| `docs-site/content/*/claude-code/**` | public docs | "Claude Code provides a `/goal` command that does X" | Yes — documents the upstream product |
-| `internal/goal/evaluate.go` yield invariant | Go | "when the runtime signals an active native `/goal`, `stop-goal` yields" | Yes — interoperation, not emission |
+| # | Surface | Layer | Sentence it makes | Still true after retirement? |
+|---|---|---|---|---|
+| 1 | `goal-directive.md` § Native `/goal` Prohibition | doctrine | "the pipeline does not emit native `/goal`, because it is HUMAN-ONLY" | Yes — it *is* the retirement |
+| 2 | `native-invocation-model.md` Classification Matrix | doctrine | "native `/goal` is HUMAN-ONLY, therefore Axis B justifies `/moai goal`" | Yes — a fact about Claude Code |
+| 3 | `internal/goal/evaluate.go` yield invariant | Go | "when the runtime signals an active native `/goal`, `stop-goal` yields" | Yes — interoperation, not emission |
 
-The fourth is the one most at risk from a mechanical sweep, and it was mis-classified in the D4 brief as "implementation, not the native command". It is in fact *about* the native command: `NativeGoalActive` exists precisely so a user who typed native `/goal` does not get double-blocked by MoAI's evaluator as well. Deleting those lines would not tidy a stale reference — it would remove a safety invariant (`workflows/goal.md` § Safety Invariants #4). AC-GSU-027 pins them.
+Three further retention surfaces exist at the **documentation** layer — `docs-site/content/*/claude-code/**`, the `autonomous-loops.md` native sections, and `.moai/docs/autonomous-workflow-strategy.md`. All three left with the sync-phase scope when it was split to `SPEC-GOAL-DOCS-RETIRE-001` (plan-audit iteration 2), and are registered there. The membership test below is identical in both SPECs; only the layer differs.
 
-The practical consequence for the run phase: **no AC may be phrased as "zero native-`/goal` in layer X"** without an explicit retention carve-out. Every sweep AC in `acceptance.md` names its file list positively rather than negating a whole layer.
+Row 3 is the one most at risk from a mechanical sweep, and it was mis-classified in the D4 brief as "implementation, not the native command". It is in fact *about* the native command: `NativeGoalActive` exists precisely so a user who typed native `/goal` does not get double-blocked by MoAI's evaluator as well. Deleting those lines would not tidy a stale reference — it would remove a safety invariant (`workflows/goal.md` § Safety Invariants #4). AC-GSU-027 pins them.
+
+A second failure mode, discovered at the documentation layer and recorded here because it generalizes: **a file can be partly emission and partly retention.** `autonomous-loops.md` is such a *split* surface — its MoAI-primitive listings are emission, its native-`/goal` sections are retention. A file-level affected/retain classification cannot express that. The handling of it moved to `SPEC-GOAL-DOCS-RETIRE-001`, but the lesson binds any future sweep here too.
+
+The practical consequence for the run phase: **no AC may be phrased as "zero native-`/goal` in layer X"** without an explicit retention carve-out, and **no file may be classified affected-or-retain without checking whether it is split**. Every sweep AC in `acceptance.md` names its file list positively rather than negating a layer, and each was tested against all three rows before its baseline was recorded.
 
 ## §C Why the Two-Step Mechanism Becomes Dead Code
 
