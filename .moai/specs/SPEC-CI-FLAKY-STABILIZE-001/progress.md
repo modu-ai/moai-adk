@@ -371,6 +371,36 @@ ok  	github.com/modu-ai/moai-adk/internal/cli	0.459s
 --- PASS: TestInventoryGuard_DetectsUnreachableGlobal (0.04s)
 ```
 
+### M6 — 결함 2 RED: 기아 특성화 테스트 + 기준선 (AC-CFS-017)
+
+`internal/session/registry_starvation_test.go` 신규.
+
+**정직성 명시 (plan.md §F M6 요구)**: 이 테스트는 **특성화이지 재현이 아니다**. 원래 CI 실패(`TestRegisterSessionConcurrent`가 획득 1회당 60초 예산을 초과해 `ErrLockTimeout`)를 결정론적으로 재현하지 않으며, 경합 하 획득당 대기 분포를 관측할 뿐이다. 측정값은 `Register` 호출 전체의 wall time(락 획득 + 읽기 + 변형 + 원자적 쓰기)이며 획득 대기만 격리한 값이 아니다 — 본 SPEC이 바꾸는 항이 획득 대기이므로 대리 지표로 사용한다.
+
+어서션은 **최대값 상한 1개만** 건다(`plan.md` §B.5). p50/p95에 어서션을 걸면 이 테스트 자체가 새 flaky 원인이 된다.
+
+기준선 측정 (현행 고정 20ms 슬립 상태, `internal/session/registry.go` 무변경, 3회 실행):
+
+```
+$ for i in 1 2 3; do go test -count=1 -run '^TestRegisterStarvationCharacterization$' -v ./internal/session/; done
+per-acquisition wait under contention (workers=8 perWorker=25 n=200): p50=664.083µs  p95=1.362459ms  max=189.316916ms
+per-acquisition wait under contention (workers=8 perWorker=25 n=200): p50=558.125µs  p95=916.125µs   max=168.559792ms
+per-acquisition wait under contention (workers=8 perWorker=25 n=200): p50=1.680208ms p95=32.201375ms max=539.249959ms
+--- PASS (3/3)
+```
+
+기준선 요약: **p50 0.56~1.68ms / p95 0.92~32.2ms / max 168.6~539.2ms**.
+
+max 값이 20ms의 배수 근처(189ms ≈ 9회, 539ms ≈ 27회 슬립)에 몰리는 것은 고정 간격 재시도에서 동일 goroutine이 반복 패배했음을 시사한다 — `spec.md` §B.2의 기아 진단과 정합하는 관측이나, 기아의 증명은 아니다.
+
+AC-CFS-016 (`-short` skip):
+
+```
+$ go test -short -count=1 -run '^TestRegisterStarvationCharacterization$' -v ./internal/session/
+--- SKIP: TestRegisterStarvationCharacterization (0.00s)
+ok  	github.com/modu-ai/moai-adk/internal/session	4.613s
+```
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<pending run-phase>_
