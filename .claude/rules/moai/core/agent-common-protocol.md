@@ -452,6 +452,26 @@ gh pr checks <PR> --json name,state,conclusion | jq '.[] | select(.conclusion !=
 # Avoid: gh pr checks <PR> | grep -E 'FAIL|PENDING'  (string parsing, brittle)
 ```
 
+#### Waiting for checks to finish — `--watch`, run in the background
+
+[ZONE:Evolvable] [HARD] The query above **samples** CI once. When the orchestrator instead needs to **wait** for checks to reach a terminal state, it MUST use `gh pr checks --watch`, and it MUST issue that command in the Bash tool's background mode. A hand-rolled `sleep`-and-poll loop is prohibited.
+
+```bash
+# Canonical wait pattern — issue with the Bash tool's background mode.
+gh pr checks <PR> --watch --fail-fast
+```
+
+- `--watch` blocks until every check is terminal, so no polling interval has to be chosen or tuned.
+- `--fail-fast` returns non-zero the moment any check fails, so the **exit code alone is the verdict** — no output parsing is needed to decide pass/fail.
+- Background mode keeps the turn unblocked: the orchestrator continues independent read-only work and is re-invoked when the watch exits.
+
+A manual polling loop burns one turn per iteration, hard-codes an interval that is simultaneously too slow for fast checks and too fast for slow ones, and re-implements — less reliably — a wait the CLI already provides. It also holds the turn open for the full CI duration, which the background `--watch` does not.
+
+```bash
+# Anti-pattern — manual polling re-implements --watch and burns a turn per iteration
+for i in 1 2 3 4 5; do sleep 60; gh pr checks <PR>; done
+```
+
 ### Recent Commit Inspection
 
 ```bash
