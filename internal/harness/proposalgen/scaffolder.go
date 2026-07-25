@@ -19,8 +19,56 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
+	"strings"
 	"time"
 )
+
+// stamps carries the wall-clock-derived fields of a rendered draft. When a
+// draft already exists on disk its stamps are reused verbatim, so re-running
+// the scaffolder on an unchanged candidate is byte-idempotent (REQ-PGN-006)
+// instead of churning .moai/proposals/ with a fresh timestamp on every run.
+type stamps struct {
+	created     string // YYYY-MM-DD
+	updated     string // YYYY-MM-DD
+	generatedAt string // RFC3339
+}
+
+// freshStamps derives a stamp set from the current wall clock. It is used only
+// when no readable draft exists yet at the target path.
+func freshStamps(now time.Time) stamps {
+	return stamps{
+		created:     now.Format("2006-01-02"),
+		updated:     now.Format("2006-01-02"),
+		generatedAt: now.Format(time.RFC3339),
+	}
+}
+
+// existingStamps reads back the stamps of a previously written draft. spec.md
+// is the single source for all three values, so the sibling proposal.json is
+// re-rendered with the same generated_at rather than its own. A missing or
+// unparseable file yields ok=false and the caller falls back to freshStamps —
+// a corrupt draft must not fail the write.
+func existingStamps(draftDir string) (stamps, bool) {
+	body, err := os.ReadFile(filepath.Join(draftDir, "spec.md"))
+	if err != nil {
+		return stamps{}, false
+	}
+	var s stamps
+	for _, line := range strings.Split(string(body), "\n") {
+		switch {
+		case s.created == "" && strings.HasPrefix(line, "created: "):
+			s.created = strings.TrimSpace(strings.TrimPrefix(line, "created: "))
+		case s.updated == "" && strings.HasPrefix(line, "updated: "):
+			s.updated = strings.TrimSpace(strings.TrimPrefix(line, "updated: "))
+		case s.generatedAt == "" && strings.HasPrefix(line, "- generated_at: "):
+			s.generatedAt = strings.TrimSpace(strings.TrimPrefix(line, "- generated_at: "))
+		}
+	}
+	if s.created == "" || s.updated == "" || s.generatedAt == "" {
+		return stamps{}, false
+	}
+	return s, true
+}
 
 // WriteProposals renders each candidate under outDir/<draft-id>/. On an
 // empty input the function returns immediately without creating outDir.
@@ -46,10 +94,14 @@ func WriteProposals(outDir string, candidates []ProposalCandidate) ([]string, er
 		if err := os.MkdirAll(draftDir, 0o755); err != nil {
 			return written, fmt.Errorf("proposalgen scaffolder: mkdir %q: %w", draftDir, err)
 		}
-		if err := os.WriteFile(filepath.Join(draftDir, "spec.md"), []byte(renderSpecMd(c)), 0o644); err != nil {
+		st, ok := existingStamps(draftDir)
+		if !ok {
+			st = freshStamps(time.Now().UTC())
+		}
+		if err := os.WriteFile(filepath.Join(draftDir, "spec.md"), []byte(renderSpecMd(c, st)), 0o644); err != nil {
 			return written, fmt.Errorf("proposalgen scaffolder: write spec.md for %s: %w", c.DraftID, err)
 		}
-		propBytes, err := marshalProposalJSON(c)
+		propBytes, err := marshalProposalJSON(c, st)
 		if err != nil {
 			return written, fmt.Errorf("proposalgen scaffolder: marshal proposal.json for %s: %w", c.DraftID, err)
 		}
@@ -65,15 +117,14 @@ func WriteProposals(outDir string, candidates []ProposalCandidate) ([]string, er
 // The body intentionally contains no Go/Python/TypeScript syntax — only
 // natural-language EARS-style requirement placeholders. Language selection
 // is downstream (manager-spec / manager-develop concern).
-func renderSpecMd(c ProposalCandidate) string {
-	generated := time.Now().UTC().Format(time.RFC3339)
+func renderSpecMd(c ProposalCandidate, st stamps) string {
 	return "---\n" +
 		"id: " + c.DraftID + "\n" +
 		"title: \"Draft proposal — " + c.PatternKey + "\"\n" +
 		"version: \"0.1.0\"\n" +
 		"status: draft\n" +
-		"created: " + time.Now().UTC().Format("2006-01-02") + "\n" +
-		"updated: " + time.Now().UTC().Format("2006-01-02") + "\n" +
+		"created: " + st.created + "\n" +
+		"updated: " + st.updated + "\n" +
 		"author: proposalgen\n" +
 		"priority: P3\n" +
 		"phase: \"exploratory\"\n" +
@@ -90,7 +141,7 @@ func renderSpecMd(c ProposalCandidate) string {
 		"- confidence: " + ftoa(c.Confidence) + "\n" +
 		"- tier: " + c.Tier + "\n" +
 		"- source_ts: " + c.SourceTs.UTC().Format(time.RFC3339) + "\n" +
-		"- generated_at: " + generated + "\n" +
+		"- generated_at: " + st.generatedAt + "\n" +
 		"- generator_version: " + GeneratorVersion + "\n\n" +
 		"## §2. Purpose & Background\n\n" +
 		"_TBD by author. Describe the problem context that this proposal is meant " +
@@ -114,14 +165,14 @@ func renderSpecMd(c ProposalCandidate) string {
 }
 
 // marshalProposalJSON encodes the proposal.json metadata payload.
-func marshalProposalJSON(c ProposalCandidate) ([]byte, error) {
+func marshalProposalJSON(c ProposalCandidate, st stamps) ([]byte, error) {
 	payload := map[string]any{
 		"pattern_key":       c.PatternKey,
 		"observation_count": c.ObservationCount,
 		"confidence":        c.Confidence,
 		"tier":              c.Tier,
 		"source_ts":         c.SourceTs.UTC().Format(time.RFC3339),
-		"generated_at":      time.Now().UTC().Format(time.RFC3339),
+		"generated_at":      st.generatedAt,
 		"generator_version": GeneratorVersion,
 		"draft_id":          c.DraftID,
 	}
