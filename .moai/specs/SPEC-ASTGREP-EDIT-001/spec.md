@@ -2,7 +2,7 @@
 id: SPEC-ASTGREP-EDIT-001
 title: "ast-grep wiring repair and moai ast-edit command"
 version: "0.1.0"
-status: completed
+status: in-progress
 created: 2026-07-25
 updated: 2026-07-26
 author: GOOS
@@ -11,9 +11,30 @@ phase: "v3.1.0 target"
 module: "internal/cli, internal/astgrep, internal/hook/security"
 lifecycle: spec-anchored
 tags: "ast-grep, ast-edit, cli, security-hook, rules, autofix"
+amendment_of: SPEC-ASTGREP-EDIT-001
 ---
 
 # SPEC-ASTGREP-EDIT-001 — ast-grep wiring repair and `moai ast-edit`
+
+## HISTORY
+
+### Amendments
+
+**Amendment 1 — 2026-07-26 (in-place)**
+
+| Field | Value |
+|---|---|
+| Prior completed version | `0.1.0` (`status: completed`) |
+| `prior_completed_sha` | `1c52b43cf` |
+| Rationale | sync-audit returned FAIL (0.770 vs Tier L threshold 0.85). Blocking finding **F0**: five `acceptance.md` criteria invoked `go test -run <selector>` with selectors naming tests that do not exist. `go test -run` exits 0 when a selector matches zero tests (`[no tests to run]`), so all five passed vacuously — and would keep passing with the entire branch reverted. This violates `acceptance.md`'s own opening pledge and reproduces the exact failure mode §A.1b diagnoses: a guard written to match the implementation rather than the requirement. |
+| Scope | `acceptance.md` AC command corrections only. **No requirement changed** — REQ-AGE-001 through REQ-AGE-008 are untouched in wording and in scope. The corrections make criteria harder to pass vacuously, never easier. |
+
+Amendment mechanics per `.claude/rules/moai/development/spec-frontmatter-schema.md`
+§ Status Transition Ownership Matrix (`completed → in-progress (amendment)` row):
+`amendment_of` is self-referential because the amendment is in-place rather than a
+successor SPEC. Because `spec.md` changes, the plan-artifact hash changes, which
+invalidates any cached plan-auditor PASS verdict and forces Phase 1 plan-audit
+re-execution on the next `/moai run`.
 
 ## A. Context
 

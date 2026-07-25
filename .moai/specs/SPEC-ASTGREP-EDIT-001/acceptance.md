@@ -1,8 +1,8 @@
 ---
 id: SPEC-ASTGREP-EDIT-001
 title: "Acceptance criteria — ast-grep wiring repair and moai ast-edit"
-version: "0.1.0"
-status: completed
+version: "0.2.0"
+status: in-progress
 created: 2026-07-25
 updated: 2026-07-26
 author: GOOS
@@ -20,16 +20,30 @@ A criterion whose check would pass even if the implementation were reverted is
 not a valid criterion; every AC below was chosen so that removing its change
 makes it fail.
 
+### Convention — `go test -run` criteria state a PASS line, never a zero exit
+
+`go test -run <selector>` exits 0 when the selector matches **zero** tests; it
+reports `[no tests to run]` and is indistinguishable from success by exit code
+alone. Every AC below whose command is a `go test -run ...` invocation therefore
+states its PASS observation as **the presence of a `--- PASS: <exact test name>`
+line in the output**, and carries `-count=1` to defeat result caching. A run
+reporting `[no tests to run]` is a **FAIL**, not a PASS.
+
+Note that a `-run` selector is an unanchored regex matched per path segment, so a
+name that is a prefix-in-spirit but not a substring (`TestFindRulesConfig` vs the
+real `TestRuleManager_FindRulesConfig`) matches nothing and silently exits 0.
+
 ## REQ-AGE-005 — `FindRulesConfig` resolves the shipped ruleset
 
 **AC-001** — In a tree whose only ast-grep config is
 `.moai/config/astgrep-rules/sgconfig.yml`, `FindRulesConfig` returns that path.
 
 ```bash
-go test ./internal/hook/security/ -run TestFindRulesConfig -v
+go test ./internal/hook/security/ -run TestRuleManager_FindRulesConfig -v -count=1
 ```
-PASS: the shipped-location case is present and passes. Falsification check:
-reverting the `searchPaths` change makes this test fail.
+PASS: output contains `--- PASS: TestRuleManager_FindRulesConfig`, covering the
+shipped-location case. `[no tests to run]` is a FAIL (see Convention above).
+Falsification check: reverting the `searchPaths` change makes this test fail.
 
 **AC-002** — The retired skill paths are gone from the resolver.
 
@@ -77,10 +91,14 @@ PASS: `diff` is empty (no working-tree change), and the command's output reports
 **AC-020** — Pattern mode reports matches and applies the rewrite.
 
 ```bash
-go test ./internal/cli/ -run TestAstEdit_PatternMode -v
+go test ./internal/cli/ \
+  -run 'TestAstEditCmd_PatternModeRewritesFile|TestAstEditCmd_DryRunLeavesFileUnchanged' \
+  -v -count=1
 ```
-PASS: a fixture file is rewritten as expected in the non-dry case, and left
-untouched in the dry case.
+PASS: output contains BOTH `--- PASS: TestAstEditCmd_PatternModeRewritesFile`
+(fixture rewritten in the non-dry case) and
+`--- PASS: TestAstEditCmd_DryRunLeavesFileUnchanged` (fixture untouched in the
+dry case). `[no tests to run]`, or either line missing, is a FAIL.
 
 **AC-021** — `--pattern` without `--rewrite` is rejected.
 
@@ -94,28 +112,55 @@ PASS: non-zero exit with a message naming the missing flag.
 **AC-030** — Rules carrying `fix:` are applied; rules without are skipped and counted.
 
 ```bash
-go test ./internal/cli/ -run TestAstEdit_RuleMode -v
+go test ./internal/cli/ -run TestAstEditCmd_RuleModeAppliesFix -v -count=1
 ```
-PASS: the fixture with a `fix:` rule is rewritten; a detection-only rule produces
-a skip notice, not an error.
+PASS: output contains `--- PASS: TestAstEditCmd_RuleModeAppliesFix` — the fixture
+with a `fix:` rule is rewritten and a detection-only rule produces a skip notice,
+not an error. `[no tests to run]` is a FAIL.
 
 **AC-031** — `--rule <id>` narrows the pass to one rule.
 
 ```bash
-go test ./internal/cli/ -run TestAstEdit_RuleFilter -v
+go test ./internal/cli/ -run TestAstEditCmd_RuleFilterNarrowsToOneRule -v -count=1
 ```
-PASS: only the named rule's changes appear in `ReplaceResult.Changes`.
+PASS: output contains `--- PASS: TestAstEditCmd_RuleFilterNarrowsToOneRule` —
+only the named rule's changes appear in `ReplaceResult.Changes`.
+`[no tests to run]` is a FAIL.
 
 ## REQ-AGE-006 — shipped rule `fix:` assessment
 
 **AC-040** — Every shipped rule that declares `fix:` has both a positive and a
 negative fixture.
 
+The requirement is satisfied **vacuously**: no shipped rule declares a `fix:`
+(see the disposition table below), so zero fixtures are required. The criterion
+therefore observes that vacuity premise directly rather than asserting a fixture
+suite. No fixture test named by this AC exists, and none is required while the
+count stays 0 — this criterion deliberately names no test, because inventing a
+`go test -run` selector for a test that does not exist is the F0 defect itself.
+
+A zero-count assertion carries its own vacuity hazard, mirroring the `-run` case
+in the Convention above: a `grep ... | wc -l` aimed at a path that does not exist
+also reports `0` and would certify a deleted ruleset as clean. Command (a)
+therefore pins the subject set to a non-zero size before command (b) asserts the
+count over it. Both must hold.
+
 ```bash
-go test ./internal/astgrep/ -run 'TestRuleFixtures' -v
+# (a) subject guard — the shipped rule-file set is non-empty
+find internal/template/templates/.moai/config/astgrep-rules \
+  -name '*.yml' ! -name 'sgconfig.yml' | wc -l
+# (b) no shipped rule declares a fix: field, at any indentation
+grep -rnE '^[[:space:]]*fix:' \
+  internal/template/templates/.moai/config/astgrep-rules/ | wc -l
 ```
-PASS: for each `fix:`-bearing rule, the positive fixture is rewritten and the
-negative fixture yields zero findings.
+PASS: (a) is `4` — the shipped rule files `go/hardcoding.yml` plus
+`security/{credentials,crypto,injection}.yml`, with the `sgconfig.yml` config
+excluded because it declares no rules — AND (b) is `0`, so the fixture obligation
+has no subject. A count other than `4` from (a) means the ruleset moved or shrank
+and the criterion is measuring the wrong thing (FAIL, not PASS). Any non-zero
+count from (b) means a `fix:` was added, at which point this AC no longer holds
+vacuously and a positive/negative fixture pair becomes mandatory for each
+`fix:`-bearing rule (and this criterion must be rewritten to assert that suite).
 
 **AC-041** — Rules deliberately left detection-only are recorded with a reason.
 
@@ -182,25 +227,51 @@ PASS: the value omits `moai-tool-ast-grep`.
 **AC-060** — Every changed `.claude/` or `.moai/` file is byte-identical to its
 template mirror.
 
+The criterion is unchanged; only its command is. The committed form read
+`for p in <changed paths>; do ...` — an unfilled placeholder, so it was never
+runnable and therefore never observable. That is the same class of defect the
+Convention above names: a check that cannot fail is not a check. The path list is
+now derived mechanically from the branch diff so it cannot drift from the actual
+changed set, and an empty list is an explicit FAIL — a loop that iterates zero
+times reports no differences and would otherwise certify a missing mirror as
+clean.
+
+`.moai/specs/` is excluded because SPEC artifacts are project-local and have no
+template mirror by design; the `-- '.claude' '.moai'` pathspec already excludes
+the `internal/template/templates/` side.
+
 ```bash
-for p in <changed paths>; do diff -q "$p" "internal/template/templates/$p"; done
+paths=$(git diff --name-only origin/main...HEAD -- '.claude' '.moai' \
+          | grep -v '^\.moai/specs/')
+test -n "$paths" || { echo "FAIL: empty path list"; exit 1; }
+printf '%s\n' "$paths" | while read -r p; do
+  diff -q "$p" "internal/template/templates/$p" >/dev/null 2>&1 \
+    && echo "IDENTICAL  $p" \
+    || echo "MIRROR-DIFF  $p"
+done
 ```
-PASS: no differences reported.
+PASS: the path list is non-empty AND every line reads `IDENTICAL`. Any
+`MIRROR-DIFF` line is a FAIL, as is the `empty path list` message.
 
 **AC-061** — Build and guards are clean.
 
 ```bash
 make build
-go test ./internal/template/ -run 'Neutrality|InternalContent|Leak|Namespace'
+go test ./internal/template/ -run 'Neutrality|InternalContent|Leak|Namespace' -v -count=1
 ```
-PASS: `make build` exits 0; all guard tests PASS.
+PASS: `make build` exits 0; the `go test` output contains at least one
+`--- PASS: Test...` line and zero `--- FAIL:` lines. `[no tests to run]` is a
+FAIL — the selector matching zero guard tests would otherwise exit 0 and certify
+a removed guard as passing.
 
 **AC-062** — Whole-repo health is unchanged or better.
 
 ```bash
 go build ./... && go vet ./... && go test ./... && golangci-lint run --timeout=5m
 ```
-PASS: all four exit 0; `go test` reports 0 FAIL.
+PASS: all four exit 0; `go test` reports 0 FAIL. The zero-test hazard in the
+Convention above does not apply here — this invocation carries no `-run`
+selector, so the whole suite runs and an empty selection is impossible.
 
 ## Regression guard
 
