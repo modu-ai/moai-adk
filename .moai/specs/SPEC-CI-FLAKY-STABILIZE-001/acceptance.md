@@ -2,7 +2,7 @@
 id: SPEC-CI-FLAKY-STABILIZE-001
 title: "CI Flaky 안정화 — 인수 기준"
 version: "0.3.0"
-status: in-progress
+status: completed
 created: 2026-07-25
 updated: 2026-07-25
 author: manager-spec

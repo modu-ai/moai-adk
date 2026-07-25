@@ -2,7 +2,7 @@
 id: SPEC-CI-FLAKY-STABILIZE-001
 title: "CI Flaky 안정화 — 진행 기록"
 version: "0.3.0"
-status: in-progress
+status: completed
 created: 2026-07-25
 updated: 2026-07-25
 author: manager-spec
@@ -585,7 +585,19 @@ PRESERVE 후 검증 5건: `LockTimeout = 2 * time.Second` 불변, `unix.LOCK_EX|
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+Sync close rationale: this SPEC is an internal test-infrastructure fix (two CI flaky root-cause repairs — cobra lazy-sort data race + session registry flock starvation) with no user-facing behavior change and no new/changed public API. README and docs-site were deliberately NOT touched — nothing they describe changed. All 27 AC PASS (0 FAIL, 0 PASS-WITH-DEBT); §F Gaps (8 items) and §G/§H (from spec.md, 8 verification-gap + 6 residual-risk items) were preserved as-is per §G Definition-of-Done and are not repeated here — see acceptance.md §F and spec.md §G/§H.
+
+```yaml
+sync_complete_at: 2026-07-25
+sync_commit_sha: pending-backfill-sync   # placeholder; orchestrator backfills after the commit lands
+sync_status: complete
+ac_pass_count: 27
+ac_fail_count: 0
+changelog_entry_added: true
+readme_updated: false        # internal test-infra fix; no user-facing behavior change
+docs_site_updated: false     # same rationale
+route: "Route B (PR-mandatory per repo-local branch protection)"
+```
 
 ## §F Phase 4 Mode Selection
 

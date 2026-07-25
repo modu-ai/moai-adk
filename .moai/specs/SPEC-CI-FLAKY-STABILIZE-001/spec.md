@@ -2,7 +2,7 @@
 id: SPEC-CI-FLAKY-STABILIZE-001
 title: "CI Flaky 안정화 — cobra lazy-sort 데이터 레이스 + session registry flock 기아"
 version: "0.3.0"
-status: in-progress
+status: completed
 created: 2026-07-25
 updated: 2026-07-25
 author: manager-spec
