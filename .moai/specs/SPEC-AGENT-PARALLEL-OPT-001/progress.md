@@ -120,11 +120,136 @@ git diff <prev-commit> -- acceptance.md | grep -oE '^\+\| AC-APO-[0-9]+b?' | sed
 
 ## §E.2 Run-phase Evidence
 
-_<pending run-phase>_
+### M3 작업 0 — D3 게이트 (판별형) verbatim 기록
+
+실행 시각: 2026-07-25 (M3 착수 시점, 브랜치 `feat/SPEC-AGENT-PARALLEL-OPT-001`, HEAD `533859188`).
+
+실행한 명령 (`plan.md` §F M3 작업 0 / `acceptance.md` AC-APO-043 판별형, 축자 동일):
+
+```bash
+grep -rn 'decomposition:' --include='*.go' --include='*.sh' --include='*.yaml' \
+  internal/ .github/ .claude/hooks/
+```
+
+verbatim 출력:
+
+```
+(no output — exit status 1)
+```
+
+출력 줄 수: **0줄** (`| wc -l` → `0`). 기대 범위 0-5줄 이내이므로 명령은 올바르게 좁혀졌다 — 재작성 불요. 비판별형(`decomposition\|segment match trace` 전역 grep, 12,133-match)은 사용하지 않았다.
+
+**게이트 판정: 기계적 소비자 0건 → 분기 A.**
+
+| 항목 | 값 |
+|---|---|
+| 마커 소비자 수 | **0** |
+| 선택된 분기 | **분기 A** |
+| `manager-spec.md` 적용 라인 상한 | **≤ 230** |
+| 합계 적용 상한 (AC-APO-055, M4/M5 판정) | **≤ 1,907** |
+| REQ-APO-043 조치 | 마커 **강제 제거** + 주변 산문 축약 (실행 Bash 정규식 검사는 존치) |
+
+`plan.md` §B.3 각주 확인: `manager-spec.md:166`이 마커가 "downstream grep verification을 가능하게 한다"고 주장했으나, 게이트가 0을 반환했으므로 그 주장은 **근거 없는 것으로 확정**된다 — 인용된 grep은 마커 정의처를 가리키는 자기참조였다.
+
+### M3 Pre-flight 실측 (편차 2건 포함)
+
+| # | 명령 | 기대 | 실측 | 판정 |
+|---|---|---|---|---|
+| 1 | `wc -l .claude/agents/moai/*.md` 합계 | 2417 | **2444** | **편차 +27** — 전량 `builder-harness.md`(실측 222 vs `spec.md` §F.1 기재 195). `git log` 최종 수정 `eee1c4fc1`(2026-07-20)로 본 SPEC plan-phase(2026-07-25) **이전**이며 `git diff origin/main...HEAD` 상 무변경 → **plan-phase §F.1 측정 오류**이지 후속 drift가 아니다. M3 대상 3파일은 기재값과 **정확히 일치**(plan-auditor 505 / manager-spec 317 / manager-develop 311) |
+| 2 | M3 대상 3쌍 mirror `diff` | 0-diff | plan-auditor **0-diff**, manager-develop **0-diff**, manager-spec **1줄 상이** | manager-spec `:139`은 로컬에 `per SPEC-V3R6-LIFECYCLE-REDESIGN-001`, 템플릿에서는 §25 중립화로 해당 토큰 제거 — **의도된 선행 baseline**(`plan.md` §C 항목 3이 예상한 "기존 차이")이며 본 SPEC이 만든 것이 아니다. M3 편집 중 **보존** 대상 |
+| 3 | `go test ./internal/skills/... ./internal/template/...` | green | `ok internal/skills` / `ok internal/template 1.457s`, exit 0 | PASS |
+| 5 | SSOT 교차참조 목적지 실재 | 3/3 | `spec-frontmatter-schema.md`(`## Canonical 12 Required Fields` @:12) / `model-policy.md`(203줄) / `moai-workflow-spec/SKILL.md`(`### GEARS Format (current)` @:140) | PASS |
+
+편차 2건 모두 M3 편집 대상 3파일의 baseline·분기 판정을 무효화하지 않으므로 blocker 반환 없이 진행했다. 편차 1은 `spec.md` §F.1 / §D.2 합계 정정이 필요하며 이는 `manager-spec` 소관이다(run-phase 에이전트는 SPEC body 수정 금지).
+
+### M3 AC 판정 매트릭스 (REQ 040-048 + 068)
+
+증거 로그: `.moai/state/verify/apo-m3/` (`/tmp` 미사용 — evidence persistence obligation 준수).
+
+| AC | 등급 | 판정 | 명령 | 실제 출력 |
+|---|---|---|---|---|
+| AC-APO-040 | MUST | **PASS** | `grep -c '^- FC-[0-9]' plan-auditor.md` / `grep -c 'The 12 required fields are'` | `0` / `1` → 열거 블록 1개(MP-3만) ≤ 1. SSOT 교차참조 2건 |
+| AC-APO-041 | MUST | **PASS** | `grep -c 'lifecycle: spec-anchored  *#' manager-spec.md` / `grep -c 'spec-frontmatter-schema.md'` | `0` / `3` |
+| AC-APO-042 | MUST | **PASS** | `grep -c "Chain-of-Verification" plan-auditor.md` | `0` |
+| AC-APO-043 | MUST | **PASS** (분기 A) | 게이트 0건 → 마커 제거; `grep -c 'decomposition:'` / `'segment match trace'` / Bash 정규식 | `0` / `0` / `1` — 실행 Bash 검사 존치 |
+| AC-APO-044 | MUST | **PASS** | Step 5 항목 중 Step 4 축자 재진술 grep | `0` |
+| AC-APO-045 | MUST | **PASS** | `grep -c '^- \*\*Ubiquitous\*\*' manager-spec.md` / `grep -c 'moai-workflow-spec'` | `0` / `2` |
+| AC-APO-046 | MUST | **PASS** | Step 4 개수 서술 vs 열거 블록 수 | 서술 "The four files enumerated below are the Tier M set" / 열거 `4` — 일치. Tier S·L 변형은 `spec-workflow.md` 교차참조 |
+| AC-APO-047 | MUST | **PASS** | `grep -c '^## DDD Cycle\|^## TDD Cycle'` / `grep -c '^## Implementation Cycle'` | `0` / `1` — 공통 5-step 골격 + 모드별 차이 |
+| AC-APO-048 | MUST | **PASS** | `grep -n 'atomic structural change' manager-develop.md` | `:133 ... scoped **within a single package**. Independent packages MAY progress concurrently — the one-change-at-a-time constraint bounds the package, not the repository.` |
+| AC-APO-068 | MUST | **PASS** | 제거 블록별 SSOT 목적지 실측 (아래 표) | 5개 외부 목적지 전량 내용 보유 확인 |
+
+### AC-APO-068 정보 무성 소실 방지 — 제거 블록별 교차참조 실증
+
+| 제거된 블록 | 교차참조 목적지 | 목적지 내용 보유 실측 |
+|---|---|---|
+| `plan-auditor` FC-1..FC-12 | `spec-frontmatter-schema.md` § Canonical 12 Required Fields / § Field Reference / § Status Enum / § Rejected Snake_Case Aliases | heading 1/1/1, Field Reference 표 행 37, 거부 alias 4종(`created_at`/`updated_at`/`labels`/`spec_id`) 전량 실재 |
+| `plan-auditor` Tool Selection Priority + Mandatory Parallel Batching | `agent-common-protocol.md` § Tool Selection by Task / § Parallel Execution | heading 1/1, Grep·Glob·Read 우선 행 3, `single-turn multi-Bash call` HARD 문장 1 |
+| `plan-auditor` Tier PASS threshold 표 | `spec-workflow.md` § SPEC Complexity Tier | `plan-auditor PASS threshold` 컬럼 실재 + S 0.75 / M 0.80 / L 0.85 3행 실측 |
+| `plan-auditor` M6 Chain-of-Verification | (제거 명령 — REQ-APO-042) 검사 항목은 동일 파일 Audit Checklist Group 2(SC-6) / 3(RQ-1,2) / 4(AC-4,5) / 6(CN-1)에 이미 열거. 유일한 비중복 지시(표본 아닌 전수 점검)는 Audit Checklist 서두 1줄로 보존 | 동일 파일 내 도달 — 외부 참조 불요 |
+| `manager-spec` 12-field 스키마 블록 | 위 `spec-frontmatter-schema.md` 동일 | 동일 |
+| `manager-spec` GEARS/EARS 패턴 표 | `moai-workflow-spec/SKILL.md` § GEARS Format / § EARS Format + `references/ears-deep-dive.md`; 추가로 `manager-spec` frontmatter가 **preload** 하는 `moai-foundation-core` 가 5-패턴 전문 보유 | GEARS/EARS heading 1/1, `ears-deep-dive.md` 실재(yes), `moai-foundation-core` 5-패턴 열거 1 |
+| `manager-spec` SPEC-ID 마커 강제 + 예시 표 | (제거 명령 — REQ-APO-043 분기 A). 유효/무효 예시는 산문으로 보존(`SPEC-AUTH-001`·`SPEC-V3R6-SPEC-ID-VALIDATION-001`·`SPEC-RETIRED-DDD-001` 및 무효 3종) | 동일 파일 내 보존 — `pedagogicalAllowlist` 등재 2토큰 **의도적 유지** |
+| `manager-spec` Scope Boundaries | 동일 파일 frontmatter `description` 의 `NOT for:` 절 | 동일 파일 내 도달 (부수 효과: stale `manager-develop/tdd` 참조 해소) |
+| `manager-spec` Delegation 도메인 3-bullet | 동일 파일 Step 6 + `archived-agent-rejection.md` §C rows 7-10 | §C backend/frontend/devops 행 4건 실측 |
+| `manager-develop` DDD/TDD 전문 2회 기술 | 동일 파일 § Implementation Cycle 통합 골격 | LARGE_SCALE·LSP baseline·loop prevention(max 100 / stale 5)·completion marker(type errors == 0)·coverage 85%·checkpoint 경로 전량 이관 확인 |
+| `manager-develop` Migration 표 + archived 목록 | 동일 파일 산문 1문장 (동일 매핑의 2회 기술 제거) | 동일 파일 내 도달 |
+| `manager-develop` Cycle Selection Decision Guide | 동일 파일 § Required Input Parameter 의 `Focus:` 2행 + § Implementation Cycle 선택 문장 | 동일 파일 내 도달 |
+| `manager-develop` Scope Boundaries / Delegation Protocol 이중 열거 | 동일 파일 통합 표 (경계와 라우팅을 1회 기술) | 6개 라우팅 전량 보존 |
+
+### M3 라인 수 결과 (`wc -l` 실측)
+
+| 파일 | 착수 전 | M3 후 | `spec.md` §D.2 상한 | 판정 |
+|---|---:|---:|---:|---|
+| `plan-auditor.md` | 505 | **454** | 340 | **미달성 (+114)** — 아래 blocker B2 참조 |
+| `manager-spec.md` | 317 | **236** | 230 (분기 A) | **미달성 (+6)** |
+| `manager-develop.md` | 311 | **238** | 240 | **충족 (-2)** |
+| 10파일 합계 | 2444 | **2239** | (M4·M5 판정 대상) | M4 대상 5파일 미착수 |
+
+AC-APO-055는 M4 소관(`plan.md` M4 작업 7)이므로 본 M3에서 판정하지 않는다. 다만 M3 대상 3파일은 M4가 손대지 않으므로, 위 2건의 미달성은 M4에서 해소 불가하며 blocker B2로 보고한다.
 
 ## §E.3 Run-phase Audit-Ready Signal
 
-_<pending run-phase>_
+```yaml
+run_complete_at: 2026-07-25
+run_commit_sha: pending-backfill-blocked   # 커밋 미수행 — blocker B1 참조
+run_status: blocked-at-commit
+milestone: M3
+ac_pass_count: 10        # AC-APO-040..048 + 068 (M3 범위 전량)
+ac_fail_count: 0
+preserve_list_post_run_count: 0            # PRESERVE 목록 파일 무변경
+l44_pre_commit_fetch: not-run              # 커밋 미수행
+l44_post_push_fetch: not-run
+new_warnings_or_lints_introduced: 0        # golangci-lint 0 issues
+cross_platform_build:
+  host: pass                               # go build ./... exit 0
+  windows: pass                            # GOOS=windows GOARCH=amd64 go build ./... exit 0
+full_test_suite: fail-preexisting-cascade  # TestCatalogHashParity / TestManifestHashFormat — blocker B1
+total_run_phase_files: 6                   # 로컬 3 + 템플릿 미러 3
+m1_to_mN_commit_strategy: not-applied      # blocker B1 로 커밋 보류
+```
+
+### Blocker B1 — catalog.yaml 해시 재생성이 병렬 세션 미커밋 변경집합과 충돌 (커밋 보류)
+
+본 세션 편집과 **무관한** 병렬 변경이 07:54:11에 워킹트리에 유입되었다(본 세션 최초 편집 08:28:28보다 선행, mtime 실측). 내용은 profile 매트릭스 frontmatter 재작성(`effort:` xhigh→high / high→medium)이며 **에이전트 10개 × 로컬·템플릿 2트리 = 20파일 + `internal/template/catalog.yaml`** 에 걸쳐 있다. 본 세션이 건드리지 않은 7개 파일도 동일하게 변경돼 있어 귀속이 명확하다.
+
+충돌 구조:
+
+- catalog 해시는 파일 바이트의 평문 SHA256이며 **frontmatter를 포함**한다(실측: 워킹트리 파일 shasum = 테스트가 보고한 `computed` 값과 일치, staged blob은 상이).
+- 본 세션 body 편집으로 3개 entry가 drift → `TestCatalogHashParity` / `TestManifestHashFormat` FAIL.
+- 재생성(`gen-catalog-hashes --all`)은 워킹트리를 읽으므로 병렬 세션의 `effort` 변경을 본 SPEC 커밋에 흡수하게 된다 → REQ-APO-065(frontmatter 무변경) 위반 + L46 귀속 위반.
+- body-only 스테이징(frontmatter hunk 제외)은 검증 완료했으나(staged frontmatter 변경 0줄, mirror parity 유지), 그 경우 커밋된 트리의 catalog 해시가 불일치해 테스트가 red로 남는다.
+
+따라서 자기정합적 커밋 경로가 없어 **커밋을 수행하지 않았다**. 편집 산출물은 워킹트리에 온전히 존재하며 index는 원상 복구했다(병렬 세션의 `git add`/commit 간섭 방지).
+
+해소 경로(오케스트레이터 결정 필요): (a) 병렬 세션이 profile 변경을 먼저 커밋 → 이후 `gen-catalog-hashes --all` + 본 M3 커밋, (b) 본 SPEC 커밋에 `effort` 변경 흡수를 명시 승인(REQ-APO-065 예외 기록 필요), (c) 병렬 변경 revert 후 본 M3 단독 커밋.
+
+### Blocker B2 — `spec.md` §D.2 상한 2건이 M3 인가 범위로 도달 불가
+
+- `plan-auditor.md` 454 vs 상한 340(-114 부족). `plan.md` M3 작업 1이 인가한 편집(frontmatter 열거 1회화 + M6 CoVe 제거)의 산출 감축량은 약 27줄이며, 추가로 SSOT 중복(Tool Selection / Parallel Batching / Tier threshold 표)을 제거해 총 51줄을 감축했다. 잔여 114줄은 rubric band 정의, D7/D8 검증 verb, Audit Checklist Group 3-6, Output Format 템플릿 등 **plan-auditor 고유 소유 내용**이며, 제거 시 REQ-APO-068(정보 무성 소실 금지) 및 §G 안티패턴 "라인 수만 맞추는 압축" 위반이다.
+- `manager-spec.md` 236 vs 분기 A 상한 230(-6 부족). 동일 사유.
+- 아울러 `spec.md` §F.1 / §D.2의 `builder-harness.md` 기재값 195는 실측 222와 불일치하며(합계 2417 vs 2444), 이는 plan-phase 측정 오류다. §D.2 합계 상한(1907/1927)의 근거 수치 정정이 필요하다.
+- 상한 조정 또는 M3 범위 확대는 `spec.md` / `plan.md` body 수정이므로 **manager-spec 소관**이다.
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
