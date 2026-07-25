@@ -41,12 +41,10 @@ moai init [project-name]
 | `--mode <ddd\|tdd>` | 開発方法論 (デフォルト: tdd) |
 | `--non-interactive` | 対話式ウィザードを省略 — フラグとデフォルトのみ使用 |
 
-### ウィザードステップ
+### ウィザード質問フラグ
 
 | フラグ | 説明 |
 |--------|------|
-| `--standard` | Phase 1 の質問を提示 (プロジェクトモード、ハーネスプロファイル、LSP、品質ゲート、デザイン) |
-| `--advanced` | Phase 1 + Phase 2 の質問を提示 (`--standard` を含む) |
 | `--project-mode <personal\|team>` | プロジェクトモード (デフォルト: personal) |
 | `--harness-profile <name>` | ハーネス評価プロファイル: default, strict, lenient, frontend |
 | `--enable-lsp` | LSP 統合を有効化 (デフォルト: false) |

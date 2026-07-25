@@ -4,7 +4,7 @@ weight: 50
 draft: false
 ---
 
-通过 MoAI-ADK 的交互式设置向导完成首次设置。按你的开发环境配置语言、Git 自动化范围、模型策略、harness 配置文件。这里设定的所有值都会保存为 `.moai/config/sections/` 下的 YAML 文件,之后随时可以直接改文件,或重新运行向导来更改。
+通过 MoAI-ADK 的交互式设置向导完成首次设置。按你的开发环境配置语言、模型策略、报告格式、质量/工作流设置。这里设定的所有值都会保存为 `.moai/config/sections/` 下的 YAML 文件,之后随时可以直接改文件,或重新运行向导来更改。
 
 ## 启动设置向导
 
@@ -31,34 +31,29 @@ moai init
 `moai init` 会直接安装到当前文件夹。新项目请用 `moai init <项目名>` 创建。
 {{< /callout >}}
 
-## 向导模式
+## 向导结构
 
-初始化向导按提问的深度分三种模式运行。
+初始化向导始终运行相同的固定 3 页流程 —— 没有可扩大或缩小提问范围的模式标志,所有用户看到的提问都相同。
 
-| 模式 | 标志 | 提问范围 |
-|------|--------|----------|
-| **Quick**(默认) | (无) | 仅核心设置 —— 语言、名称、Git、模型策略 |
-| **Standard** | `--standard` | Quick + Phase 1 提问(project mode, harness profile, LSP, quality, design) |
-| **Advanced** | `--advanced` | Standard + Phase 2 提问(仅在满足前置条件时) |
+| 页面 | 提问 |
+|------|------|
+| **Page 1 —— 基本** | 对话语言、名称、项目名称 |
+| **Page 2 —— 模型与报告** | 性能层级(模型策略)、报告格式 |
+| **Page 3 —— 质量与工作流** | LSP 集成、强制质量门禁、项目模式、设计工作流、Claude Design 联动 |
 
 ```bash
-# 默认向导(Quick)
 moai init my-project
-
-# 含 Phase 1 提问
-moai init my-project --standard
-
-# 含 Phase 1 + Phase 2 提问
-moai init my-project --advanced
 ```
 
-## Quick 模式(默认)
+{{< callout type="info" >}}
+向导不会询问 Git 自动化模式与提供方。`moai init` 会从仓库中已配置的 Git 远程自动检测。之后想更改 Git 设置,请运行 `moai update --reconfigure` —— 只有该路径会显示单独的 Git 提问集(自动化模式、提供方、凭据)。
+{{< /callout >}}
 
-不带标志运行时只询问核心设置。对大多数用户已经足够。
+## Page 1 —— 基本
 
 ### 第 1 步:选择对话语言
 
-选择 Claude 回复所用的语言。
+选择 Claude 回复所用的语言。之后的所有提问都会以该语言呈现。
 
 ```bash
 ? 选择对话语言:
@@ -78,69 +73,64 @@ moai init my-project --advanced
 ? 输入名称: [名称]
 ```
 
-### 第 3 步:选择 Git 自动化模式
+该设置保存到 `.moai/config/sections/user.yaml` 的 `user.name` 字段。
 
-设置 Claude 可执行的 Git 操作范围。
+### 第 3 步:项目名称
 
-```bash
-? 选择 Git 自动化模式:
-▸ Manual - AI 不进行提交或推送
-  Personal - AI 可创建分支并提交
-  Team - AI 可创建分支、提交、创建 PR
-```
-
-- **Manual**:AI 不执行 Git 操作。所有提交与推送由用户亲自执行。
-- **Personal**:AI 可创建分支并提交。适合个人项目。
-- **Team**:AI 可执行创建分支、提交,直至创建 PR。为团队协作工作流优化。
-
-{{< callout type="info" >}}
-Git 设置保存到 `.moai/config/sections/git-strategy.yaml` 文件。
-{{< /callout >}}
-
-### 第 4 步:选择 Git 提供方
-
-选择项目的 Git 托管平台。
+项目的名称。默认值为当前目录名。
 
 ```bash
-? 选择 Git 提供方:
-▸ GitHub - GitHub.com
-  GitLab - GitLab.com 或自托管 GitLab
+? 输入项目名称: [my-project]
 ```
 
-### 第 5 步:提交信息语言
+## Page 2 —— 模型与报告
 
-选择撰写提交信息所用的语言。可与代码注释语言设为不同。
-
-### 第 6 步:代码注释语言
-
-选择代码注释所用的语言。大多数项目推荐英语。
-
-### 第 7 步:文档语言
-
-选择文档文件所用的语言。
-
-### 第 8 步:性能层级(模型策略)
+### 性能层级(模型策略)
 
 选择分配给智能体的 AI 模型层级 —— 这是代币经济学的核心设置。
 
 ```bash
 ? 选择性能层级:
-▸ medium (推荐) - 质量与成本的平衡
-  max - 最高质量,计划·审计分配 Opus
-  low - 经济,以 Sonnet 为中心分配
+▸ Medium (推荐) - 质量与成本的平衡,Max $100 计划
+  Max - Fable 5(low) + Opus 4.8(high) + Sonnet(medium~low),Max $200 计划
+  Low - Opus 4.8(high~low) + Sonnet(medium~low),Plus $20 计划
 ```
 
 | 层级 | 特点 |
 |------|------|
-| **max** | 最高质量 —— 计划·审计分配 Opus,最大推理深度 |
-| **medium**(默认) | 质量与成本的平衡 |
-| **low** | 经济 —— 以 Sonnet 为中心分配 |
+| **Max** | 最高质量分配 —— 面向 Max $200 计划 |
+| **Medium**(默认) | 质量与成本的平衡 —— 面向 Max $100 计划 |
+| **Low** | 经济分配 —— 面向 Plus $20 计划 |
 
 该设置保存到 `.moai/config/sections/llm.yaml` 的 `performance_tier` 字段，并作为 `profile` 字段(配置矩阵列)的 legacy 别名读取。用 `--profile max|medium|low` 标志直接指定则保存到 `profile` 字段。每个配置文件的代理 model+effort 映射请参阅[配置矩阵](/zh/advanced/profile-matrix/)页面。
 
-## Standard 模式(Phase 1 提问)
+### 报告格式
 
-给出 `--standard` 标志时,除 Quick 模式的所有提问外还会显示 Phase 1 提问。
+选择报告生成为 HTML+Markdown 还是仅 Markdown。
+
+```bash
+? 选择报告格式:
+▸ HTML + Markdown (推荐) - 同时生成可在浏览器查看的 HTML 报告与 Markdown
+  仅 Markdown - 仅生成 Markdown 报告(更轻量,便于 diff)
+```
+
+该设置保存到 `.moai/config/sections/report.yaml` 的 `report.format` 字段。
+
+## Page 3 —— 质量与工作流
+
+### LSP integration
+
+选择是否在 run 阶段启用语言服务器诊断。默认为 **启用(Yes)**,如不需要可回答 No 来 opt-out。
+
+该设置保存到 `.moai/config/sections/lsp.yaml` 的 `lsp.enabled` 字段。
+
+### quality gates
+
+选择是否强制 TRUST 5 质量门禁。
+
+- **Enforce quality gates**(默认: Yes)—— 质量门禁失败时阻断实现推进
+
+该设置保存到 `.moai/config/sections/quality.yaml` 的 `constitution.enforce_quality` 字段。
 
 ### project mode
 
@@ -152,28 +142,7 @@ Git 设置保存到 `.moai/config/sections/git-strategy.yaml` 文件。
   Team - Multi-developer setup
 ```
 
-### harness evaluator profile
-
-选择质量评估器的默认配置文件。
-
-```bash
-? Select default harness evaluator profile:
-▸ default
-  strict
-  lenient
-  frontend
-```
-
-### LSP integration
-
-选择是否在 run 阶段启用语言服务器诊断。默认为禁用(opt-in)。
-
-### quality gates
-
-选择是否强制 TRUST 5 质量门禁以及是否允许覆盖率例外。
-
-- **Enforce quality gates**(默认: Yes)—— 质量门禁失败时阻断实现推进
-- **Allow coverage exemptions**(默认: No)—— 将特定文件/包排除在覆盖率对象之外
+该设置保存到 `.moai/config/sections/project.yaml` 的 `project.mode` 字段。
 
 ### design workflow
 
@@ -182,9 +151,7 @@ Git 设置保存到 `.moai/config/sections/git-strategy.yaml` 文件。
 - **Enable design workflow**(默认: Yes)
 - **Enable Claude Design integration**(默认: Yes,仅在启用 design 时显示)
 
-## Advanced 模式(Phase 2 提问)
-
-`--advanced` 标志包含 `--standard`,并额外显示 Phase 2 提问。Phase 2 提问仅在满足 run 阶段完成等前置条件时显示,无条件时会自动跳过并输出提示消息。
+这些设置保存到 `.moai/config/sections/design.yaml` 的 `design.enabled` / `design.claude_design.enabled` 字段。
 
 ## 非交互模式(CI/CD)
 

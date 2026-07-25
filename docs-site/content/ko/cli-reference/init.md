@@ -41,12 +41,10 @@ moai init [project-name]
 | `--mode <ddd\|tdd>` | 개발 방법론 (기본: tdd) |
 | `--non-interactive` | 대화형 마법사 생략 — 플래그와 기본값만 사용 |
 
-### 마법사 단계
+### 마법사 질문 플래그
 
 | 플래그 | 설명 |
 |--------|------|
-| `--standard` | Phase 1 질문 제시 (프로젝트 모드, 하네스 프로필, LSP, 품질 게이트, 디자인) |
-| `--advanced` | Phase 1 + Phase 2 질문 제시 (`--standard` 포함) |
 | `--project-mode <personal\|team>` | 프로젝트 모드 (기본: personal) |
 | `--harness-profile <name>` | 하네스 평가 프로필: default, strict, lenient, frontend |
 | `--enable-lsp` | LSP 통합 활성화 (기본: false) |

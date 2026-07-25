@@ -59,8 +59,6 @@ moai init [project-name] [OPTIONS]
 | `--force` | 기존 프로젝트 강제 재초기화 (현재 `.moai/` 백업) |
 | `--no-hooks` | Git 훅 설치 건너뛰기 |
 | `--all` | 카탈로그 전체 항목 배포 (core + optional packs + harness-generated) |
-| `--standard` | Phase 1 질문 표시 (project mode, harness profile, LSP, quality gates, design) |
-| `--advanced` | Phase 1 + Phase 2 질문 표시 (`--standard` 포함; Phase 2는 선행 조건 충족 시만) |
 | `--mode <ddd\|tdd>` | 개발 방법론 (기본값: tdd) |
 | `--language <lang>` | 주 프로그래밍 언어 |
 | `--framework <name>` | 프레임워크 이름 (기본값: 자동 감지 또는 "none") |
@@ -89,9 +87,6 @@ moai init
 
 # 비대화형 (CI/CD)
 moai init --non-interactive --project-mode personal --model-policy medium
-
-# Phase 1 질문까지 표시
-moai init my-project --standard
 ```
 
 자세한 마법사 단계는 [초기 설정](./init-wizard) 페이지를 참조하세요.

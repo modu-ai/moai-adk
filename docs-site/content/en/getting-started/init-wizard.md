@@ -4,7 +4,7 @@ weight: 50
 draft: false
 ---
 
-Complete your first setup through MoAI-ADK's interactive setup wizard. It configures the language, Git automation scope, model policy, and harness profile to match your development environment. Every value you set here is saved as a YAML file under `.moai/config/sections/`, so you can change it any time later by editing the file directly or re-running the wizard.
+Complete your first setup through MoAI-ADK's interactive setup wizard. It configures the language, model policy, report format, and quality/workflow settings to match your development environment. Every value you set here is saved as a YAML file under `.moai/config/sections/`, so you can change it any time later by editing the file directly or re-running the wizard.
 
 ## Starting the setup wizard
 
@@ -31,34 +31,29 @@ moai init
 `moai init` installs directly into the current folder. For a new project, create it with `moai init <project-name>`.
 {{< /callout >}}
 
-## Wizard modes
+## Wizard structure
 
-The initialization wizard operates in three modes, depending on the depth of questions.
+The initialization wizard always runs the same fixed 3-page flow — there is no mode flag that widens or narrows the question set; every user sees the same questions.
 
-| Mode | Flag | Question scope |
-|------|--------|----------|
-| **Quick** (default) | (none) | Core settings only — language, name, Git, model policy |
-| **Standard** | `--standard` | Quick + Phase 1 questions (project mode, harness profile, LSP, quality, design) |
-| **Advanced** | `--advanced` | Standard + Phase 2 questions (only when prerequisites are met) |
+| Page | Questions |
+|------|-----------|
+| **Page 1 — Basic** | Conversation language, name, project name |
+| **Page 2 — Model & Report** | Performance tier (model policy), report format |
+| **Page 3 — Quality & Workflow** | LSP integration, enforce quality gates, project mode, design workflow, Claude Design integration |
 
 ```bash
-# Default wizard (Quick)
 moai init my-project
-
-# Include Phase 1 questions
-moai init my-project --standard
-
-# Include Phase 1 + Phase 2 questions
-moai init my-project --advanced
 ```
 
-## Quick mode (default)
+{{< callout type="info" >}}
+Git automation mode and provider are NOT asked by the wizard. `moai init` auto-detects them from the repository's already-configured Git remotes. To change Git settings later, run `moai update --reconfigure` — only that path shows a separate set of Git questions (automation mode, provider, credentials).
+{{< /callout >}}
 
-Run without flags, it asks only the core settings. This is sufficient for most users.
+## Page 1 — Basic
 
 ### Step 1: choose the conversation language
 
-Choose the language Claude will respond in.
+Choose the language Claude will respond in. Every subsequent question renders in this language.
 
 ```bash
 ? Choose the conversation language:
@@ -78,69 +73,64 @@ The user name used in the config files. Press Enter to skip.
 ? Enter your name: [name]
 ```
 
-### Step 3: choose the Git automation mode
+This setting is saved in the `user.name` field of `.moai/config/sections/user.yaml`.
 
-Sets the scope of Git operations Claude can perform.
+### Step 3: project name
 
-```bash
-? Choose the Git automation mode:
-▸ Manual - the AI does not commit or push
-  Personal - the AI can create branches and commit
-  Team - the AI can create branches, commit, and create PRs
-```
-
-- **Manual**: the AI does not perform Git operations. You run all commits and pushes yourself.
-- **Personal**: the AI can create branches and commit. Suited for personal projects.
-- **Team**: the AI performs branch creation, commits, and even PR creation. Optimized for team collaboration workflows.
-
-{{< callout type="info" >}}
-Git settings are saved in the `.moai/config/sections/git-strategy.yaml` file.
-{{< /callout >}}
-
-### Step 4: choose the Git provider
-
-Choose the project's Git hosting platform.
+The name of your project. The default is the current directory name.
 
 ```bash
-? Choose the Git provider:
-▸ GitHub - GitHub.com
-  GitLab - GitLab.com or self-hosted GitLab
+? Enter project name: [my-project]
 ```
 
-### Step 5: commit message language
+## Page 2 — Model & Report
 
-Choose the language used for writing commit messages. It can be set differently from the code-comment language.
-
-### Step 6: code comment language
-
-Choose the language used for code comments. English is recommended for most projects.
-
-### Step 7: documentation language
-
-Choose the language used for documentation files.
-
-### Step 8: performance tier (model policy)
+### Performance tier (model policy)
 
 Choose the AI model tier assigned to agents — the core Tokenomics setting.
 
 ```bash
 ? Choose the performance tier:
-▸ medium (Recommended) - balance of quality and cost
-  max - highest quality, Opus assigned to planning and auditing
-  low - economical, Sonnet-centric allocation
+▸ Medium (Recommended) - balance of quality and cost, Max $100 plan
+  Max - Fable 5(low) + Opus 4.8(high) + Sonnet(medium~low), Max $200 plan
+  Low - Opus 4.8(high~low) + Sonnet(medium~low), Plus $20 plan
 ```
 
 | Tier | Characteristics |
 |------|------|
-| **max** | Highest quality — Opus assigned to planning and auditing, maximum reasoning depth |
-| **medium** (default) | Balance of quality and cost |
-| **low** | Economical — Sonnet-centric allocation |
+| **Max** | Highest-quality allocation — for the Max $200 plan |
+| **Medium** (default) | Balance of quality and cost — for the Max $100 plan |
+| **Low** | Economical allocation — for the Plus $20 plan |
 
 This setting is saved in the `performance_tier` field of `.moai/config/sections/llm.yaml` and is read as a legacy alias of the `profile` field (the profile matrix column). Specifying the `--profile max|medium|low` flag directly stores it in the `profile` field. For the per-profile agent model+effort mapping, see the [Profile Matrix](/en/advanced/profile-matrix/) page.
 
-## Standard mode (Phase 1 questions)
+### Report format
 
-With the `--standard` flag, all Quick-mode questions plus Phase 1 questions are shown.
+Choose whether reports are generated as HTML+Markdown or Markdown only.
+
+```bash
+? Choose the report format:
+▸ HTML + Markdown (Recommended) - generate both a browser-viewable HTML report and Markdown
+  Markdown only - generate Markdown reports only (lighter, diff-friendly)
+```
+
+This setting is saved in the `report.format` field of `.moai/config/sections/report.yaml`.
+
+## Page 3 — Quality & Workflow
+
+### LSP integration
+
+Choose whether to enable language-server diagnostics in the run phase. The default is **enabled (Yes)**; answer No to opt out.
+
+This setting is saved in the `lsp.enabled` field of `.moai/config/sections/lsp.yaml`.
+
+### quality gates
+
+Choose whether to enforce the TRUST 5 quality gates.
+
+- **Enforce quality gates** (default: Yes) — block implementation from proceeding when a quality gate fails
+
+This setting is saved in the `constitution.enforce_quality` field of `.moai/config/sections/quality.yaml`.
 
 ### project mode
 
@@ -152,28 +142,7 @@ Choose the project collaboration mode.
   Team - Multi-developer setup
 ```
 
-### harness evaluator profile
-
-Choose the default profile of the quality evaluator.
-
-```bash
-? Select default harness evaluator profile:
-▸ default
-  strict
-  lenient
-  frontend
-```
-
-### LSP integration
-
-Choose whether to enable language-server diagnostics in the run phase. The default is disabled (opt-in).
-
-### quality gates
-
-Choose whether to enforce the TRUST 5 quality gates and whether to allow coverage exemptions.
-
-- **Enforce quality gates** (default: Yes) — block implementation from proceeding when a quality gate fails
-- **Allow coverage exemptions** (default: No) — exclude specific files/packages from coverage
+This setting is saved in the `project.mode` field of `.moai/config/sections/project.yaml`.
 
 ### design workflow
 
@@ -182,9 +151,7 @@ Choose whether to enable the MoAI design pipeline and Claude Design integration.
 - **Enable design workflow** (default: Yes)
 - **Enable Claude Design integration** (default: Yes, shown only when design is enabled)
 
-## Advanced mode (Phase 2 questions)
-
-The `--advanced` flag includes `--standard`, and additionally shows Phase 2 questions. Phase 2 questions are shown only when prerequisites — such as run-phase completion — are met; if there is no such condition, they are skipped automatically with a guidance message.
+These settings are saved in the `design.enabled` / `design.claude_design.enabled` fields of `.moai/config/sections/design.yaml`.
 
 ## Non-interactive mode (CI/CD)
 

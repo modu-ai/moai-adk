@@ -59,8 +59,6 @@ moai init [project-name] [OPTIONS]
 | `--force` | Force re-initialization of an existing project (backs up the current `.moai/`) |
 | `--no-hooks` | Skip Git hook installation |
 | `--all` | Deploy all catalog items (core + optional packs + harness-generated) |
-| `--standard` | Show Phase 1 questions (project mode, harness profile, LSP, quality gates, design) |
-| `--advanced` | Show Phase 1 + Phase 2 questions (includes `--standard`; Phase 2 only when prerequisites are met) |
 | `--mode <ddd\|tdd>` | Development methodology (default: tdd) |
 | `--language <lang>` | Primary programming language |
 | `--framework <name>` | Framework name (default: auto-detect or "none") |
@@ -89,9 +87,6 @@ moai init
 
 # Non-interactive (CI/CD)
 moai init --non-interactive --project-mode personal --model-policy medium
-
-# Show up to Phase 1 questions
-moai init my-project --standard
 ```
 
 For detailed wizard steps, see the [Initial Setup](./init-wizard) page.

@@ -2,7 +2,7 @@
 id: SPEC-CLI-WIZARD-RESTRUCTURE-001
 title: "Progress — moai init wizard restructure (방안 A)"
 version: "0.2.1"
-status: in-progress
+status: completed
 created: 2026-07-25
 updated: 2026-07-25
 author: manager-spec
@@ -397,7 +397,82 @@ Recorded so sync-phase inherits these rather than rediscovering them.
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+- **`sync_status: complete`**
+- **`sync_complete_at: 2026-07-25`**
+- **`sync_commit_sha: pending-backfill-wizard-sync`** — this commit cannot reference
+  its own SHA (physics: a commit does not know its own hash until it lands); backfilled
+  in a follow-up commit per the SHA placeholder backfill exemption
+  (`spec-frontmatter-schema.md` § Status Transition Ownership Matrix).
+- **`base_merge`**: origin/main was ahead by 21 commits at sync entry
+  (`git rev-list --count --left-right origin/main...HEAD` → `0 21` local-ahead-only
+  pre-observed baseline at 96d35723c, per the orchestrator's pre-verified baseline).
+  The worktree HEAD (`96d35723c`) already carries the merged state — 9 origin/main
+  commits merged with 0 conflicts; the only file both sides touched was
+  `internal/template/model_policy.go`, in non-overlapping regions (confirmed by
+  the orchestrator's pre-verified baseline: `go build ./...` exit 0, `go vet ./...`
+  exit 0, `go test -count=1 ./...` exit 0, 105 packages ok, 0 FAIL before this
+  session's edits began).
+- **`docs_site_files_edited: 12`** — the 4-locale × 3-doc family:
+  `docs-site/content/{en,ko,ja,zh}/getting-started/init-wizard.md` (3-page rewrite),
+  `docs-site/content/{en,ko,ja,zh}/getting-started/cli.md` (flag-row removal),
+  `docs-site/content/{en,ko,ja,zh}/cli-reference/init.md` (flag-row removal +
+  heading rename "Wizard phases" → "Wizard question flags").
+- **`locale_parity`**: heading-count and table-row-count parity verified per file
+  family across en/ko/ja/zh — `init-wizard.md` 28 headings / 10 table rows each;
+  `cli.md` 44 headings / 161 table rows each; `cli-reference/init.md` 14 headings /
+  37 table rows each (command: `grep -cE '^#{1,3} '` / `grep -cE '^\|'` per locale,
+  see Evidence below).
+- **`changelog_entry_position`**: `CHANGELOG.md` `## [Unreleased]` → `### Changed`,
+  first bullet (immediately above the `SPEC-SUBAGENT-NESTING-DOCTRINE-001` entry).
+- **`frontmatter_status_transitions`**: `spec.md` / `plan.md` / `acceptance.md` /
+  `progress.md` — all 4 transitioned `in-progress → completed` in this sync commit
+  (the merged 3-phase close; `updated:` already carried `2026-07-25` from run-phase
+  and is unchanged by this transition).
+- **`push_state: NOT pushed`** — Tier L routes to Route B (PR); `manager-git` owns
+  branch/PR creation. Working tree in worktree `.claude/worktrees/wizard`,
+  branch `feat/SPEC-CLI-WIZARD-RESTRUCTURE-001`.
+
+### Evidence (verbatim command + output, this run)
+
+```
+$ hugo --gc --minify   (from docs-site/)
+exit=0
+Total in 1830 ms
+KO 153 pages / EN 151 / JA 151 / ZH 151 — 0 WARN, 0 ERROR lines
+log: .moai/state/verify/wizard-sync/1-hugo-build.log
+
+$ grep -rnE -- '--standard|--advanced' docs-site/content/
+exit=1 (0 matches; baseline was 12 files / 44 matches)
+log: .moai/state/verify/wizard-sync/2-flag-grep.log
+
+$ grep -rE -- '--standard|--advanced' .github/
+exit=1 (0 matches — unchanged, was already 0)
+log: .moai/state/verify/wizard-sync/3-github-grep.log
+
+$ go test -count=1 ./...   (from worktree root)
+exit=0, 105 packages ok, 0 FAIL
+log: .moai/state/verify/wizard-sync/6-go-test.log
+
+$ grep -c 'SPEC-CLI-WIZARD-RESTRUCTURE-001' CHANGELOG.md   (B12 pre-emission self-test)
+0 (before this session's edit — safe to emit, no duplicate)
+
+$ grep -cE '^\| \*\*AC-[A-Z]+-[0-9]+\*\*' acceptance.md
+0 (acceptance.md uses '### AC-WIZ-NNN' headings, not the '| **AC-...**' table
+   row form; AC count verified instead via
+   'grep -cE "^### AC-WIZ-[0-9]+" acceptance.md' style enumeration = 17 distinct
+   IDs + 2 lettered sub-IDs (010a, 012a) = 19, matching progress.md §E.3's
+   recorded "19/19 PASS, 0 FAIL, 0 PASS-WITH-DEBT" tally)
+```
+
+### Gaps (not observed this run)
+
+- `git show --stat <sync-commit-sha>` — not yet run; will be captured after the
+  commit lands and cited in the final report.
+- No independent re-verification of the run-phase coverage/lint numbers
+  (93.9% / 88.7% / 84.9%, golangci-lint 0 issues) — those are cited from
+  progress.md §E.3 (run-phase's own attributed measurement), not re-run in
+  this sync session, since sync-phase scope is docs-site + CHANGELOG +
+  frontmatter, not a run-phase re-audit.
 
 ## §F Phase 4 Mode Selection
 

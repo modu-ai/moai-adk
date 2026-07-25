@@ -59,8 +59,6 @@ moai init [project-name] [OPTIONS]
 | `--force` | 强制重新初始化既有项目(会备份当前 `.moai/`) |
 | `--no-hooks` | 跳过 Git 钩子安装 |
 | `--all` | 部署 catalog 全部条目(core + optional packs + harness-generated) |
-| `--standard` | 显示 Phase 1 提问(project mode、harness profile、LSP、quality gates、design) |
-| `--advanced` | 显示 Phase 1 + Phase 2 提问(含 `--standard`;Phase 2 仅在满足前置条件时) |
 | `--mode <ddd\|tdd>` | 开发方法论(默认: tdd) |
 | `--language <lang>` | 主编程语言 |
 | `--framework <name>` | 框架名称(默认: 自动检测或 "none") |
@@ -89,9 +87,6 @@ moai init
 
 # 非交互(CI/CD)
 moai init --non-interactive --project-mode personal --model-policy medium
-
-# 显示到 Phase 1 提问
-moai init my-project --standard
 ```
 
 详细的向导步骤请参阅[初始设置](./init-wizard)页面。

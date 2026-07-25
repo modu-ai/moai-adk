@@ -59,8 +59,6 @@ moai init [project-name] [OPTIONS]
 | `--force` | 既存プロジェクトの強制再初期化 (現在の `.moai/` をバックアップ) |
 | `--no-hooks` | Git フックのインストールをスキップ |
 | `--all` | カタログの全項目を配布 (core + optional packs + harness-generated) |
-| `--standard` | Phase 1 質問を表示 (project mode, harness profile, LSP, quality gates, design) |
-| `--advanced` | Phase 1 + Phase 2 質問を表示 (`--standard` を含む; Phase 2 は前提条件を満たす場合のみ) |
 | `--mode <ddd\|tdd>` | 開発方法論 (デフォルト値: tdd) |
 | `--language <lang>` | 主要プログラミング言語 |
 | `--framework <name>` | フレームワーク名 (デフォルト値: 自動検出または "none") |
@@ -89,9 +87,6 @@ moai init
 
 # 非対話型 (CI/CD)
 moai init --non-interactive --project-mode personal --model-policy medium
-
-# Phase 1 質問まで表示
-moai init my-project --standard
 ```
 
 詳しいウィザードステップは [初期設定](./init-wizard) ページを参照してください。
