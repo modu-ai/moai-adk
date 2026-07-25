@@ -130,10 +130,10 @@ func TestWriteLSPYAML(t *testing.T) {
 func TestWriteDesignYAML(t *testing.T) {
 	t.Parallel()
 	cases := []struct {
-		name              string
-		designEnabled     bool
+		name                string
+		designEnabled       bool
 		claudeDesignEnabled bool
-		want              string
+		want                string
 	}{
 		{
 			"both enabled (default)",
@@ -271,10 +271,12 @@ func TestWritePhase1Configs_AllFiles(t *testing.T) {
 		t.Fatalf("WritePhase1Configs: %v", err)
 	}
 
-	// Verify harness.yaml created with correct content
-	harness, _ := os.ReadFile(filepath.Join(sectionsDir, defs.HarnessYAML))
-	if !bytes.Contains(harness, []byte("default_profile: lenient")) {
-		t.Errorf("harness.yaml: %q", harness)
+	// C36: harness.yaml is NOT part of the Page-3 write set any more. On the
+	// real (deployer) path the file is already deployed with the correct
+	// default_profile, so WritePhase1Configs must leave it entirely alone —
+	// here that means never creating it.
+	if _, err := os.Stat(filepath.Join(sectionsDir, defs.HarnessYAML)); err == nil {
+		t.Error("harness.yaml was written; C36 removed it from the Page-3 write set")
 	}
 
 	// Verify lsp.yaml created with enabled=true

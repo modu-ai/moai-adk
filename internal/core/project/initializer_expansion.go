@@ -33,9 +33,10 @@ func WritePhase1Configs(opts InitOptions, result *InitResult) error {
 	if err := writeProjectModeYAML(sectionsDir, opts, result); err != nil {
 		return err
 	}
-	if err := writeHarnessProfileYAML(sectionsDir, opts, result); err != nil {
-		return err
-	}
+	// harness.yaml is deliberately NOT written (C36 / REQ-WIZ-012): the
+	// harness-profile question is removed from the wizard and the deployed
+	// harness.yaml already ships default_profile: "default", so a write here
+	// would destroy 8,165 B of deployed config to restate a correct value.
 	if err := writeLSPYAML(sectionsDir, opts, result); err != nil {
 		return err
 	}
@@ -80,6 +81,13 @@ func writeProjectModeYAML(sectionsDir string, opts InitOptions, result *InitResu
 }
 
 // writeHarnessProfileYAML writes harness.default_profile to harness.yaml (B2, REQ-IWE-002).
+//
+// NO LONGER PART OF THE PAGE-3 WRITE SET (C36 / REQ-WIZ-012). Its call was
+// removed from WritePhase1Configs because the harness-profile question is gone
+// and the deployed harness.yaml already carries the correct default; this
+// wholesale writer would destroy that file. The function is retained only
+// because its two dedicated tests are outside the plan.md §G delete-list —
+// removing both is C37's (M7) scope.
 func writeHarnessProfileYAML(sectionsDir string, opts InitOptions, result *InitResult) error {
 	profile := opts.HarnessProfile
 	if profile == "" {
