@@ -10,16 +10,17 @@ package cli
 // (init.go: "the wizard fills opts.Profile only when the flag is absent, so the
 // flag takes precedence over the wizard answer").
 //
-// The two bool helpers cannot express this rule by VALUE: `getBoolFlag(cmd,
-// "enable-lsp")` returns false both when the flag is absent and when the user
-// typed `--enable-lsp=false`, and `getBoolFlagWithDefault(cmd,
-// "enforce-quality", true)` returns true both when absent and when the user
-// typed `--enforce-quality=true`. The `--enforce-quality=false` and
-// `--enable-lsp=false` cases below are therefore the discriminating rows: they
-// FAIL against any value-only implementation and pass only when the
+// The bool helper cannot express this rule by VALUE: `getBoolFlagWithDefault`
+// returns its default both when the flag is absent and when the user typed that
+// same value explicitly — `(cmd, "enforce-quality", true)` returns true for both
+// "absent" and `--enforce-quality=true`, and `(cmd, "enable-lsp", true)` behaves
+// identically. The three `=false` cases below are therefore the discriminating
+// rows: they FAIL against any value-only implementation and pass only when the
 // implementation probes `cmd.Flags().Changed(<name>)`.
 
 import (
+	"os"
+	"strings"
 	"testing"
 
 	"github.com/spf13/cobra"
@@ -33,7 +34,7 @@ import (
 func seedOptsFromFlags(cmd *cobra.Command) project.InitOptions {
 	return project.InitOptions{
 		ProjectMode:    getStringFlag(cmd, "project-mode"),
-		LSPEnabled:     getBoolFlag(cmd, "enable-lsp"),
+		LSPEnabled:     getBoolFlagWithDefault(cmd, "enable-lsp", true),
 		EnforceQuality: getBoolFlagWithDefault(cmd, "enforce-quality", true),
 		DesignEnabled:  getBoolFlagWithDefault(cmd, "enable-design", true),
 	}
@@ -90,11 +91,11 @@ func TestFlagBeatsWizard_Page3Settings(t *testing.T) {
 			want:   project.InitOptions{ProjectMode: "", LSPEnabled: true, EnforceQuality: true, DesignEnabled: true},
 		},
 
-		// --- enable-lsp (bool, flag default false) ------------------------
+		// --- enable-lsp (bool, seed default true) -------------------------
 		{
-			// DISCRIMINATING ROW: a value-only implementation sees false here
-			// and cannot tell it from "absent", so it lets the wizard's true
-			// through and FAILS.
+			// DISCRIMINATING ROW: same shape as enforce-quality — the seed
+			// default is true, so only Changed() distinguishes an explicit
+			// false from an absent flag.
 			name:   "enable-lsp: explicit --enable-lsp=false, wizard true -> flag wins (false)",
 			flags:  map[string]string{"enable-lsp": "false"},
 			result: wizardAnswers("", true, true, true),
@@ -269,5 +270,52 @@ func TestFlagBeatsWizard_MatchesProfilePrecedence(t *testing.T) {
 	// must not reach outside its four fields.
 	if opts.Profile != "low" {
 		t.Errorf("Profile = %q, want %q (applyWizardPage3ToOpts must not touch it)", opts.Profile, "low")
+	}
+}
+
+// TestEnableLSPDefault_MatchesWizardDefault pins the NON-INTERACTIVE default for
+// --enable-lsp to the wizard's own lsp_enabled default (true, REQ-WIZ-010).
+// `moai init --non-interactive` never reaches applyWizardPage3ToOpts, so the
+// seed IS the answer: a seed of false made the two init paths disagree on the
+// LSP default while the two sibling bools (--enforce-quality, --enable-design)
+// both seeded their wizard default.
+//
+// The explicit-false subtest is the guard on AC-WIZ-016: raising the seed
+// default must not swallow a `--enable-lsp=false` the user actually typed.
+// getBoolFlagWithDefault returns defaultVal only when Changed() is false, so an
+// explicit false still reaches opts — this subtest fails the moment that stops
+// being true.
+func TestEnableLSPDefault_MatchesWizardDefault(t *testing.T) {
+	t.Run("flag absent -> LSP enabled, matching the wizard default", func(t *testing.T) {
+		opts := seedOptsFromFlags(newInitTestCmd())
+		if !opts.LSPEnabled {
+			t.Error("LSPEnabled = false, want true when --enable-lsp is absent")
+		}
+	})
+
+	t.Run("explicit --enable-lsp=false -> LSP disabled, flag wins", func(t *testing.T) {
+		cmd := newInitTestCmd()
+		if err := cmd.Flags().Set("enable-lsp", "false"); err != nil {
+			t.Fatalf("set --enable-lsp=false: %v", err)
+		}
+		opts := seedOptsFromFlags(cmd)
+		if opts.LSPEnabled {
+			t.Error("LSPEnabled = true, want false when --enable-lsp=false is supplied")
+		}
+	})
+}
+
+// TestSeedMirrorsProductionLSPSeed guards seedOptsFromFlags against drift from
+// the real seed in runInit. The mirror is only a faithful baseline while both
+// sides read --enable-lsp through the same getter and the same default, so the
+// behavioural assertions above bind production only through this check.
+func TestSeedMirrorsProductionLSPSeed(t *testing.T) {
+	src, err := os.ReadFile("init.go")
+	if err != nil {
+		t.Fatalf("read init.go: %v", err)
+	}
+	const seed = `getBoolFlagWithDefault(cmd, "enable-lsp", true)`
+	if !strings.Contains(string(src), seed) {
+		t.Errorf("init.go must seed LSPEnabled with %s, matching seedOptsFromFlags", seed)
 	}
 }

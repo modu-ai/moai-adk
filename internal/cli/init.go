@@ -86,7 +86,11 @@ func init() {
 	// Page-3 non-interactive override flags (REQ-IWE-008)
 	initCmd.Flags().String("project-mode", "", "Project mode: personal or team (default: personal)")
 	initCmd.Flags().String("harness-profile", "", "Default harness evaluator profile: default, strict, lenient, frontend")
-	initCmd.Flags().Bool("enable-lsp", false, "Enable LSP integration (default: false)")
+	// Registered false but read with a true default (the LSPEnabled seed in
+	// runInit), so the effective default matches the wizard's lsp_enabled
+	// default; getBoolFlagWithDefault keys off Changed(), so --enable-lsp=false
+	// still wins.
+	initCmd.Flags().Bool("enable-lsp", false, "Enable LSP integration (default: true)")
 	initCmd.Flags().Bool("enforce-quality", true, "Enforce quality gates (default: true)")
 	initCmd.Flags().Bool("enable-design", true, "Enable design workflow (default: true)")
 
@@ -384,7 +388,7 @@ func runInit(cmd *cobra.Command, args []string) error {
 		// unconditional now, so there is no mode to carry into the initializer.
 		ProjectMode:               getStringFlag(cmd, "project-mode"),
 		HarnessProfile:            getStringFlag(cmd, "harness-profile"),
-		LSPEnabled:                getBoolFlag(cmd, "enable-lsp"),
+		LSPEnabled:                getBoolFlagWithDefault(cmd, "enable-lsp", true),
 		EnforceQuality:            getBoolFlagWithDefault(cmd, "enforce-quality", true),
 		CoverageExemptionsEnabled: false, // no CLI flag; wizard/default only
 		DesignEnabled:             getBoolFlagWithDefault(cmd, "enable-design", true),
