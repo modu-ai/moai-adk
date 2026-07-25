@@ -224,6 +224,18 @@ func validateInitFlags(cmd *cobra.Command, _ []string) error {
 		return fmt.Errorf("invalid --profile value %q: must be one of: max, medium, low", profileFlag)
 	}
 
+	// SPEC-CLI-WIZARD-RESTRUCTURE-001 (S1): validate --project-mode enum.
+	// C32 made writeProjectModeYAML reachable from `moai init`, so this value
+	// now reaches patchYAMLKey and is written verbatim into project.yaml; an
+	// unvalidated newline-bearing value injects an arbitrary top-level key.
+	projectMode := getStringFlag(cmd, "project-mode")
+	if projectMode != "" {
+		validProjectModes := []string{"personal", "team"}
+		if !slices.Contains(validProjectModes, projectMode) {
+			return fmt.Errorf("invalid --project-mode value %q: must be one of: personal, team", projectMode)
+		}
+	}
+
 	// F3 git-provider identity validation (init-path parity with the
 	// reconfigure path's validateWizardInput). Reuses the in-package helpers
 	// from wizard_validate.go so a malformed username or a plaintext http URL

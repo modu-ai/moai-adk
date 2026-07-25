@@ -572,3 +572,79 @@ func TestValidateInitFlags_EmptyGitIdentity(t *testing.T) {
 		t.Errorf("validateInitFlags with empty git identity should not error, got: %v", err)
 	}
 }
+
+// --- S1 --project-mode enum validation ---
+//
+// Every sibling enum flag on `moai init` (--mode, --git-mode, --git-provider,
+// --model-policy, --profile) is closed-set validated, but --project-mode was
+// not. C32 made writeProjectModeYAML reachable from `moai init`, so the
+// unvalidated value now reaches patchYAMLKey and is written verbatim into
+// .moai/config/sections/project.yaml. A value carrying a newline therefore
+// injects an arbitrary key at column 0 of that file — the discriminating row
+// below, which passes only once the enum check rejects out-of-set values.
+
+// resetInitFlagsForProjectMode clears every flag validateInitFlags reads so a
+// prior test's leftover value on the shared global initCmd cannot bleed into
+// the project-mode validation under test.
+func resetInitFlagsForProjectMode(t *testing.T) {
+	t.Helper()
+	for _, f := range []string{
+		"mode", "git-mode", "git-provider", "model-policy", "profile",
+		"github-username", "gitlab-instance-url", "project-mode",
+	} {
+		if initCmd.Flags().Lookup(f) != nil {
+			_ = initCmd.Flags().Set(f, "")
+		}
+	}
+}
+
+// TestValidateInitFlags_InvalidProjectMode (S1) — an out-of-set --project-mode
+// errors, and the message names the closed set {personal, team}. The
+// newline-bearing rows are the YAML-injection reproduction: unvalidated, they
+// reach project.yaml verbatim and plant a top-level key.
+func TestValidateInitFlags_InvalidProjectMode(t *testing.T) {
+	for _, mode := range []string{
+		"personal\ninjected_key: true",
+		"team\nmoai:\n  version: pwned",
+		"bogus",
+		"Personal",
+	} {
+		t.Run(mode, func(t *testing.T) {
+			resetInitFlagsForProjectMode(t)
+			if err := initCmd.Flags().Set("project-mode", mode); err != nil {
+				t.Fatal(err)
+			}
+			err := validateInitFlags(initCmd, []string{})
+			if err == nil {
+				t.Fatalf("validateInitFlags with project-mode=%q should error, got nil", mode)
+			}
+			msg := err.Error()
+			if !strings.Contains(msg, "invalid --project-mode") {
+				t.Errorf("error should mention 'invalid --project-mode', got: %v", err)
+			}
+			if !strings.Contains(msg, "personal, team") {
+				t.Errorf("error should name the closed set, got: %v", err)
+			}
+		})
+	}
+	resetInitFlagsForProjectMode(t)
+}
+
+// TestValidateInitFlags_ValidProjectMode (S1) — both enum members pass, and so
+// does the empty value: empty means "flag not supplied, leave the field unset",
+// matching every sibling validator (writeProjectModeYAML then defaults to
+// "personal").
+func TestValidateInitFlags_ValidProjectMode(t *testing.T) {
+	for _, mode := range []string{"personal", "team", ""} {
+		t.Run("mode="+mode, func(t *testing.T) {
+			resetInitFlagsForProjectMode(t)
+			if err := initCmd.Flags().Set("project-mode", mode); err != nil {
+				t.Fatal(err)
+			}
+			if err := validateInitFlags(initCmd, []string{}); err != nil {
+				t.Errorf("validateInitFlags with project-mode=%q should not error, got: %v", mode, err)
+			}
+		})
+	}
+	resetInitFlagsForProjectMode(t)
+}
