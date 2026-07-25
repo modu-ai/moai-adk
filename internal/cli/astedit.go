@@ -86,7 +86,7 @@ func runAstEdit(cmd *cobra.Command, flags *astEditFlags, path string) error {
 
 	analyzer := astgrep.NewAnalyzer(".")
 	if !analyzer.IsSGAvailable(ctx) {
-		fmt.Fprintln(cmd.OutOrStdout(), "ast-grep (sg) is not installed; nothing to apply.")
+		_, _ = fmt.Fprintln(cmd.OutOrStdout(), "ast-grep (sg) is not installed; nothing to apply.")
 		return nil
 	}
 
@@ -149,7 +149,12 @@ func applyRuleEdits(ctx context.Context, analyzer *astgrep.SGAnalyzer, flags *as
 		if flags.rule != "" && rule.ID != flags.rule {
 			continue
 		}
-		if rule.Fix == "" {
+		// A rule is rewritable only when the loader surfaced both a pattern to
+		// match and a fix to apply. Rules written with ast-grep's nested `rule:`
+		// block (kind/regex/any) land here with an empty Pattern — the loader
+		// reads only the flat `pattern:` field — so they are skipped, not
+		// silently passed to sg with an empty pattern.
+		if rule.Fix == "" || rule.Pattern == "" {
 			skipped++
 			continue
 		}
@@ -170,7 +175,7 @@ func applyRuleEdits(ctx context.Context, analyzer *astgrep.SGAnalyzer, flags *as
 	}
 
 	if skipped > 0 && flags.format == "text" {
-		fmt.Fprintf(cmd.OutOrStdout(), "skipped %d detection-only rule(s) (no fix: field)\n", skipped)
+		_, _ = fmt.Fprintf(cmd.OutOrStdout(), "skipped %d detection-only rule(s) (no fix: field)\n", skipped)
 	}
 
 	return aggregate, nil
@@ -190,15 +195,15 @@ func renderAstEditResult(cmd *cobra.Command, flags *astEditFlags, result *astgre
 	}
 
 	if result.DryRun {
-		fmt.Fprintf(out, "dry run: %d match(es) in %d file(s) would be rewritten\n",
+		_, _ = fmt.Fprintf(out, "dry run: %d match(es) in %d file(s) would be rewritten\n",
 			result.MatchesFound, result.FilesModified)
 	} else {
-		fmt.Fprintf(out, "rewrote %d match(es) across %d file(s)\n",
+		_, _ = fmt.Fprintf(out, "rewrote %d match(es) across %d file(s)\n",
 			result.MatchesFound, result.FilesModified)
 	}
 
 	for _, change := range result.Changes {
-		fmt.Fprintf(out, "  %s:%d:%d\n", change.FilePath, change.Line, change.Column)
+		_, _ = fmt.Fprintf(out, "  %s:%d:%d\n", change.FilePath, change.Line, change.Column)
 	}
 
 	return nil

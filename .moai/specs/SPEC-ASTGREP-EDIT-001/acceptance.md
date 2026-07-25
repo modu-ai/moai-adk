@@ -125,14 +125,40 @@ grep -n "detection-only" .moai/specs/SPEC-ASTGREP-EDIT-001/acceptance.md
 PASS: the disposition table below is filled in during the run with one row per
 shipped rule, each carrying an evidence-backed verdict.
 
-### Disposition table (filled during run phase)
+### Disposition table (filled during run phase — 2026-07-25)
 
-| Rule | Verdict | Evidence |
+Outcome: **all four shipped rule files remain detection-only; zero `fix:` fields
+were added.** REQ-AGE-006 conditions a `fix:` on the rewrite being unambiguous
+and behaviour-preserving; none of the shipped rules meets that bar. This is a
+verdict, not a deferral — each row states why the rewrite cannot be mechanical.
+
+| Rule (id) | Verdict | Evidence |
 |---|---|---|
-| `go/hardcoding.yml` | TBD | TBD |
-| `security/credentials.yml` | TBD | TBD |
-| `security/crypto.yml` | TBD | TBD |
-| `security/injection.yml` | TBD | TBD |
+| `go-no-hardcoded-api-url` | detection-only | The fix is "extract to a constant". A rewrite must invent a constant name and add a declaration elsewhere in the file — not expressible as an AST pattern rewrite of the literal. |
+| `go-no-duplicate-coverage-threshold` | detection-only | The fix references a shared threshold constant whose name and import path are project-specific. No single rewrite is correct across projects. |
+| `sec-hardcoded-credential` (go/python/javascript/typescript) | detection-only | Rewriting the literal to an env lookup requires inventing a variable name, and — more importantly — it removes the visible marker while the secret remains in git history. The rewrite would hide the exposure rather than fix it. |
+| `sec-weak-hash-md5` | detection-only | `md5.New()` -> `sha256.New()` is pattern-expressible, but the call-site rewrite alone leaves the `crypto/md5` import in place and the `crypto/sha256` import absent, producing code that does not compile. It also changes digest length, breaking any persisted hashes. |
+| `sec-command-injection-shell` / `sec-command-injection-exec` | detection-only | The fix is to drop the shell and validate input against an allowlist — a semantic change requiring call-site context an AST pattern does not carry. |
+
+Because no `fix:` was added, AC-040's fixture requirement is vacuously satisfied
+(zero `fix:`-bearing shipped rules, so zero fixtures required). Rule mode is
+exercised instead against flat-form fixture rules in
+`TestAstEditCmd_RuleModeAppliesFix` / `TestAstEditCmd_RuleFilterNarrowsToOneRule`.
+
+### Known gap — nested `rule:` block form (recorded, not fixed)
+
+The shipped rules express their matcher as a nested `rule:` block
+(`rule: {kind, regex}` / `rule: {pattern}` / `rule: {any: [...]}`), but
+`astgrep.Rule` reads only the flat top-level `pattern:` field. Measured: all 11
+shipped rules load with `Pattern == ""` and `Fix == ""`.
+
+Consequence for this SPEC: rule mode skips them with a counted
+detection-only notice rather than passing an empty pattern to `sg`. That is the
+correct conservative behaviour and is guarded in `applyRuleEdits`.
+
+Consequence beyond this SPEC: a user-authored rule that uses the nested form
+**and** declares a `fix:` would also be skipped. Teaching the loader the nested
+form affects the scanner path as well and is therefore out of scope here.
 
 ## REQ-AGE-007 — dead skill references removed
 

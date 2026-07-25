@@ -110,6 +110,114 @@ func TestAstEditCmd_DryRunLeavesFileUnchanged(t *testing.T) {
 	}
 }
 
+// writeRuleFixture writes a flat-form rule file (the shape the loader reads) and
+// returns the rules directory.
+func writeRuleFixture(t *testing.T, body string) string {
+	t.Helper()
+	rulesDir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(rulesDir, "fixture.yml"), []byte(body), 0644); err != nil {
+		t.Fatalf("failed to write rule fixture: %v", err)
+	}
+	return rulesDir
+}
+
+// TestAstEditCmd_RuleModeAppliesFix verifies that a rule carrying a fix: is applied
+// and that a detection-only rule is skipped with a notice rather than erroring.
+// REQ-AGE-004 / AC-030.
+func TestAstEditCmd_RuleModeAppliesFix(t *testing.T) {
+	requireSG(t)
+
+	rulesDir := writeRuleFixture(t, `id: fixture-rewrites
+language: go
+severity: warning
+message: "rewritable"
+pattern: println("before")
+fix: println("after")
+---
+id: fixture-detection-only
+language: go
+severity: warning
+message: "no fix field"
+pattern: panic("boom")
+`)
+
+	tmpDir := t.TempDir()
+	target := filepath.Join(tmpDir, "sample.go")
+	original := "package sample\n\nfunc run() {\n\tprintln(\"before\")\n}\n"
+	if err := os.WriteFile(target, []byte(original), 0644); err != nil {
+		t.Fatalf("failed to write fixture: %v", err)
+	}
+
+	var out bytes.Buffer
+	cmd := cli.NewAstEditCmd()
+	cmd.SetOut(&out)
+	cmd.SetErr(&bytes.Buffer{})
+	cmd.SetArgs([]string{"--rules-dir", rulesDir, "--lang", "go", target})
+
+	if err := cmd.Execute(); err != nil {
+		t.Fatalf("rule-mode run returned an error: %v", err)
+	}
+
+	after, err := os.ReadFile(target)
+	if err != nil {
+		t.Fatalf("failed to read fixture back: %v", err)
+	}
+	if !strings.Contains(string(after), `println("after")`) {
+		t.Errorf("rule fix was not applied:\n%s", string(after))
+	}
+	if !strings.Contains(out.String(), "detection-only") {
+		t.Errorf("expected a skip notice for the detection-only rule; got %q", out.String())
+	}
+}
+
+// TestAstEditCmd_RuleFilterNarrowsToOneRule verifies that --rule restricts the pass.
+// REQ-AGE-004 / AC-031.
+func TestAstEditCmd_RuleFilterNarrowsToOneRule(t *testing.T) {
+	requireSG(t)
+
+	rulesDir := writeRuleFixture(t, `id: fixture-alpha
+language: go
+severity: warning
+message: "alpha"
+pattern: println("alpha")
+fix: println("ALPHA")
+---
+id: fixture-beta
+language: go
+severity: warning
+message: "beta"
+pattern: println("beta")
+fix: println("BETA")
+`)
+
+	tmpDir := t.TempDir()
+	target := filepath.Join(tmpDir, "sample.go")
+	original := "package sample\n\nfunc run() {\n\tprintln(\"alpha\")\n\tprintln(\"beta\")\n}\n"
+	if err := os.WriteFile(target, []byte(original), 0644); err != nil {
+		t.Fatalf("failed to write fixture: %v", err)
+	}
+
+	cmd := cli.NewAstEditCmd()
+	cmd.SetOut(&bytes.Buffer{})
+	cmd.SetErr(&bytes.Buffer{})
+	cmd.SetArgs([]string{"--rules-dir", rulesDir, "--rule", "fixture-alpha", "--lang", "go", target})
+
+	if err := cmd.Execute(); err != nil {
+		t.Fatalf("rule-filter run returned an error: %v", err)
+	}
+
+	after, err := os.ReadFile(target)
+	if err != nil {
+		t.Fatalf("failed to read fixture back: %v", err)
+	}
+	if !strings.Contains(string(after), `println("ALPHA")`) {
+		t.Errorf("the selected rule was not applied:\n%s", string(after))
+	}
+	if !strings.Contains(string(after), `println("beta")`) {
+		t.Errorf("--rule did not narrow the pass; the unselected rule was applied too:\n%s", string(after))
+	}
+}
+
 // TestAstEditCmd_PatternModeRewritesFile verifies that a non-dry pattern-mode run
 // applies the rewrite. REQ-AGE-003 / AC-020.
 func TestAstEditCmd_PatternModeRewritesFile(t *testing.T) {

@@ -28,7 +28,7 @@ ralph:
     enabled: true
 
     # Path to AST-grep configuration file
-    config_path: ".claude/skills/moai-tool-ast-grep/rules/sgconfig.yml"
+    config_path: ".moai/config/astgrep-rules/sgconfig.yml"
 
     # Enable security vulnerability scanning
     security_scan: true
