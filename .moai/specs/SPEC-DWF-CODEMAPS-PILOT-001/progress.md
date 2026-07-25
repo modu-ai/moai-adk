@@ -87,6 +87,14 @@ Ship the *pattern* (M5(b) catalog entry) + the *validated script* (M5(a)), but s
 
 **MUST-PASS gate**: AC-DCP-002/003/004/006/008/009 all PASS. A value-proven verdict with evidence satisfies the verdict gate. Run is a **PASS**.
 
+> **SUPERSESSION (post-close annotation) — `AC-DCP-010` (covering `REQ-DCP-009` / `REQ-DCP-010`), superseded by `SPEC-AGENT-PARALLEL-OPT-001`.**
+>
+> The AC-DCP-010 row above records a verdict that was true at close and is preserved verbatim. It no longer holds going forward: the criterion `grep -r "codemaps-extract\|codemaps-pilot" internal/template/templates/` → *nothing* is now false, because `SPEC-AGENT-PARALLEL-OPT-001` M1 distributed three generic fan-out scripts into the template tree — including `internal/template/templates/.claude/workflows/codemaps-extract.js`, in a directory that did not previously exist. The pilot's non-distribution **intent** is obsolete by decision. The §E.3 high-count augmentation scoping is retained and unaffected.
+>
+> **Accuracy note — M1 did not create the first violation.** The criterion was already false on `origin/main` before M1: two prose mentions of `codemaps-extract.js` existed in the template tree, at `templates/.claude/rules/moai/workflow/dynamic-workflows.md:105` and `templates/.claude/skills/moai/workflows/harness-builder.md:81`. The first described "the bundled `.claude/workflows/codemaps-extract.js`" while shipping no such file — a live dead reference for distributed users, which M1 resolves by actually shipping the script. M1 made the non-distribution intent obsolete; it did not break an otherwise-holding criterion.
+>
+> Annotation only — no status transition, no requirement rewrite, no verdict row altered. Reciprocal reference: `SPEC-AGENT-PARALLEL-OPT-001` `REQ-APO-070` / `AC-APO-070`.
+
 ## §E.5 — Mx-phase Audit-Ready Signal
 
 4-phase lifecycle close. All milestones M1-M6 complete; 10/10 AC PASS; MUST-PASS gate satisfied. Verdict: value proven (REQ-DCP-004) with three scoping caveats (§E.3). Race-absorbed cleanly onto parallel session `59c8c48f6` (cc-sync 2.1.172); regression 0; 2.1.172 determinism Note preserved.

@@ -21,28 +21,23 @@ skills:
 
 Manage Git workflows, branch strategies, commit conventions, and code review processes with automated quality checks.
 
-## Configuration Loading
+## Configuration Loading and Resolution
 
 [HARD] Always load at start of every operation:
 - @.moai/config/sections/git-strategy.yaml
 - @.moai/config/sections/language.yaml
 
-## PR Base Branch Resolution
-
-[HARD] Before any `gh pr create`:
-1. Read `git_strategy.mode` from git-strategy.yaml
-2. Resolve `main_branch = git_strategy.{mode}.main_branch` (default: `main`)
-3. Use `--base {main_branch}` in all PR commands
+[HARD] Read `git_strategy.mode`, then resolve these once per operation and reuse the resolved values at every site below:
+- `main_branch = git_strategy.{mode}.main_branch` (default: `main`) — used as `--base {main_branch}` in every `gh pr create`
+- `merge_method = git_strategy.{mode}.merge_method` (`squash` | `merge` | `rebase`; default `squash`) — every merge is executed as `gh pr merge --<merge_method> --delete-branch`, which under the squash default renders `gh pr merge --squash --delete-branch`
 
 ## Core Operational Principles
 
-- Use direct Git commands without unnecessary script abstraction
-- Minimize script complexity, maximize command clarity
-- Create annotated tags (not lightweight) for checkpoints
+- Use direct Git commands without unnecessary script abstraction — minimize script complexity, maximize command clarity
 
 ## Checkpoint System
 
-- Create: `git tag -a "moai_cp/$(TZ=Asia/Seoul date +%Y%m%d_%H%M%S)" -m "Message"`
+- Create (annotated tag, never lightweight): `git tag -a "moai_cp/$(TZ=Asia/Seoul date +%Y%m%d_%H%M%S)" -m "Message"`
 - List: `git tag -l "moai_cp/*" | tail -10`
 - Rollback: `git reset --hard [checkpoint-tag]`
 
@@ -50,7 +45,7 @@ Manage Git workflows, branch strategies, commit conventions, and code review pro
 
 [CONFIGURATION-DRIVEN] Read `git_commit_messages` from language.yaml.
 
-[HARD] All commits use **Conventional Commits** (`<type>(<scope>): <subject>`) with the `🗿 MoAI` trailer. NO emoji-phase commit subjects (no `🔴 RED` / `🟢 GREEN` / `♻ REFACTOR` / `ANALYZE` / `PRESERVE` / `IMPROVE`), NO `Co-Authored-By: Claude` line.
+[HARD] All commits use **Conventional Commits** (`<type>(<scope>): <subject>`) with the `🗿 MoAI` trailer as the final line. NO emoji-phase commit subjects (no `🔴 RED` / `🟢 GREEN` / `♻ REFACTOR` / `ANALYZE` / `PRESERVE` / `IMPROVE`), NO `Co-Authored-By: Claude` line.
 
 - Types: `feat`, `fix`, `docs`, `style`, `refactor`, `perf`, `test`, `chore`, `revert`
 - Per-milestone subject: `feat(SPEC-{ID}): M{N} <subject>` (or `fix(...)` / `docs(...)` as the change dictates)
@@ -79,22 +74,16 @@ MX Tags Changed section follows Context section.
 
 SPEC/Phase tracking: `SPEC: SPEC-XXX-NNN` and `Phase: [PLAN|RUN-*|SYNC|FIX|LOOP]`
 
-## Git Commit Signature
-
-Every commit message ends with the `🗿 MoAI` trailer as its final line. Do NOT add a `Co-Authored-By: Claude` line.
-
-```
-🗿 MoAI
-```
-
 ## Branch Management
 
-[HARD] Unified main-based branching for both Personal and Team modes.
+[HARD] Unified main-based branching for both Personal and Team modes, configured by `auto_branch`:
 
-**Auto-Branch Configuration**:
 - Read `git_strategy.automation.auto_branch` from git-strategy.yaml
 - true: Create `feature/SPEC-{ID}`, checkout from main_branch, set upstream
 - false: Use current branch (warn if on protected branch)
+- Config missing: default to `auto_branch: true`
+- Invalid value: halt and request clarification
+- Protected branch conflict: warn and present options
 
 ### Late-Branch Invocation Pattern
 
@@ -112,8 +101,7 @@ git commit -m "spec(SPEC-XXX): initial plan"
 
 Phase B — Implementation commits accumulate on main (no push):
 ```bash
-git commit -m "feat(SPEC-XXX): M1 ..."
-git commit -m "feat(SPEC-XXX): M2 ..."
+git commit -m "feat(SPEC-XXX): M1 ..."   # ... one commit per milestone
 git commit -m "test(SPEC-XXX): M3 ..."
 ```
 
@@ -122,9 +110,8 @@ Phase C — At PR time: late switch + push + merge (method from config):
 git switch -c feat/SPEC-XXX
 git push -u origin feat/SPEC-XXX
 gh pr create --base main --title "..." --body "..."
-# CI passes → merge with the active mode's git_strategy.<mode>.merge_method
-# (squash | merge | rebase; default squash). The squash default renders as below:
-gh pr merge <PR> --squash --delete-branch
+# CI passes → merge with the resolved merge_method (§ Configuration Loading and Resolution);
+gh pr merge <PR> --squash --delete-branch   # squash default
 ```
 
 Phase D — Local main reset (canonical Late-branch closure):
@@ -135,11 +122,9 @@ git reset --hard origin/main   # align local main with squashed remote
 git pull origin main           # verify (no-op if reset succeeded)
 ```
 
-[HARD] Caveat: `git push origin main` is BLOCKED in Phase A/B even with `auto_push: true`. The orchestrator MUST hold push until Phase C branch creation. Branch protection enforces this server-side, but the agent MUST NOT attempt direct pushes during Phase A/B.
+[HARD] Caveat: `git push origin main` is BLOCKED in Phase A/B even with `auto_push: true` — the orchestrator MUST hold push until Phase C branch creation, and the agent MUST NOT attempt a direct push during Phase A/B. Branch protection enforces this server-side and rejects with `! [remote rejected]`; recovery is `git switch -c feat/SPEC-*` to enter Phase C.
 
-Failure modes:
-- Skipping Phase D leaves local main with un-squashed history → next `git pull` produces merge conflict against squashed remote. Recovery: `git fetch origin && git reset --hard origin/main`.
-- `git push origin main` during Phase A/B: branch protection rejects with `! [remote rejected]`. Recovery: `git switch -c feat/SPEC-*` to enter Phase C.
+Failure mode — skipping Phase D leaves local main with un-squashed history → next `git pull` produces merge conflict against squashed remote. Recovery: `git fetch origin && git reset --hard origin/main`.
 
 Cross-reference: `.claude/rules/moai/workflow/spec-workflow.md` § Step 1 entry precondition + § Step 4 Late-branch closure for canonical step ordering.
 
@@ -160,9 +145,7 @@ SPEC Git Workflow options (from git-strategy.yaml):
 - [HARD] PR required for all changes, no direct commits to main
 - [HARD] Minimum 1 reviewer approval before merge
 - [HARD] Author cannot merge own PR
-- Auto-merge: resolve the active mode's `git_strategy.<mode>.merge_method` (squash | merge | rebase; default squash), then `gh pr merge --<merge_method> --delete-branch` (the squash default renders `gh pr merge --squash --delete-branch`; only with --auto-merge flag)
-
-Feature workflow: Create branch → DDD/TDD commits → Push → Mark PR ready → CI/CD → Review → Squash merge → Cleanup
+- Auto-merge: only with the `--auto-merge` flag, per § PR Auto-Merge (Team Mode)
 
 Hotfix: `hotfix/v*` branch from main → Fix → PR → Merge → Tag
 
@@ -170,17 +153,13 @@ Release: Tag directly on main → CI/CD triggers deployment
 
 ## Synchronization
 
+Pre-flight status reads (`git fetch`, `git status`, `git rev-list --count --left-right`, `gh pr checks --json`) are independent and read-only: issue them as ONE single-turn multi-Bash batch per `.claude/rules/moai/core/agent-common-protocol.md` § Parallel Execution (grouping rationale and batch-safety taxonomy: `.claude/rules/moai/workflow/verification-batch-pattern.md`).
+
 - Checkpoint before remote operations
 - Verify branch and check uncommitted changes
 - `git fetch origin` → `git pull origin [branch]`
 - Conflict detection with resolution guidance
 - Feature branch rebase on latest main after PR merges
-
-## Auto-Branch Configuration Handling
-
-- Config missing: Default to `auto_branch: true`
-- Invalid value: Halt and request clarification
-- Protected branch conflict: Warn and present options
 
 ## PR Auto-Merge (Team Mode)
 
@@ -188,7 +167,7 @@ Execute only with `--auto-merge` flag AND all approvals obtained:
 1. Push to remote
 2. `gh pr ready`
 3. `gh pr checks --watch`
-4. Resolve the active mode's `git_strategy.<mode>.merge_method` (squash | merge | rebase; default squash), then `gh pr merge --<merge_method> --delete-branch` (the squash default renders `gh pr merge --squash --delete-branch`)
+4. `gh pr merge --<merge_method> --delete-branch` using the resolved merge_method
 5. Checkout main, pull, delete local branch
 
 ## Context Propagation

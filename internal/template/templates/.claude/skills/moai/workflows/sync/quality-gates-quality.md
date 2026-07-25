@@ -38,6 +38,8 @@ Check indicator files in priority order (first match wins):
 
 #### Step 0.5.2: Execute Diagnostics in Parallel
 
+Snapshot consumption: before launching, query the shared diagnostic snapshot with `moai verify check --key-current`. **Where** a fresh snapshot — key equality AND within the TTL — already covers one of the three categories below (recorded by the run-phase pre-review gate at run Phase 15, or by sync Phase 1 on the unchanged tree), consume the recorded result instead of re-executing that category; the quality report cites the snapshot path, key, original command, and recorded exit code as that category's evidence (per `.claude/rules/moai/core/verification-claim-integrity.md` §2 — the snapshot is the observed evidence, and the freshness rule is what keeps the attribution valid). A stale snapshot is never cited: on key mismatch or TTL expiry, execute the check as below and record the fresh result via `moai verify record`.
+
 Launch three background tasks simultaneously:
 
 - Test Runner: Language-specific test command (pytest, npm test, go test, cargo test, etc.)
@@ -177,6 +179,8 @@ Detect languages present in modified files:
 - For each modified source file, check for @MX tags
 - Identify functions/code blocks that should have tags but don't
 
+Sharding (read-only, optional): **Where** the modified files span several languages or packages, this scan MAY be sharded — one read-only `Agent()` per shard in a single turn, 3-5 concurrent per the Mode 4 ceiling (`.claude/rules/moai/workflow/orchestration-mode-selection.md` §C.2), each returning its findings as text and writing nothing. A shard missing a required input returns a structured blocker report (`.claude/rules/moai/core/agent-common-protocol.md` § Blocker Report Format) rather than prompting the user. Step 0.6.3 tag application stays single-writer, and the blocking P1/P2 determination above is made on the merged result so no shard can clear the gate alone. The orchestrator launches the shards itself — scaling, not subagent nesting.
+
 #### Step 0.6.3: Add Missing Tags (Language-Aware)
 
 For modified files missing @MX tags, use language-specific patterns:
@@ -272,6 +276,8 @@ Generate missing tests for P1 and P2 gaps:
 - Include edge cases and error scenarios
 - Follow existing test patterns in the codebase
 - Respect file naming conventions (*_test.go, *.test.ts, test_*.py)
+
+Per-package fan-out (read-only drafting, optional): **Where** the gaps span several independent packages, the orchestrator MAY draft their tests in parallel — one read-only `Agent()` per package in a single turn, 3-5 concurrent per the Mode 4 ceiling (`.claude/rules/moai/workflow/orchestration-mode-selection.md` §C.2). Each drafter reads its package plus that package's gap list and returns test source as text; it writes no file and never prompts the user, returning a structured blocker report (`.claude/rules/moai/core/agent-common-protocol.md` § Blocker Report Format) when an input is missing. The single `manager-develop` subagent applies the drafts and runs Step 0.7.4 — it remains the only writer, so two write-capable agents never run at once. The orchestrator launches the drafters itself — scaling, not subagent nesting. **Where** the gaps sit in one package, the existing serial path runs unchanged.
 
 #### Step 0.7.4: Verification
 

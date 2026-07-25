@@ -52,16 +52,7 @@ Execute behavior-driven implementation cycles using either DDD (ANALYZE-PRESERVE
 
 ## Migration Notes
 
-This agent consolidates the previously separate `manager-ddd` and `manager-tdd` agents.
-
-| Old Usage | New Usage |
-|-----------|-----------|
-| Use `manager-ddd` subagent | Use `manager-develop` subagent with `cycle_type=ddd` |
-| Use `manager-tdd` subagent | Use `manager-develop` subagent with `cycle_type=tdd` |
-
-**Archived agents** (rejected at spawn — no stub files exist; use the new form):
-- `manager-tdd` → replaced by `manager-develop` with `cycle_type=tdd`
-- `manager-ddd` → replaced by `manager-develop` with `cycle_type=ddd`
+This agent consolidates the previously separate `manager-ddd` and `manager-tdd` agents. Both names are archived and rejected at spawn (no stub files exist) — use this agent with `cycle_type=ddd` or `cycle_type=tdd` respectively.
 
 ## cycle_type=autofix Mode (CI auto-fix loop)
 
@@ -85,162 +76,99 @@ Per the canonical CI auto-fix protocol, the `manager-develop` agent supports a t
 
 **Forbidden**: Deleting/modifying existing tests without SPEC requirement. Introducing global mutable state. Skipping tests. Modifying files outside SPEC scope.
 
-## Scope Boundaries
+## Scope Boundaries and Delegation
 
-**IN SCOPE (both cycles)**:
-- Test creation and modification
-- Source code implementation and refactoring
-- Quality validation (LSP, linting, coverage)
-- Documentation updates (comments, API docs)
+**IN SCOPE (both cycles)**: test creation and modification; source code implementation and refactoring; quality validation (LSP, linting, coverage); documentation updates (comments, API docs).
 
-**OUT OF SCOPE (both cycles)**:
-- SPEC creation (delegate to manager-spec)
-- Security audits (route to a per-spawn `Agent(general-purpose)` security reviewer per archived-agent-rejection.md §C row 9, or the Stop hook dependency-manifest audit)
-- Performance optimization (route to a per-spawn `Agent(general-purpose)` performance specialist per archived-agent-rejection.md §C row 11)
-- Deployment (route to a per-spawn `Agent(general-purpose)` devops specialist per archived-agent-rejection.md §C row 10)
+**OUT OF SCOPE (both cycles)** — each row names where the work goes instead, so the boundary and its route are stated once:
 
-## Delegation Protocol
+| Out-of-scope work | Route to |
+|---|---|
+| SPEC creation, or an unclear SPEC | manager-spec |
+| Security audits and security concerns | per-spawn `Agent(general-purpose)` security reviewer (`archived-agent-rejection.md` §C row 9), or the Stop hook dependency-manifest audit |
+| Performance optimization | per-spawn `Agent(general-purpose)` performance specialist (§C row 11) |
+| Deployment | per-spawn `Agent(general-purpose)` devops specialist (§C row 10) |
+| Independent quality verdict | sync-auditor, or the orchestrator verification batch — lint + test + coverage (§C row 2) |
+| Git operations | manager-git |
 
-- SPEC unclear: Delegate to manager-spec
-- Security concerns: route to a per-spawn `Agent(general-purpose)` security reviewer (archived-agent-rejection.md §C row 9)
-- Performance issues: route to a per-spawn `Agent(general-purpose)` performance specialist (archived-agent-rejection.md §C row 11)
-- Quality validation: Delegate to sync-auditor (or orchestrator verification batch — lint + test + coverage; archived-agent-rejection.md §C row 2)
-- Git operations: Delegate to manager-git
+## Implementation Cycle
 
-## DDD Cycle (cycle_type: ddd)
+Both cycles run the same five-step skeleton; `cycle_type` selects the mode-specific work in Steps 2-4. Steps 1, 2.5, and 5 are identical across modes.
 
-**When to use**: Selected when `development_mode: ddd` in quality.yaml. Best for existing codebases with minimal test coverage (< 10%).
+Selected by `development_mode` in quality.yaml: `ddd` for existing codebases with minimal test coverage (< 10%), `tdd` (default) for all new development work.
 
-### DDD Workflow
+### STEP 1 — Confirm the plan (both)
 
-**STEP 1: Confirm Refactoring Plan**
-- Read SPEC document, extract refactoring scope, targets, preservation requirements
-- Read existing code and test files, assess current coverage
+- Read the SPEC document and extract scope — `ddd`: refactoring targets and behavior-preservation requirements; `tdd`: feature requirements and acceptance criteria.
+- Read existing code and test files — `ddd`: assess current coverage; `tdd`: identify extension points, test patterns, and the coverage baseline.
+- **`ddd` only — detect project scale**: count test files and source lines (excluding vendor, node_modules, generated). LARGE_SCALE = test files > 500 OR source lines > 50,000, which switches PRESERVE/IMPROVE to targeted test execution. Step 5 always runs the full suite regardless of scale.
 
-**STEP 1.5: Detect Project Scale**
-- Count test files and source lines (exclude vendor, node_modules, generated)
-- LARGE_SCALE: test files > 500 OR source lines > 50,000
-- LARGE_SCALE → targeted test execution in PRESERVE/IMPROVE phases
-- STEP 5 Final Verification ALWAYS runs full suite regardless of scale
+### STEP 2 — Mode-specific entry phase
 
-**STEP 2: ANALYZE Phase**
+**`ddd` — ANALYZE**
 - Use AST-grep to analyze import patterns, dependencies, module boundaries
 - Calculate coupling metrics: Ca (afferent), Ce (efferent), I = Ce/(Ca+Ce)
 - Detect code smells: god classes, feature envy, long methods, duplicates
 - Prioritize refactoring targets by impact and risk
 
-**STEP 3: PRESERVE Phase**
+**`tdd` — RED (write failing tests)**
+For each test case: write a specification test (descriptive name, Arrange-Act-Assert pattern), run it and confirm the RED state, then record the test-case state via TaskUpdate.
+
+### STEP 2.5 — LSP baseline capture (both)
+
+Capture LSP diagnostics (errors, warnings, type errors, lint errors) and store the baseline for regression detection throughout the Step 3-4 change loop.
+
+### STEP 3 — `ddd` only: PRESERVE
+
 - Verify existing tests pass (100% pass rate required)
-- Create characterization tests for uncovered code paths
-- Name tests: `test_characterize_[component]_[scenario]`
+- Create characterization tests for uncovered code paths, named `test_characterize_[component]_[scenario]`
 - Create behavior snapshots for complex outputs
-- Verify safety net: all tests pass including new characterization tests
+- Verify the safety net: all tests pass, including the new characterization tests
 
-**STEP 3.5: LSP Baseline Capture**
-- Capture LSP diagnostics (errors, warnings, type errors, lint errors)
-- Store baseline for regression detection during IMPROVE phase
+### STEP 4 — The change loop (both)
 
-**STEP 4: IMPROVE Phase**
-For each transformation:
-1. **Make Single Change**: One atomic structural change
-2. **LSP Verification**: Check for regression (errors > baseline → REVERT immediately)
-3. **Verify Behavior**: Run tests (targeted for LARGE_SCALE, full for standard)
-4. **Check Completion**: LSP errors == 0, no regression, iteration limit (max 100)
-5. **Record Progress**: Document transformation, update metrics
+Repeat per unit of change — one atomic transformation (`ddd` IMPROVE), or one failing test made to pass (`tdd` GREEN) followed by cleanup (`tdd` REFACTOR):
 
-**STEP 5: Complete and Report**
-- Run COMPLETE test suite (always full, regardless of LARGE_SCALE)
-- Verify all behavior snapshots match
-- Compare before/after coupling metrics
-- Generate DDD completion report
+1. **Make the change**
+   - `ddd` IMPROVE: one atomic structural change at a time, scoped **within a single package**. Independent packages MAY progress concurrently — the one-change-at-a-time constraint bounds the package, not the repository.
+   - `tdd` GREEN: implement the general solution the test specifies — tests verify behavior, they do not define it. Do not hard-code outputs to the specific test inputs; the implementation must generalize beyond the literal fixtures.
+   - `tdd` REFACTOR: one improvement at a time — remove duplication, improve naming, extract methods.
+2. **LSP verification**: compare against the Step 2.5 baseline. Errors above baseline → REVERT immediately.
+3. **Verify behavior**: run tests — targeted when `ddd` LARGE_SCALE, otherwise the full suite (memory guard: module-level batches when needed).
+4. **Check completion**: all tests passing, LSP errors == 0, type errors == 0, no regression from baseline. Loop prevention: max 100 iterations, stale detection after 5 no-progress iterations.
+5. **Record progress**: document the change; update metrics (`ddd`) or coverage (`tdd`) and task status via TaskUpdate.
+
+### STEP 5 — Complete and report (both)
+
+- Run the COMPLETE test suite (always full, regardless of LARGE_SCALE; memory guard: batches when needed)
+- `ddd`: verify all behavior snapshots match, and compare before/after coupling metrics
+- `tdd`: verify coverage targets met (85% minimum per the quality.yaml SSOT — `.moai/config/sections/quality.yaml`)
+- Issue the independent read-only verifications (full suite, coverage, lint, boundary greps) as ONE single-turn parallel batch — see `.claude/rules/moai/core/agent-common-protocol.md` § Parallel Execution and `.claude/rules/moai/workflow/verification-batch-pattern.md`.
+- Generate the completion report — `ddd`: transformations and metric deltas; `tdd`: all tests and design decisions
 - Commit changes, update SPEC status
 
-## TDD Cycle (cycle_type: tdd)
+### Checkpoint and resume (both)
 
-**When to use**: Selected when `development_mode: tdd` in quality.yaml (default). Suitable for all new development work.
-
-### TDD Workflow
-
-**STEP 1: Confirm Implementation Plan**
-- Read SPEC document, extract feature requirements, acceptance criteria
-- Read existing code files for extension points and test patterns
-- Assess current test coverage baseline
-
-**STEP 2: RED Phase - Write Failing Tests**
-For each test case:
-1. **Write Specification Test**: Descriptive name, Arrange-Act-Assert pattern
-2. **Verify Test Fails**: Run test, confirm RED state
-3. **Record**: Update task status via TaskUpdate with the test case state
-
-**STEP 2.5: LSP Baseline Capture**
-- Capture LSP diagnostics (errors, warnings, type errors, lint errors)
-- Store baseline for regression detection during GREEN/REFACTOR phases
-
-**STEP 3: GREEN Phase - Minimal Implementation**
-For each failing test:
-1. **Write Minimal Code**: Implement the general solution the test specifies — tests verify behavior, they do not define it. Do not hard-code outputs to the specific test inputs; the implementation must generalize beyond the literal fixtures.
-2. **LSP Verification**: Check for regression from baseline
-3. **Verify Test Passes**: Run immediately
-4. **Check Completion**: LSP errors == 0, all tests pass
-5. **Record Progress**: Update coverage and task status via TaskUpdate
-
-**STEP 4: REFACTOR Phase**
-For each improvement:
-1. **Single Improvement**: Remove duplication, improve naming, extract methods
-2. **LSP Verification**: Check regression → REVERT if detected
-3. **Verify Tests Pass**: Run full suite (memory guard: module-level batches if needed)
-4. **Record**: Document refactoring, update quality metrics
-
-**STEP 5: Complete and Report**
-- Run complete test suite (memory guard: batches if needed)
-- Verify coverage targets met (85% minimum per quality.yaml SSOT — `.moai/config/sections/quality.yaml`)
-- Generate TDD completion report with all tests and design decisions
-- Commit changes, update SPEC status
-
-## Ralph-Style LSP Integration
-
-**DDD**: Baseline capture at ANALYZE phase start, regression detection after each transformation, completion markers (all tests passing, LSP errors == 0, type errors == 0, coverage met), loop prevention (max 100 iterations, stale detection after 5 no-progress).
-
-**TDD**: Baseline at RED phase start, regression detection after each GREEN/REFACTOR change, completion (all tests passing, LSP errors == 0, coverage target met), loop prevention (max 100 iterations, stale after 5 no-progress).
-
-## Checkpoint and Resume
-
-**DDD**: Checkpoint after every transformation to `.moai/state/checkpoints/ddd/`, auto-checkpoint on memory pressure, resume: `--resume latest`.
-
-**TDD**: Checkpoint after every RED-GREEN-REFACTOR cycle to `.moai/state/checkpoints/tdd/`, auto-checkpoint on memory pressure, resume: `--resume latest`.
-
-Adaptive context trimming to prevent memory overflow.
+Checkpoint after every unit of change — each transformation (`ddd`) or each RED-GREEN-REFACTOR cycle (`tdd`) — to `.moai/state/checkpoints/<cycle_type>/`. Auto-checkpoint on memory pressure; resume with `--resume latest`. Adaptive context trimming prevents memory overflow.
 
 ## @MX Tag Obligations
 
-**DDD** (ANALYZE and IMPROVE phases):
-- ANALYZE: Scan for functions meeting ANCHOR criteria (fan_in >= 3) and WARN criteria (goroutines, complexity >= 15). Add missing tags.
-- PRESERVE: Do not remove existing @MX tags during characterization test creation.
-- IMPROVE: Update @MX:ANCHOR if fan_in changes. Remove @MX:WARN if dangerous pattern eliminated. Add @MX:NOTE for discovered business rules.
-
-**TDD** (GREEN and REFACTOR phases):
-- RED: Add `@MX:TODO` for new public functions lacking tests (resolved in GREEN).
-- GREEN: Add `@MX:ANCHOR` for new exported functions with expected fan_in >= 3. Add `@MX:WARN` for goroutines or complex patterns.
-- REFACTOR: Update @MX:ANCHOR if fan_in changes. Remove @MX:WARN if dangerous pattern eliminated. Remove @MX:TODO when tests pass.
+| Cycle step | Obligation |
+|---|---|
+| `ddd` ANALYZE | Scan for functions meeting ANCHOR criteria (fan_in >= 3) and WARN criteria (goroutines, complexity >= 15); add missing tags |
+| `ddd` PRESERVE | Do not remove existing @MX tags while creating characterization tests |
+| `tdd` RED | Add `@MX:TODO` for new public functions lacking tests (resolved in GREEN) |
+| `tdd` GREEN | Add `@MX:ANCHOR` for new exported functions with expected fan_in >= 3; add `@MX:WARN` for goroutines or complex patterns |
+| `ddd` IMPROVE / `tdd` REFACTOR | Update `@MX:ANCHOR` when fan_in changes; remove `@MX:WARN` when the dangerous pattern is eliminated; add `@MX:NOTE` for discovered business rules (`ddd`); remove `@MX:TODO` when tests pass (`tdd`) |
 
 Tag format: `// @MX:TYPE: [AUTO] description` (use language-appropriate comment syntax).
 All ANCHOR and WARN tags MUST include a `@MX:REASON` sub-line.
 Respect per-file limits: max 3 ANCHOR, 5 WARN, 10 NOTE, 5 TODO.
 
-## Cycle Selection Decision Guide
-
-- Code already exists with defined behavior? → Use **cycle_type: ddd**
-- Creating new functionality from scratch? → Use **cycle_type: tdd**
-- Goal is structure improvement, not feature addition? → Use **cycle_type: ddd**
-- Behavior specification drives development? → Use **cycle_type: tdd**
-
 ## Common Patterns
 
-**DDD Patterns**:
-- Extract Method, Extract Class, Move Method, Rename (safe multi-file rename via AST-grep)
-
-**TDD Patterns**:
-- Specification by Example, Outside-In TDD, Inside-Out TDD, Test Doubles (Mocks, Stubs, Fakes, Spies)
+- `ddd`: Extract Method, Extract Class, Move Method, Rename (safe multi-file rename via AST-grep)
+- `tdd`: Specification by Example, Outside-In TDD, Inside-Out TDD, Test Doubles (Mocks, Stubs, Fakes, Spies)
 
 ## Status Responsibility Matrix
 
