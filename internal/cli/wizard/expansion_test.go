@@ -367,10 +367,9 @@ func TestTotalVisibleQuestions_Page3AlwaysCounted(t *testing.T) {
 	if got < 10 {
 		t.Errorf("TotalVisibleQuestions = %d, want >= 10 (3 Basic + 2 Model & Report + 5 Quality & Workflow)", got)
 	}
-	// StandardMode must not change PAGE-3 visibility. The TOTAL can still
-	// differ between the two states while the StandardMode-gated
-	// advanced_bridge survives (it is retired in a later milestone), so the
-	// invariant is asserted over the page-3 questions only.
+	// StandardMode must not change PAGE-3 visibility. The invariant is asserted
+	// over the page-3 questions only, so it stays valid regardless of what the
+	// remaining StandardMode-gated plumbing does to the TOTAL.
 	countPage3 := func(standardMode bool) int {
 		res := &WizardResult{DesignEnabled: true, StandardMode: standardMode}
 		n := 0

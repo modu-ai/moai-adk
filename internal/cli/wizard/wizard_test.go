@@ -631,16 +631,16 @@ func TestStepperTotal_DynamicDenominator(t *testing.T) {
 		result *WizardResult
 		want   int
 	}{
-		// Quick mode, git manual: 6 unconditional questions (conversation_language,
-		// user_name, project_name, model_policy, report_format, git_mode) plus the
-		// advanced_bridge (visible while StandardMode is false) = 7.
-		{"manual", &WizardResult{GitMode: "manual"}, 7},
+		// Git manual: 6 unconditional questions (conversation_language,
+		// user_name, project_name, model_policy, report_format, git_mode) = 6.
+		// The advanced_bridge gate is retired by C1, so it no longer contributes.
+		{"manual", &WizardResult{GitMode: "manual"}, 6},
 		// personal+github reveals git_provider + github_username + github_token
-		// (6 base + 3 + advanced_bridge = 10).
-		{"personal-github", &WizardResult{GitMode: "personal", GitProvider: "github"}, 10},
+		// (6 base + 3 = 9).
+		{"personal-github", &WizardResult{GitMode: "personal", GitProvider: "github"}, 9},
 		// personal+gitlab reveals git_provider + gitlab_instance_url +
-		// gitlab_username + gitlab_token (6 base + 4 + advanced_bridge = 11).
-		{"personal-gitlab", &WizardResult{GitMode: "personal", GitProvider: "gitlab"}, 11},
+		// gitlab_username + gitlab_token (6 base + 4 = 10).
+		{"personal-gitlab", &WizardResult{GitMode: "personal", GitProvider: "gitlab"}, 10},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -651,9 +651,8 @@ func TestStepperTotal_DynamicDenominator(t *testing.T) {
 		})
 	}
 
-	// Adding page 3 expands the denominator further. The advanced_bridge hides
-	// when StandardMode is preset, so the total is 6 unconditional defaults (git
-	// conditionals hidden for manual) + 5 page-3 questions = 11.
+	// Adding page 3 expands the denominator further: 6 unconditional defaults
+	// (git conditionals hidden for manual) + 5 page-3 questions = 11.
 	all := append(ReconfigureQuestions("/tmp/steppertotal"), Phase1Questions("/tmp/steppertotal")...)
 	std := &WizardResult{GitMode: "manual", StandardMode: true, DesignEnabled: true}
 	if got := stepperDenominator(all, std); got != 11 {
@@ -970,8 +969,8 @@ func TestBuildInputField_RequiredWithDefault(t *testing.T) {
 func TestDefaultQuestions_AllQuestionTypesValid(t *testing.T) {
 	questions := DefaultQuestions("/tmp/test")
 	for _, q := range questions {
-		// DefaultQuestions now includes the advanced_bridge Confirm, so Confirm is
-		// a valid type alongside Select and Input.
+		// Confirm is accepted alongside Select and Input: the Page-3 set uses it,
+		// and DefaultQuestions may regain a Confirm question in future.
 		if q.Type != QuestionTypeSelect && q.Type != QuestionTypeInput && q.Type != QuestionTypeConfirm {
 			t.Errorf("question %q has invalid type %v", q.ID, q.Type)
 		}

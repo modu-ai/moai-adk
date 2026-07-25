@@ -141,21 +141,6 @@ func DefaultQuestions(projectRoot string) []Question {
 			Default:  "html+md",
 			Required: true,
 		},
-		// 6. Advanced-settings bridge (Quick mode only). Answering Yes flips
-		// StandardMode on, which reveals the Phase 1 questions (gated on
-		// r.StandardMode) in the same wizard run. Hidden when --standard/--advanced
-		// already preset StandardMode (Condition returns false), so the flag path
-		// never double-asks.
-		{
-			ID:          "advanced_bridge",
-			Group:       "Options",
-			Type:        QuestionTypeConfirm,
-			Title:       "Configure advanced settings? (default: No)",
-			Description: "Reveals project mode, harness profile, LSP, quality gates, and design options in this run.",
-			Default:     "false",
-			Required:    false,
-			Condition:   func(r *WizardResult) bool { return !r.StandardMode },
-		},
 	}
 }
 
@@ -279,15 +264,14 @@ func GitQuestions() []Question {
 
 // ReconfigureQuestions returns the full question set used by the
 // `moai update --reconfigure` path: DefaultQuestions with GitQuestions spliced
-// back in at their original position — after report_format, before
-// advanced_bridge — so the reconfigure wizard's question order is unchanged.
+// back in at their original position — immediately after report_format — so the
+// reconfigure wizard's question order is unchanged.
 func ReconfigureQuestions(projectRoot string) []Question {
 	base := DefaultQuestions(projectRoot)
 	git := GitQuestions()
 
-	// Splice point: immediately after report_format. Falling back to
-	// "before the trailing advanced_bridge" keeps the order correct if the
-	// base set is ever reordered.
+	// Splice point: immediately after report_format. Falling back to the end of
+	// the base set keeps the order correct if the base set is ever reordered.
 	splice := len(base)
 	for i, q := range base {
 		if q.ID == "report_format" {

@@ -422,10 +422,8 @@ func saveAnswer(id, value string, result *WizardResult, locale *string) {
 // saveBoolAnswer stores a boolean answer in the result.
 func saveBoolAnswer(id string, value bool, result *WizardResult) {
 	switch id {
-	case "advanced_bridge":
-		// Quick-mode bridge: Yes reveals the Phase 1 questions (gated on
-		// StandardMode) within the same wizard run.
-		result.StandardMode = value
+	// The advanced_bridge gate is no longer asked (REQ-WIZ-001/002): Page 3 is
+	// always visible, so nothing flips StandardMode mid-wizard.
 	case "lsp_enabled":
 		result.LSPEnabled = value
 	case "enforce_quality":
@@ -446,8 +444,8 @@ func buildConfirmField(q *Question, result *WizardResult, locale *string) *huh.C
 	// v2's Confirm exposes only static Affirmative/Negative setters (no *Func
 	// variant), so — unlike the Title/Description funcs above — the button
 	// labels do NOT re-render when the user changes the conversation language
-	// mid-wizard. In practice the confirm questions (advanced_bridge + Phase 1)
-	// all follow the conversation_language question, so the build-time locale is
+	// mid-wizard. In practice the confirm questions (the Page-3 set) all follow
+	// the conversation_language question, so the build-time locale is
 	// normally the user's chosen language already.
 	ui := GetUIStrings(*locale)
 

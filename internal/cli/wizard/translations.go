@@ -39,10 +39,6 @@ var translations = map[string]map[string]QuestionTranslation{
 			Title:       "이름 입력",
 			Description: "MoAI가 부를 이름입니다. user.yaml(user.name)에 저장됩니다. 비워두면 건너뜁니다.",
 		},
-		"advanced_bridge": {
-			Title:       "고급 설정을 구성할까요? (기본값: 아니오)",
-			Description: "프로젝트 모드, 하네스 프로파일, LSP, 품질 게이트, 디자인 옵션을 이번 실행에서 표시합니다.",
-		},
 		"project_name": {
 			Title:       "프로젝트 이름 입력",
 			Description: "프로젝트의 이름입니다.",
@@ -143,10 +139,6 @@ var translations = map[string]map[string]QuestionTranslation{
 			Title:       "お名前を入力",
 			Description: "MoAIがあなたを呼ぶ名前です。user.yaml（user.name）に保存されます。空欄でスキップできます。",
 		},
-		"advanced_bridge": {
-			Title:       "詳細設定を構成しますか？（デフォルト: いいえ）",
-			Description: "プロジェクトモード、ハーネスプロファイル、LSP、品質ゲート、デザインオプションをこの実行で表示します。",
-		},
 		"project_name": {
 			Title:       "プロジェクト名を入力",
 			Description: "プロジェクトの名前です。",
@@ -246,10 +238,6 @@ var translations = map[string]map[string]QuestionTranslation{
 		"user_name": {
 			Title:       "输入您的姓名",
 			Description: "MoAI 对您的称呼。保存到 user.yaml（user.name）。留空则跳过。",
-		},
-		"advanced_bridge": {
-			Title:       "配置高级设置？（默认：否）",
-			Description: "在本次运行中显示项目模式、评估套件配置、LSP、质量门禁和设计选项。",
 		},
 		"project_name": {
 			Title:       "输入项目名称",

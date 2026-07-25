@@ -195,6 +195,43 @@ func TestReconfigureMembershipExcludesPage3(t *testing.T) {
 	}
 }
 
+// TestAdvancedBridgeRemoved pins the advanced_bridge half of AC-WIZ-001,
+// AC-WIZ-011 and AC-WIZ-013 (plan.md C1/C14/C17): the gate question is absent
+// from BOTH question sets, leaves no ko/ja/zh orphan translation, and no longer
+// has an answer-capture branch that could flip StandardMode back on.
+func TestAdvancedBridgeRemoved(t *testing.T) {
+	t.Parallel()
+	root := t.TempDir()
+
+	// AC-WIZ-001: absent from the init set (and from reconfigure, where it used
+	// to sit at the tail after the Git splice).
+	if QuestionByID(InitQuestions(root), "advanced_bridge") != nil {
+		t.Error("advanced_bridge must be absent from InitQuestions — Page 3 is ungated")
+	}
+	if QuestionByID(ReconfigureQuestions(root), "advanced_bridge") != nil {
+		t.Error("advanced_bridge must be absent from ReconfigureQuestions")
+	}
+
+	// AC-WIZ-011: no orphan translation entry survives the removal.
+	for _, locale := range localizableLocales {
+		langTrans, ok := translations[locale]
+		if !ok {
+			t.Fatalf("translations for locale %q not found", locale)
+		}
+		if _, exists := langTrans["advanced_bridge"]; exists {
+			t.Errorf("locale %q: orphan translation entry for removed question %q", locale, "advanced_bridge")
+		}
+	}
+
+	// AC-WIZ-013: the saveBoolAnswer case is gone, so the ID can no longer
+	// flip StandardMode (the dead bridge into the retired advanced path).
+	r := &WizardResult{}
+	saveBoolAnswer("advanced_bridge", true, r)
+	if r.StandardMode {
+		t.Error("saveBoolAnswer still captures advanced_bridge into StandardMode — the case must be gone")
+	}
+}
+
 // TestBasicPage_LocaleLiveRender pins AC-WIZ-004: changing conversation_language
 // re-renders the SIBLING Page-1 questions (they now share one group with it).
 func TestBasicPage_LocaleLiveRender(t *testing.T) {
