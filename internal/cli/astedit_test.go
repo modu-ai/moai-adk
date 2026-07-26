@@ -11,12 +11,24 @@ import (
 	"github.com/modu-ai/moai-adk/internal/cli"
 )
 
-// requireSG skips the test when the ast-grep binary is unavailable. The rewrite
-// path shells out to `sg`, so without it there is nothing to assert.
+// requireSG skips the test when ast-grep is unavailable. The rewrite path shells
+// out to `sg`, so without it there is nothing to assert.
+//
+// LookPath alone is insufficient: Ubuntu and Debian ship `/usr/bin/sg` as a
+// newgrp alternative, which satisfies LookPath while being an entirely different
+// program. Under that shadow the tests do not skip — they run and fail, because
+// `IsSGAvailable` correctly rejects the impostor and the command short-circuits
+// before rewriting anything. The version output must therefore be confirmed to
+// come from ast-grep. Same check, same reason, as
+// internal/astgrep/rule_seed_test.go.
 func requireSG(t *testing.T) {
 	t.Helper()
 	if _, err := exec.LookPath("sg"); err != nil {
 		t.Skip("sg binary not installed; skipping rewrite-path test")
+	}
+	out, err := exec.Command("sg", "--version").CombinedOutput()
+	if err != nil || !strings.Contains(strings.ToLower(string(out)), "ast-grep") {
+		t.Skip("`sg` on PATH is not ast-grep (Ubuntu ships newgrp under that name); skipping rewrite-path test")
 	}
 }
 

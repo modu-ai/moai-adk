@@ -109,6 +109,50 @@ must-fix findings were remediated on this branch before close:
 | F1 | CHANGELOG claimed "`--dry` is the safe default surface"; `astedit.go` declares `BoolVar(&flags.dry, "dry", false, …)`, so a bare run writes in place | CHANGELOG corrected to state `--dry` is opt-in and that a run without it rewrites files; §E.2 M2 row corrected likewise. Behaviour deliberately unchanged — REQ-AGE-002 requires only that `--dry` not modify files, which holds | Code inspection (`astedit.go` `BoolVar` default `false`) |
 | F2 | `applyRuleEdits` skipped on `Fix == "" \|\| Pattern == ""` but reported every skip as "(no fix: field)". All 11 shipped rules fail the **Pattern** leg (nested `rule:` block the loader cannot read), so a loader limitation was misattributed to the rule author's choice | The two skip reasons are counted and reported separately; `Pattern` is checked first because it is the more specific diagnosis | New guard `TestAstEditCmd_UnreadableMatcherReportedSeparately`. Reverting the fix makes it FAIL with the misattributed message verbatim |
 
+### F4 — the rewrite guards never ran in CI (closed, not deferred)
+
+Recorded separately because investigating it found a defect worse than the one
+reported, and because it is the only finding whose fix reaches outside this
+SPEC's stated scope.
+
+**As reported.** Every fixture-rewrite test — including the falsification guards
+this SPEC added — calls `requireSG(t)`, which skipped on `exec.LookPath("sg")`
+failure. On an `sg`-less runner a fully reverted implementation yields SKIPs,
+`PASS`, `ok`: green. That is F0's shape (a guard that cannot fail) displaced from
+the selector to the environment.
+
+**What investigating it found.** `.github/workflows/` provisioned no ast-grep, so
+the guards had never run in CI at all. But the reported "absent `sg` → silent
+skip" is not what Ubuntu does: Ubuntu and Debian ship `/usr/bin/sg` as a newgrp
+alternative, which satisfies `LookPath` while being an unrelated program.
+`IsSGAvailable` correctly rejects the impostor and the command short-circuits, so
+the tests do not skip — they run and **fail**. Reproduced by putting a
+non-ast-grep `sg` first on `PATH`: three tests FAIL rather than skip. This repo
+had already learned this once —
+`internal/astgrep/rule_seed_test.go:47-49` carries the note verbatim ("Ubuntu and
+Debian ship `/usr/bin/sg` … LookPath alone is insufficient") — and the new
+`requireSG` did not inherit it.
+
+**Fix, in two parts.** `requireSG` now confirms `sg --version` reports ast-grep,
+reusing the existing in-repo check rather than inventing one, so a shadowed `sg`
+skips cleanly instead of producing a misleading red. And `ci.yml` installs
+`@ast-grep/cli` (pinned — the rewrite path parses sg output) on all three
+runners, then **asserts** the resolved `sg` is ast-grep and fails the job if it
+is not. The skip path stays correct for a local developer without ast-grep; CI
+can no longer take it silently.
+
+Verified both directions: with an impostor `sg` on `PATH` all five guards SKIP
+cleanly (previously three FAILed); with real ast-grep all five PASS.
+
+**Sequencing note.** This fix landed *after* the close commit, on the same
+unpushed branch, and the SPEC stays `status: completed` — no amendment was
+opened. The reason: it changes no requirement and no acceptance criterion. It
+makes guards that AC-020/030/031 already depend on actually executable in CI,
+where they had silently never run. Reopening the SPEC would imply the
+requirements moved; they did not. The scope reach outside this SPEC — a
+`.github/workflows/ci.yml` edit — is recorded here rather than buried, because
+it is the one change in this effort that touches shared CI configuration.
+
 ## §G.1 Residual findings (deferred, named)
 
 Recorded so they are not silently inherited. None is introduced by this SPEC.
@@ -142,15 +186,6 @@ Recorded so they are not silently inherited. None is introduced by this SPEC.
   file changed. Reproduced by the re-audit. Cosmetic in the reported count only —
   the rewrites themselves are correct — but the number is wrong and a user
   reading it to gauge blast radius is misled.
-- **`requireSG(t)` silently disarms the rewrite guards** (audit F4). Every
-  fixture-rewrite test — including the falsification guards this SPEC added —
-  calls `requireSG(t)` and SKIPs when the `sg` binary is absent. On an
-  `sg`-less runner a fully reverted implementation yields 5 SKIPs, `PASS`, `ok`:
-  green. That is the same shape as F0 (a guard that cannot fail) displaced from
-  the selector to the environment, and CI has never run this branch, so the
-  `sg`-less configuration is untested in practice. Closing it means either
-  provisioning `sg` in CI or asserting at least one rewrite guard without
-  shelling out to `sg`.
 - **Three validation branches and the JSON render path are untested** (audit F5).
   Behaviour was verified manually during the audit but carries no guard.
 - **`astEditTimeout` comment does not match its behaviour** (audit F7).
