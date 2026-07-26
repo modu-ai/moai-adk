@@ -3,7 +3,6 @@
 Purpose: Overview of integration patterns for moai-worktree with MoAI-ADK workflow, development tools, and external systems.
 
 Version: 2.0.0
-Last Updated: 2026-01-06
 
 ---
 
@@ -145,5 +144,4 @@ Tools Integration (tools-integration.md):
 ---
 
 Version: 2.0.0
-Last Updated: 2026-01-06
 Module: Integration patterns overview with progressive disclosure to sub-modules

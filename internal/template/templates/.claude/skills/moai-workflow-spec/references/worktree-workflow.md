@@ -58,8 +58,8 @@ Result: creates `project-worktrees` directory with SPEC-specific subdirectories.
 /moai run SPEC-003
 ```
 
-## Worktree Isolation Rules (Advisory — 2026-05-17 Policy)
+## Worktree Isolation Rules (Advisory Policy)
 
-Per user policy 2026-05-17, L2/L3 worktree usage is user opt-in. L1 `Agent(isolation: "worktree")` is Claude Code runtime autonomous — MoAI orchestrator does not mandate isolation.
+Per user policy, L2/L3 worktree usage is user opt-in. L1 `Agent(isolation: "worktree")` is Claude Code runtime autonomous — MoAI orchestrator does not mandate isolation.
 
 See [moai-workflow-worktree](../../moai-workflow-worktree/SKILL.md) for the canonical worktree management skill.

@@ -148,7 +148,6 @@ Official documentation:
 ---
 
 Version: 2.1.0
-Last Updated: 2026-03-28
 
 <!-- moai:evolvable-start id="rationalizations" -->
 ## Common Rationalizations

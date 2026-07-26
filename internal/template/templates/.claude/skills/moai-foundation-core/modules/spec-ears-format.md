@@ -3,7 +3,6 @@
 Purpose: Comprehensive guide to Easy Approach to Requirements Syntax (EARS) patterns for SPEC generation.
 
 Version: 1.0.0
-Last Updated: 2026-01-06
 Parent: [spec-first-ddd.md](spec-first-ddd.md)
 
 > **DEPRECATED in v3.0.0**: This document describes legacy EARS notation.
@@ -205,4 +204,3 @@ complexity_metrics:
 ---
 
 Version: 1.0.0
-Last Updated: 2026-01-06

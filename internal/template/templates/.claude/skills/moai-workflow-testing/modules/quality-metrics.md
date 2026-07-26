@@ -260,5 +260,4 @@ analyzer.complexity_thresholds = {
 ---
 
 Version: 1.0.0
-Last Updated: 2026-01-06
 Module: `modules/quality-metrics.md`

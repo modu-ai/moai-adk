@@ -3,7 +3,6 @@
 Purpose: Detailed implementation patterns for agent delegation including context optimization and workflow examples.
 
 Version: 1.0.0
-Last Updated: 2026-01-06
 Parent: [delegation-patterns.md](delegation-patterns.md)
 
 ---
@@ -263,4 +262,3 @@ async def sequential_secure_workflow(analysis):
 ---
 
 Version: 1.0.0
-Last Updated: 2026-01-06

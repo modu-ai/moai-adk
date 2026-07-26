@@ -109,7 +109,6 @@ All of the following must be verified:
 ---
 
 Version: 2.11.0
-Updated: 2026-03-30
 Changes: Added Phase 3 JIT Language Detection, Phase 4 Scale-Based Mode Selection, test scenarios.
 
 ---
