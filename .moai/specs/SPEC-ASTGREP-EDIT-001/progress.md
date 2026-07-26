@@ -19,10 +19,10 @@ tags: "ast-grep, ast-edit, progress"
 
 plan_status: audit-ready
 plan_complete_at: 2026-07-25
-plan_commit_sha: "95faf94d0"
+plan_commit_sha: "b2738ee38"
 
 Plan-phase artifacts (spec.md, plan.md, acceptance.md) were authored in commit
-`95faf94d0 docs(SPEC-ASTGREP-EDIT-001): plan-phase artifacts (Tier L, tdd)`.
+`b2738ee38 docs(SPEC-ASTGREP-EDIT-001): plan-phase artifacts (Tier L, tdd)`.
 Note: this SPEC shipped with 3 artifacts (spec.md + plan.md + acceptance.md)
 despite Tier L classification (which nominally expects 5: + design.md +
 research.md). This is a plan-phase gap, recorded here for visibility but out
@@ -43,14 +43,14 @@ Six run-phase commits landed on `feat/SPEC-ASTGREP-EDIT-001`:
 
 | Milestone | Requirement | Commit | Evidence |
 |---|---|---|---|
-| M1 | REQ-AGE-005 — `FindRulesConfig` resolves shipped ruleset | `b0d6d4215 fix(SPEC-ASTGREP-EDIT-001): resolve shipped ast-grep ruleset in FindRulesConfig` | `internal/hook/security/rules.go` `searchPaths` now includes `.moai/config/astgrep-rules/sgconfig.{yml,yaml}`; retired `moai-tool-ast-grep` skill paths removed (verified: `grep -c "moai-tool-ast-grep" internal/hook/security/rules.go` → 0) |
-| M2 | REQ-AGE-001 / REQ-AGE-002 — `moai ast-edit` command skeleton, `--dry` preview path | `b3c857dfe feat(SPEC-ASTGREP-EDIT-001): add moai ast-edit and fix the rewrite no-op` | `internal/cli/astedit.go` created (`NewAstEditCmd`), registered in `internal/cli/root.go` alongside `ast-grep`; `--dry` suppresses all writes, guarded by `TestAstEditCmd_DryRunLeavesFileUnchanged`. **Correction:** `--dry` is NOT the default — `astedit.go` declares `BoolVar(&flags.dry, "dry", false, …)`, so a bare `moai ast-edit <path>` writes in place. An earlier revision of this row claimed a safe-preview default; that was contradicted by the code and is corrected here. REQ-AGE-002 requires only that `--dry` not modify files, which holds |
-| M3 | REQ-AGE-003 — pattern-mode rewrite + `--update-all` no-op fix | same commit `b3c857dfe` | `internal/astgrep/analyzer.go` `PatternReplace` now passes `--update-all` to `sg run --rewrite` (previously the rewrite printed a diff and never touched disk); fixture-rewrite assertion added, not mock-arg-only |
-| M4 | REQ-AGE-004 — rule-mode rewrite, `--rule` filter | `9bfb039b7 feat(SPEC-ASTGREP-EDIT-001): rule-mode tests, fix: assessment, dead-reference cleanup` | `applyRuleEdits` in `internal/cli/astedit.go`; tests `TestAstEditCmd_RuleModeAppliesFix` / `TestAstEditCmd_RuleFilterNarrowsToOneRule` |
-| M5 | REQ-AGE-006 — shipped rule `fix:` assessment | same commit `9bfb039b7` | Disposition table recorded in `acceptance.md` § REQ-AGE-006 — all 4 shipped rule files remain detection-only (0 `fix:` fields added), each with an evidence-backed verdict |
-| M6 | REQ-AGE-007 — dead skill reference cleanup | same commit `9bfb039b7` | `moai-foundation-cc/SKILL.md`, `moai-workflow-ddd/SKILL.md`, `moai-workflow-loop/SKILL.md` + template mirrors updated to reference `moai ast-grep` / `moai ast-edit` instead of the retired `moai-tool-ast-grep` skill |
-| M7 | REQ-AGE-008 — template parity, docs, verification | `d24c4ff14 docs(SPEC-ASTGREP-EDIT-001): document ast-grep and ast-edit in 4 locales` | `docs-site/content/{en,ja,ko,zh}/cli-reference/{ast-grep.md,_meta.yaml}` added; `make build` run (catalog.yaml regenerated); template neutrality/namespace guards pass |
-| close | — | `39cdd761c chore(SPEC-ASTGREP-EDIT-001): draft -> in-progress (run phase complete)` | frontmatter transition `draft → in-progress` |
+| M1 | REQ-AGE-005 — `FindRulesConfig` resolves shipped ruleset | `cc8af64fd fix(SPEC-ASTGREP-EDIT-001): resolve shipped ast-grep ruleset in FindRulesConfig` | `internal/hook/security/rules.go` `searchPaths` now includes `.moai/config/astgrep-rules/sgconfig.{yml,yaml}`; retired `moai-tool-ast-grep` skill paths removed (verified: `grep -c "moai-tool-ast-grep" internal/hook/security/rules.go` → 0) |
+| M2 | REQ-AGE-001 / REQ-AGE-002 — `moai ast-edit` command skeleton, `--dry` preview path | `035d70425 feat(SPEC-ASTGREP-EDIT-001): add moai ast-edit and fix the rewrite no-op` | `internal/cli/astedit.go` created (`NewAstEditCmd`), registered in `internal/cli/root.go` alongside `ast-grep`; `--dry` suppresses all writes, guarded by `TestAstEditCmd_DryRunLeavesFileUnchanged`. **Correction:** `--dry` is NOT the default — `astedit.go` declares `BoolVar(&flags.dry, "dry", false, …)`, so a bare `moai ast-edit <path>` writes in place. An earlier revision of this row claimed a safe-preview default; that was contradicted by the code and is corrected here. REQ-AGE-002 requires only that `--dry` not modify files, which holds |
+| M3 | REQ-AGE-003 — pattern-mode rewrite + `--update-all` no-op fix | same commit `035d70425` | `internal/astgrep/analyzer.go` `PatternReplace` now passes `--update-all` to `sg run --rewrite` (previously the rewrite printed a diff and never touched disk); fixture-rewrite assertion added, not mock-arg-only |
+| M4 | REQ-AGE-004 — rule-mode rewrite, `--rule` filter | `30b6eac20 feat(SPEC-ASTGREP-EDIT-001): rule-mode tests, fix: assessment, dead-reference cleanup` | `applyRuleEdits` in `internal/cli/astedit.go`; tests `TestAstEditCmd_RuleModeAppliesFix` / `TestAstEditCmd_RuleFilterNarrowsToOneRule` |
+| M5 | REQ-AGE-006 — shipped rule `fix:` assessment | same commit `30b6eac20` | Disposition table recorded in `acceptance.md` § REQ-AGE-006 — all 4 shipped rule files remain detection-only (0 `fix:` fields added), each with an evidence-backed verdict |
+| M6 | REQ-AGE-007 — dead skill reference cleanup | same commit `30b6eac20` | `moai-foundation-cc/SKILL.md`, `moai-workflow-ddd/SKILL.md`, `moai-workflow-loop/SKILL.md` + template mirrors updated to reference `moai ast-grep` / `moai ast-edit` instead of the retired `moai-tool-ast-grep` skill |
+| M7 | REQ-AGE-008 — template parity, docs, verification | `1781bf934 docs(SPEC-ASTGREP-EDIT-001): document ast-grep and ast-edit in 4 locales` | `docs-site/content/{en,ja,ko,zh}/cli-reference/{ast-grep.md,_meta.yaml}` added; `make build` run (catalog.yaml regenerated); template neutrality/namespace guards pass |
+| close | — | `ad54e18cc chore(SPEC-ASTGREP-EDIT-001): draft -> in-progress (run phase complete)` | frontmatter transition `draft → in-progress` |
 
 Sync-phase observed baseline (this run, this tree):
 - `go test ./...` → exit 0, 105 `ok` packages, 0 FAIL
@@ -61,7 +61,7 @@ Sync-phase observed baseline (this run, this tree):
 
 run_status: complete
 run_complete_at: 2026-07-26
-run_commit_sha: "39cdd761c"
+run_commit_sha: "ad54e18cc"
 
 All 8 REQ-AGE-001..008 requirements implemented across M1-M7. `go test ./...`
 and `golangci-lint run` both clean at run-phase completion.
@@ -70,7 +70,7 @@ and `golangci-lint run` both clean at run-phase completion.
 
 sync_status: complete
 sync_complete_at: 2026-07-26
-sync_commit_sha: "8c6ef0acb"
+sync_commit_sha: "f61c197ee"
 
 CHANGELOG entry appended under `[Unreleased]`. Frontmatter transitions
 `in-progress → implemented → completed` applied atomically across spec.md,
@@ -79,7 +79,17 @@ a commit cannot know its own hash — backfilled in the immediately following
 `chore(SPEC-ASTGREP-EDIT-001): backfill sync_commit_sha` commit per the SHA
 placeholder backfill exemption (D3).
 
-**Close re-issued.** The first close landed at `1c52b43cf` and was reopened by
+**SHAs re-anchored after rebase.** Before the first push, `origin/main` had moved
+ahead by one unrelated commit, and `main`'s branch protection sets
+`required_status_checks.strict: true`, so the branch had to be brought up to date
+before it could merge. The rebase was clean (zero contested files) but rewrote
+every commit id on this branch, which orphaned the SHAs recorded in §E.1-§E.4,
+§G, and `spec.md`'s amendment tables. All 16 references were re-anchored to their
+rebased equivalents and each was verified to resolve as an ancestor of HEAD; a
+recorded SHA that no longer exists is a broken audit trail, not a cosmetic
+detail.
+
+**Close re-issued.** The first close landed at `859ba5587` and was reopened by
 Amendment 1 when the sync audit returned FAIL (0.770) — an amendment sets
 `status: in-progress`, which `moai spec audit` correctly reported as
 `SyncStatusDrift` / MUST-FIX for as long as the amendment window stayed open
@@ -105,7 +115,7 @@ must-fix findings were remediated on this branch before close:
 
 | Finding | Defect | Remediation | Falsification evidence |
 |---|---|---|---|
-| F0 | Five AC commands (`AC-001/020/030/031/040`) named `go test -run` selectors matching **zero** tests. `go test -run` exits 0 on a zero-match selector and prints `[no tests to run]`, so all five certified a fully reverted implementation as passing | `acceptance.md` in-place amendment `aa225f284` — every selector replaced with a verified-existing test name, `-count=1` added, PASS restated as the presence of a `--- PASS: <name>` line, and a Convention section added declaring `[no tests to run]` a FAIL. AC-040 rewritten to assert its vacuity premise mechanically instead of naming a test that never existed | Each corrected command re-run verbatim; all show `--- PASS:` |
+| F0 | Five AC commands (`AC-001/020/030/031/040`) named `go test -run` selectors matching **zero** tests. `go test -run` exits 0 on a zero-match selector and prints `[no tests to run]`, so all five certified a fully reverted implementation as passing | `acceptance.md` in-place amendment `c81d0d714` — every selector replaced with a verified-existing test name, `-count=1` added, PASS restated as the presence of a `--- PASS: <name>` line, and a Convention section added declaring `[no tests to run]` a FAIL. AC-040 rewritten to assert its vacuity premise mechanically instead of naming a test that never existed | Each corrected command re-run verbatim; all show `--- PASS:` |
 | F1 | CHANGELOG claimed "`--dry` is the safe default surface"; `astedit.go` declares `BoolVar(&flags.dry, "dry", false, …)`, so a bare run writes in place | CHANGELOG corrected to state `--dry` is opt-in and that a run without it rewrites files; §E.2 M2 row corrected likewise. Behaviour deliberately unchanged — REQ-AGE-002 requires only that `--dry` not modify files, which holds | Code inspection (`astedit.go` `BoolVar` default `false`) |
 | F2 | `applyRuleEdits` skipped on `Fix == "" \|\| Pattern == ""` but reported every skip as "(no fix: field)". All 11 shipped rules fail the **Pattern** leg (nested `rule:` block the loader cannot read), so a loader limitation was misattributed to the rule author's choice | The two skip reasons are counted and reported separately; `Pattern` is checked first because it is the more specific diagnosis | New guard `TestAstEditCmd_UnreadableMatcherReportedSeparately`. Reverting the fix makes it FAIL with the misattributed message verbatim |
 

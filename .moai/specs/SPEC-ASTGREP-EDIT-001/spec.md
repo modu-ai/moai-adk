@@ -25,7 +25,7 @@ amendment_of: SPEC-ASTGREP-EDIT-001
 | Field | Value |
 |---|---|
 | Prior completed version | `0.1.0` (`status: completed`) |
-| `prior_completed_sha` | `1c52b43cf` |
+| `prior_completed_sha` | `859ba5587` |
 | Rationale | sync-audit returned FAIL (0.770 vs Tier L threshold 0.85). Blocking finding **F0**: five `acceptance.md` criteria invoked `go test -run <selector>` with selectors naming tests that do not exist. `go test -run` exits 0 when a selector matches zero tests (`[no tests to run]`), so all five passed vacuously — and would keep passing with the entire branch reverted. This violates `acceptance.md`'s own opening pledge and reproduces the exact failure mode §A.1b diagnoses: a guard written to match the implementation rather than the requirement. |
 | Scope | `acceptance.md` AC command corrections only. **No requirement changed** — REQ-AGE-001 through REQ-AGE-008 are untouched in wording and in scope. The corrections make criteria harder to pass vacuously, never easier. |
 
@@ -40,7 +40,7 @@ amendment_of: SPEC-ASTGREP-EDIT-001
 
 | Field | Value |
 |---|---|
-| Rationale | Re-audit at `9a6a81299` scored **0.843**, short of the Tier L 0.85 threshold by 0.007, with two must-fix items. **G1**: AC-012 still carried `'<p>'` / `'<r>'` placeholders — the same unfilled-placeholder defect AC-060 § Correction 1 condemns four sections earlier in the same file — so it proved only that a zero-match run writes nothing, and read its stated PASS token from text output where that token is a JSON field. **G2**: the REQ-AGE-002 *heading* still read "Dry-run is the safe default surface", the last surviving instance of the false default claim F1 removed elsewhere. **G3**: `progress.md` §G.1 claimed to record residuals "so they are not silently inherited" while omitting audit findings F3, F4, F5, F7. **G0**: the amendment window left all four artifacts at `status: in-progress`, which `moai spec audit` correctly reported as `SyncStatusDrift` / MUST-FIX. |
+| Rationale | Re-audit at `183cc7f83` scored **0.843**, short of the Tier L 0.85 threshold by 0.007, with two must-fix items. **G1**: AC-012 still carried `'<p>'` / `'<r>'` placeholders — the same unfilled-placeholder defect AC-060 § Correction 1 condemns four sections earlier in the same file — so it proved only that a zero-match run writes nothing, and read its stated PASS token from text output where that token is a JSON field. **G2**: the REQ-AGE-002 *heading* still read "Dry-run is the safe default surface", the last surviving instance of the false default claim F1 removed elsewhere. **G3**: `progress.md` §G.1 claimed to record residuals "so they are not silently inherited" while omitting audit findings F3, F4, F5, F7. **G0**: the amendment window left all four artifacts at `status: in-progress`, which `moai spec audit` correctly reported as `SyncStatusDrift` / MUST-FIX. |
 | Scope | AC-012 rewritten against a throwaway fixture with a matching pattern, a `≥ 1` match-count requirement, and a falsification check (dropping `--dry` yields `MODIFIED`); REQ-AGE-002 heading corrected to "Dry-run is a non-destructive preview" — **heading only, both SHALL clauses untouched and both still hold**; §G.1 extended with F3 (`FilesModified` double-count), F4 (`requireSG` disarms the rewrite guards on an `sg`-less runner), F5 (untested validation branches), F7 (`astEditTimeout` comment drift), and the un-gitignored report directory; the close re-issued across all four artifacts. |
 
 Amendment mechanics per `.claude/rules/moai/development/spec-frontmatter-schema.md`
