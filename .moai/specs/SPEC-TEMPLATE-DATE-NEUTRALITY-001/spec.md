@@ -2,9 +2,9 @@
 id: SPEC-TEMPLATE-DATE-NEUTRALITY-001
 title: "Template date-leak triage, remediation, and S1 guard refinement"
 version: "0.2.0"
-status: draft
+status: in-progress
 created: 2026-07-25
-updated: 2026-07-25
+updated: 2026-07-26
 author: manager-spec
 priority: P2
 phase: "v3.x maintenance"

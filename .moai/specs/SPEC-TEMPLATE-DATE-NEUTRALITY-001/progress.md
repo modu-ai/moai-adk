@@ -26,6 +26,33 @@ Zero clarification markers remain in `plan.md`. One question is explicitly **def
 
 _<pending run-phase>_
 
+## §F Phase 4 Mode Selection
+
+**Input parameters**
+
+| Signal | Value |
+|---|---|
+| tier | L |
+| scope (files) | 67 template files carry >=1 REMOVE row; 116 files carry >=1 finding |
+| domain count | 2 (template markdown/yaml tree; Go guard file + CI workflow) |
+| file language mix | markdown / yaml / tmpl (M3), Go (M4-M5), yaml workflow (M6) |
+| concurrency benefit | LOW — M3 carries two distinct transform shapes plus a per-edit surrounding-block judgment (research.md gap G5) |
+
+**Mode evaluation**
+
+| Mode | Selected | Rationale |
+|---|---|---|
+| 1 trivial | no | 92 line-level deletions across 67 files plus a Go structural change; not a single-line edit |
+| 2 background | no | write work; the orchestrator needs each milestone's result before sequencing the next |
+| 3 agent-team | no | RETIRED (orchestration-mode-selection.md §C.1) |
+| 4 parallel | no | coding-heavy and write-scoped; the Anthropic coding-task parallelism caveat routes this away from parallel fan-out |
+| 5 sub-agent | **yes** | sequential `manager-develop` per milestone; each milestone's exit condition gates the next |
+| 6 workflow | no | file count clears the ~30 soft boundary, but M3 is NOT a single uniform transform rule: 80 DC-2a stamp deletions and 12 bespoke DC-5 edits are two shapes, and the G5 orphan-block check requires per-edit judgment. §B.2 tie-breaker (multi-rule / semantic work prefers Mode 5) applies |
+
+**Decision: sub-agent**
+
+**Justification.** Mode 6 was evaluated seriously because the raw file count (67) clears the `~30` soft boundary, but the Mode 6 capability gate in §C.3 requires a *single uniform mechanical transform rule with no inter-file dependency*. M3 fails that on two counts: it carries two distinct edit shapes (a standalone footer-stamp line delete versus a mid-paragraph date-phrase excision), and every deletion needs the surrounding block inspected for the orphaned-header regression `research.md` gap G5 names, which no acceptance criterion mechanizes. Per the §B.2 tie-breaker, multi-rule work at any file count stays on Mode 5. Milestones M4-M6 are additionally sequential by construction (M5's report-cap change is untestable until M4 drives the strict tier to zero findings), so a sequential sub-agent chain matches the dependency graph.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<pending run-phase>_
