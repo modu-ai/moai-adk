@@ -172,7 +172,7 @@ When using Explore agent or direct exploration tools (Grep, Glob, Read), apply t
 
 **AST-Grep Priority**
 - Use structural search (ast-grep) before text-based search (Grep)
-- Load moai-tool-ast-grep skill for complex pattern matching
+- Run `moai ast-grep` to scan, `moai ast-edit` to rewrite matches
 - Example: `sg -p 'class $X extends Service' --lang python` is faster than `grep -r "class.*extends.*Service"`
 
 **Search Scope Limitation**
