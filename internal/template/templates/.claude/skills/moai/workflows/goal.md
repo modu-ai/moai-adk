@@ -80,6 +80,14 @@ progression-mode choice as a DISTINCT axis from the approve/decline decision.
 The selected mode is persisted in goal state as `progression_mode` (default
 `autonomous` when the user declines to choose).
 
+Because arming is arm-only — it records the condition but starts no work — the
+goal is always armed alongside a work-starting action, never in place of one.
+The resume-surface counterpart of this axis is
+`.claude/rules/moai/workflow/session-handoff.md` § Canonical Format (Block 5):
+Block 5's single primary action stays the work-starting command
+(`/moai run SPEC-X`), and the goal is armed alongside it once this gate has
+passed.
+
 ### Semi-autonomous checkpoint flow (the orchestrator bridge)
 
 When `progression_mode == "semi-autonomous"` and the goal is not yet satisfied
@@ -140,7 +148,7 @@ tight.
 
 ## Cross-references
 
-- `.claude/rules/moai/workflow/goal-directive.md` — native `/goal` semantics + the `/moai goal` PROGRAMMATIC counterpart row + Axis B.
+- `.claude/rules/moai/workflow/goal-directive.md` — the `/moai goal` doctrine: condition authoring, the proactive recommendation triggers, § Goal-Presentation Timing (the arm-only property and the Kickoff-gate timing), and § Native `/goal` Prohibition (why the pipeline emits no native `/goal`, plus the Axis B rationale and the runtime yield invariant).
 - `.claude/rules/moai/workflow/native-invocation-model.md` § Axis B — the HUMAN-ONLY automation justification.
-- `.claude/rules/moai/workflow/session-handoff.md` § Post-Paste /goal Follow-up Block — the post-paste native `/goal` is now an optional variant; Block 5 MAY carry `/moai goal "<condition>"`.
+- `.claude/rules/moai/workflow/session-handoff.md` § Canonical Format (Block 5) — the resume-surface counterpart: Block 5's single primary action stays the work-starting command, and its `Run:` line MAY carry `/moai goal "<condition>"` where the next SPEC declares a machine-verifiable end-state.
 - The goal-engine Go package and the `moai hook stop-goal` verb (implementation-owned; see the local project source tree).
