@@ -502,8 +502,11 @@ git diff --name-only "$(git merge-base origin/main HEAD)"..HEAD -- . \
   ':(exclude).moai/specs/SPEC-TEMPLATE-DATE-NEUTRALITY-001/**' \
   ':(exclude)internal/template/templates/**' \
   ':(exclude)internal/template/internal_content_leak_test.go' \
-  ':(exclude).github/workflows/template-neutrality-check.yaml' | wc -l
+  ':(exclude).github/workflows/template-neutrality-check.yaml' \
+  ':(exclude)internal/template/catalog.yaml' | wc -l
 ```
+
+**Amended during run phase — the `catalog.yaml` exclude.** `internal/template/catalog.yaml` is a **generated artifact of the `make build` that REQ-TDN-017 mandates**, not a hand edit: `make build` rewrites its 12 skill content hashes whenever a file under `internal/template/templates/` changes. Reverting the regeneration is not available — a stale catalog fails the `internal/template` suite (measured: stashing the regenerated `catalog.yaml` and re-running `go test ./internal/template/` yields FAIL), so committing it is the only correct action. Without this exclude, a run that correctly obeys REQ-TDN-017 necessarily fails AC-TDN-022 — the two requirements were in direct conflict. Excluding a mechanically-generated path **preserves** the criterion's intent, which is to detect *hand* edits outside the declared scope; it narrows nothing else, because every remaining path in the pathspec is still observed.
 
 Observed baseline: `0` (plan phase has touched only the SPEC directory). The merge-base resolves to `c7309aeb6` today; `origin/main` has since advanced to `f99bf4b8a`. A hardcoded `c7309aeb6..HEAD` would keep working now but silently report unrelated files the moment this branch is rebased onto the advanced `origin/main` — a false positive the orchestrator hit this iteration. `$(git merge-base origin/main HEAD)` is rebase-stable.
 
@@ -582,6 +585,7 @@ A finding-level disposition could express none of this; that is what REQ-TDN-019
 - **AC-TDN-005 counts rows, not literal occurrences within a row.** A line carrying `2026-11-22` twice contributes one row. This matches the guard's own identity and is intentional.
 - **AC-TDN-010 half 1 is weak alone** — renaming the literal would pass the grep. Half 2 (the injection recipe) is the load-bearing half; both are required.
 - **AC-TDN-022 does not verify `make build` itself.** It verifies edit scope. The `make build` exit code is recorded in `progress.md` §E.2 at M3; no plan-phase command can assert it without violating the plan-phase constraint.
+- **AC-TDN-022's exclude list was amended during run phase** to add `internal/template/catalog.yaml` (a fifth `:(exclude)` entry). The conflict was unobservable at plan time: §5 forbids plan phase from running `make build`, so the cascade `template edit → make build → catalog.yaml regenerated` could not be measured, and the note directly above — asserting only that AC-TDN-022 "does not verify `make build` itself" — did not anticipate that `make build` *produces a tracked-file change*. As written, the criterion contradicted REQ-TDN-017: obeying the mandated `make build` guaranteed a non-zero count. The amendment narrows nothing else — the four original excludes and the merge-base anchor are unchanged, and every non-generated path remains observed.
 - **No AC covers orphaned header blocks** after a DC-2a removal (`research.md` gap G5). That remains a review-quality property this set does not mechanize.
 - **The second forms are not exact duplicates of the classifier rules.** Each is a deliberately simpler tree grep, so their baselines differ from the row counts by explained deltas (78 vs 80, 49 vs 48). They are a cross-check, not a reimplementation; a divergence beyond the documented delta is itself a signal worth investigating.
 

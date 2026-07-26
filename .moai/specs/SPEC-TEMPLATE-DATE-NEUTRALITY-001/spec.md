@@ -169,6 +169,21 @@ Row counts sum to 180 — the total occurrence-class row count. Finding counts s
 
 - No template edit, guard edit, workflow edit, or `make build` occurs during plan phase.
 
+### Out of Scope — `2025-*` prose authoring stamps (measured run-phase boundary)
+
+- The `S1-internal-date` guard class matches `202[6-9]-[0-1][0-9]-[0-3][0-9]` only. Every date literal outside that year range is structurally invisible to it.
+- Measured at run phase, **41 `Last Updated: 2025-*` prose authoring stamps remain across 29 files** under `internal/template/templates/`:
+
+  ```bash
+  grep -rlE '^[[:space:]]*(#[[:space:]]*)?(\*\*)?(Last )?Updated(\*\*)?:[[:space:]]*"?2025-' internal/template/templates | wc -l
+  # → 29 files
+  ```
+
+- These are **semantically the same class as DC-2a** (internal authoring stamps on a distributed template), but they fall outside the guard regex, so they carry no `triage.tsv` row and no acceptance criterion.
+- They are **deliberately out of scope here**: every baseline in this SPEC — the 135 findings, the 180 occurrence-class rows, the six §4 REQ-TDN-001 category counts, and the `k` disposition arithmetic — plus all 23 acceptance criteria are anchored to the `202[6-9]` measurement. Widening the class now would invalidate the audited plan-phase artifact set.
+- A follow-up SPEC should cover **both** the 41 remaining stamps **and** widening the guard class to `202[5-9]`. Remediating the stamps without widening the guard leaves the guard permanently blind to this shape; widening without remediating turns the guard red.
+- **Known cosmetic residue.** In `internal/template/templates/.claude/skills/moai-foundation-cc/SKILL.md` the version-history list now reads unevenly — the in-scope `v5.0.0` / `v4.0.0` entries lost their dates while `v3.0.0 (2025-12-06)` / `v2.0.0 (2025-11-26)` retain theirs. This is a consequence of the class boundary, not a defect in the remediation.
+
 ---
 
 ## §6 Constraints
