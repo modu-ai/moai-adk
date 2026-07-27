@@ -12,8 +12,8 @@ milestones: [M1 slog scoping, M2 ast-grep sentinel + gate + doctor + docs]
 
 ## §E.2 Run-phase Evidence
 
-M1 commit: `2fbf4f4b6` — `fix(SPEC-FALSE-ALLCLEAR-GUARD-001): M1 scope slog suppression to the moai hook path`
-M2 commit: `9578b7a73` — `feat(SPEC-FALSE-ALLCLEAR-GUARD-001): M2 report an unavailable ast-grep scanner instead of a clean scan`
+M1 commit: `a5c735aed` — `fix(SPEC-FALSE-ALLCLEAR-GUARD-001): M1 scope slog suppression to the moai hook path`
+M2 commit: `49994712b` — `feat(SPEC-FALSE-ALLCLEAR-GUARD-001): M2 report an unavailable ast-grep scanner instead of a clean scan`
 
 Merge-base: `6763aff3b` (origin/main at plan-phase entry). `git diff <merge-base>..HEAD --stat` → 32 files, 1845 insertions, 109 deletions.
 
@@ -38,7 +38,7 @@ moai hook pre-tool (MOAI_LOG_LEVEL=debug) → stderr 0 bytes (carve-out uncondit
 env PATH=$EMPTY moai ast-grep ./internal/astgrep → exit=1, stderr 1050 bytes
   "ast-grep: scan did not run — the ast-grep (sg) CLI was not found. Install it from
    https://ast-grep.github.io/guide/quick-start.html, then re-run."
-M1-only build (a56bfb58c) reproduces pre-M2 shape; pre-change binary at merge-base emits 0 stderr bytes.
+M1-only build (a5c735aed) reproduces pre-M2 shape; pre-change binary at merge-base emits 0 stderr bytes.
 
 ### AC-FAG-005 — no slog record reaches stdout
 --format=text|json|sarif → stdout_bytes 0/0/0, level= 0/0/0, msg= 0/0/0 (sg absent)
@@ -126,8 +126,8 @@ Golden files: only the sg row + column widening + `4 ok`→`5 ok` + `Pass 11`→
 ```yaml
 run_status: audit-ready
 run_complete_at: 2026-07-27
-run_commit_sha_m1: 2fbf4f4b6
-run_commit_sha_m2: 9578b7a73
+run_commit_sha_m1: a5c735aed
+run_commit_sha_m2: 49994712b
 ac_pass_count: 18
 ac_total: 18
 suite_status: "go test -count=1 ./... exit=0, 105 ok, 0 FAIL"
@@ -142,7 +142,7 @@ known_debt_at_run_close:
 ```yaml
 sync_status: audit-ready
 sync_complete_at: 2026-07-27
-sync_commit_sha: pending-backfill-SPEC-FALSE-ALLCLEAR-GUARD-001
+sync_commit_sha: 4e3275d62
 sync_audit_verdict: "CONDITIONAL PASS 89.9/100 (Functionality 90 must-pass PASS, Security 95 must-pass PASS, Craft 82 PASS-with-debt, Consistency 93 PASS)"
 sync_audit_report: .moai/reports/sync-audit/SPEC-FALSE-ALLCLEAR-GUARD-001-2026-07-27.md
 f1_resolution: "progress.md §E.2/§E.3 populated at sync-phase (this commit) — closes the sole reason the verdict was CONDITIONAL rather than PASS."
