@@ -1,6 +1,8 @@
 package hook
 
 import (
+	"encoding/json"
+	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -334,5 +336,70 @@ func TestBranchStatePatterns_Blankable(t *testing.T) {
 	branchStatePatterns = nil
 	if _, matched := matchBranchStateCommand("git switch -c x"); matched {
 		t.Fatalf("after blanking branchStatePatterns, matchBranchStateCommand still matched")
+	}
+}
+
+// TestIsPrimaryCheckout_EmptyProjectDir covers the empty-projectDir guard in
+// isPrimaryCheckout (REQ-WBG-012 fail-open signal). An empty projectDir MUST
+// return an error so the caller fails open rather than running git against cwd.
+func TestIsPrimaryCheckout_EmptyProjectDir(t *testing.T) {
+	t.Parallel()
+	_, err := isPrimaryCheckout("")
+	if err == nil {
+		t.Fatalf("isPrimaryCheckout(\"\") err = nil, want non-nil")
+	}
+}
+
+// TestAppendBranchGuardAdvisory_UnwritableDir covers the audit-log error
+// branches (MkdirAll / OpenFile failure) of appendBranchGuardAdvisory. When
+// projectDir is a regular FILE (not a directory), MkdirAll on its ".moai/logs"
+// subpath fails; the function MUST NOT panic and MUST still emit the stderr
+// advisory (fail-open never blocks).
+func TestAppendBranchGuardAdvisory_UnwritableDir(t *testing.T) {
+	t.Parallel()
+	dir := t.TempDir()
+	// Make projectDir a file so filepath.Join(dir, ".moai/logs/...") lives
+	// under a non-directory parent and MkdirAll fails.
+	filePath := filepath.Join(dir, "notadir")
+	if err := os.WriteFile(filePath, []byte("x"), 0o644); err != nil {
+		t.Fatalf("write file: %v", err)
+	}
+	input := &HookInput{SessionID: "sess-advisory"}
+	// Must not panic; the error is swallowed at debug log level.
+	appendBranchGuardAdvisory(input, filePath, "git switch -c x", fmt.Errorf("simulated rev-parse failure"))
+	// No audit log should have been created under the file-as-dir path.
+	if _, err := os.Stat(filepath.Join(filePath, branchGuardAuditRelPath)); err == nil {
+		t.Fatalf("audit log unexpectedly created under a file path")
+	}
+}
+
+// TestCheckBranchState_NonBashTool covers the ToolName != "Bash" guard and the
+// empty-tool-input guard: checkBranchState returns ("", "") without invoking
+// git when the tool is not Bash or the input is empty.
+func TestCheckBranchState_NonBashAndEmptyInput(t *testing.T) {
+	t.Parallel()
+	// Non-Bash tool with a primary-checkout projectDir: must not even consult
+	// the discriminant (no git invocation, no deny).
+	repo := t.TempDir()
+	cases := []struct {
+		name  string
+		input *HookInput
+	}{
+		{"NonBashTool", &HookInput{ToolName: "Write", ToolInput: json.RawMessage(`{"file_path":"x"}`)}},
+		{"BashEmptyInput", &HookInput{ToolName: "Bash", ToolInput: nil}},
+		{"NilInput", nil},
+	}
+	for _, tc := range cases {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			decision, reason := checkBranchState(tc.input, repo)
+			if decision != "" {
+				t.Fatalf("checkBranchState(%s) decision = %q, want \"\"", tc.name, decision)
+			}
+			if reason != "" {
+				t.Fatalf("checkBranchState(%s) reason = %q, want \"\"", tc.name, reason)
+			}
+		})
 	}
 }

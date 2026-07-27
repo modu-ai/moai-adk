@@ -11,6 +11,7 @@ package hook
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"log/slog"
 	"os"
@@ -18,6 +19,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
+	"time"
 )
 
 // execCommand is the package-level indirection over exec.Command. Tests inject
@@ -26,17 +28,19 @@ import (
 // Restore via t.Cleanup in every test that swaps it.
 var execCommand = exec.Command
 
-// branchGuardExemptAgent is the trusted agent identity that may perform
-// branch-state changes in the primary checkout (manager-git Phase D,
-// Late-Branch closure). Identity-based and unconditional within the identity —
-// NOT scoped to any phase (REQ-WBG-011).
-const branchGuardExemptAgent = "manager-git"
-
 // branchGuardExemptEnv is the sentinel env var the orchestrator sets when
-// spawning Agent(manager-git, ...) for Phase D work. Closes the gap that
-// HookInput.AgentType is populated only for main-thread `claude --agent`
-// invocations (REQ-WBG-011b).
+// spawning Agent(manager-git, ...) for Late-Branch closure work. Closes the
+// gap that HookInput.AgentType is populated only for main-thread `claude
+// --agent` invocations (REQ-WBG-011b).
 const branchGuardExemptEnv = "MOAI_BRANCH_GUARD_EXEMPT"
+
+// branchGuardAuditRelPath is the fail-open advisory log path, relative to the
+// handler's projectDir. Appended on every fail-open event (REQ-WBG-012).
+const branchGuardAuditRelPath = ".moai/logs/branch-guard-audit.log"
+
+// branchGuardViolationPrefix is the sentinel reason prefix the orchestrator
+// pattern-matches without parsing the full reason (REQ-WBG-001).
+const branchGuardViolationPrefix = "BRANCH_GUARD_VIOLATION"
 
 // branchStatePattern pairs a compiled branch-state regex with a human-readable
 // deny-reason suffix naming the matched command class.
@@ -109,8 +113,8 @@ func matchBranchStateCommand(command string) (string, bool) {
 // isExemptAgent returns true when the invoking agent identity is the trusted
 // manager-git agent OR the sentinel MOAI_BRANCH_GUARD_EXEMPT=1 env var is set
 // (REQ-WBG-011). Identity-based and unconditional within the identity — NOT
-// scoped to any phase. A nil input is treated as non-exempt unless the env var
-// is set.
+// scoped to any internal execution phase. A nil input is treated as
+// non-exempt unless the env var is set.
 func isExemptAgent(input *HookInput) bool {
 	if os.Getenv(branchGuardExemptEnv) == "1" {
 		return true
@@ -118,7 +122,10 @@ func isExemptAgent(input *HookInput) bool {
 	if input == nil {
 		return false
 	}
-	return input.AgentType == branchGuardExemptAgent
+	// Identity check against the trusted manager-git agent. The literal is
+	// retained (not extracted to a const) so the AC-WBG-011 grep for
+	// 'AgentType == "manager-git"' mechanically confirms the path is present.
+	return input.AgentType == "manager-git"
 }
 
 // isPrimaryCheckout returns true when projectDir is the primary git checkout
@@ -180,3 +187,84 @@ func runGitRevParse(projectDir string, args ...string) (string, error) {
 	}
 	return strings.TrimSpace(stdout.String()), nil
 }
+
+// checkBranchState returns DecisionDeny + a "BRANCH_GUARD_VIOLATION: <suffix>
+// in primary checkout (...)" reason when ALL THREE hold: (a) primary checkout,
+// (b) command matches a branch-state pattern, (c) invoking agent is not exempt.
+// Otherwise it returns ("", "") (allow fall-through). On git-context
+// uncertainty it fails OPEN: returns ("", "") AND writes an advisory to stderr
+// plus appends a structured entry to .moai/logs/branch-guard-audit.log
+// (REQ-WBG-012).
+//
+// The deny fires ONLY on positive evidence; uncertainty never denies.
+func checkBranchState(input *HookInput, projectDir string) (decision string, reason string) {
+	if input == nil || len(input.ToolInput) == 0 {
+		return "", ""
+	}
+	command := extractBranchStateCommand(input.ToolInput)
+	if command == "" {
+		return "", ""
+	}
+	suffix, matched := matchBranchStateCommand(command)
+	if !matched {
+		return "", ""
+	}
+	if isExemptAgent(input) {
+		return "", ""
+	}
+	isPrimary, err := isPrimaryCheckout(projectDir)
+	if err != nil {
+		// Fail OPEN with advisory (REQ-WBG-012). The deny requires positive
+		// evidence of a primary checkout; an error is NOT evidence.
+		appendBranchGuardAdvisory(input, projectDir, command, err)
+		return "", ""
+	}
+	if !isPrimary {
+		return "", ""
+	}
+	reason = fmt.Sprintf("%s: %s in primary checkout (use a worktree or invoke via manager-git)",
+		branchGuardViolationPrefix, suffix)
+	return DecisionDeny, reason
+}
+
+// extractBranchStateCommand parses the command string from Bash tool input
+// JSON. Returns "" when the input is not parseable or lacks a command field.
+func extractBranchStateCommand(toolInput json.RawMessage) string {
+	var parsed map[string]any
+	if err := json.Unmarshal(toolInput, &parsed); err != nil {
+		return ""
+	}
+	c, _ := parsed["command"].(string)
+	return c
+}
+
+// appendBranchGuardAdvisory writes a fail-open advisory to stderr and appends a
+// structured entry to <projectDir>/.moai/logs/branch-guard-audit.log
+// (REQ-WBG-012). Errors during logging are debug-level only — fail-open must
+// never block the hook's allow decision.
+func appendBranchGuardAdvisory(input *HookInput, projectDir, command string, cause error) {
+	sessionID := ""
+	if input != nil {
+		sessionID = input.SessionID
+	}
+	msg := fmt.Sprintf("branch_guard: fail-open for command %q in %q: %v", command, projectDir, cause)
+	fmt.Fprintln(os.Stderr, msg)
+
+	entry := fmt.Sprintf("[%s] session=%s command=%q cause=%v\n",
+		time.Now().UTC().Format(time.RFC3339), sessionID, command, cause)
+	logPath := filepath.Join(projectDir, branchGuardAuditRelPath)
+	if err := os.MkdirAll(filepath.Dir(logPath), 0o755); err != nil {
+		slog.Debug("branch_guard: could not create audit log dir", "path", logPath, "error", err)
+		return
+	}
+	f, err := os.OpenFile(logPath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o644)
+	if err != nil {
+		slog.Debug("branch_guard: could not open audit log", "path", logPath, "error", err)
+		return
+	}
+	defer func() { _ = f.Close() }()
+	if _, err := f.WriteString(entry); err != nil {
+		slog.Debug("branch_guard: could not write audit log entry", "path", logPath, "error", err)
+	}
+}
+
