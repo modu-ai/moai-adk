@@ -85,4 +85,4 @@ jobs:
           MOAI_TEMPLATE_LEAK_STRICT: '1'
         run: |
           go test ./internal/template/... \
-            -run TestTemplateNoInternalContentLeak -v
+            -run 'TestTemplateNoInternalContentLeak' -v

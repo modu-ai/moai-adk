@@ -292,5 +292,4 @@ Implementation Details: See methods for severity assessment, likely causes analy
 
 Module: modules/debugging/debugging-workflows.md
 Version: 2.0.0 (Modular Architecture)
-Last Updated: 2025-12-07
 Lines: 350 (within 500-line limit)
