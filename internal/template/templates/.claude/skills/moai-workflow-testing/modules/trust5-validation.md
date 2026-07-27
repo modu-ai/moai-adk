@@ -334,5 +334,4 @@ reviewer.custom_analyzers[TRUTHFULNESS] = CustomTruthfulnessAnalyzer()
 ---
 
 Version: 1.0.0
-Last Updated: 2026-01-06
 Module: `modules/trust5-validation.md`

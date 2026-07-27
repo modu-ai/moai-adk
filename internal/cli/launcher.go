@@ -657,6 +657,50 @@ func parseProfileFlag(args []string) (string, []string, error) {
 	return profileName, filtered, nil
 }
 
+// normalizeWorktreeFlag rewrites -w/--worktree[=name] forms (before any "--"
+// pass-through marker) into the canonical two-token "--worktree [name]" form
+// that Claude Code accepts, preserving argument order. Tokens after "--" are
+// left untouched — they are already verbatim pass-through to claude.
+// The name is optional: a bare -w lets claude auto-generate a worktree name.
+func normalizeWorktreeFlag(args []string) []string {
+	normalized := make([]string, 0, len(args)+1)
+
+	for i := 0; i < len(args); i++ {
+		arg := args[i]
+		if arg == "--" {
+			// Everything after -- is verbatim pass-through.
+			normalized = append(normalized, args[i:]...)
+			break
+		}
+		switch {
+		case arg == "-w" || arg == "--worktree":
+			normalized = append(normalized, "--worktree")
+			// Optional value: consume the next token unless it is another flag
+			// or the pass-through marker.
+			if i+1 < len(args) && args[i+1] != "--" && !strings.HasPrefix(args[i+1], "-") {
+				normalized = append(normalized, args[i+1])
+				i++
+			}
+		case strings.HasPrefix(arg, "--worktree="):
+			name := strings.TrimPrefix(arg, "--worktree=")
+			normalized = append(normalized, "--worktree")
+			if name != "" {
+				normalized = append(normalized, name)
+			}
+		case strings.HasPrefix(arg, "-w="):
+			name := strings.TrimPrefix(arg, "-w=")
+			normalized = append(normalized, "--worktree")
+			if name != "" {
+				normalized = append(normalized, name)
+			}
+		default:
+			normalized = append(normalized, arg)
+		}
+	}
+
+	return normalized
+}
+
 // readSettingsLocalForLaunch reads the env map from .claude/settings.local.json
 // in the current directory (or project root). Returns an empty map on error.
 func readSettingsLocalForLaunch() map[string]string {

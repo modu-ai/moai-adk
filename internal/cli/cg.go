@@ -30,6 +30,8 @@ Flags:
   -p, --profile <name>          Use a named Claude profile (~/.moai/claude-profiles/<name>/)
   --permission-mode <mode>      Set permission mode (default, acceptEdits, plan, auto, bypassPermissions, dontAsk)
   -b, --bypass                  Shorthand for --permission-mode bypassPermissions
+  -w, --worktree [name]         Launch in an isolated git worktree (.claude/worktrees/<name>/);
+                                name omitted = auto-generated (same as claude --worktree)
 
 Prerequisites:
   1. A GLM API key configured via 'moai glm setup <api-key>'
@@ -68,5 +70,6 @@ func runCG(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
+	filteredArgs = normalizeWorktreeFlag(filteredArgs)
 	return unifiedLaunch(profileName, "claude_glm", filteredArgs)
 }

@@ -247,5 +247,4 @@ During DDD ANALYZE phase:
 ---
 
 Version: 2.5.0
-Last Updated: 2026-02-22
 Source: the MX tag protocol

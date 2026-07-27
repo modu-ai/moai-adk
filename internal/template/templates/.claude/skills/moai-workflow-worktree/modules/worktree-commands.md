@@ -3,7 +3,6 @@
 Purpose: Complete CLI command reference for Git worktree management with detailed usage examples and advanced options.
 
 Version: 2.0.0
-Last Updated: 2026-01-06
 
 ---
 
@@ -292,5 +291,4 @@ Pre-push hook actions:
 ---
 
 Version: 2.0.0
-Last Updated: 2026-01-06
 Module: Complete CLI command reference with usage examples

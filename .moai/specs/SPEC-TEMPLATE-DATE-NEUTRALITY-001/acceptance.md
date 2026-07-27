@@ -219,12 +219,23 @@ The window spans every function the carve-out touches:
 
 ```bash
 awk '/^func (collectLeakViolations|isPedagogicallyAllowed|isDateAllowlisted)/,/^}/' \
-  internal_content_leak_test.go | grep -cE 'LineStart|LineEnd|lineNo|LineNumber'
+  internal/template/internal_content_leak_test.go | grep -cE 'LineStart|LineEnd|lineNo|LineNumber'
 ```
 
 Observed baseline: `0` — measured today over the two functions that currently exist. (`isDateAllowlisted` does not exist yet; `awk` matches nothing for it, which is why the command is an alternation rather than a single name.)
 
 PASS condition: `0` after M4, with all three functions present.
+
+**Non-vacuity control (mandatory alongside the count).** This criterion's PASS value is `0`, and `0` is exactly what an unresolvable `awk` operand also produces: `awk` errors with `can't open file`, the pipeline carries an empty stream, and `grep -c` prints `0` — a silent false pass. The count alone therefore cannot distinguish a real pass from a vacuous one. The distinguishing control is the **awk window itself**: it must be non-empty and must contain all three `^func ` headers. Run both alongside the count and require all three results together:
+
+```bash
+awk '/^func (collectLeakViolations|isPedagogicallyAllowed|isDateAllowlisted)/,/^}/' \
+  internal/template/internal_content_leak_test.go | wc -l          # window non-empty
+awk '/^func (collectLeakViolations|isPedagogicallyAllowed|isDateAllowlisted)/,/^}/' \
+  internal/template/internal_content_leak_test.go | grep -c '^func '  # expect 3 after M4
+```
+
+Measured at M7 *(repo root)*: count `0`, window `68` lines, `3` `^func ` headers — a real pass, not a vacuous one.
 
 **Falsifiability probe (executed).** Injecting `if entry.LineStart > 0 && false { return false }` into a scratch copy of `isPedagogicallyAllowed`:
 
@@ -256,12 +267,20 @@ Half 2 — executable injection recipe. The guard reports zero findings after M4
 ```bash
 # run AFTER M4 (strict tier at zero)
 printf '\n<!-- probe 2029-12-31 -->\n' >> internal/template/templates/.claude/rules/moai/NOTICE.md
-MOAI_TEMPLATE_LEAK_STRICT=1 go test . -run TestTemplateNoInternalContentLeak -count=1 2>&1 \
+MOAI_TEMPLATE_LEAK_STRICT=1 go test ./internal/template/ -run TestTemplateNoInternalContentLeak -count=1 2>&1 \
   | grep -oE 'full listing: [^ ]+' || echo "NO-PATH-EMITTED"
 git checkout -- internal/template/templates/.claude/rules/moai/NOTICE.md
 ```
 
 Expected output at M5: a single `full listing: <path>` line, and `test -f <path>` succeeds.
+
+**Non-vacuity control (mandatory alongside the emitted path).** This half PASSes on an emitted `full listing: <path>` line and FAILs on `NO-PATH-EMITTED` — but `NO-PATH-EMITTED` is also what an unresolvable package operand produces: the `go test` target never resolves, no guard runs, the grep matches nothing, and the `||` branch fires for the wrong reason (a false FAIL rather than a false pass, but equally uninformative). The distinguishing control is that the **emitted path must satisfy `test -f`** — a path that resolves to a real file proves the guard actually ran and actually wrote the listing:
+
+```bash
+test -f <emitted-path> && echo "PASS (listing exists)" || echo "FAIL"
+```
+
+Measured at M7 *(repo root)*: emitted `full listing: /var/folders/…/T/moai-template-leak-*.log`, and `test -f` on it succeeded.
 
 Observed baseline for the truncation message today — the shape being replaced:
 
@@ -502,8 +521,11 @@ git diff --name-only "$(git merge-base origin/main HEAD)"..HEAD -- . \
   ':(exclude).moai/specs/SPEC-TEMPLATE-DATE-NEUTRALITY-001/**' \
   ':(exclude)internal/template/templates/**' \
   ':(exclude)internal/template/internal_content_leak_test.go' \
-  ':(exclude).github/workflows/template-neutrality-check.yaml' | wc -l
+  ':(exclude).github/workflows/template-neutrality-check.yaml' \
+  ':(exclude)internal/template/catalog.yaml' | wc -l
 ```
+
+**Amended during run phase — the `catalog.yaml` exclude.** `internal/template/catalog.yaml` is a **generated artifact of the `make build` that REQ-TDN-017 mandates**, not a hand edit: `make build` rewrites its 12 skill content hashes whenever a file under `internal/template/templates/` changes. Reverting the regeneration is not available — a stale catalog fails the `internal/template` suite (measured: stashing the regenerated `catalog.yaml` and re-running `go test ./internal/template/` yields FAIL), so committing it is the only correct action. Without this exclude, a run that correctly obeys REQ-TDN-017 necessarily fails AC-TDN-022 — the two requirements were in direct conflict. Excluding a mechanically-generated path **preserves** the criterion's intent, which is to detect *hand* edits outside the declared scope; it narrows nothing else, because every remaining path in the pathspec is still observed.
 
 Observed baseline: `0` (plan phase has touched only the SPEC directory). The merge-base resolves to `c7309aeb6` today; `origin/main` has since advanced to `f99bf4b8a`. A hardcoded `c7309aeb6..HEAD` would keep working now but silently report unrelated files the moment this branch is rebased onto the advanced `origin/main` — a false positive the orchestrator hit this iteration. `$(git merge-base origin/main HEAD)` is rebase-stable.
 
@@ -582,6 +604,8 @@ A finding-level disposition could express none of this; that is what REQ-TDN-019
 - **AC-TDN-005 counts rows, not literal occurrences within a row.** A line carrying `2026-11-22` twice contributes one row. This matches the guard's own identity and is intentional.
 - **AC-TDN-010 half 1 is weak alone** — renaming the literal would pass the grep. Half 2 (the injection recipe) is the load-bearing half; both are required.
 - **AC-TDN-022 does not verify `make build` itself.** It verifies edit scope. The `make build` exit code is recorded in `progress.md` §E.2 at M3; no plan-phase command can assert it without violating the plan-phase constraint.
+- **AC-TDN-022's exclude list was amended during run phase** to add `internal/template/catalog.yaml` (a fifth `:(exclude)` entry). The conflict was unobservable at plan time: §5 forbids plan phase from running `make build`, so the cascade `template edit → make build → catalog.yaml regenerated` could not be measured, and the note directly above — asserting only that AC-TDN-022 "does not verify `make build` itself" — did not anticipate that `make build` *produces a tracked-file change*. As written, the criterion contradicted REQ-TDN-017: obeying the mandated `make build` guaranteed a non-zero count. The amendment narrows nothing else — the four original excludes and the merge-base anchor are unchanged, and every non-generated path remains observed.
+- **AC-TDN-009's `awk` operand and AC-TDN-010 half 2's `go test` target were corrected during run phase.** Both were published as bare, cwd-relative operands (`internal_content_leak_test.go` and `go test .`) that only resolve when run from `internal/template/` — the exact invocation this file's §Scope forbids and the `[WATCH]` note warns against. From the repo root, AC-TDN-009's `awk` errored with `can't open file`, yielding an empty stream and a `grep -c` of `0` — **which is that criterion's own PASS condition**, so the published form was a silent false pass that would have reported PASS regardless of the source's contents. AC-TDN-010 half 2 failed in the opposite direction (`no Go files in …` → a false `NO-PATH-EMITTED`), non-executable rather than falsely green. Both operands are now repo-root-relative (`internal/template/internal_content_leak_test.go`; `go test ./internal/template/`), and each criterion gained a non-vacuity control that distinguishes a real result from an unresolvable-path artifact. Same defect class as the AC-TDN-022 conflict recorded above: a plan-phase-authored command whose scope assumption diverged from the file's own scope convention. No PASS condition, baseline figure, or assertion changed — this was a command-correctness fix.
 - **No AC covers orphaned header blocks** after a DC-2a removal (`research.md` gap G5). That remains a review-quality property this set does not mechanize.
 - **The second forms are not exact duplicates of the classifier rules.** Each is a deliberately simpler tree grep, so their baselines differ from the row counts by explained deltas (78 vs 80, 49 vs 48). They are a cross-check, not a reimplementation; a divergence beyond the documented delta is itself a signal worth investigating.
 

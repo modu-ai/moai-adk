@@ -185,7 +185,7 @@ When the router recorded a completion condition (router Step 2.8) and the pipeli
 
 **Lifecycle**:
 
-- **Entry**: post-kickoff only. The completion condition is set via `/goal` when the runtime supports it (goal-directive transcript-measurable form); otherwise the orchestrator evaluates the identical condition text per-turn (graceful degradation — no parallel evaluator).
+- **Entry**: post-kickoff only. The completion condition is armed via `/moai goal` when the goal engine is available (hooks enabled — the evaluator is the `stop-goal` Stop hook); otherwise the orchestrator evaluates the identical condition text per-turn (graceful degradation — no parallel evaluator).
 - **Iteration cycle**: run → sync → verify ONLY. While the condition is unmet, the loop re-enters the failing RUN or SYNC phase and iterates. Plan-phase re-entry is NEVER an autonomous loop step — it occurs solely via the no-progress escalation path below with explicit user approval, and the revised plan re-crosses the Implementation Kickoff Approval gate before any run-phase re-entry.
 - **Termination** (any of four): (1) the completion condition evaluates met; (2) the iteration ceiling is reached — `workflow.agentic_loop.max_iterations` in `.moai/config/sections/workflow.yaml` (default 10; pipeline-level iterations, DISTINCT from `loop_prevention.max_iterations`, the per-operation diagnostic fix-loop bound); (3) an escalation fires (no-progress or semantic failure); (4) context-threshold suspension.
 
@@ -193,7 +193,7 @@ When the router recorded a completion condition (router Step 2.8) and the pipeli
 
 - **Iteration-ceiling verdict** (cause 2): when the ceiling is reached, halt and emit the same structured 5-section evidence report (Claim / Evidence / Baseline-attribution / Gaps / Residual-risk, per `verification-claim-integrity.md` §3) that the Ralph engine emits at its own ceiling exit (`workflows/loop.md` § Ceiling-Exit Verdict Contract) — persist remaining issues to `.moai/state/loop-verdict-<id>.json` and propose a lesson-capture entry before ending the session. This closes the protocol gap relative to causes 3 (no-progress escalation) and 4 (context-threshold suspension), which already carry their own structured reports below.
 - **No-progress escalation**: when the same failure signature (identical failing check + same error class) is observed in two consecutive iterations, halt and escalate via a structured report; the orchestrator runs an AskUserQuestion round (continue with manual investigation / revert + re-plan / abort). Revert + re-plan re-crosses Implementation Kickoff Approval before any run-phase re-entry. No third identical iteration is attempted.
-- **Dark-flow guard**: every iteration surfaces a per-iteration visible report in the conversation (iteration #, phase executed, evidence delta, condition-evaluation result). Silent iterations are prohibited — the transcript evidence is also what keeps the `/goal` evaluator functional (transcript-measurability per goal-directive).
+- **Dark-flow guard**: every iteration surfaces a per-iteration visible report in the conversation (iteration #, phase executed, evidence delta, condition-evaluation result). Silent iterations are prohibited — the transcript evidence is also what keeps the `stop-goal` evaluator functional when the condition is expressed as model conditions (per goal-directive).
 - **Semantic-failure escalation**: on a semantic failure (data race, deadlock, panic, test assertion failure), clear the active completion condition and escalate immediately via AskUserQuestion — the loop never auto-fixes a semantic failure.
 - **Context-threshold suspension**: when context usage crosses the model-specific handoff threshold (`context-window-management.md` § Context Window Targets), suspend at the current iteration boundary, persist state to progress.md, and emit the paste-ready resume message per `session-handoff.md`. The loop does not start a new iteration past the threshold.
 - **Boundary**: subagents and workflow agents operating inside the loop never prompt the user; all mid-loop user decisions ride structured blocker reports → orchestrator AskUserQuestion (`agent-common-protocol.md` § User Interaction Boundary).
@@ -273,5 +273,4 @@ Mode selection:
 ---
 
 Version: 3.0.1
-Updated: 2026-07-09
 Source: SPEC-MOAI-001. Named pipeline gates + agentic completion loop + chaining policy (v3.0.0). Added the iteration-ceiling verdict protocol for Agentic Completion Loop termination cause 2, closing its parity gap with causes 3/4 (v3.0.1). Previous: --team/--solo flag Gate auto-skip (v2.9.0), Harness auto-detection (v2.8.0).

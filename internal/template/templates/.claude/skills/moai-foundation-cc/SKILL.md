@@ -239,8 +239,8 @@ For detailed patterns and working examples, see the reference directory.
 
 Version History:
 
-- v5.0.0 (2026-01-11): Converted to narrative format per CLAUDE.md Documentation Standards
-- v4.0.0 (2026-01-06): Added plugins, sandboxing, headless, statusline, dev containers, CLI reference, advanced patterns
+- v5.0.0: Converted to narrative format per CLAUDE.md Documentation Standards
+- v4.0.0: Added plugins, sandboxing, headless, statusline, dev containers, CLI reference, advanced patterns
 - v3.0.0 (2025-12-06): Added progressive disclosure, sub-agent details, integration patterns
 - v2.0.0 (2025-11-26): Initial comprehensive release
 

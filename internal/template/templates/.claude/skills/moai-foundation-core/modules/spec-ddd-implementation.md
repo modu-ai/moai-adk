@@ -3,7 +3,6 @@
 Purpose: Advanced ANALYZE-PRESERVE-IMPROVE workflows and implementation patterns for SPEC-First DDD.
 
 Version: 2.0.0 (DDD Migration)
-Last Updated: 2026-01-17
 Parent: [spec-first-ddd.md](spec-first-ddd.md)
 
 ---
@@ -291,4 +290,3 @@ jobs:
 ---
 
 Version: 2.0.0
-Last Updated: 2026-01-17
