@@ -31,7 +31,7 @@ moai handoff save --stdin --spec SPEC-AUTH-001 --phase run < resume.txt
 | `--lang <lang>` | conversation_language のスナップショット |
 | `--ultrathink` | ultrathink 指示を記録 (復元案内用) |
 | `--ultracode` | ultracode 指示を記録 (復元案内用) |
-| `--goal <condition>` | `/goal` 条件を記録 (復元案内用) |
+| `--goal <condition>` | `/moai goal` 条件を記録 (復元案内用) |
 
 ## moai handoff clear
 

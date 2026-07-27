@@ -37,7 +37,7 @@ flowchart TD
 
 ### Loop 0 — 관찰 (Observation, 매 턴)
 
-{{< icon database >}} 모든 라우팅 결정을 프라이버시 보존 다이제스트로 routing-ledger.jsonl에 기록합니다. SPEC-HARNESS-EVOLVE-001(CLOSED)에서 구현되었습니다. 기록 필드에는 라우팅 결정, 게이트 증거, `/moai loop`·`/goal` 수렴 궤적, 서브에이전트 위임 결과가 포함됩니다.
+{{< icon database >}} 모든 라우팅 결정을 프라이버시 보존 다이제스트로 routing-ledger.jsonl에 기록합니다. SPEC-HARNESS-EVOLVE-001(CLOSED)에서 구현되었습니다. 기록 필드에는 라우팅 결정, 게이트 증거, `/moai loop`·`/moai goal` 수렴 궤적, 서브에이전트 위임 결과가 포함됩니다.
 
 ### Loop 1 — 반추 (Reflection, 세션 경계)
 
@@ -94,5 +94,5 @@ SPEC-HARNESS-EVOLVE-003(CLOSED)에서 다음 7개 핵심 요소가 프로덕션 
 ## 다음 단계
 
 - [3-티어 에이전트 아키텍처](/ko/advanced/no-haiku-3tier/) — 자가 진화가 작동하는 기반 모델 아키텍처
-- [자율 연속 루프](/ko/advanced/autonomous-loops/) — `/moai loop`·`/goal` 수렴 궤적이 Loop 0 관찰에 통합
+- [자율 연속 루프](/ko/advanced/autonomous-loops/) — `/moai loop`·`/moai goal` 수렴 궤적이 Loop 0 관찰에 통합
 - [토크노믹스 개요](/ko/advanced/tokenomics-overview/) — 자가 진화가 토크노믹스와 연결되는 지점

@@ -37,7 +37,7 @@ flowchart TD
 
 ### Loop 0 — Observation (every turn)
 
-{{< icon database >}} Every routing decision is recorded as a privacy-preserving digest in routing-ledger.jsonl. Implemented in SPEC-HARNESS-EVOLVE-001 (CLOSED). Recorded fields include routing decisions, gate evidence, `/moai loop` / `/goal` convergence trajectories, and subagent delegation results.
+{{< icon database >}} Every routing decision is recorded as a privacy-preserving digest in routing-ledger.jsonl. Implemented in SPEC-HARNESS-EVOLVE-001 (CLOSED). Recorded fields include routing decisions, gate evidence, `/moai loop` / `/moai goal` convergence trajectories, and subagent delegation results.
 
 ### Loop 1 — Reflection (session boundary)
 
@@ -94,5 +94,5 @@ These surfaces are recorded as roadmap items alongside the v5.1 MCE (learning of
 ## Next Steps
 
 - [3-Tier Agent Architecture](/en/advanced/no-haiku-3tier/) — the model architecture substrate on which self-evolution operates
-- [Autonomous Continuation Loops](/en/advanced/autonomous-loops/) — `/moai loop` / `/goal` convergence trajectories integrated into Loop 0 observation
+- [Autonomous Continuation Loops](/en/advanced/autonomous-loops/) — `/moai loop` / `/moai goal` convergence trajectories integrated into Loop 0 observation
 - [Tokenomics Overview](/en/advanced/tokenomics-overview/) — where self-evolution connects to tokenomics

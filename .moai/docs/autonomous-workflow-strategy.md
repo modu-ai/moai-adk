@@ -4,6 +4,7 @@
 > **대상**: moai-adk-go 메인테이너
 > **최적화 목표**: BALANCED — quality · autonomy · efficiency 3축 균형
 > **근거 primitive 버전**: Dynamic Workflows = research preview / Claude Code v2.1.154+ · `/goal` = v2.1.139+
+> **후속 (2026-07-27)**: native `/goal` emission is retired — MoAI 파이프라인의 goal 표면은 `/moai goal` 하나로 통합되었다. 아래 3-엔진 모델은 제안 시점의 기록으로 보존한다.
 
 ---
 
