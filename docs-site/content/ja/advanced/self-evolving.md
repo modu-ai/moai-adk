@@ -37,7 +37,7 @@ flowchart TD
 
 ### Loop 0 — 観察 (Observation, 毎ターン)
 
-{{< icon database >}} 全ルーティング決定をプライバシー保存ダイジェストとしてrouting-ledger.jsonlに記録します。SPEC-HARNESS-EVOLVE-001 (CLOSED)で実装されました。記録フィールドにはルーティング決定、ゲート証拠、`/moai loop` / `/goal`収束軌跡、サブエージェント委任結果が含まれます。
+{{< icon database >}} 全ルーティング決定をプライバシー保存ダイジェストとしてrouting-ledger.jsonlに記録します。SPEC-HARNESS-EVOLVE-001 (CLOSED)で実装されました。記録フィールドにはルーティング決定、ゲート証拠、`/moai loop` / `/moai goal`収束軌跡、サブエージェント委任結果が含まれます。
 
 ### Loop 1 — 反省 (Reflection, セッション境界)
 
@@ -94,5 +94,5 @@ SPEC-HARNESS-EVOLVE-003 (CLOSED)で以下7つの核心要素がプロダクシ�
 ## 次のステップ
 
 - [3層エージェントアーキテクチャ](/ja/advanced/no-haiku-3tier/) — 自己進化が動作する基盤モデルアーキテクチャ
-- [自律連続ループ](/ja/advanced/autonomous-loops/) — `/moai loop` / `/goal`収束軌跡がLoop 0観察に統合
+- [自律連続ループ](/ja/advanced/autonomous-loops/) — `/moai loop` / `/moai goal`収束軌跡がLoop 0観察に統合
 - [トークノミクス概論](/ja/advanced/tokenomics-overview/) — 自己進化がトークノミクスと接続するポイント

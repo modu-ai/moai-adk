@@ -31,7 +31,7 @@ moai handoff save --stdin --spec SPEC-AUTH-001 --phase run < resume.txt
 | `--lang <lang>` | conversation_language 스냅샷 |
 | `--ultrathink` | ultrathink 지시 기록 (복원 안내용) |
 | `--ultracode` | ultracode 지시 기록 (복원 안내용) |
-| `--goal <condition>` | `/goal` 조건 기록 (복원 안내용) |
+| `--goal <condition>` | `/moai goal` 조건 기록 (복원 안내용) |
 
 ## moai handoff clear
 

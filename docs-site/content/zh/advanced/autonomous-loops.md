@@ -4,7 +4,7 @@ weight: 6
 draft: false
 ---
 
-代理式循环的核心问题是"何时停止、何时继续"。MoAI-ADK 提供三种连续循环原语，各有不同的触发语义和所有权。本页区分 `/goal`、`/moai goal`、`/moai loop`，并解释各自的实现状态和安全护栏。
+代理式循环的核心问题是"何时停止、何时继续"。MoAI-ADK 提供 `/moai goal` 和 `/moai loop` 两种连续循环原语，Claude Code 自身则提供原生 goal 命令。本页区分这三者，并解释各自的所有权、实现状态和安全护栏。
 
 ## 何时停止、何时继续
 
@@ -14,7 +14,7 @@ draft: false
 
 ## 三种连续循环原语
 
-MoAI-ADK 有三种连续循环原语，各有不同的触发语义和所有权。
+连续循环原语共三种 — 其中两种由 MoAI-ADK 拥有，另一种由 Claude Code 自身拥有 — 各有不同的触发语义。
 
 | 原语 | 所有权 | 触发 | 适用场景 |
 |------|--------|------|---------|
@@ -91,9 +91,9 @@ moai goal clear                         # 删除条件 (结束循环)
 
 - **Implementation Kickoff Approval** (plan → run HUMAN GATE) 不能被任何循环绕过。即使 `/goal` 活动，run-phase 进入前的用户批准仍是强制的。
 - **安全边界不变** — 即使循环活动，"难以逆转/共享系统操作前确认"边界不会被放宽。goal 评估器仅决定是否继续; 不预批准破坏性操作。
-- **与 auto mode 组合** — 将 Claude Code auto mode(每工具自动批准)与 `/goal`(每回合连续)组合可实现无人值守 `ac_converge` 循环。auto mode 移除每工具批准提示; `/goal` 移除每回合 STOP 提示。Implementation Kickoff Approval 在 run-phase 进入前仍强制。
+- **与 auto mode 组合** — 将 Claude Code auto mode(每工具自动批准)与 `/moai goal`(每回合连续)组合可实现无人值守 `ac_converge` 循环。auto mode 移除每工具批准提示; `/moai goal` 移除每回合 STOP 提示。Implementation Kickoff Approval 在 run-phase 进入前仍强制。
 
 ## 下一步
 
 - [代币经济学概述](/zh/advanced/tokenomics-overview/) — 自主循环与代币经济学的连接点
-- [线束自我进化](/zh/advanced/self-evolving/) — `/moai loop` / `/goal` 收敛轨迹整合到 Loop 0 观察
+- [线束自我进化](/zh/advanced/self-evolving/) — `/moai loop` / `/moai goal` 收敛轨迹整合到 Loop 0 观察

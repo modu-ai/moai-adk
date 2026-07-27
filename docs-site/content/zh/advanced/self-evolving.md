@@ -37,7 +37,7 @@ flowchart TD
 
 ### Loop 0 — 观察 (Observation, 每回合)
 
-{{< icon database >}} 所有路由决策以隐私保留摘要记录到 routing-ledger.jsonl。在 SPEC-HARNESS-EVOLVE-001 (CLOSED)中实现。记录字段包括路由决策、门控证据、`/moai loop` / `/goal` 收敛轨迹、子代理委派结果。
+{{< icon database >}} 所有路由决策以隐私保留摘要记录到 routing-ledger.jsonl。在 SPEC-HARNESS-EVOLVE-001 (CLOSED)中实现。记录字段包括路由决策、门控证据、`/moai loop` / `/moai goal` 收敛轨迹、子代理委派结果。
 
 ### Loop 1 — 反思 (Reflection, 会话边界)
 
@@ -94,5 +94,5 @@ SPEC-HARNESS-EVOLVE-003 (CLOSED)生产接线了 7 个核心要素:
 ## 下一步
 
 - [三层代理架构](/zh/advanced/no-haiku-3tier/) — 自我进化运作的基础模型架构
-- [自主连续循环](/zh/advanced/autonomous-loops/) — `/moai loop` / `/goal` 收敛轨迹整合到 Loop 0 观察
+- [自主连续循环](/zh/advanced/autonomous-loops/) — `/moai loop` / `/moai goal` 收敛轨迹整合到 Loop 0 观察
 - [代币经济学概述](/zh/advanced/tokenomics-overview/) — 自我进化与代币经济学的连接点
