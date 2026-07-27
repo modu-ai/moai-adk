@@ -37,7 +37,36 @@ func langOptionList() []string { return settings.LanguageOptionValues() }
 // modelOptionList returns the canonical model option set from the schema
 // (REQ-WC10-004). The empty string ("project default") is allowed by validatePrefs'
 // empty-allowed guard and is not listed here. 검증 경로 ([]string).
-func modelOptionList() []string { return settings.ModelOptionValues() }
+//
+// 1M unification: the picker now offers only opus[1m]/sonnet[1m]/fable[1m]/haiku,
+// but legacy aliases (opus, sonnet, fable, opusplan and their [1m] variants) are
+// still valid inputs — they remain keys in template.ModelAliasTable and existing
+// prefs files carry them. Validation is therefore the union of (a) picker values
+// and (b) ModelAliasTable keys + their [1m] variants, so a previously-saved
+// "opus" / "opusplan" / "sonnet" / "fable" pref does not fail validation when
+// the user saves the form.
+func modelOptionList() []string {
+	seen := map[string]struct{}{}
+	out := make([]string, 0, 16)
+	add := func(v string) {
+		if v == "" {
+			return
+		}
+		if _, ok := seen[v]; ok {
+			return
+		}
+		seen[v] = struct{}{}
+		out = append(out, v)
+	}
+	for _, v := range settings.ModelOptionValues() {
+		add(v)
+	}
+	for alias := range template.ModelAliasTable {
+		add(alias)
+		add(alias + "[1m]")
+	}
+	return out
+}
 
 // effortOptionList returns the canonical effort level option set from the schema
 // (REQ-WC10-004). The empty string ("runtime default") is allowed by the

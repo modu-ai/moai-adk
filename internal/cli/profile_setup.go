@@ -99,14 +99,34 @@ func normalizeModel(m string) string {
 	base, suffix := splitModelSuffix(m)
 	alias := template.ModelAliasFromCanonicalID(base)
 	if alias == base {
-		// base is not a known canonical id either — the legacy " 1M" suffix
-		// variant is the only remaining deprecated form to handle.
-		return normalizeModelLegacy1M(m)
+		// base is not a known canonical id. It may still be a bare short alias
+		// that the picker no longer offers (the 1M unification dropped the bare
+		// opus/sonnet/fable options); those are handled by promoteTo1M below.
+		// Otherwise the legacy " 1M" suffix is the last deprecated form left.
+		if _, known := template.ModelAliasTable[base]; !known {
+			return normalizeModelLegacy1M(m)
+		}
 	}
 	if suffix == "" {
-		return alias
+		return promoteTo1M(alias)
 	}
 	return alias + suffix
+}
+
+// promoteTo1M advances a bare short alias to its "[1m]" form when the picker
+// offers only that form. The 1M unification exposes opus/sonnet/fable solely as
+// [1m] variants, so a prefs value carrying the bare alias — either stored before
+// the unification or resolved from a deprecated full id — must migrate rather
+// than reset to the runtime default. Aliases with no [1m] variant on the picker
+// (haiku, and the opusplan routing alias) are returned unchanged.
+func promoteTo1M(alias string) string {
+	oneM := alias + "[1m]"
+	for _, v := range template.ModelAliasPickerValues() {
+		if v == oneM {
+			return oneM
+		}
+	}
+	return alias
 }
 
 // normalizeModelLegacy1M handles the deprecated " <version> 1M" suffix form

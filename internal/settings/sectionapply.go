@@ -112,6 +112,19 @@ func applyTypedEdits(projectRoot string, fields []FieldDef, values []string) err
 		touched[f.Persist.Section] = true
 	}
 
+	// quality_extras_enabled forced true: the launch-tab toggle was removed from
+	// the web UI, so the field is never submitted from the form anymore. To keep
+	// the persisted value aligned with the always-on intent (and to migrate any
+	// pre-removal config that had it stored as false), force the flag to true
+	// whenever the quality section is touched by ANY quality-section edit. The
+	// forced value overrides any submitted input (defensive — the form no longer
+	// emits this field). Pre-removal configs migrate naturally on their next
+	// quality-section save. Saves that do not touch quality leave the file
+	// untouched (LoadRaw round-trip preserves the on-disk byte content).
+	if touched["quality"] {
+		cfg.Quality.QualityExtrasEnabled = true
+	}
+
 	for _, section := range []string{"git_strategy", "llm", "quality"} {
 		if !touched[section] {
 			continue

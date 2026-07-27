@@ -129,15 +129,16 @@ func ModelAliasFromCanonicalID(canonicalID string) string {
 // because the [1m] suffix is a Claude Code native context-window modifier, not
 // a separate model.
 func ModelAliasPickerValues() []string {
-	// opus[1m] is retained for back-compat even though Opus 5 is natively 1M:
-	// the [1m] suffix remains a valid Claude Code context-window modifier and
-	// historical prefs files may carry it (kept rather than dropped).
+	// 1M unification — opus/sonnet/fable are exposed ONLY as their [1m] variants
+	// (1M context always on); haiku has no 1M variant and stays as the base alias.
+	// The base aliases (opus/sonnet/fable) and the opusplan routing alias remain
+	// valid input values (ModelAliasTable is unchanged), but are no longer
+	// offered as picker options.
 	return []string{
-		"opus", "opus[1m]",
-		"sonnet", "sonnet[1m]",
-		"fable", "fable[1m]",
+		"fable[1m]",
+		"opus[1m]",
+		"sonnet[1m]",
 		"haiku",
-		"opusplan",
 	}
 }
 
