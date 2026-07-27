@@ -1019,6 +1019,131 @@ func TestPreToolHandler_QualityGate_Disabled(t *testing.T) {
 	}
 }
 
+// TestPreToolHandler_GitCommitNoVerify_Denied — AC-PGM-004 / REQ-PGM-006 (F5
+// mechanical): the PreToolUse guard at internal/hook/pre_tool.go mechanically
+// denies `git commit --no-verify` via a fast substring check. Under
+// defaultMode: bypassPermissions the PreToolUse deny is the SOLE blocking
+// mechanism; --no-verify would bypass the relocated git pre-commit gate
+// entirely (M1.b confirmed git suppresses the hook). This test exercises the
+// actual guard — NOT a documentation grep.
+func TestPreToolHandler_GitCommitNoVerify_Denied(t *testing.T) {
+	t.Parallel()
+
+	cfgProvider := &mockConfigProvider{cfg: newTestConfig()}
+	policy := DefaultSecurityPolicy()
+	handler := NewPreToolHandler(cfgProvider, policy)
+
+	tests := []struct {
+		name    string
+		command string
+	}{
+		{
+			name:    "standalone --no-verify flag",
+			command: `git commit --no-verify -m "test"`,
+		},
+		{
+			name:    "--no-verify in compound bash",
+			command: `git add . && git commit --no-verify -m "test"`,
+		},
+		{
+			name:    "--no-verify with --amend",
+			command: `git commit --amend --no-verify`,
+		},
+		{
+			name:    "--no-verify embedded mid-command",
+			command: `git commit --no-verify --amend -m "fix"`,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			toolInput, err := json.Marshal(map[string]string{"command": tt.command})
+			if err != nil {
+				t.Fatalf("marshal: %v", err)
+			}
+
+			input := &HookInput{
+				SessionID:     "sess-no-verify",
+				HookEventName: "PreToolUse",
+				ToolName:      "Bash",
+				ToolInput:     json.RawMessage(toolInput),
+			}
+
+			got, err := handler.Handle(context.Background(), input)
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+			if got == nil || got.HookSpecificOutput == nil {
+				t.Fatal("expected non-nil output")
+			}
+			if got.HookSpecificOutput.PermissionDecision != DecisionDeny {
+				t.Fatalf("expected deny for %q, got decision %q (reason: %s)",
+					tt.command, got.HookSpecificOutput.PermissionDecision,
+					got.HookSpecificOutput.PermissionDecisionReason)
+			}
+			// The deny reason MUST mention both --no-verify and the bypass
+			// alternative so the agent knows how to proceed legitimately.
+			reason := got.HookSpecificOutput.PermissionDecisionReason
+			if !strings.Contains(reason, "--no-verify") {
+				t.Errorf("deny reason should mention --no-verify, got: %s", reason)
+			}
+			if !strings.Contains(reason, "SKIP_MOAI_PRECOMMIT") {
+				t.Errorf("deny reason should mention SKIP_MOAI_PRECOMMIT bypass, got: %s", reason)
+			}
+		})
+	}
+}
+
+// TestPreToolHandler_GitCommitNoVerify_NotFalsePositive — AC-PGM-004 negative
+// case: a git commit WITHOUT --no-verify must NOT trip the bypass-defense guard.
+// Ensures the substring check is specific enough to not block legitimate commits.
+func TestPreToolHandler_GitCommitNoVerify_NotFalsePositive(t *testing.T) {
+	t.Parallel()
+
+	cfgProvider := &mockConfigProvider{cfg: newTestConfig()}
+	policy := DefaultSecurityPolicy()
+	handler := NewPreToolHandler(cfgProvider, policy)
+
+	// A commit message that mentions "--no-verify" as prose is a corner case.
+	// The substring check WILL match it (conservative over-blocking is safe —
+	// the user can override). The test documents this behavior rather than
+	// asserting it does NOT match. Use a clean commit message for the
+	// negative-case assertion.
+	toolInput, err := json.Marshal(map[string]string{
+		"command": `git commit -m "feat: add new feature"`,
+	})
+	if err != nil {
+		t.Fatalf("marshal: %v", err)
+	}
+
+	input := &HookInput{
+		SessionID:     "sess-clean-commit",
+		HookEventName: "PreToolUse",
+		ToolName:      "Bash",
+		ToolInput:     json.RawMessage(toolInput),
+	}
+
+	got, err := handler.Handle(context.Background(), input)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if got == nil || got.HookSpecificOutput == nil {
+		t.Fatal("expected non-nil output")
+	}
+	// The clean commit (no --no-verify) must NOT be denied by the bypass guard.
+	// It may be denied by the quality gate if gate.Enabled is true and the gate
+	// fails, but the deny reason would be the gate's output, not the --no-verify
+	// message. Assert the reason does NOT contain the --no-verify-specific text.
+	if got.HookSpecificOutput.PermissionDecision == DecisionDeny {
+		reason := got.HookSpecificOutput.PermissionDecisionReason
+		if strings.Contains(reason, "--no-verify would bypass") {
+			t.Errorf("clean commit was falsely denied by the --no-verify guard: %s", reason)
+		}
+	}
+}
+
 // TestPreToolHandler_QualityGate_NonGitCommand verifies that non-git-commit Bash
 // commands bypass the quality gate entirely.
 func TestPreToolHandler_QualityGate_NonGitCommand(t *testing.T) {

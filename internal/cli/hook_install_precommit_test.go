@@ -451,17 +451,45 @@ func TestPreCommitHook_SkipBypass(t *testing.T) {
 
 // TestPreCommitHook_NoStagedGo — AC-PC-008: a commit staging only non-Go files
 // exits 0 immediately (fast no-op).
+//
+// SPEC-PRETOOL-GATE-MOVE-001 amendment: the hook now also invokes `moai gate`
+// (the heavy vet/lint/test gate) when moai is on PATH. This test isolates the
+// fast-subset docs-only path by stripping moai from PATH, so the heavy-gate
+// block is skipped. The heavy gate itself is exercised by the reachability and
+// budget-independence tests in precommit_relocation_test.go. Stripping moai
+// also makes this test robust against a stale deployed binary that does not
+// yet recognise the `gate` verb.
 func TestPreCommitHook_NoStagedGo(t *testing.T) {
 	repo := gitInitRepo(t)
 	stageFile(t, repo, "docs/readme.txt", "hello\n")
 
-	code, stderr := runPreCommitHook(t, repo, nil)
+	code, stderr := runPreCommitHook(t, repo, []string{"PATH=" + stripMoaiFromPath(t)})
 	if code != 0 {
 		t.Fatalf("expected exit 0 (no staged Go), got %d\nstderr:\n%s", code, stderr)
 	}
 	if strings.Contains(stderr, "FAILED") {
 		t.Errorf("no-op path must not emit FAILED, got:\n%s", stderr)
 	}
+}
+
+// stripMoaiFromPath returns the current PATH with every directory containing
+// a `moai` binary removed, so the hook's `command -v moai` guard fails and the
+// heavy-gate-via-moai-gate block is skipped. Used by tests that exercise only
+// the fast-subset behavior (AC-PC-008). Mirrors the shim-PATH technique of
+// TestPreCommitHook_ToolchainAbsent without that test's full toolset shim.
+func stripMoaiFromPath(t *testing.T) string {
+	t.Helper()
+	var kept []string
+	for _, d := range filepath.SplitList(os.Getenv("PATH")) {
+		if d == "" {
+			continue
+		}
+		if _, err := os.Stat(filepath.Join(d, "moai")); err == nil {
+			continue
+		}
+		kept = append(kept, d)
+	}
+	return strings.Join(kept, string(os.PathListSeparator))
 }
 
 // TestPreCommitHook_GoVetBlocks — AC-PC-009: a gofmt-clean staged Go file that
