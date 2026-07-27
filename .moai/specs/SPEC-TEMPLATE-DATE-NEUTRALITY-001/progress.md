@@ -244,7 +244,7 @@ The run phase is complete and audit-ready. `status: in-progress` is retained del
 ```yaml
 sync_status: audit-ready
 sync_complete_at: 2026-07-27
-sync_commit_sha: pending-backfill-sync
+sync_commit_sha: 1a33ac79e
 changelog_entry_position: "CHANGELOG.md [Unreleased] > ### Changed (appended after SPEC-CLI-TUX-INIT-UPDATE-001)"
 frontmatter_status_transitions:
   spec_md: "in-progress -> completed"
