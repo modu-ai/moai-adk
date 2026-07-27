@@ -6,7 +6,7 @@ draft: false
 
 `moai ast-grep` 以语法树为单位扫描代码，`moai ast-edit` 则实际替换匹配到的代码。与基于文本的 `grep` 不同，两者都按语法结构匹配，因此不受空格、换行和变量名差异的影响。
 
-两个命令都调用 [ast-grep](https://ast-grep.github.io/) CLI（`sg`）。若未安装 `sg`，两个命令都不会报错，只输出提示信息后退出。
+两个命令都调用 [ast-grep](https://ast-grep.github.io/) CLI（`sg`），而未安装 `sg` 时二者的行为是刻意不同的。`ast-grep` 是常被接入 CI 作为门禁的检测命令，因此会把安装指引写到 stderr 并**以非零码退出**——从未运行的扫描不能被读作"没有问题"。`ast-edit` 是替换命令，"没有可应用的改动"本身就是正常的空操作，所以只输出提示并以 0 退出。安装 `sg` 请参阅 [ast-grep 快速开始](https://ast-grep.github.io/guide/quick-start.html)；`moai doctor` 也会报告它是否存在。
 
 > **读取与写入是分离的命令。** `ast-grep` 绝不修改文件，`ast-edit` 会修改。由于是独立命令，授予 `Bash(moai ast-grep:*)` 不会同时打开写入权限。
 

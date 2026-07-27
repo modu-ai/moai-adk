@@ -17,6 +17,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/modu-ai/moai-adk/internal/astgrep"
 	"github.com/modu-ai/moai-adk/internal/cli/printer"
 	"github.com/modu-ai/moai-adk/internal/cli/uikit"
 	"github.com/modu-ai/moai-adk/internal/constitution"
@@ -166,6 +167,7 @@ func runGroupedChecksObserved(verbose bool, filterCheck string, obs checkObserve
 		{"Git", checkGit},
 		{"Claude Code", checkClaudeCode},
 		{"GitHub CLI", checkGitHubCLI},
+		{"ast-grep CLI", checkAstGrep},
 	}
 
 	moaiChecks := []checkFunc{
@@ -339,6 +341,46 @@ func checkGitHubCLI(verbose bool) DiagnosticCheck {
 	check.Message = strings.TrimSpace(first)
 	if verbose {
 		check.Detail = fmt.Sprintf("path: %s", ghPath)
+	}
+	return check
+}
+
+// checkAstGrep verifies the ast-grep (sg) CLI is installed.
+//
+// Warn, never Fail: sg is an optional external tool, so Fail would misreport an
+// intact installation as broken and would add an entry to the --fix list that
+// `moai init` cannot fix. The check exists because both `moai ast-grep` and the
+// commit-time quality gate degrade when sg is absent, and until now nothing in
+// the diagnostics said so.
+//
+// MOAI_SG_VERSION_OVERRIDE env short-circuits exec for golden-test determinism,
+// mirroring checkGitHubCLI — sg is present on some machines and absent on
+// others, which would otherwise make the doctor snapshots host-dependent.
+func checkAstGrep(verbose bool) DiagnosticCheck {
+	check := DiagnosticCheck{Name: "ast-grep CLI"}
+	if v := uikit.SgVersionOverride(); v != "" {
+		check.Status = uikit.CheckOK
+		check.Message = v
+		return check
+	}
+	sgPath, err := exec.LookPath("sg")
+	if err != nil {
+		check.Status = uikit.CheckWarn
+		check.Message = fmt.Sprintf("sg not found — 'moai ast-grep' cannot scan and the commit gate skips its rules; install from %s", astgrep.InstallURL)
+		return check
+	}
+	out, err := exec.Command("sg", "--version").Output()
+	if err != nil {
+		check.Status = uikit.CheckWarn
+		check.Message = "sg found but version check failed"
+		return check
+	}
+	// sg --version prints "ast-grep X.Y.Z" on the first line.
+	first := strings.SplitN(string(out), "\n", 2)[0]
+	check.Status = uikit.CheckOK
+	check.Message = strings.TrimSpace(first)
+	if verbose {
+		check.Detail = fmt.Sprintf("path: %s", sgPath)
 	}
 	return check
 }

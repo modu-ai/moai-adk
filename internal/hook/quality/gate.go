@@ -248,7 +248,11 @@ func NewQualityGate(cfg *GateConfig) *QualityGate {
 // @MX:ANCHOR: [AUTO] Quality gate executor; primary entry point called by multiple hook handlers before git operations
 // @MX:REASON: fan_in=35, invoked by SubagentStop and TeammateIdle handlers; returns block/pass decision that controls git flow
 // Run executes quality gate checks sequentially.
-// Returns (passed bool, output string) where output contains error details on failure.
+// Returns (passed bool, output string). On failure output carries the error
+// details. On success output is usually empty, but carries a non-blocking
+// notice when a step passed with something to report — an ast-grep step that
+// skipped because sg is absent, for instance. Callers must not read an empty
+// success output as the only possible success shape.
 // When gate is disabled (config.Enabled == false), returns (true, "") immediately.
 // The gate detects the project language and runs the corresponding toolchain.
 func (g *QualityGate) Run(ctx context.Context) (bool, string) {
@@ -276,14 +280,21 @@ func (g *QualityGate) Run(ctx context.Context) (bool, string) {
 		}
 	}
 
+	// passReason carries a passing step's notice out to Run's caller. Dropping
+	// it here is what left an absent ast-grep scanner indistinguishable from a
+	// clean scan: the step reported the skip and this frame threw it away.
+	var passReason string
+
 	// Step 2.5: ast-grep domain rules
 	// ASTG-UPGRADE-001: switched to RunAstGrepGateV2 which uses the unified Scanner
 	if g.config.AstGrepGate != nil && g.config.AstGrepGate.Enabled {
 		// REQ-HCWA-007: route cwd resolution through resolveQualityProjectDir.
 		projectDir := resolveQualityProjectDir(*g.config, "QualityGate.Run.astgrep")
-		if ok, out := RunAstGrepGateV2(ctx, projectDir, g.config.AstGrepGate); !ok {
+		ok, out := RunAstGrepGateV2(ctx, projectDir, g.config.AstGrepGate)
+		if !ok {
 			return false, out
 		}
+		passReason = out
 	}
 
 	// Step 3: test step (skippable)
@@ -293,7 +304,7 @@ func (g *QualityGate) Run(ctx context.Context) (bool, string) {
 		}
 	}
 
-	return true, ""
+	return true, passReason
 }
 
 // detectToolchain finds the matching toolchain by checking marker files in ProjectDir.

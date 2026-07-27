@@ -2,6 +2,7 @@ package astgrep_test
 
 import (
 	"context"
+	"errors"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -9,6 +10,27 @@ import (
 
 	"github.com/modu-ai/moai-adk/internal/astgrep"
 )
+
+// assertScanErrForRulesDirCase checks the error from a Scan whose subject is
+// the rules-directory behavior rather than scanner availability.
+//
+// Those two conditions used to be indistinguishable — both produced
+// ([]Finding{}, nil) — so these tests could assert a nil error and pass
+// regardless of whether sg existed. Scan now reports an unresolvable scanner
+// as ErrScannerUnavailable, so the expected error depends on the host, and
+// each branch is asserted precisely instead of accepting either.
+func assertScanErrForRulesDirCase(t *testing.T, err error, subject string) {
+	t.Helper()
+	if _, lookErr := exec.LookPath("sg"); lookErr != nil {
+		if !errors.Is(err, astgrep.ErrScannerUnavailable) {
+			t.Errorf("Scan() error = %v; with sg absent it must report ErrScannerUnavailable (%s)", err, subject)
+		}
+		return
+	}
+	if err != nil {
+		t.Errorf("Scan() error = %v; must not return an error %s", err, subject)
+	}
+}
 
 // TestNewScanner_DefaultConfig: verifies that Scanner creation succeeds with default Config
 func TestNewScanner_DefaultConfig(t *testing.T) {
@@ -41,9 +63,7 @@ func TestScanner_SGNotAvailable(t *testing.T) {
 
 	s := astgrep.NewScanner(cfg)
 	findings, err := s.Scan(context.Background(), ".")
-	if err != nil {
-		t.Errorf("Scan() error = %v; must return nil error when sg is absent or rules dir is empty", err)
-	}
+	assertScanErrForRulesDirCase(t, err, "for an empty rules directory")
 	if len(findings) != 0 {
 		t.Errorf("Scan() len(findings) = %d; must return empty slice for empty rules directory", len(findings))
 	}
@@ -57,9 +77,7 @@ func TestScanner_EmptyRulesDir(t *testing.T) {
 	s := astgrep.NewScanner(cfg)
 
 	findings, err := s.Scan(context.Background(), ".")
-	if err != nil {
-		t.Errorf("Scan() error = %v; must not return error for empty rules directory", err)
-	}
+	assertScanErrForRulesDirCase(t, err, "for an empty rules directory")
 	if findings == nil {
 		t.Error("Scan() returned nil findings; must return empty slice")
 	}
@@ -72,9 +90,7 @@ func TestScanner_RulesDirNotExist(t *testing.T) {
 	s := astgrep.NewScanner(cfg)
 
 	findings, err := s.Scan(context.Background(), ".")
-	if err != nil {
-		t.Errorf("Scan() error = %v; must not return error for non-existent rules directory", err)
-	}
+	assertScanErrForRulesDirCase(t, err, "for a non-existent rules directory")
 	if len(findings) != 0 {
 		t.Errorf("Scan() len(findings) = %d; must return empty slice when no rules exist", len(findings))
 	}
@@ -354,9 +370,7 @@ func TestParseSGFindings_EmptyOutput(t *testing.T) {
 	s := astgrep.NewScanner(cfg)
 
 	findings, err := s.Scan(context.Background(), ".")
-	if err != nil {
-		t.Errorf("Scan() error = %v", err)
-	}
+	assertScanErrForRulesDirCase(t, err, "for an empty rules directory")
 	if findings == nil {
 		t.Error("Scan() returned nil; must return empty slice")
 	}
