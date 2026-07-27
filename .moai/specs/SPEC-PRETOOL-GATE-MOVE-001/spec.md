@@ -1,7 +1,7 @@
 ---
 id: SPEC-PRETOOL-GATE-MOVE-001
 title: "Relocate commit-quality gate off PreToolUse 5s budget to native git pre-commit hook"
-version: "0.1.0"
+version: "0.2.0"
 status: draft
 created: 2026-07-28
 updated: 2026-07-28
@@ -19,6 +19,7 @@ tags: "pretool, gate, precommit, hook, census-p1b, critical"
 | Version | Date       | Author        | Change                                                                                                                                                                                                                                                                                                                                              |
 |---------|------------|---------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | 0.1.0   | 2026-07-28 | manager-spec  | Initial draft — plan-phase artifacts (Tier M). Census C-2 (CRITICAL) fix: relocate heavy vet/lint/test gate off the PreToolUse 5s hook budget to a native git pre-commit hook. User-approved direction (e). Extends the deployment-layer `PreCommitInstaller` shipped by SPEC-PRECOMMIT-001; PRESERVEs the ast-grep scanner tuned by SPEC-FALSE-ALLCLEAR-GUARD-001 (PR #1183, the worktree base). |
+| 0.2.0   | 2026-07-28 | manager-spec  | Iteration-2 amendments per plan-audit F1/F2/F5 — AC-PGM-003 end-to-end fixture (F1); AC-PGM-014 conditional + REQ-PGM-013 fallback (F2); REQ-PGM-006 mechanical --no-verify guard committed (F5). |
 
 ## A. Context (Why)
 
@@ -117,7 +118,7 @@ The exact extension shape (single combined script vs layered call) is an M2 desi
 
 ### C.4 Bypass defense
 
-- **REQ-PGM-006** (Event-detected): **When** a Bash command contains `git commit` together with `--no-verify`, the orchestrator (via PreToolUse doctrine or `.claude/rules/moai/development/coding-standards.md` §Bash Risk-Amplifier destructive-primitive extension) SHALL deny or require explicit user confirmation, as defense-in-depth — git pre-commit is mechanically bypassed by `--no-verify` and cannot enforce this alone.
+- **REQ-PGM-006** (Event-detected, MUST-PASS mechanical): **When** a Bash command contains `git commit` together with `--no-verify` (as a standalone argument OR as a substring of a compound Bash command), the PreToolUse hook at `internal/hook/pre_tool.go` SHALL detect the pattern via a fast sub-millisecond regex and emit deny/ask via the existing PreToolUse path. This is mechanically enforceable (NOT merely doctrinal): under `defaultMode: bypassPermissions` the PreToolUse deny is the sole blocking mechanism between Claude Code and a `--no-verify` bypass of the relocated gate, so the detection MUST live on the PreToolUse path. The `.claude/rules/moai/development/coding-standards.md` §Bash Risk-Amplifier Doctrine extension names `git commit --no-verify` as a destructive primitive at the doctrine layer; the `internal/hook/pre_tool.go` guard is the mechanical enforcement. (F5 amendment, plan-audit iter-1 — the doctrine-only alternative was rejected because a `bypassPermissions` agent could still issue `--no-verify` and bypass the relocated gate.)
 
 ### C.5 Language neutrality
 
@@ -140,6 +141,10 @@ The exact extension shape (single combined script vs layered call) is an M2 desi
 ### C.9 Fallback path
 
 - **REQ-PGM-012** (State-driven): **While** M1 verification determines that git pre-commit does NOT fire under Claude Code's `git commit` Bash invocation, the plan SHALL fall back to either census option (d) split-gate (5s sync pre-check + async full check) or option (e-prime) standalone `moai gate` CLI invoked explicitly by the user/CI.
+
+### C.10 Conditional error-surfacing fallback (M1.c-negative branch)
+
+- **REQ-PGM-013** (State-driven): **While** M1.c verification finds that Claude Code's Bash tool does NOT surface raw git pre-commit stderr to the user (the `P1B_REJECT_MARKER_<random>` sentinel is absent from the Bash tool result), M2 SHALL add an explicit surfacing step — a PreToolUse `systemMessage` or a structured next-turn output bound to a dedicated AC — so the rejection reason reaches the user via a second channel when git's native stderr path is unavailable. This is the same unverified-reachability class as the Gap 3 hazard in SPEC-FALSE-ALLCLEAR-GUARD-001: AC-PGM-014 MUST NOT pre-commit to "no additional plumbing is required" before M1.c validates that Claude Code actually surfaces the stderr. (F2 amendment, plan-audit iter-1.)
 
 ## D. Constraints (HARD)
 

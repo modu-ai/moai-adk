@@ -22,8 +22,9 @@
 - chosen_direction: (e) relocate heavy gate OFF PreToolUse to native git pre-commit hook
 - fallback_direction: (e-prime) standalone `moai gate` CLI if M1.a finds git pre-commit does NOT fire under Claude Code (REQ-PGM-012)
 - tier: M
-- req_count: 12 (REQ-PGM-001 .. REQ-PGM-012)
-- ac_count: 15 (AC-PGM-001 .. AC-PGM-015, all MUST-PASS)
+- req_count: 13 (REQ-PGM-001 .. REQ-PGM-013; REQ-PGM-013 added at v0.2.0 per F2 amendment — conditional error-surfacing fallback bound to M1.c-negative branch)
+- ac_count: 15 (AC-PGM-001 .. AC-PGM-015, all MUST-PASS; AC-PGM-003 tightened to end-to-end fixture per F1, AC-PGM-004 tightened to mechanical guard per F5, AC-PGM-014 made conditional on M1.c per F2)
+- iter_2_delta: plan-audit iter-1 PASS (CONDITIONAL) 0.92 → F1/F2/F5 amendments applied at v0.2.0 (AC-PGM-003 end-to-end fixture; AC-PGM-014 conditional + REQ-PGM-013 fallback; REQ-PGM-006 mechanical --no-verify guard committed). F3/F4/F6 are LOW and deferred to run-phase M1.
 
 ## §E.2 Run-phase Evidence
 

@@ -62,25 +62,35 @@ Then git exits 0
 And `git rev-parse HEAD` shows the new commit
 ```
 
-### AC-PGM-003 — Budget independence, the core fix
+### AC-PGM-003 — Budget independence, the core fix (END-TO-END fixture, F1 amendment)
 
 ```gherkin
-Given a repo whose full vet/lint/test suite takes >5s wall-clock
-# (use a test-only slow step if no real suite crosses 5s in CI; e.g. a synthetic `time.sleep(8s)` test)
-When Claude Code runs `git commit` via the Bash tool
-Then the gate completes (does NOT truncate at 5s)
-And the deny verdict reaches git (not silently dropped)
-And the commit is rejected if any step fails, OR succeeds if all steps pass
+Given a fresh git repo with the relocated gate installed (moai init)
+And a staged Go file containing a `go vet` failure (e.g. unreachable code, shadowed err)
+And the gate's full vet/lint/test path is measured to exceed 5s wall-clock
+# (record the baseline duration in progress.md §E.2 — cold-cache `go vet ./...` on this repo
+#  already exceeds 3s, so the suite crosses 5s naturally; if not, a test-only slow step
+#  synthesizes the >5s path)
+When Claude Code runs `git commit -m "test"` via the Bash tool (the actual Claude Code Bash code path — NOT a standalone `gate.Run()` timing test)
+Then wall-clock observation confirms the gate ran PAST the 5s PreToolUse budget (t > 5s, measured via `/usr/bin/time -p git commit ...`)
+And the commit is rejected by the relocated git pre-commit gate (git exits non-zero)
+And `git rev-parse HEAD` does not show a new commit (the commit object was never created)
+And the bad-commit rejection is NOT silently dropped — the deny reached git via the relocation surface, proving budget independence at the integration boundary where the original defect lives
+# This AC is NOT satisfiable by a standalone gate.Run() timing test alone —
+# the fixture MUST exercise Claude Code's Bash tool end-to-end so the budget-independence
+# claim is grounded at the actual integration boundary, not at a synthetic sub-component.
 ```
 
-### AC-PGM-004 — Bypass defense, `--no-verify` denied
+### AC-PGM-004 — Bypass defense, `--no-verify` mechanically denied (MUST-PASS, F5 amendment)
 
 ```gherkin
-Given the PreToolUse handler with the coding-standards.md §Bash Risk-Amplifier destructive-primitive extension
+Given the PreToolUse guard at `internal/hook/pre_tool.go` is installed and registered
+And the guard carries a fast sub-millisecond regex detecting `git commit` together with `--no-verify` (standalone arg OR substring of a compound Bash command)
 When Claude Code runs `git commit --no-verify -m "test"` via the Bash tool
-Then the command is denied or surfaced for explicit user confirmation
-And the defense-in-depth decision is logged
-And the user is informed that `--no-verify` bypasses the relocated gate
+Then the PreToolUse guard emits deny (or ask) via the existing fast PreToolUse path
+And the deny decision is observable in the PreToolUse hook output (mechanical test fixture exercising the actual guard — NOT a documentation grep)
+And the user is informed that `--no-verify` bypasses the relocated git pre-commit gate
+And the guard's regex completes in <1ms (well within the 5s PreToolUse budget — the heavy gate is no longer on this path, so the budget is no longer a constraint)
 ```
 
 ### AC-PGM-005 — Language neutrality, ≥3 non-Go languages gated
@@ -190,14 +200,25 @@ And exits 0 without running the heavy gate
 And the commit proceeds despite the defect (consistent with SPEC-PRECOMMIT-001 REQ-PC-012)
 ```
 
-### AC-PGM-014 — Error surfacing, Claude sees rejection
+### AC-PGM-014 — Error surfacing, conditional on M1.c outcome (REQ-PGM-013 fallback, F2 amendment)
 
 ```gherkin
-Given a git pre-commit rejection with a specific marker string on stderr (P1B_REJECT_MARKER_<random>)
-When Claude Code runs `git commit` via the Bash tool
-Then the Bash tool result includes the marker string in its stderr output
+Given M1.c has been executed and its outcome is recorded in progress.md §E.2
+
+# M1.c-positive branch (Claude Code surfaces git pre-commit stderr natively):
+When M1.c finds the P1B_REJECT_MARKER_<random> sentinel DOES appear in the Bash tool result
+Then AC-PGM-014 PASSes on the native-stderr path — the marker string is visible in the Bash tool result's stderr
 And Claude can read and relay the rejection reason to the user
-And no additional plumbing is required (git's native stderr is the surfacing path)
+And no additional surfacing plumbing is required (git's native stderr IS the surfacing path)
+And this outcome is recorded as the M1.c-positive branch in progress.md §E.2
+
+# M1.c-negative branch (Claude Code does NOT surface git pre-commit stderr):
+When M1.c finds the P1B_REJECT_MARKER_<random> sentinel is ABSENT from the Bash tool result
+Then REQ-PGM-013 fallback binds — M2 SHALL add an explicit surfacing step (a PreToolUse systemMessage or a structured next-turn output)
+And this AC becomes conditional on that M2 surfacing step
+And the surfacing step carries its own dedicated AC (added at run-phase when the M1.c-negative branch fires)
+# This AC MUST NOT pre-commit to "no additional plumbing is required" before M1.c validates
+# that Claude Code actually surfaces git pre-commit stderr to the user (F2 amendment, plan-audit iter-1).
 ```
 
 ### AC-PGM-015 — No PreToolUse regression

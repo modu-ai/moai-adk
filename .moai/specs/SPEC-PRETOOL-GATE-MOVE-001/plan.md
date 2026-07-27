@@ -47,7 +47,7 @@ Tier M = 3 artifacts + progress.md = 4 files. No research.md (M1 unknowns are em
 - `internal/cli/wave1_sync_test.go` — extend the byte-identity test to cover the extended pre-commit content (mirror of `TestPrePushTemplateMatchesConstant`).
 - `internal/cli/hook_install_test.go` — extend installer tests to assert the heavy-gate invocation token is present after fresh install + after update.
 - `.claude/rules/moai/development/coding-standards.md` §Bash Risk-Amplifier Doctrine — extend the destructive-primitive set to include `git commit --no-verify`.
-- (Possibly) `internal/hook/pre_tool.go` + `internal/hook/pre_tool_test.go` — if the `--no-verify` detection is implemented mechanically as a PreToolUse guard.
+- `internal/hook/pre_tool.go` + `internal/hook/pre_tool_test.go` — FIRM COMMITMENT (F5 mechanical, plan-audit iter-1): the `--no-verify` detection is implemented as a PreToolUse guard with a fast sub-millisecond regex. AC-PGM-004 is mechanically enforceable MUST-PASS via this guard; a `bypassPermissions` agent cannot bypass it because the PreToolUse deny is the sole blocking mechanism under that mode. No longer optional pending-M1-design — the cross-evidence (deny is the ONLY blocking mechanism under `bypassPermissions`) made the mechanical path the only defensible choice.
 
 **Fallback path (e-prime, if M1 rules out (e-1))**:
 - New CLI surface exposing `moai gate` as a standalone verb (if not already present — verify at M1).
@@ -230,20 +230,22 @@ Ordered by decision-reversibility (highest-change-likelihood decisions first).
 **Why separate from M2**: the bypass defense is a doctrinal + PreToolUse-side concern, independent of the relocation surface. It can be developed in parallel with M2's template work (subject to the orchestrator's no-concurrent-write-capable-agents rule).
 
 **Sub-tasks**:
-- Extend `.claude/rules/moai/development/coding-standards.md` §Bash Risk-Amplifier Doctrine destructive-primitive set: add `git commit --no-verify` next to the existing `git push --no-verify` entry. Both bypass git's safety net; both require explicit confirmation even under `bypassPermissions`.
-- (Optional, pending M1 design) Extend `internal/hook/pre_tool.go` to detect `git commit --no-verify` and emit deny/ask via the existing PreToolUse hook path. If coded, the detection MUST be a fast regex check (sub-millisecond) to stay within the 5s PreToolUse budget — the heavy gate is no longer on PreToolUse, so the budget is no longer a constraint for this detection either.
+- Extend `.claude/rules/moai/development/coding-standards.md` §Bash Risk-Amplifier Doctrine destructive-primitive set: add `git commit --no-verify` next to the existing `git push --no-verify` entry (doctrine-level documentation of the destructive-primitive set; both bypass git's safety net).
+- Extend `internal/hook/pre_tool.go` to detect `git commit --no-verify` (standalone arg OR substring of a compound Bash command) via a fast sub-millisecond regex and emit deny/ask via the existing PreToolUse hook path. **FIRM COMMITMENT (F5 mechanical, plan-audit iter-1) — NOT optional**: under `defaultMode: bypassPermissions` the PreToolUse deny is the sole blocking mechanism, so the detection MUST live on the PreToolUse path; a doctrine-only documentation grep would leave a `bypassPermissions` agent free to issue `--no-verify` and bypass the relocated gate. The detection MUST be a fast regex check (sub-millisecond) — the heavy gate is no longer on PreToolUse, so the 5s budget is no longer a constraint for this detection either.
+- Add/extend `internal/hook/pre_tool_test.go` with a mechanical test fixture: stage a `git commit --no-verify -m test` PreToolUse payload → assert the guard emits deny. This is the AC-PGM-004 mechanical test (NOT a documentation grep).
 
 **Files affected**:
 - `.claude/rules/moai/development/coding-standards.md`
-- (Possibly) `internal/hook/pre_tool.go`, `internal/hook/pre_tool_test.go`
+- `internal/hook/pre_tool.go` (FIRM — F5 mechanical)
+- `internal/hook/pre_tool_test.go` (FIRM — F5 mechanical)
 
 ### M4 — Tests (reachability, language-neutrality, template-neutrality, bypass defense, byte-identity)
 
 **Sub-tasks** (each maps to one or more ACs in acceptance.md §A):
 
 - **Reachability test** (AC-PGM-001, AC-PGM-002): stage a Go file with a `go vet` failure → run the relocated gate → assert commit rejected; mirror with a clean file → assert commit passes.
-- **Budget-independence test** (AC-PGM-003): simulate a >5s gate duration via a test-only slow step → assert deny still reaches the caller (the relocation surface has no 5s cap).
-- **Bypass-defense test** (AC-PGM-004): PreToolUse-side `--no-verify` detection denies or surfaces the command.
+- **Budget-independence test** (AC-PGM-003, END-TO-END fixture per F1 amendment): exercise Claude Code's Bash tool end-to-end — staged bad commit + wall-clock observation t>5s (via `/usr/bin/time -p`) + commit rejected by the relocated git pre-commit gate. NOT satisfiable by a standalone `gate.Run()` timing test (F1 amendment — the budget-independence claim must ground at the integration boundary, not a synthetic sub-component).
+- **Bypass-defense test** (AC-PGM-004, mechanical MUST-PASS per F5 amendment): PreToolUse guard at `internal/hook/pre_tool.go` mechanically denies `git commit --no-verify` via fast sub-millisecond regex — the test exercises the actual guard, NOT a documentation grep.
 - **Language-neutrality test** (AC-PGM-005): parameterized test across ≥3 non-Go languages (Python + `ruff check .` failing, Rust + `cargo clippy -D warnings` failing, Node.js + `eslint .` failing). Each test stages a language-specific defect file and asserts the relocated gate catches it.
 - **Fast-check preservation tests** (AC-PGM-006, AC-PGM-007): regression tests that ast-grep scanner and frozen-zone guard still fire on PreToolUse (unchanged by this SPEC — baseline captured at M1 §C pre-flight).
 - **Template-neutrality grep test** (AC-PGM-008): grep the distributed template for internal SPEC IDs / REQ tokens / commit SHAs — expect 0 matches.
