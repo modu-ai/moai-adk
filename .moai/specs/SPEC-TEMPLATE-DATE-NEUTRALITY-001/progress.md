@@ -24,7 +24,42 @@ Zero clarification markers remain in `plan.md`. One question is explicitly **def
 
 ## §E.2 Run-phase Evidence
 
-_<pending run-phase>_
+> M1-M3 evidence rows are not recorded in this section; the entries below cover M4-M5 only.
+
+### M4-M5 — carve-out + report cap (2026-07-27)
+
+Commits: `0888cf9ad` (M4), `b933c28e4` (M5). Single file changed: `internal/template/internal_content_leak_test.go`.
+
+| AC | Status | Judgment command | Actual output |
+|---|---|---|---|
+| AC-TDN-009 | PASS | `awk '/^func (collectLeakViolations\|isPedagogicallyAllowed\|isDateAllowlisted)/,/^}/' internal/template/internal_content_leak_test.go \| grep -cE 'LineStart\|LineEnd\|lineNo\|LineNumber'` | `0` (window 68 lines, all 3 functions captured; injection probe returned `1`, revert returned `0`) |
+| AC-TDN-010 half 1 | PASS | `grep -c "limit := 50" internal/template/internal_content_leak_test.go` | `0` |
+| AC-TDN-010 half 2 | PASS | injection recipe on `NOTICE.md`, then `grep -oE 'full listing: [^ ]+'` | `full listing: /var/folders/.../T/moai-template-leak-4123967095.log`; `test -f` succeeded; probe reverted |
+| AC-TDN-012 | PASS | `MOAI_TEMPLATE_LEAK_STRICT=1 go test ./internal/template/ -run TestTemplateNoInternalContentLeak -count=1` | `ok`, `exit=0` (baseline was `78 occurrences, mode=strict`) |
+| AC-TDN-002 (sanity) | PASS | narrow tier, same target | `ok`, `exit=0` |
+| AC-TDN-013 (sanity) | PASS | `go test ./internal/template/ -run TestTemplateNeutralityAudit -count=1` | `ok`, `exit=0` |
+
+Carve-out accounting — the 78 strict findings mapped 1:1 onto the 78 distinct `(file, date)` PRESERVE pairs of `triage.tsv`, all of class `S1-internal-date`; the S2 short-sha class contributed 0 both before and after:
+
+| Mechanism | Categories | Findings carved |
+|---|---|---|
+| structural gate | DC-1 (48) + DC-4 (3) | 51 |
+| content-anchored allowlist (27 entries) | DC-3 (9) + DC-2b (11) + DC-5 (7) | 27 |
+
+Over-carving probes (each injected, observed, reverted; `git status --porcelain` clean after each):
+
+| Probe | Expectation | Result |
+|---|---|---|
+| dated prose line in a skill body | flagged | flagged (`match=2029-12-31`) |
+| different date inside an allowlisted file | flagged | flagged (`match=2027-05-05`) — allowlist is `(file, date)`-pinned, not file-wide |
+| date repeated on a gated frontmatter line and a prose line | flagged | flagged (`match=2026-01-11`) — the structural gate does not poison per-file dedup |
+| frontmatter-shaped line inside a fence | flagged | flagged (`match=2029-11-11`) — fence tracking holds |
+| future attribution line in `NOTICE.md` (AC-TDN-015 A) | clean | clean |
+| `**Import Date (probe)**: 2027-09-09` in `NOTICE.md` | clean | clean |
+| future frontmatter bump (AC-TDN-015 B) | clean | clean |
+| arbitrary dated comment in `NOTICE.md` | flagged | flagged — DC-4 gate is `(file AND attribution-line-shape)`, not whole-file |
+
+Regression + build + lint: `go test -count=1 ./...` exit 0 (105 ok / 0 FAIL / 3 no-test); `go build ./...` exit 0; `GOOS=windows GOARCH=amd64 go build ./...` exit 0; `golangci-lint run --timeout=2m` exit 0, `0 issues` (no new, no pre-existing baseline); `make build` exit 0 with `catalog.yaml` SHA256 unchanged (`999046874371ce42d930b097af68b7101812790d4e8963675dacf0bc8b895225` before and after), as expected for a `_test.go`-only change.
 
 ## §F Phase 4 Mode Selection
 
