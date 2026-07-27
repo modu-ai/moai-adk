@@ -191,6 +191,10 @@ Implements REQ-HLR-005. Satisfies AC-HLR-007. **Correction (2026-07-28):** the o
 
 Implements REQ-HLR-006, 007. Satisfies AC-HLR-009, 010. Requires resolving `spec.md` §G question 3 (migrate `lessons.md` into topic files, or restore it as an index).
 
+**§G q3 resolved (2026-07-28, AskUserQuestion): option (a) — designate the topic-file convention (`feedback_*.md` + `MEMORY.md` index) as the single lesson store; `lessons.md` (47 KB, 40+ days stale) becomes a `[SUPERSEDED]` legacy artifact (content not migrated).** Rationale recorded in `spec.md` §G q3. The two M5 deliverables:
+1. **AC-009 (lesson store):** edit `moai-constitution.md` § Lessons Protocol (local + template mirror + `make build`) to name the topic-file convention instead of `lessons.md`; mark `lessons.md` `[SUPERSEDED]`.
+2. **AC-010 (inbox drain):** name the drain actor (orchestrator) + trigger in doctrine, and execute a drain that reduces the `.moai/lessons-inbox.jsonl` backlog (870 lines). The drain mechanism is doctrine-only today (no Go backstop — parallel to the M3 routing-ledger finding).
+
 ### F.5 M6 — falsifiability + CLI reporting  *(lowest reversibility — mechanical)*
 
 Implements REQ-HLR-008, 010. Satisfies AC-HLR-011, 012, 013. Help-text completion, `list`/`doctor` agreement, and `prediction:`/`verified:` on this SPEC's own lesson entries.
