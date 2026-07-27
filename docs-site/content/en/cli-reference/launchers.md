@@ -17,7 +17,7 @@ draft: false
 ## moai cc — Claude backend
 
 ```bash
-moai cc [-p profile] [-- claude-args...]
+moai cc [-p profile] [-w [name]] [-- claude-args...]
 ```
 
 Removes GLM-specific environment variables from `.claude/settings.local.json`, resets team mode if it was enabled, and then runs Claude Code.
@@ -29,6 +29,7 @@ Removes GLM-specific environment variables from `.claude/settings.local.json`, r
 | `-b, --bypass` | Shorthand for `--permission-mode bypassPermissions` |
 | `-c, --continue` | Continue the previous session |
 | `-m, --model <model>` | Override the model selection |
+| `-w, --worktree [name]` | Launch inside an isolated git worktree (`.claude/worktrees/<name>/`) — name omitted means auto-generated |
 | `--chrome` / `--no-chrome` | Toggle the Chrome MCP |
 
 The permission mode is one of `default`, `acceptEdits` (project default), `plan`, `auto`, `bypassPermissions`, `dontAsk`. The `auto` mode runs a background classifier that inspects actions and requires a Team plan + Sonnet/Opus 4.6 or later.
@@ -74,6 +75,29 @@ On launch it validates the tmux session, removes the GLM environment in the lead
 ## Profiles (`-p` flag)
 
 All three launchers accept `-p <name>` to select a named profile, which sets `CLAUDE_CONFIG_DIR` to `~/.moai/claude-profiles/<name>/`. Use this to keep multiple accounts / setting sets separate.
+
+## Isolated worktree (`-w` flag)
+
+All three launchers accept `-w [name]` to start the session inside an isolated git worktree, collapsing the two-step `cd` then launch into a single command.
+
+```bash
+moai cc -w feat-login    # Start in .claude/worktrees/feat-login/
+moai cc -w               # Auto-generated name
+moai glm -w feat-login   # Same for the GLM backend
+moai cg -w feat-login    # Same for the hybrid
+```
+
+Behavior:
+
+- The worktree path is `.claude/worktrees/<name>/`. `<name>` is a **worktree name** — not a branch name and not a SPEC ID.
+- If a worktree of that name already exists it is **reused rather than recreated**, so this doubles as the re-entry path into a tree an earlier session was working in.
+- Omitting the name lets Claude Code generate one.
+- The `-w=name`, `--worktree name`, and `--worktree=name` spellings are all accepted and mean the same thing.
+- Arguments after `--` pass through to Claude Code untouched and are unaffected by this rewrite.
+
+{{< callout type="info" >}}
+Naming the worktree after the SPEC ID (`moai cc -w SPEC-XXX-001`) lets a session handoff bring the next session back into the same working tree with one line.
+{{< /callout >}}
 
 ## Related documents
 

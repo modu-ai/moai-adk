@@ -162,7 +162,19 @@ With L3 `--worktree`, SPEC artifacts and L1 isolation base live in a different c
 
 ### Block 0 Format
 
-Block 0 is **prepended** before Block 1:
+Block 0 is **prepended** before Block 1. Two forms exist; pick by **where the worktree lives**.
+
+**Form A — `.claude/worktrees/<name>/` worktree (single command, preferred where it applies):**
+
+```
+[New Terminal — START IN WORKTREE]
+$ moai cc -w <worktree-name>     # or: moai glm -w <name> | moai cg -w <name>
+   └─ Claude Code session starts here (cwd = .claude/worktrees/<name>/)
+```
+
+`-w <name>` takes the **worktree name**, not a branch name and not a SPEC ID; it resolves to `.claude/worktrees/<name>/`. An existing worktree of that name is **reused, not recreated**, which is what makes this a valid re-entry path. Naming the worktree after the SPEC ID at creation time (`git worktree add -b feat/SPEC-X-001 .claude/worktrees/SPEC-X-001 origin/main`) lets the resume line read `moai cc -w SPEC-X-001`.
+
+**Form B — L2 worktree at `~/.moai/worktrees/<project>/<spec>/` (explicit `cd`):**
 
 ```
 [New Terminal — START IN WORKTREE]
@@ -170,6 +182,8 @@ $ cd <worktree-absolute-path>
 $ <launcher>     # Choose one: moai cc | moai glm | claude
    └─ Claude Code session starts here (cwd = worktree)
 ```
+
+Form A does **not** cover Form B: `-w` resolves only under `.claude/worktrees/`, so an L2 worktree created by `/moai plan --worktree` (which lives under `~/.moai/worktrees/`) still requires the explicit `cd`. Emitting `moai cc -w <spec>` for an L2 worktree would silently create a **new** `.claude/worktrees/<spec>/` branched from the default remote branch instead of entering the intended tree — precondition `0)` below is what catches that.
 
 ### `/cd` cache-preserving alternative (CC 2.1.169+)
 
