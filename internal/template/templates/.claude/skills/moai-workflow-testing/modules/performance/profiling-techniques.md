@@ -355,4 +355,3 @@ Visualization:
 Sub-module: `modules/performance/profiling-techniques.md`
 Parent: [Performance Optimization](../performance-optimization.md)
 Version: 2.0.0
-Last Updated: 2025-12-07

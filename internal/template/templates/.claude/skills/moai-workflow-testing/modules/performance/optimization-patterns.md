@@ -380,4 +380,3 @@ Set up alerts for:
 Sub-module: `modules/performance/optimization-patterns.md`
 Parent: [Performance Optimization](../performance-optimization.md)
 Version: 2.0.0
-Last Updated: 2025-12-07
