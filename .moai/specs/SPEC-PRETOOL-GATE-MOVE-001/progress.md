@@ -231,7 +231,7 @@ m1_to_mN_commit_strategy: per-milestone (M1 evidence-only → M2 code → M3 gua
 
 ```yaml
 sync_complete_at: 2026-07-28
-sync_commit_sha: pending-backfill
+sync_commit_sha: 883d53852
 sync_status: complete
 sync_method: orchestrator-direct (manager-docs subagent PTL'd — runtime-recovery escalation; PR via manager-git next)
 close_infix: "3-phase close"
