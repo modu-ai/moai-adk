@@ -184,9 +184,52 @@ for p in advanced/autonomous-loops.md cli-reference/handoff.md advanced/self-evo
 
 **(a) Symmetry** — every emission detector yields exactly ONE distinct value across the four locales. A prose-anchored detector produces ≥ 2 distinct values (e.g. `{2, 0}`) and fails here even while its own aggregate reads `0`.
 
-**(b) Liveness (added at audit iteration 1, finding B-1)** — every emission detector, run against the **immutable recorded base** `e306e21a9`, matches non-zero content in **all four** locales. This is what separates "content swept" from "regex broken": at judgment time both produce `0/0/0/0` against the working tree, and component (a) alone is satisfied by a dead detector (`distinct=1` over four zeros). Anchoring liveness to a fixed commit rather than the working tree means the check keeps its discriminating power *after* the sweep lands.
+**(b) Liveness (added at audit iteration 1, finding B-1; gated at v1.6.0, finding B2-2)** — every emission detector, run against the **immutable recorded base** `e306e21a9`, matches non-zero content in **all four** locales. This is what separates "content swept" from "regex broken": at judgment time both produce `0/0/0/0` against the working tree, and component (a) alone is satisfied by a dead detector (`distinct=1` over four zeros). Anchoring liveness to a fixed commit rather than the working tree means the check keeps its discriminating power *after* the sweep lands.
 
-**(c) Asymmetry carve-out (added at audit iteration 1, finding B-2)** — component (a) is disqualifying only where the underlying **content** is locale-symmetric. Where content is genuinely locale-asymmetric, the asymmetry is recorded in the baseline with a justification and the detector is exempted from (a) **by name**. No detector is currently exempt; the exemption list is empty and any addition must cite the measured content asymmetry. See §A.3.
+**Heading-set equality gate (B2-2, added at v1.6.0).** Liveness is meaningful only if the frozen base still represents the working tree's structure. For each of the 12 scoped page instances (3 files × 4 locales), the sorted set of markdown heading lines (`^#`) at `e306e21a9:<page>` MUST equal the working-tree set. The sweep edits BODY content (emission references inline), NOT heading structure — so a heading-set divergence is always a restructuring event, never a legitimate sweep edit, and liveness measured against a non-representative base becomes stale-true. The gate runs over the same 12-page iteration as (b)'s per-detector liveness loop; if any heading set diverges, `heading_set_match` reports `<12/12` and component (b) FAILs regardless of the per-detector `live_min` numbers (the liveness numbers are reported stale-true when the gate trips).
+
+```bash
+# (b) heading-set equality GATE (B2-2) — frozen base e306e21a9 <-> working tree
+# 12 scoped page instances (3 files x 4 locales). The sweep edits body content
+# (emission references inline), NOT heading structure, so any heading-set
+# divergence is a restructuring event that makes the frozen base
+# non-representative. On gate failure (heading_set_match<12/12) component (b)'s
+# live_min is reported stale-true and AC-GDR-010 FAILs regardless of the
+# per-detector numbers emitted by the loop below.
+heading_total=0; heading_match=0
+for l in en ja ko zh; do
+  for f in advanced/autonomous-loops.md advanced/self-evolving.md cli-reference/handoff.md; do
+    heading_total=$((heading_total + 1))
+    if diff -q <(git show e306e21a9:docs-site/content/$l/$f | grep -E '^#' | sort) \
+               <(grep -E '^#' docs-site/content/$l/$f | sort) >/dev/null 2>&1; then
+      heading_match=$((heading_match + 1))
+    else
+      printf "HEADING_DIVERGE %s/%s\n" "$l" "$f"
+    fi
+  done
+done
+printf "heading_set_match=%s/%s\n" "$heading_match" "$heading_total"
+```
+
+**(c) Asymmetry carve-out with structured exemption list (added at audit iteration 1, finding B-2; restructured at v1.6.0, finding B2-3)** — component (a) is disqualifying only where the underlying **content** is locale-symmetric. Where content is genuinely locale-asymmetric, the asymmetry is recorded in the structured declaration below with its justification and the detector is exempted from (a) **by name**. The declaration is machine-readable; any addition must cite the measured content asymmetry. See §A.3.
+
+```yaml
+exempt_detectors: []   # REQUIRED format if non-empty: [{name: <detector>, asymmetry: <measured values>, justification: <citation>}]
+```
+
+The mechanical guard asserts (run against component (c)'s block — extracted from the `**(c)` heading up to the `**(d)` heading): (1) `exempt_detectors:` appears **exactly once**; (2) the list has **0 entries today** (literal `[]`); (3) if non-empty, each entry carries `name` + `asymmetry` + `justification`; (4) **coexist-guard** — `exempt_detectors:` is the ONLY exemption-list-shaped field in the block, asserting by name the absence of sibling fields `exemptions:`, `exempt:`, `excluded_detectors:` (an empty `exempt_detectors: []` passing "exactly once" while a parallel-shaped field silently carries the actual exemption entries is the bypass this guard closes).
+
+```bash
+# (c) exemption-list count check (B2-3) — structured field, exactly-once, coexist-guard
+c_block=$(awk '/^\*\*\(c\) Asymmetry/{flag=1} /^\*\*\(d\) Aptness/{flag=0} flag' .moai/specs/SPEC-GOAL-DOCS-RETIRE-001/acceptance.md)
+decl=$(printf '%s\n' "$c_block" | grep -cE '^exempt_detectors:')
+# Strip trailing YAML-ish comments before counting, so the format-documentation
+# in `# REQUIRED format if non-empty: [{name: ...}]` is not mistaken for entries.
+entries=$(printf '%s\n' "$c_block" | grep -E '^exempt_detectors:' | sed 's/#.*//' | grep -cE '\[[^]]*[a-zA-Z_]')
+siblings=$(printf '%s\n' "$c_block" | grep -cE '^(exemptions|excluded_detectors|exempt):')
+printf "exempt_detectors_decl=%s/1 entries=%s/0 coexist_siblings=%s/0\n" "$decl" "$entries" "$siblings"
+# PASS when decl==1 AND entries==0 AND siblings==0
+```
 
 **(d) Aptness (added at audit iteration 2, finding B2-1)** — every emission detector's match pattern contains a literal `/goal` token. Components (a) and (b) constrain a detector's *behaviour* (symmetric, non-empty against the base) but never tie it to the token the sweep must remove, so a detector that is live and symmetric yet semantically aimed elsewhere passes both. Each detector therefore declares its pattern **once** in a `p=` variable that the counting function `w()` and the aptness test both read, so a weakening of the pattern cannot leave a stale assertion behind. The mechanism is one `case` expansion, not a second command.
 
@@ -211,8 +254,9 @@ for name in paired_al auto_mode l7 paired_se handoff; do
 done
 ```
 
-- Recorded baseline: `paired_al:distinct=1,live_min=1,apt=1 auto_mode:distinct=1,live_min=1,apt=1 l7:distinct=1,live_min=1,apt=1 paired_se:distinct=1,live_min=2,apt=1 handoff:distinct=1,live_min=1,apt=1`
-- Target: **all five keep `distinct=1` AND `live_min >= 1` AND `apt=1`**, and AC-GDR-012 at `0`
+- Recorded baseline (per-detector, preserved verbatim from v1.5.0): `paired_al:distinct=1,live_min=1,apt=1 auto_mode:distinct=1,live_min=1,apt=1 l7:distinct=1,live_min=1,apt=1 paired_se:distinct=1,live_min=2,apt=1 handoff:distinct=1,live_min=1,apt=1`
+- Recorded baseline (v1.6.0 additions): `heading_set_match=12/12` (component b gate, B2-2); `exempt_detectors_decl=1/1 entries=0/0 coexist_siblings=0/0` (component c, B2-3)
+- Target: **all five keep `distinct=1` AND `live_min >= 1` AND `apt=1`**, AND `heading_set_match=12/12`, AND `exempt_detectors_decl=1/1 entries=0/0 coexist_siblings=0/0`, and AC-GDR-012 at `0`
 - **Three controls, all executed against this block.** Each defeats a different component, and none is defeated by the others:
 
   | Control detector | `distinct` | `live_min` | `apt` | Rejected by |
