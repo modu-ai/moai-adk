@@ -72,11 +72,68 @@ N3 remains blocked on the parent's M7 landing (`acceptance.md` §C dependency ga
 
 ## §E.2 Run-phase Evidence
 
-_<pending run-phase>_
+All 12 baselines were re-measured at run-phase entry against `d54ea108d` and reproduced the values recorded in `acceptance.md` §B exactly (12/12), so every row below is a measured transition, not an assumed one.
+
+### AC matrix
+
+| AC | Judgment command (per `acceptance.md` §B) | Baseline | Actual output | Status |
+|---|---|---|---|---|
+| AC-GDR-001 | paired listing, `autonomous-loops.md`, per locale | `en:1 ja:1 ko:1 zh:1` | `en:0 ja:0 ko:0 zh:0` | PASS |
+| AC-GDR-002 | paired listing, `self-evolving.md`, per locale | `en:2 ja:2 ko:2 zh:2` | `en:0 ja:0 ko:0 zh:0` | PASS |
+| AC-GDR-003 | `` `/goal `` in `handoff.md`, per locale | `en:1 ja:1 ko:1 zh:1` | `en:0 ja:0 ko:0 zh:0` | PASS |
+| AC-GDR-004 | line-7 mis-attribution, per locale | `en:1 ja:1 ko:1 zh:1` | `en:0 ja:0 ko:0 zh:0` | PASS |
+| AC-GDR-005 | `auto mode` + `` `/goal` `` co-occurrence, per locale | `en:1 ja:1 ko:1 zh:1` | `en:0 ja:0 ko:0 zh:0` | PASS |
+| AC-GDR-006 | split-surface structural pins, per locale | `h3=1,h2=1,row=1` ×4 | `en:h3=1,h2=1,row=1 ja:h3=1,h2=1,row=1 ko:h3=1,h2=1,row=1 zh:h3=1,h2=1,row=1` | PASS |
+| AC-GDR-007 | superseding sentinel / content pin | `0` / `25` | `1` / `26` | **PASS-WITH-DEBT** — see below |
+| AC-GDR-008 | five retention pins | `cc=80 goal.md=12 moai-goal=4 hooks=2 research=4` | `cc=80 goal.md=12 moai-goal=4 hooks=2 research=4` | PASS |
+| AC-GDR-009 | four-locale file inventory | `autonomous-loops.md=4 handoff.md=4 self-evolving.md=4` | `autonomous-loops.md=4 handoff.md=4 self-evolving.md=4` | PASS |
+| AC-GDR-010 | locale-invariance meta-guard (a/b/d) | all five `distinct=1,live_min>=1,apt=1` | `paired_al:distinct=1,live_min=1,apt=1 auto_mode:distinct=1,live_min=1,apt=1 l7:distinct=1,live_min=1,apt=1 paired_se:distinct=1,live_min=2,apt=1 handoff:distinct=1,live_min=1,apt=1` | PASS |
+| AC-GDR-011 | docs-site build | `exit=0` | `exit=0` | PASS |
+| AC-GDR-012 | aggregate emission | `total=24` | `total=0` | PASS |
+
+### Invariants
+
+| Invariant | Evidence | Status |
+|---|---|---|
+| Retention register row 2 intact (native H3, `Native /goal Details` H2, comparison row, factual statements) | `grep -n '`/goal`'` on `autonomous-loops.md` returns exactly the table row, the H3, and the four factual lines in every locale — `en:7 ja:7 ko:7 zh:7`, symmetric | HOLDS |
+| No new locale pages (REQ-GDR-008) | AC-GDR-009 inventory unchanged at 4 each; `hooks=2` pin unchanged | HOLDS |
+| Scope discipline (13 paths) | `git diff --stat d54ea108d..HEAD` = 12 docs-site files + `.moai/docs/autonomous-workflow-strategy.md` + `spec.md` frontmatter only; zero changes under `docs-site/content/*/claude-code/`, `.moai/research/`, `.claude/`, `internal/template/templates/` | HOLDS |
+| `--goal` CLI flag name unchanged | `grep -c '`--goal <condition>`'` = 1 per locale | HOLDS |
+| `handoff.md` L51 `/cli-reference/goal` link path survives (D6) | `grep -c "\[moai goal\](/<locale>/cli-reference/goal)"` = 1 per locale | HOLDS |
+| Locale parity (4-locale same-PR obligation) | Every swept marker reached its target in all four locales simultaneously; no detector shows a locale split (`distinct=1` on all five) | HOLDS |
+| Build warning-free | `hugo --minify --gc` exit 0, `grep -cE 'WARN\|ERROR'` = 0, sitemap present | HOLDS |
+| URL blacklist / Mermaid TD-only | both greps clean | HOLDS |
+
+### AC-GDR-007 debt — criterion internal contradiction (off-by-one)
+
+The two components cannot both hold as literally written. Component 1 requires the file to contain the literal sentinel `native `/goal` emission is retired`; that phrase itself contains a backticked `/goal`, so satisfying it necessarily raises the component-2 occurrence count from 25 to 26. Measured on a scratch copy before editing: adding the sentinel alone yields `sentinel=1, pin=26`.
+
+The milestone's intent — annotate the record, sweep nothing — is met and verifiable: the diff is `1 insertion, 0 deletions` (`git diff --numstat`), and excluding the note line the count is exactly `25` (all historical occurrences byte-identical). The criterion's target value for component 2 is off by one; it should be `26` (25 historical + the sentinel) or the sentinel should be excluded from the count. `acceptance.md` was not modified — the correction is manager-spec's to make.
 
 ## §E.3 Run-phase Audit-Ready Signal
 
-_<pending run-phase>_
+```yaml
+run_complete_at: 2026-07-27
+run_commit_sha: pending-backfill-run-final
+run_status: audit-ready
+ac_pass_count: 11
+ac_fail_count: 0
+ac_pass_with_debt_count: 1
+preserve_list_post_run_count: 5
+l44_pre_commit_fetch: not-run
+l44_post_push_fetch: not-run
+new_warnings_or_lints_introduced: 0
+cross_platform_build:
+  applicable: false
+  reason: documentation-only SPEC; no Go source in scope
+docs_build:
+  command: hugo --minify --gc
+  exit: 0
+  warnings: 0
+  sitemap: present
+total_run_phase_files: 14
+m1_to_mN_commit_strategy: one commit per milestone (N1..N4); N5 verification edits nothing
+```
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
