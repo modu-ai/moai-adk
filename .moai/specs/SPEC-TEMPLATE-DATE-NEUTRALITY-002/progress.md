@@ -108,13 +108,124 @@ REQ 24 (unchanged), AC 32 → **33**.
 
 ## §E.2 Run-phase Evidence
 
-_<pending run-phase>_
+Run-phase executed as 6 milestone commits (M1 `64850b0bc` → M6 `f0c71168c`) on branch `spec/template-date-2025` in worktree `.claude/worktrees/date2025`. All 33 acceptance criteria PASS. Evidence persisted to `.moai/state/verify/tdn2/`.
+
+### AC PASS/FAIL matrix (33/33 PASS)
+
+| AC | Command (abbreviated) | Observed | Status |
+|---|---|---|---|
+| AC-001 | `grep -c "^DATE_RE='202\[5-9\]" classify.sh` | `1` | PASS |
+| AC-002 | row/col check on triage.tsv | `74 0` | PASS |
+| AC-003 | distinct findings + category dist | `48`; `DC-2a 28 / DC-2b 13 / DC-5 33` | PASS |
+| AC-004 | DC-5 rows lacking sub-shape code | `0` | PASS |
+| AC-005 | rows lacking REMOVE/PRESERVE | `0` | PASS |
+| AC-006 | dual-category findings | `4` | PASS |
+| AC-007 | REMOVE-scoped prose stamps (non-mirror) | `0` | PASS |
+| AC-008 | PRESERVE mirror stamps | `13` | PASS |
+| AC-009 | frontmatter example `updated:` values | `10` | PASS |
+| AC-010 | EX-DATA schema values | `3` | PASS |
+| AC-011 | placeholder tokens (YYYY-MM-DD etc.) | `9` | PASS |
+| AC-012 | fenced DC-2a row (n, ok) | `1 1` | PASS |
+| AC-013 | predecessor `202[6-9]` set (invariant) | `89` | PASS |
+| AC-014 | guard 2025 entries == triage PRESERVE findings | `24 24` | PASS |
+| AC-015 | LineStart/End/No fields (invariant) | `28` | PASS |
+| AC-016 | dual-category files: actual == expect | `0==0` both files | PASS |
+| AC-017 | `202[5-9]` occurrences in guard | `2` | PASS |
+| AC-018 | `202[6-9]` occurrences in guard | `1` | PASS |
+| AC-019 | `archive-202[6-9]` (invariant) | `1` | PASS |
+| AC-020 | `20[0-9]{2}` attribution (invariant) | `1` | PASS |
+| AC-021 | strict tier with widened class | `--- PASS (0.51s)`, exit 0 | PASS |
+| AC-022 | quoting-agnostic leak-guard steps | `2` | PASS |
+| AC-023 | unquoted `-run` invocations | `0` | PASS |
+| AC-024 | quoted `-run` invocations | `3` | PASS |
+| AC-025 | `MOAI_TEMPLATE_LEAK_STRICT` in workflow | `1` | PASS |
+| AC-026 | narrow tier (env unset) | `--- PASS (0.41s)`, exit 0 | PASS |
+| AC-027 | neutrality audit | `--- PASS`, exit 0 | PASS |
+| AC-028 | `go build ./...` | exit 0 | PASS |
+| AC-029 | edit-scope pathspec diff | `0` | PASS |
+| AC-030 | remediate-before-widen ordering | `ORDERED` | PASS |
+| AC-031 | line-number awk assertion / AC control | `0 / 33` | PASS |
+| AC-032 | `TestLeakClassNoDateShaInDefaultTier` | `--- PASS (0.00s)`, exit 0 | PASS |
+| AC-033 | edited files not in triage / file count | `0 / 34` | PASS |
+
+### REQ-TDN2-022 build-step exit code (time-critical debt)
+
+```
+$ make build
+make-build-exit=0
+  catalog.yaml updated successfully (11569 bytes)
+  go build -ldflags "..." -o bin/moai ./cmd/moai
+```
+
+`make build` ran twice during M3 (after the initial 27 DC-2a deletions, and again after the fenced-row correction); both exit 0. Per acceptance.md §G item 1, REQ-TDN2-022 is structurally unverifiable by a test (`//go:embed` re-embeds on every `go build`); the exit code is recorded here as run-phase evidence.
+
+### AC-030 ordering — both transcripts (time-critical debt)
+
+**Repaired (bounded) form** — the live criterion:
+```
+BASE=3e6c92ef7 (merge-base origin/main HEAD)
+WIDEN=27aef363e (M4 — first commit to introduce literal 202[5-9] into the guard)
+REMED=2fb84ce4b (M3 — remediation)
+git merge-base --is-ancestor 2fb84ce4b 27aef363e → true
+RESULT: ORDERED
+```
+
+**Broken (unbounded) form** — falsification reproducing the false pass (acceptance.md §G item 2):
+```
+WIDEN_BROKEN=f0c71168c (HEAD)
+REMED_BROKEN=ccd6be1f6 (2026-02-03, "feat(templates): add embedded template system" — predates this branch by 5 months)
+git merge-base --is-ancestor ccd6be1f6 f0c71168c → true
+RESULT: ORDERED  ← FALSE PASS (18 history matches; REMED_BROKEN never empty, just wrong)
+```
+
+### Per-file removal verification — dual-category files (B2 masking hazard)
+
+| File | actual prose stamps | expect (PRESERVE LS-PROSE-STAMP) | Status |
+|---|---|---|---|
+| `moai-workflow-spec/references/examples.md` | 0 | 0 | PASS |
+| `moai-workflow-project/references/examples.md` | 0 | 0 | PASS |
+
+The allowlist entries mask the deleted DC-2a rows, but AC-016 confirms deletions via direct grep independent of the guard.
+
+### Rows whose adjudication differs from the sub-shape default
+
+| Row(s) | Sub-shape default | Actual | Reason |
+|---|---|---|---|
+| Fenced DC-2a (1 row) | DC-2a default REMOVE | REMOVE (re-adjudicated at M3; initially PRESERVE at M2) | AC-007 requires zero non-mirror prose stamps; no structural carve-out for fenced stamps exists. REQ-TDN2-012 requires explicit adjudication — REMOVE is valid. |
+| HIST bullet (2 rows) | per-row | REMOVE | Predecessor (SPEC-001 spec.md §5) removed the 2026 halves of this same list; completing the remediation resolves the flagged residue. |
+| HIST table (12 rows) | per-row | PRESERVE | Legitimate release-note documentation; table form does not permit clean inline excision. |
+| CREATED (3 rows) | per-row | PRESERVE | Documentation-example Created: stamps. |
+| COMPOSITE (2 rows) | per-row | REMOVE | Mid-line excision; residual `Version: 5.0.0 \| Enterprise Ready:` (no placeholder, REQ-TDN2-009). |
+
+Final tally: **32 REMOVE** (28 DC-2a + 2 HIST bullet + 2 COMPOSITE), **42 PRESERVE** (13 DC-2b + 10 EX-FM + 3 EX-DATA + 12 HIST table + 3 CREATED + 1 DEADLINE).
 
 ---
 
 ## §E.3 Run-phase Audit-Ready Signal
 
-_<pending run-phase>_
+```yaml
+run_complete_at: 2026-07-28
+run_commit_sha: f0c71168c
+run_status: audit-ready
+ac_pass_count: 33
+ac_fail_count: 0
+preserve_list_post_run_count: 6
+  # PRESERVE list (plan.md §A.2) verified intact at run close:
+  # 1. SPEC-TEMPLATE-DATE-NEUTRALITY-001 artifacts — untouched (read-only reference)
+  # 2. predecessor date allowlist entries — additive-only (24 new, 0 rewritten)
+  # 3. narrow-tier class set + neutrality-audit test — untouched (AC-026/027 green)
+  # 4. 202[6-9] date literals — AC-013=89 invariant held
+  # 5. catalog.yaml — build-regenerated only (not a remediation target)
+  # 6. main checkout — untouched (all work confined to .claude/worktrees/date2025)
+l44_pre_commit_fetch: "0 5 (5 commits ahead of origin/main at pre-flight; not pushed)"
+l44_post_push_fetch: "N/A — did not push (PR-mandatory repo; push is orchestrator/manager-git decision)"
+new_warnings_or_lints_introduced: 0
+cross_platform_build:
+  go_build_darwin_arm64: exit 0
+  note: "No syscall/windows-specific code changed; cross-platform N/A for this SPEC scope"
+total_run_phase_files: 31
+m1_to_mN_commit_strategy: "one commit per milestone (M1-M6), explicit-pathspec staging, no --amend, no force-push, no --no-verify; progress.md §E.2/§E.3 populated in a follow-up evidence commit"
+```
 
 ---
 
