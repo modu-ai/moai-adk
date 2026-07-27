@@ -14,7 +14,7 @@ tags: "goal, docs-site, i18n, locale-parity, split-surface"
 tier: M
 depends_on: [SPEC-GOAL-SURFACE-UNIFY-001]
 run_commit_sha: 24c84c56e
-sync_commit_sha: pending-backfill-sync
+sync_commit_sha: 2a12e2b7d9aee1b5cdfbfba31d6b28ab5d7312b8
 ---
 
 ## HISTORY
