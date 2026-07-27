@@ -292,6 +292,49 @@ M5 = REQ-HLR-006/007, AC-HLR-009/010. Implemented by orchestrator-direct executi
 - The drain mechanism is doctrine-only (no Go backstop) — parallel to the M3 routing-ledger finding. The orchestrator executes drains per the constitution-named actor/trigger; no mechanical drain hook enforces frequency or pattern conversion. Accepted doctrine-level debt, not closed by M5.
 - The drain converted ONE representative feedback topic file (`feedback_lessons_inbox_drain_2026_07.md`, carrying `prediction:` + `verified: false`) — the minimum to exercise M6 AC-011's prediction/verified obligation on this SPEC's own lesson entry. Full conversion of all 149 preserved VALUE stubs into individual feedback files is NOT done (out of scope for M5; the 149 are preserved in the inbox for future drain cycles).
 
+## §E.2 (cont.) Run-phase Evidence — M6 (falsifiability + CLI reporting)
+
+M6 = REQ-HLR-008/010, AC-011/012/013. Implemented by manager-develop (TDD) — the final milestone. §F.5 was the lowest-reversibility milestone (mechanical CLI reporting fixes + doctrine evidence).
+
+### Change set
+
+| File | Change |
+|---|---|
+| `internal/cli/harness_route.go` | AC-012: replaced the static hand-authored Long string (14/20 verbs) with `buildHarnessRouterLong(cmd)` — derives the Long from `cmd.Commands()` AFTER every AddCommand call, so AddCommand is the single SSOT and the verb enumeration is a round trip. Added `useFirstToken` helper + `sort`/`strings` imports. |
+| `internal/cli/harness_route_test.go` | AC-012 RED→GREEN test `TestHarnessRouterHelp_EnumeratesAllVerbs` + `verbDocumentedInLong` helper (first-token check avoids "list" ⊂ "mute-list" false positives). |
+| `internal/cli/harness/v4lifecycle_cmd.go` | AC-013: list domain cell for a thin harness changed from `"(manifest missing)"` (defect-suggesting) to `"(command-only thin harness)"` (mirrors doctor's INFO framing). |
+| `internal/cli/harness/list_doctor_agreement_test.go` | NEW — AC-013 RED→GREEN test `TestHarnessListAndDoctor_AgreeOnCommandOnlyThinHarness`. |
+| `~/.claude/projects/-Users-goos-MoAI-moai-adk-go/memory/feedback_harness_loop_repair_m6_2026_07.md` | NEW — AC-011 lesson entry for the M6 harness edits (prediction/verified/surface). |
+| `~/.claude/projects/.../memory/feedback_lessons_inbox_drain_2026_07.md` | AC-011: annotated the M5 entry with the observed drain evidence (870→149 mechanism confirmed); `verified:` remains `false` honestly (long-term velocity/conversion effects pending). |
+| `~/.claude/projects/.../memory/MEMORY.md` | Index entry for the M6 lesson file. |
+| `.moai/specs/SPEC-HARNESS-LOOP-REPAIR-001/acceptance.md` | §B status table: AC-011/012/013 → PASS (17/17). §H.1/§H.2/§H.3 enriched with 5-section PASS evidence. |
+
+### AC verification (orchestrator-independent, observed 2026-07-28)
+
+| AC | Status | Command | Observed |
+|---|---|---|---|
+| AC-HLR-011 | PASS | `grep -c 'prediction:\|verified:' .../feedback_harness_loop_repair_m6_2026_07.md` | `3`; M5 entry `2`; both entries carry both fields |
+| AC-HLR-012 | PASS | `go test -run TestHarnessRouterHelp_EnumeratesAllVerbs ./internal/cli/` | `ok` — all 20 registered verbs documented in Long (was 14/20) |
+| AC-HLR-013 | PASS | `go test -run TestHarnessListAndDoctor_AgreeOnCommandOnlyThinHarness ./internal/cli/harness/` | `ok` — list frames thin harness as "command-only"; doctor INFO; no "missing" word |
+
+### Falsification executed (both directions, observed not assumed)
+
+- **AC-012**: temporarily added `if use == "ledger" { continue }` in `buildHarnessRouterLong` (ledger registered but skipped in description) → test FAIL (`verb "ledger" is registered (AddCommand) but NOT documented`) → reverted → green.
+- **AC-013**: reverted list domain cell to `"(manifest missing)"` → test FAIL (`list describes the thin harness in defect-suggesting terms (contains "missing")`) → reverted → green.
+
+### Orchestrator independent verification (verification-claim-integrity)
+
+- **Full `go test ./...` exit 0 (all packages)** — no cascade from the help-text or list/doctor changes.
+- `go build ./...` exit 0 · `GOOS=windows GOARCH=amd64 go build ./...` exit 0 · `GOOS=linux GOARCH=amd64 go build ./...` exit 0.
+- `golangci-lint run --timeout=2m` → exit 0, 0 issues.
+- Subagent boundary (B3 / §J item 4): `grep -rn 'AskUserQuestion(\|mcp__askuser(' internal/cli/harness*.go internal/cli/harness/*.go` (function-call pattern, excluding tests) → 0 matches. The broader-text matches are all permitted prose comments / flag descriptions (the M6-edited files contain only `//` comments referencing the `TestPropose_NoAskUserQuestion` static guard).
+- Coverage: `internal/cli/harness` 80.6% (pre-existing baseline from M1: 80.9%; M6 added fully-covered new code, the delta is the new test file + one-line edit). `internal/cli` 75.5% (large package, pre-existing). New function coverage: `buildHarnessRouterLong` + `useFirstToken` exercised 100% by `TestHarnessRouterHelp_EnumeratesAllVerbs`.
+
+### Known gaps / residual risk (not closed by M6)
+
+- Package coverage for `internal/cli/harness` remains below the 85% target (80.6%, pre-existing from M1). M6 added tests but did not close the gap (the gap is in scaffolder/reader/candidate, out of M6 scope).
+- AC-011's M5 entry remains `verified: false` — the prediction's long-term effects (inbox-noise velocity reduction + VALUE-pattern → feedback conversion) require future drain cycles. M6 does not constitute that observation.
+
 ## §F Phase 4 Mode Selection — M2
 
 Recorded before the first M2 run-phase `Agent()` spawn, per the canonical

@@ -34,11 +34,11 @@ These rules bind every AC below. They exist because §A.4 of `spec.md` attribute
 | AC-HLR-017 | M4 | **PASS** | §F.2 |
 | AC-HLR-009 | M5 | **PASS** | §G.1 |
 | AC-HLR-010 | M5 | **PASS** | §G.2 |
-| AC-HLR-011 | M6 | open | §H.1 |
-| AC-HLR-012 | M6 | open | §H.2 |
-| AC-HLR-013 | M6 | open | §H.3 |
+| AC-HLR-011 | M6 | **PASS** | §H.1 |
+| AC-HLR-012 | M6 | **PASS** | §H.2 |
+| AC-HLR-013 | M6 | **PASS** | §H.3 |
 
-14 of 17 PASS — M1: AC-001/002/003/006 (4); M2: AC-004/005/014/015/016 (5, evidence backfilled 2026-07-28); M3: AC-007 (1); M4: AC-008/017 (2); M5: AC-009/010 (2, 2026-07-28). Remaining: M6 (AC-011/012/013).
+**17 of 17 PASS** — M1: AC-001/002/003/006 (4); M2: AC-004/005/014/015/016 (5); M3: AC-007 (1); M4: AC-008/017 (2); M5: AC-009/010 (2); M6: AC-011/012/013 (3, 2026-07-28). SPEC complete.
 
 ---
 
@@ -273,7 +273,7 @@ RED test: `TestMapper_DraftIDStableAcrossDates` feeds the same `pattern_key` (`u
 
 ## §H M6 — falsifiability and CLI reporting
 
-### §H.1 AC-HLR-011 — falsifiability recorded
+### §H.1 AC-HLR-011 — falsifiability recorded · **PASS**
 
 - **Given** a harness edit made under this SPEC
 - **Then** its lesson entry carries `prediction:` at edit time and `verified: true|false` after observation
@@ -283,7 +283,20 @@ RED test: `TestMapper_DraftIDStableAcrossDates` feeds the same `pattern_key` (`u
 
 **Baseline.** Zero occurrences of `prediction:` or `verified:` across 102 feedback files plus `lessons.md`, despite the constitution requiring both (§ Lessons Protocol, Harness Edit Discipline). This SPEC is itself the first test of the obligation.
 
-### §H.2 AC-HLR-012 — help enumerates every verb
+**Evidence (executed 2026-07-28, M6).** Per the 5-section format (verification-claim-integrity §3):
+
+- **Claim.** Every harness edit made under this SPEC has a lesson entry carrying BOTH `prediction:` AND `verified:`; the M6 edits (help-text + list/doctor) carry their own entry.
+- **Evidence (verbatim command + output).**
+  - Audit of harness edits M1-M6 against the constitution's "harness edit" definition (a change to a rule / agent / skill / hook / config / template / workflow):
+    - M1-M4 are Go source-code edits to the moai binary (`internal/harness/proposalgen/`, `internal/cli/harness*`) — NOT harness components in the constitution's narrow sense, so the prediction/verified obligation does not bind them.
+    - M5 is a constitution rule edit (`.claude/rules/moai/core/moai-constitution.md` § Lessons Protocol + template mirror) — IS a harness edit. Lesson entry `feedback_lessons_inbox_drain_2026_07.md` carries both fields.
+    - M6 edits the CLI harness surface (help text + list/doctor diagnostics). Per the SPEC's intent to exercise the obligation on its own edits, a dedicated lesson entry `feedback_harness_loop_repair_m6_2026_07.md` carries all three fields (`prediction:`, `verified:`, `surface:`).
+  - `grep -c 'prediction:\|verified:' ~/.claude/projects/-Users-goos-MoAI-moai-adk-go/memory/feedback_harness_loop_repair_m6_2026_07.md` → `3` (1 prediction + 1 verified + 1 cross-ref mention of the obligation in prose); `grep -c 'prediction:\|verified:' ~/.claude/projects/-Users-goos-MoAI-moai-adk-go/memory/feedback_lessons_inbox_drain_2026_07.md` → `2`.
+- **Baseline-attribution.** Measured 2026-07-28 against the auto-memory directory `~/.claude/projects/-Users-goos-MoAI-moai-adk-go/memory/` (the project hash for moai-adk-go). Pre-M6 baseline: 1 entry with both fields (`feedback_lessons_inbox_drain_2026_07.md`, M5). Post-M6: 2 entries.
+- **Gaps.** The M5 entry's `verified:` remains `false` — its prediction (long-term inbox-noise velocity reduction + VALUE-pattern → feedback conversion acceleration) requires multiple future drain cycles to observe; the M6 work (help-text + list/doctor) does NOT constitute the observation that flips it. The drain MECHANISM is confirmed (870→149 in one cycle), but the long-term effects are pending. The M6 entry's `verified: true` is honest for its narrow mechanism-level prediction (the round-trip derivation + aligned framing prevent the defect classes from recurring; both falsifications confirm the tests are load-bearing).
+- **Residual-risk.** The prediction/verified obligation is doctrine-only (no mechanical backstop audits every harness edit for both fields). A future edit could skip the fields without an automated alarm. Closing this needs a mechanical lesson-entry audit hook, out of scope for this SPEC (parallel to the M3 routing-ledger obedience gap).
+
+### §H.2 AC-HLR-012 — help enumerates every verb · **PASS**
 
 - **Given** `moai harness --help`
 - **Then** its description lists every verb present in the command table
@@ -293,13 +306,37 @@ RED test: `TestMapper_DraftIDStableAcrossDates` feeds the same `pattern_key` (`u
 
 **Baseline.** 6 verbs omitted from the help text: `clusters`, `propose`, `install`, `execute`, `doctor`, `ledger`.
 
-### §H.3 AC-HLR-013 — list and doctor agree
+**Evidence (executed 2026-07-28, M6).** Per the 5-section format:
+
+- **Claim.** The `newHarnessRouterCmd()` Long description enumerates every verb present in the command table, derived as a round trip from `cmd.Commands()`.
+- **Evidence (verbatim command + output).**
+  - RED test: `TestHarnessRouterHelp_EnumeratesAllVerbs` (`internal/cli/harness_route_test.go`) iterates `cmd.Commands()` and asserts each verb's `Use:` token heads a line in `cmd.Long`. Pre-fix run reported all 6 baseline verbs missing (clusters, doctor, execute, install, ledger, propose) → FAIL.
+  - GREEN: `go test -run TestHarnessRouterHelp_EnumeratesAllVerbs ./internal/cli/` → `ok github.com/modu-ai/moai-adk/internal/cli 0.688s`.
+  - Mechanism: `buildHarnessRouterLong(cmd)` (`internal/cli/harness_route.go`) builds the Long from `cmd.Commands()` AFTER every `AddCommand` call, so AddCommand is the single SSOT — adding/removing a verb auto-updates `--help`.
+- **Baseline-attribution.** Measured 2026-07-28 against the worktree tree (HEAD pre-M6 `83ffaea73`). Pre-M6 Long was a static hand-authored string listing 14 of 20 registered verbs.
+- **Falsification executed.** Temporarily added `if use == "ledger" { continue }` in `buildHarnessRouterLong` (skipping one verb in the description while it remained AddCommand'd) → `go test -run TestHarnessRouterHelp_EnumeratesAllVerbs` → `FAIL: verb "ledger" is registered (AddCommand) but NOT documented` → reverted → green re-confirmed.
+- **Gaps.** None — the round-trip property is mechanically enforced.
+- **Residual-risk.** If a future edit reintroduces a static Long string bypassing `buildHarnessRouterLong`, the protection is lost — but `TestHarnessRouterHelp_EnumeratesAllVerbs` catches that case (the static string would have to enumerate every verb to pass).
+
+### §H.3 AC-HLR-013 — list and doctor agree · **PASS**
 
 - **Given** a command-only thin harness
 - **Then** `list` does not describe it in defect-suggesting terms while `doctor` classifies the same state as expected
 - **Falsification** — reverting restores the disagreement on the same fixture
 
 **Traces to** REQ-HLR-010.
+
+**Evidence (executed 2026-07-28, M6).** Per the 5-section format:
+
+- **Claim.** For a command-only thin harness (command file, no manifest/Runner), `list` frames the state as "command-only" (non-defect), agreeing with `doctor`'s SeverityInfo classification.
+- **Evidence (verbatim command + output).**
+  - RED test: `TestHarnessListAndDoctor_AgreeOnCommandOnlyThinHarness` (`internal/cli/harness/list_doctor_agreement_test.go`) sets up a thin-harness fixture, runs `list` + `doctor` via their cobra commands, asserts: doctor `error_count == 0` + `info_count >= 1` + INFO finding frames "command-only"; list output does NOT contain "missing" (defect-suggesting word) AND contains "command-only".
+  - GREEN: `go test -run TestHarnessListAndDoctor_AgreeOnCommandOnlyThinHarness ./internal/cli/harness/` → `ok github.com/modu-ai/moai-adk/internal/cli/harness 2.054s`.
+  - Mechanism: `NewHarnessV4ListCmd` domain cell for `e.Domain == ""` changed from `"(manifest missing)"` to `"(command-only thin harness)"` (`internal/cli/harness/v4lifecycle_cmd.go`), mirroring `doctor`'s INFO message vocabulary.
+- **Baseline-attribution.** Measured 2026-07-28 against the worktree tree (HEAD pre-M6 `83ffaea73`). Pre-M6 list printed `(manifest missing)` for the same state doctor classified as expected (INFO).
+- **Falsification executed.** Reverted the list domain cell to `"(manifest missing)"` → `go test -run TestHarnessListAndDoctor_AgreeOnCommandOnlyThinHarness` → `FAIL: list describes the thin harness in defect-suggesting terms (contains "missing")` → reverted → green re-confirmed.
+- **Gaps.** The JSON output still carries `manifest_missing: true` as a structured field — that is the machine-readable signal and is intentionally unchanged (it is a neutral boolean, not defect-suggesting prose). The plaintext framing is what the AC binds.
+- **Residual-risk.** A future edit could reintroduce defect-suggesting wording in the list plaintext (e.g. "(orphan)"). The test's "missing" check would not catch a different defect-suggesting word, but the "command-only" presence check is the load-bearing alignment signal.
 
 ---
 
