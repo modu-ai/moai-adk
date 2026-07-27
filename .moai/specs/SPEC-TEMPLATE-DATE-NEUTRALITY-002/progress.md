@@ -231,7 +231,22 @@ m1_to_mN_commit_strategy: "one commit per milestone (M1-M6), explicit-pathspec s
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+```yaml
+sync_status: audit-ready
+sync_complete_at: 2026-07-28
+spec_id: SPEC-TEMPLATE-DATE-NEUTRALITY-002
+sync_commit_sha: pending-backfill
+close_type: 3-phase close (plan→run→sync)
+ac_total: 33
+ac_pass: 33
+ac_fail: 0
+run_commit_sha: f0c71168c
+preserve_verified: true
+```
+
+The single sync commit carries the `in-progress → implemented → completed` frontmatter transition (3-phase close; MX Tag is a cross-cutting sync concern, not a separate phase). `sync_commit_sha` is `pending-backfill` — a commit cannot reference its own SHA (D3 self-referential-hazard backfill exemption, per spec-frontmatter-schema.md); the orchestrator backfills the real SHA after the PR's squash merge lands.
+
+Sync produced via orchestrator-direct recovery after manager-docs spawn failed with `Prompt is too long` (PTL) — rung-1 in-turn self-correction per runtime-recovery-doctrine §2; no work was lost (the spawn terminated before any file edit).
 
 ---
 

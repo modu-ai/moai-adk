@@ -2,7 +2,7 @@
 id: SPEC-TEMPLATE-DATE-NEUTRALITY-002
 title: "Template 2025 date-leak triage, remediation, and S1 year-class widening"
 version: "0.3.0"
-status: in-progress
+status: completed
 created: 2026-07-27
 updated: 2026-07-28
 author: manager-spec
