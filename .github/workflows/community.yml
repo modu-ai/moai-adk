@@ -98,7 +98,7 @@ jobs:
     timeout-minutes: 5
     steps:
       - name: Label PR based on file paths
-        uses: actions/labeler@v5
+        uses: actions/labeler@v7
         with:
           repo-token: ${{ secrets.GITHUB_TOKEN }}
           configuration-path: .github/labeler.yml
