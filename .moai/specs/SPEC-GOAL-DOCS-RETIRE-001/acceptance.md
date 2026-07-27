@@ -236,12 +236,25 @@ cd docs-site && hugo --quiet --destination /tmp/gdr-build >/dev/null 2>&1; echo 
 **AC-GDR-012** — Aggregate emission across all 12 sweep-target locale files reaches `0`. This is the integration criterion the four compounds above reference.
 
 ```bash
+# AC-GDR-012 (amended v1.5.0) — single-p= source, liveness + aptness guards
 t=0
-t=$((t + $(grep -rhoE '`/moai loop`[ ·/]+`/goal`' docs-site/content/*/advanced/autonomous-loops.md | wc -l | tr -d ' ')))
-t=$((t + $(grep -rhoE '`/moai loop`[ ·/]+`/goal`' docs-site/content/*/advanced/self-evolving.md | wc -l | tr -d ' ')))
-t=$((t + $(grep -rhc 'auto mode.*`/goal`' docs-site/content/*/advanced/autonomous-loops.md | paste -sd+ - | bc)))
-t=$((t + $(for l in en ja ko zh; do sed -n '7p' docs-site/content/$l/advanced/autonomous-loops.md | grep -c '`/goal`'; done | paste -sd+ - | bc)))
-t=$((t + $(grep -rhoF '`/goal' docs-site/content/*/cli-reference/handoff.md | wc -l | tr -d ' ')))
+for name in paired_al auto_mode l7 paired_se handoff; do
+  case $name in
+    paired_al) p='`/moai loop`[ ·/]+`/goal`'; w() { grep -ohE "$p" "$1" | wc -l | tr -d ' '; }; f=advanced/autonomous-loops.md;;
+    auto_mode) p='auto mode.*`/goal`';        w() { grep -c "$p" "$1"; };                      f=advanced/autonomous-loops.md;;
+    l7)        p='`/goal`';                   w() { sed -n '7p' "$1" | grep -c "$p"; };        f=advanced/autonomous-loops.md;;
+    paired_se) p='`/moai loop`[ ·/]+`/goal`'; w() { grep -ohE "$p" "$1" | wc -l | tr -d ' '; }; f=advanced/self-evolving.md;;
+    handoff)   p='`/goal';                    w() { grep -ohF "$p" "$1" | wc -l | tr -d ' '; }; f=cli-reference/handoff.md;;
+  esac
+  # aggregate the working-tree count across all 4 locales
+  c=$(for l in en ja ko zh; do w docs-site/content/$l/$f; done | paste -sd+ - | bc)
+  t=$((t + c))
+  # liveness: each detector matches non-zero content against the immutable base in all 4 locales
+  m=$(for l in en ja ko zh; do git show e306e21a9:docs-site/content/$l/$f > /tmp/gdr-live.md; w /tmp/gdr-live.md; done | sort -n | head -1)
+  # aptness: the single pattern source $p carries a literal /goal token
+  case "$p" in *'/goal'*) a=1;; *) a=0;; esac
+  printf "%s:count=%s,live_min=%s,apt=%s " "$name" "$c" "$m" "$a"
+done
 echo "total=$t"
 ```
 
