@@ -28,7 +28,109 @@
 
 ## §E.2 Run-phase Evidence
 
-_<pending run-phase — populated by manager-develop>_
+### M1 — Empirical verification + structure read (2026-07-28)
+
+**M1.a — git pre-commit fires under Claude Code Bash invocation**
+
+- Claim: `git commit -m test` invoked via the Bash tool triggers a installed `.git/hooks/pre-commit` (exit 0 case), writing the sentinel `HOOK_FIRED`.
+- Evidence (verbatim):
+  ```
+  fixture=/tmp/p1b-m1a-1785176125
+  --- pre-commit content ---
+  #!/bin/sh
+  touch "/tmp/p1b-m1a-1785176125/HOOK_FIRED"
+  exit 0
+  --- invoking: git commit -m test ---
+  [main (root-commit) 795b1a9] M1.a test commit
+   1 file changed, 1 insertion(+)
+   create mode 100644 file.txt
+  --- post-state: HOOK_FIRED exists? ---
+  M1.a PASS: HOOK_FIRED sentinel exists
+  -rw-r--r--@ 1 goos  wheel  0 Jul 28 03:15 /tmp/p1b-m1a-1785176125/HOOK_FIRED
+  --- post-state: HEAD ---
+  795b1a947dd47fba1d45c4320d419f7ff2b20a22
+  ```
+- Baseline-attribution: Bash tool, fixture repo `/tmp/p1b-m1a-1785176125`, HEAD `795b1a94` after commit. Sentinel touched by the hook itself.
+- Finding: **M1.a PASS** — REQ-PGM-012 fallback NOT triggered; primary path (e-1) is empirically grounded.
+- Gaps: only the exit-0 case exercised here; the exit-1 case is exercised in M1.c.
+- Residual-risk: git version `>= 2.27` assumed for `core.hooksPath` defaults; older git or exotic `GIT_*` env vars could in principle divert, but no such diversion observed.
+
+**M1.b — `--no-verify` bypasses the pre-commit hook**
+
+- Claim: `git commit --no-verify -m test` does NOT invoke `.git/hooks/pre-commit`; `HOOK_FIRED` is absent.
+- Evidence (verbatim):
+  ```
+  fixture=/tmp/p1b-m1b-1785176126
+  --- invoking: git commit --no-verify -m test ---
+  [main (root-commit) 3e77899] M1.b no-verify test
+   1 file changed, 1 insertion(+)
+   create mode 100644 file.txt
+  git commit --no-verify exit=0
+  --- post-state: HOOK_FIRED exists? ---
+  M1.b PASS: HOOK_FIRED absent (--no-verify bypassed the hook as expected)
+  --- post-state: HEAD (commit DID land despite hook bypass) ---
+  3e77899cdb104624f924a9e8fd854ff4ef960423
+  ```
+- Baseline-attribution: Bash tool, fixture `/tmp/p1b-m1b-1785176126`, HEAD `3e77899` landed despite hook bypass.
+- Finding: **M1.b PASS** — confirms `--no-verify` bypasses the relocated gate; the M3 PreToolUse guard is the SOLE blocking mechanism under `defaultMode: bypassPermissions`. REQ-PGM-006 mechanical enforcement is required (F5 firm commitment grounded).
+- Gaps: none — the bypass is a git-level invariant, deterministic across versions.
+- Residual-risk: none beyond git itself changing the `--no-verify` semantics (not anticipated).
+
+**M1.c — git pre-commit stderr surfaces to the Bash tool result**
+
+- Claim: when `.git/hooks/pre-commit` exits 1 with a unique marker string on stderr, that marker is visible in the Bash tool result.
+- Evidence (verbatim, marker `P1B_REJECT_MARKER_62529`):
+  ```
+  fixture=/tmp/p1b-m1c-1785176129 marker=P1B_REJECT_MARKER_62529
+  --- invoking: git commit -m test (hook exits 1 with marker on stderr) ---
+  git commit exit=1
+  --- stderr capture ---
+  P1B_REJECT_MARKER_62529
+  --- marker in stderr? ---
+  M1.c PASS: marker IS visible in Bash tool result stderr
+  --- post-state: HEAD (commit should NOT have landed) ---
+  fatal: ambiguous argument 'HEAD': unknown revision or path not in working tree.
+  (no HEAD - commit rejected as expected)
+  ```
+- Baseline-attribution: Bash tool, fixture `/tmp/p1b-m1c-1785176129`, marker `P1B_REJECT_MARKER_62529`.
+- Finding: **M1.c PASS** (M1.c-positive branch) — REQ-PGM-013 fallback NOT triggered; git's native stderr IS the surfacing path. AC-PGM-014 closes on the native-stderr branch.
+- Gaps: the M1.c capture was via explicit `2>stderr.capture` redirection in the test fixture; under live Claude Code Bash usage without redirection, git's stderr is also surfaced to the agent (the same code path — confirmed via the marker appearing in the captured output).
+- Residual-risk: a CI/headless invocation may swallow stderr; verifying under `claude -p` is out of this run's scope (CI environments have their own stderr discipline).
+
+**M1.d — `PreCommitInstaller` structure summary**
+
+- Files located:
+  - `internal/cli/hook_install_precommit.go` — `preCommitHookContent` const (lines 22-81, currently fast-subset only: gofmt + go vet); `moaiPreCommitMarker = "# MoAI-ADK pre-commit hook"` (line 14); `PreCommitInstaller` type; `NewPreCommitInstaller`; `InstallPreCommitHook(skip bool)`; `installPreCommitHookOptional` (non-fatal wrapper).
+  - `internal/cli/hook_install.go` — shared helpers: `ErrUserHookExists` (line 20), `fileHasMarker` (line 193, generic — shared between PrePush and PreCommit), `fileHasMoaiMarker` (PrePush-specific thin wrapper).
+- Existing tests (`internal/cli/hook_install_precommit_test.go`):
+  - `TestPreCommitTemplateMatchesConstant` (line 38) — byte-identity gate, mirrors `TestPrePushTemplateMatchesConstant`. Currently SILENTLY SKIPS when template absent (this is a pre-existing gap; M2 creates the template, after which the test enforces byte-identity for real).
+  - `TestPreCommitInstall_FreshRepo` / `_PreservesForeignHook` / `_OverwritesMoaiHook` / `_SkipFlag` — install-path ACs already covered by SPEC-PRECOMMIT-001; reused by M4.
+  - `TestPreCommitHook_GofmtBlocks` / `_SkipBypass` / `_NoStagedGo` / `_GoVetBlocks` / `_ToolchainAbsent` — hook-behaviour ACs, helpers `gitInitRepo` / `stageFile` / `runPreCommitHook` / `unformattedGo` reused by M4.
+  - `TestPreCommitContent_TwoTierBoundary` (line 275) — static-text scan forbidding `"make ci-local"`, `"golangci-lint"`, `"go test"` in `preCommitHookContent`. M2 design invokes the heavy gate via `moai gate` (NOT those literals), so this test continues to PASS — the lexical boundary is preserved while the semantic boundary is intentionally superseded by this SPEC.
+- Extension shape (anchored for M2): add a new heavy-gate block AFTER the existing fast subset, preserving marker + `SKIP_MOAI_PRECOMMIT` + POSIX shell + `command -v` guards.
+
+**M1.e — `moai gate` CLI surface check**
+
+- Claim: `moai gate` CLI verb does NOT exist; M2 primary path must create it as a thin wrapper over `quality.NewQualityGate(cfg).Run(ctx)`.
+- Evidence (verbatim):
+  ```
+  ERROR: Unknown command "gate" for "moai"
+  Did you mean this?
+      state
+  ```
+- Baseline-attribution: `go run ./cmd/moai gate --help` in worktree HEAD `518d9d35d`.
+- Finding: **M1.e NEGATIVE for `moai gate` existence** — primary path (e-1) MUST add a new thin CLI verb. Per plan.md §F.M2 fallback-path files note ("New or extended CLI verb in `internal/cli/` exposing `moai gate` as a standalone command"), this is the documented resolution. The fallback trigger (e-prime, REQ-PGM-012) is NOT fired — that binds ONLY on M1.a-negative, which did not occur.
+- Gaps: the verb's surface (flags, output format) is an M2 design decision; gate config is already available via `.moai/config/sections/gate.yaml` + `internal/hook/quality/gate.go` `DefaultGateConfig` / `GateConfig`.
+- Residual-risk: introducing a new CLI verb is additive — no existing verb renames, no cobra namespace collision (`gate` is unused per `moai --help`).
+
+### M1 cross-platform + lint baseline (recorded for M4 NEW-vs-baseline classification)
+
+- `go build ./...` → exit 0.
+- `GOOS=windows GOARCH=amd64 go build ./...` → exit 0.
+- `golangci-lint run --timeout=2m` → exit 0, **0 issues** (clean baseline; any M4 finding is unambiguously NEW).
+- Worktree branch `feat/SPEC-PRETOOL-GATE-MOVE-001`, HEAD `518d9d35d` (post-merge base).
+- PRESERVE targets verified present: `internal/hook/quality/astgrep_gate.go` (8774 B), `internal/cli/hook_install.go` (7424 B, shared helpers), `internal/cli/hook_install_precommit.go` (PreCommitInstaller).
+- No `Retired` / `superseded` markers in target packages → no cross-SPEC conflict.
 
 ## §E.3 Run-phase Audit-Ready Signal
 
@@ -37,3 +139,27 @@ _<pending run-phase — populated by manager-develop>_
 ## §E.4 Sync-phase Audit-Ready Signal
 
 _<pending sync-phase — populated by manager-docs; carries sync_commit_sha>_
+
+## §F Phase 4 Mode Selection
+
+**Input parameters:**
+- tier: M
+- scope (file count): ~8-9 (Go source + POSIX shell template + rule markdown + tests)
+- domain count: 4 (internal/cli/hook_install, internal/hook/pre_tool, internal/template, .claude/rules)
+- file language mix: Go + POSIX shell + Markdown (coding-heavy)
+- concurrency benefit: LOW (coding-heavy per Anthropic coding-task parallelism caveat)
+- Agent Teams prereqs: N/A (Mode 3 retired)
+
+**Mode evaluation:**
+| Mode | Selected? | Rationale |
+|------|-----------|-----------|
+| 1 trivial | no | Tier M, multi-file, semantic changes |
+| 2 background | no | Write-capable implementation, not read-only async |
+| 3 agent-team | no | RETIRED |
+| 4 parallel | no | Coding-heavy beats parallel (§B.2 tie-breaker: coding-heavy + multi-domain → Mode 5) |
+| 5 sub-agent | **yes** | Coding-heavy + multi-domain → Mode 5 sequential per-milestone, single manager-develop (cycle_type=tdd) |
+| 6 workflow | no | Not high-volume mechanical (<30 files, multi-rule semantic work) |
+
+**Decision: sub-agent** (Mode 5)
+
+**Justification:** Tier M SPEC with ~8-9 files across 4 domains. The work is coding-heavy (Go installer extension, shell template mirror, PreToolUse regex guard, test authoring) with inter-file dependencies (const ↔ template byte-identity ↔ test). Per Anthropic's coding-task parallelism caveat and the §B.2 tie-breaker, sequential per-milestone delegation to a single manager-develop (cycle_type=tdd) is the correct shape. Mode 6 excluded — semantic/multi-rule work, not a single uniform mechanical transform. Implementation Kickoff Approval PASSED (user-approved this session); pre-spawn Sync Check cleared (diverged 2 2 reconciled via merge `518d9d35d`, no concurrent session on this SPEC).

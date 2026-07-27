@@ -2,7 +2,7 @@
 id: SPEC-PRETOOL-GATE-MOVE-001
 title: "Relocate commit-quality gate off PreToolUse 5s budget to native git pre-commit hook"
 version: "0.2.0"
-status: draft
+status: in-progress
 created: 2026-07-28
 updated: 2026-07-28
 author: manager-spec
