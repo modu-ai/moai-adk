@@ -41,7 +41,7 @@ Every detector below is therefore anchored on a token that **survives translatio
 | structural markers (`^## `, `^\| `, `^### `) | No | AC-GDR-006 |
 | `per-turn`, "continuation", "per-tool" | **Yes — PROHIBITED as anchors** | none |
 
-The meta-guard is **AC-GDR-010**: it asserts every emission detector yields exactly ONE distinct value across the four locales, **and** that each detector still matches non-zero content against the immutable recorded base — the second component being what distinguishes a swept surface from a broken regex (finding B-1).
+The meta-guard is **AC-GDR-010**: it asserts every emission detector yields exactly ONE distinct value across the four locales, **and** that each detector still matches non-zero content against the immutable recorded base, **and** that each detector's pattern actually carries a literal `/goal` token. The second component distinguishes a swept surface from a broken regex (finding B-1); the third distinguishes a detector aimed at the emission reference from one aimed at a token that merely sits beside it (finding B2-1).
 
 ### §A.3 Asymmetry carve-out — why symmetry is not an unconditional rule
 
@@ -179,7 +179,7 @@ for p in advanced/autonomous-loops.md cli-reference/handoff.md advanced/self-evo
 - Recorded baseline: `autonomous-loops.md=4 handoff.md=4 self-evolving.md=4`
 - Target: **identical** (`4` each), and AC-GDR-012 at `0`
 
-**AC-GDR-010** — **The locale-invariance meta-guard, with a liveness floor.** Compound, three components:
+**AC-GDR-010** — **The locale-invariance meta-guard, with a liveness floor and an aptness assertion.** Compound, four components:
 
 **(a) Symmetry** — every emission detector yields exactly ONE distinct value across the four locales. A prose-anchored detector produces ≥ 2 distinct values (e.g. `{2, 0}`) and fails here even while its own aggregate reads `0`.
 
@@ -187,27 +187,41 @@ for p in advanced/autonomous-loops.md cli-reference/handoff.md advanced/self-evo
 
 **(c) Asymmetry carve-out (added at audit iteration 1, finding B-2)** — component (a) is disqualifying only where the underlying **content** is locale-symmetric. Where content is genuinely locale-asymmetric, the asymmetry is recorded in the baseline with a justification and the detector is exempted from (a) **by name**. No detector is currently exempt; the exemption list is empty and any addition must cite the measured content asymmetry. See §A.3.
 
+**(d) Aptness (added at audit iteration 2, finding B2-1)** — every emission detector's match pattern contains a literal `/goal` token. Components (a) and (b) constrain a detector's *behaviour* (symmetric, non-empty against the base) but never tie it to the token the sweep must remove, so a detector that is live and symmetric yet semantically aimed elsewhere passes both. Each detector therefore declares its pattern **once** in a `p=` variable that the counting function `w()` and the aptness test both read, so a weakening of the pattern cannot leave a stale assertion behind. The mechanism is one `case` expansion, not a second command.
+
+> **Rejected alternative — base-match-set subset.** Audit iteration 2 proposed a stronger form: assert each detector's base-match line set is a subset of the base lines carrying `` `/goal` ``. It was **executed and refuted**. In the base `e306e21a9`, `ac_converge` and `auto mode` both occur on the same line as `` `/goal` `` (`advanced/autonomous-loops.md` line 7 in `en`), so both attack detectors yield `leak=0` and pass the subset test. Line granularity is exactly the granularity the "adjacent token" attack exploits, so the subset form cannot discriminate here; the pattern-literal form rejects all three controls.
+
 ```bash
 # (a) symmetry — distinct values per detector, working tree
 # (b) liveness — same detector against the immutable base, minimum across locales
+# (d) aptness  — the single pattern source $p carries a literal /goal token
 for name in paired_al auto_mode l7 paired_se handoff; do
   case $name in
-    paired_al) w() { grep -ohE '`/moai loop`[ ·/]+`/goal`' "$1" | wc -l | tr -d ' '; }; f=advanced/autonomous-loops.md;;
-    auto_mode) w() { grep -c 'auto mode.*`/goal`' "$1"; };                            f=advanced/autonomous-loops.md;;
-    l7)        w() { sed -n '7p' "$1" | grep -c '`/goal`'; };                          f=advanced/autonomous-loops.md;;
-    paired_se) w() { grep -ohE '`/moai loop`[ ·/]+`/goal`' "$1" | wc -l | tr -d ' '; }; f=advanced/self-evolving.md;;
-    handoff)   w() { grep -ohF '`/goal' "$1" | wc -l | tr -d ' '; };                    f=cli-reference/handoff.md;;
+    paired_al) p='`/moai loop`[ ·/]+`/goal`'; w() { grep -ohE "$p" "$1" | wc -l | tr -d ' '; }; f=advanced/autonomous-loops.md;;
+    auto_mode) p='auto mode.*`/goal`';        w() { grep -c "$p" "$1"; };                      f=advanced/autonomous-loops.md;;
+    l7)        p='`/goal`';                   w() { sed -n '7p' "$1" | grep -c "$p"; };        f=advanced/autonomous-loops.md;;
+    paired_se) p='`/moai loop`[ ·/]+`/goal`'; w() { grep -ohE "$p" "$1" | wc -l | tr -d ' '; }; f=advanced/self-evolving.md;;
+    handoff)   p='`/goal';                    w() { grep -ohF "$p" "$1" | wc -l | tr -d ' '; }; f=cli-reference/handoff.md;;
   esac
   d=$(for l in en ja ko zh; do w docs-site/content/$l/$f; done | sort -u | wc -l | tr -d ' ')
   m=$(for l in en ja ko zh; do git show e306e21a9:docs-site/content/$l/$f > /tmp/gdr-live.md; w /tmp/gdr-live.md; done | sort -n | head -1)
-  printf "%s:distinct=%s,live_min=%s " "$name" "$d" "$m"
+  case "$p" in *'/goal'*) a=1;; *) a=0;; esac
+  printf "%s:distinct=%s,live_min=%s,apt=%s " "$name" "$d" "$m" "$a"
 done
 ```
 
-- Recorded baseline: `paired_al:distinct=1,live_min=1 auto_mode:distinct=1,live_min=1 l7:distinct=1,live_min=1 paired_se:distinct=1,live_min=2 handoff:distinct=1,live_min=1`
-- Target: **all five keep `distinct=1` AND `live_min >= 1`**, and AC-GDR-012 at `0`
-- **Dead-detector control, executed.** The audit's typo'd anchor `auto-mode` (hyphenated, co-occurring with `` `/goal` `` nowhere) reads `distinct=1` on the working tree — passing component (a) — but `live_min=0` against `e306e21a9`, so component (b) rejects it. Both were run; this is the discriminating evidence the criterion previously lacked.
-- Symmetry and liveness both hold at baseline, so this criterion is compounded with AC-GDR-012 for falsifiability.
+- Recorded baseline: `paired_al:distinct=1,live_min=1,apt=1 auto_mode:distinct=1,live_min=1,apt=1 l7:distinct=1,live_min=1,apt=1 paired_se:distinct=1,live_min=2,apt=1 handoff:distinct=1,live_min=1,apt=1`
+- Target: **all five keep `distinct=1` AND `live_min >= 1` AND `apt=1`**, and AC-GDR-012 at `0`
+- **Three controls, all executed against this block.** Each defeats a different component, and none is defeated by the others:
+
+  | Control detector | `distinct` | `live_min` | `apt` | Rejected by |
+  |---|---|---|---|---|
+  | `auto-mode` (hyphenated typo — the iteration-1 dead-detector control) | `1` | **`0`** | — | (b) liveness |
+  | `ac_converge` (adjacent token, co-occurs with `` `/goal` `` on the same line) | `1` | `1` | **`0`** | (d) aptness |
+  | `auto mode` (AC-GDR-005's compound regex with its `` `/goal` `` half dropped) | `1` | `1` | **`0`** | (d) aptness |
+
+- The second and third controls pass (a) **and** (b) — that is the hole component (d) closes. They are the plausible-mutation path, not a contrived one: simplifying a compound regex to its untranslated-anchor half is exactly the edit a sweep makes while driving a count toward zero, and it leaves a criterion satisfiable by deleting the words "auto mode" while the native-`/goal` reference survives.
+- All four components hold at baseline, so this criterion is compounded with AC-GDR-012 for falsifiability.
 
 **AC-GDR-011** — Compound held-out: the docs-site builds **and** the aggregate emission is `0`. A sweep that broke shortcode or front-matter syntax in one locale would fail the build half.
 
@@ -266,12 +280,13 @@ The hugo build appears as AC-GDR-011's first half rather than a pure gate, becau
 | REQ-GDR-004 (per-locale baselines) | AC-GDR-001..005 | Every emission criterion records per locale |
 | REQ-GDR-009 (symmetry, content-conditioned) | AC-GDR-010 (a) + §A.3 | Component (a) plus the named-exemption carve-out |
 | REQ-GDR-010 (liveness floor) | AC-GDR-010 (b) | Detector run against the immutable base `e306e21a9` |
+| REQ-GDR-011 (aptness) | AC-GDR-010 (d) | Single `p=` pattern source asserted to carry a literal `/goal` token |
 | REQ-GDR-005 (retention register) | AC-GDR-006, AC-GDR-007, AC-GDR-008 | One guard per register row |
 | REQ-GDR-006 (do not modify CC / contrast / archives) | AC-GDR-008 | Five pinned counts |
 | REQ-GDR-007 (split surface pinned, not zeroed) | AC-GDR-006 | Per-locale structural pins |
 | REQ-GDR-008 (no locale-symmetry manufacture) | AC-GDR-008 (`hooks=2`), AC-GDR-009 (inventory) | Two independent guards: adding a line fails the first, adding a page fails the second |
 
-Coverage: **10 / 10 REQs** cited by ≥ 1 AC. Reverse: every AC-GDR-001..012 appears in ≥ 1 row. AC-GDR-010's three components are cited separately, since each answers a different requirement.
+Coverage: **11 / 11 REQs** cited by ≥ 1 AC. Reverse: every AC-GDR-001..012 appears in ≥ 1 row. AC-GDR-010's four components are cited separately, since each answers a different requirement.
 
 ---
 
@@ -280,6 +295,7 @@ Coverage: **10 / 10 REQs** cited by ≥ 1 AC. Reverse: every AC-GDR-001..012 app
 - **Sweeping `autonomous-loops.md` to zero.** Blocked by AC-GDR-006's per-locale `h3=1,h2=1,row=1` pins.
 - **Editing `en` only.** Blocked twice: the per-locale targets in AC-GDR-001..005, and AC-GDR-010's `distinct=1` requirement.
 - **Re-introducing a prose-anchored detector.** Blocked by AC-GDR-010, which fails at `distinct=2` even when the detector's own aggregate reads `0`.
+- **Substituting a live, symmetric, semantically-wrong detector** — swapping an emission anchor for an adjacent token (`ac_converge`), or dropping the `` `/goal` `` half of a compound regex. Blocked by AC-GDR-010 (d) at `apt=0`; (a) and (b) both pass in this case, which is why (d) exists.
 - **Rewriting the strategy record instead of annotating it.** Blocked by AC-GDR-007's `25` content pin.
 - **Adding `ja`/`zh` `hooks-reference.md` lines** to force symmetry. Blocked by AC-GDR-008's `hooks=2` pin.
 - **Creating a new locale page.** Blocked by AC-GDR-009's inventory pin.

@@ -1,10 +1,10 @@
 ---
 id: SPEC-GOAL-DOCS-RETIRE-001
 title: Retire native /goal emission references from public and internal documentation across four locales
-version: 1.0.0
+version: 1.1.0
 status: draft
 created: 2026-07-25
-updated: 2026-07-25
+updated: 2026-07-27
 author: manager-spec
 priority: MEDIUM
 phase: "v3.1.0"
@@ -20,6 +20,7 @@ depends_on: [SPEC-GOAL-SURFACE-UNIFY-001]
 | Version | Date | Change | Author |
 |---------|------|--------|--------|
 | 1.0.0 | 2026-07-25 | Initial authoring. Split from `SPEC-GOAL-SURFACE-UNIFY-001` after its plan-audit iteration 2 emitted STOP (score regression 0.71 → 0.64) and the user chose scope reduction over iteration 3. Carries the public-documentation scope with locale-invariant detectors. | manager-spec |
+| 1.1.0 | 2026-07-27 | Plan-audit iteration 2 MUST-FIX **B2-1** (aptness) closed. New `REQ-GDR-011` requires every emission detector's pattern to carry a literal `/goal` token, declared once and shared by the counting step and the assertion; `AC-GDR-010` gains component **(d)** and re-records its baseline with an `apt` field. The auditor's stronger alternative — a base-match-set subset check — was executed and **refuted**: `ac_converge` and `auto mode` co-occur with `` `/goal` `` on the same base line, so a line-level subset test admits both attack detectors. | orchestrator |
 
 ---
 
@@ -89,6 +90,8 @@ Commands and observed outputs are recorded in `research.md`. Backticked detector
 - **REQ-GDR-009** (Capability gate) — **Where** the content a detector targets is locale-symmetric, the detector's per-locale baseline shall be symmetric; an asymmetric baseline is then evidence the detector is prose-anchored and shall be re-anchored before the criterion is accepted. **Where** the targeted content is genuinely locale-asymmetric, the asymmetry shall be recorded with its justification and the detector exempted by name, because forcing symmetry there would require creating content REQ-GDR-008 forbids.
 
 - **REQ-GDR-010** (Event-driven) — **When** an emission detector's target state is zero in every locale, the criterion judging it shall additionally assert the detector matches non-zero content against an immutable recorded base, so a detector that matches nothing is distinguishable from a surface that was swept.
+
+- **REQ-GDR-011** (Ubiquitous) — Every emission detector's match pattern shall contain a literal `/goal` token, so that a detector which is live and locale-symmetric but semantically aimed elsewhere is rejected before the criterion is accepted. Each detector's pattern shall be declared once and consumed by both the counting step and the aptness assertion, so the two cannot diverge.
 
 ---
 
