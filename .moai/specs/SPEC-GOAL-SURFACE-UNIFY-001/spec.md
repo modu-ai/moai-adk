@@ -4,7 +4,7 @@ title: Unify the goal surface on /moai goal and relocate goal presentation to th
 version: 1.3.0
 status: in-progress
 created: 2026-07-25
-updated: 2026-07-26
+updated: 2026-07-27
 author: manager-spec
 priority: HIGH
 phase: "v3.1.0"
