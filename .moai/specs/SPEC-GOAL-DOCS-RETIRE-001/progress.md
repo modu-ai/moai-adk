@@ -131,7 +131,7 @@ Neither the recorded baseline (`0` / `25`) nor the target (`>= 1` / `25`) change
 
 ```yaml
 run_complete_at: 2026-07-27
-run_commit_sha: pending-backfill-run-final
+run_commit_sha: 62df55fab
 run_status: audit-ready
 ac_pass_count: 11
 ac_fail_count: 0
@@ -156,7 +156,7 @@ m1_to_mN_commit_strategy: one commit per milestone (N1..N4); N5 verification edi
 
 ```yaml
 sync_complete_at: 2026-07-27
-sync_commit_sha: pending-backfill-sync-2
+sync_commit_sha: 62df55fab
 sync_status: audit-ready
 docs_build:
   command: hugo --minify --gc
