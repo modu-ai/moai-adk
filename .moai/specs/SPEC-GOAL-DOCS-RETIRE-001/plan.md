@@ -248,3 +248,129 @@ ACs affected: AC-GDR-012 (refactored); AC-GDR-006/008/009/011 (compound referenc
 - `.claude/rules/moai/development/spec-frontmatter-schema.md` § Status Transition Ownership Matrix — row `completed → in-progress (amendment)` (the canonical authority for this transition; commit subject `feat(SPEC-{ID}): in-place amendment <rationale-summary>`).
 - `.claude/rules/moai/workflow/repo-local-pr-policy.md` — Route B (PR) is mandatory for ALL tiers in this repo (`enforce_admins: true`).
 - `.claude/rules/moai/core/verification-claim-integrity.md` §1.1 surface 2 — the manager-agent §E self-verification matrix that E1-E7 above must satisfy (every claim row attributable to a directly-observed command whose verbatim output is cited).
+
+---
+
+## §I v1.6.0 Amendment — B2-2 / B2-3 Hardening Plan
+
+> **Plan-phase strategy for Amendment 2** (see `spec.md` `## Amendments` § 2). The `acceptance.md` body refactor is run-phase scope (manager-spec, re-delegation per D-NEW-1 inline-fix pattern — same routing as §F.2 v1.5.0 M1; `.claude/rules/moai/development/spec-frontmatter-schema.md` § Forbidden ownership crossings forbids `manager-develop` from modifying `acceptance.md` body content, and the `completed → in-progress (amendment)` row of the Status Transition Ownership Matrix names `manager-spec` as the owner via re-delegation). This section describes the "how" — the mechanism the run-phase agent will implement, the baseline-preservation invariant, and the integration boundary with the D2 amendment (Amendment 1). §A–§H above are the v1.0–v1.5 / D2 plan (already complete); §I is the v1.6.0 amendment plan.
+
+### §I.1 Context — why this amendment exists
+
+AC-GDR-010 is the locale-invariance meta-guard with four components (a/b/c/d). The v1.6.0 amendment hardens component (b) [B2-2] and component (c) [B2-3] only — the two SHOULD-FIX findings deferred from plan-audit iteration 2 (see `progress.md` lines 64-65). The recorded baseline (`distinct=1,live_min>=1,apt=1` for all 5 detectors; `paired_se:live_min=2`; exemption list empty today) is unaffected and MUST be preserved verbatim. **Applied lesson** (`feedback_hypothesis_as_defect`): treat these as future-risk hardening, NOT current defects.
+
+### §I.2 B2-2 mechanism — frozen-base structural-currency assertion (component b)
+
+**Hazard (B2-2)**: component (b) runs each detector against `e306e21a9:<scoped page>` and asserts non-zero content. If a scoped page is later restructured (path renamed / split / heading skeleton changed), the base path still exists and still matches — but against content that no longer represents the working tree. Liveness becomes stale-true against a non-representative base. There is no criterion today asserting the frozen base is still structurally current for the scoped pages.
+
+**Chosen mechanism — heading-set equality (option a, structural-hash comparison)**. For each scoped page instance (3 files × 4 locales = 12 instances), assert the set of markdown heading lines (`^#`) at `e306e21a9:<page>` equals the set at the working-tree `<page>`. The sweep edits BODY content (emission references inline), NOT heading structure — so a heading-set divergence is always a restructuring event, never a legitimate sweep edit.
+
+**Why this option over the alternatives**:
+- *Option (b) `git cat-file -e` + non-empty*: only asserts the base path exists. Does NOT catch the case where the working tree path was renamed but the base path still exists independently — both pass. Too weak.
+- *Option (c) content-similarity floor (≥ N% heading overlap)*: more complex, requires choosing N, and admits gradual drift below the threshold. The hazard is a discrete restructuring event, not gradual drift — a binary equality check is the tightest discriminator.
+- *Option (a) heading-set equality* (chosen): binary, falsifiable, zero-parameter. Any heading add/remove/rename trips the check. Legitimate future doc edits that add sections would trip it too — that is the desired behavior (force the contributor to re-anchor the frozen base or document the restructuring).
+
+**Implementation shape (run-phase agent finalizes the exact shell)**: extend AC-GDR-010's loop over the 5 detectors with a sixth check per scoped page — compute the sorted heading set from `git show e306e21a9:docs-site/content/$l/$f | grep -E '^#' | sort` and from the working-tree file `grep -E '^#' docs-site/content/$l/$f | sort`, assert byte-identical via `diff -q` / `cmp -s`. Report the divergent heading lines on failure. The check runs alongside component (b) liveness (same loop, same scoped-page iteration) — it does NOT replace (b), it GATES (b): if the heading set diverges, component (b)'s liveness number is reported as stale-true and the criterion FAILS.
+
+**Baseline preservation**: component (b)'s recorded `live_min>=1` values are unchanged. The new assertion adds a gate; it does not modify the recorded liveness numbers.
+
+### §I.3 B2-3 mechanism — mechanical exemption-list count check (component c)
+
+**Hazard (B2-3)**: component (c) declares the exemption list empty by prose. A future edit could add an exemption entry without citing any measured content asymmetry, and component (a) symmetry would silently bypass for that detector. There is no mechanical guard today.
+
+**Chosen mechanism — structured declaration + count check (option b)**. Replace the prose ("No detector is currently exempt; the exemption list is empty and any addition must cite the measured content asymmetry") with a structured, machine-readable declaration in `acceptance.md` AC-GDR-010 component (c):
+
+```
+exempt_detectors: []   # REQUIRED format if non-empty: [{name: <detector>, asymmetry: <measured values>, justification: <citation>}]
+```
+
+The check asserts: (1) the `exempt_detectors:` declaration is present exactly once in AC-GDR-010's component (c) block, (2) the list has 0 entries today, (3) if non-empty, each entry carries the three required fields (name + measured asymmetry + justification).
+
+**Why this option over the alternatives**:
+- *Option (a) `grep -c` on a prose sentinel*: brittle — depends on the exact wording of the prose, which a future edit could rephrase without changing the semantic invariant. The structured field is grep-stable.
+- *Option (b) structured field* (chosen): machine-readable, format-documented, addition-path-explicit. The justification field forces the contributor to cite the measured asymmetry at the point of addition, satisfying REQ-GDR-009's "asymmetry shall be recorded with its justification" rule.
+
+**Implementation shape (run-phase agent finalizes the exact shell)**: add a check to AC-GDR-010 component (c) that locates the `exempt_detectors:` declaration in `acceptance.md`, asserts it is present exactly once, parses the list, asserts 0 entries today (or, if non-empty, that each entry has name+asymmetry+justification). Report the parsed entry count on failure.
+
+**Baseline preservation**: component (c)'s current verdict (the list IS empty today) is unchanged. The new check adds a mechanical guard; it does not modify the recorded exemption-list state.
+
+### §I.4 Baseline-preservation invariant (load-bearing)
+
+After the v1.6.0 refactor, AC-GDR-010 re-run against the current working tree MUST still observe its recorded baseline verbatim:
+
+```
+paired_al:distinct=1,live_min=1,apt=1 auto_mode:distinct=1,live_min=1,apt=1 l7:distinct=1,live_min=1,apt=1 paired_se:distinct=1,live_min=2,apt=1 handoff:distinct=1,live_min=1,apt=1
+```
+
+The hardening adds two assertions (heading-set equality + exemption-list count); it does NOT change the existing component (a) distinct values, component (b) live_min values, component (d) apt values, or the aggregate `total=24` (pre-sweep, against base `e306e21a9`) / `total=0` (post-sweep, against current tree) recorded by AC-GDR-012. If the re-measured baseline diverges from the recorded values, the run-phase agent MUST return a blocker report — do NOT proceed with the refactor.
+
+### §I.5 Integration boundary with Amendment 1 (D2)
+
+- **AC-GDR-012 is NOT touched**. The v1.5.0 single-`p=`-source discipline + liveness + aptness guards (Amendment 1's run-phase refactor at commit `115b0b54e`) are preserved byte-identical.
+- **AC-GDR-010 component (d) aptness is NOT touched**. Component (d) was added at v1.4.0 (B2-1 close) and asserts each detector's `p=` carries a literal `/goal` token via `case "$p" in *'/goal'*)`. The v1.6.0 amendment does not modify the single-`p=`-source discipline.
+- **AC-GDR-010 component (a) symmetry is NOT touched**. Component (a) asserts `distinct=1` per detector via `sort -u | wc -l`; the v1.6.0 amendment does not modify the symmetry predicate.
+- The v1.6.0 refactor touches ONLY component (b) [B2-2 heading-set equality gate added] and component (c) [B2-3 structured exemption-list field + count check added].
+
+### §I.6 Pre-flight (run-phase Section C)
+
+Before the run-phase M1' refactor commit, the run-phase agent MUST re-measure the following against the current worktree tree and observe the recorded values — these are the baseline-preservation pre-conditions:
+
+```bash
+# 1. AC-GDR-010 recorded baseline still holds against the current tree (pre-refactor)
+#    Run the AC-GDR-010 block from acceptance.md as-is; expect the recorded values:
+#    paired_al:distinct=1,live_min=1,apt=1 auto_mode:... l7:... paired_se:distinct=1,live_min=2,apt=1 handoff:...
+
+# 2. The 12 scoped page instances still exist at e306e21a9 with non-empty heading content
+for l in en ja ko zh; do
+  for f in advanced/autonomous-loops.md advanced/self-evolving.md cli-reference/handoff.md; do
+    git show e306e21a9:docs-site/content/$l/$f > /dev/null 2>&1 && \
+      git show e306e21a9:docs-site/content/$l/$f | grep -cE '^#'   # non-zero heading count
+  done
+done
+
+# 3. The 12 scoped page instances in the WORKING TREE still carry the same heading skeleton as e306e21a9 (pre-refactor invariant — should be unchanged since v1.5.0)
+for l in en ja ko zh; do
+  for f in advanced/autonomous-loops.md advanced/self-evolving.md cli-reference/handoff.md; do
+    diff <(git show e306e21a9:docs-site/content/$l/$f | grep -E '^#' | sort) \
+         <(grep -E '^#' docs-site/content/$l/$f | sort)   # expect empty diff
+  done
+done
+
+# 4. The exemption list is still empty today (prose form, pre-refactor — verified at plan-phase, will be replaced by structured field at run-phase)
+grep -c 'exemption list is empty' .moai/specs/SPEC-GOAL-DOCS-RETIRE-001/acceptance.md   # = 1
+
+# 5. AC-GDR-012 aggregate still reads total=0 (post-sweep tree) — Amendment 1 invariant preserved
+#    Run the AC-GDR-012 block from acceptance.md as-is; expect total=0
+```
+
+### §I.7 Constraints (DO NOT VIOLATE)
+
+- **Component (a) symmetry predicate UNCHANGED** — do not modify the `distinct=1` check (`sort -u | wc -l`).
+- **Component (d) aptness predicate UNCHANGED** — do not modify the `case "$p" in *'/goal'*)` check or the single-`p=`-source discipline.
+- **AC-GDR-012 judgment-command block UNCHANGED** — the v1.5.0 D2 refactor stays byte-identical.
+- **Recorded baseline values UNCHANGED** — `distinct=1`, `live_min>=1` (or `=2` for `paired_se`), `apt=1`, `total=24` (base) / `total=0` (post-sweep tree).
+- **12 sweep-target locale files UNTOUCHED** — the sweep landed at v1.0–v1.4; this amendment does not re-sweep.
+- **Four retention surfaces UNTOUCHED** — `claude-code/**`, `goal.md`, `moai-goal.md`, `hooks-reference.md`, `.moai/research/*`.
+- **`progress.md` §E.2/§E.3/§E.4 body UNTOUCHED** — owned by manager-develop (§E.2/§E.3) and manager-docs (§E.4).
+- **`amendment_of: SPEC-GOAL-DOCS-RETIRE-001` self-reference preserved** — already present from v1.5.0; do NOT remove.
+
+### §I.8 Self-Verification (run-phase E1-E7)
+
+The run-phase agent's §E self-verification MUST demonstrate (per the 5-section Evidence-Bearing format, `verification-claim-integrity.md` §3):
+
+- **E1 (AC matrix)**: AC-GDR-010 re-run yields the recorded baseline verbatim (5 detectors, all `distinct=1`, `live_min>=1`, `apt=1`); the new heading-set assertion PASSes for all 12 scoped page instances; the new exemption-list count check PASSes (0 entries). AC-GDR-012 still reads `total=0` (post-sweep tree). Every PASS row cites the verbatim command output.
+- **E2 (build)**: n/a (markdown-only refactor; no Go code touched).
+- **E3 (coverage)**: n/a.
+- **E4 (subagent boundary)**: n/a (no `internal/harness/` or `internal/hook/` changes).
+- **E5 (lint)**: `moai spec lint .moai/specs/SPEC-GOAL-DOCS-RETIRE-001/` exits 0 (the new component (b)/(c) prose does not introduce a `FrontmatterInvalid` / `OwnershipTransitionInvalid` / `OutOfScopeRule` / `StatusGitConsistency` finding; the `completed → in-progress` amendment transition is owned by manager-spec and its commit subject matches the canonical pattern).
+- **E6 (commit + push)**: single run-phase commit on the worktree branch `feat/spec-retire001-b22b23`, conventional-commit subject `feat(SPEC-GOAL-DOCS-RETIRE-001): B2-2/B2-3 base-current + exemption-list hardening (run phase, AC-GDR-010 b/c)`. Push not required at run-phase (PR creation is a later manager-git step).
+- **E7 (blockers)**: if any pre-flight check in §I.6 fails (e.g., a scoped page heading skeleton has drifted since v1.5.0, or the exemption list is no longer empty), return a blocker report — do NOT proceed with the refactor until the state is documented and the user re-delegates.
+
+### §I.9 Residual-risk (forward-looking)
+
+- **Heading-set equality false-positive against legitimate future doc edits.** A future contributor who legitimately adds a section to one of the 3 scoped pages will trip the B2-2 check. This is the DESIRED behavior (the frozen base is no longer representative; the contributor must either re-anchor the base to a newer commit or document the restructuring). The residual risk is that the contributor misreads the failure as a "lint bug" and disables the check rather than re-anchoring. Mitigation: the AC-GDR-010 component (b) prose should explain the failure mode in one sentence.
+- **Exemption-list structured-field format drift.** If a future contributor adds an entry that omits the justification field, the check rejects it (desired). If a future contributor rephrases the field name (`exempt_detectors:` → `exemptions:`), the check would silently pass with the old prose and the new field coexisting. Mitigation: the check asserts the declaration is present exactly once; any rename would trip the "exactly once" predicate. Additionally, the run-phase check SHOULD assert the `exempt_detectors:` declaration is the ONLY exemption-list-shaped field in AC-GDR-010 component (c)'s block — e.g., assert by name the absence of sibling fields like `exemptions:`, `exempt:`, `excluded_detectors:` — covering the bypass where an empty `exempt_detectors: []` passes the "exactly once" predicate while a parallel-shaped field silently carries the actual exemption entries.
+
+### §I.10 Milestone M1' — AC-GDR-010 component (b)/(c) hardening
+
+Single run-phase milestone. No M2/M3 — Tier S scope. Deliverable: the `acceptance.md` AC-GDR-010 block refactored with (b) heading-set equality gate + (c) structured exemption-list field + count check; recorded baseline preserved verbatim; `moai spec lint` exits 0. **Run-phase owner: `manager-spec`** (D-NEW-1 re-delegation per the Status Transition Ownership Matrix `completed → in-progress (amendment)` row; manager-develop is forbidden from `acceptance.md` body edits per § Forbidden ownership crossings and would return a blocker report if delegated).

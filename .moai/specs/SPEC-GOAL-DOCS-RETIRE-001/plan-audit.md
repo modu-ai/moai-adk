@@ -178,3 +178,162 @@ FAIL at 0.75 against Tier M's 0.80. The distance is small and concentrated: **B-
 5. **B-5 … B-7** — one-line clarifications.
 
 What this SPEC gets right is worth stating plainly, because it is the reason the split was the correct call. The parent's N2 was a single prose-anchored detector that read zero in three locales; SPEC-B does not merely fix that instance — it names the failure class, prohibits the anchor category in a table, requires per-locale baselines as a recording rule (REQ-GDR-004), and adds a meta-guard whose subject is the detectors themselves. All 12 baselines reproduce, every emission detector is symmetric, and the retention register is consistent and fully guarded on the first attempt. The two MUST-FIX are gaps in how completely the meta-guard was specified, not evidence that the approach is wrong — and both are closable with components in the same style the SPEC already uses.
+
+---
+
+## v1.6.0 Amendment Audit (Phase 1 run-gate, 2026-07-28)
+
+**Scope**: v1.6.0 DELTA ONLY — Amendment 2 (B2-2/B2-3 hardening of AC-GDR-010 components b/c). v1.0 content was already audit-PASSed at iteration 2 (0.86) and closed; v1.5.0 D2 amendment was closed at PR #1181 (62df55fab). Reasoning context ignored per M1 Context Isolation. Commands executed in worktree `/Users/goos/MoAI/moai-adk-go/.claude/worktrees/retire001-b22b23` at `HEAD = bf711ec80`, branch `worktree-retire001-b22b23`.
+
+### Verdict: **FAIL**
+
+Tier S threshold = 0.75. Harmonic-mean score = **0.80** (passes threshold) but one MUST-FIX finding (ownership-routing contradiction) is a plan-phase authorization of a forbidden ownership crossing that the run-phase cannot self-heal without a blocker cycle. FAIL on structural grounds pending the one-line-per-site fix.
+
+### Must-Pass Results (delta scope)
+
+| | Result | Basis |
+|---|---|---|
+| MP-1 REQ consistency | N/A | No REQs added in amendment; v1.0 REQ-GDR-001..011 unchanged. |
+| MP-2 GEARS compliance | N/A | No new ACs in amendment; AC-GDR-010 body unchanged at plan-phase (refactor deferred to run-phase). |
+| MP-3 frontmatter validity | **PASS** | All 12 canonical fields present (`id`, `title`, `version: "1.6.0"` quoted, `status: in-progress`, `created`, `updated`, `author`, `priority: MEDIUM`, `phase`, `module`, `lifecycle: spec-anchored`, `tags`). `tier: S`, `amendment_of`, `run_commit_sha`, `sync_commit_sha` optional fields consistent. No snake_case aliases. |
+| MP-4 language neutrality | N/A | Docs-site i18n SPEC; single-surface (4 locales of 3 docs pages). No tool/language primacy claim. |
+| MP-5 D7 cross-SPEC | **PASS** | Only cross-SPEC reference is `SPEC-GOAL-SURFACE-UNIFY-001` (unchanged from v1.0); no new references introduced by the amendment. |
+| MP-6 D8 cross-platform | **PASS** | `grep -c syscall` over the v1.6.0 delta (HISTORY row + Amendments §2 + plan.md §I) → 0. |
+| MP-7 clarification gate | **PASS** | `grep -rn '\[NEEDS CLARIFICATION' plan.md research.md` → no markers (only match was this file's own prior-iteration report text describing the check). |
+
+### Category Scores (rubric-anchored)
+
+| Dimension | Score | Band | Evidence |
+|-----------|-------|------|----------|
+| Clarity | 0.75 | 0.75 — minor ambiguity | plan.md §I.1–§I.10 mechanisms are clearly explained (chosen option + rejected alternatives + rationale) for both B2-2 and B2-3. However, the ownership-routing statement ("run-phase scope (manager-develop)") at plan.md:256 and spec.md:62 directly contradicts the v1.5.0 routing within the same plan.md file (plan.md:182 → `manager-spec`) and the canonical matrix — a reader cannot determine the correct owner without consulting the SSOT. |
+| Completeness | 0.85 | 0.75 — one non-critical gap | HISTORY v1.6.0 row, Amendments §2 (with prior_completed_sha `62df55fab` verified), plan.md §I.1–§I.10 (Context, B2-2/B2-3 mechanisms, Baseline invariant, Integration boundary, Pre-flight, Constraints, Self-Verification, Residual-risk, Milestone M1') all present. Tier S artifact set is 2 files (spec + plan); acceptance.md correctly deferred to run-phase. |
+| Testability | 0.80 | 0.75 — minor interpretation | AC-GDR-010 components are binary-testable. The new B2-2/B2-3 checks are described at mechanism level with implementation shape deferred to run-phase ("run-phase agent finalizes the exact shell"). The recorded baseline is asserted verbatim and I verified it holds today. The deferral is acceptable for Tier S plan-phase, but the exact shell form will only be testable at run-phase. |
+| Traceability | 0.80 | 0.75 — indirect mapping | Amendment §2 of spec.md traces to plan.md §I; the B2-2/B2-3 findings trace to progress.md B2-2/B2-3 (deferred from iteration 2). The amendment hardens AC-GDR-010's interpretation of REQ-GDR-009 (component c) and REQ-GDR-010 (component b) without adding new REQs — the mapping is indirect but traceable. |
+
+**Harmonic mean** = 4 / (1/0.75 + 1/0.85 + 1/0.80 + 1/0.80) = 4 / (1.333 + 1.176 + 1.250 + 1.250) = 4 / 5.009 = **0.799** (rounds to 0.80).
+
+### Defects Found
+
+**D1. Ownership-routing contradiction (MUST-FIX).**
+`plan.md:256` (§I header) AND `spec.md:62` (Amendments §2, "Plan-phase artifacts" bullet) — Severity: **critical** — both sites state: *"The `acceptance.md` body refactor is run-phase scope (manager-develop)"* / *"a separate run-phase delegation (manager-develop)"*. The Status Transition Ownership Matrix (`.claude/rules/moai/development/spec-frontmatter-schema.md` § Forbidden ownership crossings) explicitly forbids this: *"manager-develop MUST NOT modify spec.md / plan.md / acceptance.md body content … When run-phase reveals a need to modify SPEC body content, manager-develop MUST return a blocker report and the orchestrator re-delegates to manager-spec for the scope-doc update before re-delegating back."* The `completed → in-progress (amendment)` matrix row assigns amendment work to **manager-spec** via the D-NEW-1 inline-fix pattern. The contradiction is internally demonstrable: the SAME plan.md file at `plan.md:182` (v1.5.0 §F.2 milestone M1, for the AC-GDR-012 refactor — the structurally identical case) correctly says *"Run-phase owner: `manager-spec` (per the D-NEW-1 inline-fix pattern … the `completed → in-progress (amendment)` row of the Status Transition Ownership Matrix names `manager-spec` as the owner via re-delegation). When run-phase reveals a need to modify the AC body, `manager-develop` MUST return a blocker report and the orchestrator re-delegates to `manager-spec`."* The v1.6.0 §I sites forgot the v1.5.0 §F.2 routing that sits 74 lines above them in the same file. **Required fix:** change both sites to route to `manager-spec (re-delegation per D-NEW-1 inline-fix pattern)`, mirroring `plan.md:182` verbatim. Concretely:
+- `plan.md:256` — replace `run-phase scope (manager-develop)` with `run-phase scope (manager-spec, re-delegation per D-NEW-1 inline-fix pattern — same routing as §F.2 v1.5.0 M1)`.
+- `spec.md:62` — replace `a separate run-phase delegation (manager-develop)` with `a separate run-phase delegation (manager-spec, per the D-NEW-1 inline-fix pattern)`.
+- `plan.md §I.10` M1' deliverable should additionally state the run-phase owner explicitly (mirroring §F.2's *"Run-phase owner: `manager-spec`"* sentence), so the routing is unambiguous from the milestone heading alone.
+
+**D2. B2-3 mitigation reasoning gap (SHOULD-FIX).**
+`plan.md:372` (§I.9 Residual-risk, "exemption-list structured-field format drift" bullet) — Severity: **minor** — the residual-risk note correctly identifies the rename hazard (`exempt_detectors:` → `exemptions:`) and asserts the "exactly once" predicate catches it. That reasoning IS correct for the pure-rename case (count goes 1 → 0, predicate trips). However, it does NOT cover the "both fields coexist" case: a future contributor could keep the empty `exempt_detectors: []` (count = 1, passes "exactly once") AND add a parallel `exemptions:` field carrying actual exempted detectors — the new field would silently bypass component (a) symmetry while the old empty field keeps the check passing. **Required fix:** extend the residual-risk mitigation to note that the run-phase implementation SHOULD assert the `exempt_detectors:` declaration is the ONLY exemption-list-shaped field in component (c)'s block (e.g., assert absence of `exemptions:`, `exempt:`, `excluded_detectors:` sibling fields by name), or document this as accepted forward-looking debt. Tier S defense-in-depth is acceptable; the gap is the mitigation reasoning, not the mechanism itself.
+
+### Baseline Verification (verbatim command output)
+
+The following commands were executed against the current worktree (`HEAD = bf711ec80`) to verify the §I.4 baseline-preservation invariant holds pre-refactor. All recorded baselines reproduce.
+
+**§I.6 step 2 — 12 scoped pages exist at immutable base `e306e21a9` with non-zero heading content:**
+```
+en/advanced/autonomous-loops.md: headings=9
+en/advanced/self-evolving.md:    headings=11
+en/cli-reference/handoff.md:    headings=5
+ja/advanced/autonomous-loops.md: headings=9
+ja/advanced/self-evolving.md:    headings=11
+ja/cli-reference/handoff.md:    headings=5
+ko/advanced/autonomous-loops.md: headings=9
+ko/advanced/self-evolving.md:    headings=11
+ko/cli-reference/handoff.md:    headings=5
+zh/advanced/autonomous-loops.md: headings=9
+zh/advanced/self-evolving.md:    headings=11
+zh/cli-reference/handoff.md:    headings=5
+```
+All 12 pages non-zero.
+
+**§I.6 step 3 — heading-set equality base `e306e21a9` ↔ working tree:**
+```
+ALL 12 PAGES: heading sets byte-identical between e306e21a9 and working tree
+```
+B2-2 mechanism's pre-refactor precondition holds: the frozen base is structurally current.
+
+**§I.6 step 4 — exemption list prose invariant:**
+```
+$ grep -c 'exemption list is empty' .moai/specs/SPEC-GOAL-DOCS-RETIRE-001/acceptance.md
+1
+```
+B2-3 mechanism's pre-refactor precondition holds: the list IS empty today (prose form, single occurrence).
+
+**AC-GDR-010 recorded baseline (working tree, pre-refactor):**
+```
+paired_al:distinct=1,live_min=1,apt=1 auto_mode:distinct=1,live_min=1,apt=1 l7:distinct=1,live_min=1,apt=1 paired_se:distinct=1,live_min=2,apt=1 handoff:distinct=1,live_min=1,apt=1
+```
+Byte-identical to the recorded baseline at acceptance.md:214 and to plan.md §I.4 line 302.
+
+**AC-GDR-012 (Amendment 1 D2 block, untouched) — aggregate:**
+```
+tree_total=0   (post-sweep, working tree — recorded target)
+base_total=24  (pre-sweep, against immutable base e306e21a9 — recorded baseline)
+```
+Both reproduce verbatim. The v1.5.0 D2 refactor is preserved; the integration boundary with Amendment 1 is sound.
+
+### EVALUATE verdicts (the 5 questions posed)
+
+1. **OWNERSHIP ROUTING — MUST-FIX defect (D1 above).** The plan's manager-develop assignment is a forbidden ownership crossing per the canonical matrix. The correct agent routing for the `acceptance.md` AC-GDR-010 (b)/(c) refactor is **`manager-spec`** (re-delegation per the D-NEW-1 inline-fix pattern), identical to the v1.5.0 §F.2 M1 routing for the structurally identical AC-GDR-012 refactor. The plan.md §F.2 routing at line 182 is the authoritative in-file precedent; the v1.6.0 §I sites at line 256 (and spec.md:62) contradict it and must be corrected.
+
+2. **B2-2 MECHANISM — SOUND.** The frozen-base structural-currency assertion via `^#` heading-set equality correctly catches the stale-true hazard. The chosen granularity (heading lines, sorted, byte-compared via `diff -q`/`cmp -s`) is the right discriminator because the sweep edits BODY content (emission references inline), never heading structure — so any heading divergence is necessarily a restructuring event. The rejected alternatives are correctly characterized: (b) `git cat-file -e` catches only path-existence (too weak — a renamed-but-still-extant base path passes); (c) content-similarity floor requires choosing N and admits gradual drift below threshold. The "legitimate future section-add trips the check = desired behavior" reasoning is sound — it forces the contributor to either re-anchor the frozen base or document the restructuring, which is exactly the discipline a frozen-base discipline should enforce.
+
+3. **B2-3 MECHANISM — SOUND with one residual gap (D2 above).** The structured `exempt_detectors: []` declaration replacing prose, plus the (1) exactly-once (2) zero-entries-today (3) name+asymmetry+justification-on-addition predicate set, correctly enforces the empty-list invariant + justification-on-addition. The "exactly once" predicate IS robust to a pure rename (`exempt_detectors` → `exemptions`): count drops 1 → 0 and trips the predicate. The residual gap is the "both fields coexist" case (see D2) — mitigation reasoning is slightly incomplete, not the mechanism itself.
+
+4. **BASELINE PRESERVATION — VERIFIED.** The integration boundary is sound. I ran §I.6 pre-flight commands 2/3/4 against the current worktree plus the AC-GDR-010 recorded baseline and the AC-GDR-012 aggregate (base + tree); every recorded value reproduces verbatim (see Baseline Verification above). The v1.5.0 D2 refactor (AC-GDR-012 single-`p=`-source + liveness + aptness guards) is preserved byte-identical; AC-GDR-010 components (a) and (d) are untouched at plan-phase; the 12 sweep-target locale files are untouched; the four retention surfaces are untouched.
+
+5. **TIER S APPROPRIATENESS — CORRECT.** Run-phase scope is 1 file (`acceptance.md`), ~10-15 lines of shell+prose within the AC-GDR-010 component (b)/(c) block, non-constitutional. Tier S thresholds: <5 files affected, <300 LOC, non-constitutional. The v1.5.0 amendment already transitioned the SPEC from Tier M → Tier S for the same structural reason (single-AC-body refactor); v1.6.0 retains Tier S correctly.
+
+### Recommendation
+
+**FAIL → fix D1 (one-line change at two sites) + D2 (extend §I.9 mitigation by one sentence) → re-audit.** The re-audit scope is the enumerated delta only:
+
+1. `plan.md:256` — replace `(manager-develop)` with `(manager-spec, re-delegation per D-NEW-1 inline-fix pattern — same routing as §F.2 v1.5.0 M1)`.
+2. `spec.md:62` — replace `(manager-develop)` with `(manager-spec, per the D-NEW-1 inline-fix pattern)`.
+3. `plan.md §I.10` M1' — add an explicit "Run-phase owner: `manager-spec`" sentence mirroring §F.2 line 182.
+4. `plan.md §I.9` — extend the "exemption-list structured-field format drift" bullet to note the "both fields coexist" gap and the recommended mitigation (assert `exempt_detectors:` is the only exemption-list-shaped field in component (c)'s block).
+
+What this amendment gets right is worth stating plainly. The v1.5.0 D2 work closed the aggregate-pattern-weakening hazard (single-`p=`-source discipline extended to AC-GDR-012); the v1.6.0 B2-2/B2-3 work closes two defense-in-depth gaps the original iteration-2 audit flagged as SHOULD-FIX and the v1.5.0 close did not absorb. Both B2-2 (frozen-base structural currency) and B2-3 (mechanical exemption-list enforcement) are the correct mechanisms at the correct granularity, the recorded baseline is preserved verbatim and reproduces today, and the integration boundary with Amendment 1 is clean. The single MUST-FIX is a routing error, not a mechanism defect — fixable in two one-line edits, after which the re-audit is expected to PASS at the same harmonic mean (~0.85 once the clarity score regains the 1.0 band).
+
+---
+
+## v1.6.0 Amendment Re-Audit (Phase 1 run-gate, 2026-07-28)
+
+**Scope**: v1.6.0 DELTA ONLY — verification that manager-spec's commit `8c9e1173a` resolved D1 (MUST-FIX) and D2 (SHOULD-FIX) from the prior iteration above. v1.0 content remains audit-PASSed at iteration 2 (0.86) and closed; v1.5.0 D2 amendment closed at PR #1181 (62df55fab). Reasoning context ignored per M1 Context Isolation. Read-only verification against the worktree at `.claude/worktrees/retire001-b22b23`.
+
+### Verdict: **PASS**
+
+Tier S threshold = 0.75. Harmonic-mean score = **0.86** (passes threshold). Both D1 (MUST-FIX) and D2 (SHOULD-FIX) from the prior iteration are RESOLVED; no new defects introduced.
+
+### Regression Check — prior-iteration defects
+
+- **D1 (Ownership-routing contradiction, MUST-FIX, critical): RESOLVED.** Verified at all three required sites:
+  - `plan.md:256` (§I header) — verbatim: *"The `acceptance.md` body refactor is run-phase scope (manager-spec, re-delegation per D-NEW-1 inline-fix pattern — same routing as §F.2 v1.5.0 M1; `.claude/rules/moai/development/spec-frontmatter-schema.md` § Forbidden ownership crossings forbids `manager-develop` from modifying `acceptance.md` body content, and the `completed → in-progress (amendment)` row of the Status Transition Ownership Matrix names `manager-spec` as the owner via re-delegation)."* — now routes to manager-spec with explicit D-NEW-1 citation and §F.2 cross-reference.
+  - `spec.md:62` (Amendments § 2, "Plan-phase artifacts" bullet) — verbatim: *"The `acceptance.md` body refactor is a separate run-phase delegation (manager-spec, per the D-NEW-1 inline-fix pattern)."* — `(manager-develop)` replaced with `(manager-spec, per the D-NEW-1 inline-fix pattern)`.
+  - `plan.md:376` (§I.10 M1' deliverable) — verbatim: *"**Run-phase owner: `manager-spec`** (D-NEW-1 re-delegation per the Status Transition Ownership Matrix `completed → in-progress (amendment)` row; manager-develop is forbidden from `acceptance.md` body edits per § Forbidden ownership crossings and would return a blocker report if delegated)."* — mirrors the §F.2 line 182 sentence structure verbatim.
+
+  **Consistency with §F.2 precedent (plan.md:182):** confirmed. Both sites use the same "**Run-phase owner: `manager-spec`** (D-NEW-1 re-delegation per …)" form, cite the same canonical matrix row, and cite the same § Forbidden ownership crossings forbiddance. A reader at any of the three v1.6.0 sites now reaches the same owner determination without consulting the SSOT.
+
+  **Residual bare `manager-develop` mentions in §I:** 3 total, all CORRECT (not mis-routing): (a) L256 forbidden-crossing citation, (b) L354 §I.7 progress.md §E.2/§E.3 ownership statement (canonical matrix assigns progress.md §E.2/§E.3 to manager-develop — this is NOT acceptance.md body), (c) L376 forbidden-crossing citation. spec.md Amendments § 2 carries zero residual `manager-develop` mentions. No forbidden ownership crossing remains.
+
+- **D2 (B2-3 coexist-guard gap, SHOULD-FIX, minor): RESOLVED.** `plan.md:372` (§I.9 Residual-risk, "Exemption-list structured-field format drift" bullet) — verbatim added sentence: *"Additionally, the run-phase check SHOULD assert the `exempt_detectors:` declaration is the ONLY exemption-list-shaped field in AC-GDR-010 component (c)'s block — e.g., assert by name the absence of sibling fields like `exemptions:`, `exempt:`, `excluded_detectors:` — covering the bypass where an empty `exempt_detectors: []` passes the 'exactly once' predicate while a parallel-shaped field silently carries the actual exemption entries."* — directly addresses the "both fields coexist" gap identified in the prior iteration.
+
+### Category Scores (rubric-anchored)
+
+| Dimension | Score | Band | Evidence |
+|-----------|-------|------|----------|
+| Clarity | **1.00** | 1.0 — single, unambiguous interpretation | D1 fix restored routing consistency across all 3 sites (plan.md:256, plan.md:376, spec.md:62) with the §F.2 precedent at plan.md:182. A reader at any site reaches manager-spec unambiguously. The 3 residual `manager-develop` mentions are correct forbidden-crossing citations + progress.md §E.2/§E.3 ownership, not contradictions. |
+| Completeness | **0.85** | 0.75 — one non-critical gap (unchanged) | HISTORY v1.6.0 row, Amendments § 2 (prior_completed_sha `62df55fab`), plan.md §I.1–§I.10 all present. Tier S artifact set is 2 files (spec + plan); acceptance.md correctly deferred to run-phase. The B2-2/B2-3 mechanism descriptions + pre-flight + constraints + self-verification + residual-risk + milestone are complete; the only residual interpretation surface is "run-phase agent finalizes the exact shell" for B2-2/B2-3 (acceptable for Tier S plan-phase). |
+| Testability | **0.80** | 0.75 — minor interpretation (unchanged) | AC-GDR-010 components remain binary-testable. The B2-2 heading-set equality and B2-3 count check are described at mechanism level with implementation shape deferred to run-phase. D2 fix adds a SHOULD-level sibling-field absence assertion (testable via `grep -E '^(exemptions|exempt|excluded_detectors):'`). |
+| Traceability | **0.80** | 0.75 — indirect mapping (unchanged) | Amendment § 2 of spec.md traces to plan.md §I; B2-2/B2-3 findings trace to progress.md B2-2/B2-3 (deferred from iteration 2). The amendment hardens AC-GDR-010's interpretation of REQ-GDR-009 (component c) and REQ-GDR-010 (component b) without adding new REQs — the mapping is indirect but traceable. |
+
+**Harmonic mean** = 4 / (1/1.00 + 1/0.85 + 1/0.80 + 1/0.80) = 4 / (1.000 + 1.176 + 1.250 + 1.250) = 4 / 4.676 = **0.855** (rounds to 0.86).
+
+### No-New-Defects Check
+
+- **B2-2 mechanism (heading-set equality)**: unchanged from prior iteration — remains SOUND. The frozen-base structural-currency assertion via `^#` heading-set equality correctly catches the stale-true hazard; the rejected alternatives (`git cat-file -e`, content-similarity floor) are correctly characterized. The "legitimate future section-add trips the check = desired behavior" reasoning is sound.
+- **B2-3 mechanism (structured exemption-list field + count check)**: unchanged; D2 fix extended only the §I.9 residual-risk mitigation, not the mechanism itself. The structured `exempt_detectors: []` declaration + (1) exactly-once (2) zero-entries-today (3) name+asymmetry+justification-on-addition predicate set remains SOUND. The D2 fix additionally closes the "both fields coexist" bypass at SHOULD level.
+- **Baseline preservation**: §I.4 invariant intact — recorded values (`distinct=1,live_min>=1,apt=1` for all 5 detectors; `paired_se:live_min=2`; `total=24` base / `total=0` tree) are preserved verbatim in the plan text.
+- **Tier S appropriateness**: CORRECT — 1 file (acceptance.md), ~10-15 lines of shell+prose within AC-GDR-010 (b)/(c), non-constitutional. v1.5.0 already transitioned the SPEC from Tier M → Tier S for the same single-AC-body refactor shape; v1.6.0 retains Tier S correctly.
+
+### Recommendation
+
+PASS. Both defects from the prior iteration (D1 MUST-FIX + D2 SHOULD-FIX) are resolved at the cited sites with verbatim evidence. The Clarity dimension regains the 1.0 band as expected, lifting the harmonic mean from 0.80 → 0.86. The amendment is authorized to proceed to run-phase (manager-spec, per the D-NEW-1 inline-fix pattern) for the AC-GDR-010 component (b)/(c) refactor. The Implementation Kickoff Approval human gate (plan→run) remains mandatory and score-independent — this PASS verdict does not auto-bypass it.

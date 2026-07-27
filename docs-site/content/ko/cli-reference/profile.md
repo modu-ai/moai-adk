@@ -98,6 +98,6 @@ moai cg -p team          # team 프로필로 CG 모드 실행
 
 ## 관련 문서
 
-- [CLI 레퍼런스](/getting-started/cli) - 전체 CLI 명령어
-- [빠른 시작](/getting-started/quickstart) - 처음 시작하기
-- [초기 설정](/getting-started/init-wizard) - 프로젝트 초기화
+- [CLI 레퍼런스](/ko/getting-started/cli) - 전체 CLI 명령어
+- [빠른 시작](/ko/getting-started/quickstart) - 처음 시작하기
+- [초기 설정](/ko/getting-started/init-wizard) - 프로젝트 초기화

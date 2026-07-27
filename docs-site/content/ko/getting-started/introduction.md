@@ -324,10 +324,10 @@ GLM 계정이 없다면 [z.ai 가입하기 (추가 10% 할인)](https://z.ai/sub
 
 MoAI-ADK 여정을 시작하려면 다음 단계를 따르세요:
 
-1. **[설치](/getting-started/installation)** - 시스템에 MoAI-ADK 설치
-2. **[초기 설정](/getting-started/init-wizard)** - 인터랙티브 설정 마법사 실행
-3. **[빠른 시작](/getting-started/quickstart)** - 첫 프로젝트 생성
-4. **[핵심 개념](/core-concepts/what-is-moai-adk)** - MoAI-ADK 심화 이해
+1. **[설치](/ko/getting-started/installation)** - 시스템에 MoAI-ADK 설치
+2. **[초기 설정](/ko/getting-started/init-wizard)** - 인터랙티브 설정 마법사 실행
+3. **[빠른 시작](/ko/getting-started/quickstart)** - 첫 프로젝트 생성
+4. **[핵심 개념](/ko/core-concepts/what-is-moai-adk)** - MoAI-ADK 심화 이해
 
 ## 핵심 장점
 
@@ -349,4 +349,4 @@ MoAI-ADK 여정을 시작하려면 다음 단계를 따르세요:
 
 ## 다음 단계
 
-[설치 가이드](./installation)에서 MoAI-ADK 설치 방법을 알아보세요.
+[설치 가이드](/ko/getting-started/installation)에서 MoAI-ADK 설치 방법을 알아보세요.

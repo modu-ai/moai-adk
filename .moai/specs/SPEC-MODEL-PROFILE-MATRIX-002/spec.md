@@ -2,9 +2,9 @@
 id: SPEC-MODEL-PROFILE-MATRIX-002
 title: "Agent-direct profile matrix + effort actualization"
 version: "0.1.0"
-status: draft
+status: in-progress
 created: 2026-07-23
-updated: 2026-07-23
+updated: 2026-07-28
 author: manager-spec
 priority: P1
 phase: "v3.1.0 target"

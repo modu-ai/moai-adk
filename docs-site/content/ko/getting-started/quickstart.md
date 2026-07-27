@@ -10,8 +10,8 @@ MoAI-ADK로 첫 프로젝트를 생성하고 개발 워크플로우를 경험해
 
 시작하기 전에 다음이 완료되어야 합니다:
 
-- [x] MoAI-ADK 설치 ([설치 가이드](./installation))
-- [x] 초기 설정 완료 ([초기 설정](./init-wizard))
+- [x] MoAI-ADK 설치 ([설치 가이드](/ko/getting-started/installation))
+- [x] 초기 설정 완료 ([초기 설정](/ko/getting-started/init-wizard))
 - [ ] GLM API 키 획득 (선택 — CG 모드로 토큰 비용을 절감하려는 경우)
 
 ## 첫 프로젝트 생성
@@ -439,4 +439,4 @@ graph TD
 
 ## 다음 단계
 
-[핵심 개념](/core-concepts/what-is-moai-adk)에서 MoAI-ADK의 심화 기능을 알아보세요.
+[핵심 개념](/ko/core-concepts/what-is-moai-adk)에서 MoAI-ADK의 심화 기능을 알아보세요.
