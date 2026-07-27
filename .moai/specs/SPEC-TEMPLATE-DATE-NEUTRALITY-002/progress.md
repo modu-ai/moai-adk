@@ -5,11 +5,12 @@
 ```yaml
 plan_status: audit-ready
 plan_complete_at: 2026-07-27
-plan_iteration: 2
+plan_iteration: 3
 spec_id: SPEC-TEMPLATE-DATE-NEUTRALITY-002
 tier: L
 baseline_head: 760f09f73
 iteration_1_commit: f5d3a93bf
+iteration_2_commit: e1f24264d
 branch: spec/template-date-2025
 ```
 
@@ -19,7 +20,7 @@ branch: spec/template-date-2025
 |---|---|
 | `spec.md` | authored — 24 requirements, 9 out-of-scope sub-sections |
 | `plan.md` | authored — 6 milestones, 10 known issues, PRESERVE list |
-| `acceptance.md` | authored — 32 criteria + §G known limitations, all baselines executed |
+| `acceptance.md` | authored — 33 criteria + §G known limitations (6 items), all baselines executed |
 | `design.md` | authored — coupled-ordering, masking hazard, taxonomy rationale |
 | `research.md` | authored — full measurement record, 1 refuted hypothesis, §K partition derivation |
 | `classify.sh` | committed — year-widened classifier, reproduces 74 / 48 / 34 |
@@ -32,7 +33,7 @@ Tier L artifact set (5 files) complete; `classify.sh` is the committed measureme
 | Metric | Value |
 |---|---:|
 | Requirements (`REQ-TDN2-001` … `REQ-TDN2-024`) | 24 |
-| Acceptance criteria (`AC-TDN2-001` … `AC-TDN2-032`) | 32 |
+| Acceptance criteria (`AC-TDN2-001` … `AC-TDN2-033`) | 33 |
 | Occurrence-class rows in scope | 74 |
 | Distinct findings | 48 |
 | Distinct files carrying a finding | 34 |
@@ -84,6 +85,24 @@ Plan-audit iteration 1 returned **FAIL 0.67** against the Tier L 0.85 threshold.
 | Unverified 4 — phantom lint flag | — | No artifact cites `moai spec lint --path`; verified by grep. |
 
 **Two defects were self-inflicted during the repair and caught before commit**: AC-001's target was `1` but the committed `classify.sh` contains the token twice (functional line + header comment), so the command was re-anchored on `^DATE_RE=`; and AC-031's whole-file grep was tripped by this SPEC's own explanatory prose quoting the offending shape, so the prose was reworded and the false-positive mode disclosed.
+
+---
+
+## §E.1.2 Iteration-3 audit resolution
+
+Plan-audit iteration 2 returned **FAIL 0.83** against the 0.85 threshold — a 0.67 → 0.83 progression with no regression. All seven must-pass criteria passed; 31 of 32 criteria were verified sound by execution, both iteration-1 MUST-FIX repairs held across 4 and 3 scenarios, and `classify.sh` cross-checked identical against an independently-written classifier. One critical defect drove the shortfall.
+
+| Finding | Severity | Resolution |
+|---|---|---|
+| D-NEW-1 — AC-030 vacuously prints `ORDERED` | critical | Both `git log` ranges bounded to `$(git merge-base origin/main HEAD)..HEAD`. Reproduced the broken form (`ORDERED` with zero remediation commits) and the repaired form (`NOT-EVALUABLE`) before publishing; both transcripts recorded in `acceptance.md` and `research.md` §I. §G item 2 rewritten to name the vacuity as the primary limitation, with the squash-merge window demoted to secondary. |
+| D-NEW-2 — AC-012's `/fenced/` also matches `unfenced` | minor | Marker pinned to the **uppercase** literal `FENCED` in REQ-TDN2-012; AC-012 matches on non-alphabetic boundaries. Reproduced the failure (`2 2` vs target `1 1`) and verified the fix returns `1 1` against a fixture carrying both `unfenced` and `UNFENCED`. |
+| D-NEW-3 — AC-011 lacks AC-007/008's bold groups | minor | **Fixed rather than disclosed.** `(\*\*)?` groups added; fixture detection went 3/4 → 4/4 and the live baseline is unchanged at `9` (zero bolded stamps in this tree), so the change is free. |
+| D-NEW-4 — AC-029 blind to an out-of-scope edit inside the template tree | minor | **Closed rather than disclosed.** New **AC-033** requires every edited template file to carry a triage row, with the triage file-count (34) as its paired control. Narrowing AC-029's exclude to the 22 REMOVE-bearing files was rejected — that list is not final until M2. The residual (line-level containment) is disclosed as §G item 6. |
+| D-NEW-5 — allowlist-key rejection under-argued | minor | `design.md` §C now leads with the decisive argument: narrowing the key would force the Go guard to classify line shapes, duplicating `classify.sh`'s rules in a second implementation that can drift. The two weak grounds are recorded as explicitly not relied on, and "achieves the same assurance" is downgraded to "sufficient detection for this SPEC's two measured cases". |
+| Clarity residual — REQ-003 default vs REQ-011 absolute | minor | REQ-003's table gained an "Adjudicable at M2?" column: `EX-FM` + `EX-DATA` (13 rows) are **pinned** by REQ-011 and not adjudicable; the other four codes (20 rows) carry a starting position. This is also what makes the two `DC-2b`+`DC-5` dual-category findings benign, now stated explicitly. |
+| Unverified — 14 `HIST` line numbers | — | `research.md` §K gained a one-command regeneration of the `HIST` set plus the `HIST + COMPOSITE = 16` subtraction an auditor can check without per-row reading. |
+
+REQ 24 (unchanged), AC 32 → **33**.
 
 ---
 

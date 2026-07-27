@@ -1,7 +1,7 @@
 ---
 id: SPEC-TEMPLATE-DATE-NEUTRALITY-002
 title: "Template 2025 date-leak triage, remediation, and S1 year-class widening"
-version: "0.2.0"
+version: "0.3.0"
 status: draft
 created: 2026-07-27
 updated: 2026-07-27
@@ -21,6 +21,7 @@ tier: L
 | Version | Date | Change | Author |
 |---------|------|--------|--------|
 | 0.1.0 | 2026-07-27 | Initial plan-phase authoring. Scope is the deferred follow-up recorded in SPEC-TEMPLATE-DATE-NEUTRALITY-001 §5 "Out of Scope — `2025-*` prose authoring stamps". All counts re-measured at `760f09f73` with a year-widened replica of the predecessor's committed classifier. | manager-spec |
+| 0.3.0 | 2026-07-27 | Iteration 3 after plan-audit FAIL (0.83). AC-030 was vacuous — its `git log` pickaxe selected the oldest matching commit in *all* history (`ccd6be1f6`, 2026-02-03), making the ancestry test unconditionally true; both ranges are now bounded to the branch. AC-012's marker match was a bare substring that `unfenced` also satisfies; the marker is now the anchored uppercase literal `FENCED`. AC-011 gained the bold-stamp groups its sibling criteria carry. AC-033 added to close AC-029's blindness to an out-of-scope edit *inside* the template tree. REQ-003's sub-shape defaults reconciled with REQ-011's absolute pin. | manager-spec |
 | 0.2.0 | 2026-07-27 | Iteration 2 after plan-audit FAIL (0.67). All measurements survived audit (17/17 baselines reproduced). Acceptance-layer repairs: AC-016 retargeted as a function of the M2 adjudication (was unsatisfiable under a permitted PRESERVE outcome); AC-011's dead pattern alternative replaced and its baseline corrected `0` → `9` after measurement showed 9 pre-existing ISO-format documentation lines; AC-012 re-anchored on content; four requirements gained criteria; a Known-AC-limitations section and an edit-scope criterion were added. REQ-024 brings the guard's fourth year-bearing site — a cross-SPEC test doc comment — explicitly into scope. Three `Where` requirements converted to `When`. | manager-spec |
 
 ---
@@ -105,16 +106,18 @@ Row counts sum to 74 — the total occurrence-class row count. Finding counts su
 
 **REQ-TDN2-003** — When the classifier assigns a row to `DC-5`, the triage shall record one of six named sub-shape codes in the row's `rationale` column, so that the per-row adjudication is consistent across rows sharing a construct:
 
-| Code | Sub-shape | Rows | Default disposition |
-|---|---|---:|---|
-| `EX-FM` | Frontmatter block shown as a syntax example (column-0 `updated:`) | 10 | PRESERVE |
-| `EX-DATA` | Structured-data or code-sample value (JSON field, function argument, path literal) | 3 | PRESERVE |
-| `HIST` | Version-history record (table row or bullet entry pairing a version with its release date) | 14 | PER-ROW |
-| `CREATED` | `Created:` prose stamp | 3 | PER-ROW |
-| `DEADLINE` | Forward-looking review or expiry date (`Next Review:`) | 1 | PRESERVE |
-| `COMPOSITE` | Stamp embedded mid-line in a composite footer rather than standing alone | 2 | PER-ROW |
+| Code | Sub-shape | Rows | Disposition | Adjudicable at M2? |
+|---|---|---:|---|---|
+| `EX-FM` | Frontmatter block shown as a syntax example (column-0 `updated:`) | 10 | PRESERVE | **No — pinned by REQ-TDN2-011** |
+| `EX-DATA` | Structured-data or code-sample value (JSON field, function argument, path literal) | 3 | PRESERVE | **No — pinned by REQ-TDN2-011** |
+| `HIST` | Version-history record (table row or bullet entry pairing a version with its release date) | 14 | per-row | Yes |
+| `CREATED` | `Created:` prose stamp | 3 | per-row | Yes |
+| `DEADLINE` | Forward-looking review or expiry date (`Next Review:`) | 1 | PRESERVE (default) | Yes |
+| `COMPOSITE` | Stamp embedded mid-line in a composite footer rather than standing alone | 2 | per-row | Yes |
 
-The default disposition is a starting position, not a substitute for adjudication; every row still receives an explicit disposition per REQ-TDN2-007.
+**The two columns are not the same claim, and the distinction is load-bearing.** `EX-FM` and `EX-DATA` (13 rows) are documentation-example values, which REQ-TDN2-011 forbids deleting **absolutely** — M2 records `PRESERVE` for those rows without discretion, and a contrary adjudication would violate REQ-TDN2-011 rather than merely differ from a default. For the remaining four codes (20 rows), the stated disposition is a starting position, not a substitute for adjudication.
+
+This pin is also what makes the dual-category findings benign: the two `DC-2b`+`DC-5` findings pair a `DC-2b` row pinned PRESERVE by REQ-TDN2-010 with a `DC-5` row pinned PRESERVE by REQ-TDN2-011, so neither can become a masked deletion. Every row still receives an explicit recorded disposition per REQ-TDN2-007.
 
 **REQ-TDN2-004** — When a finding's rows fall into two categories with conflicting dispositions, the remediation shall apply each row's own disposition independently and shall not collapse the finding to a single disposition. Four such findings are measured.
 
@@ -136,7 +139,9 @@ The default disposition is a starting position, not a substitute for adjudicatio
 
 **REQ-TDN2-011** — The remediation shall not delete a date that is a documentation-example value. Where such a date is removed, the surrounding construct stops demonstrating the format it exists to teach.
 
-**REQ-TDN2-012** — When a `DC-2a` row sits inside a fenced block, the remediation shall adjudicate that row explicitly rather than sweeping it with the unfenced `DC-2a` set, and the triage shall record the literal marker `fenced` in that row's `rationale` column. One such row is measured; the `DC-2a` decision rule does not inspect fence state, so a mechanical sweep would edit a fenced sample without review. The `rationale` marker exists so the row is identifiable by its own content rather than by a line number.
+**REQ-TDN2-012** — When a `DC-2a` row sits inside a fenced block, the remediation shall adjudicate that row explicitly rather than sweeping it with the unfenced `DC-2a` set, and the triage shall record the marker as the **uppercase literal `FENCED`** in that row's `rationale` column. One such row is measured; the `DC-2a` decision rule does not inspect fence state, so a mechanical sweep would edit a fenced sample without review. The `rationale` marker exists so the row is identifiable by its own content rather than by a line number.
+
+The literal is pinned to uppercase because the natural annotation for the other 27 `DC-2a` rows is the word "unfenced", which **contains** a lowercase `fenced` as a substring. A lowercase marker would make every such row match the criterion that is supposed to select exactly one. Uppercase plus the non-alphabetic anchor in AC-012 excludes both `unfenced` and `UNFENCED`.
 
 ### Carve-out mechanism
 

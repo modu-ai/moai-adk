@@ -110,7 +110,7 @@ Commit the year-widened classifier to the SPEC directory and generate the full o
 - Copy the predecessor's `classify.sh`, change only the `DATE_RE` year range to `202[5-9]`, and commit it as this SPEC's `classify.sh`.
 - Generate `triage.tsv` with the seven inherited columns, one row per occurrence-class row (74 rows expected).
 - Assign each `DC-5` row its sub-shape code in the `rationale` column (REQ-TDN2-003). The plan-phase partition is `EX-FM` 10 / `EX-DATA` 3 / `HIST` 14 / `CREATED` 3 / `DEADLINE` 1 / `COMPOSITE` 2 = 33; the per-row derivation is enumerated in `research.md` §K.
-- Record the literal marker `fenced` in the `rationale` column of the one fenced `DC-2a` row (REQ-TDN2-012), so AC-012 can anchor on content rather than on a line number.
+- Record the **uppercase** literal marker `FENCED` in the `rationale` column of the one fenced `DC-2a` row (REQ-TDN2-012), so AC-012 can anchor on content rather than on a line number. Uppercase is required: a lowercase `fenced` is a substring of `unfenced`, the natural annotation for the other 27 `DC-2a` rows, and would make AC-012 select 2 rows instead of 1.
 - Verify the classifier's `(file, date)` output set has 48 members.
 
 No tree edits. Exit condition: `triage.tsv` exists with 74 data rows and every `DC-5` row carries a sub-shape code.

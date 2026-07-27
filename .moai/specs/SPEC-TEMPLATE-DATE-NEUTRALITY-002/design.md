@@ -70,7 +70,13 @@ If the `DC-5` row is adjudicated PRESERVE, its allowlist entry masks the `DC-2a`
 
 **Consequence for verification.** A green guard is necessary but not sufficient evidence that the remediation happened. `spec.md` REQ-TDN2-015 requires the removal to be confirmed by a file-scoped check, and `acceptance.md` carries that check as a criterion independent of the guard. This is the specific mechanism behind the general rule that a criterion must be able to fail — an allowlist entry is exactly the kind of change that can make a criterion vacuously pass.
 
-**Rejected alternative:** narrowing the allowlist key to `(file, date, line-shape)` so that a `DC-2a` row and a `DC-5` row under the same date could be distinguished. This would require a Go structural change to a mechanism inherited from a completed SPEC, to serve two rows. The file-scoped verification achieves the same assurance without touching the mechanism.
+**Rejected alternative: narrowing the allowlist key to `(file, date, line-shape)`**, so a `DC-2a` row and a `DC-5` row under the same date could be distinguished and the masking could be *prevented* rather than merely detected.
+
+The decisive objection is **classifier duplication and drift**. The guard matches on `entry.File == relPath && entry.Date == matched` and has no line context at all — it never inspects the line's shape. Adding shape-awareness to the key would require the Go guard to classify line shapes itself: re-implementing `classify.sh`'s `LS-FM` / `LS-FM-FENCED` / `LS-PROSE-STAMP` / `LS-OTHER` rules, including its fence tracking and its column-0-versus-indented distinction, in a second language. Two implementations of one classification, maintained apart, drift — and a drift between the guard's shape rules and the triage record's shape rules is a worse and quieter hazard than the masking it would fix, because it would make the allowlist silently stop matching rows the triage believes are covered.
+
+Two weaker objections are recorded and explicitly **not** relied on. "It is a Go change to a mechanism inherited from a completed SPEC" is undercut by the fact that this SPEC already edits that same file three ways (widens `S1`, updates a doc comment, appends allowlist entries). "It serves only two rows" understates the case — masking is a *class* hazard, and a future dual-category finding would get no equivalent protection.
+
+**What the accepted mitigation actually buys, stated precisely.** AC-016 provides sufficient *detection* for this SPEC's two measured cases. It does not *prevent* masking, it is scoped to two named files and one line shape, and a future dual-category finding outside that scope would need its own criterion. That is a narrower claim than "achieves the same assurance", which an earlier revision of this section asserted and which is not accurate.
 
 ---
 

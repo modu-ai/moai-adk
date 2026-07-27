@@ -343,6 +343,29 @@ Re-measured over the real tree, the corrected command returns **9**, not `0`. Al
 
 AC-011's target is therefore `9` (invariant), not `0`. This is strictly stronger than the original: a target equal to a non-zero baseline cannot be satisfied by a broken path — an unresolvable `$TPL` returns `0 ≠ 9` and fails — whereas the original target of `0` was its own false-pass value.
 
+A later revision added the `(\*\*)?` bold-stamp groups that AC-007/AC-008 already carried. In the same fixture the un-bolded regex detected 3 of 4 shapes and the bold-aware regex 4 of 4; the live baseline is unchanged at `9`, because this tree carries `Last Updated:` (41) and `Updated:` (12) stamps and zero bolded ones.
+
+### Correction to AC-030 (ordering check)
+
+The criterion as first published was **vacuous**, in the same defect class as the AC-011 baseline above but with the opposite mechanism: not a dead pattern alternative, but a live one resolving to the wrong commit.
+
+```bash
+# The unbounded pickaxe selects the OLDEST match in all history:
+git log --reverse --format='%h %ci %s' -G'Last Updated: 2025-' -- internal/template/templates | head -1
+# → ccd6be1f6 2026-02-03 16:30:02 +0900 feat(templates): add embedded template system with go:embed
+git log --format=%H -G'Last Updated: 2025-' -- internal/template/templates | wc -l
+# → 17
+```
+
+`Last Updated: 2025-` stamps have existed since the template tree was created, so `REMED` resolved to a commit five months older than this branch and an ancestor of every commit on it — making `git merge-base --is-ancestor "$REMED" "$WIDEN"` unconditionally true.
+
+| Form | `REMED` resolves to | Result with zero remediation commits |
+|---|---|---|
+| unbounded (published) | `ccd6be1f6` (2026-02-03, pre-branch) | `ORDERED` — false pass |
+| **bounded to `$(git merge-base origin/main HEAD)..HEAD`** | empty | `NOT-EVALUABLE` — correct |
+
+The `NOT-EVALUABLE` guard did not catch this: it defends against an *empty* variable, and the unbounded `REMED` was never empty — it was confidently wrong. Both ranges are now bounded. Full falsification transcript alongside the criterion in `acceptance.md`.
+
 ---
 
 ## §J Open questions carried into plan phase
@@ -408,5 +431,21 @@ awk -F'\t' '$5=="DC-5"{print $1"\t"$4}' <rows-2025> | sort |
 `10 + 3 + 14 + 3 + 1 + 2 = 33`, matching the `DC-5` row total in §C.
 
 **`HIST` splits into two shapes** that M2 may dispose of differently (see §J item 1): a **bullet** form (2 rows, `- v3.0.0 (2025-12-06): …`) carrying the predecessor's flagged residue, and a **table** form (12 rows, `| 2.3.0 | 2025-12-03 | … |`) spread across three `references/reference.md` files with no such precedent.
+
+### Re-deriving the table (so a reviewer need not take it on trust)
+
+The `HIST` set is the largest and the only one not spot-checkable at a glance, so it carries a one-command regeneration. Run from the worktree root; the output is the 14 rows in the table above:
+
+```bash
+bash .moai/specs/SPEC-TEMPLATE-DATE-NEUTRALITY-002/classify.sh internal/template/templates \
+  | awk -F'\t' '$2 ~ /^2025-/ && $5=="DC-5" {print $1"\t"$4}' | sort \
+  | while IFS=$'\t' read -r f l; do
+      printf '%s:%s => %s\n' "$f" "$l" "$(sed -n "${l}p" "internal/template/templates/$f")"
+    done | grep -E '\| [0-9]+\.[0-9]+\.[0-9]+ +\||^\S+:[0-9]+ => - v[0-9]'
+```
+
+The filter selects the two `HIST` shapes: version-history **table** rows (`| 2.3.0 | 2025-12-03 | … |`, 12 rows across three `references/reference.md` files) and version-history **bullet** entries (`- v3.0.0 (2025-12-06): …`, 2 rows in `moai-foundation-cc/SKILL.md`). Dropping the `grep` filter reproduces all 33 `DC-5` rows, from which the other five codes are read off directly.
+
+`HIST + COMPOSITE = 16` is the pairing an auditor can check without per-row reading (33 total − 10 `EX-FM` − 3 `EX-DATA` − 3 `CREATED` − 1 `DEADLINE`); the 14/2 split within that 16 is what the command above resolves. AC-004 re-checks the codes mechanically once M1 writes them.
 
 The line numbers in this table are a plan-phase locator for review, not a criterion anchor — no acceptance criterion depends on them (AC-031 enforces that mechanically).
