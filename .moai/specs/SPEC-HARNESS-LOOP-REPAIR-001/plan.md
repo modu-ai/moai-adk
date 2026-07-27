@@ -177,6 +177,12 @@ Implements REQ-HLR-004, 004b, 004c, 012. Satisfies AC-HLR-004, 005, 014, 015, 01
 
 Implements REQ-HLR-009, 011. Satisfies AC-HLR-008, 017. Changes `pattern_key` narrowing and draft-identity derivation in `mapper.go`. Forward-looking only — the 7 existing duplicate pairs are grandfathered.
 
+**§G q2 resolved (2026-07-28, AskUserQuestion): option (a) — exclude the `agent_invocation` event type in `isActionable`.** Rationale recorded in `spec.md` §G q2. The two M4 code changes landed in commit `b010bcfd9`:
+1. **Narrowing (AC-008):** `isActionable` rejects promotions whose `pattern_key` event-type prefix is `agent_invocation`, via an `excludedEventTypes` set derived from `harness.EventTypeAgentInvocation`. Independent of the tier gate (an `agent_invocation` with `to_tier:auto_update` + high confidence is still rejected).
+2. **Identity (AC-017):** `buildDraftID` drops the `<YYYYMMDD>` date segment → `PROPOSAL-<sha256(pattern_key)[:8]>`.
+
+Downstream cascade (commit `efcb4990c`): `TestRunHarnessObserveStop_ProposeChainAutoRuns` (SPEC-HARNESS-RATCHET-REWIRE-001 AC-HRR-005) seed switched `agent_invocation` → `tool_failure` — the intended AC-008 consequence. Orchestrator independent verification: full `go test ./...` exit 0 (105 ok), `GOOS=windows` build ok, `golangci-lint` 0 issues.
+
 ### F.3 M3 — dispatch observation
 
 Implements REQ-HLR-005. Satisfies AC-HLR-007. **Correction (2026-07-28):** the original premise — "what is missing is the orchestrator-side obligation to call it" — was stale. The obligation, the CLI writer, the opt-in self-gate, and the unit tests were all shipped by `SPEC-HARNESS-EVOLVE-001` M3 (commit `1c54cd9c6`, 2026-07-12), 15 days before this plan was written: the obligation lives at `.claude/skills/moai/SKILL.md` (router section) and `workflows/run.md:196`; `moai harness ledger record` self-gates on `isHarnessLearningEnabled` (`internal/cli/hook.go:469`, default ON). M3's actual deliverable (user-approved Option A): verify the mechanics end-to-end, execute the AC-HLR-007 falsification, and correct this stale premise. The real residual gap is that the obligation is LLM-obeyed (no mechanical dispatch-time backstop) — documented as residual risk in `acceptance.md §E.1`, not closed by M3.

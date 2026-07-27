@@ -208,6 +208,43 @@ Baseline wording.
   and `TestHarnessObserveStop_RoutingLedgerGated` already cover the record/evidence/finalize/gate
   mechanics; M3's contribution is the live end-to-end execution + falsification evidence above.
 
+## §E.2 (cont.) Run-phase Evidence — M4 (generator quality)
+
+M4 = REQ-HLR-009/011, AC-008/017. **§G q2 resolved (AskUserQuestion, 2026-07-28): option (a) exclude `agent_invocation` event type.** Implemented by manager-develop (TDD) + orchestrator-independent-verified.
+
+### Change set
+
+| File | Change |
+|---|---|
+| `internal/harness/proposalgen/mapper.go` | C1 `excludedEventTypes` (SSOT-derived from `harness.EventTypeAgentInvocation`) + `hasExcludedEventType` + `isActionable` outermost narrowing clause; C2 `buildDraftID` drops `<YYYYMMDD>` |
+| `internal/harness/proposalgen/mapper_test.go` | RED tests `TestMapper_AgentInvocationExcludedRegardlessOfTier` (AC-008), `TestMapper_DraftIDStableAcrossDates` (AC-017); format-gate preservation test; reconciled `TestMapper_RealDataSchemaPass`/`TestMapper_DraftIDFormat` |
+| `internal/cli/hook_harness_propose_chain_test.go` | cascade fix — seed `agent_invocation` → `tool_failure` (commit `efcb4990c`) |
+
+### AC verification (orchestrator-independent)
+
+| AC | Status | Command | Observed |
+|---|---|---|---|
+| AC-HLR-008 | PASS | `go test -run TestMapper_AgentInvocationExcludedRegardlessOfTier ./internal/harness/proposalgen/...` | ok; `{agent_invocation:Bash:, auto_update, 0.9, obs:5}` → 0 candidates |
+| AC-HLR-017 | PASS | `go test -run TestMapper_DraftIDStableAcrossDates ./internal/harness/proposalgen/...` | ok; same `pattern_key` on 2 dates → identical `PROPOSAL-dc05149f` |
+
+### Falsification executed (manager-develop, observed not assumed)
+
+- C1 revert (drop `hasExcludedEventType` early-return) → AC-008 test FAIL (`got 1 candidate, want 0`, draft `PROPOSAL-20260728-aa401a3a`) → restored → green.
+- C2 revert (restore `<YYYYMMDD>`) → AC-017 test FAIL (`day1=...20260713-dc05149f` ≠ `day2=...20260714-dc05149f`) → restored → green.
+
+### Orchestrator independent verification (verification-claim-integrity)
+
+- **Full `go test ./...` exit 0 (105 ok, 0 FAIL)** — confirms no cascade beyond the one manager-develop reported.
+- `go build ./...` exit 0 · `GOOS=windows GOARCH=amd64 go build ./...` exit 0 · `golangci-lint run` 0 issues.
+- mapper.go function coverage 100% (package 78.1% — pre-existing baseline from scaffolder/reader/candidate, out of scope).
+- Subagent boundary (B3): the 1 grep match at `scaffolder.go:162` is a pre-existing string literal in a draft template, NOT a tool invocation, and NOT in the M4 diff. 0 new invocations.
+
+### Commits
+
+- `b010bcfd9` — M4 mapper.go C1+C2 + tests (manager-develop).
+- `efcb4990c` — RATCHET-REWIRE propose-chain test seed cascade fix (orchestrator).
+- Both **not pushed** — orchestrator pushes after this verification.
+
 ## §F Phase 4 Mode Selection — M2
 
 Recorded before the first M2 run-phase `Agent()` spawn, per the canonical

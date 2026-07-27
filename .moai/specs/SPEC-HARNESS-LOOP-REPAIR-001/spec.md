@@ -297,7 +297,7 @@ The system SHALL record the disposition of the producer/consumer `tier` represen
 | **M1** | Shared proposal accessor; repair C1/C2/C3 | §A.3.1 | `status` pending == on-disk draft count | **complete** — `c996eb294` |
 | **M2** | Route drafts to their designed consumer: promotion path draft → SPEC; de-wire `execute`→draft; applicability guard before snapshot; retire the tier tripwire | §A.3.2, §A.4, §A.7 | a named draft becomes a SPEC carrying its provenance, and leaves the pending queue | not started |
 | **M3** | Routing-ledger recording obligation at dispatch | §A.5 | ledger row count increases per dispatch | **complete** — obligation + mechanics pre-shipped by `SPEC-HARNESS-EVOLVE-001` (`1c54cd9c6`); M3 verified end-to-end + executed the AC-HLR-007 falsification (no Go change) |
-| **M4** | Generator quality: promotion routing by enforceability, narrow `agent_invocation` promotion, pattern-scoped draft identity | §A.5, §A.6 | no new draft with a bare-tool-name `pattern_key`; a two-date fixture yields one draft | not started |
+| **M4** | Generator quality: promotion routing by enforceability, narrow `agent_invocation` promotion, pattern-scoped draft identity | §A.5, §A.6 | no new draft with a bare-tool-name `pattern_key`; a two-date fixture yields one draft | **complete** — `b010bcfd9` (mapper.go C1+C2) + `efcb4990c` (RATCHET-REWIRE test cascade); §G q2 resolved (exclude `agent_invocation` event type) |
 | **M5** | Lesson-channel unification + inbox drain ownership | §A.2 | designated store == practiced store; inbox drains | not started |
 | **M6** | `prediction:`/`verified:` on harness-edit lessons; CLI reporting fixes | §A.2, §B.1 | fields present on new entries; help lists all verbs | not started |
 
@@ -322,7 +322,7 @@ Every criterion is stated so that **reverting the corresponding change makes it 
 | AC-HLR-005 | M2 | each promotion leaves one auditable record linking draft → SPEC | open — **rewritten in v0.2.0** |
 | AC-HLR-006 | M1 | one shared accessor; no call site re-derives `id + ".json"` | **PASS** |
 | AC-HLR-007 | M3 | a `/moai` dispatch appends one routing-ledger row | **PASS** |
-| AC-HLR-008 | M4 | no newly generated draft carries a bare-tool-name `pattern_key` | open |
+| AC-HLR-008 | M4 | no newly generated draft carries a bare-tool-name `pattern_key` | **PASS** |
 | AC-HLR-009 | M5 | exactly one designated lesson store, and it is the practiced one | open |
 | AC-HLR-010 | M5 | the inbox drain actor and trigger are named, and a drain reduces the backlog | open |
 | AC-HLR-011 | M6 | harness-edit lessons carry `prediction:` then `verified:` | open |
@@ -331,7 +331,7 @@ Every criterion is stated so that **reverting the corresponding change makes it 
 | AC-HLR-014 | M2 | `execute` no longer accepts a `proposalgen` draft, and says why | open — new in v0.2.0 |
 | AC-HLR-015 | M2 | a non-applicable proposal is rejected before any snapshot directory is created | open — new in v0.2.0 |
 | AC-HLR-016 | M2 | the tier-split disposition is recorded and the tripwire retired with rationale | open — new in v0.2.0 |
-| AC-HLR-017 | M4 | one `pattern_key` yields one draft across dates | open — new in v0.2.0 |
+| AC-HLR-017 | M4 | one `pattern_key` yields one draft across dates | **PASS** |
 
 Retired in v0.2.0: the former AC-HLR-004 (`grep -c apply_outcome … ≥ 1`) and AC-HLR-005 (`learning-history/applied/` materialises). Both presumed `proposalgen` drafts reach `Applier.Apply()`; §A.4 establishes they cannot. Their replacements carry the same falsifiability discipline against the corrected consumer. `apply_outcome` telemetry and the `applied/` directory remain the success signals of the **Applier** path, which this SPEC deliberately leaves unfed (§G open question 4).
 
@@ -354,7 +354,7 @@ Retired in v0.2.0: the former AC-HLR-004 (`grep -c apply_outcome … ≥ 1`) and
 ## §G Open Questions
 
 1. ~~**Layout direction**~~ — **RESOLVED (M1).** Consumers were normalised to the nested producer layout. The nested form held all 52 live drafts and carries `spec.md` alongside `proposal.json`; changing the producer to flat would have orphaned them. Recorded in `progress.md` § Decision taken this session.
-2. **Promotion narrowing rule** — which observation subjects remain promotable once bare tool names are excluded. §A.5 measures the candidate pool (13 unique `tool_failure` patterns vs 28 `agent_invocation`), but does not settle the rule. Belongs to M4.
+2. **Promotion narrowing rule** — **RESOLVED (M4, 2026-07-28, AskUserQuestion): option (a) exclude the `agent_invocation` event type from promotion.** A bare tool name carries no learnable decision (§A.5: 94.5% of observations are bare-tool-name `agent_invocation`); it is not routable to a hook/rule/lesson per REQ-009, so it is excluded rather than routed. `tool_failure` / `user_prompt` / `subagent_stop` / `session_stop` (and other pattern-bearing types) remain promotable subject to the existing confidence/tier/format gates. Options (b) tool_failure-only and (c) subject-based filter were considered and rejected: (b) narrows more than AC-008 requires (drops `user_prompt` etc.); (c) adds complexity for no practical gain since all current `agent_invocation` subjects are bare tool names. Implemented in `isActionable` (`internal/harness/proposalgen/mapper.go`) via an `excludedEventTypes` set derived from the `harness.EventTypeAgentInvocation` SSOT.
 3. **Lesson store direction** — migrate `lessons.md` content into the topic-file convention, or restore `lessons.md` as an index over it. Belongs to M5.
 4. **Does the `Applier` frontmatter-enrichment path ever get a producer?** — **RESOLVED (Implementation Kickoff gate, 2026-07-28): option (a) leave dormant.** The path is preserved unfed; `apply_outcome` telemetry stays at zero by design. The `execute` verb rejects `proposalgen` drafts with an honest diagnostic per AC-HLR-014. Deferring the producer decision is deliberate and remains correct: this SPEC's mandate is to stop the mis-wiring (§A.4), not to decide the Applier's future. Removal (option c) would reverse four predecessor SPECs' deliverables and is out of scope; giving it a producer (option b) requires automating the authoring judgment §A.4 identifies as unautomated. Feeds M2 implementation (AC-HLR-014).
    - Historical detail preserved for traceability: the path is fully built (5-layer pipeline, snapshot/rollback, regression gate, lineage, outcome telemetry) and has never had a caller supplying a populated `harness.Proposal` (§A.3.2). Three dispositions were on the table — (a) leave dormant (cheapest; leaves a large unexercised subsystem in the tree), (b) give it a producer, (c) retire it (reverses four predecessor SPECs). (a) was selected for the reasons above.

@@ -30,8 +30,8 @@ These rules bind every AC below. They exist because §A.4 of `spec.md` attribute
 | AC-HLR-015 | M2 | open | §D.4 |
 | AC-HLR-016 | M2 | open | §D.5 |
 | AC-HLR-007 | M3 | **PASS** | §E.1 |
-| AC-HLR-008 | M4 | open | §F.1 |
-| AC-HLR-017 | M4 | open | §F.2 |
+| AC-HLR-008 | M4 | **PASS** | §F.1 |
+| AC-HLR-017 | M4 | **PASS** | §F.2 |
 | AC-HLR-009 | M5 | open | §G.1 |
 | AC-HLR-010 | M5 | open | §G.2 |
 | AC-HLR-011 | M6 | open | §H.1 |
@@ -206,6 +206,12 @@ The finalized ledger row carries `request_digest: sha256:e0e7dba9545a` and **not
 
 **Baseline.** 29 of 52 drafts (56%) are `agent_invocation` records naming a bare tool; 28 are unique (`spec.md` §A.5).
 
+**Evidence (M4, executed 2026-07-28, commit `b010bcfd9`).** `isActionable` (`internal/harness/proposalgen/mapper.go`) now rejects promotions whose `pattern_key` event-type prefix is `agent_invocation` via an `excludedEventTypes` set derived from the `harness.EventTypeAgentInvocation` SSOT (not a hand-maintained string). The exclusion runs as the outermost narrowing clause, independent of the tier gate — an `agent_invocation:X:` with `to_tier: auto_update` + confidence 0.9 + valid format is rejected even though it passes every other gate. The format regex `actionablePatternRE` is PRESERVED (still accepts `agent_invocation:*` as a schema-valid key; pinned by `TestActionablePatternRE_AcceptsAgentInvocationFormat`).
+
+RED test: `TestMapper_AgentInvocationExcludedRegardlessOfTier` feeds `{pattern_key:"agent_invocation:Bash:", to_tier:auto_update, confidence:0.9, obs:5}` and asserts 0 candidates — `go test -run TestMapper_AgentInvocationExcludedRegardlessOfTier ./internal/harness/proposalgen/...` → ok.
+
+**Falsification executed.** Reverting the `hasExcludedEventType` early-return from `isActionable` → the test FAILS (`got 1 candidate(s), want 0`, draft `PROPOSAL-20260728-aa401a3a` reproduces) → restored → green. Downstream cascade: `TestRunHarnessObserveStop_ProposeChainAutoRuns` (SPEC-HARNESS-RATCHET-REWIRE-001 AC-HRR-005) seeded `agent_invocation:Bash` and broke; fixed by switching its seed to `tool_failure` (commit `efcb4990c`) — the intended AC-008 consequence. Full `go test ./...` exit 0 (105 ok).
+
 ### §F.2 AC-HLR-017 — one pattern yields one draft across dates
 
 - **Given** a fixture with two `Promotion` records sharing one `pattern_key` and carrying timestamps on two different dates
@@ -218,6 +224,12 @@ The finalized ledger row carries `request_digest: sha256:e0e7dba9545a` and **not
 **Baseline.** 52 drafts collapse to 45 unique `pattern_key` values; the 7-draft difference is 7 duplicate pairs, enumerated in `spec.md` §A.6. `buildDraftID` (`internal/harness/proposalgen/mapper.go:130-135`) takes the date from the promotion timestamp, so the same pattern promoted on another day yields a new ID.
 
 **Scope boundary.** Forward-looking only. The 7 existing duplicate pairs are grandfathered per `spec.md` §B.2; this AC MUST NOT be read as requiring their removal.
+
+**Evidence (M4, executed 2026-07-28, commit `b010bcfd9`).** `buildDraftID` (`internal/harness/proposalgen/mapper.go`) drops the `<YYYYMMDD>` date segment, yielding `PROPOSAL-<sha256(pattern_key)[:8]>`. One `pattern_key` now produces one draft ID across dates.
+
+RED test: `TestMapper_DraftIDStableAcrossDates` feeds the same `pattern_key` (`user_prompt::`) on 2026-07-13 and 2026-07-14 and asserts an identical `DraftID` — `go test -run TestMapper_DraftIDStableAcrossDates ./internal/harness/proposalgen/...` → ok (both days → `PROPOSAL-dc05149f`).
+
+**Falsification executed.** Restoring the `<YYYYMMDD>` date segment → the test FAILS (`day1=PROPOSAL-20260713-dc05149f` vs `day2=PROPOSAL-20260714-dc05149f`) → restored → green.
 
 ---
 
