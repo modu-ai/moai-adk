@@ -189,7 +189,6 @@ Token refresh endpoint
 
 ---
 Generated from: SPEC-001
-Last Updated: 2025-12-06
 ```
 
 **Explanation**: SPEC 데이터의 요구사항, API 엔드포인트, 요청/응답 스키마를 분석하여 구조화된 문서를 자동 생성합니다. 테이블 형식의 API 레퍼런스가 포함됩니다.
@@ -544,4 +543,3 @@ python -m moai_menu_project.cli status
 ---
 
 Version: 1.0.0
-Last Updated: 2025-12-06

@@ -3,7 +3,6 @@
 Purpose: Real-world usage examples and patterns for moai-worktree skill integration with MoAI-ADK workflow.
 
 Version: 1.0.0
-Last Updated: 2025-11-29
 
 ---
 
@@ -602,5 +601,4 @@ chmod -R 755 .moai/worktrees/PROJECT/
 ---
 
 Version: 1.0.0
-Last Updated: 2025-11-29
 Examples: Real-world usage patterns for moai-worktree integration

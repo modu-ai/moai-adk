@@ -41,7 +41,7 @@ file	date	line_shape	line_no	category	disposition	rationale
 .claude/skills/moai-foundation-core/references/reference.md	2025-12-06	LS-PROSE-STAMP	478	DC-2a	REMOVE	unfenced prose authoring stamp
 .claude/skills/moai-workflow-project/references/examples.md	2025-12-06	LS-OTHER	250	DC-5	PRESERVE	EX-DATA structured-data or code-sample value (REQ-TDN2-011 absolute pin)
 .claude/skills/moai-workflow-project/references/examples.md	2025-12-06	LS-OTHER	500	DC-5	PRESERVE	EX-DATA structured-data or code-sample value (REQ-TDN2-011 absolute pin)
-.claude/skills/moai-workflow-project/references/examples.md	2025-12-06	LS-PROSE-STAMP	192	DC-2a	PRESERVE	FENCED generated-output sample inside a fenced block; PRESERVE to retain the demonstrated output shape
+.claude/skills/moai-workflow-project/references/examples.md	2025-12-06	LS-PROSE-STAMP	192	DC-2a	REMOVE	FENCED generated-output sample inside a fenced block; REMOVE because AC-007 requires zero non-mirror prose stamps with no structural carve-out for fenced stamps (explicit adjudication per REQ-TDN2-012)
 .claude/skills/moai-workflow-project/references/examples.md	2025-12-06	LS-PROSE-STAMP	547	DC-2a	REMOVE	unfenced prose authoring stamp
 .claude/skills/moai-workflow-project/references/reference.md	2025-11-15	LS-OTHER	269	DC-5	PRESERVE	HIST version-history table row; PRESERVE as legitimate release-note documentation
 .claude/skills/moai-workflow-project/references/reference.md	2025-11-20	LS-OTHER	268	DC-5	PRESERVE	HIST version-history table row; PRESERVE as legitimate release-note documentation
