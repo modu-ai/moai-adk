@@ -6,7 +6,7 @@ draft: false
 
 `moai ast-grep` 은 코드를 구문 트리 단위로 스캔하고, `moai ast-edit` 은 매칭된 코드를 실제로 치환합니다. 텍스트 기반 `grep` 과 달리 구문 구조로 매칭하므로 공백·줄바꿈·변수명 차이에 흔들리지 않습니다.
 
-두 커맨드는 [ast-grep](https://ast-grep.github.io/) CLI(`sg`)를 사용합니다. `sg` 가 설치돼 있지 않으면 두 커맨드 모두 오류 없이 안내 메시지만 출력하고 종료합니다.
+두 커맨드는 [ast-grep](https://ast-grep.github.io/) CLI(`sg`)를 사용하며, `sg` 가 없을 때의 동작은 의도적으로 다릅니다. `ast-grep` 은 CI 게이트로도 쓰이는 검사 커맨드라 안내를 stderr 로 출력하고 **0 이 아닌 코드로 종료**합니다. 실행되지 않은 스캔을 "이상 없음" 으로 읽어서는 안 되기 때문입니다. `ast-edit` 은 치환 커맨드이고 "적용할 것이 없음" 은 정상적인 무동작이므로 안내만 출력하고 0 으로 종료합니다. `sg` 설치는 [ast-grep 퀵스타트](https://ast-grep.github.io/guide/quick-start.html) 를 참고하세요. 설치 여부는 `moai doctor` 로도 확인할 수 있습니다.
 
 > **읽기와 쓰기가 분리돼 있습니다.** `ast-grep` 은 파일을 절대 수정하지 않고, `ast-edit` 은 수정합니다. 별도 커맨드이므로 `Bash(moai ast-grep:*)` 권한을 허용해도 쓰기 권한까지 열리지 않습니다.
 

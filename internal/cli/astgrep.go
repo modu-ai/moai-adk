@@ -7,6 +7,7 @@ package cli
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os/exec"
 	"strings"
@@ -90,6 +91,20 @@ func runAstGrep(cmd *cobra.Command, flags *astGrepFlags, path string) error {
 
 	findings, err := scanner.Scan(ctx, path)
 	if err != nil {
+		// An unresolvable scanner is not a clean scan. ast-grep is a detector
+		// used as a CI gate, so it says so on stderr and exits non-zero rather
+		// than printing "no findings" over code nothing ever looked at.
+		//
+		// `moai ast-edit` deliberately keeps exit 0 in the same situation: for
+		// a mutator, "nothing to apply" is a genuine no-op.
+		if errors.Is(err, astgrep.ErrScannerUnavailable) {
+			// stderr only — stdout stays reserved for the --format=json/sarif
+			// payload that machine consumers parse.
+			_, _ = fmt.Fprintf(cmd.ErrOrStderr(),
+				"ast-grep: scan did not run — the ast-grep (sg) CLI was not found.\n"+
+					"Install it from %s, then re-run.\n", astgrep.InstallURL)
+			return &exitCodeError{code: 1, msg: "ast-grep: sg CLI not found; scan did not run"}
+		}
 		return fmt.Errorf("ast-grep scan: %w", err)
 	}
 

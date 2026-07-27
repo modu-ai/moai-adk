@@ -85,6 +85,7 @@ func TestDoctorGolden_Light(t *testing.T) {
 	t.Setenv("CLAUDE_CODE_VERSION", "test-claude-99")
 	t.Setenv("MOAI_GIT_VERSION_OVERRIDE", "git version 9.99.99")
 	t.Setenv("MOAI_GH_VERSION_OVERRIDE", "gh version 9.99.99 (2099-12-31)")
+	t.Setenv("MOAI_SG_VERSION_OVERRIDE", "ast-grep 9.99.99")
 	t.Setenv("MOAI_GOOS_OVERRIDE", "testos")
 	t.Setenv("MOAI_GOARCH_OVERRIDE", "testarch")
 
@@ -104,6 +105,7 @@ func TestDoctorGolden_Dark(t *testing.T) {
 	t.Setenv("CLAUDE_CODE_VERSION", "test-claude-99")
 	t.Setenv("MOAI_GIT_VERSION_OVERRIDE", "git version 9.99.99")
 	t.Setenv("MOAI_GH_VERSION_OVERRIDE", "gh version 9.99.99 (2099-12-31)")
+	t.Setenv("MOAI_SG_VERSION_OVERRIDE", "ast-grep 9.99.99")
 	t.Setenv("MOAI_GOOS_OVERRIDE", "testos")
 	t.Setenv("MOAI_GOARCH_OVERRIDE", "testarch")
 
@@ -122,6 +124,7 @@ func TestDoctorGolden_NoColor(t *testing.T) {
 	t.Setenv("CLAUDE_CODE_VERSION", "test-claude-99")
 	t.Setenv("MOAI_GIT_VERSION_OVERRIDE", "git version 9.99.99")
 	t.Setenv("MOAI_GH_VERSION_OVERRIDE", "gh version 9.99.99 (2099-12-31)")
+	t.Setenv("MOAI_SG_VERSION_OVERRIDE", "ast-grep 9.99.99")
 	t.Setenv("MOAI_GOOS_OVERRIDE", "testos")
 	t.Setenv("MOAI_GOARCH_OVERRIDE", "testarch")
 
@@ -157,6 +160,7 @@ func TestDoctor_GroupsPresent(t *testing.T) {
 	t.Setenv("CLAUDE_CODE_VERSION", "test-claude-99")
 	t.Setenv("MOAI_GIT_VERSION_OVERRIDE", "git version 9.99.99")
 	t.Setenv("MOAI_GH_VERSION_OVERRIDE", "gh version 9.99.99 (2099-12-31)")
+	t.Setenv("MOAI_SG_VERSION_OVERRIDE", "ast-grep 9.99.99")
 	t.Setenv("MOAI_GOOS_OVERRIDE", "testos")
 	t.Setenv("MOAI_GOARCH_OVERRIDE", "testarch")
 
@@ -175,6 +179,7 @@ func TestDoctor_GlamourCachePlaceholder(t *testing.T) {
 	t.Setenv("CLAUDE_CODE_VERSION", "test-claude-99")
 	t.Setenv("MOAI_GIT_VERSION_OVERRIDE", "git version 9.99.99")
 	t.Setenv("MOAI_GH_VERSION_OVERRIDE", "gh version 9.99.99 (2099-12-31)")
+	t.Setenv("MOAI_SG_VERSION_OVERRIDE", "ast-grep 9.99.99")
 	t.Setenv("MOAI_GOOS_OVERRIDE", "testos")
 	t.Setenv("MOAI_GOARCH_OVERRIDE", "testarch")
 
@@ -194,6 +199,7 @@ func TestDoctor_SummaryPillsPresent(t *testing.T) {
 	t.Setenv("CLAUDE_CODE_VERSION", "test-claude-99")
 	t.Setenv("MOAI_GIT_VERSION_OVERRIDE", "git version 9.99.99")
 	t.Setenv("MOAI_GH_VERSION_OVERRIDE", "gh version 9.99.99 (2099-12-31)")
+	t.Setenv("MOAI_SG_VERSION_OVERRIDE", "ast-grep 9.99.99")
 	t.Setenv("MOAI_GOOS_OVERRIDE", "testos")
 	t.Setenv("MOAI_GOARCH_OVERRIDE", "testarch")
 
@@ -210,6 +216,7 @@ func TestDoctor_GoVersionDeterministic(t *testing.T) {
 	t.Setenv("CLAUDE_CODE_VERSION", "test-claude-99")
 	t.Setenv("MOAI_GIT_VERSION_OVERRIDE", "git version 9.99.99")
 	t.Setenv("MOAI_GH_VERSION_OVERRIDE", "gh version 9.99.99 (2099-12-31)")
+	t.Setenv("MOAI_SG_VERSION_OVERRIDE", "ast-grep 9.99.99")
 	t.Setenv("MOAI_GOOS_OVERRIDE", "testos")
 	t.Setenv("MOAI_GOARCH_OVERRIDE", "testarch")
 	t.Setenv("NO_COLOR", "1")
@@ -226,6 +233,7 @@ func TestDoctor_ClaudeVersionDeterministic(t *testing.T) {
 	t.Setenv("CLAUDE_CODE_VERSION", "test-claude-99")
 	t.Setenv("MOAI_GIT_VERSION_OVERRIDE", "git version 9.99.99")
 	t.Setenv("MOAI_GH_VERSION_OVERRIDE", "gh version 9.99.99 (2099-12-31)")
+	t.Setenv("MOAI_SG_VERSION_OVERRIDE", "ast-grep 9.99.99")
 	t.Setenv("MOAI_GOOS_OVERRIDE", "testos")
 	t.Setenv("MOAI_GOARCH_OVERRIDE", "testarch")
 	t.Setenv("NO_COLOR", "1")

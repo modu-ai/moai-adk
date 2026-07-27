@@ -3,11 +3,28 @@ package quality
 import (
 	"context"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"runtime"
 	"strings"
 	"testing"
 )
+
+// wantCleanPassOutput returns the pass-path output RunAstGrepGateV2 produces
+// for a project whose scan has nothing to report: the empty string when sg
+// resolves (a scan really ran and found nothing) and the scanner-unavailable
+// reason when it does not.
+//
+// Branching keeps the tests below deterministic on hosts with and without sg.
+// It is load-bearing rather than defensive: those two outcomes used to collapse
+// into the same empty string, which is exactly the false all-clear this package
+// now refuses to emit.
+func wantCleanPassOutput() string {
+	if _, err := exec.LookPath("sg"); err != nil {
+		return astGrepReasonScannerUnavailable
+	}
+	return ""
+}
 
 // TestRunAstGrepGateV2_NilConfig verifies graceful handling of a nil config.
 func TestRunAstGrepGateV2_NilConfig(t *testing.T) {
@@ -38,9 +55,14 @@ func TestRunAstGrepGateV2_Disabled(t *testing.T) {
 	}
 }
 
-// TestRunAstGrepGateV2_NoSgCLI verifies the gate passes silently when sg is not
-// on PATH. This exercises the graceful-degradation contract of the unified
-// Scanner (REQ-ASTG-UPG-012).
+// TestRunAstGrepGateV2_NoSgCLI verifies the gate passes when sg is not on PATH
+// but says why. Graceful degradation still means "never block a commit over an
+// optional tool" (REQ-ASTG-UPG-012); it no longer means passing silently,
+// because a silent pass is byte-identical to a clean scan.
+//
+// This assertion was previously `output == ""`. It is inverted rather than
+// dropped, so it fails again if the gate ever goes back to reporting an absent
+// scanner as nothing to say.
 func TestRunAstGrepGateV2_NoSgCLI(t *testing.T) {
 	// t.Setenv is incompatible with t.Parallel().
 	t.Setenv("PATH", "")
@@ -51,8 +73,9 @@ func TestRunAstGrepGateV2_NoSgCLI(t *testing.T) {
 	if !passed {
 		t.Errorf("gate should pass when sg is not available, got output: %q", output)
 	}
-	if output != "" {
-		t.Errorf("output should be empty when sg is not available, got %q", output)
+	if output != astGrepReasonScannerUnavailable {
+		t.Errorf("output should name the scanner-unavailable skip, want %q, got %q",
+			astGrepReasonScannerUnavailable, output)
 	}
 }
 
@@ -70,8 +93,10 @@ func TestRunAstGrepGateV2_NoRulesDir(t *testing.T) {
 	if !passed {
 		t.Errorf("gate should pass when rules dir does not exist, got output: %q", output)
 	}
-	if output != "" {
-		t.Errorf("output should be empty when rules dir does not exist, got %q", output)
+	// This test does not strip PATH, so the expected pass-path output depends
+	// on whether the host has sg — see wantCleanPassOutput.
+	if want := wantCleanPassOutput(); output != want {
+		t.Errorf("output when rules dir does not exist: want %q, got %q", want, output)
 	}
 }
 
@@ -92,8 +117,10 @@ func TestRunAstGrepGateV2_EmptyRulesDir(t *testing.T) {
 	if !passed {
 		t.Errorf("gate should pass when no rules are loaded, got output: %q", output)
 	}
-	if output != "" {
-		t.Errorf("output should be empty when no rules, got %q", output)
+	// This test does not strip PATH, so the expected pass-path output depends
+	// on whether the host has sg — see wantCleanPassOutput.
+	if want := wantCleanPassOutput(); output != want {
+		t.Errorf("output when no rules are loaded: want %q, got %q", want, output)
 	}
 }
 
@@ -149,38 +176,44 @@ func TestRunAstGrepGateV2_TableDriven(t *testing.T) {
 	// is serial.
 	projectDir := t.TempDir()
 
+	// PATH is stripped below, so every enabled case reaches the scanner and
+	// finds it absent. wantOutput distinguishes the two pass shapes that used
+	// to be one: an early skip that never consulted the scanner returns "",
+	// while a case that did consult it names the skip.
 	tests := []struct {
 		name       string
 		cfg        *AstGrepGateConfig
 		wantPassed bool
-		wantEmpty  bool
+		wantOutput string
 		// expectation: "pass" means gate returns true and non-blocking.
-		// "skip" means gate returns true with empty output (silent pass).
+		// "skip" means the gate returned before reaching the scanner at all.
 		expectation string
 	}{
 		{
 			name:        "nil config skips",
 			cfg:         nil,
 			wantPassed:  true,
-			wantEmpty:   true,
+			wantOutput:  "",
 			expectation: "skip",
 		},
 		{
 			name:        "disabled skips",
 			cfg:         &AstGrepGateConfig{Enabled: false},
 			wantPassed:  true,
-			wantEmpty:   true,
+			wantOutput:  "",
 			expectation: "skip",
 		},
 		{
-			name: "enabled with missing rules dir passes silently",
+			name: "enabled with missing rules dir passes with the skip reason",
 			cfg: &AstGrepGateConfig{
 				Enabled:      true,
 				RulesDir:     "path/does/not/exist",
 				BlockOnError: true,
 			},
-			wantPassed:  true,
-			wantEmpty:   true,
+			wantPassed: true,
+			// The scanner is consulted before the rules directory is, so an
+			// absent sg is reported even though the rules dir is also missing.
+			wantOutput:  astGrepReasonScannerUnavailable,
 			expectation: "pass",
 		},
 		{
@@ -192,7 +225,7 @@ func TestRunAstGrepGateV2_TableDriven(t *testing.T) {
 				WarnOnlyMode: true,
 			},
 			wantPassed:  true,
-			wantEmpty:   true,
+			wantOutput:  astGrepReasonScannerUnavailable,
 			expectation: "pass",
 		},
 		{
@@ -203,7 +236,7 @@ func TestRunAstGrepGateV2_TableDriven(t *testing.T) {
 				BlockOnError: false,
 			},
 			wantPassed:  true,
-			wantEmpty:   true,
+			wantOutput:  astGrepReasonScannerUnavailable,
 			expectation: "pass",
 		},
 	}
@@ -219,8 +252,8 @@ func TestRunAstGrepGateV2_TableDriven(t *testing.T) {
 			if passed != tt.wantPassed {
 				t.Errorf("%s: passed = %v, want %v", tt.expectation, passed, tt.wantPassed)
 			}
-			if tt.wantEmpty && output != "" {
-				t.Errorf("%s: output = %q, want empty", tt.expectation, output)
+			if output != tt.wantOutput {
+				t.Errorf("%s: output = %q, want %q", tt.expectation, output, tt.wantOutput)
 			}
 		})
 	}
@@ -229,8 +262,9 @@ func TestRunAstGrepGateV2_TableDriven(t *testing.T) {
 // TestRunAstGrepGateV2_ProjectDirPathVariants verifies the gate tolerates a
 // variety of projectDir inputs without panicking: absolute paths, relative
 // paths, empty strings, and path-traversal attempts. In all cases the gate
-// must return passed=true with empty output because sg is unavailable
-// and/or the rules directory does not resolve to a real location.
+// must return passed=true, and — because PATH is stripped below — must
+// accompany that pass with the scanner-unavailable reason rather than the
+// empty string a genuinely clean scan returns.
 func TestRunAstGrepGateV2_ProjectDirPathVariants(t *testing.T) {
 	// t.Setenv is incompatible with t.Parallel().
 	t.Setenv("PATH", "")
@@ -263,9 +297,9 @@ func TestRunAstGrepGateV2_ProjectDirPathVariants(t *testing.T) {
 				t.Errorf("gate should pass for projectDir=%q, got blocked with output: %q",
 					tt.projectDir, output)
 			}
-			if output != "" {
-				t.Errorf("gate should return empty output for projectDir=%q, got: %q",
-					tt.projectDir, output)
+			if output != astGrepReasonScannerUnavailable {
+				t.Errorf("gate should name the scanner-unavailable skip for projectDir=%q, want %q, got: %q",
+					tt.projectDir, astGrepReasonScannerUnavailable, output)
 			}
 		})
 	}
@@ -285,6 +319,59 @@ func TestRunAstGrepGateV2_ContextCancellation(t *testing.T) {
 
 	if !passed {
 		t.Error("cancelled context should still allow gate to pass gracefully")
+	}
+}
+
+// TestRunAstGrepGateV2_ScanDegradedReason covers the second pass-path reason:
+// the scanner was present but the scan itself failed, so its empty result is
+// not a clean bill of health either.
+//
+// Reaching this branch end-to-end needs a resolvable sg whose output the
+// scanner cannot parse — RunAstGrepGateV2 hard-codes SGBinary and offers no
+// injection seam, so a fake sg emitting malformed JSON is the only lever. It
+// reuses the fixture shape of TestRunAstGrepGateV2_AdvisoryOutputWithFindings.
+//
+// Without this the degraded branch would be reachable only in principle, and
+// the two reason classes could quietly collapse into one in production while
+// the constants stayed distinct in the unit test.
+func TestRunAstGrepGateV2_ScanDegradedReason(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("fake sg shell script requires a POSIX shell")
+	}
+
+	binDir := t.TempDir()
+	// Emits text that is not valid sg JSON, so parseSGFindings fails and Scan
+	// returns a non-sentinel error.
+	script := "#!/bin/sh\necho 'not json at all'\n"
+	if err := os.WriteFile(filepath.Join(binDir, "sg"), []byte(script), 0o755); err != nil {
+		t.Fatalf("write fake sg: %v", err)
+	}
+	// t.Setenv is incompatible with t.Parallel().
+	t.Setenv("PATH", binDir)
+
+	projectDir := t.TempDir()
+	rulesDir := filepath.Join(projectDir, ".moai", "config", "astgrep-rules")
+	if err := os.MkdirAll(rulesDir, 0o755); err != nil {
+		t.Fatalf("mkdir rules dir: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(rulesDir, "sgconfig.yml"), []byte("ruleDirs:\n  - .\n"), 0o644); err != nil {
+		t.Fatalf("write sgconfig.yml: %v", err)
+	}
+
+	passed, output := RunAstGrepGateV2(context.Background(), projectDir, &AstGrepGateConfig{
+		Enabled:      true,
+		RulesDir:     ".moai/config/astgrep-rules",
+		BlockOnError: true,
+	})
+
+	if !passed {
+		t.Errorf("a failed scan must never block a commit, got blocked with output: %q", output)
+	}
+	if output != astGrepReasonScanDegraded {
+		t.Errorf("output should name the degraded scan, want %q, got %q", astGrepReasonScanDegraded, output)
+	}
+	if output == astGrepReasonScannerUnavailable {
+		t.Error("a present-but-failing scanner must not be reported as an absent one")
 	}
 }
 

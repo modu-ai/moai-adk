@@ -6,7 +6,6 @@ package cli
 import (
 	"context"
 	"fmt"
-	"io"
 	"log/slog"
 	"net/url"
 	"os"
@@ -86,9 +85,15 @@ var deps *Dependencies
 // ConfigManager.Get() returns nil and every handler that reads config
 // silently falls back (handoff-inject → mode=manual → no-op auto-resume).
 func InitDependencies() {
-	// Replace the default logger with discard to prevent slog output from hook handlers leaking to stderr.
-	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
-	slog.SetDefault(logger)
+	// Inherit the process default logger; do NOT install one here.
+	//
+	// This function used to replace the default with a discarding handler so that
+	// hook-handler output could not leak onto stderr. That rationale covers the
+	// `moai hook` path only, but the call site was unconditional, so it silenced
+	// every operator-facing subcommand as well. The hook carve-out now lives in
+	// configureLogging (logging.go), the CLI's single default-logger installation
+	// site, which Execute() calls before reaching here.
+	logger := slog.Default()
 
 	// Initialize Ralph engine and loop controller.
 	ralphCfg := config.NewDefaultRalphConfig()

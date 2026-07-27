@@ -77,6 +77,11 @@ func TestCharacterize_VersionHelpers(t *testing.T) {
 		t.Errorf("GhVersionOverride = %q, want %q", v, "gh 2.40.0")
 	}
 
+	t.Setenv("MOAI_SG_VERSION_OVERRIDE", "ast-grep 0.40.5")
+	if v := uikit.SgVersionOverride(); v != "ast-grep 0.40.5" {
+		t.Errorf("SgVersionOverride = %q, want %q", v, "ast-grep 0.40.5")
+	}
+
 	t.Setenv("MOAI_GOOS_OVERRIDE", "linux")
 	t.Setenv("MOAI_GOARCH_OVERRIDE", "arm64")
 	if v := uikit.GoosArch(); v != "linux/arm64" {
