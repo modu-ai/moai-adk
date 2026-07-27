@@ -76,6 +76,10 @@ func runWeb(cmd *cobra.Command, _ []string) error {
 	_, _ = fmt.Fprintf(cmd.OutOrStdout(),
 		"MoAI Web Console starting on http://127.0.0.1:%d (Ctrl+C to stop)\n", webPort)
 
+	// SPEC-WORKTREE-BRANCH-GUARD-001 (REQ-WBG-009): the Web Console runs in the
+	// shared primary checkout; branch-changing work belongs in a worktree.
+	emitWorktreeAdvisory(cmd.OutOrStdout(), projectRoot)
+
 	return web.Run(cmd.Context(), web.Config{
 		Port:        webPort,
 		NoOpen:      webNoOpen,
