@@ -89,7 +89,7 @@ moai init
 moai init --non-interactive --project-mode personal --model-policy medium
 ```
 
-자세한 마법사 단계는 [초기 설정](./init-wizard) 페이지를 참조하세요.
+자세한 마법사 단계는 [초기 설정](/ko/getting-started/init-wizard) 페이지를 참조하세요.
 
 ---
 
@@ -133,7 +133,7 @@ moai update -c
 moai update --templates-only
 ```
 
-자세한 업데이트 절차는 [업데이트](./update) 페이지를 참조하세요.
+자세한 업데이트 절차는 [업데이트](/ko/cli-reference/update) 페이지를 참조하세요.
 
 ---
 
@@ -187,7 +187,7 @@ moai doctor --export diagnostics.json
 moai status
 ```
 
-플래그가 없는 읽기 전용 명령어입니다. 자세한 출력 내용은 [프로젝트 상태](./status) 페이지를 참조하세요.
+플래그가 없는 읽기 전용 명령어입니다. 자세한 출력 내용은 [프로젝트 상태](/ko/cli-reference/status) 페이지를 참조하세요.
 
 ---
 
@@ -206,7 +206,7 @@ moai inventory [OPTIONS]
 | `--json` | 구조화된 JSON 출력 |
 | `--project-root <path>` | 프로젝트 루트 경로 (기본값: 현재 디렉토리) |
 
-자세한 JSON 스키마와 활용 예시는 [moai inventory](./inventory) 페이지를 참조하세요.
+자세한 JSON 스키마와 활용 예시는 [moai inventory](/ko/cli-reference/inventory) 페이지를 참조하세요.
 
 ---
 
@@ -235,7 +235,7 @@ moai glm -p cost-save # cost-save 프로필로 GLM 실행
 moai cg -p team       # team 프로필로 CG 모드 실행
 ```
 
-자세한 내용은 [프로필 관리](./profile) 페이지를 참조하세요.
+자세한 내용은 [프로필 관리](/ko/cli-reference/profile) 페이지를 참조하세요.
 
 ---
 
@@ -355,7 +355,7 @@ moai glm setup sk-your-glm-api-key
 moai cg
 ```
 
-자세한 CG 모드 안내는 [소개 — GLM으로 토큰 절약](./introduction#glm으로-토큰-절약-5070) 을 참조하세요.
+자세한 CG 모드 안내는 [소개 — GLM으로 토큰 절약](/ko/getting-started/introduction#glm으로-토큰-절약-5070) 을 참조하세요.
 
 ### 런치 플래그
 
@@ -489,9 +489,9 @@ moai update -c
 
 ## 참고
 
-- [빠른 시작](./quickstart)
-- [설치](./installation)
-- [업데이트](./update)
-- [초기 설정](./init-wizard)
-- [프로필 관리](./profile)
-- [프로젝트 상태](./status)
+- [빠른 시작](/ko/getting-started/quickstart)
+- [설치](/ko/getting-started/installation)
+- [업데이트](/ko/cli-reference/update)
+- [초기 설정](/ko/getting-started/init-wizard)
+- [프로필 관리](/ko/cli-reference/profile)
+- [프로젝트 상태](/ko/cli-reference/status)
