@@ -158,6 +158,95 @@ func TestCanary_sortMostRecent(t *testing.T) {
 	}
 }
 
+// TestCanary_sortMostRecent_ordersByProgressFile pins the two mtime signals in
+// OPPOSITE directions so the assertion can only pass when sortMostRecent reads
+// progress.md rather than the spec directory.
+//
+// Directory mtime is not a usable recency signal for SPEC activity: it changes
+// only when an entry is added to or removed from the directory, so editing
+// progress.md leaves it untouched. The caller (Evaluate) has already verified
+// progress.md exists for every name it passes here.
+func TestCanary_sortMostRecent_ordersByProgressFile(t *testing.T) {
+	c := &canary{completedSpecPattern: regexp.MustCompile(`^SPEC-[A-Z0-9]+$`)}
+	specsDir := filepath.Join(t.TempDir(), ".moai", "specs")
+	names := []string{"SPEC-AAA-001", "SPEC-BBB-001", "SPEC-CCC-001"}
+	base := time.Now().Add(-time.Hour)
+
+	for _, name := range names {
+		dir := filepath.Join(specsDir, name)
+		if err := os.MkdirAll(dir, 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(dir, "progress.md"), []byte("x"), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	// progress.md recency: AAA newest, CCC oldest.
+	for i, name := range names {
+		mt := base.Add(time.Duration(len(names)-i) * time.Hour)
+		if err := os.Chtimes(filepath.Join(specsDir, name, "progress.md"), mt, mt); err != nil {
+			t.Fatal(err)
+		}
+	}
+	// Directory recency: exactly reversed — CCC newest, AAA oldest. Set last so
+	// the file writes above cannot perturb it.
+	for i, name := range names {
+		mt := base.Add(time.Duration(i+1) * time.Hour)
+		if err := os.Chtimes(filepath.Join(specsDir, name), mt, mt); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	got := c.sortMostRecent(names, specsDir, 3)
+	want := []string{"SPEC-AAA-001", "SPEC-BBB-001", "SPEC-CCC-001"}
+	if len(got) != len(want) {
+		t.Fatalf("sortMostRecent: got %d entries (%v), want %d", len(got), got, len(want))
+	}
+	for i := range want {
+		if got[i] != want[i] {
+			t.Errorf("sortMostRecent%v: got %v, want %v (directory mtime is reversed, so a directory-mtime sort yields %v)",
+				names, got, want, []string{"SPEC-CCC-001", "SPEC-BBB-001", "SPEC-AAA-001"})
+			break
+		}
+	}
+}
+
+// TestCanary_sortMostRecent_tieIsDeterministic guards the equal-mtime case.
+// Coarse filesystem timestamp resolution (notably on Windows) can collapse
+// distinct writes onto the same mtime; the order must not depend on that.
+func TestCanary_sortMostRecent_tieIsDeterministic(t *testing.T) {
+	c := &canary{completedSpecPattern: regexp.MustCompile(`^SPEC-[A-Z0-9]+$`)}
+	specsDir := filepath.Join(t.TempDir(), ".moai", "specs")
+	// Deliberately not in sorted order, so "input order" and "name order" differ.
+	names := []string{"SPEC-CCC-001", "SPEC-AAA-001", "SPEC-BBB-001"}
+	mt := time.Now().Add(-time.Hour)
+
+	for _, name := range names {
+		dir := filepath.Join(specsDir, name)
+		if err := os.MkdirAll(dir, 0o755); err != nil {
+			t.Fatal(err)
+		}
+		path := filepath.Join(dir, "progress.md")
+		if err := os.WriteFile(path, []byte("x"), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.Chtimes(path, mt, mt); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	want := []string{"SPEC-AAA-001", "SPEC-BBB-001", "SPEC-CCC-001"}
+	for attempt := range 3 {
+		got := c.sortMostRecent(names, specsDir, 3)
+		for i := range want {
+			if i >= len(got) || got[i] != want[i] {
+				t.Fatalf("attempt %d: sortMostRecent = %v, want %v (all mtimes equal → name order)", attempt, got, want)
+			}
+		}
+	}
+}
+
 // TestParseScoreFromProgress verifies score extraction from progress.md content.
 func TestParseScoreFromProgress(t *testing.T) {
 	root := t.TempDir()

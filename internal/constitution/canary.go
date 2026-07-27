@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -17,6 +18,10 @@ const (
 	canaryMinSpecs = 3
 	// canaryMaxSpecs is the maximum number of SPECs used for canary evaluation.
 	canaryMaxSpecs = 3
+	// canaryProgressFile is the per-SPEC record whose presence marks a SPEC as
+	// completed and whose mtime represents that SPEC's recency. Both readers
+	// resolve it from here so they cannot drift apart.
+	canaryProgressFile = "progress.md"
 )
 
 // canary is an implementation of the Canary interface.
@@ -71,7 +76,7 @@ func (c *canary) Evaluate(proposal *AmendmentProposal, projectDir string) (*Cana
 			continue
 		}
 		// Determine completion by checking progress.md existence (simple implementation)
-		progressPath := filepath.Join(specsDir, name, "progress.md")
+		progressPath := filepath.Join(specsDir, name, canaryProgressFile)
 		if _, err := os.Stat(progressPath); err == nil {
 			completedSpecs = append(completedSpecs, name)
 		}
@@ -177,6 +182,17 @@ func (c *canary) estimateScoreImpact(proposal *AmendmentProposal) float64 {
 }
 
 // sortMostRecent returns the list of most recent SPECs by modification time.
+//
+// Recency is read from each SPEC's progress.md, not from its directory: a
+// directory's mtime changes only when an entry is added or removed, so editing
+// progress.md — the actual record of SPEC activity — leaves it untouched. The
+// caller has already established that progress.md exists for every name passed
+// here; a spec whose progress.md cannot be stat'ed is skipped, as before.
+//
+// Equal mtimes are broken by name so the result is deterministic. Coarse
+// filesystem timestamp resolution can collapse distinct writes onto the same
+// mtime, and an order that depended on the input slice would then vary by
+// platform.
 func (c *canary) sortMostRecent(specs []string, specsDir string, limit int) []string {
 	type specTime struct {
 		name string
@@ -185,21 +201,19 @@ func (c *canary) sortMostRecent(specs []string, specsDir string, limit int) []st
 
 	var specTimes []specTime
 	for _, spec := range specs {
-		info, err := os.Stat(filepath.Join(specsDir, spec))
+		info, err := os.Stat(filepath.Join(specsDir, spec, canaryProgressFile))
 		if err != nil {
 			continue
 		}
 		specTimes = append(specTimes, specTime{name: spec, time: info.ModTime()})
 	}
 
-	// Sort by ModTime descending
-	for i := 0; i < len(specTimes); i++ {
-		for j := i + 1; j < len(specTimes); j++ {
-			if specTimes[j].time.After(specTimes[i].time) {
-				specTimes[i], specTimes[j] = specTimes[j], specTimes[i]
-			}
+	slices.SortFunc(specTimes, func(a, b specTime) int {
+		if c := b.time.Compare(a.time); c != 0 {
+			return c
 		}
-	}
+		return strings.Compare(a.name, b.name)
+	})
 
 	// Return the latest limit items
 	var result []string
