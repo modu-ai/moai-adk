@@ -210,5 +210,4 @@ automated-code-review.md (this file)
 ---
 
 Version: 2.0.0 (Modular Structure)
-Last Updated: 2026-01-06
 Module: `modules/automated-code-review.md`

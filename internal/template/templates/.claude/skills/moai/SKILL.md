@@ -355,4 +355,3 @@ Use AskUserQuestion to present the user with logical next actions based on the c
 ---
 
 Version: 2.8.0
-Last Updated: 2026-07-07

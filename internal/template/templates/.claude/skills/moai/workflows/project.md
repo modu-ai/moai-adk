@@ -99,5 +99,4 @@ For convenience, the DB engine categories are: Relational/SQL (PostgreSQL, MySQL
 ---
 
 Version: 2.5.0
-Last Updated: 2026-02-21
 Provenance: the DB-detection hint policy, the project-harness generation policy, the workflow-split policy

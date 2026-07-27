@@ -40,7 +40,7 @@ Flags:
 | LR-02 | error | error | `Agent` token in `tools:` CSV list. Subagents cannot spawn sub-subagents. |
 | LR-03 | error | error | Missing `effort:` field in frontmatter. Promoted from warning. |
 | LR-04 | error | error | Dead hook entry: `matcher:` references a tool absent from `tools:` list. |
-| LR-05 | warning | warning | Write-heavy agent missing `isolation: worktree`. Downgraded to warning per worktree-opt-out policy (2026-07-13). |
+| LR-05 | warning | warning | Write-heavy agent missing `isolation: worktree`. Downgraded to warning per worktree-opt-out policy. |
 | LR-06 | warning | error | `--deepthink flag:` boilerplate text in `description:` field (redundant activation instructions). |
 | LR-07 | error | error | Duplicate Skeptical-Evaluator Mandate block (canonical copy lives in `agent-common-protocol.md` §Skeptical Evaluation Stance). |
 | LR-08 | warning | warning | Skill-preload drift within same agent category (>=50% peer-omission threshold). |

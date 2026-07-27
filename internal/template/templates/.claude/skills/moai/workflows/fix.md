@@ -334,4 +334,4 @@ Resume commands:
 
 Version: 2.4.0
 Updated: Phase 5 rewritten into an evidence-bearing claim/evidence contract with a full-rescan-vs-baseline regression guard (revert-or-report-failed, never silent acceptance); added Phase 8 (residue persistence to the loop-verdict schema + non-auto-invoking `/moai loop` recommendation); added the Loop Taxonomy Position section placing this workflow in the turn-based quadrant.
-Previous: 2.3.0 — consolidated CI watch + autofix references to moai-workflow-ci-loop per the skill consolidation policy. 2.2.0 (2026-03-02) — added 16-language LSP/linter tables and structured error output normalization for language-agnostic fix agents.
+Previous: 2.3.0 — consolidated CI watch + autofix references to moai-workflow-ci-loop per the skill consolidation policy. 2.2.0 — added 16-language LSP/linter tables and structured error output normalization for language-agnostic fix agents.

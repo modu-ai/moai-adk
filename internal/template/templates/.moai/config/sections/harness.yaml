@@ -51,9 +51,9 @@ harness:
     standard: "medium"   # Balanced quality: moderate reasoning budget
     thorough: "high"     # Critical features: maximum reasoning budget
 
-  # [HARD] Global plan_audit override — prevents 2026-04-21 incident recurrence
+  # [HARD] Global plan_audit override — prevents incident recurrence
   #
-  # On 2026-04-21, 30 SPECs were generated without going through the plan-auditor
+  # In a prior incident, 30 SPECs were generated without going through the plan-auditor
   # gate because: (a) /moai project scope creep bypassed /moai plan entirely, and
   # (b) the minimal level had plan_audit.enabled: false. Result: 386 cross-SPEC
   # defects (100% FAIL rate) that required emergency remediation.
