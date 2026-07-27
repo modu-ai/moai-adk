@@ -277,7 +277,7 @@ Every file's status is identical before and after M7; the new test file is clean
 
 ```yaml
 run_complete_at: 2026-07-27
-run_commit_sha: "440125ccb"           # verified via `git log --oneline -1 440125ccb` → "440125ccb feat(SPEC-GOAL-SURFACE-UNIFY-001): M7 retire native /goal from Go emission paths"
+run_commit_sha: "6cce7f573"           # verified via `git log --oneline -1 6cce7f573` → "6cce7f573 feat(SPEC-GOAL-SURFACE-UNIFY-001): M7 retire native /goal from Go emission paths" (re-backfilled after the pre-PR rebase onto origin/main; pre-rebase SHA was 440125ccb)
 run_status: audit-ready
 ac_pass_count: 30
 ac_fail_count: 0
@@ -311,7 +311,7 @@ Five corrections from plan-audit iteration 2's residual carry-over were applied 
 
 ```yaml
 sync_complete_at: 2026-07-27
-sync_commit_sha: "40828e64a"             # verified via `git log --oneline -1 40828e64a` → "40828e64a docs(SPEC-GOAL-SURFACE-UNIFY-001): sync-phase artifacts + 3-phase close"
+sync_commit_sha: "a275432d4"             # verified via `git log --oneline -1 a275432d4` → "a275432d4 docs(SPEC-GOAL-SURFACE-UNIFY-001): sync-phase artifacts + 3-phase close" (re-backfilled after the pre-PR rebase onto origin/main; pre-rebase SHA was 40828e64a)
 sync_status: audit-ready
 b12_self_test_a: "grep -c 'SPEC-GOAL-SURFACE-UNIFY-001' CHANGELOG.md → 1 (pre-emission check; this SPEC had 0 prior CHANGELOG references)"
 b12_self_test_b: "acceptance.md §B AC-row count = 30 (grep -cE '^\\*\\*AC-GSU-[0-9]+' acceptance.md → matches the 30 retained ACs incl. -031b as a sub-component); CHANGELOG entry states 30/30 AC PASS, matching"
