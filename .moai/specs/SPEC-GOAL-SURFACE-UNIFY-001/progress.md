@@ -311,7 +311,7 @@ Five corrections from plan-audit iteration 2's residual carry-over were applied 
 
 ```yaml
 sync_complete_at: 2026-07-27
-sync_commit_sha: pending-backfill-sync   # a commit cannot cite its own hash; backfilled in a follow-up commit
+sync_commit_sha: "40828e64a"             # verified via `git log --oneline -1 40828e64a` → "40828e64a docs(SPEC-GOAL-SURFACE-UNIFY-001): sync-phase artifacts + 3-phase close"
 sync_status: audit-ready
 b12_self_test_a: "grep -c 'SPEC-GOAL-SURFACE-UNIFY-001' CHANGELOG.md → 1 (pre-emission check; this SPEC had 0 prior CHANGELOG references)"
 b12_self_test_b: "acceptance.md §B AC-row count = 30 (grep -cE '^\\*\\*AC-GSU-[0-9]+' acceptance.md → matches the 30 retained ACs incl. -031b as a sub-component); CHANGELOG entry states 30/30 AC PASS, matching"
