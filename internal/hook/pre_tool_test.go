@@ -5,7 +5,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/modu-ai/moai-adk/internal/config"
@@ -1017,6 +1019,131 @@ func TestPreToolHandler_QualityGate_Disabled(t *testing.T) {
 	}
 }
 
+// TestPreToolHandler_GitCommitNoVerify_Denied — AC-PGM-004 / REQ-PGM-006 (F5
+// mechanical): the PreToolUse guard at internal/hook/pre_tool.go mechanically
+// denies `git commit --no-verify` via a fast substring check. Under
+// defaultMode: bypassPermissions the PreToolUse deny is the SOLE blocking
+// mechanism; --no-verify would bypass the relocated git pre-commit gate
+// entirely (M1.b confirmed git suppresses the hook). This test exercises the
+// actual guard — NOT a documentation grep.
+func TestPreToolHandler_GitCommitNoVerify_Denied(t *testing.T) {
+	t.Parallel()
+
+	cfgProvider := &mockConfigProvider{cfg: newTestConfig()}
+	policy := DefaultSecurityPolicy()
+	handler := NewPreToolHandler(cfgProvider, policy)
+
+	tests := []struct {
+		name    string
+		command string
+	}{
+		{
+			name:    "standalone --no-verify flag",
+			command: `git commit --no-verify -m "test"`,
+		},
+		{
+			name:    "--no-verify in compound bash",
+			command: `git add . && git commit --no-verify -m "test"`,
+		},
+		{
+			name:    "--no-verify with --amend",
+			command: `git commit --amend --no-verify`,
+		},
+		{
+			name:    "--no-verify embedded mid-command",
+			command: `git commit --no-verify --amend -m "fix"`,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			toolInput, err := json.Marshal(map[string]string{"command": tt.command})
+			if err != nil {
+				t.Fatalf("marshal: %v", err)
+			}
+
+			input := &HookInput{
+				SessionID:     "sess-no-verify",
+				HookEventName: "PreToolUse",
+				ToolName:      "Bash",
+				ToolInput:     json.RawMessage(toolInput),
+			}
+
+			got, err := handler.Handle(context.Background(), input)
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+			if got == nil || got.HookSpecificOutput == nil {
+				t.Fatal("expected non-nil output")
+			}
+			if got.HookSpecificOutput.PermissionDecision != DecisionDeny {
+				t.Fatalf("expected deny for %q, got decision %q (reason: %s)",
+					tt.command, got.HookSpecificOutput.PermissionDecision,
+					got.HookSpecificOutput.PermissionDecisionReason)
+			}
+			// The deny reason MUST mention both --no-verify and the bypass
+			// alternative so the agent knows how to proceed legitimately.
+			reason := got.HookSpecificOutput.PermissionDecisionReason
+			if !strings.Contains(reason, "--no-verify") {
+				t.Errorf("deny reason should mention --no-verify, got: %s", reason)
+			}
+			if !strings.Contains(reason, "SKIP_MOAI_PRECOMMIT") {
+				t.Errorf("deny reason should mention SKIP_MOAI_PRECOMMIT bypass, got: %s", reason)
+			}
+		})
+	}
+}
+
+// TestPreToolHandler_GitCommitNoVerify_NotFalsePositive — AC-PGM-004 negative
+// case: a git commit WITHOUT --no-verify must NOT trip the bypass-defense guard.
+// Ensures the substring check is specific enough to not block legitimate commits.
+func TestPreToolHandler_GitCommitNoVerify_NotFalsePositive(t *testing.T) {
+	t.Parallel()
+
+	cfgProvider := &mockConfigProvider{cfg: newTestConfig()}
+	policy := DefaultSecurityPolicy()
+	handler := NewPreToolHandler(cfgProvider, policy)
+
+	// A commit message that mentions "--no-verify" as prose is a corner case.
+	// The substring check WILL match it (conservative over-blocking is safe —
+	// the user can override). The test documents this behavior rather than
+	// asserting it does NOT match. Use a clean commit message for the
+	// negative-case assertion.
+	toolInput, err := json.Marshal(map[string]string{
+		"command": `git commit -m "feat: add new feature"`,
+	})
+	if err != nil {
+		t.Fatalf("marshal: %v", err)
+	}
+
+	input := &HookInput{
+		SessionID:     "sess-clean-commit",
+		HookEventName: "PreToolUse",
+		ToolName:      "Bash",
+		ToolInput:     json.RawMessage(toolInput),
+	}
+
+	got, err := handler.Handle(context.Background(), input)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if got == nil || got.HookSpecificOutput == nil {
+		t.Fatal("expected non-nil output")
+	}
+	// The clean commit (no --no-verify) must NOT be denied by the bypass guard.
+	// It may be denied by the quality gate if gate.Enabled is true and the gate
+	// fails, but the deny reason would be the gate's output, not the --no-verify
+	// message. Assert the reason does NOT contain the --no-verify-specific text.
+	if got.HookSpecificOutput.PermissionDecision == DecisionDeny {
+		reason := got.HookSpecificOutput.PermissionDecisionReason
+		if strings.Contains(reason, "--no-verify would bypass") {
+			t.Errorf("clean commit was falsely denied by the --no-verify guard: %s", reason)
+		}
+	}
+}
+
 // TestPreToolHandler_QualityGate_NonGitCommand verifies that non-git-commit Bash
 // commands bypass the quality gate entirely.
 func TestPreToolHandler_QualityGate_NonGitCommand(t *testing.T) {
@@ -1231,4 +1358,284 @@ func TestFirstLine(t *testing.T) {
 			}
 		})
 	}
+}
+
+// ---------------------------------------------------------------------------
+// SPEC-WORKTREE-BRANCH-GUARD-001 — branch-state guard integration tests (M2).
+// ---------------------------------------------------------------------------
+
+// newBranchGuardRepoFixture creates a primary git repo at a temp dir with one
+// commit (so `git worktree add` is possible). Returns the repo path. Skips the
+// test if git is unavailable.
+func newBranchGuardRepoFixture(t *testing.T) string {
+	t.Helper()
+	if _, err := exec.LookPath("git"); err != nil {
+		t.Skipf("git binary not in PATH: %v", err)
+	}
+	repo := t.TempDir()
+	run := func(args ...string) {
+		full := append([]string{"-C", repo}, args...)
+		out, err := exec.Command("git", full...).CombinedOutput()
+		if err != nil {
+			t.Fatalf("git -C %s %s: %v\n%s", repo, strings.Join(args, " "), err, out)
+		}
+	}
+	run("init")
+	run("config", "user.email", "branch-guard-test@example.com")
+	run("config", "user.name", "Branch Guard Test")
+	run("config", "core.hooksPath", "/dev/null")
+	if err := os.WriteFile(filepath.Join(repo, "SEED"), []byte("seed\n"), 0o644); err != nil {
+		t.Fatalf("write seed: %v", err)
+	}
+	run("add", "SEED")
+	run("commit", "-m", "seed")
+	return repo
+}
+
+// addBranchGuardWorktree creates a worktree at parent/wt for the given repo
+// and returns the worktree path.
+func addBranchGuardWorktree(t *testing.T, repo string) string {
+	t.Helper()
+	parent := t.TempDir()
+	wt := filepath.Join(parent, "wt")
+	full := []string{"-C", repo, "worktree", "add", wt, "-b", "wt-branch"}
+	out, err := exec.Command("git", full...).CombinedOutput()
+	if err != nil {
+		t.Fatalf("git worktree add: %v\n%s", err, out)
+	}
+	return wt
+}
+
+// TestBranchGuard_DeniesGitSwitchInPrimary covers AC-WBG-001: a `git switch`
+// PreToolUse event in the PRIMARY checkout returns deny with the
+// BRANCH_GUARD_VIOLATION: sentinel prefix. The paired allow arm
+// (MOAI_BRANCH_GUARD_EXEMPT=1) MUST return allow — without it the AC would be
+// vacuous (a guard that denies unconditionally).
+//
+// NOTE: this test cannot run t.Parallel because the EnvVar subtest mutates the
+// process-global MOAI_BRANCH_GUARD_EXEMPT via t.Setenv.
+func TestBranchGuard_DeniesGitSwitchInPrimary(t *testing.T) {
+	repo := newBranchGuardRepoFixture(t)
+
+	t.Run("Deny_primary", func(t *testing.T) {
+		t.Setenv(branchGuardExemptEnv, "")
+		handler := &preToolHandler{
+			cfg:        &mockConfigProvider{cfg: newTestConfig()},
+			policy:     DefaultSecurityPolicy(),
+			projectDir: repo,
+		}
+		input := &HookInput{
+			SessionID:     "sess-bg-1",
+			HookEventName: "PreToolUse",
+			ToolName:      "Bash",
+			AgentType:     "manager-develop",
+			ToolInput:     json.RawMessage(`{"command": "git switch -c feat/test"}`),
+		}
+		out, err := handler.Handle(context.Background(), input)
+		if err != nil {
+			t.Fatalf("Handle err = %v", err)
+		}
+		decision := decisionOf(out)
+		reason := reasonOf(out)
+		if decision != DecisionDeny {
+			t.Fatalf("Handle decision = %q, want %q (reason=%q)", decision, DecisionDeny, reason)
+		}
+		if !strings.HasPrefix(reason, branchGuardViolationPrefix+":") {
+			t.Fatalf("reason = %q, want prefix %q", reason, branchGuardViolationPrefix+":")
+		}
+	})
+
+	// Falsification arm: same event with MOAI_BRANCH_GUARD_EXEMPT=1 MUST allow.
+	t.Run("Allow_exempt_env", func(t *testing.T) {
+		t.Setenv(branchGuardExemptEnv, "1")
+		handler := &preToolHandler{
+			cfg:        &mockConfigProvider{cfg: newTestConfig()},
+			policy:     DefaultSecurityPolicy(),
+			projectDir: repo,
+		}
+		input := &HookInput{
+			SessionID:     "sess-bg-1",
+			HookEventName: "PreToolUse",
+			ToolName:      "Bash",
+			AgentType:     "manager-develop",
+			ToolInput:     json.RawMessage(`{"command": "git switch -c feat/test"}`),
+		}
+		out, err := handler.Handle(context.Background(), input)
+		if err != nil {
+			t.Fatalf("Handle err = %v", err)
+		}
+		if decision := decisionOf(out); decision == DecisionDeny {
+			t.Fatalf("Handle decision = deny with exempt env; want non-deny (reason=%q)", reasonOf(out))
+		}
+	})
+}
+
+// TestBranchGuard_AllowsInWorktree covers AC-WBG-002: the same branch-state
+// command that is denied in the primary checkout is ALLOWED in a worktree
+// context (git-dir != git-common-dir). The worktree is built via real
+// `git worktree add`, NOT a discriminant mock — mocking the discriminant is a
+// vacuous pass.
+func TestBranchGuard_AllowsInWorktree(t *testing.T) {
+	// NOTE: cannot use t.Parallel — the test calls t.Setenv to ensure no
+	// exemption leaks across runs (the ONLY difference from the deny case must
+	// be the worktree context, so the env must be deterministic).
+	repo := newBranchGuardRepoFixture(t)
+	wt := addBranchGuardWorktree(t, repo)
+
+	// Ensure no exemption so the ONLY difference from the deny case is the
+	// worktree context (proves the discriminant is the deciding factor).
+	t.Setenv(branchGuardExemptEnv, "")
+	handler := &preToolHandler{
+		cfg:        &mockConfigProvider{cfg: newTestConfig()},
+		policy:     DefaultSecurityPolicy(),
+		projectDir: wt,
+	}
+	input := &HookInput{
+		SessionID:     "sess-bg-wt",
+		HookEventName: "PreToolUse",
+		ToolName:      "Bash",
+		AgentType:     "manager-develop",
+		ToolInput:     json.RawMessage(`{"command": "git switch -c feat/test"}`),
+	}
+	out, err := handler.Handle(context.Background(), input)
+	if err != nil {
+		t.Fatalf("Handle err = %v", err)
+	}
+	if decision := decisionOf(out); decision == DecisionDeny {
+		t.Fatalf("Handle decision = deny in worktree; want non-deny (reason=%q)", reasonOf(out))
+	}
+}
+
+// TestBranchGuard_ExemptAllow covers AC-WBG-003 + REQ-WBG-011. The exemption
+// is identity-based (AgentType == "manager-git") OR env-based. The branch-state
+// LAYER must return allow for the exempt agent regardless of command.
+//
+// IMPORTANT on the `git reset --hard` choice: `git reset --hard` is in the
+// pre-existing AskBashPatterns (pre_tool.go:250), so the OVERALL handler
+// returns DecisionAsk from checkBashCommand BEFORE the branch-state check runs
+// (delegation-mandated insertion point: AFTER checkBashCommand). This is a
+// pre-existing gate this SPEC does NOT modify. AC-WBG-003 is therefore
+// satisfied at the branch-state LAYER (the unit assertions below), and the
+// end-to-end allow is demonstrated via a command NOT in ask/dangerous patterns
+// (`git switch main`, `git merge feat/x`) in the integration subtests.
+func TestBranchGuard_ExemptAllow(t *testing.T) {
+	t.Run("CheckBranchState_AgentType_manager_git", func(t *testing.T) {
+		// Unit-level: checkBranchState returns ("", "") for exempt agent, even
+		// for `git reset --hard origin/main` in the primary checkout. This is
+		// the precise REQ-WBG-003 claim.
+		t.Setenv(branchGuardExemptEnv, "")
+		repo := newBranchGuardRepoFixture(t)
+		input := &HookInput{
+			SessionID:     "sess-bg-3",
+			HookEventName: "PreToolUse",
+			ToolName:      "Bash",
+			AgentType:     "manager-git",
+			ToolInput:     json.RawMessage(`{"command": "git reset --hard origin/main"}`),
+		}
+		decision, reason := checkBranchState(input, repo)
+		if decision == DecisionDeny {
+			t.Fatalf("checkBranchState(manager-git) = deny; want allow (reason=%q)", reason)
+		}
+	})
+
+	t.Run("CheckBranchState_EnvVar_MOAI_BRANCH_GUARD_EXEMPT", func(t *testing.T) {
+		t.Setenv(branchGuardExemptEnv, "1")
+		repo := newBranchGuardRepoFixture(t)
+		input := &HookInput{
+			SessionID:     "sess-bg-3",
+			HookEventName: "PreToolUse",
+			ToolName:      "Bash",
+			AgentType:     "",
+			ToolInput:     json.RawMessage(`{"command": "git reset --hard origin/main"}`),
+		}
+		decision, reason := checkBranchState(input, repo)
+		if decision == DecisionDeny {
+			t.Fatalf("checkBranchState(MOAI_BRANCH_GUARD_EXEMPT=1) = deny; want allow (reason=%q)", reason)
+		}
+	})
+
+	// End-to-end allow via a non-ask command. Proves the exemption flows through
+	// Handle and yields a non-deny decision for manager-git.
+	t.Run("Handle_AgentType_manager_git_nonAskCommand", func(t *testing.T) {
+		t.Setenv(branchGuardExemptEnv, "")
+		repo := newBranchGuardRepoFixture(t)
+		handler := &preToolHandler{
+			cfg:        &mockConfigProvider{cfg: newTestConfig()},
+			policy:     DefaultSecurityPolicy(),
+			projectDir: repo,
+		}
+		input := &HookInput{
+			SessionID:     "sess-bg-3",
+			HookEventName: "PreToolUse",
+			ToolName:      "Bash",
+			AgentType:     "manager-git",
+			ToolInput:     json.RawMessage(`{"command": "git switch main"}`),
+		}
+		out, err := handler.Handle(context.Background(), input)
+		if err != nil {
+			t.Fatalf("Handle err = %v", err)
+		}
+		if decision := decisionOf(out); decision == DecisionDeny {
+			t.Fatalf("Handle(manager-git, git switch) = deny; want non-deny (reason=%q)", reasonOf(out))
+		}
+	})
+}
+
+// TestBranchGuard_FailOpenOnGitError covers AC-WBG-012: when the git context
+// cannot be determined (projectDir is not a git repo), the handler returns
+// allow AND writes an advisory to .moai/logs/branch-guard-audit.log.
+//
+// Falsification arm: the same event in a primary checkout returns deny
+// (AC-WBG-001) — proves the fail-open is conditional on the git-error path,
+// not unconditional.
+func TestBranchGuard_FailOpenOnGitError(t *testing.T) {
+	t.Setenv(branchGuardExemptEnv, "")
+	nonGit := t.TempDir() // no git init
+
+	handler := &preToolHandler{
+		cfg:        &mockConfigProvider{cfg: newTestConfig()},
+		policy:     DefaultSecurityPolicy(),
+		projectDir: nonGit,
+	}
+	input := &HookInput{
+		SessionID:     "sess-bg-4",
+		HookEventName: "PreToolUse",
+		ToolName:      "Bash",
+		AgentType:     "manager-develop",
+		ToolInput:     json.RawMessage(`{"command": "git switch -c feat/test"}`),
+	}
+	out, err := handler.Handle(context.Background(), input)
+	if err != nil {
+		t.Fatalf("Handle err = %v", err)
+	}
+	if decision := decisionOf(out); decision == DecisionDeny {
+		t.Fatalf("Handle(non-git) = deny; want allow (fail-open) (reason=%q)", reasonOf(out))
+	}
+	// Advisory must have been appended to the audit log.
+	auditPath := filepath.Join(nonGit, branchGuardAuditRelPath)
+	data, rerr := os.ReadFile(auditPath)
+	if rerr != nil {
+		t.Fatalf("expected audit log at %s: %v", auditPath, rerr)
+	}
+	if !strings.Contains(string(data), "git switch") {
+		t.Fatalf("audit log does not reference the command: %s", data)
+	}
+}
+
+// decisionOf extracts the permissionDecision from a HookOutput, defaulting to
+// "" (the autonomous allow shape from NewSafeDefaultOutput in plan/default
+// mode, which returns an empty HookOutput).
+func decisionOf(out *HookOutput) string {
+	if out == nil || out.HookSpecificOutput == nil {
+		return ""
+	}
+	return out.HookSpecificOutput.PermissionDecision
+}
+
+// reasonOf extracts the permissionDecisionReason from a HookOutput.
+func reasonOf(out *HookOutput) string {
+	if out == nil || out.HookSpecificOutput == nil {
+		return ""
+	}
+	return out.HookSpecificOutput.PermissionDecisionReason
 }

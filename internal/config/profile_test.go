@@ -10,7 +10,8 @@ import (
 // TestLoad_LegacyLLMYaml_Migration covers REQ-MPM-003/004 / AC-MPM-002: a legacy
 // llm.yaml carrying plan_type + claude_models + performance_tier loads without
 // error (unknown keys ignored), and the effective profile resolves via the
-// performance_tier alias (max here).
+// performance_tier alias. The persisted value here is the superseded top-column
+// name "max", which now folds to the canonical "high".
 func TestLoad_LegacyLLMYaml_Migration(t *testing.T) {
 	root := t.TempDir()
 	dir := filepath.Join(root, "config", "sections")
@@ -32,10 +33,10 @@ func TestLoad_LegacyLLMYaml_Migration(t *testing.T) {
 	if err != nil {
 		t.Fatalf("legacy llm.yaml must load without error, got: %v", err)
 	}
-	if got := cfg.LLM.EffectiveProfile(); got != "max" {
-		t.Errorf("EffectiveProfile() = %q, want max (performance_tier alias)", got)
+	if got := cfg.LLM.EffectiveProfile(); got != ProfileHigh {
+		t.Errorf("EffectiveProfile() = %q, want high (performance_tier max alias)", got)
 	}
-	// profile: absent + performance_tier: max → profile resolves max; no error.
+	// profile: absent + performance_tier: max → profile resolves high; no error.
 	if cfg.LLM.Profile != "" {
 		t.Errorf("Profile should be empty (absent in legacy config), got %q", cfg.LLM.Profile)
 	}
@@ -71,7 +72,8 @@ func TestLoad_NewSchemaLLMYaml(t *testing.T) {
 }
 
 // TestEffectiveProfile covers REQ-MPM-002 / AC-MPM-001 / AC-MPM-002: profile
-// pass-through, the performance_tier legacy alias (high→max), and the medium
+// pass-through, the superseded max→high alias on both the profile and the legacy
+// performance_tier axis, the now-identity performance_tier high, and the medium
 // default.
 func TestEffectiveProfile(t *testing.T) {
 	tests := []struct {
@@ -81,14 +83,15 @@ func TestEffectiveProfile(t *testing.T) {
 		want    string
 	}{
 		{"explicit low", "low", "", "low"},
-		{"explicit max", "max", "", "max"},
+		{"explicit high", "high", "", "high"},
+		{"legacy profile max -> high", "max", "", "high"},
 		{"explicit medium", "medium", "", "medium"},
 		{"profile wins over perf_tier", "low", "max", "low"},
-		{"legacy perf_tier high -> max", "", "high", "max"},
-		{"legacy perf_tier max pass-through", "", "max", "max"},
+		{"perf_tier high is identity", "", "high", "high"},
+		{"legacy perf_tier max -> high", "", "max", "high"},
 		{"legacy perf_tier low pass-through", "", "low", "low"},
 		{"both absent -> medium default", "", "", "medium"},
-		{"whitespace profile -> alias", "   ", "high", "max"},
+		{"whitespace profile -> perf_tier", "   ", "high", "high"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -106,7 +109,8 @@ func TestValidateProfile(t *testing.T) {
 	if errs := validateProfile(&Config{LLM: LLMConfig{Profile: ""}}); len(errs) != 0 {
 		t.Fatalf("empty profile should be valid, got %v", errs)
 	}
-	for _, v := range []string{"max", "medium", "low"} {
+	// Canonical members plus the accepted legacy top-column alias.
+	for _, v := range []string{"high", "medium", "low", "max"} {
 		if errs := validateProfile(&Config{LLM: LLMConfig{Profile: v}}); len(errs) != 0 {
 			t.Fatalf("profile %q should be valid, got %v", v, errs)
 		}
@@ -118,7 +122,7 @@ func TestValidateProfile(t *testing.T) {
 	if errs[0].Field != "llm.profile" || errs[0].Value != "bogus" {
 		t.Fatalf("error should name field+value, got %+v", errs[0])
 	}
-	if !strings.Contains(errs[0].Message, "bogus") || !strings.Contains(errs[0].Message, "max, medium, low") {
+	if !strings.Contains(errs[0].Message, "bogus") || !strings.Contains(errs[0].Message, "high, medium, low") {
 		t.Fatalf("error message should name value + closed set, got %q", errs[0].Message)
 	}
 }

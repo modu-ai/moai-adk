@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -124,12 +125,23 @@ func TestAstGrepCmd_JsonFormat(t *testing.T) {
 
 // TestAstGrepCmd_SarifFormat: verifies that --format=sarif output has SARIF 2.1.0 structure (AC4)
 func TestAstGrepCmd_SarifFormat(t *testing.T) {
+	// A SARIF payload is only produced when a scan actually runs. The skip
+	// guard used to infer "no sg" from empty output; sg-absent now writes
+	// install guidance to stderr instead, so the precondition is tested
+	// directly. This is the same skip as before, reached honestly.
+	if _, err := exec.LookPath("sg"); err != nil {
+		t.Skip("sg not installed — no SARIF payload is produced, so there is nothing to validate")
+	}
+
 	tmpDir := t.TempDir()
 
-	var buf bytes.Buffer
+	// stdout and stderr are captured separately: stdout carries the SARIF
+	// document that machine consumers parse, stderr carries human-facing
+	// notices. Merging them would feed a notice into the JSON parser.
+	var outBuf, errBuf bytes.Buffer
 	cmd := cli.NewAstGrepCmd()
-	cmd.SetOut(&buf)
-	cmd.SetErr(&buf)
+	cmd.SetOut(&outBuf)
+	cmd.SetErr(&errBuf)
 
 	if err := cmd.Flags().Set("format", "sarif"); err != nil {
 		t.Fatalf("failed to set --format=sarif: %v", err)
@@ -141,9 +153,9 @@ func TestAstGrepCmd_SarifFormat(t *testing.T) {
 	cmd.SetArgs([]string{tmpDir})
 	_ = cmd.Execute()
 
-	output := strings.TrimSpace(buf.String())
+	output := strings.TrimSpace(outBuf.String())
 	if output == "" {
-		t.Skip("no output (environment without sg CLI)")
+		t.Fatalf("--format=sarif produced no stdout with sg available; stderr was: %q", errBuf.String())
 	}
 
 	// Verify SARIF version field

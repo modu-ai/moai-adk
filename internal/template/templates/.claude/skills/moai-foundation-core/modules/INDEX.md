@@ -3,7 +3,6 @@
 Purpose: Extended documentation modules for moai-foundation-core skill, providing deep dives into each foundational principle.
 
 Version: 1.0.0
-Last Updated: 2025-11-25
 
 ---
 

@@ -13,16 +13,20 @@ import (
 // can be safely overwritten on subsequent installs.
 const moaiPreCommitMarker = "# MoAI-ADK pre-commit hook"
 
-// preCommitHookContent is the canonical content of the fast-subset pre-commit
-// hook. It runs gofmt -l + go vet on staged Go files only (the fast commit tier);
-// the full local CI mirror stays in the pre-push hook (the push tier).
+// preCommitHookContent is the canonical content of the pre-commit hook. It
+// runs the fast subset (gofmt -l + go vet on staged Go files) followed by the
+// heavy quality gate via `moai gate` (vet + lint + test, 16-language detection).
+//
+// The heavy gate runs in the user's shell — outside Claude Code's 5s PreToolUse
+// hook budget — eliminating the census C-2 silent-drop defect. This is the
+// relocation surface for SPEC-PRETOOL-GATE-MOVE-001.
 //
 // MUST stay byte-identical with internal/template/templates/.git_hooks/pre-commit.
 // TestPreCommitTemplateMatchesConstant enforces this; do not edit one without the other.
 const preCommitHookContent = `#!/bin/sh
-# MoAI-ADK pre-commit hook — fast subset (gofmt -l + go vet on staged Go files)
+# MoAI-ADK pre-commit hook — fast subset (gofmt + go vet) + heavy gate (moai gate)
 # Bypass via: SKIP_MOAI_PRECOMMIT=1 git commit
-# Full local CI (fmt + lint + build + suite) is the pre-push hook's job — not duplicated here.
+# Heavy gate (vet + lint + test, 16-language detection) runs in your shell, outside the 5s hook budget.
 set -eu
 
 if [ "${SKIP_MOAI_PRECOMMIT:-0}" = "1" ]; then
@@ -32,48 +36,62 @@ fi
 
 # Staged Go files (Added / Copied / Modified; deletions excluded via ACM).
 STAGED_GO="$(git diff --cached --name-only --diff-filter=ACM | grep '\.go$' || true)"
-[ -z "$STAGED_GO" ] && exit 0
 
-# gofmt format check. Skipped when gofmt is not on PATH (non-Go environment).
-if command -v gofmt >/dev/null 2>&1; then
-    NEED_FMT="$(
-        printf '%s\n' "$STAGED_GO" | while IFS= read -r f; do
-            [ -n "$f" ] || continue
-            gofmt -l "$f" 2>/dev/null || true
-        done
-    )"
-    if [ -n "$NEED_FMT" ]; then
-        printf '\n[pre-commit] FAILED: the following staged files need formatting:\n%s\n' "$NEED_FMT" >&2
-        printf '[pre-commit] Hint: gofmt -w <files> && git add <files>\n' >&2
-        printf '[pre-commit] Override: SKIP_MOAI_PRECOMMIT=1 git commit\n' >&2
-        exit 1
-    fi
-fi
-
-# go vet on the affected packages. Skipped when go is not on PATH (non-Go environment).
-if command -v go >/dev/null 2>&1; then
-    PKGS="$(
-        printf '%s\n' "$STAGED_GO" | while IFS= read -r f; do
-            [ -n "$f" ] || continue
-            printf './%s\n' "$(dirname "$f")"
-        done | sort -u
-    )"
-    if [ -n "$PKGS" ]; then
-        # Optional Go build tags (.moai/config/build-tags, first non-comment
-        # non-blank line) so projects requiring non-default tags (e.g. goolm)
-        # are vetted under them.
-        BT_TAGS=""
-        if [ -f .moai/config/build-tags ]; then
-            _bt_line="$(sed -e 's/#.*//' .moai/config/build-tags | awk 'NF{print; exit}')" || true
-            [ -n "$_bt_line" ] && BT_TAGS="-tags=$_bt_line"
-        fi
-        # shellcheck disable=SC2086
-        if ! go vet $BT_TAGS $PKGS >/dev/null 2>&1; then
-            printf '\n[pre-commit] FAILED: go vet reported issues in the staged packages.\n' >&2
-            printf '[pre-commit] Hint: run go vet on the affected packages, fix, then re-commit.\n' >&2
+# --- Fast subset: gofmt + go vet on staged Go files (sub-second; skipped when none staged) ---
+if [ -n "$STAGED_GO" ]; then
+    # gofmt format check. Skipped when gofmt is not on PATH (non-Go environment).
+    if command -v gofmt >/dev/null 2>&1; then
+        NEED_FMT="$(
+            printf '%s\n' "$STAGED_GO" | while IFS= read -r f; do
+                [ -n "$f" ] || continue
+                gofmt -l "$f" 2>/dev/null || true
+            done
+        )"
+        if [ -n "$NEED_FMT" ]; then
+            printf '\n[pre-commit] FAILED: the following staged files need formatting:\n%s\n' "$NEED_FMT" >&2
+            printf '[pre-commit] Hint: gofmt -w <files> && git add <files>\n' >&2
             printf '[pre-commit] Override: SKIP_MOAI_PRECOMMIT=1 git commit\n' >&2
             exit 1
         fi
+    fi
+
+    # go vet on the affected packages. Skipped when go is not on PATH (non-Go environment).
+    if command -v go >/dev/null 2>&1; then
+        PKGS="$(
+            printf '%s\n' "$STAGED_GO" | while IFS= read -r f; do
+                [ -n "$f" ] || continue
+                printf './%s\n' "$(dirname "$f")"
+            done | sort -u
+        )"
+        if [ -n "$PKGS" ]; then
+            # Optional Go build tags (.moai/config/build-tags, first non-comment
+            # non-blank line) so projects requiring non-default tags (e.g. goolm)
+            # are vetted under them.
+            BT_TAGS=""
+            if [ -f .moai/config/build-tags ]; then
+                _bt_line="$(sed -e 's/#.*//' .moai/config/build-tags | awk 'NF{print; exit}')" || true
+                [ -n "$_bt_line" ] && BT_TAGS="-tags=$_bt_line"
+            fi
+            # shellcheck disable=SC2086
+            if ! go vet $BT_TAGS $PKGS >/dev/null 2>&1; then
+                printf '\n[pre-commit] FAILED: go vet reported issues in the staged packages.\n' >&2
+                printf '[pre-commit] Hint: run go vet on the affected packages, fix, then re-commit.\n' >&2
+                printf '[pre-commit] Override: SKIP_MOAI_PRECOMMIT=1 git commit\n' >&2
+                exit 1
+            fi
+        fi
+    fi
+fi
+
+# --- Heavy gate: vet + lint + test via 'moai gate' (16-language toolchain detection) ---
+# Runs in the user's shell, outside Claude Code's 5s PreToolUse hook budget.
+# Skipped when moai is not on PATH so non-moai downstream projects pass silently.
+if command -v moai >/dev/null 2>&1; then
+    if ! moai gate; then
+        printf '\n[pre-commit] FAILED: moai gate reported errors above.\n' >&2
+        printf '[pre-commit] Hint: address the reported issues, then re-commit.\n' >&2
+        printf '[pre-commit] Override: SKIP_MOAI_PRECOMMIT=1 git commit\n' >&2
+        exit 1
     fi
 fi
 

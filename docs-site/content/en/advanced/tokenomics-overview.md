@@ -48,7 +48,7 @@ flowchart TD
 
 ### Layer B — Routing
 
-{{< icon package >}} Models and reasoning depth (effort) are declaratively assigned to each retained agent. The active profile (`max`/`medium`/`low`) selects one column of the profile matrix, assigning high-reasoning models where deep inference is needed and lighter models to mechanical work, maximizing quality per cost. For the detailed profile matrix, see the [Profile Matrix](/en/advanced/profile-matrix/) page.
+{{< icon package >}} Models and reasoning depth (effort) are declaratively assigned to each retained agent. The active profile (`high`/`medium`/`low`) selects one column of the profile matrix, placing each agent on the reasoning-depth rung its work warrants and reserving Sonnet for single-shot mechanical rows, maximizing quality per cost. For the detailed profile matrix, see the [Profile Matrix](/en/advanced/profile-matrix/) page.
 
 ### Layer C — Verify-diet
 
@@ -60,7 +60,7 @@ flowchart TD
 
 ## Model Tier Routing
 
-What concretizes Layer B's routing is the model profile policy. MoAI-ADK v3.0 excludes Haiku from the routing model set and distributes work across a 3-tier structure (Sonnet / Opus / Fable). The rationale for this design and the profile matrix implementation are covered in the next two pages.
+What concretizes Layer B's routing is the model profile policy. MoAI-ADK v3.0 excludes Haiku from the routing model set and distributes work across a 3-tier structure keyed to task character — Sonnet on single-shot rows, Opus across the agentic ladder, and `max` effort on the two rarest-invocation rows. The rationale for this design and the profile matrix implementation are covered in the next two pages.
 
 - [3-Tier Agent Architecture](/en/advanced/no-haiku-3tier/) — why Haiku is excluded, DeepSWE leaderboard rationale
 - [Profile Matrix](/en/advanced/profile-matrix/) — the single 3-column per-agent profile matrix

@@ -3,6 +3,7 @@ package quality
 import (
 	"bufio"
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -10,6 +11,26 @@ import (
 	"time"
 
 	"github.com/modu-ai/moai-adk/internal/astgrep"
+)
+
+// Pass-path reasons for the ast-grep gate step. Both accompany a pass: a
+// missing or failing optional scanner must never turn into a blocked commit.
+//
+// They are package-level named constants rather than inline literals so their
+// distinctness is assertable directly. Only the unavailable branch is
+// reachable end-to-end through the gate — RunAstGrepGateV2 constructs its
+// scanner with a fixed binary name and offers no injection seam — so a test
+// that could only reach one branch would never catch the two collapsing into
+// one string.
+const (
+	// astGrepReasonScannerUnavailable reports that the sg CLI could not be
+	// resolved, so no rule ran at all. Distinct from "ran and found nothing".
+	astGrepReasonScannerUnavailable = "ast-grep scan skipped: the sg CLI was not found, so no rules ran " +
+		"(install from " + astgrep.InstallURL + ")"
+
+	// astGrepReasonScanDegraded reports that the scanner was present but the
+	// scan itself failed, so its (empty) result is not a clean bill of health.
+	astGrepReasonScanDegraded = "ast-grep scan degraded: the scanner returned an error, so its findings are incomplete"
 )
 
 // RunAstGrepGateV2 runs the ast-grep quality gate using the unified Scanner.
@@ -51,8 +72,14 @@ func RunAstGrepGateV2(ctx context.Context, projectDir string, cfg *AstGrepGateCo
 	scanner := astgrep.NewScanner(scannerCfg)
 	findings, err := scanner.Scan(ctx, projectDir)
 	if err != nil {
-		// Pass on scan error (graceful degradation)
-		return true, ""
+		// Graceful degradation: an optional scanner never blocks a commit.
+		// The pass now carries a reason, because passing with an empty string
+		// is exactly what a clean scan returns — which left an absent scanner
+		// indistinguishable from scanned-and-clean.
+		if errors.Is(err, astgrep.ErrScannerUnavailable) {
+			return true, astGrepReasonScannerUnavailable
+		}
+		return true, astGrepReasonScanDegraded
 	}
 
 	if len(findings) == 0 {

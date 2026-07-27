@@ -273,7 +273,7 @@ MoAI is the **strategic orchestrator**. It does not write code directly — it d
 | **Specialist** | e2e-tester | 🟠 | E2E test execution across web/mobile/desktop |
 | **Built-in** | Explore | ⚪ | Read-only codebase exploration |
 
-Cost colors follow the default `medium` profile's model×effort cells (inspect via `moai model profile`): 🔴 opus+high · 🟠 opus+medium · 🔵 sonnet+medium / fable+low · 🩵 sonnet+low · ⚪ session-model inherit. Assignments shift when switching profiles (`max`/`low`).
+Cost colors follow the default `medium` profile's model×effort cells (inspect via `moai model profile`): 🔴 opus+high · 🟠 opus+medium · 🔵 opus+low · 🩵 sonnet+low · ⚪ session-model inherit (user-added agents). Assignments shift when switching profiles (`high`/`low`).
 
 ```mermaid
 flowchart TD
@@ -571,13 +571,13 @@ The @MX tag system is designed to **mark only the most dangerous and important c
 
 ## Model Policy (the Heart of Tokenomics)
 
-MoAI-ADK assigns the optimal AI model to each agent according to your Claude Code subscription plan. The goal is maximizing quality within the plan's usage limits — heavier-reasoning phases like planning and auditing get the top models, while repetitive implementation and documentation get lightweight models.
+MoAI-ADK assigns the optimal model and reasoning depth to each agent. The goal is maximizing quality within the plan's usage limits — the policy moves each agent along the Opus effort ladder rather than swapping in a weaker model class, because on long-horizon agentic work a weaker model spends more steps and costs more per task.
 
 | Policy | Characteristics |
 |------|------|
-| **max** | Highest quality — Opus assigned to planning and audits, maximum throughput |
-| **medium** (default) | Balance of quality and cost |
-| **low** | Economical, no Opus — Sonnet-centric allocation |
+| **high** | Highest quality — `max` reasoning depth on the two rarest-invocation agents |
+| **medium** (default) | Balance of quality and cost — the knee of the cost/score curve |
+| **low** | Lowest cost per task — agentic agents drop to Opus `low` effort; Sonnet only on single-shot rows |
 
 ### How to Configure
 
@@ -590,7 +590,7 @@ moai update                   # Interactive prompts for each setup step
 ```
 
 {{< callout type="info" >}}
-The default policy is `medium`. GLM settings are isolated in `settings.local.json` (never committed to Git). The config key is `profile: high | medium | low` (the profile matrix column) in `llm.yaml`, and the legacy `performance_tier` field is read as an alias when `profile` is absent (`--high`/`--low` are deprecated aliases of `--model-policy max`/`low`). You can set it directly with the `--profile high|medium|low` flag; the legacy `max` value is also accepted as input and normalized to `high`.
+The default policy is `medium`. GLM settings are isolated in `settings.local.json` (never committed to Git). The config key is `profile: high | medium | low` (the profile matrix column) in `llm.yaml`, and the legacy `performance_tier` field is read as an alias when `profile` is absent (`--high`/`--low` are deprecated aliases of `--model-policy high`/`low`). You can set it directly with the `--profile high|medium|low` flag; the legacy `max` value is also accepted as input and normalized to `high`.
 {{< /callout >}}
 
 ## Task Metrics Logging

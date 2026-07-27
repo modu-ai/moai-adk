@@ -91,12 +91,12 @@ MoAI-ADK assigns the optimal AI model to each agent according to your Claude Cod
 
 | Tier | Characteristics |
 |------|------|
-| **max** | Highest quality — Opus assigned to planning and auditing, maximum reasoning depth |
-| **medium** (default) | Balance of quality and cost |
-| **low** | Economical — Sonnet-centric allocation |
+| **high** | Highest quality — `max` reasoning depth on the two rarest-invocation agents |
+| **medium** (default) | Balance of quality and cost — the knee of the cost/score curve |
+| **low** | Lowest cost per task — agentic agents drop to Opus `low` effort |
 
 {{< callout type="warning" >}}
-**Why does this matter?** The `low` tier is designed so the whole workflow works without higher-tier models (Opus). It can perform core work while preventing usage-limit errors. The `max` tier assigns Opus to the core phases (planning, auditing) and lightweight models to general work.
+**Why does this matter?** Lowering the tier lowers *reasoning depth*, not model class. On a long-horizon agentic task, Opus at `low` effort scores higher and costs less per task than Sonnet at any effort — the bill is set by how many steps a model spends finishing, not by the per-token rate. So `low` economizes within Opus and reaches for Sonnet only on single-shot rows (`manager-git`, `Explore`) where multi-step completion failure does not apply.
 {{< /callout >}}
 
 ### Agent Model Assignment per Tier
@@ -105,24 +105,25 @@ Of the **11-agent catalog** (10 MoAI custom + 1 Anthropic built-in `Explore`), t
 
 #### Manager Agents (5)
 
-| Agent | max | medium | low |
-|---------|-----|--------|-----|
-| manager-spec | opus | opus | sonnet |
-| manager-develop | opus | sonnet | sonnet |
-| manager-docs | sonnet | sonnet | sonnet |
-| manager-git | sonnet | sonnet | sonnet |
-| manager-design | sonnet | sonnet | sonnet |
+| Agent | high | medium | low |
+|---------|------|--------|-----|
+| manager-spec | opus / high | opus / medium | opus / low |
+| manager-develop | opus / max | opus / medium | opus / low |
+| manager-docs | opus / medium | opus / low | sonnet / low |
+| manager-git | sonnet / low | sonnet / low | sonnet / low |
+| manager-design | opus / high | opus / medium | opus / low |
 
-#### Evaluator · Builder · Advisor Agents (4)
+#### Evaluator · Builder · Advisor · Specialist Agents (5)
 
-| Agent | max | medium | low |
-|---------|-----|--------|-----|
-| plan-auditor | opus | opus | sonnet |
-| sync-auditor | opus | sonnet | sonnet |
-| builder-harness | opus | sonnet | sonnet |
-| super-advisor | opus | opus | sonnet |
+| Agent | high | medium | low |
+|---------|------|--------|-----|
+| plan-auditor | opus / high | opus / medium | opus / low |
+| sync-auditor | opus / high | opus / medium | opus / low |
+| builder-harness | opus / high | opus / medium | opus / low |
+| super-advisor | opus / max | opus / high | opus / medium |
+| e2e-tester | opus / medium | opus / low | sonnet / low |
 
-The e2e-tester and the built-in `Explore` follow the session model as-is (`model: inherit`).
+The built-in `Explore` resolves to `sonnet / low` in every column — a call-time default, since it has no agent file on disk to pin.
 
 ### How to Configure
 

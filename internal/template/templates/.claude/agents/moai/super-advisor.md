@@ -12,7 +12,7 @@ description: |
   NOT for: gate verdicts (plan-auditor/sync-auditor own binding PASS/FAIL judgment); NOT for: implementation (use manager-develop); NOT for: SPEC body authoring (use manager-spec)
 tools: Read, Grep, Glob, Bash, WebFetch, Skill, TaskCreate, TaskUpdate, TaskList, TaskGet
 model: inherit
-effort: xhigh
+effort: high
 color: yellow
 permissionMode: plan
 memory: project
@@ -74,7 +74,8 @@ super-advisor natively captures two concerns from the superseded advisor-rung de
 
 - **GLM carve-out**: under `moai glm` / `moai cg` GLM panes, super-advisor's
   Opus injection does NOT apply (the session runs on GLM models). The spawn falls back to
-  the session's effective GLM reasoning model (glm-5.2) with `effort: xhigh` preserved.
+  the session's effective GLM reasoning model (glm-5.2) with the resolved effort preserved
+  (the profile-matrix row, not a fixed `xhigh`).
   This is the natural consequence of `model: inherit` — the runtime resolves the session
   model.
 - **CG leader-review-as-advisor**: the CG-mode leader (Claude orchestrator)

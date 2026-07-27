@@ -8,7 +8,7 @@ description: |
   NOT for: SPEC plan-phase audit (that is plan-auditor's domain; sync-auditor is post-implementation only), code implementation, architecture design, documentation writing, git operations
 tools: Read, Grep, Glob, Bash, TaskCreate, TaskUpdate, TaskList, TaskGet, Skill
 model: inherit
-effort: xhigh
+effort: medium
 color: red
 permissionMode: plan
 memory: project

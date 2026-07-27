@@ -306,6 +306,10 @@ func runUpdate(cmd *cobra.Command, _ []string) error {
 		if err != nil {
 			return fmt.Errorf("get working directory: %w", err)
 		}
+		// SPEC-WORKTREE-BRANCH-GUARD-001 (REQ-WBG-009): surface the worktree
+		// advisory on the dry-run path too, so `moai update --dry-run` smoke
+		// runs (AC-WBG-009) observe it without mutating the filesystem.
+		emitWorktreeAdvisory(out, cwd)
 		return dryRunArchiveLegacySkills(cwd, out)
 	}
 
@@ -1028,6 +1032,11 @@ func runTemplateSyncWithReporter(cmd *cobra.Command, reporter project.ProgressRe
 
 	// Install pre-commit hook (REQ-PC-001). Fast-subset commit tier; --no-hooks opts out.
 	installPreCommitHookOptional(projectRoot, getBoolFlag(cmd, "no-hooks"), out)
+
+	// SPEC-WORKTREE-BRANCH-GUARD-001 (REQ-WBG-009): one-line worktree advisory on
+	// update completion. The primary checkout is shared; branch-changing work
+	// belongs in a worktree.
+	emitWorktreeAdvisory(out, projectRoot)
 
 	return nil
 }

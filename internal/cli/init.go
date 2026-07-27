@@ -97,15 +97,16 @@ func init() {
 	// SPEC-AGENT-ARCH-V2-001 M3c (REQ-AA2-010): No-Haiku 3-tier performance
 	// tier flag. New canonical name --model-policy max|medium|low; legacy
 	// --high/--medium/--low accepted as deprecated aliases (one-cycle, plan.md D4).
-	initCmd.Flags().String("model-policy", "", "Performance tier: max, medium, or low (persists to llm.yaml performance_tier)")
+	initCmd.Flags().String("model-policy", "", "Performance tier: high, medium, or low (legacy max accepted as an alias of high; persists to llm.yaml performance_tier)")
 	initCmd.Flags().Bool("high", false, "Deprecated alias for --model-policy max (one-cycle backward compat)")
 	initCmd.Flags().Bool("medium-alias", false, "Deprecated alias for --model-policy medium (one-cycle backward compat)")
 	initCmd.Flags().Bool("low", false, "Deprecated alias for --model-policy low (one-cycle backward compat)")
 
 	// SPEC-MODEL-PROFILE-MATRIX-001 (REQ-MPM-015): per-agent model+effort profile
-	// selection. Persists to llm.profile; closed-set validated {max, medium, low}.
+	// selection. Persists to llm.profile; closed-set validated {high, medium, low}
+	// with the superseded top-column name max accepted as a read-time alias.
 	// Takes precedence over the wizard answer. Supersedes the retired --plan-type.
-	initCmd.Flags().String("profile", "", "Model+effort profile: max, medium, or low (persists to llm.yaml profile)")
+	initCmd.Flags().String("profile", "", "Model+effort profile: high, medium, or low (legacy max accepted as an alias of high; persists to llm.yaml profile)")
 }
 
 // getStringFlag retrieves a string flag value from the command.
@@ -213,19 +214,19 @@ func validateInitFlags(cmd *cobra.Command, _ []string) error {
 
 	// SPEC-AGENT-ARCH-V2-001 M3c (REQ-AA2-010): validate --model-policy enum.
 	// Invalid value exits non-zero with a stderr usage error naming the 3-enum.
+	// Shares config.IsValidProfile with --profile below: performance_tier and
+	// profile are the same axis, so one validator keeps the two flags from
+	// drifting apart on the superseded max -> high rename.
 	modelPolicy := getStringFlag(cmd, "model-policy")
-	if modelPolicy != "" {
-		validTiers := []string{"max", "medium", "low"}
-		if !slices.Contains(validTiers, modelPolicy) {
-			return fmt.Errorf("invalid --model-policy value %q: must be one of: max, medium, low", modelPolicy)
-		}
+	if modelPolicy != "" && !config.IsValidProfile(modelPolicy) {
+		return fmt.Errorf("invalid --model-policy value %q: must be one of: high, medium, low", modelPolicy)
 	}
 
 	// SPEC-MODEL-PROFILE-MATRIX-001 (REQ-MPM-015): validate --profile enum.
 	// Invalid value exits non-zero with a usage error naming the closed set.
 	profileFlag := getStringFlag(cmd, "profile")
 	if profileFlag != "" && !config.IsValidProfile(profileFlag) {
-		return fmt.Errorf("invalid --profile value %q: must be one of: max, medium, low", profileFlag)
+		return fmt.Errorf("invalid --profile value %q: must be one of: high, medium, low", profileFlag)
 	}
 
 	// SPEC-CLI-WIZARD-RESTRUCTURE-001 (S1): validate --project-mode enum.
@@ -675,6 +676,11 @@ func runInit(cmd *cobra.Command, args []string) error {
 
 	// Install pre-commit hook (REQ-PC-001). Fast-subset commit tier; --no-hooks opts out.
 	installPreCommitHookOptional(opts.ProjectRoot, getBoolFlag(cmd, "no-hooks"), cmd.ErrOrStderr())
+
+	// SPEC-WORKTREE-BRANCH-GUARD-001 (REQ-WBG-009): surface the shared-checkout
+	// worktree advisory. Phrased per workflow.worktree.auto_create; rides stdout
+	// alongside the slim-mode notice (informational, not a gate).
+	emitWorktreeAdvisory(cmd.OutOrStdout(), opts.ProjectRoot)
 
 	// Deferred self-update notice (REQ-TUX2-002): non-blocking stderr notice
 	// with the `moai update` hint; a failed or in-flight check never affects

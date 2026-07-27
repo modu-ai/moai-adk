@@ -10,9 +10,9 @@ MoAI-ADK は、維持されるエージェント 11 個を 1 つの **プロフ�
 
 プロファイルは 3 つの値を持ちます:
 
-- `high` — 品質優先の列。推論・監査の行に Fable 5 を配置し、コーディングには Opus 5 を `xhigh` で配置します（ベンダーがコーディング・エージェンティック作業に推奨する開始点）。
-- `medium`（デフォルト） — バランス列。Opus 5 をベンダー API のデフォルト effort である `high` で配置するため、最も予測可能な運用点です。値が無いか空の場合は `medium` として解釈されます。
-- `low` — 経済列。Opus 5 の `low`/`medium` effort を第一のトークンコストレバーとし、その次に Sonnet 5 へ下げます。
+- `high` — 品質優先の列。マルチターンのエージェンティック行はすべて Opus 5 が担当し、`max` は呼び出し頻度が最も低い 2 行（`manager-develop`、`super-advisor`）に限定されます。`xhigh` はどのセルにも現れません — Opus 5 では `high` と同じスコアでコストだけが明確に高くなるためです。
+- `medium`（デフォルト） — バランス列であり、マトリクスの残りが派生する基準点（アンカー）です。`manager-develop` はコスト/スコア曲線の変曲点である Opus 5 `medium` に配置されます。値が無いか空の場合は `medium` として解釈されます。
+- `low` — 経済列。Opus 5 の `low` は、どの effort の Sonnet 5 よりもスコアが高く **かつ** 課題あたりコストが安いため、エージェンティック行はすべて Opus のまま維持されます。Sonnet は単発・入力支配の行にのみ現れます。
 
 `max` は `high` の **読み取り専用エイリアス** です。既存設定の `profile: max` はそのまま `high` として解釈され、保存時には常に正規名 `high` で記録されます。マイグレーション作業は不要です。
 
@@ -33,21 +33,33 @@ moai update --profile low              # 事後の切り替え
 
 | エージェント | high | medium（デフォルト） | low |
 |---|---|---|---|
-| manager-spec | fable / xhigh | opus / high | opus / low |
-| plan-auditor | fable / xhigh | opus / high | opus / low |
-| sync-auditor | fable / xhigh | opus / high | opus / low |
-| manager-develop | opus / xhigh | opus / high | sonnet / medium |
-| super-advisor | opus / xhigh | opus / high | opus / medium |
-| manager-design | fable / high | opus / medium | sonnet / medium |
-| builder-harness | opus / xhigh | opus / medium | sonnet / medium |
-| e2e-tester | fable / high | opus / medium | sonnet / medium |
-| manager-docs | sonnet / high | sonnet / medium | sonnet / medium |
+| manager-spec | opus / high | opus / medium | opus / low |
+| plan-auditor | opus / high | opus / medium | opus / low |
+| sync-auditor | opus / high | opus / medium | opus / low |
+| manager-develop | opus / max | opus / medium | opus / low |
+| super-advisor | opus / max | opus / high | opus / medium |
+| manager-design | opus / high | opus / medium | opus / low |
+| builder-harness | opus / high | opus / medium | opus / low |
+| e2e-tester | opus / medium | opus / low | sonnet / low |
+| manager-docs | opus / medium | opus / low | sonnet / low |
 | manager-git | sonnet / low | sonnet / low | sonnet / low |
 | Explore | sonnet / low | sonnet / low | sonnet / low |
+
+33 セル全体のモデル分布は Opus 25 / Sonnet 8 です。Fable はどのセルにも現れず、`xhigh` を使うセルもありません。
 
 `manager-git` と `Explore` の行はプロファイルと無関係に `sonnet / low` で固定されます — 機械的作業と読み取り専用の探索は、プロファイルが上がってもモデルクラスを上げません。
 
 各行は単調（monotone）です: `high` ≥ `medium` ≥ `low`。プロファイルを下げても、どのエージェントも以前より強い組み合わせを受け取ることはありません。
+
+### セルの根拠
+
+セルはトークン単価からではなく、**すべての effort 段階について** スコア・課題あたりコスト・出力トークン・エージェントステップを報告する長期ホライズンのコーディングエージェントベンチマークから導出されています。配置を決める実測は 3 つです:
+
+- **Opus はすべての effort で Sonnet を支配します。** Opus 5 の `low`（58%、$1.66/課題、36 ステップ）は、`max` の Sonnet 5（54%、$26.40/課題、268 ステップ）を含むどの段階の Sonnet 5 よりもスコアが高く、課題あたりコストも安くなります。課題あたりコストを決めるのは完了効率 — 課題を終えるまでに費やすステップと出力トークン — であり、トークン単価ではありません。したがって Sonnet が残るのは、マルチステップの完了が当てはまらない場所、つまり単発・入力支配の行（`Explore` の検索、`manager-git` の機械的作業）だけであり、そこでは Sonnet の低い入力単価が支配的要因になります。
+- **`xhigh` は Opus 上で厳密に劣位です。** `high` は $6.08 で 73%、`xhigh` は $9.07 で同じ 73% — 利得なし、コスト +49%、ステップ +22%。マトリクスから退役しました（6 セル → 0）。`max` は呼び出し頻度が最も低い 2 セルにのみ残ります。
+- **`medium` は曲線の変曲点です。** これを超えると 1 ポイントあたりの限界コストが数倍に上がります: `low`→`medium` は 1 ポイントあたり $0.15、`medium`→`high` は 1 ポイントあたり $0.70（4.7 倍）。これが `manager-develop` の `medium` がデフォルト列のアンカーになる理由です。
+
+{{< icon warning warn >}} **根拠の適用範囲**: このベンチマークが測定しているのは *コーディング* エージェントです。ドキュメント作成、監査判断、SPEC 作成の品質は **直接測定されていません** — それらの行の配置は、マルチターンのエージェンティック作業との類似性推論に基づきます。どの行も `llm.agent_overrides` でエージェント単位に元へ戻せます。
 
 Anthropic 組み込みの `Explore` はもはや `inherit` ではなく、自身のセル（`sonnet / low`）として解釈されます。`inherit` センチネルは、ユーザーが追加したエージェントにのみ残ります。
 
@@ -61,11 +73,11 @@ effort は、各目的クラスが対応する維持エージェントの行か�
 |---|---|---|---|---|
 | `read-only-extract` | Explore | opus / low | opus / low | opus / low |
 | `mechanical-transform` | manager-git | opus / low | opus / low | opus / low |
-| `synthesize` | manager-docs | opus / high | opus / medium | opus / medium |
-| `research` | plan-auditor | opus / xhigh | opus / high | opus / low |
-| `verify-judge` | sync-auditor | opus / xhigh | opus / high | opus / low |
-| `implement` | manager-develop | opus / xhigh | opus / high | opus / medium |
-| `design-architecture` | manager-design | opus / high | opus / medium | opus / medium |
+| `synthesize` | manager-docs | opus / medium | opus / low | opus / low |
+| `research` | plan-auditor | opus / high | opus / medium | opus / low |
+| `verify-judge` | sync-auditor | opus / high | opus / medium | opus / low |
+| `implement` | manager-develop | opus / max | opus / medium | opus / low |
+| `design-architecture` | manager-design | opus / high | opus / medium | opus / low |
 
 `llm.harness_agents[プロファイル][クラス].effort` でクラスごとの effort を上書きできます。モデルはどの経路でも変わりません。認識されないクラスは `implement` にフォールバックします。
 
@@ -83,8 +95,10 @@ effort は、各目的クラスが対応する維持エージェントの行か�
 ```yaml
 llm:
   agent_overrides:
-    manager-develop: { model: opus, effort: xhigh }
+    manager-develop: { model: opus, effort: high }
 ```
+
+enum は依然としてモデルとして `fable`、effort として `xhigh` を受け付けます — デフォルトマトリクスから外れただけで語彙から削除されたわけではないため、オーバーライドではどちらも選択できます。
 
 **model** と **effort** の消費経路は異なります。リゾルブされた **model** は、オーケストレーターが spawn 時点で `Agent(model: <alias>)` ランタイム引数として注入する値です（`[1m]`-safe、frontmatter の `model:` フィールドとは別）。エージェント `.md` の frontmatter は `model: inherit` のまま維持され、init/update/web の保存はこれを変更しません。リゾルブされた **effort** は NAMED サブエージェントに対する *文書化された意図* です — Agent/Task ツールは named サブエージェントに per-spawn の effort 引数を受け取らないため、effort は (a) エージェント frontmatter の effort デフォルト、(b) GLM effort オーバーレイ、(c) Workflow / `Agent(general-purpose)` のプロンプトレベル steering を通じてのみ消費されます。
 
@@ -105,7 +119,7 @@ moai model profile --json   # 機械可読
 
 GLM バックエンド（`moai glm` / `moai cg` の GLM ペイン）では、プロファイルマトリクスの上にオーバーレイが適用されます:
 
-- モデルスロットのマッピング: `fable` → `glm-5.2`（Fable スロット、`ANTHROPIC_DEFAULT_FABLE_MODEL`）
+- モデルスロットのマッピング: `fable` → `glm-5.2`（Fable スロット、`ANTHROPIC_DEFAULT_FABLE_MODEL`）。このスロットは GLM 環境のバインディングであり、プロファイルマトリクスとは独立です — マトリクスのどのセルも Fable を選択しませんが、配線は維持されます。
 - Claude の 5 段 effort を z.ai が到達可能な 3-state に collapse:
   - `low` → **thinking-off**
   - `medium` / `high` → **reasoning-high**

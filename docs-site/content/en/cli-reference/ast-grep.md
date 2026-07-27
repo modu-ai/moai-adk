@@ -6,7 +6,7 @@ draft: false
 
 `moai ast-grep` scans code by syntax tree, and `moai ast-edit` rewrites the code it matches. Unlike text-based `grep`, both match on syntactic structure, so differences in whitespace, line breaks, and variable names do not throw the match off.
 
-Both commands drive the [ast-grep](https://ast-grep.github.io/) CLI (`sg`). When `sg` is not installed, each command prints a notice and exits without an error.
+Both commands drive the [ast-grep](https://ast-grep.github.io/) CLI (`sg`), and what they do when `sg` is missing differs on purpose. `ast-grep` is a detector, often wired into CI as a gate, so it writes install guidance to stderr and **exits non-zero** — a scan that never ran must not be read as a clean one. `ast-edit` is a rewriter, for which "nothing to apply" is a genuine no-op, so it prints a notice and exits 0. Install `sg` from the [ast-grep quick start](https://ast-grep.github.io/guide/quick-start.html); `moai doctor` also reports whether it is present.
 
 > **Reading and writing are separate commands.** `ast-grep` never modifies a file; `ast-edit` does. Because they are distinct commands, granting `Bash(moai ast-grep:*)` does not also grant write access.
 

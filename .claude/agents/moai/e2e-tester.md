@@ -14,7 +14,7 @@ description: |
   documentation (manager-docs), git operations (manager-git).
 tools: Read, Write, Edit, Bash, Grep, Glob, TaskCreate, TaskUpdate, TaskList, TaskGet, Skill
 model: inherit
-effort: high
+effort: low
 color: cyan
 permissionMode: default
 memory: project

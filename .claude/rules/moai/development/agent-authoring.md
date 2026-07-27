@@ -337,20 +337,24 @@ Per-agent default effort levels for the Opus 4.7+ / 4.8 substrate. The `effort` 
 
 ### Retained Agents (10 — active, spawnable)
 
-| Agent | Default effort | Rationale |
-|-------|----------------|-----------|
-| `manager-spec` | xhigh | plan-phase GEARS/EARS authoring, reasoning-heavy |
-| `manager-develop` | xhigh | run-phase implementation (coding/agentic) |
-| `manager-design` | xhigh (FIXED) | design pipeline — handoff fidelity, drift detection, annotation→requirement conversion are deep reasoning (frontmatter-fixed across all tiers per §2-B) |
-| `manager-docs` | medium | sync-phase documentation + frontmatter transitions (mechanical doc sync; was high pre-No-Haiku) |
-| `manager-git` | low | git operations, PR creation, Tier-L routing (fast bash execution; was high pre-No-Haiku) |
-| `plan-auditor` | xhigh | adversarial plan audit, bias prevention |
-| `sync-auditor` | xhigh | skeptical 4-dimension quality scoring |
-| `super-advisor` | xhigh (FIXED) | on-demand high-reasoning consultation — maximum reasoning (frontmatter-fixed across all tiers per §2-B) |
-| `builder-harness` | high | artifact scaffolding (agents/skills/plugins/hooks) |
-| `Explore` (Anthropic built-in) | medium | read-only codebase exploration (session-model inheritance per CC v2.1.198) |
+The values below are the **medium (default) profile column** of the `llm.profiles` matrix, which the shipped frontmatter mirrors. Because the `Agent` tool has no `effort` parameter, this frontmatter value is the effective effort on the standard sub-agent path — it is load-bearing, not documentation.
 
-The per-tier model+effort variation (max/medium/low) for each agent is in the §2-B agent×tier matrix (SPEC-AGENT-ARCH-V2-001 design.md §D.3); the values above are the default-tier (medium) baselines.
+| Agent | Default effort (medium column) | Rationale |
+|-------|-------------------------------|-----------|
+| `manager-spec` | medium | plan-phase GEARS/EARS authoring; Opus `medium` is the knee of the cost/score curve |
+| `manager-develop` | medium | run-phase implementation; **this cell is the matrix anchor** — the `high` profile raises it to `max` |
+| `manager-design` | medium | design pipeline; the `high` profile raises this to Opus `high` |
+| `manager-docs` | low | sync-phase documentation + frontmatter transitions (mechanical doc sync) |
+| `manager-git` | low | git operations, PR creation, Tier-L routing (fast bash execution) |
+| `plan-auditor` | medium | adversarial plan audit, bias prevention; `high` profile raises to Opus `high` |
+| `sync-auditor` | medium | skeptical 4-dimension quality scoring; `high` profile raises to Opus `high` |
+| `super-advisor` | high | on-demand high-reasoning consultation; rare invocation justifies the depth, and the `high` profile raises it to Opus `max` |
+| `builder-harness` | medium | artifact scaffolding (agents/skills/plugins/hooks) |
+| `Explore` (Anthropic built-in) | low (call-time) | read-only codebase exploration. Explore has NO agent file, so neither the frontmatter channel nor an `effort` parameter can carry this value — it is stated at call time in the spawn prompt alongside the search-breadth qualifier. Raise to `medium` when asking for a `very thorough` sweep. |
+
+The per-profile model+effort variation is the `llm.profiles` matrix (11 agents × {high, medium, low} = 33 cells; Go SSOT `template.DefaultProfileMatrix`) — see `.claude/rules/moai/development/model-policy.md` § Per-Agent Profile Resolver. The former "(FIXED) across all tiers" markers on `manager-design` and `super-advisor` are retired: every agent now varies with the profile, and both agents' rows remain monotone (`high >= medium >= low`). Deployments that want maximum reasoning depth set `llm.profile: high`, which raises the reasoning rows to Opus `high` and the two rarest-invocation rows (`manager-develop`, `super-advisor`) to Opus `max`. No column uses `xhigh`: on Opus it scores the same as `high` at materially higher cost.
+
+Generated harness specialists are NOT in this table: they are model-uniform (`opus`) with effort drawn from `llm.harness_agents` — see `.claude/rules/moai/development/model-policy.md` § Harness-Agent Model Policy.
 
 ### Archived Agents (legacy reference — MUST NOT be spawned)
 
@@ -371,4 +375,4 @@ The following agents were retired during the catalog consolidation (10 retained 
 | `claude-code-guide` | Claude Code Q&A | `Explore` |
 | `researcher` | research | `Explore` / WebSearch |
 
-Effort values: `low` / `medium` / `high` / `xhigh` / `max`. Opus 4.8 defaults to `effort: high` on all surfaces; raise to `xhigh` for coding/agentic work, step down to `medium`/`low` only for speed-critical or simple tasks.
+Effort values: `low` / `medium` / `high` / `xhigh` / `max`. Opus 5 defaults to `effort: high` on the Claude API and Claude Code; raise to `xhigh` for coding/agentic work. On Opus 5, `low` and `medium` are stronger than on earlier Opus models, so they are the primary token-cost lever rather than a last resort.

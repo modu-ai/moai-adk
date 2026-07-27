@@ -381,11 +381,44 @@ func (h *preToolHandler) Handle(ctx context.Context, input *HookInput) (*HookOut
 		}
 	}
 
+	// gateNotice carries a passing quality gate's non-blocking notice (for
+	// example an ast-grep step that skipped because sg is absent) to this
+	// handler's response. It rides the hook's structured output rather than
+	// slog: the `moai hook` path installs a discarding handler, so a log
+	// record here would be silent by construction.
+	var gateNotice string
+
 	// Handle Bash commands
 	if input.ToolName == "Bash" && len(input.ToolInput) > 0 {
+		command := h.extractBashCommand(input.ToolInput)
+
+		// F5 mechanical: --no-verify bypass defense (SPEC-PRETOOL-GATE-MOVE-001
+		// REQ-PGM-006). Under defaultMode: bypassPermissions, the PreToolUse
+		// deny is the SOLE blocking mechanism between Claude Code and a
+		// --no-verify bypass of the relocated git pre-commit gate. M1.b
+		// confirmed git suppresses the pre-commit hook entirely under
+		// --no-verify. Checked BEFORE the IsGitCommit gate block because a
+		// compound Bash command (e.g. `git add . && git commit --no-verify`)
+		// does not start with "git commit" and would bypass IsGitCommit's
+		// start-anchored regex. The documented bypass is SKIP_MOAI_PRECOMMIT=1
+		// (REQ-PGM-010), not --no-verify.
+		//
+		// Substring match on both "git commit" and "--no-verify" is sufficient:
+		// --no-verify is a standalone flag that never legitimately appears inside
+		// a git commit argument value (message, pathspec), and the conservative
+		// over-block on contrived echo/printf payloads is safe (user can override
+		// the deny). Sub-millisecond, no regex engine needed.
+		if command != "" && strings.Contains(command, "--no-verify") && strings.Contains(command, "git commit") {
+			reason := "git commit --no-verify would bypass the MoAI-ADK pre-commit gate " +
+				"(the relocated heavy quality gate). The commit was NOT created. " +
+				"Remove --no-verify, or use SKIP_MOAI_PRECOMMIT=1 for the documented bypass."
+			slog.Warn("pre-tool: git commit --no-verify denied (bypass defense)")
+			return NewDenyOutput(reason), nil
+		}
+
 		// Quality gate for git commit commands (REQ-GATE-001).
 		// Executes before security pattern checks so the gate cannot be bypassed.
-		if command := h.extractBashCommand(input.ToolInput); quality.IsGitCommit(command) {
+		if quality.IsGitCommit(command) {
 			gate := quality.NewQualityGate(h.loadGateConfig())
 			passed, output := gate.Run(ctx)
 			if !passed {
@@ -394,6 +427,7 @@ func (h *preToolHandler) Handle(ctx context.Context, input *HookInput) (*HookOut
 				)
 				return NewDenyOutput(output), nil
 			}
+			gateNotice = output
 		}
 
 		decision, reason := h.checkBashCommand(input.ToolInput)
@@ -409,6 +443,22 @@ func (h *preToolHandler) Handle(ctx context.Context, input *HookInput) (*HookOut
 			if decision == DecisionAsk {
 				return NewAskOutput(reason), nil
 			}
+		}
+	}
+
+	// Branch-state guard (SPEC-WORKTREE-BRANCH-GUARD-001). Runs after
+	// checkBashCommand so the existing dangerous-pattern deny takes precedence,
+	// and before the default-allow fall-through. Denies branch-state-changing
+	// git commands ONLY in the primary checkout when the invoking agent is not
+	// exempt; fails OPEN on any git-context uncertainty (REQ-WBG-012).
+	if input.ToolName == "Bash" && len(input.ToolInput) > 0 {
+		if decision, reason := checkBranchState(input, h.projectDir); decision == DecisionDeny {
+			slog.Warn("branch guard denied",
+				"tool_name", input.ToolName,
+				"session_id", input.SessionID,
+				"reason", reason,
+			)
+			return NewDenyOutput(reason), nil
 		}
 	}
 
@@ -450,7 +500,11 @@ func (h *preToolHandler) Handle(ctx context.Context, input *HookInput) (*HookOut
 		}
 	}
 
-	return NewSafeDefaultOutput(permissionModeOf(input)), nil
+	out := NewSafeDefaultOutput(permissionModeOf(input))
+	if gateNotice != "" {
+		out.SystemMessage = gateNotice
+	}
+	return out, nil
 }
 
 // scanWriteContent scans the content to be written using AST-based security scanner.
