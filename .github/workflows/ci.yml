@@ -103,6 +103,30 @@ jobs:
       - name: Download dependencies
         run: go mod download
 
+      # ast-grep supplies the `sg` binary that the internal/cli and
+      # internal/astgrep rewrite guards shell out to. Without it those guards
+      # skip, and a reverted implementation still goes green — the guards have
+      # to actually run here to mean anything.
+      # The version is pinned because the rewrite path parses sg's output, so an
+      # unreviewed upgrade can change behaviour. Bump it deliberately.
+      - name: Install ast-grep (provides `sg`)
+        run: npm install -g @ast-grep/cli@0.40.5
+
+      # Ubuntu and Debian ship /usr/bin/sg as a newgrp alternative, so `sg` being
+      # on PATH proves nothing about what it is. Assert the binary is ast-grep.
+      # Failing loudly here is the point: a silent skip of every rewrite guard is
+      # the failure this step exists to prevent.
+      - name: Verify `sg` resolves to ast-grep
+        shell: bash
+        run: |
+          if ! sg --version 2>&1 | grep -qi 'ast-grep'; then
+            echo "FAIL: 'sg' on PATH is not ast-grep — every rewrite guard would silently skip."
+            echo "resolved to: $(command -v sg || echo '<not found>')"
+            sg --version 2>&1 || true
+            exit 1
+          fi
+          echo "PASS: $(sg --version)"
+
       - name: Run go vet
         run: go vet ./...
 

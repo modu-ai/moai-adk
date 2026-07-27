@@ -152,6 +152,10 @@ func init() {
 	// ASTG-UPGRADE-001: register astgrep command
 	rootCmd.AddCommand(NewAstGrepCmd())
 
+	// SPEC-ASTGREP-EDIT-001: register ast-edit, the write-side counterpart.
+	// Kept separate from ast-grep so a read-only permission grant stays read-only.
+	rootCmd.AddCommand(NewAstEditCmd())
+
 	// SPEC-TELEMETRY-001: register telemetry subcommand
 	rootCmd.AddCommand(telemetryCmd)
 

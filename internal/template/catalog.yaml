@@ -11,7 +11,7 @@ catalog:
             - name: moai-foundation-cc
               tier: core
               path: templates/.claude/skills/moai-foundation-cc/
-              hash: c81bf0aff87900525bfc248de5358b2374ba679d7541e455ad7828bbfd7c390b
+              hash: 6b61a1133b7be0486d501db5bc50df902c18da3c714e19ae9d0143213ff68913
               version: 1.0.0
             - name: moai-foundation-core
               tier: core
@@ -56,7 +56,7 @@ catalog:
             - name: moai-workflow-ddd
               tier: core
               path: templates/.claude/skills/moai-workflow-ddd/
-              hash: 6f89fb725214bf8f5299d7aa5cfcd8313998b9f09c5fe228029e677b83d5fb64
+              hash: 8f6b03f40ce210738a8e3c1ff4ce743751718fd906a68b78b578da76c6d11eec
               version: 1.0.0
             - name: moai-workflow-docs-claim-check
               tier: core
@@ -66,7 +66,7 @@ catalog:
             - name: moai-workflow-loop
               tier: core
               path: templates/.claude/skills/moai-workflow-loop/
-              hash: e4f00c321535a4fad11f3f26af6fa6a431512eba2f636933b1fba225a7e4d282
+              hash: c313738f274f0a7750df883bf90d0622abc5bccc32685f07e1ad9c5d81d9203b
               version: 1.0.0
             - name: moai-workflow-project
               tier: core
