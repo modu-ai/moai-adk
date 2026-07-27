@@ -101,7 +101,7 @@ func newHandoffSaveCmd(projectDir *string) *cobra.Command {
 	saveCmd.Flags().StringVar(&lang, "lang", "", "conversation_language snapshot")
 	saveCmd.Flags().BoolVar(&ultrathink, "ultrathink", false, "record the ultrathink directive (restoration guidance only)")
 	saveCmd.Flags().BoolVar(&ultracode, "ultracode", false, "record the ultracode directive (restoration guidance only)")
-	saveCmd.Flags().StringVar(&goal, "goal", "", "record a /goal condition (restoration guidance only)")
+	saveCmd.Flags().StringVar(&goal, "goal", "", "record a /moai goal condition (restoration guidance only)")
 	return saveCmd
 }
 

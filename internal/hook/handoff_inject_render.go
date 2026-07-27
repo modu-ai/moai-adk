@@ -85,7 +85,7 @@ func handoffLocaleStrings(lang string) handoffStrings {
 			restoreIntro:  "복원 안내(수동 입력):",
 			ultrathink:    "  • ultrathink   ← 확장 추론을 복원하려면 이 줄을 입력하세요",
 			ultracode:     "  • /effort ultracode ← 워크플로우 팬아웃을 복원하려면 이 줄을 입력하세요",
-			goalPrefix:    "  • /goal ",
+			goalPrefix:    "  • /moai goal ",
 			goalSuffix:    " ← 자율 continuation을 복원하려면 이 줄을 입력하세요",
 			bodySeparator: "── 저장된 재개 메시지(참고) ──",
 		}
@@ -96,7 +96,7 @@ func handoffLocaleStrings(lang string) handoffStrings {
 			restoreIntro:  "復元案内（手動入力）:",
 			ultrathink:    "  • ultrathink   ← 拡張推論を復元するにはこの行を入力してください",
 			ultracode:     "  • /effort ultracode ← ワークフローのファンアウトを復元するにはこの行を入力してください",
-			goalPrefix:    "  • /goal ",
+			goalPrefix:    "  • /moai goal ",
 			goalSuffix:    " ← 自律継続を復元するにはこの行を入力してください",
 			bodySeparator: "── 保存された再開メッセージ（参考）──",
 		}
@@ -107,7 +107,7 @@ func handoffLocaleStrings(lang string) handoffStrings {
 			restoreIntro:  "恢复指引（手动输入）:",
 			ultrathink:    "  • ultrathink   ← 输入此行以恢复扩展推理",
 			ultracode:     "  • /effort ultracode ← 输入此行以恢复工作流扇出",
-			goalPrefix:    "  • /goal ",
+			goalPrefix:    "  • /moai goal ",
 			goalSuffix:    " ← 输入此行以恢复自主延续",
 			bodySeparator: "── 已保存的恢复消息（参考）──",
 		}
@@ -118,7 +118,7 @@ func handoffLocaleStrings(lang string) handoffStrings {
 			restoreIntro:  "Restoration guidance (enter manually):",
 			ultrathink:    "  • ultrathink   ← enter this line to restore extended reasoning",
 			ultracode:     "  • /effort ultracode ← enter this line to restore workflow fan-out",
-			goalPrefix:    "  • /goal ",
+			goalPrefix:    "  • /moai goal ",
 			goalSuffix:    " ← enter this line to restore autonomous continuation",
 			bodySeparator: "── saved resume message (reference) ──",
 		}

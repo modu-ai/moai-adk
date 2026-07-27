@@ -12,7 +12,7 @@ const (
 	PrimitiveSubAgent          = "sub-agent"
 	PrimitiveDynamicWorkflow   = "dynamic-workflow"
 	PrimitiveWorktree          = "worktree"
-	PrimitiveGoal              = "/goal"
+	PrimitiveGoal              = "/moai goal"
 	PrimitiveAdversarialFanOut = "adversarial-fan-out"
 )
 

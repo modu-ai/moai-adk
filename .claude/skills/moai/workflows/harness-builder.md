@@ -45,7 +45,7 @@ The Builder is **orchestrator-side logic**. It is NOT a dynamic-workflow script 
 - AskUserQuestion channel monopoly + preload: `.claude/rules/moai/core/askuser-protocol.md`.
 - Orchestrator-subagent boundary: `.claude/rules/moai/core/agent-common-protocol.md` § User Interaction Boundary.
 - Conditional worktree isolation advisory: `.claude/rules/moai/workflow/worktree-integration.md`.
-- `/goal` autonomous convergence: `.claude/rules/moai/workflow/goal-directive.md`.
+- `/moai goal` autonomous convergence: `.claude/rules/moai/workflow/goal-directive.md`.
 - 5-Section Evidence-Bearing Report Format: `.claude/rules/moai/core/verification-claim-integrity.md`.
 
 ## Handoff from the Entry Workflow
@@ -104,7 +104,7 @@ One opus-xhigh sub-agent reasons over the ANALYZE aggregate (domain profile + ta
 
 1. **Selects/combines patterns** from the 6-pattern catalog (§ Pattern Catalog below) based on task signals: parallelism available, adversarial-verification need, supervision depth, expertise diversity.
 2. **Defines specialist roles** — one specialist role per distinct responsibility the harness needs.
-3. **Maps each specialist to an execution primitive** — `sub-agent` / `dynamic-workflow` / `worktree` / `/goal` / `adversarial-fan-out` (§ Primitive Mapping below).
+3. **Maps each specialist to an execution primitive** — `sub-agent` / `dynamic-workflow` / `worktree` / `/moai goal` / `adversarial-fan-out` (§ Primitive Mapping below).
 4. **Decides per-specialist `isolation`** — `worktree` only for conflict-prone parallel generation targeting overlapping paths; `none` otherwise (§ Worktree Policy below).
 5. **Assigns per-specialist `effort` + `model`** per the purpose-driven effort taxonomy (read-only-extract = haiku/low; design-architecture = opus/xhigh; etc.).
 6. **Drafts the Sprint Contract** — the graded dimensions + thresholds the harness's evaluator (if invoked) will score against.
@@ -146,12 +146,12 @@ The Runner mirrors the same conditional on the execution side: at end-of-run it 
 
 The GENERATE output contract (§ GENERATE Output Contract below) is the handoff spec the manifest schema + Runner engine + command generation + lifecycle consume.
 
-### Phase 4 — ACTIVATE [orchestrator-direct dry-run + /goal; A/B optional]
+### Phase 4 — ACTIVATE [orchestrator-direct dry-run + goal-arming; A/B optional]
 
-**Primitive**: orchestrator-direct — dry-run sub-agent + `/goal` (autonomous convergence) + optional with/without A/B. The orchestrator drives this phase directly.
+**Primitive**: orchestrator-direct — dry-run sub-agent + `/moai goal` (autonomous convergence) + optional with/without A/B. The orchestrator drives this phase directly.
 **Isolation**: none (default) or `worktree` (if the sample task is risky).
 
-Run a sample task dry-run through the newly built harness. Use `/goal "<harness> completes task X at quality Y"` for autonomous convergence (per `.claude/rules/moai/workflow/goal-directive.md`). The `/goal` evaluator (a small fast model) checks after each turn whether the harness has demonstrably completed the sample task.
+Run a sample task dry-run through the newly built harness. Arm `/moai goal "<harness> completes task X at quality Y"` for autonomous convergence (per `.claude/rules/moai/workflow/goal-directive.md`); arming is arm-only, so arm it alongside the dry-run rather than in place of it. The `stop-goal` evaluator checks at each turn-end whether the harness has demonstrably completed the sample task — the condition above is a model condition, judged against what the dry-run surfaces in the transcript.
 
 **Reference-integrity smoke gate [HARD].** Before declaring the harness active, the ACTIVATE phase MUST run the reference-integrity smoke gate (`moai harness doctor`). The gate verifies the entry command, manifest, Runner (including its MANIFEST_PATH constant), and every specialist agent the Runner references all resolve to existing artifacts. If the gate reports any ERROR-severity finding, the workflow MUST NOT declare the harness active (do NOT expose `/harness:<name>`); regress to GENERATE and repair the flagged references first. A harness is exposed only after the smoke gate reports zero ERROR findings.
 
@@ -196,7 +196,7 @@ Each specialist in the manifest has a `primitive` field set to exactly one of 5 
 | `sub-agent` | `Agent(role, effort, model)` — ordinary sub-agent | Default for most single-task specialists |
 | `dynamic-workflow` | dynamic-workflow `agent()` call | High-volume parallel independent work (Fan-out/Fan-in, Expert Pool) |
 | `worktree` | `Agent(role, isolation:"worktree", ...)` | Conflict-prone parallel generation targeting overlapping paths |
-| `/goal` | `/goal` autonomous-convergence directive | Long-running convergence on a verifiable end-state |
+| `/moai goal` | `/moai goal` autonomous-convergence arming | Long-running convergence on a verifiable end-state |
 | `adversarial-fan-out` | Producer + Reviewer fan-out with confidence scoring | Generator-Evaluator separation (Producer-Reviewer pattern) |
 
 **PLAN's mapping discipline:**
@@ -239,7 +239,7 @@ The GENERATE phase emits 5 base artifact types PLUS a **mandatory** `hns-<name>-
 **Content contract**:
 
 - Reads `manifest.json` as its single source of truth (exactly one config-read path).
-- For each `specialist` in `manifest.specialists`: dispatches per `specialist.primitive` (sub-agent / dynamic-workflow / worktree / `/goal` / adversarial-fan-out) — verbatim, no re-derivation.
+- For each `specialist` in `manifest.specialists`: dispatches per `specialist.primitive` (sub-agent / dynamic-workflow / worktree / `/moai goal` / adversarial-fan-out) — verbatim, no re-derivation.
 - Applies the Sprint Contract (if the evaluator is not skipped).
 - Emits a worktree-cleanup directive at end-of-run if any specialist declared `isolation: worktree`.
 - **Determinism**: the script body MUST NOT call `Date.now()` or `Math.random()`. Timestamps are injected via script input arguments or stamped onto results after the run returns (per `.claude/rules/moai/workflow/dynamic-workflows.md` determinism constraint).
@@ -339,6 +339,6 @@ Subagents reachable from the Builder (Explore agents in ANALYZE, the opus-xhigh 
 - Orchestration mode selection: `.claude/rules/moai/workflow/orchestration-mode-selection.md`.
 - AskUserQuestion canonical: `.claude/rules/moai/core/askuser-protocol.md`.
 - Orchestrator-subagent boundary: `.claude/rules/moai/core/agent-common-protocol.md` § User Interaction Boundary.
-- `/goal` autonomous convergence: `.claude/rules/moai/workflow/goal-directive.md`.
+- `/moai goal` autonomous convergence: `.claude/rules/moai/workflow/goal-directive.md`.
 - Conditional worktree isolation: `.claude/rules/moai/workflow/worktree-integration.md`.
 - 5-Section Evidence-Bearing Report Format: `.claude/rules/moai/core/verification-claim-integrity.md`.

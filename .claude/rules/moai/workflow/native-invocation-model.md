@@ -46,6 +46,8 @@ Each row carries an inline citation anchor — an observed `[Skill]` / `[Workflo
 | `/clear` | HUMAN-ONLY | No `[Skill]`/`[Workflow]` marker — commands reference: `/clear [name] Start a new conversation with empty context`. Not exposed through the `Skill` tool |
 | `/compact` | HUMAN-ONLY | No `[Skill]`/`[Workflow]` marker — commands reference: `/compact [instructions]`. `skills.md`: "Other built-in commands such as `/compact` are not [available through the Skill tool]" |
 
+> **`/goal` emission consequence**: because the `/goal` row above is HUMAN-ONLY, the MoAI pipeline emits no native `/goal` line on any surface — a pipeline-emitted one would be inert text, since no tool call can trigger a non-exposed built-in. See `.claude/rules/moai/workflow/goal-directive.md` § Native `/goal` Prohibition for the prohibition, its rationale, and the runtime yield invariant that keeps MoAI's own goal evaluator from double-blocking a human-typed native `/goal`.
+
 ### Classification-divergence note (observation over provisional expectation)
 
 The plan-phase provisional expectation placed `/security-review` and `/review` in the HUMAN-ONLY category (assuming a built-in command with no programmatic bridge). Run-phase verification of the official `skills.md` **overrode** that expectation: both are built-in commands that are ALSO available through the `Skill` tool, so an orchestrator CAN trigger them programmatically. The live observation wins; they are classified PROGRAMMATIC (built-in-exposed-via-`Skill`-tool sub-case). This divergence is recorded so the classification rests on observed evidence, not on a memory-asserted assumption.
