@@ -4,7 +4,7 @@ weight: 6
 draft: false
 ---
 
-エージェント的ループの核心の問いは「いつ止まり、いつ続くか」です。MoAI-ADKは3つの連続ループプリミティブを提供し、それぞれトリガーセマンティクスと所有権が異なります。このページは`/goal`、`/moai goal`、`/moai loop`を区別し、それぞれの実装状態と安全ガードレールを説明します。
+エージェント的ループの核心の問いは「いつ止まり、いつ続くか」です。MoAI-ADKは`/moai goal`と`/moai loop`の2つの連続ループプリミティブを提供し、Claude Code自身がネイティブのgoalコマンドを提供します。このページはこの3つを区別し、それぞれの所有権、実装状態、安全ガードレールを説明します。
 
 ## いつ止まり、いつ続くか
 
@@ -14,7 +14,7 @@ draft: false
 
 ## 3つの連続ループプリミティブ
 
-MoAI-ADKには3つの連続ループプリミティブがあり、それぞれトリガーセマンティクスと所有権が異なります。
+連続ループプリミティブは3つあり — 2つはMoAI-ADK、残る1つはClaude Code自身が所有します — それぞれトリガーセマンティクスが異なります。
 
 | プリミティブ | 所有権 | トリガー | 適切な場合 |
 |-------------|--------|---------|-----------|
@@ -91,9 +91,9 @@ moai goal clear                         # 条件削除 (ループ終了)
 
 - **Implementation Kickoff Approval** (plan → run HUMAN GATE)はどのループでもバイパス不可です。`/goal`がアクティブでもrun-phase進入前のユーザー承認は必須です。
 - **安全境界 unchanged** — ループがアクティブでも「元に戻しにくい / 共有システム作業前の確認」境界は緩和されません。goal評価者は継続の可否のみを決定し、破壊的操作を事前承認しません。
-- **auto modeとの組合せ** — Claude Code auto mode(ツールごとの自動承認)と`/goal`(ターンごとの連続)を組合せると無人`ac_converge`ループが可能です。auto modeはツールごとの承認プロンプトを削除し、`/goal`はターンごとのSTOPプロンプトを削除します。Implementation Kickoff Approvalはrun-phase進入前に依然必須です。
+- **auto modeとの組合せ** — Claude Code auto mode(ツールごとの自動承認)と`/moai goal`(ターンごとの連続)を組合せると無人`ac_converge`ループが可能です。auto modeはツールごとの承認プロンプトを削除し、`/moai goal`はターンごとのSTOPプロンプトを削除します。Implementation Kickoff Approvalはrun-phase進入前に依然必須です。
 
 ## 次のステップ
 
 - [トークノミクス概論](/ja/advanced/tokenomics-overview/) — 自律ループがトークノミクスと接続するポイント
-- [ハーネス自己進化](/ja/advanced/self-evolving/) — `/moai loop` / `/goal`収束軌跡がLoop 0観察に統合
+- [ハーネス自己進化](/ja/advanced/self-evolving/) — `/moai loop` / `/moai goal`収束軌跡がLoop 0観察に統合
