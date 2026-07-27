@@ -156,7 +156,7 @@ m1_to_mN_commit_strategy: one commit per milestone (N1..N4); N5 verification edi
 
 ```yaml
 sync_complete_at: 2026-07-28
-sync_commit_sha: pending-backfill-v1.6.0
+sync_commit_sha: 3891b2bb7
 sync_status: audit-ready
 docs_build:
   command: hugo --minify --gc
