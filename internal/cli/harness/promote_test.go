@@ -210,3 +210,52 @@ func TestPromote_MissingDraftReturnsError(t *testing.T) {
 		t.Fatal("RunPromote succeeded on a missing draft; want an error")
 	}
 }
+
+// TestNewPromoteCmd_Factory exercises the cobra factory wiring so the exported
+// constructor is covered (it is registered in the active harness router tree).
+// It verifies the command shape and that --id is required.
+func TestNewPromoteCmd_Factory(t *testing.T) {
+	t.Parallel()
+
+	cmd := NewPromoteCmd()
+	if cmd == nil {
+		t.Fatal("NewPromoteCmd returned nil")
+	}
+	if cmd.Use != "promote" {
+		t.Errorf("Use = %q, want %q", cmd.Use, "promote")
+	}
+	idFlag := cmd.Flags().Lookup("id")
+	if idFlag == nil {
+		t.Fatal("--id flag not registered")
+	}
+	if prFlag := cmd.Flags().Lookup("project-root"); prFlag == nil {
+		t.Error("--project-root flag not registered")
+	}
+	// RunE must reject an empty --id (MarkFlagRequired): execute it and confirm
+	// a missing required flag surfaces an error rather than panicking.
+	cmd.SetArgs([]string{})
+	if err := cmd.Execute(); err == nil {
+		t.Error("Execute with no --id succeeded; want a required-flag error")
+	}
+}
+
+// TestNewPromoteCmd_ExecuteSuccess runs the verb end-to-end through cobra against
+// a real draft fixture, covering the RunE success branch (the stdout summary)
+// and confirming AC-HLR-004's CLI-level falsifiability: a successful invocation
+// exits 0 and leaves a SPEC skeleton on disk.
+func TestNewPromoteCmd_ExecuteSuccess(t *testing.T) {
+	t.Parallel()
+
+	root := t.TempDir()
+	const draftID = "PROPOSAL-20260728-hhhhhhhh"
+	writeNestedDraftRaw(t, root, draftID, producerDraftBody(draftID))
+
+	cmd := NewPromoteCmd()
+	cmd.SetArgs([]string{"--id", draftID, "--project-root", root})
+	if err := cmd.Execute(); err != nil {
+		t.Fatalf("cobra Execute failed: %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(root, ".moai", "specs", draftID, "spec.md")); err != nil {
+		t.Fatalf("SPEC skeleton not created via cobra Execute: %v", err)
+	}
+}
