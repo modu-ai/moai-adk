@@ -1069,5 +1069,4 @@ Solution: Tighten completion criteria in ralph.yaml
 
 ---
 
-Last Updated: 2026-01-10
 Version: 1.0.0

@@ -5,7 +5,7 @@ paths: "**/session-handoff.md"
 
 # Session Handoff — Examples and Full Localization Table
 
-> This is a path-scoped reference file for `session-handoff.md`. It holds illustrative Example sections and the full 4-locale Localization Table extracted from the always-loaded doctrine file to reduce context weight. The core doctrine (6-block skeleton, cut-line markers, Field-by-Field Spec, Pre-emit self-check, Auto-Memory Integration, Post-Paste /goal Follow-up Block, Diet Constraints) remains in `session-handoff.md`.
+> This is a path-scoped reference file for `session-handoff.md`. It holds illustrative Example sections and the full 4-locale Localization Table extracted from the always-loaded doctrine file to reduce context weight. The core doctrine (6-block skeleton, cut-line markers, Field-by-Field Spec, Pre-emit self-check, Auto-Memory Integration, Diet Constraints) remains in `session-handoff.md`.
 
 ## Localization Table (Full 4-Locale)
 
@@ -21,7 +21,6 @@ The cut-line marker text AND the 6-block skeleton verbs/headers translate per `c
 | Block 6 After-merge header (PR workflow) | `After merge:` | `머지 후:` | `マージ後:` | `合并后:` |
 | Block 6 Follow-up header (trunk no-PR) | `Follow-up:` | `후속:` | `後続:` | `后续:` |
 | Memory heading | `## Next Session Entry Point` | `## 다음 세션 시작점` | `## 次セッション開始点` | `## 下一会话起点` |
-| Post-paste /goal instruction line | Send the `/goal` line below as its own standalone message AFTER Implementation Kickoff Approval — slash commands parse only at input start, and setting a goal starts a turn immediately. | 아래 `/goal` 라인을 구현 착수 승인 후 **별도 메시지로 단독 전송** — 슬래시 커맨드는 입력 시작에서만 인식되며, goal 설정 즉시 턴이 시작됨. | 下記の `/goal` 行を実装着手承認後に**単独メッセージとして送信** — スラッシュコマンドは入力の先頭でのみ認識され、goal 設定と同時にターンが開始される。 | 在实现启动批准后，将下方 `/goal` 行**作为独立消息单独发送** — 斜杠命令仅在输入开头被识别，设定 goal 会立即开始一个回合。 |
 
 Read `conversation_language` from `.moai/config/sections/language.yaml` at render time; substitute the localized text between the `✂────` decorators (cut-line markers) while keeping `✂` and `─` characters verbatim, and substitute the locale rendering for each Block 1/3/5/6 placeholder when emitting the paste-ready message.
 
@@ -45,15 +44,9 @@ source_session_id: <not-available — environment-fallback, next session will ba
 머지 후: SPEC-MYPROJ-002 → SPEC-MYPROJ-003
 
 ✂──── 여기까지 복사 ────✂
-
-아래 /goal 라인을 구현 착수 승인 후 별도 메시지로 단독 전송 — 슬래시 커맨드는 입력 시작에서만 인식됨 (run-phase + machine-verifiable end-state일 때만 방출; 아니면 생략):
-
-✂──── 여기부터 복사 ────✂
-
-/goal the SPEC's test suite passes AND lint is clean, or stop after 20 turns
-
-✂──── 여기까지 복사 ────✂
 ```
+
+> Block 5 carries the work-starting action. Where the next SPEC declares a machine-verifiable end-state, the orchestrator arms `/moai goal "<condition>"` alongside it after Implementation Kickoff Approval — arm-only, so it never replaces the `실행:` action (§ Canonical Format, Field-by-Field Block 5).
 
 ## Example with Block 0 (Illustrative)
 
@@ -84,34 +77,34 @@ applied lessons: <lesson-id-1>, <lesson-id-2>.
 
 ## Goal-first bootstrap variant (documented alternative — NOT the default)
 
-[ZONE:Evolvable] An explicit alternative single-paste form exists: the **goal-first bootstrap** — a standalone one-line `/goal` message whose condition text carries both a resume pointer and the compact completion condition. Illustrative:
+[ZONE:Evolvable] An explicit alternative single-paste form exists: the **goal-first bootstrap** — a one-line `/moai goal` message whose condition text carries both a resume pointer and the compact completion condition. Illustrative:
 
 ```text
-/goal resume SPEC-X run: read <handoff-file> from memory and progress.md, then continue. Completion: <machine-verifiable end-state>, or stop after N turns.
+/moai goal "resume SPEC-X run: read <handoff-file> from memory and progress.md, then continue. Completion: <machine-verifiable end-state>, or stop after N turns."
 ```
 
-(The condition text follows the user's `conversation_language`; shown above in English-canonical form. The `/goal` token itself is locale-verbatim.)
+(The condition text follows the user's `conversation_language`; shown above in English-canonical form. The `/moai goal` token itself is locale-verbatim.)
 
-Grounding: official goal doc — "Setting a goal starts a turn immediately, with the condition itself as the directive" (`https://code.claude.com/docs/en/goal`). Normative content:
+Normative content:
 
-- **(a) Selection criterion**: choose goal-first bootstrap when the user wants one-paste + autonomous continuation; the two-step handoff (§ Block anatomy) remains the DEFAULT.
-- **(b) Caveats**: effort keywords (`ultrathink` / `ultracode`) placed inside a slash-command argument are NOT documented to fire — the session may run at default effort; and precondition verification shifts from paste-time structure (the Block 4 verifiable commands) to **model discretion** via the directive text.
-- **(c) Invariants preserved**: the condition must stay compact (official guidance: one measurable end state); the Implementation Kickoff Approval gate is unaffected; the `/goal` token stays locale-verbatim (never translated).
+- **(a) Selection criterion**: choose goal-first bootstrap when the user wants one-paste + autonomous continuation; the standard 6-block paste (§ Canonical Format) remains the DEFAULT.
+- **(b) Caveats**: effort keywords (`ultrathink` / `ultracode`) placed inside a command argument are NOT documented to fire — the session may run at default effort; and precondition verification shifts from paste-time structure (the Block 4 verifiable commands) to **model discretion** via the directive text.
+- **(c) Invariants preserved**: the condition must stay compact (one measurable end state); the Implementation Kickoff Approval gate is unaffected — arming never authorizes autonomous run-phase entry; the `/moai goal` token stays locale-verbatim (never translated).
 
 ## Paste-Time Activation Matrix
 
-[ZONE:Evolvable] The following normative table classifies every handoff directive by its activation mechanism, so an author never places a directive where it cannot fire. Ground truth: `https://code.claude.com/docs/en/interactive-mode` (slash commands recognized only at input start) and `https://code.claude.com/docs/en/goal` (`/goal` is a user-typed TUI command, not model-invocable).
+[ZONE:Evolvable] The following normative table classifies every handoff directive by its activation mechanism, so an author never places a directive where it cannot fire. Ground truth: `https://code.claude.com/docs/en/interactive-mode` (slash commands recognized only at input start).
 
 | Class | Directives | Mechanism | Fires from pasted body? |
 |-------|-----------|-----------|------------------------|
 | (a) Paste-time keyword | `ultrathink`, bare `ultracode` | Runtime keyword, position-independent in message text | YES |
 | (b) Paste-time natural-language phrase | `fan out subagents (<scope>)` | Explicit multi-agent opt-in phrase — same opt-in class as (a) | YES |
-| (c) Orchestrator-interpreted text | `mode:` seed, Block 5 `실행: /moai <subcommand>` | The orchestrator reads the text and routes (`/moai` via the Skill tool); NOT auto-executed as a slash command | YES (via orchestrator interpretation) |
-| (d) User-only TUI command | `/goal`, `/effort`, `/clear` | Slash command parsed ONLY at input start; not model-invocable; cannot be set by pasted body text NOR by the model | NO — requires a standalone user message |
+| (c) Orchestrator-interpreted text | `mode:` seed, Block 5 `실행: /moai <subcommand>`, the `/moai goal` directive | The orchestrator reads the text and routes (`/moai` via the Skill tool); NOT auto-executed as a slash command | YES (via orchestrator interpretation) |
+| (d) User-only TUI command | `/effort`, `/clear` | Slash command parsed ONLY at input start; not model-invocable; cannot be set by pasted body text NOR by the model | NO — requires a standalone user message |
 
-Consequence: a `/goal` line belongs to class (d) — it MUST arrive as its own standalone user message (§ Post-Paste /goal Follow-up Block), never inside the pasted resume body where it would be inert class-(d) plain text.
+Consequence: the goal-arming directive belongs to class (c), not class (d) — the orchestrator reads and routes it, so it needs no standalone user message and may ride the pasted body. The class-(d) constraint still binds `/effort` and `/clear`.
 
-The same classification governs the auto-injected body (§ Auto-Injected Resume Flow): content delivered as session-start context injection is inert context — it cannot fire class (a)/(b) paste-time keywords on its own and cannot execute class (d) commands. That is why the auto flow's ONE user message carries the class (d) `/goal` line (goal-first variant) or the class (a) `ultrathink` keyword (approval variant) in the user's own message.
+The same classification governs the auto-injected body (§ Auto-Injected Resume Flow): content delivered as session-start context injection is inert context — it cannot fire class (a)/(b) paste-time keywords on its own and cannot execute class (d) commands. That is why the auto flow's ONE user message carries the class (a) `ultrathink` keyword in the user's own message, and why the class (c) goal directive can instead be armed by the orchestrator once the resumed turn begins.
 
 ## Auto-Injected Resume Flow (mode=auto)
 
@@ -120,11 +113,11 @@ The same classification governs the auto-injected body (§ Auto-Injected Resume 
 1. The previous session emits the paste-ready resume AND persists it via `moai handoff save` (§ Emission-Time Save Obligation). The paste-ready surface is still displayed — the user can always fall back to the manual paste path.
 2. The user runs `/clear`.
 3. The session-start handler, in the single consume cell (session source is `clear` AND `handoff.mode: auto` AND a live pending record exists), **claim-renames** the pending record into a `consumed/` audit-trail copy FIRST, then injects the saved content as session-start additional context. The claim-then-inject atomic rename means exactly one of two racing sessions injects — the loser's rename fails and it skips injection fail-open. A record older than the stale TTL is cleaned up instead of injected.
-4. What the injection actually contains: a localized header; a disclaimer stating the injection only delivers context and does NOT automatically enable any extended-reasoning mode; restoration-guidance lines for the recorded directives (`ultrathink` / `/effort ultracode` / `/goal <condition>` — each rendered as manual-input guidance the user may type, never as an executed command); and the saved body **verbatim** (no re-localization — `--lang` snapshots the language at save time). The injected context cannot start a turn and cannot claim effort restoration; the platform caps session-start injected context at 10,000 characters, and the § Diet Constraints budget keeps the 6-block body far below that cap.
+4. What the injection actually contains: a localized header; a disclaimer stating the injection only delivers context and does NOT automatically enable any extended-reasoning mode; restoration-guidance lines for the recorded directives (`ultrathink` / `/effort ultracode` / the recorded goal condition — each rendered as manual-input guidance the user may type, never as an executed command); and the saved body **verbatim** (no re-localization — `--lang` snapshots the language at save time). The injected context cannot start a turn and cannot claim effort restoration; the platform caps session-start injected context at 10,000 characters, and the § Diet Constraints budget keeps the 6-block body far below that cap.
 5. The user sends **ONE** message:
-   - **Goal-first variant** — Where the next SPEC is run-phase AND declares a machine-verifiable end-state, the one message is the single standalone `/goal <condition>` line (slash commands parse only at input start, so a standalone message satisfies the class (d) activation constraint in § Paste-Time Activation Matrix).
+   - **Goal-first variant** — Where the next SPEC is run-phase AND declares a machine-verifiable end-state, the one message MAY be a single `/moai goal "<condition>"` line, which the orchestrator interprets and routes (class (c) in § Paste-Time Activation Matrix). Because the directive is class (c) rather than class (d), the orchestrator may equally arm the condition itself once the resumed turn begins — the user is not obliged to type it.
    - **Approval variant** — otherwise, the one message is a short approval/continue message. Keep recommending that the user include the `ultrathink` keyword in this first message: the injected context cannot restore effort, but a paste-time keyword in the user's own message can.
-   - **Effort caveat (goal-first)**: effort keywords placed inside a slash-command argument are NOT documented to fire — a `/goal ... ultrathink ...` line may leave the session at default effort. The doctrine does not claim the goal-first variant restores extended reasoning.
+   - **Effort caveat (goal-first)**: effort keywords placed inside a command argument are NOT documented to fire — a goal line carrying `ultrathink` inside its condition text may leave the session at default effort. The doctrine does not claim the goal-first variant restores extended reasoning.
 
 ### /clear-only injection boundary
 
@@ -136,7 +129,7 @@ Injection happens ONLY when the session-start source is `clear`. All other sessi
 
 ### Precondition verification at resumed-turn start
 
-The injected Block 4 preconditions MUST be verified at the start of the resumed session's first working turn — injection delivers the TEXT of the preconditions, not their truth. This is most acute in the goal-first variant, where `/goal` starts a turn immediately: the orchestrator verifies the injected preconditions FIRST, before acting on the goal condition.
+The injected Block 4 preconditions MUST be verified at the start of the resumed session's first working turn — injection delivers the TEXT of the preconditions, not their truth. This is most acute in the goal-first variant, where arming begins a turn immediately: the orchestrator verifies the injected preconditions FIRST, before acting on the goal condition.
 
 ## Anti-Patterns
 
@@ -154,8 +147,7 @@ See the general-hygiene bullet list and the §Diet Constraints and §V0 Abort Ga
 - Cut-line markers absent — user cannot identify exact copy boundary in long terminal scrollback (see § Cut-line Marker Specification for the literal format).
 - Cut-line markers with translated `✂` symbol or `─` decorator — contrary to § Cut-line Marker Specification (only the marker text translates; the symbols are preserved verbatim).
 - Omitting the bare `ultracode` opener keyword (or the `/effort ultracode` session-persistence variant) when the next SPEC's plan declares workflow fan-out (dynamic Workflow or Agent Teams) — the resumed session silently drops to non-ultracode effort and loses auto-orchestration (ultracode is NOT restored by `ultrathink.` per `.claude/rules/moai/workflow/dynamic-workflows.md`).
-- Omitting the post-paste `/goal` follow-up block when the next SPEC has a verifiable run-phase completion condition — the resumed session silently loses the autonomous-continuation loop (a `/goal` is NOT restored by `ultrathink.`; `/clear` removes an active goal, per `.claude/rules/moai/workflow/goal-directive.md`; the follow-up block + resumed-session reminder obligation is the two-step delivery mechanism, per § Post-Paste /goal Follow-up Block).
-- Embedding a `/goal` (or any slash command) line inside the main resume body — slash commands parse only at input start of a standalone message; a mid-paste slash line is inert plain text and never arms the goal loop (see § Paste-Time Activation Matrix). Deliver `/goal` via the separate post-paste follow-up block sent as its own standalone message.
+- Putting a bare `/moai goal` directive in Block 5 as the single primary action — the directive is arm-only, so the session would arm a condition with no work running and spin idle turns to the ceiling. Block 5 keeps the work-starting command; the goal is armed alongside it (see `session-handoff.md` § Canonical Format, Field-by-Field Block 5).
 - Omitting the fan-out steering phrase (`fan out subagents (<read-only investigation scope>)`) when `mode: parallel-subagents` is seeded — the resumed session silently under-spawns: fewer subagents are spawned by default unless fan-out is explicitly instructed (per `.claude/rules/moai/core/moai-constitution.md` § Opus 4.7+ Prompt Philosophy Principle 4; the fan-out steering phrase is NOT restored by the `ultrathink.` opener).
 
 ## Worktree-Anchored Resume Pattern
@@ -170,7 +162,19 @@ With L3 `--worktree`, SPEC artifacts and L1 isolation base live in a different c
 
 ### Block 0 Format
 
-Block 0 is **prepended** before Block 1:
+Block 0 is **prepended** before Block 1. Two forms exist; pick by **where the worktree lives**.
+
+**Form A — `.claude/worktrees/<name>/` worktree (single command, preferred where it applies):**
+
+```
+[New Terminal — START IN WORKTREE]
+$ moai cc -w <worktree-name>     # or: moai glm -w <name> | moai cg -w <name>
+   └─ Claude Code session starts here (cwd = .claude/worktrees/<name>/)
+```
+
+`-w <name>` takes the **worktree name**, not a branch name and not a SPEC ID; it resolves to `.claude/worktrees/<name>/`. An existing worktree of that name is **reused, not recreated**, which is what makes this a valid re-entry path. Naming the worktree after the SPEC ID at creation time (`git worktree add -b feat/SPEC-X-001 .claude/worktrees/SPEC-X-001 origin/main`) lets the resume line read `moai cc -w SPEC-X-001`.
+
+**Form B — L2 worktree at `~/.moai/worktrees/<project>/<spec>/` (explicit `cd`):**
 
 ```
 [New Terminal — START IN WORKTREE]
@@ -178,6 +182,8 @@ $ cd <worktree-absolute-path>
 $ <launcher>     # Choose one: moai cc | moai glm | claude
    └─ Claude Code session starts here (cwd = worktree)
 ```
+
+Form A does **not** cover Form B: `-w` resolves only under `.claude/worktrees/`, so an L2 worktree created by `/moai plan --worktree` (which lives under `~/.moai/worktrees/`) still requires the explicit `cd`. Emitting `moai cc -w <spec>` for an L2 worktree would silently create a **new** `.claude/worktrees/<spec>/` branched from the default remote branch instead of entering the intended tree — precondition `0)` below is what catches that.
 
 ### `/cd` cache-preserving alternative (CC 2.1.169+)
 

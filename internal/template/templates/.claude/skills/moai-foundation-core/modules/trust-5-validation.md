@@ -3,7 +3,6 @@
 Purpose: CI/CD integration, validation engine, and metrics dashboard for TRUST 5 quality gates.
 
 Version: 1.0.0
-Last Updated: 2026-01-06
 Parent: [trust-5-framework.md](trust-5-framework.md)
 
 ---
@@ -216,4 +215,3 @@ class TRUST5Metrics:
 ---
 
 Version: 1.0.0
-Last Updated: 2026-01-06

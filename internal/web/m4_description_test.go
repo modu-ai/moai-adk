@@ -89,18 +89,20 @@ func TestM4LLMSurface(t *testing.T) {
 	}
 }
 
-// TestM4QualityExtrasToggleOnLaunch verifies REQ-WC-004 / AC-WC-004: a single
-// enable/disable toggle for the quality-extras feature is rendered on the launch
-// tab (OQ-1 resolution). The detailed DDD-gate fields stay baked/hidden.
+// TestM4QualityExtrasToggleOnLaunch verifies the launch tab no longer renders
+// the quality_extras_enabled toggle: the control was removed from the UI and the
+// field is now forced to true unconditionally in the persistence layer
+// (sectionapply.go applyTypedEdits). Both the toggle input and its hidden
+// __present companion MUST be absent from the rendered HTML.
 func TestM4QualityExtrasToggleOnLaunch(t *testing.T) {
 	body := renderConsolePage(t)
 
-	// The toggle control renders on the launch tab.
-	if !strings.Contains(body, `name="quality.quality_extras_enabled"`) {
-		t.Error(`launch tab missing the quality_extras enable/disable toggle (name="quality.quality_extras_enabled" — REQ-WC-004 / AC-WC-004)`)
+	// The toggle control is no longer rendered on the launch tab.
+	if strings.Contains(body, `name="quality.quality_extras_enabled"`) {
+		t.Error(`launch tab still renders the removed quality_extras toggle (name="quality.quality_extras_enabled" — should be absent after UI removal)`)
 	}
-	// The toggle persists via the hidden __present companion (bool disambiguation).
-	if !strings.Contains(body, `name="quality.quality_extras_enabled__present"`) {
-		t.Error(`quality_extras toggle missing the __present hidden companion (bool save disambiguation)`)
+	// The hidden __present companion is also gone (the toggle was the only submitter).
+	if strings.Contains(body, `name="quality.quality_extras_enabled__present"`) {
+		t.Error(`quality_extras __present hidden companion still rendered (should be absent after toggle removal)`)
 	}
 }

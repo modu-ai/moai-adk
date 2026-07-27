@@ -4,7 +4,7 @@ weight: 6
 draft: false
 ---
 
-The core question of agentic loops is "when to stop and when to continue." MoAI-ADK provides three continuation-loop primitives, each with different trigger semantics and ownership. This page distinguishes `/goal`, `/moai goal`, and `/moai loop`, and explains each one's implementation status and safety guardrails.
+The core question of agentic loops is "when to stop and when to continue." MoAI-ADK provides two continuation-loop primitives, `/moai goal` and `/moai loop`; Claude Code provides a third of its own, the native goal command. This page distinguishes all three, and explains each one's ownership, implementation status, and safety guardrails.
 
 ## When to Stop, When to Continue
 
@@ -14,7 +14,7 @@ The continuation-loop primitives solve this. Declare a completion condition, and
 
 ## Three Continuation-Loop Primitives
 
-MoAI-ADK has three continuation-loop primitives, each with different trigger semantics and ownership.
+Three continuation-loop primitives are in play — two owned by MoAI-ADK and one owned by Claude Code itself — each with different trigger semantics.
 
 | Primitive | Ownership | Trigger | When appropriate |
 |-----------|-----------|---------|------------------|
@@ -91,9 +91,9 @@ Include a turn bound to bound the loop ("`or stop after 20 turns`"). Running `/c
 
 - **Implementation Kickoff Approval** (plan → run HUMAN GATE) cannot be bypassed by any loop. Even with `/goal` active, user approval before run-phase entry is mandatory.
 - **Safety boundary unchanged** — even with a loop active, the "confirm before hard-to-reverse / shared-system actions" boundary is not relaxed. The goal evaluator only decides whether to continue; it does not pre-approve destructive operations.
-- **Combination with auto mode** — combining Claude Code auto mode (per-tool auto-approval) with `/goal` (per-turn continuation) enables an unattended `ac_converge` loop. Auto mode removes per-tool approval prompts; `/goal` removes per-turn STOP prompts. Implementation Kickoff Approval is still mandatory before run-phase entry.
+- **Combination with auto mode** — combining Claude Code auto mode (per-tool auto-approval) with `/moai goal` (per-turn continuation) enables an unattended `ac_converge` loop. Auto mode removes per-tool approval prompts; `/moai goal` removes per-turn STOP prompts. Implementation Kickoff Approval is still mandatory before run-phase entry.
 
 ## Next Steps
 
 - [Tokenomics Overview](/en/advanced/tokenomics-overview/) — where autonomous loops connect to tokenomics
-- [Harness Self-Evolution](/en/advanced/self-evolving/) — `/moai loop` / `/goal` convergence trajectories integrated into Loop 0 observation
+- [Harness Self-Evolution](/en/advanced/self-evolving/) — `/moai loop` / `/moai goal` convergence trajectories integrated into Loop 0 observation

@@ -253,7 +253,8 @@ func TestRenderModelEffortPolicyAreSelects(t *testing.T) {
 	}
 
 	// Each canonical option must be present as an <option value="...">.
-	for _, opt := range []string{"opus", "opus[1m]", "sonnet", "sonnet[1m]", "haiku", "opusplan"} {
+	// 1M unification: opus/sonnet/fable exposed only as [1m]; haiku has no 1M variant.
+	for _, opt := range []string{"fable[1m]", "opus[1m]", "sonnet[1m]", "haiku"} {
 		if !strings.Contains(body, `<option value="`+opt+`"`) {
 			t.Errorf("model option %q missing from rendered selects", opt)
 		}

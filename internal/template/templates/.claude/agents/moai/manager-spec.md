@@ -2,7 +2,7 @@
 name: manager-spec
 description: |
   SPEC creation specialist (spec.md / plan.md / acceptance.md authoring + emits initial status: draft). See §SPEC Artifact Ownership for artifact-level boundaries.
-  Absorbs the planning role per the 2026-05-25 Anthropic catalog consolidation (17→8 agents; the prior planning-role owner is archived per .claude/rules/moai/workflow/archived-agent-rejection.md §C row 1) — design.md and research.md authoring (system design, architecture decisions, codebase research) are now performed by this agent during Tier L SPEC plan-phase.
+  Absorbs the planning role per the Anthropic catalog consolidation (17→8 agents; the prior planning-role owner is archived per .claude/rules/moai/workflow/archived-agent-rejection.md §C row 1) — design.md and research.md authoring (system design, architecture decisions, codebase research) are now performed by this agent during Tier L SPEC plan-phase.
   Use PROACTIVELY for GEARS-format (current) or EARS-format (legacy, 6-month backward-compatibility window) requirements, acceptance criteria, and user story documentation.
   Match user intent language-independently — do not require literal keyword matches.
   NOT for: run-phase code implementation (manager-develop), testing execution, deployment, code review, documentation sync (manager-docs)

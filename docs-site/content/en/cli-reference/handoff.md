@@ -31,7 +31,7 @@ moai handoff save --stdin --spec SPEC-AUTH-001 --phase run < resume.txt
 | `--lang <lang>` | conversation_language snapshot |
 | `--ultrathink` | Record the ultrathink directive (for restore guidance) |
 | `--ultracode` | Record the ultracode directive (for restore guidance) |
-| `--goal <condition>` | Record the `/goal` condition (for restore guidance) |
+| `--goal <condition>` | Record the `/moai goal` condition (for restore guidance) |
 
 ## moai handoff clear
 

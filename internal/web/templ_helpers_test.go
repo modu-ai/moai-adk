@@ -95,8 +95,8 @@ func TestOptSelectHelperMarkupParity(t *testing.T) {
 		Name:     "model",
 		Title:    "Model",
 		Key:      "model",
-		Desc:     "The specific model to run, including 1M-context variants.",
-		Value:    "sonnet",
+		Desc:     "The specific model to run.",
+		Value:    "sonnet[1m]",
 		Empty:    "(project default)",
 		EmptyKey: "opt.project_default",
 		Options:  modelOptionDefs(),
@@ -110,8 +110,8 @@ func TestOptSelectHelperMarkupParity(t *testing.T) {
 		`id="model"`,
 		`name="model"`,
 		`<option value="" data-i18n="opt.project_default">(project default)</option>`,
-		`<option value="sonnet" selected data-i18n="f.model.opt.sonnet">sonnet</option>`,
-		`<option value="opus" data-i18n="f.model.opt.opus">opus</option>`,
+		`<option value="sonnet[1m]" selected data-i18n="f.model.opt.sonnet[1m]">sonnet[1m]</option>`,
+		`<option value="opus[1m]" data-i18n="f.model.opt.opus[1m]">opus[1m]</option>`,
 	} {
 		if !strings.Contains(clean, want) {
 			t.Errorf("optSelect clean render missing %q\n--- rendered ---\n%s", want, clean)

@@ -43,6 +43,8 @@ Flags:
   -p, --profile <name>          Use a named Claude profile (~/.moai/claude-profiles/<name>/)
   --permission-mode <mode>      Set permission mode (default, acceptEdits, plan, bypassPermissions, dontAsk)
   -b, --bypass                  Shorthand for --permission-mode bypassPermissions
+  -w, --worktree [name]         Launch in an isolated git worktree (.claude/worktrees/<name>/);
+                                name omitted = auto-generated (same as claude --worktree)
 
 Note: Auto mode is not available with GLM (third-party provider).
 Use 'moai cc --permission-mode auto' or 'moai cg --permission-mode auto' instead.
@@ -140,6 +142,7 @@ func runGLM(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
+	filteredArgs = normalizeWorktreeFlag(filteredArgs)
 
 	// Auto mode is not available with third-party providers (GLM/Z.AI).
 	// Validate before launch to give a clear error instead of a cryptic Claude Code rejection.

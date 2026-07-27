@@ -307,7 +307,6 @@ For migration scenarios and validation scripts: [references/migration-guide.md](
 ---
 
 Version: 1.3.1 (skill body compression pass)
-Last Updated: 2026-05-23
 Integration Status: Complete - Plan-Run-Sync workflow with SDD 2025 features
 
 <!-- moai:evolvable-start id="rationalizations" -->

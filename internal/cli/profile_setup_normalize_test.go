@@ -28,17 +28,19 @@ func TestNormalizeStatuslineTheme(t *testing.T) {
 	}
 }
 
-// TestNormalizeModel_Canonical verifies that canonical aliases pass through unchanged.
+// TestNormalizeModel_Canonical verifies that picker values pass through unchanged
+// and that bare aliases predating the 1M unification migrate to their [1m] form.
+// haiku and the opusplan routing alias have no [1m] variant and stay as-is.
 func TestNormalizeModel_Canonical(t *testing.T) {
 	tests := []struct {
 		in, want string
 	}{
 		{"", ""},
-		{"opus", "opus"},
+		{"opus", "opus[1m]"},
 		{"opus[1m]", "opus[1m]"},
-		{"sonnet", "sonnet"},
+		{"sonnet", "sonnet[1m]"},
 		{"sonnet[1m]", "sonnet[1m]"},
-		{"fable", "fable"},
+		{"fable", "fable[1m]"},
 		{"fable[1m]", "fable[1m]"},
 		{"haiku", "haiku"},
 		{"opusplan", "opusplan"},
@@ -52,24 +54,26 @@ func TestNormalizeModel_Canonical(t *testing.T) {
 	}
 }
 
-// TestNormalizeModel_Deprecated verifies that deprecated full-IDs are converted to canonical aliases.
+// TestNormalizeModel_Deprecated verifies that deprecated full-IDs are converted to
+// canonical aliases, then promoted to the [1m] form the picker offers. haiku has no
+// [1m] variant, so it resolves to the bare alias.
 func TestNormalizeModel_Deprecated(t *testing.T) {
 	tests := []struct {
 		in, want string
 	}{
-		{"claude-opus-4-7", "opus"},
-		{"claude-opus-4-6", "opus"},
+		{"claude-opus-4-7", "opus[1m]"},
+		{"claude-opus-4-6", "opus[1m]"},
 		{"claude-opus-4-7[1m]", "opus[1m]"},
 		{"claude-opus-4-6[1m]", "opus[1m]"},
 		{"claude-opus-4-6 1M", "opus[1m]"},
-		{"claude-sonnet-4-6", "sonnet"},
+		{"claude-sonnet-4-6", "sonnet[1m]"},
 		{"claude-sonnet-4-6[1m]", "sonnet[1m]"},
 		{"claude-sonnet-4-6 1M", "sonnet[1m]"},
 		{"claude-haiku-4-5", "haiku"},
 		// Current canonical ids (reverse-lookup of ModelAliasTable) — M2 bump.
-		{"claude-opus-4-8", "opus"},
-		{"claude-sonnet-5", "sonnet"},
-		{"claude-fable-5", "fable"},
+		{"claude-opus-4-8", "opus[1m]"},
+		{"claude-sonnet-5", "sonnet[1m]"},
+		{"claude-fable-5", "fable[1m]"},
 	}
 	for _, tt := range tests {
 		t.Run("deprecated/"+tt.in, func(t *testing.T) {

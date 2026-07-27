@@ -4,7 +4,7 @@ weight: 6
 draft: false
 ---
 
-에이전틱 루프의 핵심 질문은 "언제 멈추고 언제 계속할 것인가"입니다. MoAI-ADK는 세 가지 연속 루프 원시(primitive)를 제공하며, 각각의 트리거 시맨틱과 소유권이 다릅니다. 이 페이지는 `/goal`, `/moai goal`, `/moai loop`를 구분하고 각각의 구현 상태와 안전 가드레일을 설명합니다.
+에이전틱 루프의 핵심 질문은 "언제 멈추고 언제 계속할 것인가"입니다. MoAI-ADK는 `/moai goal`과 `/moai loop` 두 가지 연속 루프 원시(primitive)를 제공하고, Claude Code는 자체적으로 네이티브 goal 명령을 제공합니다. 이 페이지는 이 세 가지를 구분하고 각각의 소유권, 구현 상태, 안전 가드레일을 설명합니다.
 
 ## 언제 멈추고 언제 계속할 것인가
 
@@ -14,7 +14,7 @@ draft: false
 
 ## 3가지 연속 루프 원시
 
-MoAI-ADK에는 세 가지 연속 루프 원시가 있으며 각각 트리거 시맨틱과 소유권이 다릅니다.
+연속 루프 원시는 세 가지이며 — 두 가지는 MoAI-ADK가, 나머지 하나는 Claude Code 자체가 소유합니다 — 각각 트리거 시맨틱이 다릅니다.
 
 | 원시 | 소유권 | 트리거 | 언제 적합한가 |
 |------|--------|--------|---------------|
@@ -91,9 +91,9 @@ moai goal clear                         # 조건 제거 (루프 종료)
 
 - **Implementation Kickoff Approval** (plan → run HUMAN GATE)은 어떤 루프로도 bypass할 수 없습니다. `/goal`이 활성화되어 있어도 run-phase 진입 전 사용자 승인은 필수입니다.
 - **안전 경계 유지** — 루프가 활성화되어도 "되돌리기 어려운 / 공유 시스템 작업 전 확인" 경계는 완화되지 않습니다. goal 평가자는 계속 여부만 결정하며 파괴적 작업을 사전 승인하지 않습니다.
-- **auto mode와 조합** — Claude Code auto mode(도구별 자동 승인)와 `/goal`(턴별 연속)을 조합하면 무인 `ac_converge` 루프가 가능합니다. auto mode는 도구별 승인 프롬프트를 제거하고 `/goal`은 턴별 STOP 프롬프트를 제거합니다. Implementation Kickoff Approval은 여전히 run-phase 진입 전 필수입니다.
+- **auto mode와 조합** — Claude Code auto mode(도구별 자동 승인)와 `/moai goal`(턴별 연속)을 조합하면 무인 `ac_converge` 루프가 가능합니다. auto mode는 도구별 승인 프롬프트를 제거하고 `/moai goal`은 턴별 STOP 프롬프트를 제거합니다. Implementation Kickoff Approval은 여전히 run-phase 진입 전 필수입니다.
 
 ## 다음 단계
 
 - [토크노믹스 개요](/ko/advanced/tokenomics-overview/) — 자율 루프가 토크노믹스와 연결되는 지점
-- [하네스 자가 진화](/ko/advanced/self-evolving/) — `/moai loop`·`/goal` 수렴 궤적이 Loop 0 관찰에 통합
+- [하네스 자가 진화](/ko/advanced/self-evolving/) — `/moai loop`·`/moai goal` 수렴 궤적이 Loop 0 관찰에 통합

@@ -194,7 +194,6 @@ LSP diagnostics are available for all 16 MoAI-supported languages: C++, C#, Elix
 ---
 
 Version: 1.2.0
-Last Updated: 2026-01-11
 Status: Active
 Integration: Claude Code Hooks, LSP Protocol, AST-grep
 Skill Name: moai-workflow-loop (formerly moai-ralph)

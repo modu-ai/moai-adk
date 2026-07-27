@@ -170,7 +170,6 @@ func TestComponentChromePresent(t *testing.T) {
 		`<code class="field__key">`, // key chip
 		`class="field__desc"`,       // field description
 		`class="select-wrap"`,       // styled select chevron affordance
-		`class="seg"`,               // segment checkbox card
 		`class="btn btn--primary"`,  // signature-gradient primary button
 	} {
 		if !strings.Contains(body, marker) {

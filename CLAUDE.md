@@ -38,7 +38,7 @@ Five ordered stages:
 - ② **Context-sufficiency check** — when context is insufficient, run the Rule 5 Context-First Discovery `AskUserQuestion` rounds (§7) before proceeding.
 - ③ **Execution-plan composition** — compose the skill / agent / dynamic-workflow chain and select the Phase 0.95 orchestration mode (unchanged; see `.claude/rules/moai/workflow/orchestration-mode-selection.md`). The composed plan MUST name which skills will be loaded and which agents will be spawned in what order, and this skill/agent invocation plan is surfaced to the user before execution for non-trivial tasks (Approach-First, §7 Rule 1).
 - ④ **Approval gates** — unchanged, including the **Implementation Kickoff Approval** human gate at the plan→run boundary (§8); the gate also offers an autonomous-vs-semi-autonomous progression-mode axis (a post-approval progression choice, never a gate bypass).
-- ⑤ **Execute → verify → iterate** — run the plan, verify against acceptance criteria, iterate; when a goal is armed (`/goal`, `/moai goal`), the goal evaluator is the termination judge.
+- ⑤ **Execute → verify → iterate** — run the plan, verify against acceptance criteria, iterate; when a goal is armed (`/moai goal`), the goal evaluator is the termination judge.
 
 Report: consolidate agent results and format the response in the user's `conversation_language`.
 
