@@ -1,7 +1,7 @@
 ---
 id: SPEC-WORKTREE-BRANCH-GUARD-001
 title: Acceptance Criteria — Main-Checkout Branch-State Guard
-version: 0.1.1
+version: 0.1.2
 status: in-progress
 created: 2026-07-28
 updated: 2026-07-28
@@ -12,7 +12,7 @@ module: hook
 lifecycle: spec-anchored
 era: V3R6
 tier: M
-tags: "hook, pretool, branch-guard, worktree, main-checkout, template-mirror, census-p1b"
+tags: "hook, pretool, branch-guard, worktree, main-checkout, template-mirror, sanitized-pair, census-p1b"
 related_specs:
   - SPEC-WORKTREE-001
   - SPEC-WORKTREE-002
@@ -176,28 +176,46 @@ grep -c "SPEC-WORKTREE-BRANCH-GUARD-001" .claude/rules/moai/workflow/main-checko
 **Falsification arm**: `grep -c "^Version: 1\.0\.0$" .claude/rules/moai/workflow/main-checkout-branch-guard.md`
 MUST return 0 (the v1.0.0 line is gone).
 
-### AC-WBG-007 — Template Mirror Byte-Parity (REQ-WBG-007)
+### AC-WBG-007 — Template Mirror Sanitized-Pair (REQ-WBG-007)
 
 **Verification commands**:
 
 ```bash
-# Byte-identity
-diff .claude/rules/moai/workflow/main-checkout-branch-guard.md \
-     internal/template/templates/.claude/rules/moai/workflow/main-checkout-branch-guard.md
-# Expected: exit 0, no output
+# sanitizedPairPaths enrollment (REQ-WBG-007 requires enrollment in the
+# sanitized-pair registry, NOT in the byte-parity allowlist
+# workflowOptMirroredPaths).
+grep -c "main-checkout-branch-guard" internal/template/sanitized_pair_parity_test.go
+# Expected: >= 1 (enrollment at line 91)
 
-# Allowlist enrollment
-grep -c "main-checkout-branch-guard" internal/template/rule_template_mirror_test.go
-# Expected: >= 1
-
-# Mirror test green
-go test ./internal/template/... -run TestRuleTemplateMirror -count=1 -v
+# Doctrine parity between source and sanitized mirror
+go test ./internal/template/... -run TestSanitizedPairParity -count=1 -v
 # Expected: PASS
+
+# Mirror §25 cleanliness (no internal SPEC-ID / REQ tokens leak to template)
+go test ./internal/template/... -run TestTemplateNoInternalContentLeak -count=1 -v
+# Expected: PASS
+
+# Intentional exclusion from the byte-parity allowlist (REQ-WBG-007 rationale)
+grep -c "main-checkout-branch-guard" internal/template/rule_template_mirror_test.go
+# Expected: >= 1 (a NOTE comment documents the intentional exclusion)
+
+# Sanitization signal: the source has the SPEC-ID line, the mirror does not.
+# `diff` exits non-zero — this is the EXPECTED parity-sanitization signal,
+# NOT drift. Run-phase confirms both halves:
+grep -c "SPEC-WORKTREE-BRANCH-GUARD-001" \
+  .claude/rules/moai/workflow/main-checkout-branch-guard.md
+# Expected: >= 1 (source retains SPEC-ID per REQ-WBG-006 traceability)
+
+grep -c "SPEC-WORKTREE-BRANCH-GUARD-001" \
+  internal/template/templates/.claude/rules/moai/workflow/main-checkout-branch-guard.md
+# Expected: 0 (mirror is §25-sanitized)
 ```
 
-**Falsification arm**: introducing a 1-byte drift in EITHER file (source or
-mirror) MUST cause `TestRuleTemplateMirror` to FAIL. Run-phase verifies this by
-temporarily editing one file, running the test (expects FAIL), reverting.
+**Falsification arm**: re-introducing the SPEC-ID
+(`SPEC-WORKTREE-BRANCH-GUARD-001`) in the mirror MUST make
+`TestTemplateNoInternalContentLeak` FAIL (proves the §25 cleanliness guard is
+load-bearing, not vestigial). Run-phase verifies this by temporarily inserting
+the SPEC-ID into the mirror, running the test (expects FAIL), reverting.
 
 ### AC-WBG-008 — `.worktreeinclude` Reconciliation (REQ-WBG-008)
 
@@ -359,9 +377,10 @@ debt (out of scope per §E of spec.md).
 - `go test ./internal/template/... -count=1` → exit 0 (mirror test green).
 - `golangci-lint run ./internal/hook/...` → exit 0.
 - `diff .worktreeinclude internal/template/templates/.worktreeinclude` → exit 0.
-- `diff .claude/rules/moai/workflow/main-checkout-branch-guard.md
-  internal/template/templates/.claude/rules/moai/workflow/main-checkout-branch-guard.md`
-  → exit 0.
+- `go test ./internal/template/... -run TestSanitizedPairParity -count=1` →
+  exit 0 (sanitized-pair doctrine parity green).
+- `go test ./internal/template/... -run TestTemplateNoInternalContentLeak
+  -count=1` → exit 0 (mirror §25 cleanliness green).
 - Sync-phase commit closes the SPEC (3-phase close; `sync_commit_sha` populated
   in progress.md §E.4 by manager-docs).
 
@@ -438,3 +457,9 @@ debt (out of scope per §E of spec.md).
   from fail-open to false-positive DENY; D5 AC-WBG-009 init uses temp-dir
   (no --dry-run flag, pre-flight verified); D6 AC-WBG-010 self-consistent
   Test* + internal loop (no -benchtime); N1 AC-WBG-011 word-boundary regex.
+- 2026-07-28 v0.1.2 — AC-WBG-007 rewritten from byte-parity (`diff` exit 0 +
+  `TestRuleTemplateMirror`) to sanitized-pair (`sanitizedPairPaths` enrollment
+  + `TestSanitizedPairParity` + `TestTemplateNoInternalContentLeak` + source
+  SPEC-ID present / mirror SPEC-ID absent). Rationale: §25 forbids a SPEC-ID
+  in the template mirror, so byte-parity is impossible when the source
+  references its origin SPEC (verified via `TestTemplateNoInternalContentLeak`).

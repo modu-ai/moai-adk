@@ -1,7 +1,7 @@
 ---
 id: SPEC-WORKTREE-BRANCH-GUARD-001
 title: Main-Checkout Branch-State Guard via PreToolUse Conditional Deny
-version: 0.1.1
+version: 0.1.2
 status: in-progress
 created: 2026-07-28
 updated: 2026-07-28
@@ -12,7 +12,7 @@ module: hook
 lifecycle: spec-anchored
 era: V3R6
 tier: M
-tags: "hook, pretool, branch-guard, worktree, main-checkout, template-mirror, census-p1b"
+tags: "hook, pretool, branch-guard, worktree, main-checkout, template-mirror, sanitized-pair, census-p1b"
 related_specs:
   - SPEC-WORKTREE-001
   - SPEC-WORKTREE-002
@@ -115,14 +115,34 @@ The doctrine rule `.claude/rules/moai/workflow/main-checkout-branch-guard.md`
 shall carry `Version: 1.1.0` and document the PreToolUse conditional-deny hook
 as the mechanical enforcer, superseding the v1.0.0 doctrine-only text.
 
-### REQ-WBG-007 — Template Mirror Byte-Parity (Ubiquitous)
+### REQ-WBG-007 — Template Mirror Sanitized-Pair (Ubiquitous)
 
 The template mirror
 `internal/template/templates/.claude/rules/moai/workflow/main-checkout-branch-guard.md`
-shall be byte-identical to the source rule, and the mirror-test allowlist
-`workflowOptMirroredPaths` in
-`internal/template/rule_template_mirror_test.go` shall include the rule path so
-CI enforces parity on every subsequent edit.
+shall be **§25-sanitized**: the SPEC-ID line and the cross-reference bullet
+naming `SPEC-WORKTREE-BRANCH-GUARD-001` carried in the source rule shall be
+replaced in the mirror with generic prose
+(`Origin: the run-phase SPEC that landed the v1.1.0 mechanical enforcer.`)
+and the SPEC-ID cross-reference bullet shall be dropped. The source rule
+`.claude/rules/moai/workflow/main-checkout-branch-guard.md` RETAINS the
+SPEC-ID + REQ tokens for traceability (REQ-WBG-006). The mirror SHALL be
+enrolled in the `sanitizedPairPaths` registry in
+`internal/template/sanitized_pair_parity_test.go` so
+`TestSanitizedPairParity` enforces doctrine parity between source and
+sanitized mirror, and `TestTemplateNoInternalContentLeak` enforces the
+mirror's §25 cleanliness. The rule is intentionally excluded from the
+byte-parity allowlist `workflowOptMirroredPaths` in
+`internal/template/rule_template_mirror_test.go` (a NOTE comment in that
+file records the intentional exclusion).
+
+**Rationale — §25 forbids a SPEC-ID in the template mirror**: every existing
+byte-mirrored rule (`spec-workflow.md`, `session-handoff.md`, `hooks-system.md`,
+`model-policy.md`) achieves byte-parity because the SOURCE is also §25-clean.
+This rule's source is NOT §25-clean (it carries the SPEC-ID for REQ-WBG-006
+traceability), so byte-parity is impossible without violating §25's
+`TestTemplateNoInternalContentLeak` guard. The sanitized-pair pattern is the
+established resolution — it matches the `runtime-recovery-doctrine.md` /
+`zone-registry.md` precedent.
 
 ### REQ-WBG-008 — `.worktreeinclude` Reconciliation (Ubiquitous)
 
@@ -284,7 +304,10 @@ as defense-in-depth for non-hook-enabled contexts only.
 - `internal/hook/quality/gate.go:623-625` (`IsGitCommit` — the census P1-B slow
   path that branch-state commands structurally avoid)
 - `internal/template/rule_template_mirror_test.go` (`workflowOptMirroredPaths`
-  allowlist — REQ-WBG-007 requires adding the rule path)
+  byte-parity allowlist — REQ-WBG-007 intentionally EXCLUDES the rule path; see
+  the NOTE comment in that file)
+- `internal/template/sanitized_pair_parity_test.go` (`sanitizedPairPaths`
+  registry — REQ-WBG-007 enrolls the rule path at line 91)
 - `.claude/agents/moai/manager-git.md:117-127` (Phase D — Late-Branch closure)
 - `.moai/config/sections/workflow.yaml:112-120` (`workflow.worktree` config)
 - Census P1-B: handoff memory `project_census_priority1_handoff` (5s budget
@@ -305,3 +328,9 @@ as defense-in-depth for non-hook-enabled contexts only.
   --dry-run flag); D6 AC-WBG-010 self-consistent Test* + internal loop; D7
   `[NEEDS CLARIFICATION: ...]` marker convention; N1 word-boundary regex;
   N2 env-var threat model.
+- 2026-07-28 v0.1.2 — REQ-WBG-007/AC-WBG-007 corrected from byte-parity to
+  sanitized-pair (§25 forbids a SPEC-ID in the template mirror; the
+  orchestrator's M3 delegation premise that mirrored rules may carry
+  SPEC-IDs was false — verified via `TestTemplateNoInternalContentLeak`.
+  Sanitized-pair matches the runtime-recovery-doctrine / zone-registry
+  precedent.).

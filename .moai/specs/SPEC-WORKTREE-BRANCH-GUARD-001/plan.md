@@ -1,7 +1,7 @@
 ---
 id: SPEC-WORKTREE-BRANCH-GUARD-001
 title: Main-Checkout Branch-State Guard via PreToolUse Conditional Deny — Implementation Plan
-version: 0.1.1
+version: 0.1.2
 status: in-progress
 created: 2026-07-28
 updated: 2026-07-28
@@ -12,7 +12,7 @@ module: hook
 lifecycle: spec-anchored
 era: V3R6
 tier: M
-tags: "hook, pretool, branch-guard, worktree, main-checkout, template-mirror, census-p1b"
+tags: "hook, pretool, branch-guard, worktree, main-checkout, template-mirror, sanitized-pair, census-p1b"
 related_specs:
   - SPEC-WORKTREE-001
   - SPEC-WORKTREE-002
@@ -50,11 +50,19 @@ during plan-phase research):
    `agent_type` in the subagent's PreToolUse events. **Contradicts a verified
    precondition** — closed by REQ-WBG-011b (sentinel env var).
 
-3. **Mirror test allowlist** — `internal/template/rule_template_mirror_test.go`
-   carries an explicit `workflowOptMirroredPaths` allowlist (no glob). Adding
-   `.claude/rules/moai/workflow/main-checkout-branch-guard.md` to it is a code
-   change; without it, byte-parity between source and template mirror is not
-   enforced by CI.
+3. **Mirror test allowlist + sanitized-pair registry** — the source rule
+   carries SPEC-ID + REQ tokens for traceability (REQ-WBG-006), so it is NOT
+   §25-clean. §25 (`TestTemplateNoInternalContentLeak`) forbids a SPEC-ID in
+   the template mirror, so byte-parity between source and mirror is
+   impossible. The sanitized-pair pattern is the resolution:
+   `internal/template/sanitized_pair_parity_test.go` carries an explicit
+   `sanitizedPairPaths` registry (analogous to `workflowOptMirroredPaths`).
+   Enrolling `.claude/rules/moai/workflow/main-checkout-branch-guard.md` in
+   `sanitizedPairPaths` (NOT in `workflowOptMirroredPaths`) lets
+   `TestSanitizedPairParity` enforce doctrine parity between source and
+   sanitized mirror while `TestTemplateNoInternalContentLeak` enforces the
+   mirror's §25 cleanliness. Matches the `runtime-recovery-doctrine.md` /
+   `zone-registry.md` precedent.
 
 4. **git discriminant portability** — `--path-format=absolute` requires git
    2.31+ (March 2021). Local environment runs git 2.50.1 (Apple Git-155) which
@@ -132,8 +140,11 @@ Before M1:
 
 - **Template-First**: edit `internal/template/templates/...` first, `make build`,
   sync to local, run `go test ./internal/template/...`.
-- **Byte-parity invariant**: source rule + template mirror MUST be byte-identical
-  AND the mirror-test allowlist MUST include the path (REQ-WBG-007).
+- **Sanitized-pair invariant**: source rule retains SPEC-ID + REQ tokens
+  (traceability per REQ-WBG-006); template mirror is §25-sanitized (SPEC-ID
+  line → generic prose, SPEC-ID cross-reference bullet dropped); the rule is
+  enrolled in `sanitizedPairPaths` (NOT `workflowOptMirroredPaths`)
+  per REQ-WBG-007.
 - **5s timeout budget**: the hook handler MUST complete in measured wall-time
   ≤ 500ms per invocation (REQ-WBG-010). The fast regex path meets this trivially;
   the AC encodes a measurement.
@@ -241,20 +252,25 @@ if input.ToolName == "Bash" {
 `git switch` command in the primary checkout returns deny, and the same event
 with `MOAI_BRANCH_GUARD_EXEMPT=1` set returns allow.
 
-### M3 — Rule v1.1.0 + Template Mirror (byte-parity)
+### M3 — Rule v1.1.0 + Template Mirror (sanitized-pair)
 
 **Files**:
 
 - `.claude/rules/moai/workflow/main-checkout-branch-guard.md` — bump `Version:
   1.0.0` → `1.1.0`; add a new section "## Mechanical Enforcement (v1.1.0)"
   documenting the PreToolUse hook as the enforcer. Cross-reference
-  SPEC-WORKTREE-BRANCH-GUARD-001.
+  SPEC-WORKTREE-BRANCH-GUARD-001 (source retains SPEC-ID + REQ tokens for
+  traceability per REQ-WBG-006).
 - `internal/template/templates/.claude/rules/moai/workflow/main-checkout-branch-guard.md`
-  — byte-identical copy. NO internal SPEC IDs, NO commit SHAs (CLAUDE.local.md
-  §25 neutrality).
-- `internal/template/rule_template_mirror_test.go` — add
-  `.claude/rules/moai/workflow/main-checkout-branch-guard.md` to
-  `workflowOptMirroredPaths`.
+  — §25-sanitized copy: the SPEC-ID line becomes generic prose
+  (`Origin: the run-phase SPEC that landed the v1.1.0 mechanical enforcer.`)
+  and the SPEC-ID cross-reference bullet is dropped. NO internal SPEC IDs, NO
+  REQ tokens, NO commit SHAs (CLAUDE.local.md §25 neutrality).
+- `internal/template/sanitized_pair_parity_test.go` — enroll
+  `.claude/rules/moai/workflow/main-checkout-branch-guard.md` in
+  `sanitizedPairPaths` (line 91). The rule is intentionally NOT added to
+  `workflowOptMirroredPaths` in `rule_template_mirror_test.go` — a NOTE
+  comment in that file records the intentional exclusion.
 
 **Wording guidance**: the v1.1.0 section names the hook handler
 (`internal/hook/pre_tool.go` `checkBranchState`), the sentinel deny prefix
@@ -262,9 +278,12 @@ with `MOAI_BRANCH_GUARD_EXEMPT=1` set returns allow.
 "manager-git"` OR `MOAI_BRANCH_GUARD_EXEMPT=1`), and the discriminant
 (`--path-format=absolute` git 2.31+, with fallback).
 
-**Acceptance**: M3 is complete when `go test ./internal/template/... -run
-TestRuleTemplateMirror` is green, `diff` between the two rule files is empty,
-and `grep -c "Version: 1.1.0"` returns 1 for both files.
+**Acceptance**: M3 is complete when
+`go test ./internal/template/... -run TestSanitizedPairParity` is green,
+`go test ./internal/template/... -run TestTemplateNoInternalContentLeak` is
+green, and `grep -c "Version: 1.1.0"` returns 1 for both files. The source
+MUST carry `SPEC-WORKTREE-BRANCH-GUARD-001` (>= 1 occurrence); the mirror
+MUST carry 0 occurrences.
 
 ### M4 — CLI Worktree Advisory (user-facing UX)
 
@@ -376,3 +395,9 @@ files are staged in the same commit.
   Phase-D break framing (no longer "non-blocking"/"safe-default"; aligned with
   spec.md §A valence); D7 marker convention `[NEEDS CLARIFICATION: ...]`; D2
   M1 mock-exec.Command approach made explicit (matches AC-WBG-005).
+- 2026-07-28 v0.1.2 — M3 rewritten from byte-identical copy +
+  `workflowOptMirroredPaths` enrollment to §25-sanitized mirror +
+  `sanitizedPairPaths` enrollment. §A research finding #3 updated with the
+  sanitized-pair rationale. §D byte-parity invariant rewritten as
+  sanitized-pair invariant. Implementation is already CI-green; this is a
+  wording/AC correction, not a design change.
