@@ -113,6 +113,59 @@ _Populated by manager-spec at plan-phase completion; updated v0.1.1 (iter-2)._
   (plan table `\S` would false-positive on `git checkout -- <path>`, violating the
   plan's own "non-flag token" rule + SPEC §E E-5). Documented in-source (lines 62-68).
   Faithful to prose intent; plan table token is a typo.
+- **M3-M6 implemented 2026-07-28** (manager-develop). Commits `7fd49d48f` (M3 rule
+  v1.1.0+mirror), `7c24044d8` (M4 CLI advisory), `84f257f3e` (M5 .worktreeinclude),
+  `14004045e` (M3 sanitized-pair fix), `df71f1f84` (M6 tests).
+- **Orchestrator independent verification (M3-M6)**: `go build ./...` exit 0;
+  `go vet ./internal/hook/...` exit 0; full `go test ./internal/hook/... -count=1` →
+  ALL `ok` (27s, no cascade); `go test ./internal/template/... -count=1` → `ok` (§25
+  guard + mirror + sanitized-pair all green); `golangci-lint run` hook+cli+template →
+  0 issues. LSP "undefined"/"unused" diagnostics were again wrong-tree (gopls workspace
+  ≠ worktree); the test package compiles (`go test -run xxx` → `ok [no tests to run]`
+  proves compilation) and `emitWorktreeAdvisory` IS wired (init.go:683, update.go:312/
+  1039, web.go:81). `moai init` advisory grep = 1 (AC-WBG-009 empirically PASS).
+- **AC status (full)**: AC-WBG-001/002/004/005/006/008/009/010/011/012/013 PASS;
+  AC-WBG-003 branch-state-layer PASS (Gap-G1 documented); **AC-WBG-007 PASS-WITH-DEBT**
+  (sanitized-pair, not byte-parity — see §25 resolution below).
+- **§25 resolution (orchestrator premise corrected)**: the M3 delegation premise
+  ("~10 mirrored rules carry SPEC IDs, byte-mirrored") was WRONG. The §25 CI guards
+  (`TestTemplateNoInternalContentLeak`, `TestRuleProvenanceAudit`) FLAG a SPEC-ID +
+  REQ-token template mirror; existing byte-mirrored rules (spec-workflow.md,
+  session-handflow.md, hooks-system.md, model-policy.md) carry 0 SPEC-IDs in BOTH
+  trees. The branch-guard rule CANNOT be both byte-identical AND carry a SPEC-ID
+  under §25. **Resolution applied** (matches runtime-recovery-doctrine / zone-registry
+  precedent): source rule keeps SPEC-ID+REQ tokens (AC-WBG-006); template mirror is
+  §25-sanitized (SPEC-ID→generic prose); rule enrolled in the pre-existing
+  `sanitizedPairPaths` registry (`sanitized_pair_parity_test.go`), `TestSanitizedPairParity`
+  enforces doctrine parity, `TestTemplateNoInternalContentLeak` passes.
+  **SPEC-body drift**: REQ-WBG-007/AC-WBG-007 say "byte-identical + workflowOptMirroredPaths";
+  reality is sanitized-pair. Needs a manager-spec amendment before/at sync (the D-NEW-1
+  inline-fix pattern). The sanitized-pair implementation is correct; only the SPEC
+  wording was based on the orchestrator's false premise.
+
+## §E.3 Run-phase Audit-Ready Signal
+
+_Populated by orchestrator 2026-07-28 (run-phase functionally complete)._
+
+- M1-M6 all implemented, committed, pushed to `origin/feature/SPEC-WORKTREE-BRANCH-GUARD-001`
+  (commits `9065d14e9`..`df71f1f84`; `origin` sync `0 0` clean; 🗯 MoAI trailers present).
+- All ACs satisfied: 11 PASS + AC-WBG-003 branch-state-layer PASS (Gap-G1 documented) +
+  AC-WBG-007 PASS-WITH-DEBT (sanitized-pair, §25 resolution — SPEC-body amendment pending).
+- `go build ./...` + cross-platform (GOOS=windows) exit 0; `go vet` exit 0; full test
+  suites (hook + template) green, no cascade/regression; `golangci-lint` 0 issues.
+- `branch_guard.go` coverage 94.1% floor / 91.7% statement (≥85% AC §C gate).
+- Subagent-boundary grep (C-HRA-008): 0 in new code.
+- Two orchestrator premise corrections captured: (1) LSP diagnostics twice wrong-tree
+  (resolved via authoritative `go build`/`go test`); (2) §25 mirrored-rule SPEC-ID
+  premise wrong (resolved via sanitized-pair).
+- **Audit-ready**: YES, with two documented debts → sync-phase actions:
+  (a) manager-spec amends REQ-WBG-007/AC-WBG-007 (byte-parity → sanitized-pair);
+  (b) manager-docs notes AC-WBG-003 Gap-G1 (branch-state-layer PASS, end-to-end
+  `git reset --hard` unsatisfiable via pre-existing ask-gate) in AC verification.
+- **Next phase**: sync (manager-docs) — CHANGELOG, frontmatter `in-progress →
+  implemented → completed` (single sync commit), `sync_commit_sha`, PR (repo is
+  PR-mandatory per repo-local-pr-policy.md). REQ-WBG-007 amendment routes to
+  manager-spec within sync (manager-docs cannot edit spec/acceptance body).
 
 ## §E.3 Run-phase Audit-Ready Signal
 
