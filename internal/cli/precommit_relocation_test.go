@@ -322,3 +322,108 @@ func qualityIsGitCommitForTest(command string) bool {
 	trimmed := strings.TrimLeft(command, " \t")
 	return strings.HasPrefix(trimmed, "git commit") || strings.HasPrefix(trimmed, "git\tcommit")
 }
+
+// ---- F1 remediation (sync-audit): gate.go behavior coverage ----
+//
+// The independent sync-audit found internal/cli/gate.go (the SPEC's central
+// deliverable — the thin CLI wrapper the git pre-commit hook invokes) had 0.0%
+// behavior coverage: TestPreCommitRelocation_GateVerbReachable only asserted
+// cobra registration (gateCmd != nil + Use/RunE), never executed runGate. A
+// config-loading or project-dir bug in runGate would pass the synthetic
+// BudgetIndependence fixture while failing in production — the silent-failure
+// shape this SPEC exists to prevent. These tests execute runGate's two
+// terminal branches directly via gateCmd.RunE.
+
+// TestGateCmd_RunE_Behavior exercises runGate's exit-1 (gate failed) and
+// exit-0 (gate passed) branches. $CLAUDE_PROJECT_DIR is set via t.Setenv to
+// steer resolveGateProjectDir at the fixture (t.Setenv correctly forces this
+// test non-parallel because it mutates process env).
+func TestGateCmd_RunE_Behavior(t *testing.T) {
+	if _, err := exec.LookPath("go"); err != nil {
+		t.Skip("go not on PATH — vet step cannot run")
+	}
+
+	t.Run("vet-bad fixture returns error (exit-1 path)", func(t *testing.T) {
+		repo := t.TempDir()
+		if err := os.WriteFile(filepath.Join(repo, "go.mod"), []byte("module sample\n\ngo 1.21\n"), 0o644); err != nil {
+			t.Fatalf("write go.mod: %v", err)
+		}
+		// printf format verb mismatch — reliably flagged by `go vet`'s printf check.
+		vetBad := "package sample\n\nimport \"fmt\"\n\n// VetBad triggers go vet's printf verb/arg check.\nfunc VetBad() { fmt.Printf(\"%d\", \"string-arg\") }\n"
+		if err := os.WriteFile(filepath.Join(repo, "bad.go"), []byte(vetBad), 0o644); err != nil {
+			t.Fatalf("write bad.go: %v", err)
+		}
+		t.Setenv("CLAUDE_PROJECT_DIR", repo)
+
+		err := gateCmd.RunE(gateCmd, nil)
+		if err == nil {
+			t.Fatal("RunE returned nil for a vet-bad fixture — expected the quality gate to fail and runGate to surface a non-nil error (exit-1 branch); the central deliverable's failure path is untested")
+		}
+	})
+
+	t.Run("no-toolchain fixture returns nil (exit-0 path)", func(t *testing.T) {
+		// An empty fixture (no go.mod / package.json / marker file) →
+		// detectToolchain finds no recognized language → the gate passes
+		// vacuously → RunE returns nil. This is runGate's pass branch and the
+		// 16-language neutrality guarantee: non-Go / non-moai projects pass
+		// silently rather than being spuriously blocked.
+		repo := t.TempDir()
+		t.Setenv("CLAUDE_PROJECT_DIR", repo)
+
+		err := gateCmd.RunE(gateCmd, nil)
+		if err != nil {
+			t.Fatalf("RunE returned %v for a no-toolchain fixture — expected nil (gate passes when no language toolchain is detected); the pass branch is broken or the gate spuriously fails on empty repos", err)
+		}
+	})
+}
+
+// TestReadGateGoBuildTags covers gate.go's build-tags file parser across its
+// three control-flow paths: absent file (early return ""), present file (first
+// non-comment non-blank line), and comment-only file (loop exhausts → "").
+func TestReadGateGoBuildTags(t *testing.T) {
+	t.Parallel()
+
+	t.Run("absent file returns empty", func(t *testing.T) {
+		t.Parallel()
+		if got := readGateGoBuildTags(t.TempDir()); got != "" {
+			t.Errorf("absent build-tags: got %q, want empty", got)
+		}
+	})
+
+	t.Run("empty dir returns empty", func(t *testing.T) {
+		t.Parallel()
+		if got := readGateGoBuildTags(""); got != "" {
+			t.Errorf("empty dir: got %q, want empty", got)
+		}
+	})
+
+	t.Run("first non-comment non-blank line", func(t *testing.T) {
+		t.Parallel()
+		dir := t.TempDir()
+		if err := os.MkdirAll(filepath.Join(dir, ".moai", "config"), 0o755); err != nil {
+			t.Fatalf("mkdir config: %v", err)
+		}
+		content := "# a comment\n\n   \nintegration,e2e\nignored-after-first\n"
+		if err := os.WriteFile(filepath.Join(dir, ".moai", "config", "build-tags"), []byte(content), 0o644); err != nil {
+			t.Fatalf("write build-tags: %v", err)
+		}
+		if got := readGateGoBuildTags(dir); got != "integration,e2e" {
+			t.Errorf("build-tags first-line: got %q, want %q", got, "integration,e2e")
+		}
+	})
+
+	t.Run("comment-only file returns empty", func(t *testing.T) {
+		t.Parallel()
+		dir := t.TempDir()
+		if err := os.MkdirAll(filepath.Join(dir, ".moai", "config"), 0o755); err != nil {
+			t.Fatalf("mkdir config: %v", err)
+		}
+		content := "# only comments\n# no value on any line\n"
+		if err := os.WriteFile(filepath.Join(dir, ".moai", "config", "build-tags"), []byte(content), 0o644); err != nil {
+			t.Fatalf("write build-tags: %v", err)
+		}
+		if got := readGateGoBuildTags(dir); got != "" {
+			t.Errorf("comment-only build-tags: got %q, want empty", got)
+		}
+	})
+}
