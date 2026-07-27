@@ -121,6 +121,7 @@ When a Bash command contains a destructive primitive, the orchestrator/agent SHA
 - `rm -rf` — recursive forced deletion
 - `git push --force` (and `git push -f`) — force-push rewrites remote history
 - `git push --no-verify` — bypasses pre-push hooks (the harness safety net)
+- `git commit --no-verify` — bypasses the relocated pre-commit quality gate (the harness safety net at the commit tier; enforced mechanically by the PreToolUse guard at `internal/hook/pre_tool.go` per SPEC-PRETOOL-GATE-MOVE-001 REQ-PGM-006 / F5)
 - `git reset --hard` — discards uncommitted working-tree state
 - SQL `DROP TABLE` / `TRUNCATE` — irreversible data loss
 - `chmod -R 777` — recursive world-writable (security hole)
