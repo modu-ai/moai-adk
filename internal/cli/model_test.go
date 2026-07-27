@@ -7,13 +7,14 @@ import (
 )
 
 // TestResolveModelProfileReport_MaxClaude covers REQ-MPM-025 / AC-MPM-016: the
-// resolver emits the Matrix A max column under a Claude backend, with the model
-// as the per-spawn arg and effort as documented intent.
+// resolver emits the top (high) column under a Claude backend, with the model as
+// the per-spawn arg and effort as documented intent. The seeded "max" exercises
+// the superseded top-column alias.
 func TestResolveModelProfileReport_MaxClaude(t *testing.T) {
 	llm := config.LLMConfig{Profile: "max"}
 	rpt := resolveModelProfileReport(llm)
-	if rpt.Profile != "max" || rpt.Backend != "claude" {
-		t.Fatalf("expected profile=max backend=claude, got %s/%s", rpt.Profile, rpt.Backend)
+	if rpt.Profile != "high" || rpt.Backend != "claude" {
+		t.Fatalf("expected profile=high (alias of max) backend=claude, got %s/%s", rpt.Profile, rpt.Backend)
 	}
 	if rpt.WireNote != "" {
 		t.Errorf("Claude backend should carry no GLM wire note")
@@ -22,8 +23,8 @@ func TestResolveModelProfileReport_MaxClaude(t *testing.T) {
 	for _, e := range rpt.Agents {
 		got[e.Agent] = e
 	}
-	if e := got["manager-develop"]; e.Model != "opus" || e.Effort != "high" {
-		t.Errorf("manager-develop max: got %s/%s, want opus/high", e.Model, e.Effort)
+	if e := got["manager-develop"]; e.Model != "opus" || e.Effort != "max" {
+		t.Errorf("manager-develop high: got %s/%s, want opus/max", e.Model, e.Effort)
 	}
 	if e := got["Explore"]; e.Model != "sonnet" || e.Effort != "low" || e.Group != "explore" {
 		t.Errorf("Explore: got %s/%s group=%s, want sonnet/low group=explore", e.Model, e.Effort, e.Group)

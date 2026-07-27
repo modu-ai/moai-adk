@@ -89,14 +89,14 @@ MoAI-ADK 会根据 Claude Code 订阅套餐为智能体分配最优 AI 模型。
 
 ### 策略层级对比
 
-| 策略 | 套餐 | 特点 |
-|------|--------|------|
-| **High** | Max $200/月 | 最高质量 — 规划·审计分配 Opus，最大吞吐量 |
-| **Medium** | Max $100/月 | 质量与成本的平衡 |
-| **Low** | Plus $20/月 | 经济，不含 Opus — 以 Sonnet 为主分配 |
+| 策略 | 特点 |
+|------|------|
+| **high** | 最高质量 — 对调用频率最低的两个智能体使用 `max` 推理深度 |
+| **medium**（默认） | 质量与成本的平衡 — 成本/评分曲线的拐点 |
+| **low** | 每任务成本最低 — agentic 智能体降到 Opus `low` effort |
 
 {{< callout type="warning" >}}
-**为什么重要？** Plus $20 套餐不包含 Opus。设为 `Low` 时，所有智能体都在无 Opus 的情况下运行，避免触发用量限制错误。在更高套餐中，核心阶段（规划、审计）分配 Opus，一般任务分配轻量模型。
+**为什么重要？** 降低层级降低的是*推理深度*，而不是模型级别。在长时程 agentic 任务中，Opus 的 `low` effort 比任何 effort（包括 `max`）的 Sonnet 评分更高、每任务成本更低 — 账单由模型完成任务所花的步数决定，而不是按 token 的单价。因此 `low` 是在 Opus 内部节省，仅在不存在多步完成失败问题的单次调用行（`manager-git`、`Explore`）上才使用 Sonnet。
 {{< /callout >}}
 
 ### 各层级智能体模型分配
@@ -105,24 +105,25 @@ MoAI-ADK 会根据 Claude Code 订阅套餐为智能体分配最优 AI 模型。
 
 #### Manager Agents（5 个）
 
-| 智能体 | High | Medium | Low |
+| 智能体 | high | medium | low |
 |---------|------|--------|-----|
-| manager-spec | opus | opus | sonnet |
-| manager-develop | opus | sonnet | sonnet |
-| manager-docs | sonnet | haiku | haiku |
-| manager-git | haiku | haiku | haiku |
-| manager-design | sonnet | sonnet | sonnet |
+| manager-spec | opus / high | opus / medium | opus / low |
+| manager-develop | opus / max | opus / medium | opus / low |
+| manager-docs | opus / medium | opus / low | sonnet / low |
+| manager-git | sonnet / low | sonnet / low | sonnet / low |
+| manager-design | opus / high | opus / medium | opus / low |
 
-#### Evaluator · Builder · Advisor Agents（4 个）
+#### Evaluator · Builder · Advisor · Specialist Agents（5 个）
 
-| 智能体 | High | Medium | Low |
+| 智能体 | high | medium | low |
 |---------|------|--------|-----|
-| plan-auditor | opus | opus | sonnet |
-| sync-auditor | opus | sonnet | sonnet |
-| builder-harness | opus | sonnet | haiku |
-| super-advisor | opus | opus | sonnet |
+| plan-auditor | opus / high | opus / medium | opus / low |
+| sync-auditor | opus / high | opus / medium | opus / low |
+| builder-harness | opus / high | opus / medium | opus / low |
+| super-advisor | opus / max | opus / high | opus / medium |
+| e2e-tester | opus / medium | opus / low | sonnet / low |
 
-e2e-tester 与内置 `Explore` 直接沿用会话模型 (`model: inherit`)。
+内置 `Explore` 在所有列都解析为 `sonnet / low` — 因为磁盘上没有可固定的智能体文件，这是调用时的默认值。
 
 ### 设置方法
 

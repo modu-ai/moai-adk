@@ -58,15 +58,17 @@ Token prices keep falling, but actual agent workflow spend rises. Agents spin th
 
 ### Cost is determined by assignment, not unit price
 
-The DeepSWE leaderboard (113 tasks) demonstrates this problem. Even within the same Claude family and at the same max effort, per-task costs vary widely.
+The DeepSWE leaderboard (113 tasks, per-effort view) demonstrates this problem. Within the same Claude family, per-task cost tracks how efficiently a model *finishes* — not what a token costs.
 
-| Model [max] | Pass@1 | Per-task cost | $/solved | Tokens/solved | Steps |
-|---|---|---|---|---|---|
-| claude-opus-4.8 | 59% | $13.22 | **$22.4** | 229k | 120 |
-| claude-fable-5 | 70% | $21.63 | $30.9 | 170k | 88 |
-| claude-sonnet-5 | 54% | $26.40 | **$48.9** | 396k | 268 |
+| Model [effort] | Pass@1 | Per-task cost | Output tokens | Steps |
+|---|---|---|---|---|
+| claude-opus-5 [low] | 58% | **$1.66** | 20k | 36 |
+| claude-opus-5 [medium] | 69% | $3.29 | 37k | 52 |
+| claude-opus-5 [high] | 73% | $6.08 | 64k | 73 |
+| claude-opus-5 [max] | 74% | $11.84 | 118k | 99 |
+| claude-sonnet-5 [max] | 54% | **$26.40** | 214k | 268 |
 
-Sonnet 5 max is **more expensive than Opus 5 max per task** ($26.40 vs $13.22) while scoring lower (54% vs 59%). The cause is 268 steps — at max effort, retry loops explode. "Use a weaker model harder to save money" does not hold. It burns three times the steps, consuming more quota. Cost is determined by **assigning the right model and reasoning depth to each task**, not by unit price.
+Opus 5 at its **lowest** effort scores higher than Sonnet 5 at its **highest** (58% vs 54%) while costing one-sixteenth as much per task ($1.66 vs $26.40) — even though Sonnet's per-token price is lower. The cause is 268 steps against 36: retry loops, not token rates, write the invoice. "Use a weaker model harder to save money" does not hold. Cost is determined by **assigning the right model and reasoning depth to each task**, not by unit price.
 
 MoAI-ADK systematizes this assignment instead of leaving it to chance.
 
@@ -78,9 +80,9 @@ MoAI-ADK systematizes this assignment instead of leaving it to chance.
 
 **Tier×Phase Matrix**. Declaratively assign models and reasoning effort (effort) by work phase (plan / run / sync) and SPEC size (Tier S / M / L). Deploy high-reasoning models to planning phases that need deep inference, and light models to implementation phases with mechanical repetition. Maximize quality per cost.
 
-**No-Haiku 3-Tier Policy**. Exclude Haiku from the routing model set, distributing work across a 3-tier structure (Sonnet / Opus / Fable). Assign Sonnet low effort to mechanical tasks to minimize step count, and deploy upper-tier models where reasoning matters.
+**No-Haiku 3-Tier Policy**. Exclude Haiku from the routing model set, distributing work across a 3-tier structure keyed to task character. Sonnet at low effort takes single-shot, input-dominated work (git mechanics, read-only search) to minimize step count; Opus carries every multi-turn agentic row, with `max` effort reserved for the two rarest-invocation ones.
 
-**Profile Matrix**. A single per-agent profile matrix maps each retained agent to a `{model, effort}` pair. One profile axis — `max` / `medium` (default) / `low`, selected via `llm.profile` (`moai init --profile`, `moai update --profile`) — picks the active column; `moai model profile` resolves each agent's cell. The 10 grouped agents draw model+effort from the matrix (no Haiku anywhere), while `Explore` and user-defined agents inherit the session model.
+**Profile Matrix**. A single per-agent profile matrix maps each of the 11 retained agents to a `{model, effort}` pair — 33 cells. One profile axis — `high` / `medium` (default) / `low`, selected via `llm.profile` (`moai init --profile`, `moai update --profile`) — picks the active column; `moai model profile` resolves each agent's cell. Every retained agent, `Explore` included, draws model+effort from the matrix (no Haiku anywhere); only user-defined agents inherit the session model.
 
 **CG Mode (Claude + GLM)**. `moai cg` is a hybrid mode combining Claude leader and GLM workers. Strategy, planning, and audits run on Claude; bulk implementation runs on GLM. **60-70% cost savings** on implementation-heavy workloads.
 
@@ -247,7 +249,7 @@ Natural language works too. `/moai "fix the login bug"` triggers intent analysis
 | **Specialist** | e2e-tester | 🟠 | Web/mobile/desktop E2E test execution (CLI-first) |
 | **Built-in** | Explore | ⚪ | Read-only codebase exploration |
 
-Cost colors follow the default `medium` profile's model×effort cells (inspect via `moai model profile`): 🔴 opus+high · 🟠 opus+medium · 🔵 sonnet+medium / fable+low · 🩵 sonnet+low · ⚪ session-model inherit. Assignments shift when switching profiles (`max`/`low`). Progress of long-running delegations is recorded on the Task channel and relayed by the orchestrator as an icon Progress Board.
+Cost colors follow the default `medium` profile's model×effort cells (inspect via `moai model profile`): 🔴 opus+high · 🟠 opus+medium · 🔵 opus+low · 🩵 sonnet+low · ⚪ session-model inherit (user-added agents). Assignments shift when switching profiles (`high`/`low`). Progress of long-running delegations is recorded on the Task channel and relayed by the orchestrator as an icon Progress Board.
 
 ### TRUST 5 Quality Gates
 

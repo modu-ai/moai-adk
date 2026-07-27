@@ -57,12 +57,20 @@ var (
 	}
 	// validRoutingPerfTiers is the closed set of performance tiers for the
 	// No-Haiku 3-tier policy (SPEC-AGENT-ARCH-V2-001 M3, design.md §D.2).
+	// The top tier is named "high"; the superseded "max" name is accepted via
+	// NormalizeProfile so pre-rename workflow.yaml blocks keep resolving.
 	validRoutingPerfTiers = map[string]bool{
-		"max":    true,
-		"medium": true,
-		"low":    true,
+		ProfileHigh:   true,
+		ProfileMedium: true,
+		ProfileLow:    true,
 	}
 )
+
+// isValidRoutingPerfTier reports whether the tier is a member of the closed set
+// after the max->high alias is applied.
+func isValidRoutingPerfTier(tier string) bool {
+	return validRoutingPerfTiers[NormalizeProfile(tier)]
+}
 
 // defaultRoutingEntry is the documented fallback returned when a (Tier, Phase)
 // pair is absent from the declared model_routing map (REQ-TR-002). The caller
@@ -122,10 +130,10 @@ func (c *Config) RouteModelFor(specTier, phase, perfTier string) (ModelRoutingEn
 			Value:   phase,
 		}
 	}
-	if !validRoutingPerfTiers[perfTier] {
+	if !isValidRoutingPerfTier(perfTier) {
 		return ModelRoutingEntry{}, &ValidationError{
 			Field:   "perfTier",
-			Message: fmt.Sprintf("perfTier %q not in closed set {max, medium, low}", perfTier),
+			Message: fmt.Sprintf("perfTier %q not in closed set {high, medium, low}", perfTier),
 			Value:   perfTier,
 		}
 	}
@@ -134,7 +142,13 @@ func (c *Config) RouteModelFor(specTier, phase, perfTier string) (ModelRoutingEn
 		return defaultRoutingEntry, nil
 	}
 
-	tierPhaseMap, ok := c.Workflow.ModelRoutingProfiles[perfTier]
+	// Look the tier up under its canonical name first, then under the
+	// superseded alias, so a pre-rename `max:` block still resolves.
+	canonical := NormalizeProfile(perfTier)
+	tierPhaseMap, ok := c.Workflow.ModelRoutingProfiles[canonical]
+	if !ok && canonical == ProfileHigh {
+		tierPhaseMap, ok = c.Workflow.ModelRoutingProfiles[LegacyProfileMax]
+	}
 	if !ok {
 		return defaultRoutingEntry, nil
 	}
@@ -166,10 +180,10 @@ func (c *Config) ValidateModelRoutingProfiles() error {
 	sort.Strings(perfTiers)
 
 	for _, pt := range perfTiers {
-		if !validRoutingPerfTiers[pt] {
+		if !isValidRoutingPerfTier(pt) {
 			return &ValidationError{
 				Field:   fmt.Sprintf("model_routing_profiles.%s", pt),
-				Message: fmt.Sprintf("perfTier %q not in closed set {max, medium, low}", pt),
+				Message: fmt.Sprintf("perfTier %q not in closed set {high, medium, low}", pt),
 				Value:   pt,
 			}
 		}

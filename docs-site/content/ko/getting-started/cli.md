@@ -71,9 +71,9 @@ moai init [project-name] [OPTIONS]
 | `--enable-lsp` | LSP 연동 활성화 (기본값: true) |
 | `--enforce-quality` | 품질 게이트 강제 (기본값: true) |
 | `--enable-design` | 디자인 워크플로우 활성화 (기본값: true) |
-| `--profile <max\|medium\|low>` | 모델+effort 프로필 — `llm.yaml` `profile` 에 저장 (프로필 매트릭스 열 선택) |
-| `--model-policy <max\|medium\|low>` | legacy 성능 티어 — `llm.yaml` `performance_tier` 에 저장 (`profile` 부재 시 별칭) |
-| `--high` | **삭제 예정** `--model-policy max` 의 별칭 |
+| `--profile <high\|medium\|low>` | 모델+effort 프로필 — `llm.yaml` `profile` 에 저장 (프로필 매트릭스 열 선택). legacy 값 `max` 도 입력으로 받아 `high` 로 정규화 |
+| `--model-policy <high\|medium\|low>` | legacy 성능 티어 — `llm.yaml` `performance_tier` 에 저장 (`profile` 부재 시 별칭) |
+| `--high` | **삭제 예정** `--model-policy high` 의 별칭 |
 
 ### 예시
 
@@ -115,7 +115,7 @@ moai update [OPTIONS]
 | `--no-hooks` | Git 훅 설치 건너뛰기 |
 | `--verbose` | 모든 경고 표시 (진단 모드) |
 | `--shell-env` | Claude Code 용 셸 환경변수 구성 |
-| `--profile <max\|medium\|low>` | 모델+effort 프로필 덮어쓰기 (`llm.yaml` `profile` 에 저장) |
+| `--profile <high\|medium\|low>` | 모델+effort 프로필 덮어쓰기 (`llm.yaml` `profile` 에 저장) |
 
 ### 예시
 
@@ -471,19 +471,19 @@ MoAI-ADK는 에이전트에 최적의 AI 모델을 할당하는 성능 티어 �
 
 | 티어 | 특징 |
 |------|------|
-| **max** | 최고 품질 — 계획·감사에 Opus 배정, 최대 추론 깊이 |
+| **high** | 최고 품질 — 호출 빈도가 가장 낮은 두 에이전트에 `max` 추론 깊이 |
 | **medium** (기본값) | 품질과 비용의 균형 |
-| **low** | 경제적 — Sonnet 중심 배분 |
+| **low** | 작업당 최저 비용 — 에이전틱 에이전트는 Opus `low` effort로 내려가고, Sonnet은 단발 행에만 |
 
 ```bash
 # 초기화 시 설정
-moai init my-project --model-policy max
+moai init my-project --model-policy high
 
 # 기존 프로젝트에서 재설정
 moai update -c
 ```
 
-프로필(`profile`: max/medium/low)은 프로필 매트릭스의 활성 열을 선택하여 각 에이전트의 model+effort를 결정합니다. 자세한 에이전트별 매핑은 [프로필 매트릭스](/ko/advanced/profile-matrix/) 페이지를 참조하세요.
+프로필(`profile`: high/medium/low)은 프로필 매트릭스의 활성 열을 선택하여 각 에이전트의 model+effort를 결정합니다. 자세한 에이전트별 매핑은 [프로필 매트릭스](/ko/advanced/profile-matrix/) 페이지를 참조하세요.
 
 ---
 

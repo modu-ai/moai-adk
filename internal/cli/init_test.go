@@ -414,9 +414,10 @@ func TestValidateInitFlags_ValidProfile(t *testing.T) {
 }
 
 // TestValidateInitFlags_InvalidProfile (REQ-MPM-015) — an out-of-set value
-// errors, and the message names the closed set {max, medium, low}.
+// errors, and the message names the closed set {high, medium, low}. Note "high"
+// is now the canonical top column and is therefore VALID.
 func TestValidateInitFlags_InvalidProfile(t *testing.T) {
-	for _, p := range []string{"bogus", "high", "subscription"} {
+	for _, p := range []string{"bogus", "subscription", "xhigh"} {
 		t.Run(p, func(t *testing.T) {
 			resetInitFlagsForProfile(t)
 			if err := initCmd.Flags().Set("profile", p); err != nil {
@@ -430,8 +431,53 @@ func TestValidateInitFlags_InvalidProfile(t *testing.T) {
 			if !strings.Contains(msg, "invalid --profile") {
 				t.Errorf("error should mention 'invalid --profile', got: %v", err)
 			}
-			if !strings.Contains(msg, "max, medium, low") {
-				t.Errorf("error should name the closed set, got: %v", err)
+			if !strings.Contains(msg, "high, medium, low") {
+				t.Errorf("error should name the canonical closed set, got: %v", err)
+			}
+			if strings.Contains(msg, "max, medium, low") {
+				t.Errorf("error must not name the superseded top-column set, got: %v", err)
+			}
+		})
+	}
+	resetInitFlagsForProfile(t)
+}
+
+// TestValidateInitFlags_ModelPolicyVocabulary — --model-policy and --profile are
+// the same axis, so they MUST share one closed set. "high" is the canonical top
+// column and must be accepted; the superseded "max" stays valid as a read-time
+// alias; out-of-set values error with a message naming the canonical set. This
+// pins the regression where --model-policy kept the pre-rename {max, medium,
+// low} set after --profile had already moved to {high, medium, low}.
+func TestValidateInitFlags_ModelPolicyVocabulary(t *testing.T) {
+	valid := []string{"high", "medium", "low", "max"}
+	for _, v := range valid {
+		t.Run("valid/"+v, func(t *testing.T) {
+			resetInitFlagsForProfile(t)
+			if err := initCmd.Flags().Set("model-policy", v); err != nil {
+				t.Fatal(err)
+			}
+			if err := validateInitFlags(initCmd, []string{}); err != nil {
+				t.Errorf("--model-policy=%q should be accepted, got: %v", v, err)
+			}
+		})
+	}
+
+	for _, v := range []string{"bogus", "xhigh", "subscription"} {
+		t.Run("invalid/"+v, func(t *testing.T) {
+			resetInitFlagsForProfile(t)
+			if err := initCmd.Flags().Set("model-policy", v); err != nil {
+				t.Fatal(err)
+			}
+			err := validateInitFlags(initCmd, []string{})
+			if err == nil {
+				t.Fatalf("--model-policy=%q should error, got nil", v)
+			}
+			msg := err.Error()
+			if !strings.Contains(msg, "invalid --model-policy") {
+				t.Errorf("error should mention 'invalid --model-policy', got: %v", err)
+			}
+			if !strings.Contains(msg, "high, medium, low") {
+				t.Errorf("error should name the canonical closed set, got: %v", err)
 			}
 		})
 	}
@@ -471,8 +517,8 @@ func TestInitCmd_ProfilePersistence(t *testing.T) {
 	if err != nil {
 		t.Fatalf("read deployed llm.yaml: %v", err)
 	}
-	if !strings.Contains(string(content), "profile: max") {
-		t.Errorf("deployed llm.yaml should contain 'profile: max', got:\n%s", content)
+	if !strings.Contains(string(content), "profile: high") {
+		t.Errorf("deployed llm.yaml should contain 'profile: high', got:\n%s", content)
 	}
 	if strings.Contains(string(content), "plan_type") {
 		t.Errorf("deployed llm.yaml must NOT contain a plan_type key (retired), got:\n%s", content)

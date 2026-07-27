@@ -58,8 +58,8 @@ Accepts at most 1 argument.
 | `--git-mode <manual\|personal\|team>` | Git workflow mode (default: manual) |
 | `--git-provider <github\|gitlab>` | Git provider |
 | `--github-username <name>` | GitHub username (required for personal/team mode) |
-| `--profile <max\|medium\|low>` | Model+effort profile — stored in `profile` of `llm.yaml` (selects the profile matrix column) |
-| `--model-policy <max\|medium\|low>` | Legacy performance tier — stored in `performance_tier` of `llm.yaml` (read as an alias when `profile` is absent) |
+| `--profile <high\|medium\|low>` | Model+effort profile — stored in `profile` of `llm.yaml` (selects the profile matrix column). The legacy value `max` is accepted as input and normalized to `high` |
+| `--model-policy <high\|medium\|low>` | Legacy performance tier — stored in `performance_tier` of `llm.yaml` (read as an alias when `profile` is absent) |
 
 ## Examples
 

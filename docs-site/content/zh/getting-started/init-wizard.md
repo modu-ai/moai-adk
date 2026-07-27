@@ -91,18 +91,18 @@ moai init my-project
 
 ```bash
 ? 选择性能层级:
-▸ Medium (推荐) - 质量与成本的平衡,Max $100 计划
-  Max - Fable 5(low) + Opus 4.8(high) + Sonnet(medium~low),Max $200 计划
-  Low - Opus 4.8(high~low) + Sonnet(medium~low),Plus $20 计划
+▸ Medium - Opus 5 (high~low) + Sonnet (low, single-shot rows only)
+  High - Opus 5 (max~medium) + Sonnet (low, single-shot rows only)
+  Low - Opus 5 (medium~low) + Sonnet (low, docs/e2e/single-shot rows)
 ```
 
 | 层级 | 特点 |
 |------|------|
-| **Max** | 最高质量分配 —— 面向 Max $200 计划 |
-| **Medium**(默认) | 质量与成本的平衡 —— 面向 Max $100 计划 |
-| **Low** | 经济分配 —— 面向 Plus $20 计划 |
+| **High** | 最高质量 —— 对调用频率最低的两个代理使用 `max` 推理深度 |
+| **Medium**（默认） | 质量与成本的平衡 —— 成本/分数曲线的膝点 |
+| **Low** | 每任务最低成本 —— 智能体类代理降至 Opus `low` effort |
 
-该设置保存到 `.moai/config/sections/llm.yaml` 的 `performance_tier` 字段，并作为 `profile` 字段(配置矩阵列)的 legacy 别名读取。用 `--profile max|medium|low` 标志直接指定则保存到 `profile` 字段。每个配置文件的代理 model+effort 映射请参阅[配置矩阵](/zh/advanced/profile-matrix/)页面。
+该设置保存到 `.moai/config/sections/llm.yaml` 的 `performance_tier` 字段，并作为 `profile` 字段(配置矩阵列)的 legacy 别名读取。用 `--profile high|medium|low` 标志直接指定则保存到 `profile` 字段。每个配置文件的代理 model+effort 映射请参阅[配置矩阵](/zh/advanced/profile-matrix/)页面。
 
 ### 报告格式
 

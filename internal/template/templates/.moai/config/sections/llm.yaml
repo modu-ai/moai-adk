@@ -5,64 +5,135 @@ llm:
 
   # Per-agent model+effort profile selection (set once during init/update).
   # Selects the active column of the profile matrix below for all sub-agents.
-  #   max    - highest-quality column
+  #   high   - quality-first column (top)
   #   medium - balanced default column
   #   low    - economical column
-  # Absent or empty resolves to medium (backward compatible).
+  # Absent or empty resolves to medium (backward compatible). The superseded
+  # top-column name "max" is still READ as an alias for "high", but is never
+  # written back.
   profile: "medium"
 
   # Legacy performance tier (read-time alias only — `profile` supersedes it).
   # Retained so the separate Tier x Phase routing axis keeps a tier source.
-  # When `profile` is absent, this value is aliased (high -> max; max/medium/low
-  # pass through). Options: max, high (legacy), medium, low.
+  # Now that the top column is named "high", this axis shares the profile
+  # vocabulary exactly, so no projection is applied (a legacy "max" folds to
+  # "high"). Options: high, medium, low.
   performance_tier: "medium"
 
-  # Profile matrix (transparency + editability). Each profile column maps the
-  # six agent GROUPS to a {model, effort} pair. The Go default
-  # (template.DefaultProfileMatrix) is the authoritative fallback for any cell
-  # absent here. Agent groups:
-  #   spec_auditors      - manager-spec, plan-auditor, sync-auditor
-  #   develop            - manager-develop
-  #   advisor            - super-advisor
-  #   design_harness_e2e - manager-design, builder-harness, e2e-tester
-  #   docs               - manager-docs
-  #   git                - manager-git
-  #   explore            - Explore (Anthropic built-in read-only search agent)
-  # (explore/docs/git are profile-invariant. Only user-added agents have no
-  #  group row — they stay model: inherit, never injected.)
+  # Profile matrix (transparency + editability). Each profile column maps each
+  # retained agent NAME to a {model, effort} pair — 11 agents x 3 columns = 33
+  # cells. The Go default (template.DefaultProfileMatrix) is the authoritative
+  # fallback for any cell absent here. Agents not listed (any user-added agent)
+  # stay model: inherit and are never injected.
+  #
+  # Column intent (anchored on a long-horizon coding-agent benchmark measuring
+  # score, cost per task, output tokens, and agent steps at every effort level):
+  #   high   - quality first. Opus `max` only where invocation is rare and the
+  #            marginal quality is decision-critical; `high` elsewhere.
+  #   medium - the balanced default. manager-develop at Opus `medium` is the
+  #            anchor: `medium` is the knee of the Opus cost/score curve, and
+  #            the marginal cost per point rises several-fold above it.
+  #   low    - economical. Opus `low` still outscores Sonnet at any effort and
+  #            costs less per task, so it is the floor for agentic rows.
+  #
+  # Two model rules the matrix encodes:
+  #   - Opus is the model for every multi-turn agentic row. Sonnet needs a
+  #     multiple of the agent steps and output tokens to finish the same
+  #     long-horizon task, so it costs MORE per task despite the lower unit
+  #     token price. Completion efficiency dominates unit price.
+  #   - Sonnet is retained only for single-shot, input-dominated, non-agentic
+  #     rows (Explore search, manager-git mechanics), where that multi-step
+  #     failure does not apply and the lower input price does.
+  #
+  # `xhigh` is absent from the matrix on purpose: on Opus it scores the same as
+  # `high` at materially higher cost, so it is strictly dominated.
+  #
+  # manager-git / Explore are profile-invariant.
   #
   # The model value is injected as a per-spawn runtime arg ([1m]-safe). The
-  # effort value is documented intent: consumed by the agent frontmatter default,
-  # the GLM effort overlay, and Workflow/general-purpose prompt steering — it is
-  # NOT a per-spawn override for a named subagent.
+  # effort value reaches the agent through its frontmatter `effort:` (the Agent
+  # tool has no effort parameter) or through Workflow `opts.effort`. Explore has
+  # no agent file, so its effort is stated at call time, never persisted.
   profiles:
-    max:
-      spec_auditors:      { model: fable,  effort: low }
-      develop:            { model: opus,   effort: high }
-      advisor:            { model: fable,  effort: low }
-      design_harness_e2e: { model: opus,   effort: high }
-      docs:               { model: sonnet, effort: medium }
-      git:                { model: sonnet, effort: low }
-      explore:            { model: sonnet, effort: low }
+    high:
+      manager-spec:    { model: opus,   effort: high }
+      plan-auditor:    { model: opus,   effort: high }
+      sync-auditor:    { model: opus,   effort: high }
+      manager-develop: { model: opus,   effort: max }
+      super-advisor:   { model: opus,   effort: max }
+      manager-design:  { model: opus,   effort: high }
+      builder-harness: { model: opus,   effort: high }
+      e2e-tester:      { model: opus,   effort: medium }
+      manager-docs:    { model: opus,   effort: medium }
+      manager-git:     { model: sonnet, effort: low }
+      Explore:         { model: sonnet, effort: low }
     medium:
-      spec_auditors:      { model: opus,   effort: high }
-      develop:            { model: opus,   effort: xhigh }
-      advisor:            { model: opus,   effort: low }
-      design_harness_e2e: { model: opus,   effort: medium }
-      docs:               { model: sonnet, effort: medium }
-      git:                { model: sonnet, effort: low }
-      explore:            { model: sonnet, effort: low }
+      manager-spec:    { model: opus,   effort: medium }
+      plan-auditor:    { model: opus,   effort: medium }
+      sync-auditor:    { model: opus,   effort: medium }
+      manager-develop: { model: opus,   effort: medium }
+      super-advisor:   { model: opus,   effort: high }
+      manager-design:  { model: opus,   effort: medium }
+      builder-harness: { model: opus,   effort: medium }
+      e2e-tester:      { model: opus,   effort: low }
+      manager-docs:    { model: opus,   effort: low }
+      manager-git:     { model: sonnet, effort: low }
+      Explore:         { model: sonnet, effort: low }
     low:
-      spec_auditors:      { model: opus,   effort: low }
-      develop:            { model: opus,   effort: medium }
-      advisor:            { model: opus,   effort: high }
-      design_harness_e2e: { model: opus,   effort: low }
-      docs:               { model: sonnet, effort: medium }
-      git:                { model: sonnet, effort: low }
-      explore:            { model: sonnet, effort: low }
+      manager-spec:    { model: opus,   effort: low }
+      plan-auditor:    { model: opus,   effort: low }
+      sync-auditor:    { model: opus,   effort: low }
+      manager-develop: { model: opus,   effort: low }
+      super-advisor:   { model: opus,   effort: medium }
+      manager-design:  { model: opus,   effort: low }
+      builder-harness: { model: opus,   effort: low }
+      e2e-tester:      { model: sonnet, effort: low }
+      manager-docs:    { model: sonnet, effort: low }
+      manager-git:     { model: sonnet, effort: low }
+      Explore:         { model: sonnet, effort: low }
+
+  # Harness-generation model+effort map, consumed by /moai:harness when it
+  # generates a specialist agent. Keyed profile -> purpose class -> { effort }.
+  #
+  # Harness agents are MODEL-UNIFORM on purpose: they are persistent, user-owned
+  # specialists whose differentiation is reasoning DEPTH, not model tier, so the
+  # effort axis alone separates them. The model is always `opus` — a `model:`
+  # value written here is ignored. Pinning is safe because every current
+  # non-haiku model carries a 1M context window, so an explicit pin no longer
+  # loses the 1M entitlement that inherit-by-default used to preserve.
+  #
+  # The purpose classes are the same 7 names as the `workflow_agents` taxonomy in
+  # workflow.yaml, so the two surfaces share one vocabulary. Each effort is
+  # derived from the profile-matrix row named in the comment; an absent cell
+  # falls through to that row's effort.
+  harness_agents:
+    high:
+      read-only-extract:    { effort: low }     # <- Explore row
+      mechanical-transform: { effort: low }     # <- manager-git row
+      synthesize:           { effort: medium }  # <- manager-docs row
+      research:             { effort: high }    # <- plan-auditor row
+      verify-judge:         { effort: high }    # <- sync-auditor row
+      implement:            { effort: max }     # <- manager-develop row
+      design-architecture:  { effort: high }    # <- manager-design row
+    medium:
+      read-only-extract:    { effort: low }
+      mechanical-transform: { effort: low }
+      synthesize:           { effort: low }
+      research:             { effort: medium }
+      verify-judge:         { effort: medium }
+      implement:            { effort: medium }
+      design-architecture:  { effort: medium }
+    low:
+      read-only-extract:    { effort: low }
+      mechanical-transform: { effort: low }
+      synthesize:           { effort: low }
+      research:             { effort: low }
+      verify-judge:         { effort: low }
+      implement:            { effort: low }
+      design-architecture:  { effort: low }
 
   # Optional per-agent overrides, keyed by canonical agent name. Each override
-  # {model, effort} pair wins over the active profile's group cell for that agent.
+  # {model, effort} pair wins over the active profile's cell for that agent.
   # Example (uncomment + edit to pin an agent):
   #   agent_overrides:
   #     manager-develop: { model: opus, effort: xhigh }

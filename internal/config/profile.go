@@ -10,13 +10,23 @@ import "strings"
 
 // Profile closed-set values (REQ-MPM-001). Named constants per CLAUDE.local.md
 // §14 (no magic strings for the enum), mirroring the validPlanTypes pattern.
+//
+// The top column is named "high" (formerly "max"). The rename unifies three
+// vocabularies that previously disagreed: llm.profile, the legacy
+// llm.performance_tier, and template.ModelPolicy are now all {high, medium,
+// low}, so the former performance_tier high->max projection is an identity and
+// no migration pass is required. Configs written before the rename carry
+// profile: max; LegacyProfileMax keeps them resolving via NormalizeProfile.
 const (
-	// ProfileMax is the highest-quality profile column.
-	ProfileMax = "max"
+	// ProfileHigh is the highest-quality profile column.
+	ProfileHigh = "high"
 	// ProfileMedium is the balanced default profile column (DECISION-002).
 	ProfileMedium = "medium"
 	// ProfileLow is the economical profile column.
 	ProfileLow = "low"
+	// LegacyProfileMax is the superseded name of the top column. It is accepted
+	// as a read-time alias for ProfileHigh and is never written back.
+	LegacyProfileMax = "max"
 	// DefaultProfile is the effective profile when llm.profile is absent/empty
 	// and no legacy performance_tier alias applies (REQ-MPM-002, DECISION-002).
 	DefaultProfile = ProfileMedium
@@ -24,22 +34,37 @@ const (
 
 // validProfiles is the single source of truth for the llm.profile closed set.
 var validProfiles = map[string]bool{
-	ProfileMax:    true,
+	ProfileHigh:   true,
 	ProfileMedium: true,
 	ProfileLow:    true,
 }
 
+// NormalizeProfile maps a persisted profile value onto the canonical closed set,
+// translating the superseded top-column name (max -> high). Any other value is
+// returned verbatim so callers can still reject it as out-of-set.
+//
+// @MX:ANCHOR: [AUTO] NormalizeProfile — the max->high read-time alias
+// @MX:REASON: [AUTO] fan_in >= 3 (EffectiveProfile + validateProfile + template NormalizeToTier); the sole compatibility bridge for pre-rename configs
+func NormalizeProfile(name string) string {
+	if name == LegacyProfileMax {
+		return ProfileHigh
+	}
+	return name
+}
+
 // IsValidProfile reports whether name is one of the closed-set profiles
-// (max, medium, low). The empty string is NOT a member here; callers that treat
-// empty as "keep the effective default" use EffectiveProfile instead.
+// (high, medium, low) or the accepted legacy alias (max). The empty string is
+// NOT a member here; callers that treat empty as "keep the effective default"
+// use EffectiveProfile instead.
 func IsValidProfile(name string) bool {
-	return validProfiles[name]
+	return validProfiles[NormalizeProfile(name)]
 }
 
 // ValidProfiles returns the closed-set profile names for UI option lists.
-// Order is stable (max, medium, low) for deterministic rendering.
+// Order is stable (high, medium, low) for deterministic rendering. The legacy
+// max alias is intentionally absent — it is readable but never offered.
 func ValidProfiles() []string {
-	return []string{ProfileMax, ProfileMedium, ProfileLow}
+	return []string{ProfileHigh, ProfileMedium, ProfileLow}
 }
 
 // ModelEffort carries a {model, effort} assignment for one agent or one
@@ -51,25 +76,25 @@ type ModelEffort struct {
 }
 
 // EffectiveProfile resolves the active profile (REQ-MPM-002):
-//  1. a non-empty llm.profile value passes through verbatim;
-//  2. else the legacy llm.performance_tier is used as a read-time alias —
-//     "high" maps to "max"; "max"/"medium"/"low" pass through;
+//  1. a non-empty llm.profile value passes through NormalizeProfile
+//     (max -> high; high/medium/low verbatim);
+//  2. else the legacy llm.performance_tier is used the same way — since the
+//     top column is now named "high", the former high->max projection is an
+//     identity and a pre-rename "max" resolves to "high";
 //  3. else the default profile ("medium", DECISION-002).
 //
 // The separate init-selection constant DefaultModelPolicy = "medium"
 // (template package) is NOT consulted here; since
 // SPEC-CLI-WIZARD-RESTRUCTURE-001 it happens to agree with this function's own
-// default. The high→max projection above is kept only for the
-// performance_tier alias.
+// default. With the top column renamed from "max" to "high", the profile and
+// performance_tier axes share one vocabulary, so no separate projection
+// survives — only the max -> high read alias remains.
 func (l LLMConfig) EffectiveProfile() string {
 	if p := strings.TrimSpace(l.Profile); p != "" {
-		return p
+		return NormalizeProfile(p)
 	}
 	if pt := strings.TrimSpace(l.PerformanceTier); pt != "" {
-		if pt == "high" {
-			return ProfileMax // legacy performance_tier: high → max
-		}
-		return pt // max/medium/low pass through
+		return NormalizeProfile(pt)
 	}
 	return DefaultProfile
 }
@@ -133,12 +158,12 @@ var retainedAgentNames = map[string]bool{
 // offending value AND the closed set {max, medium, low}.
 func validateProfile(cfg *Config) []ValidationError {
 	p := strings.TrimSpace(cfg.LLM.Profile)
-	if p == "" || validProfiles[p] {
+	if p == "" || IsValidProfile(p) {
 		return nil
 	}
 	return []ValidationError{{
 		Field:   "llm.profile",
-		Message: "profile " + p + " is not in the closed set {max, medium, low}",
+		Message: "profile " + p + " is not in the closed set {high, medium, low}",
 		Value:   p,
 		Wrapped: ErrInvalidConfig,
 	}}

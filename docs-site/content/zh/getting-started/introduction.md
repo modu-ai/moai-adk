@@ -185,12 +185,12 @@ MoAI-ADK 依 Claude Code 订阅套餐为智能体分配最优 AI 模型。在套
 
 | 层级 | 特点 |
 |------|------|
-| **max** | 最高质量 —— 计划·审计分配 Opus,最大推理深度 |
+| **high** | 最高质量 —— 对调用频率最低的两个智能体使用 `max` 推理深度 |
 | **medium**(默认) | 质量与成本的平衡 |
-| **low** | 经济 —— 以 Sonnet 为中心分配 |
+| **low** | 每任务成本最低 —— agentic 智能体降到 Opus `low` effort,Sonnet 仅用于单次调用的行 |
 
 {{< callout type="info" >}}
-默认层级是 **medium**。`low` 层级设计为即使没有上位模型(Opus)整个工作流也能运转。`max` 层级会为核心阶段(计划、审计)分配 Opus,为一般作业分配轻量模型。通过 `--model-policy` 标志或初始化向导设置。
+默认层级是 **medium**。层级调整的是每个智能体在 Opus 推理深度阶梯上的位置,而不是换成更弱的模型级别 —— `low` 让所有 agentic 行保持 Opus 并使用 `low` effort,仅在单次调用的行上回退到 Sonnet;`high` 则把调用频率最低的两个智能体提升到 `max` effort。通过 `--model-policy` 标志或初始化向导设置。
 {{< /callout >}}
 
 ### 执行模式与编排

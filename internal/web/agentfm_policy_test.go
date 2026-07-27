@@ -126,12 +126,14 @@ func TestAgentFMPolicy_ProfilePersistsWithoutFrontmatterMutation(t *testing.T) {
 		t.Fatalf("POST /save (profile change) = %d, want 200; body: %s", rec.Code, rec.Body.String())
 	}
 
+	// "max" is the superseded top-column name: accepted on the wire, normalized to
+	// the canonical "high" on both persisted axes so they cannot disagree.
 	got := string(readLLMYAML(t, root))
-	if !strings.Contains(got, "profile: max") {
-		t.Errorf("llm.yaml did not persist profile: max; got:\n%s", got)
+	if !strings.Contains(got, "profile: high") {
+		t.Errorf("llm.yaml did not persist profile: high (normalized from max); got:\n%s", got)
 	}
-	if !strings.Contains(got, "performance_tier: max") {
-		t.Errorf("llm.yaml did not persist the performance_tier: max alias; got:\n%s", got)
+	if !strings.Contains(got, "performance_tier: high") {
+		t.Errorf("llm.yaml did not persist the performance_tier: high alias; got:\n%s", got)
 	}
 	// Frontmatter MUST be untouched (REQ-MPM-040 — no ApplyTierProfile re-apply).
 	if gotModel := agentFrontmatterValue(t, root, "manager-spec", "model"); gotModel != "inherit" {
@@ -158,7 +160,9 @@ func TestAgentFMPolicy_InvalidValuesRejected(t *testing.T) {
 		field string
 		value string
 	}{
-		{"performance_tier out-of-set (legacy wizard vocabulary)", "performance_tier", "high"},
+		// "high" is now the canonical top column, so it is VALID. An effort-level
+		// token is the nearest out-of-set value on this axis.
+		{"performance_tier out-of-set (effort-level token)", "performance_tier", "xhigh"},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -222,8 +226,10 @@ func TestAgentFMPolicy_SelectorsRenderAtTopOfPanel(t *testing.T) {
 	if !strings.Contains(body, `name="performance_tier"`) {
 		t.Error("agentfm panel missing the performance_tier selector")
 	}
-	if !strings.Contains(body, `value="max" checked`) {
-		t.Error("performance_tier selector did not pre-select the active tier (max)")
+	// The seeded config carries the superseded "max"; the radio group offers only
+	// the canonical set, so the alias must pre-select "high".
+	if !strings.Contains(body, `value="high" checked`) {
+		t.Error("performance_tier selector did not pre-select the aliased active tier (max -> high)")
 	}
 
 	secIdx := strings.Index(body, `data-i18n="sec.agentfm.title"`)
