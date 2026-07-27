@@ -325,7 +325,42 @@ var ErrRollbackIntegrityFailed = errors.New("harness: rollback byte-length integ
 //
 // @MX:ANCHOR: [AUTO] Apply is the single entry point of Phase 4 learning application pipeline.
 // @MX:REASON: [AUTO] fan_in >= 3: applier_test.go, harness CLI apply, moai-harness-learner skill
+
+// missingApplyFields returns the JSON field names of the apply-instruction
+// fields (target_path / field_key / new_value) that are empty on proposal.
+// A non-empty result means the proposal is not an apply input (spec.md §A.4 —
+// it is a discovery report carrying pattern metadata, not an edit instruction).
+// Used by the Step 0 applicability pre-flight so the diagnostic names the exact
+// missing field(s) rather than a generic rejection (AC-HLR-015).
+func missingApplyFields(p Proposal) []string {
+	var missing []string
+	if p.TargetPath == "" {
+		missing = append(missing, "target_path")
+	}
+	if p.FieldKey == "" {
+		missing = append(missing, "field_key")
+	}
+	if p.NewValue == "" {
+		missing = append(missing, "new_value")
+	}
+	return missing
+}
+
 func (a *Applier) Apply(proposal Proposal, evaluator SafetyEvaluator, snapshotBase string, sessions []Session) error {
+	// ── Step 0: Applicability pre-flight (SPEC-HARNESS-LOOP-REPAIR-001 REQ-HLR-004c, AC-HLR-015) ──
+	// A proposal that decodes but carries no target_path / field_key / new_value is
+	// not an apply input — it is a discovery report (spec.md §A.4). The 5-layer
+	// safety pipeline below checks whether an edit is SAFE, never whether an edit
+	// was SPECIFIED (spec.md §A.7); a content-free proposal would otherwise pass
+	// every layer and reach createSnapshot, which creates a dated directory before
+	// failing on os.ReadFile(""). Reject before any pipeline work or snapshot so no
+	// directory is left behind. This guard runs AHEAD of Step 1 by design (§A.7:
+	// the fix is a guard before the pipeline, not a change inside it).
+	if missing := missingApplyFields(proposal); len(missing) > 0 {
+		return fmt.Errorf("applier: proposal not applicable — missing required field(s): %s",
+			strings.Join(missing, ", "))
+	}
+
 	// ── Step 1: Safety Pipeline Evaluation ─────────────────────────────────────────
 	// [HARD] Must pass all 5-Layers including Frozen Guard.
 	decision, err := evaluator.Evaluate(proposal, sessions)

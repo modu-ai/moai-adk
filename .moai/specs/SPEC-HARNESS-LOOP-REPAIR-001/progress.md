@@ -153,3 +153,44 @@ characterization test that MUST fail once M2 lands.
   discipline.
 - Proposal coverage for `internal/cli/harness` measured 80.9%, below the 85%
   package target. Pre-existing; M1 added tests but did not close the gap.
+
+## §F Phase 4 Mode Selection — M2
+
+Recorded before the first M2 run-phase `Agent()` spawn, per the canonical
+mode-logging policy (`orchestration-mode-selection.md` §D). M1's mode was not
+logged at the time (retroactively noted: M1 was also Mode 5 — shared accessor +
+3-site rewire is coding-heavy single-track work).
+
+**Input parameters**
+- tier: L
+- scope: ~5-8 Go files (1 new: `harness promote` verb; edits: `applier.go`, `execute.go`, `layout_repro_test.go`; new tests for promote + guard)
+- domain count: 2-3 (`internal/cli/harness`, `internal/harness`, `internal/cli`)
+- file language mix: 100% Go
+- concurrency benefit: LOW — coding-heavy (Anthropic coding-task parallelism caveat)
+
+**Mode evaluation**
+
+| Mode | Selected? | Rationale |
+|---|---|---|
+| 1 trivial | no | multi-file, semantic change (new verb + guard + de-wire + test retirement) |
+| 2 background | no | write-capable implementation, not read-only |
+| 3 agent-team | no | RETIRED |
+| 4 parallel | no | coding-heavy → Mode 5 preferred (Anthropic caveat) |
+| 5 sub-agent | **yes** | coding-heavy default; sequential per-deliverable |
+| 6 workflow | no | <30 files, semantic (not mechanical-uniform transform) |
+
+**Decision: sub-agent** (Mode 5)
+
+Justification: M2 is coding-heavy implementation (new CLI verb + Apply
+pre-flight guard + execute de-wire/diagnostic + tier tripwire retirement).
+Per Anthropic's coding-task parallelism caveat, coding-heavy work with
+inter-file dependencies belongs to sequential sub-agent delegation, not
+parallel fan-out. Tier L → Section A-E delegation template required. The
+4 deliverables carry a strict sequencing constraint (§A.7: the applicability
+guard MUST land before any payload-parseable change), which independently
+reinforces sequential execution.
+
+Implementation Kickoff Approval: obtained — user selected "M2 착수" at the
+AskUserQuestion gate this session (2026-07-28), after the three §A.6 open
+decisions were resolved (CLI verb promotion path · in-Apply guard · execute
+left dormant).

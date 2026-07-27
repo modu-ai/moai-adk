@@ -410,6 +410,108 @@ func pendingEvaluator(proposalID string) SafetyEvaluator {
 // REQ-HL-005, REQ-HL-009
 // ─────────────────────────────────────────────
 
+// TestApply_ApplicabilityGuard_RejectsContentFreeProposal is the AC-HLR-015
+// reproduction (SPEC-HARNESS-LOOP-REPAIR-001 M2-2).
+//
+// A proposal that decodes successfully but carries no target_path/field_key/
+// new_value is not an apply input — it is a discovery report (spec.md §A.4).
+// The 5-layer safety pipeline checks whether an edit is SAFE, never whether an
+// edit was SPECIFIED (spec.md §A.7), so without a pre-flight guard the proposal
+// sails through every layer and reaches createSnapshot, which creates a dated
+// directory (applier.go createSnapshot → os.MkdirAll) before failing on
+// os.ReadFile(""). The guard MUST reject before any pipeline work or snapshot.
+//
+// Falsification (acceptance.md §D.4): removing the guard lets the proposal reach
+// createSnapshot and leave a dated directory behind; this test then fails on the
+// snapshotBase-entries assertion.
+func TestApply_ApplicabilityGuard_RejectsContentFreeProposal(t *testing.T) {
+	t.Parallel()
+
+	cases := []struct {
+		name           string
+		proposal       Proposal
+		wantSubstrings []string // each must appear in the error message
+	}{
+		{
+			name:     "all three edit fields empty",
+			proposal: Proposal{ID: "discovery-all-empty"},
+			wantSubstrings: []string{
+				"not applicable",
+				"target_path",
+				"field_key",
+				"new_value",
+			},
+		},
+		{
+			name: "only target_path set",
+			proposal: Proposal{
+				ID:         "discovery-partial",
+				TargetPath: ".claude/skills/x/SKILL.md",
+			},
+			wantSubstrings: []string{
+				"not applicable",
+				"field_key",
+				"new_value",
+			},
+		},
+	}
+
+	for _, tc := range cases {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			snapshotBase := filepath.Join(t.TempDir(), "snapshots")
+			a := NewApplier()
+
+			err := a.Apply(tc.proposal, approvedEvaluator(), snapshotBase, nil)
+
+			if err == nil {
+				t.Fatal("Apply returned nil for a content-free proposal; want applicability error")
+			}
+			for _, sub := range tc.wantSubstrings {
+				if !strings.Contains(err.Error(), sub) {
+					t.Errorf("error %q missing substring %q", err.Error(), sub)
+				}
+			}
+			// The guard MUST run before createSnapshot — no dated directory may be
+			// left behind (AC-HLR-015: snapshot base contains no new entry).
+			entries, statErr := os.ReadDir(snapshotBase)
+			count := 0
+			if statErr == nil {
+				count = len(entries)
+			} // NotExist → count stays 0 (guard prevented any creation)
+			if count != 0 {
+				t.Errorf("snapshotBase contains %d entries after a rejected content-free "+
+					"proposal; guard must precede createSnapshot (AC-HLR-015)", count)
+			}
+		})
+	}
+}
+
+// TestApply_ApplicabilityGuard_PreservesSnapshotBaseOnRejection is a focused
+// negative-observation: even when snapshotBase is pre-created, a content-free
+// proposal MUST NOT add any entry to it. This guards against a guard placed
+// AFTER createSnapshot (which would have already written the dir).
+func TestApply_ApplicabilityGuard_PreservesSnapshotBaseOnRejection(t *testing.T) {
+	t.Parallel()
+
+	snapshotBase := filepath.Join(t.TempDir(), "snapshots")
+	if err := os.MkdirAll(snapshotBase, 0o755); err != nil {
+		t.Fatalf("MkdirAll snapshotBase: %v", err)
+	}
+	a := NewApplier()
+	proposal := Proposal{ID: "discovery-noop"}
+
+	_ = a.Apply(proposal, approvedEvaluator(), snapshotBase, nil)
+
+	entries, _ := os.ReadDir(snapshotBase)
+	if len(entries) != 0 {
+		t.Fatalf("snapshotBase has %d entries after rejecting a content-free proposal; "+
+			"want 0 (guard precedes createSnapshot)", len(entries))
+	}
+}
+
 // TestApply_SnapshotPrecedesWrite verifies that a snapshot is created before the file write.
 // [HARD] Snapshot creation MUST precede the file write.
 func TestApply_SnapshotPrecedesWrite(t *testing.T) {
