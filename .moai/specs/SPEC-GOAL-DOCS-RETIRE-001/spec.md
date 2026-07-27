@@ -1,8 +1,8 @@
 ---
 id: SPEC-GOAL-DOCS-RETIRE-001
 title: Retire native /goal emission references from public and internal documentation across four locales
-version: 1.3.0
-status: in-progress
+version: 1.4.0
+status: completed
 created: 2026-07-25
 updated: 2026-07-27
 author: manager-spec
@@ -13,6 +13,8 @@ lifecycle: spec-anchored
 tags: "goal, docs-site, i18n, locale-parity, split-surface"
 tier: M
 depends_on: [SPEC-GOAL-SURFACE-UNIFY-001]
+run_commit_sha: 24c84c56e
+sync_commit_sha: 2a12e2b7d9aee1b5cdfbfba31d6b28ab5d7312b8
 ---
 
 ## HISTORY

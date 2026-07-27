@@ -264,21 +264,6 @@ When releasing new version, update:
 
 When running tests, **always check if they modify project files**.
 
-### Test Execution
-```bash
-# Run all tests
-go test ./...
-
-# Run with race detection
-go test -race ./...
-
-# Run with coverage
-go test -cover ./...
-
-# Run specific test
-go test -run TestEnsureGlobalSettingsEnv ./internal/cli/
-```
-
 ### Test Isolation
 
 **[HARD] All test temp directories MUST be created under `/tmp` and cleaned up automatically.**
@@ -316,28 +301,6 @@ Never use `filepath.Join(cwd, userPath)` when `userPath` can be absolute.
 - Run `go test -count=1 ./...` to disable test caching when debugging flaky tests
 - Run `go test -race ./...` for concurrency safety on any code touching goroutines or channels
 - Run `go vet ./...` before committing to catch static analysis issues
-
-### Table-Driven Tests (Go Convention)
-
-```go
-func TestBuildRequiredPATH(t *testing.T) {
-    tests := []struct {
-        name    string
-        goBin   string
-        goPath  string
-        want    string
-    }{
-        {"default", "", "", wantDefault},
-        {"custom bin", "/custom/bin", "", wantCustom},
-        {"custom path", "", "/custom/path", wantPath},
-    }
-    for _, tt := range tests {
-        t.Run(tt.name, func(t *testing.T) {
-            // Test implementation
-        })
-    }
-}
-```
 
 ---
 
@@ -480,53 +443,7 @@ moai-adk-go uses YAML for configuration:
 
 ## 10. Build and Development Commands
 
-### Common Commands
-
-```bash
-# Build the project
-make build
-
-# Run tests
-make test
-
-# Run with race detection
-make test-race
-
-# Run linter
-make lint
-
-# Format code
-make fmt
-
-# Install locally
-make install
-
-# Clean build artifacts
-make clean
-
-# Run go fix modernizers
-make fix
-```
-
-### Development Workflow
-
-```bash
-# 1. Edit templates
-vim internal/template/templates/.claude/skills/moai/SKILL.md
-
-# 2. Regenerate embedded files
-make build
-
-# 3. Run tests
-go test ./internal/template/...
-
-# 4. Test locally
-./moai init test-project
-
-# 5. Commit
-git add internal/template/templates/
-git commit -m "feat(template): update SKILL.md"
-```
+빌드/테스트/린트 타깃은 `Makefile`에 `##` 도움말과 함께 정의돼 있다 — `make help` 로 조회. 템플릿 편집 → `make build` → 테스트 → 커밋 순서는 §2 [HARD] Template-First Rule 참조.
 
 ---
 
@@ -702,18 +619,6 @@ See: `.moai/docs/git-workflow-doctrine.md`
 
 > **[CANONICAL]** 본 섹션의 모든 enforcement 룰 — deferred tool preload 의무, pre-response self-check 4항목, anti-pattern 카탈로그, recovery protocol — 은 `.claude/rules/moai/core/askuser-protocol.md` 에 단일 진실 공급원(SSOT)으로 존재합니다. 본 §19은 cross-reference만 유지하며, 규칙 갱신 시 canonical 파일을 수정하세요.
 
-### Quick Pointer
-
-| 항목 | Canonical 위치 |
-|------|----------------|
-| Channel Monopoly + Free-form 금지 | `askuser-protocol.md` § Channel Monopoly |
-| ToolSearch Preload 절차 (의무) | `askuser-protocol.md` § ToolSearch Preload Procedure |
-| Socratic Interview 구조 (≤4Q × ≤4 options, `(권장)` first) | `askuser-protocol.md` § Socratic Interview Structure |
-| Option Description 표준 + Bias Prevention | `askuser-protocol.md` § Option Description Standards |
-| Orchestrator–Subagent 비대칭 boundary | `askuser-protocol.md` § Orchestrator–Subagent Boundary |
-| Ambiguity Trigger 4종 + Exception 5종 | `askuser-protocol.md` § Ambiguity Triggers and Exceptions |
-| Free-form Circumvention 금지 + "Other" 메커니즘 | `askuser-protocol.md` § Free-form Circumvention Prohibition |
-
 ### Local Notes
 
 본 incident 기록 (2026-04-24): `~/.claude/projects/{hash}/memory/feedback_askuserquestion_enforcement.md`. v3.4.0부터 enforcement 정책 HARD 운영. 위반 탐지 시 즉시 canonical §Recovery Protocol 적용 + memory 추가 기록.
@@ -843,7 +748,7 @@ See: `.moai/docs/template-internal-isolation-doctrine.md`
 
 ## 26. Linear 연동 (개인/로컬 전용)
 
-> [ZONE:Local-Only] 본 섹션은 GOOS 개인 개발 전용이며 로컬 전용이다. `internal/template/templates/`에 절대 미러 금지 (§25 isolation + §14 하드코딩 허용 영역). **범용 배포/제품화 계획 없음** — Linear 연동은 개인 개발 워크플로우로만 사용한다(배포용 스킬/MCP 프로비저닝 제품화는 하지 않기로 결정, 2026-07-12). CLAUDE.local.md는 gitignored라 애초에 공유되지 않는다.
+> [ZONE:Local-Only] 본 섹션은 GOOS 개인 개발 전용이며 로컬 전용이다. `internal/template/templates/`에 절대 미러 금지 (§25 isolation + §14 하드코딩 허용 영역). **범용 배포/제품화 계획 없음** — Linear 연동은 개인 개발 워크플로우로만 사용한다(배포용 스킬/MCP 프로비저닝 제품화는 하지 않기로 결정, 2026-07-12). **주의: `CLAUDE.local.md`는 gitignored가 아니라 git에 추적·커밋되어 공개 저장소(`origin/main`)에 공유된다** — 이름과 달리 로컬 전용 파일이 아니므로, 이 파일에 적는 모든 내용(워크스페이스 매핑·개인 경로·운영 방침)은 공개를 전제로 작성한다. "로컬 전용"은 *템플릿에 미러하지 않는다*는 뜻이지 *공유되지 않는다*는 뜻이 아니다.
 
 ### §26.1 워크스페이스 매핑
 
