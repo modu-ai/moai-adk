@@ -337,7 +337,7 @@ var leakClasses = []leakClass{
 var strictLeakClasses = []leakClass{
 	{
 		name:    "S1-internal-date",
-		pattern: regexp.MustCompile(`\b202[6-9]-[0-1][0-9]-[0-3][0-9]\b`),
+		pattern: regexp.MustCompile(`\b202[5-9]-[0-1][0-9]-[0-3][0-9]\b`),
 		// The date carve-out (structural gate + content-anchored allowlist)
 		// applies to this class only — see the leakClass.dateCarveOut comment.
 		dateCarveOut: true,
@@ -808,7 +808,7 @@ var dateAllowlist = []dateAllowlistEntry{
 	},
 	// --- SPEC-TEMPLATE-DATE-NEUTRALITY-002: 2025 date allowlist (24 entries) ---
 	// Each entry pins one (file, 2025-date) PRESERVE finding from the committed
-	// triage.tsv. Inert until M5 widens S1-internal-date from 202[6-9] to 202[5-9].
+	// triage.tsv. Inert until M5 widens the S1-internal-date year class to include 2025.
 	{
 		File:      ".claude/skills/moai-foundation-cc/reference/best-practices-checklist.md",
 		Date:      "2025-11-25",
@@ -1386,7 +1386,7 @@ func TestLeakClassReqTokenPartition(t *testing.T) {
 
 // TestLeakClassNoDateShaInDefaultTier enforces AC-SBN-018(a): the SKILL-BODY
 // additions to the DEFAULT-tier leakClasses MUST NOT include a generic-date
-// regex (202[6-9]-MM-DD) or a short-sha regex ([0-9a-f]{7,8}). Those classes
+// regex (202[5-9]-MM-DD) or a short-sha regex ([0-9a-f]{7,8}). Those classes
 // are owned exclusively by SPEC-V3R6-TEMPLATE-INTERNAL-ISOLATION-001's strict
 // tier (S1/S2); duplicating them here would create dual-allow-list drift
 // (EXCL-SBN-001 / REQ-SBN-018(a)).
