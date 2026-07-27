@@ -111,7 +111,7 @@ Full per-detector symmetry table, each row an executed command:
 | `` `/goal `` — claude-code/** per locale | 20 | 20 | 20 | 20 | yes | AC-GDR-008 |
 | **superseded** `per-turn` anchor | **2** | **0** | **0** | **0** | **NO** | none — disqualified |
 
-Aggregate emission across the 8 sweep files: **24** (paired_al 4 + paired_se 8 + auto_mode 4 + l7 4 + handoff 4).
+Aggregate emission across the 12 sweep-target locale files: **24** (paired_al 4 + paired_se 8 + auto_mode 4 + l7 4 + handoff 4).
 
 ## §D Retention Rationale, Per Surface
 

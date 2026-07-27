@@ -91,7 +91,7 @@ _<pending sync-phase>_
 | Signal | Value |
 |---|---|
 | tier | M (3-artifact set; 5 authored) |
-| scope (file count) | 8 sweep-target documentation files; 12 scoped locale files across 3 pages |
+| scope (file count) | 12 scoped locale files across 3 pages (sweep targets) + 1 annotate-only strategy record = 13 |
 | domain count | 1 — docs-site markdown content |
 | file language mix | 100% markdown (4 locales: en / ja / ko / zh) |
 | concurrency benefit | LOW — per-locale prose differs, and 4-locale parity requires coordinated edits within one reasoning context |

@@ -232,7 +232,7 @@ cd docs-site && hugo --quiet --destination /tmp/gdr-build >/dev/null 2>&1; echo 
 - Recorded baseline: `exit=0`
 - Target: `exit=0`, and AC-GDR-012 at `0`
 
-**AC-GDR-012** — Aggregate emission across all 8 sweep-target files reaches `0`. This is the integration criterion the four compounds above reference.
+**AC-GDR-012** — Aggregate emission across all 12 sweep-target locale files reaches `0`. This is the integration criterion the four compounds above reference.
 
 ```bash
 t=0
