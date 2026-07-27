@@ -42,18 +42,18 @@ MoAI-ADK는 **11개 핵심 에이전트** (10개 MoAI 사용자 정의 + 1개 An
 
 | 에이전트 | 역할 | 단계 | 모델 / effort | 주요 스킬 |
 |----------|------|------|---------------|----------|
-| `manager-spec` | SPEC 문서 생성, GEARS 형식 요구사항 | Plan | inherit / xhigh {{< icon flash danger >}} | `moai-workflow-spec` |
-| `manager-develop` | DDD/TDD/autofix 순환 구현 (quality.yaml의 cycle_type) | Run | inherit / xhigh {{< icon flash danger >}} | `moai-workflow-ddd`, `moai-workflow-tdd` |
-| `manager-docs` | 문서 생성, CHANGELOG, README 동기화 | Sync | sonnet / medium {{< icon flash primary >}} | `moai-workflow-project` |
+| `manager-spec` | SPEC 문서 생성, GEARS 형식 요구사항 | Plan | inherit / medium {{< icon flash primary >}} | `moai-workflow-spec` |
+| `manager-develop` | DDD/TDD/autofix 순환 구현 (quality.yaml의 cycle_type) | Run | inherit / medium {{< icon flash primary >}} | `moai-workflow-ddd`, `moai-workflow-tdd` |
+| `manager-docs` | 문서 생성, CHANGELOG, README 동기화 | Sync | inherit / low {{< icon flash muted >}} | `moai-workflow-project` |
 | `manager-git` | PR 생성, Git 브랜칭, 머지 전략 | PR (Tier L) | sonnet / low {{< icon flash muted >}} | `moai-foundation-core` |
-| `manager-design` | Claude Design 양방향 협업 (D1-D5 파이프라인) | Design | inherit / xhigh {{< icon flash danger >}} | `moai-foundation-core` |
+| `manager-design` | Claude Design 양방향 협업 (D1-D5 파이프라인) | Design | inherit / medium {{< icon flash primary >}} | `moai-foundation-core` |
 
 ### Evaluator 에이전트 (2개)
 
 | 에이전트 | 역할 | 평가 대상 | 모델 / effort | 주요 스킬 |
 |----------|------|---------|---------------|----------|
-| `plan-auditor` | Plan 단계 독립 감사, GEARS 준수, 편향 방지 | SPEC 완성도 | inherit / xhigh {{< icon flash danger >}} | `moai-foundation-core`, `moai-foundation-thinking` |
-| `sync-auditor` | Sync 단계 품질 점수 (4차원: Functionality, Security, Craft, Consistency) | 구현 품질 | inherit / xhigh {{< icon flash danger >}} | `moai-foundation-quality`, `moai-foundation-core` |
+| `plan-auditor` | Plan 단계 독립 감사, GEARS 준수, 편향 방지 | SPEC 완성도 | inherit / medium {{< icon flash primary >}} | `moai-foundation-core`, `moai-foundation-thinking` |
+| `sync-auditor` | Sync 단계 품질 점수 (4차원: Functionality, Security, Craft, Consistency) | 구현 품질 | inherit / medium {{< icon flash primary >}} | `moai-foundation-quality`, `moai-foundation-core` |
 
 계획과 감사가 분리돼 있다는 게 핵심입니다 — 만든 사람이 자기 작업을 검사하지 않습니다.
 
@@ -61,28 +61,30 @@ MoAI-ADK는 **11개 핵심 에이전트** (10개 MoAI 사용자 정의 + 1개 An
 
 | 에이전트 | 역할 | 모델 / effort | 생성물 |
 |----------|------|---------------|--------|
-| `builder-harness` | 프로젝트 고유의 동적 specialist 팀 생성 (Socratic 인터뷰 기반) | inherit / high {{< icon flash warn >}} | `.claude/agents/harness/`, `.moai/harness/manifest.json` |
+| `builder-harness` | 프로젝트 고유의 동적 specialist 팀 생성 (Socratic 인터뷰 기반) | inherit / medium {{< icon flash primary >}} | `.claude/agents/harness/`, `.moai/harness/manifest.json` |
 
 ### Advisor 에이전트 (1개)
 
 | 에이전트 | 역할 | 모델 / effort | 특징 |
 |----------|------|---------------|------|
-| `super-advisor` | 고추론 자문 — 교착 상태, 설계 결정점, 세컨드 오피니언 (E1-E4 에스컬레이션) | inherit / xhigh {{< icon flash danger >}} | 비구속 처방 — 최종 결정은 오케스트레이터 |
+| `super-advisor` | 고추론 자문 — 교착 상태, 설계 결정점, 세컨드 오피니언 (E1-E4 에스컬레이션) | inherit / high {{< icon flash warn >}} | 비구속 처방 — 최종 결정은 오케스트레이터 |
 
 ### Specialist 에이전트 (1개)
 
 | 에이전트 | 역할 | 모델 / effort | 특징 |
 |----------|------|---------------|------|
-| `e2e-tester` | 웹/모바일/데스크탑 E2E 테스트 실행 (여정 스크립팅, CLI 우선 스위트 실행, 아티팩트 관리) | inherit / high {{< icon flash warn >}} | `/moai e2e` 워크플로우의 실행 주체 — 선택 질문은 오케스트레이터 담당 |
+| `e2e-tester` | 웹/모바일/데스크탑 E2E 테스트 실행 (여정 스크립팅, CLI 우선 스위트 실행, 아티팩트 관리) | inherit / low {{< icon flash muted >}} | `/moai e2e` 워크플로우의 실행 주체 — 선택 질문은 오케스트레이터 담당 |
 
 ### 내장 에이전트 (1개, Anthropic)
 
 | 에이전트 | 역할 | 모델 / effort | 특징 |
 |----------|------|---------------|------|
-| `Explore` | 읽기 전용 코드 탐색 및 분석 | inherit (모델 미고정) | Read-only 도구 |
+| `Explore` | 읽기 전용 코드 탐색 및 분석 | sonnet / low (호출 시점 기본값) | Read-only 도구; 디스크에 에이전트 파일이 없어 effort를 고정하지 않고 spawn 프롬프트에 명시 |
 
 {{< callout type="info" >}}
-**4단계 토큰 비용 티어** ({{< icon flash danger >}} xhigh · {{< icon flash warn >}} high · {{< icon flash primary >}} medium · {{< icon flash muted >}} low): `model: inherit`은 부모 세션 모델을 상속하며, effort가 추론 토큰 예산을 결정합니다. 지능 민감 작업(계획·감사·구현)은 xhigh, 반복·문서 작업은 medium, PR 생성은 low로 목적에 맞게 배정됩니다.
+**4단계 토큰 비용 티어** ({{< icon flash danger >}} max · {{< icon flash warn >}} high · {{< icon flash primary >}} medium · {{< icon flash muted >}} low): `model: inherit`은 부모 세션 모델을 상속하며, effort가 추론 토큰 예산을 결정합니다.
+
+위 값은 **배포되는 frontmatter**이며, 갓 배포한 상태가 기본 프로필과 일치하도록 [프로필 매트릭스](/ko/advanced/profile-matrix/)의 `medium` 열에 고정돼 있습니다. 프로필을 전환하면 이 값들이 다시 쓰입니다 — `high`에서는 `manager-develop`과 `super-advisor`가 `max`로 올라가고(`max`를 쓰는 유일한 두 셀), `low`에서는 에이전틱 행이 `low`로 내려가며 `manager-docs`와 `e2e-tester`는 Sonnet으로 폴백합니다. 활성 프로필에서 리졸브된 값은 `moai model profile`로 확인하세요.
 {{< /callout >}}
 
 ## Manager-Develop 도메인 컨텍스트 주입

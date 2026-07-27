@@ -185,12 +185,12 @@ MoAI-ADK assigns the optimal AI model to each agent to match your Claude Code su
 
 | Tier | Characteristics |
 |------|------|
-| **max** | Highest quality — Opus assigned to planning and auditing, maximum reasoning depth |
+| **high** | Highest quality — `max` reasoning depth on the two rarest-invocation agents |
 | **medium** (default) | Balance of quality and cost |
-| **low** | Economical — Sonnet-centric allocation |
+| **low** | Lowest cost per task — agentic agents drop to Opus `low` effort; Sonnet only on single-shot rows |
 
 {{< callout type="info" >}}
-The default tier is **medium**. The `low` tier is designed so the whole workflow works without higher-tier models (Opus). The `max` tier assigns Opus to core phases (planning, auditing) and lightweight models to general work. Set it via the `--model-policy` flag or the initialization wizard.
+The default tier is **medium**. The tier moves each agent along the Opus reasoning-depth ladder rather than swapping in a weaker model class — `low` keeps Opus on every agentic row at `low` effort and falls back to Sonnet only on single-shot rows, while `high` raises the two rarest-invocation agents to `max` effort. Set it via the `--model-policy` flag or the initialization wizard.
 {{< /callout >}}
 
 ### Execution modes and orchestration

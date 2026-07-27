@@ -41,18 +41,18 @@ MoAI-ADK uses **11 core agents** (10 MoAI custom + 1 Anthropic built-in).
 
 | Agent | Role | Phase | Model / effort | Key skills |
 |----------|------|------|---------------|----------|
-| `manager-spec` | SPEC document creation, GEARS-format requirements | Plan | inherit / xhigh {{< icon flash danger >}} | `moai-workflow-spec` |
-| `manager-develop` | DDD/TDD/autofix cycle implementation (cycle_type in quality.yaml) | Run | inherit / xhigh {{< icon flash danger >}} | `moai-workflow-ddd`, `moai-workflow-tdd` |
-| `manager-docs` | Documentation generation, CHANGELOG, README sync | Sync | sonnet / medium {{< icon flash primary >}} | `moai-workflow-project` |
+| `manager-spec` | SPEC document creation, GEARS-format requirements | Plan | inherit / medium {{< icon flash primary >}} | `moai-workflow-spec` |
+| `manager-develop` | DDD/TDD/autofix cycle implementation (cycle_type in quality.yaml) | Run | inherit / medium {{< icon flash primary >}} | `moai-workflow-ddd`, `moai-workflow-tdd` |
+| `manager-docs` | Documentation generation, CHANGELOG, README sync | Sync | inherit / low {{< icon flash muted >}} | `moai-workflow-project` |
 | `manager-git` | PR creation, Git branching, merge strategy | PR (Tier L) | sonnet / low {{< icon flash muted >}} | `moai-foundation-core` |
-| `manager-design` | Claude Design bidirectional collaboration (D1-D5 pipeline) | Design | inherit / xhigh {{< icon flash danger >}} | `moai-foundation-core` |
+| `manager-design` | Claude Design bidirectional collaboration (D1-D5 pipeline) | Design | inherit / medium {{< icon flash primary >}} | `moai-foundation-core` |
 
 ### Evaluator Agents (2)
 
 | Agent | Role | Evaluates | Model / effort | Key skills |
 |----------|------|---------|---------------|----------|
-| `plan-auditor` | Independent plan-phase audit, GEARS compliance, bias prevention | SPEC completeness | inherit / xhigh {{< icon flash danger >}} | `moai-foundation-core`, `moai-foundation-thinking` |
-| `sync-auditor` | Sync-phase quality scoring (4 dimensions: Functionality, Security, Craft, Consistency) | Implementation quality | inherit / xhigh {{< icon flash danger >}} | `moai-foundation-quality`, `moai-foundation-core` |
+| `plan-auditor` | Independent plan-phase audit, GEARS compliance, bias prevention | SPEC completeness | inherit / medium {{< icon flash primary >}} | `moai-foundation-core`, `moai-foundation-thinking` |
+| `sync-auditor` | Sync-phase quality scoring (4 dimensions: Functionality, Security, Craft, Consistency) | Implementation quality | inherit / medium {{< icon flash primary >}} | `moai-foundation-quality`, `moai-foundation-core` |
 
 The key point is that planning and auditing are separated — the one who built it does not inspect their own work.
 
@@ -60,28 +60,30 @@ The key point is that planning and auditing are separated — the one who built 
 
 | Agent | Role | Model / effort | Produces |
 |----------|------|---------------|--------|
-| `builder-harness` | Creates project-specific dynamic specialist teams (based on a Socratic interview) | inherit / high {{< icon flash warn >}} | `.claude/agents/harness/`, `.moai/harness/manifest.json` |
+| `builder-harness` | Creates project-specific dynamic specialist teams (based on a Socratic interview) | inherit / medium {{< icon flash primary >}} | `.claude/agents/harness/`, `.moai/harness/manifest.json` |
 
 ### Advisor Agent (1)
 
 | Agent | Role | Model / effort | Characteristics |
 |----------|------|---------------|------|
-| `super-advisor` | High-reasoning consultation — deadlocks, design decision points, second opinions (E1-E4 escalation) | inherit / xhigh {{< icon flash danger >}} | Non-binding prescriptions — the orchestrator makes the final call |
+| `super-advisor` | High-reasoning consultation — deadlocks, design decision points, second opinions (E1-E4 escalation) | inherit / high {{< icon flash warn >}} | Non-binding prescriptions — the orchestrator makes the final call |
 
 ### Specialist Agent (1)
 
 | Agent | Role | Model / effort | Characteristics |
 |----------|------|---------------|------|
-| `e2e-tester` | E2E test execution across web/mobile/desktop (journey scripting, CLI-first suite runs, artifact management) | inherit / high {{< icon flash warn >}} | Execution owner of the `/moai e2e` workflow — selection questions stay with the orchestrator |
+| `e2e-tester` | E2E test execution across web/mobile/desktop (journey scripting, CLI-first suite runs, artifact management) | inherit / low {{< icon flash muted >}} | Execution owner of the `/moai e2e` workflow — selection questions stay with the orchestrator |
 
 ### Built-in Agent (1, Anthropic)
 
 | Agent | Role | Model / effort | Characteristics |
 |----------|------|---------------|------|
-| `Explore` | Read-only code exploration and analysis | inherit (model not pinned) | Read-only tools |
+| `Explore` | Read-only code exploration and analysis | sonnet / low (call-time default) | Read-only tools; no agent file on disk, so effort is stated in the spawn prompt rather than pinned |
 
 {{< callout type="info" >}}
-**4-tier token-cost tiers** ({{< icon flash danger >}} xhigh · {{< icon flash warn >}} high · {{< icon flash primary >}} medium · {{< icon flash muted >}} low): `model: inherit` inherits the parent session model, and effort determines the reasoning-token budget. Intelligence-sensitive work (planning, auditing, implementation) is assigned xhigh, repetitive/documentation work medium, and PR creation low — each matched to its purpose.
+**4-tier token-cost tiers** ({{< icon flash danger >}} max · {{< icon flash warn >}} high · {{< icon flash primary >}} medium · {{< icon flash muted >}} low): `model: inherit` inherits the parent session model, and effort determines the reasoning-token budget.
+
+The values above are the **shipped frontmatter**, which is pinned to the `medium` column of the [profile matrix](/en/advanced/profile-matrix/) so a fresh deployment matches the default profile. Switching the profile rewrites these values — under `high`, `manager-develop` and `super-advisor` move to `max` (the only two cells that use it), and under `low` the agentic rows drop to `low` while `manager-docs` and `e2e-tester` fall back to Sonnet. Inspect the resolved values for the active profile with `moai model profile`.
 {{< /callout >}}
 
 ## Manager-Develop Domain Context Injection

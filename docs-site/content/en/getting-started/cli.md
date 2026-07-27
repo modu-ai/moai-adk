@@ -71,9 +71,9 @@ moai init [project-name] [OPTIONS]
 | `--enable-lsp` | Enable LSP integration (default: true) |
 | `--enforce-quality` | Enforce quality gates (default: true) |
 | `--enable-design` | Enable the design workflow (default: true) |
-| `--profile <max\|medium\|low>` | Model+effort profile — stored in `llm.yaml` `profile` (selects the profile matrix column) |
-| `--model-policy <max\|medium\|low>` | Legacy performance tier — stored in `llm.yaml` `performance_tier` (alias when `profile` is absent) |
-| `--high` | **Deprecated** alias for `--model-policy max` |
+| `--profile <high\|medium\|low>` | Model+effort profile — stored in `llm.yaml` `profile` (selects the profile matrix column). The legacy value `max` is accepted as input and normalized to `high` |
+| `--model-policy <high\|medium\|low>` | Legacy performance tier — stored in `llm.yaml` `performance_tier` (alias when `profile` is absent) |
+| `--high` | **Deprecated** alias for `--model-policy high` |
 
 ### Examples
 
@@ -115,7 +115,7 @@ moai update [OPTIONS]
 | `--no-hooks` | Skip Git hook installation |
 | `--verbose` | Show all warnings (diagnostic mode) |
 | `--shell-env` | Configure shell environment variables for Claude Code |
-| `--profile <max\|medium\|low>` | Override the model+effort profile (stored in `llm.yaml` `profile`) |
+| `--profile <high\|medium\|low>` | Override the model+effort profile (stored in `llm.yaml` `profile`) |
 
 ### Examples
 
@@ -471,19 +471,19 @@ MoAI-ADK provides a performance-tier system that assigns the optimal AI model to
 
 | Tier | Characteristics |
 |------|------|
-| **max** | Highest quality — Opus assigned to planning and auditing, maximum reasoning depth |
-| **medium** (default) | Balance of quality and cost |
-| **low** | Economical — Sonnet-centric allocation |
+| **high** | Highest quality — `max` reasoning depth on the two rarest-invocation agents |
+| **medium** (default) | Balance of quality and cost — the knee of the cost/score curve |
+| **low** | Lowest cost per task — agentic agents drop to Opus `low` effort; Sonnet only on single-shot rows |
 
 ```bash
 # Set at initialization
-moai init my-project --model-policy max
+moai init my-project --model-policy high
 
 # Reconfigure an existing project
 moai update -c
 ```
 
-The profile (`profile`: max/medium/low) selects the active column of the profile matrix, determining each agent's model+effort. For the detailed per-agent mapping, see the [Profile Matrix](/en/advanced/profile-matrix/) page.
+The profile (`profile`: high/medium/low) selects the active column of the profile matrix, determining each agent's model+effort. For the detailed per-agent mapping, see the [Profile Matrix](/en/advanced/profile-matrix/) page.
 
 ---
 

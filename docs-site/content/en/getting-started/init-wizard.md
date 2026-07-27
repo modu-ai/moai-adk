@@ -91,18 +91,18 @@ Choose the AI model tier assigned to agents — the core Tokenomics setting.
 
 ```bash
 ? Choose the performance tier:
-▸ Medium (Recommended) - balance of quality and cost, Max $100 plan
-  Max - Fable 5(low) + Opus 4.8(high) + Sonnet(medium~low), Max $200 plan
-  Low - Opus 4.8(high~low) + Sonnet(medium~low), Plus $20 plan
+▸ Medium - Opus 5 (high~low) + Sonnet (low, single-shot rows only)
+  High - Opus 5 (max~medium) + Sonnet (low, single-shot rows only)
+  Low - Opus 5 (medium~low) + Sonnet (low, docs/e2e/single-shot rows)
 ```
 
 | Tier | Characteristics |
 |------|------|
-| **Max** | Highest-quality allocation — for the Max $200 plan |
-| **Medium** (default) | Balance of quality and cost — for the Max $100 plan |
-| **Low** | Economical allocation — for the Plus $20 plan |
+| **High** | Highest quality — `max` reasoning depth on the two rarest-invocation agents |
+| **Medium** (default) | Balance of quality and cost — the knee of the cost/score curve |
+| **Low** | Lowest cost per task — agentic agents drop to Opus `low` effort |
 
-This setting is saved in the `performance_tier` field of `.moai/config/sections/llm.yaml` and is read as a legacy alias of the `profile` field (the profile matrix column). Specifying the `--profile max|medium|low` flag directly stores it in the `profile` field. For the per-profile agent model+effort mapping, see the [Profile Matrix](/en/advanced/profile-matrix/) page.
+This setting is saved in the `performance_tier` field of `.moai/config/sections/llm.yaml` and is read as a legacy alias of the `profile` field (the profile matrix column). Specifying the `--profile high|medium|low` flag directly stores it in the `profile` field (the legacy value `max` is accepted as input and normalized to `high`). For the per-profile agent model+effort mapping, see the [Profile Matrix](/en/advanced/profile-matrix/) page.
 
 ### Report format
 

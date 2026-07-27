@@ -10,9 +10,9 @@ MoAI-ADK 通过单一的 **配置矩阵**将保留的 11 个代理各自映射�
 
 配置文件有三个取值:
 
-- `high` — 质量优先列。推理与审计行由 Fable 5 承担，编码由 Opus 5 以 `xhigh` 承担(厂商针对编码与代理式工作推荐的起点)。
-- `medium`(默认) — 平衡列。Opus 5 运行在厂商 API 默认 effort `high` 上，因此是最可预测的运行点。取值缺失或为空时按 `medium` 解释。
-- `low` — 经济列。Opus 5 的 `low`/`medium` effort 是首要的 token 成本杠杆，之后才降到 Sonnet 5。
+- `high` — 质量优先列。Opus 5 承担所有多轮代理式行，`max` 仅保留给两个调用频率最低的行(`manager-develop`、`super-advisor`)。`xhigh` 不出现在任何格子中: 在 Opus 5 上它与 `high` 得分相同，成本却明显更高。
+- `medium`(默认) — 平衡列，也是矩阵其余部分推导所依据的锚点。`manager-develop` 位于 Opus 5 `medium`，即成本/得分曲线的拐点。取值缺失或为空时按 `medium` 解释。
+- `low` — 经济列。Opus 5 在 `low` 下比任何 effort 的 Sonnet 5 得分更高**且**每任务成本更低，因此所有代理式行都保留 Opus；Sonnet 只出现在单次完成、以输入为主的行上。
 
 `max` 是 `high` 的**只读别名**。既有配置中的 `profile: max` 仍解析为 `high`，保存时始终写入规范名 `high`。无需任何迁移操作。
 
@@ -33,21 +33,33 @@ moai update --profile low              # 事后切换
 
 | 代理 | high | medium(默认) | low |
 |---|---|---|---|
-| manager-spec | fable / xhigh | opus / high | opus / low |
-| plan-auditor | fable / xhigh | opus / high | opus / low |
-| sync-auditor | fable / xhigh | opus / high | opus / low |
-| manager-develop | opus / xhigh | opus / high | sonnet / medium |
-| super-advisor | opus / xhigh | opus / high | opus / medium |
-| manager-design | fable / high | opus / medium | sonnet / medium |
-| builder-harness | opus / xhigh | opus / medium | sonnet / medium |
-| e2e-tester | fable / high | opus / medium | sonnet / medium |
-| manager-docs | sonnet / high | sonnet / medium | sonnet / medium |
+| manager-spec | opus / high | opus / medium | opus / low |
+| plan-auditor | opus / high | opus / medium | opus / low |
+| sync-auditor | opus / high | opus / medium | opus / low |
+| manager-develop | opus / max | opus / medium | opus / low |
+| super-advisor | opus / max | opus / high | opus / medium |
+| manager-design | opus / high | opus / medium | opus / low |
+| builder-harness | opus / high | opus / medium | opus / low |
+| e2e-tester | opus / medium | opus / low | sonnet / low |
+| manager-docs | opus / medium | opus / low | sonnet / low |
 | manager-git | sonnet / low | sonnet / low | sonnet / low |
 | Explore | sonnet / low | sonnet / low | sonnet / low |
+
+33 个格子的模型分布为 Opus 25 / Sonnet 8。Fable 不出现在任何格子中，也没有任何格子使用 `xhigh`。
 
 `manager-git` 与 `Explore` 行与配置文件无关，固定为 `sonnet / low` — 机械性工作与只读探索不会因配置文件上升而提升模型等级。
 
 每一行都是单调(monotone)的: `high` ≥ `medium` ≥ `low`。降低配置文件时，任何代理都不会获得比之前更强的组合。
+
+### 这些格子的依据
+
+这些格子源自一个长周期编码代理基准测试 — 它在**每一个 effort 级别**上都报告得分、每任务成本、输出 token 与代理步数，而非依据单位 token 价格。三项测量决定了布局:
+
+- **Opus 在每个 effort 上都压制 Sonnet。** Opus 5 在 `low`(58%、$1.66/任务、36 步)下得分高于任何级别的 Sonnet 5，每任务成本也更低，包括 `max` 下的 Sonnet 5(54%、$26.40/任务、268 步)。决定每任务成本的是完成效率 — 即完成任务所花的步数与输出 token — 而非单 token 价格。因此 Sonnet 仅保留在多步完成不适用之处: 单次完成、以输入为主的行(`Explore` 检索、`manager-git` 机械性操作)，那里更低的输入价格才是决定性因素。
+- **`xhigh` 在 Opus 上被严格压制。** `high` 以 $6.08 取得 73%，而 `xhigh` 以 $9.07 取得同样的 73% — 没有收益，成本 +49%，步数 +22%。它已从矩阵中退役(6 格 → 0 格)。`max` 仅存活于两个调用频率最低的格子中。
+- **`medium` 是曲线的拐点。** 越过它之后，每分的边际成本上升数倍: `low`→`medium` 每分 $0.15，`medium`→`high` 每分 $0.70(4.7×)。这正是 `manager-develop` 以 `medium` 锚定默认列的原因。
+
+{{< icon warning warn >}} **证据的适用范围**: 该基准测试衡量的是*编码*代理。文档撰写、审计判断与 SPEC 撰写质量**并未**被直接测量 — 这些行的位置基于与多轮代理式工作的相似性推断。任何行都可通过 `llm.agent_overrides` 按代理逐一回退。
 
 Anthropic 内置的 `Explore` 不再解析为 `inherit`，而是解析为自身的格子(`sonnet / low`)。`inherit` 哨兵值现在只保留给用户添加的代理。
 
@@ -61,11 +73,11 @@ effort 从各目的类别对应的保留代理行借用:
 |---|---|---|---|---|
 | `read-only-extract` | Explore | opus / low | opus / low | opus / low |
 | `mechanical-transform` | manager-git | opus / low | opus / low | opus / low |
-| `synthesize` | manager-docs | opus / high | opus / medium | opus / medium |
-| `research` | plan-auditor | opus / xhigh | opus / high | opus / low |
-| `verify-judge` | sync-auditor | opus / xhigh | opus / high | opus / low |
-| `implement` | manager-develop | opus / xhigh | opus / high | opus / medium |
-| `design-architecture` | manager-design | opus / high | opus / medium | opus / medium |
+| `synthesize` | manager-docs | opus / medium | opus / low | opus / low |
+| `research` | plan-auditor | opus / high | opus / medium | opus / low |
+| `verify-judge` | sync-auditor | opus / high | opus / medium | opus / low |
+| `implement` | manager-develop | opus / max | opus / medium | opus / low |
+| `design-architecture` | manager-design | opus / high | opus / medium | opus / low |
 
 可通过 `llm.harness_agents[配置文件][类别].effort` 覆盖各类别的 effort。模型在任何路径下都不会改变。无法识别的类别回退到 `implement`。
 
@@ -83,8 +95,10 @@ effort 从各目的类别对应的保留代理行借用:
 ```yaml
 llm:
   agent_overrides:
-    manager-develop: { model: opus, effort: xhigh }
+    manager-develop: { model: opus, effort: high }
 ```
+
+enum 仍接受 `fable` 作为 model、`xhigh` 作为 effort — 它们只是不出现在默认矩阵中，并未从词汇表中移除，因此覆盖项仍可选择其中任一。
 
 **model** 与 **effort** 的消费路径不同。解析出的 **model** 是编排器在 spawn 时作为 `Agent(model: <alias>)` 运行时参数注入的值(`[1m]`-safe，与 frontmatter 的 `model:` 字段无关)。代理 `.md` 的 frontmatter 保持 `model: inherit`，init/update/web 保存不会改变它。解析出的 **effort** 是对 NAMED 子代理的*文档化意图* — Agent/Task 工具对 named 子代理不接受 per-spawn 的 effort 参数，因此 effort 仅通过 (a) 代理 frontmatter 的 effort 默认值、(b) GLM effort 覆盖层、(c) Workflow / `Agent(general-purpose)` 的提示词级 steering 被消费。
 
@@ -105,7 +119,7 @@ moai model profile --json   # 机器可读
 
 在 GLM 后端(`moai glm` / `moai cg` 的 GLM 面板)上，会在配置矩阵之上应用一层覆盖:
 
-- 模型槽位映射: `fable` → `glm-5.2`(Fable 槽位，`ANTHROPIC_DEFAULT_FABLE_MODEL`)
+- 模型槽位映射: `fable` → `glm-5.2`(Fable 槽位，`ANTHROPIC_DEFAULT_FABLE_MODEL`)。该槽位是 GLM 环境绑定，与配置矩阵无关 — 即使没有任何矩阵格子选择 Fable，它仍保持接线状态。
 - 将 Claude 的 5 级 effort collapse 到 z.ai 可达的 3-state:
   - `low` → **thinking-off**
   - `medium` / `high` → **reasoning-high**

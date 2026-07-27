@@ -67,10 +67,10 @@ delegation:
 
 ```yaml
 llm:
-  profile: "medium"            # max | medium | low (活动矩阵列)
-  performance_tier: "medium"   # legacy 别名 (profile 缺失时读取, high→max)
-  profiles:                    # 配置文件列 → 6 个分组 → {model, effort}
-    max: { ... }               # 详表: 配置矩阵页面
+  profile: "medium"            # high | medium | low (活动矩阵列; max 读作 high)
+  performance_tier: "medium"   # legacy 别名 (profile 缺失时读取; 同一套词汇)
+  profiles:                    # 配置文件列 → 11 个代理 → {model, effort}
+    high: { ... }              # 详表: 配置矩阵页面
     medium: { ... }
     low: { ... }
   agent_overrides: {}          # 每个代理的 {model, effort} override (可选)
@@ -85,10 +85,10 @@ llm:
 
 | 键 | 说明 |
 |----|------|
-| `profile` | 活动配置矩阵列 (`max`/`medium`/`low`)。为空时解释为 `medium`。所有子代理 spawn 的 model+effort 来源 |
-| `performance_tier` | legacy 别名字段。仅当 `profile` 缺失时读取，并将 `high`→`max` 归一化 |
-| `profiles` | 每个配置文件列的分组 → `{model, effort}` 矩阵。Go 默认值(`template.DefaultProfileMatrix`)是缺失格的权威 fallback |
-| `agent_overrides` | 每个规范代理名称的 `{model, effort}` override。优先于活动配置文件的分组格 (目录+enum 校验) |
+| `profile` | 活动配置矩阵列 (`high`/`medium`/`low`; 旧的 `max` 被读作 `high` 的别名)。为空时解释为 `medium`。所有子代理 spawn 的 model+effort 来源 |
+| `performance_tier` | legacy 别名字段。仅当 `profile` 缺失时读取; 与 `profile` 共享同一套 `high`/`medium`/`low` 词汇，因此不需要归一化步骤 |
+| `profiles` | 每个配置文件列的 per-agent → `{model, effort}` 矩阵 (11 个代理 × 3 列 = 33 格)。Go 默认值(`template.DefaultProfileMatrix`)是缺失格的权威 fallback |
+| `agent_overrides` | 每个规范代理名称的 `{model, effort}` override。优先于活动配置文件的代理格 (目录+enum 校验) |
 | `glm.base_url` | Z.AI Anthropic兼容代理端点 |
 | `glm.models` | 每个插槽的 GLM 模型映射。GLM将Claude的5步effort折叠为3个推理状态 (thinking-off / reasoning-high / reasoning-max) |
 

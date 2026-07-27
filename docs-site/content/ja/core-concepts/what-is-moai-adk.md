@@ -274,7 +274,7 @@ MoAI は **戦略的オーケストレーター** です。直接コードを書
 | **Specialist** | e2e-tester | 🟠 | Web/モバイル/デスクトップの E2E テスト実行 |
 | **ビルトイン** | Explore | ⚪ | 読み取り専用のコードベース探索 |
 
-コスト色はデフォルト `medium` プロファイルの model×effort セル基準です (`moai model profile` で確認): 🔴 opus+high · 🟠 opus+medium · 🔵 sonnet+medium / fable+low · 🩵 sonnet+low · ⚪ セッションモデル継承。プロファイル (`max`/`low`) 切り替え時は割り当てが変わります。
+コスト色はデフォルト `medium` プロファイルの model×effort セル基準です (`moai model profile` で確認): 🔴 opus+high · 🟠 opus+medium · 🔵 opus+low · 🩵 sonnet+low · ⚪ セッションモデル継承 (ユーザー追加エージェント)。プロファイル (`high`/`low`) 切り替え時は割り当てが変わります。
 
 ```mermaid
 flowchart TD
@@ -577,13 +577,13 @@ MoAI-ADK は AI エージェント間でコンテキスト、不変量、危険�
 
 ## モデルポリシー (トークノミクスの核心)
 
-MoAI-ADK は Claude Code のサブスクリプション料金プランに合わせてエージェントに最適な AI モデルを割り当てます。料金プランの使用量制限内で品質を最大化することが目標です — 計画・監査のように推論が重いステップには上位モデルを、反復的な実装・ドキュメント化には軽量モデルを割り当てます。
+MoAI-ADK は各エージェントに最適なモデルと推論深度を割り当てます。料金プランの使用量制限内で品質を最大化することが目標です — このポリシーは、より弱いモデルクラスに差し替えるのではなく、各エージェントを Opus の effort の階梯に沿って動かします。長期ホライズンのエージェンティックな作業では、弱いモデルほど多くのステップを費やし、作業あたりのコストが高くなるためです。
 
 | ポリシー | 特徴 |
 |------|------|
-| **max** | 最高品質 — 計画・監査に Opus 割り当て、最大スループット |
-| **medium** (デフォルト) | 品質とコストのバランス |
-| **low** | 経済的、Opus 非含 — Sonnet 中心の配分 |
+| **high** | 最高品質 — 呼び出し頻度が最も低い2つのエージェントに `max` の推論深度 |
+| **medium** (デフォルト) | 品質とコストのバランス — コスト/スコア曲線の膝 |
+| **low** | 作業あたり最低コスト — エージェンティックなエージェントは Opus `low` effort に下がり、Sonnet は単発の行のみ |
 
 ### 設定方法
 
@@ -596,7 +596,7 @@ moai update                   # 各設定ステップに対する対話型プロ
 ```
 
 {{< callout type="info" >}}
-デフォルトポリシーは `medium` です。GLM 設定は `settings.local.json` に隔離されます (Git にコミットされません)。設定キーは `llm.yaml` の `profile: high | medium | low`(プロファイルマトリクス列)で、legacy `performance_tier` フィールドが `profile` 不在時にエイリアスとして読み込まれます (`--high`/`--low` はそれぞれ `--model-policy max`/`low` の deprecated 別名)。`--profile high|medium|low` フラグで直接指定でき、legacy の `max` 値も入力として受け付け `high` に正規化されます。
+デフォルトポリシーは `medium` です。GLM 設定は `settings.local.json` に隔離されます (Git にコミットされません)。設定キーは `llm.yaml` の `profile: high | medium | low`(プロファイルマトリクス列)で、legacy `performance_tier` フィールドが `profile` 不在時にエイリアスとして読み込まれます (`--high`/`--low` はそれぞれ `--model-policy high`/`low` の deprecated 別名)。`--profile high|medium|low` フラグで直接指定でき、legacy の `max` 値も入力として受け付け `high` に正規化されます。
 {{< /callout >}}
 
 ## Task メトリクスロギング

@@ -91,12 +91,12 @@ MoAI-ADK는 Claude Code 구독 요금제에 맞춰 에이전트에 최적의 AI 
 
 | 티어 | 특징 |
 |------|------|
-| **max** | 최고 품질 — 계획·감사에 Opus 배정, 최대 추론 깊이 |
-| **medium** (기본값) | 품질과 비용의 균형 |
-| **low** | 경제적 — Sonnet 중심 배분 |
+| **high** | 최고 품질 — 호출 빈도가 가장 낮은 두 에이전트에 `max` 추론 깊이 |
+| **medium** (기본값) | 품질과 비용의 균형 — 비용/점수 곡선의 무릎 |
+| **low** | 작업당 최저 비용 — 에이전틱 에이전트가 Opus `low` effort로 내려감 |
 
 {{< callout type="warning" >}}
-**왜 중요한가요?** `low` 티어는 상위 모델 (Opus) 없이도 전체 워크플로우가 동작하도록 설계되었습니다. 사용량 제한 오류를 방지하면서도 핵심 작업을 수행할 수 있습니다. `max` 티어에서는 핵심 단계 (계획, 감사) 에 Opus를, 일반 작업에 경량 모델을 배정합니다.
+**왜 중요한가요?** 티어를 낮추는 것은 모델 클래스가 아니라 *추론 깊이*를 낮추는 것입니다. 장기 지평 에이전틱 작업에서는 Opus의 `low` effort가 어떤 effort의 Sonnet보다도 점수가 높고 작업당 비용도 낮습니다 — 청구액을 결정하는 것은 토큰당 단가가 아니라 모델이 작업을 끝내기까지 소비한 스텝 수입니다. 그래서 `low`는 Opus 안에서 절약하고, 멀티스텝 완료 실패가 적용되지 않는 단발성 행 (`manager-git`, `Explore`) 에서만 Sonnet을 사용합니다.
 {{< /callout >}}
 
 ### 티어별 에이전트 모델 배정
@@ -105,24 +105,25 @@ MoAI-ADK는 Claude Code 구독 요금제에 맞춰 에이전트에 최적의 AI 
 
 #### Manager Agents (5개)
 
-| 에이전트 | max | medium | low |
-|---------|-----|--------|-----|
-| manager-spec | opus | opus | sonnet |
-| manager-develop | opus | sonnet | sonnet |
-| manager-docs | sonnet | sonnet | sonnet |
-| manager-git | sonnet | sonnet | sonnet |
-| manager-design | sonnet | sonnet | sonnet |
+| 에이전트 | high | medium | low |
+|---------|------|--------|-----|
+| manager-spec | opus / high | opus / medium | opus / low |
+| manager-develop | opus / max | opus / medium | opus / low |
+| manager-docs | opus / medium | opus / low | sonnet / low |
+| manager-git | sonnet / low | sonnet / low | sonnet / low |
+| manager-design | opus / high | opus / medium | opus / low |
 
-#### Evaluator · Builder · Advisor Agents (4개)
+#### Evaluator · Builder · Advisor · Specialist Agents (5개)
 
-| 에이전트 | max | medium | low |
-|---------|-----|--------|-----|
-| plan-auditor | opus | opus | sonnet |
-| sync-auditor | opus | sonnet | sonnet |
-| builder-harness | opus | sonnet | sonnet |
-| super-advisor | opus | opus | sonnet |
+| 에이전트 | high | medium | low |
+|---------|------|--------|-----|
+| plan-auditor | opus / high | opus / medium | opus / low |
+| sync-auditor | opus / high | opus / medium | opus / low |
+| builder-harness | opus / high | opus / medium | opus / low |
+| super-advisor | opus / max | opus / high | opus / medium |
+| e2e-tester | opus / medium | opus / low | sonnet / low |
 
-e2e-tester와 빌트인 `Explore`는 세션 모델을 그대로 따릅니다 (`model: inherit`).
+빌트인 `Explore`는 모든 열에서 `sonnet / low`로 해석됩니다 — 디스크에 고정할 에이전트 파일이 없으므로 호출 시점 기본값입니다.
 
 ### 설정 방법
 

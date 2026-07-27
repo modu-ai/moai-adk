@@ -10,9 +10,9 @@ MoAI-ADK는 유지되는 에이전트 11개를 하나의 **프로필 매트릭�
 
 프로필은 세 가지 값을 가집니다:
 
-- `high` — 품질 우선 열. 추론·감사 행에 Fable 5를 배치하고, 코딩에는 Opus 5를 `xhigh`로 배치합니다(벤더가 코딩·에이전틱 작업에 권장하는 시작점).
-- `medium` (기본값) — 균형 열. Opus 5를 벤더 API 기본 effort인 `high`로 배치하므로 가장 예측 가능한 운용점입니다. 값이 없거나 비어 있으면 `medium`으로 해석됩니다.
-- `low` — 경제 열. Opus 5의 `low`/`medium` effort를 1차 토큰 비용 레버로 쓰고, 그다음 Sonnet 5로 내립니다.
+- `high` — 품질 우선 열. Opus 5가 모든 멀티턴 에이전틱 행을 담당하며, `max`는 호출 빈도가 가장 낮은 두 행(`manager-develop`, `super-advisor`)에만 배정됩니다. `xhigh`는 어떤 셀에도 없습니다 — Opus 5에서는 `high`와 같은 점수를 내면서 비용만 뚜렷하게 더 듭니다.
+- `medium` (기본값) — 균형 열이자 나머지 매트릭스가 파생되는 기준점. `manager-develop`이 Opus 5 `medium`에 놓이며, 이 지점이 비용/점수 곡선의 무릎(knee)입니다. 값이 없거나 비어 있으면 `medium`으로 해석됩니다.
+- `low` — 경제 열. Opus 5의 `low`는 어떤 effort의 Sonnet 5보다도 점수가 높으면서 **동시에** 과제당 비용이 낮으므로, 모든 에이전틱 행에 Opus를 유지합니다. Sonnet은 단발(single-shot)·입력 지배 행에만 등장합니다.
 
 `max`는 `high`의 **읽기 전용 별칭**입니다. 기존 설정의 `profile: max`는 그대로 `high`로 해석되며, 저장 시에는 항상 정규 이름 `high`로 기록됩니다. 마이그레이션 작업은 필요하지 않습니다.
 
@@ -33,21 +33,33 @@ moai update --profile low              # 사후 전환
 
 | 에이전트 | high | medium (기본) | low |
 |---|---|---|---|
-| manager-spec | fable / xhigh | opus / high | opus / low |
-| plan-auditor | fable / xhigh | opus / high | opus / low |
-| sync-auditor | fable / xhigh | opus / high | opus / low |
-| manager-develop | opus / xhigh | opus / high | sonnet / medium |
-| super-advisor | opus / xhigh | opus / high | opus / medium |
-| manager-design | fable / high | opus / medium | sonnet / medium |
-| builder-harness | opus / xhigh | opus / medium | sonnet / medium |
-| e2e-tester | fable / high | opus / medium | sonnet / medium |
-| manager-docs | sonnet / high | sonnet / medium | sonnet / medium |
+| manager-spec | opus / high | opus / medium | opus / low |
+| plan-auditor | opus / high | opus / medium | opus / low |
+| sync-auditor | opus / high | opus / medium | opus / low |
+| manager-develop | opus / max | opus / medium | opus / low |
+| super-advisor | opus / max | opus / high | opus / medium |
+| manager-design | opus / high | opus / medium | opus / low |
+| builder-harness | opus / high | opus / medium | opus / low |
+| e2e-tester | opus / medium | opus / low | sonnet / low |
+| manager-docs | opus / medium | opus / low | sonnet / low |
 | manager-git | sonnet / low | sonnet / low | sonnet / low |
 | Explore | sonnet / low | sonnet / low | sonnet / low |
+
+33개 셀의 모델 분포는 Opus 25 / Sonnet 8입니다. Fable은 어떤 셀에도 없으며, `xhigh`를 쓰는 셀도 없습니다.
 
 `manager-git`과 `Explore` 행은 프로필과 무관하게 `sonnet / low`로 고정됩니다 — 기계적 작업과 읽기 전용 탐색은 프로필이 올라가도 모델 클래스를 올리지 않습니다.
 
 각 행은 단조(monotone)입니다: `high` ≥ `medium` ≥ `low`. 프로필을 낮추면 어떤 에이전트도 이전보다 강한 조합을 받지 않습니다.
+
+### 왜 이 셀 배치인가
+
+이 셀들은 토큰 단가가 아니라, 점수·과제당 비용·출력 토큰·에이전트 스텝을 **effort 단계마다** 보고하는 장기 호라이즌 코딩 에이전트 벤치마크에서 도출했습니다. 세 가지 실측이 배치를 이끕니다:
+
+- **Opus는 모든 effort에서 Sonnet을 지배합니다.** Opus 5 `low`(58%, $1.66/과제, 36스텝)는 어떤 단계의 Sonnet 5보다도 점수가 높고 과제당 비용이 낮으며, 여기에는 Sonnet 5 `max`(54%, $26.40/과제, 268스텝)도 포함됩니다. 과제당 비용을 결정하는 것은 완주 효율 — 과제를 끝내는 데 쓴 스텝과 출력 토큰 — 이지 토큰당 단가가 아닙니다. 따라서 Sonnet은 멀티스텝 완주가 적용되지 않는 곳, 즉 단발·입력 지배 행(`Explore` 검색, `manager-git` 기계 작업)에만 남습니다. 그곳에서는 낮은 입력 단가가 실질 변수이기 때문입니다.
+- **`xhigh`는 Opus에서 완전히 열등합니다.** `high`는 $6.08에 73%를, `xhigh`는 같은 73%를 $9.07에 냅니다 — 이득 없이 비용 +49%, 스텝 +22%. 매트릭스에서 퇴출했습니다(6셀 → 0). `max`는 호출 빈도가 가장 낮은 두 셀에만 살아남습니다.
+- **`medium`이 곡선의 무릎입니다.** 그 위로는 점수 1점당 한계 비용이 몇 배로 뜁니다: `low`→`medium`은 점당 $0.15, `medium`→`high`는 점당 $0.70(4.7배). `manager-develop`을 `medium`에 두어 기본 열의 기준점으로 삼은 이유가 이것입니다.
+
+{{< icon warning warn >}} **근거의 적용 범위**: 이 벤치마크가 측정하는 것은 *코딩* 에이전트입니다. 문서 저작, 감사 판단, SPEC 저작 품질은 **직접 측정되지 않았으며**, 해당 행 배치는 멀티턴 에이전틱 작업과의 유사성 추론에 기댑니다. 어떤 행이든 `llm.agent_overrides`로 에이전트별 되돌리기가 가능합니다.
 
 Anthropic 내장 `Explore`는 더 이상 `inherit`이 아니라 자기 셀(`sonnet / low`)로 해석됩니다. `inherit` 센티널은 이제 사용자가 추가한 에이전트에만 남습니다.
 
@@ -61,11 +73,11 @@ effort는 각 목적 클래스가 대응하는 유지 에이전트 행에서 빌
 |---|---|---|---|---|
 | `read-only-extract` | Explore | opus / low | opus / low | opus / low |
 | `mechanical-transform` | manager-git | opus / low | opus / low | opus / low |
-| `synthesize` | manager-docs | opus / high | opus / medium | opus / medium |
-| `research` | plan-auditor | opus / xhigh | opus / high | opus / low |
-| `verify-judge` | sync-auditor | opus / xhigh | opus / high | opus / low |
-| `implement` | manager-develop | opus / xhigh | opus / high | opus / medium |
-| `design-architecture` | manager-design | opus / high | opus / medium | opus / medium |
+| `synthesize` | manager-docs | opus / medium | opus / low | opus / low |
+| `research` | plan-auditor | opus / high | opus / medium | opus / low |
+| `verify-judge` | sync-auditor | opus / high | opus / medium | opus / low |
+| `implement` | manager-develop | opus / max | opus / medium | opus / low |
+| `design-architecture` | manager-design | opus / high | opus / medium | opus / low |
 
 `llm.harness_agents[프로필][클래스].effort`로 클래스별 effort를 덮어쓸 수 있습니다. 모델은 어떤 경로로도 바뀌지 않습니다. 인식되지 않는 클래스는 `implement`로 폴백합니다.
 
@@ -83,8 +95,10 @@ effort는 각 목적 클래스가 대응하는 유지 에이전트 행에서 빌
 ```yaml
 llm:
   agent_overrides:
-    manager-develop: { model: opus, effort: xhigh }
+    manager-develop: { model: opus, effort: high }
 ```
+
+enum은 여전히 모델로 `fable`을, effort로 `xhigh`를 받습니다 — 기본 매트릭스에서 빠졌을 뿐 어휘에서 제거된 것은 아니므로, override로는 지금도 둘 중 어느 쪽이든 선택할 수 있습니다.
 
 **model**과 **effort**의 소비 경로는 다릅니다. 리졸브된 **model**은 오케스트레이터가 spawn 시점에 `Agent(model: <alias>)` 런타임 인자로 주입하는 값입니다(`[1m]`-safe, frontmatter `model:` 필드와 별개). 에이전트 `.md` frontmatter는 `model: inherit`로 유지되며 init/update/web 저장이 이를 변경하지 않습니다. 리졸브된 **effort**는 NAMED 서브에이전트에 대한 *문서화된 의도*입니다 — Agent/Task 도구는 named 서브에이전트에 per-spawn effort 인자를 받지 않으므로, effort는 (a) 에이전트 frontmatter effort 기본값, (b) GLM effort 오버레이, (c) Workflow / `Agent(general-purpose)` 프롬프트 수준 steering을 통해서만 소비됩니다.
 
@@ -105,7 +119,7 @@ moai model profile --json   # 기계 판독용
 
 GLM 백엔드(`moai glm` / `moai cg` GLM 패널)에서는 프로필 매트릭스 위에 오버레이가 적용됩니다:
 
-- 모델 슬롯 매핑: `fable` → `glm-5.2` (Fable 슬롯, `ANTHROPIC_DEFAULT_FABLE_MODEL`)
+- 모델 슬롯 매핑: `fable` → `glm-5.2` (Fable 슬롯, `ANTHROPIC_DEFAULT_FABLE_MODEL`). 이 슬롯은 프로필 매트릭스와 무관한 GLM 환경 바인딩이며, 매트릭스의 어떤 셀도 Fable을 선택하지 않지만 배선은 그대로 유지됩니다.
 - Claude의 5단 effort를 z.ai가 도달 가능한 3-state로 collapse:
   - `low` → **thinking-off**
   - `medium` / `high` → **reasoning-high**

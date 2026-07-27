@@ -71,9 +71,9 @@ moai init [project-name] [OPTIONS]
 | `--enable-lsp` | 启用 LSP 联动(默认: true) |
 | `--enforce-quality` | 强制质量门禁(默认: true) |
 | `--enable-design` | 启用 design 工作流(默认: true) |
-| `--profile <max\|medium\|low>` | 模型+effort 配置文件 —— 保存到 `llm.yaml` `profile` (选择配置矩阵列) |
-| `--model-policy <max\|medium\|low>` | legacy 性能层级 —— 保存到 `llm.yaml` `performance_tier` (`profile` 缺失时作为别名) |
-| `--high` | **将被删除** `--model-policy max` 的别名 |
+| `--profile <high\|medium\|low>` | 模型+effort 配置文件 —— 保存到 `llm.yaml` `profile` (选择配置矩阵列)。legacy 值 `max` 也接受作为输入并规范化为 `high` |
+| `--model-policy <high\|medium\|low>` | legacy 性能层级 —— 保存到 `llm.yaml` `performance_tier` (`profile` 缺失时作为别名) |
+| `--high` | **将被删除** `--model-policy high` 的别名 |
 
 ### 示例
 
@@ -115,7 +115,7 @@ moai update [OPTIONS]
 | `--no-hooks` | 跳过 Git 钩子安装 |
 | `--verbose` | 显示所有警告(诊断模式) |
 | `--shell-env` | 为 Claude Code 配置 shell 环境变量 |
-| `--profile <max\|medium\|low>` | 覆盖模型+effort 配置文件(保存到 `llm.yaml` `profile`) |
+| `--profile <high\|medium\|low>` | 覆盖模型+effort 配置文件(保存到 `llm.yaml` `profile`) |
 
 ### 示例
 
@@ -471,19 +471,19 @@ MoAI-ADK 提供为智能体分配最优 AI 模型的性能层级系统 —— �
 
 | 层级 | 特点 |
 |------|------|
-| **max** | 最高质量 —— 计划·审计分配 Opus,最大推理深度 |
-| **medium**(默认) | 质量与成本的平衡 |
-| **low** | 经济 —— 以 Sonnet 为中心分配 |
+| **high** | 最高质量 —— 对调用频率最低的两个智能体使用 `max` 推理深度 |
+| **medium**(默认) | 质量与成本的平衡 —— 成本/评分曲线的拐点 |
+| **low** | 每任务成本最低 —— agentic 智能体降到 Opus `low` effort,Sonnet 仅用于单次调用的行 |
 
 ```bash
 # 初始化时设置
-moai init my-project --model-policy max
+moai init my-project --model-policy high
 
 # 在既有项目中重新设置
 moai update -c
 ```
 
-配置文件(`profile`: max/medium/low)选择配置矩阵的活动列，确定每个代理的 model+effort。详细的每个代理映射请参阅[配置矩阵](/zh/advanced/profile-matrix/)页面。
+配置文件(`profile`: high/medium/low)选择配置矩阵的活动列，确定每个代理的 model+effort。详细的每个代理映射请参阅[配置矩阵](/zh/advanced/profile-matrix/)页面。
 
 ---
 

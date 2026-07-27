@@ -274,7 +274,7 @@ MoAI 是 **战略编排器**。它不亲自写代码,而是把工作委派给 11
 | **Specialist** | e2e-tester | 🟠 | 执行 Web/移动/桌面 E2E 测试 |
 | **内置** | Explore | ⚪ | 只读代码库探索 |
 
-成本颜色以默认 `medium` 配置文件的 model×effort 单元为准（用 `moai model profile` 查看）：🔴 opus+high · 🟠 opus+medium · 🔵 sonnet+medium / fable+low · 🩵 sonnet+low · ⚪ 继承会话模型。切换配置文件（`max`/`low`）时分配会变化。
+成本颜色以默认 `medium` 配置文件的 model×effort 单元为准（用 `moai model profile` 查看）：🔴 opus+high · 🟠 opus+medium · 🔵 opus+low · 🩵 sonnet+low · ⚪ 继承会话模型（用户自行添加的智能体）。切换配置文件（`high`/`low`）时分配会变化。
 
 ```mermaid
 flowchart TD
@@ -572,13 +572,13 @@ MoAI-ADK 使用 **@MX 代码级注释系统** 在 AI 智能体间传递上下文
 
 ## 模型策略(代币经济学的核心)
 
-MoAI-ADK 依 Claude Code 订阅套餐为智能体分配最优 AI 模型。目标是在套餐用量限制内最大化质量 —— 为计划·审计这类推理繁重的阶段分配上位模型,为重复性实现·文档化分配轻量模型。
+MoAI-ADK 为每个智能体分配最优的模型与推理深度。目标是在套餐用量限制内最大化质量 —— 策略调整的是每个智能体在 Opus effort 阶梯上的位置,而不是换成更弱的模型级别,因为在长时程 agentic 作业中,更弱的模型会消耗更多步骤,每任务成本反而更高。
 
 | 策略 | 特点 |
 |------|------|
-| **max** | 最高质量 —— 计划·审计分配 Opus,最大吞吐量 |
-| **medium**(默认) | 质量与成本的平衡 |
-| **low** | 经济,不含 Opus —— 以 Sonnet 为中心分配 |
+| **high** | 最高质量 —— 对调用频率最低的两个智能体使用 `max` 推理深度 |
+| **medium**(默认) | 质量与成本的平衡 —— 成本/评分曲线的拐点 |
+| **low** | 每任务成本最低 —— agentic 智能体降到 Opus `low` effort,Sonnet 仅用于单次调用的行 |
 
 ### 设置方法
 
@@ -591,7 +591,7 @@ moai update                   # 对各设置步骤给出交互式提示
 ```
 
 {{< callout type="info" >}}
-默认策略是 `medium`。GLM 设置隔离在 `settings.local.json` 中(不提交到 Git)。设置键是 `llm.yaml` 的 `profile: high | medium | low`(配置矩阵列)，legacy `performance_tier` 字段在 `profile` 缺失时作为别名读取(`--high`/`--low` 分别是 `--model-policy max`/`low` 的 deprecated 别名)。可用 `--profile high|medium|low` 标志直接指定，legacy 的 `max` 值也可作为输入并规范化为 `high`。
+默认策略是 `medium`。GLM 设置隔离在 `settings.local.json` 中(不提交到 Git)。设置键是 `llm.yaml` 的 `profile: high | medium | low`(配置矩阵列)，legacy `performance_tier` 字段在 `profile` 缺失时作为别名读取(`--high`/`--low` 分别是 `--model-policy high`/`low` 的 deprecated 别名)。可用 `--profile high|medium|low` 标志直接指定，legacy 的 `max` 值也可作为输入并规范化为 `high`。
 {{< /callout >}}
 
 ## Task 指标日志

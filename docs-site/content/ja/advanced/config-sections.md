@@ -67,10 +67,10 @@ delegation:
 
 ```yaml
 llm:
-  profile: "medium"            # max | medium | low (アクティブマトリクス列)
-  performance_tier: "medium"   # legacy エイリアス (profile 不在時に読み込み、high→max)
-  profiles:                    # プロファイル列 → 6 グループ → {model, effort}
-    max: { ... }               # 詳細表: プロファイルマトリクスページ
+  profile: "medium"            # high | medium | low (アクティブマトリクス列、max は high として読み込み)
+  performance_tier: "medium"   # legacy エイリアス (profile 不在時に読み込み、同じ語彙)
+  profiles:                    # プロファイル列 → 11 エージェント → {model, effort}
+    high: { ... }              # 詳細表: プロファイルマトリクスページ
     medium: { ... }
     low: { ... }
   agent_overrides: {}          # エージェント別 {model, effort} override (任意)
@@ -85,10 +85,10 @@ llm:
 
 | キー | 説明 |
 |------|------|
-| `profile` | アクティブなプロファイルマトリクス列 (`max`/`medium`/`low`)。空なら `medium` として解釈。全サブエージェント spawn の model+effort のソース |
-| `performance_tier` | legacy エイリアスフィールド。`profile` がない場合のみ読み込まれ `high`→`max` に正規化 |
-| `profiles` | プロファイル列別グループ → `{model, effort}` マトリクス。Go デフォルト値 (`template.DefaultProfileMatrix`) が欠落セルの権威ある fallback |
-| `agent_overrides` | 正規エージェント名別 `{model, effort}` override。アクティブプロファイルのグループセルより優先 (カタログ+enum 検証) |
+| `profile` | アクティブなプロファイルマトリクス列 (`high`/`medium`/`low`。旧 `max` は `high` のエイリアスとして読み込まれる)。空なら `medium` として解釈。全サブエージェント spawn の model+effort のソース |
+| `performance_tier` | legacy エイリアスフィールド。`profile` がない場合のみ読み込まれ、`high`/`medium`/`low` の同じ語彙を共有するため正規化ステップは不要 |
+| `profiles` | プロファイル列別のエージェント単位 → `{model, effort}` マトリクス (11 エージェント × 3 列 = 33 セル)。Go デフォルト値 (`template.DefaultProfileMatrix`) が欠落セルの権威ある fallback |
+| `agent_overrides` | 正規エージェント名別 `{model, effort}` override。アクティブプロファイルのエージェントセルより優先 (カタログ+enum 検証) |
 | `glm.base_url` | Z.AI Anthropic互換プロキシエンドポイント |
 | `glm.models` | スロット別GLMモデルマッピング。GLMはClaudeの5段階effortを3個reasoning状態 (thinking-off / reasoning-high / reasoning-max) にcollapse |
 

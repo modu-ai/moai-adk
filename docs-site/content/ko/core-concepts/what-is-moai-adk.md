@@ -274,7 +274,7 @@ MoAI는 **전략적 오케스트레이터**입니다. 직접 코드를 작성하
 | **Specialist** | e2e-tester | 🟠 | 웹/모바일/데스크탑 E2E 테스트 실행 |
 | **빌트인** | Explore | ⚪ | 읽기 전용 코드베이스 탐색 |
 
-비용 색상은 기본 `medium` 프로파일의 model×effort 셀 기준입니다 (`moai model profile`로 확인): 🔴 opus+high · 🟠 opus+medium · 🔵 sonnet+medium / fable+low · 🩵 sonnet+low · ⚪ 세션 모델 상속. 프로파일 (`max`/`low`) 전환 시 배정이 달라집니다.
+비용 색상은 기본 `medium` 프로파일의 model×effort 셀 기준입니다 (`moai model profile`로 확인): 🔴 opus+high · 🟠 opus+medium · 🔵 opus+low · 🩵 sonnet+low · ⚪ 세션 모델 상속 (사용자 추가 에이전트). 프로파일 (`high`/`low`) 전환 시 배정이 달라집니다.
 
 ```mermaid
 flowchart TD
@@ -572,13 +572,13 @@ MoAI-ADK는 AI 에이전트 간 컨텍스트, 불변량, 위험 영역을 전달
 
 ## 모델 정책 (토크노믹스의 핵심)
 
-MoAI-ADK는 Claude Code 구독 요금제에 맞춰 에이전트에 최적의 AI 모델을 할당합니다. 요금제의 사용량 제한 안에서 품질을 극대화하는 것이 목표입니다. 계획·감사처럼 추론이 무거운 단계에는 상위 모델을, 반복 구현·문서화에는 경량 모델을 배정합니다.
+MoAI-ADK는 각 에이전트에 최적의 모델과 추론 깊이를 할당합니다. 요금제의 사용량 제한 안에서 품질을 극대화하는 것이 목표이며, 정책은 더 약한 모델 클래스로 교체하는 대신 각 에이전트를 Opus 추론 깊이 래더 위에서 이동시킵니다 — 장기 에이전틱 작업에서는 약한 모델이 더 많은 스텝을 소모해 작업당 비용이 오히려 높아지기 때문입니다.
 
 | 정책 | 특징 |
 |------|------|
-| **max** | 최고 품질 — 계획·감사에 Opus 배정, 최대 처리량 |
+| **high** | 최고 품질 — 호출 빈도가 가장 낮은 두 에이전트에 `max` 추론 깊이 |
 | **medium** (기본) | 품질과 비용의 균형 |
-| **low** | 경제적, Opus 미포함 — Sonnet 중심 배분 |
+| **low** | 작업당 최저 비용 — 에이전틱 에이전트는 Opus `low` effort로 내려가고, Sonnet은 단발 행에만 |
 
 ### 설정 방법
 
@@ -591,7 +591,7 @@ moai update                   # 각 설정 단계에 대한 대화형 프롬프�
 ```
 
 {{< callout type="info" >}}
-기본 정책은 `medium`입니다. GLM 설정은 `settings.local.json`에 격리됩니다 (Git에 커밋되지 않음). 설정 키는 `llm.yaml`의 `profile: high | medium | low`(프로필 매트릭스 열)이며, legacy `performance_tier` 필드가 `profile` 부재 시 별칭으로 읽힙니다 (`--high`/`--low`는 각각 `--model-policy max`/`low`의 deprecated 별칭). `--profile high|medium|low` 플래그로 직접 지정할 수 있으며, legacy `max` 값도 입력으로 받아 `high`로 정규화됩니다.
+기본 정책은 `medium`입니다. GLM 설정은 `settings.local.json`에 격리됩니다 (Git에 커밋되지 않음). 설정 키는 `llm.yaml`의 `profile: high | medium | low`(프로필 매트릭스 열)이며, legacy `performance_tier` 필드가 `profile` 부재 시 별칭으로 읽힙니다 (`--high`/`--low`는 각각 `--model-policy high`/`low`의 deprecated 별칭). `--profile high|medium|low` 플래그로 직접 지정할 수 있으며, legacy `max` 값도 입력으로 받아 `high`로 정규화됩니다.
 {{< /callout >}}
 
 ## Task 메트릭 로깅
