@@ -572,7 +572,7 @@ constitution:
 
 ## 관련 문서
 
-- [SPEC 기반 개발](/core-concepts/spec-based-dev) -- 개발 방법론 실행 전에 SPEC
+- [SPEC 기반 개발](/ko/core-concepts/spec-based-dev) -- 개발 방법론 실행 전에 SPEC
   문서가 필요합니다
-- [TRUST 5 품질](/core-concepts/trust-5) -- 구현 완료 후 품질 검증 기준을
+- [TRUST 5 품질](/ko/core-concepts/trust-5) -- 구현 완료 후 품질 검증 기준을
   확인합니다

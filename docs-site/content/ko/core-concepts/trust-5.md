@@ -459,9 +459,9 @@ TRUST 5 전체 통과: 배포 가능
 
 ## 관련 문서
 
-- [MoAI-ADK란?](/core-concepts/what-is-moai-adk) -- MoAI-ADK의 전체 구조를
+- [MoAI-ADK란?](/ko/core-concepts/what-is-moai-adk) -- MoAI-ADK의 전체 구조를
   이해합니다
-- [SPEC 기반 개발](/core-concepts/spec-based-dev) -- TRUST 5가 적용되는 Plan
+- [SPEC 기반 개발](/ko/core-concepts/spec-based-dev) -- TRUST 5가 적용되는 Plan
   단계를 배웁니다
-- [도메인 주도 개발](/core-concepts/ddd) -- TRUST 5가 적용되는 Run 단계를
+- [도메인 주도 개발](/ko/core-concepts/ddd) -- TRUST 5가 적용되는 Run 단계를
   배웁니다

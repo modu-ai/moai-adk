@@ -42,4 +42,4 @@ moai web --no-reuse      # 포트가 사용 중이면 회수 대신 실패
 
 ---
 
-관련: [프로필 관리](/cli-reference/profile) · [CLI 개요](/getting-started/cli)
+관련: [프로필 관리](/ko/cli-reference/profile) · [CLI 개요](/ko/getting-started/cli)

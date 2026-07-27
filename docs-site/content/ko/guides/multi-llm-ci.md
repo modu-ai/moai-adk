@@ -2,7 +2,7 @@
 title: "GitHub 연동 가이드"
 description: "moai github 서브커맨드로 이슈를 파싱하고 SPEC과 연결하기"
 draft: false
-weight: 10
+weight: 11
 ---
 
 MoAI-ADK의 GitHub 연동 기능은 GitHub 이슈를 파싱하고 SPEC 문서와 연결하는
