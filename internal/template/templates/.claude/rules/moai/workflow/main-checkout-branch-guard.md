@@ -113,7 +113,7 @@ flows. The hook applies the doctrine conditionally.
   entry to `.moai/logs/branch-guard-audit.log`. Aligns with the Bash
   Risk-Amplifier Doctrine (WARN-ONLY, FAIL-OPEN).
 
-Origin: SPEC-WORKTREE-BRANCH-GUARD-001 (REQ-WBG-001 through REQ-WBG-013).
+Origin: the run-phase SPEC that landed the v1.1.0 mechanical enforcer.
 
 ## Cross-references
 
@@ -121,7 +121,6 @@ Origin: SPEC-WORKTREE-BRANCH-GUARD-001 (REQ-WBG-001 through REQ-WBG-013).
 - `.claude/rules/moai/workflow/worktree-state-guard.md` — worktree state validation
 - `.claude/rules/moai/core/agent-common-protocol.md` § Pre-Spawn Sync Check — divergence check before spawning a write-capable agent
 - `.claude/rules/moai/core/verification-claim-integrity.md` — why an unobserved "no concurrent session" claim is a defect claim
-- SPEC-WORKTREE-BRANCH-GUARD-001 — the run-phase SPEC that landed the v1.1.0 mechanical enforcer
 
 ---
 
