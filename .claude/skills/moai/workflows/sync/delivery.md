@@ -14,7 +14,7 @@ metadata:
 
 #### Step 3.0: Detect Git Workflow Strategy
 
-Read `github.git_workflow` from `.moai/config/sections/system.yaml`. This determines how changes are delivered.
+Read `github.spec_git_workflow` from `.moai/config/sections/system.yaml`. This determines how changes are delivered.
 
 | Strategy | Branch Model | PR Behavior | Best For |
 |----------|-------------|-------------|----------|
@@ -24,9 +24,9 @@ Read `github.git_workflow` from `.moai/config/sections/system.yaml`. This determ
 
 Default strategy (if not configured): `github_flow`
 
-Also read `github.spec_git_workflow` to determine SPEC branch handling:
+The same `github.spec_git_workflow` key also determines SPEC branch handling:
 - `feature_branch`: Each SPEC gets its own branch (recommended for github_flow/gitflow)
-- `main_direct`: SPEC changes committed to current branch (only when git_workflow is main_direct)
+- `main_direct`: SPEC changes committed to current branch (only when spec_git_workflow is main_direct)
 
 #### Step 3.1: Commit Changes
 
@@ -212,7 +212,7 @@ Pass CI mirror results to Step 3.2 for inclusion in the PR body:
 
 #### Step 3.2: Push and Deliver (Strategy-Aware)
 
-Behavior varies based on `github.git_workflow` setting and current branch context.
+Behavior varies based on `github.spec_git_workflow` setting and current branch context.
 
 **Base Branch Resolution** (applies to all strategies below):
 1. Read `git_strategy.mode` from `.moai/config/sections/git-strategy.yaml`
@@ -414,7 +414,7 @@ All of the following must be verified:
 - Phase 10: Coverage analysis completed (measurement, gap analysis, test generation, verification)
 - Phase 11: Prerequisites verified, project analyzed, divergence analysis completed, sync plan approved by user
 - Phase 12: Safety backup created and verified, documents synchronized, SPEC documents updated per lifecycle level, project documents updated (if applicable), quality verified, SPEC status updated
-- Phase 13: Changes committed, local CI mirror validated (Step 3.1.5: vet + test-race + lint + cross-compile — Windows skipped), delivered per git_workflow strategy (PR created for github_flow/gitflow, direct push for main_direct), auto-merge executed (if flagged and PR exists)
+- Phase 13: Changes committed, local CI mirror validated (Step 3.1.5: vet + test-race + lint + cross-compile — Windows skipped), delivered per spec_git_workflow strategy (PR created for github_flow/gitflow, direct push for main_direct), auto-merge executed (if flagged and PR exists)
 - Phase 14: Completion report displayed with delivery result, appropriate next steps presented based on strategy and context
 
 ---

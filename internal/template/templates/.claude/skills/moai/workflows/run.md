@@ -2,7 +2,7 @@
 description: >
   DDD/TDD implementation workflow for SPEC requirements. Second step
   of the Plan-Run-Sync workflow. Routes to manager-develop based
-  on quality.yaml development_mode setting.
+  on quality.yaml constitution.development_mode setting.
 user-invocable: false
 metadata:
   version: "2.6.0"
@@ -71,7 +71,7 @@ Phase 4 Mode Selection: orchestrator autonomous decision over the 6-mode catalog
 
 **Input**: `$ARGUMENTS` = SPEC-ID (예: `SPEC-AUTH-001`)
 
-**Development mode**: `.moai/config/sections/quality.yaml` `development_mode` 설정 (`ddd` 또는 `tdd`)에 따라 자동 선택.
+**Development mode**: `.moai/config/sections/quality.yaml` `constitution.development_mode` 설정 (`ddd` 또는 `tdd`)에 따라 자동 선택.
 
 **Mode dispatch** (`--mode` flag):
 - `autopilot` (기본): Phase 4 scale-based 선택 후 Phase 11/2B 실행
@@ -123,23 +123,23 @@ A CI audit verifies the literal `MODE_UNKNOWN` sentinel remains present in this 
 
 Ordering invariant (read before the autonomy section below): the Implementation Kickoff Approval `AskUserQuestion` human gate is always cleared FIRST; any run-phase autonomy set is downstream of it. The next section documents that ordering and the autonomy condition together.
 
-## Run-phase Autonomy (/goal ac_converge)
+## Run-phase Autonomy (ac_converge)
 
-This section wires the run-phase autonomy mechanisms — the Implementation Kickoff Approval human-gate ordering reference and the `ac_converge` `/goal` condition — into a single co-located place. The two parts are ORDERED: the Implementation Kickoff Approval `AskUserQuestion` human gate is described FIRST (it must be cleared before any autonomy begins), then the `/goal ac_converge` set (entered only after Implementation Kickoff Approval approval).
+This section wires the run-phase autonomy mechanisms — the Implementation Kickoff Approval human-gate ordering reference and the `ac_converge` goal condition — into a single co-located place. The two parts are ORDERED: the Implementation Kickoff Approval `AskUserQuestion` human gate is described FIRST (it must be cleared before any autonomy begins), then the `ac_converge` arming (entered only after Implementation Kickoff Approval approval).
 
 > **Progression-mode axis (autonomous vs. semi-autonomous)**: the Implementation Kickoff Approval gate also offers a progression-mode choice — autonomous (default; the loop continues without per-turn prompts) or semi-autonomous (the `stop-goal` hook emits a checkpoint-signal each turn for orchestrator-side `AskUserQuestion` confirmation). This axis selects ONLY post-approval progression; the gate stays mandatory in both modes. See `.claude/skills/moai/workflows/goal.md` § Progression Mode.
 
 ### 1. Implementation Kickoff Approval ordering (the human gate comes first)
 
-[HARD] Before any run-phase autonomy (a `/goal` set, a Mode 6 Workflow launch, or any autonomous loop), the orchestrator MUST have already obtained explicit Implementation Kickoff Approval approval. Implementation Kickoff Approval is the plan→run HUMAN GATE: a mandatory orchestrator-issued `AskUserQuestion` round (run-phase entry / further review / abort, first option marked "(Recommended)") presented after Phase 1 (Plan Audit Gate) and before Phase 4 (Mode Selection). The orchestrator emits this gate; it is never embedded inside a subagent body (subagents cannot prompt the user — the asymmetric boundary in `.claude/rules/moai/core/agent-common-protocol.md` § User Interaction Boundary).
+[HARD] Before any run-phase autonomy (arming a goal, a Mode 6 Workflow launch, or any autonomous loop), the orchestrator MUST have already obtained explicit Implementation Kickoff Approval approval. Implementation Kickoff Approval is the plan→run HUMAN GATE: a mandatory orchestrator-issued `AskUserQuestion` round (run-phase entry / further review / abort, first option marked "(Recommended)") presented after Phase 1 (Plan Audit Gate) and before Phase 4 (Mode Selection). The orchestrator emits this gate; it is never embedded inside a subagent body (subagents cannot prompt the user — the asymmetric boundary in `.claude/rules/moai/core/agent-common-protocol.md` § User Interaction Boundary).
 
 [HARD] Implementation Kickoff Approval is **score-independent**: the orchestrator emits the Implementation Kickoff Approval `AskUserQuestion` gate **regardless of the plan-auditor score**, including the high skip-eligible case. Skip-eligibility (a high autonomous-bypass score) applies ONLY to Phase 1 plan-auditor verdict re-execution — NOT to Implementation Kickoff Approval. A high plan-auditor score never authorizes skipping the Implementation Kickoff Approval human gate. This is the Implementation Kickoff Approval mandatory-restoration invariant per the Implementation Kickoff Approval mandatory-restoration policy.
 
-Because Implementation Kickoff Approval also drains all user preferences (Tier, mode preference, PR strategy), the orchestrator collects every preference at this gate BEFORE launching any autonomy — `/goal`-turn agents and Mode 6 Workflow agents cannot prompt the user mid-run, so the one decision that must involve the user is taken here.
+Because Implementation Kickoff Approval also drains all user preferences (Tier, mode preference, PR strategy), the orchestrator collects every preference at this gate BEFORE launching any autonomy — goal-loop turn agents and Mode 6 Workflow agents cannot prompt the user mid-run, so the one decision that must involve the user is taken here.
 
-### 2. The `ac_converge` `/goal` condition (set only after Implementation Kickoff Approval approval)
+### 2. The `ac_converge` goal condition (armed only after Implementation Kickoff Approval approval)
 
-ONLY after Implementation Kickoff Approval approval is obtained, the orchestrator MAY set the `ac_converge` `/goal` to grant phase-internal autonomy (it removes per-turn STOP prompts so the run-phase loop continues until convergence). The condition is hard-coded inline (no registry dependency) and is transcript-measurable — every predicate references a line the orchestrator surfaces in the conversation, never a file the `/goal` evaluator would have to read:
+ONLY after Implementation Kickoff Approval approval is obtained, the orchestrator MAY arm the `ac_converge` goal via `/moai goal "<condition>"` to grant phase-internal autonomy (it removes per-turn STOP prompts so the run-phase loop continues until convergence). Because arming is **arm-only** — it records the condition but starts no work — the orchestrator arms it ALONGSIDE the run-phase work it is driving, never in place of that work (`goal-directive.md` § Goal-Presentation Timing). The condition is hard-coded inline (no registry dependency) and is authored entirely as **model conditions** — every predicate references a line the orchestrator surfaces in the conversation, so the evaluator judges it against the transcript rather than by opening a file:
 
 ```text
 Every blocking acceptance criterion in
@@ -159,15 +159,15 @@ auto-fix semantic failures.
 
 The following HARD invariants govern the `ac_converge` loop. Each is the canonical rule's render surface here; the rule is the SSOT.
 
-- **Transcript-measurability**: the `acceptance.md` reference NAMES where the AC list lives — it is NOT a path the `/goal` evaluator opens. The Haiku evaluator judges only what the orchestrator SURFACES into the transcript (per-AC PASS line, `go test ./...` exit 0, `git status`).
-- **Semantic-failure escalation (HARD)**: on a data race / deadlock / panic / test assertion failure surfaced during the loop, clear the `/goal` and escalate via `AskUserQuestion` — NEVER auto-fix a semantic failure (per `ci-autofix-protocol.md` semantic-failure-handling).
+- **Transcript-measurability**: the `acceptance.md` reference NAMES where the AC list lives — it is NOT a path the evaluator opens. Because every predicate above is a model condition, the `stop-goal` evaluator judges only what the orchestrator SURFACES into the transcript (per-AC PASS line, `go test ./...` exit 0, `git status`).
+- **Semantic-failure escalation (HARD)**: on a data race / deadlock / panic / test assertion failure surfaced during the loop, clear the goal (`/moai goal clear`) and escalate via `AskUserQuestion` — NEVER auto-fix a semantic failure (per `ci-autofix-protocol.md` semantic-failure-handling).
 - **Non-substitution (HARD)**: the goal removes per-turn STOP prompts only. It does NOT authorize bypassing Implementation Kickoff Approval (already cleared), PR creation, or any destructive operation — those remain separately-surfaced explicit gates.
-- **Blocker reports, never user prompts**: a `/goal`-turn or Mode 6 Workflow agent lacking input returns a structured blocker report; the orchestrator runs `AskUserQuestion` and re-delegates (asymmetric boundary per `agent-common-protocol.md` § User Interaction Boundary).
-- **Graceful degradation**: when `/goal` is unavailable (runtime < v2.1.139, or hooks disabled), run-phase autonomy degrades to the standard manual per-turn flow rather than failing.
+- **Blocker reports, never user prompts**: a goal-loop turn or Mode 6 Workflow agent lacking input returns a structured blocker report; the orchestrator runs `AskUserQuestion` and re-delegates (asymmetric boundary per `agent-common-protocol.md` § User Interaction Boundary).
+- **Graceful degradation**: the goal engine's evaluator IS a Stop hook (`moai hook stop-goal`), so `/moai goal` is unavailable when hooks are disabled (`disableAllHooks`, or `allowManagedHooksOnly` permitting only managed hooks). It carries no runtime-version floor of its own. When the engine is unavailable, run-phase autonomy degrades to the standard manual per-turn flow rather than failing.
 
 ### Cross-references (cite, do not restate)
 
-- `.claude/rules/moai/workflow/goal-directive.md` — `/goal` semantics (transcript-only evaluation; `max N turns` bound; clear-on-`/clear`).
+- `.claude/rules/moai/workflow/goal-directive.md` — `/moai goal` semantics (mechanical + model conditions judged by the `stop-goal` evaluator at each turn-end; the turn-ceiling bound; per-session goal state, so a goal armed in a previous session is not in effect after `/clear`).
 - `.claude/rules/moai/workflow/orchestration-mode-selection.md` § C.3 — Mode 6 (Workflow) capability gate (Implementation Kickoff Approval-passed + preferences-collected; scaling-not-nesting; named-script-API prohibition).
 - `.claude/rules/moai/workflow/dynamic-workflows.md` — the Workflow primitive (no mid-run user input; Implementation Kickoff Approval unaffected).
 - `.claude/rules/moai/workflow/runtime-recovery-doctrine.md` §3 — the 5 circuit-breaker invariants the bounded self-diagnosis loop (below) complies with.

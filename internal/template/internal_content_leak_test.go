@@ -36,6 +36,7 @@
 package template
 
 import (
+	"fmt"
 	"io/fs"
 	"os"
 	"path/filepath"
@@ -99,6 +100,13 @@ type leakClass struct {
 	// log-rotation) is NOT flagged: a genuine git short-sha almost always
 	// carries a hex letter, while a decimal size constant never does.
 	requireHexLetter bool
+	// dateCarveOut, when true, subjects the class to the date carve-out —
+	// the DC-1/DC-4 structural gate (isStructurallyCarvedDate) plus the
+	// DC-3/DC-2b/DC-5-PRESERVE content-anchored allowlist (isDateAllowlisted).
+	// Only the S1 internal-date class sets it: the carve-out categories are
+	// defined over date literals, so applying it to a SPEC-ID or REQ-token
+	// class would silently widen the exemption beyond its adjudicated scope.
+	dateCarveOut bool
 }
 
 // skillBodyPrefix is the relative-path prefix (under templatesRoot) that
@@ -330,6 +338,9 @@ var strictLeakClasses = []leakClass{
 	{
 		name:    "S1-internal-date",
 		pattern: regexp.MustCompile(`\b202[6-9]-[0-1][0-9]-[0-3][0-9]\b`),
+		// The date carve-out (structural gate + content-anchored allowlist)
+		// applies to this class only — see the leakClass.dateCarveOut comment.
+		dateCarveOut: true,
 	},
 	{
 		name: "S2-short-sha-sentence-final",
@@ -533,12 +544,334 @@ func isPedagogicallyAllowed(relPath, matched string) bool {
 	return false
 }
 
+// --- Date carve-out: structural gate (DC-1 / DC-4) -------------------------
+//
+// The date carve-out is HYBRID: a structural gate here for the two
+// mechanically-decidable recurring shapes, plus the content-anchored
+// dateAllowlist below for the judgement-call categories. A shape earns a
+// structural gate only when it is decidable from the line's own syntax (or
+// the file's own path) AND is expected to recur in ordinary authoring — so
+// that an ordinary edit does not become a Go-allowlist edit.
+//
+// Both halves are CONTENT-anchored, never line-number-anchored: the gate
+// matches a line's own text and a path suffix; the allowlist matches a path
+// suffix and a literal date. No line number participates in any decision.
+//
+// DC-1 — skill/rule frontmatter `updated:` field. Every frontmatter bump
+// touches such a line, so an allowlist would levy a Go edit per skill edit.
+// The regex mirrors the committed triage classifier's LS-FM rule verbatim
+// (`^[[:space:]]+updated:[[:space:]]*"?20`) so the guard and the triage
+// record stay mutually auditable.
+var dc1FrontmatterUpdatedRe = regexp.MustCompile(`^[ \t]+updated:[ \t]*"?20`)
+
+// dc1FenceToggleRe matches a fenced-code-block delimiter line, mirroring the
+// triage classifier's fence tracking. A frontmatter-shaped line INSIDE a fence
+// is a pedagogical example, not real frontmatter: it carries no schema-break
+// rationale, and the classifier assigns it LS-FM-FENCED -> DC-5 rather than
+// DC-1. Tracking fences here keeps the structural gate's reach identical to
+// the DC-1 category it implements; the one fenced instance in the tree is an
+// explicit dateAllowlist entry instead.
+var dc1FenceToggleRe = regexp.MustCompile("^[ \t]*```")
+
+// DC-4 — third-party import-provenance attribution records. In an attribution
+// file the import dates ARE the content, and adding an entry is ordinary
+// authoring, so the gate must survive a future attribution line.
+//
+// The gate is deliberately (file AND line shape), not file alone. A whole-file
+// exemption would carve out EVERY date in the file, including one that is
+// genuinely an internal-development stamp merely sitting in the same document
+// — and it would make AC-TDN-015 probe A (a future attribution line must not
+// be flagged) and AC-TDN-010's injection probe (an arbitrary dated line in the
+// same file MUST be flagged) mutually unsatisfiable. Requiring the attribution
+// line shape satisfies both.
+var dc4AttributionFiles = []string{
+	".claude/rules/moai/NOTICE.md",
+}
+
+// dc4AttributionLineRe matches the two attribution-record line shapes used in
+// the attribution files: the inline `(imported <date>)` parenthetical and the
+// `**Import Date (<source>)**: <date>` summary row.
+var dc4AttributionLineRe = regexp.MustCompile(`\(imported 20[0-9]{2}-|^\*\*Import Date\b`)
+
+// isStructurallyCarvedDate reports whether a date match on this line is
+// covered by the DC-1 / DC-4 structural gate.
+//
+// relPath: path relative to templatesRoot, forward-slash separated.
+// line: the full text of the line carrying the match (fence state resolved by
+// the caller, which tracks it while walking the file).
+// inFence: whether the line sits inside a fenced code block.
+func isStructurallyCarvedDate(relPath, line string, inFence bool) bool {
+	// DC-4 — an attribution-record line inside an attribution file.
+	if dc4AttributionLineRe.MatchString(line) {
+		for _, f := range dc4AttributionFiles {
+			if relPath == f {
+				return true
+			}
+		}
+	}
+	// DC-1 — real (unfenced) frontmatter `updated:` field.
+	return !inFence && dc1FrontmatterUpdatedRe.MatchString(line)
+}
+
+// --- Date carve-out: content-anchored allowlist (DC-3 / DC-2b / DC-5) ------
+
+// dateAllowlistEntry pins one (file, date literal) pair that the internal-date
+// class must not flag. Every entry is traceable to a PRESERVE row of the
+// committed triage record (triage.tsv), and Category records which triage
+// category the row was adjudicated into.
+//
+// Matching is by relative path + literal date substring only. There is
+// deliberately NO line field, not even a diagnostic one: the pedagogical
+// allowlist's unused LineStart/LineEnd fields have proven to be dead weight
+// that invites line-number coupling, and the carve-out is required to stay
+// content-anchored.
+type dateAllowlistEntry struct {
+	File      string // relative path under internal/template/templates/
+	Date      string // literal date expected in this file
+	Category  string // triage category this row was adjudicated into
+	Rationale string // why the date is preserved rather than removed
+}
+
+// dateAllowlist holds the judgement-call halves of the carve-out:
+//
+//   - DC-3  — functional deadline literals (a real future deadline, not a
+//     record of when work happened).
+//   - DC-2b — mirror-capture stamps on third-party documentation mirrors,
+//     where the date is the only staleness signal a reader has.
+//   - DC-5  — per-row adjudicated preservations (pedagogical examples,
+//     upstream-repository facts, verification-capture stamps).
+//
+// Each of these is a judgement about the specific content, not a mechanically
+// decidable shape, so each stays an explicit entry a reviewer must read.
+var dateAllowlist = []dateAllowlistEntry{
+	{
+		File:      ".claude/skills/moai-foundation-cc/reference/advanced-agent-patterns.md",
+		Date:      "2026-01-06",
+		Category:  "DC-2b",
+		Rationale: "mirror-capture stamp, the sole staleness signal for a third-party document mirror",
+	},
+	{
+		File:      ".claude/skills/moai-foundation-cc/reference/claude-code-cli-reference-official.md",
+		Date:      "2026-01-06",
+		Category:  "DC-2b",
+		Rationale: "mirror-capture stamp, the sole staleness signal for a third-party document mirror",
+	},
+	{
+		File:      ".claude/skills/moai-foundation-cc/reference/claude-code-devcontainers-official.md",
+		Date:      "2026-01-06",
+		Category:  "DC-2b",
+		Rationale: "mirror-capture stamp, the sole staleness signal for a third-party document mirror",
+	},
+	{
+		File:      ".claude/skills/moai-foundation-cc/reference/claude-code-discover-plugins-official.md",
+		Date:      "2026-01-06",
+		Category:  "DC-2b",
+		Rationale: "mirror-capture stamp, the sole staleness signal for a third-party document mirror",
+	},
+	{
+		File:      ".claude/skills/moai-foundation-cc/reference/claude-code-headless-official.md",
+		Date:      "2026-01-06",
+		Category:  "DC-2b",
+		Rationale: "mirror-capture stamp, the sole staleness signal for a third-party document mirror",
+	},
+	{
+		File:      ".claude/skills/moai-foundation-cc/reference/claude-code-plugin-marketplaces-official.md",
+		Date:      "2026-01-06",
+		Category:  "DC-2b",
+		Rationale: "mirror-capture stamp, the sole staleness signal for a third-party document mirror",
+	},
+	{
+		File:      ".claude/skills/moai-foundation-cc/reference/claude-code-plugins-official.md",
+		Date:      "2026-01-06",
+		Category:  "DC-2b",
+		Rationale: "mirror-capture stamp, the sole staleness signal for a third-party document mirror",
+	},
+	{
+		File:      ".claude/skills/moai-foundation-cc/reference/claude-code-sandboxing-official.md",
+		Date:      "2026-01-06",
+		Category:  "DC-2b",
+		Rationale: "mirror-capture stamp, the sole staleness signal for a third-party document mirror",
+	},
+	{
+		File:      ".claude/skills/moai-foundation-cc/reference/claude-code-skills-official.md",
+		Date:      "2026-01-06",
+		Category:  "DC-2b",
+		Rationale: "mirror-capture stamp, the sole staleness signal for a third-party document mirror",
+	},
+	{
+		File:      ".claude/skills/moai-foundation-cc/reference/claude-code-statusline-official.md",
+		Date:      "2026-01-06",
+		Category:  "DC-2b",
+		Rationale: "mirror-capture stamp, the sole staleness signal for a third-party document mirror",
+	},
+	{
+		File:      ".claude/skills/moai-foundation-cc/reference/claude-code-sub-agents-official.md",
+		Date:      "2026-01-06",
+		Category:  "DC-2b",
+		Rationale: "mirror-capture stamp, the sole staleness signal for a third-party document mirror",
+	},
+	{
+		File:      ".claude/agents/moai/plan-auditor.md",
+		Date:      "2026-11-22",
+		Category:  "DC-3",
+		Rationale: "functional deadline literal 2026-11-22",
+	},
+	{
+		File:      ".claude/skills/moai-foundation-core/modules/commands-reference.md",
+		Date:      "2026-11-22",
+		Category:  "DC-3",
+		Rationale: "functional deadline literal 2026-11-22",
+	},
+	{
+		File:      ".claude/skills/moai-foundation-core/modules/spec-first-ddd.md",
+		Date:      "2026-11-22",
+		Category:  "DC-3",
+		Rationale: "functional deadline literal 2026-11-22",
+	},
+	{
+		File:      ".claude/skills/moai-foundation-core/references/examples.md",
+		Date:      "2026-11-22",
+		Category:  "DC-3",
+		Rationale: "functional deadline literal 2026-11-22",
+	},
+	{
+		File:      ".claude/skills/moai-foundation-core/references/reference.md",
+		Date:      "2026-11-22",
+		Category:  "DC-3",
+		Rationale: "functional deadline literal 2026-11-22",
+	},
+	{
+		File:      ".claude/skills/moai-foundation-core/SKILL.md",
+		Date:      "2026-11-22",
+		Category:  "DC-3",
+		Rationale: "functional deadline literal 2026-11-22",
+	},
+	{
+		File:      ".claude/skills/moai/workflows/plan.md",
+		Date:      "2026-11-22",
+		Category:  "DC-3",
+		Rationale: "functional deadline literal 2026-11-22",
+	},
+	{
+		File:      ".claude/skills/moai/workflows/plan/clarity-interview.md",
+		Date:      "2026-11-22",
+		Category:  "DC-3",
+		Rationale: "functional deadline literal 2026-11-22",
+	},
+	{
+		File:      ".claude/skills/moai/workflows/plan/spec-assembly.md",
+		Date:      "2026-11-22",
+		Category:  "DC-3",
+		Rationale: "functional deadline literal 2026-11-22",
+	},
+	{
+		File:      ".claude/output-styles/moai/moai-learn.md",
+		Date:      "2026-04-11",
+		Category:  "DC-5",
+		Rationale: "illustrative filename in a naming-convention example, carries no internal development state",
+	},
+	{
+		File:      ".claude/rules/moai/development/skill-authoring.md",
+		Date:      "2026-01-28",
+		Category:  "DC-5",
+		Rationale: "frontmatter schema example inside a fenced block; deleting the value would require the placeholder substitution REQ-TDN-007 forbids",
+	},
+	{
+		File:      ".claude/rules/moai/development/spec-frontmatter-schema.md",
+		Date:      "2026-05-16",
+		Category:  "DC-5",
+		Rationale: "deliberate anti-pattern example (snake_case alias); same REQ-TDN-007 rationale",
+	},
+	{
+		File:      ".claude/skills/moai-foundation-cc/reference/claude-code-plugins-official.md",
+		Date:      "2026-07-03",
+		Category:  "DC-5",
+		Rationale: "mirror-capture annotation on a third-party doc mirror; same staleness-signal rationale as the REQ-TDN-011 DC-2b set",
+	},
+	{
+		File:      ".claude/skills/moai-foundation-cc/reference/claude-code-sub-agents-official.md",
+		Date:      "2026-07-03",
+		Category:  "DC-5",
+		Rationale: "mirror-capture annotation on a third-party doc mirror; same staleness-signal rationale as the REQ-TDN-011 DC-2b set",
+	},
+	{
+		File:      ".claude/skills/moai-foundation-cc/SKILL.md",
+		Date:      "2026-07-03",
+		Category:  "DC-5",
+		Rationale: "official-doc verification-capture stamp; the date is the reader staleness signal for the doc-lag caveat",
+	},
+	{
+		File:      ".claude/skills/moai-meta-harness/SKILL.md",
+		Date:      "2026-03-26",
+		Category:  "DC-5",
+		Rationale: "public upstream repository creation date cited alongside star and fork counts",
+	},
+}
+
+// isDateAllowlisted reports whether the (relPath, matched) pair is a
+// registered date-allowlist entry. The check is by literal path suffix +
+// literal date substring; no regex, no line-number verification.
+//
+// relPath: path relative to templatesRoot, forward-slash separated.
+// matched: the literal date captured by the internal-date regex.
+func isDateAllowlisted(relPath, matched string) bool {
+	for _, entry := range dateAllowlist {
+		if entry.File == relPath && entry.Date == matched {
+			return true
+		}
+	}
+	return false
+}
+
+// --- Failure reporting --------------------------------------------------
+
+// leakReportConsoleCap bounds how many violations are printed to the test log.
+// A 135-row failure is unreadable in a CI log, so the console output stays
+// capped — but the cap never hides findings: the remainder is written in full
+// to the file named in the truncation message (REQ-TDN-016).
+const leakReportConsoleCap = 50
+
+// leakReportFilePattern is the os.CreateTemp pattern for the full-listing
+// file. The file is created under os.TempDir() (so it is cross-platform and
+// stays out of the working tree) and is deliberately NOT registered for
+// cleanup: the truncation message names its path, so it has to outlive the
+// test run for anyone to read it. It is written only when a run actually
+// truncates, so a green run leaves nothing behind.
+const leakReportFilePattern = "moai-template-leak-*.log"
+
+// writeLeakFullListing writes every violation to a file under os.TempDir()
+// and returns its path. Errors are returned rather than fatal: a listing that
+// cannot be written must not mask the violations themselves.
+func writeLeakFullListing(violations []string, mode string) (string, error) {
+	f, err := os.CreateTemp("", leakReportFilePattern)
+	if err != nil {
+		return "", err
+	}
+	defer func() { _ = f.Close() }()
+
+	var b strings.Builder
+	fmt.Fprintf(&b, "template internal-content leak — %d occurrences, mode=%s\n\n",
+		len(violations), mode)
+	for i, v := range violations {
+		fmt.Fprintf(&b, "[%d] %s\n", i+1, v)
+	}
+	if _, err := f.WriteString(b.String()); err != nil {
+		return "", err
+	}
+	return f.Name(), nil
+}
+
 // templatesRoot is the canonical template root under audit. Relative to the
 // package directory (internal/template/), templates/ is the embedded fs.
 const templatesRoot = "templates"
 
 // leakTextExtensions is the set of file extensions scanned verbatim for
 // internal-content leak — the text formats that ship to user projects.
+// `.js` is scanned because dynamic-workflow fan-out scripts ship verbatim under
+// `.claude/workflows/`. Their header comments routinely cite the SPEC that
+// authored them, so without this entry the walker would skip the files entirely
+// and every neutrality judgment on them would be vacuous — a green produced by
+// not reading the file, not by the file being clean.
 var leakTextExtensions = map[string]bool{
 	".md":   true,
 	".tmpl": true,
@@ -546,6 +879,7 @@ var leakTextExtensions = map[string]bool{
 	".yml":  true,
 	".sh":   true,
 	".json": true,
+	".js":   true,
 }
 
 // leakScannedDotfiles is the basename allowlist of EXTENSIONLESS dotfiles that
@@ -575,17 +909,51 @@ func shouldScanForLeak(path string) bool {
 	return leakScannedDotfiles[filepath.Base(path)]
 }
 
+// scanLine is one line of a scanned file together with its fenced-code-block
+// state. The scan is line-aware (rather than whole-file) because the DC-1
+// structural gate is a property of the line a match sits on, which a
+// whole-text FindAllString cannot recover.
+type scanLine struct {
+	text    string
+	inFence bool
+}
+
+// splitScanLines splits file text into lines and resolves each line's
+// fenced-code-block state, mirroring the triage classifier's fence tracking
+// (a delimiter line toggles the state and is itself reported as outside).
+func splitScanLines(text string) []scanLine {
+	raw := strings.Split(text, "\n")
+	lines := make([]scanLine, 0, len(raw))
+	inFence := false
+	for _, l := range raw {
+		if dc1FenceToggleRe.MatchString(l) {
+			inFence = !inFence
+			lines = append(lines, scanLine{text: l, inFence: false})
+			continue
+		}
+		lines = append(lines, scanLine{text: l, inFence: inFence})
+	}
+	return lines
+}
+
 // collectLeakViolations scans text for every applicable leak class and returns
-// human-readable violation strings (one per distinct match). The three per-class
+// human-readable violation strings (one per distinct match). The per-class
 // gates are applied here: skill-body scope (skillBodyScoped classes apply only
 // under ".claude/skills/"), requireHexLetter (S2 decimal-constant exclusion),
-// and the pedagogical allowlist.
+// the pedagogical allowlist, and — for the date class only — the DC-1/DC-4
+// structural gate plus the DC-3/DC-2b/DC-5 date allowlist.
+//
+// Deduplication is per file, per class, on the trimmed match text: the same
+// literal appearing on several lines yields one violation. This is unchanged
+// from the whole-file scan the line-aware walk replaced, and other classes
+// depend on it.
 //
 // relForAllowlist is the templatesRoot-relative, forward-slash path used for the
-// skill-body scope check and the pedagogical allowlist lookup; displayPath is the
+// skill-body scope check and the allowlist lookups; displayPath is the
 // label rendered in each violation string.
 func collectLeakViolations(displayPath, relForAllowlist, text string, classes []leakClass) []string {
 	var out []string
+	lines := splitScanLines(text)
 	for _, class := range classes {
 		// Skill-body scope gate (SPEC-SKILL-BODY-NEUTRALITY-001):
 		// a skillBodyScoped class applies ONLY to files under ".claude/skills/"
@@ -599,29 +967,38 @@ func collectLeakViolations(displayPath, relForAllowlist, text string, classes []
 		if class.skillMoaiScoped && !strings.HasPrefix(relForAllowlist, skillMoaiPrefix) {
 			continue
 		}
-		matches := class.pattern.FindAllString(text, -1)
-		if len(matches) == 0 {
-			continue
-		}
 		// Deduplicate matches within the same file for readability.
 		seen := map[string]struct{}{}
-		for _, m := range matches {
-			trimmed := strings.TrimSpace(m)
-			// requireHexLetter gate (S2): a match with no [a-f] hex letter is a
-			// decimal byte/size constant, not a short-sha.
-			if class.requireHexLetter && !strings.ContainsAny(trimmed, "abcdef") {
-				continue
+		for _, ln := range lines {
+			for _, m := range class.pattern.FindAllString(ln.text, -1) {
+				trimmed := strings.TrimSpace(m)
+				// requireHexLetter gate (S2): a match with no [a-f] hex letter is a
+				// decimal byte/size constant, not a short-sha.
+				if class.requireHexLetter && !strings.ContainsAny(trimmed, "abcdef") {
+					continue
+				}
+				// DC-1/DC-4 structural gate. Evaluated BEFORE the dedup bookkeeping
+				// because it is a property of THIS line: recording a structurally
+				// carved match as seen would suppress a genuine occurrence of the
+				// same literal on a later, uncarved line.
+				if class.dateCarveOut && isStructurallyCarvedDate(relForAllowlist, ln.text, ln.inFence) {
+					continue
+				}
+				if _, ok := seen[trimmed]; ok {
+					continue
+				}
+				seen[trimmed] = struct{}{}
+				// Pedagogical allowlist gate: skip legitimate pedagogical SPEC ID
+				// illustrations per progress.md §A.6 user decision.
+				if isPedagogicallyAllowed(relForAllowlist, trimmed) {
+					continue
+				}
+				// DC-3/DC-2b/DC-5-PRESERVE content-anchored date allowlist.
+				if class.dateCarveOut && isDateAllowlisted(relForAllowlist, trimmed) {
+					continue
+				}
+				out = append(out, displayPath+" | class="+class.name+" | match="+trimmed)
 			}
-			if _, ok := seen[trimmed]; ok {
-				continue
-			}
-			seen[trimmed] = struct{}{}
-			// Pedagogical allowlist gate: skip legitimate pedagogical SPEC ID
-			// illustrations per progress.md §A.6 user decision.
-			if isPedagogicallyAllowed(relForAllowlist, trimmed) {
-				continue
-			}
-			out = append(out, displayPath+" | class="+class.name+" | match="+trimmed)
 		}
 	}
 	return out
@@ -718,18 +1095,30 @@ func TestTemplateNoInternalContentLeak(t *testing.T) {
 		}
 		t.Errorf("template internal-content leak detected (%d occurrences, mode=%s):",
 			len(violations), mode)
-		// Cap output at the first 50 violations to keep test logs readable.
-		// Real audit logs are surfaced via the `grep -rln` command in
-		// CLAUDE.local.md §25.3 self-check guidance, not via test stdout.
-		limit := 50
-		if len(violations) < limit {
-			limit = len(violations)
-		}
-		for i := 0; i < limit; i++ {
+		// Cap console output to keep test logs readable, but never let the cap
+		// hide findings: whatever is truncated is written in full to a file and
+		// that path is named in the truncation message (REQ-TDN-016). The
+		// former behaviour reported only a residual count and pointed at an
+		// indirect `grep -rln` recipe, which is what kept the true finding
+		// count invisible.
+		shown := min(len(violations), leakReportConsoleCap)
+		for i := range shown {
 			t.Errorf("  [%d] %s", i+1, violations[i])
 		}
-		if len(violations) > limit {
-			t.Errorf("  ... %d more (capped)", len(violations)-limit)
+		if len(violations) > shown {
+			t.Errorf("  ... %d more (capped)", len(violations)-shown)
+		}
+		// The path accompanies EVERY failure, not only a truncated one. That is
+		// a superset of REQ-TDN-016 ("shall not truncate without one") and it
+		// is what makes the requirement testable: AC-TDN-010's injection recipe
+		// exercises the reporting path with a single synthetic finding, which
+		// by construction does not reach the cap.
+		if path, err := writeLeakFullListing(violations, mode); err == nil {
+			t.Errorf("  full listing: %s", path)
+		} else {
+			// Never mask the write failure and never panic: the findings above
+			// are still the actionable output.
+			t.Errorf("  full listing unavailable: %v", err)
 		}
 		t.Errorf("Remediation: apply substitution dictionary at " +
 			".moai/specs/SPEC-V3R6-TEMPLATE-INTERNAL-ISOLATION-001/design.md §B " +
@@ -971,7 +1360,7 @@ func TestC7PackageRestriction(t *testing.T) {
 	for _, real := range []string{
 		"internal/spec/lint.go",
 		"internal/cli/harness.go",
-		"internal/hook/dbsync/db_schema_sync.go",
+		"internal/hook/security/scan.go",
 		"internal/ciwatch/handoff.go",
 	} {
 		if !c7.MatchString(real) {
@@ -1071,11 +1460,11 @@ func anyViolationHasClass(violations []string, class string) bool {
 // block shipped in templates/CLAUDE.md (the Template-First empty marker). The
 // block ships to every user project on `moai init` / `moai update`, so it MUST:
 //
-//   (a) be PRESENT — the heading + start/end markers exist in the template;
-//   (b) ship EMPTY — zero bullets between the markers (a populated block in the
-//       template would leak internal learning data — the AP-HEV2-006 anti-pattern);
-//   (c) be NEUTRAL — no forbidden-class content (internal SPEC IDs / REQ-AC
-//       tokens / internal dates / short-shas) in the block region.
+//	(a) be PRESENT — the heading + start/end markers exist in the template;
+//	(b) ship EMPTY — zero bullets between the markers (a populated block in the
+//	    template would leak internal learning data — the AP-HEV2-006 anti-pattern);
+//	(c) be NEUTRAL — no forbidden-class content (internal SPEC IDs / REQ-AC
+//	    tokens / internal dates / short-shas) in the block region.
 //
 // This EXTENDS the leak-scan coverage for the new block: the whole-tree
 // TestTemplateNoInternalContentLeak already walks templates/CLAUDE.md, but this

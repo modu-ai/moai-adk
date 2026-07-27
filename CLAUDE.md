@@ -38,7 +38,7 @@ Five ordered stages:
 - ② **Context-sufficiency check** — when context is insufficient, run the Rule 5 Context-First Discovery `AskUserQuestion` rounds (§7) before proceeding.
 - ③ **Execution-plan composition** — compose the skill / agent / dynamic-workflow chain and select the Phase 0.95 orchestration mode (unchanged; see `.claude/rules/moai/workflow/orchestration-mode-selection.md`). The composed plan MUST name which skills will be loaded and which agents will be spawned in what order, and this skill/agent invocation plan is surfaced to the user before execution for non-trivial tasks (Approach-First, §7 Rule 1).
 - ④ **Approval gates** — unchanged, including the **Implementation Kickoff Approval** human gate at the plan→run boundary (§8); the gate also offers an autonomous-vs-semi-autonomous progression-mode axis (a post-approval progression choice, never a gate bypass).
-- ⑤ **Execute → verify → iterate** — run the plan, verify against acceptance criteria, iterate; when a goal is armed (`/goal`, `/moai goal`), the goal evaluator is the termination judge.
+- ⑤ **Execute → verify → iterate** — run the plan, verify against acceptance criteria, iterate; when a goal is armed (`/moai goal`), the goal evaluator is the termination judge.
 
 Report: consolidate agent results and format the response in the user's `conversation_language`.
 
@@ -50,7 +50,7 @@ Report: consolidate agent results and format the response in the user's `convers
 
 Single entry point for all MoAI development workflows.
 
-Subcommands: plan, run, sync, project, fix, loop, mx, feedback, review, clean, codemaps, gate, e2e, harness
+Subcommands: plan, run, sync, project, fix, loop, mx, feedback, review, clean, codemaps, gate, e2e, harness, goal
 Default (natural language): Routes to autonomous workflow (plan -> run -> sync pipeline)
 
 `/moai loop` and `/moai fix` are goal-preset siblings built on the goal engine: `/moai loop` is the goal preset for a bounded project-wide improvement sweep (scan a finite issue queue, then delegate iterate-until-done to the goal engine), and `/moai fix` is the one-shot turn-based preset.
@@ -61,7 +61,9 @@ Default (natural language): Routes to autonomous workflow (plan -> run -> sync p
 
 The MoAI agent catalog consists of exactly **11 retained agents** (10 MoAI-custom + 1 Anthropic built-in `Explore`). The catalog is aligned with Anthropic's published best practices: "Subagents cannot spawn other subagents" (claude.com/docs/en/sub-agents — historical default; see the Watch note below for the v2.1.172 nesting update), "Start with 3-5 teammates for most workflows" (claude.com/docs/en/agent-teams), and "Define a custom subagent when you keep spawning the same kind of worker" (claude.com/docs/en/best-practices).
 
-> **Watch (Claude Code 2.1.172)**: As of Claude Code v2.1.172 a subagent can spawn its own nested subagents. This is gated by the `Agent` tool being present in the subagent's `tools` list — the `Agent(agent_type)` parenthesized allowlist is a main-thread (`claude --agent`) feature, and inside a subagent definition the parenthesized type list is ignored. Nesting depth is fixed and not configurable: a subagent at depth five does not receive the `Agent` tool and cannot spawn further. To prevent a subagent from spawning others, omit `Agent` from its `tools` list (or add it to `disallowedTools`). The MoAI retained agents do not list `Agent` in their `tools`, so MoAI subagents do not nest — the flat-hierarchy 11-agent consolidation rationale stands by configuration. See `code.claude.com/docs/en/sub-agents` § Spawn nested subagents.
+> **Watch (Claude Code 2.1.219)**: Subagent nesting is **enabled by default** on v2.1.219+ — the changelog states subagents can spawn nested subagents up to depth 3 by default; set `CLAUDE_CODE_MAX_SUBAGENT_SPAWN_DEPTH=1` to disable nesting. The former "defaults to off" claim applied only to v2.1.217–2.1.218. Caveat: the depth-3 ceiling and env-propagation behavior are changelog-sourced, not observed — the empirical evidence covers a single depth-1 nested spawn with the depth env unset. For an `Agent`-carrying subagent, **omitting the `Agent` tool from its `tools` list is the sole remaining flat-hierarchy guarantee**; every retained MoAI agent (including `sync-auditor`, whose former read-only nesting pilot is retired) omits `Agent`, so the flat hierarchy holds by tool omission. The `Agent(agent_type)` parenthesized allowlist is a main-thread (`claude --agent`) feature — inside a subagent definition it is ignored. Separately, the Task/Agent spawn-time `mode` parameter is deprecated and **ignored** since v2.1.213 (changelog/doc-sourced, not runtime-observed): subagents inherit the parent session's permission mode, and a parent in `bypassPermissions`/`acceptEdits` takes precedence and cannot be overridden — a spawned child's read-only scoping therefore rests on **tool restriction** (the inherently read-only `Explore`, or a `tools:` list omitting Write/Edit/NotebookEdit), never on the deprecated spawn-time permission-mode parameter. See `code.claude.com/docs/en/sub-agents` § Spawn nested subagents.
+>
+> **Supersession note (2026-07-25)**: the paragraph above partially supersedes the nesting encoding of SPEC-SUBAGENT-NESTING-DOCTRINE-001 (its "shipped default stays flat via the runtime env-default-off" premise is stale as of v2.1.219); that SPEC's own artifacts are not rewritten.
 
 ### Selection Decision Tree
 
@@ -140,7 +142,7 @@ For TRUST 5 framework details, see .claude/rules/moai/core/moai-constitution.md
 
 MoAI-ADK uses a 3-level harness system for adaptive quality depth: **minimal** (fast validation), **standard** (default checks), **thorough** (full sync-auditor + TRUST 5). Harness level is auto-determined by the Complexity Estimator based on SPEC scope; sync-auditor provides independent skeptical assessment with 4-dimension scoring (Functionality/Security/Craft/Consistency).
 
-LSP quality gates apply phase-specific thresholds — plan: capture LSP baseline; run: zero errors/type-errors/lint-errors required; sync: zero errors, max 10 warnings, clean LSP. For configuration and threshold details, see `.claude/rules/moai/workflow/spec-workflow.md` (harness/LSP routing) + `.moai/config/sections/harness.yaml`, `.moai/config/evaluator-profiles/`, `.moai/config/sections/quality.yaml`.
+LSP quality gates apply phase-specific thresholds — plan: capture LSP baseline; run: zero errors/type-errors/lint-errors required; sync: zero errors, max 10 warnings, clean LSP. For configuration and threshold details, see `.claude/rules/moai/workflow/spec-workflow.md` (harness/LSP routing) + `.moai/config/sections/harness.yaml`, `.moai/config/evaluator-profiles/`, `.moai/config/sections/quality.yaml`; the LSP threshold values themselves live in `.moai/config/sections/lsp.yaml` (the LSP-gate SSOT).
 
 ---
 
@@ -208,7 +210,7 @@ Execution: (1) Initial Search via WebSearch with targeted queries → (2) URL Va
 
 > **GLM-backend routing**: under `moai glm` or the GLM panes of `moai cg`, WebSearch and WebFetch route to the z.ai MCP tools instead of the built-in tools — see `.claude/rules/moai/core/glm-web-tooling.md` for the HARD routing table.
 
-For research-heavy questions, the bundled `/deep-research <question>` workflow fans out multiple web searches, cross-checks sources, votes on contested claims, and returns a cited report (requires WebSearch; spends meaningfully more tokens; the AskUserQuestion boundary holds — collect the question before launch). See `.claude/rules/moai/workflow/dynamic-workflows.md`.
+For research-heavy questions, the bundled `/deep-research <question>` workflow fans out multiple web searches, cross-checks sources, votes on contested claims, and returns a cited report (manual invocation only since Claude Code v2.1.218 — Claude no longer launches it on its own; requires WebSearch; spends meaningfully more tokens; the AskUserQuestion boundary holds — collect the question before launch). See `.claude/rules/moai/workflow/dynamic-workflows.md`.
 
 ---
 
@@ -229,7 +231,7 @@ Resume interrupted agent work using agentId (e.g., "Resume agent abc123 and cont
 
 MoAI-ADK integrates MCP servers and deep-analysis modes:
 
-- **UltraThink** (`ultrathink` keyword) / **Adaptive Thinking** (Opus 4.7+, including 4.8): the `ultrathink` keyword sets `effort: xhigh` and triggers Adaptive Thinking (dynamically allocated reasoning tokens, no fixed budget_tokens; controlled by effort level high/xhigh/max, not budget_tokens). See Skill("moai-workflow-thinking").
+- **UltraThink** (`ultrathink` keyword) / **Adaptive Thinking** (Opus 4.7+, including Opus 5 and 4.8): the `ultrathink` keyword sets `effort: xhigh` and triggers Adaptive Thinking (dynamically allocated reasoning tokens, no fixed budget_tokens; controlled by effort level high/xhigh/max, not budget_tokens). See Skill("moai-foundation-thinking").
 - **Context7**: Up-to-date library documentation lookup (resolve-library-id, get-library-docs).
 - **claude-in-chrome**: Browser automation for web-based tasks.
 - **Dynamic Workflows / ultracode**: `/effort ultracode` combines xhigh effort with automatic workflow orchestration (Claude Code v2.1.154+). See .claude/rules/moai/workflow/dynamic-workflows.md.
@@ -248,6 +250,7 @@ For MCP configuration and usage patterns, see .claude/rules/moai/core/settings-m
 
 For core principles, see `.claude/rules/moai/core/moai-constitution.md`. Operational safeguards: file-write-conflict prevention (dependency graphs before parallel execution), agent tool requirements (Read/Write/Edit/Grep/Glob/Bash/TaskCreate/Update/List/Get), loop prevention (max 3 retries), platform compatibility (prefer Edit over sed/awk), team file ownership (per-teammate patterns).
 - **Background Agent Execution (background-default aligned)**: [ZONE:Evolvable] [HARD] As of Claude Code v2.1.198, subagents run in the background by default; the runtime chooses foreground only when it needs the result before continuing, and a background subagent still surfaces every permission prompt in the main session (naming the asking subagent since v2.1.186; Esc denies just that one call). MoAI aligns with this runtime default rather than forcing write-capable agents to the foreground, and does not set the `background:` frontmatter field. The retained safeguard is concurrency, not backgrounding: MoAI does not run two write-capable agents concurrently, and orchestrator work concurrent with a write-capable agent is read-only.
+- **Subagent concurrency caps (v2.1.217)**: [ZONE:Evolvable] Three independent runtime caps bound subagent fan-out, distinct from the nesting *depth* cap (`CLAUDE_CODE_MAX_SUBAGENT_SPAWN_DEPTH`, §4 Watch note): `CLAUDE_CODE_MAX_CONCURRENT_SUBAGENTS` (default 20; ultracode sessions exempt) bounds how many subagents run at once, and `CLAUDE_CODE_MAX_SUBAGENTS_PER_SESSION` (default 200) bounds the per-session total. MoAI's own 3-5 concurrent `Agent()` ceiling (Mode 4) sits well under the runtime cap.
 
 Per the worktree-opt-in policy, L2/L3 worktree usage is user opt-in; L1 `Agent(isolation: "worktree")` is Claude Code runtime autonomous (MoAI does not mandate isolation). For the decision tree and per-role guidance, see `.claude/rules/moai/workflow/worktree-integration.md` § Terminology Glossary.
 

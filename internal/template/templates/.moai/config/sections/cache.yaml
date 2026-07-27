@@ -15,3 +15,7 @@ cacheStrategy:
   #   "5m"  → +25% cache_write, shorter window (best for short sessions)
   #   "off" → no session-level breakpoint (avoids single-turn write penalty)
   session_ttl: "1h"
+  # Per-SPEC breakpoint TTL applied on `/moai run SPEC-XXX`. Enum: "5m" | "off".
+  spec_ttl: "5m"
+  # Minimum prompt-segment size (tokens) worth caching; smaller segments skip breakpoints.
+  min_cacheable_tokens: 2048

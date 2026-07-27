@@ -66,7 +66,7 @@ delegation:
             skills: [moai-foundation-quality, moai-ref-testing-pyramid]
         harness:
             agents: [builder-harness]
-            skills: [moai-meta-harness, moai-harness-learner]
+            skills: [moai-harness-learner]
         goal:
             agents: []                     # orchestrator + stop-goal Stop hook
             skills: []

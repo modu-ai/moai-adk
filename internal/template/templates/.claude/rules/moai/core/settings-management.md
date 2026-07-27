@@ -32,7 +32,7 @@ The genuine Claude Code `/config` slash command (distinct from MoAI's `.moai`-pr
 
 MoAI-ADK no longer ships or provisions MCP servers via `.mcp.json`. Users may still configure Claude Code's native MCP support directly — see the official Claude Code MCP documentation. The GLM-backend z.ai web-tooling servers (`zai-mcp-server`, `web_search_prime`, `web_reader`) remain available via `moai glm tools enable` under a GLM session; see `.claude/rules/moai/core/glm-web-tooling.md` for the HARD routing table.
 
-> Sequential Thinking MCP was retired in an earlier deep-reasoning consolidation. Use the `ultrathink` keyword (Adaptive Thinking on Opus 4.7+ / 4.8) for deep reasoning.
+> Sequential Thinking MCP was retired in an earlier deep-reasoning consolidation. Use the `ultrathink` keyword (Adaptive Thinking on Opus 4.7+, including Opus 5 and 4.8) for deep reasoning.
 
 **`alwaysLoad` field (Claude Code v2.1.119+)** — Claude Code supports an `"alwaysLoad": true` field on MCP server entries in a user-authored `.mcp.json`; when set, the server's tool schema loads at session start instead of via the deferred-load default. This is a Claude Code platform feature documented for reference; MoAI-ADK does not emit it from its own templates.
 
@@ -54,6 +54,7 @@ MCP tools (when a user configures their own `.mcp.json`) are deferred by default
 | `requiredMinimumVersion` | v2.1.163+ | Managed | Hard version-gate — Claude Code refuses to start when its version is below the floor. An org/admin decision, parallel to the `disableWorkflows` stance. Distinct from the older advisory `minimumVersion`. |
 | `requiredMaximumVersion` | v2.1.163+ | Managed | Hard version-ceiling — refuses to start above the cap. Likewise an org/admin decision. |
 | `effortLevel` | v2.1.110+ | User/Project/Local | Intentionally NOT shipped in `settings.json.tmpl`. Per-session effort is controlled by the `ultrathink` keyword or the `CLAUDE_CODE_EFFORT_LEVEL` environment variable; pinning a fixed high effort level project-wide would force elevated token cost on every user session. |
+| `workflowSizeGuideline` | v2.1.219+ | Any settings file | Sets the advisory Dynamic workflow size guideline (`small` / `medium` / `large` / `unrestricted`; default `medium` — aim for fewer than 15 agents); the `/config` row is hidden while one is set. MoAI does not pin a size — the choice is left to the user/org (see `.claude/rules/moai/workflow/dynamic-workflows.md`). |
 
 Reference: https://code.claude.com/docs/en/settings.
 
@@ -65,13 +66,13 @@ Reference: https://code.claude.com/docs/en/settings.
 - Architecture decisions
 - Technology trade-off analysis
 
-Use the `ultrathink` keyword in user prompts to activate Adaptive Thinking (Opus 4.7+ / 4.8). This is the canonical deep-reasoning path; Sequential Thinking MCP was retired in an earlier consolidation.
+Use the `ultrathink` keyword in user prompts to activate Adaptive Thinking (Opus 4.7+, including Opus 5 and 4.8). This is the canonical deep-reasoning path; Sequential Thinking MCP was retired in an earlier consolidation.
 
 ### MoAI Configuration
 
 `.moai/config/` - MoAI-specific settings:
 
-- config.yaml: Main configuration
+- sections/*.yaml: Section-file family — the configuration SSOT (no aggregate config.yaml file exists)
 - sections/quality.yaml: Quality gates, coverage targets
 - sections/language.yaml: Language preferences
 - sections/user.yaml: User information
@@ -120,6 +121,15 @@ Loads the following 15 sections in fixed order. All return defaults on absent fi
 
 - `YAML_SECTION_NO_LOADER` (`audit_loader_completeness_test.go:TestAuditLoaderCompleteness`): fails if a new `.moai/config/sections/*.yaml` file has no loader and is not in the acknowledged allowlist.
 - `CONFIG_STRUCT_YAML_MISMATCH` (`audit_struct_yaml_symmetry_test.go:TestStructYAMLSymmetry_*`): fails if a Go struct field lacks a matching YAML key or vice versa.
+
+**Acknowledged config orphans** (single documented inventory): the following section
+files currently have no doc cross-references and/or no `Loader.Load()` consumer and are
+acknowledged as-is — `security.yaml`, `observability.yaml`, `report.yaml`, `sunset.yaml`
+(DORMANT by design), `archive.yaml`, `cache.yaml` (dedicated `LoadCacheConfig`),
+`feedback.yaml`, `project.yaml`. Maintainer-only surfaces (`tool-policy.yaml`,
+`mcp-matrix.yaml`) are not distributed to user projects; `lsp.yaml` is the LSP-gate
+threshold SSOT referenced from CLAUDE.md §6. The Go-side registry of these dispositions
+is `internal/config/audit_registry.go` + the loader-completeness allowlist.
 
 **Adding a new YAML section** (5-step procedure):
 1. Add `<name>.yaml` to `internal/template/templates/.moai/config/sections/`

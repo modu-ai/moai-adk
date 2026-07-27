@@ -46,14 +46,18 @@ func TestM5AgentTierBadgeAll20Agents(t *testing.T) {
 }
 
 // TestM5AgentTierBadgeCustomOverride verifies AC-WC-018 / EC-2: when the agent's
-// current effort is `max` or model is `inherit`, the badge renders a neutral
-// "custom" marker (NOT a tier color).
+// current effort is `max`, the badge renders a neutral "custom" marker (NOT a
+// tier color).
+//
+// `model: inherit` was REMOVED from the custom predicate by the console UX fix
+// batch (G2-3): SPEC-MODEL-PROFILE-MATRIX-001 stopped mutating agent frontmatter,
+// making `inherit` the SHIPPED default rather than a manual override — see
+// TestAgentTierBadgeInheritIsDefault. `effort: max` is now the sole signal.
 func TestM5AgentTierBadgeCustomOverride(t *testing.T) {
 	cases := []struct {
 		name, model, effort string
 	}{
 		{"manager-spec", v4manifest.ModelOpus, v4manifest.EffortMax},
-		{"manager-spec", v4manifest.ModelInherit, v4manifest.EffortXhigh},
 		{"hns-github-specialist", v4manifest.ModelInherit, v4manifest.EffortMax},
 	}
 	for _, tc := range cases {
@@ -70,28 +74,12 @@ func TestM5AgentTierBadgeCustomOverride(t *testing.T) {
 	}
 }
 
-// TestM5AgentTierSuggestedMarkers verifies the tier-suggested model/effort helpers
-// (design.md §D): each tier's suggested pair matches the table.
-func TestM5AgentTierSuggestedMarkers(t *testing.T) {
-	cases := []struct {
-		name         string
-		wantModel    string
-		wantEffort   string
-	}{
-		{"manager-spec", v4manifest.ModelOpus, v4manifest.EffortXhigh},       // 🔴
-		{"manager-develop", v4manifest.ModelOpus, v4manifest.EffortHigh},     // 🟠
-		{"manager-docs", v4manifest.ModelSonnet, v4manifest.EffortMedium},    // 🔵
-		{"hns-github-specialist", v4manifest.ModelHaiku, v4manifest.EffortLow}, // 🩵
-	}
-	for _, tc := range cases {
-		if !agentIsSuggestedModel(tc.name, tc.wantModel) {
-			t.Errorf("%s: suggested model check failed (want %q)", tc.name, tc.wantModel)
-		}
-		if !agentIsSuggestedEffort(tc.name, tc.wantEffort) {
-			t.Errorf("%s: suggested effort check failed (want %q)", tc.name, tc.wantEffort)
-		}
-	}
-}
+// NOTE: TestM5AgentTierSuggestedMarkers was removed by the G3 profile-matrix
+// repoint. The badge-tier "suggested model/effort" helpers (agentIsSuggestedModel /
+// agentIsSuggestedEffort) that it exercised are retired — the agentfm read path now
+// derives each agent's selected value from the runtime profile matrix
+// (template.ResolveAgentModelEffort), not the badge-tier table. Profile-matrix
+// resolution is covered by TestG3ReadPathDerivesFromProfileMatrix.
 
 // seedAgentFMFile writes a minimal agent .md frontmatter file for a render test.
 func seedAgentFMFile(t *testing.T, root, dir, name, model, effort string) {

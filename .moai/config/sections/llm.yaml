@@ -6,19 +6,21 @@ llm:
     performance_tier: medium
     profiles:
         max:
-            spec_auditors: { model: fable, effort: medium }
-            develop: { model: fable, effort: low }
-            advisor: { model: fable, effort: medium }
+            spec_auditors: { model: fable, effort: low }
+            develop: { model: opus, effort: high }
+            advisor: { model: fable, effort: low }
             design_harness_e2e: { model: opus, effort: high }
             docs: { model: sonnet, effort: medium }
             git: { model: sonnet, effort: low }
+            explore: { model: sonnet, effort: low }
         medium:
             spec_auditors: { model: opus, effort: high }
-            develop: { model: opus, effort: high }
-            advisor: { model: fable, effort: low }
+            develop: { model: opus, effort: xhigh }
+            advisor: { model: opus, effort: low }
             design_harness_e2e: { model: opus, effort: medium }
             docs: { model: sonnet, effort: medium }
             git: { model: sonnet, effort: low }
+            explore: { model: sonnet, effort: low }
         low:
             spec_auditors: { model: opus, effort: low }
             develop: { model: opus, effort: medium }
@@ -26,6 +28,7 @@ llm:
             design_harness_e2e: { model: opus, effort: low }
             docs: { model: sonnet, effort: medium }
             git: { model: sonnet, effort: low }
+            explore: { model: sonnet, effort: low }
     agent_overrides: {}
     glm:
         base_url: https://api.z.ai/api/anthropic

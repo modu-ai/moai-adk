@@ -3,6 +3,7 @@ package config
 import (
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 )
@@ -15,13 +16,19 @@ import (
 // OR be added to YAMLAuditExceptions. MIG-003 will register the 5 currently-excepted files
 // (constitution/context/interview/design/harness) progressively.
 func TestAuditParity(t *testing.T) {
-	// Use the project's actual .moai/config/sections/ directory.
-	// When running from the worktree, cwd is the repo root.
-	sectionsDir := ".moai/config/sections"
+	// Resolve the repo root via runtime.Caller so the test executes (PASS or
+	// FAIL, never SKIP) regardless of the go test working directory — plain
+	// `go test ./internal/config/...` runs with cwd = package dir, where a
+	// relative ".moai/config/sections" path is never found.
+	_, thisFile, _, ok := runtime.Caller(0)
+	if !ok {
+		t.Fatal("runtime.Caller failed")
+	}
+	repoRoot := filepath.Join(filepath.Dir(thisFile), "..", "..")
+	sectionsDir := filepath.Join(repoRoot, ".moai", "config", "sections")
 
 	if _, err := os.Stat(sectionsDir); os.IsNotExist(err) {
-		t.Skipf("sections dir %s not found (test environment may not have project yaml files)", sectionsDir)
-		return
+		t.Fatalf("sections dir %s not found — the tracked project config tree is missing", sectionsDir)
 	}
 
 	registry := GetYAMLToStructRegistry()

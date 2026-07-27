@@ -4,6 +4,8 @@ import (
 	"context"
 	"os"
 	"path/filepath"
+	"runtime"
+	"strings"
 	"testing"
 )
 
@@ -286,72 +288,53 @@ func TestRunAstGrepGateV2_ContextCancellation(t *testing.T) {
 	}
 }
 
-// TestRunAstGrepGate_V1_V2_Equivalence is a regression test that verifies V1
-// (RunAstGrepGate) and V2 (RunAstGrepGateV2) behave identically across the
-// non-blocking input space. Both implementations must agree on passed=true
-// and empty output for all configurations where sg is unavailable, the
-// rules directory is missing, or the gate is disabled.
-//
-// When V1 is eventually removed, this test should be removed in the same
-// commit.
-func TestRunAstGrepGate_V1_V2_Equivalence(t *testing.T) {
-	// t.Setenv is incompatible with t.Parallel().
-	t.Setenv("PATH", "")
-
-	projectDir := t.TempDir()
-
-	cases := []struct {
-		name string
-		cfg  *AstGrepGateConfig
-	}{
-		{"nil config", nil},
-		{"disabled", &AstGrepGateConfig{Enabled: false}},
-		{"default enabled (no sg, no rules)", DefaultAstGrepGateConfig()},
-		{
-			name: "warn-only",
-			cfg: &AstGrepGateConfig{
-				Enabled:      true,
-				RulesDir:     ".moai/config/astgrep-rules",
-				BlockOnError: true,
-				WarnOnlyMode: true,
-			},
-		},
-		{
-			name: "block-on-error false",
-			cfg: &AstGrepGateConfig{
-				Enabled:      true,
-				RulesDir:     ".moai/config/astgrep-rules",
-				BlockOnError: false,
-			},
-		},
-		{
-			name: "nonexistent rules dir",
-			cfg: &AstGrepGateConfig{
-				Enabled:      true,
-				RulesDir:     "does/not/exist",
-				BlockOnError: true,
-			},
-		},
+// TestRunAstGrepGateV2_AdvisoryOutputWithFindings characterizes advisory mode:
+// with error-severity findings present and WarnOnlyMode enabled, the gate
+// returns passed==true together with non-empty advisory output (the findings
+// are reported but the commit is never blocked).
+func TestRunAstGrepGateV2_AdvisoryOutputWithFindings(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("fake sg shell script requires a POSIX shell")
 	}
 
-	for _, tc := range cases {
-		tc := tc
-		t.Run(tc.name, func(t *testing.T) {
-			ctx := context.Background()
+	// Fake sg binary on PATH emitting one error-severity finding as sg JSON.
+	binDir := t.TempDir()
+	script := `#!/bin/sh
+echo '[{"ruleId":"demo-rule","severity":"error","message":"demo finding","file":"main.go","range":{"start":{"line":0,"column":0},"end":{"line":0,"column":1}}}]'
+`
+	if err := os.WriteFile(filepath.Join(binDir, "sg"), []byte(script), 0o755); err != nil {
+		t.Fatalf("write fake sg: %v", err)
+	}
+	// t.Setenv is incompatible with t.Parallel().
+	t.Setenv("PATH", binDir)
 
-			v1Passed, v1Output := RunAstGrepGate(ctx, projectDir, tc.cfg)
-			v2Passed, v2Output := RunAstGrepGateV2(ctx, projectDir, tc.cfg)
+	// Project with an sgconfig.yml so the scanner takes the single-invocation
+	// config-based path.
+	projectDir := t.TempDir()
+	rulesDir := filepath.Join(projectDir, ".moai", "config", "astgrep-rules")
+	if err := os.MkdirAll(rulesDir, 0o755); err != nil {
+		t.Fatalf("mkdir rules dir: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(rulesDir, "sgconfig.yml"), []byte("ruleDirs:\n  - .\n"), 0o644); err != nil {
+		t.Fatalf("write sgconfig.yml: %v", err)
+	}
 
-			if v1Passed != v2Passed {
-				t.Errorf("V1/V2 passed divergence: V1=%v V2=%v (config=%+v)",
-					v1Passed, v2Passed, tc.cfg)
-			}
-			// Output equivalence is asserted only in the no-findings case,
-			// which is the entire space exercised by these unit tests.
-			if v1Output != v2Output {
-				t.Errorf("V1/V2 output divergence:\nV1=%q\nV2=%q\n(config=%+v)",
-					v1Output, v2Output, tc.cfg)
-			}
-		})
+	cfg := &AstGrepGateConfig{
+		Enabled:      true,
+		RulesDir:     ".moai/config/astgrep-rules",
+		BlockOnError: false,
+		WarnOnlyMode: true,
+	}
+
+	passed, output := RunAstGrepGateV2(context.Background(), projectDir, cfg)
+
+	if !passed {
+		t.Errorf("advisory mode must never block, got blocked with output: %q", output)
+	}
+	if output == "" {
+		t.Error("advisory mode with findings should return non-empty advisory output")
+	}
+	if !strings.Contains(output, "demo-rule") {
+		t.Errorf("advisory output should contain the finding rule id, got: %q", output)
 	}
 }

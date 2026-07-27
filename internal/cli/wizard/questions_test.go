@@ -101,7 +101,6 @@ func TestQuestionOrder(t *testing.T) {
 		"project_name",
 		"model_policy",
 		"report_format",
-		"advanced_bridge",
 	}
 
 	if len(questions) != len(expectedIDs) {
@@ -140,13 +139,13 @@ func TestDefaultQuestionsHasNoGitQuestions(t *testing.T) {
 
 // TestInitWizardQuestionSetHasNoGitCredentialQuestions locks the F5 ground
 // truth: the interactive `moai init` wizard set (DefaultQuestions +
-// Phase1Questions, as assembled by RunWithDefaultsModes) never asks
+// Page3Questions, as assembled by InitQuestions) never asks
 // git_mode / git_provider / tokens — those live only in the reconfigure set
 // (ReconfigureQuestions, built by runInitWizard). `moai init` auto-detects git
 // config via detectGitConfig. This refutes the mistaken belief that the
 // git_mode select appears during `moai init`.
 func TestInitWizardQuestionSetHasNoGitCredentialQuestions(t *testing.T) {
-	initSet := append(DefaultQuestions("/tmp/test-project"), Phase1Questions("/tmp/test-project")...)
+	initSet := append(DefaultQuestions("/tmp/test-project"), Page3Questions("/tmp/test-project")...)
 	for _, id := range gitQuestionIDs {
 		if QuestionByID(initSet, id) != nil {
 			t.Errorf("init wizard set must not contain git question %q (moai init auto-detects git config)", id)
@@ -180,8 +179,8 @@ func TestGitQuestionsReturnsExactSet(t *testing.T) {
 }
 
 // TestReconfigureQuestionsOrder verifies the reconfigure set is the union of
-// both sets with the Git block spliced between report_format and
-// advanced_bridge — the pre-split order, preserved for `moai update`.
+// both sets with the Git block spliced immediately after report_format — the
+// pre-split order, preserved for `moai update`.
 func TestReconfigureQuestionsOrder(t *testing.T) {
 	questions := ReconfigureQuestions("/tmp/test-project")
 
@@ -198,7 +197,6 @@ func TestReconfigureQuestionsOrder(t *testing.T) {
 		"github_token",
 		"gitlab_username",
 		"gitlab_token",
-		"advanced_bridge",
 	}
 
 	if len(questions) != len(wantIDs) {
@@ -217,7 +215,7 @@ func TestReconfigureQuestionsOrder(t *testing.T) {
 		}
 	}
 
-	// The Git block sits strictly between report_format and advanced_bridge.
+	// The Git block sits immediately after report_format, contiguously.
 	indexOf := func(id string) int {
 		for i, q := range questions {
 			if q.ID == id {
@@ -226,12 +224,12 @@ func TestReconfigureQuestionsOrder(t *testing.T) {
 		}
 		return -1
 	}
-	reportIdx, bridgeIdx := indexOf("report_format"), indexOf("advanced_bridge")
-	for _, id := range gitQuestionIDs {
+	reportIdx := indexOf("report_format")
+	for offset, id := range gitQuestionIDs {
 		i := indexOf(id)
-		if i <= reportIdx || i >= bridgeIdx {
-			t.Errorf("git question %q at index %d must sit between report_format (%d) and advanced_bridge (%d)",
-				id, i, reportIdx, bridgeIdx)
+		if want := reportIdx + 1 + offset; i != want {
+			t.Errorf("git question %q at index %d must sit at index %d (contiguous block after report_format at %d)",
+				id, i, want, reportIdx)
 		}
 	}
 }
@@ -324,7 +322,6 @@ func TestQuestionsAllPresent(t *testing.T) {
 		"project_name",
 		"model_policy",
 		"report_format",
-		"advanced_bridge",
 	}
 
 	for _, id := range expectedIDs {
@@ -424,36 +421,10 @@ func TestUserNameQuestion(t *testing.T) {
 	}
 }
 
-// TestAdvancedBridgeQuestion verifies the bridge Confirm is last, defaults to No,
-// and is hidden once StandardMode is preset (by --standard/--advanced).
-func TestAdvancedBridgeQuestion(t *testing.T) {
-	questions := DefaultQuestions("/tmp/test-project")
-
-	if last := questions[len(questions)-1]; last.ID != "advanced_bridge" {
-		t.Fatalf("advanced_bridge must be the last question, got %q", last.ID)
-	}
-	q := QuestionByID(questions, "advanced_bridge")
-	if q == nil {
-		t.Fatal("advanced_bridge question not found")
-		return
-	}
-	if q.Type != QuestionTypeConfirm {
-		t.Errorf("advanced_bridge should be QuestionTypeConfirm, got %v", q.Type)
-	}
-	if q.Default != "false" {
-		t.Errorf("advanced_bridge default = %q, want %q (No)", q.Default, "false")
-	}
-	if q.Condition == nil {
-		t.Fatal("advanced_bridge must have a condition")
-	}
-	// Visible in quick mode (StandardMode false), hidden when preset by flag.
-	if !q.Condition(&WizardResult{StandardMode: false}) {
-		t.Error("advanced_bridge should be visible in quick mode (StandardMode=false)")
-	}
-	if q.Condition(&WizardResult{StandardMode: true}) {
-		t.Error("advanced_bridge should be hidden when StandardMode is preset by flag")
-	}
-}
+// TestAdvancedBridgeQuestion was DELETED by SPEC-CLI-WIZARD-RESTRUCTURE-001 C1
+// (plan.md §G delete-list): its subject — the advanced_bridge gate question —
+// no longer exists. The replacement coverage lives in restructure_test.go
+// (TestAdvancedBridgeRemoved), which asserts its absence.
 
 // TestSaveAnswerConversationLanguage verifies the answer stores the code AND
 // updates the live locale pointer (drives reactive re-render of later questions).
@@ -481,24 +452,16 @@ func TestSaveAnswerUserName(t *testing.T) {
 	}
 }
 
-// TestSaveBoolAnswerAdvancedBridge verifies the bridge flips StandardMode so the
-// gated Phase 1 questions become visible in the same run.
-func TestSaveBoolAnswerAdvancedBridge(t *testing.T) {
-	result := &WizardResult{}
-	saveBoolAnswer("advanced_bridge", true, result)
-	if !result.StandardMode {
-		t.Error("advanced_bridge=Yes must set StandardMode=true")
-	}
-	saveBoolAnswer("advanced_bridge", false, result)
-	if result.StandardMode {
-		t.Error("advanced_bridge=No must set StandardMode=false")
-	}
-}
+// TestSaveBoolAnswerAdvancedBridge was DELETED by
+// SPEC-CLI-WIZARD-RESTRUCTURE-001 C17 (plan.md §G delete-list): its subject —
+// the advanced_bridge mode-capture branch — no longer exists. The
+// replacement coverage lives in restructure_test.go (TestAdvancedBridgeRemoved),
+// which asserts the branch is gone.
 
 // TestNewQuestionTranslationsExist verifies ko/ja/zh translations exist for the
-// three new questions (no hardcoded UI strings that belong in the tables).
+// identity questions (no hardcoded UI strings that belong in the tables).
 func TestNewQuestionTranslationsExist(t *testing.T) {
-	ids := []string{"conversation_language", "user_name", "advanced_bridge"}
+	ids := []string{"conversation_language", "user_name"}
 	for _, locale := range []string{"ko", "ja", "zh"} {
 		langTrans, ok := translations[locale]
 		if !ok {

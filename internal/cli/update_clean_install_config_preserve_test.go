@@ -43,6 +43,9 @@ func (d *overwritingDeployer) Deploy(ctx context.Context, projectRoot string, mg
 		".moai/config/sections/user.yaml":     "user:\n  name: \"\"\n",
 		".moai/config/sections/language.yaml": "language:\n  conversation_language: \"en\"\n",
 		".moai/config/sections/design.yaml":   "design:\n  default_framework: \"next.js\"\n",
+		// .gitignore is force-deployed too (issues #1131/#1094): the template
+		// version carries no user patterns.
+		".gitignore": "# MoAI template gitignore\n.moai/cache/\n.moai/logs/\n",
 	}
 	for rel, content := range clobber {
 		abs := filepath.Join(projectRoot, filepath.FromSlash(rel))
@@ -90,6 +93,11 @@ func makeConfigPreserveFixture(t *testing.T) string {
 
 	// A PRESERVE-inventory seed so the reinstall has inventory work too.
 	writeTestFile(t, root, ".moai/specs/SPEC-USER-CFG/spec.md", "user spec\n")
+
+	// User-customized .gitignore (issues #1131/#1094): template lines plus a
+	// user-added pattern that MUST survive the force-deploy clobber.
+	writeTestFile(t, root, ".gitignore",
+		"# MoAI template gitignore\n.moai/cache/\n.moai/logs/\nuser-secret-dir/\n")
 	return root
 }
 
@@ -220,5 +228,17 @@ func TestCleanReinstall_MatchesNormalPathProtection(t *testing.T) {
 	}
 	if got := yamlNestedString(t, root, ".moai/config/sections/user.yaml", "user", "name"); got != "GOOS-CUSTOM-NAME" {
 		t.Errorf("clean-reinstall provided lower protection than the normal path: user.yaml name = %q", got)
+	}
+
+	// .gitignore parity (issues #1131/#1094): the normal path merges user
+	// patterns back after deploy (updatemerge.MergeGitignoreFile); the clean
+	// path must provide the same protection.
+	gitignore, err := os.ReadFile(filepath.Join(root, ".gitignore"))
+	if err != nil {
+		t.Fatalf("read .gitignore: %v", err)
+	}
+	if !strings.Contains(string(gitignore), "user-secret-dir/") {
+		t.Errorf("clean-reinstall provided lower protection than the normal path: "+
+			".gitignore lost user pattern user-secret-dir/; content:\n%s", gitignore)
 	}
 }

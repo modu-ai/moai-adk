@@ -192,4 +192,3 @@ If checks fail after --fix (remaining unfixable issues):
 ---
 
 Version: 1.0.0
-Updated: 2026-03-29

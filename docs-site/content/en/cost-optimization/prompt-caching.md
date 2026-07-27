@@ -32,7 +32,7 @@ point.
   the TTL extends the lifetime for free.
 - **Per-model minimum cacheable tokens**: a prefix shorter than this is not
   cached (processed normally, no error). For example, Fable 5 = 512,
-  Opus 4.8 · Sonnet 5 = 1,024, Opus 4.7 = 2,048, Haiku 4.5 = 4,096 tokens.
+  Opus 5 · Sonnet 5 = 1,024, Opus 4.7 = 2,048, Haiku 4.5 = 4,096 tokens.
 
 ## Claude Code Users — Caching Is Automatic
 

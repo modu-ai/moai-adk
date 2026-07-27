@@ -49,12 +49,14 @@ jobs:
       contents: read
       pull-requests: write  # post review comments on the PR
       issues: read
-      # C2 audit (Wave 2): id-token: write was previously granted on the claim
-      # that claude-code-action needs OIDC for Anthropic API auth. Verified the
-      # action authenticates via the claude_code_oauth_token secret (bearer/OAuth
-      # token) directly — no cloud-provider OIDC exchange step exists in this
-      # workflow. Per least-privilege, id-token: write is REMOVED. If a future
-      # change introduces a cloud-provider OIDC exchange, re-add it then.
+      # id-token: write RESTORED (falsifies the C2 audit Wave 2 removal): the
+      # C2 claim was that claude-code-action authenticates via the
+      # claude_code_oauth_token secret alone with no OIDC exchange. Observed
+      # runs (PR #1146 / #1151) show the action DOES call the GitHub Actions
+      # OIDC endpoint (ACTIONS_ID_TOKEN_REQUEST_URL) and fails all retries
+      # without this permission ("Could not fetch an OIDC token. Did you
+      # remember to add `id-token: write`?"), so the job errors before review.
+      id-token: write
     steps:
       - name: Checkout repository
         # Pinned to commit SHA to prevent supply chain attacks via floating tags.
@@ -77,7 +79,7 @@ jobs:
         # AND a prompt input is provided (per docs/custom-automations.md §
         # "Author-Specific Code Reviews"). Without a prompt it would fall back
         # to interactive @claude-mention mode, which is not what this job wants.
-        uses: anthropics/claude-code-action@af0559ee4f514d1ef21826982bed13f7edc3c35e
+        uses: anthropics/claude-code-action@be7b93b1907a4abad570368f3c74b6fe3807510b
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
 
@@ -113,7 +115,8 @@ jobs:
       contents: read
       pull-requests: write  # @claude can act on PR comments too
       issues: read
-      # id-token REMOVED — see C2 audit note in claude-pr-review job above.
+      # id-token RESTORED — see the OIDC-restore note in claude-pr-review above.
+      id-token: write
     steps:
       - name: Checkout repository
         # Pinned to commit SHA to prevent supply chain attacks via floating tags.
@@ -133,7 +136,7 @@ jobs:
         # Pinned to commit SHA to prevent supply chain attacks via floating tags.
         # Tag: v1.0.82 | SHA: 567fe954a4527e81f132d87d1bdbcc94f7737434
         # No prompt input → interactive mode (responds to @claude mentions).
-        uses: anthropics/claude-code-action@af0559ee4f514d1ef21826982bed13f7edc3c35e
+        uses: anthropics/claude-code-action@be7b93b1907a4abad570368f3c74b6fe3807510b
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           # C4 Fix: Use claude_args for max-turns (max_turns input is deprecated).

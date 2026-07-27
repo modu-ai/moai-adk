@@ -21,22 +21,27 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/harness/v4manifest"
 	"github.com/modu-ai/moai-adk/internal/settings/agentfm"
 	"github.com/modu-ai/moai-adk/internal/template"
 )
 
-// agentFMAbsent는 effort "(absent)" 상태의 폼 와이어 값이다 (EC-7 — 키 삭제).
-const agentFMAbsent = "__absent__"
-
 // modelFable은 상위 Mythos급 모델 옵션의 폼 와이어 값이다. v4manifest에 아직
-// 대응 상수가 없어 웹 레이어에서 로컬 상수로 정의한다 (agentfm.Patch는 model을
-// 닫힌 집합으로 검증하지 않으므로 이 값으로 frontmatter 영속화가 가능하다).
+// 대응 상수가 없어 웹 레이어에서 로컬 상수로 정의한다.
 const modelFable = "fable"
 
-// agentFMModelValues / agentFMEffortValues는 v4manifest closed sets에서 파생한
-// 폼 옵션 값이다 (재선언 금지 — exported 상수 재사용). fable은 v4manifest 상수가
-// 없어 modelFable 로컬 상수를 tail에 덧붙인다.
+// perfTierCustom is the client-only "Custom" pseudo-state wire value for the
+// perf-tier radio group (G3-4). It is NOT a member of ValidPerformanceTiers —
+// selecting it means "keep the current profile and its per-agent overrides".
+const perfTierCustom = "custom"
+
+// agentFMModelValues / agentFMEffortValues는 agentfm override select의 폼 옵션
+// 값이다. G3 repoint 이후 per-agent 편집은 llm.agent_overrides 로 영속화되므로,
+// model 옵션은 override-valid 집합 {inherit, haiku, sonnet, opus, fable} 에 맞춘다
+// (config.validOverrideModels 와 동일 집합). haiku 는 명시적 per-agent 경제성
+// 선택지로 허용되며, 정렬은 저렴한 모델부터 inherit → haiku → sonnet → opus →
+// fable 순이다.
 func agentFMModelValues() []string {
 	return []string{v4manifest.ModelInherit, v4manifest.ModelHaiku, v4manifest.ModelSonnet, v4manifest.ModelOpus, modelFable}
 }
@@ -62,6 +67,12 @@ func agentFMPerfTierOptions() []string {
 func parsePerfTierForm(r *http.Request) (perfTier string, errs map[string]string) {
 	errs = map[string]string{}
 	perfTier = strings.TrimSpace(r.PostFormValue("performance_tier"))
+	// "custom" is the client-only pseudo-state (G3-4) — it is NOT a persisted tier
+	// (ValidPerformanceTiers stays {max,medium,low}). Treat it as "preserve the
+	// current profile" so the submitted per-agent overrides carry the Custom state.
+	if perfTier == perfTierCustom {
+		return "", errs
+	}
 	if perfTier != "" && !template.IsValidPerformanceTier(perfTier) {
 		errs["performance_tier"] = "invalid option"
 	}
@@ -106,10 +117,17 @@ type agentBadgeInfo struct {
 
 // agentTierBadge computes the display-only tier badge for an agent row. The badge
 // comes from the name-keyed lookup table (design.md §C — Option A, NOT from the
-// agent's effort file). When the agent's current model/effort is an override
-// sentinel (max/inherit), the badge is a neutral "custom" marker (EC-2, AC-WC-018).
+// agent's effort file). When the agent's current effort is the override sentinel
+// `max`, the badge is a neutral "custom" marker (EC-2, AC-WC-018).
+//
+// `model: inherit` is NOT an override signal: SPEC-MODEL-PROFILE-MATRIX-001
+// REQ-MPM-040 stopped mutating agent frontmatter (see applyPerfTierEdits above),
+// so `inherit` is the SHIPPED default for the core agents. Treating it as a
+// manual override mislabeled those defaults CUSTOM and produced the inconsistent
+// mix of CUSTOM pills and tier glyphs across the agent rows. The model parameter
+// is retained (unused) so the call sites keep passing the row's full state.
 func agentTierBadge(name, model, effort string) agentBadgeInfo {
-	if effort == v4manifest.EffortMax || model == v4manifest.ModelInherit {
+	if effort == v4manifest.EffortMax {
 		return agentBadgeInfo{Glyph: "custom", TooltipKey: "fieldDesc.agentfm.custom", HasBadge: true, IsCustom: true}
 	}
 	tier, ok := v4manifest.AgentTier(name)
@@ -147,28 +165,6 @@ func agentTierSortRank(name string) int {
 	}
 }
 
-// agentIsSuggestedModel reports whether m is the tier-suggested model for the
-// named agent (design.md §D). Used to mark the suggested option in the model
-// <select> when the agent's model is unset (empty=preserve sentinel).
-func agentIsSuggestedModel(name, m string) bool {
-	tier, ok := v4manifest.AgentTier(name)
-	if !ok {
-		return false
-	}
-	sm, _ := v4manifest.TierSuggestedModelEffort(tier)
-	return sm == m
-}
-
-// agentIsSuggestedEffort reports whether e is the tier-suggested effort.
-func agentIsSuggestedEffort(name, e string) bool {
-	tier, ok := v4manifest.AgentTier(name)
-	if !ok {
-		return false
-	}
-	_, se := v4manifest.TierSuggestedModelEffort(tier)
-	return se == e
-}
-
 // agentIsMoaiCore reports whether the agent lives in .claude/agents/moai/ (the 10
 // core agents) vs .claude/agents/harness/ (the 10 harness specialists). Derived
 // from the source directory path.
@@ -176,54 +172,79 @@ func agentIsMoaiCore(info agentfm.AgentInfo) bool {
 	return strings.Contains(info.Path, string(filepath.Separator)+"moai"+string(filepath.Separator))
 }
 
-// agentTierSuggestedModel returns the tier-suggested model for the agent name
-// (design.md §D), or "" if the agent has no tier entry.
-func agentTierSuggestedModel(name string) string {
-	tier, ok := v4manifest.AgentTier(name)
-	if !ok {
-		return ""
+// agentFMRenderCount reports how many of the listed agents actually render in the
+// agentfm section. Only the .claude/agents/moai/ rows render (the harness sub-tab
+// was removed), so the section count must report that subset rather than the full
+// scanned catalog. The harness agents stay in the scan — an unrendered agent
+// simply submits no form values, which parseAgentFMForm reads as "preserve".
+func agentFMRenderCount(agents []agentfm.AgentInfo) int {
+	n := 0
+	for _, a := range agents {
+		if agentIsMoaiCore(a) {
+			n++
+		}
 	}
-	sm, _ := v4manifest.TierSuggestedModelEffort(tier)
-	return sm
+	return n
 }
 
-// agentTierSuggestedEffort returns the tier-suggested effort.
-func agentTierSuggestedEffort(name string) string {
-	tier, ok := v4manifest.AgentTier(name)
-	if !ok {
-		return ""
+// agentResolvedModel returns the model for the named agent resolved through the
+// runtime profile matrix (template.ResolveAgentModelEffort): an llm.agent_overrides
+// entry wins, else the active profile's group cell, else the Go-default cell. This
+// is the SINGLE SOURCE OF TRUTH the console now reads from — NOT the agent
+// frontmatter and NOT the badge-tier suggestions (G3-1 repoint).
+func agentResolvedModel(llm config.LLMConfig, name string) string {
+	me, _ := template.ResolveAgentModelEffort(llm, name)
+	return me.Model
+}
+
+// agentResolvedEffort returns the effort resolved through the profile matrix.
+func agentResolvedEffort(llm config.LLMConfig, name string) string {
+	me, _ := template.ResolveAgentModelEffort(llm, name)
+	return me.Effort
+}
+
+// agentSelectedModel returns the model the row's select should display as
+// selected — the profile-matrix-resolved value (G3-1).
+func agentSelectedModel(llm config.LLMConfig, info agentfm.AgentInfo) string {
+	return agentResolvedModel(llm, info.Name)
+}
+
+// agentSelectedEffort returns the effort the row's select should display as
+// selected — the profile-matrix-resolved value (G3-1).
+func agentSelectedEffort(llm config.LLMConfig, info agentfm.AgentInfo) string {
+	return agentResolvedEffort(llm, info.Name)
+}
+
+// agentModelIsHaiku reports whether the agent's profile-matrix-resolved model is
+// haiku. Haiku does not honor reasoning effort, so the paired effort select is
+// disabled in that case (fieldsets.templ) with a muted inline hint. The save path
+// is unaffected: a disabled select does not submit, and parseAgentFMForm backfills
+// an unsubmitted effort with the resolved value (empty=preserve), so nothing is
+// corrupted or dropped.
+func agentModelIsHaiku(llm config.LLMConfig, info agentfm.AgentInfo) bool {
+	return agentResolvedModel(llm, info.Name) == v4manifest.ModelHaiku
+}
+
+// NOTE: agentHasOverride / agentModelIsDefault / agentEffortIsDefault were
+// removed with the per-row "(default)" caption — the profile-vs-override
+// distinction is already carried by the tier badge, so the extra tag was noise.
+
+// profileMatrixData returns the per-profile per-agent {model, effort} matrix for
+// the client-side tier-repopulation handler (G3-3), emitted via templ.JSONScript.
+// Shape: {"<tier>": {"<agent>": {"model": "...", "effort": "..."}}}. It is static
+// (derived from the Go default matrix), so the same data is emitted on every render.
+func profileMatrixData() map[string]map[string]map[string]string {
+	out := map[string]map[string]map[string]string{}
+	for _, tier := range template.ValidPerformanceTiers() {
+		base := config.LLMConfig{Profile: tier}
+		cells := map[string]map[string]string{}
+		for _, agent := range template.ProfileMatrixAgents() {
+			me, _ := template.ResolveAgentModelEffort(base, agent)
+			cells[agent] = map[string]string{"model": me.Model, "effort": me.Effort}
+		}
+		out[tier] = cells
 	}
-	_, se := v4manifest.TierSuggestedModelEffort(tier)
-	return se
-}
-
-// agentSelectedModel returns the model the select should display as selected: the
-// agent's explicit frontmatter model, or — if absent — the tier-suggested default
-// (the "resolved effective value"). Used by the agentFMRow render.
-func agentSelectedModel(info agentfm.AgentInfo) string {
-	if info.Model != "" {
-		return info.Model
-	}
-	return agentTierSuggestedModel(info.Name)
-}
-
-// agentSelectedEffort returns the effort the select should display as selected.
-func agentSelectedEffort(info agentfm.AgentInfo) string {
-	if info.EffortPresent {
-		return info.Effort
-	}
-	return agentTierSuggestedEffort(info.Name)
-}
-
-// agentModelIsDefault reports whether the selected model is a derived (tier-
-// suggested) default for an absent-model agent (vs an explicit frontmatter value).
-func agentModelIsDefault(info agentfm.AgentInfo) bool {
-	return info.Model == "" && agentTierSuggestedModel(info.Name) != ""
-}
-
-// agentEffortIsDefault reports whether the selected effort is a derived default.
-func agentEffortIsDefault(info agentfm.AgentInfo) bool {
-	return !info.EffortPresent && agentTierSuggestedEffort(info.Name) != ""
+	return out
 }
 
 // agentDescriptionShort returns a compact one-line summary of the agent's
@@ -249,14 +270,6 @@ func agentDescriptionShort(desc string) string {
 		desc = desc[:maxLen-3] + "…"
 	}
 	return desc
-}
-
-// agentFMEdit는 agent 1종의 frontmatter 편집 제출이다.
-type agentFMEdit struct {
-	Agent        string
-	Model        string // "" = 유지
-	Effort       string // "" = 유지
-	DeleteEffort bool   // "(absent)" 제출 — effort 키 삭제
 }
 
 // agentDirsFor는 frontmatter 편집 대상 디렉터리 목록이다 (live 파일 전용).
@@ -294,13 +307,35 @@ func (a *app) listAllAgentFMs(projectRoot string) ([]agentfm.AgentInfo, error) {
 	return all, nil
 }
 
-// parseAgentFMForm은 agentfm.<agent>.model / agentfm.<agent>.effort 제출을
-// 파싱한다. 빈 값은 preserve(EC-1), 검증 위반은 per-field 오류로 수집되어
-// atomic reject에 합류한다. agent 이름은 뷰에 실존하는 파일 목록이 아니라
-// 폼 이름에서 오므로 경로 조작 문자를 거부한다 (path traversal 가드).
-func parseAgentFMForm(r *http.Request, agents []agentfm.AgentInfo) ([]agentFMEdit, map[string]string) {
-	var edits []agentFMEdit
+// parseAgentFMForm parses the per-agent model/effort submissions and computes the
+// desired llm.agent_overrides state for the RENDERED, profile-matrix-member agents
+// (G3-2 repoint — persistence moved off agent frontmatter onto llm.agent_overrides).
+//
+// For each submitted agent, the (model, effort) is compared against the profile
+// default for the target tier: a value equal to the default is NOT pinned (its
+// override is cleared — reset-to-named-tier), any other value is a pin. An agent
+// with no submitted fields is preserved (empty=preserve). Non-matrix agents (no
+// group membership) are skipped entirely — config.validateAgentOverrides only
+// accepts retained-catalog names.
+//
+// Returns: the pin map (agents that differ from the profile default), the set of
+// submitted matrix-member agent names (the clear scope for applyAgentOverrides),
+// and per-field validation errors joining the atomic-reject flow. `targetTier` is
+// the perf-tier the cells will resolve under after the save ("" = the client
+// Custom pseudo-state or no tier change → the current effective profile). The form
+// names carry a path-traversal guard (defensive — List builds these names).
+func parseAgentFMForm(r *http.Request, agents []agentfm.AgentInfo, llm config.LLMConfig, targetTier string) (map[string]config.ModelEffort, []string, map[string]string) {
+	pins := map[string]config.ModelEffort{}
+	var submitted []string
 	errs := map[string]string{}
+
+	// Resolve the profile-default base under the tier that will be active after
+	// this save. A Custom/empty tier submission keeps the current profile.
+	baseProfile := targetTier
+	if baseProfile == "" {
+		baseProfile = llm.EffectiveProfile()
+	}
+	base := config.LLMConfig{Profile: baseProfile, Profiles: llm.Profiles}
 
 	for _, a := range agents {
 		if !a.ParseOK {
@@ -309,62 +344,95 @@ func parseAgentFMForm(r *http.Request, agents []agentfm.AgentInfo) ([]agentFMEdi
 		if strings.ContainsAny(a.Name, "/\\") || strings.Contains(a.Name, "..") {
 			continue // 방어적 — List가 만든 이름이라 정상 경로에선 불가능
 		}
-		edit := agentFMEdit{Agent: a.Name}
 
-		if v := r.PostFormValue("agentfm." + a.Name + ".model"); v != "" {
-			if !inList(agentFMModelValues(), v) {
-				errs["agentfm."+a.Name+".model"] = "invalid option"
-			} else if v != a.Model {
-				if a.Model != "" || v != agentTierSuggestedModel(a.Name) {
-					edit.Model = v
-				}
-			}
+		m := strings.TrimSpace(r.PostFormValue("agentfm." + a.Name + ".model"))
+		e := strings.TrimSpace(r.PostFormValue("agentfm." + a.Name + ".effort"))
+		if m == "" && e == "" {
+			continue // 미제출 → preserve (empty=preserve)
 		}
-		if v := r.PostFormValue("agentfm." + a.Name + ".effort"); v != "" {
-			switch {
-			case v == agentFMAbsent:
-				if a.EffortPresent {
-					edit.DeleteEffort = true
-				}
-			case !inList(agentFMEffortValues(), v):
-				errs["agentfm."+a.Name+".effort"] = "invalid option"
-			case v != a.Effort || !a.EffortPresent:
-				if a.EffortPresent || v != agentTierSuggestedEffort(a.Name) {
-					edit.Effort = v
-				}
-			}
+		// Validate the submitted values for ANY agent (out-of-set → atomic reject),
+		// BEFORE the matrix-membership skip below, so garbage input is rejected 4xx
+		// even for a non-matrix agent.
+		if m != "" && !inList(agentFMModelValues(), m) {
+			errs["agentfm."+a.Name+".model"] = "invalid option"
+		}
+		if e != "" && !inList(agentFMEffortValues(), e) {
+			errs["agentfm."+a.Name+".effort"] = "invalid option"
+		}
+		if errs["agentfm."+a.Name+".model"] != "" || errs["agentfm."+a.Name+".effort"] != "" {
+			continue
+		}
+		// Overrides are only valid for profile-matrix member agents
+		// (config.validateAgentOverrides rejects non-retained names); a valid but
+		// non-matrix submission is ignored (no override, no frontmatter write).
+		if _, ok := template.AgentGroup(a.Name); !ok {
+			continue
 		}
 
-		if edit.Model != "" || edit.Effort != "" || edit.DeleteEffort {
-			edits = append(edits, edit)
+		submitted = append(submitted, a.Name)
+		if m == "" {
+			m = agentResolvedModel(llm, a.Name)
 		}
+		if e == "" {
+			e = agentResolvedEffort(llm, a.Name)
+		}
+		def, _ := template.ResolveAgentModelEffort(base, a.Name)
+		if m == def.Model && e == def.Effort {
+			continue // equals the profile default → cleared, not pinned
+		}
+		pins[a.Name] = config.ModelEffort{Model: m, Effort: e}
 	}
-	return edits, errs
+	return pins, submitted, errs
 }
 
-// applyAgentFMEdits는 편집을 frontmatter patch 레이어로 영속화한다 (live 파일
-// 전용, no-change 편집은 파서가 이미 걸렀다). M5-a B6 — 다중 디렉터리(moai/ +
-// harness/)에서 이름 → 절대 경로를 해상한다. 폼은 이름만 전달하므로, 패치 직전
-// 라이브 디렉터리를 재스캔해 경로를 특정한다.
-func applyAgentFMEdits(projectRoot string, edits []agentFMEdit) error {
-	pathByName := map[string]string{}
-	for _, dir := range agentDirsFor(projectRoot) {
-		agents, err := agentfm.List(dir)
-		if err != nil {
-			return fmt.Errorf("agentfm: list %s: %w", dir, err)
+// applyAgentOverrides persists per-agent pins to llm.agent_overrides (G3-2 —
+// replaces the retired frontmatter-patch path). It round-trips through the config
+// manager (LoadRaw → mutate cfg.LLM.AgentOverrides → SetSection("llm") → Save), the
+// same typed path the glm.models.* edits use, so every llm.yaml field is preserved
+// by the struct re-marshal. Submitted agents equal to the profile default have
+// their override CLEARED; pinned agents are set. When nothing actually changes the
+// write is skipped entirely (llm.yaml byte-identity preserved for empty/no-op
+// submissions). Overrides for agents outside the submitted set are preserved.
+func applyAgentOverrides(projectRoot string, pins map[string]config.ModelEffort, submitted []string) error {
+	if len(pins) == 0 && len(submitted) == 0 {
+		return nil // nothing submitted → no write
+	}
+	mgr := config.NewConfigManager()
+	cfg, err := mgr.LoadRaw(projectRoot)
+	if err != nil {
+		return fmt.Errorf("agentfm: load config: %w", err)
+	}
+	ov := cfg.LLM.AgentOverrides
+	if ov == nil {
+		ov = map[string]config.ModelEffort{}
+	}
+	changed := false
+	// Clear submitted agents that are NOT pins (they matched the profile default).
+	for _, name := range submitted {
+		if _, isPin := pins[name]; isPin {
+			continue
 		}
-		for _, info := range agents {
-			pathByName[info.Name] = info.Path
+		if _, ok := ov[name]; ok {
+			delete(ov, name)
+			changed = true
 		}
 	}
-	for _, e := range edits {
-		path, ok := pathByName[e.Agent]
-		if !ok {
-			continue // 방어적 — 폼과 라이브 리스트 불일치 (이미 삭제된 에이전트 등)
+	// Set the pins.
+	for name, me := range pins {
+		if cur, ok := ov[name]; !ok || cur != me {
+			ov[name] = me
+			changed = true
 		}
-		if err := agentfm.Patch(path, e.Model, e.Effort, e.DeleteEffort); err != nil {
-			return err
-		}
+	}
+	if !changed {
+		return nil
+	}
+	cfg.LLM.AgentOverrides = ov
+	if err := mgr.SetSection("llm", cfg.LLM); err != nil {
+		return fmt.Errorf("agentfm: set llm section: %w", err)
+	}
+	if err := mgr.Save(); err != nil {
+		return fmt.Errorf("agentfm: save config: %w", err)
 	}
 	return nil
 }

@@ -57,7 +57,7 @@ The following elements are immutable and can only be changed by human developers
 The following elements can be modified through the graduation protocol:
 
 - [EVOLVABLE] Skill body content for moai-domain-copywriting, moai-domain-brand-design, moai-workflow-gan-loop
-- [EVOLVABLE] Pipeline adaptation weights (.moai/config/sections/design.yaml adaptation.phase_weights)
+- [EVOLVABLE] Pipeline adaptation weights (.moai/config/sections/design.yaml adaptation.iteration_limits)
 - [EVOLVABLE] Evaluation rubric criteria (within bounds set by frozen rules)
 - [EVOLVABLE] Design tokens and brand heuristics (.moai/project/brand/)
 - [EVOLVABLE] Iteration limits (.moai/config/sections/design.yaml adaptation.iteration_limits)

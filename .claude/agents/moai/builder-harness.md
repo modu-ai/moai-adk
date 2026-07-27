@@ -45,18 +45,7 @@ Create standards-compliant Claude Code artifacts (agents, skills, plugins, comma
 
 ## Migration Notes
 
-This agent consolidates three previously separate builder agents.
-
-| Old Usage | New Usage |
-|-----------|-----------|
-| Use `builder-agent` subagent | Use `builder-harness` subagent with `artifact_type=agent` |
-| Use `builder-skill` subagent | Use `builder-harness` subagent with `artifact_type=skill` |
-| Use `builder-plugin` subagent | Use `builder-harness` subagent with `artifact_type=plugin` |
-
-**Archived agents** (rejected at spawn — no stub files exist; use the new form):
-- `builder-agent` → replaced by `builder-harness` with `artifact_type=agent`
-- `builder-skill` → replaced by `builder-harness` with `artifact_type=skill`
-- `builder-plugin` → replaced by `builder-harness` with `artifact_type=plugin`
+This agent consolidates three previously separate builder agents. `builder-agent`, `builder-skill`, and `builder-plugin` are **archived** — rejected at spawn, no stub files exist. Use `builder-harness` with the matching `artifact_type` instead: `agent`, `skill`, `plugin` respectively.
 
 ## Scope Boundaries
 
@@ -68,8 +57,7 @@ IN SCOPE:
 - Artifact validation and testing
 
 OUT OF SCOPE:
-- Implementing actual business logic: route to manager-develop or a per-spawn `Agent(general-purpose)` domain specialist
-- Code implementation within artifacts: route to manager-develop or a per-spawn `Agent(general-purpose)` backend/frontend specialist (archived-agent-rejection.md §C rows 7-8)
+- Implementing business logic or code within artifacts: route to manager-develop or a per-spawn `Agent(general-purpose)` domain (backend/frontend) specialist per archived-agent-rejection.md §C rows 7-8
 - Running tests: Delegate to manager-develop with cycle_type=tdd
 
 ## Workflow
@@ -84,9 +72,8 @@ OUT OF SCOPE:
 
 ### Phase 2: Research
 
-- Use WebSearch/WebFetch to gather latest documentation on the domain
-- Review existing artifacts of the same type for patterns and potential reuse
-- Identify reference implementations and best practices
+- Use WebSearch / WebFetch to gather latest documentation on the domain
+- Review existing artifacts of the same type as reference implementations — for patterns, best practices, and potential reuse
 
 ### Phase 3: Architecture Design
 
@@ -112,6 +99,8 @@ OUT OF SCOPE:
 
 ### Phase 5: Validation
 
+The checks below are independent and read-only: issue them as ONE single-turn multi-Bash batch per `.claude/rules/moai/core/agent-common-protocol.md` § Parallel Execution (grouping rationale and batch-safety taxonomy: `.claude/rules/moai/workflow/verification-batch-pattern.md`).
+
 - Verify YAML frontmatter schema compliance for artifact_type
 - Check artifact-specific limits (skills: 500-line; plugins: valid plugin.json)
 - Validate trigger keywords are specific and relevant (5-10 per artifact)
@@ -121,8 +110,7 @@ OUT OF SCOPE:
 ## Key Standards by Artifact Type
 
 **Agents**:
-- Frontmatter fields: name (required), description (required, concise semantic scope prose + language-independent trigger intent), tools (CSV), model, permissionMode, memory, skills (array)
-- Tool permissions follow least-privilege principle
+- Frontmatter fields per the Dispatch Table row; `description` is required and carries concise semantic scope prose + language-independent trigger intent; `tools` is CSV and follows the least-privilege principle; `skills` is a YAML array
 - Sub-agents cannot spawn other sub-agents unless `Agent` is listed in their `tools` (nested spawning supported as of Claude Code v2.1.172, depth-limited); MoAI agents intentionally omit `Agent`, so they do not nest
 - Background sub-agents surface permission prompts in the main session (as of Claude Code v2.1.186); keep write-capable agents in the foreground as a conservative default
 
@@ -136,13 +124,11 @@ OUT OF SCOPE:
 **Plugins**:
 - .claude-plugin/plugin.json must have: name, version, description
 - All paths in plugin.json must start with "./"
-- Validate directory structure compliance
 
 ## Delegation Protocol
 
-- Complex backend/frontend implementation: route to manager-develop or a per-spawn `Agent(general-purpose)` backend/frontend specialist (archived-agent-rejection.md §C rows 7-8)
 - Quality validation: Delegate to sync-auditor (or orchestrator verification batch — archived-agent-rejection.md §C row 2)
-- Documentation research: Use WebSearch/WebFetch or WebSearch
+- Documentation research: Use WebSearch / WebFetch
 
 ## Conditional Skill Loading
 
@@ -159,19 +145,16 @@ Static `skills:` preload is kept to a minimum (token diet — progressive disclo
 
 When generating new agents (slash command, sub-agent, harness specialist),
 apply the canonical MoAI agent model policy per
-`.claude/rules/moai/development/model-policy.md`:
-
-| Frontmatter field | Default value | Notes |
-|------------------|---------------|-------|
-| `model:` | `inherit` | Inherit-by-default — preserves parent's 1M context entitlement (avoids Anthropic Issues #45847/#51060/#36670) |
-| `model:` (speed-critical slot) | `sonnet` | Mechanical agents (documentation sync, git operations, format-only edits) use sonnet with effort `low` per the No-Haiku policy — effort tiering substitutes for the former low-cost model slot. |
-| `effort:` | `xhigh` (recommended) or per-agent appropriate | Uniform reasoning depth recommended across the catalog; lower values acceptable for mechanical-task agents |
-| `permissionMode:` | (depends on agent role — `default` for read-mostly, `bypassPermissions` for trusted write-agents) | |
-
-DO NOT generate agents with explicit `model: sonnet` or `model: opus` unless
-the user explicitly opts into the 1M-context-incompatible path (and accepts
-that the agent will fail to spawn from `[1m]` parent sessions until either
-Anthropic resolves the upstream issues OR the user disables `[1m]` context).
+`.claude/rules/moai/development/model-policy.md` — that rule is the SSOT for the
+`model:` / `effort:` defaults (inherit-by-default and its 1M-context-entitlement
+rationale, the mechanical-agent speed slot, and effort tiering), so do not restate
+its tiers in generated bodies. Two builder-side constraints apply on top of it:
+`permissionMode:` follows the agent's role (`default` for read-mostly agents,
+`bypassPermissions` for trusted write-agents), and generated agents MUST NOT
+declare an explicit `model: sonnet` or `model: opus` unless the user explicitly
+opts into the 1M-context-incompatible path (accepting that the agent will fail to
+spawn from `[1m]` parent sessions until the upstream issues are resolved OR the
+user disables `[1m]` context).
 
 Additionally, every generated agent body MUST include the canonical
 one-line "Model/effort escalation" cross-reference at body tail — see
@@ -183,13 +166,3 @@ one-line "Model/effort escalation" cross-reference at body tail — see
 > **Model/effort escalation**: deep-reasoning escalation is an ORCHESTRATOR decision (this agent cannot spawn sub-agents — no `Agent` tool). See `.claude/rules/moai/development/model-policy.md`.
 ```
 
-Generated agents do NOT list the `Agent` tool in their `tools`, so they cannot
-spawn sub-agents; model/effort escalation is an orchestrator decision, not an
-in-agent action. The one-line cross-reference points to the canonical
-model-policy rule rather than restating the escalation logic in every agent body.
-
-Rationale: keep cost-optimization + escalation policy uniform across
-hand-authored retained agents and harness-generated specialists. The existing
-catalog (inherit-by-default + effort-low mechanical slot) is ALREADY the cost-optimized
-design — uniformity of this design across future harness output preserves the
-design contract AND the 1M-context-safety guarantee.

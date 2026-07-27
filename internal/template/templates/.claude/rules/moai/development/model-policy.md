@@ -16,12 +16,12 @@ Agent definition `model` field accepts only these values:
 - haiku: Claude Haiku (fastest, lowest cost)
 
 Current model generation mapping:
-- opus = Opus 4.8 (default effort: high across all surfaces incl. Claude Code; set xhigh explicitly for coding/agentic work)
+- opus = Opus 5 (`claude-opus-5`) on the Anthropic API — the default Opus model as of CC 2.1.219, native 1M context, fast mode available (default effort: high across all surfaces incl. Claude Code; set xhigh explicitly for coding/agentic work; Opus 5 carries a previously-set effort level across sessions — no hold)
 - sonnet = Sonnet 5 on the Anthropic API (current generation; native 1M window, no `[1m]` suffix, no usage credits — CC 2.1.197). Behind an LLM gateway or with `CLAUDE_CODE_DISABLE_1M_CONTEXT=1`, `sonnet` budgets 200K. See § Sonnet 5 Native-1M Re-scope (CC 2.1.198).
 - fable = Fable (current generation; added to the model enum per CC v2.1.196 model-priority update)
 - haiku = Haiku (current generation; retired from MoAI agent routing per the No-Haiku policy — value remains valid for documentation/example YAML)
 
-Opus 4.8 serves the full 1M token context window by default (no beta header, no long-context premium). Fast mode (speed: "fast") is a research preview for higher output throughput. Explore (Anthropic built-in) inherits the session model per CC v2.1.198 — no separate deployment or model pin needed.
+Opus 5 and Opus 4.8 serve the full 1M token context window by default (no beta header, no long-context premium). Fast mode applies to Opus 5 and Opus 4.8 as of CC 2.1.219 (Opus 4.7 was removed from fast mode). Explore (Anthropic built-in) inherits the session model per CC v2.1.198 — no separate deployment or model pin needed.
 
 Invalid values (NEVER use):
 - glm: Not a model field value (GLM is configured via environment variables)
@@ -46,7 +46,7 @@ Upstream tracking (Anthropic claude-code repository):
 Workaround pattern (`model: inherit`):
 - The subagent fully inherits the parent's model + context entitlement, eliminating the mismatch.
 - Reference implementation: `.claude/agents/moai/plan-auditor.md` has used `model: inherit`.
-- All 10 MoAI-custom retained agents under `.claude/agents/moai/` declare `model: inherit` (per the 11-agent catalog: 10 MoAI-custom + 1 Anthropic built-in `Explore`, aligned with CLAUDE.md §4). The No-Haiku policy (SPEC-AGENT-ARCH-V2-001 §D) retired the former `model: haiku` exception — `manager-docs` and `manager-git` moved from `model: haiku` to `model: sonnet` with `effort: low` (cost reduction via effort tiering, not model-class substitution).
+- 8 of the 10 MoAI-custom retained agents under `.claude/agents/moai/` declare `model: inherit`; `manager-docs` and `manager-git` intentionally pin `model: sonnet` as the No-Haiku cost lever (`manager-docs` runs `effort: medium`, `manager-git` runs `effort: low`). The No-Haiku policy retired the former `model: haiku` exception — cost reduction is achieved via effort tiering, not model-class substitution.
 
 Exceptions (do NOT migrate to inherit):
 - Documentation/example YAML inside skill bodies (`.claude/skills/moai-foundation-cc/reference/**/*.md`) — these mirror official Claude Code documentation and MUST show all valid values (`sonnet`, `opus`, `haiku`, `inherit`) for educational purposes.
@@ -149,9 +149,9 @@ CG Mode (Claude + GLM) uses environment variable overrides, not model field chan
 
 ## Effort Levels
 
-Claude models support effort levels that control reasoning depth (Opus 4.8 calibration):
+Claude models support effort levels that control reasoning depth (`xhigh`/`max` available on Opus 5, Sonnet 5, Opus 4.8, and Opus 4.7):
 - xhigh: best setting for coding and agentic use cases
-- high: default on Opus 4.8 across all surfaces; minimum for intelligence-sensitive work
+- high: default on Opus 5 / Opus 4.8 across all surfaces; minimum for intelligence-sensitive work
 - medium: cost-sensitive work that can trade off intelligence
 - low: short, scoped, latency-sensitive tasks
 
@@ -163,7 +163,7 @@ Note: `ultrathink` is a Claude Code one-turn keyword that requests deeper reason
 
 - Agent `model` field must be one of: inherit, opus, sonnet, fable, haiku
 - [ZONE:Evolvable] [HARD] New agent definitions SHOULD use `model: inherit` (default); explicit `sonnet`/`opus` are deprecated due to Claude Code Issue #45847/#51060 (see Inherit-by-Default Convention)
-- `model: haiku` is retired from MoAI agent routing per the No-Haiku policy (SPEC-AGENT-ARCH-V2-001 §D); the HaikuResidualRule lint enforces 0 haiku references in agent frontmatter, claude_models, model_routing_profiles, workflow_agents, and role_profiles. Former haiku slots use `sonnet` with `effort: low`.
+- `model: haiku` is retired from MoAI agent routing per the No-Haiku policy (SPEC-AGENT-ARCH-V2-001 §D); the HaikuResidualRule lint enforces 0 haiku references in agent frontmatter, claude_models, model_routing_profiles, workflow_agents, and the retired Agent Teams `role_profiles` surface (historical configs). Former haiku slots use `sonnet` with `effort: low`.
 - GLM is configured via env vars in settings.json, never via model field
 - Model policy tier (max/medium/low) is a CLI concern, not an agent definition concern
 - CG Mode uses tmux session-level env isolation for model routing

@@ -25,7 +25,7 @@ type SectionID string
 const (
 	SectionIdentity      SectionID = "identity"       // user_name (1)
 	SectionLanguage      SectionID = "language"       // conversation/git_commit/code_comment/doc (4)
-	SectionLaunch        SectionID = "launch"         // model/model_policy/effort_level/permission_mode (4)
+	SectionLaunch        SectionID = "launch"         // model/effort_level/permission_mode (3)
 	SectionStatusline    SectionID = "statusline"     // theme + 16 segments (17)
 	SectionQuality       SectionID = "quality"        // development_mode + nested (M2b에서 확장)
 	SectionGitConvention SectionID = "git_convention" // convention + 4 nested (5)
@@ -200,12 +200,6 @@ func effortOptions() []OptionDef {
 	return optionDefsFromValues("f.effort_level.opt.", values)
 }
 
-// modelPolicyOptions는 정규 model policy 옵션 목록을 template.ValidModelPolicies()
-// 에서 파생하여 반환한다(중복 선언 금지, 기존 export 재사용).
-func modelPolicyOptions() []OptionDef {
-	return optionDefsFromValues("f.model_policy.opt.", template.ValidModelPolicies())
-}
-
 // permissionModeOptions는 정규 permission mode 옵션 목록을 반환한다. 빈 문자열은
 // 빈 옵션 라벨이 별도로 처리하므로 옵션 목록에는 비-빈 값만 포함한다. 순서는
 // TUI 위저드의 기존 순서(acceptEdits, auto, default, plan, bypass, dontAsk)를 보존한다.
@@ -319,10 +313,12 @@ func allFields() []FieldDef {
 		})
 	}
 
-	// ── Section 3: Launch (4) ────────────────────────────────────────────
+	// ── Section 3: Launch (3) ────────────────────────────────────────────
+	// model_policy was removed from the console (G3-5 — a duplicate of the
+	// agentfm performance tier). Its ProfilePreferences field + persistence stay
+	// (the resolveLaunchEffort fallback still reads it); only the UI field is gone.
 	modelOpts := modelOptions()
 	effortOpts := effortOptions()
-	policyOpts := modelPolicyOptions()
 	permOpts := permissionModeOptions()
 	fields = append(fields,
 		FieldDef{
@@ -335,17 +331,6 @@ func allFields() []FieldDef {
 			Validate:      func(v string) bool { return inOptionValues(modelOpts, v) },
 			I18nKey:       "f.model",
 			Persist:       PersistTarget{Kind: PersistProfileStore, Field: "model"},
-		},
-		FieldDef{
-			Name:          "model_policy",
-			Section:       SectionLaunch,
-			Type:          TypeSelect,
-			Options:       policyOpts,
-			EmptyLabel:    emptyLabelProjectDefault,
-			EmptyLabelKey: "opt.project_default",
-			Validate:      template.IsValidModelPolicy,
-			I18nKey:       "f.model_policy",
-			Persist:       PersistTarget{Kind: PersistProfileStore, Field: "model_policy"},
 		},
 		FieldDef{
 			Name:          "effort_level",

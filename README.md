@@ -66,7 +66,7 @@ The DeepSWE leaderboard (113 tasks) demonstrates this problem. Even within the s
 | claude-fable-5 | 70% | $21.63 | $30.9 | 170k | 88 |
 | claude-sonnet-5 | 54% | $26.40 | **$48.9** | 396k | 268 |
 
-Sonnet 5 max is **more expensive than Opus 4.8 max per task** ($26.40 vs $13.22) while scoring lower (54% vs 59%). The cause is 268 steps — at max effort, retry loops explode. "Use a weaker model harder to save money" does not hold. It burns three times the steps, consuming more quota. Cost is determined by **assigning the right model and reasoning depth to each task**, not by unit price.
+Sonnet 5 max is **more expensive than Opus 5 max per task** ($26.40 vs $13.22) while scoring lower (54% vs 59%). The cause is 268 steps — at max effort, retry loops explode. "Use a weaker model harder to save money" does not hold. It burns three times the steps, consuming more quota. Cost is determined by **assigning the right model and reasoning depth to each task**, not by unit price.
 
 MoAI-ADK systematizes this assignment instead of leaving it to chance.
 
@@ -204,7 +204,7 @@ Natural language works too. `/moai "fix the login bug"` triggers intent analysis
 | `plan` / `run` / `sync` | SPEC 3-phase pipeline |
 | `project` / `harness` / `design` | Project docs+harness generation · harness lifecycle · Design-phase collaboration |
 | `goal` / `loop` / `fix` | Declarative goal loops · iterative fixes · single-pass fixes |
-| `review` / `gate` / `clean` | Code review · pre-commit quality gates · dead code removal |
+| `review` / `gate` / `clean` | Code review (`--deep` for multi-agent adversarial vulnerability scan) · pre-commit quality gates · dead code removal |
 | `mx` / `codemaps` / `feedback` | @MX annotations · architecture docs · GitHub issue reporting |
 | `e2e` | Multi-platform E2E tests (web/mobile/desktop, CLI-first) |
 | *(natural language)* | Analyze-First routing: autonomous plan → run → sync pipeline |

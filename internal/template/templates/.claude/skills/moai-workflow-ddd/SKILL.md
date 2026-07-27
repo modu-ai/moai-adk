@@ -16,7 +16,7 @@ metadata:
   modularized: "true"
   tags: "workflow, refactoring, ddd, domain-driven, behavior-preservation, ast-grep, characterization-tests"
   author: "MoAI-ADK Team"
-  related-skills: "moai-tool-ast-grep, moai-workflow-testing, moai-foundation-quality"
+  related-skills: "moai-workflow-testing, moai-foundation-quality"
 ---
 
 # Domain-Driven Development (DDD) Workflow
@@ -330,7 +330,7 @@ DDD relies heavily on AST-grep for:
 - Safe code transformations
 - Multi-file refactoring
 
-Load moai-tool-ast-grep for detailed pattern syntax and rule creation.
+Rules live in `.moai/config/astgrep-rules/`; scan with `moai ast-grep` and apply rewrites with `moai ast-edit`.
 
 ### With Testing Workflow
 
@@ -389,7 +389,6 @@ When DDD session encounters issues:
 
 Version: 1.0.0
 Status: Active
-Last Updated: 2026-01-16
 
 <!-- moai:evolvable-start id="rationalizations" -->
 ## Common Rationalizations

@@ -16,8 +16,9 @@ Active settings.json keys: 20. RETIRE-OBS-ONLY (Go-only): 4.
 
 | Event | Matcher | Can Block | Description |
 |-------|---------|-----------|-------------|
-| SessionStart | Source | No | Runs when a new session begins. Matchers: startup, resume, clear, compact |
+| SessionStart | Source | No | Runs when a new session begins. Matchers: startup, resume, clear, compact, fork |
 | SessionEnd | Reason | No | Runs when session terminates. Matchers: clear, resume, logout, prompt_input_exit, bypass_permissions_disabled, other |
+| DirectoryAdded | No | No | Fires after `/add-dir` or the SDK `register_repo_root` control request registers a new working directory mid-session (v2.1.219+). The official hooks doc does not yet list this event (doc lag). MoAI-ADK wires no handler for it. |
 | PostSession | No | No | Runs after a session ends (self-hosted runner lifecycle event, CC 2.1.169+). Fires once the session is fully torn down, later than SessionEnd. MoAI-ADK does not wire this hook today; documented as an available option for self-hosted deployments that need post-session cleanup/telemetry. |
 | PreToolUse | Tool name | Yes | Runs before a tool executes |
 | PostToolUse | Tool name | No | Runs after a tool completes successfully |
@@ -63,7 +64,7 @@ Active settings.json keys: 20. RETIRE-OBS-ONLY (Go-only): 4.
 
 ### Event Categories
 
-**Lifecycle Events**: SessionStart, Setup, SessionEnd, ConfigChange, InstructionsLoaded
+**Lifecycle Events**: SessionStart, Setup, SessionEnd, ConfigChange, InstructionsLoaded, DirectoryAdded (v2.1.219+; no MoAI handler wired)
 
 **Context Events**: PreCompact, PostCompact, FileChanged, CwdChanged, WorktreeCreate, WorktreeRemove
 
@@ -226,7 +227,7 @@ Define hooks in `.claude/settings.json`. Each event key maps to an array of matc
 {
   "hooks": {
     "SessionStart": [{
-      "matcher": "startup|resume|clear|compact",
+      "matcher": "startup|resume|clear|compact|fork",
       "hooks": [{
         "type": "command",
         "command": "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-session-start.sh\"",
@@ -364,7 +365,7 @@ The **5s default applies to synchronous blocking hooks** (PreCompact, PreToolUse
 - Use proper path quoting to handle spaces in project paths
 - Prompt and agent hooks return JSON with `ok` and `reason` fields
 - Async hooks deliver results via `additionalContext` on the next turn (the only async-deliverable field; `systemMessage`, `decision`, and `updatedToolOutput` are NOT delivered for async hooks)
-- Exit code 2 blocks on events marked "Can Block: Yes" (PreToolUse, PermissionRequest, UserPromptSubmit, UserPromptExpansion, Stop, SubagentStop, TeammateIdle, TaskCreated, TaskCompleted, ConfigChange, PostToolBatch, PreCompact, Elicitation, ElicitationResult, WorktreeCreate); events marked "No" ignore it (StopFailure, PostToolUse, PostToolUseFailure, PermissionDenied, Notification, SubagentStart, SessionStart, Setup, SessionEnd, CwdChanged, FileChanged, PostCompact, WorktreeRemove, InstructionsLoaded, MessageDisplay). Some events also support JSON `decision:"block"` (PostToolUse, PostToolBatch, SubagentStop, ConfigChange, PreCompact, UserPromptSubmit, UserPromptExpansion) or `continue:false` (TeammateIdle, TaskCreated, TaskCompleted) as alternative block mechanisms — exit 2 is NOT universal
+- Exit code 2 blocks on events marked "Can Block: Yes" (PreToolUse, PermissionRequest, UserPromptSubmit, UserPromptExpansion, Stop, SubagentStop, TeammateIdle, TaskCreated, TaskCompleted, ConfigChange, PostToolBatch, PreCompact, Elicitation, ElicitationResult, WorktreeCreate); events marked "No" ignore it (StopFailure, PostToolUse, PostToolUseFailure, PermissionDenied, Notification, SubagentStart, SessionStart, Setup, SessionEnd, CwdChanged, FileChanged, PostCompact, WorktreeRemove, InstructionsLoaded, MessageDisplay, DirectoryAdded). Some events also support JSON `decision:"block"` (PostToolUse, PostToolBatch, SubagentStop, ConfigChange, PreCompact, UserPromptSubmit, UserPromptExpansion) or `continue:false` (TeammateIdle, TaskCreated, TaskCompleted) as alternative block mechanisms — exit 2 is NOT universal
 - Stop and SubagentStop hooks receive `last_assistant_message` field (v2.1.49+)
 
 ## Error Handling

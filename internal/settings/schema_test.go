@@ -6,15 +6,16 @@ import (
 	"testing"
 )
 
-// expected34FieldNames는 6개 섹션에 걸친 정규 34개 필드명을 렌더 순서대로 나열한다.
-// 이 목록이 스키마의 단일 진실 검사 기준이다(AC-WC10-010).
+// expected34FieldNames는 6개 섹션에 걸친 정규 필드명을 렌더 순서대로 나열한다.
+// 이 목록이 스키마의 단일 진실 검사 기준이다(AC-WC10-010). model_policy는 콘솔에서
+// 제거되어(G3-5) Launch는 이제 3개 필드다.
 var expected34FieldNames = []string{
 	// Identity (1)
 	"user_name",
 	// Language (4)
 	"conversation_lang", "git_commit_lang", "code_comment_lang", "doc_lang",
-	// Launch (4)
-	"model", "model_policy", "effort_level", "permission_mode",
+	// Launch (3)
+	"model", "effort_level", "permission_mode",
 	// Statusline (16: theme + 15 segments)
 	"statusline_theme",
 	"statusline_segment.claude_version",
@@ -80,7 +81,7 @@ func TestSchemaSixSections(t *testing.T) {
 	wantCounts := map[SectionID]int{
 		SectionIdentity:      1,
 		SectionLanguage:      4,
-		SectionLaunch:        4,
+		SectionLaunch:        3,
 		SectionStatusline:    17,
 		SectionQuality:       4,
 		SectionGitConvention: 5,

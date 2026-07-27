@@ -3,7 +3,7 @@ name: moai
 description: >
   MoAI unified orchestrator for autonomous development. Routes natural
   language or subcommands (plan, run, sync, project, fix, loop, mx,
-  feedback, review, clean, codemaps, gate, e2e, harness) to specialized
+  feedback, review, clean, codemaps, gate, e2e, harness, goal) to specialized
   agents.
 allowed-tools: Agent, AskUserQuestion, Skill, TaskCreate, TaskUpdate, TaskList, TaskGet, Bash, Read, Write, Edit, Glob, Grep
 argument-hint: "[subcommand] [args] | \"natural language task\""
@@ -16,7 +16,7 @@ argument-hint: "[subcommand] [args] | \"natural language task\""
 
 ## Essential Files
 
-.moai/config/config.yaml
+.moai/config/sections/*.yaml
 
 ---
 
@@ -35,7 +35,7 @@ Rules and constraints governing all workflows are always loaded from these sourc
 
 ## Routing Observation Ledger
 
-When dispatching a subcommand or workflow, the orchestrator records the routing decision to the append-only routing-ledger (`.moai/state/routing-ledger.jsonl`) via `moai harness ledger record` at dispatch time — the request text is piped via stdin and only a privacy-preserving digest is stored, never verbatim user text. As the routed pipeline reaches gate points, machine evidence is appended via `moai harness ledger evidence` (gate exits, audit verdicts, verify-log paths). Outcome is never supplied as an input; it is finalized from machine evidence only. This observation is opt-in and fail-open — it never blocks routing, and it is a silent no-op unless the harness observability opt-in is enabled.
+When dispatching a subcommand or workflow, the orchestrator records the routing decision to the append-only routing-ledger (`.moai/state/routing-ledger.jsonl`) via `moai harness ledger record` at dispatch time — the request text is piped via stdin and only a privacy-preserving digest is stored, never verbatim user text. As the routed pipeline reaches gate points, machine evidence is appended via `moai harness ledger evidence` (gate exits, audit verdicts, verify-log paths). Outcome is never supplied as an input; it is finalized from machine evidence only. This observation is opt-in and fail-open — it never blocks routing. NOTE: recording depends on the orchestrator actually invoking `moai harness ledger record` at dispatch; when the observability opt-in is ON but that record call is not emitted, the ledger stays empty — an un-recorded dispatch, NOT an opt-in-off no-op. Do not read an empty routing-ledger as 'opt-in disabled'.
 
 ---
 
@@ -61,11 +61,13 @@ The `--team` / `--solo` flags are forced overrides onto the catalog; the flag-fr
 
 [HARD] Extract the FIRST WORD from the Raw User Input section above. If it matches any subcommand below (or its alias), route to that workflow IMMEDIATELY. Do NOT analyze the remaining text for routing — it is context for the matched workflow:
 
+[HARD] Mixed-language guard: FIRST-WORD subcommand matching applies only when (a) the input is pure ASCII/Latin, OR (b) the message is prefixed with a literal `/moai ` slash form. When the message contains non-Latin script (Korean/Japanese/Chinese/etc.) beyond the first token, do NOT route immediately on the leading English word — treat it as a possible embedded loanword and fall through to Priority 3 semantic classification of the ENTIRE message. Rationale: CJK technical writing embeds English loanwords such as 'goal', 'run', 'fix', 'plan' at sentence start; immediate first-word routing misfires on them.
+
 - **plan** (aliases: spec): SPEC document creation workflow
-- **run** (aliases: impl): DDD/TDD implementation workflow (per quality.yaml development_mode)
+- **run** (aliases: impl): DDD/TDD implementation workflow (per quality.yaml constitution.development_mode)
 - **sync** (aliases: docs, pr): Documentation synchronization and PR creation
 - **project** (aliases: init): Project documentation generation
-- **feedback** (aliases: fb, bug, issue): GitHub issue creation
+- **feedback** (aliases: fb): GitHub issue creation
 - **fix**: Auto-fix errors in a single pass
 - **loop**: Iterative auto-fix until completion conditions are satisfied
 - **mx**: MX tag scan and annotation for codebase
@@ -74,7 +76,7 @@ The `--team` / `--solo` flags are forced overrides onto the catalog; the flag-fr
 - **codemaps**: Generate architecture documentation in `.moai/project/codemaps/`
 - **gate** (aliases: check, pre-commit): Lightweight pre-commit quality gate (lint+format+type-check+test)
 - **e2e** (aliases: e2e-test, end-to-end): Multi-platform end-to-end testing (web/mobile/desktop) with project-type auto-detection and CLI-first toolchain selection
-- **harness** (aliases: hrn, learn): harness lifecycle management — learning-lifecycle verbs (status / apply / rollback &lt;date&gt; / disable) + v4-lifecycle verbs (list / edit / remove / doctor), all dispatching through the unified `moai harness` Go-binary Cobra subcommand tree; the slash command is the documented user-facing entry point
+- **harness** (aliases: hrn): harness lifecycle management — learning-lifecycle verbs (status / apply / rollback &lt;date&gt; / disable) + v4-lifecycle verbs (list / edit / remove / doctor), all dispatching through the unified `moai harness` Go-binary Cobra subcommand tree; the slash command is the documented user-facing entry point
 - **goal**: Condition-declared universal agentic loop — arm a completion condition (`/moai goal "<condition>"`), check status, clear, or resume; evaluated each turn-end by the `stop-goal` Stop hook
 
 ### Priority 2: SPEC-ID Detection
@@ -318,7 +320,7 @@ Step 2.8 - Requirement Analysis & Completion Condition:
 Before loading the workflow body (Step 3), produce a requirement-analysis record for the routed request:
 
 1. **Requirement summary** (1-3 sentences): what the user asked for, restated in the orchestrator's own words.
-2. **Completion condition**: the end state that means "done". Where the condition is machine-verifiable (test exit code, lint-clean state, grep count, bounded turn count), express it in `/goal`-compatible transcript-measurable form per `.claude/rules/moai/workflow/goal-directive.md` (one measurable end state + a stated check + a bound clause). Do NOT invent a parallel evaluator: set the condition via `/goal` when the runtime supports it; otherwise the orchestrator evaluates the identical condition text per-turn (graceful degradation — no new machinery).
+2. **Completion condition**: the end state that means "done". Where the condition is machine-verifiable (test exit code, lint-clean state, grep count, bounded turn count), express it in `/moai goal`-compatible form per `.claude/rules/moai/workflow/goal-directive.md` (one measurable end state + a stated check + a bound clause). Do NOT invent a parallel evaluator: arm the condition via `/moai goal` when the goal engine is available (hooks enabled — the evaluator is the `stop-goal` Stop hook); otherwise the orchestrator evaluates the identical condition text per-turn (graceful degradation — no new machinery).
 3. **Pipeline contract**: `full-pipeline` (default natural-language route — run-phase completion auto-chains into sync) or `single-phase` (explicit `run`/`sync` subcommand — chaining is offered as the "(Recommended)" next-step option, never fired silently).
 4. **Orchestration-shape pre-signal**: an early input to the Phase 4 6-mode selection (`orchestration-mode-selection.md` §A) — noted here, decided at Phase 4.
 
@@ -330,7 +332,7 @@ Step 3 - Load Workflow Details:
 Read `workflows/<name>.md` for the target subcommand. (The Agent Teams static layer is retired; a `--team` flag falls back to sub-agent mode per `.claude/rules/moai/workflow/orchestration-mode-selection.md` — there is no separate `team/<name>.md` workflow file.)
 
 Step 4 - Read Configuration:
-Load relevant configuration from .moai/config/config.yaml and section files as needed.
+Load relevant configuration from the .moai/config/sections/*.yaml section files as needed.
 
 Step 5 - Initialize Task Tracking:
 Use TaskCreate to register discovered work items with pending status.
@@ -353,4 +355,3 @@ Use AskUserQuestion to present the user with logical next actions based on the c
 ---
 
 Version: 2.8.0
-Last Updated: 2026-07-07

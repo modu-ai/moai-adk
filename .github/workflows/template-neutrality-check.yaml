@@ -69,3 +69,20 @@ jobs:
         run: |
           go test ./internal/template/... \
             -run 'TestTemplateNoInternalContentLeak' -v
+
+      - name: Run internal-content leak guard, strict tier (isolated)
+        # SPEC-TEMPLATE-DATE-NEUTRALITY-001: the strict tier of the same guard —
+        # the date class C3 and commit-hash class C7 — is enforced only now that
+        # its finding count reached zero, via the M3 remediation of the REMOVE
+        # rows plus the M4 hybrid carve-out (a structural gate for frontmatter
+        # and attribution records, a content-anchored (file, date) allowlist for
+        # the remaining PRESERVE rows). Enforcing it here is what stops the
+        # neutralized state from silently re-accumulating. The step is scoped to
+        # this one test by name, matching the isolated-target shape of the two
+        # steps above; the env var is step-scoped so the narrow-tier step above
+        # keeps its own contract unchanged.
+        env:
+          MOAI_TEMPLATE_LEAK_STRICT: '1'
+        run: |
+          go test ./internal/template/... \
+            -run TestTemplateNoInternalContentLeak -v

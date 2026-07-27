@@ -162,7 +162,7 @@ func TestRenderHandoffContext_AllDirectives(t *testing.T) {
 	if strings.Contains(got, "xhigh") {
 		t.Error("must not contain 'xhigh'")
 	}
-	for _, want := range []string{"ultrathink", "/effort ultracode", "/goal ", "tests pass AND lint clean", "body"} {
+	for _, want := range []string{"ultrathink", "/effort ultracode", "/moai goal ", "tests pass AND lint clean", "body"} {
 		if !strings.Contains(got, want) {
 			t.Errorf("render missing %q in:\n%s", want, got)
 		}

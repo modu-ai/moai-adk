@@ -60,6 +60,11 @@ var symmetryCases = []symmetryTestCase{
 		templateYAML: "git-convention.yaml",
 		yamlTopKey:   "git_convention",
 	},
+	{
+		structType:   reflect.TypeOf(GateConfig{}),
+		templateYAML: "gate.yaml",
+		yamlTopKey:   "gate",
+	},
 }
 
 // checkSymmetry verifies that every top-level yaml tag in the Go struct has a
@@ -224,4 +229,21 @@ func TestStructYAMLSymmetry_GitConvention(t *testing.T) {
 	yamlPath := filepath.Join(repoRoot, "internal", "template", "templates",
 		".moai", "config", "sections", "git-convention.yaml")
 	checkSymmetry(t, symmetryCases[5], yamlPath)
+}
+
+// TestStructYAMLSymmetry_Gate verifies GateConfig ↔ YAML bijection for the
+// gate.yaml section (pre-commit quality gate + opt-in ast-grep sub-gate).
+// The struct is {Enabled, SkipTests, Timeouts, AstGrepGate} and the template
+// gate.yaml has exactly enabled/skip_tests/timeouts/ast_grep_gate top-level
+// keys under gate:, so the top-level key sets are symmetric.
+func TestStructYAMLSymmetry_Gate(t *testing.T) {
+	t.Parallel()
+	_, thisFile, _, ok := runtime.Caller(0)
+	if !ok {
+		t.Fatal("runtime.Caller failed")
+	}
+	repoRoot := filepath.Join(filepath.Dir(thisFile), "..", "..")
+	yamlPath := filepath.Join(repoRoot, "internal", "template", "templates",
+		".moai", "config", "sections", "gate.yaml")
+	checkSymmetry(t, symmetryCases[6], yamlPath)
 }

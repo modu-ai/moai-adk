@@ -40,7 +40,7 @@ For methodology details (DDD ANALYZE-PRESERVE-IMPROVE and TDD RED-GREEN-REFACTOR
 
 ### Mode Values
 
-- **`autopilot` (default for harness `minimal` / `standard`)**: Single-lead orchestration via Phase 4 Scale-Based Mode Selection (Fix / Focused / Standard / Full Pipeline) → Phase 11/2B per `quality.yaml development_mode`. Behaves as today's default `/moai run` invocation.
+- **`autopilot` (default for harness `minimal` / `standard`)**: Single-lead orchestration via Phase 4 Scale-Based Mode Selection (Fix / Focused / Standard / Full Pipeline) → Phase 11/2B per `quality.yaml constitution.development_mode`. Behaves as today's default `/moai run` invocation.
 - **`loop`**: Delegate to `Skill("moai-workflow-loop")` with the SPEC-ID and remaining args. Bypasses Phase 11/2B and enters the Ralph engine per-iteration cycle (see `loop.md` Steps 1-9). `/moai loop SPEC-XXX` is an alias resolving to `/moai run --mode loop SPEC-XXX` with identical behavior.
 - **`team` (RETIRED)**: The `--mode team` dispatch value is retired (Agent Teams static layer — Mode 3 `agent-team` retired). A forced `--mode team` emits `MODE_TEAM_UNAVAILABLE` and the orchestrator falls back to `autopilot`.
 - **`pipeline`**: REJECTED on `/moai run`. Pipeline mode is reserved for utility subcommands (`fix`, `coverage`, `mx`, `codemaps`, `clean`). Passing `--mode pipeline` here triggers `MODE_PIPELINE_ONLY_UTILITY` (the same error key the utility subcommands share).
@@ -127,8 +127,8 @@ Escalation: If a quality gate fails during execution, escalate harness level:
 
 Before execution, load these essential files:
 
-- .moai/config/config.yaml (git strategy, automation settings)
-- .moai/config/sections/quality.yaml (coverage targets, TRUST 5 settings, development_mode)
+- .moai/config/sections/git-strategy.yaml + workflow.yaml (git strategy, automation settings)
+- .moai/config/sections/quality.yaml (coverage targets, TRUST 5 settings, constitution.development_mode)
 - .moai/config/sections/harness.yaml (harness depth levels, auto-detection rules)
 - .moai/config/sections/git-strategy.yaml (auto_branch, branch creation policy)
 - .moai/config/sections/language.yaml (git_commit_messages setting)

@@ -24,41 +24,26 @@ func Run(questions []Question, styles *Styles) (*WizardResult, error) {
 	return RunWithLocale(questions, styles, "")
 }
 
-// RunWithDefaults runs the wizard with default questions for the given project root.
-// If locale is not empty, the wizard UI is displayed in that language and the
-// conversation_language question defaults to it. userName pre-fills the user_name
-// question. Quick mode is RunWithDefaultsModes with both mode flags off — the
-// advanced-settings bridge (Condition: !StandardMode) is therefore visible and,
-// when answered Yes, reveals the Phase 1 questions in the same run.
+// RunWithDefaults runs the wizard with the full `moai init` question set for the
+// given project root. If locale is not empty, the wizard UI is displayed in that
+// language and the conversation_language question defaults to it. userName
+// pre-fills the user_name question.
+//
+// It is the SINGLE init entry point: the former mode-parameterised variant is
+// retired (SPEC-CLI-WIZARD-RESTRUCTURE-001 REQ-WIZ-018), because every user now
+// sees the same three pages and no flag changes what is asked.
 func RunWithDefaults(projectRoot, locale, userName string) (*WizardResult, error) {
-	return RunWithDefaultsModes(projectRoot, locale, userName, false, false)
-}
-
-// RunWithDefaultsModes runs the wizard with mode flags controlling Phase 1 question visibility.
-// standardMode=true presents Phase 1 questions; advancedMode=true implies standardMode.
-// locale pre-fills the conversation_language default (and initial render language);
-// userName pre-fills the user_name default.
-func RunWithDefaultsModes(projectRoot, locale, userName string, standardMode, advancedMode bool) (*WizardResult, error) {
-	// Merge default + Phase 1 questions. Phase 1 questions are always present in
-	// the form but gated on r.StandardMode, so the Quick-mode advanced_bridge can
-	// reveal them by flipping StandardMode without rebuilding the form.
-	questions := DefaultQuestions(projectRoot)
-	questions = append(questions, Phase1Questions(projectRoot)...)
-
-	// When advanced mode requested, check Phase 2 prerequisites and append stubs.
-	if advancedMode {
-		gate := IsAdvancedWizardReady()
-		questions = append(questions, Phase2Questions(gate)...)
-	}
+	// The full 3-page init set (Basic / Model & Report / Quality & Workflow).
+	// Page 3 is unconditional — every user sees it
+	// (SPEC-CLI-WIZARD-RESTRUCTURE-001 REQ-WIZ-001/002).
+	questions := InitQuestions(projectRoot)
 
 	// Pre-fill the identity/locale defaults from the caller (profile values).
 	prefillIdentityDefaults(questions, userName)
 
-	// Pre-populate mode flags so Condition funcs see them from the start
+	// Pre-populate the boolean defaults so Condition funcs and the
+	// non-interactive path see them from the start.
 	result := &WizardResult{
-		StandardMode: standardMode || advancedMode,
-		AdvancedMode: advancedMode,
-		// Phase 1 boolean defaults (applied before wizard so non-interactive path works)
 		EnforceQuality:            true,
 		CoverageExemptionsEnabled: false,
 		DesignEnabled:             true,
@@ -282,21 +267,36 @@ func buildSelectField(q *Question, result *WizardResult, locale *string) *huh.Se
 		selected = q.Default
 	}
 
-	// Build options eagerly at form-construction time using the current
-	// locale. Static Options() keep the select on the defect-free layout
-	// path (the M2a spike verified huh v2 clamps scrolling minimally via
-	// ensureVisible; OptionsFunc is still unnecessary here because the
-	// option sets are fixed).
-	lq := GetLocalizedQuestion(q, *locale)
-	opts := make([]huh.Option[string], len(lq.Options))
-	for i, opt := range lq.Options {
-		key := opt.Label
-		if opt.Desc != "" {
-			key = opt.Label + " - " + opt.Desc
+	// optionsFn re-derives the localized huh options from the current locale.
+	// It is used two ways below: once eagerly to seed the materialized option
+	// set (Options), and again as the reactive OptionsFunc.
+	optionsFn := func() []huh.Option[string] {
+		lq := GetLocalizedQuestion(q, *locale)
+		opts := make([]huh.Option[string], len(lq.Options))
+		for i, opt := range lq.Options {
+			key := opt.Label
+			if opt.Desc != "" {
+				key = opt.Label + " - " + opt.Desc
+			}
+			opts[i] = huh.NewOption(key, opt.Value)
 		}
-		opts[i] = huh.NewOption(key, opt.Value)
+		return opts
 	}
 
+	// Seed the materialized option set (Options) with the build-time locale AND
+	// bind a reactive OptionsFunc to the locale pointer. huh v2 stores these
+	// separately: Options sets s.options.val (used for the initial render and by
+	// the standalone RunAccessible path), while OptionsFunc sets s.options.fn,
+	// re-evaluated whenever its binding changes — the same reactive mechanism
+	// the Title/Description funcs use. This is the huh-documented dual-call
+	// pattern (Options + OptionsFunc together) and it fixes the defect where a
+	// select showed a localized title but English options because the options
+	// were frozen at form-construction time. Option Values are locale-invariant,
+	// so the selected/default Value binding stays valid across re-localization.
+	// The huh v0.8.x YOffset scroll defect that once motivated static Options()
+	// was resolved in huh v2 (ensureVisible minimum-scroll clamping, verified by
+	// the M2a spike), and every option set here is short and fixed-length, so
+	// OptionsFunc carries no scroll regression.
 	sel := huh.NewSelect[string]().
 		TitleFunc(func() string {
 			lq := GetLocalizedQuestion(q, *locale)
@@ -306,7 +306,8 @@ func buildSelectField(q *Question, result *WizardResult, locale *string) *huh.Se
 			lq := GetLocalizedQuestion(q, *locale)
 			return lq.Description
 		}, locale).
-		Options(opts...).
+		Options(optionsFn()...).
+		OptionsFunc(optionsFn, locale).
 		Value(&selected)
 
 	// Wire up value storage (huh runs Validate on field completion/blur).
@@ -396,11 +397,10 @@ func saveAnswer(id, value string, result *WizardResult, locale *string) {
 		result.GitLabUsername = value
 	case "gitlab_token":
 		result.GitLabToken = value
-	// Phase 1 fields (REQ-IWE-001..005)
+	// Page-3 field (REQ-IWE-001). harness_profile is no longer asked
+	// (REQ-WIZ-012), so it has no capture branch.
 	case "project_mode":
 		result.ProjectMode = value
-	case "harness_profile":
-		result.HarnessProfile = value
 	}
 	_ = locale // locale is kept for GetLocalizedQuestion compatibility
 }
@@ -408,16 +408,13 @@ func saveAnswer(id, value string, result *WizardResult, locale *string) {
 // saveBoolAnswer stores a boolean answer in the result.
 func saveBoolAnswer(id string, value bool, result *WizardResult) {
 	switch id {
-	case "advanced_bridge":
-		// Quick-mode bridge: Yes reveals the Phase 1 questions (gated on
-		// StandardMode) within the same wizard run.
-		result.StandardMode = value
+	// The former reveal-more confirm is no longer asked (REQ-WIZ-001/002):
+	// Page 3 is always visible, so no answer can widen the question set
+	// mid-wizard.
 	case "lsp_enabled":
 		result.LSPEnabled = value
 	case "enforce_quality":
 		result.EnforceQuality = value
-	case "coverage_exemptions_enabled":
-		result.CoverageExemptionsEnabled = value
 	case "design_enabled":
 		result.DesignEnabled = value
 	case "claude_design_enabled":
@@ -430,6 +427,15 @@ func buildConfirmField(q *Question, result *WizardResult, locale *string) *huh.C
 	// Parse default value
 	value := q.Default == "true"
 
+	// Localize the Yes/No buttons from the locale in effect at build time. huh
+	// v2's Confirm exposes only static Affirmative/Negative setters (no *Func
+	// variant), so — unlike the Title/Description funcs above — the button
+	// labels do NOT re-render when the user changes the conversation language
+	// mid-wizard. In practice the confirm questions (the Page-3 set) all follow
+	// the conversation_language question, so the build-time locale is
+	// normally the user's chosen language already.
+	ui := GetUIStrings(*locale)
+
 	conf := huh.NewConfirm().
 		TitleFunc(func() string {
 			lq := GetLocalizedQuestion(q, *locale)
@@ -439,6 +445,8 @@ func buildConfirmField(q *Question, result *WizardResult, locale *string) *huh.C
 			lq := GetLocalizedQuestion(q, *locale)
 			return lq.Description
 		}, locale).
+		Affirmative(ui.ConfirmYes).
+		Negative(ui.ConfirmNo).
 		Value(&value)
 
 	qID := q.ID

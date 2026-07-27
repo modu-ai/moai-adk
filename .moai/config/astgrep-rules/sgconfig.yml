@@ -1,24 +1,11 @@
-# ast-grep 프로젝트 설정 파일
-# SPEC-ASTG-UPGRADE-001: 통합 규칙 라이브러리 설정
+# ast-grep 프로젝트 설정 파일 (config-mode SSOT for `sg scan --config`)
 #
-# ruleDirs: 언어별 규칙 디렉토리 선언 (16개 언어 동등 취급, Section 22 준수)
-# 모든 언어 디렉토리를 알파벳 순으로 나열하여 특정 언어 우선순위 없음을 보장
+# ruleDirs는 이 파일 위치 기준 상대경로로 해석된다. 여기에는 실제 로드 가능한
+# (valid rule) 디렉터리만 나열한다 — 나머지 언어 디렉터리(cpp/csharp/... 데모
+# 스캐폴드·빈 stub)는 invalid rule로 config-mode 전체 스캔을 실패시키므로
+# 16-언어 룰셋 정식화 백로그가 정리하기 전까지 제외한다.
+# (루트 go-hardcoding.yml은 템플릿 배포용 non-config 경로 전용; config-mode는
+#  동일 규칙을 포함하는 go/ 큐레이션 세트를 로드한다.)
 ruleDirs:
-  - cpp
-  - csharp
-  - elixir
-  - flutter
   - go
-  - java
-  - javascript
-  - kotlin
-  - php
-  - python
-  - r
-  - ruby
-  - rust
-  - scala
   - security
-  - swift
-  - typescript
-  - utils

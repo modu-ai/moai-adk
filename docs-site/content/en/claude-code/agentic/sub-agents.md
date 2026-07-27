@@ -49,16 +49,16 @@ Explore and Plan skip the main session's CLAUDE.md and git status, running faste
 
 ## The Core Constraint: Subagents Cannot Spawn Subagents
 
-This is the most important structural constraint. **Subagents cannot spawn other subagents.** Delegation descends only one level from the main conversation, and infinite nesting cannot occur.
+This was the original structural constraint: **subagents could not spawn other subagents** — delegation descended only one level from the main conversation. The default has since changed (see below); the flat hierarchy is now a configuration choice, not a runtime guarantee.
 
-### After v2.1.172: Limited Nesting (Depth-5 Cap)
+### After v2.1.219: Nesting Enabled by Default (Depth 3)
 
-Starting with Claude Code v2.1.172, **conditional subagent nesting** is possible. There is a configuration knob.
+Nesting was introduced in v2.1.172, briefly turned off by default in v2.1.217–2.1.218, and is **enabled by default** as of v2.1.219 — the changelog states subagents can spawn nested subagents up to depth 3 by default. Set `CLAUDE_CODE_MAX_SUBAGENT_SPAWN_DEPTH=1` to disable nesting.
 
 | Setting | Behavior | Usage |
 |------|------|------|
-| Include `Agent` in the subagent definition (frontmatter `tools:` list) | Nesting allowed | Up to depth 5 (hard cap) |
-| Omit the `Agent` tool | Nesting prohibited | Flat orchestration only |
+| Include `Agent` in the subagent definition (frontmatter `tools:` list) | Nesting allowed | Up to depth 3 by default (changelog); `CLAUDE_CODE_MAX_SUBAGENT_SPAWN_DEPTH` tunes the depth, `=1` disables |
+| Omit the `Agent` tool | Nesting prohibited | Flat orchestration — the sole flat-hierarchy guarantee |
 
 This constraint is also the bedrock of MoAI-ADK's orchestration design. **Only the orchestrator (the main session) invokes subagents**, and an invoked agent may delegate again only if it does not hit the depth limit. So instead of hierarchical agent chains, the design follows a flat structure where **the orchestrator directly calls each stage** (MoAI's base principle).
 
@@ -67,7 +67,7 @@ flowchart TD
     M[Main conversation<br/>Orchestrator] --> A[Subagent A<br/>Exploration]
     M --> B[Subagent B<br/>Verification]
     M --> C[Subagent C<br/>Implementation]
-    A -.->|Condition: with the Agent tool<br/>only up to depth 5| X["Nested subagent<br/>(limited)"]
+    A -.->|Condition: with the Agent tool<br/>up to depth 3 by default| X["Nested subagent<br/>(limited)"]
     style X fill:#ffd,stroke:#c80
 ```
 

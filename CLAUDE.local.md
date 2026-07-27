@@ -118,6 +118,7 @@ Never add files directly to the local project directories without also adding th
 .claude/agent-memory/          # Per-project agent memory
 .claude/hooks/moai/handle-*.sh # Generated hook wrappers (not templates)
 .claude/rules/moai/workflow/lifecycle-sync-gate.md         # Dev-only: maintainer lifecycle sync-gate rule (no template mirror, unreferenced by any shipped template file — intentional local-only)
+.claude/rules/moai/workflow/repo-local-pr-policy.md        # Dev-only: repo-local all-tier PR policy override (Route A main-direct disabled by branch protection enforce_admins:true; no template mirror — intentional local-only)
 .claude/commands/harness/{release-update,github,release}*  # Dev-only: split maintainer harness entries (§21)
 .claude/commands/harness/release-update/manifest.json      # Dev-only: release-update harness manifest (§21)
 .claude/workflows/hns-release-update-run.js                # Dev-only: release-update harness Runner (§21)
@@ -742,12 +743,6 @@ See: `.moai/docs/git-workflow-doctrine.md`
 
 ---
 
-**Status**: Active (Local Development)
-**Version**: 3.10.0 (§23/§24/§25 본문을 `.moai/docs/` 3개 doctrine 파일로 추출 — 세션 런칭 컨텍스트 59.9K→32.0K 축소; §17/§18/§21 stub+pointer 패턴 일관 적용)
-**Last Updated**: 2026-06-03
-
----
-
 ## 20. Vercel Build Cost Guard
 
 ### [HARD] Build Machine = Elastic 유지
@@ -811,6 +806,14 @@ Workflow audit 2026-05-16 finding M2 후속. 로컬 `.claude/settings.json`의 �
 - [HARD] 메인테이너 머신에서 위 키들을 변경할 때 template 자동 동기화 금지 (§2 settings.local.json Separation 적용)
 - [HARD] 위 키들(defaultMode/enableAllProjectMcpServers/teammateMode/env.PATH/outputStyle)의 의도가 변경되면 본 §22를 즉시 갱신
 - [HARD] 사용자 프로젝트에 machine-specific 키(env.PATH 등)가 누락된 것이 정상 — 누락은 결함이 아니라 의도된 격리. 단 outputStyle은 예외: 템플릿에 MoAI-Easy로 고정되므로 배포 사용자에게도 존재한다.
+
+### §22.7 model — 로컬 project settings.json에서 의도적 미탑재 (last-choice 존중, 2026-07-24)
+
+- **로컬값**: 로컬 `.claude/settings.json`에 `model` 키 **없음** (의도적 제거). Template `settings.json.tmpl:398`의 `"model": "sonnet"` 제품 기본값은 **그대로 보존**.
+- **왜 제거했나 (근원)**: Claude Code 모델 우선순위는 `local settings.json > project settings.json > user settings > 하드코딩`. `/model`의 "saved as default for new sessions"는 **user 스코프**(`~/.claude/settings.json`)에 저장되는데, project `settings.json`의 `model: sonnet` pin(스코프2)이 이를 항상 덮어 **재시작마다 sonnet 복귀** 트랩이 발생. project pin을 제거하면 user 스코프의 `/model` 마지막 선택(현재 `opus[1m]`)이 이겨서 last-choice가 존중된다. (`outputStyle`은 `/config`가 최상위 local 스코프에 써서 안 가두지만, `model`은 `/model`이 하위 user 스코프에 써서 가두는 비대칭이 근본 원인.)
+- **effort는 무관**: user `~/.claude/settings.json`의 `effortLevel: high`를 덮는 pin이 project/local 어디에도 없으므로 effort는 이미 유지됨(순수 `claude` + moai 프로파일 비어있는 `moai cc/glm/cg` 두 경로 공통). "effort도 리셋"은 model 리셋에 묶인 착시.
+- **update 경로 주의 (drift)**: `moai update` clean-reinstall은 user의 `.claude/settings.json`을 wholesale 보존하므로 대개 살아남지만(`update_clean_install.go` Step 4.5 `MergeUserFiles`), 3-way 병합 경로는 template sonnet pin을 재도입할 수 있다. 재도입되면 이 절 근거대로 다시 제거. **제품(템플릿) 기본값 변경이 아님** — 배포 사용자는 여전히 sonnet cost-lever 기본값을 받는다.
+- [HARD] 이 로컬 미탑재는 **의도된 격리**(§22.5와 동일 원칙) — 감사/동기화 시 "결함"으로 되돌리지 말 것.
 
 ---
 

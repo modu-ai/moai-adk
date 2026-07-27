@@ -4,72 +4,81 @@ weight: 4
 draft: false
 ---
 
-MoAI-ADK は、維持される各エージェントを 1 つの **プロファイルマトリクス** を通じて `{model, effort}` ペアにマッピングします。アクティブな **プロファイル**（`max` / `medium` / `low`）がマトリクスの 1 列（column）を選択し、その列の値がすべてのサブエージェント spawn に適用されます。この単一の 3 列プロファイル軸は、以前の `plan_type × tier` 60 セルマトリクスを置き換えます（SPEC-MODEL-PROFILE-MATRIX-001）。
+MoAI-ADK は、維持されるエージェント 11 個を 1 つの **プロファイルマトリクス** を通じてそれぞれの `{model, effort}` ペアにマッピングします。アクティブな **プロファイル**（`high` / `medium` / `low`）がマトリクスの 1 列（column）を選択し、その列の値がすべてのサブエージェント spawn に適用されます。マトリクスはエージェント名単位の **33 セル**（エージェント 11 個 × プロファイル 3 個）であり、以前のグループ抽象化と `plan_type × tier` 軸の両方を置き換えます。
 
 ## プロファイル軸
 
 プロファイルは 3 つの値を持ちます:
 
-- `max` — 最高品質の列。推論ポイントに Fable を、設計・ハーネス・E2E に Opus を配置します。
-- `medium`（デフォルト）— バランス列。推論と実行に Opus/high を配置します。値がない、または空の場合は `medium` として解釈されます。
-- `low` — 経済列。Opus を低い effort で配置し、機械的な作業を Sonnet に回します。
+- `high` — 品質優先の列。推論・監査の行に Fable 5 を配置し、コーディングには Opus 5 を `xhigh` で配置します（ベンダーがコーディング・エージェンティック作業に推奨する開始点）。
+- `medium`（デフォルト） — バランス列。Opus 5 をベンダー API のデフォルト effort である `high` で配置するため、最も予測可能な運用点です。値が無いか空の場合は `medium` として解釈されます。
+- `low` — 経済列。Opus 5 の `low`/`medium` effort を第一のトークンコストレバーとし、その次に Sonnet 5 へ下げます。
 
-プロファイルは `performance_tier` とは別のフィールドではなく同一の軸です — `llm.profile` が優先され、なければ legacy の `performance_tier` がエイリアスとして読み込まれます（`high` → `max` 正規化、`max`/`medium`/`low` はそのまま）。リゾルバはこの有効プロファイルを読み取り、各エージェントのセルを決定します。
+`max` は `high` の **読み取り専用エイリアス** です。既存設定の `profile: max` はそのまま `high` として解釈され、保存時には常に正規名 `high` で記録されます。マイグレーション作業は不要です。
+
+プロファイルは `performance_tier` とは別のフィールドではなく同一の軸です — `llm.profile` が優先され、無い場合は legacy `performance_tier` がエイリアスとして読まれます。両フィールドとも `high`/`medium`/`low` の語彙を共有します。リゾルバはこの有効プロファイルを読んで各エージェントのセルを決定します。
 
 ## プロファイルの設定
 
 ```bash
-moai init . --profile max              # 初期化時に設定
-moai update --profile low              # 事後切替
+moai init . --profile high             # 初期化時に設定
+moai update --profile low              # 事後の切り替え
 ```
 
-現在の値は `.moai/config/sections/llm.yaml` の `llm.profile` フィールドで確認できます。`moai init` 対話型ウィザードでは `high` の回答が `max` に正規化されます。
+許容値は `high` / `medium` / `low` であり、legacy の `max` も入力として受け付け `high` に正規化します。現在の値は `.moai/config/sections/llm.yaml` の `llm.profile` フィールドで確認できます。
 
 ## プロファイルマトリクス
 
-10 個のグループ化されたエージェントが、下のマトリクスから `{model, effort}` を受け取ります。`Explore` とユーザー定義エージェントはグループがないため `inherit`（親セッションモデルを継承）として解釈され、model 注入の対象ではありません。マトリクスのどこにも Haiku はありません。
+維持されるエージェント 11 個が、以下のマトリクスからそれぞれの `{model, effort}` を直接受け取ります。ユーザーが追加したエージェントのみが `inherit`（親セッションモデルの継承）として解釈され、model 注入の対象から外れます。マトリクスのどこにも Haiku はありません。
 
-| エージェント (グループ) | max | medium (デフォルト) | low |
+| エージェント | high | medium（デフォルト） | low |
 |---|---|---|---|
-| manager-spec (spec_auditors) | fable / medium | opus / high | opus / low |
-| plan-auditor (spec_auditors) | fable / medium | opus / high | opus / low |
-| sync-auditor (spec_auditors) | fable / medium | opus / high | opus / low |
-| manager-develop (develop) | fable / low | opus / high | opus / medium |
-| super-advisor (advisor) | fable / medium | fable / low | opus / high |
-| manager-design (design_harness_e2e) | opus / high | opus / medium | opus / low |
-| builder-harness (design_harness_e2e) | opus / high | opus / medium | opus / low |
-| e2e-tester (design_harness_e2e) | opus / high | opus / medium | opus / low |
-| manager-docs (docs) | sonnet / medium | sonnet / medium | sonnet / medium |
-| manager-git (git) | sonnet / low | sonnet / low | sonnet / low |
-| Explore (—) | inherit | inherit | inherit |
+| manager-spec | fable / xhigh | opus / high | opus / low |
+| plan-auditor | fable / xhigh | opus / high | opus / low |
+| sync-auditor | fable / xhigh | opus / high | opus / low |
+| manager-develop | opus / xhigh | opus / high | sonnet / medium |
+| super-advisor | opus / xhigh | opus / high | opus / medium |
+| manager-design | fable / high | opus / medium | sonnet / medium |
+| builder-harness | opus / xhigh | opus / medium | sonnet / medium |
+| e2e-tester | fable / high | opus / medium | sonnet / medium |
+| manager-docs | sonnet / high | sonnet / medium | sonnet / medium |
+| manager-git | sonnet / low | sonnet / low | sonnet / low |
+| Explore | sonnet / low | sonnet / low | sonnet / low |
 
-`docs` と `git` の行はプロファイルに関係なく固定されます（それぞれ sonnet/medium、sonnet/low）— 機械的な作業はプロファイルが変わってもモデルクラスを上げません。
+`manager-git` と `Explore` の行はプロファイルと無関係に `sonnet / low` で固定されます — 機械的作業と読み取り専用の探索は、プロファイルが上がってもモデルクラスを上げません。
 
-## エージェントグループ
+各行は単調（monotone）です: `high` ≥ `medium` ≥ `low`。プロファイルを下げても、どのエージェントも以前より強い組み合わせを受け取ることはありません。
 
-マトリクスはエージェント名ではなく、6 つの **グループ** 単位で定義されます。グループ → エージェントのメンバーシップは次のとおりです:
+Anthropic 組み込みの `Explore` はもはや `inherit` ではなく、自身のセル（`sonnet / low`）として解釈されます。`inherit` センチネルは、ユーザーが追加したエージェントにのみ残ります。
 
-| グループ | エージェント |
-|---|---|
-| `spec_auditors` | manager-spec, plan-auditor, sync-auditor |
-| `develop` | manager-develop |
-| `advisor` | super-advisor |
-| `design_harness_e2e` | manager-design, builder-harness, e2e-tester |
-| `docs` | manager-docs |
-| `git` | manager-git |
+## ハーネススペシャリストの model + effort
 
-`Explore` とユーザーが追加したエージェントはメンバーシップがないため `inherit` として解釈されます。
+`/moai:harness` が生成するスペシャリストは **モデルが `opus` に統一** され、**effort のみで差別化** されます。ハーネスエージェントはユーザー所有の永続的なスペシャリストであり、それらを分ける軸はモデルティアではなく推論の深さだからです。すべての非 Haiku モデルが 1M コンテキストを持つようになったため、モデルを固定してもコンテキストの損失はありません。
+
+effort は、各目的クラスが対応する維持エージェントの行から借用します:
+
+| 目的クラス | effort の由来行 | high | medium | low |
+|---|---|---|---|---|
+| `read-only-extract` | Explore | opus / low | opus / low | opus / low |
+| `mechanical-transform` | manager-git | opus / low | opus / low | opus / low |
+| `synthesize` | manager-docs | opus / high | opus / medium | opus / medium |
+| `research` | plan-auditor | opus / xhigh | opus / high | opus / low |
+| `verify-judge` | sync-auditor | opus / xhigh | opus / high | opus / low |
+| `implement` | manager-develop | opus / xhigh | opus / high | opus / medium |
+| `design-architecture` | manager-design | opus / high | opus / medium | opus / medium |
+
+`llm.harness_agents[プロファイル][クラス].effort` でクラスごとの effort を上書きできます。モデルはどの経路でも変わりません。認識されないクラスは `implement` にフォールバックします。
 
 ## リゾルバの優先順位
 
-各エージェントの有効な `{model, effort}` は、次の順序で決定されます:
+各エージェントの有効な `{model, effort}` は次の順序で決定されます:
 
 1. `llm.agent_overrides[agent]` があればそれが勝ちます。
-2. なければアクティブプロファイルのグループセル（config `llm.profiles`）を使用します。
-3. config にセルがなければ Go デフォルトマトリクス（`template.DefaultProfileMatrix`）のグループセルを使用します。
-4. グループメンバーシップがなければ `inherit`（注入なし）です。
+2. 無ければアクティブプロファイルのエージェントセル（config `llm.profiles`）を使用します。
+3. config にセルが無ければ Go デフォルトマトリクス（`template.DefaultProfileMatrix`）のエージェントセルを使用します。
+4. マトリクスに無いエージェント（ユーザー追加）は `inherit`（注入しない）です。
 
-`agent_overrides` は正規のエージェント名をキーとし、カタログ + enum に対して検証されます:
+`agent_overrides` は正規エージェント名をキーとし、カタログ + enum に対して検証されます:
 
 ```yaml
 llm:
@@ -77,32 +86,32 @@ llm:
     manager-develop: { model: opus, effort: xhigh }
 ```
 
-**model** と **effort** の消費経路は異なります。リゾルブされた **model** は、オーケストレーターが spawn 時点で `Agent(model: <alias>)` ランタイム引数として注入する値です（`[1m]`-safe、frontmatter の `model:` フィールドとは別）。エージェント `.md` frontmatter は `model: inherit` のまま維持され、init/update/web の保存がこれを変更しません。リゾルブされた **effort** は NAMED サブエージェントに対する *文書化された意図* です — Agent/Task ツールは named サブエージェントに per-spawn の effort 引数を受け取らないため、effort は (a) エージェント frontmatter の effort デフォルト、(b) GLM effort オーバーレイ、(c) Workflow / `Agent(general-purpose)` プロンプトレベルの steering を通じてのみ消費されます。
+**model** と **effort** の消費経路は異なります。リゾルブされた **model** は、オーケストレーターが spawn 時点で `Agent(model: <alias>)` ランタイム引数として注入する値です（`[1m]`-safe、frontmatter の `model:` フィールドとは別）。エージェント `.md` の frontmatter は `model: inherit` のまま維持され、init/update/web の保存はこれを変更しません。リゾルブされた **effort** は NAMED サブエージェントに対する *文書化された意図* です — Agent/Task ツールは named サブエージェントに per-spawn の effort 引数を受け取らないため、effort は (a) エージェント frontmatter の effort デフォルト、(b) GLM effort オーバーレイ、(c) Workflow / `Agent(general-purpose)` のプロンプトレベル steering を通じてのみ消費されます。
 
 ## moai model profile
 
-アクティブプロファイルでリゾルブされたエージェントごとの model+effort は、読み取り専用のアクセサで確認します:
+アクティブプロファイルでリゾルブされたエージェント別の model+effort は、読み取り専用のアクセサで確認します:
 
 ```bash
-moai model profile          # 人間用の表
-moai model profile --json   # 機械可読用
+moai model profile          # 人間向けの表
+moai model profile --json   # 機械可読
 ```
 
 このコマンドは何も変更しません — オーケストレーターが spawn 時に注入する値をそのまま公開します。
 
 ## GLM バックエンド effort オーバーレイ
 
-{{< icon warning warn >}} **正直性注記**: GLM バックエンド effort オーバーレイは **実装 + 配線完了** の状態ですが、wire 有効性（ライブ有効性）は実証予定です — 「動作保証」とは記載しません。
+{{< icon warning warn >}} **正直性の告知**: GLM バックエンドの effort オーバーレイは **実装 + 配線完了** の状態ですが、wire の有効性（ライブ有効性）は実証予定です — 「動作保証」としては記述しません。
 
-GLM バックエンド（`moai glm` / `moai cg` GLM パネル）では、プロファイルマトリクスの上にオーバーレイが適用されます:
+GLM バックエンド（`moai glm` / `moai cg` の GLM ペイン）では、プロファイルマトリクスの上にオーバーレイが適用されます:
 
-- モデルスロットマッピング: `fable` → `glm-5.2`（Fable スロット、`ANTHROPIC_DEFAULT_FABLE_MODEL`）
+- モデルスロットのマッピング: `fable` → `glm-5.2`（Fable スロット、`ANTHROPIC_DEFAULT_FABLE_MODEL`）
 - Claude の 5 段 effort を z.ai が到達可能な 3-state に collapse:
   - `low` → **thinking-off**
   - `medium` / `high` → **reasoning-high**
-  - `xhigh` / `max` → **reasoning-max**
-  - （認識不可の値 → reasoning-max、過小推論の防止）
-- coding-max override: `manager-develop` は collapse 結果に関係なく **reasoning-max** を強制
+  - `xhigh` / `max`（legacy の effort 値） → **reasoning-max**
+  - （認識不能な値 → reasoning-max、過少推論の防止）
+- coding-max override: `manager-develop` は collapse 結果と無関係に **reasoning-max** を強制
 - `manager-git` は low effort → **thinking-off**
 
 z.ai が Anthropic-compat shim で `ANTHROPIC_REASONING_EFFORT` の値を実際に消費するかは、ライブ GLM セッションのアウトバウンド観測が必要な実証課題です。ランタイムの SSOT は `internal/template/glm_effort_overlay.go` です。

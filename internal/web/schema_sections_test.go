@@ -124,14 +124,15 @@ func TestSchemaSectionsRenderSmoke(t *testing.T) {
 		}
 	}
 
-	// read-only 표시 (REQ-WC11-013/019): 편집 컨트롤 없음 + 표시 렌더.
+	// llm.mode / llm.team_mode: 편집 컨트롤 없음 (web console UX fix G2-1 이후
+	// read-only 표시 자체도 제거 — 두 키는 UI 표면에서 완전히 사라진다).
 	for _, ro := range []string{"llm.mode", "llm.team_mode"} {
 		if strings.Contains(body, `name="`+ro+`"`) {
 			t.Errorf("read-only key %q rendered as a form control", ro)
 		}
-	}
-	if !strings.Contains(body, "read-only (runtime-managed)") {
-		t.Error("read-only note not rendered")
+		if strings.Contains(body, ro) {
+			t.Errorf("removed read-only key %q still renders in the console UI", ro)
+		}
 	}
 
 	// SPEC-WEBCONF-SIMPLIFY-001 M3: raw view blocks belonged to removed sections

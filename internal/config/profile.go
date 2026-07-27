@@ -56,9 +56,11 @@ type ModelEffort struct {
 //     "high" maps to "max"; "max"/"medium"/"low" pass through;
 //  3. else the default profile ("medium", DECISION-002).
 //
-// The divergent legacy init-selection constant DefaultModelPolicy = "high"
-// (template package) is a SEPARATE default and is NOT consulted here — its
-// high→max projection is preserved only for the performance_tier alias.
+// The separate init-selection constant DefaultModelPolicy = "medium"
+// (template package) is NOT consulted here; since
+// SPEC-CLI-WIZARD-RESTRUCTURE-001 it happens to agree with this function's own
+// default. The high→max projection above is kept only for the
+// performance_tier alias.
 func (l LLMConfig) EffectiveProfile() string {
 	if p := strings.TrimSpace(l.Profile); p != "" {
 		return p
@@ -73,13 +75,28 @@ func (l LLMConfig) EffectiveProfile() string {
 }
 
 // validOverrideModels is the closed set of model aliases accepted in an
-// llm.agent_overrides entry. It matches the aliases used by Matrix A plus the
-// inherit sentinel; "haiku" is intentionally excluded (HaikuResidualRule
-// forbids haiku anywhere in the model-routing surface).
+// llm.agent_overrides entry. It matches the aliases used by Matrix A, plus the
+// inherit sentinel, plus "haiku" as an explicit user opt-in.
+//
+// haiku is admitted HERE ONLY. The relaxation is deliberately scoped to the
+// per-agent override surface — a hand-picked, per-agent economy choice — and
+// changes nothing else:
+//   - defaultProfileMatrix (template package) stays haiku-free: no profile
+//     column ever resolves an agent to haiku on its own.
+//   - validRoutingModels (model_routing.go) stays haiku-free: the
+//     model_routing_profiles closed set is a separate surface.
+//
+// The tier layer already contemplates haiku for mechanical agents (see
+// template.ModelPolicyMedium/Low), so admitting it as an explicit override
+// removes an asymmetry rather than introducing one.
+//
+// Caveat worth knowing when picking haiku: Claude's reasoning-effort levels do
+// not apply to Haiku, so the effort paired with a haiku override is inert.
 var validOverrideModels = map[string]bool{
 	"opus":    true,
 	"sonnet":  true,
 	"fable":   true,
+	"haiku":   true,
 	"inherit": true,
 }
 
@@ -146,7 +163,7 @@ func validateAgentOverrides(cfg *Config) []ValidationError {
 		if m := strings.TrimSpace(me.Model); m != "" && !validOverrideModels[m] {
 			errs = append(errs, ValidationError{
 				Field:   "llm.agent_overrides." + agent + ".model",
-				Message: "model " + m + " is not in the valid set {opus, sonnet, fable, inherit}",
+				Message: "model " + m + " is not in the valid set {opus, sonnet, fable, haiku, inherit}",
 				Value:   m,
 				Wrapped: ErrInvalidConfig,
 			})

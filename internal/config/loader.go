@@ -85,6 +85,9 @@ func (l *Loader) Load(configDir string) (*Config, error) {
 	// Load archive section (SPEC-SESSIONSTART-PERF-001: SPEC auto-archive grace window)
 	l.loadArchiveSection(sectionsDir, cfg)
 
+	// Load gate section (pre-commit quality gate + opt-in ast-grep sub-gate)
+	l.loadGateSection(sectionsDir, cfg)
+
 	// Load constitution section (REQ-MIG003-001/002)
 	l.loadConstitutionSection(sectionsDir, cfg)
 

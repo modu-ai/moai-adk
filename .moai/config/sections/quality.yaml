@@ -3,7 +3,6 @@ constitution:
     enforce_quality: true
     quality_extras_enabled: true
     test_coverage_target: 85
-    coverage_threshold: 0
     ddd_settings:
         require_existing_tests: true
         characterization_tests: true

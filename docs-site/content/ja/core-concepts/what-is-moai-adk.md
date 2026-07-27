@@ -596,7 +596,7 @@ moai update                   # 各設定ステップに対する対話型プロ
 ```
 
 {{< callout type="info" >}}
-デフォルトポリシーは `medium` です。GLM 設定は `settings.local.json` に隔離されます (Git にコミットされません)。設定キーは `llm.yaml` の `profile: max | medium | low`(プロファイルマトリクス列)で、legacy `performance_tier` フィールドが `profile` 不在時にエイリアスとして読み込まれます (`--high`/`--low` はそれぞれ `--model-policy max`/`low` の deprecated 別名)。`--profile max|medium|low` フラグで直接指定できます。
+デフォルトポリシーは `medium` です。GLM 設定は `settings.local.json` に隔離されます (Git にコミットされません)。設定キーは `llm.yaml` の `profile: high | medium | low`(プロファイルマトリクス列)で、legacy `performance_tier` フィールドが `profile` 不在時にエイリアスとして読み込まれます (`--high`/`--low` はそれぞれ `--model-policy max`/`low` の deprecated 別名)。`--profile high|medium|low` フラグで直接指定でき、legacy の `max` 値も入力として受け付け `high` に正規化されます。
 {{< /callout >}}
 
 ## Task メトリクスロギング

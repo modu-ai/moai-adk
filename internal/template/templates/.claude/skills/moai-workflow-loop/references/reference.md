@@ -12,7 +12,7 @@
 | `ralph.lsp.poll_interval_ms`                        | integer | `500`                                                  | Polling interval for diagnostics (milliseconds)           |
 | `ralph.lsp.graceful_degradation`                    | boolean | `true`                                                 | Continue if LSP unavailable (fallback to linters)         |
 | `ralph.ast_grep.enabled`                            | boolean | `true`                                                 | Enable AST-grep security scanning                         |
-| `ralph.ast_grep.config_path`                        | string  | `.claude/skills/moai-tool-ast-grep/rules/sgconfig.yml` | Path to AST-grep configuration                            |
+| `ralph.ast_grep.config_path`                        | string  | `.moai/config/astgrep-rules/sgconfig.yml`              | Path to AST-grep configuration                            |
 | `ralph.ast_grep.security_scan`                      | boolean | `true`                                                 | Enable security vulnerability scanning                    |
 | `ralph.ast_grep.quality_scan`                       | boolean | `true`                                                 | Enable code quality pattern scanning                      |
 | `ralph.ast_grep.auto_fix`                           | boolean | `false`                                                | Auto-fix without confirmation (dangerous)                 |
@@ -794,7 +794,7 @@ Per `.claude/rules/moai/development/coding-standards.md` § Language Policy (16-
 
 ### sgconfig.yml Format
 
-Location: `.claude/skills/moai-tool-ast-grep/rules/sgconfig.yml`
+Location: `.moai/config/astgrep-rules/sgconfig.yml`
 
 #### Schema
 
@@ -1125,7 +1125,7 @@ constraints:
 3. Check configuration file exists:
 
    ```bash
-   ls .claude/skills/moai-tool-ast-grep/rules/sgconfig.yml
+   ls .moai/config/astgrep-rules/sgconfig.yml
    ```
 
 4. Test ast-grep manually:
@@ -1424,6 +1424,5 @@ rules:
 
 ---
 
-Last Updated: 2026-01-10
 Version: 1.0.0
 Specification: LSP 3.17, AST-grep 0.20+

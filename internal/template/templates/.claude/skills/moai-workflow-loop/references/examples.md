@@ -851,11 +851,12 @@ jobs:
 
 echo "Running Ralph pre-commit checks..."
 
-# Run LSP diagnostics
-moai lsp diagnose --changed-files
+# Check LSP server readiness (health check; per-file diagnostics surface
+# through the editor/agent LSP session, not a CLI subcommand)
+moai lsp doctor
 
 if [ $? -ne 0 ]; then
-    echo "❌ LSP errors found. Run '/moai:fix' to resolve."
+    echo "❌ LSP server not ready. Run 'moai lsp doctor' for details."
     exit 1
 fi
 
@@ -1009,11 +1010,8 @@ moai ast-grep scan --security
 # View LSP logs
 cat .moai/logs/lsp_diagnostic.log
 
-# Test LSP connection
-moai lsp test-connection python
-
-# View diagnostics directly
-moai lsp diagnose src/auth.py
+# Check LSP server readiness for the current project
+moai lsp doctor
 ```
 
 **Common LSP Errors:**
@@ -1071,5 +1069,4 @@ Solution: Tighten completion criteria in ralph.yaml
 
 ---
 
-Last Updated: 2026-01-10
 Version: 1.0.0

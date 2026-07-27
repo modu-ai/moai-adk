@@ -114,8 +114,9 @@ func ApplyProfile(projectRoot, profile string) error {
 // a legacy config that has no profile: key.
 var llmRootRegex = regexp.MustCompile(`(?m)^llm:[ \t]*$`)
 
-// Profile agent-group keys (REQ-MPM-011). The six groups partition the retained
-// agents by model+effort class. git and docs rows are profile-invariant.
+// Profile agent-group keys (REQ-MPM-011). The seven groups partition the
+// retained agents by model+effort class. git, docs, and explore rows are
+// profile-invariant.
 const (
 	// GroupSpecAuditors covers manager-spec, plan-auditor, sync-auditor.
 	GroupSpecAuditors = "spec_auditors"
@@ -129,11 +130,17 @@ const (
 	GroupDocs = "docs"
 	// GroupGit covers manager-git.
 	GroupGit = "git"
+	// GroupExplore covers the Anthropic built-in Explore read-only search agent.
+	// Assigned sonnet/low profile-invariantly (product decision); only
+	// user-added agents fall through to the inherit sentinel now.
+	GroupExplore = "explore"
 )
 
 // agentGroupMembership is the agent-name → group SSOT (REQ-MPM-011). Agents with
-// no entry (Explore, any user-added agent) resolve to the inherit sentinel and
-// are never model-injected (REQ-MPM-013).
+// no entry (any user-added agent) resolve to the inherit sentinel and are never
+// model-injected (REQ-MPM-013 — scope narrowed by product decision: the
+// built-in Explore now has an explicit group, so only user-added agents
+// inherit).
 var agentGroupMembership = map[string]string{
 	"manager-spec":    GroupSpecAuditors,
 	"plan-auditor":    GroupSpecAuditors,
@@ -145,11 +152,13 @@ var agentGroupMembership = map[string]string{
 	"e2e-tester":      GroupDesignHarnessE2E,
 	"manager-docs":    GroupDocs,
 	"manager-git":     GroupGit,
+	"Explore":         GroupExplore,
 }
 
 // profileMatrixAgentOrder is the canonical display/derivation order of the 11
 // retained agents for the model-profile preview surfaces (REQ-MPM-020). Explore
-// is included for display even though it resolves to inherit.
+// is included in the display and now resolves to its own explore group cell
+// (sonnet/low, profile-invariant), no longer the inherit sentinel.
 var profileMatrixAgentOrder = []string{
 	"manager-spec",
 	"plan-auditor",
@@ -173,30 +182,36 @@ func ProfileMatrixAgents() []string {
 	return out
 }
 
-// defaultProfileMatrix is the Matrix A Go-code SSOT (spec.md §A.3, verbatim —
-// settled design input, MUST NOT be re-derived). Outer key: profile
-// {max, medium, low}. Inner key: agent group. Value: {model, effort}. This is
-// the authoritative fallback for any cell absent from config llm.profiles
-// (REQ-MPM-009).
+// defaultProfileMatrix is the Matrix A Go-code SSOT (spec.md §A.3 was the
+// original settled design input, MUST NOT be re-derived from tiers). Cells were
+// revised per later product decisions so each column's advertised copy is
+// literally true; the current Max column is Fable (low) + Opus (high) + Sonnet
+// (medium~low): spec_auditors fable/low, develop opus/high, advisor fable/low,
+// design_harness_e2e opus/high, docs sonnet/medium, git sonnet/low. Outer key:
+// profile {max, medium, low}. Inner key: agent group. Value: {model, effort}.
+// This is the authoritative fallback for any cell absent from config
+// llm.profiles (REQ-MPM-009).
 //
 // @MX:ANCHOR: [AUTO] defaultProfileMatrix — Matrix A model+effort SSOT (spec §A.3, verbatim)
 // @MX:REASON: [AUTO] fan_in >= 3 (ResolveAgentModelEffort resolver + moai model profile CLI + web preview); replaces the retired 66-cell tierProfiles; cells are settled design input, re-derivation forbidden
 var defaultProfileMatrix = map[string]map[string]config.ModelEffort{
 	PerformanceTierMax: {
-		GroupSpecAuditors:     {Model: "fable", Effort: "medium"},
-		GroupDevelop:          {Model: "fable", Effort: "low"},
-		GroupAdvisor:          {Model: "fable", Effort: "medium"},
+		GroupSpecAuditors:     {Model: "fable", Effort: "low"},
+		GroupDevelop:          {Model: "opus", Effort: "high"},
+		GroupAdvisor:          {Model: "fable", Effort: "low"},
 		GroupDesignHarnessE2E: {Model: "opus", Effort: "high"},
 		GroupDocs:             {Model: "sonnet", Effort: "medium"},
 		GroupGit:              {Model: "sonnet", Effort: "low"},
+		GroupExplore:          {Model: "sonnet", Effort: "low"},
 	},
 	PerformanceTierMedium: {
 		GroupSpecAuditors:     {Model: "opus", Effort: "high"},
-		GroupDevelop:          {Model: "opus", Effort: "high"},
-		GroupAdvisor:          {Model: "fable", Effort: "low"},
+		GroupDevelop:          {Model: "opus", Effort: "xhigh"},
+		GroupAdvisor:          {Model: "opus", Effort: "low"},
 		GroupDesignHarnessE2E: {Model: "opus", Effort: "medium"},
 		GroupDocs:             {Model: "sonnet", Effort: "medium"},
 		GroupGit:              {Model: "sonnet", Effort: "low"},
+		GroupExplore:          {Model: "sonnet", Effort: "low"},
 	},
 	PerformanceTierLow: {
 		GroupSpecAuditors:     {Model: "opus", Effort: "low"},
@@ -205,6 +220,7 @@ var defaultProfileMatrix = map[string]map[string]config.ModelEffort{
 		GroupDesignHarnessE2E: {Model: "opus", Effort: "low"},
 		GroupDocs:             {Model: "sonnet", Effort: "medium"},
 		GroupGit:              {Model: "sonnet", Effort: "low"},
+		GroupExplore:          {Model: "sonnet", Effort: "low"},
 	},
 }
 
@@ -225,7 +241,7 @@ func DefaultProfileMatrix() map[string]map[string]config.ModelEffort {
 }
 
 // AgentGroup returns the profile group an agent belongs to, and false when the
-// agent has no membership (Explore, user-added agents) (REQ-MPM-011/013).
+// agent has no membership (user-added agents) (REQ-MPM-011/013).
 func AgentGroup(agent string) (string, bool) {
 	g, ok := agentGroupMembership[agent]
 	return g, ok
@@ -238,8 +254,8 @@ func AgentGroup(agent string) (string, bool) {
 //  3. else the Go-default group cell (defaultProfileMatrix);
 //  4. no group membership → {inherit, ""} (REQ-MPM-013).
 //
-// The returned bool `hasGroup` is false for the inherit case (Explore / no
-// group), letting the caller skip model injection. The active profile is read
+// The returned bool `hasGroup` is false for the inherit case (a user-added
+// agent with no group), letting the caller skip model injection. The active profile is read
 // from cfg via EffectiveProfile (profile → performance_tier alias → medium).
 //
 // @MX:ANCHOR: [AUTO] ResolveAgentModelEffort — profile → per-agent {model, effort} resolver

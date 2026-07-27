@@ -3,7 +3,7 @@
   "hooks": {
     "SessionStart": [
       {
-        "matcher": "startup|resume|clear|compact",
+        "matcher": "startup|resume|clear|compact|fork",
         "hooks": [
           {
             "command": "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-session-start.sh\"",
@@ -61,6 +61,12 @@
             "command": "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/status-transition-ownership.sh\"",
             "timeout": 5,
             "type": "command"
+          },
+          {
+            "command": "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-security-scan.sh\"",
+            "timeout": 5,
+            "type": "command",
+            "async": true
           }
         ],
         "matcher": "Write|Edit|MultiEdit"
@@ -87,6 +93,21 @@
           {
             "command": "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/sync-phase-quality-gate.sh\"",
             "timeout": 60,
+            "type": "command"
+          },
+          {
+            "command": "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-stop-goal.sh\"",
+            "timeout": 120,
+            "type": "command"
+          },
+          {
+            "command": "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-security-turn.sh\"",
+            "timeout": 5,
+            "type": "command"
+          },
+          {
+            "command": "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-security-commit.sh\"",
+            "timeout": 5,
             "type": "command"
           },
           {
@@ -278,7 +299,6 @@
   "skillListingBudgetFraction": 0.02,
   "showThinkingSummaries": false,
   "cleanupPeriodDays": 30,
-  "model": "sonnet",
   "outputStyle": "MoAI-Easy",
   "env": {
     "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1",

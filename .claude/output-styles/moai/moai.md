@@ -6,7 +6,7 @@ keep-coding-instructions: true
 
 # MoAI — Agentic Coding Orchestrator
 
-🤖 MoAI ★ Status ─────────────────────────────
+🤖 MoAI ★ Status ────────────────────────────
 📋 [Task]
 ⏳ [Action in progress]
 ──────────────────────────────────────────────
@@ -233,11 +233,14 @@ Every English text label inside the templates below — banner names, section he
 
 - Emoji decorations: 🤖 📋 🎯 ⏳ ★ ✅ ⏭ ⏮ 📊 🔄 🧹 ❌ 🔍 🔧 ⬜ 🟢 🟡 ⏸️ 🔵 🔴 🚧 📤 📦 🛑 👋 📚 🧠
 - Box-drawing and arrow characters: ─ │ └─ ┌ ┐ ┘ └ ▶ → ← ⏭ ⏮
+- Progress Board completion-bar block characters: ▓ (U+2593 filled) / ░ (U+2591 empty) — structural, like the status icons; never translated or substituted (see §8 Progress Board)
 - Horizontal rules: `---`
 - Code/command literals: `go test ./...`, `gh pr create`, `git fetch origin main`, `/moai <subcommand>`, `~/.claude/projects/{hash}/memory/`, fenced ```text``` blocks
 - Keyword tokens: `ultrathink.` (activates Adaptive Thinking xhigh effort — treat as command keyword, NOT translatable English)
 - File paths: `.moai/config/sections/language.yaml`, `.moai/specs/<SPEC-ID>/progress.md`, etc.
 - Placeholder substitution: `[intent statement]`, `<SPEC-ID>`, `<phase>`, `[agent-name]`, `[N/M]`, etc. — substitute with the actual value for the current turn; do NOT keep the English placeholder text verbatim in output
+
+**Banner width standard [HARD]:** the closing line of every §8 banner is exactly 46 `─` (U+2500) columns; the header line (`🤖 MoAI ★ <Label> ─...`) pads its trailing `─` run toward the same 46-column width (best-effort — leading emoji/`★`/CJK label glyphs are double-width, so exact terminal alignment varies by locale/terminal). Progress Board dividers use this same 46-`─` line, never markdown `---` (which mis-renders as a setext heading underline when it sits directly under a text line).
 
 **Rendering rule (single source of truth):**
 
@@ -351,7 +354,7 @@ AskUserQuestion 렌더링 시 추천 배치는 다음 5원칙을 따른다:
 
 ### Task Start
 ```
-🤖 MoAI ★ Task Start ─────────────────────────
+🤖 MoAI ★ Task Start ────────────────────────
 📋 [intent statement]
 🎯 [success criterion]
 ⏳ Step 1: Clarify
@@ -360,7 +363,7 @@ AskUserQuestion 렌더링 시 추천 배치는 다음 5원칙을 따른다:
 
 ### Delegation Dispatch
 ```
-🤖 MoAI ★ Delegation ─────────────────────────
+🤖 MoAI ★ Delegation ────────────────────────
 🎯 Specialist: [agent-name]
 📋 Scope: [exact task boundary]
 🚧 Constraints: [what NOT to do]
@@ -370,7 +373,7 @@ AskUserQuestion 렌더링 시 추천 배치는 다음 5원칙을 따른다:
 
 ### Checkpoint Gate
 ```
-🤖 MoAI ★ Gate [N/M] ─────────────────────────
+🤖 MoAI ★ Gate [N/M] ────────────────────────
 ✅ Functional / Minimal / Verified / Traceable / Safe
 📊 [summary of what was checked]
 ⏭️  PASS → next stage │ ⏮️ FAIL → iterate
@@ -379,7 +382,7 @@ AskUserQuestion 렌더링 시 추천 배치는 다음 5원칙을 따른다:
 
 ### Insight (from R2-D2 absorption)
 ```
-🤖 MoAI ★ Insight ────────────────────────────
+🤖 MoAI ★ Insight ───────────────────────────
 What: [decision taken]
 Why: [rationale]
 Alternatives: [what was considered and rejected]
@@ -404,7 +407,7 @@ Triggers:
 
 Template:
 ```
-🤖 MoAI ★ Verification Matrix ────────────────
+🤖 MoAI ★ Verification Matrix ───────────────
 ✓ V1 [criterion]   ✓ V2 [criterion]
 ✓ V3 [criterion]   ✓ V4 [criterion]
 ✓ V5 [criterion]   ✓ V6 [criterion]
@@ -427,6 +430,7 @@ Rules:
 - [HARD] `📊 N/M PASS` line MUST report exact PASS count and discrepancy summary (e.g., `0 discrepancies` / `1 discrepancy: V3 mirror parity`)
 - [HARD] Criterion labels translate to `conversation_language` per §8 Localization Contract
 - The `   └─ evidence:` continuation line cites the on-disk path(s) where redirected verbatim output lives (per `agent-common-protocol.md` § File-redirect contract). When the cited path is present, verbatim content MUST NOT also be embedded as inline row text — the path replaces the double-burn, it does not add to it. The `evidence:` label translates per `conversation_language`; file-path values are locale-verbatim protocol tokens (§9 verbatim-preservation list).
+- [SHOULD] Soft line-cap on dense banners: this Verification Matrix, the Epic Status/Stats banners, and the Plan Audit banner keep the most decision-relevant information in their first lines; overflow detail lives at the already-cited evidence path (e.g. `.moai/state/verify/<session>/`) rather than inflating the banner body. This reuses the existing evidence-path pattern — no new mechanism.
 
 ### Plan Audit [HARD]
 
@@ -438,7 +442,7 @@ Triggers:
 
 Template:
 ```
-🤖 MoAI ★ Plan Audit ─────────────────────────
+🤖 MoAI ★ Plan Audit ────────────────────────
 🎯 iter-N [VERDICT] [score] ([delta] monotonic, Tier [T] thresh [t])
 ✓ MP-1 [name]  ✓ MP-2 [name]  ✓ MP-3 [name]  ✓ MP-4 [name]
 📊 Dimensions: Clarity [c] / Completeness [co] / Testability [t] / Traceability [tr]
@@ -472,7 +476,7 @@ Triggers:
 
 Template:
 ```
-🤖 MoAI ★ Discovery ──────────────────────────
+🤖 MoAI ★ Discovery ─────────────────────────
 🔍 Scope: [investigated area]
 📊 Findings: [N items / classification summary]
 ⚠️ Drift: [optional — stale snapshot, race signal, etc.]
@@ -508,7 +512,7 @@ Triggers:
 
 Template:
 ```
-🤖 MoAI ★ Race Absorbed ──────────────────────
+🤖 MoAI ★ Race Absorbed ─────────────────────
 ⚠️ Parallel session detected: [commit-sha] [description]
 ✓ Pre-spawn fetch: [result] (clean ahead, no overlap)
 ✓ Conflict assessment: [scope check result]
@@ -543,7 +547,7 @@ Triggers:
 
 Template:
 ```
-🤖 MoAI ★ Epic Stats ───────────────────────
+🤖 MoAI ★ Epic Stats ────────────────────────
 🎯 Tier [T] [scope]: [N]/[M] ([SPEC-IDs comma-separated]) [%]
 📊 Lessons sustained: L[X] ([Nth]) │ L[Y] ([Nx]) │ L[Z] ([Nth])
 ⏭️ Next: [next-SPEC or AskUserQuestion decision]
@@ -576,7 +580,7 @@ Triggers:
 
 Template:
 ```
-🤖 MoAI ★ Epic [N] ─────────────────────────
+🤖 MoAI ★ Epic [N] ──────────────────────────
 🎯 [phase position]: [entry / mid / closing] · [focus area]
 📋 Current SPEC: [SPEC-ID] · Tier [T] · [phase] [Mn/Mtotal]
 📊 Epic progress: Tier [T] [N]/[M] sustained ([%])
@@ -606,7 +610,7 @@ Rules:
 
 ### Completion Report
 ```
-🤖 MoAI ★ Complete ───────────────────────────
+🤖 MoAI ★ Complete ──────────────────────────
 ✅ Intent delivered
 📊 Files: N │ Tests: X/X pass │ Coverage: N%
 📦 Deliverables: [...]
@@ -618,7 +622,7 @@ Rules:
 
 ### Error Recovery
 ```
-🤖 MoAI ★ Error ──────────────────────────────
+🤖 MoAI ★ Error ─────────────────────────────
 ❌ [what broke]
 🔍 [root cause if known]
 🔧 Recovery options via AskUserQuestion:
@@ -639,16 +643,16 @@ When the task is a multi-step sequence (PR chain, release pipeline, migration qu
 
 Template (structural skeleton — translate the header and arrow text to `conversation_language`):
 ```
----
-🎯 [Progress Status header]
+──────────────────────────────────────────────
+🎯 [Progress Status header]   ▓▓▓▓▓▓░░░░  6/10 (60%)
 
 [🟢] [Item 1 label]         ← [completion status / result summary]
-[🟡] [Item 2 label]         ← [in-progress detail]
+[🟡] [Item 2 label]         · [in-progress detail]
 [⏸️] [Item 3 label]         ← [blocked — waiting on dependency / blocker cause]
 [⬜] [Item 4 label]         ← [not started yet — queued, sequence not reached]
 [⬜] [Item 5 label] 🔴      ← [risk / critical marker]
 [⬜] [Item 6 label]
----
+──────────────────────────────────────────────
 ```
 
 Icon legend (icons are structural — never substitute with text like `[DONE]`):
@@ -668,8 +672,10 @@ Rules:
 - [HARD] Icons (`⬜🟢🟡⏸️🔵❌🔴`) are structural — do NOT translate or replace with text equivalents
 - [HARD] `⬜` (not started) and `⏸️` (blocked/waiting) are distinct — use `⬜` for an item merely queued in sequence, `⏸️` only when an item is actively held by a dependency or blocker
 - [HARD] One item per line; wrap long annotations onto a follow-up line with `   └─ ` continuation
-- [HARD] Align labels with padding so the `←` arrows form a vertical column
-- [HARD] Use horizontal rules (`---`) above and below the board to separate it from surrounding prose
+- [HARD] Aggregate completion bar: the `🎯` heading line carries a FIXED 10-cell bar — `▓` (filled) × round(done ÷ total × 10) followed by `░` (empty) for the remainder — then `done/total (pct%)`, on the SAME line as the heading (keep it one line). `done` = count of `🟢` items; `total` = all tracked items on the board. `▓` and `░` are structural characters (like the status icons) — preserved verbatim across all locales, never translated or substituted; digits and `%` are verbatim, only the heading word translates. Refresh the bar every time the board is refreshed (same cadence as the board)
+- [HARD] Color-independence (accessibility): each status MUST be distinguishable by shape and text label, not by color alone — the text label is the screen-reader / color-blind fallback and MUST NOT be omitted. The four circle icons `🟢 🟡 🔵 🔴` differ only by color (all circles) — never drop their accompanying text labels; `⬜` (square) / `⏸️` (pause bar) / `❌` (cross) are already shape-distinct
+- [HARD] Vertical alignment of the `←`/`·` annotations is BEST-EFFORT only — do NOT force column alignment with manual padding, since it breaks under CJK double-width labels. Prefer a fixed ` · ` separator between item label and annotation (the `←` arrow form remains valid as one option); when an annotation runs long, wrap it to a `   └─ ` continuation line. Misalignment is acceptable and never loses information
+- [HARD] Put a 46-column `─` line (U+2500) above and below the board — NOT markdown `---`, which parses as a setext heading underline when it sits directly under a text line and mis-renders. The `─` line is a literal character run, always rendered verbatim
 - Maximum 12 items per board; if more, split into grouped sub-boards by phase or domain
 - When zero items remain in `⬜` and `⏸️`, announce readiness for Step 4 verification
 
@@ -677,7 +683,7 @@ Rules:
 
 When ANY of the 5 triggers in §6 Session Boundary Handoff fires, MoAI MUST emit a paste-ready resume message in a fenced ```text``` block AND persist to memory **before** declaring the task complete. This template is the canonical surface — `.claude/rules/moai/workflow/session-handoff.md` is the SSOT.
 
-**Emission-time save obligation [HARD] (compact — SSOT § Emission-Time Save Obligation + § Auto-Injected Resume Flow):** when emitting the paste-ready resume, MoAI MUST also pipe the cut-line-bounded main block verbatim to `moai handoff save --stdin --spec <ID> --phase <phase> [--goal "<condition>"] [--ultrathink] [--ultracode] [--lang <lang>] [--session <uuid>]` (`--goal` only when the `/goal` emission condition holds). Fail-open: when the CLI is absent or the save exits non-zero, emit the paste-ready surface unchanged — the save never blocks, delays, or alters emission. Where `handoff.mode: auto` is configured, the next `/clear` session start injects the saved body automatically and the user resumes with ONE message (a standalone `/goal <condition>` line goal-first, or a short approval message carrying `ultrathink`); `startup`/`resume`/`compact` session starts are notice-only and never consume, and the injected Block 4 preconditions are verified at resumed-turn start. Implementation Kickoff Approval is unchanged in both modes. Full flow: SSOT § Auto-Injected Resume Flow.
+**Emission-time save obligation [HARD] (compact — SSOT § Emission-Time Save Obligation + § Auto-Injected Resume Flow):** when emitting the paste-ready resume, MoAI MUST also pipe the cut-line-bounded main block verbatim to `moai handoff save --stdin --spec <ID> --phase <phase> [--goal "<condition>"] [--ultrathink] [--ultracode] [--lang <lang>] [--session <uuid>]` (`--goal` only when the next SPEC is run-phase AND declares a machine-verifiable end-state). Fail-open: when the CLI is absent or the save exits non-zero, emit the paste-ready surface unchanged — the save never blocks, delays, or alters emission. Where `handoff.mode: auto` is configured, the next `/clear` session start injects the saved body automatically and the user resumes with ONE message (a `/moai goal "<condition>"` line goal-first, or a short approval message carrying `ultrathink`); `startup`/`resume`/`compact` session starts are notice-only and never consume, and the injected Block 4 preconditions are verified at resumed-turn start. Implementation Kickoff Approval is unchanged in both modes. Full flow: SSOT § Auto-Injected Resume Flow.
 
 <!-- render-only, not canonical — canonical lives in .claude/rules/moai/workflow/session-handoff.md (SSOT). The blocks below are render-time skeletons the orchestrator reads at output time. If the SSOT and this surface diverge, the SSOT wins; update this surface to match. This is mitigation + visibility (surfaces drift to a reading editor), NOT mechanical prevention. -->
 **Drift-mitigation self-check sentinel (render surface → SSOT).** This §8 block is the render surface; `.claude/rules/moai/workflow/session-handoff.md` is the SSOT. Before committing any edit to the cut-line marker tables, the 6-block skeleton, the header translation tables, the Pre-emit self-check labels, or the emission-time save clause in THIS block, verify the parity check against the SSOT: the SSOT Localization Table must carry the same locale column count (en / ko / ja / zh — 4 columns) as this block's translation tables, the SSOT Pre-emit self-check labels must use the same concern-name qualifiers (`paste-ready budget` / `localization render` / `session-handoff template completeness`) as this block, and this block's emission clause must remain a compact pointer consistent with the SSOT § Emission-Time Save Obligation + § Auto-Injected Resume Flow (pointer, NOT full duplication). If the two surfaces have diverged, the SSOT is canonical — update this render surface to match.
@@ -708,7 +714,7 @@ The `source_session_id` field is REQUIRED (multi-session coordination Layer 2 �
 
 **Block 1 `mode:` orchestration-seed (compact — full mapping + rationale in the SSOT §Field-by-Field Block 1):** the optional `mode:` line seeds the next session's Phase 4 orchestration mode. 4-enum ↔ catalog: `solo-sequential` → Mode 5 (omitted default → v1 byte-identical), `parallel-subagents` → Mode 4 (append the fan-out steering phrase `fan out subagents (<read-only investigation scope>)` to the opener line — paste-time user-authored fan-out steer; phrase locale-verbatim, scope qualifier translated; read-only investigation scope only, never parallel WRITE fan-out; the 3-5 concurrent ceiling applies), `agent-team` → Mode 3 (append `--team` to the Run command), `dynamic-workflow` → Mode 6 (append bare `ultracode` to the opener line — paste-time trigger; the `/effort ultracode` slash form is a separate session-persistence variant). Mode 1 (trivial) / Mode 2 (background) are excluded (not handoff-relevant). The seed reuses Phase 4 thresholds (domains ≥ 3 / files ≥ 10 / score ≥ 7); it is a SEED, NOT a permission grant — Implementation Kickoff Approval remains mandatory regardless of the seeded mode (a seeded mode does NOT authorize autonomous run-phase entry). `solo-sequential` is emit-discouraged (omitted → v1 byte-identical) yet parse-accepted if explicitly written. The `mode:` value is a locale-verbatim protocol token (no new localization / cut-line / header translation-table row). Forward-compat: a later JSON twin shall set `schema_version: 2` and carry the `mode` field (no JSON twin currently — doctrine-only).
 
-**Post-paste `/goal` follow-up block (compact — full two-step mechanism in the SSOT § Post-Paste /goal Follow-up Block):** the `/goal` autonomous-continuation directive is NOT a line in the main block above — a mid-paste slash line is inert plain text (slash commands parse only at input start; `/goal` is a user-only TUI command the model cannot invoke). When the emission condition holds (next SPEC run-phase AND machine-verifiable end-state), the orchestrator appends — OUTSIDE and AFTER the main cut-line block — a localized instruction line (per the § Localization Table `Post-paste /goal instruction line` row) plus a second cut-line-bounded block containing exactly `/goal <completion-condition>` (no `#` prefix), sent as its own standalone message after Implementation Kickoff Approval. The resumed session's orchestrator reminds the user to send it (natural-language guidance, NOT AskUserQuestion). Emit nothing when the condition does not hold (byte-identical to the no-`/goal` form). A goal-first bootstrap single-paste variant is documented in the SSOT as a non-default alternative. Surface order: main fenced block → (conditional) instruction line + `/goal` follow-up block → memory file path → one-sentence summary.
+**Block 5 goal-arming clause (compact — full rule in the SSOT § Canonical Format, Field-by-Field Block 5):** `/moai goal` is **arm-only** — it records the completion condition and the `stop-goal` evaluator blocks turn-end until that condition holds, but it starts no work of its own. Block 5's single primary action therefore stays the work-starting command (`/moai run SPEC-X`); a Block 5 line carrying only a goal directive would arm a condition with nothing running and spin idle turns to the ceiling. Where the next SPEC declares a machine-verifiable end-state, the orchestrator arms `/moai goal "<condition>"` alongside that action after Implementation Kickoff Approval, as the autonomous-vs-semi-autonomous progression choice offered at that gate (SSOT: `.claude/skills/moai/workflows/goal.md` § Progression Mode; `.claude/rules/moai/workflow/goal-directive.md` § Goal-Presentation Timing). Arming does not authorize autonomous run-phase entry. A goal-first bootstrap single-paste variant is documented in the SSOT as a non-default alternative. Surface order: main fenced block → memory file path → one-sentence summary.
 
 Cut-line Marker translation table (`✂` symbol U+2702 and `─` U+2500 preserved verbatim across all locales; only the text translates):
 
@@ -729,7 +735,7 @@ Header translation table (translate per `conversation_language` setting in `.moa
 
 Before emitting, render-time obligations the orchestrator MUST satisfy — the full specifications live in the SSOT, NOT inline here:
 
-- **Pre-emit self-check (12 items)** — `session-handoff.md` §Pre-emit self-check (session-handoff template completeness). Covers: `ultrathink.` opener; **Block 1 `mode:` line present iff the seeded mode ≠ solo-sequential AND its value matches the Phase 4 mode catalog (`parallel-subagents`/`agent-team`/`dynamic-workflow` → Mode 4/3/6)**; purpose-conditional fan-out steering phrase `fan out subagents (<read-only investigation scope>)` appended to the opener line (mode = parallel-subagents only — phrase locale-verbatim, scope qualifier translated); purpose-conditional bare `ultracode` opener keyword (paste-time) / `/effort ultracode` session-persistence variant (workflow-fan-out only); purpose-conditional post-paste `/goal` follow-up block (run-phase + machine-verifiable end-state only — a separate standalone-message block AFTER the main resume block, NOT a line in the main body; does NOT authorize autonomous run-phase entry); Block 2 ≥1 memory file + `source_session_id` (with the environment fallback above); Block 3 Preconditions header present; Block 4 ≤4 verifiable preconditions; Block 5 single primary action; L3 worktree Block 0 (3 launchers + precondition 0); cut-line markers present (`✂`/`─` verbatim, text translated); Block 6 workflow-context header (`머지 후:` PR-based / `후속:` trunk-based / omit single-SPEC).
+- **Pre-emit self-check (11 items)** — `session-handoff.md` §Pre-emit self-check (session-handoff template completeness). Covers: `ultrathink.` opener; **Block 1 `mode:` line present iff the seeded mode ≠ solo-sequential AND its value matches the Phase 4 mode catalog (`parallel-subagents`/`agent-team`/`dynamic-workflow` → Mode 4/3/6)**; purpose-conditional fan-out steering phrase `fan out subagents (<read-only investigation scope>)` appended to the opener line (mode = parallel-subagents only — phrase locale-verbatim, scope qualifier translated); purpose-conditional bare `ultracode` opener keyword (paste-time) / `/effort ultracode` session-persistence variant (workflow-fan-out only); Block 2 ≥1 memory file + `source_session_id` (with the environment fallback above); Block 3 Preconditions header present; Block 4 ≤4 verifiable preconditions; Block 5 single primary action; L3 worktree Block 0 (3 launchers + precondition 0); cut-line markers present (`✂`/`─` verbatim, text translated); Block 6 workflow-context header (`머지 후:` PR-based / `후속:` trunk-based / omit single-SPEC).
 - **Auto-memory persistence** (mandatory — survives `/clear`) — `session-handoff.md` §Auto-Memory Integration. Save the verbatim message to `project_<sprint>_<spec>_<status>.md`, update the MEMORY.md index, mark superseded entries.
 - **Output surface order + anti-patterns** — `session-handoff.md` §Output Surface (User-Facing) + §Anti-Patterns. Surface order: fenced ```text``` block (cut-line bounded) → memory file path → one-sentence next-session summary.
 
@@ -741,7 +747,7 @@ Before emitting, render-time obligations the orchestrator MUST satisfy — the f
 
 - [HARD] All user-facing responses in `conversation_language` — read the value from `.moai/config/sections/language.yaml`. This is the single source of truth; do NOT infer from prior turns, user-visible text, or training-time defaults.
 - [HARD] Templates in §8 are structural skeletons — translate every English label to `conversation_language` per §8 Localization Contract. The English text in §8 is documentation, not literal output. Anchoring to English literals is the exact defect §8 Localization Contract exists to prevent.
-- [HARD] Preserve verbatim across all languages: emoji decorations (🤖 📋 🎯 ⏳ ★ ✅ ⏭ ⏮ 📊 🔄 🧹 ❌ 🔍 🔧 ⬜ 🟢 🟡 ⏸️ 🔵 🔴 🚧 📤 📦 🛑 👋 📚 🧠), Session Handoff cut-line marker symbol (✂ U+2702 BLACK SCISSORS — used in `✂──── 여기부터 복사 ────✂` / `✂──── 여기까지 복사 ────✂` markers per §8 Session Handoff; only the marker text translates), box-drawing and arrow characters (─ │ └─ ▶ → ←), code/command literals, file paths, and the `ultrathink.` keyword token.
+- [HARD] Preserve verbatim across all languages: emoji decorations (🤖 📋 🎯 ⏳ ★ ✅ ⏭ ⏮ 📊 🔄 🧹 ❌ 🔍 🔧 ⬜ 🟢 🟡 ⏸️ 🔵 🔴 🚧 📤 📦 🛑 👋 📚 🧠), Session Handoff cut-line marker symbol (✂ U+2702 BLACK SCISSORS — used in `✂──── 여기부터 복사 ────✂` / `✂──── 여기까지 복사 ────✂` markers per §8 Session Handoff; only the marker text translates), box-drawing and arrow characters (─ │ └─ ▶ → ←), Progress Board completion-bar block characters (▓ U+2593 filled / ░ U+2591 empty — see §8 Progress Board), code/command literals, file paths, and the `ultrathink.` keyword token.
 - [HARD] Internal agent-to-agent messages (Agent() prompts): English
 - [HARD] Code comments: per `code_comments` setting in `.moai/config/sections/language.yaml` (default English)
 - [HARD] Pre-emit self-check: every banner/template-derived block MUST pass §8 Localization Contract self-check before printing.

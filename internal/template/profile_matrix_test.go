@@ -79,11 +79,11 @@ func TestApplyProfile_InsertsProfileWhenAbsent(t *testing.T) {
 func TestResolveAgentModelEffort_MatrixAFidelity(t *testing.T) {
 	cfg := config.LLMConfig{Profile: "max"}
 	want := map[string]config.ModelEffort{
-		"manager-spec":    {Model: "fable", Effort: "medium"},
-		"plan-auditor":    {Model: "fable", Effort: "medium"},
-		"sync-auditor":    {Model: "fable", Effort: "medium"},
-		"manager-develop": {Model: "fable", Effort: "low"},
-		"super-advisor":   {Model: "fable", Effort: "medium"},
+		"manager-spec":    {Model: "fable", Effort: "low"},
+		"plan-auditor":    {Model: "fable", Effort: "low"},
+		"sync-auditor":    {Model: "fable", Effort: "low"},
+		"manager-develop": {Model: "opus", Effort: "high"},
+		"super-advisor":   {Model: "fable", Effort: "low"},
 		"manager-design":  {Model: "opus", Effort: "high"},
 		"builder-harness": {Model: "opus", Effort: "high"},
 		"e2e-tester":      {Model: "opus", Effort: "high"},
@@ -139,17 +139,37 @@ func TestResolveAgentModelEffort_OverridePrecedence(t *testing.T) {
 	}
 }
 
-// TestResolveAgentModelEffort_Inherit covers REQ-MPM-013 / AC-MPM-007: Explore
-// and unknown agents resolve to inherit with hasGroup=false.
+// TestResolveAgentModelEffort_Inherit covers REQ-MPM-013 / AC-MPM-007: only
+// user-added / unknown agents resolve to inherit with hasGroup=false. The
+// built-in Explore now has an explicit group (see
+// TestResolveAgentModelEffort_ExploreProfileInvariant) and is no longer in this
+// inherit set.
 func TestResolveAgentModelEffort_Inherit(t *testing.T) {
 	cfg := config.LLMConfig{Profile: "max"}
-	for _, agent := range []string{"Explore", "some-user-agent"} {
+	for _, agent := range []string{"some-user-agent", "another-custom-agent"} {
 		got, hasGroup := ResolveAgentModelEffort(cfg, agent)
 		if hasGroup {
 			t.Errorf("%s should have no group", agent)
 		}
 		if got.Model != modelInherit {
 			t.Errorf("%s should resolve to inherit, got %q", agent, got.Model)
+		}
+	}
+}
+
+// TestResolveAgentModelEffort_ExploreProfileInvariant covers the product
+// decision that the built-in Explore agent resolves to sonnet/low with
+// hasGroup=true across all three profile columns (profile-invariant, like
+// docs/git).
+func TestResolveAgentModelEffort_ExploreProfileInvariant(t *testing.T) {
+	for _, profile := range []string{"max", "medium", "low"} {
+		cfg := config.LLMConfig{Profile: profile}
+		got, hasGroup := ResolveAgentModelEffort(cfg, "Explore")
+		if !hasGroup {
+			t.Errorf("profile %q: Explore should now have a group", profile)
+		}
+		if (got != config.ModelEffort{Model: "sonnet", Effort: "low"}) {
+			t.Errorf("profile %q: Explore got %+v, want sonnet/low", profile, got)
 		}
 	}
 }
@@ -179,7 +199,7 @@ func TestResolveAgentModelEffort_ConfigProfilesOverrideDefault(t *testing.T) {
 func TestResolveAgentModelEffort_LegacyAlias(t *testing.T) {
 	cfg := config.LLMConfig{PerformanceTier: "max"} // no profile
 	got, _ := ResolveAgentModelEffort(cfg, "manager-develop")
-	if (got != config.ModelEffort{Model: "fable", Effort: "low"}) {
+	if (got != config.ModelEffort{Model: "opus", Effort: "high"}) {
 		t.Errorf("legacy perf_tier max should resolve to max column: got %+v", got)
 	}
 }

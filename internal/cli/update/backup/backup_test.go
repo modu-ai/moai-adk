@@ -136,14 +136,14 @@ func TestCleanupOldBackups(t *testing.T) {
 		}
 	})
 
-	t.Run("cleanup removes old backups", func(t *testing.T) {
+	t.Run("cleanup keeps newest, removes oldest", func(t *testing.T) {
 		tmpDir := t.TempDir()
 		backupDir := filepath.Join(tmpDir, defs.BackupsDir)
 		if err := os.MkdirAll(backupDir, defs.DirPerm); err != nil {
 			t.Fatal(err)
 		}
 
-		// Create 5 timestamped backups
+		// Create 5 timestamped backups with distinct, ordered timestamps.
 		backups := []string{
 			"20260101_120000",
 			"20260102_120000",
@@ -158,29 +158,31 @@ func TestCleanupOldBackups(t *testing.T) {
 			}
 		}
 
-		// Keep 3, delete 2 newest (function sorts ascending, deletes from index keepCount)
+		// Keep 3: the retention policy keeps the NEWEST keepCount backups and
+		// deletes the oldest excess. A rotation that kept the oldest would
+		// destroy the most recent (most valuable) restore points.
 		deletedCount := CleanupOldBackups(tmpDir, 3)
 		if deletedCount != 2 {
-			t.Errorf("CleanupOldBackups() = %d, want 2 (deleted 2 newest backups)", deletedCount)
+			t.Errorf("CleanupOldBackups() = %d, want 2 (deleted 2 oldest backups)", deletedCount)
 		}
 
 		// After sorting ascending: ["20260101", "20260102", "20260103", "20260104", "20260105"]
-		// backups[:3] are kept (oldest 3)
-		// backups[3:] are deleted (newest 2: "20260104", "20260105")
+		// backups[:2] are deleted (oldest 2: "20260101", "20260102")
+		// backups[2:] are kept (newest 3: "20260103", "20260104", "20260105")
 
-		// Verify oldest 3 still exist
-		for _, name := range backups[:3] {
+		// Verify oldest 2 were deleted
+		for _, name := range backups[:2] {
 			backupPath := filepath.Join(backupDir, name)
-			if _, err := os.Stat(backupPath); err != nil {
-				t.Errorf("old backup %q was deleted (should be kept): %v", backupPath, err)
+			if _, err := os.Stat(backupPath); !os.IsNotExist(err) {
+				t.Errorf("old backup %q still exists (should be deleted)", backupPath)
 			}
 		}
 
-		// Verify newest 2 were deleted
-		for _, name := range backups[3:] {
+		// Verify newest 3 still exist
+		for _, name := range backups[2:] {
 			backupPath := filepath.Join(backupDir, name)
-			if _, err := os.Stat(backupPath); !os.IsNotExist(err) {
-				t.Errorf("new backup %q still exists (should be deleted)", backupPath)
+			if _, err := os.Stat(backupPath); err != nil {
+				t.Errorf("newest backup %q was deleted (should be kept): %v", backupPath, err)
 			}
 		}
 	})

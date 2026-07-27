@@ -7,21 +7,36 @@ import (
 	"strings"
 )
 
-// The wizard question set is split across three constructors:
+// The wizard question set is split across these constructors:
 //
-//   - DefaultQuestions      — the `moai init` set (NO Git questions)
+//   - DefaultQuestions      — pages 1-2 of the `moai init` set (NO Git questions)
+//   - Page3Questions        — page 3 of the `moai init` set
+//   - InitQuestions         — DefaultQuestions + Page3Questions: the full
+//     3-page `moai init` set, assembled once for the wizard entry point
 //   - GitQuestions          — the 7 Git questions, on their own
-//   - ReconfigureQuestions  — DefaultQuestions with GitQuestions spliced back in,
-//     used by the `moai update --reconfigure` path
+//   - ReconfigureQuestions  — DefaultQuestions with GitQuestions spliced back
+//     in, used by the `moai update --reconfigure` path. It deliberately does
+//     NOT include the page-3 questions, so the reconfigure set keeps its
+//     pre-restructure membership.
 //
-// DefaultQuestions returns the question set asked during project
-// initialization, in this order:
+// The `moai init` wizard renders three topic pages
+// (SPEC-CLI-WIZARD-RESTRUCTURE-001 REQ-WIZ-003..005):
+//
+//	Page 1 "Basic"              — conversation_language, user_name, project_name
+//	Page 2 "Model & Report"     — model_policy, report_format
+//	Page 3 "Quality & Workflow" — lsp_enabled, enforce_quality, project_mode,
+//	                              design_enabled, claude_design_enabled (nested)
+//
+// A page is a run of consecutive UNCONDITIONAL questions sharing one Group
+// label: buildFormGroups (wizard.go) merges each such run into a single huh
+// group. Pages 1-2 come from DefaultQuestions, page 3 from Page3Questions.
+//
+// DefaultQuestions returns pages 1-2, in this order:
 //  1. Conversation language (drives the rendering language of every later question)
 //  2. User name (optional)
 //  3. Project name (required)
 //  4. Model policy
 //  5. Report format
-//  6. Advanced-settings bridge (conditional — hidden when StandardMode is preset by flag)
 //
 // Git mode and provider are NOT asked here: `moai init` derives them from the
 // repository's configured remotes (see detectGitConfig in internal/cli), so a
@@ -47,7 +62,7 @@ func DefaultQuestions(projectRoot string) []Question {
 		// leaves them untouched because the translation entry supplies no options).
 		{
 			ID:          "conversation_language",
-			Group:       "Language",
+			Group:       "Basic",
 			Type:        QuestionTypeSelect,
 			Title:       "Select conversation language",
 			Description: "The language MoAI uses when talking with you. The wizard switches to it immediately.",
@@ -64,7 +79,7 @@ func DefaultQuestions(projectRoot string) []Question {
 		// wizard entry point when available. Empty is allowed.
 		{
 			ID:          "user_name",
-			Group:       "Identity",
+			Group:       "Basic",
 			Type:        QuestionTypeInput,
 			Title:       "Enter your name",
 			Description: "How MoAI addresses you. Persisted to user.yaml (user.name). Leave empty to skip.",
@@ -74,7 +89,7 @@ func DefaultQuestions(projectRoot string) []Question {
 		// 3. Project Name
 		{
 			ID:          "project_name",
-			Group:       "Project",
+			Group:       "Basic",
 			Type:        QuestionTypeInput,
 			Title:       "Enter project name",
 			Description: "The name of your project.",
@@ -84,16 +99,28 @@ func DefaultQuestions(projectRoot string) []Question {
 		// 2. Model Policy
 		{
 			ID:          "model_policy",
-			Group:       "Project",
+			Group:       "Model & Report",
 			Type:        QuestionTypeSelect,
 			Title:       "Select model policy",
 			Description: "Controls which Claude model tier is assigned to each agent. Match to your Claude plan.",
+			// Labels use the v3.0.1 tier naming (Max / Medium / Low). Values stay
+			// "high"/"medium"/"low": the internal ModelPolicy vocabulary
+			// (internal/template/model_policy.go IsValidModelPolicy) expects those
+			// values and NormalizeToTier maps high→max downstream.
+			// Descriptions mirror the actual per-tier assignments in the profile
+			// matrix SSOT (internal/template/profile_matrix.go defaultProfileMatrix,
+			// Matrix A): max leans on Fable + Opus for core agents; medium/low mix
+			// Opus and Sonnet across effort levels. Keep these in sync with that
+			// matrix, not with a marketing summary.
+			// The (Recommended) marker tracks the Default below: Medium is the default
+			// for new projects (SPEC-CLI-WIZARD-RESTRUCTURE-001 REQ-WIZ-008). Max/High
+			// remains a fully selectable tier — only the DEFAULT moved.
 			Options: []Option{
-				{Label: "High (Recommended)", Value: "high", Desc: "Opus for critical agents — Max $200 plan"},
-				{Label: "Medium", Value: "medium", Desc: "Opus for key agents, sonnet for rest — Max $100 plan"},
-				{Label: "Low", Value: "low", Desc: "Sonnet and haiku only — Plus $20 plan"},
+				{Label: "Max", Value: "high", Desc: "Fable 5 (low) + Opus 4.8 (high) + Sonnet (medium~low) — Max $200 plan"},
+				{Label: "Medium (Recommended)", Value: "medium", Desc: "Opus 4.8 (xhigh~low) + Sonnet (medium~low) — Max $100 plan"},
+				{Label: "Low", Value: "low", Desc: "Opus 4.8 (high~low) + Sonnet (medium~low) — Plus $20 plan"},
 			},
-			Default:  "high",
+			Default:  "medium",
 			Required: true,
 		},
 		// 3. Report Format — html+md vs md.
@@ -102,7 +129,7 @@ func DefaultQuestions(projectRoot string) []Question {
 		// report.format). Keep these two Values in sync with that SSOT.
 		{
 			ID:          "report_format",
-			Group:       "Project",
+			Group:       "Model & Report",
 			Type:        QuestionTypeSelect,
 			Title:       "Select report format",
 			Description: "Controls whether reports are generated as HTML+Markdown or Markdown only.",
@@ -112,21 +139,6 @@ func DefaultQuestions(projectRoot string) []Question {
 			},
 			Default:  "html+md",
 			Required: true,
-		},
-		// 6. Advanced-settings bridge (Quick mode only). Answering Yes flips
-		// StandardMode on, which reveals the Phase 1 questions (gated on
-		// r.StandardMode) in the same wizard run. Hidden when --standard/--advanced
-		// already preset StandardMode (Condition returns false), so the flag path
-		// never double-asks.
-		{
-			ID:          "advanced_bridge",
-			Group:       "Options",
-			Type:        QuestionTypeConfirm,
-			Title:       "Configure advanced settings? (default: No)",
-			Description: "Reveals project mode, harness profile, LSP, quality gates, and design options in this run.",
-			Default:     "false",
-			Required:    false,
-			Condition:   func(r *WizardResult) bool { return !r.StandardMode },
 		},
 	}
 }
@@ -143,7 +155,8 @@ func DefaultQuestions(projectRoot string) []Question {
 // These are asked ONLY by the `moai update --reconfigure` path — runInitWizard
 // (internal/cli/update.go) is the sole caller and it builds ReconfigureQuestions.
 // The interactive `moai init` path is DISTINCT: init.go -> runWizardFn ->
-// RunWithDefaultsModes builds DefaultQuestions (+ Phase1/Phase2), which contain
+// RunWithDefaults builds InitQuestions (DefaultQuestions + Page3Questions),
+// which contain
 // NO Git questions; `moai init` auto-detects mode and provider from the
 // repository's remotes via detectGitConfig instead. This split is enforced by
 // TestInitWizardQuestionSetHasNoGitCredentialQuestions.
@@ -251,15 +264,14 @@ func GitQuestions() []Question {
 
 // ReconfigureQuestions returns the full question set used by the
 // `moai update --reconfigure` path: DefaultQuestions with GitQuestions spliced
-// back in at their original position — after report_format, before
-// advanced_bridge — so the reconfigure wizard's question order is unchanged.
+// back in at their original position — immediately after report_format — so the
+// reconfigure wizard's question order is unchanged.
 func ReconfigureQuestions(projectRoot string) []Question {
 	base := DefaultQuestions(projectRoot)
 	git := GitQuestions()
 
-	// Splice point: immediately after report_format. Falling back to
-	// "before the trailing advanced_bridge" keeps the order correct if the
-	// base set is ever reordered.
+	// Splice point: immediately after report_format. Falling back to the end of
+	// the base set keeps the order correct if the base set is ever reordered.
 	splice := len(base)
 	for i, q := range base {
 		if q.ID == "report_format" {
@@ -273,6 +285,22 @@ func ReconfigureQuestions(projectRoot string) []Question {
 	merged = append(merged, git...)
 	merged = append(merged, base[splice:]...)
 	return merged
+}
+
+// InitQuestions returns the FULL `moai init` question set: pages 1-2
+// (DefaultQuestions) followed by page 3 (Page3Questions). It is the single
+// assembly point consumed by the wizard entry point, so the init set cannot
+// drift from what the tests exercise.
+//
+// ReconfigureQuestions deliberately does NOT build on this: the page-3
+// questions must not leak into `moai update --reconfigure` (AC-WIZ-012a).
+func InitQuestions(projectRoot string) []Question {
+	base := DefaultQuestions(projectRoot)
+	page3 := Page3Questions(projectRoot)
+	all := make([]Question, 0, len(base)+len(page3))
+	all = append(all, base...)
+	all = append(all, page3...)
+	return all
 }
 
 // FilteredQuestions returns questions filtered by their conditions.
@@ -369,14 +397,46 @@ func harnessProfileOptions(profiles []string) []Option {
 	return opts
 }
 
-// Phase1Questions returns the additional Phase 1 questions exposed by --standard/--advanced.
-// Each question is gated on r.StandardMode == true so Quick mode is unaffected.
-func Phase1Questions(projectRoot string) []Question {
+// Page3Questions returns page 3 of the `moai init` set, "Quality & Workflow".
+//
+// The questions are UNCONDITIONAL: the former mode gate was removed
+// (REQ-WIZ-001/002), so every user sees them and they merge into one page. The
+// single exception is claude_design_enabled, which stays nested on
+// design_enabled (REQ-WIZ-006) and therefore renders as its own sub-group.
+//
+// The constructor is named for the page it builds rather than for the retired
+// mode taxonomy (REQ-WIZ-018): no flag selects it any more.
+//
+// Order is load-bearing: design_enabled MUST precede claude_design_enabled so
+// huh has the design answer before evaluating the nested hide func.
+func Page3Questions(projectRoot string) []Question {
 	return []Question{
+		// B3 — lsp.enabled. Enabled by default since
+		// SPEC-CLI-WIZARD-RESTRUCTURE-001 (REQ-WIZ-010): the diagnostics are
+		// worth more than the startup cost, and opting out is one keystroke.
+		{
+			ID:          "lsp_enabled",
+			Group:       "Quality & Workflow",
+			Type:        QuestionTypeConfirm,
+			Title:       "Enable LSP integration? (default: Yes)",
+			Description: "LSP provides language-server diagnostics during the run phase. Enabled by default; answer No to opt out.",
+			Default:     "true",
+			Required:    false,
+		},
+		// B5 — quality.enforce_quality
+		{
+			ID:          "enforce_quality",
+			Group:       "Quality & Workflow",
+			Type:        QuestionTypeConfirm,
+			Title:       "Enforce quality gates? (default: Yes)",
+			Description: "When enabled, TRUST 5 quality gates block implementation progress on failure.",
+			Default:     "true",
+			Required:    false,
+		},
 		// B1 — project.mode
 		{
 			ID:          "project_mode",
-			Group:       "Options",
+			Group:       "Quality & Workflow",
 			Type:        QuestionTypeSelect,
 			Title:       "Select project mode",
 			Description: "Controls collaboration settings. 'personal' is the recommended default for solo developers.",
@@ -384,78 +444,31 @@ func Phase1Questions(projectRoot string) []Question {
 				{Label: "Personal (Recommended)", Value: "personal", Desc: "Solo developer — no team coordination overhead"},
 				{Label: "Team", Value: "team", Desc: "Multi-developer setup — enables team collaboration features"},
 			},
-			Default:   "personal",
-			Required:  true,
-			Condition: func(r *WizardResult) bool { return r.StandardMode },
-		},
-		// B2 — harness.default_profile (dynamic enumeration)
-		{
-			ID:          "harness_profile",
-			Group:       "Options",
-			Type:        QuestionTypeSelect,
-			Title:       "Select default harness evaluator profile",
-			Description: "Controls quality scoring depth. Profiles are loaded from .moai/config/evaluator-profiles/.",
-			Options:     loadHarnessProfiles(projectRoot),
-			Default:     "default",
-			Required:    true,
-			Condition:   func(r *WizardResult) bool { return r.StandardMode },
-		},
-		// B3 — lsp.enabled
-		{
-			ID:          "lsp_enabled",
-			Group:       "Options",
-			Type:        QuestionTypeConfirm,
-			Title:       "Enable LSP integration? (default: No)",
-			Description: "LSP provides language-server diagnostics during the run phase. Default is off (opt-in).",
-			Default:     "false",
-			Required:    false,
-			Condition:   func(r *WizardResult) bool { return r.StandardMode },
-		},
-		// B5 — quality.enforce_quality
-		{
-			ID:          "enforce_quality",
-			Group:       "Options",
-			Type:        QuestionTypeConfirm,
-			Title:       "Enforce quality gates? (default: Yes)",
-			Description: "When enabled, TRUST 5 quality gates block implementation progress on failure.",
-			Default:     "true",
-			Required:    false,
-			Condition:   func(r *WizardResult) bool { return r.StandardMode },
-		},
-		// B5 — quality.coverage_exemptions.enabled
-		{
-			ID:          "coverage_exemptions_enabled",
-			Group:       "Options",
-			Type:        QuestionTypeConfirm,
-			Title:       "Allow coverage exemptions? (default: No)",
-			Description: "Permits specific files or packages to be excluded from the coverage target.",
-			Default:     "false",
-			Required:    false,
-			Condition:   func(r *WizardResult) bool { return r.StandardMode },
+			Default:  "personal",
+			Required: true,
 		},
 		// B8 — design.enabled
 		{
 			ID:          "design_enabled",
-			Group:       "Options",
+			Group:       "Quality & Workflow",
 			Type:        QuestionTypeConfirm,
 			Title:       "Enable design workflow? (default: Yes)",
 			Description: "Enables the MoAI design pipeline (GAN loop, brand context, Claude Design integration).",
 			Default:     "true",
 			Required:    false,
-			Condition:   func(r *WizardResult) bool { return r.StandardMode },
 		},
-		// B8 — design.claude_design.enabled (conditional on design_enabled=true)
+		// B8 — design.claude_design.enabled. The ONLY conditional question on
+		// page 3: nested on design_enabled (REQ-WIZ-006). The mode half of the
+		// former two-term predicate is gone — only DesignEnabled remains.
 		{
 			ID:          "claude_design_enabled",
-			Group:       "Options",
+			Group:       "Quality & Workflow",
 			Type:        QuestionTypeConfirm,
 			Title:       "Enable Claude Design integration? (default: Yes)",
 			Description: "Enables the Claude Design handoff workflow within the design pipeline.",
 			Default:     "true",
 			Required:    false,
-			Condition: func(r *WizardResult) bool {
-				return r.StandardMode && r.DesignEnabled
-			},
+			Condition:   func(r *WizardResult) bool { return r.DesignEnabled },
 		},
 	}
 }

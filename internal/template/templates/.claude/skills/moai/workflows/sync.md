@@ -51,6 +51,12 @@ Sync-phase quality gate (per the canonical sync-phase quality gate policy) is en
 | Phase 11~Phase 12: Analysis + Doc Sync | `Read workflows/sync/doc-execution.md` | Phase 11 Analysis, HUMAN GATE 2 Documentation Scope, Phase 12 Execute Doc Synchronization |
 | Phase 13~Phase 14: Git Delivery + Completion | `Read workflows/sync/delivery.md` | Phase 13 Git Operations, Phase 14 Completion, GitStrategy PR-ready transition, Graceful Exit, Test Scenarios |
 
+## Parallel Quality-Evidence Fan-Out (capability-gated)
+
+**Where** `.claude/workflows/sync-audit-4dim.js` exists on disk **AND** the runtime supports dynamic workflows, the orchestrator MAY launch it at Phase 7 (Quality Check) to gather the four quality dimensions in one parallel read-only pass. **Where** either condition is absent — the script was removed, or the runtime predates dynamic-workflow support — Phase 7 proceeds on its existing path with no error, no warning, and no interruption.
+
+The orchestrator launches the script itself; this is scaling, not subagent nesting, so the flat agent hierarchy is preserved. Every judge is read-only and reports an `evidence_gaps` entry or a structured blocker report rather than prompting the user. The aggregate score is cited as evidence only — the binding sync-phase verdict stays with `sync-auditor`, and neither `gate-sync-1` nor `gate-sync-2` is bypassed or auto-passed by a workflow run.
+
 ## HUMAN GATE Map
 
 | GATE | Location | Formal ID | Trigger |

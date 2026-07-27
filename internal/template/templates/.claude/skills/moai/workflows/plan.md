@@ -103,6 +103,12 @@ Constraints: 10k concurrent users, 100ms read latency target
 | Completion Criteria | `plan/spec-assembly.md` | All checklist items + audit-ready signal |
 | Test Scenarios | `plan/spec-assembly.md` | Normal/Existing Assets/Error flow examples |
 
+## Parallel Research Fan-Out (capability-gated)
+
+**Where** `.claude/workflows/plan-research-fanout.js` exists on disk **AND** the runtime supports dynamic workflows, the orchestrator MAY launch it to run Phase 2 (Project Exploration) and Phase 6 (Deep Research) as a single parallel read-only sweep — three-to-four lens explorers plus one synthesizer that returns the `research.md` body as a string. **Where** either condition is absent — the script was removed, or the runtime predates dynamic-workflow support — research proceeds on the standard single-`Explore` path with no error, no warning, and no change to the produced SPEC artifact set.
+
+The orchestrator launches the script itself; this is scaling, not subagent nesting, so the flat agent hierarchy is preserved. Every lens agent is read-only and writes no file — `research.md` is persisted by `manager-spec` / the orchestrator outside the workflow. A lens with nothing to report records it under its `confidence_and_gaps` heading, and an agent missing required input returns a structured blocker report; workflow agents never prompt the user (`agent-common-protocol.md` § User Interaction Boundary). The script gathers evidence only — the binding plan-phase verdict remains owned by `plan-auditor` at Phase 11, and Decision Point 1 is neither bypassed nor auto-passed by a workflow run.
+
 ---
 
 ## Invocation Flow
@@ -158,7 +164,6 @@ This signal marks the plan artifacts as finalized and enables the Plan Audit Gat
 ---
 
 Version: 2.8.0
-Updated: 2026-05-25
 Changes: Added test scenarios, Phase 3 JIT Language Detection.
 
 ---

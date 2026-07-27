@@ -59,8 +59,6 @@ moai init [project-name] [OPTIONS]
 | `--force` | Force re-initialization of an existing project (backs up the current `.moai/`) |
 | `--no-hooks` | Skip Git hook installation |
 | `--all` | Deploy all catalog items (core + optional packs + harness-generated) |
-| `--standard` | Show Phase 1 questions (project mode, harness profile, LSP, quality gates, design) |
-| `--advanced` | Show Phase 1 + Phase 2 questions (includes `--standard`; Phase 2 only when prerequisites are met) |
 | `--mode <ddd\|tdd>` | Development methodology (default: tdd) |
 | `--language <lang>` | Primary programming language |
 | `--framework <name>` | Framework name (default: auto-detect or "none") |
@@ -69,8 +67,8 @@ moai init [project-name] [OPTIONS]
 | `--git-mode <manual\|personal\|team>` | Git workflow mode (default: manual) |
 | `--git-provider <github\|gitlab>` | Git provider |
 | `--project-mode <personal\|team>` | Project mode (default: personal) |
-| `--harness-profile <profile>` | Harness evaluator profile (default, strict, lenient, frontend) |
-| `--enable-lsp` | Enable LSP integration (default: false) |
+| `--harness-profile <profile>` | Harness evaluator profile (default, strict, lenient, frontend); accepted but currently has no persisted effect |
+| `--enable-lsp` | Enable LSP integration (default: true) |
 | `--enforce-quality` | Enforce quality gates (default: true) |
 | `--enable-design` | Enable the design workflow (default: true) |
 | `--profile <max\|medium\|low>` | Model+effort profile — stored in `llm.yaml` `profile` (selects the profile matrix column) |
@@ -89,9 +87,6 @@ moai init
 
 # Non-interactive (CI/CD)
 moai init --non-interactive --project-mode personal --model-policy medium
-
-# Show up to Phase 1 questions
-moai init my-project --standard
 ```
 
 For detailed wizard steps, see the [Initial Setup](./init-wizard) page.
@@ -294,7 +289,6 @@ MoAI-specific subcommands are also included.
 | `spec-status` | Auto-update SPEC status on git commit |
 | `harness-classify` | Run the harness classifier and record tier promotions |
 | `harness-observe` · `harness-observe-stop` · `harness-observe-subagent-stop` · `harness-observe-user-prompt-submit` | Record harness usage logs |
-| `db-schema-sync` | Detect DB schema changes in the PostToolUse hook |
 
 You do not run hooks directly — Claude Code's `settings.json` calls them automatically.
 

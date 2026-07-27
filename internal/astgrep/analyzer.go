@@ -511,8 +511,10 @@ func (a *SGAnalyzer) PatternReplace(ctx context.Context, pattern, replacement, l
 	result.FilesModified = len(fileSet)
 
 	// If not dry_run, execute the actual replacement.
+	// --update-all is required: `sg run --rewrite` alone prints a diff and exits 0
+	// without touching the file, so omitting it makes the whole non-dry path a no-op.
 	if !dryRun && result.MatchesFound > 0 {
-		replaceArgs := []string{"run", "--pattern", pattern, "--rewrite", replacement, "--lang", lang, path}
+		replaceArgs := []string{"run", "--pattern", pattern, "--rewrite", replacement, "--lang", lang, "--update-all", path}
 		_, err := a.executor.Execute(ctx, a.workDir, "sg", replaceArgs...)
 		if err != nil {
 			return nil, fmt.Errorf("pattern replace execute %q: %w", pattern, err)

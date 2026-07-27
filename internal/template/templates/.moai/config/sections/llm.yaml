@@ -27,7 +27,9 @@ llm:
   #   design_harness_e2e - manager-design, builder-harness, e2e-tester
   #   docs               - manager-docs
   #   git                - manager-git
-  # (Explore has no group row — it stays model: inherit, never injected.)
+  #   explore            - Explore (Anthropic built-in read-only search agent)
+  # (explore/docs/git are profile-invariant. Only user-added agents have no
+  #  group row — they stay model: inherit, never injected.)
   #
   # The model value is injected as a per-spawn runtime arg ([1m]-safe). The
   # effort value is documented intent: consumed by the agent frontmatter default,
@@ -35,19 +37,21 @@ llm:
   # NOT a per-spawn override for a named subagent.
   profiles:
     max:
-      spec_auditors:      { model: fable,  effort: medium }
-      develop:            { model: fable,  effort: low }
-      advisor:            { model: fable,  effort: medium }
+      spec_auditors:      { model: fable,  effort: low }
+      develop:            { model: opus,   effort: high }
+      advisor:            { model: fable,  effort: low }
       design_harness_e2e: { model: opus,   effort: high }
       docs:               { model: sonnet, effort: medium }
       git:                { model: sonnet, effort: low }
+      explore:            { model: sonnet, effort: low }
     medium:
       spec_auditors:      { model: opus,   effort: high }
-      develop:            { model: opus,   effort: high }
-      advisor:            { model: fable,  effort: low }
+      develop:            { model: opus,   effort: xhigh }
+      advisor:            { model: opus,   effort: low }
       design_harness_e2e: { model: opus,   effort: medium }
       docs:               { model: sonnet, effort: medium }
       git:                { model: sonnet, effort: low }
+      explore:            { model: sonnet, effort: low }
     low:
       spec_auditors:      { model: opus,   effort: low }
       develop:            { model: opus,   effort: medium }
@@ -55,6 +59,7 @@ llm:
       design_harness_e2e: { model: opus,   effort: low }
       docs:               { model: sonnet, effort: medium }
       git:                { model: sonnet, effort: low }
+      explore:            { model: sonnet, effort: low }
 
   # Optional per-agent overrides, keyed by canonical agent name. Each override
   # {model, effort} pair wins over the active profile's group cell for that agent.

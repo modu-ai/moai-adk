@@ -121,6 +121,24 @@ Agent: manager-docs subagent
 
 Input: Approved sync plan, project verification results, changed files list, divergence report from Phase 11.
 
+##### Drafter / Applier Structure (read-only fan-out, single writer)
+
+**Where** the sync scope spans several independent document families, the orchestrator MAY draft them in parallel before any final artifact is written. Five read-only drafters launch in a single turn — five is the top of the Mode 4 concurrency ceiling of 3-5 concurrent `Agent()` calls (`.claude/rules/moai/workflow/orchestration-mode-selection.md` §C.2), so a sixth output family is folded into one of the five rather than added as a sixth drafter:
+
+| Drafter | Draft scope |
+|---------|-------------|
+| D1 | CHANGELOG entry |
+| D2 | README + docs-site |
+| D3 | project docs (product.md / structure.md / tech.md) |
+| D4 | SPEC artifacts (divergence-driven updates per Step 2.2.1) |
+| D5 | codemaps |
+
+Each drafter reads the changeset and **returns draft text; it writes no final artifact**. A large draft (4-locale docs-site content, for example) MAY instead be staged under `.moai/state/` with only the path returned — that staging path is runtime state, not a sync deliverable, so it does not make the drafter a writer of the output set. `manager-docs` then applies the five drafts **sequentially** and is the single writer of every final artifact (CHANGELOG, README, docs-site, project docs, SPEC frontmatter, codemaps).
+
+**Independent of the write-concurrency rule.** This structure holds under the current `[HARD]` prohibition on running two write-capable agents concurrently, exactly as that rule stands today: the drafters are read-only, so at no point does more than one write-capable agent run. Nothing here waits on, presumes, or requires any change to that rule — the parallelism is bought entirely by making the drafters read-only, not by loosening the writer constraint.
+
+Boundary: drafters never prompt the user. A drafter missing a required input returns a structured blocker report (`.claude/rules/moai/core/agent-common-protocol.md` § Blocker Report Format), and the orchestrator re-delegates that one item while the other four drafts stand. The orchestrator launches the drafters itself — scaling, not subagent nesting, so the flat agent hierarchy is preserved. **Where** the scope covers a single document family, or the fan-out is skipped, `manager-docs` performs the whole of Step 2.2 serially as before, with the same resulting artifacts.
+
 Tasks for manager-docs:
 
 - Reflect changed code in Living Documents

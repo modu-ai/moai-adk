@@ -206,11 +206,14 @@ func TestAgentFMPolicy_EmptySubmissionPreservesCurrent(t *testing.T) {
 }
 
 // TestAgentFMPolicy_SelectorsRenderAtTopOfPanel verifies the performance_tier
-// selector renders inside the agentfm section, BEFORE the sub-tabs, and
-// pre-selects the active value. (The plan_type selector was removed.)
+// selector renders inside the agentfm section, BEFORE the per-agent rows, and
+// pre-selects the active value. (The plan_type selector was removed; the
+// sub-tabs the selector used to precede were removed by G2-2, so the first
+// agent row is now the ordering anchor.)
 func TestAgentFMPolicy_SelectorsRenderAtTopOfPanel(t *testing.T) {
 	root := t.TempDir()
 	writeLLMYAML(t, root, "api", "max")
+	seedAgentFMFile(t, root, "moai", "manager-spec", "opus", "xhigh")
 	body := renderAgentFMBody(t, root)
 
 	if strings.Contains(body, `name="plan_type"`) {
@@ -219,18 +222,18 @@ func TestAgentFMPolicy_SelectorsRenderAtTopOfPanel(t *testing.T) {
 	if !strings.Contains(body, `name="performance_tier"`) {
 		t.Error("agentfm panel missing the performance_tier selector")
 	}
-	if !strings.Contains(body, `value="max" selected`) {
+	if !strings.Contains(body, `value="max" checked`) {
 		t.Error("performance_tier selector did not pre-select the active tier (max)")
 	}
 
 	secIdx := strings.Index(body, `data-i18n="sec.agentfm.title"`)
 	tierIdx := strings.Index(body, `name="performance_tier"`)
-	subtabIdx := strings.Index(body, `data-agentfm-tab="subagents"`)
-	if secIdx < 0 || tierIdx < 0 || subtabIdx < 0 {
+	rowIdx := strings.Index(body, `name="agentfm.manager-spec.model"`)
+	if secIdx < 0 || tierIdx < 0 || rowIdx < 0 {
 		t.Fatal("could not locate agentfm section markers")
 	}
-	if secIdx >= tierIdx || tierIdx >= subtabIdx {
-		t.Error("performance_tier selector is not positioned at the TOP of the agentfm panel (before the sub-tabs)")
+	if secIdx >= tierIdx || tierIdx >= rowIdx {
+		t.Error("performance_tier selector is not positioned at the TOP of the agentfm panel (before the per-agent rows)")
 	}
 }
 
@@ -241,7 +244,7 @@ func TestAgentFMPolicy_SelectorsRenderAtTopOfPanel(t *testing.T) {
 func TestAgentFMPolicy_EmptyValueHints(t *testing.T) {
 	root := t.TempDir() // no llm.yaml at all
 	body := renderAgentFMBody(t, root)
-	if !strings.Contains(body, `value="medium" selected`) {
+	if !strings.Contains(body, `value="medium" checked`) {
 		t.Error("absent performance_tier did not pre-select the medium default")
 	}
 }
@@ -257,7 +260,7 @@ func TestAgentFMPolicy_ExplicitEmptyTierHint(t *testing.T) {
 	if !strings.Contains(body, "agentfm.tier.default") {
 		t.Error("explicit empty performance_tier did not render the default hint (agentfm.tier.default)")
 	}
-	if !strings.Contains(body, `value="medium" selected`) {
+	if !strings.Contains(body, `value="medium" checked`) {
 		t.Error("explicit empty performance_tier did not pre-select the medium default")
 	}
 }

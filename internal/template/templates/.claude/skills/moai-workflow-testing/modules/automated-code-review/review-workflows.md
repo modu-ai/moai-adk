@@ -211,7 +211,11 @@ quality_gate:
   stage: report
   image: <runtime-image>
   script:
-    - moai quality-gate --report review-report.json --fail-on-violation
+    # Quality gate: run the project's real lint + test toolchain in CI.
+    # (The /moai gate command is a Claude Code session surface, not a CI
+    # executable — invoke the underlying tools directly here.)
+    - <lint-command>        # e.g. golangci-lint run / ruff check / eslint .
+    - <test-command>        # e.g. go test ./... / pytest / npm test
   dependencies:
     - code_review
   allow_failure: false
@@ -368,5 +372,4 @@ class ReviewTrendAnalyzer(storage_path):
 ---
 
 Version: 1.0.0
-Last Updated: 2026-01-06
 Module: `modules/automated-code-review/review-workflows.md`

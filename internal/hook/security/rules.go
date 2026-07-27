@@ -22,20 +22,23 @@ func NewRuleManager() RuleManager {
 
 // FindRulesConfig finds the rules configuration file in project directory.
 // Implements REQ-HOOK-110.
+// A user-supplied config in the project root or .ast-grep/ takes precedence over
+// the ruleset MoAI ships, so a project can override the defaults without editing them.
 // Search order:
 // 1. sgconfig.yml in project root
 // 2. sgconfig.yaml in project root
 // 3. .ast-grep/sgconfig.yml
 // 4. .ast-grep/sgconfig.yaml
-// 5. .claude/skills/moai-tool-ast-grep/rules/sgconfig.yml
+// 5. .moai/config/astgrep-rules/sgconfig.yml (the ruleset shipped by the template)
+// 6. .moai/config/astgrep-rules/sgconfig.yaml
 func (rm *ruleManager) FindRulesConfig(projectDir string) string {
 	searchPaths := []string{
 		filepath.Join(projectDir, "sgconfig.yml"),
 		filepath.Join(projectDir, "sgconfig.yaml"),
 		filepath.Join(projectDir, ".ast-grep", "sgconfig.yml"),
 		filepath.Join(projectDir, ".ast-grep", "sgconfig.yaml"),
-		filepath.Join(projectDir, ".claude", "skills", "moai-tool-ast-grep", "rules", "sgconfig.yml"),
-		filepath.Join(projectDir, ".claude", "skills", "moai-tool-ast-grep", "rules", "sgconfig.yaml"),
+		filepath.Join(projectDir, ".moai", "config", "astgrep-rules", "sgconfig.yml"),
+		filepath.Join(projectDir, ".moai", "config", "astgrep-rules", "sgconfig.yaml"),
 	}
 
 	for _, path := range searchPaths {

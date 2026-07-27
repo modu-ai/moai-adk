@@ -24,7 +24,7 @@ import (
 	"github.com/modu-ai/moai-adk/internal/harness/proposalgen"
 	"github.com/modu-ai/moai-adk/internal/harness/routing"
 	"github.com/modu-ai/moai-adk/internal/hook"
-	"github.com/modu-ai/moai-adk/internal/hook/dbsync"
+	"github.com/modu-ai/moai-adk/internal/hook/security"
 )
 
 var hookCmd = &cobra.Command{
@@ -132,16 +132,6 @@ func init() {
 		RunE:  runHarnessObserveUserPromptSubmit,
 	})
 
-	// Add "db-schema-sync" subcommand (SPEC-DB-SYNC-001)
-	dbSchemaSyncCmd := &cobra.Command{
-		Use:   "db-schema-sync",
-		Short: "Handle DB schema change detection from PostToolUse hook",
-		Long:  "Detect migration file changes, apply debounce, parse, and write proposal.json for user approval.",
-		RunE:  runDBSchemaSync,
-	}
-	dbSchemaSyncCmd.Flags().String("file", "", "File path from PostToolUse hook stdin")
-	hookCmd.AddCommand(dbSchemaSyncCmd)
-
 	// Add "spec-status" subcommand (SPEC-STATUS-AUTO-001)
 	specStatusCmd := &cobra.Command{
 		Use:   "spec-status",
@@ -150,6 +140,35 @@ func init() {
 		RunE:  runSpecStatus,
 	}
 	hookCmd.AddCommand(specStatusCmd)
+
+	// Add the in-session security guardian subcommands (SPEC-SEC-GUARDIAN-001).
+	// Three thin RunE wrappers forward stdin/stdout to the compiled Go handlers
+	// in internal/hook/security. Each is advisory-first + fail-open; none blocks
+	// by default and none invokes AskUserQuestion (REQ-SG-040/042/060).
+	//   security-scan   L1 PostToolUse — instant regex pattern warnings (advisory)
+	//   security-turn   L2 Stop        — turn-diff review (advisory; opt-in block)
+	//   security-commit L3 Stop        — commit cross-file review (dormant by default)
+	hookCmd.AddCommand(&cobra.Command{
+		Use:          "security-scan",
+		Short:        "Layer-1 in-session security guardian: PostToolUse pattern warnings",
+		Long:         "Scan a written buffer (PostToolUse) for known-dangerous patterns and emit advisory findings. Regex-only, in-process, never blocks. SPEC-SEC-GUARDIAN-001.",
+		SilenceUsage: true,
+		RunE:         runSecurityScan,
+	})
+	hookCmd.AddCommand(&cobra.Command{
+		Use:          "security-turn",
+		Short:        "Layer-2 in-session security guardian: Stop turn-diff review",
+		Long:         "Review the turn's working-tree diff (Stop) for high-severity findings. Advisory by default; blocking is opt-in via MOAI_SECURITY_BLOCKING. SPEC-SEC-GUARDIAN-001.",
+		SilenceUsage: true,
+		RunE:         runSecurityTurn,
+	})
+	hookCmd.AddCommand(&cobra.Command{
+		Use:          "security-commit",
+		Short:        "Layer-3 in-session security guardian: commit cross-file review",
+		Long:         "Review a commit's changed + related files for cross-file data-flow risks (IDOR / auth-bypass / SSRF). Dormant unless MOAI_SECURITY_COMMIT_REVIEW is set. SPEC-SEC-GUARDIAN-001.",
+		SilenceUsage: true,
+		RunE:         runSecurityCommit,
+	})
 
 	// Add "harness-classify" subcommand (SPEC-V3R6-HARNESS-CLASSIFIER-WIRING-001).
 	// Wired into the /moai:harness status workflow body §2.1 to close the V3R4
@@ -376,44 +395,6 @@ func endsWithAny(s string, suffixes ...string) bool {
 	return endsWith(s, suffixes...)
 }
 
-// runDBSchemaSync executes the db-schema-sync hook handler (SPEC-DB-SYNC-001).
-// It accepts --file <path> and always exits 0 (non-blocking per REQ-011).
-//
-// @MX:NOTE: [AUTO] runDBSchemaSync wires CLI flag to dbsync.HandleDBSchemaSync; always non-blocking.
-func runDBSchemaSync(cmd *cobra.Command, _ []string) error {
-	filePath, _ := cmd.Flags().GetString("file")
-
-	// Resolve project root env-first (CLAUDE_PROJECT_DIR then os.Getwd()) per
-	// internal/hook/CLAUDE.md §B7 — a hook may run with cwd inside a worktree.
-	root := resolveHookProjectRoot()
-
-	// Load migration patterns from db.yaml if available; use defaults otherwise.
-	patterns := loadMigrationPatterns(root)
-
-	cfg := dbsync.Config{
-		FilePath:          filePath,
-		MigrationPatterns: patterns,
-		ExcludedPatterns:  dbsync.DefaultExcludedPatterns,
-		StateFile:         filepath.Join(root, ".moai", "cache", "db-sync", "last-seen.json"),
-		ProposalFile:      filepath.Join(root, ".moai", "cache", "db-sync", "proposal.json"),
-		ErrorLogFile:      filepath.Join(root, ".moai", "logs", "db-sync-errors.log"),
-		DebounceWindow:    10 * time.Second,
-	}
-
-	result := dbsync.HandleDBSchemaSync(cfg)
-
-	// REQ-010: emit decision JSON to stdout so orchestrator can act on it.
-	out := map[string]string{"decision": result.Decision}
-	if encErr := json.NewEncoder(cmd.OutOrStdout()).Encode(out); encErr != nil {
-		// Non-fatal: stdout write failure is logged but does not block.
-		_, _ = fmt.Fprintln(cmd.ErrOrStderr(), "db-schema-sync: write output:", encErr)
-	}
-
-	// Always exit 0 (non-blocking, REQ-011)
-	_ = result.ExitCode
-	return nil
-}
-
 // runSpecStatus handles the spec-status hook subcommand.
 // It reads hook input from stdin and dispatches to the spec status handler.
 func runSpecStatus(cmd *cobra.Command, _ []string) error {
@@ -447,80 +428,25 @@ func runSpecStatus(cmd *cobra.Command, _ []string) error {
 	return nil
 }
 
-// defaultMigrationPatterns are the built-in migration patterns from SPEC-DB-SYNC-001.
-var defaultMigrationPatterns = []string{
-	"prisma/schema.prisma",
-	"alembic/versions/**/*.py",
-	"db/migrate/**/*.rb",
-	"migrations/**/*.sql",
-	"supabase/migrations/**/*.sql",
-	"sql/migrations/**/*.sql",
+// runSecurityScan forwards a PostToolUse payload to the Layer-1 guardian handler
+// (SPEC-SEC-GUARDIAN-001). It is advisory-first + fail-open: the handler reads
+// stdin, writes any advisory findings to stdout, and always returns nil so the
+// PostToolUse pipeline is never broken.
+func runSecurityScan(cmd *cobra.Command, args []string) error {
+	return security.HandleSecurityScan(args, cmd.InOrStdin(), cmd.OutOrStdout(), resolveHookProjectRoot())
 }
 
-// loadMigrationPatterns reads migration_patterns from .moai/config/sections/db.yaml.
-// Falls back to defaultMigrationPatterns if the file is absent or unparseable.
-func loadMigrationPatterns(projectRoot string) []string {
-	dbYAML := filepath.Join(projectRoot, ".moai", "config", "sections", "db.yaml")
-	data, err := os.ReadFile(dbYAML)
-	if err != nil {
-		return defaultMigrationPatterns
-	}
-
-	// Simple line-based extraction for migration_patterns list.
-	// Full YAML parsing would require gopkg.in/yaml.v3 which is already a dep,
-	// but the file format is simple enough for this lightweight approach.
-	var patterns []string
-	inPatterns := false
-	for _, line := range splitLines(string(data)) {
-		trimmed := trimSpace(line)
-		if trimmed == "migration_patterns:" {
-			inPatterns = true
-			continue
-		}
-		if inPatterns {
-			if len(trimmed) > 0 && trimmed[0] == '-' {
-				pat := trimSpace(trimmed[1:])
-				if pat != "" {
-					patterns = append(patterns, pat)
-				}
-			} else if len(trimmed) > 0 && trimmed[0] != ' ' && trimmed[0] != '\t' {
-				// New top-level key — stop collecting
-				break
-			}
-		}
-	}
-
-	if len(patterns) == 0 {
-		return defaultMigrationPatterns
-	}
-	return patterns
+// runSecurityTurn forwards a Stop payload to the Layer-2 guardian handler
+// (turn-diff review). Advisory by default; blocking opt-in. Fail-open.
+func runSecurityTurn(cmd *cobra.Command, args []string) error {
+	return security.HandleSecurityTurn(args, cmd.InOrStdin(), cmd.OutOrStdout(), resolveHookProjectRoot())
 }
 
-func splitLines(s string) []string {
-	var lines []string
-	start := 0
-	for i, c := range s {
-		if c == '\n' {
-			lines = append(lines, s[start:i])
-			start = i + 1
-		}
-	}
-	if start < len(s) {
-		lines = append(lines, s[start:])
-	}
-	return lines
-}
-
-func trimSpace(s string) string {
-	left := 0
-	for left < len(s) && (s[left] == ' ' || s[left] == '\t') {
-		left++
-	}
-	right := len(s)
-	for right > left && (s[right-1] == ' ' || s[right-1] == '\t' || s[right-1] == '\r') {
-		right--
-	}
-	return s[left:right]
+// runSecurityCommit forwards a Stop payload to the Layer-3 guardian handler
+// (commit cross-file review). Dormant unless MOAI_SECURITY_COMMIT_REVIEW is set.
+// Fail-open.
+func runSecurityCommit(cmd *cobra.Command, args []string) error {
+	return security.HandleSecurityCommit(args, cmd.InOrStdin(), cmd.OutOrStdout(), resolveHookProjectRoot())
 }
 
 // isHarnessLearningEnabled reports whether the harness learning subsystem is
@@ -613,7 +539,7 @@ func isHookOptInEnabled(projectRoot string) bool {
 // Gate is implemented by isHarnessLearningEnabled (fail-open semantics: missing
 // config or parse error preserves baseline observation).
 // resolveHookProjectRoot resolves the project root for the harness-observe
-// family + db-schema-sync + harness-classify handlers, env-first per
+// family + harness-classify handlers, env-first per
 // internal/hook/CLAUDE.md §B7: CLAUDE_PROJECT_DIR then os.Getwd(). Hook wrappers
 // run with cwd inside a worktree (~/.moai/worktrees/{project}/{spec}/), so a
 // bare os.Getwd() is NOT the project root — CLAUDE_PROJECT_DIR is authoritative.

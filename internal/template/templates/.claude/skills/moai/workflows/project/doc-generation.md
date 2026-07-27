@@ -1,9 +1,9 @@
 ---
-description: "Project Phase 6/3.1/3.3/3.5/3.7/4.1a/4 — Documentation generation, audit, codemaps, LSP check, dev mode config, DB detection, and completion"
+description: "Project Phase 6/3.1/3.3/3.5/3.7/4 — Documentation generation, audit, codemaps, LSP check, dev mode config, and completion"
 user-invocable: false
 metadata:
   parent: moai-workflow-project
-  phase: "Phase 6/3.1/3.3/3.5/3.7/4.1a/4: Documentation Generation and Completion"
+  phase: "Phase 6/3.1/3.3/3.5/3.7/4: Documentation Generation and Completion"
 ---
 
 <!-- TRACE PROBE: workflow-split baseline trace mechanism -->
@@ -205,11 +205,12 @@ to the mobile row.
 
 ### Step 3.6.2: Select recommended servers from the matrix
 
-Read the externalized recommendation matrix at `.moai/config/sections/mcp-matrix.yaml` (the
-SSOT — the matrix rows are NOT duplicated in this skill; only this fallback pointer is
-carried here). Select the row matching the detected stack. When the stack cannot be
-classified into web-frontend / mobile / backend-db, fall back to the `universal_starter` row
-rather than skipping provisioning silently.
+Where a maintainer-provided MCP recommendation matrix exists in the project config
+(an optional, locally-maintained inventory — not distributed with the template), read it and
+select the row matching the detected stack. Where no matrix is present, derive the
+recommendation directly from the detected stack (web-frontend / mobile / backend-db). When
+the stack cannot be classified, fall back to a minimal universal starter set rather than
+skipping provisioning silently.
 
 [HARD] Cap the recommendation at 3-5 servers maximum, and prefer vendor-maintained servers
 over community-maintained equivalents (2026 MCP CVE surge). The matrix marks each server
@@ -288,87 +289,6 @@ Methodology-to-Mode Mapping Reference:
 
 ---
 
-## Detection Keywords Reference
-
-Full DB engine keywords, dependency manifest files (all 16 MoAI-supported languages), and ORM/ODM lists used by Phase 13 below.
-
-**DB engine keywords** (grepped against `tech.md`, case-insensitive): Relational/SQL (PostgreSQL, MySQL, MariaDB, SQLite, Oracle, SQL Server, CockroachDB, Supabase, Neon, Planetscale), NoSQL Document (MongoDB, Firestore, Firebase, Couchbase), NoSQL Key-Value (Redis, DynamoDB, Cassandra, ScyllaDB, Riak), Search/Analytics (Elasticsearch, ClickHouse, Snowflake, InfluxDB).
-
-**Dependency manifest + ORM/ODM keywords per language** (alphabetical):
-
-| Language | Dependency manifest(s) | Common ORM/ODM keywords |
-|----------|------------------------|--------------------------|
-| C++ | `conanfile.txt`, `vcpkg.json`, `CMakeLists.txt` | sqlite3, soci, odb |
-| C# | `*.csproj`, `packages.config` | entityframework, dapper |
-| Elixir | `mix.exs` | ecto |
-| Flutter | `pubspec.yaml` | sqflite, drift, isar |
-| Go | `go.mod` | gorm, ent, sqlx, sqlc |
-| Java | `pom.xml`, `build.gradle` | hibernate, jpa, mybatis |
-| JavaScript | `package.json` | sequelize, mongoose, knex |
-| Kotlin | `build.gradle.kts` | exposed, ktorm, hibernate |
-| PHP | `composer.json` | doctrine, eloquent |
-| Python | `requirements.txt`, `pyproject.toml`, `Pipfile` | sqlalchemy, django.db, peewee, tortoise |
-| R | `DESCRIPTION` | dbplyr, dbi |
-| Ruby | `Gemfile` | activerecord, sequel, mongoid |
-| Rust | `Cargo.toml` | diesel, sea-orm, sqlx |
-| Scala | `build.sbt` | slick, doobie, quill |
-| Swift | `Package.swift`, `Podfile` | coredata, grdb, realm |
-| TypeScript | `package.json` | prisma, typeorm, sequelize, mongoose, drizzle |
-
----
-
-## Phase 13: DB Detection
-
-Purpose: Detect database technology from generated documentation and dependency
-files. Detected metadata is consumed by sync workflow Phase 2 (DB Schema Doc
-Check) to drive automatic refresh via `moai hook db-schema-sync` when
-`db.auto_sync.enabled: true` is set in `.moai/config/sections/db.yaml` (the
-`auto_sync:` key is a nested object — `enabled:` is its toggle sub-key,
-alongside `debounce_seconds`, `require_user_approval`, and `excluded_patterns`).
-
-[HARD] This phase runs automatically without user interaction. No AskUserQuestion is needed.
-
-Steps:
-
-1. Check `.moai/project/tech.md` exists. If not: set `detected_db=false` and skip to Phase 14.
-2. Grep `tech.md` for DB engine keywords (case-insensitive). See Detection Keywords Reference above.
-3. Glob for dependency manifests across all 16 supported languages (see Detection Keywords Reference above).
-4. For each found manifest file ≤ 1 MB: grep for ORM/ODM keywords relevant to that language.
-5. Aggregate matches into: `{detected, matched_keywords[], source_files[], scanned_at, tech_md_hash}`.
-6. Write state artifact at `.moai/state/db-detection.json`.
-7. Proceed to Phase 14 with `detected_db` flag.
-
-When `detected_db=true`, Phase 14 (Next Steps) emits a guidance note to enable
-`db.auto_sync.enabled: true` in `.moai/config/sections/db.yaml`. The user opts in once,
-and subsequent `/moai sync` runs automatically refresh `.moai/project/db/` derived
-docs (schema.md, erd.mmd, migrations.md) via Phase 2 → `moai hook db-schema-sync`.
-
-The `/moai db` slash command was retired (Bundle A, 2026-05-16). Initial DB
-documentation scaffolding is now handled by `.moai/project/db/` templates created
-on first sync when `db.enabled: true`.
-
-File size limit: 1 MB. Skip any manifest file larger than 1 MB to avoid scanning generated lockfiles (e.g., `package-lock.json`, `poetry.lock`, `Cargo.lock`).
-
-Tool choice: Grep with `-i` (case-insensitive) for keyword matching; Glob for manifest discovery.
-
-Edge case: If `.moai/project/tech.md` does not exist (e.g., Phase 6 failed or was skipped), Phase 13 SHALL skip gracefully without error, set `detected_db=false`, and proceed to Phase 14 with the original three options unchanged.
-
-State artifact schema: `.moai/state/db-detection.json` contains:
-
-```json
-{
-  "detected": true,
-  "matched_keywords": ["prisma", "postgresql"],
-  "source_files": ["package.json", ".moai/project/tech.md"],
-  "scanned_at": "2026-04-21T12:00:00Z",
-  "tech_md_hash": "<sha256-of-tech.md-content>"
-}
-```
-
-The `tech_md_hash` field enables stale-detection: if `tech.md` content changes between runs, Phase 14 can detect that the cached detection result is outdated and re-trigger Phase 13.
-
----
-
 ## Phase 14: Completion
 
 ### Step 4.1: Content Summary Report
@@ -406,33 +326,7 @@ Development Mode: [tdd/ddd] (auto-configured in Phase 12)
 
 ### Step 4.2: Next Steps
 
-[HARD] After displaying the summary, read the `detected_db` flag from `.moai/state/db-detection.json` (written by Phase 13), then use AskUserQuestion to present conditional options based on the three-way branch below.
-
-**Branch A — DB detected, `.moai/project/db/` does NOT exist:**
-
-When `detected_db` is true AND `.moai/project/db/` is absent, present these options:
-
-- Enable automatic DB doc sync (Recommended): DB technology was detected in your project. Set `db.enabled: true` and `db.auto_sync.enabled: true` in `.moai/config/sections/db.yaml` (create the file if absent). Subsequent `/moai sync` runs will automatically generate and refresh `.moai/project/db/` via Phase 2 (`moai hook db-schema-sync`). Recommended before creating SPECs that depend on your data model.
-- Create SPEC: Run `/moai plan` to define your first feature specification. This is the natural next step after project setup.
-- Review and Edit Documentation: Open the generated files for review and manual editing before proceeding.
-- Generate project-specific harness: Proceed to Phase 15 (`project/meta-harness.md`) to build a domain-specific harness (agents + skills) tailored to this project via the v4 harness Builder.
-- Done: Complete the project setup workflow.
-
-When the user selects "Enable automatic DB doc sync": Display guidance to edit `.moai/config/sections/db.yaml` and then run `/moai sync` on the next milestone. Do NOT auto-modify the config file.
-
-**Branch B — DB detected, `.moai/project/db/` already exists:**
-
-When `detected_db` is true AND `.moai/project/db/` already exists, present these options (existing order and Recommended flag preserved):
-
-- Create SPEC (Recommended): Run `/moai plan` to define your first feature specification. This is the natural next step after project setup.
-- Review and Edit Documentation: Open the generated files for review and manual editing before proceeding.
-- Generate project-specific harness: Proceed to Phase 15 (`project/meta-harness.md`) to build a domain-specific harness (agents + skills) tailored to this project via the v4 harness Builder.
-- Done: Complete the project setup workflow.
-- Verify auto-sync enabled: DB documentation already exists. Confirm `db.auto_sync.enabled: true` in `.moai/config/sections/db.yaml`. When set, subsequent `/moai sync` runs automatically refresh `.moai/project/db/` via Phase 2 (`moai hook db-schema-sync`) on detected migration changes.
-
-**Branch C — DB not detected:**
-
-When `detected_db` is false, present the original three options plus the harness-generation option:
+[HARD] After displaying the summary, use AskUserQuestion to present these options:
 
 - Create SPEC (Recommended): Run `/moai plan` to define your first feature specification. This is the natural next step after project setup.
 - Review and Edit Documentation: Open the generated files for review and manual editing before proceeding.
@@ -452,4 +346,3 @@ When `detected_db` is false, present the original three options plus the harness
 - Phase 10: per-spawn `Agent(general-purpose)` devops specialist (optional LSP installation)
 - Phase 11: MoAI orchestrator (MCP server provisioning — matrix select + AskUserQuestion approval + additive `.mcp.json` write at project scope; subagent never prompts)
 - Phase 12: MoAI orchestrator (automatic development_mode configuration, no user interaction)
-- Phase 13: MoAI orchestrator (automatic DB detection via Grep/Glob, no user interaction)

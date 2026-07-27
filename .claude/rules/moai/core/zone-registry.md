@@ -1,6 +1,6 @@
 ---
 description: "Constitution zone registry — CONST-* clause records consumed by moai constitution CLI and zone audits"
-paths: "**/.claude/rules/**,**/.moai/config/sections/constitution.yaml"
+paths: "**/zone-registry.md,**/.moai/config/sections/constitution.yaml"
 ---
 
 # Zone Registry
@@ -842,7 +842,7 @@ moai constitution list --format json
   zone_class: evolvable-tuning
   file: .claude/rules/moai/workflow/context-window-management.md
   anchor: "#context-window-targets"
-  clause: "Operational threshold is model-specific: 1M context (Opus 4.8 / GLM-5.2) = 50%, 256K context (Opus/Fable) = 90%, 200K context (Sonnet/Haiku) = 90%"
+  clause: "Operational threshold is model-specific: 1M context (Opus 5 / Opus 4.8 / GLM-5.2) = 50%, 256K context (Fable) = 90%, 200K context (Sonnet/Haiku) = 90%"
   canary_gate: false
 
 - id: CONST-V3R5-023

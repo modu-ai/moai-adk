@@ -397,7 +397,7 @@ func runProfileSetup(cmd *cobra.Command, args []string) error {
 				Options(langOptions...).
 				Value(&convLang),
 		).Title("Language"),
-	)
+	).WithTheme(moaiHuhTheme())
 
 	if err := langForm.Run(); err != nil {
 		if errors.Is(err, huh.ErrUserAborted) {
@@ -620,7 +620,7 @@ func runProfileSetup(cmd *cobra.Command, args []string) error {
 				Description(t.GitEnforceOnPushDesc).
 				Value(&nestedEnforceOnPush),
 		).Title(t.GitAutoEnabledTitle),
-	)
+	).WithTheme(moaiHuhTheme())
 
 	if err := form.Run(); err != nil {
 		if errors.Is(err, huh.ErrUserAborted) {

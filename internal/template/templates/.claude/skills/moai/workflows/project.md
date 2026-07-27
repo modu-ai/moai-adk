@@ -53,7 +53,7 @@ This workflow is also triggered automatically when project documentation does no
 | Phase 8: harness-spec.yaml Emission | `project/doc-generation.md` | Emit `.moai/project/harness-spec.yaml` from `interview.md` answers (8-field schema, no user interaction, overwrite) |
 | Phase 9: Codemaps Generation | `project/doc-generation.md` | Explore + manager-docs for codemaps/ |
 | Phase 10: Dev Environment Check | `project/doc-generation.md` | LSP server detection + optional install |
-| Phase 11: MCP Server Provisioning | `project/doc-generation.md` | Detect stack, select MCP servers from `mcp-matrix.yaml`, orchestrator approval, additive `.mcp.json` write |
+| Phase 11: MCP Server Provisioning | `project/doc-generation.md` | Detect stack, select recommended MCP servers, orchestrator approval, additive `.mcp.json` write |
 | Phase 12: Dev Methodology Config | `project/doc-generation.md` | Auto-set development_mode in quality.yaml |
 | Phase 13: DB Detection | `project/doc-generation.md` | Grep/Glob DB keyword detection, db-detection.json |
 | Phase 14: Completion | `project/doc-generation.md` | Summary report + 3-branch next-steps AskUserQuestion |
@@ -99,5 +99,4 @@ For convenience, the DB engine categories are: Relational/SQL (PostgreSQL, MySQL
 ---
 
 Version: 2.5.0
-Last Updated: 2026-02-21
 Provenance: the DB-detection hint policy, the project-harness generation policy, the workflow-split policy

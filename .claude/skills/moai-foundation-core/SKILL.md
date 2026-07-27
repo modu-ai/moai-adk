@@ -302,11 +302,7 @@ Context window optimization, /clear strategy, session state persistence, and mul
 
 ### Context Window Targets
 
-| Model class | Window | 75% threshold | /clear trigger |
-|-------------|--------|---------------|----------------|
-| Opus 4.7 (1M) | 1,000,000 tokens | ~750,000 | Above threshold |
-| Sonnet/Opus standard | 200,000 tokens | ~150,000 | Above threshold |
-| Haiku | 200,000 tokens | ~150,000 | Above threshold |
+See `.claude/rules/moai/workflow/context-window-management.md` § Context Window Targets for the authoritative per-model-class `/clear` threshold table (1M/GLM = 50%, 200K/256K = 90%). Do not restate thresholds here (SSOT).
 
 ### Phase Token Allocation
 
