@@ -156,7 +156,7 @@ m1_to_mN_commit_strategy: one commit per milestone (N1..N4); N5 verification edi
 
 ```yaml
 sync_complete_at: 2026-07-27
-sync_commit_sha: 2a12e2b7d9aee1b5cdfbfba31d6b28ab5d7312b8
+sync_commit_sha: pending-backfill-sync-2
 sync_status: audit-ready
 docs_build:
   command: hugo --minify --gc
@@ -164,11 +164,27 @@ docs_build:
   warnings: 0
   sitemap: present
 changelog_entry: yes
+amendment_sync: true
+amendment_version: "1.5.0"
+run_phase_commits:
+  - sha: "449c7cb28"
+    description: "plan-phase amendment spec.md frontmatter + ## Amendments + plan.md rewrite"
+  - sha: "f683675b3"
+    description: "audit SHOULD-FIX D1/D2 + NIT D3-D7"
+  - sha: "115b0b54e"
+    description: "M1 AC-GDR-012 refactor (acceptance.md single-p= source + liveness + aptness guards)"
+verification:
+  independent_check: true
+  tree_total: 0
+  spec_lint_errors: 0
+  e1_e7_pass: true
 orphan_sha_mapping:
   - original: d54ea108d
     mapped_to: 24c84c56e
     rationale: "PR #1176 was squash-merged; d54ea108d evaporated from git history (verified via git merge-base --is-ancestor exit 1)"
 ```
+
+**Sync-phase notes**: This is the amendment sync-phase (v1.5.0 D2 aggregate liveness/aptness guard). The run-phase M1 commit (`115b0b54e`) was independently verified this session with all E1-E7 checks passing. The sync_commit_sha will be backfilled in a follow-up commit per the D3 placeholder-backfill exemption (a commit cannot reference its own SHA).
 
 **Mapping rationale**: The run-phase commit `d54ea108d` was squash-merged into PR #1176 (commit `24c84c56e`). Git no longer recognizes `d54ea108d` as an ancestor of the current tree (verified by `git merge-base --is-ancestor d54ea108d origin/main` exiting 1), confirming evaporation. All references in `progress.md` have been mapped to the squash-merge commit `24c84c56e`, which is the authoritative baseline for the run-phase work.
 
