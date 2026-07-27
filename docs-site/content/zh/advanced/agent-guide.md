@@ -39,46 +39,52 @@ MoAI-ADK 使用 **11 个核心智能体**（10 个 MoAI 自定义 + 1 个 Anthro
 
 ### Manager 智能体（5 个）
 
-| 智能体 | 角色 | 阶段 | 主要技能 |
-|----------|------|------|----------|
-| `manager-spec` | 生成 SPEC 文档、GEARS 格式需求 | Plan | `moai-workflow-spec` |
-| `manager-develop` | DDD/TDD/autofix 循环实现（quality.yaml 的 cycle_type） | Run | `moai-workflow-ddd`, `moai-workflow-tdd` |
-| `manager-docs` | 文档生成、CHANGELOG、README 同步 | Sync | `moai-workflow-project` |
-| `manager-git` | PR 创建、Git 分支、合并策略 | PR (Tier L) | `moai-foundation-core` |
-| `manager-design` | Claude Design 双向协作（D1-D5 管线） | Design | `moai-foundation-core` |
+| 智能体 | 角色 | 阶段 | 模型 / effort | 主要技能 |
+|----------|------|------|---------------|----------|
+| `manager-spec` | 生成 SPEC 文档、GEARS 格式需求 | Plan | inherit / medium {{< icon flash primary >}} | `moai-workflow-spec` |
+| `manager-develop` | DDD/TDD/autofix 循环实现（quality.yaml 的 cycle_type） | Run | inherit / medium {{< icon flash primary >}} | `moai-workflow-ddd`, `moai-workflow-tdd` |
+| `manager-docs` | 文档生成、CHANGELOG、README 同步 | Sync | inherit / low {{< icon flash muted >}} | `moai-workflow-project` |
+| `manager-git` | PR 创建、Git 分支、合并策略 | PR (Tier L) | sonnet / low {{< icon flash muted >}} | `moai-foundation-core` |
+| `manager-design` | Claude Design 双向协作（D1-D5 管线） | Design | inherit / medium {{< icon flash primary >}} | `moai-foundation-core` |
 
 ### Evaluator 智能体（2 个）
 
-| 智能体 | 角色 | 评估对象 | 主要技能 |
-|----------|------|---------|----------|
-| `plan-auditor` | Plan 阶段独立审计、GEARS 遵循、偏差防范 | SPEC 完成度 | `moai-foundation-core`, `moai-foundation-thinking` |
-| `sync-auditor` | Sync 阶段质量评分（4 维：Functionality、Security、Craft、Consistency） | 实现质量 | `moai-foundation-quality`, `moai-foundation-core` |
+| 智能体 | 角色 | 评估对象 | 模型 / effort | 主要技能 |
+|----------|------|---------|---------------|----------|
+| `plan-auditor` | Plan 阶段独立审计、GEARS 遵循、偏差防范 | SPEC 完成度 | inherit / medium {{< icon flash primary >}} | `moai-foundation-core`, `moai-foundation-thinking` |
+| `sync-auditor` | Sync 阶段质量评分（4 维：Functionality、Security、Craft、Consistency） | 实现质量 | inherit / medium {{< icon flash primary >}} | `moai-foundation-quality`, `moai-foundation-core` |
 
 核心在于计划与审计是分离的 — 做的人不检查自己的工作。
 
 ### Builder 智能体（1 个）
 
-| 智能体 | 角色 | 产物 |
-|----------|------|--------|
-| `builder-harness` | 生成项目专属的动态智能体团队（基于苏格拉底式访谈） | `.claude/agents/harness/`, `.moai/harness/manifest.json` |
+| 智能体 | 角色 | 模型 / effort | 产物 |
+|----------|------|---------------|--------|
+| `builder-harness` | 生成项目专属的动态智能体团队（基于苏格拉底式访谈） | inherit / medium {{< icon flash primary >}} | `.claude/agents/harness/`, `.moai/harness/manifest.json` |
 
 ### Advisor 智能体（1 个）
 
-| 智能体 | 角色 | 特点 |
-|----------|------|------|
-| `super-advisor` | 高推理咨询 — 僵局、设计决策点、第二意见（E1-E4 升级） | 非约束性处方 — 最终决定权在编排器 |
+| 智能体 | 角色 | 模型 / effort | 特点 |
+|----------|------|---------------|------|
+| `super-advisor` | 高推理咨询 — 僵局、设计决策点、第二意见（E1-E4 升级） | inherit / high {{< icon flash warn >}} | 非约束性处方 — 最终决定权在编排器 |
 
 ### Specialist 智能体（1 个）
 
-| 智能体 | 角色 | 特点 |
-|----------|------|------|
-| `e2e-tester` | 网页/移动/桌面 E2E 测试执行（旅程脚本、CLI 优先套件执行、产物管理） | `/moai e2e` 工作流的执行主体 — 选择问题由编排器负责 |
+| 智能体 | 角色 | 模型 / effort | 特点 |
+|----------|------|---------------|------|
+| `e2e-tester` | 网页/移动/桌面 E2E 测试执行（旅程脚本、CLI 优先套件执行、产物管理） | inherit / low {{< icon flash muted >}} | `/moai e2e` 工作流的执行主体 — 选择问题由编排器负责 |
 
 ### 内置智能体（1 个，Anthropic）
 
-| 智能体 | 角色 | 特点 |
-|----------|------|------|
-| `Explore` | 只读代码探索与分析 | Haiku 模型、只读工具 |
+| 智能体 | 角色 | 模型 / effort | 特点 |
+|----------|------|---------------|------|
+| `Explore` | 只读代码探索与分析 | sonnet / low（调用时默认值） | 只读工具；磁盘上没有智能体文件，因此 effort 在 spawn 提示词中说明，而非固定在 frontmatter 中 |
+
+{{< callout type="info" >}}
+**4 级 token 成本层级**（{{< icon flash danger >}} max · {{< icon flash warn >}} high · {{< icon flash primary >}} medium · {{< icon flash muted >}} low）：`model: inherit` 继承父会话模型，effort 决定推理 token 的预算。
+
+上表数值是**随附的 frontmatter**，它固定在[配置矩阵](/zh/advanced/profile-matrix/)的 `medium` 列上，使全新部署与默认配置文件保持一致。切换配置文件会重写这些数值 — 在 `high` 下，`manager-develop` 与 `super-advisor` 移到 `max`（仅这两格使用它），在 `low` 下代理式行降到 `low`，同时 `manager-docs` 与 `e2e-tester` 回退到 Sonnet。可用 `moai model profile` 查看活动配置文件下解析出的数值。
+{{< /callout >}}
 
 ## Manager-Develop 领域上下文注入
 

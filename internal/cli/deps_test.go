@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"io"
 	"log/slog"
 	"testing"
 
@@ -108,7 +109,15 @@ func TestEnsureUpdate_AlreadyInitialized(t *testing.T) {
 	}
 }
 
-func TestInitDependencies_SetsDefaultSlogToDiscard(t *testing.T) {
+// TestInitDependencies_InheritsDefaultLogger replaces the former
+// TestInitDependencies_SetsDefaultSlogToDiscard, which asserted the behavior this
+// SPEC removes: InitDependencies used to install a discarding handler as the
+// process default, silencing every subcommand rather than just `moai hook`.
+//
+// The assertion is inverted rather than dropped, so it now guards the new
+// invariant — configureLogging (logging.go) is the single slog.SetDefault site,
+// and re-adding one here would fail this test.
+func TestInitDependencies_InheritsDefaultLogger(t *testing.T) {
 	origDeps := deps
 	origDefaultLogger := slog.Default()
 	defer func() {
@@ -116,17 +125,22 @@ func TestInitDependencies_SetsDefaultSlogToDiscard(t *testing.T) {
 		slog.SetDefault(origDefaultLogger)
 	}()
 
-	deps = nil
-	defaultHandlerBefore := slog.Default().Handler()
+	// Install a recognizable default: any SetDefault inside InitDependencies
+	// would swap this handler out, which is exactly what must not happen. Using a
+	// discarding handler also keeps this test's own output quiet.
+	sentinel := slog.NewTextHandler(io.Discard, nil)
+	slog.SetDefault(slog.New(sentinel))
 
+	deps = nil
 	InitDependencies()
 
-	defaultHandlerAfter := slog.Default().Handler()
-	if defaultHandlerBefore == defaultHandlerAfter {
-		t.Error("slog.Default() handler should change after InitDependencies")
+	if slog.Default().Handler() != sentinel {
+		t.Error("InitDependencies replaced the process default slog handler; " +
+			"logging is configured once in configureLogging (logging.go) and must " +
+			"not be installed a second time here")
 	}
-	if deps.Logger.Handler() != slog.Default().Handler() {
-		t.Error("deps.Logger handler should match slog.Default() handler")
+	if deps.Logger.Handler() != sentinel {
+		t.Error("deps.Logger should inherit the process default handler")
 	}
 }
 

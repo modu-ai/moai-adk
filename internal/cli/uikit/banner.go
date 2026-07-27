@@ -56,6 +56,14 @@ func GhVersionOverride() string {
 	return os.Getenv("MOAI_GH_VERSION_OVERRIDE")
 }
 
+// SgVersionOverride returns the MOAI_SG_VERSION_OVERRIDE env var (empty if unset).
+// Same role as its git/gh siblings: ast-grep is an optional external tool whose
+// presence and version differ between developer machines and CI runners, so the
+// doctor golden snapshots pin it rather than exec'ing the real binary.
+func SgVersionOverride() string {
+	return os.Getenv("MOAI_SG_VERSION_OVERRIDE")
+}
+
 // GoosArch returns the platform string used in doctor output ("goos/goarch").
 func GoosArch() string {
 	goos := runtime.GOOS

@@ -1,7 +1,7 @@
 ---
 id: SPEC-GOAL-DOCS-RETIRE-001
 title: Retire native /goal emission references from public and internal documentation across four locales
-version: 1.4.0
+version: 1.5.0
 status: completed
 created: 2026-07-25
 updated: 2026-07-27
@@ -11,8 +11,9 @@ phase: "v3.1.0"
 module: docs
 lifecycle: spec-anchored
 tags: "goal, docs-site, i18n, locale-parity, split-surface"
-tier: M
+tier: S
 depends_on: [SPEC-GOAL-SURFACE-UNIFY-001]
+amendment_of: SPEC-GOAL-DOCS-RETIRE-001
 run_commit_sha: 24c84c56e
 sync_commit_sha: 2a12e2b7d9aee1b5cdfbfba31d6b28ab5d7312b8
 ---
@@ -25,6 +26,24 @@ sync_commit_sha: 2a12e2b7d9aee1b5cdfbfba31d6b28ab5d7312b8
 | 1.1.0 | 2026-07-27 | Plan-audit iteration 2 MUST-FIX **B2-1** (aptness) closed. New `REQ-GDR-011` requires every emission detector's pattern to carry a literal `/goal` token, declared once and shared by the counting step and the assertion; `AC-GDR-010` gains component **(d)** and re-records its baseline with an `apt` field. The auditor's stronger alternative — a base-match-set subset check — was executed and **refuted**: `ac_converge` and `auto mode` co-occur with `` `/goal` `` on the same base line, so a line-level subset test admits both attack detectors. | orchestrator |
 | 1.2.0 | 2026-07-27 | Run-gate plan-audit (PASS 0.849) finding **D1** closed. The sweep-target file count is corrected `8 → 12` and the retained-within-scope count `5 → 1` (annotate-only), reconciling `spec.md` §A.3 and `REQ-GDR-001` with `plan.md` §F.1's ownership map (`autonomous-loops.md` ×4 + `self-evolving.md` ×4 + `handoff.md` ×4 + strategy ×1 = 13). The same correction is applied to `acceptance.md` AC-GDR-012's header and to `progress.md` §F's scope row, which had recorded both figures side by side without reconciling them. Iteration 2's finding B-4 corrected the adjacent **marker** count `18 → 24` but did not question the **file** partition. A fourth site the D1 block did not enumerate — `research.md` §C's aggregate sentence — carried the same `8` and was self-contradictory (its own decomposition includes `handoff 4`); it is corrected with the rest, keeping the `24` and the decomposition verbatim. Prose-only: no judgment command, recorded baseline, or target value changed. | manager-spec |
 | 1.3.0 | 2026-07-27 | `AC-GDR-007`'s content-pin detector corrected to exclude the mandated sentinel line, closing an off-by-one internal contradiction found during run-phase N5 verification. The criterion is compound: component 1 mandates the literal sentinel ``native `/goal` emission is retired``, and that phrase itself carries a backticked `` `/goal `` that component 2's occurrence count picked up — so satisfying component 1 necessarily drove the pin from `25` to `26`, making the criterion unsatisfiable as written. The second detector now filters the sentinel line out before counting (`grep -vF … \| grep -ohF … \| wc -l`). The pin value (`25`) and the recorded baseline (`0` / `25`) are **unchanged**, as is the criterion's semantics ("all 25 historical occurrences survive"); the raise-to-`26` alternative was declined because `26` is a composite that obscures what the pin asserts. The implementation was already correct — `git diff origin/main...HEAD` on the strategy record is `1 insertion, 0 deletions`. | manager-spec |
+| 1.5.0 | 2026-07-27 | In-place amendment (D2 debt — aggregate liveness/aptness guard). AC-GDR-012 currently carries its own inline copies of the 5 detector patterns as `t=$((t + $(grep ...)))` literals, bypassing the single-`p=`-source discipline AC-GDR-010 adopted at audit iteration 2 (finding B2-1). A future weakening of an inline aggregate pattern (e.g. the backticked `` `/goal` `` token dropped) could lower `total` and produce a fake `total=0` ("sweep complete" disguise) that AC-GDR-010's own aptness guard would NOT catch — because AC-GDR-010 inspects ONLY its own `p=` variable. The amendment extends the single-`p=`-source discipline to the AC-GDR-012 aggregate path, adds liveness + aptness guards mirroring AC-GDR-010 components (b) and (d), and preserves the recorded baseline `total=24` / target `total=0` verbatim. Prose-only refactor of one AC's judgment-command block; no judgment-command target value, recorded baseline, or held-out gate changes. See `## Amendments` below. | manager-spec |
+
+## Amendments
+
+### Amendment 1 — D2 aggregate liveness/aptness guard (v1.5.0) — COMPLETED
+
+- **Prior completed version**: 1.4.0
+- **prior_completed_sha**: `760f09f73` — the PR #1179 squash-merge that landed `version: 1.3.0 → 1.4.0` + `status: in-progress → completed` on main (verified this run via `git show 760f09f73 -- .moai/specs/SPEC-GOAL-DOCS-RETIRE-001/spec.md`; the diff shows both frontmatter transitions). The SPEC's own `sync_commit_sha: 2a12e2b7d9aee1b5cdfbfba31d6b28ab5d7312b8` records the underlying sync commit (squash source preserved in PR #1179); `760f09f73` is the main-branch merge that combined that sync commit with the D3 `sync_commit_sha` backfill.
+- **Rationale**: AC-GDR-012 (the aggregate emission integration criterion) carries its own inline copies of the 5 detector patterns as literals — five `t=$((t + $(grep ...)))` lines, each duplicating a pattern that AC-GDR-010 already declares in its `case` block. This bypasses the single-`p=`-source discipline AC-GDR-010 adopted at audit iteration 2 (finding B2-1). The regression risk is real and verified this session: AC-GDR-010's aptness guard inspects ONLY its own `p=` variable, so if one of AC-GDR-012's inline patterns is weakened (e.g. the `` `/goal` `` token dropped during a future edit), the aggregate `total` drops and a fake `total=0` ("sweep complete" disguise) becomes possible — and AC-GDR-010 would NOT catch it because its own pattern is intact. The single-source discipline must be extended to the aggregate path so the defect class AC-GDR-010 already rejects at the per-detector level cannot re-enter at the aggregate level.
+- **Scope**: `acceptance.md` AC-GDR-012 judgment-command block (the `t=0; t=$((t + ...)) × 5; echo "total=$t"` shell block at lines ~238-246). The 5 inline-literal lines are refactored into the same `for name in ...; case ... p= ...; w() ...` single-source structure AC-GDR-010 uses (at `acceptance.md` lines 199-211); the aggregate additionally gains a **liveness** assertion (each detector matches non-zero content against the immutable base `e306e21a9` in all four locales, mirroring AC-GDR-010 component (b)) and an **aptness** assertion (each detector's pattern carries a literal `/goal` token, read from the SAME `p=` source, mirroring AC-GDR-010 component (d)). The 5 pattern values are byte-identical to AC-GDR-010's `case` block — the authoritative source is at `acceptance.md:199-211`; `paired_al` and `paired_se` share the same pattern but target different files (`autonomous-loops.md` vs `self-evolving.md`). Prose-only refactor: NO judgment-command target value, recorded baseline (`total=24`), or held-out gate change — `total=24` (pre-sweep, against base `e306e21a9`) / `total=0` (post-sweep, against current tree) are preserved verbatim. The refactor's run-phase strategy is authored in `plan.md`.
+- **Out of scope (amendment)**: AC-GDR-001 through AC-GDR-011 body content; spec.md §B requirements; plan.md milestones N1-N5 (the original sweep work, already complete at v1.4.0); the 12 sweep-target locale files (already swept); the four retention surfaces; `run_commit_sha` / `sync_commit_sha` provenance fields; `progress.md` §E.2/§E.3/§E.4 (owned by run-phase / sync-phase).
+- **Tier transition M → S**: the v1.0–v1.4 SPEC was classified Tier M (13 files, full artifact set). The v1.5.0 amendment's run-phase scope is local to one AC body (`acceptance.md` AC-GDR-012 block, ~15 lines of shell); 1 file affected at run-phase, well under the Tier S thresholds (<5 files, <300 LOC, non-constitutional). The spec.md amendment declaration itself landed in plan-phase (commit `449c7cb28`), so the run-phase deliverable is a single `acceptance.md` edit. The frontmatter is flipped from `tier: M` to `tier: S` accordingly; the §D body paragraph is reconciled to match (the SSOT is the frontmatter).
+- **Amendment completion** (2026-07-27):
+  - **Plan-phase amendment**: commit `449c7cb28`
+  - **Audit SHOULD-FIX**: commit `f683675b3` (D1/D2 + NIT D3-D7 closed)
+  - **Run-phase M1 refactor**: commit `115b0b54e` (AC-GDR-012 refactored to single-`p=` source + liveness + aptness guards; baseline preserved)
+  - **Independent verification**: PASS (E1-E7 verified this session; tree_total=0; AC-GDR-012 block refactored correctly; spec-lint 0 errors)
+  - **Sync-phase**: This commit (3-phase close; `status: completed`)
 
 ---
 
@@ -145,7 +164,7 @@ Corrected at this SPEC's audit iteration 1 (finding B-3): four rows mapped to th
 
 A **REQ ↔ AC traceability matrix** is at `acceptance.md` §E.
 
-**Artifact set — deliberately beyond the Tier M minimum (finding B-6).** Tier M requires three artifacts (`spec` + `plan` + `acceptance`); six are delivered. `design.md` and `research.md` are retained deliberately, not by tier misclassification: the two MUST-FIX findings of this SPEC's first audit (B-1 liveness, B-2 asymmetry carve-out) are both *design* questions about detector semantics, and `research.md` §C carries the per-detector locale-symmetry proof plus the disqualified-detector record that keeps the N2 anchor from being reintroduced. Trimming them would discard the evidence that makes the criteria auditable. The tier remains **M** — confirmed correct against the complexity criteria (13 files, one verification regime, non-constitutional, fully reversible); only the artifact count exceeds the minimum.
+**Artifact set — deliberately beyond the Tier M minimum (finding B-6).** Tier M requires three artifacts (`spec` + `plan` + `acceptance`); six are delivered. `design.md` and `research.md` are retained deliberately, not by tier misclassification: the two MUST-FIX findings of this SPEC's first audit (B-1 liveness, B-2 asymmetry carve-out) are both *design* questions about detector semantics, and `research.md` §C carries the per-detector locale-symmetry proof plus the disqualified-detector record that keeps the N2 anchor from being reintroduced. Trimming them would discard the evidence that makes the criteria auditable. The v1.0–v1.4 tier was **M** (13 files, one verification regime, non-constitutional, fully reversible — only the artifact count exceeded the minimum). The v1.5.0 in-place amendment (see `## Amendments` § 1) re-classified the SPEC to **Tier S** — amendment run-phase scope is local to one AC body (`acceptance.md` AC-GDR-012 block, <5 files, <300 LOC, non-constitutional). The frontmatter `tier: S` is the lint-read SSOT; this body §D paragraph is reconciled to it.
 
 ---
 

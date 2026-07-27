@@ -58,15 +58,17 @@ Token 单价持续下降，但实际 Agent 工作流的支出却在上升。Agen
 
 ### 成本由配分决定，而非模型单价
 
-DeepSWE 排行榜（113 tasks）的实测数据展示了这个问题。即使在同一个 Claude 系列内，以同样的 max effort 运行，单任务成本也差异巨大。
+DeepSWE 排行榜（113 tasks，按 effort 分级视图）的实测数据展示了这个问题。在同一个 Claude 系列内，单任务成本取决于模型*完成*任务的效率 —— 而非一个 Token 的价格。
 
-| 模型 [max] | Pass@1 | 单任务成本 | $/解决任务 | Token/解决任务 | 步数 |
-|---|---|---|---|---|---|
-| claude-opus-4.8 | 59% | $13.22 | **$22.4** | 229k | 120 |
-| claude-fable-5 | 70% | $21.63 | $30.9 | 170k | 88 |
-| claude-sonnet-5 | 54% | $26.40 | **$48.9** | 396k | 268 |
+| 模型 [effort] | Pass@1 | 单任务成本 | 输出 Token | 步数 |
+|---|---|---|---|---|
+| claude-opus-5 [low] | 58% | **$1.66** | 20k | 36 |
+| claude-opus-5 [medium] | 69% | $3.29 | 37k | 52 |
+| claude-opus-5 [high] | 73% | $6.08 | 64k | 73 |
+| claude-opus-5 [max] | 74% | $11.84 | 118k | 99 |
+| claude-sonnet-5 [max] | 54% | **$26.40** | 214k | 268 |
 
-Sonnet 5 max 比 Opus 5 max **单任务更贵**（$26.40 vs $13.22）但分数更低（54% vs 59%）。原因是 268 步 —— 在 max effort 下重试循环爆炸。"用弱模型跑得更狠就能省钱"的直觉不成立。反而跑三倍步数，消耗更多配额。成本由**为任务分配合适的模型和推理深度**决定，而非单价。
+Opus 5 在**最低** effort 下的分数高于 Sonnet 5 在**最高** effort 下的分数（58% vs 54%），而单任务成本只有其十六分之一（$1.66 vs $26.40）—— 尽管 Sonnet 的单 Token 价格更低。原因是 268 步对 36 步：写出这张账单的是重试循环，而不是 Token 费率。"用弱模型跑得更狠就能省钱"的直觉不成立。成本由**为任务分配合适的模型和推理深度**决定，而非单价。
 
 MoAI-ADK 将这种分配系统化，不再听天由命。
 
@@ -78,9 +80,9 @@ MoAI-ADK 将这种分配系统化，不再听天由命。
 
 **Tier×Phase 矩阵**。根据工作阶段（plan / run / sync）和 SPEC 大小（Tier S / M / L）声明式分配模型和推理深度（effort）。需要深度推理的计划阶段分配高推理模型，机械重复较多的实现阶段分配轻量模型。最大化成本质量比。
 
-**No-Haiku 3 层模型策略**。将 Haiku 从路由模型集中排除，工作分散到 3 层结构（Sonnet / Opus / Fable）。机械任务分配 Sonnet low effort 最小化步数，推理关键处分配上层模型。
+**No-Haiku 3 层模型策略**。将 Haiku 从路由模型集中排除，工作分散到贴合任务性质的 3 层结构。Sonnet 以 low effort 承担单次完成、以输入为主的工作（Git 机械操作、只读检索）以最小化步数；Opus 承担所有多轮代理式行，`max` effort 只保留给两个调用频率最低的行。
 
-**配置矩阵**。单一的 per-agent 配置矩阵将每个保留 agent 映射到一个 `{model, effort}` 对。单一配置文件轴 —— `max` / `medium`（默认）/ `low`，通过 `llm.profile`（`moai init --profile`、`moai update --profile`）选择 —— 选取活动列；`moai model profile` 解析每个 agent 的格。10 个分组 agent 从矩阵获取 model+effort（任何位置都没有 Haiku），而 `Explore` 和用户自定义 agent 继承会话模型。
+**配置矩阵**。单一的 per-agent 配置矩阵将 11 个保留 agent 各自映射到一个 `{model, effort}` 对 —— 共 33 格。单一配置文件轴 —— `high` / `medium`（默认）/ `low`，通过 `llm.profile`（`moai init --profile`、`moai update --profile`）选择 —— 选取活动列；`moai model profile` 解析每个 agent 的格。包括 `Explore` 在内的每个保留 agent 都从矩阵获取 model+effort（任何位置都没有 Haiku）；只有用户自定义 agent 继承会话模型。
 
 **CG 模式（Claude + GLM）**。`moai cg` 是结合 Claude 领导和 GLM Worker 的混合模式。战略、规划、审计在 Claude 上运行；大批量实现在 GLM 上运行。实现密集型工作负载节省 **60-70% 成本**。
 
@@ -247,7 +249,7 @@ claude        # launch Claude Code inside the project
 | **Specialist** | e2e-tester | 🟠 | Web/移动/桌面 E2E 测试执行（CLI 优先） |
 | **Built-in** | Explore | ⚪ | 只读代码库探索 |
 
-成本颜色以默认 `medium` 配置文件的 model×effort 单元为准（用 `moai model profile` 查看）：🔴 opus+high · 🟠 opus+medium · 🔵 sonnet+medium / fable+low · 🩵 sonnet+low · ⚪ 继承会话模型。切换配置文件（`max`/`low`）时分配会变化。长期委托的进度记录在 Task 通道，由编排器以图标 Progress Board 转达。
+成本颜色以默认 `medium` 配置文件的 model×effort 单元为准（用 `moai model profile` 查看）：🔴 opus+high · 🟠 opus+medium · 🔵 opus+low · 🩵 sonnet+low · ⚪ 继承会话模型（用户添加的 agent）。切换配置文件（`high`/`low`）时分配会变化。长期委托的进度记录在 Task 通道，由编排器以图标 Progress Board 转达。
 
 ### TRUST 5 质量门控
 

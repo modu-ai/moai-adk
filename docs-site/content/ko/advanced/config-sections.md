@@ -67,10 +67,10 @@ delegation:
 
 ```yaml
 llm:
-  profile: "medium"            # max | medium | low (활성 매트릭스 열)
-  performance_tier: "medium"   # legacy 별칭 (profile 부재 시 읽힘, high→max)
-  profiles:                    # 프로필 열 → 6개 그룹 → {model, effort}
-    max: { ... }               # 상세 표: 프로필 매트릭스 페이지
+  profile: "medium"            # high | medium | low (활성 매트릭스 열, max는 high로 읽힘)
+  performance_tier: "medium"   # legacy 별칭 (profile 부재 시 읽힘, 동일 어휘)
+  profiles:                    # 프로필 열 → 11개 에이전트 → {model, effort}
+    high: { ... }              # 상세 표: 프로필 매트릭스 페이지
     medium: { ... }
     low: { ... }
   agent_overrides: {}          # 에이전트별 {model, effort} override (선택)
@@ -85,10 +85,10 @@ llm:
 
 | 키 | 설명 |
 |----|------|
-| `profile` | 활성 프로필 매트릭스 열 (`max`/`medium`/`low`). 비어 있으면 `medium`으로 해석. 모든 서브에이전트 spawn의 model+effort 소스 |
-| `performance_tier` | legacy 별칭 필드. `profile`이 없을 때만 읽히며 `high`→`max`로 정규화 |
-| `profiles` | 프로필 열별 그룹 → `{model, effort}` 매트릭스. Go 기본값(`template.DefaultProfileMatrix`)이 누락 셀의 권위 있는 fallback |
-| `agent_overrides` | 정규 에이전트 이름별 `{model, effort}` override. 활성 프로필의 그룹 셀보다 우선 (카탈로그+enum 검증) |
+| `profile` | 활성 프로필 매트릭스 열 (`high`/`medium`/`low`, 과거 `max`는 `high`의 별칭으로 읽힘). 비어 있으면 `medium`으로 해석. 모든 서브에이전트 spawn의 model+effort 소스 |
+| `performance_tier` | legacy 별칭 필드. `profile`이 없을 때만 읽히며, `high`/`medium`/`low` 어휘를 공유하므로 정규화 단계가 필요 없음 |
+| `profiles` | 프로필 열별 에이전트 → `{model, effort}` 매트릭스 (에이전트 11개 × 열 3개 = 33셀). Go 기본값(`template.DefaultProfileMatrix`)이 누락 셀의 권위 있는 fallback |
+| `agent_overrides` | 정규 에이전트 이름별 `{model, effort}` override. 활성 프로필의 에이전트 셀보다 우선 (카탈로그+enum 검증) |
 | `glm.base_url` | Z.AI Anthropic 호환 프록시 엔드포인트 |
 | `glm.models` | 슬롯별 GLM 모델 매핑. GLM은 Claude의 5단계 effort를 3개 reasoning 상태(thinking-off / reasoning-high / reasoning-max)로 collapse |
 

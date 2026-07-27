@@ -91,12 +91,12 @@ MoAI-ADK は Claude Code のサブスクリプション料金プランに合わ�
 
 | ティア | 特徴 |
 |------|------|
-| **max** | 最高品質 — 計画・監査に Opus を割り当て、最大の推論深度 |
-| **medium** (デフォルト値) | 品質とコストのバランス |
-| **low** | 経済的 — Sonnet 中心の配分 |
+| **high** | 最高品質 — 呼び出し頻度が最も低い2つのエージェントに `max` の推論深度 |
+| **medium** (デフォルト値) | 品質とコストのバランス — コスト/スコア曲線の膝 |
+| **low** | 作業あたり最低コスト — エージェンティックなエージェントは Opus `low` effort に下がる |
 
 {{< callout type="warning" >}}
-**なぜ重要ですか?** `low` ティアは上位モデル (Opus) なしでもワークフロー全体が動作するよう設計されています。使用量制限エラーを防ぎながら核心的な作業を行えます。`max` ティアでは核心ステップ (計画、監査) に Opus を、一般作業に軽量モデルを割り当てます。
+**なぜ重要ですか?** ティアを下げることはモデルクラスではなく *推論深度* を下げることです。長期ホライズンのエージェンティックな作業では、Opus の `low` effort が `max` を含むあらゆる effort の Sonnet よりもスコアが高く、作業あたりのコストも低くなります — 請求額を決めるのはトークン単価ではなく、モデルが完了までに費やしたステップ数です。したがって `low` は Opus の中で節約し、マルチステップ完了失敗が当てはまらない単発の行 (`manager-git`、`Explore`) でのみ Sonnet を使います。
 {{< /callout >}}
 
 ### ティア別エージェントモデル割り当て
@@ -105,24 +105,25 @@ MoAI-ADK は Claude Code のサブスクリプション料金プランに合わ�
 
 #### Manager Agents (5 個)
 
-| エージェント | max | medium | low |
-|---------|-----|--------|-----|
-| manager-spec | opus | opus | sonnet |
-| manager-develop | opus | sonnet | sonnet |
-| manager-docs | sonnet | sonnet | sonnet |
-| manager-git | sonnet | sonnet | sonnet |
-| manager-design | sonnet | sonnet | sonnet |
+| エージェント | high | medium | low |
+|---------|------|--------|-----|
+| manager-spec | opus / high | opus / medium | opus / low |
+| manager-develop | opus / max | opus / medium | opus / low |
+| manager-docs | opus / medium | opus / low | sonnet / low |
+| manager-git | sonnet / low | sonnet / low | sonnet / low |
+| manager-design | opus / high | opus / medium | opus / low |
 
-#### Evaluator · Builder · Advisor Agents (4 個)
+#### Evaluator · Builder · Advisor · Specialist Agents (5 個)
 
-| エージェント | max | medium | low |
-|---------|-----|--------|-----|
-| plan-auditor | opus | opus | sonnet |
-| sync-auditor | opus | sonnet | sonnet |
-| builder-harness | opus | sonnet | sonnet |
-| super-advisor | opus | opus | sonnet |
+| エージェント | high | medium | low |
+|---------|------|--------|-----|
+| plan-auditor | opus / high | opus / medium | opus / low |
+| sync-auditor | opus / high | opus / medium | opus / low |
+| builder-harness | opus / high | opus / medium | opus / low |
+| super-advisor | opus / max | opus / high | opus / medium |
+| e2e-tester | opus / medium | opus / low | sonnet / low |
 
-e2e-tester とビルトインの `Explore` はセッションモデルをそのまま踏襲します (`model: inherit`)。
+ビルトインの `Explore` はすべての列で `sonnet / low` に解決されます — ディスク上にピン留めするエージェントファイルがないため、呼び出し時のデフォルト値です。
 
 ### 設定方法
 

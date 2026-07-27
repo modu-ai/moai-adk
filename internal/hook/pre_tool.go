@@ -381,6 +381,13 @@ func (h *preToolHandler) Handle(ctx context.Context, input *HookInput) (*HookOut
 		}
 	}
 
+	// gateNotice carries a passing quality gate's non-blocking notice (for
+	// example an ast-grep step that skipped because sg is absent) to this
+	// handler's response. It rides the hook's structured output rather than
+	// slog: the `moai hook` path installs a discarding handler, so a log
+	// record here would be silent by construction.
+	var gateNotice string
+
 	// Handle Bash commands
 	if input.ToolName == "Bash" && len(input.ToolInput) > 0 {
 		// Quality gate for git commit commands (REQ-GATE-001).
@@ -394,6 +401,7 @@ func (h *preToolHandler) Handle(ctx context.Context, input *HookInput) (*HookOut
 				)
 				return NewDenyOutput(output), nil
 			}
+			gateNotice = output
 		}
 
 		decision, reason := h.checkBashCommand(input.ToolInput)
@@ -450,7 +458,11 @@ func (h *preToolHandler) Handle(ctx context.Context, input *HookInput) (*HookOut
 		}
 	}
 
-	return NewSafeDefaultOutput(permissionModeOf(input)), nil
+	out := NewSafeDefaultOutput(permissionModeOf(input))
+	if gateNotice != "" {
+		out.SystemMessage = gateNotice
+	}
+	return out, nil
 }
 
 // scanWriteContent scans the content to be written using AST-based security scanner.

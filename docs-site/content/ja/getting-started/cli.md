@@ -71,9 +71,9 @@ moai init [project-name] [OPTIONS]
 | `--enable-lsp` | LSP 連携の有効化 (デフォルト値: true) |
 | `--enforce-quality` | 品質ゲートの強制 (デフォルト値: true) |
 | `--enable-design` | デザインワークフローの有効化 (デフォルト値: true) |
-| `--profile <max\|medium\|low>` | モデル+effort プロファイル — `llm.yaml` `profile` に保存 (プロファイルマトリクス列の選択) |
-| `--model-policy <max\|medium\|low>` | legacy パフォーマンスティア — `llm.yaml` `performance_tier` に保存 (`profile` 不在時にエイリアス) |
-| `--high` | **削除予定** `--model-policy max` の別名 |
+| `--profile <high\|medium\|low>` | モデル+effort プロファイル — `llm.yaml` `profile` に保存 (プロファイルマトリクス列の選択)。legacy 値 `max` も入力として受け付け `high` に正規化 |
+| `--model-policy <high\|medium\|low>` | legacy パフォーマンスティア — `llm.yaml` `performance_tier` に保存 (`profile` 不在時にエイリアス) |
+| `--high` | **削除予定** `--model-policy high` の別名 |
 
 ### 例
 
@@ -115,7 +115,7 @@ moai update [OPTIONS]
 | `--no-hooks` | Git フックのインストールをスキップ |
 | `--verbose` | すべての警告を表示 (診断モード) |
 | `--shell-env` | Claude Code 用のシェル環境変数を構成 |
-| `--profile <max\|medium\|low>` | モデル+effort プロファイルの上書き (`llm.yaml` `profile` に保存) |
+| `--profile <high\|medium\|low>` | モデル+effort プロファイルの上書き (`llm.yaml` `profile` に保存) |
 
 ### 例
 
@@ -471,19 +471,19 @@ MoAI-ADK はエージェントに最適な AI モデルを割り当てるパフ�
 
 | ティア | 特徴 |
 |------|------|
-| **max** | 最高品質 — 計画・監査に Opus 割り当て、最大の推論深度 |
-| **medium** (デフォルト値) | 品質とコストのバランス |
-| **low** | 経済的 — Sonnet 中心の配分 |
+| **high** | 最高品質 — 呼び出し頻度が最も低い2つのエージェントに `max` の推論深度 |
+| **medium** (デフォルト値) | 品質とコストのバランス — コスト/スコア曲線の膝 |
+| **low** | 作業あたり最低コスト — エージェンティックなエージェントは Opus `low` effort に下がり、Sonnet は単発の行のみ |
 
 ```bash
 # 初期化時に設定
-moai init my-project --model-policy max
+moai init my-project --model-policy high
 
 # 既存プロジェクトで再設定
 moai update -c
 ```
 
-プロファイル (`profile`: max/medium/low) はプロファイルマトリクスのアクティブ列を選択し、各エージェントの model+effort を決定します。詳しいエージェント別マッピングは [プロファイルマトリクス](/ja/advanced/profile-matrix/) ページを参照してください。
+プロファイル (`profile`: high/medium/low) はプロファイルマトリクスのアクティブ列を選択し、各エージェントの model+effort を決定します。詳しいエージェント別マッピングは [プロファイルマトリクス](/ja/advanced/profile-matrix/) ページを参照してください。
 
 ---
 

@@ -2,12 +2,13 @@
 │                                                                                                                                                      │
 │  System Diagnostics                                                                                                                                  │
 │  System ---                                                                                                                                          │
-│    STATUS  CHECK        MESSAGE                                                                                                                      │
-│    ok      Go Runtime   go 1.99.99 (testos/testarch)                                                                                                 │
-│    ok      Git          git version 9.99.99                                                                                                          │
-│    ok      Claude Code  test-claude-99                                                                                                               │
-│    ok      GitHub CLI   gh version 9.99.99 (2099-12-31)                                                                                              │
-│    4 ok, 0 warn, 0 fail                                                                                                                              │
+│    STATUS  CHECK         MESSAGE                                                                                                                     │
+│    ok      Go Runtime    go 1.99.99 (testos/testarch)                                                                                                │
+│    ok      Git           git version 9.99.99                                                                                                         │
+│    ok      Claude Code   test-claude-99                                                                                                              │
+│    ok      GitHub CLI    gh version 9.99.99 (2099-12-31)                                                                                             │
+│    ok      ast-grep CLI  ast-grep 9.99.99                                                                                                            │
+│    5 ok, 0 warn, 0 fail                                                                                                                              │
 │                                                                                                                                                      │
 │  MoAI-ADK ---                                                                                                                                        │
 │    STATUS  CHECK                  MESSAGE                                                                                                            │
@@ -35,6 +36,6 @@
 │    warn    Glamour Cache     glamour not integrated                                                                                                  │
 │    1 ok, 8 warn, 0 fail                                                                                                                              │
 │                                                                                                                                                      │
-│  [Pass 11]  [Warn 11]  [Fail 0]                                                                                                                      │
+│  [Pass 12]  [Warn 11]  [Fail 0]                                                                                                                      │
 │                                                                                                                                                      │
 ╰──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯

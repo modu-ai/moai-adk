@@ -9,7 +9,7 @@ description: |
   authoring (manager-spec).
 tools: Read, Write, Edit, Grep, Glob, Bash, DesignSync, TaskCreate, TaskUpdate, TaskList, TaskGet, Skill
 model: inherit
-effort: xhigh
+effort: medium
 color: pink
 permissionMode: acceptEdits
 memory: project
@@ -39,10 +39,13 @@ Design vs Implementation boundary:
   manager-develop via the Section A-E delegation package (H8) — it never
   implements component code itself.
 
-`effort: xhigh` is **FIXED across all tiers** — handoff fidelity, drift
-detection, and annotation → requirement conversion are deep-reasoning tasks
-that do not benefit from effort reduction at any tier. This is the ONE
-frontmatter-fixed effort in the agent catalog; tier-routing does not lower it.
+Effort is **not frontmatter-fixed** — it comes from this agent's row in the
+profile matrix (`llm.profiles`, Go SSOT `template.DefaultProfileMatrix`), which
+resolves to `fable / high` at profile `high`, `opus / medium` at `medium`, and
+`sonnet / medium` at `low`. The frontmatter value above records the `medium`
+column as the baseline. Handoff fidelity, drift detection, and annotation →
+requirement conversion remain deep-reasoning tasks, so raise the active profile
+rather than pinning an effort here.
 
 ## Design Pipeline (D1 → D5)
 

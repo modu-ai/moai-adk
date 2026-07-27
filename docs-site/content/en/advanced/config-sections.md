@@ -67,10 +67,10 @@ Defines the profile, the profile matrix, per-agent overrides, and GLM model mapp
 
 ```yaml
 llm:
-  profile: "medium"            # max | medium | low (active matrix column)
-  performance_tier: "medium"   # legacy alias (read when profile absent, high→max)
-  profiles:                    # profile column → 6 groups → {model, effort}
-    max: { ... }               # detailed table: Profile Matrix page
+  profile: "medium"            # high | medium | low (active matrix column; max read as high)
+  performance_tier: "medium"   # legacy alias (read when profile absent; same vocabulary)
+  profiles:                    # profile column → 11 agents → {model, effort}
+    high: { ... }              # detailed table: Profile Matrix page
     medium: { ... }
     low: { ... }
   agent_overrides: {}          # per-agent {model, effort} override (optional)
@@ -85,10 +85,10 @@ llm:
 
 | Key | Description |
 |-----|-------------|
-| `profile` | Active profile matrix column (`max`/`medium`/`low`). An empty value is interpreted as `medium`. The model+effort source for every subagent spawn |
-| `performance_tier` | Legacy alias field. Read only when `profile` is absent, normalized `high`→`max` |
-| `profiles` | The group → `{model, effort}` matrix per profile column. The Go default (`template.DefaultProfileMatrix`) is the authoritative fallback for missing cells |
-| `agent_overrides` | Per-canonical-agent-name `{model, effort}` override. Takes precedence over the active profile's group cell (catalog+enum validated) |
+| `profile` | Active profile matrix column (`high`/`medium`/`low`; the former `max` is read as an alias of `high`). An empty value is interpreted as `medium`. The model+effort source for every subagent spawn |
+| `performance_tier` | Legacy alias field. Read only when `profile` is absent; shares the same `high`/`medium`/`low` vocabulary, so no normalization step is needed |
+| `profiles` | The per-agent → `{model, effort}` matrix per profile column (11 agents × 3 columns = 33 cells). The Go default (`template.DefaultProfileMatrix`) is the authoritative fallback for missing cells |
+| `agent_overrides` | Per-canonical-agent-name `{model, effort}` override. Takes precedence over the active profile's agent cell (catalog+enum validated) |
 | `glm.base_url` | Z.AI Anthropic-compatible proxy endpoint |
 | `glm.models` | Per-slot GLM model mapping. GLM collapses Claude's 5-step effort into 3 reasoning states (thinking-off / reasoning-high / reasoning-max) |
 

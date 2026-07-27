@@ -91,18 +91,18 @@ Claude が応答する言語を選択します。以降のすべての質問が�
 
 ```bash
 ? パフォーマンスティアを選択:
-▸ Medium (推奨) - 品質とコストのバランス、Max $100 プラン
-  Max - Fable 5(low) + Opus 4.8(high) + Sonnet(medium~low)、Max $200 プラン
-  Low - Opus 4.8(high~low) + Sonnet(medium~low)、Plus $20 プラン
+▸ Medium - Opus 5 (high~low) + Sonnet (low, single-shot rows only)
+  High - Opus 5 (max~medium) + Sonnet (low, single-shot rows only)
+  Low - Opus 5 (medium~low) + Sonnet (low, docs/e2e/single-shot rows)
 ```
 
 | ティア | 特徴 |
 |------|------|
-| **Max** | 最高品質の配分 — Max $200 プラン向け |
-| **Medium** (デフォルト値) | 品質とコストのバランス — Max $100 プラン向け |
-| **Low** | 経済的な配分 — Plus $20 プラン向け |
+| **High** | 最高品質 — 呼び出し頻度が最も低い 2 エージェントに `max` 推論深度 |
+| **Medium** (デフォルト) | 品質とコストのバランス — コスト/スコア曲線の膝 |
+| **Low** | タスクあたり最低コスト — エージェンティックなエージェントは Opus `low` effort へ |
 
-この設定は `.moai/config/sections/llm.yaml` の `performance_tier` フィールドに保存され、`profile` フィールド(プロファイルマトリクス列)の legacy エイリアスとして読み込まれます。`--profile max|medium|low` フラグで直接指定すると `profile` フィールドに保存されます。プロファイル別のエージェント model+effort マッピングは [プロファイルマトリクス](/ja/advanced/profile-matrix/) ページを参照してください。
+この設定は `.moai/config/sections/llm.yaml` の `performance_tier` フィールドに保存され、`profile` フィールド(プロファイルマトリクス列)の legacy エイリアスとして読み込まれます。`--profile high|medium|low` フラグで直接指定すると `profile` フィールドに保存されます。プロファイル別のエージェント model+effort マッピングは [プロファイルマトリクス](/ja/advanced/profile-matrix/) ページを参照してください。
 
 ### レポート形式
 

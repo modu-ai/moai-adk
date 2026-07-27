@@ -91,18 +91,18 @@ Claude가 응답할 언어를 선택합니다. 이후 모든 질문이 이 언�
 
 ```bash
 ? 성능 티어 선택:
-▸ Medium (권장) - 품질과 비용의 균형, Max $100 플랜
-  Max - Fable 5(low) + Opus 4.8(high) + Sonnet(medium~low), Max $200 플랜
-  Low - Opus 4.8(high~low) + Sonnet(medium~low), Plus $20 플랜
+▸ Medium - Opus 5 (high~low) + Sonnet (low, single-shot rows only)
+  High - Opus 5 (max~medium) + Sonnet (low, single-shot rows only)
+  Low - Opus 5 (medium~low) + Sonnet (low, docs/e2e/single-shot rows)
 ```
 
 | 티어 | 특징 |
 |------|------|
-| **Max** | 최고 품질 배분 — Max $200 플랜 대상 |
-| **Medium** (기본값) | 품질과 비용의 균형 — Max $100 플랜 대상 |
-| **Low** | 경제적 배분 — Plus $20 플랜 대상 |
+| **High** | 최고 품질 — 호출 빈도가 가장 낮은 두 에이전트에 `max` 추론 깊이 |
+| **Medium** (기본값) | 품질과 비용의 균형 — 비용/점수 곡선의 무릎 |
+| **Low** | 작업당 최저 비용 — 에이전틱 에이전트는 Opus `low` effort로 내려갑니다 |
 
-이 설정은 `.moai/config/sections/llm.yaml` 의 `performance_tier` 필드에 저장되며, `profile` 필드(프로필 매트릭스 열)의 legacy 별칭으로 읽힙니다. `--profile max|medium|low` 플래그로 직접 지정하면 `profile` 필드에 저장됩니다. 프로필별 에이전트 model+effort 매핑은 [프로필 매트릭스](/ko/advanced/profile-matrix/) 페이지를 참조하세요.
+이 설정은 `.moai/config/sections/llm.yaml` 의 `performance_tier` 필드에 저장되며, `profile` 필드(프로필 매트릭스 열)의 legacy 별칭으로 읽힙니다. `--profile high|medium|low` 플래그로 직접 지정하면 `profile` 필드에 저장됩니다. 프로필별 에이전트 model+effort 매핑은 [프로필 매트릭스](/ko/advanced/profile-matrix/) 페이지를 참조하세요.
 
 ### 리포트 형식
 

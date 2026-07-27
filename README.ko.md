@@ -56,15 +56,17 @@ MoAI-ADK(Agentic Development Kit)는 Claude Code가 코드를 생산하게 하�
 
 ### 비용은 모델 단가가 아니라 배정이 결정한다
 
-DeepSWE 리더보드(113 tasks) 실측이 이 문제를 보여준다. 같은 Claude 계열, 같은 최고 effort(max)로 돌려도 과제 하나를 푸는 비용은 크게 벌어진다.
+DeepSWE 리더보드(113 tasks, effort 단계별 뷰) 실측이 이 문제를 보여준다. 같은 Claude 계열 안에서도 과제당 비용은 토큰 단가가 아니라 모델이 얼마나 효율적으로 *완주*하느냐를 따라간다.
 
-| 모델 [max] | Pass@1 | 과제당 비용 | $/해결과제 | 토큰/해결과제 | 스텝 |
-|---|---|---|---|---|---|
-| claude-opus-4.8 | 59% | $13.22 | **$22.4** | 229k | 120 |
-| claude-fable-5 | 70% | $21.63 | $30.9 | 170k | 88 |
-| claude-sonnet-5 | 54% | $26.40 | **$48.9** | 396k | 268 |
+| 모델 [effort] | Pass@1 | 과제당 비용 | 출력 토큰 | 스텝 |
+|---|---|---|---|---|
+| claude-opus-5 [low] | 58% | **$1.66** | 20k | 36 |
+| claude-opus-5 [medium] | 69% | $3.29 | 37k | 52 |
+| claude-opus-5 [high] | 73% | $6.08 | 64k | 73 |
+| claude-opus-5 [max] | 74% | $11.84 | 118k | 99 |
+| claude-sonnet-5 [max] | 54% | **$26.40** | 214k | 268 |
 
-Sonnet 5 max는 Opus 5 max보다 **비싸면서(과제당 $26.40 vs $13.22) 점수는 낮다(54% vs 59%)**. 원인은 268스텝 — 최고 effort에서 재시도 루프가 폭주한다. "약한 모델을 세게 굴리면 싸다"는 통념은 성립하지 않는다. 오히려 스텝을 세 배 돌며 쿼터를 더 태운다. 즉, 비용은 모델 단가가 아니라 **작업에 맞는 모델·추론 깊이 배정**이 결정한다.
+Opus 5는 **가장 낮은** effort에서도 Sonnet 5의 **가장 높은** effort보다 점수가 높으면서(58% vs 54%) 과제당 비용은 16분의 1이다($1.66 vs $26.40) — Sonnet의 토큰당 단가가 더 싼데도 그렇다. 원인은 36스텝 대 268스텝이다: 청구서를 쓰는 것은 토큰 요율이 아니라 재시도 루프다. "약한 모델을 세게 굴리면 싸다"는 통념은 성립하지 않는다. 즉, 비용은 모델 단가가 아니라 **작업에 맞는 모델·추론 깊이 배정**이 결정한다.
 
 MoAI-ADK는 이 배정을 그때그때 운에 맡기지 않고 시스템으로 만든다.
 
@@ -76,9 +78,9 @@ MoAI-ADK는 이 배정을 그때그때 운에 맡기지 않고 시스템으로 �
 
 **Tier×Phase 매트릭스**. 작업 단계(phase: plan / run / sync)와 SPEC 크기(Tier S / M / L)에 따라 모델과 추론 깊이(effort)를 선언적으로 배정한다. 깊은 추론이 필요한 계획 단계에는 고추론 모델을, 기계적 반복이 많은 구현 단계에는 가벼운 모델을 배정하여 비용 대비 품질을 극대화한다.
 
-**No-Haiku 3-티어 정책**. Haiku를 라우팅 모델 세트에서 배제하고, 3-티어 구조(Sonnet / Opus / Fable)로 작업을 분산한다. 기계 작업에는 Sonnet low effort를 배정하여 스텝 수를 최소화하고, 추론이 필요한 곳에는 상위 모델을 배정한다.
+**No-Haiku 3-티어 정책**. Haiku를 라우팅 모델 세트에서 배제하고, 작업 성격에 맞춘 3-티어 구조로 작업을 분산한다. Sonnet low effort는 단발·입력 지배 작업(git 기계 작업, 읽기 전용 검색)을 맡아 스텝 수를 최소화하고, 멀티턴 에이전틱 행은 전부 Opus가 담당하되 `max` effort는 호출 빈도가 가장 낮은 두 행에만 남긴다.
 
-**프로파일 매트릭스 (Profile Matrix)**. 에이전트별 단일 프로파일 매트릭스가 각 리테인 에이전트를 `{model, effort}` 쌍에 대응시킨다. 하나의 프로파일 축 — `max` / `medium`(기본값) / `low`, `llm.profile`로 선택(`moai init --profile`, `moai update --profile`) — 이 활성 열을 고르고, `moai model profile`이 각 에이전트의 셀을 해석한다. 10개 그룹 에이전트는 매트릭스에서 모델+effort를 가져오며(어디에도 Haiku 없음), `Explore`와 사용자 정의 에이전트는 세션 모델을 상속한다.
+**프로파일 매트릭스** (Profile Matrix). 에이전트별 단일 프로파일 매트릭스가 11개 리테인 에이전트를 각각 `{model, effort}` 쌍에 대응시킨다 — 33셀이다. 하나의 프로파일 축 — `high` / `medium`(기본값) / `low`, `llm.profile`로 선택(`moai init --profile`, `moai update --profile`) — 이 활성 열을 고르고, `moai model profile`이 각 에이전트의 셀을 해석한다. `Explore`를 포함한 모든 리테인 에이전트가 매트릭스에서 모델+effort를 가져오며(어디에도 Haiku 없음), 세션 모델을 상속하는 것은 사용자 정의 에이전트뿐이다.
 
 **CG 모드 (Claude + GLM)**. `moai cg`는 Claude 리더와 GLM 워커를 결합한 하이브리드 모드다. 전략, 계획, 감사는 Claude가 담당하고, 대량 구현 작업은 GLM이 담당한다. 구현 중심 작업에서 **60-70% 비용 절감** 효과가 있다.
 
@@ -245,7 +247,7 @@ claude        # launch Claude Code inside the project
 | **Specialist** | e2e-tester | 🟠 | 웹/모바일/데스크톱 E2E 테스트 실행 (CLI 우선) |
 | **Built-in** | Explore | ⚪ | 읽기 전용 코드베이스 탐색 |
 
-비용 색상은 기본 `medium` 프로파일의 model×effort 셀 기준이다 (`moai model profile`로 확인): 🔴 opus+high · 🟠 opus+medium · 🔵 sonnet+medium / fable+low · 🩵 sonnet+low · ⚪ 세션 모델 상속. 프로파일(`max`/`low`) 전환 시 배정이 달라진다. 장기 위임의 진행 상태는 Task 채널에 기록되고, 오케스트레이터가 아이콘 Progress Board로 중계한다.
+비용 색상은 기본 `medium` 프로파일의 model×effort 셀 기준이다 (`moai model profile`로 확인): 🔴 opus+high · 🟠 opus+medium · 🔵 opus+low · 🩵 sonnet+low · ⚪ 세션 모델 상속 (사용자 추가 에이전트). 프로파일(`high`/`low`) 전환 시 배정이 달라진다. 장기 위임의 진행 상태는 Task 채널에 기록되고, 오케스트레이터가 아이콘 Progress Board로 중계한다.
 
 ### TRUST 5 품질 게이트
 

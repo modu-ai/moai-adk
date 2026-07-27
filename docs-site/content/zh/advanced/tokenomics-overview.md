@@ -48,7 +48,7 @@ flowchart TD
 
 ### Layer B — 路由 (Routing)
 
-{{< icon package >}} 为每个保留代理声明式地分配模型和推理深度(effort)。活动配置文件(`max`/`medium`/`low`)选择配置矩阵的一列，在需要深度推理的节点分配高推理模型，在机械性工作分配轻量模型，最大化性价比。详细的配置矩阵见 [配置矩阵](/zh/advanced/profile-matrix/)页面。
+{{< icon package >}} 为每个保留代理声明式地分配模型和推理深度(effort)。活动配置文件(`high`/`medium`/`low`)选择配置矩阵的一列，把每个代理放在其工作所需的推理深度阶梯上，并把 Sonnet 保留给单次完成的机械性行，最大化性价比。详细的配置矩阵见 [配置矩阵](/zh/advanced/profile-matrix/)页面。
 
 ### Layer C — 验证节食 (Verify-diet)
 
@@ -60,7 +60,7 @@ flowchart TD
 
 ## 模型层级路由
 
-将 Layer B 路由具体化的是模型配置文件策略。MoAI-ADK v3.0 将 Haiku 从路由模型集合中排除，以三层结构(Sonnet / Opus / Fable)分散工作。此设计的依据和配置矩阵实现在以下两页讨论。
+将 Layer B 路由具体化的是模型配置文件策略。MoAI-ADK v3.0 将 Haiku 从路由模型集合中排除，以贴合任务性质的三层结构分散工作 — Sonnet 承担单次完成的行，Opus 贯穿整条代理式阶梯，`max` effort 只用于两个调用频率最低的行。此设计的依据和配置矩阵实现在以下两页讨论。
 
 - [三层代理架构](/zh/advanced/no-haiku-3tier/) — 为什么排除 Haiku、DeepSWE 排行榜依据
 - [配置矩阵](/zh/advanced/profile-matrix/) — 单一 3 列 per-agent 配置矩阵

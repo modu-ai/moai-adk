@@ -110,6 +110,22 @@ func HasErrors(findings []Finding) bool {
 // ErrUntrustedBinary is returned when an untrusted binary path is specified.
 var ErrUntrustedBinary = errors.New("astgrep: untrusted binary path")
 
+// ErrScannerUnavailable identifies "the sg scanner binary could not be
+// resolved" as a condition distinct from both a clean scan and a scan failure.
+// Scan returns it wrapped, so the message can name the binary it sought and
+// carry install guidance while errors.Is still matches through the wrap.
+//
+// It exists because reporting an absent scanner as an empty successful scan is
+// a false all-clear: a CI pipeline gating on `moai ast-grep` passed green over
+// code that was never scanned.
+var ErrScannerUnavailable = errors.New("astgrep: sg scanner binary unavailable")
+
+// InstallURL is the canonical ast-grep install page. The scanner's unavailable
+// error, the `moai ast-grep` CLI guidance, the commit quality gate's skip
+// reason, and the `moai doctor` check all cite it from here so the four cannot
+// drift apart.
+const InstallURL = "https://ast-grep.github.io/guide/quick-start.html"
+
 // trustedBinaryPrefixes returns the list of allowed absolute path prefixes.
 func trustedBinaryPrefixes() []string {
 	home, _ := os.UserHomeDir()
@@ -222,21 +238,30 @@ func (s *Scanner) isSGAvailable() bool {
 }
 
 // Scan runs all rules against the given path.
-// Returns ([]Finding{}, nil) when the sg CLI is not available (REQ-ASTG-UPG-012).
+// Returns an error wrapping ErrScannerUnavailable when the sg CLI cannot be
+// resolved — that condition is NOT reported as an empty successful scan,
+// because callers cannot tell the two apart.
 // Returns ([]Finding{}, nil) when the rules directory is empty or does not exist (REQ-ASTG-UPG-012).
 // Returns an error when SGBinary is an untrusted path (F2 security check).
 func (s *Scanner) Scan(ctx context.Context, path string) ([]Finding, error) {
 	// Binary path security validation (F2): untrusted paths return an error immediately.
+	// This runs before the availability probe, so a rejected path yields a
+	// distinct, non-sentinel error.
 	if err := ValidateBinary(s.cfg.SGBinary); err != nil {
 		return []Finding{}, fmt.Errorf("sg binary validation failed (SGBinary=%q): %w", s.cfg.SGBinary, err)
 	}
 
-	// Warn and skip when the sg CLI is not available (REQ-ASTG-UPG-012).
+	// The sg CLI is not resolvable, so no rule ran. Report it as the sentinel
+	// rather than as a clean result: callers gate on this.
 	if !s.isSGAvailable() {
+		binary := s.cfg.SGBinary
+		if binary == "" {
+			binary = "sg"
+		}
 		slog.Warn("ast-grep (sg) CLI not found; skipping scan",
-			"binary", s.cfg.SGBinary,
-			"hint", "install from https://ast-grep.github.io/guide/quick-start.html")
-		return []Finding{}, nil
+			"binary", binary,
+			"hint", "install from "+InstallURL)
+		return []Finding{}, fmt.Errorf("%q not found in PATH; install from %s: %w", binary, InstallURL, ErrScannerUnavailable)
 	}
 
 	// Return empty results when the rules directory does not exist
