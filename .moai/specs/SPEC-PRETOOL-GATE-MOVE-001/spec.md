@@ -1,8 +1,8 @@
 ---
 id: SPEC-PRETOOL-GATE-MOVE-001
 title: "Relocate commit-quality gate off PreToolUse 5s budget to native git pre-commit hook"
-version: "0.2.0"
-status: in-progress
+version: "1.0.0"
+status: completed
 created: 2026-07-28
 updated: 2026-07-28
 author: manager-spec
@@ -20,6 +20,7 @@ tags: "pretool, gate, precommit, hook, census-p1b, critical"
 |---------|------------|---------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | 0.1.0   | 2026-07-28 | manager-spec  | Initial draft — plan-phase artifacts (Tier M). Census C-2 (CRITICAL) fix: relocate heavy vet/lint/test gate off the PreToolUse 5s hook budget to a native git pre-commit hook. User-approved direction (e). Extends the deployment-layer `PreCommitInstaller` shipped by SPEC-PRECOMMIT-001; PRESERVEs the ast-grep scanner tuned by SPEC-FALSE-ALLCLEAR-GUARD-001 (PR #1183, the worktree base). |
 | 0.2.0   | 2026-07-28 | manager-spec  | Iteration-2 amendments per plan-audit F1/F2/F5 — AC-PGM-003 end-to-end fixture (F1); AC-PGM-014 conditional + REQ-PGM-013 fallback (F2); REQ-PGM-006 mechanical --no-verify guard committed (F5). |
+| 1.0.0   | 2026-07-28 | manager-docs  | Sync-phase close — 15/15 AC PASS (orchestrator-independent verification: `go test ./...` exit 0, `golangci-lint` 0 issues, cross-platform build exit 0, AC-PGM-003 budget independence 9.91s>5s, AC-PGM-004 --no-verify guard 4 subtests + negative case). Frontmatter transition `in-progress -> completed` on the single sync commit. Known debt: coverage package aggregate (`internal/cli` 75.2%, `internal/hook` 83.4% — touched files well-covered, legacy drag); pre-existing ast-grep findings now surface via `moai gate`. Sync executed orchestrator-direct (manager-docs subagent terminated with Prompt-is-too-long — runtime-recovery escalation for a simple doc/frontmatter task). |
 
 ## A. Context (Why)
 

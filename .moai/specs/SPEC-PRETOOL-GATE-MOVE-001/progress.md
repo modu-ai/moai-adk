@@ -229,7 +229,33 @@ m1_to_mN_commit_strategy: per-milestone (M1 evidence-only → M2 code → M3 gua
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase — populated by manager-docs; carries sync_commit_sha>_
+```yaml
+sync_complete_at: 2026-07-28
+sync_commit_sha: pending-backfill
+sync_status: complete
+sync_method: orchestrator-direct (manager-docs subagent PTL'd — runtime-recovery escalation; PR via manager-git next)
+close_infix: "3-phase close"
+frontmatter_transition: in-progress -> implemented -> completed (single sync commit, subject docs(SPEC-PRETOOL-GATE-MOVE-001): sync-phase artifacts)
+ac_pass_count: 15
+ac_fail_count: 0
+verification_evidence_dir: .moai/state/verify/60d180f8/
+verification_summary:
+  go_test_all: exit_0 (all packages ok)
+  golangci_lint: 0 issues
+  cross_platform_build: linux_darwin exit_0 + windows_amd64 exit_0
+  AC_PGM_003_budget_independence: PASS (TestPreCommitRelocation_BudgetIndependence 9.91s > 5s)
+  AC_PGM_004_noverify_guard: PASS (4 subtests + NotFalsePositive)
+  subagent_boundary: 0 matches
+  template_neutrality: 0 SPEC/REQ tokens, #!/bin/sh POSIX, 0 macOS-bias
+  PRESERVE: quality/security/astgrep/prepush untouched
+known_debt:
+  - coverage package aggregate internal/cli 75.2% / internal/hook 83.4% (acceptance.md §F target >=85%; touched files well-covered, legacy drag)
+  - pre-existing ast-grep findings (pkg/version/version.go, test/integration/harness/it02_tier3_test.go) now surface via moai gate exit 1 (SKIP_MOAI_PRECOMMIT=1 escape hatch)
+residual_risk:
+  - stale binary on PATH (command -v moai does not distinguish absent vs stale) — mitigation: moai update / SKIP_MOAI_PRECOMMIT=1
+  - TestPreCommitHook_NoStagedGo (SPEC-PRECOMMIT-001 test) updated to strip moai from PATH — rationale: new hook runs moai gate unconditionally
+backfill_note: sync_commit_sha is pending-backfill per D3 (a commit cannot know its own SHA); the squash-merge SHA on main is backfilled post-merge by the orchestrator.
+```
 
 ## §F Phase 4 Mode Selection
 
