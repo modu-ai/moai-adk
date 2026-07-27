@@ -1,10 +1,10 @@
 ---
 id: SPEC-HARNESS-LOOP-REPAIR-001
 title: "Harness self-learning loop repair — proposal layout contract + decision-signal observation + lesson-channel unification"
-version: "0.2.0"
+version: "0.2.1"
 status: in-progress
 created: 2026-07-27
-updated: 2026-07-27
+updated: 2026-07-28
 author: manager-spec
 priority: P1
 phase: "v3.0.x"
@@ -24,6 +24,7 @@ depends_on: [SPEC-HARNESS-LOOP-CLOSURE-001, SPEC-HARNESS-APPLY-EXECUTE-001, SPEC
 |---------|------|--------|--------|
 | 0.1.0 | 2026-07-27 | manager-spec | Initial draft — full-surface audit of the goal skill, the recursive self-learning subsystem, and the harness CLI. Root cause isolated to a producer/consumer directory-layout contract mismatch that survived four completed predecessor SPECs. |
 | 0.2.0 | 2026-07-27 | manager-spec | Post-M1 amendment. §A.3 corrected: the layout mismatch was only the FIRST of TWO independent causes — the fields the consumer requires were never collected anywhere upstream (§A.3.2). §A.4 rewritten around the species distinction (discovery report vs edit instruction) that explains the four-SPEC recurrence. AC-HLR-004 rewritten (success signal is promotion into a SPEC, not an `apply_outcome` record) and REQ-HLR-004 amended to match; AC-HLR-005 rewritten (`applied/` does not materialise from this path). M2 redefined; duplicate-draft defect (REQ-HLR-011) and tier-split disposition scoped. §E converted to an index — `acceptance.md` is now the AC SSOT. |
+| 0.2.1 | 2026-07-28 | manager-spec | Implementation Kickoff gate (2026-07-28) resolutions. §G q4 resolved: Applier frontmatter-enrichment path left dormant (option a) — deferring the producer decision is deliberate, removal would reverse four predecessor SPECs' deliverables, and a producer would need to automate the §A.4 authoring judgment. §G q5 resolved: applicability guard placed in-`Apply` pre-flight (defense-in-depth per §A.7 — protects every future caller including ones bypassing the loader). plan.md §A.6 records both resolutions with rationale; §F.1 step 1 is now a no-op confirmation. No REQ-HLR-* requirement or AC-HLR-* criterion text was modified — the requirements already accommodated every option on each question. |
 
 ---
 
@@ -355,9 +356,7 @@ Retired in v0.2.0: the former AC-HLR-004 (`grep -c apply_outcome … ≥ 1`) and
 1. ~~**Layout direction**~~ — **RESOLVED (M1).** Consumers were normalised to the nested producer layout. The nested form held all 52 live drafts and carries `spec.md` alongside `proposal.json`; changing the producer to flat would have orphaned them. Recorded in `progress.md` § Decision taken this session.
 2. **Promotion narrowing rule** — which observation subjects remain promotable once bare tool names are excluded. §A.5 measures the candidate pool (13 unique `tool_failure` patterns vs 28 `agent_invocation`), but does not settle the rule. Belongs to M4.
 3. **Lesson store direction** — migrate `lessons.md` content into the topic-file convention, or restore `lessons.md` as an index over it. Belongs to M5.
-4. **Does the `Applier` frontmatter-enrichment path ever get a producer?** — The path is fully built (5-layer pipeline, snapshot/rollback, regression gate, lineage, outcome telemetry) and has never had a caller supplying a populated `harness.Proposal` (§A.3.2). Three dispositions are open, and this SPEC picks none of them:
-   - **(a) Leave dormant** — preserve the code unfed; accept that `apply_outcome` telemetry stays at zero. Cheapest; leaves a large unexercised subsystem in the tree.
-   - **(b) Give it a producer** — a distinct upstream that decides target file + field + value. This is the authoring judgment §A.4 identifies as unautomated; a producer would need to make it.
-   - **(c) Retire it** — remove the path and its telemetry. Reverses four predecessor SPECs' deliverables and should not be done inside this SPEC.
-   The choice determines whether `moai harness execute` survives as a verb (see AC-HLR-014). Deferring is deliberate: this SPEC's mandate is to stop the mis-wiring, not to decide the Applier's future.
-5. **Where does the applicability guard live?** — REQ-HLR-004c requires rejection before `createSnapshot`. Two placements are viable: at load time (reject a proposal that decodes but carries no edit), or as a pre-flight inside `Apply` ahead of Step 2. The load-time placement keeps `Apply` unchanged; the `Apply` placement protects every future caller including ones that bypass the loader. Belongs to M2 design.
+4. **Does the `Applier` frontmatter-enrichment path ever get a producer?** — **RESOLVED (Implementation Kickoff gate, 2026-07-28): option (a) leave dormant.** The path is preserved unfed; `apply_outcome` telemetry stays at zero by design. The `execute` verb rejects `proposalgen` drafts with an honest diagnostic per AC-HLR-014. Deferring the producer decision is deliberate and remains correct: this SPEC's mandate is to stop the mis-wiring (§A.4), not to decide the Applier's future. Removal (option c) would reverse four predecessor SPECs' deliverables and is out of scope; giving it a producer (option b) requires automating the authoring judgment §A.4 identifies as unautomated. Feeds M2 implementation (AC-HLR-014).
+   - Historical detail preserved for traceability: the path is fully built (5-layer pipeline, snapshot/rollback, regression gate, lineage, outcome telemetry) and has never had a caller supplying a populated `harness.Proposal` (§A.3.2). Three dispositions were on the table — (a) leave dormant (cheapest; leaves a large unexercised subsystem in the tree), (b) give it a producer, (c) retire it (reverses four predecessor SPECs). (a) was selected for the reasons above.
+5. **Where does the applicability guard live?** — **RESOLVED (Implementation Kickoff gate, 2026-07-28): in-`Apply` pre-flight.** The guard lives at the top of `applier.go`'s `Apply`, before Step 2 / `createSnapshot`. §A.7 explicitly names "every future caller including ones bypassing the loader" as the protection target — in-`Apply` is defense-in-depth and the strongest guard. Both placements (load-time and in-`Apply`) satisfy REQ-HLR-004c (reject before any snapshot directory is created); in-`Apply` is chosen for the broader protection. Feeds M2 implementation (REQ-HLR-004c, AC-HLR-015). The sequencing hazard is unchanged: this guard MUST land before any change that makes the producer payload parseable (§A.7).
+   - Historical detail preserved for traceability: two placements were viable — load-time (keeps `Apply` unchanged) and in-`Apply` pre-flight (protects every future caller). In-`Apply` was selected for the broader protection.

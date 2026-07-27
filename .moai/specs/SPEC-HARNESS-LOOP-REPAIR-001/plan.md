@@ -44,19 +44,15 @@ Route `proposalgen` drafts to their **designed** consumer — manager-spec SPEC 
 
 `spec.md`, `plan.md`, `acceptance.md`, `progress.md` exist. `design.md` and `research.md` — nominally expected at Tier L — **do not exist**. This is recorded as known debt rather than silently ignored. The M2 design decisions that would normally live in `design.md` are carried in §A.6 and §F.1 of this file; if M2's design space grows beyond what those sections hold, author `design.md` before implementing rather than expanding this file further.
 
-### A.6 Open decisions — MUST be settled before M2 implementation
+### A.6 Decisions — resolved at the Implementation Kickoff gate (2026-07-28)
 
-These are the highest-change-likelihood items in the SPEC. Both are surfaced to the user at the Implementation Kickoff Approval gate.
+These were the highest-change-likelihood items in the SPEC. Both were surfaced to the user at the Implementation Kickoff Approval gate on 2026-07-28 and resolved there. The resolutions below feed M2 implementation; they do not alter any REQ-HLR-* requirement or AC-HLR-* criterion — the requirements already accommodated every option on each question (AC-HLR-004 names outcomes, not mechanism; REQ-HLR-004c requires only "before createSnapshot").
 
-**[NEEDS CLARIFICATION: promotion path surface]** — How is a draft promoted into a SPEC? Three shapes, materially different in cost and blast radius:
-- **(a) New CLI verb** (`moai harness promote --id <ID>`) — mechanical, testable, discoverable; adds a verb to a CLI whose help text is already incomplete (AC-HLR-012).
-- **(b) Orchestrator-side workflow** — the `moai-harness-learner` skill reads the draft and hands it to `manager-spec`; no Go change; harder to give a falsifiable AC.
-- **(c) Both** — CLI verb materialises the SPEC skeleton, orchestrator authors the body.
-AC-HLR-004 is written to be satisfiable by any of the three (it names outcomes, not mechanism), so this decision does not invalidate the AC.
+**RESOLVED (Implementation Kickoff gate, 2026-07-28): promotion path surface → option (a), a new CLI verb `moai harness promote --id <ID>`.** Rationale: mechanical, testable, discoverable; AC-HLR-004 and AC-HLR-005 become falsifiable via CLI exit code + SPEC-directory existence — the strongest falsifiability available, and the property §A.4 identifies as missing in the predecessor recurrence. Options (b) orchestrator-side and (c) both were considered and rejected: (b) makes the AC behavior-based and weakly falsifiable (the exact failure mode §A.4 diagnoses); (c) adds a second surface to maintain without any REQ benefit. AC-HLR-004 continues to be satisfiable (it names outcomes, not mechanism), so this decision does not invalidate the AC.
 
-**[NEEDS CLARIFICATION: applicability guard placement]** — REQ-HLR-004c requires rejection before `createSnapshot`. Load-time placement keeps `Apply` unchanged; in-`Apply` pre-flight protects every future caller including ones bypassing the loader. See `spec.md` §G question 5.
+**RESOLVED (Implementation Kickoff gate, 2026-07-28): applicability guard placement → in-`Apply` pre-flight.** The guard lives at the top of `applier.go`'s `Apply`, before Step 2 / `createSnapshot`. Rationale: `spec.md` §A.7 explicitly names "every future caller including ones bypassing the loader" as the protection target — in-`Apply` is defense-in-depth and the strongest guard. Both placements (load-time and in-`Apply`) satisfy REQ-HLR-004c (reject before any snapshot directory is created); in-`Apply` is chosen for the broader protection. The sequencing hazard in §F.1 is unchanged: this guard MUST land before any change that makes the producer payload parseable (§A.7).
 
-A third question — the fate of `moai harness execute` once de-wired (`spec.md` §G question 4) — is **deliberately not** a blocker: AC-HLR-014 requires only an honest diagnostic, which is satisfiable whether the verb survives or is later removed.
+A third question — the fate of `moai harness execute` once de-wired (`spec.md` §G question 4) — was **deliberately not** a blocker for M2 entry: AC-HLR-014 requires only an honest diagnostic, which is satisfiable whether the verb survives or is later removed. That question is also now resolved (`spec.md` §G q4 — leave dormant); the "not a blocker" characterization remains accurate because AC-HLR-014 needs only a diagnostic.
 
 ---
 
@@ -166,7 +162,7 @@ Ordered by decision reversibility. §F.1 carries the architectural decision and 
 
 Implements REQ-HLR-004, 004b, 004c, 012. Satisfies AC-HLR-004, 005, 014, 015, 016.
 
-1. Resolve §A.6 open decisions at the Kickoff gate.
+1. §A.6 decisions were resolved at the Kickoff gate (2026-07-28) — confirm the recorded resolutions before continuing. This is now a no-op confirmation step, not a fresh decision.
 2. Build the promotion path: draft `<ID>` → SPEC directory carrying `<ID>` as provenance → draft leaves the pending queue.
 3. Add the promotion audit record (draft → SPEC → timestamp).
 4. Add the applicability guard **before** `createSnapshot`.
