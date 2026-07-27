@@ -71,7 +71,19 @@ _Populated by manager-spec at plan-phase completion; updated v0.1.1 (iter-2)._
 
 ## §E.2 Run-phase Evidence
 
-_<pending run-phase>_
+- **Run-phase entry 2026-07-28** (orchestrator). Pre-Spawn Sync Check executed:
+  `git fetch origin main` + `git rev-list --count --left-right origin/main...HEAD`
+  returned `3 1` (diverged — main advanced 3 commits via #1184/#1185/#1186,
+  branch 1 ahead). File-overlap check vs planned work files = **0 overlap**.
+  Active-session query `moai session list --filter-spec=...` = `[]`.
+  Resolution: `git merge origin/main` (merge commit `c6139581f`, clean — no
+  rebase, preserves plan commit SHA `0e9e3ee26` per
+  `feedback_rebase_orphans_recorded_shas`). Post-merge divergence = `0 2`
+  (clean; main fully absorbed). Working-tree dirty file `llm.yaml` is
+  runtime-managed (`team_mode: glm`, §22.3) — excluded from pathspec commits.
+  Implementation Kickoff Approval: granted (prior session, semi-autonomous
+  progression — checkpoint after M1-M2).
+- _<M1-M2 evidence to be populated by manager-develop>_
 
 ## §E.3 Run-phase Audit-Ready Signal
 
@@ -80,3 +92,46 @@ _<pending run-phase>_
 ## §E.4 Sync-phase Audit-Ready Signal
 
 _<pending sync-phase>_
+
+## §F Phase 4 Mode Selection
+
+Recorded by orchestrator before the first run-phase `Agent()` spawn
+(`orchestration-mode-selection.md` §D logging contract).
+
+### Input parameters
+
+| Parameter | Value |
+|-----------|-------|
+| tier | M |
+| scope (file count) | ~8-10 (branch_guard.go + test, pre_tool.go ext, pre_tool_test.go ext, integration test, rule + template mirror, rule_template_mirror_test.go, .worktreeinclude x2, init/update/web.go) |
+| domain count | 4 (hook Go code, rule/template mirror, CLI advisory, worktree config) |
+| file language mix | Go source + markdown rules + YAML — mixed |
+| concurrency benefit | LOW (coding-heavy implementation: regex logic, exec.Command dispatch, hook wiring) |
+
+### Mode evaluation
+
+| Mode | Selected? | Rationale |
+|------|-----------|-----------|
+| 1 trivial | no | multi-file Go implementation, not a typo |
+| 2 background | no | write-capable, must commit |
+| 3 agent-team | no (RETIRED) | tombstone |
+| 4 parallel | no | multi-domain yes, but coding-heavy → Anthropic coding-task parallelism caveat |
+| 5 sub-agent | **YES** | sequential coding work; M1→M2 tightly coupled (M2 wires M1 functions) |
+| 6 workflow | no | <30 files, semantic/new-code not uniform-mechanical |
+
+### Decision
+
+`Decision: sub-agent` (Mode 5, sequential)
+
+### Justification
+
+This is coding-heavy implementation (regex matching, `exec.Command` dispatch
+indirection, PreToolUse handler wiring) where sequential sub-agent delegation
+is the safe default per Anthropic's coding-task parallelism caveat. M1
+(discriminant + exemption + branch-state regex in `branch_guard.go`) and M2
+(wiring `checkBranchState` into `pre_tool.go` Handle) are tightly coupled —
+M2 calls M1's functions — so a single `manager-develop` spawn covers both to
+avoid context handoff. Progression mode: semi-autonomous (checkpoint with the
+user after M1-M2, per the kickoff-approved resume). M3-M6 (rule/template
+mirror, CLI advisory, `.worktreeinclude` reconciliation, tests + sync) are
+deferred to after the M1-M2 checkpoint.

@@ -2,7 +2,7 @@
 id: SPEC-WORKTREE-BRANCH-GUARD-001
 title: Main-Checkout Branch-State Guard via PreToolUse Conditional Deny
 version: 0.1.1
-status: draft
+status: in-progress
 created: 2026-07-28
 updated: 2026-07-28
 author: manager-spec
