@@ -36,6 +36,7 @@
 package template
 
 import (
+	"fmt"
 	"io/fs"
 	"os"
 	"path/filepath"
@@ -572,15 +573,25 @@ var dc1FrontmatterUpdatedRe = regexp.MustCompile(`^[ \t]+updated:[ \t]*"?20`)
 // explicit dateAllowlist entry instead.
 var dc1FenceToggleRe = regexp.MustCompile("^[ \t]*```")
 
-// dc4AttributionFiles enumerates template files whose date literals are
-// third-party import-provenance attribution records. In such a file the dates
-// ARE the content — a new attribution entry is ordinary authoring — so the
-// gate is scoped to the whole file by path rather than to a line shape.
-// Keep this list minimal: each entry exempts an entire file from the date
-// class, so a file qualifies only when dated attribution is its purpose.
+// DC-4 — third-party import-provenance attribution records. In an attribution
+// file the import dates ARE the content, and adding an entry is ordinary
+// authoring, so the gate must survive a future attribution line.
+//
+// The gate is deliberately (file AND line shape), not file alone. A whole-file
+// exemption would carve out EVERY date in the file, including one that is
+// genuinely an internal-development stamp merely sitting in the same document
+// — and it would make AC-TDN-015 probe A (a future attribution line must not
+// be flagged) and AC-TDN-010's injection probe (an arbitrary dated line in the
+// same file MUST be flagged) mutually unsatisfiable. Requiring the attribution
+// line shape satisfies both.
 var dc4AttributionFiles = []string{
 	".claude/rules/moai/NOTICE.md",
 }
+
+// dc4AttributionLineRe matches the two attribution-record line shapes used in
+// the attribution files: the inline `(imported <date>)` parenthetical and the
+// `**Import Date (<source>)**: <date>` summary row.
+var dc4AttributionLineRe = regexp.MustCompile(`\(imported 20[0-9]{2}-|^\*\*Import Date\b`)
 
 // isStructurallyCarvedDate reports whether a date match on this line is
 // covered by the DC-1 / DC-4 structural gate.
@@ -590,10 +601,12 @@ var dc4AttributionFiles = []string{
 // the caller, which tracks it while walking the file).
 // inFence: whether the line sits inside a fenced code block.
 func isStructurallyCarvedDate(relPath, line string, inFence bool) bool {
-	// DC-4 — whole-file attribution record.
-	for _, f := range dc4AttributionFiles {
-		if relPath == f {
-			return true
+	// DC-4 — an attribution-record line inside an attribution file.
+	if dc4AttributionLineRe.MatchString(line) {
+		for _, f := range dc4AttributionFiles {
+			if relPath == f {
+				return true
+			}
 		}
 	}
 	// DC-1 — real (unfenced) frontmatter `updated:` field.
@@ -808,6 +821,44 @@ func isDateAllowlisted(relPath, matched string) bool {
 		}
 	}
 	return false
+}
+
+// --- Failure reporting --------------------------------------------------
+
+// leakReportConsoleCap bounds how many violations are printed to the test log.
+// A 135-row failure is unreadable in a CI log, so the console output stays
+// capped — but the cap never hides findings: the remainder is written in full
+// to the file named in the truncation message (REQ-TDN-016).
+const leakReportConsoleCap = 50
+
+// leakReportFilePattern is the os.CreateTemp pattern for the full-listing
+// file. The file is created under os.TempDir() (so it is cross-platform and
+// stays out of the working tree) and is deliberately NOT registered for
+// cleanup: the truncation message names its path, so it has to outlive the
+// test run for anyone to read it. It is written only when a run actually
+// truncates, so a green run leaves nothing behind.
+const leakReportFilePattern = "moai-template-leak-*.log"
+
+// writeLeakFullListing writes every violation to a file under os.TempDir()
+// and returns its path. Errors are returned rather than fatal: a listing that
+// cannot be written must not mask the violations themselves.
+func writeLeakFullListing(violations []string, mode string) (string, error) {
+	f, err := os.CreateTemp("", leakReportFilePattern)
+	if err != nil {
+		return "", err
+	}
+	defer func() { _ = f.Close() }()
+
+	var b strings.Builder
+	fmt.Fprintf(&b, "template internal-content leak — %d occurrences, mode=%s\n\n",
+		len(violations), mode)
+	for i, v := range violations {
+		fmt.Fprintf(&b, "[%d] %s\n", i+1, v)
+	}
+	if _, err := f.WriteString(b.String()); err != nil {
+		return "", err
+	}
+	return f.Name(), nil
 }
 
 // templatesRoot is the canonical template root under audit. Relative to the
@@ -1044,18 +1095,30 @@ func TestTemplateNoInternalContentLeak(t *testing.T) {
 		}
 		t.Errorf("template internal-content leak detected (%d occurrences, mode=%s):",
 			len(violations), mode)
-		// Cap output at the first 50 violations to keep test logs readable.
-		// Real audit logs are surfaced via the `grep -rln` command in
-		// CLAUDE.local.md §25.3 self-check guidance, not via test stdout.
-		limit := 50
-		if len(violations) < limit {
-			limit = len(violations)
-		}
-		for i := 0; i < limit; i++ {
+		// Cap console output to keep test logs readable, but never let the cap
+		// hide findings: whatever is truncated is written in full to a file and
+		// that path is named in the truncation message (REQ-TDN-016). The
+		// former behaviour reported only a residual count and pointed at an
+		// indirect `grep -rln` recipe, which is what kept the true finding
+		// count invisible.
+		shown := min(len(violations), leakReportConsoleCap)
+		for i := range shown {
 			t.Errorf("  [%d] %s", i+1, violations[i])
 		}
-		if len(violations) > limit {
-			t.Errorf("  ... %d more (capped)", len(violations)-limit)
+		if len(violations) > shown {
+			t.Errorf("  ... %d more (capped)", len(violations)-shown)
+		}
+		// The path accompanies EVERY failure, not only a truncated one. That is
+		// a superset of REQ-TDN-016 ("shall not truncate without one") and it
+		// is what makes the requirement testable: AC-TDN-010's injection recipe
+		// exercises the reporting path with a single synthetic finding, which
+		// by construction does not reach the cap.
+		if path, err := writeLeakFullListing(violations, mode); err == nil {
+			t.Errorf("  full listing: %s", path)
+		} else {
+			// Never mask the write failure and never panic: the findings above
+			// are still the actionable output.
+			t.Errorf("  full listing unavailable: %v", err)
 		}
 		t.Errorf("Remediation: apply substitution dictionary at " +
 			".moai/specs/SPEC-V3R6-TEMPLATE-INTERNAL-ISOLATION-001/design.md §B " +
