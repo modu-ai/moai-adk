@@ -53,7 +53,9 @@ Generalizing `DC-3` to a shape rule (`Next Review:` / `Expires:` / `Deadline:`) 
 
 ## §C The allowlist-masking hazard
 
-The carve-out allowlist is keyed on `(file, date)` and matched by path suffix plus literal date. It therefore suppresses **every** occurrence of that date in that file.
+The carve-out allowlist is keyed on `(file, date)` and matched by an **exact** templates-root-relative path plus the literal date — the guard compares `entry.File == relPath`, not a suffix. It therefore suppresses **every** occurrence of that date in that file.
+
+The exactness matters in two directions. An entry written as a path *suffix* never matches, so the row it was meant to preserve stays a finding and the strict tier reports it. An entry that does match preserves the whole `(file, date)` pair, not the single row the author had in mind — which is the masking hazard below.
 
 For the predecessor's set this was benign, because its dual-shape findings paired a PRESERVE frontmatter row with a REMOVE prose row and the frontmatter row was covered by the *structural gate* rather than the allowlist — the gate matches per-line, so it could not mask the prose row.
 

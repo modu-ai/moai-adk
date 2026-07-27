@@ -175,13 +175,39 @@ Two of the four pair a REMOVE category (`DC-2a`) with an adjudicated category (`
 
 ## §F Sibling year-bearing patterns
 
-The guard file contains three year-bearing constructs. Only one is in scope.
+The guard file contains **four** year-bearing sites — three regex constructs plus one prose doc comment. An earlier revision of this section counted only three and omitted the comment; the omission mattered, because AC-018's `202[6-9]` target of `3 → 1` cannot be met without editing it.
 
-| Construct | Current pattern | Tier | Measured relevance to 2025 | Disposition |
-|---|---|---|---|---|
-| `S1-internal-date` class | `\b202[6-9]-[0-1][0-9]-[0-3][0-9]\b` | strict | the entire 48-finding set | **widen** |
-| Attribution line matcher | `\(imported 20[0-9]{2}-\|^\*\*Import Date\b` | strict (structural gate) | already spans all `20XX` | leave unchanged |
-| Archive-path class | `Finding A[1-6]\|archive-202[6-9]-…` | narrow | zero occurrences at either year range | leave unchanged |
+| # | Site | Current text | Tier | Measured relevance to 2025 | Disposition |
+|---|---|---|---|---|---|
+| 1 | `S1-internal-date` class pattern | `\b202[6-9]-[0-1][0-9]-[0-3][0-9]\b` | strict | the entire 48-finding set | **widen** (REQ-TDN2-016) |
+| 2 | `TestLeakClassNoDateShaInDefaultTier` doc comment | prose: `…generic-date regex (202[6-9]-MM-DD)…` | n/a (comment) | describes site 1's shape; goes stale when site 1 widens | **update** (REQ-TDN2-024) |
+| 3 | Attribution line matcher | `\(imported 20[0-9]{2}-\|^\*\*Import Date\b` | strict (structural gate) | already spans all `20XX` | leave unchanged |
+| 4 | Archive-path class | `Finding A[1-6]\|archive-202[6-9]-…` | narrow | zero occurrences at either year range | leave unchanged |
+
+### Site 2 — cross-SPEC ownership
+
+Site 2 is not merely a comment in a shared file: it is the doc comment of `TestLeakClassNoDateShaInDefaultTier`, a **different test function enforcing a different SPEC's acceptance criterion**. Its own text names the owner:
+
+```go
+// TestLeakClassNoDateShaInDefaultTier enforces AC-SBN-018(a): the SKILL-BODY
+// additions to the DEFAULT-tier leakClasses MUST NOT include a generic-date
+// regex (202[6-9]-MM-DD) or a short-sha regex ([0-9a-f]{7,8}). Those classes
+// are owned exclusively by SPEC-V3R6-TEMPLATE-INTERNAL-ISOLATION-001's strict
+// tier (S1/S2); duplicating them here would create dual-allow-list drift
+```
+
+Two facts make the edit safe, and both were measured rather than assumed:
+
+- **No behavioural coupling.** The test scans `leakClasses` (the *default* tier) with `dateProbe := "2026-06-04"`; this SPEC widens a *strict*-tier class. Widening `S1` cannot change what the default tier matches, and `2026-06-04` matches `202[5-9]` exactly as it matched `202[6-9]`.
+- **Green at baseline**, so a post-change re-run is a meaningful comparison:
+
+```bash
+go test ./internal/template/... -run 'TestLeakClassNoDateShaInDefaultTier' -v
+# --- PASS: TestLeakClassNoDateShaInDefaultTier (0.00s)
+# ok  	github.com/modu-ai/moai-adk/internal/template	0.558s
+```
+
+The edit is therefore confined to the prose parenthetical naming the year range. AC-032 re-runs this test so the cross-SPEC risk is discharged by evidence rather than by argument.
 
 ```bash
 grep -rE 'archive-2025-[0-1][0-9]-[0-3][0-9]'   internal/template/templates | wc -l   # → 0
@@ -281,15 +307,106 @@ All commands run from the worktree root.
 | 6 | unquoted `-run <Name>` invocations in the workflow | 1 |
 | 7 | quoted `-run '<Name>'` invocations in the workflow | 2 |
 | 8 | `grep -cE '2025-[0-9]{2}-[0-9]{2}' internal/template/catalog.yaml` | 0 |
+| 9 | placeholder-token scan over stamp values (AC-011, corrected form) | **9** |
+| 10 | edit-scope pathspec diff against the merge-base (AC-029) | 0 |
+| 11 | line-number `awk` predicates in `acceptance.md` (AC-031) | 1 |
+| 12 | `go test … -run 'TestLeakClassNoDateShaInDefaultTier' -v` (AC-032) | `--- PASS`, exit 0 |
+| 13 | `grep -c '202[6-9]' internal/template/internal_content_leak_test.go` | 3 |
 
 Baseline 8 confirms the generated catalog artifact carries no `2025` date, so it is neither a remediation target nor a source of false positives — recorded because the predecessor's acceptance record names generated-path exclusion as a recurring criterion defect.
+
+### Correction to baseline 9 (AC-011)
+
+An earlier revision published AC-011 with a baseline of `0`. That figure was measured with a two-stage pipe whose second stage anchored `^[[:space:]]*updated:` against the `path:lineno:` prefix that `grep -rn` emits, so that alternative could never fire. Falsified in a scratch fixture carrying three injected placeholder shapes:
+
+```
+Last Updated: YYYY-MM-DD
+updated: YYYY-MM-DD
+Version: 5.0.0 | Last Updated: YYYY-MM-DD | Enterprise Ready:
+```
+
+| Command form | Detected of 3 |
+|---|---:|
+| original two-stage pipe | 2 (the `updated:` line never fires) |
+| single-stage, `^`-anchored | 2 (misses the mid-line composite) |
+| **single-stage, unanchored (adopted)** | **3** |
+
+The adopted form is unanchored precisely because the `COMPOSITE` sub-shape carries its stamp mid-line — the shape most at risk of a placeholder substitution under REQ-TDN2-009, and the one an anchored pattern cannot see.
+
+Re-measured over the real tree, the corrected command returns **9**, not `0`. All nine are pre-existing schema documentation teaching the ISO date format, and all must be preserved:
+
+```
+.claude/rules/moai/development/spec-frontmatter-schema.md:23,24,178,179   created:/updated: YYYY-MM-DD
+.claude/skills/moai/workflows/plan/spec-assembly.md:87,88                  created:/updated: YYYY-MM-DD
+.claude/skills/moai-workflow-spec/references/reference.md:40,91,170        Created: YYYY-MM-DD
+```
+
+AC-011's target is therefore `9` (invariant), not `0`. This is strictly stronger than the original: a target equal to a non-zero baseline cannot be satisfied by a broken path — an unresolvable `$TPL` returns `0 ≠ 9` and fails — whereas the original target of `0` was its own false-pass value.
 
 ---
 
 ## §J Open questions carried into plan phase
 
 1. **`HIST` disposition** (14 rows). A version-history record pairs a released version with its release date. It is arguably a factual record rather than an authoring stamp, but it is also internal project history shipping to users. Recorded as `PER-ROW` with no default; `plan.md` M2 resolves it.
-2. **`CREATED` disposition** (3 rows). `Created:` is shaped like an authoring stamp but names a different event than `Last Updated:`. Recorded as `PER-ROW`.
-3. **`COMPOSITE` disposition** (2 rows). The stamp is embedded mid-line in a composite footer, so removal is a line edit rather than a line deletion, which interacts with REQ-TDN2-009's no-placeholder rule. Recorded as `PER-ROW`.
 
-None of the three blocks plan-phase completion; each is an M2 adjudication item with its measurement already attached.
+   **The predecessor's own precedent is the most constraining input, and it must be on the table before M2 decides.** SPEC-TEMPLATE-DATE-NEUTRALITY-001 `spec.md` §5 records, under "Known cosmetic residue":
+
+   > In `internal/template/templates/.claude/skills/moai-foundation-cc/SKILL.md` the version-history list now reads unevenly — the in-scope `v5.0.0` / `v4.0.0` entries lost their dates while `v3.0.0 (2025-12-06)` / `v2.0.0 (2025-11-26)` retain theirs. This is a consequence of the class boundary, not a defect in the remediation.
+
+   Confirmed live in the tree — these are `HIST` rows 1-2 of the 14:
+
+   ```bash
+   grep -n '202[5-9]-' internal/template/templates/.claude/skills/moai-foundation-cc/SKILL.md
+   # 244:- v3.0.0 (2025-12-06): Added progressive disclosure, sub-agent details, integration patterns
+   # 245:- v2.0.0 (2025-11-26): Initial comprehensive release
+   ```
+
+   So the predecessor **already removed the 2026 halves of this same list**. The two surviving entries are not a neutral starting position — they are the residue the predecessor flagged and deferred. Preserving them perpetuates a known cosmetic defect in a file the predecessor already edited; removing them resolves it. This does not decide the other 12 `HIST` rows (which sit in version-history *tables* in three `references/reference.md` files and carry no such precedent), and M2 may legitimately split the disposition between the two shapes.
+
+2. **`CREATED` disposition** (3 rows). `Created:` is shaped like an authoring stamp but names a different event than `Last Updated:`. Recorded as `PER-ROW`. All three sit in one file under one date (`moai-workflow-spec/references/examples.md`, `2025-12-07`), alongside the `DC-2a` prose stamp at line 955 under that same literal — so this is one of the two dual-category findings and either disposition is covered: PRESERVE routes through AC-016's file-scoped check, REMOVE leaves no allowlist entry and the post-widening guard catches any survivor.
+
+3. **`COMPOSITE`** (2 rows) — **re-posed as an editing instruction, not a decision.** The earlier phrasing ("does removing a mid-line stamp constitute a placeholder substitution?") was mis-posed: REQ-TDN2-009 already answers it — removal is never itself a substitution. The real gap was that the two rows were never located, so the *shape of the edit* could not be reviewed. Both are now named, and both carry byte-identical text:
+
+   ```
+   .claude/skills/moai-workflow-testing/modules/advanced-patterns.md:576
+   .claude/skills/moai-workflow-testing/modules/optimization.md:505
+   → Version: 5.0.0 | Last Updated: 2025-11-22 | Enterprise Ready:
+   ```
+
+   Verified by `od -c`, the line ends `Enterprise Ready:` + newline — a trailing label with no value, and it is the final line of each file. The date-bearing *construct* under REQ-TDN2-009 is the ` Last Updated: 2025-11-22 |` segment, not the whole line: the line also carries `Version: 5.0.0` and `Enterprise Ready:`, neither of which is date-bearing, so deleting the line would remove content outside the SPEC's scope.
+
+   **What M2 owes is therefore the residual-line text**, and the candidate is:
+
+   ```
+   Version: 5.0.0 | Enterprise Ready:
+   ```
+
+   i.e. excise the stamp plus exactly one `|` delimiter, leaving no doubled separator and no dangling pipe. M2 confirms or replaces this residual; whichever it chooses, AC-011 verifies no placeholder token was introduced in its place.
+
+None of the three blocks plan-phase completion; each is an M2 adjudication item with its measurement attached.
+
+---
+
+## §K Sub-shape partition derivation (all 33 `DC-5` rows)
+
+The `EX-FM 10 / EX-DATA 3 / HIST 14 / CREATED 3 / DEADLINE 1 / COMPOSITE 2` partition is enumerated here per row, so `spec.md` REQ-TDN2-003's table and AC-004 have a stated basis rather than an asserted count. Generated by joining each classifier row's `(file, line_no)` back to its line text:
+
+```bash
+awk -F'\t' '$5=="DC-5"{print $1"\t"$4}' <rows-2025> | sort |
+  while IFS=$'\t' read -r f l; do printf '%s:%s => %s\n' "$f" "$l" "$(sed -n "${l}p" "internal/template/templates/$f")"; done
+```
+
+| Code | Rows | File : line numbers |
+|---|---:|---|
+| `EX-FM` | 10 | `moai-foundation-cc/reference/examples.md:27`; `…/skill-examples.md:31,162,304,517,853,1161,1597`; `…/skill-formatting-guide.md:27,173` |
+| `EX-DATA` | 3 | `moai-workflow-project/references/examples.md:250,500`; `moai-workflow-project/schemas/tab_schema.json:3` |
+| `HIST` | 14 | `moai-foundation-cc/SKILL.md:244,245` (bullet form); `moai-foundation-core/references/reference.md:469,470,471,472,473`; `moai-workflow-project/references/reference.md:267,268,269`; `moai-workflow-testing/references/reference.md:431,432,433,434` (table form) |
+| `CREATED` | 3 | `moai-workflow-spec/references/examples.md:69,386,673` |
+| `DEADLINE` | 1 | `moai-foundation-cc/reference/skill-formatting-guide.md:716` |
+| `COMPOSITE` | 2 | `moai-workflow-testing/modules/advanced-patterns.md:576`; `moai-workflow-testing/modules/optimization.md:505` |
+
+`10 + 3 + 14 + 3 + 1 + 2 = 33`, matching the `DC-5` row total in §C.
+
+**`HIST` splits into two shapes** that M2 may dispose of differently (see §J item 1): a **bullet** form (2 rows, `- v3.0.0 (2025-12-06): …`) carrying the predecessor's flagged residue, and a **table** form (12 rows, `| 2.3.0 | 2025-12-03 | … |`) spread across three `references/reference.md` files with no such precedent.
+
+The line numbers in this table are a plan-phase locator for review, not a criterion anchor — no acceptance criterion depends on them (AC-031 enforces that mechanically).

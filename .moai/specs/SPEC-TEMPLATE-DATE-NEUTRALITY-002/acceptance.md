@@ -26,6 +26,10 @@ Each criterion therefore carries a **control**: either a paired positive measure
 
 Per REQ-TDN2-020, no criterion depends on quoting style, line numbers, or whitespace. **Property** criteria are written quoting-agnostically and hold both before and after the normalization; **normalization** criteria assert the formatting change explicitly and are labelled as such. The two shapes are never merged — that merge is exactly what produced the predecessor's `AC-TDN-019` defect, where a criterion returned its expected value only because three sibling invocations were quoted inconsistently.
 
+**This claim is enforced, not merely asserted.** An earlier revision made the blanket statement while AC-012 carried an `awk` predicate comparing the triage record's `line_no` column against a literal line number — the claim was false as written. AC-012 is now anchored on the `fenced` marker REQ-TDN2-012 requires in the triage `rationale` column, and **AC-031** greps this file for line-number `awk` predicates so the claim cannot silently drift again.
+
+AC-031's coverage is **partial and stated as such**: it detects the `line_no`-comparison shape that actually occurred, not every conceivable formatting coupling. A quoting dependency would still pass it. See §G for the residual.
+
 ---
 
 ## §B Given-When-Then scenarios
@@ -81,12 +85,24 @@ All commands run from the worktree root. `GUARD` denotes `internal/template/inte
 
 | AC | REQ | Command | Baseline | Target |
 |---|---|---|---|---|
-| AC-TDN2-001 | 022 | `test -f $SPECDIR/classify.sh && grep -c "202\[5-9\]" $SPECDIR/classify.sh` | file absent | `1` |
-| AC-TDN2-002 | 006 | `awk -F'\t' 'NR>1{n++; if (NF!=7) bad++} END{print n, bad+0}' $SPECDIR/triage.tsv` | file absent | `74 0` |
-| AC-TDN2-003 | 005 | `awk -F'\t' 'NR>1{print $1"\t"$2}' $SPECDIR/triage.tsv \| sort -u \| wc -l` | file absent | `48` |
+| AC-TDN2-001 | 008 | `test -f $SPECDIR/classify.sh && grep -c "^DATE_RE='202\[5-9\]" $SPECDIR/classify.sh` | file absent | `1` |
+| AC-TDN2-002 | 006, 002 | `awk -F'\t' 'NR>1{n++; if (NF!=7) bad++} END{print n, bad+0}' $SPECDIR/triage.tsv` | file absent | `74 0` |
+| AC-TDN2-003 | 005, 001 | finding count + category distribution — script below | file absent | `48` and `DC-2a 28 / DC-2b 13 / DC-5 33` |
 | AC-TDN2-004 | 003 | `awk -F'\t' 'NR>1 && $5=="DC-5" && $7 !~ /EX-FM\|EX-DATA\|HIST\|CREATED\|DEADLINE\|COMPOSITE/' $SPECDIR/triage.tsv \| wc -l` | file absent | `0` |
 | AC-TDN2-005 | 007 | `awk -F'\t' 'NR>1 && $6!="REMOVE" && $6!="PRESERVE"' $SPECDIR/triage.tsv \| wc -l` | file absent | `0` |
 | AC-TDN2-006 | 004 | `awk -F'\t' 'NR>1{print $1"\t"$2"\t"$5}' $SPECDIR/triage.tsv \| sort -u \| awk -F'\t' '{n[$1"\t"$2]++} END{for(k in n) if(n[k]>1) c++; print c+0}'` | file absent | `4` |
+
+**AC-003 script**:
+
+```bash
+awk -F'\t' 'NR>1{print $1"\t"$2}' "$SPECDIR/triage.tsv" | sort -u | wc -l   # expect 48
+awk -F'\t' 'NR>1{c[$5]++} END{for (k in c) printf "%s %d\n", k, c[k]}' \
+  "$SPECDIR/triage.tsv" | sort                                              # expect DC-2a 28, DC-2b 13, DC-5 33
+```
+
+The distribution half is what covers REQ-TDN2-001: it asserts the six-category table's measured row counts, including that `DC-1`, `DC-3`, and `DC-4` are **absent** — the three emptinesses REQ-TDN2-001 states are load-bearing. A stray row in any of those three categories means the classifier or the triage diverged from the measured baseline.
+
+**AC-002 covers REQ-TDN2-002** (the occurrence-class row unit) by the row count itself: `74` is the occurrence-class total, not the `48` finding total. A triage record built on findings rather than rows would fail this criterion on the count alone.
 
 **Control for AC-002/003/005**: AC-002's row count is non-zero, so a missing or empty `triage.tsv` fails it rather than passing the zero-valued criteria vacuously. AC-004/005/006 are only meaningful once AC-002 passes; evaluate them in that order.
 
@@ -98,15 +114,19 @@ All commands run from the worktree root. `GUARD` denotes `internal/template/inte
 | AC-TDN2-008 | 010 | `grep -rnE '^[[:space:]]*(#[[:space:]]*)?(\*\*)?(Last )?Updated(\*\*)?:[[:space:]]*"?2025-' $TPL \| grep -c 'moai-foundation-cc/reference/'` | `13` | `13` |
 | AC-TDN2-009 | 011 | `grep -rhE '^updated:[[:space:]]*"?2025-' $TPL \| wc -l` | `10` | `10` |
 | AC-TDN2-010 | 011 | `grep -rhE '"schema_updated"\|backup_created\|restore_from_backup' $TPL \| grep -c '2025-'` | `3` | `3` |
-| AC-TDN2-011 | 009 | `grep -rnE '(TBD\|XXXX-XX-XX\|<date>\|YYYY-MM-DD)' $TPL \| grep -icE 'last updated\|^[[:space:]]*updated:'` | `0` | `0` |
-| AC-TDN2-012 | 012 | `awk -F'\t' 'NR>1 && $1 ~ /moai-workflow-project\/references\/examples.md/ && $4==192 {print $6}' $SPECDIR/triage.tsv` | file absent | non-empty (`REMOVE` or `PRESERVE`) |
+| AC-TDN2-011 | 009 | `grep -rhE '(Last \|Next )?(Updated\|updated\|Created\|created):[[:space:]]*"?(TBD\|XXXX-XX-XX\|<date>\|YYYY-MM-DD)' $TPL \| wc -l` | `9` | `9` |
+| AC-TDN2-012 | 012 | `awk -F'\t' 'NR>1 && $5=="DC-2a" && $7 ~ /fenced/ {n++; if ($6=="REMOVE" \|\| $6=="PRESERVE") ok++} END{print n+0, ok+0}' $SPECDIR/triage.tsv` | file absent | `1 1` |
 | AC-TDN2-013 | C-5 | `grep -rEn '\b202[6-9]-[0-1][0-9]-[0-3][0-9]\b' $TPL \| wc -l` | `89` | `89` |
 
 **AC-008 is the non-vacuity control for AC-007** — both run the identical grep over the identical path and differ only in the filter direction. If the path or pattern breaks, AC-008 drops to `0` and fails, so AC-007 cannot pass vacuously. AC-008 is additionally an over-deletion guard: it fails if the remediation sweeps the mirror-capture set.
 
 **AC-009, AC-010, AC-013 are invariants.** They can fail: each measures content a mechanical sweep would plausibly delete (example frontmatter, example data values, the predecessor's carved `2026` set). AC-013's `89` exceeds the guard-visible `88` by one line in an unscanned `.mustache` file; using the raw grep makes the invariant strictly stronger than a guard-scoped one.
 
-**AC-011** guards REQ-TDN2-009's no-placeholder rule: a removed date must not be replaced by a placeholder token.
+**AC-011 guards REQ-TDN2-009's no-placeholder rule** — a removed date must not be replaced by a placeholder token — and is an invariant at `9`.
+
+Its **non-vacuity control is AC-008**, which runs over the same `$TPL` and expects a non-zero `13`: a broken or unresolvable template path fails AC-008 loudly rather than letting AC-011 pass on an empty stream. AC-011 is additionally self-controlling, because its own target is non-zero — the nine matches are pre-existing schema documentation teaching the ISO date format (`created: YYYY-MM-DD` and siblings in `spec-frontmatter-schema.md`, `spec-assembly.md`, and `moai-workflow-spec/references/reference.md`), all of which must survive. A count below `9` means legitimate documentation was deleted; above `9` means a placeholder was introduced. Both directions fail.
+
+The command is deliberately **single-stage and unanchored**. An earlier revision used a two-stage pipe whose second stage anchored `^[[:space:]]*updated:` against the `path:lineno:` prefix `grep -rn` emits, so that alternative was structurally unreachable. The unanchored form is also what catches a placeholder substituted into the `COMPOSITE` sub-shape, whose stamp sits mid-line — the shape most at risk under REQ-TDN2-009 and the one an anchored pattern cannot see. Falsification evidence and the corrected baseline derivation are in `research.md` §I.
 
 ### Carve-out (M4)
 
@@ -114,11 +134,30 @@ All commands run from the worktree root. `GUARD` denotes `internal/template/inte
 |---|---|---|---|---|
 | AC-TDN2-014 | 013 | `A=$(grep -cE 'Date:[[:space:]]*"2025-' $GUARD); B=$(awk -F'\t' 'NR>1 && $6=="PRESERVE"{print $1"\t"$2}' $SPECDIR/triage.tsv \| sort -u \| wc -l); echo "$A $B"` | `0` / file absent | two equal non-zero values |
 | AC-TDN2-015 | 014 | `grep -cE 'Line(Start\|End\|No):' $GUARD` | `28` | `28` |
-| AC-TDN2-016 | 015 | `for f in .claude/skills/moai-workflow-spec/references/examples.md .claude/skills/moai-workflow-project/references/examples.md; do grep -cE '^[[:space:]]*(#[[:space:]]*)?(\*\*)?(Last )?Updated(\*\*)?:[[:space:]]*"?2025-' "$TPL/$f"; done` | `1` and `2` | `0` and `0` |
+| AC-TDN2-016 | 015 | per-file `actual` vs `expect` comparison over the two dual-category files — script below | `actual` `1` and `2`; `expect` unresolvable (`triage.tsv` absent) | `actual == expect` for **both** files |
 
 **AC-015 is an invariant scoped by count, not by block.** The 28 existing `LineStart`/`LineEnd` fields all belong to the separate SPEC-ID pedagogical allowlist, which this SPEC does not touch. The date allowlist carries no line-number field. A new line-anchored date entry anywhere in the file raises the count and fails the criterion.
 
-**AC-016 is the allowlist-masking control** (GWT-2). It is the only evidence that the two dual-category REMOVE rows were actually deleted, because the guard cannot distinguish that state once the sibling PRESERVE entries are in place. `grep -c` on a single existing file returns `0` for a clean file and non-zero otherwise; a missing file makes `grep` fail loudly rather than return `0`.
+**AC-016 script** (run from the worktree root):
+
+```bash
+STAMP='^[[:space:]]*(#[[:space:]]*)?(\*\*)?(Last )?Updated(\*\*)?:[[:space:]]*"?2025-'
+for f in .claude/skills/moai-workflow-spec/references/examples.md \
+         .claude/skills/moai-workflow-project/references/examples.md; do
+  actual=$(grep -cE "$STAMP" "$TPL/$f")
+  expect=$(awk -F'\t' -v F="$f" 'NR>1 && $1==F && $3=="LS-PROSE-STAMP" && $6=="PRESERVE"' \
+             "$SPECDIR/triage.tsv" | wc -l | tr -d ' ')
+  printf '%s actual=%s expect=%s\n' "$f" "$actual" "$expect"
+done
+```
+
+**AC-016 is the allowlist-masking control** (GWT-2). It is the only evidence that the dual-category REMOVE rows were actually deleted, because the guard cannot distinguish that state once the sibling PRESERVE entries are in place. `grep -c` on a single existing file returns `0` for a clean file and non-zero otherwise; a missing file makes `grep` fail loudly rather than return `0`.
+
+**Why the target is computed rather than fixed at `0`.** An earlier revision hard-coded `0` for both files. That target was **unsatisfiable under an outcome this SPEC explicitly permits**: `moai-workflow-project/references/examples.md` carries two prose stamps, and one of them is the fenced `DC-2a` row that REQ-TDN2-012 requires be adjudicated and that AC-012 accepts as `REMOVE` **or** `PRESERVE`. Adjudicating it `PRESERVE` — arguably correct, since it is a fenced sample structurally like the documentation-example values REQ-TDN2-011 protects — would leave one stamp standing forever, and the criterion could never pass. Two criteria in the same SPEC contradicted each other.
+
+The repair keeps AC-012's adjudication intact (the alternative — pinning the fenced row to `REMOVE` at plan time — would delete the very adjudication REQ-TDN2-012 exists to require) and instead derives AC-016's expectation from what M2 actually decided. The criterion still closes the hole it exists to close: it counts prose stamps by direct grep, never consulting the guard, so a REMOVE row left in place makes `actual` exceed `expect` and fails regardless of any allowlist entry.
+
+**Non-vacuity.** `expect` is read from `triage.tsv`, so an absent or malformed triage record yields an empty/zero `expect` against a non-zero `actual` and fails rather than passing. A broken `$TPL` makes `grep -c` fail loudly on a missing file. Note the two counts are independent measurements of different artifacts — the tree and the triage record — so the criterion cannot be satisfied by corrupting just one.
 
 ### Guard widening (M5)
 
@@ -156,8 +195,60 @@ All commands run from the worktree root. `GUARD` denotes `internal/template/inte
 | AC-TDN2-026 | 021 | `go test ./internal/template/... -run TestTemplateNoInternalContentLeak -v` (narrow tier, env unset) | `--- PASS`, exit `0` | `--- PASS`, exit `0` |
 | AC-TDN2-027 | 021 | `go test ./internal/template/... -run TestTemplateNeutralityAudit -v` | `--- PASS`, exit `0` | `--- PASS`, exit `0` |
 | AC-TDN2-028 | 021 | `go build ./...` | exit `0` | exit `0` |
+| AC-TDN2-032 | 024, 021 | `go test ./internal/template/... -run 'TestLeakClassNoDateShaInDefaultTier' -v` | `--- PASS`, exit `0` | `--- PASS`, exit `0` |
 
----
+**AC-032 discharges the cross-SPEC risk in REQ-TDN2-024.** The doc comment this SPEC edits belongs to a test enforcing a *different* SPEC's acceptance criterion (`AC-SBN-018(a)`). The test scans the default-tier class set while this SPEC widens a strict-tier class, so no behavioural coupling is expected — but "expected" is not evidence, and this criterion supplies it. It is an invariant that can fail: the test's `dateProbe` is `2026-06-04`, which a careless edit to the wrong class would make match.
+
+### Scope and process (M3-M6)
+
+| AC | REQ | Command | Baseline | Target |
+|---|---|---|---|---|
+| AC-TDN2-029 | 023, C-1/C-2/C-3 | edit-scope pathspec diff — script below | `0` | `0` |
+| AC-TDN2-030 | 017 | remediate-before-widen commit ordering — script below | not yet evaluable (neither commit exists) | `ORDERED` |
+| AC-TDN2-031 | 020 | two-part: assertion + paired positive control — script below | assertion `1` at `f5d3a93bf`, `0` after the iteration-2 repair; control `32` | assertion `0` **and** control `32` |
+
+**AC-029 script** — restores the predecessor's `AC-TDN-022` edit-scope criterion, which this SPEC had dropped entirely despite `plan.md` §B10 naming shared-checkout contamination as a live risk:
+
+```bash
+git diff --name-only "$(git merge-base origin/main HEAD)"..HEAD -- . \
+  ':(exclude).moai/specs/SPEC-TEMPLATE-DATE-NEUTRALITY-002/**' \
+  ':(exclude).moai/reports/plan-audit/**' \
+  ':(exclude)internal/template/templates/**' \
+  ':(exclude)internal/template/internal_content_leak_test.go' \
+  ':(exclude).github/workflows/template-neutrality-check.yaml' \
+  ':(exclude)internal/template/catalog.yaml' | wc -l
+```
+
+The merge-base anchor is rebase-stable; a hardcoded SHA silently reports unrelated files the moment the branch is rebased. Two excludes are inherited with their reasons: `internal/template/catalog.yaml` is regenerated by the build step REQ-TDN2-022 mandates (the predecessor amended its criterion mid-run for exactly this conflict, and pre-excluding it here avoids repeating that), and the SPEC's own directory is the plan-phase work product. `.moai/reports/plan-audit/**` is added because audit reports are workflow artifacts produced by the auditor, not remediation edits by the implementer; it is currently untracked, so the exclude is defensive rather than load-bearing.
+
+**AC-030 script** — the only mechanical check of REQ-TDN2-017's ordering:
+
+```bash
+WIDEN=$(git log --reverse --format=%H -G'202\[5-9\]' -- internal/template/internal_content_leak_test.go | head -1)
+REMED=$(git log --reverse --format=%H -G'Last Updated: 2025-' -- internal/template/templates | head -1)
+if [ -z "$WIDEN" ] || [ -z "$REMED" ]; then echo "NOT-EVALUABLE"
+elif git merge-base --is-ancestor "$REMED" "$WIDEN"; then echo "ORDERED"
+else echo "VIOLATION"; fi
+```
+
+**Non-vacuity**: the explicit `NOT-EVALUABLE` branch is what stops an empty-variable state from printing `ORDERED` — without it, two unset variables would make `merge-base --is-ancestor` misbehave or the test vacuously succeed. `NOT-EVALUABLE` is a FAIL for this criterion, not a pass.
+
+**Evaluate before squash-merge.** This repository squash-merges pull requests, which collapses branch history — after the merge, the ordering is unobservable. AC-030 is therefore a branch-state criterion and must be recorded during run phase while the individual milestone commits still exist. This is a real limitation of the criterion, not of the requirement (see §G).
+
+**AC-031 script** — the assertion and its paired positive control run over the same file:
+
+```bash
+# assertion: no criterion compares the triage line_no column to a literal
+grep -cE '\$4[[:space:]]*==[[:space:]]*[0-9]+' "$SPECDIR/acceptance.md"   # expect 0
+# positive control: the same path must still yield the full criterion set
+grep -oE 'AC-TDN2-[0-9]{3}' "$SPECDIR/acceptance.md" | sort -u | wc -l    # expect 32
+```
+
+**Non-vacuity.** The assertion's target is `0`, which is also what an unresolvable path returns — so the assertion alone would be a silent false pass, the same defect class as the predecessor's `AC-TDN-009`. The paired control fixes that: a broken `$SPECDIR` makes the control return `0 ≠ 32` and the criterion fails. Both halves must hold.
+
+**Baseline note.** The assertion measured `1` at `f5d3a93bf` (AC-012's line-number predicate) and `0` after the iteration-2 repair that removed it. The criterion is therefore already satisfied and functions from here as a **regression guard** for the remainder of run phase, not as a delta to be achieved.
+
+**Known false-positive mode.** The grep scans the whole file, so explanatory prose that quotes the offending shape literally will trip it — as this section's own earlier draft did. That is a deliberate conservative choice: a false positive costs one rewording, a false negative silently readmits the defect.
 
 ## §E Quality gate criteria
 
@@ -171,7 +262,7 @@ All commands run from the worktree root. `GUARD` denotes `internal/template/inte
 
 ## §F Definition of Done
 
-1. All 28 acceptance criteria PASS, each reported with its command and observed output.
+1. All 32 acceptance criteria PASS, each reported with its command and observed output.
 2. `triage.tsv` and `classify.sh` committed in the SPEC directory; every one of the 74 rows carries an adjudicated disposition.
 3. The 28 `DC-2a` REMOVE rows are deleted across 22 files, plus any `DC-5` row M2 adjudicated REMOVE.
 4. Every preserved `(file, date)` finding carries a content-anchored allowlist entry with no line-number anchor.
@@ -181,3 +272,33 @@ All commands run from the worktree root. `GUARD` denotes `internal/template/inte
 8. The embedded-template build step has run after the last template edit.
 9. The three M2 adjudication questions (`HIST`, `CREATED`, `COMPOSITE`) are resolved with the reason recorded in each row's `rationale` column.
 10. No file outside the declared scope surface is modified; the predecessor's artifacts are byte-unchanged.
+
+---
+
+## §G Known AC limitations
+
+§A adopts the predecessor's recorded criterion defects as binding authoring constraints. This section adopts its **disclosure practice** as well: what the criteria above do *not* establish. An undisclosed gap is indistinguishable from an overlooked one.
+
+### 1. REQ-TDN2-022's build step is not verifiable at all
+
+**REQ-TDN2-022 is the only requirement in this SPEC with no acceptance criterion, and this section is why.** No criterion asserts that the embedded-template build step ran, and none can. Templates are embedded via `//go:embed all:templates` at **compile** time, so `go build ./...` (AC-028) re-embeds implicitly on every invocation — a build after a template edit and a build after a skipped build step produce the same green result. The property is unobservable by construction, not merely unmeasured.
+
+The predecessor disclosed the weaker form of this ("AC-TDN-022 does not verify `make build` itself") but did not name the `//go:embed` mechanism that makes it unverifiable. Recorded here so no future reader mistakes AC-028 for coverage of REQ-TDN2-022. The build step's exit code belongs in `progress.md` §E.2 as run-phase evidence.
+
+### 2. AC-030's ordering check does not survive a squash-merge
+
+REQ-TDN2-017's remediate-before-widen ordering is observable only while the branch's individual milestone commits exist. This repository squash-merges pull requests, so the check must be run and its output recorded during run phase; post-merge it returns `NOT-EVALUABLE`. The requirement is sound and the criterion is real, but its evaluation window is bounded — a fact that would otherwise surface as a confusing post-merge failure.
+
+### 3. Orphaned header blocks after a `DC-2a` removal are not mechanized
+
+Deleting a `Last Updated:` stamp can leave behind a now-empty footer block — a trailing `---` separator, a blank heading, or a dangling delimiter with nothing under it. With 28 deletions across 22 files the residue risk is live. No criterion detects it; the count-based criteria (AC-007, AC-008) see only the stamp lines themselves.
+
+The predecessor recorded the identical gap as `research.md` G5 and left it as "a review-quality property this set does not mechanize". The same holds here. The `COMPOSITE` sub-shape is the sharpest instance — its edit is a mid-line excision whose residual (`Version: 5.0.0 | Enterprise Ready:`) is specified in `research.md` §J item 3 but verified only by review.
+
+### 4. AC-031's formatting-coupling check is partial
+
+AC-031 detects the line-number `awk` predicate shape that actually occurred (`$4 == <digits>`). It does not detect a quoting dependency, a whitespace dependency, or a line-number reference expressed some other way. REQ-TDN2-020 is therefore **partially** mechanized and otherwise rests on authoring discipline plus review.
+
+### 5. `triage.tsv`-derived criteria inherit the triage record's correctness
+
+AC-004, AC-005, AC-006, AC-012, AC-014, and AC-016 read expectations from `triage.tsv`. They verify internal consistency between the record and the tree; they cannot detect a row that was classified wrongly but consistently. The classifier's fidelity to the guard's finding set (REQ-TDN2-005, AC-003) bounds this, but sub-shape assignment and `DC-5` disposition remain human judgments that no criterion second-guesses.

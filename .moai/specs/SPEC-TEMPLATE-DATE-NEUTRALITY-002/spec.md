@@ -1,7 +1,7 @@
 ---
 id: SPEC-TEMPLATE-DATE-NEUTRALITY-002
 title: "Template 2025 date-leak triage, remediation, and S1 year-class widening"
-version: "0.1.0"
+version: "0.2.0"
 status: draft
 created: 2026-07-27
 updated: 2026-07-27
@@ -21,6 +21,7 @@ tier: L
 | Version | Date | Change | Author |
 |---------|------|--------|--------|
 | 0.1.0 | 2026-07-27 | Initial plan-phase authoring. Scope is the deferred follow-up recorded in SPEC-TEMPLATE-DATE-NEUTRALITY-001 §5 "Out of Scope — `2025-*` prose authoring stamps". All counts re-measured at `760f09f73` with a year-widened replica of the predecessor's committed classifier. | manager-spec |
+| 0.2.0 | 2026-07-27 | Iteration 2 after plan-audit FAIL (0.67). All measurements survived audit (17/17 baselines reproduced). Acceptance-layer repairs: AC-016 retargeted as a function of the M2 adjudication (was unsatisfiable under a permitted PRESERVE outcome); AC-011's dead pattern alternative replaced and its baseline corrected `0` → `9` after measurement showed 9 pre-existing ISO-format documentation lines; AC-012 re-anchored on content; four requirements gained criteria; a Known-AC-limitations section and an edit-scope criterion were added. REQ-024 brings the guard's fourth year-bearing site — a cross-SPEC test doc comment — explicitly into scope. Three `Where` requirements converted to `When`. | manager-spec |
 
 ---
 
@@ -102,7 +103,7 @@ Row counts sum to 74 — the total occurrence-class row count. Finding counts su
 
 **REQ-TDN2-002** — The classifier shall operate on occurrence-class rows rather than findings, so that a dual-category finding receives one disposition per row rather than a single disposition it cannot express.
 
-**REQ-TDN2-003** — Where a row is classified `DC-5`, the triage shall record one of six named sub-shape codes in the row's `rationale` column, so that the per-row adjudication is consistent across rows sharing a construct:
+**REQ-TDN2-003** — When the classifier assigns a row to `DC-5`, the triage shall record one of six named sub-shape codes in the row's `rationale` column, so that the per-row adjudication is consistent across rows sharing a construct:
 
 | Code | Sub-shape | Rows | Default disposition |
 |---|---|---:|---|
@@ -135,7 +136,7 @@ The default disposition is a starting position, not a substitute for adjudicatio
 
 **REQ-TDN2-011** — The remediation shall not delete a date that is a documentation-example value. Where such a date is removed, the surrounding construct stops demonstrating the format it exists to teach.
 
-**REQ-TDN2-012** — Where a `DC-2a` row sits inside a fenced block, the remediation shall adjudicate that row explicitly rather than sweeping it with the unfenced `DC-2a` set. One such row is measured; the `DC-2a` decision rule does not inspect fence state, so a mechanical sweep would edit a fenced sample without review.
+**REQ-TDN2-012** — When a `DC-2a` row sits inside a fenced block, the remediation shall adjudicate that row explicitly rather than sweeping it with the unfenced `DC-2a` set, and the triage shall record the literal marker `fenced` in that row's `rationale` column. One such row is measured; the `DC-2a` decision rule does not inspect fence state, so a mechanical sweep would edit a fenced sample without review. The `rationale` marker exists so the row is identifiable by its own content rather than by a line number.
 
 ### Carve-out mechanism
 
@@ -143,7 +144,7 @@ The default disposition is a starting position, not a substitute for adjudicatio
 
 **REQ-TDN2-014** — The carve-out shall be content-anchored: no allowlist entry shall identify a preserved row by line number.
 
-**REQ-TDN2-015** — Where a preserved row and a removed row share a `(file, date)` pair, the verification shall confirm the removed row's deletion by a file-scoped check rather than by the guard's finding count alone. An allowlist entry keyed on that pair masks both rows, so a guard-clean result does not by itself establish that the removal occurred.
+**REQ-TDN2-015** — When a preserved row and a removed row share a `(file, date)` pair, the verification shall confirm the removed row's deletion by a file-scoped check rather than by the guard's finding count alone. An allowlist entry keyed on that pair masks both rows, so a guard-clean result does not by itself establish that the removal occurred.
 
 ### Guard widening
 
@@ -151,7 +152,11 @@ The default disposition is a starting position, not a substitute for adjudicatio
 
 **REQ-TDN2-017** — The widening shall be applied only after every REMOVE row has been remediated and every PRESERVE row has an allowlist entry. Applying it earlier turns the strict tier red on the full finding set.
 
-**REQ-TDN2-018** — The widening shall be confined to the `S1-internal-date` class pattern. Two sibling year-bearing patterns in the same file shall be left unchanged, each for a stated reason: the attribution line matcher already spans the full `20XX` range and needs no edit, and the narrow-tier archive-path class matches a distinct `archive-`-prefixed construct that has zero occurrences in the template tree at either year range.
+**REQ-TDN2-018** — The guard file holds **four** year-bearing sites, and each shall receive its stated treatment: the `S1-internal-date` class pattern is widened (REQ-TDN2-016); the descriptive doc comment naming that class's range is updated to match (REQ-TDN2-024); and the two sibling *patterns* are left unchanged, each for a stated reason — the attribution line matcher already spans the full `20XX` range and needs no edit, and the narrow-tier archive-path class matches a distinct `archive-`-prefixed construct that has zero occurrences in the template tree at either year range. No fifth site exists.
+
+**REQ-TDN2-024** — When the `S1-internal-date` year range changes, the descriptive doc comment that names that range in prose shall be updated to match, and the test function owning that comment shall remain green.
+
+That comment belongs to a **different test function enforcing a different SPEC's acceptance criterion**, so the edit is deliberately minimal: only the prose parenthetical naming the year range changes. No probe value, assertion, or class membership in that test is altered, and the widening is to the *strict*-tier class while that test scans the *default*-tier class set — so the two do not interact behaviourally. The comment is nonetheless in scope because leaving it would make the file describe a class shape it no longer has.
 
 ### CI enforcement
 
@@ -159,7 +164,7 @@ The default disposition is a starting position, not a substitute for adjudicatio
 
 **REQ-TDN2-020** — No acceptance criterion in this SPEC shall depend on incidental formatting — quoting style, line numbers, or whitespace. A criterion that a formatting-only change can flip is measuring the formatting, not the property.
 
-**REQ-TDN2-021** — The narrow tier, the neutrality-audit target, the strict tier, and `go build ./...` shall all be green on completion. This is the SPEC's single non-regression requirement.
+**REQ-TDN2-021** — The narrow tier, the neutrality-audit target, the strict tier, the cross-SPEC test named in REQ-TDN2-024, and `go build ./...` shall all be green on completion. This is the SPEC's single non-regression requirement.
 
 ### Template-First discipline
 

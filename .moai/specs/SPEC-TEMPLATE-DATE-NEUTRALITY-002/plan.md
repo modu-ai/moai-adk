@@ -109,7 +109,8 @@ Commit the year-widened classifier to the SPEC directory and generate the full o
 
 - Copy the predecessor's `classify.sh`, change only the `DATE_RE` year range to `202[5-9]`, and commit it as this SPEC's `classify.sh`.
 - Generate `triage.tsv` with the seven inherited columns, one row per occurrence-class row (74 rows expected).
-- Assign each `DC-5` row its sub-shape code in the `rationale` column (REQ-TDN2-003).
+- Assign each `DC-5` row its sub-shape code in the `rationale` column (REQ-TDN2-003). The plan-phase partition is `EX-FM` 10 / `EX-DATA` 3 / `HIST` 14 / `CREATED` 3 / `DEADLINE` 1 / `COMPOSITE` 2 = 33; the per-row derivation is enumerated in `research.md` §K.
+- Record the literal marker `fenced` in the `rationale` column of the one fenced `DC-2a` row (REQ-TDN2-012), so AC-012 can anchor on content rather than on a line number.
 - Verify the classifier's `(file, date)` output set has 48 members.
 
 No tree edits. Exit condition: `triage.tsv` exists with 74 data rows and every `DC-5` row carries a sub-shape code.
@@ -120,7 +121,7 @@ The highest-change-likelihood step: these dispositions are the ones a reviewer i
 
 Resolve the three open questions recorded in `research.md` §J:
 
-- `HIST` (14 rows) — version-history records. Decide whether a released-version date is a factual record worth keeping or internal project history that should not ship.
+- `HIST` (14 rows) — version-history records. Decide whether a released-version date is a factual record worth keeping or internal project history that should not ship. **The predecessor already set a precedent here and it must be on the table before deciding**: its `spec.md` §5 "Known cosmetic residue" note records that it removed the *2026* halves of this same version-history list in `moai-foundation-cc/SKILL.md`, leaving `v3.0.0 (2025-12-06)` / `v2.0.0 (2025-11-26)` (the two `HIST` rows at lines 244-245) stranded with dates while their newer siblings have none. Preserving them perpetuates a residue the predecessor explicitly flagged; removing them resolves it. See `research.md` §J item 1.
 - `CREATED` (3 rows) — `Created:` stamps. Decide whether they follow `DC-2a` (REMOVE) or are distinguishable from an authoring stamp.
 - `COMPOSITE` (2 rows) — mid-line stamps in a composite footer. Removal is a line edit rather than a deletion; confirm the edit does not become a placeholder substitution under REQ-TDN2-009.
 
@@ -144,7 +145,7 @@ Exit condition: the REMOVE-scoped prose-stamp grep returns 0; the PRESERVE-scope
 
 Add one content-anchored allowlist entry per preserved `(file, date)` finding. Every preserved row needs one — no structural gate covers this set (`design.md` §E).
 
-- Anchor by path suffix and literal date; never by line number (REQ-TDN2-014).
+- Anchor by the **exact** templates-root-relative path plus the literal date; never by line number (REQ-TDN2-014). The guard compares `entry.File == relPath` — an entry written as a path *suffix* silently fails to match and the row stays a finding.
 - Entries added at this point are inert, because the year class has not widened yet and no `2025` literal is a match. This is expected; M5 is what makes them live.
 
 Exit condition: entry count equals the preserved-finding count from `triage.tsv`; the strict tier is still green (the entries changed nothing yet).
@@ -154,7 +155,8 @@ Exit condition: entry count equals the preserved-finding count from `triage.tsv`
 The single-line flip that converts the cleanup into an enforced invariant.
 
 - Change the `S1-internal-date` class year range from `202[6-9]` to `202[5-9]` (REQ-TDN2-016).
-- Update the descriptive comment that names the class's range in prose, so it does not drift from the implemented pattern. The guard holds exactly three `202[6-9]` occurrences — the archive class, the `S1` pattern, and this comment — and two of the three move.
+- Update the descriptive comment that names the class's range in prose, so it does not drift from the implemented pattern (REQ-TDN2-024). The guard holds exactly three `202[6-9]` occurrences — the archive class, the `S1` pattern, and this comment — and two of the three move.
+- **Cross-SPEC coupling on that comment.** It is the doc comment of `TestLeakClassNoDateShaInDefaultTier`, a different test enforcing a different SPEC's acceptance criterion (`AC-SBN-018(a)`). Change only the prose parenthetical naming the year range; leave its probe values, assertions, and class membership untouched. That test scans the *default*-tier class set while this SPEC widens a *strict*-tier class, so there is no behavioural coupling — but AC-032 runs it explicitly, because an implementer who declines to touch another SPEC's test would otherwise fail AC-018 with no stated reason.
 - Leave the attribution matcher and the narrow-tier archive class unchanged (REQ-TDN2-018).
 - Run the strict tier immediately. A non-zero finding count here means M3 or M4 is incomplete — read the reported findings rather than adding allowlist entries to silence them.
 
