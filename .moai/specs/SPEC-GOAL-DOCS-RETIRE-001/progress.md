@@ -72,7 +72,7 @@ N3 remains blocked on the parent's M7 landing (`acceptance.md` §C dependency ga
 
 ## §E.2 Run-phase Evidence
 
-All 12 baselines were re-measured at run-phase entry against `d54ea108d` and reproduced the values recorded in `acceptance.md` §B exactly (12/12), so every row below is a measured transition, not an assumed one.
+All 12 baselines were re-measured at run-phase entry against `24c84c56e` (the squash-merge commit for PR #1176; the original run-phase commit `d54ea108d` evaporated from git history via squash merge) and reproduced the values recorded in `acceptance.md` §B exactly (12/12), so every row below is a measured transition, not an assumed one.
 
 ### AC matrix
 
@@ -97,7 +97,7 @@ All 12 baselines were re-measured at run-phase entry against `d54ea108d` and rep
 |---|---|---|
 | Retention register row 2 intact (native H3, `Native /goal Details` H2, comparison row, factual statements) | `grep -n '`/goal`'` on `autonomous-loops.md` returns exactly the table row, the H3, and the four factual lines in every locale — `en:7 ja:7 ko:7 zh:7`, symmetric | HOLDS |
 | No new locale pages (REQ-GDR-008) | AC-GDR-009 inventory unchanged at 4 each; `hooks=2` pin unchanged | HOLDS |
-| Scope discipline (13 paths) | `git diff --stat d54ea108d..HEAD` = 12 docs-site files + `.moai/docs/autonomous-workflow-strategy.md` + `spec.md` frontmatter only; zero changes under `docs-site/content/*/claude-code/`, `.moai/research/`, `.claude/`, `internal/template/templates/` | HOLDS |
+| Scope discipline (13 paths) | `git diff --stat 24c84c56e..HEAD` = 12 docs-site files + `.moai/docs/autonomous-workflow-strategy.md` + `spec.md` frontmatter only; zero changes under `docs-site/content/*/claude-code/`, `.moai/research/`, `.claude/`, `internal/template/templates/` | HOLDS |
 | `--goal` CLI flag name unchanged | `grep -c '`--goal <condition>`'` = 1 per locale | HOLDS |
 | `handoff.md` L51 `/cli-reference/goal` link path survives (D6) | `grep -c "\[moai goal\](/<locale>/cli-reference/goal)"` = 1 per locale | HOLDS |
 | Locale parity (4-locale same-PR obligation) | Every swept marker reached its target in all four locales simultaneously; no detector shows a locale split (`distinct=1` on all five) | HOLDS |
@@ -154,7 +154,23 @@ m1_to_mN_commit_strategy: one commit per milestone (N1..N4); N5 verification edi
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+```yaml
+sync_complete_at: 2026-07-27
+sync_commit_sha: 2a12e2b7d9aee1b5cdfbfba31d6b28ab5d7312b8
+sync_status: audit-ready
+docs_build:
+  command: hugo --minify --gc
+  exit: 0
+  warnings: 0
+  sitemap: present
+changelog_entry: yes
+orphan_sha_mapping:
+  - original: d54ea108d
+    mapped_to: 24c84c56e
+    rationale: "PR #1176 was squash-merged; d54ea108d evaporated from git history (verified via git merge-base --is-ancestor exit 1)"
+```
+
+**Mapping rationale**: The run-phase commit `d54ea108d` was squash-merged into PR #1176 (commit `24c84c56e`). Git no longer recognizes `d54ea108d` as an ancestor of the current tree (verified by `git merge-base --is-ancestor d54ea108d origin/main` exiting 1), confirming evaporation. All references in `progress.md` have been mapped to the squash-merge commit `24c84c56e`, which is the authoritative baseline for the run-phase work.
 
 ## §F Phase 4 Mode Selection
 
