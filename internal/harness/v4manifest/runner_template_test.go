@@ -16,7 +16,7 @@ func TestRunnerTemplate_DispatchesAllFivePrimitivesVerbatim(t *testing.T) {
 		{PrimitiveSubAgent, `case "sub-agent"`},
 		{PrimitiveDynamicWorkflow, `case "dynamic-workflow"`},
 		{PrimitiveWorktree, `case "worktree"`},
-		{PrimitiveGoal, `case "/goal"`},
+		{PrimitiveGoal, `case "/moai goal"`},
 		{PrimitiveAdversarialFanOut, `case "adversarial-fan-out"`},
 	}
 	for _, tc := range cases {

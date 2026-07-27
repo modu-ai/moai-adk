@@ -199,7 +199,6 @@ Performance Features:
 ## Resources
 
 Status: Production Ready
-Last Updated: 2026-01-11
 Maintained by: MoAI-ADK Database Team
 
 <!-- moai:evolvable-start id="rationalizations" -->

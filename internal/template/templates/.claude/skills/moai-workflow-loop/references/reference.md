@@ -1424,6 +1424,5 @@ rules:
 
 ---
 
-Last Updated: 2026-01-10
 Version: 1.0.0
 Specification: LSP 3.17, AST-grep 0.20+

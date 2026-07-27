@@ -17,7 +17,7 @@ draft: false
 ## moai cc —— Claude 后端
 
 ```bash
-moai cc [-p profile] [-- claude-args...]
+moai cc [-p profile] [-w [name]] [-- claude-args...]
 ```
 
 从 `.claude/settings.local.json` 中移除 GLM 专用环境变量,若 team 模式曾开启则将其重置,然后启动 Claude Code。
@@ -29,6 +29,7 @@ moai cc [-p profile] [-- claude-args...]
 | `-b, --bypass` | `--permission-mode bypassPermissions` 的简写 |
 | `-c, --continue` | 继续上一个会话 |
 | `-m, --model <model>` | 覆盖模型选择 |
+| `-w, --worktree [name]` | 在隔离的 git worktree(`.claude/worktrees/<name>/`)中启动 —— 省略名称时自动生成 |
 | `--chrome` / `--no-chrome` | 切换 Chrome MCP |
 
 权限模式为 `default`、`acceptEdits`(项目默认)、`plan`、`auto`、`bypassPermissions`、`dontAsk` 之一。`auto` 模式由后台分类器检查动作,需要 Team 方案 + Sonnet/Opus 4.6 及以上。
@@ -74,6 +75,29 @@ CG 是 "Claude + GLM" 的缩写,是成本优化的团队组合。
 ## 配置文件(`-p` 标志)
 
 三个启动器都可用 `-p <name>` 指定命名配置,此时 `CLAUDE_CONFIG_DIR` 会设为 `~/.moai/claude-profiles/<name>/`。用于分离运营多个账户·设置集。
+
+## 隔离 worktree(`-w` 标志)
+
+三个启动器都可用 `-w [name]` 在隔离的 git worktree 内启动会话,把先 `cd` 再启动的两步合并为一条命令。
+
+```bash
+moai cc -w feat-login    # 在 .claude/worktrees/feat-login/ 中启动
+moai cc -w               # 自动生成名称
+moai glm -w feat-login   # GLM 后端同理
+moai cg -w feat-login    # 混合模式同理
+```
+
+行为规则:
+
+- worktree 路径为 `.claude/worktrees/<name>/`。`<name>` 是 **worktree 名称**,既不是分支名也不是 SPEC ID。
+- 若同名 worktree 已存在,则**复用而不重新创建**。因此它也可作为回到上一个会话工作树的再入路径。
+- 省略名称时由 Claude Code 自动命名。
+- `-w=name`、`--worktree name`、`--worktree=name` 三种写法含义相同,均被接受。
+- `--` 之后的参数原样传递给 Claude Code,不受此改写影响。
+
+{{< callout type="info" >}}
+在会话交接中把 worktree 名称取成与 SPEC ID 相同(`moai cc -w SPEC-XXX-001`),下一个会话即可用一行命令回到同一工作树。
+{{< /callout >}}
 
 ## 相关文档
 

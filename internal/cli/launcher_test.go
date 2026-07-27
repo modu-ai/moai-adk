@@ -245,6 +245,84 @@ func TestParseProfileFlag(t *testing.T) {
 	}
 }
 
+func TestNormalizeWorktreeFlag(t *testing.T) {
+	tests := []struct {
+		name string
+		args []string
+		want []string
+	}{
+		{
+			name: "no flags",
+			args: []string{},
+			want: []string{},
+		},
+		{
+			name: "-w with name",
+			args: []string{"-w", "feat-login"},
+			want: []string{"--worktree", "feat-login"},
+		},
+		{
+			name: "--worktree with name",
+			args: []string{"--worktree", "feat-login"},
+			want: []string{"--worktree", "feat-login"},
+		},
+		{
+			name: "--worktree=name form",
+			args: []string{"--worktree=feat-login"},
+			want: []string{"--worktree", "feat-login"},
+		},
+		{
+			name: "-w=name form",
+			args: []string{"-w=feat-login"},
+			want: []string{"--worktree", "feat-login"},
+		},
+		{
+			name: "bare -w auto-name",
+			args: []string{"-w"},
+			want: []string{"--worktree"},
+		},
+		{
+			name: "bare -w followed by another flag",
+			args: []string{"-w", "-b"},
+			want: []string{"--worktree", "-b"},
+		},
+		{
+			name: "-w before pass-through marker",
+			args: []string{"-w", "feat-a", "--", "--print"},
+			want: []string{"--worktree", "feat-a", "--", "--print"},
+		},
+		{
+			name: "no rewrite after pass-through marker",
+			args: []string{"--", "-w", "feat-a"},
+			want: []string{"--", "-w", "feat-a"},
+		},
+		{
+			name: "combined with other flags order preserved",
+			args: []string{"-b", "-w", "feat-a", "--model", "opus"},
+			want: []string{"-b", "--worktree", "feat-a", "--model", "opus"},
+		},
+		{
+			name: "--worktree= empty value falls back to auto-name",
+			args: []string{"--worktree="},
+			want: []string{"--worktree"},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := normalizeWorktreeFlag(tt.args)
+			if len(got) != len(tt.want) {
+				t.Fatalf("args = %v, want %v", got, tt.want)
+			}
+			for i, a := range got {
+				if a != tt.want[i] {
+					t.Errorf("args[%d] = %q, want %q", i, a, tt.want[i])
+				}
+			}
+		})
+	}
+}
+
 func TestUnifiedLaunch_Claude(t *testing.T) {
 	tmpDir := t.TempDir()
 	moaiDir := filepath.Join(tmpDir, ".moai")

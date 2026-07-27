@@ -10,7 +10,7 @@
 //	        case "sub-agent":           Agent(specialist.role, ...)
 //	        case "dynamic-workflow":    dynamicWorkflow(specialist.role, ...)
 //	        case "worktree":            Agent(specialist.role, isolation:"worktree", ...)
-//	        case "/goal":               goalDirective(specialist.role, ...)
+//	        case "/moai goal":          goalDirective(specialist.role, ...)
 //	        case "adversarial-fan-out": adversarialFanOut(specialist.role, ...)
 //	    apply Sprint Contract (if evaluator not skipped)
 //	emit cleanup directive (worktree cleanup if any isolation:worktree specialists)
@@ -84,7 +84,7 @@ function dispatchSpecialist(specialist, manifest) {
         model: specialist.model === "inherit" ? undefined : specialist.model,
         prompt: buildSpecialistPrompt(specialist, manifest)
       });
-    case "/goal":
+    case "/moai goal":
       return agent({
         label: specialist.role,
         effort: specialist.effort,

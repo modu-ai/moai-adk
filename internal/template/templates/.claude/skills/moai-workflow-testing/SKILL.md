@@ -187,7 +187,6 @@ the [modules index](${CLAUDE_SKILL_DIR}/modules/INDEX.md), or jump to a stage:
 ---
 
 Status: Production Ready
-Last Updated: 2026-07-10
 Maintained by: MoAI-ADK Development Workflow Team
 Version: 2.5.0 (audit remediation: language-neutrality + module re-linking)
 

@@ -325,7 +325,6 @@ When TDD discipline breaks down:
 
 Version: 1.0.0
 Status: Active
-Last Updated: 2026-02-03
 
 <!-- moai:evolvable-start id="rationalizations" -->
 ## Common Rationalizations

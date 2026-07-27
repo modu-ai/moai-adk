@@ -280,6 +280,64 @@ func TestApplySchemaEditsGitStrategyDirtyFlagIsolation(t *testing.T) {
 	}
 }
 
+// TestApplySchemaEditsForcesQualityExtrasTrue는 UI 토글 제거(SPEC-WEB-CONSOLE-014
+// M4 — quality_extras_enabled 편집 필드 철거) 이후 백엔드가 quality 섹션을 건드린
+// 모든 저장에서 QualityExtrasEnabled 를 true로 강제하는 정책을 검증한다.
+// 시드 fixture(quality.yaml)는 quality_extras_enabled 키를 포함하지 않아 구조체
+// 디폴트 false 상태이며, 강제 로직이 이를 true로 전환한다. 또한 quality 섹션을
+// 건드리지 않는 저장(llm만 편집)이 quality.yaml을 바이트 단위로 보존함을 검증한다.
+func TestApplySchemaEditsForcesQualityExtrasTrue(t *testing.T) {
+	t.Parallel()
+	root := t.TempDir()
+	seedTypedFixtures(t, root, "git-strategy", "llm", "quality")
+	qPath := filepath.Join(root, ".moai", "config", "sections", "quality.yaml")
+
+	// (i) quality 섹션을 건드리는 편집 — 강제 true가 적용되어야 한다.
+	//     test_coverage_target 은 typed applier 경로를 타는 잔류 DDD 게이트 형제
+	//     키가 아니라 단순한 quality 섹션 touch 의 트리거가 된다. 여기서는
+	//     ddd_settings.characterization_tests 잔류 키를 사용한다 (M4 다이어트 후
+	//     런타임 reader 보존 키 — applyQualityKey 가 이 키를 처리한다).
+	if err := ApplySchemaEdits(root, map[string]string{
+		"quality.ddd_settings.characterization_tests": "true",
+	}); err != nil {
+		t.Fatalf("ApplySchemaEdits(quality): %v", err)
+	}
+	raw, err := os.ReadFile(qPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var doc struct {
+		Q struct {
+			QualityExtrasEnabled bool `yaml:"quality_extras_enabled"`
+		} `yaml:"constitution"`
+	}
+	if err := yaml.Unmarshal(raw, &doc); err != nil {
+		t.Fatal(err)
+	}
+	if !doc.Q.QualityExtrasEnabled {
+		t.Errorf("quality_extras_enabled = false after quality-section edit; want true (forced)")
+	}
+
+	// (ii) quality 섹션을 건드리지 않는 저장(llm만)은 quality.yaml 을 byte 보존한다
+	//      (SPEC-GITSTRATEGY-SAVE-ISOLATION-001 의 sibling 불변식 — touched-flag 경로).
+	beforeLLM, err := os.ReadFile(qPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := ApplySchemaEdits(root, map[string]string{
+		"llm.glm.models.high": "glm-other-model",
+	}); err != nil {
+		t.Fatalf("ApplySchemaEdits(llm-only): %v", err)
+	}
+	afterLLM, err := os.ReadFile(qPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(beforeLLM) != string(afterLLM) {
+		t.Error("quality.yaml was rewritten by an llm-only edit (forced-true must NOT cross sections)")
+	}
+}
+
 // TestApplySchemaEditsRejectsUnknownAndReadOnly는 미지명 필드와 read-only 키가
 // 거부됨을 검증한다 (REQ-WC11-013/018).
 func TestApplySchemaEditsRejectsUnknownAndReadOnly(t *testing.T) {

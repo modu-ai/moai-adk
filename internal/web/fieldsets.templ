@@ -108,21 +108,8 @@ templ fieldsetLaunch(view pageView) {
 						<span class="field-error" id="err_permission_mode">@icon("alert-circle")<span>{ msg }</span></span>
 					}
 				</div>
-				@optSelect(optSelectArgs{Name: "model", Title: "Model", Key: "model", Desc: "The specific model to run, including 1M-context variants.", Value: view.Prefs.Model, Empty: settings.EmptyLabelFor("model"), EmptyKey: settings.EmptyLabelKeyFor("model"), Options: view.ModelOptions, Errors: view.FieldErrors})
+				@optSelect(optSelectArgs{Name: "model", Title: "Model", Key: "model", Desc: "The specific model to run.", Value: view.Prefs.Model, Empty: settings.EmptyLabelFor("model"), EmptyKey: settings.EmptyLabelKeyFor("model"), Options: view.ModelOptions, Errors: view.FieldErrors})
 				@optSelect(optSelectArgs{Name: "effort_level", Title: "Effort level", Key: "effort_level", Desc: "How much reasoning effort the model spends per task.", Value: view.Prefs.EffortLevel, Empty: settings.EmptyLabelFor("effort_level"), EmptyKey: settings.EmptyLabelKeyFor("effort_level"), Options: view.EffortLevels, Errors: view.FieldErrors})
-				<div class="field">
-					<span class="field__label"><span class="field__title" data-i18n="f.quality.quality_extras_enabled.title">Quality extras</span><code class="field__key">quality.quality_extras_enabled</code></span>
-					<span class="field__desc" data-i18n="f.quality.quality_extras_enabled.desc">Enable the advanced quality-extras feature (DDD gates).</span>
-					<label class="seg">
-						<input type="hidden" name="quality.quality_extras_enabled__present" value="1"/>
-						if view.SchemaValues["quality.quality_extras_enabled"] == "true" {
-							<input type="checkbox" id="quality.quality_extras_enabled" name="quality.quality_extras_enabled" value="1" checked/>
-						} else {
-							<input type="checkbox" id="quality.quality_extras_enabled" name="quality.quality_extras_enabled" value="1"/>
-						}
-						<span class="seg__box"><span class="seg__tick">@icon("check")</span></span>
-					</label>
-				</div>
 			</div>
 		</div>
 	</fieldset>

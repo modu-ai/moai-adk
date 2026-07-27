@@ -17,7 +17,7 @@ draft: false
 ## moai cc — Claude バックエンド
 
 ```bash
-moai cc [-p profile] [-- claude-args...]
+moai cc [-p profile] [-w [name]] [-- claude-args...]
 ```
 
 `.claude/settings.local.json` から GLM 専用の環境変数を取り除き、team モードが有効だった場合はリセットしたうえで Claude Code を起動します。
@@ -29,6 +29,7 @@ moai cc [-p profile] [-- claude-args...]
 | `-b, --bypass` | `--permission-mode bypassPermissions` のショートハンド |
 | `-c, --continue` | 前回のセッションを継続 |
 | `-m, --model <model>` | モデル選択をオーバーライド |
+| `-w, --worktree [name]` | 隔離された git worktree (`.claude/worktrees/<name>/`) で起動 — 名前を省略すると自動生成 |
 | `--chrome` / `--no-chrome` | Chrome MCP のトグル |
 
 権限モードは `default`、`acceptEdits`(プロジェクトデフォルト)、`plan`、`auto`、`bypassPermissions`、`dontAsk` のいずれかです。`auto` モードはバックグラウンド分類器が動作を検査するもので、Team プラン + Sonnet/Opus 4.6 以上が必要です。
@@ -74,6 +75,29 @@ CG は "Claude + GLM" の略で、コスト最適化のチーム構成です。
 ## プロファイル (`-p` フラグ)
 
 3 ランチャーとも `-p <name>` で名前付きプロファイルを指定すると `CLAUDE_CONFIG_DIR` が `~/.moai/claude-profiles/<name>/` に設定されます。複数のアカウント・設定セットを分離して運用するときに使用します。
+
+## 隔離 worktree (`-w` フラグ)
+
+3 ランチャーとも `-w [name]` で隔離された git worktree の中からセッションを開始できます。`cd` でディレクトリを移動してから起動する 2 ステップを 1 コマンドにまとめます。
+
+```bash
+moai cc -w feat-login    # .claude/worktrees/feat-login/ で開始
+moai cc -w               # 名前を自動生成
+moai glm -w feat-login   # GLM バックエンドでも同様
+moai cg -w feat-login    # ハイブリッドでも同様
+```
+
+動作ルール:
+
+- worktree のパスは `.claude/worktrees/<name>/` です。`<name>` は **worktree 名**であり、ブランチ名でも SPEC ID でもありません。
+- 同名の worktree が既に存在する場合は**新規作成せず再利用**します。そのため、以前のセッションが作業していたツリーへの再入場パスとしても使えます。
+- 名前を省略すると Claude Code が自動的に命名します。
+- `-w=name`、`--worktree name`、`--worktree=name` の表記もすべて同じ意味として受け付けます。
+- `--` の後ろの引数はそのまま Claude Code に渡され、この書き換えの影響を受けません。
+
+{{< callout type="info" >}}
+セッション引き継ぎで worktree 名を SPEC ID と同じにしておくと (`moai cc -w SPEC-XXX-001`)、次のセッションが 1 行で同じ作業ツリーに復帰できます。
+{{< /callout >}}
 
 ## 関連ドキュメント
 

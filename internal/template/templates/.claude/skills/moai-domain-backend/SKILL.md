@@ -142,7 +142,6 @@ Integration Patterns:
 For working code examples, see [examples.md](examples.md).
 
 Status: Production Ready
-Last Updated: 2026-01-11
 Maintained by: MoAI-ADK Backend Team
 
 <!-- moai:evolvable-start id="rationalizations" -->

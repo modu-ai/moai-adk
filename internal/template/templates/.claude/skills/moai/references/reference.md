@@ -226,4 +226,3 @@ Previous /moai:X-Y command format mapped to new /moai subcommand format:
 ---
 
 Version: 2.5.0
-Last Updated: 2026-02-22

@@ -3,7 +3,6 @@
 Purpose: Detailed integration patterns for moai-worktree with MoAI-ADK Plan-Run-Sync workflow including plan phase automation, DDD integration, and cleanup workflows.
 
 Version: 1.0.0
-Last Updated: 2026-01-06
 
 ---
 
@@ -243,5 +242,4 @@ For failed synchronization:
 ---
 
 Version: 1.0.0
-Last Updated: 2026-01-06
 Module: MoAI-ADK workflow integration patterns for Plan-Run-Sync phases
