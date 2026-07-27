@@ -1,10 +1,10 @@
 ---
 id: SPEC-TEMPLATE-DATE-NEUTRALITY-001
 title: "Template date-leak triage, remediation, and S1 guard refinement"
-version: "0.2.0"
-status: in-progress
+version: "0.3.0"
+status: completed
 created: 2026-07-25
-updated: 2026-07-26
+updated: 2026-07-27
 author: manager-spec
 priority: P2
 phase: "v3.x maintenance"
@@ -22,6 +22,7 @@ tier: L
 |---------|------|--------|--------|
 | 0.1.0 | 2026-07-25 | Initial plan-phase authoring. Scope from a measured strict-tier guard run (135 findings, 116 files). | manager-spec |
 | 0.2.0 | 2026-07-25 | Iteration 2 after plan-audit FAIL (0.55). Four user decisions absorbed (hybrid carve-out, DC-1 preserve, mirror-stamp preserve, CI isolated target). Classification moved to occurrence-class granularity to resolve dual-shape conflicts; DC-2 split into DC-2a/DC-2b; counts restated from a committed classifier that reproduces the guard's finding set exactly; three misclassifications corrected. | manager-spec |
+| 0.3.0 | 2026-07-27 | Sync-phase close (3-phase: plan → run → sync). Run phase merged as PR #1173 (squash `6763aff3b`): strict-tier findings 135 -> 0 across 67 template files (92 REMOVE / 88 PRESERVE, k=12), hybrid carve-out, report-cap named constant, CI strict-tier step adopted. 23/23 AC PASS. CHANGELOG entry appended; status transitioned in-progress -> completed. | manager-docs |
 
 ---
 

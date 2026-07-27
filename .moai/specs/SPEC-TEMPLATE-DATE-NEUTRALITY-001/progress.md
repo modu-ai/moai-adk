@@ -241,4 +241,25 @@ The run phase is complete and audit-ready. `status: in-progress` is retained del
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+```yaml
+sync_status: audit-ready
+sync_complete_at: 2026-07-27
+sync_commit_sha: pending-backfill-sync
+changelog_entry_position: "CHANGELOG.md [Unreleased] > ### Changed (appended after SPEC-CLI-TUX-INIT-UPDATE-001)"
+frontmatter_status_transitions:
+  spec_md: "in-progress -> completed"
+  plan_md: "no frontmatter status field (body-only artifact)"
+  acceptance_md: "no frontmatter status field (body-only artifact)"
+  progress_md: "no frontmatter status field (body-only artifact); this §E.4 block is the sync-phase signal"
+sync_changes:
+  - "CHANGELOG.md: 1 entry appended under [Unreleased] > ### Changed, naming the 92/88 row split, hybrid carve-out, report-cap fix, CI adoption, and the deferred 2025-stamp debt"
+  - "spec.md: version 0.2.0 -> 0.3.0, status in-progress -> completed, updated -> 2026-07-27, HISTORY row appended"
+  - "progress.md: this §E.4 block populated"
+  - "docs-site / README: evaluated, none owed (internal CI-guard + template-hygiene change, no user-visible feature/API surface)"
+verification_evidence:
+  - "grep -c 'SPEC-TEMPLATE-DATE-NEUTRALITY-001' CHANGELOG.md -> 0 before edit, 1 after edit"
+  - "MOAI_TEMPLATE_LEAK_STRICT=1 go test -count=1 -run TestTemplateNoInternalContentLeak ./internal/template/ -> ok (5.097s)"
+  - "acceptance.md AC-TDN-001..023 confirmed present (23 rows) via grep -n 'AC-TDN-' acceptance.md"
+```
+
+The sync phase is complete and audit-ready. `sync_commit_sha` is recorded as `pending-backfill-sync` because this commit cannot reference its own hash; it is backfilled in a follow-up commit per the SHA-placeholder backfill exemption in `.claude/rules/moai/development/spec-frontmatter-schema.md` § SHA placeholder backfill exemption. This is the single sync commit carrying the `in-progress -> implemented -> completed` 3-phase close (per `.claude/rules/moai/development/spec-frontmatter-schema.md` § Status Transition Ownership Matrix) — there is no separate Mx-phase chore commit.
