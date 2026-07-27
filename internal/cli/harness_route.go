@@ -78,6 +78,9 @@ Proposal-management verbs (SPEC-V3R5-HARNESS-AUTONOMY-001 §6, new in M4):
   unmute     Remove a category from the mute list
   verify     Verify harness determinism (W4 placeholder)
 
+Proposal-promotion verb (SPEC-HARNESS-LOOP-REPAIR-001 M2-1):
+  promote    Promote a discovery draft to a SPEC skeleton (routes to manager-spec)
+
 Harness-v4 lifecycle verbs (SPEC-V3R6-HARNESS-V4-001 M4):
   list       List all v4 harnesses (name + domain + entry command)
   edit       Show paths to edit a v4 harness manifest + specialists
@@ -130,6 +133,13 @@ satisfies AC-HRA-009 (6+ verb surface).`,
 	// package, sharing the TestPropose_NoAskUserQuestion boundary guard. The `apply
 	// --execute` UX delegates to this same RunExecute (see newHarnessApplyCmd).
 	cmd.AddCommand(harnesscli.NewExecuteCmd())
+
+	// SPEC-HARNESS-LOOP-REPAIR-001 M2-1: `moai harness promote` routes a
+	// proposalgen discovery draft to its designed consumer — manager-spec SPEC
+	// authoring — by materialising a SPEC skeleton carrying the draft ID as
+	// provenance and moving the draft out of the pending queue. The factory lives
+	// in the same boundary-guarded package.
+	cmd.AddCommand(harnesscli.NewPromoteCmd())
 
 	// SPEC-V3R6-HARNESS-V4-001 M4: v4 harness lifecycle verbs (list/edit/remove).
 	// These enumerate / edit / atomically-remove harness-v4 entries under
