@@ -23,8 +23,8 @@ func TestResolveModelProfileReport_MaxClaude(t *testing.T) {
 	for _, e := range rpt.Agents {
 		got[e.Agent] = e
 	}
-	if e := got["manager-develop"]; e.Model != "opus" || e.Effort != "xhigh" {
-		t.Errorf("manager-develop high: got %s/%s, want opus/xhigh", e.Model, e.Effort)
+	if e := got["manager-develop"]; e.Model != "opus" || e.Effort != "max" {
+		t.Errorf("manager-develop high: got %s/%s, want opus/max", e.Model, e.Effort)
 	}
 	if e := got["Explore"]; e.Model != "sonnet" || e.Effort != "low" || e.Group != "explore" {
 		t.Errorf("Explore: got %s/%s group=%s, want sonnet/low group=explore", e.Model, e.Effort, e.Group)

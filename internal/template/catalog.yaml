@@ -107,17 +107,17 @@ catalog:
             - name: sync-auditor
               tier: core
               path: templates/.claude/agents/moai/sync-auditor.md
-              hash: baab043aecadd872b01cc57144cb84c31e0980da8aabc266572cfa0a237d6ec9
+              hash: dccccf61cb32bbd1a53f944fc20493e75c62de7b3a162f7ec2f0a3046d6e7bcd
               version: 1.0.0
             - name: manager-develop
               tier: core
               path: templates/.claude/agents/moai/manager-develop.md
-              hash: ba0ffc68f3fe34321b5a10cf5fafa29de8c13016a17fc6953ceb8ff593134001
+              hash: 2ff233abfb8aa9620907ea93daecf4d4e145eeb92bedee862115ce6e8b2a3c44
               version: 1.0.0
             - name: manager-docs
               tier: core
               path: templates/.claude/agents/moai/manager-docs.md
-              hash: f5f7601467c005d49aa4167d8ed05d5de4d4c8f212554d4d7b8d1165faccabf0
+              hash: eac8b97ebaf653aef8e4162448ee753f76f48cb3372e3d634bc69c1b60cc772e
               version: 1.0.0
             - name: manager-git
               tier: core
@@ -127,12 +127,12 @@ catalog:
             - name: manager-spec
               tier: core
               path: templates/.claude/agents/moai/manager-spec.md
-              hash: 8b16dee23a289689745df0de1a3807f1a5d969ed74697081f5fce9bcc2bbce27
+              hash: f2ff159e7d13aafdd496017663630a979edcb2b645eef950cbe14a331e288cb6
               version: 1.0.0
             - name: plan-auditor
               tier: core
               path: templates/.claude/agents/moai/plan-auditor.md
-              hash: 7a342aba94b829ce25eb002b9e76379ea248469e946a405604ba86669e6bdfd3
+              hash: 7b69c68bafe2084afc6d93e20d564e8a2afa28fe64e609137ee9f9d078a41490
               version: 1.0.0
             - name: super-advisor
               tier: core
@@ -147,7 +147,7 @@ catalog:
             - name: e2e-tester
               tier: core
               path: templates/.claude/agents/moai/e2e-tester.md
-              hash: 709e68a2c8b023b44fddbfa203c6c930892f7a06369a34e45dc7b5af4ef80206
+              hash: 61bbd26d61b3d0fda4c9776fd64edae3247c7c9ee08380110aaba039b1928809
               version: 1.0.0
     optional_packs:
         backend:

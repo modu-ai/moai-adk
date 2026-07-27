@@ -81,15 +81,15 @@ func TestApplyProfile_InsertsProfileWhenAbsent(t *testing.T) {
 func TestResolveAgentModelEffort_MatrixAFidelity(t *testing.T) {
 	cfg := config.LLMConfig{Profile: "high"}
 	want := map[string]config.ModelEffort{
-		"manager-spec":    {Model: "fable", Effort: "xhigh"},
-		"plan-auditor":    {Model: "fable", Effort: "xhigh"},
-		"sync-auditor":    {Model: "fable", Effort: "xhigh"},
-		"manager-develop": {Model: "opus", Effort: "xhigh"},
-		"super-advisor":   {Model: "opus", Effort: "xhigh"},
-		"manager-design":  {Model: "fable", Effort: "high"},
-		"builder-harness": {Model: "opus", Effort: "xhigh"},
-		"e2e-tester":      {Model: "fable", Effort: "high"},
-		"manager-docs":    {Model: "sonnet", Effort: "high"},
+		"manager-spec":    {Model: "opus", Effort: "high"},
+		"plan-auditor":    {Model: "opus", Effort: "high"},
+		"sync-auditor":    {Model: "opus", Effort: "high"},
+		"manager-develop": {Model: "opus", Effort: "max"},
+		"super-advisor":   {Model: "opus", Effort: "max"},
+		"manager-design":  {Model: "opus", Effort: "high"},
+		"builder-harness": {Model: "opus", Effort: "high"},
+		"e2e-tester":      {Model: "opus", Effort: "medium"},
+		"manager-docs":    {Model: "opus", Effort: "medium"},
 		"manager-git":     {Model: "sonnet", Effort: "low"},
 		"Explore":         {Model: "sonnet", Effort: "low"},
 	}
@@ -112,7 +112,8 @@ func TestResolveAgentModelEffort_LowColumn(t *testing.T) {
 	cases := map[string]config.ModelEffort{
 		"manager-spec":    {Model: "opus", Effort: "low"},
 		"super-advisor":   {Model: "opus", Effort: "medium"},
-		"manager-develop": {Model: "sonnet", Effort: "medium"},
+		"manager-develop": {Model: "opus", Effort: "low"},
+		"manager-docs":    {Model: "sonnet", Effort: "low"},
 		"manager-git":     {Model: "sonnet", Effort: "low"},
 	}
 	for agent, exp := range cases {
@@ -125,18 +126,20 @@ func TestResolveAgentModelEffort_LowColumn(t *testing.T) {
 
 // TestDefaultProfileMatrix_Shape asserts the structural invariants of the
 // per-agent matrix: 3 profiles x 11 agents = 33 cells, models restricted to
-// {fable, opus, sonnet}, efforts restricted to {low, medium, high, xhigh} (no
-// `max` effort cell), and no `inherit` inside the matrix.
+// {opus, sonnet} (fable is retired from the matrix — it is dominated by Opus 5
+// on the coding axis at every effort), efforts restricted to
+// {low, medium, high, max} (no `xhigh` cell — on Opus 5 xhigh scores the same
+// as high at materially higher cost), and no `inherit` inside the matrix.
 func TestDefaultProfileMatrix_Shape(t *testing.T) {
 	m := DefaultProfileMatrix()
 	wantProfiles := []string{PerformanceTierHigh, PerformanceTierMedium, PerformanceTierLow}
 	if len(m) != len(wantProfiles) {
 		t.Fatalf("profile count = %d, want %d", len(m), len(wantProfiles))
 	}
-	okModel := map[string]bool{"fable": true, "opus": true, "sonnet": true}
+	okModel := map[string]bool{"opus": true, "sonnet": true}
 	okEffort := map[string]bool{
 		EffortLevelLow: true, EffortLevelMedium: true,
-		EffortLevelHigh: true, EffortLevelXHigh: true,
+		EffortLevelHigh: true, EffortLevelMax: true,
 	}
 	total := 0
 	for _, profile := range wantProfiles {
@@ -155,10 +158,10 @@ func TestDefaultProfileMatrix_Shape(t *testing.T) {
 			}
 			total++
 			if !okModel[cell.Model] {
-				t.Errorf("%s/%s model %q outside {fable, opus, sonnet}", profile, agent, cell.Model)
+				t.Errorf("%s/%s model %q outside {opus, sonnet}", profile, agent, cell.Model)
 			}
 			if !okEffort[cell.Effort] {
-				t.Errorf("%s/%s effort %q outside {low, medium, high, xhigh}", profile, agent, cell.Effort)
+				t.Errorf("%s/%s effort %q outside {low, medium, high, max}", profile, agent, cell.Effort)
 			}
 		}
 	}
@@ -171,10 +174,10 @@ func TestDefaultProfileMatrix_Shape(t *testing.T) {
 // across high >= medium >= low on a combined (model rank, effort rank) ordering.
 // This is the invariant the former super-advisor low>medium cell violated.
 func TestDefaultProfileMatrix_Monotone(t *testing.T) {
-	modelRank := map[string]int{"sonnet": 0, "opus": 1, "fable": 2}
+	modelRank := map[string]int{"sonnet": 0, "opus": 1}
 	effortRank := map[string]int{
 		EffortLevelLow: 0, EffortLevelMedium: 1,
-		EffortLevelHigh: 2, EffortLevelXHigh: 3,
+		EffortLevelHigh: 2, EffortLevelXHigh: 3, EffortLevelMax: 4,
 	}
 	m := DefaultProfileMatrix()
 	rank := func(profile, agent string) int {
@@ -200,13 +203,13 @@ func TestDefaultProfileMatrix_Monotone(t *testing.T) {
 func TestResolveHarnessAgentModelEffort(t *testing.T) {
 	// Derived: effort borrowed from the class row, model always pinned.
 	want := map[string]string{
-		HarnessClassReadOnlyExtract:     EffortLevelLow,   // Explore row
-		HarnessClassMechanicalTransform: EffortLevelLow,   // manager-git row
-		HarnessClassSynthesize:          EffortLevelHigh,  // manager-docs row
-		HarnessClassResearch:            EffortLevelXHigh, // plan-auditor row
-		HarnessClassVerifyJudge:         EffortLevelXHigh, // sync-auditor row
-		HarnessClassImplement:           EffortLevelXHigh, // manager-develop row
-		HarnessClassDesignArchitecture:  EffortLevelHigh,  // manager-design row
+		HarnessClassReadOnlyExtract:     EffortLevelLow,    // Explore row
+		HarnessClassMechanicalTransform: EffortLevelLow,    // manager-git row
+		HarnessClassSynthesize:          EffortLevelMedium, // manager-docs row
+		HarnessClassResearch:            EffortLevelHigh,   // plan-auditor row
+		HarnessClassVerifyJudge:         EffortLevelHigh,   // sync-auditor row
+		HarnessClassImplement:           EffortLevelMax,    // manager-develop row
+		HarnessClassDesignArchitecture:  EffortLevelHigh,   // manager-design row
 	}
 	cfg := config.LLMConfig{Profile: "high"}
 	for class, exp := range want {
@@ -227,7 +230,7 @@ func TestResolveHarnessAgentModelEffort(t *testing.T) {
 	if known {
 		t.Errorf("unknown class should report known=false")
 	}
-	if got.Effort != EffortLevelXHigh || got.Model != HarnessAgentModel {
+	if got.Effort != EffortLevelMax || got.Model != HarnessAgentModel {
 		t.Errorf("unknown class should fall back to implement: got %+v", got)
 	}
 
@@ -262,7 +265,7 @@ func TestResolveAgentModelEffort_OverridePrecedence(t *testing.T) {
 	}
 	// plan-auditor shares spec_auditors but is unaffected → medium group cell.
 	got, _ = ResolveAgentModelEffort(cfg, "plan-auditor")
-	if (got != config.ModelEffort{Model: "opus", Effort: "high"}) {
+	if (got != config.ModelEffort{Model: "opus", Effort: "medium"}) {
 		t.Errorf("plan-auditor medium cell should be unaffected: got %+v", got)
 	}
 }
@@ -337,7 +340,7 @@ func TestResolveAgentModelEffort_StaleGroupKeyedMirror(t *testing.T) {
 	if !mapped {
 		t.Fatalf("manager-docs should still resolve")
 	}
-	if (got != config.ModelEffort{Model: "sonnet", Effort: "high"}) {
+	if (got != config.ModelEffort{Model: "opus", Effort: "medium"}) {
 		t.Errorf("stale group-keyed cell should be ignored, Go default used: got %+v", got)
 	}
 }
@@ -348,7 +351,7 @@ func TestResolveAgentModelEffort_StaleGroupKeyedMirror(t *testing.T) {
 func TestResolveAgentModelEffort_LegacyAlias(t *testing.T) {
 	cfg := config.LLMConfig{PerformanceTier: "max"} // no profile
 	got, _ := ResolveAgentModelEffort(cfg, "manager-develop")
-	if (got != config.ModelEffort{Model: "opus", Effort: "xhigh"}) {
+	if (got != config.ModelEffort{Model: "opus", Effort: "max"}) {
 		t.Errorf("legacy perf_tier max should resolve to the high column: got %+v", got)
 	}
 }

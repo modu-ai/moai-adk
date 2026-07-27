@@ -46,7 +46,7 @@ Upstream tracking (Anthropic claude-code repository):
 Workaround pattern (`model: inherit`):
 - The subagent fully inherits the parent's model + context entitlement, eliminating the mismatch.
 - Reference implementation: `.claude/agents/moai/plan-auditor.md` has used `model: inherit`.
-- 8 of the 10 MoAI-custom retained agents under `.claude/agents/moai/` declare `model: inherit`; `manager-docs` and `manager-git` intentionally pin `model: sonnet` as the No-Haiku cost lever (`manager-docs` runs `effort: medium`, `manager-git` runs `effort: low`). The No-Haiku policy retired the former `model: haiku` exception — cost reduction is achieved via effort tiering, not model-class substitution.
+- 9 of the 10 MoAI-custom retained agents under `.claude/agents/moai/` declare `model: inherit`; only `manager-git` still pins `model: sonnet`, which matches its profile-matrix row exactly (sonnet / low in every column). `manager-docs` returned to `model: inherit` when the matrix moved it onto Opus in the high and medium columns — a static pin can no longer express a row whose model varies by column. The No-Haiku policy retired the former `model: haiku` exception — cost reduction is achieved via effort tiering, not model-class substitution.
 
 Exceptions (do NOT migrate to inherit):
 - Documentation/example YAML inside skill bodies (`.claude/skills/moai-foundation-cc/reference/**/*.md`) — these mirror official Claude Code documentation and MUST show all valid values (`sonnet`, `opus`, `haiku`, `inherit`) for educational purposes.
@@ -119,11 +119,16 @@ Model policy is set via `moai init --model-policy <tier>`. The 3-tier system is 
 
 | Tier | Philosophy | Top-model deployment | Effort baseline |
 |------|------------|-----------------|------------------------|
-| `high` | Quality first — Fable on reasoning/audit, Opus on coding | Fable: manager-spec · plan/sync-auditor · manager-design · e2e-tester. Opus: manager-develop · super-advisor · builder-harness | Coding/audit xhigh; procedural low |
-| `medium` (default) | Opus at its API-default effort — most predictable operating point | Opus on every reasoning/coding agent; Fable 0 | Reasoning/coding `high`; design/harness/e2e `medium`; procedural `low` |
-| `low` | Opus low/medium as the cost lever, then Sonnet — cost minimum | Opus retained only where judgment is load-bearing (spec, auditors, super-advisor) | Reasoning `low`~`medium`; workers Sonnet `medium`; procedural `low` |
+| `high` | Quality first — Opus throughout; `max` only where the marginal point is decision-critical | Opus on every row except the two single-shot procedural rows (manager-git, Explore); Fable 0 | `max` on manager-develop + super-advisor; `high` on spec/auditors/design/harness; `medium` on docs/e2e; procedural `low` |
+| `medium` (default) | Balanced — manager-develop at Opus `medium`, the knee of the cost/score curve, anchors the column | Opus on every reasoning / coding / authoring agent; Fable 0 | Reasoning/coding `medium`; super-advisor `high`; docs/e2e `low`; procedural `low` |
+| `low` | Cost minimum — Opus `low` still outscores Sonnet at any effort AND costs less per task | Opus retained on every agentic row; Sonnet on docs / e2e / git / Explore | Agentic `low`; super-advisor `medium`; procedural `low` |
 
-The per-agent cells are the `llm.profiles` matrix (11 retained agents × 3 columns = 33 cells; Go SSOT `template.DefaultProfileMatrix`). Every agent row is monotone across `high >= medium >= low`. Former haiku slots (docs sync, mx tagging, git procedures) use `sonnet / low` — cost reduction via effort tiering, not model-class substitution. `low`/`medium` effort on Opus 5 is the primary token-cost lever (both are stronger on Opus 5 than on earlier Opus models), which is why the `low` column keeps Opus on judgment-bearing agents instead of dropping straight to Sonnet.
+The per-agent cells are the `llm.profiles` matrix (11 retained agents × 3 columns = 33 cells; Go SSOT `template.DefaultProfileMatrix`). Every agent row is monotone across `high >= medium >= low`. The matrix encodes two model rules, both measured on a long-horizon coding-agent benchmark that reports score, cost per task, output tokens, and agent steps at every effort level:
+
+1. **Opus dominates Sonnet at every effort.** Opus at `low` scores higher AND costs less per task than Sonnet at any level, because Sonnet spends a multiple of the agent steps and output tokens to finish the same long-horizon task. Completion efficiency — not unit token price — drives cost, so Opus is the model for every multi-turn agentic row.
+2. **Sonnet is retained only for single-shot, input-dominated, non-agentic rows** (`Explore` search, `manager-git` mechanics, plus the docs / e2e rows in the `low` column), where that multi-step completion failure does not apply and the lower input price does.
+
+`xhigh` is absent from the matrix on purpose: on Opus it scores the same as `high` at materially higher cost, so it is strictly dominated. `max` is reserved for the two rows whose invocation is rare AND whose marginal quality is decision-critical (`manager-develop`, `super-advisor` — high column only).
 
 ## Per-Agent Profile Resolver (model injection source)
 
@@ -188,7 +193,7 @@ Claude models support five effort levels that control reasoning depth. The set i
 
 On Opus 5, `low` and `medium` are stronger than on earlier Opus models, so they are the primary control for token cost and response time wherever quality holds. Effort settings carried over from an earlier model generation should be re-swept rather than reused. Note that on Opus 5, thinking cannot be disabled at `xhigh` or `max` (a request setting `thinking: disabled` at those levels is rejected); MoAI never disables thinking, so this constraint does not bind any MoAI path.
 
-The per-agent effort defaults across the 3-tier profile system (high/medium/low) are the `llm.profiles` matrix (33 cells; Go SSOT `template.DefaultProfileMatrix`). The `model_routing_profiles` cells in `workflow.yaml` carry the `{model, effort}` pair for each Tier-Phase × perfTier combination. No matrix cell uses `max` effort.
+The per-agent effort defaults across the 3-tier profile system (high/medium/low) are the `llm.profiles` matrix (33 cells; Go SSOT `template.DefaultProfileMatrix`). The `model_routing_profiles` cells in `workflow.yaml` carry the `{model, effort}` pair for each Tier-Phase × perfTier combination. Exactly two matrix cells use `max` effort — `manager-develop` and `super-advisor` in the `high` column — and no cell uses `xhigh`, which on Opus scores the same as `high` at materially higher cost.
 
 Note: `ultrathink` is a Claude Code one-turn keyword that requests deeper reasoning for that prompt; MoAI standardizes it to `effort: xhigh` (the coding/agentic level above) for that turn.
 

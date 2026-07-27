@@ -26,13 +26,29 @@ llm:
   # fallback for any cell absent here. Agents not listed (any user-added agent)
   # stay model: inherit and are never injected.
   #
-  # Column intent:
-  #   high   - Fable carries reasoning/audit; Opus carries coding at xhigh
-  #   medium - Opus at `high` (the vendor API default effort) — most predictable
-  #   low    - Opus low/medium as the primary token-cost lever, then Sonnet
+  # Column intent (anchored on a long-horizon coding-agent benchmark measuring
+  # score, cost per task, output tokens, and agent steps at every effort level):
+  #   high   - quality first. Opus `max` only where invocation is rare and the
+  #            marginal quality is decision-critical; `high` elsewhere.
+  #   medium - the balanced default. manager-develop at Opus `medium` is the
+  #            anchor: `medium` is the knee of the Opus cost/score curve, and
+  #            the marginal cost per point rises several-fold above it.
+  #   low    - economical. Opus `low` still outscores Sonnet at any effort and
+  #            costs less per task, so it is the floor for agentic rows.
   #
-  # manager-docs / manager-git / Explore are profile-invariant apart from the
-  # docs row's high-column bump.
+  # Two model rules the matrix encodes:
+  #   - Opus is the model for every multi-turn agentic row. Sonnet needs a
+  #     multiple of the agent steps and output tokens to finish the same
+  #     long-horizon task, so it costs MORE per task despite the lower unit
+  #     token price. Completion efficiency dominates unit price.
+  #   - Sonnet is retained only for single-shot, input-dominated, non-agentic
+  #     rows (Explore search, manager-git mechanics), where that multi-step
+  #     failure does not apply and the lower input price does.
+  #
+  # `xhigh` is absent from the matrix on purpose: on Opus it scores the same as
+  # `high` at materially higher cost, so it is strictly dominated.
+  #
+  # manager-git / Explore are profile-invariant.
   #
   # The model value is injected as a per-spawn runtime arg ([1m]-safe). The
   # effort value reaches the agent through its frontmatter `effort:` (the Agent
@@ -40,39 +56,39 @@ llm:
   # no agent file, so its effort is stated at call time, never persisted.
   profiles:
     high:
-      manager-spec:    { model: fable,  effort: xhigh }
-      plan-auditor:    { model: fable,  effort: xhigh }
-      sync-auditor:    { model: fable,  effort: xhigh }
-      manager-develop: { model: opus,   effort: xhigh }
-      super-advisor:   { model: opus,   effort: xhigh }
-      manager-design:  { model: fable,  effort: high }
-      builder-harness: { model: opus,   effort: xhigh }
-      e2e-tester:      { model: fable,  effort: high }
-      manager-docs:    { model: sonnet, effort: high }
-      manager-git:     { model: sonnet, effort: low }
-      Explore:         { model: sonnet, effort: low }
-    medium:
       manager-spec:    { model: opus,   effort: high }
       plan-auditor:    { model: opus,   effort: high }
       sync-auditor:    { model: opus,   effort: high }
-      manager-develop: { model: opus,   effort: high }
+      manager-develop: { model: opus,   effort: max }
+      super-advisor:   { model: opus,   effort: max }
+      manager-design:  { model: opus,   effort: high }
+      builder-harness: { model: opus,   effort: high }
+      e2e-tester:      { model: opus,   effort: medium }
+      manager-docs:    { model: opus,   effort: medium }
+      manager-git:     { model: sonnet, effort: low }
+      Explore:         { model: sonnet, effort: low }
+    medium:
+      manager-spec:    { model: opus,   effort: medium }
+      plan-auditor:    { model: opus,   effort: medium }
+      sync-auditor:    { model: opus,   effort: medium }
+      manager-develop: { model: opus,   effort: medium }
       super-advisor:   { model: opus,   effort: high }
       manager-design:  { model: opus,   effort: medium }
       builder-harness: { model: opus,   effort: medium }
-      e2e-tester:      { model: opus,   effort: medium }
-      manager-docs:    { model: sonnet, effort: medium }
+      e2e-tester:      { model: opus,   effort: low }
+      manager-docs:    { model: opus,   effort: low }
       manager-git:     { model: sonnet, effort: low }
       Explore:         { model: sonnet, effort: low }
     low:
       manager-spec:    { model: opus,   effort: low }
       plan-auditor:    { model: opus,   effort: low }
       sync-auditor:    { model: opus,   effort: low }
-      manager-develop: { model: sonnet, effort: medium }
+      manager-develop: { model: opus,   effort: low }
       super-advisor:   { model: opus,   effort: medium }
-      manager-design:  { model: sonnet, effort: medium }
-      builder-harness: { model: sonnet, effort: medium }
-      e2e-tester:      { model: sonnet, effort: medium }
-      manager-docs:    { model: sonnet, effort: medium }
+      manager-design:  { model: opus,   effort: low }
+      builder-harness: { model: opus,   effort: low }
+      e2e-tester:      { model: sonnet, effort: low }
+      manager-docs:    { model: sonnet, effort: low }
       manager-git:     { model: sonnet, effort: low }
       Explore:         { model: sonnet, effort: low }
 
@@ -94,27 +110,27 @@ llm:
     high:
       read-only-extract:    { effort: low }     # <- Explore row
       mechanical-transform: { effort: low }     # <- manager-git row
-      synthesize:           { effort: high }    # <- manager-docs row
-      research:             { effort: xhigh }   # <- plan-auditor row
-      verify-judge:         { effort: xhigh }   # <- sync-auditor row
-      implement:            { effort: xhigh }   # <- manager-develop row
+      synthesize:           { effort: medium }  # <- manager-docs row
+      research:             { effort: high }    # <- plan-auditor row
+      verify-judge:         { effort: high }    # <- sync-auditor row
+      implement:            { effort: max }     # <- manager-develop row
       design-architecture:  { effort: high }    # <- manager-design row
     medium:
       read-only-extract:    { effort: low }
       mechanical-transform: { effort: low }
-      synthesize:           { effort: medium }
-      research:             { effort: high }
-      verify-judge:         { effort: high }
-      implement:            { effort: high }
+      synthesize:           { effort: low }
+      research:             { effort: medium }
+      verify-judge:         { effort: medium }
+      implement:            { effort: medium }
       design-architecture:  { effort: medium }
     low:
       read-only-extract:    { effort: low }
       mechanical-transform: { effort: low }
-      synthesize:           { effort: medium }
+      synthesize:           { effort: low }
       research:             { effort: low }
       verify-judge:         { effort: low }
-      implement:            { effort: medium }
-      design-architecture:  { effort: medium }
+      implement:            { effort: low }
+      design-architecture:  { effort: low }
 
   # Optional per-agent overrides, keyed by canonical agent name. Each override
   # {model, effort} pair wins over the active profile's cell for that agent.

@@ -192,18 +192,30 @@ func ProfileMatrixAgents() []string {
 // effort}. This is the authoritative fallback for any cell absent from config
 // llm.profiles (REQ-MPM-009).
 //
-// Cell derivation (each row is monotone: high >= medium >= low):
-//   - high   — quality-first. Fable 5 carries the reasoning/audit rows; Opus 5
-//     carries coding at xhigh per the vendor's "start at xhigh for coding and
-//     agentic work" guidance for Opus 5.
-//   - medium — the balanced default. Opus 5 at `high`, which is the vendor API
-//     default effort, so this column is the most predictable operating point.
-//   - low    — economical. Opus 5 `low`/`medium` are the primary token-cost
-//     lever (they are stronger on Opus 5 than on earlier Opus models) before
-//     dropping to Sonnet 5.
+// Cell derivation (each row is monotone: high >= medium >= low). The cells are
+// anchored on a published long-horizon coding-agent benchmark that measures
+// score, cost per task, output tokens, and agent steps at every effort level:
 //
-// Invariants asserted by tests: zero haiku; models subset of {fable, opus,
-// sonnet}; efforts subset of {low, medium, high, xhigh} (no `max` effort cell);
+//   - Opus 5 dominates Sonnet 5 at EVERY effort on that benchmark: Opus 5 at
+//     `low` scores higher AND costs less per task than Sonnet 5 at any level,
+//     because Sonnet 5 spends a multiple of the agent steps and output tokens
+//     to finish the same long-horizon task. Unit token price is therefore not
+//     the cost driver — completion efficiency is. Opus is consequently the
+//     model for every multi-turn agentic row.
+//   - `xhigh` is retired from the matrix: on Opus 5 it scores the same as
+//     `high` while costing materially more, so it is strictly dominated. `max`
+//     is reserved for rows whose invocation is rare AND whose marginal quality
+//     is decision-critical (run-phase implementation and the escalation
+//     advisor, high column only).
+//   - `medium` is the knee of the Opus 5 cost/score curve — marginal cost per
+//     point rises several-fold above it — so manager-develop at `medium` is
+//     the default-profile anchor the rest of the matrix is derived from.
+//   - Sonnet 5 is retained ONLY for single-shot, input-dominated, non-agentic
+//     rows (Explore search, manager-git mechanics) where the multi-step
+//     completion failure does not apply and the lower input price does.
+//
+// Invariants asserted by tests: zero haiku; zero fable; models subset of
+// {opus, sonnet}; efforts subset of {low, medium, high, max} (no `xhigh` cell);
 // `inherit` never appears inside the matrix — it survives only as the
 // unmapped-agent fallback.
 //
@@ -211,28 +223,28 @@ func ProfileMatrixAgents() []string {
 // @MX:REASON: [AUTO] fan_in >= 3 (ResolveAgentModelEffort resolver + moai model profile CLI + web preview + harness class derivation); cells are settled design input, re-derivation forbidden
 var defaultProfileMatrix = map[string]map[string]config.ModelEffort{
 	PerformanceTierHigh: {
-		"manager-spec":    {Model: "fable", Effort: EffortLevelXHigh},
-		"plan-auditor":    {Model: "fable", Effort: EffortLevelXHigh},
-		"sync-auditor":    {Model: "fable", Effort: EffortLevelXHigh},
-		"manager-develop": {Model: "opus", Effort: EffortLevelXHigh},
-		"super-advisor":   {Model: "opus", Effort: EffortLevelXHigh},
-		"manager-design":  {Model: "fable", Effort: EffortLevelHigh},
-		"builder-harness": {Model: "opus", Effort: EffortLevelXHigh},
-		"e2e-tester":      {Model: "fable", Effort: EffortLevelHigh},
-		"manager-docs":    {Model: "sonnet", Effort: EffortLevelHigh},
+		"manager-spec":    {Model: "opus", Effort: EffortLevelHigh},
+		"plan-auditor":    {Model: "opus", Effort: EffortLevelHigh},
+		"sync-auditor":    {Model: "opus", Effort: EffortLevelHigh},
+		"manager-develop": {Model: "opus", Effort: EffortLevelMax},
+		"super-advisor":   {Model: "opus", Effort: EffortLevelMax},
+		"manager-design":  {Model: "opus", Effort: EffortLevelHigh},
+		"builder-harness": {Model: "opus", Effort: EffortLevelHigh},
+		"e2e-tester":      {Model: "opus", Effort: EffortLevelMedium},
+		"manager-docs":    {Model: "opus", Effort: EffortLevelMedium},
 		"manager-git":     {Model: "sonnet", Effort: EffortLevelLow},
 		"Explore":         {Model: "sonnet", Effort: EffortLevelLow},
 	},
 	PerformanceTierMedium: {
-		"manager-spec":    {Model: "opus", Effort: EffortLevelHigh},
-		"plan-auditor":    {Model: "opus", Effort: EffortLevelHigh},
-		"sync-auditor":    {Model: "opus", Effort: EffortLevelHigh},
-		"manager-develop": {Model: "opus", Effort: EffortLevelHigh},
+		"manager-spec":    {Model: "opus", Effort: EffortLevelMedium},
+		"plan-auditor":    {Model: "opus", Effort: EffortLevelMedium},
+		"sync-auditor":    {Model: "opus", Effort: EffortLevelMedium},
+		"manager-develop": {Model: "opus", Effort: EffortLevelMedium},
 		"super-advisor":   {Model: "opus", Effort: EffortLevelHigh},
 		"manager-design":  {Model: "opus", Effort: EffortLevelMedium},
 		"builder-harness": {Model: "opus", Effort: EffortLevelMedium},
-		"e2e-tester":      {Model: "opus", Effort: EffortLevelMedium},
-		"manager-docs":    {Model: "sonnet", Effort: EffortLevelMedium},
+		"e2e-tester":      {Model: "opus", Effort: EffortLevelLow},
+		"manager-docs":    {Model: "opus", Effort: EffortLevelLow},
 		"manager-git":     {Model: "sonnet", Effort: EffortLevelLow},
 		"Explore":         {Model: "sonnet", Effort: EffortLevelLow},
 	},
@@ -240,12 +252,12 @@ var defaultProfileMatrix = map[string]map[string]config.ModelEffort{
 		"manager-spec":    {Model: "opus", Effort: EffortLevelLow},
 		"plan-auditor":    {Model: "opus", Effort: EffortLevelLow},
 		"sync-auditor":    {Model: "opus", Effort: EffortLevelLow},
-		"manager-develop": {Model: "sonnet", Effort: EffortLevelMedium},
+		"manager-develop": {Model: "opus", Effort: EffortLevelLow},
 		"super-advisor":   {Model: "opus", Effort: EffortLevelMedium},
-		"manager-design":  {Model: "sonnet", Effort: EffortLevelMedium},
-		"builder-harness": {Model: "sonnet", Effort: EffortLevelMedium},
-		"e2e-tester":      {Model: "sonnet", Effort: EffortLevelMedium},
-		"manager-docs":    {Model: "sonnet", Effort: EffortLevelMedium},
+		"manager-design":  {Model: "opus", Effort: EffortLevelLow},
+		"builder-harness": {Model: "opus", Effort: EffortLevelLow},
+		"e2e-tester":      {Model: "sonnet", Effort: EffortLevelLow},
+		"manager-docs":    {Model: "sonnet", Effort: EffortLevelLow},
 		"manager-git":     {Model: "sonnet", Effort: EffortLevelLow},
 		"Explore":         {Model: "sonnet", Effort: EffortLevelLow},
 	},
@@ -255,13 +267,13 @@ var defaultProfileMatrix = map[string]map[string]config.ModelEffort{
 // specialist into. The names are reused verbatim from the `workflow_agents`
 // purpose taxonomy in workflow.yaml so the two surfaces share one vocabulary.
 const (
-	HarnessClassReadOnlyExtract    = "read-only-extract"
+	HarnessClassReadOnlyExtract     = "read-only-extract"
 	HarnessClassMechanicalTransform = "mechanical-transform"
-	HarnessClassSynthesize         = "synthesize"
-	HarnessClassResearch           = "research"
-	HarnessClassVerifyJudge        = "verify-judge"
-	HarnessClassImplement          = "implement"
-	HarnessClassDesignArchitecture = "design-architecture"
+	HarnessClassSynthesize          = "synthesize"
+	HarnessClassResearch            = "research"
+	HarnessClassVerifyJudge         = "verify-judge"
+	HarnessClassImplement           = "implement"
+	HarnessClassDesignArchitecture  = "design-architecture"
 )
 
 // HarnessAgentModel is the model every generated harness specialist is pinned to.

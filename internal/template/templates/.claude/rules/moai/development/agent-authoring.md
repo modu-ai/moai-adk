@@ -341,18 +341,18 @@ The values below are the **medium (default) profile column** of the `llm.profile
 
 | Agent | Default effort (medium column) | Rationale |
 |-------|-------------------------------|-----------|
-| `manager-spec` | high | plan-phase GEARS/EARS authoring; Opus 5 `high` is the vendor API default and its most predictable operating point |
-| `manager-develop` | high | run-phase implementation; the `high` profile raises this to `xhigh` per the vendor's coding guidance |
-| `manager-design` | medium | design pipeline; the `high` profile raises this to Fable `high` |
-| `manager-docs` | medium | sync-phase documentation + frontmatter transitions (mechanical doc sync) |
+| `manager-spec` | medium | plan-phase GEARS/EARS authoring; Opus `medium` is the knee of the cost/score curve |
+| `manager-develop` | medium | run-phase implementation; **this cell is the matrix anchor** — the `high` profile raises it to `max` |
+| `manager-design` | medium | design pipeline; the `high` profile raises this to Opus `high` |
+| `manager-docs` | low | sync-phase documentation + frontmatter transitions (mechanical doc sync) |
 | `manager-git` | low | git operations, PR creation, Tier-L routing (fast bash execution) |
-| `plan-auditor` | high | adversarial plan audit, bias prevention; `high` profile raises to Fable `xhigh` |
-| `sync-auditor` | high | skeptical 4-dimension quality scoring; `high` profile raises to Fable `xhigh` |
-| `super-advisor` | high | on-demand high-reasoning consultation; `high` profile raises to Opus `xhigh` |
+| `plan-auditor` | medium | adversarial plan audit, bias prevention; `high` profile raises to Opus `high` |
+| `sync-auditor` | medium | skeptical 4-dimension quality scoring; `high` profile raises to Opus `high` |
+| `super-advisor` | high | on-demand high-reasoning consultation; rare invocation justifies the depth, and the `high` profile raises it to Opus `max` |
 | `builder-harness` | medium | artifact scaffolding (agents/skills/plugins/hooks) |
 | `Explore` (Anthropic built-in) | low (call-time) | read-only codebase exploration. Explore has NO agent file, so neither the frontmatter channel nor an `effort` parameter can carry this value — it is stated at call time in the spawn prompt alongside the search-breadth qualifier. Raise to `medium` when asking for a `very thorough` sweep. |
 
-The per-profile model+effort variation is the `llm.profiles` matrix (11 agents × {high, medium, low} = 33 cells; Go SSOT `template.DefaultProfileMatrix`) — see `.claude/rules/moai/development/model-policy.md` § Per-Agent Profile Resolver. The former "(FIXED) across all tiers" markers on `manager-design` and `super-advisor` are retired: every agent now varies with the profile, and both agents' rows remain monotone (`high >= medium >= low`). Deployments that want the previous `xhigh` reasoning depth on every reasoning agent set `llm.profile: high`.
+The per-profile model+effort variation is the `llm.profiles` matrix (11 agents × {high, medium, low} = 33 cells; Go SSOT `template.DefaultProfileMatrix`) — see `.claude/rules/moai/development/model-policy.md` § Per-Agent Profile Resolver. The former "(FIXED) across all tiers" markers on `manager-design` and `super-advisor` are retired: every agent now varies with the profile, and both agents' rows remain monotone (`high >= medium >= low`). Deployments that want maximum reasoning depth set `llm.profile: high`, which raises the reasoning rows to Opus `high` and the two rarest-invocation rows (`manager-develop`, `super-advisor`) to Opus `max`. No column uses `xhigh`: on Opus it scores the same as `high` at materially higher cost.
 
 Generated harness specialists are NOT in this table: they are model-uniform (`opus`) with effort drawn from `llm.harness_agents` — see `.claude/rules/moai/development/model-policy.md` § Harness-Agent Model Policy.
 

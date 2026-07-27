@@ -1029,7 +1029,7 @@ func TestLintLR12_MatrixDrift_CleanAgent(t *testing.T) {
 name: manager-spec
 description: SPEC authoring specialist
 tools: Read, Write, Agent
-effort: high
+effort: medium
 ---
 SPEC agent body`
 
@@ -1048,7 +1048,7 @@ SPEC agent body`
 	// Correct effort value for the medium cell -> no LR-12 violation
 	for _, v := range violations {
 		if v.Rule == "LR-12" {
-			t.Errorf("expected no LR-12 violations for manager-spec with correct effort: high, got: %s", v.Message)
+			t.Errorf("expected no LR-12 violations for manager-spec with correct effort: medium, got: %s", v.Message)
 		}
 	}
 
