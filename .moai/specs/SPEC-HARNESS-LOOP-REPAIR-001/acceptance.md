@@ -32,13 +32,13 @@ These rules bind every AC below. They exist because §A.4 of `spec.md` attribute
 | AC-HLR-007 | M3 | **PASS** | §E.1 |
 | AC-HLR-008 | M4 | **PASS** | §F.1 |
 | AC-HLR-017 | M4 | **PASS** | §F.2 |
-| AC-HLR-009 | M5 | open | §G.1 |
-| AC-HLR-010 | M5 | open | §G.2 |
+| AC-HLR-009 | M5 | **PASS** | §G.1 |
+| AC-HLR-010 | M5 | **PASS** | §G.2 |
 | AC-HLR-011 | M6 | open | §H.1 |
 | AC-HLR-012 | M6 | open | §H.2 |
 | AC-HLR-013 | M6 | open | §H.3 |
 
-12 of 17 PASS — M1: AC-001/002/003/006 (4); M2: AC-004/005/014/015/016 (5, evidence backfilled 2026-07-28); M3: AC-007 (1); M4: AC-008/017 (2). Remaining: M5 (AC-009/010), M6 (AC-011/012/013).
+14 of 17 PASS — M1: AC-001/002/003/006 (4); M2: AC-004/005/014/015/016 (5, evidence backfilled 2026-07-28); M3: AC-007 (1); M4: AC-008/017 (2); M5: AC-009/010 (2, 2026-07-28). Remaining: M6 (AC-011/012/013).
 
 ---
 

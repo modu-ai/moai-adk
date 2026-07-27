@@ -263,6 +263,35 @@ M4 = REQ-HLR-009/011, AC-008/017. **§G q2 resolved (AskUserQuestion, 2026-07-28
 - `efcb4990c` — RATCHET-REWIRE propose-chain test seed cascade fix (orchestrator).
 - Both **not pushed** — orchestrator pushes after this verification.
 
+## §E.2 (cont.) Run-phase Evidence — M5 (lesson channel)
+
+M5 = REQ-HLR-006/007, AC-HLR-009/010. Implemented by orchestrator-direct execution (user-approved; M5 is doctrine/memory work, not Go code implementation). §G q3 was resolved in the prior session (commit `8eb11902a`, option a — topic-file convention as single lesson store).
+
+### Change set
+
+- `moai-constitution.md` § Lessons Protocol: line 145 (`Store lessons at ... lessons.md` → topic-file convention `feedback_*.md` + `MEMORY.md` as the single designated store); line 149 (archive target `lessons-archive.md` → `memory/_archive/`); line 153 (drain actor + drain trigger named — the orchestrator + the "backlog obscures recurring patterns" trigger). Edited in BOTH `.claude/rules/moai/core/moai-constitution.md` (local) and `internal/template/templates/.claude/rules/moai/core/moai-constitution.md` (mirror).
+- `make build` recompiled the binary (`bin/moai` v3.0.1, `8eb11902a`; build smoke `./bin/moai version` → exit 0).
+- `lessons.md` (auto-memory, 47 KB, 41 days stale) marked `[SUPERSEDED]` — content not migrated, kept on disk for the audit trail.
+- `.moai/lessons-inbox.jsonl` drain: 870 → 149 lines (82.9% reduction). Noise drained = `UnknownFailure(Bash/Read)` 721 one-off dev failures; preserved = VALUE event_keys (OOM/Sandbox/Permission/Timeout/ContextCancelled/Agent/MCP) 149 lines. Backup at `.moai/state/lessons-inbox.backup-20260728.jsonl` (870 lines, sha256 `666b46e5...`).
+
+### AC verification (orchestrator-direct, observed 2026-07-28)
+
+- **AC-HLR-009 (one designated lesson store): PASS.** Constitution § Lessons Protocol now names the topic-file convention (`feedback_*.md` + `MEMORY.md` index) as the single designated store; no rule names the stale `lessons.md` as the store (it is marked `[SUPERSEDED]`). Falsification direction — reverting the constitution edit restores `lessons.md` (mtime 2026-06-17, 41 days stale) as the designated store whose mtime is older than the practiced `feedback_*.md` topic files; the edit is the load-bearing change.
+- **AC-HLR-010 (inbox drain named): PASS.** Drain actor (orchestrator) + drain trigger (backlog obscures recurring patterns) both named in constitution line 153. A drain run reduced the undrained entry count: 870 → 149 (observed via `wc -l` before/after; sha256-verified replacement `4841ecc6...`). Falsification direction (count unchanged) is refuted by the measured reduction.
+
+### Orchestrator independent verification (verification-claim-integrity)
+
+- `go test ./...` → exit 0, 0 FAIL (full suite).
+- `golangci-lint run --timeout=3m` → exit 0, 0 issues.
+- byte-parity local↔template constitution: `diff` → identical.
+- template neutrality (§25): `grep` for SPEC-ID / REQ-HLR / AC-HLR / commit-SHA / internal-date in both constitution files → 0 matches.
+- `./bin/moai version` → exit 0, `v3.0.1 / 8eb11902a`.
+
+### Known gaps / residual risk (not closed by M5)
+
+- The drain mechanism is doctrine-only (no Go backstop) — parallel to the M3 routing-ledger finding. The orchestrator executes drains per the constitution-named actor/trigger; no mechanical drain hook enforces frequency or pattern conversion. Accepted doctrine-level debt, not closed by M5.
+- The drain converted ONE representative feedback topic file (`feedback_lessons_inbox_drain_2026_07.md`, carrying `prediction:` + `verified: false`) — the minimum to exercise M6 AC-011's prediction/verified obligation on this SPEC's own lesson entry. Full conversion of all 149 preserved VALUE stubs into individual feedback files is NOT done (out of scope for M5; the 149 are preserved in the inbox for future drain cycles).
+
 ## §F Phase 4 Mode Selection — M2
 
 Recorded before the first M2 run-phase `Agent()` spawn, per the canonical
