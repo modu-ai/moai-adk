@@ -38,17 +38,21 @@ func TestMapper_CurrentDataProducesCandidates(t *testing.T) {
 	}
 
 	candidates := MapPromotions(promotions)
-	// 4 unique key 중 observation(agent_invocation:Bash:) 1종 배제 → 3 candidate.
+	// 4 unique key 중 agent_invocation:Bash: 1종 배제 → 3 candidate. C1 (REQ-HLR-009)
+	// added an event-type exclusion independent of tier: even an auto_update-tier
+	// agent_invocation is now excluded. In this fixture agent_invocation:Bash:
+	// carries to_tier=observation, so it is excluded by BOTH the tier gate and
+	// the new event-type gate; the count stays 3 either way.
 	if got, want := len(candidates), 3; got != want {
 		t.Errorf("len(candidates) = %d, want %d (auto_update system events now actionable)", got, want)
 		for _, c := range candidates {
 			t.Logf("candidate: pattern=%q tier=%q conf=%v", c.PatternKey, c.Tier, c.Confidence)
 		}
 	}
-	// agent_invocation:Bash: (observation) 는 배제되어야 한다.
+	// agent_invocation:Bash: 는 배제되어야 한다 (구 observation-tier 배제 + C1 event-type 배제).
 	for _, c := range candidates {
 		if c.PatternKey == "agent_invocation:Bash:" {
-			t.Errorf("observation-tier pattern %q must not be admitted", c.PatternKey)
+			t.Errorf("pattern %q must not be admitted", c.PatternKey)
 		}
 	}
 }
@@ -141,7 +145,7 @@ func TestMapper_RealDataSchemaPass(t *testing.T) {
 	}{
 		// 실측 pattern_key 3형 — 모두 유효 EventType prefix + 빈 segment 허용.
 		{"user_prompt::", true},          // 빈 subject + 빈 context_hash
-		{"agent_invocation:Bash:", true}, // 빈 context_hash
+		{"agent_invocation:Bash:", false}, // format valid, but C1 (REQ-HLR-009) excludes agent_invocation event-type regardless of tier/confidence
 		{"session_stop::", true},         // 빈 subject + 빈 context_hash
 		{"subagent_stop:unknown:", true}, // 비어있지 않은 subject
 		// 나머지 pattern-bearing EventType prefix.
@@ -255,8 +259,9 @@ func TestMapper_DedupByPatternKey(t *testing.T) {
 	}
 }
 
-// TestMapper_DraftIDFormat 는 draft ID가 PROPOSAL-<YYYYMMDD>-<hash> 형식이며 동일 입력에
-// 대해 안정적임을 검증한다.
+// TestMapper_DraftIDFormat 는 draft ID가 PROPOSAL-<hash> 형식 (REQ-HLR-011, C2 — date
+// segment dropped) 이며 동일 입력에 대해 안정적임을 검증한다. 과거 PROPOSAL-<YYYYMMDD>-<hash>
+// 형식은 폐기: 동일 pattern_key 가 날짜에 무관하게 단일 ID를 산출한다 (AC-HLR-017).
 func TestMapper_DraftIDFormat(t *testing.T) {
 	t.Parallel()
 
@@ -276,12 +281,20 @@ func TestMapper_DraftIDFormat(t *testing.T) {
 		t.Errorf("DraftID not stable across calls: %q vs %q", first[0].DraftID, second[0].DraftID)
 	}
 	id := first[0].DraftID
-	if !strings.HasPrefix(id, "PROPOSAL-20260524-") {
-		t.Errorf("DraftID = %q, want prefix PROPOSAL-20260524-", id)
+	if !strings.HasPrefix(id, "PROPOSAL-") {
+		t.Errorf("DraftID = %q, want prefix PROPOSAL-", id)
+	}
+	// Date segment MUST be absent (REQ-HLR-011): PROPOSAL-<8 hex> only, no YYYYMMDD.
+	const wantLen = len("PROPOSAL-") + 8
+	if len(id) != wantLen {
+		t.Errorf("DraftID length = %d, want %d (PROPOSAL-<8hex>, date-free; id=%q)", len(id), wantLen, id)
 	}
 	// Hash segment must be exactly 8 hex characters.
-	if got := len(id) - len("PROPOSAL-20260524-"); got != 8 {
-		t.Errorf("DraftID hash segment length = %d, want 8 (id=%q)", got, id)
+	hashSeg := id[len("PROPOSAL-"):]
+	for _, r := range hashSeg {
+		if !strings.ContainsRune("0123456789abcdef", r) {
+			t.Errorf("DraftID hash segment %q contains non-hex char %q", hashSeg, r)
+		}
 	}
 }
 
@@ -300,5 +313,116 @@ func TestSortCandidatesByConfidenceDesc(t *testing.T) {
 	want := []string{"b", "c", "a"}
 	if strings.Join(got, ",") != strings.Join(want, ",") {
 		t.Errorf("sorted order = %v, want %v", got, want)
+	}
+}
+
+// TestActionablePatternRE_AcceptsAgentInvocationFormat pins the FORMAT gate's
+// acceptance of the agent_invocation event-type prefix after C1 (REQ-HLR-009).
+// C1 narrows ACTIONABILITY (an agent_invocation promotion is rejected regardless
+// of tier/confidence) but does NOT weaken the format regex — the regex must still
+// match agent_invocation:<subject>:<context_hash> so the format gate remains the
+// SSOT-derived, schema-only check it was before. This test is the format-gate
+// preservation assertion called out by AC-HLR-008's PRESERVE clause.
+func TestActionablePatternRE_AcceptsAgentInvocationFormat(t *testing.T) {
+	t.Parallel()
+
+	cases := []string{
+		"agent_invocation:Bash:",       // real data: empty context_hash
+		"agent_invocation::",           // empty subject + context_hash
+		"agent_invocation:Read:deadbeef",
+	}
+	for _, pk := range cases {
+		if !actionablePatternRE.MatchString(pk) {
+			t.Errorf("actionablePatternRE rejected %q — format gate MUST accept agent_invocation prefix (C1 narrows actionability, not format)", pk)
+		}
+	}
+	// Non-agent_invocation real-data prefixes are still format-accepted too.
+	for _, pk := range []string{"user_prompt::", "session_stop::", "subagent_stop:unknown:"} {
+		if !actionablePatternRE.MatchString(pk) {
+			t.Errorf("actionablePatternRE rejected %q", pk)
+		}
+	}
+}
+
+// TestMapper_AgentInvocationExcludedRegardlessOfTier is the AC-HLR-008 RED
+// falsification (REQ-HLR-009). A promotion whose pattern_key event-type prefix is
+// agent_invocation MUST be excluded from candidates EVEN WHEN it passes every
+// other gate (to_tier=auto_update, confidence=0.9, valid format, observation_count=5).
+// Before C1 this promotion was admitted (one candidate); after C1 it yields zero.
+func TestMapper_AgentInvocationExcludedRegardlessOfTier(t *testing.T) {
+	t.Parallel()
+
+	in := []harness.Promotion{
+		{
+			Ts:               time.Date(2026, 7, 28, 9, 0, 0, 0, time.UTC),
+			PatternKey:       "agent_invocation:Bash:",
+			ToTier:           "auto_update",
+			ObservationCount: 5,
+			Confidence:       0.9,
+		},
+	}
+	got := MapPromotions(in)
+	if len(got) != 0 {
+		t.Errorf("agent_invocation promotion admitted: got %d candidate(s), want 0 (C1 event-type exclusion)", len(got))
+		for _, c := range got {
+			t.Logf("unexpected candidate: pattern=%q tier=%q draft=%q", c.PatternKey, c.Tier, c.DraftID)
+		}
+	}
+}
+
+// TestMapper_AgentInvocationExcludedWithMixedInput confirms C1 excludes ONLY the
+// agent_invocation event-type while tool_failure / user_prompt / subagent_stop /
+// session_stop remain promotable subject to the existing gates.
+func TestMapper_AgentInvocationExcludedWithMixedInput(t *testing.T) {
+	t.Parallel()
+
+	in := []harness.Promotion{
+		{Ts: time.Date(2026, 7, 28, 9, 0, 0, 0, time.UTC), PatternKey: "agent_invocation:Bash:", ToTier: "auto_update", ObservationCount: 5, Confidence: 0.9},
+		{Ts: time.Date(2026, 7, 28, 9, 1, 0, 0, time.UTC), PatternKey: "tool_failure:Read:deadbeef", ToTier: "auto_update", ObservationCount: 8, Confidence: 0.9},
+		{Ts: time.Date(2026, 7, 28, 9, 2, 0, 0, time.UTC), PatternKey: "user_prompt::", ToTier: "rule", ObservationCount: 12, Confidence: 0.95},
+		{Ts: time.Date(2026, 7, 28, 9, 3, 0, 0, time.UTC), PatternKey: "subagent_stop:unknown:", ToTier: "auto_update", ObservationCount: 7, Confidence: 0.9},
+		{Ts: time.Date(2026, 7, 28, 9, 4, 0, 0, time.UTC), PatternKey: "session_stop::", ToTier: "rule", ObservationCount: 6, Confidence: 0.9},
+	}
+	got := MapPromotions(in)
+	// agent_invocation excluded; the other 4 event-types remain promotable.
+	if want := 4; len(got) != want {
+		t.Fatalf("len(candidates) = %d, want %d", len(got), want)
+	}
+	for _, c := range got {
+		if strings.HasPrefix(c.PatternKey, "agent_invocation:") {
+			t.Errorf("agent_invocation candidate leaked through C1: pattern=%q", c.PatternKey)
+		}
+	}
+}
+
+// TestMapper_DraftIDStableAcrossDates is the AC-HLR-017 RED falsification
+// (REQ-HLR-011). Two Promotion records sharing one pattern_key but carrying
+// timestamps on two DIFFERENT dates (2026-07-13 and 2026-07-14) MUST produce the
+// SAME DraftID. Before C2 the date segment made the IDs differ; after C2 the date
+// is dropped and one pattern_key yields one draft ID across dates.
+func TestMapper_DraftIDStableAcrossDates(t *testing.T) {
+	t.Parallel()
+
+	day1 := time.Date(2026, 7, 13, 10, 0, 0, 0, time.UTC)
+	day2 := time.Date(2026, 7, 14, 10, 0, 0, 0, time.UTC)
+	const pk = "user_prompt::"
+
+	idDay1 := buildDraftID(harness.Promotion{Ts: day1, PatternKey: pk})
+	idDay2 := buildDraftID(harness.Promotion{Ts: day2, PatternKey: pk})
+	if idDay1 != idDay2 {
+		t.Errorf("same pattern_key yielded different DraftIDs across dates:\n  day1(%s)=%s\n  day2(%s)=%s\nwant identical (C2 dropped the date segment)", day1.Format("2006-01-02"), idDay1, day2.Format("2006-01-02"), idDay2)
+	}
+
+	// End-to-end: two same-pattern promotions on different dates collapse to one
+	// candidate (the dedup map keys on pattern_key; the latest Ts wins).
+	cands := MapPromotions([]harness.Promotion{
+		{Ts: day1, PatternKey: pk, ToTier: "auto_update", ObservationCount: 10, Confidence: 0.9},
+		{Ts: day2, PatternKey: pk, ToTier: "auto_update", ObservationCount: 11, Confidence: 0.9},
+	})
+	if len(cands) != 1 {
+		t.Fatalf("MapPromotions yielded %d candidates, want 1", len(cands))
+	}
+	if cands[0].DraftID != idDay1 {
+		t.Errorf("end-to-end DraftID %q != direct buildDraftID %q", cands[0].DraftID, idDay1)
 	}
 }
