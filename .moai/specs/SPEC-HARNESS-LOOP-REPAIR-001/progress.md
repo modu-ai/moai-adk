@@ -159,6 +159,24 @@ characterization test that MUST fail once M2 lands.
 - Proposal coverage for `internal/cli/harness` measured 80.9%, below the 85%
   package target. Pre-existing; M1 added tests but did not close the gap.
 
+## §E.2 (cont.) Run-phase Evidence — M2 (route drafts to designed consumer)
+
+M2 = REQ-HLR-004/004b/004c/012, AC-004/005/014/015/016. Implemented in the prior session (commits `1050d6738`·`127bd7bbe`·`1a1d6e206`·`1f78f0da3`·`93dc4b5dd`); evidence backfilled 2026-07-28 (the prior session recorded the work but not this §E.2 block).
+
+### AC verification (backfill, observed 2026-07-28, HEAD `300847a64`)
+
+| AC | Status | Test | Observed |
+|---|---|---|---|
+| AC-004 | PASS | `TestPromote_CreatesSPECSkeletonWithProvenance` + `TestPromote_ProvenanceRoundTripsDraftID` + `TestPromote_DraftLeavesPendingQueue` | all `--- PASS` |
+| AC-005 | PASS | `TestPromote_AppendsExactlyOneAuditRecord` | `--- PASS` |
+| AC-014 | PASS | `TestLoadProposalByID_DiscoveryDraftDiagnostic` | `--- PASS` |
+| AC-015 | PASS | `TestApply_ApplicabilityGuard_RejectsContentFreeProposal` | `--- PASS` (subtests: all-three-empty, only-target-path-set) |
+| AC-016 | PASS | `TestLoadProposalByID_ProducerSchemaMismatch_RetiredByM2` (sentinel) + no `Tier` JSON codec | sentinel `--- PASS`; `grep` confirms no codec (clause 1) |
+
+Design decisions (resolved at the M2 Implementation Kickoff gate, recorded in `plan.md` §A.6): promotion path = `moai harness promote --id`; applicability guard = in-`Apply` pre-flight (before `createSnapshot`); `execute` left dormant (diagnostic only).
+
+The prior M2 session executed the falsifications (revert/observe/restore) per its handoff; this backfill re-ran the tests (all green) and recorded the evidence. See `acceptance.md §D` "M2 — verification evidence (backfilled)".
+
 ## §E.2 (cont.) Run-phase Evidence — M3 (dispatch observation)
 
 M3 = REQ-HLR-005 / AC-HLR-007. **The recording obligation and CLI mechanics were already

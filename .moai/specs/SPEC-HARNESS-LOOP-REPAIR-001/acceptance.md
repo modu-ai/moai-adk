@@ -24,11 +24,11 @@ These rules bind every AC below. They exist because §A.4 of `spec.md` attribute
 | AC-HLR-002 | M1 | **PASS** | §C.2 |
 | AC-HLR-003 | M1 | **PASS** | §C.3 |
 | AC-HLR-006 | M1 | **PASS** | §C.4 |
-| AC-HLR-004 | M2 | open | §D.1 |
-| AC-HLR-005 | M2 | open | §D.2 |
-| AC-HLR-014 | M2 | open | §D.3 |
-| AC-HLR-015 | M2 | open | §D.4 |
-| AC-HLR-016 | M2 | open | §D.5 |
+| AC-HLR-004 | M2 | **PASS** | §D.1 |
+| AC-HLR-005 | M2 | **PASS** | §D.2 |
+| AC-HLR-014 | M2 | **PASS** | §D.3 |
+| AC-HLR-015 | M2 | **PASS** | §D.4 |
+| AC-HLR-016 | M2 | **PASS** | §D.5 |
 | AC-HLR-007 | M3 | **PASS** | §E.1 |
 | AC-HLR-008 | M4 | **PASS** | §F.1 |
 | AC-HLR-017 | M4 | **PASS** | §F.2 |
@@ -38,7 +38,7 @@ These rules bind every AC below. They exist because §A.4 of `spec.md` attribute
 | AC-HLR-012 | M6 | open | §H.2 |
 | AC-HLR-013 | M6 | open | §H.3 |
 
-4 of 17 PASS. All four PASS rows belong to M1 and were verified at commit `c996eb294`.
+12 of 17 PASS — M1: AC-001/002/003/006 (4); M2: AC-004/005/014/015/016 (5, evidence backfilled 2026-07-28); M3: AC-007 (1); M4: AC-008/017 (2). Remaining: M5 (AC-009/010), M6 (AC-011/012/013).
 
 ---
 
@@ -159,6 +159,20 @@ M2 acts on `spec.md` §A.3.2 / §A.4: a `proposalgen` draft is a discovery repor
 **Why no codec is needed.** The `tier` string/numeric split has exactly one consumer: `loadProposalByID` in the execute path (`internal/cli/harness/execute.go:222-225`). The other two consumers never decode into `harness.Proposal` — `countProposals` only counts directories (`internal/cli/harness.go:194-200`), and the default `apply` path reads raw bytes and echoes them to stdout (`internal/cli/harness.go:278-285`). Removing the execute→draft wiring removes the only consumer, so the split is dissolved rather than fixed. Adding a codec would be work with no caller.
 
 > **Conditional fallback.** Should M2 design instead retain a typed reader for `proposal.json`, the minimal repair is a `Tier.UnmarshalJSON` accepting both the string vocabulary (the inverse of the existing `String()` SSOT at `internal/harness/types.go:245`) and a bare number. That is compile-neutral: a method addition changes no existing struct literal, so the 57 `Tier:` literal sites across `internal/**/*_test.go` are unaffected. This fallback is recorded so the option is not re-derived; it is NOT the selected path.
+
+### M2 — verification evidence (backfilled 2026-07-28, session de850f4f)
+
+M2 was implemented+pushed in the prior session (`93dc4b5dd`) but its AC PASS evidence was not recorded here at the time. This block records the verification executed 2026-07-28 against the current tree (HEAD `300847a64`).
+
+| AC | Test(s) | Observed |
+|---|---|---|
+| AC-HLR-004 | `TestPromote_CreatesSPECSkeletonWithProvenance`, `TestPromote_ProvenanceRoundTripsDraftID`, `TestPromote_DraftLeavesPendingQueue` (`internal/cli/harness/promote_test.go`) | `--- PASS` (all three); provenance round-trips the draft ID; the draft leaves the pending queue |
+| AC-HLR-005 | `TestPromote_AppendsExactlyOneAuditRecord` (`promote_test.go`) | `--- PASS`; exactly one durable record per promotion |
+| AC-HLR-014 | `TestLoadProposalByID_DiscoveryDraftDiagnostic` (`internal/cli/harness/layout_repro_test.go`) | `--- PASS`; a discovery draft surfaces an honest diagnostic, not a raw unmarshal error |
+| AC-HLR-015 | `TestApply_ApplicabilityGuard_RejectsContentFreeProposal` (`internal/harness/applier_test.go`) | `--- PASS` (subtests: all-three-empty, only-target-path-set); rejected before snapshot |
+| AC-HLR-016 | `TestLoadProposalByID_ProducerSchemaMismatch_RetiredByM2` (retirement sentinel) + `grep 'func (.*Tier) (Marshal\|Unmarshal)JSON' internal/harness/` → no codec | sentinel `--- PASS` (records the retirement rationale); no `Tier` JSON codec exists (clause 1) |
+
+Command run: `go test -v -run '<the tests above>' ./internal/cli/harness/ ./internal/harness/` → all listed tests `--- PASS`. The falsification vehicles are the named tests themselves (RED-by-design when the M2 change is reverted); their revert/observe/restore execution was performed in the M2 implementation session (per the M2 handoff). This backfill confirms the current tree holds green.
 
 ---
 

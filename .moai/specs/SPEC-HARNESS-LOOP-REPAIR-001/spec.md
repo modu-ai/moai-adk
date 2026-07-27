@@ -295,7 +295,7 @@ The system SHALL record the disposition of the producer/consumer `tier` represen
 | M | Scope | Source | Verification | Status |
 |---|---|---|---|---|
 | **M1** | Shared proposal accessor; repair C1/C2/C3 | §A.3.1 | `status` pending == on-disk draft count | **complete** — `c996eb294` |
-| **M2** | Route drafts to their designed consumer: promotion path draft → SPEC; de-wire `execute`→draft; applicability guard before snapshot; retire the tier tripwire | §A.3.2, §A.4, §A.7 | a named draft becomes a SPEC carrying its provenance, and leaves the pending queue | not started |
+| **M2** | Route drafts to their designed consumer: promotion path draft → SPEC; de-wire `execute`→draft; applicability guard before snapshot; retire the tier tripwire | §A.3.2, §A.4, §A.7 | a named draft becomes a SPEC carrying its provenance, and leaves the pending queue | **complete** — `93dc4b5dd`; AC-004/005/014/015/016 PASS (evidence backfilled 2026-07-28, acceptance.md §D) |
 | **M3** | Routing-ledger recording obligation at dispatch | §A.5 | ledger row count increases per dispatch | **complete** — obligation + mechanics pre-shipped by `SPEC-HARNESS-EVOLVE-001` (`1c54cd9c6`); M3 verified end-to-end + executed the AC-HLR-007 falsification (no Go change) |
 | **M4** | Generator quality: promotion routing by enforceability, narrow `agent_invocation` promotion, pattern-scoped draft identity | §A.5, §A.6 | no new draft with a bare-tool-name `pattern_key`; a two-date fixture yields one draft | **complete** — `b010bcfd9` (mapper.go C1+C2) + `efcb4990c` (RATCHET-REWIRE test cascade); §G q2 resolved (exclude `agent_invocation` event type) |
 | **M5** | Lesson-channel unification + inbox drain ownership | §A.2 | designated store == practiced store; inbox drains | not started |
@@ -318,8 +318,8 @@ Every criterion is stated so that **reverting the corresponding change makes it 
 | AC-HLR-001 | M1 | `status` pending count equals the on-disk draft count | **PASS** |
 | AC-HLR-002 | M1 | `apply` returns a draft payload, not "No pending proposals" | **PASS** |
 | AC-HLR-003 | M1 | `execute --id` resolves to the draft rather than "proposal not found" | **PASS** |
-| AC-HLR-004 | M2 | a named draft becomes a SPEC carrying its provenance and leaves the pending queue | open — **rewritten in v0.2.0** |
-| AC-HLR-005 | M2 | each promotion leaves one auditable record linking draft → SPEC | open — **rewritten in v0.2.0** |
+| AC-HLR-004 | M2 | a named draft becomes a SPEC carrying its provenance and leaves the pending queue | **PASS** |
+| AC-HLR-005 | M2 | each promotion leaves one auditable record linking draft → SPEC | **PASS** |
 | AC-HLR-006 | M1 | one shared accessor; no call site re-derives `id + ".json"` | **PASS** |
 | AC-HLR-007 | M3 | a `/moai` dispatch appends one routing-ledger row | **PASS** |
 | AC-HLR-008 | M4 | no newly generated draft carries a bare-tool-name `pattern_key` | **PASS** |
@@ -328,9 +328,9 @@ Every criterion is stated so that **reverting the corresponding change makes it 
 | AC-HLR-011 | M6 | harness-edit lessons carry `prediction:` then `verified:` | open |
 | AC-HLR-012 | M6 | `harness --help` enumerates every shipped verb | open |
 | AC-HLR-013 | M6 | `list` and `doctor` agree on a command-only thin harness | open |
-| AC-HLR-014 | M2 | `execute` no longer accepts a `proposalgen` draft, and says why | open — new in v0.2.0 |
-| AC-HLR-015 | M2 | a non-applicable proposal is rejected before any snapshot directory is created | open — new in v0.2.0 |
-| AC-HLR-016 | M2 | the tier-split disposition is recorded and the tripwire retired with rationale | open — new in v0.2.0 |
+| AC-HLR-014 | M2 | `execute` no longer accepts a `proposalgen` draft, and says why | **PASS** |
+| AC-HLR-015 | M2 | a non-applicable proposal is rejected before any snapshot directory is created | **PASS** |
+| AC-HLR-016 | M2 | the tier-split disposition is recorded and the tripwire retired with rationale | **PASS** |
 | AC-HLR-017 | M4 | one `pattern_key` yields one draft across dates | **PASS** |
 
 Retired in v0.2.0: the former AC-HLR-004 (`grep -c apply_outcome … ≥ 1`) and AC-HLR-005 (`learning-history/applied/` materialises). Both presumed `proposalgen` drafts reach `Applier.Apply()`; §A.4 establishes they cannot. Their replacements carry the same falsifiability discipline against the corrected consumer. `apply_outcome` telemetry and the `applied/` directory remain the success signals of the **Applier** path, which this SPEC deliberately leaves unfed (§G open question 4).
