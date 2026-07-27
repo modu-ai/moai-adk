@@ -8,8 +8,8 @@
 | Plan (spec.md) | complete | commit `71ef81809` — 10 REQ / 13 AC / 6 milestones |
 | Plan (plan.md, acceptance.md) | **not written** | orchestrator-direct authoring; agent spawning was constrained this session |
 | plan-audit | **not run** | no independent `plan-auditor` verdict exists |
-| Kickoff Approval | **not obtained** | required before M1 run-phase entry |
-| M1 implementation | not started | no code touched |
+| Kickoff Approval | **obtained** | user selected "M1 바로 착수" at the AskUserQuestion gate |
+| M1 implementation | complete | shared accessor + C1/C2/C3 rewired; see §E.2 |
 
 ## Decision taken this session
 
@@ -89,3 +89,67 @@ reintroduces an independent `id + ".json"` path derivation.
   based on `origin/main` = `760f09f73`). Do not commit this SPEC's work in the primary checkout.
 - `moai harness ledger record` was exercised once this session and works (exit 0, one row
   written). The ledger was empty purely because no orchestrator had ever called it — M3.
+
+## §E.2 Run-phase Evidence — M1
+
+Every row below was produced by running the named command in this run, against
+this tree. Verbatim logs: `.moai/state/verify/m1/`.
+
+### Change set
+
+| File | Change |
+|---|---|
+| `internal/harness/proposalgen/layout.go` | NEW — the shared accessor (`ProposalDirRel`, `MetadataFileName`, `ProposalDir`, `ListDraftIDs`, `ProposalPath`) placed next to the producer that defines the layout |
+| `internal/cli/harness.go` | C1 `countProposals` + C2 apply selector routed through the accessor; `harnessDefaultProposalDir` now aliases `proposalgen.ProposalDirRel` (duplicate literal removed) |
+| `internal/cli/harness/execute.go` | C3 `resolveProposalPath` delegates path + traversal validation to the accessor; `execProposalDirRel` aliases the canonical const; `draftLabel` added so diagnostics name the draft ID rather than the shared `proposal.json` basename |
+| `internal/cli/harness_layout_repro_test.go` | NEW — C1/C2 reproduction + AC-HLR-006 flat-derivation guard |
+| `internal/cli/harness/layout_repro_test.go` | NEW — C3 reproduction, traversal guard, M2 schema characterization |
+| `internal/cli/harness/execute_test.go`, `internal/cli/harness_execute_test.go` | fixtures migrated from the retired flat `<id>.json` to nested `<id>/proposal.json` |
+
+### AC verification
+
+| AC | Status | Command | Observed |
+|---|---|---|---|
+| AC-HLR-001 | PASS | `moai harness status --project-root <primary>` (binary built from this worktree) | `pending proposals: 52 items` (baseline `0 items`) |
+| AC-HLR-002 | PASS | `moai harness apply --project-root <primary>` | emitted the `PROPOSAL-20260617-dc05149f` payload, not `No pending proposals` |
+| AC-HLR-003 | PASS | `moai harness execute --id PROPOSAL-20260617-dc05149f --project-root <isolated copy>` | no longer `proposal not found`; reaches the file and fails at the schema layer (exit 1) — see Blocker below |
+| AC-HLR-006 | PASS | `go test -run TestNoFlatProposalPathDerivation ./internal/cli/` | no call site re-derives `id + ".json"` |
+
+### Falsification (both directions verified, not assumed)
+
+- Inverting the directory predicate in `ListDraftIDs` → `TestCountProposals_NestedLayout` reports `countProposals = 0, want 2`; `TestHarnessApply_NestedLayout` fails.
+- Restoring `draftID+".json"` in `ProposalPath` → `TestResolveProposalPath_NestedLayout` and `TestLoadProposalByID_NestedLayout` fail.
+- Both edits were reverted and the suite re-confirmed green.
+
+### Full verification batch
+
+`go test ./...` exit 0 (105 packages ok) · `go vet ./...` exit 0 ·
+`golangci-lint run` exit 0 (0 issues) · `GOOS=windows` and `GOOS=linux`
+builds exit 0 · subagent-boundary grep: 0 invocations (19 matches are prose
+comments and flag descriptions only).
+
+### Blocker discovered — belongs to M2, NOT fixed here
+
+The producer and the consumer carry two different schemas, independent of the
+layout seam:
+
+- `proposalgen` writes `"tier": "auto_update"` (string); `harness.Proposal.Tier`
+  is the numeric `harness.Tier` → hard unmarshal error.
+- The producer emits no `target_path` / `field_key` / `new_value`, so
+  `Applier.Apply()` would have nothing to apply even if parsing succeeded.
+
+Repairing the layout makes drafts VISIBLE; it does not make them APPLICABLE.
+AC-HLR-004 (first `apply_outcome`) is therefore blocked on reconciling these
+schemas — a design decision (change the producer, or add a mapping layer) that
+belongs to M2. Pinned by `TestLoadProposalByID_ProducerSchemaMismatch`, a
+characterization test that MUST fail once M2 lands.
+
+### Known gaps (not addressed in M1)
+
+- `plan.md` / `acceptance.md` remain unwritten and no `plan-auditor` verdict
+  exists; the SPEC is Tier L and nominally expects 5 artifacts.
+- `harness execute` diagnostics carry a doubled `harness execute:` prefix. This
+  predates M1 (present at `6fe9d89e8`) and was left untouched under scope
+  discipline.
+- Proposal coverage for `internal/cli/harness` measured 80.9%, below the 85%
+  package target. Pre-existing; M1 added tests but did not close the gap.

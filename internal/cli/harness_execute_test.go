@@ -11,10 +11,11 @@ import (
 	"testing"
 )
 
-// writeApplyProposalFixture는 root에 pending proposal JSON 1건을 작성한다.
+// writeApplyProposalFixture는 root에 pending proposal 1건을 생산자의 nested
+// 레이아웃(proposals/<id>/proposal.json)으로 작성한다 (REQ-HLR-001).
 func writeApplyProposalFixture(t *testing.T, root, id, targetPath, fieldKey, newValue string) {
 	t.Helper()
-	propDir := filepath.Join(root, ".moai", "harness", "proposals")
+	propDir := filepath.Join(root, ".moai", "harness", "proposals", id)
 	if err := os.MkdirAll(propDir, 0o755); err != nil {
 		t.Fatalf("mkdir proposals: %v", err)
 	}
@@ -29,7 +30,7 @@ func writeApplyProposalFixture(t *testing.T, root, id, targetPath, fieldKey, new
 	if err != nil {
 		t.Fatalf("marshal proposal: %v", err)
 	}
-	if err := os.WriteFile(filepath.Join(propDir, id+".json"), data, 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(propDir, "proposal.json"), data, 0o644); err != nil {
 		t.Fatalf("write proposal: %v", err)
 	}
 }

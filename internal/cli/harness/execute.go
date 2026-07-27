@@ -27,14 +27,17 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/modu-ai/moai-adk/internal/harness"
+	"github.com/modu-ai/moai-adk/internal/harness/proposalgen"
 	"github.com/modu-ai/moai-adk/internal/harness/safety"
 )
 
-// canonical harness 경로 (project root 상대, REQ-AEX-009). harness.go의 동일 const와
-// 의미가 일치하지만 패키지 경계가 다르므로 여기서 별도 선언한다 (cli 패키지의
-// unexported const는 cross-package 참조 불가).
+// canonical harness 경로 (project root 상대, REQ-AEX-009).
+//
+// execProposalDirRel은 proposalgen이 소유한 canonical 선언을 alias한다 —
+// 레이아웃은 그것을 기록하는 코드가 소유하며, 경로 리터럴을 여기서 재선언하면
+// 생산자/소비자 drift가 다시 열린다 (REQ-HLR-001).
 const (
-	execProposalDirRel  = ".moai/harness/proposals"
+	execProposalDirRel  = proposalgen.ProposalDirRel
 	execSnapshotBaseRel = ".moai/harness/learning-history/snapshots"
 	execManifestRel     = ".moai/harness/learning-history/manifest.jsonl"
 	execBaselineRel     = ".moai/harness/measurements-baseline.yaml"
@@ -189,35 +192,47 @@ func runExecuteWithBase(opts ExecuteOptions, evaluator harness.SafetyEvaluator, 
 	return applier.Apply(proposal, evaluator, snapshotBase, sessions)
 }
 
-// resolveProposalPath는 proposal ID를 .moai/harness/proposals/<id>.json 경로로
-// 변환한다. 경로 traversal(../)을 방지하기 위해 ID가 단순 base name인지 검증한다
-// (EC-1, 절대경로 규칙).
+// resolveProposalPath는 proposal ID를 생산자가 기록하는 nested 경로
+// .moai/harness/proposals/<id>/proposal.json 로 변환한다 (REQ-HLR-001).
+//
+// 경로 해석과 traversal 검증은 모두 공유 accessor(proposalgen.ProposalPath)가
+// 소유한다 — 여기서 경로를 재구성하면 C3 drift가 다시 열린다. accessor의
+// 검증 실패는 입력 측 오류이므로 userError(exit 1)로 감싼다 (REQ-AEX-012).
 func resolveProposalPath(root, id string) (string, error) {
-	if id == "" {
-		return "", &userError{msg: "harness execute: empty proposal ID"}
+	path, err := proposalgen.ProposalPath(proposalgen.ProposalDir(root), id)
+	if err != nil {
+		return "", &userError{msg: fmt.Sprintf("harness execute: %v", err)}
 	}
-	// 경로 traversal 방지: ID는 단순 식별자여야 한다 (디렉터리 구분자/.. 금지).
-	if strings.ContainsAny(id, `/\`) || strings.Contains(id, "..") {
-		return "", &userError{msg: fmt.Sprintf("harness execute: invalid proposal ID %q (path traversal not allowed)", id)}
-	}
-	return filepath.Join(root, execProposalDirRel, id+".json"), nil
+	return path, nil
 }
 
 // loadProposalByID는 proposal JSON 파일을 harness.Proposal로 로드한다 (REQ-AEX-004).
 // 파일 부재는 user error(exit 1, REQ-AEX-012)로 분류된다.
 func loadProposalByID(path string) (harness.Proposal, error) {
+	// nested 레이아웃에서 Base(path)는 항상 "proposal.json"이므로 draft를
+	// 식별하지 못한다. 진단에는 부모 디렉터리 이름(= draft ID)을 쓴다.
+	name := draftLabel(path)
 	data, err := os.ReadFile(path)
 	if err != nil {
 		if os.IsNotExist(err) {
-			return harness.Proposal{}, &userError{msg: fmt.Sprintf("harness execute: proposal not found: %s", filepath.Base(path))}
+			return harness.Proposal{}, &userError{msg: fmt.Sprintf("harness execute: proposal not found: %s", name)}
 		}
-		return harness.Proposal{}, &userError{msg: fmt.Sprintf("harness execute: read proposal %s: %v", filepath.Base(path), err)}
+		return harness.Proposal{}, &userError{msg: fmt.Sprintf("harness execute: read proposal %s: %v", name, err)}
 	}
 	var prop harness.Proposal
 	if err := json.Unmarshal(data, &prop); err != nil {
-		return harness.Proposal{}, &userError{msg: fmt.Sprintf("harness execute: parse proposal %s: %v", filepath.Base(path), err)}
+		return harness.Proposal{}, &userError{msg: fmt.Sprintf("harness execute: parse proposal %s: %v", name, err)}
 	}
 	return prop, nil
+}
+
+// draftLabel은 proposal.json 경로에서 사용자에게 보여줄 draft 식별자를 뽑는다.
+// nested 레이아웃에서는 부모 디렉터리 이름이 draft ID다.
+func draftLabel(path string) string {
+	if filepath.Base(path) == proposalgen.MetadataFileName {
+		return filepath.Base(filepath.Dir(path))
+	}
+	return filepath.Base(path)
 }
 
 // userError는 exit 1(user error)로 분류되는 에러를 표시하는 sentinel 타입이다.
