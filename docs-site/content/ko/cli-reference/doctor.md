@@ -54,4 +54,4 @@ moai doctor sandbox       # 샌드박스 백엔드
 
 ---
 
-관련: [프로젝트 상태](/cli-reference/status) · [CLI 개요](/getting-started/cli)
+관련: [프로젝트 상태](/ko/cli-reference/status) · [CLI 개요](/ko/getting-started/cli)
