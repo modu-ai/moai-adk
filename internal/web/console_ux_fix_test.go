@@ -187,42 +187,38 @@ func TestLLMSectionRenamedThirdParty(t *testing.T) {
 	}
 }
 
-// TestModelOptLabelsCarryContextWindow verifies N3: the model <option> labels carry
-// a context-window annotation — (200K) for the standard 200K models, (1M) for the
-// [1m] variants. The annotation is the same token across all 4 locales (labels render
-// in English via the .opt. guard), so each annotated value appears exactly 4 times in
-// i18n.js. opusplan (a routing alias, no single window) stays un-annotated.
-func TestModelOptLabelsCarryContextWindow(t *testing.T) {
+// TestModelOptLabelsEnglishUnified verifies the model <option> labels render as
+// unified English names across all 4 locales (no context-window annotation):
+// Fable 5 / Opus 5 / Sonnet 5 / Haiku 4.5. opus/sonnet/fable are exposed ONLY as
+// their [1m] variants (1M always on), so the picker surface is exactly 4 options
+// and each English label appears exactly 4 times in i18n.js (one per locale).
+func TestModelOptLabelsEnglishUnified(t *testing.T) {
 	dict := readEmbeddedAsset(t, "i18n.js")
 	wants := map[string]string{
-		"f.model.opt.opus":       "Opus 4.8 (200K)",
-		"f.model.opt.opus[1m]":   "Opus 4.8 (1M)",
-		"f.model.opt.sonnet":     "Sonnet 5 (200K)",
-		"f.model.opt.sonnet[1m]": "Sonnet 5 (1M)",
-		"f.model.opt.fable":      "Fable 5 (200K)",
-		"f.model.opt.fable[1m]":  "Fable 5 (1M)",
-		"f.model.opt.haiku":      "Haiku 4.5 (200K)",
+		"f.model.opt.fable[1m]":  "Fable 5",
+		"f.model.opt.opus[1m]":   "Opus 5",
+		"f.model.opt.sonnet[1m]": "Sonnet 5",
+		"f.model.opt.haiku":      "Haiku 4.5",
 	}
 	for key, val := range wants {
 		entry := `"` + key + `": "` + val + `"`
 		if n := strings.Count(dict, entry); n != 4 {
-			t.Errorf("i18n.js has %d occurrences of %s, want 4 (one per locale)", n, entry)
+			t.Errorf("i18n.js has %d occurrences of %s, want 4 (one per locale, English-unified)", n, entry)
 		}
 	}
-	// The old un-annotated / locale-specific "(1M context)" labels must be gone.
+	// The old context-window-annotated labels must be gone from the model opt keys.
 	for _, banned := range []string{
-		`"f.model.opt.opus": "Opus 4.8"`,
-		`"f.model.opt.opus[1m]": "Opus 4.8 (1M context)"`,
-		`"f.model.opt.opus[1m]": "Opus 4.8 (1M 컨텍스트)"`,
+		`"f.model.opt.opus": "Opus 4.8 (200K)"`,
+		`"f.model.opt.opus[1m]": "Opus 4.8 (1M)"`,
+		`"f.model.opt.sonnet": "Sonnet 5 (200K)"`,
+		`"f.model.opt.sonnet[1m]": "Sonnet 5 (1M)"`,
+		`"f.model.opt.fable": "Fable 5 (200K)"`,
+		`"f.model.opt.fable[1m]": "Fable 5 (1M)"`,
+		`"f.model.opt.haiku": "Haiku 4.5 (200K)"`,
 	} {
 		if strings.Contains(dict, banned) {
-			t.Errorf("i18n.js still carries the old model label %q", banned)
+			t.Errorf("i18n.js still carries the old context-window label %q", banned)
 		}
-	}
-	// opusplan stays a routing alias (no single context window) — must NOT gain (200K)/(1M).
-	if strings.Contains(dict, `"f.model.opt.opusplan": "OpusPlan (200K)"`) ||
-		strings.Contains(dict, `"f.model.opt.opusplan": "OpusPlan (1M)"`) {
-		t.Error("opusplan must stay un-annotated (it is a routing alias, not a single-window model)")
 	}
 }
 
