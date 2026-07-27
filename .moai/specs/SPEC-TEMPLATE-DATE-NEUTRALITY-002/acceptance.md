@@ -275,7 +275,7 @@ grep -cE '\$4[[:space:]]*==[[:space:]]*[0-9]+' "$SPECDIR/acceptance.md"   # expe
 grep -oE 'AC-TDN2-[0-9]{3}' "$SPECDIR/acceptance.md" | sort -u | wc -l    # expect 33
 ```
 
-**Non-vacuity.** The assertion's target is `0`, which is also what an unresolvable path returns — so the assertion alone would be a silent false pass, the same defect class as the predecessor's `AC-TDN-009`. The paired control fixes that: a broken `$SPECDIR` makes the control return `0 ≠ 32` and the criterion fails. Both halves must hold.
+**Non-vacuity.** The assertion's target is `0`, which is also what an unresolvable path returns — so the assertion alone would be a silent false pass, the same defect class as the predecessor's `AC-TDN-009`. The paired control fixes that: a broken `$SPECDIR` makes the control return `0 ≠ 33` and the criterion fails. Both halves must hold.
 
 **Baseline note.** The assertion measured `1` at `f5d3a93bf` (AC-012's line-number predicate) and `0` after the iteration-2 repair that removed it. The criterion is therefore already satisfied and functions from here as a **regression guard** for the remainder of run phase, not as a delta to be achieved.
 
