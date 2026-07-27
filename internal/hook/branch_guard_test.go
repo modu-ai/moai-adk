@@ -403,3 +403,138 @@ func TestCheckBranchState_NonBashAndEmptyInput(t *testing.T) {
 		})
 	}
 }
+
+// TestIsPrimaryCheckout_PartialPrimaryPath covers the dispatcher's "second
+// primary call failed; fall through" branch (branch_guard.go:153) — the case
+// where `git rev-parse --path-format=absolute --git-dir` SUCCEEDS but
+// `--path-format=absolute --git-common-dir` FAILS, forcing the dispatcher to
+// fall through to the --absolute-git-dir + cwd-normalized --git-common-dir
+// fallback. Without this test the fallback-via-second-call-failure branch is
+// uncovered (file-level coverage stays under the 85% AC §C gate).
+//
+// The mock distinguishes the two primary-path calls by inspecting whether the
+// joined args contain `--git-dir` vs `--git-common-dir` AFTER a
+// `--path-format=absolute` prefix.
+func TestIsPrimaryCheckout_PartialPrimaryPath(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("fallback mock uses sh -c; skip on windows (tests run on darwin/linux)")
+	}
+	requireGit(t)
+
+	orig := execCommand
+	t.Cleanup(func() { execCommand = orig })
+
+	execCommand = func(name string, args ...string) *exec.Cmd {
+		joined := strings.Join(args, " ")
+		switch {
+		case strings.Contains(joined, "--path-format=absolute") && strings.Contains(joined, "--git-common-dir"):
+			// Second primary-path call fails: simulate an older-git host that
+			// rejects --path-format=absolute only on the second invocation.
+			return exec.Command("sh", "-c", "echo 'unknown flag' >&2; exit 1")
+		case strings.Contains(joined, "--path-format=absolute") && strings.Contains(joined, "--git-dir"):
+			// First primary-path call succeeds.
+			return exec.Command("sh", "-c", "printf %s '/fake/repo/.git'")
+		case strings.Contains(joined, "--absolute-git-dir"):
+			return exec.Command("sh", "-c", "printf %s "+shellQuote("/fake/repo/.git"))
+		case strings.Contains(joined, "--git-common-dir"):
+			return exec.Command("sh", "-c", "printf %s "+shellQuote("/fake/repo/.git"))
+		}
+		return exec.Command("sh", "-c", "exit 1")
+	}
+
+	gotPrimary, err := isPrimaryCheckout("/fake/repo")
+	if err != nil {
+		t.Fatalf("isPrimaryCheckout partial-primary err = %v", err)
+	}
+	if !gotPrimary {
+		t.Fatalf("isPrimaryCheckout partial-primary = false, want true (fallback resolves primary)")
+	}
+}
+
+// TestAppendBranchGuardAdvisory_WriteFailure covers the OpenFile/WriteString
+// failure branches of appendBranchGuardAdvisory. The audit log directory is
+// made unwritable AFTER MkdirAll succeeds (so the branch past MkdirAll is
+// exercised) but BEFORE OpenFile, forcing the OpenFile failure path.
+func TestAppendBranchGuardAdvisory_WriteFailure(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("chmod 0500 permission test skipped on windows")
+	}
+	t.Parallel()
+	dir := t.TempDir()
+	logsDir := filepath.Join(dir, ".moai", "logs")
+	if err := os.MkdirAll(logsDir, 0o755); err != nil {
+		t.Fatalf("mkdir logs: %v", err)
+	}
+	// Make the logs directory read-only so OpenFile(O_WRONLY|O_CREATE) fails.
+	// MkdirAll already succeeded above, so this exercises the OpenFile branch
+	// rather than the MkdirAll branch covered by _UnwritableDir.
+	if err := os.Chmod(logsDir, 0o500); err != nil {
+		t.Fatalf("chmod logs: %v", err)
+	}
+	t.Cleanup(func() { _ = os.Chmod(logsDir, 0o755) })
+
+	input := &HookInput{SessionID: "sess-write-fail"}
+	// Must not panic; the error is swallowed at debug log level.
+	appendBranchGuardAdvisory(input, dir, "git switch -c x", fmt.Errorf("simulated"))
+	// No audit log file should have been created (OpenFile failed).
+	if _, err := os.Stat(filepath.Join(dir, branchGuardAuditRelPath)); err == nil {
+		t.Fatalf("audit log unexpectedly created under read-only dir")
+	}
+}
+
+// TestIsPrimaryCheckout_FallbackAbsoluteGitDirFail covers the fallback's
+// `--absolute-git-dir` failure branch (branch_guard.go:164-166): the primary
+// `--path-format=absolute` call rejected AND the fallback `--absolute-git-dir`
+// call also fails. The dispatcher MUST surface a non-nil error so the caller
+// fails OPEN per REQ-WBG-012.
+func TestIsPrimaryCheckout_FallbackAbsoluteGitDirFail(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("fallback mock uses sh -c; skip on windows")
+	}
+	requireGit(t)
+	orig := execCommand
+	t.Cleanup(func() { execCommand = orig })
+	execCommand = func(name string, args ...string) *exec.Cmd {
+		joined := strings.Join(args, " ")
+		switch {
+		case strings.Contains(joined, "--path-format=absolute"):
+			return exec.Command("sh", "-c", "echo 'unknown flag' >&2; exit 1")
+		case strings.Contains(joined, "--absolute-git-dir"):
+			return exec.Command("sh", "-c", "exit 1")
+		}
+		return exec.Command("sh", "-c", "exit 1")
+	}
+	_, err := isPrimaryCheckout("/fake/repo")
+	if err == nil {
+		t.Fatalf("isPrimaryCheckout(fallback --absolute-git-dir fail) err = nil, want non-nil (fail-open signal)")
+	}
+}
+
+// TestIsPrimaryCheckout_FallbackCommonDirFail covers the fallback's
+// `--git-common-dir` failure branch (branch_guard.go:168-170): the primary
+// path rejected, `--absolute-git-dir` succeeds, but bare `--git-common-dir`
+// fails. The dispatcher MUST surface a non-nil error (fail-open).
+func TestIsPrimaryCheckout_FallbackCommonDirFail(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("fallback mock uses sh -c; skip on windows")
+	}
+	requireGit(t)
+	orig := execCommand
+	t.Cleanup(func() { execCommand = orig })
+	execCommand = func(name string, args ...string) *exec.Cmd {
+		joined := strings.Join(args, " ")
+		switch {
+		case strings.Contains(joined, "--path-format=absolute"):
+			return exec.Command("sh", "-c", "exit 1")
+		case strings.Contains(joined, "--absolute-git-dir"):
+			return exec.Command("sh", "-c", "printf %s '/fake/repo/.git'")
+		case strings.Contains(joined, "--git-common-dir"):
+			return exec.Command("sh", "-c", "exit 1")
+		}
+		return exec.Command("sh", "-c", "exit 1")
+	}
+	_, err := isPrimaryCheckout("/fake/repo")
+	if err == nil {
+		t.Fatalf("isPrimaryCheckout(fallback --git-common-dir fail) err = nil, want non-nil (fail-open signal)")
+	}
+}
