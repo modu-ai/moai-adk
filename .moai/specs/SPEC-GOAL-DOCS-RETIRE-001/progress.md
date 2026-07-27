@@ -25,7 +25,7 @@ Origin: split from `SPEC-GOAL-SURFACE-UNIFY-001` after that SPEC's plan-audit it
 - ID confirmed unused before authoring (`ls .moai/specs/SPEC-GOAL-DOCS-RETIRE-001` → `No such file or directory`).
 - **12** acceptance criteria; every judgment command executed and its verbatim baseline recorded. All 12 fail at baseline.
 - **Every emission criterion carries a per-locale baseline**, and all five emission detectors measure symmetric (`distinct=1`). This is the requirement that closes the parent's audit finding N2.
-- 10 REQs, all cited by ≥ 1 AC (`acceptance.md` §E).
+- 11 REQs, all cited by ≥ 1 AC (`acceptance.md` §E). (10 at authoring; REQ-GDR-011 added closing audit iteration 2 finding B2-1.)
 - 13 paths, single-owner across N1-N5 (`plan.md` §F.1). 41 retained files owned by no milestone.
 - Four retention surfaces registered in this SPEC's own register (`plan.md` §A.2) — not inherited from the parent.
 
@@ -54,7 +54,21 @@ The first audit confirmed Tier M correct, reproduced all 12 baselines with zero 
 | **B-6** | Beyond-minimum artifact set documented as deliberate; tier stays M |
 | **B-7** | AC-GDR-004's fallback re-specified as the locale-invariant triple co-occurrence, replacing the prose-adjacent `provides` (measured `1/1/1/1`) |
 
-_Awaiting plan-audit iteration 2 for this SPEC. N3 additionally blocked on the parent's M7 landing (`acceptance.md` §C dependency gate)._
+### Plan-audit iteration 2 — PASS 0.86 (Tier M threshold 0.80), MUST-FIX B2-1 closed
+
+Iteration 2 reproduced 12 of 12 baselines with zero divergence and scored Clarity 0.90 / Completeness 0.85 / Testability 0.80 / Traceability 0.90 (harmonic mean 0.8605). One MUST-FIX and two SHOULD-FIX were raised.
+
+| Finding | Severity | Resolution |
+|---|---|---|
+| **B2-1** — AC-GDR-010 validated liveness and symmetry but not *aptness*: a detector aimed at an adjacent token (`ac_converge`) or a compound regex with its `` `/goal` `` half dropped passes (a) and (b) while matching no emission reference | MUST-FIX | **CLOSED.** New **REQ-GDR-011**; AC-GDR-010 gained component **(d)**, asserting each detector's pattern carries a literal `/goal` token from a single `p=` source shared by `w()` and the assertion. Three controls executed: the hyphenated dead detector is rejected by (b); `ac_converge` and the weakened `auto mode` half are rejected by (d) |
+| **B2-2** — liveness against a frozen base can be stale-true; no criterion asserts the base is still current for the scoped pages | SHOULD-FIX | Open — deferred as follow-on |
+| **B2-3** — the empty exemption list is guarded by prose, not by a check | SHOULD-FIX | Open — deferred as follow-on |
+
+**Auditor's stronger alternative for B2-1 was executed and refuted.** The audit proposed asserting each detector's base-match line set is a subset of the base lines carrying `` `/goal` ``. Run against `e306e21a9`, both attack detectors yield `leak=0` and pass: `ac_converge` and `auto mode` occur on the *same line* as `` `/goal` `` (`en/advanced/autonomous-loops.md` line 7). Line granularity is precisely the granularity the adjacent-token attack exploits, so the subset form cannot discriminate. The pattern-literal form was adopted instead, with the single-`p=`-source discipline closing its own divergence risk.
+
+Residual (not in B2-1's required fix): AC-GDR-012's aggregate still carries its own inline copies of the five detector definitions, so the single-source discipline does not extend to the aggregate path.
+
+N3 remains blocked on the parent's M7 landing (`acceptance.md` §C dependency gate) — the parent is now `completed`, so the gate is expected to clear at run-phase entry and must be re-measured there.
 
 ## §E.2 Run-phase Evidence
 
@@ -67,3 +81,36 @@ _<pending run-phase>_
 ## §E.4 Sync-phase Audit-Ready Signal
 
 _<pending sync-phase>_
+
+## §F Phase 4 Mode Selection
+
+**Decision: sub-agent** (Mode 5, sequential per-milestone delegation)
+
+**Input parameters**
+
+| Signal | Value |
+|---|---|
+| tier | M (3-artifact set; 5 authored) |
+| scope (file count) | 8 sweep-target documentation files; 12 scoped locale files across 3 pages |
+| domain count | 1 — docs-site markdown content |
+| file language mix | 100% markdown (4 locales: en / ja / ko / zh) |
+| concurrency benefit | LOW — per-locale prose differs, and 4-locale parity requires coordinated edits within one reasoning context |
+
+**Mode evaluation**
+
+| Mode | Selected | Rationale |
+|---|---|---|
+| 1 `trivial` | no | Multi-file semantic sweep with 12 acceptance criteria; not a typo class |
+| 2 `background` | no | Work is write-heavy (Edit on scoped pages), not read-only analysis |
+| 3 `agent-team` | no | RETIRED tombstone; never selected by the decision tree |
+| 4 `parallel` | no | Single domain (< 3) and edit-heavy, not research-heavy; the coding-task parallelism caveat routes this to Mode 5 |
+| 5 `sub-agent` | **YES** | Default fallback; sequential per-milestone delegation preserves 4-locale coordination |
+| 6 `workflow` | no | Scope is ~12 files, below the ~30-file entry threshold, and the transform is not one uniform mechanical rule — each locale's surrounding prose differs |
+
+**Decision: sub-agent**
+
+Mode 5 is selected. The sweep is edit-heavy rather than research-heavy, touches one domain, and its hardest constraint is locale parity — four files must change consistently against a shared detector set, which a single sequential agent holds in one reasoning context. Anthropic's coding-task parallelism caveat ("most coding tasks involve fewer truly parallelizable tasks than research") applies directly, and the Mode 6 file-count threshold is not met.
+
+**Boundary case** — none. No signal sat at a threshold ±1: domain count 1 (vs 3), file count ~12 (vs 30), and the transform-kind test fails Mode 6 independently of count.
+
+**Gate provenance** — Implementation Kickoff Approval obtained from the user before this section was written. Progression mode selected at the same gate: **autonomous** (`/moai goal` armed after the gate, per `goal-directive.md` § Goal-Presentation Timing — arming pairs with the work-starting command, never replaces it).
