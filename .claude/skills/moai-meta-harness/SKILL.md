@@ -48,7 +48,7 @@ progressive_disclosure:
 >   AskUserQuestion at the PLAN->GENERATE approval gate (first-class boundary).
 > - A **manifest-driven dynamic-workflow Runner** (`hns-<name>-run.js`) that
 >   reads `manifest.json` and dispatches specialists per their declared
->   `primitive` (sub-agent / dynamic-workflow / worktree / /goal /
+>   `primitive` (sub-agent / dynamic-workflow / worktree / /moai goal /
 >   adversarial-fan-out) — no heuristic re-derivation.
 > - **Conditional sub-agent-granular worktree isolation** (no mandatory
 >   top-level worktree; worktree only for conflict-prone parallel generation).
