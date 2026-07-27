@@ -64,11 +64,9 @@ var isInteractiveStdin = func() bool {
 }
 
 // runWizardFn runs the init wizard. Injectable seam for the network-order
-// contract test (AC-TUX2-001); the default dispatches on the mode flags.
-var runWizardFn = func(rootFlag, locale, userName string, standardMode, advancedMode bool) (*wizard.WizardResult, error) {
-	if standardMode {
-		return wizard.RunWithDefaultsModes(rootFlag, locale, userName, standardMode, advancedMode)
-	}
+// contract test (AC-TUX2-001). There is a single entry point: the mode-flag
+// dispatch is retired (REQ-WIZ-018), so every init run gets the same 3-page set.
+var runWizardFn = func(rootFlag, locale, userName string) (*wizard.WizardResult, error) {
 	return wizard.RunWithDefaults(rootFlag, locale, userName)
 }
 

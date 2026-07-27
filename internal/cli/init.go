@@ -80,14 +80,17 @@ func init() {
 	initCmd.Flags().Bool("no-hooks", false, "Skip git hook installation (REQ-CIAUT-002)")
 	initCmd.Flags().Bool("all", false, "Deploy all catalog entries (core + optional packs + harness-generated). Bypasses slim mode (SPEC-V3R4-CATALOG-002).")
 
-	// Phase 1 mode flags (REQ-IWE-006, REQ-IWE-007)
-	initCmd.Flags().Bool("standard", false, "Present Phase 1 questions (project mode, harness profile, LSP, quality gates, design)")
-	initCmd.Flags().Bool("advanced", false, "Present Phase 1 + Phase 2 questions (implies --standard; Phase 2 skipped when prerequisites absent)")
+	// The two wizard mode flags are retired (REQ-WIZ-018): the wizard presents
+	// the same three pages to every user, so there is no mode to select.
 
-	// Phase 1 non-interactive override flags (REQ-IWE-008)
+	// Page-3 non-interactive override flags (REQ-IWE-008)
 	initCmd.Flags().String("project-mode", "", "Project mode: personal or team (default: personal)")
 	initCmd.Flags().String("harness-profile", "", "Default harness evaluator profile: default, strict, lenient, frontend")
-	initCmd.Flags().Bool("enable-lsp", false, "Enable LSP integration (default: false)")
+	// Registered false but read with a true default (the LSPEnabled seed in
+	// runInit), so the effective default matches the wizard's lsp_enabled
+	// default; getBoolFlagWithDefault keys off Changed(), so --enable-lsp=false
+	// still wins.
+	initCmd.Flags().Bool("enable-lsp", false, "Enable LSP integration (default: true)")
 	initCmd.Flags().Bool("enforce-quality", true, "Enforce quality gates (default: true)")
 	initCmd.Flags().Bool("enable-design", true, "Enable design workflow (default: true)")
 
@@ -121,6 +124,46 @@ func getBoolFlag(cmd *cobra.Command, name string) bool {
 		return false
 	}
 	return val
+}
+
+// applyWizardPage3ToOpts applies the always-visible Page-3 wizard answers to
+// opts, honouring flag-over-wizard precedence (REQ-WIZ-020).
+//
+// Page 3 is ungated, so without this rule the wizard result would
+// unconditionally overwrite every flag-seeded value — inverting the documented
+// `--profile` precedence above ("the wizard fills opts.Profile only when the
+// flag is absent"). Each of the four overlapping settings therefore yields to
+// the wizard ONLY when its flag was not explicitly supplied.
+//
+// Explicitness is probed with cmd.Flags().Changed(name), never by value:
+// getBoolFlag / getBoolFlagWithDefault cannot distinguish "flag absent" from
+// "flag explicitly set to the same value as the default", so a value-only
+// check would silently drop `--enable-lsp=false` and `--enforce-quality=false`.
+func applyWizardPage3ToOpts(cmd *cobra.Command, result *wizard.WizardResult, opts *project.InitOptions) {
+	if !cmd.Flags().Changed("project-mode") && result.ProjectMode != "" {
+		opts.ProjectMode = result.ProjectMode
+	}
+	if !cmd.Flags().Changed("enable-lsp") {
+		opts.LSPEnabled = result.LSPEnabled
+	}
+	if !cmd.Flags().Changed("enforce-quality") {
+		opts.EnforceQuality = result.EnforceQuality
+	}
+	if !cmd.Flags().Changed("enable-design") {
+		opts.DesignEnabled = result.DesignEnabled
+	}
+
+	// harness_profile and coverage_exemptions_enabled are no longer asked
+	// (REQ-WIZ-012/013), so these result fields are permanently zero and the
+	// assignments are inert; they are retained so the wizard→opts mapping stays
+	// complete if either question ever returns.
+	if result.HarnessProfile != "" {
+		opts.HarnessProfile = result.HarnessProfile
+	}
+	opts.CoverageExemptionsEnabled = result.CoverageExemptionsEnabled
+
+	// claude_design_enabled is wizard-only (no CLI flag), so it always applies.
+	opts.ClaudeDesignEnabled = result.ClaudeDesignEnabled
 }
 
 // getBoolFlagWithDefault retrieves a bool flag value, returning defaultVal when
@@ -183,6 +226,18 @@ func validateInitFlags(cmd *cobra.Command, _ []string) error {
 	profileFlag := getStringFlag(cmd, "profile")
 	if profileFlag != "" && !config.IsValidProfile(profileFlag) {
 		return fmt.Errorf("invalid --profile value %q: must be one of: max, medium, low", profileFlag)
+	}
+
+	// SPEC-CLI-WIZARD-RESTRUCTURE-001 (S1): validate --project-mode enum.
+	// C32 made writeProjectModeYAML reachable from `moai init`, so this value
+	// now reaches patchYAMLKey and is written verbatim into project.yaml; an
+	// unvalidated newline-bearing value injects an arbitrary top-level key.
+	projectMode := getStringFlag(cmd, "project-mode")
+	if projectMode != "" {
+		validProjectModes := []string{"personal", "team"}
+		if !slices.Contains(validProjectModes, projectMode) {
+			return fmt.Errorf("invalid --project-mode value %q: must be one of: personal, team", projectMode)
+		}
 	}
 
 	// F3 git-provider identity validation (init-path parity with the
@@ -312,10 +367,6 @@ func runInit(cmd *cobra.Command, args []string) error {
 
 	nonInteractive := getBoolFlag(cmd, "non-interactive")
 
-	// Resolve mode flags: --advanced implies --standard (REQ-IWE-007, EC-3)
-	advancedMode := getBoolFlag(cmd, "advanced")
-	standardMode := getBoolFlag(cmd, "standard") || advancedMode
-
 	opts := project.InitOptions{
 		ProjectRoot:       rootFlag,
 		ProjectName:       projectName,
@@ -332,12 +383,12 @@ func runInit(cmd *cobra.Command, args []string) error {
 		// (validated in validateInitFlags). The wizard fills opts.Profile only when
 		// the flag is absent, so the flag takes precedence over the wizard answer.
 		Profile: getStringFlag(cmd, "profile"),
-		// Phase 1 mode flags
-		StandardMode: standardMode,
-		// Phase 1 non-interactive overrides — defaults match wizard defaults (REQ-IWE-008)
+		// Page-3 non-interactive overrides — defaults match wizard defaults (REQ-IWE-008).
+		// The InitOptions mode field is gone (C33): the Page-3 writes are
+		// unconditional now, so there is no mode to carry into the initializer.
 		ProjectMode:               getStringFlag(cmd, "project-mode"),
 		HarnessProfile:            getStringFlag(cmd, "harness-profile"),
-		LSPEnabled:                getBoolFlag(cmd, "enable-lsp"),
+		LSPEnabled:                getBoolFlagWithDefault(cmd, "enable-lsp", true),
 		EnforceQuality:            getBoolFlagWithDefault(cmd, "enforce-quality", true),
 		CoverageExemptionsEnabled: false, // no CLI flag; wizard/default only
 		DesignEnabled:             getBoolFlagWithDefault(cmd, "enable-design", true),
@@ -410,12 +461,12 @@ func runInit(cmd *cobra.Command, args []string) error {
 		uikit.PrintBanner(version.GetVersion())
 		uikit.PrintWelcomeMessage()
 
-		// Use RunWithDefaultsModes when --standard or --advanced is set; otherwise
-		// fall back to RunWithDefaults for Quick mode backward-compat (REQ-IWE-006).
+		// One wizard entry point for every user: the mode flags that used to
+		// select between two question sets are retired (REQ-WIZ-018).
 		// runWizardFn is the injectable wizard seam (REQ-TUX2-001 order contract).
 		// The profile locale + user name pre-fill the conversation_language and
 		// user_name question defaults (empty when no profile exists).
-		result, wizErr := runWizardFn(rootFlag, opts.ConvLang, opts.UserName, standardMode, advancedMode)
+		result, wizErr := runWizardFn(rootFlag, opts.ConvLang, opts.UserName)
 		if wizErr != nil {
 			if errors.Is(wizErr, wizard.ErrCancelled) {
 				_, _ = fmt.Fprintln(cmd.OutOrStderr(), "Initialization cancelled.")
@@ -461,20 +512,10 @@ func runInit(cmd *cobra.Command, args []string) error {
 		if opts.ReportFormat == "" && result.ReportFormat != "" {
 			opts.ReportFormat = result.ReportFormat
 		}
-		// Apply Phase 1 wizard results (only when StandardMode was active)
-		if result.StandardMode {
-			if result.ProjectMode != "" {
-				opts.ProjectMode = result.ProjectMode
-			}
-			if result.HarnessProfile != "" {
-				opts.HarnessProfile = result.HarnessProfile
-			}
-			opts.LSPEnabled = result.LSPEnabled
-			opts.EnforceQuality = result.EnforceQuality
-			opts.CoverageExemptionsEnabled = result.CoverageExemptionsEnabled
-			opts.DesignEnabled = result.DesignEnabled
-			opts.ClaudeDesignEnabled = result.ClaudeDesignEnabled
-		}
+		// Apply the Page-3 wizard results. The former mode gate on the wizard
+		// result is removed (REQ-WIZ-001/002): Page 3 is always visible, so its
+		// answers always reach opts.
+		applyWizardPage3ToOpts(cmd, result, &opts)
 	}
 
 	// Default git provider to "github" for backward compatibility

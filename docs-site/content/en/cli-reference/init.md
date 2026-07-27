@@ -41,15 +41,13 @@ Accepts at most 1 argument.
 | `--mode <ddd\|tdd>` | Development methodology (default: tdd) |
 | `--non-interactive` | Skip the interactive wizard — use flags and defaults only |
 
-### Wizard phases
+### Wizard question flags
 
 | Flag | Description |
 |--------|------|
-| `--standard` | Present Phase 1 questions (project mode, harness profile, LSP, quality gate, design) |
-| `--advanced` | Present Phase 1 + Phase 2 questions (includes `--standard`) |
 | `--project-mode <personal\|team>` | Project mode (default: personal) |
-| `--harness-profile <name>` | Harness evaluation profile: default, strict, lenient, frontend |
-| `--enable-lsp` | Enable LSP integration (default: false) |
+| `--harness-profile <name>` | Harness evaluation profile: default, strict, lenient, frontend; accepted but currently has no persisted effect |
+| `--enable-lsp` | Enable LSP integration (default: true) |
 | `--enforce-quality` | Enforce quality gates (default: true) |
 | `--enable-design` | Enable the design workflow (default: true) |
 

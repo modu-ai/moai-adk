@@ -4,7 +4,7 @@ weight: 50
 draft: false
 ---
 
-MoAI-ADK のインタラクティブな設定ウィザードで最初の設定を完了しましょう。言語、Git 自動化の範囲、モデルポリシー、ハーネスプロファイルを開発環境に合わせて構成します。ここで決めた値はすべて `.moai/config/sections/` 配下の YAML ファイルに保存されるので、後からいつでもファイルを直接直したりウィザードを再実行したりして変更できます。
+MoAI-ADK のインタラクティブな設定ウィザードで最初の設定を完了しましょう。言語、モデルポリシー、レポート形式、品質・ワークフロー設定を開発環境に合わせて構成します。ここで決めた値はすべて `.moai/config/sections/` 配下の YAML ファイルに保存されるので、後からいつでもファイルを直接直したりウィザードを再実行したりして変更できます。
 
 ## 設定ウィザードの開始
 
@@ -31,34 +31,29 @@ moai init
 `moai init` は現在のフォルダにそのままインストールします。新規プロジェクトは `moai init <プロジェクト名>` で作成してください。
 {{< /callout >}}
 
-## ウィザードモード
+## ウィザードの構成
 
-初期化ウィザードは質問の深さに応じて 3 つのモードで動作します。
+初期化ウィザードは常に同じ固定された 3 ページの流れで動作します — 質問範囲を広げたり狭めたりするモードフラグは存在せず、すべてのユーザーに同じ質問セットが表示されます。
 
-| モード | フラグ | 質問範囲 |
-|------|--------|----------|
-| **Quick** (デフォルト値) | (なし) | 核心設定のみ — 言語、名前、Git、モデルポリシー |
-| **Standard** | `--standard` | Quick + Phase 1 質問 (project mode, harness profile, LSP, quality, design) |
-| **Advanced** | `--advanced` | Standard + Phase 2 質問 (前提条件を満たす場合のみ) |
+| ページ | 質問 |
+|------|------|
+| **Page 1 — 基本** | 会話言語、名前、プロジェクト名 |
+| **Page 2 — モデル & レポート** | パフォーマンスティア (モデルポリシー)、レポート形式 |
+| **Page 3 — 品質 & ワークフロー** | LSP 統合、品質ゲート強制、プロジェクトモード、デザインワークフロー、Claude Design 連携 |
 
 ```bash
-# 基本ウィザード (Quick)
 moai init my-project
-
-# Phase 1 質問を含む
-moai init my-project --standard
-
-# Phase 1 + Phase 2 質問を含む
-moai init my-project --advanced
 ```
 
-## Quick モード (デフォルト)
+{{< callout type="info" >}}
+Git 自動化モード・プロバイダーはウィザードでは尋ねません。`moai init` はリポジトリに既に設定されている Git リモートから自動検出します。後から Git 設定を変更するには `moai update --reconfigure` を実行してください — このパスでのみ別の Git 質問セット (自動化モード、プロバイダー、認証情報) が表示されます。
+{{< /callout >}}
 
-フラグなしで実行すると核心設定のみを尋ねます。ほとんどのユーザーに十分です。
+## Page 1 — 基本
 
 ### ステップ 1: 会話言語の選択
 
-Claude が応答する言語を選択します。
+Claude が応答する言語を選択します。以降のすべての質問がこの言語で表示されます。
 
 ```bash
 ? 会話言語を選択してください:
@@ -78,69 +73,64 @@ Claude が応答する言語を選択します。
 ? 名前を入力: [名前]
 ```
 
-### ステップ 3: Git 自動化モードの選択
+この設定は `.moai/config/sections/user.yaml` の `user.name` フィールドに保存されます。
 
-Claude が行える Git 作業の範囲を設定します。
+### ステップ 3: プロジェクト名
 
-```bash
-? Git 自動化モードを選択:
-▸ Manual - AI がコミットやプッシュをしない
-  Personal - AI がブランチ生成およびコミット可能
-  Team - AI がブランチ生成、コミット、PR 生成が可能
-```
-
-- **Manual**: AI が Git 作業を行いません。すべてのコミットとプッシュはユーザーが自ら実行します。
-- **Personal**: AI がブランチを生成しコミットできます。個人プロジェクトに適しています。
-- **Team**: AI がブランチ生成、コミット、PR 生成まで行います。チーム協業ワークフローに最適化されています。
-
-{{< callout type="info" >}}
-Git 設定は `.moai/config/sections/git-strategy.yaml` ファイルに保存されます。
-{{< /callout >}}
-
-### ステップ 4: Git プロバイダーの選択
-
-プロジェクトの Git ホスティングプラットフォームを選択します。
+プロジェクトの名前です。デフォルト値は現在のディレクトリ名です。
 
 ```bash
-? Git プロバイダーを選択:
-▸ GitHub - GitHub.com
-  GitLab - GitLab.com またはセルフホスト GitLab
+? プロジェクト名を入力: [my-project]
 ```
 
-### ステップ 5: コミットメッセージ言語
+## Page 2 — モデル & レポート
 
-コミットメッセージ作成に使う言語を選択します。コードコメント言語と異なる設定にできます。
-
-### ステップ 6: コードコメント言語
-
-コードコメントに使う言語を選択します。ほとんどのプロジェクトでは英語を推奨します。
-
-### ステップ 7: ドキュメント言語
-
-ドキュメントファイルに使う言語を選択します。
-
-### ステップ 8: パフォーマンスティア (モデルポリシー)
+### パフォーマンスティア (モデルポリシー)
 
 エージェントに割り当てる AI モデルティアを選択します — トークノミクスの核心設定です。
 
 ```bash
 ? パフォーマンスティアを選択:
-▸ medium (推奨) - 品質とコストのバランス
-  max - 最高品質、計画・監査に Opus 割り当て
-  low - 経済的、Sonnet 中心の配分
+▸ Medium (推奨) - 品質とコストのバランス、Max $100 プラン
+  Max - Fable 5(low) + Opus 4.8(high) + Sonnet(medium~low)、Max $200 プラン
+  Low - Opus 4.8(high~low) + Sonnet(medium~low)、Plus $20 プラン
 ```
 
 | ティア | 特徴 |
 |------|------|
-| **max** | 最高品質 — 計画・監査に Opus 割り当て、最大の推論深度 |
-| **medium** (デフォルト値) | 品質とコストのバランス |
-| **low** | 経済的 — Sonnet 中心の配分 |
+| **Max** | 最高品質の配分 — Max $200 プラン向け |
+| **Medium** (デフォルト値) | 品質とコストのバランス — Max $100 プラン向け |
+| **Low** | 経済的な配分 — Plus $20 プラン向け |
 
 この設定は `.moai/config/sections/llm.yaml` の `performance_tier` フィールドに保存され、`profile` フィールド(プロファイルマトリクス列)の legacy エイリアスとして読み込まれます。`--profile max|medium|low` フラグで直接指定すると `profile` フィールドに保存されます。プロファイル別のエージェント model+effort マッピングは [プロファイルマトリクス](/ja/advanced/profile-matrix/) ページを参照してください。
 
-## Standard モード (Phase 1 質問)
+### レポート形式
 
-`--standard` フラグを与えると Quick モードのすべての質問に加えて Phase 1 質問が表示されます。
+レポートを HTML+Markdown で生成するか、Markdown のみで生成するかを選択します。
+
+```bash
+? レポート形式を選択:
+▸ HTML + Markdown (推奨) - ブラウザで閲覧できる HTML レポートと Markdown を両方生成
+  Markdown のみ - Markdown レポートのみ生成 (軽量、diff フレンドリー)
+```
+
+この設定は `.moai/config/sections/report.yaml` の `report.format` フィールドに保存されます。
+
+## Page 3 — 品質 & ワークフロー
+
+### LSP integration
+
+run ステップで言語サーバー診断を有効化するか選択します。デフォルト値は **有効 (Yes)** で、無効にしたい場合は No と答えて opt-out できます。
+
+この設定は `.moai/config/sections/lsp.yaml` の `lsp.enabled` フィールドに保存されます。
+
+### quality gates
+
+TRUST 5 品質ゲートの強制有無を選択します。
+
+- **Enforce quality gates** (デフォルト値: Yes) — 品質ゲート失敗時に実装の進行を遮断
+
+この設定は `.moai/config/sections/quality.yaml` の `constitution.enforce_quality` フィールドに保存されます。
 
 ### project mode
 
@@ -152,28 +142,7 @@ Git 設定は `.moai/config/sections/git-strategy.yaml` ファイルに保存さ
   Team - Multi-developer setup
 ```
 
-### harness evaluator profile
-
-品質評価者のデフォルトプロファイルを選択します。
-
-```bash
-? Select default harness evaluator profile:
-▸ default
-  strict
-  lenient
-  frontend
-```
-
-### LSP integration
-
-run ステップで言語サーバー診断を有効化するか選択します。デフォルト値は無効 (opt-in) です。
-
-### quality gates
-
-TRUST 5 品質ゲートの強制有無とカバレッジ例外の許可有無を選択します。
-
-- **Enforce quality gates** (デフォルト値: Yes) — 品質ゲート失敗時に実装の進行を遮断
-- **Allow coverage exemptions** (デフォルト値: No) — 特定のファイル/パッケージをカバレッジ対象から除外
+この設定は `.moai/config/sections/project.yaml` の `project.mode` フィールドに保存されます。
 
 ### design workflow
 
@@ -182,9 +151,7 @@ MoAI デザインパイプラインと Claude Design 連携を有効化するか
 - **Enable design workflow** (デフォルト値: Yes)
 - **Enable Claude Design integration** (デフォルト値: Yes、design 有効化時のみ表示)
 
-## Advanced モード (Phase 2 質問)
-
-`--advanced` フラグは `--standard` を含み、追加で Phase 2 質問を表示します。Phase 2 質問は run ステップ完了などの前提条件が満たされた場合にのみ表示され、条件がなければ自動的にスキップされ案内メッセージが出力されます。
+これらの設定は `.moai/config/sections/design.yaml` の `design.enabled` / `design.claude_design.enabled` フィールドに保存されます。
 
 ## 非対話型モード (CI/CD)
 
@@ -195,7 +162,6 @@ moai init my-project \
   --non-interactive \
   --project-mode personal \
   --profile medium \
-  --harness-profile default \
   --enable-lsp=false \
   --enforce-quality
 ```

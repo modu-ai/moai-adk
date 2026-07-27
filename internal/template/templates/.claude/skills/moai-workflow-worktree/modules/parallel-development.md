@@ -3,7 +3,6 @@
 Purpose: Advanced patterns and workflows for parallel SPEC development using isolated worktrees, enabling true concurrent development without context switching overhead.
 
 Version: 2.0.0
-Last Updated: 2026-01-06
 
 ---
 
@@ -198,5 +197,4 @@ Advanced Use Cases (parallel-advanced.md):
 ---
 
 Version: 2.0.0
-Last Updated: 2026-01-06
 Module: Parallel development overview with progressive disclosure to sub-modules

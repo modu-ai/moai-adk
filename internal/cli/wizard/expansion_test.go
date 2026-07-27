@@ -6,32 +6,34 @@ import (
 	"testing"
 )
 
-// TestPhase1QuestionsStructure verifies each Phase 1 Question entry has the required fields.
-func TestPhase1QuestionsStructure(t *testing.T) {
+// TestPage3QuestionsStructure verifies each page-3 Question entry has the
+// required fields, in the REQ-WIZ-005 order. The page-3 questions are
+// unconditional; claude_design_enabled (nested on design_enabled) is the only
+// one that still carries a Condition.
+func TestPage3QuestionsStructure(t *testing.T) {
 	t.Parallel()
 	tmpDir := t.TempDir()
 
-	questions := Phase1Questions(tmpDir)
+	questions := Page3Questions(tmpDir)
 
-	// Expected IDs and their types
+	// Expected IDs, their types, and whether they are gated.
 	type entry struct {
 		id      string
 		qtype   QuestionType
 		hasOpts bool // whether Options slice is non-empty
+		gated   bool // whether Condition is non-nil
 	}
 
 	want := []entry{
-		{"project_mode", QuestionTypeSelect, true},
-		{"harness_profile", QuestionTypeSelect, true},
-		{"lsp_enabled", QuestionTypeConfirm, false},
-		{"enforce_quality", QuestionTypeConfirm, false},
-		{"coverage_exemptions_enabled", QuestionTypeConfirm, false},
-		{"design_enabled", QuestionTypeConfirm, false},
-		{"claude_design_enabled", QuestionTypeConfirm, false},
+		{"lsp_enabled", QuestionTypeConfirm, false, false},
+		{"enforce_quality", QuestionTypeConfirm, false, false},
+		{"project_mode", QuestionTypeSelect, true, false},
+		{"design_enabled", QuestionTypeConfirm, false, false},
+		{"claude_design_enabled", QuestionTypeConfirm, false, true},
 	}
 
 	if len(questions) != len(want) {
-		t.Fatalf("Phase1Questions() returned %d questions, want %d", len(questions), len(want))
+		t.Fatalf("Page3Questions() returned %d questions, want %d", len(questions), len(want))
 	}
 
 	for i, w := range want {
@@ -45,82 +47,87 @@ func TestPhase1QuestionsStructure(t *testing.T) {
 		if w.hasOpts && len(q.Options) == 0 {
 			t.Errorf("questions[%d] (%s) has no Options", i, q.ID)
 		}
-		if q.Condition == nil {
-			t.Errorf("questions[%d] (%s) has nil Condition; Phase 1 questions must be gated", i, q.ID)
+		if got := q.Condition != nil; got != w.gated {
+			t.Errorf("questions[%d] (%s) gated = %v, want %v", i, q.ID, got, w.gated)
 		}
 	}
 }
 
-// TestAdvancedBridgeRevealsPhase1 verifies the requirement-C mechanism: in a
-// quick-mode question set (DefaultQuestions + Phase1Questions), answering the
-// advanced_bridge Confirm Yes flips StandardMode, which makes the Phase 1
-// questions visible in the same run (and hides the bridge itself).
-func TestAdvancedBridgeRevealsPhase1(t *testing.T) {
+// TestPage3VisibleWithoutBridge supersedes TestAdvancedBridgeRevealsPhase1.
+// The advanced_bridge no longer reveals page 3: page 3 is unconditional, so it
+// is visible from the start (REQ-WIZ-001/002) with no bridge answered. The
+// coverage intent is preserved but inverted — this now asserts the ABSENCE of
+// the gate, through the visibility lens (FilteredQuestions).
+func TestPage3VisibleWithoutBridge(t *testing.T) {
 	t.Parallel()
 	tmpDir := t.TempDir()
-	all := append(DefaultQuestions(tmpDir), Phase1Questions(tmpDir)...)
+	all := InitQuestions(tmpDir)
 
-	// Quick mode before answering the bridge: Phase 1 hidden, bridge visible.
+	// A fresh result with no bridge answered and no mode selected.
 	quick := &WizardResult{EnforceQuality: true, DesignEnabled: true, ClaudeDesignEnabled: true}
-	if q := QuestionByID(all, "project_mode"); q == nil || q.Condition(quick) {
-		t.Error("project_mode (Phase 1) must be hidden before the bridge is answered")
-	}
-	if q := QuestionByID(all, "advanced_bridge"); q == nil || !q.Condition(quick) {
-		t.Error("advanced_bridge must be visible in quick mode")
-	}
+	visible := FilteredQuestions(all, quick)
 
-	// Bridge answered Yes → StandardMode flips → Phase 1 revealed, bridge hidden.
-	saveBoolAnswer("advanced_bridge", true, quick)
-	if !quick.StandardMode {
-		t.Fatal("advanced_bridge=Yes must set StandardMode")
-	}
-	if q := QuestionByID(all, "project_mode"); q == nil || !q.Condition(quick) {
-		t.Error("project_mode (Phase 1) must be visible after the bridge is answered Yes")
-	}
-	if q := QuestionByID(all, "advanced_bridge"); q == nil || q.Condition(quick) {
-		t.Error("advanced_bridge must hide itself once StandardMode is set")
+	for _, id := range []string{
+		"lsp_enabled", "enforce_quality", "project_mode",
+		"design_enabled", "claude_design_enabled",
+	} {
+		if QuestionByID(visible, id) == nil {
+			t.Errorf("page-3 question %q must be visible with no bridge answered", id)
+		}
 	}
 }
 
-// TestPhase1Questions_StandardModeGating verifies questions are hidden when StandardMode=false.
-func TestPhase1Questions_StandardModeGating(t *testing.T) {
+// TestPage3Questions_Ungated supersedes the former mode-gating test: C3 removed
+// the gate and REQ-WIZ-018 retired the flag it read, so the page-3 questions are
+// visible for any result whose DesignEnabled reveals the one nested question.
+// The gate cannot be re-asserted through a field that no longer exists, so the
+// invariant is pinned structurally instead: only claude_design_enabled carries a
+// Condition, and the whole page is visible in one pass.
+func TestPage3Questions_Ungated(t *testing.T) {
 	t.Parallel()
 	tmpDir := t.TempDir()
-	questions := Phase1Questions(tmpDir)
+	questions := Page3Questions(tmpDir)
 
-	// Quick mode: StandardMode=false — all Phase 1 questions should be filtered out
-	quickResult := &WizardResult{StandardMode: false}
-	visible := FilteredQuestions(questions, quickResult)
-	if len(visible) != 0 {
-		t.Errorf("Quick mode: expected 0 visible Phase 1 questions, got %d", len(visible))
+	page3 := []string{
+		"lsp_enabled", "enforce_quality", "project_mode",
+		"design_enabled", "claude_design_enabled",
+	}
+	visible := FilteredQuestions(questions, &WizardResult{DesignEnabled: true})
+	for _, id := range page3 {
+		if QuestionByID(visible, id) == nil {
+			t.Errorf("page-3 question %q must be visible", id)
+		}
 	}
 
-	// Standard mode: StandardMode=true, DesignEnabled=true — all 7 questions visible
-	standardResult := &WizardResult{StandardMode: true, DesignEnabled: true}
-	visible = FilteredQuestions(questions, standardResult)
-	if len(visible) != 7 {
-		t.Errorf("Standard mode: expected 7 visible Phase 1 questions, got %d", len(visible))
+	// Structural half: nothing on page 3 is gated except the nested design question.
+	for _, q := range questions {
+		if q.ID == "claude_design_enabled" {
+			continue
+		}
+		if q.Condition != nil {
+			t.Errorf("page-3 question %q carries a Condition — page 3 must be ungated", q.ID)
+		}
 	}
 }
 
-// TestPhase1Questions_ClaudeDesignConditional verifies claude_design_enabled is hidden
+// TestPage3Questions_ClaudeDesignConditional verifies claude_design_enabled is hidden
 // when DesignEnabled=false (AC-IWE-005 conditional skip).
-func TestPhase1Questions_ClaudeDesignConditional(t *testing.T) {
+func TestPage3Questions_ClaudeDesignConditional(t *testing.T) {
 	t.Parallel()
 	tmpDir := t.TempDir()
-	questions := Phase1Questions(tmpDir)
+	questions := Page3Questions(tmpDir)
 
-	// Standard mode but design disabled: claude_design_enabled should be hidden
-	result := &WizardResult{StandardMode: true, DesignEnabled: false}
+	// Design disabled: claude_design_enabled should be hidden.
+	result := &WizardResult{DesignEnabled: false}
 	visible := FilteredQuestions(questions, result)
 	for _, q := range visible {
 		if q.ID == "claude_design_enabled" {
 			t.Error("claude_design_enabled visible when DesignEnabled=false, want hidden")
 		}
 	}
-	// Expect 6 visible (7 minus claude_design_enabled)
-	if len(visible) != 6 {
-		t.Errorf("Expected 6 visible questions when DesignEnabled=false, got %d", len(visible))
+	// Expect 4 visible (the 5 page-3 questions minus claude_design_enabled)
+	if len(visible) != 4 {
+		t.Errorf("Expected 4 visible questions when DesignEnabled=false, got %d", len(visible))
 	}
 }
 
@@ -128,7 +135,7 @@ func TestPhase1Questions_ClaudeDesignConditional(t *testing.T) {
 func TestProjectModeQuestion(t *testing.T) {
 	t.Parallel()
 	tmpDir := t.TempDir()
-	questions := Phase1Questions(tmpDir)
+	questions := Page3Questions(tmpDir)
 
 	q := QuestionByID(questions, "project_mode")
 	if q == nil {
@@ -190,7 +197,10 @@ func TestHarnessProfileDynamic(t *testing.T) {
 	}
 }
 
-// TestSaveAnswerPhase1 verifies saveAnswer stores Phase 1 string fields correctly.
+// TestSaveAnswerPhase1 verifies saveAnswer stores the page-3 string field.
+// harness_profile is deliberately absent — its capture branch was removed with
+// the question (REQ-WIZ-012); the absence is asserted in
+// TestRemovedQuestionsHaveNoCaptureBranch.
 func TestSaveAnswerPhase1(t *testing.T) {
 	t.Parallel()
 	locale := ""
@@ -200,14 +210,11 @@ func TestSaveAnswerPhase1(t *testing.T) {
 	if result.ProjectMode != "team" {
 		t.Errorf("ProjectMode = %q, want 'team'", result.ProjectMode)
 	}
-
-	saveAnswer("harness_profile", "strict", result, &locale)
-	if result.HarnessProfile != "strict" {
-		t.Errorf("HarnessProfile = %q, want 'strict'", result.HarnessProfile)
-	}
 }
 
-// TestSaveBoolAnswer verifies saveBoolAnswer stores all Phase 1 boolean fields.
+// TestSaveBoolAnswer verifies saveBoolAnswer stores the page-3 boolean fields.
+// coverage_exemptions_enabled is deliberately absent — its capture branch was
+// removed with the question (REQ-WIZ-013).
 func TestSaveBoolAnswer(t *testing.T) {
 	t.Parallel()
 	cases := []struct {
@@ -217,7 +224,6 @@ func TestSaveBoolAnswer(t *testing.T) {
 	}{
 		{"lsp_enabled", true, func(r *WizardResult) bool { return r.LSPEnabled }},
 		{"enforce_quality", false, func(r *WizardResult) bool { return !r.EnforceQuality }},
-		{"coverage_exemptions_enabled", true, func(r *WizardResult) bool { return r.CoverageExemptionsEnabled }},
 		{"design_enabled", false, func(r *WizardResult) bool { return !r.DesignEnabled }},
 		{"claude_design_enabled", false, func(r *WizardResult) bool { return !r.ClaudeDesignEnabled }},
 	}
@@ -227,46 +233,6 @@ func TestSaveBoolAnswer(t *testing.T) {
 		if !c.check(result) {
 			t.Errorf("saveBoolAnswer(%q, %v): check failed", c.id, c.val)
 		}
-	}
-}
-
-// TestIsAdvancedWizardReady verifies gate returns false for P2 and P4 (not yet implemented).
-func TestIsAdvancedWizardReady(t *testing.T) {
-	t.Parallel()
-	gate := IsAdvancedWizardReady()
-	if gate.P2Ready {
-		t.Error("P2Ready = true, want false (SPEC-V3R5-GIT-STRATEGY-SCHEMA-001 not implemented)")
-	}
-	if gate.P4Ready {
-		t.Error("P4Ready = true, want false (SPEC-V3R5-WORKFLOW-SCHEMA-EXTEND-001 not implemented)")
-	}
-}
-
-// TestPhase2Questions_SkippedWhenGateNotReady verifies Phase 2 stubs are hidden
-// when prerequisites are absent.
-func TestPhase2Questions_SkippedWhenGateNotReady(t *testing.T) {
-	t.Parallel()
-	gate := AdvancedGate{P2Ready: false, P4Ready: false}
-	questions := Phase2Questions(gate)
-
-	result := &WizardResult{StandardMode: true, AdvancedMode: true}
-	visible := FilteredQuestions(questions, result)
-	if len(visible) != 0 {
-		t.Errorf("Expected 0 visible Phase 2 questions when gate not ready, got %d", len(visible))
-	}
-}
-
-// TestPhase2Questions_VisibleWhenGateReady verifies Phase 2 stubs are visible
-// when prerequisites are met (mock scenario).
-func TestPhase2Questions_VisibleWhenGateReady(t *testing.T) {
-	t.Parallel()
-	gate := AdvancedGate{P2Ready: true, P4Ready: true}
-	questions := Phase2Questions(gate)
-
-	result := &WizardResult{StandardMode: true, AdvancedMode: true}
-	visible := FilteredQuestions(questions, result)
-	if len(visible) != 4 {
-		t.Errorf("Expected 4 visible Phase 2 questions when gate ready, got %d", len(visible))
 	}
 }
 
@@ -288,23 +254,20 @@ func TestBuildQuestionGroup_ConfirmType(t *testing.T) {
 	}
 }
 
-// TestWizardResultDefaultsPrePopulated verifies RunWithDefaultsModes pre-populates
-// the result with correct defaults before wizard interaction.
+// TestWizardResultDefaultsPrePopulated verifies RunWithDefaults pre-populates
+// the result with correct defaults before wizard interaction. The two mode
+// fields it used to seed are retired (REQ-WIZ-018), so only the four boolean
+// defaults remain.
 func TestWizardResultDefaultsPrePopulated(t *testing.T) {
 	t.Parallel()
 	// We test the pre-population logic directly since we can't run interactive wizard in tests.
 	result := &WizardResult{
-		StandardMode:              true,
-		AdvancedMode:              false,
 		EnforceQuality:            true,
 		CoverageExemptionsEnabled: false,
 		DesignEnabled:             true,
 		ClaudeDesignEnabled:       true,
 	}
 
-	if !result.StandardMode {
-		t.Error("StandardMode should be true")
-	}
 	if !result.EnforceQuality {
 		t.Error("EnforceQuality default should be true")
 	}
@@ -354,29 +317,30 @@ func TestBuildConfirmField_DefaultTrue(t *testing.T) {
 	}
 }
 
-// TestTotalVisibleQuestions_StandardMode verifies TotalVisibleQuestions includes
-// Phase 1 questions in standard mode.
-func TestTotalVisibleQuestions_StandardMode(t *testing.T) {
+// TestTotalVisibleQuestions_Page3AlwaysCounted supersedes the former
+// mode-parameterised stepper test: the denominator no longer depends on any
+// mode flag for the page-3 questions, and REQ-WIZ-018 retired the flag itself.
+func TestTotalVisibleQuestions_Page3AlwaysCounted(t *testing.T) {
 	t.Parallel()
 	tmpDir := t.TempDir()
-	all := append(DefaultQuestions(tmpDir), Phase1Questions(tmpDir)...)
+	all := InitQuestions(tmpDir)
 
-	// Quick mode: the init set is fully unconditional apart from
-	// advanced_bridge (visible while StandardMode is false); no git questions
-	// and 0 Phase 1 questions.
-	quickResult := &WizardResult{StandardMode: false}
-	quickCount := TotalVisibleQuestions(all, quickResult)
-	if quickCount != 4 {
-		// More lenient check: all originals minus conditional ones
-		if quickCount > 9 {
-			t.Errorf("Quick mode shows more than 9 questions: %d", quickCount)
+	// No mode is selected — page 3 no longer needs one.
+	// DesignEnabled reveals the nested claude_design_enabled.
+	res := &WizardResult{DesignEnabled: true}
+	got := TotalVisibleQuestions(all, res)
+	// Page 1 (3) + Page 2 (2) + Page 3 (5) = 10 exactly.
+	if got != 10 {
+		t.Errorf("TotalVisibleQuestions = %d, want 10 (3 Basic + 2 Model & Report + 5 Quality & Workflow)", got)
+	}
+	// All five page-3 questions are counted with no flag to enable them.
+	n := 0
+	for _, q := range FilteredQuestions(all, res) {
+		if q.Group == "Quality & Workflow" {
+			n++
 		}
 	}
-
-	// Standard mode: 4 unconditional default + 7 Phase 1 = up to 11 (minus git conditionals)
-	standardResult := &WizardResult{StandardMode: true, DesignEnabled: true}
-	standardCount := TotalVisibleQuestions(all, standardResult)
-	if standardCount < 11 { // at minimum: 4 unconditional default + 7 Phase 1
-		t.Errorf("Standard mode: too few visible questions: %d (want >= 11)", standardCount)
+	if n != 5 {
+		t.Errorf("visible page-3 questions = %d, want 5", n)
 	}
 }

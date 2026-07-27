@@ -4,7 +4,7 @@ weight: 50
 draft: false
 ---
 
-MoAI-ADK의 인터랙티브 설정 마법사로 첫 설정을 완료하세요. 언어, Git 자동화 범위, 모델 정책, 하네스 프로필을 개발 환경에 맞게 구성합니다. 여기서 정한 값은 전부 `.moai/config/sections/` 아래 YAML 파일로 저장되므로, 나중에 언제든 파일을 직접 고치거나 마법사를 다시 실행해 바꿀 수 있습니다.
+MoAI-ADK의 인터랙티브 설정 마법사로 첫 설정을 완료하세요. 언어, 모델 정책, 리포트 형식, 품질/워크플로우 설정을 개발 환경에 맞게 구성합니다. 여기서 정한 값은 전부 `.moai/config/sections/` 아래 YAML 파일로 저장되므로, 나중에 언제든 파일을 직접 고치거나 마법사를 다시 실행해 바꿀 수 있습니다.
 
 ## 설정 마법사 시작
 
@@ -31,34 +31,29 @@ moai init
 `moai init`은 현재 폴더에 바로 설치합니다. 신규 프로젝트는 `moai init <프로젝트명>`으로 생성하세요.
 {{< /callout >}}
 
-## 마법사 모드
+## 마법사 구성
 
-초기화 마법사는 질문의 깊이에 따라 세 모드로 동작합니다.
+초기화 마법사는 모드 선택 없이 항상 동일한 3-페이지 흐름으로 동작합니다 — 별도 플래그로 질문 범위를 늘리거나 줄이지 않고, 모든 사용자에게 같은 질문 세트가 표시됩니다.
 
-| 모드 | 플래그 | 질문 범위 |
-|------|--------|----------|
-| **Quick** (기본값) | (없음) | 핵심 설정만 — 언어, 이름, Git, 모델 정책 |
-| **Standard** | `--standard` | Quick + Phase 1 질문 (project mode, harness profile, LSP, quality, design) |
-| **Advanced** | `--advanced` | Standard + Phase 2 질문 (선행 조건 충족 시만) |
+| 페이지 | 질문 |
+|--------|------|
+| **Page 1 — 기본** | 대화 언어, 이름, 프로젝트 이름 |
+| **Page 2 — 모델 및 리포트** | 성능 티어 (모델 정책), 리포트 형식 |
+| **Page 3 — 품질 및 워크플로우** | LSP 통합, 품질 게이트 강제, 프로젝트 모드, 디자인 워크플로우, Claude Design 연동 |
 
 ```bash
-# 기본 마법사 (Quick)
 moai init my-project
-
-# Phase 1 질문 포함
-moai init my-project --standard
-
-# Phase 1 + Phase 2 질문 포함
-moai init my-project --advanced
 ```
 
-## Quick 모드 (기본)
+{{< callout type="info" >}}
+Git 자동화 모드·프로바이더는 마법사에서 묻지 않습니다. `moai init`은 저장소에 이미 구성된 Git 원격(remote)에서 자동으로 감지합니다. 나중에 Git 설정을 바꾸려면 `moai update --reconfigure` 를 실행하세요 — 이 경로에서만 별도의 Git 질문 세트(자동화 모드, 프로바이더, 인증 정보)가 표시됩니다.
+{{< /callout >}}
 
-플래그 없이 실행하면 핵심 설정만 묻습니다. 대부분의 사용자에게 충분합니다.
+## Page 1 — 기본
 
 ### 1단계: 대화 언어 선택
 
-Claude가 응답할 언어를 선택합니다.
+Claude가 응답할 언어를 선택합니다. 이후 모든 질문이 이 언어로 렌더링됩니다.
 
 ```bash
 ? 대화 언어를 선택하세요:
@@ -78,69 +73,64 @@ Claude가 응답할 언어를 선택합니다.
 ? 이름 입력: [이름]
 ```
 
-### 3단계: Git 자동화 모드 선택
+이 설정은 `.moai/config/sections/user.yaml` 의 `user.name` 필드에 저장됩니다.
 
-Claude가 수행할 수 있는 Git 작업 범위를 설정합니다.
+### 3단계: 프로젝트 이름
 
-```bash
-? Git 자동화 모드 선택:
-▸ Manual - AI가 커밋이나 푸시를 하지 않음
-  Personal - AI가 브랜치 생성 및 커밋 가능
-  Team - AI가 브랜치 생성, 커밋, PR 생성 가능
-```
-
-- **Manual**: AI가 Git 작업을 수행하지 않습니다. 모든 커밋과 푸시는 사용자가 직접 실행합니다.
-- **Personal**: AI가 브랜치를 생성하고 커밋할 수 있습니다. 개인 프로젝트에 적합합니다.
-- **Team**: AI가 브랜치 생성, 커밋, PR 생성까지 수행합니다. 팀 협업 워크플로우에 최적화되어 있습니다.
-
-{{< callout type="info" >}}
-Git 설정은 `.moai/config/sections/git-strategy.yaml` 파일에 저장됩니다.
-{{< /callout >}}
-
-### 4단계: Git 프로바이더 선택
-
-프로젝트의 Git 호스팅 플랫폼을 선택합니다.
+프로젝트 이름입니다. 기본값은 현재 디렉터리 이름입니다.
 
 ```bash
-? Git 프로바이더 선택:
-▸ GitHub - GitHub.com
-  GitLab - GitLab.com 또는 자체 호스팅 GitLab
+? 프로젝트 이름 입력: [my-project]
 ```
 
-### 5단계: 커밋 메시지 언어
+## Page 2 — 모델 및 리포트
 
-커밋 메시지 작성에 사용할 언어를 선택합니다. 코드 주석 언어와 다르게 설정할 수 있습니다.
-
-### 6단계: 코드 주석 언어
-
-코드 주석에 사용할 언어를 선택합니다. 대부분의 프로젝트에서는 영어를 권장합니다.
-
-### 7단계: 문서 언어
-
-문서 파일에 사용할 언어를 선택합니다.
-
-### 8단계: 성능 티어 (모델 정책)
+### 성능 티어 (모델 정책)
 
 에이전트에 할당할 AI 모델 티어를 선택합니다 — 토크노믹스의 핵심 설정입니다.
 
 ```bash
 ? 성능 티어 선택:
-▸ medium (권장) - 품질과 비용의 균형
-  max - 최고 품질, 계획·감사에 Opus 배정
-  low - 경제적, Sonnet 중심 배분
+▸ Medium (권장) - 품질과 비용의 균형, Max $100 플랜
+  Max - Fable 5(low) + Opus 4.8(high) + Sonnet(medium~low), Max $200 플랜
+  Low - Opus 4.8(high~low) + Sonnet(medium~low), Plus $20 플랜
 ```
 
 | 티어 | 특징 |
 |------|------|
-| **max** | 최고 품질 — 계획·감사에 Opus 배정, 최대 추론 깊이 |
-| **medium** (기본값) | 품질과 비용의 균형 |
-| **low** | 경제적 — Sonnet 중심 배분 |
+| **Max** | 최고 품질 배분 — Max $200 플랜 대상 |
+| **Medium** (기본값) | 품질과 비용의 균형 — Max $100 플랜 대상 |
+| **Low** | 경제적 배분 — Plus $20 플랜 대상 |
 
 이 설정은 `.moai/config/sections/llm.yaml` 의 `performance_tier` 필드에 저장되며, `profile` 필드(프로필 매트릭스 열)의 legacy 별칭으로 읽힙니다. `--profile max|medium|low` 플래그로 직접 지정하면 `profile` 필드에 저장됩니다. 프로필별 에이전트 model+effort 매핑은 [프로필 매트릭스](/ko/advanced/profile-matrix/) 페이지를 참조하세요.
 
-## Standard 모드 (Phase 1 질문)
+### 리포트 형식
 
-`--standard` 플래그를 주면 Quick 모드의 모든 질문에 추가로 Phase 1 질문이 표시됩니다.
+리포트를 HTML+Markdown으로 생성할지, Markdown만 생성할지 선택합니다.
+
+```bash
+? 리포트 형식 선택:
+▸ HTML + Markdown (권장) - 브라우저에서 볼 수 있는 HTML 리포트와 Markdown을 함께 생성
+  Markdown만 - Markdown 리포트만 생성 (가볍고 diff 친화적)
+```
+
+이 설정은 `.moai/config/sections/report.yaml` 의 `report.format` 필드에 저장됩니다.
+
+## Page 3 — 품질 및 워크플로우
+
+### LSP integration
+
+run 단계에서 언어 서버 진단을 활성화할지 선택합니다. 기본값은 **활성화(Yes)** 이며, 원치 않으면 No로 답해 opt-out 할 수 있습니다.
+
+이 설정은 `.moai/config/sections/lsp.yaml` 의 `lsp.enabled` 필드에 저장됩니다.
+
+### quality gates
+
+TRUST 5 품질 게이트 강제 여부를 선택합니다.
+
+- **Enforce quality gates** (기본값: Yes) — 품질 게이트 실패 시 구현 진행 차단
+
+이 설정은 `.moai/config/sections/quality.yaml` 의 `constitution.enforce_quality` 필드에 저장됩니다.
 
 ### project mode
 
@@ -152,28 +142,7 @@ Git 설정은 `.moai/config/sections/git-strategy.yaml` 파일에 저장됩니�
   Team - Multi-developer setup
 ```
 
-### harness evaluator profile
-
-품질 평가자의 기본 프로필을 선택합니다.
-
-```bash
-? Select default harness evaluator profile:
-▸ default
-  strict
-  lenient
-  frontend
-```
-
-### LSP integration
-
-run 단계에서 언어 서버 진단을 활성화할지 선택합니다. 기본값은 비활성화 (opt-in) 입니다.
-
-### quality gates
-
-TRUST 5 품질 게이트 강제 여부와 커버리지 예외 허용 여부를 선택합니다.
-
-- **Enforce quality gates** (기본값: Yes) — 품질 게이트 실패 시 구현 진행 차단
-- **Allow coverage exemptions** (기본값: No) — 특정 파일/패키지를 커버리지 대상에서 제외
+이 설정은 `.moai/config/sections/project.yaml` 의 `project.mode` 필드에 저장됩니다.
 
 ### design workflow
 
@@ -182,9 +151,7 @@ MoAI 디자인 파이프라인과 Claude Design 연동을 활성화할지 선택
 - **Enable design workflow** (기본값: Yes)
 - **Enable Claude Design integration** (기본값: Yes, design 활성화 시만 표시)
 
-## Advanced 모드 (Phase 2 질문)
-
-`--advanced` 플래그는 `--standard` 를 포함하며, 추가로 Phase 2 질문을 표시합니다. Phase 2 질문은 run 단계 완료 등 선행 조건이 충족된 경우에만 표시되고, 조건이 없으면 자동으로 건너뛰며 안내 메시지가 출력됩니다.
+이 설정들은 `.moai/config/sections/design.yaml` 의 `design.enabled` / `design.claude_design.enabled` 필드에 저장됩니다.
 
 ## 비대화형 모드 (CI/CD)
 
@@ -195,7 +162,6 @@ moai init my-project \
   --non-interactive \
   --project-mode personal \
   --profile medium \
-  --harness-profile default \
   --enable-lsp=false \
   --enforce-quality
 ```

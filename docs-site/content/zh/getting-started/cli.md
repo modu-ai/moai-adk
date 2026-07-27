@@ -59,8 +59,6 @@ moai init [project-name] [OPTIONS]
 | `--force` | 强制重新初始化既有项目(会备份当前 `.moai/`) |
 | `--no-hooks` | 跳过 Git 钩子安装 |
 | `--all` | 部署 catalog 全部条目(core + optional packs + harness-generated) |
-| `--standard` | 显示 Phase 1 提问(project mode、harness profile、LSP、quality gates、design) |
-| `--advanced` | 显示 Phase 1 + Phase 2 提问(含 `--standard`;Phase 2 仅在满足前置条件时) |
 | `--mode <ddd\|tdd>` | 开发方法论(默认: tdd) |
 | `--language <lang>` | 主编程语言 |
 | `--framework <name>` | 框架名称(默认: 自动检测或 "none") |
@@ -69,8 +67,8 @@ moai init [project-name] [OPTIONS]
 | `--git-mode <manual\|personal\|team>` | Git 工作流模式(默认: manual) |
 | `--git-provider <github\|gitlab>` | Git 提供者 |
 | `--project-mode <personal\|team>` | 项目模式(默认: personal) |
-| `--harness-profile <profile>` | harness 评估器配置文件(default, strict, lenient, frontend) |
-| `--enable-lsp` | 启用 LSP 联动(默认: false) |
+| `--harness-profile <profile>` | harness 评估器配置文件(default, strict, lenient, frontend);接受该值,但目前不会持久化生效 |
+| `--enable-lsp` | 启用 LSP 联动(默认: true) |
 | `--enforce-quality` | 强制质量门禁(默认: true) |
 | `--enable-design` | 启用 design 工作流(默认: true) |
 | `--profile <max\|medium\|low>` | 模型+effort 配置文件 —— 保存到 `llm.yaml` `profile` (选择配置矩阵列) |
@@ -89,9 +87,6 @@ moai init
 
 # 非交互(CI/CD)
 moai init --non-interactive --project-mode personal --model-policy medium
-
-# 显示到 Phase 1 提问
-moai init my-project --standard
 ```
 
 详细的向导步骤请参阅[初始设置](./init-wizard)页面。

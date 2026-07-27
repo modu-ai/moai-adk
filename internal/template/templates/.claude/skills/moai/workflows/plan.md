@@ -164,7 +164,6 @@ This signal marks the plan artifacts as finalized and enables the Plan Audit Gat
 ---
 
 Version: 2.8.0
-Updated: 2026-05-25
 Changes: Added test scenarios, Phase 3 JIT Language Detection.
 
 ---

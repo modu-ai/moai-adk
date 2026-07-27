@@ -198,7 +198,7 @@ func TestInitGitFlagOverridesDetection(t *testing.T) {
 
 	// The wizard no longer answers any git question on the init path.
 	origWizard := runWizardFn
-	runWizardFn = func(_, _, _ string, _, _ bool) (*wizard.WizardResult, error) {
+	runWizardFn = func(_, _, _ string) (*wizard.WizardResult, error) {
 		return &wizard.WizardResult{
 			ProjectName:  "flag-proj",
 			ModelPolicy:  "high",
@@ -251,7 +251,7 @@ func TestInitGitDetectionFillsConfig(t *testing.T) {
 	t.Cleanup(func() { deps = origDeps })
 
 	origWizard := runWizardFn
-	runWizardFn = func(_, _, _ string, _, _ bool) (*wizard.WizardResult, error) {
+	runWizardFn = func(_, _, _ string) (*wizard.WizardResult, error) {
 		return &wizard.WizardResult{
 			ProjectName:  "detect-proj",
 			ModelPolicy:  "high",

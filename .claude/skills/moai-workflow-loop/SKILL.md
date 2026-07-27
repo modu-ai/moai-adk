@@ -147,7 +147,7 @@ Review the max_iterations setting to ensure it allows sufficient iterations. Rev
 Skills:
 
 - moai-foundation-quality: TRUST 5 validation
-- moai-tool-ast-grep: Security scanning patterns
+- `moai ast-grep` / `moai ast-edit`: security scanning patterns and rewrites
 - moai-workflow-testing: DDD integration
 - `.claude/rules/moai/languages/python.md`: Python-specific patterns (auto-loaded via paths frontmatter)
 - `.claude/rules/moai/languages/typescript.md`: TypeScript patterns (auto-loaded via paths frontmatter)
