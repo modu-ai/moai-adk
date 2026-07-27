@@ -87,8 +87,13 @@ reintroduces an independent `id + ".json"` path derivation.
   with that session's uncommitted files. All work for this SPEC happens in the isolated
   worktree `.claude/worktrees/harness-loop-repair` (branch `feat/SPEC-HARNESS-LOOP-REPAIR-001`,
   based on `origin/main` = `760f09f73`). Do not commit this SPEC's work in the primary checkout.
-- `moai harness ledger record` was exercised once this session and works (exit 0, one row
-  written). The ledger was empty purely because no orchestrator had ever called it — M3.
+- `moai harness ledger record` was exercised once this session and works (exit 0, creates a
+  **pending** row — not a ledger line; the ledger line appears only at terminal-evidence Stop).
+  The recording **obligation already exists** in doctrine (`.claude/skills/moai/SKILL.md` router
+  section + `workflows/run.md:196`, shipped by `SPEC-HARNESS-EVOLVE-001` M3 commit `1c54cd9c6`,
+  2026-07-12). The ledger stayed empty because no dispatch was driven to a terminal-evidence Stop
+  and the LLM-obeyed doctrine is not mechanically enforced — M3 verifies the mechanics + executes
+  the AC-HLR-007 falsification; it does not add a second obligation.
 
 ## §E.2 Run-phase Evidence — M1
 
@@ -153,6 +158,55 @@ characterization test that MUST fail once M2 lands.
   discipline.
 - Proposal coverage for `internal/cli/harness` measured 80.9%, below the 85%
   package target. Pre-existing; M1 added tests but did not close the gap.
+
+## §E.2 (cont.) Run-phase Evidence — M3 (dispatch observation)
+
+M3 = REQ-HLR-005 / AC-HLR-007. **The recording obligation and CLI mechanics were already
+shipped by `SPEC-HARNESS-EVOLVE-001` M3 (`1c54cd9c6`, 2026-07-12).** M3's deliverable under
+the user-approved Option A is: verify the mechanics end-to-end + execute the AC-HLR-007
+falsification + correct the stale "obligation missing" premise in plan.md §F.3 and the
+progress.md ledger-record line above. No Go code changed.
+
+### AC verification
+
+| AC | Status | Command | Observed |
+|---|---|---|---|
+| AC-HLR-007 | PASS | full lifecycle in isolated `/tmp` root (worktree binary) | record→pending=1; evidence --terminal; `harness-observe-stop`→ledger 0→**1**, `outcome:"success"`; falsification (no record)→ledger unchanged; gate0 OFF→finalize skipped |
+
+### Falsification executed (both directions, observed not assumed)
+
+Driven in a fresh `/tmp` root with `hook.opt_in.enabled: true` + `learning.enabled` default-ON:
+
+1. `record --session m3a` (stdin `/moai run SPEC-X`) → `routing-pending-m3a.json` created, ledger 0.
+2. `evidence --session m3a --kind gate_exit --value 0 --terminal` → terminal evidence on pending.
+3. `harness-observe-stop` (stdin `{"session_id":"m3a",...}`) → `FinalizeOnStop` derived terminal
+   `success`, appended **1 line** to `routing-ledger.jsonl`, deleted the pending file.
+4. **Falsification**: `harness-observe-stop` for a session with NO `record` → ledger unchanged
+   (self-gated no-op, `pending.go:148-150`). Confirmed.
+5. **Gate cross-check**: `hook.opt_in.enabled: false` → record+evidence+Stop leaves ledger
+   unchanged (`finalizeRoutingLedgerOnStop` gate 0, `hook.go:737-738`). Confirmed.
+6. **Privacy**: ledger row carries `request_digest: sha256:e0e7dba9545a`, verbatim request
+   `grep -c` = 0. Confirmed (no leak).
+
+Verbatim evidence log: `/tmp/hlr-m3-R3-3UJ1/.moai/state/routing-ledger.jsonl` (1 row).
+
+### Lifecycle clarification
+
+The AC's "routing-ledger line count +1 per dispatch" is realized across the dispatch→finalize
+lifecycle: `record` writes a *pending* row at dispatch; a terminal-evidence Stop finalizes it
+into `routing-ledger.jsonl`. A single `record` call never appends to the ledger. This is the
+designed `pending.go` architecture, not a defect; `acceptance.md §E.1` carries the corrected
+Baseline wording.
+
+### Known gaps / residual risk (not closed by M3)
+
+- **Obedience gap (residual risk).** The obligation is LLM-obeyed doctrine; no mechanical
+  backstop fires `record` at dispatch. The primary-checkout ledger holds 1 row (audit-hand-written)
+  despite the doctrine shipping 2026-07-12. Closing this needs a mechanical dispatch-time
+  trigger (Option B follow-up), out of scope for M3 per user decision.
+- No new Go test added — the existing `TestLedgerVerbs_RecordEvidenceList`, `TestLedgerRecord_LearningDisabledNoOp`,
+  and `TestHarnessObserveStop_RoutingLedgerGated` already cover the record/evidence/finalize/gate
+  mechanics; M3's contribution is the live end-to-end execution + falsification evidence above.
 
 ## §F Phase 4 Mode Selection — M2
 

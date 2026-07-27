@@ -179,7 +179,7 @@ Implements REQ-HLR-009, 011. Satisfies AC-HLR-008, 017. Changes `pattern_key` na
 
 ### F.3 M3 — dispatch observation
 
-Implements REQ-HLR-005. Satisfies AC-HLR-007. The ledger writer already works; what is missing is the orchestrator-side obligation to call it.
+Implements REQ-HLR-005. Satisfies AC-HLR-007. **Correction (2026-07-28):** the original premise — "what is missing is the orchestrator-side obligation to call it" — was stale. The obligation, the CLI writer, the opt-in self-gate, and the unit tests were all shipped by `SPEC-HARNESS-EVOLVE-001` M3 (commit `1c54cd9c6`, 2026-07-12), 15 days before this plan was written: the obligation lives at `.claude/skills/moai/SKILL.md` (router section) and `workflows/run.md:196`; `moai harness ledger record` self-gates on `isHarnessLearningEnabled` (`internal/cli/hook.go:469`, default ON). M3's actual deliverable (user-approved Option A): verify the mechanics end-to-end, execute the AC-HLR-007 falsification, and correct this stale premise. The real residual gap is that the obligation is LLM-obeyed (no mechanical dispatch-time backstop) — documented as residual risk in `acceptance.md §E.1`, not closed by M3.
 
 ### F.4 M5 — lesson channel
 

@@ -29,7 +29,7 @@ These rules bind every AC below. They exist because §A.4 of `spec.md` attribute
 | AC-HLR-014 | M2 | open | §D.3 |
 | AC-HLR-015 | M2 | open | §D.4 |
 | AC-HLR-016 | M2 | open | §D.5 |
-| AC-HLR-007 | M3 | open | §E.1 |
+| AC-HLR-007 | M3 | **PASS** | §E.1 |
 | AC-HLR-008 | M4 | open | §F.1 |
 | AC-HLR-017 | M4 | open | §F.2 |
 | AC-HLR-009 | M5 | open | §G.1 |
@@ -173,7 +173,23 @@ M2 acts on `spec.md` §A.3.2 / §A.4: a `proposalgen` draft is a discovery repor
 
 **Traces to** REQ-HLR-005.
 
-**Baseline.** `.moai/state/routing-ledger.jsonl` was absent until the audit wrote one row by hand. `moai harness ledger record` was exercised once and works (exit 0, one row written) — the ledger was empty because no orchestrator ever called it, not because the writer was broken.
+**Baseline (corrected M3).** `.moai/state/routing-ledger.jsonl` was absent until the audit wrote one row by hand. `moai harness ledger record` exits 0 and creates a **pending** row (`.moai/state/routing-pending-<session>.json`) — it does not append to the ledger directly; the ledger line appears only at terminal-evidence finalization on Stop. The original "one row written" phrasing conflated the pending row with a finalized ledger line; the ledger was empty because no dispatch was ever driven to a terminal-evidence Stop, not because the writer was broken.
+
+**Evidence (M3, executed 2026-07-28, worktree binary, isolated `/tmp` root).** Both opt-ins ON (`hook.opt_in.enabled: true` in `system.yaml`; `learning.enabled` default-ON via absent `harness.yaml`):
+
+| Step | Command | Observed |
+|---|---|---|
+| dispatch | `echo "/moai run SPEC-X" \| moai harness ledger record --subcommand run --session m3a --tier M` | 1 pending row created; ledger still 0 |
+| terminal evidence | `moai harness ledger evidence --session m3a --kind gate_exit --value 0 --terminal --ref "go test ./..."` | terminal `gate_exit` appended to the pending row |
+| finalize | `moai hook harness-observe-stop` (stdin `{"session_id":"m3a",...}`) | ledger 0→**1**; pending deleted; row `outcome:"success"` derived from the terminal evidence |
+
+The finalized ledger row carries `request_digest: sha256:e0e7dba9545a` and **not** the verbatim request — `grep -c 'SPEC-X-DISPATCH-123' routing-ledger.jsonl` = 0 (privacy preserved).
+
+**Falsification executed.** With the `record` call removed (only `harness-observe-stop` run for a session `m3b` with no pending row), the ledger count stayed at 1 — `FinalizeOnStop` is a self-gated no-op when no pending row exists (`pending.go:148-150`). Removing the record call leaves the count unchanged across a dispatch, as required. The opt-in gate was also confirmed: with `hook.opt_in.enabled: false`, `record`+`evidence`+`Stop` left the ledger unchanged (`finalizeRoutingLedgerOnStop` gate 0, `hook.go:737-738`).
+
+**Lifecycle clarification (operational reading of "routing-ledger line count +1").** The dispatch-time `record` writes a *pending* row; the *ledger* line appears only at terminal-evidence finalization on Stop (`internal/harness/routing/pending.go` `FinalizeOnStop` → `DeriveOutcome`). The AC's "+1 routing-ledger line per dispatch" is realized across the dispatch→finalize lifecycle, not atomically at the `record` call. This is the designed pending→finalize architecture, not a defect.
+
+**Residual risk (not closed by M3).** The recording obligation lives in doctrine (`.claude/skills/moai/SKILL.md` router section; `.claude/skills/moai/workflows/run.md:196`) and is LLM-obeyed — no mechanical backstop guarantees the orchestrator calls `record` at dispatch. The doctrine shipped 2026-07-12 (`SPEC-HARNESS-EVOLVE-001` M3, commit `1c54cd9c6`); the primary-checkout ledger nonetheless holds only 1 row (audit-hand-written). M3 verifies the mechanics are correct and the falsification passes; closing the obedience gap is a candidate follow-up (a mechanical dispatch-time trigger), not part of this milestone.
 
 ---
 

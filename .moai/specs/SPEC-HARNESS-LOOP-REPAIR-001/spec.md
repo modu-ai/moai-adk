@@ -296,7 +296,7 @@ The system SHALL record the disposition of the producer/consumer `tier` represen
 |---|---|---|---|---|
 | **M1** | Shared proposal accessor; repair C1/C2/C3 | §A.3.1 | `status` pending == on-disk draft count | **complete** — `c996eb294` |
 | **M2** | Route drafts to their designed consumer: promotion path draft → SPEC; de-wire `execute`→draft; applicability guard before snapshot; retire the tier tripwire | §A.3.2, §A.4, §A.7 | a named draft becomes a SPEC carrying its provenance, and leaves the pending queue | not started |
-| **M3** | Routing-ledger recording obligation at dispatch | §A.5 | ledger row count increases per dispatch | not started |
+| **M3** | Routing-ledger recording obligation at dispatch | §A.5 | ledger row count increases per dispatch | **complete** — obligation + mechanics pre-shipped by `SPEC-HARNESS-EVOLVE-001` (`1c54cd9c6`); M3 verified end-to-end + executed the AC-HLR-007 falsification (no Go change) |
 | **M4** | Generator quality: promotion routing by enforceability, narrow `agent_invocation` promotion, pattern-scoped draft identity | §A.5, §A.6 | no new draft with a bare-tool-name `pattern_key`; a two-date fixture yields one draft | not started |
 | **M5** | Lesson-channel unification + inbox drain ownership | §A.2 | designated store == practiced store; inbox drains | not started |
 | **M6** | `prediction:`/`verified:` on harness-edit lessons; CLI reporting fixes | §A.2, §B.1 | fields present on new entries; help lists all verbs | not started |
@@ -321,7 +321,7 @@ Every criterion is stated so that **reverting the corresponding change makes it 
 | AC-HLR-004 | M2 | a named draft becomes a SPEC carrying its provenance and leaves the pending queue | open — **rewritten in v0.2.0** |
 | AC-HLR-005 | M2 | each promotion leaves one auditable record linking draft → SPEC | open — **rewritten in v0.2.0** |
 | AC-HLR-006 | M1 | one shared accessor; no call site re-derives `id + ".json"` | **PASS** |
-| AC-HLR-007 | M3 | a `/moai` dispatch appends one routing-ledger row | open |
+| AC-HLR-007 | M3 | a `/moai` dispatch appends one routing-ledger row | **PASS** |
 | AC-HLR-008 | M4 | no newly generated draft carries a bare-tool-name `pattern_key` | open |
 | AC-HLR-009 | M5 | exactly one designated lesson store, and it is the practiced one | open |
 | AC-HLR-010 | M5 | the inbox drain actor and trigger are named, and a drain reduces the backlog | open |
