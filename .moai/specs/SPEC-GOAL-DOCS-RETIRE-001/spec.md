@@ -2,9 +2,9 @@
 id: SPEC-GOAL-DOCS-RETIRE-001
 title: Retire native /goal emission references from public and internal documentation across four locales
 version: 1.6.0
-status: in-progress
+status: completed
 created: 2026-07-25
-updated: 2026-07-27
+updated: 2026-07-28
 author: manager-spec
 priority: MEDIUM
 phase: "v3.1.0"
