@@ -83,7 +83,36 @@ _Populated by manager-spec at plan-phase completion; updated v0.1.1 (iter-2)._
   runtime-managed (`team_mode: glm`, §22.3) — excluded from pathspec commits.
   Implementation Kickoff Approval: granted (prior session, semi-autonomous
   progression — checkpoint after M1-M2).
-- _<M1-M2 evidence to be populated by manager-develop>_
+- **M1-M2 implemented 2026-07-28** (manager-develop). Commits:
+  - `9065d14e9` M1 — `branch_guard.go` (discriminant `isPrimaryCheckout`, exemption
+    `isExemptAgent`, `branchStatePatterns` regex set named+blankable via `@MX:ANCHOR`,
+    `checkBranchState`, `execCommand` mock indirection) + `branch_guard_test.go`
+  - `fe3a50558` M2 — `pre_tool.go` Handle integration (checkBranchState after
+    checkBashCommand, before default-allow) + `pre_tool_test.go` (4 integration tests)
+  - Frontmatter `status: draft → in-progress` on spec/plan/acceptance (M1 commit).
+- **Orchestrator independent verification 2026-07-28** (trust-but-verify, all run in
+  the L2 worktree — not the stale gopls workspace that emitted wrong-tree "undefined"
+  diagnostics): `go build ./...` exit 0; `go vet ./internal/hook/...` exit 0; full
+  `go test ./internal/hook/... -count=1` → ALL packages `ok` (no cascade); `golangci-lint
+  run ./internal/hook/...` → 0 issues; subagent-boundary grep → 0; `branch_guard.go`
+  coverage 87.8% per-function avg / 91.7% statement (≥85% AC §C gate met); commits
+  pushed `0 0` clean, 🗯 MoAI trailers present (2).
+- **AC status (M1-M2 scope)**: AC-WBG-001/002/004/005/011/012 PASS; AC-WBG-003 PASS
+  at branch-state layer (see Gap-G1). AC-006..009/010/013 deferred to M3-M6.
+- **Gap-G1 (manager-develop surfaced, orchestrator confirmed in-scope)**:
+  `git\s+reset\s+--hard` is in the pre-existing `AskBashPatterns` (`pre_tool.go:250`),
+  so `checkBashCommand` returns DecisionAsk BEFORE the branch-state check for that ONE
+  command. The other 6 patterns are NOT in AskBashPatterns → branch-guard is the first
+  gate for them (works as designed). `git reset --hard` pre-gating == the documented
+  Phase-D interim break (acceptance.md F-1, spec.md §E — "static deny ALSO blocks
+  Phase D, not addressed by this SPEC"). AC-WBG-003 end-to-end via `git reset --hard`
+  is not satisfiable through Handle; the exemption is proven at the branch-state layer
+  + via non-ask command `git switch main` (`Handle_AgentType_manager_git_nonAskCommand`).
+  Sync-phase action: note this in AC-WBG-003 verification (M6).
+- **Gap-G2 (confirmed, defensible)**: `branch_guard.go:82` uses `[^\s-]` not `\S`
+  (plan table `\S` would false-positive on `git checkout -- <path>`, violating the
+  plan's own "non-flag token" rule + SPEC §E E-5). Documented in-source (lines 62-68).
+  Faithful to prose intent; plan table token is a typo.
 
 ## §E.3 Run-phase Audit-Ready Signal
 
