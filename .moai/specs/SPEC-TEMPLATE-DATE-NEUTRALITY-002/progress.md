@@ -121,3 +121,39 @@ _<pending run-phase>_
 ## §E.4 Sync-phase Audit-Ready Signal
 
 _<pending sync-phase>_
+
+---
+
+## §F Phase 4 Mode Selection
+
+### Input parameters
+
+- **tier**: L
+- **scope (file count)**: ≥24 (22 REMOVE-bearing template files + 1 Go guard + 1 CI workflow, before any DC-5 adjudicated REMOVE adds more)
+- **domain count**: 4 (template tree, Go internal-content-leak guard, CI workflow, SPEC triage artifacts)
+- **file language mix**: markdown-heavy (template tree) + Go (guard test) + YAML (CI workflow) + TSV (triage)
+- **concurrency benefit**: LOW — coupled-ordering hazard (design.md §A); M5 widening is gated on M3+M4 verification, so milestones are strictly sequential, not independent
+- **Agent Teams prereqs**: n/a (static layer retired)
+
+### Mode evaluation
+
+| Mode | Selected? | Rationale |
+|------|-----------|-----------|
+| 1 trivial | no | 24+ files, semantic changes — not trivial |
+| 2 background | no | write-capable implementation, not read-only async |
+| 3 agent-team | no | RETIRED (static layer tombstone) |
+| 4 parallel | no | LOW concurrency benefit; coupled-ordering makes milestones dependent, not independent; coding-heavy (Anthropic coding-task parallelism caveat) |
+| 5 sub-agent | **yes** | sequential per-milestone delegation matches the M1→M6 dependency chain; default fallback for coding-heavy Tier L |
+| 6 workflow | no | not a single uniform mechanical transform — M2 adjudication is judgment work, M3/M4 are content-anchored edits, M5 is a coupled one-line flip |
+
+### Decision
+
+Mode: sub-agent
+
+### Justification
+
+The milestone chain has a hard ordering constraint (plan.md §F, design.md §A): the year-class widening in M5 turns CI red on 48 findings unless every REMOVE row (M3) and every PRESERVE carve-out (M4) has already landed. That dependency is strictly sequential — no two milestones are safely parallelizable. Combined with the judgment-heavy M2 adjudication (3 open questions on HIST/CREATED/COMPOSITE rows) and the content-anchored (not line-numbered) edits in M3/M4, this is the canonical Mode 5 case per Anthropic's coding-task parallelism caveat. Mode 6 is rejected because the transform is not uniform-mechanical: each REMOVE row carries its own disposition and each PRESERVE row its own literal-date anchor.
+
+### Kickoff confirmation
+
+Implementation Kickoff Approval: PASSED (prior session 3053725a, plan-audit PASS 0.90, score ≥ 0.90 with 4-condition skip-eligibility satisfied for Phase 1 verdict re-execution — distinct from this kickoff gate). All preferences collected at kickoff; no mid-run user input required.

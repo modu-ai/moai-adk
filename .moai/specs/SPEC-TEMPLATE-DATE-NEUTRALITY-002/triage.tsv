@@ -1,0 +1,75 @@
+file	date	line_shape	line_no	category	disposition	rationale
+.claude/skills/moai-foundation-cc/reference/best-practices-checklist.md	2025-11-25	LS-PROSE-STAMP	612	DC-2b	PRESERVE	mirror-capture stamp, sole staleness signal for a third-party document mirror (REQ-TDN2-010)
+.claude/skills/moai-foundation-cc/reference/best-practices-checklist.md	2025-11-25	LS-PROSE-STAMP	7	DC-2b	PRESERVE	mirror-capture stamp, sole staleness signal for a third-party document mirror (REQ-TDN2-010)
+.claude/skills/moai-foundation-cc/reference/examples.md	2025-11-26	LS-OTHER	27	DC-5	PRESERVE	EX-FM frontmatter block shown as a syntax example (REQ-TDN2-011 absolute pin)
+.claude/skills/moai-foundation-cc/reference/reference.md	2025-12-06	LS-PROSE-STAMP	209	DC-2b	PRESERVE	mirror-capture stamp, sole staleness signal for a third-party document mirror (REQ-TDN2-010)
+.claude/skills/moai-foundation-cc/reference/skill-examples.md	2025-11-25	LS-OTHER	1161	DC-5	PRESERVE	EX-FM frontmatter block shown as a syntax example (REQ-TDN2-011 absolute pin)
+.claude/skills/moai-foundation-cc/reference/skill-examples.md	2025-11-25	LS-OTHER	1597	DC-5	PRESERVE	EX-FM frontmatter block shown as a syntax example (REQ-TDN2-011 absolute pin)
+.claude/skills/moai-foundation-cc/reference/skill-examples.md	2025-11-25	LS-OTHER	162	DC-5	PRESERVE	EX-FM frontmatter block shown as a syntax example (REQ-TDN2-011 absolute pin)
+.claude/skills/moai-foundation-cc/reference/skill-examples.md	2025-11-25	LS-OTHER	304	DC-5	PRESERVE	EX-FM frontmatter block shown as a syntax example (REQ-TDN2-011 absolute pin)
+.claude/skills/moai-foundation-cc/reference/skill-examples.md	2025-11-25	LS-OTHER	31	DC-5	PRESERVE	EX-FM frontmatter block shown as a syntax example (REQ-TDN2-011 absolute pin)
+.claude/skills/moai-foundation-cc/reference/skill-examples.md	2025-11-25	LS-OTHER	517	DC-5	PRESERVE	EX-FM frontmatter block shown as a syntax example (REQ-TDN2-011 absolute pin)
+.claude/skills/moai-foundation-cc/reference/skill-examples.md	2025-11-25	LS-OTHER	853	DC-5	PRESERVE	EX-FM frontmatter block shown as a syntax example (REQ-TDN2-011 absolute pin)
+.claude/skills/moai-foundation-cc/reference/skill-examples.md	2025-11-25	LS-PROSE-STAMP	1670	DC-2b	PRESERVE	mirror-capture stamp, sole staleness signal for a third-party document mirror (REQ-TDN2-010)
+.claude/skills/moai-foundation-cc/reference/skill-examples.md	2025-11-25	LS-PROSE-STAMP	7	DC-2b	PRESERVE	mirror-capture stamp, sole staleness signal for a third-party document mirror (REQ-TDN2-010)
+.claude/skills/moai-foundation-cc/reference/skill-formatting-guide.md	2025-11-25	LS-OTHER	173	DC-5	PRESERVE	EX-FM frontmatter block shown as a syntax example (REQ-TDN2-011 absolute pin)
+.claude/skills/moai-foundation-cc/reference/skill-formatting-guide.md	2025-11-25	LS-OTHER	27	DC-5	PRESERVE	EX-FM frontmatter block shown as a syntax example (REQ-TDN2-011 absolute pin)
+.claude/skills/moai-foundation-cc/reference/skill-formatting-guide.md	2025-11-25	LS-PROSE-STAMP	7	DC-2b	PRESERVE	mirror-capture stamp, sole staleness signal for a third-party document mirror (REQ-TDN2-010)
+.claude/skills/moai-foundation-cc/reference/skill-formatting-guide.md	2025-11-25	LS-PROSE-STAMP	715	DC-2b	PRESERVE	mirror-capture stamp, sole staleness signal for a third-party document mirror (REQ-TDN2-010)
+.claude/skills/moai-foundation-cc/reference/skill-formatting-guide.md	2025-12-25	LS-OTHER	716	DC-5	PRESERVE	DEADLINE forward-looking review or expiry date
+.claude/skills/moai-foundation-cc/reference/sub-agents/sub-agent-examples.md	2025-11-25	LS-PROSE-STAMP	1589	DC-2b	PRESERVE	mirror-capture stamp, sole staleness signal for a third-party document mirror (REQ-TDN2-010)
+.claude/skills/moai-foundation-cc/reference/sub-agents/sub-agent-examples.md	2025-11-25	LS-PROSE-STAMP	7	DC-2b	PRESERVE	mirror-capture stamp, sole staleness signal for a third-party document mirror (REQ-TDN2-010)
+.claude/skills/moai-foundation-cc/reference/sub-agents/sub-agent-formatting-guide.md	2025-11-25	LS-PROSE-STAMP	1081	DC-2b	PRESERVE	mirror-capture stamp, sole staleness signal for a third-party document mirror (REQ-TDN2-010)
+.claude/skills/moai-foundation-cc/reference/sub-agents/sub-agent-formatting-guide.md	2025-11-25	LS-PROSE-STAMP	7	DC-2b	PRESERVE	mirror-capture stamp, sole staleness signal for a third-party document mirror (REQ-TDN2-010)
+.claude/skills/moai-foundation-cc/reference/sub-agents/sub-agent-integration-patterns.md	2025-11-25	LS-PROSE-STAMP	1096	DC-2b	PRESERVE	mirror-capture stamp, sole staleness signal for a third-party document mirror (REQ-TDN2-010)
+.claude/skills/moai-foundation-cc/reference/sub-agents/sub-agent-integration-patterns.md	2025-11-25	LS-PROSE-STAMP	7	DC-2b	PRESERVE	mirror-capture stamp, sole staleness signal for a third-party document mirror (REQ-TDN2-010)
+.claude/skills/moai-foundation-cc/SKILL.md	2025-11-26	LS-OTHER	245	DC-5		HIST version-history bullet; REMOVE resolves predecessor flagged cosmetic residue (SPEC-TEMPLATE-DATE-NEUTRALITY-001 spec.md sec. 5)
+.claude/skills/moai-foundation-cc/SKILL.md	2025-12-06	LS-OTHER	244	DC-5		HIST version-history bullet; REMOVE resolves predecessor flagged cosmetic residue (SPEC-TEMPLATE-DATE-NEUTRALITY-001 spec.md sec. 5)
+.claude/skills/moai-foundation-core/modules/commands-reference.md	2025-11-25	LS-PROSE-STAMP	5	DC-2a	REMOVE	unfenced prose authoring stamp
+.claude/skills/moai-foundation-core/modules/execution-rules.md	2025-11-25	LS-PROSE-STAMP	5	DC-2a	REMOVE	unfenced prose authoring stamp
+.claude/skills/moai-foundation-core/modules/INDEX.md	2025-11-25	LS-PROSE-STAMP	6	DC-2a	REMOVE	unfenced prose authoring stamp
+.claude/skills/moai-foundation-core/modules/progressive-disclosure.md	2025-11-25	LS-PROSE-STAMP	6	DC-2a	REMOVE	unfenced prose authoring stamp
+.claude/skills/moai-foundation-core/modules/progressive-disclosure.md	2025-11-25	LS-PROSE-STAMP	647	DC-2a	REMOVE	unfenced prose authoring stamp
+.claude/skills/moai-foundation-core/modules/token-optimization.md	2025-11-25	LS-PROSE-STAMP	6	DC-2a	REMOVE	unfenced prose authoring stamp
+.claude/skills/moai-foundation-core/modules/token-optimization.md	2025-11-25	LS-PROSE-STAMP	705	DC-2a	REMOVE	unfenced prose authoring stamp
+.claude/skills/moai-foundation-core/references/examples.md	2025-12-06	LS-PROSE-STAMP	365	DC-2a	REMOVE	unfenced prose authoring stamp
+.claude/skills/moai-foundation-core/references/reference.md	2025-11-15	LS-OTHER	473	DC-5		HIST version-history table row; PRESERVE as legitimate release-note documentation
+.claude/skills/moai-foundation-core/references/reference.md	2025-11-20	LS-OTHER	472	DC-5		HIST version-history table row; PRESERVE as legitimate release-note documentation
+.claude/skills/moai-foundation-core/references/reference.md	2025-11-25	LS-OTHER	471	DC-5		HIST version-history table row; PRESERVE as legitimate release-note documentation
+.claude/skills/moai-foundation-core/references/reference.md	2025-11-28	LS-OTHER	470	DC-5		HIST version-history table row; PRESERVE as legitimate release-note documentation
+.claude/skills/moai-foundation-core/references/reference.md	2025-12-03	LS-OTHER	469	DC-5		HIST version-history table row; PRESERVE as legitimate release-note documentation
+.claude/skills/moai-foundation-core/references/reference.md	2025-12-06	LS-PROSE-STAMP	478	DC-2a	REMOVE	unfenced prose authoring stamp
+.claude/skills/moai-workflow-project/references/examples.md	2025-12-06	LS-OTHER	250	DC-5	PRESERVE	EX-DATA structured-data or code-sample value (REQ-TDN2-011 absolute pin)
+.claude/skills/moai-workflow-project/references/examples.md	2025-12-06	LS-OTHER	500	DC-5	PRESERVE	EX-DATA structured-data or code-sample value (REQ-TDN2-011 absolute pin)
+.claude/skills/moai-workflow-project/references/examples.md	2025-12-06	LS-PROSE-STAMP	192	DC-2a		FENCED generated-output sample inside a fenced block; PRESERVE to retain the demonstrated output shape
+.claude/skills/moai-workflow-project/references/examples.md	2025-12-06	LS-PROSE-STAMP	547	DC-2a	REMOVE	unfenced prose authoring stamp
+.claude/skills/moai-workflow-project/references/reference.md	2025-11-15	LS-OTHER	269	DC-5		HIST version-history table row; PRESERVE as legitimate release-note documentation
+.claude/skills/moai-workflow-project/references/reference.md	2025-11-20	LS-OTHER	268	DC-5		HIST version-history table row; PRESERVE as legitimate release-note documentation
+.claude/skills/moai-workflow-project/references/reference.md	2025-11-27	LS-OTHER	267	DC-5		HIST version-history table row; PRESERVE as legitimate release-note documentation
+.claude/skills/moai-workflow-project/references/reference.md	2025-12-06	LS-PROSE-STAMP	274	DC-2a	REMOVE	unfenced prose authoring stamp
+.claude/skills/moai-workflow-project/schemas/tab_schema.json	2025-12-22	LS-OTHER	3	DC-5	PRESERVE	EX-DATA structured-data or code-sample value (REQ-TDN2-011 absolute pin)
+.claude/skills/moai-workflow-spec/modules/advanced-patterns.md	2025-12-07	LS-PROSE-STAMP	237	DC-2a	REMOVE	unfenced prose authoring stamp
+.claude/skills/moai-workflow-spec/references/examples.md	2025-12-07	LS-OTHER	386	DC-5		CREATED documentation-example Created: stamp
+.claude/skills/moai-workflow-spec/references/examples.md	2025-12-07	LS-OTHER	673	DC-5		CREATED documentation-example Created: stamp
+.claude/skills/moai-workflow-spec/references/examples.md	2025-12-07	LS-OTHER	69	DC-5		CREATED documentation-example Created: stamp
+.claude/skills/moai-workflow-spec/references/examples.md	2025-12-07	LS-PROSE-STAMP	955	DC-2a	REMOVE	unfenced prose authoring stamp
+.claude/skills/moai-workflow-spec/references/reference.md	2025-12-07	LS-PROSE-STAMP	728	DC-2a	REMOVE	unfenced prose authoring stamp
+.claude/skills/moai-workflow-testing/modules/advanced-patterns.md	2025-11-22	LS-OTHER	576	DC-5		COMPOSITE mid-line footer stamp; excise stamp and one delimiter, residual is Version: 5.0.0 | Enterprise Ready: (REQ-TDN2-009 no-placeholder)
+.claude/skills/moai-workflow-testing/modules/ai-debugging.md	2025-12-07	LS-PROSE-STAMP	283	DC-2a	REMOVE	unfenced prose authoring stamp
+.claude/skills/moai-workflow-testing/modules/debugging/debugging-workflows.md	2025-12-07	LS-PROSE-STAMP	295	DC-2a	REMOVE	unfenced prose authoring stamp
+.claude/skills/moai-workflow-testing/modules/debugging/error-analysis.md	2025-12-07	LS-PROSE-STAMP	288	DC-2a	REMOVE	unfenced prose authoring stamp
+.claude/skills/moai-workflow-testing/modules/optimization.md	2025-11-22	LS-OTHER	505	DC-5		COMPOSITE mid-line footer stamp; excise stamp and one delimiter, residual is Version: 5.0.0 | Enterprise Ready: (REQ-TDN2-009 no-placeholder)
+.claude/skills/moai-workflow-testing/modules/performance/optimization-patterns.md	2025-12-07	LS-PROSE-STAMP	383	DC-2a	REMOVE	unfenced prose authoring stamp
+.claude/skills/moai-workflow-testing/modules/performance/profiling-techniques.md	2025-12-07	LS-PROSE-STAMP	358	DC-2a	REMOVE	unfenced prose authoring stamp
+.claude/skills/moai-workflow-testing/references/examples.md	2025-12-06	LS-PROSE-STAMP	672	DC-2a	REMOVE	unfenced prose authoring stamp
+.claude/skills/moai-workflow-testing/references/reference.md	2025-11-15	LS-OTHER	434	DC-5		HIST version-history table row; PRESERVE as legitimate release-note documentation
+.claude/skills/moai-workflow-testing/references/reference.md	2025-11-20	LS-OTHER	433	DC-5		HIST version-history table row; PRESERVE as legitimate release-note documentation
+.claude/skills/moai-workflow-testing/references/reference.md	2025-11-25	LS-OTHER	432	DC-5		HIST version-history table row; PRESERVE as legitimate release-note documentation
+.claude/skills/moai-workflow-testing/references/reference.md	2025-11-30	LS-OTHER	431	DC-5		HIST version-history table row; PRESERVE as legitimate release-note documentation
+.claude/skills/moai-workflow-testing/references/reference.md	2025-12-06	LS-PROSE-STAMP	439	DC-2a	REMOVE	unfenced prose authoring stamp
+.claude/skills/moai-workflow-worktree/modules/troubleshooting.md	2025-12-30	LS-PROSE-STAMP	396	DC-2a	REMOVE	unfenced prose authoring stamp
+.claude/skills/moai-workflow-worktree/modules/troubleshooting.md	2025-12-30	LS-PROSE-STAMP	6	DC-2a	REMOVE	unfenced prose authoring stamp
+.claude/skills/moai-workflow-worktree/references/examples.md	2025-11-29	LS-PROSE-STAMP	6	DC-2a	REMOVE	unfenced prose authoring stamp
+.claude/skills/moai-workflow-worktree/references/examples.md	2025-11-29	LS-PROSE-STAMP	605	DC-2a	REMOVE	unfenced prose authoring stamp
+.claude/skills/moai-workflow-worktree/references/reference.md	2025-11-29	LS-PROSE-STAMP	356	DC-2a	REMOVE	unfenced prose authoring stamp
+.claude/skills/moai-workflow-worktree/references/reference.md	2025-11-29	LS-PROSE-STAMP	6	DC-2a	REMOVE	unfenced prose authoring stamp
