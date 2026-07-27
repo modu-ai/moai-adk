@@ -54,9 +54,9 @@ flowchart TD
 
 ## 스킬 카테고리
 
-MoAI-ADK 템플릿에는 총 **27개 `moai-*` 스킬**이 5개 기능 카테고리로 분류되어 있습니다 (Foundation 4 + Workflow 8 + Domain 5 + Reference 8 + Meta/Harness 2 = 27). 여기에 요청을 전문 스킬로 라우팅하는 `moai` umbrella 스킬 1개가 별도로 존재합니다. 사용자 프로젝트에서는 추가로 `harness-*` 사용자 정의 스킬을 작성할 수 있습니다. 프로그래밍 언어 지원은 `rules/moai/languages/` 아래의 규칙으로 제공되며 별도 스킬이 아닙니다.
+MoAI-ADK 템플릿에는 총 **29개 `moai-*` 스킬**이 5개 기능 카테고리로 분류되어 있습니다 (Foundation 4 + Workflow 9 + Domain 6 + Reference 8 + Meta/Harness 2 = 29). 여기에 요청을 전문 스킬로 라우팅하는 `moai` umbrella 스킬 1개가 별도로 존재합니다. 사용자 프로젝트에서는 추가로 `harness-*` 사용자 정의 스킬을 작성할 수 있습니다. 프로그래밍 언어 지원은 `rules/moai/languages/` 아래의 규칙으로 제공되며 별도 스킬이 아닙니다.
 
-이 숫자도 다이어트의 결과입니다 — 스킬 카탈로그는 v3 기간 동안 48 → 38 → 27개로 정련되었습니다. 사용자 정의 하네스 스킬의 현재 접두사는 `hns-*`입니다(레거시 `harness-*`도 인식됨).
+이 숫자도 다이어트의 결과입니다 — 스킬 카탈로그는 v3 기간 동안 48 → 38 → 29개로 정련되었습니다. 사용자 정의 하네스 스킬의 현재 접두사는 `hns-*`입니다(레거시 `harness-*`도 인식됨).
 
 ### Foundation (핵심 철학) - 4개
 
@@ -67,20 +67,21 @@ MoAI-ADK 템플릿에는 총 **27개 `moai-*` 스킬**이 5개 기능 카테고�
 | `moai-foundation-thinking` | 구조화 사고, 아이디에이션, 제1원리 분석             |
 | `moai-foundation-quality`  | 코드 품질 자동 검증, TRUST 5 밸리데이션             |
 
-### Workflow (자동화 워크플로우) - 8개
+### Workflow (자동화 워크플로우) - 9개
 
-| 스킬 이름                | 설명                                          |
-| ------------------------ | --------------------------------------------- |
-| `moai-workflow-spec`     | SPEC 문서 생성, GEARS 형식, 요구사항 분석     |
-| `moai-workflow-project`  | 프로젝트 초기화, 문서 생성, 언어 설정         |
-| `moai-workflow-ddd`      | ANALYZE-PRESERVE-IMPROVE 사이클               |
-| `moai-workflow-tdd`      | RED-GREEN-REFACTOR 테스트 주도 개발           |
-| `moai-workflow-testing`  | 테스트 생성, 디버깅, 코드 리뷰 통합           |
-| `moai-workflow-worktree` | Git worktree 기반 병렬 개발                   |
-| `moai-workflow-loop`     | Ralph Engine 자율 루프, LSP 연동              |
-| `moai-workflow-ci-loop`  | CI 감시 및 자동 수정 루프 워크플로우          |
+| 스킬 이름                       | 설명                                          |
+| ------------------------------- | --------------------------------------------- |
+| `moai-workflow-spec`            | SPEC 문서 생성, GEARS 형식, 요구사항 분석     |
+| `moai-workflow-project`         | 프로젝트 초기화, 문서 생성, 언어 설정         |
+| `moai-workflow-ddd`             | ANALYZE-PRESERVE-IMPROVE 사이클               |
+| `moai-workflow-tdd`             | RED-GREEN-REFACTOR 테스트 주도 개발           |
+| `moai-workflow-testing`         | 테스트 생성, 디버깅, 코드 리뷰 통합           |
+| `moai-workflow-worktree`        | Git worktree 기반 병렬 개발                   |
+| `moai-workflow-loop`            | Ralph Engine 자율 루프, LSP 연동              |
+| `moai-workflow-ci-loop`         | CI 감시 및 자동 수정 루프 워크플로우          |
+| `moai-workflow-docs-claim-check`| 공개 문서(README·릴리스 노트) 주장 검증, 읽기 전용 |
 
-### Domain (도메인 전문성) - 5개
+### Domain (도메인 전문성) - 6개
 
 | 스킬 이름                   | 설명                                             |
 | --------------------------- | ------------------------------------------------ |
@@ -89,6 +90,7 @@ MoAI-ADK 템플릿에는 총 **27개 `moai-*` 스킬**이 5개 기능 카테고�
 | `moai-domain-database`      | PostgreSQL, MongoDB, Redis, 고급 데이터 패턴     |
 | `moai-domain-html-report`   | Markdown → 단일 HTML 리포트 렌더러 (6개 모드, 외부 의존성 없음) |
 | `moai-domain-humanize`      | AI 텍스트 휴머나이제이션, 윤문 (KO/EN/JA/ZH)    |
+| `moai-domain-svg-infographic` | 편집 가능 SVG 기술 인포그래픽 (아키텍처·흐름·비교), CJK 폰트 |
 
 ### Reference (모범 사례) - 8개
 
@@ -110,7 +112,7 @@ MoAI-ADK 템플릿에는 총 **27개 `moai-*` 스킬**이 5개 기능 카테고�
 | `moai-meta-harness`    | **DEPRECATED** — 레거시 7-Phase 메타 하네스. v4 Builder(`/moai:harness <자연어 요청>`)로 리다이렉트 |
 | `moai-harness-learner` | Harness 학습 서브시스템, 자동 업데이트 제안 |
 
-> 27개 `moai-*` 스킬은 MoAI-ADK 템플릿에 기본으로 포함되며, 각 스킬은 독립적으로 로드되어 토큰을 절약합니다. 사용자는 추가적으로 프로젝트별 `hns-*` 사용자 정의 하네스 스킬을 작성할 수 있습니다(레거시 `harness-*` 접두사도 인식됨).
+> 29개 `moai-*` 스킬은 MoAI-ADK 템플릿에 기본으로 포함되며, 각 스킬은 독립적으로 로드되어 토큰을 절약합니다. 사용자는 추가적으로 프로젝트별 `hns-*` 사용자 정의 하네스 스킬을 작성할 수 있습니다(레거시 `harness-*` 접두사도 인식됨).
 
 ## 점진적 공개 시스템
 
@@ -148,7 +150,7 @@ flowchart TD
 
 ### 토큰 절약 효과
 
-- **기존 방식**: 27개 스킬 전체 로드 = 약 135,000 토큰 (불가능)
+- **기존 방식**: 29개 스킬 전체 로드 = 약 145,000 토큰 (불가능)
 - **점진적 공개**: 메타데이터만 로드 = 약 5,200 토큰 (97% 절약)
 - **필요 시 로드**: 작업에 필요한 2~3개 스킬만 = 약 15,000 토큰 추가
 

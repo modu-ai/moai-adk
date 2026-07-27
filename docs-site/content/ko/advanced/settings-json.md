@@ -856,7 +856,7 @@ MoAI-ADK statusline에는 다음이 포함됩니다.
 
 - **그라디언트 색상**: 컨텍스트 사용률에 따른 동적 색상 그라디언트
 - **5H/7D 사용량 모니터링**: 5시간 및 7일 API 사용량 바 표시
-- **다중 라인 레이아웃**: Compact (3줄), default, full 디스플레이 모드
+- **세그먼트 기반 레이아웃**: 활성화된 세그먼트 수에 따라 자동으로 라인 수가 결정되며, 별도의 디스플레이 프리셋(full/compact/minimal)은 퇴역했습니다 — `segments:` 토글이 유일한 구성 레버입니다
 - **테마** (`internal/statusline/theme.go` 정의):
   - **catppuccin-mocha** (기본값): 다크 팔레트
   - **catppuccin-latte**: 밝은 환경을 위한 라이트 팔레트
