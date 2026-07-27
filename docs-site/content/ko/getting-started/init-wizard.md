@@ -226,7 +226,7 @@ moai doctor
 
 ## 다음 단계
 
-설정이 완료되면 [빠른 시작](./quickstart) 가이드를 따라 첫 프로젝트를 생성해보세요.
+설정이 완료되면 [빠른 시작](/ko/getting-started/quickstart) 가이드를 따라 첫 프로젝트를 생성해보세요.
 
 ```bash
 moai --help

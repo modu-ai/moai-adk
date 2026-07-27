@@ -50,6 +50,6 @@ moai status
 
 ## 참고
 
-- [CLI 레퍼런스](./cli) — 전체 CLI 명령어
-- [moai inventory](./inventory) — 활성 자원 통합 조회
-- [초기 설정](./init-wizard) — 프로젝트 초기화 마법사
+- [CLI 레퍼런스](/ko/cli-reference) — 전체 CLI 명령어
+- [moai inventory](/ko/cli-reference/inventory) — 활성 자원 통합 조회
+- [초기 설정](/ko/getting-started/init-wizard) — 프로젝트 초기화 마법사
