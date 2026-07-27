@@ -2,9 +2,9 @@
 id: SPEC-GOAL-SURFACE-UNIFY-001
 title: Unify the goal surface on /moai goal and relocate goal presentation to the Implementation Kickoff Approval gate
 version: 1.3.0
-status: draft
+status: completed
 created: 2026-07-25
-updated: 2026-07-25
+updated: 2026-07-27
 author: manager-spec
 priority: HIGH
 phase: "v3.1.0"
@@ -146,7 +146,7 @@ ACs: AC-GSU-006 .. AC-GSU-011.
 
 ### M3 — `workflows/goal.md` + `native-invocation-model.md`: W2 wiring and retention semantics
 
-**Priority High.** Completes the bidirectional linkage M2 opened, and guards the two retained surfaces against over-deletion.
+**Priority High.** Completes the bidirectional linkage M2 opened, and guards retention register row 2 against over-deletion.
 
 Owns 2 files:
 - `.claude/skills/moai/workflows/goal.md`
@@ -252,9 +252,15 @@ ACs: AC-GSU-022 .. AC-GSU-027, AC-GSU-030.
 | M7 | run | **tdd** | 5 | 5 Go (4 emission files + `runner_template_test.go`, D3) |
 | **Total** | | | **37** | all run-phase |
 
-**Canonical path total: 37**, all run-phase (1+3+2+9+2+15+5). Every path appears in exactly one row. This SPEC has no sync-phase paths — see §F.2.
+**Canonical path total: 37** in the milestone-ownership sense (1+3+2+9+2+15+5) — every path in this table appears in exactly one row, and this SPEC has no sync-phase paths (see §F.2). The **actual run-phase path union across M1-M7 is 40**: three paths are touched as a mechanical or requirement-mandated consequence of the table above without being independently enumerated as owned rows, and were not caught by this table at plan time:
 
-Derivation of each column, so the number is computed rather than carried: the doctrine layer is **15 local + 15 template = 30 files** (M1-M4 own the 15 local; M6 owns their 15 mirrors), plus 5 Go (M7) and 2 new (M5). Since audit iteration 1: M4 gained `moai-meta-harness/SKILL.md` (D6) → 9 local and M6 gained its mirror → 15 template; M7 gained `runner_template_test.go` (D3) → 5 Go, counted as an existing file rather than "new". Since audit iteration 2 the 13 sync paths left with the scope reduction, taking the total from 50 to 37.
+| Extra path | Why not enumerated at plan time | Why it is still in scope |
+|---|---|---|
+| `internal/template/catalog.yaml` | Regenerated mechanically by `make build` (M5's own action), not hand-edited — plan time enumerated the hand-authored `.md.tmpl`, not `make build`'s regeneration side effect | AC-GSU-016 requires the wrapper to be embedded-FS-reachable, which is exactly what `make build` regenerating this file proves |
+| `internal/hook/handoff_inject_render_test.go` | The milestone brief listed M7 as "5 Go files" (4 emission files + `runner_template_test.go`) without separately calling out the *new* test file AC-GSU-033 requires M7 to author | AC-GSU-021 / AC-GSU-033 mandate this file's existence as the RED-then-GREEN regression guard |
+| `internal/hook/handoff_inject_cover_test.go` | A pre-existing lockstep fixture pinning the retired `"/goal "` token; not itself an edit target of any REQ | M7 recorded this as a scope deviation (§E.2 "M7 scope deviation") — `"/moai goal "` does not contain the substring `"/goal "`, so the fixture's assertion went red and required a one-line pin update |
+
+Derivation of the 37-row column, so the number is computed rather than carried: the doctrine layer is **15 local + 15 template = 30 files** (M1-M4 own the 15 local; M6 owns their 15 mirrors), plus 5 Go (M7) and 2 new (M5). Since audit iteration 1: M4 gained `moai-meta-harness/SKILL.md` (D6) → 9 local and M6 gained its mirror → 15 template; M7 gained `runner_template_test.go` (D3) → 5 Go, counted as an existing file rather than "new". Since audit iteration 2 the 13 sync paths left with the scope reduction, taking the total from 50 to 37. The 3 additional paths above (§H sync-phase note) bring the actual run-phase touch-count to 40; they are enumeration gaps at plan time, not scope creep — none required a new REQ or AC.
 
 ### §F.2 Sync-phase scope — MOVED to `SPEC-GOAL-DOCS-RETIRE-001`
 
@@ -275,8 +281,8 @@ Nothing in this SPEC is sync-phase scoped any longer: M1-M7 are all run-phase. T
 
 ## §H Cross-References
 
-- `spec.md` §B — REQ-GSU-001..028.
-- `acceptance.md` — 33 ACs with recorded baselines, plus the REQ↔AC traceability matrix (§F).
+- `spec.md` §B — 25 REQs (REQ-GSU-001..024 + 028).
+- `acceptance.md` — 30 ACs (AC-GSU-001..027 + 030, 031, 033) with recorded baselines, plus the REQ↔AC traceability matrix (§F: 25/25 REQs covered).
 - `design.md` — doctrine-surface boundary and SSOT/render-surface parity.
 - `research.md` — baseline commands and observed outputs.
 - `CLAUDE.local.md` §2 / §25 / §27.3.

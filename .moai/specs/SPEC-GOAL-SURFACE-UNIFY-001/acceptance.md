@@ -2,9 +2,9 @@
 id: SPEC-GOAL-SURFACE-UNIFY-001
 title: Unify the goal surface on /moai goal and relocate goal presentation to the Implementation Kickoff Approval gate
 version: 1.3.0
-status: draft
+status: completed
 created: 2026-07-25
-updated: 2026-07-25
+updated: 2026-07-27
 author: manager-spec
 priority: HIGH
 phase: "v3.1.0"
@@ -204,7 +204,7 @@ grep -ohF '`/goal' \
 
 ### M5 — W3 wrapper
 
-**AC-GSU-016** — **Reachability, not text presence.** The new wrapper is actually embedded in the binary's template FS and passes the thin-command audit. `TestCommandsThinPattern` walks the *embedded* FS, so this fails unless `make build` ran; and the subtest is named after the path, so a match proves the file was both embedded and audited.
+**AC-GSU-016** — **Reachability, not text presence.** The new wrapper is actually present in the template source tree and passes the thin-command audit. `TestCommandsThinPattern` walks the embedded template FS at test-binary compile time (`//go:embed all:templates` re-embeds from the source tree on every `go test`, independent of whether `make build` was separately run); the subtest is named after the path, so a match proves the file both exists in the source tree and passes the thin-command audit.
 
 ```bash
 go test -run TestCommandsThinPattern ./internal/template/ -v 2>&1 | grep -c 'commands/moai/goal.md.tmpl'
@@ -367,7 +367,7 @@ grep -coF 'case "/moai goal"' internal/harness/v4manifest/runner_template_test.g
 - Recorded baseline: `exit=0` / `0`
 - Target: `exit=0` / `1`
 
-**AC-GSU-031** (D5) — Union-detector sweep over the five owned files that carry **no** retention surface, closing the eight blind spots the backtick-anchored detectors could not see. Target 0 is achievable precisely because none of these five files is a retention surface — tested against all six register rows before recording.
+**AC-GSU-031** (D5) — Union-detector sweep over the five owned files that carry **no** retention surface, closing the eight blind spots the backtick-anchored detectors could not see. Target 0 is achievable precisely because none of these five files is a retention surface — tested against all three register rows (post-split; see `spec.md` §B.7) before recording.
 
 ```bash
 grep -rhoE '/goal([^a-zA-Z0-9_./-]|$)' \
@@ -467,7 +467,7 @@ Every one of the 28 requirements maps to at least one acceptance criterion. Wher
 | REQ-GSU-011 (arming ≠ authorization) | AC-GSU-004 | Second component asserts the invariant sentence inside the section |
 | REQ-GSU-012 (rejected alternative recorded) | AC-GSU-005 | |
 | REQ-GSU-013 (wrapper exists) | AC-GSU-016, AC-GSU-017, AC-GSU-018 | |
-| REQ-GSU-014 (template-first + `make build`) | AC-GSU-016 | Embedded-FS reachability is the only way to observe `make build` ran |
+| REQ-GSU-014 (template-first + `make build`) | AC-GSU-016 | Source-tree presence + thin-command-audit reachability; `go:embed` re-embeds from source at every `go test`, so this AC does not observe whether `make build` specifically ran |
 | REQ-GSU-015 (`argument-hint` matches verbs) | AC-GSU-018 | Second component asserts `argument-hint` omits the undelivered `resume` verb |
 | REQ-GSU-016 (mirror byte-identity) | AC-GSU-019, AC-GSU-020 | 14 pairs + the divergent `CLAUDE.md` pair |
 | REQ-GSU-017 (no template leak) | AC-GSU-021 | |

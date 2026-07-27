@@ -2,7 +2,7 @@
 id: SPEC-GOAL-SURFACE-UNIFY-001
 title: Unify the goal surface on /moai goal and relocate goal presentation to the Implementation Kickoff Approval gate
 version: 1.3.0
-status: in-progress
+status: completed
 created: 2026-07-25
 updated: 2026-07-27
 author: manager-spec
@@ -29,7 +29,7 @@ Five brief corrections surfaced and resolved during authoring, each verified by 
 | # | Correction | Evidence |
 |---|---|---|
 | 1 | Doctrine scope is 28 existing files, not 26 — the root `CLAUDE.md` pair was missed by a `.claude/`-scoped grep | `research.md` §A.3 |
-| 2 | Four retention surfaces exist, not one — `internal/goal/evaluate.go`'s native-`/goal` yield invariant was mis-classified in the D4 brief as "implementation" | `research.md` §F.2 |
+| 2 | Four retention surfaces were identified at authoring time (three remain post-split — §B.7) — `internal/goal/evaluate.go`'s native-`/goal` yield invariant was mis-classified in the D4 brief as "implementation" | `research.md` §F.2 |
 | 3 | The D4 "17 implementation references" figure is not reproducible (nearest pattern gives 35); no AC is built on it | `research.md` §F.3 |
 | 4 | Sync-phase affected set is 13 files, not 9 — `advanced/self-evolving.md` (×4) is MoAI-surface primitive naming, not factual contrast | `research.md` §G.1 |
 | 5 | `advanced/hooks-reference.md` exists in all four locales, not only en/ko — the gap is a content gap inside existing pages | `research.md` §G.3 |
@@ -277,7 +277,7 @@ Every file's status is identical before and after M7; the new test file is clean
 
 ```yaml
 run_complete_at: 2026-07-27
-run_commit_sha: pending-backfill-m7   # a commit cannot cite its own hash; backfilled in a follow-up
+run_commit_sha: "440125ccb"           # verified via `git log --oneline -1 440125ccb` → "440125ccb feat(SPEC-GOAL-SURFACE-UNIFY-001): M7 retire native /goal from Go emission paths"
 run_status: audit-ready
 ac_pass_count: 30
 ac_fail_count: 0
@@ -307,4 +307,38 @@ Run-phase complete: M1-M7 landed, 30/30 AC PASS, all held-out gates green apart 
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+Five corrections from plan-audit iteration 2's residual carry-over were applied during sync (Task 1): two stale figure corrections in `plan.md` §H, one stale-count phrase in `plan.md` M3, one tense correction in `progress.md` §E.1, two overclaim corrections in `acceptance.md` (AC-GSU-016's rationale + `acceptance.md` §F REQ-GSU-014 row, and AC-GSU-031's register-row count), and a run-phase path-count correction in `plan.md` §F.1 (37 → 40, three enumeration gaps documented). None touched AC judgment commands, targets, or REQ/AC body substance.
+
+```yaml
+sync_complete_at: 2026-07-27
+sync_commit_sha: pending-backfill-sync   # a commit cannot cite its own hash; backfilled in a follow-up commit
+sync_status: audit-ready
+b12_self_test_a: "grep -c 'SPEC-GOAL-SURFACE-UNIFY-001' CHANGELOG.md → 1 (pre-emission check; this SPEC had 0 prior CHANGELOG references)"
+b12_self_test_b: "acceptance.md §B AC-row count = 30 (grep -cE '^\\*\\*AC-GSU-[0-9]+' acceptance.md → matches the 30 retained ACs incl. -031b as a sub-component); CHANGELOG entry states 30/30 AC PASS, matching"
+b12_self_test_c: "all file paths named in the CHANGELOG entry verified via ls: internal/hook/handoff_inject_render.go, internal/hook/handoff_inject_render_test.go, internal/template/templates/.claude/commands/moai/goal.md.tmpl, internal/goal/evaluate.go, .claude/rules/moai/workflow/goal-directive.md, .claude/rules/moai/workflow/native-invocation-model.md, .claude/skills/moai/workflows/goal.md — all present"
+changelog_entry_position: "single entry appended under [Unreleased] → ### Added, following the existing entry list (no reordering of prior entries)"
+frontmatter_status_transitions:
+  spec_md: "in-progress -> completed"
+  plan_md: "draft -> completed"
+  acceptance_md: "draft -> completed"
+  progress_md: "in-progress -> completed"
+canary_compliance_check: "n/a — this SPEC defines no forward-looking policy that tests its own sync phase"
+```
+
+Held-out gates (`acceptance.md` §C), re-run at sync close:
+
+| Gate | Observed |
+|---|---|
+| Full suite — `go test ./... 2>&1 \| tail -10` | `exit=0`, zero `FAIL` lines |
+| Template guard suite — `go test ./internal/template/` | `ok github.com/modu-ai/moai-adk/internal/template` |
+| Cross-platform build | `go build ./...` → exit 0; `GOOS=windows GOARCH=amd64 go build ./...` → exit 0 |
+
+AC spot-checks re-run verbatim from `acceptance.md` §B to confirm the Task 1 documentation-only edits did not regress the closed run phase:
+
+| AC | Command | Observed | Status |
+|---|---|---|---|
+| AC-GSU-019 | 14-pair byte parity + `post_paste_in_templates` sweep (verbatim §B block) | `same=14 diff=0 post_paste_in_templates=0` | PASS (matches recorded) |
+| AC-GSU-022 | `grep -coF '• /goal '` / `'• /moai goal '` in the renderer | `0` / `4` | PASS (matches recorded) |
+| AC-GSU-027 | `NativeGoalActive` / `native /goal` / non-test `"/goal"` count | `2` / `3` / `0` | PASS (matches recorded) |
+
+Sync phase complete: CHANGELOG entry added, frontmatter 3-phase close applied to all four SPEC artifacts (spec.md, plan.md, acceptance.md, progress.md — `updated:` refreshed to 2026-07-27 in all four), Task 1's five corrections applied and evidenced above. `sync_commit_sha` backfilled in a follow-up commit per the established self-referential-hazard pattern (see §E.3's identical `run_commit_sha` treatment, now resolved).
