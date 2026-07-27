@@ -155,6 +155,44 @@ m1_to_mN_commit_strategy: one commit per milestone (N1..N4); N5 verification edi
 ## §E.4 Sync-phase Audit-Ready Signal
 
 ```yaml
+sync_complete_at: 2026-07-28
+sync_commit_sha: 3891b2bb7
+sync_status: audit-ready
+docs_build:
+  command: hugo --minify --gc
+  exit: 0
+  warnings: 0
+  sitemap: present
+changelog_entry: yes
+amendment_sync: true
+amendment_version: "1.6.0"
+run_phase_commits:
+  - sha: "bf711ec80"
+    description: "plan cherry-pick (v1.6.0 amendment declaration — spec.md HISTORY v1.6.0 + ## Amendments § 2)"
+  - sha: "8c9e1173a"
+    description: "plan-audit D1/D2 ownership-routing fix (acceptance.md refactor routed to manager-spec)"
+  - sha: "5cde6018d"
+    description: "plan-audit record FAIL -> PASS 0.86 (re-audit after D1/D2 fix)"
+  - sha: "d0dc7b530"
+    description: "M1' AC-GDR-010 b/c hardening (B2-2 base-current heading-set gate + B2-3 exempt_detectors declaration)"
+verification:
+  independent_check: true
+  observed_ac_gdr_010:
+    a_baseline_reproduced_verbatim: "paired_al:distinct=1,live_min=1,apt=1 paired_se:distinct=1,live_min=2,apt=1 handoff:distinct=1,live_min=1,apt=1 (5-detector baseline against base e306e21a9 reproduced verbatim)"
+    b_heading_set_gate: "heading_set_match=12/12 PASS non-vacuous (both sides non-empty + diff-logic discriminates)"
+    c_exempt_detectors: "exempt_detectors_decl=1/1 entries=0/0 coexist_siblings=0/0 PASS non-vacuous (entries regex discriminates 0-vs-1; coexist-guard regex correctly excludes the exempt_detectors: header line itself)"
+    d_aptness: "untouched — apt=1 across all 5 detectors"
+  ac_gdr_012_preserved: "total=0 (v1.5.0 single-p= aggregate guard block untouched)"
+  spec_lint: "exit 0 (1 pre-existing StatusGitConsistency warning from the in-progress -> completed transition clears at this completed transition)"
+  scope: "acceptance.md only (B2-2/B2-3 hardening); spec.md/plan.md body untouched this sync-phase"
+plan_audit_verdict: "PASS 0.86 (re-audit)"
+```
+
+**Sync-phase notes**: This is the v1.6.0 amendment sync-phase (B2-2/B2-3 hardening — AC-GDR-010 base-current + exemption-list guards). The run-phase M1' commit (`d0dc7b530`) and its supporting plan-phase commits on this branch were independently verified by the orchestrator this session — AC-GDR-010 (a)/(b)/(d) per-detector baselines reproduced verbatim against base `e306e21a9`; (b) heading-set gate `heading_set_match=12/12` PASS non-vacuous (both sides non-empty and the diff-logic discriminates a real mismatch); (c) `exempt_detectors_decl=1/1 entries=0/0 coexist_siblings=0/0` PASS non-vacuous (the `entries` regex discriminates 0-vs-1 and the coexist-guard regex correctly excludes the `exempt_detectors:` header line itself); AC-GDR-012 (the v1.5.0 single-`p=`-source aggregate guard) block is untouched and `total=0` is preserved; `moai spec lint` exits 0 (the single pre-existing `StatusGitConsistency` warning is from this very `in-progress -> completed` transition and clears once the transition lands). Plan-audit verdict PASS 0.86 (re-audit). The `sync_commit_sha` will be backfilled in a follow-up commit per the D3 placeholder-backfill exemption (a commit cannot reference its own SHA).
+
+### v1.5.0 amendment sync (historical — preserved)
+
+```yaml
 sync_complete_at: 2026-07-27
 sync_commit_sha: 62df55fab
 sync_status: audit-ready
@@ -184,9 +222,9 @@ orphan_sha_mapping:
     rationale: "PR #1176 was squash-merged; d54ea108d evaporated from git history (verified via git merge-base --is-ancestor exit 1)"
 ```
 
-**Sync-phase notes**: This is the amendment sync-phase (v1.5.0 D2 aggregate liveness/aptness guard). The run-phase M1 commit (`115b0b54e`) was independently verified this session with all E1-E7 checks passing. The sync_commit_sha will be backfilled in a follow-up commit per the D3 placeholder-backfill exemption (a commit cannot reference its own SHA).
+**v1.5.0 sync-phase notes**: amendment sync-phase (D2 aggregate liveness/aptness guard). The run-phase M1 commit (`115b0b54e`) was independently verified with all E1-E7 checks passing.
 
-**Mapping rationale**: The run-phase commit `d54ea108d` was squash-merged into PR #1176 (commit `24c84c56e`). Git no longer recognizes `d54ea108d` as an ancestor of the current tree (verified by `git merge-base --is-ancestor d54ea108d origin/main` exiting 1), confirming evaporation. All references in `progress.md` have been mapped to the squash-merge commit `24c84c56e`, which is the authoritative baseline for the run-phase work.
+**v1.5.0 mapping rationale**: The run-phase commit `d54ea108d` was squash-merged into PR #1176 (commit `24c84c56e`). Git no longer recognizes `d54ea108d` as an ancestor of the current tree (verified by `git merge-base --is-ancestor d54ea108d origin/main` exiting 1), confirming evaporation. All references in `progress.md` have been mapped to the squash-merge commit `24c84c56e`, which is the authoritative baseline for the run-phase work.
 
 ## §F Phase 4 Mode Selection
 

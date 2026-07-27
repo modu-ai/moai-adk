@@ -241,8 +241,8 @@ Version History:
 
 - v5.0.0: Converted to narrative format per CLAUDE.md Documentation Standards
 - v4.0.0: Added plugins, sandboxing, headless, statusline, dev containers, CLI reference, advanced patterns
-- v3.0.0 (2025-12-06): Added progressive disclosure, sub-agent details, integration patterns
-- v2.0.0 (2025-11-26): Initial comprehensive release
+- v3.0.0: Added progressive disclosure, sub-agent details, integration patterns
+- v2.0.0: Initial comprehensive release
 
 <!-- moai:evolvable-start id="rationalizations" -->
 ## Common Rationalizations
