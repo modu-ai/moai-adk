@@ -81,6 +81,14 @@ var sanitizedPairPaths = []string{
 	// generic prose) while ALL 115 CONST-* zone entries are preserved verbatim.
 	// Newly deployed so deployed projects no longer break on a missing registry.
 	".claude/rules/moai/core/zone-registry.md",
+	// main-checkout-branch-guard.md: v1.1.0 added the "Mechanical Enforcement"
+	// section documenting the PreToolUse hook enforcer. The source rule retains
+	// the SPEC-ID + REQ/AC tokens (Origin line + cross-reference) for
+	// traceability; the template mirror is held sanitized per §25 (SPEC-ID +
+	// REQ tokens stripped to generic prose, the "Mechanical Enforcement"
+	// doctrine preserved verbatim). Doctrine parity is enforced here, NOT by
+	// byte-parity (rule_template_mirror_test.go).
+	".claude/rules/moai/workflow/main-checkout-branch-guard.md",
 }
 
 // tokenNormalizer pairs a regex matching an intentionally-divergent internal

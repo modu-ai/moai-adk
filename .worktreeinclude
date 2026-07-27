@@ -1,0 +1,25 @@
+# Gitignored files copied into a new Claude Code worktree.
+#
+# A worktree is a fresh checkout, so gitignored files are absent from it.
+# Claude Code copies the entries below when it creates a worktree — via
+# `claude --worktree`, `moai cc|glm|cg -w`, or a subagent spawned with
+# `isolation: worktree`.
+#
+# Syntax is .gitignore syntax. Only files that BOTH match a pattern here AND
+# are gitignored get copied; tracked files are never duplicated.
+#
+# NOT processed when a custom WorktreeCreate hook replaces the default git
+# behavior — copy local files inside that hook instead.
+#
+# Add your own project-local files below (credentials, local overrides, build
+# caches your toolchain needs) using the same .gitignore syntax.
+
+# Per-machine Claude Code settings. Carries env.PATH as an absolute path
+# (Claude Code does not expand $HOME in env values), plus defaultMode and
+# outputStyle. Without this file a worktree session may fail to resolve
+# project binaries from its Bash subprocess.
+.claude/settings.local.json
+
+# Environment files
+.env
+.env.*

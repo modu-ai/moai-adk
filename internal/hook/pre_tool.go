@@ -446,6 +446,22 @@ func (h *preToolHandler) Handle(ctx context.Context, input *HookInput) (*HookOut
 		}
 	}
 
+	// Branch-state guard (SPEC-WORKTREE-BRANCH-GUARD-001). Runs after
+	// checkBashCommand so the existing dangerous-pattern deny takes precedence,
+	// and before the default-allow fall-through. Denies branch-state-changing
+	// git commands ONLY in the primary checkout when the invoking agent is not
+	// exempt; fails OPEN on any git-context uncertainty (REQ-WBG-012).
+	if input.ToolName == "Bash" && len(input.ToolInput) > 0 {
+		if decision, reason := checkBranchState(input, h.projectDir); decision == DecisionDeny {
+			slog.Warn("branch guard denied",
+				"tool_name", input.ToolName,
+				"session_id", input.SessionID,
+				"reason", reason,
+			)
+			return NewDenyOutput(reason), nil
+		}
+	}
+
 	// Handle Write and Edit tools
 	if (input.ToolName == "Write" || input.ToolName == "Edit") && len(input.ToolInput) > 0 {
 		// Harness-learner FROZEN zone guard (Vision §3.4, W3 first implementer).

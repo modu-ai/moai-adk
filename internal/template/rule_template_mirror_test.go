@@ -55,6 +55,12 @@ var workflowOptMirroredPaths = []string{
 	// byte-parity holds and the template mirror is internal-content clean. Enrolled
 	// so future single-tree edits on this rule are caught at CI.
 	".claude/rules/moai/development/model-policy.md",
+	// NOTE: main-checkout-branch-guard.md is NOT in this byte-parity allowlist.
+	// It is a §25 sanitized pair (see sanitized_pair_parity_test.go registry):
+	// the source rule retains the SPEC-ID + REQ/AC tokens for traceability, while
+	// the template mirror is held sanitized for neutral distribution. Byte-parity
+	// cannot hold; doctrine parity is enforced by TestSanitizedPairParity and
+	// mirror cleanliness by TestTemplateNoInternalContentLeak.
 	// Layer G — evaluator profile D7/D8 weight registration
 	".moai/config/evaluator-profiles/default.md",
 	".moai/config/evaluator-profiles/frontend.md",
