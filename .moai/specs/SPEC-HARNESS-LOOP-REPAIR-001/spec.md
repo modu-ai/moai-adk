@@ -2,7 +2,7 @@
 id: SPEC-HARNESS-LOOP-REPAIR-001
 title: "Harness self-learning loop repair — proposal layout contract + decision-signal observation + lesson-channel unification"
 version: "0.2.1"
-status: in-progress
+status: completed
 created: 2026-07-27
 updated: 2026-07-28
 author: manager-spec

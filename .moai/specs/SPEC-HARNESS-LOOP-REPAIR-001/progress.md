@@ -335,6 +335,20 @@ M6 = REQ-HLR-008/010, AC-011/012/013. Implemented by manager-develop (TDD) — t
 - Package coverage for `internal/cli/harness` remains below the 85% target (80.6%, pre-existing from M1). M6 added tests but did not close the gap (the gap is in scaffolder/reader/candidate, out of M6 scope).
 - AC-011's M5 entry remains `verified: false` — the prediction's long-term effects (inbox-noise velocity reduction + VALUE-pattern → feedback conversion) require future drain cycles. M6 does not constitute that observation.
 
+## §E.3 Run-phase Audit-Ready Signal
+
+run_status: audit-ready
+run_complete_at: 2026-07-28
+run_commit_range: 83ffaea73 (M5 baseline) → 5f986301e (M6)
+run_phase_summary: All 6 milestones (M1-M6) complete. 17/17 AC PASS per acceptance.md §B. Orchestrator-independent verification (observed, not asserted): `go test -count=1 ./...` exit 0 (0 FAIL / 105 ok); `go vet ./...` exit 0; `golangci-lint run --timeout=3m` exit 0 ("0 issues"); `GOOS=windows GOARCH=amd64 go build ./...` exit 0; `GOOS=linux GOARCH=amd64 go build ./...` exit 0; C-HRA-008 subagent-boundary grep 0 matches (§J item 4). Falsifications executed for every falsifiable AC (§J item 5): AC-012 (ledger skip → FAIL → restore → PASS), AC-013 (`(manifest missing)` revert → FAIL → restore → PASS), plus the M1-M5 falsifications recorded in their respective §E.2 blocks.
+
+## §E.4 Sync-phase Audit-Ready Signal
+
+sync_status: audit-ready
+sync_complete_at: 2026-07-28
+sync_commit_sha: pending-backfill-sync-hlr001
+sync_phase_summary: 3-phase close (plan → run → sync). The single sync commit carries the merged `in-progress → completed` frontmatter transition + this §E.4 signal + the CHANGELOG `[Unreleased]` entry. §G open questions q1-q5 all RESOLVED (q1 M1, q2 M4, q3 M5, q4/q5 Implementation Kickoff gate 2026-07-28) — §J item 6 satisfied; no spec.md body edit was required (the questions were resolved in-place during plan/run phases and recorded in §G + the version-history table). `sync_commit_sha` is backfilled in a follow-up commit after the sync commit lands (D3 self-referential-hazard exemption — a commit cannot reference its own SHA).
+
 ## §F Phase 4 Mode Selection — M2
 
 Recorded before the first M2 run-phase `Agent()` spawn, per the canonical
