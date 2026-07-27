@@ -81,14 +81,49 @@ git -C <worktree-path> branch --show-current
 git rev-list --count --left-right origin/<branch>...HEAD
 ```
 
+## Mechanical Enforcement (v1.1.0)
+
+The doctrine above is mechanically enforced by a PreToolUse hook. The
+enforcer is NOT a static `settings.json` deny entry — a static deny cannot
+scope to the primary checkout only and would lock out legitimate worktree
+flows. The hook applies the doctrine conditionally.
+
+- **Handler**: `internal/hook/pre_tool.go` `preToolHandler.Handle` calls
+  `checkBranchState` (in `internal/hook/branch_guard.go`) after the existing
+  dangerous-pattern check and before the default-allow fall-through.
+- **Deny reason sentinel**: every deny emitted by this path carries the
+  prefix `BRANCH_GUARD_VIOLATION:` so the orchestrator can pattern-match the
+  source without parsing the full reason string.
+- **Discriminant (primary vs worktree)**: the hook compares the absolute
+  `git rev-parse --git-dir` against the absolute `git rev-parse
+  --git-common-dir`; equal paths classify as the primary checkout, differing
+  paths as a worktree. Primary path uses `--path-format=absolute` (git 2.31+,
+  March 2021); older git or Apple Git that rejects the flag falls back to
+  `git rev-parse --absolute-git-dir` + cwd-normalized `--git-common-dir`.
+- **Exemption mechanism**: the deny is suppressed when EITHER the invoking
+  agent identity is the trusted git agent (`HookInput.AgentType ==
+  "manager-git"`, populated on main-thread `claude --agent manager-git`) OR
+  the sentinel environment variable `MOAI_BRANCH_GUARD_EXEMPT=1` is set by
+  the orchestrator when spawning that agent for Late-Branch closure.
+- **Fail-open norm**: the deny fires ONLY on positive evidence (primary
+  checkout confirmed AND a branch-state pattern matched AND the agent is not
+  exempt). Any uncertainty — not a git repo, missing git binary, `git
+  rev-parse` exiting non-zero, or indeterminate agent identity — falls
+  through to allow, writes an advisory to stderr, and appends a structured
+  entry to `.moai/logs/branch-guard-audit.log`. Aligns with the Bash
+  Risk-Amplifier Doctrine (WARN-ONLY, FAIL-OPEN).
+
+Origin: SPEC-WORKTREE-BRANCH-GUARD-001 (REQ-WBG-001 through REQ-WBG-013).
+
 ## Cross-references
 
 - `.claude/rules/moai/workflow/worktree-integration.md` — worktree systems, lifecycle, and the disposal contract
 - `.claude/rules/moai/workflow/worktree-state-guard.md` — worktree state validation
 - `.claude/rules/moai/core/agent-common-protocol.md` § Pre-Spawn Sync Check — divergence check before spawning a write-capable agent
 - `.claude/rules/moai/core/verification-claim-integrity.md` — why an unobserved "no concurrent session" claim is a defect claim
+- SPEC-WORKTREE-BRANCH-GUARD-001 — the run-phase SPEC that landed the v1.1.0 mechanical enforcer
 
 ---
 
-Version: 1.0.0
+Version: 1.1.0
 Classification: Evolvable operational rule — branch-state isolation; changes no gate semantics.

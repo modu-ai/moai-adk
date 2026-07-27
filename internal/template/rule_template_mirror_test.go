@@ -55,6 +55,14 @@ var workflowOptMirroredPaths = []string{
 	// byte-parity holds and the template mirror is internal-content clean. Enrolled
 	// so future single-tree edits on this rule are caught at CI.
 	".claude/rules/moai/development/model-policy.md",
+	// SPEC-WORKTREE-BRANCH-GUARD-001 REQ-WBG-007 — main-checkout-branch-guard.md
+	// mirror parity. The v1.1.0 bump lands the "Mechanical Enforcement" section +
+	// SPEC cross-reference in BOTH trees byte-identically; the rule references
+	// SPEC-WORKTREE-BRANCH-GUARD-001 by ID (the established pattern for mirrored
+	// rules — ~10 existing entries carry SPEC IDs; §25 SPEC-ID neutrality does
+	// NOT bind .claude/rules/ mirrored files). Enrolled so future single-tree
+	// edits on this always-loaded canonical rule are caught at CI.
+	".claude/rules/moai/workflow/main-checkout-branch-guard.md",
 	// Layer G — evaluator profile D7/D8 weight registration
 	".moai/config/evaluator-profiles/default.md",
 	".moai/config/evaluator-profiles/frontend.md",
