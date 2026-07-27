@@ -421,4 +421,4 @@ rm -rf "$HOME/.moai"
 
 ## 다음 단계
 
-[초기 설정 마법사](./init-wizard)에서 MoAI-ADK 구성 방법을 알아보세요.
+[초기 설정 마법사](/ko/getting-started/init-wizard)에서 MoAI-ADK 구성 방법을 알아보세요.
