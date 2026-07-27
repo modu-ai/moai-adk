@@ -217,7 +217,7 @@ run_phase_commits:
   - 0888cf9ad  # M4 hybrid carve-out
   - b933c28e4  # M5 report cap names the full-listing path
   - e8644a8ef  # M4-M5 run-phase evidence in progress.md
-  - pending-backfill-m6-m7  # M6 CI step + M7 acceptance matrix (this commit)
+  - 1ce5766a2  # M6 CI step + M7 acceptance matrix
 total_run_phase_files: 70
 files_breakdown:
   template_tree: 67
