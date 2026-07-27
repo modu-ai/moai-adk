@@ -145,11 +145,12 @@ for l in en ja ko zh; do printf "%s:%s " $l "$(grep -ohF '`/goal' docs-site/cont
 
 ```bash
 grep -ciF 'native `/goal` emission is retired' .moai/docs/autonomous-workflow-strategy.md
-grep -ohF '`/goal' .moai/docs/autonomous-workflow-strategy.md | wc -l | tr -d ' '
+grep -vF 'native `/goal` emission is retired' .moai/docs/autonomous-workflow-strategy.md | grep -ohF '`/goal' | wc -l | tr -d ' '
 ```
 
 - Recorded baseline: `0` / `25`
 - Target: `>= 1` / `25`
+- The second detector excludes the sentinel line before counting because the phrase component 1 mandates — ``native `/goal` emission is retired`` — itself carries a backticked `` `/goal ``; counting it would drive the pin to `26` the moment component 1 is satisfied, making the compound self-contradictory. Excluding it keeps the pin asserting exactly what it means: all 25 *historical* occurrences survive.
 - A generic `grep -ciE 'superseded|retired'` is disqualified as a detector: it already reads `4` at baseline against unrelated prose. Both were run; hence the specific sentinel.
 
 ### N5 — Retention and locale-parity verification

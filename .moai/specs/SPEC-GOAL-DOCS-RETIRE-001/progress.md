@@ -104,11 +104,28 @@ All 12 baselines were re-measured at run-phase entry against `d54ea108d` and rep
 | Build warning-free | `hugo --minify --gc` exit 0, `grep -cE 'WARN\|ERROR'` = 0, sitemap present | HOLDS |
 | URL blacklist / Mermaid TD-only | both greps clean | HOLDS |
 
-### AC-GDR-007 debt — criterion internal contradiction (off-by-one)
+### AC-GDR-007 debt — criterion internal contradiction (off-by-one) — **CLOSED**
 
 The two components cannot both hold as literally written. Component 1 requires the file to contain the literal sentinel `native `/goal` emission is retired`; that phrase itself contains a backticked `/goal`, so satisfying it necessarily raises the component-2 occurrence count from 25 to 26. Measured on a scratch copy before editing: adding the sentinel alone yields `sentinel=1, pin=26`.
 
-The milestone's intent — annotate the record, sweep nothing — is met and verifiable: the diff is `1 insertion, 0 deletions` (`git diff --numstat`), and excluding the note line the count is exactly `25` (all historical occurrences byte-identical). The criterion's target value for component 2 is off by one; it should be `26` (25 historical + the sentinel) or the sentinel should be excluded from the count. `acceptance.md` was not modified — the correction is manager-spec's to make.
+The milestone's intent — annotate the record, sweep nothing — is met and verifiable: the diff is `1 insertion, 0 deletions` (`git diff --numstat`), and excluding the note line the count is exactly `25` (all historical occurrences byte-identical). The criterion's target value for component 2 is off by one; it should be `26` (25 historical + the sentinel) or the sentinel should be excluded from the count. `acceptance.md` was not modified during the run phase — the correction was manager-spec's to make.
+
+**Resolution (manager-spec, 2026-07-27).** The exclusion form was adopted: component 2's detector now filters the sentinel line out before counting, leaving the pin at `25`. The raise-to-`26` alternative was declined — `26` is a composite (25 historical + 1 sentinel) that obscures what the pin asserts.
+
+```bash
+grep -ciF 'native `/goal` emission is retired' .moai/docs/autonomous-workflow-strategy.md
+grep -vF 'native `/goal` emission is retired' .moai/docs/autonomous-workflow-strategy.md | grep -ohF '`/goal' | wc -l | tr -d ' '
+```
+
+Three validating measurements, all run before the edit was delegated:
+
+| Measurement | Result |
+|-------------|--------|
+| Post-edit working tree, exclusion-form count | `25` (the target) |
+| Sentinel component (component 1) | `1` (satisfied, target `>= 1`) |
+| Pre-edit base — `git show origin/main:.moai/docs/autonomous-workflow-strategy.md`, exclusion form | `25` (recorded baseline unchanged) |
+
+Neither the recorded baseline (`0` / `25`) nor the target (`>= 1` / `25`) changed; only the second detector's command did. The criterion's semantics ("all 25 historical occurrences survive") are preserved, and it is now satisfiable. Recorded in `spec.md` HISTORY `1.3.0`. AC-GDR-007 is now satisfiable and satisfied; the §E.3 signal below is the frozen run-phase snapshot and still records it as the one PASS-WITH-DEBT row.
 
 ## §E.3 Run-phase Audit-Ready Signal
 

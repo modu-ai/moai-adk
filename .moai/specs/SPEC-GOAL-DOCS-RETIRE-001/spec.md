@@ -1,7 +1,7 @@
 ---
 id: SPEC-GOAL-DOCS-RETIRE-001
 title: Retire native /goal emission references from public and internal documentation across four locales
-version: 1.2.0
+version: 1.3.0
 status: in-progress
 created: 2026-07-25
 updated: 2026-07-27
@@ -22,6 +22,7 @@ depends_on: [SPEC-GOAL-SURFACE-UNIFY-001]
 | 1.0.0 | 2026-07-25 | Initial authoring. Split from `SPEC-GOAL-SURFACE-UNIFY-001` after its plan-audit iteration 2 emitted STOP (score regression 0.71 → 0.64) and the user chose scope reduction over iteration 3. Carries the public-documentation scope with locale-invariant detectors. | manager-spec |
 | 1.1.0 | 2026-07-27 | Plan-audit iteration 2 MUST-FIX **B2-1** (aptness) closed. New `REQ-GDR-011` requires every emission detector's pattern to carry a literal `/goal` token, declared once and shared by the counting step and the assertion; `AC-GDR-010` gains component **(d)** and re-records its baseline with an `apt` field. The auditor's stronger alternative — a base-match-set subset check — was executed and **refuted**: `ac_converge` and `auto mode` co-occur with `` `/goal` `` on the same base line, so a line-level subset test admits both attack detectors. | orchestrator |
 | 1.2.0 | 2026-07-27 | Run-gate plan-audit (PASS 0.849) finding **D1** closed. The sweep-target file count is corrected `8 → 12` and the retained-within-scope count `5 → 1` (annotate-only), reconciling `spec.md` §A.3 and `REQ-GDR-001` with `plan.md` §F.1's ownership map (`autonomous-loops.md` ×4 + `self-evolving.md` ×4 + `handoff.md` ×4 + strategy ×1 = 13). The same correction is applied to `acceptance.md` AC-GDR-012's header and to `progress.md` §F's scope row, which had recorded both figures side by side without reconciling them. Iteration 2's finding B-4 corrected the adjacent **marker** count `18 → 24` but did not question the **file** partition. A fourth site the D1 block did not enumerate — `research.md` §C's aggregate sentence — carried the same `8` and was self-contradictory (its own decomposition includes `handoff 4`); it is corrected with the rest, keeping the `24` and the decomposition verbatim. Prose-only: no judgment command, recorded baseline, or target value changed. | manager-spec |
+| 1.3.0 | 2026-07-27 | `AC-GDR-007`'s content-pin detector corrected to exclude the mandated sentinel line, closing an off-by-one internal contradiction found during run-phase N5 verification. The criterion is compound: component 1 mandates the literal sentinel ``native `/goal` emission is retired``, and that phrase itself carries a backticked `` `/goal `` that component 2's occurrence count picked up — so satisfying component 1 necessarily drove the pin from `25` to `26`, making the criterion unsatisfiable as written. The second detector now filters the sentinel line out before counting (`grep -vF … \| grep -ohF … \| wc -l`). The pin value (`25`) and the recorded baseline (`0` / `25`) are **unchanged**, as is the criterion's semantics ("all 25 historical occurrences survive"); the raise-to-`26` alternative was declined because `26` is a composite that obscures what the pin asserts. The implementation was already correct — `git diff origin/main...HEAD` on the strategy record is `1 insertion, 0 deletions`. | manager-spec |
 
 ---
 
