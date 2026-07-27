@@ -806,6 +806,153 @@ var dateAllowlist = []dateAllowlistEntry{
 		Category:  "DC-5",
 		Rationale: "public upstream repository creation date cited alongside star and fork counts",
 	},
+	// --- SPEC-TEMPLATE-DATE-NEUTRALITY-002: 2025 date allowlist (24 entries) ---
+	// Each entry pins one (file, 2025-date) PRESERVE finding from the committed
+	// triage.tsv. Inert until M5 widens S1-internal-date from 202[6-9] to 202[5-9].
+	{
+		File:      ".claude/skills/moai-foundation-cc/reference/best-practices-checklist.md",
+		Date:      "2025-11-25",
+		Category:  "DC-2b",
+		Rationale: "mirror-capture stamp, sole staleness signal for a third-party document mirror (REQ-TDN2-010)",
+	},
+	{
+		File:      ".claude/skills/moai-foundation-cc/reference/examples.md",
+		Date:      "2025-11-26",
+		Category:  "DC-5",
+		Rationale: "EX-FM frontmatter block shown as a syntax example (REQ-TDN2-011 absolute pin)",
+	},
+	{
+		File:      ".claude/skills/moai-foundation-cc/reference/reference.md",
+		Date:      "2025-12-06",
+		Category:  "DC-2b",
+		Rationale: "mirror-capture stamp, sole staleness signal for a third-party document mirror (REQ-TDN2-010)",
+	},
+	{
+		File:      ".claude/skills/moai-foundation-cc/reference/skill-examples.md",
+		Date:      "2025-11-25",
+		Category:  "DC-5",
+		Rationale: "EX-FM frontmatter block shown as a syntax example (REQ-TDN2-011 absolute pin)",
+	},
+	{
+		File:      ".claude/skills/moai-foundation-cc/reference/skill-formatting-guide.md",
+		Date:      "2025-11-25",
+		Category:  "DC-5",
+		Rationale: "EX-FM frontmatter block shown as a syntax example (REQ-TDN2-011 absolute pin)",
+	},
+	{
+		File:      ".claude/skills/moai-foundation-cc/reference/skill-formatting-guide.md",
+		Date:      "2025-12-25",
+		Category:  "DC-5",
+		Rationale: "DEADLINE forward-looking review or expiry date",
+	},
+	{
+		File:      ".claude/skills/moai-foundation-cc/reference/sub-agents/sub-agent-examples.md",
+		Date:      "2025-11-25",
+		Category:  "DC-2b",
+		Rationale: "mirror-capture stamp, sole staleness signal for a third-party document mirror (REQ-TDN2-010)",
+	},
+	{
+		File:      ".claude/skills/moai-foundation-cc/reference/sub-agents/sub-agent-formatting-guide.md",
+		Date:      "2025-11-25",
+		Category:  "DC-2b",
+		Rationale: "mirror-capture stamp, sole staleness signal for a third-party document mirror (REQ-TDN2-010)",
+	},
+	{
+		File:      ".claude/skills/moai-foundation-cc/reference/sub-agents/sub-agent-integration-patterns.md",
+		Date:      "2025-11-25",
+		Category:  "DC-2b",
+		Rationale: "mirror-capture stamp, sole staleness signal for a third-party document mirror (REQ-TDN2-010)",
+	},
+	{
+		File:      ".claude/skills/moai-foundation-core/references/reference.md",
+		Date:      "2025-11-15",
+		Category:  "DC-5",
+		Rationale: "HIST version-history table row; PRESERVE as legitimate release-note documentation",
+	},
+	{
+		File:      ".claude/skills/moai-foundation-core/references/reference.md",
+		Date:      "2025-11-20",
+		Category:  "DC-5",
+		Rationale: "HIST version-history table row; PRESERVE as legitimate release-note documentation",
+	},
+	{
+		File:      ".claude/skills/moai-foundation-core/references/reference.md",
+		Date:      "2025-11-25",
+		Category:  "DC-5",
+		Rationale: "HIST version-history table row; PRESERVE as legitimate release-note documentation",
+	},
+	{
+		File:      ".claude/skills/moai-foundation-core/references/reference.md",
+		Date:      "2025-11-28",
+		Category:  "DC-5",
+		Rationale: "HIST version-history table row; PRESERVE as legitimate release-note documentation",
+	},
+	{
+		File:      ".claude/skills/moai-foundation-core/references/reference.md",
+		Date:      "2025-12-03",
+		Category:  "DC-5",
+		Rationale: "HIST version-history table row; PRESERVE as legitimate release-note documentation",
+	},
+	{
+		File:      ".claude/skills/moai-workflow-project/references/examples.md",
+		Date:      "2025-12-06",
+		Category:  "DC-5",
+		Rationale: "EX-DATA structured-data or code-sample value (REQ-TDN2-011 absolute pin)",
+	},
+	{
+		File:      ".claude/skills/moai-workflow-project/references/reference.md",
+		Date:      "2025-11-15",
+		Category:  "DC-5",
+		Rationale: "HIST version-history table row; PRESERVE as legitimate release-note documentation",
+	},
+	{
+		File:      ".claude/skills/moai-workflow-project/references/reference.md",
+		Date:      "2025-11-20",
+		Category:  "DC-5",
+		Rationale: "HIST version-history table row; PRESERVE as legitimate release-note documentation",
+	},
+	{
+		File:      ".claude/skills/moai-workflow-project/references/reference.md",
+		Date:      "2025-11-27",
+		Category:  "DC-5",
+		Rationale: "HIST version-history table row; PRESERVE as legitimate release-note documentation",
+	},
+	{
+		File:      ".claude/skills/moai-workflow-project/schemas/tab_schema.json",
+		Date:      "2025-12-22",
+		Category:  "DC-5",
+		Rationale: "EX-DATA structured-data or code-sample value (REQ-TDN2-011 absolute pin)",
+	},
+	{
+		File:      ".claude/skills/moai-workflow-spec/references/examples.md",
+		Date:      "2025-12-07",
+		Category:  "DC-5",
+		Rationale: "CREATED documentation-example Created: stamp",
+	},
+	{
+		File:      ".claude/skills/moai-workflow-testing/references/reference.md",
+		Date:      "2025-11-15",
+		Category:  "DC-5",
+		Rationale: "HIST version-history table row; PRESERVE as legitimate release-note documentation",
+	},
+	{
+		File:      ".claude/skills/moai-workflow-testing/references/reference.md",
+		Date:      "2025-11-20",
+		Category:  "DC-5",
+		Rationale: "HIST version-history table row; PRESERVE as legitimate release-note documentation",
+	},
+	{
+		File:      ".claude/skills/moai-workflow-testing/references/reference.md",
+		Date:      "2025-11-25",
+		Category:  "DC-5",
+		Rationale: "HIST version-history table row; PRESERVE as legitimate release-note documentation",
+	},
+	{
+		File:      ".claude/skills/moai-workflow-testing/references/reference.md",
+		Date:      "2025-11-30",
+		Category:  "DC-5",
+		Rationale: "HIST version-history table row; PRESERVE as legitimate release-note documentation",
+	},
 }
 
 // isDateAllowlisted reports whether the (relPath, matched) pair is a
