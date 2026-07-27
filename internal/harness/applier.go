@@ -315,17 +315,6 @@ type SurfaceRestoreUnit struct {
 // interfered; the caller MUST surface this rather than silently restore.
 var ErrRollbackIntegrityFailed = errors.New("harness: rollback byte-length integrity check failed")
 
-// Apply safely applies Proposal after safety pipeline evaluation.
-// [HARD] Must call evaluator.Evaluate() first, return immediately if rejected.
-// [HARD] Snapshot must be created before file write. Abort write on snapshot failure.
-//
-// evaluator is the SafetyEvaluator interface (implemented by safety.Pipeline).
-// snapshotBase is the base path in ".moai/harness/learning-history/snapshots/" format.
-// sessions is the list of recent sessions used for L2 canary check.
-//
-// @MX:ANCHOR: [AUTO] Apply is the single entry point of Phase 4 learning application pipeline.
-// @MX:REASON: [AUTO] fan_in >= 3: applier_test.go, harness CLI apply, moai-harness-learner skill
-
 // missingApplyFields returns the JSON field names of the apply-instruction
 // fields (target_path / field_key / new_value) that are empty on proposal.
 // A non-empty result means the proposal is not an apply input (spec.md §A.4 —
@@ -346,6 +335,16 @@ func missingApplyFields(p Proposal) []string {
 	return missing
 }
 
+// Apply safely applies Proposal after safety pipeline evaluation.
+// [HARD] Must call evaluator.Evaluate() first, return immediately if rejected.
+// [HARD] Snapshot must be created before file write. Abort write on snapshot failure.
+//
+// evaluator is the SafetyEvaluator interface (implemented by safety.Pipeline).
+// snapshotBase is the base path in ".moai/harness/learning-history/snapshots/" format.
+// sessions is the list of recent sessions used for L2 canary check.
+//
+// @MX:ANCHOR: [AUTO] Apply is the single entry point of Phase 4 learning application pipeline.
+// @MX:REASON: [AUTO] fan_in >= 3: applier_test.go, harness CLI apply, moai-harness-learner skill
 func (a *Applier) Apply(proposal Proposal, evaluator SafetyEvaluator, snapshotBase string, sessions []Session) error {
 	// ── Step 0: Applicability pre-flight (SPEC-HARNESS-LOOP-REPAIR-001 REQ-HLR-004c, AC-HLR-015) ──
 	// A proposal that decodes but carries no target_path / field_key / new_value is
