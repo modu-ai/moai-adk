@@ -15,13 +15,18 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// seedEligibleUsageLog writes n agent_invocation:Bash:<hash> events (eligible,
+// seedEligibleUsageLog writes n tool_failure:Bash:<hash> events (eligible,
 // non-degenerate) so the classifier produces at least one rule-tier promotion
-// that the propose chain can map to a candidate.
+// that the propose chain can map to a candidate. NOTE: this seed was switched
+// from agent_invocation to tool_failure by SPEC-HARNESS-LOOP-REPAIR-001 M4
+// (AC-HLR-008) — agent_invocation promotions are now excluded from candidates
+// (a bare tool name carries no learnable decision), so tool_failure is used as
+// a still-eligible event type. AC-HRR-005 (the propose chain auto-runs) is
+// unchanged; only the seed event type changed.
 func seedEligibleUsageLog(t *testing.T, dir string, n int) {
 	t.Helper()
 	events := repeatEvents(map[string]string{
-		"event_type": "agent_invocation", "subject": "Bash", "context_hash": "propose-hash",
+		"event_type": "tool_failure", "subject": "Bash", "context_hash": "propose-hash",
 	}, n)
 	seedEventLines(t, dir, events)
 }
