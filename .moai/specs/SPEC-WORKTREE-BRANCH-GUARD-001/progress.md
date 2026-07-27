@@ -167,13 +167,61 @@ _Populated by orchestrator 2026-07-28 (run-phase functionally complete)._
   PR-mandatory per repo-local-pr-policy.md). REQ-WBG-007 amendment routes to
   manager-spec within sync (manager-docs cannot edit spec/acceptance body).
 
-## §E.3 Run-phase Audit-Ready Signal
-
-_<pending run-phase>_
-
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+_Populated by manager-docs 2026-07-28 (sync-phase 3-phase close)._
+
+- **sync_commit_sha**: `pending-backfill-SPEC-WORKTREE-BRANCH-GUARD-001`
+  (self-referential-SHA hazard — a commit cannot reference its own hash; the
+  real SHA is backfilled in a FOLLOW-UP commit after PR merge, per the
+  established pattern documented in
+  `.claude/rules/moai/development/spec-frontmatter-schema.md` § D3 SHA
+  placeholder backfill exemption).
+- **sync_status**: completed (single sync commit carries the merged
+  `in-progress → implemented → completed` transition on spec.md / plan.md /
+  acceptance.md; `updated:` refreshed to 2026-07-28 on all three).
+- **Run-phase complete**: YES. M1-M6 all implemented, committed, pushed
+  (commits `9065d14e9`..`df71f1f84`, `4764e2579`; `origin` sync clean).
+- **ACs satisfied (13 total)**: 11 PASS + 2 documented-debt:
+  - PASS: AC-WBG-001/002/004/005/006/008/009/010/011/012/013
+  - PASS (branch-state layer, Gap-G1 documented): AC-WBG-003 — end-to-end
+    `git reset --hard` allow unsatisfiable via pre-existing `AskBashPatterns`
+    pre-gate (returns DecisionAsk before branch-state check); exemption proven
+    at branch-state layer + via non-ask `git switch main`. Documented Phase-D
+    interim break (acceptance.md F-1, spec.md §E).
+  - PASS-WITH-DEBT (sanitized-pair): AC-WBG-007 — REQ amended in `4764e2579`
+    after orchestrator M3 premise correction (§25 forbids SPEC-ID in template
+    mirror; byte-parity impossible without violating
+    `TestTemplateNoInternalContentLeak`). Sanitized-pair implementation is
+    correct; mirror enrolled in `sanitizedPairPaths` registry.
+- **Build/test/lint/coverage green**: `go build ./...` exit 0; `GOOS=windows`
+  cross-build exit 0; `go test ./internal/hook/... ./internal/template/...
+  -count=1` ALL `ok` (no cascade); `golangci-lint run` 0 issues;
+  `branch_guard.go` coverage 94.1% floor / 91.7% statement (≥85% AC §C gate).
+- **§25 mirror cleanliness**: sanitized-pair — `TestTemplateNoInternalContentLeak`
+  PASS (mirror carries 0 SPEC-ID/REQ tokens); `TestSanitizedPairParity` PASS
+  (doctrine parity between source and sanitized mirror).
+- **B12 self-test (CHANGELOG emission discipline)**:
+  - `grep -c 'SPEC-WORKTREE-BRANCH-GUARD-001' CHANGELOG.md` = 1 (single entry,
+    no duplicate from parallel BATCH-SYNC sessions).
+  - AC count: acceptance.md `grep -cE '^### AC-WBG-[0-9]+'` = 13 — matches
+    CHANGELOG entry (11 PASS + 2 documented-debt = 13).
+  - File paths cited in CHANGELOG verified via `ls` before commit
+    (`internal/hook/branch_guard.go`, `internal/hook/pre_tool.go`,
+    `internal/cli/{init,update,web}.go`, both rule paths, both
+    `.worktreeinclude` paths, both template test files).
+- **Frontmatter status transitions**: `in-progress → implemented → completed`
+  on all 3 artifacts (spec.md + plan.md + acceptance.md); `updated:` field
+  refreshed to 2026-07-28 on all 3. No body sections touched (only `status:`
+  + `updated:` per the spec-frontmatter-schema forbidden-crossings rule).
+- **Follow-up SPEC (recorded, not blocking)**: orchestrator-side spawn
+  contract for setting `MOAI_BRANCH_GUARD_EXEMPT=1` when spawning
+  `Agent(manager-git, ...)` Phase D invocations (plan.md §B-1 / acceptance.md
+  F-1). Until that follow-up lands, manager-git Phase D invocations via
+  sub-agent spawn WILL BE DENIED; Phase D must run via main-thread
+  `claude --agent manager-git` (where `HookInput.AgentType == "manager-git"`
+  populates correctly).
+- **Audit-ready**: YES.
 
 ## §F Phase 4 Mode Selection
 

@@ -2,7 +2,7 @@
 id: SPEC-WORKTREE-BRANCH-GUARD-001
 title: Acceptance Criteria — Main-Checkout Branch-State Guard
 version: 0.1.2
-status: in-progress
+status: completed
 created: 2026-07-28
 updated: 2026-07-28
 author: manager-spec
