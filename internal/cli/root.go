@@ -3,8 +3,6 @@ package cli
 import (
 	"context"
 	"fmt"
-	"io"
-	"log/slog"
 	"os"
 	"strings"
 
@@ -41,12 +39,12 @@ Use 'moai cc', 'moai cg', or 'moai glm' to launch Claude Code.`,
 // R3 nil-access mitigation: only commands verified to NOT touch `deps` are listed
 // here. Adding a command that accesses deps without InitDependencies would panic.
 var trivialCommands = map[string]bool{
-	"--version": true,
-	"version":   true,
-	"-v":        true,
-	"help":      true,
-	"--help":    true,
-	"-h":        true,
+	"--version":  true,
+	"version":    true,
+	"-v":         true,
+	"help":       true,
+	"--help":     true,
+	"-h":         true,
 	"completion": true, // cobra built-in
 }
 
@@ -61,9 +59,13 @@ var trivialCommands = map[string]bool{
 // the full dependency graph via InitDependencies() — handler completeness preserved.
 func Execute() error {
 	initConsole()
-	if isTrivialCommand(os.Args[1:]) {
-		initLightDeps()
-	} else {
+	args := os.Args[1:]
+	// Logging is configured here, for every subcommand and ahead of the branch
+	// below, so that both paths share one decision. configureLogging is the only
+	// place the CLI installs the default logger; InitDependencies deliberately
+	// does not install one of its own.
+	configureLogging(args)
+	if !isTrivialCommand(args) {
 		InitDependencies()
 	}
 	// SPEC-CLI-TUX-V3-004 M4d (REQ-TUX4-007, keep-fang verdict): order each
@@ -96,14 +98,6 @@ func isTrivialCommand(args []string) bool {
 		return trivialCommands[arg]
 	}
 	return false
-}
-
-// initLightDeps initializes only the lightweight logger for trivial subcommands.
-// This avoids the full InitDependencies() cost (hook registry, LSP config load,
-// security scanner creation, astgrep analyzer) for commands like --version.
-func initLightDeps() {
-	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
-	slog.SetDefault(logger)
 }
 
 func init() {

@@ -2,7 +2,7 @@
 id: SPEC-FALSE-ALLCLEAR-GUARD-001
 title: "Block two false all-clear signals: scope slog suppression to the moai hook path, and make ast-grep report an unavailable scanner"
 version: "0.3.0"
-status: draft
+status: in-progress
 created: 2026-07-27
 updated: 2026-07-27
 author: manager-spec
