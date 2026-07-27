@@ -171,10 +171,9 @@ _Populated by orchestrator 2026-07-28 (run-phase functionally complete)._
 
 _Populated by manager-docs 2026-07-28 (sync-phase 3-phase close)._
 
-- **sync_commit_sha**: `pending-backfill-SPEC-WORKTREE-BRANCH-GUARD-001`
-  (self-referential-SHA hazard — a commit cannot reference its own hash; the
-  real SHA is backfilled in a FOLLOW-UP commit after PR merge, per the
-  established pattern documented in
+- **sync_commit_sha**: `e89d01461`
+  (PR #1192 squash-merge commit; backfilled in this follow-up commit per the
+  self-referential-SHA pattern documented in
   `.claude/rules/moai/development/spec-frontmatter-schema.md` § D3 SHA
   placeholder backfill exemption).
 - **sync_status**: completed (single sync commit carries the merged
