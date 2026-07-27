@@ -208,6 +208,14 @@ func resolveProposalPath(root, id string) (string, error) {
 
 // loadProposalByID는 proposal JSON 파일을 harness.Proposal로 로드한다 (REQ-AEX-004).
 // 파일 부재는 user error(exit 1, REQ-AEX-012)로 분류된다.
+//
+// SPEC-HARNESS-LOOP-REPAIR-001 M2-3 (AC-HLR-014): a proposalgen discovery
+// draft carries pattern metadata with "tier":"auto_update" (string) while
+// harness.Proposal.Tier is numeric, so strict unmarshal fails with a raw
+// "cannot unmarshal string" symptom. That symptom describes a parse failure,
+// not the reason. When the failure is a producer-shaped discovery report
+// (string tier + no edit fields), an honest diagnostic is returned naming the
+// reason and pointing at the promotion path instead.
 func loadProposalByID(path string) (harness.Proposal, error) {
 	// nested 레이아웃에서 Base(path)는 항상 "proposal.json"이므로 draft를
 	// 식별하지 못한다. 진단에는 부모 디렉터리 이름(= draft ID)을 쓴다.
@@ -221,9 +229,47 @@ func loadProposalByID(path string) (harness.Proposal, error) {
 	}
 	var prop harness.Proposal
 	if err := json.Unmarshal(data, &prop); err != nil {
+		// AC-HLR-014: surface an honest diagnostic for a discovery draft instead
+		// of the raw unmarshal symptom. The probe is precise (string tier AND no
+		// edit fields) so a consumer-shaped fixture with numeric tier still
+		// reports its genuine parse error through the fallback below.
+		if isDiscoveryDraft(data) {
+			return harness.Proposal{}, &userError{msg: fmt.Sprintf(
+				"harness execute: %s is a discovery draft (proposalgen report, not an apply input — "+
+					"carries no target_path/field_key/new_value); promote it via "+
+					"'moai harness promote --id %s' instead (SPEC-HARNESS-LOOP-REPAIR-001 §A.4)",
+				name, name)}
+		}
 		return harness.Proposal{}, &userError{msg: fmt.Sprintf("harness execute: parse proposal %s: %v", name, err)}
 	}
 	return prop, nil
+}
+
+// discoveryShapeProbe inspects the producer/consumer species of a proposal
+// payload WITHOUT decoding into harness.Proposal (which would re-trigger the
+// string→int tier failure). It reads the edit-instruction fields as permissive
+// strings and the tier as a raw JSON token so the caller can tell a
+// pattern-discovery draft from a genuine (if malformed) apply input.
+type discoveryShapeProbe struct {
+	TargetPath string          `json:"target_path"`
+	FieldKey   string          `json:"field_key"`
+	NewValue   string          `json:"new_value"`
+	Tier       json.RawMessage `json:"tier"`
+}
+
+// isDiscoveryDraft reports whether data is a proposalgen pattern-discovery
+// draft: tier encoded as a JSON string (producer vocabulary) AND no edit
+// fields present. Both conditions must hold so a consumer-shaped payload with
+// a numeric tier is never misclassified.
+func isDiscoveryDraft(data []byte) bool {
+	var probe discoveryShapeProbe
+	if err := json.Unmarshal(data, &probe); err != nil {
+		return false
+	}
+	tierTok := strings.TrimSpace(string(probe.Tier))
+	isStringTier := len(tierTok) > 0 && tierTok[0] == '"'
+	hasNoEditFields := probe.TargetPath == "" && probe.FieldKey == "" && probe.NewValue == ""
+	return isStringTier && hasNoEditFields
 }
 
 // draftLabel은 proposal.json 경로에서 사용자에게 보여줄 draft 식별자를 뽑는다.

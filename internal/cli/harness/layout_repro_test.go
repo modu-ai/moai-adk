@@ -116,32 +116,22 @@ func TestLoadProposalByID_MissingDraft(t *testing.T) {
 	}
 }
 
-// TestLoadProposalByID_ProducerSchemaMismatch is a CHARACTERIZATION test: it
-// pins the currently-broken producer/consumer schema contract discovered while
-// repairing the layout seam (M1). It documents a blocker for M2 (first
-// apply_outcome), NOT desired behaviour.
+// TestLoadProposalByID_DiscoveryDraftDiagnostic is the AC-HLR-014 reproduction
+// (SPEC-HARNESS-LOOP-REPAIR-001 M2-3).
 //
-// The producer (proposalgen.marshalProposalJSON) emits pattern-DISCOVERY
-// metadata:
+// A proposalgen discovery draft carries pattern-discovery metadata
+// (tier:"auto_update", pattern_key, observation_count) and NO edit instruction
+// (target_path/field_key/new_value). It is not an apply input (spec.md §A.4).
+// loadProposalByID MUST reject it with an honest diagnostic naming the reason,
+// NOT the raw "cannot unmarshal string into Go struct field Proposal.tier"
+// symptom that the string/numeric tier split produces.
 //
-//	{"tier": "auto_update", "pattern_key": ..., "observation_count": ...}
-//
-// The consumer (harness.Proposal) expects an actionable EDIT INSTRUCTION:
-//
-//	{"tier": <int>, "target_path": ..., "field_key": ..., "new_value": ...}
-//
-// Two independent breaks follow: `tier` is a string on disk but a numeric
-// harness.Tier in the struct (a hard unmarshal error), and target_path /
-// field_key / new_value are absent entirely (so Applier.Apply would have
-// nothing to apply even if parsing succeeded).
-//
-// Repairing the layout seam makes drafts VISIBLE; it does not make them
-// APPLICABLE. When M2 reconciles the two schemas this test MUST fail — that
-// failure is the signal to update it, not a regression.
-func TestLoadProposalByID_ProducerSchemaMismatch(t *testing.T) {
+// Falsification (acceptance.md §D.3): reverting the de-wiring restores the raw
+// unmarshal diagnostic.
+func TestLoadProposalByID_DiscoveryDraftDiagnostic(t *testing.T) {
 	root := t.TempDir()
-	const draftID = "PROPOSAL-20260727-ffffffff"
-	// Byte-shaped after a real producer-written draft on disk.
+	const draftID = "PROPOSAL-20260728-gggggggg"
+	// Byte-shaped after a real proposalgen-written draft: string tier, no edit fields.
 	writeNestedDraftRaw(t, root, draftID, `{
   "confidence": 1,
   "draft_id": "`+draftID+`",
@@ -158,18 +148,45 @@ func TestLoadProposalByID_ProducerSchemaMismatch(t *testing.T) {
 	if err != nil {
 		t.Fatalf("resolveProposalPath 오류: %v", err)
 	}
-	// The layout seam is repaired, so resolution reaches the real file...
-	if _, statErr := os.Stat(path); statErr != nil {
-		t.Fatalf("nested path did not resolve to the draft on disk: %v", statErr)
-	}
-	// ...but the schema contract is not, so the load still fails.
 	_, err = loadProposalByID(path)
 	if err == nil {
-		t.Fatal("producer-shaped draft loaded successfully — the M2 schema gap appears " +
-			"to be fixed; update this characterization test to assert the new contract")
+		t.Fatal("loadProposalByID succeeded on a discovery draft; want a diagnostic error")
 	}
-	if !strings.Contains(err.Error(), "cannot unmarshal string into Go struct field Proposal.tier") {
-		t.Fatalf("unexpected failure mode; the known M2 blocker is the string/int tier "+
-			"mismatch, got: %v", err)
+	msg := err.Error()
+	// MUST NOT surface the raw unmarshal symptom.
+	if strings.Contains(msg, "cannot unmarshal string into Go struct field") {
+		t.Fatalf("error is the raw unmarshal symptom, not the honest diagnostic:\n%s", msg)
 	}
+	// MUST name the discovery-draft reason and point at the promotion path.
+	for _, want := range []string{"discovery draft", "target_path", "promote"} {
+		if !strings.Contains(msg, want) {
+			t.Errorf("error %q missing substring %q", msg, want)
+		}
+	}
+}
+
+// RETIRED (SPEC-HARNESS-LOOP-REPAIR-001 M2-4, AC-HLR-016 clause 2):
+// TestLoadProposalByID_ProducerSchemaMismatch previously pinned the
+// producer/consumer tier mismatch (producer writes "tier":"auto_update" string;
+// harness.Proposal.Tier is numeric) as a CHARACTERIZATION of a known-broken
+// state. M2-3 de-wires the execute→draft path: loadProposalByID now detects a
+// producer-shaped discovery draft and returns an honest diagnostic instead of
+// the raw unmarshal error. The mismatch therefore no longer has a live
+// consumer — REQ-HLR-012 DISSOLVES the tier split rather than repairing it (no
+// harness.Tier JSON codec is added; the only consumer was this execute path).
+// The new contract is pinned by TestLoadProposalByID_DiscoveryDraftDiagnostic
+// above. The retired test is reproduced below as a comment for traceability:
+// it asserted err.Error() contained "cannot unmarshal string into Go struct
+// field Proposal.tier", which is exactly the raw symptom M2-3 replaces.
+//
+// (The test function body is intentionally removed; do not restore it without
+// also reverting M2-3 — the two are coupled.)
+
+// TestLoadProposalByID_ProducerSchemaMismatch_REMOVED is a sentinel that keeps
+// the retirement grep-discoverable without re-asserting the defunct contract.
+func TestLoadProposalByID_ProducerSchemaMismatch_RetiredByM2(t *testing.T) {
+	t.Parallel()
+	// This test intentionally asserts nothing about the old mismatch. It exists
+	// so `grep ProducerSchemaMismatch` still resolves to a documented retirement
+	// rather than a silent deletion (AC-HLR-016 clause 2 rationale requirement).
 }
