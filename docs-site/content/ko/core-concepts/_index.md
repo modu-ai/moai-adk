@@ -21,9 +21,9 @@ MoAI-ADK v3.0을 이해하는 데 필요한 핵심 개념을 소개합니다. v3
 
 | 기둥 | 핵심 질문 | 대표 문서 |
 |------|----------|----------|
-| **토크노믹스** | 같은 품질을 더 적은 토큰으로 얻으려면? | [MoAI-ADK란?](/core-concepts/what-is-moai-adk) |
+| **토크노믹스** | 같은 품질을 더 적은 토큰으로 얻으려면? | [MoAI-ADK란?](/ko/core-concepts/what-is-moai-adk) |
 | **에이전틱 루프 엔지니어링** | 루프가 어떻게 스스로 일하고 학습하는가? | [하네스 엔지니어링](/ko/core-concepts/harness-engineering) |
-| **에이전틱 하네스** | 에이전트가 잘 일할 환경을 어떻게 설계하는가? | [SPEC 기반 개발](/core-concepts/spec-based-dev) · [TRUST 5](/core-concepts/trust-5) |
+| **에이전틱 하네스** | 에이전트가 잘 일할 환경을 어떻게 설계하는가? | [SPEC 기반 개발](/ko/core-concepts/spec-based-dev) · [TRUST 5](/ko/core-concepts/trust-5) |
 
 ```mermaid
 flowchart TD
@@ -45,11 +45,11 @@ flowchart TD
 
 | 순서 | 문서 | 핵심 질문 |
 |------|------|----------|
-| 1 | [MoAI-ADK란?](/core-concepts/what-is-moai-adk) | MoAI-ADK는 무엇이고, 왜 토크노믹스를 목표로 하는가? |
+| 1 | [MoAI-ADK란?](/ko/core-concepts/what-is-moai-adk) | MoAI-ADK는 무엇이고, 왜 토크노믹스를 목표로 하는가? |
 | 2 | [하네스 엔지니어링](/ko/core-concepts/harness-engineering) | 코드를 직접 쓰는 대신 환경을 설계한다는 것은 무슨 뜻인가? |
-| 3 | [SPEC 기반 개발](/core-concepts/spec-based-dev) | 요구사항을 어떻게 명확하게 정의하고 관리하는가? |
-| 4 | [개발 방법론 (DDD/TDD)](/core-concepts/ddd) | 기존 코드를 망가뜨리지 않고 어떻게 개선하는가? |
-| 5 | [TRUST 5 품질](/core-concepts/trust-5) | 코드 품질을 어떤 기준으로 보장하는가? |
+| 3 | [SPEC 기반 개발](/ko/core-concepts/spec-based-dev) | 요구사항을 어떻게 명확하게 정의하고 관리하는가? |
+| 4 | [개발 방법론 (DDD/TDD)](/ko/core-concepts/ddd) | 기존 코드를 망가뜨리지 않고 어떻게 개선하는가? |
+| 5 | [TRUST 5 품질](/ko/core-concepts/trust-5) | 코드 품질을 어떤 기준으로 보장하는가? |
 | 6 | [Constitution 시스템](/ko/core-concepts/constitution) | 하네스가 스스로 진화할 때 무엇이 그 진화를 통제하는가? |
 
 {{< callout type="info" >}}

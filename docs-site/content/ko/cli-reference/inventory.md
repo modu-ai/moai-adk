@@ -173,8 +173,8 @@ moai inventory --json | jq '[.sessions.entries[].phase] | group_by(.) | map({pha
 
 ## 관련 문서
 
-- [CLI 레퍼런스](./cli) — 전체 CLI 명령어
-- [프로젝트 상태](./status) — `moai status` 명령어
+- [CLI 레퍼런스](/ko/cli-reference) — 전체 CLI 명령어
+- [프로젝트 상태](/ko/cli-reference/status) — `moai status` 명령어
 - [SPEC 기반 개발](/ko/workflow-commands/moai-plan) — SPEC 생명 주기
 
 {{< callout type="info" >}}

@@ -50,7 +50,7 @@ moai cg 실행
 ### 1단계: GLM API 키 저장 (최초 1회)
 
 ```bash
-moai glm sk-your-glm-api-key
+moai glm setup sk-your-glm-api-key
 ```
 
 키는 `~/.moai/.env.glm`에 안전하게 저장됩니다.

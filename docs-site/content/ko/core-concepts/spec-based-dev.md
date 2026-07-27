@@ -638,9 +638,9 @@ era 분류는 `spec.md` 프론트매터의 `created:` 날짜와 `progress.md`의
 
 ## 관련 문서
 
-- [MoAI-ADK란?](/core-concepts/what-is-moai-adk) -- MoAI-ADK의 전체 구조를
+- [MoAI-ADK란?](/ko/core-concepts/what-is-moai-adk) -- MoAI-ADK의 전체 구조를
   이해합니다
-- [개발 방법론 (DDD/TDD)](/core-concepts/ddd) -- SPEC을 기반으로 안전하게 코드를
+- [개발 방법론 (DDD/TDD)](/ko/core-concepts/ddd) -- SPEC을 기반으로 안전하게 코드를
   구현하는 DDD/TDD 방법론을 배웁니다
-- [TRUST 5 품질](/core-concepts/trust-5) -- 구현된 코드의 품질을 검증하는 기준을
+- [TRUST 5 품질](/ko/core-concepts/trust-5) -- 구현된 코드의 품질을 검증하는 기준을
   배웁니다
