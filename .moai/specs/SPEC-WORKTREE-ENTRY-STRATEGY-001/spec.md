@@ -2,7 +2,7 @@
 id: SPEC-WORKTREE-ENTRY-STRATEGY-001
 title: "EnterWorktree-First Worktree Entry Strategy + Launcher L2 Path-Resolution Extension + Web Auto-Toggles Default OFF + Parallel-Session Branch Conflict Auto-Isolation"
 version: "0.3.1"
-status: draft
+status: in-progress
 created: 2026-07-28
 updated: 2026-07-28
 author: manager-spec

@@ -6,13 +6,11 @@
 
 ## §A. Status
 
-- **Phase**: plan (artifacts authored; awaiting plan-auditor + Implementation
-  Kickoff Approval)
+- **Phase**: run (M1 committed; M3a next — Round 1 scope)
 - **Tier**: L (5-artifact set: spec.md + plan.md + acceptance.md + design.md
   + research.md)
 - **Era**: V3R6 (explicit frontmatter `era: V3R6` — no auto-detection)
-- **Frontmatter `status:`**: draft (set by manager-spec at plan-phase
-  artifact creation; the ONLY transition manager-spec performs)
+- **Frontmatter `status:`**: in-progress (set by manager-develop on M1 commit)
 
 ## §B. Plan-phase Artifact Set
 
@@ -76,10 +74,35 @@ _<pending sync-phase>_
 
 ## §F. Phase 4 Mode Selection
 
-_<pending run-phase — orchestrator logs the chosen Mode 1-6 + input
-parameters + decision rationale here before the first run-phase Agent()
-spawn; preserves the literal `Mode Selection` token per the grep AC
-(orchestration-mode-selection.md §D)_
+- **Input parameters**:
+  - tier: L (5-artifact set)
+  - scope: ~10 files (defaults.go, defaults_test.go, launcher.go,
+    launcher_test.go, worktree-integration.md, session-handoff.md,
+    session-handoff-examples.md, CLAUDE.local.md, README/help)
+  - domain count: 4 (config + cli + rules/workflow + local-docs)
+  - file language mix: Go (2 files) + Markdown (6+ files)
+  - concurrency benefit: LOW (coding-heavy; M3a launcher test depends on
+    M1 defaults being stable; doc milestones reference Go code state)
+- **Mode evaluation**:
+  - Mode 1 (trivial): not selected — multi-file, semantic change
+  - Mode 2 (background): not selected — write work, blocks conversation
+  - Mode 3 (agent-team): RETIRED — never selected
+  - Mode 4 (parallel): not selected — coding-heavy (Anthropic coding-task
+    parallelism caveat); files are inter-dependent
+  - Mode 5 (sub-agent): **selected** — coding-heavy sequential per milestone
+  - Mode 6 (workflow): not selected — not high-volume mechanical transform
+- **Decision**: `sub-agent` (Mode 5)
+- **Justification**: Per Anthropic's coding-task parallelism caveat, the Go
+  code changes (M1 default mutation + M3a launcher extension) and their
+  dependent doc updates are sequenced through a single manager-develop
+  sub-agent. Milestones have inter-dependencies (M3a precedes M3 Form B;
+  M2 precedes M6's procedure reference), so sequential avoids coordination
+  overhead. Route B PR per repo-local-pr-policy.md (all tiers PR-mandatory).
+- **Progression mode**: semi-autonomous (반자동 milestone checkpoint)
+- **Implementation Kickoff Approval**: PASSED (user confirmed 2026-07-28,
+  "반자동 진행" option)
+- **Plan Audit Gate**: skip-eligible (4-condition satisfied: PASS / 0.96 /
+  hash-unchanged / within 24h) — Phase 1 re-execution skipped
 
 ## §G. Decision Point 1 Resolution Log (FIRM as of 2026-07-28)
 

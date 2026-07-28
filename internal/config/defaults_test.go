@@ -471,9 +471,11 @@ func TestNewDefaultWorkflowConfigNestedDefaults(t *testing.T) {
 		{"AutoClear.AfterPlan", cfg.AutoClear.AfterPlan, true},
 		{"AutoClear.AfterRun", cfg.AutoClear.AfterRun, false},
 		{"LoopPrevention.FailurePatternDetection", cfg.LoopPrevention.FailurePatternDetection, true},
-		{"Worktree.AutoCleanup", cfg.Worktree.AutoCleanup, true},
+		// SPEC-WORKTREE-ENTRY-STRATEGY-001 M1: web auto-toggles default OFF.
+		// AutoCleanup and AutoMerge mutated true→false; AutoCreate unchanged (false).
+		{"Worktree.AutoCleanup", cfg.Worktree.AutoCleanup, false},
 		{"Worktree.AutoCreate", cfg.Worktree.AutoCreate, false},
-		{"Worktree.AutoMerge", cfg.Worktree.AutoMerge, true},
+		{"Worktree.AutoMerge", cfg.Worktree.AutoMerge, false},
 		{"Worktree.TmuxPreferred", cfg.Worktree.TmuxPreferred, true},
 	}
 	for _, c := range boolChecks {
