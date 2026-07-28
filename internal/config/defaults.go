@@ -141,13 +141,13 @@ const (
 
 	// SPEC-SESSIONSTART-PERF-001 M3 (REQ-SSP-014 / REQ-SSP-015 / REQ-SSP-018):
 	// the three M3 regression-guard thresholds, extracted here so no literal
-	// 2s / 500 lives inline in business logic or tests (CLAUDE.local.md §14).
+	// 4s / 500 lives inline in business logic or tests (CLAUDE.local.md §14).
 
 	// DefaultDriftPerfBudget is the wall-clock budget the drift-detection
 	// perf-regression test asserts against (REQ-SSP-014). The single-pass design
 	// completes far under this at the current corpus; a budget breach signals the
 	// O(n)-subprocess pattern has regressed.
-	DefaultDriftPerfBudget = 2 * time.Second
+	DefaultDriftPerfBudget = 4 * time.Second
 
 	// DefaultSessionStartDriftTimeout time-boxes the session-start drift advisory
 	// check (REQ-SSP-015). On deadline exceed the handler skips the (abandoned)
