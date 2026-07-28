@@ -552,3 +552,63 @@ func searchString(s, substr string) bool {
 	}
 	return false
 }
+
+// TestToMapInterface covers toMapInterface in strategies.go. It was retargeted
+// here from the deleted confirm_coverage_test.go, where it had been filed by
+// accident: the function it exercises belongs to the merge strategy layer and
+// has nothing to do with the removed confirmation program.
+func TestToMapInterface(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name    string
+		input   any
+		wantOK  bool
+		wantLen int
+	}{
+		{
+			name:    "map[string]any",
+			input:   map[string]any{"key": "value"},
+			wantOK:  true,
+			wantLen: 1,
+		},
+		{
+			name:    "map[any]any (YAML style)",
+			input:   map[any]any{"key": "value", 42: "number"},
+			wantOK:  true,
+			wantLen: 2,
+		},
+		{
+			name:   "string (not a map)",
+			input:  "hello",
+			wantOK: false,
+		},
+		{
+			name:   "nil",
+			input:  nil,
+			wantOK: false,
+		},
+		{
+			name:   "int",
+			input:  42,
+			wantOK: false,
+		},
+		{
+			name:   "slice",
+			input:  []string{"a", "b"},
+			wantOK: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result, ok := toMapInterface(tt.input)
+			if ok != tt.wantOK {
+				t.Errorf("toMapInterface() ok = %v, want %v", ok, tt.wantOK)
+			}
+			if ok && len(result) != tt.wantLen {
+				t.Errorf("toMapInterface() len = %d, want %d", len(result), tt.wantLen)
+			}
+		})
+	}
+}
