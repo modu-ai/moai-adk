@@ -2,7 +2,7 @@
 id: SPEC-V3R6-CODERABBIT-ADOPTION-001
 title: "CodeRabbit PR-review adoption — disable claude-pr-review, retain @claude interactive"
 version: "0.1.0"
-status: draft
+status: completed
 created: 2026-07-29
 updated: 2026-07-29
 author: MoAI orchestrator
