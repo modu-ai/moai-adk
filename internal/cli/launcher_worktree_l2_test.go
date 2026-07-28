@@ -11,8 +11,9 @@
 // AC-WES-010c: an absolute path NOT under ~/.moai/worktrees/ or
 //   .claude/worktrees/ is rejected with a clear error.
 //
-// NOTE: does not call t.Parallel() because it sets HOME via t.Setenv (process-
-// global state); follows the TestCleanupMoaiWorktrees_GlobalPath convention.
+// NOTE: does not call t.Parallel() because it sets HOME and USERPROFILE via
+// t.Setenv (process-global state on Windows where os.UserHomeDir reads
+// USERPROFILE); follows the TestCleanupMoaiWorktrees_GlobalPath convention.
 package cli
 
 import (
@@ -21,14 +22,19 @@ import (
 	"testing"
 )
 
-// runResolveWorktreeL2Path sets HOME to homeDir via t.Setenv (deterministic,
-// parallel-safe because this test file forgoes t.Parallel) and invokes the
-// production resolveWorktreeL2Path. The project root is resolved from the
-// real findProjectRoot() — this test file lives in the repo, so
+// runResolveWorktreeL2Path sets HOME and USERPROFILE to homeDir via t.Setenv
+// (deterministic, parallel-safe because this test file forgoes t.Parallel) and
+// invokes the production resolveWorktreeL2Path. The project root is resolved
+// from the real findProjectRoot() — this test file lives in the repo, so
 // <repo>/.claude/worktrees/ is the L1 prefix used for the L1-vs-L2 check.
+//
+// @MX:NOTE: [AUTO] HOME+USERPROFILE both set (SPEC-WORKTREE-ENTRY-STRATEGY-001 M3a windows CI fix)
+// @MX:REASON: os.UserHomeDir() reads USERPROFILE on Windows, HOME on Unix — setting both makes
+// the resolver deterministic on every GOOS without a per-platform build tag.
 func runResolveWorktreeL2Path(t *testing.T, homeDir string, args []string) error {
 	t.Helper()
 	t.Setenv("HOME", homeDir)
+	t.Setenv("USERPROFILE", homeDir)
 	return resolveWorktreeL2Path(args)
 }
 

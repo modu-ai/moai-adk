@@ -341,14 +341,35 @@ func resetTeamModeForCC(projectRoot string) string {
 	return fmt.Sprintf("Team mode disabled (was: %s)", prev)
 }
 
-// resolveSymlinks returns the symlink-resolved form of path, or path itself
-// on error. This ensures prefix matching works correctly on macOS, where
-// os.TempDir() returns /var/folders/... but git reports /private/var/folders/...
+// resolveSymlinks returns the symlink-resolved form of path. For paths that
+// exist on disk it resolves symlinks via filepath.EvalSymlinks (so macOS
+// /var/folders → /private/var/folders prefix matching works); for paths that
+// do NOT exist it falls back to filepath.Clean(path) lexically.
+//
+// The non-existent-path fallback MUST be lexical, NOT EvalSymlinks, because
+// filepath.EvalSymlinks's behavior on a non-existent path diverges across
+// GOOS: on darwin/linux it returns the cleaned path unchanged (no error),
+// while on windows it can partially-resolve the existing prefix (transforming
+// 8.3 short names like RUNNER~1 → runneradmin) and leave the non-existent
+// tail verbatim — yielding a partially-resolved string that no longer matches
+// a prefix built from the same short-name home directory. This divergence
+// breaks the launcher's -w validation for absolute paths to worktrees that
+// do not exist yet (e.g. re-entry into a not-yet-created path). Returning a
+// deterministic lexical Clean on non-existent paths makes prefix-matching
+// GOOS-independent for the launcher's pre-creation validation pass.
+//
+// @MX:NOTE: [AUTO] GOOS-deterministic symlink resolution fallback for non-existent paths (SPEC-WORKTREE-ENTRY-STRATEGY-001 M3a windows CI fix)
+// @MX:REASON: Windows filepath.EvalSymlinks on non-existent paths partially-resolves the existing prefix (8.3 short-name → long form), diverging from darwin/linux lexical-clean behavior and breaking prefix-matching for the launcher's pre-worktree-creation -w validation; gating EvalSymlinks behind an existence check restores GOOS-independent determinism while preserving macOS /var → /private/var resolution for paths that do exist.
 func resolveSymlinks(path string) string {
+	if _, err := os.Lstat(path); err != nil {
+		// Path does not exist (or is inaccessible): fall back to lexical Clean
+		// so prefix-matching is deterministic across GOOS. See function doc.
+		return filepath.Clean(path)
+	}
 	if resolved, err := filepath.EvalSymlinks(path); err == nil {
 		return resolved
 	}
-	return path
+	return filepath.Clean(path)
 }
 
 // cleanupMoaiWorktrees removes moai-related git worktrees from both the
@@ -795,13 +816,22 @@ func worktreeFlagValue(args []string) (string, bool) {
 }
 
 // isUnderWorktreePrefix reports whether path is contained within prefix.
-// Both path and prefix are symlink-resolved (matching cleanupMoaiWorktrees)
-// so that macOS /var/folders → /private/var/folders prefix matching works.
+// Both path and prefix are Clean'd, then symlink-resolved (matching
+// cleanupMoaiWorktrees) so that macOS /var/folders → /private/var/folders
+// prefix matching works. The comparison uses filepath.Rel, which is
+// separator-aware on every GOOS (handles Windows `\` natively); no
+// forward-slash string matching is performed.
 // The prefix itself is NOT considered "under" (a prefix path is not a valid
 // worktree path; only a child of the prefix is).
+//
+// @MX:NOTE: [AUTO] cross-platform path containment check (SPEC-WORKTREE-ENTRY-STRATEGY-001 M3a)
+// @MX:REASON: Windows compatibility — `~` expands via os.UserHomeDir() (USERPROFILE on Windows,
+// HOME on Unix); filepath.Rel handles `\` and `/` separators via stdlib, so no manual ToSlash needed.
 func isUnderWorktreePrefix(path, prefix string) bool {
-	resolvedPath := resolveSymlinks(path)
-	resolvedPrefix := resolveSymlinks(prefix)
+	cleanedPath := filepath.Clean(path)
+	cleanedPrefix := filepath.Clean(prefix)
+	resolvedPath := resolveSymlinks(cleanedPath)
+	resolvedPrefix := resolveSymlinks(cleanedPrefix)
 	rel, err := filepath.Rel(resolvedPrefix, resolvedPath)
 	if err != nil {
 		return false
