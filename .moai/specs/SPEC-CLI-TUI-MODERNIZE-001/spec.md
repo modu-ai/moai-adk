@@ -2,9 +2,9 @@
 id: SPEC-CLI-TUI-MODERNIZE-001
 title: "interactive TUI surface modernization — Bubble Tea preview redesign + dead confirm removal + huh theme unification"
 version: "0.1.3"
-status: in-progress
+status: completed
 created: 2026-07-25
-updated: 2026-07-25
+updated: 2026-07-29
 author: manager-spec
 priority: High
 phase: "v3.1.0 target"

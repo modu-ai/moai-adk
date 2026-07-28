@@ -79,7 +79,7 @@ and `golangci-lint run` both clean at run-phase completion.
 
 sync_status: complete
 sync_complete_at: 2026-07-26
-sync_commit_sha: "f61c197ee"
+sync_commit_sha: "ec04ddae7"   # PR #1167 mergeCommit — re-anchored 2026-07-29 from the orphan f61c197ee (no longer reachable on origin/main)
 
 CHANGELOG entry appended under `[Unreleased]`. Frontmatter transitions
 `in-progress → implemented → completed` applied atomically across spec.md,
@@ -87,6 +87,16 @@ plan.md, acceptance.md, progress.md. `sync_commit_sha` above is a placeholder �
 a commit cannot know its own hash — backfilled in the immediately following
 `chore(SPEC-ASTGREP-EDIT-001): backfill sync_commit_sha` commit per the SHA
 placeholder backfill exemption (D3).
+
+**SHA re-anchored to PR #1167 mergeCommit (2026-07-29).** The prior value
+`f61c197ee` (carried since the original close) was found to be unreachable on
+`origin/main` — `git rev-parse f61c197ee` failed and no ancestry-path reached
+it from the tip. The field now names `ec04ddae7`, the PR #1167 squash mergeCommit
+that actually landed the implementation on `origin/main` (verified: 446-commit
+ancestry-path to origin/main tip). A recorded SHA that no longer resolves on
+the canonical branch is a broken audit trail; this re-anchor closes that gap
+without touching the SPEC body or re-opening the amendment window — the SPEC
+remains `status: completed`.
 
 **SHAs re-anchored after rebase.** Before the first push, `origin/main` had moved
 ahead by one unrelated commit, and `main`'s branch protection sets
