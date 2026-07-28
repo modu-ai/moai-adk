@@ -70,6 +70,10 @@ func runCG(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
+	// SPEC-WORKTREE-ENTRY-STRATEGY-001 M3a: see cc.go for the rationale.
+	if err := resolveWorktreeL2Path(filteredArgs); err != nil {
+		return err
+	}
 	filteredArgs = normalizeWorktreeFlag(filteredArgs)
 	return unifiedLaunch(profileName, "claude_glm", filteredArgs)
 }
