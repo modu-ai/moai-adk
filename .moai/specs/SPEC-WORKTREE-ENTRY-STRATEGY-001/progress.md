@@ -148,7 +148,7 @@ avoided in BOTH copies (REQ-WES-* / AC-WES-* tokens live only in
 
 ```yaml
 run_complete_at: 2026-07-28T23:30:00Z   # Round 1
-run_commit_sha: 5a86fe92a                # M3a (Round 1 latest); M1=2fdf77714; Round 2 commit pending-backfill below
+run_commit_sha: 1201680b3                # Round 2 (M2-M6 doc-alignment); M3a=5a86fe92a; M1=2fdf77714; Round 1 evidence=9791dc27b
 run_status: complete                      # Round 1 (M1+M3a) + Round 2 (M2+M3+M4+M5+M6) all complete; 15/15 MUST ACs PASS
 ac_pass_count: 15                         # AC-WES-001a/b/002/003/004a/b/c/005a/b/006/007/008/010a/b/c (AC-009 SHOULD also PASS)
 ac_fail_count: 0
