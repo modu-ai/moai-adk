@@ -19,6 +19,7 @@ Rules:
 - Detect user's language from their input
 - Respond in the same language
 - Internal agent communication uses English
+- [ZONE:Evolvable] [HARD] For non-English `conversation_language`, output MUST be native idiom, not English mapped word-for-word (no translation-style calques — e.g. figurative "축(axis)" / "기둥(pillar)" as headings, "검증경제", "예산방어"). Chat uses colloquial native register; artifacts (reports, README, docs-site) use clean native written register. SSOT + hazard list + humanize mechanism: `.claude/rules/moai/core/native-idiom-and-register.md`.
 
 ## Parallel Execution
 
